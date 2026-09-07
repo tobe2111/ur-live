@@ -93,7 +93,10 @@ describe('⑤ 오늘의 핫딜 카드', () => {
   const s = code(read(HERO))
   it('할인율이 사진 위(absolute) 배지가 아니라 가격 줄에 있다', () => {
     expect(s).not.toMatch(/absolute top-1\.5 left-1\.5 bg-brand/)
-    expect(s).toMatch(/discount > 0 && <span className="text-brand-text/)
+    /* 할인 강조색은 `--sale`(빨강)이다 — 2026-09-07 대표 "할인율도 빨강으로 유지".
+       블루는 행동(버튼·선택 칩) 전용이고 이건 가격 이득이라 역할이 다르다.
+       계약은 "할인율이 한 색으로 강조된다" 이고, 그 색만 바뀌었다(완화 아님). */
+    expect(s).toMatch(/discount > 0 && <span className="text-sale/)
   })
   it('카드 테두리 0 · shadow-lift · 이모지 0', () => {
     expect(s).toMatch(/shadow-lift/)

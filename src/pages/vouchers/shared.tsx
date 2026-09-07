@@ -102,7 +102,7 @@ export const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: Vouc
         <div className="flex items-baseline gap-1 mt-1">
           {/* 🖥️ 2026-07-16 (대표 — 할인 % 나와야지): 가격 옆에 할인율 코랄레드로 명시. */}
           {discountRate > 0 && (
-            <span className="text-[15px] font-extrabold text-brand dark:text-[#4D8DF5] tracking-tight">{discountRate}%</span>
+            <span className="text-[15px] font-extrabold text-sale dark:text-[#4D8DF5] tracking-tight">{discountRate}%</span>
           )}
           <span className="text-[16px] font-extrabold text-[#171B24] dark:text-white tracking-tight">{formatNumber(p.price)}</span>
           <span className="text-[12px] font-bold text-[#171B24] dark:text-white">딜</span>

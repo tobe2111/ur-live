@@ -190,17 +190,22 @@ export default function HomeHeroDefault({
         </div>
       </div>
 
-      {/* 🖼️ 2026-09-03 (안 1): 컨트롤 행에 있던 "사진 속 딜 보기"를 **사진 오른쪽 아래**로 옮겼다.
-          왼쪽 글자 뭉치 옆에 있으면 무엇을 가리키는 말인지 알 수 없고, 주 버튼 옆에서 화살표를 하나 더
-          만들었다. 사진 위에 있으면 설명이 필요 없다. 사진이 실제 딜일 때만 — 갈 곳이 없으면 장식이다. */}
+      {/* 🖼️ 2026-09-06 (대표 — "히어로 속 이미지 부분은 클릭이 되게 · 사진 속 딜 보기 문구는 없애줘"):
+          사진 자체가 링크다. 종전엔 사진이 `pointer-events-none` 배경 래퍼 안에 있어 **클릭이 구조적으로
+          불가능**했고, 그래서 오른쪽 아래에 "사진 속 딜 보기 →" 라는 안내를 따로 달아야 했다.
+          사진이 곧 그 딜이면 안내가 필요 없다 — 누르면 간다.
+
+          📐 **사진과 같은 자를 쓴다.** 폭·오른쪽 여백 계산이 위 사진 div 와 한 글자라도 다르면 링크가
+             사진 밖으로 삐져나가거나 덜 덮는다(둘은 같이 고쳐야 한다 — 테스트가 그걸 잡는다).
+          🔝 z-20 인 이유: 콘텐츠 층(z-10)이 `w-full` 이라 사진 위까지 덮는다. 그 아래에 두면 투명한
+             콘텐츠 div 가 클릭을 먼저 가로챈다. 왼쪽 글자·컨트롤은 실제 요소가 있는 곳에서만 위에 있다.
+          👆 사진은 눌러진다는 표시가 없으므로 hover 에 아주 옅은 막 하나만 — 사진을 탁하게 만들지 않는 선. */}
       {hasMedia && photoHref !== '/map' && (
         <Link
           to={photoHref}
-          /* 사진 오른쪽 끝이 매대와 정렬됐으니 이 링크도 같은 자를 쓴다 — 안 그러면 사진 밖에 뜬다. */
-          className="absolute z-20 bottom-3 right-[calc(max(0px,(100vw-1440px)/2)+2.5rem)] lg:right-[calc(max(0px,(100vw-1440px)/2)+3rem)] text-[12px] font-bold text-white/70 hover:text-white transition-colors drop-shadow-[0_1px_3px_rgba(0,0,0,0.55)]"
-        >
-          사진 속 딜 보기 →
-        </Link>
+          aria-label="이 사진의 딜 보기"
+          className="hidden md:block absolute z-20 inset-y-0 w-[46%] lg:w-[54%] right-[calc(max(0px,(100vw-1440px)/2)+1.5rem)] lg:right-[calc(max(0px,(100vw-1440px)/2)+2rem)] bg-transparent hover:bg-white/[0.06] transition-colors"
+        />
       )}
     </section>
   )
