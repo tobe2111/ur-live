@@ -38,14 +38,42 @@ export default function StoreClaimPage() {
     if (!isLoggedInSync()) navigate(`/login?returnUrl=${encodeURIComponent('/store/new')}`, { replace: true })
   }, [navigate])
 
+  /**
+   * ✕ 로 나갈 곳. `navigate(-1)` 하나로는 부족하다 — 이 페이지는 푸터·소개 페이지·카톡으로 받은
+   * 링크처럼 **직접 주소로** 열리는 자리라(그게 이 페이지의 존재 이유다) 돌아갈 이력이 없을 수 있고,
+   * 그때 `-1` 은 아무 일도 안 하거나 앱 밖으로 나간다. 이력이 없으면 홈으로 보낸다.
+   */
+  const goBack = () => {
+    const idx = (window.history.state as { idx?: number } | null)?.idx
+    if (typeof idx === 'number' ? idx > 0 : window.history.length > 1) navigate(-1)
+    else navigate('/', { replace: true })
+  }
+
   return (
-    <div className="min-h-[100dvh] bg-gray-50 dark:bg-[#11141C]">
+    /* 🕳️ 2026-09-07 (실측 1.09:1): `force-light-theme` 이 없으면 **다크모드에서 입력 글자가 안 보인다.**
+       전역 `.dark input:not(...)`(특이도 0,5,1)이 모달의 `text-gray-900`(0,1,0)을 이겨 글자를
+       gray-100 으로 덮는데, 모달 배경은 `bg-white` 다 → 흰 배경 위 흰 글자(브라우저 실측
+       rgb(243,244,246) on rgb(255,255,255)). 대표가 2026-09-03 지도 검색창에서 신고한 것과
+       **같은 버그**가, 하필 매장 유치 퍼널에 있었다.
+       ⚠️ 이건 임기응변이 아니라 `index.css` 가 명시한 규칙이다 —
+       *"신규 standalone 라이트 페이지(로그인/가입/대시보드 외부)는 루트 div 에 `force-light-theme` 추가할 것"*.
+       대시보드 안(`MyStoresPanel`)에서 열릴 땐 `.seller-light-theme` 래퍼가 이미 같은 일을 한다. */
+    <div className="force-light-theme min-h-[100dvh] bg-gray-50">
       <SEO title="매장 등록 - 유어딜" description="카카오맵에서 내 가게를 찾아 유어딜에 등록하세요" noindex />
       <StoreRegisterModal
-        onClose={() => navigate(-1)}
-        onDone={async (sellerId) => {
-          await enterStoreSeat(sellerId)
-          toast.success('매장이 등록됐어요 — 이제 이용권을 올릴 수 있어요')
+        /**
+         * 🩸 2026-09-07 (대표 *"흰 섹션 바깥쪽을 클릭하니까 페이지가 꺼져"*): 여기선 모달이 곧 페이지라
+         *   배경 뒤에 아무것도 없다 — 바깥 클릭은 닫을 것이 아니라 **폼을 날리는 사고**다. 닫기는 ✕ 로만.
+         */
+        dismissOnBackdrop={false}
+        onClose={goBack}
+        onDone={async (sellerId, opts) => {
+          // `existing` = 새로 만든 게 아니라 **원래 갖고 있던 매장**으로 들어간 경우(중복 409 분기).
+          //   그때 "등록됐어요" 라고 말하면 사장님에게 거짓말이고, 좌석도 이미 잡혀 있다.
+          if (!opts?.existing) {
+            await enterStoreSeat(sellerId)
+            toast.success('매장이 등록됐어요 — 이제 이용권을 올릴 수 있어요')
+          }
           navigate('/seller', { replace: true })
         }}
       />

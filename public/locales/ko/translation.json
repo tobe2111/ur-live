@@ -5270,10 +5270,7 @@
     "editNamePlaceholder": "이름을 입력하세요",
     "editPhone": "전화번호",
     "editCancel": "취소",
-    "appInfo": "앱 정보",
-    "currentVersion": "현재 버전",
-    "build": "빌드",
-    "checkLatest": "최신 빌드 확인",
+    "checkLatest": "최신 버전인지 확인",
     "loginRequired": "로그인이 필요합니다.",
     "fallbackName": "사용자",
     "nameRequired": "이름을 입력해주세요.",
@@ -5309,7 +5306,12 @@
     "ariaToggleOff": "{{label}} 끄기",
     "language": "언어",
     "phoneRequired": "전화번호를 입력해주세요 — 교환권·알림톡이 이 번호로 갑니다",
-    "phoneInvalid": "전화번호 형식을 확인해주세요 (010-0000-0000)"
+    "phoneInvalid": "전화번호 형식을 확인해주세요 (010-0000-0000)",
+    "appName": "유어딜",
+    "checking": "확인 중…",
+    "isLatest": "최신 버전이에요",
+    "updateAvailable": "새 버전이 나왔어요",
+    "updateNow": "지금 업데이트"
   },
   "productDetail": {
     "retry": "다시 시도",

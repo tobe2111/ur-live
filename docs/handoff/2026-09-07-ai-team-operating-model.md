@@ -50,8 +50,14 @@
 | [planning] 기획 주간 정합 | 월 09:30 | `trig_01TwdCNThxLzVxd6WLKT3DPm` |
 | [marketing] 마케팅 주간 | 화 09:30 | `trig_01Mac6jT8N7CayQ78qFXz89p` |
 | [design] 디자인 주간 | 수 09:30 | `trig_01TPoqu3NDox96ETDrk7qUnh` |
-| [executor] 승인 결재 실행기 | 4시간마다(:56) · 승인 0건이면 무동작 | `trig_01LkzCCq5UD56vsY1yHVKjv7` |
+| [executor] 승인 결재 실행기 | 4시간마다(:18) · 승인 0건이면 무동작 · **이 세션에 바인딩**(fresh-session 은 푸시 불가 — 아래 판정) | `trig_01BmSbMMZfpnC1TBF3xWfRGF` (구 fresh `trig_01LkzCCq5UD56vsY1yHVKjv7` 삭제) |
 | [connector-proxy] 커넥터 대리인 | 4시간마다(:26, 실행기 30분 뒤) · **이 세션에 바인딩**(GitHub·Notion 보유) · 루틴 브랜치 draft PR 생성 + 머지분 Notion 미러 | `trig_01HeNMX1hE9gx7s2wn1WPtLm` |
+
+### 🧪 실행기 fresh-session 판정 — 2026-09-07 21:16 KST (체크인 `trig_0145EkezWGTpsE3Dr4BzPMvh`)
+- 1회차 20:45 KST 재시도 세션 `cse_013TtSzb1we9SRyggVbtswGi`: 20분 실행 · 46만 토큰 · $11.8 · 상태 "review ready" — **원격 브랜치 0개**(`git fetch --prune` 후 `claude/exec-*` 없음). 진단용 `claude/exec-retry-2026-09-07` 푸시 지시도 안 남았다 ⇒ 푸시가 구조적으로 막힌다(config `outcomes: []`·`allowed_push_branches: []`).
+- 처리: fresh 실행기 삭제 → **이 세션 바인딩 실행기** 신설(`trig_01BmSbMMZfpnC1TBF3xWfRGF`, `git worktree` 로 격리·같은 절차). 대리인 루틴과 같은 방식이라 GitHub·Notion 도구가 실제로 있다(대리인 1회차가 Notion 4행을 실제로 썼다).
+- 🩸 그 20분 산출은 세션 UI 의 "review" 에 남아 있을 수 있다 — 대표가 세션 목록에서 열어 diff 가 있으면 UI 의 PR 생성으로 살릴 수 있고, 없으면 바인딩 실행기가 다음 회차에 처음부터 한다(승인 항목 `2026-09-07-actor-benefit-conflicts`).
+- 역할 루틴 7개는 그대로 fresh-session — 보고가 산출이라 푸시가 필요 없다. 단 **수리 PR 을 만드는 dev/design 루틴의 "빨강이면 수리 PR" 은 같은 이유로 안 된다** → 그 둘은 결재/handoff 로 올리고 실행기(이 세션)가 집는 흐름으로 읽을 것. ⚠️ 이 세션이 아카이브되면 실행기·대리인이 함께 멈춘다.
 
 ### 🔴 대표가 직접 해야 하는 것 — 2026-09-07 17:0x 재정리 (대표 *"내가 할 일 너가 최대한 하거나 자동화 해주면 안돼?"*)
 | 항목 | 자동화 시도 | 결과 | 남는 것 |

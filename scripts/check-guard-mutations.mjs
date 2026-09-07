@@ -1277,6 +1277,27 @@ const MUTATIONS = [
       '매번 ALTER 를 두 번 시도했다. 09-02 에 이 계정은 D1 일일 읽기 한도로 소비자 API 가 통째로 500 이었다.',
   },
   {
+    name: '🪦 은퇴한 cron 식이 기대 목록으로 되돌아간다 — 헬스체크 영구 빨강',
+    file: 'src/worker/utils/cron-expected.ts',
+    find: "  '2,17,32,47 * * * *',\n]",
+    replace: "  '2,17,32,47 * * * *',\n  '0 20 * * 0',\n]",
+    test: 'src/tests/unit/cron-expected.test.ts',
+    why:
+      '`0 20 * * 0` 은 2026-08-25 에 트리거에서 빠졌는데 기대 목록에 남아, `findNeverFired` 가 매번 잡아내 ' +
+      '`/api/_healthcheck/cron` 이 13일간 503 이었다. 영원한 빨간불 하나가 경보 채널 전체를 침묵시킨다 — ' +
+      '진짜 cron 이 죽어도 같은 503 이라 구분이 안 된다(#1056 에서 같은 방식으로 21일을 잃었다).',
+  },
+  {
+    name: '🪦 은퇴한 cron 식의 디스패처 분기가 사라진다 — 잔존 트리거가 unmatched',
+    file: 'src/worker/scheduled.ts',
+    find: "cron === '2,17,32,47 * * * *' || cron === '0 20 * * 0' || cron === '0 20 * * SUN' || cron === '0 20 * * 7'",
+    replace: "cron === '2,17,32,47 * * * *'",
+    test: 'src/tests/unit/cron-expected.test.ts',
+    why:
+      '은퇴는 "기대하지 않는다"이지 "받지 않는다"가 아니다. 분기를 지우면 대시보드에 남은 옛 주간 트리거의 ' +
+      '회차가 `cron-unmatched` 로 조용히 버려진다 — 아무 일도 안 일어나는데 에러도 안 난다.',
+  },
+  {
     name: '📉 키워드 수율 재계산 6h 게이트가 헛돈다(회차마다 전수 GROUP BY)',
     file: 'src/features/marketing/api/influencer-keyword-yield.ts',
     find: '  if (row?.value === bucket) return { skipped: \'bucket\', bucket }\n',
@@ -9539,6 +9560,114 @@ canvas {
     why:
       '2026-06-17 대표 결정(5%→2%)이 적립 경로에만 반영되고 표시 상수는 5 로 남아 몇 달간 ' +
       '어드민 정책 표가 2.5배 틀린 숫자를 보여 줬다. 상수를 되돌리면 그 상태로 돌아간다.',
+  },
+  {
+    name: '🏪 매장 등록 페이지가 다시 다크에 노출된다 (사장님이 자기 입력을 못 본다)',
+    file: 'src/pages/StoreClaimPage.tsx',
+    find: '<div className="force-light-theme min-h-[100dvh] bg-gray-50">',
+    replace: '<div className="min-h-[100dvh] bg-gray-50 dark:bg-[#11141C]">',
+    test: 'src/tests/unit/store-register-wizard.test.ts',
+    why:
+      '전역 `.dark input`(특이도 0,5,1)이 모달의 text-gray-900(0,1,0)을 이겨 **흰 배경 위 흰 글자**가 ' +
+      '된다(브라우저 실측 1.00:1). 화면은 멀쩡해 보이고 에러도 없다 — 사장님이 사업자번호를 치는 ' +
+      '동안 자기가 뭘 쳤는지 못 볼 뿐이다. 하필 매장 유치 퍼널의 유일한 문이다.',
+  },
+  {
+    name: '🏪 이미 등록된 매장이 다시 막다른 alert 이 된다',
+    file: 'src/components/seller/StoreRegisterModal.tsx',
+    find: "      if (e?.response?.status === 409 && e?.response?.data?.code === 'STORE_EXISTS') {",
+    replace: '      if (false) {',
+    test: 'src/tests/unit/store-register-wizard.test.ts',
+    why:
+      '서버는 중복이면 그 매장의 seller_id 까지 돌려주는데(seller-stores.routes.ts:357) 분기를 지우면 ' +
+      '화면은 "이미 등록된 매장입니다" 토스트 하나 띄우고 끝난다. 자기 매장을 다른 계정으로 등록해 둔 ' +
+      '사장님은 거기서 갈 곳이 없다 — 실패가 아니라 **조용한 포기**라 우리는 영영 모른다.',
+  },
+  {
+    name: '🏪 위저드가 다시 한 화면 네 질문으로 (회색 버튼 이유가 사라진다)',
+    file: 'src/components/seller/StoreRegisterModal.tsx',
+    find: '          {blocked && <p className="text-[11.5px] text-gray-500 text-center mt-2">{blocked}</p>}',
+    replace: '',
+    test: 'src/tests/unit/store-register-wizard.test.ts',
+    why:
+      'blockReason 을 계산만 하고 안 그리면 종전과 똑같다 — 사장님은 무엇이 빠졌는지 모른 채 회색 ' +
+      '버튼을 바라본다. 이 레포가 토스 결제에서 한 번 고친 "구조적으로 잠기는 버튼" 클래스다.',
+  },
+  {
+    name: '🏪 좌석 없는 소비자에게 requireSeller 경로를 권한다 (새 막다른 길)',
+    file: 'src/components/seller/StoreRegisterModal.tsx',
+    find: '              {hasSellerSeat && (',
+    replace: '              {true && (',
+    test: 'src/tests/unit/store-register-wizard.test.ts',
+    why:
+      '`/seller/stores` 는 requireSeller 다. 푸터로 들어온 소비자(seller_token 없음)에게 이 버튼을 ' +
+      '보이면 셀러 로그인 화면으로 튕긴다 — 막다른 길을 없애러 와서 하나 더 놓는 셈이고, 화면상 ' +
+      '멀쩡해 보여 리뷰에서도 안 잡힌다. 실제로 내가 첫 판에 이대로 썼다가 적대적 재독에서 잡았다.',
+  },
+  {
+    name: '🏪 등록 안 했는데 "매장이 등록됐어요" 라고 말한다',
+    file: 'src/pages/StoreClaimPage.tsx',
+    find: '          if (!opts?.existing) {',
+    replace: '          if (true) {',
+    test: 'src/tests/unit/store-register-wizard.test.ts',
+    why:
+      '이미 갖고 있던 매장으로 들어간 경우엔 아무것도 등록되지 않았다. 그런데 같은 문구를 띄우면 ' +
+      '사장님은 매장이 하나 더 생긴 줄 안다 — 거짓말이고, 좌석도 이미 잡혀 있어 재발급이 낭비다.',
+  },
+  {
+    name: '🏪 등록 직전 요약에서 되돌아갈 길이 사라진다',
+    file: 'src/components/seller/StoreRegisterModal.tsx',
+    find: '                    <button onClick={() => setStep(r.to)} className="text-[11px] text-gray-400 underline shrink-0 pt-0.5">수정</button>',
+    replace: '',
+    test: 'src/tests/unit/store-register-wizard.test.ts',
+    why:
+      '요약은 틀린 걸 발견하라고 있는 것이다. 발견해도 고칠 길이 없으면 불안만 주고, 사장님은 ' +
+      '취소하고 처음부터 다시 하거나 그냥 잘못된 채로 등록한다. 화면은 멀쩡해 보인다.',
+  },
+  {
+    name: '🏝️ 매장 등록 모달이 다시 흰 판 위 흰 글자가 된다 (light-island 소실)',
+    file: 'src/components/seller/StoreRegisterModal.tsx',
+    find: 'className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl max-h-[92dvh]',
+    replace: 'className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl max-h-[92dvh]',
+    test: 'src/tests/unit/store-claim-2026-09-07.test.ts',
+    why:
+      '이 패널은 bg-white 뿐이라 늘 흰데 소비자 라우트(/store/new)에서도 열린다. 전역 .dark input' +
+      '(특이도 0,5,1)이 text-gray-900(0,1,0)을 이기므로 클래스 유틸로는 못 이기고, light-island 만이 ' +
+      '안쪽 dark: 를 끈다. 2026-09-07 대표가 검색창에 친 글자를 못 봤다 — 이 레포 세 번째 재발.',
+  },
+  {
+    name: '🔗 면제한 auth 페이지가 실제 렌더 측정 목록에서 빠진다 (아무도 안 보는 화면)',
+    file: 'scripts/check-dark-contrast.mjs',
+    find: "  { route: '/register', name: '가입', fill: true },",
+    replace: '',
+    test: 'src/tests/unit/theme-guard-pairing-2026-09-07.test.ts',
+    why:
+      'check-light-input-guard 의 CONSUMER_EXCLUDE 는 "이 페이지는 양 테마를 지원한다"는 선언이라 ' +
+      '라이트 고정 검사를 면제한다. 그 선언이 사실인지는 dark-contrast 의 실제 렌더 측정만 안다. ' +
+      '2026-09-07 에 RegisterPage 가 면제 목록에 있으면서 다크 이행이 반만 돼 있어 가입 폼 전체가 ' +
+      '안 읽혔다(약관 링크 1.03:1 · 입력 1.00:1). 면제는 약속이고 이 짝이 그 약속을 지킨다.',
+  },
+  {
+    name: '🚪 매장 등록 페이지가 다시 배경 클릭으로 꺼진다 (폼 통째로 날아감)',
+    file: 'src/pages/StoreClaimPage.tsx',
+    find: '        dismissOnBackdrop={false}',
+    replace: '',
+    test: 'src/tests/unit/store-claim-2026-09-07.test.ts',
+    why:
+      '/store/new 는 모달이 곧 페이지라 배경 뒤에 아무것도 없다. 사업자등록증까지 올린 폼이 ' +
+      '스치는 클릭 한 번에 사라지고 화면을 떠난다(2026-09-07 대표 신고). 대시보드에서 겹쳐 뜰 때와 ' +
+      '닫기의 의미가 다르다.',
+  },
+  {
+    name: '🏝️ 409 안내 패널만 light-island 를 잃는다 (한 파일 안 두 표면 중 하나)',
+    file: 'src/components/seller/StoreRegisterModal.tsx',
+    find: '        <div className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl" onClick={e => e.stopPropagation()}>',
+    replace: '        <div className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl" onClick={e => e.stopPropagation()}>',
+    test: 'src/tests/unit/store-claim-2026-09-07.test.ts',
+    why:
+      '이 파일엔 늘-흰 패널이 **둘**이다(등록 폼 · 409 안내). 실제로 409 화면이 light-island 없이 ' +
+      '들어왔고, 그때 가드가 `.find()` 로 첫 하나만 봐서 통과시켰다. 한 파일 안에 같은 성질의 표면이 ' +
+      '둘이면 하나만 고치고 끝났다고 믿기 쉽다 — 그래서 둘 다 주입해 본다.',
   },
 ]
 /**
