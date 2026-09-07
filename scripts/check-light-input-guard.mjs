@@ -31,7 +31,18 @@ const STRICT = process.env.STRICT_LIGHT_INPUT === '1' || process.argv.includes('
 
 // scope: 라이트 고정 계열의 인증/진입 페이지만 (대시보드 CRUD 는 레이아웃이 보호 → 제외).
 const AUTH_NAME = /(Login|Register|ForgotPassword|ResetPassword|Join|StaffLogin|PinSetup|SignUp|SignIn)/i
-// 소비자(다크 토글) 진입 페이지 — 라이트 고정 아님(의도적 다크), scope 밖.
+/**
+ * 소비자(다크 토글) 진입 페이지 — 라이트 고정이 아니라 **양 테마를 지원하는** 페이지라 scope 밖.
+ *
+ * 🩸 2026-09-07 — 이 제외가 실사고를 숨겼다. `RegisterPage` 는 여기 적혀 있었지만 실제로는
+ *   **다크 이행이 반만** 돼 있었다: 바깥 배경만 `dark:bg-[#11141C]` 로 뒤집히고 안쪽 폼은 원시
+ *   hex(`text-[#111]`·`text-[#555]`)로 남아, 다크에서 약관 링크가 1.03:1 · 입력이 1.00:1(흰 위 흰)
+ *   이었다. 즉 **"다크 대응이 돼 있다"는 전제를 이 목록이 사실로 굳혀 놓고 있었다.**
+ *
+ * ⚠️ 그러니 여기 이름을 올리는 것은 면제가 아니라 **약속**이다 — 그 페이지는 양 테마를 실제로
+ *   지원해야 하고, 그 사실은 이 정적 검사가 아니라 `check-dark-contrast.mjs`(실제 렌더 측정)가
+ *   본다. 두 가드는 짝이다: 여기서 빠지는 페이지는 반드시 저쪽 경로 목록에 있어야 한다.
+ */
 const CONSUMER_EXCLUDE = new Set([
   'src/pages/LoginPage.tsx',
   'src/pages/RegisterPage.tsx',
