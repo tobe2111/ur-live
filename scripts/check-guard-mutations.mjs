@@ -9575,6 +9575,18 @@ canvas {
       '안쪽 dark: 를 끈다. 2026-09-07 대표가 검색창에 친 글자를 못 봤다 — 이 레포 세 번째 재발.',
   },
   {
+    name: '🔗 면제한 auth 페이지가 실제 렌더 측정 목록에서 빠진다 (아무도 안 보는 화면)',
+    file: 'scripts/check-dark-contrast.mjs',
+    find: "  { route: '/register', name: '가입', fill: true },",
+    replace: '',
+    test: 'src/tests/unit/theme-guard-pairing-2026-09-07.test.ts',
+    why:
+      'check-light-input-guard 의 CONSUMER_EXCLUDE 는 "이 페이지는 양 테마를 지원한다"는 선언이라 ' +
+      '라이트 고정 검사를 면제한다. 그 선언이 사실인지는 dark-contrast 의 실제 렌더 측정만 안다. ' +
+      '2026-09-07 에 RegisterPage 가 면제 목록에 있으면서 다크 이행이 반만 돼 있어 가입 폼 전체가 ' +
+      '안 읽혔다(약관 링크 1.03:1 · 입력 1.00:1). 면제는 약속이고 이 짝이 그 약속을 지킨다.',
+  },
+  {
     name: '🚪 매장 등록 페이지가 다시 배경 클릭으로 꺼진다 (폼 통째로 날아감)',
     file: 'src/pages/StoreClaimPage.tsx',
     find: '        dismissOnBackdrop={false}',

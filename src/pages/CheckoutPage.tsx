@@ -428,7 +428,7 @@ function CartCheckout() {
   if (error) return (
     <div className="w-full p-4 sm:p-6">
       <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-lg p-4">
-        <div className="flex items-center gap-2"><AlertCircle className="w-5 h-5 text-red-600" /><p className="text-red-800">{error}</p></div>
+        <div className="flex items-center gap-2"><AlertCircle className="w-5 h-5 text-red-600" /><p className="text-red-800 dark:text-red-400">{error}</p></div>
         <div className="flex gap-2 mt-4">
           <button onClick={() => window.location.reload()} className="px-4 py-2 bg-gray-900 text-white text-sm rounded-lg">{t('common.retry', { defaultValue: '다시 시도' })}</button>
           <Button onClick={() => navigate('/cart', { replace: true })} variant="outline">{t('checkout.backToCart', { defaultValue: '장바구니로 돌아가기' })}</Button>
