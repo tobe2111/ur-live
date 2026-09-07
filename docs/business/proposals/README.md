@@ -5,7 +5,7 @@
 | 문서 | 파일 | 어드민 |
 |---|---|---|
 | 인플루언서 제휴 제안 (16:9, 9장) | `public/static/proposals/influencer-proposal.html` | `/admin/proposals` |
-| 대행사 제휴 제안 (16:9, 14장, PowerPoint) | `docs/business/proposals/urdeal-agency-proposal.pptx` (생성기 `urdeal-agency-proposal.build.js`) | 없음. 파일로 전달 |
+| 대행사 제휴 제안 (16:9, 14장, PowerPoint) | `docs/business/proposals/urdeal-agency-proposal.pptx` (생성기 `urdeal-agency-proposal.build.mjs`) | 없음. 파일로 전달 |
 
 ## 왜 docs/ 가 아니라 public/static/ 인가
 
@@ -37,7 +37,7 @@ NODE_USE_ENV_PROXY=1 node scripts/capture-proposal-shots.mjs /tmp/shots
 
 ```bash
 mkdir -p /tmp/deck && cd /tmp/deck && npm init -y && npm i pptxgenjs sharp react react-dom react-icons
-node /path/to/ur-live/docs/business/proposals/urdeal-agency-proposal.build.js ./urdeal-agency-proposal.pptx
+node /path/to/ur-live/docs/business/proposals/urdeal-agency-proposal.build.mjs ./urdeal-agency-proposal.pptx
 ```
 
 - 요율(직접 10% / 중개 5%)과 "유어딜은 중개사에게 지급하지 않는다"는 2026-09-04 대표 확정입니다.

@@ -4,7 +4,7 @@
 
 ## 만든 것
 - `docs/business/proposals/urdeal-agency-proposal.pptx` — 대행사(중개사) 향 제안서 14장, 16:9.
-- `docs/business/proposals/urdeal-agency-proposal.build.js` — pptxgenjs 생성기(재생성 절차는 proposals/README.md).
+- `docs/business/proposals/urdeal-agency-proposal.build.mjs` — pptxgenjs 생성기(재생성 절차는 proposals/README.md).
 
 ## 내용의 근거 (전부 SSOT 또는 라이브 실측)
 | 주장 | 출처 |
