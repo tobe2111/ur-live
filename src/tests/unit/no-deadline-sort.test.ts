@@ -17,9 +17,18 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync, existsSync } from 'node:fs'
 
 const read = (p: string) => readFileSync(p, 'utf-8')
-/** ⚠️ 주석은 걷어내고 **코드만** 본다 — 이 레포가 반복해 밟은 함정이다(설명에 그 단어를 쓰면
- *  판정이 뒤집힌다). 실제로 이 테스트를 처음 짤 때 내 주석의 'deadline' 에 걸려 빨간불이 났다. */
-const code = (p: string) => read(p).split('\n').filter(l => !l.trim().startsWith('//') && !l.trim().startsWith('*') && !l.trim().startsWith('/*')).join('\n')
+/**
+ * ⚠️ 주석은 걷어내고 **코드만** 본다 — 이 레포가 반복해 밟은 함정이다(설명에 그 단어를 쓰면
+ * 판정이 뒤집힌다). 실제로 이 테스트를 처음 짤 때 내 주석의 'deadline' 에 걸려 빨간불이 났다.
+ *
+ * 🔧 2026-09-07: **줄 단위 필터로는 부족했다.** `{/* … *\/}` 처럼 여러 줄에 걸친 JSX 주석은
+ *   가운데 줄이 `//`·`*` 로 시작하지 않아 그대로 남는다 — 세 번째로 같은 함정에 걸려(내가 방금 쓴
+ *   설명 문장에 '마감' 이 있었다) 블록 주석을 **먼저 통째로 지운 뒤** 줄 단위 필터를 돌린다.
+ *   ⚠️ 이 강화는 `not.toMatch` 를 더 엄격하게만 만든다. 반대로 `toMatch`(과잉 삭제 방지) 단언이
+ *      주석 덕에 통과하고 있었다면 이제 빨간불이 되는데, 그건 **헛도는 가드였다는 뜻**이라 옳다.
+ */
+const stripBlockComments = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '')
+const code = (p: string) => stripBlockComments(read(p)).split('\n').filter(l => !l.trim().startsWith('//')).join('\n')
 
 describe('마감 개념 — 소비자 정렬에서 제거된 상태 유지', () => {
   it('모바일 홈 피드 SORTS 에 deadline 칩이 없다', () => {
@@ -90,5 +99,50 @@ describe('마감 개념 — 영구히 0 이 되는 지표를 남기지 않는다
 
   it('셀러 타입에 고아가 된 위험 카운트 필드가 없다', () => {
     expect(code('src/pages/seller-page/types.ts')).not.toMatch(/atRiskGroupBuys/)
+  })
+})
+
+/**
+ * 🔴 2026-09-07 — **#1349 가 놓친 마지막 한 곳: 피드 카드의 '마감 임박' 빨간 배지.**
+ *
+ * 상세 배너는 지웠는데 카드 배지는 살아 있었다. 눈에 안 띈 이유가 고약하다 — 리스트 API 가
+ * 판매 마감을 `p.group_buy_deadline AS expires_at` 으로 **이름을 바꿔** 내려서, 카드 쪽 코드만
+ * 보면 그게 '사용 기한'처럼 읽힌다(`group_buy_deadline` 으로 grep 하면 안 걸린다).
+ *
+ * 그리고 조건이 `시간|분` 단위일 때만이라 **평소엔 안 뜬다**. 라이브 실측(2026-09-07): 활성 50건 중
+ * `expires_at` 이 있는 건 유일한 실제 매장 상품(2888) 하나뿐이고 값이 `2026-09-10 07:21` 이라,
+ * **09-09 부터 24시간 동안만** 빨간 `마감 23시간 → 마감 30분` 이 켜질 예정이었다. 배포 시점에
+ * 화면을 봐도 안 보이는 결함이다 — 그래서 날짜가 아니라 코드로 못을 박는다.
+ *
+ * ⚠️ 못 지키는 것: 서버가 여전히 `expires_at` 을 내려보낸다(외부/캐시 계약이라 안 건드렸다).
+ *    이 테스트는 **그 값을 소비자 화면에 긴박감으로 그리지 않는다**만 고정한다.
+ */
+describe('마감 개념 — 카드에 가짜 긴박감을 그리지 않는다', () => {
+  const card = () => code('src/pages/main-home/GroupBuyFeedCard.tsx')
+
+  it('피드 카드가 마감 문구를 만들지 않는다', () => {
+    const s = card()
+    expect(s).not.toMatch(/마감/)
+    expect(s).not.toMatch(/timeRemaining/)
+    expect(s).not.toMatch(/isUrgent/)
+  })
+
+  it('피드 카드가 expires_at 을 읽지 않는다 — 이름만 바뀐 같은 필드다', () => {
+    expect(card()).not.toMatch(/expires_at/)
+  })
+
+  it('🛡️ 카드의 살아 있는 계약은 그대로다 (과잉 삭제 방지)', () => {
+    const s = card()
+    expect(s).toMatch(/React\.memo|memo\(/)          // 잠금표: 50카드 reconcile 방지
+    expect(s).toMatch(/rootMargin:\s*'100px'/)        // 잠금표: viewport prefetch (200px 금지)
+    // 🩸 처음엔 `/fetchPriority/` 로 썼는데 **주석에만 있는 단어**라 헛돌았다(강화한 stripper 가
+    //   바로 잡았다). 실제 배선은 `DealCardMedia` 에 넘기는 `eager={aboveFold}` 다.
+    expect(s).toMatch(/eager=\{aboveFold\}/)         // 잠금표: aboveFold eager
+    expect(s).toMatch(/FcfsBadge/)                    // 추첨 배지는 남는다
+  })
+
+  it('죽은 마감 포매터가 되살아나지 않는다', () => {
+    expect(code('src/pages/main-home/utils.ts')).not.toMatch(/fmtEnd/)
+    expect(code('src/pages/group-buy/detail-derived.ts')).not.toMatch(/export function daysLeft/)
   })
 })

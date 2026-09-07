@@ -27,10 +27,4 @@ export function disc(p: number, op?: number) {
   return op && op > p ? Math.round((1 - p / op) * 100) : 0
 }
 
-export function fmtEnd(deadline?: string) {
-  if (!deadline) return ''
-  const min = Math.max(0, Math.floor((new Date(deadline).getTime() - Date.now()) / 60000))
-  if (min < 60) return `${min}분 후 마감`
-  if (min < 1440) return `${Math.floor(min / 60)}시간 ${min % 60}분 후 마감`
-  return `${Math.floor(min / 1440)}일 후 마감`
-}
+// 🪦 2026-09-07: `fmtEnd(deadline)`(`N분 후 마감`) 제거 — 참조 0. 마감 개념이 없어져 되살릴 자리도 없다.
