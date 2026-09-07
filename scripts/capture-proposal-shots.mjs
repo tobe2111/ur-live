@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 대외 제안서(docs/business/proposals/*.html)에 넣을 라이브 화면 캡처.
+ * 대외 제안서(public/static/proposals/*.html)에 넣을 라이브 화면 캡처.
  *
  *   NODE_USE_ENV_PROXY=1 node scripts/capture-proposal-shots.mjs [출력디렉터리]
  *
