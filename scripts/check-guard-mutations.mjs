@@ -88,6 +88,36 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🎛️ 담기 적립 스위치를 어드민에서 다시 뗀다 (켤 손잡이가 사라진다)',
+    file: 'src/pages/AdminPlatformSettingsPage.tsx',
+    find: "    key: 'affiliate_program_enabled', label: '⑧ 담기 적립(어필리에이트) 프로그램', default: 'false',",
+    replace: "    key: 'affiliate_program_enabled_REMOVED', label: '⑧ 담기 적립(어필리에이트) 프로그램', default: 'false',",
+    test: 'src/tests/unit/admin-money-switch-ui-2026-09-07.test.ts',
+    why:
+      '이게 없던 것이 원래 상태다 — 읽는 곳 둘, 쓰는 화면 0. 머니 스위치를 D1 직접 수정으로만 ' +
+      '켤 수 있으면 오타값이 저장돼도 read-site 가 조용히 OFF 로 읽는다.',
+  },
+  {
+    name: "🎛️ 스위치 옵션 값을 'True' 로 (켠 줄 알지만 꺼진 채로 돈다)",
+    file: 'src/pages/AdminPlatformSettingsPage.tsx',
+    find: "{ value: 'true', label: 'ON — 담아서 팔면 소개비 적립' }",
+    replace: "{ value: 'True', label: 'ON — 담아서 팔면 소개비 적립' }",
+    test: 'src/tests/unit/admin-money-switch-ui-2026-09-07.test.ts',
+    why:
+      "read-site 둘 다 `=== 'true'` strict 비교다. 대문자 하나면 화면엔 ON 인데 지급도 배지도 " +
+      '안 켜진다 — 에러가 없어 "왜 안 켜지지" 로 며칠 간다.',
+  },
+  {
+    name: '💸 요율 폴백을 Number() 로 (칸을 비우면 수수료가 0% 가 된다)',
+    file: 'src/worker/utils/ledger-commission-policy.ts',
+    find: "    const pct = Number.parseFloat(row?.value ?? '')",
+    replace: "    const pct = Number(row?.value ?? '')",
+    test: 'src/tests/unit/admin-money-switch-ui-2026-09-07.test.ts',
+    why:
+      "Number('') 는 0 이고 0 은 0~100 범위를 통과한다 — 폴백(10%/5%)으로 안 가고 **0% 로 걷힌다**. " +
+      '이번에 요율 입력칸을 만들면서 "비울 수 있는 입구"가 처음 생겼으므로 이 폴백이 곧 안전판이다.',
+  },
+  {
     name: '🖼️ 피드가 섹션 상품을 미루지 않는다 (같은 사진이 위아래로 두 번)',
     file: 'src/pages/main-home/GroupBuyFeed.tsx',
     find: 'deferSeeded(sortBand(src), sectionIds)',

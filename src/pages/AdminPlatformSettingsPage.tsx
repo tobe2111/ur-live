@@ -74,6 +74,27 @@ const COMMISSION_BUDGET_FIELDS: Array<{ key: string; label: string; default: str
     options: [{ value: 'false', label: 'OFF (현행 — sellers.commission_rate)' }, { value: 'true', label: 'ON — 채널로 요율 분기' }],
     hint: '직판(자기 상품)=10% · 중개(벤더 상품)=5%. ⚠️ 원장 fee 가 바뀐다 — staging 실결제 각 1건 확인 후 ON',
   },
+  // 🪙 2026-09-07 (대표 "모두 어드민에 붙혀줘"): **담기 적립의 주 스위치인데 켤 화면이 없었다.**
+  //   `affiliate_program_enabled` 는 읽는 곳이 둘(affiliate-credit.ts 지급 · affiliate-program.ts 표시)
+  //   인데 쓰는 화면이 0 이라, 켜려면 D1 을 직접 고쳐야 했다 — 머니 스위치를 그렇게 켜면
+  //   오타값('True'/'1')이 저장돼도 read-site 의 `==='true'` 가 조용히 OFF 로 읽는다.
+  //   ⚠️ 이 구멍이 `ops-gate-reachable` 를 통과한 이유: 그 시험은 **OPS_GATES 에 등재된 것만** 본다.
+  //   등재를 안 하면 검사 대상이 아니다 — 그래서 같은 커밋에서 OPS_GATES 에도 넣는다.
+  {
+    key: 'affiliate_program_enabled', label: '⑧ 담기 적립(어필리에이트) 프로그램', default: 'false',
+    options: [{ value: 'false', label: 'OFF (2026-08-22 종료 — 현행)' }, { value: 'true', label: 'ON — 담아서 팔면 소개비 적립' }],
+    hint: "🔴 머니 경로. **② 재원을 'owner' 로 먼저** 켤 것 — 'platform' 인 채로 켜면 매장이 건 소개비를 유어딜이 문다. 순서: ②재원 → ③promo필드 → 이 키. OFF 면 지급도 화면 배지도 함께 꺼진다(표시 게이트가 같은 키를 본다)",
+  },
+  // 💸 2026-09-07: ③ 게이트는 켬/끔만 있고 **요율 값 자체를 고칠 자리가 없었다**(매장 카드는 표시 전용).
+  //   미설정이면 코드 기본값(직접 10 / 중개 5)으로 동작한다 — 비워 두는 것이 안전한 기본이다.
+  {
+    key: 'platform_fee_pct_direct', label: '③-a 직접 입점 요율 (%)', default: '10',
+    hint: '③ 이 ON 일 때만 쓰인다. 비우면 코드 기본 10%',
+  },
+  {
+    key: 'platform_fee_pct_brokered', label: '③-b 중개(대행사) 요율 (%)', default: '5',
+    hint: '③ 이 ON 일 때만 쓰인다. 비우면 코드 기본 5%',
+  },
   {
     key: 'promo_funding_source', label: '② 핀 추천(어필리에이트) 재원', default: 'platform',
     options: [{ value: 'platform', label: '플랫폼 부담 (현행)' }, { value: 'owner', label: '주인(셀러) 부담 — promo 슬라이스' }],

@@ -315,6 +315,11 @@ const OPS_GATES: OpsGate[] = [
   // 8월 promo flip 스코프 스위치 — 값이 비어 있지 않으면 그 매장만 flip 경로.
   { key: 'flip_pilot_seller_ids', kind: 'setting', label: '8월 flip 파일럿 매장 스코프', default_value: '', staging_ref: null, turn_on_when: '8월 promo flip 파일럿 매장이 정해지면 그 seller_id 를 넣는다' },
   { key: 'seller_promo_field_enabled', kind: 'setting', label: '셀러 promo% 입력 UI', default_value: 'false', staging_ref: null, turn_on_when: 'flip 파일럿 매장이 스스로 promo% 를 입력할 단계가 되면' },
+  // 🪙 2026-09-07 — **한 달 넘게 이 표에 없었다.** 그래서 `ops-gate-reachable`(등재된 게이트만 본다)이
+  //   "켤 화면이 없다"를 잡지 못했고, 어드민에 손잡이가 없는 채로 남았다. 등재가 곧 검사 범위다.
+  //   2026-09-06 에 표시 게이트(affiliate-program.ts)가 같은 키를 읽게 되면서 이 스위치 하나가
+  //   **지급과 화면 배지를 동시에** 가른다 — 끄면 배지도 사라지고 켜면 함께 돌아온다.
+  { key: 'affiliate_program_enabled', kind: 'setting', label: '담기 적립(어필리에이트) — 지급 + 화면 배지', default_value: 'false', staging_ref: null, turn_on_when: "🔴 **promo_funding_source='owner' 를 먼저** 켤 것. 'platform' 인 채로 켜면 매장이 건 소개비를 유어딜이 문다. 그리고 담을 남의 가게(매장)가 있어야 의미가 생긴다 — 대표 권고 기준선은 매장 10곳" },
   // 🪙 2026-09-01 — 이용권을 "딜 일부 + 카드 나머지" 로 살 수 있게 하는 스위치(대표 "포인트 차감처럼").
   //   OFF 면 딜 사용액이 항상 0 이고 총액과 다른 청구액은 종전처럼 AMOUNT_MISMATCH 로 막힌다.
   { key: 'voucher_partial_deal_enabled', kind: 'setting', label: '이용권 부분결제(딜+카드)', default_value: 'false', staging_ref: 'S12', turn_on_when: '🔴 **먼저 influencer_deal_bonus_pct = 0** — 딜 보너스 20%가 살아 있으면 딜은 액면가보다 비싸고(1,000딜 = 유어딜 부채 1,200원), 마진 5~10%인 이용권에 쓰이면 팔릴수록 적자다(교환권은 소비자 마크업 20%가 상쇄하지만 이용권엔 그 상쇄가 없다). 그다음 S12 실결제로 카드+딜=총액·매장 정산 총액 불변·환불 복원 확인' },
