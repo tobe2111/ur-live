@@ -80,7 +80,7 @@ export default memo(function DealRow({
         {price != null && (
           <div className="flex items-baseline gap-1 mt-1">
             {discountPct > 0 && (
-              <span className="text-[15px] font-extrabold text-brand-text tracking-tight">{discountPct}%</span>
+              <span className="text-[15px] font-extrabold text-sale tracking-tight">{discountPct}%</span>
             )}
             <span className="text-[17px] font-extrabold text-gray-900 dark:text-white tracking-tight">{formatNumber(price)}</span>
             <span className="text-[12px] font-bold text-gray-900 dark:text-white">{unit}</span>
