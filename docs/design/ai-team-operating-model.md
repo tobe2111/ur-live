@@ -137,7 +137,7 @@ Notion 개발 로그는 머지 시 · 결정은 `docs/decisions/` · "할 것이
 |---|---|---|---|---|
 | 개발 일일 판정 | dev | 매일 08:00 | 최근 24h 머지 PR 의 E3/E4 판정 · `audit-gate` · 열린 PR CI 빨강 · 죽은 루틴/cron 하트비트 | handoff + 빨강이면 수리 PR |
 | 정산 일일 판정 | finance | 매일 08:30 | 원장 무결성(`ledger-integrity-check` 결과) · payout 과지급 0 · 수수료 SSOT 대조 · 게이트 상태 | handoff + 이상이면 결재 항목 |
-| 결재함 브리핑 | ceo-office | 매일 09:00 | open/approved-미반영 항목 요약 · 등급 미기재 보고 반려 · Notion 미러 | 대표 푸시 1건 |
+| 결재함 브리핑 | ceo-office | 매일 09:00 | open/approved-미반영 항목 요약 · 등급 미기재 보고 반려 · Notion 미러 · **월요일: 역할별 한 줄**(한 것·최고 E등급·열린 것 — 과정 없음, 대표 2026-09-07 "역할별 한 줄 넣어줘") | 대표 푸시 1건 |
 | 기획 주간 | planning | 월 09:30 | FEATURE_STATUS ↔ 코드 정합 · 결재 기한 경과 · 인계 누락(`check-current-work-sync`) | handoff |
 | 마케팅 주간 | marketing | 화 09:30 | `live-contracts` 결과 · sitemap/robots 생존 · 블로그/소셜 초안 검토 대기 · SEO 메타 실측 | handoff + 초안(draft) |
 | 디자인 주간 | design | 수 09:30 | `dark-contrast`·`render-smoke` 워크플로 결과 · slop/모양 래칫 · 시안 대기 목록 | handoff + 결함이면 수리 PR |
@@ -150,6 +150,16 @@ Notion 개발 로그는 머지 시 · 결정은 `docs/decisions/` · "할 것이
 PR 생성·Notion 미러는 대표가 Routines UI 에서 GitHub·Notion 을 붙인 뒤부터 자동이다. 붙이기 전에도 판정(git·curl·D1·어드민 API)은 돈다.
 
 ---
+
+### 대표가 보는 것은 세 층뿐 (2026-09-07 대표 질문 *"팀원들이 작업하는 과정도 보는 것까지 구현하는 건 낭비인가?"* → 낭비다)
+| 층 | 무엇 | 대표 시간 |
+|---|---|---|
+| 매일 | 결재함 브리핑 한 줄(푸시·이메일) | 1분 |
+| 매주(월) | 브리핑 끝에 **역할별 한 줄**: 한 것 · 최고 E등급 · 열린 것 | 3분 |
+| 필요할 때 | 의심 항목의 handoff 파일 또는 세션 기록을 열어 E4 근거를 찔러봄 | 그때만 |
+
+과정 감시 화면은 만들지 않는다 — 루틴 세션 기록(claude.ai/code)과 handoff 가 이미 과정 전체를 남기고, 실시간 감시는
+"수기 컨트롤"의 다른 형태다. 2~3주 뒤에도 "누가 뭘 했는지 파일을 뒤진다"는 느낌이 들면 그때 어드민 탭(§7-5)을 붙인다.
 
 ## 7. 롤아웃
 
