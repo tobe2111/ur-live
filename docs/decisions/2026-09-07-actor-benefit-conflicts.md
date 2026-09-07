@@ -62,4 +62,4 @@ Q1-1 · Q2-1 · Q3-3 · Q4-2 · Q5-1. 이유: 지금 돈이 안 흐르므로 **�
 ## 반영 커밋
 - Q3-3: PR #1390 → 머지 `1d0593e` (2026-09-08 00:57 KST) — 채널 필수 선택. Q1-1·Q5-1 은 변경 없음(지도 §3 확정 표기).
 - Q2-1: 실체는 2026-08-30 "자동분은 빼줘" 로 이미 반영돼 있었다(제안 문·정산 계산 모두 `DEAL_PCT_MAX`=90 만 검증). 자투리 정리 PR #1392 → 머지 `6c50b8f` (2026-09-08 03:13 KST)
-- Q4-2: 07-08 재원 원칙 폐기 표기 + 아비터 원칙 문단(platform-model §5-3 · funding-restructure · CLAUDE.md) + S1 시나리오 보강 — <PR_Q4>. **`commission_budget_enabled` ON 은 대표**(staging S1 뒤). 이 항목이 끝나면 이 결재의 다섯 하위 항목이 전부 반영된다.
+- Q4-2: 07-08 재원 원칙 폐기 표기 + 아비터 원칙 문단(platform-model §5-3 · funding-restructure · CLAUDE.md) + S1 시나리오 보강 — PR #1394 (draft, 머지 대기). **`commission_budget_enabled` ON 은 대표**(staging S1 뒤). 이 항목이 끝나면 이 결재의 다섯 하위 항목이 전부 반영된다.
