@@ -24,8 +24,13 @@ const MEDIA = code('src/components/deal/DealCardMedia.tsx')
 describe('① 빈 칸 없는 넘김', () => {
   it('opacity 가 shown 이 아니라 painted(로드 완료 장면) 를 따른다', () => {
     expect(MEDIA).toMatch(/const painted = loaded\.has\(shown\) \? shown : paintedRef\.current/)
-    expect(MEDIA).toMatch(/opacity: i === painted \? \(painted === shown \? 1 : 0\.65\) : 0/)
+    expect(MEDIA).toMatch(/opacity: i === painted \? \(waiting \? 0\.8 : 1\) : 0/)
     expect(MEDIA, '옛 즉시 전환이 남아 있다 — 클릭 순간 빈 칸').not.toMatch(/opacity: i === shown \? 1 : 0/)
+    // 🩸 2026-09-06: 어둡게만 하는 건 신호가 아니다(대표 "이전 사진과 똑같이 나온다").
+    //   받는 중인 것을 **흐림**으로 알린다 — 밝은 사진에서도 0ms 에 읽힌다.
+    expect(MEDIA, '받는 중 표시(블러)가 사라졌다 — 직전 사진이 선명해 안 넘어간 것으로 보인다')
+      .toMatch(/filter: i === painted && waiting \? 'blur\(10px\)' : 'blur\(0px\)'/)
+    expect(MEDIA, 'waiting 판정이 사라졌다').toMatch(/const waiting = painted !== shown/)
   })
   it('onLoad 가 loaded 집합을 채우고, 직전 장면은 로드 완료 뒤에만 painted 가 바뀐다', () => {
     expect(MEDIA).toMatch(/setLoaded\(\(prev\) => \(prev\.has\(i\) \? prev : new Set\(prev\)\.add\(i\)\)\)/)
