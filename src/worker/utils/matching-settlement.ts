@@ -41,20 +41,23 @@ export interface MatchingSettlement {
  * @param grossKrw       주문 총액(원)
  * @param commissionPct  매칭 협상 수수료율(seller_influencer_deals.commission_pct)
  * @param platformFeePct 플랫폼 인프라 수수료율(기본 5) — 순수취의 기준
- * @param maxCommissionPct 상한(max_influencer_commission_pct) — 있으면 clamp
+ *
+ * 🛑 2026-09-07 대표 결재 Q2-1(`docs/decisions/2026-09-07-actor-benefit-conflicts.md` — *"기본안대로 모두 승인"*):
+ *   **인플루언서 딜 % 에 플랫폼 상한은 없다.** 매장이 제안서에 적은 % 그대로다(매장 부담이라 유어딜 리스크 0).
+ *   여기 있던 선택 인자 `maxCommissionPct`(= `max_influencer_commission_pct` clamp)를 **제거**했다 —
+ *   호출부는 한 곳도 안 넘기고 있었지만, 인자가 남아 있으면 언젠가 누가 넘겨서 2% 로 잘리는 날이 온다.
+ *   유일한 검증선은 제안 문의 `DEAL_PCT_MAX`(90 — 100% 를 넘겨 매장이 역마진 나는 값 차단)이고,
+ *   그건 정책이 아니라 입력 검증이다(`commission-rates.ts calcInfluencerCommissionPct` 와 같은 값).
+ *   가드: `deal-pct-no-cap-2026-09-07.test.ts`.
  */
 export function computeMatchingSettlement(input: {
   grossKrw: number
   commissionPct: number
   platformFeePct?: number
-  maxCommissionPct?: number
 }): MatchingSettlement {
   const gross = Math.max(0, Math.floor(Number(input.grossKrw) || 0))
   const feePct = Number.isFinite(Number(input.platformFeePct)) ? Number(input.platformFeePct) : DEFAULT_PLATFORM_FEE_PCT
-  let pct = Math.max(0, Number(input.commissionPct) || 0)
-  if (input.maxCommissionPct != null && Number.isFinite(input.maxCommissionPct)) {
-    pct = Math.min(pct, Math.max(0, input.maxCommissionPct))
-  }
+  const pct = Math.max(0, Number(input.commissionPct) || 0)
   const influencerKrw = Math.floor((gross * pct) / 100)
   // 순수취는 커미션과 **독립** — 항상 총액의 feePct%. (커미션은 매장 promo 에서만 나감.)
   const platformNetKrw = Math.round((gross * feePct) / 100)

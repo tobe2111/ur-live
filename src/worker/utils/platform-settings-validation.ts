@@ -140,7 +140,7 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   affiliate_commission_rate: pct,      // affiliate-credit.ts:38
   tier1_commission_rate: pct,
   tier2_commission_rate: pct,
-  max_influencer_commission_pct: pct,  // marketing.routes.ts:325/375
+  max_influencer_commission_pct: pct,  // 🛑 2026-09-07 결재 Q2-1 — 더 이상 읽히지 않는 설정(상한 없음). 검증만 남김
   influencer_store_intro_pct: pct,     // influencer-store-intro-commission.ts:24
   // 🏪 2026-08-27: 유효기간(개월). 미등록이면 무검증 통과라 '열두달' 같은 값도 저장됐다.
   influencer_store_intro_months: intRange(1, 120), // influencer-store-intro-commission.ts isStoreIntroExpired

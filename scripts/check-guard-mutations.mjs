@@ -88,6 +88,16 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '💸 매칭 정산에 2% 상한이 되살아난다 (결재 Q2-1 "상한 없음" 무력화)',
+    file: 'src/worker/utils/matching-settlement.ts',
+    find: '  const pct = Math.max(0, Number(input.commissionPct) || 0)',
+    replace: '  const pct = Math.min(2, Math.max(0, Number(input.commissionPct) || 0))',
+    test: 'src/tests/unit/deal-pct-no-cap-2026-09-07.test.ts',
+    why:
+      '매장이 "10% 드릴게요" 라고 약속했는데 정산이 2% 만 적립하면 소개자는 약속의 1/5 을 받고 매장은 ' +
+      '이유를 모른다 — 에러가 없어 아무도 모른다. 2026-08-30 에 제안 문에서 걷어낸 캡이 정산 쪽에서 되살아나는 모습.',
+  },
+  {
     name: '🏪 채널 미지정 좌석이 고르지 않고도 1단계를 넘는다 (결재 Q3-3 "미지정 폴백 폐지" 무력화)',
     file: 'src/pages/SellerMealVoucherNewPage.tsx',
     find: '    if (s === 0 && channelSet === false) {',

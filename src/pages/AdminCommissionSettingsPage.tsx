@@ -319,7 +319,7 @@ export default function AdminCommissionSettingsPage() {
               </p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">인플 commission 최대 cap (%)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">인플 commission 최대 cap (%) — 미사용</label>
               <input
                 type="number"
                 step="0.5"
@@ -330,8 +330,8 @@ export default function AdminCommissionSettingsPage() {
                 className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900"
               />
               <p className="text-[11px] text-gray-500 mt-1">
-                매장이 소개자에게 제안할 수 있는 상한. ⚠️ 소개비는 <b>매장 지갑</b>에서 나가므로(유어딜 몫 불변)
-                이 상한은 유어딜을 보호하는 값이 아니다 — 입력 상한을 결제 엔진과 같은 90 으로 맞췄다(값은 그대로).
+                🛑 2026-09-07 대표 확정(결재 Q2-1): <b>상한 없음</b>. 이 값은 제안·정산 어디서도 더 이상 읽지 않는다(과거 정산 조회 호환으로만 남김).
+                소개비는 <b>매장 지갑</b>에서 나가므로(유어딜 몫 불변) 유어딜을 보호하는 값이 아니었다. 유일한 검증선은 결제 엔진의 90(역마진 차단).
               </p>
             </div>
           </div>
