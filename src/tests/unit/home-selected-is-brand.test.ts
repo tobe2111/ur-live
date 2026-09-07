@@ -54,7 +54,7 @@ describe('안 B — 홈에서 "선택됨"은 브랜드 블루 면', () => {
   })
 })
 
-describe('안 C — 섹션 더보기는 테두리 없는 블루 글자', () => {
+describe('안 C — 섹션 더보기는 테두리 없는 글자 링크', () => {
   const moreLink = () => {
     const s = code(SECTIONS)
     const i = s.indexOf('to={more}')
@@ -69,8 +69,18 @@ describe('안 C — 섹션 더보기는 테두리 없는 블루 글자', () => {
     expect(l).not.toMatch(/rounded-full/)
   })
 
-  it('블루 글자다 — 색이 "눌러진다"를 말한다', () => {
-    expect(moreLink()).toMatch(/text-brand-text/)
+  /**
+   * 🎨 2026-09-07 대표 정정: *"글자 색은 흰색에서 파랑으로 넘어가진 말자."*
+   *   블루는 **면**(버튼·선택 칩)에서만 쓴다. 본문 글자를 파랑으로 물들이지 않는다 —
+   *   다크에서 밝은 회색이던 글자가 파랑이 되는 게 특히 어색했다.
+   *   눌러지는 신호는 hover 밑줄이 맡는다.
+   */
+  it('글자를 파랑으로 물들이지 않는다 (블루는 면에서만)', () => {
+    const l = moreLink()
+    expect(l).not.toMatch(/text-brand/)
+    expect(l).toMatch(/text-gray-600/)      // 라이트
+    expect(l).toMatch(/dark:text-gray-300/) // 다크
+    expect(l).toMatch(/hover:underline/)    // 눌러지는 신호
   })
 
   it('화살표가 없다 — 색과 화살표가 같은 말을 두 번 하면 안 된다', () => {

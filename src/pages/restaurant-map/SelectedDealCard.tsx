@@ -189,7 +189,7 @@ export default function SelectedDealCard({
               {dist != null && nearKmLabel(dist) && <span className="ml-1 font-semibold text-gray-600 dark:text-gray-300 shrink-0">· {nearKmLabel(dist)}</span>}
             </p>
             <div className="flex items-baseline gap-1.5 mt-2">
-              {discount > 0 && <span className="text-[13px] font-extrabold text-brand dark:text-[#4D8DF5] shrink-0">{discount}%</span>}
+              {discount > 0 && <span className="text-[13px] font-extrabold text-sale dark:text-[#4D8DF5] shrink-0">{discount}%</span>}
               {selected.original_price > selected.price && (
                 <span className="text-[11px] text-gray-400 dark:text-gray-500 line-through">{formatNumber(selected.original_price)}원</span>
               )}

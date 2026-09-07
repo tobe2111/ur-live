@@ -88,6 +88,26 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🏷️ 할인율이 다시 브랜드 블루로 (행동 색과 가격 색이 섞인다)',
+    file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
+    find: "font-extrabold text-sale\">{discount}%",
+    replace: "font-extrabold text-brand\">{discount}%",
+    test: 'src/tests/unit/discount-is-sale-red.test.ts',
+    why:
+      '블루는 "누르는 것", 할인 빨강은 "가격 이득" 이다. 할인율이 블루로 돌아가면 목록에서 파랑이던 ' +
+      '것이 상세에서 빨강이 되는 종전 상태로 되돌아간다 — 같은 상품의 같은 숫자인데 색이 바뀐다.',
+  },
+  {
+    name: '🏷️ --sale 이 대비 미달 값으로 바뀐다 (할인율이 안 읽힌다)',
+    file: 'src/index.css',
+    find: '    --sale: #DC2626;',
+    replace: '    --sale: #F23E4D;',
+    test: 'src/tests/unit/discount-is-sale-red.test.ts',
+    why:
+      '공구 상세가 쓰던 #F23E4D 는 흰 카드 위 3.77:1 로 본문 크기 글자엔 AA 미달이다(그쪽은 빨강 ' +
+      '**면** 위 흰 글자라 기준이 다르다). 눈으로는 "비슷한 빨강" 이라 그냥 지나간다.',
+  },
+  {
     name: '🎨 홈 정렬 칩이 다시 잉크 검정으로 (선택 색이 서비스 안에서 둘이 된다)',
     file: 'src/pages/pc-home/PcHomePage.tsx',
     // 정렬 칩은 두 벌(현위치 칩 + SORT_CHIPS 루프)이라 같은 문자열이 두 번 나온다.
@@ -112,7 +132,7 @@ const MUTATIONS = [
   {
     name: '🎨 섹션 더보기가 다시 테두리 알약이 된다 (표면 규칙 ① 위반)',
     file: 'src/components/home/HomeSections.tsx',
-    find: '                  className="shrink-0 text-[12.5px] font-extrabold text-brand-text hover:underline underline-offset-4 whitespace-nowrap"',
+    find: '                  className="shrink-0 text-[12.5px] font-bold text-gray-600 dark:text-gray-300 hover:underline underline-offset-4 whitespace-nowrap"',
     replace: '                  className="shrink-0 px-3.5 py-1.5 rounded-full border border-gray-200 text-[12.5px] font-bold text-gray-600 whitespace-nowrap"',
     test: 'src/tests/unit/home-selected-is-brand.test.ts',
     why:
