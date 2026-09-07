@@ -46,7 +46,10 @@ async function shot(name) {
     const p = path.join(SHOTS_DIR, `${name}.${ext}`);
     if (fs.existsSync(p)) {
       const r = await renderPhone(p, PHONE_STYLE);
-      return { data: 'image/png;base64,' + r.buffer.toString('base64'), width: r.width, height: r.height, pad: r.pad, frameW: r.frameW, frameH: r.frameH };
+      // 슬라이드에서 최대 6in 높이라 캔버스 1,200px 이면 충분하다(2× 원본은 파일을 12MB 로 불린다).
+      const k = 1200 / r.height;
+      const buf = await sharp(r.buffer).resize({ height: 1200 }).png({ compressionLevel: 9, palette: false }).toBuffer();
+      return { data: 'image/png;base64,' + buf.toString('base64'), width: r.width * k, height: 1200, pad: r.pad * k, frameW: r.frameW * k, frameH: r.frameH * k };
     }
   }
   return null;
