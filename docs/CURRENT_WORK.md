@@ -5498,6 +5498,7 @@ _총 259건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-07**
 - [`/store/new` 매장 등록 — 다크 흰 글자 · 배경 클릭 이탈 (2026-09-07)](handoff/2026-09-07-store-claim-dark-and-backdrop.md)
+- [어드민에 없던 머니 스위치 셋을 붙였다 (2026-09-07)](handoff/2026-09-07-admin-money-switch-ui.md)
 **2026-09-06**
 - [PC 상세 사진도 스마트 크롭 + 남아 있던 두 항목 판정 (2026-09-06)](handoff/2026-09-06-pc-hero-crop.md)
 - [2026-09-06 — 홈에서 같은 이용권 사진이 두 번 나오던 것](handoff/2026-09-06-home-section-duplicate-photo.md)
