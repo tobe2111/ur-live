@@ -124,13 +124,21 @@ describe('② 대표 확정 — 없으면 아무것도 안 그린다', () => {
   it('🔴 히어로 사진: 실상품 우선 · 데모는 마지막 수단 · 남의 사진은 절대 안 쓴다', () => {
     const def = code('src/components/home/HomeHeroDefault.tsx')
     if (!/<img/.test(def)) return  // 사진을 안 쓰는 형태로 되돌아가면 이 항목은 무의미
-    expect(def).toMatch(/__SSR_INITIAL_MAIN__/)      // 출처 = 홈 시드(권리 확보된 우리 상품)
+    /**
+     * 🖼️ 2026-09-03 — 시드 읽기가 `useHeroPhoto` 로 **옮겨졌다**(하드로드 시드 + 홈 피드 캐시 폴백).
+     *   원래 이 줄은 컴포넌트 파일에 시드 문자열이 있는지만 봤는데, 그건 *어디서 읽느냐*를 파일로
+     *   못박는 것이라 SSOT 를 옮기자마자 깨졌다. 의도는 "히어로 사진의 출처가 우리 시드"이므로
+     *   그 훅을 보되, **컴포넌트가 그 훅을 실제로 쓰는지**까지 함께 고정한다(더 강한 계약).
+     */
+    expect(def).toMatch(/useHeroPhoto\(/)
+    expect(code('src/components/home/useHeroPhoto.ts')).toMatch(/__SSR_INITIAL_MAIN__/)
     /**
      * ⚠️ 2026-08-29: **고르는 규칙 자체는 이 컴포넌트에서 빠졌다** — 워커도 같은 사진을 골라야
      *   히어로를 preload 할 수 있어서 `shared/home-hero-photo` 가 SSOT 가 됐다.
      *   그러니 규칙은 그 파일에서 검사한다(여기서만 보면 규칙이 옮겨간 걸 사고로 오인한다).
      */
-    expect(def).toMatch(/pickHeroPhotoFromSeedJson/)
+    //   2026-09-03: 그 SSOT 를 부르는 자리도 훅으로 옮겼다(위 주석과 같은 이유 — 파일이 아니라 규칙을 본다).
+    expect(code('src/components/home/useHeroPhoto.ts')).toMatch(/pickHeroPhotoFromSeedJson/)
     const rule = code('src/shared/home-hero-photo.ts')
     expect(rule).toMatch(/demo-deal-/)                // 데모를 여전히 분간한다(= 뒤로 미룬다)
     // 데모 분기는 **우리 호스트일 때만** 후보로 잡는다 — 이 조건이 사라지면 워터마크 사고가 돌아온다.
@@ -164,10 +172,11 @@ describe('② 대표 확정 — 없으면 아무것도 안 그린다', () => {
     expect(code('src/pages/pc-home/PcHomePage.tsx')).not.toMatch(/<PcHomeLocationBar/)
   })
 
-  it('기본 히어로 배경 애니메이션이 prefers-reduced-motion 을 존중한다', () => {
+  it('기본 히어로 배경에 블룸·빛줄기 그라디언트가 없다', () => {
     const css = read('src/index.css')
-    const block = css.slice(css.indexOf('ur-hero-bloom-a'))
-    expect(block).toMatch(/prefers-reduced-motion[\s\S]{0,400}ur-hero-bloom-a/)
+    // 🎫 2026-09-02: 블룸·빛줄기 자체가 사라졌다(대표 "그라데이션 안 맞는다") — 남아 있으면 위반.
+    expect(css).not.toMatch(/ur-hero-bloom|ur-hero-sweep/)
+    expect(read('src/components/home/HomeHeroDefault.tsx')).not.toMatch(/radial-gradient|ur-hero-bloom|ur-hero-sweep/)
   })
 
   it('서버가 상품 0건 섹션을 목록에서 뺀다 (홈에 제목만 남는 빈 줄 금지)', () => {
@@ -235,16 +244,24 @@ describe('③ 되돌리기 — 플래그 하나로 전부 꺼진다', () => {
 describe('④ 상품 선정 — 홈 피드와 같은 조건 + 몰 격리', () => {
   const rules = code('src/features/sections/api/section-rules.ts')
 
+  // 🧭 2026-09-03: 조건이 **별칭으로 매개변수화**됐다(`conds('p' | 'p2')`) — 인기순의 정규화 분모를
+  //   본문과 **같은 조건**으로 구하려면 같은 빌더를 두 별칭에 써야 하기 때문이다.
+  //   그래서 아래 검사는 리터럴 `p.` 와 템플릿 `${a}.` 를 **둘 다** 받는다. 지키는 것은 표기가 아니라
+  //   "그 조건이 쿼리에 붙어 있는가"다. 한 표기만 고집하면 규칙을 지켰는데 빨간불이 된다(오늘 두 번 겪었다).
+  const AL = String.raw`(?:p|\$\{a\})`
+
   it('규칙 쿼리에 본진 몰 격리(mainScopeFor)가 있다', () => {
     expect(rules).toMatch(/mainScopeFor\(\s*env\.DB\s*,\s*'products'/)
-    expect(rules).toMatch(/\$\{productScope\}/)
+    // 변수명(`${productScope}`)이 아니라 **쿼리 템플릿 안에서 호출·보간되는가**를 본다.
+    expect(rules).toMatch(/\$\{(productScope|await mainScopeFor\()/)
   })
 
   it('규칙 쿼리 WHERE 가 홈 피드 조건을 그대로 쓴다', () => {
-    expect(rules).toMatch(/p\.is_active\s*=\s*1/)
-    expect(rules).toMatch(/p\.group_buy_status\s*=\s*'active'/)
-    expect(rules).toMatch(/is_supply_product/)
-    expect(rules).toMatch(/p\.category IN/)
+    expect(rules).toMatch(new RegExp(`${AL}\\.is_active\\s*=\\s*1`))
+    expect(rules).toMatch(new RegExp(`${AL}\\.group_buy_status\\s*=\\s*'active'`))
+    // 도매 원본 제외는 SSOT 상수로 모였다(2026-09-03) — 인라인 문자열도 상수 호출도 인정한다.
+    expect(rules).toMatch(/is_supply_product|consumerVisibleProductSql\(/)
+    expect(rules).toMatch(new RegExp(`${AL}\\.category IN`))
   })
 
   it('수동 섹션 쿼리에도 몰 격리가 있다', () => {

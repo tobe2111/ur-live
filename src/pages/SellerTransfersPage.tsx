@@ -167,7 +167,7 @@ function TransferCard({
       {actionable && (
         <div className="mt-3 flex gap-2">
           <button onClick={onApprove} disabled={submitting}
-            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-900 hover:bg-gray-900 text-white text-xs font-bold rounded-lg disabled:opacity-50">
+            className="ur-btn ur-btn-md ur-btn-primary flex-1 flex items-center justify-center gap-1.5 disabled:opacity-50">
             <Check className="w-3.5 h-3.5" /> {t('seller.transfers.approveBtn', { defaultValue: '동의' })}
           </button>
           <button onClick={onReject} disabled={submitting}

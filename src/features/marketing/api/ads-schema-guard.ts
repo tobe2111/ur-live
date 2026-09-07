@@ -29,13 +29,26 @@ export function ddlChecksum(statements: string[]): string {
  * 같은 DDL 목록이 이미 적용됐으면 건너뛰고, 아니면 전부 실행한 뒤 체크섬을 기록한다.
  * @param key platform_settings 키(테이블별로 분리 — 예: 'ads_ddl_influencer')
  */
-export async function runDdlOnce(DB: D1Database, key: string, statements: string[]): Promise<{ ran: boolean }> {
+export const SETTINGS_DDL =
+  'CREATE TABLE IF NOT EXISTS platform_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, description TEXT, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)'
+
+export async function runDdlOnce(
+  DB: D1Database, key: string, statements: string[],
+): Promise<{ ran: boolean; gateStuck: boolean }> {
   const sum = ddlChecksum(statements)
+  // 🩸 **표를 먼저 만든다** (2026-09-02 실사고). 예전엔 statements *뒤*에 만들었는데, 그 사이의
+  //   모든 플래그 조회가 `no such table` 로 실패한다 — 그리고 이 파일이 아니라 **호출부**의
+  //   "1회만 도는" 마이그레이션들이 그 플래그로 게이트돼 있어서, 표가 없으면 그것들이 **영원히 다시 돈다.**
+  await DB.prepare(SETTINGS_DDL).run().catch(() => null)
   const row = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(key)
     .first<{ value: string }>().catch(() => null)
-  if (row?.value === sum) return { ran: false } // ✅ 최신 — DDL 전부 생략
+  if (row?.value === sum) return { ran: false, gateStuck: true } // ✅ 최신 — DDL 전부 생략
   for (const sql of statements) await DB.prepare(sql).run().catch(() => null)
-  await DB.prepare('CREATE TABLE IF NOT EXISTS platform_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL, description TEXT, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)').run().catch(() => null)
   await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(key, sum).run().catch(() => null)
-  return { ran: true }
+  // 🔍 **기록이 실제로 남았는지 확인한다.** 남지 않았는데 호출부가 "1회 마이그레이션"을 계속 돌리면
+  //   전수 UPDATE/DELETE 가 매 부팅마다 반복된다 — 2026-09-02 에 그래서 계정의 D1 일일 읽기 한도가 소진됐다.
+  //   실패는 조용하면 안 된다: 호출부가 이 값을 보고 **비싼 일을 하지 않도록** 알려 준다.
+  const back = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(key)
+    .first<{ value: string }>().catch(() => null)
+  return { ran: true, gateStuck: back?.value === sum }
 }

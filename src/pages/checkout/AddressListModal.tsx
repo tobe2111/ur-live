@@ -44,8 +44,8 @@ export default function AddressListModal({
                 key={addr.id}
                 className={`relative rounded-xl p-4 cursor-pointer transition-all active:scale-[0.99] ${
                   isSelected
-                    ? 'bg-gray-50 dark:bg-[#1A1C21] ring-1 ring-gray-900'
-                    : 'bg-white dark:bg-[#0D0F12] border border-gray-100 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-[#1A1C21]'
+                    ? 'bg-gray-50 dark:bg-[#1D1F29] ring-1 ring-gray-900'
+                    : 'bg-white dark:bg-[#11141C] border border-gray-100 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-[#1D1F29]'
                 }`}
                 onClick={(e) => {
                   e.stopPropagation()
@@ -78,7 +78,7 @@ export default function AddressListModal({
             e.stopPropagation()
             onAddNewAddress()
           }}
-          className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-gray-300 dark:border-[#3A3A3A] py-3.5 text-[14px] font-medium text-gray-500 dark:text-gray-400 transition-all hover:bg-gray-50 dark:hover:bg-[#1A1C21] cursor-pointer active:scale-[0.98]"
+          className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-gray-300 dark:border-[#3A3A3A] py-3.5 text-[14px] font-medium text-gray-500 dark:text-gray-400 transition-all hover:bg-gray-50 dark:hover:bg-[#1D1F29] cursor-pointer active:scale-[0.98]"
         >
           <Plus className="w-4 h-4" />
           {t('checkout.address.addNew', { defaultValue: '새 배송지 추가' })}

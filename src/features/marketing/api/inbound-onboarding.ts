@@ -29,6 +29,9 @@ async function ensureOnboardColumn(DB: D1Database): Promise<void> {
   if (_colDone.has(DB)) return
   _colDone.add(DB)
   await DB.prepare('ALTER TABLE ad_influencer_leads ADD COLUMN onboarded_at TEXT').run().catch(() => null)
+  // 📉 2026-09-02 (정적 감사 §3 #8): 위 리마인드와 같은 0건 모양의 전수 스캔 — inbound 이면서 미온보딩만 담는 부분 인덱스.
+  await DB.prepare(`CREATE INDEX IF NOT EXISTS idx_ad_inf_leads_onboard_todo ON ad_influencer_leads(account_id, consented_at)
+    WHERE source = 'inbound' AND onboarded_at IS NULL`).run().catch(() => null)
 }
 
 /**

@@ -27,7 +27,7 @@ export default function NotFoundPage() {
         noindex
       />
 
-      <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#fbfbfd] via-white to-[#f5f5f7] dark:from-[#0D0F12] dark:via-[#0D0F12] dark:to-[#1A1C21] flex items-center justify-center px-4 py-12">
+      <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#fbfbfd] via-white to-[#f5f5f7] dark:from-[#11141C] dark:via-[#11141C] dark:to-[#1D1F29] flex items-center justify-center px-4 py-12">
         {/* Decorative floating orbs */}
         <div
           aria-hidden
@@ -85,7 +85,7 @@ export default function NotFoundPage() {
             </Link>
             <button
               type="button" onClick={() => navigate(-1)} aria-label="뒤로 가기"
-              className="inline-flex items-center justify-center gap-2 h-12 rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1C1C1E] text-gray-700 dark:text-gray-300 font-bold text-[15px] hover:bg-gray-50 dark:hover:bg-[#2C2F35] hover:border-gray-300 dark:hover:border-[#3A3A3A] transition-all duration-200 active:scale-[0.98]"
+              className="inline-flex items-center justify-center gap-2 h-12 rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300 font-bold text-[15px] hover:bg-gray-50 dark:hover:bg-[#2C2F35] hover:border-gray-300 dark:hover:border-[#3A3A3A] transition-all duration-200 active:scale-[0.98]"
             >
               <ArrowLeft className="h-4 w-4" />
               {t('notFound.goBack')}
@@ -102,7 +102,7 @@ export default function NotFoundPage() {
                 <Link
                   key={to}
                   to={to}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-[#2C2F35] text-sm font-semibold text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-[#3A3A3A] hover:bg-gray-50 dark:hover:bg-[#2C2F35] hover:text-gray-900 dark:hover:text-white transition-all duration-200 active:scale-[0.98] shadow-sm"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] text-sm font-semibold text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-[#3A3A3A] hover:bg-gray-50 dark:hover:bg-[#2C2F35] hover:text-gray-900 dark:hover:text-white transition-all duration-200 active:scale-[0.98] shadow-sm"
                 >
                   <Icon className="h-3.5 w-3.5" />
                   {label}

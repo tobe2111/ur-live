@@ -16,6 +16,7 @@ import { Store, Plus, Loader2, Trash2, Users } from 'lucide-react'
 import StoreRegisterModal from '@/components/seller/StoreRegisterModal'
 import StoreProfileModal from '@/components/seller/StoreProfileModal'
 import SellerWithdrawSection from '@/components/seller/SellerWithdrawSection'
+import ReviewBonusCard from '@/components/seller/ReviewBonusCard'
 
 interface OperableStore {
   seller_id: number; role: 'owner' | 'operator'; source: 'link' | 'grant'
@@ -61,7 +62,7 @@ export default function SellerStoresPage() {
         <div className="flex items-center justify-between">
           <p className="text-xs text-gray-600">내 가게든, 관리를 맡은 가게든 — 여기서 추가하고 전환해서 운영해요.</p>
           <button onClick={() => setAdding(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-brand hover:bg-brand-dark text-white text-xs font-bold transition">
+            className="ur-btn ur-btn-md ur-btn-primary flex items-center gap-1.5 transition">
             <Plus className="w-4 h-4" /> 매장 등록
           </button>
         </div>
@@ -122,6 +123,10 @@ export default function SellerStoresPage() {
               유도한다(채널은 사실이지 요금제가 아니다). 실제 수수료는 이용권 등록의 실수령가 카드가 건별로 보여 준다. */}
           매장을 전환하려면 상단의 매장 이름을 누르세요.
         </p>
+
+        {/* 🧾 2026-08-31 (대표 "후기 보너스는 매장 사장님이 설정… 셀러 대시보드에서"):
+            지금 전환된 매장 기준이다 — 매장을 바꾸면 그 매장 값이 뜬다. */}
+        <ReviewBonusCard />
 
         {/* 🚪 2026-08-26 (대표 "셀러도 탈퇴를 할 수 있어야"): 소비자 탈퇴의 셀러판 — 조용한 자리에. */}
         <SellerWithdrawSection />

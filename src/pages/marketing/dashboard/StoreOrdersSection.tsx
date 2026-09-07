@@ -83,7 +83,7 @@ export default function StoreOrdersSection() {
           <div className="mt-2 text-[13px] text-gray-600 dark:text-gray-300">
             연결됨 <span className="text-gray-400 dark:text-gray-500">({maskedId})</span>
             <div className="mt-3 flex gap-2">
-              <button onClick={sync} disabled={busy} className="rounded-lg bg-gray-900 dark:bg-white px-3 py-2 text-[12px] font-bold text-white dark:text-[#0D0F12] disabled:opacity-50">발주 동기화</button>
+              <button onClick={sync} disabled={busy} className="rounded-lg bg-gray-900 dark:bg-white px-3 py-2 text-[12px] font-bold text-white dark:text-[#11141C] disabled:opacity-50">발주 동기화</button>
               <button onClick={async () => { await api.delete('/api/ads/naver/connect', { headers: authHeader() }); loadStatus() }} className="rounded-lg border border-gray-200 dark:border-[#2C2F35] px-3 py-2 text-[12px] text-gray-500 dark:text-gray-400">연결 해제</button>
             </div>
           </div>
@@ -104,7 +104,7 @@ export default function StoreOrdersSection() {
               <p className="text-[11.5px] text-red-600 dark:text-red-400 leading-relaxed">{connectErr}</p>
             )}
             <div className="flex gap-2">
-              <button onClick={connect} disabled={busy} className="rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#0D0F12] disabled:opacity-50">{busy ? '검증 중…' : '연결'}</button>
+              <button onClick={connect} disabled={busy} className="rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#11141C] disabled:opacity-50">{busy ? '검증 중…' : '연결'}</button>
               <button onClick={() => { setStoreOpen(false); setConnectErr(null) }} className="rounded-lg px-3 py-2 text-[12px] text-gray-500 dark:text-gray-400">취소</button>
             </div>
           </div>

@@ -244,7 +244,7 @@ export default function SellerRegisterSupplierPage() {
           </div>
           <button
             onClick={() => navigate(existingStatus === 'active' ? '/seller' : '/seller/waiting')}
-            className="w-full py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-semibold text-sm">
+            className="ur-btn ur-btn-lg ur-btn-primary w-full">
             {existingStatus === 'active'
               ? t('seller.gateway.goDashboard', { defaultValue: '셀러 대시보드' })
               : t('seller.gateway.viewStatus', { defaultValue: '심사 상태 보기' })}
@@ -415,7 +415,7 @@ export default function SellerRegisterSupplierPage() {
         </p>
 
         <button onClick={submit} disabled={loading}
-          className="w-full py-3.5 bg-gray-800 disabled:opacity-50 text-white font-bold rounded-2xl flex items-center justify-center gap-2">
+          className="ur-btn ur-btn-lg ur-btn-primary w-full disabled:opacity-50 flex items-center justify-center gap-2">
           {loading && <Loader2 className="w-5 h-5 animate-spin" />}
           {loading
             ? t('seller.gateway.submitting', { defaultValue: '신청 중...' })

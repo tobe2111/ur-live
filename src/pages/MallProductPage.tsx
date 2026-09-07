@@ -43,7 +43,7 @@ import { STORAGE_LABEL, STORAGE_NOTICE, type PickupInfo } from '@/shared/pickup'
 import { hasConsumerSession } from '@/utils/auth'
 import { rememberMallOrigin } from '@/shared/mall/origin'
 import { toast } from '@/hooks/useToast'
-import { cfImage } from '@/utils/cf-image'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { parseUTCDate } from '@/utils/date'
 import { formatNumber } from '@/utils/format'
 
@@ -131,7 +131,7 @@ export default function MallProductPage() {
   // 🏬 몰은 있고 상품만 없다 — **그 가게의 화면**으로 안내한다(유어딜 404 로 떨구지 않는다).
   if (state === 'gone' || !product) {
     return (
-      <div className="min-h-[100dvh] flex flex-col items-center justify-center px-8 text-center bg-white dark:bg-[#0D0F12]"
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center px-8 text-center bg-white dark:bg-[#11141C]"
         style={{ ['--mall-l' as string]: mall.colorLight, ['--mall-d' as string]: mall.colorDark }}>
         <p className="text-[15px] font-bold tracking-[-0.03em] text-[#3F383C] dark:text-[#DAD4D7]">지금은 판매하지 않는 상품이에요</p>
         <p className="mt-2 text-[13px] tracking-[-0.02em] text-[#8A8288] dark:text-[#7C7479]">공동구매가 끝났거나 준비된 수량이 모두 나갔어요</p>
@@ -190,7 +190,7 @@ export default function MallProductPage() {
 
   return (
     <div
-      className="min-h-[100dvh] bg-white dark:bg-[#0D0F12] [--mall:var(--mall-l)] dark:[--mall:var(--mall-d)]"
+      className="min-h-[100dvh] bg-white dark:bg-[#11141C] [--mall:var(--mall-l)] dark:[--mall:var(--mall-d)]"
       style={{ ['--mall-l' as string]: mall.colorLight, ['--mall-d' as string]: mall.colorDark }}
     >
       <SEO title={`${product.name} - ${mall.name}`} description={product.description || mall.intro} url={`/${mall.slug}/p/${product.product_id}`} />
@@ -203,7 +203,9 @@ export default function MallProductPage() {
         </Link>
         {mall.logoUrl ? (
           <img src={cfImage(mall.logoUrl, { width: 64 })} alt="" width={28} height={28}
-            className="w-7 h-7 rounded-lg object-cover flex-none" />
+            className="w-7 h-7 rounded-lg object-cover flex-none"
+            onError={(e) => cfImageOnError(e.currentTarget, mall.logoUrl)}
+          />
         ) : (
           <div className="w-7 h-7 rounded-lg flex items-center justify-center text-[13px] font-extrabold text-white dark:text-[#1A1719] flex-none"
             style={{ backgroundColor: 'var(--mall)' }} aria-hidden>{mall.initial}</div>
@@ -215,7 +217,9 @@ export default function MallProductPage() {
         <div className="relative aspect-square rounded-[16px] overflow-hidden bg-[#F1EDEF] dark:bg-[#221D20]">
           {product.image_url && (
             <img src={cfImage(product.image_url, { width: 900 })} alt="" width={900} height={900}
-              className="w-full h-full object-cover" />
+              className="w-full h-full object-cover"
+              onError={(e) => cfImageOnError(e.currentTarget, product.image_url)}
+            />
           )}
           {remain && (
             <span className="absolute left-2.5 top-2.5 flex items-center gap-1 px-2.5 py-[6px] rounded-full bg-red-600 text-white text-[12px] font-bold tracking-[-0.02em]">
@@ -278,7 +282,7 @@ export default function MallProductPage() {
         {product.detail_images.length > 0 && (
           <div className="mt-6 space-y-2">
             {product.detail_images.map((src, i) => (
-              <img key={i} src={cfImage(src, { width: 900 })} alt="" loading="lazy" className="w-full rounded-xl" />
+              <img key={i} src={cfImage(src, { width: 900 })} alt="" loading="lazy" className="w-full rounded-xl" onError={(e) => cfImageOnError(e.currentTarget, src)} />
             ))}
           </div>
         )}
@@ -289,7 +293,7 @@ export default function MallProductPage() {
       </main>
 
       {/* 구매 바 — `StickyActionBar` 가 아니라 자체 바인 이유: 본진 컴포넌트는 유어딜 톤을 끌고 온다. */}
-      <div className="fixed bottom-0 inset-x-0 z-40 border-t border-[#F1EDEF] dark:border-[#262023] bg-white/95 dark:bg-[#0D0F12]/95 backdrop-blur">
+      <div className="fixed bottom-0 inset-x-0 z-40 border-t border-[#F1EDEF] dark:border-[#262023] bg-white/95 dark:bg-[#11141C]/95 backdrop-blur">
         <div className="ur-content-wide mx-auto px-5 py-3 pb-[max(12px,env(safe-area-inset-bottom))] flex items-center gap-3">
           {!closed && !soldOut && (
             <div className="flex-none flex items-center rounded-xl border border-[#EDE9EB] dark:border-[#292327]">

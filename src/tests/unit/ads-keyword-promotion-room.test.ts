@@ -68,7 +68,8 @@ describe('키워드 신선도 회전 — cap 상향 + 수율 은퇴', () => {
   it('⚠️ 회차 폭은 별도 상수(차단 리스크 레버) — 값 변경은 대표 승인 사항', async () => {
     const { COLLECT_KEYWORDS_PER_ROUND } = await import('@/features/marketing/api/influencer-keyword-rotation')
     // 6→9: 2026-08-11 대표 승인 "폭 9로 올려" — 해제 조건(측정>유입·차단 0) 충족 실측 후.
-    expect(COLLECT_KEYWORDS_PER_ROUND).toBe(9)
+    // 9→14: 2026-09-02 대표 승인 "응 다 해줘" — blocked 0/ok 54,383 · 성과측정 94.7% 완료 실측 후.
+    expect(COLLECT_KEYWORDS_PER_ROUND).toBe(14)
   })
 
   it('🔒 수율 은퇴가 배선돼 있다 — barren 의 drip 사각지대(found 50+ / saved <10)를 슬롯 차원에서 회수', async () => {

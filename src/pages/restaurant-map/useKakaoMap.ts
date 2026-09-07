@@ -391,7 +391,7 @@ export function useKakaoMap({
       const size = sel ? 50 : 42
       el.style.width = `${size}px`
       el.style.height = `${size}px`
-      el.style.boxShadow = `0 4px 12px rgba(0,0,0,0.30)${sel ? ', 0 0 0 3px rgba(224,82,107,0.9)' : ''}`
+      el.style.boxShadow = `0 4px 12px rgba(0,0,0,0.30)${sel ? ', 0 0 0 3px rgba(28,105,239,0.9)' : ''}`
       el.style.transform = `translate(-50%, -50%) scale(${sel ? 1.08 : 1})`
     })
   }, [selected?.id])

@@ -184,7 +184,7 @@ export default function KakaoCallbackPage() {
   //   → BrandLoader 로 통일. UR·DEAL 워드마크 + 전역 위상동기라 목적지(홈 등)의 로더와 끊김 없이 이어짐.
   //   ⚠️ 잠긴 로직(seller_username 저장·admin/agency user_type 보존)은 위 effect — byte-불변, 로딩 마크업만.
   return (
-    <div className="min-h-[100dvh] bg-white dark:bg-[#0D0F12]">
+    <div className="min-h-[100dvh] bg-white dark:bg-[#11141C]">
       <BrandLoader fullScreen label="로그인 처리 중이에요" />
     </div>
   )

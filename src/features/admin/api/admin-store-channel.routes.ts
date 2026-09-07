@@ -25,6 +25,9 @@ import type { Env } from '@/worker/types/env'
 import { writeAuditLog } from '@/worker/middleware/admin-security'
 import { getSellerMeta, setSellerMeta } from '@/worker/utils/seller-meta'
 import { safeError } from '@/worker/utils/safe-error'
+import { DEFAULT_FEE_RATES } from '@/worker/utils/fee-resolver'
+import { DEFAULT_PG_RESERVE_PCT } from '@/worker/utils/commission-budget'
+import { COMMISSION_DEFAULTS } from '@/shared/constants/policy'
 
 const adminStoreChannelRoutes = new Hono<{ Bindings: Env }>()
 
@@ -37,6 +40,27 @@ async function channelGateOn(DB: D1Database): Promise<boolean> {
   const row = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'fee_channel_rates_enabled'")
     .first<{ value: string }>().catch(() => null)
   return row?.value === 'true'
+}
+
+/**
+ * 돈 갈림표에 쓰는 요율 묶음. 전부 `platform_settings` 이고 어드민이 조정한다.
+ * 조회 실패는 기본값으로 떨어진다 — 표가 안 뜨는 것보다 기본값으로라도 보이는 게 낫다.
+ */
+async function loadSplitRates(DB: D1Database): Promise<{
+  direct_pct: number; brokered_pct: number; pg_reserve_pct: number; store_intro_pct: number
+}> {
+  const read = async (key: string, fallback: number): Promise<number> => {
+    const row = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?')
+      .bind(key).first<{ value: string }>().catch(() => null)
+    const n = Number(row?.value)
+    return Number.isFinite(n) && n >= 0 ? n : fallback
+  }
+  return {
+    direct_pct: await read('platform_fee_pct_direct', DEFAULT_FEE_RATES.platformPctDirect),
+    brokered_pct: await read('platform_fee_pct_brokered', DEFAULT_FEE_RATES.platformPct),
+    pg_reserve_pct: await read('pg_reserve_pct', DEFAULT_PG_RESERVE_PCT),
+    store_intro_pct: await read('influencer_store_intro_pct', COMMISSION_DEFAULTS.INFLUENCER_STORE_INTRO_PCT),
+  }
 }
 
 /** GET /api/admin/sellers/:id/channel — 현재 채널 + 게이트 상태 */
@@ -54,6 +78,11 @@ adminStoreChannelRoutes.get('/sellers/:id/channel', cors(), async (c) => {
         // null = 미지정. 이 상태는 종전 요율 경로로 떨어진다(채널이 요율을 안 정한다).
         channel: isChannel(meta?.store_channel) ? meta.store_channel : null,
         channel_rates_active: await channelGateOn(c.env.DB),
+        // 💰 2026-08-31 대표 요구 — 어드민 매장 카드가 "이 설정이면 돈이 어떻게 갈리나"를
+        //   그 자리에서 보여주기 위한 요율. 화면이 직접 platform_settings 를 캐지 않게 여기서 준다.
+        //   ⚠️ **어드민 전용이다**(대표: "3번 결과는 운영자인 나만 보여야 해") — PG 준비금과
+        //   유어딜 마진이 들어 있어 매장·소개자에게 보일 성질이 아니다. 셀러 API 에 넣지 말 것.
+        rates: await loadSplitRates(c.env.DB),
       },
     })
   } catch (err) {

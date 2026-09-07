@@ -3,7 +3,7 @@
  *
  * - mode: 'system' | 'light' | 'dark' — 사용자 선호 (localStorage 영속)
  * - applied: 'light' | 'dark' — 실제 화면에 적용된 테마 (mode + 시스템 결합 결과)
- * - 초기값: 'system' (OS prefers-color-scheme 추적)
+ * - 초기값: 'system' (OS prefers-color-scheme 추적) — 2026-09-02 대표 지시로 복원(05-16~09-02 는 'light')
  *
  * Tailwind 의 `dark:` 변형은 <html class="dark"> 일 때만 활성화됨.
  * FOUC 방지를 위해 첫 렌더 전 (index.html inline script) 에 한 번 적용 후,
@@ -31,10 +31,11 @@ function readMode(): ThemeMode {
     const v = sessionStorage.getItem(STORAGE_KEY)
     if (v === 'light' || v === 'dark' || v === 'system') return v
   } catch { /* full sandbox */ }
-  // 🛡️ 2026-05-16: 신규 사용자 default = 'light' (사용자 명시 요구).
-  //   기존 'system' 은 OS 다크 모드 켠 사용자가 우리 사이트도 다크로 보게 만들었음.
-  //   라이트 기본 + 토글로 dark/system 선택 가능 유지.
-  return 'light'
+  // 🌓 2026-09-02 대표 지시 "시스템 테마에 따라가도록 해줘": 저장값 없는 사용자 = 'system'(OS 추적).
+  //   2026-05-16 "신규 사용자 default = light" 를 대체한다 — 다크(#11141C)가 대표 확정 기본 화면이 되면서
+  //   OS 다크 사용자가 라이트를 먼저 보는 쪽이 오히려 어긋난다. 직접 고른 light/dark 는 그대로 존중.
+  //   ⚠️ index.html 부팅 스크립트(FOUC 방지)와 같은 규칙이어야 한다 — 한쪽만 바꾸면 첫 페인트가 튄다.
+  return 'system'
 }
 
 function detectSystemTheme(): AppliedTheme {
@@ -53,7 +54,7 @@ function applyToDocument(applied: AppliedTheme) {
   // 🛡️ 2026-05-03 (re-enable): 토글 복원 — 사용자 신고 "테마 변경하는게 없어".
   // 정책 (CLAUDE.md A안):
   //   - 화이트 테마 페이지 (쇼핑/결제/상세) = light 모드 → bg-white, dark 모드 → dark: variants 활성
-  //   - 다크 테마 페이지 (홈/마이/라이브) = bg-[#0D0F12] 강제 → 토글 무영향 (의도)
+  //   - 다크 테마 페이지 (홈/마이/라이브) = bg-[#11141C] 강제 → 토글 무영향 (의도)
   //   - 셀러/어드민/에이전시 = #F4F5F7 강제 + dark: variants 절대 금지 (pre-commit hook 차단)
   // 즉 토글은 쇼핑/결제 흐름에만 시각 적용. 사고 재발 방지를 위해 글로벌 CSS override 는 사용 안 함.
   try {
@@ -67,7 +68,7 @@ function applyToDocument(applied: AppliedTheme) {
     //   인라인 스타일은 모든 CSS 규칙(html.dark body / body.app-frame-host …)을 이긴다.
     //   그런데 토글 시 이 인라인 값이 **갱신되지 않아** 직전 테마 색(흰/검)이 그대로 남았다.
     //   → 프레임 양옆(gutter)을 현재 테마에 직접 동기: 라이트 #e9ebef(은은한 회색·프레임 강조),
-    //   다크 #0C0D10(2026-06-17 사용자 선택 — 순흑 #000 은 안쪽 페이지 #0D0F12 와 똑같아 프레임이 안 떠
+    //   다크 #0C0D10(2026-06-17 사용자 선택 — 순흑 #000 은 안쪽 페이지 #11141C 와 똑같아 프레임이 안 떠
     //   보였음. 살짝 밝은 다크그레이로 라이트모드처럼 '액자' 분리감). CSS 규칙(html.dark { })은 FOUC/폴백.
     if (document.body) document.body.style.backgroundColor = applied === 'dark' ? '#0C0D10' : '#e9ebef'
   } catch { /* SSR */ }

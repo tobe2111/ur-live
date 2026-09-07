@@ -90,6 +90,42 @@ async function getStoreIntroPct(DB: D1Database): Promise<number> {
 }
 
 /**
+ * 🏪 **2026-08-31 대표 확정 — 영입 2% 는 직접 입점(`store_channel='direct'`) 매장에만.**
+ *
+ * 이유는 경제다. 채널별 플랫폼 수수료가 **직접 10% / 중개 5%** 인데(`fee_channel_rates_enabled`,
+ * `ledger-commission-policy.channelPlatformRate`), 중개 매장에 2% 를 얹으면 라이브 실측 기준
+ *
+ *   중개: 5% − PG준비금 2.75% − 영입 2% = **+0.25%**   (직접: 10% − 2.75% − 2% = +5.25%)
+ *
+ * 로 사실상 0 이 된다. 그리고 이건 커미션이 **하나만** 붙었을 때고, 어필리에이트(2%)나
+ * 추천 트리(10/3/1%)가 같은 주문에 겹치면 바로 적자다. 대표가 직접 제기했다:
+ * *"2%를 줘야 하는데 그 매장이 대행사(5% 정산)로 되어 있는 경우 … 우리가 적자일 수 있어."*
+ *
+ * 🔴 **미지정(`store_channel` 없음)은 미지급이다.** 이건 대표 명시 결정이고, 방향에 근거가 있다:
+ *   - **미지급은 되돌릴 수 있고 과지급은 못 되돌린다.** 채널을 나중에 채우고 소급 판단하면 되지만,
+ *     남에게 이미 나간 돈은 회수가 사실상 불가능하다.
+ *   - `fee-resolver` 가 **반대 방향에 같은 논리**를 쓴다 — *"잘못 10% 를 물리면 매장에서 더 떼는
+ *     것이고, 그건 되돌리기 훨씬 비싸다"*. 즉 *매장에서 떼는* 쪽은 관대, *우리가 주는* 쪽은 엄격.
+ *   - 결정 시점 실측: 영입자 지정 매장 **0곳** → 지금 당장 손해 보는 사람이 없다.
+ *
+ * ⚠️ **그래서 매장 채널을 채우는 것이 이 규칙의 전제다.** 실측상 매장 11곳 중 채널이 박힌 곳은
+ *   1곳뿐이었다(그것도 brokered). 안 채우면 영입이 일어나도 아무도 못 받는다 —
+ *   어드민 `/admin/store-channel`(`admin-store-channel.routes.ts`)에서 지정한다.
+ *
+ * ⚠️ 조회 실패(일시 오류)도 **미지급**으로 떨어진다. fail-soft 의 방향을 미지급으로 두는 것은
+ *   위와 같은 이유이며, 주문당 1회성이라 cron 재집계 대상이 아니다.
+ */
+async function isDirectChannelStore(DB: D1Database, sellerId: number): Promise<boolean> {
+  try {
+    const { getSellerMeta } = await import('./seller-meta')
+    const meta = (await getSellerMeta(DB, [sellerId])).get(sellerId)
+    return meta?.store_channel === 'direct'
+  } catch {
+    return false // 조회 실패 → 미지급(과지급보다 안전)
+  }
+}
+
+/**
  * 💸 2026-07-04 [INV-CB] (커미션 예산 아비터 — docs/design/commission-funding-restructure.md):
  *   적립 없이 "이 주문에서 적립될 금액"만 계산(read-only). 오케스트레이터(order-commissions.ts)가
  *   예산 배분 전에 요청액을 산출할 때 사용. 적립 로직(credit)과 동일 판정 — 부적격/0원이면 0.
@@ -110,6 +146,8 @@ export async function computeInfluencerStoreIntroRequest(
     const influencerIdStr = String(influencerId)
     // ⏳ 유효기간(기본 1년) 경과 → 적립 종료. compute/credit 동일 판정(isStoreIntroExpired).
     if (isStoreIntroExpired(sellerRow, await getStoreIntroMonths(DB))) return 0
+    // 🏪 직접 입점 매장에만(2026-08-31 대표). 미지정 = 미지급. credit 과 동일 판정.
+    if (!(await isDirectChannelStore(DB, Number(order.seller_id)))) return 0
     const blocked = await DB.prepare(
       "SELECT 1 FROM seller_blocked_influencers WHERE seller_id = ? AND influencer_id = ? AND unblocked_at IS NULL LIMIT 1"
     ).bind(order.seller_id, influencerIdStr).first().catch(() => null)
@@ -147,6 +185,9 @@ export async function creditInfluencerStoreIntroCommission(
     const influencerIdStr = String(influencerId)
     // ⏳ 유효기간(기본 1년) 경과 → 적립 종료. compute/credit 동일 판정(isStoreIntroExpired).
     if (isStoreIntroExpired(sellerRow, await getStoreIntroMonths(DB))) return
+    // 🏪 직접 입점 매장에만(2026-08-31 대표). 미지정 = 미지급. compute 와 동일 판정.
+    //    ⚠️ 두 곳이 갈리면 예산 아비터가 요청액을 잡아 두고 적립은 0 이 되어 예산이 새는 쪽으로 샌다.
+    if (!(await isDirectChannelStore(DB, Number(order.seller_id)))) return
 
     // 2. 영입자가 블록되었거나(seller_blocked_influencers) self-매장이면 skip.
     const blocked = await DB.prepare(

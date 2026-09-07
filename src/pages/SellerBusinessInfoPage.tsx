@@ -255,18 +255,36 @@ export default function SellerBusinessInfoPage() {
         return
       }
 
+      // 🔢 2026-09-03 (대표 "입력했던 정보가 저장이 안되어있나?"): 서버는 사업자번호가 있으면
+      //   `XXX-XX-XXXXX` 를 강제한다. 종전엔 그 400 이 **영문 원문**으로 작은 빨간 글씨에만 떠서
+      //   저장이 안 된 걸 모르고 지나가기 쉬웠다 — 보내기 전에 한국어로 먼저 잡는다.
+      const bizNo = (formData.business_number || '').trim()
+      if (bizNo && !/^\d{3}-\d{2}-\d{5}$/.test(bizNo)) {
+        const msg = t('seller.bizNoFormat', { defaultValue: '사업자등록번호는 000-00-00000 형식으로 입력해 주세요' })
+        setError(msg); toast.error(msg); setSubmitting(false); return
+      }
+
       const response = await api.post('/api/seller/business-info', formData)
 
       if (response.data.success) {
         setSuccess(t('seller.businessInfoSaved'))
+        toast.success(t('seller.businessInfoSaved'))
         setTimeout(() => {
           loadBusinessInfo()
         }, 1500)
+      } else {
+        // 🕳️ 200 인데 success:false 면 **아무 일도 안 일어나던** 자리다 — 화면이 조용해서
+        //   "저장했는데 안 남아 있다"로 보인다. 실패는 반드시 보이게 한다.
+        const msg = response.data?.error || t('seller.businessInfoSaveFailed')
+        setError(msg); toast.error(msg)
       }
     } catch (error: unknown) {
       const error_ = error as { response?: { data?: { error?: string; message?: string }; status?: number } };
       if (import.meta.env.DEV) console.error('Failed to save business info:', error)
-      setError(error_.response?.data?.error || t('seller.businessInfoSaveFailed'))
+      const msg = error_.response?.status === 401
+        ? t('seller.sessionExpired', { defaultValue: '로그인이 풀렸어요. 다시 로그인한 뒤 저장해 주세요.' })
+        : (error_.response?.data?.error || t('seller.businessInfoSaveFailed'))
+      setError(msg); toast.error(msg)
     } finally {
       setSubmitting(false)
     }
@@ -457,6 +475,37 @@ export default function SellerBusinessInfoPage() {
             </button>
           </div>
         </div>
+
+        {/* 📄 2026-09-03 (대표 "사업자등록증 사진 이미지도 올리는게 필요했는데"): 기능은 있는데
+            **다른 탭에 있어서** 안 보였다. 오늘 이용권 관리와 같은 종류의 문제라 같은 처방을 한다 —
+            찾는 자리에서 그 자리를 알려 준다. */}
+        {/* 🏪 2026-09-03 (대표 "입력했던 정보가 저장이 안되어있나?"): 저장은 돼 있었는데 **다른 테이블**
+            이었다 — 매장 등록 때 낸 값은 `sellers` 에, 이 화면은 `seller_business_info` 를 읽는다.
+            이제 등록 때 값을 채워 보여 주되, **아직 정식 등록이 아니라는 사실을 숨기지 않는다.** */}
+        {activeTab === 'business' && businessInfo?.from_registration && (
+          <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <p className="text-[13px] font-bold text-amber-900">
+              {t('seller.bizFromRegistration', { defaultValue: '매장 등록 때 입력하신 내용을 채워 뒀어요' })}
+            </p>
+            <p className="mt-0.5 text-[12px] text-amber-800">
+              {t('seller.bizFromRegistrationDesc', { defaultValue: '아직 사업자 정보로는 등록되지 않았습니다 — 확인 후 저장을 눌러 주세요.' })}
+            </p>
+          </div>
+        )}
+
+        {activeTab === 'business' && (
+          <button
+            type="button"
+            onClick={() => switchTab('certificate')}
+            className="w-full mb-3 flex items-center gap-2 px-4 py-3 rounded-xl border border-gray-200 bg-white text-left hover:border-gray-400"
+          >
+            <FileText className="w-4 h-4 text-gray-500 shrink-0" />
+            <span className="flex-1 text-[13px] font-semibold text-gray-800">
+              {t('seller.certHint', { defaultValue: '사업자등록증 사진은 여기서 올려요' })}
+            </span>
+            <span className="text-[12px] text-gray-400">→</span>
+          </button>
+        )}
 
         {/* Form */}
         {activeTab === 'business' && (

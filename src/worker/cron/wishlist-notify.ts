@@ -26,7 +26,18 @@ import { logInfo, logError } from '../utils/logger'
 const BATCH_CAP = 200
 
 let _ensured = false
-async function ensureTables(DB: D1Database) {
+let _baseColEnsured = false
+/**
+ * 🆕 2026-09-03 `base_price` — **찜한 그 순간의 가격**(대표 확정 위시리스트 안 B).
+ *
+ *   `last_price` 는 이름 그대로 *마지막으로 통지한* 가격이라 통지가 한 번 나가면 현재가와 같아진다.
+ *   그걸로 "찜한 뒤 내렸다"를 말하면 **알림을 받은 사람에게만 배지가 사라진다** — 정확히 거꾸로다.
+ *   그래서 seed 때 한 번 쓰고 **다시는 갱신하지 않는** 열을 옆에 둔다. 찜을 지우면 함께 사라진다
+ *   (`clearWishlistBaseline`) → 다시 찜하면 그 시점 가격이 새 기준이 된다.
+ *
+ *   ⚠️ `wishlists` 는 건드리지 않는다 — 이 파일의 원래 설계 원칙("`wishlists` 핫 테이블 불변").
+ */
+export async function ensureWishlistBaselineTables(DB: D1Database) {
   if (_ensured) return
   try {
     await DB.prepare(`CREATE TABLE IF NOT EXISTS wishlist_stock_notifications (
@@ -39,12 +50,25 @@ async function ensureTables(DB: D1Database) {
       user_id TEXT NOT NULL,
       product_id INTEGER NOT NULL,
       last_price INTEGER,
+      base_price INTEGER,
       notified_at DATETIME,
       PRIMARY KEY (user_id, product_id)
     )`).run()
     _ensured = true
   } catch { /* exists */ }
+  // 기존 DB 에는 열이 없다. ALTER **성공** = 방금 추가됐다는 뜻이므로 그때만 백필한다
+  //   (매 isolate 마다 UPDATE 전수 스캔을 돌리지 않으려는 것 — 실패=이미 있음이라 정상 경로다).
+  if (!_baseColEnsured) {
+    _baseColEnsured = true
+    const added = await DB.prepare('ALTER TABLE wishlist_price_notifications ADD COLUMN base_price INTEGER')
+      .run().then(() => true).catch(() => false)
+    if (added) {
+      await DB.prepare('UPDATE wishlist_price_notifications SET base_price = last_price WHERE base_price IS NULL')
+        .run().catch(() => {})
+    }
+  }
 }
+const ensureTables = ensureWishlistBaselineTables
 
 function productLink(productId: number, category: string | null): string {
   return isVoucherCategory(category) ? `/group-buy/${productId}` : `/products/${productId}`
@@ -70,8 +94,8 @@ export async function seedWishlistBaseline(DB: D1Database, userId: string | numb
         .bind(uid, pid).run().catch(() => {})
     }
     if (p.price != null && Number(p.price) > 0) {
-      await DB.prepare('INSERT OR IGNORE INTO wishlist_price_notifications (user_id, product_id, last_price) VALUES (?, ?, ?)')
-        .bind(uid, pid, Number(p.price)).run().catch(() => {})
+      await DB.prepare('INSERT OR IGNORE INTO wishlist_price_notifications (user_id, product_id, last_price, base_price) VALUES (?, ?, ?, ?)')
+        .bind(uid, pid, Number(p.price), Number(p.price)).run().catch(() => {})
     }
   } catch { /* best-effort */ }
 }
@@ -170,14 +194,15 @@ export async function handleWishlistPriceDropNotify(env: Env): Promise<{ notifie
       if (row.last_price == null) {
         // 첫 관측 — baseline 기록만(통지 X). 이후 이 값보다 내려가면 통지.
         await DB.prepare(
-          "INSERT OR IGNORE INTO wishlist_price_notifications (user_id, product_id, last_price) VALUES (?, ?, ?)"
-        ).bind(String(row.user_id), row.product_id, price).run().catch(() => {})
+          "INSERT OR IGNORE INTO wishlist_price_notifications (user_id, product_id, last_price, base_price) VALUES (?, ?, ?, ?)"
+        ).bind(String(row.user_id), row.product_id, price, price).run().catch(() => {})
         continue
       }
 
       // 인하 claim — 아직 last_price 가 현재가보다 높을 때만 원자적으로 낮춰 통지 권리 확보.
       const claim = await DB.prepare(
-        "UPDATE wishlist_price_notifications SET last_price = ?, notified_at = datetime('now') WHERE user_id = ? AND product_id = ? AND last_price > ?"
+        // base_price 는 갱신하지 않는다(=찜 시점 기준 유지). NULL 인 옛 행만 직전 last_price 로 메운다.
+        "UPDATE wishlist_price_notifications SET last_price = ?, base_price = COALESCE(base_price, last_price), notified_at = datetime('now') WHERE user_id = ? AND product_id = ? AND last_price > ?"
       ).bind(price, String(row.user_id), row.product_id, price).run().catch(() => null)
       if ((claim?.meta?.changes ?? 0) === 0) continue // 다른 주기가 이미 통지/갱신
 

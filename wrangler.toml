@@ -90,9 +90,15 @@ database_id = "0e9a8f82-32fb-4584-878c-cdaec6c0aff0"
 #   wrangler kv:namespace create SESSION_KV
 #   → 출력된 id 를 Dashboard Bindings 에 등록 (또는 아래 주석 풀어서 사용)
 #
-# [[kv_namespaces]]
-# binding = "RATE_LIMIT_KV"
-# id = "YOUR_KV_NAMESPACE_ID"
+# 🔴 2026-08-31 주석 해제 — MEDIA_BUCKET 과 **같은 클래스**였다(배포가 둘인데 바인딩은 하나).
+#   cron 5곳이 이걸 읽는다: 디스코드 경고 중복제거(`sendDiscordAlertDedup`)와 피처 플래그.
+#   없으면 기능이 죽지는 않지만(플래그는 DB 폴백) **중복제거가 안 돼 같은 경고가 매시간 도배**된다.
+#   id 는 추측이 아니라 **Pages 프로덕션 바인딩이 실제로 가리키는 값**을 그대로 옮겼다
+#   (2026-08-31 CF API 실측). 위 CACHE_KV 주석이 경고하듯 이름이 아니라 **id 를 따라가야** 한다 —
+#   둘이 갈리면 cron 이 쓴 키를 Pages 가 못 읽어 에러 없이 기능만 죽는다.
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "bf9d3b4e6a314004aaa58fc38c3b5837"
 
 # [[kv_namespaces]]
 # binding = "SESSION_KV"
@@ -150,9 +156,19 @@ bucket_name = "ur-live-backups"
 #     3) (선택) Custom Domain 연결 → PUBLIC_R2_URL secret 등록
 #     4) /api/upload/image 호출 시 fail-soft (bucket 없으면 dataURI fallback 동작 — src/worker/upload.ts)
 #
-# [[r2_buckets]]
-# binding = "MEDIA_BUCKET"
-# bucket_name = "ur-live-media"
+# 🔴 2026-08-31 주석 해제 — **이 줄이 주석이라 cron 의 이미지 이관이 통째로 죽어 있었다.**
+#   위 안내(2)가 Pages 대시보드 바인딩만 말하는데, **cron 은 Pages 가 아니라 이 파일로 배포되는
+#   Workers 쪽에서 돈다**(worker-deploy.yml). 그래서 두 배포의 바인딩이 갈렸다:
+#     · Pages(요청 처리) → 대시보드에 MEDIA_BUCKET 있음 → /api/media 서빙 정상(실측 200)
+#     · Workers(cron)    → 여기 주석 → 바인딩 없음 → demo-image-rehost 가 `if (!MEDIA_BUCKET) return`
+#                          으로 **매 5분 조용히 조기 반환**
+#   실측(2026-08-31): 이관 대기 큐 338건 · 그 전부가 `img_rehost_tries=0`(한 번도 시도된 적 없음) ·
+#   하트비트 `reconditioned=3 migrated=0 images=0 done=0`(D1 은 되고 R2 만 안 됨) ·
+#   데모 숙소 46건 커버가 **전부 남의 서버**(카카오맵 36 · 네이버 블로그 10, R2 0건).
+#   ⚠️ 에러가 안 난다 — cron 은 ok:true 로 기록되고 큐만 영원히 안 줄어든다.
+[[r2_buckets]]
+binding = "MEDIA_BUCKET"
+bucket_name = "ur-live-media"
 
 # ============================================================
 # Durable Objects (for live streaming)

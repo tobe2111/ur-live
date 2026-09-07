@@ -80,14 +80,21 @@ for (const f of targetFiles) {
   //   (dark: 0 = 순수 다크/강제 화이트로 모호 → 플래그 X, 오탐 방지)
   //   bg-[#020202] = 강제 다크 페이지 → 제외.
   if (!/dark:(bg|text|border)/.test(src)) continue
-  // 🖤 2026-08-30 잉크 검정 전환: 다크 배경이 #0F151D → #0D0F12. 구 값도 남겨 둔다
+  // 🖤 2026-08-30 잉크 검정 전환: 다크 배경이 #0F151D → #11141C. 구 값도 남겨 둔다
   //    (외부 브랜치·미이행 파일이 옛 hex 로 들어와도 순수 다크 판정이 유지되도록).
-  if (/bg-\[#020202\]|bg-\[#0F151D\]|bg-\[#0D0F12\]|data-mobile-only/.test(src)) continue
+  if (/bg-\[#020202\]|bg-\[#0F151D\]|bg-\[#11141C\]|data-mobile-only/.test(src)) continue
   const lines = src.split('\n')
   lines.forEach((line, i) => {
     // 주석 줄(// 또는 * 로 시작)은 className 아님 → 스킵 (오탐 방지)
     const trimmed = line.trim()
     if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) return
+    // 🗺️ 2026-09-02 `light-fixed` — **배경이 테마와 무관하게 늘 밝은 자리**(카카오 지도 타일 위 오버레이).
+    //    거기서 dark: 로 남색을 주면 파스텔 지도 위에 검은 덩어리가 된다(대표 신고 "색깔이 눈에 잘 안 들어와").
+    //    🎫 2026-09-03 추가: **PC 홈 잉크 히어로 색면**(`--home-field`)도 같은 부류다 — 라이트/다크 어느
+    //    쪽이든 늘 잉크라, 그 위 흰 알약에 `dark:` 를 달면 다크에서 검은 알약이 되어 안 보인다.
+    //    줄에 `light-fixed` 주석이 있으면 그 줄의 라이트 토큰은 의도된 고정으로 본다.
+    //    남용 금지 — **배경이 테마와 무관하게 늘 정해진 자리**(지도 타일 위 · 잉크 히어로 위)만.
+    if (line.includes('light-fixed')) return
     for (const tok of LIGHT_TOKENS) {
       tok.re.lastIndex = 0
       let m
@@ -107,7 +114,7 @@ for (const f of targetFiles) {
     //       dark: 없이 쓰면 라이트 모드에서 검정 박스. → `bg-<라이트> dark:bg-[#…]` 로 써야 함.
     //       의도적 양모드 다크 요소는 줄에 `theme-dual` 주석으로 면제.
     if (!line.includes('theme-dual')) {
-      const darkHex = /((?:[\w-]+:)*)bg-\[#(0A0A0A|121212|1A1A1A|2A2A2A|0F151D|1A2334|2A3446|0D0F12|1A1C21|2C2F35)\]/g
+      const darkHex = /((?:[\w-]+:)*)bg-\[#(0A0A0A|121212|1A1A1A|2A2A2A|0F151D|1A2334|2A3446|0D0F12|1A1C21|11141C|1D1F29|2C2F35)\]/g
       let dm
       while ((dm = darkHex.exec(line)) !== null) {
         const variant = dm[1] || ''

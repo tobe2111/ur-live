@@ -43,3 +43,25 @@ export async function companyInflowByDay(DB: D1Database): Promise<{ byDay: Compa
   const t = await DB.prepare("SELECT DATE('now','+9 hours') AS d").first<{ d: string }>().catch(() => null)
   return { byDay, todayKst: String(t?.d || '') }
 }
+
+
+/**
+ * 📅 **오늘(KST) 유입만** — 화면이 매 요청 실시간으로 덮어쓰는 값.
+ *
+ * 분포 표는 1시간 캐시로 충분하지만 이 숫자만은 낡으면 안 된다("수집이 살아 있나"를 보는 자리라,
+ * 낡으면 멀쩡히 도는데 멈춘 것처럼 보인다). `collected_at` 인덱스 덕에 오늘치만 읽는다 —
+ * 라이브 실측 **7,234행**(전체 다시 세기 929,284행의 0.8%).
+ *
+ * ⚠️ 경계는 서버가 정한다(`DATE('now','+9 hours')`) — 클라가 `new Date()` 로 오늘을 구하면
+ *   브라우저 TZ 에 따라 9시간 어긋나 멀쩡한 날이 '폭락'으로 읽힌다(이 파일 위 주석과 같은 클래스).
+ * ⚠️ 실패는 `null` — 0 으로 적으면 "오늘 한 건도 안 들어왔다"는 **거짓말**이 된다.
+ */
+export async function todayInflow(DB: D1Database): Promise<CompanyDayInflow | null> {
+  const r = await DB.prepare(`SELECT DATE('now','+9 hours') AS d, COUNT(*) AS n,
+      SUM(CASE WHEN (email IS NOT NULL AND email != '') OR (phone IS NOT NULL AND phone != '') THEN 1 ELSE 0 END) AS reachable
+    FROM ad_company_leads
+   WHERE merged_into IS NULL AND collected_at >= datetime('now','-1 days')
+     AND DATE(collected_at,'+9 hours') = DATE('now','+9 hours')`).first<CompanyDayInflow>().catch(() => null)
+  if (!r || !r.d) return null
+  return { d: String(r.d), n: Number(r.n) || 0, reachable: Number(r.reachable) || 0 }
+}

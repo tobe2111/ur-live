@@ -82,7 +82,7 @@ export default function AddToHomeHint({ context = 'wallet' }: { context?: 'walle
           </button>
         )}
       </div>
-      <button onClick={dismiss} aria-label="닫기" className="-m-1 shrink-0 rounded-full p-1 hover:bg-gray-100 dark:hover:bg-[#1A1C21]">
+      <button onClick={dismiss} aria-label="닫기" className="-m-1 shrink-0 rounded-full p-1 hover:bg-gray-100 dark:hover:bg-[#1D1F29]">
         <X className="h-4 w-4 text-gray-400 dark:text-gray-500" />
       </button>
     </div>

@@ -265,6 +265,7 @@ node scripts/check-mobile-viewport.mjs || true
 #   둘 다 에러를 안 내고 화면만 조용히 밋밋해진다. 커밋 전에 알려 준다. warn-only(차단은 CI).
 echo "==> Pre-commit: AI 디자인 흔적 래칫 (warn-only)..."
 node scripts/check-design-slop.mjs || true
+node scripts/check-dashboard-button-system.mjs || true
 
 # 🛡️ 2026-06-29: 파일 크기 래칫 — god 파일 재발 방지. 신규 600줄 초과 / baseline 동결 파일 성장 경고.
 #   staged 파일만 검사. 줄인 뒤엔 `node scripts/check-file-size.mjs --rebaseline` 로 동결값 갱신. warn-only.
@@ -370,6 +371,15 @@ auto_ref_relevant=$(echo "$staged_ts" | grep -E '^(src/App\.tsx|src/(features|wo
 if [ -n "$auto_ref_relevant" ]; then
   echo "==> Pre-commit: 가이드 자동 참조 재생성..."
   node scripts/generate-guide-references.mjs > /dev/null 2>&1 || true
+fi
+
+# 📖 2026-08-31 (대표 "구현하는대로 업데이트가 되어야 해"): 운영백서 숫자표 재생성 + stage.
+#   요율·기능플래그를 고쳤는데 문서를 안 고치는 경로를 없앤다. 보장은 CI(--check) 가 한다 —
+#   원격 세션은 컨테이너가 새로 떠서 이 훅 자체가 없을 수 있기 때문이다.
+if [ -f scripts/generate-ops-handbook.mjs ]; then
+  echo "==> Pre-commit: 운영백서 숫자표 재생성..."
+  node scripts/generate-ops-handbook.mjs > /dev/null 2>&1 || true
+  git add src/features/guides/api/ops-handbook-auto.ts 2>/dev/null || true
   if ! git diff --quiet src/features/guides/api/auto-reference.ts 2>/dev/null; then
     git add src/features/guides/api/auto-reference.ts
     echo "   ✓ auto-reference.ts 재생성 + staged"

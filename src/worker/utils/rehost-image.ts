@@ -15,6 +15,7 @@ export async function rehostImageToR2(
   env: { MEDIA_BUCKET?: R2Bucket },
   srcUrl: string | null | undefined,
   source = 'dongnedeal-demo',
+  keyPrefix = 'uploads/demo', // 2026-09-02: 실상품 이관은 'uploads/rehost' — 데모 키와 섞이지 않게
 ): Promise<string | null> {
   if (!srcUrl || !env.MEDIA_BUCKET || !/^https?:\/\//i.test(srcUrl)) return null
   try {
@@ -39,7 +40,7 @@ export async function rehostImageToR2(
     const ext = ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : ct.includes('gif') ? 'gif' : 'jpg'
     const yyyymm = new Date().toISOString().slice(0, 7)
     const rand = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.round(Math.random() * 1e9)}`
-    const key = `uploads/demo/${yyyymm}/${rand}.${ext}`
+    const key = `${keyPrefix}/${yyyymm}/${rand}.${ext}`
     await env.MEDIA_BUCKET.put(key, buf, {
       httpMetadata: { contentType: ct, cacheControl: 'public, max-age=31536000, immutable' },
       customMetadata: { source, at: new Date().toISOString() },

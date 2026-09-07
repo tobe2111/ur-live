@@ -401,7 +401,7 @@ export default function AgencyPage() {
           >
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-[#6B7280] mb-1">{kpi.label}</p>
+        <p className="text-[10px] font-bold text-[#6B7280] mb-1">{kpi.label}</p>
                 {showStatsSkeleton ? (
                   <>
                     <Skel className="h-6 w-2/3 mb-1" />

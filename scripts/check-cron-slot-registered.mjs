@@ -63,12 +63,25 @@ function registeredSlots(toml) {
   return new Set([...m[1].matchAll(/["']([^"']+)["']/g)].map((x) => x[1].trim()))
 }
 
-/** `if (cron === 'X') { … safeCron('name', …) … }` 블록을 중괄호 깊이로 잘라 읽는다. */
+/**
+ * `if (cron === 'X') { … safeCron('name', …) … }` 블록을 중괄호 깊이로 잘라 읽는다.
+ *
+ * 🩸 2026-08-31 — **파서가 절반을 못 보고 있었다.** 조건이 `cron === 'X'` 로 *끝나는* 것만 읽어서
+ *   `if (cron === 'X' && slotDue(…))` · `if (cron === 'X' || …)` 형태(= 이 레포의 슬롯 블록 대부분)를
+ *   통째로 건너뛰었다. 실측: 블록 12개 중 **4개만** 읽혔다. 그러면 그 블록들의 cron 이 등록에서
+ *   빠져도 이 가드는 초록이다 — 이 파일이 막으려는 바로 그 침묵을, 이 파일이 만들고 있었다.
+ *   ⇒ 뒤에 `&&` · `||` 가 붙는 형태도 읽는다.
+ *
+ * ⚠️ **주석 줄은 건너뛴다.** 안 그러면 설명문 안의 `cron === '…'` 예시가 진짜 블록으로 읽힌다
+ *   (같은 날 실제로 그랬다 — 슬롯 이름이 `X` 인 블록이 잡혔다).
+ */
 function slotBlocks(src) {
   const lines = src.split('\n')
   const blocks = []
   for (let i = 0; i < lines.length; i++) {
-    const m = lines[i].match(/if\s*\(\s*cron\s*===\s*['"]([^'"]+)['"]\s*\)/)
+    const t = lines[i].trimStart()
+    if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) continue
+    const m = lines[i].match(/if\s*\(\s*cron\s*===\s*['"]([^'"]+)['"]\s*(?:\)|&&|\|\|)/)
     if (!m) continue
     let depth = 0
     let end = lines.length - 1
@@ -77,7 +90,11 @@ function slotBlocks(src) {
       if (j > i && depth <= 0) { end = j; break }
     }
     const body = lines.slice(i, end + 1).join('\n')
-    const names = [...body.matchAll(/safeCron\(\s*['"]([^'"]+)['"]/g)].map((x) => x[1])
+    // 🩸 2026-08-31: `safeCron(` 만 세면 **슬롯 블록의 작업이 하나도 안 잡힌다** — 그것들은
+    //   `slotCron('<식>')('이름', …)` 으로 등록되기 때문이다. 블록 정규식을 넓혀도 이름이 0개면
+    //   보고할 것이 없어 여전히 초록이었다(실측: 미등록 cron 을 심어도 통과). 등록 래퍼 둘 다 센다
+    //   — `check-cron-heartbeat` 의 REGISTER_RE 와 같은 형태를 쓴다.
+    const names = [...body.matchAll(/(?:safeCron|slotCron\([^)]*\))\(\s*['"]([^'"]+)['"]/g)].map((x) => x[1])
     blocks.push({ slot: m[1], line: i + 1, names })
   }
   return blocks

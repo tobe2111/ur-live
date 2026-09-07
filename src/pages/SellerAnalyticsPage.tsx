@@ -192,7 +192,7 @@ export default function SellerAnalyticsPage() {
                 )}
                 {/* Table header */}
                 {(data as ProductPerformanceItem[]).length > 0 && (
-                  <div className="hidden md:grid grid-cols-7 gap-2 px-4 py-2 bg-gray-50 border-b border-gray-100 text-[10px] font-semibold text-gray-500 uppercase">
+         <div className="hidden md:grid grid-cols-7 gap-2 px-4 py-2 bg-gray-50 border-b border-gray-100 text-[10px] font-semibold text-gray-500">
                     <span className="col-span-2">{t('seller.productName')}</span>
                     <span className="text-right">{t('seller.unitsSold')}</span>
                     <span className="text-right">{t('seller.orderCount')}</span>

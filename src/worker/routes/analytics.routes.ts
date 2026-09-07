@@ -16,7 +16,10 @@ import { requireAdmin } from '../middleware/auth'
 const analyticsRoutes = new Hono<{ Bindings: Env }>()
 
 // 1% sampling — 100명 중 1명만 기록 (KV write 한도 보호)
-const VITALS_SAMPLE_RATE = 0.01
+// 📈 2026-09-02 (대표 "모두 다 진행" — 로딩 후속 ①): 0.01 → 0.25. 1% 표본으로는 **하루 1건**이 찍혀(실측: 8/30~9/2 LCP 표본 0)
+//   실사용자 판정이 불가능했다. Workers 유료 전환(9/2)으로 KV 쓰기 한도가 월 100만이라 25% 표본(뷰당 ≤5 쓰기)은 여유.
+//   ⚠️ 무료 요금제로 되돌리면(일 1K 쓰기) 다시 0.01 로 내릴 것.
+const VITALS_SAMPLE_RATE = 0.25
 // 🛡️ 2026-06-11 머니/무료티어 감사: 고볼륨 funnel(view/click) 5% 샘플 + inc 20 보정 →
 //   KV free write 1K/day 한도 보호. join/success(저볼륨·고가치)는 항상 기록.
 const FUNNEL_SAMPLE_RATE = 0.05

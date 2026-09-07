@@ -72,7 +72,7 @@ export default function BlogDetailPage() {
   if (loading) {
     // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): ad-hoc 스피너 → BrandLoader.
     return (
-      <div className="min-h-[100dvh] bg-white dark:bg-[#0D0F12]">
+      <div className="min-h-[100dvh] bg-white dark:bg-[#11141C]">
         <BrandLoader fullScreen />
       </div>
     )
@@ -80,7 +80,7 @@ export default function BlogDetailPage() {
 
   if (!post) {
     return (
-      <div className="min-h-[100dvh] bg-white dark:bg-[#0D0F12] flex flex-col items-center justify-center">
+      <div className="min-h-[100dvh] bg-white dark:bg-[#11141C] flex flex-col items-center justify-center">
         <p className="text-gray-500 dark:text-gray-400 mb-4">{t('blogDetail.notFound', { defaultValue: '글을 찾을 수 없습니다' })}</p>
         <Link to="/blog" className="text-blue-600 text-sm font-medium">{t('blogDetail.backToBlog', { defaultValue: '블로그로 돌아가기' })}</Link>
       </div>
@@ -129,7 +129,7 @@ export default function BlogDetailPage() {
   )
 
   return (
-    <div className="min-h-[100dvh] bg-white dark:bg-[#0D0F12]">
+    <div className="min-h-[100dvh] bg-white dark:bg-[#11141C]">
       <SEO
         title={post.title}
         description={stripBold(post.summary)}
@@ -142,20 +142,20 @@ export default function BlogDetailPage() {
       />
 
       {/* 상단 네비 — 로고 | 검색·유어딜 홈·공유·CTA */}
-      <header className="sticky top-0 z-40 bg-white/90 dark:bg-[#0D0F12]/90 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
+      <header className="sticky top-0 z-40 bg-white/90 dark:bg-[#11141C]/90 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="max-w-7xl mx-auto flex items-center justify-between px-4 lg:px-8 h-14">
           <Link to="/blog" className="flex items-center gap-2 text-lg font-extrabold text-gray-900 dark:text-white tracking-tight">
             유어딜 <span className="text-gray-300 dark:text-[#333] font-light">|</span> <span className="text-gray-500 dark:text-gray-400 text-base font-bold">Blog</span>
           </Link>
           <div className="flex items-center gap-1 sm:gap-1.5">
-            <Link to="/blog" aria-label="블로그 검색" className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1A1C21]">
+            <Link to="/blog" aria-label="블로그 검색" className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1D1F29]">
               <Search className="w-4 h-4" />
             </Link>
             <button onClick={() => nativeShare({ title: post.title, url: `https://urdeal.kr/blog/${post.slug}` })}
-              aria-label="공유" className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1A1C21]">
+              aria-label="공유" className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1D1F29]">
               <Share2 className="w-4 h-4" />
             </button>
-            <Link to="/" className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1A1C21]">
+            <Link to="/" className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1D1F29]">
               <Home className="w-4 h-4" />유어딜 홈
             </Link>
             <Link to="/store/new" className="px-3.5 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold hover:opacity-90">내 가게 등록</Link>

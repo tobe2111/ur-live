@@ -5,12 +5,11 @@
  * 공구 핵심 정보 (현재/목표 인원 + 마감 시간) 한눈에.
  */
 
-import { memo, useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { formatNumber } from '@/utils/format'
 import { safeDate } from '@/utils/safe-date'
 import DealCardMedia from '@/components/deal/DealCardMedia'
-import StarRating from '@/components/deal/StarRating'
 import WishlistHeart from '@/components/deal/WishlistHeart'
 import { cardGradient } from '@/utils/card-gradient'
 import { extractDominantColor, reportDominantColor } from '@/utils/dominant-color'
@@ -18,7 +17,9 @@ import { usePrefetchGroupBuyProduct } from '@/hooks/queries'
 import { canonicalDetailPath } from '@/shared/product-flow'
 import FcfsBadge from '@/features/group-buy/FcfsBadge'
 import { stripStorePrefix } from '@/utils/deal-title'
-import { Utensils, Scissors, BedDouble, Ticket, Dumbbell, PawPrint, PartyPopper, Gift, type LucideIcon } from 'lucide-react'
+import StarRating from '@/components/deal/StarRating'
+import { Star } from 'lucide-react'
+import { dealCategoryMeta } from '@/shared/deal-category-icon'
 import type { FcfsInfo } from '@/features/group-buy/useFcfs'
 import type { Product } from './types'
 
@@ -34,15 +35,6 @@ import type { Product } from './types'
  *   OS 와 무관하게 같은 화면이 된다. **개념이 일반적인 것들**(식사·숙소·반려…)이므로
  *   lucide 를 그대로 쓴다 — 직접 그리는 것은 유어샵·동네딜처럼 *유어딜에만 있는 개념*에만.
  */
-const CATEGORY_META: Record<string, { Icon: LucideIcon; label: string }> = {
-  meal_voucher:     { Icon: Utensils,     label: '식사' },
-  beauty_voucher:   { Icon: Scissors,     label: '뷰티' },
-  stay_voucher:     { Icon: BedDouble,    label: '숙소' },
-  etc_voucher:      { Icon: Ticket,       label: '기타' },
-  health_voucher:   { Icon: Dumbbell,     label: '건강' },
-  pet_voucher:      { Icon: PawPrint,     label: '반려' },
-  activity_voucher: { Icon: PartyPopper,  label: '액티비티' },
-}
 
 interface FeedCardProduct extends Product {
   /* 🏷️ 2026-07-19 (대표 UI v2 P2): 제목 매장명 프리픽스 제거용 — 리스트 API 가 이미 내려줌 */
@@ -121,7 +113,13 @@ function prefetchDetailChunk() {
  *   ⚠️ 그래서 이 prop 을 지우거나 호출부에서 빠뜨리면 돈이 새는 쪽으로 조용히 깨진다
  *      (`urshop-card-unify.test.ts` 가 이 배선을 고정한다).
  */
-function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc, to }: { p: FeedCardProduct; aboveFold?: boolean; fcfs?: FcfsInfo; imgWidth?: number; userLoc?: { lat: number; lng: number } | null; to?: string }) {
+/**
+ * 🚩 `flags` — 이 카드가 **그 화면에서만** 갖는 한 줄(2026-09-03, 위시리스트 안 B).
+ *   찜 목록의 "↓ 4,200원 내림" · "3일 남음" 이 여기로 들어온다. 홈은 안 넘기므로 출력 불변.
+ *   ⚠️ 사진 위가 아니라 **본문 맨 위**다 — 2026-08-31 대표 지시("할인율이 사진 안으로 들어가면
+ *      안돼")와 같은 이유로, 사진은 상품을 보여주는 자리이지 배지를 얹는 자리가 아니다.
+ */
+function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc, to, flags, hideWishlist = false }: { p: FeedCardProduct; aboveFold?: boolean; fcfs?: FcfsInfo; imgWidth?: number; userLoc?: { lat: number; lng: number } | null; to?: string; flags?: ReactNode; hideWishlist?: boolean }) {
   // 🛡️ 2026-05-22 Phase 2 (100% 영구): hover / touch 즉시 prefetch → 클릭 시 0ms.
   const prefetch = usePrefetchGroupBuyProduct()
 
@@ -175,7 +173,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
   const brandIcon = p.brand_icon_url || p.gc_brand_icon_url || null
   // 카테고리도 동일 — voucher 면 gc.goods_type_detail 사용.
   const rawCategory = p.category && p.category !== 'voucher' ? p.category : (p.gc_goods_type_detail || p.category || 'etc_voucher')
-  const cat = CATEGORY_META[rawCategory] || { Icon: Gift, label: rawCategory }
+  const cat = dealCategoryMeta(rawCategory)
   const price = p.current_price ?? p.price ?? 0
   const originalPrice = p.original_price ?? 0
   // 💸 할인율 — 🐛 2026-08-19 (대표 신고 "할인율도 나타나야 할 것 같다"): 이전엔 `p.discount_rate ?? 계산`
@@ -293,7 +291,9 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
                 (마감임박 배지가 있으면 그 아래). 겹치면 둘 다 못 읽는다. */}
             {fcfs && <FcfsBadge info={fcfs} variant="overlay" className={`absolute ${isUrgent ? 'top-9' : 'top-2'} left-2 z-[2]`} />}
             {/* 💗 찜 — 그루폰 카드 우상단 하트. hover 시 나타나고(찜된 건 항상 보임) 누르면 통 튄다. */}
-            <WishlistHeart productId={p.id} className="absolute top-2 right-2 z-[3]" />
+            {/* 🧷 `hideWishlist` — 핀 고르기 화면은 이 자리에 '추가' 버튼이 온다(둘이 겹치면 하트가 묻힌다).
+                기본값 false 라 홈·찜·유어샵은 출력 불변. */}
+            {!hideWishlist && <WishlistHeart productId={p.id} className="absolute top-2 right-2 z-[3]" />}
           </>
         }
       />
@@ -302,64 +302,51 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
           [머천트(작은 회색)] → [제목 2줄] → [주소 · 거리] → [★평점 (구매수)] → [정가취소선 · 판매가 · 할인 pill]
           이전엔 정가가 제목 **위**에 떠 있고 가격이 중간에 있어, 카드마다 눈이 가는 자리가 달랐다. */}
       {/* 🧹 PC 는 카드 박스가 없으므로 좌우 패딩도 0 — 사진 왼쪽 끝과 글자가 딱 맞아야 그루폰처럼 보인다. */}
-      <div className="pt-2.5">
-        {/* 머천트 — 매장명 우선, 없으면 브랜드(gift_catalog). 🏪 온누리 가맹 뱃지는 그 옆. */}
-        {(p.restaurant_name || brandName || p.onnuri_merchant) && (
-          <p className={`flex items-center gap-1 text-[11px] leading-none mb-1 ${cSub}`}>
-            {brandIcon && !p.restaurant_name && <img src={brandIcon} alt="" className="w-3 h-3 rounded-full object-contain shrink-0" loading="lazy" />}
+      <div className="pt-2">
+        {flags}
+        {/* [시안 B] 08-19 그루폰 5줄 위계 유지 — 배지만 사진 위로 */}
+        {(p.restaurant_name || brandName) && (
+          <p className={`flex items-center gap-1 text-[11px] leading-none mb-0.5 ${cSub}`}>
             <span className="truncate">{p.restaurant_name || brandName}</span>
-            {p.onnuri_merchant && (
-              <span className="shrink-0 px-1 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[9px] font-bold">온누리</span>
-            )}
           </p>
         )}
-
-        {/* 제목 — 2줄 max */}
-        <p className={`text-[13.5px] font-bold line-clamp-2 leading-snug ${cText}`}>
+        <p className={`text-[13.5px] font-bold line-clamp-2 leading-tight ${cText}`}>
           {stripStorePrefix(p.name, p.restaurant_name)}
         </p>
-
-        {/* 📍 주소(좌) · 거리(우) — 그루폰처럼 양끝 정렬(거리가 항상 같은 자리에 온다) */}
         {(addrShort || distKm != null) && (
-          <p className={`flex items-center justify-between gap-2 mt-1 text-[11px] min-w-0 ${cSub}`}>
+          <p className={`flex items-center justify-between gap-2 mt-0.5 text-[11px] min-w-0 ${cSub}`}>
             <span className="truncate">{addrShort}</span>
             {distKm != null && <span className="shrink-0 whitespace-nowrap">{distKm}km</span>}
           </p>
         )}
-
-        {/* ⭐ 평점 — 🌟 2026-08-19 (대표 "별 5개 형태로"): 별 하나 + 숫자 → **별 5개(부분 채움)** +
-            숫자 + 리뷰수. 그루폰 카드의 그 줄이다. 리뷰가 없으면 구매수라도 보여 줘 줄이 비지 않게. */}
-        {(rating > 0 || soldCount > 0) && (
-          <p className={`flex items-center gap-1.5 mt-1 text-[11px] ${cSub}`}>
-            {rating > 0 ? (
-              <>
-                <StarRating value={rating} />
-                <span className={`font-bold ${cText}`}>{rating.toFixed(1)}</span>
-                {reviewCount > 0 && <span>({formatNumber(reviewCount)})</span>}
-              </>
-            ) : null}
-            {soldCount > 0 && <span>{rating > 0 ? '· ' : ''}구매 {formatSoldCount(soldCount)}</span>}
+        {rating > 0 && (
+          <p className={`flex items-center gap-1.5 mt-0.5 text-[11px] ${cSub}`}>
+            <StarRating value={rating} />
+            <span className={`font-bold ${cText}`}>{rating.toFixed(1)}</span>
+            {reviewCount > 0 && <span>({formatNumber(reviewCount)})</span>}
           </p>
         )}
 
-        {/* 💰 가격 — 한 줄에 [정가 취소선] [판매가] [할인 pill]. 그루폰의 마지막 줄과 같은 순서. */}
-        <p className="flex items-baseline flex-wrap gap-x-1.5 gap-y-0.5 mt-1.5">
-          {originalPrice > price && originalPrice > 0 && (
-            <span className={`text-[11.5px] line-through ${cSub}`}>{formatNumber(originalPrice)}원</span>
+        {/* 💰 가격 — 쿠팡식 2줄. [할인율(강조) 정가취소선] / [판매가]
+            ① 할인율을 사진 위에 올리지 않는다(사진을 가린다).
+            ② 할인율은 커머스에서 가장 강한 신호이므로 **로즈 굵게**로 세운다.
+            ③ 정가와 판매가를 줄로 나누면 6자리 가격(119,000원)에서도 줄이 안 깨진다. */}
+        <div className="mt-1">
+          {(discount > 0 || (originalPrice > price && originalPrice > 0)) && (
+            <p className="flex items-baseline gap-1 leading-none">
+              {discount > 0 && <span className="text-[12.5px] font-extrabold text-brand">{discount}%</span>}
+              {originalPrice > price && originalPrice > 0 && (
+                <span className={`text-[11.5px] line-through ${cSub}`}>{formatNumber(originalPrice)}원</span>
+              )}
+            </p>
           )}
-          <span className={`text-[16px] font-extrabold tracking-tight ${cText}`}>
-            {formatNumber(price)}원
-          </span>
-          {/* 🏨 2026-07-20: 숙소 가격 = 최저 객실 주중가 → 단위 명시(야놀자/아고다식 "1박~") */}
-          {p.category === 'stay_voucher' && price > 0 && (
-            <span className={`text-[11px] font-semibold ${cSub}`}>/1박~</span>
-          )}
-          {discount > 0 && (
-            <span className="shrink-0 px-1.5 py-[1px] rounded text-[11px] font-extrabold bg-brand/10 text-brand-text dark:bg-brand/20 dark:text-brand">
-              -{discount}%
-            </span>
-          )}
-        </p>
+          <p className="flex items-baseline gap-1 mt-0.5 leading-none">
+            <span className={`text-[17px] font-extrabold tracking-tight ${cText}`}>{formatNumber(price)}원</span>
+            {p.category === 'stay_voucher' && price > 0 && (
+              <span className={`text-[11px] font-semibold ${cSub}`}>/1박~</span>
+            )}
+          </p>
+        </div>
       </div>
     </Link>
   )

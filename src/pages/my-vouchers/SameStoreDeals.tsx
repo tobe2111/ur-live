@@ -7,11 +7,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
-import { cfImage } from '@/utils/cf-image'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 
 interface DealLite { id: number; name: string; price: number; image_url?: string | null; discount_rate?: number | null; current_price?: number | null }
 
-export default function SameStoreDeals({ productId }: { productId?: number }) {
+export default function SameStoreDeals({ productId, hideTitle }: { productId?: number; hideTitle?: boolean }) {
   const navigate = useNavigate()
   const [deals, setDeals] = useState<DealLite[]>([])
 
@@ -36,16 +36,16 @@ export default function SameStoreDeals({ productId }: { productId?: number }) {
   if (!deals.length) return null
   return (
     <div className="mt-3">
-      <p className="text-[12px] font-semibold text-gray-600 dark:text-gray-300 mb-2">이 매장의 다른 이용권도 있어요</p>
+      {!hideTitle && <p className="text-[12px] font-semibold text-gray-600 dark:text-gray-300 mb-2">이 매장의 다른 이용권도 있어요</p>}
       <div className="space-y-2">
         {deals.map((d) => (
           <button
             key={d.id}
-            className="w-full flex items-center gap-3 bg-gray-50 dark:bg-[#1A1C21] rounded-xl p-2.5 text-left"
+            className="w-full flex items-center gap-3 bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-2.5 text-left"
             onClick={() => navigate(`/group-buy/${d.id}`)}
           >
             {d.image_url ? (
-              <img src={cfImage(d.image_url, { width: 96 })} alt="" width={40} height={40} loading="lazy" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
+              <img src={cfImage(d.image_url, { width: 96 })} alt="" width={40} height={40} loading="lazy" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" onError={(e) => cfImageOnError(e.currentTarget, d.image_url)} />
             ) : (
               <span className="w-10 h-10 rounded-lg bg-gray-200 dark:bg-[#2A3344] flex-shrink-0" aria-hidden />
             )}
@@ -53,7 +53,7 @@ export default function SameStoreDeals({ productId }: { productId?: number }) {
               <span className="block text-[13px] font-semibold text-gray-900 dark:text-white truncate">{d.name}</span>
               <span className="block text-[12px] text-gray-500 dark:text-gray-400">
                 {Number(d.current_price ?? d.price).toLocaleString()}원
-                {d.discount_rate ? <em className="not-italic text-red-500 ml-1">{d.discount_rate}%</em> : null}
+                {d.discount_rate ? <em className="not-italic text-brand-text font-bold ml-1">{d.discount_rate}%</em> : null}
               </span>
             </span>
             <span className="text-[12px] text-gray-400 flex-shrink-0" aria-hidden>›</span>

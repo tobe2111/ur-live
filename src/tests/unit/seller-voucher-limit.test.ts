@@ -69,13 +69,25 @@ describe('수정 폼이 이용권 4종 전부를 다룬다', () => {
 })
 
 describe('레거시 카테고리가 조용히 사라지지 않는다', () => {
-  it('등록 화면이 주는 레거시 값이 SSOT 로 정규화된다', () => {
-    // 등록 화면은 헬스/반려/액티비티를 고르게 해 주는데, 이들은 소비자 피드 필터
-    // (`category IN VOUCHER_CATEGORIES`)에 안 걸린다 → 등록 성공 화면 + 어디에도 안 뜸.
+  /**
+   * ✏️ 2026-09-02 갱신 — **이 테스트가 스스로 예고한 그 순간이 왔다.**
+   *
+   * 원래 이 검사는 *"등록 화면이 레거시(헬스/반려/액티비티)를 고르게 해 주니, 최소한 서버가
+   * 정규화는 해 다오"* 였다(그래서 메시지가 "없어졌다면 이 테스트를 갱신할 것" 이었다).
+   * 그 뒤 전수조사에서 **화면이 없는 선택지를 내밀던 것 자체**를 고쳤다 — 셀러가 "헬스" 를 고르면
+   * 조용히 "미용" 으로 저장되던 문제(에러 0)라, 정규화는 옳지만 화면이 거짓말을 하고 있었다.
+   *
+   * ⇒ 이제 두 가지를 **각각** 고정한다:
+   *   ① 화면은 레거시를 **안 준다**(위쪽 `voucher-flow-audit-2026-09-02` 가 그 자리를 지킨다)
+   *   ② 그래도 서버의 정규화 안전판은 **살아 있어야 한다** — 옛 드래프트·`?copyFrom=` 복사·
+   *      외부 호출로 레거시 값이 여전히 들어올 수 있고, 그때 피드에서 사라지면 안 된다.
+   *   ①을 이유로 ②를 지우면 2026-08-22 에 고친 "등록은 됐는데 어디에도 안 뜸" 이 되살아난다.
+   */
+  it('레거시 값이 들어와도 SSOT 로 정규화된다 (화면은 더 이상 주지 않지만 안전판은 유지)', () => {
     for (const legacy of ['health_voucher', 'pet_voucher', 'activity_voucher']) {
-      expect(read(NEW), `등록 화면에 ${legacy} 가 없어졌다면 이 테스트를 갱신할 것`).toContain(legacy)
+      expect(read(NEW), `등록 화면이 사라진 카테고리 ${legacy} 를 다시 내밀고 있다`).not.toContain(`'${legacy}' as const`)
       const canon = normalizeCategory(legacy)
-      expect(canon, `${legacy} 의 정규화 대상이 없다`).toBeTruthy()
+      expect(canon, `${legacy} 의 정규화 대상이 없다 — 옛 값이 들어오면 피드에서 사라진다`).toBeTruthy()
       expect(VOUCHER_CATEGORIES as readonly string[]).toContain(canon!)
     }
   })

@@ -35,6 +35,8 @@ const REF_SOURCES: Array<[string, string]> = [
 const KEY_RE = /uploads\/[A-Za-z0-9._/-]+/g
 
 export interface OrphanReport {
+  /** 바인딩 부재 등으로 **아예 못 돌았을 때**의 사유. 전부 0 인 보고와 구분하기 위한 것(2026-08-31). */
+  skipped?: string
   scanned: number         // 검사한 uploads/ 객체 수
   referenced: number      // DB 에서 참조 확인된 수(스캔 범위)
   candidates: number      // 고아 후보(참조 없음 + 60일 경과 + biz-cert 아님)
@@ -48,7 +50,9 @@ export async function r2OrphanCleanup(env: Env, opts?: { maxList?: number; maxDe
   const bucket = (env as unknown as { MEDIA_BUCKET?: R2Bucket }).MEDIA_BUCKET
   const enabled = (env as unknown as { R2_ORPHAN_CLEANUP_ENABLED?: string }).R2_ORPHAN_CLEANUP_ENABLED === 'true'
   const report: OrphanReport = { scanned: 0, referenced: 0, candidates: 0, candidateBytes: 0, deleted: 0, enabled, truncated: false }
-  if (!bucket) return report
+  // 🔴 2026-08-31: demo-image-rehost 와 같은 침묵이었다 — 바인딩이 없으면 전부 0 으로 보고돼
+  //   "정리할 게 없었다"와 구분이 안 된다. 못 한 것은 못 했다고 남긴다.
+  if (!bucket) return { ...report, skipped: 'NO_MEDIA_BUCKET' }
 
   // 1) 참조된 키 집합 수집(각 소스 fail-soft — 없는 컬럼은 건너뜀).
   const referenced = new Set<string>()

@@ -6,7 +6,8 @@ import type { DealCategory } from '@/pages/pc-home/PcHomeRail'
 export const HOME_CATEGORY_KEYS: DealCategory[] = ['all', 'meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher']
 
 /** 홈 정렬 키 — 두 홈이 같은 집합을 쓴다. */
-export const HOME_SORT_KEYS = ['popular', 'newest', 'deadline', 'discount', 'near'] as const
+// 🗓️ 2026-09-04 (대표 "마감 개념은 없어"): 'deadline' 제거 — 목록에 없으면 그 쿼리는 무시된다(기본 유지).
+export const HOME_SORT_KEYS = ['popular', 'newest', 'discount', 'near'] as const
 export type HomeSortKey = (typeof HOME_SORT_KEYS)[number]
 
 /**

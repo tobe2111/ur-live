@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { ImageIcon, Lightbulb } from 'lucide-react'
 import { formatWon } from '@/utils/format'
-import { cfImage } from '@/utils/cf-image'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import type { ProductFormData } from './types'
 
 interface Props {
@@ -21,7 +21,7 @@ export default function ProductPreviewRail({ formData, categoryLabel }: Props) {
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-        <p className="mb-3 text-xs font-bold uppercase tracking-wide text-gray-400">
+        <p className="mb-3 text-xs font-bold text-gray-400">
           {t('seller.products.previewTitle', { defaultValue: '미리보기' })}
         </p>
 
@@ -33,6 +33,7 @@ export default function ProductPreviewRail({ formData, categoryLabel }: Props) {
                   src={cfImage(formData.image_url, { width: 480, height: 480, fit: 'cover' })}
                   alt={formData.name || ''}
                   className="h-full w-full object-cover"
+                  onError={(e) => cfImageOnError(e.currentTarget, formData.image_url)}
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-gray-300">

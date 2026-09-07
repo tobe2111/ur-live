@@ -67,7 +67,7 @@ export default function HomeTab({ onGo }: { onGo: (tab: string) => void }) {
             { l: 'CTR', v: `${(summary.ctr * 100).toFixed(1)}%` },
             { l: '활성 자동입찰', v: `${formatNumber(activeRules)}개` },
           ].map((m) => (
-            <div key={m.l} className="rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] p-3">
+            <div key={m.l} className="rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] p-3">
               <div className="text-[10.5px] text-gray-400 dark:text-gray-500">{m.l}</div>
               <div className="mt-0.5 text-[15px] font-bold text-gray-900 dark:text-white tabular-nums">{m.v}</div>
             </div>
@@ -89,7 +89,7 @@ export default function HomeTab({ onGo }: { onGo: (tab: string) => void }) {
           <p className="mt-1 text-[12.5px] leading-relaxed text-[#191919]/70">지역 인플루언서 리스트업 · 협찬 제안 대행 — 맡기면 끝. 카드 결제 지원</p>
           <div className="mt-3 text-[12.5px] font-bold">서비스몰 열기 →</div>
         </button>
-        <button onClick={() => onGo('keywords')} className="text-left rounded-2xl p-5 bg-gray-900 dark:bg-white text-white dark:text-[#0D0F12] hover:brightness-110 dark:hover:brightness-95 transition">
+        <button onClick={() => onGo('keywords')} className="text-left rounded-2xl p-5 bg-gray-900 dark:bg-white text-white dark:text-[#11141C] hover:brightness-110 dark:hover:brightness-95 transition">
           <div className="text-[26px]">🔎</div>
           <div className="mt-2 text-[16.5px] font-extrabold">키워드 분석</div>
           <p className="mt-1 text-[12.5px] leading-relaxed opacity-75">연관키워드 · 월 검색량 · 쇼핑 경쟁 — 지금 바로 무료</p>
@@ -105,7 +105,7 @@ export default function HomeTab({ onGo }: { onGo: (tab: string) => void }) {
             const tint = TAB_TINT[t.id] || TAB_TINT.tools
             return (
               <button key={t.id} onClick={() => onGo(t.id)}
-                className="flex items-center gap-3 text-left rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] p-3.5 hover:border-gray-300 dark:hover:border-[#3A4456] transition-colors">
+                className="flex items-center gap-3 text-left rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] p-3.5 hover:border-gray-300 dark:hover:border-[#3A4456] transition-colors">
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl" style={{ background: tint.bg, color: tint.fg }}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">{t.icon}</svg>
                 </span>

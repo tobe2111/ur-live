@@ -5,8 +5,9 @@
  * (docs/design/seller-dashboard-v2.md — 매장업주·중개자 공용 콘솔)에서 nav 가 계속 바뀔 파일이라
  * 레이아웃 셸과 분리해 두는 것이 맞다. **여기는 데이터만** — 렌더링/필터링은 SellerLayout 이 한다.
  */
-import { LayoutDashboard, ShoppingBag, Package, DollarSign, Megaphone, Bell, Building2, Heart, BarChart3, Ticket, Star, BarChart2, BookOpen, Tag, Sparkles, Boxes, ScanLine, Handshake, Receipt, Gift, Play, Rocket, Undo2, Users } from 'lucide-react'
+import { LayoutDashboard, PlusCircle, ShoppingBag, Package, DollarSign, Megaphone, Bell, Building2, Heart, BarChart3, Ticket, Star, BarChart2, BookOpen, Tag, Sparkles, Boxes, ScanLine, Handshake, Receipt, Gift, Play, Rocket, Undo2, Users } from 'lucide-react'
 import { LIVE_COMMERCE_SUSPENDED, SELLER_STORE_ONLY_MODE } from '@/shared/feature-flags'
+import { SELLER_TAB_GROUPS, tabGroupSiblings } from './seller-tab-groups'
 
 export type SellerType = 'influencer' | 'store_owner' | 'both'
 
@@ -19,6 +20,26 @@ export type SellerType = 'influencer' | 'store_owner' | 'both'
  * 'both' 셀러는 상단에 segmented control 로 모드 전환 가능.
  */
 export type SellerMode = 'live' | 'store' | 'common'
+
+/**
+ * 🧭 **묶음 하나 = 사이드바 한 줄** (2026-09-03 대표 승인 "전부" — 36줄 → 14줄).
+ *
+ * 착지점·이름·아이콘·형제 경로를 전부 `seller-tab-groups`(SSOT)에서 가져온다. 여기서 손으로 다시
+ * 적지 않는 이유는 하나다 — **`also` 가 형제 경로와 어긋나면 탭으로 이동한 순간 사이드바 줄이 꺼져
+ * 사용자가 자기 위치를 잃는다.** 파생시키면 어긋날 수가 없다.
+ */
+function navFromGroup(landingPath: string, extraAlso: string[] = []) {
+  const g = SELLER_TAB_GROUPS.find(x => x.tabs[0].path === landingPath)
+  if (!g) throw new Error(`[seller-nav] 알 수 없는 묶음: ${landingPath}`)
+  return {
+    path: landingPath,
+    labelKey: g.labelKey,
+    icon: g.icon,
+    mode: (g.mode || 'common') as SellerMode,
+    ...(g.hideFor ? { hideFor: g.hideFor } : {}),
+    also: [...tabGroupSiblings(landingPath), ...extraAlso],
+  }
+}
 
 export const NAV_GROUPS: {
   label?: string
@@ -41,9 +62,6 @@ export const NAV_GROUPS: {
     label: '', // 홈 (그룹 라벨 없음)
     items: [
       { path: '/seller', labelKey: 'seller.dashboard', icon: LayoutDashboard, exact: true, mode: 'common' },
-      // 🎟️ 2026-08-23 (대표 AB테스트 — "왼쪽 카테고리에도 이용권 등록 버튼이 있어야지"):
-      //   셀러의 1번 작업이라 대시보드 바로 아래 상시 노출.
-      { path: '/seller/meal-voucher/new', labelKey: 'seller.registerVoucher', icon: Ticket, mode: 'common' as SellerMode },
       // 🏪 2026-07-19 (대표 확정 — "상품은 유어샵에서만"): 상품(물건) 판매 표면 = 유어샵. nav 최상단 진입.
       ...(SELLER_STORE_ONLY_MODE ? [{ path: '/u/me', labelKey: 'seller.nav.myLinkshop', icon: Sparkles, mode: 'common' as SellerMode }] : []),
     ],
@@ -63,81 +81,61 @@ export const NAV_GROUPS: {
     ],
   }]),
   {
-    labelKey: 'seller.layout.groupbuy',
-    mode: 'store',
+    /**
+     * 🎟️ **이용권** — 2026-09-03 대표 신고 *"이용권 관리에 대한 통합 페이지가 따로 없어보여.
+     *   셀러 대시보드 왼쪽 카테고리에도 없지 않아?"* 로 재편.
+     *
+     * 실제로 페이지는 있었다(`/seller/group-buy`). 문제는 **닿을 수가 없었다**는 것이다:
+     *   ① 이 그룹 전체가 `mode: 'store'` 였다 → `isStoreOwner` 가 아닌 셀러(크리에이터·기본값)에겐
+     *      통째로 숨겨졌다. 그런데 **이용권 *등록*은 `common`**(2026-08-23 대표 지시)이라
+     *      **누구나 만들 수는 있는데 만든 뒤 목록·수정에 갈 링크가 하나도 없었다.**
+     *      수정 버튼은 그 페이지 안에만 있으므로 *"이용권 수정도 안되는구나"* 도 같은 원인이다.
+     *   ② 매장 단독 셀러는 심플 nav 라 보이긴 했는데 이름이 **"내 딜"** 이었다.
+     */
+    labelKey: 'seller.layout.vouchers',
     items: [
-      // group-buy(교환권/공구) 는 매장·크리에이터 공통 (둘 다 발행).
-      // 🧭 2026-06-10: 계산대 스캔 — 현장에서 가장 자주 쓰는 동선이라 그룹 최상단.
-      { path: '/seller/scan', labelKey: 'seller.nav.voucherScan', icon: ScanLine, mode: 'store' },
-      // 🗺️ 2026-07-02 카카오맵 리뷰 게이미피케이션 — 손님 후기 인증 확인(승인 시 보너스+레벨 점수)
-      { path: '/seller/review-verifications', labelKey: 'seller.nav.reviewVerifications', icon: Sparkles, mode: 'store' },
-      { path: '/seller/group-buy', labelKey: 'seller.nav.mealVoucher', icon: Ticket, mode: 'store' },
-      // 🏁 2026-06-12 (4차 감사 D5) → 🏪 2026-07-19 상품그룹 숨김에 따라 이용권 그룹으로 이동:
-      //   크리에이터 대행 등록 검토/승인(매장) — 이용권 운영의 일부.
-      { path: '/seller/proxy-products', labelKey: 'seller.nav.proxyProducts', icon: Package, mode: 'store' },
-      // 🏭 2026-06-04 역할 큐레이션 — 숙소는 매장(오프라인 숙박) 전용. 크리에이터에겐 숨김.
-      { path: '/seller/stays', labelKey: 'seller.nav.stays', icon: Building2, mode: 'store', hideFor: ['influencer'] },
-      { path: '/seller/stays/bookings', labelKey: 'seller.nav.staysBookings', icon: BarChart3, mode: 'store', hideFor: ['influencer'] },
+      // 셀러가 하는 일은 '만들고, 운영한다' 둘이다 — 등록과 관리를 같은 묶음에 둔다.
+      { path: '/seller/meal-voucher/new', labelKey: 'seller.registerVoucher', icon: PlusCircle, mode: 'common' as SellerMode },
+      // `/seller/products/` 는 이용권 **수정** 화면이라 이 줄을 함께 켠다(탭 이동 중 길 잃음 방지).
+      navFromGroup('/seller/group-buy', ['/seller/products/']),
+      navFromGroup('/seller/stays'),
     ],
   },
   {
-    labelKey: 'seller.layout.ordersCustomers',
+    labelKey: 'seller.layout.sales',
     items: [
-      { path: '/seller/orders', labelKey: 'seller.orders', icon: ShoppingBag, mode: 'common' },
-      // ↩️ 2026-08-01 세션 ⑤ — 반품 큐. API(`GET /api/returns/seller`)는 있었는데 **소비 화면이 0건**이라
-      //    운영자가 자기 상품 반품을 볼 데가 없었다(체크리스트 §5.4 🟡).
-      { path: '/seller/returns', labelKey: 'seller.nav.returns', icon: Undo2, mode: 'common' },
-      { path: '/seller/reviews', labelKey: 'seller.nav.reviews', icon: Star, mode: 'common' },
-      { path: '/seller/coupons', labelKey: 'seller.nav.coupons', icon: Ticket, mode: 'common' },
-      { path: '/seller/promo-codes', labelKey: 'seller.nav.promoCodes', icon: Tag, mode: 'common' },
-      // 🤝 2026-07-10: 소개 파트너 우대 커미션 협업 deal (marketing.routes sellerApp — 기존 API)
-      { path: '/seller/influencer-deals', labelKey: 'seller.nav.influencerDeals', icon: Handshake, mode: 'common' },
-      // 📣 2026-08-20 — 유어애즈 DB 탐색 + 협업 제안(발송은 유어딜 대행)
-      { path: '/seller/influencers', labelKey: 'seller.nav.findInfluencers', icon: Megaphone, mode: 'common' },
-      // 🎁 2026-07-12 WP-A: 체험 캠페인(무료 응모·추첨 체험단). 생성은 게이트 뒤, 관리는 상시.
-      { path: '/seller/experience-campaigns', labelKey: 'seller.nav.experienceCampaigns', icon: Gift, mode: 'common' },
-      { path: '/seller/followers', labelKey: 'seller.nav.followers', icon: Heart, mode: 'common' },
+      navFromGroup('/seller/orders'),
+      navFromGroup('/seller/settlements'),
     ],
   },
   {
-    labelKey: 'seller.layout.revenue',
+    labelKey: 'seller.layout.growth',
     items: [
-      { path: '/seller/analytics', labelKey: 'seller.analytics', icon: BarChart2, mode: 'common' },
-      { path: '/seller/settlements', labelKey: 'seller.revenue', icon: DollarSign, mode: 'common' },
-      // 🤝 2026-07-10: 3단 위임/promo 투명성 (§4.3) — promo 지출(불변원칙 #1)·매장 위임(grant/revoke)
-      { path: '/seller/promo-spend', labelKey: 'seller.nav.promoSpend', icon: Receipt, mode: 'common' },
-      // 🏪 2026-08-20 seller-dashboard-v2 — 매장 관리(추가·삭제·위임)·운영자
-      { path: '/seller/stores', labelKey: 'seller.nav.stores', icon: Building2, mode: 'common' },
-      { path: '/seller/agency-delegation', labelKey: 'seller.nav.agencyDelegation', icon: Handshake, mode: 'common' },
-      // 🏪 2026-08-19 매장 운영자 관리 (store-operator-model.md 2단계) — 소유자만 실제로 쓸 수 있고,
-      //   비소유자가 들어가면 서버가 403 을 준다(화면 숨김은 편의, 게이트는 서버).
-      { path: '/seller/operators', labelKey: 'seller.nav.operators', icon: Users, mode: 'common' },
-      { path: '/seller/donations', labelKey: 'seller.donations', icon: Heart, hideFor: ['store_owner'], mode: 'live' },
-      { path: '/seller/castings', labelKey: 'seller.nav.castings', icon: Megaphone, mode: 'live' },
-      { path: '/seller/promote-boosts', labelKey: 'seller.nav.promoteBoosts', icon: Rocket, mode: 'live' },
-    ],
-  },
-  // 🛡️ 2026-05-25 (migration 0278/0280): 큐레이터 유어샵 통합 — 셀러도 본인 user 계정 큐레이터 가능
-  // 🏭 2026-06-04 역할 큐레이션 — 유어샵/큐레이터/영입은 크리에이터 전용. 매장사장님에겐 숨김.
-  {
-    labelKey: 'seller.layout.curator',
-    hideFor: ['store_owner'],
-    items: [
-      { path: '/host', labelKey: 'seller.nav.hosting', icon: Sparkles, mode: 'common' },
-      { path: '/u/me/earnings', labelKey: 'seller.nav.curatorEarnings', icon: Sparkles, mode: 'common' },
-      // 🛡️ 2026-05-27: 매장 영입 prospects (인플루언서 only)
-      { path: '/seller/prospects', labelKey: 'seller.nav.prospects', icon: Sparkles, mode: 'common' },
+      navFromGroup('/seller/coupons'),
+      navFromGroup('/seller/influencer-deals'),
+      // 🏭 크리에이터 전용 — 매장 사장님에겐 숨긴다(hideFor 는 항목 단위로 유지).
+      { path: '/u/me/earnings', labelKey: 'seller.nav.curatorEarnings', icon: Sparkles, mode: 'common' as SellerMode, hideFor: ['store_owner'] as SellerType[] },
+      { path: '/seller/prospects', labelKey: 'seller.nav.prospects', icon: Sparkles, mode: 'common' as SellerMode, hideFor: ['store_owner'] as SellerType[] },
+      /**
+       * 🎥 **라이브 전용 — 지금은 아무에게도 안 보인다**(`LIVE_COMMERCE_SUSPENDED` 가 렌더에서 거른다).
+       * 2026-09-03 통폐합 때 이 줄들을 **빠뜨렸다가 `check-orphan-routes` 가 잡았다.**
+       * 화면엔 어차피 안 뜨지만 정의에서 지우면 **라우트가 어디에서도 닿을 수 없는 상태**가 되고,
+       * 라이브가 돌아오는 날 조용히 사라진 채로 남는다. **숨기는 것과 없애는 것은 다르다.**
+       */
+      { path: '/seller/donations', labelKey: 'seller.donations', icon: Heart, mode: 'live' as SellerMode, hideFor: ['store_owner'] as SellerType[] },
+      { path: '/seller/castings', labelKey: 'seller.nav.castings', icon: Megaphone, mode: 'live' as SellerMode },
+      { path: '/seller/promote-boosts', labelKey: 'seller.nav.promoteBoosts', icon: Rocket, mode: 'live' as SellerMode },
     ],
   },
   {
     labelKey: 'seller.layout.settings',
     items: [
-      { path: '/seller/business-info', labelKey: 'seller.businessInfo', icon: Building2, mode: 'common' },
-      { path: '/seller/mini-shop', labelKey: 'seller.nav.miniShop', icon: Megaphone, mode: 'common' },
-      { path: '/seller/streaming-guide', labelKey: 'seller.nav.streamingGuide', icon: Play, mode: 'live' },
-      { path: '/seller/alimtalk', labelKey: 'seller.brandMessage', icon: Bell, mode: 'common' },
-      { path: '/seller/notify-followers', labelKey: 'seller.nav.notifyFollowers', icon: Megaphone, mode: 'live' },
-      { path: '/seller/guide', labelKey: 'seller.nav.guide', icon: BookOpen, mode: 'common' },
+      { path: '/seller/business-info', labelKey: 'seller.businessInfo', icon: Building2, mode: 'common' as SellerMode },
+      navFromGroup('/seller/stores'),
+      navFromGroup('/seller/alimtalk'),
+      // 🎥 라이브 전용 — 위와 같은 이유로 정의에 남긴다(렌더에서는 게이트가 숨긴다).
+      { path: '/seller/streaming-guide', labelKey: 'seller.nav.streamingGuide', icon: Play, mode: 'live' as SellerMode },
+      { path: '/seller/notify-followers', labelKey: 'seller.nav.notifyFollowers', icon: Megaphone, mode: 'live' as SellerMode },
     ],
   },
 ]
@@ -150,3 +148,25 @@ function modesForSellerType(st: SellerType): SellerMode[] {
   if (st === 'store_owner') return ['store']
   return ['live', 'store']  // both
 }
+
+/**
+ * 🔎 **검색에만 나오는 페이지** (2026-09-03 대표 *"셀러대시보드도 어드민처럼 페이지 검색이 필요해"*).
+ *
+ * 셀러 라우트 64개 중 사이드바에 있는 건 절반뿐이고, 나머지에는 **실제로 쓰는 화면이 섞여 있다**
+ * (내 정보·등급·예약·매장 원장·교환권 발송 이력…). 사이드바에 다 올리면 지금도 긴 메뉴가 두 배가 되고,
+ * 안 올리면 존재조차 모른다 — 오늘 이용권 관리에서 그 대가를 치렀다.
+ * ⇒ **사이드바는 그대로, 검색은 전부 닿게.** 로그인·콜백 같은 통과 화면은 넣지 않는다(갈 데가 아니다).
+ */
+export const SELLER_SEARCH_ONLY: { path: string; labelKey: string; fallback: string; icon: any; group: string }[] = [
+  { path: '/seller/profile', labelKey: 'seller.nav.profile', fallback: '내 정보', icon: Users, group: '설정' },
+  { path: '/seller/tier', labelKey: 'seller.nav.tier', fallback: '셀러 등급', icon: Star, group: '설정' },
+  { path: '/seller/2fa', labelKey: 'seller.nav.twoFactor', fallback: '2단계 인증', icon: Bell, group: '설정' },
+  { path: '/seller/appointments', labelKey: 'seller.nav.appointments', fallback: '예약 관리', icon: BarChart3, group: '주문·고객' },
+  { path: '/seller/ledger', labelKey: 'seller.nav.ledger', fallback: '매장 원장', icon: Receipt, group: '수익' },
+  { path: '/seller/store-dashboard', labelKey: 'seller.nav.storeDashboard', fallback: '매장 현황', icon: Building2, group: '수익' },
+  { path: '/seller/realtime', labelKey: 'seller.nav.realtime', fallback: '실시간 현황', icon: BarChart2, group: '수익' },
+  { path: '/seller/voucher-orders', labelKey: 'seller.nav.voucherOrders', fallback: '교환권 발송 이력', icon: Gift, group: '수익' },
+  { path: '/seller/transfers', labelKey: 'seller.nav.transfers', fallback: '매장 이관', icon: Handshake, group: '설정' },
+  { path: '/seller/marketing', labelKey: 'seller.nav.marketing', fallback: '마케팅', icon: Megaphone, group: '주문·고객' },
+  { path: '/seller/ad-slots', labelKey: 'seller.nav.adSlots', fallback: '광고 슬롯', icon: Rocket, group: '주문·고객' },
+]

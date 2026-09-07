@@ -7,6 +7,7 @@ import { productDetailColsHealed, withColumnPruning } from '@/shared/db/product-
 import type { Product, ProductFilter, ProductCreateInput, ProductUpdateInput } from '../types';
 import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories';
 import { capRowGalleries } from '@/features/group-buy/api/card-gallery'
+import { buildSearchClause } from './search-query'
 
 /**
  * 🖼️ 목록 응답의 갤러리를 **커버 제외 3장**으로 자른다 (2026-08-27).
@@ -424,84 +425,42 @@ export class ProductRepository {
     offset: number = 0,
     limit: number = 20
   ): Promise<Product[]> {
-    // 🛡️ 2026-05-19 v2 — 검색 정확도 종합 개선:
-    //   1) prefix wildcard (`"스타벅스"*`) — "스타" → "스타벅스카드" 매칭
-    //   2) FTS 특수문자 escape — syntax-safe
-    //   3) 한국어 동의어 자동 확장 (기프티콘 → 쿠폰/교환권/상품권 등)
-    //   4) bm25 가중치 — name(3) > category(2) > description(1) — 상품명 매치 우선
-    const tokens = query
-      .trim()
-      .replace(/["*^():~+\-]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .split(' ')
-      .filter(t => t.length >= 1)
+    // 🔎 2026-09-03 (대표 — "키워드 단어만 검색해도 되어야 하는데"): FTS 를 1급에서 내리고
+    //   **부분매칭 + SQL 랭킹**으로 간다. 왜 그게 이 규모에서 이상적인지는 `search-query.ts` 머리말 참조
+    //   (요약: 라이브 FTS 는 porter 토크나이저라 단어 *안쪽*을 못 잡고, trigram 으로 바꾸면 2글자
+    //    검색어가 통째로 죽으며, FTS 인덱스엔 **매장명이 아예 없다**).
+    const { where, rank, params: searchParams } = buildSearchClause(query, expandSynonyms, 'p')
+    if (!where) return []
 
-    if (tokens.length === 0) return []
-
-    // 동의어 확장 — 각 토큰을 OR 그룹으로. "기프티콘" → ("기프티콘"* OR "교환권"* OR "쿠폰"*)
-    const expandedGroups = tokens.map(t => {
-      const synonyms = expandSynonyms(t)
-      const parts = [t, ...synonyms].map(s => `"${s}"*`)
-      return parts.length > 1 ? `(${parts.join(' OR ')})` : parts[0]
-    })
-    const sanitizedQuery = expandedGroups.join(' ')
-
-    // 🛡️ 2026-05-20: FTS5 외부 콘텐츠 테이블은 rowid 로 join (migration 0080: content_rowid=id).
-    //   기존 `fts.product_id` 컬럼은 존재하지 않아 항상 빈 결과 → LIKE fallback 으로 떨어졌음.
-    //   영구 수정: rowid 명시.
-    let ftsQuery = `
-      SELECT ${productDetailColsHealed('p')}
-      FROM products_fts fts
-      JOIN products p ON p.id = fts.rowid
-      WHERE products_fts MATCH ?
+    const params: any[] = []
+    let sql = `
+      SELECT ${productDetailColsHealed('p')}, (${rank}) AS _rank
+      FROM products p
+      WHERE ${where}
       AND p.is_active = 1
       AND NOT (COALESCE(p.is_supply_product, 0) = 1 AND COALESCE(p.supply_source_id, 0) = 0)
       AND NOT (COALESCE(p.category, '') = 'general' AND p.seller_id IS NULL)
     `;
+    params.push(...searchParams)
 
-    const params: any[] = [sanitizedQuery];
-    
-    // 추가 필터 적용
-    if (filter.sellerId) {
-      ftsQuery += ` AND p.seller_id = ?`;
-      params.push(filter.sellerId);
-    }
-    
-    if (filter.category) {
-      ftsQuery += ` AND p.category = ?`;
-      params.push(filter.category);
-    }
-    
-    if (filter.status) {
-      ftsQuery += ` AND p.status = ?`;
-      params.push(filter.status);
-    }
-    
-    if (filter.minPrice !== undefined) {
-      ftsQuery += ` AND p.price >= ?`;
-      params.push(filter.minPrice);
-    }
-    
-    if (filter.maxPrice !== undefined) {
-      ftsQuery += ` AND p.price <= ?`;
-      params.push(filter.maxPrice);
-    }
-    
-    // 🛡️ 2026-05-19 v2: bm25 컬럼 가중치 — name(3.0) > category(2.0) > description(1.0).
-    //   products_fts 스키마: (name, description, category) 순.
-    //   상품명 매치 점수가 가장 높음 → "스타벅스" 입력 시 상품명에 "스타벅스" 있는 것이
-    //   description 에만 있는 것보다 우선.
-    ftsQuery += ` ORDER BY bm25(products_fts, 3.0, 1.0, 2.0) LIMIT ? OFFSET ?`;
-    params.push(limit, offset);
-    
+    // 추가 필터 — 기존 계약 그대로 승계.
+    if (filter.sellerId) { sql += ` AND p.seller_id = ?`; params.push(filter.sellerId) }
+    if (filter.category) { sql += ` AND p.category = ?`; params.push(filter.category) }
+    if (filter.status) { sql += ` AND p.status = ?`; params.push(filter.status) }
+    if (filter.minPrice !== undefined) { sql += ` AND p.price >= ?`; params.push(filter.minPrice) }
+    if (filter.maxPrice !== undefined) { sql += ` AND p.price <= ?`; params.push(filter.maxPrice) }
+
+    // 동점은 많이 팔린 것 → 평점 → 최신 순. `_rank` 는 위 SELECT 의 별칭이라 재계산 없음.
+    sql += ` ORDER BY _rank DESC, COALESCE(p.sold_count,0) DESC, COALESCE(p.rating,0) DESC, p.id DESC LIMIT ? OFFSET ?`
+    params.push(limit, offset)
+
     try {
-      const result = await this.db.prepare(ftsQuery).bind(...params).all<Product>();
-      // 🖼️ 2026-08-27: FTS 는 **상세 컬럼 목록**(productDetailColsHealed)을 쓰므로 이미 원본 갤러리를
-      //   통째로 싣고 있었다. 검색 결과도 카드로 그려지니 같은 규칙으로 자른다(페이로드 축소).
+      const result = await this.db.prepare(sql).bind(...params).all<Product>();
+      // 🖼️ 2026-08-27: 검색 결과도 카드로 그려지니 갤러리를 같은 규칙으로 자른다(페이로드 축소).
       return capGalleries(result.results || []);
     } catch (error) {
-      // FTS 테이블이 없으면 기존 LIKE 검색으로 폴백
-      console.warn('[ProductRepository] FTS search failed, falling back to LIKE search:', error);
+      // 컬럼 자가치유(productDetailColsHealed)로도 못 살린 환경 — 최소 조건 검색으로 폴백.
+      console.warn('[ProductRepository] ranked search failed, falling back to findAll:', error);
       return this.findAll({ ...filter, search: query }, offset, limit);
     }
   }

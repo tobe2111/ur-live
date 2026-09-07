@@ -17,7 +17,15 @@ import { readFileSync } from 'node:fs'
 import { pickNewerDraft, emptyVoucherForm, type VoucherDraft } from '@/pages/seller-meal-voucher/voucher-form'
 
 const read = (p: string) => readFileSync(p, 'utf-8')
-const ROUTES = 'src/features/seller/api/seller-stores.routes.ts'
+/**
+ * ✏️ 2026-09-02 — 임시저장 엔드포인트가 `seller-stores.routes.ts` 에서 **여기로 이사**했다
+ *   (그 파일이 god-파일 래칫 600줄을 넘어 추출. 경로·동작은 불변).
+ *   ⚠️ 이 테스트가 **이사를 잡아냈다** — CI 가 R2/R3/R5 를 빨간불로 세웠고, 그게 맞는 동작이다.
+ *   아래 R6 은 그 반대 방향을 막는다: 파일만 남고 **등록이 빠지면** 세 엔드포인트가 통째로 사라진다
+ *   (404 — 임시저장이 조용히 죽는다). 추출의 진짜 위험은 그쪽이다.
+ */
+const ROUTES = 'src/features/seller/api/seller-voucher-draft.routes.ts'
+const HOST = 'src/features/seller/api/seller-stores.routes.ts'
 const PAGE = 'src/pages/SellerMealVoucherNewPage.tsx'
 
 const draft = (over: Partial<VoucherDraft['form']>, savedAt: number): VoucherDraft => ({
@@ -51,8 +59,17 @@ describe('R1 pickNewerDraft — 최근 것이 이긴다', () => {
 
 describe('R2~R3 서버 드래프트 라우트 계약', () => {
   const s = read(ROUTES)
+  /**
+   * ⚠️ 앵커를 못 찾으면 **통과가 아니라 실패**여야 한다. 종전엔 `s.slice(s.indexOf(...))` 였는데,
+   *   라우터 변수명이 `app` → `draftApp` 으로 바뀌자 indexOf 가 -1 을 주고 `slice(-1)` 이 **마지막
+   *   한 글자**('\n')를 돌려줬다 — 검사 대상이 사실상 빈 문자열이 된 것이다. 이번엔 그래서 빨간불이
+   *   났지만, 반대로 "없는 것을 안 찾아서 통과"가 되기도 쉬운 모양이다(이 레포가 반복해 만난 클래스).
+   *   ⇒ 변수명에 의존하지 않고 찾되, 못 찾으면 명시적으로 실패시킨다.
+   */
   it('R2 upsert(ON CONFLICT) + 크기 상한이 있다', () => {
-    const block = s.slice(s.indexOf("app.put('/voucher-draft'"))
+    const at = s.search(/\w+\.put\('\/voucher-draft'/)
+    expect(at, "PUT /voucher-draft 핸들러를 못 찾았다 — 검사가 헛돌고 있다").toBeGreaterThan(-1)
+    const block = s.slice(at)
     expect(block, 'upsert 가 사라지면 셀러당 행이 중복된다').toContain('ON CONFLICT(seller_id) DO UPDATE')
     expect(block, '크기 상한이 없으면 base64 이미지로 행이 무한 성장한다').toContain('DRAFT_MAX_BYTES')
   })
@@ -76,5 +93,20 @@ describe('R4 제출/폐기 시 양쪽 모두 삭제', () => {
   })
   it('새로 작성(폐기)도 서버까지 지운다', () => {
     expect(p).toMatch(/clearVoucherDraft\(\); deleteServerDraft\(\); setPendingDraft\(null\)/)
+  })
+})
+
+describe('R6 추출된 라우트가 실제로 등록된다 (파일만 남고 안 붙으면 404)', () => {
+  it('호스트가 registerVoucherDraftRoutes 를 부른다', () => {
+    const h = read(HOST)
+    expect(h, '등록 호출이 빠지면 /voucher-draft 3개가 통째로 사라진다')
+      .toContain('registerVoucherDraftRoutes(app)')
+    expect(h).toContain("from './seller-voucher-draft.routes'")
+  })
+  it('경로 문자열은 그대로 — 클라(draft-sync)는 한 줄도 안 바뀌었다', () => {
+    const r = read(ROUTES)
+    for (const m of ['get', 'put', 'delete']) {
+      expect(r, `${m} /voucher-draft 가 사라졌다`).toContain(`draftApp.${m}('/voucher-draft'`)
+    }
   })
 })

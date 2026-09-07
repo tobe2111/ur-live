@@ -22,7 +22,12 @@ interface OperableStore {
   business_name: string | null
   name: string | null
   username: string | null
+  /** 서버 상태 — 승인 전(pending)은 좌석 전환이 거부된다(`/stores/:id/token`). */
+  status: string | null
 }
+
+/** 좌석에 앉을 수 있는가 — 서버의 토큰 발급 조건과 같은 판정. */
+const seatable = (s: OperableStore) => s.status === 'active' || s.status === 'approved'
 
 const storeLabel = (s: OperableStore) => s.business_name || s.name || `매장 #${s.seller_id}`
 
@@ -59,6 +64,9 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
   const [switching, setSwitching] = useState<number | null>(null)
   const [currentId, setCurrentId] = useState(() => Number(localStorage.getItem('seller_id') || 0))
   const hasStoreInfo = !!form.restaurant_name
+  /** 지금 앉아 있지 않은 **앉을 수 있는** 매장이 있는가 — 안내를 '등록' 대신 '선택'으로 바꾸는 신호.
+      승인 대기 매장은 아직 고를 수 없으므로 이 신호에서 뺀다(고르라고 해 놓고 거부하면 안 된다). */
+  const hasOtherStore = stores.some(s => s.seller_id !== currentId && seatable(s))
   // 매장 정보가 이미 있으면 지도는 접어 둔다 — "다시 검색"으로 언제든 편다.
   const [showMap, setShowMap] = useState(!hasStoreInfo)
   const mapAutoOpened = useRef(false)
@@ -80,6 +88,10 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
   /** 🔁 다른 매장 선택 = 좌석 전환(StoreSwitcher 와 동일 계약) + 그 매장 정보로 프리필. */
   async function pickStore(s: OperableStore) {
     if (s.seller_id === currentId || switching != null) return
+    if (!seatable(s)) {
+      toast.info(t('seller.mealVoucher.storePendingNotice', { defaultValue: '매장이 등록 접수됐어요 — 사업자 확인(승인) 후 이용권을 등록할 수 있어요' }))
+      return
+    }
     setSwitching(s.seller_id)
     try {
       const r = await api.post(`/api/seller/stores/${s.seller_id}/token`)
@@ -130,8 +142,13 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
 
   return (
     <div className="space-y-4">
-      {/* 다매장 선택 칩 — 전환할 곳이 있을 때만(1곳뿐이면 소음) */}
-      {stores.length >= 2 && (
+      {/* 🏪 매장 선택 칩 — **전환할 곳이 있을 때만** 보인다.
+          ⚠️ 2026-09-02 정정: 종전 조건은 `stores.length >= 2` 였다. 그러면 **매장이 딱 하나인데
+            개인 좌석에 앉아 있는 사람**에게 칩이 하나도 안 보인다 — 자기 매장이 있는데 고를 수가 없고,
+            화면은 "매장을 등록하세요" 만 반복했다(대표 실사례: 매장 1개 + 개인 좌석). 조건을
+            "**앉아 있지 않은 매장이 하나라도 있는가**" 로 바꾼다. 이미 그 매장에 앉아 있으면 여전히
+            안 보인다(1곳뿐일 때 소음을 막던 원래 의도는 그대로). */}
+      {stores.some(s => s.seller_id !== currentId) && (
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <p className="text-sm font-bold text-gray-900 mb-2 flex items-center gap-1.5">
             <Store className="w-4 h-4 text-gray-500" />
@@ -147,12 +164,18 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
                   onClick={() => pickStore(s)}
                   disabled={switching != null}
                   className={`px-3 py-2 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-60 ${
-                    active ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                    active ? 'border-pink-500 bg-pink-50 text-pink-700'
+                      : seatable(s) ? 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                      /* 승인 대기 — 눌러도 서버가 거부한다. 숨기지 않고 '왜 못 고르는지'를 보여준다. */
+                      : 'border-gray-200 bg-gray-50 text-gray-400'
                   }`}
                 >
                   {switching === s.seller_id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : active && <CheckCircle className="w-3.5 h-3.5" />}
                   <span className="max-w-[160px] truncate">{storeLabel(s)}</span>
-                  {s.role === 'operator' && (
+                  {!seatable(s) && (
+                    <span className="text-[10px] font-bold text-gray-600 bg-gray-200 px-1 py-0.5 rounded">승인 대기</span>
+                  )}
+                  {seatable(s) && s.role === 'operator' && (
                     <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1 py-0.5 rounded">위임</span>
                   )}
                 </button>
@@ -231,7 +254,11 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
                   ? (placeSelected
                     ? t('seller.mealVoucher.registerStoreRequired', { defaultValue: '⚠️ 매장 등록이 필수예요 — [매장 등록]을 완료해야 다음 단계로 갈 수 있어요' })
                     : t('seller.mealVoucher.registerStoreFirst', { defaultValue: '⚠️ 첫 단계는 매장 등록이에요 — 위 지도에서 매장을 찾은 뒤 등록을 완료해주세요' }))
-                  : t('seller.mealVoucher.registerStoreHint', { defaultValue: '이 매장을 매장 관리에 등록하면 다음부터 자동으로 불러와요' })}
+                  : hasOtherStore
+                    /* 이미 운영 중인 매장이 있는데 다른 좌석에 앉아 있다 — 시켜야 할 일은 '등록'이 아니라 '선택'이다.
+                       (등록을 시키면 같은 가게가 두 번 등록될 뿐이다.) */
+                    ? t('seller.mealVoucher.pickStoreHint', { defaultValue: '위에서 매장을 고르면 그 매장의 이용권으로 등록돼요 — 새 매장이면 아래로 등록하세요' })
+                    : t('seller.mealVoucher.registerStoreHint', { defaultValue: '이 매장을 매장 관리에 등록하면 다음부터 자동으로 불러와요' })}
               </p>
               <button
                 type="button"

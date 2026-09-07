@@ -45,7 +45,7 @@ interface ReturnRow {
 
 /** 재사용 요소 팔레트〔시안〕. 모르는 상태는 회색으로 떨군다(추측한 색을 칠하지 않는다). */
 const STATUS_STYLE: Record<string, { label: string; cls: string }> = {
-  requested: { label: '대기', cls: 'text-[#B0576A] bg-[#FBEDF0]' },
+  requested: { label: '대기', cls: 'text-[#B0576A] bg-[#EAF1FE]' },
   approved: { label: '승인함', cls: 'text-[#2E7D5B] bg-[#E6F3EC]' },
   rejected: { label: '거절함', cls: 'text-[#8A8288] bg-[#F1EDEF]' },
   refunded: { label: '환불완료', cls: 'text-[#2E7D5B] bg-[#E6F3EC]' },
@@ -188,7 +188,7 @@ export default function SellerReturnsPage() {
                         거절
                       </button>
                       <button disabled={busy === r.id} onClick={() => act(r.id, 'approve')}
-                        className="h-[50px] rounded-xl bg-[#1A1719] text-white text-[14.5px] font-extrabold tracking-[-0.02em] active:bg-black disabled:opacity-50">
+                        className="ur-btn ur-btn-md ur-btn-primary h-[50px] bg-[#1A1719] text-[14.5px] tracking-[-0.02em] disabled:opacity-50">
                         승인
                       </button>
                     </div>

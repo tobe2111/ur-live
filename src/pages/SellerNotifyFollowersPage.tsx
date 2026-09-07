@@ -213,7 +213,7 @@ export default function SellerNotifyFollowersPage() {
         <button
           onClick={handleSubmit}
           disabled={submitting || title.length < 2 || message.length < 5}
-          className="w-full py-4 bg-gray-800 hover:opacity-95 disabled:opacity-50 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-lg"
+          className="ur-btn ur-btn-lg ur-btn-block ur-btn-primary"
         >
           {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           {submitting ? '발송 중…' : '단골 전원에게 알림 발송'}

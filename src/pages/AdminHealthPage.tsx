@@ -63,7 +63,7 @@ export default function AdminHealthPage() {
   // 🛡️ 2026-06-03 Tier2(대시보드): 수동 10s 폴링 → useApiQuery refetchInterval.
   const { data: metrics = null, isLoading: loading, isError, dataUpdatedAt, refetch } = useApiQuery<Metrics | null>(
     ['admin', 'metrics'], '/api/admin/metrics',
-    { select: (r: any) => (r?.success ? r.data : null), refetchInterval: 10_000 },
+    { select: (r: any) => (r?.success ? r.data : null), refetchInterval: 60_000 } // 📉 2026-09-02: 10s 폴링 × COUNT 6개(webhook_events·user_sessions 무인덱스) = 하루 5만 쿼리 → 60s,
   )
   const error = isError ? '메트릭 조회 실패' : null
   const lastFetched = dataUpdatedAt ? new Date(dataUpdatedAt) : null

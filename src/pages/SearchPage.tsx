@@ -7,7 +7,7 @@ import { useSearchInfinite } from '@/hooks/useSearch'
 import { isVoucherCategory } from '@/shared/constants/voucher-categories'
 import SearchHeader from '@/components/search/SearchHeader'
 import SearchStates, { addRecentSearch } from '@/components/search/SearchStates'
-import ProductCard from '@/components/search/ProductCard'
+import RestaurantRow from '@/pages/restaurant-map/RestaurantRow'
 import SortFilterBar from '@/components/search/SortFilterBar'
 
 interface Product {
@@ -25,6 +25,13 @@ interface Product {
   deal_only?: number
   // 🖥️ 2026-07-16: 이용권(voucher 카테고리) 판별용 — 검색을 이용권만으로 필터.
   category?: string
+  // 🎫 2026-09-03: 이용권 행(RestaurantRow)이 그리는 매장 정보 — 서버 응답에 이미 실려 온다(실측).
+  restaurant_name?: string
+  restaurant_address?: string
+  restaurant_phone?: string
+  restaurant_lat?: number
+  restaurant_lng?: number
+  avg_rating?: number
 }
 
 
@@ -178,7 +185,7 @@ export default function SearchPage() {
 
   // 🛡️ 2026-07-03: min-h-screen(100vh) → min-h-[100dvh] — 인앱/웹뷰 하단 네비 실종 방지(룰 #8, /vouchers 와 동일).
   return (
-    <div className="bg-white dark:bg-[#0D0F12] pb-safe-nav md:pb-20 min-h-[100dvh]">
+    <div className="bg-white dark:bg-[#11141C] pb-safe-nav md:pb-20 min-h-[100dvh]">
       <SEO title={query ? t('search.seoTitleQuery', { query, defaultValue: `${query} 검색결과 - 유어딜` }) : t('search.pageTitle', { defaultValue: '검색 - 유어딜' })} description={t('search.seoDesc', { defaultValue: '유어딜에서 원하는 이용권을 검색하세요. 동네 가게 할인 이용권을 만나보세요.' })} url="/search" noindex />
       {/* Header */}
       <SearchHeader
@@ -212,13 +219,32 @@ export default function SearchPage() {
               onSortChange={setSortBy}
             />
 
-            {/* 2-column Product Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-3 gap-y-6">
+            {/* 🎫 2026-09-03 (대표 — "이용권 UI 가 원래 쓰는 것대로 안 나오네. 5줄짜리 말이야"):
+                결과는 **이용권만**인데(위 필터) 그리는 옷이 쇼핑용 2열 카드였다 — 장바구니 ➕ 와
+                무료배송 칩이 붙는, 배송 상품의 UI. 홈(지도 목록)이 쓰는 **같은 행 컴포넌트**로 통일한다.
+                검색엔 위치가 없으므로 `userLoc=null`(거리 미표시), 선택 개념도 없어 `isSelected=false`. */}
+            <div className="flex flex-col divide-y divide-rule">
               {products.map((product) => (
-                <ProductCard
+                <RestaurantRow
                   key={product.id}
-                  product={product}
-                  highlightQuery={query}
+                  r={{
+                    id: product.id,
+                    name: product.name,
+                    restaurant_name: product.restaurant_name || '',
+                    restaurant_address: product.restaurant_address || '',
+                    restaurant_phone: product.restaurant_phone || '',
+                    restaurant_lat: product.restaurant_lat ?? 0,
+                    restaurant_lng: product.restaurant_lng ?? 0,
+                    price: product.price,
+                    original_price: product.original_price,
+                    image_url: product.image_url,
+                    discount_percent: product.discount_rate || 0,
+                    rating: product.avg_rating ?? 0,
+                    category: product.category,
+                  }}
+                  isSelected={false}
+                  userLoc={null}
+                  onSelect={(r) => navigate(`/group-buy/${r.id}`)}
                 />
               ))}
             </div>
@@ -244,7 +270,7 @@ export default function SearchPage() {
                   <button
                     key={keyword}
                     onClick={() => handleSearch(keyword)}
-                    className="px-4 py-2 rounded-full border border-gray-200 dark:border-[#2C2F35] text-[13px] text-gray-600 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-[#1A1C21] active:bg-gray-100 dark:bg-[#1A1C21] dark:active:bg-[#1A1C21] transition-colors"
+                    className="px-4 py-2 rounded-full border border-gray-200 dark:border-[#2C2F35] text-[13px] text-gray-600 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-[#1D1F29] active:bg-gray-100 dark:bg-[#1D1F29] dark:active:bg-[#1D1F29] transition-colors"
                   >
                     {keyword}
                   </button>

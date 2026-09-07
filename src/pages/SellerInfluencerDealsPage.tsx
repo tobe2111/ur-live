@@ -187,7 +187,7 @@ export default function SellerInfluencerDealsPage() {
             <button
               type="button"
               onClick={() => setShowForm((v) => !v)}
-              className="inline-flex items-center gap-1.5 rounded-full bg-gray-900 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-gray-700"
+              className="ur-btn ur-btn-sm ur-btn-primary inline-flex items-center gap-1.5 hover:bg-gray-700"
             >
               <Send className="h-3 w-3" />
               {showForm
@@ -274,7 +274,7 @@ export default function SellerInfluencerDealsPage() {
                   type="button"
                   onClick={submitPropose}
                   disabled={proposing}
-                  className="flex-1 rounded-lg bg-gray-900 py-2 text-sm font-bold text-white hover:bg-gray-900 disabled:opacity-50"
+                  className="ur-btn ur-btn-md ur-btn-primary flex-1 disabled:opacity-50"
                 >
                   {proposing
                     ? t('seller.influencerDeals.sending', { defaultValue: '발송 중...' })

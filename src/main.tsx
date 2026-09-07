@@ -371,7 +371,7 @@ async function bootApp() {
         <div style="text-align: center; padding: 2rem;">
           <h1 style="color: #dc2626; margin-bottom: 1rem;">앱 초기화 실패</h1>
           <p style="color: #6e6e73;">Root element를 찾을 수 없습니다.</p>
-          <button onclick="window.location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #E0526B; color: white; border: none; border-radius: 8px; cursor: pointer;">새로고침</button>
+          <button onclick="window.location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #1C69EF; color: white; border: none; border-radius: 8px; cursor: pointer;">새로고침</button>
         </div>
       </div>
     `
@@ -430,7 +430,7 @@ async function bootApp() {
             <h1 style="color: #dc2626; margin-bottom: 1rem;">앱을 표시할 수 없어요</h1>
             <p style="color: #6e6e73; font-size: 14px; margin-bottom: 12px;">브라우저 환경이 호환되지 않을 수 있습니다.</p>
             <p style="color: #8e8e93; font-size: 12px; word-break: break-all;">${String(error)}</p>
-            <button id="ur-render-fail-reload" type="button" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #E0526B; color: white; border: none; border-radius: 8px; cursor: pointer;">새로고침</button>
+            <button id="ur-render-fail-reload" type="button" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #1C69EF; color: white; border: none; border-radius: 8px; cursor: pointer;">새로고침</button>
           </div>
         </div>
       `

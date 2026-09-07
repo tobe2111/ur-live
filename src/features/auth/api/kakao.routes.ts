@@ -764,15 +764,14 @@ kakaoRoutes.get('/sync/callback', rateLimit({ action: 'kakao_sync_callback', max
       if (userWithFlag.isNewUser) {
         stateUrl.searchParams.set('new', '1');
 
-        // 🛡️ 2026-05-20: 신규 가입 보너스 3000딜 자동 적립 (사용자 요청). fail-soft.
-        //   2026-07-12 (감사 ②): kakaoId 전달 — 탈퇴→재가입 3000딜 루프 영구 차단(kakao_id dedup).
-        try {
-          const { grantSignupBonus } = await import('../../../worker/utils/signup-bonus');
-          const r = await grantSignupBonus(c.env.DB, String(user.id), kakaoUser.kakaoId);
-          if (r.granted) {
-            stateUrl.searchParams.set('bonus', String(r.amount));
-          }
-        } catch { /* fail-soft */ }
+        // 🔴 2026-08-31 (대표 "3000원 주는거 없어져야 해"): **신규 가입 보너스 지급 경로 제거.**
+        //   2026-08-01 에 금액을 `platform_settings.signup_bonus_amount` 로 옮겨 0(=중단)으로 뒀지만,
+        //   그건 **꺼둔 것이지 없앤 것이 아니었다** — 어드민 칸에 숫자를 넣으면 배포 없이 되살아났다.
+        //   대표가 두 번 같은 뜻을 밝혔으므로(08-01 "너무 세다" → 08-31 "없어져야 해") 경로를 걷어낸다.
+        //   ⇒ `?bonus=` 를 안 붙이므로 환영 모달의 보너스 카드도 자동으로 안 뜬다(UI 조건 `bonusAmount > 0`).
+        //   되살리려면 이 블록과 `utils/signup-bonus.ts` 를 복원하는 **배포**가 필요하다 — 그게 목적이다.
+        //   ⚠️ 에이전시 매장영입의 `type='signup_bonus'`(₩30,000, `agency-store-intro-commission.ts`)는
+        //      **다른 테이블·다른 제도**다. 이름만 같다 — 건드리지 않았다.
 
         // 📜 2026-07-05 (대표 "회원가입 시 1회 — 자연스럽게"): 간주 동의 서버 기록.
         //   LoginPage 가 카카오 버튼 아래에 "로그인하면 이용약관·개인정보처리방침에 동의" 를

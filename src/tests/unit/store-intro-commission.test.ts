@@ -14,6 +14,12 @@ interface MockCfg {
   months?: number | null
   /** 매장 행의 기간 관련 컬럼 — 미지정이면 undefined(=기준 시각 불명 → 만료 판정 안 함). */
   seller?: { referral_bonus_until?: string | null; introduced_at?: string | null; created_at?: string | null }
+  /**
+   * 🏪 2026-08-31 — 영입 2% 가 **직접 입점(`store_channel='direct'`) 매장에만** 붙게 됐다.
+   * 이 파일의 관심사는 금액 계산·멱등·블록·만료라 채널은 기본 `'direct'` 로 둔다(그 전 동작과 동일).
+   * 채널 게이트 자체는 `store-intro-direct-only.test.ts` 가 본다.
+   */
+  channel?: string | null
 }
 function makeDB(cfg: MockCfg) {
   const inserts: { sql: string; args: unknown[] }[] = []
@@ -31,7 +37,14 @@ function makeDB(cfg: MockCfg) {
       const make = (args: unknown[]) => ({
         first: async () => firstFor(sql),
         run: async () => { inserts.push({ sql, args }); return { meta: { last_row_id: 1 } } },
-        all: async () => ({ results: [] }),
+        all: async () => {
+          // seller_meta 조회 — 채널 게이트(isDirectChannelStore)가 여기서 읽는다.
+          if (sql.includes('FROM seller_meta')) {
+            const ch = cfg.channel === undefined ? 'direct' : cfg.channel
+            return ch == null ? { results: [] } : { results: [{ seller_id: 9, key: 'store_channel', value: ch }] }
+          }
+          return { results: [] }
+        },
       })
       return { ...make([]), bind: (...args: unknown[]) => make(args) }
     },

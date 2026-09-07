@@ -77,11 +77,21 @@ export async function handleInfluencerPayout(env: Env): Promise<void> {
     ).first<{ value: string }>().catch(() => null)
     const payoutMin = Number(minRow?.value ?? DEFAULT_PAYOUT_MIN) || DEFAULT_PAYOUT_MIN
 
+    // 💎 2026-08-31 대표 *"정산 최소 10만원은 딜 사용은 상관없이 쓰게 해줘"* —
+    //   **최소 금액은 현금 송금에만 적용한다.**
+    //
+    //   그 문턱은 은행 송금 비용·수수료를 감당하려고 있는 것인데, 딜은 우리 안에서 숫자를
+    //   더하는 일이라 비용이 0 이다. 문턱을 씌우면 **아무 이유 없이 못 쓰게 막는 것**이 된다.
+    //   2% 보상이 10만원을 넘으려면 그 매장이 500만원을 팔아야 하고, 그전까지 소개자는
+    //   자기가 번 것을 한 푼도 못 만진다 — 시작 단계에서 이건 사실상 "안 주는 것"이다.
+    //
+    //   그래서 딜 수령자는 1원부터 지급 대기에 뜬다(`available_amount > 0`).
     const toPayout = await DB.prepare(`
       SELECT influencer_id, available_amount, tax_type, business_number,
              bank_name, bank_account, account_holder, payout_method
       FROM influencer_balances
-      WHERE available_amount >= ?
+      WHERE available_amount > 0
+        AND (payout_method = 'deal' OR available_amount >= ?)
       ORDER BY available_amount DESC
       LIMIT 100
     `).bind(payoutMin).all<InfluencerToPayout>().catch(() => ({ results: [] as InfluencerToPayout[] }))

@@ -21,10 +21,11 @@ export default function SellerSimpleNav({ isActive, onNavigate, fullMenuOpen, on
   const items = [
     // 🎟️ 2026-08-23 (대표 AB테스트 — "왼쪽 카테고리에도 이용권 등록 버튼"): 심플 모드에도 상시 노출.
     { path: '/seller/meal-voucher/new', label: t('seller.registerVoucher', { defaultValue: '이용권 등록' }), icon: PlusCircle, also: undefined as string[] | undefined },
+    // 🎟️ 2026-09-03 대표 신고 — 이름이 **"내 딜"** 이라 대표가 "이용권 관리"를 못 찾았다.
+    //   하는 일 그대로 쓴다. `also` 에 수정 화면(`/seller/products/:id/edit`)도 넣어 편집 중에도 여기가 켜진다.
+    { path: '/seller/group-buy', label: t('seller.nav.voucherManage', { defaultValue: '이용권 관리' }), icon: Ticket, also: ['/seller/proxy-products', '/seller/products/'] },
     { path: '/seller/scan', label: t('seller.simple.scan', { defaultValue: 'QR 스캔' }), icon: ScanLine, also: undefined },
     { path: '/seller/settlements', label: t('seller.simple.settlement', { defaultValue: '정산' }), icon: DollarSign, also: undefined },
-    // 내 딜 = 이용권/딜 관리(승인 대기 = 대납 검토 포함 — also 로 활성 표시. meal-voucher 는 위 등록 항목이 담당)
-    { path: '/seller/group-buy', label: t('seller.simple.myDeals', { defaultValue: '내 딜' }), icon: Ticket, also: ['/seller/proxy-products'] },
   ]
   return (
     <div className="mt-1">

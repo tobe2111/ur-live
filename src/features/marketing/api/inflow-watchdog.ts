@@ -297,12 +297,16 @@ export function totalsToDaily(all: Record<string, SendableTotals>, key: keyof Se
 
 /** 현재 누계를 잰다. 실패하면 null — 모르는 값을 0 으로 적으면 다음 날 증분이 거짓 급등이 된다. */
 export async function readSendableTotals(DB: D1Database): Promise<SendableTotals | null> {
-  const r = await DB.prepare(
-    `SELECT (SELECT COUNT(*) FROM ad_influencer_leads WHERE email IS NOT NULL AND email <> '') AS influencer,
-            (SELECT COUNT(*) FROM ad_company_leads WHERE merged_into IS NULL AND email IS NOT NULL AND email <> '') AS company`,
-  ).first<SendableTotals>().catch(() => null)
-  if (!r || !Number.isFinite(Number(r.influencer)) || !Number.isFinite(Number(r.company))) return null
-  return { influencer: Number(r.influencer), company: Number(r.company) }
+  // 🩸 2026-09-02 (정적 감사 §3): 종전엔 **한 문장**에 `ad_influencer_leads` 와 `ad_company_leads` 를 같이 넣었다.
+  //   두 테이블은 2026-08-23 부터 **서로 다른 D1**(ADS_DB / ADS_COMPANY_DB)에 살고, 라우터(`leads-db.ts`)는 문장
+  //   하나를 한 DB 로만 보낸다(company 우선) → 그 DB 엔 `ad_influencer_leads` 가 없어 예외 → `.catch(() => null)`
+  //   → **`sendable_*` 두 축이 조용히 판정에서 빠져 있었다**(대표의 유일한 성공 지표가 미감시). 테이블당 한 문장으로.
+  const [inf, comp] = await Promise.all([
+    DB.prepare(`SELECT COUNT(*) AS n FROM ad_influencer_leads WHERE email IS NOT NULL AND email <> ''`).first<{ n: number }>().catch(() => null),
+    DB.prepare(`SELECT COUNT(*) AS n FROM ad_company_leads WHERE merged_into IS NULL AND email IS NOT NULL AND email <> ''`).first<{ n: number }>().catch(() => null),
+  ])
+  if (!inf || !comp || !Number.isFinite(Number(inf.n)) || !Number.isFinite(Number(comp.n))) return null
+  return { influencer: Number(inf.n), company: Number(comp.n) }
 }
 
 /** 오늘 누계를 기록하고, 증분 시계열로 두 축을 판정한다. */

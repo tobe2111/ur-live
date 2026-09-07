@@ -59,6 +59,19 @@ const BLOCKED_PHOTO_HOSTS = [
   'shutterstock', 'gettyimages', 'istockphoto', 'alamy', '123rf', 'dreamstime',
 ] as const
 
+/**
+ * 🚨 후보 조회용 SQL 조각 — `(col LIKE '%h1%' OR col LIKE '%h2%' …)`.
+ *
+ * 2026-09-02 QA 에서 **동아일보 사진이 만화카페 딜 카드에 라이브로 떠 있었다**(id 2879). 정비(recondition)는
+ * 그런 행을 만나면 바로 내리지만(`is_active=0`), 큐가 `ORDER BY p.id` 라 순번이 올 때까지 기다린다 —
+ * 그날 백로그 40건 · 시간당 3건이라 **13시간**이 남아 있었다. 저작권 사진은 "나중"이 없다 ⇒ 큐에서 먼저 본다.
+ *
+ * ⚠️ 값이 SQL 에 그대로 들어가므로 목록에 따옴표가 없어야 한다(도메인 문자열만 — 가드가 검사한다).
+ */
+export function blockedPhotoSql(col: string): string {
+  return '(' + BLOCKED_PHOTO_HOSTS.map((h) => `${col} LIKE '%${h}%'`).join(' OR ') + ')'
+}
+
 /** 그 매장 사진일 수 없는 출처인가. 판정 실패(파싱 불가)는 **버리는 쪽**으로 — 확신 없으면 안 쓴다. */
 export function isBlockedPhotoUrl(url: string): boolean {
   if (!url) return true

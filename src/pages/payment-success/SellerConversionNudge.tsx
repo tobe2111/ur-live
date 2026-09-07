@@ -37,7 +37,7 @@ export default function SellerConversionNudge() {
   if (!visible) return null
 
   return (
-    <div className="mt-4 sm:mt-5 rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gradient-to-br from-gray-50 to-white dark:from-[#161616] dark:to-[#1C1C1E] p-4 sm:p-5">
+    <div className="mt-4 sm:mt-5 rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gradient-to-br from-gray-50 to-white dark:from-[#161616] dark:to-[#1D1F29] p-4 sm:p-5">
       <div className="flex items-start gap-3">
         <span className="text-2xl leading-none">🏪</span>
         <div className="flex-1 min-w-0">

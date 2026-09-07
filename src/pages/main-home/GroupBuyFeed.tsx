@@ -5,19 +5,22 @@
  * 광고/배너/최근본/카테고리섹션 없음. 오롯이 공구만.
  */
 
-import { SearchX, Flame, Timer, Tag, Clock } from 'lucide-react'
+import { DEAL_GRID_GAP } from '@/shared/deal-card-grid'
+import { SearchX, Flame, Tag, Clock, Store } from 'lucide-react'
 import { DEAL_CATS } from '@/pages/pc-home/PcHomeRail'
 import { SortMenu, type SortOptionItem } from '@/components/ui/sort-menu'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 // 🖼️ 폭·중단점은 워커의 카드 preload 와 같은 값이어야 한다(`shared/home-card-image` SSOT).
 import { HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_LG_QUERY } from '@/shared/home-card-image'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys } from '@/hooks/queries'
 import { useFcfsMap } from '@/features/group-buy/useFcfs'
 import GroupBuyFeedCard from './GroupBuyFeedCard'
+import UrDealLogo from '@/components/brand/UrDealLogo'
+import { sellerEntryPath } from '@/utils/seller-entry'
 import type { Product } from './types'
 import { matchAddress, matchRegionCoords } from '@/shared/constants/korea-regions'
 import { addressInRegion, type RegionRef } from '@/shared/constants/region-slugs'
@@ -74,9 +77,11 @@ const CATEGORIES = DEAL_CATS
  *   전부 `SortMenu`). `sort-menu.tsx` 의 주석이 스스로 밝히듯 그 컴포넌트의 존재 이유가
  *   "네이티브 select 대체" 인데, 정작 홈이 예외로 남아 있었다.
  */
-const SORTS: Array<SortOptionItem<'popular' | 'deadline' | 'discount' | 'newest'>> = [
+// 🗓️ 2026-09-04 (대표 "마감 개념은 없어"): '마감임박' 칩 제거. 이용권은 모여야 열리는 공동구매가
+//   아니라 즉시 구매라 마감이 개념으로 없다. 라이브 실측으로도 활성 338건 중 마감이 박힌 건 1건뿐이라
+//   그 칩은 사실상 아무 순서도 만들지 못했다. 구매 후 사용 기간은 `voucher_expiry`(별개 필드)가 맡는다.
+const SORTS: Array<SortOptionItem<'popular' | 'discount' | 'newest'>> = [
   { key: 'popular',  label: '인기순',   Icon: Flame },
-  { key: 'deadline', label: '마감임박', Icon: Timer },
   { key: 'discount', label: '할인율',   Icon: Tag },
   { key: 'newest',   label: '최신순',   Icon: Clock },
 ]
@@ -128,6 +133,7 @@ export default function GroupBuyFeed({
   // 🗺️ 2026-07-16 (대표 — 현위치로 가까운 순): sort='near' 일 때 이 좌표 기준 거리순 정렬(좌표 없는 딜은 뒤로).
   userLoc?: { lat: number; lng: number } | null
 } = {}) {
+  const navigate = useNavigate()
   const [categoryState, setCategoryState] = useState<CategoryKey>('all')
   const [sortState, setSortState] = useState<SortKey>('popular')
   const category = categoryProp ?? categoryState
@@ -152,8 +158,8 @@ export default function GroupBuyFeed({
     //   읽히고, 위 섹션 그리드(lg:grid-cols-4)와도 열 수가 같아진다(같은 화면에서 열이 갈리지 않는다).
     // 📐 2026-08-24: md(768~1023, 태블릿)가 `sm` 규칙에 걸려 **3열**이었다. 편성 섹션은 4개를
     //   뿌리므로 마지막 하나가 줄에 혼자 남아 오른쪽이 텅 비었다 — 태블릿도 4열로 맞춘다.
-    ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 lg:gap-4 pb-8'
-    : 'grid grid-cols-2 sm:grid-cols-3 gap-3 px-4 pb-8'
+    ? `grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 ${DEAL_GRID_GAP} pb-8`
+    : `grid grid-cols-2 sm:grid-cols-3 ${DEAL_GRID_GAP} px-4 pb-8`
 
   // 🎯 2026-07-01 (대표 — 동네딜 추첨 응모): 활성 추첨 상품 Map(공개, 60s 캐시) → 카드에 배지 노출.
   const { fcfsMap } = useFcfsMap()
@@ -181,10 +187,23 @@ export default function GroupBuyFeed({
 
   // 🛡️ 2026-05-24 (loading P0): staleTime/gcTime override 제거 → global default (30분/1h) 적용.
   //   refetchOnWindowFocus 는 유지 false (홈 피드는 잦은 변경 안 함 — 카테고리 칩 클릭 시 새 카테고리 fetch).
+  /**
+   * 🚦 2026-09-03 (대표 "마저 다 해줘"): **정렬을 서버로.** 이전엔 서버가 준 최신 50개(+스크롤분) 안에서만
+   *   정렬해 "인기순"이 사실은 "최근 50개 중 인기순"이었다 — 전체가 338건인데. 이제 서버가 전체에서
+   *   정렬해 상위부터 준다(정의는 서버 ALLOWED_GB_SORT 가 클라 soldOf/discountOf 를 미러).
+   *   거리순은 `sort` 가 아니라 `near`(서버 거리 랭킹)가 담당한다.
+   *   ⚠️ 좌표는 **서버 캐시키 단위(0.02°≈2km)로 반올림**해 보낸다 — 몇 m 움직일 때마다 캐시가 갈리면
+   *      엣지 적중이 무너진다. 화면에 보이는 최종 순서는 아래 `sortBand` 가 정확한 좌표로 다시 매긴다.
+   */
+  const nearKey = sort === 'near' && userLoc
+    ? `${(Math.round(userLoc.lat / 0.02) * 0.02).toFixed(2)},${(Math.round(userLoc.lng / 0.02) * 0.02).toFixed(2)}`
+    : ''
+  const serverSort = sort === 'near' ? '' : sort
+  const feedParams = `${serverSort ? `&sort=${serverSort}` : ''}${nearKey ? `&near=${nearKey}` : ''}`
   const { data: items = [], isLoading: loading, isError, refetch } = useQuery<FeedProduct[]>({
-    queryKey: queryKeys.groupBuyList('active', category),
+    queryKey: queryKeys.groupBuyList('active', category, serverSort || (nearKey && `near:${nearKey}`) || ''),
     queryFn: async () => {
-      const res = await api.get(`/api/group-buy/products?status=active&category=${category}`)
+      const res = await api.get(`/api/group-buy/products?status=active&category=${category}${feedParams}`)
       const arr: FeedProduct[] = Array.isArray(res.data?.data) ? res.data.data : []
       // hydrate individual detail cache (idempotent).
       for (const p of arr) {
@@ -195,6 +214,9 @@ export default function GroupBuyFeed({
     initialData: ssrInitial,
     initialDataUpdatedAt: ssrInitial ? Date.now() - 60_000 : 0,  // SSR 데이터를 1분 stale 로 표시 → useQuery 가 background refetch
     refetchOnWindowFocus: false,
+    // 🚦 2026-09-03: 정렬을 바꾸면 캐시키가 갈리므로 그대로 두면 **빈 화면 → 스켈레톤**이 된다.
+    //   직전 결과를 유지한 채 새 정렬을 받아 온다(그 사이 sortBand 가 로드된 것만이라도 즉시 재정렬).
+    placeholderData: (prev) => prev,
   })
 
   // 📄 2026-07-08 (대표 "전체 상품이 안 나옴 — 50곳밖에"): 서버 기본 피드는 LIMIT 50(캐시/SSR 고정).
@@ -203,8 +225,9 @@ export default function GroupBuyFeed({
   const [extraPages, setExtraPages] = useState<FeedProduct[][]>([])
   const [loadingMore, setLoadingMore] = useState(false)
   const [reachedEnd, setReachedEnd] = useState(false)
-  // 카테고리 변경 시 누적분 리셋
-  useEffect(() => { setExtraPages([]); setReachedEnd(false) }, [category])
+  // 카테고리·정렬 변경 시 누적분 리셋 (🚦 2026-09-03: 정렬이 서버로 갔으므로 옛 순서로 받은 페이지가
+  //   새 정렬 결과와 섞이면 중복·누락이 생긴다 — 밴드를 통째로 버리고 page2 부터 다시 쌓는다.)
+  useEffect(() => { setExtraPages([]); setReachedEnd(false) }, [category, serverSort, nearKey])
 
   // 🗺️ 2026-07-16 (대표 신고 — 스크롤 로드 시 이용권 배치가 제멋대로 바뀜): '누적 전체 재정렬'이 아니라
   //   페이지(밴드)별로 정렬 → 이미 보인 카드는 위치 고정, 새 페이지만 아래로 append(재정렬 없음).
@@ -241,11 +264,6 @@ export default function GroupBuyFeed({
         return a.sort((x, y) => d2(x) - d2(y))
       }
       case 'popular': return a.sort((x, y) => soldOf(y) - soldOf(x))
-      case 'deadline': return a.sort((x, y) => {
-        const ax = x.expires_at ? parseUTCDate(x.expires_at).getTime() : Infinity
-        const bx = y.expires_at ? parseUTCDate(y.expires_at).getTime() : Infinity
-        return ax - bx
-      })
       case 'discount': return a.sort((x, y) => discountOf(y) - discountOf(x))
       case 'newest': return a.sort((x, y) => {
         const ax = x.created_at ? parseUTCDate(x.created_at).getTime() : 0
@@ -261,7 +279,7 @@ export default function GroupBuyFeed({
     setLoadingMore(true)
     try {
       const nextPage = extraPages.length + 2  // page1 = items → 다음은 2부터
-      const res = await api.get(`/api/group-buy/products?status=active&category=${category}&page=${nextPage}&limit=50`)
+      const res = await api.get(`/api/group-buy/products?status=active&category=${category}&page=${nextPage}&limit=50${feedParams}`)
       const arr: FeedProduct[] = Array.isArray(res.data?.data) ? res.data.data : []
       for (const p of arr) { if (p?.id != null) qc.setQueryData(queryKeys.groupBuyProduct(p.id), p) }
       setExtraPages(prev => [...prev, arr])
@@ -327,8 +345,8 @@ export default function GroupBuyFeed({
              이 안의 칩은 처음부터 그 화면에선 군더더기였다.
           ⇒ 라벨을 맞추는 걸로는 부족했다. 중복은 **컨트롤 자체**였다. */}
       {!pc && !onCategoryChange && (
-      <div className="bg-white dark:bg-[#0D0F12] border-b border-gray-100 dark:border-[#2C2F35] sticky top-12 z-10">
-        <div className="flex gap-1.5 px-4 py-2.5 overflow-x-auto no-scrollbar">
+      <div className="bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35] sticky top-12 z-10">
+        <div className="flex gap-1.5 px-4 py-2.5 overflow-x-auto scrollbar-hide">
           {CATEGORIES.map(c => {
             const active = c.key === category
             return (
@@ -338,7 +356,7 @@ export default function GroupBuyFeed({
                 className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-bold transition-colors ${
                   active
                     ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
-                    : 'bg-gray-100 dark:bg-[#1A1C21] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2C2F35]'
+                    : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2C2F35]'
                 }`}
               >
                 {c.key !== 'all' && <c.icon className="w-3.5 h-3.5" aria-hidden="true" />}
@@ -350,10 +368,14 @@ export default function GroupBuyFeed({
       </div>
       )}
 
-      {/* 정렬 옵션 + 카운트 — 🖥️ PC 홈에선 정렬칩이 대신 구동 → 숨김. */}
-      {!pc && (
-      <div className="flex items-center justify-between px-4 py-2.5 text-[12px] text-gray-600 dark:text-gray-400">
-        <span>{loading ? '불러오는 중…' : `${sorted.length}개 공구`}</span>
+      {/* 정렬 옵션 + 카운트 — 🖥️ PC 홈에선 정렬칩이 대신 구동 → 숨김.
+          🔢 2026-08-31: 0 일 때 "0개" 를 굳이 보여주지 않는다. 바로 아래 빈 상태가 같은 말을
+          더 잘 하고 있어 **같은 사실을 두 번** 말하던 자리였다(대기업 앱은 0을 세지 않는다). */}
+      {/* 🔇 정렬할 것이 없으면 정렬도 내린다. 카운트를 감추고 나니 이 알약만 오른쪽에
+          홀로 떠서 **빈 줄 하나**처럼 보였다 — 컨트롤은 쓸 데가 있을 때만 자리를 갖는다. */}
+      {!pc && (loading || sorted.length > 0) && (
+      <div className="flex items-center justify-between px-4 py-2.5 text-[12px] text-gray-500 dark:text-gray-400">
+        <span>{loading ? '불러오는 중…' : `딜 ${sorted.length}개`}</span>
         <SortMenu value={sort as typeof SORTS[number]['key']} options={SORTS} onChange={(v) => setSort(v)} />
       </div>
       )}
@@ -423,7 +445,7 @@ export default function GroupBuyFeed({
           ) : (
             <button
               onClick={loadMore}
-              className="px-5 py-3 bg-white dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] rounded-full text-sm font-bold text-gray-900 dark:text-white"
+              className="px-5 py-3 bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-full text-sm font-bold text-gray-900 dark:text-white"
             >
               더 보기
             </button>
@@ -431,18 +453,26 @@ export default function GroupBuyFeed({
         </div>
       )}
 
-      {/* 하단 — 전체 동네딜 진입점.
-          🚑 2026-07-19 (대표 신고 — "이 버튼 이상적인가?"): 기존 to="/group-buy" 는 App 라우트가 홈으로
-          리다이렉트(Navigate to="/")라 눌러도 제자리로 돌아오는 죽은 버튼이었음 → 실제 전체 브라우즈
-          표면인 지도(/map — 리스트+지도+지역/카테고리)로 정정 + 라벨 명확화. */}
+      {/* 하단 — 🏪 2026-08-31 (대표 — "모바일로도 '판매하세요' 가 있어야 하지 않을까? PC버전처럼").
+          ■ 왜 여기인가: PC 는 상단 네비에 이 진입점이 있는데(`DesktopTopNav` — 로고+"에서 판매하세요")
+            **모바일엔 어디에도 없었다.** 매장 사장님이 소비자 홈에서 우리를 처음 볼 때 들어올 문이
+            폰에는 없었다는 뜻이다.
+          ■ 왜 새 줄을 안 만들었나: 이 자리에 있던 "지도에서 전체 동네딜 보기"는 2026-08-30 에
+            상단 [목록|지도] 전환이 생기면서 **같은 곳으로 가는 두 번째 버튼**이 됐다. 그 중복을
+            치우고 그 자리를 쓴다 — 줄은 그대로고 없던 문이 생긴다.
+          ■ 목적지는 `sellerEntryPath()` SSOT: 셀러면 대시보드, 아니면 입점 안내(/partners).
+            2026-08-26 에 PC 에서 겪은 그 문제(아직 셀러가 아닌 사람이 로그인 벽으로 튕김)를 반복하지 않는다. */}
       {!loading && sorted.length > 0 && (
         <div className="px-4 pb-8 text-center">
-          <Link
-            to="/map"
-            className="inline-block px-5 py-3 bg-white dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] rounded-full text-sm font-bold text-gray-900 dark:text-white"
+          <button
+            type="button"
+            onClick={() => navigate(sellerEntryPath())}
+            aria-label="유어딜에서 판매하세요"
+            className="inline-flex items-center gap-1.5 px-5 py-3 bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-full text-sm font-bold text-gray-900 dark:text-white"
           >
-            지도에서 전체 동네딜 보기 →
-          </Link>
+            <Store className="w-4 h-4 shrink-0" strokeWidth={1.75} aria-hidden="true" />
+            <span className="flex items-center gap-1"><UrDealLogo size={13} />에서 판매하세요</span>
+          </button>
         </div>
       )}
     </>
@@ -477,26 +507,46 @@ function EmptyStateWithFallback({ category, onReset }: { category: CategoryKey; 
         {/* 🏷️ 2026-08-30: 어깨 으쓱 이모지(🤷) → 선 아이콘.
             이모지 빈 화면은 "아직 안 만든 자리"처럼 읽힌다 — 실제로는 정상 상태인데도.
             같은 화면의 '내 주변 지도로 보기' 원형 처리와 같은 언어로 맞춘다. */}
-        <div className="mx-auto mb-3 w-14 h-14 rounded-full bg-gray-100 dark:bg-[#1A1C21] flex items-center justify-center">
+        <div className="mx-auto mb-3 w-14 h-14 rounded-full bg-gray-100 dark:bg-[#1D1F29] flex items-center justify-center">
           <SearchX className="w-6 h-6 text-gray-400" aria-hidden="true" />
         </div>
-        <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">
-          {category === 'all' ? '진행 중인 공구가 없어요' : '이 카테고리에 진행 중인 공구가 없어요'}
+        <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">
+          {category === 'all' ? '이 지역엔 아직 진행 중인 딜이 없어요' : '이 카테고리엔 진행 중인 딜이 없어요'}
         </p>
-        {category !== 'all' && (
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-            대신 다른 인기 공구를 추천드려요
-          </p>
-        )}
-        {category !== 'all' && (
-          <button
-            type="button"
-            onClick={onReset}
-            className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full text-xs font-bold"
-          >
-            전체 공구 보기
-          </button>
-        )}
+        <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-5">
+          {category === 'all' ? '교환권은 지역과 상관없이 바로 살 수 있어요' : '대신 다른 인기 딜을 추천드려요'}
+        </p>
+        {/* 🚪 2026-08-31 (대표 "더 대기업 수준의 완성도"): 여기는 **막다른 길**이었다.
+            `category === 'all'` 이면 문구 한 줄만 있고 다음 행동이 아무것도 없었다 —
+            그리고 그게 데이터가 적은 지금 **신규 사용자가 가장 많이 보는 화면**이다.
+            빈 화면의 값어치는 "없다"고 말하는 데 있지 않고 **갈 곳을 주는 데** 있다.
+            교환권은 지역과 무관하게 항상 재고가 있으므로 실제로 살 수 있는 출구다. */}
+        <div className="flex items-center justify-center gap-2">
+          {category === 'all' ? (
+            <>
+              <Link
+                to="/vouchers"
+                className="ur-btn ur-btn-md bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-4"
+              >
+                교환권 보러가기
+              </Link>
+              <Link
+                to="/map"
+                className="ur-btn ur-btn-md border border-gray-200 dark:border-[#2C2F35] text-gray-700 dark:text-gray-200 px-4"
+              >
+                지도에서 찾기
+              </Link>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={onReset}
+              className="ur-btn ur-btn-md bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-4"
+            >
+              전체 딜 보기
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 인접 카테고리 공구 노출 (전체에서 인기 6개) */}
@@ -508,13 +558,13 @@ function EmptyStateWithFallback({ category, onReset }: { category: CategoryKey; 
             </span>
           </div>
           {fbLoading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className={`grid grid-cols-2 sm:grid-cols-3 ${DEAL_GRID_GAP}`}>
               {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="aspect-square rounded-xl bg-gray-100 dark:bg-[#1A1C21] animate-pulse" />
+                <div key={i} className="aspect-square rounded-xl bg-gray-100 dark:bg-[#1D1F29] animate-pulse" />
               ))}
             </div>
           ) : fallback && fallback.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className={`grid grid-cols-2 sm:grid-cols-3 ${DEAL_GRID_GAP}`}>
               {fallback.map(p => <GroupBuyFeedCard key={p.id} p={p} />)}
             </div>
           ) : null}

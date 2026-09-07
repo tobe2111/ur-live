@@ -101,12 +101,13 @@ export default function SellerGroupBuyPage() {
   }
 
   return (
-    <SellerLayout title={t('seller.nav.mealVoucher')}>
+    <SellerLayout title={t('seller.nav.voucherManage', { defaultValue: '이용권 관리' })}>
+      {/* 🎟️ 2026-09-03 대표 — 이용권 일을 한 페이지처럼: nav 는 하나, 여기서 탭 이동. */}
       <div className="mx-auto max-w-3xl space-y-5 p-4 sm:p-6 lg:p-8">
         {/* 🛡️ 2026-04-22 배치 131: 디자인 시스템 적용 */}
         <DashboardPageHeader
-          title={t('seller.nav.mealVoucher')}
-          subtitle={t('seller.groupBuySubtitle', { defaultValue: '공동구매 / 이용권 관리' })}
+          title={t('seller.nav.voucherManage', { defaultValue: '이용권 관리' })}
+          subtitle={t('seller.groupBuySubtitle', { defaultValue: '발행 현황 · 매장 확인코드 · 수정' })}
           icon={<Ticket className="h-5 w-5" />}
           actions={
             <button
@@ -143,7 +144,7 @@ export default function SellerGroupBuyPage() {
             <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-5 text-white">
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <p className="text-[11px] uppercase tracking-wider opacity-80">예상 정산</p>
+                  <p className="text-[11px] opacity-80">예상 정산</p>
                   <p className="text-3xl font-extrabold mt-0.5">{formatWon(totalNet)}</p>
                 </div>
                 <DollarSign className="w-8 h-8 opacity-70" />

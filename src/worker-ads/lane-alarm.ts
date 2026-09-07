@@ -15,6 +15,9 @@ import {
 import { lookupAlarmLane } from './lane-alarm-runners'
 import { dueByElapsed } from './lane-alarm-policy'
 import { buildCronBeatRow } from '@/worker/utils/cron-heartbeat'
+import { withMeteredEnv, newMeter, type ReadMeter } from '@/worker/utils/d1-read-meter'
+import { lanesPaused } from './lane-pause'
+import { readBudgetState, reportReadUsage, handleBudgetRequest, budgetBlocked, READ_BUDGET_PATH } from './read-budget'
 import { staleGapMinutes } from './lane-cadence'
 import { summarizeLaneRun, appendRunHistory, serializeRunHistory, serializeLaneStamp, LANE_RUNS_KEY } from './lane-run-history'
 import type { LaneRunEntry } from './lane-run-history'
@@ -27,6 +30,15 @@ interface AlarmEnv {
 }
 
 export class AdsLaneDurableObject extends DurableObject<Env> {
+  /** 📏 이번 알람 회차가 읽은 D1 행 수 — `alarm()` 진입마다 새로 잡고 스탬프에 싣는다. */
+  private meter: ReadMeter = newMeter()
+
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env)
+    // 📏 DO 는 자기 env 를 따로 받으므로 엔트리의 래핑이 안 미친다 — 여기서 감싼다(sink 가 회차별 계량기를 본다).
+    this.env = withMeteredEnv(env, () => this.meter)
+  }
+
   /** 이 인스턴스가 모는 레인 = DO 이름. `idFromName` 으로 만든 id 만 이름을 갖는다. */
   private get lane(): string { return this.ctx.id.name || 'enrich-influencer' }
 
@@ -43,6 +55,9 @@ export class AdsLaneDurableObject extends DurableObject<Env> {
       await this.ctx.storage.put('boost', accept ? { runs, until: Date.now() + BOOST_TTL_MS } : { runs: 0, until: 0 }).catch(() => undefined)
       return Response.json({ ok: true, lane: this.lane, accepted: accept, runs: accept ? runs : 0 })
     }
+    // 📉 읽기 예산 원장 — `idFromName('read-budget')` 인스턴스가 받는다(레인 인스턴스가 받아도 무해 — 저장 키가 다르다).
+    //   처리는 순수 함수(`read-budget.ts`)에 있다 — 여기선 저장소만 넘긴다.
+    if (url.pathname === READ_BUDGET_PATH) return Response.json(await handleBudgetRequest(url, this.ctx.storage, this.env))
     if (url.pathname !== '/start') return new Response('Not Found', { status: 404 })
     if (!alarmEnabled(this.env)) return Response.json({ ok: true, enabled: false })
     const cur = await this.ctx.storage.getAlarm()
@@ -64,7 +79,19 @@ export class AdsLaneDurableObject extends DurableObject<Env> {
    */
   async alarm(): Promise<void> {
     const t0 = Date.now()
+    this.meter = newMeter()
     if (!alarmEnabled(this.env)) return // 킬스위치 — 다음 알람을 안 걸면 체인이 멎는다
+    // ⏸️ 일시정지 — 킬스위치와 달리 **체인은 살린다**(다음 알람만 걸고 레인은 안 돌린다). runs/failStreak/
+    //   runHistory 를 안 건드리므로 재개 첫 회차가 실패 이력에서 시작하지 않는다. 근거: `lane-pause.ts`.
+    if (lanesPaused(this.env)) {
+      await this.ctx.storage.setAlarm(t0 + resolveInterval(undefined, this.env)).catch(() => undefined)
+      return
+    }
+    // 📉 읽기 예산 — 오늘 몫을 넘겼으면 일시정지와 같은 동작(체인은 잇고 레인은 안 돌림). 근거: `read-budget.ts` 헤더.
+    if (budgetBlocked(await readBudgetState(this.env))) {
+      await this.ctx.storage.setAlarm(t0 + resolveInterval(undefined, this.env)).catch(() => undefined)
+      return
+    }
     // 등록부에 없는 이름 = 이름이 바뀐 유령 인스턴스 → 이어 걸지 않고 스스로 소멸시킨다.
     const lane = lookupAlarmLane(this.lane)
     if (!lane) return
@@ -102,6 +129,8 @@ export class AdsLaneDurableObject extends DurableObject<Env> {
       stats = { skipped: 'min_interval', last_run_at: lastRunAt }
     }
 
+    // 📉 이 회차가 읽은 만큼 원장에 더한다 — 실제로 돈 회차만(skip 은 0 이라 어차피 안 보낸다).
+    this.ctx.waitUntil(reportReadUsage(this.env, this.meter.rr, this.meter.rw))
     const ran = runs < cap ? runs + 1 : runs
     const nextFail = error ? failStreak + 1 : 0
     // 🎞️ 회차 이력 — 마지막 1건만 남기면 "안 돌았나 / 돌았는데 실패했나"를 못 가른다(근거는 모듈 docblock).
@@ -142,7 +171,7 @@ export class AdsLaneDurableObject extends DurableObject<Env> {
         //   ⚠️ 페이로드는 `buildCronBeatRow`(SSOT)를 쓴다 — 손으로 모양을 맞추면 두 벌이 갈린다.
         //   ⚠️ 같은 batch = **서브리퀘스트 1개**. 낱개로 쓰면 가장 빠듯한 지점에 하나를 더 얹는 셈이다.
         const hb = buildCronBeatRow(`ads:${this.lane}`, !error, Date.now() - t0, undefined, stats,
-          staleGapMinutes(Math.max(1, Math.round(60 / Math.max(1, cap)))))
+          staleGapMinutes(Math.max(1, Math.round(60 / Math.max(1, cap)))), this.meter) // 📏 이 회차의 D1 읽기량
         await DB.batch([
           // ⚠️ 자르지 않는다 — `.slice(0, 2000)` 은 라이브에서 실제로 JSON 을 중간에서 끊어
           //   두 레인의 스탬프를 파싱 불가로 만들었다(`serializeLaneStamp` docblock 의 실측).

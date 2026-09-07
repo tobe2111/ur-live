@@ -11,7 +11,7 @@ import { ChevronLeft, ChevronRight, Pin, Download, Megaphone, FolderDown, Truck,
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
-import { cfImage } from '@/utils/cf-image'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { safeDate } from '@/utils/safe-date'
 import { WT } from './wholesale-theme'
 import { WholesaleWordmark } from '@/pages/wholesale-catalog/WholesaleLogo'
@@ -122,7 +122,7 @@ export default function WholesaleBoardPage() {
             </button>
           )}
         </div>
-        <div className="ur-content-wide px-5 lg:px-8 flex gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="ur-content-wide px-5 lg:px-8 flex gap-1 overflow-x-auto scrollbar-hide">
           {TABS.map(ti => (
             <button key={ti.key} onClick={() => setTab(ti.key)}
               className="shrink-0 inline-flex items-center gap-1.5 px-4 h-11 text-[14px] font-bold whitespace-nowrap border-b-2 transition-colors"
@@ -231,7 +231,7 @@ export default function WholesaleBoardPage() {
                   style={i ? { borderTop: '1px solid ' + WT.line } : undefined}>
                   {tab === 'archive' && (
                     <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0" style={{ background: WT.fill }}>
-                      {p.product_image && <img src={cfImage(p.product_image, { width: 96, format: 'auto' }) || p.product_image} alt="" loading="lazy" className="w-full h-full object-cover" />}
+                      {p.product_image && <img src={cfImage(p.product_image, { width: 96, format: 'auto' }) || p.product_image} alt="" loading="lazy" className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, p.product_image)} />}
                     </div>
                   )}
                   <div className="flex-1 min-w-0">

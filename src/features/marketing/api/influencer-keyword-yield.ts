@@ -79,6 +79,34 @@ export interface KeywordYieldRow { keyword: string; leads: number; contacts: num
  * 리드 풀 → 키워드별 유튜브 성과. **한 번 훑고** 배치 한 번으로 쓴다.
  * @returns 갱신 시도한 키워드 수(관측용 — 0 이면 집계가 비었다는 뜻이라 화면에서 바로 보인다)
  */
+/**
+ * 📉 **6시간 버킷 게이트** (2026-09-02, D1 계정 일일 읽기 한도 사고).
+ *
+ * 정비 cron 의 `reclassify` 슬롯이 이 집계를 **회차마다** 불렀다 — 하루 92회 × `GROUP BY source_keyword`
+ * 전수(15.3만 행) = **1,410만 행/일**, 유어애즈에 남은 가장 큰 단일 읽기(정적 감사 §3 #1). 키워드 수율은
+ * 수집이 쌓여야 움직이는 값이라 92번 다시 세도 답이 거의 같다. 6시간마다(하루 4회)로 줄인다 —
+ * 은퇴/승격 판정(`influencer-keyword-store`)이 그 값을 읽는 주기도 하루 단위다.
+ * ⚠️ 스탬프는 `platform_settings`(본진) 한 행 — 읽기 1·쓰기 1(회차당). 실패하면 종전대로 집계한다.
+ */
+export const KW_YIELD_STAMP_KEY = 'ads_kw_yield_bucket'
+export const KW_YIELD_BUCKET_HOURS = 6
+export function kwYieldBucket(nowMs = Date.now()): string {
+  const d = new Date(nowMs)
+  return `${d.toISOString().slice(0, 10)}:${Math.floor(d.getUTCHours() / KW_YIELD_BUCKET_HOURS)}`
+}
+export async function recomputeKeywordContactYieldBucketed(
+  DB: D1Database, nowMs = Date.now(),
+): Promise<{ keywords: number; scanned: number } | { skipped: 'bucket'; bucket: string }> {
+  const bucket = kwYieldBucket(nowMs)
+  const row = await DB.prepare('SELECT value FROM platform_settings WHERE key = ?').bind(KW_YIELD_STAMP_KEY)
+    .first<{ value: string }>().catch(() => null)
+  if (row?.value === bucket) return { skipped: 'bucket', bucket }
+  const out = await recomputeKeywordContactYield(DB)
+  await DB.prepare('INSERT OR REPLACE INTO platform_settings (key, value) VALUES (?, ?)').bind(KW_YIELD_STAMP_KEY, bucket)
+    .run().catch(() => null)
+  return out
+}
+
 export async function recomputeKeywordContactYield(DB: D1Database): Promise<{ keywords: number; scanned: number }> {
   await runDdlOnce(DB, 'ads_ddl_kw_yield_v1', KEYWORD_YIELD_DDL)
   //   ⚠️ 빈 문자열도 '없음'이다 — `email IS NOT NULL` 만 보면 `''` 를 연락처로 센다(이 레포가 반복해 겪은 형태).

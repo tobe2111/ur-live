@@ -24,6 +24,10 @@ const sitemapRoutes = new Hono<{ Bindings: Env }>();
 const WHOLESALE_HOSTS = ['utongstart.com', 'www.utongstart.com'];
 const WHOLESALE_BASE = 'https://utongstart.com';
 
+// 📉 2026-09-02: sitemap 은 캐시 미들웨어가 없어 Yeti/Googlebot/Bingbot·uptime 프로브가 부를 때마다 D1 을 다시 읽었다
+//   (products 500+500 · sellers 200 + EXISTS 2개 · blog 100 · computeRegionStats 무제한). .xml 은 CF 기본 캐시 확장자가 아니다.
+//   캐시 키가 호스트를 포함하므로 도매(utongstart)/소비자 sitemap 은 섞이지 않는다. 미들웨어는 `worker/index.ts` 에서
+//   `app.route` 앞에 건다(이 모듈은 유닛이 직접 부르므로 `caches.default` 에 묶지 않는다).
 sitemapRoutes.get('/sitemap.xml', async (c) => {
   const reqUrl = new URL(c.req.url);
   const origin = reqUrl.origin;

@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { User, Package, Ticket, Heart, MapPin, Settings } from 'lucide-react'
+import { User, Package, Ticket, Gift, Heart, MapPin, Settings } from 'lucide-react'
 
 /**
  * 🧭 마이페이지 좌측 내비 (2026-08-19 — 대표 시안: 그루폰 `My Account`).
@@ -17,6 +17,8 @@ const ITEMS = [
   { icon: User,     label: '내 정보',      path: '/user/profile' },
   { icon: Package,  label: '주문 내역',    path: '/my-orders' },
   { icon: Ticket,   label: '내 이용권',    path: '/my-vouchers' },
+  // 🎫 2026-09-02 (대표 시안 — PC 마이): 교환권 지갑이 이용권과 분리(08-31)됐는데 메뉴에 없었다.
+  { icon: Gift,     label: '내 교환권',    path: '/my-gifticons' },
   { icon: Heart,    label: '찜한 이용권',  path: '/wishlist' },
   { icon: MapPin,   label: '배송지',       path: '/mypage/addresses' },
   { icon: Settings, label: '설정',         path: '/account/settings' },
@@ -37,8 +39,8 @@ export default function AccountSideNav() {
                 aria-current={active ? 'page' : undefined}
                 className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-[13.5px] font-semibold transition-colors ${
                   active
-                    ? 'bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white'
-                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/[0.04] hover:text-gray-900 dark:hover:text-white'
+                    ? 'bg-brand text-white'
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-white dark:hover:bg-white/[0.04] hover:text-gray-900 dark:hover:text-white'
                 }`}
               >
                 <Icon className="w-[17px] h-[17px] shrink-0" strokeWidth={active ? 2.1 : 1.8} />

@@ -70,7 +70,7 @@ export default function DashboardStatCard({
     return (
       <Link
         to={to}
-        className="group relative block overflow-hidden rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white p-4 shadow-sm transition-all hover:shadow hover:border-gray-300"
+        className="group relative block overflow-hidden rounded-2xl bg-white p-4 shadow-lift transition-all hover:shadow-md"
       >
         <span className="absolute bottom-2 right-3 text-[13px] text-gray-300 transition-colors group-hover:text-gray-600" aria-hidden>↗</span>
         {inner}
@@ -78,7 +78,7 @@ export default function DashboardStatCard({
     )
   }
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white p-4 shadow-sm transition-shadow hover:shadow">
+    <div className="relative overflow-hidden rounded-2xl bg-white p-4 shadow-lift transition-shadow hover:shadow-md">
       {inner}
     </div>
   )

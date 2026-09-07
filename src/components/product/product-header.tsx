@@ -45,7 +45,7 @@ export function ProductHeader({ name, price, originalPrice, discountRate, seller
         </div>
       )}
 
-      <div className="h-px bg-gray-100 dark:bg-[#1A1C21]" />
+      <div className="h-px bg-gray-100 dark:bg-[#1D1F29]" />
 
       {/* v4 Product info */}
       <section className="px-5 pt-5 pb-6">

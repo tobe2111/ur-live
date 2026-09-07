@@ -13,7 +13,7 @@ const authHeader = () => {
 }
 interface Settings { enabled: number; budget_pace_pct: number; price_undercut: number; rank_drop: number }
 interface AlertItem { kind: 'budget' | 'price'; title: string; detail: string }
-const card = 'rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] p-4'
+const card = 'rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] p-4'
 
 export default function AlertsPanel() {
   const [s, setS] = useState<Settings | null>(null)
@@ -61,7 +61,7 @@ export default function AlertsPanel() {
         <div className="text-[14px] font-bold text-gray-900 dark:text-white">임계값 알림 <span className="text-gray-400 dark:text-gray-500 text-[11px] font-medium">예산·최저가</span></div>
         {s && (
           <button onClick={() => patch({ enabled: s.enabled ? 0 : 1 })} disabled={saving}
-            className={`px-2.5 py-1 rounded-lg text-[11.5px] font-bold ${s.enabled ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-gray-100 dark:bg-[#1A1C21] text-gray-500 dark:text-gray-400'}`}>
+            className={`px-2.5 py-1 rounded-lg text-[11.5px] font-bold ${s.enabled ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400'}`}>
             {s.enabled ? '알림 ON' : '알림 OFF'}
           </button>
         )}
@@ -79,14 +79,14 @@ export default function AlertsPanel() {
                 <input type="number" min={50} max={100} value={s.budget_pace_pct}
                   onChange={(e) => setS({ ...s, budget_pace_pct: Number(e.target.value) })}
                   onBlur={() => patch({ budget_pace_pct: s.budget_pace_pct })}
-                  className="w-16 h-8 rounded-lg border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#0D0F12] px-2 text-[12px] text-right text-gray-900 dark:text-white" />
+                  className="w-16 h-8 rounded-lg border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#11141C] px-2 text-[12px] text-right text-gray-900 dark:text-white" />
                 <span className="text-[12px] text-gray-400 dark:text-gray-500">%</span>
               </div>
             </div>
             <div className="flex items-center justify-between gap-2">
               <span className="text-[12.5px] text-gray-700 dark:text-gray-300">최저가 역전 알림 (내 가격이 더 비쌀 때)</span>
               <button onClick={() => patch({ price_undercut: s.price_undercut ? 0 : 1 })} disabled={saving}
-                className={`px-2 py-0.5 rounded text-[11px] font-bold ${s.price_undercut ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-gray-100 dark:bg-[#1A1C21] text-gray-500 dark:text-gray-400'}`}>
+                className={`px-2 py-0.5 rounded text-[11px] font-bold ${s.price_undercut ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400'}`}>
                 {s.price_undercut ? 'ON' : 'OFF'}
               </button>
             </div>
@@ -96,7 +96,7 @@ export default function AlertsPanel() {
                 <input type="number" min={0} max={20} value={s.rank_drop}
                   onChange={(e) => setS({ ...s, rank_drop: Number(e.target.value) })}
                   onBlur={() => patch({ rank_drop: s.rank_drop })}
-                  className="w-16 h-8 rounded-lg border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#0D0F12] px-2 text-[12px] text-right text-gray-900 dark:text-white" />
+                  className="w-16 h-8 rounded-lg border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#11141C] px-2 text-[12px] text-right text-gray-900 dark:text-white" />
                 <span className="text-[12px] text-gray-400 dark:text-gray-500">위</span>
               </div>
             </div>

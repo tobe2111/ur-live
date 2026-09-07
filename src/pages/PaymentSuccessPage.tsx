@@ -5,7 +5,7 @@ import BrandLoader from '@/components/brand/BrandLoader'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import { Button } from '@/components/ui/button'
-import { CheckCircle, Package, AlertCircle } from 'lucide-react'
+import { CheckCircle, Package, AlertCircle, CalendarClock, Receipt, ReceiptText } from 'lucide-react'
 import { getUserId } from '@/utils/auth'
 import { addBreadcrumb, captureError } from '@/lib/sentry'
 import { formatNumber } from '@/utils/format'
@@ -287,7 +287,7 @@ export default function PaymentSuccessPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0D0F12] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#11141C] flex items-center justify-center p-4">
         <div className="max-w-md w-full text-center">
           <AlertCircle className="h-20 w-20 text-red-500 mx-auto mb-6" />
           <h1 className="text-2xl font-bold text-[#1d1d1f] dark:text-white mb-4">{t('paymentSuccess.approveFailed')}</h1>
@@ -295,7 +295,7 @@ export default function PaymentSuccessPage() {
           <div className="flex gap-3">
             <Button
               onClick={() => navigate('/checkout')}
-              className="flex-1 bg-[#f5f5f7] dark:bg-[#1A1C21] hover:bg-[#e8e8ed] dark:hover:bg-[#2C2F35] text-[#1d1d1f] dark:text-white"
+              className="flex-1 bg-[#f5f5f7] dark:bg-[#1D1F29] hover:bg-[#e8e8ed] dark:hover:bg-[#2C2F35] text-[#1d1d1f] dark:text-white"
             >
               다시 시도
             </Button>
@@ -312,10 +312,10 @@ export default function PaymentSuccessPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0D0F12] flex items-center justify-center px-4 py-6">
+    <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#11141C] flex items-center justify-center px-4 py-6">
       <SEO title={t('payment.successSeoTitle', { defaultValue: '결제 완료 - 유어딜' })} description={t('payment.successSeoDesc', { defaultValue: '주문이 성공적으로 완료되었습니다' })} url="/payment/success" noindex />
       <div className="max-w-2xl w-full">
-        <div className="bg-white dark:bg-[#1C1C1E] rounded-xl sm:rounded-2xl p-5 sm:p-6 lg:p-8 shadow-lg border border-[#e5e5e7] dark:border-[#2C2F35]">
+        <div className="bg-white dark:bg-[#1D1F29] rounded-xl sm:rounded-2xl p-5 sm:p-6 lg:p-8 shadow-lg border border-[#e5e5e7] dark:border-[#2C2F35]">
           {/* 성공 아이콘 */}
           <div className="text-center mb-5 sm:mb-6 lg:mb-8">
             <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 lg:w-20 lg:h-20 rounded-full bg-green-100 dark:bg-green-900/30 mb-3 sm:mb-4">
@@ -330,7 +330,7 @@ export default function PaymentSuccessPage() {
           {pendingBookings.length > 0 && (
             <div className="rounded-xl border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-500/10 p-4 mb-4">
               <div className="flex items-start gap-3 mb-3">
-                <span className="text-2xl">📅</span>
+                <CalendarClock className="w-6 h-6 shrink-0 text-amber-600 dark:text-amber-400" strokeWidth={1.7} aria-hidden />
                 <div className="flex-1">
                   <p className="text-sm font-bold text-amber-900 dark:text-amber-200">예약이 필요한 상품 {pendingBookings.length}개</p>
                   <p className="text-[11px] text-amber-700 dark:text-amber-300 mt-0.5">아래 상품은 매장 방문 전 시간 예약이 필요합니다. 지금 잡으시면 매장에서 헛걸음하지 않아요.</p>
@@ -360,7 +360,7 @@ export default function PaymentSuccessPage() {
           {/* 주문 정보 */}
           {orderInfo && (
             <div className="space-y-3 sm:space-y-4 lg:space-y-6">
-              <div className="bg-[#f5f5f7] dark:bg-[#1A1C21] rounded-lg sm:rounded-xl p-4 sm:p-5 lg:p-6">
+              <div className="bg-[#f5f5f7] dark:bg-[#1D1F29] rounded-lg sm:rounded-xl p-4 sm:p-5 lg:p-6">
                 <h2 className="text-sm sm:text-base lg:text-lg font-semibold text-[#1d1d1f] dark:text-white mb-3 sm:mb-4 flex items-center gap-2">
                   <Package className="h-4 w-4 sm:h-5 sm:w-5 text-gray-900 dark:text-white" />
                   주문 정보
@@ -422,7 +422,7 @@ export default function PaymentSuccessPage() {
               {amountMismatch && (
                 <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-lg sm:rounded-xl p-3 sm:p-4">
                   <p className="text-xs sm:text-sm text-red-900 dark:text-red-300 leading-relaxed">
-                    ⚠️ 결제 금액 검증 경고가 있습니다. 고객센터로 문의해주세요.
+                    결제 금액 검증 경고가 있습니다. 고객센터로 문의해주세요.
                   </p>
                 </div>
               )}
@@ -433,11 +433,11 @@ export default function PaymentSuccessPage() {
                   href={orderInfo.payment.receipt.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block bg-[#f5f5f7] dark:bg-[#1A1C21] hover:bg-[#e8e8ed] dark:hover:bg-[#2C2F35] rounded-lg sm:rounded-xl p-3 sm:p-4 transition-colors"
+                  className="block bg-[#f5f5f7] dark:bg-[#1D1F29] hover:bg-[#e8e8ed] dark:hover:bg-[#2C2F35] rounded-lg sm:rounded-xl p-3 sm:p-4 transition-colors"
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs sm:text-sm font-semibold text-[#1d1d1f] dark:text-white">📄 영수증 보기</p>
+                      <p className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-[#1d1d1f] dark:text-white"><Receipt className="w-4 h-4 shrink-0" strokeWidth={1.8} aria-hidden />영수증 보기</p>
                       <p className="text-[10px] sm:text-xs text-[#6e6e73] dark:text-gray-400 mt-0.5">토스페이먼츠 호스팅</p>
                     </div>
                     <span className="text-gray-400 text-xs">→</span>
@@ -451,11 +451,11 @@ export default function PaymentSuccessPage() {
                   href={orderInfo.payment.cashReceipt.receiptUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block bg-[#f5f5f7] dark:bg-[#1A1C21] hover:bg-[#e8e8ed] dark:hover:bg-[#2C2F35] rounded-lg sm:rounded-xl p-3 sm:p-4 transition-colors"
+                  className="block bg-[#f5f5f7] dark:bg-[#1D1F29] hover:bg-[#e8e8ed] dark:hover:bg-[#2C2F35] rounded-lg sm:rounded-xl p-3 sm:p-4 transition-colors"
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs sm:text-sm font-semibold text-[#1d1d1f] dark:text-white">🧾 현금영수증 보기</p>
+                      <p className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-[#1d1d1f] dark:text-white"><ReceiptText className="w-4 h-4 shrink-0" strokeWidth={1.8} aria-hidden />현금영수증 보기</p>
                       <p className="text-[10px] sm:text-xs text-[#6e6e73] dark:text-gray-400 mt-0.5">
                         {orderInfo.payment.cashReceipt.type ? `${orderInfo.payment.cashReceipt.type} — ` : ''}국세청 발급 완료 후 홈택스 조회 가능
                       </p>
@@ -469,7 +469,7 @@ export default function PaymentSuccessPage() {
               {orderInfo?.status === 'demo' ? (
                 <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800/40 rounded-lg sm:rounded-xl p-3 sm:p-4">
                   <p className="text-xs sm:text-sm lg:text-base text-yellow-900 dark:text-yellow-300 leading-relaxed">
-                    🎭 <strong>{t('paymentSuccess.demoMode')}</strong>: {t('paymentSuccess.demoModeDesc')}
+                    <strong>{t('paymentSuccess.demoMode')}</strong>: {t('paymentSuccess.demoModeDesc')}
                   </p>
                 </div>
               ) : (
@@ -531,7 +531,7 @@ export default function PaymentSuccessPage() {
               궁금한 점이 있으신가요?
             </p>
             <p className="text-sm sm:text-base lg:text-lg font-semibold text-[#1d1d1f] dark:text-white mb-1.5">
-              💬 고객센터: 카카오톡 채널 문의
+              고객센터: 카카오톡 채널 문의
             </p>
             <p className="text-xs sm:text-sm text-[#86868b] dark:text-gray-500">
               평일 09:00 - 18:00

@@ -88,7 +88,7 @@ export default function RegionPage() {
   ]
 
   return (
-    <div className="bg-white dark:bg-[#0D0F12] min-h-[100dvh]">
+    <div className="bg-white dark:bg-[#11141C] min-h-[100dvh]">
       <SEO
         title={title}
         description={description}

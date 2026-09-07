@@ -25,8 +25,8 @@ interface Lead {
 }
 interface Sources { youtube: boolean; naver_blog: boolean; instagram: boolean; tiktok: boolean }
 
-const card = 'rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] p-4'
-const input = 'h-10 rounded-lg border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#0D0F12] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
+const card = 'rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] p-4'
+const input = 'h-10 rounded-lg border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#11141C] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
 const STATUS_KO: Record<string, string> = { new: '신규', contacted: '컨택함', rejected: '제외' }
 const PLATFORMS = [{ id: 'youtube', label: '유튜브' }, { id: 'naver_blog', label: '네이버 블로그' }, { id: 'instagram', label: '인스타그램' }, { id: 'tiktok', label: '틱톡' }] as const
 // 카테고리 프리셋 — 클릭 시 키워드 자동 입력(발굴은 키워드 기반).
@@ -126,7 +126,7 @@ export default function InfluencerDiscoveryPanel() {
       {/* 플랫폼 선택 */}
       <div className="mt-3 flex gap-1.5">
         {PLATFORMS.map(p => (
-          <button key={p.id} onClick={() => setPlatform(p.id)} className={`h-8 px-3 rounded-lg text-[12.5px] font-semibold ${platform === p.id ? 'bg-gray-900 dark:bg-white text-white dark:text-[#0D0F12]' : 'border border-gray-200 dark:border-[#2C2F35] text-gray-600 dark:text-gray-300'}`}>{p.label}</button>
+          <button key={p.id} onClick={() => setPlatform(p.id)} className={`h-8 px-3 rounded-lg text-[12.5px] font-semibold ${platform === p.id ? 'bg-gray-900 dark:bg-white text-white dark:text-[#11141C]' : 'border border-gray-200 dark:border-[#2C2F35] text-gray-600 dark:text-gray-300'}`}>{p.label}</button>
         ))}
       </div>
 
@@ -140,14 +140,14 @@ export default function InfluencerDiscoveryPanel() {
       {/* 발굴 폼 */}
       <div className="mt-2 flex gap-2">
         <input className={`flex-1 ${input}`} placeholder={freePlatform ? '예: 뷰티 리뷰, 캠핑, 홈트, 맛집' : '제공사 연동 후 사용 가능'} value={keyword} onChange={e => setKeyword(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') discover() }} disabled={!canDiscover} />
-        <button onClick={discover} disabled={busy || !canDiscover} className="h-10 px-4 rounded-lg bg-gray-900 dark:bg-white text-[13px] font-bold text-white dark:text-[#0D0F12] disabled:opacity-50">{busy ? '수집 중…' : '발굴하기'}</button>
+        <button onClick={discover} disabled={busy || !canDiscover} className="h-10 px-4 rounded-lg bg-gray-900 dark:bg-white text-[13px] font-bold text-white dark:text-[#11141C] disabled:opacity-50">{busy ? '수집 중…' : '발굴하기'}</button>
       </div>
 
       {/* 카테고리 프리셋 — 클릭 시 키워드 입력(발굴은 버튼으로) */}
       {freePlatform && (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {CATEGORIES.map(cat => (
-            <button key={cat} onClick={() => setKeyword(cat)} className={`px-2.5 py-1 rounded-full text-[11.5px] font-semibold ${keyword === cat ? 'bg-gray-900 dark:bg-white text-white dark:text-[#0D0F12]' : 'border border-gray-200 dark:border-[#2C2F35] text-gray-600 dark:text-gray-300'}`}>{cat}</button>
+            <button key={cat} onClick={() => setKeyword(cat)} className={`px-2.5 py-1 rounded-full text-[11.5px] font-semibold ${keyword === cat ? 'bg-gray-900 dark:bg-white text-white dark:text-[#11141C]' : 'border border-gray-200 dark:border-[#2C2F35] text-gray-600 dark:text-gray-300'}`}>{cat}</button>
           ))}
         </div>
       )}
@@ -182,7 +182,7 @@ export default function InfluencerDiscoveryPanel() {
               <label className="flex items-center gap-1.5 text-gray-600 dark:text-gray-300 cursor-pointer">
                 <input type="checkbox" checked={onlyContact} onChange={e => setOnlyContact(e.target.checked)} /> 연락처만
               </label>
-              <select value={sortBy} onChange={e => setSortBy(e.target.value as 'subs' | 'recent')} className="rounded border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#0D0F12] px-1.5 py-1 text-[11px] text-gray-700 dark:text-gray-200">
+              <select value={sortBy} onChange={e => setSortBy(e.target.value as 'subs' | 'recent')} className="rounded border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#11141C] px-1.5 py-1 text-[11px] text-gray-700 dark:text-gray-200">
                 <option value="subs">구독자순</option>
                 <option value="recent">최근 수집순</option>
               </select>
@@ -221,7 +221,7 @@ export default function InfluencerDiscoveryPanel() {
                 </div>
               </div>
               <div className="flex items-center gap-1.5 shrink-0 text-[11.5px]">
-                <select value={l.status} onChange={e => setStatus(l, e.target.value)} className="rounded border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#0D0F12] px-1.5 py-1 text-[11px] font-semibold text-gray-700 dark:text-gray-200">
+                <select value={l.status} onChange={e => setStatus(l, e.target.value)} className="rounded border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#11141C] px-1.5 py-1 text-[11px] font-semibold text-gray-700 dark:text-gray-200">
                   {Object.entries(STATUS_KO).map(([v, k]) => <option key={v} value={v}>{k}</option>)}
                 </select>
                 <button onClick={() => remove(l)} className="font-semibold text-red-500 hover:underline">삭제</button>

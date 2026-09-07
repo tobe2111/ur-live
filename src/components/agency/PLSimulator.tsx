@@ -86,7 +86,7 @@ export default function PLSimulator() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* 입력 섹션 */}
         <div className="space-y-3">
-          <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">📥 입력</h4>
+          <h4 className="text-xs font-bold text-gray-500 ">📥 입력</h4>
 
           <Field label="활성 셀러 수" value={sellerCount} onChange={setSellerCount} suffix="명" />
           <Field label="셀러당 월 매출" value={avgRevenuePerSeller} onChange={setAvgRevenuePerSeller} suffix="딜" />
@@ -103,7 +103,7 @@ export default function PLSimulator() {
 
         {/* 결과 섹션 */}
         <div className="bg-gray-50 rounded-lg p-4">
-          <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">📤 추정 결과</h4>
+          <h4 className="text-xs font-bold text-gray-500 mb-3">📤 추정 결과</h4>
 
           <ResultRow label="총 매출" value={calc.totalRevenue} unit="딜" highlight={false} />
           <ResultRow label={`수수료 수익 (${commissionRate}%)`} value={calc.commissionRevenue} unit="원" highlight={false} />

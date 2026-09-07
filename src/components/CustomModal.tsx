@@ -83,7 +83,7 @@ export function CustomModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? 'modal-title' : undefined}
-        className={`bg-white dark:bg-[#0D0F12] rounded-3xl shadow-2xl ${getMaxWidth()} w-full ${isCustom ? 'p-0' : 'p-6'} animate-slideUp relative`}
+        className={`bg-white dark:bg-[#11141C] rounded-3xl shadow-2xl ${getMaxWidth()} w-full ${isCustom ? 'p-0' : 'p-6'} animate-slideUp relative`}
         onClick={(e) => e.stopPropagation()}
       >
         {isCustom ? (
@@ -139,7 +139,7 @@ export function CustomModal({
                 <>
                   <button
                     onClick={onClose}
-                    className="flex-1 py-3 px-4 bg-gray-100 dark:bg-[#1A1C21] text-gray-700 dark:text-gray-200 font-medium rounded-full hover:bg-gray-200 transition-colors text-sm"
+                    className="flex-1 py-3 px-4 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200 font-medium rounded-full hover:bg-gray-200 transition-colors text-sm"
                   >
                     취소
                   </button>

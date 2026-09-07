@@ -292,7 +292,7 @@ export default function SellerMiniShopPage() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="w-full py-4 bg-gray-800 hover:opacity-95 disabled:opacity-50 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-lg"
+          className="ur-btn ur-btn-lg ur-btn-primary w-full hover:opacity-95 disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg"
         >
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           {saving ? '저장 중…' : '저장'}

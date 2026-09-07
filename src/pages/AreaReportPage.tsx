@@ -1,3 +1,4 @@
+import { sellerEntryPath } from '@/utils/seller-entry'
 /**
  * 📊 우리 동네 상권 리포트 — 공개 SEO 페이지 (2026-07-27 대표 "다음 구현").
  *   공공 인허가 수집분 지역 집계(업종별 영업중/90일 개폐업 + 최근 개업) — 아웃리치 이메일의
@@ -130,7 +131,10 @@ export default function AreaReportPage() {
             <div className="mt-8 rounded-2xl border border-gray-100 dark:border-[#1A1A1A] bg-gray-50 dark:bg-[#121212] p-5 text-center">
               <p className="text-sm font-semibold text-gray-900 dark:text-white">경쟁이 이렇게 빠르게 움직입니다 — 우리 가게를 동네에 먼저 노출하세요.</p>
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">유어딜 입점은 입점비·고정비 없이, 팔릴 때만 수수료.</p>
-              <a href="/partners" className="inline-block mt-3 px-5 py-2.5 rounded-xl bg-gray-900 text-white dark:bg-white dark:text-gray-900 text-sm font-bold">사장님 가게 입점 알아보기 →</a>
+              {/* 🚪 2026-08-31: 상권 리포트를 다 본 직후는 전환이 제일 강한 순간이다. 그런데 `/partners`
+                  직행이라 **이미 입점한 사장님**도 처음 오는 사람용 소개 페이지로 보내졌다.
+                  ⇒ `sellerEntryPath()` — 셀러면 자기 대시보드로 곧장. */}
+              <a href={sellerEntryPath()} className="inline-block mt-3 px-5 py-2.5 rounded-xl bg-gray-900 text-white dark:bg-white dark:text-gray-900 text-sm font-bold">사장님 가게 입점 알아보기 →</a>
             </div>
           </>
         )}

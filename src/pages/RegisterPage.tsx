@@ -8,6 +8,7 @@ import { toast } from '@/hooks/useToast'
 import { hasConsumerSession } from '@/utils/auth'
 import { Eye, EyeOff } from 'lucide-react'
 import BrandLoader from '@/components/brand/BrandLoader'
+import UrDealLogo from '@/components/brand/UrDealLogo'
 
 export default function RegisterPage() {
   const { t } = useTranslation()
@@ -106,22 +107,22 @@ export default function RegisterPage() {
   // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): ad-hoc 스피너 → BrandLoader.
   if (!isAuthReady) {
     return (
-      <div className="min-h-[100dvh] bg-white dark:bg-[#0D0F12]">
+      <div className="min-h-[100dvh] bg-white dark:bg-[#11141C]">
         <BrandLoader fullScreen />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0D0F12] flex flex-col items-center justify-center px-5 py-12">
+    <div className="min-h-screen bg-white dark:bg-[#11141C] flex flex-col items-center justify-center px-5 py-12">
       <SEO title={t('register.seoTitle', { defaultValue: '회원가입 - 유어딜' })} description={t('register.seoDesc', { defaultValue: '유어딜에 가입하고 라이브 쇼핑을 시작하세요' })} url="/register" noindex />
       <div className="w-full max-w-[360px] md:max-w-[420px]">
 
         {/* Logo */}
         <div className="text-center mb-12">
-          <h1 className="text-[32px] font-bold tracking-[0.08em] text-[#111]">
-            UR LIVE
-          </h1>
+          {/* 🏷️ 2026-09-03 (QA 1라운드): 폐기된 브랜드명 "UR LIVE" 가 소비자 화면에 이 한 곳만 남아 있었다.
+              로그인 화면과 같은 워드마크 SSOT(UrDealLogo)로 — 문자열을 다시 박으면 또 갈린다. */}
+          <div className="flex justify-center"><UrDealLogo size={34} forceLight /></div>
           <p className="text-[14px] text-[#999] mt-3 font-light">
             {t('register.title', { defaultValue: '회원가입' })}
           </p>

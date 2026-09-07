@@ -132,7 +132,7 @@ export default function SellerAppointmentsPage() {
                       <td className="px-4 py-3 text-center">
                         {a.status === 'confirmed' && (
                           <div className="flex items-center justify-center gap-1">
-                            <button onClick={() => markComplete(a)} className="px-2 py-1 bg-gray-900 text-white rounded text-[10px] font-medium flex items-center gap-1">
+                            <button onClick={() => markComplete(a)} className="ur-btn ur-btn-sm ur-btn-primary rounded text-[10px] flex items-center gap-1">
                               <CheckCircle className="w-3 h-3" /> 완료
                             </button>
                             <button onClick={() => markNoShow(a)} className="px-2 py-1 bg-red-600 text-white rounded text-[10px] font-medium flex items-center gap-1">

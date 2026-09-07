@@ -54,3 +54,15 @@ export async function writeVoucherProductFields(
     if (val !== undefined && val !== null && val !== '') await writeOne(db, field, val, productId);
   }
 }
+
+/**
+ * 📝 긴 텍스트/JSON 컬럼 한 칸 (`detail_images` · `images` · long_description 류).
+ *
+ * 🖼️ `images` 는 2026-09-03 대표 "이용권에 사진 여러 장" 으로 쓰기 시작했다. `detail_images`(상세에만
+ * 병합) 와 달리 이 컬럼은 **홈 카드 캐러셀**도 읽는다(`sliceCardGallery`) — 첫 장이 대표이고
+ * `image_url` 과 같은 값이다. 위 파일 주석대로 컬럼별 개별 write + 개별 try.
+ */
+export async function writeProductText(db: D1Database, productId: number, field: string, val: unknown): Promise<void> {
+  if (typeof val !== 'string' || val.length === 0 || val.length > 100000) return;
+  await writeOne(db, field, val, productId);
+}

@@ -72,7 +72,7 @@ export default function PublicProfileSection() {
   }
 
   return (
-    <section className="rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#0D0F12] p-4 mb-4">
+    <section className="rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#11141C] p-4 mb-4">
       <div className="flex items-start gap-2 mb-3">
         <Megaphone className="w-5 h-5 text-pink-500 shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
@@ -86,7 +86,7 @@ export default function PublicProfileSection() {
           disabled={saving}
           onClick={() => save({ ...p, is_open: p.is_open ? 0 : 1 })}
           className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold ${
-            p.is_open ? 'bg-gray-900 text-white' : 'bg-gray-100 dark:bg-[#1A1C21] text-gray-600 dark:text-gray-300'
+            p.is_open ? 'bg-gray-900 text-white' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300'
           } disabled:opacity-50`}
         >
           {p.is_open ? '공개 중' : '비공개'}
@@ -201,7 +201,7 @@ function StoreInviteLink() {
             그 매장 매출의 <b>2%</b>를 <b>1년간</b> 받습니다.
           </p>
           <div className="mt-2 flex items-center gap-1.5">
-            <code className="flex-1 min-w-0 truncate rounded bg-gray-50 dark:bg-[#1A1C21] px-2 py-1.5 text-[10px] text-gray-600 dark:text-gray-300">
+            <code className="flex-1 min-w-0 truncate rounded bg-gray-50 dark:bg-[#1D1F29] px-2 py-1.5 text-[10px] text-gray-600 dark:text-gray-300">
               {url}
             </code>
             <button

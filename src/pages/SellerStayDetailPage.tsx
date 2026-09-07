@@ -198,7 +198,7 @@ function InfoTab({ info, productId, onSaved }: { info: StayInfo; productId: numb
         type="button"
         onClick={save}
         disabled={saving}
-        className="inline-flex items-center gap-1.5 px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-gray-900 disabled:opacity-50"
+        className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-1.5 disabled:opacity-50"
       >
         <Save className="w-3.5 h-3.5" /> {saving ? '저장 중...' : '저장'}
       </button>
@@ -217,7 +217,7 @@ function RoomsTab({ productId, rooms, onChanged }: { productId: number; rooms: S
         <button
           type="button"
           onClick={() => { setEditing(null); setShowForm(true) }}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 text-white text-xs font-semibold rounded-lg hover:bg-gray-900"
+          className="ur-btn ur-btn-sm ur-btn-primary inline-flex items-center gap-1.5"
         >
           <Plus className="w-3.5 h-3.5" /> 객실 추가
         </button>
@@ -382,7 +382,7 @@ function RoomFormModal({ productId, room, onClose, onSaved }: {
         </div>
         <div className="flex gap-2 mt-5">
           <button type="button" onClick={onClose} disabled={saving} className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 disabled:opacity-50">취소</button>
-          <button type="button" onClick={submit} disabled={saving} className="flex-1 px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-gray-900 disabled:opacity-50">
+          <button type="button" onClick={submit} disabled={saving} className="ur-btn ur-btn-md ur-btn-primary flex-1 disabled:opacity-50">
             {saving ? '저장 중...' : (room ? '수정' : '추가')}
           </button>
         </div>
@@ -542,7 +542,7 @@ function CalendarTab({ productId, rooms, calendar, onChanged }: {
         <button type="button" onClick={applyBulkInventory} className="text-xs px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
           이번 달 일괄 재고 적용
         </button>
-        <button type="button" onClick={saveBulk} disabled={saving || Object.keys(edits).length === 0} className="ml-auto text-xs px-3 py-1.5 bg-gray-900 text-white rounded-lg hover:bg-gray-900 disabled:opacity-50 inline-flex items-center gap-1">
+        <button type="button" onClick={saveBulk} disabled={saving || Object.keys(edits).length === 0} className="ur-btn ur-btn-sm ur-btn-primary ml-auto disabled:opacity-50 inline-flex items-center gap-1">
           <Save className="w-3 h-3" /> {saving ? '저장 중...' : `${Object.keys(edits).length}일 저장`}
         </button>
       </div>

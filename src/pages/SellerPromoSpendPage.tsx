@@ -239,7 +239,7 @@ export default function SellerPromoSpendPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
                   <thead>
-                    <tr className="border-b border-gray-100 text-[10px] font-bold uppercase text-gray-400">
+                    <tr className="border-b border-gray-100 text-[10px] font-bold text-gray-400">
                       <th className="px-4 py-2">{t('seller.promoSpend.recipient', { defaultValue: '수령인' })}</th>
                       <th className="px-4 py-2 text-right">{t('seller.promoSpend.total', { defaultValue: '합계' })}</th>
                       <th className="px-4 py-2 text-right">{t('seller.promoSpend.count', { defaultValue: '건수' })}</th>

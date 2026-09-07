@@ -13,6 +13,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { readFileSync } from 'node:fs'
 import {
   isSelfOwnedGroupBuy,
+  isSelfReferral,
   resolveGbOrderNumber,
   guardAwaitingDeposit,
   issuedVoucherLabel,
@@ -57,6 +58,34 @@ const ROUTES = 'src/features/group-buy/api/group-buy.routes.ts'
 const SELLER = 'src/features/group-buy/api/group-buy-seller.routes.ts'
 
 beforeEach(() => { cancelTossPayment.mockReset(); createDashboardNotification.mockReset() })
+
+// ──────────────────────────────────────────────────────────────────────────────
+describe('①-b 자기 링크 자기 구매 = 보상 귀속 없음 (2026-09-02 대표)', () => {
+  it('ref 가 구매자 users.id 와 같으면 본인 (DB 조회 없음)', async () => {
+    const { DB, calls } = fakeDB()
+    expect(await isSelfReferral(DB, '42', 42)).toBe(true)
+    expect(calls.length).toBe(0)
+  })
+  it('ref 가 구매자에게 연결된 sellers.id 면 본인 — users.id 와 숫자가 달라도', async () => {
+    const { DB, calls } = fakeDB({ first: { hit: 1 } })
+    expect(await isSelfReferral(DB, '12', '500')).toBe(true)
+    expect(calls[0].sql).toMatch(/linked_user_id/)
+    expect(calls[0].binds).toEqual([12, '500', '500'])
+  })
+  it('남의 sellers.id 면 본인 아님', async () => {
+    const { DB } = fakeDB({ first: null })
+    expect(await isSelfReferral(DB, '12', '500')).toBe(false)
+  })
+  it('DB 장애면 귀속을 버린다(fail-closed — 모르면 안 준다)', async () => {
+    const { DB } = fakeDB({ throwOn: /sellers/ })
+    expect(await isSelfReferral(DB, '12', '500')).toBe(true)
+  })
+  it('/join 이 문자열 비교가 아니라 이 헬퍼로 판정한다', () => {
+    const s = code(ROUTES)
+    expect(s).toMatch(/await isSelfReferral\(DB, referralInfluencerId, userId\)/)
+    expect(s).not.toMatch(/String\(referralInfluencerId\) === String\(userId\)/)
+  })
+})
 
 // ──────────────────────────────────────────────────────────────────────────────
 describe('① 주문번호 = 토스 orderId (웹훅 연결)', () => {

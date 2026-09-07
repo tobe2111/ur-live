@@ -34,6 +34,11 @@ export interface CuratorPin {
   avg_rating?: number | null
   review_count?: number | null
   sold_count?: number | null
+  // 🏪 2026-08-31 (대표 — "유어샵의 이용권도 일반 이용권 UI처럼"): 카드는 2026-08-27 부터
+  //   이미 홈과 **같은 `GroupBuyFeedCard`** 였는데, 이 두 필드가 서버 SELECT 에 없어
+  //   [머천트 · 주소] 한 줄만 홈보다 비어 있었다. 그 줄을 채운다.
+  restaurant_name?: string | null
+  restaurant_address?: string | null
 }
 
 export interface CuratorProfile {
@@ -63,6 +68,8 @@ export interface CuratorPageResponse {
   // 🚀 2026-07-11 (1-RTT): 서버가 동봉한 셀러 공개 페이로드(= /api/sellers/:id/public data) —
   //   SellerPublicPage 가 시드로 동기 소비해 셀러 fetch 를 생략. 구캐시/실패 시 null(클라 폴백 fetch).
   linked_seller_public?: Record<string, unknown> | null
+  // 🚀 2026-09-02: 셀러 상품 첫 100개(= /api/products?seller_id&limit=100 data) — SellerPublicPage 가 시드로 소비해 상품 fetch 생략.
+  linked_seller_products?: unknown[] | null
   error?: string
 }
 

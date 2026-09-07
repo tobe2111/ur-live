@@ -118,6 +118,7 @@ const UserProfilePage = lazy(() => import('./pages/UserProfilePage'))
 const WishlistPage = lazy(() => import('./pages/WishlistPage'))
 const FollowingPage = lazy(() => import('./pages/FollowingPage'))
 const MyVouchersPage = lazy(() => import('./pages/MyVouchersPage'))
+const MyGifticonsPage = lazy(() => import('./pages/MyGifticonsPage'))  // 🎟️ 2026-08-31 지갑 분리 — 교환권 보관함
 const MyStorePage = lazy(() => import('./pages/MyStorePage'))
 const StoreScanPage = lazy(() => import('./pages/StoreScanPage'))
 const InfluencerSettlementPage = lazy(() => import('./pages/InfluencerSettlementPage'))
@@ -497,7 +498,7 @@ function AppContent() {
   useEffect(() => {
     // 화이트 테마 페이지 (CLAUDE.md 정책)
     const lightPages = ['/browse', '/vouchers', '/checkout', '/my-orders', '/account/', '/cart',
-      '/referral/', '/map', '/restaurant-map', '/products/', '/wishlist', '/my-vouchers', '/search', '/group-buy', '/community-group-buy']
+      '/referral/', '/map', '/restaurant-map', '/products/', '/wishlist', '/my-vouchers', '/my-gifticons', '/search', '/group-buy', '/community-group-buy']
     const isLight = lightPages.some(p => location.pathname === p || location.pathname.startsWith(p))
 
     // 1. Capacitor 네이티브 앱 — StatusBar 플러그인
@@ -522,7 +523,7 @@ function AppContent() {
         dynamic.setAttribute('data-dynamic', '1')
         document.head.appendChild(dynamic)
       }
-      dynamic.setAttribute('content', isLight ? '#FAF7F5' : '#0D0F12') // 🎨 2026-07-19 지시서 §6 — 라이트 #FAF7F5 / 다크 #0D0F12
+      dynamic.setAttribute('content', isLight ? '#F8F7FC' : '#11141C') // 🎨 2026-07-19 지시서 §6 — 라이트 #F8F7FC / 다크 #11141C
     } catch { /* SSR / 브라우저 미지원 */ }
   }, [location.pathname])
 
@@ -886,6 +887,7 @@ function AppContent() {
                 <MyVouchersPage />
               </ProtectedRoute>
             } />
+            <Route path="/my-gifticons" element={<ProtectedRoute requireUser><MyGifticonsPage /></ProtectedRoute>} />
             {/* 🏪 2026-06-22 사업자 유저 경량 '내 매장'(원장+분쟁) — 풀 셀러 대시보드 대신 앱 내. */}
             <Route path="/my-store" element={
               <ProtectedRoute requireUser>

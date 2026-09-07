@@ -51,7 +51,8 @@ function intRange(min: number, max: number): Validator {
 }
 
 /** 캡 우선 보전 축 — order-commissions.ts 의 요청 축 키(CSV). ''=우선 없음(전 축 비례). */
-const COMMISSION_AXES = ['affiliate', 'multi_tier', 'influencer_intro', 'agency_intro']
+// 🛑 2026-08-31: 'agency_intro'(에이전시 매장영입 1%) 폐지 — 설정으로도 되살릴 수 없다.
+const COMMISSION_AXES = ['affiliate', 'multi_tier', 'influencer_intro']
 function priorityAxes(value: string): string | null {
   if (value === '') return null
   const bad = value.split(',').map((s) => s.trim()).filter(Boolean).filter((k) => !COMMISSION_AXES.includes(k))
@@ -105,6 +106,7 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   //   read-site: cron/influencer-payout.ts (성숙 시점). 기본 OFF = 종전 현금 경로.
   gb_pricing_enabled: boolStr,                 // 🔌 공구가 청구 킬스위치(기본 ON — 'false' 만 끔). gb-order-pricing
   gb_engine_enabled: boolStr,                // gb-marketplace:26 / gb-proposals:27 / seller-orders:1285
+  voucher_deal_payment_enabled: boolStr,     // 💰 이용권 딜 결제 (group-buy.routes join). ⚠️ 켜기 전 influencer_deal_bonus_pct=0 — 보너스 20% > 이용권 마진 5~10% 라 팔릴수록 적자
   seller_promo_field_enabled: boolStr,         // seller-orders.routes.ts:814
   settlement_skip_ledgered: boolStr,           // auto-settlement.ts:54 / restaurant-settlement.routes.ts:87
   agency_auto_settle_legacy_enabled: boolStr,  // cron/agency-auto-settle.ts:59

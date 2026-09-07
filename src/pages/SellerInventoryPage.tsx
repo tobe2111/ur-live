@@ -256,12 +256,12 @@ export default function SellerInventoryPage() {
           <button
             type="button"
             onClick={startCamera}
-            className="px-3 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-900 transition-colors"
+            className="ur-btn ur-btn-md ur-btn-primary transition-colors"
             title={t('seller.cameraScanBarcode')}
           >
             <Camera className="w-4 h-4" />
           </button>
-          <button onClick={() => handleScan()} className="px-4 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-900">
+          <button onClick={() => handleScan()} className="ur-btn ur-btn-md ur-btn-primary">
             {t('seller.lookupButton')}
           </button>
         </div>
@@ -369,7 +369,7 @@ export default function SellerInventoryPage() {
                         }
                         img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)))
                       }}
-                      className="px-3 py-1.5 bg-gray-900 text-white text-xs font-medium rounded-lg"
+                      className="ur-btn ur-btn-sm ur-btn-primary"
                     >
                       {t('common.save')}
                     </button>
@@ -453,7 +453,7 @@ export default function SellerInventoryPage() {
                 <button
                   onClick={handleStockAction}
                   disabled={!quantity && stockAction !== 'adjust'}
-                  className="w-full mt-2 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-900 disabled:opacity-50"
+                  className="ur-btn ur-btn-md ur-btn-primary w-full mt-2 disabled:opacity-50"
                 >
                   {stockAction === 'in' ? <><Plus className="w-3.5 h-3.5 inline" /> {t('seller.stockInProcess')}</> :
                    stockAction === 'out' ? <><Minus className="w-3.5 h-3.5 inline" /> {t('seller.stockOutProcess')}</> :

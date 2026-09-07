@@ -10,7 +10,7 @@ import AdminLayout from '@/components/AdminLayout'
 import {
   Package, Plus, Edit, Trash2, Eye, EyeOff,
   Loader2, Image as ImageIcon, Star, Truck,
-  BarChart2, Download, Upload, Boxes
+  BarChart2, Download, Upload, Boxes, Gift, ShoppingBag
 } from 'lucide-react'
 import { downloadAdminTemplate } from '@/utils/product-template'
 import BulkUploadModal from '@/components/BulkUploadModal'
@@ -493,9 +493,9 @@ export default function AdminProductsPage() {
       {activeTab === 'products' && (
         <div className="flex flex-wrap items-center gap-2 mb-3">
           {[
-            { key: 'all' as const, label: '전체 상품', desc: '교환권 + 쇼핑 모두', icon: '📦' },
-            { key: 'kt_alpha' as const, label: '교환권 (기프티콘)', desc: 'KT 기프티쇼 자동발송 상품', icon: '🎁' },
-            { key: 'regular' as const, label: '쇼핑 상품 (배송)', desc: '실물 배송/일반 판매 상품', icon: '🛍️' },
+            { key: 'all' as const, label: '전체 상품', desc: '교환권 + 쇼핑 모두', Icon: Boxes },
+            { key: 'kt_alpha' as const, label: '교환권 (기프티콘)', desc: 'KT 기프티쇼 자동발송 상품', Icon: Gift },
+            { key: 'regular' as const, label: '쇼핑 상품 (배송)', desc: '실물 배송/일반 판매 상품', Icon: ShoppingBag },
           ].map(seg => (
             <button
               key={seg.key}
@@ -507,7 +507,7 @@ export default function AdminProductsPage() {
               }`}
             >
               <div className="flex items-center gap-2">
-                <span className="text-lg">{seg.icon}</span>
+                <seg.Icon className="w-[18px] h-[18px] shrink-0 text-gray-500" strokeWidth={1.9} aria-hidden />
                 <div>
                   <p className={`text-sm font-bold ${sourceFilter === seg.key ? 'text-blue-700' : 'text-gray-900'}`}>
                     {seg.label}

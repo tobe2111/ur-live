@@ -73,6 +73,26 @@ export const SELLER_PROMO_FIELD_ENABLED = false
 export const GB_ENGINE_ENABLED = false
 
 /**
+ * VOUCHER_DEAL_PAYMENT_ENABLED — **이용권을 딜로도 살 수 있게** (2026-08-31 대표 방향).
+ *
+ *   지금까지 딜로 살 수 있는 건 교환권(`deal_only=1`)뿐이고 이용권은 카드 전용이었다.
+ *   ⚠️ 그런데 **서버는 원래 이용권에도 `payment_method:'deal'` 을 받고 있었다**
+ *   (`group-buy.routes` join 의 상품 조회가 voucher 카테고리 OR deal_only 를 함께 매칭).
+ *   화면이 안 내놨을 뿐이라, 직접 POST 하면 통했다. 그래서 이 플래그와 **짝을 이루는 서버 게이트**
+ *   (`platform_settings.voucher_deal_payment_enabled==='true'`)는 기능을 여는 동시에
+ *   **그 열린 문을 닫는다** — 기본 OFF 면 이용권 딜 결제가 서버에서 거절된다.
+ *
+ * 🔴 **켜기 전 반드시 선행**: `influencer_deal_bonus_pct` 를 **0** 으로.
+ *   보너스 20% 가 살아 있는 채로 열면 이용권 마진(5~10%)보다 보너스가 커서
+ *   **팔릴수록 유어딜이 건당 8~14원 적자**다(2026-08-31 실측). 교환권은 마크업 20% 가
+ *   보너스를 상쇄해서 괜찮았던 것이고, 이용권엔 그 상쇄가 없다.
+ *
+ *   활성 순서: ① 교환권 마진 0 + 재계산 ② 딜 보너스 0 + 현금 정산 수수료 ③ 이 플래그 + 서버 키.
+ *   ①②는 어드민에서, ③은 이 상수(배포)와 어드민 키를 함께 — 이중 안전.
+ */
+export const VOUCHER_DEAL_PAYMENT_ENABLED = false
+
+/**
  * TOPUP_DISABLED — '딜 충전'(현금→딜 유상 충전) **서비스 전체 종료** (2026-07-18 대표 확정
  *   "딜 포인트 충전 자체를 빼자 우리 서비스에서" — 앱 전환 시 Apple IAP 30% 이슈 원천 제거).
  *   딜 = **적립 전용 리워드 통화**로 전환: 친구초대·추천(핀)·커미션 등 무상 적립과 딜 *사용*

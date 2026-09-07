@@ -16,6 +16,7 @@ import type { JWTPayload } from 'hono/utils/jwt/types'
 import { getSellerIdFromToken, type SellerJWTPayload } from '@/lib/seller-shared'
 import { swallow } from '@/worker/utils/swallow'
 import { isPinVerified } from './seller-pin.routes'
+import { buildBusinessInfoSeed } from './business-info-seed'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string }
 interface SellerProfileUpdate {
@@ -344,8 +345,10 @@ sellerProfileRoutes.get('/business-info', async (c) => {
       `).bind(sellerId).first();
     }
 
+    // 🏪 2026-09-03: 행이 없으면 매장 등록 때 받은 값으로 채워 돌려준다(설명은 business-info-seed).
     if (!businessInfo) {
-      return c.json({ success: false, error: 'Not found' }, 404);
+      const seeded = await buildBusinessInfoSeed(db, sellerId);
+      return seeded ? c.json({ success: true, data: seeded }) : c.json({ success: false, error: 'Not found' }, 404);
     }
 
     // 🖼️ 2026-07-01 (대표 — 유어샵 판매자 정보): 통신판매업신고번호 additive 동봉 (컬럼 없으면 조용히 생략 —
@@ -396,12 +399,9 @@ sellerProfileRoutes.on(['POST', 'PUT', 'PATCH'], '/business-info', async (c) => 
       onnuri_merchant?: boolean;  // 🏪 2026-07-05 온누리상품권 가맹 여부 (seller_meta K-V, additive 저장)
     }>();
 
-    // 사업자번호 형식 검증
-    if (body.business_number) {
-      const businessNumberRegex = /^\d{3}-\d{2}-\d{5}$/;
-      if (!businessNumberRegex.test(body.business_number)) {
-        return c.json({ success: false, error: 'Invalid business number format (XXX-XX-XXXXX)' }, 400);
-      }
+    // 사업자번호 형식 검증 — 🗣️ 2026-09-03: 문구를 한국어로(영문 원문이면 무엇을 고칠지 모른다).
+    if (body.business_number && !/^\d{3}-\d{2}-\d{5}$/.test(body.business_number)) {
+      return c.json({ success: false, error: '사업자등록번호는 000-00-00000 형식으로 입력해 주세요' }, 400);
     }
 
     const db = c.env.DB;

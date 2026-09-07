@@ -60,3 +60,17 @@ export function InfoBlock({ label, children }: { label: string; children: React.
     </div>
   )
 }
+
+/**
+ * 🏷️ 숙소 유형 배지 라벨 — DB 값은 영문('hotel')이라 그대로 두면 화면에 원본 데이터가 비친다.
+ *   어휘는 시드의 `STAY_TYPES.label`(admin-stays.routes)과 맞춘다.
+ *   상세 본문(배지)과 빵부스러기(`stayCrumbs`)가 **같은 라벨**을 써야 해서 여기(공용)에 둔다.
+ */
+const PROPERTY_TYPE_LABELS: Record<string, string> = {
+  hotel: '호텔', pension: '펜션', guesthouse: '스테이', resort: '리조트',
+  glamping: '글램핑', motel: '모텔', villa: '풀빌라', camping: '캠핑',
+}
+export function propertyTypeLabel(t?: string | null): string {
+  const key = String(t || '').trim().toLowerCase()
+  return PROPERTY_TYPE_LABELS[key] || (t || '숙소')
+}

@@ -109,6 +109,13 @@ const COMMISSION_BUDGET_FIELDS: Array<{ key: string; label: string; default: str
     options: [{ value: 'false', label: 'OFF (현행 — 표면 미노출)' }, { value: 'true', label: 'ON — 공구 엔진 서버 게이트' }],
     hint: '활성화 순서 ④ — ①예산캡 ②owner펀딩 ③promo필드가 staging 검증 후 켜진 뒤에만. ⚠️ 서버 게이트만 켜짐 — 클라 표면은 GB_ENGINE_ENABLED(코드 배포) 별도. 런북: commission-funding-restructure.md §1',
   },
+  // 💰 2026-08-31: 이용권을 딜로도 살 수 있게 (대표 방향 — 상품 마진 대신 현금 출구에 마진).
+  //   ⚠️ 이 키가 없으면 게이트를 **켤 방법 자체가 없다** — `ops-gate-reachable` 테스트가 그걸 막았다.
+  {
+    key: 'voucher_deal_payment_enabled', label: '이용권 딜 결제', default: 'false',
+    options: [{ value: 'false', label: 'OFF (현행 — 이용권은 카드만)' }, { value: 'true', label: 'ON — 이용권도 딜로 결제' }],
+    hint: '🔴 선행 필수: influencer_deal_bonus_pct = 0. 보너스 20% 가 이용권 마진(5~10%)보다 커서 켜면 팔릴수록 건당 8~14원 적자(2026-08-31 실측). 순서: ①교환권 마진 0+재계산 ②딜 보너스 0 + 현금 정산 수수료 ③이 키. ⚠️ 서버 게이트만 — 클라 표면은 VOUCHER_DEAL_PAYMENT_ENABLED(코드 배포) 별도. 검증: STAGING_CHECKLIST S9',
+  },
   // 🥡💳 2026-08-12: **켤 화면이 없어서 영영 못 켜던 게이트 2개** (검증 데이 블로커).
   //   실측: `pickup_unclaimed_policy_enabled` 는 이 화면에 *"시스템 모니터링에서 켜라"* 는 **안내문만**
   //   있었는데 그 화면(`/admin/system-monitoring`)은 **조회 전용**이라 쓰기 API 가 없다.
@@ -125,6 +132,13 @@ const COMMISSION_BUDGET_FIELDS: Array<{ key: string; label: string; default: str
     key: 'partial_refund_enabled', label: '⑥ 부분환불 금액 지정', default: 'false',
     options: [{ value: 'false', label: 'OFF (현행 — 전액 환불만)' }, { value: 'true', label: 'ON — 반품 화면에서 금액 지정 가능' }],
     hint: '🔴 머니 경로. OFF 면 금액 설정 API 가 403 이다(=현행 전액 환불 그대로). ON 시 결제액 초과는 서버가 클램프하고, 환불 실행 후에는 변경 불가. 검증 절차: docs/VERIFICATION_DAY.md (P11)',
+  },
+  // 🪙 2026-09-01: 이용권을 "딜 일부 + 카드 나머지" 로 살 수 있게 하는 스위치(대표 "포인트 차감처럼").
+  //   ⚠️ 게이트를 만들면서 이 손잡이를 안 만들면 `ops-gate-reachable` 가 즉시 잡는다 — 이번에도 잡혔다.
+  {
+    key: 'voucher_partial_deal_enabled', label: '⑦ 이용권 부분결제 (딜 + 카드)', default: 'false',
+    options: [{ value: 'false', label: 'OFF (현행 — 전부-딜 또는 전부-카드)' }, { value: 'true', label: 'ON — 가진 딜만큼 카드 청구액 차감' }],
+    hint: '🔴 머니 경로. **먼저 딜 보너스(influencer_deal_bonus_pct)를 0 으로** — 20%가 살아 있으면 딜이 액면가보다 비싸서(1,000딜 = 부채 1,200원) 마진 5~10%인 이용권에 쓰일수록 적자다. 그다음 이걸 켜면 딜 잔액만큼 카드 청구액이 줄고 차액이 딜에서 빠진다. 매장 정산은 총액 기준 그대로(딜도 유저가 낸 현금). 끄면 즉시 현행 복귀. 검증 절차: docs/STAGING_CHECKLIST.md (S12)',
   },
   // 🚨 2026-08-12: **킬스위치인데 당길 손잡이가 없었다.**
   //   `gb_pricing_enabled` 는 *"잘못 설정된 공구가로 과소청구가 날 때 false 로 저장해 즉시 상시가로

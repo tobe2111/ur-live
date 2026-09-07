@@ -183,7 +183,7 @@ export default function StoreStatsPage() {
   // Magic Link 토큰으로 자동 인증 중 — 로딩 화면
   if (magicToken && !authenticated && !error) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#0D0F12] flex items-center justify-center px-5">
+      <div className="min-h-screen bg-white dark:bg-[#11141C] flex items-center justify-center px-5">
         <SEO title={t('storeStats.seoTitle')} description={t('storeStats.seoDesc')} url={`/store/stats/${productId ?? ''}`} noindex />
         <BrandLoader label="매장 인증 중..." />
       </div>
@@ -192,7 +192,7 @@ export default function StoreStatsPage() {
 
   if (!authenticated) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#0D0F12] flex items-center justify-center px-5">
+      <div className="min-h-screen bg-white dark:bg-[#11141C] flex items-center justify-center px-5">
         <SEO title={t('storeStats.seoTitle')} description={t('storeStats.seoDesc')} url={`/store/stats/${productId ?? ''}`} noindex />
         <div className="w-full max-w-sm text-center">
           <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-orange-100 flex items-center justify-center">
@@ -229,7 +229,7 @@ export default function StoreStatsPage() {
   const usedPercent = stats.total_vouchers > 0 ? Math.round((stats.used / stats.total_vouchers) * 100) : 0
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#1A1C21] px-5 py-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#1D1F29] px-5 py-8">
       <SEO title={t('storeStats.titleSuffix', { name: stats.restaurant_name || t('storeStats.fallbackRestaurant') })} description={t('storeStats.seoDesc')} url={`/store/stats/${productId ?? ''}`} noindex />
       <div className="ur-content-narrow">
         {/* 헤더 */}
@@ -243,10 +243,10 @@ export default function StoreStatsPage() {
           {[
             { label: t('storeStats.labelUsed'), value: stats.used, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
             { label: t('storeStats.labelUnused'), value: stats.unused, icon: Ticket, color: 'text-blue-600', bg: 'bg-blue-50' },
-            { label: t('storeStats.labelExpired'), value: stats.expired, icon: XCircle, color: 'text-gray-500 dark:text-gray-400', bg: 'bg-gray-100 dark:bg-[#1A1C21]' },
+            { label: t('storeStats.labelExpired'), value: stats.expired, icon: XCircle, color: 'text-gray-500 dark:text-gray-400', bg: 'bg-gray-100 dark:bg-[#1D1F29]' },
             { label: t('storeStats.labelTotal'), value: stats.total_vouchers, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
           ].map(s => (
-            <div key={s.label} className="bg-white dark:bg-[#0D0F12] rounded-xl p-4 border border-gray-200 dark:border-[#2C2F35]">
+            <div key={s.label} className="bg-white dark:bg-[#11141C] rounded-xl p-4 border border-gray-200 dark:border-[#2C2F35]">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs text-gray-500 dark:text-gray-400">{s.label}</span>
                 <div className={`w-7 h-7 ${s.bg} rounded-lg flex items-center justify-center`}>
@@ -259,7 +259,7 @@ export default function StoreStatsPage() {
         </div>
 
         {/* 사용률 바 */}
-        <div className="bg-white dark:bg-[#0D0F12] rounded-xl p-5 border border-gray-200 dark:border-[#2C2F35] mb-5">
+        <div className="bg-white dark:bg-[#11141C] rounded-xl p-5 border border-gray-200 dark:border-[#2C2F35] mb-5">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-bold text-gray-900 dark:text-white">바우처 사용률</span>
             <span className="text-sm font-bold text-green-600">{usedPercent}%</span>
@@ -271,7 +271,7 @@ export default function StoreStatsPage() {
         </div>
 
         {/* 🛡️ 2026-05-16 (선물하기 모델): 손님이 미리 결제한 메뉴 제공 */}
-        <div className="bg-white dark:bg-[#0D0F12] rounded-xl p-5 border-2 border-emerald-200 dark:border-emerald-900 mb-5">
+        <div className="bg-white dark:bg-[#11141C] rounded-xl p-5 border-2 border-emerald-200 dark:border-emerald-900 mb-5">
           <div className="flex items-center gap-2 mb-3">
             <ScanLine className="w-5 h-5 text-emerald-600" />
             <h3 className="text-sm font-bold text-gray-900 dark:text-white">손님 식권 확인 → 메뉴 제공</h3>
@@ -302,7 +302,7 @@ export default function StoreStatsPage() {
               onChange={e => setVoucherCode(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') handleUseVoucher() }}
               placeholder="예: UR-AB12-XY34"
-              className="flex-1 border border-gray-300 dark:border-[#2C2F35] rounded-xl px-3 py-3 text-sm font-mono text-center tracking-wider bg-white dark:bg-[#1A1C21] text-gray-900 dark:text-white"
+              className="flex-1 border border-gray-300 dark:border-[#2C2F35] rounded-xl px-3 py-3 text-sm font-mono text-center tracking-wider bg-white dark:bg-[#1D1F29] text-gray-900 dark:text-white"
               autoCapitalize="characters"
               autoCorrect="off"
             />
@@ -332,7 +332,7 @@ export default function StoreStatsPage() {
         </div>
 
         {/* 공동구매 현황 */}
-        <div className="bg-white dark:bg-[#0D0F12] rounded-xl p-5 border border-gray-200 dark:border-[#2C2F35]">
+        <div className="bg-white dark:bg-[#11141C] rounded-xl p-5 border border-gray-200 dark:border-[#2C2F35]">
           <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">공동구매 현황</h3>
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-gray-500 dark:text-gray-400">참여자</span>

@@ -17,7 +17,7 @@ interface Props {
 export default function OrderItemsList({ sellerGroups, totalItemCount }: Props) {
   const { t } = useTranslation()
   return (
-    <section className="bg-white dark:bg-[#0D0F12] px-5 py-6">
+    <section className="bg-white dark:bg-[#11141C] px-5 py-6">
       <div className="flex items-center justify-between">
         <h2 className="text-[15px] font-bold text-gray-900 dark:text-white">{t('checkout.items.title', { defaultValue: '주문 상품' })}</h2>
         <span className="text-[13px] text-gray-400 dark:text-gray-500">{t('checkout.items.count', { defaultValue: '{{count}}개', count: totalItemCount })}</span>
@@ -32,7 +32,7 @@ export default function OrderItemsList({ sellerGroups, totalItemCount }: Props) 
 
             {group.items.map((item) => (
               <div key={item.id} className="flex gap-4 py-3 border-t border-gray-200 dark:border-[#2C2F35] first:border-t-0">
-                <div className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-2xl bg-gray-50 dark:bg-[#1A1C21]">
+                <div className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-2xl bg-gray-50 dark:bg-[#1D1F29]">
                   {item.image_url ? (
                     <img
                       src={cfImage(item.image_url, { width: 200, quality: 82, format: 'auto' }) || item.image_url}
@@ -65,7 +65,10 @@ export default function OrderItemsList({ sellerGroups, totalItemCount }: Props) 
               </div>
             ))}
 
-            {/* 배송비 정보 */}
+            {/* 배송비 정보 — 📦 2026-09-01: 비배송(이용권·교환권) 그룹엔 이 줄이 없다.
+                바로 위에서 "배송지 입력이 필요 없어요" 라고 해 놓고 아래에 배송비 3,000원을
+                찍고 있었다(그리고 합계엔 안 들어갔다). 한 화면이 스스로와 어긋나 있었다. */}
+            {!group.no_shipping && (<>
             <div className="mt-3 pt-3 border-t border-gray-200 dark:border-[#2C2F35] flex justify-between text-[13px]">
               <span className="text-gray-400 dark:text-gray-500">{t('checkout.summary.shippingFee', { defaultValue: '배송비' })}</span>
               <span className="font-semibold text-gray-900 dark:text-white">
@@ -79,6 +82,7 @@ export default function OrderItemsList({ sellerGroups, totalItemCount }: Props) 
                 {t('checkout.items.addForFreeShipping', { defaultValue: '{{amount}}원 추가 시 무료배송', amount: formatNumber(group.free_shipping_threshold - group.subtotal) })}
               </p>
             )}
+            </>)}
           </div>
         ))}
       </div>

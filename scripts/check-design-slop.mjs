@@ -30,11 +30,72 @@ const BASELINE = path.join(ROOT, 'scripts/design-slop-baseline.json')
 const MONO = new Set(['pink','rose','fuchsia','orange','amber','yellow','lime','green','emerald','teal','cyan','sky','blue','indigo','violet','purple','gray'])
 const norm = (t) => { const i = t.lastIndexOf('-'); if (i < 0) return t; const fam = t.slice(0, i); return MONO.has(fam) ? 'ink' + t.slice(i) : t }
 
-const FLAT = /bg-gradient-to-[a-z]{1,2}\s+from-(\S+?)(?:\s+via-(\S+?))?\s+to-([^\s"'`]+)/g
+/**
+ * 🕳️ 2026-09-01 — **이 가드의 두 번째 구멍.** 예전 정규식은
+ *   `from-… (via-…) to-…` 가 **연속으로 붙어 있을 때만** 잡았다. 그런데 이 레포는 변형(variant)을
+ *   섞어 쓴다: `from-gray-50 dark:from-[#0D0F12] to-white dark:to-[#0D0F12]`.
+ *   그러면 `from-` 다음 토큰이 `to-` 가 아니라 `dark:from-` 이라 **매치 자체가 실패**하고,
+ *   가드는 조용히 0건을 낸다. 실제로 `CouponClaimPage` 가 다크에서 `#0D0F12 → #0D0F12`
+ *   (완전 평면)를 **세 줄** 갖고 있었는데 몇 달간 초록불이었다.
+ *   ⇒ 이제 한 줄에서 stop 을 **변형별로 묶어** 각 그룹을 따로 판정한다
+ *      (`''`=기본 · `dark:` · `hover:` …). 그래야 "라이트는 멀쩡한데 다크만 평면"이 잡힌다.
+ *
+ * ⚠️ 투명도 접미사(`/20` → `/10`)는 **평면이 아니다** — 같은 색의 진짜 페이드라
+ *   `NotFoundPage` 의 `from-[#6b7280]/20 to-[#6b7280]/10` 은 정상이다. 그래서 stop 을
+ *   비교할 때 `/알파` 를 **떼지 않고 그대로** 비교한다.
+ */
+const GRAD_LINE = /bg-gradient-to-[a-z]{1,2}\b/
+const STOP = /(?:^|[\s"'`])((?:[a-z-]+:)*)(from|via|to)-([^\s"'`]+)/g
+
+/** 한 줄의 stop 들을 변형 접두사별로 묶는다. 같은 그룹 안의 색이 전부 같으면 평면. */
+function flatVariantGroups(ln) {
+  const groups = new Map()
+  for (const m of ln.matchAll(STOP)) {
+    const [, variant, , value] = m
+    if (!groups.has(variant)) groups.set(variant, [])
+    groups.get(variant).push(norm(value))
+  }
+  const hits = []
+  for (const [variant, stops] of groups) {
+    if (stops.length >= 2 && new Set(stops).size === 1) hits.push(variant || 'base')
+  }
+  return hits
+}
+/**
+ * 🕳️ 2026-08-31 — **이 가드의 구멍이었다.** 위 정규식은 Tailwind `className` 만 본다.
+ *   그런데 인라인 `style={{ background: 'linear-gradient(...)' }}` 로 쓴 것이 라이브에 남아 있었고
+ *   (`VouchersPage` 잔액 카드: `linear-gradient(135deg, #6b7280, #6b7280)` — 같은 색 두 개짜리
+ *   가짜 그라디언트, MONO 흑백 시절 잔재), 이 가드는 **0건이라고 계속 초록불**을 냈다.
+ *   같은 클래스의 결함을 한쪽 표기법으로만 찾고 있었던 셈이다.
+ *   ⇒ CSS 함수 표기도 같이 본다. 색 토큰을 뽑아 전부 같으면 평면.
+ */
+const FLAT_CSS = /linear-gradient\(([^)]*)\)/g
 // 그림 이모지만. 화살표(→ ←)·문장부호는 타이포그래피라 대상 아님.
 const EMOJI = /[\u{1F300}-\u{1FAFF}\u{1F000}-\u{1F0FF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}]/u
-// UI 껍데기로 판정하는 자리: 아이콘 필드 · 칩/탭 라벨 · JSX 제목 텍스트
-const UI_SLOT = /(^|[^a-zA-Z])(icon|emoji)\s*:\s*['"`]|label:\s*['"`][^'"`]*$|<(h[1-6]|button)[^>]*>[^<]*$/
+/**
+ * UI 껍데기로 판정하는 자리.
+ *
+ * ⚠️ 2026-09-01 — **이 목록이 좁아서 구매 흐름을 통째로 놓쳤다.** 예전 판은
+ *   `icon:`/`emoji:` 필드 · `label:` · `<h1~6|button>` 끝 텍스트만 봤다. 그런데 실제 코드는
+ *     `<span className="text-2xl">📱</span>`      (결제 안내 카드)
+ *     `📦 합배송`                                  (장바구니 칩, 평범한 JSX 텍스트)
+ *     `charge: '💳', donate: '🛒'`                 (딜 내역의 값 맵 — 필드명이 icon 이 아니다)
+ *   처럼 생겨서 **전부 통과**했고, 래칫이 0 인 채로 구매 흐름에 이모지 45곳이 남아 있었다.
+ *   대표가 *"결제 페이지도 다 했어?"* 라고 물어 재 보고 알았다.
+ *   ⇒ ① 값이 **이모지만 있는 짧은 문자열**인 객체 필드(맵) ② `<span>`/`<p>` 등 짧은 JSX 텍스트
+ *      ③ 기존 세 자리. 문장 안의 이모지(토스트·안내문 본문)는 계속 면제한다.
+ */
+const UI_SLOT = new RegExp([
+  // ① 아이콘 필드 (icon:/emoji: 뿐 아니라 값이 이모지 한두 자인 모든 필드 — charge: '💳')
+  "(^|[^a-zA-Z])(icon|emoji)\\s*:\\s*['\"`]",
+  "|^\\s*[a-zA-Z_][\\w]*\\s*:\\s*['\"`][^'\"`a-zA-Z0-9가-힣]{1,4}['\"`]\\s*,?\\s*$",
+  // ② 칩/탭 라벨
+  "|label:\\s*['\"`][^'\"`]*$",
+  // ③ 제목·버튼 텍스트
+  "|<(h[1-6]|button)[^>]*>[^<]*$",
+  // ④ 짧은 JSX 텍스트 노드 — <span>📦 합배송</span> / 줄 전체가 라벨인 경우
+  "|>\\s*[^<>{}\\n]{0,14}$",
+].join(''))
 
 function walk(d, out = []) {
   for (const e of fs.readdirSync(d, { withFileTypes: true })) {
@@ -57,9 +118,15 @@ for (const f of walk(path.join(ROOT, 'src'))) {
     if (inBlock) { if (t.includes('*/')) inBlock = false; return }
     if (t.startsWith('*') || t.startsWith('//') || t.startsWith('{/*')) return
 
-    for (const m of ln.matchAll(FLAT)) {
-      const parts = [m[1], m[2], m[3]].filter(Boolean).map(norm)
-      if (new Set(parts).size === 1) found.flat.push(`${rel}:${i + 1}`)
+    if (GRAD_LINE.test(ln)) {
+      for (const v of flatVariantGroups(ln)) found.flat.push(`${rel}:${i + 1} (${v})`)
+    }
+    for (const m of ln.matchAll(FLAT_CSS)) {
+      // 각도(135deg)·위치(0%)를 뺀 **색 토큰**만 남긴다. hex·rgb·색이름 모두.
+      const stops = (m[1].match(/#[0-9a-fA-F]{3,8}|rgba?\([^)]*\)|\b[a-z]{3,}\b/g) || [])
+        .filter((x) => !/^(deg|to|top|bottom|left|right|at|circle|ellipse|closest|farthest|side|corner)$/i.test(x))
+        .map((x) => x.toLowerCase())
+      if (stops.length >= 2 && new Set(stops).size === 1) found.flat.push(`${rel}:${i + 1}`)
     }
     if (EMOJI.test(ln) && UI_SLOT.test(ln)) found.emoji.push(`${rel}:${i + 1}`)
   })

@@ -12,7 +12,7 @@ import { formatKSTDate } from '@/utils/date'
 import { formatWon } from '@/utils/format'
 import { distributorPriceFromCost } from '@/lib/distributor-pricing'
 import api from '@/lib/api'
-import { cfImage } from '@/utils/cf-image'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 
 // 🖼️ 2026-06-30: 저장된 이미지 목록(JSON 문자열 | 배열) → URL 배열. 승인 전 시각 검수용.
 function parseImgList(v: string | string[] | null | undefined): string[] {
@@ -378,7 +378,9 @@ export default function SupplierProductsTab({
                 {/* 🖼️ 2026-06-30: 대표 썸네일 — 승인 전 시각 확인. */}
                 {p.image_url && (
                   <img src={cfImage(p.image_url, { width: 120, format: 'auto' }) || p.image_url} alt="" loading="lazy" decoding="async"
-                    className="w-16 h-16 rounded-lg object-cover border border-gray-200 shrink-0 bg-gray-50" />
+                    className="w-16 h-16 rounded-lg object-cover border border-gray-200 shrink-0 bg-gray-50"
+                    onError={(e) => cfImageOnError(e.currentTarget, p.image_url)}
+                  />
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
@@ -426,7 +428,9 @@ export default function SupplierProductsTab({
                             {allImgs.map((u, i) => (
                               <a key={u + i} href={u} target="_blank" rel="noopener noreferrer" className="block" title={i === 0 && p.image_url ? '대표(썸네일)' : i < coverCount ? '대표 갤러리' : '상세'}>
                                 <img src={cfImage(u, { width: 200, format: 'auto' }) || u} alt="" loading="lazy" decoding="async"
-                                  className="w-20 h-20 rounded-lg object-cover border border-gray-200 bg-gray-50 hover:border-gray-400" />
+                                  className="w-20 h-20 rounded-lg object-cover border border-gray-200 bg-gray-50 hover:border-gray-400"
+                                  onError={(e) => cfImageOnError(e.currentTarget, u)}
+                                />
                               </a>
                             ))}
                           </div>

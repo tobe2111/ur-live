@@ -30,7 +30,7 @@ const MENU_ITEMS: NavItem[] = [
   { labelKey: 'nav.live',            labelDefault: '라이브',         icon: Radio,   path: '/live',      active: (p) => p.startsWith('/live') },
   { labelKey: 'nav.browse',          labelDefault: '둘러보기',       icon: Compass, path: '/browse',    active: (p, s) => p === '/browse' && !s.includes('category=') },
   // 🎟️ 2026-06-19 (대표 5탭 확정 — 홈=동네딜이라 동네딜 메뉴는 홈과 중복): 동네딜 → 교환권(기프티콘 카탈로그).
-  { labelKey: 'nav.vouchers',        labelDefault: '교환권',          icon: Gift,    path: '/vouchers',  active: (p) => p.startsWith('/vouchers') },
+  { labelKey: 'nav.vouchers',        labelDefault: '교환권',          icon: Gift,    path: '/vouchers',  active: (p) => p.startsWith('/vouchers') || p.startsWith('/my-gifticons') },
   // 🆕 2026-06-17 (대표 신고 — PC 진입 버튼 누락): 공구 제안/만들기 (모바일 하단바 ➕ 와 동일 목적지).
   { labelKey: 'nav.create',          labelDefault: '공구 제안',       icon: Plus,    path: '/community-group-buy/new', active: (p) => p.startsWith('/community-group-buy/new') },
 ]
@@ -82,11 +82,11 @@ export default function DesktopLiveSidebar() {
 
   return (
     <aside
-      className="hidden md:flex fixed left-0 top-0 bottom-0 w-[60px] xl:w-56 z-40 flex-col bg-white dark:bg-[#0D0F12] border-r border-gray-100 dark:border-white/[0.06] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+      className="hidden md:flex fixed left-0 top-0 bottom-0 w-[60px] xl:w-56 z-40 flex-col bg-white dark:bg-[#11141C] border-r border-gray-100 dark:border-white/[0.06] overflow-y-auto scrollbar-hide"
       aria-label={t('nav.mainMenu', { defaultValue: '메인 메뉴' })}
     >
       {/* 로고 — xl: 풀 로고, md~xl: 'U' 아이콘. sticky 로 사이드바 스크롤 시 항상 표시 */}
-      <Link to="/" className="sticky top-0 z-10 bg-white dark:bg-[#0D0F12] flex items-center justify-center xl:justify-start xl:px-4 h-14 shrink-0">
+      <Link to="/" className="sticky top-0 z-10 bg-white dark:bg-[#11141C] flex items-center justify-center xl:justify-start xl:px-4 h-14 shrink-0">
         <span className="xl:hidden text-[18px] font-black text-gray-900 dark:text-white select-none">U</span>
         <span className="hidden xl:block"><UrDealLogo size={20} /></span>
       </Link>

@@ -7,7 +7,7 @@
 import { WT } from './wholesale-theme'
 import { WholesaleWordmark } from '../wholesale-catalog/WholesaleLogo'
 import { useWholesaleMall } from '@/hooks/queries/useWholesale'
-import { cfImage } from '@/utils/cf-image'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 
 // 🏢 기본 사업자정보 — 사람과고리 공식 정보(2026-06-16 사용자 제공). 몰 company_json 미설정 시 폴백 SSOT.
 export const BUSINESS_INFO = {
@@ -60,7 +60,7 @@ export default function WholesaleFooter() {
           <div className="text-[12.5px] leading-[1.8]" style={{ color: WT.ink3 }}>
             <div className="mb-2.5">
               {logoUrl
-                ? <img src={cfImage(logoUrl, { width: 156 })} alt={displayName} style={{ height: 26, width: 'auto' }} />
+                ? <img src={cfImage(logoUrl, { width: 156 })} alt={displayName} style={{ height: 26, width: 'auto' }} onError={(e) => cfImageOnError(e.currentTarget, logoUrl)} />
                 : <WholesaleWordmark height={26} />}
             </div>
             {biz.company} · 대표 {biz.ceo} · 사업자등록번호 {biz.bizRegNo}<br />

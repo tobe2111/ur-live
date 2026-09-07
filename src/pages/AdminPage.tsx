@@ -8,7 +8,7 @@ import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import { toast } from '@/hooks/useToast'
 import {
   Users, Play, Package, TrendingUp, CheckCircle,
-  DollarSign, Eye, X, Ticket, Truck, RotateCcw, Banknote, Boxes, AlertTriangle
+  DollarSign, Eye, Ticket, Truck, RotateCcw, Banknote, Boxes, AlertTriangle
 } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
@@ -24,6 +24,7 @@ const RejectionModal = lazy(() => import('./admin-page/RejectionModal'))
 const BizInfoModal = lazy(() => import('./admin-page/BizInfoModal'))
 import SellersTable from './admin-page/SellersTable'
 import type { ApiError, Seller, Stream, Stats, DashboardStats, Alert } from './admin-page/types'
+import AdminAlertBanner from './admin-page/AdminAlertBanner'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types / DeferUntilVisible / ChartSkeleton /
 //   AdminRevenueChart / AdminActivityFeed / RejectionModal / BizInfoModal
@@ -119,7 +120,6 @@ export default function AdminPage() {
     if (dashboardStats.todaySales >= salesTarget && !salesAlertShown.current) {
       setAlerts(prev => [...prev, {
         type: 'success',
-        emoji: '\uD83C\uDF89',
         title: t('admin.dashboard.k001', { defaultValue: '일일 매출 목표 달성!' }),
         message: t('admin.dashboard.todaySalesMsg', { sales: fmtPrice(dashboardStats.todaySales), target: fmtPrice(salesTarget), defaultValue: `오늘 매출 ${fmtPrice(dashboardStats.todaySales)} 달성 (목표: ${fmtPrice(salesTarget)})` })
       }])
@@ -182,7 +182,6 @@ export default function AdminPage() {
           ).join(' | ')
           return [...prev, {
             type: 'warning' as const,
-            emoji: '⚠️',
             title: t('admin.dashboard.highOrderAlert', { count: userEntries.length, defaultValue: `고액 주문 감지 (${userEntries.length}명)` }),
             message: summary + (userEntries.length > 3 ? t('admin.dashboard.andMore', { n: userEntries.length - 3, defaultValue: ` 외 ${userEntries.length - 3}명` }) : '')
           }]
@@ -207,7 +206,6 @@ export default function AdminPage() {
                 if (prev.some(a => a.title.includes(t('admin.dashboard.k003', { defaultValue: '연속 주문' })))) return prev
                 return [...prev, {
                   type: 'error' as const,
-                  emoji: '🚨',
                   title: t('admin.dashboard.k004', { defaultValue: '연속 주문 감지' }),
                   message: `유저 ${order.user_email || uid}: 1분 내 ${recent.length + 1}건`
                 }]
@@ -401,25 +399,8 @@ export default function AdminPage() {
         </Suspense>
       )}
 
-      {/* ── 실시간 알림 ── */}
-      {alerts.length > 0 && (
-        <div className="space-y-2 mb-4">
-          {alerts.map((alert, i) => (
-            <div key={i} className={`flex items-center gap-3 px-4 py-3 rounded-xl ${
-              alert.type === 'success' ? 'bg-green-50 border border-green-200' :
-              alert.type === 'warning' ? 'bg-amber-50 border border-amber-200' :
-              'bg-red-50 border border-red-200'
-            }`}>
-              <span className="text-lg">{alert.emoji}</span>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">{alert.title}</p>
-                <p className="text-xs text-gray-500">{alert.message}</p>
-              </div>
-              <button onClick={() => dismissAlert(i)} aria-label={t('admin.dashboard.k022', { defaultValue: "알림 닫기" })} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* ── 실시간 알림 ── (마크업은 admin-page/AdminAlertBanner 로 추출 — 2026-09-01) */}
+      <AdminAlertBanner alerts={alerts} onDismiss={dismissAlert} closeLabel={t('admin.dashboard.k022', { defaultValue: '알림 닫기' })} />
 
       {/* ── 실시간 통계 카드 ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">

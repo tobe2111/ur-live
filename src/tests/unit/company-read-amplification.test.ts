@@ -38,7 +38,7 @@ const CREATE = `CREATE TABLE ad_company_leads (
   address TEXT, description TEXT, source TEXT NOT NULL DEFAULT 'manual', source_keyword TEXT,
   status TEXT NOT NULL DEFAULT 'new', memo TEXT, active INTEGER NOT NULL DEFAULT 1,
   nps_checked_at DATETIME, enrich_checked_at DATETIME, classified_v INTEGER, enrich_v INTEGER,
-  merged_into INTEGER, name_norm TEXT, kakao_checked_at DATETIME, UNIQUE(company_key))`
+  merged_into INTEGER, name_norm TEXT, kakao_checked_at DATETIME, contact_source TEXT, UNIQUE(company_key))`
 
 /** 라이브 분포를 대략 흉내낸 표본(이메일 11%·홈페이지 1.8%·접힌 행 0.5%). 결정론적 시드. */
 function seed(rows: number): InstanceType<typeof DatabaseSync> {
@@ -268,5 +268,117 @@ describe('⑦ 수집 레인 크롤 대상 — 인덱스가 전수 정렬을 없�
     expect(keyPart, '정렬 키는 (tier1 우선, id DESC) 하나여야 한다').not.toMatch(/\bsource\b/)
     expect(wherePart).toMatch(/source IN \('local','webkr'\)/)
     expect(wherePart, '접힌 행까지 인덱스에 담으면 대상이 커진다').toContain('merged_into IS NULL')
+  })
+})
+
+/**
+ * ⑧ **원부 전화 매칭** — 업체 DB 최대 소비자였다(2026-08-31 라이브 실측 2,270만 행/일 = 전체의 22%).
+ *
+ * 정규화가 **왼쪽(컬럼)** 에 걸려 어떤 인덱스도 못 타던 것을 **식 인덱스**로 옮긴다.
+ * ⚠️ 이 시험이 못 보는 것: 라이브에서 실제로 줄었는지는 `rowsRead` 로만 판정된다.
+ */
+describe('⑧ 원부 전화 매칭 — 식 인덱스가 전수 스캔을 없앤다 (node:sqlite 실증)', () => {
+  const NORM = "REPLACE(REPLACE(REPLACE(phone,'-',''),' ',''),'.','')"
+  const PHONE_Q = `SELECT phone, email, website FROM ad_company_leads
+        WHERE source = 'commerce' AND merged_into IS NULL AND phone IS NOT NULL AND phone != ''
+          AND ${NORM} IN ('0210012001','0210022002','0210032003')
+          AND ((email IS NOT NULL AND email != '') OR (website IS NOT NULL AND website != ''))`
+
+  const seedPhones = () => {
+    const db = seed(8000)
+    db.exec("UPDATE ad_company_leads SET source = CASE WHEN id % 10 < 7 THEN 'commerce' ELSE 'webkr' END")
+    db.exec("UPDATE ad_company_leads SET phone = '02-' || (1000 + id) || '-' || (2000 + id)")
+    return db
+  }
+
+  it('인덱스 없으면 전수 스캔 → 있으면 식 탐색, 그리고 **결과가 동일**', () => {
+    const db = seedPhones()
+    const before = plan(db, PHONE_Q)
+    expect(before, '이게 회당 39만 행을 훑던 비용이다').toMatch(/SCAN ad_company_leads(?! USING)/)
+    const rowsBefore = db.prepare(PHONE_Q).all()
+
+    for (const sql of COMPANY_INDEX_DDL.filter(x => /registry_phone/.test(x))) db.exec(sql)
+    db.exec('ANALYZE')
+
+    const after = plan(db, PHONE_Q)
+    expect(after, '인덱스를 안 쓰면 고친 게 아니다').toContain('idx_company_leads_registry_phone')
+    expect(after, '식 자체를 짚어야 IN 이 탐색이 된다').toMatch(/<expr>=\?/)
+    // 🔒 빠르기만 하고 답이 달라지면 그건 고친 게 아니라 바꾼 것이다.
+    expect(db.prepare(PHONE_Q).all()).toEqual(rowsBefore)
+    db.close()
+  })
+
+  it('🔒 인덱스의 식이 쿼리의 식과 **글자까지 같다** — 하나만 달라도 플래너가 못 쓴다', () => {
+    const ddl = COMPANY_INDEX_DDL.find(x => /registry_phone/.test(x))!
+    const src = readFileSync('src/features/marketing/api/registry-email-match.ts', 'utf8')
+    const norm = (t: string) => t.replace(/\s+/g, '')
+    expect(norm(ddl), '인덱스 키가 정규화 식이어야 한다').toContain(norm(NORM))
+    expect(norm(src), '쿼리도 같은 식을 써야 한다').toContain(norm(NORM))
+    // 부분 조건 넷이 쿼리의 WHERE 와 같아야 부분 인덱스가 쓰인다.
+    const where = ddl.split(/\bWHERE\b/)[1]
+    for (const cond of ["source = 'commerce'", 'merged_into IS NULL', 'phone IS NOT NULL', "phone != ''"])
+      expect(norm(where), `부분조건에 ${cond} 가 있어야 한다`).toContain(norm(cond))
+  })
+
+  it('🔗 DDL 에 등재돼 있다 — 여기서 빠지면 라이브에 생성되지 않는다', () => {
+    expect(COMPANY_DDL.join('\n')).toContain('idx_company_leads_registry_phone')
+  })
+})
+
+/**
+ * ⑨ **자가-치유 두 건** — 고칠 게 없어도 매 회차 테이블을 훑던 것(2026-09-01 실측 합계 1,898만 행/일).
+ *
+ * ⚠️ 이 시험이 못 보는 것: 라이브에서 실제로 줄었는지는 `rowsRead` 로만 판정된다.
+ */
+describe('⑨ 통신판매 자가-치유 — 부분 인덱스가 전수 스캔을 없앤다 (node:sqlite 실증)', () => {
+  const U_EMAIL = "UPDATE ad_company_leads SET email = NULL, contact_source = CASE WHEN contact_source = 'commerce' THEN NULL ELSE contact_source END, active = CASE WHEN (phone IS NULL OR phone = '') THEN 0 ELSE active END WHERE email LIKE '%*%'"
+  const U_ADDR = "UPDATE ad_company_leads SET address = NULL WHERE address IN ('N/A','n/a','N.A.','-','--','없음','미상','null')"
+
+  /** 라이브를 흉내낸 표본 — 오염은 드물다(마스킹 0.2% · 자리표시자 0.3%). 그게 이 수리의 전제다. */
+  const seedDirty = () => {
+    const db = seed(6000)
+    db.exec("UPDATE ad_company_leads SET source = 'commerce', contact_source = 'commerce', phone = '02-1'")
+    db.exec("UPDATE ad_company_leads SET email = CASE WHEN id % 500 = 0 THEN 'a**b@x.com' ELSE email END")
+    db.exec("UPDATE ad_company_leads SET address = CASE WHEN id % 333 = 0 THEN 'N/A' ELSE '서울 ' || id END")
+    return db
+  }
+  const idx = COMPANY_INDEX_DDL.filter(x => /masked_email|placeholder_address/.test(x))
+
+  it('인덱스 없으면 두 UPDATE 다 전수 스캔 → 있으면 부분 인덱스만 훑는다', () => {
+    const db = seedDirty()
+    for (const q of [U_EMAIL, U_ADDR]) expect(plan(db, q), q.slice(0, 40)).toMatch(/SCAN ad_company_leads(?! USING)/)
+    for (const sql of idx) db.exec(sql)
+    db.exec('ANALYZE')
+    expect(plan(db, U_EMAIL)).toContain('idx_company_leads_masked_email')
+    expect(plan(db, U_ADDR)).toContain('idx_company_leads_placeholder_address')
+    db.close()
+  })
+
+  it('🔒 빠르기만 하고 답이 달라지면 고친 게 아니다 — 두 방식의 최종 상태가 같다', () => {
+    const run = (withIdx: boolean) => {
+      const db = seedDirty()
+      if (withIdx) for (const sql of idx) db.exec(sql)
+      db.exec(U_EMAIL); db.exec(U_ADDR)
+      const rows = db.prepare('SELECT id, email, address, contact_source, active FROM ad_company_leads ORDER BY id').all()
+      db.close(); return rows
+    }
+    expect(run(true)).toEqual(run(false))
+  })
+
+  it('🔒 부분 조건이 UPDATE 의 WHERE 와 **글자까지 같다** — 하나만 달라도 인덱스가 안 쓰인다', () => {
+    const src = readFileSync('src/features/marketing/api/commerce-notify-collect.ts', 'utf8')
+    const norm = (t: string) => t.replace(/\s+/g, '')
+    const cond = (name: RegExp) => norm(COMPANY_INDEX_DDL.find(x => name.test(x))!.split(/\bWHERE\b/)[1])
+    expect(cond(/masked_email/)).toBe(norm("email LIKE '%*%'"))
+    expect(cond(/placeholder_address/)).toBe(norm("address IN ('N/A','n/a','N.A.','-','--','없음','미상','null')"))
+    // 소스의 UPDATE 가 정말 그 조건을 쓰는지 — 한쪽만 바뀌면 인덱스가 조용히 죽는다.
+    expect(norm(src)).toContain(cond(/masked_email/))
+    expect(norm(src)).toContain(cond(/placeholder_address/))
+  })
+
+  it('🔗 DDL 에 등재돼 있다', () => {
+    const all = COMPANY_DDL.join('\n')
+    expect(all).toContain('idx_company_leads_masked_email')
+    expect(all).toContain('idx_company_leads_placeholder_address')
   })
 })

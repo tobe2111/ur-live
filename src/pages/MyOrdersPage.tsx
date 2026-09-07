@@ -69,12 +69,31 @@ export default function MyOrdersPage() {
   // 🛡️ 2026-07-02: 상태 필터 — 마이페이지 주문 현황 바(?status=)와 배선. 칩 클릭으로도 전환.
   const [searchParams, setSearchParams] = useSearchParams()
   const statusFilter = searchParams.get('status') || 'all'
+  /**
+   * 🎟️ 2026-09-02 (대표 "주문내역 페이지 지금 잘못됐어 · 배송 형태는 아니고")
+   *
+   * 이 칩 줄은 쇼핑몰의 **배송 5단계**였다. 유어딜이 파는 것은 매장 이용권과 문자 교환권이라
+   * 배송 단계가 아예 없어서, `배송준비/배송중/배송완료` 세 칩은 **누르면 언제나 0건**이었다
+   * (쇼핑탭은 2026-07-10 부터 숨김). 대표 스크린샷의 그 줄이 정확히 그 상태다.
+   *
+   * ⇒ 배송 칩은 **배송 주문이 실제로 있을 때만** 보여준다. 없으면 [전체 · 결제완료 · 취소·환불]
+   *   세 칩만 남는다 — 이용권/교환권 주문에 실제로 존재하는 상태들이다.
+   * ⚠️ 지우지 않고 **조건부**로 둔 이유: 쇼핑을 다시 열면 그 화면이 그대로 필요하고,
+   *   지금도 과거 배송 주문을 가진 사람에게는 그 필터가 유효하다(대표 화면에 실제로 2건 있다).
+   */
+  const hasShippingOrders = useMemo(
+    () => allOrders.some(o => ['PREPARING', 'SHIPPING', 'DELIVERED'].includes((o.status || '').toUpperCase())),
+    [allOrders],
+  )
   const STATUS_FILTERS: { key: string; label: string; match: string[] | null }[] = [
     { key: 'all', label: t('myOrders.filterAll', { defaultValue: '전체' }), match: null },
     { key: 'paid', label: t('orderStatus.paid', { defaultValue: '결제완료' }), match: ['PAID', 'DONE'] },
-    { key: 'preparing', label: t('orderStatus.preparing', { defaultValue: '배송준비' }), match: ['PREPARING'] },
-    { key: 'shipping', label: t('orderStatus.shipping', { defaultValue: '배송중' }), match: ['SHIPPING'] },
-    { key: 'delivered', label: t('orderStatus.delivered', { defaultValue: '배송완료' }), match: ['DELIVERED'] },
+    ...(hasShippingOrders ? [
+      { key: 'preparing', label: t('orderStatus.preparing', { defaultValue: '배송준비' }), match: ['PREPARING'] },
+      { key: 'shipping', label: t('orderStatus.shipping', { defaultValue: '배송중' }), match: ['SHIPPING'] },
+      { key: 'delivered', label: t('orderStatus.delivered', { defaultValue: '배송완료' }), match: ['DELIVERED'] },
+    ] : []),
+    { key: 'cancelled', label: t('orderStatus.cancelledRefunded', { defaultValue: '취소·환불' }), match: ['CANCELLED', 'REFUNDED', 'FAILED'] },
   ]
   const activeFilter = STATUS_FILTERS.find(f => f.key === statusFilter) ?? STATUS_FILTERS[0]
   const orders = useMemo(
@@ -216,11 +235,11 @@ export default function MyOrdersPage() {
   // 🛡️ 2026-05-28 (사용자 요청 A): 헤더/레이아웃을 CartPage(/cart) 와 동일한 쇼핑 페이지 표준
   //   스타일로 통일 — 화이트 테마 + 스티키 헤더(뒤로가기 + 가운데 제목). Wallet/LargeTitle chrome 제거.
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0D0F12] pb-safe-nav md:pb-20">
+    <div className="min-h-screen bg-white dark:bg-[#11141C] pb-safe-nav md:pb-20">
       <SEO title={t('myOrders.docTitle')} description={t('myOrders.seoDesc')} url="/my-orders" noindex />
 
       {/* 헤더 — 무신사 스타일: 뒤로가기 + 좌측 large title */}
-      <div className="sticky top-0 z-10 bg-white dark:bg-[#0D0F12] border-b border-gray-100 dark:border-[#2C2F35]">
+      <div className="sticky top-0 z-10 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-medium flex items-center gap-1 px-4 py-3">
           <button type="button" onClick={() => navigate(-1)} aria-label={t('notifications.back', { defaultValue: '뒤로' })} className="w-9 h-9 -ml-2 flex items-center justify-center">
             <ArrowLeft className="h-5 w-5 text-gray-900 dark:text-white" aria-hidden="true" />
@@ -240,7 +259,7 @@ export default function MyOrdersPage() {
               className={`shrink-0 px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-colors ${
                 statusFilter === f.key
                   ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-gray-900 dark:border-white'
-                  : 'bg-white dark:bg-[#0D0F12] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35]'
+                  : 'bg-white dark:bg-[#11141C] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35]'
               }`}
             >
               {f.label}

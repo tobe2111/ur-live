@@ -117,7 +117,7 @@ export default function SellerWaitingPage() {
           <div className="space-y-2">
             <button
               onClick={() => fetchStatus()}
-              className="w-full flex items-center justify-center gap-2 py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-semibold text-sm"
+              className="ur-btn ur-btn-lg ur-btn-primary w-full flex items-center justify-center gap-2"
             >
               <RefreshCw className="w-4 h-4" />
               {t('common.retry', { defaultValue: '다시 시도' })}
@@ -195,7 +195,7 @@ export default function SellerWaitingPage() {
         )}
 
         <div className="space-y-2">
-          <Link to="/" className="w-full flex items-center justify-center gap-2 py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-semibold text-sm">
+          <Link to="/" className="ur-btn ur-btn-lg ur-btn-primary w-full flex items-center justify-center gap-2">
             <Home className="w-4 h-4" />
             {t('common.home')}
           </Link>

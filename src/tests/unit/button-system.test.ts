@@ -13,12 +13,15 @@
  *
  * ■ 이 테스트가 못 막는 것
  *   - Tailwind 가 안 쓰이는 `.ur-btn` 을 번들에서 지우는 것(트리셰이킹)은 **소스만 봐선
- *     알 수 없다.** 그건 빌드 산출 CSS 를 봐야 하고, 아래 마지막 케이스가 dist 가 있을
- *     때만 확인한다(없으면 건너뛴다 — CI 순서에 의존하지 않기 위해).
+ *     알 수 없다.** 그건 빌드 산출 CSS 를 봐야 하므로 `scripts/check-built-css.mjs` 가
+ *     맡는다 — 빌드 **뒤에** 도는 자리(verify.yml)다.
+ *     🩸 2026-08-31 까지 그 판정이 이 파일 마지막 케이스에 있었는데, 유닛테스트가 빌드보다
+ *     먼저 돌아 `dist/` 가 없으므로 **CI 에서 실패할 수 없었다**(조용히 return). 반대로
+ *     로컬에선 낡은 `dist/` 를 읽어 가짜 빨간불을 냈다. 판정이 언제나 틀린 검사였다.
  *   - 개별 화면이 체계를 안 쓰고 인라인으로 버튼을 그리는 것은 안 본다(아직 2,600여 곳).
  */
 import { describe, it, expect } from 'vitest'
-import { readFileSync, existsSync, readdirSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const root = resolve(__dirname, '../../..')
@@ -49,15 +52,6 @@ describe('버튼 체계 (.ur-btn)', () => {
     const mq = css.match(/@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{[\s\S]*?\n\s{4}\}/)?.[0] ?? css
     expect(mq).toMatch(/prefers-reduced-motion/)
     expect(css).toMatch(/prefers-reduced-motion:\s*reduce[\s\S]{0,400}transform:\s*none/)
-  })
-
-  it('빌드 산출 CSS 에 .ur-btn-lg 가 실려야 한다 (Tailwind 트리셰이킹 방어)', () => {
-    const dir = resolve(root, 'dist/client/assets')
-    if (!existsSync(dir)) return // 빌드 전이면 판정하지 않는다(CI 순서 비의존).
-    const f = readdirSync(dir).find((n) => /^index-.*\.css$/.test(n))
-    if (!f) return
-    const built = readFileSync(resolve(dir, f), 'utf-8')
-    expect(built, '빌드 CSS 에 .ur-btn-lg 가 없다 — 실사용처가 사라져 통째로 지워졌다').toContain('.ur-btn-lg{')
   })
 })
 
@@ -125,6 +119,11 @@ describe('평면 그라디언트 — 그라데이션이 안 되는 그라디언�
       'teal','cyan','sky','blue','indigo','violet','purple','gray'])
     const norm = (t: string) => { const i = t.lastIndexOf('-'); return i < 0 ? t : (MONO.has(t.slice(0, i)) ? 'ink' + t.slice(i) : t) }
     const pat = /bg-gradient-to-[a-z]{1,2}\s+from-(\S+?)(?:\s+via-(\S+?))?\s+to-([^\s"'`]+)/g
+    // 🕳️ 2026-08-31: 이 테스트도 **className 만** 보고 있었다. 그래서 인라인
+    //   `style={{ background: 'linear-gradient(135deg, #6b7280, #6b7280)' }}` 이
+    //   교환권 잔액 카드에 살아 있는데도 래칫과 이 테스트가 **둘 다 초록**이었다.
+    //   같은 결함을 한쪽 표기법으로만 찾으면 다른 표기법으로 그대로 들어온다.
+    const patCss = /linear-gradient\(([^)]*)\)/g
 
     const walk = (d: string, out: string[] = []): string[] => {
       for (const e of readdirSync(d, { withFileTypes: true })) {
@@ -143,6 +142,22 @@ describe('평면 그라디언트 — 그라데이션이 안 되는 그라디언�
       for (const m of src.matchAll(pat)) {
         const parts = [m[1], m[2], m[3]].filter(Boolean).map(norm)
         if (new Set(parts).size === 1) bad.push(`${f.replace(root + '/', '')}  ${m[0].slice(0, 60)}`)
+      }
+      // ⚠️ 주석은 건너뛴다. 이걸 안 했더니 **결함을 설명하려고 쓴 주석 문자열**
+      //    (`confirm-dialog.tsx` 의 "…였고" 설명)이 위반으로 잡혔다 — 되돌려-검증에서 걸렸다.
+      //    래칫(check-design-slop.mjs)은 원래 줄 단위로 주석을 거르고 있었고, 여기만 안 걸렀다.
+      let inBlock = false
+      for (const raw of src.split('\n')) {
+        const t = raw.trim()
+        if (t.startsWith('/*')) { inBlock = !t.includes('*/'); continue }
+        if (inBlock) { if (t.includes('*/')) inBlock = false; continue }
+        if (t.startsWith('*') || t.startsWith('//') || t.startsWith('{/*')) continue
+        for (const m of raw.matchAll(patCss)) {
+          const stops = (m[1].match(/#[0-9a-fA-F]{3,8}|rgba?\([^)]*\)|\b[a-z]{3,}\b/g) || [])
+            .filter((x) => !/^(deg|to|top|bottom|left|right|at|circle|ellipse|closest|farthest|side|corner)$/i.test(x))
+            .map((x) => x.toLowerCase())
+          if (stops.length >= 2 && new Set(stops).size === 1) bad.push(`${f.replace(root + '/', '')}  ${m[0].slice(0, 60)}`)
+        }
       }
     }
     expect(bad, `평면 그라디언트:\n${bad.slice(0, 8).join('\n')}`).toEqual([])

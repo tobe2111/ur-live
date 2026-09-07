@@ -35,8 +35,10 @@ const SCOPED_CSS = `
 .uad:not(.dark) .uad-nav:hover{background:#F1F3F7}
 .uad .uad-nav.active{background:var(--brand-soft);color:var(--brand-ink)}
 .uad .uad-tgl{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;border:1px solid var(--border2);background:var(--surface);color:var(--ink2);cursor:pointer;font-size:14px}
-.uad ::-webkit-scrollbar{width:9px;height:9px}
-.uad ::-webkit-scrollbar-thumb{background:var(--scroll);border-radius:6px;border:3px solid transparent;background-clip:content-box}
+/* 2026-09-03 스크롤 일관화: 이 표면만 9px/반경6/테두리3 이었다 — 전역(8px/알약/2px)과 같은 치수로.
+   색은 이 대시보드 자기 토큰(--scroll)을 그대로 쓴다(라이트·다크 각자 값을 갖고 있다). */
+.uad ::-webkit-scrollbar{width:8px;height:8px}
+.uad ::-webkit-scrollbar-thumb{background:var(--scroll);border-radius:99px;border:2px solid transparent;background-clip:content-box}
 .uad [id^="sec-"]{scroll-margin-top:76px}
 `
 

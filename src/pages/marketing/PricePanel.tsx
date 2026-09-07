@@ -17,8 +17,8 @@ const authHeader = () => {
 
 interface Watch { id: number; query: string; my_price: number | null; last_lowest: number | null; last_mall: string | null; last_total: number | null; last_checked_at: string | null }
 
-const card = 'rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] p-4'
-const input = 'h-10 rounded-lg border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#0D0F12] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
+const card = 'rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] p-4'
+const input = 'h-10 rounded-lg border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#11141C] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
 
 export default function PricePanel() {
   const [watches, setWatches] = useState<Watch[]>([])
@@ -71,7 +71,7 @@ export default function PricePanel() {
       <div className="mt-2 flex flex-wrap gap-2">
         <input className={`${input} flex-1 min-w-[160px]`} placeholder="상품 검색어 (예: 무선이어폰 블랙)" value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') add() }} />
         <input className={`${input} w-32`} type="number" placeholder="내 판매가(선택)" value={myPrice} onChange={e => setMyPrice(e.target.value)} />
-        <button onClick={add} disabled={busy} className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#0D0F12] disabled:opacity-50">{busy ? '등록 중…' : '추적 추가'}</button>
+        <button onClick={add} disabled={busy} className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#11141C] disabled:opacity-50">{busy ? '등록 중…' : '추적 추가'}</button>
       </div>
 
       {err && <PanelError onRetry={load} />}

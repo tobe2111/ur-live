@@ -129,7 +129,7 @@ export default function SellerExperienceCampaignsPage() {
               </label>
             </div>
             <div className="mt-3 flex justify-end">
-              <button type="button" disabled={creating} onClick={create} className="px-4 py-2 rounded-xl bg-gray-900 text-white text-[13px] font-semibold disabled:opacity-50">{creating ? t('seller.expCampaigns.creating', { defaultValue: '생성 중…' }) : t('seller.expCampaigns.createBtn', { defaultValue: '캠페인 개설' })}</button>
+              <button type="button" disabled={creating} onClick={create} className="ur-btn ur-btn-md ur-btn-primary text-[13px] disabled:opacity-50">{creating ? t('seller.expCampaigns.creating', { defaultValue: '생성 중…' }) : t('seller.expCampaigns.createBtn', { defaultValue: '캠페인 개설' })}</button>
             </div>
           </div>
         ) : (
@@ -158,7 +158,7 @@ export default function SellerExperienceCampaignsPage() {
               {expanded === c.id && (
                 <div className="px-4 pb-4 bg-gray-50/60">
                   <div className="flex flex-wrap gap-2 py-3">
-                    {c.status === 'open' && <button type="button" onClick={() => void draw(c.id, c.slots)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-900 text-white text-[12px] font-semibold"><Dice5 className="w-3.5 h-3.5" />{t('seller.expCampaigns.drawBtn', { defaultValue: '공정 추첨 실행' })}</button>}
+                    {c.status === 'open' && <button type="button" onClick={() => void draw(c.id, c.slots)} className="ur-btn ur-btn-sm ur-btn-primary flex items-center gap-1.5 text-[12px]"><Dice5 className="w-3.5 h-3.5" />{t('seller.expCampaigns.drawBtn', { defaultValue: '공정 추첨 실행' })}</button>}
                   </div>
                   {report?.metrics && (
                     <div className="grid grid-cols-4 gap-2 mb-3">

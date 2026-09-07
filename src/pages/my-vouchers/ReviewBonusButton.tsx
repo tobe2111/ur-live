@@ -61,7 +61,7 @@ export default function ReviewBonusButton(
       </button>
       {open && (
         <div className="fixed inset-0 z-[10500] flex items-end sm:items-center justify-center bg-black/60" onClick={() => setOpen(false)}>
-          <div className="bg-white dark:bg-[#0D0F12] rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white dark:bg-[#11141C] rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-2"><Star className="w-4 h-4 inline-block align-[-3px] mr-1 text-gray-400" aria-hidden="true" />카카오맵 후기 작성 보너스</h3>
             <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-4">
               매장 카카오맵 후기 작성하고 인증해주시면 보너스 딜 지급 (기본 1,000딜).
@@ -71,7 +71,7 @@ export default function ReviewBonusButton(
             </p>
             {/* 🗺️ 어느 매장 후기인지 못 찾아 헤매지 않게 — 매장명과 카카오맵 검색 링크를 바로 준다. */}
             {restaurantName && (
-              <div className="mb-4 p-2.5 rounded-xl bg-gray-50 dark:bg-[#1A1C21]">
+              <div className="mb-4 p-2.5 rounded-xl bg-gray-50 dark:bg-[#1D1F29]">
                 <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{restaurantName}</p>
                 {restaurantAddress && (
                   <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate mt-0.5">{restaurantAddress}</p>
@@ -84,15 +84,15 @@ export default function ReviewBonusButton(
               </div>
             )}
             <div className="grid grid-cols-2 gap-1 mb-3">
-              <button onClick={() => setMode('url')} className={`py-2 text-xs font-bold rounded ${mode === 'url' ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-100 dark:bg-[#1A1C21] text-gray-700 dark:text-gray-200'}`}>URL 제출</button>
-              <button onClick={() => setMode('screenshot')} className={`py-2 text-xs font-bold rounded ${mode === 'screenshot' ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-100 dark:bg-[#1A1C21] text-gray-700 dark:text-gray-200'}`}>스크린샷 (AI 자동 검증)</button>
+              <button onClick={() => setMode('url')} className={`py-2 text-xs font-bold rounded ${mode === 'url' ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200'}`}>URL 제출</button>
+              <button onClick={() => setMode('screenshot')} className={`py-2 text-xs font-bold rounded ${mode === 'screenshot' ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200'}`}>스크린샷 (AI 자동 검증)</button>
             </div>
             {mode === 'url' ? (
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">카카오맵 후기 URL</label>
                 <input value={reviewUrl} onChange={(e) => setReviewUrl(e.target.value)}
                   placeholder="https://place.map.kakao.com/..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 dark:text-white dark:bg-[#1A1C21]" />
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 dark:text-white dark:bg-[#1D1F29]" />
                 <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">어드민 검증 후 1~3일 내 보너스 지급</p>
               </div>
             ) : (

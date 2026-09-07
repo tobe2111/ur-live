@@ -134,6 +134,7 @@ cartRoutes.get('/', requireAuth(), async (c) => {
            p.stock       AS product_stock,
            p.is_active   AS product_is_active,
            p.deal_only,
+           p.category,
            p.seller_id,
            p.bundling_key,
            po.option_value AS option_value,
@@ -164,6 +165,7 @@ cartRoutes.get('/', requireAuth(), async (c) => {
         product_stock: number;
         product_is_active: number;  // 🛡️ 2026-05-19: 판매 종료 (0) 상품도 노출.
         deal_only: number | null;
+        category: string | null;   // 🛡️ 2026-09-01: 이용권 비배송 판정 — 클라가 이 값을 본다.
         seller_id: number;
         bundling_key: string | null;
         option_value: string | null;  // 🛡️ 2026-07-02: 카트에 옵션 표시 + 옵션 변경 진입점.
@@ -178,7 +180,7 @@ cartRoutes.get('/', requireAuth(), async (c) => {
             `SELECT ci.id, ci.product_id, ci.quantity, ci.price_snapshot, ci.option_id, ci.live_stream_id, ci.added_at,
                     p.name AS product_name, p.description AS product_description, p.price AS product_price,
                     p.image_url AS product_image, p.stock AS product_stock, p.is_active AS product_is_active,
-                    p.deal_only, p.seller_id, NULL AS bundling_key,
+                    p.deal_only, p.category, p.seller_id, NULL AS bundling_key,
                     po.option_value AS option_value, po.option_type AS option_type,
                     s.business_name AS seller_name,
                     COALESCE(s.base_shipping_fee, s.shipping_fee, 3000) AS shipping_fee,

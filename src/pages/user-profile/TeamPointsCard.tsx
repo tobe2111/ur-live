@@ -40,13 +40,15 @@ export default function TeamPointsCard() {
     return () => window.removeEventListener('pointsBalanceChanged', handler)
   }, [])
 
+  const isEmpty = !loading && !error && balance === 0
+
   return (
     <div className="ur-content-medium px-4 lg:px-8 py-3">
       {/* 🎯 2026-08-30: 마이에서 **강조는 이것 하나**다.
           바탕이 웜 화이트로 내려가고 나머지 그룹이 흰 카드가 됐으므로, 자산(딜 잔액)만
           잉크 배경으로 띄운다. 이전엔 여덟 블록이 전부 같은 회색이라 화면이 무엇을
           먼저 보라고 말하지 않았다 — 강조가 없는 게 아니라 **전부 강조**여서 그랬다. */}
-      <div className="bg-ink dark:bg-[#1A1C21] rounded-2xl px-5 py-4">
+      <div className="bg-ink dark:bg-[#1D1F29] rounded-2xl px-5 py-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
             <Coins className="w-6 h-6 text-white/60 dark:text-gray-400" aria-hidden="true" />
@@ -85,12 +87,21 @@ export default function TeamPointsCard() {
             {t('my.charge', { defaultValue: '충전하기' })}
           </button>
           )}
+          {/* 💤 2026-08-31: 잔액이 0 인데 화면에서 **가장 강한 검정 카드**가 그 0 을 강조하고,
+              버튼은 '사용 내역'(볼 내역이 없다)이었다. 값이 없을 때 자산 카드가 할 일은
+              숫자를 크게 보여 주는 게 아니라 **채우러 가는 길**을 주는 것이다. */}
           <button
             type="button"
-            onClick={() => navigate('/my-deal-history')}
+            onClick={() => navigate(isEmpty ? '/map' : '/my-deal-history')}
             className="ur-btn ur-btn-sm ur-btn-block text-white dark:text-gray-200 bg-white/[0.14] dark:bg-white/[0.06]"
           >
-            <ScrollText className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{t('my.dealHistory', { defaultValue: '사용 내역' })}
+            {isEmpty ? (
+              t('my.earnDeal', { defaultValue: '딜 모으러 가기' })
+            ) : (
+              <>
+                <ScrollText className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{t('my.dealHistory', { defaultValue: '사용 내역' })}
+              </>
+            )}
           </button>
         </div>
       </div>

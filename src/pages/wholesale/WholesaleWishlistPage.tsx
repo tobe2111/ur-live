@@ -9,7 +9,7 @@ import { ChevronRight, Heart, ShoppingCart, Lock } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
-import { cfImage } from '@/utils/cf-image'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { WT, won, marginRate } from './wholesale-theme'
 import { WholesaleWordmark } from '@/pages/wholesale-catalog/WholesaleLogo'
 import { useWholesaleCart } from './useWholesaleCart'
@@ -154,7 +154,7 @@ export default function WholesaleWishlistPage() {
                 <div key={it.product_id} className="flex flex-col rounded-2xl overflow-hidden" style={{ background: '#fff', border: '1px solid ' + WT.line }}>
                   <div className="relative aspect-square" style={{ background: WT.fill }}>
                     <button onClick={() => navigate(`/wholesale/product/${it.product_id}`)} className="block w-full h-full">
-                      {it.image_url && <img src={cfImage(it.image_url, { width: 360, format: 'auto' }) || it.image_url} alt={it.name || ''} loading="lazy" decoding="async" className="w-full h-full object-cover" />}
+                      {it.image_url && <img src={cfImage(it.image_url, { width: 360, format: 'auto' }) || it.image_url} alt={it.name || ''} loading="lazy" decoding="async" className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, it.image_url)} />}
                     </button>
                     {/* 찜 해제 — 우상단 채워진 하트 */}
                     <button onClick={() => remove(it.product_id)} aria-label="찜 해제"

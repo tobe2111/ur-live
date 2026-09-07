@@ -24,6 +24,7 @@ import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { requireAuth } from '@/worker/middleware/auth'
 import type { AuthUser } from '@/worker/middleware/auth'
+import { resolveReviewBonus } from './review-bonus-funding'
 import { swallow } from '@/worker/utils/swallow'
 import { creditReviewScoreOnApproval, getUserReviewLevelSummary } from '@/worker/utils/review-level'
 
@@ -93,8 +94,9 @@ userApp.post('/submit', async (c) => {
   const product = await DB.prepare("SELECT seller_id FROM products WHERE id = ?").bind(voucher.product_id).first<{ seller_id: number }>().catch(() => null)
 
   // 보너스 정책 조회
-  const bonusRow = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'kakao_review_bonus_amount'").first<{ value: string }>().catch(() => null)
-  const bonusAmount = Number(bonusRow?.value ?? 1000)
+  // 💵 2026-08-31: 금액은 **매장이 정한 값 우선** (없으면 플랫폼 기본값) — SSOT `review-bonus-funding`.
+  const bonusPolicy = await resolveReviewBonus(DB, product?.seller_id ?? null)
+  const bonusAmount = bonusPolicy.amount
   const autoRow = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'kakao_review_auto_approve'").first<{ value: string }>().catch(() => null)
   const autoApprove = String(autoRow?.value ?? '0') === '1'
 
@@ -197,8 +199,9 @@ async function approveSubmission(
   }
   if (submission.status !== 'submitted') return { ok: false, httpStatus: 400, error: '이미 처리됨' }
 
-  const bonusRow = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'kakao_review_bonus_amount'").first<{ value: string }>().catch(() => null)
-  const bonusAmount = Number(bonusRow?.value ?? 1000)
+  // 💵 승인 시점의 매장 설정이 권위다(제출 이후 매장이 바꿨을 수 있다) — SSOT `review-bonus-funding`.
+  const bonusPolicy = await resolveReviewBonus(DB, submission.seller_id)
+  const bonusAmount = bonusPolicy.amount
 
   // CAS 선점 — 동시 승인(어드민↔매장 포함) 중 승자 1명만 지급 경로 진입
   const claim = await DB.prepare(

@@ -73,7 +73,7 @@ export default function VoucherDisputeBanner() {
               <button
                 onClick={() => respond(d, 'concede')}
                 disabled={busy === d.id}
-                className="flex-1 py-2.5 rounded-xl bg-white dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] text-gray-700 dark:text-gray-300 text-[13px] font-bold disabled:opacity-50 active:scale-[0.98] transition-transform"
+                className="flex-1 py-2.5 rounded-xl bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] text-gray-700 dark:text-gray-300 text-[13px] font-bold disabled:opacity-50 active:scale-[0.98] transition-transform"
               >
                 아직 안 갔어요
               </button>

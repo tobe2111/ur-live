@@ -37,7 +37,7 @@ export default function NearbyEmptyBanner({ loading, userLoc, sortBy, list, onOp
   if (!show) return null
 
   return (
-    <div className="mb-3 flex items-center justify-between gap-3 rounded-xl bg-gray-50 dark:bg-[#1A1C21] border border-gray-100 dark:border-[#2C2F35] px-3.5 py-3">
+    <div className="mb-3 flex items-center justify-between gap-3 rounded-xl bg-gray-50 dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35] px-3.5 py-3">
       <p className="text-[12.5px] leading-snug text-gray-500 dark:text-gray-400 min-w-0">
         <span className="block font-bold text-gray-900 dark:text-white">
           {t('restaurantMap.farBannerTitle', { defaultValue: '내 주변엔 아직 딜이 없어요' })}
@@ -46,7 +46,7 @@ export default function NearbyEmptyBanner({ loading, userLoc, sortBy, list, onOp
       </p>
       <button
         onClick={onOpenRegion}
-        className="shrink-0 px-3 py-2 rounded-lg bg-white dark:bg-[#0D0F12] border border-gray-200 dark:border-[#2C2F35] text-[12px] font-bold text-gray-900 dark:text-white active:scale-95 transition-transform"
+        className="shrink-0 px-3 py-2 rounded-lg bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] text-[12px] font-bold text-gray-900 dark:text-white active:scale-95 transition-transform"
       >
         {t('restaurantMap.farBannerCta', { defaultValue: '지역 선택' })}
       </button>

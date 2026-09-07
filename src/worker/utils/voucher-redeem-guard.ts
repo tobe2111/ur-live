@@ -11,8 +11,12 @@
  * `scan_only` 도 포함한다 — "직원 확인만" 이라는 의도인데 no-PIN 이면 코드-단독 소각이 되어
  * 의도와 정반대로 동작했다. 매장코드를 요구해야 실제 '직원 확인'이 복원된다.
  *
- * 불변: **self_free(느슨한 매장, 기본값)와 store_verify_pin 이 설정된 상품은 byte-불변**
- * (PIN 이 이미 staff 비밀 역할을 한다). 조회 실패는 fail-open — redemption-settings SSOT 와 같은 사상.
+ * 불변: `store_verify_pin` 이 설정된 상품은 byte-불변(PIN 이 이미 staff 비밀 역할을 한다).
+ *
+ * 🔒 2026-09-03: `self_free` 폐기로 기본값이 `store_code` 가 됐다 — PIN 없는 상품은 이제
+ *   **기본적으로 매장 확인코드를 요구**한다(예전엔 기본이 느슨해 코드-단독 소각이 열려 있었다).
+ *   조회 실패도 fail-**closed**: SSOT(`getRedemptionSettings`)가 실패 시 `store_code` 를 돌려주므로
+ *   이 함수는 그 판정을 그대로 따른다. 아래 catch 는 SQL 자체가 실패한 경우만 남긴다.
  */
 
 /** 통과면 null, 막아야 하면 사용자에게 보일 사유. */
@@ -33,7 +37,6 @@ export async function checkStoreCodeRequired(
 
     const { getRedemptionSettings } = await import('./redemption-settings')
     const s = await getRedemptionSettings(DB, Number(prod.seller_id))
-    if (s.mode === 'self_free') return null
     if (s.store_code && submittedPin === s.store_code) return null
 
     return { code: 'STORE_CODE_REQUIRED', error: '매장 확인코드를 입력해주세요.' }

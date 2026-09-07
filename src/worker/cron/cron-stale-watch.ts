@@ -27,7 +27,7 @@
  *   이 작업은 매시(`0 * * * *`)에 붙어 있어, 시간당 cron 자체가 죽으면 침묵한다.
  *   그 경우는 외부 관측(uptime 워크플로 / 사이트 다운)이 잡아야 한다.
  */
-import { listCronHeartbeats } from '../utils/cron-heartbeat'
+import { listCronHeartbeats, adsLanesPausedFrom, isPausedAdsBeat } from '../utils/cron-heartbeat'
 import { classifyBeat, freshBaseNames } from '../utils/cron-beat-retirement'
 import { reportCronFailure } from '../utils/cron-reporter'
 import type { Env } from '../types/env'
@@ -59,9 +59,24 @@ export async function handleCronStaleWatch(env: Env): Promise<{ checked: number;
   //   🔒 **지우는 게 아니다** — `retired`/`superseded` 만 빼고 판정 대상(`judge`)은 그대로 신고한다.
   //   판정 기준은 그 파일의 배수(8×)와 하한(24h)이라, 예산에 밀려 늦는 정상 레인은 숨지 않는다.
   const fresh = freshBaseNames(beats)
+  // ⏸️ 유어애즈가 스위치로 멈춰 있으면(`ads:lanes-paused` 신선 + paused=true) `ads:*` 침묵은 신고하지 않는다 —
+  //   표식 없이 멈춘 것과 구분한다(그건 여전히 경보다). 근거: `worker-ads/lane-pause.ts`.
+  const adsPaused = adsLanesPausedFrom(beats)
   const stale = beats.filter(b =>
-    b.stale === true && b.name !== SELF
+    b.stale === true && b.name !== SELF && !isPausedAdsBeat(b.name, adsPaused)
     && classifyBeat({ name: b.name, age_minutes: b.age_minutes, max_gap_min: b.max_gap_min }, fresh) === 'judge')
+
+  // 🔴 2026-08-31 신설 — 이 감시가 못 보던 나머지 절반: **돌긴 하는데 아무것도 못 하는 것.**
+  //
+  //   위 판정은 "안 돌았다"(age)만 본다. 그런데 실제로 넉 달을 놓친 사고는 정반대 모양이었다:
+  //   이미지 이관 cron 이 5분마다 **성실히 돌면서** `migrated=0` 을 반환했다. 바인딩이 없어서
+  //   아무것도 못 한 건데, 하트비트에서는 "옮길 게 없었다"와 **글자 하나 다르지 않았다.**
+  //   ok:true · age 정상 · stale=false → 이 감시가 볼 이유가 없었다.
+  //
+  //   ⇒ 이제 cron 이 **못 한 것을 못 했다고 말한다**(`skipped:'...'`). 그 한마디가 붙은 비트만
+  //   고른다. 정상 회차는 이 필드를 아예 안 실으므로 **오탐이 구조적으로 0** 이고, 앞으로 만들
+  //   어떤 cron 이든 같은 관례만 따르면 공짜로 감시된다.
+  const blocked = beats.filter(b => b.name !== SELF && /(^|[\s,{])skipped[=:]/.test(b.result || ''))
   if (!beats.length) return { checked: 0, alerted: [] }
 
   // 이전 알림 시각 (없거나 깨졌으면 빈 맵 — 처음이면 알린다)
@@ -76,6 +91,7 @@ export async function handleCronStaleWatch(env: Env): Promise<{ checked: number;
   const alerted: string[] = []
   const next: Record<string, string> = {}
 
+  // 두 종류를 같은 억제 상태(12h)로 다룬다 — 알림 키가 다르므로 서로를 덮지 않는다.
   for (const b of stale) {
     const last = prev[b.name] ? Date.parse(prev[b.name]) : NaN
     const recentlyAlerted = Number.isFinite(last) && (now - last) < REALERT_HOURS * 3600_000
@@ -98,6 +114,28 @@ export async function handleCronStaleWatch(env: Env): Promise<{ checked: number;
     } catch {
       // 통지 실패는 삼킨다 — 다음 회차에 다시 시도된다(상태를 안 남기므로).
     }
+  }
+
+  // 🚧 "돌긴 했는데 못 했다" — 알림 키를 `blocked:` 로 따로 둔다(같은 작업이 멈춤·차단 둘 다일 수
+  //   있고, 키가 같으면 한쪽이 다른 쪽의 12h 억제에 묻힌다).
+  for (const b of blocked) {
+    const key = `blocked:${b.name}`
+    const last = prev[key] ? Date.parse(prev[key]) : NaN
+    if (Number.isFinite(last) && (now - last) < REALERT_HOURS * 3600_000) { next[key] = prev[key]!; continue }
+    try {
+      await reportCronFailure(
+        env,
+        key,
+        new Error(
+          `cron '${b.name}' 이(가) 돌긴 했지만 아무 일도 못 했습니다 — ${b.result}. `
+          + '바인딩·게이트를 확인하세요. 실행은 성공으로 기록되므로 멈춤 감시로는 안 잡힙니다.',
+        ),
+        { job: b.name, cron: b.cron, last_run_at: b.at, result: b.result },
+        'warning',
+      )
+      alerted.push(key)
+      next[key] = new Date(now).toISOString()
+    } catch { /* 통지 실패는 삼킨다 — 다음 회차 재시도 */ }
   }
 
   // 지금 정상으로 돌아온 작업은 상태에서 빼 둔다(다시 멈추면 즉시 알리도록).

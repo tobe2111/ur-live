@@ -5,6 +5,7 @@
  *   import { DashboardPageHeader, DashboardStatCard, DashboardCard, DashboardEmptyState, DashboardLoading } from '@/components/dashboard'
  */
 export { default as DashboardPageHeader } from './DashboardPageHeader'
+export { default as DashboardActions, type OverflowItem } from './DashboardActions'
 export { default as DashboardStatCard } from './DashboardStatCard'
 export { default as DashboardCard } from './DashboardCard'
 export { default as DashboardEmptyState } from './DashboardEmptyState'

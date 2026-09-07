@@ -98,7 +98,7 @@ const BrowseProductCard = memo(function BrowseProductCard({
           </span>
         )}
         {isMealVoucher && (
-          <span className="absolute bottom-1.5 right-1.5 rounded-full p-1.5 bg-white/85 dark:bg-[#0D0F12]/85 backdrop-blur-sm">
+          <span className="absolute bottom-1.5 right-1.5 rounded-full p-1.5 bg-white/85 dark:bg-[#11141C]/85 backdrop-blur-sm">
             <Bell
               onClick={(e: React.MouseEvent) => onToggleInterest?.(e, product.id, product.name, interested)}
               className={`w-3 h-3 ${interested ? 'text-gray-900 fill-gray-900 dark:text-white dark:fill-white' : 'text-gray-300 dark:text-gray-600'}`}

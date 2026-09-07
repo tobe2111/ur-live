@@ -84,7 +84,7 @@ export function WalletSkeleton() {
   return (
     <div className="animate-pulse" aria-hidden>
       {/* 히어로 */}
-      <div className="rounded-[20px] bg-gray-200 dark:bg-[#1A1C21] h-[120px] mb-4" />
+      <div className="rounded-[20px] bg-gray-200 dark:bg-[#1D1F29] h-[120px] mb-4" />
       {/* 패스 카드 2장 */}
       {[0, 1].map(i => (
         <div key={i} className="rounded-[18px] bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#2C2F35] p-4 mb-4">
@@ -160,7 +160,7 @@ export function EmptyVouchers({ mode, onExplore, t }: {
             <div className="flex flex-col items-center gap-2 w-[66px] shrink-0">
               <div className="relative w-11 h-11 rounded-2xl flex items-center justify-center bg-brand-tint text-brand-text">
                 <Icon className="w-[19px] h-[19px]" strokeWidth={2} />
-                <span className="absolute -top-1 -right-1 w-[15px] h-[15px] rounded-full bg-white dark:bg-[#0D0F12] border border-gray-200 dark:border-[#2C2F35] text-[9px] font-extrabold text-gray-500 dark:text-gray-400 flex items-center justify-center tabular-nums">{i + 1}</span>
+                <span className="absolute -top-1 -right-1 w-[15px] h-[15px] rounded-full bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] text-[9px] font-extrabold text-gray-500 dark:text-gray-400 flex items-center justify-center tabular-nums">{i + 1}</span>
               </div>
               <span className="text-[11px] font-medium leading-tight text-gray-600 dark:text-gray-300 whitespace-pre-line">{label}</span>
             </div>
@@ -170,7 +170,7 @@ export function EmptyVouchers({ mode, onExplore, t }: {
 
       <button
         onClick={onExplore}
-        className="mt-9 w-full max-w-[300px] py-3.5 rounded-2xl text-[15px] font-extrabold bg-brand hover:bg-brand-dark text-white active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shadow-[0_8px_22px_rgba(224,82,107,0.32)] dark:shadow-[0_8px_22px_rgba(224,82,107,0.2)]"
+        className="mt-9 w-full max-w-[300px] py-3.5 rounded-2xl text-[15px] font-extrabold bg-brand hover:bg-brand-dark text-white active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shadow-[0_8px_22px_rgba(28,105,239,0.32)] dark:shadow-[0_8px_22px_rgba(28,105,239,0.2)]"
       >
         {cta}
         <ArrowRight className="w-[17px] h-[17px]" strokeWidth={2.4} />

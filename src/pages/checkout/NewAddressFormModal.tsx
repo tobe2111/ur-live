@@ -82,13 +82,13 @@ export default function NewAddressFormModal({
               aria-required="true"
               value={newAddress.postal_code}
               readOnly
-              className="flex-1 min-w-0 px-4 py-3 border border-gray-200 dark:border-[#2C2F35] rounded-2xl bg-gray-50 dark:bg-[#1A1C21] text-[15px] text-gray-600 dark:text-gray-300"
+              className="flex-1 min-w-0 px-4 py-3 border border-gray-200 dark:border-[#2C2F35] rounded-2xl bg-gray-50 dark:bg-[#1D1F29] text-[15px] text-gray-600 dark:text-gray-300"
               placeholder={t('checkout.newAddress.postalCode', { defaultValue: '우편번호' })}
             />
             <button
               type="button"
               onClick={() => setShowPostcodePopup(true)}
-              className="shrink-0 px-5 py-3 border border-gray-200 dark:border-[#2C2F35] rounded-2xl text-[14px] font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#1A1C21] transition-all whitespace-nowrap"
+              className="shrink-0 px-5 py-3 border border-gray-200 dark:border-[#2C2F35] rounded-2xl text-[14px] font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-all whitespace-nowrap"
             >
               {t('checkout.newAddress.searchAddress', { defaultValue: '주소 검색' })}
             </button>
@@ -112,7 +112,7 @@ export default function NewAddressFormModal({
             aria-required="true"
             value={newAddress.address}
             readOnly
-            className="w-full px-4 py-3 border border-gray-200 dark:border-[#2C2F35] rounded-2xl bg-gray-50 dark:bg-[#1A1C21] text-[15px] text-gray-600 dark:text-gray-300"
+            className="w-full px-4 py-3 border border-gray-200 dark:border-[#2C2F35] rounded-2xl bg-gray-50 dark:bg-[#1D1F29] text-[15px] text-gray-600 dark:text-gray-300"
             placeholder={t('checkout.newAddress.addressPlaceholder', { defaultValue: '주소 검색 후 자동 입력됩니다' })}
           />
         </div>
@@ -148,7 +148,7 @@ export default function NewAddressFormModal({
               e.stopPropagation()
               onClose()
             }}
-            className="flex-1 py-4 bg-gray-50 dark:bg-[#1A1C21] text-gray-500 dark:text-gray-400 rounded-2xl text-[16px] font-bold hover:bg-gray-100 dark:hover:bg-[#1A1C21] transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
+            className="flex-1 py-4 bg-gray-50 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400 rounded-2xl text-[16px] font-bold hover:bg-gray-100 dark:hover:bg-[#1D1F29] transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
           >
             {t('common.cancel', { defaultValue: '취소' })}
           </button>

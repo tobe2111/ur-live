@@ -58,7 +58,7 @@ export default function InfoTab({ seller, isOwner, T }: Props) {
           )}
           {seller.phone && (
             <a href={`tel:${seller.phone}`}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-white dark:bg-[#0D0F12] border border-gray-200 dark:border-[#2C2F35] text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold active:scale-[0.97]">
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold active:scale-[0.97]">
               <Phone className="w-3.5 h-3.5" /> {t('seller.publicPage.phoneInquiry', { defaultValue: '전화 문의' })}
             </a>
           )}
@@ -71,9 +71,9 @@ export default function InfoTab({ seller, isOwner, T }: Props) {
           <button
             onClick={() => setOpen(o => !o)}
             aria-expanded={open}
-            className="w-full flex items-center gap-1.5 py-1 text-[10px] font-bold tracking-wider text-gray-400 dark:text-gray-500 uppercase active:opacity-70"
+            className="w-full flex items-center gap-1.5 py-1 text-[11px] font-bold text-gray-500 dark:text-gray-400 active:opacity-70"
           >
-            {t('seller.publicPage.moreInfo', { defaultValue: 'MORE INFO' })}
+            {t('seller.publicPage.moreInfo', { defaultValue: '사업자 정보 더보기' })}
             <span className="text-[11px] leading-none font-normal">{open ? '−' : '+'}</span>
           </button>
 

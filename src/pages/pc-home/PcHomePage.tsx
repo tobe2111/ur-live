@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useCurrentDong } from '@/hooks/useCurrentDong'
-import { BedDouble } from 'lucide-react'
+import { BedDouble, LocateFixed } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
 import SiteFooter from '@/components/main/SiteFooter'
@@ -27,13 +27,13 @@ import { HOME_SHOWCASE_ENABLED, REGION_PAGES_ENABLED } from '@/shared/feature-fl
 const SORT_CHIPS = [
   { key: 'popular',  label: '인기순' },
   { key: 'newest',   label: '최신순' },
-  { key: 'deadline', label: '마감임박' },
   { key: 'discount', label: '할인율순' },
 ] as const
 type SortKey = typeof SORT_CHIPS[number]['key'] | 'near'
 
 const DEAL_CATEGORY_KEYS: DealCategory[] = ['all', 'meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher']
-const SORT_KEYS: SortKey[] = ['popular', 'newest', 'deadline', 'discount']
+// 🗓️ 2026-09-04 (대표 "마감 개념은 없어"): 'deadline' 제거 — 옛 `?sort=deadline` 링크는 'popular' 로 폴백된다.
+const SORT_KEYS: SortKey[] = ['popular', 'newest', 'discount']
 
 export default function PcHomePage() {
   // 🧭 2026-07-20 (카테고리 이동 전수조사): `/?category=` 딥링크로 초기 카테고리 지정 지원 —
@@ -91,7 +91,11 @@ export default function PcHomePage() {
       {/* 🖥️ 2026-07-19 (대표 — "왼쪽 카테고리보단 위에"): 좌측 레일 제거 → 풀너비. 카테고리는 상단 가로 바(PcHomeRail).
           📐 2026-08-17 (대표 — "컴팩트하게, 여백이 많은 느낌" · 여기어때/그루폰 참고): 컨테이너 1600→1440
           + 상하 여백 축소. 카드 밀도는 GroupBuyFeed pc 그리드(xl 5열·2xl 6열)와 짝. */}
-      <div className="max-w-[1440px] mx-auto px-6 lg:px-8 pt-4">
+      {/* 🎫 2026-09-03 (대표 — "히어로 사진과 아래 흰색 공간 사이 공백을 없애줘"): `pt-4`(16px) 삭제.
+          히어로 사진은 `absolute inset-0` 이라 섹션 바닥이 곧 사진 바닥인데, 그 아래 16px 만큼
+          색면이 띠처럼 드러나 사진이 패널에 안 닿고 떠 보였다. 흰 패널이 사진 밑단에 그대로 물린다
+          (패널의 둥근 윗모서리가 그 이음매를 만든다 — 그루폰식 "색면 위 매대"). */}
+      <div className="max-w-[1440px] mx-auto px-6 lg:px-8">
         <main className="min-w-0">
           {/* 🗺️ 2026-08-19 (대표 확정 — 통합형 히어로): 여기 있던 **위치바 흰 패널(145px)**을 없앴다.
               위치 선택·현 위치·지도 진입은 전부 히어로 안 칩으로 옮겼다 — 헤더 114 + 히어로 190 =
@@ -115,18 +119,19 @@ export default function PcHomePage() {
           {/* 🏷️ 2026-08-08: 카테고리를 고르면 제목·설명이 **그 카테고리를 말한다.** 이전엔 숙소를 눌러도
               제목이 "내 주변 가까운 딜"이라, 화면이 걸러졌다는 신호가 어디에도 없었다. */}
           {/* 🎨 그루폰 구조 — 제목·정렬칩·그리드를 하나의 흰 패널에 담는다(색면 위에 뜬 매대). */}
-          <div className="ur-home-panel">
+          <div className="ur-home-panel light-island">
           <header ref={gridHeaderRef} className="mb-3 scroll-mt-24">
             <h1 className="text-[20px] font-black tracking-tight text-gray-900 dark:text-white">
               {catLabel
                 ? `${catLabel} 이용권`
                 : userLoc ? (dong?.dong ? `${dong.dong} 주변 딜` : '내 주변 가까운 딜') : region.regionKey ? '이 지역 동네 딜' : '가까운 동네 딜'}
             </h1>
-            <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">
-              {catLabel
-                ? `${catLabel} 이용권만 모아 봤어요.`
-                : '이용권 · 공동구매 · 교환권을 할인가로 바로 만나보세요.'}
-            </p>
+            {/* 🧹 2026-08-31: 기본 부제 "이용권 · 공동구매 · 교환권을 할인가로 바로 만나보세요." 삭제.
+                정보가 0인데 한 줄을 먹는다 — 모바일 홈에서 같은 이유로 지웠고, PC 만 남아 있었다.
+                카테고리를 고른 경우엔 **걸러졌다는 신호**라 유지한다(그건 정보다). */}
+            {catLabel && (
+              <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{`${catLabel} 이용권만 모아 봤어요.`}</p>
+            )}
           </header>
 
           {/* 정렬 칩 — 현위치 설정 시 '가까운 순' 칩 노출(거리순). */}
@@ -141,7 +146,7 @@ export default function PcHomePage() {
                     : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
                 }`}
               >
-                📍 가까운 순
+                <LocateFixed className="w-[15px] h-[15px]" aria-hidden="true" />가까운 순
               </button>
             )}
             {SORT_CHIPS.map(s => {
@@ -198,7 +203,7 @@ export default function PcHomePage() {
           플래그 OFF 면 아무것도 안 그린다(홈은 2026-07-19 확정 구조로 즉시 복귀). */}
       {/* 🎨 2026-08-19: 색면 위에서는 자체 배경이 없으면 글자가 묻힌다(gray-900 on 잉크).
           지역 링크는 흰 밴드로 깔아 하단을 마무리한다 — 그루폰 하단 링크 영역과 같은 처리. */}
-      {REGION_PAGES_ENABLED && <RegionLinkGrid className="bg-white dark:bg-[#0D0F12]" />}
+      {REGION_PAGES_ENABLED && <RegionLinkGrid className="bg-white dark:bg-[#11141C]" />}
 
       <PcHomeAppBand />
       <SiteFooter />

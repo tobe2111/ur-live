@@ -1,6 +1,7 @@
-import { memo, useCallback, useMemo, useState, useRef } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cfImage, cfSrcSet, cfImageOnError } from '@/utils/cf-image'
+import { rememberWarmImage } from '@/utils/image-warm'
 
 /** 스와이프로 칠 최소 가로 이동(px). 이보다 작으면 그냥 탭으로 본다. */
 const SWIPE_MIN_PX = 36
@@ -95,6 +96,19 @@ function DealCardMedia({
   /** 지금 보이는 장면이 죽었으면 살아 있는 첫 장면으로 대체(그 장면은 이제 '본' 것이 된다). */
   const shown = dead.has(idx) ? (alive[0] ?? idx) : idx
 
+  /**
+   * 🎞️ 2026-09-02 (대표 "여기도 사진 좌우 불러오는 데 시간이 걸려"): **빈 칸 없는 넘김**.
+   *
+   * 이전엔 화살표를 누르는 순간 이전 사진의 opacity 가 0 이 되고 새 사진은 아직 안 왔으니 **회색 칸**이
+   * 보였다 — 콜드 콜로에서 0.3~2초. 사진이 늦는 게 아니라 *늦는 동안 아무것도 안 보이는 것*이 체감이다.
+   * ⇒ 다운로드가 끝난 장면(`loaded`)만 그린다. 새 장면이 아직이면 **직전 장면을 그대로 두고** 살짝 어둡게
+   *   (`0.65`) 해 "받는 중"을 알린 뒤, 도착하면 교차한다. 요청 수는 그대로다.
+   */
+  const [loaded, setLoaded] = useState<Set<number>>(() => new Set())
+  const paintedRef = useRef(0)
+  const painted = loaded.has(shown) ? shown : paintedRef.current
+  useEffect(() => { if (loaded.has(shown)) paintedRef.current = shown }, [loaded, shown])
+
   const markDead = useCallback((i: number, isShown: boolean) => {
     setDead((prev) => {
       if (prev.has(i)) return prev
@@ -133,6 +147,7 @@ function DealCardMedia({
     })
   }, [slides, dead, idx])
 
+
   /** 장면 이동 — 화살표와 스와이프가 **같은 로직**을 쓴다(둘이 갈리면 한쪽만 고쳐진다). */
   const step = useCallback((delta: number) => {
     setIdx((cur) => {
@@ -158,6 +173,41 @@ function DealCardMedia({
   }, [step])
 
   const multi = alive.length > 1
+
+  /**
+   * 👀 2026-09-02 (대표 "여기도 사진 좌우 불러오는 데 시간이 걸려"): **보이는 카드는 다음 1장을 한가할 때 미리**.
+   *
+   * hover/touch 프리페치(위)는 손이 닿은 *뒤*에 시작하므로 화살표를 바로 누르면 여전히 콜드 대기였다
+   * (PC 실측: hover→클릭 0.3초, 외부 CDN 콜드 리사이즈 0.3~2초). 그래서 **화면에 60% 이상 들어온 카드**가
+   * 커버를 다 받은 뒤, 브라우저가 한가할 때(`requestIdleCallback`) **다음 한 장만** 받아 둔다.
+   *
+   * ⚠️ 트래픽 보호(위 1원칙)와의 타협을 명시한다: 화면 밖 카드는 여전히 커버만이고, 보이는 카드도 **한 장**(전량 X),
+   *   첫 페인트 뒤(커버 로드 후 + idle)라 LCP 를 안 건드린다. 첫 화면 기준 카드 ~6장 × 1장 ≈ 200~300KB 가 idle 에 추가.
+   *   카드당 한 번만(`idleDone`) — 넘긴 뒤의 다음 장은 `step` 이 이미 챙긴다.
+   */
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  const idleDone = useRef(false)
+  const coverLoaded = loaded.has(0)
+  useEffect(() => {
+    if (!multi || !coverLoaded || idleDone.current) return
+    const el = rootRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') return
+    let idle: number | undefined
+    const io = new IntersectionObserver((entries) => {
+      if (!entries.some((e) => e.isIntersecting)) return
+      io.disconnect()
+      idleDone.current = true
+      const run = () => prefetchNext()
+      if (typeof requestIdleCallback === 'function') idle = requestIdleCallback(run, { timeout: 2000 })
+      else idle = window.setTimeout(run, 300)
+    }, { threshold: 0.6 })
+    io.observe(el)
+    const cleanup = () => { // ⚠️ 화살괄호를 바로 돌려주지 않는다 — deal-card-gallery 가드가 JSX 반환문을 앵커로 자른다
+      io.disconnect()
+      if (idle != null) { if (typeof cancelIdleCallback === 'function') cancelIdleCallback(idle); else clearTimeout(idle) }
+    }
+    return cleanup
+  }, [multi, coverLoaded, prefetchNext])
 
   /**
    * 👆 손가락으로 넘기기 (2026-08-27 대표 지시 — "이용권 이미지 썸네일 좌우로 스와이프 되어져야 해").
@@ -202,6 +252,7 @@ function DealCardMedia({
 
   return (
     <div
+      ref={rootRef}
       className={`relative ${aspectClass} w-full overflow-hidden group/media ${className}`}
       onMouseEnter={prefetchNext}
       onTouchStart={onTouchStartMedia}
@@ -227,8 +278,12 @@ function DealCardMedia({
               decoding="async"
               onLoad={(e) => {
                 const el = e.currentTarget as HTMLImageElement
-                el.style.opacity = i === shown ? '1' : '0'
-                if (isCover) onCoverLoad?.(el)
+                setLoaded((prev) => (prev.has(i) ? prev : new Set(prev).add(i)))
+                if (isCover) {
+                  // 🔥 상세가 이 변형을 밑에 깔아 클릭 즉시 사진을 보인다(`utils/image-warm`).
+                  rememberWarmImage(src, el.currentSrc)
+                  onCoverLoad?.(el)
+                }
               }}
               onError={(e) => {
                 const el = e.currentTarget as HTMLImageElement
@@ -236,9 +291,10 @@ function DealCardMedia({
                 // `cfFallback === '2'` = 리사이저도 원본도 실패해 숨긴 상태 = 이 장면은 죽었다.
                 if (el.dataset.cfFallback === '2') markDead(i, i === shown)
               }}
-              style={{ opacity: i === shown ? 1 : 0, transition: 'opacity 220ms ease-out' }}
+              // 🎞️ 그려진 장면(painted)만 보인다. 새 장면을 받는 중이면 직전 장면을 0.65 로 남긴다(빈 칸 0).
+              style={{ opacity: i === painted ? (painted === shown ? 1 : 0.65) : 0, transition: 'opacity 220ms ease-out' }}
               className={`absolute inset-0 w-full h-full object-cover ${
-                i === shown ? 'transition-transform duration-300 group-hover:scale-[1.03]' : 'pointer-events-none'
+                i === painted ? 'transition-transform duration-300 group-hover:scale-[1.03]' : 'pointer-events-none'
               }`}
             />
           )

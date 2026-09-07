@@ -79,11 +79,11 @@ export default function GeoHelpSheet({
   return (
     <div className="fixed inset-0 flex items-end sm:items-center justify-center" style={{ zIndex: Z.SHEET_BODY }}>
       <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden="true" />
-      <div className="relative w-full sm:max-w-sm bg-white dark:bg-[#0D0F12] rounded-t-3xl sm:rounded-3xl p-5 pb-8 sm:pb-6 shadow-2xl">
+      <div className="relative w-full sm:max-w-sm bg-white dark:bg-[#11141C] rounded-t-3xl sm:rounded-3xl p-5 pb-8 sm:pb-6 shadow-2xl">
         <button
           onClick={onClose}
           aria-label="닫기"
-          className="absolute top-3 right-3 p-1.5 rounded-full bg-gray-100 dark:bg-[#1A1C21] text-gray-500 dark:text-gray-400"
+          className="absolute top-3 right-3 p-1.5 rounded-full bg-gray-100 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400"
         >
           <X className="w-4 h-4" />
         </button>

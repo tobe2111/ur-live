@@ -41,28 +41,28 @@ export default function SettlementsTable({ settlements, onDownload }: {
         <table className="w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 ">
                 {t('seller.settlementPeriod')}
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 ">
                 {t('seller.sales')}
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 ">
                 {t('seller.commissionRate')}
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 ">
                 {t('seller.commissionAmountColumn')}
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 ">
                 {t('seller.settlementAmountColumn')}
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 ">
                 {t('common.status')}
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 ">
                 {t('seller.requestDateColumn')}
               </th>
-              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+       <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 ">
                 {t('seller.actionColumn')}
               </th>
             </tr>

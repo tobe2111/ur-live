@@ -1,4 +1,5 @@
 import { cfImage, cfSrcSet } from '../../utils/cf-image'
+import { DETAIL_HERO_DESKTOP_WIDTH, detailHeroMobileUrl, detailPlainUrl } from '../../shared/detail-hero-image'
 import {
   HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE,
   HOME_CARD_LG_QUERY, HOME_CARD_BASE_QUERY, HOME_CARD_ABOVE_FOLD,
@@ -88,13 +89,16 @@ export function buildHomeCardPreloadLinks(ssrExtraPayload: string): string[] {
  *
  * @returns `<link …>` 문자열, 만들 수 없으면 `null`(fail-soft).
  */
-export function buildDetailHeroPreloadLink(ssrPayload: string, isVoucherSurface: boolean): string | null {
+export function buildDetailHeroPreloadLink(ssrPayload: string, isVoucherSurface: boolean, isMobile = true): string | null {
   try {
     const heroSrc = (JSON.parse(ssrPayload) as { data?: { image_url?: string } })?.data?.image_url
     if (!heroSrc) return null
+    // 🧵 2026-09-02: 이용권 상세는 `DetailGallery` 와 **같은 SSOT 함수**로 만든다. 이전의 `width: 900` 은
+    //    08-31 크롭 도입 뒤 갤러리가 그리는 어떤 URL 과도 안 맞아 **preload 가 통째로 버려지고** 있었다
+    //    (라이브 실측: 111KB 를 받고 안 쓴 뒤 같은 사진을 다시 받았다). 폰/PC 는 그리는 폭이 달라 UA 로 가른다.
     const heroUrl = isVoucherSurface
       ? cfImage(heroSrc, { width: 800, format: 'auto' })
-      : cfImage(heroSrc, { width: 900, format: 'auto' })
+      : isMobile ? detailHeroMobileUrl(heroSrc) : detailPlainUrl(heroSrc, DETAIL_HERO_DESKTOP_WIDTH)
     if (!heroUrl || heroUrl.startsWith('data:')) return null
     const heroSrcSet = isVoucherSurface ? cfSrcSet(heroSrc, 800) : ''
     return `<link rel="preload" as="image" fetchpriority="high" href="${escAttr(heroUrl)}"${

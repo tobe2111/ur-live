@@ -18,7 +18,28 @@ import { Calendar, User, ChevronRight, ChevronLeft } from 'lucide-react'
  * 📱 모바일은 한 달씩 세로로 이어 붙인다(두 달을 옆으로 두면 한 달이 화면 밖으로 나간다).
  * 📐 PC 에서 이 바는 **우측 360px 아사이드** 안에 있다 — 넓은 패널을 왼쪽 기준으로 펼치면 화면
  *    오른쪽 밖으로 넘어간다. 그래서 패널은 `lg:left-auto lg:right-0` 로 오른쪽 끝을 맞춘다.
+ *
+ * 🩸 2026-09-02 (대표 *"연박도 할 수 있는데 구현이 안되어있는 것 같아"* → 맞았다):
+ *    `pickDay` 가 "이미 범위가 잡혔으면 새 체크인" 규칙을 썼는데, 초기값이 늘 체크인+1박이라 **범위는
+ *    언제나 잡혀 있었다** → 어떤 날을 눌러도 새 체크인+1박, 체크아웃을 찍을 길이 없었다. 서버(가용 조회·
+ *    결제의 야간별 재고 차감)는 연박을 받는다. ⇒ 단계(`phase`)를 둔다: 체크인 고르는 중 → 체크아웃 고르는 중.
+ *    판정은 순수함수 `pickRange` — 테스트가 실제 클릭 순서로 검증한다(`stay-detail-pc-booking-panel.test.ts`).
+ * 📏 트리거 두 개를 한 줄에 두면 360px 안에서 날짜가 "2026.09.02(수)~0…" 로 잘렸다(대표 *"문장이 2줄로
+ *    되고 보기 안좋아"*). 날짜 한 줄, 인원 한 줄.
  */
+
+export type PickPhase = 'in' | 'out'
+/**
+ * 달력 클릭 한 번의 결과. 체크인 단계면 그 날을 체크인(+1박)으로 잡고 체크아웃 단계로,
+ * 체크아웃 단계면 그 날이 체크인보다 뒤일 때 체크아웃으로 닫는다(같거나 앞이면 새 체크인).
+ */
+export function pickRange(
+  draftIn: string, draftOut: string, phase: PickPhase, day: string, today: string,
+): { draftIn: string; draftOut: string; phase: PickPhase } {
+  if (day < today) return { draftIn, draftOut, phase }
+  if (phase === 'out' && day > draftIn) return { draftIn, draftOut: day, phase: 'in' }
+  return { draftIn: day, draftOut: addDays(day, 1), phase: 'out' }
+}
 
 export interface DayPrice { date: string; price?: number; available?: boolean }
 
@@ -57,11 +78,12 @@ export default function StayDateGuestPicker({
   // 패널 안에서 고르는 임시값 — '적용하기' 를 눌러야 바깥으로 나간다(야놀자와 동일).
   const [draftIn, setDraftIn] = useState(checkIn)
   const [draftOut, setDraftOut] = useState(checkOut)
+  const [phase, setPhase] = useState<PickPhase>('in')
   const [adults, setAdults] = useState(Math.max(1, guests))
   const [kids, setKids] = useState(0)
   const boxRef = useRef<HTMLDivElement | null>(null)
 
-  useEffect(() => { setDraftIn(checkIn); setDraftOut(checkOut) }, [checkIn, checkOut])
+  useEffect(() => { setDraftIn(checkIn); setDraftOut(checkOut); setPhase('in') }, [checkIn, checkOut])
   useEffect(() => { setAdults(Math.max(1, guests)) }, [guests])
 
   useEffect(() => {
@@ -83,12 +105,9 @@ export default function StayDateGuestPicker({
   const base = new Date(); base.setDate(1)
   const months = [0, 1].map(i => { const d = new Date(base); d.setMonth(d.getMonth() + monthOffset + i); return d })
 
-  /** 체크인이 정해진 상태에서 다음 클릭은 체크아웃 — 이미 범위가 잡혔으면 새 체크인으로 다시 시작. */
   const pickDay = (day: string) => {
-    if (day < today) return
-    const rangeDone = draftIn && draftOut && draftIn !== draftOut
-    if (!draftIn || rangeDone || day <= draftIn) { setDraftIn(day); setDraftOut(addDays(day, 1)); return }
-    setDraftOut(day)
+    const next = pickRange(draftIn, draftOut, phase, day, today)
+    setDraftIn(next.draftIn); setDraftOut(next.draftOut); setPhase(next.phase)
   }
 
   const nights = nightsBetween(draftIn, draftOut)
@@ -101,10 +120,10 @@ export default function StayDateGuestPicker({
 
   return (
     <div ref={boxRef} className="relative">
-      <div className="flex items-stretch gap-2">
-        <button type="button" onClick={() => setOpen(o => (o === 'date' ? 'none' : 'date'))} className={`${trigger} ${open === 'date' ? on : off}`}>
+      <div className="flex flex-col gap-2">
+        <button type="button" onClick={() => { setPhase('in'); setOpen(o => (o === 'date' ? 'none' : 'date')) }} className={`${trigger} ${open === 'date' ? on : off}`}>
           <Calendar className="w-4 h-4 shrink-0" aria-hidden="true" />
-          <span className="truncate">{fmtTrigger(checkIn)}~{fmtTrigger(checkOut).slice(5)} · {nightsBetween(checkIn, checkOut)}박</span>
+          <span className="truncate">{fmtTrigger(checkIn)} ~ {fmtTrigger(checkOut).slice(5)} · {nightsBetween(checkIn, checkOut)}박</span>
         </button>
         <button type="button" onClick={() => setOpen(o => (o === 'guest' ? 'none' : 'guest'))} className={`${trigger} ${open === 'guest' ? on : off}`}>
           <User className="w-4 h-4 shrink-0" aria-hidden="true" />
@@ -119,7 +138,7 @@ export default function StayDateGuestPicker({
               aria-label="이전 달" className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-white/[0.06]">
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <span className="text-[13px] font-bold text-gray-500 dark:text-gray-400">체크인 날짜를 먼저 고르세요</span>
+            <span className="text-[13px] font-bold text-gray-500 dark:text-gray-400" aria-live="polite">{phase === 'out' ? '체크아웃 날짜를 고르세요' : '체크인 날짜를 먼저 고르세요'}</span>
             <button type="button" onClick={() => setMonthOffset(m => m + 1)} aria-label="다음 달"
               className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-white/[0.06]">
               <ChevronRight className="w-5 h-5" />

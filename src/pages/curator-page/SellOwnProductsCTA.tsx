@@ -65,7 +65,7 @@ export default function SellOwnProductsCTA() {
       }
     }
     return (
-      <section className="mb-6 bg-gray-50 dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] rounded-xl p-4">
+      <section className="mb-6 bg-gray-50 dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-xl p-4">
         <p className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5"><Store className="w-4 h-4 text-gray-400" aria-hidden="true" />판매 활성 · 내 유어샵 <VerifiedSeal size={15} /> <span className="font-medium text-gray-500 dark:text-gray-400">· 판매·현금 정산 활성</span></p>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-3">
           이용권·상품을 정식 등록(이미지·상세·옵션)하거나, 셀러 대시보드에서 주문·정산을 관리하세요. 등록한 것은 내 유어샵에 바로 진열됩니다.
@@ -74,21 +74,21 @@ export default function SellOwnProductsCTA() {
           <button
             onClick={() => goSeller('/seller/products/new')}
             disabled={switching}
-            className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-[#0D0F12] text-xs font-bold rounded-lg disabled:opacity-50"
+            className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-[#11141C] text-xs font-bold rounded-lg disabled:opacity-50"
           >
             {switching ? '이동 중…' : '+ 상품 등록'}
           </button>
           <button
             onClick={() => goSeller('/seller/meal-voucher/new')}
             disabled={switching}
-            className="px-4 py-2 bg-white dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] text-gray-700 dark:text-gray-200 text-xs font-bold rounded-lg disabled:opacity-50"
+            className="px-4 py-2 bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] text-gray-700 dark:text-gray-200 text-xs font-bold rounded-lg disabled:opacity-50"
           >
             + 이용권 등록
           </button>
           <button
             onClick={() => goSeller('/seller')}
             disabled={switching}
-            className="px-4 py-2 bg-white dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] text-gray-700 dark:text-gray-200 text-xs font-bold rounded-lg disabled:opacity-50"
+            className="px-4 py-2 bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] text-gray-700 dark:text-gray-200 text-xs font-bold rounded-lg disabled:opacity-50"
           >
             셀러 대시보드 →
           </button>
@@ -100,7 +100,7 @@ export default function SellOwnProductsCTA() {
   // 심사 중 (셀러 신청 접수됨)
   if (hasSeller && st === 'pending') {
     return (
-      <section className="mb-6 bg-gray-50 dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] rounded-xl p-4">
+      <section className="mb-6 bg-gray-50 dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-xl p-4">
         <p className="text-sm font-bold text-gray-900 dark:text-white"><Store className="w-4 h-4 inline-block align-[-3px] mr-1 text-gray-400" aria-hidden="true" />매장 등록 심사 중</p>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
           등록증을 확인하는 중이에요. 승인되면 내 유어샵에서 판매·현금 정산이 열립니다.
@@ -154,11 +154,11 @@ function BenefitsSheet({ onClose, onStart }: { onClose: () => void; onStart: () 
   return (
     <div className="fixed inset-0 z-[10600] flex items-end justify-center" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/55" onClick={onClose} />
-      <div className="relative w-full sm:max-w-md bg-white dark:bg-[#1A1C21] rounded-t-3xl px-5 pt-2 pb-7 animate-slideUp">
+      <div className="relative w-full sm:max-w-md bg-white dark:bg-[#1D1F29] rounded-t-3xl px-5 pt-2 pb-7 animate-slideUp">
         <div className="w-10 h-1 rounded-full bg-gray-200 dark:bg-[#2C2F35] mx-auto mt-1.5 mb-4" />
         <h2 className="text-[21px] font-extrabold text-gray-900 dark:text-white tracking-tight">내 유어샵에서 직접 팔아보세요</h2>
         <div className="flex items-center gap-1.5 mt-2 text-[13px] text-gray-500 dark:text-gray-400 flex-wrap">
-          <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#1A1C21] text-[11px] font-bold">유저</span>
+          <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#1D1F29] text-[11px] font-bold">유저</span>
           <span className="font-extrabold text-gray-400">→</span>
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#eaf5ff] dark:bg-[#0d2a40] text-[#1d9bf0] text-[11px] font-bold"><VerifiedSeal size={13} /> 인증 유저</span>
           로 전환하면
@@ -166,7 +166,7 @@ function BenefitsSheet({ onClose, onStart }: { onClose: () => void; onStart: () 
         <div className="mt-5 space-y-4">
           {benefits.map((b, i) => (
             <div key={i} className="flex items-start gap-3">
-              <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-[20px] ${b.seal ? 'bg-[#eaf5ff] dark:bg-[#0d2a40]' : 'bg-gray-100 dark:bg-[#1A1C21]'}`}>{b.seal ? <VerifiedSeal size={22} /> : b.Icon ? <b.Icon className="w-5 h-5 text-gray-500 dark:text-gray-400" aria-hidden="true" /> : null}</span>
+              <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-[20px] ${b.seal ? 'bg-[#eaf5ff] dark:bg-[#0d2a40]' : 'bg-gray-100 dark:bg-[#1D1F29]'}`}>{b.seal ? <VerifiedSeal size={22} /> : b.Icon ? <b.Icon className="w-5 h-5 text-gray-500 dark:text-gray-400" aria-hidden="true" /> : null}</span>
               <div>
                 <p className="text-[15px] font-extrabold text-gray-900 dark:text-white">{b.t}</p>
                 <p className="text-[12.5px] text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">{b.d}</p>
@@ -174,7 +174,7 @@ function BenefitsSheet({ onClose, onStart }: { onClose: () => void; onStart: () 
             </div>
           ))}
         </div>
-        <button onClick={onStart} className="mt-6 w-full h-[52px] rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-[#0D0F12] text-[15.5px] font-extrabold active:opacity-80">
+        <button onClick={onStart} className="mt-6 w-full h-[52px] rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-[#11141C] text-[15.5px] font-extrabold active:opacity-80">
           ✓ 사업자 인증 시작하기
         </button>
         <p className="text-center text-[11.5px] text-gray-400 dark:text-gray-500 mt-2.5">사업자등록 → 관리자 승인 후 활성화 · 무료</p>

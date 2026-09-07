@@ -16,14 +16,12 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Check, Loader2, Plus, Search, X } from 'lucide-react'
 import api from '@/lib/api'
 import { curatorApi } from '@/features/curator/api/curator-api'
-import { seededColor } from '@/utils/card-gradient'
 import { toast } from '@/hooks/useToast'
 import { CURATOR_DEFAULTS } from '@/shared/constants/policy'
 import SEO from '@/components/SEO'
 // 🎨 2026-06-22 (대표 — "커스텀 카드 그만, 표준 카드 재사용"): picker 도 홈/쇼핑/동네딜과 같은
-//   표준 카드(BrowseProductCard)를 그대로 써 디자인 영구 동기화. 카드 위에 핀 토글 버튼만 오버레이.
-import BrowseProductCard from '@/pages/browse/BrowseProductCard'
-import type { Product as BrowseProduct } from '@/pages/browse/types'
+//   표준 카드(홈과 같은 `GroupBuyFeedCard`)를 그대로 써 디자인 영구 동기화. 카드 위에 핀 토글 버튼만 오버레이.
+import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
 import { invalidateCurator } from '@/features/curator/curator-page-cache'
 
 type PickerTab = 'shop' | 'voucher'
@@ -202,14 +200,16 @@ export default function LinkshopPinPicker() {
   return (
     <>
       <SEO title="유어샵에 추가 - 유어딜" description="상품과 이용권을 내 유어샵에 추가하세요" url="/u/me/add" />
-      <div className="min-h-screen bg-white dark:bg-[#0D0F12] text-gray-900 dark:text-white pb-28">
+      <div className="min-h-screen bg-white dark:bg-[#11141C] text-gray-900 dark:text-white pb-28">
         {/* 상단 바 */}
-        <div className="sticky top-0 z-40 bg-white/90 dark:bg-[#0D0F12]/90 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
+        <div className="sticky top-0 z-40 bg-white/90 dark:bg-[#11141C]/90 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
           <div className="max-w-3xl mx-auto px-3 h-14 flex items-center gap-2">
             <button
-              onClick={() => navigate('/u/me')}
+              // 🔙 히스토리가 있으면 온 곳으로. `/u/me` 로 밀면 (a) 뒤로가기가 한 칸 *늘어나고*
+              //    (b) `/u/me` 는 `/u/{handle}` 로 튕기는 리다이렉트라 브라우저 뒤로가 다시 이 화면으로 온다.
+              onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/u/me'))}
               aria-label="뒤로"
-              className="shrink-0 w-9 h-9 -ml-1 rounded-full flex items-center justify-center text-gray-700 dark:text-gray-200 active:bg-gray-100 dark:active:bg-[#1A1C21]"
+              className="shrink-0 w-9 h-9 -ml-1 rounded-full flex items-center justify-center text-gray-700 dark:text-gray-200 active:bg-gray-100 dark:active:bg-[#1D1F29]"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
@@ -221,7 +221,7 @@ export default function LinkshopPinPicker() {
             </div>
             <button
               onClick={() => navigate('/u/me')}
-              className="shrink-0 px-3.5 h-9 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#0D0F12] text-[13px] font-bold active:opacity-80"
+              className="shrink-0 px-3.5 h-9 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#11141C] text-[13px] font-bold active:opacity-80"
             >
               완료
             </button>
@@ -245,7 +245,7 @@ export default function LinkshopPinPicker() {
 
         {/* 검색 */}
         <div className="max-w-3xl mx-auto px-4 pt-3">
-          <div className="flex items-center gap-2 h-11 px-3.5 rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-gray-50 dark:bg-[#1A1C21]">
+          <div className="flex items-center gap-2 h-11 px-3.5 rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-gray-50 dark:bg-[#1D1F29]">
             <Search className="w-4 h-4 text-gray-400 shrink-0" />
             <input
               value={query}
@@ -265,7 +265,7 @@ export default function LinkshopPinPicker() {
         {loading && items.length === 0 ? (
           <div className="max-w-3xl mx-auto px-4 grid grid-cols-2 gap-3 pt-4">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="aspect-[3/4] rounded-2xl bg-gray-100 dark:bg-[#1A1C21] animate-pulse" />
+              <div key={i} className="aspect-[3/4] rounded-2xl bg-gray-100 dark:bg-[#1D1F29] animate-pulse" />
             ))}
           </div>
         ) : filtered.length === 0 ? (
@@ -337,7 +337,7 @@ function NoteModal({ pinId, productName, onClose }: { pinId: number; productName
   return (
     <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full sm:max-w-md bg-white dark:bg-[#1A1C21] rounded-t-3xl sm:rounded-3xl p-5 pb-7 animate-slideUp">
+      <div className="relative w-full sm:max-w-md bg-white dark:bg-[#1D1F29] rounded-t-3xl sm:rounded-3xl p-5 pb-7 animate-slideUp">
         <div className="flex items-start gap-2 mb-1">
           <span className="text-[15px] font-extrabold text-gray-900 dark:text-white flex-1"><Check className="w-4 h-4 inline-block align-[-3px] mr-1" aria-hidden="true" />유어샵에 추가됨</span>
           <button onClick={onClose} aria-label="닫기" className="shrink-0 w-7 h-7 -mt-0.5 -mr-1 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
@@ -353,11 +353,11 @@ function NoteModal({ pinId, productName, onClose }: { pinId: number; productName
           rows={2}
           maxLength={CURATOR_DEFAULTS.PIN_NOTE_MAX_LEN}
           placeholder="예: 재구매만 3번째예요. 향이 진짜 좋아요!"
-          className="w-full rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-gray-50 dark:bg-[#0D0F12] px-3.5 py-2.5 text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 outline-none focus:border-gray-400 dark:focus:border-[#3A3A3A] resize-none"
+          className="w-full rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-gray-50 dark:bg-[#11141C] px-3.5 py-2.5 text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 outline-none focus:border-gray-400 dark:focus:border-[#3A3A3A] resize-none"
         />
         <div className="flex gap-2 mt-4">
           <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-[#2C2F35] text-[13.5px] font-bold text-gray-600 dark:text-gray-300 active:opacity-70">건너뛰기</button>
-          <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#0D0F12] text-[13.5px] font-bold active:opacity-80 disabled:opacity-50">
+          <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#11141C] text-[13.5px] font-bold active:opacity-80 disabled:opacity-50">
             {saving ? '저장 중…' : '저장'}
           </button>
         </div>
@@ -366,24 +366,23 @@ function NoteModal({ pinId, productName, onClose }: { pinId: number; productName
   )
 }
 
-// 🎨 2026-06-22 (대표 — A안): 표준 BrowseProductCard 재사용(디자인 영구 동기화) + 핀 토글 버튼 오버레이.
-//   카드 본문 클릭 = 상품/동네딜 상세 미리보기, 우상단 버튼 = 추가/제거 토글(stopPropagation).
-//   PinCard(유어샵 핀) 의 래핑 패턴과 동일.
+// 🎨 2026-06-22 (대표 — A안) → 🏪 2026-09-03 (대표 "홈 카드로 동일해야지 — 안 A"): 표준 카드 재사용 +
+//   핀 토글 오버레이. 카드 본문 클릭 = 상세 미리보기, 우상단 버튼 = 추가/제거 토글(stopPropagation).
+//   ⚠️ 홈 카드는 우상단에 **찜 하트**를 그린다 — 여기선 그 자리에 '추가' 버튼이 오므로 `hideWishlist`
+//      로 하트를 끈다(안 끄면 하트가 버튼 밑에 깔려 눌리지도 보이지도 않는다).
 function PickCard({ item, pinned, busy, onToggle }: { item: PickItem; pinned: boolean; busy: boolean; onToggle: () => void }) {
-  const product: BrowseProduct = {
+  const product = {
     id: item.id,
     name: item.name,
     price: item.price,
     current_price: item.price,
     original_price: item.original_price ?? undefined,
-    discount_rate: 0, // BrowseProductCard 가 original_price 로 자동 계산
+    discount_rate: 0, // 카드가 original_price 로 자동 계산
     image_url: item.image_url || '',
     stock: 0,
     dominant_color: item.dominant_color,
     deal_only: item.deal_only,
   }
-  // dominant_color 없고 외부호스트 CORS 로 추출 실패 시 회색 단색 방지(PinCard 와 동일 폴백).
-  const fallbackColor = item.dominant_color || seededColor(item.category || item.id)
   const to = item.gb ? `/group-buy/${item.id}` : `/products/${item.id}`
   const commission = Math.round(Number(item.referral_commission_rate) || 0)
 
@@ -394,8 +393,9 @@ function PickCard({ item, pinned, busy, onToggle }: { item: PickItem; pinned: bo
   }
 
   return (
-    <div className={`relative group rounded-2xl ${pinned ? 'ring-2 ring-gray-900 dark:ring-white ring-offset-2 ring-offset-white dark:ring-offset-[#0D0F12]' : ''}`}>
-      <BrowseProductCard product={product} aboveFold={false} to={to} fallbackColor={fallbackColor} />
+    /* 선택 표시는 **브랜드 블루 링** — 표면 규칙 ②(강조색 하나, 자리 셋) 중 '선택' 자리. */
+    <div className={`relative group rounded-xl ${pinned ? 'ring-2 ring-brand ring-offset-2 ring-offset-white dark:ring-offset-[#11141C]' : ''}`}>
+      <GroupBuyFeedCard p={product as never} aboveFold={false} to={to} hideWishlist />
       {/* 적립률 신호 — 담으면 얼마 적립되는지(있을 때만). 동네딜(group-buy)은 데이터 없어 미표시. */}
       {commission > 0 && (
         <span className="absolute top-2 left-2 z-10 inline-flex items-center gap-0.5 h-6 px-2 rounded-full bg-black/55 backdrop-blur-md ring-1 ring-white/20 text-white text-[11px] font-bold pointer-events-none">
@@ -411,7 +411,7 @@ function PickCard({ item, pinned, busy, onToggle }: { item: PickItem; pinned: bo
         aria-label={pinned ? '유어샵에서 제거' : '유어샵에 추가'}
         className={`absolute top-2 right-2 z-10 inline-flex items-center gap-1 h-8 pl-2 pr-2.5 rounded-full text-[12px] font-bold shadow-sm backdrop-blur-md ring-1 transition-colors active:scale-95 disabled:opacity-50 ${
           pinned
-            ? 'bg-gray-900 dark:bg-white text-white dark:text-[#0D0F12] ring-white/30'
+            ? 'bg-gray-900 dark:bg-white text-white dark:text-[#11141C] ring-white/30'
             : 'bg-white/90 dark:bg-black/55 text-gray-900 dark:text-white ring-black/10 dark:ring-white/25'
         }`}
       >

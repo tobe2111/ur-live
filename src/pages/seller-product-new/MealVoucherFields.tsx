@@ -43,11 +43,7 @@ export default function MealVoucherFields({ onChange }: Props) {
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
         </div>
       </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.groupBuyDeadline')}</label>
-        <input type="datetime-local" name="group_buy_deadline" onChange={onChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
-      </div>
+      {/* 🗓️ 2026-09-04 (대표 "마감 개념은 없어"): '판매 마감' 입력 제거. */}
       <div className="col-span-2">
         <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.storeVerifyPin')} *</label>
         <input name="store_verify_pin" onChange={onChange} placeholder={t('seller.products.storeVerifyPinPlaceholder')}

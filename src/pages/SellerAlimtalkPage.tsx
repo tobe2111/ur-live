@@ -174,7 +174,7 @@ export default function SellerAlimtalkPage() {
       </span>
       <button
         onClick={() => setChargeModal(true)}
-        className="flex items-center gap-1 px-3 py-1.5 bg-gray-900 text-white text-xs font-semibold rounded-lg hover:bg-gray-900"
+        className="ur-btn ur-btn-sm ur-btn-primary flex items-center gap-1"
       >
         <CreditCard className="w-3.5 h-3.5" /> {t('seller.chargeBtn')}
       </button>
@@ -251,7 +251,7 @@ export default function SellerAlimtalkPage() {
               <div className="py-16 text-center">
                 <CreditCard className="w-10 h-10 text-gray-200 mx-auto mb-3" />
                 <p className="text-sm text-gray-400">{t('seller.noChargeHistory')}</p>
-                <button onClick={() => setChargeModal(true)} className="mt-3 px-4 py-2 bg-gray-900 text-white text-xs font-medium rounded-lg hover:bg-gray-900">
+                <button onClick={() => setChargeModal(true)} className="ur-btn ur-btn-md ur-btn-primary mt-3">
                   {t('seller.firstCharge')}
                 </button>
               </div>
@@ -357,7 +357,7 @@ export default function SellerAlimtalkPage() {
                   <button
                     onClick={handleCharge}
                     disabled={paying || !selectedPkg}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold bg-gray-900 text-white hover:bg-gray-900 disabled:opacity-50"
+                    className="ur-btn ur-btn-md ur-btn-primary flex-1 flex items-center justify-center gap-1.5 disabled:opacity-50"
                   >
                     {paying ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
                     {selectedPkg ? t('seller.payAmount', { amount: formatNumber(selectedPkg.price) }) : t('seller.selectPackage')}

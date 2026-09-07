@@ -189,14 +189,14 @@ export default function MyGroupBuysPage() {
   ];
 
   return (
-    <div className="min-h-dvh bg-white dark:bg-[#0D0F12]">
+    <div className="min-h-dvh bg-white dark:bg-[#11141C]">
       <SEO
         title={t('myGroupBuys.title')}
         description={t('myGroupBuys.seoDesc')}
         url="/my-group-buys"
       />
       {/* 헤더 */}
-      <header className="sticky top-0 md:top-14 z-40 bg-white dark:bg-[#0D0F12] border-b border-gray-200 dark:border-[#2C2F35]">
+      <header className="sticky top-0 md:top-14 z-40 bg-white dark:bg-[#11141C] border-b border-gray-200 dark:border-[#2C2F35]">
         <div className="ur-content-narrow flex items-center justify-between h-14 px-4 lg:px-8">
           <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="flex items-center text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white">
             <ChevronLeft className="w-6 h-6" />
@@ -207,7 +207,7 @@ export default function MyGroupBuysPage() {
       </header>
 
       {/* 탭 */}
-      <div className="flex border-b border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#0D0F12] sticky top-14 z-30 overflow-x-auto">
+      <div className="flex border-b border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#11141C] sticky top-14 z-30 overflow-x-auto">
         {tabs.map(item => (
           <button
             key={item.key}
@@ -268,11 +268,11 @@ function UnifiedCard({ item }: { item: UnifiedItem }) {
   return (
     <button
       onClick={item.onClick}
-      className="w-full text-left bg-white dark:bg-[#0D0F12] rounded-xl border border-gray-200 dark:border-[#2C2F35] p-4 hover:border-gray-300 hover:shadow-sm transition-all"
+      className="w-full text-left bg-white dark:bg-[#11141C] rounded-xl border border-gray-200 dark:border-[#2C2F35] p-4 hover:border-gray-300 hover:shadow-sm transition-all"
     >
       <div className="flex items-start gap-3">
         {/* 썸네일 */}
-        <div className="w-16 h-16 rounded-lg bg-gray-100 dark:bg-[#1A1C21] overflow-hidden shrink-0 flex items-center justify-center">
+        <div className="w-16 h-16 rounded-lg bg-gray-100 dark:bg-[#1D1F29] overflow-hidden shrink-0 flex items-center justify-center">
           {item.image ? (
             <img src={cfImage(item.image, { width: 200, quality: 82, format: 'auto' }) || item.image} alt="" className="w-full h-full object-cover" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, item.image)} />
           ) : (
@@ -294,7 +294,7 @@ function UnifiedCard({ item }: { item: UnifiedItem }) {
               <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${
                 item.subBadgeAccent === 'pink'
                   ? 'bg-pink-50 text-pink-600'
-                  : 'bg-gray-100 dark:bg-[#1A1C21] text-gray-600 dark:text-gray-300'
+                  : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300'
               }`}>
                 {item.subBadge}
               </span>
@@ -303,7 +303,7 @@ function UnifiedCard({ item }: { item: UnifiedItem }) {
 
           {/* 진행 바 (active + has target) */}
           {item.isActive && item.target && item.target > 0 && (
-            <div className="h-1.5 w-full bg-gray-100 dark:bg-[#1A1C21] rounded-full overflow-hidden mb-2">
+            <div className="h-1.5 w-full bg-gray-100 dark:bg-[#1D1F29] rounded-full overflow-hidden mb-2">
               <div className="h-full bg-pink-500 transition-all" style={{ width: `${progressPct}%` }} />
             </div>
           )}
@@ -389,16 +389,16 @@ function UnifiedStatusBadge({ item }: { item: UnifiedItem }) {
   }
   // expired/refunded/cancelled
   if (item.source === 'voucher' && (item.raw as VoucherEntry).status === 'refunded') {
-    return <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#1A1C21] text-gray-500 dark:text-gray-400">{t('myGroupBuys.statusRefunded', { defaultValue: '환불' })}</span>;
+    return <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400">{t('myGroupBuys.statusRefunded', { defaultValue: '환불' })}</span>;
   }
-  return <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#1A1C21] text-gray-400 dark:text-gray-500">{t('myGroupBuys.statusExpired')}</span>;
+  return <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#1D1F29] text-gray-400 dark:text-gray-500">{t('myGroupBuys.statusExpired')}</span>;
 }
 
 function EmptyState({ onBrowse }: { onBrowse: () => void }) {
   const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
-      <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-[#1A1C21] flex items-center justify-center mb-4">
+      <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-[#1D1F29] flex items-center justify-center mb-4">
         <Gift className="w-8 h-8 text-gray-400 dark:text-gray-500" />
       </div>
       <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">{t('myGroupBuys.emptyTitle')}</p>

@@ -4,7 +4,7 @@ import type { CatOpt } from './types'
 // ── 카테고리 칩 ── (실제 상품에 존재하는 카테고리만 — 데이터 기반)
 export function CatChips({ cat, setCat, cats }: { cat: string; setCat: (c: string) => void; cats: CatOpt[] }) {
   return (
-    <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div className="flex gap-2 overflow-x-auto scrollbar-hide">
       {cats.map((c) => {
         const on = cat === c.id
         return (

@@ -62,11 +62,14 @@ describe('색면 토큰이 정의돼 있다', () => {
 })
 
 describe('두 색면이 같은 토큰을 읽는다', () => {
-  it('히어로 색면 · 스크림 · 하단 페이드가 전부 토큰이다', () => {
+  it('히어로 색면 · 스크림이 토큰이고, 세로 페이드는 없다', () => {
     const s = code(read(HERO))
     expect(s, '히어로 배경이 토큰이 아니다').toMatch(/bg-\[var\(--home-field\)\]/)
     expect(s, '좌측 스크림이 리터럴 rgba 로 되돌아갔다').toMatch(/rgb\(var\(--home-field-rgb\)/)
-    expect(s, '하단 페이드가 토큰이 아니다').toMatch(/linear-gradient\(180deg, transparent, var\(--home-field\)\)/)
+    // 🎫 2026-09-02 대표 "위아래부분까지 그라데이션은 안해도 될 것 같은데" — 사진 세로 마스크(180deg)와
+    //    하단 h-12 페이드를 뺐다. 페이드는 좌우(90deg)만. 세로 페이드가 되살아나면 여기서 빨강.
+    expect(s, '세로(위아래) 페이드가 되살아났다').not.toMatch(/linear-gradient\(180deg/)
+    expect(s, '좌우 페이드까지 사라졌다(대표 요청 "양쪽 그라데이션")').toMatch(/linear-gradient\(90deg, transparent 0%/)
   })
 
   it('PC 홈 페이지 색면도 같은 토큰이다', () => {
@@ -91,5 +94,27 @@ describe('두 색면이 같은 토큰을 읽는다', () => {
       expect(src, `${f}: 색면에 ${hex} 리터럴이 남아 있다`).not.toMatch(hexRe)
       expect(src, `${f}: 스크림에 rgb(${rgb![1]},${rgb![2]},${rgb![3]}) 리터럴이 남아 있다`).not.toMatch(rgbRe)
     }
+  })
+})
+
+describe('폼 컨트롤 기본 글자색도 잉크를 따른다', () => {
+  it('index.css 의 input/textarea/select 폴백이 옛 네이비 gray-900 이 아니다', () => {
+    // 🩸 실제로 났던 일(2026-08-31 배포 후 라이브 실측): 잉크를 검정(#16181C)으로 옮겼는데
+    //   index.css 의 폼 컨트롤 **전역 폴백**만 옛 Tailwind gray-900(rgb 17 24 39 — 남색기가
+    //   있다)으로 남아 있었다. 마크업 클래스는 `text-gray-900` 이라 리매핑을 따르는 것처럼
+    //   보이는데, 전역 규칙이 그 위에 얹혀 **PC 상단 검색창 글자만 남색**이었다.
+    //   ⇒ 색 토큰을 옮길 때 클래스만 보면 놓친다. 전역 CSS 폴백도 같이 봐야 한다.
+    const css = read(CSS)
+    const ink = css.match(/--ink:\s*(#[0-9A-Fa-f]{6})/)?.[1]
+    expect(ink, '--ink 를 못 읽었다 — 셀렉터가 낡았다').toBeTruthy()
+
+    // 줄머리(라이트 전역) 규칙만 — 들여쓴 미디어쿼리판과 `.dark` 접두는 대상이 아니다.
+    const block = css.match(/^input:not\(\[type='checkbox'\]\)[\s\S]*?\}/m)?.[0]
+    expect(block, '폼 컨트롤 전역 폴백 블록을 못 찾았다 — 셀렉터가 낡았다').toBeTruthy()
+    // ⚠️ 주석을 빼고 본다. 안 그러면 **결함을 설명하려고 쓴 주석의 옛 hex** 가 위반으로 잡힌다
+    //    (작성 중 실제로 걸렸다 — 이 레포가 반복해 겪은 "주석이 판정을 흔든다" 클래스).
+    const decl = code(block!)
+    expect(decl, '폼 폴백이 옛 gray-900(남색기)으로 되돌아갔다').not.toMatch(/17\s+24\s+39|#111827/i)
+    expect(decl.toUpperCase(), `폼 폴백이 --ink(${ink}) 와 다르다`).toContain(ink!.toUpperCase())
   })
 })

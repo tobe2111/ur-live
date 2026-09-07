@@ -20,7 +20,7 @@ import { isVoucherCategory } from './constants/voucher-categories'
 //   이용권 = 식당·뷰티·숙박 매장권 (`meal_voucher` 등 카테고리) → **카드 결제**(group_buy_toss)
 //   카테고리 이름에 `_voucher` 가 붙는다고 딜 결제가 아니다 — 이 혼동이 실제 오판을 낳았다.
 export type ProductFlow =
-  | 'voucher_deal'         // 교환권(deal_only=1) — 딜 결제, 즉시 발급, /my-vouchers 이동
+  | 'voucher_deal'         // 교환권(deal_only=1) — 딜 결제, 즉시 발급, /my-gifticons 이동
   | 'group_buy_toss'       // 공동구매 (일반 상품) — Toss 결제, 배송, voucher 발급
   | 'standard_checkout'    // 일반 쇼핑 — Toss 결제, 배송, 장바구니 지원
 
@@ -56,6 +56,37 @@ export function getProductFlow(product: ProductFlowInput): ProductFlow {
 }
 
 /**
+ * 📦 배송이 없는 상품인가 — **배송비·배송지 판정의 단일 진실원천** (2026-09-01 신설).
+ *
+ * ■ 왜 만들었나
+ *   같은 판정이 CartPage 와 CheckoutPage 에 **따로** 적혀 있었고 둘이 갈라졌다.
+ *   CheckoutPage 는 2026-06-22 에 `이용권 카테고리도 비배송` 으로 넓혔는데 CartPage 는
+ *   `deal_only===1` 에 머물러, 같은 장바구니가 **장바구니에선 배송비 6,000원 · 결제 화면에선 0원**
+ *   이었다(2026-09-01 프리뷰 하네스로 실제 재현). 합계가 결제 직전에 줄어드는 화면은
+ *   깎아 준 것도 아니고 틀린 것도 아닌, 그냥 못 믿을 화면이다.
+ *
+ * ■ 두 가지 비배송
+ *   · 교환권(`deal_only=1`) — 휴대폰으로 온다(배송이 아니라 발송)
+ *   · 이용권(`meal_voucher` 등) — 아무것도 오지 않는다. 매장에서 쓴다
+ *   문구는 다르지만 **배송비가 0 이라는 결론은 같다.**
+ */
+export function isNoShippingProduct(p: ProductFlowInput): boolean {
+  return getNoShippingKind(p) !== null
+}
+
+/**
+ * 비배송이라면 **어떤 종류**인가 — 화면 문구가 이 값으로 갈린다.
+ *   'deal'    교환권: 휴대폰으로 온다 → "휴대폰 즉시 발송 (무료)"
+ *   'voucher' 이용권: 아무것도 오지 않는다 → "매장에서 사용 (배송 없음)"
+ * 문구를 고르려고 `deal_only === 1` 을 화면에서 다시 쓰기 시작하면 판정이 또 갈라진다.
+ */
+export function getNoShippingKind(p: ProductFlowInput): 'deal' | 'voucher' | null {
+  if (Number(p.deal_only) === 1) return 'deal'
+  if (isVoucherCategory(p.category ?? undefined)) return 'voucher'
+  return null
+}
+
+/**
  * 흐름별 path / API / payment method 매핑.
  * 모든 caller 가 이걸 참조 → 흐름 변경 시 1곳 수정.
  */
@@ -75,7 +106,8 @@ export const FLOW_CONFIG: Record<ProductFlow, {
     detailPath: id => `/vouchers/${id}`,
     apiPath: id => `/api/group-buy/join/${id}`,
     paymentMethod: 'deal',
-    successPath: '/my-vouchers',
+    // 🎟️ 2026-08-31 (대표 — 지갑 분리): 교환권은 교환권 보관함으로. 이용권 지갑(/my-vouchers)이 아니다.
+    successPath: '/my-gifticons',
     buttonLabel: '🎁 딜로 교환하기',
   },
   group_buy_toss: {

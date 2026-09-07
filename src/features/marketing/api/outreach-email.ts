@@ -71,7 +71,7 @@ function buildOutreachHtml(p: {
       ${p.productName ? `<p style="font-size:14px;color:#444;margin:0 0 4px">제안 이용권: <strong>${esc(p.productName)}</strong></p>` : ''}
       <p style="font-size:14px;color:#444;margin:0 0 16px">판매 커미션 <strong>${p.commissionPct}%</strong> · 상품 ${p.support === 'free' ? '무상 제공' : '유상'}</p>
       <div style="background:#fafafa;border-radius:10px;padding:16px;font-size:13.5px;color:#333;white-space:pre-wrap;margin:0 0 20px">${esc(p.message)}</div>
-      <a href="${p.acceptUrl}" style="display:block;text-align:center;background:#E0526B;color:#fff;text-decoration:none;border-radius:12px;padding:14px;font-weight:700;font-size:15px">제안 확인하고 수락하기</a>
+      <a href="${p.acceptUrl}" style="display:block;text-align:center;background:#1C69EF;color:#fff;text-decoration:none;border-radius:12px;padding:14px;font-weight:700;font-size:15px">제안 확인하고 수락하기</a>
       <p style="font-size:12px;color:#999;margin:16px 0 0">수락하면 카카오 로그인 후 전용 홍보 링크가 바로 발급됩니다. 이용권이 사용될 때마다 커미션이 적립돼요.</p>
     </div>
     <p style="font-size:11px;color:#aaa;margin:20px 4px 0;line-height:1.6">

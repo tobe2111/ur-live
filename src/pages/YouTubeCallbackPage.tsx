@@ -90,7 +90,7 @@ export default function YouTubeCallbackPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0D0F12] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#11141C] flex items-center justify-center p-4">
       <div className="apple-card p-8 sm:p-10 text-center max-w-sm w-full">
 
         {/* ── 로딩 ── */}

@@ -33,7 +33,7 @@ export default function CouponSection({ couponCode, setCouponCode, couponDiscoun
   }
 
   return (
-    <section className="bg-white dark:bg-[#0D0F12] px-5 py-4 border-t border-gray-100 dark:border-[#2C2F35]">
+    <section className="bg-white dark:bg-[#11141C] px-5 py-4 border-t border-gray-100 dark:border-[#2C2F35]">
       <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-2">{t('checkout.coupon.title', { defaultValue: '할인 쿠폰' })}</h2>
       {/* 🛡️ 2026-05-23 영구 fix: flex children min-width:0 (min-w-0) 누락 → input 이 content 크기 유지하며
             shrink-0 버튼을 viewport 밖으로 밀어내던 사고. flex container 에 w-full + min-w-0, input 에 min-w-0. */}

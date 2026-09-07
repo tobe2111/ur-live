@@ -16,7 +16,7 @@ import { useEffect, useState, useRef, useCallback, useMemo, Fragment } from 'rea
 import BrandLoader from '@/components/brand/BrandLoader'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Search, Gift, ArrowRight, ChevronDown, ShoppingBag, Flame, Clock, Tag, ArrowDownWideNarrow, ArrowUpWideNarrow, Soup, Shirt, Sparkle, Sofa, Smartphone, type LucideIcon } from 'lucide-react'
+import { ArrowRight, ChevronDown, ShoppingBag, Flame, Clock, Tag, ArrowDownWideNarrow, ArrowUpWideNarrow, Soup, Shirt, Sparkle, Sofa, Smartphone, type LucideIcon } from 'lucide-react'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 // 🎟️ 2026-07-10 (대표 결정): 일반상품(쇼핑) 노출은 SHOPPING_TAB_HIDDEN 게이트 — 교환권은 유지.
 import { SHOPPING_TAB_HIDDEN, TOPUP_DISABLED } from '@/shared/feature-flags'
@@ -26,6 +26,8 @@ import { formatNumber } from '@/utils/format'
 import { getUserIdSync } from '@/utils/auth'
 // 🖥️ 2026-07-18 (교환권 PC 2단 분리): 카드/행 + VoucherProduct 타입은 ./vouchers/shared 로 추출(파일크기 래칫).
 import { VoucherCard, VoucherRow, BrandChip, CategoryIcon, type VoucherProduct } from './vouchers/shared'
+import { GifticonBoxRailRow } from './vouchers/GifticonBoxEntry'
+import VouchersTopBar from './vouchers/VouchersTopBar'
 import { SortMenu } from '@/components/ui/sort-menu'
 import { SORT_OPTIONS, SHOP_CATEGORIES, type SortKey } from './vouchers/constants'
 import BrowseProductCard from './browse/BrowseProductCard'
@@ -143,9 +145,9 @@ function ShoppingGrid() {
       <div ref={gateRef} aria-hidden style={{ height: 1 }} />
       {/* 🛒 2026-06-23 (대표 '가장 이상적으로'): 쇼핑 카테고리 = sticky 바(top-[45px], 탭 바로 아래) —
           쇼핑 섹션에 있는 동안 상단에 따라붙어 어디서든 카테고리 전환 가능. 교환권 reveal 그룹은 이때 숨김(슬롯 공유). */}
-      <div className="sticky top-[45px] z-20 bg-white/95 dark:bg-[#0D0F12]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
+      <div className="sticky top-[45px] z-20 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-wide px-4 lg:px-8 py-2.5">
-          <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+          <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
             {visibleShopCats.map(c => {
               const active = shopCategory === c.key
               return (
@@ -156,7 +158,7 @@ function ShoppingGrid() {
                   className={`shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors ${
                     active
                       ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900 shadow-sm'
-                      : 'bg-gray-100 dark:bg-[#1A1C21] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2C2F35]'
+                      : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2C2F35]'
                   }`}
                 >
                   {c.Icon && <c.Icon className="w-3.5 h-3.5" aria-hidden="true" />}
@@ -240,6 +242,18 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   //   sections = 카테고리별 (편의점/카페/외식 등) + 각 카테고리 내 인기 브랜드 12개.
   //   첫 로드 시 cnt 가장 많은 카테고리 자동 선택. 카테고리 변경 시 브랜드 list 자동 갱신.
   const [sections, setSections] = useState<CategorySection[]>([])
+  /**
+   * 🗂️ 2026-09-01 (대표 "나안"): 브랜드 스트립을 **기본 접기**.
+   *   실측(미리보기 하네스, 430px): 첫 상품 위에 잔액 슬래브 250 + 고아 링크 40 + 카테고리 칩 60
+   *   + 브랜드 스트립 175 + 섹션 헤더 60 ≈ **700px** 이 쌓여 상품이 1.5개밖에 안 보였다.
+   *   그중 가장 두꺼운 것이 브랜드 스트립인데, 브랜드는 상품 이름에 이미 들어 있다
+   *   ("스타벅스 아메리카노" · "CU 모바일상품권") — 같은 정보로 두 번 거르게 하는 층이다.
+   *   ⚠️ 없애지는 않는다. 2026-05-19 대표 요청으로 들어간 "카테고리 + 브랜드 2단 구조"라
+   *   **'브랜드로 찾기' 를 누르면 그대로 나온다.** 딥링크로 브랜드가 이미 잡혀 있으면 펴서 시작한다
+   *   (접힌 채 선택 상태면 왜 걸러졌는지 알 수 없다).
+   */
+  // 🎫 2026-09-02 (대표 확정 — 교환권 B안 "칩 + 브랜드 펼침 · 로고가 보이게"): 기본 펼침. 09-01 '기본 접기'를 대체. 접기 토글은 남긴다.
+  const [brandsOpen, setBrandsOpen] = useState(true)
   // 📐 2026-07-29 (CLS 실측 0.188 수리): 카테고리/브랜드 블록이 **상품 목록보다 늦게** 도착해
   //   목록을 아래로 밀어냈다. 상품은 SSR 시드로 즉시 그려지는데(`__SSR_INITIAL_VOUCHERS__`)
   //   그 위 두 블록은 `/api/vouchers/categories` 응답을 기다리기 때문이다. 첫 방문(로컬 캐시 없음)
@@ -471,7 +485,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   const setBrand = (next: string) => {
     const params = new URLSearchParams(searchParams)
     if (next) params.set('brand', next); else params.delete('brand')
-    setSearchParams(params)
+    setSearchParams(params, { replace: true })  // 🔙 필터는 이동이 아니라 상태 — 히스토리를 안 쌓는다(back-navigation 테스트)
   }
 
   // 🛡️ 2026-05-19: 카테고리 변경 — 브랜드 자동 초기화 (다른 카테고리의 브랜드는 의미 없음).
@@ -479,7 +493,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
     const params = new URLSearchParams(searchParams)
     if (next) params.set('category', next); else params.delete('category')
     params.delete('brand')
-    setSearchParams(params)
+    setSearchParams(params, { replace: true })  // 🔙 필터는 상태 — 히스토리를 쌓지 않는다(위 주석)
   }
 
   // 🎨 2026-07-01 (대표 "2번 로딩 근본 해결" — urdeal 로더 유지): standalone(/vouchers) 은 로딩 중
@@ -493,7 +507,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   //   isPc 는 useMediaQuery 동기 초기화(첫 렌더부터 정확)라 모바일↔PC 브랜치 플래시 없음.
   if (isPc && !embedded) {
     return (
-      <div className="bg-white dark:bg-[#0D0F12] min-h-[100dvh]">
+      <div className="bg-warm dark:bg-[#11141C] min-h-[100dvh]">
         <SEO
           title={brand ? `${brand} 교환권 - 유어딜` : '교환권 - 유어딜'}
           description="스타벅스, GS25, 김밥천국 등 인기 브랜드 교환권을 딜로 구매하세요. 즉시 발송."
@@ -512,24 +526,25 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
               type="button"
               /* 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 충전 종료 — 카드 탭 = 딜 내역으로. */
               onClick={() => navigate(TOPUP_DISABLED ? '/my-deal-history' : '/points/charge')}
-              className="w-full text-left rounded-2xl p-4 active:scale-[0.99] transition-transform"
-              style={{ background: 'linear-gradient(135deg, #211d3a 0%, #15131f 45%, #050505 100%)' }}
+              className="w-full text-left rounded-2xl p-4 bg-white dark:bg-[#1D1F29] shadow-lift active:scale-[0.99] transition-transform"
             >
-              <p className="text-[11px] text-gray-400 mb-1.5 tracking-wide">내 딜 잔액</p>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-1.5 tracking-wide">내 딜 잔액</p>
               <div className="flex items-baseline gap-1">
-                <span className="text-[26px] font-extrabold text-white leading-none tracking-tight">{dealBalance == null ? '0' : formatNumber(dealBalance)}</span>
-                <span className="text-[15px] font-bold text-gray-500">딜</span>
+                <span className="text-[26px] font-extrabold text-gray-900 dark:text-white leading-none tracking-tight tabular-nums">{dealBalance == null ? '0' : formatNumber(dealBalance)}</span>
+                <span className="text-[15px] font-bold text-gray-400 dark:text-gray-500">딜</span>
               </div>
-              <p className="text-[10px] text-gray-500 mt-1.5">1딜 = 1원 · 현금처럼 사용</p>
-              <span className="mt-3 w-full inline-flex items-center justify-center gap-1 text-[12px] font-bold py-2 rounded-lg text-white bg-white/10">
+              <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1.5">1딜 = 1원 · 현금처럼 사용</p>
+              <span className="mt-3 w-full inline-flex items-center justify-center gap-1 text-[12px] font-bold py-2 rounded-lg text-white bg-brand">
                 {TOPUP_DISABLED ? '딜 내역 보기' : '충전하기'} <ArrowRight className="w-3.5 h-3.5" />
               </span>
             </button>
 
+            <GifticonBoxRailRow />
+
             {/* 카테고리 — 세로 리스트 */}
             {sections.length > 0 && (
               <div>
-                <h3 className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2 px-1">카테고리</h3>
+                <h3 className="text-[11px] font-bold text-gray-400 dark:text-gray-500 mb-2 px-1">카테고리</h3>
                 <div className="space-y-0.5">
                   {sections.map(s => {
                     const active = s.category === category
@@ -540,13 +555,13 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                         onClick={() => setCategory(s.category)}
                         className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] transition-colors ${
                           active
-                            ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 font-bold'
-                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.04]'
+                            ? 'bg-brand text-white font-bold'
+                            : 'text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-white/[0.04]'
                         }`}
                       >
                         <CategoryIcon category={s.category} />
                         <span className="flex-1 text-left truncate">{s.category}</span>
-                        <span className={`text-[11px] ${active ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'}`}>{s.count}</span>
+                        <span className={`text-[11px] tabular-nums ${active ? 'text-white/80' : 'text-gray-400 dark:text-gray-500'}`}>{s.count}</span>
                       </button>
                     )
                   })}
@@ -562,8 +577,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             {/* 인기 브랜드 — 상단 가로 스트립(대표 — 좌레일 하단은 불편 → 상품 바로 위로). */}
             {currentBrands.length > 0 && (
               <div className="mb-5 pb-4 border-b border-gray-100 dark:border-[#2C2F35]">
-                <h3 className="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">인기 브랜드</h3>
-                <div className="flex gap-3 overflow-x-auto no-scrollbar py-1">
+                <h3 className="text-[11px] font-bold text-gray-400 dark:text-gray-500 mb-2">인기 브랜드</h3>
+                <div className="flex gap-3 overflow-x-auto scrollbar-hide py-1">
                   {orderedBrands.map(b => (
                     <BrandChip
                       key={b.brand_name}
@@ -577,7 +592,6 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             )}
             <div className="flex items-center justify-between gap-2 mb-4">
               <h2 className="text-[19px] font-extrabold text-gray-900 dark:text-white flex items-center gap-2 min-w-0">
-                <Gift className="w-5 h-5 text-amber-500 shrink-0" />
                 <span className="truncate">{brand ? brand : category ? category : '전체'} 교환권</span>
                 {/* 🐛 2026-08-17 (UX 전수검사 P1): 로드분 개수를 총계 자리에 그대로 쓰면 "커피/음료 775개"
                     카테고리가 "20"으로 읽힌다 — 더 있으면 `20+` 로 표기(정확한 총계 API 없음). */}
@@ -585,7 +599,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                 {brand && (
                   <button
                     onClick={() => setBrand('')}
-                    className="shrink-0 ml-1 inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 text-[11px] font-medium"
+                    className="shrink-0 ml-1 inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-white/[0.08] text-gray-600 dark:text-gray-300 text-[11px] font-medium"
                   >
                     해제 ✕
                   </button>
@@ -623,7 +637,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                       // 🔘 2026-08-30 버튼 체계 적용 (index.css `.ur-btn`).
                       //   이전: h-12 rounded-2xl text-[13px] font-bold — 이 화면만의 값이었다.
                       //   높이·모서리·굵기·글자크기를 체계가 정하고, 여기선 **채움색만** 준다.
-                      className="ur-btn ur-btn-lg ur-btn-block bg-gray-100 dark:bg-[#1A1C21] text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-[#2C2F35]"
+                      className="ur-btn ur-btn-lg ur-btn-block bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-[#2C2F35]"
                     >
                       {t('home.moreVouchers', { defaultValue: '교환권 더보기' })}
                       <ChevronDown className="w-4 h-4" />
@@ -643,7 +657,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   //   100vh 는 주소창 포함 '큰 뷰포트'라 카카오톡 인앱/일부 안드로이드 웹뷰에서 fixed 하단 네비를
   //   화면 밖으로 밀어냄(CLAUDE.md 룰 #8). 정상 동작하는 홈(RestaurantMapPage)도 min-h-[100dvh] 사용.
   return (
-    <div className={embedded ? '' : 'bg-white dark:bg-[#0D0F12] pb-safe-nav md:pb-20 min-h-[100dvh]'}>
+    <div className={embedded ? '' : 'bg-warm dark:bg-[#11141C] pb-safe-nav md:pb-20 min-h-[100dvh]'}>
       {!embedded && (
         <SEO
           title={brand ? `${brand} 교환권 - 유어딜` : '교환권 - 유어딜'}
@@ -657,38 +671,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
       <h1 className="sr-only">{brand ? `${brand} 교환권` : '교환권'} — 인기 브랜드 기프티콘을 딜로 즉시 구매</h1>
 
 
-      {/* Header — 🛡️ 2026-05-25: 뒤로가기 버튼 제거 (사용자 요청).
-          BottomNav 의 메인 탭이라 의미 없는 navigation. 검색 + 타이틀만 유지.
-          🛡️ 2026-06-01: embedded(홈) 모드면 홈의 sticky 헤더가 담당 → 자체 헤더 skip. */}
-      {/* 🎫 2026-06-23 (대표 결정): 중앙 정렬 스크롤스파이 탭 — 클릭 시 해당 섹션으로 점프, 스크롤 위치 따라 활성.
-          콘텐츠를 교체하지 않고 한 페이지 안에서 교환권↔쇼핑 사이를 이동. 검색 아이콘은 우측에 absolute 고정. */}
-      {!embedded && (
-        <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#0D0F12]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
-          <div className="relative flex items-center justify-center px-2 py-1.5">
-            <div className="flex items-center gap-1">
-              {/* 🎟️ 2026-07-10 (대표 결정): SHOPPING_TAB_HIDDEN 이면 쇼핑 탭 숨김 — 교환권 단일 탭. */}
-              {([['vouchers', '교환권'], ['shopping', '쇼핑']] as const).filter(([key]) => key !== 'shopping' || !SHOPPING_TAB_HIDDEN).map(([key, label]) => {
-                const active = activeTab === key
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => (key === 'shopping' ? goToShopping() : goToVouchers())}
-                    className={`relative px-4 py-2 text-[15px] font-extrabold transition-colors ${active ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}
-                  >
-                    {label}
-                    {active && <span className="absolute left-4 right-4 bottom-0 h-[2.5px] rounded-full bg-gray-900 dark:bg-white" />}
-                  </button>
-                )
-              })}
-            </div>
-            {/* 👆 2026-07-29 (UX 실측): 탭 타깃이 28×28 이었다 — iOS HIG 44pt 미만. 아이콘 크기는 그대로 두고 패딩만. */}
-            <button onClick={() => navigate('/search?scope=exchange')} aria-label="검색" className="absolute right-1 top-1/2 -translate-y-1/2 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center">
-              <Search className="w-5 h-5 text-gray-900 dark:text-white" />
-            </button>
-          </div>
-        </div>
-      )}
+      {/* 상단 바 — 제목(단일 표면) 또는 교환권↔쇼핑 스크롤스파이 탭 + [보관함][검색]. 홈(embedded)은 홈 헤더가 담당. */}
+      {!embedded && <VouchersTopBar activeTab={activeTab} onVouchers={goToVouchers} onShopping={goToShopping} />}
 
       {/* 🎫 2026-06-23: 교환권 본문(잔액/카테고리/브랜드/리스트) — 항상 표시. 아래 쇼핑 섹션과 한 스크롤로 이어짐. */}
       {/* 🛡️ 2026-05-28 (사용자 요청): 잔액 카드 + 카테고리 = scroll-up reveal 그룹 (headroom).
@@ -697,7 +681,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             🎫 2026-06-23 (대표 '가장 이상적으로'): 쇼핑 섹션에 있을 땐(activeTab==='shopping') 강제 숨김 —
             쇼핑의 sticky 카테고리 바(top-[45px] 동일 슬롯)와 겹치지 않게 '한 번에 한 카테고리 바'만 상단에. */}
       <div
-        className="sticky top-[45px] z-20 bg-white dark:bg-[#0D0F12]"
+        className="sticky top-[45px] z-20 bg-warm dark:bg-[#11141C]"
         style={{
           transform: (revealTop && activeTab !== 'shopping') ? 'translateY(0)' : 'translateY(-110%)',
           transition: 'transform 0.25s ease',
@@ -707,43 +691,47 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
       {/* 🛡️ 2026-05-21 v3: 잔액 카드 — 토스 inspired (premium dark card).
             기존 v2 white 카드 "촌스러워" 피드백 → 검정 카드 + grand 타이포 + 우상단 충전 ›. */}
       <div className="ur-content-wide px-4 lg:px-8 pt-3">
-        <button
-          type="button"
-          /* 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 충전 종료 — 카드 탭 = 딜 내역으로. */
-          onClick={() => navigate(TOPUP_DISABLED ? '/my-deal-history' : '/points/charge')}
-          /* 🏭 2026-06-05 (사용자 요청): 토스식 프리미엄 다크 그라데이션(은은한 인디고 틴트). */
-          className="w-full text-left rounded-2xl p-5 active:scale-[0.99] transition-transform"
-          style={{ background: 'linear-gradient(135deg, #211d3a 0%, #15131f 45%, #050505 100%)' }}
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              <p className="text-[12px] text-gray-400 mb-2 tracking-wide">내 딜 잔액</p>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-[36px] font-extrabold text-white leading-none tracking-tight">
-                  {dealBalance == null ? '0' : formatNumber(dealBalance)}
+        {dealBalance ? (
+          <>
+            <button
+              type="button"
+              onClick={() => navigate(TOPUP_DISABLED ? '/my-deal-history' : '/points/charge')}
+              className="w-full text-left rounded-2xl p-5 bg-white dark:bg-[#1D1F29] shadow-lift active:scale-[0.99] transition-transform"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-2 tracking-wide">내 딜 잔액</p>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-[36px] font-extrabold text-gray-900 dark:text-white leading-none tracking-tight tabular-nums">{formatNumber(dealBalance)}</span>
+                    <span className="text-[18px] font-bold text-gray-400 dark:text-gray-500">딜</span>
+                  </div>
+                  <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1.5">1딜 = 1원 · 현금처럼 사용</p>
+                </div>
+                <span className="shrink-0 inline-flex items-center gap-1 text-[12px] font-bold mt-1 px-2.5 py-1 rounded-full text-white bg-brand">
+                  {TOPUP_DISABLED ? '내역' : '충전'} <ArrowRight className="w-3.5 h-3.5" />
                 </span>
-                <span className="text-[18px] font-bold text-gray-500">딜</span>
               </div>
-              {/* 🎫 2026-06-26 (대표 결정 B): '딜=원' 항상 명확화 — 신규/외부 유입 진입장벽 해소(기존엔 잔액 부족 시만 노출). */}
-              <p className="text-[11px] text-gray-500 mt-1.5">1딜 = 1원 · 현금처럼 사용</p>
-            </div>
-            <span className="shrink-0 inline-flex items-center gap-1 text-[12px] font-bold mt-1 px-2.5 py-1 rounded-full text-white" style={{ background: 'linear-gradient(135deg, #6b7280, #6b7280)' }}>
-              {TOPUP_DISABLED ? '내역' : '충전'} <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+            {dealBalance < 10000 && (
+              <div className="mt-1.5 px-1">
+                <button type="button" onClick={() => navigate('/map')} className="text-[11.5px] text-gray-500 dark:text-gray-400 hover:underline">딜 모으는 방법 보기</button>
+              </div>
+            )}
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => navigate('/map')}
+            className="w-full h-11 px-3.5 flex items-center justify-between gap-2 rounded-xl bg-white dark:bg-[#1D1F29] shadow-lift active:scale-[0.99] transition-transform"
+          >
+            <span className="text-[12.5px] text-gray-600 dark:text-gray-300 truncate">
+              <b className="text-gray-900 dark:text-white">딜 0</b> · 1딜 = 1원, 현금처럼 써요
             </span>
-          </div>
-          {dealBalance != null && dealBalance < 10000 && (
-            <p className="text-[11px] text-amber-400 mt-3">
-              {TOPUP_DISABLED ? '딜은 리뷰 인증 같은 활동으로 모을 수 있어요' : '잔액이 부족해요 — 지금 충전하기'}
-            </p>
-          )}
-        </button>
-        {/* 보조 액션 — 카드 바깥 작은 텍스트 (당근/토스 패턴) */}
-        <div className="mt-2 flex items-center gap-3 text-[11px] px-1">
-          <button type="button" onClick={() => navigate('/map')} className="text-gray-500 dark:text-gray-400 hover:underline">
-            공구로 적립
+            <span className="shrink-0 inline-flex items-center gap-0.5 text-[11.5px] font-bold text-brand-text">
+              모으는 방법 <ArrowRight className="w-3 h-3" />
+            </span>
           </button>
-
-        </div>
+        )}
       </div>
 
       {/* 🛡️ 2026-05-19: 카테고리 바 — 사용자 요청 (전체 탭 X, KT Alpha 분류 그대로).
@@ -754,9 +742,9 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
         <div className="h-[50px]" aria-hidden="true" />
       )}
       {sections.length > 0 && (
-        <div className="bg-white/95 dark:bg-[#0D0F12]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
+        <div className="bg-warm dark:bg-[#11141C]">
           <div className="ur-content-wide px-4 lg:px-8 py-2.5">
-            <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide">
               {sections.map(s => {
                 const active = s.category === category
                 return (
@@ -764,15 +752,15 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                     key={s.category}
                     type="button"
                     onClick={() => setCategory(s.category)}
-                    className={`shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors ${
+                    className={`shrink-0 inline-flex items-center gap-1.5 h-9 pl-3 pr-3.5 rounded-full text-[13px] font-bold transition-colors ${
                       active
-                        ? 'bg-amber-500 text-white shadow-sm'
-                        : 'bg-gray-100 dark:bg-[#1A1C21] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2C2F35]'
+                        ? 'bg-brand text-white'
+                        : 'bg-white dark:bg-[#1D1F29] text-gray-800 dark:text-gray-100 shadow-lift'
                     }`}
                   >
-                    <CategoryIcon category={s.category} />
+                    <CategoryIcon category={s.category} className="w-[15px] h-[15px]" />
                     {s.category}
-                    <span className={`text-[10px] ${active ? 'text-white/80' : 'text-gray-400 dark:text-gray-500'}`}>({s.count})</span>
+                    <span className={`text-[11px] tabular-nums ${active ? 'text-white/80' : 'text-gray-400'}`}>{s.count}</span>
                   </button>
                 )
               })}
@@ -800,15 +788,21 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
         /* 🎫 2026-06-26 (대표 결정 A): 상단 레이어 정리 — 상품을 위로. py-4→pt-1.5/pb-3, 헤더/로고 컴팩트. */
         <div className="ur-content-wide px-4 lg:px-8 pt-1.5 pb-3">
           <div className="flex items-center justify-between mb-1.5">
-            <h2 className="text-[12px] font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setBrandsOpen(v => !v)}
+              className="text-[12px] font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1.5"
+            >
               <CategoryIcon category={category} />
-              {category} 인기 브랜드
-            </h2>
+              브랜드로 찾기
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${brandsOpen ? 'rotate-180' : ''}`} />
+            </button>
             {/* 🧭 정렬: 홈(embedded)은 여기 / /vouchers 는 아래 '상품' 섹션 헤더로 이동(2026-06-20) */}
             {embedded && <SortMenu value={sort} options={SORT_OPTIONS} onChange={(v) => setSort(v)} />}
           </div>
           {/* 🧭 2026-06-20 (사용자: 상품이 너무 아래로 밀림): /vouchers 도 홈처럼 1행 가로 스크롤로 압축 —
               12개 로고 그리드(3~4행)가 상품을 fold 아래로 밀던 주범. 클릭/ring 강조 동작 불변. */}
+          {brandsOpen && (
           <div className="flex gap-2.5 overflow-x-auto scrollbar-hide py-1 -mx-1 px-1">
             {orderedBrands.map(b => (
               <BrandChip
@@ -820,6 +814,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
               />
             ))}
           </div>
+          )}
         </div>
       )}
 
@@ -829,7 +824,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           <span className="text-[12px] text-gray-500 dark:text-gray-400">필터:</span>
           <button
             onClick={() => setBrand('')}
-            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 text-[12px] font-medium"
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-100 dark:bg-white/[0.08] text-gray-600 dark:text-gray-300 text-[12px] font-medium"
           >
             {brand} ✕
           </button>
@@ -840,16 +835,18 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           구분선(border-t) + '상품' 섹션 헤더(카테고리/브랜드 + 개수) + 정렬을 상품 바로 위로. /vouchers 전용. */}
       {!embedded && (
         <div className="ur-content-wide px-4 lg:px-8 pt-3 pb-2 border-t border-gray-100 dark:border-[#2C2F35] flex items-center justify-between gap-2">
+          {/* 🧹 2026-08-31: ① 선물 아이콘 제거 — 바로 아래 하단 탭의 '교환권' 아이콘과 **같은 그림**이라
+              같은 화면에서 두 번 같은 말을 했고, 앰버 한 점이 이 화면의 유일한 색이라 시선만 끌었다.
+              ② 0 은 세지 않는다 — 곧바로 아래 빈 상태가 같은 사실을 더 잘 말한다. */}
           <h2 className="text-[16px] font-extrabold text-gray-900 dark:text-white flex items-center gap-1.5 min-w-0">
-            <Gift className="w-[18px] h-[18px] text-amber-500 shrink-0" />
             <span className="truncate">{brand ? brand : category ? category : '전체'} 교환권</span>
-            {!loading && (
+            {!loading && products.length > 0 && (
               <span className="text-[13px] font-semibold text-gray-400 dark:text-gray-500 shrink-0">{hasMore ? `${products.length}+` : products.length}</span>
             )}
             {brand && (
               <button
                 onClick={() => setBrand('')}
-                className="shrink-0 ml-1 inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 text-[11px] font-medium"
+                className="shrink-0 ml-1 inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-white/[0.08] text-gray-600 dark:text-gray-300 text-[11px] font-medium"
               >
                 해제 ✕
               </button>
@@ -866,11 +863,11 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             // 🏠 홈/PC — 2/3/4/5열 그리드 카드 스켈레톤 (main 의 PC 확장 lg:4 xl:5 반영).
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-2.5">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="animate-pulse rounded-2xl overflow-hidden border border-gray-100 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21]">
-                  <div className="aspect-square bg-gray-100 dark:bg-[#1A1C21]" />
+                <div key={i} className="animate-pulse rounded-2xl overflow-hidden border border-gray-100 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29]">
+                  <div className="aspect-square bg-gray-100 dark:bg-[#1D1F29]" />
                   <div className="px-2.5 pt-2 pb-2.5">
-                    <div className="h-3 bg-gray-100 dark:bg-[#1A1C21] rounded w-3/4" />
-                    <div className="h-3 mt-2 bg-gray-100 dark:bg-[#1A1C21] rounded w-1/2" />
+                    <div className="h-3 bg-gray-100 dark:bg-[#1D1F29] rounded w-3/4" />
+                    <div className="h-3 mt-2 bg-gray-100 dark:bg-[#1D1F29] rounded w-1/2" />
                   </div>
                 </div>
               ))}
@@ -880,19 +877,33 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             <div className="grid grid-cols-1">
               {Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} className="animate-pulse flex items-center gap-3.5 py-3.5 border-b border-gray-100 dark:border-[#2C2F35]">
-                  <div className="w-[88px] h-[88px] sm:w-24 sm:h-24 shrink-0 rounded-2xl bg-gray-100 dark:bg-[#1A1C21]" />
+                  <div className="w-[88px] h-[88px] sm:w-24 sm:h-24 shrink-0 rounded-2xl bg-gray-100 dark:bg-[#1D1F29]" />
                   <div className="flex-1">
-                    <div className="h-3 bg-gray-100 dark:bg-[#1A1C21] rounded w-1/3" />
-                    <div className="h-4 mt-2 bg-gray-100 dark:bg-[#1A1C21] rounded w-3/4" />
-                    <div className="h-4 mt-2 bg-gray-100 dark:bg-[#1A1C21] rounded w-1/4" />
+                    <div className="h-3 bg-gray-100 dark:bg-[#1D1F29] rounded w-1/3" />
+                    <div className="h-4 mt-2 bg-gray-100 dark:bg-[#1D1F29] rounded w-3/4" />
+                    <div className="h-4 mt-2 bg-gray-100 dark:bg-[#1D1F29] rounded w-1/4" />
                   </div>
                 </div>
               ))}
             </div>
           )
         ) : products.length === 0 ? (
-          <div className="text-center py-16 text-gray-400 dark:text-gray-500 text-sm">
-            {brand ? `${brand} 교환권이 없습니다` : '교환권이 없습니다'}
+          <div className="text-center py-16">
+            <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">
+              {brand ? `${brand} 교환권이 없어요` : '조건에 맞는 교환권이 없어요'}
+            </p>
+            <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-5">
+              {brand ? '다른 브랜드도 둘러보세요' : '카테고리를 바꾸면 더 많이 볼 수 있어요'}
+            </p>
+            {/* 🚪 2026-08-31: 여기도 막다른 길이었다 — 회색 문구 한 줄이 전부였고,
+                브랜드/카테고리 필터로 0건이 된 사용자는 되돌아갈 버튼이 없었다. */}
+            <button
+              type="button"
+              onClick={() => { setBrand(''); setCategory('') }}
+              className="ur-btn ur-btn-md bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-4"
+            >
+              전체 교환권 보기
+            </button>
           </div>
         ) : (
           <>
@@ -908,7 +919,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             ) : (
               // 🎨 2026-06-23 /vouchers — 1줄 리스트, embedVisible(기본 20)개까지만 노출 후 '더보기'(대표 결정).
               //   내용 동일, 배치만 행. 더보기 아래로 쇼핑 섹션이 이어짐.
-              <div className="grid grid-cols-1">
+              <div className="grid grid-cols-1 gap-2">
                 {displayProducts.slice(0, embedVisible).map((p, idx) => (
                   <Fragment key={p.id}>
                     <VoucherRow p={p} aboveFold={idx < 4} />
@@ -929,7 +940,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                       const np = page + 1; setPage(np); loadProducts(np, false)
                     }
                   }}
-                  className="w-full flex items-center justify-center gap-1.5 h-12 rounded-2xl bg-gray-100 dark:bg-[#1A1C21] text-[13px] font-bold text-gray-700 dark:text-gray-200 active:scale-[0.99] transition-transform"
+                  className="w-full flex items-center justify-center gap-1.5 h-12 rounded-2xl bg-gray-100 dark:bg-[#1D1F29] text-[13px] font-bold text-gray-700 dark:text-gray-200 active:scale-[0.99] transition-transform"
                 >
                   {t('home.moreVouchers', { defaultValue: '교환권 더보기' })}
                   {embedTotalSteps && embedTotalSteps > 1 && (
@@ -955,7 +966,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           🎟️ 2026-07-10 (대표 결정 — 일반상품 숨김·교환권 유지): SHOPPING_TAB_HIDDEN 게이트 — 숨김 시
           순수 교환권 페이지(인플 딜포인트→교환권 구매 경로 보존). 플래그 false 로 즉시 복원(가역). */}
       {!embedded && !SHOPPING_TAB_HIDDEN && (
-        <section ref={shoppingRef} className="scroll-mt-14 mt-2 border-t-8 border-gray-50 dark:border-[#1A1C21]">
+        <section ref={shoppingRef} className="scroll-mt-14 mt-2 border-t-8 border-gray-50 dark:border-[#1D1F29]">
           <div className="ur-content-wide px-4 lg:px-8 pt-5 pb-1 flex items-center gap-1.5">
             <ShoppingBag className="w-[18px] h-[18px] text-gray-900 dark:text-white" />
             <h2 className="text-[16px] font-extrabold text-gray-900 dark:text-white">쇼핑</h2>

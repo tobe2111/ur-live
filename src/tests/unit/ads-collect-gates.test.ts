@@ -76,4 +76,25 @@ describe('배선 — 게이트/계측이 실제로 실행 경로에 붙어 있�
     const src = readFileSync('src/features/marketing/api/admin-ads.routes.ts', 'utf8')
     expect(code(src)).toMatch(/app\.route\('\/',\s*adminAdsCollectGatesRoutes\)/)
   })
+
+  /**
+   * 🔢 **회차 수 기본값** — 폭(`COLLECT_KEYWORDS_PER_ROUND`)과 곱해져 하루 발굴량을 정하는 나머지 절반.
+   *
+   * 2026-09-02 대표 승인("응 다 해줘")으로 **4 → 12**. 상한 12 는 종전 그대로라 새 천장을 만들지 않았고,
+   * *설계된 범위 안에서 기본값만* 옮긴 것이다. 근거(예산 3축 실측): 쓰기 55.7만/일 → 3배여도 78만
+   * (한도 150만) · 읽기 6,800만 → 7,000만(2억) · 네이버 검색 API 0.7% → 2% · 차단 blocked 0.
+   *
+   * ⚠️ **왜 못을 박나**: 이 값은 env 로도 바뀌므로 코드 기본값이 조용히 되돌아가도 라이브는 한동안
+   *   멀쩡해 보인다(env 가 덮으니까). 그러다 env 를 지우는 순간 발굴량이 3분의 1로 떨어지는데,
+   *   에러가 없어 아무도 모른다 — 이 레포가 반복해 만난 "실패가 아니라 조용한 부재"다.
+   * ⚠️ 이 테스트가 못 보는 것: 넓힌 뒤 네이버가 차단하는지(`ads_naver_crawl_block.blocked`).
+   *   코드 밖 사실이라 배포 후 관측으로만 판정한다 — 차단이 뜨면 기본값을 4 로 되돌린다.
+   */
+  it('🔢 회차 기본값 = 승인값 12, 상한은 12 그대로(새 천장 금지)', () => {
+    const c = code(readFileSync('src/worker-ads/chain.routes.ts', 'utf8'))
+    const m = /Math\.min\((\d+),\s*Math\.max\(1,\s*parseInt\([^)]*ADS_COLLECT_ROUNDS[\s\S]{0,120}?\|\|\s*(\d+)\)\)/.exec(c)
+    expect(m, '회차 수 계산식을 못 찾았다 — 옮겼으면 이 가드도 따라와야 한다').toBeTruthy()
+    expect(Number(m![2]), 'env 미설정 시 기본 회차').toBe(12)
+    expect(Number(m![1]), '상한을 올리는 것은 별개 판단 — 조용히 넘기지 않는다').toBe(12)
+  })
 })

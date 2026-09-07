@@ -19,6 +19,9 @@ interface PinButtonProps {
   /** 카드 컨텍스트에 따른 위치 조정 */
   variant?: 'card-overlay' | 'detail-floating' | 'inline'
   className?: string
+  /** 아이콘 override — 상세 상단바처럼 **선 아이콘으로 통일해야 하는 자리**에서 쓴다.
+   *  기본은 이모지(➕/📌)인데, 선 아이콘들 사이에 섞이면 그 버튼만 혼자 튄다(대표 지적 2026-08-31). */
+  icon?: (pinned: boolean) => React.ReactNode
 }
 
 /**
@@ -41,7 +44,7 @@ function useIsPinned(productId: number): { pinned: boolean; setPinned: (v: boole
   return { pinned, setPinned }
 }
 
-export default function PinButton({ productId, price, variant = 'card-overlay', className = '' }: PinButtonProps) {
+export default function PinButton({ productId, price, variant = 'card-overlay', className = '', icon: iconOverride }: PinButtonProps) {
   const { isPinning, togglePin } = usePinAction()
   const { pinned, setPinned } = useIsPinned(productId)
 
@@ -56,10 +59,10 @@ export default function PinButton({ productId, price, variant = 'card-overlay', 
     variant === 'card-overlay'
       ? 'absolute top-2 right-2 z-10 w-9 h-9 rounded-full flex items-center justify-center bg-black/60 hover:bg-pink-500 backdrop-blur transition-all'
       : variant === 'detail-floating'
-        ? 'w-11 h-11 rounded-full flex items-center justify-center bg-white dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] hover:border-pink-500 transition-all'
+        ? 'flex items-center justify-center transition-all'  // chrome 은 호출부(상세 상단바)가 className 으로 준다 — 4개 버튼을 한 벌로 맞추기 위해
         : 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-pink-500 hover:bg-pink-600 text-white text-sm font-bold transition-colors'
 
-  const icon = pinned ? '📌' : '➕'
+  const icon = iconOverride ? iconOverride(pinned) : (pinned ? '📌' : '➕')
   const label = pinned ? '핀됨' : '핀'
 
   return (

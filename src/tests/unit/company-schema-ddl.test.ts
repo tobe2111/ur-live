@@ -24,7 +24,11 @@ describe('COMPANY_DDL', () => {
     //   (15건 뽑으려고 402,363행). 근거·설계는 `company-ddl-indexes.ts` ④.
     // 2026-08-31: 일자별 유입 인덱스(`collected_at`) 추가로 26 → 27.
     //   그 쿼리가 전수 스캔 + 정렬이었다(실측 461,191행 — 테이블보다 크다). 근거: company-ddl-indexes ⑤.
-    expect(COMPANY_DDL).toHaveLength(27)
+    // 2026-08-31(후속): 원부 전화 매칭 식 인덱스(`registry_phone`) 추가로 27 → 28.
+    //   업체 DB 최대 소비자였다 — 하루 2,270만 행(전체 읽기의 22%). 근거: company-ddl-indexes ⑥.
+    // 2026-09-01: 자가-치유 두 건의 부분 인덱스(`masked_email`·`placeholder_address`) 추가로 28 → 30.
+    //   고칠 게 없어도 매 회차 전수 스캔이었다(합계 1,898만 행/일). 근거: company-ddl-indexes ⑦⑧.
+    expect(COMPANY_DDL).toHaveLength(30)
   })
 
   it('두 테이블을 만든다 — 리드 본체 + 반송 억제', () => {

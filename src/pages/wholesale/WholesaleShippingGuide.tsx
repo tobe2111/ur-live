@@ -20,7 +20,7 @@ export default function WholesaleShippingGuide() {
       <h3 className="text-[17px] font-extrabold mb-5" style={{ color: WT.ink }}>배송 안내</h3>
 
       {/* 4단계 플로우 */}
-      <div className="flex items-center justify-between gap-1 mb-6 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex items-center justify-between gap-1 mb-6 overflow-x-auto scrollbar-hide">
         {STEPS.map((s, i) => (
           <div key={s.label} className="flex items-center gap-1 shrink-0">
             <div className="flex flex-col items-center gap-2 px-1.5">

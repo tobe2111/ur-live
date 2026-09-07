@@ -33,6 +33,9 @@ export interface CartItem {
   bundling_key?: string | null
   // 🛡️ 2026-05-19: KT Alpha 교환권 (deal_only=1) 은 '딜' 단위로 표시 + 토스 결제 차단.
   deal_only?: number
+  // 🛡️ 2026-09-01: 비배송 판정용 — 이용권(매장에서 쓰는 것)은 배송이 없다.
+  //   CheckoutPage 는 2026-06-22 부터 이 값을 보는데 서버가 안 보내고 있었다(cart.routes SELECT 누락).
+  category?: string | null
   // 🛡️ 2026-05-19 (사용자 신고): 상품 판매 종료 (is_active=0) 시에도 카트에 표시.
   //   사용자 데이터 보존 (가격 snapshot + 분쟁 추적). 단, 결제는 불가.
   product_is_active?: number

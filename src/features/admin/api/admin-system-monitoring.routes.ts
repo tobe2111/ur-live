@@ -308,12 +308,16 @@ const OPS_GATES: OpsGate[] = [
   //   ⇒ 공구 특가를 결제에 배선해도(#844) **둘 다 켜지기 전에는 어디에도 적용되지 않는다.**
   //   여기 등재는 서버 겹만 값으로 보여준다 — 클라 겹은 배포가 필요하므로 라벨에 함께 적는다.
   { key: 'gb_engine_enabled', kind: 'setting', label: '공구 엔진 (⚠️ 2겹 — 클라 GB_ENGINE_ENABLED 도 함께 켜야 적용)', default_value: 'false', staging_ref: null, turn_on_when: 'P9 실결제 통과 시(⑤ 1순위). ⚠️ 클라 GB_ENGINE_ENABLED 도 함께 켜야 적용. ⚠️ 공구가 청구는 이 키가 아니라 gb_pricing_enabled 가 지배한다(2026-08-11 정정)' },
+  { key: 'voucher_deal_payment_enabled', kind: 'setting', label: '이용권 딜 결제 (⚠️ 2겹 — 클라 VOUCHER_DEAL_PAYMENT_ENABLED 도 함께)', default_value: 'false', staging_ref: 'S9', turn_on_when: '🔴 선행 필수: influencer_deal_bonus_pct=0. 보너스 20% 가 이용권 마진(5~10%)보다 커서 켜면 팔릴수록 건당 8~14원 적자(2026-08-31 실측). 순서: ① 교환권 마진 0+재계산 ② 딜 보너스 0 + 현금 정산 수수료 ③ 이 키 + 클라 플래그' },
   // 🔌 2026-08-11 — **끄는 스위치**(기본 ON). 다른 게이트와 방향이 반대라 라벨에 명시한다:
   //   미설정/조회실패 = 공구가 적용(현행). `'false'` 를 저장한 순간에만 상시가로 되돌아간다.
   { key: 'gb_pricing_enabled', kind: 'setting', label: '공구가 청구 (🔴 킬스위치 — 기본 ON, false 로 저장해야 꺼짐)', default_value: 'true', staging_ref: null, turn_on_when: '항상 ON 이 정상. 잘못 설정된 공구가로 과소청구가 날 때 `false` 로 저장해 즉시 상시가로 되돌린다' },
   // 8월 promo flip 스코프 스위치 — 값이 비어 있지 않으면 그 매장만 flip 경로.
   { key: 'flip_pilot_seller_ids', kind: 'setting', label: '8월 flip 파일럿 매장 스코프', default_value: '', staging_ref: null, turn_on_when: '8월 promo flip 파일럿 매장이 정해지면 그 seller_id 를 넣는다' },
   { key: 'seller_promo_field_enabled', kind: 'setting', label: '셀러 promo% 입력 UI', default_value: 'false', staging_ref: null, turn_on_when: 'flip 파일럿 매장이 스스로 promo% 를 입력할 단계가 되면' },
+  // 🪙 2026-09-01 — 이용권을 "딜 일부 + 카드 나머지" 로 살 수 있게 하는 스위치(대표 "포인트 차감처럼").
+  //   OFF 면 딜 사용액이 항상 0 이고 총액과 다른 청구액은 종전처럼 AMOUNT_MISMATCH 로 막힌다.
+  { key: 'voucher_partial_deal_enabled', kind: 'setting', label: '이용권 부분결제(딜+카드)', default_value: 'false', staging_ref: 'S12', turn_on_when: '🔴 **먼저 influencer_deal_bonus_pct = 0** — 딜 보너스 20%가 살아 있으면 딜은 액면가보다 비싸고(1,000딜 = 유어딜 부채 1,200원), 마진 5~10%인 이용권에 쓰이면 팔릴수록 적자다(교환권은 소비자 마크업 20%가 상쇄하지만 이용권엔 그 상쇄가 없다). 그다음 S12 실결제로 카드+딜=총액·매장 정산 총액 불변·환불 복원 확인' },
   { key: 'DISTRICT_AUTO_ISSUE_ENABLED', kind: 'env', label: '상권 쿠폰 온라인 자동발급(경로 B)', default_value: 'false', staging_ref: null, turn_on_when: '상권 캠페인 파일럿 매장이 확정되고 재원(예산 풀)이 배정되면' },
   // 💸 2026-08-01 ④-b: 미수령(픽업 안 찾아감) 환불을 보관구분에 따라 가른다.
   //   🔴 **이미 흐르는 환불의 방향을 바꾼다** — 안 돌던 걸 켜는 게 아니다(cron `0 18` 실행 확인됨).

@@ -95,7 +95,7 @@ function CheckoutForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Stripe Payment Element */}
-      <div className="bg-white dark:bg-[#1A1C21] rounded-lg border border-gray-200 dark:border-[#2C2F35] p-4">
+      <div className="bg-white dark:bg-[#1D1F29] rounded-lg border border-gray-200 dark:border-[#2C2F35] p-4">
         <PaymentElement />
       </div>
 

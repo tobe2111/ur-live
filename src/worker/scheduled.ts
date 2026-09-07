@@ -22,6 +22,9 @@
 import type { ScheduledEvent, ExecutionContext } from '@cloudflare/workers-types';
 import type { Env } from './types/env';
 import { slotDue } from './cron-slot';
+// 🩹 2026-08-31: 놓친 하루치를 같은 날 안에 만회한다(무료 cron 미발화 + 예산 고갈 대응). 상세는 그 파일 상단.
+import type { SlotSpec } from './cron-slot';
+import { beginCatchup, catchupOpens, claimCatchupJob, summarizeCatchup, type CatchupState } from './cron-catchup';
 
 // 🛡️ 2026-05-18: handleScheduled (49KB) dynamic import — cron 발생 시만 로드.
 import { runReconciliation } from './cron/reconciliation';
@@ -57,6 +60,9 @@ import { LIVE_COMMERCE_SUSPENDED } from '../shared/feature-flags';
 import { logError } from './utils/logger';
 import { reportCronFailure } from './utils/cron-reporter';
 import { recordCronBeat, expectedMaxAgeMinutes } from './utils/cron-heartbeat';
+// 📏 2026-09-02: 작업별 D1 읽기 행 수 — 9/1 무료 한도(500만/일) 사고. 근거는 utils/d1-read-meter.ts 헤더.
+import { installTaskMeteredEnv, runInMeter, initTaskMeter } from './utils/d1-read-meter-als';
+import { newMeter } from './utils/d1-read-meter';
 import { ACCEPTED_CRON_EXPRESSIONS } from './utils/cron-expected';
 import { envBeatFor } from './utils/cron-required-env';
 import { runDailyLane } from './cron/daily-lane';
@@ -131,6 +137,10 @@ export async function handleCronScheduled(
   ctx: ExecutionContext,
 ): Promise<void> {
   const cron = event.cron;
+  // 📏 env 의 D1 을 계량 래퍼로 바꾼다 — 아래 모든 작업 클로저가 이 `env` 바인딩을 잡으므로 여기 한 줄이
+  //   곧 전체 커버리지다(하트비트와 같은 이유로 같은 자리). 작업 밖의 쿼리(`__tick` 등)는 세지 않는다.
+  await initTaskMeter(); // ALS 를 런타임에 불러온다(정적 node: import 금지 — 그 파일 헤더). 실패해도 안 던진다.
+  env = installTaskMeteredEnv(env);
 
   // 🔬 2026-08-22 진단 프로브(`__tick`) — 왜 맨 앞인지·무엇을 가르는지는 `utils/cron-heartbeat.ts` 상단 주석.
   // 🔬 2026-08-25: 키를 **트리거별**로 쪼갠다(`__tick:<cron식>`). 전역 키 하나였을 땐 같은 분에
@@ -147,20 +157,44 @@ export async function handleCronScheduled(
     const t0 = Date.now();
     let ok = true;
     let out: unknown;
+    // 📏 이 작업이 읽은 D1 행 수 — 던져도 그때까지 읽은 양은 남긴다(실패한 작업이 제일 많이 읽는다).
+    const meter = newMeter();
     try {
       // 반환값이 있으면 '무엇을 했나'까지 기록한다 — 0건으로 끝난 게 '할 일이 없어서'인지
       // '조용히 실패해서'인지 구분하려면 실행 사실만으로는 부족하다.
-      out = await task();
+      out = await runInMeter(meter, task);
     } catch (err) {
       ok = false;
       await notifyCronFailure(env, name, err);
     } finally {
       // 기록 자체는 절대 throw 하지 않는다(관측이 기능을 막으면 안 된다).
-      await recordCronBeat(env, name, ok, Date.now() - t0, cron, out, gapMin);
+      await recordCronBeat(env, name, ok, Date.now() - t0, cron, out, gapMin, meter);
     }
   };
   // ⏰ 슬롯 작업은 5분 캐리어가 아니라 **자기 주기**를 신고한다(근거: `expectedMaxAgeMinutes` docblock).
-  const slotCron = (expr: string) => (n: string, t: () => Promise<unknown>) => safeCron(n, t, expectedMaxAgeMinutes(expr) ?? undefined);
+  //
+  // 🩹 2026-08-31 — **만회 틱**(매시 :55)이면 이번 주기에 이미 돈 작업을 건너뛰고,
+  //   한 틱에 새로 시작하는 수를 제한한다. 정시 틱은 `catchup === null` 이라 **한 바이트도 안 바뀐다**
+  //   — 그게 이 기능의 안전장치다(최악의 경우 = 현행 그대로).
+  const nowMs = typeof event.scheduledTime === 'number' && Number.isFinite(event.scheduledTime)
+    ? event.scheduledTime : Date.now();
+  const catchup: CatchupState | null = cron === '*/5 * * * *'
+    ? await beginCatchup(event.scheduledTime, env.DB)
+    : null;
+  const slotCron = (expr: string) => (n: string, t: () => Promise<unknown>) => {
+    if (catchup && !claimCatchupJob(catchup, n, expr, nowMs)) return Promise.resolve();
+    return safeCron(n, t, expectedMaxAgeMinutes(expr) ?? undefined);
+  };
+  /**
+   * 이 슬롯이 지금 열리는가 — 정시거나, 만회 틱이면서 오늘 주기가 이미 시작됐거나.
+   *
+   * ⚠️ **트리거 검사(`cron === …`)는 일부러 호출부에 남겨 뒀다.** 여기로 흡수하면
+   *   `check-cron-slot-registered` 가 `if (cron === 'X')` 로 블록을 읽는 파서라
+   *   슬롯 블록 대부분을 **못 보게 된다**(이 레포가 잠금표에서 겪은 '낡은 지도'와 같은 클래스).
+   *   `catchup` 자체가 5분 캐리어에서만 만들어지므로 중복 검사여도 의미는 갈리지 않는다.
+   */
+  const slotOpen = (spec: SlotSpec) =>
+    slotDue(event.scheduledTime, spec) || catchupOpens(catchup, nowMs, spec);
 
   // 🔇 2026-07-29: **매칭되지 않은 트리거**를 기록한다 — CF 에 등록은 됐는데 아래 `cron === '...'` 중
   //   어디에도 안 걸리면 하트비트도 실패도 안 남아 "등록했으니 돌겠지"와 "무동작"이 **구분 불가**였다.
@@ -190,7 +224,8 @@ export async function handleCronScheduled(
     }));
     ctx.waitUntil(safeCron('scheduled-cleanup', async () => {
       const { handleScheduled } = await import('./cron/scheduled-cleanup')
-      return handleScheduled(env)
+      // ⏱️ 2026-09-02 읽기 다이어트 — 청소는 티어로 돈다(매 틱 / 매시 :10 / 매일 04:20 KST). 근거는 그 파일 헤더.
+      return handleScheduled(env, { hourly: slotOpen({ minute: 10 }), daily: slotOpen({ minute: 20, hour: 19 }) })
     }));
     // 🛡️ 2026-05-07: 알림톡 발송 실패 자동 재시도 (max 3회, exponential backoff)
     ctx.waitUntil(safeCron('retry-alimtalk', () => handleRetryAlimtalk(env)));
@@ -207,10 +242,14 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('group-buy-feed-cache', () => handleGroupBuyFeedCache(env)));
     // 🛡️ 2026-05-23 (Task 3): 5분마다 hot endpoint pre-warm — 배포 후 / cache expire 후
     //   첫 사용자 cold-start 제거. publicCache 가 edge + KV 양쪽 자동으로 채움.
-    ctx.waitUntil(safeCron('cache-prewarm', () => handleCachePrewarm(env)));
+    // ⏱️ 2026-09-02 읽기 다이어트 — 동적 워밍(셀러/상품/큐레이터 12개)은 30분마다, products 정규화 UPDATE 는 하루 1회.
+    //   HOT_PATHS(SSR 키) 자체는 5분 그대로(잠금표 — 제거·약화 금지).
+    ctx.waitUntil(safeCron('cache-prewarm', () => handleCachePrewarm(env, { dynamic: slotOpen({ minute: 0 }) || slotOpen({ minute: 30 }), normalize: slotOpen({ minute: 35, hour: 19 }) })));
     // 🛡️ 2026-05-27 (영업 검증 Layer 4): prospects 첫 매출 발생 시 commission 활성.
     //   단순 가입 X — 매장이 실제 매출 내야 영업 commission lock-in. 부정 방지.
-    ctx.waitUntil(safeCron('prospects-commission-activate', async () => {
+    // ⏱️ 2026-09-02 읽기 다이어트 — 루프당 최대 200쿼리 + status 무인덱스 스캔 2개를 5분마다 돌렸다. "첫 매출" 은
+    //   시간 단위면 충분하다(커미션 활성화 지연 ≤1h). 매시 :40.
+    if (slotOpen({ minute: 40 })) ctx.waitUntil(slotCron('40 * * * *')('prospects-commission-activate', async () => {
       const { handleProspectsCommissionActivate } = await import('./cron/prospects-commission-activate')
       return handleProspectsCommissionActivate(env)
     }));
@@ -219,14 +258,10 @@ export async function handleCronScheduled(
 
   // ⏰ 2026-08-11: `0 * * * *` 미등록으로 이 블록 7개가 침묵했다(하트비트 0). 트리거 한도(5)를 다 써
   //   `*/5` 틱 위 :25 게이트로 시간당 1회. 왜 이 방식인지는 `cron-slot.ts` 참조.
-  // 🗄️ 2026-08-22: 재개 가능한 분할 백업(커서로 시간당 조금씩). 기존 주간 백업은 DB 가 263 MB 로
-  //   자라 워커 메모리를 넘겨 08-02 이후 조용히 멈춰 있었다 — 근거는 `cron/d1-backup-chunked.ts` 헤더.
-  if (cron === '*/5 * * * *' && [5, 20, 35, 50].some((m) => slotDue(event.scheduledTime, { minute: m }))) {
-    ctx.waitUntil(slotCron('5,20,35,50 * * * *')('d1-backup-chunked', async () => {
-      const { handleChunkedBackup } = await import('./cron/d1-backup-chunked')
-      return handleChunkedBackup(env as never)
-    }));
-  }
+  // 🗄️ 2026-08-22 분할 백업의 `*/5` 슬롯(:05/:20/:35/:50)은 **2026-09-02 에 제거** — 08-25 에 백업 전용
+  //   트리거(:02/:17/:32/:47, 아래)가 생긴 뒤에도 남아 있어 같은 작업이 시간당 8회 돌았다. 백업은 DB 를
+  //   통째로 읽는 작업이라(회차당 ≤1.2만 행) 그 중복만으로 하루 ~110만 행 = 무료 한도(500만)의 22% 였다.
+  //   근거: docs/handoff/2026-09-02-d1-read-diet.md §2-1 #11. 전용 트리거가 예산을 통째로 써서 더 잘 돈다.
 
   if (cron === '*/5 * * * *' && slotDue(event.scheduledTime, { minute: 25 })) {
     // 🥗 2026-07-15 워커 다이어트(대표 승인): social-maintenance 배선 제거 — CF 1MB 압축한도 회복.
@@ -269,21 +304,22 @@ export async function handleCronScheduled(
   //   그전엔 작업 16개가 한 인보케이션에서 서브리퀘스트 예산(무료 ~50)을 나눠 썼고, 마르면
   //   뒤쪽이 **에러 없이 잘렸다**. 실측 2026-08-24: 16개 전부 하트비트 없음(정산 성숙 포함).
   //   ⚠️ 분은 5의 배수 + 기존 게이트와 비충돌이어야 한다 — 겹치면 같은 인보케이션이라 분리가 무의미.
-  if (cron === '0 18 * * *') {
-    runDailyLane('money', { env, ctx, run: safeCron, onFailure: (n, e) => notifyCronFailure(env, n, e) });
+  // 🩹 만회: 전용 트리거가 안 울리거나 예산이 마르면 :55 틱이 오늘 안에 이어받는다. `slotCron` 이 이번 주기에 이미 돈 작업을 걸러낸다.
+  if (cron === '0 18 * * *' || catchupOpens(catchup, nowMs, { minute: 0, hour: 18 })) {
+    runDailyLane('money', { env, ctx, run: slotCron('0 18 * * *'), onFailure: (n, e) => notifyCronFailure(env, n, e) });
   }
-  if (cron === '*/5 * * * *' && slotDue(event.scheduledTime, { minute: 10, hour: 18 })) {
+  if (cron === '*/5 * * * *' && slotOpen({ minute: 10, hour: 18 })) {
     runDailyLane('integrity', { env, ctx, run: slotCron('10 18 * * *'), onFailure: (n, e) => notifyCronFailure(env, n, e) });
   }
-  if (cron === '*/5 * * * *' && slotDue(event.scheduledTime, { minute: 30, hour: 18 })) {
+  if (cron === '*/5 * * * *' && slotOpen({ minute: 30, hour: 18 })) {
     runDailyLane('maintenance', { env, ctx, run: slotCron('30 18 * * *'), onFailure: (n, e) => notifyCronFailure(env, n, e) });
   }
-  if (cron === '*/5 * * * *' && slotDue(event.scheduledTime, { minute: 40, hour: 18 })) {
+  if (cron === '*/5 * * * *' && slotOpen({ minute: 40, hour: 18 })) {
     runDailyLane('growth', { env, ctx, run: slotCron('40 18 * * *'), onFailure: (n, e) => notifyCronFailure(env, n, e) });
   }
 
   // 🛡️ KT Alpha catalog sync — 매일 12:30 KST(03:30 UTC). 하루 1회 → KV 한도 무관(D1 only).
-  if (cron === '*/5 * * * *' && slotDue(event.scheduledTime, { minute: 30, hour: 3 })) {
+  if (cron === '*/5 * * * *' && slotOpen({ minute: 30, hour: 3 })) {
     ctx.waitUntil(slotCron('30 3 * * *')('kt-alpha-catalog-sync', async () => {
       const { runKtAlphaCatalogSync } = await import('./cron/kt-alpha-catalog-sync')
       await runKtAlphaCatalogSync(env as { DB: D1Database })
@@ -296,7 +332,7 @@ export async function handleCronScheduled(
   }
 
   // 🛡️ 이용권 주소 → 좌표 일괄 변환. 페이지 진입마다 Kakao 호출하던 것을 여기로 모았다(일 1만 → ~10).
-  if (cron === '*/5 * * * *' && slotDue(event.scheduledTime, { minute: 35, hour: 3 })) {
+  if (cron === '*/5 * * * *' && slotOpen({ minute: 35, hour: 3 })) {
     ctx.waitUntil(slotCron('35 3 * * *')('restaurant-geocode', async () => {
       const { runRestaurantGeocode } = await import('./cron/restaurant-geocode')
       await runRestaurantGeocode(env as { DB: D1Database; KAKAO_REST_API_KEY?: string })
@@ -314,7 +350,7 @@ export async function handleCronScheduled(
     }))
   }
 
-  if (cron === '*/5 * * * *' && slotDue(event.scheduledTime, { minute: 40, hour: 9 })) {
+  if (cron === '*/5 * * * *' && slotOpen({ minute: 40, hour: 9 })) {
     ctx.waitUntil(slotCron('40 9 * * *')('stay-reminder', async () => {
       const { runStayReminderCron } = await import('./cron/stay-reminder')
       await runStayReminderCron(env as { DB: D1Database })
@@ -353,57 +389,59 @@ export async function handleCronScheduled(
     }))
   }
 
-  if (cron === '0 19 * * *') {
-    ctx.waitUntil(safeCron('reconciliation', () => runReconciliation(env)));
+  // 🩹 만회: 전용 트리거가 안 울리거나 예산이 마르면 :55 틱이 오늘 안에 이어받는다.
+  //   `slotCron('0 19 * * *')` 가 이번 주기에 이미 돈 작업을 걸러내므로 정상인 날의 만회는 비용 0 이다.
+  if (cron === '0 19 * * *' || catchupOpens(catchup, nowMs, { minute: 0, hour: 19 })) {
+    ctx.waitUntil(slotCron('0 19 * * *')('reconciliation', () => runReconciliation(env)));
     // 🛡️ 2026-05-16: 인플루언서 attribution pending→available 매일 19시 동기화.
     //   매월 1일에만 실제 송금 큐잉. 그 외엔 status 동기화만.
-    ctx.waitUntil(safeCron('influencer-payout', () => handleInfluencerPayout(env)));
+    ctx.waitUntil(slotCron('0 19 * * *')('influencer-payout', () => handleInfluencerPayout(env)));
     // ⏰ 2026-08-03 — 아래 넷은 발화하지 않는 `0 * * * *` 블록(wrangler crons 미등록 — 하트비트 0건
     //   실측)에서 **여기로 이사**. 머니 무관 + 자체 상한 + 시각 게이트 없음이라 일간도 유효하다.
     //   cron-stale-watch=멈춤 감시 · anomaly-detect=어뷰징 탐지 · wishlist-*=찜 재입고/가격인하(CAP 200).
     //   ⚠️ 두고 온 것: `ops-daily-digest`(내부 `getUTCHours()===22` 게이트 — 여기 오면 조용히 no-op)와
     //      머니 경로(교환권 재발송·환불 재시도·webhook drain·도매 정산) = 대표 결정 + staging 룰.
-    ctx.waitUntil(safeCron('cron-stale-watch', async () => {
+    ctx.waitUntil(slotCron('0 19 * * *')('cron-stale-watch', async () => {
       const { handleCronStaleWatch } = await import('./cron/cron-stale-watch');
       await handleCronStaleWatch(env);
     }));
-    ctx.waitUntil(safeCron('anomaly-detect', () => handleAnomalyDetection(env)));
-    ctx.waitUntil(safeCron('wishlist-restock-notify', async () => {
+    ctx.waitUntil(slotCron('0 19 * * *')('anomaly-detect', () => handleAnomalyDetection(env)));
+    ctx.waitUntil(slotCron('0 19 * * *')('wishlist-restock-notify', async () => {
       const { handleWishlistRestockNotify } = await import('./cron/wishlist-notify');
       return handleWishlistRestockNotify(env);
     }));
-    ctx.waitUntil(safeCron('wishlist-price-drop-notify', async () => {
+    ctx.waitUntil(slotCron('0 19 * * *')('wishlist-price-drop-notify', async () => {
       const { handleWishlistPriceDropNotify } = await import('./cron/wishlist-notify');
       return handleWishlistPriceDropNotify(env);
     }));
     // 🎫 KT Alpha 교환권 발송 실패 자동 복구(retry<3·backoff·14일내·run당 20건·NOT EXISTS 이중발송 0).
     //   2026-08-03 대표 승인 — 발화 안 하는 `0 * * * *` 에 있어 **돈 낸 교환권이 영영 안 가고 있었다.**
     //   ⚠️ 일간이라 복구가 최대 24h 지연된다. 즉시 필요하면 어드민 `POST /_run-cron {kt-alpha-voucher-retry}`.
-    ctx.waitUntil(safeCron('kt-alpha-voucher-retry', async () => {
+    ctx.waitUntil(slotCron('0 19 * * *')('kt-alpha-voucher-retry', async () => {
       const { handleKtAlphaVoucherRetry } = await import('./cron/kt-alpha-voucher-retry');
       return handleKtAlphaVoucherRetry(env);
     }));
     // 💰 2026-08-03 (대표 "재처리 3개도 다 진행해줘") — 발화 안 하는 `0 * * * *` 에서 이사. 보류 사유였던
     //   규모를 라이브 D1 로 **실측**: reconcile 0건 · 예치금 원장 172,800원 · 환불실패 테이블 미생성 ·
     //   FAILED 웹훅 0 · pending 숙소예약 0 ⇒ 돈이 움직이는 게 아니라 **안전망을 켜는 것**이다.
-    ctx.waitUntil(safeCron('toss-refund-retry', () => handleTossRefundRetry(env)));
+    ctx.waitUntil(slotCron('0 19 * * *')('toss-refund-retry', () => handleTossRefundRetry(env)));
     // FAILED 웹훅 백로그 **감시**(Discord 요약). 자동 재처리는 잠금 해제 후 2단계 — 지금은 관측만.
-    ctx.waitUntil(safeCron('webhook-failed-drain', async () => {
+    ctx.waitUntil(slotCron('0 19 * * *')('webhook-failed-drain', async () => {
       const { handleWebhookFailedDrain } = await import('./cron/webhook-failed-drain');
       return handleWebhookFailedDrain(env);
     }));
     // 차감됐는데 PAID 못 간 예치금 주문 자동 환불(미회수 0). 라이브 실측 대상 0건 · 예치금 원장 총 172,800원.
-    ctx.waitUntil(safeCron('wholesale-deposit-reconcile', async () => {
+    ctx.waitUntil(slotCron('0 19 * * *')('wholesale-deposit-reconcile', async () => {
       const { reconcileOrphanedDepositOrders } = await import('../features/supply/api/wholesale-deposit-core')
       return reconcileOrphanedDepositOrders(env.DB)
     }));
     // 출금 원장 자가복구 — **재출금 방지**라 안 도는 쪽이 위험하다(테이블 미생성 = 아직 출금 0).
-    ctx.waitUntil(safeCron('wholesale-withdrawal-reconcile', async () => {
+    ctx.waitUntil(slotCron('0 19 * * *')('wholesale-withdrawal-reconcile', async () => {
       const { reconcileWithdrawalLedgers } = await import('../features/supply/api/supplier-withdrawal-core')
       return reconcileWithdrawalLedgers(env.DB)
     }));
     // 미결제 pending 숙소 예약 만료(30분 경과). 재고 미조작 — 정리 목적. 실측 대상 0건.
-    ctx.waitUntil(safeCron('stay-pending-expire', async () => {
+    ctx.waitUntil(slotCron('0 19 * * *')('stay-pending-expire', async () => {
       const { handleStayPendingExpire } = await import('./cron/stay-pending-expire')
       return handleStayPendingExpire(env)
     }));
@@ -421,7 +459,7 @@ export async function handleCronScheduled(
 
   // 💸 2026-08-11: `0 0 * * 1` 도 미등록이라 주간 7개가 침묵했다. `payouts-generate` 는 송금이 아니라
   //   지급 대상 목록 생성이고 송금은 어드민 수동 + 멱등. 월 09:45 KST(다른 게이트와 분 분리 = 예산 분리).
-  if (cron === '*/5 * * * *' && slotDue(event.scheduledTime, { minute: 45, hour: 0, dow: 1 })) {
+  if (cron === '*/5 * * * *' && slotOpen({ minute: 45, hour: 0, dow: 1 })) {
     // 🛡️ 2026-05-21 Phase C: 주 1회 정산 자동 생성 — admin 검토용 pending payouts 생성.
     ctx.waitUntil(slotCron('45 0 * * 1')('payouts-generate', () => handlePayoutsGenerate(env)));
     // 📊 2026-07-05 (자문 ⑤): 주간 조종석 숫자 5개 — 어드민 벨 + Discord (read-only 집계, fail-soft).
@@ -484,5 +522,15 @@ export async function handleCronScheduled(
       // 🎯 [urads-split Phase E 2026-07-18] 유어애즈 AI 주간 리포트 → ur-ads worker cron("0 0 * * 1")으로
       //   이관(src/worker-ads/index.ts, 주당 1회 멱등 유지) — 메인의 마지막 marketing cron 참조 제거. 재도입=원복.
     }));
+  }
+
+  // 🩹 **만회 회차 한 줄 기록** — 이 기능의 유일한 관측 지점이다.
+  //   만회는 정상인 날엔 아무 흔적도 안 남긴다(밀린 게 없으면 전부 건너뛴다). 그러면
+  //   "돌았는데 할 일이 없었다"와 "아예 안 돌았다"가 **구분되지 않는다** — 이 레포가 반복해
+  //   당한 '조용한 부재' 클래스이고, 하필 그걸 고치려고 만든 기능이 같은 병을 앓았다.
+  //   started=0 skipped=27 이면 "돌았고 밀린 게 없었다"가 화면에서 읽힌다.
+  //   ⏰ 주기는 매시 1회(:55)라 5분 캐리어 식이 아니라 시간당 기준을 신고한다.
+  if (catchup) {
+    ctx.waitUntil(recordCronBeat(env, '__catchup', true, 0, cron, summarizeCatchup(catchup), expectedMaxAgeMinutes('55 * * * *') ?? undefined)); // cron-heartbeat-ok: 작업이 아니라 하트비트 **자체**다(__tick 과 동일 이유)
   }
 }

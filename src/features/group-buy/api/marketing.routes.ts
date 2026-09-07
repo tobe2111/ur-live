@@ -729,14 +729,17 @@ adminApp.post('/disputes/:id/resolve', async (c) => {
 
 adminApp.get('/payouts', async (c) => {
   const DB = c.env.DB
-  // 송금 대기: available_amount >= minimum
+  // 지급 대기 — 💎 2026-08-31 대표: **최소 금액은 현금에만.** 딜은 1원부터 뜬다.
+  //   (문턱의 근거는 은행 송금 비용인데 딜엔 그 비용이 없다. cron 쪽과 같은 조건 — 갈리면
+  //   "알림엔 떴는데 목록엔 없다"가 난다.)
   const minRow = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'influencer_payout_min'").first<{ value: string }>().catch(() => null)
   const payoutMin = Number(minRow?.value ?? 100000)
   const { results } = await DB.prepare(
     `SELECT influencer_id, available_amount, total_paid_out, payout_method,
             business_number, tax_type, bank_name, bank_account, account_holder, updated_at
      FROM influencer_balances
-     WHERE available_amount >= ?
+     WHERE available_amount > 0
+       AND (payout_method = 'deal' OR available_amount >= ?)
      ORDER BY available_amount DESC
      LIMIT 200`
   ).bind(payoutMin).all().catch(() => ({ results: [] as any[] }))

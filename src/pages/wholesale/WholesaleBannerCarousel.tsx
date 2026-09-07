@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useWholesaleBanners, type WholesaleBanner } from '@/hooks/queries/useWholesale'
 import { safeInternalPath, isSafeInternalPath } from '@/utils/safe-internal-path'
-import { cfImage } from '@/utils/cf-image'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { WT } from './wholesale-theme'
 
 const AUTOPLAY_MS = 5000
@@ -166,6 +166,7 @@ export default function WholesaleBannerCarousel() {
                 loading={i <= 1 ? 'eager' : 'lazy'}
                 decoding="async"
                 className="block w-full h-full object-cover pointer-events-none"
+                onError={(e) => cfImageOnError(e.currentTarget, b.image_url)}
               />
               {b.title && (
                 <span className="absolute left-5 bottom-4 px-3 py-1.5 rounded-lg text-[14px] lg:text-[16px] font-bold text-white"

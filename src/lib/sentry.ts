@@ -3,6 +3,8 @@
 //   preload 강제. 일반 사용자 첫 페인트에 252KB 추가.
 //   지금: 함수 호출 시점에 import — 첫 페인트 영향 0.
 //   initSentry 만 main.tsx 에서 이미 lazy 처리됨 (line 131).
+import { isNoiseEvent, type SentryLikeEvent } from './sentry-noise'
+
 type SentryModule = typeof import('@sentry/react')
 let _sentryPromise: Promise<SentryModule> | null = null
 function loadSentry(): Promise<SentryModule> {
@@ -45,24 +47,11 @@ export async function initSentry() {
       //   tracesSampleRate: 10% → 1% (트랜잭션은 운영 monitoring 용 — 적은 표본도 충분)
       tracesSampleRate: 0.01,
 
-      // 에러 필터링
+      // 에러 필터링 — 판정은 `sentry-noise.ts` 순수 함수 SSOT(테스트가 실제로 돌려 본다).
+      //   🔇 2026-09-03: Sentry 자신의 web-vitals 리포터가 던지는 TypeError 를 버린다 —
+      //      uncaught 라 Sentry 가 그걸 다시 올려 **자기 쿼터를 태우는 고리**가 되고, 그 끝이 429 다.
       beforeSend(event, hint) {
-        // localStorage 관련 오류 무시
-        if (event.message?.includes('localStorage')) {
-          return null
-        }
-
-        // 네트워크 오류 (401, 403 제외)
-        if (event.message?.includes('NetworkError')) {
-          return null
-        }
-
-        // 개발 환경 오류 무시
-        if (event.environment === 'development') {
-          return null
-        }
-
-        return event
+        return isNoiseEvent(event as SentryLikeEvent, hint?.originalException) ? null : event
       },
 
       // 에러 핸들링

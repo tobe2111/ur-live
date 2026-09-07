@@ -100,7 +100,7 @@ const GroupBuyGridCard = memo(function GroupBuyGridCard({
         {/* 관심 등록 */}
         <button
           onClick={(e) => onToggleInterest(e, p.id, p.restaurant_name)}
-          className="absolute bottom-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white/80 dark:bg-[#0D0F12]/80 backdrop-blur shadow-sm active:scale-90 transition-transform"
+          className="absolute bottom-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-white/80 dark:bg-[#11141C]/80 backdrop-blur shadow-sm active:scale-90 transition-transform"
           aria-label={t('common.wishlist', { defaultValue: '관심 등록' })}
         >
           <Bell className={`w-3.5 h-3.5 ${interested ? 'text-gray-900 fill-gray-900 dark:text-white dark:fill-white' : 'text-gray-400'}`} />

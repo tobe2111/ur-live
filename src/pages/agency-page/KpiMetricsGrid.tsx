@@ -14,14 +14,14 @@ export function KpiMetricsGrid({ kpiData }: { kpiData: KpiData }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+        <span className="text-xs font-bold text-gray-500 ">
           📊 {t('agency.kpiMetricTitle', { days: kpiData.period_days, defaultValue: `핵심 지표 6 (${kpiData.period_days}일 기준 · 참고용)` })}
         </span>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
         {metrics.map((kpi) => (
           <div key={kpi.labelKey} className="rounded-xl p-3 bg-white border border-gray-200 dark:border-[#2C2F35]">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">
+            <p className="text-[10px] font-bold text-gray-500 mb-1">
               {t(kpi.labelKey, { defaultValue: kpi.labelDefault })}
             </p>
             <p className="text-lg font-extrabold text-gray-900">{kpi.value}</p>
@@ -41,7 +41,7 @@ export function MonthlyTasksGrid({ tasks }: { tasks: MonthlyTask[] }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+        <span className="text-xs font-bold text-gray-500 ">
           🎯 {t('agency.monthlyTaskTitle', { defaultValue: '이번 달 의무 작업' })}
         </span>
         <span className="text-[10px] text-gray-400">{tasks[0]?.month}</span>

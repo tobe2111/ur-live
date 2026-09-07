@@ -105,26 +105,33 @@ export default function MyStoresPanel({ onGateChange }: Props) {
   if (gated) {
     return (
       <>
-        <div className="bg-gray-900 rounded-2xl p-5 text-white">
-          <p className="text-[11px] font-bold text-white/60 mb-1">STEP 1</p>
-          <h2 className="text-lg font-extrabold leading-snug">
+        {/* 🎫 2026-09-02 (대표 확정 — 셀러 B안): 잉크 STEP 카드 → 티켓 부품(블루 밴드 + 흰 본문). 잉크 사이드바와
+            잉크 카드와 잉크 버튼이 한 화면에서 셋이 경쟁하던 것을, 강조는 밴드 하나로. 소비자 지갑·결제 완료와 같은 문법. */}
+        <div className="overflow-hidden rounded-2xl bg-white shadow-lift">
+          <div className="flex items-center justify-between h-11 px-4 text-[14px] text-white bg-brand tabular-nums">
+            <span className="font-bold">STEP 1 · {t('seller.stores.step1', { defaultValue: '매장 등록' })}</span>
+            <span className="font-medium">1 / 4</span>
+          </div>
+          <div className="p-5">
+          <h2 className="text-lg font-extrabold leading-snug text-gray-900">
             {t('seller.stores.gateTitle', { defaultValue: '매장 등록부터 시작해요' })}
           </h2>
-          <p className="text-[12px] text-white/70 mt-1.5 leading-relaxed">
+          <p className="text-[12.5px] text-gray-600 mt-1.5 leading-relaxed">
             {t('seller.stores.gateDesc', { defaultValue: '유어딜의 모든 기능은 매장에서 출발합니다. 카카오맵에서 내 매장을 찾아 등록하면 이용권 판매·소개 협업·정산이 열려요.' })}
           </p>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-3 text-[11px] text-white/50 font-semibold">
-            <span className="text-white">① {t('seller.stores.step1', { defaultValue: '매장 등록' })}</span>
-            <span>→ ② {t('seller.stores.step2', { defaultValue: '이용권 등록' })}</span>
-            <span>→ ③ {t('seller.stores.step3', { defaultValue: '판매·협업' })}</span>
-            <span>→ ④ {t('seller.stores.step4', { defaultValue: '정산' })}</span>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-3 text-[11.5px] text-gray-400 font-semibold">
+            <span className="text-brand-text">① {t('seller.stores.step1', { defaultValue: '매장 등록' })}</span>
+            <span>② {t('seller.stores.step2', { defaultValue: '이용권 등록' })}</span>
+            <span>③ {t('seller.stores.step3', { defaultValue: '판매·협업' })}</span>
+            <span>④ {t('seller.stores.step4', { defaultValue: '정산' })}</span>
           </div>
           <button
             onClick={() => setAdding(true)}
-            className="mt-4 w-full sm:w-auto px-6 py-3 rounded-xl bg-white text-gray-900 text-sm font-extrabold hover:bg-gray-100 active:scale-[0.98] flex items-center justify-center gap-2"
+            className="ur-btn ur-btn-md ur-btn-primary mt-4 w-full sm:w-auto"
           >
             <Map className="w-4 h-4" aria-hidden="true" />{t('seller.stores.registerCta', { defaultValue: '카카오맵으로 매장 등록하기' })}
           </button>
+          </div>
         </div>
         {adding && <StoreRegisterModal onClose={() => setAdding(false)} onDone={onRegistered} />}
       </>

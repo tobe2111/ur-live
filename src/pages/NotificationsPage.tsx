@@ -43,10 +43,10 @@ export default function NotificationsPage() {
 
   // 🛡️ 2026-07-03: min-h-screen(100vh) → min-h-[100dvh] — 인앱/웹뷰 하단 네비 실종 방지(룰 #8, /vouchers 와 동일).
   return (
-    <div className="min-h-[100dvh] bg-white dark:bg-[#0D0F12] pb-safe-nav md:pb-20">
+    <div className="min-h-[100dvh] bg-white dark:bg-[#11141C] pb-safe-nav md:pb-20">
       <SEO title={t('notifications.seoTitle', { defaultValue: '알림 - 유어딜' })} description={t('notifications.seoDesc', { defaultValue: '새로운 알림을 확인하세요' })} url="/notifications" noindex />
       {/* Header */}
-      <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#0D0F12]/90 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
+      <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#11141C]/90 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-narrow flex items-center justify-between px-5 lg:px-8 py-3">
           <button type="button" onClick={() => navigate(-1)} aria-label={t('notifications.back')} className="text-gray-900 dark:text-white">
             <ChevronLeft className="w-6 h-6" aria-hidden="true" />
