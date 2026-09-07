@@ -16,13 +16,14 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync, existsSync } from 'node:fs'
+import { readRepairLane } from '../helpers/source-text'
 
 const SRC = readFileSync('src/worker/utils/point-buckets.ts', 'utf8')
-// repair-schema 는 2026-08-01 에 *데이터*(컬럼 ALTER 목록)와 *로직*(라우트)으로 갈렸다.
-// 검사는 둘을 합쳐서 본다 — 한쪽만 읽으면 파일이 갈리는 순간 조용히 통과해 버린다.
-const REPAIR =
-  readFileSync('src/worker/routes/repair-schema.routes.ts', 'utf8') +
-  readFileSync('src/worker/routes/repair-schema/column-repairs.ts', 'utf8')
+// repair-schema 는 2026-08-01 에 *데이터*(컬럼 ALTER 목록)와 *로직*(라우트)으로 갈렸고,
+// 2026-09-07 에 표 정의까지 `aux-tables.ts` 로 또 갈렸다. 그때 이 상수가 두 파일만 이어 붙이고
+// 있어서 `point_transactions` CREATE 를 못 찾아 빨간불이 났다 — 불변식은 하나도 안 깨졌는데.
+// ⇒ 파일을 열거하지 말고 **레인 전체**를 읽는다(다음에 또 쪼개도 안 깨진다).
+const REPAIR = readRepairLane()
 
 describe('creditFreePoints — 잔액만 늘고 원장 행이 없는 사태 방지', () => {
   it('원장 INSERT 실패를 그냥 삼키지 않는다 (빈 catch 금지)', () => {

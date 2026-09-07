@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
+import { readRepairLane } from '../helpers/source-text'
 import {
   parseYouTubeUrl, parseYouTubeVideoId, parseIsoDurationSec, youTubeEmbedUrl, youTubeThumbUrl,
   URSHORTS_CARD_W, URSHORTS_CARD_H, URSHORTS_RAIL_LIMIT, URSHORTS_VIEWER_PATH,
@@ -296,7 +297,11 @@ describe('허락받은 영상만 홈에 나간다', () => {
   })
 
   it('repair-schema 테이블 정의에도 있다 (라우트만 있으면 새 DB 에서 갈린다)', () => {
-    expect(code('src/worker/routes/repair-schema.routes.ts'))
-      .toMatch(/consent INTEGER NOT NULL DEFAULT 0/)
+    // 정의는 `repair-schema/aux-tables.ts`, 배선은 라우트의 스프레드. **둘 다** 봐야 한다 —
+    // 정의만 있고 스프레드가 빠지면 테이블이 안 만들어지는데 파일은 멀쩡해 보인다.
+    expect(readRepairLane()).toMatch(/consent INTEGER NOT NULL DEFAULT 0/)
+    expect(code('src/worker/routes/repair-schema.routes.ts'),
+      'AUX_TABLE_REPAIRS 스프레드가 빠졌다 — 정의만 있고 실행이 안 된다')
+      .toContain('...AUX_TABLE_REPAIRS')
   })
 })
