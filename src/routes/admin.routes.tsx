@@ -11,6 +11,8 @@ const AdminLoginPage = lazy(() => import('@/pages/AdminLoginPage'))
 const AdminSettlementPage = lazy(() => import('@/pages/AdminSettlementPage'))
 const AdminBannersPage = lazy(() => import('@/pages/AdminBannersPage'))
 const AdminHomeSectionsPage = lazy(() => import('@/pages/admin/AdminHomeSectionsPage'))
+// 🎬 2026-09-07 유어쇼츠 — 영상마다 이용권을 고르는 화면.
+const AdminUrShortsPage = lazy(() => import('@/pages/AdminUrShortsPage'))
 const AdminOrdersPage = lazy(() => import('@/pages/AdminOrdersPage'))
 // 🛡️ 2026-05-27 (사용자 결정): admin 매장 검수 통합 페이지
 const AdminPendingSellersPage = lazy(() => import('@/pages/AdminPendingSellersPage'))
@@ -302,6 +304,11 @@ export function AdminRoutes() {
       <Route path="/admin/home-sections" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminHomeSectionsPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/urshorts" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminUrShortsPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/orders" element={

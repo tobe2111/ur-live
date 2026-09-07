@@ -181,3 +181,26 @@ describe('대표가 확정한 값', () => {
     expect(youTubeThumbUrl('aBcDeFgHiJk')).toBe('https://img.youtube.com/vi/aBcDeFgHiJk/hqdefault.jpg')
   })
 })
+
+describe('어드민 화면', () => {
+  const A = code('src/pages/AdminUrShortsPage.tsx')
+
+  it('라우트와 메뉴에 둘 다 등록돼 있다 (한쪽만 있으면 못 들어가거나 안 보인다)', () => {
+    expect(code('src/routes/admin.routes.tsx')).toMatch(/path="\/admin\/urshorts"/)
+    expect(code('src/components/admin/admin-nav-config.ts')).toMatch(/'\/admin\/urshorts'/)
+  })
+
+  it('붙여 넣는 즉시 쇼츠인지 알려 준다 (서버까지 갔다 거부당하는 왕복을 줄인다)', () => {
+    expect(A).toContain('parseYouTubeUrl(url)')
+    expect(A).toMatch(/form === 'shorts'/)
+  })
+
+  it('이용권을 안 고른 영상이 눈에 띈다 — 그게 이 화면의 할 일이다', () => {
+    expect(A).toContain('이용권을 고르세요')
+    expect(A).toMatch(/rows\.filter\(\(r\) => !r\.product_id\)/)
+  })
+
+  it('서버 거부 사유를 그대로 보여 준다 (일반 문구로 덮지 않는다)', () => {
+    expect(A).toMatch(/response\?\.data\?\.error/)
+  })
+})
