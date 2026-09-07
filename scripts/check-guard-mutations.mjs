@@ -860,6 +860,28 @@ const MUTATIONS = [
       '"점은 넘어갔는데 사진은 그대로" = 안 넘어간 것으로 읽힌다. 블러가 유일한 즉시 신호다.',
   },
   {
+    name: '👁️ 스쳐 지나간 카드까지 미리 받는다 (머문-시간 게이트 소실 → 트래픽 낭비)',
+    file: 'src/components/deal/DealCardMedia.tsx',
+    find: '      }, DWELL_MS)\n',
+    replace: '      }, 0)\n',
+    test: 'src/tests/unit/deal-card-swipe-continuity.test.ts',
+    why:
+      '"일찍 받기" 는 공짜가 아니다 — 2026-09-06 실측으로 같은 스크롤에서 +27%(2,624→3,326KB) 였다. ' +
+      '머문 250ms 를 조건으로 걸어야 빠르게 훑고 지나가는 카드가 걸러진다. 이 게이트가 사라져도 ' +
+      '화면은 완전히 똑같고 오히려 더 빨라 보여서 — 데이터만 조용히 더 쓴다.',
+  },
+  {
+    name: '⏱️ 카드 프리페치가 다시 늦게 시작한다 (화면에 다 들어온 뒤 · idle 2초)',
+    file: 'src/components/deal/DealCardMedia.tsx',
+    find: "    }, { threshold: 0, rootMargin: '400px' })",  // 2026-09-06 머문-시간 게이트와 짝
+    replace: '    }, { threshold: 0.6 })',
+    test: 'src/tests/unit/deal-card-swipe-continuity.test.ts',
+    why:
+      '2026-09-06 실측(4G · 카드가 보인 뒤 다음 장 준비까지): 4,650ms · 435ms · >5,000ms · 1,048ms. ' +
+      '스크롤로 만난 카드를 바로 넘기면 그 대기를 정면으로 맞는다. 되돌려도 **화면은 멀쩡하고 에러도 ' +
+      '없어서** 느려진 것을 아무도 모른다 — 트래픽은 그대로이므로 되돌릴 이유도 없다.',
+  },
+  {
     name: '🎞️ 보이는 카드의 idle 프리페치 게이트가 뒤집혀 커버 로드 전에도 안 도는(=영영 안 도는) 상태',
     file: 'src/components/deal/DealCardMedia.tsx',
     find: '    if (!multi || !coverLoaded || idleDone.current) return\n',

@@ -46,7 +46,14 @@ describe('② 보이는 카드는 다음 한 장을 idle 에 미리', () => {
     const body = MEDIA.slice(at, at + 1200)
     expect(body).toMatch(/if \(!multi \|\| !coverLoaded \|\| idleDone\.current\) return/)
     expect(body).toMatch(/new IntersectionObserver\(/)
-    expect(body).toMatch(/threshold: 0\.6/)
+    // ⏱️ 2026-09-06: 화면에 **닿기 전**부터 받는다. 받는 장수는 그대로(카드당 1장) — 시점만 앞당겼다.
+    //   되돌아가면 스크롤해서 만난 카드를 바로 넘길 때 4~5초를 정면으로 맞는다(4G 실측).
+    expect(body, '관측 여백이 사라졌다 — 카드가 화면에 다 들어온 뒤에야 받기 시작한다').toMatch(/rootMargin: '400px'/)
+    expect(body, 'idle 대기가 다시 길어졌다').toMatch(/timeout: 800/)
+    // 👁️ 머문 카드만 받는다 — 스쳐 지나간 카드는 타이머가 취소돼 한 장도 안 받는다.
+    //   이게 빠지면 "일찍 받기"의 트래픽 비용(+27% 실측)이 빠른 스크롤에서도 그대로 나간다.
+    expect(body, '머문-시간 게이트가 사라졌다 — 스쳐 간 카드까지 받는다').toMatch(/setTimeout\([\s\S]{0,400}?DWELL_MS\)/)
+    expect(body, '화면을 벗어날 때 예약을 취소하지 않는다').toMatch(/clearTimeout\(dwell\)/)
     expect(body).toMatch(/requestIdleCallback\(run/)
     expect(body).toMatch(/const run = \(\) => prefetchNext\(\)/)
     expect(MEDIA).toMatch(/const coverLoaded = loaded\.has\(0\)/)
