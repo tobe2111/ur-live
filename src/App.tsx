@@ -129,6 +129,8 @@ const MyDigitalLibraryPage = lazy(() => import('./pages/MyDigitalLibraryPage'))
 const VoucherVerifyPage = lazy(() => import('./pages/VoucherVerifyPage'))
 const StoreStatsPage = lazy(() => import('./pages/StoreStatsPage'))
 const BrowsePage = lazy(() => import('./pages/BrowsePage'))
+// 🎬 2026-09-07 유어쇼츠 뷰어 — **반드시 lazy**. 홈 첫 화면이 유튜브 재생 코드를 받으면 안 된다.
+const VideosPage = lazy(() => import('./pages/VideosPage'))
 // 🛡️ 2026-05-19: 교환권 전용 페이지 — /browse 와 분리 (카카오 선물하기 스타일).
 const VouchersPage = lazy(() => import('./pages/VouchersPage'))
 const ExperienceCampaignsPage = lazy(() => import('./pages/ExperienceCampaignsPage'))
@@ -563,7 +565,7 @@ function AppContent() {
   // 🛡️ 2026-05-24 (regression fix): /pay/widget 누락 → BottomNav 가 결제 버튼 가림.
   //   결제 위젯 마운트하는 모든 경로는 반드시 여기 등록. 신규 추가 시 tests/unit/toss-fullscreen-routes.test.ts
   //   가 자동 검증 (App.tsx 의 fullScreenPrefixes 와 TossPaymentWidget 마운트 라우트 일치 확인).
-  const fullScreenPrefixes = ['/cart', '/checkout', '/payment', '/pay', '/points', '/seller', '/admin', '/login', '/register', '/auth', '/embed', '/introduce', '/blog', '/about', '/partners', '/creators', '/my-orders', '/store/scan']
+  const fullScreenPrefixes = ['/cart', '/checkout', '/payment', '/pay', '/points', '/seller', '/admin', '/login', '/register', '/auth', '/embed', '/introduce', '/blog', '/about', '/partners', '/creators', '/my-orders', '/store/scan', '/videos']
   const fullScreen = fullScreenPrefixes.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
   // 🏭 유통스타트 B2B(도매몰/제조사)는 소비자 BottomNav/TopNav 미표시 — 별도 도메인·업태.
   //   isWholesaleSurface = SSOT (`/wholesale*`·`/supplier*`). 같은 헬퍼를 BottomNav·DesktopTopNav
@@ -699,6 +701,7 @@ function AppContent() {
             <Route path="/store/stats/:productId" element={<StoreStatsPage />} />
             <Route path="/browse" element={<BrowsePage />} />
             <Route path="/vouchers" element={<VouchersPage />} />
+            <Route path="/videos" element={<VideosPage />} />
             <Route path="/experience" element={<ExperienceCampaignsPage />} />
             {/* 🆕 통합 마케팅 서비스(가칭) — 3번째 서비스. 도매몰처럼 자체 surface 로 분리 */}
             {/* 🆕 2026-06-27 /ads = 공개 랜딩(소개), /ads/dashboard = 로그인 후 입점 대시보드 */}

@@ -30,7 +30,7 @@ export const RESERVED_SLUGS: readonly string[] = [
   'privacy-policy', 'product', 'products', 'profile', 'referral', 'refund',
   'refund-policy', 'region', 'register', 'restaurant-map', 's', 'search', 'seller',
   'shipping-policy', 'stays', 'store', 'success', 'supplier', 'terms',
-  'terms-of-service', 'toss-debug', 'u', 'user', 'v', 'vouchers',
+  'terms-of-service', 'toss-debug', 'u', 'user', 'v', 'videos', 'vouchers',
   'wholesale', 'wishlist',
 ]
 

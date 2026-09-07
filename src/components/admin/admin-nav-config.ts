@@ -8,6 +8,7 @@ import {
   Bell, Image, Monitor, Store, ClipboardList, Gift, Ticket, Play, BookOpen, Building2, UserCheck, Settings, Send,
   BarChart3, Shield, UserCog, Radio, Users, MessageSquare, Megaphone, Sparkles, AlertTriangle, TrendingUp, AlertOctagon, Wallet, Layers, Mail, Crown,
   Wrench, RotateCcw, Upload, History, MapPin, Scale, FileText, Rocket, Share2, LayoutList,
+  Video,
   type LucideIcon
 } from 'lucide-react'
 import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
@@ -147,6 +148,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/voucher-transactions', label: '교환권 거래', icon: Ticket },
       { path: '/admin/banners',          label: '배너 관리',     icon: Image },
       { path: '/admin/home-sections',    label: '홈 섹션',       icon: LayoutList },
+      { path: '/admin/urshorts',         label: '유어쇼츠',     icon: Video },
     ],
   },
   {

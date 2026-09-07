@@ -88,6 +88,87 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🎬 허락 안 받은 영상이 홈에 나간다 (consent 게이트 제거)',
+    file: 'src/features/urshorts/api/urshorts.routes.ts',
+    find: '     AND s.consent = 1',
+    replace: '     AND 1 = 1',
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      '남의 영상 옆에 "지금 구매"가 붙으면 그 창작자가 이 딜을 보증한 것으로 읽히는데 그는 그런 적이 ' +
+      '없다. 게다가 유어애즈가 바로 그 채널들에게 제휴 제안을 보낼 참이라, 자기 영상이 이미 우리 ' +
+      '판매에 쓰이는 걸 보면 그 제안이 열리기도 전에 죽는다 — 만들려는 관계를 태우는 셈이다.',
+  },
+  {
+    name: '🎬 셀러가 남의 상품에 영상을 걸 수 있다 (소유권 검사 제거)',
+    file: 'src/features/urshorts/api/urshorts.routes.ts',
+    find: 'SELECT id, name FROM products WHERE id = ? AND seller_id = ?',
+    replace: 'SELECT id, name FROM products WHERE id = ?',
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      '화면이 보낸 product_id 를 그대로 믿으면 아무 셀러나 남의 상품에 영상을 건다(IDOR). ' +
+      'A 매장 이용권 옆에 B 매장 영상이 붙어 홈에서 그대로 팔리는데, 에러가 안 나서 신고가 와야 안다.',
+  },
+  {
+    name: '🎬 /videos 가 몰 슬러그 예약어에서 빠진다',
+    file: 'src/shared/mall/slug.ts',
+    find: "'u', 'user', 'v', 'videos', 'vouchers',",
+    replace: "'u', 'user', 'v', 'vouchers',",
+    test: 'src/tests/unit/mall-branding.test.ts',
+    why:
+      '`urdeal.kr/{몰슬러그}` 는 한 세그먼트라, 어떤 몰이 videos 를 슬러그로 잡으면 유어쇼츠 뷰어가 ' +
+      '통째로 죽는다. 개설되기 전까지는 아무 일도 안 일어나서 몇 달 뒤에 터진다.',
+  },
+  {
+    name: '🎬 미연결 영상이 홈으로 샌다 (LEFT JOIN)',
+    file: 'src/features/urshorts/api/urshorts.routes.ts',
+    find: '    JOIN products p ON p.id = s.product_id\n   WHERE s.is_active = 1',
+    replace: '    LEFT JOIN products p ON p.id = s.product_id\n   WHERE s.is_active = 1',
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      '이용권이 안 붙은 영상이 홈에 뜨면 누른 사람이 살 수가 없다 — 그 순간 유어쇼츠는 매출 장치가 ' +
+      '아니라 유튜브로 나가는 문이 된다. 에러가 안 나고 "영상이 많아졌네"로만 보인다.',
+  },
+  {
+    name: '🎬 재생기가 여러 개 살아남는다 (iframe key 제거)',
+    file: 'src/pages/VideosPage.tsx',
+    find: '          key={cur.video_id}',
+    replace: '          data-key={cur.video_id}',
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      'key 가 없으면 React 가 같은 iframe 을 재사용하지 않고 넘길 때마다 새 재생기가 쌓인다. ' +
+      '폰에서 목록이 길어질수록 조용히 느려지다 멈춘다 — 에러는 끝까지 안 난다.',
+  },
+  {
+    name: '🎬 홈 레일이 마운트하자마자 데이터를 부른다',
+    file: 'src/components/home/UrShortsRail.tsx',
+    find: '    if (!near) return\n    let alive = true',
+    replace: '    let alive = true',
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      '홈을 여는 모든 사람이 요청을 하나 더 내게 된다. 대부분은 레일까지 스크롤하지 않으므로 ' +
+      '그 요청은 통째로 낭비다 — 화면은 똑같아 보여서 아무도 못 알아챈다.',
+  },
+  {
+    name: '🎬 쇼츠가 아닌 영상도 통과시킨다 (길이 확인 생략)',
+    file: 'src/features/urshorts/api/urshorts.routes.ts',
+    find: '    if (sec > URSHORTS_MAX_DURATION_SEC) {',
+    replace: '    if (false) {',
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      '가로 10분짜리가 9:16 카드에 들어가면 위아래 검은 띠가 생기고 구매 바를 띄울 화면도 아니다. ' +
+      '깨지는 게 아니라 그냥 못생겨지므로 배포까지 간다.',
+  },
+  {
+    name: '🏪 채널 미지정 좌석이 고르지 않고도 1단계를 넘는다 (결재 Q3-3 "미지정 폴백 폐지" 무력화)',
+    file: 'src/pages/SellerMealVoucherNewPage.tsx',
+    find: '    if (s === 0 && channelSet === false) {',
+    replace: '    if (false && channelSet === false) {',
+    test: 'src/tests/unit/store-channel-required-2026-09-07.test.ts',
+    why:
+      '게이트가 빠지면 옛 매장이 채널을 안 고른 채 이용권을 등록하고, 화면은 "운영 방식 미선택" 만 ' +
+      '띄운 채 정산은 조용히 중개 폴백으로 걷힌다 — 에러가 없어 아무도 모른다.',
+  },
+  {
     name: '🏷️ 할인율이 다시 브랜드 블루로 (행동 색과 가격 색이 섞인다)',
     file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
     find: "font-extrabold text-sale\">{discount}%",
@@ -9563,6 +9644,18 @@ canvas {
       '이 패널은 bg-white 뿐이라 늘 흰데 소비자 라우트(/store/new)에서도 열린다. 전역 .dark input' +
       '(특이도 0,5,1)이 text-gray-900(0,1,0)을 이기므로 클래스 유틸로는 못 이기고, light-island 만이 ' +
       '안쪽 dark: 를 끈다. 2026-09-07 대표가 검색창에 친 글자를 못 봤다 — 이 레포 세 번째 재발.',
+  },
+  {
+    name: '🔗 면제한 auth 페이지가 실제 렌더 측정 목록에서 빠진다 (아무도 안 보는 화면)',
+    file: 'scripts/check-dark-contrast.mjs',
+    find: "  { route: '/register', name: '가입', fill: true },",
+    replace: '',
+    test: 'src/tests/unit/theme-guard-pairing-2026-09-07.test.ts',
+    why:
+      'check-light-input-guard 의 CONSUMER_EXCLUDE 는 "이 페이지는 양 테마를 지원한다"는 선언이라 ' +
+      '라이트 고정 검사를 면제한다. 그 선언이 사실인지는 dark-contrast 의 실제 렌더 측정만 안다. ' +
+      '2026-09-07 에 RegisterPage 가 면제 목록에 있으면서 다크 이행이 반만 돼 있어 가입 폼 전체가 ' +
+      '안 읽혔다(약관 링크 1.03:1 · 입력 1.00:1). 면제는 약속이고 이 짝이 그 약속을 지킨다.',
   },
   {
     name: '🚪 매장 등록 페이지가 다시 배경 클릭으로 꺼진다 (폼 통째로 날아감)',

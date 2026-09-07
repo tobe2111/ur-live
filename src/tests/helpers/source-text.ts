@@ -144,3 +144,38 @@ export function sliceFrom(code: string, anchor: string, end?: string, maxLen = 2
   }
   return code.slice(i, i + maxLen)
 }
+
+/**
+ * 🩹 **정비 레인(repair-schema) 전체 소스** — 파일이 아니라 *레인*을 읽는다.
+ *
+ * ## 왜 파일 경로로 읽으면 안 되나 (2026-09-07 실측 — 이 헬퍼가 생긴 이유)
+ *
+ * 정비 레인의 불변식은 늘 **"이 테이블/컬럼이 정비 레인에 등재돼 있다"** 이지
+ * *"repair-schema.routes.ts 라는 파일 안에 있다"* 가 아니다. 그런데 일곱 개 테스트가
+ * 후자로 적혀 있었고, `repair-schema.routes.ts` 가 1,455줄로 커져 파일크기 래칫에 걸려
+ * 표 정의를 `repair-schema/aux-tables.ts` 로 **옮기자 네 개가 통째로 빨간불**이 됐다.
+ * 불변식은 하나도 안 깨졌는데 테스트만 깨진 것 — 검사가 *사실*이 아니라 *주소*를 보고 있었다.
+ *
+ * ⚠️ 그리고 반대 방향이 더 위험하다: 표가 딴 파일로 가 버린 뒤에도
+ * `toContain('...')` 류가 **우연히 통과**하면(다른 이유로 그 문자열이 남아 있으면)
+ * 정비 등재가 실제로 사라졌는데 초록불이 뜬다. 레인 전체를 읽으면 그 창이 닫힌다.
+ *
+ * 그래서 `repair-schema.routes.ts` + `repair-schema/*.ts` 를 **디렉터리에서 찾아** 잇는다.
+ * 다음에 또 쪼개도 이 헬퍼를 쓰는 검사는 안 깨지고, 등재가 진짜로 빠지면 그때만 깨진다.
+ *
+ * 🔒 파일을 하나도 못 찾으면 **통과가 아니라 예외**다 — 이 레포가 반복해 당한
+ * "측정 대상 0건인데 초록불"(= 헛도는 가드)을 이 헬퍼 자신이 하지 않게.
+ */
+export function readRepairLane(): string {
+  const dir = 'src/worker/routes/repair-schema'
+  const parts: string[] = [readRaw('src/worker/routes/repair-schema.routes.ts')]
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { readdirSync } = require('fs') as typeof import('fs')
+  for (const f of readdirSync(resolve(process.cwd(), dir)).sort()) {
+    if (f.endsWith('.ts')) parts.push(readRaw(`${dir}/${f}`))
+  }
+  if (parts.length < 2) {
+    throw new Error(`정비 레인 소스를 ${dir} 에서 못 찾았다 — 경로가 바뀌었는지 확인할 것`)
+  }
+  return parts.join('\n')
+}

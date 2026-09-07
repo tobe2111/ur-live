@@ -27,7 +27,7 @@ import { resolve } from 'node:path'
 const ROOT = resolve(__dirname, '../../..')
 const read = (p: string) => readFileSync(resolve(ROOT, p), 'utf-8')
 
-const ROLES = ['ceo-office', 'planning', 'marketing', 'design', 'dev', 'finance'] as const
+const ROLES = ['ceo-office', 'planning', 'marketing', 'design', 'dev', 'finance', 'ops'] as const
 const MODEL_DOC = 'docs/design/ai-team-operating-model.md'
 const REQUIRED_SECTIONS = ['## 먼저 읽는다', '## 결정권', '## 금지', '## 완료 판정', '## 보고 형식']
 
@@ -42,7 +42,7 @@ function frontmatter(src: string): Record<string, string> {
   return out
 }
 
-describe('① 역할 파일 6개 — 프론트매터', () => {
+describe('① 역할 파일 7개 — 프론트매터', () => {
   for (const role of ROLES) {
     it(`${role}.md 가 있고 name 이 파일명과 같다`, () => {
       const p = `.claude/agents/${role}.md`
