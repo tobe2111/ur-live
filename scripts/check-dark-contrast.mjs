@@ -83,6 +83,12 @@ const ROUTES = [
   { route: '/notifications', name: '알림', auth: 'user', fill: true },
   { route: '/wishlist', name: '찜', auth: 'user', fill: true },
   { route: '/my-deal-history', name: '딜 내역', auth: 'user', fill: true },
+  // 🏪 매장 등록 — 2026-09-07 에 여기서 **흰 배경 위 흰 글자(1.00:1)** 가 나왔다.
+  //   대시보드 밖 라이트 고정 페이지라 `force-light-theme` 이 필요한데 그것만 빠져 있었고,
+  //   이 목록에 없어서 가드도 못 봤다(가드의 검사 범위 = 이 배열이다).
+  //   ⚠️ 1단계는 카카오맵 SDK 를 부르는데 외부 리소스가 차단돼 지도는 안 뜬다 — 그래도
+  //     상단 chrome·진행바·버튼·안내문은 그려지므로 대비 측정에는 충분하다.
+  { route: '/store/new', name: '매장 등록', auth: 'user', fill: true },
   // 대외·정적
   { route: '/about', name: '소개', fill: true },
   { route: '/faq', name: 'FAQ', fill: true },

@@ -5270,10 +5270,7 @@
     "editNamePlaceholder": "请输入姓名",
     "editPhone": "电话号码",
     "editCancel": "取消",
-    "appInfo": "应用信息",
-    "currentVersion": "当前版本",
-    "build": "构建",
-    "checkLatest": "检查最新构建",
+    "checkLatest": "检查更新",
     "loginRequired": "需要登录。",
     "fallbackName": "用户",
     "nameRequired": "请输入姓名。",
@@ -5309,7 +5306,12 @@
     "ariaToggleOff": "关闭 {{label}}",
     "language": "语言",
     "phoneRequired": "请输入手机号 — 兑换券和通知将发送到该号码",
-    "phoneInvalid": "请检查手机号格式 (010-0000-0000)"
+    "phoneInvalid": "请检查手机号格式 (010-0000-0000)",
+    "appName": "UrDeal",
+    "checking": "检查中…",
+    "isLatest": "已是最新版本",
+    "updateAvailable": "有新版本",
+    "updateNow": "立即更新"
   },
   "productDetail": {
     "retry": "重试",
