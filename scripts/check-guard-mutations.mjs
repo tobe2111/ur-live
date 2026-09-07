@@ -110,8 +110,8 @@ const MUTATIONS = [
   {
     name: '🎬 미연결 영상이 홈으로 샌다 (LEFT JOIN)',
     file: 'src/features/urshorts/api/urshorts.routes.ts',
-    find: '    JOIN products p ON p.id = s.product_id',
-    replace: '    LEFT JOIN products p ON p.id = s.product_id',
+    find: '    JOIN products p ON p.id = s.product_id\n   WHERE s.is_active = 1',
+    replace: '    LEFT JOIN products p ON p.id = s.product_id\n   WHERE s.is_active = 1',
     test: 'src/tests/unit/urshorts-core.test.ts',
     why:
       '이용권이 안 붙은 영상이 홈에 뜨면 누른 사람이 살 수가 없다 — 그 순간 유어쇼츠는 매출 장치가 ' +
