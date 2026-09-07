@@ -51,7 +51,16 @@
 | [marketing] 마케팅 주간 | 화 09:30 | `trig_01Mac6jT8N7CayQ78qFXz89p` |
 | [design] 디자인 주간 | 수 09:30 | `trig_01TPoqu3NDox96ETDrk7qUnh` |
 | [executor] 승인 결재 실행기 | 4시간마다(:56) · 승인 0건이면 무동작 | `trig_01LkzCCq5UD56vsY1yHVKjv7` |
+| [connector-proxy] 커넥터 대리인 | 4시간마다(:26, 실행기 30분 뒤) · **이 세션에 바인딩**(GitHub·Notion 보유) · 루틴 브랜치 draft PR 생성 + 머지분 Notion 미러 | `trig_01HeNMX1hE9gx7s2wn1WPtLm` |
 
+### 🔴 대표가 직접 해야 하는 것 — 2026-09-07 17:0x 재정리 (대표 *"내가 할 일 너가 최대한 하거나 자동화 해주면 안돼?"*)
+| 항목 | 자동화 시도 | 결과 | 남는 것 |
+|---|---|---|---|
+| 옛 "System health check" 끄기 | `update_trigger` → 거부(http_api 생성) · `fire_trigger` 로 자기-비활성 지시 → **not found** | 에이전트는 이 루틴에 손댈 수 없다 | **대표가 Routines UI 에서 끈다** (안 꺼도 실패 로그만 쌓일 뿐 해는 없다) |
+| 루틴에 GitHub·Notion 커넥터 | fresh-session 루틴엔 못 넘김 → **커넥터 대리인 루틴**을 이 세션(둘 다 보유)에 바인딩해 PR 생성·Notion 미러를 대신 | 첫 회차 18:26 KST 에 실제로 도구가 있는지 판정된다(생성 응답의 warning 이 세션-바인딩에도 붙어 확언 불가) | 대리인이 안 되면 그때 UI 에서 붙인다. 이 세션이 아카이브되면 대리인도 죽는다 — 그때도 UI |
+| 결재함 답하기 · staging 실결제 · 머니 스위치 ON | 자동화 대상 아님(결정권 C — 대표만) | — | **대표** (실결제는 카드가 필요하고, 스위치는 사람이 켠다는 것이 이 모델의 1원칙) |
+
+(아래 원문은 재정리 전 기록)
 ### 🔴 대표가 직접 해야 하는 것 2가지 (세션이 권한상 못 한다)
 1. **죽은 "System health check" 비활성화** — 2026-04 에 `http_api` 로 만들어져 에이전트가 수정할 수 없다
    (`update_trigger` 거부 실측: *"created via http_api, not by an agent"*). claude.ai Routines UI 에서 끄거나 지운다.
