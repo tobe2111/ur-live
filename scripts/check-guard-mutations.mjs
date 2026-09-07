@@ -88,6 +88,16 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🎬 /videos 가 몰 슬러그 예약어에서 빠진다',
+    file: 'src/shared/mall/slug.ts',
+    find: "'u', 'user', 'v', 'videos', 'vouchers',",
+    replace: "'u', 'user', 'v', 'vouchers',",
+    test: 'src/tests/unit/mall-branding.test.ts',
+    why:
+      '`urdeal.kr/{몰슬러그}` 는 한 세그먼트라, 어떤 몰이 videos 를 슬러그로 잡으면 유어쇼츠 뷰어가 ' +
+      '통째로 죽는다. 개설되기 전까지는 아무 일도 안 일어나서 몇 달 뒤에 터진다.',
+  },
+  {
     name: '🎬 미연결 영상이 홈으로 샌다 (LEFT JOIN)',
     file: 'src/features/urshorts/api/urshorts.routes.ts',
     find: '    JOIN products p ON p.id = s.product_id',
