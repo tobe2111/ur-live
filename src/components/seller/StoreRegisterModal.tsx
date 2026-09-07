@@ -50,9 +50,19 @@ interface Props {
   onClose: () => void
   /** 등록 성공 — 서버 응답의 새 seller_id 를 넘긴다(목록 갱신용). */
   onDone: (sellerId?: number) => void
+  /**
+   * 배경(어두운 여백)을 눌렀을 때 닫을지. 기본 `true` — 대시보드에서 목록 위에 겹쳐 뜰 때는
+   * 바깥 클릭으로 닫히는 게 맞다(뒤에 돌아갈 화면이 보인다).
+   *
+   * 🩸 2026-09-07 (대표 신고 *"흰 섹션 바깥쪽을 클릭하니까 페이지가 꺼져"*): `/store/new` 는
+   *   **모달이 곧 페이지**라 배경 뒤에 아무것도 없다. 그 자리에서 바깥을 누르면 사장님이
+   *   사업자등록증까지 올려 둔 폼이 통째로 날아가고 화면을 떠난다. 겹쳐 뜬 것과 페이지인 것은
+   *   같은 컴포넌트라도 **닫기의 의미가 다르다** ⇒ 페이지로 쓸 땐 `false`.
+   */
+  dismissOnBackdrop?: boolean
 }
 
-export default function StoreRegisterModal({ initialPlace, onClose, onDone }: Props) {
+export default function StoreRegisterModal({ initialPlace, onClose, onDone, dismissOnBackdrop = true }: Props) {
   const [picked, setPicked] = useState<RegisterPlace | null>(initialPlace ?? null)
   const [showMap, setShowMap] = useState(!initialPlace)
   const [channel, setChannel] = useState<'direct' | 'brokered' | null>(null)
@@ -129,8 +139,17 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone }: Pr
   }
 
   return (
-    <div className="fixed inset-0 z-[10500] flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4" onClick={onClose}>
-      <div className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl max-h-[92dvh] flex flex-col" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[10500] flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4"
+      onClick={dismissOnBackdrop ? onClose : undefined}>
+      {/* 🏝️ light-island — 이 패널은 `bg-white` 뿐이라 **테마와 무관하게 늘 흰색**이다. 그런데 이 모달은
+        * 소비자 라우트(`/store/new`)에서도 열리므로, 다크에서 안쪽 `dark:` 유틸이 살아 있으면
+        * 흰 판 위에 흰 글자가 된다 — 실제로 대표가 검색창에 친 글자를 못 봤다(2026-09-07).
+        * 전역 `.dark input`(특이도 0,5,1)이 `text-gray-900`(0,1,0)을 이기므로 **클래스 유틸로는 못 이긴다.**
+        * 실측: 붙이기 전 1.00:1(흰 위 흰) → 붙인 뒤 17.77:1.
+        * ⚠️ `light-fixed` 주석은 가드 면제용 부표일 뿐 런타임엔 아무 일도 안 한다(CLAUDE.md 🏝️ 절).
+        * ⚠️ 이 블록의 이어지는 줄이 `*` 로 시작하는 이유: `check-dashboard-theme.sh` 가 여러 줄 JSX
+        *    주석의 둘째 줄부터를 실코드로 보고 다크 유틸 표기를 위반으로 잡는다(오탐 방향이라 안전). */}
+      <div className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl max-h-[92dvh] flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between shrink-0">
           <h2 className="text-sm font-bold text-gray-900">매장 등록</h2>
           <button onClick={onClose} className="text-gray-400 text-sm px-2">✕</button>

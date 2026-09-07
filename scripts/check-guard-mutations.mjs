@@ -9490,6 +9490,28 @@ canvas {
       '2026-06-17 대표 결정(5%→2%)이 적립 경로에만 반영되고 표시 상수는 5 로 남아 몇 달간 ' +
       '어드민 정책 표가 2.5배 틀린 숫자를 보여 줬다. 상수를 되돌리면 그 상태로 돌아간다.',
   },
+  {
+    name: '🏝️ 매장 등록 모달이 다시 흰 판 위 흰 글자가 된다 (light-island 소실)',
+    file: 'src/components/seller/StoreRegisterModal.tsx',
+    find: 'className="light-island w-full sm:max-w-lg',
+    replace: 'className="w-full sm:max-w-lg',
+    test: 'src/tests/unit/store-claim-2026-09-07.test.ts',
+    why:
+      '이 패널은 bg-white 뿐이라 늘 흰데 소비자 라우트(/store/new)에서도 열린다. 전역 .dark input' +
+      '(특이도 0,5,1)이 text-gray-900(0,1,0)을 이기므로 클래스 유틸로는 못 이기고, light-island 만이 ' +
+      '안쪽 dark: 를 끈다. 2026-09-07 대표가 검색창에 친 글자를 못 봤다 — 이 레포 세 번째 재발.',
+  },
+  {
+    name: '🚪 매장 등록 페이지가 다시 배경 클릭으로 꺼진다 (폼 통째로 날아감)',
+    file: 'src/pages/StoreClaimPage.tsx',
+    find: '        dismissOnBackdrop={false}',
+    replace: '',
+    test: 'src/tests/unit/store-claim-2026-09-07.test.ts',
+    why:
+      '/store/new 는 모달이 곧 페이지라 배경 뒤에 아무것도 없다. 사업자등록증까지 올린 폼이 ' +
+      '스치는 클릭 한 번에 사라지고 화면을 떠난다(2026-09-07 대표 신고). 대시보드에서 겹쳐 뜰 때와 ' +
+      '닫기의 의미가 다르다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).
