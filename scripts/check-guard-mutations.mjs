@@ -9543,6 +9543,16 @@ canvas {
       '이미 갖고 있던 매장으로 들어간 경우엔 아무것도 등록되지 않았다. 그런데 같은 문구를 띄우면 ' +
       '사장님은 매장이 하나 더 생긴 줄 안다 — 거짓말이고, 좌석도 이미 잡혀 있어 재발급이 낭비다.',
   },
+  {
+    name: '🏪 등록 직전 요약에서 되돌아갈 길이 사라진다',
+    file: 'src/components/seller/StoreRegisterModal.tsx',
+    find: '                    <button onClick={() => setStep(r.to)} className="text-[11px] text-gray-400 underline shrink-0 pt-0.5">수정</button>',
+    replace: '',
+    test: 'src/tests/unit/store-register-wizard.test.ts',
+    why:
+      '요약은 틀린 걸 발견하라고 있는 것이다. 발견해도 고칠 길이 없으면 불안만 주고, 사장님은 ' +
+      '취소하고 처음부터 다시 하거나 그냥 잘못된 채로 등록한다. 화면은 멀쩡해 보인다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).

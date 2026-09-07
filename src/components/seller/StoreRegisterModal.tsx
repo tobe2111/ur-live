@@ -340,6 +340,28 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone }: Pr
           {/* ④ 사업자 확인 — 사진이 필수, 번호는 선택 */}
           {step === 3 && (
             <div className="space-y-3">
+              {/* 🪞 당근 원칙 ⑤ "매 단계 결과 미리보기" — 마지막 문턱에서 **무엇이 등록되는지** 보여 준다.
+                  앞 세 단계는 답하고 나면 화면에서 사라지므로, 여기서 다시 안 보여 주면 사장님은
+                  자기가 무엇을 골랐는지 기억에만 의존해 [매장 등록]을 누르게 된다. 매장명이 한 글자
+                  다른 지점을 골랐어도 이 카드가 없으면 등록 후에야 안다.
+                  ⚠️ 새 데이터를 부르지 않는다 — 이미 손에 든 값만 다시 보여 준다(요청 0). */}
+              <div className="rounded-xl bg-gray-50 border border-gray-200 divide-y divide-gray-200">
+                {[
+                  { k: '매장', v: picked?.name, sub: picked?.address, to: 0 },
+                  { k: '담당자', v: formatPhone(managerPhone), to: 1 },
+                  { k: '운영', v: channel === 'direct' ? '내 가게' : channel === 'brokered' ? '중개·대행' : '', to: 2 },
+                ].map((r) => (
+                  <div key={r.k} className="flex items-start gap-3 px-3 py-2.5">
+                    <span className="text-[11px] font-bold text-gray-400 w-11 shrink-0 pt-0.5">{r.k}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[13px] font-bold text-gray-900 truncate">{r.v}</span>
+                      {r.sub && <span className="block text-[11px] text-gray-500 truncate">{r.sub}</span>}
+                    </span>
+                    {/* 틀린 걸 발견해도 되돌아갈 길이 없으면 미리보기는 불안만 준다. */}
+                    <button onClick={() => setStep(r.to)} className="text-[11px] text-gray-400 underline shrink-0 pt-0.5">수정</button>
+                  </div>
+                ))}
+              </div>
               {/* 📄 사업자등록증 사본 — 개업일·대표자명을 외워 적는 대신 사진 1장. 이게 심사의 근거다. */}
               <label className={`flex items-center gap-2.5 px-3 py-3 rounded-lg border border-dashed cursor-pointer ${certUrl ? 'border-emerald-300 bg-emerald-50' : 'border-gray-300 bg-gray-50'}`}>
                 <input

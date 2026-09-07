@@ -95,6 +95,26 @@ describe('🕳️ 이미 등록된 매장 = 막다른 길', () => {
   })
 })
 
+describe('🪞 마지막 문턱에서 무엇이 등록되는지 보여 준다 (당근 원칙 ⑤)', () => {
+  it('요약이 마지막 단계 안에 있다', () => {
+    // 앞 세 단계는 답하고 나면 화면에서 사라진다. 여기서 다시 안 보여 주면 사장님은
+    // 자기가 무엇을 골랐는지 기억에만 의존해 [매장 등록]을 누른다.
+    const lastStep = M.slice(M.indexOf('{step === 3 && ('))
+    expect(lastStep, `${MODAL}: 마지막 단계에 요약이 없다`).toMatch(/k: '매장'[\s\S]{0,200}k: '담당자'[\s\S]{0,200}k: '운영'/)
+  })
+
+  it('요약에서 되돌아갈 수 있다', () => {
+    // 틀린 걸 발견해도 고칠 길이 없으면 미리보기는 불안만 준다.
+    expect(M, `${MODAL}: 요약에 수정 경로가 없다`).toMatch(/onClick=\{\(\) => setStep\(r\.to\)\}/)
+  })
+
+  it('요약이 새 요청을 만들지 않는다', () => {
+    // 이미 손에 든 값만 다시 보여 준다 — 마지막 문턱에서 네트워크를 타면 느려지고 실패할 수 있다.
+    const lastStep = M.slice(M.indexOf('{step === 3 && ('), M.indexOf('</div>\n          )}\n        </div>'))
+    expect(lastStep, `${MODAL}: 요약이 api 호출을 한다`).not.toMatch(/api\.(get|post)\(/)
+  })
+})
+
 describe('🚧 막다른 길을 없애면서 새 막다른 길을 놓지 않는다', () => {
   it('셀러 좌석이 없으면 /seller/stores 를 권하지 않는다', () => {
     // `/seller/stores` 는 requireSeller 다(seller.routes.tsx:222). 푸터로 들어온 소비자에게
