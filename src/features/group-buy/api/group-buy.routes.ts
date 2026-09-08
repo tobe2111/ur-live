@@ -12,7 +12,7 @@ import { Hono } from 'hono'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { auditLog } from '@/worker/middleware/audit-log'
-import { recordLedger } from '@/worker/utils/ledger'
+import { recordLedger, sellerLedgerAccount } from '@/worker/utils/ledger'
 import { formatKSTDate } from '@/utils/date' // 워커 TZ=UTC — 만료일 안내가 하루 이르던 것 교정
 import { swallow } from '@/worker/utils/swallow'
 import { resolveUserIdString } from '@/worker/utils/resolve-user-id'
@@ -510,7 +510,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
         reference_id: orderNumber,
         amount: totalAmount,
         debit_account: `user:${userId}`,                  // 유저 wallet 차감
-        credit_account: `seller:${product.seller_id}`,    // 셀러 receivable 증가
+        credit_account: sellerLedgerAccount(product.seller_id),    // 셀러 receivable 증가
         fee_amount: commissionAmount,
         fee_account: 'platform:commission',
         metadata: { product_id: productId, qty, applied_discount_pct: appliedDiscountPct },
@@ -547,7 +547,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
             event_type: 'user_referral_bonus',
             reference_id: orderNumber,
             amount: userBonusAmount,
-            debit_account: influencerActive ? `seller:${product.seller_id}` : 'platform:commission',  // 인플 활성 시 셀러 receivable 에서, 차단 시 유어딜이 떠안음
+            debit_account: influencerActive ? sellerLedgerAccount(product.seller_id) : 'platform:commission',  // 인플 활성 시 셀러 receivable 에서, 차단 시 유어딜이 떠안음
             credit_account: `user:${userId}`,
             metadata: { source: 'influencer_referral', influencer_id: referralInfluencerId, absorbed_by_platform: !influencerActive },
           })
@@ -574,7 +574,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
             event_type: 'influencer_commission',
             reference_id: orderNumber,
             amount: influencerAmount,
-            debit_account: `seller:${product.seller_id}`,
+            debit_account: sellerLedgerAccount(product.seller_id),
             credit_account: `influencer:${referralInfluencerId}`,
             metadata: { product_id: productId, available_at: availableAt },
           })
@@ -1351,7 +1351,7 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
         reference_id: orderNumber,
         amount: expectedAmount,
         debit_account: `user:${userId}`,
-        credit_account: `seller:${product.seller_id}`,
+        credit_account: sellerLedgerAccount(product.seller_id),
         fee_amount: commissionAmount,
         fee_account: 'platform:commission',
         metadata: { product_id: productId, qty, applied_discount_pct: tierDiscountPct, payment_method: 'toss' },

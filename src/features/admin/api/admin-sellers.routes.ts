@@ -535,6 +535,10 @@ adminSellersRoutes.patch('/sellers/:id/link-user', cors(), async (c) => {
       `SELECT id FROM sellers WHERE linked_user_id = ? AND id != ? LIMIT 1`, [userId, sellerId]);
     if (conflict.length > 0) return c.json({ success: false, error: `이 유저는 이미 다른 셀러(#${conflict[0].id})에 연결돼 있습니다` }, 409);
 
+    // 🔐 2026-09-07: 미지급 잔액이 남은 매장은 주인을 못 바꾼다 — 그 돈이 새 계좌로 나간다(store-handover-guard.ts).
+    const { checkStoreHandover, STORE_HANDOVER_BLOCKED } = await import('../../../worker/utils/store-handover-guard');
+    const handover = await checkStoreHandover(DB, Number(sellerId), userId);
+    if (handover.blocked) return c.json({ success: false, error: handover.reason, code: STORE_HANDOVER_BLOCKED, receivable: handover.receivable }, 409);
     await executeRun(DB, `UPDATE sellers SET linked_user_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [userId, sellerId]);
     await writeAuditLog(c, { action: 'link_seller_user', targetType: 'seller', targetId: sellerId, after: { linked_user_id: userId, handle } });
     return c.json({ success: true, data: { seller_id: Number(sellerId), linked_user_id: userId, handle } });
