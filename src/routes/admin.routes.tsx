@@ -86,7 +86,7 @@ const AdminKakaoTestPage = lazy(() => import('@/pages/admin/AdminKakaoTestPage')
 const AdminKakaoTestCallbackPage = lazy(() => import('@/pages/admin/AdminKakaoTestCallbackPage'))
 const AdminSampleRequestsPage = lazy(() => import('@/pages/admin/AdminSampleRequestsPage'))
 const AdminOperationsGuidePage = lazy(() => import('@/pages/admin/AdminOperationsGuidePage'))
-const AdminPlatformModelPage = lazy(() => import('@/pages/admin/AdminPlatformModelPage')); const AdminProposalsPage = lazy(() => import('@/pages/admin/AdminProposalsPage'))
+const AdminPlatformModelPage = lazy(() => import('@/pages/admin/AdminPlatformModelPage')); const AdminProposalsPage = lazy(() => import('@/pages/admin/AdminProposalsPage')); const AdminDecisionsPage = lazy(() => import('@/pages/admin/AdminDecisionsPage')) // 📥 2026-09-08 결재함(docs/decisions ?raw)
 // 🏭 2026-06-07: 도매몰(유통스타트 B2B) 전용 운영 가이드.
 const AdminWholesaleGuidePage = lazy(() => import('@/pages/admin/AdminWholesaleGuidePage'))
 const AdminBlogPage = lazy(() => import('@/pages/AdminBlogPage'))
@@ -524,7 +524,7 @@ export function AdminRoutes() {
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminPlatformModelPage /></ErrorBoundary>
         </ProtectedRoute>
-      } /><Route path="/admin/proposals" element={<ProtectedRoute requireAdmin><ErrorBoundary><AdminProposalsPage /></ErrorBoundary></ProtectedRoute>} />
+      } /><Route path="/admin/proposals" element={<ProtectedRoute requireAdmin><ErrorBoundary><AdminProposalsPage /></ErrorBoundary></ProtectedRoute>} /><Route path="/admin/decisions" element={<ProtectedRoute requireAdmin><ErrorBoundary><AdminDecisionsPage /></ErrorBoundary></ProtectedRoute>} />
       {/* 🏭 2026-06-07: 도매몰(유통스타트 B2B) 전용 운영 가이드 */}
       <Route path="/admin/wholesale-guide" element={
         <ProtectedRoute requireAdmin>
