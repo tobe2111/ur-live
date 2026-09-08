@@ -1718,7 +1718,7 @@
 
 
 
-> 마지막 생성: 2026-09-08T07:25:17.537Z
+> 마지막 생성: 2026-09-08T07:07:35.893Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

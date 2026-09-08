@@ -116,3 +116,18 @@ describe('안 B — 무엇을 사는지 말한다', () => {
     expect(bar, '버튼이 전체폭이 됐다 = 안 C').not.toMatch(/w-full[^"]*bg-brand/)
   })
 })
+
+/**
+ * 🔴 2026-09-08 — 이용권이 안 붙은 영상도 뷰어에 온다(공개 쿼리 LEFT JOIN, 대표 확정).
+ * 그때 구매 바를 그리면 `/group-buy/null` 로 가는 버튼이 된다.
+ */
+describe('살 게 없으면 구매 바를 안 그린다', () => {
+  it('구매 바가 product_id 뒤에 있다', () => {
+    expect(V).toMatch(/\{cur && cur\.product_id \?/)
+  })
+
+  it('매장명이 없으면 빈 줄을 남기지 않는다', () => {
+    expect(V).not.toMatch(/\{cur\.store_name \|\| ''\}/)
+    expect(V).toMatch(/\{cur\.store_name && \(/)
+  })
+})
