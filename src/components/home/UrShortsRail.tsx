@@ -193,7 +193,11 @@ export default function UrShortsRail() {
         </Link>
       </div>
 
-      <div className="relative">
+      {/* 🩸 2026-09-08: 여기 `group` 이 **없었다.** 아래 화살표 둘이 `group-hover:grid` 인데 부모에
+          `group` 이 없으면 그 변형은 **영원히 안 걸린다** — 즉 PC 화살표가 한 번도 뜬 적이 없다.
+          `hidden` 이 기본값이라 에러도 경고도 없고, 대표에게는 그냥 "넘길 방법이 없는 레일"로 보였다.
+          이 레포가 반복해 만난 "코드는 있는데 안 되던" 클래스 그대로다(뷰어 스와이프가 같은 날 같은 꼴). */}
+      <div className="group relative">
         {/* 화살표는 PC 에서 레일에 마우스를 올렸을 때만. 폰은 잘린 카드가 이미 말한다. */}
         {edge.l && (
           <button

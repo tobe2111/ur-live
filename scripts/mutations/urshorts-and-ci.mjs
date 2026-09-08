@@ -32,8 +32,10 @@ export default [
   {
     name: '🎬 유튜브 컨트롤이 되살아나 구매 바와 겹친다',
     file: 'src/pages/VideosPage.tsx',
-    find: '{ autoplay: true, controls: false }',
-    replace: '{ autoplay: true }',
+    // 🩸 2026-09-08: `{ autoplay: true, controls: false }` 만 쓰면 **대상이 2곳**이 됐다
+    //    (IFrame API 경로 `youTubePlayerVars(...)` + 폴백 `youTubeEmbedUrl(...)`). 함수 이름까지 앵커.
+    find: 'youTubePlayerVars({ autoplay: true, controls: false })',
+    replace: 'youTubePlayerVars({ autoplay: true })',
     test: 'src/tests/unit/urshorts-viewer-chrome.test.ts',
     why:
       '실측(430×608): 유튜브 진행 바 56px · Shorts 로고 18px, 구매 바는 10~76px — 이용권을 붙이면 ' +
@@ -108,5 +110,130 @@ export default [
     why:
       '병합이 `},{` 경계를 삼켜 주입 둘이 한 객체로 융합되면 앞 항목이 통째로 사라진다(2026-09-02 에 ' +
       '10건이 그 상태로 main 에 있었다). 나누면서 그 보호만 빠지는 것이 가장 흔한 퇴행이다.',
+  },
+  {
+    name: '🔇 자막이 한 번만 꺼진다 (다음 영상에서 되살아난다)',
+    file: 'src/pages/VideosPage.tsx',
+    find: '        onStateChange: (e) => {\n          killCaptions(e.target)',
+    replace: '        onStateChange: (e) => {',
+    test: 'src/tests/unit/urshorts-viewer-chrome.test.ts',
+    why:
+      '`loadVideoById` 로 다음 영상이 오면 유튜브가 자막 모듈을 **다시 싣는다.** onReady 에서만 끄면 ' +
+      '첫 편만 깨끗하고 두 번째부터 자막이 돌아온다 — 대표가 처음 신고한 그 화면으로 되돌아가는데 ' +
+      '테스트도 에러도 없다.',
+  },
+  {
+    name: '🔇 자막 모듈을 하나만 내린다 (세대가 다르면 안 꺼진다)',
+    file: 'src/pages/videos/youtube-player.ts',
+    find: "export const CAPTION_MODULES = ['captions', 'cc'] as const",
+    replace: "export const CAPTION_MODULES = ['captions'] as const",
+    test: 'src/tests/unit/urshorts-viewer-chrome.test.ts',
+    why:
+      '유튜브가 플레이어 세대에 따라 `captions` 와 `cc` 중 하나를 쓴다. 하나만 부르면 **어떤 기기에서는 ' +
+      '꺼지고 어떤 기기에서는 안 꺼진다** — 재현이 안 되는 결함이 되어 원인을 못 찾는다.',
+  },
+  {
+    name: '🎬 재생기가 둘 이상 살아남는다 (중복 생성 가드 제거)',
+    file: 'src/pages/VideosPage.tsx',
+    find: "    if (apiState !== 'ready' || playerRef.current) return",
+    replace: "    if (apiState !== 'ready') return",
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      '유튜브 재생기는 무겁다. effect 가 다시 돌 때마다 하나씩 더 붙으면 폰에서 화면이 멈추는데, ' +
+      '앞의 것이 소리 없이 계속 재생돼 **소리만 겹친다** — 에러가 없어 원인을 엉뚱한 데서 찾게 된다.',
+  },
+  {
+    name: '🎬 전환이 갈아 끼우기가 아니라 재부팅이 된다',
+    file: 'src/pages/VideosPage.tsx',
+    find: '    try { p.loadVideoById(wantId) }',
+    replace: '    try { void p }',
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      'IFrame API 경로에서 이 한 줄이 빠지면 **넘겨도 영상이 안 바뀐다.** 구매 바와 카운터는 다음 ' +
+      '영상으로 바뀌는데 화면만 그대로라, 사용자는 우리가 엉뚱한 상품을 파는 것으로 본다.',
+  },
+  {
+    name: '🎬 나갈 때 재생기를 안 치운다 (postMessage 리스너가 남는다)',
+    file: 'src/pages/VideosPage.tsx',
+    find: '      try { playerRef.current?.destroy() } catch',
+    replace: '      try { void 0 } catch',
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      '뷰어를 닫아도 유튜브 iframe 과 리스너가 남는다. 홈으로 돌아온 뒤에도 **소리가 계속 나는** ' +
+      '형태로 드러나는데, 그때쯤이면 어느 화면이 원인인지 알기 어렵다.',
+  },
+  {
+    name: '🛟 API 가 안 오면 화면이 검게 죽는다 (폴백 제거)',
+    file: 'src/pages/VideosPage.tsx',
+    find: "      {apiState === 'off' && cur && (",
+    replace: '      {false && cur && (',
+    // 🩸 처음에 viewer-chrome 을 가리켰다가 **초록**이 떴다(그 파일은 로더와 로딩 게이트만 본다).
+    //    폴백 마크업을 고정하는 단언은 core 쪽에 있다 — 되돌려-검증이 이 오조준을 잡았다.
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      '광고 차단기나 네트워크로 `iframe_api` 가 막힌 사용자에게 `/videos` 가 **아무것도 없는 검은 화면**이 ' +
+      '된다. 우리 콘솔엔 에러가 없고 그 사용자는 신고도 안 한다 — 그냥 안 돌아온다.',
+  },
+  {
+    name: '🛟 로더가 실패를 던진다 (검은 화면 + 콘솔만 빨강)',
+    file: 'src/pages/videos/youtube-player.ts',
+    find: '    s.onerror = () => { clearTimeout(timer); finish(null) }',
+    replace: '    s.onerror = () => { clearTimeout(timer); reject(new Error("yt api")) }',
+    test: 'src/tests/unit/urshorts-viewer-chrome.test.ts',
+    why:
+      '이 Promise 는 `apiState` 를 정하는 유일한 경로다. reject 하면 `.then` 이 안 불려 화면이 ' +
+      '**로더에서 영원히 멈춘다** — "느리다"로 보고되고 원인은 스크립트 차단이다.',
+  },
+  {
+    name: '👆 탭 일시정지가 사라진다 (controls=0 인데 대신할 것이 없다)',
+    file: 'src/pages/VideosPage.tsx',
+    find: '          if (Math.abs(dy) < 12 && Date.now() - touchAt.current < 400) togglePlay()',
+    replace: '          if (Math.abs(dy) < 12 && Date.now() - touchAt.current < 400) return',
+    test: 'src/tests/unit/urshorts-viewer-chrome.test.ts',
+    why:
+      '`controls=0` 으로 유튜브 조작을 끄고 그 위를 제스처 층이 덮었으니, 이걸 지우면 **영상을 멈출 ' +
+      '방법이 하나도 없다.** 기능이 사라진 게 아니라 처음부터 없던 것처럼 보여 아무도 버그로 안 적는다.',
+  },
+  {
+    name: '👆 탭 한 번에 두 번 토글된다 (합성 click 가드 제거)',
+    file: 'src/pages/VideosPage.tsx',
+    find: '          if (Date.now() - touchEndAt.current < 600) return',
+    replace: '          if (false) return',
+    test: 'src/tests/unit/urshorts-viewer-chrome.test.ts',
+    why:
+      '모바일 브라우저는 터치 뒤에 합성 click 을 한 번 더 쏜다. 두 번 토글되면 **탭해도 아무 일도 ' +
+      '안 일어난 것처럼** 보인다(멈췄다 곧바로 재생) — 재현이 기기 의존이라 원인 찾기가 오래 걸린다.',
+  },
+  {
+    name: '🎞️ PC 레일 화살표가 다시 죽는다 (group 제거)',
+    file: 'src/components/home/UrShortsRail.tsx',
+    find: '      <div className="group relative">',
+    replace: '      <div className="relative">',
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      '`group-hover:grid` 는 조상에 `group` 이 없으면 **영원히 안 걸린다.** 기본값이 `hidden` 이라 ' +
+      '화살표가 한 번도 안 뜨는데 에러도 경고도 없다 — 2026-09-08 까지 실제로 그 상태였고, ' +
+      '대표에게는 "넘길 방법이 없는 레일"로 보였다.',
+  },
+  {
+    name: '🔁 영상이 끝나면 유튜브 끝 화면이 뜬다 (반복 재생 제거)',
+    file: 'src/pages/VideosPage.tsx',
+    find: "          if (e.data === (st?.ENDED ?? 0)) { try { e.target.playVideo() }",
+    replace: '          if (false) { try { e.target.playVideo() }',
+    test: 'src/tests/unit/urshorts-viewer-chrome.test.ts',
+    why:
+      '10~18초짜리가 끝나면 유튜브가 **관련 영상 끝 화면**을 깐다. 그걸 누른 사람은 우리 화면을 ' +
+      '떠나고 다시 안 온다 — 매출 장치로 놓은 것이 이탈 장치가 되는 정확한 지점이다.',
+  },
+  {
+    name: '⏱️ 준비 전에 넘기면 그 영상에서 굳는다 (playerReady 게이트 제거)',
+    file: 'src/pages/VideosPage.tsx',
+    find: '    if (!p || !playerReady || !wantId || loadedRef.current === wantId) return',
+    replace: '    if (!p || !wantId || loadedRef.current === wantId) return',
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      '재생기는 `onReady` 전에는 명령을 못 받아 `loadVideoById` 가 던진다. 그 예외를 삼키면 ' +
+      '`loadedRef` 만 앞서 나가 **넘겨도 영상이 안 바뀐다** — 구매 바는 다음 상품인데 화면은 이전 ' +
+      '영상이라, 우리가 엉뚱한 상품을 파는 것처럼 보인다.',
   },
 ]

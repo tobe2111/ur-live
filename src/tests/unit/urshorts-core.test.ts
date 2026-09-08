@@ -161,8 +161,26 @@ describe('③ 홈 첫 화면이 비용을 안 문다', () => {
 describe('④ 재생기는 항상 하나만', () => {
   const V = code('src/pages/VideosPage.tsx')
 
-  it('iframe 이 정확히 하나이고 key 가 video_id 다 (넘기면 이전 것이 파기된다)', () => {
+  // 🔁 2026-09-08 **앵커가 바뀌었다.** 예전에는 `<iframe key={video_id}>` 로 "넘기면 이전 것이
+  //    파기된다"를 만들었는데, 지금은 IFrame Player API 로 **한 번 만들고 갈아 끼운다.**
+  //    지키려는 것(재생기가 둘 이상 살지 않는다)은 같고 표현이 더 강해졌다 —
+  //    `new YT.Player` 가 소스에 한 번뿐이면 두 개가 생길 수가 없다.
+  it('재생기를 만드는 자리가 정확히 하나다', () => {
+    expect((V.match(/new YT\.Player\(/g) ?? []).length).toBe(1)
+    expect(V, '두 번째 재생기 방지 가드').toMatch(/if \(apiState !== 'ready' \|\| playerRef\.current\) return/)
+  })
+
+  it('영상 전환은 재부팅이 아니라 갈아 끼우기다', () => {
+    expect(V).toMatch(/p\.loadVideoById\(wantId\)/)
+  })
+
+  it('나갈 때 재생기를 destroy 한다 — 안 하면 postMessage 리스너가 남는다', () => {
+    expect(V).toMatch(/playerRef\.current\?\.destroy\(\)/)
+  })
+
+  it('폴백 iframe 은 하나뿐이고 key 가 video_id 다 (API 가 안 왔을 때만 산다)', () => {
     expect((V.match(/<iframe/g) ?? []).length).toBe(1)
+    expect(V, '폴백이 API 경로와 동시에 뜨면 재생기가 둘이 된다').toMatch(/\{apiState === 'off' && cur && \(/)
     // 🩸 `/key=\{cur\.video_id\}/` 로 쓰면 주입본 `data-key={cur.video_id}` 도 매치된다
     //    (부분문자열이라). 앞의 공백을 요구해 속성 이름 자체를 앵커로 삼는다.
     expect(V).toMatch(/\skey=\{cur\.video_id\}/)
@@ -347,5 +365,43 @@ describe('허락은 기록이지 노출 조건이 아니다', () => {
     expect(code('src/worker/routes/repair-schema.routes.ts'),
       'AUX_TABLE_REPAIRS 스프레드가 빠졌다 — 정의만 있고 실행이 안 된다')
       .toContain('...AUX_TABLE_REPAIRS')
+  })
+})
+
+/**
+ * 🩸 **`group-hover:` 는 부모에 `group` 이 없으면 영원히 안 걸린다** (2026-09-08 실측).
+ *
+ * 레일의 PC 화살표 둘이 `hidden … group-hover:grid` 인데 조상 어디에도 `group` 이 없었다 —
+ * 기본값이 `hidden` 이라 **화살표가 한 번도 뜬 적이 없고**, 에러도 경고도 안 난다.
+ * 대표에게는 "넘길 방법이 없는 레일"로만 보였다(같은 날 뷰어 스와이프가 정확히 같은 꼴이었다).
+ *
+ * ⚠️ 이 테스트가 못 막는 것: `group` 이 **화살표의 조상인지**는 안 본다(문자열 검사라).
+ *   실제로 마우스를 올려 봐야 알 수 있는 것은 여전히 눈으로 봐야 한다.
+ */
+describe('⑤ group-hover 는 group 이 있어야 걸린다', () => {
+  const RAIL2 = code('src/components/home/UrShortsRail.tsx')
+
+  it('화살표가 group-hover 를 쓰면 레일 래퍼에 group 이 있다', () => {
+    if (!RAIL2.includes('group-hover:')) return // 화살표를 다른 방식으로 바꿨다면 이 규칙은 무관
+    expect(RAIL2, 'group 없는 group-hover 는 죽은 코드다').toMatch(/className="group relative"/)
+  })
+})
+
+/**
+ * ⏱️ 재생기는 **만든 직후엔 명령을 못 받는다** — `onReady` 전 `loadVideoById` 는 던진다.
+ * 그 예외를 그냥 삼키면 `loadedRef` 만 앞서 나가 "넘겨도 영상이 안 바뀌는" 상태로 굳는다
+ * (구매 바와 목록은 다음 영상인데 화면만 그대로 — 우리가 엉뚱한 상품을 파는 것처럼 보인다).
+ */
+describe('⑥ 준비되기 전에 넘겨도 이어 붙는다', () => {
+  const V2 = code('src/pages/VideosPage.tsx')
+
+  it('전환 effect 가 재생기 준비 상태를 함께 본다', () => {
+    expect(V2).toMatch(/if \(!p \|\| !playerReady \|\| !wantId \|\| loadedRef\.current === wantId\) return/)
+    expect(V2, '준비되면 다시 돌아야 한다').toMatch(/\}, \[wantId, playerReady\]\)/)
+  })
+
+  it('onReady 가 준비 상태를 올리고, 파기하면 내린다', () => {
+    expect(V2).toMatch(/setPlayerReady\(true\)/)
+    expect(V2).toMatch(/setPlayerReady\(false\)/)
   })
 })
