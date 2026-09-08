@@ -61,6 +61,28 @@ export async function ensureLedgerTable(DB: D1Database): Promise<void> {
   } catch { /* exists */ }
 }
 
+/**
+ * 🏷️ 매장 계정 이름 SSOT — `seller:N`, 단 **판매자가 없으면 `platform:revenue`**.
+ *
+ * 🩸 2026-09-07 라이브 실측: 원장에 `credit_account = 'seller:null'` 행이 실재했다(1,800원).
+ *   `products.seller_id` 는 nullable 인데(KT 기프티콘 같은 **플랫폼 상품**은 판매자가 없다)
+ *   호출부가 `` `seller:${product.seller_id}` `` 를 가드 없이 썼기 때문이다. TS 타입은
+ *   `seller_id: number` 라고 적혀 있어 컴파일러도 안 잡았다 — **타입 선언이 DB 현실과 달랐다.**
+ *
+ * ⚠️ 왜 그냥 "기록 안 함" 이 아닌가: 그러면 **판 사실 자체가 원장에서 사라진다.**
+ *   플랫폼 상품이면 그 돈은 플랫폼 것이므로 `platform:revenue` 가 옳은 목적지다.
+ *
+ * 🔐 그리고 이건 **지급 대상에서 구조적으로 빠진다** — `payouts-generate` 는
+ *   `credit_account LIKE 'merchant:%'|'seller:%'|'agency:%'|'user:%'` 만 집계한다.
+ *   반면 `'seller:null'` 은 그 LIKE 에 **걸린다**: split(':') 이 `id='null'`(truthy 문자열)을 내고
+ *   화이트리스트도 통과해, 잔액이 최소출금액(10,000원)을 넘는 순간 **계좌 없는 유령 payout** 이
+ *   만들어진다(실측: 현재 잔액 1,710원이라 아직 안 생겼다 — payouts 0건).
+ */
+export function sellerLedgerAccount(sellerId: number | null | undefined): string {
+  const id = Number(sellerId)
+  return Number.isFinite(id) && id > 0 ? `seller:${id}` : 'platform:revenue'
+}
+
 export async function recordLedger(DB: D1Database, entry: LedgerEntry): Promise<void> {
   await ensureLedgerTable(DB)
   if (!Number.isFinite(entry.amount) || entry.amount < 0 || entry.amount > 100_000_000_000) {
@@ -318,8 +340,29 @@ export async function recordIntroductionCommissionShare(
     'SELECT introduced_by_influencer_id, referral_bonus_until FROM sellers WHERE id = ?',
   ).bind(params.merchant_id).first<{ introduced_by_influencer_id: number | null; referral_bonus_until: string | null }>().catch(() => null)
   if (!seller?.introduced_by_influencer_id) return { influencer_id: null, amount: 0 }
-  // 기간 만료 시 commission 0 (referral_bonus_until 설정된 경우만, NULL = 무기한)
-  if (seller.referral_bonus_until && new Date(seller.referral_bonus_until) < new Date()) {
+  /**
+   * ⏳ 2026-09-07: 만료 판정을 **결제 레일과 같은 SSOT**(`isStoreIntroExpired`)로 통일.
+   *
+   * 🕳️ 종전엔 `referral_bonus_until` 하나만 봤고 **NULL 이면 무기한**이었다. 그런데 결제 레일
+   *   (`influencer-store-intro-commission.ts`)은 NULL 이면 `introduced_at + N개월`(기본 1년)로
+   *   끊는다. 같은 영입 관계인데 **레일마다 기간이 달랐고**, 이쪽은 사실상 영구였다.
+   *   `referral_bonus_until` 은 백필로만 채워지는 컬럼이라 대부분의 매장에서 NULL 이다.
+   *
+   * ⚠️ 이 레일은 **이용권 사용 시점**에 매장의 *현재* 영입자를 읽는다 — 즉 과거에 팔린 이용권의
+   *   커미션이 오늘의 영입자에게 간다(소급). 그 자체를 없애려면 구매 시점의 영입자를 이용권에
+   *   스탬프해야 하는데 그건 스키마 변경 + 백필이라 별건이다
+   *   (`docs/decisions/2026-09-07-store-handover-money-cut.md`). 여기서 하는 것은 그 소급을
+   *   **기간으로 가두는 것**이다 — 영입 후 N개월이 지나면 어느 쪽이든 0 이 된다.
+   */
+  const { isStoreIntroExpired } = await import('./influencer-store-intro-commission')
+  const monthsRow = await DB.prepare(
+    "SELECT value FROM platform_settings WHERE key = 'influencer_store_intro_months'",
+  ).first<{ value: string }>().catch(() => null)
+  const { COMMISSION_DEFAULTS: CD } = await import('../../shared/constants/policy')
+  const introMonths = Number(monthsRow?.value) > 0
+    ? Number(monthsRow?.value)
+    : CD.INFLUENCER_STORE_INTRO_MONTHS
+  if (isStoreIntroExpired(seller, introMonths)) {
     return { influencer_id: null, amount: 0 }
   }
 
@@ -438,6 +481,36 @@ export async function getLedgerReceivable(
 }
 
 /** 정산 가능 잔액 = 순 receivable − 이미 payout(approved/sent) 처리분 */
+/**
+ * 💸 **아직 아무에게도 배정되지 않은 잔액** — 손바뀜 판단의 정식 수치 (2026-09-08).
+ *
+ * `getLedgerReceivable` 은 순수 원장이라 **정산 마감을 해도 안 줄어든다.** 그 값으로 손바뀜을
+ * 막으면 마감을 해도 계속 막혀 **막다른 길**이 된다(2026-09-07 자물쇠의 실제 결함).
+ *
+ * 여기서는 `payouts-generate` 와 **똑같은 공식**을 쓴다 — 원장에서 이미 payout 행으로
+ * 배정된 몫(`pending`/`approved`/`sent`)을 뺀다. 그 행들은 **생성 시점의 계좌를 자기 안에
+ * 스냅샷**하고 있으므로(payouts-generate 가 `sellers.bank_account` 를 행에 박는다),
+ * 주인이 바뀌어도 **이전 주인에게 간다.** 그래서 이 값이 0 이면 "새 주인에게 흘러갈 돈은 없다".
+ *
+ * ⚠️ `getPayablePending` 과 다르다 — 그쪽은 `pending` 을 **안** 뺀다("앞으로 지급 가능한 액수"라는
+ *   다른 질문에 답한다). 손바뀜에는 이 함수를 쓸 것.
+ *
+ * ⚠️ **못 막는 것**: 손바뀜 *뒤에* 그 payout 을 `cancelled`/`failed` 로 되돌리면 잔액이
+ *   원장으로 되살아나 새 주인에게 간다(집계가 그 두 상태를 안 뺀다). 마감 payout 의 취소를
+ *   막는 것은 아직 없다 — 승계 기능을 지을 때 함께 다뤄야 한다.
+ */
+export async function getUnsettledBalance(
+  DB: D1Database,
+  payeeAccount: string,
+): Promise<number> {
+  const receivable = await getLedgerReceivable(DB, payeeAccount)
+  const earmarked = await DB.prepare(
+    `SELECT COALESCE(SUM(amount), 0) as total FROM payouts
+      WHERE (payee_type || ':' || payee_id) = ? AND status IN ('pending','approved','sent')`,
+  ).bind(payeeAccount).first<{ total: number }>().catch(() => ({ total: 0 }))
+  return receivable - Number(earmarked?.total ?? 0)
+}
+
 export async function getPayablePending(
   DB: D1Database,
   payeeAccount: string,

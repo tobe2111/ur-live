@@ -9,8 +9,7 @@ import {
   BarChart3, Shield, UserCog, Radio, Users, MessageSquare, Megaphone, Sparkles, AlertTriangle, TrendingUp, AlertOctagon, Wallet, Layers, Mail, Crown,
   Wrench, RotateCcw, Upload, History, MapPin, Scale, FileText, Rocket, Share2, LayoutList,
   Video,
-  type LucideIcon
-} from 'lucide-react'
+  type LucideIcon, Inbox } from 'lucide-react'
 import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import { isUtongstart } from '@/utils/domain'
 
@@ -45,6 +44,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/business-metrics', label: '비즈니스 지표', icon: BarChart3 },
       { path: '/admin/revenue',          label: '매출 분석',     icon: BarChart3 },
       { path: '/admin/operations-guide', label: '운영 가이드',   icon: BookOpen },
+      { path: '/admin/decisions',        label: '결재함',        icon: Inbox },
       { path: '/admin/platform-model',   label: '플랫폼 모델',   icon: FileText },
       { path: '/admin/proposals',        label: '대외 제안서',   icon: FileText },
       { path: '/admin/region-density',   label: '동네별 딜 밀도', icon: MapPin },

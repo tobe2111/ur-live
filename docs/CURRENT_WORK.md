@@ -5494,13 +5494,15 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 271건 · 최신순 · 이 목록은 자동 생성된다._
+_총 273건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-08**
+- [[E2] 실행기 5회차 — 결재 store-acquisition-pipeline 선택지 1 (2026-09-08 13:18~14:1x KST)](handoff/2026-09-08-exec-store-acquisition-pipeline.md)
 - [유어쇼츠 구매 바 — 대표 확정 "안 B + 기존 가격정보" (2026-09-08)](handoff/2026-09-08-buy-bar-plan-b.md)
 **2026-09-07**
 - [유어쇼츠 — 홈 레일 + `/videos` 뷰어 (2026-09-07)](handoff/2026-09-07-urshorts.md)
 - [🏪 매장 등록 문 — 당근식 스텝 위저드 + 막다른 길 셋 (2026-09-07)](handoff/2026-09-07-store-register-wizard.md)
+- [💰 매장 손바뀜 · 귀속 시점 — 잠금 먼저 (2026-09-07)](handoff/2026-09-07-store-handover-money.md)
 - [`/store/new` 매장 등록 — 다크 흰 글자 · 배경 클릭 이탈 (2026-09-07)](handoff/2026-09-07-store-claim-dark-and-backdrop.md)
 - [인플루언서 제안서 — 프리텐다드 이행 + 라이브 화면 재배치 (2026-09-07)](handoff/2026-09-07-proposal-pretendard-live-shots.md)
 - [2026-09-07 — 운영(ops) 역할 신설 + 1인 운영 결재 3건 (대표 "모두 진행")](handoff/2026-09-07-ops-role-and-queue-automation.md)

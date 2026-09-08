@@ -104,6 +104,15 @@ export const AUX_TABLE_REPAIRS: Array<{ name: string; sql: string }> = [
       agreed_at TEXT DEFAULT (datetime('now')),
       UNIQUE(subject_type, subject_id, doc_type, doc_version)
     )` },
+    // 📥 2026-09-08 결재함 답 우편함 — worker/utils/decision-answers.ts SSOT 미러.
+    { name: 'decision_answers', sql: `CREATE TABLE IF NOT EXISTS decision_answers (
+      slug TEXT PRIMARY KEY,
+      answer TEXT NOT NULL,
+      answered_by TEXT,
+      answered_at TEXT NOT NULL DEFAULT (datetime('now')),
+      synced_at TEXT,
+      synced_ref TEXT
+    )` },
     { name: 'coupons', sql: `CREATE TABLE IF NOT EXISTS coupons (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       code TEXT UNIQUE NOT NULL,

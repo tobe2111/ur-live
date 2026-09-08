@@ -74,6 +74,12 @@ export async function handlePayoutsGenerate(env: Env): Promise<{ created: number
       if (pending < MIN_AMOUNT) continue
       const [type, id] = c.credit_account.split(':')
       if (!type || !id) continue
+      // 🔐 2026-09-07: id 는 **숫자여야 한다.** `'seller:null'` 같은 오염 계정은 `id='null'`
+      //   (truthy 문자열)이라 위 가드를 통과해 왔고, 그러면 계좌 없는 **유령 payout** 이
+      //   만들어진다(payee_id='null', account_number=NULL). 실측으로 그런 원장 행이 있었다.
+      //   ⚠️ 근본 수리는 `sellerLedgerAccount()`(ledger.ts)가 애초에 안 쓰게 하는 것이고,
+      //     이건 그 뒤를 받치는 두 번째 방어선이다 — 오염 경로가 하나뿐이라고 믿지 않는다.
+      if (!/^\d+$/.test(id)) continue
       // userdeal:N 은 비사업자 딜 적립 audit 전용 → 현금 payout 대상 아님 (위 WHERE 의 user:% 와 구분됨).
       const payeeType = type === 'merchant' ? 'store_owner' : type
       if (!['store_owner', 'seller', 'agency', 'user'].includes(payeeType)) continue
