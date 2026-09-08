@@ -88,11 +88,26 @@ describe('현재 위치 표시 — 만들어 놓고 안 부르는 일이 없게'
     //   한 번도 호출한 적이 없었다.** 그래서 위치를 잡아도 화면은 일반명사 "내 주변" 만
     //   말했고, 대표가 "홈에선 현재 위치가 어딘지도 나와야지" 라고 지적할 때까지 몰랐다.
     //   ⇒ 에러가 안 나는 부재다. 배포는 초록불이고 기능만 조용히 없다.
+    // 🩸 2026-09-07 — **이 검사가 바로 그 버그를 못 박고 있었다.**
+    //   종전엔 서버에 `/kakao/coord2region` 이 있고 훅에 `/api/proxy/kakao/coord2region` 이
+    //   있는지 각각 봤다. 둘 다 참이라 초록불이었는데 **두 문자열이 서로 다른 경로였다** —
+    //   라우터는 `app.route('/api', proxyRoutes)` 로 붙어 실제 경로에 `proxy` 세그먼트가 없다.
+    //   그래서 훅은 배포 후 줄곧 404 를 받았고, `.catch` 가 삼켜 화면은 '내 주변' 으로 폴백했다.
+    //   ⇒ **존재 확인이 아니라 "같은 주소인가" 를 봐야 한다.** 마운트 접두사와 라우트 경로를
+    //     소스에서 읽어 실제 URL 을 조립하고, 훅이 정확히 그것을 부르는지 대조한다.
     const server = readFileSync(resolve(root, 'src/worker/routes/proxy.routes.ts'), 'utf-8')
-    expect(server, '서버 엔드포인트가 사라졌다면 이 검사도 갱신할 것').toContain('/kakao/coord2region')
+    const routePath = server.match(/app\.get\('(\/kakao\/coord2region)'/)?.[1]
+    expect(routePath, 'proxy.routes.ts 에서 coord2region 라우트를 못 찾았다').toBe('/kakao/coord2region')
 
+    // 마운트 접두사 — `app.route('<prefix>', proxyRoutes)`
+    const workerSrc = readFileSync(resolve(root, 'src/worker/index.ts'), 'utf-8')
+    const mount = workerSrc.match(/app\.route\('([^']+)',\s*proxyRoutes\)/)?.[1]
+    expect(mount, 'worker/index.ts 에서 proxyRoutes 마운트를 못 찾았다').toBeTruthy()
+
+    const realUrl = `${mount}${routePath}`          // → '/api/kakao/coord2region'
     const hook = readFileSync(resolve(root, 'src/hooks/useCurrentDong.ts'), 'utf-8')
-    expect(hook).toContain('/api/proxy/kakao/coord2region')
+    const called = hook.match(/api\.get\(`([^`?]+)/)?.[1]
+    expect(called, `훅이 부르는 주소(${called})가 실제 라우트(${realUrl})와 다르다`).toBe(realUrl)
 
     // 홈 두 표면이 실제로 그 훅을 쓰는지 — 훅만 있고 아무도 안 쓰면 같은 상태로 돌아간다.
     for (const f of ['src/pages/mobile-home/MobileHomePage.tsx', 'src/pages/pc-home/PcHomePage.tsx']) {

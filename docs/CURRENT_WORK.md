@@ -5494,8 +5494,10 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 270건 · 최신순 · 이 목록은 자동 생성된다._
+_총 271건 · 최신순 · 이 목록은 자동 생성된다._
 
+**2026-09-08**
+- [유어쇼츠 구매 바 — 대표 확정 "안 B + 기존 가격정보" (2026-09-08)](handoff/2026-09-08-buy-bar-plan-b.md)
 **2026-09-07**
 - [유어쇼츠 — 홈 레일 + `/videos` 뷰어 (2026-09-07)](handoff/2026-09-07-urshorts.md)
 - [🏪 매장 등록 문 — 당근식 스텝 위저드 + 막다른 길 셋 (2026-09-07)](handoff/2026-09-07-store-register-wizard.md)

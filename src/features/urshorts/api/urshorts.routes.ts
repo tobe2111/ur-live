@@ -143,29 +143,83 @@ adminUrshortsRoutes.get('/', requireAdmin(), async (c) => {
  *    홈에 가로 영상이 섞이고, 그건 에러가 아니라 그냥 못생긴 화면으로만 드러난다.
  *    그때 어드민은 `/shorts/` 주소를 붙이면 된다 — 그 길은 키 없이도 항상 열려 있다.
  */
-async function verifyIsShort(
-  env: Env, videoId: string, form: string,
-): Promise<{ ok: true; duration: number | null } | { ok: false; reason: string }> {
-  if (form === 'shorts') return { ok: true, duration: null }
+/**
+ * 유튜브에서 이 영상의 **길이·제목·채널**을 한 번에 받아 온다.
+ *
+ * 💰 `videos.list` 는 **파트를 몇 개 붙이든 1 unit** 이다. 그래서 `snippet` 을 얹어도
+ *    쿼터가 안 늘고 제목·채널이 공짜로 따라온다(`search` 는 100 unit — 그건 안 쓴다).
+ */
+async function fetchVideoMeta(env: Env, videoId: string): Promise<
+  { ok: true; duration: number | null; title: string | null; channel: string | null }
+  | { ok: false; reason: string }
+> {
   const key = env.YOUTUBE_API_KEY
-  if (!key) {
-    return { ok: false, reason: '쇼츠 주소(youtube.com/shorts/...)를 붙여 주세요' }
-  }
+  if (!key) return { ok: false, reason: 'no-key' }
   try {
     const r = await fetch(
-      `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${videoId}&key=${key}`,
+      `https://www.googleapis.com/youtube/v3/videos?part=contentDetails,snippet&id=${videoId}&key=${key}`,
     )
-    if (!r.ok) return { ok: false, reason: '쇼츠 주소(youtube.com/shorts/...)를 붙여 주세요' }
-    const j = await r.json() as { items?: Array<{ contentDetails?: { duration?: string } }> }
-    const sec = parseIsoDurationSec(j?.items?.[0]?.contentDetails?.duration)
-    if (sec == null) return { ok: false, reason: '영상을 찾지 못했습니다' }
-    if (sec > URSHORTS_MAX_DURATION_SEC) {
-      return { ok: false, reason: `쇼츠가 아닙니다 (${Math.round(sec / 60)}분 영상)` }
+    if (!r.ok) return { ok: false, reason: 'fetch-failed' }
+    const j = await r.json() as {
+      items?: Array<{
+        contentDetails?: { duration?: string }
+        snippet?: { title?: string; channelTitle?: string }
+      }>
     }
-    return { ok: true, duration: sec }
+    const item = j?.items?.[0]
+    if (!item) return { ok: false, reason: 'not-found' }
+    return {
+      ok: true,
+      duration: parseIsoDurationSec(item.contentDetails?.duration),
+      title: item.snippet?.title?.slice(0, 200) || null,
+      channel: item.snippet?.channelTitle?.slice(0, 100) || null,
+    }
   } catch {
-    return { ok: false, reason: '쇼츠 주소(youtube.com/shorts/...)를 붙여 주세요' }
+    return { ok: false, reason: 'fetch-failed' }
   }
+}
+
+/**
+ * 🔴 **쇼츠만 받는다** — 그리고 제목·채널을 대신 채워 준다.
+ *
+ * 판정 규칙(불변): `/shorts/ID` 주소는 **스스로 증명한다**(유튜브가 그 주소를 쇼츠에만 준다).
+ * `watch?v=` 는 길이를 재야 하므로 키가 없거나 조회가 실패하면 **통과시키지 않는다** —
+ * 모르는 것을 통과시키면 가로 10분짜리가 9:16 카드에 들어가 위아래 검은 띠가 생긴다.
+ *
+ * 📝 2026-09-08 (대표 *"채널 정보, 영상 제목 이런거 자동으로 못가져오나?"*): 이전엔 `/shorts/`
+ * 형태가 **조회를 아예 건너뛰어** 제목·채널이 비었다(화면에 "채널 미상"). 이제 쇼츠 형태도
+ * 메타를 받아 채우되 **fail-soft** 다 — 키가 없거나 조회가 실패해도 저장은 그대로 된다.
+ * 그래야 오늘의 동작(키 없이도 `/shorts/` 추가 가능)이 안 깨진다.
+ */
+async function verifyIsShort(
+  env: Env, videoId: string, form: string,
+): Promise<
+  { ok: true; duration: number | null; title: string | null; channel: string | null }
+  | { ok: false; reason: string }
+> {
+  const meta = await fetchVideoMeta(env, videoId)
+
+  if (form === 'shorts') {
+    // 주소가 이미 증명했다. 메타는 있으면 쓰고 없으면 그만 — 저장을 막지 않는다.
+    return meta.ok
+      ? { ok: true, duration: meta.duration, title: meta.title, channel: meta.channel }
+      : { ok: true, duration: null, title: null, channel: null }
+  }
+
+  // watch?v= — 길이를 못 재면 통과시키지 않는다.
+  if (!meta.ok) {
+    return {
+      ok: false,
+      reason: meta.reason === 'not-found'
+        ? '영상을 찾지 못했습니다'
+        : '쇼츠 주소(youtube.com/shorts/...)를 붙여 주세요',
+    }
+  }
+  if (meta.duration == null) return { ok: false, reason: '영상을 찾지 못했습니다' }
+  if (meta.duration > URSHORTS_MAX_DURATION_SEC) {
+    return { ok: false, reason: `쇼츠가 아닙니다 (${Math.round(meta.duration / 60)}분 영상)` }
+  }
+  return { ok: true, duration: meta.duration, title: meta.title, channel: meta.channel }
 }
 
 adminUrshortsRoutes.post('/', requireAdmin(), async (c) => {
@@ -183,7 +237,11 @@ adminUrshortsRoutes.post('/', requireAdmin(), async (c) => {
       INSERT OR IGNORE INTO home_shorts
         (video_id, title, channel, thumb_url, product_id, sort_order, source, duration_sec, consent)
       VALUES (?, ?, ?, ?, ?, 0, 'manual', ?, ?)`)
-      .bind(parsed.id, (body?.title ?? '').slice(0, 200) || null, (body?.channel ?? '').slice(0, 100) || null,
+      // 📝 사람이 적어 넣은 값이 있으면 그게 이긴다(고쳐 쓴 제목을 유튜브 값으로 덮지 않는다).
+      //    비어 있을 때만 조회해 온 제목·채널로 채운다 — 화면의 "채널 미상"이 여기서 사라진다.
+      .bind(parsed.id,
+            (body?.title ?? '').slice(0, 200) || verdict.title,
+            (body?.channel ?? '').slice(0, 100) || verdict.channel,
             youTubeThumbUrl(parsed.id), Number.isFinite(pid) && pid > 0 ? pid : null,
             verdict.duration, body?.consent ? 1 : 0)
       .run()
@@ -191,6 +249,42 @@ adminUrshortsRoutes.post('/', requireAdmin(), async (c) => {
     return c.json({ success: true, video_id: parsed.id })
   } catch (err) {
     return safeError(c, err, '유어쇼츠를 추가하지 못했습니다', '[urshorts:admin]')
+  }
+})
+
+/**
+ * 📝 제목·채널 다시 가져오기 — **이 기능이 생기기 전에 넣은 영상**을 위한 것.
+ *
+ * 2026-09-08 이전에 `/shorts/` 주소로 넣은 행은 조회를 건너뛰어 제목·채널이 비어 있다
+ * (화면에 "채널 미상"). 지우고 다시 넣게 하는 대신 한 번 눌러 채운다.
+ * 사람이 고쳐 쓴 값을 덮지 않도록 **비어 있는 칸만** 채운다.
+ */
+adminUrshortsRoutes.post('/:id/refresh-meta', requireAdmin(), async (c) => {
+  try {
+    const DB = c.env.DB
+    await ensureTable(DB)
+    const id = Number(c.req.param('id'))
+    if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 요청' }, 400)
+    const row = await DB.prepare('SELECT video_id, title, channel FROM home_shorts WHERE id = ?')
+      .bind(id).first<{ video_id: string; title: string | null; channel: string | null }>()
+    if (!row) return c.json({ success: false, error: '영상을 찾지 못했습니다' }, 404)
+    const meta = await fetchVideoMeta(c.env, row.video_id)
+    if (!meta.ok) {
+      return c.json({
+        success: false,
+        error: meta.reason === 'no-key'
+          ? 'YouTube API 키가 설정되어 있지 않습니다'
+          : '유튜브에서 정보를 가져오지 못했습니다',
+      }, 400)
+    }
+    // 이미 채워진 칸은 건드리지 않는다.
+    const title = row.title || meta.title
+    const channel = row.channel || meta.channel
+    await DB.prepare('UPDATE home_shorts SET title = ?, channel = ?, duration_sec = COALESCE(duration_sec, ?) WHERE id = ?')
+      .bind(title, channel, meta.duration, id).run()
+    return c.json({ success: true, title, channel })
+  } catch (err) {
+    return safeError(c, err, '영상 정보를 가져오지 못했습니다', '[urshorts:admin]')
   }
 })
 

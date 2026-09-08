@@ -843,3 +843,63 @@ curl -sS "https://urdeal.kr/api/_healthcheck/cron" | python3 -m json.tool
 ```
 `ok:true` + `never_fired: []` 면 통과. `stale`·`missing` 은 지금도 `[]` 다.
 ⚠️ 이제부터 이 엔드포인트의 빨간불은 **진짜**다 — 뜨면 조사할 것.
+
+---
+
+## §20 — 2026-09-07 · 현재 위치 훅이 줄곧 404 (대표 콘솔 제보)
+
+대표가 콘솔 로그를 붙여 *"이건 무슨 에러야"* 라고 물었다. 둘이 섞여 있었다:
+
+```
+GET /api/proxy/kakao/coord2region?lat=…&lng=… 404   ← 진짜 버그
+…ingest.sentry.io/…/envelope 429                     ← 어제 정리한 Sentry 쿼터(앱 무관)
+```
+
+⚠️ 스택의 `sentry-*.js` 는 Sentry 의 **XHR 계측 래퍼**라 전달자일 뿐 원인이 아니다.
+실제 호출자는 `axios → app-utils → React`. 이걸 Sentry 오류로 읽으면 엉뚱한 곳을 판다.
+
+### 진단 (라이브 실측 30초)
+
+```
+/api/proxy/kakao/coord2region  → 404 {"error":"Not found"}
+/api/kakao/coord2region        → 200 {"dong":"동탄4동","city":"화성시 동탄구"}
+```
+
+서버는 멀쩡했다. 라우터가 `app.route('/api', proxyRoutes)` 로 붙으므로 **실제 경로에
+`proxy` 세그먼트가 없다** — 파일 이름이 `proxy.routes.ts` 라 헷갈리기 딱 좋다.
+
+### 🩸 아이러니
+
+`useCurrentDong` 은 2026-08-30 에 *"엔드포인트는 07-07 부터 있었는데 클라이언트가 한 번도
+안 불렀다"* 는 **배선 누락을 고치려고** 만든 훅이다. 그런데 **그 고치는 코드가 주소를 틀렸다.**
+`.catch(() => {})` 가 404 를 삼켜 화면은 '내 주변' 으로 폴백했고, 배포는 초록불이었다.
+형제 훅 `useNearMeAuto` 는 처음부터 맞게 부르고 있었다(같은 API, 다른 주소 — 그래서 안 보였다).
+
+### 🕳️ 그리고 가드가 그 버그를 못 박고 있었다
+
+`button-system.test.ts` 의 "만들어 놓고 안 부르는 일이 없게" 검사가 이랬다:
+
+```
+expect(server).toContain('/kakao/coord2region')              // 참
+expect(hook).toContain('/api/proxy/kakao/coord2region')      // 참 ← 서로 다른 경로인데!
+```
+
+**존재만 보고 일치를 안 봤다.** 둘 다 참이라 몇 주간 초록불이었다.
+⇒ 마운트 접두사(`app.route('<prefix>', proxyRoutes)`)와 라우트 경로(`app.get('<path>'`)를
+**소스에서 읽어 실제 URL 을 조립**하고, 훅이 정확히 그것을 부르는지 대조하도록 고쳤다.
+실패 메시지가 두 주소를 나란히 보여 준다.
+
+### 같은 클래스 전수
+
+클라이언트가 부르는 `/api/(kakao|naver)/*` 를 전부 라우트 정의와 대조 — **어긋난 건 이 하나뿐**
+(`/api/kakao/place/` 는 주석 속 글로브라 오탐).
+
+### 검증
+
+tsc 0 · `button-system` 9 pass · 주입 매니페스트 1건 등록 + 되돌려-검증 빨간불 확인
+(옛 주소 주입 → `훅이 부르는 주소(/api/proxy/…)가 실제 라우트(/api/…)와 다르다`)
+
+### 배포 후 판정
+
+`/map` 또는 홈에서 위치 허용 → 콘솔에 `coord2region` 404 가 **없고**, 상단이
+"내 주변" 대신 **실제 동 이름**(예: 동탄4동)을 보여주면 통과.
