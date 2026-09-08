@@ -174,11 +174,18 @@ describe('✍️ 쓰기 예산 — 요금을 터뜨린 축', () => {
     expect(DEFAULT_DAILY_WRITE_BUDGET).toBeGreaterThanOrEqual(1_000_000)
   })
 
+  /**
+   * ⏱️ **시각을 넘긴다** — 2026-09-07 에 한시 스로틀이 생겨(`SEPT_2026_*`) 9월 안에서는
+   *   env 미설정 기본값이 3만이다. 이 시험이 재는 것은 **env 규약**이지 그 스로틀이 아니므로
+   *   창 밖 시각을 준다. 스로틀 자체는 `ads-sept-write-throttle.test.ts` 가 따로 잠근다.
+   *   ⚠️ `Date.now()` 에 맡기면 이 시험은 9월엔 빨갛고 10월엔 초록인 **날짜 의존 시험**이 된다.
+   */
   it('env 규약이 읽기와 같다(빈값/이상값=기본, 0 이하=끔)', () => {
-    expect(resolveWriteBudget({ ADS_DAILY_WRITE_BUDGET: ' 900000 ' })).toBe(900_000)
-    expect(resolveWriteBudget({ ADS_DAILY_WRITE_BUDGET: '0' })).toBe(0)
-    expect(resolveWriteBudget({ ADS_DAILY_WRITE_BUDGET: 'abc' })).toBe(DEFAULT_DAILY_WRITE_BUDGET)
-    expect(resolveWriteBudget({})).toBe(DEFAULT_DAILY_WRITE_BUDGET)
+    const after = Date.parse('2026-10-02T00:00:00Z')
+    expect(resolveWriteBudget({ ADS_DAILY_WRITE_BUDGET: ' 900000 ' }, after)).toBe(900_000)
+    expect(resolveWriteBudget({ ADS_DAILY_WRITE_BUDGET: '0' }, after)).toBe(0)
+    expect(resolveWriteBudget({ ADS_DAILY_WRITE_BUDGET: 'abc' }, after)).toBe(DEFAULT_DAILY_WRITE_BUDGET)
+    expect(resolveWriteBudget({}, after)).toBe(DEFAULT_DAILY_WRITE_BUDGET)
   })
 
   it('🔒 **읽기 없이 쓰기만** 한 회차도 세진다 — 전수 UPDATE 가 정확히 그 모양이다', async () => {
