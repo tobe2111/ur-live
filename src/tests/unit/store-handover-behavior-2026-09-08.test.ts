@@ -54,6 +54,7 @@ function fresh() {
     id INTEGER PRIMARY KEY AUTOINCREMENT, payee_type TEXT NOT NULL, payee_id TEXT NOT NULL,
     amount INTEGER NOT NULL CHECK(amount > 0), period_start TEXT NOT NULL, period_end TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending', account_number TEXT, account_holder TEXT, admin_memo TEXT,
+    kind TEXT, payee_user_id INTEGER,
     created_at TEXT DEFAULT (datetime('now')))`)
   db.exec(`CREATE UNIQUE INDEX idx_payouts_period_unique ON payouts(payee_type, payee_id, period_start, period_end)`)
   db.exec(`CREATE TABLE sellers (id INTEGER PRIMARY KEY, linked_user_id INTEGER, bank_account TEXT, business_name TEXT)`)
@@ -66,11 +67,11 @@ const credit = (db: Db, acct: string, amount: number, fee = 0) =>
 
 /** 마감 창구가 하는 일 그대로 — 지금 계좌를 행에 **스냅샷**해서 배정한다. */
 const closeout = (db: Db, sellerId: number, amount: number, day: string) => {
-  const s = db.prepare('SELECT bank_account, business_name FROM sellers WHERE id = ?').get(sellerId) as
-    { bank_account: string | null; business_name: string | null }
-  db.prepare(`INSERT OR IGNORE INTO payouts (payee_type, payee_id, amount, period_start, period_end, status, account_number, account_holder)
-              VALUES ('seller', ?, ?, ?, ?, 'pending', ?, ?)`)
-    .run(String(sellerId), amount, day, day, s.bank_account, s.business_name)
+  const s = db.prepare('SELECT bank_account, business_name, linked_user_id FROM sellers WHERE id = ?').get(sellerId) as
+    { bank_account: string | null; business_name: string | null; linked_user_id: number | null }
+  db.prepare(`INSERT OR IGNORE INTO payouts (payee_type, payee_id, amount, period_start, period_end, status, account_number, account_holder, kind, payee_user_id)
+              VALUES ('seller', ?, ?, ?, ?, 'pending', ?, ?, 'handover_closeout', ?)`)
+    .run(String(sellerId), amount, day, day, s.bank_account, s.business_name, s.linked_user_id)
 }
 
 describe('💰 마감 → 잔액 0 → 손바뀜 열림 (인과 사슬을 실제로 돌린다)', () => {
@@ -174,5 +175,73 @@ describe('💰 마감 → 잔액 0 → 손바뀜 열림 (인과 사슬을 실제
     closeout(db, 7, 20_000, '2026-09-08')   // UNIQUE(payee,period) 가 두 번째를 무시한다
     const n = (db.prepare('SELECT COUNT(*) c FROM payouts').get() as { c: number }).c
     expect(n).toBe(1)
+  })
+})
+
+/**
+ * 🔒 **취소로 되살아나는 구멍** — 대표 2026-09-08 "모두 해줘".
+ *
+ * 집계(`payouts-generate`)는 `cancelled`/`failed` 를 안 뺀다. 그래서 마감 행을 취소하면 금액이
+ * 원장으로 되살아나고, 주인이 이미 바뀌었다면 **새 주인**에게 간다. 라우트가 그 조건을 어떻게
+ * 판정하는지를 여기서 같은 SQL 로 돌려 본다.
+ *
+ * ⚠️ 못 막는 것: HTTP 층(권한·2FA·감사로그·confirm_release 파싱)은 짝 시험이 소스로 고정한다.
+ */
+describe('🔒 마감 행 취소 — 주인이 바뀐 뒤면 확인을 받는다', () => {
+  /** 라우트의 판정 그대로: 마감 행이고 · 주인이 기록된 사람과 다르면 → 확인 필요. */
+  const needsConfirm = (db: Db, payoutId: number) => {
+    const row = db.prepare('SELECT kind, payee_type, payee_id, payee_user_id FROM payouts WHERE id = ?').get(payoutId) as
+      { kind: string | null; payee_type: string; payee_id: string; payee_user_id: number | null }
+    if (row.kind !== 'handover_closeout' || !row.payee_user_id || row.payee_type !== 'seller') return false
+    const now = db.prepare('SELECT linked_user_id FROM sellers WHERE id = ? LIMIT 1').get(row.payee_id) as
+      { linked_user_id: number | null } | undefined
+    return !!now && Number(now.linked_user_id) !== Number(row.payee_user_id)
+  }
+
+  it('마감 행에 kind 와 "누구 것이었는지" 가 박힌다', () => {
+    const db = fresh()
+    db.prepare(`INSERT INTO sellers VALUES (7, 100, '중개사은행 110-1', '중개사')`).run()
+    credit(db, 'seller:7', 30_000)
+    closeout(db, 7, 30_000, '2026-09-08')
+    const row = db.prepare('SELECT kind, payee_user_id FROM payouts').get() as Record<string, unknown>
+    expect(row.kind, 'kind 가 없으면 취소 게이트가 이 행을 못 알아본다').toBe('handover_closeout')
+    expect(row.payee_user_id, '누구 것이었는지 없으면 주인이 바뀌었는지 판정할 수 없다').toBe(100)
+  })
+
+  it('손바뀜 전 취소는 그냥 된다 (아무것도 안 샌다)', () => {
+    const db = fresh()
+    db.prepare(`INSERT INTO sellers VALUES (7, 100, '중개사은행 110-1', '중개사')`).run()
+    credit(db, 'seller:7', 30_000)
+    closeout(db, 7, 30_000, '2026-09-08')
+    expect(needsConfirm(db, 1), '주인이 그대로인데 막으면 금액 오타를 못 고친다(막다른 길)').toBe(false)
+  })
+
+  it('손바뀜 뒤 취소는 확인을 받는다', () => {
+    const db = fresh()
+    db.prepare(`INSERT INTO sellers VALUES (7, 100, '중개사은행 110-1', '중개사')`).run()
+    credit(db, 'seller:7', 30_000)
+    closeout(db, 7, 30_000, '2026-09-08')
+    db.prepare('UPDATE sellers SET linked_user_id = 200 WHERE id = 7').run()
+    expect(needsConfirm(db, 1), '주인이 바뀐 뒤 조용히 취소되면 그 돈이 새 주인에게 간다').toBe(true)
+  })
+
+  it('취소하면 실제로 잔액이 되살아난다 — 그래서 확인이 필요하다', async () => {
+    const db = fresh()
+    db.prepare(`INSERT INTO sellers VALUES (7, 100, '중개사은행 110-1', '중개사')`).run()
+    credit(db, 'seller:7', 30_000)
+    closeout(db, 7, 30_000, '2026-09-08')
+    expect(await getUnsettledBalance(d1(db), 'seller:7')).toBe(0)
+
+    db.prepare(`UPDATE payouts SET status = 'cancelled' WHERE id = 1`).run()
+    // 되살아난다 — 이게 구멍의 실체다(집계가 cancelled 를 안 뺀다).
+    expect(await getUnsettledBalance(d1(db), 'seller:7')).toBe(30_000)
+  })
+
+  it('마감이 아닌 일반 payout 은 게이트에 안 걸린다', () => {
+    const db = fresh()
+    db.prepare(`INSERT INTO sellers VALUES (7, 200, '사장님은행 220-2', '사장님')`).run()
+    db.prepare(`INSERT INTO payouts (payee_type, payee_id, amount, period_start, period_end, status)
+                VALUES ('seller','7',10000,'2026-09-01','2026-09-07','pending')`).run()
+    expect(needsConfirm(db, 1), '주간 정산까지 막으면 평상시 운영이 죽는다').toBe(false)
   })
 })

@@ -18,7 +18,7 @@ import AdminFinanceTabs from '@/components/admin/AdminFinanceTabs'
 import { DashboardPageHeader, DashboardLoadError } from '@/components/dashboard'
 import { Wallet, CheckCircle, Send, XCircle } from 'lucide-react'
 import { formatWon } from '@/utils/format'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 
 interface Payout {
   id: number
@@ -130,7 +130,64 @@ export default function AdminPayoutsPage() {
       const res = await api.patch(`/api/admin/payouts/${p.id}/cancel`, { reason })
       if (res.data?.success) { toast.success('취소됨'); load() }
       else toast.error(res.data?.error || '실패')
-    } catch { toast.error('실패') }
+    } catch (e: unknown) {
+      // 🤝 손바뀜 마감 행인데 이미 주인이 바뀌었다 — 취소하면 돈의 방향이 바뀐다.
+      //   서버가 막지 않고 알려 주므로, 무슨 일이 일어나는지 보여 주고 한 번 더 받는다.
+      const ax = e as { response?: { data?: { code?: string; error?: string } } }
+      if (ax.response?.data?.code === 'HANDOVER_CLOSEOUT_RELEASE') {
+        const ok = await confirmDialog({
+          title: '이 돈이 새 소유자 몫으로 돌아갑니다',
+          message: (ax.response.data.error || '') + '\n\n정말 취소할까요?',
+          confirmText: '알겠습니다, 취소',
+          danger: true,
+        })
+        if (!ok) return
+        try {
+          const res2 = await api.patch(`/api/admin/payouts/${p.id}/cancel`, { reason, confirm_release: true })
+          if (res2.data?.success) { toast.success('취소됨'); load() }
+          else toast.error(res2.data?.error || '실패')
+        } catch { toast.error('실패') }
+        return
+      }
+      toast.error(ax.response?.data?.error || '실패')
+    }
+  }
+
+  /**
+   * 🤝 손바뀜 마감 — 주인이 바뀌기 **전에** 지금 주인 몫을 떼어 배정한다 (대표 확정 2026-09-08).
+   *   송금은 안 한다. `pending` 행을 만들 뿐이고, 그 행이 **지금 계좌를 스냅샷**해서 들고 있으므로
+   *   나중에 주인이 바뀌어도 그 돈은 이전 주인에게 간다.
+   */
+  async function closeout(row: PendingRow) {
+    const sellerId = Number(row.account.split(':')[1])
+    if (!Number.isFinite(sellerId)) { toast.error('매장 계정이 아닙니다'); return }
+    const ok = await confirmDialog({
+      title: '손바뀜 마감',
+      message: `${row.account} 의 미정산 ${formatWon(row.pending_amount)} 을 **지금 소유자** 몫으로 배정합니다.\n`
+        + '송금은 하지 않습니다 — 정산 목록에 검토 대기로 올라가고, 승인·송금은 종전대로 진행합니다.\n'
+        + '배정이 끝나면 이 매장의 소유자를 변경할 수 있게 됩니다.',
+      confirmText: '마감하기',
+    })
+    if (!ok) return
+    const reason = await promptDialog({
+      title: '마감 사유',
+      message: '왜 지금 마감하는지 남겨주세요. 감사로그에 그대로 기록됩니다.',
+      prompt: { placeholder: '예: 홍대돈까스 사장님께 매장 이관 예정', required: true },
+    })
+    if (!reason || reason.trim().length < 5) { toast.error('사유를 5자 이상 적어주세요'); return }
+    try {
+      const res = await api.post('/api/admin/payouts/handover-closeout', { seller_id: sellerId, reason })
+      const d = res.data?.data
+      if (res.data?.success && d?.closed) {
+        toast.success(`${formatWon(d.amount)} 을 ${d.account_holder || '지금 소유자'} 몫으로 배정했습니다`)
+        load()
+      } else if (res.data?.success) {
+        toast.success(d?.note || '마감할 잔액이 없습니다')
+      } else toast.error(res.data?.error || '실패')
+    } catch (e: unknown) {
+      const ax = e as { response?: { data?: { error?: string } } }
+      toast.error(ax.response?.data?.error || '실패')
+    }
   }
 
   return (
@@ -203,6 +260,7 @@ export default function AdminPayoutsPage() {
                   <th className="px-4 py-3 text-right">총 발생액</th>
                   <th className="px-4 py-3 text-right">이미 송금</th>
                   <th className="px-4 py-3 text-right">미정산 잔액</th>
+                  <th className="px-4 py-3 text-right">손바뀜</th>
                 </tr>
               </thead>
               <tbody>
@@ -212,6 +270,18 @@ export default function AdminPayoutsPage() {
                     <td className="px-4 py-3 text-right text-gray-700">{formatWon(p.total_credited)}</td>
                     <td className="px-4 py-3 text-right text-gray-500">{formatWon(p.total_paid)}</td>
                     <td className="px-4 py-3 text-right font-bold text-amber-700">{formatWon(p.pending_amount)}</td>
+                    <td className="px-4 py-3 text-right">
+                      {/* 매장 계정만 — 소유자가 바뀔 수 있는 건 매장뿐이다. */}
+                      {p.account.startsWith('seller:') && p.pending_amount > 0 ? (
+                        <button
+                          onClick={() => closeout(p)}
+                          className="px-2 py-1 rounded-md border border-gray-300 text-[11px] font-bold text-gray-700 hover:bg-gray-50"
+                          title="주인이 바뀌기 전에 지금 소유자 몫을 떼어 배정합니다 (송금 아님)"
+                        >
+                          마감
+                        </button>
+                      ) : <span className="text-gray-300">-</span>}
+                    </td>
                   </tr>
                 ))}
               </tbody>

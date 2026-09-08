@@ -345,6 +345,10 @@ export const AUX_TABLE_REPAIRS: Array<{ name: string; sql: string }> = [
     )` },
     { name: 'idx_user_withdrawals_user_status', sql: `CREATE INDEX IF NOT EXISTS idx_user_withdrawals_user_status ON user_withdrawals(user_id, status, requested_at DESC)` },
     // 🏦 2026-06-12 지급 센터 (P1 사용자 결정) — 입금완료 기록 + 큐레이터 딜 차감 마커 + 에이전시 지급 이력.
+    // 🤝 2026-09-08 손바뀜 마감 — 이 행이 마감인지(kind) + 만들 때 주인이 누구였는지(payee_user_id).
+    //   취소로 돈이 되살아나 **새 주인**에게 가는 것을 막는 게이트가 이 둘을 읽는다.
+    { name: 'payouts.kind', sql: 'ALTER TABLE payouts ADD COLUMN kind TEXT' },
+    { name: 'payouts.payee_user_id', sql: 'ALTER TABLE payouts ADD COLUMN payee_user_id INTEGER' },
     { name: 'settlements.paid_at', sql: 'ALTER TABLE settlements ADD COLUMN paid_at DATETIME' },
     { name: 'settlements.admin_memo', sql: 'ALTER TABLE settlements ADD COLUMN admin_memo TEXT' },
     { name: 'user_withdrawals.deal_deducted', sql: 'ALTER TABLE user_withdrawals ADD COLUMN deal_deducted INTEGER DEFAULT 0' },

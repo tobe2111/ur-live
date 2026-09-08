@@ -18,6 +18,12 @@
  * `status='pending'` 행을 만들 뿐이고, 실제 송금은 종전 그대로 어드민이 승인(approve) →
  * 송금(sent) 해야 한다. 여기서 하는 일은 **"이 돈은 이 사람 것"** 이라고 못 박는 것뿐이다.
  *
+ * ## 🔒 취소로 되살아나지 않게 — `kind` + `payee_user_id`
+ * 이 행이 취소되면 금액이 원장으로 되살아나(집계가 `cancelled`/`failed` 를 안 뺀다) **새 주인**에게
+ * 간다. 그래서 행에 `kind='handover_closeout'` 과 **만들 때의 주인**(`payee_user_id`)을 적는다.
+ * 취소 라우트가 그 둘을 읽어, 이미 주인이 바뀐 뒤라면 명시 확인 없이는 못 풀게 막는다.
+ * (`admin_memo` 같은 자유 문구를 제어 신호로 쓰지 않는다 — 오타 한 번에 게이트가 풀린다.)
+ *
  * ## ⚠️ 최소출금액(10,000원)을 적용하지 않는다
  * 주간 cron 은 소액을 건너뛰지만(다음 주에 합산되니까), 마감은 **다음 주가 없다** —
  * 건너뛴 금액은 그대로 새 주인에게 간다. 그래서 1원이라도 행을 만든다.
@@ -76,9 +82,9 @@ export async function handoverCloseout(c: Context<{ Bindings: Env }>): Promise<R
       // UNIQUE(payee_type, payee_id, period_start, period_end) — 같은 날 두 번이면 두 번째는 무시된다.
       //   첫 마감이 잔액을 배정했으므로 두 번째는 어차피 amount 0 으로 걸러진다(이중 배정 0).
       const ins = await DB.prepare(
-        `INSERT OR IGNORE INTO payouts (payee_type, payee_id, amount, period_start, period_end, status, account_number, account_holder, admin_memo)
-         VALUES ('seller', ?, ?, ?, ?, 'pending', ?, ?, ?)`,
-      ).bind(String(sellerId), amount, today, today, seller.bank_account, seller.business_name || null, memo).run()
+        `INSERT OR IGNORE INTO payouts (payee_type, payee_id, amount, period_start, period_end, status, account_number, account_holder, admin_memo, kind, payee_user_id)
+         VALUES ('seller', ?, ?, ?, ?, 'pending', ?, ?, ?, 'handover_closeout', ?)`,
+      ).bind(String(sellerId), amount, today, today, seller.bank_account, seller.business_name || null, memo, seller.linked_user_id ?? null).run()
 
       if (!(ins.meta?.changes ?? 0)) {
         return c.json({ success: false, code: 'ALREADY_CLOSED_TODAY', error: '오늘 이미 이 매장의 마감 정산이 만들어져 있습니다.' }, 409)
