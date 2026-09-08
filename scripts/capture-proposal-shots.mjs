@@ -1,15 +1,21 @@
 #!/usr/bin/env node
 /**
- * 대외 제안서(docs/business/proposals/*.html)에 넣을 라이브 화면 캡처.
+ * 대외 제안서(public/static/proposals/*.html)에 넣을 라이브 화면 캡처.
  *
  *   NODE_USE_ENV_PROXY=1 node scripts/capture-proposal-shots.mjs [출력디렉터리]
  *
- * ⚠️ 이 원격 환경에서 Chromium 은 스스로 TLS 터널을 못 연다.
+ * ⚠️ 이 원격 환경에서 Chromium 은 기본 설정으로 TLS 터널을 못 연다.
  * 프록시를 `--proxy-server` 로 물려도 CONNECT 는 붙었다가 handshake 중간에
  * 끊긴다(ERR_CONNECTION_RESET · 프록시 로그상 `ws_closed_mid_exchange`).
  * 그래서 브라우저에 네트워크를 맡기지 않고 **모든 요청을 Node 의 fetch 로
  * 대신 받아 채워 넣는다**(Node 는 HTTPS_PROXY + CA 번들을 정상으로 읽는다).
  * `NODE_USE_ENV_PROXY=1` 없이 돌리면 전부 실패한다.
+ *
+ * 🔎 2026-09-07 실측 — 원인은 **TLS 1.3** 이었다. `--proxy-server` 에 더해
+ * `--ssl-version-max=tls1.2` 를 주면 브라우저가 직접 붙는다(`/api/version` 200 확인).
+ * 즉 위 라우팅은 유일한 길이 아니라 **더 안전한 길**이다(CSP 를 벗기는 대신 실제
+ * 네트워크를 그대로 쓰고 싶으면 그 플래그를 쓰면 된다). 여기서는 이미 검증된
+ * 라우팅 방식을 유지한다 — 바꿀 이유가 생기면 그때 갈아타라.
  *
  * 캡처본에는 개인정보가 섞일 수 있다. 매장 전화번호처럼 문서로 돌아다니면
  * 곤란한 값은 그대로 두지 말고 가린 뒤 넣는다(`mask` 셀렉터).
@@ -29,9 +35,13 @@ const ORIGIN = 'https://urdeal.kr'
 /** 캡처 대상. y 는 스크롤 위치(논리 px). */
 const SHOTS = [
   { name: 'home', url: '/', y: 0 },
-  { name: 'shop', url: '/u/jiwon1228', y: 0, cropTop: 130 },
-  { name: 'detail', url: '/group-buy/2876', y: 0, mask: 'a[href^="tel:"]' },
-  { name: 'use', url: '/group-buy/2876', y: 1100 },
+  { name: 'map', url: '/map', y: 0, settle: 18000 },
+  { name: 'shop', url: '/u/jiwon1228', y: 0, cropTop: 56 },
+  { name: 'store', url: '/s/store_mt9rvbhg1i6', y: 0, cropTop: 56 },
+  { name: 'detail', url: '/group-buy/2888', y: 0, mask: 'a[href^="tel:"]' },
+  { name: 'use', url: '/group-buy/2888', y: 1100, mask: 'a[href^="tel:"]' },
+  { name: 'vouchers', url: '/vouchers', y: 0 },
+  { name: 'apply', url: '/creators/apply', y: 0 },
 ]
 
 const W = 430
@@ -52,6 +62,9 @@ async function main() {
       'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
     locale: 'ko-KR',
     timezoneId: 'Asia/Seoul',
+    // 지도 화면은 위치 권한이 있어야 '내 주변' 으로 뜬다. 없으면 전국 축척이라 핀이 안 보인다.
+    geolocation: { latitude: 37.5013, longitude: 127.0396 },
+    permissions: ['geolocation'],
   })
 
   await ctx.route('**', async (route) => {
@@ -84,12 +97,12 @@ async function main() {
     const raw = path.join(OUT, `${shot.name}.png`)
     try {
       await page.goto(ORIGIN + shot.url, { waitUntil: 'domcontentloaded', timeout: 60000 })
-      await page.waitForTimeout(5500)
+      await page.waitForTimeout(shot.settle ?? 5500)
       // 한 번 지나쳐 lazy 이미지를 깨운 뒤 목표 위치로 되돌아온다
       await page.evaluate((y) => window.scrollTo(0, y + 500), shot.y)
       await page.waitForTimeout(1800)
       await page.evaluate((y) => window.scrollTo(0, y), shot.y)
-      await page.waitForTimeout(2200)
+      await page.waitForTimeout(shot.settle ? 3500 : 2200)
 
       let masks = []
       if (shot.mask) {

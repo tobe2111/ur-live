@@ -11,8 +11,19 @@
  *  R2 참조 URL 과 실제 파일의 어긋남 (배포 후에야 빈 iframe 으로 드러난다)
  *  R3 `/static/` 밖으로 옮기기 — `_routes.json` 이 그 접두사만 워커에서 제외하므로
  *     다른 경로면 워커가 SPA 셸을 돌려주고 미리보기가 통째로 깨진다
+ *  R4 인라인 캡처에 `loading="lazy"` 를 붙이기 — 2026-09-07 대표 신고
+ *     ("4페이지는 왜 비어져있어? 화면 사진들이?" · "6,7 페이지도 마찬가지야")
+ *
+ * ■ R4 를 왜 막는가
+ *   제안서의 화면 캡처는 base64 data URI 라 **문서 안에 이미 들어 있다** — 지연할
+ *   네트워크 요청이 애초에 없어서 lazy 의 이득이 0 이다. 반대로 손해는 확실하다:
+ *   인쇄(PDF 로 저장)는 스크롤을 하지 않으므로 첫 화면 밖 이미지가 **로드되지 않은 채**
+ *   인쇄되고, 폰 프레임이 빈 흰 상자로 남는다. 4·6·7 페이지가 정확히 그랬다.
+ *   화면에서는 스크롤하면 채워지므로 **PDF 로 뽑아 보기 전까지 아무도 모른다.**
  *
  * 못 막는 것: 파일 내용이 최신인지, 인쇄 결과가 16:9 로 나오는지. 그건 배포 후 눈으로.
+ *   (PDF 를 뽑을 때는 `[...document.images].map(i => i.decode())` 로 전부 디코드된 것을
+ *    확인하고 인쇄할 것 — 이 테스트는 소스만 보고 렌더 결과를 못 본다.)
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync, existsSync } from 'node:fs'
@@ -48,5 +59,22 @@ describe('대외 제안서는 정적 자산으로 서빙된다', () => {
   it('R3 `_routes.json` 이 실제로 /static/* 를 워커에서 제외한다', () => {
     const routes = JSON.parse(readFileSync(resolve(ROOT, 'public/_routes.json'), 'utf8'))
     expect(routes.exclude).toContain('/static/*')
+  })
+
+  describe('R4 인라인 캡처는 지연 로딩하지 않는다 (인쇄하면 빈 상자가 된다)', () => {
+    const decks = urls.map(url => ({
+      url,
+      html: readFileSync(resolve(ROOT, 'public', url.replace(/^\//, '')), 'utf8'),
+    }))
+
+    it('검사 대상 제안서에 인라인 캡처가 실제로 있다 (0장이면 아래 검사가 헛돈다)', () => {
+      const total = decks.reduce((n, d) => n + (d.html.match(/data:image\//g) || []).length, 0)
+      expect(total).toBeGreaterThan(0)
+    })
+
+    it.each(decks.map(d => d.url))('%s 에 loading="lazy" 가 없다', url => {
+      const html = decks.find(d => d.url === url)!.html
+      expect(html).not.toMatch(/loading\s*=\s*["']lazy["']/)
+    })
   })
 })
