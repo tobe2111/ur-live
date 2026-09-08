@@ -8047,6 +8047,28 @@ canvas {
       '2026-07-23(F-32)이 고쳤던 그 스테일 사고가 에러 없이 돌아온다. 이 자리의 모름은 갱신이어야 한다.',
   },
   {
+    name: '🚨 9월 쓰기 스로틀이 스스로 안 풀린다(10월에도 3만에 묶인다)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: '  return nowMs < SEPT_2026_THROTTLE_UNTIL_MS ? SEPT_2026_WRITE_THROTTLE : DEFAULT_DAILY_WRITE_BUDGET',
+    replace: '  return SEPT_2026_WRITE_THROTTLE',
+    test: 'src/tests/unit/ads-sept-write-throttle.test.ts',
+    why:
+      '한시 조치는 스스로 풀려야 한다. 날짜 조건이 빠지면 10월에도 하루 3만에 묶이는데 ' +
+      '에러가 안 나서 아무도 모른다 — 수집이 40분의 1로 줄어든 채 몇 주가 갈 수 있다. ' +
+      '이 레포가 반복해 만난 "실패가 아니라 조용한 부재" 를 이 자리에서 만들지 않는다.',
+  },
+  {
+    name: '🚨 9월 쓰기 스로틀이 env 를 덮어쓴다(대표가 되돌릴 수 없게 된다)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: '  if (explicit) return resolveBudget(env, WRITE_BUDGET_ENV, DEFAULT_DAILY_WRITE_BUDGET)',
+    replace: '  if (false) return resolveBudget(env, WRITE_BUDGET_ENV, DEFAULT_DAILY_WRITE_BUDGET)',
+    test: 'src/tests/unit/ads-sept-write-throttle.test.ts',
+    why:
+      'env 를 명시하면 그 값이 이겨야 한다 — 그게 대표가 코드 배포 없이 되돌리는 유일한 손잡이다. ' +
+      '코드가 env 를 덮으면 라이브에서 값을 바꿔도 아무 일이 안 일어나고, 화면엔 바꾼 값이 보여서 ' +
+      '"반영됐다"고 오판하게 된다(2026-08-02 platform-settings 저장 UI 사고와 같은 모양).',
+  },
+  {
     name: '🗂️ 매장정보 재보강 큐 인덱스가 사라진다(20건 뽑으려고 38.7만 행)',
     file: 'src/features/marketing/api/company-ddl-indexes.ts',
     find: '`CREATE INDEX IF NOT EXISTS idx_company_leads_storeinfo_queue ON ad_company_leads(source, id)',

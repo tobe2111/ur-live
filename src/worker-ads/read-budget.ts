@@ -91,9 +91,41 @@ export function resolveReadBudget(env: unknown): number {
   return resolveBudget(env, READ_BUDGET_ENV, DEFAULT_DAILY_READ_BUDGET)
 }
 
-/** 쓰기 예산 — 읽기와 **같은 규약**(빈값/이상값이면 기본값, 0 이하면 끔). */
-export function resolveWriteBudget(env: unknown): number {
-  return resolveBudget(env, WRITE_BUDGET_ENV, DEFAULT_DAILY_WRITE_BUDGET)
+/**
+ * 🚨 **2026년 9월 한시 스로틀 — 10/1 UTC 에 스스로 풀린다.**
+ *
+ * 9/2 하루에 **4,554만 행**을 쓴 폭주(업체 DB 전면 재기록)가 월 포함분 5,000만을 통째로 먹었다.
+ * 그래서 9월 남은 기간은 **누가 쓰든 전부 과금 구간**이다 — 유어딜 본진의 하루 4.5만 행도 포함이다
+ * (포함분은 DB 가 아니라 **계정** 단위다). 대표 지시 2026-09-07: *"이번 달은 과금 안 되게"*.
+ *
+ * 실측 기반 선택지(9/7 21:00 KST 기준, 남은 23.5일):
+ * ```
+ *   유어애즈 쓰기/일        9월 총 초과      금액
+ *              0           2,350,952      $2.35   ← 바닥(본진 몫, 못 멈춘다)
+ *         30,000           3,055,952      $3.06   ← 채택
+ *      1,200,000          30,550,952     $30.55   ← 그대로 뒀을 때
+ * ```
+ * 잃는 것이 거의 없어 채택했다 — 제휴 제안 발송은 "한참 뒤"(대표 확정)이고 **백로그는 썩지 않는다**.
+ * 6개월 뒤에 측정해도 그때의 현재 활동을 재는 것이라 결과가 같다(CLAUDE.md 유어애즈 절).
+ *
+ * ⚠️ **`0` 을 쓰면 안 된다** — 아래 `resolveBudget` 에서 0 은 "끔"(**무제한**)이다. 정반대가 된다.
+ * ⚠️ **날짜로 스스로 풀리게 한 이유**: 되돌리는 것을 잊어 수집이 영영 묶이는 사고를 막기 위해서다.
+ *   이 레포가 반복해 만난 *"실패가 아니라 조용한 부재"* 를 여기서 만들지 않는다.
+ * ⚠️ env `ADS_DAILY_WRITE_BUDGET` 를 명시하면 **그 값이 이긴다** — 대표가 언제든 되돌릴 수 있다.
+ *
+ * 🔭 **근본 처방은 따로다**(이번 범위 밖): 이 예산은 *일일* 상한이라 **월 포함분이 이미 소진됐는지를
+ *   모른다**. 그래서 폭주가 월초에 한도를 태워도 남은 날들이 태연히 과금 구간으로 걸어 들어간다.
+ *   월 인식 예산이 있었다면 이번 $29 는 애초에 안 생겼다.
+ */
+export const SEPT_2026_WRITE_THROTTLE = 30_000
+export const SEPT_2026_THROTTLE_UNTIL_MS = Date.parse('2026-10-01T00:00:00Z')
+
+/** 쓰기 예산 — 읽기와 **같은 규약**(빈값/이상값이면 기본값, 0 이하면 끔) + 위 한시 스로틀. */
+export function resolveWriteBudget(env: unknown, nowMs: number = Date.now()): number {
+  const raw = (env as Record<string, unknown> | undefined)?.[WRITE_BUDGET_ENV]
+  const explicit = raw !== undefined && raw !== null && String(raw).trim() !== ''
+  if (explicit) return resolveBudget(env, WRITE_BUDGET_ENV, DEFAULT_DAILY_WRITE_BUDGET)
+  return nowMs < SEPT_2026_THROTTLE_UNTIL_MS ? SEPT_2026_WRITE_THROTTLE : DEFAULT_DAILY_WRITE_BUDGET
 }
 
 function resolveBudget(env: unknown, key: string, fallback: number): number {
