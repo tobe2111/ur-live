@@ -5,8 +5,8 @@
  *     POST /api/seller-marketing/deals/propose      — {influencer_id, commission_pct, ends_at?, message?}
  *     POST /api/seller-marketing/deals/:id/respond  — {action:'accept'|'reject'} (인플 제안 + proposed 만)
  *
- * ⚠️ 커미션 % 상한(cap)은 서버가 platform_settings.max_influencer_commission_pct 로 검증 —
- *   초과 시 서버 오류 메시지(허용 범위 포함)를 그대로 노출한다.
+ * ⚠️ 커미션 % 에 플랫폼 상한은 없다(2026-09-07 결재 Q2-1 — 매장이 정한 값 그대로). 서버는 입력 검증선
+ *   `DEAL_PCT_MAX`(90) 만 본다 — 초과 시 서버 오류 메시지(허용 범위 포함)를 그대로 노출한다.
  * ⚠️ 재원 카피 중립 유지 — 이 페이지엔 funding 정보 endpoint 가 없으므로 재원 주장 문구 금지.
  */
 import { useState } from 'react'

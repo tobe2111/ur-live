@@ -38,9 +38,9 @@ describe('computeMatchingSettlement — 순수취 5% 불변', () => {
     expect(s.ownerDebitKrw).toBe(s.influencerKrw)
   })
 
-  it('상한(maxCommissionPct) clamp', () => {
-    const s = computeMatchingSettlement({ grossKrw: 100_000, commissionPct: 9, maxCommissionPct: 2 })
-    expect(s.influencerKrw).toBe(2000) // 9% 요청이 2% 로 clamp
+  it('상한 없음 — 2026-09-07 결재 Q2-1: 9% 요청은 9% 그대로(옛 maxCommissionPct clamp 제거)', () => {
+    const s = computeMatchingSettlement({ grossKrw: 100_000, commissionPct: 9 })
+    expect(s.influencerKrw).toBe(9000)
   })
 
   it('음수/NaN/0 graceful', () => {

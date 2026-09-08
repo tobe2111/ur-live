@@ -5,6 +5,7 @@ import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { youTubeEmbedUrl, type UrShortItem } from '@/shared/urshorts'
+import { priceDisplay } from '@/shared/price-display'
 import SEO from '@/components/SEO'
 
 /**
@@ -83,7 +84,9 @@ export default function VideosPage() {
     )
   }
 
-  const dc = Number(cur?.discount_rate) || 0
+  // 💸 할인율·정가는 홈 딜 카드와 **같은 규칙**으로 정한다(`priceDisplay` SSOT).
+  //    직접 계산하면 같은 상품이 홈에서 30%, 여기서 0% 로 보이는 날이 온다 — 에러 없이.
+  const pd = priceDisplay(cur ?? {})
   const thumb = cur?.thumb_url || cur?.product_image || ''
 
   return (
@@ -145,11 +148,29 @@ export default function VideosPage() {
               onError={(e) => cfImageOnError(e.currentTarget, thumb)}
             />
           )}
+          {/* 🧾 대표 확정 "안 B + 기존 가격정보"(2026-09-08) — 매장 / 상품명 / 가격 세 줄.
+              **무엇을 사는지 모른 채 누르게 하지 않는다**는 것이 상품명 줄의 존재 이유다.
+
+              🩸 내가 틀렸던 것: "정가는 버튼 옆 220px 자리에 228px라 안 들어간다" 고 보고했는데
+              **재 보니 자리가 267px 였고 정가 포함 가격 줄은 139px** 였다(430px 기준). 계산을
+              머리로 했고 틀렸다. 가장 좁은 360px 에서도 자리 197px / 최악값 175px 로 들어간다
+              (최악 = `9,900,000원 99% 9,900,000원`). 실측 근거는 `videos-buy-bar.test.ts` 주석에.
+
+              ⚠️ 가격 줄은 `whitespace-nowrap` 이라 6자리에서도 안 깨진다. 넘치면 잘릴 뿐
+              (홈 카드가 2줄로 나눈 것과 다른 선택 — 여기는 영상을 덜 가리는 게 우선이다). */}
           <div className="min-w-0 flex-1 text-gray-900">
             <div className="truncate text-[10.5px] text-gray-500">{cur.store_name || ''}</div>
-            <div className="truncate text-[15px] font-bold tabular-nums">
-              {dc > 0 && <span className="mr-1 text-[12.5px] text-sale">{dc}%</span>}
-              {formatNumber(cur.price)}원
+            {cur.product_name && (
+              <div className="truncate text-[12.5px] font-semibold leading-tight">{cur.product_name}</div>
+            )}
+            <div className="mt-[1px] flex items-baseline whitespace-nowrap text-[15px] font-bold tabular-nums">
+              {pd.showOriginal && (
+                <span className="mr-1 text-[11px] font-normal text-gray-400 line-through">
+                  {formatNumber(pd.originalPrice)}원
+                </span>
+              )}
+              {pd.discount > 0 && <span className="mr-1 text-[12.5px] text-sale">{pd.discount}%</span>}
+              {formatNumber(pd.price)}원
             </div>
           </div>
           <Link

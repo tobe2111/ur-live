@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { readRepairLane } from '../helpers/source-text'
+import { readRepairLane, readCode } from '../helpers/source-text'
 import {
   parseYouTubeUrl, parseYouTubeVideoId, parseIsoDurationSec, youTubeEmbedUrl, youTubeThumbUrl,
   URSHORTS_CARD_W, URSHORTS_CARD_H, URSHORTS_RAIL_LIMIT, URSHORTS_VIEWER_PATH,
@@ -63,18 +63,24 @@ describe('① 쇼츠만 받는다', () => {
   it('서버가 주소 모양과 길이 둘 다로 거른다', () => {
     expect(R).toMatch(/form === 'shorts'/)
     // 🩸 이름만 찾으면 **import 줄**에 걸려 늘 통과한다. 실제 비교식을 앵커로.
-    expect(R).toMatch(/sec > URSHORTS_MAX_DURATION_SEC/)
+    //   2026-09-08: snippet 자동 채우기로 `sec` → `meta.duration` 이 됐다(판정은 그대로).
+    expect(R).toMatch(/meta\.duration > URSHORTS_MAX_DURATION_SEC/)
   })
 
   it('확인이 안 되면 통과시키지 않는다 (키 부재·호출 실패 모두 거부)', () => {
-    // `verifyIsShort` 안에서 키가 없으면 ok:false 로 끝나야 한다.
-    const fn = R.slice(R.indexOf('async function verifyIsShort'), R.indexOf('adminUrshortsRoutes.post'))
-    expect(fn).toMatch(/if \(!key\)[\s\S]{0,120}ok: false/)
-    expect(fn).toMatch(/catch \{[\s\S]{0,120}ok: false/)
+    // 2026-09-08: 조회가 `fetchVideoMeta` 로 분리됐다. 불변식은 그대로다 —
+    //   **watch?v= 는 길이를 못 재면 통과 못 한다**(키 없음·호출 실패·못 찾음 전부).
+    //   ⚠️ `/shorts/` 는 주소가 스스로 증명하므로 원래도 이 검사 대상이 아니었다(조기 반환).
+    const meta = R.slice(R.indexOf('async function fetchVideoMeta'), R.indexOf('async function verifyIsShort'))
+    expect(meta, '키 없으면 실패로 끝나야 한다').toMatch(/if \(!key\) return \{ ok: false/)
+    expect(meta, '호출 실패를 성공으로 넘기면 안 된다').toMatch(/catch \{[\s\S]{0,80}ok: false/)
+    const fn = R.slice(R.indexOf('async function verifyIsShort'), R.indexOf("adminUrshortsRoutes.post('/'"))
+    expect(fn, 'watch?v= 가 조회 실패에도 통과한다').toMatch(/if \(!meta\.ok\) \{[\s\S]{0,300}ok: false/)
   })
 
   it('길이 확인은 videos.list 다 — search(100 units)를 쓰면 안 된다', () => {
-    expect(R).toContain('youtube/v3/videos?part=contentDetails')
+    // 2026-09-08: snippet 을 얹었다 — videos.list 는 파트를 늘려도 1 unit 이라 공짜다.
+    expect(R).toContain('youtube/v3/videos?part=contentDetails,snippet')
     expect(R).not.toContain('youtube/v3/search')
   })
 })
@@ -207,7 +213,11 @@ describe('어드민 화면', () => {
   })
 
   it('이용권을 안 고른 영상이 눈에 띈다 — 그게 이 화면의 할 일이다', () => {
-    expect(A).toContain('이용권을 고르세요')
+    // 2026-09-08: 상태 pill + 숫자 입력 두 칸이 **고르는 버튼 하나**로 합쳐졌다.
+    //   빨갛게 남아 할 일이 보인다는 성질은 그대로다(버튼이 red 로 렌더된다).
+    expect(A, '고르는 칸이 사라졌다').toMatch(/<ProductPicker/)
+    expect(readCode('src/pages/admin-urshorts/ProductPicker.tsx'))
+      .toMatch(/이용권 고르기/)
     expect(A).toMatch(/rows\.filter\(\(r\) => !r\.product_id\)/)
   })
 
