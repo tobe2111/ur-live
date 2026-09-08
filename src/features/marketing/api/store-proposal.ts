@@ -5,10 +5,25 @@
  *   개업 브리핑(opening-briefing)이 "축하 + 상권 수치" 문구라면 이것은 "입점 제안 + 조건 + 등록 링크" 문구다 — 둘 다 어드민 열람용.
  */
 
+import { loadFeeRates } from '@/worker/utils/fee-resolver'
+
 export interface ProposalStore {
   id: number; biz_name: string; category: string | null; region: string | null; apv_perm_ymd?: string | null; is_new_open?: number
 }
 export interface ProposalRates { platformPctDirect: number; platformPct: number }
+
+/**
+ * 요율은 **메인 DB** platform_settings(어드민 조정값)에서 — 매장 후보 라우트 파일은 리드 DB 파일이라 `env.DB` 를
+ * 직접 만지면 안 된다(ads-leads-db R1). 그래서 리드 테이블 이름이 없는 이 파일이 메인 DB 접근을 맡는다.
+ */
+export async function loadProposalRates(env: { DB: D1Database }): Promise<ProposalRates> {
+  try {
+    const r = await loadFeeRates(env.DB)
+    return { platformPct: r.platformPct, platformPctDirect: r.platformPctDirect }
+  } catch {
+    return { platformPct: 5, platformPctDirect: 10 }
+  }
+}
 export interface ProposalDraft { subject: string; body: string; sms: string; register_url: string }
 
 export const REGISTER_URL = 'https://urdeal.kr/business'

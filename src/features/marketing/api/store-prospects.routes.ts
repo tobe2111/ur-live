@@ -18,8 +18,7 @@ import { listStoreTrades, setStoreTradeActive, addStoreTrade, getStoreConfig, se
 import { REGION_GROUPS } from './company-keyword-grid'
 import { adsLeadsDb } from '../../../shared/ads/leads-db'
 import { weekKeyKST, getWeeklyConfig, setWeeklyConfig, getOrCreateWeeklyPicks, trackerOf, weeklyHistory } from './store-weekly-picks'
-import { proposalDraft } from './store-proposal'
-import { loadFeeRates } from '@/worker/utils/fee-resolver'
+import { proposalDraft, loadProposalRates } from './store-proposal'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -203,8 +202,8 @@ app.get('/:id/proposal', async (c) => {
   const store = await adsLeadsDb(c.env).prepare('SELECT id, biz_name, category, region, apv_perm_ymd, is_new_open FROM store_prospects WHERE id = ?')
     .bind(id).first<{ id: number; biz_name: string; category: string | null; region: string | null; apv_perm_ymd: string | null; is_new_open: number }>().catch(() => null)
   if (!store) return c.json({ success: false, error: '매장을 찾을 수 없습니다' }, 404)
-  const rates = await loadFeeRates(c.env.DB).catch(() => ({ platformPct: 5, platformPctDirect: 10 }))
-  return c.json({ success: true, store, ...proposalDraft(store, { platformPct: rates.platformPct, platformPctDirect: rates.platformPctDirect }) })
+  const rates = await loadProposalRates(c.env)
+  return c.json({ success: true, store, ...proposalDraft(store, rates) })
 })
 
 // GET /api/admin/store-prospects/new-open-digest — 🎉 개업 웰컴 큐(최근 개업 + 지역 집계).

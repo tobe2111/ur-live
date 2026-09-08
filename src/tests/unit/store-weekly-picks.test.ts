@@ -80,7 +80,9 @@ describe('배선 계약', () => {
     expect(src).toContain("app.get('/:id/proposal'")
     // 한 세그먼트 GET '/:id' 가 생기면 그보다 앞에 '/weekly' 를 두어야 한다 — 지금은 존재 자체가 없다.
     expect(src).not.toMatch(/app\.get\(\s*'\/:id'\s*,/)
-    expect(src).toContain('loadFeeRates(c.env.DB)')
+    // 요율은 리드 파일 밖(store-proposal.ts)에서 메인 DB 를 읽는다 — 이 파일에 bare env.DB 가 있으면 ads-leads-db R1 이 빨갛다
+    expect(src).toContain('loadProposalRates(c.env)')
+    expect(src.replace(/adsLeadsDb\(c\.env\)/g, '')).not.toMatch(/(?<![.\w])(?:c\.)?env\.DB\b/)
   })
   it('어드민 매장 후보 페이지가 WeeklyPicksPanel 을 그린다 · 패널은 자동 발송 코드가 없다', () => {
     const page = codeOnly(read('src/pages/admin/AdminStoreProspectsPage.tsx'))
