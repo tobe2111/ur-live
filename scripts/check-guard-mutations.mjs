@@ -9925,6 +9925,36 @@ canvas {
       '모르면 안 보여 주는 쪽이 언제나 싸다 — 못 본 정산은 물어보면 되지만, 본 정산은 되돌릴 수 없다.',
   },
   {
+    name: '🔒 마감 행 취소가 무음으로 열린다 (돈이 새 주인에게)',
+    file: 'src/features/admin/api/admin-payouts.routes.ts',
+    find: "  if (row.kind === 'handover_closeout' && row.payee_user_id && row.payee_type === 'seller' && !body.confirm_release) {",
+    replace: '  if (false) {',
+    test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
+    why:
+      '집계는 cancelled 를 안 뺀다 — 마감 행을 취소하면 금액이 원장으로 되살아나고, 주인이 이미 ' +
+      '바뀌었다면 다음 주에 새 주인 계좌로 나간다. 대표 확정과 정반대 방향이다.',
+  },
+  {
+    name: '🔒 마감 행에 "누구 것이었는지" 를 안 박는다',
+    file: 'src/features/admin/api/admin-payouts/handover-closeout.ts',
+    find: "         VALUES ('seller', ?, ?, ?, ?, 'pending', ?, ?, ?, 'handover_closeout', ?)`,",
+    replace: "         VALUES ('seller', ?, ?, ?, ?, 'pending', ?, ?, ?, NULL, NULL)`,",
+    test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
+    why:
+      'kind·payee_user_id 가 없으면 취소 게이트가 이 행을 알아보지 못한다. 게이트 코드가 멀쩡해도 ' +
+      '입력이 비어 조용히 통과한다 — 이 레포가 반복해 당한 "실패가 아니라 부재" 클래스다.',
+  },
+  {
+    name: '🖥️ 마감 창구가 화면에서 사라진다 (API 만 남음)',
+    file: 'src/pages/AdminPayoutsPage.tsx',
+    find: "      const res = await api.post('/api/admin/payouts/handover-closeout', { seller_id: sellerId, reason })",
+    replace: '      const res = { data: { success: false } }',
+    test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
+    why:
+      '대표가 "마감 화면이 없다" 를 고치라고 했다. API 만 있고 화면이 없으면 아무도 못 쓰고, ' +
+      '그러면 자물쇠는 그냥 손바뀜을 막는 장치로만 남는다.',
+  },
+  {
     name: '🧪 [행동] 마감해도 손바뀜이 안 열린다 — 가드가 순수 원장을 본다',
     file: 'src/worker/utils/store-handover-guard.ts',
     find: '    receivable = await getUnsettledBalance(DB, `seller:${sellerId}`)',
@@ -9967,8 +9997,8 @@ canvas {
   {
     name: '🤝 마감이 계좌를 스냅샷하지 않는다 (새 주인에게 송금)',
     file: 'src/features/admin/api/admin-payouts/handover-closeout.ts',
-    find: "      ).bind(String(sellerId), amount, today, today, seller.bank_account, seller.business_name || null, memo).run()",
-    replace: "      ).bind(String(sellerId), amount, today, today, null, seller.business_name || null, memo).run()",
+    find: "      ).bind(String(sellerId), amount, today, today, seller.bank_account, seller.business_name || null, memo, seller.linked_user_id ?? null).run()",
+    replace: "      ).bind(String(sellerId), amount, today, today, null, seller.business_name || null, memo, seller.linked_user_id ?? null).run()",
     test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
     why:
       'payout 행이 계좌를 안 들고 있으면, 송금 시점에 sellers.bank_account 를 다시 읽게 되고 ' +

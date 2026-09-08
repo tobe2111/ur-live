@@ -28,6 +28,7 @@ const PAYOUTS = 'src/features/seller/api/seller-settlements/payouts.ts'
 const REASSIGN = 'src/features/admin/api/admin-sellers/reassign-introducer.ts'
 const CLOSEOUT = 'src/features/admin/api/admin-payouts/handover-closeout.ts'
 const PAYROUTES = 'src/features/admin/api/admin-payouts.routes.ts'
+const PAYPAGE = 'src/pages/AdminPayoutsPage.tsx'
 
 describe('🔐 ① 미지급 잔액이 남은 매장은 주인을 못 바꾼다', () => {
   it('가드가 잔액을 실제로 조회한다 — 배정분을 뺀 값으로', () => {
@@ -186,5 +187,50 @@ describe('🤝 ⑤ 손바뀜 마감 — 이전 주인 몫을 떼어 배정한다
     expect(r).toMatch(/handover-closeout[\s\S]{0,200}requireAdminRole\('finance'\)/)
     expect(r).toMatch(/handover-closeout[\s\S]{0,200}require2FA\(\)/)
     expect(r).toMatch(/handover-closeout[\s\S]{0,200}auditLog\(/)
+  })
+})
+
+describe('🔒 ⑥ 마감 행 취소 게이트 + 어드민 화면 (2026-09-08 대표 "모두 해줘")', () => {
+  it('마감 행에 kind·payee_user_id 를 박는다', () => {
+    const c = strip(read(CLOSEOUT))
+    expect(c, `${CLOSEOUT}: 표시가 없으면 취소 게이트가 이 행을 못 알아본다`)
+      .toMatch(/'handover_closeout'/)
+    expect(c).toMatch(/payee_user_id/)
+    expect(c, '자유 문구(admin_memo)를 제어 신호로 쓰면 오타 한 번에 게이트가 풀린다')
+      .toMatch(/seller\.linked_user_id/)
+  })
+
+  it('취소 라우트가 주인이 바뀌었는지 실제로 조회한다', () => {
+    const r = strip(read(PAYROUTES))
+    // 🩸 첫 판은 본문 문자열(HANDOVER_CLOSEOUT_RELEASE·SELECT…)만 봤는데 **헛돌았다** —
+    //   조건을 `if (false)` 로 바꿔도 그 문자열들은 그대로 남아 초록이 떴다. 주입 검증이 잡았다.
+    //   ⇒ **게이트 조건 자체**로 앵커를 옮긴다.
+    expect(r, `${PAYROUTES}: 게이트 조건이 사라지면 본문이 남아 있어도 아무도 안 지킨다`)
+      .toMatch(/if \(row\.kind === 'handover_closeout'[\s\S]{0,120}row\.payee_user_id[\s\S]{0,120}\{/)
+    expect(r, '현재 주인을 안 읽으면 "바뀌었는지" 를 판정할 수 없다')
+      .toMatch(/SELECT linked_user_id FROM sellers/)
+    expect(r).toMatch(/Number\(now\.linked_user_id\) !== Number\(row\.payee_user_id\)/)
+    expect(r).toMatch(/HANDOVER_CLOSEOUT_RELEASE/)
+  })
+
+  it('하드 블록이 아니라 명시 확인이다 (막다른 길 금지)', () => {
+    // 🩸 이 PR 의 자물쇠가 처음에 정확히 그 실수를 했다 — 막기만 하고 푸는 길이 없었다.
+    const r = strip(read(PAYROUTES))
+    expect(r, `${PAYROUTES}: confirm_release 가 없으면 금액 오타를 영영 못 고친다`)
+      .toMatch(/confirm_release/)
+  })
+
+  it('어드민 화면에 마감 창구가 붙어 있다', () => {
+    const p = strip(read(PAYPAGE))
+    expect(p, `${PAYPAGE}: API 만 있고 화면이 없으면 아무도 못 쓴다`)
+      .toMatch(/\/api\/admin\/payouts\/handover-closeout/)
+    expect(p, '매장 계정에만 — 소유자가 바뀔 수 있는 건 매장뿐이다')
+      .toMatch(/account\.startsWith\('seller:'\)/)
+  })
+
+  it('화면이 취소 경고를 받아 한 번 더 확인한다', () => {
+    const p = strip(read(PAYPAGE))
+    expect(p, `${PAYPAGE}: 경고를 안 받으면 서버가 막아도 사용자는 이유를 모른다`)
+      .toMatch(/HANDOVER_CLOSEOUT_RELEASE[\s\S]{0,600}confirm_release: true/)
   })
 })
