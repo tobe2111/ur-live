@@ -1377,6 +1377,17 @@ const MUTATIONS = [
       '매번 ALTER 를 두 번 시도했다. 09-02 에 이 계정은 D1 일일 읽기 한도로 소비자 API 가 통째로 500 이었다.',
   },
   {
+    name: '🧭 현재 위치 훅이 없는 경로(/api/proxy/...)를 부른다',
+    file: 'src/hooks/useCurrentDong.ts',
+    find: 'api.get(`/api/kakao/coord2region',
+    replace: 'api.get(`/api/proxy/kakao/coord2region',
+    test: 'src/tests/unit/button-system.test.ts',
+    why:
+      '라우터는 `app.route(\'/api\', proxyRoutes)` 로 붙어 실제 경로에 `proxy` 세그먼트가 없다(파일 이름이 ' +
+      'proxy.routes.ts 라 헷갈린다). 훅의 `.catch` 가 404 를 조용히 삼켜 화면은 \'내 주변\' 으로 폴백하므로 ' +
+      '콘솔을 안 보면 영영 모른다 — 종전 가드는 두 문자열의 **존재만** 봐서 이 어긋남을 못 박고 있었다.',
+  },
+  {
     name: '🪦 은퇴한 cron 식이 기대 목록으로 되돌아간다 — 헬스체크 영구 빨강',
     file: 'src/worker/utils/cron-expected.ts',
     find: "  '2,17,32,47 * * * *',\n]",
