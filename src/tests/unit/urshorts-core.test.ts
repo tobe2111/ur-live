@@ -285,12 +285,33 @@ describe('셀러 입력칸 — 소유권이 전부다', () => {
  * ⇒ 홈에 나가는 영상은 (a) 우리 것 (b) 매장 것 (c) 창작자가 명시로 허락한 것, 셋 중 하나.
  *   이 규칙을 **문서가 아니라 구조로** 만든다 — 나중에 자동수집이 붙어도 못 샌다.
  */
-describe('허락받은 영상만 홈에 나간다', () => {
+/**
+ * 🔁 **허락(consent) 은 노출을 안 가른다** — 2026-09-08 대표
+ * *"어드민 대시보드에서 올렸던 영상은 메인에서 보여지도록 해줘 허락 받은 유무 상관없이"*.
+ * 09-07 의 `AND s.consent = 1` 게이트를 이 지시가 대체했다.
+ *
+ * ⚠️ 그렇다고 컬럼을 지우면 안 된다 — **어떤 영상에 허락을 받아 뒀는지**를 알아야
+ * 유어애즈 제휴 제안을 보낼 수 있다. 노출에서 빠졌을 뿐 기록으로 산다.
+ * 되돌리려면 PUBLIC_SQL 의 WHERE 에 그 한 줄을 복원하면 된다.
+ */
+describe('허락은 기록이지 노출 조건이 아니다', () => {
   const R = code('src/features/urshorts/api/urshorts.routes.ts')
 
-  it('공개 쿼리가 consent = 1 을 요구한다 (이게 규칙의 전부다)', () => {
+  it('공개 쿼리가 consent 를 요구하지 않는다', () => {
     const sql = R.slice(R.indexOf('const PUBLIC_SQL'), R.indexOf('urshortsRoutes.get'))
-    expect(sql).toMatch(/AND s\.consent = 1/)
+    expect(sql).not.toMatch(/AND s\.consent = 1/)
+  })
+
+  it('켜고 끄는 것은 is_active 하나다', () => {
+    const sql = R.slice(R.indexOf('const PUBLIC_SQL'), R.indexOf('urshortsRoutes.get'))
+    expect(sql).toMatch(/WHERE s\.is_active = 1/)
+  })
+
+  it('어드민 화면이 "체크 안 하면 홈에 안 나간다" 고 말하지 않는다', () => {
+    // 문구가 서버 규칙과 어긋나면 대표가 체크를 찾아 헤맨다(오늘 실제로 그랬다).
+    const A = code('src/pages/AdminUrShortsPage.tsx')
+    expect(A).not.toMatch(/홈에는 안 나갑니다/)
+    expect(A).toMatch(/확인 안 해도 홈에는 나갑니다/)
   })
 
   it('기본값은 0 이다 — 모르면 안 내보낸다', () => {

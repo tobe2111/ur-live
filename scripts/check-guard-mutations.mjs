@@ -249,15 +249,25 @@ const MUTATIONS = [
       '상세 페이지가 빈 채로 뜨는 경로라, 사는 사람은 자기가 뭘 잘못 눌렀다고 생각한다.',
   },
   {
-    name: '🎬 허락 안 받은 영상이 홈에 나간다 (consent 게이트 제거)',
+    name: '🎬 허락 게이트가 되살아나 어드민 영상이 홈에서 사라진다',
     file: 'src/features/urshorts/api/urshorts.routes.ts',
-    find: '     AND s.consent = 1',
-    replace: '     AND 1 = 1',
+    find: '     AND (p.id IS NULL OR p.is_active = 1)\n   ORDER BY s.sort_order',
+    replace: '     AND (p.id IS NULL OR p.is_active = 1)\n     AND s.consent = 1\n   ORDER BY s.sort_order',
     test: 'src/tests/unit/urshorts-core.test.ts',
     why:
-      '남의 영상 옆에 "지금 구매"가 붙으면 그 창작자가 이 딜을 보증한 것으로 읽히는데 그는 그런 적이 ' +
-      '없다. 게다가 유어애즈가 바로 그 채널들에게 제휴 제안을 보낼 참이라, 자기 영상이 이미 우리 ' +
-      '판매에 쓰이는 걸 보면 그 제안이 열리기도 전에 죽는다 — 만들려는 관계를 태우는 셈이다.',
+      '2026-09-08 대표가 "허락 받은 유무 상관없이 메인에 보여지도록" 확정했다. 게이트가 돌아오면 ' +
+      '어드민이 올린 영상이 조용히 홈에서 사라지는데, 에러가 없어서 "왜 또 안 나오지" 를 사람이 ' +
+      '다시 물어야 드러난다(이 프로젝트에서 이미 한 번 그렇게 드러났다).',
+  },
+  {
+    name: '🎬 어드민 화면이 홈 노출 규칙을 거짓으로 말한다',
+    file: 'src/pages/AdminUrShortsPage.tsx',
+    find: '확인 안 해도 홈에는 나갑니다',
+    replace: '홈에는 안 나갑니다',
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      '서버는 내보내는데 화면이 "안 나간다" 고 하면 대표가 있지도 않은 체크를 찾아 헤맨다. ' +
+      '코드가 아니라 문구만 낡는 종류라 테스트 말고는 아무도 안 잡는다.',
   },
   {
     name: '🎬 셀러가 남의 상품에 영상을 걸 수 있다 (소유권 검사 제거)',
@@ -9903,17 +9913,6 @@ canvas {
     why:
       '매장이 "10% 드릴게요" 라고 약속했는데 정산이 2% 만 적립하면 소개자는 약속의 1/5 을 받고 매장은 ' +
       '이유를 모른다 — 에러가 없어 아무도 모른다. 2026-08-30 에 제안 문에서 걷어낸 캡이 정산 쪽에서 되살아나는 모습.',
-  },
-  {
-    name: '🎬 허락 안 받은 영상이 홈에 나간다 (consent 게이트 제거)',
-    file: 'src/features/urshorts/api/urshorts.routes.ts',
-    find: '     AND s.consent = 1',
-    replace: '     AND 1 = 1',
-    test: 'src/tests/unit/urshorts-core.test.ts',
-    why:
-      '남의 영상 옆에 "지금 구매"가 붙으면 그 창작자가 이 딜을 보증한 것으로 읽히는데 그는 그런 적이 ' +
-      '없다. 게다가 유어애즈가 바로 그 채널들에게 제휴 제안을 보낼 참이라, 자기 영상이 이미 우리 ' +
-      '판매에 쓰이는 걸 보면 그 제안이 열리기도 전에 죽는다 — 만들려는 관계를 태우는 셈이다.',
   },
 ]
 /**
