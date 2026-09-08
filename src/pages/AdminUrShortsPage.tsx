@@ -117,7 +117,9 @@ export default function AdminUrShortsPage() {
     } catch { setMsg({ kind: 'bad', text: '저장하지 못했습니다' }) }
   }
 
-  const live = rows.filter((r) => r.is_active && r.product_id && r.consent).length
+  // 🔁 2026-09-08 대표 지시로 홈 노출 조건이 `is_active` 하나가 됐다(허락·이용권 무관).
+  //    이 숫자가 서버의 공개 쿼리와 다르면 화면이 거짓말을 한다 — 조건을 같이 옮긴다.
+  const live = rows.filter((r) => r.is_active).length
   const noConsent = rows.filter((r) => !r.consent).length
   const orphan = rows.filter((r) => !r.product_id).length
 
@@ -177,9 +179,10 @@ export default function AdminUrShortsPage() {
               {hint.text}
             </p>
           )}
-          {/* 🔴 허락 확인. 남의 영상을 구매 버튼 옆에 두면 그 창작자가 이 딜을 보증한 것으로 읽히는데
-              그는 그런 적이 없다. 게다가 유어애즈가 바로 그 채널들에게 제휴 제안을 보낼 참이라,
-              자기 영상이 이미 우리 판매에 쓰이는 걸 보면 그 제안이 열리기도 전에 죽는다. */}
+          {/* 🔁 허락 확인 — **기록용**이다(2026-09-08 대표: 허락 무관하게 홈에 노출).
+              위험은 그대로다: 남의 영상을 구매 버튼 옆에 두면 그 창작자가 이 딜을 보증한 것으로
+              읽히고, 유어애즈가 그 채널에 제휴 제안을 보낼 때 불리해진다. 그래서 체크는 남긴다 —
+              어떤 영상에 허락을 받아 뒀는지 알아야 제안을 보낼 수 있다. 다만 노출은 안 막는다. */}
           <label className="mt-3 flex items-start gap-2 text-[12.5px] text-gray-700">
             <input
               type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)}
@@ -188,7 +191,7 @@ export default function AdminUrShortsPage() {
             <span>
               <b>우리가 만든 영상이거나, 매장 영상이거나, 창작자에게 허락받았습니다.</b>
               <span className="block text-gray-500">
-                확인 안 하면 목록에는 남지만 홈에는 안 나갑니다. 허락은 유어애즈 제휴 제안으로 받으세요.
+                기록용입니다 — 확인 안 해도 홈에는 나갑니다. 허락은 유어애즈 제휴 제안으로 받으세요.
               </span>
             </span>
           </label>
@@ -268,7 +271,7 @@ export default function AdminUrShortsPage() {
 
                   <button
                     onClick={() => void patch(r.id, { consent: !r.consent })}
-                    title={r.consent ? '허락 확인됨 — 누르면 취소' : '허락 미확인 — 누르면 확인'}
+                    title={r.consent ? '허락 확인됨 — 누르면 취소' : '허락 미확인 — 누르면 확인 (기록용, 홈 노출과 무관)'}
                     className={`shrink-0 rounded-lg px-2.5 py-2 text-[11px] font-bold ${
                       r.consent ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'}`}
                   >

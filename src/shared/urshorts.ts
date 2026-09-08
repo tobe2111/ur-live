@@ -116,8 +116,9 @@ export interface UrShortItem {
   title: string | null
   channel: string | null
   thumb_url: string | null
-  /** 🔴 항상 존재한다 — 서버가 INNER JOIN 으로 강제한다. */
-  product_id: number
+  /** 🔴 **비어 있을 수 있다** — 2026-09-08 부터 이용권 안 붙인 영상도 홈에 나간다(LEFT JOIN).
+   *  이 값이 없으면 카드는 글자 띠를, 뷰어는 구매 바를 아예 안 그린다. */
+  product_id: number | null
   /** 초. 쇼츠 판정에 쓴 값이라 남겨 둔다(모르면 null). */
   duration_sec?: number | null
   product_name: string | null

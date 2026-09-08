@@ -6,6 +6,7 @@ import { formatNumber } from '@/utils/format'
 import {
   URSHORTS_CARD_W, URSHORTS_CARD_H, URSHORTS_VIEWER_PATH, type UrShortItem,
 } from '@/shared/urshorts'
+import { priceDisplay } from '@/shared/price-display'
 
 /**
  * 🎬 유어쇼츠 레일 — 홈에서 인기 이용권 바로 아래 (2026-09-07 대표 확정).
@@ -32,7 +33,17 @@ import {
  */
 function ShortCard({ item, load, onOpen }: { item: UrShortItem; load: boolean; onOpen: () => void }) {
   const thumb = item.thumb_url || item.product_image || ''
-  const dc = Number(item.discount_rate) || 0
+  // 💸 할인율·정가는 홈 딜 카드·구매 바와 **같은 규칙**(priceDisplay SSOT).
+  //    여기서 또 따로 계산하면 같은 상품이 세 화면에서 서로 다른 %를 보이게 된다.
+  const pd = priceDisplay(item)
+  // ⏱️ 재생시간은 **없을 수 있다** — 2026-09-08 이전에 `/shorts/` 주소로 넣은 영상은
+  //    유튜브 조회를 건너뛰어 길이가 비어 있다. 없으면 배지를 그리지 않는다.
+  const dur = Number(item.duration_sec) || 0
+  const durLabel = dur > 0 ? `${Math.floor(dur / 60)}:${String(dur % 60).padStart(2, '0')}` : null
+  // 🔴 이용권이 안 붙은 영상은 **글자 띠 자체를 안 그린다**(2026-09-08 대표 — 서버가 LEFT JOIN 이
+  //    되면서 상품 없는 행이 여기까지 온다). 조건 없이 그리면 빈 검정 그라디언트만 남는데,
+  //    그건 "정보 없음"이 아니라 그냥 결함으로 보인다.
+  const hasInfo = !!(item.store_name || item.product_name || pd.price > 0)
   return (
     <button
       type="button"
@@ -60,18 +71,47 @@ function ShortCard({ item, load, onOpen }: { item: UrShortItem; load: boolean; o
         <span className="absolute left-2 top-2 grid h-[22px] w-[22px] place-items-center rounded-full bg-black/50 text-white">
           <Play size={11} fill="currentColor" strokeWidth={0} />
         </span>
-        {/* 가격이 사진 위에 있는 것이 요점이다 — 누르기 전에 이미 "파는 것"임을 안다. */}
+        {/* ⏱️ 재생시간은 **우상단**이다. 시안에서는 우하단이었는데, 글자가 네 줄이 되면서
+            아래쪽은 스크림이 다 차지한다 — 그대로 두면 가격 위에 배지가 얹힌다(렌더로 확인). */}
+        {durLabel && (
+          <span className="absolute right-1.5 top-1.5 rounded bg-black/60 px-1 py-px text-[9px] font-semibold tabular-nums text-white">
+            {durLabel}
+          </span>
+        )}
+        {/* 💰 대표 확정 "안 라"(2026-09-08) — 매장 / 상품명 / 정가 / 할인율·판매가.
+            가격이 사진 위에 있는 것이 요점이다 — 누르기 전에 이미 "파는 것"임을 안다.
+
+            🔴 **모르는 것은 그리지 않는다**(대표 *"영상 속 정보 모르면 그냥 안보이게"*).
+               줄마다 값이 있을 때만 렌더한다. 이전엔 매장명이 `|| ''` 라 **값이 없어도 빈 줄이
+               남아** 카드마다 글자 시작 높이가 달랐다. 2026-09-08 부터는 **상품명·가격도 빌 수 있다**
+               (이용권 안 붙인 영상도 홈에 나간다) — 그래서 띠 전체가 `hasInfo` 뒤에 있다. */}
+        {hasInfo && (
         <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent px-[7px] pb-[7px] pt-[18px] text-white">
-          <span className="block truncate text-[9.5px] opacity-90">{item.store_name || ''}</span>
-          <span className="mt-[1px] block text-[11.5px] font-bold tabular-nums">
+          {item.store_name && (
+            <span className="block truncate text-[9.5px] opacity-90">{item.store_name}</span>
+          )}
+          {item.product_name && (
+            <span className="mt-px block truncate text-[10.5px] font-semibold leading-tight">
+              {item.product_name}
+            </span>
+          )}
+          {pd.showOriginal && (
+            <span className="mt-0.5 block text-[9px] tabular-nums line-through opacity-70">
+              {formatNumber(pd.originalPrice)}원
+            </span>
+          )}
+          {pd.price > 0 && (
+          <span className="mt-px block text-[11.5px] font-bold tabular-nums">
             {/* 🩸 여기에 새 빨강(#FF8A93)을 발명했다가 되돌렸다. 오늘 아침에 할인율을 `--sale`
                 하나로 통일해 놓고 같은 날 넷째 값을 만들 뻔했다. 사진 위 스크림은 **테마와 무관하게
                 늘 어둡다**(light-island 와 같은 성질)이라 라이트 값 #DC2626 은 안 읽힌다 →
                 시스템이 이미 쓰는 **다크 표면용 --sale 값**을 그대로 쓴다. */}
-            {dc > 0 && <b className="text-[#FF5C69]">{dc}% </b>}
-            {formatNumber(item.price)}원
+            {pd.discount > 0 && <b className="text-[#FF5C69]">{pd.discount}% </b>}
+            {formatNumber(pd.price)}원
           </span>
+          )}
         </span>
+        )}
       </span>
     </button>
   )
