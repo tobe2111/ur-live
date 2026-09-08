@@ -34,6 +34,7 @@ const OK_PARTS = [
   '/src/components/main/', '/src/components/auth/', '/src/shared/config/', '/src/shared/utils/', '/src/shared/constants/',
   '/src/shared/types/', '/src/shared/stores/', '/src/utils/', '/src/hooks/', '/src/lib/', '/src/shared/seller-roles',
   '/src/shared/deal-card-grid', // 딜 카드 격자 간격 SSOT → app-shared (2026-09-03)
+  '/src/shared/price-display',  // 가격·할인율 표시 규칙 SSOT → app-shared (2026-09-08)
   '/src/components/icons/', '/src/client/', '/src/i18n', '/src/pages/main-home/GroupBuyFeed', '/src/pages/mobile-home/',
   '/src/routes/', '/src/shared/feature-flags', '/src/components/brand/', // app-shell 규칙(엔트리 셸)에 이미 있는 것
 ]
