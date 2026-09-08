@@ -9915,6 +9915,26 @@ canvas {
       '모르면 안 보여 주는 쪽이 언제나 싸다 — 못 본 정산은 물어보면 되지만, 본 정산은 되돌릴 수 없다.',
   },
   {
+    name: '🧪 [행동] 마감해도 손바뀜이 안 열린다 — 가드가 순수 원장을 본다',
+    file: 'src/worker/utils/store-handover-guard.ts',
+    find: '    receivable = await getUnsettledBalance(DB, `seller:${sellerId}`)',
+    replace: '    receivable = await getLedgerReceivable(DB, `seller:${sellerId}`)',
+    test: 'src/tests/unit/store-handover-behavior-2026-09-08.test.ts',
+    why:
+      '이 인과 사슬(마감 → 잔액 0 → 자물쇠 열림)이 이 변경의 핵심 주장이다. 실제 DB 로 돌려서 ' +
+      '깨지는지 본다 — 배선만 보는 짝 시험이 못 잡는 층이다.',
+  },
+  {
+    name: '🧪 [행동] 배정 잔액이 pending 을 안 빼서 사슬이 끊긴다',
+    file: 'src/worker/utils/ledger.ts',
+    find: "      WHERE (payee_type || ':' || payee_id) = ? AND status IN ('pending','approved','sent')",
+    replace: "      WHERE (payee_type || ':' || payee_id) = ? AND status IN ('approved','sent')",
+    test: 'src/tests/unit/store-handover-behavior-2026-09-08.test.ts',
+    why:
+      '마감이 만드는 행은 pending 이다. 안 빼면 마감 직후에도 잔액이 그대로라 손바뀜이 안 열린다. ' +
+      '실제 DB 로 돌려야 이 값이 정말 0 이 되는지 알 수 있다.',
+  },
+  {
     name: '🤝 손바뀜 가드가 순수 원장을 다시 본다 (마감해도 안 열리는 막다른 길)',
     file: 'src/worker/utils/store-handover-guard.ts',
     find: '    receivable = await getUnsettledBalance(DB, `seller:${sellerId}`)',
