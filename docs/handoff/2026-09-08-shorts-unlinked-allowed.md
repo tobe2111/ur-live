@@ -140,3 +140,56 @@ tsc 0 · `urshorts-viewer-chrome.test.ts` 9건 pass · 지도 953 · 주입 3건
 ## 다음
 - 배포 후 `/videos` 를 폰과 PC 에서 열어 ① 스와이프·휠로 넘어가는지 ② 상단 아이콘이 남는지 확인.
 - 남으면 다음 수: 상단에 우리 그라디언트를 덮거나, IFrame Player API 로 갈아타고 chrome 을 우리가 그린다.
+
+---
+
+# 후속 3 — ④ CI 단축: 주입 전수를 PR 에서 떼어냈다
+
+## 대표 지시
+> "모두 다 순서대로 진행" · "계속 진행"
+
+## 실측이 시킨 일
+Verify **48분 29초** 중 `check-guard-mutations -s` 가 **37분 24초 = 77%**
+(job 101957335695 스텝 타이밍). 950건 넘어 선형으로 는다.
+그 길이의 2차 피해가 더 컸다 — CI 가 도는 동안 main 이 움직이고, 거의 모든 PR 이 그 매니페스트를
+건드리니 **머지마다 충돌**했다(2026-09-08 하루 머지 시도 4번 중 **3번이 405 conflict**).
+
+## 🔴 먼저 발견한 구멍
+전수는 **`verify.yml` 한 곳에서만** 돌고 있었다. PR 을 좁히기만 했으면 **전수가 어디서도 안 돌게**
+된다 — 그래서 `guard-mutations-full.yml`(main push + 야간 03:40 KST)을 **같이** 만들었다. 둘은 짝이다.
+
+## 무엇을 바꿨나
+- 신규 `scripts/guard-mutations-scope.mjs` — **순수 판정**(`fullReasonFor` · `inScope` · `changedScope`).
+  🩸 처음엔 러너 안에 뒀는데 **자기참조**로 막혔다: 그것을 지키는 주입의 `find` 가 같은 파일의
+  매니페스트 안에도 있어 "주입 대상이 2곳" 이 됐다. 뽑아내니 해결됐고, 덤으로 **테스트가 문자열이
+  아니라 동작을 재게** 됐다(`.d.mts` 로 타입 — `.d.ts` 는 `.mjs` import 에 안 붙는다, tsc 가 잡았다).
+- `verify.yml` → `--changed -s`
+- 신규 `guard-mutations-full.yml` → 전수 `-s` (main push + `40 18 * * *` UTC + 수동, timeout 90분)
+- fail-safe: base 못 구함 · `scripts/**` · `package.json` · `vitest.config` · `verify.yml` ·
+  `src/tests/helpers/` · **바뀐 파일 0개** → 전부 전수
+
+## 실측 효과 (958건 기준)
+| PR 이 바꾼 것 | 도는 주입 |
+|---|---|
+| 소비자 페이지 1개(VideosPage) | **8건 (0.8%)** |
+| 유어쇼츠 3파일 | 13건 (1.4%) |
+| 워커 라우트 1개 | 0건 |
+| 문서만 | 0건 |
+| 가드 자신 | **958건 (전수 폴백)** ← 이 PR 이 그 경우다 |
+
+⇒ 37분 24초 → 소비자 PR 이면 30초 안쪽. **이 PR 자신은 전수로 돈다**(매니페스트를 고쳤으니 맞다).
+
+## 가드
+`guard-mutations-scope.test.ts` 17건 — 절반이 **실제 함수 호출**이다(Set 을 넣고 결과를 본다).
+주입 5건 **되돌려-검증 빨간불 확인**: 전수 워크플로가 좁혀 돎 · schedule 제거 · fail-safe 제거 ·
+좁힘이 전부 통과 · 0개를 "돌 것 없음" 으로 읽음.
+
+🩸 **이 파일을 쓰며 밟은 것 둘** — ① 워크플로를 `readCode` 로 읽었더니 `paths-ignore: ['docs/**']`
+의 `/**` 를 블록 주석으로 읽어 **파일 가운데가 사라졌다**(헬퍼가 경고한 그 지뢰) → `readRaw`.
+② 전수 워크플로에 *"`--changed` 붙이지 말 것"* 이라 적어 둔 **주석에 속아** `not.toMatch(/--changed/)`
+가 빨간불 → YAML `#` 주석을 걷어내고 판정.
+
+## 다음 (⑤)
+매니페스트 분할 — `MUTATIONS` 배열은 **그대로 두고** 러너가 `scripts/mutations/*.mjs` 를
+**추가로** 읽게만 한다(옮기지 않는다 → 다른 세션 브랜치가 안 깨진다). CLAUDE.md 에 "새 주입은 거기에" 한 줄.
+⚠️ `auto-reference.ts` gitignore 는 **한산할 때** — 지금은 다른 세션 브랜치와 modify/delete 충돌.

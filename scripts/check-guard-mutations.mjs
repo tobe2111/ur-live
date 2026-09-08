@@ -36,6 +36,7 @@ import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { changedScope, inScope } from './guard-mutations-scope.mjs'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const STRICT = process.argv.includes('-s') || process.argv.includes('--strict')
@@ -79,6 +80,25 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
  * 그건 전수(또는 `--only`)의 몫이다. 커밋 전 지도 점검용이지 되돌려-검증의 대체가 아니다.
  */
 const MAP_ONLY = process.argv.includes('--map-only')
+
+/**
+ * ⏱️ `--changed` — **PR 에서는 이 변경이 건드린 주입만** 돌린다 (2026-09-08 대표 지시).
+ *
+ * 실측: Verify 48분 29초 중 이 스크립트가 **37분 24초 = 77%**(job 101957335695 스텝 타이밍).
+ * 950건을 넘어 선형으로 는다. 그 길이의 2차 피해가 더 컸다 — CI 가 도는 동안 main 이 움직이고,
+ * 거의 모든 PR 이 이 매니페스트를 건드리니 **머지마다 충돌**했다(하루 4번 중 3번이 405 conflict).
+ *
+ * 판정은 `guard-mutations-scope.mjs` 에 있다 — **순수 함수라 테스트가 동작을 직접 잰다.**
+ * 여기 두면 그것을 지키는 주입의 `find` 가 이 파일의 매니페스트 안에도 있어 **자기참조**가 된다
+ * (실제로 "주입 대상이 2곳" 으로 잡혀 이 파일에서 뽑아냈다).
+ * 🔴 좁힌 만큼은 `guard-mutations-full.yml`(main push + 야간)이 전수로 되찾는다 — 둘은 짝이다.
+ */
+const CHANGED = process.argv.includes('--changed')
+const SCOPE = changedScope({
+  enabled: CHANGED,
+  baseRef: process.env.GUARD_MUTATIONS_BASE,
+  run: (args) => execFileSync('git', args, { cwd: ROOT, encoding: 'utf8' }),
+})
 
 /**
  * @typedef {{name:string, file:string, find:string, replace:string, test:string, why:string}} Mutation
@@ -237,6 +257,56 @@ const MUTATIONS = [
     why:
       '값이 하나도 없는데 그라디언트만 그리면 사진 아래가 이유 없이 어두워진다. "정보 없음" 이 ' +
       '아니라 렌더가 깨진 것처럼 보이는데, 콘솔에는 아무것도 안 찍힌다.',
+  },
+  {
+    name: '⏱️ 가드 자신을 고쳐도 좁혀 돈다 (fail-safe 제거)',
+    file: 'scripts/guard-mutations-scope.mjs',
+    find: "  'scripts/',                        // 가드 스크립트 자신(매니페스트 · 이 파일 포함)",
+    replace: '  // (fail-safe 제거됨)',
+    test: 'src/tests/unit/guard-mutations-scope.test.ts',
+    why:
+      '주입을 새로 추가하는 PR 이 자기 주입을 안 돌리게 된다. 새 주입이 헛돌아도 그 PR 은 초록이고, ' +
+      '전수가 도는 다음 날에야 드러난다 — 그때는 이미 머지돼 있다.',
+  },
+  {
+    name: '⏱️ 좁힘이 아무것도 안 걸러 --changed 가 무의미해진다',
+    file: 'scripts/guard-mutations-scope.mjs',
+    find: '  return scope.files.has(m.file) || scope.files.has(m.test)',
+    replace: '  return true',
+    test: 'src/tests/unit/guard-mutations-scope.test.ts',
+    why:
+      '옵션은 받는데 전부 통과시켜 CI 가 그대로 48분이다. 느려지는 것뿐이라 사람이 버그로 안 읽고 ' +
+      '"좁혔는데 왜 안 빨라지지" 로만 남는다.',
+  },
+  {
+    name: '⏱️ 바뀐 파일 0개를 "돌 것 없음" 으로 읽는다',
+    file: 'scripts/guard-mutations-scope.mjs',
+    find: "  if (list.length === 0) return '바뀐 파일이 0개로 보인다 — 믿지 않고 전수로 돈다'",
+    replace: '  if (list.length === 0) return null',
+    test: 'src/tests/unit/guard-mutations-scope.test.ts',
+    why:
+      'base 계산이 틀려도 0 개가 나온다. 그걸 믿으면 **주입을 하나도 안 돌리고 초록**이 뜬다 — ' +
+      '이 레포가 반복해 당한 "측정 0 = 통과" 그 자체다.',
+  },
+  {
+    name: '⏱️ 전수 워크플로까지 좁혀 돌아 전수가 사라진다',
+    file: '.github/workflows/guard-mutations-full.yml',
+    find: '        run: node scripts/check-guard-mutations.mjs -s',
+    replace: '        run: node scripts/check-guard-mutations.mjs --changed -s',
+    test: 'src/tests/unit/guard-mutations-scope.test.ts',
+    why:
+      'PR 이 --changed 로 좁힌 만큼을 되찾는 곳이 여기뿐이다. 여기까지 좁히면 전수는 어디서도 안 도는데 ' +
+      '**아무 에러도 안 난다** — 이 레포가 반복해 당한 "검사가 실패하는 게 아니라 아예 안 도는" 클래스.',
+  },
+  {
+    name: '⏱️ 전수의 야간 보증이 사라진다 (schedule 제거)',
+    file: '.github/workflows/guard-mutations-full.yml',
+    find: '  schedule:',
+    replace: '  x-schedule-off:',
+    test: 'src/tests/unit/guard-mutations-scope.test.ts',
+    why:
+      'main push 만 남으면 main 이 조용한 날 전수가 며칠씩 안 돈다. 그 사이 쌓인 헛도는 가드는 ' +
+      '아무도 모른다 — 야간이 유일한 "하루 한 번은 반드시" 보증이다.',
   },
   {
     name: '🎬 뷰어에 영상 번호(1 / 3)가 되돌아온다',
@@ -10353,12 +10423,20 @@ if (integrity.length) {
   process.exit(1)
 }
 
-console.log(`🧬 guard-mutations: ${MUTATIONS.length}개 주입 검증 (각각 소스를 잠깐 고쳤다가 되돌린다)\n`)
+const planned = MUTATIONS.filter((m) => (!ONLY || m.name.includes(ONLY)) && inScope(m, SCOPE)).length
+if (SCOPE.full) {
+  console.log(`🧬 guard-mutations: ${MUTATIONS.length}개 주입 검증 (각각 소스를 잠깐 고쳤다가 되돌린다)\n`)
+  if (CHANGED) console.log(`   ⚠️ 전수로 돈다 — ${SCOPE.why}\n`)
+} else {
+  console.log(`🧬 guard-mutations(--changed): ${MUTATIONS.length}건 중 **${planned}건** — 이 브랜치가 바꾼 파일 ${SCOPE.files.size}개에 걸린 것만.`)
+  console.log('   ⚠️ 전수는 main push·야간(guard-mutations-full.yml)이 돈다. 여기서 초록이라고 전수가 초록인 건 아니다.\n')
+}
 
 let onlyMatched = 0
 for (const m of MUTATIONS) {
   if (ONLY && !m.name.includes(ONLY)) continue
   if (ONLY) onlyMatched += 1
+  if (!inScope(m, SCOPE)) continue
   const abs = path.join(ROOT, m.file)
   if (!fs.existsSync(abs)) { problems.push(`${m.name}: 파일 없음 — ${m.file} (코드가 옮겨갔다)`); continue }
   const src = fs.readFileSync(abs, 'utf8')
