@@ -654,7 +654,7 @@ A. KT Alpha 카탈로그 sync 는 매일 갱신. 신규 브랜드 추가는 KT A
 
 ### 소개 협업 (\`/seller/influencer-deals\`)
 - 소개해 줄 사람이 제안한 **우대 커미션** deal 을 수락/거절하거나, 내가 먼저 제안할 수 있습니다.
-- 커미션 % 는 플랫폼 상한(어드민 설정 \`max_influencer_commission_pct\`) 이내에서만 — 초과 시 서버가 차단합니다.
+- 커미션 % 는 **매장이 정한 값 그대로**입니다(플랫폼 상한 없음 — 2026-09-07 확정). 0 초과 ~ 90 이하만 받습니다(100% 를 넘겨 역마진이 나는 값만 차단). 소개비는 매장 지갑에서 나가고 유어딜 몫은 그대로입니다.
 - 상태 흐름: 제안됨(proposed) → 활성(active) / 거절됨(rejected).
 - 관련 API: \`GET /api/seller-marketing/deals\` · \`POST .../deals/propose\` · \`POST .../deals/:id/respond\`
 

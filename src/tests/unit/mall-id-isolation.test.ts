@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync, existsSync } from 'fs'
 import { resolve } from 'path'
+import { readRepairLane } from '../helpers/source-text'
 
 /**
  * 🏬 `mall_id` 격리 전제 가드 (2026-07-29 대표 지시 — §8-C 의 전제를 규율에서 코드로)
@@ -39,7 +40,8 @@ describe('mall_id 격리 전제 — 신규 몰은 1·2 를 재사용하지 않�
   })
 
   it('(a3) 시드가 1·2 를 점유한다 (신규 몰이 3부터 시작하는 근거)', () => {
-    const repair = read('src/worker/routes/repair-schema.routes.ts')
+    // 시드가 `repair-schema/aux-tables.ts` 로 갈렸다 — 파일이 아니라 레인을 읽는다.
+    const repair = readRepairLane()
     expect(/INSERT OR IGNORE INTO wholesale_malls \(id[^)]*\)\s*VALUES \(1,/.test(repair)).toBe(true)
     expect(/INSERT OR IGNORE INTO wholesale_malls \(id[^)]*\)\s*VALUES \(2,/.test(repair)).toBe(true)
   })

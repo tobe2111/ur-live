@@ -60,7 +60,9 @@ interface HomeSection {
  * @param midBanner 첫 섹션 **뒤에** 끼워 넣을 노드(③ 중간 배너). 섹션이 하나도 없으면 이것만
  *   남는다 — 배너 컴포넌트 자신이 "없으면 null" 이라 결국 아무것도 안 그려진다.
  */
-export default function HomeSections({ midBanner }: { midBanner?: React.ReactNode }) {
+export default function HomeSections(
+  { midBanner, shortsRail }: { midBanner?: React.ReactNode; shortsRail?: React.ReactNode },
+) {
   /**
    * 🖼️ 카드 사진 해상도 — 열 수를 아는 쪽이 정한다(2026-08-27).
    *   이 섹션은 룩을 위해 `pc` 를 **항상** 넘기는데, 예전엔 그 플래그가 이미지 폭까지 정해서
@@ -128,7 +130,7 @@ export default function HomeSections({ midBanner }: { midBanner?: React.ReactNod
     )
   }
 
-  if (visible.length === 0) return <>{midBanner}</>
+  if (visible.length === 0) return <>{shortsRail}{midBanner}</>
 
   return (
     <>
@@ -177,6 +179,10 @@ export default function HomeSections({ midBanner }: { midBanner?: React.ReactNod
               ))}
             </div>
           </section>
+          {/* 🎬 2026-09-07 (대표 확정): 유어쇼츠는 **인기 이용권 다음**. 히어로 바로 아래로 올리면
+              홈이 첫 딜을 보여 주는 시각(559ms→304ms로 당겨 둔 값)이 늦어지고, 4열 그리드가
+              세 번 연달아 나오던 단조로움도 이 세로 레일이 끊는다. */}
+          {sIdx === 0 && shortsRail}
           {sIdx === 0 && midBanner}
           </Fragment>
         )

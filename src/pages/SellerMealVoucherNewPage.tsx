@@ -26,6 +26,7 @@ import KakaoShareButton from '@/components/KakaoShareButton'
 import { DashboardPageHeader } from '@/components/dashboard'
 import type { KakaoPlace } from '@/components/KakaoMapPicker'
 import StoreStep from './seller-meal-voucher/StoreStep'
+import StoreChannelRequired from './seller-meal-voucher/StoreChannelRequired'
 import VoucherInfoStep from './seller-meal-voucher/VoucherInfoStep'
 import SaleSettingsStep from './seller-meal-voucher/SaleSettingsStep'
 import {
@@ -54,6 +55,9 @@ export default function SellerMealVoucherNewPage() {
   // 🚪 2026-08-24 (대표): 매장 등록이 무조건 선행 — 서버 판정(store_ready). false 면 1단계에서
   //   등록을 완료해야 다음 단계로 넘어갈 수 있다. null(판정 중/실패)은 막지 않는다(fail-open).
   const [storeReady, setStoreReady] = useState<boolean | null>(null)
+  // 🏪 2026-09-07 결재 Q3-3: 채널(직접/중개) 미지정 좌석은 1단계에서 **고르고** 넘어간다(서버 set-once).
+  //   null(판정 중/실패)은 막지 않는다(fail-open — storeReady 와 같은 규칙). 새 매장은 등록 문에서 이미 골랐다.
+  const [channelSet, setChannelSet] = useState<boolean | null>(null)
 
   // 🧭 재발행 복사: ?copyFrom=<productId> 면 본인 소유 공구를 불러와 프리필(날짜는 리셋).
   useEffect(() => {
@@ -127,6 +131,9 @@ export default function SellerMealVoucherNewPage() {
         setForm(f => (f.restaurant_name ? f : applyStoreContext(f, s)))
       })
       .catch(() => { /* 프리필 실패는 조용히 — 지도 검색이 언제나 대안 */ })
+    api.get('/api/seller/fee-context')
+      .then(r => { if (alive && r.data?.success && typeof r.data.data?.channel_set === 'boolean') setChannelSet(r.data.data.channel_set) })
+      .catch(() => { /* 판정 실패는 막지 않는다 */ })
     return () => { alive = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -197,6 +204,11 @@ export default function SellerMealVoucherNewPage() {
     }
     if (s === 0 && !form.restaurant_name.trim()) {
       toast.error(t('seller.mealVoucher.needStore', { defaultValue: '매장을 먼저 선택하거나 입력해주세요' }))
+      return false
+    }
+    // 🏪 채널 미지정 좌석 — 한 번 고르기 전엔 다음 단계로 못 간다(결재 Q3-3 "미지정 폴백 폐지").
+    if (s === 0 && channelSet === false) {
+      toast.error(t('seller.mealVoucher.channelFirst', { defaultValue: '이 매장을 누가 운영하는지 먼저 골라주세요' }))
       return false
     }
     if (s === 1 && (!form.name.trim() || !(form.price > 0))) {
@@ -397,6 +409,9 @@ export default function SellerMealVoucherNewPage() {
               storeRequired={storeReady === false}
               onStoreReady={() => setStoreReady(true)}
             />
+          )}
+          {step === 0 && channelSet === false && (
+            <StoreChannelRequired onDone={() => setChannelSet(true)} />
           )}
           {step === 1 && (
             <VoucherInfoStep

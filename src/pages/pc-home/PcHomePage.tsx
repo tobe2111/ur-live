@@ -14,6 +14,7 @@ import RegionLinkGrid from '@/components/region/RegionLinkGrid'
 import HomeHeroBanner from '@/components/home/HomeHeroBanner'
 import HomeBannerStrip from '@/components/home/HomeBannerStrip'
 import HomeSections from '@/components/home/HomeSections'
+import UrShortsRail from '@/components/home/UrShortsRail'
 import { HOME_SHOWCASE_ENABLED, REGION_PAGES_ENABLED } from '@/shared/feature-flags'
 
 /**
@@ -121,7 +122,10 @@ export default function PcHomePage() {
                   ⚠️ 모바일에만 두지 않는다 — 두 홈이 같은 섹션·같은 배너 자리를 쓰는데 한쪽만 반영하면
                   이 레포가 이미 여러 번 겪은 "한쪽만 개선되는" 상태가 된다(더보기 링크가 그랬다). */}
               <HomeBannerStrip variant="strip" />
-              <HomeSections midBanner={<HomeBannerStrip variant="inline" />} />
+              <HomeSections
+                midBanner={<HomeBannerStrip variant="inline" />}
+                shortsRail={<UrShortsRail />}
+              />
               <HomeBannerStrip variant="wide" />
             </>
           )}
