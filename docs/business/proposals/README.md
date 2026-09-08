@@ -5,6 +5,7 @@
 | 문서 | 파일 | 어드민 |
 |---|---|---|
 | 인플루언서 제휴 제안 (16:9, 9장) | `public/static/proposals/influencer-proposal.html` | `/admin/proposals` |
+| 대행사 제휴 제안 (16:9, 17장, PowerPoint, 매장 모집 실행서) | `docs/business/proposals/urdeal-agency-proposal.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-agency-proposal.build.mjs`) | 없음. 파일로 전달 |
 
 ## 왜 docs/ 가 아니라 public/static/ 인가
 
@@ -31,3 +32,45 @@ NODE_USE_ENV_PROXY=1 node scripts/capture-proposal-shots.mjs /tmp/shots
 - 유어샵은 `/u/jiwon1228`(대표 계정)을 씁니다. 남의 유어샵을 대외 문서에 넣지 마세요.
 - 색은 `src/index.css` 의 `--ink` / `--ink-soft` 를 **복사해 쓰는 구조**라 자동으로 안 따라옵니다.
   서비스 테마가 바뀌면 제안서도 같이 고쳐야 합니다.
+
+## 대행사 제안서 (.pptx) 다시 만들려면
+
+```bash
+mkdir -p /tmp/deck && cd /tmp/deck && npm init -y && npm i pptxgenjs sharp react react-dom react-icons
+node /path/to/ur-live/docs/business/proposals/urdeal-agency-proposal.build.mjs ./urdeal-agency-proposal.pptx
+```
+
+- 요율(직접 10% / 중개 5%)과 "유어딜은 중개사에게 지급하지 않는다"는 2026-09-04 대표 확정입니다.
+  `docs/design/store-operator-model.md` §7 이 SSOT 이고, 바뀌면 1·2·4·5·6·16 장을 같이 고쳐야 합니다.
+- 라이브 실측 숫자(2026-09-07): 활성 이용권 338건 중 식사 평균가 32,339원(242개)·숙박 155,824원(51개)·실제 매장 등록 1개(나머지는 데모),
+  인플루언서 DB 198,704명·연락 가능 45,725명(`/api/admin/ads/influencer-pool/stats`). 전달 전에 다시 재서 3·5·10·14 장을 갱신하세요.
+- **v4 (2026-09-07)**: 대표가 보낸 참고 PDF("유어딜 중개사 파트너 제안" 5장, A4)를 반영했습니다. 표지 "5%만 가져갑니다"와 5% / 95% / 0원,
+  돈 흐름도(손님→카드사→유어딜→매장→귀사 보수)와 "흔한 오해 / 실제", 규모별 표(10·30·100·300곳, 귀사 3% 예시), 운영자 권한 가능/차단 표,
+  정직 고지 장(운영자별 귀속 미추적·초기 상태·대표 인용), 시작하는 방법 3단계. 단위 경제는 참고 PDF 와 같은 기준(평균가 32,339원, 하루 1건, 보수 3% 예시)으로 통일했습니다.
+  ⚠️ 참고 PDF 의 "채널은 나중에 어드민에서만 바꿀 수 있다"는 코드와 다릅니다 — 매장 소유자도 `POST /api/seller/stores/:id/channel` 로 바꿀 수 있어 "매장 주인이나 유어딜만"으로 적었습니다.
+- 5·6 장의 단위 경제(판매가 2만원, 월 60건, 보수 10%, 재료비 35%)와 14 장의 파일럿 목표는 **가정·제안**입니다. 슬라이드에도 그렇게 적혀 있습니다.
+- 글꼴은 **Pretendard** 입니다(v3, 대표 지시). PowerPoint 로 여는 PC 에 Pretendard 가 없으면 대체 글꼴로 보이므로
+  **대외 전달은 PDF 로** 하세요. 리눅스에서 뽑으려면 `~/.fonts` 에 Pretendard OTF 를 넣고 `fc-cache -f`.
+- **폰 프레임은 `phone-frame.mjs` 가 PNG 로 미리 굽습니다**(둥근 화면 + 베젤 + 그림자). pptxgenjs 는 이미지를
+  둥글게 못 자릅니다(`rounding:true` 는 원형 크롭). 스타일 4종 시안은 `phone-frame-styles.png`, 선택은
+  `PHONE_STYLE=minimal|island|card|light`(기본 minimal, 대표 확정 대기).
+- **라이브 모바일 캡처**(`shots/home·detail·use·shop.jpg`, 390×844)가 1·3·7·9·15 장에, 셀러 화면 4장(`shots/seller-*.jpg`)이 8·10·11·12 장에 들어갑니다.
+  다시 찍으려면 아래 캡처 절차 그대로. 캡처 폴더를 `SHOTS_DIR` 로 넘기면 되고, 없으면 빈 슬롯으로 그립니다.
+- **셀러 대시보드 화면(8·10·11·12 장)은 셀러 계정 없이 찍었습니다.** `capture-seller-shots.mjs` 가 실제 urdeal.kr
+  프론트를 띄우되 `/api/seller/*` 응답만 예시 데이터로 대체합니다(Playwright `route`). 로그인도, 프로덕션 쓰기도 없습니다.
+  클라이언트 가드가 토큰의 `exp` 만 보므로 서명 없는 JWT 를 localStorage 에 넣어 화면을 엽니다. 슬라이드에는
+  "예시 데이터로 렌더한 실제 화면"이라고 적혀 있습니다. 화면 UI 가 바뀌면 다시 찍으세요:
+  ```bash
+  NODE_USE_ENV_PROXY=1 NODE_PATH=/opt/node22/lib/node_modules/playwright/node_modules:/opt/node22/lib/node_modules:/tmp/deck/node_modules \
+    node docs/business/proposals/capture-seller-shots.mjs /tmp/shots
+  ```
+  🩸 처음엔 `/seller/stores` 가 에러 경계로 떴습니다. 알림 벨(`/api/dashboard-notifications`)·유입 바인딩이 401 을 내면
+  소비자용 클라이언트가 throw 하고, `ReviewBonusCard` 가 `/api/seller/stores/review-bonus` 의 빈 배열에 `.toLocaleString()` 을
+  부릅니다. 그 엔드포인트들을 이름을 밝혀 명시적으로 모킹한 것이 해결책입니다(무차별 401→200 치환은 하지 않습니다).
+
+### PDF 로 뽑으려면 (리눅스)
+`libreoffice-impress` + `fonts-nanum` + `python3-uno` 가 있어야 합니다. 맑은 고딕을 나눔고딕으로
+매핑하는 fontconfig alias 를 두고, `export-pptx-to-pdf.py <in.pptx> <out.pdf>` 를 돌립니다.
+이 스크립트가 LibreOffice 의 "아시아/비아시아 문자 간 자동 여백" 문단 속성을 꺼서 "월 12 만원" 처럼
+벌어지는 표시를 없앱니다(PowerPoint 원본엔 없는 현상). 차트 안 글자는 별도 객체라 여백이 남고, **pptx 표(addTable) 셀도 보정이 안 먹습니다** —
+그래서 5 장의 규모별 표는 표 객체가 아니라 텍스트 상자로 그립니다.

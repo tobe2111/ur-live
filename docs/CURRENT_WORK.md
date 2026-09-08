@@ -5494,9 +5494,10 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 270건 · 최신순 · 이 목록은 자동 생성된다._
+_총 272건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-08**
+- [[E2] 실행기 5회차 — 결재 store-acquisition-pipeline 선택지 1 (2026-09-08 13:18~14:1x KST)](handoff/2026-09-08-exec-store-acquisition-pipeline.md)
 - [유어쇼츠 구매 바 — 대표 확정 "안 B + 기존 가격정보" (2026-09-08)](handoff/2026-09-08-buy-bar-plan-b.md)
 **2026-09-07**
 - [유어쇼츠 — 홈 레일 + `/videos` 뷰어 (2026-09-07)](handoff/2026-09-07-urshorts.md)
@@ -5509,6 +5510,7 @@ _총 270건 · 최신순 · 이 목록은 자동 생성된다._
 - [다크 대비 가드 범위 확장 — 가입 폼이 안 읽히고 있었다 (2026-09-07)](handoff/2026-09-07-dark-contrast-coverage.md)
 - [마이페이지 앱 정보 — 카드에서 줄글로 (2026-09-07)](handoff/2026-09-07-app-info-plain-text.md)
 - [2026-09-07 — AI 팀 운영 모델 (역할 6 · 결재함 · 완료 판정 E1~E5) + 행위자·베네핏 한 장 지도](handoff/2026-09-07-ai-team-operating-model.md)
+- [2026-09-07 — 대행사 향 서비스 소개·제안서 (.pptx, 16장 v2 "매장 모집 실행서")](handoff/2026-09-07-agency-proposal-deck.md)
 - [어드민에 없던 머니 스위치 셋을 붙였다 (2026-09-07)](handoff/2026-09-07-admin-money-switch-ui.md)
 **2026-09-06**
 - [PC 상세 사진도 스마트 크롭 + 남아 있던 두 항목 판정 (2026-09-06)](handoff/2026-09-06-pc-hero-crop.md)
