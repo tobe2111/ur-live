@@ -85,22 +85,35 @@ describe('① 쇼츠만 받는다', () => {
   })
 })
 
-describe('② 이용권이 안 붙은 영상은 홈에 못 나간다', () => {
+/**
+ * ② **허락받은 영상만** 홈에 나간다 — 이용권 연결은 더 이상 조건이 아니다.
+ *
+ * 🔁 2026-09-08 에 뒤집혔다. 원래 이 describe 는 *"이용권이 안 붙은 영상은 홈에 못 나간다"* 였고
+ *    `LEFT JOIN` 금지를 단언했다. 대표가 영상 3편을 넣고도 홈이 비는 걸 보고
+ *    *"이용권 정보를 입력하지 않으면 그냥 정보 없이 두는걸로"* 로 확정 → INNER 가 풀렸다.
+ *    **허락(consent) 게이트는 그대로다** — 그건 남의 콘텐츠 문제라 성격이 다르다.
+ */
+describe('② 허락받은 영상만 홈에 나간다', () => {
   const R = code('src/features/urshorts/api/urshorts.routes.ts')
+  const sql = () => R.slice(R.indexOf('const PUBLIC_SQL'), R.indexOf('urshortsRoutes.get'))
 
-  it('공개 쿼리가 products 와 INNER JOIN 이다', () => {
-    const sql = R.slice(R.indexOf('const PUBLIC_SQL'), R.indexOf('urshortsRoutes.get'))
-    expect(sql).toMatch(/JOIN products p ON p\.id = s\.product_id/)
-    expect(sql).not.toMatch(/LEFT JOIN products/)
+  it('이용권이 없어도 나간다 — LEFT JOIN', () => {
+    expect(sql()).toMatch(/LEFT JOIN products p ON p\.id = s\.product_id/)
   })
 
-  it('내려간 상품의 영상도 같이 사라진다', () => {
-    const sql = R.slice(R.indexOf('const PUBLIC_SQL'), R.indexOf('urshortsRoutes.get'))
-    expect(sql).toMatch(/p\.is_active = 1/)
-    expect(sql).toMatch(/s\.is_active = 1/)
+  it('🔴 상품이 있을 때만 is_active 를 본다 — 안 그러면 LEFT 가 조용히 INNER 로 돌아간다', () => {
+    // `AND p.is_active = 1` 만 두면 상품 없는 행의 NULL 비교가 거짓이라 전부 걸러진다.
+    // 에러가 안 나고 레일만 다시 비므로 이 단언이 유일한 방어다.
+    expect(sql()).toMatch(/AND \(p\.id IS NULL OR p\.is_active = 1\)/)
+    expect(sql()).not.toMatch(/AND p\.is_active = 1\s/)
   })
 
-  it('어드민 목록만 LEFT JOIN 이다 — 미연결 영상을 보여 줘야 고칠 수 있다', () => {
+  it('내려간 상품의 영상은 여전히 사라진다 · 꺼 둔 영상도', () => {
+    expect(sql()).toMatch(/p\.is_active = 1/)
+    expect(sql()).toMatch(/s\.is_active = 1/)
+  })
+
+  it('어드민 목록도 LEFT JOIN 이다 — 미연결 영상을 보여 줘야 고칠 수 있다', () => {
     const adm = R.slice(R.indexOf("adminUrshortsRoutes.get('/'"), R.indexOf("adminUrshortsRoutes.post"))
     expect(adm).toMatch(/LEFT JOIN products/)
   })

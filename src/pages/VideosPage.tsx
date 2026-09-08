@@ -137,8 +137,10 @@ export default function VideosPage() {
         </button>
       </div>
 
-      {/* 🔴 구매 바는 영상 위에 항상. 끝나기를 기다리면 이미 늦다. */}
-      {cur && (
+      {/* 🔴 구매 바는 영상 위에 항상. 끝나기를 기다리면 이미 늦다.
+          단 **살 게 있을 때만** — 2026-09-08 부터 이용권 안 붙인 영상도 여기 온다(대표 확정).
+          상품이 없으면 `/group-buy/null` 로 가는 버튼이 되므로 바 전체를 안 그린다. */}
+      {cur && cur.product_id ? (
         <div className="absolute inset-x-2.5 bottom-2.5 z-20 flex items-center gap-2.5 rounded-2xl bg-white/97 p-2.5 shadow-2xl">
           {thumb && (
             <img
@@ -159,7 +161,11 @@ export default function VideosPage() {
               ⚠️ 가격 줄은 `whitespace-nowrap` 이라 6자리에서도 안 깨진다. 넘치면 잘릴 뿐
               (홈 카드가 2줄로 나눈 것과 다른 선택 — 여기는 영상을 덜 가리는 게 우선이다). */}
           <div className="min-w-0 flex-1 text-gray-900">
-            <div className="truncate text-[10.5px] text-gray-500">{cur.store_name || ''}</div>
+            {/* 매장명은 비어 있을 수 있다 — `|| ''` 로 두면 빈 줄이 남아 카드마다 높이가 갈린다
+                (홈 레일 카드에서 고친 것과 같은 결함). */}
+            {cur.store_name && (
+              <div className="truncate text-[10.5px] text-gray-500">{cur.store_name}</div>
+            )}
             {cur.product_name && (
               <div className="truncate text-[12.5px] font-semibold leading-tight">{cur.product_name}</div>
             )}
@@ -180,7 +186,7 @@ export default function VideosPage() {
             구매
           </Link>
         </div>
-      )}
+      ) : null}
     </div>
   )
 }

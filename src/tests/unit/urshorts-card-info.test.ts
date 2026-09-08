@@ -10,10 +10,11 @@
  * 화면엔 그냥 여백으로 보이니 아무도 버그로 안 읽는데, 카드마다 글자 시작 높이가 달라져
  * 레일이 들쭉날쭉해진다. 값이 있을 때만 그 줄을 만든다.
  *
- * ## 무엇이 항상 있고 무엇이 비는가 (서버 계약)
- * - **항상 있다**: `product_name` · `price` — 공개 쿼리가 `JOIN products` 로 강제한다.
- * - **빌 수 있다**: `store_name`(매장 미등록) · `original_price`(정가 없음) ·
- *   `duration_sec`(2026-09-08 이전에 `/shorts/` 주소로 넣은 영상은 유튜브 조회를 건너뛰었다).
+ * ## 무엇이 빌 수 있는가 (서버 계약 — 2026-09-08 에 넓어졌다)
+ * **전부 빌 수 있다.** 원래는 `product_name`·`price` 만은 공개 쿼리의 INNER JOIN 이 보장했는데,
+ * 대표가 *"이용권 정보를 입력하지 않으면 그냥 정보 없이 두는걸로"* 로 확정해 `LEFT JOIN` 이 됐다.
+ * ⇒ 이용권이 안 붙은 영상은 **글자 띠 자체를 안 그린다**(`hasInfo`). 조건 없이 그리면 빈 검정
+ *   그라디언트만 남는데, 그건 "정보 없음"이 아니라 결함으로 보인다.
  *
  * ## 실측 (Chromium, 125×222)
  * | 상태 | 글자 띠 | 사진 가림 |
@@ -62,6 +63,17 @@ describe('🔴 모르는 것은 그리지 않는다', () => {
     expect(card).toMatch(/\{item\.product_name && \(/)
     expect(card).toMatch(/\{pd\.showOriginal && \(/)
     expect(card).toMatch(/\{durLabel && \(/)
+  })
+
+  it('🔴 이용권이 없으면 글자 띠를 통째로 안 그린다 (빈 그라디언트 금지)', () => {
+    // LEFT JOIN 이후 상품 없는 행이 여기까지 온다. 띠를 무조건 그리면 사진 아래가
+    // 이유 없이 어두워진다 — 값이 하나도 없을 때 띠가 사라지는 것이 대표 지시의 실체다.
+    expect(card).toMatch(/const hasInfo = /)
+    expect(card, '띠가 hasInfo 뒤에 없다').toMatch(/\{hasInfo && \(\s*\n?\s*<span className="absolute inset-x-0 bottom-0 bg-gradient-to-t/)
+  })
+
+  it('가격이 0 이면 "0원"을 안 쓴다', () => {
+    expect(card).toMatch(/\{pd\.price > 0 && \(/)
   })
 
   it('재생시간이 0 이거나 없으면 라벨을 만들지 않는다', () => {

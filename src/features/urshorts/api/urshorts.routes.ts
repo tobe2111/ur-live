@@ -63,7 +63,14 @@ async function ensureTable(DB: D1Database) {
 /**
  * 공개 목록 SELECT.
  *
- * 🔴 `JOIN products` 는 INNER 다 — 이용권이 안 붙었거나 그 상품이 내려갔으면 행 자체가 없다.
+ * 🔴 `LEFT JOIN products` — **이용권이 안 붙은 영상도 홈에 나간다**
+ *    (2026-09-08 대표 *"이용권 정보를 입력하지 않으면 그냥 정보 없이 두는걸로"*).
+ *    원래 INNER 였는데, 그러면 영상을 넣어 놓고 이용권을 못 고른 순간 **레일이 통째로 빈다** —
+ *    대표가 영상 3편을 넣고도 홈에 아무것도 안 뜨는 걸 보고 물어서 드러났다. 카드는 이미
+ *    "모르는 것은 그리지 않는다"(안 라, 2026-09-08)라 상품이 없으면 글자 띠 없이 썸네일만 그린다.
+ *
+ * 🔴 그래서 `p.is_active` 는 **상품이 있을 때만** 건다 — `AND p.is_active = 1` 을 그대로 두면
+ *    NULL 비교가 거짓이라 **LEFT JOIN 이 조용히 INNER 로 되돌아간다**(에러 없이 다시 빈 레일).
  *
  * 🔴 `s.consent = 1` — **허락받은 영상만 홈에 나간다** (2026-09-07 대표 판단).
  *    남의 영상을 구매 버튼 옆에 두면 그 창작자가 이 딜을 보증한 것으로 읽히는데 그는 그런 적이 없다.
@@ -83,9 +90,9 @@ const PUBLIC_SQL = `
          p.original_price AS original_price,
          p.discount_rate AS discount_rate
     FROM home_shorts s
-    JOIN products p ON p.id = s.product_id
+    LEFT JOIN products p ON p.id = s.product_id
    WHERE s.is_active = 1
-     AND p.is_active = 1
+     AND (p.id IS NULL OR p.is_active = 1)
      AND s.consent = 1
    ORDER BY s.sort_order ASC, s.id DESC
    LIMIT ?`

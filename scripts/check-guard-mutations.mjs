@@ -208,6 +208,47 @@ const MUTATIONS = [
       '이용권인지 알 수 없는데, 화면은 깔끔해 보여서 문제로 안 읽힌다.',
   },
   {
+    name: '🎬 이용권 없는 영상이 다시 홈에서 사라진다 (LEFT → INNER)',
+    file: 'src/features/urshorts/api/urshorts.routes.ts',
+    find: '    LEFT JOIN products p ON p.id = s.product_id\n   WHERE s.is_active = 1',
+    replace: '    JOIN products p ON p.id = s.product_id\n   WHERE s.is_active = 1',
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      '대표가 2026-09-08 에 "이용권 정보를 입력하지 않으면 그냥 정보 없이 두는걸로" 를 확정했다. ' +
+      'INNER 로 되돌리면 영상을 넣어 놓고 이용권을 못 고른 순간 레일이 통째로 비는데, 에러가 없어 ' +
+      '"왜 홈에 안 나오지" 를 다시 사람이 물어야 드러난다(실제로 그렇게 드러났다).',
+  },
+  {
+    name: '🎬 LEFT JOIN 이 조용히 INNER 가 된다 (NULL 가드 제거)',
+    file: 'src/features/urshorts/api/urshorts.routes.ts',
+    find: '     AND (p.id IS NULL OR p.is_active = 1)',
+    replace: '     AND p.is_active = 1',
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      'SQL 은 LEFT JOIN 인데 WHERE 가 NULL 을 걸러 결과는 INNER 와 같아진다. 이게 더 나쁘다 — ' +
+      '쿼리를 읽으면 고쳐진 것처럼 보이는데 레일은 여전히 비고, 아무 에러도 안 난다.',
+  },
+  {
+    name: '🎬 이용권 없는 카드에 빈 검정 띠가 남는다',
+    file: 'src/components/home/UrShortsRail.tsx',
+    find: '        {hasInfo && (',
+    replace: '        {true && (',
+    test: 'src/tests/unit/urshorts-card-info.test.ts',
+    why:
+      '값이 하나도 없는데 그라디언트만 그리면 사진 아래가 이유 없이 어두워진다. "정보 없음" 이 ' +
+      '아니라 렌더가 깨진 것처럼 보이는데, 콘솔에는 아무것도 안 찍힌다.',
+  },
+  {
+    name: '🎬 살 게 없는 영상에 구매 버튼이 뜬다 (/group-buy/null)',
+    file: 'src/pages/VideosPage.tsx',
+    find: '      {cur && cur.product_id ? (',
+    replace: '      {cur ? (',
+    test: 'src/tests/unit/videos-buy-bar.test.ts',
+    why:
+      '이용권이 안 붙은 영상에서 "구매" 를 누르면 /group-buy/null 로 간다. 404 화면이 아니라 ' +
+      '상세 페이지가 빈 채로 뜨는 경로라, 사는 사람은 자기가 뭘 잘못 눌렀다고 생각한다.',
+  },
+  {
     name: '🎬 허락 안 받은 영상이 홈에 나간다 (consent 게이트 제거)',
     file: 'src/features/urshorts/api/urshorts.routes.ts',
     find: '     AND s.consent = 1',
@@ -237,16 +278,6 @@ const MUTATIONS = [
     why:
       '`urdeal.kr/{몰슬러그}` 는 한 세그먼트라, 어떤 몰이 videos 를 슬러그로 잡으면 유어쇼츠 뷰어가 ' +
       '통째로 죽는다. 개설되기 전까지는 아무 일도 안 일어나서 몇 달 뒤에 터진다.',
-  },
-  {
-    name: '🎬 미연결 영상이 홈으로 샌다 (LEFT JOIN)',
-    file: 'src/features/urshorts/api/urshorts.routes.ts',
-    find: '    JOIN products p ON p.id = s.product_id\n   WHERE s.is_active = 1',
-    replace: '    LEFT JOIN products p ON p.id = s.product_id\n   WHERE s.is_active = 1',
-    test: 'src/tests/unit/urshorts-core.test.ts',
-    why:
-      '이용권이 안 붙은 영상이 홈에 뜨면 누른 사람이 살 수가 없다 — 그 순간 유어쇼츠는 매출 장치가 ' +
-      '아니라 유튜브로 나가는 문이 된다. 에러가 안 나고 "영상이 많아졌네"로만 보인다.',
   },
   {
     name: '🎬 재생기가 여러 개 살아남는다 (iframe key 제거)',

@@ -40,6 +40,10 @@ function ShortCard({ item, load, onOpen }: { item: UrShortItem; load: boolean; o
   //    유튜브 조회를 건너뛰어 길이가 비어 있다. 없으면 배지를 그리지 않는다.
   const dur = Number(item.duration_sec) || 0
   const durLabel = dur > 0 ? `${Math.floor(dur / 60)}:${String(dur % 60).padStart(2, '0')}` : null
+  // 🔴 이용권이 안 붙은 영상은 **글자 띠 자체를 안 그린다**(2026-09-08 대표 — 서버가 LEFT JOIN 이
+  //    되면서 상품 없는 행이 여기까지 온다). 조건 없이 그리면 빈 검정 그라디언트만 남는데,
+  //    그건 "정보 없음"이 아니라 그냥 결함으로 보인다.
+  const hasInfo = !!(item.store_name || item.product_name || pd.price > 0)
   return (
     <button
       type="button"
@@ -79,8 +83,9 @@ function ShortCard({ item, load, onOpen }: { item: UrShortItem; load: boolean; o
 
             🔴 **모르는 것은 그리지 않는다**(대표 *"영상 속 정보 모르면 그냥 안보이게"*).
                줄마다 값이 있을 때만 렌더한다. 이전엔 매장명이 `|| ''` 라 **값이 없어도 빈 줄이
-               남아** 카드마다 글자 시작 높이가 달랐다. 상품명·가격은 서버가 INNER JOIN 으로
-               강제하므로 항상 있지만, 매장명·정가·재생시간은 비어 있을 수 있다. */}
+               남아** 카드마다 글자 시작 높이가 달랐다. 2026-09-08 부터는 **상품명·가격도 빌 수 있다**
+               (이용권 안 붙인 영상도 홈에 나간다) — 그래서 띠 전체가 `hasInfo` 뒤에 있다. */}
+        {hasInfo && (
         <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent px-[7px] pb-[7px] pt-[18px] text-white">
           {item.store_name && (
             <span className="block truncate text-[9.5px] opacity-90">{item.store_name}</span>
@@ -95,6 +100,7 @@ function ShortCard({ item, load, onOpen }: { item: UrShortItem; load: boolean; o
               {formatNumber(pd.originalPrice)}원
             </span>
           )}
+          {pd.price > 0 && (
           <span className="mt-px block text-[11.5px] font-bold tabular-nums">
             {/* 🩸 여기에 새 빨강(#FF8A93)을 발명했다가 되돌렸다. 오늘 아침에 할인율을 `--sale`
                 하나로 통일해 놓고 같은 날 넷째 값을 만들 뻔했다. 사진 위 스크림은 **테마와 무관하게
@@ -103,7 +109,9 @@ function ShortCard({ item, load, onOpen }: { item: UrShortItem; load: boolean; o
             {pd.discount > 0 && <b className="text-[#FF5C69]">{pd.discount}% </b>}
             {formatNumber(pd.price)}원
           </span>
+          )}
         </span>
+        )}
       </span>
     </button>
   )
