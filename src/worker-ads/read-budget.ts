@@ -76,11 +76,17 @@ export const READ_BUDGET_DO = 'read-budget'
 export const READ_BUDGET_BEAT = 'read-budget'
 export const READ_BUDGET_PATH = '/budget'
 
-export interface ReadBudgetState { day: string; used: number; written?: number }
+export interface ReadBudgetState {
+  day: string; used: number; written?: number
+  /** 🗓️ 월 누적 쓴 행 — 요금이 월 단위라 일 단위만으로는 못 지킨다(아래 `monthlyDerivedWriteBudget`). */
+  month?: string; writtenMonth?: number
+}
 export interface ReadBudgetView extends ReadBudgetState {
   budget: number; over: boolean; unknown?: boolean
   /** 쓰기 쪽 — 원장은 하나이고 축만 둘이다(경계·DO·게이트를 두 벌 만들 이유가 없다). */
   written: number; writeBudget: number; writeOver: boolean
+  /** 🗓️ 월 상태 — 화면에 안 보이면 "왜 오늘 예산이 이 값인지"를 아무도 못 설명한다. */
+  writtenMonth?: number; monthLeft?: number; daysLeft?: number
 }
 
 /** Cloudflare 가 일일 한도를 되돌리는 경계 = UTC 자정. */
@@ -128,6 +134,92 @@ export function resolveWriteBudget(env: unknown, nowMs: number = Date.now()): nu
   return nowMs < SEPT_2026_THROTTLE_UNTIL_MS ? SEPT_2026_WRITE_THROTTLE : DEFAULT_DAILY_WRITE_BUDGET
 }
 
+/**
+ * 🗓️ **① 월에서 역산하는 일일 쓰기 예산** — 대표 지시 2026-09-08 *"$0 으로 가야해"*.
+ *
+ * ## 왜 일일 상한만으로는 안 되는가
+ * 요금은 **월** 단위(포함 5,000만 행)인데 차단기는 **일** 단위였다. 그 둘 사이엔 중간이 없다:
+ * 너무 조이면 쓸 수 있는 용량을 버리고, 너무 풀면 월을 터뜨린다. 그리고 폭주가 월초에 한도를
+ * 태워도 **남은 날들이 그 사실을 모른 채** 태연히 과금 구간으로 걸어 들어간다 — 2026-09-02 가
+ * 정확히 그랬다(하루 4,554만 행 → 그 달 내내 초과).
+ *
+ * ## 계산
+ * ```
+ *   남은 몫   = 포함분 − 유어딜 예약분 − 이번 달 유어애즈 누적
+ *   오늘 예산 = 남은 몫 ÷ 남은 일수(오늘 포함)
+ * ```
+ * **스스로 균형을 잡는다** — 적게 쓴 날이 있으면 남은 날이 그만큼 더 쓰고, 많이 쓴 날이 있으면
+ * 남은 날이 조여진다. 월을 터뜨리는 것도, 용량을 남기는 것도 구조적으로 안 된다.
+ *
+ * ⚠️ **유어딜 몫을 먼저 뗀다** — 포함분은 DB 가 아니라 **계정** 단위다. 본진(하루 4.5만 행 실측)이
+ *   쓰는 만큼을 빼지 않으면 유어애즈가 그 몫까지 먹고 본진 쓰기가 과금으로 넘어간다.
+ * ⚠️ **절대 0 을 돌려주지 않는다** — 이 파일에서 0 은 "끔"(**무제한**)이라 정반대가 된다.
+ *   월 몫이 이미 소진됐어도 바닥값(`MONTH_SPENT_FLOOR`)을 돌려준다.
+ * ⚠️ 원장은 **유어애즈 자신의 쓰기만** 센다(레인이 보고한 값). 본진 실적은 안 보이므로 예약분은
+ *   상수다 — 본진이 커지면 이 값을 다시 재서 올려야 한다.
+ */
+export const MONTHLY_WRITE_ALLOWANCE = 50_000_000
+/** 유어딜 본진 월 예약분 — 실측 하루 4.5만 행 × 31일에 여유를 얹었다(2026-09 측정). */
+export const URDEAL_MONTHLY_RESERVE = 1_500_000
+/** 월 몫이 다 떨어졌을 때의 바닥값. **0 이면 안 된다**(0 = 끔 = 무제한). */
+export const MONTH_SPENT_FLOOR = 30_000
+
+/** UTC 기준 이번 달 남은 일수(오늘 포함). 요금 경계가 UTC 월이라 그 달력을 쓴다. */
+export function utcDaysLeftInMonth(nowMs: number): number {
+  const d = new Date(nowMs)
+  const last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate()
+  return Math.max(1, last - d.getUTCDate() + 1)
+}
+
+/** UTC 월 키(`2026-10`) — 요금 경계와 같은 달력. */
+export function utcMonth(nowMs: number): string { return new Date(nowMs).toISOString().slice(0, 7) }
+
+export function monthlyDerivedWriteBudget(
+  writtenMonth: number, nowMs: number,
+  allowance: number = MONTHLY_WRITE_ALLOWANCE, reserve: number = URDEAL_MONTHLY_RESERVE,
+): number {
+  const spent = Number.isFinite(writtenMonth) && writtenMonth > 0 ? writtenMonth : 0
+  const left = allowance - reserve - spent
+  if (!(left > 0)) return MONTH_SPENT_FLOOR
+  return Math.max(MONTH_SPENT_FLOOR, Math.floor(left / utcDaysLeftInMonth(nowMs)))
+}
+
+/**
+ * 🕐 **② 하루 예산을 시간에 걸쳐 편다(페이싱)** — 대표 관측 *"유료인데 오히려 불안정하다"* 의 직접 해법.
+ *
+ * 종전엔 하루치를 **다 쓸 때까지 전속력으로 달리다 절벽처럼 멈췄다**. 2026-09-07 실측:
+ * ```
+ *   12시간에 하루치 소진  →  나머지 12시간 수집 0        (같은 총량, 절반은 죽은 시간)
+ * ```
+ * 시간이 지난 만큼만 쓰게 하면 같은 총량이 **하루 내내 고르게** 나간다. 레인이 서지 않으므로
+ * 창 밖에서 죽는 레인도 없다(2026-09-04 B2B 붕괴가 그 모양이었다).
+ *
+ * ⚠️ **따라잡기를 허용한다** — 허용치가 누적(`(시간+1)/24`)이라, 앞 시간에 덜 썼으면 그만큼
+ *   지금 더 쓸 수 있다. 안 그러면 조용한 시간대가 그대로 손실이 된다.
+ * ⚠️ 마지막 시간(23시)엔 허용치가 하루치와 같아진다 — 일일 상한과 정확히 일치한다.
+ */
+export function pacedWriteOver(state: ReadBudgetState | null | undefined, dayBudget: number, nowMs: number): boolean {
+  if (!(dayBudget > 0) || !state || state.day !== utcDay(nowMs)) return false
+  const hour = new Date(nowMs).getUTCHours()
+  const allowed = Math.ceil((dayBudget * (hour + 1)) / 24)
+  return (state.written || 0) >= allowed
+}
+
+/**
+ * 오늘의 실효 쓰기 예산. 우선순위: **env 명시 > 9월 한시 스로틀 > 월 역산**.
+ * env 가 이기는 이유는 대표가 코드 배포 없이 되돌릴 손잡이를 남기기 위해서다.
+ */
+export function effectiveWriteBudget(env: unknown, state: ReadBudgetState | null | undefined, nowMs: number): number {
+  const raw = (env as Record<string, unknown> | undefined)?.[WRITE_BUDGET_ENV]
+  if (raw !== undefined && raw !== null && String(raw).trim() !== '') {
+    return resolveBudget(env, WRITE_BUDGET_ENV, DEFAULT_DAILY_WRITE_BUDGET)
+  }
+  const sameMonth = state && state.month === utcMonth(nowMs)
+  const derived = monthlyDerivedWriteBudget(sameMonth ? state.writtenMonth || 0 : 0, nowMs)
+  // 9월 한시 스로틀은 **천장**으로 남는다 — 그 달 원장엔 9/2 폭주 이력이 없어 역산이 과대평가한다.
+  return nowMs < SEPT_2026_THROTTLE_UNTIL_MS ? Math.min(SEPT_2026_WRITE_THROTTLE, derived) : derived
+}
+
 function resolveBudget(env: unknown, key: string, fallback: number): number {
   const raw = (env as Record<string, unknown> | undefined)?.[key]
   if (raw === undefined || raw === null || String(raw).trim() === '') return fallback
@@ -141,10 +233,15 @@ export function applyRead(prev: ReadBudgetState | null | undefined, rr: number, 
   const day = utcDay(nowMs)
   const pos = (n: number) => (Number.isFinite(n) && n > 0 ? Math.floor(n) : 0)
   const same = prev && prev.day === day
+  const month = utcMonth(nowMs)
+  const sameMonth = prev && prev.month === month
   return {
     day,
     used: (same ? prev.used : 0) + pos(rr),
     written: (same ? prev.written || 0 : 0) + pos(rw),
+    // 🗓️ 달이 바뀌면 0 에서 다시 — 포함분이 UTC 월 경계에서 리셋되기 때문이다.
+    month,
+    writtenMonth: (sameMonth ? prev.writtenMonth || 0 : 0) + pos(rw),
   }
 }
 
@@ -168,7 +265,6 @@ export const READ_BUDGET_STORAGE_KEY = 'readBudget'
  */
 export async function handleBudgetRequest(url: URL, storage: StorageLike, env: unknown, nowMs = Date.now()): Promise<ReadBudgetView> {
   const budget = resolveReadBudget(env)
-  const writeBudget = resolveWriteBudget(env)
   const prev = (await storage.get<ReadBudgetState>(READ_BUDGET_STORAGE_KEY)) ?? null
   const rr = Number(url.searchParams.get('rr') || 0)
   const rw = Number(url.searchParams.get('rw') || 0)
@@ -179,10 +275,18 @@ export async function handleBudgetRequest(url: URL, storage: StorageLike, env: u
     ? applyRead(prev, rr, nowMs, rw)
     : (prev && prev.day === utcDay(nowMs) ? prev : { day: utcDay(nowMs), used: 0, written: 0 })
   if (reported) await storage.put(READ_BUDGET_STORAGE_KEY, next)
+  // 🗓️ 예산은 **갱신된 상태로** 계산한다 — 이 회차의 쓰기까지 반영해야 다음 판정이 정확하다.
+  const writeBudget = effectiveWriteBudget(env, next, nowMs)
+  const writtenMonth = next.writtenMonth || 0
   return {
     ...next, written: next.written || 0,
     budget, over: budgetOver(next, budget, nowMs),
-    writeBudget, writeOver: writeBudgetOver(next, writeBudget, nowMs),
+    writeBudget,
+    // ⚠️ 일일 상한과 페이싱 **둘 다** 본다. 페이싱만 두면 23시엔 하루치가 통째로 열린다.
+    writeOver: writeBudgetOver(next, writeBudget, nowMs) || pacedWriteOver(next, writeBudget, nowMs),
+    writtenMonth,
+    monthLeft: Math.max(0, MONTHLY_WRITE_ALLOWANCE - URDEAL_MONTHLY_RESERVE - writtenMonth),
+    daysLeft: utcDaysLeftInMonth(nowMs),
   }
 }
 
@@ -210,7 +314,12 @@ export async function readBudgetState(env: unknown): Promise<ReadBudgetView> {
     const body = (await res.json()) as ReadBudgetView
     return {
       day: body.day, used: Number(body.used) || 0, written: Number(body.written) || 0,
-      budget, over: !!body.over, writeBudget, writeOver: !!body.writeOver,
+      budget, over: !!body.over,
+      // 🗓️ 쓰기 예산은 **원장이 계산한 값**을 쓴다 — 월 누적을 아는 쪽은 원장뿐이다.
+      //   못 읽으면 env/기본값으로 폴백(화면이 비는 것보다 낫다).
+      writeBudget: Number(body.writeBudget) || writeBudget, writeOver: !!body.writeOver,
+      writtenMonth: Number(body.writtenMonth) || 0,
+      monthLeft: Number(body.monthLeft) || 0, daysLeft: Number(body.daysLeft) || 0,
     }
   } catch {
     return { ...idle, over: true, writeOver: true, unknown: true }
@@ -233,6 +342,8 @@ export function budgetBeatFields(v: ReadBudgetView): Record<string, number | boo
   return {
     used: v.used, budget: v.budget, over: v.over,
     written: v.written, wbudget: v.writeBudget, wover: v.writeOver,
+    // 🗓️ 월 상태 — 이게 없으면 "왜 오늘 예산이 이 값인가"를 아무도 설명 못 한다.
+    ...(v.writtenMonth !== undefined ? { wmonth: v.writtenMonth, mleft: v.monthLeft || 0, dleft: v.daysLeft || 0 } : {}),
     ...(v.unknown ? { unknown: true } : {}),
   }
 }
