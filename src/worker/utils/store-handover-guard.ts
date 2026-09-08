@@ -15,19 +15,26 @@
  * ⇒ 주인을 바꾸고 계좌를 갈면 **그 매장이 창업 이래 쌓은 미지급 잔액 전액이 다음 주 cron 에서
  *   통째로 새 계좌로 나간다.** 되돌릴 수 없는 오지급이고, 에러도 안 난다.
  *
- * ## 이 파일이 하는 일 — 승계를 만드는 게 아니라 **사고를 막는 것**
- * 승계 기능(`owner_verified`)은 아직 코드가 없다(레포 전체 grep 0건). 그래서 지금 필요한 것은
- * 정교한 승계 절차가 아니라, **그런 절차 없이 주인이 바뀌는 것을 막는 자물쇠**다.
- * 잔액이 0 이면 아무 일도 안 하고(=오늘까지의 모든 정상 흐름 그대로), 잔액이 남아 있을 때만 막는다.
+ * ## 이 파일이 하는 일 — 마감을 강제한다
+ * ⭐ **2026-09-08 대표 확정**: *"중개사가 한 매장으로 유어딜에서 번 돈이 있으면 그 돈은 승계가
+ * 되더라도 일단 중개사에게 정산되어야지. 반대 상황도 마찬가지고."*
  *
- * 그러면 나중에 승계를 만드는 사람이 **이 자물쇠를 반드시 마주치게 되고**, 그 자리에서
- * "이전 주인에게 정산하고 0 으로 마감" 을 설계하게 된다. 결정 문서:
- * `docs/decisions/2026-09-07-store-handover-money-cut.md`
+ * ⇒ 답은 "손바뀜을 막는다" 가 아니라 **"마감하고 나서 넘긴다"** 다. 이 자물쇠는 그 순서를
+ * 강제하는 장치이지 종착점이 아니다. 마감 창구는
+ * `POST /api/admin/payouts/handover-closeout` — 이전 주인 계좌를 payout 행에 **스냅샷**해
+ * 배정하고, 그러면 아래 잔액이 0 이 되어 손바뀜이 열린다.
+ *
+ * 🩸 **처음엔 `getLedgerReceivable`(순수 원장)을 봤는데 그게 결함이었다** — 마감을 해도 원장은
+ *   안 줄어서 **영원히 막혔다**(막다른 길). 지금은 `getUnsettledBalance`(원장 − 배정분)를 본다.
+ *
+ * 결정 문서: `docs/decisions/2026-09-07-store-handover-money-cut.md`
  *
  * ## ⚠️ 이 가드가 **막지 못하는 것** (과신 금지)
  *   - 잔액이 0 인 상태의 손바뀜은 그대로 통과한다 — 그게 의도다(줄 돈이 없으니 샐 돈도 없다).
- *   - 손바뀜 **이후** 발생한 매출은 여전히 매장 계정에 쌓인다. "귀속 시점부터 계산" 의
- *     나머지 절반(원장을 시점으로 자르기)은 승계 기능과 함께 지어야 한다.
+ *   - 손바뀜 **이후** 발생한 매출은 여전히 매장 계정에 쌓인다. 그건 새 주인 것이 맞다 —
+ *     마감이 이전 주인 몫을 payout 으로 떼어 냈으므로, 그 뒤 쌓이는 것은 자연히 새 주인 몫이다.
+ *   - 마감 payout 을 손바뀜 **뒤에** 취소하면 잔액이 되살아나 새 주인에게 간다
+ *     (`getUnsettledBalance` 헤더 참조). 그 취소를 막는 장치는 아직 없다.
  *   - **최초 연결**(`linked_user_id` 가 NULL → 값)은 손바뀜이 아니므로 검사하지 않는다.
  *   - `seller_operators` 로 운영자를 추가하는 것도 손바뀜이 아니다(정산 목적지가 안 바뀐다).
  */
@@ -84,8 +91,8 @@ export async function checkStoreHandover(
 
   let receivable: number
   try {
-    const { getLedgerReceivable } = await import('./ledger')
-    receivable = await getLedgerReceivable(DB, `seller:${sellerId}`)
+    const { getUnsettledBalance } = await import('./ledger')
+    receivable = await getUnsettledBalance(DB, `seller:${sellerId}`)
   } catch {
     return {
       blocked: true,
@@ -95,14 +102,19 @@ export async function checkStoreHandover(
     }
   }
 
+  // 배정이 끝났으면(0) 통과. 음수는 매장이 플랫폼에 빚진 상태라 payout 으로 표현할 수 없다 —
+  // 그대로 넘기면 그 빚을 새 주인이 떠안으므로 역시 막는다.
   if (receivable === 0) return { blocked: false, receivable: 0, prevUserId }
 
+  const won = Math.abs(receivable).toLocaleString('ko-KR')
   return {
     blocked: true,
     receivable,
     prevUserId,
-    reason:
-      `이 매장에 아직 정산되지 않은 금액(${receivable.toLocaleString('ko-KR')}원)이 남아 있어요. ` +
-      '지금 소유자를 바꾸면 그 돈이 새 소유자 계좌로 나갑니다 — 이전 소유자에게 정산을 마친 뒤에 진행해주세요.',
+    reason: receivable > 0
+      ? `이 매장에 아직 정산되지 않은 금액(${won}원)이 남아 있어요. 지금 소유자를 바꾸면 그 돈이 ` +
+        '새 소유자 계좌로 나갑니다 — 정산 마감(어드민 → 정산 → 손바뀜 마감)을 먼저 해주세요.'
+      : `이 매장은 플랫폼에 정산할 금액(${won}원)이 남아 있어요. 소유자를 바꾸면 그 부담이 ` +
+        '새 소유자에게 넘어갑니다 — 먼저 정리해주세요.',
   }
 }

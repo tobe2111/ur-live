@@ -481,6 +481,36 @@ export async function getLedgerReceivable(
 }
 
 /** 정산 가능 잔액 = 순 receivable − 이미 payout(approved/sent) 처리분 */
+/**
+ * 💸 **아직 아무에게도 배정되지 않은 잔액** — 손바뀜 판단의 정식 수치 (2026-09-08).
+ *
+ * `getLedgerReceivable` 은 순수 원장이라 **정산 마감을 해도 안 줄어든다.** 그 값으로 손바뀜을
+ * 막으면 마감을 해도 계속 막혀 **막다른 길**이 된다(2026-09-07 자물쇠의 실제 결함).
+ *
+ * 여기서는 `payouts-generate` 와 **똑같은 공식**을 쓴다 — 원장에서 이미 payout 행으로
+ * 배정된 몫(`pending`/`approved`/`sent`)을 뺀다. 그 행들은 **생성 시점의 계좌를 자기 안에
+ * 스냅샷**하고 있으므로(payouts-generate 가 `sellers.bank_account` 를 행에 박는다),
+ * 주인이 바뀌어도 **이전 주인에게 간다.** 그래서 이 값이 0 이면 "새 주인에게 흘러갈 돈은 없다".
+ *
+ * ⚠️ `getPayablePending` 과 다르다 — 그쪽은 `pending` 을 **안** 뺀다("앞으로 지급 가능한 액수"라는
+ *   다른 질문에 답한다). 손바뀜에는 이 함수를 쓸 것.
+ *
+ * ⚠️ **못 막는 것**: 손바뀜 *뒤에* 그 payout 을 `cancelled`/`failed` 로 되돌리면 잔액이
+ *   원장으로 되살아나 새 주인에게 간다(집계가 그 두 상태를 안 뺀다). 마감 payout 의 취소를
+ *   막는 것은 아직 없다 — 승계 기능을 지을 때 함께 다뤄야 한다.
+ */
+export async function getUnsettledBalance(
+  DB: D1Database,
+  payeeAccount: string,
+): Promise<number> {
+  const receivable = await getLedgerReceivable(DB, payeeAccount)
+  const earmarked = await DB.prepare(
+    `SELECT COALESCE(SUM(amount), 0) as total FROM payouts
+      WHERE (payee_type || ':' || payee_id) = ? AND status IN ('pending','approved','sent')`,
+  ).bind(payeeAccount).first<{ total: number }>().catch(() => ({ total: 0 }))
+  return receivable - Number(earmarked?.total ?? 0)
+}
+
 export async function getPayablePending(
   DB: D1Database,
   payeeAccount: string,

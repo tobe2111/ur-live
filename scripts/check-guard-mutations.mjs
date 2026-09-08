@@ -9772,6 +9772,46 @@ canvas {
       '모르면 안 보여 주는 쪽이 언제나 싸다 — 못 본 정산은 물어보면 되지만, 본 정산은 되돌릴 수 없다.',
   },
   {
+    name: '🤝 손바뀜 가드가 순수 원장을 다시 본다 (마감해도 안 열리는 막다른 길)',
+    file: 'src/worker/utils/store-handover-guard.ts',
+    find: '    receivable = await getUnsettledBalance(DB, `seller:${sellerId}`)',
+    replace: '    receivable = await getLedgerReceivable(DB, `seller:${sellerId}`)',
+    test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
+    why:
+      '순수 원장은 정산 마감을 해도 안 줄어든다. 그 값으로 막으면 마감을 마쳐도 손바뀜이 ' +
+      '영원히 안 열려서, 자물쇠가 안전장치가 아니라 막다른 길이 된다(실제로 그렇게 짰다가 고쳤다).',
+  },
+  {
+    name: '🤝 배정 잔액이 pending 을 안 뺀다 (마감이 문을 못 연다)',
+    file: 'src/worker/utils/ledger.ts',
+    find: "      WHERE (payee_type || ':' || payee_id) = ? AND status IN ('pending','approved','sent')",
+    replace: "      WHERE (payee_type || ':' || payee_id) = ? AND status IN ('approved','sent')",
+    test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
+    why:
+      '마감이 만드는 행은 pending 이다. 그걸 안 빼면 마감 직후에도 잔액이 그대로라 손바뀜이 ' +
+      '계속 막히고, payouts-generate 의 집계 공식과도 어긋난다.',
+  },
+  {
+    name: '🤝 마감이 계좌를 스냅샷하지 않는다 (새 주인에게 송금)',
+    file: 'src/features/admin/api/admin-payouts/handover-closeout.ts',
+    find: "      ).bind(String(sellerId), amount, today, today, seller.bank_account, seller.business_name || null, memo).run()",
+    replace: "      ).bind(String(sellerId), amount, today, today, null, seller.business_name || null, memo).run()",
+    test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
+    why:
+      'payout 행이 계좌를 안 들고 있으면, 송금 시점에 sellers.bank_account 를 다시 읽게 되고 ' +
+      '그때는 이미 **새 주인 계좌**다. 마감의 의미가 통째로 뒤집힌다.',
+  },
+  {
+    name: '🤝 마감 창구가 finance 권한 없이 열린다',
+    file: 'src/features/admin/api/admin-payouts.routes.ts',
+    find: "adminPayoutsRoutes.post('/admin/payouts/handover-closeout',\n  requireAdminRole('finance'), require2FA(), auditLog('payouts.handover_closeout'),",
+    replace: "adminPayoutsRoutes.post('/admin/payouts/handover-closeout',\n  requireAdmin(),",
+    test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
+    why:
+      '돈을 사람에게 배정하는 창구다. 일반 어드민 아무나 열 수 있으면 감사로그도 2FA 도 없이 ' +
+      '남의 매장 잔액을 임의 계좌로 떼어 낼 수 있다.',
+  },
+  {
     name: '⏳ 새 영입자에게 이전 영입자의 만료일이 그대로 적용된다',
     file: 'src/features/admin/api/admin-sellers/reassign-introducer.ts',
     find: "      ? `, introduced_at = datetime('now'), referral_bonus_until = NULL`",
