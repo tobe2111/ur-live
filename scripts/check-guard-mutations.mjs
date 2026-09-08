@@ -8159,6 +8159,37 @@ canvas {
       '2026-07-23(F-32)이 고쳤던 그 스테일 사고가 에러 없이 돌아온다. 이 자리의 모름은 갱신이어야 한다.',
   },
   {
+    name: '🗓️ 월 몫 소진 시 0 을 돌려준다(차단기가 꺼져 무제한이 된다)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: '  if (!(left > 0)) return MONTH_SPENT_FLOOR',
+    replace: '  if (!(left > 0)) return 0',
+    test: 'src/tests/unit/ads-monthly-write-budget.test.ts',
+    why:
+      '이 파일에서 0 은 "끔"(무제한)이다. 월 몫이 다 떨어졌을 때 0 을 돌려주면 차단기가 꺼져 ' +
+      '정확히 정반대 — 가장 조여야 할 순간에 무제한이 된다. 에러도 경보도 없이 그 달 요금이 터진다.',
+  },
+  {
+    name: '🗓️ 월 누적이 달 경계에서 리셋 안 된다(다음 달이 지난달 값에 눌린다)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: '    writtenMonth: (sameMonth ? prev.writtenMonth || 0 : 0) + pos(rw),',
+    replace: '    writtenMonth: (prev?.writtenMonth || 0) + pos(rw),',
+    test: 'src/tests/unit/ads-monthly-write-budget.test.ts',
+    why:
+      '포함분은 UTC 월 경계에서 리셋된다. 누적이 안 끊기면 11월 1일이 10월 실적에 눌려 ' +
+      '바닥값으로 시작하고, 그 상태로 한 달이 간다 — 수집이 40분의 1인데 에러는 0 이다.',
+  },
+  {
+    name: '🕐 일중 페이싱이 사라진다(하루치를 반나절에 태우고 절벽처럼 멈춘다)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: '    writeOver: writeBudgetOver(next, writeBudget, nowMs) || pacedWriteOver(next, writeBudget, nowMs),',
+    replace: '    writeOver: writeBudgetOver(next, writeBudget, nowMs),',
+    test: 'src/tests/unit/ads-monthly-write-budget.test.ts',
+    why:
+      '2026-09-07 실측: 12시간에 하루치를 소진하고 나머지 12시간 수집이 0 이었다. 총량은 같은데 ' +
+      '절반이 죽은 시간이 되고, 그 사이 창 밖 레인이 통째로 죽는다(9/4 B2B 붕괴가 그 모양). ' +
+      '페이싱이 빠져도 하루 총량은 그대로라 요금 지표로는 안 보인다.',
+  },
+  {
     name: '🚨 9월 쓰기 스로틀이 스스로 안 풀린다(10월에도 3만에 묶인다)',
     file: 'src/worker-ads/read-budget.ts',
     find: '  return nowMs < SEPT_2026_THROTTLE_UNTIL_MS ? SEPT_2026_WRITE_THROTTLE : DEFAULT_DAILY_WRITE_BUDGET',
