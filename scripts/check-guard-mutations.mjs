@@ -88,6 +88,46 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🧾 홈 카드와 구매 바의 할인율 정의가 다시 두 벌이 된다 (SSOT 이탈)',
+    file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
+    find: '  const { price, originalPrice, discount } = priceDisplay({',
+    replace: '  const { price, originalPrice, discount } = ((x) => x)({',
+    test: 'src/tests/unit/videos-buy-bar.test.ts',
+    why:
+      '같은 상품이 홈 카드에서 30%, 유어쇼츠 구매 바에서 0% 로 보이게 된다. 어느 쪽도 에러를 ' +
+      '내지 않으므로 사용자가 신고할 때까지 아무도 모르고, 신고가 와도 "어느 쪽이 맞나" 부터 다퉈야 한다.',
+  },
+  {
+    name: '🧾 구매 바에서 정가가 사라진다 (대표 확정 "기존 가격정보도 넣어라" 무력화)',
+    file: 'src/pages/VideosPage.tsx',
+    find: '              {pd.showOriginal && (',
+    replace: '              {false && (',
+    test: 'src/tests/unit/videos-buy-bar.test.ts',
+    why:
+      '할인율만 남고 정가가 사라지면 "30% 29,500원" 이 무엇에서 30% 인지 알 수 없다. ' +
+      '화면은 멀쩡해 보이고 숫자도 맞아서 회귀를 눈으로 못 잡는다.',
+  },
+  {
+    name: '🧾 가격 줄이 여러 줄로 깨진다 (nowrap 제거 — 6자리 가격에서 바가 커진다)',
+    file: 'src/pages/VideosPage.tsx',
+    find: 'flex items-baseline whitespace-nowrap text-[15px]',
+    replace: 'flex items-baseline text-[15px]',
+    test: 'src/tests/unit/videos-buy-bar.test.ts',
+    why:
+      '숙소처럼 6~7자리 가격에서 줄이 접혀 바가 높아지고 영상을 더 가린다. 보통 가격에서는 ' +
+      '멀쩡해 보여서 개발 중에는 안 드러나고, 비싼 상품에서만 나타난다.',
+  },
+  {
+    name: '🧾 상품명 줄이 사라진다 (안 B → 안 A 로 되돌아감)',
+    file: 'src/pages/VideosPage.tsx',
+    find: '            {cur.product_name && (',
+    replace: '            {false && cur.product_name && (',
+    test: 'src/tests/unit/videos-buy-bar.test.ts',
+    why:
+      '무엇을 사는지 모른 채 구매 버튼을 누르게 된다. 매장명과 가격만으로는 그 매장의 어떤 ' +
+      '이용권인지 알 수 없는데, 화면은 깔끔해 보여서 문제로 안 읽힌다.',
+  },
+  {
     name: '🎬 허락 안 받은 영상이 홈에 나간다 (consent 게이트 제거)',
     file: 'src/features/urshorts/api/urshorts.routes.ts',
     find: '     AND s.consent = 1',
