@@ -165,6 +165,9 @@ export default defineConfig({
           // 📐 2026-09-03: 딜 카드 격자 간격 상수 — 홈·찜·유어샵·편성 섹션이 함께 읽는 한 줄짜리 SSOT.
           //   catch-all 로 떨어지면 홈 폐쇄가 app-shared 밖 청크를 하나 더 끌고 온다(home-chunk-diet 가 잡는다).
           if (id.includes('/src/shared/deal-card-grid')) return 'app-shared'
+          // 💸 2026-09-08: 가격·할인율 표시 규칙 SSOT — 홈 딜 카드와 유어쇼츠 구매 바가 함께 읽는다.
+          //   위 `deal-card-grid` 와 **정확히 같은 함정**이라 같은 자리에 둔다(가드가 바로 잡아냈다).
+          if (id.includes('/src/shared/price-display')) return 'app-shared'
           // 🖊️ 2026-08-30: 유어딜 전용 아이콘(`components/icons/urdeal-icons`)도 **정확히 같은 함정**에
           //   빠졌다. 60줄짜리 순수 SVG 리프 모듈인데 `/src/components/` catch-all 에 걸려
           //   `app-components`(166KB · 58모듈)로 들어갔고, 그걸 **BottomNav·DesktopTopNav**

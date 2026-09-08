@@ -20,6 +20,7 @@ import { Star } from 'lucide-react'
 import { dealCategoryMeta } from '@/shared/deal-category-icon'
 import type { FcfsInfo } from '@/features/group-buy/useFcfs'
 import type { Product } from './types'
+import { priceDisplay } from '@/shared/price-display'
 
 /**
  * 🖼️ 사진 없는 카드의 자리표시 (2026-08-30 — 이모지 → 선 아이콘)
@@ -163,16 +164,16 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
   // 카테고리도 동일 — voucher 면 gc.goods_type_detail 사용.
   const rawCategory = p.category && p.category !== 'voucher' ? p.category : (p.gc_goods_type_detail || p.category || 'etc_voucher')
   const cat = dealCategoryMeta(rawCategory)
-  const price = p.current_price ?? p.price ?? 0
-  const originalPrice = p.original_price ?? 0
-  // 💸 할인율 — 🐛 2026-08-19 (대표 신고 "할인율도 나타나야 할 것 같다"): 이전엔 `p.discount_rate ?? 계산`
-  //   이라 서버가 **0 을 내려주면**(컬럼 기본값 0) `??` 가 그 0 을 채택해 계산식에 못 갔다 →
-  //   38,000 → 30,100 처럼 명백한 할인에도 pill 이 안 떴다. 둘 중 **큰 값**을 쓴다.
-  const declaredDiscount = Number(p.discount_rate) || 0
-  const computedDiscount = originalPrice > price && originalPrice > 0
-    ? Math.round(((originalPrice - price) / originalPrice) * 100)
-    : 0
-  const discount = Math.max(declaredDiscount, computedDiscount)
+  // 💸 가격·할인율 — 규칙은 `shared/price-display.ts` SSOT 하나다(2026-09-08 분리).
+  //   이 카드가 갖고 있던 `Math.max(선언값, 계산값)` 규칙을 **행동 그대로** 옮긴 것이고,
+  //   같은 규칙을 유어쇼츠 구매 바가 함께 쓴다 — 정의가 두 벌이면 같은 상품이 홈에서 30%,
+  //   구매 바에서 0% 로 보이는 날이 오고 에러가 안 나서 아무도 모른다.
+  //   ⚠️ 가격은 `current_price` 우선(공구 확정가) — 그 폴백은 여기 계약이라 여기서 푼다.
+  const { price, originalPrice, discount } = priceDisplay({
+    price: p.current_price ?? p.price ?? 0,
+    original_price: p.original_price,
+    discount_rate: p.discount_rate,
+  })
   const rating = p.avg_rating ?? 0
   const reviewCount = p.review_count ?? 0
   const soldCount = p.sold_count ?? 0

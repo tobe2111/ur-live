@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import api from '@/lib/api'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
-import { Plus, Trash2, Eye, EyeOff, Link2, AlertCircle } from 'lucide-react'
+import { Plus, Trash2, Eye, EyeOff, AlertCircle, RefreshCw } from 'lucide-react'
+import ProductPicker from './admin-urshorts/ProductPicker'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
@@ -81,6 +82,21 @@ export default function AdminUrShortsPage() {
   const patch = async (id: number, body: Record<string, unknown>) => {
     try { await api.patch(`/api/admin/urshorts/${id}`, body); await load() }
     catch { setMsg({ kind: 'bad', text: '수정하지 못했습니다' }) }
+  }
+
+  /**
+   * 📝 제목·채널 다시 가져오기 — 이 기능(2026-09-08) 이전에 넣은 영상용.
+   *   그때는 `/shorts/` 주소가 유튜브 조회를 건너뛰어 제목·채널이 비어 있었다.
+   */
+  const refreshMeta = async (id: number) => {
+    try {
+      await api.post(`/api/admin/urshorts/${id}/refresh-meta`, {})
+      await load()
+      setMsg({ kind: 'ok', text: '제목·채널을 가져왔습니다' })
+    } catch (e) {
+      const err = e as { response?: { data?: { error?: string } } }
+      setMsg({ kind: 'bad', text: err?.response?.data?.error || '가져오지 못했습니다' })
+    }
   }
 
   const remove = async (r: Row) => {
@@ -216,39 +232,39 @@ export default function AdminUrShortsPage() {
                     <div className="truncate text-[13px] font-semibold text-gray-900">
                       {r.title || r.video_id}
                     </div>
-                    <div className="truncate text-[11.5px] text-gray-500">
-                      {r.channel || '채널 미상'}
-                      {r.duration_sec ? ` · ${r.duration_sec}초` : ''}
-                      {r.source === 'channel' ? ' · 채널' : ' · 직접'}
+                    <div className="flex items-center gap-1.5 truncate text-[11.5px] text-gray-500">
+                      <span className="truncate">
+                        {r.channel || '채널 미상'}
+                        {r.duration_sec ? ` · ${r.duration_sec}초` : ''}
+                        {r.source === 'channel' ? ' · 채널' : ' · 직접'}
+                      </span>
+                      {/* 📝 이 기능 이전에 넣은 영상만 비어 있다 — 채워지면 버튼도 사라진다. */}
+                      {(!r.channel || !r.title) && (
+                        <button
+                          onClick={() => void refreshMeta(r.id)}
+                          title="유튜브에서 제목·채널 가져오기"
+                          className="flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-semibold text-blue-600 hover:bg-blue-50"
+                        >
+                          <RefreshCw size={10} /> 가져오기
+                        </button>
+                      )}
                     </div>
                   </div>
 
-                  {/* 🔴 이용권 연결이 이 화면의 전부다. 안 고른 것은 빨갛게 남아 할 일이 보인다. */}
-                  <div className="w-[190px] shrink-0">
-                    {r.product_id ? (
-                      <span className="flex items-center gap-1.5 truncate rounded-lg bg-blue-50 px-2.5 py-1.5 text-[12px] text-gray-900">
-                        <Link2 size={12} className="shrink-0 text-blue-600" />
-                        <span className="truncate">{r.store_name || r.product_name}</span>
-                        {r.price != null && (
-                          <span className="shrink-0 text-gray-500">{formatNumber(r.price)}원</span>
-                        )}
-                      </span>
-                    ) : (
-                      <span className="block rounded-lg bg-red-50 px-2.5 py-1.5 text-[12px] font-semibold text-red-600">
-                        이용권을 고르세요
-                      </span>
-                    )}
-                  </div>
-
-                  <input
-                    type="number" defaultValue={r.product_id ?? ''} placeholder="상품 ID"
-                    onBlur={(e) => {
-                      const v = e.target.value.trim()
-                      const next = v === '' ? null : Number(v)
-                      if (next !== (r.product_id ?? null)) void patch(r.id, { product_id: next })
-                    }}
-                    className="w-[86px] shrink-0 rounded-lg border border-gray-200 px-2 py-1.5 text-[12px] text-gray-900"
+                  {/* 🔴 이용권 연결이 이 화면의 전부다. 안 고른 것은 빨갛게 남아 할 일이 보인다.
+                      🔎 2026-09-08 (대표 *"ID 하나하나 다 모르는데"*): 숫자 입력 + 상태 pill 두 칸이던
+                         것을 **고르는 칸 하나**로 합쳤다. 번호를 아는 사람은 아무도 없고, 틀린 번호는
+                         에러도 안 나고 엉뚱한 이용권에 조용히 붙는다. 이제 이름·매장명으로 찾아 누른다. */}
+                  <ProductPicker
+                    value={r.product_id ?? null}
+                    label={r.store_name || r.product_name}
+                    onPick={(next) => { if (next !== (r.product_id ?? null)) void patch(r.id, { product_id: next }) }}
                   />
+                  {r.product_id != null && r.price != null && (
+                    <span className="shrink-0 text-[11.5px] tabular-nums text-gray-500">
+                      {formatNumber(r.price)}원
+                    </span>
+                  )}
 
                   <button
                     onClick={() => void patch(r.id, { consent: !r.consent })}
