@@ -239,6 +239,36 @@ const MUTATIONS = [
       '아니라 렌더가 깨진 것처럼 보이는데, 콘솔에는 아무것도 안 찍힌다.',
   },
   {
+    name: '🎬 뷰어에 영상 번호(1 / 3)가 되돌아온다',
+    file: 'src/pages/VideosPage.tsx',
+    find: '        <X size={18} />',
+    replace: "        <X size={18} />\n      </button>\n      <span>{idx + 1} / {items.length}",
+    test: 'src/tests/unit/urshorts-viewer-chrome.test.ts',
+    why:
+      '대표가 2026-09-08 에 "3/3 이런거 안나오면 좋겠어 지금 번잡해" 로 지웠다. 우상단 숫자 하나가 ' +
+      '유튜브 자기 아이콘들 옆에 붙어 화면이 시끄러워진다 — 기능이 아니라 소음이라 아무도 버그로 안 본다.',
+  },
+  {
+    name: '🎬 스와이프가 다시 iframe 에 먹힌다 (제스처 층이 아래로)',
+    file: 'src/pages/VideosPage.tsx',
+    find: 'className="absolute inset-0 z-10"',
+    replace: 'className="absolute inset-0 -z-10"',
+    test: 'src/tests/unit/urshorts-viewer-chrome.test.ts',
+    why:
+      '교차 출처 iframe 은 터치·휠을 자기가 먹고 부모에게 안 넘긴다. 층이 iframe 아래로 내려가면 ' +
+      '핸들러가 한 번도 안 불리는데 **코드는 멀쩡해 보인다** — 실제로 그 상태로 배포돼 있었다.',
+  },
+  {
+    name: '🎬 유튜브 컨트롤이 되살아나 구매 바와 겹친다',
+    file: 'src/pages/VideosPage.tsx',
+    find: '{ autoplay: true, controls: false }',
+    replace: '{ autoplay: true }',
+    test: 'src/tests/unit/urshorts-viewer-chrome.test.ts',
+    why:
+      '실측(430×608): 유튜브 진행 바 56px · Shorts 로고 18px, 구매 바는 10~76px — 이용권을 붙이면 ' +
+      '아래쪽에 세 겹이 쌓인다. 대표가 렌더 보기 전에 먼저 알아챈 그 겹침이다.',
+  },
+  {
     name: '🎬 살 게 없는 영상에 구매 버튼이 뜬다 (/group-buy/null)',
     file: 'src/pages/VideosPage.tsx',
     find: '      {cur && cur.product_id ? (',

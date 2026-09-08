@@ -33,6 +33,8 @@ export default function VideosPage() {
   const navigate = useNavigate()
   const startVideo = params.get('v')
   const touchY = useRef<number | null>(null)
+  // 🖱️ 휠은 한 번 굴려도 이벤트가 수십 개 온다 — 쿨다운이 없으면 한 번에 끝까지 넘어간다.
+  const wheelAt = useRef(0)
 
   useEffect(() => {
     let alive = true
@@ -90,24 +92,14 @@ export default function VideosPage() {
   const thumb = cur?.thumb_url || cur?.product_image || ''
 
   return (
-    <div
-      className="relative min-h-[100dvh] overflow-hidden bg-[#0A0C12]"
-      onTouchStart={(e) => { touchY.current = e.touches[0]?.clientY ?? null }}
-      onTouchEnd={(e) => {
-        const s = touchY.current
-        const end = e.changedTouches[0]?.clientY
-        if (s == null || end == null) return
-        if (Math.abs(end - s) > 60) go(end < s ? 1 : -1)
-        touchY.current = null
-      }}
-    >
+    <div className="relative min-h-[100dvh] overflow-hidden bg-[#0A0C12]">
       <SEO title="유어쇼츠 - 유어딜" description="영상으로 보고 바로 구매하는 이용권" url="/videos" noindex />
 
       {/* 🔴 key 가 video_id 다 — 넘기면 이전 iframe 이 파기되고 새로 하나만 산다. */}
       {cur && (
         <iframe
           key={cur.video_id}
-          src={youTubeEmbedUrl(cur.video_id, { autoplay: true })}
+          src={youTubeEmbedUrl(cur.video_id, { autoplay: true, controls: false })}
           title={cur.title || '유어쇼츠'}
           allow="autoplay; encrypted-media; picture-in-picture"
           allowFullScreen
@@ -115,16 +107,37 @@ export default function VideosPage() {
         />
       )}
 
+      {/* 🖐️ **제스처 레이어** (2026-09-08 대표 *"마우스 위아래 스크롤이나 스마트폰으로도 위아래 스와이프"*).
+          🔴 왜 층이 필요한가: iframe 이 화면을 꽉 덮어서 **터치·휠이 전부 유튜브로 먹힌다.**
+             래퍼에 핸들러를 달아 둔 채로는 우리 코드까지 이벤트가 오지 않는다 — 스와이프 코드가
+             있는데도 실제로는 안 넘어가던 이유가 이것이다(교차 출처라 안을 못 본다).
+          ⚠️ 대가: 이 층이 덮은 만큼 **탭해서 일시정지·되감기가 안 된다.** 10~18초짜리 쇼츠라
+             넘김을 택했다. 되돌리려면 이 블록을 지우면 유튜브 조작이 돌아온다(대신 스와이프가 죽는다). */}
+      <div
+        className="absolute inset-0 z-10"
+        onTouchStart={(e) => { touchY.current = e.touches[0]?.clientY ?? null }}
+        onTouchEnd={(e) => {
+          const s = touchY.current
+          const end = e.changedTouches[0]?.clientY
+          if (s == null || end == null) return
+          if (Math.abs(end - s) > 60) go(end < s ? 1 : -1)
+          touchY.current = null
+        }}
+        onWheel={(e) => {
+          if (Math.abs(e.deltaY) < 20) return
+          const now = Date.now()
+          if (now - wheelAt.current < 450) return
+          wheelAt.current = now
+          go(e.deltaY > 0 ? 1 : -1)
+        }}
+      />
+
       <button
         type="button" onClick={() => navigate(-1)} aria-label="닫기"
         className="absolute left-3 top-3 z-20 grid h-9 w-9 place-items-center rounded-full bg-black/45 text-white backdrop-blur"
       >
         <X size={18} />
       </button>
-      <span className="absolute right-3 top-4 z-20 text-[12.5px] font-semibold text-white/85 tabular-nums">
-        {idx + 1} / {items.length}
-      </span>
-
       {/* 위아래 이동 — 손가락은 스와이프, 마우스는 이 버튼 */}
       <div className="absolute right-3 top-1/2 z-20 hidden -translate-y-1/2 gap-2 [@media(hover:hover)_and_(pointer:fine)]:grid">
         <button type="button" aria-label="이전 영상" onClick={() => go(-1)} disabled={idx === 0}
