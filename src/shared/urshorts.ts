@@ -99,13 +99,18 @@ export function youTubeThumbUrl(videoId: string): string {
  * 재생용 embed 주소. **누른 뒤에만** 만든다 — 미리 만들면 홈 첫 화면이 재생기 무게를 받는다.
  * `playsinline=1` 이 없으면 iOS 가 전체화면을 강제로 띄워 우리 구매 바를 덮는다.
  */
-export function youTubeEmbedUrl(videoId: string, opts?: { autoplay?: boolean }): string {
+export function youTubeEmbedUrl(videoId: string, opts?: { autoplay?: boolean; controls?: boolean }): string {
   const p = new URLSearchParams({
     playsinline: '1',
     rel: '0',            // 끝나고 남의 채널 영상을 추천하지 않는다
     modestbranding: '1',
   })
   if (opts?.autoplay) p.set('autoplay', '1')
+  // 🧹 2026-09-08 대표 *"3/3 이런거 안나오면 좋겠어 지금 번잡해 … 깔끔하게"*.
+  //    `controls: false` 면 유튜브 **아래쪽 컨트롤 바**(진행 바·시간·전체화면)를 안 그린다.
+  //    ⚠️ 상단 아이콘(스피커·CC·⚙️)까지 사라지는지는 **유튜브가 정한다** — 우리는 요청만 한다.
+  //    iframe 안은 교차 출처라 CSS 로 못 건드린다. 실제 결과는 배포 후 눈으로 판정할 것.
+  if (opts?.controls === false) p.set('controls', '0')
   return `https://www.youtube-nocookie.com/embed/${videoId}?${p.toString()}`
 }
 

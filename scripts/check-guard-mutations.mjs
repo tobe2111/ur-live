@@ -35,7 +35,8 @@
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+import { changedScope, inScope } from './guard-mutations-scope.mjs'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const STRICT = process.argv.includes('-s') || process.argv.includes('--strict')
@@ -79,6 +80,25 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
  * 그건 전수(또는 `--only`)의 몫이다. 커밋 전 지도 점검용이지 되돌려-검증의 대체가 아니다.
  */
 const MAP_ONLY = process.argv.includes('--map-only')
+
+/**
+ * ⏱️ `--changed` — **PR 에서는 이 변경이 건드린 주입만** 돌린다 (2026-09-08 대표 지시).
+ *
+ * 실측: Verify 48분 29초 중 이 스크립트가 **37분 24초 = 77%**(job 101957335695 스텝 타이밍).
+ * 950건을 넘어 선형으로 는다. 그 길이의 2차 피해가 더 컸다 — CI 가 도는 동안 main 이 움직이고,
+ * 거의 모든 PR 이 이 매니페스트를 건드리니 **머지마다 충돌**했다(하루 4번 중 3번이 405 conflict).
+ *
+ * 판정은 `guard-mutations-scope.mjs` 에 있다 — **순수 함수라 테스트가 동작을 직접 잰다.**
+ * 여기 두면 그것을 지키는 주입의 `find` 가 이 파일의 매니페스트 안에도 있어 **자기참조**가 된다
+ * (실제로 "주입 대상이 2곳" 으로 잡혀 이 파일에서 뽑아냈다).
+ * 🔴 좁힌 만큼은 `guard-mutations-full.yml`(main push + 야간)이 전수로 되찾는다 — 둘은 짝이다.
+ */
+const CHANGED = process.argv.includes('--changed')
+const SCOPE = changedScope({
+  enabled: CHANGED,
+  baseRef: process.env.GUARD_MUTATIONS_BASE,
+  run: (args) => execFileSync('git', args, { cwd: ROOT, encoding: 'utf8' }),
+})
 
 /**
  * @typedef {{name:string, file:string, find:string, replace:string, test:string, why:string}} Mutation
@@ -10095,6 +10115,66 @@ canvas {
       '결제 레일은 1년으로 끊는데 사용 레일만 영구라, 같은 영입 관계의 기간이 레일마다 달랐다.',
   },
 ]
+
+/**
+ * 📁 **분할 매니페스트** — 새 주입은 `scripts/mutations/<도메인>.mjs` 에 넣는다 (2026-09-08).
+ *
+ * ## 왜 (실측)
+ * 위 배열은 한 파일에 950건이 쌓여 **10,000줄이 넘는다.** 모든 PR 이 그 배열 **끝에 덧붙이니**
+ * 충돌이 필연이었다 — 2026-09-08 하루 머지 충돌 4번 중 **3번이 이 파일**이었다.
+ * 도메인별로 갈라 두면 서로 다른 영역을 만지는 세션은 **충돌 자체가 안 난다.**
+ *
+ * ## 🔴 위 배열은 **옮기지 않는다**
+ * 지금 열려 있는 다른 세션의 브랜치들이 그 배열에 덧붙이고 있다. 통째로 옮기면 그 브랜치가
+ * 전부 깨진다. 그래서 **읽는 곳만 늘린다** — 옛 배열은 그대로 두고 시간이 지나며 자연히 빈다.
+ *
+ * ## 계약
+ * 각 파일은 `export default [ …주입… ]` 하나. 형태는 위와 같다(`name·file·find·replace·test·why`).
+ * 이름은 **전체에서 유일**해야 한다 — `--only` 가 부분일치라 같은 이름이 둘이면 무엇이 돌았는지 모른다.
+ */
+const MUTATIONS_DIR = path.join(ROOT, 'scripts', 'mutations')
+const SPLIT_FILES = fs.existsSync(MUTATIONS_DIR)
+  ? fs.readdirSync(MUTATIONS_DIR).filter((f) => f.endsWith('.mjs')).sort()
+  : []
+/** @type {Mutation[]} */
+const SPLIT = []
+/** 파일 → 그 파일이 내보낸 주입 수. 무결성 검사가 소스 객체 수와 대조한다. */
+const SPLIT_COUNT = new Map()
+for (const f of SPLIT_FILES) {
+  const rel = `scripts/mutations/${f}`
+  const mod = await import(pathToFileURL(path.join(MUTATIONS_DIR, f)).href)
+  const arr = mod.default
+  if (!Array.isArray(arr)) {
+    console.error(`❌ ${rel}: \`export default [ … ]\` 가 아니다 — 배열 하나만 내보낸다.`)
+    process.exit(1)
+  }
+  // 🔴 형태를 여기서 막는다. 필드 하나가 비면 그 주입은 조용히 아무것도 안 한다.
+  for (const m of arr) {
+    for (const k of ['name', 'file', 'find', 'test', 'why']) {
+      if (typeof m?.[k] !== 'string' || !m[k]) {
+        console.error(`❌ ${rel}: \`${k}\` 가 없거나 빈 주입이 있다 — ${m?.name ?? '(이름 없음)'}`)
+        process.exit(1)
+      }
+    }
+    if (typeof m.replace !== 'string') {
+      console.error(`❌ ${rel}: \`replace\` 가 문자열이 아니다 — ${m.name}`)
+      process.exit(1)
+    }
+    SPLIT.push(m)
+  }
+  SPLIT_COUNT.set(f, arr.length)
+}
+/** 인라인 + 분할. 이 아래는 전부 이 목록으로 돈다. */
+const ALL = [...MUTATIONS, ...SPLIT]
+{
+  // 이름 중복은 `--only` 를 모호하게 만든다(부분일치라 둘 다 돌거나 엉뚱한 게 돈다).
+  const seen = new Set()
+  const dup = [...new Set(ALL.map((m) => m.name).filter((n) => (seen.has(n) ? true : (seen.add(n), false))))]
+  if (dup.length) {
+    console.error(`❌ 주입 이름 중복 ${dup.length}건 — --only 가 무엇을 돌렸는지 알 수 없게 된다\n   • ${dup.join('\n   • ')}`)
+    process.exit(1)
+  }
+}
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).
  *
@@ -10160,7 +10240,7 @@ function baselineGreen(testPath) {
   return baselineCache.get(testPath)
 }
 
-if (MUTATIONS.length === 0) {
+if (ALL.length === 0) {
   console.error('❌ guard-mutations: 등록된 주입이 0건 — 통과가 아니라 실패다.')
   process.exit(1)
 }
@@ -10227,7 +10307,7 @@ let mapOk = 0  // --map-only: 지도가 성한 주입 수
 // 🧹 잔재 확인 전용 모드 — 주입은 건드리지 않고 "지금 트리에 남아 있나"만 본다(위 VERIFY_CLEAN 주석).
 if (VERIFY_CLEAN) {
   const dirty = []
-  for (const m of MUTATIONS) {
+  for (const m of ALL) {
     const abs = path.join(ROOT, m.file)
     if (!fs.existsSync(abs)) continue // 파일 이동은 전수 모드가 "낡은 지도"로 따로 보고한다
     const s = fs.readFileSync(abs, 'utf8')
@@ -10249,7 +10329,7 @@ if (VERIFY_CLEAN) {
     console.error(`\n   복원: git checkout -- <위 파일들>\n`)
     process.exit(1)
   }
-  console.log(`✅ 주입 잔재 0 — 작업트리 깨끗함 (${MUTATIONS.length}건 확인)`)
+  console.log(`✅ 주입 잔재 0 — 작업트리 깨끗함 (${ALL.length}건 확인)`)
   process.exit(0)
 }
 
@@ -10265,10 +10345,9 @@ if (VERIFY_CLEAN) {
  *   ⚠️ `MUTATIONS.length` 로는 절대 못 잡는다. 융합된 항목은 배열에서 애초에 세어지지 않는다.
  *   그래서 **소스 텍스트를 직접** 읽어 객체마다 중복 키가 있는지 본다.
  */
-function selfIntegrity() {
-  const self = fs.readFileSync(fileURLToPath(import.meta.url), 'utf8')
-  const start = self.indexOf('const MUTATIONS = [')
-  if (start === -1) return ['자기 검사 실패: `const MUTATIONS = [` 를 못 찾았다']
+function scanIntegrity(self, anchor, expected, label) {
+  const start = self.indexOf(anchor)
+  if (start === -1) return [`${label}: \`${anchor}\` 를 못 찾았다`]
   // 문자열·주석을 건너뛰며 깊이 1(배열 바로 아래) 객체를 뜬다.
   let i = self.indexOf('[', start) + 1
   let depth = 0
@@ -10340,12 +10419,27 @@ function selfIntegrity() {
       bad.push(`한 객체에 키가 두 벌 [${[...dup].join(', ')}] — 병합이 \`},{\` 경계를 삼켜 주입 둘이 융합됐다 (첫 항목: ${first ? first[1].slice(0, 40) : '?'})`)
     }
   }
-  if (objects.length !== MUTATIONS.length) {
-    bad.push(`소스의 객체 ${objects.length}개 ≠ 배열 ${MUTATIONS.length}개 — 세지 못한 항목이 있다`)
+  if (objects.length !== expected) {
+    bad.push(`${label}: 소스의 객체 ${objects.length}개 ≠ 배열 ${expected}개 — 세지 못한 항목이 있다`)
   }
   return bad
 }
-const integrity = selfIntegrity()
+
+/**
+ * 🔴 **분할 파일도 같은 검사를 받는다.** 안 하면 융합-키 사고(주입이 조용히 사라지는 형태)가
+ * 새 파일에서 그대로 재발한다 — 나누면서 보호만 빠지는 것이 가장 흔한 퇴행이다.
+ */
+const integrity = [
+  ...scanIntegrity(fs.readFileSync(fileURLToPath(import.meta.url), 'utf8'),
+    'const MUTATIONS = [', MUTATIONS.length, 'check-guard-mutations.mjs'),
+  ...SPLIT_FILES.flatMap((f) => scanIntegrity(
+    fs.readFileSync(path.join(MUTATIONS_DIR, f), 'utf8'),
+    // 🩸 앵커에 줄바꿈까지 넣는다 — `export default [` 만 쓰면 **헤더 주석 안의 설명 문장**
+    //    ("요지는 `export default [ … ]` 하나")이 먼저 잡혀 거기서부터 훑고 객체 0개를 센다.
+    //    첫 판이 실제로 그랬고, 이 무결성 검사가 그걸 잡았다.
+    'export default [\n', SPLIT_COUNT.get(f) ?? 0, `scripts/mutations/${f}`,
+  )),
+]
 if (integrity.length) {
   console.error('\n❌ guard-mutations 자기 무결성 실패 — 주입 지도가 조용히 항목을 잃었다\n')
   for (const b of integrity) console.error(`   • ${b}`)
@@ -10353,12 +10447,20 @@ if (integrity.length) {
   process.exit(1)
 }
 
-console.log(`🧬 guard-mutations: ${MUTATIONS.length}개 주입 검증 (각각 소스를 잠깐 고쳤다가 되돌린다)\n`)
+const planned = ALL.filter((m) => (!ONLY || m.name.includes(ONLY)) && inScope(m, SCOPE)).length
+if (SCOPE.full) {
+  console.log(`🧬 guard-mutations: ${ALL.length}개 주입 검증 (각각 소스를 잠깐 고쳤다가 되돌린다)\n`)
+  if (CHANGED) console.log(`   ⚠️ 전수로 돈다 — ${SCOPE.why}\n`)
+} else {
+  console.log(`🧬 guard-mutations(--changed): ${ALL.length}건 중 **${planned}건** — 이 브랜치가 바꾼 파일 ${SCOPE.files.size}개에 걸린 것만.`)
+  console.log('   ⚠️ 전수는 main push·야간(guard-mutations-full.yml)이 돈다. 여기서 초록이라고 전수가 초록인 건 아니다.\n')
+}
 
 let onlyMatched = 0
-for (const m of MUTATIONS) {
+for (const m of ALL) {
   if (ONLY && !m.name.includes(ONLY)) continue
   if (ONLY) onlyMatched += 1
+  if (!inScope(m, SCOPE)) continue
   const abs = path.join(ROOT, m.file)
   if (!fs.existsSync(abs)) { problems.push(`${m.name}: 파일 없음 — ${m.file} (코드가 옮겨갔다)`); continue }
   const src = fs.readFileSync(abs, 'utf8')
@@ -10408,7 +10510,7 @@ for (const m of MUTATIONS) {
 }
 
 // 🔒 마지막 안전 확인 — 어떤 경로로든 소스가 바뀐 채 남지 않았는지.
-for (const m of MUTATIONS) {
+for (const m of ALL) {
   const abs = path.join(ROOT, m.file)
   if (fs.existsSync(abs) && fs.readFileSync(abs, 'utf8').includes(m.replace) && m.replace && !fs.readFileSync(abs, 'utf8').includes(m.find)) {
     problems.push(`⚠️ 복원 실패 의심: ${m.file} — \`git diff\` 로 확인할 것`)
@@ -10442,4 +10544,4 @@ if (ONLY && onlyMatched === 0) {
   console.error('   여러 건을 돌리려면 각각 따로 부르거나 인자 없이 전수로 돌려라.')
   process.exit(1)
 }
-console.log(`\n✅ guard-mutations: ${ONLY ? `${onlyMatched}개(--only "${ONLY}")` : `${MUTATIONS.length}개`} 주입 전부 빨간불 확인 — 가드가 실제로 실패할 수 있다.`)
+console.log(`\n✅ guard-mutations: ${ONLY ? `${onlyMatched}개(--only "${ONLY}")` : `${planned}개`} 주입 전부 빨간불 확인 — 가드가 실제로 실패할 수 있다.`)
