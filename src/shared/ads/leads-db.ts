@@ -46,6 +46,7 @@ export const ADS_LEADS_TABLES = [
   'ad_influencer_leads',   // 인플루언서 리드 (최대 — 125.9 MB / 122,558행)
   'ad_company_leads',      // 업체(대행사) 리드 (77.7 MB / 341,926행)
   'store_prospects',       // 매장 후보 — 인허가 발굴 (53.4 MB / 209,228행)
+  'store_weekly_picks',    // 🗓️ 이번 주 영입 묶음(2026-09-08) — store_prospects 와 JOIN 하므로 같은 DB 에 산다
   'supply_maker_leads',    // 제조사 후보 (5.4 MB / 25,584행)
   'ad_discovery_keywords', // 인플루언서 발굴 키워드
   'ad_company_keywords',   // 업체 발굴 키워드

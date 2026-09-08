@@ -5494,11 +5494,12 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 272건 · 최신순 · 이 목록은 자동 생성된다._
+_총 273건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-08**
 - [2026-09-08 — 유어쇼츠: 이용권 없는 영상도 홈에 (INNER → LEFT) + 수수료 질문 답변](handoff/2026-09-08-shorts-unlinked-allowed.md)
 - [유어쇼츠 홈 레일 카드 — 대표 확정 "안 라" (2026-09-08)](handoff/2026-09-08-shorts-card-plan-la.md)
+- [[E2] 실행기 5회차 — 결재 store-acquisition-pipeline 선택지 1 (2026-09-08 13:18~14:1x KST)](handoff/2026-09-08-exec-store-acquisition-pipeline.md)
 - [유어쇼츠 구매 바 — 대표 확정 "안 B + 기존 가격정보" (2026-09-08)](handoff/2026-09-08-buy-bar-plan-b.md)
 **2026-09-07**
 - [유어쇼츠 — 홈 레일 + `/videos` 뷰어 (2026-09-07)](handoff/2026-09-07-urshorts.md)

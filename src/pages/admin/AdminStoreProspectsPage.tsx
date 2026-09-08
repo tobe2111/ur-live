@@ -6,6 +6,7 @@ import { toast } from '@/hooks/useToast'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { formatNumber, kstShort } from '@/utils/format'
 import OpeningWelcomePanel from './store-prospects/OpeningWelcomePanel'
+import WeeklyPicksPanel from './store-prospects/WeeklyPicksPanel'
 import TradePanel, { type TradeRow } from './partner-pool/TradePanel'
 import CollectConfigPanel from './store-prospects/CollectConfigPanel'
 
@@ -185,6 +186,8 @@ export default function AdminStoreProspectsPage() {
       <div className="p-4 lg:p-6 max-w-7xl mx-auto">
         <DashboardPageHeader title="🏪 매장 후보" subtitle="지방행정 인허가로 발굴한 유어딜 입점 대상 매장 — 발굴·개업감지·폐업정리 (수집 ≠ 발송)" />
 
+        {/* 🗓️ 결재 store-acquisition-pipeline(2026-09-08) — 이번 주 영입 N곳 + 추적표 + 제안 문구. 발송은 대표. */}
+        <WeeklyPicksPanel onStatusChange={(id, status) => patchStatus(id, status)} />
         {/* 🎉 개업 웰컴 — 최근 개업 큐 + 개업 컨설팅 브리핑(상권 수치·멘트) */}
         <OpeningWelcomePanel onStatusChange={(id, status) => patchStatus(id, status)} />
 
