@@ -88,6 +88,56 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🔎 이용권을 다시 숫자 ID 로 넣게 한다 (고르는 칸 제거)',
+    file: 'src/pages/AdminUrShortsPage.tsx',
+    find: '                  <ProductPicker',
+    replace: '                  <input placeholder="상품 ID" /> && <ProductPicker',
+    test: 'src/tests/unit/urshorts-admin-usability.test.ts',
+    why:
+      '번호를 아는 사람은 아무도 없고, **틀린 번호를 넣어도 아무 에러가 안 난다** — 존재하는 ' +
+      '다른 상품이면 엉뚱한 이용권에 영상이 조용히 붙어 그대로 홈에 나간다.',
+  },
+  {
+    name: '🔎 고르는 목록이 꺼진 상품까지 보여 준다 (붙여도 홈에 안 나온다)',
+    file: 'src/pages/admin-urshorts/ProductPicker.tsx',
+    find: '`/api/admin/products?status=active&limit=20&q=${encodeURIComponent(term)}`',
+    replace: '`/api/admin/products?limit=20&q=${encodeURIComponent(term)}`',
+    test: 'src/tests/unit/urshorts-admin-usability.test.ts',
+    why:
+      '공개 쿼리가 `p.is_active = 1` 로 거르므로 꺼진 상품에 연결하면 홈에 영영 안 나온다. ' +
+      '어드민 화면은 "연결됨"으로 보여서 왜 안 뜨는지 알 길이 없다.',
+  },
+  {
+    name: '📝 제목·채널 자동 채우기가 사라진다 (snippet 제거)',
+    file: 'src/features/urshorts/api/urshorts.routes.ts',
+    find: 'part=contentDetails,snippet',
+    replace: 'part=contentDetails',
+    test: 'src/tests/unit/urshorts-admin-usability.test.ts',
+    why:
+      'videos.list 는 파트를 늘려도 1 unit 이라 snippet 은 공짜인데, 빼면 화면이 다시 ' +
+      '"채널 미상"이 되고 사람이 제목을 손으로 적어야 한다. 쿼터는 한 푼도 안 아낀다.',
+  },
+  {
+    name: '📝 유튜브 값이 사람이 고쳐 쓴 제목을 덮어쓴다',
+    file: 'src/features/urshorts/api/urshorts.routes.ts',
+    find: "(body?.title ?? '').slice(0, 200) || verdict.title",
+    replace: "verdict.title || (body?.title ?? '').slice(0, 200)",
+    test: 'src/tests/unit/urshorts-admin-usability.test.ts',
+    why:
+      '운영자가 다듬어 놓은 제목이 유튜브 원제로 되돌아간다. 저장은 성공하므로 다시 고칠 ' +
+      '때까지 아무도 모르고, 고쳐도 다음 저장에 또 덮인다.',
+  },
+  {
+    name: '📝 쇼츠 주소가 메타 조회 실패만으로 거부된다 (fail-soft 상실)',
+    file: 'src/features/urshorts/api/urshorts.routes.ts',
+    find: '      : { ok: true, duration: null, title: null, channel: null }',
+    replace: "      : { ok: false, reason: '영상을 찾지 못했습니다' }",
+    test: 'src/tests/unit/urshorts-admin-usability.test.ts',
+    why:
+      '`/shorts/` 주소는 그 자체로 쇼츠임을 증명하므로 원래 키 없이도 넣을 수 있었다. ' +
+      '메타 조회에 묶으면 키가 만료되거나 유튜브가 잠깐 흔들릴 때 등록이 통째로 막힌다.',
+  },
+  {
     name: '🧾 홈 카드와 구매 바의 할인율 정의가 다시 두 벌이 된다 (SSOT 이탈)',
     file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
     find: '  const { price, originalPrice, discount } = priceDisplay({',
@@ -191,8 +241,8 @@ const MUTATIONS = [
   {
     name: '🎬 쇼츠가 아닌 영상도 통과시킨다 (길이 확인 생략)',
     file: 'src/features/urshorts/api/urshorts.routes.ts',
-    find: '    if (sec > URSHORTS_MAX_DURATION_SEC) {',
-    replace: '    if (false) {',
+    find: '  if (meta.duration > URSHORTS_MAX_DURATION_SEC) {',
+    replace: '  if (false) {',
     test: 'src/tests/unit/urshorts-core.test.ts',
     why:
       '가로 10분짜리가 9:16 카드에 들어가면 위아래 검은 띠가 생기고 구매 바를 띄울 화면도 아니다. ' +
