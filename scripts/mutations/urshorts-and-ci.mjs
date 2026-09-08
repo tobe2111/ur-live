@@ -281,4 +281,37 @@ export default [
       '화면 맨 위가 가까운 곳이 아니게 되고, 거리 1등과 할인 1등이 같으면 한 화면에 같은 카드가 ' +
       '두 번 뜬다(대표 실측). 게다가 수요 로딩 이후엔 "전체 중 top 5"도 아니다.',
   },
+  {
+    name: '🌑 잉크 패널에 light-island 이 되돌아온다 (라이트에서 글자가 사라진다)',
+    file: 'src/components/home/UrShortsRail.tsx',
+    find: 'className="ur-home-panel ur-panel-ink"',
+    replace: 'className="ur-home-panel ur-panel-ink light-island"',
+    test: 'src/tests/unit/urshorts-rail-ink-panel.test.ts',
+    why:
+      '`light-island` 은 안쪽 `dark:` 유틸을 **전부 끈다**. 배경이 잉크인 채로 그게 켜지면 라이트 ' +
+      '모드에서 회색 글자가 살아나 잉크 위 잉크색이 된다 — 다크에서 보면 멀쩡해서 못 본다. ' +
+      '2026-09-03 지도 검색창(흰 배경 위 흰 글자 1.1:1)과 정확히 같은 클래스다.',
+  },
+  {
+    name: '🌑 잉크 패널 위에 라이트 회색 글자가 돌아온다',
+    file: 'src/components/home/UrShortsRail.tsx',
+    find: 'text-[17px] font-black tracking-tight text-white',
+    replace: 'text-[17px] font-black tracking-tight text-gray-900',
+    test: 'src/tests/unit/urshorts-rail-ink-panel.test.ts',
+    why:
+      '패널이 늘 어두우므로 라이트 회색 토큰은 어느 테마에서도 안 읽힌다. 그런데 `check-theme-consistency` ' +
+      '는 `text-gray-900`+`dark:text-white` 짝만 보므로 **짝을 갖춰 놓으면 통과한다** — 배경이 늘 ' +
+      '어둡다는 사실은 그 가드가 모른다.',
+  },
+  {
+    name: '🌑 색면 토큰 대신 새 hex 를 발명한다',
+    file: 'src/index.css',
+    find: '.ur-panel-ink {\n  background: var(--home-field);',
+    replace: '.ur-panel-ink {\n  background: #1B1E27;',
+    test: 'src/tests/unit/urshorts-rail-ink-panel.test.ts',
+    why:
+      '09-02 표면 규칙은 "표면 두 톤"이다. 여기서 넷째 회색을 만들면 홈에 색면이 두 벌이 되어 ' +
+      '히어로(--home-field)와 이 패널이 미묘하게 어긋난다 — 한쪽만 바꾸는 날 이음매가 드러난다. ' +
+      '같은 실수를 카드 할인 빨강에서 이미 한 번 했다(#FF8A93 발명 후 되돌림).',
+  },
 ]
