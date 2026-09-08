@@ -43,13 +43,13 @@ describe('admin-decisions parse', () => {
   })
 
   it('정렬: 답 필요 → 구현 중 → 반영 끝, 같은 묶음은 기한 이른 순', () => {
-    const mk = (slug: string, status: string, due: string, applied = '<비워 둠>') =>
+    const makeDecision = (slug: string, status: string, due: string, applied = '<비워 둠>') =>
       parseDecision(slug, `# ${slug}\n\n상태: ${status}\n역할: dev\n기한: ${due}\n\n## 질문\n질문 한 문장입니다\n\n## 선택지\n1. a\n\n## 결정 (대표가 한 말 그대로)\n1\n\n## 반영 커밋\n${applied}\n`)
     const sorted = sortDecisions([
-      mk('done', 'approved', '2026-09-01', '머지 `abcdef1`'),
-      mk('open-late', 'open', '2026-09-20'),
-      mk('wip', 'approved', '2026-09-10'),
-      mk('open-early', 'open', '2026-09-14'),
+      makeDecision('done', 'approved', '2026-09-01', '머지 `abcdef1`'),
+      makeDecision('open-late', 'open', '2026-09-20'),
+      makeDecision('wip', 'approved', '2026-09-10'),
+      makeDecision('open-early', 'open', '2026-09-14'),
     ]).map(d => d.slug)
     expect(sorted).toEqual(['open-early', 'open-late', 'wip', 'done'])
   })
