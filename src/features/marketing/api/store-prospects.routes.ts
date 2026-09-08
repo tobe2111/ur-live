@@ -17,6 +17,9 @@ import {
 import { listStoreTrades, setStoreTradeActive, addStoreTrade, getStoreConfig, setStoreConfig } from './store-trades'
 import { REGION_GROUPS } from './company-keyword-grid'
 import { adsLeadsDb } from '../../../shared/ads/leads-db'
+import { weekKeyKST, getWeeklyConfig, setWeeklyConfig, getOrCreateWeeklyPicks, trackerOf, weeklyHistory } from './store-weekly-picks'
+import { proposalDraft } from './store-proposal'
+import { loadFeeRates } from '@/worker/utils/fee-resolver'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', requireAdmin())
@@ -177,6 +180,31 @@ app.post('/enrich-contacts', async (c) => {
   if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(kick()); return c.json({ success: true, started: true }) }
   try { await kick(); return c.json({ success: true, started: false }) }
   catch { return c.json({ success: false, error: 'ur-ads 위임 오류' }, 502) }
+})
+
+// 🗓️ 결재 store-acquisition-pipeline(2026-09-08 승인) — 이번 주 영입 N곳 + 추적표. 같은 주엔 같은 묶음(lazy 생성).
+//   ⚠️ '/:id' 보다 먼저 선언해야 'weekly' 가 id 로 잡히지 않는다.
+app.get('/weekly', async (c) => {
+  const DB = adsLeadsDb(c.env)
+  const week = weekKeyKST()
+  const config = await getWeeklyConfig(DB)
+  const { rows, created } = await getOrCreateWeeklyPicks(DB, week, config)
+  const history = await weeklyHistory(DB, 8)
+  return c.json({ success: true, week, config, created, rows, tracker: trackerOf(rows), history })
+})
+app.patch('/weekly/config', async (c) => {
+  const b = await c.req.json().catch(() => ({}))
+  return c.json({ success: true, config: await setWeeklyConfig(adsLeadsDb(c.env), b) })
+})
+// ✉️ 매장 1곳 입점 제안 문구(제목/본문/문자) — 요율은 메인 DB platform_settings(어드민 조정값, 없으면 기본). 발송 없음.
+app.get('/:id/proposal', async (c) => {
+  const id = intParam(c.req.param('id'), 0)
+  if (!id) return c.json({ success: false, error: 'invalid id' }, 400)
+  const store = await adsLeadsDb(c.env).prepare('SELECT id, biz_name, category, region, apv_perm_ymd, is_new_open FROM store_prospects WHERE id = ?')
+    .bind(id).first<{ id: number; biz_name: string; category: string | null; region: string | null; apv_perm_ymd: string | null; is_new_open: number }>().catch(() => null)
+  if (!store) return c.json({ success: false, error: '매장을 찾을 수 없습니다' }, 404)
+  const rates = await loadFeeRates(c.env.DB).catch(() => ({ platformPct: 5, platformPctDirect: 10 }))
+  return c.json({ success: true, store, ...proposalDraft(store, { platformPct: rates.platformPct, platformPctDirect: rates.platformPctDirect }) })
 })
 
 // GET /api/admin/store-prospects/new-open-digest — 🎉 개업 웰컴 큐(최근 개업 + 지역 집계).
