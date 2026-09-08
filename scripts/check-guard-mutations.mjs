@@ -88,6 +88,36 @@ const MAP_ONLY = process.argv.includes('--map-only')
 /** @type {Mutation[]} */
 const MUTATIONS = [
   {
+    name: '🏷️ 매장명이 없어도 빈 줄이 남는다 (카드 높이가 갈린다)',
+    file: 'src/components/home/UrShortsRail.tsx',
+    find: '          {item.store_name && (',
+    replace: '          {true && (',
+    test: 'src/tests/unit/urshorts-card-info.test.ts',
+    why:
+      '매장이 안 붙은 이용권에서 빈 줄이 남아 카드마다 글자 시작 높이가 달라진다. ' +
+      '화면엔 그냥 여백으로 보여서 아무도 버그로 안 읽고, 레일만 들쭉날쭉해진다.',
+  },
+  {
+    name: '🏷️ 재생시간 배지가 아래로 내려가 가격 위에 얹힌다',
+    file: 'src/components/home/UrShortsRail.tsx',
+    find: 'className="absolute right-1.5 top-1.5 rounded bg-black/60',
+    replace: 'className="absolute right-1.5 bottom-1.5 rounded bg-black/60',
+    test: 'src/tests/unit/urshorts-card-info.test.ts',
+    why:
+      '글자가 네 줄이라 카드 아래쪽은 스크림이 다 차지한다. 배지를 내리면 판매가 위에 겹쳐 ' +
+      '가격이 가려지는데, 시간이 없는 영상에서는 안 겹쳐서 일부 카드에서만 깨진다.',
+  },
+  {
+    name: '🏷️ 레일 카드가 할인율을 또 자체 계산한다 (세 번째 정의)',
+    file: 'src/components/home/UrShortsRail.tsx',
+    find: '  const pd = priceDisplay(item)',
+    replace: '  const pd = { ...priceDisplay(item), discount: Number(item.discount_rate) || 0 }',
+    test: 'src/tests/unit/urshorts-card-info.test.ts',
+    why:
+      '같은 상품이 홈 딜 카드·구매 바·레일 카드에서 서로 다른 %를 보이게 된다. ' +
+      '셋 다 에러를 안 내므로 사용자가 신고할 때까지 아무도 모른다.',
+  },
+  {
     name: '🔎 이용권을 다시 숫자 ID 로 넣게 한다 (고르는 칸 제거)',
     file: 'src/pages/AdminUrShortsPage.tsx',
     find: '                  <ProductPicker',
