@@ -241,7 +241,9 @@ export default [
     file: 'src/pages/mobile-home/MobileHomePage.tsx',
     find: "    () => (readCachedLoc() ? 'near' : 'popular'),",
     replace: "    () => (readCachedLoc() && !readHomeRegion().regionKey ? 'near' : 'popular'),",
-    test: 'src/tests/unit/home-nearest-first.test.ts',
+    // 🩸 2026-09-08: 처음엔 `home-nearest-first` 를 가리켰는데, 같은 날 그 계약을 **이 파일로 옮기면서**
+    //    거기엔 규칙이 안 남았다 → 결함을 심어도 초록. CI 가 잡았다(계약을 옮기면 주입 지도도 옮긴다).
+    test: 'src/tests/unit/home-top-banner-and-near-default.test.ts',
     why:
       '예전에 지역을 한 번 골라 둔 사람은 위치가 잡혀 있어도 영영 인기순이 된다. 그런데 헤더는 ' +
       '동네 이름을 띄우므로 **화면과 목록이 서로 다른 말을 한다** — 대표가 "동탄5동" 아래 서울 강남 ' +
@@ -252,7 +254,7 @@ export default [
     file: 'src/pages/mobile-home/MobileHomePage.tsx',
     find: 'useState<HomeRegion>(() => (readCachedLoc() ? {} : readHomeRegion()))',
     replace: 'useState<HomeRegion>(() => readHomeRegion())',
-    test: 'src/tests/unit/home-nearest-first.test.ts',
+    test: 'src/tests/unit/home-top-banner-and-near-default.test.ts',
     why:
       '헤더는 위치를 우선해 "동탄5동"을 띄우는데 목록만 저장된 지역으로 걸린다. 그 지역에 딜이 0건이면 ' +
       '전체 폴백까지 걸려 **그 동네 이름 아래 엉뚱한 도시 딜**이 뜬다 — 목록이 거짓말을 하는 상태다.',
