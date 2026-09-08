@@ -54,10 +54,13 @@ describe('read-budget — 순수', () => {
     expect(resolveReadBudget({ ADS_DAILY_READ_BUDGET: '' })).toBe(DEFAULT_DAILY_READ_BUDGET)
   })
   it('① 누적은 같은 날에만, 날이 바뀌면 0 에서 — 음수/NaN 은 안 더한다', () => {
+    // ⚠️ 전체 일치(`toEqual`)로 보지 않는다 — 2026-09-08 에 월 누적 필드(`month`·`writtenMonth`)가
+    //   추가되며 이 시험이 깨졌다. 재는 것은 **일 누적 규약**이지 상태의 필드 목록이 아니다.
+    //   월 누적은 `ads-monthly-write-budget.test.ts` 가 따로 잠근다.
     const a = applyRead(null, 100, D1)
-    expect(a).toEqual({ day: '2026-09-02', used: 100, written: 0 })
-    expect(applyRead(a, 50, D1)).toEqual({ day: '2026-09-02', used: 150, written: 0 })
-    expect(applyRead(a, 50, D2)).toEqual({ day: '2026-09-03', used: 50, written: 0 })
+    expect(a).toMatchObject({ day: '2026-09-02', used: 100, written: 0 })
+    expect(applyRead(a, 50, D1)).toMatchObject({ day: '2026-09-02', used: 150, written: 0 })
+    expect(applyRead(a, 50, D2)).toMatchObject({ day: '2026-09-03', used: 50, written: 0 })
     expect(applyRead(a, -9, D1).used).toBe(100)
     expect(applyRead(a, Number.NaN, D1).used).toBe(100)
   })
@@ -76,7 +79,7 @@ describe('read-budget — 원장 처리', () => {
     const st = memStorage()
     const v1 = await handleBudgetRequest(new URL('https://x/budget?rr=1000'), st, {}, D1)
     expect(v1).toMatchObject({ day: '2026-09-02', used: 1000, budget: DEFAULT_DAILY_READ_BUDGET, over: false })
-    expect(st.m.get(READ_BUDGET_STORAGE_KEY)).toEqual({ day: '2026-09-02', used: 1000, written: 0 })
+    expect(st.m.get(READ_BUDGET_STORAGE_KEY)).toMatchObject({ day: '2026-09-02', used: 1000, written: 0 })
     const before = st.m.size
     const v2 = await handleBudgetRequest(new URL('https://x/budget'), st, {}, D1)
     expect(v2.used).toBe(1000)

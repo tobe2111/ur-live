@@ -5495,6 +5495,8 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
 _총 272건 · 최신순 · 이 목록은 자동 생성된다._
+_총 269건 · 최신순 · 이 목록은 자동 생성된다._
+_총 268건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-08**
 - [2026-09-08 — 유어쇼츠: 이용권 없는 영상도 홈에 (INNER → LEFT) + 수수료 질문 답변](handoff/2026-09-08-shorts-unlinked-allowed.md)
