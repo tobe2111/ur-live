@@ -149,3 +149,48 @@ describe('좁혀 돌 때 그 사실을 말한다', () => {
     expect(RUNNER).toMatch(/여기서 초록이라고 전수가 초록인 건 아니다/)
   })
 })
+
+/**
+ * 📁 **분할 매니페스트** — 새 주입은 `scripts/mutations/<도메인>.mjs` 에 (2026-09-08 ⑤).
+ *
+ * ## 왜
+ * 인라인 배열은 한 파일에 950건, 10,000줄이 넘고 **모든 PR 이 그 끝에 덧붙인다** — 충돌이 필연이다.
+ * 2026-09-08 하루 머지 충돌 4번 중 **3번이 그 파일**이었다.
+ *
+ * ## 🔴 옮기지 않는다 — 읽는 곳만 늘린다
+ * 지금 열려 있는 다른 세션 브랜치들이 인라인 배열에 덧붙이고 있다. 통째로 옮기면 그 브랜치가
+ * 전부 깨진다. 옛 배열은 그대로 두고 새 주입만 분할 파일로 간다.
+ */
+describe('📁 분할 매니페스트', () => {
+  const RUNNER_RAW = readRaw('scripts/check-guard-mutations.mjs')
+
+  it('러너가 scripts/mutations/*.mjs 를 읽는다', () => {
+    expect(RUNNER_RAW).toMatch(/const MUTATIONS_DIR = path\.join\(ROOT, 'scripts', 'mutations'\)/)
+    expect(RUNNER_RAW).toMatch(/readdirSync\(MUTATIONS_DIR\)/)
+    expect(RUNNER_RAW, '인라인 + 분할을 합치지 않는다').toMatch(/const ALL = \[\.\.\.MUTATIONS, \.\.\.SPLIT\]/)
+  })
+
+  it('🔴 인라인 배열은 그대로 있다 — 옮기면 다른 세션 브랜치가 깨진다', () => {
+    expect(RUNNER_RAW).toMatch(/const MUTATIONS = \[/)
+    // 인라인이 통째로 비면 "옮겼다"는 뜻이다. 수백 건이 남아 있어야 정상.
+    const inline = RUNNER_RAW.slice(RUNNER_RAW.indexOf('const MUTATIONS = ['))
+    expect(inline.split("\n    name: '").length - 1).toBeGreaterThan(500)
+  })
+
+  it('분할 파일도 무결성 검사를 받는다 — 나누면서 보호만 빠지는 게 가장 흔한 퇴행', () => {
+    expect(RUNNER_RAW).toMatch(/SPLIT_FILES\.flatMap\(\(f\) => scanIntegrity\(/)
+    // 🩸 앵커에 줄바꿈이 없으면 헤더 주석의 설명 문장이 먼저 잡혀 객체 0개를 센다(첫 판이 그랬다).
+    expect(RUNNER_RAW).toMatch(/'export default \[\\n'/)
+  })
+
+  it('이름 중복과 빈 필드에서 멈춘다', () => {
+    expect(RUNNER_RAW).toMatch(/주입 이름 중복/)
+    expect(RUNNER_RAW).toMatch(/가 없거나 빈 주입이 있다/)
+  })
+
+  it('첫 분할 파일이 실제로 존재하고 배열을 내보낸다', () => {
+    const f = readRaw('scripts/mutations/urshorts-and-ci.mjs')
+    expect(f).toMatch(/export default \[\n/)
+    expect(f.split("\n    name: '").length - 1).toBeGreaterThan(0)
+  })
+})
