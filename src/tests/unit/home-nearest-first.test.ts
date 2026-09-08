@@ -23,22 +23,22 @@
 import { describe, it, expect } from 'vitest'
 import { readCode } from '../helpers/source-text'
 
-const MOBILE = readCode('src/pages/mobile-home/MobileHomePage.tsx')
-const PC = readCode('src/pages/pc-home/PcHomePage.tsx')
 const FEED = readCode('src/pages/main-home/GroupBuyFeed.tsx')
 
-describe('① 위치가 저장된 지역을 이긴다', () => {
-  for (const [name, src] of [['모바일 홈', MOBILE], ['PC 홈', PC]] as const) {
-    it(`${name}: 좌표가 있으면 기본 정렬이 거리순이다`, () => {
-      expect(src).toMatch(/readCachedLoc\(\) \? 'near' : 'popular'/)
-      expect(src, '저장된 지역이 거리순을 막던 조건이 되살아났다')
-        .not.toMatch(/readCachedLoc\(\) && !readHomeRegion\(\)\.regionKey/)
-    })
-
-    it(`${name}: 좌표가 있으면 저장된 지역을 안 씌운다 (헤더와 목록이 같은 말을 하도록)`, () => {
-      expect(src).toMatch(/useState<HomeRegion>\(\(\) => \(readCachedLoc\(\) \? \{\} : readHomeRegion\(\)\)\)/)
-    })
-  }
+/**
+ * ① **기본 정렬 규칙은 여기서 안 검사한다.** 주인은 `home-top-banner-and-near-default.test.ts` §② 다
+ *   (2026-09-08 에 그 파일의 계약을 새 규칙으로 재조준했다). 같은 규칙을 두 파일에 적으면 반드시
+ *   갈라지므로 — 실제로 이 파일을 먼저 쓰는 바람에 두 파일이 **서로 반대**를 주장했고 CI 가 잡았다.
+ *   여기서는 그 파일이 그 일을 하고 있는지만 확인한다(주인이 사라지면 빨강).
+ */
+describe('① 기본 정렬 규칙의 주인이 있다', () => {
+  it('near 기본값 계약을 다른 파일이 갖고 있다', () => {
+    // ⚠️ 정규식 대신 **테스트 제목**을 앵커로 쓴다. 소유 파일의 단언은 정규식 리터럴이라
+    //   여기서 다시 정규식으로 맞추려면 이스케이프가 두 겹이 되고, 그 자체가 틀리기 쉽다(실제로 틀렸다).
+    const owner = readCode('src/tests/unit/home-top-banner-and-near-default.test.ts')
+    expect(owner, 'near 기본값 계약이 사라졌다').toContain('캐시된 위치가 있으면 near 로 시작한다')
+    expect(owner, '좌표 우선 규칙이 사라졌다').toContain('좌표가 있으면 저장된 지역을 안 씌운다')
+  })
 })
 
 describe('② 정렬 알약이 거짓말하지 않는다', () => {
