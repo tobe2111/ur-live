@@ -127,8 +127,24 @@ export async function reassignIntroducer(
     const setClause = clearOther
       ? `${spec.column} = ?, ${spec.otherColumn} = NULL`
       : `${spec.column} = ?`
+    /**
+     * 🕳️ 2026-09-07: `introduced_at = now` 만 갱신하고 **`referral_bonus_until` 은 그대로 뒀다.**
+     *   그런데 `isStoreIntroExpired`(influencer-store-intro-commission.ts:58-76)는
+     *   `referral_bonus_until` 이 있으면 **그것만 보고 `introduced_at` 을 무시한다.**
+     *   ⇒ 새 영입자가 붙어도 **이전 영입자의 만료일**이 그대로 적용됐다. 이미 지난 날짜면
+     *     새 영입자는 첫 주문부터 만료 처리되고, 아무 에러도 안 난다.
+     *
+     *   대표 원칙(*"귀속되는 시점부터 계산"*) 그대로: 새 영입자를 붙이면 창을 **다시 연다** —
+     *   `referral_bonus_until` 을 비워 `introduced_at + N개월` 로 재계산되게 한다.
+     *
+     * ⚠️ **비울 때(`newId = null`)는 `introduced_at` 을 건드리지 않는다.** 영입자가 없어졌는데
+     *   "방금 영입됐다" 고 적는 건 거짓이고, 나중에 누가 다시 붙일 때 기준이 오염된다.
+     */
+    const timeClause = newId != null
+      ? `, introduced_at = datetime('now'), referral_bonus_until = NULL`
+      : ``
     const casResult = await DB.prepare(
-      `UPDATE sellers SET ${setClause}, introduced_at = datetime('now'), updated_at = CURRENT_TIMESTAMP
+      `UPDATE sellers SET ${setClause}${timeClause}, updated_at = CURRENT_TIMESTAMP
        WHERE id = ? AND COALESCE(updated_at, '') = COALESCE(?, '')`,
     ).bind(newId, sellerId, previousUpdatedAt).run()
 

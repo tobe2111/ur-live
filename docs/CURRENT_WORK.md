@@ -5494,7 +5494,7 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 273건 · 최신순 · 이 목록은 자동 생성된다._
+_총 274건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-08**
 - [2026-09-08 — 유어쇼츠: 이용권 없는 영상도 홈에 (INNER → LEFT) + 수수료 질문 답변](handoff/2026-09-08-shorts-unlinked-allowed.md)
@@ -5504,6 +5504,7 @@ _총 273건 · 최신순 · 이 목록은 자동 생성된다._
 **2026-09-07**
 - [유어쇼츠 — 홈 레일 + `/videos` 뷰어 (2026-09-07)](handoff/2026-09-07-urshorts.md)
 - [🏪 매장 등록 문 — 당근식 스텝 위저드 + 막다른 길 셋 (2026-09-07)](handoff/2026-09-07-store-register-wizard.md)
+- [💰 매장 손바뀜 · 귀속 시점 — 잠금 먼저 (2026-09-07)](handoff/2026-09-07-store-handover-money.md)
 - [`/store/new` 매장 등록 — 다크 흰 글자 · 배경 클릭 이탈 (2026-09-07)](handoff/2026-09-07-store-claim-dark-and-backdrop.md)
 - [2026-09-07 — 운영(ops) 역할 신설 + 1인 운영 결재 3건 (대표 "모두 진행")](handoff/2026-09-07-ops-role-and-queue-automation.md)
 - [[E2] 승인 실행기 1회차 — 결재 `2026-09-07-actor-benefit-conflicts` 중 Q3-3 (채널 필수 선택) — PR #1390](handoff/2026-09-07-exec-actor-benefit-conflicts.md)

@@ -21,6 +21,7 @@ import { auditLog } from '../../../worker/middleware/audit-log'
 import type { Env } from '../../../worker/types/env'
 import { markPayoutSent, isTransferable, type PayoutRow } from '../../../worker/utils/payout-sent'
 import { csvEscape } from '../../../worker/utils/csv-safe'
+import { handoverCloseout } from './admin-payouts/handover-closeout'
 
 export const adminPayoutsRoutes = new Hono<{ Bindings: Env }>()
 
@@ -388,6 +389,11 @@ adminPayoutsRoutes.patch('/admin/payouts/bulk-approve', requireAdminRole('financ
 //   정산 지급이 이미 나간 뒤 환불이 들어오면 자동 회수가 안 되고 의무만 기록됨(settlement_clawbacks
 //   'pending' / settlement_adjustments reason='refund'). 이 목록으로 운영자가 회수 대상을 확인한다.
 //   read-only — 테이블 lazy-create 라 미존재 시 빈 배열(fail-soft).
+// 🤝 손바뀜 정산 마감 — 본문은 admin-payouts/handover-closeout.ts (대표 확정 2026-09-08).
+adminPayoutsRoutes.post('/admin/payouts/handover-closeout',
+  requireAdminRole('finance'), require2FA(), auditLog('payouts.handover_closeout'),
+  (c) => handoverCloseout(c))
+
 adminPayoutsRoutes.get('/admin/payouts/clawbacks', requireAdminRole('finance'), async (c) => {
   const { DB } = c.env
   const clawbacks = await DB.prepare(
