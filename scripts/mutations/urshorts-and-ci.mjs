@@ -236,4 +236,36 @@ export default [
       '`loadedRef` 만 앞서 나가 **넘겨도 영상이 안 바뀐다** — 구매 바는 다음 상품인데 화면은 이전 ' +
       '영상이라, 우리가 엉뚱한 상품을 파는 것처럼 보인다.',
   },
+  {
+    name: '🧭 저장된 지역이 다시 거리순을 막는다 (홈이 인기순으로 되돌아감)',
+    file: 'src/pages/mobile-home/MobileHomePage.tsx',
+    find: "    () => (readCachedLoc() ? 'near' : 'popular'),",
+    replace: "    () => (readCachedLoc() && !readHomeRegion().regionKey ? 'near' : 'popular'),",
+    test: 'src/tests/unit/home-nearest-first.test.ts',
+    why:
+      '예전에 지역을 한 번 골라 둔 사람은 위치가 잡혀 있어도 영영 인기순이 된다. 그런데 헤더는 ' +
+      '동네 이름을 띄우므로 **화면과 목록이 서로 다른 말을 한다** — 대표가 "동탄5동" 아래 서울 강남 ' +
+      '딜을 본 그 화면이다. 에러가 없어 아무도 버그로 안 적는다.',
+  },
+  {
+    name: '🧭 좌표가 있는데도 저장된 지역을 씌운다 (헤더와 목록이 어긋난다)',
+    file: 'src/pages/mobile-home/MobileHomePage.tsx',
+    find: 'useState<HomeRegion>(() => (readCachedLoc() ? {} : readHomeRegion()))',
+    replace: 'useState<HomeRegion>(() => readHomeRegion())',
+    test: 'src/tests/unit/home-nearest-first.test.ts',
+    why:
+      '헤더는 위치를 우선해 "동탄5동"을 띄우는데 목록만 저장된 지역으로 걸린다. 그 지역에 딜이 0건이면 ' +
+      '전체 폴백까지 걸려 **그 동네 이름 아래 엉뚱한 도시 딜**이 뜬다 — 목록이 거짓말을 하는 상태다.',
+  },
+  {
+    name: '📛 정렬 알약이 남의 라벨을 그린다 (거리순인데 "인기순"이라고 적힘)',
+    file: 'src/pages/main-home/GroupBuyFeed.tsx',
+    find: 'options={userLoc ? [NEAR_SORT, ...SORTS] : SORTS}',
+    replace: 'options={SORTS}',
+    test: 'src/tests/unit/home-nearest-first.test.ts',
+    why:
+      '`SortMenu` 는 `value` 가 `options` 에 없으면 조용히 `options[0]` 을 그린다. 그래서 실제로는 ' +
+      '거리순인 화면이 **"인기순"이라고 적혀 있었고**, 다른 정렬을 한 번 고르면 거리순으로 돌아갈 길이 ' +
+      '없었다(일방통행). 라벨이 틀린 것은 에러가 아니라 조용한 거짓말이다.',
+  },
 ]
