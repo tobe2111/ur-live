@@ -268,4 +268,15 @@ export default [
       '거리순인 화면이 **"인기순"이라고 적혀 있었고**, 다른 정렬을 한 번 고르면 거리순으로 돌아갈 길이 ' +
       '없었다(일방통행). 라벨이 틀린 것은 에러가 아니라 조용한 거짓말이다.',
   },
+  {
+    name: "🗺️ 지도 시트 맨 위를 '오늘의 핫딜'이 다시 가로챈다",
+    file: 'src/pages/RestaurantMapPage.tsx',
+    find: '            <RestaurantList',
+    replace: '            <HeroCarousel heroDeals={[]} userLoc={userLoc} liveSellerIds={liveSellerIds} onSelect={selectAndPan} />\n            <RestaurantList',
+    test: 'src/tests/unit/map-chips-b.test.ts',
+    why:
+      '대표가 "거리순이 가장 우선"이라 못박은 자리다. 할인율순 다섯 장이 거리순 목록 위에 서면 ' +
+      '화면 맨 위가 가까운 곳이 아니게 되고, 거리 1등과 할인 1등이 같으면 한 화면에 같은 카드가 ' +
+      '두 번 뜬다(대표 실측). 게다가 수요 로딩 이후엔 "전체 중 top 5"도 아니다.',
+  },
 ]

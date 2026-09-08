@@ -87,15 +87,9 @@ const SORTS: Array<SortOptionItem<'popular' | 'discount' | 'newest'>> = [
   { key: 'newest',   label: '최신순',   Icon: Clock },
 ]
 
-/**
- * 🗺️ 거리순 — `userLoc` 기준. **위치가 있을 때만** 목록에 낀다(좌표 없이 거리순은 말이 안 된다).
- *
- * 🩸 2026-09-08 (대표 *"여기엔 거리순, 가장 가까운 순이 먼저 떠야해"*): 이게 오래 **PcHomePage 전용**
- *   이었다 — PC 는 자기 칩(`sort === 'near'`)으로 구동하고 모바일 메뉴엔 아예 없었다. 그 결과 폰에서:
- *   ① 실제로 거리순인데 알약은 **"인기순"이라고 적혀 있었다**(`SortMenu` 는 `value` 가 options 에 없으면
- *      조용히 `options[0]` 을 그린다 — 틀린 라벨이 에러 없이 뜨는 자리다) ②다른 정렬을 한 번 고르면
- *      **거리순으로 돌아갈 길이 없었다**(일방통행).
- */
+// 🗺️ 거리순 — 위치가 있을 때만 낀다. 2026-09-08 까지 PcHomePage 전용이라 폰에서는 실제로 거리순인데
+//    알약이 "인기순"이라고 적혀 있었다(SortMenu 는 value 가 options 에 없으면 options[0] 을 그린다).
+//    근거·함정: `home-nearest-first.test.ts`.
 const NEAR_SORT: SortOptionItem<'near'> = { key: 'near', label: '거리순', Icon: MapPin }
 type SortKey = typeof SORTS[number]['key'] | 'near'
 type CategoryKey = typeof CATEGORIES[number]['key']
@@ -403,11 +397,8 @@ export default function GroupBuyFeed({
       <div className="flex items-center justify-between px-4 py-2.5 text-[12px] text-gray-500 dark:text-gray-400">
         <span>{loading ? '불러오는 중…' : `딜 ${sorted.length}개`}</span>
         {/* ⚠️ `value` 가 `options` 안에 반드시 있어야 한다 — 없으면 알약이 남의 라벨을 조용히 그린다. */}
-        <SortMenu<SortKey>
-          value={sort}
-          options={userLoc ? [NEAR_SORT, ...SORTS] : SORTS}
-          onChange={(v) => setSort(v)}
-        />
+        <SortMenu<SortKey> value={sort} onChange={(v) => setSort(v)}
+          options={userLoc ? [NEAR_SORT, ...SORTS] : SORTS} />
       </div>
       )}
 

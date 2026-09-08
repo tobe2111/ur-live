@@ -32,7 +32,6 @@ const SITES = [
   'src/pages/vouchers/shared.tsx',
   'src/components/deal/DealRow.tsx',
   'src/pages/restaurant-map/RestaurantRow.tsx',
-  'src/pages/restaurant-map/HeroCarousel.tsx',
   'src/pages/restaurant-map/SelectedDealCard.tsx',
   'src/pages/TossWidgetPayPage.tsx',
   'src/pages/VoucherDetailPage.tsx',

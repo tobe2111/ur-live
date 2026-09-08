@@ -54,7 +54,7 @@ describe('② 정렬 알약이 거짓말하지 않는다', () => {
     // 예전: `value={sort as typeof SORTS[number]['key']}` — 'near' 를 SORTS 키인 척 넘겨
     //       SortMenu 의 `options.find(...) || options[0]` 폴백이 '인기순'을 그렸다.
     expect(FEED).not.toMatch(/value=\{sort as typeof SORTS\[number\]\['key'\]\}/)
-    expect(FEED).toMatch(/<SortMenu<SortKey>\s*\n\s*value=\{sort\}/)
+    expect(FEED).toMatch(/<SortMenu<SortKey> value=\{sort\}/)
   })
 
   it('SortMenu 는 여전히 options 밖 값을 조용히 삼킨다 — 그래서 위 배선이 필요하다', () => {
