@@ -94,4 +94,27 @@ introduced_by 붙은 매장   0곳
 
 ## 결정 (대표가 한 말 그대로)
 
+> *"매장 가져오는 것에선 돈까지 귀속이 되면 안되지, 귀속되는 시점부터 계산해서 성과 수익이
+> 계산되어야 하지 않을까? 확인해볼래?"* (2026-09-07)
+>
+> 이어서 기본안(잠금 먼저 + 함께 발견한 것 3건 수리)에 **"모두 다 순서대로 해줘"**.
+
+⚠️ **선택지 1/2/3 자체는 아직 안 골랐다.** 대표가 승인한 것은 **잠금과 부수 수리**이고,
+"손바뀜 이전에 쌓인 잔액을 어떻게 마감할 것인가" 는 승계 기능을 지을 때 다시 물어야 한다.
+그때 이 문서로 돌아올 것 — 자물쇠(`store-handover-guard.ts`)가 그 자리로 데려다준다.
+
 ## 반영 커밋
+
+| 무엇 | 어디 |
+|---|---|
+| 🔐 미지급 잔액이 남은 매장은 주인을 못 바꾼다 (fail-**closed**) | `worker/utils/store-handover-guard.ts` (신규) + 손바뀜 3경로 배선 |
+| 🏷️ 판매자 없는 상품이 `seller:null` 로 적립되지 않는다 | `worker/utils/ledger.ts` `sellerLedgerAccount()` + `group-buy.routes.ts` raw 보간 4곳 |
+| 🏷️ payout 이 숫자 아닌 계정 id 를 거른다 (두 번째 방어선) | `worker/cron/payouts-generate.ts` |
+| 👥 운영자는 합류(`granted_at`) 이후 정산만 본다 | `worker/utils/settlement-scope.ts` (신규) + `seller-settlements/payouts.ts` (분리) |
+| ⏳ 새 영입자를 붙이면 옛 만료일을 지운다 | `admin-sellers/reassign-introducer.ts` |
+| ⏳ 이용권 사용 레일이 결제 레일과 같은 만료 규칙을 쓴다 | `worker/utils/ledger.ts` `recordIntroductionCommissionShare` |
+
+가드: `src/tests/unit/store-handover-money-2026-09-07.test.ts` 14건 + 주입 매니페스트 8건
+(**전부 되돌려-검증 빨간불 확인**).
+
+⚠️ **판정은 staging이다.** 위 전부 텍스트 가드로만 확인했다 — 실제 D1 동작·실제 송금은 안 봤다.

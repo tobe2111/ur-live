@@ -9711,6 +9711,86 @@ canvas {
       '없다. 게다가 유어애즈가 바로 그 채널들에게 제휴 제안을 보낼 참이라, 자기 영상이 이미 우리 ' +
       '판매에 쓰이는 걸 보면 그 제안이 열리기도 전에 죽는다 — 만들려는 관계를 태우는 셈이다.',
   },
+  {
+    name: '🔐 손바뀜 잔액 가드가 fail-open 이 된다 (모르면 통과)',
+    file: 'src/worker/utils/store-handover-guard.ts',
+    find: "  } catch {\n    return {\n      blocked: true,\n      receivable: 0,\n      prevUserId,\n      reason: '정산 잔액을 확인할 수 없어 소유자 변경을 보류했어요',",
+    replace: "  } catch {\n    return {\n      blocked: false,\n      receivable: 0,\n      prevUserId,\n      reason: '',",
+    test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
+    why:
+      'D1 이 흔들리는 순간 손바뀜이 그대로 열린다. 돈이 걸린 판단에서 "모르겠으면 통과" 는 ' +
+      '오지급으로 직행하고, 오지급은 되돌릴 수 없다.',
+  },
+  {
+    name: '🔐 어드민 매장-유저 링크에서 잔액 가드가 빠진다',
+    file: 'src/features/admin/api/admin-sellers.routes.ts',
+    find: '    const handover = await checkStoreHandover(DB, Number(sellerId), userId);',
+    replace: '    const handover = { blocked: false, receivable: 0 };',
+    test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
+    why:
+      '이 라우트가 손바뀜의 정문이다. 여기가 열리면 미지급 잔액이 남은 매장의 주인이 바뀌고, ' +
+      '그 매장이 창업 이래 쌓은 돈이 다음 주 cron 에서 새 계좌로 통째로 나간다.',
+  },
+  {
+    name: '🏷️ 판매자 없는 상품이 다시 seller:null 로 적립된다',
+    file: 'src/worker/utils/ledger.ts',
+    find: "  return Number.isFinite(id) && id > 0 ? `seller:${id}` : 'platform:revenue'",
+    replace: '  return `seller:${sellerId}`',
+    test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
+    why:
+      'products.seller_id 는 nullable 인데(플랫폼 상품) 타입 선언은 number 라 컴파일러가 안 잡는다. ' +
+      "라이브 원장에 실제로 'seller:null' 행이 있었고, 잔액이 최소출금액을 넘으면 계좌 없는 유령 payout 이 된다.",
+  },
+  {
+    name: '🏷️ payout 이 숫자 아닌 계정 id 를 다시 통과시킨다',
+    file: 'src/worker/cron/payouts-generate.ts',
+    find: '      if (!/^\\d+$/.test(id)) continue',
+    replace: '',
+    test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
+    why:
+      "'seller:null' 은 split(':') 이 id='null'(truthy 문자열)을 내서 기존 `if (!id) continue` 를 " +
+      '통과한다. 두 번째 방어선이 없으면 오염 계정 하나가 그대로 지급 큐에 들어간다.',
+  },
+  {
+    name: '👥 운영자가 다시 합류 전 정산까지 본다',
+    file: 'src/features/seller/api/seller-settlements/payouts.ts',
+    find: '          AND (? IS NULL OR created_at >= ?)',
+    replace: '',
+    test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
+    why:
+      '기준(granted_at)을 계산해 놓고 WHERE 에 안 넣으면 종전과 똑같다 — 위임받아 들어온 사람에게 ' +
+      '이전 주인의 정산 이력이 통째로 열리고, 합류 전 매출이 자기 실적으로 보인다.',
+  },
+  {
+    name: '👥 운영자 범위 해석이 fail-open 이 된다 (관계를 못 찾으면 다 보여 준다)',
+    file: 'src/worker/utils/settlement-scope.ts',
+    find: "  const since = g?.granted_at || DENY_ALL",
+    replace: '  const since = g?.granted_at || null',
+    test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
+    why:
+      'granted_at 이 NULL 이거나 조회가 실패했을 때 제한을 푸는 건, 게이트가 아예 없는 것과 같다. ' +
+      '모르면 안 보여 주는 쪽이 언제나 싸다 — 못 본 정산은 물어보면 되지만, 본 정산은 되돌릴 수 없다.',
+  },
+  {
+    name: '⏳ 새 영입자에게 이전 영입자의 만료일이 그대로 적용된다',
+    file: 'src/features/admin/api/admin-sellers/reassign-introducer.ts',
+    find: "      ? `, introduced_at = datetime('now'), referral_bonus_until = NULL`",
+    replace: "      ? `, introduced_at = datetime('now')`",
+    test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
+    why:
+      'isStoreIntroExpired 는 referral_bonus_until 이 있으면 **그것만 보고** introduced_at 을 무시한다. ' +
+      '안 지우면 새 영입자는 첫 주문부터 만료 처리될 수 있고, 아무 에러도 안 난다.',
+  },
+  {
+    name: '⏳ 이용권 사용 레일이 다시 무기한 커미션이 된다',
+    file: 'src/worker/utils/ledger.ts',
+    find: '  if (isStoreIntroExpired(seller, introMonths)) {',
+    replace: '  if (seller.referral_bonus_until && new Date(seller.referral_bonus_until) < new Date()) {',
+    test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
+    why:
+      'referral_bonus_until 은 백필로만 채워져 대부분 NULL 이고, NULL 이면 종전 규칙은 **무기한**이었다. ' +
+      '결제 레일은 1년으로 끊는데 사용 레일만 영구라, 같은 영입 관계의 기간이 레일마다 달랐다.',
+  },
 ]
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).
