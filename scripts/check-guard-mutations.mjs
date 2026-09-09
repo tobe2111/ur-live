@@ -996,7 +996,7 @@ const MUTATIONS = [
   {
     name: '🩸 near 와 sort 를 같이 보낸다 — 서버가 sort 를 무시해 정렬이 조용히 틀린다',
     file: 'src/pages/restaurant-map/useFeedWindow.ts',
-    find: "const near = sortBy === 'distance' ? userLoc : null",
+    find: "const near = eff === 'distance' ? userLoc : null",
     replace: 'const near = userLoc',
     test: 'src/tests/unit/map-feed-demand-loading.test.ts',
     why: '서버는 baseOrder = hasNear ? 거리 : sort — near 가 이긴다. 전량 로딩을 걷어낸 뒤로는 이게 곧 틀린 목록이다.',
@@ -10007,6 +10007,97 @@ canvas {
       '모르면 안 보여 주는 쪽이 언제나 싸다 — 못 본 정산은 물어보면 되지만, 본 정산은 되돌릴 수 없다.',
   },
   {
+    name: '🕳️ 자물쇠가 두 번째 주인 자리를 다시 못 본다 (지금 만드는 모든 매장에서 무력)',
+    file: 'src/worker/utils/store-handover-guard.ts',
+    find: "      WHERE seller_id = ? AND role = 'owner' AND revoked_at IS NULL",
+    replace: "      WHERE seller_id = ? AND role = 'nonexistent-role' AND revoked_at IS NULL",
+    test: 'src/tests/unit/store-handover-behavior-2026-09-08.test.ts',
+    why:
+      '/store/new 는 linked_user_id 를 비우고 seller_operators.role=owner 로 주인을 적는다. ' +
+      '앞쪽만 보면 라이브의 모든 매장에서 자물쇠가 통과만 한다 — 잠긴 것처럼 보이는데 안 잠긴다.',
+  },
+  {
+    name: '🕳️ 주인 조회 실패를 "주인 없음"으로 접는다 (fail-open)',
+    file: 'src/worker/utils/store-handover-guard.ts',
+    find: '  if (owner === undefined) return undefined       // 조회 실패 = 모름',
+    replace: '  if (owner === undefined) return null',
+    test: 'src/tests/unit/store-handover-behavior-2026-09-08.test.ts',
+    why:
+      '"모름"과 "없음"이 섞이면 모름이 곧 통과가 된다. 돈이 걸린 판단에서 그 둘을 구분하는 것이 ' +
+      'fail-closed 의 전부다.',
+  },
+  {
+    name: '🧭 위치 없이 거리순이면 정렬이 통째로 사라진다 (화면은 "거리순"이라 표시)',
+    file: 'src/pages/restaurant-map/effective-sort.ts',
+    find: "  return sortBy === 'distance' && !hasLocation ? NO_LOCATION_FALLBACK : sortBy",
+    replace: '  return sortBy',
+    test: 'src/tests/unit/map-sort-no-location-2026-09-09.test.ts',
+    why:
+      '위치가 없으면 서버 sort 는 비워지고(거리순이니까) near 도 없어서 기본 순서가 오고, ' +
+      '클라 재정렬도 userLoc 가드에 걸려 건너뛴다 — 아무 정렬도 안 된 목록이 "거리순" 라벨을 단다. ' +
+      '대표가 실제로 신고한 증상이다(동탄에서 거리순인데 서울 송파·서초가 먼저).',
+  },
+  {
+    name: '🧭 서버 요청만 raw sortBy 로 돌아간다 (서버·클라 정렬이 갈린다)',
+    file: 'src/pages/restaurant-map/useFeedWindow.ts',
+    find: '  const eff = effectiveSort(sortBy, !!userLoc)',
+    replace: '  const eff = sortBy',
+    test: 'src/tests/unit/map-sort-no-location-2026-09-09.test.ts',
+    why:
+      '서버가 고른 50개와 클라가 매기는 순서가 다른 정의를 쓰면 조용히 틀린 목록이 된다 — ' +
+      '2026-09-03 에 "인기순"이 인기순이 아니었던 그 클래스.',
+  },
+  {
+    name: '🤝 이용권 커미션이 다시 소급된다 (오늘의 영입자가 과거 판매분을 가져감)',
+    file: 'src/worker/utils/ledger.ts',
+    find: '  const payeeId = stamped ? Number(stamp!.iid) : (seller?.introduced_by_influencer_id ?? null)',
+    replace: '  const payeeId = seller?.introduced_by_influencer_id ?? null',
+    test: 'src/tests/unit/voucher-intro-stamp-2026-09-09.test.ts',
+    why:
+      '사용 시점에 매장의 현재 영입자를 읽으면, 영입자가 바뀐 뒤 과거에 팔린 이용권의 커미션까지 ' +
+      '새 사람에게 간다. 대표 원칙("귀속되는 시점부터 계산")과 정반대이고 에러가 안 난다.',
+  },
+  {
+    name: '🤝 지급 대상이 도장을 무시하고 매장에서 다시 나온다',
+    file: 'src/worker/utils/ledger.ts',
+    find: '  const influencerUserId = payeeId',
+    replace: '  const influencerUserId = seller?.introduced_by_influencer_id ?? null',
+    test: 'src/tests/unit/voucher-intro-stamp-2026-09-09.test.ts',
+    why:
+      '판정은 도장으로 해 놓고 지급만 매장에서 꺼내면 **판정과 돈이 갈린다** — 가장 조용한 종류의 ' +
+      '오지급이다(로그도 화면도 정상이고 받는 사람만 다르다).',
+  },
+  {
+    name: '🤝 이용권에 도장을 안 찍는다 (판정할 근거가 사라짐)',
+    file: 'src/features/group-buy/api/experience-campaign.routes.ts',
+    find: '    const introStamp = await resolveVoucherIntroStamp(DB, campaign.seller_id)',
+    replace: '    const introStamp = { introducerId: null as number | null, stampedAt: null as string | null }',
+    test: 'src/tests/unit/voucher-intro-stamp-2026-09-09.test.ts',
+    why:
+      '읽는 코드가 멀쩡해도 찍는 쪽이 비면 조용히 옛 규칙(소급)으로 떨어진다 — "실패가 아니라 부재".',
+  },
+  {
+    name: '🪑 직접 등록 사장님이 다시 운영자로 오판된다 (정산 계좌 못 넣음 = 돈 못 받음)',
+    file: 'src/worker/utils/store-actor.ts',
+    find: '    const isOwner = role ? role === \'owner\' : operatorUserId === null',
+    replace: '    const isOwner = operatorUserId === null',
+    test: 'src/tests/unit/store-owner-judgment-2026-09-09.test.ts',
+    why:
+      '/store/new 는 설계상 linked_user_id 를 비워 두므로 직접 등록한 진짜 사장님도 source:grant 로 ' +
+      '들어온다. 역할을 안 보면 그 사장님이 운영자로 오판돼 자기 매장 정산 계좌를 못 넣는다 — ' +
+      '즉 그 매장은 돈을 받을 방법이 없다. 에러도 안 나고 "권한이 없습니다" 만 뜬다.',
+  },
+  {
+    name: '🪑 토큰이 역할을 안 싣는다 (판정할 근거가 사라짐)',
+    file: 'src/features/seller/api/seller-operators.routes.ts',
+    find: '    if (access.role) payload.store_role = access.role',
+    replace: '',
+    test: 'src/tests/unit/store-owner-judgment-2026-09-09.test.ts',
+    why:
+      '판정 코드가 멀쩡해도 입력이 비면 조용히 옛 규칙으로 떨어진다 — 이 레포가 반복해 당한 ' +
+      '"실패가 아니라 부재" 클래스다. 그래서 싣는 쪽과 읽는 쪽을 각각 고정한다.',
+  },
+  {
     name: '🔒 마감 행 취소가 무음으로 열린다 (돈이 새 주인에게)',
     file: 'src/features/admin/api/admin-payouts.routes.ts',
     find: "  if (row.kind === 'handover_closeout' && row.payee_user_id && row.payee_type === 'seller' && !body.confirm_release) {",
@@ -10109,8 +10200,8 @@ canvas {
   {
     name: '⏳ 이용권 사용 레일이 다시 무기한 커미션이 된다',
     file: 'src/worker/utils/ledger.ts',
-    find: '  if (isStoreIntroExpired(seller, introMonths)) {',
-    replace: '  if (seller.referral_bonus_until && new Date(seller.referral_bonus_until) < new Date()) {',
+    find: '  if (!stamped && isStoreIntroExpired(seller, introMonths)) {',
+    replace: '  if (!stamped && seller?.referral_bonus_until && new Date(seller.referral_bonus_until) < new Date()) {',
     test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
     why:
       'referral_bonus_until 은 백필로만 채워져 대부분 NULL 이고, NULL 이면 종전 규칙은 **무기한**이었다. ' +
