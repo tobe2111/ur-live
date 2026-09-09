@@ -613,11 +613,15 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
         INSERT INTO order_items (order_id, product_id, product_name, unit_price, price, quantity, subtotal)
         VALUES (?, ?, ?, ?, ?, ?, ?)
       `).bind(newOrderId, productId, product.name, product.price, product.price, qty, totalAmount)
+      // 🤝 2026-09-09: **판 시점의 영입자를 도장 찍는다**(대표 "귀속되는 시점부터 계산").
+      //   안 찍으면 사용 시점에 매장의 *현재* 영입자를 읽어 과거 판매분까지 소급된다.
+      const { resolveVoucherIntroStamp } = await import('../../../worker/utils/voucher-intro-stamp')
+      const introStamp = await resolveVoucherIntroStamp(DB, product.seller_id)
       const voucherStmts = codes.map(code =>
         DB.prepare(`
-          INSERT INTO vouchers (order_id, product_id, user_id, code, expires_at, applied_discount_pct, applied_price)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
-        `).bind(newOrderId, productId, userId, code, expiresAt, appliedDiscountPct, unitPrice)
+          INSERT INTO vouchers (order_id, product_id, user_id, code, expires_at, applied_discount_pct, applied_price, introduced_by_influencer_id, intro_stamped_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).bind(newOrderId, productId, userId, code, expiresAt, appliedDiscountPct, unitPrice, introStamp.introducerId, introStamp.stampedAt)
       )
       // order_items + vouchers 같은 batch — atomic + 1 round-trip.
       await DB.batch([orderItemStmt, ...voucherStmts])
@@ -1244,11 +1248,14 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
       INSERT INTO order_items (order_id, product_id, product_name, unit_price, price, quantity, subtotal)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).bind(newOrderId, productId, product.name, unitPrice, unitPrice, qty, expectedAmount)
+    // 🤝 2026-09-09: 판 시점의 영입자 도장 (위 /join 경로와 같은 SSOT).
+    const { resolveVoucherIntroStamp } = await import('../../../worker/utils/voucher-intro-stamp')
+    const introStamp = await resolveVoucherIntroStamp(DB, product.seller_id)
     const voucherStmts = codes.map(code =>
       DB.prepare(`
-        INSERT INTO vouchers (order_id, product_id, user_id, code, expires_at, applied_discount_pct, applied_price)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).bind(newOrderId, productId, userId, code, expiresAt, tierDiscountPct, unitPrice)
+        INSERT INTO vouchers (order_id, product_id, user_id, code, expires_at, applied_discount_pct, applied_price, introduced_by_influencer_id, intro_stamped_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(newOrderId, productId, userId, code, expiresAt, tierDiscountPct, unitPrice, introStamp.introducerId, introStamp.stampedAt)
     )
     await DB.batch([orderItemStmt, ...voucherStmts])
 

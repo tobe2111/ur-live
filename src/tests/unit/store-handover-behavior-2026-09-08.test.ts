@@ -58,6 +58,12 @@ function fresh() {
     created_at TEXT DEFAULT (datetime('now')))`)
   db.exec(`CREATE UNIQUE INDEX idx_payouts_period_unique ON payouts(payee_type, payee_id, period_start, period_end)`)
   db.exec(`CREATE TABLE sellers (id INTEGER PRIMARY KEY, linked_user_id INTEGER, bank_account TEXT, business_name TEXT)`)
+  // 🕳️ 2026-09-09: 주인은 두 곳에 적힌다 — `/store/new` 는 linked_user_id 를 비우고 여기에 적는다.
+  //   이 표가 없으면 가드가 "모른다"고 판정해 막는다(fail-closed). 그건 옳은 동작이고,
+  //   픽스처가 라이브 스키마를 따라가야 한다.
+  db.exec(`CREATE TABLE seller_operators (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, seller_id INTEGER NOT NULL, user_id INTEGER NOT NULL,
+    role TEXT NOT NULL DEFAULT 'operator', granted_at DATETIME DEFAULT (datetime('now')), revoked_at DATETIME)`)
   return db
 }
 
@@ -243,5 +249,61 @@ describe('🔒 마감 행 취소 — 주인이 바뀐 뒤면 확인을 받는다
     db.prepare(`INSERT INTO payouts (payee_type, payee_id, amount, period_start, period_end, status)
                 VALUES ('seller','7',10000,'2026-09-01','2026-09-07','pending')`).run()
     expect(needsConfirm(db, 1), '주간 정산까지 막으면 평상시 운영이 죽는다').toBe(false)
+  })
+})
+
+/**
+ * 🕳️ **주인은 두 곳에 적힌다** — 자물쇠의 사각지대 수리 (2026-09-09)
+ *
+ * `/store/new` 는 설계상 `sellers.linked_user_id` 를 **비워 두고**
+ * `seller_operators.role='owner'` 로 주인을 적는다. 자물쇠가 앞쪽만 보면
+ * **지금 만들어지는 모든 매장에서 무력**이다(라이브 실측: 매장 1곳 전부 linked_user_id NULL).
+ */
+describe('🕳️ 두 번째 주인 자리 — seller_operators.role=owner', () => {
+  it('linked_user_id 가 비어 있어도 role=owner 를 주인으로 본다', async () => {
+    const db = fresh()
+    db.prepare(`INSERT INTO sellers VALUES (7, NULL, '중개사은행 110-1', '중개사')`).run()
+    db.prepare(`INSERT INTO seller_operators (seller_id, user_id, role) VALUES (7, 100, 'owner')`).run()
+    credit(db, 'seller:7', 50_000)
+
+    const r = await checkStoreHandover(d1(db), 7, 200)
+    expect(r.blocked, 'role=owner 를 못 보면 이 매장의 잔액이 그대로 새 주인에게 간다').toBe(true)
+    expect(r.prevUserId).toBe(100)
+  })
+
+  it('운영자(role=operator)만 있는 매장은 주인이 없다 — 최초 연결로 통과', async () => {
+    const db = fresh()
+    db.prepare(`INSERT INTO sellers VALUES (7, NULL, NULL, '무주공산')`).run()
+    db.prepare(`INSERT INTO seller_operators (seller_id, user_id, role) VALUES (7, 300, 'operator')`).run()
+    credit(db, 'seller:7', 50_000)
+
+    const r = await checkStoreHandover(d1(db), 7, 200)
+    expect(r.blocked, '운영자는 정산 계좌를 못 바꾼다 — 주인이 아니다').toBe(false)
+  })
+
+  it('회수된 owner 는 주인이 아니다', async () => {
+    const db = fresh()
+    db.prepare(`INSERT INTO sellers VALUES (7, NULL, NULL, '가게')`).run()
+    db.prepare(`INSERT INTO seller_operators (seller_id, user_id, role, revoked_at)
+                VALUES (7, 100, 'owner', datetime('now'))`).run()
+    credit(db, 'seller:7', 50_000)
+    expect((await checkStoreHandover(d1(db), 7, 200)).blocked).toBe(false)
+  })
+
+  it('같은 사람이면 막지 않는다 (role 경로에서도)', async () => {
+    const db = fresh()
+    db.prepare(`INSERT INTO sellers VALUES (7, NULL, NULL, '가게')`).run()
+    db.prepare(`INSERT INTO seller_operators (seller_id, user_id, role) VALUES (7, 100, 'owner')`).run()
+    credit(db, 'seller:7', 50_000)
+    expect((await checkStoreHandover(d1(db), 7, 100)).blocked).toBe(false)
+  })
+
+  it('두 표가 다 안 잡히면 막는다 (모르면 통과 금지)', async () => {
+    // seller_operators 자체가 없는 환경 = 판단 근거 없음.
+    const db = new DatabaseSync(':memory:')
+    db.exec(`CREATE TABLE sellers (id INTEGER PRIMARY KEY, linked_user_id INTEGER)`)
+    db.prepare(`INSERT INTO sellers VALUES (7, NULL)`).run()
+    const r = await checkStoreHandover(d1(db), 7, 200)
+    expect(r.blocked, '조회 실패를 "주인 없음"으로 접으면 그게 fail-open 이다').toBe(true)
   })
 })

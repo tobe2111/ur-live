@@ -347,6 +347,10 @@ export const AUX_TABLE_REPAIRS: Array<{ name: string; sql: string }> = [
     // 🏦 2026-06-12 지급 센터 (P1 사용자 결정) — 입금완료 기록 + 큐레이터 딜 차감 마커 + 에이전시 지급 이력.
     // 🤝 2026-09-08 손바뀜 마감 — 이 행이 마감인지(kind) + 만들 때 주인이 누구였는지(payee_user_id).
     //   취소로 돈이 되살아나 **새 주인**에게 가는 것을 막는 게이트가 이 둘을 읽는다.
+    // 🤝 2026-09-09 이용권이 **판 시점의 영입자**를 기억한다(소급 커미션 차단).
+    //   `intro_stamped_at` 이 "판정했다"는 표시 — 없으면 옛 이용권이라 종전 규칙으로 떨어진다.
+    { name: 'vouchers.introduced_by_influencer_id', sql: 'ALTER TABLE vouchers ADD COLUMN introduced_by_influencer_id INTEGER' },
+    { name: 'vouchers.intro_stamped_at', sql: 'ALTER TABLE vouchers ADD COLUMN intro_stamped_at DATETIME' },
     { name: 'payouts.kind', sql: 'ALTER TABLE payouts ADD COLUMN kind TEXT' },
     { name: 'payouts.payee_user_id', sql: 'ALTER TABLE payouts ADD COLUMN payee_user_id INTEGER' },
     { name: 'settlements.paid_at', sql: 'ALTER TABLE settlements ADD COLUMN paid_at DATETIME' },

@@ -54,13 +54,13 @@ describe('전량 순회 금지', () => {
 
 describe('정렬은 서버가 한다', () => {
   it('거리순은 sort 가 아니라 near 가 담당한다', () => {
-    expect(win).toMatch(/sortBy === 'distance' \? '' : sortBy/)
+    expect(win).toMatch(/eff === 'distance' \? '' : eff/)
   })
 
   it('🩸 near 와 sort 를 같이 보내지 않는다 — 서버에선 near 가 sort 를 이긴다', () => {
     // group-buy-public.routes: `baseOrder = hasNear ? 거리 : sort`.
     // 둘 다 보내면 '할인율순'을 골라도 서버는 가까운 50개를 주고, 화면은 그 안에서만 정렬한다(조용히 틀림).
-    expect(win).toMatch(/const near = sortBy === 'distance' \? userLoc : null/)
+    expect(win).toMatch(/const near = eff === 'distance' \? userLoc : null/)
     expect(win).toMatch(/useMapProducts\(category, near, \{ sort \}\)/)
     expect(route).toMatch(/const baseOrder = hasNear/)   // 그 우선순위가 유지되는 한 이 규칙이 필요하다
   })

@@ -27,9 +27,20 @@ const BIZINFO = codeOnly(readFileSync('src/features/seller/api/seller-profile/bu
 const WITHDRAW = codeOnly(readFileSync('src/features/seller/api/seller-withdraw.routes.ts', 'utf-8'))
 
 describe('행위자 판별 — 토큰이 들고 있는 사실만 본다', () => {
-  it('`operator_user_id` 로 판정한다', () => {
+  it('토큰의 `store_role` 로 판정한다 (옛 토큰은 종전 규칙 폴백)', () => {
+    /**
+     * 🔄 2026-09-09 규칙 갱신 — 종전 단언은 `isOwner: operatorUserId === null` 이었다.
+     *   그 규칙이 **틀렸다**: `/store/new` 는 설계상 `linked_user_id` 를 비우므로 직접(direct)
+     *   등록한 **진짜 사장님도 `source:'grant'`** 로 들어와 그 claim 이 붙는다 ⇒ `role:'owner'`
+     *   인데 운영자로 오판되고, 자기 매장 정산 계좌를 못 넣어 **돈을 못 받는다**.
+     *
+     * ⚠️ 이 시험이 원래 지키던 것(**토큰이 들고 있는 사실만 본다** · DB 폴백 금지)은 그대로다 —
+     *   `store_role` 도 토큰 claim 이고, 아래 '🔴 linked_user_id 폴백' 시험이 계속 그걸 못 박는다.
+     */
     expect(ACTOR).toContain('operator_user_id')
-    expect(ACTOR).toMatch(/isOwner: operatorUserId === null/)
+    expect(ACTOR, '역할을 안 보면 직접 등록 사장님이 다시 운영자로 오판된다')
+      .toMatch(/const role = typeof p\.store_role === 'string'/)
+    expect(ACTOR).toMatch(/role \? role === 'owner' : operatorUserId === null/)
   })
 
   it("type !== 'seller' 토큰은 통과 못 한다", () => {
