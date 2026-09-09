@@ -5494,8 +5494,10 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 275건 · 최신순 · 이 목록은 자동 생성된다._
+_총 276건 · 최신순 · 이 목록은 자동 생성된다._
 
+**2026-09-09**
+- [2026-09-09 — 지도 마커 안 D4 · 유어쇼츠 진입점(모바일+PC) · CI 수리](handoff/2026-09-09-map-marker-d4-and-shorts-entry.md)
 **2026-09-08**
 - [2026-09-08 — 유어쇼츠: 이용권 없는 영상도 홈에 (INNER → LEFT) + 수수료 질문 답변](handoff/2026-09-08-shorts-unlinked-allowed.md)
 - [유어쇼츠 뷰어 — 자막을 확실히 끄기 위해 재생기를 우리가 쥔다 (2026-09-08)](handoff/2026-09-08-shorts-player-api.md)

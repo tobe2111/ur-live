@@ -41,10 +41,13 @@ describe('② 🔴 스크롤 밖에 고정된다', () => {
   const s = code(read(HOME))
   it('카테고리 nav 와 진입점이 형제다(같은 flex 줄, nav 안이 아니다)', () => {
     // nav 가 닫힌 **뒤에** 링크가 온다 — 안에 있으면 스크롤과 함께 밀려 사라진다.
+    const navOpen = s.indexOf('<nav')
     const navClose = s.indexOf('</nav>')
-    const link = s.indexOf('URSHORTS_VIEWER_PATH', navClose)
     expect(navClose, 'nav 가 사라졌다').toBeGreaterThan(-1)
-    expect(link, '진입점이 nav 뒤에 없다 = 스크롤 안으로 들어갔다').toBeGreaterThan(navClose)
+    expect(s.indexOf('URSHORTS_VIEWER_PATH', navClose), '진입점이 nav 뒤에 없다').toBeGreaterThan(navClose)
+    // 🩸 2026-09-09: PC 주입이 드러낸 구멍 — "뒤에 있나"만 물으면 nav 안에 하나를 더 심어도 통과한다.
+    expect(s.slice(navOpen, navClose), 'nav 안에 진입점이 있다 = 스크롤되어 사라진다')
+      .not.toContain('URSHORTS_VIEWER_PATH')
   })
   it('nav 는 스크롤하고 진입점은 shrink-0 이다', () => {
     expect(s).toMatch(/<nav[^>]*overflow-x-auto/)
@@ -83,5 +86,40 @@ describe('④ ShortsIcon 은 세트 규약을 따른다', () => {
   it('재생 삼각형은 채운다 — 선으로 그리면 16px 에서 속이 비어 안 읽힌다', () => {
     const blk = s.slice(s.indexOf('export const ShortsIcon'))
     expect(blk).toMatch(/fill="currentColor" stroke="none"/)
+  })
+})
+
+describe('PC 홈 — 같은 자리, 같은 함정 (2026-09-09)', () => {
+  const s = code(read('src/components/main/DesktopTopNav.tsx'))
+  it('진입점이 카테고리 nav **뒤**에 있고 nav 안에는 없다 = 스크롤 영역 밖', () => {
+    // 🩸 2026-09-09: 이 파일엔 `<nav>` 가 **둘**이다(탭 메뉴 + 카테고리 줄). 첫 번째를 집으면
+    //    엉뚱한 요소를 재고 무엇을 심어도 초록이 뜬다 — 실제로 그랬고 주입이 잡았다.
+    const anchor = s.indexOf("aria-label={t('nav.categories'")
+    expect(anchor, '카테고리 nav 를 못 찾았다(aria-label 이 바뀌었나)').toBeGreaterThan(-1)
+    const navOpen = s.lastIndexOf('<nav', anchor)
+    const navClose = s.indexOf('</nav>', anchor)
+    expect(navClose, 'nav 가 사라졌다').toBeGreaterThan(-1)
+    expect(s.indexOf('URSHORTS_VIEWER_PATH', navClose), '진입점이 nav 뒤에 없다').toBeGreaterThan(navClose)
+    // 🩸 2026-09-09: "뒤에 있나"만 물으면 nav **안에** 하나를 더 심어도 통과한다(주입이 그걸 잡았다).
+    //    스크롤러 안에 하나라도 있으면 그것이 밀려 사라지는 진입점이다.
+    expect(s.slice(navOpen, navClose), 'nav 안에 진입점이 있다 = 스크롤되어 사라진다')
+      .not.toContain('URSHORTS_VIEWER_PATH')
+  })
+  it('스크롤 컨테이너가 진입점을 감싸지 않는다', () => {
+    // 진입점을 감싼 줄에는 overflow-x-auto 가 없어야 한다(있으면 같이 밀린다).
+    const row = s.match(/<div className="max-w-\[1440px\][^"]*"/)
+    expect(row, '카테고리 줄 컨테이너를 못 찾았다').toBeTruthy()
+    expect(row![0]).not.toContain('overflow-x-auto')
+    expect(row![0], '스크롤러가 남은 폭을 먹어야 진입점이 오른쪽 끝에 붙는다').toContain('flex')
+  })
+  it('마침표는 붙어 있고 브랜드 글자색이다(모바일과 같은 장치)', () => {
+    expect(s).toMatch(/text-brand-text">\.<\/span>/)
+    expect(s, '음수 마진이 빠지면 점이 떨어져 뱃지로 읽힌다').toMatch(/-ml-\[3px\]/)
+  })
+  it('스크롤 화살표가 스크롤러 기준으로 붙는다(right-4 면 진입점을 덮는다)', () => {
+    expect(s).toMatch(/ur-appear absolute right-0/)
+  })
+  it('아이콘은 유어딜 전용(lucide 로 대체 금지)', () => {
+    expect(s).toContain('ShortsIcon')
   })
 })

@@ -345,4 +345,24 @@ export default [
       '실제로 쓰이는 크기가 16px 다. 삼각형을 획 1.6 선으로 그리면 그 크기에서 속이 비어 ' +
       '무엇인지 안 읽힌다(시안에서 40px·16px 를 나란히 놓고 판정한 기준이 이것 하나였다).',
   },
+  {
+    name: '🎬 PC 유어쇼츠 진입점이 카테고리 스크롤 안으로 들어간다',
+    file: 'src/components/main/DesktopTopNav.tsx',
+    find: '            </nav>',
+    replace: '              <Link to={URSHORTS_VIEWER_PATH}>유어쇼츠</Link>\n            </nav>',
+    test: 'src/tests/unit/home-shorts-entry.test.ts',
+    why:
+      '그 줄은 overflow-x-auto 다. 안에 넣으면 카테고리가 하나만 늘어도 진입점이 밀려 화면 밖으로 ' +
+      '사라지는데, 지금은 다섯 개가 다 들어와 스크롤이 안 생기므로 **화면으로는 티가 안 난다**.',
+  },
+  {
+    name: '🎬 PC 스크롤 화살표가 right-4 로 돌아가 진입점을 덮는다',
+    file: 'src/components/main/DesktopTopNav.tsx',
+    find: "                className=\"ur-appear absolute right-0 top-1/2",
+    replace: "                className=\"ur-appear absolute right-4 top-1/2",
+    test: 'src/tests/unit/home-shorts-entry.test.ts',
+    why:
+      '화살표의 위치 기준이 줄 전체에서 스크롤러로 바뀌었다. right-4 로 되돌리면 그만큼 안쪽으로 ' +
+      '들어와 카테고리 마지막 칩을 가린다(진입점 옆이 아니라 글자 위에 뜬다).',
+  },
 ]
