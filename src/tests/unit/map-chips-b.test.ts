@@ -79,8 +79,20 @@ describe('④ 핀 링 = 잉크 하나 + 선택/라이브 블루', () => {
   it('카테고리 팔레트가 없다', () => {
     expect(s).not.toMatch(/#ec4899|#10b981|#8b5cf6|#f59e0b|categoryColor|categoryEmoji/i)
   })
-  it('ring 은 isLive || isSelected 일 때만 브랜드', () => {
-    expect(s).toMatch(/const ring = isLive \|\| isSelected \? PIN_RING_BRAND : PIN_RING_INK/)
+  // 🗺️ 2026-09-09 (안 D4): 핀이 원형 사진+링 → **알약**이 되면서 `ring` 변수는 사라졌다.
+  //   지키려던 것은 변수 이름이 아니라 *"강조색은 브랜드 하나, 자리는 선택뿐"* 이라는 규칙이므로
+  //   그 규칙 자체로 다시 겨눈다(테스트를 지우는 것과 다르다 — 계약은 그대로 살아 있다).
+  //   `isLive` 는 라이브커머스 영구중단으로 항상 빈 Set 이라 09-09 에 제거됐다.
+  it('브랜드 색은 선택(면)·즐겨찾기(선)에만 — 카테고리·평점 등으로 번지지 않는다', () => {
+    const brandUses = [...s.matchAll(/PIN_RING_BRAND/g)].length
+    expect(brandUses, 'PIN_RING_BRAND 가 사라졌다').toBeGreaterThan(0)
+    // 선택 알약 배경 + 즐겨찾기 윤곽선. 그 밖에서 브랜드가 쓰이기 시작하면 자리가 늘어난 것이다.
+    expect(brandUses, `브랜드 색 사용처가 ${brandUses}곳으로 늘었다`).toBeLessThanOrEqual(3)
+    expect(s).toMatch(/isFav && !isSelected \? `outline:1\.5px solid \$\{PIN_RING_BRAND\}/)
+  })
+  it('무게 3단계가 pinTierStyle 한 곳에서 나온다(호출부가 색을 따로 정하지 않는다)', () => {
+    expect(s).toMatch(/export function pinTierStyle\(tier: MapMarkerTier\)/)
+    for (const t of ['selected', 'seen', 'highlight']) expect(s).toContain(`tier === '${t}'`)
   })
   it('버블·핀 폴백에 이모지·그라디언트가 없다', () => {
     expect(s).not.toMatch(/linear-gradient\(135deg/)

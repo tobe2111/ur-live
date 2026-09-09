@@ -274,7 +274,7 @@ export default [
     name: "🗺️ 지도 시트 맨 위를 '오늘의 핫딜'이 다시 가로챈다",
     file: 'src/pages/RestaurantMapPage.tsx',
     find: '            <RestaurantList',
-    replace: '            <HeroCarousel heroDeals={[]} userLoc={userLoc} liveSellerIds={liveSellerIds} onSelect={selectAndPan} />\n            <RestaurantList',
+    replace: '            <HeroCarousel heroDeals={[]} userLoc={userLoc} onSelect={selectAndPan} />\n            <RestaurantList',
     test: 'src/tests/unit/map-chips-b.test.ts',
     why:
       '대표가 "거리순이 가장 우선"이라 못박은 자리다. 할인율순 다섯 장이 거리순 목록 위에 서면 ' +

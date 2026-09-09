@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { MapPin, Map as MapIcon, ChevronDown, Search, Bell, ShoppingCart, LocateFixed, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
+import { priceDisplay } from '@/shared/price-display'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
@@ -150,7 +151,6 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   // 옵션 B: 카카오 일반 맛집 + 클릭 시 수요 신호 모달
   const [kakaoPlaces, setKakaoPlaces] = useState<KakaoPlace[]>([])
   const [suggestionFor, setSuggestionFor] = useState<KakaoPlace | null>(null)
-  const [liveSellerIds] = useState<Set<number>>(new Set())  // 라이브커머스 영구중단 → 항상 빈 Set(LIVE 배지 미표시)
   const activeFilterCount = ((region || district) ? 1 : 0) + (radiusKm > 0 ? 1 : 0) + (priceRange !== 'all' ? 1 : 0)
   // 🗺️ 2026-06-20 (대표 — 홈=지도 / "상품 1개일 때 공백 남음"): 기본 snap 을 peek 으로 → 지도 우선 +
   //   콘텐츠 적을 때 큰 흰 공백 제거(컴팩트). 더 보려면 시트를 위로 드래그(mid/full).
@@ -290,9 +290,10 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
         return da - db
       }
       if (sortBy === 'discount') {
-        const dA = a.original_price > a.price ? (1 - a.price / a.original_price) : 0
-        const dB = b.original_price > b.price ? (1 - b.price / b.original_price) : 0
-        return dB - dA
+        // 🐛 2026-09-09: 종전엔 여기서 할인율을 **자체 계산**해 서버 정렬(MAX(discount_rate, 계산값))·
+        //   카드(priceDisplay)와 정의가 셋으로 갈려 있었다. 같은 상품이 화면마다 다른 할인율을 보이면
+        //   그건 버그가 아니라 거짓말이다 — SSOT 경유로 통일(마커 D4 강조도 같은 값을 쓴다).
+        return priceDisplay(b).discount - priceDisplay(a).discount
       }
       if (sortBy === 'price') return (a.price || 0) - (b.price || 0)
       if (sortBy === 'rating') return (b.rating || 0) - (a.rating || 0)
@@ -352,7 +353,6 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     kakaoPlaces,
     setSuggestionFor,
     userLoc,
-    liveSellerIds,
     favorites,
     sheetSnap,
     serverClusters: aggClusters,
