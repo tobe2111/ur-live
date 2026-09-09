@@ -32,6 +32,7 @@ import { DEFAULT_FEE_RATES } from '@/worker/utils/fee-resolver'
 import { getEffectivePlatformFee } from '@/worker/utils/effective-platform-fee'
 import { registerVoucherDraftRoutes } from './seller-voucher-draft.routes'
 import { pickStoreChannel, registerStoreChannelRoutes } from './seller-store-channel.routes'
+import { registerStoreClaimRoutes } from './seller-store-claims.routes'
 
 const app = new Hono<{ Bindings: Env }>()
 type Ctx = Context<{ Bindings: Env }>
@@ -153,6 +154,9 @@ app.get('/fee-context', async (c) => {
 registerVoucherDraftRoutes(app)
 // 🏪 채널 필수 선택(미지정 좌석 set-once) — 2026-09-07 결재 Q3-3. 같은 앱에 등록(경로 /fee-context/channel).
 registerStoreChannelRoutes(app)
+// 🙋 내 가게 찾기(소유권 신청) — 2026-09-09 3단계. 경로 `/stores/lookup-by-business` · `/store-claims`.
+//    판정 주체를 넘겨 준다 — 같은 `resolveActorUserId` 를 두 벌로 만들면 언젠가 갈린다.
+registerStoreClaimRoutes(app, resolveActorUserId)
 
 // ── 매장 프로필 병합(공유) — SSOT: worker/utils/store-profile.ts (2026-08-23 단일화) ────────
 async function loadMergedProfile(DB: D1Database, sellerId: number) {

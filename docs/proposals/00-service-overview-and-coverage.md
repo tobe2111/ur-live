@@ -291,9 +291,9 @@
 |---|---|---|---|
 | 도매몰 (유통스타트) | `wholesale-mall-brief.md` | 43 | 4 |
 | 오프라인 공구 / 동네딜 | `offline-groupbuy-brief.md` | 29 | 95 |
-| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 69 | 272 |
+| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 70 | 272 |
 | 유어샵 / 담기·소개 | `linkshop-brief.md` | 23 | 88 |
-| **합계** | — | **164** | **459** |
+| **합계** | — | **165** | **459** |
 
 ### 전체 커버리지 검증 (자동 — 빠진 기능 보증)
 
@@ -302,12 +302,12 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 363 | 1109 |
-| 도메인 버킷 (5개 소개서) | 164 | 459 |
-| 공통/인프라 (의도적 제외) | 165 | 472 |
-| **미커버 (점검 필요)** | **34** | **178** |
+| 전체 | 365 | 1116 |
+| 도메인 버킷 (5개 소개서) | 165 | 459 |
+| 공통/인프라 (의도적 제외) | 166 | 476 |
+| **미커버 (점검 필요)** | **34** | **181** |
 
-⚠️ **미커버 212건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 215건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -487,11 +487,14 @@
 - `PATCH /signup-meta` (`src/features/supply/api/supplier-dashboard.routes.ts`)
 - `GET /statement` (`src/features/supply/api/wholesale-documents.routes.ts`)
 - `GET /status` (`src/features/supply/api/coupang-commerce.routes.ts`)
+- `POST /store-claims` (`src/features/seller/api/seller-store-claims.routes.ts`)
+- `GET /store-claims/mine` (`src/features/seller/api/seller-store-claims.routes.ts`)
 - `POST /store/coupang/connect` (`src/features/supply/api/supplier-dashboard.routes.ts`)
 - `POST /store/import` (`src/features/supply/api/supplier-dashboard.routes.ts`)
 - `POST /store/naver/connect` (`src/features/supply/api/supplier-dashboard.routes.ts`)
 - `GET /store/products` (`src/features/supply/api/supplier-dashboard.routes.ts`)
 - `GET /store/status` (`src/features/supply/api/supplier-dashboard.routes.ts`)
+- `GET /stores/lookup-by-business` (`src/features/seller/api/seller-store-claims.routes.ts`)
 - `GET /sub-accounts` (`src/features/supply/api/wholesale.routes.ts`)
 - `POST /sub-accounts` (`src/features/supply/api/wholesale.routes.ts`)
 - `DELETE /sub-accounts/:id` (`src/features/supply/api/wholesale.routes.ts`)
@@ -879,7 +882,7 @@
 
 #### 온라인 입점 / 라이브커머스
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (69개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (70개)
 
 - `/browse`
 - `/cart`
@@ -943,6 +946,7 @@
 - `/seller/youtube-growth`
 - `/seller/youtube-growth/success`
 - `/seller/youtube/callback`
+- `/store/find`
 - `/store/new`
 - `/store/scan`
 - `/store/stats/:productId`
@@ -1718,7 +1722,7 @@
 
 
 
-> 마지막 생성: 2026-09-08T07:07:35.893Z
+> 마지막 생성: 2026-09-09T08:52:57.324Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

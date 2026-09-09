@@ -155,9 +155,13 @@ export async function isStoreOwner(DB: D1Database, userId: number, sellerId: num
 /**
  * 운영 권한 부여. 멱등(UNIQUE + INSERT OR IGNORE) — 같은 쌍을 두 번 눌러도 행 1개.
  * 이미 회수된 행이면 되살린다(같은 사람을 다시 부를 수 있어야 한다).
+ *
+ * ⚠️ `grantedByUserId` 는 **소비자 user id** 다. 어드민이 대신 지정하는 경우엔 `null` 을 넘긴다 —
+ *   어드민 id 를 여기 적으면 두 id 공간이 한 칸에 섞여, 나중에 이 칸을 읽는 코드가 조용히 오판한다
+ *   (오늘 하루에 그 병을 여섯 곳에서 봤다). 어드민 흔적은 감사로그와 신청서 `decided_by` 에 남는다.
  */
 export async function grantOperator(
-  DB: D1Database, sellerId: number, userId: number, grantedByUserId: number, role: OperatorRole = 'operator'
+  DB: D1Database, sellerId: number, userId: number, grantedByUserId: number | null, role: OperatorRole = 'operator'
 ): Promise<{ ok: boolean; reason?: string }> {
   if (!Number.isFinite(sellerId) || sellerId <= 0) return { ok: false, reason: 'bad_seller' }
   if (!Number.isFinite(userId) || userId <= 0) return { ok: false, reason: 'bad_user' }

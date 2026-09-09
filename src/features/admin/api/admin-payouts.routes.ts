@@ -542,9 +542,17 @@ adminPayoutsRoutes.patch('/admin/payouts/:id/cancel', requireAdmin(), require2FA
    *   말해 주고 `confirm_release: true` 를 받는다. 감사로그가 그 선택을 남긴다.
    */
   if (row.kind === 'handover_closeout' && row.payee_user_id && row.payee_type === 'seller' && !body.confirm_release) {
-    const now = await DB.prepare('SELECT linked_user_id FROM sellers WHERE id = ? LIMIT 1')
-      .bind(row.payee_id).first<{ linked_user_id: number | null }>().catch(() => null)
-    if (now && Number(now.linked_user_id) !== Number(row.payee_user_id)) {
+    /**
+     * 🪑 2026-09-09: 종전엔 `sellers.linked_user_id` 하나로 "지금 주인"을 물었다. 그 칸은
+     *   `/store/new` 매장에서 **항상 비어 있어서**(주인은 `seller_operators.role='owner'`) 비교가
+     *   늘 `NaN !== N` → 참이 되고, **주인이 그대로인데도** 확인을 요구했다. 출금·인증·마감 판정과
+     *   **같은 함수**로 묻는다 — 신호가 갈리면 화면과 실제가 갈린다.
+     *
+     * 🔒 모름(undefined)은 "바뀌었다"로 다룬다. 근거 없이 통과시키면 그 돈이 새 주인에게 간다.
+     */
+    const { resolveStoreOwnerUserId } = await import('../../../worker/utils/seller-operators')
+    const nowOwner = await resolveStoreOwnerUserId(DB, Number(row.payee_id))
+    if (nowOwner === undefined || Number(nowOwner) !== Number(row.payee_user_id)) {
       return c.json({
         success: false,
         code: 'HANDOVER_CLOSEOUT_RELEASE',

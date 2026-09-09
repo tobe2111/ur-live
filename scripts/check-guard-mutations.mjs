@@ -10172,8 +10172,10 @@ canvas {
   {
     name: '🤝 마감이 계좌를 스냅샷하지 않는다 (새 주인에게 송금)',
     file: 'src/features/admin/api/admin-payouts/handover-closeout.ts',
-    find: "      ).bind(String(sellerId), amount, today, today, seller.bank_account, seller.business_name || null, memo, seller.linked_user_id ?? null).run()",
-    replace: "      ).bind(String(sellerId), amount, today, today, null, seller.business_name || null, memo, seller.linked_user_id ?? null).run()",
+    // 🪑 2026-09-09 재앵커: payee_user_id 를 `seller.linked_user_id` → `resolveStoreOwnerUserId` 로
+    //   바꾸면서 이 줄이 달라졌다(그 칸은 /store/new 매장에서 항상 비어 있다). 계좌 스냅샷만 잰다.
+    find: "      ).bind(String(sellerId), amount, today, today, seller.bank_account, seller.business_name || null, memo, ownerUserId ?? null).run()",
+    replace: "      ).bind(String(sellerId), amount, today, today, null, seller.business_name || null, memo, ownerUserId ?? null).run()",
     test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
     why:
       'payout 행이 계좌를 안 들고 있으면, 송금 시점에 sellers.bank_account 를 다시 읽게 되고 ' +
