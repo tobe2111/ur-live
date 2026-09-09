@@ -2,7 +2,7 @@ import { useRef, useState, useCallback, useEffect } from 'react'
 import { distanceKm } from './utils'
 import { attachKakaoTouchShim } from '@/lib/kakao-touch-shim'
 import { buildAggContent, buildClusterContent, buildPinContent, buildPlaceContent, buildMeContent, applyPinTierStyle } from './map-overlays'
-import { mapMarkerTier, shouldShowMarkerLabel } from '@/shared/map-marker'
+import { mapMarkerTier, shouldShowMarkerLabel, setMapHighlightPct, mapHighlightPct } from '@/shared/map-marker'
 import { priceDisplay } from '@/shared/price-display'
 import { readRecentlyViewedIds } from '@/components/group-buy/RecentlyViewedStrip'
 import type { Restaurant, KakaoPlace } from './types'
@@ -412,6 +412,38 @@ export function useKakaoMap({
   }, [sdkLoaded, withCoords, kakaoPlaces, userLoc, favorites, coordGroupSize, setSelected, setSuggestionFor, panToProduct, viewportRev, serverClusters])
 
   useEffect(() => { initMap() }, [initMap])
+
+  /**
+   * 🎛️ 2026-09-09: 할인 강조 임계값의 **어드민 조정값**을 받아 온다.
+   *
+   * 🔴 **첫 화면을 막지 않는다** — 마커는 이미 코드 상수로 그려져 있고, 값이 도착하면 색만 다시
+   *   칠한다. 실패·지연이면 상수 그대로라 오늘과 완전히 같은 동작이다(로딩 규칙: 새 블로킹 왕복 0).
+   * 🔴 값이 실제로 **달라졌을 때만** 다시 칠한다 — 매번 칠하면 선택 상태가 깜빡인다.
+   */
+  useEffect(() => {
+    if (!enabled) return
+    let alive = true
+    import('@/lib/api').then(({ default: api }) => api.get('/api/consumer-settings'))
+      .then((r) => {
+        if (!alive) return
+        const v = (r.data as { data?: { map_highlight_discount_pct?: number } })?.data?.map_highlight_discount_pct
+        if (v == null) return
+        const before = mapHighlightPct()
+        setMapHighlightPct(v)
+        if (mapHighlightPct() === before) return
+        const seen = readRecentlyViewedIds()
+        pinElsRef.current.forEach((el, id) => {
+          const r2 = pinDataRef.current.get(id)
+          applyPinTierStyle(el, mapMarkerTier({
+            discount: r2 ? priceDisplay(r2).discount : 0,
+            isSelected: selectedIdRef.current === id,
+            isSeen: seen.has(id),
+          }))
+        })
+      })
+      .catch(() => { /* 조정값 없음 = 코드 상수 유지(현행과 동일) */ })
+    return () => { alive = false }
+  }, [enabled])
 
   // ⚡ 2026-07-08 (레이어 4의 핫패스): 선택 변경 시 해당 핀 DOM 만 직접 restyle — 전량 재빌드 0.
   useEffect(() => {

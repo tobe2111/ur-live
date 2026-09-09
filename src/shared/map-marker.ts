@@ -22,8 +22,31 @@
  *   왕복을 하나 더 만드는 것은 이 레포의 로딩 규칙에 어긋난다(그래서 v1 은 상수).
  */
 
-/** 이 % 이상이면 마커를 다른 무게로 띄운다. 실측 기준 50건 중 9건(화면엔 두세 개). */
+/**
+ * 이 % 이상이면 마커를 다른 무게로 띄운다. 실측 기준 50건 중 9건(화면엔 두세 개).
+ *
+ * 🎛️ 2026-09-09: 이제 **어드민이 조정할 수 있다**(`platform_settings.map_highlight_discount_pct`
+ *   → 공개 `GET /api/consumer-settings`). 이 상수는 그 값이 **없거나 늦게 올 때의 기본값**이다.
+ *   🔴 서버 기본값과 이 숫자는 같아야 한다 — 다르면 설정 미저장 상태에서 화면이 저 혼자 값을 바꾼다.
+ */
 export const MAP_HIGHLIGHT_DISCOUNT_PCT = 30
+
+/** 어드민 조정값을 담아 두는 자리. 조회 실패·미설정이면 위 상수를 그대로 쓴다(현행과 동일). */
+let _highlightPct: number = MAP_HIGHLIGHT_DISCOUNT_PCT
+
+/** 지금 적용 중인 임계값. 티어 판정은 반드시 이걸 읽는다(상수를 직접 읽으면 조정이 무효가 된다). */
+export function mapHighlightPct(): number {
+  return _highlightPct
+}
+
+/**
+ * 어드민 조정값 적용. 범위 밖·비숫자는 **무시**하고 기본값을 유지한다 —
+ * 0 이면 전 마커가 강조돼 D4 가 무의미해지고, 100 이면 아무것도 안 뜬다.
+ */
+export function setMapHighlightPct(v: unknown): void {
+  const n = Number(v)
+  if (Number.isFinite(n) && n >= 1 && n <= 99) _highlightPct = Math.round(n)
+}
 
 export type MapMarkerTier = 'selected' | 'seen' | 'highlight' | 'normal'
 
@@ -40,7 +63,7 @@ export function mapMarkerTier({ discount, isSelected, isSeen }: MapMarkerTierInp
   // 🔴 순서 고정: seen 이 highlight 보다 먼저다. 뒤집으면 이미 본 것이 할인 때문에 되살아나
   //    "무엇이 새 것인가"를 못 읽는다(무게 3단계가 무너진다).
   if (isSeen) return 'seen'
-  return discount >= MAP_HIGHLIGHT_DISCOUNT_PCT ? 'highlight' : 'normal'
+  return discount >= mapHighlightPct() ? 'highlight' : 'normal'
 }
 
 /**

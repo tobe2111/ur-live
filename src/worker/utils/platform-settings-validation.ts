@@ -95,6 +95,10 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   pickup_unclaimed_cold_pct: optionalPct,
   pickup_unclaimed_room_pct: optionalPct,
   pickup_unclaimed_room_grace_days: optionalIntRange(0, 365),
+  // ── 🗺️ 지도 마커 할인 강조 기준(안 D4) — read-site: shared/map-marker.ts ──
+  //   1~99 밖은 화면이 무시하고 기본값 30 을 쓴다. 저장 단계에서 막아 주지 않으면
+  //   대표가 "0 으로 낮췄는데 전부 강조가 안 되네" 를 원인 없이 겪는다(조용한 무시).
+  map_highlight_discount_pct: optionalIntRange(1, 99),
   // ── 운영자 문의 연락처 — read-site: features/seller/api/seller-gb.routes.ts ──
   operator_support_contact: optionalText(200),
   // ── boolean 스위치 (read-site === 'true') ──

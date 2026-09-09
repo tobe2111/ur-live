@@ -10,7 +10,8 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { mapMarkerTier, shouldShowMarkerLabel, MAP_HIGHLIGHT_DISCOUNT_PCT } from '@/shared/map-marker'
+import { stripComments } from '../helpers/source-text'
+import { mapMarkerTier, shouldShowMarkerLabel, MAP_HIGHLIGHT_DISCOUNT_PCT, mapHighlightPct, setMapHighlightPct } from '@/shared/map-marker'
 import { mapMarkerIconSvg, MAP_ICON_INNER_FOR_TEST } from '@/shared/map-marker-icons'
 import { buildPinContent, pinTierStyle, applyPinTierStyle } from '@/pages/restaurant-map/map-overlays'
 import type { Restaurant } from '@/pages/restaurant-map/types'
@@ -185,7 +186,52 @@ describe('⑧ 할인율 정의는 한 곳이다 — 지도 한 화면에 다섯 
     expect(readFileSync(f, 'utf8')).toContain('priceDisplay')
   })
   it.each(SURFACES)('%s 가 자체 계산식으로 되돌아가지 않는다', (f) => {
-    const src = readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+    // 🩸 2026-09-09: 처음엔 여기서 자체 정규식으로 주석을 벗겼다. `RestaurantMapPage.tsx` 의
+    //   `//  /api/kakao/place/* 호출은 0 …` 한 줄이 **가짜 블록주석을 열어** 6,433자를 먹었고,
+    //   내가 검사하려던 코드가 그 안에 있어 **결함을 심어도 초록**이었다(CI 의 주입이 잡았다).
+    //   레포엔 이미 문자열·정규식 리터럴을 추적하는 스캐너가 있다 — 그걸 쓴다.
+    const src = stripComments(readFileSync(f, 'utf8'))
     expect(src, '할인율을 다시 손으로 계산한다').not.toMatch(/1\s*-\s*\w+\.price\s*\/\s*\w+\.original_price/)
+  })
+})
+
+describe('⑨ 임계값 어드민 조정 (2026-09-09 대표 "모두 다 해줘")', () => {
+  const restore = () => setMapHighlightPct(MAP_HIGHLIGHT_DISCOUNT_PCT)
+  it('기본값은 코드 상수와 같다 — 미설정 상태에서 화면이 저 혼자 값을 바꾸면 안 된다', () => {
+    restore()
+    expect(mapHighlightPct()).toBe(MAP_HIGHLIGHT_DISCOUNT_PCT)
+  })
+  it('조정값이 실제로 티어 판정을 바꾼다', () => {
+    restore()
+    expect(mapMarkerTier({ discount: 22, isSelected: false, isSeen: false })).toBe('normal')
+    setMapHighlightPct(20)
+    expect(mapMarkerTier({ discount: 22, isSelected: false, isSeen: false })).toBe('highlight')
+    restore()
+  })
+  it('🔴 범위 밖·비숫자는 무시한다 — 0 이면 전부 강조돼 D4 가 무의미해진다', () => {
+    restore()
+    for (const bad of [0, -5, 100, 1000, NaN, null, undefined, '삼십', '']) {
+      setMapHighlightPct(bad)
+      expect(mapHighlightPct(), String(bad)).toBe(MAP_HIGHLIGHT_DISCOUNT_PCT)
+    }
+  })
+  it('티어 판정이 상수가 아니라 조정값을 읽는다(상수를 직접 읽으면 조정이 무효다)', () => {
+    const src = readFileSync('src/shared/map-marker.ts', 'utf8')
+    expect(src).toMatch(/discount >= mapHighlightPct\(\)/)
+  })
+  it('🔴 지도의 조정값 조회가 첫 화면을 막지 않는다', () => {
+    const s = readFileSync('src/pages/restaurant-map/useKakaoMap.ts', 'utf8')
+    expect(s).toContain('/api/consumer-settings')
+    // 🩸 2026-09-09: 처음엔 "`.then` 체인이 있는가"로 물었는데, 앞에 `await` 를 심어도 뒤의
+    //   `.then` 이 남아 통과했다(주입이 잡았다). **있으면 안 되는 것**으로 물어야 한다.
+    expect(s, '조정값을 await 로 기다리면 그 자체가 블로킹이다').not.toMatch(/await[^\n]*consumer-settings/)
+    expect(s, '실패해도 조용히 기본값을 써야 한다').toMatch(/\.catch\(\(\) => \{[^}]*\}\)/)
+  })
+  it('서버가 같은 범위로 거른다 (화면만 걸러도 저장은 되어 다음 사람이 헷갈린다)', () => {
+    const route = readFileSync('src/worker/routes/public-utility.routes.ts', 'utf8')
+    expect(route).toContain('/api/consumer-settings')
+    expect(route).toMatch(/pct >= 1 && pct <= 99/)
+    const reg = readFileSync('src/worker/utils/platform-settings-validation.ts', 'utf8')
+    expect(reg, '저장 단계에서 안 막으면 조용히 무시된다').toMatch(/map_highlight_discount_pct: optionalIntRange\(1, 99\)/)
   })
 })

@@ -78,4 +78,32 @@ export default [
     test: 'src/tests/unit/map-marker-d4.test.ts',
     why: '핀을 눌러 뜨는 카드다 — 방금 본 마커의 숫자와 다르면 그 자리에서 바로 어긋난다.',
   },
+  {
+    name: '🗺️ 티어 판정이 조정값 대신 상수를 직접 읽는다 (어드민 조정이 무효가 된다)',
+    file: 'src/shared/map-marker.ts',
+    find: "  return discount >= mapHighlightPct() ? 'highlight' : 'normal'",
+    replace: "  return discount >= MAP_HIGHLIGHT_DISCOUNT_PCT ? 'highlight' : 'normal'",
+    test: 'src/tests/unit/map-marker-d4.test.ts',
+    why:
+      '어드민에서 값을 바꿔도 화면이 안 바뀐다 — 에러가 안 나서 대표는 "저장이 안 된다"고 ' +
+      '설정 페이지를 의심하게 되고, 원인은 전혀 다른 파일에 있다.',
+  },
+  {
+    name: '🗺️ 범위 밖 임계값을 그대로 받는다 (0 이면 전 마커가 강조된다)',
+    file: 'src/shared/map-marker.ts',
+    find: '  if (Number.isFinite(n) && n >= 1 && n <= 99) _highlightPct = Math.round(n)',
+    replace: '  if (Number.isFinite(n)) _highlightPct = Math.round(n)',
+    test: 'src/tests/unit/map-marker-d4.test.ts',
+    why: '0 이면 전부 강조돼 D4 가 무의미해지고, 100 이면 아무것도 안 뜬다. 어느 쪽도 에러가 아니다.',
+  },
+  {
+    name: '🗺️ 조정값 조회가 첫 화면을 막는다 (렌더 경로에서 await)',
+    file: 'src/pages/restaurant-map/useKakaoMap.ts',
+    find: "    import('@/lib/api').then(({ default: api }) => api.get('/api/consumer-settings'))",
+    replace: "    void (async () => { const api = (await import('@/lib/api')).default; await api.get('/api/consumer-settings') })(); Promise.resolve()",
+    test: 'src/tests/unit/map-marker-d4.test.ts',
+    why:
+      '마커 색 하나 때문에 지도 첫 페인트가 왕복 하나만큼 늦어진다. 이 값은 늦게 와도 되는 값이라 ' +
+      '기다릴 이유가 없다(로딩 규칙: 새 블로킹 왕복 0).',
+  },
 ]
