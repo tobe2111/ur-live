@@ -314,4 +314,35 @@ export default [
       '히어로(--home-field)와 이 패널이 미묘하게 어긋난다 — 한쪽만 바꾸는 날 이음매가 드러난다. ' +
       '같은 실수를 카드 할인 빨강에서 이미 한 번 했다(#FF8A93 발명 후 되돌림).',
   },
+  {
+    name: '🎬 스크롤이 바깥 컨테이너로 옮겨져 유어쇼츠 진입점이 같이 밀린다',
+    file: 'src/pages/mobile-home/MobileHomePage.tsx',
+    find: '<div className="flex items-end gap-3 px-4">\n        <nav aria-label="카테고리" className="flex min-w-0 flex-1 gap-5 overflow-x-auto scrollbar-hide">',
+    replace: '<div className="flex items-end gap-3 px-4 overflow-x-auto scrollbar-hide">\n        <nav aria-label="카테고리" className="flex min-w-0 flex-1 gap-5">',
+    test: 'src/tests/unit/home-shorts-entry.test.ts',
+    why:
+      '"두 칸으로 나눈 걸 한 칸으로 합치자" 는 흔한 정리다. 그 순간 진입점의 shrink-0 가 무의미해지고 ' +
+      '카테고리와 함께 스크롤된다. 이 결함은 **화면으로 안 보인다** — 카테고리가 다섯 개라 스크롤이 ' +
+      '안 생기기 때문이다. 하나만 늘어나는 날 진입점이 조용히 화면 밖으로 사라진다.',
+  },
+  {
+    name: '🔵 유어쇼츠 마침표가 점으로 떨어진다 (뱃지로 읽힌다)',
+    file: 'src/pages/mobile-home/MobileHomePage.tsx',
+    find: '유어쇼츠<span className="-ml-[3px] text-brand-text">.</span>',
+    replace: '유어쇼츠<span className="ml-1 text-brand-text">.</span>',
+    test: 'src/tests/unit/home-shorts-entry.test.ts',
+    why:
+      '붙은 마침표는 로고 `urdeal.` 과 같은 **서명**이라 상시로 켜 둬도 안 낡는다. 띄우는 순간 ' +
+      '바로 옆 알림 종 때문에 **뱃지**로 읽혀, 한 주면 배경이 되고 진짜 뱃지의 신뢰도까지 깎인다.',
+  },
+  {
+    name: '🎬 쇼츠 아이콘 재생 삼각형이 선이 된다 (16px 에서 속이 빈다)',
+    file: 'src/components/icons/urdeal-icons.tsx',
+    find: '<path d="M10.6 9.2v5.6l4.6-2.8z" fill="currentColor" stroke="none" />',
+    replace: '<path d="M10.6 9.2v5.6l4.6-2.8z" />',
+    test: 'src/tests/unit/home-shorts-entry.test.ts',
+    why:
+      '실제로 쓰이는 크기가 16px 다. 삼각형을 획 1.6 선으로 그리면 그 크기에서 속이 비어 ' +
+      '무엇인지 안 읽힌다(시안에서 40px·16px 를 나란히 놓고 판정한 기준이 이것 하나였다).',
+  },
 ]

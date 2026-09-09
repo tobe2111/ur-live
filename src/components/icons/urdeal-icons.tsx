@@ -193,3 +193,23 @@ export const StayLineIcon = forwardRef<SVGSVGElement, IconProps>(function StayLi
     </svg>
   )
 })
+
+/**
+ * 유어쇼츠 — **세로 화면 + 재생**. (2026-09-09 대표 확정 "아이콘 1")
+ *
+ * 왜 이 그림인가: 쇼츠는 **9:16 세로**라는 형태 자체가 정체성이다. 원 + 삼각형(범용 재생)은
+ * 읽기는 쉬워도 "유어쇼츠"라는 신호가 없고, 카드 두 장을 겹친 안은 실제로 쓰이는 **16px 에서
+ * 뒤 장이 앞 장에 먹혔다**(시안 3안을 40px·16px 나란히 놓고 판정 — `docs/design/`).
+ *
+ * ⚠️ 삼각형만 `fill="currentColor" stroke="none"` 이다. 선으로 그리면 16px 에서 속이 비어
+ *    무엇인지 안 읽힌다. 나머지 획은 세트 규약대로 1.6.
+ * ⚠️ `filled` 는 안 받는다 — 하단 탭이 아니라 헤더 링크에만 쓰여 활성 상태가 없다.
+ */
+export const ShortsIcon = forwardRef<SVGSVGElement, IconProps>(function ShortsIcon({ size = 24, filled: _f, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <rect x="6.5" y="3" width="11" height="18" rx="3.2" />
+      <path d="M10.6 9.2v5.6l4.6-2.8z" fill="currentColor" stroke="none" />
+    </svg>
+  )
+})
