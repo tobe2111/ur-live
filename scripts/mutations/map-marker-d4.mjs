@@ -6,8 +6,8 @@ export default [
   {
     name: '🗺️ 이미 본 것이 할인 강조에 짐 (무게 3단계가 무너진다)',
     file: 'src/shared/map-marker.ts',
-    find: "  if (isSeen) return 'seen'\n  return discount >= MAP_HIGHLIGHT_DISCOUNT_PCT ? 'highlight' : 'normal'",
-    replace: "  if (discount >= MAP_HIGHLIGHT_DISCOUNT_PCT) return 'highlight'\n  return isSeen ? 'seen' : 'normal'",
+    find: "  if (isSeen) return 'seen'\n  return discount >= mapHighlightPct() ? 'highlight' : 'normal'",
+    replace: "  if (discount >= mapHighlightPct()) return 'highlight'\n  return isSeen ? 'seen' : 'normal'",
     test: 'src/tests/unit/map-marker-d4.test.ts',
     why: "이미 본 것을 할인 때문에 되살리면 '무엇이 새 것인가'를 못 읽는다. 순서가 곧 규칙이다.",
   },

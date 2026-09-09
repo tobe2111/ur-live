@@ -26,6 +26,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Screen } from '@/components/ui/screen'
 import { type MapVoucherType } from './restaurant-map/voucher-types'
 import { useKakaoMap, type ServerCluster } from './restaurant-map/useKakaoMap'
+import { useViewportRegion } from './restaurant-map/useViewportRegion'
 import { useSheetDrag, SHEET_BASE_TOP, SHEET_SNAP_TRANSLATE, SHEET_SNAP_TRANSITION } from './restaurant-map/useSheetDrag'
 import { distanceKm } from './restaurant-map/utils'
 import type { Restaurant, KakaoPlace, SortBy } from './restaurant-map/types'
@@ -357,6 +358,8 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     sheetSnap,
     serverClusters: aggClusters,
   })
+  // 📍 2026-09-09 (대표 확정 "안 R1"): 시트의 "이 지역"을 지금 보는 화면의 실제 이름으로(동탄6동 …).
+  const viewportRegion = useViewportRegion({ mapInstance, enabled: mode === 'map' && sdkLoaded })
 
   // 🛡️ 2026-04-30 Phase 5: '내 주변' 클릭 — GPS 요청 + 거리순 + 위치로 pan
   // 🗺️ 2026-06-23 (대표 — 취소 가능): 이미 활성이면 다시 누르면 토글 off(거리순 → 기본 정렬 복귀).
@@ -843,6 +846,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             setVoucherType={setVoucherType}
             filteredCount={!needsAll && !search ? (feedTotal ?? displayList.length) : displayList.length}
             viewportCount={viewportInCount}
+            regionLabel={viewportRegion}
             userLoc={userLoc}
             sortBy={sortBy}
             setSortBy={setSortByUser}
