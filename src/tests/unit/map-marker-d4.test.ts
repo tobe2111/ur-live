@@ -165,10 +165,25 @@ describe('⑦ 아이콘은 칩과 같은 그림이다 (거울)', () => {
   })
 })
 
-describe('⑧ 할인율 정의는 한 곳이다', () => {
-  it('지도 정렬이 자체 계산식으로 되돌아가지 않는다', () => {
-    const s = readFileSync('src/pages/RestaurantMapPage.tsx', 'utf8')
-    expect(s).toContain('priceDisplay')
-    expect(s, '지도가 다시 자기 할인율을 계산한다').not.toContain('1 - a.price / a.original_price')
+describe('⑧ 할인율 정의는 한 곳이다 — 지도 한 화면에 다섯 벌이 있었다', () => {
+  /**
+   * 🩸 2026-09-09: 마커만 SSOT 로 옮기고 끝낼 뻔했다. 실제로는 **같은 화면**에 계산이 다섯 벌이었다
+   *   — 마커 · 목록 행 · 선택 카드 3종. 목록 행은 지도 바로 아래라, 마커가 34% 라고 한 상품이
+   *   그 행에서 다른 숫자면 사용자가 두 값을 동시에 본다(선언값 > 계산값일 때 실제로 갈린다).
+   */
+  const SURFACES = [
+    'src/pages/RestaurantMapPage.tsx',
+    'src/pages/restaurant-map/RestaurantRow.tsx',
+    'src/pages/restaurant-map/SelectedPeekCard.tsx',
+    'src/pages/restaurant-map/SelectedDealCard.tsx',
+    'src/pages/restaurant-map/SelectedDetailCard.tsx',
+    'src/pages/restaurant-map/map-overlays.ts',
+  ]
+  it.each(SURFACES)('%s 가 SSOT 를 쓴다', (f) => {
+    expect(readFileSync(f, 'utf8')).toContain('priceDisplay')
+  })
+  it.each(SURFACES)('%s 가 자체 계산식으로 되돌아가지 않는다', (f) => {
+    const src = readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+    expect(src, '할인율을 다시 손으로 계산한다').not.toMatch(/1\s*-\s*\w+\.price\s*\/\s*\w+\.original_price/)
   })
 })

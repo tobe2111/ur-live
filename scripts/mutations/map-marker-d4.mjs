@@ -59,4 +59,22 @@ export default [
     test: 'src/tests/unit/map-marker-d4.test.ts',
     why: '스타일 값이 빌더와 restyle 두 곳에 있으면 한쪽만 고쳐져 조용히 갈린다(종전 코드가 정확히 그랬다).',
   },
+  {
+    name: '🗺️ 지도 목록 행이 다시 자기 할인율을 계산 (마커와 한 화면에서 갈린다)',
+    file: 'src/pages/restaurant-map/RestaurantRow.tsx',
+    find: '  const { discount } = priceDisplay(r)',
+    replace: '  const discount = r.original_price > r.price ? Math.round((1 - r.price / r.original_price) * 100) : 0',
+    test: 'src/tests/unit/map-marker-d4.test.ts',
+    why:
+      '이 행은 지도 **바로 아래**에 있다. 마커가 34% 라고 한 상품이 여기서 다른 숫자면 사용자가 ' +
+      '한 화면에서 두 값을 동시에 본다 — 서버 선언값이 계산값보다 클 때 실제로 갈린다.',
+  },
+  {
+    name: '🗺️ 선택 카드가 다시 자기 할인율을 계산',
+    file: 'src/pages/restaurant-map/SelectedDealCard.tsx',
+    find: '    ? priceDisplay(selected).discount',
+    replace: '    ? Math.round((1 - selected.price / selected.original_price) * 100)',
+    test: 'src/tests/unit/map-marker-d4.test.ts',
+    why: '핀을 눌러 뜨는 카드다 — 방금 본 마커의 숫자와 다르면 그 자리에서 바로 어긋난다.',
+  },
 ]

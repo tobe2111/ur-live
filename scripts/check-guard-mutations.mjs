@@ -9173,10 +9173,14 @@ canvas {
     why: '2026-09-02 대표 신고 "눌렀는지 안눌렀는지 확인도 안돼". 켜짐은 블루 면이어야 다크·라이트 어디서든 갈린다.',
   },
   {
-    name: '/map B안 — 핀 링이 카테고리 팔레트로 되돌아간다',
+    // 🗺️ 2026-09-09 (안 D4): 핀이 원형 사진+링 → 알약이 되면서 `const ring = …` 이 사라졌다.
+    //   지키는 규칙은 그대로 살아 있으므로(강조색은 브랜드 하나, 자리는 선택뿐) 새 구조로 재조준한다.
+    //   ⚠️ 이 건은 CI 가 "낡은 지도"로 잡아 줬다 — 로컬에서 `--only='🗺️'` 로만 돌려 이름이
+    //   `/map` 으로 시작하는 이 항목을 놓쳤다. 구조를 바꿀 땐 이름이 아니라 **파일**로 훑을 것.
+    name: '/map B안 — 핀 강조색이 카테고리 팔레트로 되돌아간다',
     file: 'src/pages/restaurant-map/map-overlays.ts',
-    find: "const ring = isLive || isSelected ? PIN_RING_BRAND : PIN_RING_INK",
-    replace: "const ring = isLive ? PIN_RING_BRAND : '#ec4899'",
+    find: "return { pillBg: '#fff', pillFg: PIN_RING_INK, iconFg: '#3D4350', discountFg: PIN_RING_INK,",
+    replace: "return { pillBg: '#ec4899', pillFg: PIN_RING_INK, iconFg: '#10b981', discountFg: PIN_RING_INK,",
     test: 'src/tests/unit/map-chips-b.test.ts',
     why: '칩을 블루 하나로 정리해도 핀이 알록달록하면 정리가 무효다. 강조색은 하나, 자리는 선택뿐.',
   },

@@ -11,6 +11,7 @@
  * 넘기면 그만이라 **새 prop 이 하나도 필요 없다**.
  */
 import { memo } from 'react'
+import { priceDisplay } from '@/shared/price-display'
 import { MapPin } from 'lucide-react'
 import CatIcon from './CatIcon'
 import { formatNumber } from '@/utils/format'
@@ -26,7 +27,9 @@ export const RestaurantRow = memo(function RestaurantRow({ r, isSelected, userLo
   onSelect: (r: Restaurant) => void
   fcfs?: { spots: number; appliedDisplay: number }
 }) {
-  const discount = r.original_price > r.price ? Math.round((1 - r.price / r.original_price) * 100) : 0
+  // 💸 2026-09-09: 자체 계산 → SSOT. 이 행은 지도 **바로 아래**에 있어, 마커가 34% 라고 한 상품이
+  //   여기서 다른 숫자면 한 화면에서 두 값이 보인다(선언값이 계산값보다 클 때 실제로 갈렸다).
+  const { discount } = priceDisplay(r)
   // 🗺️ 2026-07-19 (대표 — 거리 표시 로직): 10km 이상 원거리 딜은 "42km" 강조가 "동네딜" 컨셉과
   //   충돌 → 지역명("서울 중구") 우선, 거리는 흐린 보조 표기로 강등. 근거리(<10km)는 기존 강조 유지.
   const dist = userLoc && r.restaurant_lat && r.restaurant_lng
