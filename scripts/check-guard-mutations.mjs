@@ -10008,7 +10008,9 @@ canvas {
   },
   {
     name: '🕳️ 자물쇠가 두 번째 주인 자리를 다시 못 본다 (지금 만드는 모든 매장에서 무력)',
-    file: 'src/worker/utils/store-handover-guard.ts',
+    // 🚚 2026-09-09: 주인 조회가 seller-operators.ts 로 이사했다(출금·자가구매 판정과 같은 규칙을
+    //    쓰려고). 지키는 불변식은 그대로라 지우지 않고 **새 자리로 재조준**한다.
+    file: 'src/worker/utils/seller-operators.ts',
     find: "      WHERE seller_id = ? AND role = 'owner' AND revoked_at IS NULL",
     replace: "      WHERE seller_id = ? AND role = 'nonexistent-role' AND revoked_at IS NULL",
     test: 'src/tests/unit/store-handover-behavior-2026-09-08.test.ts',
@@ -10018,9 +10020,9 @@ canvas {
   },
   {
     name: '🕳️ 주인 조회 실패를 "주인 없음"으로 접는다 (fail-open)',
-    file: 'src/worker/utils/store-handover-guard.ts',
-    find: '  if (owner === undefined) return undefined       // 조회 실패 = 모름',
-    replace: '  if (owner === undefined) return null',
+    file: 'src/worker/utils/seller-operators.ts',   // 🚚 2026-09-09 이사 — 위 항목과 같은 사유
+    find: '  if (owner === undefined) return undefined\n  return owner ? Number(owner.user_id) : null',
+    replace: '  return owner ? Number(owner.user_id) : null',
     test: 'src/tests/unit/store-handover-behavior-2026-09-08.test.ts',
     why:
       '"모름"과 "없음"이 섞이면 모름이 곧 통과가 된다. 돈이 걸린 판단에서 그 둘을 구분하는 것이 ' +
