@@ -13,6 +13,7 @@
 import { useEffect } from 'react'
 import { useMapProducts } from '@/hooks/queries/useMapProducts'
 import type { SortBy } from './types'
+import { effectiveSort } from './effective-sort'
 
 export function useFeedWindow(params: {
   category: string
@@ -22,8 +23,14 @@ export function useFeedWindow(params: {
   needsAll: boolean
 }) {
   const { category, userLoc, sortBy, needsAll } = params
+  /**
+   * 🧭 2026-09-09: **위치 없이 '가까운 순'은 성립하지 않는다.** 그대로 두면 `sort` 는 비워지고
+   *   `near` 도 없어서 **서버 기본 순서**가 나오는데 화면엔 "거리순"이라고 떠 있었다(대표 신고).
+   *   `effectiveSort` 가 그 상태를 다른 정렬로 내려 준다 — 클라 재정렬도 **같은 함수**를 쓴다.
+   */
+  const eff = effectiveSort(sortBy, !!userLoc)
   // 거리순 = near 가 담당(서버 거리 랭킹). 나머지는 이름 그대로 서버 sort 화이트리스트와 1:1.
-  const sort = sortBy === 'distance' ? '' : sortBy
+  const sort = eff === 'distance' ? '' : eff
   /**
    * 🩸 2026-09-03 (자기 diff 재검토에서 발견 — 테스트가 못 잡았다): `near` 와 `sort` 를 **같이 보내면
    *   안 된다.** 서버는 `baseOrder = hasNear ? 거리 : sort` 라 **near 가 sort 를 이긴다**
@@ -32,7 +39,7 @@ export function useFeedWindow(params: {
    *   최종 순서가 맞았지만, 수요 로딩으로 바꾼 지금은 **조용히 틀린 목록**이 된다.
    *   ⇒ 거리순일 때만 near 를 넘긴다(서버의 우선순위와 같은 규칙).
    */
-  const near = sortBy === 'distance' ? userLoc : null
+  const near = eff === 'distance' ? userLoc : null
   const feed = useMapProducts(category, near, { sort })
   const { loadAll } = feed
 

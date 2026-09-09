@@ -19,6 +19,7 @@ import RestaurantList from './restaurant-map/RestaurantList'; import SiteFooter 
 import NearbyEmptyBanner from './restaurant-map/NearbyEmptyBanner'
 import { useGeocodeMissing } from './restaurant-map/useGeocodeMissing'
 import { useNearMeAuto } from './restaurant-map/useNearMeAuto'
+import { effectiveSort } from './restaurant-map/effective-sort'
 import SelectedDealCard from './restaurant-map/SelectedDealCard'
 import MapTopBar from './restaurant-map/MapTopBar'
 import SheetFilterBar from './restaurant-map/SheetFilterBar'
@@ -283,21 +284,23 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       return true
     })
 
-    // 정렬
+    // 정렬 — 🧭 2026-09-09: 서버 요청과 **같은 함수**로 정한다(둘이 갈리면 조용히 틀린 목록이 된다).
+    const eff = effectiveSort(sortBy, !!userLoc)
     items = [...items].sort((a, b) => {
-      if (sortBy === 'distance' && userLoc) {
+      if (eff === 'distance' && userLoc) {
         const da = a.restaurant_lat ? distanceKm(userLoc.lat, userLoc.lng, a.restaurant_lat, a.restaurant_lng) : Infinity
         const db = b.restaurant_lat ? distanceKm(userLoc.lat, userLoc.lng, b.restaurant_lat, b.restaurant_lng) : Infinity
         return da - db
       }
-      if (sortBy === 'discount') {
+      if (eff === 'discount') {
         // 🐛 2026-09-09: 종전엔 여기서 할인율을 **자체 계산**해 서버 정렬(MAX(discount_rate, 계산값))·
         //   카드(priceDisplay)와 정의가 셋으로 갈려 있었다. 같은 상품이 화면마다 다른 할인율을 보이면
         //   그건 버그가 아니라 거짓말이다 — SSOT 경유로 통일(마커 D4 강조도 같은 값을 쓴다).
+        //   ⚠️ 조건은 `eff`(위치 없을 때의 대체 정렬까지 반영) — 같은 날 다른 PR 이 고친 것이라 둘 다 산다.
         return priceDisplay(b).discount - priceDisplay(a).discount
       }
-      if (sortBy === 'price') return (a.price || 0) - (b.price || 0)
-      if (sortBy === 'rating') return (b.rating || 0) - (a.rating || 0)
+      if (eff === 'price') return (a.price || 0) - (b.price || 0)
+      if (eff === 'rating') return (b.rating || 0) - (a.rating || 0)
       return 0
     })
     return items
@@ -445,6 +448,14 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     }).catch(() => { /* 미지원(iOS 등) — onchange 없이 사용자가 '위치 허용/다시 시도'로 재요청 */ })
     return () => { cancelled = true; if (status) status.onchange = null }
   }, [geoHelp, requestNearMe])
+
+  // 🧭 2026-09-09 (대표 "거리순인데 정렬이 안 되어 있다"): 거리순을 고르면 위치를 요청한다.
+  //   못 얻으면 effective-sort.ts 가 안전망(사유는 그 헤더). 이미 '내 주변' 모드면 안 부른다 —
+  //   requestNearMe 가 그 경우 토글이라 정렬을 되돌린다.
+  const chooseSort = useCallback((s: SortBy) => {
+    setSortByUser(s)
+    if (s === 'distance' && !userLoc && !nearMeMode) requestNearMe()
+  }, [setSortByUser, userLoc, nearMeMode, requestNearMe])
 
   // 📜 2026-07-08 (대표 "카테고리 버튼 누를 때마다 상단으로"): 카테고리 전환 시 리스트 최상단으로 스크롤.
   const selectVoucherType = useCallback((v: MapVoucherType) => {
@@ -670,7 +681,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             filteredCount={!needsAll && !search ? (feedTotal ?? displayList.length) : filtered.length}
             userLoc={userLoc}
             sortBy={sortBy}
-            setSortBy={setSortByUser}
+            setSortBy={chooseSort}
             favorites={favorites}
             showFavoritesOnly={showFavoritesOnly}
             setShowFavoritesOnly={setShowFavoritesOnly}
@@ -708,7 +719,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             region={region} district={district} sortBy={sortBy} radiusKm={radiusKm} priceRange={priceRange}
             hasUserLoc={!!userLoc} countFor={countFor}
             onApply={(rg, dist, sort, radius, price) => {
-              setRegion(rg); setDistrict(dist); setSortByUser(sort); setRadiusKm(radius); setPriceRange(price); setFilterSheetOpen(false)
+              setRegion(rg); setDistrict(dist); chooseSort(sort); setRadiusKm(radius); setPriceRange(price); setFilterSheetOpen(false)
             }}
             onClose={() => setFilterSheetOpen(false)}
           />
@@ -849,7 +860,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             regionLabel={viewportRegion}
             userLoc={userLoc}
             sortBy={sortBy}
-            setSortBy={setSortByUser}
+            setSortBy={chooseSort}
             favorites={favorites}
             showFavoritesOnly={showFavoritesOnly}
             setShowFavoritesOnly={setShowFavoritesOnly}
@@ -915,7 +926,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
           onApply={(rg, dist, sort, radius, price) => {
             setRegion(rg)
             setDistrict(dist)
-            setSortByUser(sort)
+            chooseSort(sort)
             setRadiusKm(radius)
             setPriceRange(price)
             setMapView(true)
