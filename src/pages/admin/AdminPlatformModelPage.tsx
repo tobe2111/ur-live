@@ -8,6 +8,7 @@ import { useState } from 'react'
 import platformMd from '../../../docs/design/urdeal-platform-model.md?raw'
 import linkshopMd from '../../../docs/design/linkshop-role-model.md?raw'
 import businessMd from '../../../docs/business/urdeal-business-plan.md?raw'
+import whitepaperMd from '../../../docs/business/urdeal-operations-whitepaper.md?raw'
 import MarkdownView from '@/components/MarkdownView'
 import { FileText } from 'lucide-react'
 
@@ -15,6 +16,7 @@ const DOCS = [
   { key: 'platform', label: '플랫폼 모델 (전체)', src: platformMd },
   { key: 'linkshop', label: '유어샵 역할 모델', src: linkshopMd },
   { key: 'business', label: '비즈니스 문서 (사업계획/회사소개/입점제안)', src: businessMd },
+  { key: 'whitepaper', label: '운영 백서', src: whitepaperMd },
 ] as const
 
 export default function AdminPlatformModelPage() {
