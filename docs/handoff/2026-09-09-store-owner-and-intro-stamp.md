@@ -119,20 +119,49 @@ near = sortBy==='distance' ? userLoc : null   → 위치가 없으면 near 도 �
 남아 있으면 막히고, 마감 창구로 이전 주인 몫을 떼고 넘긴다). 1건을 위해 신원 확인 UI 를 새로
 짓는 것보다, 두 번째 사례가 생길 때 짓는 편이 §6 의 경고와 맞다.
 
-## 🔴 커밋을 막은 것 — npm audit 9건 (대표 판단 필요)
+## ✅ 커밋·CI 를 막던 것 — npm audit (해결됨. 대표 판단 불필요)
 
-pre-commit 의 `check-npm-audit` 이 high/critical **9건**으로 커밋을 막았다. **내 변경과 무관**이고
-`.audit-allowlist.json` 에 없는 신규 advisory 들이다:
+### 🩸 내가 처음에 틀리게 보고했다 — 두 가지가 틀렸다
 
-| 패키지 | 위치 |
-|---|---|
-| vite · postcss · concurrently · wrangler | devDependencies(빌드 전용) |
-| sharp · miniflare · shell-quote · js-yaml · @xmldom/xmldom | 전이 의존(빌드 도구 아래) |
+첫 판에 *"high/critical 9건, vite·postcss·concurrently·wrangler·miniflare·shell-quote 등"* 이라고
+적고 **대표 판단 사항(allowlist 등재 vs 업그레이드)** 으로 올렸다. **둘 다 틀렸다.**
 
-**`package.json` 의 `dependencies`(런타임)에는 하나도 없다** — 배포되는 Worker/Pages 번들에 안 들어간다.
-그래서 이번엔 문서화된 비상 경로(`[SKIP_AUDIT]`)로 통과시켰다.
+1. **개수·패키지가 틀렸다.** 게이트 로직을 그대로 돌려 보니 실제 차단은 **10건 / 패키지 셋뿐**이다.
+   내가 나열한 대부분(vite·postcss·shell-quote…)은 **이미 allowlist 에 등재된 것**인데 섞어 말했다.
 
-⚠️ **이건 임시다.** main 최근 40커밋에 `[SKIP_AUDIT]` 선례가 **0건**인데, 그건 이 게이트가
-다른 세션에서 안 돌기 때문일 가능성이 크다(원격 세션은 `install-git-hooks.sh` 를 매번 돌려야 훅이
-생긴다 — CLAUDE.md 경고). ⇒ 대표 판단: **(a) allowlist 등재**(도달 불가 근거로, `accepted_by` 필요)
-**(b) 패키지 업그레이드**(vite 5→6 major 체인 — 기존 기술부채 정책과 충돌).
+   | 패키지 | 건수 | 취약 범위 | 경로 |
+   |---|---|---|---|
+   | `@xmldom/xmldom` | 8 | `<=0.8.14` | `@capacitor/cli` → `plist` |
+   | `js-yaml` | 1 | `4.0.0 - 4.3.1` | `eslint-plugin-import` → `eslint` |
+   | `sharp` | 1 | `<0.35.4` | `wrangler` → `miniflare` |
+
+2. **대표 판단 사항이 아니었다.** 이 레포엔 **세 번째 길**이 이미 있다 — `package.json` 의
+   `overrides`(12개 기존 항목: `tar`·`js-yaml@4`·`shell-quote`·`undici`…). 그리고 같은 사건의
+   선례가 커밋 로그에 그대로 있다:
+   `b93fe9c6c 2026-08-22 "fix(deps): tar 7.5.13 → 7.5.22 — 새 취약점이 모든 PR 의 감사 게이트를 막고 있었다"`
+   ⇒ **allowlist(위험 수용)도 아니고 메이저 업그레이드도 아닌, 패치 상향**이 이 레포의 정답이다.
+
+### 수정 — overrides 세 줄
+
+```
+"js-yaml@4":        "^4.3.1" → "^4.3.2"   # 기존 override 가 취약 범위 안에 있었다
+"@xmldom/xmldom":   "^0.9.12"  (신규)
+"sharp":            "^0.35.4"  (신규)
+```
+
+**런타임 위험 0**: 셋 다 `dependencies` 에 없고 `src/` 어디서도 안 쓴다(배포 번들 미포함).
+`@capacitor/cli` 는 직접 devDependency 조차 아니고 `app:sync`/`app:android`/`app:ios`(모바일 패키징)
+에서만 쓰여 **CI·웹 빌드 경로 밖**이다 — 0.8→0.9 를 넘긴 근거.
+
+⚠️ **`npm audit` 은 npm 서버의 취약점 DB 를 실시간 조회한다** — 어제 초록이던 PR 이 오늘 빨간불이
+되는 것은 정상이고, 이 레포에서 최소 세 번째다(07-15 · 07-25 allowlist 등재 · 08-22 tar 상향).
+**내 브랜치 문제가 아니라 그 시점의 모든 PR 이 같이 막힌다** — 다음에 같은 일이 나면 대표에게
+결정을 올리기 전에 **`npm audit --json` 의 `fixAvailable` 부터 볼 것.**
+
+검증: 게이트 재실행 초록 · tsc 0 · `npm run build` 0 · vitest **659파일 8,173건 pass**.
+
+## 🧹 남긴 것 — 주입을 인라인에 넣었다(규약 이탈)
+
+CLAUDE.md 는 새 주입을 `scripts/mutations/<도메인>.mjs` 에 두라고 한다(동시 세션 간 머지 충돌
+때문). 이번 11건은 `check-guard-mutations.mjs` **인라인 배열**에 넣었다 — 동작은 같지만 규약 이탈이고,
+지금 열려 있는 다른 브랜치(#1413, 주입 7건)와 **같은 줄을 다툴 수 있다.** 다음 세션이 옮길 것.
