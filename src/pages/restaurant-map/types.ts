@@ -6,7 +6,11 @@ export interface Restaurant {
   id: number; name: string; restaurant_name: string; restaurant_address: string
   restaurant_phone: string; restaurant_lat: number; restaurant_lng: number
   price: number; original_price: number; image_url: string
-  discount_percent: number; rating: number
+  /** 🐛 2026-09-09: 종전 `discount_percent` 는 **선언만 되고 한 번도 채워진 적이 없다** —
+   *  서버(`/api/group-buy/products`)가 보내는 이름은 `discount_rate` 다. 이름이 어긋나 지도만
+   *  자체 계산식을 쓰다가 서버 정렬·카드와 할인율 정의가 갈렸다. 실제 이름으로 교정.
+   *  ⚠️ 표시·정렬은 반드시 `priceDisplay()`(shared/price-display) 경유. */
+  discount_rate?: number | null; rating: number
   category?: string
   seller_id?: number
 }

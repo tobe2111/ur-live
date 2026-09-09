@@ -30,6 +30,11 @@ interface Props {
   setShowFavoritesOnly: (fn: (v: boolean) => boolean) => void
   // 🗺️ 2026-06-22 (대표 시안): 칩을 상단(MapTopBar)으로 올린 지도 모드에선 칩 줄 숨기고 count/정렬만.
   hideChips?: boolean
+  /**
+   * 📍 2026-09-09 (대표 확정 "안 R1"): "이 지역" 자리에 들어갈 **실제 지역명**(예: `동탄6동`).
+   * 없으면 종전 "이 지역" 그대로 — 지오코딩 실패·전국 줌에서 이름을 지어내지 않는다.
+   */
+  regionLabel?: string | null
 }
 
 /**
@@ -52,6 +57,7 @@ export default function SheetFilterBar({
   showFavoritesOnly,
   setShowFavoritesOnly,
   hideChips = false,
+  regionLabel = null,
 }: Props) {
   const { t } = useTranslation()
   const [sortOpen, setSortOpen] = useState(false)
@@ -117,13 +123,12 @@ export default function SheetFilterBar({
           <span className="text-[12px] text-gray-500 dark:text-gray-400">
             {showViewport ? (
               <>
-                <span className="font-bold text-gray-900 dark:text-white">{t('map.sheet.thisArea', { defaultValue: '이 지역' })} {viewportCount}</span>{t('map.sheet.count', { defaultValue: '곳' })}
+                <span className="font-bold text-gray-900 dark:text-white">{regionLabel || t('map.sheet.thisArea', { defaultValue: '이 지역' })} {viewportCount}</span>{t('map.sheet.count', { defaultValue: '곳' })}
                 <span className="ml-1 text-gray-400 dark:text-gray-500">· {t('map.sheet.total', { defaultValue: '전체' })} {filteredCount}{t('map.sheet.count', { defaultValue: '곳' })}</span>
               </>
             ) : (
               <><span className="font-bold text-gray-900 dark:text-white">{filteredCount}</span>{t('map.sheet.count', { defaultValue: '곳' })}</>
             )}
-            {userLoc && sortBy === 'distance' && <span className="ml-1 text-brand dark:text-[#4D8DF5]">{t('map.sheet.nearMeLabel', { defaultValue: '내 위치 기준' })}</span>}
           </span>
           {favorites.length > 0 && (
             <button
