@@ -53,7 +53,7 @@ function ShortCard({ item, load, onOpen }: { item: UrShortItem; load: boolean; o
       aria-label={`${item.store_name || ''} ${item.title || '유어쇼츠 영상'}`}
     >
       <span
-        className="relative block overflow-hidden rounded-[10px] bg-gray-200 dark:bg-[#2A2D38]"
+        className="relative block overflow-hidden rounded-[10px] bg-[#2A2D38]"
         style={{ height: URSHORTS_CARD_H }}
       >
         {load && thumb ? (
@@ -177,29 +177,36 @@ export default function UrShortsRail() {
   if (items.length === 0) return <div ref={wrapRef} aria-hidden="true" />
 
   return (
-    <section className="ur-home-panel light-island" ref={wrapRef}>
+    <section className="ur-home-panel ur-panel-ink" ref={wrapRef}>
       <div className="mb-3 flex items-end justify-between gap-4">
-        <h3 className="text-[17px] font-black tracking-tight text-gray-900 dark:text-white">
+        {/* 🌑 잉크 패널 위라 글자는 **테마 분기 없이 늘 밝다**(위 .ur-panel-ink 주석).
+            흰 알파를 쓰는 이유: 회색 토큰은 라이트 토큰으로 읽혀 짝(dark:)을 요구받는데,
+            여기엔 짝지을 라이트 상태가 아예 없다. */}
+        <h3 className="text-[17px] font-black tracking-tight text-white">
           유어쇼츠
-          <span className="ml-2 text-[11.5px] font-normal text-gray-500 dark:text-gray-400">
+          <span className="ml-2 text-[11.5px] font-normal text-white/60">
             눌러서 보고 바로 구매
           </span>
         </h3>
         <Link
           to={URSHORTS_VIEWER_PATH}
-          className="shrink-0 whitespace-nowrap text-[12.5px] font-bold text-gray-600 underline-offset-4 hover:underline dark:text-gray-300"
+          className="shrink-0 whitespace-nowrap text-[12.5px] font-bold text-white/75 underline-offset-4 hover:underline"
         >
           전체 보기
         </Link>
       </div>
 
-      <div className="relative">
+      {/* 🩸 2026-09-08: 여기 `group` 이 **없었다.** 아래 화살표 둘이 `group-hover:grid` 인데 부모에
+          `group` 이 없으면 그 변형은 **영원히 안 걸린다** — 즉 PC 화살표가 한 번도 뜬 적이 없다.
+          `hidden` 이 기본값이라 에러도 경고도 없고, 대표에게는 그냥 "넘길 방법이 없는 레일"로 보였다.
+          이 레포가 반복해 만난 "코드는 있는데 안 되던" 클래스 그대로다(뷰어 스와이프가 같은 날 같은 꼴). */}
+      <div className="group relative">
         {/* 화살표는 PC 에서 레일에 마우스를 올렸을 때만. 폰은 잘린 카드가 이미 말한다. */}
         {edge.l && (
           <button
             type="button" aria-label="이전"
             onClick={() => nudge(-1)}
-            className="absolute left-[-13px] z-[3] hidden h-9 w-9 place-items-center rounded-full bg-white text-gray-900 shadow-lg dark:bg-[#1D1F29] dark:text-white [@media(hover:hover)_and_(pointer:fine)]:group-hover:grid"
+            className="absolute left-[-13px] z-[3] hidden h-9 w-9 place-items-center rounded-full bg-[#2A2D38] text-white shadow-lg [@media(hover:hover)_and_(pointer:fine)]:group-hover:grid"
             style={{ top: URSHORTS_CARD_H / 2 - 18 }}
           >
             <ChevronLeft size={17} />
@@ -221,13 +228,13 @@ export default function UrShortsRail() {
           {/* 끝까지 민 사람은 이미 관심이 있다. 그 자리에 문을 둔다. */}
           <Link
             to={URSHORTS_VIEWER_PATH}
-            className="grid shrink-0 snap-start place-items-center gap-1.5 rounded-[10px] border border-dashed border-gray-300 text-center text-brand dark:border-[#3A3D48]"
+            className="grid shrink-0 snap-start place-items-center gap-1.5 rounded-[10px] border border-dashed border-white/20 text-center text-brand-text"
             style={{ width: URSHORTS_CARD_W, height: URSHORTS_CARD_H }}
           >
             <span>
               <ChevronRight size={24} className="mx-auto" />
               <span className="mt-1 block text-[12px] font-bold">전체 보기</span>
-              <span className="mt-[2px] block text-[10.5px] font-normal text-gray-500 dark:text-gray-400">
+              <span className="mt-[2px] block text-[10.5px] font-normal text-white/55">
                 {items.length}편
               </span>
             </span>
@@ -237,7 +244,7 @@ export default function UrShortsRail() {
           <button
             type="button" aria-label="다음"
             onClick={() => nudge(1)}
-            className="absolute right-[-13px] z-[3] hidden h-9 w-9 place-items-center rounded-full bg-white text-gray-900 shadow-lg dark:bg-[#1D1F29] dark:text-white [@media(hover:hover)_and_(pointer:fine)]:group-hover:grid"
+            className="absolute right-[-13px] z-[3] hidden h-9 w-9 place-items-center rounded-full bg-[#2A2D38] text-white shadow-lg [@media(hover:hover)_and_(pointer:fine)]:group-hover:grid"
             style={{ top: URSHORTS_CARD_H / 2 - 18 }}
           >
             <ChevronRight size={17} />

@@ -9,12 +9,11 @@ import UrDealLogo from '@/components/brand/UrDealLogo'
 import { isKorea } from '@/shared/config/region'
 import { storage } from '@/shared/utils/storage'
 
-// 🛡️ 2026-05-02: TD-018 추가 분할 — types/utils/HeroCarousel 추출.
+// 🛡️ 2026-05-02: TD-018 추가 분할 — types/utils 추출(HeroCarousel 은 2026-09-08 제거).
 // 🛡️ 2026-05-05: TD-006 추가 분할 — RestaurantList / SelectedPeekCard / SelectedDetailCard 추출.
 // 🛡️ 2026-05-06: TD-006 추가 분할 — SheetFilterBar 추출. (MapSearchHeader 는 2026-07-20 MapTopBar 로 대체·삭제.)
 import FilterSheet, { type PriceRange } from './restaurant-map/FilterSheet'
 import SuggestionModal from './restaurant-map/SuggestionModal'
-import HeroCarousel from './restaurant-map/HeroCarousel'
 import RestaurantList from './restaurant-map/RestaurantList'; import SiteFooter from '@/components/main/SiteFooter'
 import NearbyEmptyBanner from './restaurant-map/NearbyEmptyBanner'
 import { useGeocodeMissing } from './restaurant-map/useGeocodeMissing'
@@ -316,18 +315,6 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     () => pickViewportList(displayList, (mode === 'map' && !search && !(aggClusters && aggClusters.length > 0)) ? mapBounds : null),
     [mode, mapBounds, aggClusters, displayList, search],
   )
-
-  // 🛡️ 2026-04-30 Phase 3: hero carousel — 인기 (할인율 높은 순) 상위 5개
-  const heroDeals = useMemo(() => {
-    return [...filtered]
-      .filter(r => r.original_price > r.price)
-      .sort((a, b) => {
-        const dA = 1 - a.price / a.original_price
-        const dB = 1 - b.price / b.original_price
-        return dB - dA
-      })
-      .slice(0, 5)
-  }, [filtered])
 
   // 🛡️ 2026-04-28: 동일 좌표 이용권 그룹화 (핀 겹침 방지).
   //   같은 매장에 이용권 여러 개 등록 시 핀 1개 + 개수 배지.
@@ -875,15 +862,18 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             className="px-3 pt-3 pb-24"
             style={{ overscrollBehavior: 'contain', touchAction: !isLgViewport && sheetSnap !== 'full' ? 'none' : undefined }}
           >
-            {/* 🛡️ 2026-04-30 Phase 3: hero carousel — 할인율 TOP5 */}
-            {!loading && (
-              <HeroCarousel
-                heroDeals={heroDeals}
-                userLoc={userLoc}
-                liveSellerIds={liveSellerIds}
-                onSelect={selectAndPan}
-              />
-            )}
+            {/* 🗑️ 2026-09-08 (대표 *"거리순이 가장 우선이야"* + *"오늘의 핫딜은 원래 없었지 않아? 왜 생긴거지?"*):
+                여기 있던 '오늘의 핫딜' 캐러셀(할인율 TOP5, 2026-04-30 `eb153b842`)을 제거했다. 이유 셋:
+                ① **거리순을 가로챘다** — 시트는 거리순인데 그 위에 할인율순 다섯 장이 먼저 서 있었다.
+                   "가까운 순이 가장 우선"이면 화면 맨 위가 가까운 것이어야 한다.
+                ② **바로 아래 첫 줄과 겹쳤다** — 거리 1등과 할인 1등이 같은 상품이면 한 화면에 두 번 뜬다
+                   (대표 실측 캡처). 홈에서 2026-09-06 에 고친 "같은 이용권이 두 번"과 같은 클래스인데
+                   지도엔 그 처방이 안 갔다.
+                ③ **"5곳"이 전체에서 고른 게 아니었다** — 2026-09-03 수요 로딩 이후 화면은 가까운 50개만
+                   갖고 있어서, 위에 "338곳"이라 적혀 있어도 실제로는 그 50개 중 top 5 였다.
+                🔁 되살리려면 `git revert` 로 이 커밋의 이 블록 + `heroDeals` + 컴포넌트 파일을 복원한다.
+                   (같은 이름의 쇼핑/메인 '오늘의 핫딜'은 이미 2026-06-04 에 "불필요"로 제거됐다 — 그때
+                    지도 쪽만 남아 있었고, 2026-09-03 재디자인으로 모양이 바뀌어 새것처럼 보였다.) */}
             <RestaurantList
               loading={loading}
               filtered={viewportList}
