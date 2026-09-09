@@ -219,3 +219,95 @@ guard-registry 128 · sql-column/bind/table · file-size · balance-write GREEN.
 - 이 PR 의 staging 실측: **직접 등록 사장님으로 출금 신청** → 403 이 아닌지. 중개자로는 여전히 막히는지.
 - `seller-churn-detect.ts:41`·`seller-public-payload.ts:100`·`worker/index.ts:2605` 도 같은 신호를 쓴다.
   돈이 아니라 **알림·표시**라 이번 범위에서 뺐다 — 직접 등록 매장이 늘면 그때 함께 본다.
+
+---
+
+# 🪑 승계 3단계 — 어드민 지정 + 사장님 신청 (같은 날, 세 번째 묶음)
+
+대표: *"내 판단 알려줘 무슨 말인지 이해못했어. 지금은 유저가 없어서 지금 하면 좋은게 아닐까 싶긴 한데"*
+→ *"모두 다 완벽하게 진행해줘"*.
+
+## 🩸 내가 대표에게 틀린 말을 했고, 정정하고 착수했다
+
+앞선 보고에서 *"어드민이 수동으로 승격하면 되니 급하지 않다"* 고 말했다. **거짓이었다.**
+grep 결과 어드민 소유권 이전 경로는 **0건**이고, `POST /stores/:id/operators` 는
+`requireOwnerOfCurrentStore` 를 요구하며 역할도 `'operator'` 로 못 박혀 있다.
+⇒ **주인이 없는 매장은 영원히 주인이 없다.** 라이브 매장 **14 홍대돈까스**가 정확히 그 상태였다
+(approved · brokered · `linked_user_id` NULL · `bank_account` NULL · operator 는 유저 3).
+정산 계좌를 넣을 사람이 존재하지 않는 매장이 라이브에 있었다.
+
+## 무엇을 지었나
+
+| 층 | 파일 | 경로 |
+|---|---|---|
+| 승계 SSOT | `worker/utils/store-ownership-transfer.ts` | — |
+| 신청서 | `worker/utils/store-ownership-claims.ts` | (+ repair-schema 등록) |
+| 어드민 API | `features/admin/api/admin-store-owner.routes.ts` | `GET/POST /api/admin/stores/:id/owner` · `GET /api/admin/store-claims` · `POST /api/admin/store-claims/:id/decide` |
+| 소비자 API | `features/seller/api/seller-store-claims.routes.ts` | `GET /api/seller/stores/lookup-by-business` · `POST /api/seller/store-claims` · `GET /api/seller/store-claims/mine` |
+| 어드민 화면 | `pages/AdminStoreOwnerPage.tsx` | `/admin/store-owner` |
+| 소비자 화면 | `pages/StoreOwnerClaimPage.tsx` | `/store/find` |
+
+**두 입구가 SSOT 하나만 부른다** — 입구마다 규칙을 다시 쓰면 언젠가 갈린다.
+
+## 설계 §5(c) — 이 작업의 유일한 절대 규칙
+
+`introduced_by_influencer_id` · `introduced_by_agency_id` · `introduced_at` · `referral_bonus_until` 은
+**승계가 절대 안 건드린다.** 관계가 끊기면 수입도 끊긴다고 하면 중개자는 사장님이 직접 계정 만드는 걸
+막고, 그러면 매장이 플랫폼에 영영 안 올라온다. 시험과 주입이 이 불변식을 고정한다.
+
+## 🩸 시험이 내 코드의 결함 둘을 잡았다 (오늘 여섯·일곱 번째)
+
+1. **`LEGACY_ACCOUNT_STORE` 는 죽은 가지였다.** `resolveStoreOwnerUserId` 는 linked 를 먼저 보므로
+   `linked !== prev` 는 **영원히 거짓**이다. 조건이 있어 보였을 뿐 아무것도 안 막고 있었다.
+2. **더 중요한 것 — 이전 주인 "한 명"만 강등하면 안 된다.** 그 함수는 linked 가 없으면
+   `owner` 행 중 **granted_at 이 가장 이른 것**을 고른다. 두 신호가 어긋난 매장에서 옛 owner 행이
+   남으면 **이전이 끝난 뒤에도 새 주인이 주인이 아니다**(에러 없이). ⇒ **새 주인 외의 모든 owner
+   행을 강등**하도록 고쳤고, 시험이 판정 함수 결과까지 확인한다(행만 맞고 판정이 갈리면 무의미).
+
+## 🪑 같은 병의 여섯째·일곱째 자리도 고쳤다
+
+| # | 자리 | 증상 |
+|---|---|---|
+| ⑥ | `admin-payouts/handover-closeout.ts` `payee_user_id` | 그 칸이 `seller.linked_user_id` 라 **이 창구가 가장 필요한 중개 매장에서 NULL** → 취소 가드가 근거를 잃음 |
+| ⑦ | `admin-payouts.routes.ts` 취소 게이트 | `Number(null) !== N` 이 늘 참 → **주인이 그대로인데도** 확인 요구(경고의 마모) |
+
+⑦은 **모름(undefined)을 "바뀌었다"로** 다룬다 — 근거 없이 통과시키면 그 돈이 새 주인에게 간다.
+⑥을 고치면서 기존 주입 하나의 지도가 낡았고(`--map-only` 가 잡았다) 재조준했다. 09-07 시험의
+두 단언도 옛 신호를 강제하고 있어 **새 규칙으로 다시 썼다**(가드가 버그를 지키고 있던 셈이다).
+
+## 그 밖에 고정한 규약
+
+- `grantOperator(…, grantedByUserId)` 를 **`number | null`** 로 넓히고, 어드민 경로는 **`null`** 을 넘긴다.
+  `admins.id` 와 `users.id` 는 다른 공간이다 — 섞으면 그 칸을 읽는 코드가 조용히 오판한다(오늘 여섯 곳).
+  어드민 흔적은 감사로그와 신청서 `decided_by` 가 남긴다.
+- 신청 승인은 **이전이 성공한 뒤에만** `approved` 로 찍는다. 반대로 하면 자물쇠에 막혔는데 신청서만
+  승인됨이 되어 아무도 주인이 안 된 채 큐에서 사라진다.
+- `bno_match` 는 **3상태**(일치/불일치/**대조 불가**). 번호를 안 낸 신청을 '불일치'로 뭉개면
+  어드민이 진짜 사장님을 거절한다.
+- 조회(`lookup-by-business`)는 **지금 주인이 누구인지 안 알려준다**. 사업자번호 하나로 남의 계정
+  존재를 확인할 수 있으면 그건 조회가 아니라 열람이다.
+- `StoreRegisterModal` 의 중복(409) 화면에서 *"상담으로 알려주세요"* 를 **실제 창구 버튼**으로 교체.
+  그 문장은 창구가 아니라 **부재의 완곡어**였다(받은 뒤에 주인을 바꿀 수단이 없었다).
+
+## 검증
+
+tsc 0 · 신규 시험 **23건** pass · 관련 4파일 **76건** pass · 주입 **1,007건 지도 성함** ·
+신규 11건 **전부 되돌려-검증 빨간불 확인** · theme/dashboard-theme/light-input/sql-bind/sql-column/
+sql-table/mobile-viewport/modal-zindex/anti-slop/utc-date/duplicate-routes/robots-routes GREEN.
+
+## ➡️ 다음 세션 — 첫 액션
+
+배포 후 `/admin/store-owner` 에서 **매장 14** 를 조회한다. 판정 기준:
+1. "이 매장에는 소유자가 없습니다" 가 뜨는가 (오늘 D1 실측과 일치하는가)
+2. 소유자를 지정하면 `seller_operators` 에 `role='owner'` 행이 생기는가
+3. **지정 뒤 그 계정으로 정산 계좌 등록이 열리는가** ← 이게 이 작업의 실제 목적이다
+4. 잔액이 있는 매장에서 이전 시도 → 409 `STORE_HANDOVER_BLOCKED` + 마감 안내가 뜨는가
+
+⚠️ **머니 경로 인접**(자물쇠·마감·수취인)이라 3·4 는 staging 확인이 필요하다. 승계 자체는 송금하지 않는다.
+
+## ⚠️ 남긴 것
+
+- `seller-churn-detect.ts:41` · `seller-public-payload.ts:100` · `worker/index.ts:2605` 는 여전히
+  옛 신호를 쓴다. **알림·표시**라 이번에도 범위 밖 — 직접 등록 매장이 늘면 함께 본다.
+- `resolveActorUserId` 가 `seller-stores.routes.ts` 와 `seller-operators.routes.ts` **두 벌**이다.
+  이번엔 전자를 인자로 넘겨 신청 라우트가 같은 판정을 쓰게 했지만, 두 벌 자체는 남아 있다.

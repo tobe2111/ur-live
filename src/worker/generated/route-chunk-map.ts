@@ -3,65 +3,65 @@
 export const ROUTE_CHUNK_MAP: Record<string, { js: string[]; css: string[] }> = {
   "home": {
     "js": [
-      "/assets/PcHomePage-BnJ4eBmA.js",
-      "/assets/MobileHomePage-B0z2Eb8r.js",
-      "/assets/app-home-D2EQwQBT.js",
-      "/assets/app-constants-24uPaJ3r.js",
-      "/assets/GroupBuyFeed-CoQLnceS.js",
-      "/assets/useHomeQuerySync-BX8muueO.js"
+      "/assets/PcHomePage-B5ZGoPzF.js",
+      "/assets/MobileHomePage-TwOqVIde.js",
+      "/assets/app-home-D5eAh-74.js",
+      "/assets/app-constants-CiiuIgex.js",
+      "/assets/GroupBuyFeed-kziGJDxZ.js",
+      "/assets/useHomeQuerySync-BXd_YI4h.js"
     ],
     "css": []
   },
   "gbDetail": {
     "js": [
-      "/assets/GroupBuyDetailPage-DUUb8jfz.js",
-      "/assets/DetailTitleHeader-CZWMGfpy.js",
-      "/assets/app-misc-DNrsOWgB.js",
-      "/assets/app-home-D2EQwQBT.js",
-      "/assets/app-constants-24uPaJ3r.js",
-      "/assets/app-components-DdbOatn0.js",
-      "/assets/app-utils-deferred-CCaB0iJZ.js",
+      "/assets/GroupBuyDetailPage-BiU6rPhB.js",
+      "/assets/DetailTitleHeader-DZ-9p3mw.js",
+      "/assets/app-misc-C5Mztm_O.js",
+      "/assets/app-home-D5eAh-74.js",
+      "/assets/app-constants-CiiuIgex.js",
+      "/assets/app-components-BS7JCMxf.js",
+      "/assets/app-utils-deferred-D27NEsEj.js",
       "/assets/radix-ui-7il725KW.js",
       "/assets/app-ui-utils-msoul5Oj.js",
-      "/assets/app-features-sMhRYEkO.js"
+      "/assets/app-features-ymc4dXvD.js"
     ],
     "css": []
   },
   "voucherDetail": {
     "js": [
-      "/assets/VoucherDetailPage-DZoz5Siv.js",
-      "/assets/app-home-D2EQwQBT.js",
-      "/assets/app-constants-24uPaJ3r.js",
-      "/assets/app-utils-deferred-CCaB0iJZ.js",
+      "/assets/VoucherDetailPage-B0pWhJWU.js",
+      "/assets/app-home-D5eAh-74.js",
+      "/assets/app-constants-CiiuIgex.js",
+      "/assets/app-utils-deferred-D27NEsEj.js",
       "/assets/seed-detail-BRqakZJ5.js"
     ],
     "css": []
   },
   "product": {
     "js": [
-      "/assets/ProductDetailPage-fkImkIyv.js",
-      "/assets/app-home-D2EQwQBT.js",
-      "/assets/app-constants-24uPaJ3r.js",
-      "/assets/app-utils-deferred-CCaB0iJZ.js",
-      "/assets/app-product-components-B3FKuvMH.js",
+      "/assets/ProductDetailPage-B1l7ppzn.js",
+      "/assets/app-home-D5eAh-74.js",
+      "/assets/app-constants-CiiuIgex.js",
+      "/assets/app-utils-deferred-D27NEsEj.js",
+      "/assets/app-product-components-CuF4yPZf.js",
       "/assets/embla-XVrp4Y8g.js",
-      "/assets/app-components-DdbOatn0.js",
+      "/assets/app-components-BS7JCMxf.js",
       "/assets/radix-ui-7il725KW.js",
       "/assets/app-ui-utils-msoul5Oj.js",
-      "/assets/app-features-sMhRYEkO.js"
+      "/assets/app-features-ymc4dXvD.js"
     ],
     "css": []
   },
   "linkshop": {
     "js": [
-      "/assets/CuratorPage-Du1xCGJs.js",
-      "/assets/SellerPublicPage-DJTtyR9E.js",
-      "/assets/app-home-D2EQwQBT.js",
-      "/assets/app-constants-24uPaJ3r.js",
-      "/assets/app-features-sMhRYEkO.js",
-      "/assets/seller-public-fetch-nMvrHRaM.js",
-      "/assets/app-components-DdbOatn0.js",
-      "/assets/app-utils-deferred-CCaB0iJZ.js",
+      "/assets/CuratorPage-H6u40aix.js",
+      "/assets/SellerPublicPage-CHGXn7O-.js",
+      "/assets/app-home-D5eAh-74.js",
+      "/assets/app-constants-CiiuIgex.js",
+      "/assets/app-features-ymc4dXvD.js",
+      "/assets/seller-public-fetch-DzPxxKuN.js",
+      "/assets/app-components-BS7JCMxf.js",
+      "/assets/app-utils-deferred-D27NEsEj.js",
       "/assets/radix-ui-7il725KW.js",
       "/assets/app-ui-utils-msoul5Oj.js"
     ],
@@ -69,21 +69,26 @@ export const ROUTE_CHUNK_MAP: Record<string, { js: string[]; css: string[] }> = 
   },
   "vouchers": {
     "js": [
-      "/assets/VouchersPage-VQfbnBFz.js",
-      "/assets/app-home-D2EQwQBT.js",
-      "/assets/app-constants-24uPaJ3r.js",
-      "/assets/BrowseProductCard-Jt-yrh6A.js",
-      "/assets/app-utils-deferred-CCaB0iJZ.js"
+      "/assets/VouchersPage-Bj9FQ9zo.js",
+      "/assets/app-home-D5eAh-74.js",
+      "/assets/app-constants-CiiuIgex.js",
+      "/assets/app-components-BS7JCMxf.js",
+      "/assets/app-utils-deferred-D27NEsEj.js",
+      "/assets/radix-ui-7il725KW.js",
+      "/assets/app-ui-utils-msoul5Oj.js",
+      "/assets/app-features-ymc4dXvD.js",
+      "/assets/app-kakao-sdk-HAM5uC3L.js",
+      "/assets/BrowseProductCard-CBITvJIr.js"
     ],
     "css": []
   },
   "browse": {
     "js": [
-      "/assets/BrowsePage-DXxO2Z8S.js",
-      "/assets/app-home-D2EQwQBT.js",
-      "/assets/app-constants-24uPaJ3r.js",
-      "/assets/app-utils-deferred-CCaB0iJZ.js",
-      "/assets/BrowseProductCard-Jt-yrh6A.js"
+      "/assets/BrowsePage--yvLMI72.js",
+      "/assets/app-home-D5eAh-74.js",
+      "/assets/app-constants-CiiuIgex.js",
+      "/assets/app-utils-deferred-D27NEsEj.js",
+      "/assets/BrowseProductCard-CBITvJIr.js"
     ],
     "css": []
   }

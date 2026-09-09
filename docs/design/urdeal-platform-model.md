@@ -113,6 +113,18 @@
 > `seller_id` 로 자동 스코프되므로 그 검사가 뚫리면 IDOR 이다. 💰 정산 귀속은 **불변**.
 > SSOT: `store-operator-model.md` §4.
 
+> 🪑 **소유권 승계 (2026-09-09, 3단계 구현)**: 중개자가 대신 올린 매장의 **주인 자리**를 사장님에게
+> 넘긴다. 입구는 둘 — 어드민 지정(`POST /api/admin/stores/:id/owner`, 화면 `/admin/store-owner`) ·
+> 사장님 신청(`POST /api/seller/store-claims`, 화면 `/store/find`) → 어드민 승인. 둘 다 SSOT
+> `store-ownership-transfer.ts` 하나만 부른다.
+> 🩸 **이게 없어서 매장이 잠겨 있었다**: `/store/new` 매장은 주인이 `seller_operators.role='owner'`
+> 로만 표현되는데 **그 행을 만들 수 있는 사람이 아무도 없었다** — 주인 없는 매장엔 정산 계좌를
+> 넣을 사람도 없다(라이브 매장 14 가 그 상태였다).
+> 🔑 **영입 보상은 승계에도 그대로 간다**(`introduced_by_*`·`referral_bonus_until` 무접촉) — 관계가
+> 끊기면 수입도 끊긴다고 하면 중개자가 사장님을 플랫폼에서 숨긴다.
+> 🔒 이전 주인 몫이 남아 있으면 **막고**, 마감(`/api/admin/payouts/handover-closeout`)을 먼저 하게 한다.
+> SSOT: `store-operator-model.md` §8.
+
 ### 2-2. 도매(B2B) 행위자 — §12 참조
 - **판매사** (도매가로 사입해 재판매, `sellers.is_distributor=1`)
 - **제조사** (도매몰에 상품 공급, suppliers)
@@ -169,6 +181,7 @@
   판매 표면 = 유어샵(`/u/{handle}`) 일원화** — nav 최상단 '내 유어샵' 진입. 대시보드 핵심 동선 =
   이용권 등록/관리 · QR 스캔 · 정산 · 리뷰 · 매장 통계(심플모드 SellerSimpleNav 와 정합). 전환퍼널
   (시청자→주문, 라이브 잔재)은 홈에서 숨김. 라우트/API/데이터 보존 — 플래그 false 로 즉시 복원.
+- **매장 소유권 (2026-09-09)**: `/store/find`(내 가게 찾기 — 사업자등록증으로 소유권 신청, 소비자 라우트) · `/admin/store-owner`(어드민 지정·심사)
 - **매장·인플루언서 (2026-08-20, seller-dashboard-v2)**: `/seller/stores`(매장 관리 — 카카오맵 등록·국세청 검증·채널(직접/중개)·삭제·위임) · `/seller/influencers`(유어애즈 DB 탐색+협업 제안 — 발송은 유어딜 대행, 연락처 무반환) · `/seller/operators`(운영자)
 - **협업·캠페인 (2026-07)**: `/seller/influencer-deals`(우대 커미션 — 조건부=콘텐츠 인증 시 발효) · `/seller/experience-campaigns`(체험 캠페인 관리 — 셀프 개설은 게이트 `experience_campaign_seller_create` 뒤, 어드민 대행 `/admin/experience-campaigns` 가 1순위)
 
