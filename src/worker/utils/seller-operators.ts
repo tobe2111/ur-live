@@ -213,3 +213,76 @@ export async function listStoreOperators(DB: D1Database, sellerId: number) {
   ).bind(sellerId).all().catch(() => ({ results: [] as never[] }))
   return rows.results || []
 }
+
+/**
+ * 🪑 이 유저가 **주인**인 승인된 매장 — 두 신호를 함께 본다.
+ *
+ * ## 왜 필요한가 (2026-09-09 — 소유자 오판 수리의 뒷면)
+ * `/store/new` 는 설계상 `sellers.linked_user_id` 를 **비워 두고** `seller_operators` 로
+ * 소유권을 준다. 그래서 `WHERE linked_user_id = ?` 하나로 "사업자 셀러인가"를 묻는 코드는
+ * **직접 등록한 사장님을 전부 남으로 본다.** 실측으로 걸린 자리들:
+ *   - 실제 돈 출금 자격 → 403 "사업자 셀러만 가능합니다" (자기 매장 매출인데)
+ *   - 출금 UI 분기 → "일반 회원, 딜로만 적립" 으로 표시
+ *   - 사업자 인증 표시 → 등록증까지 냈는데 콘솔이 계속 '사업자 등록' 을 요구
+ *
+ * ## ⚠️ `role='owner'` 만이다
+ * 중개(operator)는 **볼 수 있는 매장을 넓힐 뿐 정산 귀속을 바꾸지 않는다**(이 파일 머리말).
+ * 여기서 operator 까지 통과시키면 남의 가게 돈을 중개자가 출금하게 된다.
+ *
+ * ## 🛟 실패는 옛 동작으로 되돌린다
+ * `seller_operators` 조회가 실패해도 **기존 `linked_user_id` 판정은 살려 둔다** —
+ * 넓히려다 오늘 되던 사람이 막히면 그건 개선이 아니라 사고다.
+ *
+ * @returns 주인인 승인 매장 1건 · 없으면 `null`
+ */
+export async function findOwnedApprovedSeller(
+  DB: D1Database,
+  userId: string | number,
+): Promise<{ id: number; business_name: string | null; business_number: string | null } | null> {
+  const uid = String(userId)
+  const widened = await DB.prepare(
+    `SELECT s.id, s.business_name, s.business_number
+       FROM sellers s
+      WHERE s.status = 'approved'
+        AND ( s.linked_user_id = ?
+           OR EXISTS (SELECT 1 FROM seller_operators o
+                       WHERE o.seller_id = s.id AND o.user_id = ?
+                         AND o.role = 'owner' AND o.revoked_at IS NULL) )
+      LIMIT 1`,
+  ).bind(uid, uid).first<{ id: number; business_name: string | null; business_number: string | null }>()
+    .catch(() => undefined)
+  if (widened !== undefined) return widened || null
+
+  // 조회 자체가 실패(테이블 부재 등) — 종전 판정으로 폴백한다.
+  return await DB.prepare(
+    `SELECT id, business_name, business_number FROM sellers
+      WHERE linked_user_id = ? AND status = 'approved' LIMIT 1`,
+  ).bind(uid).first<{ id: number; business_name: string | null; business_number: string | null }>()
+    .catch(() => null)
+}
+
+/**
+ * 🪑 이 매장의 **주인 user id** — `store-handover-guard.resolveCurrentOwner` 와 **같은 규칙**이다.
+ * (한쪽만 고치면 "손바뀜은 막는데 출금은 남이 한다" 같은 어긋남이 생긴다 —
+ *  `store-owner-signal.test.ts` 가 두 자리를 함께 고정한다.)
+ *
+ * @returns 주인 user id · 주인 없음 `null` · **판단 근거를 못 얻으면 `undefined`**
+ */
+export async function resolveStoreOwnerUserId(
+  DB: D1Database,
+  sellerId: number,
+): Promise<number | null | undefined> {
+  const seller = await DB.prepare('SELECT linked_user_id FROM sellers WHERE id = ? LIMIT 1')
+    .bind(sellerId).first<{ linked_user_id: number | null }>().catch(() => undefined)
+  if (seller === undefined) return undefined
+  if (!seller) return null
+  if (seller.linked_user_id) return Number(seller.linked_user_id)
+
+  const owner = await DB.prepare(
+    `SELECT user_id FROM seller_operators
+      WHERE seller_id = ? AND role = 'owner' AND revoked_at IS NULL
+      ORDER BY granted_at LIMIT 1`,
+  ).bind(sellerId).first<{ user_id: number }>().catch(() => undefined)
+  if (owner === undefined) return undefined
+  return owner ? Number(owner.user_id) : null
+}

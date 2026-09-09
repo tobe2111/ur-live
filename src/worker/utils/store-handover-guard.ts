@@ -47,6 +47,7 @@
  *   바로 이 `role` 승격이다. 그래서 **두 신호를 함께** 본다.
  */
 import type { D1Database } from '@cloudflare/workers-types'
+import { resolveStoreOwnerUserId } from './seller-operators'
 
 export interface HandoverCheck {
   /** 막아야 하는가 */
@@ -88,19 +89,8 @@ export async function resolveCurrentOwner(
   DB: D1Database,
   sellerId: number,
 ): Promise<number | null | undefined> {
-  const seller = await DB.prepare('SELECT linked_user_id FROM sellers WHERE id = ? LIMIT 1')
-    .bind(sellerId).first<{ linked_user_id: number | null }>().catch(() => undefined)
-  if (seller === undefined) return undefined      // 조회 실패 = 모름
-  if (!seller) return null                        // 없는 매장 — 막을 것도 없다
-  if (seller.linked_user_id) return Number(seller.linked_user_id)
-
-  const owner = await DB.prepare(
-    `SELECT user_id FROM seller_operators
-      WHERE seller_id = ? AND role = 'owner' AND revoked_at IS NULL
-      ORDER BY granted_at LIMIT 1`,
-  ).bind(sellerId).first<{ user_id: number }>().catch(() => undefined)
-  if (owner === undefined) return undefined       // 조회 실패 = 모름
-  return owner ? Number(owner.user_id) : null
+  // 규칙 본체는 `seller-operators.ts` 하나뿐이다 — 출금·인증 판정도 같은 함수를 쓴다.
+  return await resolveStoreOwnerUserId(DB, sellerId)
 }
 
 export async function checkStoreHandover(
