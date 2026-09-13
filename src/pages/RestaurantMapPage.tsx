@@ -33,6 +33,7 @@ import { distanceKm } from './restaurant-map/utils'
 import type { Restaurant, KakaoPlace, SortBy } from './restaurant-map/types'
 import { useFeedWindow } from './restaurant-map/useFeedWindow'
 import { pickViewportList } from './restaurant-map/viewport-list'
+import { groupByCoord } from './restaurant-map/coord-groups'
 import { matchAddress, findRegionByKey, findDistrictGroup } from '@/shared/constants/korea-regions'
 import { panToRegionAccurate } from './restaurant-map/pan-to-region'
 import { useSearchPan, useSearchDeals } from './restaurant-map/useSearchPan'
@@ -321,31 +322,9 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     [mode, mapBounds, aggClusters, displayList, search],
   )
 
-  // 🛡️ 2026-04-28: 동일 좌표 이용권 그룹화 (핀 겹침 방지).
-  //   같은 매장에 이용권 여러 개 등록 시 핀 1개 + 개수 배지.
-  //   그룹 대표 = 첫 번째 (정렬 순서 따름).
-  const withCoords = useMemo(() => {
-    const list = filtered.filter(r => r.restaurant_lat && r.restaurant_lng)
-    const groups = new Map<string, Restaurant[]>()
-    for (const r of list) {
-      // 5자리 반올림 → ~1m 정밀도 (효과적으로 동일 매장)
-      const key = `${r.restaurant_lat.toFixed(5)}_${r.restaurant_lng.toFixed(5)}`
-      if (!groups.has(key)) groups.set(key, [])
-      groups.get(key)!.push(r)
-    }
-    // 그룹 대표만 반환 (count 별도로 노출은 핀 markup 에서)
-    return Array.from(groups.values()).map(g => g[0])
-  }, [filtered])
-
-  // 좌표 키 → 그룹 size 매핑 (핀 markup 에서 배지 표시용)
-  const coordGroupSize = useMemo(() => {
-    const map = new Map<string, number>()
-    for (const r of filtered.filter(x => x.restaurant_lat && x.restaurant_lng)) {
-      const key = `${r.restaurant_lat.toFixed(5)}_${r.restaurant_lng.toFixed(5)}`
-      map.set(key, (map.get(key) || 0) + 1)
-    }
-    return map
-  }, [filtered])
+  // 🛡️ 2026-04-28: 동일 좌표 이용권 그룹화(핀 겹침 방지) — 대표 1개 + 좌표별 개수.
+  //   🔴 둘은 **한 번의 순회**에서 같이 나와야 한다(근거·함정은 coord-groups.ts).
+  const { withCoords, coordGroupSize } = useMemo(() => groupByCoord(filtered), [filtered])
 
   const { mapRef, mapInstance, sdkLoaded, sdkError, panToProduct } = useKakaoMap({
     kr,

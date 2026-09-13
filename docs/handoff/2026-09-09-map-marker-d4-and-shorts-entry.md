@@ -177,3 +177,31 @@ RestaurantMapPage.tsx:  //         /api/kakao/place/* 호출은 0 — …
 3. `YOUTUBE_API_KEY` — 대표가 "있다"고 확인했다. `/api/version` 은 **고정 목록만** 보고하고
    그 키는 목록에 없다 ⇒ **부재의 근거가 아니다**(내가 그렇게 오판했다, 정정). 자동 채우기가
    실제로 도는지는 어드민에서 영상 하나 추가해 제목이 채워지는지로 판정할 것.
+
+---
+
+## 🔀 저녁 — main 머지 충돌 + 파일 래칫
+
+머지 직전 main 이 3개 PR(#1414·#1415·#1416)만큼 움직였고 **같은 줄이 양쪽에서** 바뀌어 있었다.
+
+- **#1414** — 지도 정렬 조건 `sortBy` → `eff`(`effectiveSort`). 위치가 없으면 거리순이 조용히
+  무정렬이 되던 것을 고친 것.
+- **이 브랜치** — 그 자리의 자체 할인율 계산 → `priceDisplay` SSOT.
+
+한쪽을 고르면 다른 쪽 수정이 사라진다 ⇒ **합쳤다**:
+`if (eff === 'discount') { return priceDisplay(b).discount - priceDisplay(a).discount }`.
+`package.json` 의 `@xmldom/xmldom` 오버라이드는 main 의 높은 쪽(0.9.12), lockfile 은 손으로 고치지
+않고 `npm install --package-lock-only` 로 재생성.
+
+### 🩸 머지가 만든 두 번째 빨간불 — 파일 크기 래칫
+합쳐 놓으니 `RestaurantMapPage.tsx` 가 **961줄**(baseline 957). 내 4줄 + main 의 증가분이 겹친 것이다.
+**rebaseline 은 답이 아니다**(그건 줄였을 때 쓰는 것) ⇒ 진짜로 줄였다:
+
+같은 파일에 **같은 그룹핑이 두 벌**로 있었다 — 대표 목록(`withCoords`)과 개수 맵(`coordGroupSize`)이
+각각 `filtered` 를 걸러 5자리 키로 묶고 있었고, **걸러내는 조건과 키 식을 각자 적어 두고 있었다.**
+한쪽만 고치면 대표 핀은 뜨는데 개수 칩이 없는(그 반대도) 상태가 **에러 없이** 만들어진다.
+순수 모듈 `restaurant-map/coord-groups.ts` 로 합쳐 한 번 순회로 둘을 낸다 → 940줄.
+가드 `coord-groups.test.ts` 5건 + 주입 5건(전부 되돌려-검증 빨간불).
+
+⚠️ 이때 **주입을 이름이 아니라 파일로 쓸었다** — 오늘 두 번 물린 뒤라. `🗺️` 20건 · `📍` 10건 ·
+`🧭` 11건(main 이 새로 넣은 정렬 가드 포함) 전부 다시 빨간불 확인.
