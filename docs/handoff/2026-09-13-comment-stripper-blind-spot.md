@@ -56,6 +56,31 @@ PR #1413 을 머지한 뒤, 거기서 남긴 숙제 — *"자체 정규식으로
 - 신규 `source-text-scanner.test.ts` 12건 + 주입 4건(전부 빨간불)
 - guard-registry 130 · audit-registry 109
 
+## ⚠️ 이 세션에서 **브라우저 실측을 못 했다** (환경 제약 — 기록용)
+
+`urdeal.kr` 로의 브라우저 접속이 이 컨테이너에서 막힌다. 원인은 우리 코드가 아니라 **에이전트
+프록시**다 — 같은 URL 이 curl 로는 200 인데 Chromium 은 **모든 호스트**에서 끊긴다:
+
+```
+curl  https://urdeal.kr/map            → 200
+Chromium(+proxy) https://example.com/  → ERR_TUNNEL_CONNECTION_FAILED
+Chromium(+proxy) https://urdeal.kr/…   → ERR_CONNECTION_RESET
+프록시 로그: ws_closed_mid_exchange urdeal.kr:443
+```
+
+`--proxy-server`·경량 args·`--disable-http2` 다 시도했고 전부 같다. **이전 세션들이 하던
+"하네스 실측"이 지금은 안 된다** — 다음 세션은 이걸 먼저 확인하고(위 두 줄이면 30초),
+안 되면 눈 검증을 대표 몫으로 넘길 것. 시간을 태우지 말 것.
+
+대신 확인한 것(배포 자체는 초록):
+`Deploy to Cloudflare Pages` · `Prod Smoke (assert — auto QA)` · `Guard mutations (full)`
+전부 머지 커밋 `ea7674160` 에서 **success**.
+
+🩸 그리고 내가 쓴 우회 검증(배포된 청크를 grep) 은 **엉뚱한 곳을 뒤졌다** — `app-routes` 청크에는
+어드민 페이지 182개만 들어 있어 소비자 지도 청크가 애초에 없었다. "0건 나왔다"를 근거로
+"배포가 안 됐다"고 말할 뻔했다. **검사 대상이 0이면 통과가 아니라 검사가 틀린 것**이라는
+이 레포의 규칙이 사람에게도 그대로 적용된다.
+
 ## 다음 세션 첫 액션
 
 1. **배포 후 눈 검증**(#1413 이 오늘 머지·배포됐다): `urdeal.kr/map` 을 폰 폭으로 열어
