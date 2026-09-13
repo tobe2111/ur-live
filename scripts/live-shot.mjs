@@ -11,6 +11,16 @@
  *   Chromium 은 모든 호스트에서 끊긴다(에이전트 프록시가 터널을 닫는다). 그날 지도 눈 검증을
  *   통째로 못 했다. **CI 러너는 네트워크가 열려 있으므로** 거기서 찍어 아티팩트로 받는다.
  *
+ *   🔬 **원인까지 재 놨다(2026-09-14 — 다음 세션이 또 20분 태우지 않도록).** 이 컨테이너엔
+ *   Playwright 1.58 + Chromium 1194 가 이미 깔려 있고 `/map` 은 `curl` 로 200 이라 **된다고 착각하기 쉽다.**
+ *   실제로 하면 `net::ERR_CONNECTION_RESET` 이고, 프록시 `/__agentproxy/status` 가 원인을 말한다:
+ *   `ws_closed_mid_exchange … 1751 B sent, 39 B received, client reading` — **CONNECT 는 통과했는데
+ *   TLS 핸드셰이크 중간에 릴레이가 6초 만에 터널을 닫는다.** 즉 인증서 신뢰 문제가 아니다
+ *   (NSS 저장소는 이미 설정돼 있고, 애초에 핸드셰이크가 안 끝난다). 시도해 봤지만 **소용없는 것**:
+ *   `proxy: { server: HTTPS_PROXY }` 전달 · `--disable-features=PostQuantumKyber,EncryptedClientHello`
+ *   · `--disable-quic` (ClientHello 를 1793→1719 B 로 줄여도 같은 자리에서 끊긴다).
+ *   ⇒ **로컬 브라우저 검증은 이 환경에서 불가**. 프록시 README 의 "지원 안 함(보고할 것)" 항목이다.
+ *
  * ## 쓰는 법
  *   node scripts/live-shot.mjs --paths=/map,/vouchers --device=phone
  *   (워크플로: `.github/workflows/live-shot.yml` — `workflow_dispatch` 전용)
