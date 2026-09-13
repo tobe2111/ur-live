@@ -10,6 +10,12 @@
 #   외부 의존이라 간헐 실패하고, 그게 머지를 막으면 결국 꺼 버리게 된다.
 #   그리고 이건 **판정기가 아니라 보는 도구**라 초록/빨강이 뜻을 갖지 않는다(항상 exit 0).
 #
+# 🔴 **누가 무엇을 볼 수 있나** (2026-09-14 실측 — 만든 날 바로 막혔다):
+#   · 세션은 이 워크플로를 **띄우지 못한다**(dispatch 403 — actions:write 없음) ⇒ 대표가 한 번 눌러야 한다.
+#   · 세션은 아티팩트(PNG)를 **못 내려받는다**(blob 호스트 CONNECT 403) ⇒ 그림은 대표만 본다.
+#   · 세션이 볼 수 있는 것은 **잡 로그**뿐이다 ⇒ 스크립트가 우리 DOM 텍스트를 로그에 찍는다.
+#     그림이 꼭 필요하면 `paths` 옆에 스크립트 인자 `--b64crop=x,y,w,h` 를 써서 조각만 로그로 뺀다.
+#
 # 🔒 읽기 전용: 공개 페이지 GET 만 한다. 로그인하지 않고, 시크릿을 안 쓰고, 아무것도 안 바꾼다.
 name: Live shot
 
@@ -32,6 +38,10 @@ on:
         description: '기준 주소'
         required: false
         default: 'https://urdeal.kr'
+      b64crop:
+        description: '그 조각만 base64 로 로그에 (x,y,w,h) — 세션이 그림을 볼 수 있는 유일한 통로'
+        required: false
+        default: ''
 
 jobs:
   shot:
@@ -50,7 +60,8 @@ jobs:
             --base='${{ inputs.base }}' \
             --paths='${{ inputs.paths }}' \
             --device='${{ inputs.device }}' \
-            --theme='${{ inputs.theme }}'
+            --theme='${{ inputs.theme }}' \
+            --b64crop='${{ inputs.b64crop }}'
       - uses: actions/upload-artifact@v4
         if: always()
         with:

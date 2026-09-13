@@ -17,6 +17,21 @@
  *
  * 결과: `artifacts/live-shot/<이름>.png` + stdout 에 경로별 요약(주요 문구·에러·요청 실패).
  *
+ * ## 🔴 세션이 이 도구로 **볼 수 있는 것 / 없는 것** (2026-09-14 실측 — 만든 날 바로 막혔다)
+ * 만들면서 "이제 세션이 눈 검증을 할 수 있다"고 적었는데 **둘 다 막혀 있었다.** 정정한다:
+ *
+ * | | 세션 | 대표(브라우저) |
+ * |---|---|---|
+ * | 워크플로 dispatch | ❌ `403 Resource not accessible by integration`(actions:write 없음) | ✅ Actions 탭 |
+ * | 아티팩트(PNG) 내려받기 | ❌ `productionresultssa19.blob.core.windows.net` CONNECT 403 | ✅ |
+ * | **잡 로그 읽기** | ✅ `get_job_logs` | ✅ |
+ *
+ * ⇒ **실행은 대표가 한 번 눌러 주셔야 하고, 세션이 볼 수 있는 것은 로그뿐이다.**
+ *   그래서 이 스크립트는 **로그에 사실을 최대한 싣는다** — 우리 DOM 텍스트는 그대로 찍고
+ *   (`○○동 16곳 · 전체 338곳` 같은 것은 이걸로 판정된다), 그림이 꼭 필요하면
+ *   `--b64crop=x,y,w,h` 로 **잘라낸 조각만** base64 로 찍는다(로그가 유일한 통로라서).
+ *   ⚠️ 교차 출처 iframe(유튜브) 안은 JS 로 못 잰다 — 그 겹침은 **그림으로만** 판정된다.
+ *
  * ⚠️ **읽기 전용이다.** 공개 페이지 GET 만 한다 — 로그인하지 않고, 자격증명을 안 싣고,
  *   아무것도 쓰지 않는다. 절대 PR 게이트로 올리지 말 것(느리고 외부 의존이라 간헐 실패한다 —
  *   `render-smoke.yml`·`dark-contrast.yml`·`live-contracts.yml` 과 같은 판단).
@@ -34,7 +49,12 @@ const PATHS = arg('paths', '/map').split(',').map((s) => s.trim()).filter(Boolea
 const DEVICE = arg('device', 'phone')
 const THEME = arg('theme', 'light')          // light | dark
 const WAIT_MS = Number(arg('wait', '9000'))
+/** `x,y,w,h` — 그 조각만 base64 로 로그에 찍는다. 세션이 그림을 볼 수 있는 **유일한 통로**. */
+const B64CROP = arg('b64crop', '')
 const OUT = path.join(process.cwd(), 'artifacts/live-shot')
+
+/** 로그에 넣을 수 있는 상한. 넘으면 안 찍는다 — 잡 로그를 base64 로 덮으면 아무도 못 읽는다. */
+const B64_MAX = 48_000
 
 /** 폰은 대표가 실제로 보는 화면, PC 는 액자 밖 레이아웃 — 둘의 실패 모드가 다르다. */
 const DEVICES = {
@@ -99,6 +119,18 @@ for (const p of PATHS) {
   if (errs.length) console.log(`   콘솔 에러 ${errs.length}: ${errs.slice(0, 3).join(' // ')}`)
   if (failed.length) console.log(`   요청 실패 ${failed.length}: ${failed.slice(0, 3).join(' // ')}`)
   console.log(`   → ${path.relative(process.cwd(), file)}`)
+  if (B64CROP) {
+    const [x, y, w, h] = B64CROP.split(',').map(Number)
+    if ([x, y, w, h].every(Number.isFinite) && w > 0 && h > 0) {
+      const buf = await page.screenshot({ clip: { x, y, width: w, height: h } }).catch(() => null)
+      const b64 = buf ? buf.toString('base64') : ''
+      if (!b64) console.log('   [b64crop] 실패')
+      else if (b64.length > B64_MAX) console.log(`   [b64crop] 너무 크다(${b64.length}) — 영역을 줄일 것`)
+      else console.log(`   [b64crop ${x},${y},${w},${h}]\n${b64}`)
+    } else {
+      console.log(`   [b64crop] 값이 이상하다: ${B64CROP}`)
+    }
+  }
   await page.close()
 }
 
