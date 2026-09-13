@@ -88,3 +88,4 @@ artifacts/
 
 # 🖼️ visual-preview.mjs 산출 스크린샷 (로컬 확인용)
 out/visual/
+docs/business/proposals/node_modules
