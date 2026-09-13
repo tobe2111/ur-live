@@ -11,7 +11,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
 (async () => {
   const d = await createDeck({
     title: '유어딜 매장 사장님 안내서', footer: '유어딜 매장 사장님 안내', shotsDir: SHOTS_DIR,
-    shotKeys: ['home', 'detail', 'use', 'shop', 'store-new', 'store-new-channel', 'seller-stores', 'seller-settlements', 'seller-influencers', 'seller-operators'],
+    shotKeys: ['home', 'detail', 'use', 'shop', 'store-new', 'store-new-channel', 'seller-stores', 'seller-settlements', 'seller-influencers', 'seller-operators', 'seller-scan'],
   });
   const { pres, ic, T, chrome, title, lead, card, iconCircle, numBadge, hr, label, phone, kv, customerSteps, honesty } = d;
 
@@ -126,7 +126,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     T(s, '광고 없이 온 새 손님 한 명당 9,075원이 남습니다. 안 팔리면 0원이고, 수수료는 팔린 뒤에만 나갑니다. 재료비 35%는 가정이니 사장님 숫자로 바꿔 보세요.', { x, y: yEnd + 0.12, w, h: 0.7, fontSize: 11, color: C.ink, lineSpacingMultiple: 1.4, valign: 'top' });
     const pts = [
       ['FiXCircle', '선지출 광고비 0', '배너, 검색 광고, 체험단처럼 미리 내는 돈이 없습니다. 팔린 만큼만 나갑니다.'],
-      ['FiTag', '할인율과 유효기간은 사장님이', '남는 메뉴만 올리고, 할인율도 수량도 유효기간도 직접 정합니다. 손해 보는 구조를 만들 수 없습니다.'],
+      ['FiTag', '할인율과 유효기간은 사장님이', '남는 메뉴만 올리고, 할인율도 수량도 유효기간도 직접 정합니다. 유효기간을 안 정하면 무기한입니다. 손해 보는 구조를 만들 수 없습니다.'],
       ['FiClock', '정산은 손님이 쓴 뒤 매주', '손님이 매장에서 QR 을 찍은 이용권만 주 단위로 계좌에 들어옵니다.'],
       ['FiRefreshCcw', '안 쓴 이용권은 유어딜이 환불', '유효기간이 지나도 안 쓴 이용권은 유어딜이 손님에게 100% 환불합니다. 사장님이 처리할 일이 없습니다.'],
     ];
@@ -157,9 +157,9 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
       numBadge(s, i + 1, M, y + 0.02, 0.38);
       T(s, h, { x: M + 0.55, y, w: 5.2, h: 0.32, fontSize: 13.5, bold: true, color: C.ink, charSpacing: -0.3 });
       T(s, p, { x: M + 0.55, y: y + 0.34, w: 5.2, h: 0.55, fontSize: 10.5, color: C.inkSoft, lineSpacingMultiple: 1.4, valign: 'top' });
-      y += 0.8;
+      y += 0.76;
     });
-    T(s, '승인이 나면 이용권 등록으로 이어집니다. 메뉴 이름, 정가, 판매가, 수량, 유효기간을 넣으면 판매가 시작됩니다. 사업자번호는 나중에 넣어도 됩니다.', { x: M, y: y - 0.05, w: 5.9, h: 0.65, fontSize: 10.5, color: C.ink, lineSpacingMultiple: 1.4, valign: 'top' });
+    T(s, '승인이 나면 이용권 등록으로 이어집니다. 메뉴 이름, 정가, 판매가, 수량, 유효기간을 넣으면 판매가 시작됩니다. 대행사나 지인이 내 매장을 먼저 올려 뒀다면 urdeal.kr/store/find 에서 내 가게를 찾아 소유자 신청을 하세요. 소유자가 돼야 정산 계좌를 넣을 수 있습니다.', { x: M, y: y - 0.05, w: 5.9, h: 0.9, fontSize: 10.5, color: C.ink, lineSpacingMultiple: 1.4, valign: 'top' });
     const ph = 4.55;
     const pw = phone(s, 'store-new', 7.15, 1.95, ph, { caption: '1단계: 카카오맵에서 내 가게 찾기' });
     phone(s, 'store-new-channel', 7.15 + pw + 0.55, 1.95, ph, { caption: '3단계: 누가 운영하나요' });
@@ -295,7 +295,31 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     s.addNotes('seller-operators.ts · store-operator-model.md §7.7: 계좌 변경·사업자정보·탈퇴·운영자 관리 403, 마스킹, 정산 내역은 합류 이후분만. 중개 경유 5%.');
   }
 
-  // ───────── 12 정직하게 + 시작하기 ─────────
+  // ───────── 12 자주 묻는 것 (+ QR 사용 처리 화면) ─────────
+  {
+    const s = pres.addSlide();
+    chrome(s);
+    title(s, '사장님들이 자주 묻는 것.');
+    const faq = [
+      ['배달앱이나 네이버 예약과 같이 써도 되나요?', '됩니다. 유어딜은 독점을 요구하지 않고 계약 기간도 없습니다. 이용권 손님은 가게에 직접 오므로 배달 주문과 겹치지 않습니다.'],
+      ['할인율에 최소가 있나요?', '없습니다. 할인율, 수량, 유효기간 전부 사장님이 정합니다. 다만 손님이 정가와 나란히 보므로 할인이 없으면 잘 팔리지 않습니다.'],
+      ['하루에 너무 많이 팔리면요?', '판매 수량에 상한을 두면 그만큼만 팔립니다. 이용권은 예약이 아니라 손님이 오는 날 쓰는 것이라 한 날에 몰리지 않습니다.'],
+      ['간이과세자도 되나요?', '사업자등록증이 있으면 됩니다. 과세 유형은 등록 조건이 아닙니다. 사업자번호는 나중에 넣어도 됩니다.'],
+      ['세금계산서는요?', '수수료에 대한 세금계산서는 유어딜이 초안을 만들어 보내고 사장님은 확인만 하는 방식을 준비하고 있습니다. 시행 전까지는 담당자가 안내합니다.'],
+      ['승인은 얼마나 걸리나요?', '사람이 등록증을 직접 확인하므로 즉시는 아닙니다. 확인이 끝나면 등록한 담당자 번호로 알려 드리고, 확인이 더 필요하면 전화드립니다.'],
+    ];
+    const cw = 4.0, ch = 1.32;
+    faq.forEach(([q, a], i) => {
+      const x = M + (i % 2) * (cw + 0.25), y = 2.15 + Math.floor(i / 2) * (ch + 0.18);
+      card(s, x, y, cw, ch);
+      T(s, q, { x: x + 0.28, y: y + 0.17, w: cw - 0.56, h: 0.3, fontSize: 12, bold: true, color: C.ink, charSpacing: -0.3 });
+      T(s, a, { x: x + 0.28, y: y + 0.5, w: cw - 0.56, h: 0.78, fontSize: 10, color: C.inkSoft, lineSpacingMultiple: 1.38, valign: 'top' });
+    });
+    phone(s, 'seller-scan', 9.7, 1.05, 5.35, { caption: '매장 QR 사용 처리 화면 (예시 데이터)' });
+    s.addNotes('독점·계약기간 없음(코드에 제약 0). 할인율 하한 없음. 수량 상한은 상품 필드. 과세 유형은 등록 조건 아님(seller-registration.routes). 세금계산서: tax-invoice-gateway.ts 역발행 초안(연동 활성 여부는 운영 확인). 승인은 사람(seller-stores.routes 자동 승인 없음).');
+  }
+
+  // ───────── 13 정직하게 + 시작하기 ─────────
   {
     const s = pres.addSlide();
     chrome(s);
@@ -327,5 +351,5 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
   }
 
   await pres.writeFile({ fileName: OUT });
-  console.log('wrote', OUT, '(12 slides)');
+  console.log('wrote', OUT, '(13 slides)');
 })();

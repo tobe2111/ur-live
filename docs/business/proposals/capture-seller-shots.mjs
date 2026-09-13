@@ -89,6 +89,9 @@ function mock(url) {
   if (p === '/api/acquisition/inflow/bind') return json({ success: true })
   // ── 인플루언서 덱용 화면 (예시 데이터) ──
   // 제안 수락 화면 /i/offer/:token — 매장이 보낸 제안 하나
+  if (p === '/api/group-buy/redemption-settings') return json({ success: true, data: { mode: 'store_code', store_code: '482913', usage_conditions: ['매장 방문 시 이용권 화면 제시', '1인 1매'], usage_custom: '' } })
+  if (p === '/api/seller/streams') return json({ success: true, data: [] })
+  if (p === '/api/seller/scan-devices') return json({ success: true, data: [] })
   if (p.startsWith('/api/influencer-offers/')) return json({ success: true, data: {
     seller_name: '홍대돈까스', product_name: '치즈돈가스 2인 세트 할인권', product_price: 16500, product_image: null,
     commission_pct: 12, product_support: 'free', channels: JSON.stringify(['instagram', 'naver_blog']),
@@ -131,6 +134,9 @@ const SHOTS = [
   { name: 'seller-operators', url: '/seller/operators' },
   { name: 'seller-settlements', url: '/seller/settlements' },
   // 매장 등록 마법사 — 소비자 로그인 상태로 연다(ProtectedRoute requireUser). drive 가 단계를 진행시킨다.
+  // 사장님 덱: 첫 이용권 등록 폼 · 매장 QR 사용 처리 화면
+  { name: 'seller-product-new', url: '/seller/products/new' },
+  { name: 'seller-scan', url: '/seller/scan' },
   { name: 'store-new', url: '/store/new', user: true },
   { name: 'store-new-channel', url: '/store/new', user: true, drive: 'channel' },
   // ── 인플루언서 덱 ──

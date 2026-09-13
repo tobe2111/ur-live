@@ -113,7 +113,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     const cw = (W - 2 * M - 0.35) / 2, cy = 2.15, ch = 3.05;
     const cols = [
       ['FiPercent', '주문마다 붙는 딜 소개비', '결제 금액 × 매장이 제안한 %',
-        '매장이 "이 이용권 팔아 주면 몇 %" 를 적어 제안합니다. 수락하면 그 자리에서 내 전용 링크가 나오고, 그 링크로 팔린 건마다 그 %가 쌓입니다. 상한이 없고, 유어딜이 중간에서 떼지 않습니다.',
+        '매장이 "이 이용권 팔아 주면 몇 %" 를 적어 제안합니다. 수락하면 그 자리에서 내 전용 링크가 나오고, 그 링크로 팔린 건마다 그 %가 쌓입니다. 상한이 없고, 유어딜이 중간에서 떼지 않습니다. 제안에 콘텐츠 조건이나 기간이 붙으면 그 조건을 지킨 건에만 붙습니다.',
         [['재원', '사장님 몫 안에서', 0], ['비율', '매장이 딜마다 제안', 1], ['상한', '없음', 2]]],
       ['FiTrendingUp', FACTS.introTerm + '간 붙는 영입 소개비', '그 매장 매출 × ' + FACTS.introPct,
         '내 초대 링크로 사장님이 직접 입점하면, 그 매장의 모든 이용권 매출에서 ' + FACTS.introPct + '가 ' + FACTS.introTerm + '간 나에게 옵니다. 내가 그 딜을 다시 공유하지 않아도, 다른 사람 링크로 팔려도 쌓입니다. 매장이 주인을 바꿔도 유지됩니다.',
@@ -173,7 +173,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     title(s, '경로 A. 제안을 받고, 공유합니다.', { w: 8.4 });
     lead(s, '매장 섭외가 필요 없습니다. 신청해 두면 조건을 담은 제안이 오고, 수락하면 그 자리에서 팔 수 있습니다. 수락하기 전까지 아무 의무도 생기지 않습니다.', { y: 2.0, h: 0.65, w: 8.2 });
     const steps = [
-      ['신청서를 남긴다', 'urdeal.kr/creators/apply 에서 채널 주소, 카테고리, 활동 지역, 희망 단가를 적습니다. 팔로워 수 하한은 없습니다.'],
+      ['신청서를 남기고, 프로필을 공개한다', 'urdeal.kr/creators/apply 에 채널과 활동 지역을 적고, 카카오 로그인 뒤 내 정산 화면에서 소개자 프로필을 "공개"로 켭니다. 매장은 공개된 프로필을 보고 제안을 보냅니다. 팔로워 수 하한은 없습니다.'],
       ['제안을 보고 수락한다', '매장이 이용권과 소개비 %, 촬영 지원 여부를 담아 보냅니다. 수락하는 순간 조건이 발효되고 내 전용 링크가 발급됩니다.'],
       ['콘텐츠에 링크를 건다', '스토리, 릴스, 카톡, 유튜브 더보기, 블로그 어디든 됩니다. 유어샵에 담아 두면 콘텐츠가 내려가도 판매는 이어집니다.'],
       ['성과와 정산을 확인한다', '내 정산 화면에서 딜별 주문과 대기, 확정 금액을 봅니다. 매장에 판매량을 물어볼 일이 없습니다.'],
@@ -289,7 +289,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     });
     card(s, M, 5.4, 8.6, 1.35, { fill: C.tint });
     T(s, '원천징수는 법대로, 대신 계산은 유어딜이', { x: M + 0.3, y: 5.55, w: 8.0, h: 0.3, fontSize: 12, bold: true, color: C.ink, charSpacing: -0.3 });
-    T(s, '사업자는 사업소득 3.3%, 비사업자는 기타소득 8.8%를 떼고 보냅니다. ' + FACTS.influencerPayoutMin + '에 못 미치면 다음 달로 이월되고 사라지지 않습니다. 계좌와 사업자번호는 내 정산 화면에서 직접 넣습니다.', { x: M + 0.3, y: 5.87, w: 8.0, h: 0.8, fontSize: 10.5, color: C.inkSoft, lineSpacingMultiple: 1.4, valign: 'top' });
+    T(s, '사업자는 사업소득 3.3%, 비사업자는 기타소득 8.8%를 떼고 보냅니다. 8.8%는 이듬해 5월 종합소득세 신고에서 정산되며 돌려받을 수 있습니다. ' + FACTS.influencerPayoutMin + '에 못 미치면 다음 달로 이월되고 사라지지 않습니다. 계좌와 사업자번호는 내 정산 화면에서 직접 넣습니다.', { x: M + 0.3, y: 5.87, w: 8.0, h: 0.8, fontSize: 10.5, color: C.inkSoft, lineSpacingMultiple: 1.4, valign: 'top' });
     phone(s, 'influencer-settlement', 10.0, 1.05, 5.35, { caption: '내 정산 화면 (예시 데이터)' });
     s.addNotes('influencer-payout.ts: T+7 available, 매월 1일 18시 KST 집계, 현금 최소 influencer_payout_min(기본 100,000), 딜 수령은 하한 없음, 실제 지급은 어드민 /admin/influencer-payouts (사람). 원천징수 WITHHOLDING_RATES 3.3/8.8.');
   }
@@ -305,13 +305,15 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
       ['비용이 드나요?', '가입비도 이용료도 없습니다. 소개비는 매장이, 영입비는 유어딜이 냅니다.'],
       ['콘텐츠 형식이 정해져 있나요?', '자유입니다. 제안에 조건이 붙어 있으면 그 조건을 지켜야 그 소개비가 발효됩니다.'],
       ['소개비가 안 붙는 이용권도 있나요?', '있습니다. 매장과 맺은 딜이 없는 이용권은 담아 둘 수는 있지만 소개비가 0 입니다.'],
+      ['광고 표시를 해야 하나요?', '네. 소개비를 받는 콘텐츠에는 "광고" 처럼 경제적 대가를 받았다는 표시가 법으로 필요합니다. 표시 없이 올린 콘텐츠의 책임은 유어딜이 대신 질 수 없습니다.'],
+      ['제안은 어떻게 오나요?', '신청서는 유어딜 담당자가 보고, 매장은 내가 공개해 둔 소개자 프로필을 보고 직접 보냅니다. 둘 다 해 두는 것이 빠릅니다.'],
     ];
-    const cw = (W - 2 * M - 0.3) / 2, ch = 1.2;
+    const cw = (W - 2 * M - 0.5) / 3, ch = 1.27;
     faq.forEach(([q, a], i) => {
-      const x = M + (i % 2) * (cw + 0.3), y = 4.0 + Math.floor(i / 2) * (ch + 0.22);
+      const x = M + (i % 3) * (cw + 0.25), y = 4.0 + Math.floor(i / 3) * (ch + 0.18);
       card(s, x, y, cw, ch);
-      T(s, q, { x: x + 0.3, y: y + 0.18, w: cw - 0.6, h: 0.3, fontSize: 12.5, bold: true, color: C.ink, charSpacing: -0.3 });
-      T(s, a, { x: x + 0.3, y: y + 0.52, w: cw - 0.6, h: 0.6, fontSize: 10.5, color: C.inkSoft, lineSpacingMultiple: 1.4, valign: 'top' });
+      T(s, q, { x: x + 0.26, y: y + 0.16, w: cw - 0.52, h: 0.28, fontSize: 11.5, bold: true, color: C.ink, charSpacing: -0.3 });
+      T(s, a, { x: x + 0.26, y: y + 0.47, w: cw - 0.52, h: 0.76, fontSize: 9.8, color: C.inkSoft, lineSpacingMultiple: 1.36, valign: 'top' });
     });
     s.addNotes('정직 고지: 09-13 실측(활성 337, 실제 매장 1, 인플루언서 딜 지급 0). FAQ 는 기존 9장 HTML 에서 옮기고 "딜 없으면 0" 항목 추가.');
   }
@@ -323,7 +325,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     title(s, '지금 하실 일은 신청서를 남기는 것, 그것뿐입니다.');
     lead(s, '수락하기 전까지 아무 의무도 생기지 않습니다. 조건을 보고 마음에 들지 않으면 수락하지 않으면 됩니다.', { y: 2.0, h: 0.4, w: 7.6 });
     const x = M, w = 7.6;
-    const steps = [['신청 (3분)', 'urdeal.kr/creators/apply 에서 채널 주소, 카테고리, 활동 지역, 희망 단가를 적습니다.'], ['제안 수신', '조건이 맞는 매장의 제안을 받습니다. 수락 여부는 매번 내가 정합니다.'], ['공유와 정산', '링크를 걸고, 성과와 정산은 내 정산 화면에서 확인합니다.']];
+    const steps = [['신청 (3분)', 'urdeal.kr/creators/apply 에 신청하고, 로그인 뒤 내 정산 화면에서 소개자 프로필을 공개합니다.'], ['제안 수신', '조건이 맞는 매장의 제안을 받습니다. 수락 여부는 매번 내가 정합니다.'], ['공유와 정산', '링크를 걸고, 성과와 정산은 내 정산 화면에서 확인합니다.']];
     steps.forEach(([h, p], i) => {
       const y = 2.75 + i * 0.72;
       numBadge(s, i + 1, x, y, 0.36);

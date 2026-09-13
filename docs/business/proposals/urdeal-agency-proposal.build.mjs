@@ -131,7 +131,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
       T(s, h, { x: x + 0.25, y: cy2 + 0.14, w: cw2 - 0.5, h: 0.28, fontSize: 11.5, bold: true, color: i ? C.brand : C.ink, charSpacing: -0.3 });
       T(s, p, { x: x + 0.25, y: cy2 + 0.44, w: cw2 - 0.5, h: 0.68, fontSize: 9.5, color: C.inkSoft, lineSpacingMultiple: 1.35, valign: 'top' });
     });
-    T(s, '유어딜 장부와 정산 화면에 귀사에 대한 지급은 한 줄도 등장하지 않습니다. 귀사의 거래 상대는 매장입니다.', { x: M, y: 6.56, w: W - 2 * M, h: 0.26, fontSize: 10.5, color: C.ink, bold: true });
+    T(s, '유어딜 정산은 매장 계좌로만 갑니다. 귀사 보수는 매장이 귀사에게 직접 지급하고, 유어딜 장부에는 그 지급이 한 줄도 등장하지 않습니다.', { x: M, y: 6.56, w: W - 2 * M, h: 0.26, fontSize: 10.5, color: C.ink, bold: true });
     s.addNotes('2026-09-04 대표 확정: "중개사가 5% 내에서 가져가는 게 아니라 나머지 95%에서 매장이랑 거래". PG 2.75% 는 commission-budget.ts 실측 상수(플랫폼 부담). 정산은 used 이용권만 주간(auto-settlement.ts).');
   }
 
@@ -240,7 +240,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     const steps = [
       ['FiSearch', '카카오맵에서 매장 찾기', '/seller/stores 에서 매장 이름을 검색해 장소를 연결합니다. 주소와 좌표가 자동으로 들어옵니다.', '1분'],
       ['FiShield', '국세청 진위확인', '사업자번호, 대표자명, 개업일을 넣으면 국세청 조회로 즉시 확인됩니다. 사업자등록증 사진만 보면 됩니다.', '2분'],
-      ['FiLayers', '"누가 운영하나요"에서 중개 선택', '"중개·대행사에요"를 고르면 그 매장은 5%가 적용됩니다. 나중엔 매장 주인이나 유어딜만 바꿀 수 있으니 등록할 때 정확히 고르세요. 확인 PIN도 여기서.', '1분'],
+      ['FiLayers', '"누가 운영하나요"에서 중개 선택', '"중개·대행사에요"를 고르면 그 매장은 5%가 적용됩니다. 등록은 귀사 계정으로 해도 되지만, 정산 계좌는 사장님이 소유자가 된 뒤에만 넣을 수 있습니다(17장). 확인 PIN도 여기서.', '1분'],
       ['FiCamera', '이용권 만들기', '사진, 정가, 판매가, 유효기간, 마감 수량. 대표 메뉴 두세 개면 충분합니다. 사진은 그 자리에서 찍어도 됩니다.', '3분씩'],
       ['FiSmartphone', '사장님께 사용법', '손님이 QR을 보여 주면 매장 폰으로 찍거나, 손님 화면에 매장 PIN을 눌러 주면 끝. 이것만 설명하면 됩니다.', '3분'],
     ];
@@ -375,12 +375,13 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     const rows = [
       ['상품 등록과 가격 설정', true, '매장 대신 이용권을 만들고 운영합니다'],
       ['주문과 예약 관리', true, '일상 운영 전부'],
-      ['정산계좌 변경', false, '서버가 거부합니다. 계좌는 끝 4자리만 보입니다'],
+      ['소개 파트너에게 제안', true, '인플루언서 DB 검색과 딜 제안까지 매장 대신 합니다'],
+      ['정산계좌 등록과 변경', false, '주인만. 사장님이 소유자가 되기 전엔 계좌가 비어 정산이 나가지 않습니다'],
       ['사업자정보 열람과 수정', false, '등록번호 끝 4자리, 대표자명 첫 글자만. 주소와 연락처는 안 보입니다'],
       ['매장 탈퇴', false, '주인만 할 수 있습니다'],
       ['운영 권한 회수', null, '주인이 언제든. 올려 둔 이용권, 주문, 리뷰는 매장에 남습니다'],
     ];
-    const tx = M, tw = 8.7, ty = 2.8, rh = 0.44;
+    const tx = M, tw = 8.7, ty = 2.8, rh = 0.38;
     T(s, '운영자(귀사)가', { x: tx, y: ty, w: 2.6, h: 0.26, fontSize: 9.5, bold: true, color: C.gray });
     T(s, '내용', { x: tx + 3.55, y: ty, w: 3, h: 0.26, fontSize: 9.5, bold: true, color: C.gray });
     hr(s, tx, ty + 0.3, tw);
@@ -393,8 +394,8 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
       T(s, v, { x: tx + 3.55, y, w: tw - 3.55, h: rh - 0.06, fontSize: 10.5, color: C.inkSoft, valign: 'middle' });
       hr(s, tx, y + rh - 0.03, tw);
     });
-    card(s, M, 5.9, tw, 0.95, { fill: C.tint });
-    T(s, '즉 매장의 돈이 다른 곳으로 갈 수 있는 경로가 시스템에 없습니다. 사장님께 "제가 통장을 못 건드립니다"라고 말씀하시고 화면으로 보여 주시면 됩니다. 이 문장 하나가 계약서 열 장보다 잘 통합니다.', { x: M + 0.3, y: 5.9, w: tw - 0.6, h: 0.95, fontSize: 11, color: C.ink, lineSpacingMultiple: 1.4, valign: 'middle' });
+    card(s, M, 5.92, tw, 0.88, { fill: C.tint });
+    T(s, '즉 매장의 돈이 다른 곳으로 갈 수 있는 경로가 시스템에 없습니다. 사장님께 "제가 통장을 못 건드립니다"라고 말씀하시고 화면으로 보여 주시면 됩니다. 이 문장 하나가 계약서 열 장보다 잘 통합니다.', { x: M + 0.3, y: 5.92, w: tw - 0.6, h: 0.88, fontSize: 10.5, color: C.ink, lineSpacingMultiple: 1.36, valign: 'middle' });
     phone(s, 'seller-operators', 10.05, 1.15, 5.15, { caption: '운영자 관리 (예시 데이터)' });
     s.addNotes('store-operator-model.md §7.7 (마스킹: 계좌 ****1234 · 등록번호 끝 4자리 · 대표자명 첫 글자 · 주소/연락처 null · 계좌 변경/사업자정보 수정/탈퇴 403). 오른쪽은 /seller/operators 실제 UI 를 예시 데이터로 렌더한 캡처.');
   }
@@ -512,7 +513,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     chrome(s, { dark: true });
     title(s, '남은 질문과, 시작하는 방법.', { dark: true });
     const faqs = [
-      ['수수료가 두 번 나가나요?', '아닙니다. 유어딜이 떼는 것은 중개 매장 5% 하나뿐입니다. 귀사 보수는 매장과 귀사의 계약이고 유어딜 정산서에 나오지 않습니다.'],
+      ['수수료가 두 번 나가나요?', '아닙니다. 유어딜이 떼는 것은 중개 매장 5% 하나뿐입니다. 귀사 보수는 매장이 귀사에게 직접 지급하고(세금계산서도 귀사와 매장 사이), 유어딜 정산서에 나오지 않습니다.'],
       ['사장님이 직접 계정을 만들면 우리 관계는요?', '계정 양도가 아니라 권한 변경입니다. 상품, 주문, 리뷰, 정산 이력은 매장에 그대로 남고, 귀사는 운영자로 계속 일할 수 있습니다.'],
       ['대행사가 유어딜에 내는 돈이 있나요?', '없습니다. 가입비, 월 이용료, 매장당 등록비 전부 없습니다. 매장에서 팔린 만큼만 유어딜 수수료가 나갑니다.'],
       ['매장 정산은 언제 되나요?', '손님이 매장에서 실제로 사용한 이용권만 주간 정산으로 매장 계좌에 들어옵니다. 안 쓴 이용권은 손님에게 자동 환불됩니다.'],
@@ -523,27 +524,27 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
       T(s, q, { x: M, y, w: cw, h: 0.3, fontSize: 12.5, bold: true, color: C.darkText, charSpacing: -0.3 });
       T(s, a, { x: M, y: y + 0.33, w: cw, h: 0.75, fontSize: 10.5, color: C.darkMuted, lineSpacingMultiple: 1.42, valign: 'top' });
     });
-    const px = M + cw + 0.55, py = 2.15, pw = W - M - px, ph = 4.45;
+    const px = M + cw + 0.55, py = 2.0, pw = W - M - px, ph = 4.55;
     card(s, px, py, pw, ph, { fill: C.darkSurface });
     label(s, '시작하는 방법', px + 0.35, py + 0.22, 3, { color: C.brand });
     const steps = [
       ['셀러 계정을 만드십시오', '별도의 대행사 가입 절차가 없습니다. 귀사도 매장과 같은 셀러 대시보드를 씁니다.'],
-      ['매장을 등록하면서 중개로 지정하십시오', '등록 화면의 "누가 운영하나요"에서 중개를 고르면 그 매장은 5%가 적용됩니다. 매장 주인이나 유어딜만 바꿀 수 있으니 처음에 정확히.'],
-      ['매장과 운영비를 합의하십시오', '유어딜은 이 협의에 관여하지 않습니다. 95% 안에서 자유롭게 정하시면 됩니다.'],
+      ['매장을 중개로 등록하고, 운영비는 매장과 합의하십시오', '"누가 운영하나요"에서 중개를 고르면 5%. 귀사 보수는 95% 안에서 매장과 정하고, 매장이 귀사에게 직접 지급합니다.'],
+      ['사장님을 소유자로 세우십시오', '사장님이 본인 카카오로 urdeal.kr/store/find 에서 등록증을 올리면 유어딜이 확인해 소유자로 지정합니다. 그 전엔 정산 계좌가 없어 정산이 나가지 않습니다.'],
     ];
     let sy = py + 0.6;
     steps.forEach(([h, p], i) => {
       numBadge(s, i + 1, px + 0.35, sy, 0.34);
       T(s, h, { x: px + 0.85, y: sy, w: pw - 1.2, h: 0.3, fontSize: 12, bold: true, color: C.darkText, charSpacing: -0.3 });
-      T(s, p, { x: px + 0.85, y: sy + 0.32, w: pw - 1.2, h: 0.62, fontSize: 10, color: C.darkMuted, lineSpacingMultiple: 1.38, valign: 'top' });
-      sy += 0.98;
+      T(s, p, { x: px + 0.85, y: sy + 0.31, w: pw - 1.2, h: 0.66, fontSize: 9.8, color: C.darkMuted, lineSpacingMultiple: 1.3, valign: 'top' });
+      sy += 0.99;
     });
-    hr(s, px + 0.35, py + 3.28, pw - 0.7, { dark: true });
-    T(s, '후보 매장 몇 곳의 이름과 동네만 보내 주세요. 하루 안에 확인해 첫 방문 일정을 잡습니다.', { x: px + 0.35, y: py + 3.36, w: pw - 0.7, h: 0.3, fontSize: 10, color: C.darkText });
+    hr(s, px + 0.35, py + 3.56, pw - 0.7, { dark: true });
+    T(s, '후보 매장 몇 곳의 이름과 동네만 보내 주세요. 하루 안에 확인해 첫 방문 일정을 잡습니다.', { x: px + 0.35, y: py + 3.6, w: pw - 0.7, h: 0.26, fontSize: 9.5, color: C.darkText });
     const contact = [['FiMailW', 'jiwon@ur-team.com'], ['FiGlobeW', 'urdeal.kr'], ['FiFileTextW', '리스터코퍼레이션, 사업자등록번호 479-09-02930']];
     contact.forEach(([i, t], k) => {
-      s.addImage({ data: ic[i], x: px + 0.35, y: py + 3.74 + k * 0.23, w: 0.16, h: 0.16 });
-      T(s, t, { x: px + 0.62, y: py + 3.68 + k * 0.23, w: pw - 1.0, h: 0.28, fontSize: k === 2 ? 9 : 11, bold: k < 2, color: C.darkText, valign: 'middle' });
+      s.addImage({ data: ic[i], x: px + 0.35, y: py + 3.94 + k * 0.2, w: 0.16, h: 0.16 });
+      T(s, t, { x: px + 0.62, y: py + 3.88 + k * 0.2, w: pw - 1.0, h: 0.28, fontSize: k === 2 ? 9 : 11, bold: k < 2, color: C.darkText, valign: 'middle' });
     });
     T(s, '이 문서의 요율(직접 10%, 중개 5%)과 권한 범위는 2026년 9월 13일 라이브 설정값입니다. 요율은 어드민 조정값이고, 평균가와 매장 수는 같은 날 실측입니다.', { x: M, y: 6.62, w: W - 2 * M, h: 0.24, fontSize: 8.5, color: C.darkMuted });
     s.addNotes('FAQ 출처: 사업계획서 C-3, 셀러 가이드, auto-settlement.ts. 채널 변경은 POST /api/seller/stores/:id/channel (소유자만) + 어드민.');
