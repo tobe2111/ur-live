@@ -1,0 +1,59 @@
+# 📸 라이브 화면 촬영 — 세션이 눈으로 못 볼 때의 눈. **손으로만 돌린다.**
+#
+# 왜 있나 (2026-09-13): 이 레포는 "추측 금지, 실측" 이 규칙인데, 디자인 변경의 상당수는
+#   가드가 구조적으로 못 본다(타일 위 마커 겹침·가독성, 지오코딩이 실제로 부르는 동 이름…).
+#   그래서 매번 대표에게 "배포 후 눈으로 봐 주세요" 를 넘겨 왔다.
+#   그날 세션 컨테이너에서 **브라우저가 아예 막혔다** — 같은 URL 이 curl 로는 200 인데 Chromium 은
+#   모든 호스트에서 끊긴다(에이전트 프록시가 터널을 닫는다). CI 러너는 네트워크가 열려 있다.
+#
+# ⚠️ **PR 게이트로 승격하지 말 것.** render-smoke·dark-contrast·live-contracts 와 같은 판단이다 —
+#   외부 의존이라 간헐 실패하고, 그게 머지를 막으면 결국 꺼 버리게 된다.
+#   그리고 이건 **판정기가 아니라 보는 도구**라 초록/빨강이 뜻을 갖지 않는다(항상 exit 0).
+#
+# 🔒 읽기 전용: 공개 페이지 GET 만 한다. 로그인하지 않고, 시크릿을 안 쓰고, 아무것도 안 바꾼다.
+name: Live shot
+
+on:
+  workflow_dispatch:
+    inputs:
+      paths:
+        description: '쉼표로 구분한 경로 (예: /map,/vouchers,/group-buy/2888)'
+        required: false
+        default: '/map'
+      device:
+        description: 'phone | pc'
+        required: false
+        default: 'phone'
+      theme:
+        description: 'light | dark'
+        required: false
+        default: 'light'
+      base:
+        description: '기준 주소'
+        required: false
+        default: 'https://urdeal.kr'
+
+jobs:
+  shot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      # npm ci 를 안 한다 — 이 스크립트는 playwright 하나만 쓰고, 전체 설치는 몇 분을 먹는다.
+      - run: npm i --no-save --no-audit --no-fund playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: Shoot
+        run: |
+          node scripts/live-shot.mjs \
+            --base='${{ inputs.base }}' \
+            --paths='${{ inputs.paths }}' \
+            --device='${{ inputs.device }}' \
+            --theme='${{ inputs.theme }}'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-shot
+          path: artifacts/live-shot/
+          retention-days: 7

@@ -23,7 +23,7 @@
  * - 제스처가 실제 기기에서 자연스러운지(임계값 60px·쿨다운 450ms)는 손으로 만져 봐야 안다.
  */
 import { describe, it, expect } from 'vitest'
-import { readCode } from '../helpers/source-text'
+import { readCode, sliceFrom } from '../helpers/source-text'
 import { youTubeEmbedUrl, youTubePlayerVars } from '@/shared/urshorts'
 
 const V = readCode('src/pages/VideosPage.tsx')
@@ -47,13 +47,16 @@ describe('깔끔하게 — 우리가 그리던 것 정리', () => {
 
 describe('🔴 제스처는 iframe 위에서 받는다', () => {
   it('제스처 층이 있고 iframe 보다 위다', () => {
-    expect(V, '투명 층이 없다').toMatch(/className="absolute inset-0 z-10"/)
+    // 🩸 2026-09-13: 종전엔 클래스 문자열을 **통째로** 박아 뒀다(`"absolute inset-0 z-10"`).
+    //   그래서 같은 층에 `touch-none` 을 **더하기만** 해도 빨간불이 났다 — 지키려던 성질
+    //   (층이 있고 iframe 보다 위다)은 그대로인데. 클래스는 열린 집합으로 본다.
+    expect(V, '투명 층이 없다').toMatch(/className="absolute inset-0 z-10[^"]*"/)
     // iframe 은 z 지정이 없어 기본 스택 — 뒤에 오는 z-10 층이 위에 온다.
     expect(V.indexOf('<iframe')).toBeLessThan(V.indexOf('absolute inset-0 z-10'))
   })
 
   it('그 층이 터치와 휠을 둘 다 받는다', () => {
-    const layer = V.slice(V.indexOf('className="absolute inset-0 z-10"'))
+    const layer = V.slice(V.search(/className="absolute inset-0 z-10[^"]*"/))
     expect(layer, '스와이프').toMatch(/onTouchStart=/)
     expect(layer, '스와이프 끝').toMatch(/onTouchEnd=/)
     expect(layer, '마우스 휠').toMatch(/onWheel=/)
@@ -72,7 +75,10 @@ describe('🔴 제스처는 iframe 위에서 받는다', () => {
 
 describe('🔒 층 위에 남아야 하는 것', () => {
   it('닫기 버튼과 구매 바는 제스처 층보다 위다(z-20)', () => {
-    expect(V, '닫기').toMatch(/absolute left-3 top-3 z-20/)
+    // 🩸 2026-09-13: 여기서 `top-3` 까지 박아 두는 바람에, 유튜브 로고와 겹쳐 자리를 옮기자
+    //   이 검사가 빨간불이 됐다. 이 describe 가 지키는 것은 **층 순서(z-20)** 이고,
+    //   버튼의 **세로 자리**는 아래 "닫기 버튼이 유튜브 Shorts 로고를 가리지 않는다" 가 지킨다.
+    expect(V, '닫기').toMatch(/absolute left-3 top-\d+ z-20/)
     expect(V, '구매 바').toMatch(/absolute inset-x-2\.5 bottom-2\.5 z-20/)
   })
 
@@ -171,5 +177,61 @@ describe('🛟 재생기가 못 와도 영상은 나온다', () => {
 describe('🔁 끝 화면으로 사람을 뺏기지 않는다', () => {
   it('영상이 끝나면 다시 재생한다', () => {
     expect(V).toMatch(/e\.data === \(st\?\.ENDED \?\? 0\)\) \{ try \{ e\.target\.playVideo\(\)/)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🩸 2026-09-13 대표 신고 2건 (라이브 스크린샷)
+//   ① "아래로는 넘겨지는데 위로는 다시 안됨" — 한 방향만 죽었다.
+//   ② "좌측 위 x표시가 겹침" — 우리 X 가 유튜브 Shorts 로고와 같은 자리였다.
+// 둘 다 **에러가 안 나는** 종류다: ①은 이벤트가 안 오는 것이고 ②는 그냥 겹쳐 보이는 것이다.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('🖐️ 위로 되돌아가는 스와이프가 브라우저에 먹히지 않는다', () => {
+  const V2 = readCode('src/pages/VideosPage.tsx')
+
+  it('제스처 층이 세로 팬을 브라우저에 넘기지 않는다 (touch-action)', () => {
+    // 이 화면은 스크롤이 없어서, 맨 위에서 아래로 끄는 손짓이 당겨서-새로고침으로 잡힌다.
+    // 그러면 touchcancel 이 오고 touchend 는 안 와서 `go(-1)` 이 영영 안 불린다.
+    const layer = sliceFrom(V2, 'onTouchStart={', undefined, 200)
+    expect(layer.length).toBeGreaterThan(0)
+    expect(V2, '제스처 층에 touch-none 이 없다').toMatch(/absolute inset-0 z-10 touch-none/)
+  })
+
+  it('루트가 오버스크롤을 가둔다 (touch-action 이 새는 브라우저 대비)', () => {
+    expect(V2).toMatch(/min-h-\[100dvh\][^"]*overscroll-none/)
+  })
+
+  it('판정이 뗄 때가 아니라 **이동 중 임계**에서 난다 — 취소돼도 이미 넘어가 있다', () => {
+    expect(V2, 'onTouchMove 가 없다').toContain('onTouchMove={')
+    const move = sliceFrom(V2, 'onTouchMove={', 'onTouchEnd={', 600)
+    expect(move, '이동 중에 go() 를 안 부른다').toMatch(/go\(dy < 0 \? 1 : -1\)/)
+    expect(move, '임계가 없다').toContain('> 60')
+  })
+
+  it('한 손짓에 두 칸 가지 않는다 (이동 판정 ↔ 뗄 때 판정 중복)', () => {
+    expect(V2).toContain('swiped.current = true')
+    const end = sliceFrom(V2, 'onTouchEnd={', 'onTouchCancel={', 900)
+    expect(end, '이미 넘긴 손짓을 뗄 때 또 넘긴다').toMatch(/if \(swiped\.current\) \{ swiped\.current = false; return \}/)
+  })
+
+  it('브라우저가 제스처를 가져가면 시작점을 지운다 (다음 터치가 옛 좌표로 재지 않게)', () => {
+    expect(V2).toContain('onTouchCancel={')
+    const cancel = sliceFrom(V2, 'onTouchCancel={', '}}', 300)
+    expect(cancel).toContain('touchY.current = null')
+  })
+})
+
+describe('❌ 닫기 버튼이 유튜브 Shorts 로고를 가리지 않는다', () => {
+  const V2 = readCode('src/pages/VideosPage.tsx')
+
+  it('상단 띠(로고 줄) 밖으로 내려와 있다', () => {
+    const btn = sliceFrom(V2, "aria-label=\"닫기\"", '</button>', 500)
+    expect(btn, '아직 top-3 — 로고와 같은 자리다').not.toMatch(/\btop-3\b/)
+    expect(btn).toMatch(/\btop-14\b/)
+  })
+
+  it('유튜브가 남기는 것을 덮어 해결하지 않는다 (embed 약관)', () => {
+    // 상단 전체를 가리는 불투명 띠를 새로 깔면 로고·음량·⋮ 를 덮게 된다.
+    expect(V2, '상단 전체를 덮는 불투명 띠가 생겼다').not.toMatch(/absolute inset-x-0 top-0[^"]*bg-(black|white)(?!\/)/)
   })
 })

@@ -22,8 +22,8 @@ export default [
   {
     name: '🎬 스와이프가 다시 iframe 에 먹힌다 (제스처 층이 아래로)',
     file: 'src/pages/VideosPage.tsx',
-    find: 'className="absolute inset-0 z-10"',
-    replace: 'className="absolute inset-0 -z-10"',
+    find: 'className="absolute inset-0 z-10 touch-none"',
+    replace: 'className="absolute inset-0 -z-10 touch-none"',
     test: 'src/tests/unit/urshorts-viewer-chrome.test.ts',
     why:
       '교차 출처 iframe 은 터치·휠을 자기가 먹고 부모에게 안 넘긴다. 층이 iframe 아래로 내려가면 ' +
