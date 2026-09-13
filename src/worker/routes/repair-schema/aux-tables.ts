@@ -104,6 +104,15 @@ export const AUX_TABLE_REPAIRS: Array<{ name: string; sql: string }> = [
       agreed_at TEXT DEFAULT (datetime('now')),
       UNIQUE(subject_type, subject_id, doc_type, doc_version)
     )` },
+    // 📥 2026-09-08 결재함 답 우편함 — worker/utils/decision-answers.ts SSOT 미러.
+    { name: 'decision_answers', sql: `CREATE TABLE IF NOT EXISTS decision_answers (
+      slug TEXT PRIMARY KEY,
+      answer TEXT NOT NULL,
+      answered_by TEXT,
+      answered_at TEXT NOT NULL DEFAULT (datetime('now')),
+      synced_at TEXT,
+      synced_ref TEXT
+    )` },
     { name: 'coupons', sql: `CREATE TABLE IF NOT EXISTS coupons (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       code TEXT UNIQUE NOT NULL,
@@ -336,6 +345,14 @@ export const AUX_TABLE_REPAIRS: Array<{ name: string; sql: string }> = [
     )` },
     { name: 'idx_user_withdrawals_user_status', sql: `CREATE INDEX IF NOT EXISTS idx_user_withdrawals_user_status ON user_withdrawals(user_id, status, requested_at DESC)` },
     // 🏦 2026-06-12 지급 센터 (P1 사용자 결정) — 입금완료 기록 + 큐레이터 딜 차감 마커 + 에이전시 지급 이력.
+    // 🤝 2026-09-08 손바뀜 마감 — 이 행이 마감인지(kind) + 만들 때 주인이 누구였는지(payee_user_id).
+    //   취소로 돈이 되살아나 **새 주인**에게 가는 것을 막는 게이트가 이 둘을 읽는다.
+    // 🤝 2026-09-09 이용권이 **판 시점의 영입자**를 기억한다(소급 커미션 차단).
+    //   `intro_stamped_at` 이 "판정했다"는 표시 — 없으면 옛 이용권이라 종전 규칙으로 떨어진다.
+    { name: 'vouchers.introduced_by_influencer_id', sql: 'ALTER TABLE vouchers ADD COLUMN introduced_by_influencer_id INTEGER' },
+    { name: 'vouchers.intro_stamped_at', sql: 'ALTER TABLE vouchers ADD COLUMN intro_stamped_at DATETIME' },
+    { name: 'payouts.kind', sql: 'ALTER TABLE payouts ADD COLUMN kind TEXT' },
+    { name: 'payouts.payee_user_id', sql: 'ALTER TABLE payouts ADD COLUMN payee_user_id INTEGER' },
     { name: 'settlements.paid_at', sql: 'ALTER TABLE settlements ADD COLUMN paid_at DATETIME' },
     { name: 'settlements.admin_memo', sql: 'ALTER TABLE settlements ADD COLUMN admin_memo TEXT' },
     { name: 'user_withdrawals.deal_deducted', sql: 'ALTER TABLE user_withdrawals ADD COLUMN deal_deducted INTEGER DEFAULT 0' },

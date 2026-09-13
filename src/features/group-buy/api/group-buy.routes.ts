@@ -12,7 +12,7 @@ import { Hono } from 'hono'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { auditLog } from '@/worker/middleware/audit-log'
-import { recordLedger } from '@/worker/utils/ledger'
+import { recordLedger, sellerLedgerAccount } from '@/worker/utils/ledger'
 import { formatKSTDate } from '@/utils/date' // 워커 TZ=UTC — 만료일 안내가 하루 이르던 것 교정
 import { swallow } from '@/worker/utils/swallow'
 import { resolveUserIdString } from '@/worker/utils/resolve-user-id'
@@ -76,8 +76,9 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
   const userId = await resolveUserIdString(c.env.DB, user.id, user.isDbId)
   const body = await c.req.json<{
     quantity?: number; payment_method?: 'deal' | 'toss'; promo_code?: string; ref?: string; idempotency_key?: string
-  }>().catch(() => ({ quantity: 1, payment_method: 'deal' as const, promo_code: undefined as string | undefined, ref: undefined as string | undefined, idempotency_key: undefined as string | undefined }))
-  const { quantity, payment_method, promo_code, ref, idempotency_key } = body
+    deal_use?: number | null   // 🪙 딜로 낼 금액(없으면 최대한)
+  }>().catch(() => ({ quantity: 1, payment_method: 'deal' as const, promo_code: undefined as string | undefined, ref: undefined as string | undefined, idempotency_key: undefined as string | undefined, deal_use: undefined as number | null | undefined }))
+  const { quantity, payment_method, promo_code, ref, idempotency_key, deal_use } = body
 
   // 🛡️ 2026-05-23 idempotency — 중복 클릭 / 네트워크 retry 시 중복 발급 영구 차단.
   //   client 가 unique idempotency_key 보내고, server 가 같은 key 의 기존 order 있으면 그 결과 반환.
@@ -213,7 +214,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     // 🪙 2026-09-01 부분결제(게이트 OFF 기본): 가진 딜만큼 카드 청구액을 줄인다.
     //   게이트가 꺼져 있으면 dealUsed=0 → `amount` 가 총액 그대로 = 종전과 byte-동일.
     //   딜 **차감은 여기서 하지 않는다** — 아직 아무것도 청구되지 않았다(confirm-toss 가 한다).
-    const dealPlan = await resolvePartialDealPlan(DB, { userId, totalAmount })
+    const dealPlan = await resolvePartialDealPlan(DB, { userId, totalAmount, requested: deal_use })  // 🪙 없으면 최대한(종전)
     return c.json({
       success: true,
       data: {
@@ -510,7 +511,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
         reference_id: orderNumber,
         amount: totalAmount,
         debit_account: `user:${userId}`,                  // 유저 wallet 차감
-        credit_account: `seller:${product.seller_id}`,    // 셀러 receivable 증가
+        credit_account: sellerLedgerAccount(product.seller_id),    // 셀러 receivable 증가
         fee_amount: commissionAmount,
         fee_account: 'platform:commission',
         metadata: { product_id: productId, qty, applied_discount_pct: appliedDiscountPct },
@@ -547,7 +548,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
             event_type: 'user_referral_bonus',
             reference_id: orderNumber,
             amount: userBonusAmount,
-            debit_account: influencerActive ? `seller:${product.seller_id}` : 'platform:commission',  // 인플 활성 시 셀러 receivable 에서, 차단 시 유어딜이 떠안음
+            debit_account: influencerActive ? sellerLedgerAccount(product.seller_id) : 'platform:commission',  // 인플 활성 시 셀러 receivable 에서, 차단 시 유어딜이 떠안음
             credit_account: `user:${userId}`,
             metadata: { source: 'influencer_referral', influencer_id: referralInfluencerId, absorbed_by_platform: !influencerActive },
           })
@@ -574,7 +575,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
             event_type: 'influencer_commission',
             reference_id: orderNumber,
             amount: influencerAmount,
-            debit_account: `seller:${product.seller_id}`,
+            debit_account: sellerLedgerAccount(product.seller_id),
             credit_account: `influencer:${referralInfluencerId}`,
             metadata: { product_id: productId, available_at: availableAt },
           })
@@ -613,11 +614,15 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
         INSERT INTO order_items (order_id, product_id, product_name, unit_price, price, quantity, subtotal)
         VALUES (?, ?, ?, ?, ?, ?, ?)
       `).bind(newOrderId, productId, product.name, product.price, product.price, qty, totalAmount)
+      // 🤝 2026-09-09: **판 시점의 영입자를 도장 찍는다**(대표 "귀속되는 시점부터 계산").
+      //   안 찍으면 사용 시점에 매장의 *현재* 영입자를 읽어 과거 판매분까지 소급된다.
+      const { resolveVoucherIntroStamp } = await import('../../../worker/utils/voucher-intro-stamp')
+      const introStamp = await resolveVoucherIntroStamp(DB, product.seller_id)
       const voucherStmts = codes.map(code =>
         DB.prepare(`
-          INSERT INTO vouchers (order_id, product_id, user_id, code, expires_at, applied_discount_pct, applied_price)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
-        `).bind(newOrderId, productId, userId, code, expiresAt, appliedDiscountPct, unitPrice)
+          INSERT INTO vouchers (order_id, product_id, user_id, code, expires_at, applied_discount_pct, applied_price, introduced_by_influencer_id, intro_stamped_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).bind(newOrderId, productId, userId, code, expiresAt, appliedDiscountPct, unitPrice, introStamp.introducerId, introStamp.stampedAt)
       )
       // order_items + vouchers 같은 batch — atomic + 1 round-trip.
       await DB.batch([orderItemStmt, ...voucherStmts])
@@ -1066,11 +1071,13 @@ import { groupBuyAdminRoutes } from './group-buy-admin.routes'
 import { registerSellerEndpoints } from './group-buy-seller.routes'
 import { registerPublicEndpoints } from './group-buy-public.routes'
 import { registerVoucherEndpoints } from './group-buy-voucher.routes'
+import { registerDealPlanEndpoint } from './deal-plan.routes'
 
 groupBuyRoutes.route('/admin', groupBuyAdminRoutes)        // /admin/list, /admin/analytics, /admin/force-refund
 registerSellerEndpoints(groupBuyRoutes)                    // /refund/:productId, /seller-voucher-stats, /voucher-logs
 registerPublicEndpoints(groupBuyRoutes)                    // /products, /products/:id, /live-ticker, /participants, /commission-rate, /my, /verify/:code
 registerVoucherEndpoints(groupBuyRoutes)                   // /:code/use, /voucher/:code/partial-refund, /store-stats/:productId
+registerDealPlanEndpoint(groupBuyRoutes)                   // /deal-plan/:productId
 
 // 🛡️ 2026-05-22: 공구 토스 결제 confirm endpoint — Toss SDK success URL 에서 호출.
 //   body: { paymentKey, orderId, amount, productId, qty, promoCode?, ref? }
@@ -1244,11 +1251,14 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
       INSERT INTO order_items (order_id, product_id, product_name, unit_price, price, quantity, subtotal)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).bind(newOrderId, productId, product.name, unitPrice, unitPrice, qty, expectedAmount)
+    // 🤝 2026-09-09: 판 시점의 영입자 도장 (위 /join 경로와 같은 SSOT).
+    const { resolveVoucherIntroStamp } = await import('../../../worker/utils/voucher-intro-stamp')
+    const introStamp = await resolveVoucherIntroStamp(DB, product.seller_id)
     const voucherStmts = codes.map(code =>
       DB.prepare(`
-        INSERT INTO vouchers (order_id, product_id, user_id, code, expires_at, applied_discount_pct, applied_price)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).bind(newOrderId, productId, userId, code, expiresAt, tierDiscountPct, unitPrice)
+        INSERT INTO vouchers (order_id, product_id, user_id, code, expires_at, applied_discount_pct, applied_price, introduced_by_influencer_id, intro_stamped_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(newOrderId, productId, userId, code, expiresAt, tierDiscountPct, unitPrice, introStamp.introducerId, introStamp.stampedAt)
     )
     await DB.batch([orderItemStmt, ...voucherStmts])
 
@@ -1351,7 +1361,7 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
         reference_id: orderNumber,
         amount: expectedAmount,
         debit_account: `user:${userId}`,
-        credit_account: `seller:${product.seller_id}`,
+        credit_account: sellerLedgerAccount(product.seller_id),
         fee_amount: commissionAmount,
         fee_account: 'platform:commission',
         metadata: { product_id: productId, qty, applied_discount_pct: tierDiscountPct, payment_method: 'toss' },

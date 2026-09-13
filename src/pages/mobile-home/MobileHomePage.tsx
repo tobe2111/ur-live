@@ -33,7 +33,7 @@ import { HOME_SHOWCASE_ENABLED } from '@/shared/feature-flags'
  */
 export default function MobileHomePage() {
   const navigate = useNavigate()
-  const [region, setRegion] = useState<HomeRegion>(() => readHomeRegion())
+  const [region, setRegion] = useState<HomeRegion>(() => (readCachedLoc() ? {} : readHomeRegion()))
   /**
    * 🧭 2026-09-05 (대표 "주말에 떠나는 숙소 섹션 아래의 일반 이용권들은 기본 디폴트가 현재 위치에서
    *   가까운 순대로"): **새로 묻지 않는다** — 지도 홈·위치바가 저장해 둔 마지막 측위만 읽는다
@@ -47,13 +47,24 @@ export default function MobileHomePage() {
   const dong = useCurrentDong(userLoc)
   const [category, setCategory] = useState<DealCategory>('all')
   /**
-   * ⚠️ 지역을 직접 고른 사람에겐 '가까운 순'을 씌우지 않는다 — 지역 필터와 거리순이 겹치면
-   *   무엇을 기준으로 걸러진 목록인지 화면이 말할 수 없다(지도의 `useNearMeAuto` 와 같은 가드).
-   *   섹션 '더보기'(`/?sort=popular`)는 `useHomeQuerySync` 가 그 위를 덮는다 — 대표 지시대로
-   *   "더보기 = 인기순"이 유지된다.
+   * 🧭 **위치가 저장된 지역을 이긴다** (2026-09-08 대표 *"여기엔 거리순, 가장 가까운 순이 먼저 떠야해"*).
+   *
+   * 🩸 이전 판은 `readCachedLoc() && !readHomeRegion().regionKey` 였다. 그래서 **예전에 지역을 골라 둔
+   *   사람**은 위치가 잡혀 있어도 영영 '인기순'이었는데, 헤더는 `located` 를 우선해 "동탄5동"을 띄운다.
+   *   화면은 "당신은 동탄에 있다"고 말하고 목록은 저장된 지역으로 걸러 인기순으로 줄 세운 셈이다.
+   *   그 지역에 딜이 0건이면 전체 폴백까지 걸려 **동탄5동 아래 서울 강남 딜**이 떴다(대표 실측).
+   *
+   * ⇒ 좌표가 있으면 저장된 지역은 **적용하지 않는다**(localStorage 는 그대로 둔다 — 지역을 다시 고르면
+   *   `handleRegion` 이 위치를 비우고 그 지역으로 간다). 헤더가 이미 내리는 판단을 목록도 내리게 하는 것뿐이다.
+   *
+   * ⚠️ 좌표가 없으면 거리순은 **만들 수 없다** → 그때만 '인기순'. 홈에서 위치를 새로 묻지는 않는다
+   *   (2026-09-05 결정 유지 — 화면 열자마자 권한 팝업은 과하다).
+   * 📌 여기 있던 "지역을 고른 사람에겐 가까운 순을 안 씌운다" 규칙은 이 결정으로 폐기됐다. 겹침 걱정은
+   *   위 `region` 초기화가 해결한다 — 좌표가 있으면 지역을 아예 안 씌우므로 두 기준이 겹칠 일이 없다.
+   *   섹션 '더보기'(`/?sort=popular`)는 `useHomeQuerySync` 가 그 위를 덮는다(더보기 = 인기순 유지).
    */
   const [sort, setSort] = useState<'popular' | 'newest' | 'discount' | 'near'>(
-    () => (readCachedLoc() && !readHomeRegion().regionKey ? 'near' : 'popular'),
+    () => (readCachedLoc() ? 'near' : 'popular'),
   )
 
   /**

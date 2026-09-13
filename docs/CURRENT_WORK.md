@@ -5495,13 +5495,23 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
 _총 272건 · 최신순 · 이 목록은 자동 생성된다._
+_총 278건 · 최신순 · 이 목록은 자동 생성된다._
 
+**2026-09-13**
+- [💳 결제가 마지막 화면에서 조용히 실패하던 것 — 콜백 주소의 쿼리 (2026-09-13)](handoff/2026-09-13-payment-callback-query.md)
+- [딜을 얼마나 쓸지 고른다 — 2026-09-13](handoff/2026-09-13-deal-use-chooser.md)
+**2026-09-09**
+- [🪑 소유자 오판 수리 + 이용권 영입자 도장 + 자물쇠 사각지대 (2026-09-09)](handoff/2026-09-09-store-owner-and-intro-stamp.md)
 **2026-09-08**
+- [2026-09-08 — 유어쇼츠: 이용권 없는 영상도 홈에 (INNER → LEFT) + 수수료 질문 답변](handoff/2026-09-08-shorts-unlinked-allowed.md)
+- [유어쇼츠 뷰어 — 자막을 확실히 끄기 위해 재생기를 우리가 쥔다 (2026-09-08)](handoff/2026-09-08-shorts-player-api.md)
+- [유어쇼츠 홈 레일 카드 — 대표 확정 "안 라" (2026-09-08)](handoff/2026-09-08-shorts-card-plan-la.md)
 - [[E2] 실행기 5회차 — 결재 store-acquisition-pipeline 선택지 1 (2026-09-08 13:18~14:1x KST)](handoff/2026-09-08-exec-store-acquisition-pipeline.md)
 - [유어쇼츠 구매 바 — 대표 확정 "안 B + 기존 가격정보" (2026-09-08)](handoff/2026-09-08-buy-bar-plan-b.md)
 **2026-09-07**
 - [유어쇼츠 — 홈 레일 + `/videos` 뷰어 (2026-09-07)](handoff/2026-09-07-urshorts.md)
 - [🏪 매장 등록 문 — 당근식 스텝 위저드 + 막다른 길 셋 (2026-09-07)](handoff/2026-09-07-store-register-wizard.md)
+- [💰 매장 손바뀜 · 귀속 시점 — 잠금 먼저 (2026-09-07)](handoff/2026-09-07-store-handover-money.md)
 - [`/store/new` 매장 등록 — 다크 흰 글자 · 배경 클릭 이탈 (2026-09-07)](handoff/2026-09-07-store-claim-dark-and-backdrop.md)
 - [2026-09-07 — 운영(ops) 역할 신설 + 1인 운영 결재 3건 (대표 "모두 진행")](handoff/2026-09-07-ops-role-and-queue-automation.md)
 - [[E2] 승인 실행기 1회차 — 결재 `2026-09-07-actor-benefit-conflicts` 중 Q3-3 (채널 필수 선택) — PR #1390](handoff/2026-09-07-exec-actor-benefit-conflicts.md)

@@ -6,6 +6,7 @@
  *   상태/핸들러는 전부 GroupBuyDetailPage 소유(controlled) — 결제 로직(handleJoin) 무수정 재사용.
  *   색은 .gbd CSS 변수(테마 자동) — 상세 표면과 동톤.
  */
+import type { ReactNode } from 'react'
 import { ShieldCheck, Zap, Lock, Bell } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 
@@ -29,12 +30,14 @@ interface Props {
   joining: boolean
   onBuy: () => void
   onPrelaunchApply: () => void
+  /** 🪙 CTA 바로 위 슬롯 — 지금은 딜 사용 선택(`DealUseChooser`). 모바일 결제 바와 같은 자리·같은 순서. */
+  dealSlot?: ReactNode
 }
 
 export default function DealPurchaseBox({
   name, discountPct, unitPrice, refPrice, unitSaving, totalSaving, total,
   quantity, setQuantity, maxQty, maxPerPerson,
-  buyable, isJoinable, isPrelaunch, isDemo, joining, onBuy, onPrelaunchApply,
+  buyable, isJoinable, isPrelaunch, isDemo, joining, onBuy, onPrelaunchApply, dealSlot,
 }: Props) {
   // 🎭 2026-08-08 (대표 "데모 상품들만 상품페이지에 구매하기 버튼 대신 응모하기로"): 데모는 '구매하기'가
   //   어울리지 않아 문구를 바꿨다. 동작(onBuy)은 그대로.
@@ -106,6 +109,8 @@ export default function DealPurchaseBox({
           {quantity > 1 ? `총 ${formatNumber(totalSaving)}원 할인 중` : `${formatNumber(unitSaving)}원 할인 중`}
         </div>
       )}
+
+      {dealSlot}
 
       {/* CTA — 하단 바와 동일 핸들러(결제 로직 무수정) */}
       <button

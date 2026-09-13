@@ -93,6 +93,7 @@ const AdminBlogPage = lazy(() => import('@/pages/AdminBlogPage'))
 const AdminSocialPage = lazy(() => import('@/pages/AdminSocialPage'))
 const AdminNotificationSettingsPage = lazy(() => import('@/pages/AdminNotificationSettingsPage'))
 const AdminSellerApprovalPage = lazy(() => import('@/pages/AdminSellerApprovalPage'))
+const AdminStoreOwnerPage = lazy(() => import('@/pages/AdminStoreOwnerPage')) // 🪑 매장 소유자 지정·이전 (3단계)
 const AdminSettlementsBulkPage = lazy(() => import('@/pages/AdminSettlementsBulkPage'))
 const AdminNoticesPage = lazy(() => import('@/pages/AdminNoticesPage'))
 const AdminPlatformSettingsPage = lazy(() => import('@/pages/AdminPlatformSettingsPage'))
@@ -599,7 +600,7 @@ export function AdminRoutes() {
       } />
       <Route path="/admin/seller-approval" element={
         <ProtectedRoute requireAdmin><AdminSellerApprovalPage /></ProtectedRoute>
-      } />
+      } /><Route path="/admin/store-owner" element={<ProtectedRoute requireAdmin><AdminStoreOwnerPage /></ProtectedRoute>} />
       <Route path="/admin/settlements-bulk" element={
         <ProtectedRoute requireAdmin><AdminSettlementsBulkPage /></ProtectedRoute>
       } />

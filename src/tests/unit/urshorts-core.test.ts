@@ -85,22 +85,35 @@ describe('① 쇼츠만 받는다', () => {
   })
 })
 
-describe('② 이용권이 안 붙은 영상은 홈에 못 나간다', () => {
+/**
+ * ② **허락받은 영상만** 홈에 나간다 — 이용권 연결은 더 이상 조건이 아니다.
+ *
+ * 🔁 2026-09-08 에 뒤집혔다. 원래 이 describe 는 *"이용권이 안 붙은 영상은 홈에 못 나간다"* 였고
+ *    `LEFT JOIN` 금지를 단언했다. 대표가 영상 3편을 넣고도 홈이 비는 걸 보고
+ *    *"이용권 정보를 입력하지 않으면 그냥 정보 없이 두는걸로"* 로 확정 → INNER 가 풀렸다.
+ *    **허락(consent) 게이트는 그대로다** — 그건 남의 콘텐츠 문제라 성격이 다르다.
+ */
+describe('② 허락받은 영상만 홈에 나간다', () => {
   const R = code('src/features/urshorts/api/urshorts.routes.ts')
+  const sql = () => R.slice(R.indexOf('const PUBLIC_SQL'), R.indexOf('urshortsRoutes.get'))
 
-  it('공개 쿼리가 products 와 INNER JOIN 이다', () => {
-    const sql = R.slice(R.indexOf('const PUBLIC_SQL'), R.indexOf('urshortsRoutes.get'))
-    expect(sql).toMatch(/JOIN products p ON p\.id = s\.product_id/)
-    expect(sql).not.toMatch(/LEFT JOIN products/)
+  it('이용권이 없어도 나간다 — LEFT JOIN', () => {
+    expect(sql()).toMatch(/LEFT JOIN products p ON p\.id = s\.product_id/)
   })
 
-  it('내려간 상품의 영상도 같이 사라진다', () => {
-    const sql = R.slice(R.indexOf('const PUBLIC_SQL'), R.indexOf('urshortsRoutes.get'))
-    expect(sql).toMatch(/p\.is_active = 1/)
-    expect(sql).toMatch(/s\.is_active = 1/)
+  it('🔴 상품이 있을 때만 is_active 를 본다 — 안 그러면 LEFT 가 조용히 INNER 로 돌아간다', () => {
+    // `AND p.is_active = 1` 만 두면 상품 없는 행의 NULL 비교가 거짓이라 전부 걸러진다.
+    // 에러가 안 나고 레일만 다시 비므로 이 단언이 유일한 방어다.
+    expect(sql()).toMatch(/AND \(p\.id IS NULL OR p\.is_active = 1\)/)
+    expect(sql()).not.toMatch(/AND p\.is_active = 1\s/)
   })
 
-  it('어드민 목록만 LEFT JOIN 이다 — 미연결 영상을 보여 줘야 고칠 수 있다', () => {
+  it('내려간 상품의 영상은 여전히 사라진다 · 꺼 둔 영상도', () => {
+    expect(sql()).toMatch(/p\.is_active = 1/)
+    expect(sql()).toMatch(/s\.is_active = 1/)
+  })
+
+  it('어드민 목록도 LEFT JOIN 이다 — 미연결 영상을 보여 줘야 고칠 수 있다', () => {
     const adm = R.slice(R.indexOf("adminUrshortsRoutes.get('/'"), R.indexOf("adminUrshortsRoutes.post"))
     expect(adm).toMatch(/LEFT JOIN products/)
   })
@@ -148,8 +161,26 @@ describe('③ 홈 첫 화면이 비용을 안 문다', () => {
 describe('④ 재생기는 항상 하나만', () => {
   const V = code('src/pages/VideosPage.tsx')
 
-  it('iframe 이 정확히 하나이고 key 가 video_id 다 (넘기면 이전 것이 파기된다)', () => {
+  // 🔁 2026-09-08 **앵커가 바뀌었다.** 예전에는 `<iframe key={video_id}>` 로 "넘기면 이전 것이
+  //    파기된다"를 만들었는데, 지금은 IFrame Player API 로 **한 번 만들고 갈아 끼운다.**
+  //    지키려는 것(재생기가 둘 이상 살지 않는다)은 같고 표현이 더 강해졌다 —
+  //    `new YT.Player` 가 소스에 한 번뿐이면 두 개가 생길 수가 없다.
+  it('재생기를 만드는 자리가 정확히 하나다', () => {
+    expect((V.match(/new YT\.Player\(/g) ?? []).length).toBe(1)
+    expect(V, '두 번째 재생기 방지 가드').toMatch(/if \(apiState !== 'ready' \|\| playerRef\.current\) return/)
+  })
+
+  it('영상 전환은 재부팅이 아니라 갈아 끼우기다', () => {
+    expect(V).toMatch(/p\.loadVideoById\(wantId\)/)
+  })
+
+  it('나갈 때 재생기를 destroy 한다 — 안 하면 postMessage 리스너가 남는다', () => {
+    expect(V).toMatch(/playerRef\.current\?\.destroy\(\)/)
+  })
+
+  it('폴백 iframe 은 하나뿐이고 key 가 video_id 다 (API 가 안 왔을 때만 산다)', () => {
     expect((V.match(/<iframe/g) ?? []).length).toBe(1)
+    expect(V, '폴백이 API 경로와 동시에 뜨면 재생기가 둘이 된다').toMatch(/\{apiState === 'off' && cur && \(/)
     // 🩸 `/key=\{cur\.video_id\}/` 로 쓰면 주입본 `data-key={cur.video_id}` 도 매치된다
     //    (부분문자열이라). 앞의 공백을 요구해 속성 이름 자체를 앵커로 삼는다.
     expect(V).toMatch(/\skey=\{cur\.video_id\}/)
@@ -272,12 +303,33 @@ describe('셀러 입력칸 — 소유권이 전부다', () => {
  * ⇒ 홈에 나가는 영상은 (a) 우리 것 (b) 매장 것 (c) 창작자가 명시로 허락한 것, 셋 중 하나.
  *   이 규칙을 **문서가 아니라 구조로** 만든다 — 나중에 자동수집이 붙어도 못 샌다.
  */
-describe('허락받은 영상만 홈에 나간다', () => {
+/**
+ * 🔁 **허락(consent) 은 노출을 안 가른다** — 2026-09-08 대표
+ * *"어드민 대시보드에서 올렸던 영상은 메인에서 보여지도록 해줘 허락 받은 유무 상관없이"*.
+ * 09-07 의 `AND s.consent = 1` 게이트를 이 지시가 대체했다.
+ *
+ * ⚠️ 그렇다고 컬럼을 지우면 안 된다 — **어떤 영상에 허락을 받아 뒀는지**를 알아야
+ * 유어애즈 제휴 제안을 보낼 수 있다. 노출에서 빠졌을 뿐 기록으로 산다.
+ * 되돌리려면 PUBLIC_SQL 의 WHERE 에 그 한 줄을 복원하면 된다.
+ */
+describe('허락은 기록이지 노출 조건이 아니다', () => {
   const R = code('src/features/urshorts/api/urshorts.routes.ts')
 
-  it('공개 쿼리가 consent = 1 을 요구한다 (이게 규칙의 전부다)', () => {
+  it('공개 쿼리가 consent 를 요구하지 않는다', () => {
     const sql = R.slice(R.indexOf('const PUBLIC_SQL'), R.indexOf('urshortsRoutes.get'))
-    expect(sql).toMatch(/AND s\.consent = 1/)
+    expect(sql).not.toMatch(/AND s\.consent = 1/)
+  })
+
+  it('켜고 끄는 것은 is_active 하나다', () => {
+    const sql = R.slice(R.indexOf('const PUBLIC_SQL'), R.indexOf('urshortsRoutes.get'))
+    expect(sql).toMatch(/WHERE s\.is_active = 1/)
+  })
+
+  it('어드민 화면이 "체크 안 하면 홈에 안 나간다" 고 말하지 않는다', () => {
+    // 문구가 서버 규칙과 어긋나면 대표가 체크를 찾아 헤맨다(오늘 실제로 그랬다).
+    const A = code('src/pages/AdminUrShortsPage.tsx')
+    expect(A).not.toMatch(/홈에는 안 나갑니다/)
+    expect(A).toMatch(/확인 안 해도 홈에는 나갑니다/)
   })
 
   it('기본값은 0 이다 — 모르면 안 내보낸다', () => {
@@ -313,5 +365,43 @@ describe('허락받은 영상만 홈에 나간다', () => {
     expect(code('src/worker/routes/repair-schema.routes.ts'),
       'AUX_TABLE_REPAIRS 스프레드가 빠졌다 — 정의만 있고 실행이 안 된다')
       .toContain('...AUX_TABLE_REPAIRS')
+  })
+})
+
+/**
+ * 🩸 **`group-hover:` 는 부모에 `group` 이 없으면 영원히 안 걸린다** (2026-09-08 실측).
+ *
+ * 레일의 PC 화살표 둘이 `hidden … group-hover:grid` 인데 조상 어디에도 `group` 이 없었다 —
+ * 기본값이 `hidden` 이라 **화살표가 한 번도 뜬 적이 없고**, 에러도 경고도 안 난다.
+ * 대표에게는 "넘길 방법이 없는 레일"로만 보였다(같은 날 뷰어 스와이프가 정확히 같은 꼴이었다).
+ *
+ * ⚠️ 이 테스트가 못 막는 것: `group` 이 **화살표의 조상인지**는 안 본다(문자열 검사라).
+ *   실제로 마우스를 올려 봐야 알 수 있는 것은 여전히 눈으로 봐야 한다.
+ */
+describe('⑤ group-hover 는 group 이 있어야 걸린다', () => {
+  const RAIL2 = code('src/components/home/UrShortsRail.tsx')
+
+  it('화살표가 group-hover 를 쓰면 레일 래퍼에 group 이 있다', () => {
+    if (!RAIL2.includes('group-hover:')) return // 화살표를 다른 방식으로 바꿨다면 이 규칙은 무관
+    expect(RAIL2, 'group 없는 group-hover 는 죽은 코드다').toMatch(/className="group relative"/)
+  })
+})
+
+/**
+ * ⏱️ 재생기는 **만든 직후엔 명령을 못 받는다** — `onReady` 전 `loadVideoById` 는 던진다.
+ * 그 예외를 그냥 삼키면 `loadedRef` 만 앞서 나가 "넘겨도 영상이 안 바뀌는" 상태로 굳는다
+ * (구매 바와 목록은 다음 영상인데 화면만 그대로 — 우리가 엉뚱한 상품을 파는 것처럼 보인다).
+ */
+describe('⑥ 준비되기 전에 넘겨도 이어 붙는다', () => {
+  const V2 = code('src/pages/VideosPage.tsx')
+
+  it('전환 effect 가 재생기 준비 상태를 함께 본다', () => {
+    expect(V2).toMatch(/if \(!p \|\| !playerReady \|\| !wantId \|\| loadedRef\.current === wantId\) return/)
+    expect(V2, '준비되면 다시 돌아야 한다').toMatch(/\}, \[wantId, playerReady\]\)/)
+  })
+
+  it('onReady 가 준비 상태를 올리고, 파기하면 내린다', () => {
+    expect(V2).toMatch(/setPlayerReady\(true\)/)
+    expect(V2).toMatch(/setPlayerReady\(false\)/)
   })
 })

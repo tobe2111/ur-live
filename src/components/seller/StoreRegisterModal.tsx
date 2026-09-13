@@ -254,13 +254,22 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
                   내 매장 목록 보기
                 </button>
               )}
+              {/* 🙋 2026-09-09: 종전엔 여기서 *"상담으로 알려주세요"* 로 끝났다 — 상담은 창구가 아니라
+                * **부재의 완곡어**였다(받은 뒤에 주인을 바꿀 수단이 코드에 없었다). 이제 진짜 창구가 있다. */}
+              {taken.sellerId && (
+                <button onClick={() => { onClose(); navigate(`/store/find?seller_id=${taken.sellerId}`) }}
+                  className="w-full py-3 rounded-xl border border-gray-200 text-sm font-bold text-gray-700 hover:bg-gray-50">
+                  제 가게예요 — 소유권 신청하기
+                </button>
+              )}
               <button onClick={() => setTaken(null)}
                 className="w-full py-2 text-[12.5px] text-gray-500 hover:text-gray-700">
                 다른 매장으로 다시 찾기
               </button>
             </div>
             <p className="text-[11px] text-gray-400 mt-4 leading-relaxed">
-              사장님이신데 들어갈 수 없다면 소유권 확인이 필요해요. 아래 상담으로 알려주시면 확인해 드릴게요.
+              사장님이신데 들어갈 수 없다면 사업자등록증으로 소유권을 신청해주세요. 확인 후 그 매장의 주인으로
+              등록해 드리고, 지금까지 쌓인 상품·주문·정산 이력은 그대로 남습니다.
             </p>
           </div>
         </div>

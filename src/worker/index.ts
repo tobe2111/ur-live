@@ -63,6 +63,7 @@ import { adminWholesaleMallRoutes } from '../features/supply/api/wholesale-malls
 import { adminStatsRoutes } from '../features/admin/api/admin-stats.routes';
 import { adminSellersRoutes } from '../features/admin/api/admin-sellers.routes';
 import { adminStoreChannelRoutes } from '../features/admin/api/admin-store-channel.routes';
+import { adminStoreOwnerRoutes } from '../features/admin/api/admin-store-owner.routes'; // 🪑 매장 소유자 지정·이전 + 소유권 신청 심사 (3단계)
 import { adminProductsRoutes } from '../features/admin/api/admin-products.routes';
 // 🏭 [wholesale-split 2026-07-16] adminSuppliersRoutes → src/worker/mount-wholesale.ts (도매 분리)
 // 🛡️ 2026-05-18: 숙소 공구 (stay_voucher) 어드민 — PR 1 Foundation.
@@ -78,6 +79,7 @@ import { adminAnalyticsRoutes } from '../features/admin/api/admin-analytics.rout
 import { adminModerationRoutes } from '../features/admin/api/admin-moderation.routes';
 import { adminUsersRoutes } from '../features/admin/api/admin-users.routes';
 import { adminMiscRoutes } from '../features/admin/api/admin-misc.routes';
+import { adminDecisionsRoutes } from '../features/admin/api/admin-decisions.routes'; // 📥 2026-09-08 결재함 답
 import { adminAbuseRoutes } from '../features/admin/api/admin-abuse.routes';
 import { adminReviewGeneratorRoutes } from '../features/admin/api/admin-review-generator.routes';
 import { adminRoutes as adminAuthRoutes } from '../features/auth/api/admin.routes';
@@ -1750,6 +1752,7 @@ adminApp.route('/', adminStatsRoutes);
 adminApp.route('/', adminSellersRoutes);
 // 🏪 매장 등록 채널(직접/대행사) 지정 — 요율을 정하는 값이라 어드민이 확정할 수 있어야 한다(2026-08-27).
 adminApp.route('/', adminStoreChannelRoutes);
+adminApp.route('/', adminStoreOwnerRoutes);
 // 🛡️ 2026-04-22 배치 148 (TD-006 부분): admin-products + sample-requests 분리
 adminApp.route('/', adminProductsRoutes);
 // 🏭 [wholesale-split] 도매 admin 마운트(suppliers/withdrawal) → mount-wholesale.ts
@@ -1774,6 +1777,7 @@ adminApp.route('/', adminModerationRoutes);
 adminApp.route('/', adminUsersRoutes);
 // 🛡️ 2026-04-22 배치 155 (TD-006 부분): admin-misc (donations/deals/commission/audit) 분리
 adminApp.route('/', adminMiscRoutes);
+adminApp.route('/', adminDecisionsRoutes); // 📥 결재함 답 우편함(/api/admin/decisions/*)
 // 2026-05-05: 어뷰징 탐지 + 광고 슬롯 관리
 adminApp.route('/', adminAbuseRoutes);
 // 🛡️ 2026-04-22 배치 156 (TD-006 부분): admin-review-generator 분리

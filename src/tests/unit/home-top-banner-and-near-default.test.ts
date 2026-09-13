@@ -152,12 +152,28 @@ describe('🩸 규격 SSOT — inline/wide 가 뒤바뀌어 있던 것', () => {
   })
 })
 
+/**
+ * 🔁 **2026-09-08 규칙이 한 겹 넓어졌다** (대표 *"거리순이 가장 우선이야"*).
+ *
+ * 원래 여기 있던 계약은 `readCachedLoc() && !readHomeRegion().regionKey ? 'near' : 'popular'` 였다.
+ * 즉 **지역을 한 번이라도 골라 둔 사람에게는 거리순을 안 씌운다**가 규칙이었고, 그 근거는
+ * "지역 필터와 거리순이 겹치면 무엇으로 걸러진 목록인지 화면이 말할 수 없다" 였다.
+ *
+ * 🩸 그런데 실제로는 **헤더와 목록이 서로 다른 말**을 했다. 헤더는 `located` 를 우선해 "동탄5동"을
+ *   띄우는데 목록만 저장된 지역으로 걸려 인기순으로 줄 섰고, 그 지역에 딜이 0건이면 전체 폴백까지
+ *   걸려 **그 동네 이름 아래 서울 강남 딜**이 떴다(대표 실측 캡처).
+ *
+ * ⇒ 겹침 걱정은 **지역을 안 씌우는 것**으로 푼다: 좌표가 있으면 저장된 지역을 적용하지 않는다.
+ *   그러면 두 기준이 겹칠 일 자체가 없고, 헤더가 이미 내리는 판단을 목록도 내리게 된다.
+ *   ⚠️ 이 파일은 **기본 정렬 규칙의 주인**이다 — 같은 규칙을 `home-nearest-first.test.ts` 에
+ *     또 적지 말 것(두 벌이면 갈라진다). 그 파일은 정렬 알약 라벨만 맡는다.
+ */
 describe('② 아래 딜 목록 기본 정렬 = 가까운 순', () => {
   it('두 홈 모두 캐시된 위치가 있으면 near 로 시작한다', () => {
     for (const p of ['src/pages/mobile-home/MobileHomePage.tsx', 'src/pages/pc-home/PcHomePage.tsx']) {
       const src = codeOnly(read(p))
       expect(src, `${p}: readCachedLoc 미사용`).toMatch(/readCachedLoc\(\)/)
-      expect(src, `${p}: near 기본값 미배선`).toMatch(/readCachedLoc\(\)\s*&&\s*!readHomeRegion\(\)\.regionKey\s*\?\s*'near'\s*:\s*'popular'/)
+      expect(src, `${p}: near 기본값 미배선`).toMatch(/readCachedLoc\(\)\s*\?\s*'near'\s*:\s*'popular'/)
     }
   })
 
@@ -168,9 +184,15 @@ describe('② 아래 딜 목록 기본 정렬 = 가까운 순', () => {
     }
   })
 
-  it('지역을 직접 고른 사람에겐 거리순을 씌우지 않는다', () => {
+  // 🔁 2026-09-08: 여기 있던 "지역을 직접 고른 사람에겐 거리순을 씌우지 않는다"를 **뒤집은 규칙**으로
+  //    교체한다(위 describe 주석 참조). 지우지 않고 반대 방향으로 고정해, 옛 규칙이 조용히 돌아오면 빨강.
+  it('좌표가 있으면 저장된 지역을 안 씌운다 — 헤더와 목록이 같은 말을 하도록', () => {
     for (const p of ['src/pages/mobile-home/MobileHomePage.tsx', 'src/pages/pc-home/PcHomePage.tsx']) {
-      expect(codeOnly(read(p))).toMatch(/!readHomeRegion\(\)\.regionKey/)
+      const src = codeOnly(read(p))
+      expect(src, `${p}: 지역 초기화가 좌표를 안 본다`)
+        .toMatch(/useState<HomeRegion>\(\(\) => \(readCachedLoc\(\) \? \{\} : readHomeRegion\(\)\)\)/)
+      expect(src, `${p}: 옛 규칙(지역이 거리순을 막음)이 돌아왔다`)
+        .not.toMatch(/readCachedLoc\(\) && !readHomeRegion\(\)\.regionKey/)
     }
   })
 
@@ -178,7 +200,10 @@ describe('② 아래 딜 목록 기본 정렬 = 가까운 순', () => {
     // PC: 쿼리 분기가 기본값 계산보다 먼저 return 한다.
     const pc = read('src/pages/pc-home/PcHomePage.tsx')
     const q = pc.indexOf("if (q && SORT_KEYS.includes(q)) return q")
-    const fallback = pc.indexOf("readCachedLoc() && !readHomeRegion().regionKey ? 'near' : 'popular'")
+    // ⚠️ 앵커는 **현재 코드의 표현**이어야 한다 — 2026-09-08 에 규칙이 바뀌며 옛 문자열이 사라졌고,
+    //    indexOf 가 -1 을 내면서 이 비교가 통째로 무너졌다(CI 가 잡았다). 규칙이 또 바뀌면 여기도 함께.
+    const fallback = pc.indexOf("readCachedLoc() ? 'near' : 'popular'")
+    expect(fallback, '기본값 계산 앵커를 못 찾았다(표현이 바뀌었나?)').toBeGreaterThan(-1)
     expect(q).toBeGreaterThan(-1)
     expect(q).toBeLessThan(fallback)
     // 모바일: useHomeQuerySync 가 그 일을 한다(두 홈 공용).

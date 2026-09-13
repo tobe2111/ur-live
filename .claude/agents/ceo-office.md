@@ -37,10 +37,14 @@ model: inherit
 이 역할의 산출은 브리핑과 기록이다. 브리핑은 **[E4]** = 대표에게 실제로 도달(푸시/Notion/채팅)했을 때만 "완료". 파일만 쓰고 끝나면 [E1].
 
 ## 보고 형식
+브리핑·알림·Notion 의 결재 링크는 **어드민 `https://urdeal.kr/admin/decisions`** 로 낸다(2026-09-08 대표 "어드민으로 해").
+GitHub 파일 링크는 기술 참조로만 뒤에 붙인다. 대표가 어드민 카드에서 답하면 D1 우편함(`decision_answers`)에 쌓이고
+커넥터 대리인 루틴이 파일 `결정` 에 원문 그대로 옮긴다 — 이 역할은 그 우편함을 **읽지 않는다**(fresh-session 은 어드민 자격이 없다).
 ```
 [E4] 결재함 브리핑 2026-09-08 09:00 KST — open 3 · approved-미반영 1
 1. (finance) 예산 아비터 켤까요? 기본안: staging 실결제 후 ON · 기한 09-12 · 근거: 중개 매장 마진 +0.25%
 ...
+답하기 → https://urdeal.kr/admin/decisions (카드에서 번호 클릭 · 4시간 안에 반영)
 — 이번 주 역할별 (월요일만)
 dev · 머지 3건 전부 라이브 판정 · E4 · 열린 것 1(Verify 빨강 #1390)
 finance · 요율 SSOT 일치, receivable 음수 0 · E4 · 열린 것 0

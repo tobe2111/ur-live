@@ -86,6 +86,15 @@ sellerKakaoLinkRoutes.post('/link-kakao', async (c) => {
       return c.json({ success: false, error: '이 카카오 계정은 이미 다른 셀러 계정에 연동되어 있습니다.' }, 409)
     }
 
+    // 🔐 2026-09-07 (대표): 이미 다른 사람이 주인인 매장에 미지급 잔액이 남아 있으면 막는다 —
+    //   바꾸는 순간 그 돈이 새 계좌로 나간다(원장은 `seller:N` 에만 붙고 집계에 기간이 없다).
+    //   최초 연동(linked_user_id NULL)·같은 사람 재연동은 손바뀜이 아니라 통과한다.
+    const { checkStoreHandover, STORE_HANDOVER_BLOCKED } = await import('../../../worker/utils/store-handover-guard')
+    const handover = await checkStoreHandover(DB, Number(sellerId), kakaoUserId)
+    if (handover.blocked) {
+      return c.json({ success: false, error: handover.reason, code: STORE_HANDOVER_BLOCKED }, 409)
+    }
+
     await DB.prepare(
       "UPDATE sellers SET linked_user_id = ?, updated_at = datetime('now') WHERE id = ?"
     ).bind(kakaoUserId, sellerId).run()
@@ -147,6 +156,13 @@ sellerKakaoLinkRoutes.post('/relink-kakao', rateLimit({ action: 'seller_relink',
 
     const prevUserId = seller.linked_user_id
     if (prevUserId !== newUserId) {
+      // 🔐 2026-09-07 (대표): 여기가 **명시적 손바뀜 경로**다(이전 계정에 보안 통지까지 보낸다).
+      //   미지급 잔액이 남아 있으면 이전 주인에게 정산을 마친 뒤에만 넘긴다.
+      const { checkStoreHandover, STORE_HANDOVER_BLOCKED } = await import('../../../worker/utils/store-handover-guard')
+      const handover = await checkStoreHandover(c.env.DB, Number(seller.id), newUserId)
+      if (handover.blocked) {
+        return c.json({ success: false, error: handover.reason, code: STORE_HANDOVER_BLOCKED }, 409)
+      }
       await c.env.DB.prepare(
         "UPDATE sellers SET linked_user_id = ?, updated_at = datetime('now') WHERE id = ?"
       ).bind(newUserId, seller.id).run()

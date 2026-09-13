@@ -1,0 +1,55 @@
+name: Guard mutations (full)
+
+# 🧬 **주입 전수 검증** — PR 에서 좁힌 만큼을 여기서 되찾는다 (2026-09-08).
+#
+# ## 왜 따로 떼었나 (실측)
+# Verify 48분 29초 중 `check-guard-mutations -s` 가 **37분 24초 = 77%** 였다
+# (job 101957335695 스텝 타이밍). 항목이 950건을 넘어 선형으로 늘어난다.
+# 그 48분이 만든 2차 피해가 더 컸다 — CI 가 도는 동안 main 이 움직이고, 거의 모든 PR 이
+# 그 매니페스트를 건드리니 **머지 때마다 충돌**했다(2026-09-08 하루에 4번 중 3번이 405).
+#
+# ⇒ PR 은 `--changed` 로 자기가 건드린 주입만(수 분), **전수는 여기서** 돈다.
+#
+# ## 🔴 이 워크플로를 지우면 검사가 꺼진다
+# `verify.yml` 이 `--changed` 를 쓰는 한, 전수를 도는 곳은 **여기뿐**이다.
+# `--changed` 는 "주입 M 의 테스트가 M 의 파일 말고 다른 파일도 읽는" 경우를 못 고른다 —
+# 그 사각지대를 메우는 것이 이 전수다. 둘은 짝이고, `guard-mutations-scope.test.ts` 가 그 짝을 고정한다.
+#
+# ## 언제 도나
+#   · main push — 머지된 조합을 바로 전수로 재검
+#   · 매일 새벽 — main 이 조용해도 하루 한 번은 반드시 (야간이 진짜 보증이다)
+#   · 수동
+on:
+  push:
+    branches: [main]
+  schedule:
+    # 매일 18:40 UTC = 다음날 03:40 KST. 배포·정비 cron 과 겹치지 않는 시간대.
+    - cron: '40 18 * * *'
+  workflow_dispatch:
+
+# main push 가 몰리면 최신 것만 — 대신 위 schedule 이 하루 한 번은 반드시 완주시킨다.
+concurrency:
+  group: guard-mutations-full-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  full:
+    runs-on: ubuntu-latest
+    name: Guard mutations (full)
+    # 950건 × vitest 라 40분 안팎. 넉넉히 두되 무한 대기는 막는다.
+    timeout-minutes: 90
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      # 🔴 `--changed` 를 여기에 붙이지 말 것 — 이 워크플로의 존재 이유가 전수다.
+      - name: 가드 주입 전수 검증 (strict)
+        run: node scripts/check-guard-mutations.mjs -s

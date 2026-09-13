@@ -213,8 +213,12 @@ jobs:
       #   하루에 세 번 났다(reverse 픽스처 · phase 이름 가설 · 일1회 레인 누락 픽스처).
       #   셋 다 손으로 주입해 보고서야 알았다 — 손으로 하면 다음 세션은 안 한다.
       #   ⚠️ 소스를 잠깐 고쳤다 되돌리므로 **다른 스텝과 병렬로 돌리지 말 것**.
-      - name: 가드 주입 검증 (strict)
-        run: node scripts/check-guard-mutations.mjs -s
+      # ⏱️ 2026-09-08: PR 에서는 **이 브랜치가 건드린 주입만** 돈다(48분 → 수 분).
+      #   실측으로 이 스텝이 Verify 의 77%(37분 24초)였고, 그 길이가 머지 충돌을 만들고 있었다.
+      #   🔴 전수는 `guard-mutations-full.yml`(main push + 야간)이 돈다 — **그걸 지우면 검사가 꺼진다.**
+      #   애매하면 전수로 폴백한다(base 못 구함 · scripts/** · package.json · verify.yml 변경 시).
+      - name: 가드 주입 검증 (변경분, strict)
+        run: node scripts/check-guard-mutations.mjs --changed -s
         continue-on-error: false
 
       # 🧾 2026-07-30: 예산 루프가 **자기 기록을 쓸 몫**을 남기는가. 루프 뒤에는 반드시 D1 쓰기가 있다
