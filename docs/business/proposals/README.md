@@ -6,6 +6,8 @@
 |---|---|---|
 | 인플루언서 제휴 제안 (16:9, 9장) | `public/static/proposals/influencer-proposal.html` | `/admin/proposals` |
 | 대행사 제휴 제안 (16:9, 17장, PowerPoint, 매장 모집 실행서) | `docs/business/proposals/urdeal-agency-proposal.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-agency-proposal.build.mjs`) | 없음. 파일로 전달 |
+| 매장 사장님 안내 (16:9, 12장, PowerPoint) | `docs/business/proposals/urdeal-store-owner-deck.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-store-owner-deck.build.mjs`, 공통 모듈 `deck-common.mjs`) | 없음. 파일로 전달 |
+| 소개서 3종 기획서 | `docs/business/proposals/three-decks-plan-2026-09.md` | 없음 |
 
 ## 왜 docs/ 가 아니라 public/static/ 인가
 
@@ -32,6 +34,29 @@ NODE_USE_ENV_PROXY=1 node scripts/capture-proposal-shots.mjs /tmp/shots
 - 유어샵은 `/u/jiwon1228`(대표 계정)을 씁니다. 남의 유어샵을 대외 문서에 넣지 마세요.
 - 색은 `src/index.css` 의 `--ink` / `--ink-soft` 를 **복사해 쓰는 구조**라 자동으로 안 따라옵니다.
   서비스 테마가 바뀌면 제안서도 같이 고쳐야 합니다.
+
+## 공통 모듈 `deck-common.mjs` (2026-09-13)
+
+색·글꼴·헬퍼(chrome/title/card/phone/kv/table)와 세 덱이 글자 그대로 공유하는 사실(`FACTS`: 요율, 카드비 문구, 실측 숫자,
+연락처)이 여기 있다. **요율이나 실측 숫자가 바뀌면 이 파일 한 곳만 고친다.** 카드 수수료는 "현재 약 2.75%, 카드사 정책에
+따라 바뀔 수 있음" 으로 적는다(대표 2026-09-13). 세 덱이 공유하는 블록: `customerSteps`(손님 4단계 폰 4장) · `honesty`(정직 고지).
+대행사 v4 생성기는 아직 자기 헬퍼를 쓴다(v5 에서 이 모듈로 옮긴다).
+
+## 매장 사장님 안내 (.pptx) 다시 만들려면
+
+```bash
+mkdir -p /tmp/deck && cd /tmp/deck && npm init -y && npm i pptxgenjs sharp react react-dom react-icons
+ln -sfn /tmp/deck/node_modules /path/to/ur-live/docs/business/proposals/node_modules   # ESM import 는 NODE_PATH 를 안 본다
+cd /path/to/ur-live/docs/business/proposals && node urdeal-store-owner-deck.build.mjs out.pptx
+```
+
+- 12장 구성과 근거는 `three-decks-plan-2026-09.md` §2. 5장의 셈법은 라이브 유일의 실제 매장 이용권(id 2888, 25,000 → 16,500원)을 쓴다.
+  재료비 35% 는 가정이고 슬라이드에도 그렇게 적혀 있다.
+- 셀러 화면은 `capture-seller-shots.mjs` 로 계정 없이 찍는다. 2026-09-13 에 `/seller/settlements`(정산) · `/store/new`(등록 마법사 1단계·3단계) 를 추가했다.
+  🩸 정산 화면은 처음에 에러 경계가 떴다: `DealBalanceCard` 가 `balance.total.toLocaleString()` 을 부르는데 예시 응답에 `total` 이 없었다.
+  프로덕션 React 는 에러 경계가 잡은 오류를 콘솔에 남기지 않으므로 **컴포넌트가 읽는 필드를 코드에서 확인해 예시 응답을 맞춰야 한다.**
+  🩸 등록 마법사는 소비자 로그인(`user_id`)이 필요한데, 그 신호를 넣으면 화면 장식이 `/api/curator/me/*`·`/api/wishlists`·`/api/auth/session/health` 를 부르고
+  401 이 나면 소비자 클라이언트가 로그아웃시켜 `/login` 으로 튕긴다. 그 셋을 성공 응답으로 모킹해야 한다.
 
 ## 대행사 제안서 (.pptx) 다시 만들려면
 

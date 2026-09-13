@@ -54,9 +54,37 @@ function mock(url) {
   if (p === '/api/seller/influencers/categories') return json({ success: true, data: CATEGORIES })
   if (p === '/api/seller/products') return json({ success: true, data: [{ id: 2876, name: '한우 런치 정식 2인' }, { id: 2879, name: '치즈돈가스 2인 세트 할인권' }] })
   if (p === '/api/seller/refresh') return json({ success: true, token: FAKE_TOKEN })
+  // 정산 화면 (/seller/settlements) — 예시 데이터
+  if (p === '/api/seller/profile') return json({ success: true, data: { id: 999, name: '유어딜 파트너스', business_name: '홍대돈까스', bank_name: '국민은행', bank_account: '******1234', account_holder: '정**', status: 'approved', commission_rate: 10 } })
+  if (p === '/api/seller/settlements/stats') return json({ success: true, data: { total_pending: 1, total_approved: 1, total_paid: 6, pending_amount: 412500, approved_amount: 297000, paid_amount: 2184300 } })
+  if (p === '/api/seller/settlements') return json({ success: true, data: [
+    { id: 8, seller_id: 999, period_start: '2026-09-01', period_end: '2026-09-07', total_sales: 458333, commission_rate: 10, commission_amount: 45833, settlement_amount: 412500, status: 'pending', requested_at: '2026-09-08 00:45:00', approved_at: null, paid_at: null, created_at: '2026-09-08 00:45:00', updated_at: '2026-09-08 00:45:00' },
+    { id: 7, seller_id: 999, period_start: '2026-08-25', period_end: '2026-08-31', total_sales: 330000, commission_rate: 10, commission_amount: 33000, settlement_amount: 297000, status: 'approved', requested_at: '2026-09-01 00:45:00', approved_at: '2026-09-02 09:10:00', paid_at: null, created_at: '2026-09-01 00:45:00', updated_at: '2026-09-02 09:10:00' },
+    { id: 6, seller_id: 999, period_start: '2026-08-18', period_end: '2026-08-24', total_sales: 385000, commission_rate: 10, commission_amount: 38500, settlement_amount: 346500, status: 'paid', requested_at: '2026-08-25 00:45:00', approved_at: '2026-08-26 09:00:00', paid_at: '2026-08-26 10:12:00', created_at: '2026-08-25 00:45:00', updated_at: '2026-08-26 10:12:00' },
+  ] })
+  if (p === '/api/seller/dashboard/stats') return json({ success: true, data: { daily_revenue: Array.from({ length: 30 }, (_, i) => ({ date: `2026-08-${String(15 + (i % 16)).padStart(2, '0')}`, revenue: 33000 + ((i * 7919) % 90000) })) } })
+  if (p === '/api/seller/settlement-options') return json({ success: true, data: { business_registration: { status: 'verified', image_url: null, reject_reason: null }, auto_payout: true } })
+  if (p === '/api/seller/payouts') return json({ success: true, data: { payable: 412500, scheduled_total: 297000, sent_total: 2184300, payouts: [
+    { id: 31, amount: 297000, status: 'approved', created_at: '2026-09-08 00:45:00', period: '8/25 ~ 8/31' },
+    { id: 30, amount: 346500, status: 'sent', created_at: '2026-09-01 00:45:00', sent_at: '2026-09-04 10:12:00', period: '8/18 ~ 8/24' },
+    { id: 29, amount: 391000, status: 'sent', created_at: '2026-08-25 00:45:00', sent_at: '2026-08-28 09:40:00', period: '8/11 ~ 8/17' },
+  ] } })
+  if (p === '/api/seller/deal-balance') return json({ success: true, data: { total: 0, withdrawable: 0, notice: null, business_verified: true } })
+  if (p === '/api/seller/tax-summary') return json({ success: true, data: { year: 2026, total_gross: 0, total_withheld: 0, total_net: 0, payouts_count: 0, reportable: false, threshold: 3000000 } })
+  // 매장 등록 마법사 (/store/new) — 카카오맵 검색을 예시 결과로
+  if (p === '/api/kakao/place/search') return json({ success: true, data: { documents: [
+    { id: '1', place_name: '홍대돈까스 본점', road_address_name: '서울 마포구 와우산로 29길 14', address_name: '서울 마포구 서교동 358-12', phone: '02-333-1234', category_name: '음식점 > 일식 > 돈까스,우동', x: '126.9239', y: '37.5545' },
+    { id: '2', place_name: '홍대돈까스 합정점', road_address_name: '서울 마포구 양화로 45', address_name: '서울 마포구 서교동 400-1', phone: '02-333-5678', category_name: '음식점 > 일식 > 돈까스,우동', x: '126.9142', y: '37.5498' },
+  ] } })
+  // 소비자 세션 신호(user_id)를 넣으면 화면 장식이 큐레이터 API 를 부르고, 401 이면 소비자 클라이언트가 로그아웃시킨다 → 성공 응답으로 대체
+  if (/^\/api\/(wishlists|notifications|my-[a-z-]+|users?\/me|user\/[a-z-]+|points\/balance|deal-balance)/.test(p)) return json({ success: true, data: [] })
+  if (p.startsWith('/api/curator/me')) return json({ success: true, data: { handle: 'jiwon1228', name: '정지원', pins: [], items: [], stats: { clicks: 0, orders: 0 }, earnings: { pending: 0, granted: 0 } } })
+  if (p === '/api/auth/session/health') return json({ success: true, data: { session: true } })
+  if (p === '/api/auth/me' || p === '/api/users/me' || p === '/api/auth/session') return json({ success: true, data: { id: 999, name: '정지원', handle: 'jiwon1228', email: null } })
+  if (p === '/api/seller/stores/review-bonus') return json({ success: true, data: { amount: 1000, store_set: false, funded_by: 'platform' } })
   // 화면 장식 위젯이 부르는 부가 API 두 개(알림 벨·유입 바인딩) — 세션이 없어 401 이 나면 stores 페이지의
   // 소비자용 클라이언트가 throw 해 에러 경계가 뜬다. 스크린샷용으로 빈 목록/무응답을 준다.
-  if (p === '/api/seller/stores/review-bonus') return json({ success: true, data: { amount: 300, store_set: false, funded_by: 'platform' } })
+  if (p === '/api/seller/stores/review-bonus') return json({ success: true, data: { amount: 1000, store_set: false, funded_by: 'platform' } })
   if (p === '/api/dashboard-notifications') return json({ success: true, data: [], unread: 0 })
   if (p === '/api/acquisition/inflow/bind') return json({ success: true })
   if (p.startsWith('/api/seller/') || p.startsWith('/api/seller-public/') || p.startsWith('/api/disputes/')) return json({ success: true, data: [] })
@@ -71,7 +99,39 @@ const SHOTS = [
   { name: 'seller-influencers', url: '/seller/influencers' },
   { name: 'seller-operating', url: '/seller/operating' },
   { name: 'seller-operators', url: '/seller/operators' },
+  { name: 'seller-settlements', url: '/seller/settlements' },
+  // 매장 등록 마법사 — 소비자 로그인 상태로 연다(ProtectedRoute requireUser). drive 가 단계를 진행시킨다.
+  { name: 'store-new', url: '/store/new', user: true },
+  { name: 'store-new-channel', url: '/store/new', user: true, drive: 'channel' },
 ]
+
+/** 마법사를 "누가 운영하나요" 단계까지 진행시킨다. 실패하면 도달한 단계에서 찍는다. */
+async function driveWizard(page, step) {
+  try {
+    const input = page.locator('input[placeholder*="매장 이름"]').first()
+    await input.waitFor({ timeout: 15000 })
+    await input.fill('홍대돈까스')
+    await input.press('Enter')
+    const hit = page.locator('button:has-text("홍대돈까스 본점")').first()
+    await hit.waitFor({ timeout: 10000 })
+    await hit.click()
+    await page.waitForTimeout(600)
+    await page.locator('button:has-text("다음")').first().click()
+    await page.waitForTimeout(500)
+    const phone = page.locator('input[placeholder="010-0000-0000"]').first()
+    await phone.waitFor({ timeout: 8000 })
+    await phone.fill('010-1234-5678')
+    await page.waitForTimeout(300)
+    await page.locator('button:has-text("다음")').first().click()
+    await page.waitForTimeout(800)
+    if (step === 'business') {
+      await page.locator('button:has-text("내 가게에요")').first().click()
+      await page.waitForTimeout(300)
+      await page.locator('button:has-text("다음")').first().click()
+      await page.waitForTimeout(800)
+    }
+  } catch (err) { console.log(`  [drive] ${String(err.message).split('\n')[0]}`) }
+}
 
 async function main() {
   fs.mkdirSync(OUT, { recursive: true })
@@ -80,6 +140,14 @@ async function main() {
     viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true,
     userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
     locale: 'ko-KR', timezoneId: 'Asia/Seoul',
+  })
+  await ctx.addInitScript(() => {
+    // DEBUG 용: 에러 경계가 삼키는 렌더 오류를 붙잡아 둔다
+    window.__errs = []
+    const orig = console.error
+    console.error = (...a) => { try { window.__errs.push(a.map((x) => (x && x.stack) ? String(x.stack).slice(0, 600) : String(x)).join(' ').slice(0, 800)) } catch {} ; orig.apply(console, a) }
+    window.addEventListener('error', (e) => { try { window.__errs.push('window.error ' + (e.error?.stack || e.message || '').slice(0, 600)) } catch {} })
+    window.addEventListener('unhandledrejection', (e) => { try { window.__errs.push('unhandled ' + String(e.reason?.stack || e.reason).slice(0, 600)) } catch {} })
   })
   await ctx.addInitScript(({ token }) => {
     localStorage.setItem('seller_token', token)
@@ -91,6 +159,10 @@ async function main() {
     localStorage.setItem('ur_seller_full_menu', '1')
     sessionStorage.setItem('ur_seller_surface', 'seller')
     localStorage.setItem('seller_kakao_link_banner_dismissed_v1', '1')
+    // 소비자 로그인 신호(ProtectedRoute requireUser 는 user_id 존재로 판단)
+    localStorage.setItem('user_id', '999')
+    localStorage.setItem('user_name', '정지원')
+    localStorage.setItem('user_handle', 'jiwon1228')
   }, { token: FAKE_TOKEN })
 
   await ctx.route('**', async (route) => {
@@ -99,6 +171,7 @@ async function main() {
     if (!/^https?:/.test(url)) return route.continue()
     if (url.includes('sentry.io')) {
       const body = req.postData() || ''
+      if (process.env.DEBUG_API) fs.appendFileSync(path.join(OUT, '_sentry.log'), body + '\n')
       const hit = body.match(/"(?:type|value)":"([^"]{0,300})"/g)
       console.log('  [sentry]', (hit || []).slice(0, 4).join(' | '))
       const st = body.match(/"filename":"([^"]{0,120})","function":"([^"]{0,60})"/)
@@ -129,15 +202,19 @@ async function main() {
   for (const shot of SHOTS) {
     if (only && !only.includes(shot.name)) continue
     const page = await ctx.newPage()
+    if (process.env.DEBUG_API) page.on('request', (r) => { if (r.url().includes('/api/')) console.log(`  [api] ${r.method()} ${r.url().slice(0, 120)}`) })
     page.on('requestfailed', (r) => console.log(`  [failed] ${r.url().slice(0, 110)} ${r.failure()?.errorText}`))
     page.on('response', (r) => { if (r.status() >= 400) console.log(`  [${r.status()}] ${r.url().slice(0, 110)}`) })
     page.on('pageerror', (e) => console.log(`  [pageerror] ${shot.name}: ${String(e.message).split('\n')[0]}`))
-    page.on('console', (m) => { if (m.type() === 'error') console.log(`  [console] ${shot.name}: ${m.text().slice(0, 200)}`) })
+    page.on('console', (m) => { if (m.type() === 'error' || process.env.DEBUG_API) console.log(`  [console:${m.type()}] ${shot.name}: ${m.text().slice(0, 300)}`) })
     const raw = path.join(OUT, `${shot.name}.png`)
     try {
+      if (shot.user) await page.addInitScript(() => { localStorage.setItem('user_type', 'user') })
       await page.goto(ORIGIN + shot.url, { waitUntil: 'domcontentloaded', timeout: 60000 })
       await page.waitForTimeout(6000)
+      if (shot.drive) await driveWizard(page, shot.drive)
       await page.screenshot({ path: raw })
+      if (process.env.DEBUG_API) { const errs = await page.evaluate(() => window.__errs || []); for (const e of errs) console.log('  [errs]', e.replace(/\n/g, ' | ').slice(0, 700)) }
       const meta = await sharp(raw).metadata()
       await sharp(raw).resize({ width: W, height: H, fit: 'cover', position: 'top' }).jpeg({ quality: 88 }).toFile(path.join(OUT, `${shot.name}.jpg`))
       console.log(`${shot.name} OK ${meta.width}x${meta.height} url=${page.url()}`)

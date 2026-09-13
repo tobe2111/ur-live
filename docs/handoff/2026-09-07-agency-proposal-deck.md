@@ -78,3 +78,12 @@ v1 은 구조 설명이었고 "그래서 내일 어디 가서 뭘 하면 얼마�
 
 다음 세션 첫 액션: 대표 답 확인 → `deck-common.mjs` 분리 → `capture-seller-shots.mjs` 로 등록 마법사·쇼츠 화면 재캡처 → 사장님 덱.
 소개서와 별개로 §0-5 의 라이브 문구 수리(약관 `/terms/influencer`, `/business`, `/introduce`, `/partners`)는 별 PR 로.
+
+### 09-13 저녁: 사장님 덱 v1 제작 (12장, 16:9)
+
+대표 답: 카드비 변동 가능 · 셋 다 16:9 PDF · 사장님 최우선 · "가장 권장하는 형태로". ⇒ `deck-common.mjs`(공통 모듈, `FACTS` 한 곳) +
+`urdeal-store-owner-deck.build.mjs` → `urdeal-store-owner-deck.pptx/.pdf`. 12장 전부 LibreOffice 렌더로 눈 확인(겹침 6곳 수정 · 가운뎃점 줄당 1 정리).
+캡처 3장 추가(정산 · 등록 마법사 1/3단계). 🩸 정산 화면 에러 경계 원인 = 예시 응답에 `total` 필드 부재(콘솔 무출력, 코드 읽어서 찾음).
+🩸 등록 마법사 캡처는 소비자 세션 신호 + 큐레이터/위시리스트/세션헬스 3종 모킹이 없으면 `/login` 으로 튕긴다(README 에 기록).
+
+다음: 인플루언서 덱(12장, 기존 HTML 대체) → 대행사 v5(공통 모듈로 이관 + 300딜→1,000딜 정정) → `/terms/influencer` 약관 수리 PR.
