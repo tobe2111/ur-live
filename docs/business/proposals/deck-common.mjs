@@ -32,6 +32,7 @@ export const FACTS = {
   liveMeasuredAt: '2026-09-13',
   activeVouchers: '337', realStores: '1', avgMeal: '32,411원', avgStay: '155,824원',
   influencerDb: '201,471명', influencerReachable: '46,220명',
+  influencerPayoutMin: '10만원', influencerPayoutDay: '매월 1일', clawbackWindow: '7일',
   contactEmail: 'jiwon@ur-team.com', kakaoChannel: 'pf.kakao.com/_AITdn', site: 'urdeal.kr', biz: '리스터코퍼레이션 · 사업자등록번호 479-09-02930',
 };
 
@@ -175,10 +176,10 @@ export async function createDeck({ title, footer, shotsDir, shotKeys = [], phone
     });
   }
   /** 정직 고지 (세 덱 공통 문장). */
-  function honesty(slide, { x = M, y, w = W - 2 * M, h = 1.5 } = {}) {
+  function honesty(slide, { x = M, y, w = W - 2 * M, h = 1.5, text } = {}) {
     card(slide, x, y, w, h, { fill: C.tint });
     T(slide, '정직하게 말씀드립니다', { x: x + 0.3, y: y + 0.18, w: w - 0.6, h: 0.3, fontSize: 12.5, bold: true, color: C.ink, charSpacing: -0.3 });
-    T(slide, `유어딜은 초기 서비스입니다. ${FACTS.liveMeasuredAt} 기준 판매 중인 이용권 ${FACTS.activeVouchers}건 가운데 실제 매장이 등록한 것은 ${FACTS.realStores}건이고, 나머지는 시범 운영을 위한 예시입니다. 트래픽을 약속하는 대신 조건을 숫자로 먼저 공개합니다. 지금 들어오시는 매장이 그 지역과 카테고리의 첫 자리를 가져갑니다.`,
+    T(slide, text || `유어딜은 초기 서비스입니다. ${FACTS.liveMeasuredAt} 기준 판매 중인 이용권 ${FACTS.activeVouchers}건 가운데 실제 매장이 등록한 것은 ${FACTS.realStores}건이고, 나머지는 시범 운영을 위한 예시입니다. 트래픽을 약속하는 대신 조건을 숫자로 먼저 공개합니다. 지금 들어오시는 매장이 그 지역과 카테고리의 첫 자리를 가져갑니다.`,
       { x: x + 0.3, y: y + 0.52, w: w - 0.6, h: h - 0.62, fontSize: 10.5, color: C.ink, lineSpacingMultiple: 1.45, valign: 'top' });
   }
 

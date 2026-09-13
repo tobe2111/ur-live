@@ -87,3 +87,12 @@ v1 은 구조 설명이었고 "그래서 내일 어디 가서 뭘 하면 얼마�
 🩸 등록 마법사 캡처는 소비자 세션 신호 + 큐레이터/위시리스트/세션헬스 3종 모킹이 없으면 `/login` 으로 튕긴다(README 에 기록).
 
 다음: 인플루언서 덱(12장, 기존 HTML 대체) → 대행사 v5(공통 모듈로 이관 + 300딜→1,000딜 정정) → `/terms/influencer` 약관 수리 PR.
+
+## 09-13 밤: 인플루언서 덱 v1 제작 (12장)
+
+- `docs/business/proposals/urdeal-influencer-deck.{build.mjs,pptx,pdf}` — 사장님 덱과 같은 `deck-common.mjs`. 기존 9장 HTML 을 대체(HTML 파일은 아직 남겨 둠, 어드민 `/admin/proposals` 가 그걸 보여 준다).
+- 캡처 4장 추가(`capture-seller-shots.mjs`): `influencer-offer` · `influencer-settlement`(둘 다 예시 데이터 mock) · `ushop` · `creators-apply`(라이브).
+  - 🩸 `/influencer/settlement` 가 처음엔 에러 경계였다 — `PublicProfileSection` 이 `/api/influencer-profile/me` 응답을 객체로 기대하는데 폴백 mock 이 `[]` 를 줘서 `p.channels.map` 크래시. 프로필 mock 을 따로 넣어 해결.
+  - `/videos` 는 유튜브가 이 환경에서 막혀(iframe·ytimg 전부 CONNECT 403) 재생기 자리가 비어 덱에서 뺐다. embed 를 가짜 HTML 로 대체해 봤지만 구매 바 오버레이가 안 떠서 못 쓴다.
+- **기획서 §3 의 사실 오류 정정**: "최소 1만원·관리자 처리" 는 사장님 정산 값이었다. 인플루언서는 `influencer-payout.ts`: T+7 → 매월 1일 집계 → 현금 `influencer_payout_min`(기본 10만원)부터 원천징수 후 어드민 송금, 딜 수령은 하한 없음. 덱 10장이 이 값이다.
+- 다음: 대행사 v5(`deck-common.mjs` 이행, 숫자 갱신, 300딜→1,000딜, 운영자·주인변경 행, `/agency-partner` CTA 제거) → `/terms/influencer` 약관 수정 PR(0.5%/2% 상한/10만원 자동지급 문구가 덱과 다르다).

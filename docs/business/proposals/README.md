@@ -7,6 +7,7 @@
 | 인플루언서 제휴 제안 (16:9, 9장) | `public/static/proposals/influencer-proposal.html` | `/admin/proposals` |
 | 대행사 제휴 제안 (16:9, 17장, PowerPoint, 매장 모집 실행서) | `docs/business/proposals/urdeal-agency-proposal.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-agency-proposal.build.mjs`) | 없음. 파일로 전달 |
 | 매장 사장님 안내 (16:9, 12장, PowerPoint) | `docs/business/proposals/urdeal-store-owner-deck.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-store-owner-deck.build.mjs`, 공통 모듈 `deck-common.mjs`) | 없음. 파일로 전달 |
+| 인플루언서 제휴 소개 (16:9, 12장, PowerPoint) | `docs/business/proposals/urdeal-influencer-deck.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-influencer-deck.build.mjs`, 공통 모듈 `deck-common.mjs`). 기존 9장 HTML(`public/static/proposals/influencer-proposal.html`)을 대체한다 | 없음. 파일로 전달 (어드민 `/admin/proposals` 의 HTML 은 구판) |
 | 소개서 3종 기획서 | `docs/business/proposals/three-decks-plan-2026-09.md` | 없음 |
 
 ## 왜 docs/ 가 아니라 public/static/ 인가
@@ -99,3 +100,16 @@ node /path/to/ur-live/docs/business/proposals/urdeal-agency-proposal.build.mjs .
 이 스크립트가 LibreOffice 의 "아시아/비아시아 문자 간 자동 여백" 문단 속성을 꺼서 "월 12 만원" 처럼
 벌어지는 표시를 없앱니다(PowerPoint 원본엔 없는 현상). 차트 안 글자는 별도 객체라 여백이 남고, **pptx 표(addTable) 셀도 보정이 안 먹습니다** —
 그래서 5 장의 규모별 표는 표 객체가 아니라 텍스트 상자로 그립니다.
+
+## 인플루언서 제휴 소개 (.pptx) 다시 만들려면
+
+사장님 덱과 같은 절차다. 캡처는 `capture-seller-shots.mjs` 의 `influencer-offer`(제안 수락, 예시 데이터) ·
+`influencer-settlement`(내 정산, 예시 데이터) · `ushop`(라이브 `/u/jiwon1228`) · `creators-apply`(라이브 신청 폼) 네 장.
+
+```bash
+cd /path/to/ur-live/docs/business/proposals && node urdeal-influencer-deck.build.mjs out.pptx
+python3 export-pptx-to-pdf.py "$PWD/out.pptx" "$PWD/out.pdf"   # 절대경로만 받는다
+```
+
+정산 문구는 `src/worker/cron/influencer-payout.ts` 실값이다(T+7 확정, 매월 1일 집계, 현금 10만원부터, 딜은 하한 없음,
+지급은 어드민이 처리). `/videos`(유어쇼츠) 캡처는 이 환경이 유튜브를 막아 재생기 자리가 비므로 덱에 넣지 않았다.

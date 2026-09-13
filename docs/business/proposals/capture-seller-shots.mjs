@@ -87,6 +87,36 @@ function mock(url) {
   if (p === '/api/seller/stores/review-bonus') return json({ success: true, data: { amount: 1000, store_set: false, funded_by: 'platform' } })
   if (p === '/api/dashboard-notifications') return json({ success: true, data: [], unread: 0 })
   if (p === '/api/acquisition/inflow/bind') return json({ success: true })
+  // ── 인플루언서 덱용 화면 (예시 데이터) ──
+  // 제안 수락 화면 /i/offer/:token — 매장이 보낸 제안 하나
+  if (p.startsWith('/api/influencer-offers/')) return json({ success: true, data: {
+    seller_name: '홍대돈까스', product_name: '치즈돈가스 2인 세트 할인권', product_price: 16500, product_image: null,
+    commission_pct: 12, product_support: 'free', channels: JSON.stringify(['instagram', 'naver_blog']),
+    message: '마포구 맛집 콘텐츠 잘 보고 있습니다. 런치 세트 이용권을 소개해 주시면 판매가의 12%를 드리고, 촬영용 2인 세트는 무상으로 준비해 두겠습니다.', status: 'pending' } })
+  // 내 정산 화면 /influencer/settlement
+  if (p === '/api/influencer-settlement/me') return json({ success: true, data: { funding_source: 'platform', balance: {
+    pending_amount: 71280, available_amount: 115920, total_paid_out: 386400, business_number: null, tax_type: 'other_income',
+    bank_name: null, bank_account: null, account_holder: null, payout_method: 'cash' }, recent: [
+    { id: 1, order_id: 9112, product_id: 2888, seller_id: 14, commission_amount: 1980, status: 'pending', created_at: '2026-09-12 03:12:00', available_at: '2026-09-19 03:12:00', paid_at: null },
+    { id: 2, order_id: 9107, product_id: 2888, seller_id: 14, commission_amount: 1980, status: 'pending', created_at: '2026-09-11 11:40:00', available_at: '2026-09-18 11:40:00', paid_at: null },
+    { id: 3, order_id: 9080, product_id: 2876, seller_id: 102, commission_amount: 3900, status: 'available', created_at: '2026-09-04 08:05:00', available_at: '2026-09-11 08:05:00', paid_at: null },
+    { id: 4, order_id: 9061, product_id: 2876, seller_id: 102, commission_amount: 3900, status: 'available', created_at: '2026-09-02 02:30:00', available_at: '2026-09-09 02:30:00', paid_at: null },
+    { id: 5, order_id: 8990, product_id: 2888, seller_id: 14, commission_amount: 1980, status: 'paid', created_at: '2026-08-21 07:15:00', available_at: '2026-08-28 07:15:00', paid_at: '2026-09-01 09:00:00' },
+  ] } })
+  if (p === '/api/influencer-settlement/my-stores') return json({ success: true, data: {
+    referred: [{ id: 14, name: '홍대돈까스', referral_bonus_until: '2027-08-14 00:00:00', total_commission: 24600 }],
+    deals: [
+      { id: 1, seller_id: 14, seller_name: '홍대돈까스', commission_pct: 12, status: 'active', proposed_by: 'seller', created_at: '2026-08-14 02:00:00', ends_at: null },
+      { id: 2, seller_id: 102, seller_name: '한우한돈정육점', commission_pct: 10, status: 'active', proposed_by: 'seller', created_at: '2026-08-30 05:00:00', ends_at: '2026-12-31 00:00:00' },
+    ] } })
+  if (p === '/api/influencer-settlement/my-rank') return json({ success: true, data: { national_rank: 3, national_total_participants: 41, my_commission: 187200 } })
+  if (p === '/api/influencer-settlement/deals') return json({ success: true, data: [] })
+  if (p === '/api/influencer-profile/me') return json({ success: true, data: { is_open: 1, intro: '마포구 맛집과 카페를 다닙니다.', channels: [{ kind: 'instagram', url: 'https://instagram.com/mapo_eats', followers: 18400 }], categories: ['meal_voucher'], regions: ['서울 마포구'] } })
+  if (p.startsWith('/api/influencer-profile/')) return json({ success: true, data: { categories: ['meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher'], regions: ['서울 마포구', '서울 영등포구'] } })
+  if (p.startsWith('/api/influencer-settlement/')) return json({ success: true, data: [] })
+  // 유어쇼츠(/videos): 이 환경은 유튜브가 막혀 있어 재생기 자리를 어두운 예시 화면으로 대체한다(캡션에 "예시" 명시).
+  if (/youtube(-nocookie)?\.com\/embed\//.test(url)) return { status: 200, headers: { 'content-type': 'text/html' }, body: '<html><body style="margin:0;background:#0b0d12;height:100vh;display:flex;align-items:center;justify-content:center;font-family:sans-serif"><div style="width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center"><div style="width:0;height:0;border-left:26px solid #fff;border-top:16px solid transparent;border-bottom:16px solid transparent;margin-left:8px"></div></div></body></html>' }
+
   if (p.startsWith('/api/seller/') || p.startsWith('/api/seller-public/') || p.startsWith('/api/disputes/')) return json({ success: true, data: [] })
   return null
 }
@@ -103,6 +133,12 @@ const SHOTS = [
   // 매장 등록 마법사 — 소비자 로그인 상태로 연다(ProtectedRoute requireUser). drive 가 단계를 진행시킨다.
   { name: 'store-new', url: '/store/new', user: true },
   { name: 'store-new-channel', url: '/store/new', user: true, drive: 'channel' },
+  // ── 인플루언서 덱 ──
+  { name: 'influencer-offer', url: '/i/offer/demo' },                     // 제안 수락 화면 (예시 데이터)
+  { name: 'influencer-settlement', url: '/influencer/settlement', user: true }, // 내 정산 (예시 데이터)
+  { name: 'ushop', url: '/u/jiwon1228' },                                  // 유어샵 (라이브, 공개 페이지)
+  { name: 'shorts', url: '/videos' },                                      // 유어쇼츠 (라이브)
+  { name: 'creators-apply', url: '/creators/apply' },                      // 신청 폼 (라이브)
 ]
 
 /** 마법사를 "누가 운영하나요" 단계까지 진행시킨다. 실패하면 도달한 단계에서 찍는다. */
