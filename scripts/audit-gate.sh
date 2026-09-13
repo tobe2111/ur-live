@@ -46,6 +46,7 @@ if domain auth; then
   run "라이트 입력 가시성"               env STRICT_LIGHT_INPUT=1      node scripts/check-light-input-guard.mjs
   run "내부 링크 dead-link"             env STRICT_LINKS=1            node scripts/check-internal-links.mjs
   run "라우트 경로 중복(조용히 죽는 페이지)" env STRICT_DUP_ROUTES=1       node scripts/check-duplicate-routes.mjs
+  run "결제 복귀 주소 실재(승인 뒤 갈 곳)"                                   node scripts/check-payment-redirect-routes.mjs
   run "서버 라우트 중복(한 번도 안 도는 핸들러)" env STRICT_DUP_ROUTES=1 node scripts/check-duplicate-hono-routes.mjs
   run "게이트 미등재(켤 화면을 못 만드는 원인)" env STRICT_GATE_REGISTRY=1 node scripts/check-gate-registry.mjs
   run "꺼진 적립을 약속하는 새 경로"        env STRICT_AFFILIATE_GATE=1 node scripts/check-affiliate-display-gate.mjs
