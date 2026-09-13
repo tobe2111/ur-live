@@ -277,6 +277,12 @@ jobs:
         run: node scripts/check-duplicate-hono-routes.mjs -s
         continue-on-error: false
 
+      # 🧾 2026-09-13 (대표 "결제의 다른 부분은?"): 토스가 승인 뒤 돌려보내는 주소가 실재하는
+      #   라우트인지. 문자열이라 빌드·타입체크·테스트가 전부 못 본다 — 결제가 끝나고 아무 데도
+      #   아닌 곳으로 돌아와도 초록불이다. 예외 `payment-redirect-ok`.
+      - name: 결제 복귀 주소가 실재 라우트인지 (strict)
+        run: node scripts/check-payment-redirect-routes.mjs
+
       # 🎛️ 2026-09-07: **게이트를 만들고 표에 안 넣으면 `ops-gate-reachable` 의 검사 밖으로 나간다.**
       #   그래서 담기 적립의 주 스위치가 한 달 넘게 손잡이 없이 남았다(읽는 곳 둘 · 쓰는 화면 0).
       #   등재가 곧 검사 범위다 — 이 가드가 등재 자체를 강제한다. 첫 실행에서 미등재 5개를 찾았다.
