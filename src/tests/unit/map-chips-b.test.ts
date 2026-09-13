@@ -17,9 +17,10 @@
 import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
+import { stripComments } from '../helpers/source-text'
 
 const read = (p: string) => fs.readFileSync(path.join(process.cwd(), p), 'utf-8')
-const code = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+const code = (src: string) => stripComments(src)
 
 const TOPBAR = 'src/pages/restaurant-map/MapTopBar.tsx'
 const DEFS = 'src/pages/restaurant-map/voucher-types.ts'

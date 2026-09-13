@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { derivePricing } from '@/pages/group-buy/pricing'
+import { stripComments } from '../helpers/source-text'
 
 const read = (p: string) => readFileSync(p, 'utf8')
 /** 주석을 걷어낸 코드만 본다 — "주석에만 남아도 통과"하는 헛도는 가드를 막는다. */
-const code = (p: string) =>
-  read(p).replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
+const code = (p: string) => stripComments(read(p))
 
 const DETAIL = 'src/pages/GroupBuyDetailPage.tsx'
 const MAP = 'src/pages/RestaurantMapPage.tsx'

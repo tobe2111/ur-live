@@ -94,7 +94,11 @@ describe('🔒 지키는 계약', () => {
   })
 
   it('재생시간 배지는 위쪽이다 — 아래로 내리면 가격 위에 얹힌다', () => {
-    const badge = card.slice(card.indexOf('{durLabel && ('), card.indexOf('{durLabel && (') + 320)
+    // 🩸 2026-09-13: 종전엔 시작점 + **320자** 라는 매직 길이로 잘랐다. 주석 제거기가 고쳐져
+    //   `{/* … */}` 가 `{}` 로 줄자 그 320자가 **다음 블록(가격 스크림)까지 삼켜** 빨간불이 났다.
+    //   길이가 아니라 **그 요소의 끝(`)}`)** 으로 자른다 — 주석 분량에 안 흔들린다.
+    const badgeAt = card.indexOf('{durLabel && (')
+    const badge = card.slice(badgeAt, card.indexOf(')}', badgeAt) + 2)
     expect(badge).toMatch(/top-1\.5/)
     expect(badge, '아래로 내려가면 네 줄 스크림과 겹친다').not.toMatch(/bottom-/)
   })
