@@ -45,6 +45,7 @@ import OtherDealsRow from './group-buy/OtherDealsRow'
 import ShareRewardBanner from './group-buy/ShareRewardBanner'
 import DeferUntilVisible from './group-buy/DeferUntilVisible'
 import DealPayButton, { useCanPayWithDeal } from './group-buy/DealPayButton'
+import DealUseChooser, { useDealPlan } from './group-buy/DealUseChooser'
 import { handleDealJoinError } from './group-buy/deal-join-error'
 import { useProductViewBeacon } from '@/hooks/useProductViewBeacon'
 
@@ -344,6 +345,9 @@ export default function GroupBuyDetailPage() {
 
   // 💰 이용권 딜 결제(2026-08-31) — 노출 조건·버튼·이중 게이트 설명은 `./group-buy/DealPayButton`.
   const { canPayWithDeal, dealBalance } = useCanPayWithDeal({ isLoggedIn, detail, total })
+  // 🪙 2026-09-13 (대표 "딜 일부만 쓰고 결제할지 선택도 안돼"): 숫자는 전부 서버가 준다 — 사유는 `./group-buy/DealUseChooser`.
+  const dealPlan = useDealPlan({ productId, qty: quantity, enabled: isLoggedIn && buyable })
+  const [dealUse, setDealUse] = useState<number | null>(null)
 
   async function handleJoin(payWithDeal = false) {
     if (!detail) return
@@ -407,6 +411,8 @@ export default function GroupBuyDetailPage() {
       const { getTrackedSellerId: getRef } = await import('@/lib/seller-tracking')
       const initRes = await api.post(`/api/group-buy/join/${productId}`, {
         quantity, payment_method: 'toss', ref: getRef() || undefined,
+        // 🪙 안 고르면 아예 안 보낸다 → 서버가 종전대로 '최대한'. 값은 서버가 잔액·카드최소액으로 클램프한다.
+        ...(dealUse == null ? {} : { deal_use: dealUse }),
       })
       if (!initRes.data?.success) {
         toast.error(initRes.data?.error || '공구 결제 시작 실패')
@@ -883,6 +889,7 @@ export default function GroupBuyDetailPage() {
           joining={joining}
           onBuy={() => handleJoin()}
           onPrelaunchApply={() => document.getElementById('fcfs-apply-block')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+          dealSlot={<DealUseChooser plan={!isPrelaunch && isJoinable ? dealPlan : null} value={dealUse ?? dealPlan?.max_deal_usable ?? 0} onChange={setDealUse} />}
         />
       </aside>
       </div>{/* /lg 그루폰식 그리드 */}
@@ -920,6 +927,7 @@ export default function GroupBuyDetailPage() {
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--gbd-sub)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
           <span style={{ fontSize: 11.5, color: 'var(--gbd-sub)', fontWeight: 500, whiteSpace: 'nowrap' }}>{isPrelaunch ? '오픈 협의 중 매장 · 응모는 무료, 오픈 시 알림을 드려요' : '토스로 3초 안전결제 · 미사용 시 100% 자동환불'}</span>
         </div>
+        <DealUseChooser plan={!isPrelaunch && isJoinable ? dealPlan : null} value={dealUse ?? dealPlan?.max_deal_usable ?? 0} onChange={setDealUse} />
         <button
           onClick={isPrelaunch ? () => document.getElementById('fcfs-apply-block')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) : () => handleJoin()}
           disabled={(!isJoinable && !isPrelaunch) || joining}

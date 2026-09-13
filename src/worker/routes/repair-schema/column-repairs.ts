@@ -385,6 +385,25 @@ export const COLUMN_REPAIRS: ColumnRepair[] = [
     )` },
     { desc: 'idx_seller_operators_pair', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_seller_operators_pair ON seller_operators(seller_id, user_id)" },
     { desc: 'idx_seller_operators_user', sql: "CREATE INDEX IF NOT EXISTS idx_seller_operators_user ON seller_operators(user_id, revoked_at)" },
+    // 🙋 2026-09-09 소유권 신청(내 가게 찾기) — 설계 §5(a) 3단계. 런타임 ensureStoreOwnershipClaims 의 짝.
+    //   ⚠️ pending 부분 UNIQUE 가 멱등의 근거다(머니 룰 #3: SELECT 후 INSERT 금지).
+    { desc: 'store_ownership_claims', sql: `CREATE TABLE IF NOT EXISTS store_ownership_claims (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      seller_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      business_number TEXT,
+      cert_url TEXT NOT NULL,
+      contact_phone TEXT,
+      note TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      bno_match INTEGER,
+      decided_by INTEGER,
+      decided_at DATETIME,
+      decision_reason TEXT,
+      created_at DATETIME DEFAULT (datetime('now'))
+    )` },
+    { desc: 'idx_store_claims_open', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_store_claims_open ON store_ownership_claims(seller_id, user_id) WHERE status = 'pending'" },
+    { desc: 'idx_store_claims_status', sql: "CREATE INDEX IF NOT EXISTS idx_store_claims_status ON store_ownership_claims(status, created_at)" },
     // 🔒 2026-08-27 유어애즈 DB 열람량 — 대행사 차단(ads-db-access.ts)의 짝. 등록 유형은 자기신고라
     //   우회되지만 "하루에 몇 행 가져갔나"는 우회할 수 없다. 상한의 근거이자 감사 기록.
     { desc: 'seller_ads_db_usage', sql: `CREATE TABLE IF NOT EXISTS seller_ads_db_usage (

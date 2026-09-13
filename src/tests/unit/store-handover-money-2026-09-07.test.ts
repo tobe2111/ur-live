@@ -196,8 +196,11 @@ describe('🔒 ⑥ 마감 행 취소 게이트 + 어드민 화면 (2026-09-08 �
     expect(c, `${CLOSEOUT}: 표시가 없으면 취소 게이트가 이 행을 못 알아본다`)
       .toMatch(/'handover_closeout'/)
     expect(c).toMatch(/payee_user_id/)
+    // 🪑 2026-09-09: 수취인을 `seller.linked_user_id` → `resolveStoreOwnerUserId` 로 바꿨다.
+    //   그 칸은 /store/new 매장에서 **항상 비어 있어서** 이 창구가 가장 필요한 중개 매장에서
+    //   payee_user_id 가 NULL 이었고, 그러면 아래 취소 게이트가 판단 근거를 잃는다.
     expect(c, '자유 문구(admin_memo)를 제어 신호로 쓰면 오타 한 번에 게이트가 풀린다')
-      .toMatch(/seller\.linked_user_id/)
+      .toMatch(/resolveStoreOwnerUserId\(DB,\s*sellerId\)/)
   })
 
   it('취소 라우트가 주인이 바뀌었는지 실제로 조회한다', () => {
@@ -207,9 +210,12 @@ describe('🔒 ⑥ 마감 행 취소 게이트 + 어드민 화면 (2026-09-08 �
     //   ⇒ **게이트 조건 자체**로 앵커를 옮긴다.
     expect(r, `${PAYROUTES}: 게이트 조건이 사라지면 본문이 남아 있어도 아무도 안 지킨다`)
       .toMatch(/if \(row\.kind === 'handover_closeout'[\s\S]{0,120}row\.payee_user_id[\s\S]{0,120}\{/)
+    // 🪑 2026-09-09: 같은 이유로 "지금 주인" 판정도 SSOT 로 옮겼다. linked_user_id 하나로 물으면
+    //   중개 매장에서 늘 `NaN !== N` 이 되어 **주인이 그대로인데도** 확인을 요구했다.
     expect(r, '현재 주인을 안 읽으면 "바뀌었는지" 를 판정할 수 없다')
-      .toMatch(/SELECT linked_user_id FROM sellers/)
-    expect(r).toMatch(/Number\(now\.linked_user_id\) !== Number\(row\.payee_user_id\)/)
+      .toMatch(/resolveStoreOwnerUserId\(DB,\s*Number\(row\.payee_id\)\)/)
+    // 🔒 모름(undefined)을 통과로 다루면 그 돈이 새 주인에게 간다.
+    expect(r).toMatch(/nowOwner === undefined \|\| Number\(nowOwner\) !== Number\(row\.payee_user_id\)/)
     expect(r).toMatch(/HANDOVER_CLOSEOUT_RELEASE/)
   })
 

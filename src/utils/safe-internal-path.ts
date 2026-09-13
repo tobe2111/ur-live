@@ -104,3 +104,68 @@ export function safeInternalPath(raw: unknown, fallback: string = '/'): string {
   }
   return isSafeInternalPath(decoded) ? decoded + preserved : fallback
 }
+
+/**
+ * 💳 **결제 콜백 전용 — 경로는 막고, 쿼리는 남긴다.**
+ *
+ * 🩸 2026-09-13 (대표 신고 *"결제가 안되네"* — 재현 확인): `TossWidgetPayPage` 가 결제 성공
+ *   주소를 위의 `safeInternalPath()` 에 통과시키고 있었는데, **그 함수는 쿼리를 통째로 지운다.**
+ *   그 삭제는 2026-05-01 에 *카카오 로그인 returnUrl* 의 `?error=...?error=...` 누적을 막으려고
+ *   넣은 것이다 — **OAuth 복귀 주소의 규칙**이지 결제 콜백의 규칙이 아니었다.
+ *
+ *   결제 콜백에서는 쿼리가 장식이 아니라 **데이터**다. 토스는 우리가 준 주소에 `paymentKey`·
+ *   `orderId`·`amount` 만 붙여 돌려보내므로, 그 밖의 것(어느 상품인가·몇 개인가·어느 주문인가)은
+ *   **우리가 그 주소에 실어 보낸 쿼리로만** 돌아온다. 지워지면 돌아올 방법이 없다.
+ *
+ *   실제로 세 흐름이 조용히 깨져 있었다 — 에러 로그도, 실패 알림도 없이 마지막 화면만 틀렸다:
+ *     · 이용권 카드 결제 `?productId=&qty=`  → productId 0 → "결제 정보가 올바르지 않습니다"
+ *     · 숙소 예약      `?order_id=`          → `STAY-{id}` 역산 폴백에 의존
+ *     · 알림톡 충전    `?charge=success&orderId=` → 충전 결과 화면이 안 뜸
+ *
+ * ## 무엇이 같고 무엇이 다른가
+ * **오픈 리다이렉트 방어는 한 글자도 안 약해진다** — 경로 판정은 위의 `isSafeInternalPath()`
+ * **같은 함수**를 그대로 쓴다(외부 URL·`//`·역슬래시·제어문자·인증 경로 전부 차단). 달라지는 건
+ * 검증을 통과한 뒤 **쿼리를 붙여 돌려주는 것** 하나뿐이다.
+ *
+ * ## 🔒 그래도 쿼리를 그대로 믿지는 않는다
+ * ① `#` 이하는 버린다 — 조각(fragment)은 서버 리다이렉트에서 살아남지 못하고, 남겨 두면
+ *    "왔겠거니" 하는 코드를 부른다. ② `URLSearchParams` 왕복으로 **재인코딩**한다 — 이상한
+ *    바이트가 그대로 주소에 박히지 않게. ③ 길이를 제한한다.
+ *
+ * ⚠️ **금액·상품의 진실은 여전히 서버다.** 이 쿼리는 화면이 어느 주문을 확인할지 고르는
+ *   손잡이일 뿐이고, 실제 청구액은 `/confirm` 이 토스 응답과 서버 계산을 대조해 재검증한다.
+ *   그러니 여기서 쿼리를 살려도 **금액을 위조할 수 있는 자리가 생기지 않는다.**
+ */
+const RETURN_PATH_MAX = 1024
+
+export function safePaymentReturnPath(raw: unknown, fallback: string = '/'): string {
+  if (typeof raw !== 'string' || raw.length === 0 || raw.length > RETURN_PATH_MAX) return fallback
+  // 제어문자·역슬래시는 쪼개기 전에 통째로 거른다(경로든 쿼리든 들어올 자리가 없다).
+  if (raw.includes('\\') || /[\n\t\r\0]/.test(raw)) return fallback
+
+  // 조각(#)은 버리고, 첫 '?' 에서 경로와 쿼리를 가른다.
+  const hashIdx = raw.indexOf('#')
+  const noHash = hashIdx >= 0 ? raw.slice(0, hashIdx) : raw
+  const qIdx = noHash.indexOf('?')
+  const rawPath = qIdx >= 0 ? noHash.slice(0, qIdx) : noHash
+  const rawQuery = qIdx >= 0 ? noHash.slice(qIdx + 1) : ''
+
+  // 경로 판정은 위의 SSOT 그대로 — 여기서 규칙을 다시 쓰지 않는다(다시 쓰면 언젠가 갈린다).
+  let path: string
+  try {
+    path = decodeURIComponent(rawPath)
+  } catch {
+    path = rawPath
+  }
+  if (!isSafeInternalPath(path)) return fallback
+
+  if (!rawQuery) return path
+  let query: string
+  try {
+    query = new URLSearchParams(rawQuery).toString()
+  } catch {
+    return path   // 쿼리를 못 읽겠으면 경로만 — 이상한 값을 주소에 싣느니 없는 편이 낫다.
+  }
+  const out = query ? `${path}?${query}` : path
+  return out.length > RETURN_PATH_MAX ? path : out
+}

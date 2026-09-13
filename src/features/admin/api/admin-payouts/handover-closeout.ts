@@ -55,6 +55,15 @@ export async function handoverCloseout(c: Context<{ Bindings: Env }>): Promise<R
       const raw = await getUnsettledBalance(DB, `seller:${sellerId}`)
       const amount = Math.round(raw)
 
+      /**
+       * 🪑 2026-09-09: 종전엔 `seller.linked_user_id` 를 그대로 수취인으로 적었다. 그런데 그 칸은
+       *   `/store/new` 설계상 **항상 비어 있다** ⇒ 이 창구가 가장 필요한 **중개 매장에서 payee_user_id
+       *   가 NULL** 이었고, 그러면 취소 가드("주인이 바뀐 뒤엔 명시 확인 없이 못 푼다")가 판단 근거를
+       *   잃는다. 자물쇠·출금 판정과 **같은 함수**로 주인을 찾는다.
+       */
+      const { resolveStoreOwnerUserId } = await import('../../../../worker/utils/seller-operators')
+      const ownerUserId = await resolveStoreOwnerUserId(DB, sellerId)
+
       if (amount === 0) {
         return c.json({ success: true, data: { closed: false, amount: 0, note: '마감할 잔액이 없습니다. 바로 소유자를 변경할 수 있어요.' } })
       }
@@ -84,7 +93,7 @@ export async function handoverCloseout(c: Context<{ Bindings: Env }>): Promise<R
       const ins = await DB.prepare(
         `INSERT OR IGNORE INTO payouts (payee_type, payee_id, amount, period_start, period_end, status, account_number, account_holder, admin_memo, kind, payee_user_id)
          VALUES ('seller', ?, ?, ?, ?, 'pending', ?, ?, ?, 'handover_closeout', ?)`,
-      ).bind(String(sellerId), amount, today, today, seller.bank_account, seller.business_name || null, memo, seller.linked_user_id ?? null).run()
+      ).bind(String(sellerId), amount, today, today, seller.bank_account, seller.business_name || null, memo, ownerUserId ?? null).run()
 
       if (!(ins.meta?.changes ?? 0)) {
         return c.json({ success: false, code: 'ALREADY_CLOSED_TODAY', error: '오늘 이미 이 매장의 마감 정산이 만들어져 있습니다.' }, 409)
@@ -95,7 +104,7 @@ export async function handoverCloseout(c: Context<{ Bindings: Env }>): Promise<R
         data: {
           closed: true,
           amount,
-          payee_user_id: seller.linked_user_id,
+          payee_user_id: ownerUserId ?? null,
           account_holder: seller.business_name,
           note: '이전 소유자 계좌로 배정했습니다. 승인·송금은 정산 화면에서 진행하세요. 이제 소유자를 변경할 수 있습니다.',
         },
