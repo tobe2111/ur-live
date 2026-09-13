@@ -4,7 +4,7 @@ import { Loader2, ArrowLeft } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { getTossPayments } from '@/lib/toss-preload'
 import { getUserIdSync } from '@/utils/auth'
-import { safeInternalPath } from '@/utils/safe-internal-path'
+import { safePaymentReturnPath } from '@/utils/safe-internal-path'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { readPaySummary, displayDiscountPct } from '@/shared/pay-summary'
 
@@ -28,7 +28,7 @@ type TossWidgets = ReturnType<Awaited<ReturnType<typeof getTossPayments>>['widge
  *       SSOT·이유: `src/shared/pay-summary.ts`
  *
  * 보안:
- *   - successUrl / failUrl 은 safeInternalPath() 통과 — open redirect 차단
+ *   - successUrl / failUrl 은 safePaymentReturnPath() 통과 — open redirect 차단(쿼리는 보존)
  *   - amount / orderId 형식 검증
  */
 export default function TossWidgetPayPage() {
@@ -56,9 +56,16 @@ export default function TossWidgetPayPage() {
    */
   const displayGoodsAmount = summary.dealUsed ? amount + summary.dealUsed : 0
 
-  // safeInternalPath: 내부 경로만 허용 — open redirect 차단.
-  const successUrl = `${window.location.origin}${safeInternalPath(successUrlRaw, '/')}`
-  const failUrl = `${window.location.origin}${safeInternalPath(failUrlRaw, '/')}`
+  /**
+   * 🩸 2026-09-13 [UNLOCK] (대표 승인 — *"결제가 안되네"* 신고, 재현 확인): `safeInternalPath` →
+   *   `safePaymentReturnPath`. 전자는 **쿼리를 통째로 지운다**(2026-05-01 카카오 returnUrl 의
+   *   `?error=` 누적 차단용). 그런데 결제 콜백에서 쿼리는 장식이 아니라 **데이터**다 — 토스는
+   *   `paymentKey·orderId·amount` 만 붙여 돌려주므로 "어느 상품·몇 개·어느 주문" 은 우리가
+   *   실어 보낸 쿼리로만 돌아온다. 지워져서 이용권 카드결제·숙소·알림톡 충전 셋이 조용히 깨져 있었다.
+   *   **오픈 리다이렉트 방어는 불변** — 경로 판정은 `isSafeInternalPath` 같은 함수 그대로다.
+   */
+  const successUrl = `${window.location.origin}${safePaymentReturnPath(successUrlRaw, '/')}`
+  const failUrl = `${window.location.origin}${safePaymentReturnPath(failUrlRaw, '/')}`
 
   useEffect(() => {
     if (initializedRef.current) return
