@@ -1,146 +1,21 @@
-// 유어딜 대행사 제휴 제안서 (.pptx) 생성기 — v4 (2026-09-07): 대표 참고 PDF(중개사 파트너 제안 5장) 반영 · Pretendard · 라이브 캡처 · 셀러 화면
-// 사실 출처: docs/business/urdeal-business-plan.md C-2 · docs/design/store-operator-model.md §7 ·
+// 유어딜 대행사 제휴 제안서 (.pptx) 생성기 — v5 (2026-09-13): v4(09-07 대표 참고 PDF 반영)를 공통 모듈 deck-common.mjs 로 이행 + 실측 갱신
+// 사실 출처: docs/business/proposals/three-decks-plan-2026-09.md §0 · docs/design/store-operator-model.md §7 ·
 //            seller-stores.routes.ts(국세청 진위확인·카카오맵·채널) · auto-settlement.ts(사용분 주간 정산) ·
-//            라이브 실측 2026-09-07 (활성 이용권 338 · 평균가 식사 32,339 / 숙박 155,824 · 실제 매장 1 · 인플루언서 DB 198,704)
-// 재생성: npm i pptxgenjs sharp react react-dom react-icons
+//            라이브 실측 2026-09-13 (활성 이용권 337 · 평균가 식사 32,411 / 숙박 155,824 · 실제 매장 1 · 인플루언서 DB 201,471)
+// 재생성: cd /tmp/deck && npm i pptxgenjs sharp react react-dom react-icons  (node_modules 심링크는 README 참조)
 //         SHOTS_DIR=<캡처 폴더> node urdeal-agency-proposal.build.mjs out.pptx
-//         캡처: NODE_USE_ENV_PROXY=1 node scripts/capture-proposal-shots.mjs <캡처 폴더>  (home/detail/use/shop.jpg)
-import pptxgen from 'pptxgenjs';
-import sharp from 'sharp';
-import React from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
-import * as Fi from 'react-icons/fi';
-import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { renderPhone } from './phone-frame.mjs';
+import { createDeck, C, FONT, W, H, M, FACTS, __dirname } from './deck-common.mjs';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT = process.argv[2] || path.join(__dirname, 'urdeal-agency-proposal.pptx');
 const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
-const PHONE_STYLE = process.env.PHONE_STYLE || 'minimal'; // phone-frame.mjs STYLES: minimal | island | card | light
-
-// ── 브랜드 토큰 (src/index.css SSOT) ──
-const C = {
-  brand: '1C69EF', brandSoft: 'E4EDFD', bg: 'F8F7FC', surface: 'FFFFFF', ink: '16181C', ink2: '3A3D44', inkSoft: '6E6B68',
-  rule: 'E6E2DE', dark: '11141C', darkSurface: '1D1F29', darkText: 'F8F7FC', darkMuted: 'A9A6A2', gray: '8A8580',
-  tint: 'EEF3FE', chart2: '8FB4F5', chart3: 'C9C5C1',
-};
-const FONT = 'Pretendard';
-const W = 13.333, H = 7.5, M = 0.75;
-
-async function icon(name, color, px = 256) {
-  const Comp = Fi[name];
-  if (!Comp) throw new Error('icon ' + name);
-  const svg = renderToStaticMarkup(React.createElement(Comp, { color: '#' + color, size: px, strokeWidth: 1.7 }));
-  return 'image/png;base64,' + (await sharp(Buffer.from(svg)).png().toBuffer()).toString('base64');
-}
-async function wordmark(fill) {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 344 100" width="1376" height="400"><text x="0" y="78" font-family="Poppins, Pretendard, Arial, sans-serif" font-weight="800" font-size="96" letter-spacing="-3.4" fill="#${fill}">urdeal</text><circle cx="322" cy="70" r="8.2" fill="#${C.brand}"/></svg>`;
-  return 'image/png;base64,' + (await sharp(Buffer.from(svg)).png().toBuffer()).toString('base64');
-}
-// 라이브 캡처(390×844 비율)를 폰 프레임(둥근 화면 + 베젤 + 그림자)이 합성된 PNG 로 미리 굽는다.
-// pptxgenjs 는 이미지를 둥글게 못 자르므로(rounding:true 는 원형 크롭) 프레임을 여기서 만든다. 없으면 null.
-async function shot(name) {
-  for (const ext of ['jpg', 'png']) {
-    const p = path.join(SHOTS_DIR, `${name}.${ext}`);
-    if (fs.existsSync(p)) {
-      const r = await renderPhone(p, PHONE_STYLE);
-      // 슬라이드에서 최대 6in 높이라 캔버스 1,200px 이면 충분하다(2× 원본은 파일을 12MB 로 불린다).
-      const k = 1200 / r.height;
-      const buf = await sharp(r.buffer).resize({ height: 1200 }).png({ compressionLevel: 9, palette: false }).toBuffer();
-      return { data: 'image/png;base64,' + buf.toString('base64'), width: r.width * k, height: 1200, pad: r.pad * k, frameW: r.frameW * k, frameH: r.frameH * k };
-    }
-  }
-  return null;
-}
 
 (async () => {
-  const pres = new pptxgen();
-  pres.layout = 'LAYOUT_WIDE';
-  pres.author = '리스터코퍼레이션';
-  pres.title = '유어딜 대행사 제휴 제안서';
-
-  const wmDark = await wordmark(C.ink);
-  const wmLight = await wordmark(C.darkText);
-  const ic = {};
-  const names = ['FiPercent', 'FiLayers', 'FiUsers', 'FiCreditCard', 'FiMapPin', 'FiUserCheck', 'FiSearch', 'FiEye',
-    'FiBarChart2', 'FiRefreshCcw', 'FiLock', 'FiFileText', 'FiCheckCircle', 'FiSmartphone', 'FiShield', 'FiClock', 'FiCamera', 'FiTag',
-    'FiTrendingUp', 'FiXCircle', 'FiCheck', 'FiArrowRight'];
-  for (const n of names) ic[n] = await icon(n, C.brand);
-  ic.FiArrowGray = await icon('FiArrowRight', C.gray);
-  ic.FiMailW = await icon('FiMail', C.darkText);
-  ic.FiGlobeW = await icon('FiGlobe', C.darkText);
-  ic.FiFileTextW = await icon('FiFileText', C.darkText);
-  const shots = {};
-  for (const k of ['home', 'detail', 'use', 'shop', 'seller-stores', 'seller-influencers', 'seller-operating', 'seller-operators']) shots[k] = await shot(k);
-  const missing = Object.entries(shots).filter(([, v]) => !v).map(([k]) => k);
-  if (missing.length) console.warn('캡처 없음 (빈 슬롯으로 그림):', missing.join(', '));
-
-  let page = 0;
-  const T = (slide, text, o) => slide.addText(text, Object.assign({ fontFace: FONT, isTextBox: true, margin: 0 }, o));
-
-  function chrome(slide, { dark = false } = {}) {
-    page += 1;
-    slide.background = { color: dark ? C.dark : C.bg };
-    slide.addImage({ data: dark ? wmLight : wmDark, x: M, y: 0.5, w: 0.96, h: 0.28 });
-    T(slide, '유어딜 대행사 제휴 제안', { x: M, y: H - 0.62, w: 6, h: 0.25, fontSize: 9, color: dark ? C.darkMuted : C.gray, charSpacing: 0.5 });
-    T(slide, String(page).padStart(2, '0'), { x: W - M - 0.8, y: H - 0.62, w: 0.8, h: 0.25, fontSize: 9.5, bold: true, color: dark ? C.darkText : C.ink, align: 'right' });
-  }
-  function title(slide, text, { dark = false, y = 1.15, size = 27, w = W - 2 * M } = {}) {
-    T(slide, text, { x: M, y, w, h: 0.9, fontSize: size, bold: true, color: dark ? C.darkText : C.ink, valign: 'top', lineSpacingMultiple: 1.15, charSpacing: -0.6 });
-  }
-  function lead(slide, text, { x = M, y = 2.05, w = W - 2 * M, dark = false, size = 12.5, h = 0.8 } = {}) {
-    T(slide, text, { x, y, w, h, fontSize: size, color: dark ? C.darkMuted : C.inkSoft, lineSpacingMultiple: 1.5, valign: 'top' });
-  }
-  function card(slide, x, y, w, h, { fill } = {}) {
-    const f = fill || C.surface;
-    const darkFill = f === C.ink || f === C.darkSurface || f === C.dark;
-    slide.addShape(pres.shapes.ROUNDED_RECTANGLE, {
-      x, y, w, h, rectRadius: 0.14, fill: { color: f }, line: { color: f, width: 0 },
-      shadow: darkFill || f === C.tint ? undefined : { type: 'outer', color: '1A2C42', blur: 8, offset: 2, angle: 90, opacity: 0.07 },
-    });
-  }
-  function iconCircle(slide, name, x, y, d = 0.5, { fill = C.brandSoft } = {}) {
-    slide.addShape(pres.shapes.OVAL, { x, y, w: d, h: d, fill: { color: fill }, line: { color: fill, width: 0 } });
-    slide.addImage({ data: ic[name], x: x + d * 0.26, y: y + d * 0.26, w: d * 0.48, h: d * 0.48 });
-  }
-  function numBadge(slide, n, x, y, d = 0.4, { filled = true } = {}) {
-    slide.addShape(pres.shapes.OVAL, { x, y, w: d, h: d, fill: { color: filled ? C.brand : C.surface }, line: { color: C.brand, width: 1.25 } });
-    T(slide, String(n), { x, y, w: d, h: d, fontSize: 11.5, bold: true, color: filled ? 'FFFFFF' : C.brand, align: 'center', valign: 'middle' });
-  }
-  function hr(slide, x, y, w, { dark = false } = {}) {
-    slide.addShape(pres.shapes.LINE, { x, y, w, h: 0, line: { color: dark ? C.ink2 : C.rule, width: 0.75 } });
-  }
-  function label(slide, text, x, y, w, { dark = false, color } = {}) {
-    T(slide, text, { x, y, w, h: 0.26, fontSize: 10, bold: true, color: color || (dark ? C.darkMuted : C.gray), charSpacing: 1.2 });
-  }
-  /** 폰 프레임. (x, y) 는 보이는 프레임의 좌상단, h 는 프레임 높이. 그림자는 PNG 에 구워져 있어 프레임 밖으로 비어져 나온다.
-   *  캡처가 없으면 빈 슬롯. 반환값은 보이는 프레임 폭. */
-  function phone(slide, key, x, y, h, { caption, dark = false } = {}) {
-    const s = shots[key];
-    const frameRatio = s ? s.frameW / s.frameH : (780 + 44) / (1688 + 44);
-    const w = h * frameRatio;
-    if (s) {
-      const scale = h / s.frameH; // inch per px
-      slide.addImage({ data: s.data, x: x - s.pad * scale, y: y - s.pad * scale, w: s.width * scale, h: s.height * scale });
-    } else {
-      slide.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y, w, h, rectRadius: 0.3, fill: { color: C.darkSurface }, line: { color: C.darkSurface, width: 0 } });
-      T(slide, '라이브 화면\n캡처 자리', { x, y: y + h / 2 - 0.3, w, h: 0.6, fontSize: 10, color: C.darkMuted, align: 'center', valign: 'middle' });
-    }
-    if (caption) T(slide, caption, { x: x - 0.4, y: y + h + 0.16, w: w + 0.8, h: 0.3, fontSize: 10.5, color: dark ? C.darkMuted : C.inkSoft, align: 'center' });
-    return w;
-  }
-  function kv(slide, rows, x, y, w, { rowH = 0.4 } = {}) {
-    rows.forEach(([k, v, kind, rule]) => {
-      const strong = kind > 0;
-      T(slide, k, { x, y, w: w * 0.64, h: rowH - 0.08, fontSize: 11.5, color: strong ? C.ink : C.inkSoft, bold: strong, valign: 'middle' });
-      T(slide, v, { x: x + w * 0.55, y, w: w * 0.45, h: rowH - 0.08, fontSize: 12, bold: true, color: kind === 2 ? C.brand : C.ink, align: 'right', valign: 'middle' });
-      if (rule) hr(slide, x, y + rowH - 0.03, w);
-      y += rowH;
-    });
-    return y;
-  }
+  const d = await createDeck({
+    title: '유어딜 대행사 제휴 제안서', footer: '유어딜 대행사 제휴 제안', shotsDir: SHOTS_DIR,
+    shotKeys: ['home', 'detail', 'use', 'shop', 'seller-stores', 'seller-influencers', 'seller-operating', 'seller-operators'],
+  });
+  const { pres, ic, T, chrome, title, lead, card, iconCircle, numBadge, hr, label, phone, kv } = d;
 
   // ───────── 01 표지 ─────────
   {
@@ -198,7 +73,7 @@ async function shot(name) {
     chrome(s);
     title(s, '이용권은 이렇게 생겼습니다.\n매장 메뉴 하나가 곧 상품입니다.', { w: 6.6 });
     lead(s, '손님이 보는 실제 화면입니다. 정가와 할인가가 함께 보이고, 토스로 결제하면 이용권이 바로 발급됩니다. 유효기간, 할인율, 마감 수량은 전부 매장이 정하고, 안 쓴 이용권은 100% 자동 환불됩니다.', { w: 6.3, y: 2.35, h: 1.1 });
-    const facts = [['32,339원', '식사 이용권 평균가 (242개)'], ['155,824원', '숙박 이용권 평균가. 식사의 4.8배'], ['0', '재고, 배송, 반품']];
+    const facts = [['32,411원', '식사 이용권 평균가 (241개)'], ['155,824원', '숙박 이용권 평균가. 식사의 4.8배'], ['0', '재고, 배송, 반품']];
     let y = 3.75;
     facts.forEach(([n, l], i) => {
       T(s, n, { x: M, y, w: 2.9, h: 0.7, fontSize: 32, bold: true, color: i === 2 ? C.brand : C.ink, charSpacing: -1 });
@@ -206,7 +81,7 @@ async function shot(name) {
       hr(s, M, y + 0.82, 5.8);
       y += 0.92;
     });
-    T(s, '2026년 9월 7일 urdeal.kr 활성 이용권 338개의 카탈로그 평균가. 실거래 평균이 아니라 가격대 참고치입니다.', { x: M, y: 6.55, w: 6.3, h: 0.3, fontSize: 9.5, color: C.gray });
+    T(s, '2026년 9월 13일 urdeal.kr 활성 이용권 337개의 카탈로그 평균가. 실거래 평균이 아니라 가격대 참고치입니다.', { x: M, y: 6.55, w: 6.3, h: 0.3, fontSize: 9.5, color: C.gray });
     const pw3 = phone(s, 'detail', 7.6, 1.1, 4.95, { caption: '이용권 상세' });
     phone(s, 'use', 7.6 + pw3 + 0.3, 1.1, 4.95, { caption: '사용 방법과 환불 안내' });
     s.addNotes('평균가는 2026-09-07 공개 API 실측(meal 242건 avg 32,339 / stay 51건 avg 155,824). 캡처는 scripts/capture-proposal-shots.mjs (detail/use).');
@@ -235,7 +110,7 @@ async function shot(name) {
       T(s, big, { x, y: by + bh + 0.38, w: bw, h: 0.34, fontSize: 15, bold: true, color: C.ink, align: 'center', charSpacing: -0.5 });
       T(s, small, { x: x - 0.15, y: by + bh + 0.72, w: bw + 0.3, h: 0.5, fontSize: 9.5, color: C.inkSoft, align: 'center', lineSpacingMultiple: 1.35, valign: 'top' });
     };
-    drop(1, '2.75%', '카드 결제 수수료.\n유어딜이 자기 5% 안에서 냅니다');
+    drop(1, '약 2.75%', '카드 결제 수수료.\n유어딜이 자기 5% 안에서 냅니다.\n카드사 정책에 따라 바뀔 수 있습니다');
     drop(2, '5%', '중개 경유 매장\n(직접 입점은 10%)');
     {
       const x = M + 3 * (bw + gap);
@@ -269,9 +144,9 @@ async function shot(name) {
     const x = M + 0.35, w = 4.9;
     label(s, '매장 한 곳, 한 달 (바꿔서 다시 계산하셔도 됩니다)', x, 2.35, w);
     const yEnd = kv(s, [
-      ['식사 이용권 평균가 (라이브 실측)', '32,339원', 0], ['매장당 월 판매 (하루 1건 가정)', '30건', 0], ['매장 월 거래액', '970,170원', 0, true],
-      ['유어딜 5%', '48,509원', 0], ['매장 몫 95%', '921,662원', 0, true],
-      ['   인플루언서 소개비 (매장 제안 10% 가정)', '97,017원', 1], ['   귀사 보수 (3% 예시)', '29,105원', 2], ['   매장 순수취', '795,540원', 1],
+      ['식사 이용권 평균가 (라이브 실측)', '32,411원', 0], ['매장당 월 판매 (하루 1건 가정)', '30건', 0], ['매장 월 거래액', '972,330원', 0, true],
+      ['유어딜 5%', '48,617원', 0], ['매장 몫 95%', '923,714원', 0, true],
+      ['   인플루언서 소개비 (매장 제안 10% 가정)', '97,233원', 1], ['   귀사 보수 (3% 예시)', '29,170원', 2], ['   매장 순수취', '797,311원', 1],
     ], x, 2.7, w, { rowH: 0.41 });
     T(s, '3%는 유어딜이 정한 값이 아니라 계산을 보여 드리려고 넣은 값입니다. 2%로도, 5%로도, 매장별로 다르게도 하실 수 있습니다.', { x, y: yEnd + 0.1, w, h: 0.6, fontSize: 10.5, color: C.ink, lineSpacingMultiple: 1.4, valign: 'top' });
     // 규모별 표
@@ -279,10 +154,10 @@ async function shot(name) {
     label(s, '매장 수를 늘리면 (같은 가정)', tx, 2.2, tw);
     const hdr = ['운영 매장', '월 거래', '거래액', '매장 몫 95%', '귀사 3% 가정'];
     const body = [
-      ['10곳', '300건', '970만원', '922만원', '29만원'],
-      ['30곳', '900건', '2,910만원', '2,765만원', '87만원'],
-      ['100곳', '3,000건', '9,700만원', '9,215만원', '291만원'],
-      ['300곳', '9,000건', '2억 9,100만원', '2억 7,645만원', '873만원'],
+      ['10곳', '300건', '972만원', '924만원', '29만원'],
+      ['30곳', '900건', '2,917만원', '2,771만원', '88만원'],
+      ['100곳', '3,000건', '9,723만원', '9,237만원', '292만원'],
+      ['300곳', '9,000건', '2억 9,170만원', '2억 7,711만원', '875만원'],
     ];
     const colW = [1.0, 1.0, 1.45, 1.45, tw - 4.9];
     const colX = colW.map((_, i) => tx + colW.slice(0, i).reduce((a, b) => a + b, 0));
@@ -441,8 +316,8 @@ async function shot(name) {
     });
     const pw10 = phone(s, 'seller-influencers', 7.75, 1.15, 5.15, { caption: '소개 파트너 찾기 (예시 데이터)' });
     const sx = 7.75 + pw10 + 0.45, sw = W - M - sx;
-    label(s, '인플루언서 DB (2026.9.7 실측)', sx, 1.3, sw);
-    const nums = [['198,704', '전체'], ['45,725', '연락 가능'], ['170,307', '네이버 블로그'], ['17,986', '유튜브'], ['9,803', '네이버 카페']];
+    label(s, '인플루언서 DB (2026.9.13 실측)', sx, 1.3, sw);
+    const nums = [['201,471', '전체'], ['46,220', '연락 가능'], ['172,755', '네이버 블로그'], ['18,170', '유튜브'], ['9,939', '네이버 카페']];
     let ny = 1.68;
     nums.forEach(([n, l], i) => {
       T(s, n, { x: sx, y: ny, w: sw, h: 0.45, fontSize: 21, bold: true, color: i < 2 ? C.brand : C.ink, charSpacing: -0.8 });
@@ -532,7 +407,7 @@ async function shot(name) {
     const items = [
       ['FiUserCheck', '첫 매장 세 곳은 같이 갑니다', '첫 등록 세 건은 유어딜 담당자가 현장이나 통화로 동행합니다. 한 번 같이 하면 그다음은 혼자 됩니다.'],
       ['FiFileText', '사장님용 한 장 안내', '수수료, 정산, QR 사용법이 적힌 매장용 안내 한 장을 드립니다. 대행사 이름을 넣어 드립니다.'],
-      ['FiUsers', '인플루언서 DB와 발송 대행', '19만 명 DB 탐색과 제안 발송을 유어딜이 합니다. 연락처를 모으거나 DM을 돌릴 필요가 없습니다.'],
+      ['FiUsers', '인플루언서 DB와 발송 대행', '20만 명 DB 탐색과 제안 발송을 유어딜이 합니다. 연락처를 모으거나 DM을 돌릴 필요가 없습니다.'],
       ['FiCreditCard', '결제, 정산, 환불, 세금', '토스 결제, 주간 정산, 미사용 환불, 원천징수를 유어딜이 처리합니다. 손님 CS도 유어딜로 옵니다.'],
       ['FiMapPin', '손님 유입', '홈 지도에 동네 기준으로 노출되고, 매장 페이지는 카톡 미리보기 카드와 네이버, 구글 검색에 잡힙니다. 6개 언어를 지원합니다.'],
       ['FiTrendingUp', '주간 실적 공유', '파일럿 기간에는 매주 매장별 판매와 사용 숫자를 유어딜이 먼저 보내 드립니다. 매장 보고서에 그대로 쓰시면 됩니다.'],
@@ -560,7 +435,7 @@ async function shot(name) {
     label(s, '지금 유어딜의 상태', lx + 0.35, 2.75, 4, { color: C.brand });
     T(s, [
       { text: '초기입니다. ', options: { bold: true, color: C.darkText } },
-      { text: '카탈로그에 이용권이 338개 올라와 있지만 그중 실제 매장이 등록한 것은 1개이고, 나머지는 화면을 채우려고 넣은 데모입니다. 승인된 매장은 한 곳, 소비자 결제가 본격적으로 돌기 전입니다. 지금 오시는 파트너는 매대가 이미 붐비는 곳에 들어오시는 것이 아닙니다.', options: {} },
+      { text: '카탈로그에 이용권이 337개 올라와 있지만 그중 실제 매장이 등록한 것은 1개이고, 나머지는 화면을 채우려고 넣은 데모입니다. 승인된 매장은 한 곳, 소비자 결제가 본격적으로 돌기 전입니다. 지금 오시는 파트너는 매대가 이미 붐비는 곳에 들어오시는 것이 아닙니다.', options: {} },
     ], { x: lx + 0.35, y: 3.05, w: lw - 0.7, h: 0.8, fontFace: FONT, fontSize: 10.5, color: C.darkMuted, isTextBox: true, margin: 0, lineSpacingMultiple: 1.42, valign: 'top' });
     T(s, [
       { text: '대신 수수료 구조와 권한 설계는 코드로 확정되어 라이브에 있습니다. ', options: { bold: true, color: C.darkText } },
@@ -670,10 +545,10 @@ async function shot(name) {
       s.addImage({ data: ic[i], x: px + 0.35, y: py + 3.74 + k * 0.23, w: 0.16, h: 0.16 });
       T(s, t, { x: px + 0.62, y: py + 3.68 + k * 0.23, w: pw - 1.0, h: 0.28, fontSize: k === 2 ? 9 : 11, bold: k < 2, color: C.darkText, valign: 'middle' });
     });
-    T(s, '이 문서의 요율(직접 10%, 중개 5%)과 권한 범위는 2026년 9월 7일 라이브 설정값입니다. 요율은 어드민 조정값이고, 평균가와 매장 수는 같은 날 실측입니다.', { x: M, y: 6.62, w: W - 2 * M, h: 0.24, fontSize: 8.5, color: C.darkMuted });
+    T(s, '이 문서의 요율(직접 10%, 중개 5%)과 권한 범위는 2026년 9월 13일 라이브 설정값입니다. 요율은 어드민 조정값이고, 평균가와 매장 수는 같은 날 실측입니다.', { x: M, y: 6.62, w: W - 2 * M, h: 0.24, fontSize: 8.5, color: C.darkMuted });
     s.addNotes('FAQ 출처: 사업계획서 C-3, 셀러 가이드, auto-settlement.ts. 채널 변경은 POST /api/seller/stores/:id/channel (소유자만) + 어드민.');
   }
 
   await pres.writeFile({ fileName: OUT });
-  console.log('wrote', OUT, 'slides', page);
+  console.log('wrote', OUT, '(17 slides)');
 })().catch((e) => { console.error(e); process.exit(1); });
