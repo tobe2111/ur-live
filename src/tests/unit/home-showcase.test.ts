@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
-import { readRepairLane } from '../helpers/source-text'
+import { readRepairLane, stripComments } from '../helpers/source-text'
 import {
   BANNER_SLOTS, NEW_BANNER_SLOT, parseBannerSlot, isBannerSlot,
   SECTION_SOURCES, DEFAULT_SECTION_SOURCE, normalizeSectionSource,
@@ -24,7 +24,7 @@ import {
 const root = process.cwd()
 const read = (p: string) => fs.readFileSync(path.join(root, p), 'utf8')
 /** 블록 주석을 걷어낸 소스 — "주석에만 남아도 통과"를 막는다(2026-07-29 실사고 클래스). */
-const code = (p: string) => read(p).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+const code = (p: string) => stripComments(read(p))
 
 describe('① SSOT — 자리·소스 종류', () => {
   it('🔴 자리 미지정은 null 이다 — 기본 자리로 승격되지 않는다', () => {

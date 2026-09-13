@@ -27,6 +27,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
+import { stripComments } from '../helpers/source-text'
 
 const INDEX = 'src/worker-ads/index.ts'
 const ROUTES = 'src/worker-ads/enrich.routes.ts'
@@ -35,7 +36,7 @@ const ROUTES = 'src/worker-ads/enrich.routes.ts'
 function code(path: string): string {
   const raw = fs.readFileSync(path, 'utf8')
   expect(raw.length, `${path} 가 비었다 — 경로가 낡았다(통과가 아니라 실패)`).toBeGreaterThan(500)
-  return raw.replace(/\/\*[\s\S]*?\*\//g, '').split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n')
+  return stripComments(raw)
 }
 
 describe('cron 팬아웃 — 자식을 기다린다', () => {

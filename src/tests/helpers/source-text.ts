@@ -35,6 +35,19 @@ import { resolve } from 'path'
  *   현재 `readCode` 대상 17개 중 실제로 망가지는 건 0개다(worker 를 읽는 테스트가 없다).
  *   아무도 안 밟는 지뢰를 제거하려다 잘 도는 것을 깨는 거래라 **경고만 남긴다.**
  */
+/**
+ * 여는 기호가 **같은 줄에서** 닫히는가. 문자열·정규식 오판을 한 줄로 가둬 두는 안전판이다 —
+ * 오판해도 "덜 지우는" 게 아니라 **파일 뒤쪽을 통째로 살려 두는** 사고가 나기 때문에 필요하다.
+ */
+function hasCloserOnLine(text: string, from: number, closer: string): boolean {
+  for (let j = from + 1; j < text.length; j++) {
+    if (text[j] === '\n') return false
+    if (text[j] === '\\') { j++; continue }
+    if (text[j] === closer) return true
+  }
+  return false
+}
+
 export function stripComments(text: string): string {
   // 🩸 2026-08-27: 정규식 판을 **스캐너로 교체**했다. 위 경고가 말한 지뢰를 그날 실제로 밟았다 —
   //   `ProductRepository.ts` 의 라인 주석 한 줄에 `(/api/wholesale/*)` 가 있어 그 `/*` 가 블록주석
@@ -64,6 +77,10 @@ export function stripComments(text: string): string {
       continue
     }
     if (c === '"' || c === "'" || c === '`') {           // 문자열 · 템플릿
+      // 🩸 2026-09-13: 따옴표가 **그 줄에서 안 닫히면 문자열이 아니다.** JSX 본문의 아포스트로피
+      //   (`don't`·`대표's`)가 그 경우인데, 종전 판은 그걸 문자열로 보고 다음 따옴표까지 통째로
+      //   삼켜 그 사이의 주석을 전부 살려 뒀다. 백틱만 여러 줄이 정상이다.
+      if (c !== '`' && !hasCloserOnLine(text, i, c)) { out += c; prev = c; i++; continue }
       const q = c
       out += c; i++
       while (i < n) {
@@ -75,7 +92,13 @@ export function stripComments(text: string): string {
       prev = q
       continue
     }
-    if (c === '/' && /[(,=:[!&|?{};+\-*%^~<>]/.test(prev)) {   // 정규식 리터럴
+    // 정규식 리터럴 — 🔴 `prev === '<'` 은 **JSX 닫는 태그(`</div>`)** 다. 종전 판은 그걸 정규식
+    //   시작으로 읽어 다음 `/` 까지(=파일 대부분) 통째로 삼켰고, 그 안의 주석이 전부 살아남았다.
+    //   실측: `RegisterPage.tsx` 15,428자 중 141자만 지워졌다(= 사실상 주석 제거를 안 한 것).
+    //   그 상태로도 테스트는 초록이라 아무도 몰랐다. `a < /re/` 같은 코드는 이 레포에 없다.
+    if (c === '/' && prev !== '<' && /[(,=:[!&|?{};+\-*%^~<>]/.test(prev)) {
+      // 정규식은 이 레포에서 **한 줄**이다. 그 줄에서 안 닫히면 나눗셈·JSX 로 보고 넘긴다.
+      if (!hasCloserOnLine(text, i, '/')) { out += c; prev = c; i++; continue }
       out += c; i++
       let inClass = false
       while (i < n) {

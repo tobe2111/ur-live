@@ -679,6 +679,14 @@ jobs:
         run: STRICT_INPUT_TEXT=1 node scripts/check-input-text-color.mjs
         continue-on-error: false
 
+      # 🔬 2026-09-13: 텍스트 가드가 **자기 주석 제거기를 새로 쓰는 것**을 동결한다.
+      #   `.replace(/\/\*[\s\S]*?\*\//g,'')` 는 문자열 안의 `/*` 에 물려 소스를 통째로 먹는다
+      #   (실측: worker/index.ts 코드의 76% 증발 → not.toContain 류가 무조건 통과).
+      #   SSOT 는 helpers/source-text 의 stripComments. 남은 98개는 동결만(줄이는 건 자유).
+      - name: Comment stripper ratchet (strict)
+        run: STRICT_COMMENT_STRIPPER=1 node scripts/check-comment-stripper.mjs
+        continue-on-error: false
+
       # 🛡️ 2026-06-30: 배포-청크 자가복구(흰화면/무한로딩) 시스템 회귀 방지 — 현재 위반 0 → strict.
       #   인라인 부트가드 + chunk-error SSOT(__cb 캐시버스트) + main.tsx 배선 + worker SPA no-cache
       #   4불변식 중 하나라도 빠지면 새 배포 후 대시보드 안 켜짐(4번+ 재발). 신규 약화 차단.

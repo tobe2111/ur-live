@@ -24,11 +24,10 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
+import { stripComments } from '../helpers/source-text'
 
 const read = (p: string) => readFileSync(p, 'utf-8')
-const code = (s: string) =>
-  s.replace(/\/\*[\s\S]*?\*\//g, '')
-    .split('\n').filter((l) => !l.trim().startsWith('//') && !l.trim().startsWith('*')).join('\n')
+const code = (s: string) => stripComments(s)
 
 const GALLERY = 'src/pages/group-buy/DetailGallery.tsx'
 const CFIMG = 'src/utils/cf-image.ts'

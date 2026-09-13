@@ -26,10 +26,10 @@ import { readFileSync } from 'node:fs'
 import { buildDetailHeroPreloadLink } from '../../worker/utils/home-card-preload'
 import { DETAIL_HERO_MOBILE_WIDTH, DETAIL_HERO_RATIO, detailHeroMobileUrl, isMobileUserAgent } from '@/shared/detail-hero-image'
 import { getWarmImage, rememberWarmImage } from '@/utils/image-warm'
+import { stripComments } from '../helpers/source-text'
 
 const read = (p: string) => readFileSync(p, 'utf-8')
-const code = (s: string) =>
-  s.replace(/\/\*[\s\S]*?\*\//g, '').split('\n').filter((l) => !l.trim().startsWith('//')).join('\n')
+const code = (s: string) => stripComments(s)
 
 const GALLERY = code(read('src/pages/group-buy/DetailGallery.tsx'))
 const CARD = code(read('src/components/deal/DealCardMedia.tsx'))

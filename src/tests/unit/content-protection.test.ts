@@ -11,11 +11,11 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
+import { stripComments } from '../helpers/source-text'
 
 const read = (p: string) => readFileSync(p, 'utf-8')
 /** 주석에만 남아도 통과하는 함정을 피한다 — 판정은 항상 주석 제거본으로. */
-const code = (s: string) =>
-  s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
+const code = (s: string) => stripComments(s)
 
 const BOT = 'src/worker/middleware/bot-detection.ts'
 const WORKER = 'src/worker/index.ts'
