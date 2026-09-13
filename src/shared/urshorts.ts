@@ -68,6 +68,45 @@ export function parseYouTubeUrl(input: string | null | undefined): { id: string;
   return m ? { id: m[1], form: 'watch' } : null
 }
 
+/**
+ * 여러 줄로 붙여 넣은 주소를 한 번에 읽는다 (2026-09-09 대표 *"여러개 영상 업로드"*).
+ *
+ * ## 왜 클라에서 먼저 읽나
+ * 서른 개를 붙여 넣고 서버에 하나씩 보내다가 스무 번째에서 "주소가 아닙니다" 를 만나면
+ * **어느 줄이 잘못됐는지 알 수 없다.** 보내기 전에 줄 단위로 갈라 놓으면 화면이
+ * "27개 인식 · 2개 못 읽음 · 1개 중복" 을 먼저 말해 줄 수 있다.
+ *
+ * 줄바꿈·쉼표·공백 아무거나로 나눈다 — 사람이 어디서 복사해 오는지 우리가 못 정한다.
+ * ⚠️ 같은 영상이 두 번 들어오면 **먼저 나온 것만** 남긴다(서버도 막지만, 보내기 전에 세어야
+ *   화면의 개수가 실제로 추가될 개수와 같아진다).
+ */
+export interface YouTubeUrlListResult {
+  /** 보낼 것 — 입력 순서 유지, 중복 제거됨. */
+  ok: { url: string; id: string; form: YouTubeUrlForm }[]
+  /** 유튜브 주소로 못 읽은 조각(원문 그대로 — 사람이 어느 줄인지 찾을 수 있게). */
+  bad: string[]
+  /** 같은 영상이 여러 번 나온 경우의 2번째 이후. */
+  dupes: string[]
+}
+
+export function parseYouTubeUrlList(text: string | null | undefined): YouTubeUrlListResult {
+  const out: YouTubeUrlListResult = { ok: [], bad: [], dupes: [] }
+  const seen = new Set<string>()
+  for (const piece of (text ?? '').split(/[\s,]+/)) {
+    const raw = piece.trim()
+    if (!raw) continue
+    const p = parseYouTubeUrl(raw)
+    if (!p) { out.bad.push(raw); continue }
+    if (seen.has(p.id)) { out.dupes.push(raw); continue }
+    seen.add(p.id)
+    out.ok.push({ url: raw, id: p.id, form: p.form })
+  }
+  return out
+}
+
+/** 한 번에 보낼 수 있는 최대 개수. 유튜브 조회가 건당 1 unit 이고 D1 왕복도 건당 하나다. */
+export const URSHORTS_BULK_MAX = 30
+
 /** id 만 필요할 때. 모양 판단이 필요하면 `parseYouTubeUrl` 을 쓸 것. */
 export function parseYouTubeVideoId(input: string | null | undefined): string | null {
   return parseYouTubeUrl(input)?.id ?? null

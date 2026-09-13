@@ -236,7 +236,7 @@ export default function SearchPage() {
                     price: product.price,
                     original_price: product.original_price,
                     image_url: product.image_url,
-                    discount_percent: product.discount_rate || 0,
+                    discount_rate: product.discount_rate ?? null,
                     rating: product.avg_rating ?? 0,
                     category: product.category,
                   }}

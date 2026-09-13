@@ -238,9 +238,14 @@ describe('어드민 화면', () => {
     expect(code('src/components/admin/admin-nav-config.ts')).toMatch(/'\/admin\/urshorts'/)
   })
 
+  // 🎬 2026-09-09: 입력이 여러 줄을 받게 되면서 파서가 `parseYouTubeUrl` → `parseYouTubeUrlList`
+  //   로 바뀌었다. 지키려던 것은 함수 이름이 아니라 *"서버까지 갔다 거부당하기 전에 화면이 먼저
+  //   말해 준다"* 이므로, 그 성질로 다시 겨눈다(테스트를 지우는 것과 다르다).
   it('붙여 넣는 즉시 쇼츠인지 알려 준다 (서버까지 갔다 거부당하는 왕복을 줄인다)', () => {
-    expect(A).toContain('parseYouTubeUrl(url)')
-    expect(A).toMatch(/form === 'shorts'/)
+    expect(A, '화면이 붙여 넣은 값을 스스로 읽지 않으면 서버 왕복 뒤에야 알게 된다')
+      .toMatch(/parseYouTubeUrlList\(url\)/)
+    expect(A, 'shorts 주소는 그 자체로 증명이라 다르게 안내해야 한다').toMatch(/form === 'shorts'/)
+    expect(A, '힌트를 화면에 실제로 그려야 한다').toMatch(/\{hint\.text\}/)
   })
 
   it('이용권을 안 고른 영상이 눈에 띈다 — 그게 이 화면의 할 일이다', () => {

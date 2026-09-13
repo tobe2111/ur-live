@@ -12,6 +12,8 @@ import HomeBannerStrip from '@/components/home/HomeBannerStrip'
 import PcHomeLocationBar, { readHomeRegion, type HomeRegion } from '@/pages/pc-home/PcHomeLocationBar'
 import { readCachedLoc } from '@/shared/utils/cached-loc'
 import { DEAL_CATS, type DealCategory } from '@/pages/pc-home/PcHomeRail'
+import { ShortsIcon } from '@/components/icons/urdeal-icons'
+import { URSHORTS_VIEWER_PATH } from '@/shared/urshorts'
 import { HOME_SHOWCASE_ENABLED } from '@/shared/feature-flags'
 
 /**
@@ -123,8 +125,19 @@ export default function MobileHomePage() {
           </div>
         </div>
 
-        {/* 카테고리 — 라벨 SSOT 는 PC 헤더와 같은 `DEAL_CATS`(둘이 갈리지 않게). */}
-        <nav aria-label="카테고리" className="flex gap-5 overflow-x-auto scrollbar-hide px-4">
+        {/* 카테고리 — 라벨 SSOT 는 PC 헤더와 같은 `DEAL_CATS`(둘이 갈리지 않게).
+
+            🎬 2026-09-09 (대표 지시 — 캡처에 빨간 박스로 자리를 찍어 줬다): 이 줄 **오른쪽 끝**에
+            유어쇼츠 진입점. 그전까지 유어쇼츠로 가는 문은 레일 안 「전체 보기」 하나뿐이었고,
+            그 레일은 인기 이용권 다음이라(2026-09-07 확정 — 위로 올리면 첫 딜 표시가 늦어진다)
+            거기까지 스크롤한 사람만 존재를 알았다.
+
+            🔴 **진입점은 스크롤 밖에 있어야 한다.** 카테고리는 `overflow-x-auto` 라, 진입점을
+               그 안에 넣으면 카테고리가 **하나만 늘어도 같이 밀려 화면 밖으로 사라진다.**
+               지금은 다섯 개가 다 들어와 스크롤이 안 생겨서 티가 안 날 뿐이다.
+               그래서 줄을 [스크롤 영역][고정 진입점] 두 칸으로 나눈다. */}
+        <div className="flex items-end gap-3 px-4">
+        <nav aria-label="카테고리" className="flex min-w-0 flex-1 gap-5 overflow-x-auto scrollbar-hide">
           {DEAL_CATS.map(({ key, label }) => {
             const on = category === key
             return (
@@ -143,6 +156,25 @@ export default function MobileHomePage() {
             )
           })}
         </nav>
+        {/* 🎬 유어쇼츠 진입점 (대표 확정 2026-09-09 — 자리·아이콘·마침표 전부 시안에서 확정).
+            글자를 빼지 않는 이유: 유어쇼츠는 새 이름이라 아이콘만으론 무엇인지 모른다.
+            면(알약)을 안 쓰는 이유: 이 줄의 유일한 면이 되어 정작 필터인 카테고리보다 무거워진다
+            (09-01 "색이 아니라 무게로").
+
+            🔵 **마침표는 로고 `urdeal.` 과 같은 장치다.** 점을 띄우면 바로 옆 알림 종 때문에
+               뱃지("새 것 있음")로 읽혀, 상시로 켜 두면 한 주 만에 배경이 되고 진짜 뱃지의
+               신뢰도까지 깎인다. 붙이면 서명이라 안 낡는다.
+            ⏳ 반짝임(펄스)은 **일부러 안 넣었다** — `live-pulse`(index.css)가 지도 LIVE 핀에서
+               "지금 방송 중"을 뜻하고 있어 같은 손짓이 두 가지를 뜻하게 된다. 새 영상이 쌓이면
+               "마지막 방문 이후 새 영상이 있을 때만" 조건으로 얹는다. */}
+        <Link
+          to={URSHORTS_VIEWER_PATH}
+          className="flex shrink-0 items-center gap-1.5 whitespace-nowrap pb-2 text-[12.5px] font-bold text-gray-600 dark:text-gray-300"
+        >
+          <ShortsIcon size={16} />
+          유어쇼츠<span className="-ml-[3px] text-brand-text">.</span>
+        </Link>
+        </div>
       </div>
 
       {/* 어드민 편성(섹션·배너) — 카테고리를 고르면 숨긴다(PC 홈과 같은 규칙: 화면 맨 위가 그 카테고리여야 한다). */}
