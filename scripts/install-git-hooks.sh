@@ -266,6 +266,10 @@ node scripts/check-mobile-viewport.mjs || true
 echo "==> Pre-commit: AI 디자인 흔적 래칫 (warn-only)..."
 node scripts/check-design-slop.mjs || true
 node scripts/check-dashboard-button-system.mjs || true
+# 🩸 2026-09-14: 같은 가족인 카피 래칫 둘이 pre-commit 에 없어서, 주석 한 줄의 가운뎃점 때문에
+#   56분짜리 Verify 를 통째로 한 번 태웠다(PR #1425). 0.1초면 여기서 알려 준다. warn-only(차단은 CI).
+node scripts/check-anti-slop-copy.mjs || true
+node scripts/check-middle-dot-chain.mjs || true
 
 # 🛡️ 2026-06-29: 파일 크기 래칫 — god 파일 재발 방지. 신규 600줄 초과 / baseline 동결 파일 성장 경고.
 #   staged 파일만 검사. 줄인 뒤엔 `node scripts/check-file-size.mjs --rebaseline` 로 동결값 갱신. warn-only.
