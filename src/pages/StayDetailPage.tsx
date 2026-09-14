@@ -277,8 +277,13 @@ export default function StayDetailPage() {
   ) : null
 
   const inputCls = 'w-full px-3 py-2 bg-white dark:bg-[#1D1F29] border border-gray-300 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white'
+  /* 🩸 2026-09-14: 날짜 모드는 `FieldCard` 가 표면을 맡으므로 래퍼가 **껍데기**다(트리거 테두리만
+     걷고 여기를 남겼더니 화면엔 상자가 두 겹이었다 — 유닛은 초록이고 렌더해 보고서야 보였다).
+     ⚠️ 이용권 모드는 자체 표면이 없어 카드 유지. 경위: docs/design/stay-detail-booking-card-2026-09.md */
   const selectorBox = (
-    <div className="bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] rounded-xl p-4 shadow-sm">
+    <div className={isVoucherMode
+      ? 'bg-white dark:bg-[#1D1F29] rounded-2xl p-4 shadow-lift'
+      : ''}>
       {isVoucherMode ? (
         <>
           {/* voucher 모드: 평일/주말 + 박수 */}
@@ -328,9 +333,8 @@ export default function StayDetailPage() {
             checkOutTime={stay.check_out_time}
             onApply={({ checkIn: ci, checkOut: co, guests: g }) => { setCheckIn(ci); setCheckOut(co); setGuests(g) }}
           />
-          {/* 🩸 2026-09-14: 여기 있던 "N박 · 체크인 … / 체크아웃 …" 한 줄을 지웠다.
-              박수는 카드 가운데 배지가, 시각은 카드 각주가 말한다. 같은 값을 두 자리에서 말하면
-              나중에 한쪽만 고쳐져 서로 어긋난다(대표 지적 ④). */}
+          {/* 🩸 2026-09-14: "N박 · 체크인 … / 체크아웃 …" 한 줄을 지웠다 — 박수는 카드 배지가,
+              시각은 카드 각주가 말한다. 두 자리에서 말하면 한쪽만 고쳐져 어긋난다(대표 지적 ④). */}
         </>
       )}
     </div>
@@ -388,9 +392,8 @@ export default function StayDetailPage() {
           <h1 className="text-xl lg:text-2xl font-extrabold">{stay.restaurant_name || stay.name}</h1>
           <div className="flex items-center gap-2 mt-1 text-xs text-gray-500 dark:text-gray-400">
             <MapPin className="w-3 h-3" />
-            {/* 📍 2026-09-14 대표 신고 — 여기가 "경북 경주시 · 경북 경주시 손곡3길 37-14" 로 찍히던 자리.
-                라이브 50건 전수: 주소가 자체 지역을 가진 것 50/50, 그중 **12건은 지역 항목과 아예 다르다**
-                (region=강원 속초시 ↔ address=강원특별자치도 양양군) → 이어 붙이면 틀린 주소가 된다.
+            {/* 📍 2026-09-14: "경북 경주시 · 경북 경주시 손곡3길 37-14" 로 찍히던 자리.
+                라이브 50건 중 12건은 지역 항목과 주소가 아예 달라, 이어 붙이면 **틀린 주소**가 됐다.
                 판정은 `shared/stay-address.ts` 하나로. */}
             <span>{stayAddressLine(stay.region_sido, stay.region_sigungu, stay.address)}</span>
           </div>

@@ -50,6 +50,16 @@ export default [
     why: '배지가 박수를 말하므로 다른 줄에서 또 말할 필요가 없다. 고정 문구가 되면 그 근거가 사라진다.',
   },
   {
+    name: '🎫 카드 바깥에 테두리 상자가 되돌아온다 (판정에서 잡힌 결함)',
+    file: STAY,
+    find: `    <div className={isVoucherMode
+      ? 'bg-white dark:bg-[#1D1F29] rounded-2xl p-4 shadow-lift'
+      : ''}>`,
+    replace: '    <div className="bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] rounded-xl p-4 shadow-sm">',
+    test: TEST,
+    why: '트리거 테두리만 걷고 바깥 래퍼를 남기면 화면엔 여전히 상자가 두 겹이다 — 유닛은 초록인데 눈에는 보인다.',
+  },
+  {
     name: '🎫 시각 각주가 값 없이도 그려진다 (모르는 값을 지어낸다)',
     file: PICKER,
     find: '{checkInTime && checkOutTime ? (',

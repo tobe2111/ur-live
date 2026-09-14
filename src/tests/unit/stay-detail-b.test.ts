@@ -20,6 +20,11 @@ import { stayAddressLine, stayRegionLabel } from '@/shared/stay-address'
 
 const read = (p: string) => fs.readFileSync(p, 'utf8')
 const code = (p: string) => stripComments(read(p))
+/** 앵커 뒤 n 글자 — 파일 전체를 보면 다른 곳의 같은 문자열에 헛걸린다. */
+const sliceAfter = (s: string, anchor: string, n: number) => {
+  const i = s.indexOf(anchor)
+  return i < 0 ? '' : s.slice(i, i + n)
+}
 
 describe('📍 주소는 한 곳에서 판정한다', () => {
   it('주소가 있으면 지역을 앞에 덧붙이지 않는다 (대표 스크린샷의 중복)', () => {
@@ -68,6 +73,16 @@ describe('🎫 안 B — 분할 카드형', () => {
     expect(picker).toMatch(/leftLabel="체크인"/)
     expect(picker).toMatch(/rightLabel="체크아웃"/)
     expect(picker, '가운데 배지가 박수가 아니다').toMatch(/badge=\{`\$\{nightsBetween\(checkIn, checkOut\)\}박`\}/)
+  })
+
+  it('카드 바깥에 상자를 하나 더 두르지 않는다 (판정에서 잡힌 결함)', () => {
+    // 🩸 2026-09-14: 트리거 두 개의 테두리만 걷고 **바깥 래퍼를 남겨** 화면에 상자가 두 겹이었다.
+    //    유닛은 전부 초록이었고 실제로 렌더해 보고서야 보였다. 날짜 모드에선 래퍼가 껍데기여야 한다.
+    const page = code('src/pages/StayDetailPage.tsx')
+    const box = sliceAfter(page, 'const selectorBox = (', 400)
+    expect(box, '날짜 모드에도 테두리 래퍼가 살아 있다').not.toMatch(/isVoucherMode \?[\s\S]{0,80}\n?\s*<div className="bg-white dark:bg-\[#11141C\] border/)
+    expect(box, '이용권 모드에만 카드를 두는 분기가 없다').toMatch(/isVoucherMode\s*$|isVoucherMode\s*\n?\s*\?/m)
+    expect(box, '래퍼가 여전히 무조건 테두리를 두른다').not.toMatch(/^\s*<div className="[^"]*\bborder border-gray-200\b/m)
   })
 
   it('시각 각주는 값이 둘 다 있을 때만 (모르는 값을 지어내지 않는다)', () => {
