@@ -2536,7 +2536,76 @@
       "orders": "Commandes"
     },
     "bizFromRegistration": "Prérempli depuis l’enregistrement de votre boutique",
-    "bizFromRegistrationDesc": "Pas encore enregistré comme informations d’entreprise — vérifiez puis enregistrez."
+    "bizFromRegistrationDesc": "Pas encore enregistré comme informations d’entreprise — vérifiez puis enregistrez.",
+    "tab": {
+      "home": "Accueil",
+      "orders": "Commandes",
+      "vouchers": "Bons",
+      "settlements": "Règlement",
+      "more": "Plus"
+    },
+    "more": {
+      "account": "Compte",
+      "language": "Langue"
+    },
+    "home": {
+      "today": "Aujourd'hui",
+      "revenue": "Ventes",
+      "orders": "Commandes",
+      "pending": "À confirmer",
+      "settleAvail": "Disponible",
+      "newOrders": "{{count}} nouvelles commandes",
+      "newOrdersSub": "Confirmez-les et commencez la préparation",
+      "confirm": "Confirmer",
+      "settleSub": "Vous pouvez demander un versement",
+      "withdraw": "Retirer",
+      "todoTitle": "À faire maintenant",
+      "todoEmpty": "Rien à traiter pour l'instant. Les nouvelles commandes et règlements s'afficheront ici.",
+      "myVouchers": "Mes bons",
+      "manageAll": "Tout gérer",
+      "register": "Ajouter",
+      "soldCount": "{{count}} vendus",
+      "noVouchers": "Aucun bon pour l'instant. Créez le premier et il apparaîtra ici.",
+      "moreVouchers": "+{{count}} autres",
+      "thisWeek": "Cette semaine",
+      "seePerf": "Voir les résultats",
+      "weekOrders": "{{count}} commandes",
+      "vsLastWeek": "vs semaine dernière",
+      "myStore": "Mon magasin"
+    },
+    "vouchers": {
+      "paused": "En pause",
+      "thisMonth": "Ce mois-ci",
+      "soldTotal": "{{count}} vendus",
+      "onSale": "En vente",
+      "onSaleShort": "Vente",
+      "ended": "Terminé",
+      "segEmpty": "Aucun bon dans cet état",
+      "price": "Prix",
+      "sold": "Vendus",
+      "edit": "Modifier",
+      "more": "Plus",
+      "expectedNet": "Règlement prévu",
+      "feeNote": "après {{pct}}% de frais",
+      "usage": "Bons utilisés",
+      "expired": "{{count}} expirés",
+      "copyStoreLink": "Copier le lien du commerce",
+      "sendAlimtalk": "Prévenir le commerçant",
+      "rotateLink": "Nouveau lien (l’ancien expire)",
+      "rotateConfirm": "L'ancien lien expirera et un nouveau sera envoyé. Continuer ?",
+      "noContact": "Téléphone du commerce manquant — ajouter",
+      "pinWarn": "Sur 7 jours, les erreurs de PIN ({{errors}}) dépassent les succès ({{ok}}). Vérifiez le PIN remis au commerce."
+    },
+    "ordersM3": {
+      "today": "Aujourd'hui",
+      "yesterday": "Hier",
+      "waiting": "À confirmer",
+      "preparing": "En préparation",
+      "done": "Terminé",
+      "none": "Aucune commande ici",
+      "pickupAt": "Utilisation prévue {{date}}",
+      "confirm": "Confirmer la commande"
+    }
   },
   "admin": {
     "login": {

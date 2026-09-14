@@ -3217,7 +3217,76 @@
       "orders": "注文"
     },
     "bizFromRegistration": "店舗登録時の内容を入れておきました",
-    "bizFromRegistrationDesc": "まだ事業者情報として登録されていません — 確認して保存を押してください。"
+    "bizFromRegistrationDesc": "まだ事業者情報として登録されていません — 確認して保存を押してください。",
+    "tab": {
+      "home": "ホーム",
+      "orders": "注文",
+      "vouchers": "利用券",
+      "settlements": "精算",
+      "more": "その他"
+    },
+    "more": {
+      "account": "アカウント",
+      "language": "言語"
+    },
+    "home": {
+      "today": "今日",
+      "revenue": "売上",
+      "orders": "注文",
+      "pending": "未確認",
+      "settleAvail": "精算可能",
+      "newOrders": "新規注文 {{count}}件",
+      "newOrdersSub": "確認して準備を始めましょう",
+      "confirm": "確認",
+      "settleSub": "今すぐ出金申請できます",
+      "withdraw": "出金",
+      "todoTitle": "今やること",
+      "todoEmpty": "今やることはありません。新規注文と精算がここに集まります。",
+      "myVouchers": "マイ利用券",
+      "manageAll": "すべて管理",
+      "register": "登録",
+      "soldCount": "{{count}}件",
+      "noVouchers": "まだ利用券がありません。最初の利用券を作るとここに表示されます。",
+      "moreVouchers": "他{{count}}件",
+      "thisWeek": "今週",
+      "seePerf": "実績を見る",
+      "weekOrders": "注文 {{count}}件",
+      "vsLastWeek": "先週比",
+      "myStore": "マイ店舗"
+    },
+    "vouchers": {
+      "paused": "販売停止",
+      "thisMonth": "今月",
+      "soldTotal": "販売 {{count}}件",
+      "onSale": "販売中",
+      "onSaleShort": "販売",
+      "ended": "終了",
+      "segEmpty": "この状態の利用券はありません",
+      "price": "価格",
+      "sold": "販売",
+      "edit": "編集",
+      "more": "もっと見る",
+      "expectedNet": "精算予定額",
+      "feeNote": "手数料 {{pct}}% 控除",
+      "usage": "バウチャー使用",
+      "expired": "期限切れ {{count}}",
+      "copyStoreLink": "店主リンクをコピー",
+      "sendAlimtalk": "店主へ通知",
+      "rotateLink": "新しいリンクを発行（旧リンク無効）",
+      "rotateConfirm": "旧リンクが無効になり新しいリンクが送られます。続けますか？",
+      "noContact": "店舗連絡先未登録 — 登録する",
+      "pinWarn": "直近7日のPINエラー {{errors}}件が成功 {{ok}}件より多いです。店舗に案内したPINを確認してください。"
+    },
+    "ordersM3": {
+      "today": "今日",
+      "yesterday": "昨日",
+      "waiting": "未確認",
+      "preparing": "準備中",
+      "done": "完了",
+      "none": "該当する注文はありません",
+      "pickupAt": "利用予定 {{date}}",
+      "confirm": "注文確認"
+    }
   },
   "admin": {
     "login": {

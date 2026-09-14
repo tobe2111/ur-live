@@ -21,7 +21,8 @@ const CSS = readFileSync('src/index.css', 'utf-8')
 const LAYOUT = read('src/components/SellerLayout.tsx')
 const BANNER = read('src/components/SellerKakaoLinkBanner.tsx')
 const STORES = read('src/pages/seller-page/MyStoresPanel.tsx')
-const PAGE = read('src/pages/SellerPage.tsx')
+// 📱 2026-09-14 오후(홈 M2): 할 일 카드는 `seller-page/TodoRows.tsx` 로 옮겨 갔다 — 홈 본문 + 그 행을 함께 본다.
+const PAGE = read('src/pages/SellerPage.tsx') + read('src/pages/seller-page/TodoRows.tsx')
 
 describe('셀러 대시보드 B안', () => {
   it('주 버튼(ur-btn-primary)은 브랜드 블루 — 대시보드 셋이 한 줄로 같이 바뀐다', () => {

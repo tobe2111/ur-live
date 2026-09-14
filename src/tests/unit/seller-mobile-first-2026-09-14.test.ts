@@ -1,0 +1,84 @@
+/**
+ * 📱 **셀러 대시보드 모바일 우선 재설계 — 되돌아가면 조용히 깨지는 배선** (2026-09-14 대표 승인 "그대로 모두 진행").
+ *   시안: `docs/design/seller-dashboard-mobile-first-2026-09.md` (홈 M2 · 이용권 M4 · 주문 M3 · 하단 탭 5).
+ *
+ * ⚠️ 못 막는 것: 간격·크기·"보기 좋은가". 그건 렌더해서 봤다(폰 430 · PC 1440 · 신규/운영/매장없음 세 인격).
+ */
+import { describe, it, expect } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { stripComments } from '../helpers/source-text'
+import { SELLER_PRIMARY_NAV, activePrimaryKey, isCoveredByPrimary } from '@/components/seller/seller-primary-nav'
+
+const read = (p: string) => stripComments(readFileSync(p, 'utf8'))
+
+describe('T1 다섯 대분류 SSOT — 폰 하단 탭과 PC 사이드바가 같은 목록을 쓴다', () => {
+  it('다섯이고 순서가 홈·주문·이용권·정산·더보기다', () => {
+    expect(SELLER_PRIMARY_NAV.map(t => t.key)).toEqual(['home', 'orders', 'vouchers', 'settlements', 'more'])
+  })
+  it('🔒 하단 탭은 목록을 손으로 적지 않고 모델에서 받는다', () => {
+    const tabs = read('src/components/seller-layout/SellerBottomTabs.tsx')
+    expect(tabs).toMatch(/const \{ primary \} = useSellerNavModel\(\)/)
+    expect(tabs).not.toMatch(/'\/seller\/orders'/)
+  })
+  it('🔒 홈은 더보기에 다시 뜨지 않는다 (폰 실측: "대시보드" 줄이 중복됐다)', () => {
+    expect(isCoveredByPrimary('/seller')).toBe(true)
+    expect(activePrimaryKey('/seller/orders/123')).toBe('orders')
+  })
+  it('🔒 레이아웃 본문 끝이 탭 바 높이만큼 비어 있다 — 없으면 마지막 줄이 탭에 가린다', () => {
+    const layout = read('src/components/SellerLayout.tsx')
+    expect(layout).toMatch(/paddingBottom: `calc\(\$\{SELLER_TABBAR_H\}px \+ env\(safe-area-inset-bottom\)/)
+    expect(layout).toMatch(/<SellerBottomTabs pendingOrders=\{pendingOrders\} \/>/)
+    // 햄버거·서랍은 없다 — 폰 메뉴는 하단 탭 + 더보기가 전부다.
+    expect(layout).not.toMatch(/sidebarOpen/)
+  })
+  it('🔒 /seller/more 라우트가 실재한다 (다섯 번째 탭의 착지점)', () => {
+    expect(readFileSync('src/routes/seller.routes.tsx', 'utf8')).toContain('path="/seller/more"')
+  })
+})
+
+describe('T2 홈 M2 — 매장 게이트가 흔들리지 않는다', () => {
+  const page = read('src/pages/SellerPage.tsx')
+  it('🔒 MyStoresPanel 은 한 자리에만 있다 — 게이트 여부로 부모가 바뀌면 재마운트돼 게이트가 풀렸다 잠겼다를 반복한다(실측)', () => {
+    expect(page.match(/<MyStoresPanel /g)?.length).toBe(1)
+    expect(page).toContain('storeGated === true ?')
+  })
+  it('🔒 폰에서는 게이트 판정만(gateOnly) — 시안에 매장 블록이 없다', () => {
+    expect(page).toMatch(/gateOnly=\{!isPc\}/)
+    expect(read('src/pages/seller-page/MyStoresPanel.tsx')).toMatch(/if \(gateOnly\) return null/)
+  })
+  it('🔒 홈 숫자는 서버가 실제로 주는 이름만 읽는다 (옛 홈은 없는 summary.* 를 읽어 언제나 0 이었다)', () => {
+    const hook = read('src/pages/seller-page/useSellerHome.ts')
+    expect(hook).toMatch(/d\.today_revenue/)
+    expect(hook).toMatch(/d\.daily_revenue/)
+    expect(hook).not.toMatch(/summary\./)
+  })
+  it('🔒 서버 오늘 매출은 KST 달력일 + 결제 완료만 센다 (종전: UTC 날짜 + 결제 실패까지 합산)', () => {
+    const api = read('src/features/seller/api/seller-settlements.routes.ts')
+    const i = api.indexOf("get('/dashboard/stats'")
+    const body = api.slice(i, i + 2500)
+    expect(body).toMatch(/status IN \('PAID','DONE'\) AND DATE\(created_at, '\+9 hours'\) = \?/)
+    expect(body).not.toMatch(/AND DATE\(created_at\) = \?/)
+  })
+})
+
+describe('T3 이용권 M4 · 주문 M3', () => {
+  it('🔒 판매 스위치는 상품 관리와 같은 계약(HIDDEN) — PAUSED 는 서버가 400 을 준다', () => {
+    const row = read('src/pages/seller-group-buy/VoucherRow.tsx')
+    expect(row).toMatch(/status: next \? 'ACTIVE' : 'HIDDEN'/)
+    expect(row).toMatch(/role="switch"/)
+  })
+  it('🔒 폰 주문 타임라인의 [주문 확인]이 실제 상태 전이에 배선돼 있다', () => {
+    const page = read('src/pages/SellerOrdersPage.tsx')
+    expect(page).toMatch(/onConfirm=\{\(o\) => handleStatusChange\(o\.order_number, 'PREPARING'\)\}/)
+    const list = read('src/pages/seller-orders/MobileOrderList.tsx')
+    expect(list).toMatch(/\{hot && onConfirm && \(/)
+  })
+  it('🔒 이용권 탭에 검은 그라디언트 카드가 돌아오지 않는다', () => {
+    const page = read('src/pages/SellerGroupBuyPage.tsx')
+    expect(page).not.toMatch(/from-gray-800|bg-gray-900/)
+  })
+  it.each(['ko', 'en', 'ja', 'zh', 'es', 'fr'])('%s 로케일에 다섯 탭 이름이 있다', (lng) => {
+    const j = JSON.parse(readFileSync(`public/locales/${lng}/translation.json`, 'utf8'))
+    for (const k of ['home', 'orders', 'vouchers', 'settlements', 'more']) expect(j.seller?.tab?.[k], k).toBeTruthy()
+  })
+})

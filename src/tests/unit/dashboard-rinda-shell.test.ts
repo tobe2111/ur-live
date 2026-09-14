@@ -26,7 +26,8 @@ describe('R1 대시보드 사이드바는 흰 면이다 (검은 사이드바로 
   const FILES = [
     'src/components/SellerLayout.tsx',
     'src/components/AdminLayout.tsx',
-    'src/components/seller-layout/SellerSimpleNav.tsx',
+    // 📱 2026-09-14 (모바일 우선 재설계): 심플 nav 는 삭제됐고 하단 탭이 그 자리를 맡는다.
+    'src/components/seller-layout/SellerBottomTabs.tsx',
   ]
   it.each(FILES)('%s 에 어두운 사이드바 토큰이 없다', (f) => {
     const src = strip(read(f))
@@ -73,41 +74,47 @@ describe('R3 사이드바 CTA 로 옮겨도 검색 색인에서 사라지지 않
    *   `orderedNavGroups`(⌘K 색인의 원본)에서까지 빼면 그 페이지는 메뉴에도 검색에도 없어진다 —
    *   이 레포가 반복해 겪은 "페이지는 있는데 닿을 수 없다"의 재발이다.
    */
-  const src = strip(read('src/components/SellerLayout.tsx'))
+  // 📱 2026-09-14: 계산이 `useSellerNavModel`(SSOT)로 뽑혀 나갔다 — 사이드바·하단 탭·더보기가 같은 목록을 쓴다.
+  const src = strip(read('src/components/seller-layout/useSellerNavModel.ts'))
   it('CTA 는 renderedNavGroups 로만 걸러진다 (orderedNavGroups 원본은 무손상)', () => {
     expect(src).toMatch(/const renderedNavGroups = orderedNavGroups/)
-    expect(src).toMatch(/renderedNavGroups\.map/)
+    // 그리는 쪽은 걸러진 목록(moreGroups = renderedNavGroups)만 받는다.
+    expect(src).toMatch(/moreGroups: renderedNavGroups/)
+    expect(strip(read('src/components/SellerLayout.tsx'))).toMatch(/moreGroups\.map/)
     // 검색 색인(commandItems)은 여전히 거르지 않은 원본을 쓴다.
     expect(src).toMatch(/\.\.\.orderedNavGroups\.flatMap\(\(g\) => g\.items\.map/)
   })
   it('그 역할에 항목이 없으면 CTA 도 안 뜬다 (역할별 노출 규칙 승계)', () => {
     expect(src).toMatch(/const ctaItem = orderedNavGroups\.flatMap/)
-    expect(src).toMatch(/\{ctaItem && \(/)
+    // 그리는 쪽(레이아웃)은 모델이 준 ctaItem 이 있을 때만 파란 버튼을 그린다.
+    expect(strip(read('src/components/SellerLayout.tsx'))).toMatch(/\{ctaItem && \(/)
   })
 })
 
-describe('R4 핵심 작업 타일에 검은 면이 없다 (강조는 브랜드 한 가지)', () => {
+describe('R4 홈의 행동 칩에 검은 면이 없다 (강조는 브랜드 한 가지)', () => {
   /**
    * 종전엔 `bg-gray-900` 타일이 조건에 따라 **동시에 셋까지** 떴다(이용권 등록 + 미처리 주문 + 정산).
    * 셋이 똑같이 새까매서 무엇이 급한지 구별해 주지 못했다 — 대표가 말한 "헷갈린다"의 한 축.
+   * 📱 2026-09-14 오후: 타일(`PrimaryActions`)은 홈 M2 로 바뀌며 삭제됐다 — 그 자리는 '지금 처리할 일' 행의 칩이다.
    */
-  it('PrimaryActions 에 bg-gray-900 / bg-black 면이 없다', () => {
-    const src = strip(read('src/pages/seller-page/PrimaryActions.tsx'))
+  it('TodoRows 에 bg-gray-900 / bg-black 면이 없다', () => {
+    const src = strip(read('src/pages/seller-page/TodoRows.tsx'))
     expect(src).not.toMatch(/bg-gray-900/)
     expect(src).not.toMatch(/bg-black(?![/\w-])/)
   })
-  it('강조는 브랜드 틴트 한 가지로만 준다 (0건이면 통과가 아니라 실패)', () => {
-    const src = strip(read('src/pages/seller-page/PrimaryActions.tsx'))
-    expect(src).toMatch(/attention\s*\?\s*'border border-brand bg-brand-tint'/)
+  it('행동 칩은 브랜드 틴트 한 가지로만 준다 (0건이면 통과가 아니라 실패)', () => {
+    const src = strip(read('src/pages/seller-page/TodoRows.tsx'))
+    expect(src).toMatch(/const ACT = 'rounded-lg bg-brand-tint px-3 py-2 text-xs font-bold text-brand-text'/)
   })
 })
 
 describe('R5 정산 금액을 건수로 말하지 않는다', () => {
   /** 🐛 ₩412,000 이 "정산 가능 412000건" 으로 찍히던 자리. 돈을 세는 단위로 말하면 안 된다. */
-  it('SellerPage 가 금액 키(settlementAvailableAmount)를 쓴다', () => {
-    const src = strip(read('src/pages/SellerPage.tsx'))
+  it('홈의 할 일 행이 금액 키(settlementAvailableAmount)를 쓴다', () => {
+    // 📱 2026-09-14 오후: 그 문자열은 홈 M2 의 '지금 처리할 일' 행(TodoRows)으로 옮겨 갔다.
+    const src = strip(read('src/pages/seller-page/TodoRows.tsx'))
     expect(src).toMatch(/settlementAvailableAmount/)
-    expect(src).not.toMatch(/settlementAvailableCount'?,\s*\{\s*count:\s*stats\.pendingSettlement/)
+    expect(src).not.toMatch(/settlementAvailableCount/)
   })
   it.each(['ko', 'en', 'ja', 'zh', 'es', 'fr'])('%s 로케일에 그 키가 있다', (lng) => {
     const j = JSON.parse(read(`public/locales/${lng}/translation.json`))

@@ -3217,7 +3217,76 @@
       "orders": "Orders"
     },
     "bizFromRegistration": "Filled in from your store registration",
-    "bizFromRegistrationDesc": "Not registered as business info yet — review and press Save."
+    "bizFromRegistrationDesc": "Not registered as business info yet — review and press Save.",
+    "tab": {
+      "home": "Home",
+      "orders": "Orders",
+      "vouchers": "Vouchers",
+      "settlements": "Payouts",
+      "more": "More"
+    },
+    "more": {
+      "account": "Account",
+      "language": "Language"
+    },
+    "home": {
+      "today": "Today",
+      "revenue": "Sales",
+      "orders": "Orders",
+      "pending": "To confirm",
+      "settleAvail": "Available",
+      "newOrders": "{{count}} new orders",
+      "newOrdersSub": "Confirm them and start preparing",
+      "confirm": "Confirm",
+      "settleSub": "You can request a payout now",
+      "withdraw": "Withdraw",
+      "todoTitle": "To do now",
+      "todoEmpty": "Nothing to handle right now. New orders and payouts will gather here.",
+      "myVouchers": "My vouchers",
+      "manageAll": "Manage all",
+      "register": "Add",
+      "soldCount": "{{count}} sold",
+      "noVouchers": "No vouchers yet. Create your first one and it will show here.",
+      "moreVouchers": "+{{count}} more",
+      "thisWeek": "This week",
+      "seePerf": "See performance",
+      "weekOrders": "{{count}} orders",
+      "vsLastWeek": "vs last week",
+      "myStore": "My store"
+    },
+    "vouchers": {
+      "paused": "Paused",
+      "thisMonth": "This month",
+      "soldTotal": "{{count}} sold",
+      "onSale": "On sale",
+      "onSaleShort": "Sale",
+      "ended": "Ended",
+      "segEmpty": "No vouchers in this state",
+      "price": "Price",
+      "sold": "Sold",
+      "edit": "Edit",
+      "more": "More",
+      "expectedNet": "Expected payout",
+      "feeNote": "after {{pct}}% fee",
+      "usage": "Vouchers used",
+      "expired": "{{count}} expired",
+      "copyStoreLink": "Copy store link",
+      "sendAlimtalk": "Notify store owner",
+      "rotateLink": "Issue new link (old link expires)",
+      "rotateConfirm": "The old link will expire and a new one will be sent. Continue?",
+      "noContact": "No store phone — add it",
+      "pinWarn": "In the last 7 days, PIN errors ({{errors}}) exceeded successes ({{ok}}). Check the PIN given to the store."
+    },
+    "ordersM3": {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "waiting": "To confirm",
+      "preparing": "Preparing",
+      "done": "Done",
+      "none": "No orders here",
+      "pickupAt": "Use on {{date}}",
+      "confirm": "Confirm order"
+    }
   },
   "admin": {
     "login": {

@@ -58,7 +58,7 @@ export default function SellerStoresPage() {
   return (
     <SellerLayout title="매장 관리">
       <SEO title="매장 관리 - 유어딜 셀러" description="매장 추가·삭제·위임" noindex />
-      <div className="mx-auto max-w-4xl space-y-3 p-3 sm:p-4">
+      <div className="mx-auto max-w-5xl space-y-3">
         <div className="flex items-center justify-between">
           <p className="text-xs text-gray-600">내 가게든, 관리를 맡은 가게든 — 여기서 추가하고 전환해서 운영해요.</p>
           <button onClick={() => setAdding(true)}

@@ -59,7 +59,7 @@ export default function SellerStaysPage() {
         </Link>
       }
     >
-      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-6">
         <DashboardPageHeader
           title={t('seller.stays.title', { defaultValue: '숙소 공구' })}
           subtitle={t('seller.stays.subtitle', { defaultValue: '펜션·호텔·모텔·게스트하우스 — 객실 + 날짜 기반 예약' })}

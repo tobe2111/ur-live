@@ -76,6 +76,21 @@ A 메인 다이어트(성과는 별도 메뉴) · B 한 페이지 4덩어리+섹
 - 모바일 뷰포트 룰(`h-[100dvh]`·`flex-1 min-h-0`)·`StickyActionBar` — 하단 고정 등록 버튼이 탭바와 겹치지 않게.
 - 목업 생성기 원본: `assets/seller-dashboard-2026-09/mock-mobile.mjs.txt` · `mock-pc.mjs.txt`(Playwright, 토큰 그대로) — 시안을 더 그릴 때 재사용.
 
-## ✅ 구현 완료
+## ✅ 구현 완료 (2026-09-14 — 대표 *"그대로 모두 진행. 그리고 추가로 저 삭제할 건 없어? 모두 진행해줘."*)
 
-(대표 선택 후 commit hash 를 여기에)
+같은 PR(#1429, `claude/seller-dashboard-rinda`)에 얹었다. 폰 430 · PC 1440 × 신규/운영/매장없음 세 인격을 렌더해 확인했다.
+
+| 순서 | 무엇 | 어디 |
+|---|---|---|
+| ① 다섯 대분류 | `홈 · 주문 · 이용권 · 정산 · 더보기` SSOT `seller-primary-nav.ts` → 폰 하단 탭 `SellerBottomTabs` = PC 사이드바 위쪽. 더보기 목록은 `useSellerNavModel` 이 `NAV_GROUPS` 에서 **파생**(손으로 두 벌 안 적는다). 햄버거·서랍·심플 nav·모드 토글 삭제. 새 라우트 `/seller/more` | `SellerLayout.tsx` · `seller-layout/*` · `SellerMorePage.tsx` |
+| ② 홈 = M2 | 오늘 티켓(매출·주문·처리 대기 / PC +정산 가능) → 지금 처리할 일 → 내 이용권 레일(+등록) → 이번 주(PC 차트). PC 2열(우 sticky: 할 일 + 내 매장). 매장 게이트(STEP 1)는 그대로 | `SellerPage.tsx` · `seller-page/{TodayTicket,TodoRows,MyVouchersRail,WeekSummary,useSellerHome,useNewOrderAlert}` |
+| ③ 이용권 = M4 | 이번 달 매출 한 줄 → 판매 중/중지/종료 세그먼트 → 행(사진·정가→판매가·N건·매출·**판매 스위치**·펼침=수정·재발행·사장님 링크·알림톡) → 폰 하단 고정 등록 버튼 | `SellerGroupBuyPage.tsx` · `seller-group-buy/VoucherRow.tsx` |
+| ③ 주문 = M3 | 폰: 처리 대기/준비 중/완료 세그먼트 → 날짜별 타임라인, 대기 행 안에 **[주문 확인]**(→ 준비 중). PC 표는 무접촉(머니 경로 `handleRefund`) | `seller-orders/MobileOrderList.tsx` |
+| ④ 안쪽 페이지 | 본문 폭 `max-w-2xl~7xl` 9종 → **`max-w-5xl` 1종**(레이아웃 패딩과 겹치던 안쪽 패딩 제거) · 검은 그라디언트 3곳(알림톡 잔액·팔로워 차트·퀵공구 버튼) → 티켓/브랜드 | 39 페이지 |
+
+**🩸 실측으로 잡은 것**: ⓐ 옛 홈이 읽던 `summary.total_sales`·`daily`·`topProducts` 는 **서버가 준 적이 없는 이름**이라 숫자 네 장이 언제나 0 이었다(TD-006 분할 때 갈림). ⓑ `/dashboard/stats` 오늘 매출이 **UTC 날짜 + 결제 실패 포함**이었다 → KST + PAID/DONE. ⓒ 매장 패널을 게이트 여부로 다른 부모에 그리면 재마운트돼 **게이트가 풀렸다 잠겼다를 반복**(STEP 1 이 안 보였다) → 한 자리 고정. ⓓ 가로 레일이 그리드 칸을 콘텐츠 폭으로 넓혀 폰 화면 밖으로 밀렸다 → `min-w-0`.
+
+**🗑️ 삭제(대표 "삭제할 건 없어?")**: 소비처 0 이 된 홈 블록 10개 파일(`PrimaryActions`·`StoreQuickTrio`·`InsightsCallouts`·`PublicPagePreview`·`MonthlyGoalCard`·`RealtimeOrdersPanel`·`OnboardingChecklist`(seller-page)·`SellerReferralInfoCard`·`SellerGroupBuyOverview`·`SellerKpiDashboard`) · `SellerSimpleNav` · nav 정의 중 **라우트가 이미 없던** `/seller/donations`·`/seller/castings`·`/seller/streaming-guide`. **안 지운 것(대표 판단)**: 영구 중단·꺼진 기능의 페이지·라우트(라이브 `notify-followers`·`youtube-growth`(Toss 리턴 경로 가드 얽힘) · 매장 전용 모드로 숨긴 상품/소싱/번들/재고/위탁/광고슬롯/마케팅) — 라우트는 살아 있고 검색으로 닿는다. 지우려면 서버 라우트·orphan 베이스라인·결제 리턴 가드까지 같이 가야 해 별건.
+
+가드: `seller-mobile-first-2026-09-14.test.ts` 18건 + 주입 5건(`scripts/mutations/seller-mobile-first.mjs`, 되돌려-검증 전부 빨간불 확인) · 기존 `voucher-nav-reachability`·`dashboard-rinda-shell`·`seller-dashboard-b`·`seller-page-search` 는 새 SSOT 로 재앵커.
+남은 것: **PC 주문(P-orders)의 우측 선택 주문 티켓**은 안 했다 — 기존 상세 모달이 그 역할을 하고, 표는 머니 경로라 무접촉. 어드민 대시보드는 이 재설계 범위 밖(Rinda 껍데기까지만).

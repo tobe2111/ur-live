@@ -106,7 +106,7 @@ export default function SellerNotifyFollowersPage() {
 
   return (
     <SellerLayout title="단골에게 알림 발송">
-      <div className="mx-auto max-w-2xl space-y-5 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-5">
         <DashboardPageHeader
           title="단골에게 알림 발송"
           subtitle="신상품 / 라이브 시작 / 공구 시작을 단골에게 push 로 알려보세요"

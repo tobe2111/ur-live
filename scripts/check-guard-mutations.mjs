@@ -121,19 +121,19 @@ const MUTATIONS = [
   },
   {
     name: '🧭 사이드바 CTA 필터가 검색 색인까지 먹는다 (이용권 등록이 ⌘K 에서 사라진다)',
-    file: 'src/components/SellerLayout.tsx',
-    find: 'renderedNavGroups.map',
-    replace: 'orderedNavGroups.map',
+    file: 'src/components/seller-layout/useSellerNavModel.ts',
+    find: '...orderedNavGroups.flatMap((g) => g.items.map',
+    replace: '...renderedNavGroups.flatMap((g) => g.items.map',
     test: 'src/tests/unit/dashboard-rinda-shell.test.ts',
     why:
       "'이용권 등록'을 파란 CTA 로 뽑아내면서 **그리는 목록만** 걸러야 한다. 색인 원본까지 거르면 " +
       '그 페이지는 메뉴에도 검색에도 없어진다 — 이 레포가 반복해 겪은 "페이지는 있는데 닿을 수 없다".',
   },
   {
-    name: '🧭 핵심 작업에 검은 타일이 되돌아온다 (무엇이 급한지 구별이 사라진다)',
-    file: 'src/pages/seller-page/PrimaryActions.tsx',
-    find: "'border border-brand bg-brand-tint'",
-    replace: "'bg-gray-900 text-white'",
+    name: '🧭 홈 할 일 행의 칩이 검은 타일로 되돌아온다 (무엇이 급한지 구별이 사라진다)',
+    file: 'src/pages/seller-page/TodoRows.tsx',
+    find: "const ACT = 'rounded-lg bg-brand-tint px-3 py-2 text-xs font-bold text-brand-text'",
+    replace: "const ACT = 'rounded-lg bg-gray-900 px-3 py-2 text-xs font-bold text-white'",
     test: 'src/tests/unit/dashboard-rinda-shell.test.ts',
     why:
       '종전엔 bg-gray-900 타일이 조건에 따라 동시에 셋까지 떴다(이용권 등록 + 미처리 주문 + 정산). ' +
@@ -151,7 +151,7 @@ const MUTATIONS = [
   },
   {
     name: '💸 정산 금액을 다시 건수로 말한다 (₩412,000 → "412000건")',
-    file: 'src/pages/SellerPage.tsx',
+    file: 'src/pages/seller-page/TodoRows.tsx',
     find: 'settlementAvailableAmount',
     replace: 'settlementAvailableCount',
     test: 'src/tests/unit/dashboard-rinda-shell.test.ts',

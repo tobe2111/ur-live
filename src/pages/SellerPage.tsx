@@ -1,535 +1,100 @@
-import { useEffect, useState, useRef, useCallback, Suspense } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+/**
+ * 🏠 **셀러 홈 = M2** (2026-09-14 대표 승인 — 모바일 우선 재설계 "좋네. 지금 형태 좋다" → "그대로 모두 진행").
+ *   시안·근거: `docs/design/seller-dashboard-mobile-first-2026-09.md`.
+ *
+ * ## 무엇이 바뀌었나
+ *   종전엔 블록 **14개**가 세로 한 줄로 쌓여 있었다(매장 → 타일5 → 트리오3 → 숫자4 → 영입자 → 공구현황 → 인사이트 →
+ *   KPI → 차트 → 인기상품 → 할일 → 신규스텝 → 공개페이지 → 문의). 신규 셀러는 그 대부분을 0 이나 빈 채로 봤다.
+ *   대표: *"그냥 다 때려박은 느낌이잖아 · 카드·섹션 자체가 마음에 들지 않아 · 이용권 등록·관리·매출이 가장 중요"*.
+ *
+ *   이제 홈은 **한 화면**에 넷이다(스크롤해야 보이는 것은 홈에 두지 않는다):
+ *     ① 오늘 티켓(매출·주문·처리 대기 / PC +정산 가능) ② 지금 처리할 일 ③ 내 이용권(끝에 ＋등록) ④ 이번 주
+ *   PC(lg+)는 같은 넷을 2열로: 좌 ①③④ · 우 sticky ②+내 매장(P-홈).
+ *   지운 블록의 데이터는 사라진 게 아니라 **각자의 탭**으로 갔다 — 성과는 정산 › 매출 분석, 매장은 더보기 › 매장.
+ *
+ * ## 지키는 것
+ *   - 🚪 2026-08-24 대표: "첫 단계는 매장 등록 — 무조건 선행." 등록 매장이 0 이면 STEP 1 티켓 하나만 남고 나머지는 잠긴다
+ *     (`storeGated === true` — 느슨한 truthy 게이트는 로딩/실패 중 정상 셀러를 잠근다, fail-open).
+ *   - 🔔 새 주문 알림(10초 폴링 + 사운드)은 그대로 — `useNewOrderAlert`.
+ *   - ☎️ 운영자 문의(`SellerSupportContact`)는 게이트 밖 — 매장 등록 전에도 열려 있어야 한다.
+ */
+import { useEffect, useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useQuery } from '@tanstack/react-query'
-import api from '@/lib/api'
-import { AlertCircle, CreditCard, Lock, ShoppingBag, TrendingUp } from 'lucide-react'
-import { getSellerToken, getSellerId, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
+import { Lock } from 'lucide-react'
+import { isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 import SellerLayout from '@/components/SellerLayout'
-import RoleGate from '@/components/RoleGate'
-import { getRoleLabel, getRoleMeta, getCurrentSellerRole, isInfluencer as checkInfluencer } from '@/shared/seller-roles'
-import { DashboardPageHeader } from '@/components/dashboard'
-import SellerReferralInfoCard from '@/components/seller/SellerReferralInfoCard'
-import SellerGroupBuyOverview from '@/components/seller/SellerGroupBuyOverview'
-import SellerKpiDashboard from '@/components/seller/SellerKpiDashboard'
-import { formatNumber } from '@/utils/format'
-import { swallow } from '@/shared/utils/swallow'
-import LazyChart from './seller-page/LazyChart'
-import NewSellerSteps from './seller-page/NewSellerSteps'
-import StoreQuickTrio from './seller-page/StoreQuickTrio'
-import PrimaryActions from './seller-page/PrimaryActions'
-import PublicPagePreview from './seller-page/PublicPagePreview'
-import InsightsCallouts from './seller-page/InsightsCallouts'
-import MyStoresPanel from './seller-page/MyStoresPanel'
-import type { DashboardStats, DailyStats, TopProduct, Order } from './seller-page/types'
 import SellerSupportContact from '@/components/seller/SellerSupportContact'
+import MyStoresPanel from './seller-page/MyStoresPanel'
+import TodayTicket from './seller-page/TodayTicket'
+import TodoRows from './seller-page/TodoRows'
+import MyVouchersRail from './seller-page/MyVouchersRail'
+import WeekSummary from './seller-page/WeekSummary'
+import { useSellerHome } from './seller-page/useSellerHome'
+import { useNewOrderAlert } from './seller-page/useNewOrderAlert'
 
-// 🛡️ 2026-05-02: TD-018 분할 — types / LazyChart / OnboardingChecklist / RealtimeOrdersPanel
-//   를 ./seller-page/ 디렉토리로 추출. STATUS_CONFIG_BASE 는 RealtimeOrdersPanel 내부로 이동.
-//   미사용 DeferUntilVisible 컴포넌트 (dead code) 제거.
-
-// Inline skeleton placeholder
-const Skel = ({ className }: { className?: string }) => (
-  <div className={`animate-pulse bg-gray-200 rounded ${className || ''}`} />
-)
-
-// 🛡️ 2026-05-27 (memory): 새 주문 알림 사운드 — module-scope 1회 생성 → GC 압력 ↓.
-//   이전: 매 폴링마다 new Audio(data:...) → 인스턴스 누적.
-// 🛡️ 2026-06-04 (CSP): data:audio URI 는 CSP media-src('self' https: blob:) 에 차단됨 →
-//   콘솔 violation. base64 → Blob → object URL(blob:) 로 변환해 정책 위반 없이 재생.
-const NEW_ORDER_WAV_B64 = 'UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2JkZeWj4J1aGBneIONkpGLgXRtZ2l4hI+UkYyBdWxnbHqFkJSTjoF1bGdteYWQlJOOgXVsZ2x5hpGVk46BdWxnbHmFkJSTjoF1bGdteYWQlJOOgXVsZ2x5hpGVk46BdWxnbHmFkJSTjoF1'
-const newOrderAudio: HTMLAudioElement = (() => {
-  if (typeof Audio === 'undefined') return { play: () => Promise.resolve(), currentTime: 0 } as unknown as HTMLAudioElement
-  try {
-    const bytes = Uint8Array.from(atob(NEW_ORDER_WAV_B64), (ch) => ch.charCodeAt(0))
-    const url = URL.createObjectURL(new Blob([bytes], { type: 'audio/wav' }))
-    return Object.assign(new Audio(url), { volume: 0.3 })
-  } catch {
-    return { play: () => Promise.resolve(), currentTime: 0 } as unknown as HTMLAudioElement
-  }
-})()
-
-// 🛡️ 2026-06-03 Tier2(대시보드): 6-endpoint 대시보드 번들 타입 + fetcher + sessionStorage seed.
-type SellerDashBundle = {
-  hasBank: boolean
-  stats: DashboardStats
-  dailyStats: DailyStats[]
-  topProducts: TopProduct[]
-  followerCount: number
-  hasMealVouchers: boolean
-  mealVoucherCount: number
-  activeGroupBuys: number
-}
-
-const DEFAULT_DASH_STATS: DashboardStats = {
-  totalRevenue: 0, totalOrders: 0, activeStreams: 0, totalViewers: 0,
-  pendingOrders: 0, cancelledOrders: 0, completedOrders: 0, avgOrderValue: 0,
-}
-
-// sessionStorage 5분 TTL 캐시 → useQuery initialData (즉시렌더 보존).
-function readSellerDashCache(period: string): SellerDashBundle | undefined {
-  try {
-    const cached = sessionStorage.getItem(`seller_dashboard_cache_${period}`)
-    if (!cached) return undefined
-    const c = JSON.parse(cached)
-    if (Date.now() - (c.ts || 0) >= 5 * 60 * 1000) return undefined
-    return {
-      hasBank: false,
-      stats: c.stats ?? DEFAULT_DASH_STATS,
-      dailyStats: c.dailyStats ?? [],
-      topProducts: c.topProducts ?? [],
-      followerCount: typeof c.followerCount === 'number' ? c.followerCount : 0,
-      hasMealVouchers: !!c.hasMealVouchers,
-      mealVoucherCount: typeof c.mealVoucherCount === 'number' ? c.mealVoucherCount : 0,
-      activeGroupBuys: typeof c.activeGroupBuys === 'number' ? c.activeGroupBuys : 0,
-    }
-  } catch { return undefined }
-}
-
-async function fetchSellerDashboard(period: string): Promise<SellerDashBundle> {
-  const token = getSellerToken()
-  const headers = token ? { Authorization: `Bearer ${token}` } : {}
-  // 🗑️ 2026-08-20 라이브 잔재 제거: /api/seller/streams 는 서버에서 사라진 라우트(영구 중단).
-  // 🗑️ 2026-08-23 (대표 AB테스트 — "재고부족 같은 라이브커머스 잔재 다 지워"): 재고 경보
-  //    (/api/inventory/stock/alerts — 쇼핑 재고 레일) 호출·타일 제거. 이용권 콘솔에 무의미.
-  const [dashRes, followerRes, productsRes, profileRes] = await Promise.allSettled([
-    api.get(`/api/seller/dashboard/stats?period=${period}`, { headers }),
-    api.get(`/api/social/followers/${getSellerId()}`),
-    api.get('/api/seller/products', { headers }),
-    api.get('/api/seller/profile', { headers }),
-  ])
-
-  const bundle: SellerDashBundle = {
-    hasBank: false, stats: { ...DEFAULT_DASH_STATS }, dailyStats: [], topProducts: [],
-    followerCount: 0, hasMealVouchers: false, mealVoucherCount: 0, activeGroupBuys: 0,
-  }
-
-  if (profileRes.status === 'fulfilled' && profileRes.value.data?.success) {
-    const p = profileRes.value.data.data
-    bundle.hasBank = !!(p?.bank_name && p?.bank_account)
-  }
-  if (dashRes.status === 'fulfilled' && dashRes.value.data.success) {
-    const d = dashRes.value.data.data
-    bundle.stats = {
-      totalRevenue: d.summary?.total_sales || 0, totalOrders: d.summary?.total_orders || 0,
-      activeStreams: 0, totalViewers: 0,
-      pendingOrders: d.summary?.pending_orders || 0, cancelledOrders: d.summary?.cancelled_orders || 0,
-      completedOrders: d.summary?.completed_orders || 0, avgOrderValue: d.summary?.avg_order_value || 0,
-      lowStockCount: d.summary?.low_stock_count || 0, pendingSettlement: d.summary?.pending_settlement || 0,
-    }
-    bundle.dailyStats = d.daily || []
-    bundle.topProducts = d.topProducts || []
-  }
-  if (followerRes.status === 'fulfilled' && followerRes.value.data?.success) {
-    bundle.followerCount = followerRes.value.data.data?.count || 0
-  }
-  if (productsRes.status === 'fulfilled' && productsRes.value.data?.success) {
-    const prods = productsRes.value.data.data || []
-    type ProdEntry = { category?: string; group_buy_status?: string }
-    const vouchers = (prods as ProdEntry[]).filter(p => p.category === 'meal_voucher' || p.category === 'group_buy')
-    bundle.hasMealVouchers = vouchers.length > 0
-    bundle.mealVoucherCount = vouchers.length
-    bundle.activeGroupBuys = vouchers.filter(p => p.group_buy_status === 'active' || p.group_buy_status === 'achieved').length
-  }
-
-  // sessionStorage 캐시 (5분 TTL) — 다음 진입 즉시렌더.
-  try {
-    sessionStorage.setItem(`seller_dashboard_cache_${period}`, JSON.stringify({
-      ts: Date.now(), stats: bundle.stats, dailyStats: bundle.dailyStats, topProducts: bundle.topProducts,
-      followerCount: bundle.followerCount, hasMealVouchers: bundle.hasMealVouchers,
-      mealVoucherCount: bundle.mealVoucherCount, activeGroupBuys: bundle.activeGroupBuys,
-    }))
-  } catch { /* quota 무시 */ }
-
-  return bundle
-}
-
-// ─── Component ───────────────────────────────────────────────────────────────
 export default function SellerPage() {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const navigate = useNavigate()
+  const isPc = useMediaQuery('(min-width: 1024px)')
 
-  const sellerType = localStorage.getItem('seller_type') || 'influencer'
-  // 🛡️ 2026-05-21 Phase D-5: helper 사용 (직접 비교 금지).
-  const isInfluencer = checkInfluencer(sellerType)
-  // 🗑️ 2026-08-23 (대표 AB테스트): live/store 모드 분기 제거 — 라이브 영구 중단으로 모드는 늘
-  //   'store' 하나였다(modesForSellerType 이 LIVE_COMMERCE_SUSPENDED 에서 ['store'] 고정).
-
-  const [period, setPeriod] = useState<'7d' | '30d' | '90d'>('7d')
-
-  // 🚪 2026-08-24 (대표): "첫 단계는 매장 등록 — 무조건 선행. 없으면 다음 단계 이용 불가."
-  //   MyStoresPanel 이 서버 판정(store_ready + 매장 목록)으로 게이트 여부를 알려준다.
-  //   null(판정 중)엔 잠그지 않는다 — 오탐으로 정상 셀러를 막으면 안 된다(fail-open).
-  const [storeGated, setStoreGated] = useState<boolean | null>(null)
-  const onGateChange = useCallback((g: boolean | null) => setStoreGated(g), [])
-
-  // 🛡️ 2026-06-03 Tier2(대시보드): 6-endpoint Promise.allSettled 대시보드 → useQuery.
-  //   sessionStorage 5분 캐시 = initialData (즉시렌더) + refetchOnMount:'always' 백그라운드 fresh.
-  //   실시간 주문 폴링(pollOrders)은 snapshot-diff/알림 사이드이펙트라 명령형 유지.
-  const dashQ = useQuery<SellerDashBundle>({
-    queryKey: ['seller', 'dashboard', period],
-    queryFn: () => fetchSellerDashboard(period),
-    enabled: isSellerAuthenticated(),
-    initialData: () => readSellerDashCache(period),
-    staleTime: 60_000,
-    gcTime: 30 * 60_000,
-    refetchOnWindowFocus: false,
-    refetchOnMount: 'always',
-  })
-  const hasBank = dashQ.data?.hasBank ?? false
-  const stats = dashQ.data?.stats ?? DEFAULT_DASH_STATS
-  const dailyStats = dashQ.data?.dailyStats ?? []
-  const topProducts = dashQ.data?.topProducts ?? []
-  const loading = dashQ.isLoading && !dashQ.data
-
-  // Real-time orders
-  const [recentOrders, setRecentOrders] = useState<Order[]>([])
-  const [newOrderIds, setNewOrderIds] = useState<Set<number>>(new Set())
-  const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
-  const [ordersRefreshing, setOrdersRefreshing] = useState(false)
-  const lastMaxIdRef = useRef<number>(0)
-  const newOrderTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  // 대시보드 번들에서 파생 (follower/활동 데이터)
-  const followerCount = dashQ.data?.followerCount ?? 0
-  const activeGroupBuys = dashQ.data?.activeGroupBuys ?? 0
-
-  // ── Auth ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!isSellerAuthenticated()) redirectToLogin(navigate)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate])
 
-  // ── Real-time orders polling ───────────────────────────────────────────────
-  const pollOrders = useCallback(async (isManual = false) => {
-    if (isManual) setOrdersRefreshing(true)
-    try {
-      const resp = await api.get('/api/seller/orders?limit=10&sort=desc', {
-        headers: { Authorization: `Bearer ${getSellerToken()}` }
-      })
-      if (resp.data.success) {
-        const orders: Order[] = resp.data.data || []
-        setRecentOrders(orders)
-        setLastUpdated(new Date())
+  const home = useSellerHome()
+  useNewOrderAlert(home.orders)
 
-        if (orders.length > 0) {
-          const maxId = Math.max(...orders.map(o => o.id))
-          if (lastMaxIdRef.current > 0 && maxId > lastMaxIdRef.current) {
-            const newIds = new Set(orders.filter(o => o.id > lastMaxIdRef.current).map(o => o.id))
-            setNewOrderIds(newIds)
-            if (newOrderTimerRef.current) clearTimeout(newOrderTimerRef.current)
-            newOrderTimerRef.current = setTimeout(() => setNewOrderIds(new Set()), 12000)
+  // 🚪 매장 게이트 — MyStoresPanel 이 서버 판정(store_ready + 매장 목록)으로 알려 준다. null(판정 중)엔 잠그지 않는다.
+  const [storeGated, setStoreGated] = useState<boolean | null>(null)
+  const onGateChange = useCallback((g: boolean | null) => setStoreGated(g), [])
 
-            // 🛡️ 2026-04-23 배치 170: 신규 주문 알림 (브라우저 Notification + 사운드)
-            try {
-              if (Notification.permission === 'granted') {
-                new Notification(t('seller.newOrderNotifTitle', { defaultValue: '🛒 새 주문이 들어왔어요!' }), {
-                  body: t('seller.newOrderNotifBody', { defaultValue: '{{count}}건의 새 주문을 확인하세요', count: newIds.size }),
-                  icon: '/icon-biz-192.png',
-                })
-              } else if (Notification.permission === 'default') {
-                Notification.requestPermission()
-              }
-              // 🛡️ 2026-05-27 (memory): module-scope 1회 생성 — 매 알림마다 새 Audio 인스턴스 회피.
-              newOrderAudio.currentTime = 0
-              newOrderAudio.play().catch(swallow('seller:new-order-audio'))
-            } catch { /* non-critical */ }
-          }
-          lastMaxIdRef.current = maxId
-        }
-      }
-    } catch {
-      // silent fail
-    } finally {
-      if (isManual) setOrdersRefreshing(false)
-    }
-  }, [])
+  const storeName = localStorage.getItem('seller_name') || t('seller.home.myStore', { defaultValue: '내 매장' })
 
-  useEffect(() => {
-    pollOrders()
-    // 10s polling interval for near real-time order updates
-    // (SSE upgrade deferred due to Cloudflare Workers CPU/duration limits)
-    const interval = setInterval(() => { if (!document.hidden) pollOrders() }, 10000)
-    const onVisible = () => { if (!document.hidden) pollOrders() }
-    document.addEventListener('visibilitychange', onVisible)
-    return () => {
-      clearInterval(interval)
-      document.removeEventListener('visibilitychange', onVisible)
-      if (newOrderTimerRef.current) clearTimeout(newOrderTimerRef.current)
-    }
-  }, [pollOrders])
-
-  // ── Period-over-period 델타 계산 ──────────────────────────────────────────
-  // dailyStats: 최근 N일 데이터. 전반기(prev) vs 후반기(curr) 비교.
-  function pctDelta(curr: number, prev: number): number {
-    if (prev > 0) return Math.round(((curr - prev) / prev) * 100)
-    if (curr > 0) return 100
-    return 0
-  }
-  const halfLen = Math.max(1, Math.floor(dailyStats.length / 2))
-  const prevSlice = dailyStats.slice(0, halfLen)
-  const currSlice = dailyStats.slice(-halfLen)
-  const prevRevenue = prevSlice.reduce((s, d) => s + (d.sales || 0), 0)
-  const currRevenue = currSlice.reduce((s, d) => s + (d.sales || 0), 0)
-  const prevOrders = prevSlice.reduce((s, d) => s + (d.orders || 0), 0)
-  const currOrders = currSlice.reduce((s, d) => s + (d.orders || 0), 0)
-  const revenueDelta = pctDelta(currRevenue, prevRevenue)
-  const ordersDelta = pctDelta(currOrders, prevOrders)
-  // pending/viewers: sessionStorage에 이전 스냅샷이 있으면 비교
-  const snapshotKey = `seller_stats_prev_snapshot`
-  let pendingDelta = 0
-  try {
-    const raw = sessionStorage.getItem(snapshotKey)
-    if (raw) {
-      const prevSnap = JSON.parse(raw) as { pendingOrders?: number; ts?: number }
-      // 24시간 이상 된 스냅샷만 비교용으로 사용
-      if (prevSnap.ts && Date.now() - prevSnap.ts > 24 * 60 * 60 * 1000) {
-        pendingDelta = pctDelta(stats.pendingOrders || 0, prevSnap.pendingOrders || 0)
-      }
-    }
-  } catch { /* ignore */ }
-
-  // ── Helpers ────────────────────────────────────────────────────────────────
-  function fmtPrice(n: number) {
-    return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', maximumFractionDigits: 0 }).format(n || 0)
-  }
-  function timeAgo(date: Date) {
-    const s = Math.floor((Date.now() - date.getTime()) / 1000)
-    if (s < 60) return t('seller.secondsAgo', { count: s })
-    if (s < 3600) return t('seller.minutesAgo', { count: Math.floor(s / 60) })
-    return date.toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' })
-  }
-
-
-  // ── Render ──────────────────────────────────────────────────────────────────
-  const headerRight = (
-    <div className="flex items-center gap-2">
-      <div className="hidden sm:flex items-center bg-gray-100 rounded-lg p-1 gap-1">
-        {(['7d', '30d', '90d'] as const).map(p => (
-          <button
-            key={p}
-            onClick={() => setPeriod(p)}
-            className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-              period === p ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            {p === '7d' ? t('seller.last7days') : p === '30d' ? t('seller.last30days') : t('seller.last90days')}
-          </button>
-        ))}
-      </div>
-      {/* 🗑️ 2026-07-07 라이브커머스 제거: 송출 버튼 삭제. */}
-    </div>
-  )
+  // 폰에서는 매장 패널이 게이트 판정·STEP 1 티켓만 맡는다(시안엔 매장 블록이 없다). PC 는 우측 열에 카드로.
 
   return (
-    <SellerLayout title={t('seller.dashboard')} headerRight={headerRight} pendingOrders={stats.pendingOrders}>
-      {/* 🧱 2026-08-20 (대표): "너무 공백이 많아 — 컴팩트하게" → 세로 간격·패딩 축소. */}
-      <div className="mx-auto max-w-7xl space-y-3 p-3 sm:p-4">
-        {/* 🛡️ 2026-04-22 배치 131: 디자인 시스템 적용 */}
-        {/* 🧹 2026-08-31: 상단바가 이미 "대시보드"를 말하는데 페이지 제목이 또 "대시보드"였다.
-            같은 화면에서 같은 단어가 두 번 나오면 둘 중 하나는 자리만 차지한다.
-            ⇒ 부제에 묻혀 있던 **역할**을 제목으로 올린다 — 이 화면이 실제로 알려 줄 것은
-               "여기가 어디냐"(상단바가 답함)가 아니라 "당신이 무엇으로 로그인해 있느냐"다.
-            아이콘도 뗐다. 홈 카테고리 '전체' 와 같은 그림이라 뜻을 더하지 않았다. */}
-        <DashboardPageHeader
-          title={getRoleLabel(getCurrentSellerRole())}
-          subtitle={getRoleMeta(getCurrentSellerRole()).description}
-        />
-
-        {/* 🗑️ 2026-06-26 (대표 — '의미 없음'): 셀러 트래킹 링크(/browse?seller=) 제거.
-            대상 /browse(쇼핑)는 SHOPPING_TAB_HIDDEN 으로 숨김 + 정식 공유 경로는 유어샵(/u/{handle}) 이라 obsolete. */}
-
-        {/* 🏪 2026-08-24 (대표): 1번 섹션 = 내 매장 — 등록 매장 카드(여러 개면 여러 개, 카드마다
-            이용권 등록). 등록 매장이 없으면 이 자리가 STEP 1 게이트가 되고 아래 전부가 잠긴다. */}
-        <MyStoresPanel onGateChange={onGateChange} />
-
-        {storeGated === true ? (
-          <p className="text-center text-[12px] text-gray-400 py-8">
-            <Lock className="w-3.5 h-3.5 inline-block align-[-2px] mr-1 text-gray-400" aria-hidden="true" />{t('seller.stores.lockedNote', { defaultValue: '매장 등록을 마치면 이용권 등록 · 주문 · 정산 · 소개 협업이 열려요' })}
-          </p>
-        ) : (
-        <>
-        {/* 🧱 2026-08-23 (대표 AB테스트 — "중요한 작업들이 모여있어야"): 핵심 작업 5버튼을
-            헤더 바로 아래로 — 이용권 등록(주역)·주문·이용권 관리·정산·소개 파트너 찾기. */}
-        <PrimaryActions
-          pendingOrders={stats.pendingOrders || 0}
-          activeGroupBuys={activeGroupBuys}
-          settlementAvailable={stats.pendingSettlement ?? 0}
-        />
-
-        {/* 🧭 2026-07-19 (대표 UI v2 P2 — 심플 모드): 🏪 스캔 안내 카드 → 3액션 트리오(QR스캔·정산·내 딜)로 대체 */}
-        <RoleGate showFor="store-or-both">
-          <StoreQuickTrio />
-        </RoleGate>
-
-        {/* 🧭 2026-09-14 (대표 Rinda 시안 — "메인이 너무 보기 안좋아"):
-            종전엔 블록 13개가 **세로 한 줄로** 쌓여 있었다(주석 이력이 그 누적을 그대로 보여 준다).
-            신규 셀러는 그 대부분을 0 이거나 빈 채로 본다 → 화면에 위계가 없고 "뭘 먼저 봐야 하나"가
-            안 잡힌다. 블록을 **지우지 않고**(대표가 명시로 넣으라 한 것들이다) 위계만 준다:
-              · 전체 폭 = 매장 → 핵심 작업 → 숫자   (지금 상태)
-              · 좌 2/3  = 흐름·추이                 (읽는 것)
-              · 우 1/3  = 지금 할 일 · 내 페이지     (하는 것)
-            Rinda 와 같은 骨格이다. */}
-
-          {/* ── 2열: 좌=읽는 것 / 우=하는 것 ── */}
-          <div className="grid gap-3 lg:grid-cols-3">
-            <div className="space-y-3 lg:col-span-2">
-            {/* ── 숫자 (Rinda: 점 + 큰 숫자 + 설명. 컬러 아이콘 칩·하단 막대 없음) ── */}
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                {
-                  label: t('seller.totalRevenue'), value: fmtPrice(stats.totalRevenue),
-                  sub: stats.avgOrderValue > 0 ? t('seller.avgPerOrder', { amount: fmtPrice(stats.avgOrderValue) }) : undefined,
-                  dot: 'bg-brand',
-                  delta: revenueDelta, showDelta: dailyStats.length >= 2,
-                },
-                {
-                  label: t('seller.totalOrders'), value: `${formatNumber(stats.totalOrders || 0)}`,
-                  sub: stats.completedOrders > 0 ? t('seller.completedCount', { count: stats.completedOrders }) : undefined,
-                  dot: 'bg-gray-300',
-                  delta: ordersDelta, showDelta: dailyStats.length >= 2,
-                },
-                {
-                  label: t('seller.pendingOrders'), value: `${formatNumber(stats.pendingOrders || 0)}`,
-                  sub: t('seller.needsAction'),
-                  // 🚦 이 한 장만 색이 다르다 — 유일하게 **사람이 지금 움직여야 하는** 숫자다.
-                  dot: (stats.pendingOrders || 0) > 0 ? 'bg-amber-500' : 'bg-gray-300',
-                  delta: pendingDelta, showDelta: pendingDelta !== 0,
-                },
-                {
-                  label: t('seller.expectedSettlement', { defaultValue: '정산 예정' }),
-                  value: fmtPrice(stats.pendingSettlement ?? 0),
-                  sub: t('seller.primary.settlementsDesc', { defaultValue: '딜/현금 출금' }),
-                  dot: (stats.pendingSettlement ?? 0) > 0 ? 'bg-emerald-500' : 'bg-gray-300',
-                  delta: 0, showDelta: false,
-                },
-              ].map(card => (
-                <div key={card.label} className="rounded-2xl border border-rule bg-white p-4">
-                  <div className="flex items-center gap-1.5">
-                    <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${card.dot}`} aria-hidden />
-                    <span className="truncate text-[12px] font-medium text-gray-500">{card.label}</span>
-                  </div>
-                  {loading ? (
-                    <>
-                      <Skel className="mt-2 h-7 w-2/3" />
-                      <Skel className="mt-1 h-3 w-1/2" />
-                    </>
-                  ) : (
-                    <>
-                      <p className="mt-1.5 text-[22px] font-extrabold leading-tight tracking-tight text-gray-900 sm:text-[24px]">{card.value}</p>
-                      {card.showDelta && (
-                        <span className={`mt-1 inline-block text-[11px] font-bold ${card.delta >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                          {card.delta >= 0 ? '↑' : '↓'} {Math.abs(card.delta)}% {t('seller.vsPreviousPeriod')}
-                        </span>
-                      )}
-                      {card.sub && <p className="mt-1 text-[12px] text-gray-400">{card.sub}</p>}
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
-
-              {/* 🛡️ 2026-05-27: 영입자 + commission 분배 가시화 (영입자 있을 때만 표시) */}
-              <SellerReferralInfoCard />
-              {/* 🗑️ 2026-08-23 (대표): 라이브/공구 모드 배지·이중 렌더 제거 — 라이브 영구 중단으로 모드는 하나다. */}
-              <SellerGroupBuyOverview />
-              {/* ── Actionable insights callouts ── (2026-08-26 컴포넌트 추출 — 로직 불변) */}
-              <InsightsCallouts stats={stats} dailyStats={dailyStats} fmtPrice={fmtPrice} />
-              {/* 🛡️ 2026-05-15: KPI 통합 대시보드 (단골 / 공구 / 매출 / 분쟁) */}
-              <SellerKpiDashboard />
-
-              {/* ── Chart ── */}
-              {dailyStats.length > 0 && (
-                <div className="grid gap-3 md:grid-cols-2">
-                  {/* Sales chart — 스크롤 진입 시 recharts 번들 로드 */}
-                  <div className={`rounded-2xl border border-rule bg-white p-5 ${topProducts.length > 0 ? '' : 'md:col-span-2'}`}>
-                    <div className="mb-4 flex items-center justify-between">
-                      <h2 className="text-sm font-bold text-gray-900">{t('seller.dailySalesTrend')}</h2>
-                      <span className="text-xs text-gray-400">
-                        {period === '7d' ? t('seller.last7days') : period === '30d' ? t('seller.last30days') : t('seller.last90days')}
-                      </span>
-                    </div>
-                    <div style={{ width: '100%', height: 220 }}>
-                      <Suspense fallback={<div className="flex h-full items-center justify-center text-sm text-gray-400">{t('seller.chartLoading')}</div>}>
-                        <LazyChart data={dailyStats} salesLabel={t('seller.sales')} ordersLabel={t('seller.order')} />
-                      </Suspense>
-                    </div>
-                  </div>
-
-                  {/* Top products */}
-                  {topProducts.length > 0 && (
-                    <div className="rounded-2xl border border-rule bg-white p-5">
-                      <div className="mb-4 flex items-center justify-between">
-                        <h2 className="text-sm font-bold text-gray-900">{t('seller.topProducts')}</h2>
-                        <Link to="/seller/products" className="text-xs font-semibold text-brand-text hover:underline">{t('seller.all')}</Link>
-                      </div>
-                      <div className="space-y-3">
-                        {topProducts.slice(0, 5).map((p, i) => (
-                          <div key={p.product_id} className="flex items-center gap-3">
-                            <span className="w-5 text-center text-xs font-bold text-gray-400">{i + 1}</span>
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-xs font-medium text-gray-800">{p.product_name}</p>
-                              <p className="text-xs text-gray-400">{p.order_count}</p>
-                            </div>
-                            <span className="whitespace-nowrap text-xs font-semibold text-gray-700">
-                              {fmtPrice(p.total_revenue)}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-3">
-              {/* ── 지금 할 일 ──
-                  🧭 2026-09-14 (Rinda 시안 §1 마지막 줄): 종전엔 **할 일이 있을 때만** 이 카드가 떴다.
-                  없으면 자리 자체가 사라져, 신규 셀러 화면엔 `0` 네 장만 남았다. Rinda 는 빈 자리에
-                  0 을 띄우지 않고 **무엇을 하면 채워지는지**를 적는다. 그대로 따른다. */}
-              <div className="rounded-2xl border border-rule bg-white p-4">
-                <h3 className="mb-2.5 text-sm font-bold text-gray-900">{t('seller.actionItems')}</h3>
-                {(stats.pendingOrders > 0 || (stats.pendingSettlement ?? 0) > 0) ? (
-                  <div className="flex flex-wrap gap-2">
-                    {stats.pendingOrders > 0 && (
-                      <Link to="/seller/orders" className="flex items-center gap-1.5 rounded-lg bg-brand-tint px-3 py-2 text-xs font-bold text-brand-text">
-                        <ShoppingBag className="h-3.5 w-3.5" /> {t('seller.unprocessedOrderCount', { count: stats.pendingOrders })}
-                      </Link>
-                    )}
-                    {(stats.pendingSettlement ?? 0) > 0 && (
-                      <Link to="/seller/settlements" className="flex items-center gap-1.5 rounded-lg bg-brand-tint px-3 py-2 text-xs font-bold text-brand-text">
-                        {/* 🐛 2026-09-14: 종전엔 `settlementAvailableCount`({{count}}건) 에 **금액**을 넘겨
-                            ₩412,000 이 "정산 가능 412000건" 으로 찍혔다. 돈을 건수로 말하던 자리다. */}
-                        <CreditCard className="h-3.5 w-3.5" /> {t('seller.settlementAvailableAmount', { amount: fmtPrice(stats.pendingSettlement ?? 0), defaultValue: '정산 가능 {{amount}}' })}
-                      </Link>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-[13px] leading-relaxed text-gray-500">
-                    {t('seller.actionItemsEmpty', { defaultValue: '지금 처리할 일이 없어요. 이용권을 등록하면 주문과 정산이 여기에 모입니다.' })}
-                  </p>
-                )}
-              </div>
-
-              {/* 🧭 2026-06-09: 신규 셀러(상품 0·주문 0) 3단계 시작 안내 — 데이터 생기면 자동 소멸 */}
-              {(stats.totalProducts ?? -1) === 0 && (stats.totalOrders || 0) === 0 && (
-                <NewSellerSteps isStoreOwner={!isInfluencer} />
-              )}
-            </div>
+    <SellerLayout title={t('seller.dashboard')} pendingOrders={home.pendingOrders}>
+      <div className="mx-auto min-w-0 max-w-5xl space-y-5">
+        {/* ⚠️ 매장 패널은 **한 자리에만** 둔다(게이트 여부로 부모를 바꾸면 안 된다). 부모가 바뀌면 React 가 패널을
+            다시 마운트하고, 새 인스턴스가 '판정 중(null)'을 보고해 게이트가 풀렸다 잠겼다를 반복한다 — 첫 렌더 실측에서
+            STEP 1 티켓이 아예 안 보이던 원인. 그래서 격자는 늘 그대로 두고 **열 안의 내용만** 게이트로 바꾼다. */}
+        <div className="grid min-w-0 grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
+          {/* min-w-0: 가로 스크롤 레일(내 이용권)이 그리드 칸을 콘텐츠 폭으로 넓혀 화면 밖으로 밀던 것 차단(폰 실측). */}
+          <div className="min-w-0 space-y-5">
+            {storeGated === true ? (
+              <p className="py-6 text-center text-[12px] text-gray-400 lg:py-10">
+                <Lock className="mr-1 inline-block h-3.5 w-3.5 align-[-2px] text-gray-400" aria-hidden="true" />
+                {t('seller.stores.lockedNote', { defaultValue: '매장 등록을 마치면 이용권 등록 · 주문 · 정산 · 소개 협업이 열려요' })}
+              </p>
+            ) : (
+              <>
+                <TodayTicket
+                  loading={home.loading}
+                  storeName={storeName}
+                  todayRevenue={home.todayRevenue}
+                  todayOrders={home.todayOrders}
+                  pendingOrders={home.pendingOrders}
+                  withdrawable={home.withdrawable}
+                />
+                {/* 📱 폰: 할 일은 티켓 바로 아래(M2). PC: 우측 열로 간다(P-홈). 같은 부품 하나를 자리만 바꿔 그린다. */}
+                {!isPc && <TodoRows pendingOrders={home.pendingOrders} withdrawable={home.withdrawable} hasVouchers={home.vouchers.length > 0} />}
+                <MyVouchersRail vouchers={home.vouchers} loaded={home.vouchersLoaded} />
+                <WeekSummary revenue={home.weekRevenue} orders={home.weekOrders} delta={home.weekDelta} week7={home.week7} hasDaily={home.hasDaily} />
+              </>
+            )}
           </div>
+          {/* 게이트 중엔 폰에서 STEP 1 티켓이 잠금 안내보다 위로 온다(order-first). */}
+          <div className={`min-w-0 space-y-5 lg:sticky lg:top-0 ${storeGated === true ? 'order-first lg:order-none' : ''}`}>
+            {isPc && storeGated !== true && <TodoRows pendingOrders={home.pendingOrders} withdrawable={home.withdrawable} hasVouchers={home.vouchers.length > 0} />}
+            <MyStoresPanel onGateChange={onGateChange} gateOnly={!isPc} />
+          </div>
+        </div>
 
-          {/* 🖥️ 2026-09-14: 이 카드는 **가로 한 줄**로 설계돼 있다(썸네일 + 주소 + 버튼 4개).
-              1/3 컬럼에 넣었더니 "내 공개 페이지"가 한 글자씩 세로로 쪼개졌다 — 전체 폭에 둔다. */}
-          <PublicPagePreview followerCount={followerCount} />
-
-        </>
-        )}
-
-        {/* ☎️ 2026-08-01 O9 — 운영자 문의 경로(X8 확정 ⓒ). 미설정이면 자기가 안 그린다.
-            게이트 밖 — 문의 경로는 매장 등록 전에도 열려 있어야 한다. */}
+        {/* ☎️ 2026-08-01 O9 — 운영자 문의 경로. 미설정이면 자기가 안 그린다. 게이트 밖. */}
         <SellerSupportContact />
-
       </div>
     </SellerLayout>
   )

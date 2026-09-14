@@ -36,9 +36,15 @@ const isApproved = (s: OperableStore) => s.status === 'active' || s.status === '
 interface Props {
   /** 게이트 여부를 부모(대시보드)에 알린다 — 다른 작업 잠금에 사용. null = 판정 중. */
   onGateChange: (gated: boolean | null) => void
+  /**
+   * 📱 2026-09-14 (홈 M2): 폰 홈에는 매장 카드 블록이 없다(시안 — 매장 이름은 오늘 티켓 밴드가 말하고, 관리는
+   *   더보기 › 매장). 그런데 **게이트 판정은 이 컴포넌트가 한다**(서버 store_ready + 매장 목록). 그래서 폰에서는
+   *   `gateOnly` 로 마운트해 판정·STEP 1 티켓만 맡기고, 등록 매장이 있으면 아무것도 그리지 않는다.
+   */
+  gateOnly?: boolean
 }
 
-export default function MyStoresPanel({ onGateChange }: Props) {
+export default function MyStoresPanel({ onGateChange, gateOnly = false }: Props) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [stores, setStores] = useState<OperableStore[] | null>(null)
@@ -98,6 +104,7 @@ export default function MyStoresPanel({ onGateChange }: Props) {
   }
 
   if (loading) {
+    if (gateOnly) return null
     return <div className="flex items-center gap-2 rounded-2xl border border-rule bg-white p-4 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin" /> {t('seller.stores.loading', { defaultValue: '내 매장 확인 중…' })}</div>
   }
 
@@ -137,6 +144,8 @@ export default function MyStoresPanel({ onGateChange }: Props) {
       </>
     )
   }
+
+  if (gateOnly) return null
 
   // ── 매장 카드 목록 — 여러 매장이면 여러 카드, 카드마다 이용권 등록 ──
   return (

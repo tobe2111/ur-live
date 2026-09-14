@@ -164,7 +164,7 @@ export default function SellerProductNewPage() {
 
   return (
     <SellerLayout title={t('seller.productCreate')}>
-      <div className="mx-auto max-w-6xl space-y-5 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-5">
         <DashboardPageHeader
           title={t('seller.productCreate')}
           subtitle={t('seller.newProductDesc')}
