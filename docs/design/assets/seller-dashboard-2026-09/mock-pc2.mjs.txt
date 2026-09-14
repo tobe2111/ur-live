@@ -1,0 +1,160 @@
+import { createRequire } from 'node:module'
+import { writeFileSync } from 'node:fs'
+const require = createRequire('/home/user/ur-live/package.json')
+const { chromium } = require('playwright-core')
+const OUT = '/tmp/claude-0/-home-user-ur-live/3f48ebd5-3b52-5f8a-846d-cad65cac2cd1/scratchpad/mock'
+
+const CSS = `
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:14px/1.45 -apple-system,'Pretendard','Apple SD Gothic Neo',sans-serif;background:#F8F7FC;color:#111827;-webkit-font-smoothing:antialiased}
+.wrap{display:flex;min-height:100vh}
+.side{width:240px;flex:0 0 240px;background:#fff;border-right:1px solid rgba(17,24,39,.08);padding:16px 14px;display:flex;flex-direction:column}
+.logo{font-weight:800;font-size:17px;letter-spacing:-.02em;padding:2px 8px 14px}
+.logo i{display:inline-block;width:6px;height:6px;border-radius:50%;background:#1C69EF;margin-left:1px}
+.ws{border:1px solid rgba(17,24,39,.08);border-radius:12px;padding:10px;display:flex;gap:9px;align-items:center;margin-bottom:12px}
+.ws .av{width:32px;height:32px;border-radius:9px;background:#EAF1FE;color:#1C69EF;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}
+.ws b{display:block;font-size:13px}.ws s{display:block;font-size:11px;color:#9CA3AF;text-decoration:none}
+.cta{display:flex;align-items:center;justify-content:center;gap:6px;background:#1C69EF;color:#fff;border-radius:10px;padding:11px;font-weight:800;font-size:13.5px;margin-bottom:14px}
+.nav a{display:flex;align-items:center;gap:10px;padding:10px 10px;border-radius:9px;font-size:14px;color:#6B7280;font-weight:600;text-decoration:none}
+.nav a.on{background:#EAF1FE;color:#111827;font-weight:800}
+.nav .dot{width:18px;height:18px;border-radius:5px;border:1.6px solid #9CA3AF;flex:0 0 18px}
+.nav a.on .dot{background:#1C69EF;border-color:#1C69EF}
+.nav .cnt{margin-left:auto;background:#1C69EF;color:#fff;border-radius:999px;min-width:20px;height:20px;padding:0 6px;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.sep{border-top:1px solid rgba(17,24,39,.08);margin:10px 4px}
+.nav.sub a{font-size:13px;padding:8px 10px;color:#9CA3AF}
+.main{flex:1;min-width:0}
+.top{height:60px;background:#fff;border-bottom:1px solid rgba(17,24,39,.08);display:flex;align-items:center;padding:0 28px;gap:12px}
+.top b{font-size:16px}.top .r{margin-left:auto;display:flex;gap:10px;align-items:center}
+.bell{width:34px;height:34px;border-radius:50%;background:#F3F4F6;position:relative}
+.bell:after{content:"";position:absolute;top:8px;right:8px;width:7px;height:7px;border-radius:50%;background:#1C69EF}
+.body{padding:24px 28px 40px;max-width:1180px}
+.g{display:grid;gap:14px}
+h2{font-size:15px;font-weight:800;display:flex;justify-content:space-between;align-items:baseline;margin:0 0 10px}
+h2 a{font-size:12.5px;color:#1C69EF;font-weight:700}
+.ticket{background:#fff;border-radius:18px;overflow:hidden}
+.ticket .band{background:#1C69EF;color:#fff;padding:12px 20px;display:flex;justify-content:space-between;font-size:14px;font-weight:800}
+.ticket .band span:last-child{font-weight:600;opacity:.9}
+.ticket .body2{padding:20px}
+.quad{display:grid;grid-template-columns:repeat(4,1fr)}
+.quad div{padding:0 10px}.quad div+div{border-left:1px solid rgba(17,24,39,.08)}
+.quad b{display:block;font-size:26px;font-weight:800;letter-spacing:-.02em}
+.quad s{display:block;text-decoration:none;font-size:12.5px;color:#9CA3AF;margin-top:4px}
+.quad .up{color:#1C69EF;font-weight:700;font-size:12px;margin-left:6px}
+.white{background:#fff;border-radius:16px;padding:6px 18px}
+.row{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid rgba(17,24,39,.08)}
+.row:last-child{border-bottom:0}
+.row .dot{width:8px;height:8px;border-radius:50%;background:#1C69EF;flex:0 0 8px}
+.row b{display:block;font-size:14px}.row s{display:block;text-decoration:none;font-size:12.5px;color:#9CA3AF;margin-top:2px}
+.row .act{margin-left:auto;background:#EAF1FE;color:#1C69EF;font-weight:800;font-size:12.5px;padding:7px 12px;border-radius:9px;white-space:nowrap}
+.vgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.vc{background:#fff;border-radius:16px;overflow:hidden}
+.vc .th{height:110px;background:linear-gradient(135deg,#DCE7FB,#EAF1FE)}
+.vc .t{padding:12px 14px}
+.vc b{display:block;font-size:14px}.vc s{display:block;text-decoration:none;font-size:12.5px;color:#9CA3AF;margin-top:4px}
+.vc em{font-style:normal;color:#1C69EF;font-weight:800}
+.vc.add{display:flex;align-items:center;justify-content:center;background:#EAF1FE;color:#1C69EF;font-weight:800;font-size:15px;min-height:170px}
+.chart{height:180px;border-radius:12px;background:linear-gradient(180deg,#EAF1FE,#fff);border:1px solid #EEF0F4;position:relative;overflow:hidden}
+.chart:after{content:"";position:absolute;left:0;right:0;bottom:0;height:60%;background:repeating-linear-gradient(90deg,#1C69EF 0 14px,transparent 14px 40px);opacity:.25}
+.sticky{position:sticky;top:20px}
+.note{position:fixed;right:14px;top:14px;background:#111827;color:#fff;font-size:11px;font-weight:700;padding:6px 10px;border-radius:8px;opacity:.85;z-index:9}
+.seg{display:inline-flex;background:#fff;border-radius:11px;padding:4px;margin:14px 0}
+.seg div{padding:8px 16px;border-radius:8px;font-size:13.5px;font-weight:700;color:#9CA3AF}
+.seg div.on{background:#1C69EF;color:#fff}
+.tbl{background:#fff;border-radius:16px;overflow:hidden}
+.tr{display:grid;grid-template-columns:64px 1.6fr 1fr .8fr 1fr 60px 90px;gap:16px;align-items:center;padding:12px 20px;border-bottom:1px solid rgba(17,24,39,.08)}
+.tr.h{font-size:12px;color:#9CA3AF;font-weight:700;padding:12px 20px 8px}
+.tr:last-child{border-bottom:0}
+.tr .th{width:56px;height:56px;border-radius:10px;background:linear-gradient(135deg,#DCE7FB,#EAF1FE)}
+.tr b{display:block;font-size:14px}.tr .p{font-size:12.5px;color:#6B7280}
+.tr em{font-style:normal;color:#1C69EF;font-weight:800}
+.sw{width:42px;height:24px;border-radius:12px;background:#1C69EF;position:relative}
+.sw:after{content:"";position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:#fff}
+.sw.off{background:#D1D5DB}.sw.off:after{right:auto;left:3px}
+.ghostbtn{border:1px solid rgba(17,24,39,.12);border-radius:9px;padding:7px 12px;font-size:12.5px;font-weight:700;text-align:center;background:#fff}
+.big{font-size:30px;font-weight:800;letter-spacing:-.03em}
+.mut{color:#9CA3AF;font-size:13px}
+.up{color:#1C69EF;font-weight:700}
+.feed{position:relative;padding-left:26px}
+.feed:before{content:"";position:absolute;left:8px;top:8px;bottom:8px;width:2px;background:rgba(17,24,39,.08)}
+.ev{position:relative;padding:12px 0 12px 4px}
+.ev:before{content:"";position:absolute;left:-23px;top:18px;width:10px;height:10px;border-radius:50%;background:#C6C9D2;border:2px solid #F8F7FC}
+.ev.hot:before{background:#1C69EF}
+.ev .t{font-size:11.5px;color:#9CA3AF;font-weight:600}.ev b{display:block;font-size:14.5px;margin-top:2px}.ev s{display:block;text-decoration:none;font-size:13px;color:#6B7280;margin-top:2px}
+`
+const SIDE = (on) => `<div class="side">
+ <div class="logo">urdeal<i></i> <span style="font-weight:600;color:#9CA3AF;font-size:12px;margin-left:4px">사장님</span></div>
+ <div class="ws"><div class="av">홍</div><div><b>홍대돈까스</b><s>운영 중 · 매장 1곳</s></div></div>
+ <div class="cta">＋ 이용권 등록</div>
+ <div class="nav">
+  ${[['홈',''],['주문','3'],['이용권',''],['정산','']].map(([n,c])=>`<a class="${n===on?'on':''}"><i class="dot"></i>${n}${c?`<span class="cnt">${c}</span>`:''}</a>`).join('')}
+ </div>
+ <div class="sep"></div>
+ <div class="nav sub">${['내 매장','리뷰','소개 파트너','마케팅','설정'].map(n=>`<a><i class="dot" style="opacity:.6"></i>${n}</a>`).join('')}</div>
+</div>`
+const page = (label, title, inner, on) => `<!doctype html><meta charset="utf-8"><style>${CSS}</style><div class="note">${label}</div>
+<div class="wrap">${SIDE(on)}<div class="main"><div class="top"><b>${title}</b><span class="mut">홍대돈까스</span><div class="r"><div class="bell"></div></div></div><div class="body">${inner}</div></div></div>`
+
+// ── P-홈 (= M2 를 2열로) ──
+const HOME = `<div class="g" style="grid-template-columns:1fr 340px;align-items:start">
+<div class="g">
+ <div class="ticket"><div class="band"><span>오늘 · 9월 14일 (월)</span><span>운영 중</span></div>
+  <div class="body2"><div class="quad">
+   <div><b>₩248,000</b><s>매출 <span class="up">+12%</span></s></div><div><b>7</b><s>주문</s></div><div><b>3</b><s>처리 대기</s></div><div><b>₩412,000</b><s>정산 가능</s></div>
+  </div></div></div>
+ <div><h2>내 이용권 <a>전체 관리 →</a></h2>
+  <div class="vgrid">
+   ${[['치즈돈까스 2인','12건 · ','₩420,000'],['점심 정식','9건 · ','₩288,000'],['저녁 세트','4건 · ','₩160,000']].map(([n,c,m])=>`<div class="vc"><div class="th"></div><div class="t"><b>${n}</b><s>${c}<em>${m}</em></s></div></div>`).join('')}
+   <div class="vc add">＋ 등록</div>
+  </div></div>
+ <div><h2>이번 주 <a>성과 보기 →</a></h2>
+  <div class="white" style="padding:18px"><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px"><div class="big" style="font-size:24px">₩1,284,000</div><span class="mut">주문 37건 · 지난주보다 <span class="up">+18%</span></span></div><div class="chart"></div></div></div>
+</div>
+<div class="sticky g">
+ <div><h2>지금 처리할 일</h2>
+  <div class="white">
+   <div class="row"><i class="dot"></i><div><b>새 주문 3건</b><s>확인하고 준비를 시작하세요</s></div><span class="act">확인</span></div>
+   <div class="row"><i class="dot" style="background:#10B981"></i><div><b>정산 가능 ₩412,000</b><s>지금 출금 신청할 수 있어요</s></div><span class="act">출금</span></div>
+   <div class="row"><i class="dot" style="background:#C6C9D2"></i><div><b>리뷰 답글 2건</b><s>"돈까스가 바삭하고…"</s></div><span class="act" style="background:#F3F4F6;color:#374151">답글</span></div>
+  </div></div>
+ <div><h2>내 매장</h2>
+  <div class="white" style="padding:16px"><b style="font-size:14px">홍대돈까스</b><div class="mut" style="margin:3px 0 10px">전북 전주시 덕진구 가리내10길 10 · 운영 중</div><div style="display:flex;gap:8px"><div class="ghostbtn" style="flex:1">매장 정보</div><div class="ghostbtn" style="flex:1">공개 페이지</div></div></div></div>
+</div></div>`
+
+// ── P-이용권 (= M4 를 넓게) ──
+const VOUCH = `<div style="display:flex;justify-content:space-between;align-items:flex-end">
+ <div><div class="mut">이번 달</div><div style="display:flex;align-items:baseline;gap:10px"><div class="big">₩1,284,000</div><span class="up">+18%</span></div><div class="mut" style="margin-top:4px">주문 37건 · 정산 가능 <b style="color:#111827">₩412,000</b></div></div>
+ <div class="seg"><div class="on">판매 중 5</div><div>판매 중지 2</div><div>초안 1</div></div>
+</div>
+<div class="tbl">
+ <div class="tr h"><span></span><span>이용권</span><span>가격</span><span>판매</span><span>매출</span><span>판매</span><span></span></div>
+ ${[['치즈돈까스 2인','₩35,000 → ₩28,000','12건','₩420,000',''],['점심 정식','₩12,000 → ₩9,900','9건','₩288,000',''],['저녁 세트','₩48,000 → ₩39,000','4건','₩160,000',''],['커플 세트','₩60,000 → ₩49,000','2건','₩98,000',''],['런치 음료 포함','₩14,000 → ₩11,000','0건','₩0','off']]
+ .map(([n,p,c,m,off])=>`<div class="tr"><div class="th"></div><div><b>${n}</b><div class="p">홍대돈까스 · 식사</div></div><div class="p">${p}</div><div>${c}</div><div><em>${m}</em></div><div class="sw ${off}"></div><div class="ghostbtn">편집</div></div>`).join('')}
+</div>`
+
+// ── P-주문 (= M3 시간순 + 오른쪽 상세) ──
+const ORDERS = `<div class="g" style="grid-template-columns:1fr 380px;align-items:start">
+<div><div class="seg" style="margin-top:0"><div class="on">처리 대기 3</div><div>준비 중 2</div><div>완료 32</div></div>
+ <div class="white" style="padding:10px 18px"><div class="feed">
+  <div class="ev hot"><div class="t">방금</div><b>치즈돈까스 2인 · 김○○</b><s>₩35,000 · 카드 · 사용 예정 오늘 18:30</s></div>
+  <div class="ev hot"><div class="t">12분 전</div><b>점심 정식 · 이○○</b><s>₩32,000 · 카드</s></div>
+  <div class="ev hot"><div class="t">40분 전</div><b>저녁 세트 · 박○○</b><s>₩39,000 · 딜 5,000 + 카드</s></div>
+  <div class="ev"><div class="t">어제 21:10</div><b>치즈돈까스 2인 · 최○○</b><s>사용 완료</s></div>
+ </div></div></div>
+<div class="sticky"><div class="ticket"><div class="band"><span>주문 #GB-3-1788</span><span>처리 대기</span></div><div class="body2">
+ <b style="font-size:16px">치즈돈까스 2인</b><div class="mut" style="margin:4px 0 14px">김○○ · 010-****-1234 · 방금</div>
+ <div class="row" style="padding:10px 0"><span class="mut">결제</span><b style="margin-left:auto">₩35,000 카드</b></div>
+ <div class="row" style="padding:10px 0"><span class="mut">사용 예정</span><b style="margin-left:auto">오늘 18:30</b></div>
+ <div class="row" style="padding:10px 0"><span class="mut">이용권 코드</span><b style="margin-left:auto">7K2P-Q9</b></div>
+ <div class="cta" style="margin:16px 0 0">주문 확인</div>
+</div></div></div></div>`
+
+const V = [
+ ['P-home','PC 홈 (모바일 M2 를 2열로)', '홈', HOME, '홈'],
+ ['P-vouchers','PC 이용권 (모바일 M4 를 표로)', '이용권', VOUCH, '이용권'],
+ ['P-orders','PC 주문 (모바일 M3 + 우측 상세)', '주문', ORDERS, '주문'],
+]
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--no-sandbox'] })
+const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 })
+const pg = await ctx.newPage()
+for (const [k,l,title,inner,on] of V) { const f=`${OUT}/${k}.html`; writeFileSync(f, page(l,title,inner,on)); await pg.goto('file://'+f); await pg.waitForTimeout(200); await pg.screenshot({ path:`${OUT}/seller-${k}.png`, fullPage:true }); console.log('ok',k) }
+await browser.close()
