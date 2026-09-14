@@ -42,14 +42,15 @@ export async function icon(name, color, px = 256) {
   const svg = renderToStaticMarkup(React.createElement(Comp, { color: '#' + color, size: px, strokeWidth: 1.7 }));
   return 'image/png;base64,' + (await sharp(Buffer.from(svg)).png().toBuffer()).toString('base64');
 }
-export async function wordmark(fill) {
+export async function wordmark(fill, scale = 1) {
   // Poppins 가 이 환경에 없어(대체 폰트로 그려지면 점이 글자에서 떨어진다) 글자를 먼저 그려 폭을 실측한 뒤 점을 붙인다.
-  const fs = 96;
-  const textSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="900" height="140"><text x="10" y="106" font-family="Pretendard" font-weight="800" font-size="${fs}" letter-spacing="-4" fill="#${fill}">urdeal</text></svg>`;
+  // scale: 표지처럼 크게 박을 때 해상도를 올린다(96px × scale).
+  const fs = 96 * scale;
+  const textSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${900 * scale}" height="${140 * scale}"><text x="${10 * scale}" y="${106 * scale}" font-family="Pretendard" font-weight="800" font-size="${fs}" letter-spacing="${-4 * scale}" fill="#${fill}">urdeal</text></svg>`;
   const txt = sharp(Buffer.from(textSvg)).png();
   const trimmed = await txt.trim().toBuffer({ resolveWithObject: true });
   const tw = trimmed.info.width, th = trimmed.info.height;
-  const r = 10, gap = 12, pad = 8;
+  const r = 10 * scale, gap = 12 * scale, pad = 8 * scale;
   const W_ = tw + gap + r * 2 + pad * 2, H_ = th + pad * 2;
   const dot = `<svg xmlns="http://www.w3.org/2000/svg" width="${W_}" height="${H_}"><circle cx="${pad + tw + gap + r}" cy="${pad + th - r - 2}" r="${r}" fill="#${C.brand}"/></svg>`;
   const buf = await sharp({ create: { width: W_, height: H_, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
@@ -70,6 +71,16 @@ export async function shot(shotsDir, name, phoneStyle = 'minimal') {
   return null;
 }
 
+/** 데스크톱 캡처를 둥근 모서리로 깎아 base64 로 돌려준다(폭·높이 포함). 없으면 null. */
+export async function roundedImage(file, radiusPx = 28) {
+  if (!fs.existsSync(file)) return null;
+  const img = sharp(file);
+  const meta = await img.metadata();
+  const mask = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${meta.width}" height="${meta.height}"><rect x="0" y="0" width="${meta.width}" height="${meta.height}" rx="${radiusPx}" ry="${radiusPx}" fill="#fff"/></svg>`);
+  const buf = await img.png().composite([{ input: mask, blend: 'dest-in' }]).png().toBuffer();
+  return { data: 'image/png;base64,' + buf.toString('base64'), width: meta.width, height: meta.height, ratio: meta.width / meta.height };
+}
+
 /**
  * 덱 하나를 시작한다. 반환값의 헬퍼로 슬라이드를 그린다.
  * @param {object} o  { title, footer, shotsDir, shotKeys, phoneStyle, icons }
@@ -82,6 +93,8 @@ export async function createDeck({ title, footer, shotsDir, shotKeys = [], phone
 
   const wmDark = await wordmark(C.ink);
   const wmLight = await wordmark(C.darkText);
+  const wmBig = await wordmark(C.ink, 5);
+  const wmBigLight = await wordmark(C.darkText, 5);
   const wmH = 0.26, wmW = wmH * wmDark.ratio;
   const ic = {};
   const base = ['FiPercent', 'FiLayers', 'FiUsers', 'FiCreditCard', 'FiMapPin', 'FiUserCheck', 'FiSearch', 'FiEye', 'FiBarChart2',
@@ -93,6 +106,8 @@ export async function createDeck({ title, footer, shotsDir, shotKeys = [], phone
   ic.FiGlobeW = await icon('FiGlobe', C.darkText);
   ic.FiMessageW = await icon('FiMessageCircle', C.darkText);
   ic.FiFileTextW = await icon('FiFileText', C.darkText);
+  ic.FiCheckW = await icon('FiCheck', 'FFFFFF');
+  ic.FiMinusG = await icon('FiMinus', C.gray);
   const shots = {};
   for (const k of shotKeys) shots[k] = await shot(shotsDir, k, phoneStyle);
   const missing = Object.entries(shots).filter(([, v]) => !v).map(([k]) => k);
@@ -176,8 +191,8 @@ export async function createDeck({ title, footer, shotsDir, shotKeys = [], phone
     return y + 0.36 + body.length * rowH;
   }
   /** 손님 경험 4단계 (세 덱 공통 블록). 폰 4장을 가로로. */
-  function customerSteps(slide, { y = 2.4, h = 4.2, keys = ['home', 'detail', 'use', 'shop'] } = {}) {
-    const caps = ['찾기: 홈에서 동네 이용권', '결제: 정가와 할인가를 함께', '발급: 결제 즉시 내 이용권', '사용: 매장에서 QR 또는 확인코드'];
+  function customerSteps(slide, { y = 2.4, h = 4.2, keys = ['home', 'detail', 'use', 'shop'], caps: capsIn } = {}) {
+    const caps = capsIn || ['찾기: 홈에서 동네 이용권', '결제: 정가와 할인가를 함께', '발급: 결제 즉시 내 이용권', '사용: 매장에서 QR 또는 확인코드'];
     const frameRatio = (780 + 44) / (1688 + 44);
     const pw = h * frameRatio, gap = (W - 2 * M - 4 * pw) / 3;
     keys.forEach((k, i) => {
@@ -194,5 +209,58 @@ export async function createDeck({ title, footer, shotsDir, shotKeys = [], phone
       { x: x + 0.3, y: y + 0.52, w: w - 0.6, h: h - 0.62, fontSize: 10.5, color: C.ink, lineSpacingMultiple: 1.45, valign: 'top' });
   }
 
-  return { pres, ic, shots, T, chrome, title, lead, card, iconCircle, numBadge, hr, label, phone, kv, table, customerSteps, honesty };
+  /** 표지: 로고를 크게. 페이지 번호에 안 센다(REVU 류 대외 제안서 관행). */
+  function cover(slide, { kicker = '우리동네 이용권', deckName, sub, date = '2026년 9월', dark = false } = {}) {
+    slide.background = { color: dark ? C.dark : C.bg };
+    const wm = dark ? wmBigLight : wmBig;
+    const lw = 5.6, lh = lw / wm.ratio;
+    const ly = 2.45;
+    T(slide, kicker, { x: M, y: ly - 0.62, w: 8, h: 0.4, fontSize: 16, bold: true, color: C.brand, charSpacing: 0.5 });
+    slide.addImage({ data: wm.data, x: M - 0.04, y: ly, w: lw, h: lh });
+    if (deckName) T(slide, deckName, { x: M, y: ly + lh + 0.45, w: 9, h: 0.55, fontSize: 24, bold: true, color: dark ? C.darkText : C.ink, charSpacing: -0.6 });
+    if (sub) T(slide, sub, { x: M, y: ly + lh + 1.05, w: 8.5, h: 0.5, fontSize: 12.5, color: dark ? C.darkMuted : C.inkSoft, lineSpacingMultiple: 1.45, valign: 'top' });
+    slide.addShape(pres.shapes.LINE, { x: M, y: H - 0.95, w: W - 2 * M, h: 0, line: { color: dark ? C.ink2 : C.rule, width: 0.75 } });
+    T(slide, FACTS.biz + ' · ' + FACTS.site, { x: M, y: H - 0.82, w: 8, h: 0.25, fontSize: 9, color: dark ? C.darkMuted : C.gray });
+    T(slide, date, { x: W - M - 3, y: H - 0.82, w: 3, h: 0.25, fontSize: 9, color: dark ? C.darkMuted : C.gray, align: 'right' });
+    T(slide, '본 문서의 내용을 무단으로 복제·전재·재배포할 수 없습니다.', { x: M, y: H - 0.58, w: 8, h: 0.25, fontSize: 8.5, color: dark ? C.darkMuted : C.gray });
+  }
+  /** 화면 위에 붙이는 말풍선 칩(브랜드 알약). 폭은 글자 수로 추정한다. 반환값은 폭. */
+  function chip(slide, x, y, text, { tone = 'brand', size = 9.5 } = {}) {
+    const w = Math.max(0.7, text.length * size * 0.0125 + 0.34), h = 0.3;
+    const fill = tone === 'ink' ? C.ink : tone === 'white' ? C.surface : C.brand;
+    const color = tone === 'white' ? C.ink : 'FFFFFF';
+    slide.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y, w, h, rectRadius: 0.15, fill: { color: fill }, line: { color: fill, width: 0 }, shadow: { type: 'outer', color: '16181C', blur: 6, offset: 2, angle: 90, opacity: 0.22 } });
+    T(slide, text, { x, y, w, h, fontSize: size, bold: true, color, align: 'center', valign: 'middle', charSpacing: -0.2 });
+    return w;
+  }
+  /** 데스크톱 캡처를 둥근 카드에 얹는다. 높이는 비율로 계산해 반환. */
+  async function screen(slide, file, x, y, w, { caption, radius = 28 } = {}) {
+    const im = await roundedImage(file, radius);
+    if (!im) { card(slide, x, y, w, w * 0.5); T(slide, '캡처 자리', { x, y: y + w * 0.25 - 0.15, w, h: 0.3, fontSize: 10, color: C.gray, align: 'center' }); return w * 0.5; }
+    const h = w / im.ratio;
+    card(slide, x - 0.08, y - 0.08, w + 0.16, h + 0.16);
+    slide.addImage({ data: im.data, x, y, w, h });
+    if (caption) T(slide, caption, { x, y: y + h + 0.2, w, h: 0.26, fontSize: 9.5, color: C.inkSoft, align: 'center' });
+    return h;
+  }
+  /** "Q. 왜 …?" 뒤에 이유 셋. 반환값은 끝 y. */
+  function qa3(slide, x, y, w, q, items, { dark = false, rowH = 0.6 } = {}) {
+    T(slide, q, { x, y, w, h: 0.32, fontSize: 12.5, bold: true, color: dark ? C.darkText : C.ink, charSpacing: -0.3, valign: 'middle' });
+    let yy = y + 0.42;
+    items.forEach((t, i) => {
+      numBadge(slide, i + 1, x, yy + 0.03, 0.26, { filled: false });
+      T(slide, t, { x: x + 0.38, y: yy, w: w - 0.38, h: rowH - 0.06, fontSize: 10.2, color: dark ? C.darkMuted : C.inkSoft, valign: 'top', lineSpacingMultiple: 1.32 });
+      yy += rowH;
+    });
+    return yy;
+  }
+  /** 숫자 타일(REVU 류 2×2). */
+  function statTile(slide, x, y, w, h, { icon: name, n, l, brand = false }) {
+    card(slide, x, y, w, h);
+    T(slide, l, { x: x + 0.28, y: y + 0.22, w: w - 1.0, h: 0.28, fontSize: 10, bold: true, color: C.gray, charSpacing: 0.3 });
+    T(slide, n, { x: x + 0.28, y: y + 0.5, w: w - 1.0, h: h - 0.6, fontSize: 24, bold: true, color: brand ? C.brand : C.ink, charSpacing: -0.8, valign: 'middle' });
+    if (name) iconCircle(slide, name, x + w - 0.8, y + h / 2 - 0.25, 0.5);
+  }
+
+  return { pres, ic, shots, T, chrome, title, lead, card, iconCircle, numBadge, hr, label, phone, kv, table, customerSteps, honesty, cover, chip, screen, qa3, statTile };
 }

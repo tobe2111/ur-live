@@ -1,5 +1,5 @@
-// 유어딜 매장 사장님 소개서 (.pptx) 생성기 — v5 (2026-09-14): 대표 최종 구성안, 9장 ("이렇게.").
-// 표지 → 한계 → 차별점·실계산 → 노출·판매(크리에이터 풀) → 활용 시나리오 → FAQ → 등록 → 운영·정산 → 마무리.
+// 유어딜 매장 사장님 소개서 (.pptx) 생성기 — v6 (2026-09-14): 대표 최종 구성안 9장 + 로고 표지 + 손님 흐름 1장 = 11장.
+// 로고 표지 → 헤드라인 → 한계 → 차별점·실계산 → 손님 흐름(화면 4장) → 노출·판매(크리에이터 풀) → 활용 시나리오 → FAQ → 등록 → 운영·정산 → 마무리.
 // 성과 수치("매출 O% 증가")는 쓰지 않는다. 상세판(16장, 이용 안내·기대 수익 표)은 urdeal-store-owner-deck-detail.build.mjs.
 // 기획: docs/business/proposals/three-decks-plan-2026-09.md §2 · 사실 SSOT: 같은 문서 §0 + docs/design/actor-benefit-map.md
 // 재생성: cd /tmp/deck && npm i pptxgenjs sharp react react-dom react-icons  (node_modules 심링크는 README 참조)
@@ -14,10 +14,16 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
 (async () => {
   const d = await createDeck({
     title: '유어딜 매장 사장님 소개서', footer: '유어딜 매장 사장님 소개', shotsDir: SHOTS_DIR,
-    shotKeys: ['home', 'detail', 'use', 'store-new', 'store-new-channel', 'seller-settlements'],
+    shotKeys: ['home', 'detail', 'use', 'shop', 'store-new', 'store-new-channel', 'seller-settlements'],
     icons: ['FiCalendar', 'FiLink', 'FiGrid'],
   });
-  const { pres, ic, T, chrome, title, lead, card, iconCircle, numBadge, hr, label, phone, kv } = d;
+  const { pres, ic, T, chrome, title, lead, card, iconCircle, numBadge, hr, label, phone, kv, cover, chip, screen, customerSteps } = d;
+
+  // ───────── 00 로고 표지 ─────────
+  {
+    const s = pres.addSlide();
+    cover(s, { deckName: '매장 사장님 소개서', sub: '손님이 먼저 결제하고 가게로 오는 이용권. 미리 내는 돈 없이, 팔린 뒤에만 수수료 10%.' });
+  }
 
   // ───────── 01 표지 ─────────
   {
@@ -102,6 +108,16 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     s.addNotes('상품 2888 실측: 정가 25,000 / 판매가 16,500 → 수수료 1,650 → 입금 14,850. 카드 수수료(현재 약 2.75%, 변동 가능)는 유어딜 부담. 월 판매 시나리오와 업종 평균가 표는 상세판 5장.');
   }
 
+  // ───────── 03-2 손님 쪽 흐름 (라이브 화면 4장) ─────────
+  {
+    const s = pres.addSlide();
+    chrome(s);
+    title(s, '손님 쪽은 이렇게 흘러갑니다. 사장님이 끼어들 자리가 없습니다.', { size: 25 });
+    lead(s, '앱 설치도, 회원가입 강요도 없습니다. 카카오 로그인 한 번이면 홈에서 고르고, 토스로 결제하고, 가게에 와서 QR 을 보여 줍니다. 안 쓴 이용권은 유효기간이 지나면 100% 자동 환불이라 환불 응대가 사장님께 오지 않습니다.', { y: 2.0, h: 0.75, size: 12 });
+    customerSteps(s, { y: 3.3, h: 3.05, keys: ['home', 'detail', 'use', 'shop'], caps: ['찾기: 홈에서 내 동네 이용권', '결제: 정가와 할인가를 보고 토스로', '사용: 매장에서 QR 또는 확인코드', '다시 찾기: 매장 페이지가 남습니다'] });
+    s.addNotes('4장 전부 urdeal.kr 모바일 라이브 캡처(home/detail/use/shop). 자동 환불: voucher-expire.ts. 결제: Toss V2 위젯.');
+  }
+
   // ───────── 04 노출·판매 (+ 인플루언서 풀 실제 관리 화면, 연락처 블러) ─────────
   {
     const s = pres.addSlide();
@@ -121,13 +137,9 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     kv(s, [['유튜버', FACTS.influencerYoutube, 1], ['네이버 블로거', FACTS.influencerNaverBlog, 1, true], ['미리 나가는 홍보비', '0원', 2]], lx, ay + 0.36, lw, { rowH: 0.32 });
     // 오른쪽: 실제 인플루언서 풀 관리 화면 (연락처는 블러)
     const ix = 5.15, iw = W - M - ix;
-    const shotPath = path.join(SHOTS_DIR, 'admin-influencer-pool-table.jpg');
-    if (fs.existsSync(shotPath)) {
-      const ih = iw * (1120 / 2524);
-      card(s, ix - 0.08, 3.02, iw + 0.16, ih + 0.16);
-      s.addImage({ data: 'image/jpeg;base64,' + fs.readFileSync(shotPath).toString('base64'), x: ix, y: 3.1, w: iw, h: ih });
-      T(s, '유어딜 크리에이터 풀 관리 화면 (실제 화면, 연락처는 가렸습니다)', { x: ix, y: 3.1 + ih + 0.22, w: iw, h: 0.28, fontSize: 10, color: C.inkSoft, align: 'center' });
-    }
+    const ih = await screen(s, path.join(SHOTS_DIR, 'admin-influencer-pool-table.jpg'), ix, 3.1, iw, { caption: '유어딜 크리에이터 풀 관리 화면 (실제 화면, 연락처는 가렸습니다)' });
+    chip(s, ix + iw - 2.35, 3.1 - 0.12, '연락처는 가렸습니다', { tone: 'ink' });
+    chip(s, ix - 0.15, 3.1 + ih - 0.16, '채널 · 구독자 · 카테고리로 고릅니다');
     s.addNotes('노출 4곳: 홈 섹션/지도(/map)/검색·카톡 OG/유어쇼츠(/videos). 크리에이터 풀: /api/admin/ads/influencer-pool/stats 2026-09-13 실측 youtube 18,170 / naver_blog 172,755. 오른쪽은 /admin/influencer-pool 데스크톱 캡처(capture-admin-shots.mjs — 이메일·IG·TT 블러, 아바타는 외부 CDN 차단이라 중립 원). 소개비: 매장 제안 %·매장 부담.');
   }
 
@@ -202,6 +214,8 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     const ph = 4.55;
     const pw = phone(s, 'store-new', 7.15, 1.95, ph, { caption: '카카오맵에서 내 가게 찾기' });
     phone(s, 'store-new-channel', 7.15 + pw + 0.55, 1.95, ph, { caption: '"누가 운영하나요" 화면' });
+    chip(s, 7.15 - 0.3, 1.95 + 1.1, '주소·전화가 자동으로');
+    chip(s, 7.15 + pw + 0.55 - 0.3, 1.95 + 1.1, '"내 가게에요" 를 고르면 10%');
     s.addNotes('StoreRegisterModal.tsx 마법사. 승인은 사람(seller-stores.routes.ts 자동 승인 없음). "대신 만들어 드립니다"는 대표 운영 약속(코드 아님).');
   }
 
@@ -226,6 +240,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
       { text: '운영을 누구에게 맡겨도.', options: { color: C.inkSoft } },
     ], { x: M + 0.3, y: 6.0, w: 7.4, h: 0.75, fontSize: 12, valign: 'middle' });
     phone(s, 'seller-settlements', 10.0, 1.05, 5.35, { caption: '정산 화면 (예시 데이터)' });
+    chip(s, 10.0 - 0.35, 1.05 + 1.3, '매주 월요일, 등록 계좌로');
     s.addNotes('사용 처리: group-buy-voucher.routes.ts. payouts-generate.ts: 매주 월요일, 최소 10,000원(이월), 승인·송금은 사람. 계좌 변경 owner 전용. 판매 추이: 셀러 대시보드 daily_revenue + 상품별 판매 수.');
   }
 
@@ -263,5 +278,5 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
   }
 
   await pres.writeFile({ fileName: OUT });
-  console.log('wrote', OUT, '(9 slides)');
+  console.log('wrote', OUT, '(11 slides)');
 })();

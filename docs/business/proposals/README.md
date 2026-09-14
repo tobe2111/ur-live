@@ -5,9 +5,9 @@
 | 문서 | 파일 | 어드민 |
 |---|---|---|
 | 인플루언서 제휴 제안 (16:9, 9장) | `public/static/proposals/influencer-proposal.html` | `/admin/proposals` |
-| 대행사 제휴 제안 (16:9, 17장 v5.3 — 화법 통일, PowerPoint, 매장 모집 실행서) | `docs/business/proposals/urdeal-agency-proposal.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-agency-proposal.build.mjs`) | 없음. 파일로 전달 |
-| 매장 사장님 소개 (16:9, 9장, PowerPoint — 대표 최종 구성안. 상세판 16장은 `urdeal-store-owner-deck-detail.*`) | `docs/business/proposals/urdeal-store-owner-deck.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-store-owner-deck.build.mjs`, 공통 모듈 `deck-common.mjs`) | 없음. 파일로 전달 |
-| 인플루언서 제휴 소개 (16:9, 12장, PowerPoint) | `docs/business/proposals/urdeal-influencer-deck.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-influencer-deck.build.mjs`, 공통 모듈 `deck-common.mjs`). 기존 9장 HTML(`public/static/proposals/influencer-proposal.html`)을 대체한다 | 없음. 파일로 전달 (어드민 `/admin/proposals` 의 HTML 은 구판) |
+| 대행사 제휴 제안 (16:9, 21장 v6 — 로고 표지·비교표·인플루언서 기준·채널별, PowerPoint, 매장 모집 실행서) | `docs/business/proposals/urdeal-agency-proposal.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-agency-proposal.build.mjs`) | 없음. 파일로 전달 |
+| 매장 사장님 소개 (16:9, 11장 — 로고 표지 + 대표 최종 구성안 9장 + 손님 흐름, PowerPoint. 상세판 17장은 `urdeal-store-owner-deck-detail.*`) | `docs/business/proposals/urdeal-store-owner-deck.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-store-owner-deck.build.mjs`, 공통 모듈 `deck-common.mjs`) | 없음. 파일로 전달 |
+| 인플루언서 제휴 소개 (16:9, 14장 v1.3 — 로고 표지·채널별, PowerPoint) | `docs/business/proposals/urdeal-influencer-deck.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-influencer-deck.build.mjs`, 공통 모듈 `deck-common.mjs`). 기존 9장 HTML(`public/static/proposals/influencer-proposal.html`)을 대체한다 | 없음. 파일로 전달 (어드민 `/admin/proposals` 의 HTML 은 구판) |
 | 소개서 3종 기획서 | `docs/business/proposals/three-decks-plan-2026-09.md` | 없음 |
 
 ## 왜 docs/ 가 아니라 public/static/ 인가

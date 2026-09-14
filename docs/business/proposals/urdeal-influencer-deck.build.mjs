@@ -15,7 +15,13 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     shotKeys: ['home', 'detail', 'use', 'shop', 'ushop', 'influencer-offer', 'influencer-settlement', 'creators-apply'],
     icons: ['FiLink', 'FiPackage', 'FiTruck', 'FiHeadphones', 'FiSend', 'FiInbox', 'FiGift'],
   });
-  const { pres, ic, T, chrome, title, lead, card, iconCircle, numBadge, hr, label, phone, kv, customerSteps, honesty } = d;
+  const { pres, ic, T, chrome, title, lead, card, iconCircle, numBadge, hr, label, phone, kv, customerSteps, honesty, cover, chip, qa3 } = d;
+
+  // ───────── 00 로고 표지 ─────────
+  {
+    const s = pres.addSlide();
+    cover(s, { deckName: '인플루언서 제휴 소개서', sub: '팔로워에게 광고를 파는 대신, 동네에서 진짜 쓰는 이용권을 건넵니다. 링크 하나로 소개비, 데려온 매장에서 ' + FACTS.introTerm + '간 ' + FACTS.introPct + '.', dark: true });
+  }
 
   // ───────── 01 표지 ─────────
   {
@@ -252,6 +258,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     T(s, '유어쇼츠', { x: M + 0.95, y: 5.5, w: cw - 1.2, h: 0.34, fontSize: 14.5, bold: true, color: C.ink, charSpacing: -0.4 });
     T(s, '세로 영상 아래 구매 버튼이 붙는 자리입니다. 영상 자체에 대한 몫은 없고, 그 이용권에 매장과 맺은 딜이 있을 때 소개비가 붙습니다.', { x: M + 0.3, y: 5.9, w: cw - 0.6, h: 0.75, fontSize: 10.5, color: C.inkSoft, lineSpacingMultiple: 1.4, valign: 'top' });
     phone(s, 'ushop', 6.7, 1.1, 5.5, { caption: '유어샵 (라이브 화면)' });
+    chip(s, 6.7 - 0.45, 1.1 + 1.45, '프로필 링크는 이 주소 하나');
     // 오른쪽: 담기 3단계
     const rx = 10.15, rw = W - M - rx;
     label(s, '담는 방법', rx, 2.2, rw);
@@ -264,6 +271,30 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
       sy += 1.15;
     });
     s.addNotes('유어샵: CuratorPage /u/:handle (핀). 유어쇼츠: /videos (urshorts.routes, 크리에이터 몫 0 — 09-08 동의 게이트 폐기). 담기 보상 0 (affiliate_program_enabled OFF).');
+  }
+
+  // ───────── 09-2 채널별로 링크를 어디에 두나 ─────────
+  {
+    const s = pres.addSlide();
+    chrome(s);
+    title(s, '내 채널이 무엇이든, 링크를 둘 자리는 정해져 있습니다.', { size: 25 });
+    lead(s, '어느 채널이든 결제로 이어진 것만 소개비로 잡힙니다. 조회수와 좋아요는 세지 않습니다. 그래서 팔로워가 적어도 동네 손님이 사면 돈이 됩니다.', { y: 1.95, h: 0.62 });
+    const chans = [
+      ['FiSearch', '네이버 블로그', '"동네 + 메뉴" 검색에 오래 남는 글', ['글 본문과 마지막에 이용권 링크를 둡니다', '가게 이름과 메뉴를 제목에 넣습니다', '한 번 쓴 글이 유효기간 동안 계속 팝니다']],
+      ['FiVideo', '유튜브 · 쇼츠', '먹는 장면으로 설득하는 영상', ['설명란과 고정 댓글에 링크를 둡니다', '쇼츠는 매장 근처 시청자에게 짧게 닿습니다', '영상 하나에 이용권 여러 개를 함께 소개합니다']],
+      ['FiCamera', '인스타그램 · 릴스', '동네 감성과 단골 손님', ['프로필 링크를 내 유어샵 주소로 둡니다', '릴스와 스토리에서 이용권을 바로 안내합니다', '팔로워가 적어도 동네 손님이면 결제가 납니다']],
+      ['FiSmartphone', '유어쇼츠', '이용권 페이지 안의 세로 영상', ['유어딜 홈과 이용권 상세에 영상이 실립니다', '영상 아래 구매 버튼으로 바로 결제합니다', '외부 채널 없이도 딜이 있으면 소개비가 붙습니다']],
+    ];
+    const cw = (W - 2 * M - 0.75) / 4, cy = 2.7, ch = 4.0;
+    chans.forEach(([i, h, sub, items], k) => {
+      const x = M + k * (cw + 0.25);
+      card(s, x, cy, cw, ch);
+      iconCircle(s, i, x + 0.28, cy + 0.28, 0.46);
+      T(s, h, { x: x + 0.28, y: cy + 0.88, w: cw - 0.5, h: 0.32, fontSize: 13.5, bold: true, color: C.ink, charSpacing: -0.3 });
+      T(s, sub, { x: x + 0.28, y: cy + 1.2, w: cw - 0.5, h: 0.3, fontSize: 10, color: C.brand, bold: true });
+      qa3(s, x + 0.28, cy + 1.58, cw - 0.5, '이렇게 씁니다', items, { rowH: 0.6 });
+    });
+    s.addNotes('전용 링크: influencer-deals 수락 시 발급. 유어샵 /u/:handle. 유어쇼츠 /videos + 상세 ProductShortsField. 결제 기준 커미션: order-commissions.ts. 채널별 안내는 사용법이지 성과 약속이 아니다.');
   }
 
   // ───────── 10 정산은 언제 ─────────
@@ -348,5 +379,5 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
   }
 
   await pres.writeFile({ fileName: OUT });
-  console.log('wrote', OUT, '(12 slides)');
+  console.log('wrote', OUT, '(14 slides)');
 })();

@@ -16,7 +16,13 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     title: '유어딜 대행사 제휴 제안서', footer: '유어딜 대행사 제휴 제안', shotsDir: SHOTS_DIR,
     shotKeys: ['home', 'detail', 'use', 'shop', 'seller-stores', 'seller-influencers', 'seller-operating', 'seller-operators'],
   });
-  const { pres, ic, T, chrome, title, lead, card, iconCircle, numBadge, hr, label, phone, kv } = d;
+  const { pres, ic, T, chrome, title, lead, card, iconCircle, numBadge, hr, label, phone, kv, cover, chip, screen, qa3, table } = d;
+
+  // ───────── 00 로고 표지 ─────────
+  {
+    const s = pres.addSlide();
+    cover(s, { deckName: '대행사 제휴 제안서', sub: '매장을 모으고 대신 운영해 주실 파트너를 찾습니다. 유어딜은 중개 매장에서 5%만 받고, 나머지는 매장과 귀사가 정합니다.', dark: true });
+  }
 
   // ───────── 01 표지 ─────────
   {
@@ -206,6 +212,35 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     s.addNotes('재료비 35% 는 가정. 정산 규칙은 auto-settlement.ts. 사용 처리는 매장 QR 스캔 또는 확인 PIN.');
   }
 
+  // ───────── 06-2 사장님께 보여 줄 비교표: 체험단·광고 vs 유어딜 ─────────
+  {
+    const s = pres.addSlide();
+    chrome(s);
+    title(s, '사장님이 이미 써 본 방식과 나란히 놓으면, 설명이 짧아집니다.', { size: 25 });
+    lead(s, '체험단은 무료 식사를 내드리고 후기를 받는 구조이고, 광고는 노출을 삽니다. 유어딜은 손님이 결제한 이용권만 세고, 그 뒤에만 수수료가 나갑니다. 사장님 앞에서 이 표 한 장이면 됩니다.', { y: 1.95, h: 0.75 });
+    const cols = [
+      ['체험단 · 블로그 마케팅', ['무료 식사 제공 + 대행비 선지출', '결과는 노출 수·방문자 수', '후기는 남지만 손님 결제는 확인 못 함', '건당 비용이 먼저 나감'], false],
+      ['배달앱 · 검색 광고', ['월 광고비 또는 클릭당 과금', '결과는 클릭·노출', '광고 끄면 같이 끝남', '수수료 위에 광고비가 얹힘'], false],
+      ['유어딜 이용권', ['선지출 0원, 팔린 뒤에만 수수료', '결과는 결제 건수와 입금액', '손님이 먼저 결제하고 가게에 옴', '미사용은 손님에게 100% 자동 환불'], true],
+    ];
+    const cw = (W - 2 * M - 0.5) / 3, cy = 2.95, ch = 3.5;
+    cols.forEach(([h, items, hi], i) => {
+      const x = M + i * (cw + 0.25);
+      card(s, x, cy, cw, ch, { fill: hi ? C.ink : C.surface });
+      s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y: cy, w: cw, h: 0.62, rectRadius: 0.14, fill: { color: hi ? C.brand : C.tint }, line: { color: hi ? C.brand : C.tint, width: 0 } });
+      s.addShape(pres.shapes.RECTANGLE, { x, y: cy + 0.4, w: cw, h: 0.22, fill: { color: hi ? C.brand : C.tint }, line: { color: hi ? C.brand : C.tint, width: 0 } });
+      T(s, h, { x: x + 0.3, y: cy, w: cw - 0.6, h: 0.62, fontSize: 13.5, bold: true, color: hi ? 'FFFFFF' : C.ink, valign: 'middle', charSpacing: -0.3 });
+      let iy = cy + 0.9;
+      items.forEach((t) => {
+        s.addImage({ data: ic[hi ? 'FiCheckW' : 'FiMinusG'], x: x + 0.3, y: iy + 0.05, w: 0.2, h: 0.2 });
+        T(s, t, { x: x + 0.6, y: iy, w: cw - 0.9, h: 0.6, fontSize: 11, bold: hi, color: hi ? C.darkText : C.ink2, lineSpacingMultiple: 1.35, valign: 'top' });
+        iy += 0.68;
+      });
+    });
+    T(s, '체험단·광고의 항목은 일반적인 상품 구조를 요약한 것이고 업체마다 다릅니다. 유어딜 항목은 라이브 설정값입니다.', { x: M, y: 6.55, w: W - 2 * M, h: 0.24, fontSize: 8.5, color: C.gray });
+    s.addNotes('사장님 덱 2장(한계 비교표)과 같은 논리. 체험단 = 사장님 덱 표지의 "무료 식사를 내드리고 후기를 받는" 구조.');
+  }
+
   // ───────── 07 어떤 매장을 데려올지 (+ 유어샵 화면) ─────────
   {
     const s = pres.addSlide();
@@ -255,6 +290,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
       y += 0.88;
     });
     phone(s, 'seller-stores', 10.0, 1.15, 5.15, { caption: '매장 관리 화면 (예시 데이터)' });
+    chip(s, 10.0 - 0.45, 1.15 + 1.3, '카카오맵 검색으로 주소 자동');
     s.addNotes('시간은 현장 추정. 필드는 seller-stores.routes.ts 실재. 오른쪽은 /seller/stores 실제 UI 를 예시 데이터로 렌더한 캡처(프로덕션 무접촉).');
   }
 
@@ -317,19 +353,65 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     });
     // 오른쪽: 인플루언서 풀 실제 관리 화면(연락처 블러) + 숫자
     const sx = 7.6, sw = W - M - sx;
-    const shotPath = path.join(SHOTS_DIR, 'admin-influencer-pool-table.jpg');
     let ny = 1.25;
-    if (fs.existsSync(shotPath)) {
-      const ih = sw * (1120 / 2524);
-      card(s, sx - 0.08, ny - 0.08, sw + 0.16, ih + 0.16);
-      s.addImage({ data: 'image/jpeg;base64,' + fs.readFileSync(shotPath).toString('base64'), x: sx, y: ny, w: sw, h: ih });
-      T(s, '유어딜 인플루언서 풀 (실제 화면, 연락처는 가렸습니다)', { x: sx, y: ny + ih + 0.18, w: sw, h: 0.26, fontSize: 9.5, color: C.inkSoft, align: 'center' });
-      ny = ny + ih + 0.62;
-    }
+    const ih = await screen(s, path.join(SHOTS_DIR, 'admin-influencer-pool-table.jpg'), sx, ny, sw, { caption: '유어딜 인플루언서 풀 (실제 화면, 연락처는 가렸습니다)' });
+    chip(s, sx + sw - 2.1, ny - 0.12, '연락처는 가렸습니다', { tone: 'ink' });
+    ny = ny + ih + 0.62;
     label(s, '인플루언서 DB (' + FACTS.liveMeasuredAt + ' 실측)', sx, ny, sw);
     kv(s, [['전체', FACTS.influencerDb, 2], ['연락 가능', FACTS.influencerReachable, 2, true], ['네이버 블로그', FACTS.influencerNaverBlog, 0], ['유튜브', FACTS.influencerYoutube, 0], ['네이버 카페', '9,939명', 0]], sx, ny + 0.3, sw, { rowH: 0.36 });
     T(s, '인스타그램과 틱톡은 필터에 있으나 DB의 대부분은 네이버 블로그와 유튜브입니다.', { x: sx, y: ny + 2.15, w: sw, h: 0.45, fontSize: 8.5, color: C.gray, lineSpacingMultiple: 1.35, valign: 'top' });
     s.addNotes('숫자는 /api/admin/ads/influencer-pool/stats 2026-09-13 실측. 오른쪽은 /admin/influencer-pool 데스크톱 캡처(capture-admin-shots.mjs — 이메일·IG·TT 블러).');
+  }
+
+  // ───────── 10-2 인플루언서를 고르는 기준 (+ 소개 파트너 찾기 화면) ─────────
+  {
+    const s = pres.addSlide();
+    chrome(s);
+    title(s, '팔로워 수만 보고 고르지 않으셔도 됩니다.\n걸러 주는 기준이 화면에 있습니다.', { w: 8.2, size: 26 });
+    const filters = [
+      ['FiTag', '카테고리', '맛집, 뷰티, 여행, 육아처럼 채널이 실제로 다루는 주제로 거릅니다. 매장 업종과 맞는 채널만 남습니다.'],
+      ['FiUsers', '팔로워 구간', '1천 미만부터 10만 이상까지 구간으로 봅니다. 동네 매장은 큰 채널보다 동네에서 읽히는 중간 채널이 맞습니다.'],
+      ['FiBarChart2', '정렬 다섯 가지', '팔로워순, 평균 조회순, 게시물순, 댓글순, 추천순. 팔로워는 많은데 조회가 낮은 채널은 여기서 걸러집니다.'],
+      ['FiEye', '표에 보이는 것', '프로필, 팔로워, 게시물 수, 평균 조회, 평균 댓글. 연락처는 대행사에게도 안 보이고, 제안은 유어딜이 대신 보냅니다.'],
+    ];
+    let fy = 2.5;
+    filters.forEach(([i, h, p]) => {
+      iconCircle(s, i, M, fy, 0.44);
+      T(s, h, { x: M + 0.62, y: fy, w: 6.6, h: 0.32, fontSize: 13.5, bold: true, color: C.ink, charSpacing: -0.3 });
+      T(s, p, { x: M + 0.62, y: fy + 0.35, w: 6.6, h: 0.62, fontSize: 10.8, color: C.inkSoft, lineSpacingMultiple: 1.4, valign: 'top' });
+      fy += 0.95;
+    });
+    card(s, M, 6.3, 7.2, 0.48, { fill: C.tint });
+    T(s, [{ text: '데이터 출처: ', options: { bold: true, color: C.ink } }, { text: '유어딜이 직접 수집한 인플루언서 DB ' + FACTS.influencerDb + ' (' + FACTS.liveMeasuredAt + ' 실측). 채널 활동 지표는 주기적으로 다시 잽니다.', options: { color: C.inkSoft } }], { x: M + 0.25, y: 6.3, w: 6.8, h: 0.48, fontSize: 10, valign: 'middle' });
+    const px = 9.35, pyy = 1.2, phh = 5.6;
+    phone(s, 'seller-influencers', px, pyy, phh, { caption: '소개 파트너 찾기 (/seller/influencers, 예시 데이터)' });
+    chip(s, px - 0.5, pyy + 1.35, '카테고리 · 팔로워 구간 · 정렬');
+    chip(s, px - 0.5, pyy + 3.3, '골라서 제안 접수', { tone: 'ink' });
+    s.addNotes('필터·정렬·표 컬럼은 SellerInfluencersPage.tsx 실제 UI(카테고리 select, FOLLOWER_BANDS, sort 5종, 컬럼 프로필·팔로워·게시물·평균 조회·평균 댓글). 연락처 비공개 + 유어딜 발송은 같은 화면 안내 문구.');
+  }
+
+  // ───────── 10-3 채널별로 무엇을 기대하나 ─────────
+  {
+    const s = pres.addSlide();
+    chrome(s);
+    title(s, '채널마다 하는 일이 다릅니다. 이용권 링크 하나가 네 곳에 실립니다.', { size: 25 });
+    lead(s, '어느 채널이든 인플루언서에게는 전용 링크와 유어샵이 생기고, 그 링크로 들어온 결제만 소개비로 잡힙니다. 노출을 세지 않고 결제를 셉니다.', { y: 1.95, h: 0.62 });
+    const chans = [
+      ['FiSearch', '네이버 블로그', '"동네 + 메뉴" 검색에서 오래 남는 글', ['검색으로 찾는 손님에게 매장 이름을 먼저 보여 줍니다', '글 안의 이용권 링크가 결제로 이어집니다', '한 번 쓴 글이 유효기간 동안 계속 팝니다']],
+      ['FiVideo', '유튜브 · 쇼츠', '먹는 장면으로 설득하는 영상', ['설명란과 고정 댓글에 이용권 링크를 둡니다', '쇼츠는 매장 근처 시청자에게 짧게 닿습니다', '영상 하나로 여러 이용권을 함께 소개할 수 있습니다']],
+      ['FiCamera', '인스타그램 · 릴스', '동네 감성과 단골 손님', ['프로필 링크를 유어샵으로 둡니다', '릴스와 스토리에서 이용권을 바로 안내합니다', '팔로워가 적어도 동네 손님이면 결제가 납니다']],
+      ['FiSmartphone', '유어쇼츠', '이용권 페이지 안의 세로 영상', ['유어딜 홈과 이용권 상세에 영상이 실립니다', '영상 아래 구매 버튼으로 바로 결제합니다', '외부 채널 없이도 소개 커미션이 잡힙니다']],
+    ];
+    const cw = (W - 2 * M - 0.75) / 4, cy = 2.7, ch = 4.0;
+    chans.forEach(([i, h, sub, items], k) => {
+      const x = M + k * (cw + 0.25);
+      card(s, x, cy, cw, ch);
+      iconCircle(s, i, x + 0.28, cy + 0.28, 0.46);
+      T(s, h, { x: x + 0.28, y: cy + 0.88, w: cw - 0.5, h: 0.32, fontSize: 13.5, bold: true, color: C.ink, charSpacing: -0.3 });
+      T(s, sub, { x: x + 0.28, y: cy + 1.2, w: cw - 0.5, h: 0.3, fontSize: 10, color: C.brand, bold: true });
+      qa3(s, x + 0.28, cy + 1.58, cw - 0.5, '무엇을 기대하나', items, { rowH: 0.6 });
+    });
+    s.addNotes('전용 링크·유어샵: influencer-deals(수락 시 링크 발급). 유어쇼츠: /videos + 이용권 상세 ProductShortsField. 결제 기준 커미션: order-commissions.ts. 채널별 기대는 운영 가이드이지 성과 약속이 아니다.');
   }
 
   // ───────── 11 주간 루틴 + 화면 3장 ─────────
@@ -400,6 +482,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     card(s, M, 5.92, tw, 0.88, { fill: C.tint });
     T(s, '즉 매장의 돈이 다른 곳으로 갈 수 있는 경로가 시스템에 없습니다. 사장님께 "제가 통장을 못 건드립니다"라고 말씀하시고 화면으로 보여 주시면 됩니다. 이 문장 하나가 계약서 열 장보다 잘 통합니다.', { x: M + 0.3, y: 5.92, w: tw - 0.6, h: 0.88, fontSize: 10.5, color: C.ink, lineSpacingMultiple: 1.36, valign: 'middle' });
     phone(s, 'seller-operators', 10.05, 1.15, 5.15, { caption: '운영자 관리 (예시 데이터)' });
+    chip(s, 10.05 - 0.45, 1.15 + 1.1, '권한은 사장님이 언제든 회수', { tone: 'ink' });
     s.addNotes('store-operator-model.md §7.7 (마스킹: 계좌 ****1234 · 등록번호 끝 4자리 · 대표자명 첫 글자 · 주소/연락처 null · 계좌 변경/사업자정보 수정/탈퇴 403). 오른쪽은 /seller/operators 실제 UI 를 예시 데이터로 렌더한 캡처.');
   }
 
@@ -549,5 +632,5 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
   }
 
   await pres.writeFile({ fileName: OUT });
-  console.log('wrote', OUT, '(17 slides)');
+  console.log('wrote', OUT, '(21 slides)');
 })().catch((e) => { console.error(e); process.exit(1); });

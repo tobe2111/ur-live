@@ -25,8 +25,14 @@ const CALC = (() => {
     title: '우리동네 이용권, 유어딜 — 매장 사장님 소개서', footer: '유어딜 매장 사장님 소개', shotsDir: SHOTS_DIR,
     shotKeys: ['home', 'detail', 'use', 'store-new', 'store-new-channel', 'seller-stores', 'seller-settlements', 'seller-scan', 'seller-influencers', 'seller-operators'],
   });
-  const { pres, ic, T, chrome, title, lead, card, iconCircle, numBadge, hr, label, phone, kv, table } = d;
+  const { pres, ic, T, chrome, title, lead, card, iconCircle, numBadge, hr, label, phone, kv, table, cover } = d;
   const won = CALC.won;
+
+  // ───────── 00 로고 표지 ─────────
+  {
+    const s = pres.addSlide();
+    cover(s, { deckName: '매장 사장님 소개서 (상세판)', sub: '이용 안내와 기대 수익 계산까지 담은 16장. 요약본은 매장 사장님 소개서(11장)입니다.' });
+  }
 
   // ───────── 01 표지: 우리동네 이용권, 유어딜 ─────────
   {
@@ -468,5 +474,5 @@ const CALC = (() => {
   }
 
   await pres.writeFile({ fileName: OUT });
-  console.log('wrote', OUT, '(16 slides)');
+  console.log('wrote', OUT, '(17 slides)');
 })();
