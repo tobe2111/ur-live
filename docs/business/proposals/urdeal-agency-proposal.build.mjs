@@ -24,10 +24,10 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     chrome(s, { dark: true });
     label(s, '대행사 제휴 제안, 2026년 9월', M, 1.55, 6, { color: C.brand });
     s.addText([
-      { text: '매장을 데려오시면', options: { breakLine: true } },
+      { text: '매장을 소개해 주시면,', options: { breakLine: true } },
       { text: '유어딜은 ', options: {} },
       { text: '5%만', options: { color: C.brand } },
-      { text: ' 가져갑니다.', options: {} },
+      { text: ' 받습니다.', options: {} },
     ], { x: M, y: 1.95, w: 7.6, h: 1.9, fontFace: FONT, fontSize: 40, bold: true, color: C.darkText, isTextBox: true, margin: 0, valign: 'top', lineSpacingMultiple: 1.14, charSpacing: -1 });
     T(s, '나머지 95%는 매장 몫입니다. 그 안에서 매장과 직접 거래하십시오. 귀사의 보수를 유어딜이 정하지 않고, 상한도 두지 않습니다.', {
       x: M, y: 3.85, w: 6.8, h: 0.8, fontSize: 13, color: C.darkMuted, lineSpacingMultiple: 1.5, valign: 'top',
@@ -48,7 +48,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
   {
     const s = pres.addSlide();
     chrome(s);
-    title(s, '제안을 한 장으로 줄이면 이렇습니다.');
+    title(s, '바쁘실 테니, 한 장으로 먼저 정리했습니다.');
     const cells = [
       ['FiMapPin', '무엇을 파나', '동네 식당, 카페, 미용, 숙박, 액티비티의 이용권. 손님이 온라인에서 할인가로 미리 사고 매장에 와서 QR로 씁니다. 배송도 재고도 없습니다.'],
       ['FiUsers', '대행사는 무엇을 하나', '매장을 찾아 유어딜에 올리고(10분), 이용권을 만들고(3분), 인플루언서를 붙이고, 매장에 성과를 보고합니다. 돈을 걷거나 나누는 일은 없습니다.'],
@@ -72,7 +72,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
   {
     const s = pres.addSlide();
     chrome(s);
-    title(s, '이용권은 이렇게 생겼습니다.\n매장 메뉴 하나가 곧 상품입니다.', { w: 6.6 });
+    title(s, '메뉴 하나가 곧 상품입니다.\n이용권은 이렇게 생겼습니다.', { w: 6.6 });
     lead(s, '손님이 보는 실제 화면입니다. 정가와 할인가가 함께 보이고, 토스로 결제하면 이용권이 바로 발급됩니다. 유효기간, 할인율, 마감 수량은 전부 매장이 정하고, 안 쓴 이용권은 100% 자동 환불됩니다.', { w: 6.3, y: 2.35, h: 1.1 });
     const facts = [['32,411원', '식사 이용권 평균가 (241개)'], ['155,824원', '숙박 이용권 평균가. 식사의 4.8배'], ['0', '재고, 배송, 반품']];
     let y = 3.75;
@@ -92,8 +92,8 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
   {
     const s = pres.addSlide();
     chrome(s);
-    title(s, '손님이 낸 돈은 이렇게 갈립니다. 유어딜은 5%에서 끝납니다.');
-    lead(s, '대부분의 플랫폼 제안서가 여기를 흐리게 씁니다. 유어딜은 구조가 단순해서 흐릴 것이 없습니다.', { y: 2.0, h: 0.4 });
+    title(s, '손님이 낸 돈은 어디로 갈까요? 유어딜 몫은 5%에서 끝납니다.');
+    lead(s, '구조가 단순해서 흐릴 것이 없습니다. 카드 결제 수수료까지 같은 그림에 적었습니다.', { y: 2.0, h: 0.4 });
     const bw = 2.2, gap = 0.5, by = 2.6, bh = 0.78;
     const nodes = [['손님', '이용권 결제', C.surface], ['카드사', '결제 처리', C.surface], ['유어딜', '5%', C.ink], ['매장', '나머지 95%', C.tint]];
     nodes.forEach(([h, sub, fill], i) => {
@@ -140,7 +140,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
   {
     const s = pres.addSlide();
     chrome(s);
-    title(s, '매장 한 곳이 귀사에게 얼마가 되는가. 가정은 전부 공개합니다.', { size: 25 });
+    title(s, '매장 한 곳이 귀사에게 얼마가 되는지, 가정까지 함께 적었습니다.', { size: 25 });
     card(s, M, 2.15, 5.6, 4.65);
     const x = M + 0.35, w = 4.9;
     label(s, '매장 한 곳, 한 달 (바꿔서 다시 계산하셔도 됩니다)', x, 2.35, w);
@@ -180,7 +180,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
   {
     const s = pres.addSlide();
     chrome(s);
-    title(s, '사장님이 "네" 하는 이유도 숫자입니다. 광고비 선지출이 없습니다.', { size: 25 });
+    title(s, '사장님이 "네" 하시는 이유도 숫자에 있습니다. 광고비를 먼저 내지 않으니까요.', { size: 25 });
     card(s, M, 2.15, 5.9, 4.65);
     const x = M + 0.35, w = 5.2;
     label(s, '이용권 한 장이 팔렸을 때 (파스타 2인 세트 예시)', x, 2.35, w);
@@ -210,7 +210,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
   {
     const s = pres.addSlide();
     chrome(s);
-    title(s, '이 여섯 가지가 되면 데려오세요.\n대부분 그 자리에서 진행됩니다.', { w: 7.5, size: 26 });
+    title(s, '이 여섯 가지만 맞으면 됩니다.\n대부분 그 자리에서 진행됩니다.', { w: 7.5, size: 26 });
     const checks = [
       ['사업자등록이 있다', '사업자번호, 대표자명, 개업일로 국세청 진위확인을 합니다. 없으면 올릴 수 없습니다.'],
       ['카카오맵에 매장이 있다', '등록할 때 카카오맵 장소를 연결합니다. 없으면 사장님이 먼저 등록해야 합니다(무료, 하루 이틀).'],
@@ -237,7 +237,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
   {
     const s = pres.addSlide();
     chrome(s);
-    title(s, '사장님 앞에서 10분.\n서명도 서류도 없이 대행사 폰으로 끝납니다.', { w: 8.8, size: 26 });
+    title(s, '사장님 앞에서 10분이면 됩니다.\n서류 없이, 담당자 폰으로 끝납니다.', { w: 8.8, size: 26 });
     const steps = [
       ['FiSearch', '카카오맵에서 매장 찾기', '/seller/stores 에서 매장 이름을 검색해 장소를 연결합니다. 주소와 좌표가 자동으로 들어옵니다.', '1분'],
       ['FiShield', '국세청 진위확인', '사업자번호, 대표자명, 개업일을 넣으면 국세청 조회로 즉시 확인됩니다. 사업자등록증 사진만 보면 됩니다.', '2분'],
@@ -262,7 +262,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
   {
     const s = pres.addSlide();
     chrome(s);
-    title(s, '사장님께 하는 말 네 마디와, 거절 다섯 가지의 답.');
+    title(s, '사장님께 드릴 말씀 네 마디와, 거절에 대한 답 다섯 가지를 준비했습니다.', { size: 25 });
     card(s, M, 2.15, 4.5, 4.7, { fill: C.ink });
     label(s, '5분 대본', M + 0.3, 2.35, 3, { color: C.brand });
     const lines = [
@@ -299,7 +299,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
   {
     const s = pres.addSlide();
     chrome(s);
-    title(s, '인플루언서 섭외, 계약, 정산이\n화면 안에서 끝납니다.', { w: 6.8 });
+    title(s, '섭외부터 정산까지,\n인플루언서 일은 화면 안에서 끝납니다.', { w: 6.8 });
     const steps = [
       ['DB에서 고른다', '/seller/influencers 에서 플랫폼과 팔로워 구간으로 거릅니다. 매장 동네에서 활동하는 채널을 우선합니다.'],
       ['제안을 접수한다', '매장 소개와 조건을 적어 접수하면 유어딜이 발송합니다. 연락처는 대행사에게도 공개되지 않습니다.'],
@@ -336,7 +336,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
   {
     const s = pres.addSlide();
     chrome(s);
-    title(s, '담당자 한 명의 일주일.\n쓰는 화면은 여섯 장뿐입니다.', { w: 5.4 });
+    title(s, '담당자 한 분의 일주일입니다.\n쓰는 화면은 여섯 장뿐입니다.', { w: 5.4 });
     const days = [
       ['월·화', '매장 방문 4곳', '체크리스트로 고른 매장을 방문해 등록합니다. 하루 2곳이면 충분합니다.'],
       ['수', '이용권 손보기', '사진 교체, 마감 수량, 할인율 조정. 잘 팔리는 메뉴는 수량을 늘립니다.'],
@@ -373,7 +373,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
   {
     const s = pres.addSlide();
     chrome(s);
-    title(s, '사장님을 설득할 재료는 계약서가 아니라 시스템입니다.', { w: 9, size: 25 });
+    title(s, '"왜 남에게 계정을 맡기죠?" 계약서가 아니라 시스템이 답합니다.', { w: 9, size: 25 });
     lead(s, '영업에서 가장 어려운 질문은 "왜 남에게 우리 가게 계정을 맡기느냐"입니다. 운영자(귀사)가 무엇을 할 수 있고 무엇이 막혀 있는지 화면으로 보여 드리면 됩니다.', { y: 1.95, w: 8.7, h: 0.7 });
     const rows = [
       ['상품 등록과 가격 설정', true, '매장 대신 이용권을 만들고 운영합니다'],
@@ -407,7 +407,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
   {
     const s = pres.addSlide();
     chrome(s);
-    title(s, '유어딜이 대행사에게 붙여 드리는 것 여섯 가지.');
+    title(s, '시작하실 때 유어딜이 곁에서 해 드리는 여섯 가지입니다.');
     const items = [
       ['FiUserCheck', '첫 매장 세 곳은 같이 갑니다', '첫 등록 세 건은 유어딜 담당자가 현장이나 통화로 동행합니다. 한 번 같이 하면 그다음은 혼자 됩니다.'],
       ['FiFileText', '사장님용 소개서 (PDF 9장)', '수수료, 정산, QR 사용법, 자주 묻는 질문까지 담긴 사장님용 소개서를 드립니다. 대행사 이름을 넣어 드립니다.'],
@@ -454,7 +454,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
   {
     const s = pres.addSlide();
     chrome(s);
-    title(s, '먼저 한두 곳, 그다음 8주에 열 곳. 구조가 맞는지 판정이 납니다.', { size: 25 });
+    title(s, '먼저 한두 곳만 해 보시죠. 8주에 열 곳이면 구조가 맞는지 판정이 납니다.', { size: 25 });
     card(s, M, 2.15, 4.0, 4.65, { fill: C.ink });
     label(s, '8주 목표', M + 0.35, 2.35, 3, { color: C.brand });
     const goals = [['10곳', '등록 매장'], ['30개', '판매 중 이용권 (매장당 3개)'], ['20건', '인플루언서 제안 접수'], ['1회', '매장별 실적 보고와 청구']];
@@ -487,7 +487,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
   {
     const s = pres.addSlide();
     chrome(s);
-    title(s, '손님 쪽은 화면 네 장이면 끝납니다. 그래서 매장이 올리면 팔립니다.', { size: 25 });
+    title(s, '손님은 화면 네 장이면 끝납니다. 그래서 매장이 올리면 팔립니다.', { size: 25 });
     const steps = [
       ['home', '발견', '홈에서 내 동네 기준으로 이용권이 뜹니다. 카톡 카드와 네이버, 구글 검색에도 잡힙니다.'],
       ['detail', '결제', '정가와 할인가를 함께 보고 토스로 결제합니다. 앱 설치나 가입 강요 구간이 없습니다.'],
@@ -509,7 +509,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
   {
     const s = pres.addSlide();
     chrome(s, { dark: true });
-    title(s, '남은 질문과, 시작하는 방법.', { dark: true });
+    title(s, '남은 질문에 답하고, 시작하는 방법을 남깁니다.', { dark: true });
     const faqs = [
       ['수수료가 두 번 나가나요?', '아닙니다. 유어딜이 떼는 것은 중개 매장 5% 하나뿐입니다. 귀사 보수는 매장이 귀사에게 직접 지급하고(세금계산서도 귀사와 매장 사이), 유어딜 정산서에 나오지 않습니다.'],
       ['사장님이 직접 계정을 만들면 우리 관계는요?', '계정 양도가 아니라 권한 변경입니다. 상품, 주문, 리뷰, 정산 이력은 매장에 그대로 남고, 귀사는 운영자로 계속 일할 수 있습니다.'],
@@ -539,10 +539,10 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     });
     hr(s, px + 0.35, py + 3.56, pw - 0.7, { dark: true });
     T(s, '후보 매장 몇 곳의 이름과 동네만 보내 주세요. 하루 안에 확인해 첫 방문 일정을 잡습니다.', { x: px + 0.35, y: py + 3.6, w: pw - 0.7, h: 0.26, fontSize: 9.5, color: C.darkText });
-    const contact = [['FiMailW', 'jiwon@ur-team.com'], ['FiGlobeW', 'urdeal.kr'], ['FiFileTextW', '리스터코퍼레이션, 사업자등록번호 479-09-02930']];
+    const contact = [['FiMessageW', FACTS.kakaoChannel + '  카카오톡 채널'], ['FiMailW', FACTS.contactEmail], ['FiGlobeW', 'urdeal.kr'], ['FiFileTextW', '리스터코퍼레이션, 사업자등록번호 479-09-02930']];
     contact.forEach(([i, t], k) => {
-      s.addImage({ data: ic[i], x: px + 0.35, y: py + 3.94 + k * 0.2, w: 0.16, h: 0.16 });
-      T(s, t, { x: px + 0.62, y: py + 3.88 + k * 0.2, w: pw - 1.0, h: 0.28, fontSize: k === 2 ? 9 : 11, bold: k < 2, color: C.darkText, valign: 'middle' });
+      s.addImage({ data: ic[i], x: px + 0.35, y: py + 3.9 + k * 0.18, w: 0.15, h: 0.15 });
+      T(s, t, { x: px + 0.62, y: py + 3.84 + k * 0.18, w: pw - 1.0, h: 0.27, fontSize: k === 3 ? 8.5 : 10.5, bold: k < 3, color: C.darkText, valign: 'middle' });
     });
     T(s, '이 문서의 요율(직접 10%, 중개 5%)과 권한 범위는 2026년 9월 13일 라이브 설정값입니다. 요율은 어드민 조정값이고, 평균가와 매장 수는 같은 날 실측입니다.', { x: M, y: 6.62, w: W - 2 * M, h: 0.24, fontSize: 8.5, color: C.darkMuted });
     s.addNotes('FAQ 출처: 사업계획서 C-3, 셀러 가이드, auto-settlement.ts. 채널 변경은 POST /api/seller/stores/:id/channel (소유자만) + 어드민.');
