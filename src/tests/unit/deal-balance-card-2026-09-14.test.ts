@@ -22,14 +22,24 @@ describe('🪙 확정 구조 (안 A3)', () => {
     expect(card).not.toMatch(/text-\[36px\]/)   // 종전 값으로 되돌아가면 빨간불
   })
 
+  // 두 층을 가르는 실제 코드 경계. ⚠️ **주석 문구를 앵커로 쓰지 말 것** — 2026-09-14 에
+  // 여기 `card.indexOf('아래층')`(주석에만 있던 낱말)을 썼다가, 같은 날 main 이 주석
+  // 제거기를 여러 줄 JSX 주석까지 지우도록 고치자 -1 이 되어 슬라이스가 카드 전체로 번졌다.
+  const DIVIDER = 'h-px bg-rule'
+  const dividerAt = card.indexOf(DIVIDER)
+
+  it('경계 앵커가 실재한다 — 없으면 아래 두 시험이 헛돈다', () => {
+    expect(dividerAt).toBeGreaterThan(-1)
+  })
+
   it('🔴 위층에 버튼이 없다 — 그게 A3 의 전부다', () => {
     // 위층(라벨~금액)을 잘라 그 안에 button 이 없는지 본다.
-    const top = card.slice(card.indexOf('내 딜 잔액'), card.indexOf('아래층'))
+    const top = card.slice(card.indexOf('내 딜 잔액'), dividerAt)
     expect(top).not.toMatch(/<button/)
   })
 
   it('🔴 아래층은 두 칸 — 딜 모으기 · 이용내역', () => {
-    const bottom = card.slice(card.indexOf('bg-rule'))
+    const bottom = card.slice(dividerAt)
     expect(bottom).toMatch(/딜 모으기/)
     expect(bottom).toMatch(/이용내역/)
     expect((bottom.match(/<button/g) ?? []).length).toBe(2)
