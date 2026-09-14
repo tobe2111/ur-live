@@ -255,6 +255,8 @@ async function main() {
       await page.goto(ORIGIN + shot.url, { waitUntil: 'domcontentloaded', timeout: 60000 })
       await page.waitForTimeout(6000)
       if (shot.drive) await driveWizard(page, shot.drive)
+      // 등록 마법사는 바텀시트라 뒤가 검게 가려진다(bg-black/40). 덱에서는 뒤 화면이 보이도록 딤을 옅게 한다.
+      if (shot.url === '/store/new') { await page.addStyleTag({ content: 'div.fixed.inset-0.bg-black\\/40{background-color:rgba(17,20,28,.12)!important}' }); await page.waitForTimeout(300) }
       await page.screenshot({ path: raw })
       if (process.env.DEBUG_API) { const errs = await page.evaluate(() => window.__errs || []); for (const e of errs) console.log('  [errs]', e.replace(/\n/g, ' | ').slice(0, 700)) }
       const meta = await sharp(raw).metadata()
