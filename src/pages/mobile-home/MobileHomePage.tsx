@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Search, Bell, ShoppingCart } from 'lucide-react'
 import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
+import SellOnUrdealRow from './SellOnUrdealRow'
 import GroupBuyFeed from '@/pages/main-home/GroupBuyFeed'
 import { useHomeQuerySync } from '@/pages/main-home/useHomeQuerySync'
 import HomeSections from '@/components/home/HomeSections'
@@ -211,6 +212,11 @@ export default function MobileHomePage() {
           userLoc={userLoc}
         />
       </section>
+
+      {/* 🏪 판매 진입점 — **피드를 다 본 뒤**가 자리다(대표 확정 2026-09-14, 안 1).
+            8/26 에 지도 모달에서 뺀 것과 같은 물건이 되지 않으려면 위로 올리면 안 된다.
+            사유·노출 규칙은 `./SellOnUrdealRow` 머리주석. */}
+      <SellOnUrdealRow />
     </div>
   )
 }
