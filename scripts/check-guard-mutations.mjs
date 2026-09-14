@@ -2446,17 +2446,15 @@ const MUTATIONS = [
   {
     name: '한도 재검증(과금 직전)이 사라져 다른 탭으로 뚫린다',
     file: 'src/features/group-buy/api/group-buy.routes.ts',
-    find: `      const ownedRow = await DB.prepare(
-        "SELECT COUNT(*) AS n FROM vouchers WHERE product_id = ? AND user_id = ? AND status IN ('unused','used')"
-      ).bind(productId, userId).first<{ n: number }>().catch(() => ({ n: 0 }))
-      const owned = Number(ownedRow?.n ?? 0)
-      if (owned + qty > maxPerPerson) {`,
-    replace: '      const owned = 0\n      if (owned + qty > maxPerPerson) {',
+    find: '    const lim2 = await recheck(DB, productId, userId, qty, mppRaw)',
+    replace: '    const lim2 = { ok: true } as { ok: true } | { ok: false; error: string }',
     test: 'src/tests/unit/seller-voucher-limit.test.ts',
     why:
-      '같은 쿼리가 두 곳에 있다(사전검증 / 과금 직전 레이스 차단). 한쪽만 지워도 정상 구매는 ' +
-      '전부 통과해서 눈으로는 못 본다. ⚠️ 이 가드는 처음에 "파일에 쿼리가 있는가" 로 판정해 ' +
-      '**헛돌았다** — 되돌려-검증에서 잡아 개수 판정으로 고쳤다.',
+      '두 지점(사전검증 / 과금 직전 레이스 차단) 중 하나만 지워도 정상 구매는 전부 통과해서 ' +
+      '눈으로는 못 본다. ⚠️ 이 가드는 처음에 "파일에 쿼리가 있는가" 로 판정해 **헛돌았다** — ' +
+      '되돌려-검증에서 잡아 개수 판정으로 고쳤다. 🔁 2026-09-14: 두 벌이던 인라인 판정을 ' +
+      '`purchase-cap.ts` 헬퍼로 합치면서 이 주입의 **대상이 사라졌다**(낡은 지도로 CI 가 잡았다) — ' +
+      '호출 자리를 겨냥하도록 재조준.',
   },
   {
     name: '즐겨찾기가 다시 localStorage 단독 저장이 된다',
