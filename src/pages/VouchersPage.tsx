@@ -18,13 +18,13 @@ import { saveListView, readListView } from '@/lib/list-view-cache'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowRight, ChevronDown, ShoppingBag, Flame, Clock, Tag, ArrowDownWideNarrow, ArrowUpWideNarrow, Soup, Shirt, Sparkle, Sofa, Smartphone, type LucideIcon } from 'lucide-react'
+import { ChevronDown, ShoppingBag, Flame, Clock, Tag, ArrowDownWideNarrow, ArrowUpWideNarrow, Soup, Shirt, Sparkle, Sofa, Smartphone, type LucideIcon } from 'lucide-react'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 // 🎟️ 2026-07-10 (대표 결정): 일반상품(쇼핑) 노출은 SHOPPING_TAB_HIDDEN 게이트 — 교환권은 유지.
-import { SHOPPING_TAB_HIDDEN, TOPUP_DISABLED } from '@/shared/feature-flags'
+import { SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
+import DealBalanceCard from './vouchers/DealBalanceCard'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
-import { formatNumber } from '@/utils/format'
 import { getUserIdSync } from '@/utils/auth'
 // 🖥️ 2026-07-18 (교환권 PC 2단 분리): 카드/행 + VoucherProduct 타입은 ./vouchers/shared 로 추출(파일크기 래칫).
 import { VoucherCard, VoucherRow, BrandChip, CategoryIcon, type VoucherProduct } from './vouchers/shared'
@@ -433,23 +433,9 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
         <div className="ur-content-wide px-8 py-6 grid grid-cols-[248px_minmax(0,1fr)] gap-8 items-start">
           {/* ── 좌측 필터 레일 (sticky — 전역 네비 2행(~101px) 아래) ── */}
           <aside className="sticky top-[120px] self-start space-y-6">
-            {/* 딜 잔액 — 컴팩트 카드 */}
-            <button
-              type="button"
-              /* 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 충전 종료 — 카드 탭 = 딜 내역으로. */
-              onClick={() => navigate(TOPUP_DISABLED ? '/my-deal-history' : '/points/charge')}
-              className="w-full text-left rounded-2xl p-4 bg-white dark:bg-[#1D1F29] shadow-lift active:scale-[0.99] transition-transform"
-            >
-              <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-1.5 tracking-wide">내 딜 잔액</p>
-              <div className="flex items-baseline gap-1">
-                <span className="text-[26px] font-extrabold text-gray-900 dark:text-white leading-none tracking-tight tabular-nums">{dealBalance == null ? '0' : formatNumber(dealBalance)}</span>
-                <span className="text-[15px] font-bold text-gray-400 dark:text-gray-500">딜</span>
-              </div>
-              <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1.5">1딜 = 1원 · 현금처럼 사용</p>
-              <span className="mt-3 w-full inline-flex items-center justify-center gap-1 text-[12px] font-bold py-2 rounded-lg text-white bg-brand">
-                {TOPUP_DISABLED ? '딜 내역 보기' : '충전하기'} <ArrowRight className="w-3.5 h-3.5" />
-              </span>
-            </button>
+            {/* 🪙 딜 잔액 — 모바일과 **같은 부품**(compact). 2026-09-14 전에는 두 벌이라
+                  한쪽만 고쳐지는 사고가 실제로 났다(며칠 전 딜 선택 UI 에서 PC 를 통째로 잊었다). */}
+            <DealBalanceCard balance={dealBalance} variant="compact" />
 
             <GifticonBoxRailRow />
 
@@ -600,50 +586,10 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           willChange: 'transform',
         }}
       >
-      {/* 🛡️ 2026-05-21 v3: 잔액 카드 — 토스 inspired (premium dark card).
-            기존 v2 white 카드 "촌스러워" 피드백 → 검정 카드 + grand 타이포 + 우상단 충전 ›. */}
+      {/* 🪙 2026-09-14 (대표 확정 — 안 A3 + 42px): 잔액 카드.
+            구조와 지운 문구의 사유는 `./vouchers/DealBalanceCard` 머리주석. 여기는 자리와 여백만. */}
       <div className="ur-content-wide px-4 lg:px-8 pt-3">
-        {dealBalance ? (
-          <>
-            <button
-              type="button"
-              onClick={() => navigate(TOPUP_DISABLED ? '/my-deal-history' : '/points/charge')}
-              className="w-full text-left rounded-2xl p-5 bg-white dark:bg-[#1D1F29] shadow-lift active:scale-[0.99] transition-transform"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-2 tracking-wide">내 딜 잔액</p>
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-[36px] font-extrabold text-gray-900 dark:text-white leading-none tracking-tight tabular-nums">{formatNumber(dealBalance)}</span>
-                    <span className="text-[18px] font-bold text-gray-400 dark:text-gray-500">딜</span>
-                  </div>
-                  <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1.5">1딜 = 1원 · 현금처럼 사용</p>
-                </div>
-                <span className="shrink-0 inline-flex items-center gap-1 text-[12px] font-bold mt-1 px-2.5 py-1 rounded-full text-white bg-brand">
-                  {TOPUP_DISABLED ? '내역' : '충전'} <ArrowRight className="w-3.5 h-3.5" />
-                </span>
-              </div>
-            </button>
-            {dealBalance < 10000 && (
-              <div className="mt-1.5 px-1">
-                <button type="button" onClick={() => navigate('/map')} className="text-[11.5px] text-gray-500 dark:text-gray-400 hover:underline">딜 모으는 방법 보기</button>
-              </div>
-            )}
-          </>
-        ) : (
-          <button
-            type="button"
-            onClick={() => navigate('/map')}
-            className="w-full h-11 px-3.5 flex items-center justify-between gap-2 rounded-xl bg-white dark:bg-[#1D1F29] shadow-lift active:scale-[0.99] transition-transform"
-          >
-            <span className="text-[12.5px] text-gray-600 dark:text-gray-300 truncate">
-              <b className="text-gray-900 dark:text-white">딜 0</b> · 1딜 = 1원, 현금처럼 써요
-            </span>
-            <span className="shrink-0 inline-flex items-center gap-0.5 text-[11.5px] font-bold text-brand-text">
-              모으는 방법 <ArrowRight className="w-3 h-3" />
-            </span>
-          </button>
-        )}
+        <DealBalanceCard balance={dealBalance} />
       </div>
 
       {/* 🛡️ 2026-05-19: 카테고리 바 — 사용자 요청 (전체 탭 X, KT Alpha 분류 그대로).
