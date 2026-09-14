@@ -77,6 +77,18 @@ describe('T3 이용권 M4 · 주문 M3', () => {
     const page = read('src/pages/SellerGroupBuyPage.tsx')
     expect(page).not.toMatch(/from-gray-800|bg-gray-900/)
   })
+  // 🩸 2026-09-14 CI(surface-role-leak 8건 · 빌드 경고 "Circular chunk: app-seller-components -> app-components"):
+  //   `components/seller-layout/` 에 manualChunks 규칙이 없어 하단 탭·nav 모델이 generic `app-components` 로
+  //   떨어졌고, 그 파일들이 `components/seller/seller-primary-nav` 를 import 해 순환이 생겨 상세·유어샵·교환권
+  //   표면이 셀러 봉투(+app-dashboard)를 첫 페인트에 받았다. 에러 0·화면 정상 — 바이트만 샜다.
+  it('🔒 components/seller-layout/ 는 셀러 봉투 규칙을 갖고, 그 규칙이 components/ catch-all 보다 앞에 있다', () => {
+    const vite = readFileSync('vite.config.ts', 'utf8')
+    const rule = vite.indexOf("id.includes('/src/components/seller-layout/')) return 'app-seller-components'")
+    const catchAll = vite.indexOf("id.includes('/src/components/')) return 'app-components'")
+    expect(rule, 'seller-layout 규칙이 없다').toBeGreaterThan(0)
+    expect(catchAll, 'components catch-all 을 못 찾았다 — 이 검사가 헛돌고 있다').toBeGreaterThan(0)
+    expect(rule, 'seller-layout 규칙이 catch-all 뒤에 있어 닿지 않는다').toBeLessThan(catchAll)
+  })
   it.each(['ko', 'en', 'ja', 'zh', 'es', 'fr'])('%s 로케일에 다섯 탭 이름이 있다', (lng) => {
     const j = JSON.parse(readFileSync(`public/locales/${lng}/translation.json`, 'utf8'))
     for (const k of ['home', 'orders', 'vouchers', 'settlements', 'more']) expect(j.seller?.tab?.[k], k).toBeTruthy()

@@ -3,6 +3,16 @@
  */
 export default [
   {
+    name: '📱 seller-layout 폴더가 다시 generic app-components 로 떨어진다 (셀러 봉투가 소비자 첫 페인트로)',
+    file: 'vite.config.ts',
+    find: "          if (id.includes('/src/components/seller-layout/')) return 'app-seller-components'\n",
+    replace: '',
+    test: 'src/tests/unit/seller-mobile-first-2026-09-14.test.ts',
+    why:
+      '2026-09-14 CI 가 잡은 그 상태다 — app-components → app-seller-components 순환으로 상세·유어샵·교환권 표면 8건 누수. ' +
+      '빌드는 경고만 내고 성공하므로 이 규칙이 사라져도 아무도 모른다.',
+  },
+  {
     name: '📱 하단 탭이 목록을 손으로 적는다 (모델과 갈린다)',
     file: 'src/components/seller-layout/SellerBottomTabs.tsx',
     find: "const { primary } = useSellerNavModel()",

@@ -116,3 +116,16 @@ R3 CTA 를 빼도 ⌘K 색인은 무손상 / R4 검은 타일 0 / R5 금액을 �
 로케일 6개는 양쪽이 같은 자리에 키를 넣어 충돌 — 둘 다 보존(+`seller.vouchers.deleteConfirm/deleteFailed` 신설).
 ⚠️ **틀렸던 판단**: 머지 전 `git merge-tree` 가 충돌 0 이라고 보고했는데 실제 머지는 8파일 충돌이었다(merge-tree 호출 방식 문제).
 "충돌 없음"은 실제 `git merge` 로만 판정할 것.
+
+## §8 CI 빨강 1건 — `components/seller-layout/` 에 청크 규칙이 없었다 (2026-09-14 밤)
+
+머지 커밋 `0a462d0a3` 의 Verify 가 `surface-role-leak` 8건으로 빨강: gbDetail·product·linkshop·vouchers 표면에
+`app-seller-components`·`app-dashboard`. 로컬 `npm run build` 가 원인을 그대로 찍어 줬다 —
+`Circular chunk: app-seller-components -> app-components -> app-seller-components`.
+`SellerBottomTabs`·`useSellerNavModel` 을 둔 `components/seller-layout/` 은 manualChunks 에 규칙이 없어 `components/`
+catch-all(app-components)로 떨어졌고, 그 둘이 `components/seller/seller-primary-nav` 를 import 해 순환이 생겼다.
+소비자 페이지는 app-components 를 거의 다 쓰므로 그 순환이 첫 페인트로 셀러 봉투를 끌고 왔다(에러 0·화면 정상 — 바이트만).
+수리: 규칙 한 줄(`seller-layout/` → app-seller-components, catch-all 앞). 실측: 빌드 경고 0 · 가드 0건 · critical-chunks 17 동일.
+가드: `seller-mobile-first` 테스트 +1(규칙 존재 + catch-all 보다 앞) · 주입 +1(되돌려-검증 빨간불).
+🩸 **틀렸던 판단**: 로컬 audit-gate 에서 이 가드가 빨갛게 떴을 때 "옛 dist 산출물 탓" 으로 넘겼다(PR 본문에도 그렇게 적었다).
+실제로는 진짜 누수였다. 이 가드는 `npm run build` 직후에만 믿을 수 있고, **빨간불의 이유를 추측으로 기각하지 말 것**.
