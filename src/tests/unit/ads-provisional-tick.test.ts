@@ -18,6 +18,7 @@ import {
   appendTick, provisionalTick, isProvisionalTick, readTickHistory, summarizeTick,
 } from '@/worker-ads/tick-history'
 import { learnLanes, missedTicks, missedTicksJudged, MIN_LANES_PER_TICK } from '@/worker-ads/lane-aimd'
+import { stripComments } from '../helpers/source-text'
 
 const H = (n: number) => `2026-08-06T${String(n).padStart(2, '0')}:00:00.000Z`
 
@@ -70,7 +71,7 @@ describe('배선 — 빠지면 잠정 항목이 영원히 안 생긴다', () => 
   const index = readFileSync('src/worker-ads/index.ts', 'utf8')
   const tail = readFileSync('src/worker-ads/tick-history-write.ts', 'utf8')
   /** 주석을 지운 본문 — 주석에만 남은 이름이 배선으로 오인되는 걸 막는다(이 레포가 두 번 밟은 함정). */
-  const code = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
+  const code = (s: string) => stripComments(s)
 
   it('디스패처가 잠정 항목을 실제로 쓴다(주석 아님)', () => {
     expect(code(runner)).toMatch(/writes\.push[\s\S]{0,200}provisionalTick\(/)

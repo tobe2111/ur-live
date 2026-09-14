@@ -21,12 +21,12 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { stripComments } from '../helpers/source-text'
 
 const SRC = 'src/components/ScrollToTop.tsx'
 const src = readFileSync(resolve(__dirname, '../../..', SRC), 'utf-8')
 /** 주석 제거 — 설명이 판정을 통과시키는 함정을 이 레포는 반복해 겪었다. */
-const code = src
-  .replace(/\/\*[\s\S]*?\*\//g, '')
+const code = stripComments(src)
   .split('\n')
   .filter((l) => !l.trim().startsWith('//') && !l.trim().startsWith('*'))
   .join('\n')

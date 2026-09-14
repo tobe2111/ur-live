@@ -20,6 +20,7 @@ import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
 import { settleWithin, judgedLaneNames, TAIL_WAIT_MS, TAIL_WAIT_MS_PAID } from '@/worker-ads/tail-bound'
+import { stripComments } from '../helpers/source-text'
 
 const read = (rel: string) => {
   const p = path.join(process.cwd(), rel)
@@ -104,7 +105,7 @@ describe('배선', () => {
     // 증상이 같아 원인 규명이 한 바퀴 더 돈다.
     // ⚠️ **주석을 걷어내고 본다.** 안 걷으면 위 설명문(그 형태를 인용한다)에 걸려 정상 코드가 빨간불이
     //   된다 — 오늘 이 함정을 네 번째로 밟았다. 텍스트 존재는 구조의 증거가 아니다.
-    const codeOnly = TAIL.replace(/\/\*[\s\S]*?\*\//g, '').split('\n').filter((l) => !/^\s*(\/\/|\*)/.test(l)).join('\n')
+    const codeOnly = stripComments(TAIL)
     expect(codeOnly).not.toMatch(/await import\('@\//)
   })
 

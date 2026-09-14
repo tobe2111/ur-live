@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { deferSeeded, seededSectionProductIds, readHomeSectionsSeed } from '@/shared/home-section-ids'
+import { stripComments } from '../helpers/source-text'
 
 /**
  * 🖼️ 2026-09-06 (대표 — "메인에서 이용권의 똑같은 사진이 두 번 나오는 경우가 있는데")
@@ -98,8 +99,7 @@ describe('SSR 시드 읽기', () => {
 })
 
 /** 주석을 지운 소스 — 이 판정이 *설명하는 주석*에 걸려 늘 통과하는 것을 막는다(같은 함정을 두 번 밟았다). */
-const code = (p: string) =>
-  readFileSync(p, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+const code = (p: string) => stripComments(readFileSync(p, 'utf8'))
 
 describe('배선', () => {
   const FEED = code('src/pages/main-home/GroupBuyFeed.tsx')

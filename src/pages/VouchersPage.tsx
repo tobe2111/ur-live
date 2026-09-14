@@ -13,6 +13,8 @@
  *   3. 카테고리 탭 (편의점/카페/외식/도서 등) — KT Alpha categories
  */
 import { useEffect, useState, useRef, useCallback, useMemo, Fragment } from 'react'
+import { useNavigationType } from 'react-router-dom'
+import { saveListView, readListView } from '@/lib/list-view-cache'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -29,9 +31,8 @@ import { VoucherCard, VoucherRow, BrandChip, CategoryIcon, type VoucherProduct }
 import { GifticonBoxRailRow } from './vouchers/GifticonBoxEntry'
 import VouchersTopBar from './vouchers/VouchersTopBar'
 import { SortMenu } from '@/components/ui/sort-menu'
-import { SORT_OPTIONS, SHOP_CATEGORIES, type SortKey } from './vouchers/constants'
-import BrowseProductCard from './browse/BrowseProductCard'
-import type { Product } from './browse/types'
+import { SORT_OPTIONS, type SortKey } from './vouchers/constants'
+import ShoppingGrid from './vouchers/ShoppingGrid'
 
 interface BrandSummary {
   brand_name: string
@@ -51,146 +52,19 @@ interface CategorySection {
 //   계속됐어도 page2 가 limit30 offset30 으로 20~29 를 건너뜀. SSR limit 과 동일하게 맞춰 근본 해결.
 const PAGE_SIZE = 20
 
+// 🔙 2026-09-13 (대표 신고 — "교환권 상세 갔다 나오면 다시 새로고침됨"): 뒤로 왔을 때 되살릴 목록 상태.
+//   경로가 바뀌면 App.tsx 가 페이지를 리마운트하므로 useState 는 전부 날아간다 → 보관함에서 되살린다.
+//   근거·한계: `src/lib/list-view-cache.ts`
+type VouchersViewState = {
+  products: VoucherProduct[]
+  page: number
+  hasMore: boolean
+  embedVisible: number
+}
+
 // 🏭 2026-06-04 (사용자 요청): 홈(embedded) 기본 카테고리 = '커피/음료' (KT Alpha goods_type_detail).
 //   worker/index.ts MAIN 슬롯 + cache-prewarm HOT_PATH 의 category 값과 반드시 동일해야 SSR 0-RTT 정합.
 const EMBEDDED_DEFAULT_CATEGORY = '커피/음료'
-
-// 🛒 2026-06-20 (사용자 결정 — 교환권/쇼핑 상단 탭 분리) → 2026-06-23 연속 스크롤로 전환: 쇼핑 섹션 =
-//   일반 상품(exclude_deal_only=1) 그리드. /browse 와 동일 데이터·카드(BrowseProductCard)·카테고리.
-//   교환권 더보기 버튼 아래에 이어짐. 카테고리 칩 선택 시 해당 카테고리로 재조회(무한 스크롤 유지).
-function ShoppingGrid() {
-  const [shopCategory, setShopCategory] = useState('all')
-  const [items, setItems] = useState<Product[]>([])
-  const [loading, setLoading] = useState(true)
-  const [loadingMore, setLoadingMore] = useState(false)
-  const [page, setPage] = useState(1)
-  const [hasMore, setHasMore] = useState(true)
-  // 🛒 2026-06-23 (대표 '적응형 카테고리'): 실제 상품이 있는 카테고리만 칩 노출. null=로딩(전체만), []=조회완료.
-  //   /api/products/count(카테고리별, edge 15분 캐시) 병렬 조회 → 0개 카테고리 자동 숨김(인벤토리 적든 많든 깔끔).
-  const [availableShopCats, setAvailableShopCats] = useState<string[] | null>(null)
-  const sentinelRef = useRef<HTMLDivElement>(null)
-  // 🗑️ 2026-07-07 [UNLOCK_LOADING] (로딩 낭비 감사): 쇼핑 그리드는 교환권 리스트 + '더보기' 아래(폴드 밖).
-  //   마운트 즉시 상품 fetch + 카테고리 count 5개 병렬을 하던 것을 IntersectionObserver 로 게이팅 —
-  //   사용자가 쇼핑 섹션 근처(600px)까지 스크롤할 때만 로드(HomeProductsRail 동일 패턴). SSR seed·교환권
-  //   리스트·default sort 전부 불변(이 컴포넌트는 리스트 아래 별도 섹션 — additive 게이트 1개).
-  const [inView, setInView] = useState(false)
-  const gateRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const el = gateRef.current
-    if (!el || inView) return
-    if (typeof IntersectionObserver === 'undefined') { setInView(true); return }
-    const io = new IntersectionObserver((entries) => {
-      if (entries.some(e => e.isIntersecting)) { setInView(true); io.disconnect() }
-    }, { rootMargin: '600px' })
-    io.observe(el)
-    return () => io.disconnect()
-  }, [inView])
-  const load = useCallback((pageNum: number, reset: boolean) => {
-    if (reset) setLoading(true); else setLoadingMore(true)
-    const params = new URLSearchParams({ page: String(pageNum), limit: '20', exclude_deal_only: '1', sort: 'popular' })
-    if (shopCategory !== 'all') params.set('category', shopCategory)
-    api.get(`/api/products?${params.toString()}`)
-      .then(r => {
-        if (r.data?.success) {
-          const ni: Product[] = r.data.data || []
-          setItems(prev => reset ? ni : [...prev, ...ni])
-          setHasMore(ni.length === 20)
-          if (reset) setPage(1)
-        }
-      })
-      .catch(() => { /* graceful */ })
-      .finally(() => { setLoading(false); setLoadingMore(false) })
-  }, [shopCategory])
-  // 카테고리 변경(load identity 변경) 시 1페이지부터 리셋 로드. (폴드 밖 → inView 후에만 최초 로드)
-  useEffect(() => { if (inView) load(1, true) }, [load, inView])
-  useEffect(() => {
-    if (!sentinelRef.current || !hasMore || loadingMore || loading) return
-    const ob = new IntersectionObserver(([e]) => {
-      if (e.isIntersecting) { const n = page + 1; setPage(n); load(n, false) }
-    }, { threshold: 0.1 })
-    ob.observe(sentinelRef.current)
-    return () => ob.disconnect()
-  }, [hasMore, loadingMore, loading, page, load])
-  // 🛒 2026-06-23: 카테고리별 상품 수 조회 → 비어있는 카테고리 칩 제거. 마운트 1회(전역 카탈로그 기준).
-  //   localStorage 캐시(1h) 우선 → 재진입 0-RTT + '전체→확장' 플래시 방지(교환권 카테고리와 동일 패턴).
-  useEffect(() => {
-    let cancelled = false
-    // localStorage 캐시는 inView 무관 즉시 반영(요청 아님) — 재진입 0-RTT 유지.
-    try {
-      const raw = localStorage.getItem('shop_cats_v1')
-      if (raw) {
-        const cached = JSON.parse(raw) as { ts: number; data: string[] }
-        if (Date.now() - cached.ts < 60 * 60_000 && Array.isArray(cached.data)) setAvailableShopCats(cached.data)
-      }
-    } catch { /* localStorage 손상 — 무시 */ }
-    if (!inView) return  // 폴드 밖 — count 5종 병렬 요청은 섹션 근처 스크롤 시에만
-    const cats = SHOP_CATEGORIES.filter(c => c.key !== 'all')
-    Promise.all(cats.map(c =>
-      api.get(`/api/products/count?exclude_deal_only=1&category=${encodeURIComponent(c.key)}`)
-        .then(r => (r.data?.success && Number(r.data.total) > 0) ? c.key : null)
-        .catch(() => null)
-    )).then(results => {
-      if (cancelled) return
-      const avail = results.filter((k): k is string => !!k)
-      setAvailableShopCats(avail)
-      try { localStorage.setItem('shop_cats_v1', JSON.stringify({ ts: Date.now(), data: avail })) } catch { /* quota */ }
-    })
-    return () => { cancelled = true }
-  }, [inView])
-  // 노출 칩: 로딩 중(null)엔 '전체'만 → 조회되면 '전체' + 상품 있는 카테고리.
-  const visibleShopCats = SHOP_CATEGORIES.filter(c => c.key === 'all' || (availableShopCats?.includes(c.key) ?? false))
-  return (
-    <div className="pb-4">
-      {/* 🗑️ 2026-07-07 폴드-아래 게이트 센티넬: 뷰포트 600px 안에 들어오면 상품/카테고리 count 로드. */}
-      <div ref={gateRef} aria-hidden style={{ height: 1 }} />
-      {/* 🛒 2026-06-23 (대표 '가장 이상적으로'): 쇼핑 카테고리 = sticky 바(top-[45px], 탭 바로 아래) —
-          쇼핑 섹션에 있는 동안 상단에 따라붙어 어디서든 카테고리 전환 가능. 교환권 reveal 그룹은 이때 숨김(슬롯 공유). */}
-      <div className="sticky top-[45px] z-20 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
-        <div className="ur-content-wide px-4 lg:px-8 py-2.5">
-          <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
-            {visibleShopCats.map(c => {
-              const active = shopCategory === c.key
-              return (
-                <button
-                  key={c.key}
-                  type="button"
-                  onClick={() => setShopCategory(c.key)}
-                  className={`shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors ${
-                    active
-                      ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900 shadow-sm'
-                      : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2C2F35]'
-                  }`}
-                >
-                  {c.Icon && <c.Icon className="w-3.5 h-3.5" aria-hidden="true" />}
-                  {c.label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-      <div className="ur-content-wide px-4 lg:px-8 pt-3">
-      {loading ? (
-        <BrandLoader />
-      ) : items.length === 0 ? (
-        <div className="text-center py-16 text-gray-400 dark:text-gray-500 text-sm">쇼핑 상품이 없습니다</div>
-      ) : (
-        <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-2.5 items-stretch">
-            {items.map((p, idx) => (
-              <BrowseProductCard key={p.id} product={p} aboveFold={idx < 4} />
-            ))}
-          </div>
-          <div ref={sentinelRef} className="h-10 flex items-center justify-center mt-4">
-            {loadingMore && <div className="text-[11px] text-gray-400 dark:text-gray-500">로드 중...</div>}
-            {!hasMore && items.length > 0 && <div className="text-[11px] text-gray-400 dark:text-gray-500">— 마지막 —</div>}
-          </div>
-        </>
-      )}
-      </div>
-    </div>
-  )
-}
 
 // 🎨 2026-07-01 (대표 "페이지가 빨리 뜨면 되는거"): SSR seed 를 첫 렌더에 **동기 소비** → 로더 프레임 제거,
 //   청크 로드 끝나면 콘텐츠 즉시. (기존엔 loading=true 로 시작 후 effect 에서 소비 → 로더 한 프레임.)
@@ -230,6 +104,18 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
     ssrSeedRef.current = readVouchersSsrSeed(embedded, category, brand, searchParams.get('sort') || 'price_low')
   }
 
+  // 🔙 2026-09-13 (대표 신고 — "상세 갔다 나오면 다시 새로고침됨"): 뒤로(POP) 로 돌아온 경우
+  //   직전 목록을 **첫 렌더에 동기 복원**한다. effect 로 미루면 로더가 한 프레임 뜨고, 무엇보다
+  //   그 프레임의 문서가 짧아 ScrollToTop 의 복원이 그 짧은 높이에 맞춰 잘린다(실측: 1400 → 594).
+  //   키에 필터를 담아 다른 카테고리/브랜드/정렬의 목록이 섞이지 않게 한다.
+  const navType = useNavigationType()
+  const viewKey = `vouchers:list:${embedded ? 'home' : 'page'}:${category}|${brand}|${searchParams.get('sort') || 'price_low'}`
+  const restoredRef = useRef<VouchersViewState | null | undefined>(undefined)
+  if (restoredRef.current === undefined) {
+    restoredRef.current = navType === 'POP' ? readListView<VouchersViewState>(viewKey) : null
+  }
+  const restored = restoredRef.current
+
   // 🎫 2026-06-23 (대표 결정 — '연속 스크롤 + 중앙 스크롤스파이 탭'): 비embedded /vouchers 는 한 페이지에
   //   교환권(상단, ~20개 + 더보기) → 쇼핑(하단 무한)이 이어짐. 상단 [교환권][쇼핑] 탭은 중앙 정렬 +
   //   스크롤 위치 따라 활성 + 클릭 시 해당 섹션으로 점프(콘텐츠 교체/URL 전환 아님). 홈(embedded)은 탭 없음 → 불변.
@@ -260,13 +146,22 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   //   에서만 발생 — 재방문은 캐시로 즉시 그려져 시프트가 없다(그래서 눈에 잘 안 띄었다).
   //   → 응답 전까지 **실측 높이만큼 자리를 잡아 둔다**(칩 행 50px · 브랜드 스트립 113px).
   const [sectionsReady, setSectionsReady] = useState(false)
-  const [products, setProducts] = useState<VoucherProduct[]>(() => ssrSeedRef.current ?? [])
-  const [loading, setLoading] = useState(() => ssrSeedRef.current == null)
+  // 🔙 2026-09-13: 복원본이 SSR 시드보다 우선한다 — 시드는 늘 1페이지(20개)라, 더보기로 편
+  //   목록을 시드로 덮으면 목록이 도로 짧아진다(이 사고의 증상 그대로).
+  const [products, setProducts] = useState<VoucherProduct[]>(() => restored?.products ?? ssrSeedRef.current ?? [])
+  const [loading, setLoading] = useState(() => restored == null && ssrSeedRef.current == null)
   const [loadingMore, setLoadingMore] = useState(false)
-  const [page, setPage] = useState(1)
-  const [hasMore, setHasMore] = useState(() => ssrSeedRef.current != null ? ssrSeedRef.current.length === PAGE_SIZE : true)
+  const [page, setPage] = useState(() => restored?.page ?? 1)
+  const [hasMore, setHasMore] = useState(() => restored ? restored.hasMore
+    : ssrSeedRef.current != null ? ssrSeedRef.current.length === PAGE_SIZE : true)
   // 🎫 2026-06-26 (대표 결정): 교환권 노출 cap 리셋 — 홈 12개 / /vouchers 8개. 카테고리·브랜드 변경 시 초기화.
-  useEffect(() => { setEmbedVisible(embedded ? 12 : 8) }, [embedded, category, brand])
+  // 🔙 2026-09-13: 되살린 경우 **첫 실행만** 건너뛴다. 이 effect 는 마운트에서도 도는데, 그대로
+  //   두면 복원한 '더보기' 확장분을 8개로 되돌려 문서가 다시 짧아진다(= 스크롤 복원도 같이 깨진다).
+  const embedResetSkipRef = useRef(restored != null)
+  useEffect(() => {
+    if (embedResetSkipRef.current) { embedResetSkipRef.current = false; return }
+    setEmbedVisible(embedded ? 12 : 8)
+  }, [embedded, category, brand])
   const loadMoreRef = useRef<HTMLDivElement>(null)
 
   // 🛡️ 2026-05-28 (사용자 요청): 잔액 카드 + 카테고리 scroll-up reveal (headroom).
@@ -410,7 +305,12 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   //   "늦게 되는" 느낌. productsRef 로 "이미 상품 있으면 비우지 않고" 백그라운드 교체 → 즉시 belt 재정렬 + 서버 전체정렬 1페이지 swap.
   const productsRef = useRef<VoucherProduct[]>([])
   useEffect(() => { productsRef.current = products }, [products])
+  // 🔙 2026-09-13: 지금 화면의 products 가 **어느 필터의 결과인지**. 필터를 바꾸면 새 응답이
+  //   오기 전까지 옛 상품이 그대로 떠 있으므로(의도 — 2026-06-05 "비우지 않고 백그라운드 교체"),
+  //   그 사이에 보관하면 새 키에 옛 카테고리 목록이 들어간다. 스탬프가 맞을 때만 보관한다.
+  const productsKeyRef = useRef(viewKey)
   const loadProducts = useCallback((pageNum: number, reset: boolean) => {
+    const keyAtCall = viewKey
     if (reset) { if (productsRef.current.length === 0) setLoading(true) }
     else setLoadingMore(true)
     const params = new URLSearchParams({
@@ -425,6 +325,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
       .then(r => {
         if (r.data?.success) {
           const newItems: VoucherProduct[] = r.data.data || []
+          productsKeyRef.current = keyAtCall
           setProducts(prev => reset ? newItems : [...prev, ...newItems])
           setHasMore(newItems.length === PAGE_SIZE)
           if (reset) setPage(1)
@@ -433,7 +334,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
       .catch(() => { /* graceful */ })
       .finally(() => { setLoading(false); setLoadingMore(false) })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [brand, category, sort])
+  }, [brand, category, sort, viewKey])
+
 
   // 🎨 2026-07-01 (대표 "페이지가 빨리 뜨면"): SSR(MAIN/VOUCHERS) seed 는 첫 렌더에 **동기 소비**(products/loading
   //   초기값, 위 ssrSeedRef). effect 는 (a) seed miss 시 첫 fetch (b) 정렬/카테고리/브랜드 변경 시 fresh fetch 만 담당.
@@ -442,7 +344,9 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   useEffect(() => {
     if (firstEffectRef.current) {
       firstEffectRef.current = false
-      if (ssrSeedRef.current != null) return  // 첫 렌더에 seed 동기 소비됨 → 마운트 재fetch 스킵
+      // 🔙 2026-09-13: 복원본도 시드와 같다 — 마운트에서 재fetch 하면 응답이 1페이지뿐이라
+      //   되살린 목록이 도로 20개로 잘린다. 되살린 데이터는 방금 전 것이라 재조회하지 않는다.
+      if (restored != null || ssrSeedRef.current != null) return
     }
     loadProducts(1, true)
   }, [brand, category, sort, loadProducts])
@@ -453,8 +357,16 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   //   (비embedded 도 cap → 더보기 아래로 쇼핑 섹션이 이어지게). 교환권 무한관찰 비활성, 무한스크롤은 하단 쇼핑 섹션이 담당.
   // 🎫 2026-06-26 (대표 결정): 홈 12개 / /vouchers 8개 먼저 노출 후 '더보기'.
   const EMBED_INITIAL = embedded ? 12 : 8
-  const [embedVisible, setEmbedVisible] = useState(EMBED_INITIAL)
+  const [embedVisible, setEmbedVisible] = useState(() => restored?.embedVisible ?? EMBED_INITIAL)
   const embeddedCapped = true
+  // 🔙 2026-09-13: 현재 목록을 보관 — 상세로 떠났다 뒤로 오면 이 값이 첫 렌더에 되살아난다.
+  //   ⚠️ 이 effect 는 반드시 `embedVisible` **선언 뒤**에 있어야 한다. 위로 올리면 의존성 배열이
+  //   렌더 중에 평가되면서 TDZ 로 페이지가 통째로 빈 화면이 된다(2026-09-13 실측 — tsc TS2448).
+  useEffect(() => {
+    if (loading || products.length === 0 || productsKeyRef.current !== viewKey) return
+    saveListView<VouchersViewState>(viewKey, { products, page, hasMore, embedVisible })
+  }, [viewKey, products, page, hasMore, embedVisible, loading])
+
   // 🧭 2026-06-10 (사용자 요청): '교환권 더보기 (1/14)' 단계 표시 — 전용 /count (엣지 캐시).
   //   list 응답 total 은 추정치(COUNT 제거 최적화)라 사용 불가. 실패 시 표시 생략(graceful).
   const [dealTotal, setDealTotal] = useState<number | null>(null)

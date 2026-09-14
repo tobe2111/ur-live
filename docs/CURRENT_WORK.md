@@ -5495,11 +5495,17 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
 _총 280건 · 최신순 · 이 목록은 자동 생성된다._
+_총 284건 · 최신순 · 이 목록은 자동 생성된다._
 
+**2026-09-14**
+- [2026-09-14 — 유어쇼츠: 위로 되돌아가는 스와이프 + 닫기 버튼 겹침](handoff/2026-09-14-urshorts-swipe-back-and-close-button.md)
+- [나머지 목록 화면 뒤로가기 (2026-09-14) — 재 보니 이미 정상이었다](handoff/2026-09-14-list-restore-remaining-surfaces.md)
 **2026-09-13**
+- [교환권 목록 — 상세 갔다 뒤로 오면 새로고침되던 것 (2026-09-13)](handoff/2026-09-13-vouchers-back-restore.md)
 - [결제 경로 전수 — 2026-09-13](handoff/2026-09-13-payment-sweep.md)
 - [💳 결제가 마지막 화면에서 조용히 실패하던 것 — 콜백 주소의 쿼리 (2026-09-13)](handoff/2026-09-13-payment-callback-query.md)
 - [딜을 얼마나 쓸지 고른다 — 2026-09-13](handoff/2026-09-13-deal-use-chooser.md)
+- [2026-09-13 — 가드들의 눈이 멀어 있었다 (주석 제거기)](handoff/2026-09-13-comment-stripper-blind-spot.md)
 **2026-09-09**
 - [🪑 소유자 오판 수리 + 이용권 영입자 도장 + 자물쇠 사각지대 (2026-09-09)](handoff/2026-09-09-store-owner-and-intro-stamp.md)
 - [2026-09-09 — 지도 마커 안 D4 · 유어쇼츠 진입점(모바일+PC) · CI 수리](handoff/2026-09-09-map-marker-d4-and-shorts-entry.md)
