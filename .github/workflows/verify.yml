@@ -686,12 +686,11 @@ jobs:
       - name: Comment stripper ratchet (strict)
         run: STRICT_COMMENT_STRIPPER=1 node scripts/check-comment-stripper.mjs
 
-  # 🛡️ 2026-09-14: "CI 가 막는 것은 로컬도 막는다" — 실측 91개 가드가 CI strict 인데
-  #   로컬은 무방비였다(합쳐 20초인데도). 위반 하나가 CI 57분을 태우던 원인.
-  #   새 strict 가드는 pre-push 게이트가 돌리거나 EXCLUDE 에 사유를 적어야 한다.
-  - name: 로컬↔CI 차단 동등성 (pre-push 게이트 누수)
+      # 🛡️ 2026-09-14: "CI 가 막는 것은 로컬도 막는다" — 실측 91개 가드가 CI strict 인데
+      #   로컬은 무방비였다(합쳐 20초인데도). 위반 하나가 CI 57분을 태우던 원인.
+      #   새 strict 가드는 pre-push 게이트가 돌리거나 EXCLUDE 에 사유를 적어야 한다.
+      - name: 로컬↔CI 차단 동등성 (pre-push 게이트 누수)
         run: node scripts/check-local-ci-parity.mjs
-        continue-on-error: false
         continue-on-error: false
 
       # 🛡️ 2026-06-30: 배포-청크 자가복구(흰화면/무한로딩) 시스템 회귀 방지 — 현재 위반 0 → strict.

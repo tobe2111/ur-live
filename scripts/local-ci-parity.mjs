@@ -18,7 +18,10 @@
  *   `dark-contrast.yml`, `live-contracts.yml`)는 보지 않는다. 그건 의도다 — 전부
  *   PR 게이트가 아니거나 브라우저·네트워크가 필요해 로컬 푸시 게이트에 맞지 않는다.
  */
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
+import { createRequire } from 'node:module'
+
+const WORKFLOW_DIR = '.github/workflows'
 
 /** CI 가 strict 로 돌리지만 **로컬 푸시 게이트에서는 뺀다** — 이유를 반드시 적는다. */
 export const EXCLUDE = {
@@ -30,19 +33,17 @@ export const EXCLUDE = {
     'route-chunk-map 이 이번 빌드의 것이어야 한다. 빌드 없이는 스스로 판정을 거부한다.',
 }
 
-/** verify.yml 에서 "실패하면 CI 가 막는" 가드 스크립트 이름을 뽑는다. */
-export function ciStrictGuards(ymlPath = '.github/workflows/verify.yml') {
-  const lines = readFileSync(ymlPath, 'utf8').split('\n')
+/**
+ * verify.yml 에서 **아무데서나 언급된** 가드 이름을 줍는 "멍청한 그물"(줄 단위 정규식).
+ *
+ * 이건 판정용이 아니다 — 파싱 워커가 **못 본 자리**를 드러내는 대조군이다.
+ * (matrix·재사용 워크플로처럼 구조가 바뀌면 워커가 눈이 멀 수 있다.)
+ */
+export function guardsMentioned(ymlPath = `${WORKFLOW_DIR}/verify.yml`) {
   const found = new Set()
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
+  for (const line of readFileSync(ymlPath, 'utf8').split('\n')) {
     if (line.trim().startsWith('#')) continue
-    const m = line.match(/scripts\/(check-[a-z0-9-]+\.(?:mjs|sh))/)
-    if (!m) continue
-    // continue-on-error: true 가 근처에 붙어 있으면 경고용이라 제외
-    const near = lines.slice(i, i + 3).join('\n')
-    if (near.includes('continue-on-error: true')) continue
-    found.add(m[1])
+    for (const m of line.matchAll(/scripts\/(check-[a-z0-9-]+\.(?:mjs|sh))/g)) found.add(m[1])
   }
   return [...found].sort()
 }
@@ -50,4 +51,98 @@ export function ciStrictGuards(ymlPath = '.github/workflows/verify.yml') {
 /** 로컬 푸시 게이트가 실제로 돌릴 목록. */
 export function localGateGuards(ymlPath) {
   return ciStrictGuards(ymlPath).filter((g) => !(g in EXCLUDE))
+}
+
+/** verify.yml 이 **경고로만** 돌리는 가드(`continue-on-error: true`). 게이트 대상 아님. */
+export function ciWarnGuards(ymlPath = `${WORKFLOW_DIR}/verify.yml`) {
+  return [...collectGuards(ymlPath).warn].sort()
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🛡️ 2026-09-14 (같은 날 후속) — **깨진 워크플로는 빨간불이 아니라 "아예 안 돎"이다**
+//
+// 이 파일을 만든 커밋 자신이 `verify.yml` 의 들여쓰기를 깨뜨렸다(스텝 하나가 2칸,
+// `continue-on-error` 중복). 결과는 CI 실패가 아니라 **잡 0개로 즉시 종료**였고,
+// PR 화면엔 Verify 가 **뜨지도 않은 채** `Cloudflare Pages ✅` 하나만 초록으로 남았다.
+// 훑어보면 통과한 것처럼 보인다 — 이 레포가 반복해 당한 "조용한 부재" 클래스.
+//
+// 그리고 위 `ciStrictGuards()` 는 **줄 단위 정규식**이라 깨진 YAML 에서도 그럴듯한
+// 목록을 뱉는다. 게이트는 94개를 통과시키고 푸시를 내보냈다. 그래서 아래 둘을 더한다:
+//   ① 워크플로가 YAML 로 실제 파싱되는가
+//   ② 정규식이 뽑은 집합과 **파싱해서 뽑은 집합이 같은가**(정규식 드리프트 차단)
+
+/** 워크플로 YAML 파서. 없으면 **조용히 건너뛰지 않고** 크게 실패한다. */
+function loadYamlParser() {
+  const req = createRequire(import.meta.url)
+  try {
+    return req('js-yaml')
+  } catch {
+    throw new Error(
+      'js-yaml 을 못 찾았다(지금은 eslint 의 전이 의존). 워크플로 YAML 검증을 조용히 건너뛰면 ' +
+        '깨진 워크플로가 다시 샌다 — package.json devDependencies 에 js-yaml 을 직접 추가할 것.',
+    )
+  }
+}
+
+export function workflowFiles(dir = WORKFLOW_DIR) {
+  return readdirSync(dir)
+    .filter((f) => f.endsWith('.yml') || f.endsWith('.yaml'))
+    .sort()
+    .map((f) => `${dir}/${f}`)
+}
+
+/** 워크플로 파일이 실제로 GitHub 가 읽을 모양인가. 빈 배열이면 정상. */
+export function workflowYamlErrors(dir = WORKFLOW_DIR) {
+  const yaml = loadYamlParser()
+  const errors = []
+  for (const file of workflowFiles(dir)) {
+    let doc
+    try {
+      doc = yaml.load(readFileSync(file, 'utf8'))
+    } catch (err) {
+      errors.push({ file, message: String(err?.message ?? err).split('\n')[0] })
+      continue
+    }
+    if (!doc || typeof doc !== 'object' || !doc.jobs || typeof doc.jobs !== 'object') {
+      errors.push({ file, message: 'jobs 가 없다 — 워크플로 모양이 아니다.' })
+      continue
+    }
+    for (const [jobName, job] of Object.entries(doc.jobs)) {
+      const steps = job?.steps
+      if (steps !== undefined && !Array.isArray(steps)) {
+        errors.push({ file, message: `${jobName}.steps 가 배열이 아니다(들여쓰기가 깨졌을 때 나는 모양).` })
+      }
+    }
+  }
+  return errors
+}
+
+/**
+ * 워크플로를 **파싱해서** 가드를 strict / warn 으로 가른다.
+ *
+ * 🩸 왜 파싱인가: 처음엔 줄 단위 정규식으로 `continue-on-error: true` 를 "3줄 안"에서
+ *   찾았는데, YAML 은 키 순서가 자유라 그 창 밖에 있으면 못 본다. 실제로
+ *   `check-bundle-size.mjs` 는 CI 에서 경고인데 게이트가 **차단**으로 오해하고 있었다.
+ *   반대 방향(차단인데 경고로 오해)이면 가드가 조용히 샌다 — 같은 결함의 위험한 쪽이다.
+ */
+function collectGuards(ymlPath) {
+  const yaml = loadYamlParser()
+  const doc = yaml.load(readFileSync(ymlPath, 'utf8'))
+  const strict = new Set()
+  const warn = new Set()
+  for (const job of Object.values(doc?.jobs ?? {})) {
+    for (const step of job?.steps ?? []) {
+      const run = typeof step?.run === 'string' ? step.run : ''
+      const bucket = step?.['continue-on-error'] === true ? warn : strict
+      for (const m of run.matchAll(/scripts\/(check-[a-z0-9-]+\.(?:mjs|sh))/g)) bucket.add(m[1])
+    }
+  }
+  // 한 가드가 두 스텝에 걸쳐 있으면(경고 1 + 차단 1) 차단이 이긴다 — 안전한 쪽.
+  for (const g of strict) warn.delete(g)
+  return { strict, warn }
+}
+
+/** verify.yml 에서 "실패하면 CI 가 막는" 가드 스크립트 이름. **이게 판정 기준이다.** */
+export function ciStrictGuards(ymlPath = `${WORKFLOW_DIR}/verify.yml`) {
+  return [...collectGuards(ymlPath).strict].sort()
 }
