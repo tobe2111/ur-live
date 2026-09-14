@@ -20,6 +20,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Env } from '@/worker/types/env'
 import { cacheGet } from '@/worker/utils/cache'
 import { normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url'
+import { buildDetailMeta } from './detail-meta-enrich'
 import { demoSlugSql, isDemoSlug } from '@/shared/constants/demo-products'
 import { safeError } from '@/worker/utils/safe-error'
 import { productDetailCols, productDetailColsHealed, withColumnPruning } from '@/shared/db/product-columns'
@@ -615,32 +616,10 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
           WHERE p.id = ? AND u.handle IS NOT NULL AND u.handle != '' LIMIT 1`
       ).bind(id).first<{ handle: string }>().catch(() => null),
     ])
-    let menu: Array<{ name: string; desc?: string; price?: string; image?: string; hot?: boolean }> | undefined
-    try {
-      const raw = metaMap?.get(Number(id))?.menu
-      if (raw) { const arr = JSON.parse(raw); if (Array.isArray(arr) && arr.length) menu = arr }
-    } catch { /* meta 데이터 invalid — 메뉴 없음 */ }
     const seller_handle = (handleRow?.handle && handleRow.handle.toLowerCase() !== 'me') ? handleRow.handle : null
-    // 🛡️ 2026-07-01 (대표 "1인당 결제 최대 한도" — 셀러가 등록 시 설정): product_supply_meta.max_per_person.
-    //   0/미설정=무제한. 클라 스텝퍼 cap + 서버 주문검증(group-buy.routes)이 함께 사용.
-    const mppRaw = metaMap?.get(Number(id))?.max_per_person
-    const max_per_person = mppRaw != null && Number.isFinite(Number(mppRaw)) && Number(mppRaw) > 0 ? Math.floor(Number(mppRaw)) : null
-    // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): 등록 시 캡처한 place_url (있으면 상세 지도가 직접 연결).
-    const kakao_place_url = normalizeKakaoPlaceUrl(metaMap?.get(Number(id))?.kakao_place_url)
-    // 🗺️ 2026-07-02 (카카오맵 리뷰 게이미피케이션): 레벨 전용 이용권 — 클라 배지/안내 + 서버 주문검증(group-buy.routes)이 함께 사용.
-    const mrlRaw = metaMap?.get(Number(id))?.min_review_level
-    const min_review_level = mrlRaw != null && Number.isFinite(Number(mrlRaw)) && Number(mrlRaw) > 1 ? Math.floor(Number(mrlRaw)) : null
-    const prelaunch = metaMap?.get(Number(id))?.prelaunch === '1'  // 🏷️ 오픈 예정형(상세 배지·구매 CTA 분기)
-    // 🏪 2026-07-05 온누리 가맹 뱃지 (B2G): seller_meta.onnuri_merchant='1' 이면 상세에 additive 동봉.
-    let onnuri_merchant = false
-    try {
-      const sid = Number((product as { seller_id?: number }).seller_id)
-      if (Number.isFinite(sid) && sid > 0) {
-        const { getSellerMeta } = await import('../../../worker/utils/seller-meta')
-        const sm = await getSellerMeta(DB, [sid])
-        onnuri_merchant = sm.get(sid)?.onnuri_merchant === '1'
-      }
-    } catch { /* fail-soft */ }
+    // 🎟️ meta 파생값 묶음(메뉴·한도·실효상한·장소URL·레벨·오픈예정·온누리) — `detail-meta-enrich.ts`
+    const { menu, max_per_person, qty_cap, kakao_place_url, min_review_level, prelaunch, onnuri_merchant } =
+      await buildDetailMeta(DB, id, metaMap, (product as { seller_id?: number }).seller_id)
 
     return c.json({
       success: true,
@@ -653,6 +632,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         ...(seller_handle ? { seller_handle } : {}),  // 🔗 셀러 유어샵 handle (있을 때만)
         ...(menu ? { menu } : {}),                // 🍽️ #5: 대표 메뉴 (있을 때만)
         ...(max_per_person ? { max_per_person } : {}),  // 🎯 1인당 구매 한도 (있을 때만)
+        ...(qty_cap ? { qty_cap } : {}),  // 🧾 실효 상한(상품별 ?? 플랫폼 기본) — 스테퍼 cap
         ...(prelaunch ? { prelaunch: true } : {}),  // 🏷️ 오픈 예정형
         ...(kakao_place_url ? { kakao_place_url } : {}),  // 🎯 카카오 장소 페이지 URL (있을 때만)
         ...(min_review_level ? { min_review_level } : {}),  // 🗺️ 동네 리뷰어 레벨 전용 (있을 때만)

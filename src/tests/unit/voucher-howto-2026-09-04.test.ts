@@ -22,15 +22,20 @@ import { stripComments as codeOnly } from '../helpers/source-text'
 
 const HOWTO = 'src/pages/group-buy/RedeemHowTo.tsx'
 const DETAIL = codeOnly(readFileSync('src/pages/GroupBuyDetailPage.tsx', 'utf-8'))
+// 🔁 2026-09-14 (안 B): 이용 안내가 `UsageGuide` 로 추출되면서 상세 → UsageGuide → RedeemHowTo
+//   **두 단계 사슬**이 됐다. 한 단계만 보면 중간이 끊겨도 초록이 뜬다.
+const USAGE = codeOnly(readFileSync('src/pages/group-buy/UsageGuide.tsx', 'utf-8'))
 const howto = codeOnly(readFileSync(HOWTO, 'utf-8'))
 
 describe('① 상세가 사용 절차를 보여 준다', () => {
   it('컴포넌트가 배선돼 있다 — import 만으론 안 그려진다', () => {
-    expect(DETAIL, '렌더가 빠지면 손님은 여전히 한 줄만 본다').toMatch(/<RedeemHowTo\s*\/>/)
+    expect(DETAIL, '상세가 이용 안내를 안 그리면 사슬이 거기서 끊긴다').toMatch(/<UsageGuide\s/)
+    expect(USAGE, '렌더가 빠지면 손님은 여전히 한 줄만 본다').toMatch(/<RedeemHowTo\s/)
   })
 
   it('옛 한 줄짜리 안내로 되돌아가지 않았다', () => {
     expect(DETAIL).not.toContain("v: '매장에서 교환권 제시'")
+    expect(USAGE).not.toContain("v: '매장에서 교환권 제시'")
   })
 })
 

@@ -1491,8 +1491,15 @@ const MUTATIONS = [
   {
     name: '💰 교환권 마진 SSOT 가 0 을 도로 20 으로 삼킨다 (어드민에서 0% 를 못 만든다)',
     file: 'src/features/admin/api/admin-kt-alpha/markup.ts',
-    find: '  return Math.min(100, Math.max(0, n))\n',
-    replace: '  return Math.min(100, Math.max(0, n || KT_CONSUMER_MARKUP_DEFAULT_PCT))\n',
+    // ⚠️ 앵커에 앞줄을 붙여 둔 이유: 2026-09-14 에 같은 파일로 **셀러 축**
+    //    `resolveKtSellerMarkupPct` 가 들어오면서 클램프 줄이 byte-동일로 두 번이 됐다.
+    //    `Math.min(...)` 한 줄만으로는 어느 함수인지 못 가린다 — 줄이지 말 것.
+    find:
+      '  if (!Number.isFinite(n)) return KT_CONSUMER_MARKUP_DEFAULT_PCT\n' +
+      '  return Math.min(100, Math.max(0, n))\n',
+    replace:
+      '  if (!Number.isFinite(n)) return KT_CONSUMER_MARKUP_DEFAULT_PCT\n' +
+      '  return Math.min(100, Math.max(0, n || KT_CONSUMER_MARKUP_DEFAULT_PCT))\n',
     test: 'src/tests/unit/kt-alpha-markup-zero.test.ts',
     why: '2026-09-02 라이브: 설정 20 → 교환권 2,260개가 액면가 ×1.19. 0 을 넣어도 `|| 20` 이 삼켰다.',
   },
@@ -2498,17 +2505,15 @@ const MUTATIONS = [
   {
     name: '한도 재검증(과금 직전)이 사라져 다른 탭으로 뚫린다',
     file: 'src/features/group-buy/api/group-buy.routes.ts',
-    find: `      const ownedRow = await DB.prepare(
-        "SELECT COUNT(*) AS n FROM vouchers WHERE product_id = ? AND user_id = ? AND status IN ('unused','used')"
-      ).bind(productId, userId).first<{ n: number }>().catch(() => ({ n: 0 }))
-      const owned = Number(ownedRow?.n ?? 0)
-      if (owned + qty > maxPerPerson) {`,
-    replace: '      const owned = 0\n      if (owned + qty > maxPerPerson) {',
+    find: '    const lim2 = await recheck(DB, productId, userId, qty, mppRaw)',
+    replace: '    const lim2 = { ok: true } as { ok: true } | { ok: false; error: string }',
     test: 'src/tests/unit/seller-voucher-limit.test.ts',
     why:
-      '같은 쿼리가 두 곳에 있다(사전검증 / 과금 직전 레이스 차단). 한쪽만 지워도 정상 구매는 ' +
-      '전부 통과해서 눈으로는 못 본다. ⚠️ 이 가드는 처음에 "파일에 쿼리가 있는가" 로 판정해 ' +
-      '**헛돌았다** — 되돌려-검증에서 잡아 개수 판정으로 고쳤다.',
+      '두 지점(사전검증 / 과금 직전 레이스 차단) 중 하나만 지워도 정상 구매는 전부 통과해서 ' +
+      '눈으로는 못 본다. ⚠️ 이 가드는 처음에 "파일에 쿼리가 있는가" 로 판정해 **헛돌았다** — ' +
+      '되돌려-검증에서 잡아 개수 판정으로 고쳤다. 🔁 2026-09-14: 두 벌이던 인라인 판정을 ' +
+      '`purchase-cap.ts` 헬퍼로 합치면서 이 주입의 **대상이 사라졌다**(낡은 지도로 CI 가 잡았다) — ' +
+      '호출 자리를 겨냥하도록 재조준.',
   },
   {
     name: '즐겨찾기가 다시 localStorage 단독 저장이 된다',
