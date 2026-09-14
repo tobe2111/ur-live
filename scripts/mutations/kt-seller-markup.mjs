@@ -30,6 +30,22 @@ export default [
       '"둘 중 하나만" 이 실제로 빨간불인지 확인한다.',
   },
   {
+    // 소비자 축에는 이 주입이 원래 있었는데 셀러 축엔 없었다 — 2026-09-14 CI 가
+    // 그 비대칭을 드러내 주며 함께 채웠다(소비자 앵커가 두 곳에 걸린 그 실패).
+    name: '💰셀러 클램프가 0 을 기본값으로 되돌린다 (함수 안에서 같은 함정 재발)',
+    file: 'src/features/admin/api/admin-kt-alpha/markup.ts',
+    find:
+      `  if (!Number.isFinite(n)) return KT_SELLER_MARKUP_DEFAULT_PCT\n` +
+      `  return Math.min(100, Math.max(0, n))\n`,
+    replace:
+      `  if (!Number.isFinite(n)) return KT_SELLER_MARKUP_DEFAULT_PCT\n` +
+      `  return Math.min(100, Math.max(0, n || KT_SELLER_MARKUP_DEFAULT_PCT))\n`,
+    test: TEST,
+    why:
+      '호출부만 지키면 함수 안에서 같은 형태로 되살아날 수 있다. 소비자 축은 이 자리를 ' +
+      '이미 지키고 있었고, 셀러 축만 비어 있었다.',
+  },
+  {
     name: '💰셀러 기본값이 소비자 기본값(20)으로 뭉개진다',
     file: 'src/features/admin/api/admin-kt-alpha/markup.ts',
     find: `export const KT_SELLER_MARKUP_DEFAULT_PCT = 5`,
