@@ -12,15 +12,18 @@
  * 우회: `SKIP_PREPUSH_GATE=1 git push …` (긴급 시). 우회해도 CI 가 다시 막는다.
  */
 import { execFileSync } from 'node:child_process'
-import { localGateGuards, EXCLUDE } from './local-ci-parity.mjs'
+import { localGateSteps, EXCLUDE } from './local-ci-parity.mjs'
 
 if (process.env.SKIP_PREPUSH_GATE === '1') {
   console.log('⏭️  pre-push 게이트 건너뜀 (SKIP_PREPUSH_GATE=1) — CI 가 대신 막는다.')
   process.exit(0)
 }
 
-const guards = localGateGuards()
-if (guards.length === 0) {
+// 🔑 이름이 아니라 **CI 의 명령 그대로** 돌린다(2026-09-14 수리).
+//    맨손으로 `node scripts/<이름>` 을 돌리면 `-s`·`--changed-only`·`STRICT_*` 가 빠져
+//    절반 가까이가 경고 모드로 통과한다 — 게이트가 94개 초록을 찍고 CI 가 막았다.
+const steps = localGateSteps()
+if (steps.length === 0) {
   // 🛡️ 측정 0 = 통과가 아니라 실패. 이 레포가 반복해 당한 "헛도는 가드" 차단.
   console.error('❌ pre-push 게이트: verify.yml 에서 가드를 하나도 못 뽑았다 — 파서가 낡았다.')
   process.exit(1)
@@ -28,18 +31,22 @@ if (guards.length === 0) {
 
 const t0 = Date.now()
 const failed = []
-for (const g of guards) {
-  const isSh = g.endsWith('.sh')
+for (const step of steps) {
   try {
-    execFileSync(isSh ? 'bash' : 'node', [`scripts/${g}`], { stdio: 'pipe', timeout: 120_000 })
+    // CI 의 `shell: /usr/bin/bash -e {0}` 와 같은 모양으로.
+    execFileSync('bash', ['-e', '-c', step.run], {
+      stdio: 'pipe',
+      timeout: 120_000,
+      env: { ...process.env, ...step.env },
+    })
   } catch (err) {
-    failed.push({ g, out: `${err.stdout ?? ''}${err.stderr ?? ''}`.trim() })
+    failed.push({ g: step.name, out: `${err.stdout ?? ''}${err.stderr ?? ''}`.trim() })
   }
 }
 const secs = ((Date.now() - t0) / 1000).toFixed(1)
 
 if (failed.length === 0) {
-  console.log(`✅ pre-push 게이트: 가드 ${guards.length}개 통과 (${secs}초). 제외 ${Object.keys(EXCLUDE).length}개는 CI 담당.`)
+  console.log(`✅ pre-push 게이트: 가드 ${steps.length}개 통과 (${secs}초). 제외 ${Object.keys(EXCLUDE).length}개는 CI 담당.`)
   process.exit(0)
 }
 
