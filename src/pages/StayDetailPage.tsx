@@ -19,6 +19,7 @@ import DetailTitleHeader from './group-buy/DetailTitleHeader'
 import DetailBreadcrumb, { stayCrumbs } from '@/components/deal/DetailBreadcrumb'
 import DetailFloatingHeader from '@/components/deal/DetailFloatingHeader'
 import StayDateGuestPicker, { type DayPrice } from './stay-detail/StayDateGuestPicker'
+import { stayAddressLine, stayRegionLabel } from '@/shared/stay-address'
 import StayBookingPanel, { cancellationLabel } from './stay-detail/StayBookingPanel'
 import BrandLoader from '@/components/brand/BrandLoader'
 
@@ -323,9 +324,13 @@ export default function StayDetailPage() {
             dayPrices={dayPrices}
             maxGuests={rooms.reduce((m, r) => Math.max(m, r.max_guests || 0), 0) || 20}
             baseGuests={rooms.reduce((m, r) => Math.max(m, r.base_guests || 0), 0) || undefined}
+            checkInTime={stay.check_in_time}
+            checkOutTime={stay.check_out_time}
             onApply={({ checkIn: ci, checkOut: co, guests: g }) => { setCheckIn(ci); setCheckOut(co); setGuests(g) }}
           />
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{nights}박 · 체크인 {stay.check_in_time} / 체크아웃 {stay.check_out_time}</p>
+          {/* 🩸 2026-09-14: 여기 있던 "N박 · 체크인 … / 체크아웃 …" 한 줄을 지웠다.
+              박수는 카드 가운데 배지가, 시각은 카드 각주가 말한다. 같은 값을 두 자리에서 말하면
+              나중에 한쪽만 고쳐져 서로 어긋난다(대표 지적 ④). */}
         </>
       )}
     </div>
@@ -343,7 +348,7 @@ export default function StayDetailPage() {
       {/* 🔘 이용권 상세와 **같은 컴포넌트**(대표 "왜 계속 다르게 하는거지?"). 경위는 detail-hero-crop.test.ts */}
       <DetailFloatingHeader
         productId={stay.id} title={stay.restaurant_name || stay.name}
-        shareDescription={[stay.region_sido, stay.region_sigungu].filter(Boolean).join(' ') || '숙소 이용권'}
+        shareDescription={stayRegionLabel(stay.region_sido, stay.region_sigungu, stay.address) || '숙소 이용권'}
         shareImageUrl={stay.image_url || ''} shareLink={`https://urdeal.kr/stays/${stay.id}`}
         myUserId={localStorage.getItem('user_id') || ''} heroRef={heroRef} onBack={() => navigate(-1)}
       />
@@ -351,7 +356,7 @@ export default function StayDetailPage() {
       <DetailTitleHeader
         name={stay.restaurant_name || stay.name}
         storeName={propertyTypeLabel(stay.property_type)}
-        address={[stay.region_sido, stay.region_sigungu, stay.address].filter(Boolean).join(' ')}
+        address={stayAddressLine(stay.region_sido, stay.region_sigungu, stay.address)}
         rating={stay.avg_rating ?? undefined}
         reviewCount={stay.review_count ?? undefined}
       />
@@ -383,7 +388,11 @@ export default function StayDetailPage() {
           <h1 className="text-xl lg:text-2xl font-extrabold">{stay.restaurant_name || stay.name}</h1>
           <div className="flex items-center gap-2 mt-1 text-xs text-gray-500 dark:text-gray-400">
             <MapPin className="w-3 h-3" />
-            <span>{stay.region_sido} {stay.region_sigungu} · {stay.address}</span>
+            {/* 📍 2026-09-14 대표 신고 — 여기가 "경북 경주시 · 경북 경주시 손곡3길 37-14" 로 찍히던 자리.
+                라이브 50건 전수: 주소가 자체 지역을 가진 것 50/50, 그중 **12건은 지역 항목과 아예 다르다**
+                (region=강원 속초시 ↔ address=강원특별자치도 양양군) → 이어 붙이면 틀린 주소가 된다.
+                판정은 `shared/stay-address.ts` 하나로. */}
+            <span>{stayAddressLine(stay.region_sido, stay.region_sigungu, stay.address)}</span>
           </div>
           {stay.avg_rating ? (
             <div className="flex items-center gap-1.5 mt-2">

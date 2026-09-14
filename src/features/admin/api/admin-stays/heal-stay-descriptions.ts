@@ -13,8 +13,21 @@
  *
  * ## 대상 판정 — 두 조건 다 필요하다
  * - `slug LIKE 'demo-stay-%'` — 빠지면 **관리자가 손으로 쓴 문구를 덮는다**
- * - `description LIKE '%—%'` — 조립문의 지문. 빠지면 멱등이 깨진다(새 desc 는 줄표를 안 쓰므로
+ * - 줄표(`—`) 를 가진 행 — 조립문의 지문. 빠지면 멱등이 깨진다(새 desc 는 줄표를 안 쓰므로
  *   두 번 돌려도 무해하다 — 그 성질이 이 조건에서 나온다)
+ *
+ * 🩸 **2026-09-14 — 이 치유가 절반만 되어 있었다.** 대표 스크린샷(연정풀빌라, id 2764)의 '숙소 소개'가
+ *    그대로 `경주의 펜션 — 독채형 펜션 — 바비큐 테라스와 프라이빗한 휴식.` 이었다. 실측:
+ *
+ *      products.description            → '테라스에서 바비큐를 …'   ✅ 고쳐져 있었다
+ *      product_stay_info.description_full → '경주의 펜션 — 독채형 …'  ❌ 그대로였다
+ *
+ *    화면의 '숙소 소개' 섹션이 읽는 것은 **`description_full`** 이다. 즉 치유가 *아무도 안 보는 칸*만
+ *    고치고 *보이는 칸*을 남겼고, 반환값은 "N건 고침" 이라 성공처럼 보였다.
+ *    더 나쁜 것: 선택 조건이 `p.description LIKE '%—%'` 하나였던 탓에, description 이 고쳐진 순간
+ *    그 행은 **영영 다시 선택되지 않는다** — description_full 은 손댈 기회조차 없었다.
+ *    ⇒ 선택은 **두 칸 중 하나라도** 줄표를 가지면, 갱신은 **두 칸 모두**.
+ *    가드: `stay-detail-b.test.ts`.
  */
 type D1 = {
   prepare: (q: string) => {
@@ -36,7 +49,8 @@ export async function healStayDescriptions(DB: D1, types: readonly StayTypeDesc[
     const stale = await DB.prepare(
       `SELECT p.id AS pid, psi.property_type AS ptype
          FROM products p JOIN product_stay_info psi ON psi.product_id = p.id
-        WHERE p.slug LIKE 'demo-stay-%' AND p.description LIKE '%—%'`
+        WHERE p.slug LIKE 'demo-stay-%'
+          AND (p.description LIKE '%—%' OR psi.description_full LIKE '%—%')`
     ).all<{ pid: number; ptype: string | null }>()
       .catch(() => ({ results: [] as { pid: number; ptype: string | null }[] }))
     for (const row of (stale.results || [])) {
@@ -45,7 +59,11 @@ export async function healStayDescriptions(DB: D1, types: readonly StayTypeDesc[
       const r = await DB.prepare(
         `UPDATE products SET description = ?, updated_at = datetime('now') WHERE id = ?`
       ).bind(ty.desc, row.pid).run().catch(() => null)
-      if (r && (r.meta.changes || 0) > 0) healed++
+      // 🩸 화면의 '숙소 소개' 가 읽는 칸. 위 UPDATE 만 있던 탓에 라이브 문구가 안 바뀌었다(파일 머리 참조).
+      const r2 = await DB.prepare(
+        `UPDATE product_stay_info SET description_full = ? WHERE product_id = ?`
+      ).bind(ty.desc, row.pid).run().catch(() => null)
+      if ((r && (r.meta.changes || 0) > 0) || (r2 && (r2.meta.changes || 0) > 0)) healed++
     }
   } catch { /* best-effort — 문구 백필 실패가 시드를 막지 않음 */ }
   return healed
