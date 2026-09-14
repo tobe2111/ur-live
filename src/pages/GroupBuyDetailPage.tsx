@@ -2,7 +2,9 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import DetailGallery from './group-buy/DetailGallery'
 import { detailGalleryImages } from '@/shared/detail-hero-image'
-import RedeemHowTo from './group-buy/RedeemHowTo'
+import UsageGuide from './group-buy/UsageGuide'
+import { FieldCard, FieldRow } from '@/components/ticket/FieldCard'
+import { DEFAULT_QTY_CAP } from '@/shared/purchase-cap-default'
 import DetailTitleHeader from './group-buy/DetailTitleHeader'
 import DetailBreadcrumb, { voucherCrumbs } from '@/components/deal/DetailBreadcrumb'
 import { readCachedLoc, distanceKm } from './group-buy/detail-derived'
@@ -87,6 +89,8 @@ interface GroupBuyDetail {
   current_discount_pct: number
   /** 🎯 1인당 최대 구매 수량 (셀러 설정, 없으면 무제한). */
   max_per_person?: number
+  /** 실효 상한(상품별 ?? 플랫폼 기본) — 서버가 정한다. 없으면 화면 기본값. */
+  qty_cap?: number
   min_review_level?: number
   /** 🏷️ 오픈 예정형 데모 — 구매 대신 사전 응모 CTA */
   prelaunch?: boolean
@@ -325,7 +329,11 @@ export default function GroupBuyDetailPage() {
   const total = unitPrice * quantity
   const totalSaving = unitSaving * quantity
   // 🎯 2026-07-01 (대표 "1인당 결제 최대 한도"): 셀러 설정값으로 스텝퍼 상한. 미설정=기존 10.
-  const maxQty = detail?.max_per_person && detail.max_per_person > 0 ? detail.max_per_person : 10
+  // 🧾 2026-09-14: 상한의 진실은 서버(`purchase-cap.ts`)다 — 화면이 10 을 자기 상수로 들고 있어서
+  //   API 를 직접 치면 100장이 사지던 구멍이 있었다. 응답이 없을 때만 화면 기본값으로 폴백한다.
+  const maxQty = detail?.qty_cap && detail.qty_cap > 0
+    ? detail.qty_cap
+    : (detail?.max_per_person && detail.max_per_person > 0 ? detail.max_per_person : DEFAULT_QTY_CAP)
   const isJoinable = detail?.group_buy_status === 'active' || detail?.group_buy_status === 'achieved'
   // 🏷️ 2026-07-05 (대표 "옵션으로 선택"): 오픈 예정형은 구매 불가 — 사전 응모(FcfsApplyBlock)로 유도.
   const isPrelaunch = !!detail?.prelaunch
@@ -602,7 +610,7 @@ export default function GroupBuyDetailPage() {
           {[
             { id: 'gb-sec-info', label: '이용권 정보' },
             ...((detail.restaurant_address || (detail.restaurant_lat && detail.restaurant_lng)) ? [{ id: 'gb-sec-location', label: '매장 위치' }] : []),
-            { id: 'gb-sec-reviews', label: '리뷰' },
+            ...(Number(detail.review_count || 0) > 0 ? [{ id: 'gb-sec-reviews', label: '리뷰' }] : []),
           ].map((tab) => (
             <button key={tab.id} onClick={() => document.getElementById(tab.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
               style={{ padding: '11px 15px', fontSize: 14, fontWeight: 800, color: 'var(--gbd-ink2)', background: 'transparent', border: 'none', cursor: 'pointer' }}>
@@ -682,8 +690,30 @@ export default function GroupBuyDetailPage() {
           </div>
           {/* 🔀 양쪽을 합친다: main(#1251)의 여백 정리(marginTop 6) + 내 탈-로즈(`--gbd-ink`).
               한쪽만 고르면 여백이나 색 중 하나를 잃는다. */}
-          <div style={{ marginTop: 6, fontSize: 13, color: 'var(--gbd-ink2)', fontWeight: 500 }}>{unitSaving > 0 && <>1매당 <b style={{ fontWeight: 800, color: 'var(--gbd-ink)' }}>{formatNumber(unitSaving)}원</b> 저렴 · </>}결제 즉시 교환권 발급</div>
+          <div style={{ marginTop: 6, fontSize: 13, color: 'var(--gbd-ink2)', fontWeight: 500 }}>결제 즉시 교환권 발급</div>
         </div>
+
+        {/* 🎫 살 조건 — 수량. **숙소 '인원' 행과 같은 부품**(`FieldRow`)이다(대표 "두 상세가 같은 부품을 쓰도록").
+            📱 모바일 전용: PC 는 우측 `DealPurchaseBox` 가 담당(두 곳에 두면 어느 쪽이 진짜인지 흐려진다).
+            종전엔 하단 바 안에 32px 스테퍼로 끼어 있어 살 조건이 화면 맨 아래에만 있었다. */}
+        {isJoinable && (
+          <div className="lg:hidden" style={{ padding: '0 18px 16px' }}>
+            <FieldCard>
+              <FieldRow
+                label="수량"
+                value={`${quantity}장`}
+                hint={detail.max_per_person && detail.max_per_person > 0 ? `1인당 최대 ${detail.max_per_person}개` : undefined}
+                right={(
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 2 }} role="group" aria-label="수량 조절">
+                    <button type="button" onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={!buyable || quantity <= 1} aria-label="수량 감소" style={{ width: 34, height: 34, borderRadius: 9, border: '1px solid var(--gbd-line2)', background: 'transparent', color: 'var(--gbd-ink)', fontSize: 18, cursor: 'pointer', opacity: (!isJoinable || quantity <= 1) ? .4 : 1 }}>−</button>
+                    <span style={{ minWidth: 32, textAlign: 'center', fontSize: 15, fontWeight: 800, color: 'var(--gbd-ink)' }} aria-live="polite" aria-label={`현재 ${quantity}장`}>{quantity}</span>
+                    <button type="button" onClick={() => setQuantity(q => Math.min(maxQty, q + 1))} disabled={!buyable || quantity >= maxQty} aria-label="수량 증가" style={{ width: 34, height: 34, borderRadius: 9, border: '1px solid var(--gbd-line2)', background: 'transparent', color: 'var(--gbd-ink)', fontSize: 18, cursor: 'pointer', opacity: (!isJoinable || quantity >= maxQty) ? .4 : 1 }}>+</button>
+                  </span>
+                )}
+              />
+            </FieldCard>
+          </div>
+        )}
 
         {/* 🗓️ 2026-09-04 (대표 "마감 개념은 없어"): 'D-N 마감' 배너 제거 — 마감이 아무것도 안 막는데
             남겨 두면 없는 마감을 소비자에게 알리는 거짓말이 된다. 구매 후 사용 기간은 별개 축이다. */}
@@ -752,7 +782,7 @@ export default function GroupBuyDetailPage() {
               <span key={line} style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span aria-hidden="true" style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--gbd-accent)', flex: '0 0 auto' }} />{line}</span>
             ))}
           </div>
-          {detail.description && <p style={{ margin: '14px 0 0', fontSize: 14.5, lineHeight: 1.72, color: 'var(--gbd-ink2)', whiteSpace: 'pre-line' }}>{detail.description}</p>}
+          {detail.description && detail.description.trim() !== (detail.name || '').trim() && <p style={{ margin: '14px 0 0', fontSize: 14.5, lineHeight: 1.72, color: 'var(--gbd-ink2)', whiteSpace: 'pre-line' }}>{detail.description}</p>}
         </div>
 
         {/* 대표 메뉴 — 백엔드 menu 데이터 있을 때만 (data-gate; docs/design/group-buy-detail.md). 추출: DealMenuList */}
@@ -804,34 +834,7 @@ export default function GroupBuyDetailPage() {
 
         <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
 
-        {/* 이용 안내 — 헤어라인 스펙표 + 점불릿 유의사항 */}
-        <div style={{ padding: '22px 18px' }}>
-          <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>이용 안내</div>
-          <div style={{ marginTop: 15 }}>
-            {[
-              { k: '사용기한', v: detail.voucher_expiry ? `${safeDate(detail.voucher_expiry)?.toLocaleDateString('ko-KR') ?? ''} 까지` : '발급 후 사용 기간 적용' },
-              { k: '사용처', v: detail.restaurant_name || '전 지점' },
-              { k: '사용 방법', v: 'QR 제시 · 확인코드' },
-            ].map((row, i, arr) => (
-              <div key={row.k} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 0', borderTop: '1px solid var(--gbd-line2)', borderBottom: i === arr.length - 1 ? '1px solid var(--gbd-line2)' : 'none' }}>
-                <span style={{ fontSize: 13.5, color: 'var(--gbd-sub)', whiteSpace: 'nowrap' }}>{row.k}</span>
-                <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gbd-ink)' }}>{row.v}</span>
-              </div>
-            ))}
-          </div>
-          <RedeemHowTo />
-          <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {(detail.voucher_terms
-              ? detail.voucher_terms.split('\n').map(s => s.trim()).filter(Boolean)
-              : ['현장에서 추가 할인이나 다른 쿠폰과 중복 적용되지 않아요.', '잔액은 환불되지 않으니 한 번에 사용하시길 권장해요.']
-            ).map((line, i) => (
-              <div key={i} style={{ display: 'flex', gap: 9, alignItems: 'flex-start' }}>
-                <span style={{ flex: '0 0 auto', width: 4, height: 4, borderRadius: '50%', background: 'var(--gbd-sub2)', marginTop: 8 }} />
-                <span style={{ fontSize: 13, color: 'var(--gbd-sub)', lineHeight: 1.5 }}>{line}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <UsageGuide voucherExpiry={detail.voucher_expiry} voucherTerms={detail.voucher_terms} />
 
         {/* 후기·평점 — 신뢰 레버 (디자이너 후속 제안). 기존 ProductReviews 재사용(lazy, 빈 상태/작성 폼 내장). */}
         <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
@@ -909,18 +912,10 @@ export default function GroupBuyDetailPage() {
             <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-ink2)', whiteSpace: 'nowrap' }}>
               {isJoinable && totalSaving > 0 ? (quantity > 1 ? `총 ${formatNumber(totalSaving)}원 할인 중` : `${formatNumber(unitSaving)}원 할인 중`) : ''}
             </span>
-            {detail?.max_per_person && detail.max_per_person > 0 ? (
-              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gbd-sub)', whiteSpace: 'nowrap' }}>1인당 최대 {detail.max_per_person}개</span>
-            ) : null}
             {/* 🗺️ 2026-07-02 카카오맵 리뷰 게이미피케이션 — 레벨 전용 이용권 배지 (서버 게이트의 UX 안내) */}
             {detail?.min_review_level && detail.min_review_level > 1 ? (
               <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--gbd-ink)', whiteSpace: 'nowrap' }}>동네 리뷰어 Lv.{detail.min_review_level} 전용</span>
             ) : null}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--gbd-line2)', borderRadius: 10, overflow: 'hidden' }} role="group" aria-label="수량 조절">
-            <button onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={!buyable || quantity <= 1} aria-label="수량 감소" style={{ width: 32, height: 32, border: 'none', background: 'var(--gbd-card)', color: 'var(--gbd-ink)', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (!isJoinable || quantity <= 1) ? .4 : 1 }}>−</button>
-            <span style={{ minWidth: 30, textAlign: 'center', fontSize: 14, fontWeight: 700, color: 'var(--gbd-ink)' }} aria-live="polite" aria-label={`현재 ${quantity}장`}>{quantity}</span>
-            <button onClick={() => setQuantity(q => Math.min(maxQty, q + 1))} disabled={!buyable || quantity >= maxQty} aria-label="수량 증가" style={{ width: 32, height: 32, border: 'none', background: 'var(--gbd-card)', color: 'var(--gbd-ink)', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: (!isJoinable || quantity >= maxQty) ? .4 : 1 }}>+</button>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, marginBottom: 6 }}>

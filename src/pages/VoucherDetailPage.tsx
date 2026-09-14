@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { DEFAULT_QTY_CAP } from '@/shared/purchase-cap-default'
 import { useParams, useNavigate, Navigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Info, Link as LinkIcon } from 'lucide-react'
@@ -57,6 +58,7 @@ interface VoucherProduct {
   seller_name?: string | null
   /** 🎯 1인당 최대 구매 수량 (설정 시, 없으면 무제한). */
   max_per_person?: number
+  qty_cap?: number  // 🧾 실효 상한 — 서버(`purchase-cap.ts`)가 정한다
   min_review_level?: number
 }
 
@@ -464,7 +466,7 @@ export default function VoucherDetailPage() {
               {/* 🎯 2026-07-01: 1인당 한도(max_per_person) cap — 미설정 시 10(서버 공통 상한과 별개 UX 가드). */}
               <button onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={quantity <= 1} aria-label="수량 감소" className="flex h-11 w-11 items-center justify-center text-[20px] font-semibold text-gray-900 dark:text-white disabled:text-gray-300 dark:disabled:text-gray-600">−</button>
               <span className="min-w-[20px] text-center text-[16px] font-bold text-gray-900 dark:text-white">{quantity}</span>
-              <button onClick={() => { const cap = product?.max_per_person && product.max_per_person > 0 ? product.max_per_person : 10; setQuantity(q => Math.min(cap, q + 1)) }} disabled={quantity >= (product?.max_per_person && product.max_per_person > 0 ? product.max_per_person : 10)} aria-label="수량 증가" className="flex h-11 w-11 items-center justify-center text-[20px] font-semibold text-gray-900 dark:text-white disabled:text-gray-300 dark:disabled:text-gray-600">+</button>
+              <button onClick={() => { const cap = product?.qty_cap && product.qty_cap > 0 ? product.qty_cap : (product?.max_per_person && product.max_per_person > 0 ? product.max_per_person : DEFAULT_QTY_CAP); setQuantity(q => Math.min(cap, q + 1)) }} disabled={quantity >= (product?.qty_cap && product.qty_cap > 0 ? product.qty_cap : (product?.max_per_person && product.max_per_person > 0 ? product.max_per_person : DEFAULT_QTY_CAP))} aria-label="수량 증가" className="flex h-11 w-11 items-center justify-center text-[20px] font-semibold text-gray-900 dark:text-white disabled:text-gray-300 dark:disabled:text-gray-600">+</button>
             </div>
             <button
               onClick={handleExchange}
