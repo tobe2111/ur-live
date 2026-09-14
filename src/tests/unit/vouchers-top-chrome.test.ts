@@ -19,15 +19,21 @@ import { resolve } from 'node:path'
 const SRC = readFileSync(resolve(__dirname, '../../pages/VouchersPage.tsx'), 'utf-8')
 
 describe('교환권 탭 상단', () => {
-  it('① 잔액 0 이면 슬래브 대신 한 줄 바 — 잔액 유무로 갈린다', () => {
-    // 슬래브는 `dealBalance ?` 삼항의 참 가지 안에만 있어야 한다.
-    const i = SRC.indexOf('{dealBalance ? (')
-    expect(i).toBeGreaterThan(-1)
-    // 🎫 2026-09-02 B안: 검정 슬래브 → 흰 카드(`p-5 … shadow-lift`, 숫자 36px 이 주인공). 표식만 바꿨다.
-    const slab = SRC.indexOf('rounded-2xl p-5 bg-white dark:bg-[#1D1F29] shadow-lift', i)
-    const elseAt = SRC.indexOf(') : (', i)
-    expect(slab).toBeGreaterThan(-1)
-    expect(slab).toBeLessThan(elseAt)   // 슬래브가 else 가지로 새지 않았다
+  it('① 잔액 0 이면 큰 카드 대신 한 줄 바 — 잔액 유무로 갈린다', () => {
+    // 🪙 2026-09-14: 불변식은 그대로인데 **보는 자리가 옮겨갔다.** 잔액 카드가 페이지 인라인에서
+    //   `pages/vouchers/DealBalanceCard.tsx` 부품으로 빠졌다(대표 확정 안 A3 — 파일크기 래칫도 겸함).
+    //   가드를 푸는 대신 재조준한다. 지키는 것은 여전히 하나: **처음 온 사람에게 "당신은 0" 이
+    //   첫 화면이 되면 안 된다**(비로그인도 dealBalance 가 0 이다).
+    const CARD = readFileSync(resolve(__dirname, '../../pages/vouchers/DealBalanceCard.tsx'), 'utf-8')
+    const zeroAt = CARD.indexOf('if (!balance)')
+    expect(zeroAt).toBeGreaterThan(-1)
+    const bigAt = CARD.indexOf('text-[42px]')          // 큰 카드의 표식 = 확정된 숫자 크기
+    expect(bigAt).toBeGreaterThan(zeroAt)              // 큰 카드는 0 분기 **뒤**에만 있다
+    // ⚠️ `toMatch(/<DealBalanceCard balance=\{dealBalance\}/)` 로는 부족하다 — **PC 호출부에도 매치**돼
+    //    모바일을 인라인으로 되돌려도 통과한다(주입이 잡았다). 페이지가 잔액 카드를 **직접 그리지
+    //    않는다**를 본다: 큰 숫자 표식이 페이지에 나타나면 인라인으로 되돌아간 것이다.
+    expect(SRC).not.toMatch(/text-\[42px\]/)
+    expect((SRC.match(/<DealBalanceCard\b/g) ?? []).length).toBe(2)   // 모바일 + PC
   })
 
   it('② 브랜드 스트립은 접기 토글로 게이트된다(기본은 펼침 — 2026-09-02 B안)', () => {
