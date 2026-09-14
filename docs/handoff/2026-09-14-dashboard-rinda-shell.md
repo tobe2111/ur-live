@@ -60,6 +60,8 @@ R3 CTA 를 빼도 ⌘K 색인은 무손상 / R4 검은 타일 0 / R5 금액을 �
    재앵커한 두 단언은 되돌려-검증으로 빨간불을 확인했다.
 5. **브랜치 head 해시를 한 번 틀리게 말했다**(`d9df9dc` ↔ `d98da7f`). 보고 전에 `git log -1` 로 확인할 것.
 
+- **main 머지 뒤 CI 를 "로컬 71건 초록"으로 대신했다** — `origin/main` 을 머지하면 **main 이 그 사이 새로 만든 가드**도 같이 들어온다(이번엔 09-13 신설 `check-comment-stripper`). 내 테스트가 그 가드의 첫 위반자가 되어 Verify 가 53분 만에 빨간불(`cff67b0e1` 로 수리 — 자체 정규식 제거기 → SSOT `stripComments`). ⇒ 머지 커밋 뒤에는 관련 테스트가 아니라 **`bash scripts/audit-gate.sh` 를 다시** 돌릴 것. 새 가드는 내 diff 를 안 봐도 잡는다.
+
 ## 4. 렌더 하네스 (이 세션이 쓴 방법 — 다음 세션이 그대로 쓸 수 있게)
 
 `vite dev --port 5199` + `playwright-core`(`/opt/pw-browsers/chromium-1194/chrome-linux/chrome`,
