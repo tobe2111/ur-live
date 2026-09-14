@@ -113,3 +113,15 @@ python3 export-pptx-to-pdf.py "$PWD/out.pptx" "$PWD/out.pdf"   # 절대경로만
 
 정산 문구는 `src/worker/cron/influencer-payout.ts` 실값이다(T+7 확정, 매월 1일 집계, 현금 10만원부터, 딜은 하한 없음,
 지급은 어드민이 처리). `/videos`(유어쇼츠) 캡처는 이 환경이 유튜브를 막아 재생기 자리가 비므로 덱에 넣지 않았다.
+
+## 어드민 화면 캡처 (`capture-admin-shots.mjs`)
+
+자동화 어드민 계정(환경변수 `URDEAL_ADMIN_EMAIL` / `URDEAL_ADMIN_PASSWORD`)으로 `/admin/influencer-pool` 을 데스크톱으로 열어
+연락처(이메일 · 인스타/틱톡 핸들)만 블러 처리한 뒤 통계 카드 줄과 목록 표를 잘라 저장한다. 사장님 덱 4장이 `shots/admin-influencer-pool-table.jpg` 를 쓴다.
+토큰은 메모리에만 두고 파일로 남기지 않는다. 브라우저 이그레스가 막힌 환경이라 요청을 node fetch 로 대신 보낸다(캡처 스크립트들과 같은 방식).
+아바타는 외부 CDN 이라 못 받아 중립 원으로 바꿔 그린다.
+
+```bash
+NODE_USE_ENV_PROXY=1 NODE_PATH=/opt/node22/lib/node_modules/playwright/node_modules:/opt/node22/lib/node_modules:/tmp/deck/node_modules \
+  node docs/business/proposals/capture-admin-shots.mjs <출력 폴더>
+```

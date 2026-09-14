@@ -4,6 +4,7 @@
 // 기획: docs/business/proposals/three-decks-plan-2026-09.md §2 · 사실 SSOT: 같은 문서 §0 + docs/design/actor-benefit-map.md
 // 재생성: cd /tmp/deck && npm i pptxgenjs sharp react react-dom react-icons  (node_modules 심링크는 README 참조)
 //         SHOTS_DIR=<캡처 폴더> node urdeal-store-owner-deck.build.mjs out.pptx
+import fs from 'node:fs';
 import path from 'node:path';
 import { createDeck, C, W, H, M, FACTS, __dirname } from './deck-common.mjs';
 
@@ -101,36 +102,33 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     s.addNotes('상품 2888 실측: 정가 25,000 / 판매가 16,500 → 수수료 1,650 → 입금 14,850. 카드 수수료(현재 약 2.75%, 변동 가능)는 유어딜 부담. 월 판매 시나리오와 업종 평균가 표는 상세판 5장.');
   }
 
-  // ───────── 04 노출·판매 ─────────
+  // ───────── 04 노출·판매 (+ 인플루언서 풀 실제 관리 화면, 연락처 블러) ─────────
   {
     const s = pres.addSlide();
     chrome(s);
     title(s, '이용권을 올리시면, 파는 건 저희가 열심히 합니다.');
-    lead(s, '등록만 하면 유어딜 홈 인기 목록, 지도의 내 주변 이용권, 검색과 카카오톡 공유 카드, 영상 아래 구매 버튼, 네 곳에 자동으로 뜹니다.', { y: 2.0, h: 0.6 });
-    const cw = 4.35;
-    card(s, M, 2.75, cw, 4.0);
-    label(s, '자동 노출', M + 0.3, 2.93, cw - 0.6);
+    lead(s, `등록만 하면 유어딜 홈 인기 목록, 지도의 내 주변 이용권, 검색과 카카오톡 공유 카드, 영상 아래 구매 버튼, 네 곳에 자동으로 뜹니다. 그리고 저희에겐 파는 사람들이 있습니다. 유어딜이 확보한 크리에이터 풀, 유튜버 ${FACTS.influencerYoutube}과 네이버 블로거 ${FACTS.influencerNaverBlog}(${FACTS.influencerAsOf})에게 사장님의 이용권 판매를 제안합니다. 그 링크로 팔린 것에만 소개비가 나가고, 미리 주는 돈은 없습니다.`, { y: 1.95, h: 1.05, size: 12 });
+    const lx = M, lw = 3.95;
+    label(s, '자동 노출', lx, 3.08, lw);
     const auto = [['FiHome', '유어딜 홈 인기 목록'], ['FiMapPin', '지도의 내 주변 이용권'], ['FiSearch', '검색과 카카오톡 공유 카드'], ['FiVideo', '영상 아래 구매 버튼']];
-    let ay = 3.3;
+    let ay = 3.38;
     auto.forEach(([i, t]) => {
-      iconCircle(s, i, M + 0.3, ay, 0.46);
-      T(s, t, { x: M + 0.95, y: ay, w: cw - 1.2, h: 0.46, fontSize: 12.5, bold: true, color: C.ink, valign: 'middle', charSpacing: -0.3 });
-      ay += 0.8;
+      iconCircle(s, i, lx, ay, 0.38);
+      T(s, t, { x: lx + 0.52, y: ay, w: lw - 0.52, h: 0.38, fontSize: 12, bold: true, color: C.ink, valign: 'middle', charSpacing: -0.3 });
+      ay += 0.5;
     });
-    const x2 = M + cw + 0.35, w2 = W - M - x2;
-    card(s, x2, 2.75, w2, 4.0);
-    T(s, '그리고 저희에겐 파는 사람들이 있습니다.', { x: x2 + 0.35, y: 2.95, w: w2 - 0.7, h: 0.36, fontSize: 15, bold: true, color: C.ink, charSpacing: -0.4 });
-    T(s, `유어딜이 확보한 크리에이터 풀, 유튜버 ${FACTS.influencerYoutube}과 네이버 블로거 ${FACTS.influencerNaverBlog}(${FACTS.influencerAsOf})에게 사장님의 이용권 판매를 제안합니다. 맛집, 뷰티, 동네 콘텐츠를 만드는 사람들이 자기 채널에서 이용권을 소개하고, 그 링크로 팔린 것에만 소개비가 나갑니다. 여기서도 미리 주는 돈은 없습니다.`,
-      { x: x2 + 0.35, y: 3.38, w: w2 - 0.7, h: 1.45, fontSize: 11, color: C.inkSoft, lineSpacingMultiple: 1.48, valign: 'top' });
-    hr(s, x2 + 0.35, 4.95, w2 - 0.7);
-    const stats = [[FACTS.influencerYoutube, '유튜버'], [FACTS.influencerNaverBlog, '네이버 블로거'], ['0원', '미리 나가는 홍보비']];
-    stats.forEach(([n, l], i) => {
-      const x = x2 + 0.35 + i * ((w2 - 0.7) / 3);
-      T(s, n, { x, y: 5.15, w: (w2 - 0.7) / 3, h: 0.6, fontSize: 24, bold: true, color: i === 2 ? C.brand : C.ink, charSpacing: -1 });
-      T(s, l, { x, y: 5.78, w: (w2 - 0.7) / 3, h: 0.3, fontSize: 10.5, color: C.inkSoft });
-    });
-    T(s, '소개비 %는 사장님이 정합니다. 제안하지 않으면 아무것도 나가지 않습니다.', { x: x2 + 0.35, y: 6.2, w: w2 - 0.7, h: 0.3, fontSize: 10.5, bold: true, color: C.ink });
-    s.addNotes('노출 4곳: 홈 섹션/지도(/map)/검색·카톡 OG/유어쇼츠(/videos). 크리에이터 풀: /api/admin/ads/influencer-pool/stats 2026-09-13 실측 youtube 18,170 / naver_blog 172,755 (전체 201,471, 연락 가능 46,220). 소개비: 매장 제안 %·매장 부담·상한 없음.');
+    label(s, '파는 사람들', lx, ay + 0.06, lw);
+    kv(s, [['유튜버', FACTS.influencerYoutube, 1], ['네이버 블로거', FACTS.influencerNaverBlog, 1, true], ['미리 나가는 홍보비', '0원', 2]], lx, ay + 0.36, lw, { rowH: 0.32 });
+    // 오른쪽: 실제 인플루언서 풀 관리 화면 (연락처는 블러)
+    const ix = 5.15, iw = W - M - ix;
+    const shotPath = path.join(SHOTS_DIR, 'admin-influencer-pool-table.jpg');
+    if (fs.existsSync(shotPath)) {
+      const ih = iw * (1120 / 2524);
+      card(s, ix - 0.08, 3.02, iw + 0.16, ih + 0.16);
+      s.addImage({ data: 'image/jpeg;base64,' + fs.readFileSync(shotPath).toString('base64'), x: ix, y: 3.1, w: iw, h: ih });
+      T(s, '유어딜 크리에이터 풀 관리 화면 (실제 화면, 연락처는 가렸습니다)', { x: ix, y: 3.1 + ih + 0.22, w: iw, h: 0.28, fontSize: 10, color: C.inkSoft, align: 'center' });
+    }
+    s.addNotes('노출 4곳: 홈 섹션/지도(/map)/검색·카톡 OG/유어쇼츠(/videos). 크리에이터 풀: /api/admin/ads/influencer-pool/stats 2026-09-13 실측 youtube 18,170 / naver_blog 172,755. 오른쪽은 /admin/influencer-pool 데스크톱 캡처(capture-admin-shots.mjs — 이메일·IG·TT 블러, 아바타는 외부 CDN 차단이라 중립 원). 소개비: 매장 제안 %·매장 부담.');
   }
 
   // ───────── 05 활용 시나리오 ─────────
