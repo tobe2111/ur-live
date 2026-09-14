@@ -2201,6 +2201,7 @@
     "unprocessedOrderCount": "{{count}}个未处理订单",
     "lowStockCount": "{{count}}个库存不足商品",
     "settlementAvailableCount": "{{count}}个可结算",
+    "settlementAvailableAmount": "可结算 {{amount}}",
     "insightPendingOrdersTitle": "{{count}}个未处理订单",
     "insightPendingOrdersDesc": "需要尽快处理",
     "insightManageOrders": "订单管理",

@@ -2202,6 +2202,7 @@
     "unprocessedOrderCount": "{{count}} unprocessed orders",
     "lowStockCount": "{{count}} low stock items",
     "settlementAvailableCount": "{{count}} settlements available",
+    "settlementAvailableAmount": "{{amount}} available to settle",
     "insightPendingOrdersTitle": "{{count}} unprocessed orders",
     "insightPendingOrdersDesc": "These orders need your attention",
     "insightManageOrders": "Manage orders",

@@ -32,7 +32,7 @@ export default function RealtimeOrdersPanel({ recentOrders, newOrderIds, ordersR
   const { t, i18n } = useTranslation()
 
   return (
-    <div className="lg:col-span-2 bg-white rounded-xl shadow-sm overflow-hidden">
+    <div className="lg:col-span-2 rounded-2xl border border-rule bg-white overflow-hidden">
       <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-semibold text-gray-900">{t('seller.realtimeOrders')}</h2>

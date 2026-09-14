@@ -1520,6 +1520,7 @@
     "unprocessedOrderCount": "{{count}} pedidos sin procesar",
     "lowStockCount": "{{count}} productos con bajo stock",
     "settlementAvailableCount": "{{count}} liquidaciones disponibles",
+    "settlementAvailableAmount": "{{amount}} disponible para liquidar",
     "insightPendingOrdersTitle": "{{count}} pedidos sin procesar",
     "insightPendingOrdersDesc": "Requieren atención inmediata",
     "insightManageOrders": "Gestionar pedidos",

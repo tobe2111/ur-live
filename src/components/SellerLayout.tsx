@@ -198,6 +198,22 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
       group: it.group,
     })),
   ]
+  /**
+   * 🎟️ 2026-09-14 (Rinda 시안): '이용권 등록'을 사이드바 **상단 파란 CTA** 로 한 번만 그린다.
+   *   대표 2026-08-23 요구("왼쪽 카테고리에도 이용권 등록 버튼")를 그대로 이어받되, 같은 문구의
+   *   검은 버튼이 한 화면에 셋이던 것(메뉴 + 메인 타일 + 매장 카드)을 줄인다.
+   *
+   *   ⚠️ **`orderedNavGroups` 에서는 빼지 않는다** — 그건 ⌘K 검색 색인의 원본이라, 빼면
+   *      "이용권 등록"이 검색에서 사라진다(이 레포가 반복해 겪은 "페이지는 있는데 닿을 수 없다").
+   *      화면에 그리는 목록만 따로 만든다. 역할별 노출 규칙도 자동 승계 —
+   *      그 역할에게 항목이 없으면 `ctaItem` 이 undefined 라 CTA 도 안 뜬다.
+   */
+  const SIDEBAR_CTA_PATH = '/seller/meal-voucher/new'
+  const ctaItem = orderedNavGroups.flatMap((g) => g.items).find((i) => i.path === SIDEBAR_CTA_PATH)
+  const renderedNavGroups = orderedNavGroups
+    .map((g) => ({ ...g, items: g.items.filter((i) => i.path !== SIDEBAR_CTA_PATH) }))
+    .filter((g) => g.items.length > 0)
+
   const [paletteOpen, setPaletteOpen] = useState(false)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -259,29 +275,31 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
   // 🛡️ 사이드바를 함수 컴포넌트가 아닌 JSX 변수로 정의 — 부모 re-render 시 함수 참조가
   // 매번 새로 만들어져 React 가 unmount/remount → <nav> 의 scroll 위치가 reset 되던 버그.
   const sidebar = (
-    <aside className="w-[232px] flex-shrink-0 flex flex-col h-full" style={{ background: '#0A0A0B' }}>
+    // 🧭 2026-09-14 (대표 Rinda 시안 — docs/design/dashboard-rinda-2026-09.md):
+    //   어두운 면(#0A0A0B) → **흰 면 + 헤어라인**. 대표 지적 "UI가 불편해 · 셀러들 모두 헷갈릴거야"의
+    //   절반이 여기였다 — 검은 사이드바는 도구를 '관리자용'으로 읽히게 하고, 그 위의 9px 회색 라벨은
+    //   사실상 읽히지 않았다. 폭도 232 → 260 으로: 글자를 12 → 13px 로 올려야 했기 때문이다.
+    <aside className="w-[260px] flex-shrink-0 flex flex-col h-full bg-white border-r border-rule">
       {/* Branding */}
-      <div className="px-4 pt-5 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      <div className="px-4 pt-5 pb-3">
         <div className="flex items-center gap-2.5">
-          <UrDealLogo size={14} forceDark />
-          <span
-            className="font-bold uppercase"
-            style={{ fontSize: '9px', letterSpacing: '0.08em', color: '#9ca3af' }}
-          >
+          <UrDealLogo size={15} />
+          <span className="font-bold uppercase text-[9px] tracking-[0.08em] text-gray-400">
             SELLER STUDIO
           </span>
         </div>
-        {/* Seller profile */}
-        <div className="flex items-center gap-2.5 mt-3">
-          <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-extrabold text-white flex-shrink-0"
-            style={{ background: 'linear-gradient(135deg, #4b5563, #6b7280)' }}
-          >
-            {sellerName.charAt(0).toUpperCase()}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-extrabold text-white truncate">{sellerName}</p>
-            <p className="text-white/50" style={{ fontSize: '9px' }}>{sellerTypeLabel}</p>
+      </div>
+
+      {/* 🏪 워크스페이스 카드 — Rinda 의 `워크스페이스 / 유어팀` 자리. 종전엔 아바타 + 9px 역할 라벨이라
+          "내가 무슨 자격으로 로그인해 있나"가 안 읽혔다. 테두리 박스로 올려 준다. */}
+      <div className="px-4 pb-3">
+        <div className="rounded-xl border border-rule px-3 py-2.5">
+          <p className="text-[10px] font-semibold text-gray-400">{t('seller.layout.workspace', { defaultValue: '내 계정' })}</p>
+          <div className="mt-0.5 flex items-center gap-2">
+            <p className="min-w-0 flex-1 truncate text-[13px] font-bold text-gray-900">{sellerName}</p>
+            <span className="shrink-0 rounded-md bg-brand-tint px-1.5 py-0.5 text-[10px] font-bold text-brand-text">
+              {sellerTypeLabel}
+            </span>
           </div>
         </div>
       </div>
@@ -289,15 +307,15 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
       {/* 🛡️ 2026-05-17: Mode 토글 — 'both' 셀러만 표시 (라이브 ↔ 매장 모드 전환).
             mode 별로 nav 항목이 동적 필터링되어 인지 부담 감소. */}
       {availableModes.length > 1 && (
-        <div className="px-4 py-2 border-y border-white/10 bg-white/[0.02]">
-          <div className="flex gap-1 p-1 bg-black/30 rounded-full">
+        <div className="px-4 py-2 border-y border-rule bg-gray-50">
+          <div className="flex gap-1 p-1 bg-gray-100 rounded-full">
             <button
               type="button"
               onClick={() => switchMode('live')}
               className={`flex-1 py-1.5 px-2 rounded-full text-[10px] font-bold transition-colors ${
                 activeMode === 'live'
                   ? 'bg-red-500 text-white shadow'
-                  : 'text-white/60 hover:text-white'
+                  : 'text-gray-500 hover:text-gray-900'
               }`}
               aria-pressed={activeMode === 'live'}
             >
@@ -309,14 +327,14 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
               className={`flex-1 py-1.5 px-2 rounded-full text-[10px] font-bold transition-colors ${
                 activeMode === 'store'
                   ? 'bg-amber-500 text-white shadow'
-                  : 'text-white/60 hover:text-white'
+                  : 'text-gray-500 hover:text-gray-900'
               }`}
               aria-pressed={activeMode === 'store'}
             >
               <Store className="w-3 h-3 inline-block align-[-1px] mr-1" aria-hidden="true" />매장 모드
             </button>
           </div>
-          <p className="text-[9px] text-white/40 mt-1.5 px-1">
+          <p className="text-[10px] text-gray-400 mt-1.5 px-1">
             {activeMode === 'live'
               ? '라이브 송출 + 일반 상품 메뉴만 표시'
               : '매장 운영 + 이용권 발행 메뉴만 표시'}
@@ -328,29 +346,36 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
       <button
         type="button"
         onClick={() => { setPaletteOpen(true); setSidebarOpen(false) }}
-        className="mx-4 mb-1 mt-2 flex items-center gap-2 px-3 py-2 rounded-lg text-left"
-        style={{ background: 'rgba(255,255,255,0.03)' }}
+        className="mx-4 mb-2 flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-left transition-colors hover:bg-gray-100"
       >
-        <Search size={12} className="text-white/35 flex-shrink-0" />
-        <span className="flex-1 text-[11px] text-white/40">{t('seller.pageSearch', { defaultValue: '페이지 검색' })}</span>
-        <kbd className="text-[9px] font-bold text-white/40 bg-white/10 rounded px-1 py-0.5">⌘K</kbd>
+        <Search size={13} className="flex-shrink-0 text-gray-400" />
+        <span className="flex-1 text-[12px] text-gray-400">{t('seller.pageSearch', { defaultValue: '페이지 검색' })}</span>
+        <kbd className="rounded bg-white px-1 py-0.5 text-[9px] font-bold text-gray-400 border border-rule">⌘K</kbd>
       </button>
+
+      {/* 🎟️ 주 행동 — Rinda 사이드바의 파란 CTA 자리. 메뉴가 아니라 '할 일'이라 모양이 다르다. */}
+      {ctaItem && (
+        <Link
+          to={ctaItem.path}
+          onClick={() => setSidebarOpen(false)}
+          className="mx-4 mb-3 flex items-center justify-center gap-1.5 rounded-lg bg-brand px-3 py-2.5 text-[13px] font-bold text-white transition-colors hover:bg-brand-dark"
+        >
+          <ctaItem.icon size={16} strokeWidth={2.4} />
+          {t(ctaItem.labelKey)}
+        </Link>
+      )}
 
       {/* Grouped navigation — 🧭 심플 모드(매장 단독): 홈+3메뉴 상단 고정, 나머지는 "전체 메뉴" 접힘 */}
       <nav ref={navScrollRef} className="flex-1 min-h-0 overflow-y-auto scrollbar-hide pb-2">
         {simpleMode && (
           <SellerSimpleNav isActive={isActive} onNavigate={() => setSidebarOpen(false)} fullMenuOpen={fullMenuOpen} onToggleFullMenu={toggleFullMenu} />
         )}
-        {(!simpleMode || fullMenuOpen) && orderedNavGroups.map((group, gi) => (
-          <div key={gi} className="mt-3 first:mt-1">
-            {(group.label || group.labelKey) && (
-              <div
-        className="px-4 py-1.5 font-extrabold text-white/30"
-                style={{ fontSize: '9px', letterSpacing: '0.12em' }}
-              >
-                {group.labelKey ? t(group.labelKey) : group.label}
-              </div>
-            )}
+        {/* 🧭 2026-09-14 (Rinda 시안 §4-3): **그룹 라벨 제거 → 헤어라인 구분선.**
+            종전엔 9px 라벨 4개(이용권/설정/판매/성장)에 항목이 1~3개씩 붙어 있었다 —
+            분류가 주는 도움보다 읽히지도 않는 글자 네 줄의 부담이 컸다. Rinda 는 라벨이 0개다.
+            묶음 정보는 **간격과 선**으로 남긴다(의미를 버리는 게 아니라 글자를 버린다). */}
+        {(!simpleMode || fullMenuOpen) && renderedNavGroups.map((group, gi) => (
+          <div key={gi} className={gi === 0 ? 'px-2' : 'mt-2 border-t border-rule px-2 pt-2'}>
             {group.items.map(({ path, labelKey, icon: Icon, ...rest }) => {
               const exact = (rest as any).exact as boolean | undefined
               const highlight = (rest as any).highlight as boolean | undefined
@@ -362,20 +387,21 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
                   to={path}
                   onClick={() => setSidebarOpen(false)}
                   // 🛡️ 2026-05-20: inline style 제거 (CSP unsafe-inline) — 색상/border 전부 Tailwind 클래스.
-                  //   active gradient 는 index.css 의 .ur-seller-nav-active 유틸. hover 는 hover:text-white.
-                  className={`flex items-center gap-2.5 px-4 py-[7px] text-[12px] font-semibold transition-colors border-l-[2.5px] ${
+                  // 🧭 2026-09-14 (Rinda 시안): 세로 막대 + 어두운 면 → **연파랑 알약**(.ur-seller-nav-active
+                  //   = var(--brand-tint)). 글자 12 → 13px, 높이 7 → 9px — 대표 지적 "글자가 작다"의 자리.
+                  className={`mx-0 flex items-center gap-2.5 rounded-lg px-2.5 py-[9px] text-[13px] transition-colors ${
                     active
-                      ? 'text-white border-brand ur-seller-nav-active'
+                      ? 'font-bold text-gray-900 ur-seller-nav-active'
                       : highlight
-                      ? 'bg-red-500/20 border-red-500'
-                      : 'text-white/55 hover:text-white border-transparent'
+                      ? 'bg-red-50 font-semibold text-red-600'
+                      : 'font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-900'
                   }`}
                 >
-                  <Icon size={14} strokeWidth={2} className={`flex-shrink-0 ${highlight && !active ? 'text-red-400' : ''}`} />
-                  <span className={`flex-1 truncate ${highlight && !active ? 'text-red-400' : ''}`}>{label}</span>
+                  <Icon size={16} strokeWidth={2} className={`flex-shrink-0 ${active ? 'text-brand-text' : highlight ? 'text-red-500' : 'text-gray-400'}`} />
+                  <span className="flex-1 truncate">{label}</span>
                   {highlight && !active && <span className="ml-auto h-2 w-2 bg-red-500 rounded-full animate-pulse" />}
                   {labelKey === 'seller.orders' && pendingOrders > 0 && (
-                    <span className="text-[9px] font-extrabold px-1.5 rounded-full bg-white/10 text-white">
+                    <span className="rounded-full bg-brand px-1.5 text-[10px] font-extrabold text-white">
                       {pendingOrders}
                     </span>
                   )}
@@ -389,7 +415,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
       {/* Bottom */}
       {/* 🛡️ 2026-04-22 배치 126: '설정' → 셀러 프로필 편집 페이지 (이전엔 공개 프로필로 가던 UX 버그)
                                   '유저로 돌아가기' → 유저 마이페이지 (이전엔 메인 홈 — 모호한 UX) */}
-      <div className="px-4 py-3 space-y-0.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+      <div className="border-t border-rule px-2 py-2">
         {/* 🛡️ 2026-05-20: 사이드바 하단 버튼은 `preserveScroll: true` 로 스크롤 리셋 skip.
               사용자 요구: 하단 버튼 누르면 페이지 위로 점프하지 말고 자연스럽게 이동.
               빈 slug → /profile/ 무한 redirect 방지: 셀러 식별자 없으면 link 자체 비활성. */}
@@ -397,9 +423,9 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
           to="/seller/profile?tab=business"
           state={{ preserveScroll: true }}
           onClick={() => setSidebarOpen(false)}
-          className="flex items-center gap-2.5 px-1 py-1.5 text-[11px] font-medium text-white/55 hover:text-white transition-colors"
+          className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12px] font-medium text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900"
         >
-          <Settings size={13} strokeWidth={2} />
+          <Settings size={14} strokeWidth={2} className="text-gray-400" />
           {t('seller.settings')}
         </Link>
         {(() => {
@@ -417,9 +443,9 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
               to={target}
               state={{ preserveScroll: true }}
               onClick={() => setSidebarOpen(false)}
-              className="flex items-center gap-2.5 px-1 py-1.5 text-[11px] font-medium text-white/55 hover:text-white transition-colors"
+              className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12px] font-medium text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900"
             >
-              <Globe size={13} strokeWidth={2} />
+              <Globe size={14} strokeWidth={2} className="text-gray-400" />
               {t('seller.viewPublicProfile', { defaultValue: '공개 프로필 보기' })}
             </Link>
           )
@@ -429,9 +455,9 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
             소비자 화면으로의 출구는 위 '공개 프로필 보기'(→ /u/{handle} 유어샵)가 담당. */}
         <button
           onClick={() => logoutSeller(navigate)}
-          className="w-full flex items-center gap-2.5 px-1 py-1.5 text-[11px] font-medium text-white/55 hover:text-white transition-colors"
+          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12px] font-medium text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-900"
         >
-          <LogOut size={13} strokeWidth={2} />
+          <LogOut size={14} strokeWidth={2} className="text-gray-400" />
           {t('common.logout')}
         </button>
       </div>
@@ -445,14 +471,14 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
   //   [셀러 대시보드 풀 렌더 → /wholesale 바운스] 오표면 플래시 제거. 판정/실패 시 즉시 해제(fail-open).
   if (surfacePending) {
     return (
-      <div className="seller-light-theme" style={{ background: '#F4F5F7' }}>
+      <div className="seller-light-theme bg-warm">
         <BrandLoader fullScreen forceLight />
       </div>
     )
   }
 
   return (
-    <div className="seller-light-theme flex h-[100dvh] overflow-hidden bg-[#F4F5F7] text-gray-900">
+    <div className="seller-light-theme flex h-[100dvh] overflow-hidden bg-warm text-gray-900">
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={() => setSidebarOpen(false)} />
       )}
@@ -469,7 +495,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
       </div>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="bg-white border-b border-gray-200 px-4 lg:px-6 h-14 flex items-center justify-between flex-shrink-0">
+        <header className="flex h-16 flex-shrink-0 items-center justify-between border-b border-rule bg-white px-4 lg:px-6">
           <div className="flex items-center gap-3">
             <button
               aria-label={sidebarOpen ? t('common.closeSidebar', { defaultValue: '사이드바 닫기' }) : t('common.openSidebar', { defaultValue: '사이드바 열기' })}
@@ -479,7 +505,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
             >
               {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
-            <h1 className="text-base font-semibold text-gray-900">{title}</h1>
+            <h1 className="text-[15px] font-bold text-gray-900">{title}</h1>
           </div>
           <div className="flex items-center gap-2">
             {/* 🏪 2026-08-19 매장 전환 — 운영 매장이 2곳 이상일 때만 스스로 렌더한다(store-operator-model.md). */}

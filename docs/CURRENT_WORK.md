@@ -5494,10 +5494,11 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 282건 · 최신순 · 이 목록은 자동 생성된다._
+_총 283건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-14**
 - [2026-09-14 — 유어쇼츠: 위로 되돌아가는 스와이프 + 닫기 버튼 겹침](handoff/2026-09-14-urshorts-swipe-back-and-close-button.md)
+- [셀러·어드민 대시보드 — Rinda 껍데기 (2026-09-14)](handoff/2026-09-14-dashboard-rinda-shell.md)
 **2026-09-13**
 - [결제 경로 전수 — 2026-09-13](handoff/2026-09-13-payment-sweep.md)
 - [💳 결제가 마지막 화면에서 조용히 실패하던 것 — 콜백 주소의 쿼리 (2026-09-13)](handoff/2026-09-13-payment-callback-query.md)

@@ -2232,6 +2232,7 @@
     "unprocessedOrderCount": "미처리 주문 {{count}}건",
     "lowStockCount": "재고 부족 {{count}}건",
     "settlementAvailableCount": "정산 가능 {{count}}건",
+    "settlementAvailableAmount": "정산 가능 {{amount}}",
     "insightPendingOrdersTitle": "미처리 주문 {{count}}건",
     "insightPendingOrdersDesc": "빠른 처리가 필요합니다",
     "insightManageOrders": "주문 관리",

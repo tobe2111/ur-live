@@ -362,156 +362,166 @@ export default function SellerPage() {
           <StoreQuickTrio />
         </RoleGate>
 
-        {/* 🏭 2026-06-04 (사용자 요청): 시작 가이드(온보딩 체크리스트) 제거 — 대시보드 간소화. */}
-        {/* 🛡️ 2026-05-27: 영입자 + commission 분배 가시화 (영입자 있을 때만 표시) */}
-        <SellerReferralInfoCard />
+        {/* 🧭 2026-09-14 (대표 Rinda 시안 — "메인이 너무 보기 안좋아"):
+            종전엔 블록 13개가 **세로 한 줄로** 쌓여 있었다(주석 이력이 그 누적을 그대로 보여 준다).
+            신규 셀러는 그 대부분을 0 이거나 빈 채로 본다 → 화면에 위계가 없고 "뭘 먼저 봐야 하나"가
+            안 잡힌다. 블록을 **지우지 않고**(대표가 명시로 넣으라 한 것들이다) 위계만 준다:
+              · 전체 폭 = 매장 → 핵심 작업 → 숫자   (지금 상태)
+              · 좌 2/3  = 흐름·추이                 (읽는 것)
+              · 우 1/3  = 지금 할 일 · 내 페이지     (하는 것)
+            Rinda 와 같은 骨格이다. */}
 
-        {/* 🗑️ 2026-08-23 (대표): 라이브/공구 모드 배지·이중 렌더 제거 — 라이브 영구 중단으로 모드는 하나다. */}
-        <SellerGroupBuyOverview />
-
-        {/* 🛡️ 2026-05-15: KPI 통합 대시보드 (단골 / 공구 / 매출 / 분쟁) */}
-        <SellerKpiDashboard />
-
-        {/* 🏭 2026-06-04 (사용자 요청): 현재 등급(TierBadge) · 광고 슬롯 입찰 배너 · 시작 가이드(온보딩) ·
-            7일 부트캠프 위젯 제거 — 셀러 대시보드 간소화. */}
-
-          {/* 🗑️ 2026-08-20 (대표): 월간 매출 목표 카드 제거 — "매출 목표 필요없고, 컴팩트하게". */}
-          {/* ── Stats row ── */}
-          {/* 🛡️ 2026-05-14: 태블릿 (md+) 4 cols → 풀 너비 활용 (iPad sidebar 있어도 588px+ 콘텐츠 영역).
-              2026-05-18: Mode-specific 4번째 카드 — live 모드는 '진행 라이브', store 모드는 '진행 공구'. */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            {[
-              {
-                label: t('seller.totalRevenue'), value: fmtPrice(stats.totalRevenue),
-                sub: stats.avgOrderValue > 0 ? t('seller.avgPerOrder', { amount: fmtPrice(stats.avgOrderValue) }) : undefined,
-                icon: <TrendingUp className="w-5 h-5" />, color: 'text-gray-600', bg: 'bg-gray-100',
-                visible: true, delta: revenueDelta, showDelta: dailyStats.length >= 2,
-              },
-              {
-                label: t('seller.totalOrders'), value: `${formatNumber(stats.totalOrders || 0)}`,
-                sub: stats.completedOrders > 0 ? t('seller.completedCount', { count: stats.completedOrders }) : undefined,
-                icon: <ShoppingBag className="w-5 h-5" />, color: 'text-gray-600', bg: 'bg-gray-100',
-                visible: true, delta: ordersDelta, showDelta: dailyStats.length >= 2,
-              },
-              {
-                label: t('seller.pendingOrders'), value: `${formatNumber(stats.pendingOrders || 0)}`,
-                sub: t('seller.needsAction'),
-                icon: <AlertCircle className="w-5 h-5" />, color: 'text-gray-600', bg: 'bg-gray-100',
-                visible: true, delta: pendingDelta, showDelta: pendingDelta !== 0,
-              },
-              // 💰 2026-08-23 (대표 AB테스트): 4번째 카드 = 정산 예정 — 종전 '진행 현황 👇' 필러 CTA
-              //   (라이브/모드 잔재)를 실데이터 카드로 대체.
-              {
-                label: t('seller.expectedSettlement', { defaultValue: '정산 예정' }),
-                value: fmtPrice(stats.pendingSettlement ?? 0),
-                sub: t('seller.primary.settlementsDesc', { defaultValue: '딜/현금 출금' }),
-                icon: <CreditCard className="w-5 h-5" />, color: 'text-gray-600', bg: 'bg-gray-100',
-                visible: true, delta: 0, showDelta: false,
-              },
-            ].filter(card => card.visible).map(card => (
-              <div key={card.label} className="bg-white rounded-2xl p-3 sm:p-4 shadow-lift">
-                <div className="flex items-center justify-between mb-2 sm:mb-3">
-                  <span className="text-[10px] sm:text-xs font-medium text-gray-500">{card.label}</span>
-                  <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg ${card.bg} ${card.color} flex items-center justify-center`}>
-                    {card.icon}
+          {/* ── 2열: 좌=읽는 것 / 우=하는 것 ── */}
+          <div className="grid gap-3 lg:grid-cols-3">
+            <div className="space-y-3 lg:col-span-2">
+            {/* ── 숫자 (Rinda: 점 + 큰 숫자 + 설명. 컬러 아이콘 칩·하단 막대 없음) ── */}
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                {
+                  label: t('seller.totalRevenue'), value: fmtPrice(stats.totalRevenue),
+                  sub: stats.avgOrderValue > 0 ? t('seller.avgPerOrder', { amount: fmtPrice(stats.avgOrderValue) }) : undefined,
+                  dot: 'bg-brand',
+                  delta: revenueDelta, showDelta: dailyStats.length >= 2,
+                },
+                {
+                  label: t('seller.totalOrders'), value: `${formatNumber(stats.totalOrders || 0)}`,
+                  sub: stats.completedOrders > 0 ? t('seller.completedCount', { count: stats.completedOrders }) : undefined,
+                  dot: 'bg-gray-300',
+                  delta: ordersDelta, showDelta: dailyStats.length >= 2,
+                },
+                {
+                  label: t('seller.pendingOrders'), value: `${formatNumber(stats.pendingOrders || 0)}`,
+                  sub: t('seller.needsAction'),
+                  // 🚦 이 한 장만 색이 다르다 — 유일하게 **사람이 지금 움직여야 하는** 숫자다.
+                  dot: (stats.pendingOrders || 0) > 0 ? 'bg-amber-500' : 'bg-gray-300',
+                  delta: pendingDelta, showDelta: pendingDelta !== 0,
+                },
+                {
+                  label: t('seller.expectedSettlement', { defaultValue: '정산 예정' }),
+                  value: fmtPrice(stats.pendingSettlement ?? 0),
+                  sub: t('seller.primary.settlementsDesc', { defaultValue: '딜/현금 출금' }),
+                  dot: (stats.pendingSettlement ?? 0) > 0 ? 'bg-emerald-500' : 'bg-gray-300',
+                  delta: 0, showDelta: false,
+                },
+              ].map(card => (
+                <div key={card.label} className="rounded-2xl border border-rule bg-white p-4">
+                  <div className="flex items-center gap-1.5">
+                    <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${card.dot}`} aria-hidden />
+                    <span className="truncate text-[12px] font-medium text-gray-500">{card.label}</span>
                   </div>
-                </div>
-                {loading ? (
-                  <>
-                    <Skel className="h-6 w-2/3 mb-1" />
-                    <Skel className="h-3 w-1/2" />
-                  </>
-                ) : (
-                  <>
-                    <p className="text-lg sm:text-xl font-bold text-gray-900 mb-0.5">{card.value}</p>
-                    {card.showDelta && (
-                      <span className={`text-[10px] font-bold ${card.delta >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {card.delta >= 0 ? '↑' : '↓'} {Math.abs(card.delta)}% {t('seller.vsPreviousPeriod')}
-                      </span>
-                    )}
-                    {card.sub && <p className="text-[10px] sm:text-xs text-gray-400">{card.sub}</p>}
-                  </>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* 🧭 2026-06-09: 신규 셀러(상품 0·주문 0) 3단계 시작 안내 — 데이터 생기면 자동 소멸 */}
-          {(stats.totalProducts ?? -1) === 0 && (stats.totalOrders || 0) === 0 && (
-            <NewSellerSteps isStoreOwner={!isInfluencer} />
-          )}
-
-          {/* ── Actionable insights callouts ── (2026-08-26 컴포넌트 추출 — 로직 불변) */}
-          <InsightsCallouts stats={stats} dailyStats={dailyStats} fmtPrice={fmtPrice} />
-
-          {/* ── 할 일 목록 ── */}
-          {/* 🗑️ 2026-08-23 (대표): 재고 부족 칩 제거 — 쇼핑 재고 레일 잔재. */}
-          {(stats.pendingOrders > 0 || (stats.pendingSettlement ?? 0) > 0) && (
-            <div className="bg-white rounded-2xl shadow-lift p-4">
-              <h3 className="text-sm font-bold text-gray-900 mb-2">{t('seller.actionItems')}</h3>
-              <div className="flex flex-wrap gap-2">
-                {stats.pendingOrders > 0 && (
-                  <Link to="/seller/orders" className="flex items-center gap-1.5 px-3 py-2 bg-brand-tint rounded-lg text-xs font-bold text-brand-text">
-                    <ShoppingBag className="w-3.5 h-3.5" /> {t('seller.unprocessedOrderCount', { count: stats.pendingOrders })}
-                  </Link>
-                )}
-                {(stats.pendingSettlement ?? 0) > 0 && (
-                  <Link to="/seller/settlements" className="flex items-center gap-1.5 px-3 py-2 bg-brand-tint rounded-lg text-xs font-bold text-brand-text">
-                    <CreditCard className="w-3.5 h-3.5" /> {t('seller.settlementAvailableCount', { count: stats.pendingSettlement })}
-                  </Link>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* 🗑️ 2026-08-23 (대표 AB테스트): 빠른 액션(→상단 핵심 작업으로 통합)·알림 그리드(재고 부족
-              등 잔재, 나머지는 stat 카드와 중복)·전환 퍼널(시청자 지표 = 라이브 잔재) 제거.
-              내 공개 페이지는 컴팩트 한 줄로. */}
-          <PublicPagePreview followerCount={followerCount} />
-
-          {/* ── Chart ── */}
-          {dailyStats.length > 0 && (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {/* Sales chart — 스크롤 진입 시 recharts 번들 로드 */}
-              <div className="lg:col-span-2 bg-white rounded-xl shadow-sm p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-sm font-semibold text-gray-900">{t('seller.dailySalesTrend')}</h2>
-                  <span className="text-xs text-gray-400">
-                    {period === '7d' ? t('seller.last7days') : period === '30d' ? t('seller.last30days') : t('seller.last90days')}
-                  </span>
-                </div>
-                <div style={{ width: '100%', height: 220 }}>
-                  <Suspense fallback={<div className="flex items-center justify-center h-full text-gray-400 text-sm">{t('seller.chartLoading')}</div>}>
-                    <LazyChart data={dailyStats} salesLabel={t('seller.sales')} ordersLabel={t('seller.order')} />
-                  </Suspense>
-                </div>
-              </div>
-
-              {/* Top products */}
-              {topProducts.length > 0 && (
-                <div className="bg-white rounded-2xl shadow-lift p-5">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-sm font-semibold text-gray-900">{t('seller.topProducts')}</h2>
-                    <Link to="/seller/products" className="text-xs text-blue-600 hover:underline">{t('seller.all')}</Link>
-                  </div>
-                  <div className="space-y-3">
-                    {topProducts.slice(0, 5).map((p, i) => (
-                      <div key={p.product_id} className="flex items-center gap-3">
-                        <span className="w-5 text-xs font-bold text-gray-400 text-center">{i + 1}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-gray-800 truncate">{p.product_name}</p>
-                          <p className="text-xs text-gray-400">{p.order_count}</p>
-                        </div>
-                        <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">
-                          {fmtPrice(p.total_revenue)}
+                  {loading ? (
+                    <>
+                      <Skel className="mt-2 h-7 w-2/3" />
+                      <Skel className="mt-1 h-3 w-1/2" />
+                    </>
+                  ) : (
+                    <>
+                      <p className="mt-1.5 text-[22px] font-extrabold leading-tight tracking-tight text-gray-900 sm:text-[24px]">{card.value}</p>
+                      {card.showDelta && (
+                        <span className={`mt-1 inline-block text-[11px] font-bold ${card.delta >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                          {card.delta >= 0 ? '↑' : '↓'} {Math.abs(card.delta)}% {t('seller.vsPreviousPeriod')}
                         </span>
-                      </div>
-                    ))}
+                      )}
+                      {card.sub && <p className="mt-1 text-[12px] text-gray-400">{card.sub}</p>}
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+
+              {/* 🛡️ 2026-05-27: 영입자 + commission 분배 가시화 (영입자 있을 때만 표시) */}
+              <SellerReferralInfoCard />
+              {/* 🗑️ 2026-08-23 (대표): 라이브/공구 모드 배지·이중 렌더 제거 — 라이브 영구 중단으로 모드는 하나다. */}
+              <SellerGroupBuyOverview />
+              {/* ── Actionable insights callouts ── (2026-08-26 컴포넌트 추출 — 로직 불변) */}
+              <InsightsCallouts stats={stats} dailyStats={dailyStats} fmtPrice={fmtPrice} />
+              {/* 🛡️ 2026-05-15: KPI 통합 대시보드 (단골 / 공구 / 매출 / 분쟁) */}
+              <SellerKpiDashboard />
+
+              {/* ── Chart ── */}
+              {dailyStats.length > 0 && (
+                <div className="grid gap-3 md:grid-cols-2">
+                  {/* Sales chart — 스크롤 진입 시 recharts 번들 로드 */}
+                  <div className={`rounded-2xl border border-rule bg-white p-5 ${topProducts.length > 0 ? '' : 'md:col-span-2'}`}>
+                    <div className="mb-4 flex items-center justify-between">
+                      <h2 className="text-sm font-bold text-gray-900">{t('seller.dailySalesTrend')}</h2>
+                      <span className="text-xs text-gray-400">
+                        {period === '7d' ? t('seller.last7days') : period === '30d' ? t('seller.last30days') : t('seller.last90days')}
+                      </span>
+                    </div>
+                    <div style={{ width: '100%', height: 220 }}>
+                      <Suspense fallback={<div className="flex h-full items-center justify-center text-sm text-gray-400">{t('seller.chartLoading')}</div>}>
+                        <LazyChart data={dailyStats} salesLabel={t('seller.sales')} ordersLabel={t('seller.order')} />
+                      </Suspense>
+                    </div>
                   </div>
+
+                  {/* Top products */}
+                  {topProducts.length > 0 && (
+                    <div className="rounded-2xl border border-rule bg-white p-5">
+                      <div className="mb-4 flex items-center justify-between">
+                        <h2 className="text-sm font-bold text-gray-900">{t('seller.topProducts')}</h2>
+                        <Link to="/seller/products" className="text-xs font-semibold text-brand-text hover:underline">{t('seller.all')}</Link>
+                      </div>
+                      <div className="space-y-3">
+                        {topProducts.slice(0, 5).map((p, i) => (
+                          <div key={p.product_id} className="flex items-center gap-3">
+                            <span className="w-5 text-center text-xs font-bold text-gray-400">{i + 1}</span>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-xs font-medium text-gray-800">{p.product_name}</p>
+                              <p className="text-xs text-gray-400">{p.order_count}</p>
+                            </div>
+                            <span className="whitespace-nowrap text-xs font-semibold text-gray-700">
+                              {fmtPrice(p.total_revenue)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          )}
+
+            <div className="space-y-3">
+              {/* ── 지금 할 일 ──
+                  🧭 2026-09-14 (Rinda 시안 §1 마지막 줄): 종전엔 **할 일이 있을 때만** 이 카드가 떴다.
+                  없으면 자리 자체가 사라져, 신규 셀러 화면엔 `0` 네 장만 남았다. Rinda 는 빈 자리에
+                  0 을 띄우지 않고 **무엇을 하면 채워지는지**를 적는다. 그대로 따른다. */}
+              <div className="rounded-2xl border border-rule bg-white p-4">
+                <h3 className="mb-2.5 text-sm font-bold text-gray-900">{t('seller.actionItems')}</h3>
+                {(stats.pendingOrders > 0 || (stats.pendingSettlement ?? 0) > 0) ? (
+                  <div className="flex flex-wrap gap-2">
+                    {stats.pendingOrders > 0 && (
+                      <Link to="/seller/orders" className="flex items-center gap-1.5 rounded-lg bg-brand-tint px-3 py-2 text-xs font-bold text-brand-text">
+                        <ShoppingBag className="h-3.5 w-3.5" /> {t('seller.unprocessedOrderCount', { count: stats.pendingOrders })}
+                      </Link>
+                    )}
+                    {(stats.pendingSettlement ?? 0) > 0 && (
+                      <Link to="/seller/settlements" className="flex items-center gap-1.5 rounded-lg bg-brand-tint px-3 py-2 text-xs font-bold text-brand-text">
+                        {/* 🐛 2026-09-14: 종전엔 `settlementAvailableCount`({{count}}건) 에 **금액**을 넘겨
+                            ₩412,000 이 "정산 가능 412000건" 으로 찍혔다. 돈을 건수로 말하던 자리다. */}
+                        <CreditCard className="h-3.5 w-3.5" /> {t('seller.settlementAvailableAmount', { amount: fmtPrice(stats.pendingSettlement ?? 0), defaultValue: '정산 가능 {{amount}}' })}
+                      </Link>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-[13px] leading-relaxed text-gray-500">
+                    {t('seller.actionItemsEmpty', { defaultValue: '지금 처리할 일이 없어요. 이용권을 등록하면 주문과 정산이 여기에 모입니다.' })}
+                  </p>
+                )}
+              </div>
+
+              {/* 🧭 2026-06-09: 신규 셀러(상품 0·주문 0) 3단계 시작 안내 — 데이터 생기면 자동 소멸 */}
+              {(stats.totalProducts ?? -1) === 0 && (stats.totalOrders || 0) === 0 && (
+                <NewSellerSteps isStoreOwner={!isInfluencer} />
+              )}
+            </div>
+          </div>
+
+          {/* 🖥️ 2026-09-14: 이 카드는 **가로 한 줄**로 설계돼 있다(썸네일 + 주소 + 버튼 4개).
+              1/3 컬럼에 넣었더니 "내 공개 페이지"가 한 글자씩 세로로 쪼개졌다 — 전체 폭에 둔다. */}
+          <PublicPagePreview followerCount={followerCount} />
 
         </>
         )}

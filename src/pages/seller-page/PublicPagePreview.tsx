@@ -16,7 +16,7 @@ export default function PublicPagePreview({ followerCount = 0 }: { followerCount
   const username = localStorage.getItem('seller_username') || sellerId
 
   return (
-    <div className="bg-white rounded-xl shadow-sm px-4 py-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+    <div className="rounded-2xl border border-rule bg-white px-4 py-3 flex flex-wrap items-center gap-x-3 gap-y-2">
       <span className="text-lg shrink-0">🏪</span>
       <div className="min-w-0 flex-1">
         <p className="text-[13px] font-bold text-gray-900">{t('seller.myPublicPage')}</p>
@@ -44,7 +44,7 @@ export default function PublicPagePreview({ followerCount = 0 }: { followerCount
         </a>
         <Link
           to="/seller/profile"
-          className="px-2.5 py-1.5 rounded-lg bg-gray-900 text-white text-[11px] font-bold hover:bg-gray-800"
+          className="rounded-lg bg-brand px-2.5 py-1.5 text-[11px] font-bold text-white hover:bg-brand-dark"
         >
           {t('seller.editProfile')}
         </Link>

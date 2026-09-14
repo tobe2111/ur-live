@@ -98,7 +98,7 @@ export default function MyStoresPanel({ onGateChange }: Props) {
   }
 
   if (loading) {
-    return <div className="bg-white rounded-xl shadow-sm p-4 flex items-center gap-2 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin" /> {t('seller.stores.loading', { defaultValue: '내 매장 확인 중…' })}</div>
+    return <div className="flex items-center gap-2 rounded-2xl border border-rule bg-white p-4 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin" /> {t('seller.stores.loading', { defaultValue: '내 매장 확인 중…' })}</div>
   }
 
   // ── 1단계 게이트 — 등록 매장 0: 매장 등록 없이는 아무것도 시작되지 않는다 ──
@@ -107,7 +107,7 @@ export default function MyStoresPanel({ onGateChange }: Props) {
       <>
         {/* 🎫 2026-09-02 (대표 확정 — 셀러 B안): 잉크 STEP 카드 → 티켓 부품(블루 밴드 + 흰 본문). 잉크 사이드바와
             잉크 카드와 잉크 버튼이 한 화면에서 셋이 경쟁하던 것을, 강조는 밴드 하나로. 소비자 지갑·결제 완료와 같은 문법. */}
-        <div className="overflow-hidden rounded-2xl bg-white shadow-lift">
+        <div className="overflow-hidden rounded-2xl border border-rule bg-white">
           <div className="flex items-center justify-between h-11 px-4 text-[14px] text-white bg-brand tabular-nums">
             <span className="font-bold">STEP 1 · {t('seller.stores.step1', { defaultValue: '매장 등록' })}</span>
             <span className="font-medium">1 / 4</span>
@@ -140,7 +140,7 @@ export default function MyStoresPanel({ onGateChange }: Props) {
 
   // ── 매장 카드 목록 — 여러 매장이면 여러 카드, 카드마다 이용권 등록 ──
   return (
-    <div className="bg-white rounded-xl shadow-sm p-4">
+    <div className="rounded-2xl border border-rule bg-white p-4">
       <div className="flex items-center justify-between mb-2.5">
         <h2 className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
           <Store className="w-4 h-4 text-gray-500" /> {t('seller.stores.myStores', { defaultValue: '내 매장' })}
@@ -148,7 +148,7 @@ export default function MyStoresPanel({ onGateChange }: Props) {
         </h2>
         <button
           onClick={() => setAdding(true)}
-          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 text-[11px] font-bold text-gray-700 hover:bg-gray-50"
+          className="flex items-center gap-1 rounded-lg border border-rule px-2.5 py-1.5 text-[11px] font-bold text-gray-700 hover:bg-gray-50"
         >
           <Plus className="w-3.5 h-3.5" /> {t('seller.stores.addStore', { defaultValue: '매장 추가' })}
         </button>
@@ -157,7 +157,7 @@ export default function MyStoresPanel({ onGateChange }: Props) {
         {registered.map(s => {
           const active = s.seller_id === currentId
           return (
-            <div key={s.seller_id} className={`rounded-xl border p-3 ${active ? 'border-gray-900 bg-gray-50' : 'border-gray-200'}`}>
+            <div key={s.seller_id} className={`rounded-xl border p-3 ${active ? 'border-brand bg-brand-tint' : 'border-rule'}`}>
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="text-[13px] font-extrabold text-gray-900 truncate flex items-center gap-1">
@@ -182,7 +182,7 @@ export default function MyStoresPanel({ onGateChange }: Props) {
                   onClick={() => registerVoucherFor(s)}
                   disabled={switching != null}
                   className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-[11px] font-extrabold active:scale-[0.98] disabled:opacity-60 ${
-                    isApproved(s) ? 'bg-gray-900 text-white hover:bg-gray-800' : 'bg-gray-100 text-gray-400'
+                    isApproved(s) ? 'bg-brand text-white hover:bg-brand-dark' : 'bg-gray-100 text-gray-400'
                   }`}
                 >
                   {switching === s.seller_id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Ticket className="w-3.5 h-3.5" />}
@@ -190,7 +190,7 @@ export default function MyStoresPanel({ onGateChange }: Props) {
                 </button>
                 <button
                   onClick={() => setEditing(s)}
-                  className="px-3 py-2 rounded-lg border border-gray-200 text-[11px] font-bold text-gray-600 hover:bg-gray-50 flex items-center gap-1"
+                  className="flex items-center gap-1 rounded-lg border border-rule px-3 py-2 text-[11px] font-bold text-gray-600 hover:bg-gray-50"
                 >
                   <Settings2 className="w-3.5 h-3.5" /> {t('seller.stores.info', { defaultValue: '정보' })}
                 </button>

@@ -2201,6 +2201,7 @@
     "unprocessedOrderCount": "未処理注文 {{count}}件",
     "lowStockCount": "在庫不足 {{count}}件",
     "settlementAvailableCount": "精算可能 {{count}}件",
+    "settlementAvailableAmount": "精算可能 {{amount}}",
     "insightPendingOrdersTitle": "未処理注文 {{count}}件",
     "insightPendingOrdersDesc": "迅速な対応が必要です",
     "insightManageOrders": "注文管理",

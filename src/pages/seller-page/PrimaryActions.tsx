@@ -11,10 +11,17 @@ interface Props {
 /**
  * 🛡️ 2026-05-20: 셀러 대시보드 상단 큰 CTA 카드 (사용자 요청).
  * 🧱 2026-08-23 (대표 AB테스트 — "중요한 작업들이 어느정도 모여있어야 해. 컴팩트하게"):
- *   흩어져 있던 핵심 작업(빠른 액션의 '이용권 등록' + 큰 카드 3개)을 **한 줄 5버튼**으로 통합.
- *   [이용권 등록(주역, 다크) · 주문 확인 · 이용권 관리 · 정산 · 소개 파트너 찾기]
- *   가로형 컴팩트 버튼(아이콘+텍스트 한 줄) — 종전 세로형 큰 카드 대비 높이 절반.
- *   ('상품 등록'/'라이브'는 제거 — 상품은 유어샵 일원화, 라이브는 영구 중단.)
+ *   흩어져 있던 핵심 작업을 **한 줄 5버튼**으로 통합.
+ *   [이용권 등록 · 주문 확인 · 이용권 관리 · 정산 · 소개 파트너 찾기]
+ *
+ * 🎨 2026-09-14 (대표 Rinda 시안 — docs/design/dashboard-rinda-2026-09.md §4):
+ *   **검은 타일을 걷어냈다.** 종전엔 `bg-gray-900` 타일이 조건에 따라 **동시에 셋까지**(이용권 등록 항상
+ *   + 미처리 주문 + 정산 가능) 떴다. 셋이 똑같이 새까매서 "무엇이 더 급한가"를 구별해 주지 못했고,
+ *   같은 화면의 매장 카드 버튼까지 검정이라 대표가 말한 "헷갈린다"의 한 축이었다.
+ *   ⇒ 기본은 흰 면 + 헤어라인 하나로 통일하고, **강조는 브랜드 틴트 한 가지로만** 준다
+ *     (= "당신이 지금 처리할 게 여기 있다"). 강조가 생기는 자리는 미처리 주문 · 정산 가능 둘뿐이다.
+ *   '이용권 등록'은 사이드바 상단 **파란 CTA** 가 주역을 맡는다(SellerLayout) — 그래서 여기서는
+ *   다른 넷과 같은 무게로 둔다. 주역을 없앤 게 아니라 **한 자리로 모은 것**이다.
  */
 export default function PrimaryActions({ pendingOrders, activeGroupBuys, settlementAvailable = 0 }: Props) {
   const { t } = useTranslation()
@@ -24,20 +31,19 @@ export default function PrimaryActions({ pendingOrders, activeGroupBuys, settlem
     title: string
     subtitle: string
     icon: typeof Ticket
-    bg: string
     iconBg: string
     iconColor: string
+    /** 지금 사람이 움직여야 하는 자리 — 브랜드 틴트로 딱 이때만 강조한다. */
+    attention?: boolean
     badge?: number
-    badgeBg?: string
   }> = [
     {
       to: '/seller/meal-voucher/new',
       title: t('seller.registerVoucher', { defaultValue: '이용권 등록' }),
       subtitle: t('seller.selectOnKakaoMap', { defaultValue: '카카오맵으로 매장 선택' }),
       icon: Utensils,
-      bg: 'bg-gray-900 text-white hover:bg-gray-800 shadow-md',
-      iconBg: 'bg-white/15',
-      iconColor: 'text-white',
+      iconBg: 'bg-brand-tint',
+      iconColor: 'text-brand-text',
     },
     {
       to: '/seller/orders',
@@ -46,13 +52,10 @@ export default function PrimaryActions({ pendingOrders, activeGroupBuys, settlem
         ? t('seller.primary.pendingOrders', { defaultValue: '미처리 주문', count: pendingOrders })
         : t('seller.primary.allDone', { defaultValue: '신규/배송 관리' }),
       icon: ShoppingBag,
-      bg: pendingOrders > 0
-        ? 'bg-gray-900 text-white hover:bg-gray-900 shadow-md'
-        : 'bg-white border border-gray-200 hover:bg-gray-50',
-      iconBg: pendingOrders > 0 ? 'bg-white/20' : 'bg-blue-50',
-      iconColor: pendingOrders > 0 ? 'text-white' : 'text-blue-600',
+      iconBg: 'bg-gray-100',
+      iconColor: 'text-gray-500',
+      attention: pendingOrders > 0,
       badge: pendingOrders > 0 ? pendingOrders : undefined,
-      badgeBg: 'bg-white text-blue-700',
     },
     {
       to: '/seller/group-buy',
@@ -61,9 +64,8 @@ export default function PrimaryActions({ pendingOrders, activeGroupBuys, settlem
         ? t('seller.activeGroupBuyCount', { defaultValue: '진행 중 {{count}}건', count: activeGroupBuys })
         : t('seller.primary.voucherManageDesc', { defaultValue: '판매·현황' }),
       icon: Ticket,
-      bg: 'bg-white border border-gray-200 hover:bg-gray-50',
-      iconBg: 'bg-brand-tint',
-      iconColor: 'text-brand-text',
+      iconBg: 'bg-gray-100',
+      iconColor: 'text-gray-500',
     },
     {
       to: '/seller/settlements',
@@ -72,40 +74,41 @@ export default function PrimaryActions({ pendingOrders, activeGroupBuys, settlem
         ? `₩${settlementAvailable.toLocaleString()}`
         : t('seller.primary.settlementsDesc', { defaultValue: '딜/현금 출금' }),
       icon: Wallet,
-      bg: settlementAvailable > 0
-        ? 'bg-gray-900 text-white hover:bg-gray-900 shadow-md'
-        : 'bg-white border border-gray-200 hover:bg-gray-50',
-      iconBg: settlementAvailable > 0 ? 'bg-white/20' : 'bg-emerald-50',
-      iconColor: settlementAvailable > 0 ? 'text-white' : 'text-emerald-600',
+      iconBg: 'bg-gray-100',
+      iconColor: 'text-gray-500',
+      attention: settlementAvailable > 0,
     },
     {
       to: '/seller/influencers',
       title: t('seller.nav.findInfluencers', { defaultValue: '소개 파트너 찾기' }),
       subtitle: t('seller.primary.findInfluencersDesc', { defaultValue: '협업 제안 보내기' }),
       icon: Megaphone,
-      bg: 'bg-white border border-gray-200 hover:bg-gray-50',
-      iconBg: 'bg-violet-50',
-      iconColor: 'text-violet-600',
+      iconBg: 'bg-gray-100',
+      iconColor: 'text-gray-500',
     },
   ]
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
       {cards.map((c) => (
         <Link
           key={c.to}
           to={c.to}
-          className={`relative flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all active:scale-[0.98] ${c.bg}`}
+          className={`relative flex items-center gap-2.5 rounded-xl px-3 py-2.5 transition-colors active:scale-[0.98] ${
+            c.attention
+              ? 'border border-brand bg-brand-tint'
+              : 'border border-rule bg-white hover:bg-gray-50'
+          }`}
         >
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${c.iconBg}`}>
-            <c.icon className={`w-4 h-4 ${c.iconColor}`} />
+          <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${c.attention ? 'bg-white' : c.iconBg}`}>
+            <c.icon className={`h-4 w-4 ${c.attention ? 'text-brand-text' : c.iconColor}`} />
           </div>
           <div className="min-w-0">
-            <p className="text-[12.5px] font-extrabold leading-tight truncate">{c.title}</p>
-            <p className={`text-[10.5px] mt-0.5 truncate ${c.bg.includes('text-white') ? 'opacity-80' : 'text-gray-500'}`}>{c.subtitle}</p>
+            <p className={`truncate text-[13px] font-bold leading-tight ${c.attention ? 'text-brand-text' : 'text-gray-900'}`}>{c.title}</p>
+            <p className={`mt-0.5 truncate text-[11px] ${c.attention ? 'text-brand-text opacity-80' : 'text-gray-500'}`}>{c.subtitle}</p>
           </div>
           {c.badge && c.badge > 0 && (
-            <span className={`absolute top-1.5 right-1.5 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full ${c.badgeBg ?? 'bg-red-500 text-white'}`}>
+            <span className="absolute right-1.5 top-1.5 rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-extrabold text-white">
               {c.badge}
             </span>
           )}

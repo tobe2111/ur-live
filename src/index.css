@@ -444,6 +444,11 @@
   --tone-warn: #8A5A00;    --tone-warn-bg: #FBF1DC;
   --tone-bad: #C62828;     --tone-bad-bg: #FBEAEA;
   --tone-info: #1C69EF;    --tone-info-bg: #EAF1FE;
+  /* 🧭 2026-09-14 (Rinda 시안): 브랜드 틴트도 같은 이유로 되박는다. 이게 없으면 html.dark 에서
+     `:root.dark` 의 `--brand-tint: #16243D`(남색)가 새어 들어와 **활성 메뉴 알약이 검게** 뜬다.
+     위 `--lift` 주석이 경고한 바로 그 사고이고, 사이드바가 흰 면으로 바뀌면서 실제로 도달 가능해졌다. */
+  --brand-tint: #EAF1FE;
+  --brand-text: #1C69EF;
 }
 .light-island, .force-light-theme, .admin-light-theme, .agency-light-theme {
   --lift: 0 2px 10px rgb(22 24 28 / 0.06);
@@ -454,6 +459,9 @@
   --tone-warn: #8A5A00;    --tone-warn-bg: #FBF1DC;
   --tone-bad: #C62828;     --tone-bad-bg: #FBEAEA;
   --tone-info: #1C69EF;    --tone-info-bg: #EAF1FE;
+  /* 🧭 2026-09-14 (Rinda 시안): 셀러 래퍼와 같은 이유 — 위 블록 주석 참조. */
+  --brand-tint: #EAF1FE;
+  --brand-text: #1C69EF;
 }
 
 /* 🛡️ 2026-06-17 (사용자 신고 — 로그인/대시보드 입력 글자 흰색으로 안 보임): 어드민/셀러/에이전시/도매는 라이트 고정.
@@ -1390,9 +1398,14 @@ html.dark .gbd {
 .animate-orderProofIn { animation: orderProofIn 300ms ease-out; }
 
 /* 🛡️ 2026-05-20: 사이드바 active gradient — Seller/Admin/Agency Layout 의 inline style 대체. */
-.ur-seller-nav-active { background: rgba(255, 255, 255, 0.06); } /* 🎫 2026-09-02 B안: 그라디언트 → 평면, 활성 표시는 블루 세로 막대 */
-.ur-admin-nav-active  { background: linear-gradient(to right, rgba(252, 211, 77, 0.12), transparent); }
-.ur-agency-nav-active { background: linear-gradient(to right, rgba(139, 92, 246, 0.18), transparent); }
+/* 🧭 2026-09-14 (대표 Rinda 시안 — `docs/design/dashboard-rinda-2026-09.md`):
+   대시보드 사이드바가 **어두운 면 + 세로 막대**에서 **흰 면 + 연파랑 알약**으로 바뀌었다.
+   세 역할이 각자 다른 색(흰 6% / 앰버 그라디언트 / 보라 그라디언트)을 쓰던 것을 한 값으로 모은다 —
+   세 대시보드가 서로 다르게 생길 이유가 없고, 활성 표시는 브랜드 하나면 충분하다.
+   ⚠️ `--brand-tint` 를 쓰므로 아래 §라이트 되박기가 반드시 함께 있어야 한다(다크 모드 누수). */
+.ur-seller-nav-active,
+.ur-admin-nav-active,
+.ur-agency-nav-active { background: var(--brand-tint); }
 
 /* 🛡️ 2026-05-20: 라이브/쇼츠/숏폼 카드 공통 utility (CSP unsafe-inline 제거 — style={{}} 일괄 제거) */
 .ur-live-pill {

@@ -1520,6 +1520,7 @@
     "unprocessedOrderCount": "{{count}} commandes non traitées",
     "lowStockCount": "{{count}} produits en rupture de stock",
     "settlementAvailableCount": "{{count}} règlements disponibles",
+    "settlementAvailableAmount": "{{amount}} disponible au règlement",
     "insightPendingOrdersTitle": "{{count}} commandes non traitées",
     "insightPendingOrdersDesc": "Un traitement rapide est nécessaire",
     "insightManageOrders": "Gérer les commandes",
