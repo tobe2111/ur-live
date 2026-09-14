@@ -2274,7 +2274,8 @@
       "alimtalkSent": "オーナーにアリムトークが送信されました",
       "reissue": "同じ内容で再発行",
       "copyLoaded": "前回の内容を読み込みました — 日付を確認して発行!",
-      "copyFailed": "前回の内容を読み込めませんでした"
+      "copyFailed": "前回の内容を読み込めませんでした",
+      "deleted": "利用券を削除しました"
     },
     "voucher": {
       "categoryTitle": "クーポンカテゴリ",
@@ -3216,7 +3217,12 @@
       "orders": "注文"
     },
     "bizFromRegistration": "店舗登録時の内容を入れておきました",
-    "bizFromRegistrationDesc": "まだ事業者情報として登録されていません — 確認して保存を押してください。"
+    "bizFromRegistrationDesc": "まだ事業者情報として登録されていません — 確認して保存を押してください。",
+    "edit": {
+      "listPrice": "定価（割引前の価格）",
+      "listPriceDiscount": "お客様には{{pct}}%割引と表示されます。",
+      "listPriceHint": "販売価格より高く入力すると割引率が表示されます。空欄なら表示されません。"
+    }
   },
   "admin": {
     "login": {
