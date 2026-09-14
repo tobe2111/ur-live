@@ -2274,7 +2274,8 @@
       "alimtalkSent": "已向商家发送Alimtalk",
       "reissue": "按相同内容重新发布",
       "copyLoaded": "已载入上次团购 — 确认日期后发布!",
-      "copyFailed": "无法载入上次团购"
+      "copyFailed": "无法载入上次团购",
+      "deleted": "已删除使用券"
     },
     "voucher": {
       "categoryTitle": "使用券类型",
@@ -3216,7 +3217,12 @@
       "orders": "订单"
     },
     "bizFromRegistration": "已填入您门店注册时的内容",
-    "bizFromRegistrationDesc": "尚未登记为营业信息 — 确认后请点击保存。"
+    "bizFromRegistrationDesc": "尚未登记为营业信息 — 确认后请点击保存。",
+    "edit": {
+      "listPrice": "原价（折扣前价格）",
+      "listPriceDiscount": "顾客将看到 {{pct}}% 折扣。",
+      "listPriceHint": "填写高于售价的金额即显示折扣率。留空则不显示。"
+    }
   },
   "admin": {
     "login": {
