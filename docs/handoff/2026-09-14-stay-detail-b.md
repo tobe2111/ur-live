@@ -108,3 +108,22 @@ description 이 고쳐진 순간 그 행이 **영영 다시 안 뽑힌다** → 
 - **공구 상세의 테두리 걷기** — 지금 카드마다 `1px solid var(--gbd-line2)`(표면 규칙 ① 위반).
   걷으면 화면이 꽤 달라지므로 시안 없이 하지 않는다.
 - 지도 할인 강조 임계값 · RSS 자동수집/셀러 투고(착수 금지 유지).
+
+## 🩸 머지 뒤 CI 가 잡은 것 — 래칫 기준선이 발밑에서 바뀌었다
+
+`e9bd4a954`(main `b90d18aa0` 병합) 에서 **Verify 빨간불**:
+`StayDetailPage.tsx (885줄) — baseline 873줄 초과`.
+
+내가 어제 "baseline 885 에 맞춰 주석 3줄 압축" 한 그 값이 **main 에서 873 으로 내려가 있었다** —
+PR #1426 이 `--rebaseline` 을 돌리면서 그 시점 main 의 실제 크기(873)를 기록했기 때문이다.
+내 브랜치는 baseline 파일을 안 건드렸으니 머지는 깨끗했고, **충돌 없이 조용히** 기준만 12줄 낮아졌다.
+
+⇒ **교훈**: 파일크기 래칫에 "딱 맞춰" 두면 다른 세션의 rebaseline 한 번에 빨간불이 된다.
+   맞추지 말고 **줄여서 여유를 두거나 추출**할 것. (rebaseline 으로 성장을 축복하는 건 래칫의 취지에 반한다.)
+
+**수리**: `amenityMeta` + `AMENITY_ICON_CLS` 를 `stay-detail/amenity-meta.tsx` 로 추출(**로직 byte-불변**).
+상태·훅이 없는 순수 매핑이라 가장 깨끗하게 떨어지는 조각이고, lucide 아이콘 12개 import 도 함께 나갔다
+(전부 이 함수 안에서만 쓰였다 — 실측). 885 → **866줄**. 낡은 지도 방지로 이 함수를 가리키던 주석 2곳
+(`admin-stays.routes.ts` 시드 · `StayInfoSections.tsx`)의 경로도 새 파일로 갱신했다.
+
+검증: tsc 0 · `check-file-size --changed-only` 통과 · 숙소 유닛 32건 pass · 주입 1건 되돌려-검증 빨간불 확인.
