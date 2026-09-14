@@ -44,7 +44,7 @@ node scripts/visual-preview.mjs --route=/checkout --cart --auth=user --name=chec
 
 - 이용권 `/group-buy/:id` → **`/pay/widget`**(TossWidgetPayPage) → `/group-buy/confirm-payment`
 - 교환권(`deal_only=1`) → 상세에서 딜로 즉시 교환 (결제 화면 자체가 없다)
-- `/cart`·`/checkout` 을 타는 것은 **쇼핑**(`SHOPPING_TAB_HIDDEN` 으로 숨김)과
+- `/cart`·`/checkout` 을 타는 것은 **쇼핑**과
   **공구 서비스의 몰 상품**(`MallProductPage` → directPurchase)뿐
 
 grep 으로 확인: `GroupBuyDetailPage`·`VoucherDetailPage` 에 '장바구니 담기' **0건**.

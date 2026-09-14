@@ -5499,7 +5499,13 @@ _총 283건 · 최신순 · 이 목록은 자동 생성된다._
 **2026-09-14**
 - [2026-09-14 — 유어쇼츠: 위로 되돌아가는 스와이프 + 닫기 버튼 겹침](handoff/2026-09-14-urshorts-swipe-back-and-close-button.md)
 - [셀러·어드민 대시보드 — Rinda 껍데기 (2026-09-14)](handoff/2026-09-14-dashboard-rinda-shell.md)
+_총 284건 · 최신순 · 이 목록은 자동 생성된다._
+
+**2026-09-14**
+- [2026-09-14 — 유어쇼츠: 위로 되돌아가는 스와이프 + 닫기 버튼 겹침](handoff/2026-09-14-urshorts-swipe-back-and-close-button.md)
+- [나머지 목록 화면 뒤로가기 (2026-09-14) — 재 보니 이미 정상이었다](handoff/2026-09-14-list-restore-remaining-surfaces.md)
 **2026-09-13**
+- [교환권 목록 — 상세 갔다 뒤로 오면 새로고침되던 것 (2026-09-13)](handoff/2026-09-13-vouchers-back-restore.md)
 - [결제 경로 전수 — 2026-09-13](handoff/2026-09-13-payment-sweep.md)
 - [💳 결제가 마지막 화면에서 조용히 실패하던 것 — 콜백 주소의 쿼리 (2026-09-13)](handoff/2026-09-13-payment-callback-query.md)
 - [딜을 얼마나 쓸지 고른다 — 2026-09-13](handoff/2026-09-13-deal-use-chooser.md)

@@ -1,4 +1,6 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
+import { saveListView } from '@/lib/list-view-cache'
+import { browseViewKey, useBrowseRestore, type BrowseViewState } from './browse/list-restore'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -51,8 +53,10 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
   useEffect(() => { captureTrackingFromUrl() }, [])
   // 🚑 2026-07-10: SSR 시드 동기 소비 — 시드 있으면 로더 프레임 0 (위 readBrowseSeed 주석 참조).
   const [initialSeed] = useState<Product[] | null>(() => readBrowseSeed(defaultCategory))
-  const [products, setProducts] = useState<Product[]>(initialSeed ?? [])
-  const [loading, setLoading] = useState(initialSeed == null)
+  // 🔙 2026-09-14: 뒤로(POP) 면 직전 목록을 돌려준다. 근거·한계: `./browse/list-restore`
+  const restored = useBrowseRestore(defaultCategory)
+  const [products, setProducts] = useState<Product[]>(restored?.products ?? initialSeed ?? [])
+  const [loading, setLoading] = useState(restored == null && initialSeed == null)
   // ✅ UX M17 FIX: 에러 상태 + 재시도 버튼
   const [error, setError] = useState<string | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
@@ -98,11 +102,11 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
   // 🛡️ 2026-05-24 (loading P0): PAGE_SIZE 50 → 20.
   //   첫 화면 이미지 다운로드 -60% (50개 카드 평균 200~500KB 이미지 = 10-25MB → 4-10MB).
   //   IntersectionObserver 가 sentinel 도달 시 자동으로 다음 페이지 fetch — UX 동일.
-  const [page, setPage] = useState(1)
-  const [hasMore, setHasMore] = useState(false)
+  const [page, setPage] = useState(() => restored?.page ?? 1)
+  const [hasMore, setHasMore] = useState(() => restored?.hasMore ?? false)
   const [loadingMore, setLoadingMore] = useState(false)
   const PAGE_SIZE = 20
-  const [showCount, setShowCount] = useState(ITEMS_PER_PAGE)
+  const [showCount, setShowCount] = useState(() => restored?.showCount ?? ITEMS_PER_PAGE)
   const [priceRange, setPriceRange] = useState<'all' | 'under10' | 'under30' | 'under50' | 'over50'>('all')
   const [freeShipOnly, setFreeShipOnly] = useState(false)
   const [showFilter, setShowFilter] = useState(false)
@@ -280,7 +284,12 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
       })
   }, [category, sortBy, priceRange, t])
 
+  // 🔙 2026-09-14: 되살린 경우 **첫 실행만** 건너뛴다. 이 effect 는 마운트에서도 도는데 그대로 두면
+  //   setProducts([]) 로 복원본을 지우고 1페이지만 다시 받아 목록이 도로 짧아진다(= 고치려던 증상).
+  //   이후 카테고리·정렬·가격 변경은 정상적으로 리셋된다.
+  const browseSkipFirstRef = useRef(restored != null)
   useEffect(() => {
+    if (browseSkipFirstRef.current) { browseSkipFirstRef.current = false; return }
     setProducts([])
     // 🛡️ 2026-05-27 (loading P0): SSR inject first-paint — category=all 초기 진입 즉시 표시.
     // 🏭 2026-06-05: SSR(__SSR_INITIAL_BROWSE__)은 기본(popular/전체가격)일 때만 소비 — 정렬/가격 변경 시 서버 refetch.
@@ -316,6 +325,13 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
     observer.observe(loadMoreRef.current)
     return () => observer.disconnect()
   }, [hasMore, loadingMore, page, loadProducts])
+
+  // 🔙 2026-09-14: 현재 목록을 보관 — 뒤로 오면 첫 렌더에 되살아난다. 근거: `./browse/list-restore`
+  //   ⚠️ 이 effect 는 showCount·page·hasMore **선언 뒤**여야 한다(위로 올리면 TDZ 로 빈 화면).
+  useEffect(() => {
+    if (loading || products.length === 0 || priceRange !== 'all') return
+    saveListView<BrowseViewState>(browseViewKey(category, sortBy), { products, page, hasMore, showCount })
+  }, [category, sortBy, priceRange, products, page, hasMore, showCount, loading])
 
   useEffect(() => {
     const handler = () => setShowSortDropdown(false)
