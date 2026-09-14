@@ -1593,7 +1593,8 @@
       "alimtalkSent": "Alimtalk envoyé au commerçant",
       "reissue": "Rééditer à l’identique",
       "copyLoaded": "Contenu précédent chargé — vérifiez les dates et publiez !",
-      "copyFailed": "Impossible de charger le précédent"
+      "copyFailed": "Impossible de charger le précédent",
+      "deleted": "Bon supprimé"
     },
     "voucher": {
       "categoryTitle": "Catégorie de Bon",
@@ -2535,7 +2536,12 @@
       "orders": "Commandes"
     },
     "bizFromRegistration": "Prérempli depuis l’enregistrement de votre boutique",
-    "bizFromRegistrationDesc": "Pas encore enregistré comme informations d’entreprise — vérifiez puis enregistrez."
+    "bizFromRegistrationDesc": "Pas encore enregistré comme informations d’entreprise — vérifiez puis enregistrez.",
+    "edit": {
+      "listPrice": "Prix de référence (avant remise)",
+      "listPriceDiscount": "Affiché aux clients comme {{pct}} % de réduction.",
+      "listPriceHint": "Saisissez un montant supérieur au prix de vente pour afficher une remise. Laissez vide pour ne rien afficher."
+    }
   },
   "admin": {
     "login": {

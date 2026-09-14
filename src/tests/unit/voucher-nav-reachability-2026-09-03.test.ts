@@ -15,6 +15,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
+import { stripComments as strip } from '../helpers/source-text'
 import { NAV_GROUPS } from '@/components/seller/seller-nav'
 import { publicSellerHandle, isAutoSellerUsername } from '@/shared/seller-handle'
 import { SELLER_TAB_GROUPS, findSellerTabGroup, tabGroupSiblings } from '@/components/seller/seller-tab-groups'
@@ -22,8 +23,9 @@ import { SELLER_TAB_GROUPS, findSellerTabGroup, tabGroupSiblings } from '@/compo
 const items = NAV_GROUPS.flatMap(g => g.items)
 const byPath = (p: string) => items.find(i => i.path === p)
 const SIMPLE = readFileSync('src/components/seller-layout/SellerSimpleNav.tsx', 'utf8')
-/** 주석 제거본 — 옛 이름을 *설명하는 주석*까지 위반으로 세면 가짜 빨강이 된다(오늘 실제로 걸렸다). */
-const SIMPLE_CODE = SIMPLE.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+/** 주석 제거본 — 옛 이름을 *설명하는 주석*까지 위반으로 세면 가짜 빨강이 된다(오늘 실제로 걸렸다).
+ *  ⚠️ 자체 정규식은 문자열 안의 `/*` 에 소스가 통째로 증발한다 → SSOT `stripComments` 사용. */
+const SIMPLE_CODE = strip(SIMPLE)
 const MANAGE_PAGE = readFileSync('src/pages/SellerGroupBuyPage.tsx', 'utf8')
 // ⚠️ 셀러 라우트는 **두 파일에 흩어져 있다** — 대부분은 `routes/seller.routes.tsx` 인데
 //   `/seller/proxy-products` 같은 일부는 `App.tsx` 에 남아 있다. 한쪽만 보면 '라우트 없음'
@@ -135,6 +137,20 @@ describe('④ 관리 → 수정 진입점이 살아 있다', () => {
     // 이용권을 수정할 방법이 화면에서 사라진다.
     expect(MANAGE_PAGE).toMatch(/navigate\(`\/seller\/products\/\$\{p\.id\}\/edit`\)/)
     expect(ROUTES).toContain('path="/seller/products/:id/edit"')
+  })
+
+  // 🩸 2026-09-14: 위 단언은 **파일 안에 그 문자열이 있는지**만 봤다. 그런데 실제 링크는
+  //   `p.restaurant_phone` 이 **없을 때만** 뜨는 '연락처 등록 →' 배너 안에 있었다 —
+  //   연락처가 등록된 매장은 수정 화면에 닿을 방법이 아예 없었는데도 이 검사는 초록이었다.
+  //   라이브 실측(2026-09-14): 셀러 소유 활성 이용권은 1건뿐이고(홍대돈까스) 연락처가 등록돼 있어
+  //   **정확히 그 경우**였다. ⇒ "있다" 가 아니라 "조건 없이 보인다" 를 본다.
+  it('🔒 수정 버튼이 연락처 분기 **밖**에 있다 — 조건부면 그 조건을 만족 못 하는 매장은 갇힌다', () => {
+    const code = strip(MANAGE_PAGE)
+    const editNav = code.indexOf('/seller/products/${p.id}/edit')
+    const phoneBranch = code.indexOf('p.restaurant_phone ?')
+    expect(editNav, '수정 진입점이 없다').toBeGreaterThan(-1)
+    expect(phoneBranch, '연락처 분기를 못 찾았다 — 이 검사가 헛돌고 있다').toBeGreaterThan(-1)
+    expect(editNav, '수정 진입점이 연락처 분기 안에만 있다').toBeLessThan(phoneBranch)
   })
 })
 
