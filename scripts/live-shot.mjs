@@ -19,7 +19,13 @@
  *   (NSS 저장소는 이미 설정돼 있고, 애초에 핸드셰이크가 안 끝난다). 시도해 봤지만 **소용없는 것**:
  *   `proxy: { server: HTTPS_PROXY }` 전달 · `--disable-features=PostQuantumKyber,EncryptedClientHello`
  *   · `--disable-quic` (ClientHello 를 1793→1719 B 로 줄여도 같은 자리에서 끊긴다).
- *   ⇒ **로컬 브라우저 검증은 이 환경에서 불가**. 프록시 README 의 "지원 안 함(보고할 것)" 항목이다.
+ *   ⇒ **라이브 URL 을 여는 로컬 브라우저는 이 환경에서 불가**. 프록시 README 의 "지원 안 함" 항목이다.
+ *
+ *   ✅ **단, 브라우저 자체는 멀쩡히 뜬다 — 로컬만 열면 된다(2026-09-14 실측).**
+ *   `check-dark-contrast.mjs` 는 `dist/client` 를 `127.0.0.1` 로 서빙하고 외부 요청을 전부
+ *   `route.abort()` 하기 때문에 **이 컨테이너에서 그대로 돌아간다**(39개 경로·텍스트 1,177개 측정 성공).
+ *   즉 막힌 것은 "브라우저"가 아니라 "외부 오리진"이다. 화면을 눈으로 재야 할 때는
+ *   **`npm run build` 후 로컬 정적 서버 + Playwright** 가 먼저다. 라이브 실물이 꼭 필요할 때만 이 도구.
  *
  * ## 쓰는 법
  *   node scripts/live-shot.mjs --paths=/map,/vouchers --device=phone

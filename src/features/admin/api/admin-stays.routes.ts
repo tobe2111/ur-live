@@ -306,7 +306,7 @@ const STAY_TYPES = [
   { type: 'glamping', label: '글램핑', kakao: '글램핑', mods: ['별빛', '리버뷰', '불멍'], desc: '장비를 챙길 필요가 없는 글램핑입니다. 개별 화로가 있고 텐트에 냉난방이 들어와요.' },
 ]
 // 🏨 2026-07-21 (대표 "시설 설정 안 됨" — 이상적): 업종별 대표 시설 세트(5~6개). 상세 시설 아이콘 매핑
-//   (StayDetailPage amenityMeta)이 한글 키워드로 인식. 공통 + 유형 특색.
+//   (stay-detail/amenity-meta.tsx)이 한글 키워드로 인식. 공통 + 유형 특색.
 const STAY_AMENITIES: Record<string, string[]> = {
   pension: ['무료 주차', '와이파이', '바비큐', '취사 가능', '에어컨', '개별 테라스'],
   hotel: ['무료 주차', '와이파이', '조식', '24시간 프런트', '에어컨', '엘리베이터'],

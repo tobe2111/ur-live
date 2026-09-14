@@ -29,7 +29,7 @@ export function SectionTitle({ children, className = '' }: { children: React.Rea
 
 /**
  * 시설 — 아이콘 + 낱말이 줄바꿈되며 흐른다. 카드·테두리 없음.
- * `items` 는 이미 아이콘이 매핑된 상태로 받는다(아이콘 매핑 SSOT 는 StayDetailPage.amenityMeta).
+ * `items` 는 이미 아이콘이 매핑된 상태로 받는다(아이콘 매핑 SSOT 는 stay-detail/amenity-meta.tsx).
  */
 export function AmenityFlow({ items }: { items: Array<{ key: string; label: string; icon: React.ReactNode }> }) {
   if (!items.length) return null
