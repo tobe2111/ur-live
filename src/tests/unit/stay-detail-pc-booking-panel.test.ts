@@ -55,7 +55,9 @@ describe('③ PC 예약 패널(B안) · 트리거 · 라벨', () => {
   const picker = R('pages/stay-detail/StayDateGuestPicker.tsx')
   it('아사이드가 StayBookingPanel 을 그리고, 객실 카드는 PC 에서 숨긴다(두 곳에 그리지 않는다)', () => {
     expect(page).toMatch(/<StayBookingPanel\b/)
-    expect(page).toMatch(/<div className="mb-5 lg:hidden">\s*<SectionTitle className="mb-3">객실 선택/)
+    // 🔁 2026-09-14 (안 B): 하단 바의 '객실 고르기' 목적지로 `id="stay-sec-rooms"` 가 붙었다.
+    //   지키는 성질은 그대로 — 모바일 객실 목록이 `lg:hidden` 인가(PC 는 우측 패널이 담당).
+    expect(page).toMatch(/<div id="stay-sec-rooms"[^>]*className="mb-5 lg:hidden"[\s\S]{0,120}?<SectionTitle className="mb-3">객실 선택/)
   })
   it('패널: 객실 행 + 총액 + 단일 주 행동, 카드 테두리 0', () => {
     expect(panel).toMatch(/rounded-2xl bg-white dark:bg-\[#1D1F29\] shadow-lift/)
