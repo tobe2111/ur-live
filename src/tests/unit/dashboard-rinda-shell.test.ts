@@ -12,15 +12,15 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { stripComments } from '../helpers/source-text'
 
 const ROOT = resolve(__dirname, '../../..')
 const read = (p: string) => readFileSync(resolve(ROOT, p), 'utf8')
 
 /** JSX/TS 주석을 걷어낸다 — 설명 글의 단어가 검사에 걸리는 오탐을 막는다.
- *  ⚠️ 블록 주석을 **먼저 통째로** 지운다(줄 단위로 하면 여러 줄 주석의 가운데 줄이 살아남는다 —
- *     이 레포가 세 번 밟은 함정). */
-const strip = (s: string) =>
-  s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, '').replace(/^\s*\/\/.*$/gm, '')
+ *  ⚠️ 자체 정규식을 쓰지 않는다 — 문자열 안의 `/*` 에 물려 소스가 통째로 증발하는 함정
+ *     (`check-comment-stripper` 가 2026-09-13 부터 막는다). SSOT `stripComments` 로만. */
+const strip = (s: string) => stripComments(s)
 
 describe('R1 대시보드 사이드바는 흰 면이다 (검은 사이드바로 되돌아가지 않는다)', () => {
   const FILES = [
