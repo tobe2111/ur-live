@@ -31,7 +31,7 @@ export const FACTS = {
   minPayout: '1만원',
   liveMeasuredAt: '2026-09-13',
   activeVouchers: '337', realStores: '1', avgMeal: '32,411원', avgStay: '155,824원',
-  influencerDb: '201,471명', influencerReachable: '46,220명',
+  influencerDb: '201,471명', influencerReachable: '46,220명', influencerYoutube: '18,170명', influencerNaverBlog: '172,755명', influencerAsOf: '2026년 9월 기준',
   influencerPayoutMin: '10만원', influencerPayoutDay: '매월 1일', clawbackWindow: '7일',
   contactEmail: 'jiwon@ur-team.com', kakaoChannel: 'pf.kakao.com/_AITdn', site: 'urdeal.kr', biz: '리스터코퍼레이션 · 사업자등록번호 479-09-02930',
 };
