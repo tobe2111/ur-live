@@ -127,6 +127,7 @@ if domain ui; then
   # 2026-07-29 신규 등록 — 셋 다 파일은 예전부터 있었는데 어디에서도 실행되지 않고 있었다.
   run "input 라이트 가시성(흰글자)"       env STRICT_INPUT_TEXT=1       node scripts/check-input-text-color.mjs
   run "자체 주석 제거기 래칫"            env STRICT_COMMENT_STRIPPER=1 node scripts/check-comment-stripper.mjs
+  run "로컬↔CI 차단 동등성"             node scripts/check-local-ci-parity.mjs
   run "i18n 6개 언어 동기화"             node scripts/check-i18n-sync.mjs
 fi
 
