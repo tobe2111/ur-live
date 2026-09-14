@@ -23,9 +23,9 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
   {
     const s = pres.addSlide();
     chrome(s, { dark: true });
-    T(s, '체험단,\n할 만큼 해보셨잖아요.', { x: M, y: 1.3, w: 8.0, h: 1.9, fontSize: 42, bold: true, color: C.darkText, lineSpacingMultiple: 1.1, charSpacing: -1.4, valign: 'top' });
-    T(s, '공짜로 먹고 가는 사람 말고, 계산하고 가는 손님을 만드는 방법입니다.', { x: M, y: 3.25, w: 7.6, h: 0.45, fontSize: 15, bold: true, color: C.brand, charSpacing: -0.3 });
-    T(s, '후기 몇 개 받자고 무료 식사를 내드리는 것도, 대행비를 먼저 보내는 것도 이제 그만할 때가 됐습니다. 유어딜은 가게 이용권을 온라인에서 미리 파는 곳입니다. 손님이 먼저 결제하고, 이용권을 들고 가게로 옵니다. 사장님이 내는 건 팔린 이용권의 수수료 10%, 그게 전부입니다.',
+    T(s, '체험단 말고,\n계산하는 손님을 부르는 방법입니다.', { x: M, y: 1.3, w: 8.2, h: 1.9, fontSize: 38, bold: true, color: C.darkText, lineSpacingMultiple: 1.1, charSpacing: -1.4, valign: 'top' });
+    T(s, '무료 식사를 내드리고 후기를 받는 대신, 손님이 먼저 결제하고 가게에 옵니다.', { x: M, y: 3.25, w: 7.6, h: 0.45, fontSize: 15, bold: true, color: C.brand, charSpacing: -0.3 });
+    T(s, '후기 몇 개를 받으려고 무료 식사를 내드리고 대행비를 먼저 보내는 방식은, 이제 안 하셔도 됩니다. 유어딜은 가게 이용권을 온라인에서 미리 파는 곳입니다. 손님이 먼저 결제하고, 이용권을 들고 가게로 옵니다. 사장님이 내는 건 팔린 이용권의 수수료 10%, 그게 전부입니다.',
       { x: M, y: 3.8, w: 7.5, h: 1.3, fontSize: 12.5, color: C.darkMuted, lineSpacingMultiple: 1.5, valign: 'top' });
     const stats = [['0원', '미리 내는 돈'], [FACTS.feeDirect, '팔린 뒤에만 내는 수수료'], ['90%', '사장님 몫']];
     stats.forEach(([n, l], i) => {
@@ -34,7 +34,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
       T(s, l, { x, y: 5.95, w: 2.3, h: 0.4, fontSize: 10.5, color: C.darkMuted, valign: 'top' });
     });
     phone(s, 'home', 9.3, 1.1, 5.7, { dark: true });
-    s.addNotes('표지. 대표 최종 구성안(09-14). 10%: 직접 등록 기준(fee-resolver.ts). 오른쪽은 urdeal.kr 홈 라이브 캡처.');
+    s.addNotes('표지. 09-14 대표 "체험단, 할 만큼 해보셨잖아요" 는 어조가 예의 있지 않다 → 같은 대비를 정중하게. 10%: 직접 등록 기준(fee-resolver.ts). 오른쪽은 urdeal.kr 홈 라이브 캡처.');
   }
 
   // ───────── 02 기존 방식의 한계 ─────────

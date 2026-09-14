@@ -4,6 +4,7 @@
 //            라이브 실측 2026-09-13 (활성 이용권 337 · 평균가 식사 32,411 / 숙박 155,824 · 실제 매장 1 · 인플루언서 DB 201,471)
 // 재생성: cd /tmp/deck && npm i pptxgenjs sharp react react-dom react-icons  (node_modules 심링크는 README 참조)
 //         SHOTS_DIR=<캡처 폴더> node urdeal-agency-proposal.build.mjs out.pptx
+import fs from 'node:fs';
 import path from 'node:path';
 import { createDeck, C, FONT, W, H, M, FACTS, __dirname } from './deck-common.mjs';
 
@@ -314,19 +315,21 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
       if (i < 4) hr(s, M, y + 0.84, 6.65);
       y += 0.88;
     });
-    const pw10 = phone(s, 'seller-influencers', 7.75, 1.15, 5.15, { caption: '소개 파트너 찾기 (예시 데이터)' });
-    const sx = 7.75 + pw10 + 0.45, sw = W - M - sx;
-    label(s, '인플루언서 DB (2026.9.13 실측)', sx, 1.3, sw);
-    const nums = [['201,471', '전체'], ['46,220', '연락 가능'], ['172,755', '네이버 블로그'], ['18,170', '유튜브'], ['9,939', '네이버 카페']];
-    let ny = 1.68;
-    nums.forEach(([n, l], i) => {
-      T(s, n, { x: sx, y: ny, w: sw, h: 0.45, fontSize: 21, bold: true, color: i < 2 ? C.brand : C.ink, charSpacing: -0.8 });
-      T(s, l, { x: sx, y: ny + 0.44, w: sw, h: 0.25, fontSize: 10, color: C.inkSoft });
-      if (i < 4) hr(s, sx, ny + 0.78, sw);
-      ny += 0.9;
-    });
-    T(s, '인스타그램과 틱톡은 필터에 있으나 DB의 대부분은 네이버 블로그와 유튜브입니다.', { x: sx, y: 6.2, w: sw, h: 0.6, fontSize: 8.5, color: C.gray, lineSpacingMultiple: 1.35, valign: 'top' });
-    s.addNotes('숫자는 /api/admin/ads/influencer-pool/stats 2026-09-07 실측. 가운데는 /seller/influencers 실제 UI 를 예시 데이터로 렌더한 캡처.');
+    // 오른쪽: 인플루언서 풀 실제 관리 화면(연락처 블러) + 숫자
+    const sx = 7.6, sw = W - M - sx;
+    const shotPath = path.join(SHOTS_DIR, 'admin-influencer-pool-table.jpg');
+    let ny = 1.25;
+    if (fs.existsSync(shotPath)) {
+      const ih = sw * (1120 / 2524);
+      card(s, sx - 0.08, ny - 0.08, sw + 0.16, ih + 0.16);
+      s.addImage({ data: 'image/jpeg;base64,' + fs.readFileSync(shotPath).toString('base64'), x: sx, y: ny, w: sw, h: ih });
+      T(s, '유어딜 인플루언서 풀 (실제 화면, 연락처는 가렸습니다)', { x: sx, y: ny + ih + 0.18, w: sw, h: 0.26, fontSize: 9.5, color: C.inkSoft, align: 'center' });
+      ny = ny + ih + 0.62;
+    }
+    label(s, '인플루언서 DB (' + FACTS.liveMeasuredAt + ' 실측)', sx, ny, sw);
+    kv(s, [['전체', FACTS.influencerDb, 2], ['연락 가능', FACTS.influencerReachable, 2, true], ['네이버 블로그', FACTS.influencerNaverBlog, 0], ['유튜브', FACTS.influencerYoutube, 0], ['네이버 카페', '9,939명', 0]], sx, ny + 0.3, sw, { rowH: 0.36 });
+    T(s, '인스타그램과 틱톡은 필터에 있으나 DB의 대부분은 네이버 블로그와 유튜브입니다.', { x: sx, y: ny + 2.15, w: sw, h: 0.45, fontSize: 8.5, color: C.gray, lineSpacingMultiple: 1.35, valign: 'top' });
+    s.addNotes('숫자는 /api/admin/ads/influencer-pool/stats 2026-09-13 실측. 오른쪽은 /admin/influencer-pool 데스크톱 캡처(capture-admin-shots.mjs — 이메일·IG·TT 블러).');
   }
 
   // ───────── 11 주간 루틴 + 화면 3장 ─────────
@@ -407,7 +410,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     title(s, '유어딜이 대행사에게 붙여 드리는 것 여섯 가지.');
     const items = [
       ['FiUserCheck', '첫 매장 세 곳은 같이 갑니다', '첫 등록 세 건은 유어딜 담당자가 현장이나 통화로 동행합니다. 한 번 같이 하면 그다음은 혼자 됩니다.'],
-      ['FiFileText', '사장님용 한 장 안내', '수수료, 정산, QR 사용법이 적힌 매장용 안내 한 장을 드립니다. 대행사 이름을 넣어 드립니다.'],
+      ['FiFileText', '사장님용 소개서 (PDF 9장)', '수수료, 정산, QR 사용법, 자주 묻는 질문까지 담긴 사장님용 소개서를 드립니다. 대행사 이름을 넣어 드립니다.'],
       ['FiUsers', '인플루언서 DB와 발송 대행', '20만 명 DB 탐색과 제안 발송을 유어딜이 합니다. 연락처를 모으거나 DM을 돌릴 필요가 없습니다.'],
       ['FiCreditCard', '결제, 정산, 환불, 세금', '토스 결제, 주간 정산, 미사용 환불, 원천징수를 유어딜이 처리합니다. 손님 CS도 유어딜로 옵니다.'],
       ['FiMapPin', '손님 유입', '홈 지도에 동네 기준으로 노출되고, 매장 페이지는 카톡 미리보기 카드와 네이버, 구글 검색에 잡힙니다. 6개 언어를 지원합니다.'],
@@ -425,31 +428,26 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     s.addNotes('동행·안내장·주간 실적 공유는 파일럿 제안의 유어딜 측 약속. 나머지 셋은 현행 기능.');
   }
 
-  // ───────── 14 정직하게 말씀드립니다 (지금 유어딜의 상태) ─────────
+  // ───────── 14 한 가지는 미리 말씀드립니다 (운영자별 매출 귀속) ─────────
   {
     const s = pres.addSlide();
     chrome(s);
-    title(s, '다만 두 가지는 정직하게 말씀드립니다.', { w: 8.6 });
-    lead(s, '파트너가 시간을 들일지 판단하시려면 이 부분을 아셔야 합니다. 감추지 않겠습니다.', { y: 1.95, w: 8.4, h: 0.4 });
+    title(s, '한 가지는 미리 말씀드립니다.', { w: 8.6 });
+    lead(s, '운영 대행을 맡기 전에 아셔야 하는 경계입니다. 감추지 않겠습니다.', { y: 1.95, w: 8.4, h: 0.4 });
     const lx = M, lw = 8.5;
-    card(s, lx, 2.55, lw, 2.25, { fill: C.ink });
-    label(s, '지금 유어딜의 상태', lx + 0.35, 2.75, 4, { color: C.brand });
-    T(s, [
-      { text: '초기입니다. ', options: { bold: true, color: C.darkText } },
-      { text: '카탈로그에 이용권이 337개 올라와 있지만 그중 실제 매장이 등록한 것은 1개이고, 나머지는 화면을 채우려고 넣은 데모입니다. 승인된 매장은 한 곳, 소비자 결제가 본격적으로 돌기 전입니다. 지금 오시는 파트너는 매대가 이미 붐비는 곳에 들어오시는 것이 아닙니다.', options: {} },
-    ], { x: lx + 0.35, y: 3.05, w: lw - 0.7, h: 0.8, fontFace: FONT, fontSize: 10.5, color: C.darkMuted, isTextBox: true, margin: 0, lineSpacingMultiple: 1.42, valign: 'top' });
-    T(s, [
-      { text: '대신 수수료 구조와 권한 설계는 코드로 확정되어 라이브에 있습니다. ', options: { bold: true, color: C.darkText } },
-      { text: '5%와 95%의 경계, 정산계좌 차단, 운영 요약 화면은 만들겠다는 약속이 아니라 지금 작동하는 기능입니다. 바뀔 수 있는 것은 요율 수치이고, 어드민 조정값이라 파트너와 합의 없이 움직이지 않습니다.', options: {} },
-    ], { x: lx + 0.35, y: 3.9, w: lw - 0.7, h: 0.8, fontFace: FONT, fontSize: 10.5, color: C.darkMuted, isTextBox: true, margin: 0, lineSpacingMultiple: 1.42, valign: 'top' });
-    card(s, lx, 4.95, lw, 1.2);
-    T(s, '운영자별 매출 귀속은 추적하지 않습니다', { x: lx + 0.35, y: 5.1, w: lw - 0.7, h: 0.3, fontSize: 12.5, bold: true, color: C.ink, charSpacing: -0.3 });
-    T(s, '화면의 숫자는 그 매장의 총액이고, 화면 자체가 그 사실을 문장으로 밝힙니다. "제가 만든 매출입니다"라고 쓸 수 있는 숫자는 드리지 않습니다. 방어 가능한 근거는 운영 시작 이후 구간뿐이고, 확정된 주문만 셉니다.', { x: lx + 0.35, y: 5.42, w: lw - 0.7, h: 0.7, fontSize: 10.5, color: C.inkSoft, lineSpacingMultiple: 1.42, valign: 'top' });
+    card(s, lx, 2.6, lw, 1.75);
+    T(s, '운영자별 매출 귀속은 추적하지 않습니다', { x: lx + 0.35, y: 2.8, w: lw - 0.7, h: 0.3, fontSize: 13, bold: true, color: C.ink, charSpacing: -0.3 });
+    T(s, '화면의 숫자는 그 매장의 총액이고, 화면 자체가 그 사실을 문장으로 밝힙니다. "제가 만든 매출입니다"라고 쓸 수 있는 숫자는 드리지 않습니다. 방어 가능한 근거는 운영 시작 이후 구간뿐이고, 확정된 주문만 셉니다. 매장과 보수를 정하실 때 이 기준으로 정하시면 나중에 다툴 일이 없습니다.',
+      { x: lx + 0.35, y: 3.15, w: lw - 0.7, h: 1.1, fontSize: 10.5, color: C.inkSoft, lineSpacingMultiple: 1.42, valign: 'top' });
+    card(s, lx, 4.55, lw, 1.45, { fill: C.tint });
+    T(s, '수수료 구조와 권한 설계는 코드로 확정되어 라이브에 있습니다', { x: lx + 0.35, y: 4.72, w: lw - 0.7, h: 0.3, fontSize: 12.5, bold: true, color: C.ink, charSpacing: -0.3 });
+    T(s, '5%와 95%의 경계, 정산계좌 차단, 운영 요약 화면은 만들겠다는 약속이 아니라 지금 작동하는 기능입니다. 바뀔 수 있는 것은 요율 수치이고, 어드민 조정값이라 파트너와 합의 없이 움직이지 않습니다.',
+      { x: lx + 0.35, y: 5.05, w: lw - 0.7, h: 0.9, fontSize: 10.5, color: C.ink, lineSpacingMultiple: 1.42, valign: 'top' });
     s.addShape(pres.shapes.LINE, { x: lx, y: 6.24, w: 0, h: 0.5, line: { color: C.brand, width: 2 } });
     T(s, '"중개사가 5% 내에서 가져가는 게 아니라, 나머지 95%에서 매장이랑 거래를 하는 거지. 5%는 중개사일 때 유어딜의 수수료인 거고."', { x: lx + 0.25, y: 6.2, w: lw - 0.25, h: 0.4, fontSize: 10.5, italic: true, color: C.ink, lineSpacingMultiple: 1.35, valign: 'top' });
     T(s, '유어딜 대표, 2026년 9월 4일 확정', { x: lx + 0.25, y: 6.55, w: lw, h: 0.22, fontSize: 9, color: C.gray });
     phone(s, 'seller-operating', 10.05, 1.15, 5.15, { caption: '운영 매장 요약. 화면이 그 경계를 직접 말합니다' });
-    s.addNotes('2026-09-07 실측: 활성 338 중 slug demo-deal-* 286 + seller_id 없는 숙박 데모 51, 실제 매장(홍대돈까스) 1. 귀속 미추적은 SellerOperatingSummaryPage 헤더 주석 그대로. 오른쪽은 /seller/operating 실제 UI + 예시 데이터.');
+    s.addNotes('09-14: "초기입니다(337 중 실제 1)" 블록 제거(대표 — 사장님 덱과 같은 판단). 귀속 미추적은 SellerOperatingSummaryPage 헤더 주석 그대로. 오른쪽은 /seller/operating 실제 UI + 예시 데이터.');
   }
 
   // ───────── 15 8주 파일럿 제안 ─────────

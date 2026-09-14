@@ -31,7 +31,6 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
       T(s, l, { x, y: 5.8, w: 2.35, h: 0.6, fontSize: 10, color: C.darkMuted, lineSpacingMultiple: 1.35, valign: 'top' });
     });
     phone(s, 'ushop', 9.3, 1.1, 5.7, { dark: true });
-    T(s, '인플루언서 제휴 소개 · ' + FACTS.liveMeasuredAt, { x: M, y: 0.98, w: 6, h: 0.25, fontSize: 10, color: C.darkMuted, charSpacing: 0.5 });
     s.addNotes('딜 소개비: 매장 제안 %, 상한 없음, 매장 부담(actor-benefit-map Q2-1). 영입 2%: influencer-store-intro-commission.ts (직접 입점만, 1년, 유어딜 몫). 비용 0.');
   }
 
@@ -299,7 +298,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     const s = pres.addSlide();
     chrome(s);
     title(s, '협찬은 한 번 받고 끝나지만, 이 구조는 남습니다.');
-    honesty(s, { y: 2.15, h: 1.55, text: `유어딜은 초기 서비스입니다. ${FACTS.liveMeasuredAt} 기준 판매 중인 이용권 ${FACTS.activeVouchers}건 가운데 실제 매장이 등록한 것은 ${FACTS.realStores}건이고, 매장이 제안한 딜로 소개비가 지급된 건은 아직 없습니다. 트래픽을 약속하는 대신 조건과 정산 방식을 숫자로 먼저 공개합니다. 비어 있는 지역과 카테고리는 먼저 들어온 채널이 가져갑니다.` });
+    lead(s, '캠페인이 끝나도 내 유어샵과 링크는 그대로 남고, 매장과 맺은 딜은 계속 쌓입니다. 자주 묻는 질문에 먼저 답해 두었습니다.', { y: 2.0, h: 0.6 });
     const faq = [
       ['팔로워가 적어도 되나요?', '하한이 없습니다. 오히려 지역과 카테고리가 뚜렷한 채널이 동네 이용권과 잘 맞습니다.'],
       ['비용이 드나요?', '가입비도 이용료도 없습니다. 소개비는 매장이, 영입비는 유어딜이 냅니다.'],
@@ -308,14 +307,14 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
       ['광고 표시를 해야 하나요?', '네. 소개비를 받는 콘텐츠에는 "광고" 처럼 경제적 대가를 받았다는 표시가 법으로 필요합니다. 표시 없이 올린 콘텐츠의 책임은 유어딜이 대신 질 수 없습니다.'],
       ['제안은 어떻게 오나요?', '신청서는 유어딜 담당자가 보고, 매장은 내가 공개해 둔 소개자 프로필을 보고 직접 보냅니다. 둘 다 해 두는 것이 빠릅니다.'],
     ];
-    const cw = (W - 2 * M - 0.5) / 3, ch = 1.27;
+    const cw = (W - 2 * M - 0.5) / 3, ch = 1.75;
     faq.forEach(([q, a], i) => {
-      const x = M + (i % 3) * (cw + 0.25), y = 4.0 + Math.floor(i / 3) * (ch + 0.18);
+      const x = M + (i % 3) * (cw + 0.25), y = 2.8 + Math.floor(i / 3) * (ch + 0.25);
       card(s, x, y, cw, ch);
-      T(s, q, { x: x + 0.26, y: y + 0.16, w: cw - 0.52, h: 0.28, fontSize: 11.5, bold: true, color: C.ink, charSpacing: -0.3 });
-      T(s, a, { x: x + 0.26, y: y + 0.47, w: cw - 0.52, h: 0.76, fontSize: 9.8, color: C.inkSoft, lineSpacingMultiple: 1.36, valign: 'top' });
+      T(s, q, { x: x + 0.3, y: y + 0.24, w: cw - 0.6, h: 0.3, fontSize: 12.5, bold: true, color: C.ink, charSpacing: -0.3 });
+      T(s, a, { x: x + 0.3, y: y + 0.62, w: cw - 0.6, h: 1.05, fontSize: 10.5, color: C.inkSoft, lineSpacingMultiple: 1.42, valign: 'top' });
     });
-    s.addNotes('정직 고지: 09-13 실측(활성 337, 실제 매장 1, 인플루언서 딜 지급 0). FAQ 는 기존 9장 HTML 에서 옮기고 "딜 없으면 0" 항목 추가.');
+    s.addNotes('09-14: 정직 고지 블록 제거(대표 — 사장님 덱과 같은 판단). FAQ 6 개를 크게.');
   }
 
   // ───────── 12 신청 + 연락처 ─────────
