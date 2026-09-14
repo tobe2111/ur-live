@@ -127,3 +127,12 @@
 | 날짜 | 항목 | 결과 | 비고 |
 |---|---|---|---|
 | — | — | — | 아직 없음 |
+
+## S-QTYCAP · 1인당 구매 상한 (2026-09-14)
+
+- [ ] 한도 미설정 상품에서 `POST /api/group-buy/:id/join` 에 `quantity: 50` → **400 `PER_PERSON_LIMIT`**
+      (종전엔 100까지 통과했다. 화면은 원래 10에서 막혀 이 경로로만 재현된다)
+- [ ] 상세 응답에 `qty_cap` 이 실리는지 — `curl .../api/group-buy/products/2888 | grep qty_cap`
+- [ ] 어드민에서 `platform_settings.voucher_max_per_person_default` 를 3 으로 두면 스테퍼가 3에서 멈추는지
+      (캐시 TTL 120초 뒤 반영)
+- [ ] 셀러가 상품별 값을 5 로 두면 플랫폼 기본보다 그것이 이기는지

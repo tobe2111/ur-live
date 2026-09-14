@@ -12,7 +12,8 @@ import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { MapPin, Calendar, Users, Star, Sparkles, Hotel, TicketPercent } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
-import { SectionTitle, AmenityFlow, InfoBlock, propertyTypeLabel } from './stay-detail/StayInfoSections'
+import StayStickyBar from './stay-detail/StayStickyBar'
+import { SectionTitle, AmenityFlow, InfoBlock, propertyTypeLabel, StayReviews, StaySoldOutCard } from './stay-detail/StayInfoSections'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import DetailGallery from './group-buy/DetailGallery'
 import DetailTitleHeader from './group-buy/DetailTitleHeader'
@@ -236,6 +237,10 @@ export default function StayDetailPage() {
   const cartItems = rooms.filter((r) => (cartQty[r.room_id] || 0) > 0)
   const cartTotalQty = cartItems.reduce((s, r) => s + (cartQty[r.room_id] || 0), 0)
   const cartSubtotal = cartItems.reduce((s, r) => s + r.total_price * (cartQty[r.room_id] || 0), 0)
+  // 🏨 담기 전 하단 바가 말할 값 — 팔 수 있는 객실 중 최저 총액. 하나도 없으면 null(바 미렌더).
+  const sellableRooms = rooms.filter((r) => r.available && r.total_price > 0)
+  const minRoomPrice = sellableRooms.length ? Math.min(...sellableRooms.map((r) => r.total_price)) : null
+  const roomsPriceLabel = isVoucherMode ? `숙소 이용권 ${voucherNights}박` : `${nights}박 총액`
 
   const modeTabs = stay.sale_mode === 'both' ? (
     <div className="flex gap-1.5">
@@ -399,7 +404,7 @@ export default function StayDetailPage() {
         )}
 
         {/* 모드 탭 + 날짜/인원 선택 — 모바일 인라인 (PC 는 우측 아사이드가 동일 JSX 렌더) */}
-        <div className="lg:hidden space-y-3 mb-5">
+        <div id="stay-sec-dates" className="lg:hidden space-y-3 mb-5" style={{ scrollMarginTop: 96 }}>
           {modeTabs}
           {selectorBox}
         </div>
@@ -424,14 +429,17 @@ export default function StayDetailPage() {
         )}
 
         {/* Rooms — 📱 모바일 카드. 🖥️ PC(lg+)는 우측 `StayBookingPanel` 의 객실 행이 담당(B안) → 여기 숨김. */}
-        <div className="mb-5 lg:hidden">
+        <div id="stay-sec-rooms" className="mb-5 lg:hidden" style={{ scrollMarginTop: 96 }}>
           <SectionTitle className="mb-3">객실 선택 ({rooms.length})</SectionTitle>
           {roomsLoading ? (
             <p className="text-xs text-gray-500 dark:text-gray-400">가용 객실 조회 중...</p>
           ) : rooms.length === 0 ? (
-            <p className="text-xs text-gray-500 dark:text-gray-400">해당 기간 가용 객실이 없습니다</p>
+            <StaySoldOutCard onPickDates={() => document.getElementById('stay-sec-dates')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} />
           ) : (
             <div className="space-y-3">
+              {rooms.every((r) => !r.available) && (
+                <StaySoldOutCard onPickDates={() => document.getElementById('stay-sec-dates')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} />
+              )}
               {rooms.map((r) => (
                 /* 🛏️ 2026-08-30 (대표 "AI 티 안나는 디자인으로") — 객실 카드 재구성.
                    이전엔 카드 오른쪽 절반에 [가격 → 작은 로즈 버튼 → "묶기 − 0 +" 스테퍼]가
@@ -542,6 +550,8 @@ export default function StayDetailPage() {
           </div>
         </div>
 
+        <StayReviews productId={productId} />
+
         </div>{/* /좌측 콘텐츠 */}
 
         {/* 🖥️ PC 우측 sticky 예약 패널 — B안(2026-09-02). `lg:z-20`: sticky 는 스택 컨텍스트를 만드는데
@@ -579,24 +589,17 @@ export default function StayDetailPage() {
         />
       )}
 
-      {/* 🛡️ 2026-05-19: 다객실 묶음 결제 sticky bar — 모바일 전용(PC 는 아사이드 요약이 담당).
-          ⚠️ app-frame-bar 미사용(pc-fullbleed 가 숨김) + lg:hidden — pc-fullbleed 등재 전제조건. */}
-      {cartItems.length > 0 && (
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-black/95 backdrop-blur border-t border-gray-200 p-3">
-          <div className="max-w-md mx-auto flex items-center gap-3">
-            <div className="flex-1 min-w-0">
-              <p className="text-[10px] text-gray-500 dark:text-gray-400">{cartItems.length}종 객실 / {cartTotalQty}객실</p>
-              <p className="text-base font-extrabold text-brand ">₩{formatNumber(cartSubtotal)}</p>
-            </div>
-            <button onClick={() => setCartQty({})}
-              className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">비우기</button>
-            <button onClick={() => setMultiBookingOpen(true)}
-              className="px-4 py-2.5 bg-brand text-white text-sm font-bold rounded-lg hover:bg-brand-dark">
-              묶음 예약 →
-            </button>
-          </div>
-        </div>
-      )}
+      {/* 🏨 2026-09-14 (안 B): 하단 구매 바 — 담기 전에도 **가격이 보인다**(종전엔 담아야 떴다). */}
+      <StayStickyBar
+        minPrice={minRoomPrice}
+        nightsLabel={roomsPriceLabel}
+        cartCount={cartItems.length}
+        cartTotalQty={cartTotalQty}
+        cartSubtotal={cartSubtotal}
+        onClear={() => setCartQty({})}
+        onBook={() => setMultiBookingOpen(true)}
+        onPickRoom={() => document.getElementById('stay-sec-rooms')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+      />
 
       {multiBookingOpen && (
         <MultiBookingModal
