@@ -1,6 +1,8 @@
 # 셀러·어드민 대시보드 — Rinda 껍데기 (2026-09-14)
 
-브랜치 `claude/seller-dashboard-rinda` · 시안·근거 `docs/design/dashboard-rinda-2026-09.md`
+브랜치 `claude/seller-dashboard-rinda` · **PR #1429 (draft)** · 시안·근거 `docs/design/dashboard-rinda-2026-09.md`
+
+> 🔴 **이 PR 뒤에 대표가 방향을 더 밀었다** — *"모바일이 더욱 중요. 기존 UI 전체를 뒤엎어도 된다. 카드·섹션 자체가 싫다. 이용권 등록·관리·매출이 주인공."* 모바일 시안 4안 제안·선택 대기: `docs/design/seller-dashboard-mobile-first-2026-09.md`. 다음 세션은 **그 선택부터** 확인할 것 — 선택에 따라 이 PR 의 카드 부품은 대체된다.
 
 ## 대표 지시 (원문)
 
