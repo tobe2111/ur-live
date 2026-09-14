@@ -2275,7 +2275,8 @@
       "alimtalkSent": "已向商家发送Alimtalk",
       "reissue": "按相同内容重新发布",
       "copyLoaded": "已载入上次团购 — 确认日期后发布!",
-      "copyFailed": "无法载入上次团购"
+      "copyFailed": "无法载入上次团购",
+      "deleted": "已删除使用券"
     },
     "voucher": {
       "categoryTitle": "使用券类型",
@@ -3275,7 +3276,9 @@
       "rotateLink": "签发新链接（旧链接失效）",
       "rotateConfirm": "旧链接将失效并发送新链接。继续吗？",
       "noContact": "未登记门店电话 — 去登记",
-      "pinWarn": "最近7天 PIN 错误 {{errors}} 次多于成功 {{ok}} 次。请确认告知门店的 PIN。"
+      "pinWarn": "最近7天 PIN 错误 {{errors}} 次多于成功 {{ok}} 次。请确认告知门店的 PIN。",
+      "deleteConfirm": "要删除 '{{name}}' 使用券吗？\n已发放的使用券仍可使用，只会停止新的销售。",
+      "deleteFailed": "删除失败"
     },
     "ordersM3": {
       "today": "今天",
@@ -3286,6 +3289,11 @@
       "none": "没有符合的订单",
       "pickupAt": "预计使用 {{date}}",
       "confirm": "确认订单"
+    },
+    "edit": {
+      "listPrice": "原价（折扣前价格）",
+      "listPriceDiscount": "顾客将看到 {{pct}}% 折扣。",
+      "listPriceHint": "填写高于售价的金额即显示折扣率。留空则不显示。"
     }
   },
   "admin": {

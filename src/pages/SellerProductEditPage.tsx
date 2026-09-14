@@ -9,6 +9,7 @@ import ProductOptionForm, { ProductOption } from '@/components/ProductOptionForm
 import VoucherFields from '@/pages/seller-product-edit/VoucherFields'
 import ProductPhotoField, { parseProductPhotos } from '@/pages/seller-product-edit/ProductPhotoField'
 import ProductShortsField from '@/pages/seller-product-edit/ProductShortsField'
+import PriceStockFields from '@/pages/seller-product-edit/PriceStockFields'
 import { isVoucherCategory } from '@/shared/constants/voucher-categories'
 import { 
   ArrowLeft, 
@@ -52,6 +53,7 @@ export default function SellerProductEditPage() {
     name: '',
     description: '',
     price: '',
+    original_price: '',  // 💰 2026-09-14: 정가(표시 전용) — 서버는 받고 있었는데 화면만 안 보냈다.
     stock: '',
     image_url: '',
     live_stream_id: '',
@@ -99,6 +101,7 @@ export default function SellerProductEditPage() {
     const photos = parseProductPhotos(productData)  // 🖼️ 2026-09-03 사진 목록(옛 상품은 대표 1장)
     setFormData({
       name: productData.name, description: productData.description || '', price: String(productData.price), stock: String(productData.stock),
+      original_price: productData.original_price ? String(productData.original_price) : '',
       image_url: productData.image_url || '', live_stream_id: productData.live_stream_id ? String(productData.live_stream_id) : '',
       live_only_price: productData.live_only_price ? String(productData.live_only_price) : '', live_price_enabled: !!productData.live_price_enabled,
       is_active: productData.is_active, detail_images: detailImages, photos, product_type: productData.product_type || 'featured', category: productData.category || 'lifestyle',
@@ -130,6 +133,8 @@ export default function SellerProductEditPage() {
         name: formData.name,
         description: formData.description,
         price: Number(formData.price),
+        // 💰 빈 칸 = 정가 없음(할인 표시 해제). 서버 검증은 0~1억 + null 허용.
+        original_price: formData.original_price === '' ? null : Number(formData.original_price),
         stock: Number(formData.stock),
         image_url: formData.photos[0] || formData.image_url,
         images: formData.photos.length ? JSON.stringify(formData.photos) : null,  // 🖼️ 없으면 수정마다 사라진다
@@ -304,48 +309,13 @@ export default function SellerProductEditPage() {
             />
           </div>
 
-          {/* Price & Stock */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('seller.originalPrice')} <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="number"
-                  name="price"
-                  value={formData.price}
-                  onChange={handleChange}
-                  placeholder="30000"
-                  required
-                  min="0"
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <p className="text-xs text-gray-500 mt-1">{t('common.enterInWon')}</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('seller.stockQuantity')} <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <Box className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="number"
-                  name="stock"
-                  value={formData.stock}
-                  onChange={handleChange}
-                  placeholder="100"
-                  required
-                  min="0"
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <p className="text-xs text-gray-500 mt-1">{t('common.enterInUnits')}</p>
-            </div>
-          </div>
+          {/* Price & Stock — 정가 칸 포함(파일크기 래칫 때문에 별도 파일) */}
+          <PriceStockFields
+            price={formData.price}
+            originalPrice={formData.original_price}
+            stock={formData.stock}
+            onChange={handleChange}
+          />
 
           {/* 라이브 전용 특가 */}
           <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl">

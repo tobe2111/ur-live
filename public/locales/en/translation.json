@@ -2276,7 +2276,8 @@
       "alimtalkSent": "Alimtalk sent to the merchant",
       "reissue": "Reissue with same details",
       "copyLoaded": "Loaded previous deal — just check the dates and publish!",
-      "copyFailed": "Failed to load previous deal"
+      "copyFailed": "Failed to load previous deal",
+      "deleted": "Voucher deleted"
     },
     "voucher": {
       "categoryTitle": "Voucher Category",
@@ -3275,7 +3276,9 @@
       "rotateLink": "Issue new link (old link expires)",
       "rotateConfirm": "The old link will expire and a new one will be sent. Continue?",
       "noContact": "No store phone — add it",
-      "pinWarn": "In the last 7 days, PIN errors ({{errors}}) exceeded successes ({{ok}}). Check the PIN given to the store."
+      "pinWarn": "In the last 7 days, PIN errors ({{errors}}) exceeded successes ({{ok}}). Check the PIN given to the store.",
+      "deleteConfirm": "Delete the voucher '{{name}}'?\nAlready issued vouchers stay usable; only new sales stop.",
+      "deleteFailed": "Delete failed"
     },
     "ordersM3": {
       "today": "Today",
@@ -3286,6 +3289,11 @@
       "none": "No orders here",
       "pickupAt": "Use on {{date}}",
       "confirm": "Confirm order"
+    },
+    "edit": {
+      "listPrice": "List price (before discount)",
+      "listPriceDiscount": "Shown to customers as {{pct}}% off.",
+      "listPriceHint": "Enter a value above the selling price to show a discount. Leave empty for none."
     }
   },
   "admin": {

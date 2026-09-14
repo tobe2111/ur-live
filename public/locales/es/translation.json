@@ -1594,7 +1594,8 @@
       "alimtalkSent": "Alimtalk enviado al comerciante",
       "reissue": "Reemitir con los mismos datos",
       "copyLoaded": "Cargado el anterior — ¡revisa las fechas y publica!",
-      "copyFailed": "No se pudo cargar el anterior"
+      "copyFailed": "No se pudo cargar el anterior",
+      "deleted": "Cupón eliminado"
     },
     "voucher": {
       "categoryTitle": "Categoría de Vale",
@@ -2594,7 +2595,9 @@
       "rotateLink": "Emitir nuevo enlace (el anterior caduca)",
       "rotateConfirm": "El enlace anterior caducará y se enviará uno nuevo. ¿Continuar?",
       "noContact": "Sin teléfono del local — añadir",
-      "pinWarn": "En 7 días hubo más errores de PIN ({{errors}}) que aciertos ({{ok}}). Revisa el PIN entregado al local."
+      "pinWarn": "En 7 días hubo más errores de PIN ({{errors}}) que aciertos ({{ok}}). Revisa el PIN entregado al local.",
+      "deleteConfirm": "¿Eliminar el cupón '{{name}}'?\nLos cupones ya emitidos siguen siendo válidos; solo se detienen las ventas nuevas.",
+      "deleteFailed": "Error al eliminar"
     },
     "ordersM3": {
       "today": "Hoy",
@@ -2605,6 +2608,11 @@
       "none": "No hay pedidos aquí",
       "pickupAt": "Uso previsto {{date}}",
       "confirm": "Confirmar pedido"
+    },
+    "edit": {
+      "listPrice": "Precio de lista (antes del descuento)",
+      "listPriceDiscount": "Se muestra a los clientes como {{pct}}% de descuento.",
+      "listPriceHint": "Introduce un valor superior al precio de venta para mostrar un descuento. Déjalo vacío para no mostrarlo."
     }
   },
   "admin": {

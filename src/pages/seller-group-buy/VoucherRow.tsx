@@ -1,14 +1,14 @@
 /**
  * 🎟️ 이용권 한 줄 — M4 시안 (2026-09-14). [사진 · 이름/가격 · N건·매출 · 판매 스위치 · 펼침].
  *   폰은 행, PC(md+)는 같은 부품이 표의 한 줄로 늘어난다(열: 이용권 · 가격 · 판매 · 매출 · 판매중 · 편집).
- *   펼치면 그 이용권의 나머지 일이 나온다 — 수정 · 재발행 · 사장님 링크 복사 · 알림톡 · 바우처 사용 현황.
+ *   편집은 행에 하나(조건 없음). 펼치면 나머지 일이 나온다 — 재발행 · 삭제 · 사장님 링크 복사 · 알림톡 · 바우처 사용 현황.
  *   스위치는 `PUT /api/seller/products/:id { is_active, status }` — 상품 관리 화면과 같은 계약
  *   (서버 허용 status 는 ACTIVE/HIDDEN — 'PAUSED' 는 400, 2026-07-02 실측).
  */
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { AlertCircle, ChevronDown, Copy, Pencil, RefreshCw, Send } from 'lucide-react'
+import { AlertCircle, ChevronDown, Copy, Pencil, RefreshCw, Send, Trash2 } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
@@ -51,6 +51,30 @@ export default function VoucherRow({ v, stat, commissionRate, onChanged }: Props
       const e = err as { response?: { data?: { error?: string } } }
       toast.error(e?.response?.data?.error || t('seller.productStatusChangeFailed'))
     } finally { setBusy(false) }
+  }
+
+  // ✏️ 수정 진입점은 **하나**이고 조건이 없다. 종전(#1430 이전)엔 '연락처 미등록' 배너 안에만 있어
+  //   연락처가 등록된 매장은 수정 화면에 닿을 방법이 없었다(라이브의 유일한 실제 매장이 그 경우였다).
+  const goEdit = () => navigate(`/seller/products/${v.id}/edit`)
+
+  // 🗑️ 2026-09-14 (#1430 대표 "이용권 관리 맡아서 해줘" — M4 행으로 이식): 삭제. 서버는 2026-05-15 부터
+  //   준비돼 있었는데 버튼이 없어 셀러가 자기 이용권을 내릴 방법이 화면에 없었다. 서버가 소유권(`AND seller_id = ?`)과
+  //   진행 중 공구(참여자 1명 이상이면 409)를 막으므로 여기서는 확인만 받는다. soft delete 라 발급된 이용권은 살아 있다.
+  async function deleteVoucher() {
+    if (!(await confirmDialog(t('seller.vouchers.deleteConfirm', { defaultValue: "'{{name}}' 이용권을 삭제할까요?\n이미 발급된 이용권은 그대로 사용할 수 있고, 새 판매만 중단됩니다.", name: v.name })))) return
+    try {
+      const res = await api.delete(`/api/seller/products/${v.id}`, { headers })
+      if (res.data?.success) {
+        toast.success(t('seller.groupBuy.deleted', { defaultValue: '이용권이 삭제되었습니다' }))
+        onChanged()
+      } else {
+        toast.error(res.data?.error || t('seller.vouchers.deleteFailed', { defaultValue: '삭제 실패' }))
+      }
+    } catch (err: unknown) {
+      // 409(진행 중 공구)는 서버가 쓴 이유를 그대로 보여준다 — "삭제 실패" 만으로는 할 수 있는 게 없다.
+      const e = err as { response?: { data?: { error?: string } } }
+      toast.error(e?.response?.data?.error || t('seller.vouchers.deleteFailed', { defaultValue: '삭제 실패' }))
+    }
   }
 
   // 🛡️ 2026-04-27: 사장님께 알림톡 재발송 (Magic Link)
@@ -107,8 +131,9 @@ export default function VoucherRow({ v, stat, commissionRate, onChanged }: Props
         >
           <span className={`absolute top-[3px] h-5 w-5 rounded-full bg-white transition-all ${v.is_active ? 'left-[21px]' : 'left-[3px]'}`} />
         </button>
-        <button type="button" onClick={() => navigate(`/seller/products/${v.id}/edit`)} className={`hidden md:inline-flex ${GHOST}`}>
-          <Pencil size={13} /> {t('seller.vouchers.edit', { defaultValue: '편집' })}
+        {/* 편집은 행에 하나 — 폰은 아이콘만, PC 는 라벨까지. 펼침 안에 또 두지 않는다(진입점이 둘이면 한쪽이 조용히 죽는다). */}
+        <button type="button" onClick={goEdit} aria-label={t('seller.vouchers.edit', { defaultValue: '편집' })} className={`${GHOST} px-2 md:px-3`}>
+          <Pencil size={13} /> <span className="hidden md:inline">{t('seller.vouchers.edit', { defaultValue: '편집' })}</span>
         </button>
         <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label={t('seller.vouchers.more', { defaultValue: '더 보기' })} className="shrink-0 p-1 text-gray-400 md:hidden">
           <ChevronDown size={18} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
@@ -130,9 +155,9 @@ export default function VoucherRow({ v, stat, commissionRate, onChanged }: Props
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => navigate(`/seller/products/${v.id}/edit`)} className={`md:hidden ${GHOST}`}><Pencil size={13} /> {t('seller.vouchers.edit', { defaultValue: '편집' })}</button>
             {/* 🧭 2026-06-10 (재방문 루프 갭): 1탭 복사 재발행 */}
             <button type="button" onClick={() => navigate(`/seller/meal-voucher/new?copyFrom=${v.id}`)} className={GHOST}><RefreshCw size={13} /> {t('seller.groupBuy.reissue', { defaultValue: '같은 내용으로 재발행' })}</button>
+            <button type="button" onClick={() => deleteVoucher()} className={`${GHOST} text-tone-bad`}><Trash2 size={13} /> {t('common.delete', { defaultValue: '삭제' })}</button>
             <button type="button" onClick={copyStoreLink} className={GHOST}><Copy size={13} /> {t('seller.vouchers.copyStoreLink', { defaultValue: '사장님 링크 복사' })}</button>
             {v.restaurant_phone ? (
               <>
@@ -140,7 +165,7 @@ export default function VoucherRow({ v, stat, commissionRate, onChanged }: Props
                 <button type="button" title={t('seller.vouchers.rotateLink', { defaultValue: '새 링크 발급 (이전 링크 무효화)' })} onClick={async () => { if (await confirmDialog(t('seller.vouchers.rotateConfirm', { defaultValue: '이전 링크가 만료되고 새 링크가 발송됩니다. 진행하시겠습니까?' }))) resendStoreLink(true) }} className={GHOST}><RefreshCw size={13} /></button>
               </>
             ) : (
-              <button type="button" onClick={() => navigate(`/seller/products/${v.id}/edit`)} className={`${GHOST} text-tone-warn`}>
+              <button type="button" onClick={goEdit} className={`${GHOST} text-tone-warn`}>
                 <AlertCircle size={13} /> {t('seller.vouchers.noContact', { defaultValue: '식당 연락처 미등록 — 등록하기' })}
               </button>
             )}

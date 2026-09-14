@@ -1594,7 +1594,8 @@
       "alimtalkSent": "Alimtalk envoyé au commerçant",
       "reissue": "Rééditer à l’identique",
       "copyLoaded": "Contenu précédent chargé — vérifiez les dates et publiez !",
-      "copyFailed": "Impossible de charger le précédent"
+      "copyFailed": "Impossible de charger le précédent",
+      "deleted": "Bon supprimé"
     },
     "voucher": {
       "categoryTitle": "Catégorie de Bon",
@@ -2594,7 +2595,9 @@
       "rotateLink": "Nouveau lien (l’ancien expire)",
       "rotateConfirm": "L'ancien lien expirera et un nouveau sera envoyé. Continuer ?",
       "noContact": "Téléphone du commerce manquant — ajouter",
-      "pinWarn": "Sur 7 jours, les erreurs de PIN ({{errors}}) dépassent les succès ({{ok}}). Vérifiez le PIN remis au commerce."
+      "pinWarn": "Sur 7 jours, les erreurs de PIN ({{errors}}) dépassent les succès ({{ok}}). Vérifiez le PIN remis au commerce.",
+      "deleteConfirm": "Supprimer le bon '{{name}}' ?\nLes bons déjà émis restent utilisables ; seules les nouvelles ventes s'arrêtent.",
+      "deleteFailed": "Échec de la suppression"
     },
     "ordersM3": {
       "today": "Aujourd'hui",
@@ -2605,6 +2608,11 @@
       "none": "Aucune commande ici",
       "pickupAt": "Utilisation prévue {{date}}",
       "confirm": "Confirmer la commande"
+    },
+    "edit": {
+      "listPrice": "Prix de référence (avant remise)",
+      "listPriceDiscount": "Affiché aux clients comme {{pct}} % de réduction.",
+      "listPriceHint": "Saisissez un montant supérieur au prix de vente pour afficher une remise. Laissez vide pour ne rien afficher."
     }
   },
   "admin": {

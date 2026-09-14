@@ -2275,7 +2275,8 @@
       "alimtalkSent": "オーナーにアリムトークが送信されました",
       "reissue": "同じ内容で再発行",
       "copyLoaded": "前回の内容を読み込みました — 日付を確認して発行!",
-      "copyFailed": "前回の内容を読み込めませんでした"
+      "copyFailed": "前回の内容を読み込めませんでした",
+      "deleted": "利用券を削除しました"
     },
     "voucher": {
       "categoryTitle": "クーポンカテゴリ",
@@ -3275,7 +3276,9 @@
       "rotateLink": "新しいリンクを発行（旧リンク無効）",
       "rotateConfirm": "旧リンクが無効になり新しいリンクが送られます。続けますか？",
       "noContact": "店舗連絡先未登録 — 登録する",
-      "pinWarn": "直近7日のPINエラー {{errors}}件が成功 {{ok}}件より多いです。店舗に案内したPINを確認してください。"
+      "pinWarn": "直近7日のPINエラー {{errors}}件が成功 {{ok}}件より多いです。店舗に案内したPINを確認してください。",
+      "deleteConfirm": "'{{name}}' 利用券を削除しますか？\n発行済みの利用券はそのまま使え、新規販売のみ停止します。",
+      "deleteFailed": "削除に失敗しました"
     },
     "ordersM3": {
       "today": "今日",
@@ -3286,6 +3289,11 @@
       "none": "該当する注文はありません",
       "pickupAt": "利用予定 {{date}}",
       "confirm": "注文確認"
+    },
+    "edit": {
+      "listPrice": "定価（割引前の価格）",
+      "listPriceDiscount": "お客様には{{pct}}%割引と表示されます。",
+      "listPriceHint": "販売価格より高く入力すると割引率が表示されます。空欄なら表示されません。"
     }
   },
   "admin": {

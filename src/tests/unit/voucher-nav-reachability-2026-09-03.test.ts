@@ -15,6 +15,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
+import { stripComments as strip } from '../helpers/source-text'
 import { NAV_GROUPS } from '@/components/seller/seller-nav'
 import { publicSellerHandle, isAutoSellerUsername } from '@/shared/seller-handle'
 import { SELLER_TAB_GROUPS, findSellerTabGroup, tabGroupSiblings } from '@/components/seller/seller-tab-groups'
@@ -144,6 +145,22 @@ describe('④ 관리 → 수정 진입점이 살아 있다', () => {
     // 이용권을 수정할 방법이 화면에서 사라진다.
     expect(MANAGE_PAGE).toMatch(/navigate\(`\/seller\/products\/\$\{v\.id\}\/edit`\)/)
     expect(ROUTES).toContain('path="/seller/products/:id/edit"')
+  })
+
+  // 🩸 2026-09-14 (#1430): 위 단언은 **파일 안에 그 문자열이 있는지**만 봤다. 그런데 실제 링크는
+  //   `restaurant_phone` 이 **없을 때만** 뜨는 '연락처 등록 →' 배너 안에 있었다 — 연락처가 등록된 매장은
+  //   수정 화면에 닿을 방법이 아예 없었는데도 이 검사는 초록이었다. 라이브 실측: 셀러 소유 활성 이용권은
+  //   1건뿐이고(홍대돈까스) 연락처가 등록돼 있어 **정확히 그 경우**였다. ⇒ "있다" 가 아니라 "조건 없이 보인다" 를 본다.
+  //   M4 행에서는 진입점이 `goEdit` 하나이고, 그 버튼이 연락처 분기 **앞**(행 헤더)에 있어야 한다.
+  it('🔒 수정 버튼이 연락처 분기 **밖**에 있다 — 조건부면 그 조건을 만족 못 하는 매장은 갇힌다', () => {
+    const code = strip(MANAGE_PAGE)
+    const editBtn = code.indexOf('onClick={goEdit}')
+    const phoneBranch = code.indexOf('v.restaurant_phone ?')
+    expect(editBtn, '수정 진입점이 없다').toBeGreaterThan(-1)
+    expect(phoneBranch, '연락처 분기를 못 찾았다 — 이 검사가 헛돌고 있다').toBeGreaterThan(-1)
+    expect(editBtn, '수정 진입점이 연락처 분기 안에만 있다').toBeLessThan(phoneBranch)
+    // 그리고 그 진입점이 실제로 수정 화면으로 간다(이름만 남고 몸통이 빈 경우 차단).
+    expect(code).toMatch(/const goEdit = \(\) => navigate\(`\/seller\/products\/\$\{v\.id\}\/edit`\)/)
   })
 })
 

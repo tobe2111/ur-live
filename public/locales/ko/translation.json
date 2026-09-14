@@ -2306,7 +2306,8 @@
       "alimtalkSent": "사장님께 알림톡이 발송되었습니다",
       "reissue": "같은 내용으로 재발행",
       "copyLoaded": "이전 공구 내용을 불러왔어요 — 날짜만 확인하고 발행하세요!",
-      "copyFailed": "이전 공구를 불러오지 못했어요"
+      "copyFailed": "이전 공구를 불러오지 못했어요",
+      "deleted": "이용권이 삭제되었습니다"
     },
     "voucher": {
       "categoryTitle": "이용권 종류",
@@ -3275,7 +3276,9 @@
       "rotateLink": "새 링크 발급 (이전 링크 무효화)",
       "rotateConfirm": "이전 링크가 만료되고 새 링크가 발송됩니다. 진행하시겠습니까?",
       "noContact": "식당 연락처 미등록 — 등록하기",
-      "pinWarn": "최근 7일 PIN 오류 {{errors}}건이 성공 {{ok}}건보다 많아요. 가게에 안내된 PIN 을 확인해 주세요."
+      "pinWarn": "최근 7일 PIN 오류 {{errors}}건이 성공 {{ok}}건보다 많아요. 가게에 안내된 PIN 을 확인해 주세요.",
+      "deleteConfirm": "'{{name}}' 이용권을 삭제할까요?\n이미 발급된 이용권은 그대로 사용할 수 있고, 새 판매만 중단됩니다.",
+      "deleteFailed": "삭제 실패"
     },
     "ordersM3": {
       "today": "오늘",
@@ -3286,6 +3289,11 @@
       "none": "해당하는 주문이 없어요",
       "pickupAt": "사용 예정 {{date}}",
       "confirm": "주문 확인"
+    },
+    "edit": {
+      "listPrice": "정가 (할인 전 가격)",
+      "listPriceDiscount": "소비자 화면에 {{pct}}% 할인으로 보입니다.",
+      "listPriceHint": "판매가보다 높게 넣으면 할인율이 표시됩니다. 비우면 할인 표시가 없습니다."
     }
   },
   "admin": {
