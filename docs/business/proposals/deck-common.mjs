@@ -43,8 +43,18 @@ export async function icon(name, color, px = 256) {
   return 'image/png;base64,' + (await sharp(Buffer.from(svg)).png().toBuffer()).toString('base64');
 }
 export async function wordmark(fill) {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 344 100" width="1376" height="400"><text x="0" y="78" font-family="Poppins, Pretendard, Arial, sans-serif" font-weight="800" font-size="96" letter-spacing="-3.4" fill="#${fill}">urdeal</text><circle cx="322" cy="70" r="8.2" fill="#${C.brand}"/></svg>`;
-  return 'image/png;base64,' + (await sharp(Buffer.from(svg)).png().toBuffer()).toString('base64');
+  // Poppins 가 이 환경에 없어(대체 폰트로 그려지면 점이 글자에서 떨어진다) 글자를 먼저 그려 폭을 실측한 뒤 점을 붙인다.
+  const fs = 96;
+  const textSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="900" height="140"><text x="10" y="106" font-family="Pretendard" font-weight="800" font-size="${fs}" letter-spacing="-4" fill="#${fill}">urdeal</text></svg>`;
+  const txt = sharp(Buffer.from(textSvg)).png();
+  const trimmed = await txt.trim().toBuffer({ resolveWithObject: true });
+  const tw = trimmed.info.width, th = trimmed.info.height;
+  const r = 10, gap = 12, pad = 8;
+  const W_ = tw + gap + r * 2 + pad * 2, H_ = th + pad * 2;
+  const dot = `<svg xmlns="http://www.w3.org/2000/svg" width="${W_}" height="${H_}"><circle cx="${pad + tw + gap + r}" cy="${pad + th - r - 2}" r="${r}" fill="#${C.brand}"/></svg>`;
+  const buf = await sharp({ create: { width: W_, height: H_, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+    .composite([{ input: trimmed.data, left: pad, top: pad }, { input: Buffer.from(dot), left: 0, top: 0 }]).png().toBuffer();
+  return { data: 'image/png;base64,' + buf.toString('base64'), ratio: W_ / H_ };
 }
 /** 라이브 캡처(390×844 비율)를 폰 프레임이 합성된 PNG 로 미리 굽는다. 없으면 null. */
 export async function shot(shotsDir, name, phoneStyle = 'minimal') {
@@ -72,6 +82,7 @@ export async function createDeck({ title, footer, shotsDir, shotKeys = [], phone
 
   const wmDark = await wordmark(C.ink);
   const wmLight = await wordmark(C.darkText);
+  const wmH = 0.26, wmW = wmH * wmDark.ratio;
   const ic = {};
   const base = ['FiPercent', 'FiLayers', 'FiUsers', 'FiCreditCard', 'FiMapPin', 'FiUserCheck', 'FiSearch', 'FiEye', 'FiBarChart2',
     'FiRefreshCcw', 'FiLock', 'FiFileText', 'FiCheckCircle', 'FiSmartphone', 'FiShield', 'FiClock', 'FiCamera', 'FiTag',
@@ -93,7 +104,7 @@ export async function createDeck({ title, footer, shotsDir, shotKeys = [], phone
   function chrome(slide, { dark = false } = {}) {
     page += 1;
     slide.background = { color: dark ? C.dark : C.bg };
-    slide.addImage({ data: dark ? wmLight : wmDark, x: M, y: 0.5, w: 0.96, h: 0.28 });
+    slide.addImage({ data: (dark ? wmLight : wmDark).data, x: M, y: 0.5, w: wmW, h: wmH });
     T(slide, footer, { x: M, y: H - 0.62, w: 6, h: 0.25, fontSize: 9, color: dark ? C.darkMuted : C.gray, charSpacing: 0.5 });
     T(slide, String(page).padStart(2, '0'), { x: W - M - 0.8, y: H - 0.62, w: 0.8, h: 0.25, fontSize: 9.5, bold: true, color: dark ? C.darkText : C.ink, align: 'right' });
   }
