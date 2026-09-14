@@ -15,6 +15,9 @@ export interface StaySearchItem {
   star_rating?: number | null
   region_sido?: string
   region_sigungu?: string
+  /** 📍 서버가 이미 내려주고 있었는데 타입에만 없었다(2026-09-14). 카드 지역 표기의 진실은 이쪽이다 —
+   *  라이브 50건 중 12건은 `region_*` 과 주소가 서로 다르다. 판정은 `shared/stay-address.ts`. */
+  address?: string | null
   amenities?: string | null
   price_from?: number | null
   max_guests?: number | null

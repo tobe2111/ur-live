@@ -6,6 +6,7 @@
  *   + PC(lg+) 풀너비(pc-fullbleed) · 카드 그리드 확장(2→4열).
  */
 import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
+import { stayRegionLabel } from '@/shared/stay-address'
 import { DEAL_GRID_GAP } from '@/shared/deal-card-grid'
 import { CalendarDays } from 'lucide-react'
 import { TicketStubIcon } from '@/components/icons/urdeal-icons'
@@ -184,7 +185,9 @@ export default function StaysSearchPage() {
                     price: s.price_from ?? 0,
                     image_url: s.image_url || '',
                     category: 'stay_voucher',
-                    restaurant_address: [s.region_sido, s.region_sigungu].filter(Boolean).join(' '),
+                    // 📍 상세와 같은 SSOT — 카드가 "강원 속초시" 라 해 놓고 상세가 "양양군" 이면
+                    //    같은 숙소가 두 지역에 있는 것처럼 보인다(라이브 50건 중 12건이 그 상태였다).
+                    restaurant_address: stayRegionLabel(s.region_sido, s.region_sigungu, s.address),
                     avg_rating: s.avg_rating ?? undefined,
                     review_count: s.review_count ?? undefined,
                   } as never}

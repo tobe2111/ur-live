@@ -62,8 +62,13 @@ describe('③ PC 예약 패널(B안) · 트리거 · 라벨', () => {
     expect(panel).toMatch(/예약하기/)
     expect(panel).not.toMatch(/border border-gray/)
   })
-  it('날짜·인원 트리거는 세로 두 줄 (한 줄이면 360px 에서 날짜가 잘린다)', () => {
-    expect(picker).toMatch(/<div className="flex flex-col gap-2">/)
+  it('날짜와 인원은 각자 다른 행 (한 줄이면 360px 에서 날짜가 잘린다)', () => {
+    // 🎫 2026-09-14 재조준: 지키려는 성질은 "날짜와 인원이 한 줄에 안 눌린다" 이지
+    //    `flex flex-col gap-2` 라는 특정 마크업이 아니었다. 안 B(분할 카드)는 그 성질을
+    //    행을 나누는 방식으로 지킨다 — 가드를 지우지 말고 성질로 다시 겨눈다.
+    //    구조 자체는 `stay-detail-b.test.ts` 가 더 촘촘히 본다.
+    expect(picker, '날짜 행이 없다').toMatch(/<FieldSplit\b/)
+    expect(picker, '인원이 날짜와 같은 행에 눌렸다').toMatch(/<FieldRow\b[\s\S]{0,200}label="인원"/)
   })
   it('제목 위 라벨은 원본 값이 아니라 한글 라벨', () => {
     expect(page).toMatch(/storeName=\{propertyTypeLabel\(stay\.property_type\)\}/)

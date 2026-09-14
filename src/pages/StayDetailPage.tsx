@@ -10,7 +10,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
-import { MapPin, Calendar, Users, Star, Wifi, Coffee, Car, Waves, Sparkles, Flame, Utensils, Wind, Bath, Dumbbell, Check, PawPrint, CigaretteOff, Hotel, TicketPercent } from 'lucide-react'
+import { MapPin, Calendar, Users, Star, Sparkles, Hotel, TicketPercent } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import { SectionTitle, AmenityFlow, InfoBlock, propertyTypeLabel } from './stay-detail/StayInfoSections'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
@@ -19,6 +19,8 @@ import DetailTitleHeader from './group-buy/DetailTitleHeader'
 import DetailBreadcrumb, { stayCrumbs } from '@/components/deal/DetailBreadcrumb'
 import DetailFloatingHeader from '@/components/deal/DetailFloatingHeader'
 import StayDateGuestPicker, { type DayPrice } from './stay-detail/StayDateGuestPicker'
+import { amenityMeta } from './stay-detail/amenity-meta'
+import { stayAddressLine, stayRegionLabel } from '@/shared/stay-address'
 import StayBookingPanel, { cancellationLabel } from './stay-detail/StayBookingPanel'
 import BrandLoader from '@/components/brand/BrandLoader'
 
@@ -89,26 +91,6 @@ interface AvailRoom {
 // 🏨 2026-07-21 (대표 "시설 아이콘이 점으로만 뜸"): 시드가 시설을 **한글**(무료 주차/와이파이/조식 등)로
 //   저장하는데 기존 매핑은 영문 키(wifi/parking)만 알아 매칭 실패 → 점(•) 폴백. 한글/영문 **키워드 매칭**으로
 //   교체(부분일치) — 시드/수기/미래 표현 다 인식. 미매칭도 점 대신 체크 아이콘(설정된 시설로 보이게).
-const AMENITY_ICON_CLS = 'w-4 h-4 text-gray-500 dark:text-gray-400'
-
-function amenityMeta(a: string): { label: string; icon: React.ReactNode } {
-  const s = String(a || '').toLowerCase()
-  const has = (...keys: string[]) => keys.some((k) => s.includes(k))
-  let icon: React.ReactNode = <Check className={AMENITY_ICON_CLS} />
-  if (has('주차', 'parking')) icon = <Car className={AMENITY_ICON_CLS} />
-  else if (has('와이파이', '와이', 'wifi', 'wi-fi', '인터넷')) icon = <Wifi className={AMENITY_ICON_CLS} />
-  else if (has('조식', '아침', 'breakfast')) icon = <Coffee className={AMENITY_ICON_CLS} />
-  else if (has('수영', '풀', 'pool')) icon = <Waves className={AMENITY_ICON_CLS} />
-  else if (has('스파', '사우나', '온천', '온수풀', 'spa', 'sauna', '자쿠지', '욕조', 'bath')) icon = <Bath className={AMENITY_ICON_CLS} />
-  else if (has('화로', '바비큐', 'bbq', '불멍', '캠프파이어', 'grill')) icon = <Flame className={AMENITY_ICON_CLS} />
-  else if (has('취사', '주방', '조리', '키친', 'kitchen', '요리')) icon = <Utensils className={AMENITY_ICON_CLS} />
-  else if (has('에어컨', '냉난방', '냉방', '난방', 'air')) icon = <Wind className={AMENITY_ICON_CLS} />
-  else if (has('헬스', '피트니스', 'gym', 'fitness')) icon = <Dumbbell className={AMENITY_ICON_CLS} />
-  else if (has('반려', '애견', '펫', 'pet')) icon = <PawPrint className={AMENITY_ICON_CLS} />
-  else if (has('금연', 'non-smoking', 'no smoking')) icon = <CigaretteOff className={AMENITY_ICON_CLS} />
-  return { label: a, icon }
-}
-
 function todayIso() { return new Date().toISOString().slice(0, 10) }
 function tomorrowIso() { return new Date(Date.now() + 86400000).toISOString().slice(0, 10) }
 
@@ -276,8 +258,13 @@ export default function StayDetailPage() {
   ) : null
 
   const inputCls = 'w-full px-3 py-2 bg-white dark:bg-[#1D1F29] border border-gray-300 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white'
+  /* 🩸 2026-09-14: 날짜 모드는 `FieldCard` 가 표면을 맡으므로 래퍼가 **껍데기**다(트리거 테두리만
+     걷고 여기를 남겼더니 화면엔 상자가 두 겹이었다 — 유닛은 초록이고 렌더해 보고서야 보였다).
+     ⚠️ 이용권 모드는 자체 표면이 없어 카드 유지. 경위: docs/design/stay-detail-booking-card-2026-09.md */
   const selectorBox = (
-    <div className="bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] rounded-xl p-4 shadow-sm">
+    <div className={isVoucherMode
+      ? 'bg-white dark:bg-[#1D1F29] rounded-2xl p-4 shadow-lift'
+      : ''}>
       {isVoucherMode ? (
         <>
           {/* voucher 모드: 평일/주말 + 박수 */}
@@ -323,9 +310,12 @@ export default function StayDetailPage() {
             dayPrices={dayPrices}
             maxGuests={rooms.reduce((m, r) => Math.max(m, r.max_guests || 0), 0) || 20}
             baseGuests={rooms.reduce((m, r) => Math.max(m, r.base_guests || 0), 0) || undefined}
+            checkInTime={stay.check_in_time}
+            checkOutTime={stay.check_out_time}
             onApply={({ checkIn: ci, checkOut: co, guests: g }) => { setCheckIn(ci); setCheckOut(co); setGuests(g) }}
           />
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{nights}박 · 체크인 {stay.check_in_time} / 체크아웃 {stay.check_out_time}</p>
+          {/* 🩸 2026-09-14: "N박 · 체크인 … / 체크아웃 …" 한 줄을 지웠다 — 박수는 카드 배지가,
+              시각은 카드 각주가 말한다. 두 자리에서 말하면 한쪽만 고쳐져 어긋난다(대표 지적 ④). */}
         </>
       )}
     </div>
@@ -343,7 +333,7 @@ export default function StayDetailPage() {
       {/* 🔘 이용권 상세와 **같은 컴포넌트**(대표 "왜 계속 다르게 하는거지?"). 경위는 detail-hero-crop.test.ts */}
       <DetailFloatingHeader
         productId={stay.id} title={stay.restaurant_name || stay.name}
-        shareDescription={[stay.region_sido, stay.region_sigungu].filter(Boolean).join(' ') || '숙소 이용권'}
+        shareDescription={stayRegionLabel(stay.region_sido, stay.region_sigungu, stay.address) || '숙소 이용권'}
         shareImageUrl={stay.image_url || ''} shareLink={`https://urdeal.kr/stays/${stay.id}`}
         myUserId={localStorage.getItem('user_id') || ''} heroRef={heroRef} onBack={() => navigate(-1)}
       />
@@ -351,7 +341,7 @@ export default function StayDetailPage() {
       <DetailTitleHeader
         name={stay.restaurant_name || stay.name}
         storeName={propertyTypeLabel(stay.property_type)}
-        address={[stay.region_sido, stay.region_sigungu, stay.address].filter(Boolean).join(' ')}
+        address={stayAddressLine(stay.region_sido, stay.region_sigungu, stay.address)}
         rating={stay.avg_rating ?? undefined}
         reviewCount={stay.review_count ?? undefined}
       />
@@ -383,7 +373,10 @@ export default function StayDetailPage() {
           <h1 className="text-xl lg:text-2xl font-extrabold">{stay.restaurant_name || stay.name}</h1>
           <div className="flex items-center gap-2 mt-1 text-xs text-gray-500 dark:text-gray-400">
             <MapPin className="w-3 h-3" />
-            <span>{stay.region_sido} {stay.region_sigungu} · {stay.address}</span>
+            {/* 📍 2026-09-14: "경북 경주시 · 경북 경주시 손곡3길 37-14" 로 찍히던 자리.
+                라이브 50건 중 12건은 지역 항목과 주소가 아예 달라, 이어 붙이면 **틀린 주소**가 됐다.
+                판정은 `shared/stay-address.ts` 하나로. */}
+            <span>{stayAddressLine(stay.region_sido, stay.region_sigungu, stay.address)}</span>
           </div>
           {stay.avg_rating ? (
             <div className="flex items-center gap-1.5 mt-2">
