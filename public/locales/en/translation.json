@@ -2275,7 +2275,8 @@
       "alimtalkSent": "Alimtalk sent to the merchant",
       "reissue": "Reissue with same details",
       "copyLoaded": "Loaded previous deal — just check the dates and publish!",
-      "copyFailed": "Failed to load previous deal"
+      "copyFailed": "Failed to load previous deal",
+      "deleted": "Voucher deleted"
     },
     "voucher": {
       "categoryTitle": "Voucher Category",
@@ -3216,7 +3217,12 @@
       "orders": "Orders"
     },
     "bizFromRegistration": "Filled in from your store registration",
-    "bizFromRegistrationDesc": "Not registered as business info yet — review and press Save."
+    "bizFromRegistrationDesc": "Not registered as business info yet — review and press Save.",
+    "edit": {
+      "listPrice": "List price (before discount)",
+      "listPriceDiscount": "Shown to customers as {{pct}}% off.",
+      "listPriceHint": "Enter a value above the selling price to show a discount. Leave empty for none."
+    }
   },
   "admin": {
     "login": {
