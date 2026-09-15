@@ -117,9 +117,20 @@ export default function MallAdvancedFields({ form, setForm }: { form: MallForm; 
             <p className="text-[11px] text-gray-400 mt-1">비우면 전 기능 켜짐 — <b>대부분 비워 두면 됩니다.</b></p>
           </div>
 
-          {/* 📣 2026-08-09 과업①(상인회 SaaS) — 몰별 마케팅/고지. 전부 선택(비우면 미사용). */}
+          {/* 🏬 2026-08-10 몰 운영자 지정 — `/mall-admin` 콘솔의 유일한 열쇠(비우면 어드민 전용). */}
+          <div className="rounded-lg border border-gray-200 p-3">
+            <label className={LABEL}>몰 운영자 회원번호 <span className="font-normal text-gray-400">(users.id · 비우면 어드민 전용)</span></label>
+            <input value={form.operator_user_id} onChange={(e) => setForm((f) => ({ ...f, operator_user_id: e.target.value.replace(/\D/g, '') }))}
+              maxLength={12} inputMode="numeric" className={INPUT} placeholder="예: 1024" />
+            <p className="text-[11px] text-gray-400 mt-1">
+              지정하면 그 회원이 카카오 로그인 후 <code>/mall-admin</code> 에서 이 몰의 공지를 직접 올릴 수 있습니다.
+              (첫 진입 시 운영자 약관 동의) 없는 회원번호는 저장되지 않습니다.
+            </p>
+          </div>
+
+          {/* 📣 2026-08-09 몰별 마케팅/고지. 전부 선택(비우면 미사용). */}
           <div className="rounded-lg border border-gray-200 p-3 space-y-3">
-            <p className="text-xs font-bold text-gray-700">마케팅 · 고지 <span className="font-normal text-gray-400">— 상인회(운영자) 몰용. 비우면 미사용</span></p>
+            <p className="text-xs font-bold text-gray-700">마케팅 · 고지 <span className="font-normal text-gray-400">— 운영자 몰용. 비우면 미사용</span></p>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={LABEL}>GA4 측정 ID</label>
