@@ -268,8 +268,8 @@ export default function SellerProductEditPage() {
 
         {/* Error Message */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <div className="flex items-center gap-2 text-red-700">
+          <div className="mb-6 p-4 bg-white border border-rule rounded-lg">
+            <div className="flex items-center gap-2 text-tone-bad">
               <Package className="w-5 h-5" />
               <p>{error}</p>
             </div>
@@ -281,7 +281,7 @@ export default function SellerProductEditPage() {
           {/* Product Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              {t('seller.productName')} <span className="text-red-500">*</span>
+              {t('seller.productName')} <span className="text-tone-bad">*</span>
             </label>
             <input
               type="text"
@@ -290,7 +290,7 @@ export default function SellerProductEditPage() {
               onChange={handleChange}
               placeholder={t('seller.productNamePlaceholderForm')}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand"
             />
           </div>
 
@@ -305,7 +305,7 @@ export default function SellerProductEditPage() {
               onChange={handleChange}
               placeholder={t('seller.descriptionPlaceholder')}
               rows={4}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand"
             />
           </div>
 
@@ -318,19 +318,19 @@ export default function SellerProductEditPage() {
           />
 
           {/* 라이브 전용 특가 */}
-          <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl">
+          <div className="p-4 bg-white border border-rule rounded-xl">
             <div className="flex items-center gap-2 mb-3">
               <input
                 type="checkbox"
                 id="live_price_enabled"
                 checked={formData.live_price_enabled}
                 onChange={e => setFormData({ ...formData, live_price_enabled: e.target.checked })}
-                className="rounded border-orange-300 text-orange-600"
+                className="rounded border-rule text-tone-warn"
               />
-              <label htmlFor="live_price_enabled" className="text-sm font-semibold text-orange-800">
+              <label htmlFor="live_price_enabled" className="text-sm font-semibold text-tone-warn">
                 {t('seller.liveOnly')}
               </label>
-              <span className="text-xs text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full">{t('seller.liveOnlyDuring')}</span>
+              <span className="text-xs text-tone-warn bg-tone-warn-bg px-2 py-0.5 rounded-full">{t('seller.liveOnlyDuring')}</span>
             </div>
             {formData.live_price_enabled && (
               <div>
@@ -341,9 +341,9 @@ export default function SellerProductEditPage() {
                   onChange={handleChange}
                   placeholder={t('seller.liveOnlyPricePlaceholder')}
                   min="0"
-                  className="w-full px-3 py-2 border border-orange-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 bg-white"
+                  className="w-full px-3 py-2 border border-rule rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 bg-white"
                 />
-                <p className="text-xs text-orange-600 mt-1">{t('seller.liveOnlyPriceDesc')}</p>
+                <p className="text-xs text-tone-warn mt-1">{t('seller.liveOnlyPriceDesc')}</p>
               </div>
             )}
           </div>
@@ -359,14 +359,14 @@ export default function SellerProductEditPage() {
           {/* Category Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              {t('common.category')} <span className="text-red-500">*</span>
+              {t('common.category')} <span className="text-tone-bad">*</span>
             </label>
             <select
               name="category"
               value={formData.category}
               onChange={handleChange}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand"
             >
               <option value="fashion">{t('common.fashion')}</option>
               <option value="beauty">{t('common.beauty')}</option>
@@ -401,21 +401,21 @@ export default function SellerProductEditPage() {
           {/* Product Type Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-3">
-              {t('seller.productType')} <span className="text-red-500">*</span>
+              {t('seller.productType')} <span className="text-tone-bad">*</span>
             </label>
             <div className="space-y-3">
-              <label className={`flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50 ${formData.product_type === 'live' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>
+              <label className={`flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50 ${formData.product_type === 'live' ? 'border-brand bg-brand-tint' : 'border-gray-200'}`}>
                 <input
                   type="radio"
                   name="product_type"
                   value="live"
                   checked={formData.product_type === 'live'}
                   onChange={handleChange}
-                  className="mt-1 w-4 h-4 text-blue-600"
+                  className="mt-1 w-4 h-4 text-gray-700"
                 />
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <Play className="w-5 h-5 text-red-600" />
+                    <Play className="w-5 h-5 text-tone-bad" />
                     <span className="font-semibold text-gray-900">{t('seller.liveOnlyProduct')}</span>
                   </div>
                   <p className="text-sm text-gray-600 mt-1">
@@ -424,18 +424,18 @@ export default function SellerProductEditPage() {
                 </div>
               </label>
 
-              <label className={`flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50 ${formData.product_type === 'featured' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>
+              <label className={`flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50 ${formData.product_type === 'featured' ? 'border-brand bg-brand-tint' : 'border-gray-200'}`}>
                 <input
                   type="radio"
                   name="product_type"
                   value="featured"
                   checked={formData.product_type === 'featured'}
                   onChange={handleChange}
-                  className="mt-1 w-4 h-4 text-blue-600"
+                  className="mt-1 w-4 h-4 text-gray-700"
                 />
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <Package className="w-5 h-5 text-blue-600" />
+                    <Package className="w-5 h-5 text-gray-700" />
                     <span className="font-semibold text-gray-900">{t('seller.featuredProduct')}</span>
                   </div>
                   <p className="text-sm text-gray-600 mt-1">
@@ -476,7 +476,7 @@ export default function SellerProductEditPage() {
                     <Button
                       type="button"
                       onClick={() => removeDetailImage(index)}
-                      className="flex-shrink-0 px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm"
+                      className="ur-btn ur-btn-sm ur-btn-danger flex-shrink-0"
                     >
                       {t('common.delete')}
                     </Button>
@@ -491,7 +491,7 @@ export default function SellerProductEditPage() {
               </div>
             )}
             <p className="text-xs text-gray-500 mt-2">
-              💡 {t('seller.detailImageTip')}
+              {t('seller.detailImageTip')}
             </p>
           </div>
 
@@ -507,7 +507,7 @@ export default function SellerProductEditPage() {
                   name="live_stream_id"
                   value={formData.live_stream_id}
                   onChange={handleChange}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand appearance-none bg-white"
                 >
                   <option value="">{t('seller.selectLiveStream')}</option>
                   {liveStreams.map((stream) => (
@@ -529,7 +529,7 @@ export default function SellerProductEditPage() {
                 name="is_active"
                 checked={formData.is_active}
                 onChange={handleChange}
-                className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                className="w-5 h-5 text-gray-700 border-gray-300 rounded focus:ring-blue-500"
               />
               <div>
                 <p className="text-sm font-medium text-gray-700">{t('seller.productActivate')}</p>

@@ -42,7 +42,7 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
         <div className="p-6">
           {/* Modal Header */}
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">{t('seller.orderDetail')}</h2>
+            <h2 className="text-lg font-bold text-gray-900">{t('seller.orderDetail')}</h2>
             <button
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -74,7 +74,7 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
                 <div>
                   <p className="text-gray-500 mb-1">{t('seller.paymentStatusHeader')}</p>
                   <div>
-                    <Badge className={(order.payment_status === 'approved' || order.payment_status === 'completed') ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+                    <Badge className={(order.payment_status === 'approved' || order.payment_status === 'completed') ? 'border border-rule bg-white text-tone-ok' : 'bg-gray-100 text-gray-800'}>
                       {(order.payment_status === 'approved' || order.payment_status === 'completed') ? t('seller.statusDone') : order.payment_status}
                     </Badge>
                   </div>
@@ -164,7 +164,7 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="flex justify-between text-lg font-bold">
                   <span>{t('seller.totalOrderAmount')}</span>
-                  <span className="text-blue-600">{formatPrice(order.total_amount)}{t('common.won')}</span>
+                  <span className="text-gray-700">{formatPrice(order.total_amount)}{t('common.won')}</span>
                 </div>
               </div>
             </div>
@@ -196,7 +196,7 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
                 <button
                   onClick={() => onRefund(order.order_number)}
                   disabled={updating}
-                  className="w-full py-3 border border-rose-300 text-rose-600 rounded-lg font-medium hover:bg-rose-50 disabled:opacity-50"
+                  className="w-full py-3 border border-rule text-tone-bad rounded-lg font-medium hover:bg-gray-100 disabled:opacity-50"
                 >
                   {t('seller.cancelRefund', { defaultValue: '주문 취소·환불' })}
                 </button>
@@ -210,13 +210,13 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
                 <form onSubmit={(e) => onTrackingSubmit(e, order.order_number)} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      {t('seller.courierLabel')} <span className="text-red-500">*</span>
+                      {t('seller.courierLabel')} <span className="text-tone-bad">*</span>
                     </label>
                     <select
                       value={trackingForm.courier}
                       onChange={(e) => onTrackingFormChange({ ...trackingForm, courier: e.target.value })}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand bg-white"
                     >
                       <option value="">{t('seller.selectCourier')}</option>
                       {COURIERS.map(c => <option key={c} value={c}>{c}</option>)}
@@ -224,7 +224,7 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      {t('seller.trackingNumberLabel')} <span className="text-red-500">*</span>
+                      {t('seller.trackingNumberLabel')} <span className="text-tone-bad">*</span>
                     </label>
                     <input
                       type="text"
@@ -232,7 +232,7 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
                       onChange={(e) => onTrackingFormChange({ ...trackingForm, tracking_number: e.target.value })}
                       placeholder={t('seller.trackingNumberPlaceholder')}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand"
                     />
                   </div>
                   <Button

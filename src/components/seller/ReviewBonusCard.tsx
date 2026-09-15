@@ -104,7 +104,7 @@ export default function ReviewBonusCard() {
               "매장 부담"이라고 쓰면 사장님이 없는 청구를 믿게 된다. */}
           {policy && (
             policy.funded_by === 'owner' ? (
-              <p className="mt-1 text-[11px] text-amber-700">이 금액은 매장 정산에서 차감됩니다.</p>
+              <p className="mt-1 text-[11px] text-tone-warn">이 금액은 매장 정산에서 차감됩니다.</p>
             ) : (
               <p className="mt-1 text-[11px] text-gray-400">
                 지금은 유어딜이 부담합니다. 매장 정산 차감은 준비가 끝난 뒤 안내드리고 시작합니다.
@@ -112,8 +112,8 @@ export default function ReviewBonusCard() {
             )
           )}
 
-          {error && <p className="mt-2 text-[11px] text-red-600">{error}</p>}
-          {saved && !error && <p className="mt-2 text-[11px] text-emerald-700">저장했어요.</p>}
+          {error && <p className="mt-2 text-[11px] text-tone-bad">{error}</p>}
+          {saved && !error && <p className="mt-2 text-[11px] text-tone-ok">저장했어요.</p>}
         </>
       )}
     </div>

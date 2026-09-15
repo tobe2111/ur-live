@@ -50,8 +50,8 @@ export default function GbProposalsPanel({ products, headers }: { products: Prod
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="flex items-center gap-1.5 text-sm font-bold text-gray-900"><Inbox className="w-4 h-4 text-emerald-600" /> 공구 제안</h3>
-        <button onClick={() => setShowPropose(s => !s)} className="text-[12px] font-semibold text-emerald-700 flex items-center gap-1">
+        <h3 className="flex items-center gap-1.5 text-sm font-bold text-gray-900"><Inbox className="w-4 h-4 text-tone-ok" /> 공구 제안</h3>
+        <button onClick={() => setShowPropose(s => !s)} className="text-[12px] font-semibold text-tone-ok flex items-center gap-1">
           <Send className="w-3.5 h-3.5" /> {showPropose ? '취소' : '인플루언서에게 제안'}
         </button>
       </div>

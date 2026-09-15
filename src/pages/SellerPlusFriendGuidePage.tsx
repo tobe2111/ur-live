@@ -72,12 +72,12 @@ export default function SellerPlusFriendGuidePage() {
               onClick={markAsAdded}
               className="block w-full text-center mt-4 py-3 bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] rounded-xl font-bold text-sm transition-colors"
             >
-              💬 유어딜 카카오 채널 열기
+              유어딜 카카오 채널 열기
             </a>
           </section>
 
-          <section className="bg-blue-50 border border-blue-200 rounded-[var(--dash-radius,16px)] p-4">
-            <p className="text-xs text-blue-900 leading-relaxed">
+          <section className="bg-white border border-rule rounded-[var(--dash-radius,16px)] p-4">
+            <p className="text-xs text-gray-700 leading-relaxed">
               <strong>안내:</strong> 채널 추가 후 이 페이지로 돌아와서 아래 "추가 완료" 버튼을 눌러주세요.
               그래야 onboarding 진행률이 업데이트됩니다.
             </p>
@@ -95,7 +95,7 @@ export default function SellerPlusFriendGuidePage() {
               disabled={confirmed}
               className="ur-btn ur-btn-lg ur-btn-primary flex-1"
             >
-              {confirmed ? '✓ 완료' : '✓ 추가 완료'}
+              {confirmed ? '완료' : '추가 완료'}
             </button>
           </div>
         </div>

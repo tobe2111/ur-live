@@ -57,7 +57,7 @@ export default function SellerYoutubeGrowthSuccessPage() {
     return (
       <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-red-500 mx-auto mb-4" />
+          <Loader2 className="w-12 h-12 animate-spin text-tone-bad mx-auto mb-4" />
           <p className="text-gray-500">{t('seller.processingPayment')}</p>
         </div>
       </div>
@@ -68,8 +68,8 @@ export default function SellerYoutubeGrowthSuccessPage() {
     return (
       <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center p-4">
         <div className="max-w-md w-full text-center bg-white rounded-[var(--dash-radius,16px)] p-8 shadow-lg">
-          <p className="text-red-600 mb-4">{error}</p>
-          <button onClick={() => navigate('/seller/youtube-growth')} className="px-6 py-3 bg-red-500 text-white rounded-xl font-bold">
+          <p className="text-tone-bad mb-4">{error}</p>
+          <button onClick={() => navigate('/seller/youtube-growth')} className="ur-btn ur-btn-lg ur-btn-primary">
             {t('seller.goBackButton')}
           </button>
         </div>
@@ -80,22 +80,22 @@ export default function SellerYoutubeGrowthSuccessPage() {
   return (
     <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-[var(--dash-radius,16px)] p-8 shadow-lg text-center">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-4">
-          <CheckCircle className="w-10 h-10 text-green-600" />
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-tone-ok-bg mb-4">
+          <CheckCircle className="w-10 h-10 text-tone-ok" />
         </div>
         <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('seller.paymentCompleted')}</h1>
         <p className="text-sm text-gray-500 mb-6">{t('seller.subscriberGrowthAfterReview')}</p>
         <div className="bg-gray-50 rounded-xl p-5 my-6">
           <div className="flex items-center justify-center gap-2 mb-2">
-            <Youtube className="w-5 h-5 text-red-500" />
+            <Youtube className="w-5 h-5 text-tone-bad" />
             <span className="text-sm text-gray-600">{t('seller.youtubeGrowth')}</span>
           </div>
-          <p className="text-3xl font-bold text-red-600">{String(t('seller.subscriberPlus', { count: formatNumber(result?.subscribers) } as Record<string, string>))}</p>
+          <p className="text-3xl font-bold text-tone-bad">{String(t('seller.subscriberPlus', { count: formatNumber(result?.subscribers) } as Record<string, string>))}</p>
           <p className="text-sm text-gray-500 mt-2">{t('seller.paymentAmountLabel')}: {formatNumber(result?.amount)}{t('common.won')}</p>
         </div>
         <button
           onClick={() => navigate('/seller/youtube-growth')}
-          className="w-full py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600"
+          className="ur-btn ur-btn-lg ur-btn-primary w-full"
         >
           {t('seller.checkRequestHistory')}
         </button>

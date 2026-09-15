@@ -155,8 +155,8 @@ export default function SellerSettlementsPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <XCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <p className="text-red-600 mb-4">{error}</p>
+          <XCircle className="h-12 w-12 text-tone-bad mx-auto mb-4" />
+          <p className="text-tone-bad mb-4">{error}</p>
           <Button onClick={() => loadSettlements()}>{t('common.refresh')}</Button>
         </div>
       </div>

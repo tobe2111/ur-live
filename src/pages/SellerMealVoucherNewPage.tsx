@@ -296,7 +296,7 @@ export default function SellerMealVoucherNewPage() {
       <SellerLayout title={t('seller.mealVoucher.title')}>
         <div className="mx-auto max-w-5xl">
           <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-8 text-center mt-8">
-            <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
+            <CheckCircle className="w-12 h-12 text-tone-ok mx-auto mb-3" />
             <h2 className="text-lg font-bold text-gray-900">{t('seller.mealVoucher.doneTitle', { defaultValue: '이용권이 등록됐어요!' })}</h2>
             <p className="text-sm text-gray-500 mt-2">
               {t('seller.mealVoucher.doneDesc', { defaultValue: '소개해 줄 사람에게 제안을 보내면 소개 판매가 시작돼요. 커미션은 팔렸을 때만 발생합니다.' })}
@@ -355,7 +355,7 @@ export default function SellerMealVoucherNewPage() {
 
         {/* 💾 임시저장 복원 배너 */}
         {pendingDraft && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between gap-3">
+          <div className="bg-white border border-rule rounded-xl p-4 flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="text-sm font-bold text-gray-900">{t('seller.mealVoucher.draftFound', { defaultValue: '임시저장된 작성 내용이 있어요' })}</p>
               <p className="text-[11px] text-gray-500 mt-0.5 truncate">

@@ -138,7 +138,7 @@ export default function StoreSwitcher({ variant = 'menu' }: { variant?: 'menu' |
                   <span className="flex-1 truncate">{storeLabel(s)}</span>
                   {/* 위임받은 매장은 표시해 준다 — 내 매장인지 남의 매장인지 헷갈리면 사고가 난다. */}
                   {s.role === 'operator' && (
-                    <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded shrink-0">위임</span>
+                    <span className="text-[10px] font-bold text-tone-warn bg-tone-warn-bg px-1.5 py-0.5 rounded shrink-0">위임</span>
                   )}
                   {switching === s.seller_id
                     ? <Loader2 className="w-4 h-4 animate-spin text-gray-400 shrink-0" />

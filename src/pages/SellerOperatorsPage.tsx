@@ -116,11 +116,11 @@ export default function SellerOperatorsPage() {
         </div>
 
         {error && (
-          <div className="rounded-xl bg-red-50 border border-red-200 p-4 flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+          <div className="rounded-xl bg-white border border-rule p-4 flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-tone-bad mt-0.5 shrink-0" />
             <div className="flex-1">
-              <p className="text-sm text-red-700">{error}</p>
-              <button onClick={load} className="text-xs font-semibold text-red-700 underline mt-1">다시 시도</button>
+              <p className="text-sm text-tone-bad">{error}</p>
+              <button onClick={load} className="text-xs font-semibold text-brand-text underline mt-1">다시 시도</button>
             </div>
           </div>
         )}

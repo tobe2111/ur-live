@@ -69,7 +69,7 @@ export default function SellerRelinkPage() {
         {/* STEP 1 — 새 카카오 로그인 */}
         <div className="flex items-center gap-2.5 mb-4">
           {hasConsumer
-            ? <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+            ? <CheckCircle2 className="w-5 h-5 text-tone-ok shrink-0" />
             : <span className="w-5 h-5 rounded-full bg-brand text-white text-[11px] font-extrabold flex items-center justify-center shrink-0">1</span>}
           <p className="text-[14px] font-bold text-[#16181C] flex-1">{t('seller.relink.step1', { defaultValue: '새 카카오 계정으로 로그인' })}</p>
           {!hasConsumer && (

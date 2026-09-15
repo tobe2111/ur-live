@@ -26,19 +26,19 @@ export function StatusBadge({ status }: { status: string }) {
   const { t } = useTranslation()
   switch (status) {
     case 'PAY_COMPLETE': case 'PAID': case 'DONE':
-      return <Badge className="bg-blue-100 text-blue-800 border-blue-200">{t('seller.statusDone')}</Badge>
+      return <Badge className="bg-white text-gray-700 border-rule">{t('seller.statusDone')}</Badge>
     case 'PENDING': case 'AWAITING_PAYMENT':
       return <Badge className="bg-gray-100 text-gray-700 border-gray-200">{t('seller.statusPending')}</Badge>
     case 'PREPARING':
-      return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">{t('seller.statusPreparing')}</Badge>
+      return <Badge className="bg-white text-tone-warn border-rule">{t('seller.statusPreparing')}</Badge>
     case 'SHIPPING':
-      return <Badge className="bg-purple-100 text-purple-800 border-purple-200">{t('seller.statusShipping')}</Badge>
+      return <Badge className="bg-white text-gray-700 border-rule">{t('seller.statusShipping')}</Badge>
     case 'DELIVERED':
-      return <Badge className="bg-green-100 text-green-800 border-green-200">{t('seller.statusDelivered')}</Badge>
+      return <Badge className="bg-white text-tone-ok border-rule">{t('seller.statusDelivered')}</Badge>
     case 'CANCELLED':
-      return <Badge className="bg-red-100 text-red-800 border-red-200">{t('seller.statusCancelled')}</Badge>
+      return <Badge className="bg-white text-tone-bad border-rule">{t('seller.statusCancelled')}</Badge>
     case 'REFUNDED':
-      return <Badge className="bg-orange-100 text-orange-800 border-orange-200">{t('common.refunded')}</Badge>
+      return <Badge className="bg-white text-tone-warn border-rule">{t('common.refunded')}</Badge>
     default:
       return <Badge>{status}</Badge>
   }

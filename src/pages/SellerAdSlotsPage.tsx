@@ -127,17 +127,17 @@ function SlotCard({ slot, labels, onBid }: { slot: AdSlot; labels: SlotLabels; o
           <p className="text-[11px] text-gray-500 mt-0.5">{slot.description}</p>
         </div>
         {wonByMe && (
-          <span className="shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 text-[10px] font-semibold">
+          <span className="shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full bg-tone-warn-bg text-tone-warn text-[10px] font-semibold">
             <Trophy className="w-3 h-3" />{labels.won}
           </span>
         )}
         {isLeading && !wonByMe && (
-          <span className="shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-[10px] font-semibold">
+          <span className="shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full bg-tone-ok-bg text-tone-ok text-[10px] font-semibold">
             <TrendingUp className="w-3 h-3" />{labels.leading}
           </span>
         )}
         {bidding && !isLeading && (
-          <span className="shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-semibold">
+          <span className="shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full bg-tone-info-bg text-tone-info text-[10px] font-semibold">
             <Gavel className="w-3 h-3" />{labels.bidding}
           </span>
         )}
@@ -166,7 +166,7 @@ function SlotCard({ slot, labels, onBid }: { slot: AdSlot; labels: SlotLabels; o
           <span>{timeLeft(slot.expires_at, tlabels)}</span>
         </div>
         {wonByMe ? (
-          <span className="text-[11px] text-yellow-600 font-medium">{labels.exposing} — {timeLeft(slot.my_bid?.end_period ?? null, tlabels)}</span>
+          <span className="text-[11px] text-tone-warn font-medium">{labels.exposing} — {timeLeft(slot.my_bid?.end_period ?? null, tlabels)}</span>
         ) : (
           <button
             type="button"
@@ -182,8 +182,8 @@ function SlotCard({ slot, labels, onBid }: { slot: AdSlot; labels: SlotLabels; o
       {slot.my_bid && (
         <div className="px-4 pb-3">
           <div className={`rounded-xl px-3 py-2 text-[11px] ${
-            wonByMe ? 'bg-yellow-50 text-yellow-700' :
-            isLeading ? 'bg-green-50 text-green-700' :
+            wonByMe ? 'bg-tone-warn-bg text-tone-warn' :
+            isLeading ? 'bg-tone-ok-bg text-tone-ok' :
             'bg-gray-50 text-gray-600'
           }`}>
             {labels.myBid}: {slot.my_bid.bid_amount.toLocaleString('ko-KR')}{labels.priceUnit}
@@ -268,11 +268,11 @@ function BidModal({
           className="w-full px-4 py-3 border border-gray-200 rounded-xl text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
           placeholder={`${labels.minBidLabel} ${slot.min_bid.toLocaleString('ko-KR')}${labels.priceUnit}`}
         />
-        {error && <p className="text-[11px] text-red-500 mt-1.5">{error}</p>}
+        {error && <p className="text-[11px] text-tone-bad mt-1.5">{error}</p>}
 
-        <div className="flex items-start gap-2 mt-3 p-3 bg-blue-50 rounded-xl">
-          <Info className="w-3.5 h-3.5 text-blue-500 mt-0.5 shrink-0" />
-          <p className="text-[11px] text-blue-700">
+        <div className="flex items-start gap-2 mt-3 p-3 border border-rule bg-white rounded-xl">
+          <Info className="w-3.5 h-3.5 text-gray-700 mt-0.5 shrink-0" />
+          <p className="text-[11px] text-gray-700">
             {labels.auctionNotice}
           </p>
         </div>

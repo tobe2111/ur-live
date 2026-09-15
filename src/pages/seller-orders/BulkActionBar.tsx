@@ -20,12 +20,12 @@ export default function BulkActionBar({
 }) {
   const { t } = useTranslation()
   return (
-    <div className="flex items-center gap-3 px-4 py-3 bg-blue-50 border-b border-blue-200">
-      <span className="text-sm font-medium text-blue-700">{t('seller.selectedCount', { count })}</span>
+    <div className="flex items-center gap-3 px-4 py-3 bg-white border-b border-rule">
+      <span className="text-sm font-medium text-gray-700">{t('seller.selectedCount', { count })}</span>
       <select
         value={status}
         onChange={e => onStatusChange(e.target.value)}
-        className="text-sm border border-blue-300 rounded-lg px-2 py-1.5 text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="text-sm border border-rule rounded-lg px-2 py-1.5 text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
       >
         <option value="">{t('common.status')}</option>
         <option value="PREPARING">{t('seller.statusPreparing')}</option>
