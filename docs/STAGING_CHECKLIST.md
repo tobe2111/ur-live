@@ -136,3 +136,25 @@
 - [ ] 어드민에서 `platform_settings.voucher_max_per_person_default` 를 3 으로 두면 스테퍼가 3에서 멈추는지
       (캐시 TTL 120초 뒤 반영)
 - [ ] 셀러가 상품별 값을 5 로 두면 플랫폼 기본보다 그것이 이기는지
+
+## S-CART — 이용권 장바구니 결제 (2026-09-15)
+
+게이트: `platform_settings.voucher_cart_enabled` (기본 OFF). **아래를 통과하기 전에는 켜지 않는다.**
+설계: `docs/design/voucher-cart-2026-09.md` · 가드: `src/tests/unit/voucher-cart-checkout-2026-09-15.test.ts`
+
+레포가 못 재는 것만 적는다(D1·Toss 가 필요하다).
+
+| # | 확인 | 통과 기준 |
+|---|---|---|
+| S-CART-1 | 게이트 OFF 상태로 `/api/group-buy/cart/init` 호출 | 403 `CART_CHECKOUT_DISABLED` — 단일 구매는 종전대로 동작 |
+| S-CART-2 | 게이트 ON → **서로 다른 매장** 이용권 2종 담아 카드 결제 1회 | 이용권이 **전부** 발급 · `orders` 1행 (`seller_id` null) · `order_items` 2행 |
+| S-CART-3 | 같은 결제의 정산 기록 | `donations` 가 **셀러별 2행** · `ledger_entries(group_buy_join)` 도 셀러별 2건 · 수수료 합이 총액×요율 |
+| S-CART-4 | 그 주문 전액 환불 | 이용권 전부 `refunded` · 두 매장 정산이 **각각** 회수(`voucher-settlement-clawback`) · `refunded_amount` 일치 |
+| S-CART-5 | 복귀 URL 의 `orderId` 를 **다른 사람 주문번호**로 바꿔 확정 시도 | 400 `INTENT_NOT_FOUND` (주인만 읽는다) |
+| S-CART-6 | 1인당 한도가 걸린 상품을 한도 초과 수량으로 담아 결제 시작 | init 이 400 `PER_PERSON_LIMIT` — **결제창이 안 열린다** |
+| S-CART-7 | init 후 다른 탭에서 한도를 채우고 확정 | 승인 전 400 — 카드 청구 0(토스 자동 만료) |
+| S-CART-8 | 재고 1개인 상품 2장 담아 결제 | `OUT_OF_STOCK` 409 + **자동 환불** · 다른 줄 재고 원복 확인 |
+| S-CART-9 | 부분결제(딜) 켜고 딜+카드로 장바구니 결제 | `orders.deal_used` 기록 · 환불 시 딜 복원 |
+| S-CART-10 | 같은 `paymentKey` 로 확정 재시도(새로고침) | `idempotent: true` · 이용권 **재발급 0** |
+| S-CART-11 | 가상계좌로 시도 | 발급 0 + 자동 취소(웹훅에 공구 발급이 없다) |
+| S-CART-12 | 한 매장 1종만 담아 결제 | 완료 화면이 **기존 티켓**(`PaymentCompleteTicket`) — 묶음 화면이 아니다 |

@@ -5494,8 +5494,10 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 288건 · 최신순 · 이 목록은 자동 생성된다._
+_총 289건 · 최신순 · 이 목록은 자동 생성된다._
 
+**2026-09-15**
+- [날짜 창 잘림 · 테두리 시안 · 이용권 장바구니 (2026-09-15)](handoff/2026-09-15-date-popover-borders-cart.md)
 **2026-09-14**
 - [이용권 관리 — 수정·삭제·정가 (2026-09-14)](handoff/2026-09-14-voucher-manage-actions.md)
 - [2026-09-14 — 유어쇼츠: 위로 되돌아가는 스와이프 + 닫기 버튼 겹침](handoff/2026-09-14-urshorts-swipe-back-and-close-button.md)
