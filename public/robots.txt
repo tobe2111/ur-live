@@ -40,6 +40,7 @@ Disallow: /my/
 Disallow: /mypage
 Disallow: /orders
 Disallow: /host
+Disallow: /mall-admin
 Disallow: /pay/
 Disallow: /u/me$
 Disallow: /u/me/

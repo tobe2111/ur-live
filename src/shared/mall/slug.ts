@@ -23,7 +23,7 @@ export const RESERVED_SLUGS: readonly string[] = [
   'g', 'gb-market', 'gdpr', 'gift', 'group-buy', 'host',
   'i', // 인플루언서 제안 수락 /i/offer/:token (2026-08-22)
   'influencer', 'interest-list', 'introduce', 'join', 'kakao-debug', 'local',
-  'login', 'map', 'meal-vouchers', 'my', 'my-appointments', 'my-commissions',
+  'login', 'mall-admin', 'map', 'meal-vouchers', 'my', 'my-appointments', 'my-commissions',
   'my-coupons', 'my-deal-history', 'my-gifticons', 'my-orders', 'my-returns', 'my-reviews', 'my-stays',
   'my-store', 'my-vouchers', 'mypage', 'new-openings', 'notifications', 'orders',
   'partners', 'partnership', 'pay', 'payment', 'points', 'privacy',
