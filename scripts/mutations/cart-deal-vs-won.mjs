@@ -8,6 +8,7 @@
 const TEST = 'src/tests/unit/cart-deal-vs-won-2026-09-15.test.tsx'
 const SUM = 'src/components/cart/CartSummary.tsx'
 const PAGE = 'src/pages/CartPage.tsx'
+const TOTALS = 'src/pages/cart/cart-totals.ts'
 
 export default [
   {
@@ -44,9 +45,9 @@ export default [
   },
   {
     name: '[장바구니금액] 합계 루프가 딜을 원에 더한다 (88,000원 재발)',
-    file: PAGE,
-    find: '      if (isDealOnlyCartItem(item)) { deal += line; dealCount += item.quantity }\n      else sum += line',
-    replace: '      sum += line',
+    file: TOTALS,
+    find: '    if (isDealOnlyCartItem(item)) { deal += line; dealCount += item.quantity }\n    else sum += line',
+    replace: '    sum += line',
     test: TEST,
     why: '라이브에 실제로 떠 있던 값이다 — 74,500원 + 13,500딜 = "88,000원".',
   },

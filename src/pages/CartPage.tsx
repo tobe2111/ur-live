@@ -14,7 +14,8 @@ import { ShoppingCart, ChevronRight, Store, X, PackageCheck } from 'lucide-react
 import type { CartItem } from '@/types/cart'
 import { getCartItemPrice } from '@/types/cart'
 import { getNoShippingKind, isNoShippingProduct } from '@/shared/product-flow'
-import { routeCartCheckout, classifyCart, isDealOnlyCartItem } from './cart/voucher-checkout'
+import { routeCartCheckout } from './cart/voucher-checkout'
+import { computeCartTotals } from './cart/cart-totals'
 import { formatNumber } from '@/utils/format'
 import { hasConsumerSession } from '@/utils/auth'
 import CustomModal from './cart/CustomModal'
@@ -367,65 +368,10 @@ function CartPageContent() {
     }>)
   }, [cartItems])
 
-  // 🏷️ 2026-09-15: 총액을 **결제 수단별로** 센다. 교환권(`deal_only=1`)은 딜로 사고 이용권·배송 상품은
-  //    카드로 산다 — 한 숫자로 더하면 "88,000원"(74,500원 + 13,500딜) 같은 존재하지 않는 금액이 나온다.
-  //    라이브 번들을 실제로 렌더해 보고서야 보였다(테스트는 전부 초록이었다).
-  const { totalItems, dealItems, subtotal, shippingFee, dealAmount, cartKind } = useMemo(() => {
-    let count = 0
-    let dealCount = 0
-    let sum = 0
-    let deal = 0
-
-    // 🛡️ 2026-05-19: 판매 종료 (product_is_active=0) 상품은 자동 제외 — 사용자 의도 무관하게
-    //   결제 흐름에서 빠짐 (백엔드도 차단하지만 프론트 calc 도 정합).
-    const isAvailable = (item: CartItem) => item.product_is_active === undefined || Number(item.product_is_active) === 1
-
-    // 선택된 상품들 (판매 종료 자동 제외)
-    const selectedItems = cartItems.filter(item => selectedIds.has(item.id) && isAvailable(item))
-
-    // 셀러별로 그룹화
-    const selectedSellerGroups = selectedItems.reduce((groups, item) => {
-      const sellerId = item.seller_id || 0
-      if (!groups[sellerId]) {
-        groups[sellerId] = {
-          items: [],
-          subtotal: 0,
-          shipping_fee: item.shipping_fee ?? 3000,  // `||` 는 명시한 0 을 3,000 으로 되돌린다
-          free_shipping_threshold: item.free_shipping_threshold || 0,
-        }
-      }
-      groups[sellerId].items.push(item)
-      groups[sellerId].subtotal += (getCartItemPrice(item) * item.quantity)
-      return groups
-    }, {} as Record<string | number, {
-      items: CartItem[]
-      subtotal: number
-      shipping_fee: number
-      free_shipping_threshold: number
-    }>)
-
-    // 전체 상품 개수 및 소계 계산
-    for (const item of selectedItems) {
-      count += item.quantity
-      const line = getCartItemPrice(item) * item.quantity
-      if (isDealOnlyCartItem(item)) { deal += line; dealCount += item.quantity }
-      else sum += line
-    }
-
-    // 셀러별 배송비 계산
-    const totalShippingFee = Object.values(selectedSellerGroups).reduce((total, group) => {
-      // 🛡️ 교환권은 휴대폰 발송, 이용권은 매장 사용 — 둘 다 배송비 없음.
-      const allNoShip = group.items.length > 0 && group.items.every(isNoShippingItem)
-      if (allNoShip) return total
-      // 무료배송 기준액이 설정되어 있고, 해당 셀러의 소계가 기준액 이상이면 배송비 0원
-      if (group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold) {
-        return total
-      }
-      return total + group.shipping_fee
-    }, 0)
-
-    return { totalItems: count, dealItems: dealCount, subtotal: sum, shippingFee: totalShippingFee, dealAmount: deal, cartKind: classifyCart(selectedItems) }
-  }, [cartItems, selectedIds])
+  // 🏷️ 합계는 **순수 함수**가 낸다(`cart/cart-totals.ts`) — 통화가 둘이라 실행해서 재야 하고,
+  //    페이지 안에 두면 렌더 없이는 못 잰다.
+  const { totalItems, dealItems, subtotal, shippingFee, dealAmount, cartKind } =
+    useMemo(() => computeCartTotals(cartItems, selectedIds), [cartItems, selectedIds])
 
   /** 카드로 청구될 금액. 딜은 여기 안 들어간다(통화가 다르다). */
   const total = subtotal + shippingFee

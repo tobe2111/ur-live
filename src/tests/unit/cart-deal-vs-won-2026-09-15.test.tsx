@@ -16,7 +16,9 @@
 import { describe, it, expect } from 'vitest'
 import { render } from '@testing-library/react'
 import { CartSummary } from '@/components/cart/CartSummary'
+import type { CartItem } from '@/types/cart'
 import { readCode } from '../helpers/source-text'
+import { computeCartTotals } from '@/pages/cart/cart-totals'
 
 const txt = (el: HTMLElement) => el.textContent?.replace(/\s+/g, ' ') ?? ''
 
@@ -92,8 +94,35 @@ describe('섞였으면 **누르기 전에** 말한다', () => {
 describe('배선 — CartPage 가 딜을 따로 센다', () => {
   const PAGE = readCode('src/pages/CartPage.tsx')
 
-  it('합계 루프가 딜과 원을 다른 변수에 담는다', () => {
-    expect(PAGE).toMatch(/if \(isDealOnlyCartItem\(item\)\) \{ deal \+= line;[\s\S]{0,60}\}\s*\n\s*else sum \+= line/)
+  // 🔬 문자열이 아니라 **실행해서** 잰다 — 계산은 순수 함수로 빼 두었다(`cart/cart-totals.ts`).
+  it('합계가 딜과 원을 다른 칸에 담는다 (실행 검증)', () => {
+    const items = [
+      { id: 1, product_id: 1, product_name: 'v', quantity: 1, price: 16500, category: 'meal_voucher', seller_id: 11 },
+      { id: 2, product_id: 2, product_name: 'v2', quantity: 2, price: 29000, category: 'beauty_voucher', seller_id: 22 },
+      { id: 3, product_id: 3, product_name: 'd', quantity: 3, price: 4500, category: 'etc_voucher', deal_only: 1, seller_id: null },
+    ] as unknown as CartItem[]
+    const all = new Set<string | number>([1, 2, 3])
+    const t = computeCartTotals(items, all)
+    expect(t.subtotal).toBe(74500)     // 16,500 + 58,000 — 원화만
+    expect(t.dealAmount).toBe(13500)   // 4,500 × 3 — 딜만
+    expect(t.subtotal + t.dealAmount).toBe(88000)  // 이 값이 화면에 뜨면 안 된다(라이브에 떠 있던 값)
+    expect(t.cartKind).toBe('mixed')
+    expect(t.totalItems - t.dealItems).toBe(3)     // 상품금액 줄의 개수 = 원화 품목 수량
+    expect(t.shippingFee).toBe(0)                  // 이용권·교환권은 배송이 없다
+  })
+
+  it('교환권만이면 카드 금액이 0 이고 종류가 deal (실행 검증)', () => {
+    const only = [{ id: 3, product_id: 3, product_name: 'd', quantity: 2, price: 4500, category: 'etc_voucher', deal_only: 1 }] as unknown as CartItem[]
+    const t = computeCartTotals(only, new Set([3]))
+    expect(t).toMatchObject({ subtotal: 0, dealAmount: 9000, cartKind: 'deal' })
+  })
+
+  it('판매 종료 상품은 합계에서 빠진다 (회귀 방지 — 2026-05-19)', () => {
+    const items = [
+      { id: 1, product_id: 1, product_name: 'v', quantity: 1, price: 10000, category: 'meal_voucher', product_is_active: 0 },
+      { id: 2, product_id: 2, product_name: 'v2', quantity: 1, price: 20000, category: 'meal_voucher' },
+    ] as unknown as CartItem[]
+    expect(computeCartTotals(items, new Set([1, 2])).subtotal).toBe(20000)
   })
 
   it('요약에 `dealAmount` 와 `cartKind` 를 넘긴다', () => {
@@ -102,7 +131,6 @@ describe('배선 — CartPage 가 딜을 따로 센다', () => {
 
   it('상품금액 줄의 **개수**에서 교환권 수량을 뺀다 (개수 6 · 금액 3개분 자기모순 방지)', () => {
     expect(PAGE).toMatch(/totalItems=\{totalItems - dealItems\}/)
-    expect(PAGE).toMatch(/dealCount \+= item\.quantity/)
   })
 
   it('버튼이 섞임이면 **비활성** 이고 교환권만이면 "딜로 주문하기" 라고 쓴다', () => {
