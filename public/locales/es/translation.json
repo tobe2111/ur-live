@@ -2634,6 +2634,30 @@
       "pending": "Pendiente (T+7)",
       "conv": "Conversión 30d",
       "console": "Consola de recomendación"
+    },
+    "signup": {
+      "title": "Registro de usuario empresarial",
+      "band": "Registrar mi tienda",
+      "bandStep": "Paso 1 / 3",
+      "bandActive": "Usuario empresarial",
+      "bandPending": "En revisión",
+      "heroTitle": "Registra tu tienda y vende vales en tu UrShop",
+      "heroDesc": "Las ventas se liquidan automáticamente en tu cuenta cada semana. Solo necesitas tu certificado de registro empresarial.",
+      "step1": "Introducir datos",
+      "step1Sub": "Esta pantalla",
+      "step2": "Revisión",
+      "step2Sub": "Inmediata si coincide con Hacienda; si no, 1–2 días hábiles",
+      "step3": "Empezar a vender",
+      "step3Sub": "Tras la aprobación, registra vales en el panel de vendedor",
+      "bizSection": "Datos de la empresa",
+      "bizSectionSub": "Tal como aparece en el certificado. Si coincide con Hacienda se aprueba al instante.",
+      "storeSection": "Datos de la tienda",
+      "storeSectionSub": "Se muestran en tu UrShop y en los vales. Puedes cambiarlos después en el panel.",
+      "note1": "Te avisamos en la app y por KakaoTalk. Si coincide con Hacienda, se aprueba de inmediato.",
+      "note2": "Para cobros en efectivo se requiere una verificación adicional con foto del certificado tras la aprobación (Panel › Datos de empresa).",
+      "progress": "Obligatorios {{filled}} / 5",
+      "submitProgress": "Solicitar ({{filled}}/5 obligatorios)",
+      "submit": "Solicitar"
     }
   },
   "admin": {

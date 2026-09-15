@@ -2634,6 +2634,30 @@
       "pending": "En attente (T+7)",
       "conv": "Conversion 30j",
       "console": "Console de recommandation"
+    },
+    "signup": {
+      "title": "Inscription compte professionnel",
+      "band": "Enregistrer ma boutique",
+      "bandStep": "Étape 1 / 3",
+      "bandActive": "Utilisateur professionnel",
+      "bandPending": "En cours d’examen",
+      "heroTitle": "Enregistrez votre boutique et vendez des bons dans votre UrShop",
+      "heroDesc": "Les ventes sont versées automatiquement sur votre compte chaque semaine. Il suffit de votre certificat d’immatriculation.",
+      "step1": "Saisir les informations",
+      "step1Sub": "Cet écran",
+      "step2": "Examen",
+      "step2Sub": "Immédiat si les données correspondent au fisc, sinon 1 à 2 jours ouvrés",
+      "step3": "Commencer à vendre",
+      "step3Sub": "Après approbation, enregistrez des bons dans le tableau de bord vendeur",
+      "bizSection": "Informations de l’entreprise",
+      "bizSectionSub": "Exactement comme sur le certificat. Une correspondance avec le fisc est approuvée immédiatement.",
+      "storeSection": "Informations de la boutique",
+      "storeSectionSub": "Affichées sur votre UrShop et vos bons. Modifiables ensuite dans le tableau de bord.",
+      "note1": "Résultat par notification dans l’app et KakaoTalk. Correspondance avec le fisc = approbation immédiate.",
+      "note2": "Les versements en espèces nécessitent une vérification photo supplémentaire du certificat après approbation (Tableau de bord › Infos entreprise).",
+      "progress": "Obligatoires {{filled}} / 5",
+      "submitProgress": "Envoyer ({{filled}}/5 obligatoires)",
+      "submit": "Envoyer la demande"
     }
   },
   "admin": {
