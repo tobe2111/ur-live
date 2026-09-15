@@ -172,4 +172,14 @@ export async function runDailyCleanup(DB: D1Database, results: Record<string, nu
       if (r.failed > 0) results.consignment_settlements_failed = r.failed;
     }
   } catch (e) { logError('[Cron] consignment_settlements record error:', { error: String(e) }); }
+
+  // ── 24. 🧺 2026-09-15: 이용권 장바구니 의사(gb_cart_intents) 청소 ──
+  //   결제 시작 때 "무엇을 사는지"를 서버가 적어 두는 표다(복귀 URL 로 돌려받으면 바꿔치기가 통과한다).
+  //   확정되면 consumed_at 이 찍히지만, **결제창에서 이탈한 행은 아무도 안 지운다** — 하루 지난 것을 턴다.
+  //   ⚠️ 게이트(voucher_cart_enabled)가 꺼져 있으면 애초에 행이 안 생겨 no-op 이다. 켜기 전에 배선해 둔다.
+  try {
+    const { purgeStaleCartIntents } = await import('../../features/group-buy/api/cart-intent');
+    const n = await purgeStaleCartIntents(DB);
+    if (n > 0) results.cart_intents_purged = n;
+  } catch (e) { logError('[Cron] cart_intents purge error:', { error: String(e) }); }
 }

@@ -202,8 +202,20 @@ GET /api/admin/promo-ledger/order/:orderNumber      (read-only, finance 권한)
 
 ## S-CART — 이용권 장바구니 결제 (2026-09-15)
 
-게이트: `platform_settings.voucher_cart_enabled` (기본 OFF). **아래를 통과하기 전에는 켜지 않는다.**
+🔑 **스위치가 둘이다. 켤 때 반드시 같이 켠다** (2026-09-15 라이브에서 어긋난 적 있음):
+
+| | 스위치 | 무엇 | 켜는 법 |
+|---|---|---|---|
+| ① | `platform_settings.voucher_cart_enabled = 'true'` | **서버 게이트 = 보안 경계** | 어드민(배포 불필요) |
+| ② | `src/shared/feature-flags.ts` `VOUCHER_CART_UI_ENABLED = true` | 화면의 '담기' 진입점 | 코드 + 배포 |
+
+⚠️ **①만 켜면** 아무도 담을 수 없다(버튼이 없다). **②만 켜면** 담기는 되는데 결제가 403 이라
+**막다른 길**이 된다 — 담은 것이 `cart_items` 에 남고 "장바구니 결제는 아직 준비 중입니다" 만 본다.
+실제로 그 상태로 배포된 적이 있고(2026-09-15), 그래서 ②를 신설해 기본 OFF 로 막았다.
+**아래를 통과하기 전에는 둘 다 켜지 않는다.**
+
 설계: `docs/design/voucher-cart-2026-09.md` · 가드: `src/tests/unit/voucher-cart-checkout-2026-09-15.test.ts`
+· 짝 가드: `src/tests/unit/voucher-cart-gate-pairing-2026-09-15.test.ts`
 
 레포가 못 재는 것만 적는다(D1·Toss 가 필요하다).
 
