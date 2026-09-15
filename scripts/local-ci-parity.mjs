@@ -53,6 +53,28 @@ export function localGateGuards(ymlPath) {
   return ciStrictGuards(ymlPath).filter((g) => !(g in EXCLUDE))
 }
 
+/**
+ * 🩸 2026-09-14 (같은 날 세 번째) — **이름만 뽑으면 절반이 헛돈다.**
+ *
+ * 게이트가 `node scripts/<이름>` 을 맨손으로 돌리고 있었다. 그런데 CI 는
+ * `node scripts/check-file-size.mjs --changed-only -s` 처럼 **플래그**로, 또는
+ * `STRICT_FILE_SIZE: 1` 처럼 **env** 로 strict 를 켠다. 둘 다 버려지니 그 가드들은
+ * 로컬에서 **경고 모드로 통과**한다 — 게이트가 "94개 통과"를 찍고 CI 가 막았다.
+ *
+ * 실측: strict 스텝 97개 중 **플래그 44 · env 8**. 즉 이 게이트가 없애려던 바로 그
+ * "CI 는 차단 · 로컬은 안 막음" 이 게이트 자신 안에 절반쯤 남아 있었다.
+ *
+ * ⇒ 이름이 아니라 **CI 의 명령 그대로** 돌린다. `${'$'}{{ }}` 표현식은 실측 0건이라
+ *   로컬에서 그대로 실행해도 안전하다(있으면 아래가 걸러 낸다).
+ */
+export function localGateSteps(ymlPath = `${WORKFLOW_DIR}/verify.yml`) {
+  const { steps } = collectGuards(ymlPath)
+  return steps
+    .filter((s) => !s.guards.some((g) => g in EXCLUDE))
+    // GitHub 표현식이 든 명령은 로컬에서 뜻이 달라진다 — 돌리지 않는다(현재 0건).
+    .filter((s) => !s.run.includes('${{'))
+}
+
 /** verify.yml 이 **경고로만** 돌리는 가드(`continue-on-error: true`). 게이트 대상 아님. */
 export function ciWarnGuards(ymlPath = `${WORKFLOW_DIR}/verify.yml`) {
   return [...collectGuards(ymlPath).warn].sort()
@@ -130,16 +152,24 @@ function collectGuards(ymlPath) {
   const doc = yaml.load(readFileSync(ymlPath, 'utf8'))
   const strict = new Set()
   const warn = new Set()
+  const steps = []
   for (const job of Object.values(doc?.jobs ?? {})) {
     for (const step of job?.steps ?? []) {
       const run = typeof step?.run === 'string' ? step.run : ''
-      const bucket = step?.['continue-on-error'] === true ? warn : strict
-      for (const m of run.matchAll(/scripts\/(check-[a-z0-9-]+\.(?:mjs|sh))/g)) bucket.add(m[1])
+      const isWarn = step?.['continue-on-error'] === true
+      const bucket = isWarn ? warn : strict
+      const guards = [...run.matchAll(/scripts\/(check-[a-z0-9-]+\.(?:mjs|sh))/g)].map((m) => m[1])
+      for (const g of guards) bucket.add(g)
+      // strict 스텝은 **명령·env 그대로** 보관한다 — 게이트가 CI 와 같은 모드로 돌리려면
+      // 이름만으로는 부족하다(플래그 44 · env 8 이 그 증거다).
+      if (!isWarn && guards.length > 0) {
+        steps.push({ name: String(step?.name ?? guards[0]), run, env: step?.env ?? {}, guards })
+      }
     }
   }
   // 한 가드가 두 스텝에 걸쳐 있으면(경고 1 + 차단 1) 차단이 이긴다 — 안전한 쪽.
   for (const g of strict) warn.delete(g)
-  return { strict, warn }
+  return { strict, warn, steps }
 }
 
 /** verify.yml 에서 "실패하면 CI 가 막는" 가드 스크립트 이름. **이게 판정 기준이다.** */

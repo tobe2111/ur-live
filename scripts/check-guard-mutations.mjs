@@ -1439,8 +1439,15 @@ const MUTATIONS = [
   {
     name: '💰 교환권 마진 SSOT 가 0 을 도로 20 으로 삼킨다 (어드민에서 0% 를 못 만든다)',
     file: 'src/features/admin/api/admin-kt-alpha/markup.ts',
-    find: '  return Math.min(100, Math.max(0, n))\n',
-    replace: '  return Math.min(100, Math.max(0, n || KT_CONSUMER_MARKUP_DEFAULT_PCT))\n',
+    // ⚠️ 앵커에 앞줄을 붙여 둔 이유: 2026-09-14 에 같은 파일로 **셀러 축**
+    //    `resolveKtSellerMarkupPct` 가 들어오면서 클램프 줄이 byte-동일로 두 번이 됐다.
+    //    `Math.min(...)` 한 줄만으로는 어느 함수인지 못 가린다 — 줄이지 말 것.
+    find:
+      '  if (!Number.isFinite(n)) return KT_CONSUMER_MARKUP_DEFAULT_PCT\n' +
+      '  return Math.min(100, Math.max(0, n))\n',
+    replace:
+      '  if (!Number.isFinite(n)) return KT_CONSUMER_MARKUP_DEFAULT_PCT\n' +
+      '  return Math.min(100, Math.max(0, n || KT_CONSUMER_MARKUP_DEFAULT_PCT))\n',
     test: 'src/tests/unit/kt-alpha-markup-zero.test.ts',
     why: '2026-09-02 라이브: 설정 20 → 교환권 2,260개가 액면가 ×1.19. 0 을 넣어도 `|| 20` 이 삼켰다.',
   },
