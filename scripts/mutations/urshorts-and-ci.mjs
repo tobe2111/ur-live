@@ -62,14 +62,16 @@ export default [
       '아무도 모른다 — 야간이 유일한 "하루 한 번은 반드시" 보증이다.',
   },
   {
-    name: '⏱️ 가드 자신을 고쳐도 좁혀 돈다 (fail-safe 제거)',
+    name: '⏱️ 판정 자신을 고쳐도 좁혀 돈다 (fail-safe 제거)',
     file: 'scripts/guard-mutations-scope.mjs',
-    find: "  'scripts/',                        // 가드 스크립트 자신(매니페스트 · 이 파일 포함)",
+    find: "  'scripts/guard-mutations-scope.mjs',",
     replace: '  // (fail-safe 제거됨)',
     test: 'src/tests/unit/guard-mutations-scope.test.ts',
     why:
-      '주입을 새로 추가하는 PR 이 자기 주입을 안 돌리게 된다. 새 주입이 헛돌아도 그 PR 은 초록이고, ' +
-      '전수가 도는 다음 날에야 드러난다 — 그때는 이미 머지돼 있다.',
+      '판정 자신이 바뀌었는데 좁혀 돌면, 그 변경이 다른 주입을 어떻게 판정하는지 아무도 안 본다. ' +
+      '❗2026-09-15 재조준: 예전엔 `scripts/` 접두사 한 줄을 겨눴는데 그 줄이 CI 의 92%를 ' +
+      '전수로 보내고 있어 걷어냈다(측정 근거는 guard-mutations-manifest-diff.mjs 머리주석). ' +
+      '이제 fail-safe 는 **판정 파일 두 개**이고, 주입도 그쪽을 겨눈다.',
   },
   {
     name: '⏱️ 좁힘이 아무것도 안 걸러 --changed 가 무의미해진다',
