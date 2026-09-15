@@ -5498,6 +5498,20 @@ _총 290건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-15**
 - [2026-09-15 — 결재함 오기 정정 · 죽은 PR 둘 닫기 · S1 판정 패널](handoff/2026-09-15-pr-cleanup-and-s1-verdict.md)
+_총 289건 · 최신순 · 이 목록은 자동 생성된다._
+_총 287건 · 최신순 · 이 목록은 자동 생성된다._
+_총 285건 · 최신순 · 이 목록은 자동 생성된다._
+
+**2026-09-14**
+- [2026-09-14 — 유어쇼츠: 위로 되돌아가는 스와이프 + 닫기 버튼 겹침](handoff/2026-09-14-urshorts-swipe-back-and-close-button.md)
+- [2026-09-14 — 숙소 이용권 상세 안 B · 두 상세 부품 통합 · 주소·문구 수리](handoff/2026-09-14-stay-detail-b.md)
+_총 280건 · 최신순 · 이 목록은 자동 생성된다._
+_총 284건 · 최신순 · 이 목록은 자동 생성된다._
+_총 286건 · 최신순 · 이 목록은 자동 생성된다._
+_총 288건 · 최신순 · 이 목록은 자동 생성된다._
+
+**2026-09-15**
+- [2026-09-15 — verify.yml push 트리거 제거 (필수 검사 룰셋과의 충돌)](handoff/2026-09-15-verify-push-trigger.md)
 **2026-09-14**
 - [이용권 관리 — 수정·삭제·정가 (2026-09-14)](handoff/2026-09-14-voucher-manage-actions.md)
 - [2026-09-14 — 유어쇼츠: 위로 되돌아가는 스와이프 + 닫기 버튼 겹침](handoff/2026-09-14-urshorts-swipe-back-and-close-button.md)
@@ -5526,6 +5540,7 @@ _총 290건 · 최신순 · 이 목록은 자동 생성된다._
 - [🏪 매장 등록 문 — 당근식 스텝 위저드 + 막다른 길 셋 (2026-09-07)](handoff/2026-09-07-store-register-wizard.md)
 - [💰 매장 손바뀜 · 귀속 시점 — 잠금 먼저 (2026-09-07)](handoff/2026-09-07-store-handover-money.md)
 - [`/store/new` 매장 등록 — 다크 흰 글자 · 배경 클릭 이탈 (2026-09-07)](handoff/2026-09-07-store-claim-dark-and-backdrop.md)
+- [인플루언서 제안서 — 프리텐다드 이행 + 라이브 화면 재배치 (2026-09-07)](handoff/2026-09-07-proposal-pretendard-live-shots.md)
 - [2026-09-07 — 운영(ops) 역할 신설 + 1인 운영 결재 3건 (대표 "모두 진행")](handoff/2026-09-07-ops-role-and-queue-automation.md)
 - [[E2] 승인 실행기 1회차 — 결재 `2026-09-07-actor-benefit-conflicts` 중 Q3-3 (채널 필수 선택) — PR #1390](handoff/2026-09-07-exec-actor-benefit-conflicts.md)
 - [[E2] 승인 실행기 3회차 — 결재 `2026-09-07-actor-benefit-conflicts` 중 Q4-2 (재원 원칙 폐기 → 예산 아비터) — PR #1394 (draft, 머지 대기)](handoff/2026-09-07-exec-actor-benefit-conflicts-q4.md)
