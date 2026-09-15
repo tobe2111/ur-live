@@ -65,7 +65,7 @@ export default function ScanDeviceManager() {
           <h2 className="text-[14px] font-extrabold text-gray-900">{t('seller.scanDevices.title', { defaultValue: '직원·공기계용 스캔 링크' })}</h2>
         </div>
         <button onClick={issue} disabled={busy}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-brand text-white text-[12px] font-bold disabled:opacity-50">
+          className="ur-btn ur-btn-sm ur-btn-primary flex items-center gap-1 text-[12px] disabled:opacity-50">
           <Plus className="w-3.5 h-3.5" /> {t('seller.scanDevices.issue', { defaultValue: '링크 발급' })}
         </button>
       </div>

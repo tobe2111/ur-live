@@ -80,7 +80,7 @@ export default function VoucherRedeemModal({ totalBalance, onClose, onSuccess }:
     if (!acceptExpiry || !acceptB2B) { toast.error('약관 동의 필요'); return }
     if (needTaxConsent && !acceptTax) { toast.error('원천징수 동의 필요'); return }
     const taxLine = needTaxConsent ? `\n원천징수: ₩${withholdingAmount.toLocaleString()}` : ''
-    if (!(await confirmDialog({ message: `${selected.name} × ${qty} → ${phoneMasked}\n총 차감: ₩${totalDeductWithTax.toLocaleString()}${taxLine}\n\n⚠️ 30일 유효기간 / 환불 불가 동의하신 것 맞나요?`, danger: true }))) return
+    if (!(await confirmDialog({ message: `${selected.name} × ${qty} → ${phoneMasked}\n총 차감: ₩${totalDeductWithTax.toLocaleString()}${taxLine}\n\n30일 유효기간 / 환불 불가 동의하신 것 맞나요?`, danger: true }))) return
     setSubmitting(true)
     try {
       const token = localStorage.getItem('seller_token')
@@ -94,7 +94,7 @@ export default function VoucherRedeemModal({ totalBalance, onClose, onSuccess }:
       if (r.data?.success) {
         const d = r.data.data
         const totalShown = d.total_deduct_with_tax || d.total_deduct
-        toast.success(`✅ 발송 완료 (${d.qty}건, 차감 ₩${totalShown.toLocaleString()})`)
+        toast.success(`발송 완료 (${d.qty}건, 차감 ₩${totalShown.toLocaleString()})`)
         onSuccess()
       }
     } catch (err: unknown) {
@@ -110,7 +110,7 @@ export default function VoucherRedeemModal({ totalBalance, onClose, onSuccess }:
         onClick={(e) => e.stopPropagation()}>
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-bold text-gray-900">🎁 교환권으로 받기</h3>
+            <h3 className="text-lg font-bold text-gray-900">교환권으로 받기</h3>
             <p className="text-xs text-gray-500 mt-0.5">
               잔액 ₩{totalBalance.toLocaleString()} 에서 차감 · KT Alpha (기프티쇼) B2B 정산
             </p>
@@ -119,8 +119,8 @@ export default function VoucherRedeemModal({ totalBalance, onClose, onSuccess }:
         </div>
 
         {/* 🛡️ KT Alpha 가이드라인 — 30일 유효기간 / 환불 불가 / B2B 사전 고지 */}
-        <div className="mx-5 mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-[11px] text-amber-900 space-y-1">
-          <p className="font-bold flex items-center gap-1">⚠️ 발송 전 반드시 확인하세요</p>
+        <div className="mx-5 mt-3 p-3 bg-white border border-rule rounded-lg text-[11px] text-tone-warn space-y-1">
+          <p className="font-bold flex items-center gap-1">발송 전 반드시 확인하세요</p>
           <ul className="list-disc list-inside space-y-0.5 ml-1">
             <li><b>유효기간 30일 고정</b> — 연장 불가</li>
             <li><b>발송 후 환불 / 취소 불가</b> (KT Alpha B2B 쿠폰 정책)</li>
@@ -136,7 +136,7 @@ export default function VoucherRedeemModal({ totalBalance, onClose, onSuccess }:
               onKeyDown={(e) => e.key === 'Enter' && load()}
               placeholder="브랜드명 / 상품명 검색"
               className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm" />
-            <button onClick={load} className="text-xs px-3 py-2 bg-gray-100 rounded-lg">검색</button>
+            <button onClick={load} className="ur-btn ur-btn-sm ur-btn-secondary">검색</button>
           </div>
         </div>
 
@@ -191,10 +191,10 @@ export default function VoucherRedeemModal({ totalBalance, onClose, onSuccess }:
                 <label className="block text-xs font-bold text-gray-700 mb-1.5">받을 휴대폰 (본인 명의 강제)</label>
                 {hasPhone ? (
                   <div className="px-3 py-2 bg-gray-100 border border-gray-200 rounded-lg text-sm font-mono text-gray-700 flex items-center gap-2">
-                    🔒 {phoneMasked}
+                    {phoneMasked}
                   </div>
                 ) : (
-                  <div className="px-3 py-2 bg-red-50 border border-red-300 rounded-lg text-xs text-red-700">
+                  <div className="px-3 py-2 bg-white border border-rule rounded-lg text-xs text-tone-bad">
                     셀러 본인 휴대폰 미등록 — <a href="/seller/profile" className="underline font-bold">설정에서 등록</a>
                   </div>
                 )}
@@ -206,24 +206,24 @@ export default function VoucherRedeemModal({ totalBalance, onClose, onSuccess }:
               <p className="flex justify-between"><span className="text-gray-500">단가 (markup {markupPct}% 포함)</span><span>₩{unitDeduct(selected).toLocaleString()}</span></p>
               <p className="flex justify-between"><span className="text-gray-500">교환권 차감</span><span>₩{totalDeduct.toLocaleString()}</span></p>
               {needTaxConsent && (
-                <p className="flex justify-between text-amber-700">
+                <p className="flex justify-between text-tone-warn">
                   <span>+ 원천징수 ({withholdingRate}%, 비사업자)</span>
                   <span>₩{withholdingAmount.toLocaleString()}</span>
                 </p>
               )}
               <p className="flex justify-between pt-1 border-t border-gray-200"><span className="text-gray-700 font-bold">총 차감액</span><span className="text-base font-extrabold text-brand-text">₩{totalDeductWithTax.toLocaleString()}</span></p>
               {totalDeductWithTax > totalBalance && (
-                <p className="text-red-600 text-[11px] font-bold mt-1">⚠️ 잔액 부족 (보유 ₩{totalBalance.toLocaleString()})</p>
+                <p className="text-tone-bad text-[11px] font-bold mt-1">잔액 부족 (보유 ₩{totalBalance.toLocaleString()})</p>
               )}
             </div>
 
             {/* 🛡️ KT Alpha 가이드라인 — 발송 전 동의 체크박스 강제 */}
-            <div className="bg-white border border-amber-200 rounded p-3 mb-3 space-y-2">
+            <div className="bg-white border border-rule rounded p-3 mb-3 space-y-2">
               <label className="flex items-start gap-2 text-[11px] text-gray-700 cursor-pointer">
                 <input type="checkbox" checked={acceptExpiry} onChange={(e) => setAcceptExpiry(e.target.checked)}
                   className="mt-0.5 w-4 h-4 accent-brand flex-shrink-0" />
                 <span>
-                  <b className="text-amber-700">[필수]</b> 본 교환권은 <b>발행일로부터 30일 유효</b>하며,
+                  <b className="text-tone-warn">[필수]</b> 본 교환권은 <b>발행일로부터 30일 유효</b>하며,
                   발송 후 <b>환불 / 취소 / 유효기간 연장이 불가</b>함을 확인했습니다 (KT Alpha B2B 쿠폰 정책).
                 </span>
               </label>
@@ -231,7 +231,7 @@ export default function VoucherRedeemModal({ totalBalance, onClose, onSuccess }:
                 <input type="checkbox" checked={acceptB2B} onChange={(e) => setAcceptB2B(e.target.checked)}
                   className="mt-0.5 w-4 h-4 accent-brand flex-shrink-0" />
                 <span>
-                  <b className="text-amber-700">[필수]</b> 본 교환권은 <b>유어딜이 자사 셀러(본인)에게 지급하는 B2B 정산 수단</b>이며,
+                  <b className="text-tone-warn">[필수]</b> 본 교환권은 <b>유어딜이 자사 셀러(본인)에게 지급하는 B2B 정산 수단</b>이며,
                   최종 소비자 판매 목적이 아님을 확인했습니다. 본인 명의 휴대폰으로만 발송됩니다.
                 </span>
               </label>
@@ -240,7 +240,7 @@ export default function VoucherRedeemModal({ totalBalance, onClose, onSuccess }:
                   <input type="checkbox" checked={acceptTax} onChange={(e) => setAcceptTax(e.target.checked)}
                     className="mt-0.5 w-4 h-4 accent-brand flex-shrink-0" />
                   <span>
-                    <b className="text-amber-700">[비사업자 필수]</b> 본인은 사업자등록증을 보유하지 않은 개인이며,
+                    <b className="text-tone-warn">[비사업자 필수]</b> 본인은 사업자등록증을 보유하지 않은 개인이며,
                     소득세법 §21 기타소득에 따라 <b>액면가의 {withholdingRate}% (₩{withholdingAmount.toLocaleString()}) 원천징수</b> 후
                     교환권을 수령함에 동의합니다. 연 누계 300만원 초과 시 종합소득 합산 신고 의무가 본인에게 있습니다.
                   </span>
@@ -254,12 +254,12 @@ export default function VoucherRedeemModal({ totalBalance, onClose, onSuccess }:
                 취소
               </button>
               <button onClick={submit} disabled={submitting || !canSubmit}
-                className="flex-1 px-4 py-2 bg-brand text-white text-sm font-bold rounded-lg hover:bg-brand-dark disabled:opacity-50 disabled:cursor-not-allowed">
-                {submitting ? '발송 중...' : `🎁 ₩${totalDeduct.toLocaleString()} 차감 후 발송`}
+                className="ur-btn ur-btn-md ur-btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed">
+                {submitting ? '발송 중...' : `₩${totalDeduct.toLocaleString()} 차감 후 발송`}
               </button>
             </div>
             {!canSubmit && selected && (
-              <p className="text-[10px] text-amber-600 mt-2 text-center">
+              <p className="text-[10px] text-tone-warn mt-2 text-center">
                 {!hasPhone && '· 셀러 본인 휴대폰 등록 필요 '}
                 {(!acceptExpiry || !acceptB2B) && '· 약관 2종 동의 필요 '}
                 {needTaxConsent && !acceptTax && '· 원천징수 동의 필요 '}

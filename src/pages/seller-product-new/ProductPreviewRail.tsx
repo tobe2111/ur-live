@@ -53,7 +53,7 @@ export default function ProductPreviewRail({ formData, categoryLabel }: Props) {
               <div className="mt-1.5 flex items-baseline gap-1.5">
                 <span className="text-lg font-extrabold text-gray-900">{formatWon(price)}</span>
                 {formData.live_price_enabled && Number(formData.live_only_price) > 0 && (
-                  <span className="rounded bg-orange-100 px-1.5 py-0.5 text-[10px] font-bold text-orange-700">
+                  <span className="rounded bg-tone-warn-bg px-1.5 py-0.5 text-[10px] font-bold text-tone-warn">
                     {t('seller.liveOnly')} {formatWon(Number(formData.live_only_price))}
                   </span>
                 )}
@@ -70,12 +70,12 @@ export default function ProductPreviewRail({ formData, categoryLabel }: Props) {
         )}
       </div>
 
-      <div className="rounded-[var(--dash-radius,16px)] border border-amber-200 bg-amber-50 p-4">
-        <div className="mb-2 flex items-center gap-1.5 text-sm font-bold text-amber-800">
+      <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-4">
+        <div className="mb-2 flex items-center gap-1.5 text-sm font-bold text-tone-warn">
           <Lightbulb className="h-4 w-4" />
           {t('seller.products.tipsTitle', { defaultValue: '등록 팁' })}
         </div>
-        <ul className="space-y-1.5 text-xs text-amber-900/80">
+        <ul className="space-y-1.5 text-xs text-tone-warn/80">
           <li>• {t('seller.products.tip1', { defaultValue: '이미지는 정사각형(1:1)이 가장 예쁘게 나와요' })}</li>
           <li>• {t('seller.products.tip2', { defaultValue: '상품명 앞쪽에 핵심 키워드를 넣으세요' })}</li>
           <li>• {t('seller.products.tip3', { defaultValue: '등록 후에도 언제든 수정할 수 있어요' })}</li>

@@ -269,16 +269,16 @@ export default function SellerInventoryPage() {
 
       {/* 재고 부족 알림 */}
       {alerts.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+        <div className="bg-white border border-rule rounded-xl p-4">
           <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle className="w-4 h-4 text-amber-600" />
-            <h3 className="text-sm font-semibold text-amber-800">{t('seller.lowStockProducts', { count: alerts.length })}</h3>
+            <AlertTriangle className="w-4 h-4 text-tone-warn" />
+            <h3 className="text-sm font-semibold text-tone-warn">{t('seller.lowStockProducts', { count: alerts.length })}</h3>
           </div>
           <div className="space-y-1">
             {alerts.slice(0, 5).map(p => (
               <div key={p.id} className="flex items-center justify-between text-xs">
-                <span className="text-amber-700">{p.name}</span>
-                <span className="font-bold text-red-600">{t('seller.remainingStock', { count: p.stock })}</span>
+                <span className="text-tone-warn">{p.name}</span>
+                <span className="font-bold text-tone-bad">{t('seller.remainingStock', { count: p.stock })}</span>
               </div>
             ))}
           </div>
@@ -313,13 +313,13 @@ export default function SellerInventoryPage() {
                 </p>
               </div>
               <div className="text-right">
-                <p className={`text-sm font-bold ${p.stock <= (p.min_stock_alert || 5) ? 'text-red-600' : 'text-gray-900'}`}>
+                <p className={`text-sm font-bold ${p.stock <= (p.min_stock_alert || 5) ? 'text-tone-bad' : 'text-gray-900'}`}>
                   {p.stock}{t('common.count')}
                 </p>
                 {!p.barcode && (
                   <button
                     onClick={e => { e.stopPropagation(); generateBarcode(p.id) }}
-                    className="text-[10px] text-blue-600 font-medium mt-0.5"
+                    className="text-[10px] text-gray-700 font-medium mt-0.5"
                   >
                     <QrCode className="w-3 h-3 inline" /> {t('seller.generateButton')}
                   </button>
@@ -337,7 +337,7 @@ export default function SellerInventoryPage() {
           <div className="relative rounded-[var(--dash-radius,16px)] border border-rule bg-white-xl w-full max-w-lg max-h-[85dvh] overflow-y-auto">
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-900">{selectedProduct.name}</h3>
-              <button onClick={() => setShowModal(false)} aria-label={t('common.close')} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
+              <button onClick={() => setShowModal(false)} aria-label={t('common.close')} className="ur-btn ur-btn-sm ur-btn-icon ur-btn-ghost"><X className="h-5 w-5" /></button>
             </div>
             <div className="p-5 space-y-4">
               {/* 바코드 표시 + 다운로드/인쇄 */}
@@ -411,9 +411,9 @@ export default function SellerInventoryPage() {
               )}
 
               {/* 현재 재고 */}
-              <div className="flex items-center justify-between p-3 bg-blue-50 rounded-xl">
+              <div className="flex items-center justify-between p-3 border border-rule bg-white rounded-xl">
                 <span className="text-sm text-gray-700">{t('common.stock')}</span>
-                <span className={`text-xl font-bold ${selectedProduct.stock <= (selectedProduct.min_stock_alert || 5) ? 'text-red-600' : 'text-blue-600'}`}>
+                <span className={`text-xl font-bold ${selectedProduct.stock <= (selectedProduct.min_stock_alert || 5) ? 'text-tone-bad' : 'text-gray-900'}`}>
                   {selectedProduct.stock}{t('common.count')}
                 </span>
               </div>
@@ -497,7 +497,7 @@ export default function SellerInventoryPage() {
           <div className="relative rounded-[var(--dash-radius,16px)] border border-rule bg-white-xl w-full max-w-md overflow-hidden">
             <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                <Camera className="w-4 h-4 text-blue-600" />
+                <Camera className="w-4 h-4 text-gray-700" />
                 {t('seller.barcodeScan')}
               </h3>
               <button onClick={stopCamera} className="text-gray-400 hover:text-gray-600">
@@ -513,17 +513,17 @@ export default function SellerInventoryPage() {
                 className="w-full aspect-[4/3] object-cover"
               />
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="w-64 h-24 border-2 border-blue-400 rounded-lg opacity-70" />
+                <div className="w-64 h-24 border-2 border-white rounded-lg opacity-70" />
               </div>
             </div>
             <div className="p-4 space-y-3">
               {!('BarcodeDetector' in window) && (
-                <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
+                <p className="text-xs text-tone-warn border border-rule bg-white px-3 py-2 rounded-lg">
                   {t('seller.noBarcodeDetector')}
                 </p>
               )}
               {'BarcodeDetector' in window && (
-                <p className="text-xs text-blue-600 bg-blue-50 px-3 py-2 rounded-lg">
+                <p className="text-xs text-gray-700 border border-rule bg-white px-3 py-2 rounded-lg">
                   {t('seller.barcodeAutoDetect')}
                 </p>
               )}

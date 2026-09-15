@@ -91,7 +91,7 @@ describe('C — 정산 탭 안의 소개 수익', () => {
 })
 
 describe('세부 페이지 정리 — 옛 패턴 0 (래칫)', () => {
-  const files = execSync("git ls-files 'src/pages/Seller*.tsx' 'src/pages/seller-*/**/*.tsx' 'src/components/seller/*.tsx'", { encoding: 'utf8' }).trim().split('\n')
+  const files = execSync("git ls-files ':(glob)src/pages/Seller*.tsx' ':(glob)src/pages/seller-*/**/*.tsx' ':(glob)src/components/seller/**/*.tsx'", { encoding: 'utf8' }).trim().split('\n')
   it('대상 파일이 충분히 있다 — 경로가 낡으면 통과가 아니라 실패', () => { expect(files.length).toBeGreaterThan(60) })
   it('그림자 카드 · 검은 토글 · rounded-2xl 이 셀러 표면에 없다', () => {
     const bad: string[] = []

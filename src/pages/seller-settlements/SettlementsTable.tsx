@@ -15,10 +15,10 @@ export default function SettlementsTable({ settlements, onDownload }: {
 
   function getStatusBadge(status: string) {
     const styles: Record<string, string> = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      approved: 'bg-blue-100 text-blue-800',
-      paid: 'bg-green-100 text-green-800',
-      rejected: 'bg-red-100 text-red-800'
+      pending: 'bg-tone-warn-bg text-tone-warn',
+      approved: 'bg-tone-info-bg text-tone-info',
+      paid: 'bg-tone-ok-bg text-tone-ok',
+      rejected: 'bg-tone-bad-bg text-tone-bad'
     }
 
     const labels: Record<string, string> = {
@@ -96,12 +96,12 @@ export default function SettlementsTable({ settlements, onDownload }: {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-red-600 font-medium">
+                    <div className="text-sm text-tone-bad font-medium">
                       -₩{formatNumber(settlement.commission_amount)}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-green-600 font-bold">
+                    <div className="text-sm text-tone-ok font-bold">
                       ₩{formatNumber(settlement.settlement_amount)}
                     </div>
                   </td>
@@ -109,12 +109,12 @@ export default function SettlementsTable({ settlements, onDownload }: {
                     {getStatusBadge(settlement.status)}
                     {/* 🛡️ 배치 170: 예상 입금일 표시 */}
                     {settlement.status === 'pending' && (
-                      <p className="text-[10px] text-amber-600 mt-0.5">
+                      <p className="text-[10px] text-tone-warn mt-0.5">
                         {t('seller.settlementEstimate', '예상 입금: 요청 후 영업일 3~5일')}
                       </p>
                     )}
                     {settlement.status === 'approved' && (
-                      <p className="text-[10px] text-blue-600 mt-0.5">
+                      <p className="text-[10px] text-gray-700 mt-0.5">
                         {t('seller.settlementApprovedEstimate', '입금 예정: 1~2 영업일 내')}
                       </p>
                     )}

@@ -23,7 +23,7 @@ export default function SaleSettingsStep({ form, update, showAdvanced, setShowAd
     <div className="space-y-4">
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <div className="flex items-center gap-2 mb-4">
-          <Users className="w-5 h-5 text-blue-500" />
+          <Users className="w-5 h-5 text-gray-700" />
           <h2 className="text-base font-bold text-gray-900">{t('seller.mealVoucher.groupBuySettings')}</h2>
         </div>
 
@@ -91,7 +91,7 @@ export default function SaleSettingsStep({ form, update, showAdvanced, setShowAd
             onClick={() => setShowAdvanced(v => !v)}
             className="w-full flex items-center justify-between py-2 px-3 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm font-medium text-gray-700 transition"
           >
-            <span>⚙️ 고급 설정 (이용약관 · 예약 링크)</span>
+            <span>고급 설정 (이용약관 · 예약 링크)</span>
             <span className="text-xs text-gray-400">{showAdvanced ? '접기 ▲' : '펼치기 ▼'}</span>
           </button>
 
@@ -111,7 +111,7 @@ export default function SaleSettingsStep({ form, update, showAdvanced, setShowAd
           {/* 외부 예약 링크 — 숙소/뷰티 사전 예약 필수 카테고리 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              📅 외부 예약 링크 <span className="text-[11px] text-gray-400">(숙소/뷰티 등 예약 필수 카테고리)</span>
+              외부 예약 링크 <span className="text-[11px] text-gray-400">(숙소/뷰티 등 예약 필수 카테고리)</span>
             </label>
             <input
               type="url"

@@ -98,14 +98,14 @@ export default function Seller2FASetupPage() {
         />
 
         {/* 현재 상태 */}
-        <div className={`rounded-[var(--dash-radius,16px)] p-5 border-2 flex items-center gap-4 ${enabled ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
+        <div className={`rounded-[var(--dash-radius,16px)] p-5 border-2 flex items-center gap-4 ${enabled ? 'bg-white border-rule' : 'bg-white border-rule'}`}>
           {enabled ? (
-            <ShieldCheck className="w-10 h-10 text-green-600 shrink-0" />
+            <ShieldCheck className="w-10 h-10 text-tone-ok shrink-0" />
           ) : (
-            <ShieldAlert className="w-10 h-10 text-amber-600 shrink-0" />
+            <ShieldAlert className="w-10 h-10 text-tone-warn shrink-0" />
           )}
           <div className="flex-1">
-            <p className={`text-sm font-bold ${enabled ? 'text-green-700' : 'text-amber-700'}`}>
+            <p className={`text-sm font-bold ${enabled ? 'text-tone-ok' : 'text-tone-warn'}`}>
               {enabled ? '2FA 활성화됨' : '2FA 비활성화 상태'}
             </p>
             <p className="text-xs text-gray-600 mt-0.5">
@@ -200,13 +200,13 @@ export default function Seller2FASetupPage() {
               value={code}
               onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
               placeholder="000000"
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-xl font-mono text-center text-gray-900 focus:border-red-500 focus:outline-none tracking-widest"
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-xl font-mono text-center text-gray-900 focus:border-brand focus:outline-none tracking-widest"
               autoComplete="one-time-code"
             />
             <button
               onClick={disable2fa}
               disabled={submitting || code.length !== 6}
-              className="w-full px-6 py-3 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white rounded-xl text-sm font-bold"
+              className="ur-btn ur-btn-lg ur-btn-danger w-full"
             >
               {submitting ? '처리 중…' : '비활성화'}
             </button>

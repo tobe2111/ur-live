@@ -19,7 +19,7 @@ export default function FormSection({ title, desc, icon, aside, children }: Prop
       <div className="mb-4 flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
           {icon && (
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-500">
               {icon}
             </div>
           )}

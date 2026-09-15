@@ -22,7 +22,7 @@ import {
   CheckCircle2,
   AlertCircle,
   ExternalLink,
-  Truck
+  Truck, MessageCircle, Lock
 } from 'lucide-react'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types 를 ./seller-profile-edit/types 로 추출.
@@ -362,16 +362,16 @@ export default function SellerProfileEditPage() {
 
         {/* Success/Error Messages */}
         {successMessage && (
-          <div className="flex items-center gap-3 rounded-[var(--dash-radius,16px)] border border-emerald-200 bg-emerald-50 p-4">
-            <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-emerald-600" />
-            <p className="text-sm font-medium text-emerald-700">{successMessage}</p>
+          <div className="flex items-center gap-3 rounded-[var(--dash-radius,16px)] border border-rule bg-white p-4">
+            <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-tone-ok" />
+            <p className="text-sm font-medium text-tone-ok">{successMessage}</p>
           </div>
         )}
 
         {errorMessage && (
-          <div className="flex items-center gap-3 rounded-[var(--dash-radius,16px)] border border-red-200 bg-red-50 p-4">
-            <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-600" />
-            <p className="text-sm font-medium text-red-700">{errorMessage}</p>
+          <div className="flex items-center gap-3 rounded-[var(--dash-radius,16px)] border border-rule bg-white p-4">
+            <AlertCircle className="h-5 w-5 flex-shrink-0 text-tone-bad" />
+            <p className="text-sm font-medium text-tone-bad">{errorMessage}</p>
           </div>
         )}
 
@@ -557,8 +557,8 @@ export default function SellerProfileEditPage() {
           {/* 카카오 계정 연동 — 이메일/비번 셀러가 카카오 로그인 활성화 */}
           <div className="apple-card p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-[#fee500]/10 rounded-full flex items-center justify-center">
-                <span className="text-lg">💬</span>
+              <div className="w-10 h-10 bg-gray-100 text-gray-500 rounded-full flex items-center justify-center">
+                <MessageCircle className="h-5 w-5" />
               </div>
               <div>
                 <h2 className="text-[17px] font-semibold text-[#1d1d1f]">카카오 계정 연동</h2>
@@ -571,8 +571,8 @@ export default function SellerProfileEditPage() {
           {/* 보안 PIN — 민감 액션(정산/계좌) 추가 인증 */}
           <div className="apple-card p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-[#34c759]/10 rounded-full flex items-center justify-center">
-                <span className="text-lg">🔐</span>
+              <div className="w-10 h-10 bg-gray-100 text-gray-500 rounded-full flex items-center justify-center">
+                <Lock className="h-5 w-5" />
               </div>
               <div>
                 <h2 className="text-[17px] font-semibold text-[#1d1d1f]">보안 PIN</h2>
@@ -602,8 +602,8 @@ export default function SellerProfileEditPage() {
                 placeholder="https://open.kakao.com/o/..."
                 className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
               />
-              <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                <div className="flex gap-2 text-[11px] text-orange-800">
+              <div className="mt-3 p-3 bg-white border border-rule rounded-lg">
+                <div className="flex gap-2 text-[11px] text-tone-warn">
                   <AlertCircle className="h-4 w-4 flex-shrink-0" />
                   <div>
                     <p className="font-semibold mb-1">{t('seller.externalTradeWarningTitle')}</p>
@@ -680,7 +680,7 @@ export default function SellerProfileEditPage() {
               </div>
             </div>
 
-            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg flex gap-2 text-[11px] text-blue-800">
+            <div className="mt-3 p-3 bg-white border border-rule rounded-lg flex gap-2 text-[11px] text-gray-700">
               <AlertCircle className="h-4 w-4 flex-shrink-0" />
               <p>{t('seller.shippingServerNote', { defaultValue: '교환권(딜 결제)은 배송비가 부과되지 않으며, 실제 결제 배송비는 주문 시 서버에서 이 설정으로 계산됩니다.' })}</p>
             </div>

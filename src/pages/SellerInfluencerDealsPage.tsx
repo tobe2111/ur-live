@@ -58,12 +58,12 @@ export default function SellerInfluencerDealsPage() {
 
   function statusBadge(status: string): { label: string; cls: string } {
     if (status === 'active') {
-      return { label: t('seller.influencerDeals.statusActive', { defaultValue: '활성' }), cls: 'bg-emerald-100 text-emerald-700 border-emerald-200' }
+      return { label: t('seller.influencerDeals.statusActive', { defaultValue: '활성' }), cls: 'bg-white text-tone-ok border-rule' }
     }
     if (status === 'rejected') {
-      return { label: t('seller.influencerDeals.statusRejected', { defaultValue: '거절됨' }), cls: 'bg-red-100 text-red-700 border-red-200' }
+      return { label: t('seller.influencerDeals.statusRejected', { defaultValue: '거절됨' }), cls: 'bg-white text-tone-bad border-rule' }
     }
-    return { label: t('seller.influencerDeals.statusProposed', { defaultValue: '제안됨' }), cls: 'bg-blue-100 text-blue-700 border-blue-200' }
+    return { label: t('seller.influencerDeals.statusProposed', { defaultValue: '제안됨' }), cls: 'bg-white text-gray-700 border-rule' }
   }
 
   async function submitPropose() {
@@ -171,9 +171,9 @@ export default function SellerInfluencerDealsPage() {
         />
 
         {/* 적용 범위 안내 — 재원 주장 없이 중립 카피만 */}
-        <div className="flex items-start gap-2.5 rounded-[var(--dash-radius,16px)] border border-blue-200 bg-blue-50 px-4 py-3">
-          <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
-          <p className="text-[11px] leading-relaxed text-blue-700">
+        <div className="flex items-start gap-2.5 rounded-[var(--dash-radius,16px)] border border-rule bg-white px-4 py-3">
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-gray-700" />
+          <p className="text-[11px] leading-relaxed text-gray-700">
             {t('seller.influencerDeals.pinNote', { defaultValue: '우대 커미션은 소개(핀)로 팔린 건에만 적용됩니다.' })}
           </p>
         </div>
@@ -249,14 +249,14 @@ export default function SellerInfluencerDealsPage() {
                 />
               </div>
               {/* 🎬 WP-B: 콘텐츠 인증 조건 (opt-in — 미체크 시 기존 무조건부 흐름과 동일) */}
-              <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+              <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-rule bg-white px-3 py-2.5">
                 <input
                   type="checkbox"
                   checked={form.requires_content_proof}
                   onChange={(e) => setForm((f) => ({ ...f, requires_content_proof: e.target.checked }))}
                   className="mt-0.5 h-4 w-4 shrink-0 accent-amber-600"
                 />
-                <span className="text-[11px] leading-relaxed text-amber-800">
+                <span className="text-[11px] leading-relaxed text-tone-warn">
                   <b className="font-bold">{t('seller.influencerDeals.proofGateLabel', { defaultValue: '콘텐츠 게시 인증 시 발효' })}</b>
                   {' — '}
                   {t('seller.influencerDeals.proofGateDesc', { defaultValue: '상대가 콘텐츠(블로그/SNS)를 게시하고 링크를 제출한 뒤, 내가 확인·승인해야 우대 커미션이 발효됩니다. 승인 전 판매분은 기본 커미션이 적용됩니다.' })}
@@ -289,17 +289,17 @@ export default function SellerInfluencerDealsPage() {
         {dealsQ.isLoading ? (
           <DashboardLoading />
         ) : dealsQ.isError ? (
-          <div className="rounded-[var(--dash-radius,16px)] border border-red-200 bg-red-50 p-6 text-center">
-            <p className="text-sm font-bold text-red-700">
+          <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-6 text-center">
+            <p className="text-sm font-bold text-tone-bad">
               {t('seller.influencerDeals.loadFailed', { defaultValue: '협업 deal 을 불러오지 못했습니다' })}
             </p>
-            <p className="mt-1 text-xs text-red-500">
+            <p className="mt-1 text-xs text-tone-bad">
               {t('seller.influencerDeals.loadFailedDesc', { defaultValue: '네트워크 상태를 확인한 뒤 다시 시도해주세요.' })}
             </p>
             <button
               type="button"
               onClick={() => dealsQ.refetch()}
-              className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-red-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-red-700"
+              className="ur-btn ur-btn-sm ur-btn-secondary mt-3 gap-1.5"
             >
               <RefreshCw className="h-3.5 w-3.5" />
               {t('seller.influencerDeals.retry', { defaultValue: '재시도' })}
@@ -357,16 +357,16 @@ export default function SellerInfluencerDealsPage() {
                         {d.message && <p className="mt-0.5 truncate text-[10px] italic text-gray-600">&ldquo;{d.message}&rdquo;</p>}
                         {/* 🎬 WP-B: 조건부 딜 인증 상태 */}
                         {isConditional && d.status !== 'active' && (
-                          <p className="mt-1 text-[10px] font-medium text-amber-700">
+                          <p className="mt-1 text-[10px] font-medium text-tone-warn">
                             {d.proof_status === 'submitted'
                               ? t('seller.influencerDeals.proofSubmitted', { defaultValue: '콘텐츠 인증 제출됨 — 검토 필요' })
                               : d.proof_status === 'rejected'
                                 ? t('seller.influencerDeals.proofRejectedLabel', { defaultValue: '↩︎ 인증 반려됨 — 재제출 대기' })
-                                : t('seller.influencerDeals.proofPending', { defaultValue: '⏳ 콘텐츠 게시·링크 제출 대기 중' })}
+                                : t('seller.influencerDeals.proofPending', { defaultValue: '콘텐츠 게시·링크 제출 대기 중' })}
                             {d.proof_url && (
                               <>
                                 {' · '}
-                                <a href={d.proof_url} target="_blank" rel="noopener noreferrer" className="underline hover:text-amber-900">
+                                <a href={d.proof_url} target="_blank" rel="noopener noreferrer" className="underline hover:text-tone-warn">
                                   {t('seller.influencerDeals.viewProof', { defaultValue: '콘텐츠 보기 ↗' })}
                                 </a>
                               </>
@@ -383,7 +383,7 @@ export default function SellerInfluencerDealsPage() {
                             type="button"
                             disabled={responding != null}
                             onClick={() => reviewProof(d, 'approve')}
-                            className="inline-flex items-center gap-1 rounded-full border border-emerald-200 px-3 py-1.5 text-[11px] font-bold text-emerald-600 hover:bg-emerald-50 disabled:opacity-40"
+                            className="inline-flex items-center gap-1 rounded-full border border-transparent px-3 py-1.5 text-[11px] font-bold text-tone-ok hover:bg-gray-100 disabled:opacity-40"
                           >
                             <Check className="h-3 w-3" />
                             {t('seller.influencerDeals.approveProof', { defaultValue: '인증 승인' })}
@@ -392,7 +392,7 @@ export default function SellerInfluencerDealsPage() {
                             type="button"
                             disabled={responding != null}
                             onClick={() => reviewProof(d, 'reject')}
-                            className="inline-flex items-center gap-1 rounded-full border border-red-200 px-3 py-1.5 text-[11px] font-bold text-red-600 hover:bg-red-50 disabled:opacity-40"
+                            className="inline-flex items-center gap-1 rounded-full border border-transparent px-3 py-1.5 text-[11px] font-bold text-tone-bad hover:bg-gray-100 disabled:opacity-40"
                           >
                             <X className="h-3 w-3" />
                             {t('seller.influencerDeals.rejectProof', { defaultValue: '반려' })}
@@ -405,7 +405,7 @@ export default function SellerInfluencerDealsPage() {
                             type="button"
                             disabled={responding != null}
                             onClick={() => respond(d, 'accept')}
-                            className="inline-flex items-center gap-1 rounded-full border border-emerald-200 px-3 py-1.5 text-[11px] font-bold text-emerald-600 hover:bg-emerald-50 disabled:opacity-40"
+                            className="inline-flex items-center gap-1 rounded-full border border-transparent px-3 py-1.5 text-[11px] font-bold text-tone-ok hover:bg-gray-100 disabled:opacity-40"
                           >
                             <Check className="h-3 w-3" />
                             {t('seller.influencerDeals.accept', { defaultValue: '수락' })}
@@ -414,7 +414,7 @@ export default function SellerInfluencerDealsPage() {
                             type="button"
                             disabled={responding != null}
                             onClick={() => respond(d, 'reject')}
-                            className="inline-flex items-center gap-1 rounded-full border border-red-200 px-3 py-1.5 text-[11px] font-bold text-red-600 hover:bg-red-50 disabled:opacity-40"
+                            className="inline-flex items-center gap-1 rounded-full border border-transparent px-3 py-1.5 text-[11px] font-bold text-tone-bad hover:bg-gray-100 disabled:opacity-40"
                           >
                             <X className="h-3 w-3" />
                             {t('seller.influencerDeals.reject', { defaultValue: '거절' })}

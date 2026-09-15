@@ -169,7 +169,7 @@ export default function SellerAlimtalkPage() {
   const headerRight = (
     <div className="flex items-center gap-2">
       <span className="text-xs text-gray-400">{t('seller.remainingCredits')}</span>
-      <span className={`text-sm font-bold ${balance > 0 ? 'text-blue-600' : 'text-red-500'}`}>
+      <span className={`text-sm font-bold ${balance > 0 ? 'text-gray-700' : 'text-tone-bad'}`}>
         {formatNumber(balance)}{t('seller.creditsUnit')}
       </span>
       <button
@@ -208,7 +208,7 @@ export default function SellerAlimtalkPage() {
             <button
               key={id}
               onClick={() => setActiveTab(id)}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${activeTab === id ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${activeTab === id ? 'border-brand text-brand-text' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
             >
               <Icon className="w-4 h-4" /> {label}
             </button>
@@ -230,13 +230,13 @@ export default function SellerAlimtalkPage() {
                   <p className="text-sm font-medium text-gray-900">{item.trigger}</p>
                   <p className="text-xs text-gray-400 mt-0.5">{item.desc}</p>
                 </div>
-                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${item.active ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-400'}`}>
+                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${item.active ? 'bg-tone-ok-bg text-tone-ok' : 'bg-gray-100 text-gray-400'}`}>
                   {item.active ? t('seller.activeStatus') : t('seller.preparingStatus')}
                 </span>
               </div>
             ))}
-            <div className="p-4 bg-yellow-50">
-              <p className="text-xs text-yellow-700">
+            <div className="p-4 border border-rule bg-white">
+              <p className="text-xs text-tone-warn">
                 {t('seller.kakaoTemplateNote')}
               </p>
             </div>
@@ -263,7 +263,7 @@ export default function SellerAlimtalkPage() {
                       <p className="text-xs text-gray-400">{formatKST(tx.created_at)}</p>
                     </div>
                     <div className="text-right">
-                      <p className={`text-sm font-semibold ${tx.amount > 0 ? 'text-blue-600' : 'text-gray-500'}`}>
+                      <p className={`text-sm font-semibold ${tx.amount > 0 ? 'text-gray-700' : 'text-gray-500'}`}>
                         {tx.amount > 0 ? '+' : ''}{formatNumber(tx.amount)}{t('seller.creditsUnit')}
                       </p>
                       {tx.price_paid && (
@@ -281,7 +281,7 @@ export default function SellerAlimtalkPage() {
         {activeTab === 'logs' && (
           <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white">
             {logsLoading ? (
-              <div className="py-12 text-center"><Loader2 className="w-6 h-6 animate-spin text-blue-500 mx-auto" /></div>
+              <div className="py-12 text-center"><Loader2 className="w-6 h-6 animate-spin text-brand-text mx-auto" /></div>
             ) : logs.length === 0 ? (
               <div className="py-16 text-center">
                 <History className="w-10 h-10 text-gray-200 mx-auto mb-3" />
@@ -292,15 +292,15 @@ export default function SellerAlimtalkPage() {
                 {logs.map(log => (
                   <div key={log.id} className="flex items-start gap-3 px-4 py-3">
                     {log.success
-                      ? <CheckCircle2 className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-                      : <XCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+                      ? <CheckCircle2 className="w-4 h-4 text-tone-ok mt-0.5 flex-shrink-0" />
+                      : <XCircle className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                     }
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-gray-800">
                         {log.receiver.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3')}
                         {log.order_id && <span className="text-xs text-gray-400 ml-2">{t('seller.orderLabelPrefix')} {log.order_id}</span>}
                       </p>
-                      {log.error_msg && <p className="text-xs text-red-400">{log.error_msg}</p>}
+                      {log.error_msg && <p className="text-xs text-gray-400">{log.error_msg}</p>}
                       <p className="text-xs text-gray-400">{formatKST(log.created_at)}</p>
                     </div>
                   </div>
@@ -329,16 +329,16 @@ export default function SellerAlimtalkPage() {
                   <button
                     key={pkg.id}
                     onClick={() => setSelectedPkgId(pkg.id)}
-                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-colors ${isSelected ? 'border-blue-600 bg-blue-50' : 'border-gray-100 hover:border-gray-200'}`}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-colors ${isSelected ? 'border-brand bg-brand-tint' : 'border-gray-100 hover:border-gray-200'}`}
                   >
                     <div className="flex items-center gap-3">
-                      <Package className={`w-4 h-4 ${isSelected ? 'text-blue-600' : 'text-gray-400'}`} />
+                      <Package className={`w-4 h-4 ${isSelected ? 'text-gray-700' : 'text-gray-400'}`} />
                       <div className="text-left">
-                        <p className={`text-sm font-semibold ${isSelected ? 'text-blue-700' : 'text-gray-800'}`}>{pkg.label}</p>
+                        <p className={`text-sm font-semibold ${isSelected ? 'text-gray-700' : 'text-gray-800'}`}>{pkg.label}</p>
                         <p className="text-xs text-gray-400">{t('seller.perUnit', { price: unitPrice })}</p>
                       </div>
                     </div>
-                    <p className={`text-sm font-bold ${isSelected ? 'text-blue-700' : 'text-gray-700'}`}>
+                    <p className={`text-sm font-bold ${isSelected ? 'text-gray-700' : 'text-gray-700'}`}>
                       {formatNumber(pkg.price)}{t('common.won')}
                     </p>
                   </button>

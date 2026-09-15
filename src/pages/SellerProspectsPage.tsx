@@ -10,6 +10,7 @@
  */
 
 import { useState } from 'react'
+import { Handshake } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
@@ -142,7 +143,7 @@ export default function SellerProspectsPage() {
       <div className="min-h-screen bg-gray-50 pb-24">
         <header className="sticky top-0 z-20 bg-white border-b border-gray-200">
           <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-            <h1 className="text-lg font-bold text-gray-900">🤝 매장 영입 관리</h1>
+            <h1 className="text-lg font-bold text-gray-900">매장 영입 관리</h1>
             <button
               onClick={() => setShowAdd(true)}
               className="ur-btn ur-btn-sm ur-btn-primary"
@@ -154,7 +155,7 @@ export default function SellerProspectsPage() {
 
         {/* 가이드 */}
         <div className="max-w-3xl mx-auto px-4 py-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-900 leading-relaxed">
+          <div className="bg-white border border-rule rounded-xl p-3 text-xs text-gray-700 leading-relaxed">
             <strong>영업 가이드</strong>
             <ol className="list-decimal ml-4 mt-1 space-y-0.5">
               <li>매장 방문 / 미팅 후 "+ 매장 사전 등록" 클릭</li>
@@ -171,7 +172,7 @@ export default function SellerProspectsPage() {
             <div className="text-center py-12 text-gray-400 text-sm">로딩 중...</div>
           ) : prospects.length === 0 ? (
             <div className="text-center py-16">
-              <p className="text-4xl mb-3">🤝</p>
+              <Handshake className="mx-auto mb-3 h-10 w-10 text-gray-300" />
               <p className="text-sm text-gray-500">아직 등록한 prospect 가 없습니다</p>
             </div>
           ) : (
@@ -197,9 +198,9 @@ export default function SellerProspectsPage() {
                   {p.status === 'converted' && (
                     <div className="mt-2 pt-2 border-t border-gray-100 text-[11px] text-gray-600">
                       {p.first_sale_at ? (
-                        <span className="text-green-600 font-bold">✅ 첫 매출 발생 — commission 활성</span>
+                        <span className="text-tone-ok font-bold">첫 매출 발생. 커미션 활성</span>
                       ) : (
-                        <span>⏳ 첫 매출 대기 중</span>
+                        <span>첫 매출 대기 중</span>
                       )}
                     </div>
                   )}
@@ -212,13 +213,13 @@ export default function SellerProspectsPage() {
                         {/* 🏁 2026-07-02 대리 등록: 사장님은 이 링크로 카카오 로그인+확인만 — 정보 재입력 0 */}
                         <button
                           onClick={() => copyInviteLink(p.id)}
-                          className="text-[10px] font-bold text-emerald-700 hover:underline"
+                          className="text-[10px] font-bold text-brand-text hover:underline"
                         >
                           가입 링크 복사
                         </button>
                         <button
                           onClick={() => remove(p.id)}
-                          className="text-[10px] text-red-500 hover:underline"
+                          className="text-[10px] text-brand-text hover:underline"
                         >
                           회수
                         </button>
@@ -300,7 +301,7 @@ export default function SellerProspectsPage() {
                 {form.proof_image_url && (
                   <img src={form.proof_image_url} alt="증빙" className="mt-2 w-full h-32 object-cover rounded-lg" />
                 )}
-                {uploadingProof && <p className="text-[11px] text-gray-400 mt-1">⏳ 업로드 중...</p>}
+                {uploadingProof && <p className="text-[11px] text-gray-400 mt-1">업로드 중...</p>}
                 <p className="text-[11px] text-gray-500 mt-1">매장 간판 또는 명함 사진 — admin 검증 시 commission lock-in 가속</p>
               </div>
               <div className="flex gap-2 pt-2">

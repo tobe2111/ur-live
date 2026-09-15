@@ -98,7 +98,7 @@ export default function SellerCouponsPage() {
             {coupons.map(c => (
               <div key={c.id} className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Ticket className="w-5 h-5 text-blue-500" />
+                  <Ticket className="w-5 h-5 text-gray-700" />
                   <div>
                     <p className="text-sm font-bold text-gray-900">{c.name} <span className="text-xs font-mono text-gray-500">({c.code})</span></p>
                     <p className="text-xs text-gray-500">
@@ -108,7 +108,7 @@ export default function SellerCouponsPage() {
                     </p>
                   </div>
                 </div>
-                <button onClick={() => handleDelete(c.id)} className="p-2 text-red-400 hover:bg-red-50 rounded-lg">
+                <button onClick={() => handleDelete(c.id)} className="p-2 text-gray-400 hover:bg-gray-100 rounded-lg">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>

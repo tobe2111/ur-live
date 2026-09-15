@@ -121,7 +121,7 @@ export default function SellerAppointmentsPage() {
                       <td className="px-4 py-3 text-gray-700">
                         {a.user_name || a.user_id}
                         {a.user_phone && (
-                          <a href={`tel:${a.user_phone}`} className="flex items-center gap-1 text-blue-600 mt-0.5">
+                          <a href={`tel:${a.user_phone}`} className="flex items-center gap-1 text-gray-700 mt-0.5">
                             <Phone className="w-3 h-3" /> {a.user_phone}
                           </a>
                         )}
@@ -135,7 +135,7 @@ export default function SellerAppointmentsPage() {
                             <button onClick={() => markComplete(a)} className="ur-btn ur-btn-sm ur-btn-primary rounded text-[10px] flex items-center gap-1">
                               <CheckCircle className="w-3 h-3" /> 완료
                             </button>
-                            <button onClick={() => markNoShow(a)} className="px-2 py-1 bg-red-600 text-white rounded text-[10px] font-medium flex items-center gap-1">
+                            <button onClick={() => markNoShow(a)} className="ur-btn ur-btn-sm ur-btn-danger gap-1">
                               <XCircle className="w-3 h-3" /> 노쇼
                             </button>
                           </div>
