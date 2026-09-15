@@ -32,6 +32,7 @@ const PWAInstallPrompt = lazy(() => import('./components/PWAInstallPrompt'))
 const OnboardingTrigger = lazy(() => import('./components/onboarding/OnboardingTrigger'))
 const RestoreAccountModal = lazy(() => import('./components/account/RestoreAccountModal'))
 const SideBanner = lazy(() => import('@/components/SideBanner'))
+const DesignVariantsPage = lazy(() => import('./pages/design-variants/DesignVariantsPage')) // 🎨 내부 시안 갤러리(링크 0 · robots 차단 · noindex)
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { isKorea } from '@/shared/config/region'
 // TD-006: route group files
@@ -566,7 +567,7 @@ function AppContent() {
   // 🛡️ 2026-05-24 (regression fix): /pay/widget 누락 → BottomNav 가 결제 버튼 가림.
   //   결제 위젯 마운트하는 모든 경로는 반드시 여기 등록. 신규 추가 시 tests/unit/toss-fullscreen-routes.test.ts
   //   가 자동 검증 (App.tsx 의 fullScreenPrefixes 와 TossPaymentWidget 마운트 라우트 일치 확인).
-  const fullScreenPrefixes = ['/cart', '/checkout', '/payment', '/pay', '/points', '/seller', '/admin', '/login', '/register', '/auth', '/embed', '/introduce', '/blog', '/about', '/partners', '/creators', '/my-orders', '/store/scan', '/videos', '/mall-admin']
+  const fullScreenPrefixes = ['/cart', '/checkout', '/payment', '/pay', '/points', '/seller', '/admin', '/login', '/register', '/auth', '/embed', '/introduce', '/blog', '/about', '/partners', '/creators', '/my-orders', '/store/scan', '/videos', '/design', '/mall-admin']
   const fullScreen = fullScreenPrefixes.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
   // 🏭 유통스타트 B2B(도매몰/제조사)는 소비자 BottomNav/TopNav 미표시 — 별도 도메인·업태.
   //   isWholesaleSurface = SSOT (`/wholesale*`·`/supplier*`). 같은 헬퍼를 BottomNav·DesktopTopNav
@@ -1002,7 +1003,7 @@ function AppContent() {
             <Route path="/restaurant-map" element={<Navigate to="/map" replace />} />
 
             {/* 블로그 */}
-            <Route path="/blog" element={<BlogListPage />} />
+            <Route path="/design/variants" element={<DesignVariantsPage />} /><Route path="/blog" element={<BlogListPage />} />
             <Route path="/new-openings" element={<NewOpeningsPage />} />
             {/* 🗺️ 2026-08-03 지역 페이지 — 라우트는 플래그와 무관하게 유지(플래그 OFF 는 노출·색인만 끔). 색인된 URL 을 404 로 만들면 회수에 수 주. */}
             <Route path="/region" element={<RegionIndexPage />} />

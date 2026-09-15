@@ -22,6 +22,9 @@ Disallow: /wishlist
 Disallow: /notifications
 Disallow: /embed/
 Disallow: /debug/
+# 🎨 내부 시안 갤러리(구조가 다른 디자인 안들을 나란히 보는 화면). 어디에서도 링크하지 않지만
+#   주소가 새어도 색인되지 않게 막는다 — 페이지도 noindex 를 스스로 선언한다.
+Disallow: /design/
 Disallow: /search
 
 # 🔒 2026-07-29: 로그인 필요한 표면 일괄 차단.
