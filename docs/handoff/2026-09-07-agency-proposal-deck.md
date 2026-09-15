@@ -180,3 +180,9 @@ v1 은 구조 설명이었고 "그래서 내일 어디 가서 뭘 하면 얼마�
   - `/about/print` 수익 표: "동네 공구 5%" → 이용권 직접 10% / 대행사 경유 5% / 상품 10%.
 - 🩸 덱 사실 검증 때 코드 시드(20%)를 믿었으면 약관에 틀린 보너스를 적을 뻔했다. **요율·보너스는 코드 기본값이 아니라 라이브 `platform_settings` 로 판정할 것.**
 - 검증: anti-slop 가드 GREEN(em-dash 0). tsc/vitest 는 `npm ci` 완료 후(이 세션은 npm 통과).
+
+## 09-15 (10): 최종 상태 — PR #1381 CI GREEN (head 250d056)
+
+- Verify 가 02bc2e4 에서 한 번 빨갛게 났다: 내가 `/about/print` 표에 행을 하나 더 넣어 `AboutPage.tsx` 가 778줄(baseline 777) 이 됐다. 두 행을 한 행으로 합쳐 250d056 에서 GREEN. 🧭 baseline 동결 파일은 **한 줄도** 못 늘어난다(pre-commit 은 안 막고 CI 만 막는다 — `--changed-only` 를 로컬에서 먼저 돌릴 것).
+- **다음 세션 첫 액션**: 대표가 PR #1381 을 머지하면 ① `curl -s https://urdeal.kr/terms/influencer | grep -o '매월 1일'` · `curl -s https://urdeal.kr/partners | grep -o '수수료 10%'` 로 E4 판정 ② Notion 개발 로그에 한 줄(서비스: 유어딜 · 유형: 문구 정정 + 대외 소개서 · 머니 경로: 없음 · PR 링크).
+- 남은 결정: 머지(대표). 유어쇼츠 캡처는 이 환경에서 불가(YouTube 차단) — 대표 PC 에서 `/videos` 캡처를 `shots/shorts.jpg` 로 주면 덱 생성기가 바로 싣는다(`capture-seller-shots.mjs` 의 `shorts` 슬롯).
