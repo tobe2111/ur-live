@@ -40,7 +40,7 @@ export default function RegionPickerModal({ open, regionKey, districtKey, onClos
       role="presentation"
     >
       <div
-        className="bg-white dark:bg-[#11141C] w-full h-full sm:h-[600px] sm:max-w-2xl sm:rounded-2xl border border-line overflow-hidden flex flex-col"
+        className="bg-surface w-full h-full sm:h-[600px] sm:max-w-2xl sm:rounded-2xl border border-line overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

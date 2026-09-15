@@ -206,7 +206,7 @@ export default function MyStorePage() {
                             type="number" inputMode="numeric" min={0}
                             value={draft ?? String(p.stock ?? 0)}
                             onChange={e => setStockDraft(prev => ({ ...prev, [p.id]: e.target.value }))}
-                            className="w-16 px-2 py-1 rounded-lg border border-line bg-white dark:bg-[#11141C] text-gray-900 dark:text-white text-[12px] text-right"
+                            className="w-16 px-2 py-1 rounded-lg border border-line bg-surface text-gray-900 dark:text-white text-[12px] text-right"
                             aria-label={`${p.name} 재고`}
                           />
                           {dirty && (

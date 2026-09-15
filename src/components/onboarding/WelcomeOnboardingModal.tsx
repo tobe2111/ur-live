@@ -133,7 +133,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
       role="presentation"
     >
       <div
-        className="bg-white dark:bg-[#11141C] w-full max-w-md rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col max-h-[92dvh]"
+        className="bg-surface w-full max-w-md rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col max-h-[92dvh]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="welcome-title"
@@ -172,7 +172,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
 
               {/* 🛡️ 2026-05-20: 신규 가입 보너스 3000딜 — 자동 적립 완료 카드 (bonusAmount > 0 일 때만). */}
               {bonusAmount > 0 && (
-                <div className="bg-gray-50 border border-amber-200 rounded-2xl p-5 mt-6 text-left">
+                <div className="bg-warm border border-amber-200 rounded-2xl p-5 mt-6 text-left">
                   <div className="flex items-start gap-3">
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center shrink-0 shadow-md">
                       <Sparkles className="w-6 h-6 text-white" />
@@ -190,7 +190,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
                 </div>
               )}
 
-              <div className="bg-gray-50 border border-rule rounded-2xl p-5 mt-6 text-left">
+              <div className="bg-warm border border-rule rounded-2xl p-5 mt-6 text-left">
                 <div className="flex items-start gap-3">
                   <div className="w-12 h-12 rounded-2xl bg-brand flex items-center justify-center shrink-0 shadow-md">
                     <Gift className="w-6 h-6 text-white" />
@@ -202,7 +202,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
                   </div>
                 </div>
                 {couponClaimed ? (
-                  <div className="mt-3 px-3 py-2 bg-white dark:bg-[#11141C] rounded-xl text-center text-[13px] font-bold text-brand-text flex items-center justify-center gap-1">
+                  <div className="mt-3 px-3 py-2 bg-surface rounded-xl text-center text-[13px] font-bold text-brand-text flex items-center justify-center gap-1">
                     <Check className="w-4 h-4" /> {t('welcomeOnboarding.couponClaimed', { defaultValue: '발급 완료!' })}
                   </div>
                 ) : (

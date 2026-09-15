@@ -121,13 +121,13 @@ export default function PartnersPage() {
                 <span className="text-[11.5px] font-bold text-gray-500 dark:text-gray-400">정가 (원)</span>
                 <input type="number" inputMode="numeric" value={price} min={0} step={1000}
                   onChange={e => setPrice(Number(e.target.value))}
-                  className="mt-1 w-full h-11 px-3 rounded-xl border border-line bg-white dark:bg-[#11141C] text-[15px] font-bold text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand" />
+                  className="mt-1 w-full h-11 px-3 rounded-xl border border-line bg-surface text-[15px] font-bold text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand" />
               </label>
               <label className="block">
                 <span className="text-[11.5px] font-bold text-gray-500 dark:text-gray-400">할인율 (%)</span>
                 <input type="number" inputMode="numeric" value={discount} min={0} max={90}
                   onChange={e => setDiscount(Number(e.target.value))}
-                  className="mt-1 w-full h-11 px-3 rounded-xl border border-line bg-white dark:bg-[#11141C] text-[15px] font-bold text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand" />
+                  className="mt-1 w-full h-11 px-3 rounded-xl border border-line bg-surface text-[15px] font-bold text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand" />
               </label>
             </div>
             <div className="rounded-xl bg-warm p-4 space-y-1.5">

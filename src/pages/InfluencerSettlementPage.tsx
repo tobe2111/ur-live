@@ -49,7 +49,7 @@ function MyRankCard() {
   }, [])
   if (!rank) return null
   return (
-    <a href="/influencer/rankings" className="block bg-gray-50 border border-amber-200 rounded-xl p-4">
+    <a href="/influencer/rankings" className="block bg-warm border border-amber-200 rounded-xl p-4">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-[11px] text-amber-700 font-medium">🏆 이번 달 나의 순위</p>
@@ -84,7 +84,7 @@ function MyStoresAndDeals({ ownerFunded }: { ownerFunded: boolean }) {
   }, [])
   return (
     <>
-      <div className="bg-white dark:bg-[#11141C] border border-line rounded-xl p-5">
+      <div className="bg-surface border border-line rounded-xl p-5">
         <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">🏪 내가 영입한 매장 ({referred.length}개)</h3>
         {referred.length === 0 ? (
           <p className="text-xs text-gray-400 text-center py-4">아직 영입한 매장이 없습니다. 매장 가입 시 추천 링크 (https://urdeal.kr/seller/register?ref=내ID) 공유 → 6개월간 +1% 추가 commission</p>
@@ -108,7 +108,7 @@ function MyStoresAndDeals({ ownerFunded }: { ownerFunded: boolean }) {
         )}
       </div>
 
-      <div className="bg-white dark:bg-[#11141C] border border-line rounded-xl p-5">
+      <div className="bg-surface border border-line rounded-xl p-5">
         <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">🤝 매장 협업 ({deals.length}건)</h3>
         {/* 💡 flip D1: owner-펀딩일 때만 재원 출처 표기 — platform 동안 미렌더(기존 화면 불변) */}
         {ownerFunded && (
@@ -293,7 +293,7 @@ export default function InfluencerSettlementPage() {
         </div>
 
         {/* 정산 정보 입력 */}
-        <div className="bg-white dark:bg-[#11141C] border border-line rounded-xl p-5 space-y-4">
+        <div className="bg-surface border border-line rounded-xl p-5 space-y-4">
           <h3 className="text-sm font-bold text-gray-900 dark:text-white">정산 정보</h3>
 
           <div>
@@ -353,7 +353,7 @@ export default function InfluencerSettlementPage() {
             <select
               value={form.tax_type}
               onChange={(e) => setForm(f => ({ ...f, tax_type: e.target.value as 'business_income' | 'other_income' | 'unreported' }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 dark:text-white bg-white dark:bg-[#11141C]"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 dark:text-white bg-surface"
             >
               <option value="business_income">사업소득 (3.3% 원천징수, 사업자번호 필요)</option>
               <option value="other_income">기타소득 (8.8% 원천징수, 사업자번호 불필요)</option>
@@ -366,7 +366,7 @@ export default function InfluencerSettlementPage() {
             <select
               value={form.bank_name}
               onChange={(e) => setForm(f => ({ ...f, bank_name: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 dark:text-white bg-white dark:bg-[#11141C]"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 dark:text-white bg-surface"
             >
               <option value="">은행 선택</option>
               {['KB국민은행','신한은행','우리은행','하나은행','NH농협은행','IBK기업은행','케이뱅크','카카오뱅크','토스뱅크','새마을금고','신협','우체국'].map(b => (
@@ -408,7 +408,7 @@ export default function InfluencerSettlementPage() {
         <MyStoresAndDeals ownerFunded={ownerFunded} />
 
         {/* 최근 내역 */}
-        <div className="bg-white dark:bg-[#11141C] border border-line rounded-xl p-5">
+        <div className="bg-surface border border-line rounded-xl p-5">
           <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">최근 commission 내역 ({recent.length}건)</h3>
           {recent.length === 0 ? (
             <p className="text-xs text-gray-400 text-center py-6">아직 referral commission 이 없습니다</p>

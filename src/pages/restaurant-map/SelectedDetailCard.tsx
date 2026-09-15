@@ -29,7 +29,7 @@ export default function SelectedDetailCard({ selected, userLoc, liveSellerIds, f
         {selected.image_url ? (
           <img src={cfImage(selected.image_url, { width: 160, quality: 85, format: 'auto' }) || selected.image_url} alt="" className="w-20 h-20 rounded-xl object-cover shrink-0" loading="lazy" decoding="async" onError={(e) => cfImageOnError(e.currentTarget, selected.image_url)} />
         ) : (
-          <div className="w-20 h-20 rounded-xl bg-white dark:bg-[#11141C] flex items-center justify-center shrink-0">
+          <div className="w-20 h-20 rounded-xl bg-surface flex items-center justify-center shrink-0">
             <CatIcon cat={selected.category} className="w-7 h-7 text-gray-400" />
           </div>
         )}
@@ -75,7 +75,7 @@ export default function SelectedDetailCard({ selected, userLoc, liveSellerIds, f
           <Heart className="w-4 h-4" fill={favorites.includes(selected.id) ? 'currentColor' : 'none'} />
         </button>
         {selected.restaurant_phone && (
-          <a href={`tel:${selected.restaurant_phone}`} aria-label={t('map.detail.call', { defaultValue: '전화' })} className="flex items-center justify-center w-10 h-10 bg-white dark:bg-[#11141C] rounded-xl text-gray-700 dark:text-gray-200">
+          <a href={`tel:${selected.restaurant_phone}`} aria-label={t('map.detail.call', { defaultValue: '전화' })} className="flex items-center justify-center w-10 h-10 bg-surface rounded-xl text-gray-700 dark:text-gray-200">
             <Phone className="w-4 h-4" />
           </a>
         )}

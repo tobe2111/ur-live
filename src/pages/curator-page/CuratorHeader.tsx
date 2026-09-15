@@ -369,7 +369,7 @@ export default function CuratorHeader({
               </a>
             )}
             {curator.tiktok_url && (
-              <a href={snsUrl('tiktok', curator.tiktok_url)} target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="w-[34px] h-[34px] rounded-[10px] bg-[#1D1F29] flex items-center justify-center">
+              <a href={snsUrl('tiktok', curator.tiktok_url)} target="_blank" rel="noopener noreferrer" aria-label="TikTok" /* theme-dual — 틱톡 브랜드 검정. 표면이 아니라 로고 타일이라 두 테마에서 같아야 한다. */ className="w-[34px] h-[34px] rounded-[10px] bg-[#1D1F29] flex items-center justify-center">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M16.5 3c.3 2.2 1.6 3.9 3.8 4.1v2.6c-1.3.1-2.5-.3-3.8-1v5.7c0 4.4-3.4 6.9-6.9 5.8-3.2-1-4.1-5-1.7-7.2 1-.9 2.4-1.3 3.8-1.1v2.7c-.4-.1-.8-.1-1.2 0-1.2.3-1.7 1.4-1.3 2.5.4 1.1 1.8 1.5 2.7.7.5-.4.7-1 .7-1.7V3h3.9Z" /></svg>
               </a>
             )}
@@ -408,7 +408,7 @@ export default function CuratorHeader({
                   value={snsForm[key]}
                   onChange={(e) => setSnsForm(s => ({ ...s, [key]: e.target.value }))}
                   placeholder="@핸들 또는 링크"
-                  className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg border border-rule bg-white dark:bg-[#11141C] text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none"
+                  className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg border border-rule bg-surface text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none"
                 />
               </div>
             ))}
@@ -435,7 +435,7 @@ export default function CuratorHeader({
             </div>
             {editingHandle ? (
               <div>
-                <div className="flex items-center gap-1 px-3 py-2.5 rounded-xl border border-rule-strong bg-white dark:bg-[#11141C]">
+                <div className="flex items-center gap-1 px-3 py-2.5 rounded-xl border border-rule-strong bg-surface">
                   <span className="shrink-0 text-[13px] font-mono text-gray-400">{shareHost}/u/</span>
                   <input
                     value={handleVal}

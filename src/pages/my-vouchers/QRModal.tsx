@@ -178,7 +178,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
 
   return (
     <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-[2px]" onClick={onClose} role="presentation">
-      <div className="bg-white dark:bg-[#11141C] rounded-t-3xl sm:rounded-3xl p-6 pt-3 sm:pt-6 w-full sm:max-w-xs sm:mx-4 relative animate-slideUp" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('voucher.qrCode', { defaultValue: 'QR 코드' })}>
+      <div className="bg-surface rounded-t-3xl sm:rounded-3xl p-6 pt-3 sm:pt-6 w-full sm:max-w-xs sm:mx-4 relative animate-slideUp" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('voucher.qrCode', { defaultValue: 'QR 코드' })}>
         {/* 그래버 (모바일 바텀시트) */}
         <div className="sm:hidden mx-auto mb-4 h-1 w-9 rounded-full bg-gray-200 dark:bg-[#2C2F35]" aria-hidden />
         <button onClick={onClose} className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-[#1D1F29] dark:bg-[#1D1F29]">
@@ -197,7 +197,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
           </p>
         )}
         <div className="flex justify-center mb-4">
-          <div className="relative p-4 rounded-2xl bg-white dark:bg-[#11141C] border border-gray-100 dark:border-[#2C2F35]" style={{ boxShadow: '0 2px 12px rgba(10,10,10,0.06)' }}>
+          <div className="relative p-4 rounded-2xl bg-surface border border-gray-100 dark:border-[#2C2F35]" style={{ boxShadow: '0 2px 12px rgba(10,10,10,0.06)' }}>
             {/* 스캔 프레임 코너 브래킷 (사용 가능 시) */}
             {!isUsed && !isExpired && (
               <>

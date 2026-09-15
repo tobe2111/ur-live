@@ -136,7 +136,7 @@ export default function GiftClaimPage() {
         </div>
 
         {/* 상품 카드 */}
-        <div className="bg-white dark:bg-[#11141C] rounded-2xl border border-gray-100 dark:border-[#2C2F35] p-5 shadow-sm mb-4">
+        <div className="bg-surface rounded-2xl border border-gray-100 dark:border-[#2C2F35] p-5 shadow-sm mb-4">
           <div className="flex gap-3 mb-4">
             {gift.product_thumbnail ? (
               <img src={cfImage(gift.product_thumbnail, { width: 200, quality: 82, format: 'auto' }) || gift.product_thumbnail} alt="" className="w-20 h-20 rounded-xl object-cover flex-shrink-0" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, gift.product_thumbnail)} />
@@ -190,7 +190,7 @@ export default function GiftClaimPage() {
         )}
 
         {canClaim && (
-          <form onSubmit={handleSubmit} className="bg-white dark:bg-[#11141C] rounded-2xl border border-gray-100 dark:border-[#2C2F35] p-5 shadow-sm">
+          <form onSubmit={handleSubmit} className="bg-surface rounded-2xl border border-gray-100 dark:border-[#2C2F35] p-5 shadow-sm">
             <h3 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <MapPin className="w-4 h-4 text-brand-text" /> {t('giftClaim.addressTitle')}
             </h3>

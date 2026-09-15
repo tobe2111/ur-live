@@ -159,7 +159,7 @@ export default function PWAInstallPrompt() {
   if (show && deferredPrompt) {
     return (
       <div className="fixed bottom-20 left-3 right-3 z-[60] sm:left-auto sm:right-4 sm:bottom-4 sm:max-w-sm pointer-events-auto">
-        <div className="bg-white dark:bg-[#11141C] rounded-2xl shadow-2xl border border-gray-100 dark:border-[#2C2F35] p-4">
+        <div className="bg-surface rounded-2xl shadow-2xl border border-gray-100 dark:border-[#2C2F35] p-4">
           <div className="flex items-start gap-3">
             {/* 🛡️ 2026-05-27 사용자 요청: 좌측 분홍 네모 (smartphone icon 컨테이너) 제거. */}
             <div className="flex-1 min-w-0">
@@ -195,7 +195,7 @@ export default function PWAInstallPrompt() {
     const isIOSDevice = isIOS()
     return (
       <div className="fixed bottom-20 left-3 right-3 z-[60] sm:left-auto sm:right-4 sm:bottom-4 sm:max-w-sm pointer-events-auto">
-        <div className="bg-white dark:bg-[#11141C] rounded-2xl shadow-2xl border-2 border-rule p-4">
+        <div className="bg-surface rounded-2xl shadow-2xl border-2 border-rule p-4">
           <div className="flex items-start gap-3 mb-2">
             {/* 🛡️ 2026-05-27 사용자 요청: 좌측 분홍 네모 (smartphone icon 컨테이너) 제거. */}
             <div className="flex-1 min-w-0">
@@ -206,7 +206,7 @@ export default function PWAInstallPrompt() {
               <X className="w-4 h-4 text-gray-400 dark:text-gray-500" />
             </button>
           </div>
-          <div className="bg-gray-50 border border-rule rounded-xl p-3 text-[12px] text-gray-700 dark:text-gray-200 leading-relaxed">
+          <div className="bg-warm border border-rule rounded-xl p-3 text-[12px] text-gray-700 dark:text-gray-200 leading-relaxed">
             {isIOSDevice ? (
               <>
                 <div className="flex items-center gap-1.5 mb-1.5">

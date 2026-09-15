@@ -446,7 +446,7 @@ export default function StayDetailPage() {
                    이전엔 카드 오른쪽 절반에 [가격 → 작은 로즈 버튼 → "묶기 − 0 +" 스테퍼]가
                    세로로 쌓여 있었다. 한 카드에 누를 것이 둘이라 무엇이 주 행동인지 안 읽히고,
                    버튼이 오른쪽에만 걸쳐 균형도 깨졌다. ⇒ 위: 정보↔가격, 아래: 전폭 CTA + 스테퍼. */
-                <div key={r.room_id} className={`bg-white dark:bg-[#11141C] border rounded-xl p-4 ${r.available ? 'border-gray-200 dark:border-[#2C2F35]' : 'border-gray-200 dark:border-[#2C2F35] opacity-55'}`}>
+                <div key={r.room_id} className={`bg-surface border rounded-xl p-4 ${r.available ?'border-gray-200 dark:border-[#2C2F35]' : 'border-gray-200 dark:border-[#2C2F35] opacity-55'}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <h3 className="text-[15px] font-bold tracking-tight">{r.name}</h3>
@@ -681,7 +681,7 @@ function BookingModal({ stay, room, checkIn, checkOut, guests, nights, saleMode,
 
   return (
     <div className="fixed inset-0 z-[10600] bg-black/60 dark:bg-black/80 backdrop-blur flex items-end sm:items-center justify-center" onClick={onClose}>
-      <div className="bg-white dark:bg-[#11141C] text-gray-900 dark:text-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-line max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-surface text-gray-900 dark:text-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-line max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="sticky top-0 bg-white dark:bg-[#11141C] px-5 py-4 border-b border-line">
           <h3 className="text-base font-bold">예약 정보</h3>
           <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{(stay.restaurant_name || stay.name)} · {room.name}</p>
@@ -808,7 +808,7 @@ function MultiBookingModal({
 
   return (
     <div className="fixed inset-0 z-[10600] bg-black/60 dark:bg-black/80 backdrop-blur flex items-end sm:items-center justify-center" onClick={onClose}>
-      <div className="bg-white dark:bg-[#11141C] text-gray-900 dark:text-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-line max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-surface text-gray-900 dark:text-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-line max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="sticky top-0 bg-white dark:bg-[#11141C] px-5 py-4 border-b border-line">
           <h3 className="text-base font-bold">묶음 예약 ({totalQty}객실)</h3>
           <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{stay.restaurant_name || stay.name}</p>

@@ -29,7 +29,7 @@ export default function EmptyShowcase({ catEmpty, showcaseCards, createPath, sta
                 </div>
                 <div className={`max-w-md mx-auto ${showcaseCards.length === 1 ? 'flex justify-center' : 'grid grid-cols-2 gap-3'}`}>
                   {showcaseCards.map((c, i) => (
-                    <div key={i} className={`bg-white dark:bg-[#11141C] border-2 border-dashed border-line rounded-2xl p-4 text-center opacity-70 hover:opacity-100 transition-opacity ${showcaseCards.length === 1 ? 'w-44' : ''}`}>
+                    <div key={i} className={`bg-surface border-2 border-dashed border-line rounded-2xl p-4 text-center opacity-70 hover:opacity-100 transition-opacity ${showcaseCards.length === 1 ?'w-44' : ''}`}>
                       <c.Icon className="w-7 h-7 mx-auto mb-1.5 text-gray-400" aria-hidden="true" />
                       <p className="text-xs font-bold text-gray-700 dark:text-gray-300">{c.label}</p>
                       <p className="text-[10px] text-gray-400 mt-0.5">{c.desc}</p>
