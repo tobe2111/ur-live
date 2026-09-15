@@ -184,7 +184,7 @@ export default function AddressManagementPage() {
   // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): ad-hoc 스피너 → BrandLoader.
   if (loading) {
     return (
-      <div className="min-h-[100dvh] bg-white dark:bg-[#11141C]">
+      <div className="min-h-[100dvh] bg-warm">
         <BrandLoader fullScreen />
       </div>
     )
@@ -194,7 +194,7 @@ export default function AddressManagementPage() {
   //    멀쩡히 저장해 둔 주소를 지워진 줄 안다.
   if (isError) {
     return (
-      <div className="min-h-[100dvh] bg-white dark:bg-[#11141C] flex items-center justify-center px-6">
+      <div className="min-h-[100dvh] bg-warm flex items-center justify-center px-6">
         <ListLoadError onRetry={() => refetch()} />
       </div>
     )

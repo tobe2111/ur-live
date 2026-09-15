@@ -74,9 +74,11 @@ describe('보관함(list-view-cache) 자체가 계약대로 동작한다', () =>
 })
 
 describe('교환권 목록 — 뒤로 왔을 때 되살린다', () => {
+  // 🔀 2026-09-15: 이 판정이 `vouchers/warm-seed.ts` 로 **옮겨졌다**(웜 시드와 한 자리에).
+  //    불변식은 그대로라 시험을 지우지 않고 새 자리로 재조준한다.
   it('복원은 **POP 일 때만** — 하단바로 새로 들어오면(PUSH) 맨 위·첫 페이지', () => {
-    expect(code, 'POP 조건 없이 복원하면 새로 들어온 사람에게 옛 목록을 보여 준다')
-      .toMatch(/navType === 'POP' \? readListView<VouchersViewState>\(viewKey\) : null/)
+    expect(strip(read('src/pages/vouchers/warm-seed.ts')), 'POP 조건 없이 복원하면 새로 들어온 사람에게 옛 목록을 보여 준다')
+      .toMatch(/navType === 'POP' \? readListView<S>\(viewKey\) : null/)
   })
 
   it('키에 필터가 들어간다 — 다른 카테고리/브랜드/정렬의 목록이 섞이면 안 된다', () => {
@@ -88,10 +90,12 @@ describe('교환권 목록 — 뒤로 왔을 때 되살린다', () => {
   })
 
   it('첫 렌더에 **동기** 복원한다 — effect 로 미루면 그 프레임의 짧은 문서에 스크롤이 잘린다', () => {
-    expect(code).toMatch(/useState<VoucherProduct\[\]>\(\(\) => restored\?\.products \?\? ssrSeedRef\.current \?\? \[\]\)/)
+    // 🔀 2026-09-15: 사이에 `warm`(탭 재진입 시드)이 들어왔다. **복원이 여전히 맨 앞**이어야
+    //    한다 — 웜이 앞서면 1페이지분이 복원본을 덮어 목록이 도로 짧아진다.
+    expect(code).toMatch(/useState<VoucherProduct\[\]>\(\(\) => restored\?\.products \?\? warm \?\? ssrSeedRef\.current \?\? \[\]\)/)
     expect(code).toMatch(/useState\(\(\) => restored\?\.page \?\? 1\)/)
     expect(code, '복원했는데 로더가 뜨면 "새로고침됨" 증상 그대로다')
-      .toMatch(/useState\(\(\) => restored == null && ssrSeedRef\.current == null\)/)
+      .toMatch(/useState\(\(\) => restored == null && warm == null && ssrSeedRef\.current == null\)/)
   })
 
   it("'더보기'로 편 개수(embedVisible)까지 되살린다 — 이게 곧 문서 높이다", () => {

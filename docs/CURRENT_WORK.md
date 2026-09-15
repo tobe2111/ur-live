@@ -5497,6 +5497,7 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 _총 309건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-15**
+- [🔥 탭을 누를 때마다 화면이 덮이던 것 + 이번 세션 전체 판정 (2026-09-15, 5차)](handoff/2026-09-15-warm-seed-and-verdict.md)
 - [삭제한 이용권을 되돌리는 길 (2026-09-15)](handoff/2026-09-15-voucher-restore.md)
 - [2026-09-15 — verify.yml push 트리거 제거 (필수 검사 룰셋과의 충돌)](handoff/2026-09-15-verify-push-trigger.md)
 - [2026-09-15 — 시안 갤러리 `/design/variants` 신설](handoff/2026-09-15-variant-gallery.md)
@@ -5505,6 +5506,7 @@ _총 309건 · 최신순 · 이 목록은 자동 생성된다._
 - [2026-09-15 — 셀러 모바일 결함 4건 (대표 스크린샷 신고)](handoff/2026-09-15-seller-mobile-fixes.md)
 - [2026-09-15 — 셀러 대시보드 3차: D3 밀도·데이터 + A2 매장이 제목 + B2 전 매장 합계 + C 정산 안 소개 수익](handoff/2026-09-15-seller-d3.md)
 - [2026-09-15 — 결재함 오기 정정 · 죽은 PR 둘 닫기 · S1 판정 패널](handoff/2026-09-15-pr-cleanup-and-s1-verdict.md)
+- [🚨 검사기 자신이 "실패할 수 없는" 구멍을 갖고 있었다 (2026-09-15, 4차)](handoff/2026-09-15-guard-self-hole.md)
 - [이용권 상세 "안 B" · 지갑 "안 E" (2026-09-15)](handoff/2026-09-15-detail-b-wallet-e.md)
 - [날짜 창 잘림 · 테두리 시안 · 이용권 장바구니 (2026-09-15)](handoff/2026-09-15-date-popover-borders-cart.md)
 - [소비자 화면 색 정리 — 표면 토큰 채택 + 재발 차단 래칫 (2026-09-15)](handoff/2026-09-15-color-cleanup.md)
