@@ -60,7 +60,7 @@ function DealsSection() {
     <div className="bg-white border border-gray-200 rounded-xl p-5">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-          <Handshake className="w-4 h-4 text-blue-500" /> 인플 협업 deal ({deals.length})
+          <Handshake className="w-4 h-4 text-gray-700" /> 인플 협업 deal ({deals.length})
         </h3>
         <button onClick={() => setShowProposeModal(true)} disabled={proposing} className="ur-btn ur-btn-sm ur-btn-primary text-[11px] disabled:opacity-40">
           + 우대 commission 제안
@@ -79,8 +79,8 @@ function DealsSection() {
               </div>
               {d.status === 'proposed' && d.proposed_by === 'influencer' && (
                 <div className="flex gap-1 shrink-0">
-                  <button onClick={() => respond(d.id, 'accept')} className="px-2 py-1 text-[10px] font-bold text-emerald-600 border border-emerald-200 rounded">수락</button>
-                  <button onClick={() => respond(d.id, 'reject')} className="px-2 py-1 text-[10px] font-bold text-red-600 border border-red-200 rounded">거절</button>
+                  <button onClick={() => respond(d.id, 'accept')} className="px-2 py-1 text-[10px] font-bold text-tone-ok border border-transparent rounded">수락</button>
+                  <button onClick={() => respond(d.id, 'reject')} className="px-2 py-1 text-[10px] font-bold text-tone-bad border border-transparent rounded">거절</button>
                 </div>
               )}
             </li>
@@ -91,7 +91,7 @@ function DealsSection() {
       {/* 🛡️ 2026-05-16: 제안 modal (prompt 대신 정식 form) */}
       {showProposeModal && (
         <div className="fixed inset-0 z-[10500] flex items-center justify-center bg-black/60 p-4" onClick={() => setShowProposeModal(false)}>
-          <div className="bg-white rounded-2xl p-5 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white rounded-[var(--dash-radius,16px)] p-5 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-base font-bold text-gray-900 mb-4">우대 commission 제안</h3>
             <div className="space-y-3">
               <div>
@@ -210,7 +210,7 @@ export default function SellerMarketingPage() {
           <button
             onClick={toggleMarketing}
             disabled={loading}
-            className={`px-4 py-2 rounded-full text-xs font-bold ${marketingEnabled ? 'bg-gray-900 text-white' : 'bg-gray-300 text-gray-700'}`}
+            className={`px-4 py-2 rounded-full text-xs font-bold ${marketingEnabled ? 'bg-brand-tint text-brand-text' : 'bg-gray-300 text-gray-700'}`}
           >
             {marketingEnabled ? 'ON' : 'OFF'}
           </button>
@@ -232,12 +232,12 @@ export default function SellerMarketingPage() {
                       <p className="text-[11px] text-gray-500">{r.count}건 · commission {r.total_commission.toLocaleString()}원</p>
                     </div>
                     {isBlocked ? (
-                      <span className="text-[10px] text-red-600 font-bold">차단됨</span>
+                      <span className="text-[10px] text-tone-bad font-bold">차단됨</span>
                     ) : (
                       <button
                         onClick={() => blockInfluencer(r.influencer_id)}
                         disabled={blockingId === r.influencer_id}
-                        className="px-3 py-1.5 text-[11px] font-bold text-red-600 border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-40"
+                        className="px-3 py-1.5 text-[11px] font-bold text-tone-bad border border-transparent rounded-lg hover:bg-gray-100 disabled:opacity-40"
                       >
                         <Ban className="w-3 h-3 inline mr-1" /> 차단
                       </button>
@@ -268,7 +268,7 @@ export default function SellerMarketingPage() {
                   </div>
                   <button
                     onClick={() => unblock(b.influencer_id)}
-                    className="px-3 py-1.5 text-[11px] font-bold text-emerald-600 border border-emerald-200 rounded-lg hover:bg-emerald-50"
+                    className="px-3 py-1.5 text-[11px] font-bold text-tone-ok border border-transparent rounded-lg hover:bg-gray-100"
                   >
                     <RotateCcw className="w-3 h-3 inline mr-1" /> 해제
                   </button>

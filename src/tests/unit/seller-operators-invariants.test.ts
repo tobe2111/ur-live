@@ -159,9 +159,14 @@ describe('🔌 배선', () => {
 
   it('매장 전환 UI 는 매장이 2곳 미만이면 렌더하지 않는다', () => {
     const sw = read('src/components/seller/StoreSwitcher.tsx')
-    expect(sw).toMatch(/if \(stores\.length < 2\) return null/)
+    // 🏷️ 2026-09-15 A2: 제목형(variant='title')은 매장 1곳이어도 이름을 그린다(헤더 제목 자리). 드롭다운(menu)은 종전대로 2곳 미만이면 없다.
+    expect(sw).toMatch(/if \(!canSwitch && variant === 'menu'\) return null/)
+    expect(sw).toMatch(/const canSwitch = stores\.length >= 2/)
     // 전환은 반드시 서버 발급 토큰으로 — 클라가 seller_id 만 바꿔치기하면 안 된다.
-    expect(sw).toMatch(/api\.post\(`\/api\/seller\/stores\/\$\{s\.seller_id\}\/token`\)/)
+    // 2026-09-15: 전환 본체는 export 된 `switchStore(sellerId, …)` 로 옮겨졌다(홈 매장별 표에서도 같은 함수를 쓴다).
+    expect(sw).toMatch(/export async function switchStore\(/)
+    expect(sw).toMatch(/api\.post\(`\/api\/seller\/stores\/\$\{sellerId\}\/token`\)/)
     expect(sw).toMatch(/localStorage\.setItem\('seller_token', d\.seller_token\)/)
+    expect(sw).toMatch(/await switchStore\(s\.seller_id/)
   })
 })

@@ -39,6 +39,8 @@ import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
 import { isVoucherDealPaymentAllowed, groupBuyJoinBlockReason, isSelfOwnedGroupBuy, isSelfReferral, resolveGbOrderNumber, guardAwaitingDeposit, issuedVoucherLabel } from './gb-purchase-guards'
 import { resolvePartialDealPlan, derivePartialDeal, spendPartialDeal, recordOrderDealUsed, restorePartialDeal } from './partial-deal'
 import { findActiveDealPct } from '@/worker/utils/influencer-deal'
+// 🧺 2026-09-15 이용권 장바구니 결제(`/cart/init`·`/cart/confirm-toss`, 게이트 `voucher_cart_enabled` 기본 OFF)
+import { cartCheckoutRoutes } from './cart-checkout.routes'
 
 const groupBuyRoutes = new Hono<{ Bindings: Env }>()
 
@@ -1419,6 +1421,10 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
     }, 500)
   }
 })
+
+// 🧺 2026-09-15 이용권 장바구니 결제 마운트 — 같은 `/api/group-buy` 접두사.
+//   ⚠️ import 는 **파일 맨 위**에 있다(중간 import 금지 — 2026-04-22 워커 크래시 룰).
+groupBuyRoutes.route('/', cartCheckoutRoutes)
 
 // 외부 import 호환을 위해 helpers 의 generateStoreOwnerToken / sendStoreOwnerAlimtalk re-export
 export { generateStoreOwnerToken, sendStoreOwnerAlimtalk } from './helpers'

@@ -53,11 +53,11 @@ export default function AdminTikTokDiscoveryPage() {
               onClick={() => setFilter(f)}
               className={`px-3 py-1.5 text-xs font-medium rounded-lg ${
                 filter === f
-                  ? 'bg-gray-900 text-white'
+                  ? 'bg-brand text-white'
                   : 'bg-white border border-gray-200 text-gray-700'
               }`}
             >
-              {f === 'all' ? t('admin.tiktokDiscovery.filterAll', { defaultValue: '전체' }) : f === 'inactive' ? t('admin.tiktokDiscovery.filterInactive', { defaultValue: '🌱 라이브 미경험' }) : t('admin.tiktokDiscovery.filterActive', { defaultValue: '🔴 라이브 활성' })}
+              {f === 'all' ? t('admin.tiktokDiscovery.filterAll', { defaultValue: '전체' }) : f === 'inactive' ? t('admin.tiktokDiscovery.filterInactive', { defaultValue: '라이브 미경험' }) : t('admin.tiktokDiscovery.filterActive', { defaultValue: '라이브 활성' })}
             </button>
           ))}
         </div>
@@ -71,7 +71,7 @@ export default function AdminTikTokDiscoveryPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map(item => (
-              <div key={item.seller_id} className="bg-white rounded-xl p-4 border border-gray-100 hover:border-blue-300 transition-colors">
+              <div key={item.seller_id} className="bg-white rounded-xl p-4 border border-gray-100 hover:border-rule transition-colors">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1 min-w-0">
                     <h4 className="text-sm font-bold text-gray-900 truncate">
@@ -80,15 +80,15 @@ export default function AdminTikTokDiscoveryPage() {
                     <a
                       href={`/admin/seller-approval?status=all&q=${encodeURIComponent(item.seller_name || '')}`}
                       target="_blank" rel="noreferrer"
-                      className="text-[10px] text-blue-600 hover:underline inline-flex items-center gap-0.5"
+                      className="text-[10px] text-brand-text hover:underline inline-flex items-center gap-0.5"
                     >
                       {t('admin.tiktokDiscovery.sellerDetail', { defaultValue: '셀러 상세' })} <ExternalLink className="w-2.5 h-2.5" />
                     </a>
                   </div>
                   {item.is_seller_active ? (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-bold">{t('admin.tiktokDiscovery.statusActive', { defaultValue: '활성' })}</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-tone-bad-bg text-tone-bad font-bold">{t('admin.tiktokDiscovery.statusActive', { defaultValue: '활성' })}</span>
                   ) : (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800 font-bold">{t('admin.tiktokDiscovery.statusInactive', { defaultValue: '미경험' })}</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-tone-warn-bg text-tone-warn font-bold">{t('admin.tiktokDiscovery.statusInactive', { defaultValue: '미경험' })}</span>
                   )}
                 </div>
 
@@ -100,13 +100,13 @@ export default function AdminTikTokDiscoveryPage() {
 
                 {item.best_video_title && (
                   <div className="text-xs text-gray-600 mb-2 p-2 bg-gray-50 rounded">
-                    🎬 {t('admin.tiktokDiscovery.bestVideo', { defaultValue: '베스트' })}: <strong>{item.best_video_title.slice(0, 40)}</strong>
+                    {t('admin.tiktokDiscovery.bestVideo', { defaultValue: '베스트' })}: <strong>{item.best_video_title.slice(0, 40)}</strong>
                     <div className="text-[10px] text-gray-400 mt-0.5">{formatNumber(item.best_video_views || 0)} {t('admin.tiktokDiscovery.viewsSuffix', { defaultValue: '조회' })}</div>
                   </div>
                 )}
 
-                <div className="text-[11px] text-purple-700 bg-purple-50 p-2 rounded">
-                  💡 {item.recommendation}
+                <div className="text-[11px] text-gray-700 border border-rule bg-white p-2 rounded">
+                  {item.recommendation}
                 </div>
               </div>
             ))}

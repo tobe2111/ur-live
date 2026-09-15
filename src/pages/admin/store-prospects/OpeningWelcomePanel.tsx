@@ -42,10 +42,10 @@ export default function OpeningWelcomePanel({ onStatusChange }: { onStatusChange
   }
 
   return (
-    <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-4 mb-5">
+    <div className="rounded-xl border border-rule bg-white p-4 mb-5">
       <button onClick={() => setOpen(v => !v)} className="w-full flex items-center justify-between text-left">
         <div>
-          <span className="text-sm font-bold text-gray-900">🎉 개업 웰컴 — 최근 {digest.days}일 신규 개업 {formatNumber(digest.total)}곳</span>
+          <span className="text-sm font-bold text-gray-900">개업 웰컴 — 최근 {digest.days}일 신규 개업 {formatNumber(digest.total)}곳</span>
           <span className="ml-2 text-xs text-gray-500">개업 초기 = 입점 전환율 최고 · 브리핑으로 상권 수치 들고 전화하세요</span>
         </div>
         <span className="text-gray-400 text-xs">{open ? '접기 ▲' : '펼치기 ▼'}</span>
@@ -64,18 +64,18 @@ export default function OpeningWelcomePanel({ onStatusChange }: { onStatusChange
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="text-sm font-semibold text-gray-900 truncate">
-                      <span className="mr-1 text-[10px] px-1 py-0.5 rounded bg-rose-100 text-rose-600 font-bold">{dDay(r.apv_perm_ymd)}</span>
+                      <span className="mr-1 text-[10px] px-1 py-0.5 rounded bg-tone-bad-bg text-tone-bad font-bold">{dDay(r.apv_perm_ymd)}</span>
                       {r.biz_name}
                     </div>
                     <div className="text-[11px] text-gray-400 truncate">{[r.region, r.category, r.uptae].filter(Boolean).join(' · ')}</div>
                     <div className="text-[11px] text-gray-600 mt-0.5">
-                      {r.phone ? <a href={`tel:${r.phone}`} className="text-blue-600">📞 {r.phone}</a> : <span className="text-gray-300">전화 미확보</span>}
-                      {r.email && <span className="ml-2 text-gray-500">✉ {r.email}</span>}
+                      {r.phone ? <a href={`tel:${r.phone}`} className="text-gray-700">{r.phone}</a> : <span className="text-gray-300">전화 미확보</span>}
+                      {r.email && <span className="ml-2 text-gray-500">{r.email}</span>}
                     </div>
                   </div>
                 </div>
                 <div className="mt-2 flex items-center gap-1.5">
-                  <button onClick={() => setBriefingId(r.id)} className="px-2.5 py-1 rounded-lg bg-gray-900 text-white text-[11px]">📊 브리핑</button>
+                  <button onClick={() => setBriefingId(r.id)} className="ur-btn ur-btn-sm ur-btn-primary text-[11px]">브리핑</button>
                   {r.status === 'new'
                     ? <button onClick={() => markContacted(r.id)} className="px-2.5 py-1 rounded-lg border border-gray-300 bg-white text-gray-600 text-[11px]">컨택함으로</button>
                     : <span className="text-[11px] text-gray-400">상태: {r.status}</span>}

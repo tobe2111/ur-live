@@ -385,28 +385,28 @@ export default function SellerBusinessInfoPage() {
 
         {/* Status Banner */}
         {businessInfo && (
-          <div className={`rounded-2xl border p-4 ${
+          <div className={`rounded-[var(--dash-radius,16px)] border p-4 ${
             businessInfo.is_verified
-              ? 'border-emerald-200 bg-emerald-50'
-              : 'border-amber-200 bg-amber-50'
+              ? 'border-rule bg-white'
+              : 'border-rule bg-white'
           }`}>
             <div className="flex items-center gap-3">
               {businessInfo.is_verified ? (
                 <>
-                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                  <CheckCircle2 className="h-5 w-5 text-tone-ok" />
                   <div>
-                    <p className="text-sm font-semibold text-emerald-900">{t('seller.verificationApproved')}</p>
-                    <p className="text-xs text-emerald-700">
+                    <p className="text-sm font-semibold text-tone-ok">{t('seller.verificationApproved')}</p>
+                    <p className="text-xs text-tone-ok">
                       {businessInfo.verified_at && t('seller.verifiedAt', { date: formatKST(businessInfo.verified_at) })}
                     </p>
                   </div>
                 </>
               ) : (
                 <>
-                  <AlertCircle className="h-5 w-5 text-amber-600" />
+                  <AlertCircle className="h-5 w-5 text-tone-warn" />
                   <div>
-                    <p className="text-sm font-semibold text-amber-900">{t('seller.verificationPending')}</p>
-                    <p className="text-xs text-amber-700">{t('seller.verificationPendingDesc')}</p>
+                    <p className="text-sm font-semibold text-tone-warn">{t('seller.verificationPending')}</p>
+                    <p className="text-xs text-tone-warn">{t('seller.verificationPendingDesc')}</p>
                   </div>
                 </>
               )}
@@ -416,8 +416,8 @@ export default function SellerBusinessInfoPage() {
 
         {/* Error Message */}
         {error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
-            <div className="flex items-center gap-2 text-red-700">
+          <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-4">
+            <div className="flex items-center gap-2 text-tone-bad">
               <AlertCircle className="h-5 w-5" />
               <p className="text-sm font-medium">{error}</p>
             </div>
@@ -426,8 +426,8 @@ export default function SellerBusinessInfoPage() {
 
         {/* Success Message */}
         {success && (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-            <div className="flex items-center gap-2 text-emerald-700">
+          <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-4">
+            <div className="flex items-center gap-2 text-tone-ok">
               <CheckCircle2 className="h-5 w-5" />
               <p className="text-sm font-medium">{success}</p>
             </div>
@@ -435,14 +435,14 @@ export default function SellerBusinessInfoPage() {
         )}
 
         {/* 🛡️ 2026-06-10: 탭 바 — 사업자 정보 / 정산 계좌 정보 / 사업자등록증 검증 (URL ?tab= 동기화) */}
-        <div className="bg-white rounded-lg shadow p-4">
+        <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-4">
           <div className="flex items-center gap-2 overflow-x-auto">
             <button
               type="button"
               onClick={() => switchTab('business')}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'business'
-                  ? 'bg-gray-900 text-white'
+                  ? 'bg-brand-tint text-brand-text'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -454,7 +454,7 @@ export default function SellerBusinessInfoPage() {
               onClick={() => switchTab('bank')}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'bank'
-                  ? 'bg-gray-900 text-white'
+                  ? 'bg-brand-tint text-brand-text'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -466,7 +466,7 @@ export default function SellerBusinessInfoPage() {
               onClick={() => switchTab('certificate')}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'certificate'
-                  ? 'bg-gray-900 text-white'
+                  ? 'bg-brand-tint text-brand-text'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -483,11 +483,11 @@ export default function SellerBusinessInfoPage() {
             이었다 — 매장 등록 때 낸 값은 `sellers` 에, 이 화면은 `seller_business_info` 를 읽는다.
             이제 등록 때 값을 채워 보여 주되, **아직 정식 등록이 아니라는 사실을 숨기지 않는다.** */}
         {activeTab === 'business' && businessInfo?.from_registration && (
-          <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-            <p className="text-[13px] font-bold text-amber-900">
+          <div className="mb-3 rounded-xl border border-rule bg-white px-4 py-3">
+            <p className="text-[13px] font-bold text-tone-warn">
               {t('seller.bizFromRegistration', { defaultValue: '매장 등록 때 입력하신 내용을 채워 뒀어요' })}
             </p>
-            <p className="mt-0.5 text-[12px] text-amber-800">
+            <p className="mt-0.5 text-[12px] text-tone-warn">
               {t('seller.bizFromRegistrationDesc', { defaultValue: '아직 사업자 정보로는 등록되지 않았습니다 — 확인 후 저장을 눌러 주세요.' })}
             </p>
           </div>

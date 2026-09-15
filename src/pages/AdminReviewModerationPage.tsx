@@ -39,7 +39,7 @@ function Stars({ rating }: { rating: number }) {
   return (
     <div className="flex gap-0.5">
       {[1, 2, 3, 4, 5].map(i => (
-        <Star key={i} className={`w-3 h-3 ${i <= rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200'}`} />
+        <Star key={i} className={`w-3 h-3 ${i <= rating ? 'text-gray-400 fill-amber-400' : 'text-gray-200'}`} />
       ))}
     </div>
   )
@@ -110,22 +110,22 @@ export default function AdminReviewModerationPage() {
       {/* 통계 카드 */}
       {stats && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="bg-white rounded-xl p-4 shadow-sm">
+          <div className="bg-white rounded-xl p-4 border border-rule">
             <p className="text-xs text-gray-500 mb-1">{t('admin.reviewModeration.cardTotal', { defaultValue: '전체 리뷰' })}</p>
             <p className="text-xl font-bold text-gray-900">{formatNumber(stats.total)}</p>
           </div>
-          <div className="bg-white rounded-xl p-4 shadow-sm">
+          <div className="bg-white rounded-xl p-4 border border-rule">
             <p className="text-xs text-gray-500 mb-1">{t('admin.reviewModeration.cardAvgRating', { defaultValue: '평균 평점' })}</p>
             <div className="flex items-center gap-2">
               <p className="text-xl font-bold text-gray-900">{stats.average_rating.toFixed(1)}</p>
               <Stars rating={Math.round(stats.average_rating)} />
             </div>
           </div>
-          <div className="bg-white rounded-xl p-4 shadow-sm">
+          <div className="bg-white rounded-xl p-4 border border-rule">
             <p className="text-xs text-gray-500 mb-1">{t('admin.reviewModeration.cardHidden', { defaultValue: '숨김 처리' })}</p>
-            <p className="text-xl font-bold text-red-500">{stats.hidden_count}</p>
+            <p className="text-xl font-bold text-tone-bad">{stats.hidden_count}</p>
           </div>
-          <div className="bg-white rounded-xl p-4 shadow-sm">
+          <div className="bg-white rounded-xl p-4 border border-rule">
             <p className="text-xs text-gray-500 mb-1">{t('admin.reviewModeration.cardRatingDist', { defaultValue: '평점 분포' })}</p>
             <div className="flex items-end gap-1 h-8">
               {[stats.rating_1, stats.rating_2, stats.rating_3, stats.rating_4, stats.rating_5].map((count, i) => {
@@ -138,7 +138,7 @@ export default function AdminReviewModerationPage() {
       )}
 
       {/* 필터 */}
-      <div className="bg-white rounded-xl shadow-sm p-4 flex flex-wrap items-center gap-3">
+      <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-4 flex flex-wrap items-center gap-3">
         <Filter className="w-4 h-4 text-gray-400" />
         <select value={filters.status} onChange={e => { setFilters(p => ({ ...p, status: e.target.value })); setPage(1) }}
           className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-900">
@@ -162,9 +162,9 @@ export default function AdminReviewModerationPage() {
 
       {/* 리뷰 목록 */}
       {loading ? (
-        <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" /></div>
+        <div className="flex justify-center py-12"><div className="w-8 h-8 border-4 border-brand border-t-transparent rounded-full animate-spin" /></div>
       ) : reviews.length === 0 ? (
-        <div className="bg-white rounded-xl shadow-sm p-12 text-center">
+        <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-12 text-center">
           <MessageSquare className="w-10 h-10 mx-auto text-gray-300 mb-3" />
           <p className="text-sm text-gray-500">{t('admin.reviewModeration.noReviews', { defaultValue: '리뷰가 없습니다' })}</p>
         </div>
@@ -173,7 +173,7 @@ export default function AdminReviewModerationPage() {
           {reviews.map(review => {
             const images = parseImages(review.image_urls)
             return (
-              <div key={review.id} className={`bg-white rounded-xl shadow-sm p-4 ${!review.is_visible ? 'opacity-60 border-l-4 border-red-300' : ''}`}>
+              <div key={review.id} className={`rounded-[var(--dash-radius,16px)] border border-rule bg-white p-4 ${!review.is_visible ? 'opacity-60 border-l-4 border-rule' : ''}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
@@ -181,7 +181,7 @@ export default function AdminReviewModerationPage() {
                       <span className="text-xs text-gray-500">{review.user_name}</span>
                       <span className="text-xs text-gray-400">{formatKSTDate(review.created_at)}</span>
                       {!review.is_visible && (
-                        <span className="text-[10px] px-1.5 py-0.5 bg-red-100 text-red-600 rounded-full font-medium">{t('admin.reviewModeration.hiddenBadge', { defaultValue: '숨김' })}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 bg-tone-bad-bg text-tone-bad rounded-full font-medium">{t('admin.reviewModeration.hiddenBadge', { defaultValue: '숨김' })}</span>
                       )}
                     </div>
                     {review.product_name && (
@@ -198,12 +198,12 @@ export default function AdminReviewModerationPage() {
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     <button onClick={() => toggleVisibility(review)}
-                      className={`p-1.5 rounded-lg transition-colors ${review.is_visible ? 'hover:bg-amber-50 text-amber-500' : 'hover:bg-green-50 text-green-500'}`}
+                      className={`p-1.5 rounded-lg transition-colors ${review.is_visible ? 'hover:bg-gray-100 text-tone-warn' : 'hover:bg-gray-100 text-tone-ok'}`}
                       title={review.is_visible ? t('admin.reviewModeration.hideReview', { defaultValue: '숨기기' }) : t('admin.reviewModeration.showReview', { defaultValue: '표시하기' })}>
                       {review.is_visible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                     <button onClick={() => deleteReview(review)}
-                      className="p-1.5 rounded-lg hover:bg-red-50 text-red-400" title={t('admin.reviewModeration.deleteBtn', { defaultValue: '삭제' })}>
+                      className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400" title={t('admin.reviewModeration.deleteBtn', { defaultValue: '삭제' })}>
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -218,12 +218,12 @@ export default function AdminReviewModerationPage() {
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2 mt-4">
           <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-            className="p-2 rounded-lg bg-white shadow-sm disabled:opacity-40 hover:bg-gray-50">
+            className="p-2 rounded-lg bg-white border border-rule disabled:opacity-40 hover:bg-gray-50">
             <ChevronLeft className="w-4 h-4 text-gray-600" />
           </button>
           <span className="text-sm text-gray-600">{page} / {totalPages}</span>
           <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-            className="p-2 rounded-lg bg-white shadow-sm disabled:opacity-40 hover:bg-gray-50">
+            className="p-2 rounded-lg bg-white border border-rule disabled:opacity-40 hover:bg-gray-50">
             <ChevronRight className="w-4 h-4 text-gray-600" />
           </button>
         </div>

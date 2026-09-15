@@ -35,23 +35,23 @@ export const LeadNameCell = React.memo(function LeadNameCell(
         <span className="font-medium">{l.name}</span>
         {l.lead_score != null && (
           <span
-            className={`${BADGE} font-bold ${l.lead_score >= 70 ? 'bg-emerald-100 text-emerald-700' : l.lead_score >= 45 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}
+            className={`${BADGE} font-bold ${l.lead_score >= 70 ? 'border border-rule bg-white text-tone-ok' : l.lead_score >= 45 ? 'border border-rule bg-white text-tone-warn' : 'bg-gray-100 text-gray-500'}`}
             title="리드 점수 0~100 — 연락가능성·규모적합도·활동성·카테고리핏 합산(야간 자동 채점)"
-          >🏅{l.lead_score}</span>
+          >{l.lead_score}</span>
         )}
         {/* 🚫 본인이 소개글에 "제안 사절"을 써 둔 사람 — 발송 큐에서 자동 제외된다(추정이 아니라 의사표시). */}
         {l.opted_out ? (
-          <span className={`${BADGE} bg-rose-100 text-rose-700`}
+          <span className={`${BADGE} border border-rule bg-white text-tone-bad`}
             title="소개글에 제안 거부를 명시 — 연락하지 않습니다(발송 큐 자동 제외). 오탐이면 이 리드를 확인해 주세요."
-          >🚫 제안거부</span>
+          >제안거부</span>
         ) : null}
         {l.is_brand ? (
           <span className={`${BADGE} bg-gray-200 text-gray-600`}
             title="브랜드/기업 공식 채널 추정 — 인플루언서가 아닐 수 있음(노이즈 숨김에 포함)"
-          >🏢 브랜드</span>
+          >브랜드</span>
         ) : null}
         {l.source === 'inbound' && (
-          <span className={`${BADGE} bg-violet-100 text-violet-700`} title="스스로 신청 · 사전동의">📥 신청</span>
+          <span className={`${BADGE} border border-rule bg-white text-gray-700`} title="스스로 신청 · 사전동의">신청</span>
         )}
         <span className="ml-1.5 text-xs text-gray-400">{platformLabel[l.platform] || l.platform}{l.handle ? ` · ${l.handle}` : ''}</span>
       </span>

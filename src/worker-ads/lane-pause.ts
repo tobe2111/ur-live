@@ -49,8 +49,13 @@ export function pauseExempt(path: string): boolean {
   return PAUSE_EXEMPT_PATHS.has(path.split('?')[0] ?? path)
 }
 
-/** 레인 진입에서 막힌 이유 — 빈 문자열이면 통과. 하트비트/응답에 그대로 실린다. */
-export type LaneEntryBlock = '' | 'paused' | 'budget'
+/**
+ * 레인 진입에서 막힌 이유 — 빈 문자열이면 통과. 하트비트/응답에 그대로 실린다.
+ *
+ * `runaway` 는 **그 레인만** 오늘 잘린 것이다(`budget` = 계정 몫을 넘겨 전 레인 정지와 다르다).
+ * 둘을 한 이름으로 뭉치면 "왜 멈췄나"가 사라지고, 그러면 처방이 또 '전부 조이기'로 돌아간다.
+ */
+export type LaneEntryBlock = '' | 'paused' | 'budget' | 'runaway'
 
 /**
  * 레인 라우트 진입 판정 — **순수하게 떼어 둔 것은 게으름을 시험으로 고정하기 위해서다.**
@@ -62,9 +67,17 @@ export type LaneEntryBlock = '' | 'paused' | 'budget'
 export async function laneEntryBlock(
   path: string,
   env: unknown,
-  overFn: (env: unknown) => Promise<boolean>,
+  budgetFn: (env: unknown, lane: string) => Promise<'' | 'budget' | 'runaway'>,
+  lane?: string,
 ): Promise<LaneEntryBlock> {
   if (pauseExempt(path)) return ''
   if (lanesPaused(env)) return 'paused'
-  return (await overFn(env)) ? 'budget' : ''
+  // 🧾 레인 이름은 호출부가 준다(`_beat` 우선 — 경로와 다른 레인이 있다: `enrich-company-driver` → `enrich-company`).
+  //    안 주면 경로에서 뽑는다 — 근사치이지 정답이 아니므로, 배선은 시험이 고정한다.
+  return budgetFn(env, (lane || '').trim() || entryLaneKey(path))
+}
+
+/** 경로 → 레인 이름(폴백). `laneLedgerKey` 와 같은 규약이지만 이 파일은 read-budget 을 import 하지 않는다(순환 방지). */
+export function entryLaneKey(path: string): string {
+  return (path.split('?')[0] ?? '').replace(/^\/__ads\//, '').replace(/^\//, '')
 }

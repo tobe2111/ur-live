@@ -111,6 +111,23 @@ export const VOUCHER_DEAL_PAYMENT_ENABLED = true
 export const TOPUP_DISABLED = true
 
 /**
+ * VOUCHER_CART_UI_ENABLED — 이용권 '장바구니에 담기' **진입점** (2026-09-15 신설).
+ *   false: 공구/이용권 상세의 담기 버튼을 숨긴다. 단일 구매는 무영향.
+ *
+ * 🩸 **왜 생겼나**: 담기 버튼을 서버 게이트(`platform_settings.voucher_cart_enabled`)와 묶지 않고
+ *   내보냈더니, 게이트가 꺼진 라이브에서 **담기는 되는데 결제가 안 되는 막다른 길**이 생겼다
+ *   (담으면 `cart_items` 에 남고, 결제하면 "장바구니 결제는 아직 준비 중입니다" 403).
+ *   초대해 놓고 못 사게 하는 화면이라, 아예 안 보이는 편이 낫다.
+ *
+ * 🔑 **스위치가 둘이다 — 켤 때 반드시 같이 켠다**:
+ *   ① 서버 `platform_settings.voucher_cart_enabled = 'true'`  (보안 경계 — 이쪽이 진짜 게이트)
+ *   ② 이 상수 `true` + 배포                                    (화면 진입점)
+ *   ①만 켜면 아무도 담을 수 없고, ②만 켜면 다시 막다른 길이 된다.
+ *   절차: `docs/STAGING_CHECKLIST.md` S-CART.
+ */
+export const VOUCHER_CART_UI_ENABLED = false
+
+/**
  * IOS_HIDE_DIGITAL_TOPUP — iOS 네이티브 앱에서 '딜 충전'(순수 디지털 포인트)을 숨기고
  *   외부 브라우저로 유도 (Apple 인앱결제(IAP) 정책 대비). 2026-06-27 메커니즘 신설.
  *   배경: 애플은 앱 내 디지털 재화에 자사 IAP(30%) 강제 가능. 단, 유어딜 딜은 공구/숙소/교환권

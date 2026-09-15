@@ -61,10 +61,13 @@ describe('상세 안 B — 지어낸 문장이 돌아오지 않았다', () => {
 
 describe('상세 안 B — 같은 할인을 세 번 말하지 않는다', () => {
   it('하단 결제 바에 "할인 중" 문구가 없다', () => {
-    const src = readCode(GB)
-    const bar = src.slice(src.indexOf("aria-label=\"결제 영역\""))
-    expect(bar.length, '결제 바 앵커가 낡았다').toBeGreaterThan(200)
+    // 🔀 2026-09-15 머지: main 이 같은 날 하단 바를 `DealBottomBar` 부품으로 분리했다(로직 불변).
+    //   검사 대상이 페이지가 아니라 그 부품으로 옮겨진다 — 페이지만 보면 이 가드는 조용히 통과한다.
+    const bar = readCode('src/pages/group-buy/DealBottomBar.tsx')
+    expect(bar.length, '결제 바 부품을 못 읽었다 — 경로가 낡았다').toBeGreaterThan(500)
     expect(bar, '결제 바가 다시 할인액을 말한다 — 위 가격 블록이 이미 말한다').not.toContain('할인 중')
+    // 페이지 쪽에도 되살아나지 않았는지 함께 본다(분리 이전 형태로의 회귀 차단).
+    expect(readCode(GB), '페이지가 다시 자체 결제 바를 그린다').not.toContain('할인 중')
   })
 
   /**
@@ -114,7 +117,16 @@ describe('상세 안 B — 표면이 두 톤이다', () => {
     const src = readCode(GB)
     expect(src, '매장 위치가 StoreLocation 위임에서 인라인으로 되돌아갔다').toMatch(/<StoreLocation\b/)
     const loc = readCode('src/pages/group-buy/StoreLocation.tsx')
-    expect(loc, '매장 위치 카드에 테두리가 되살아났다').not.toMatch(/border:\s*'1px solid/)
+    // ⚠️ 파일 전체에서 `border:` 를 금지하면 안 된다 — **outline 버튼**은 테두리가 정상이고
+    //   (main 이 같은 날 `--rule-strong` 으로 통일했다), 그렇게 짜면 정상 코드가 빨간불이 난다.
+    //   지키려는 것은 **지도 블록에 경계가 없다**(안 3) 하나다.
+    // 🔀 처음엔 "들림(--lift)이 있어야 한다"고 썼다가 뺐다 — main 이 같은 날 확정한 안 3 은
+    //   카드가 아니라 **경계 없는 블록**이고, 내 안 B 시안의 매장 위치도 같은 그림이었다.
+    //   두 승인이 어긋나지 않으므로 여기서 들림을 요구하면 내가 내 결정을 되돌리는 셈이 된다.
+    //   블록 자체의 모양(경계 0)은 `gb-detail-borders-2026-09-15.test.ts` ①이 정본으로 지킨다.
+    const block = loc.split('\n').find((l) => l.includes('borderRadius: 14') && l.includes('overflow'))
+    expect(block, '매장 위치 지도 블록 줄을 못 찾았다 — 앵커가 낡았다').toBeTruthy()
+    expect(block!, '매장 위치 지도에 테두리가 되살아났다').not.toMatch(/border:\s*'1px solid/)
     expect(loc, '전화 버튼이 사라졌다 — 전화번호가 갈 곳이 없어진다').toContain('`tel:${phone}`')
   })
 })

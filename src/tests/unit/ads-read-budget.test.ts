@@ -138,20 +138,21 @@ describe('read-budget — 배선', () => {
   it('④ DO 알람 — 정지 게이트 다음, 레인 조회 전에 예산 게이트(체인은 잇는다) · 회차 뒤 보고', () => {
     const alarm = ALARM.slice(ALARM.indexOf('async alarm()'))
     const pauseAt = alarm.indexOf('if (lanesPaused(this.env)) {')
-    const budgetAt = alarm.indexOf('if (budgetBlocked(await readBudgetState(this.env))) {')
+    // 🧾 2026-09-15: 한 번 읽은 뷰를 계정 초과(`budgetBlocked`)와 레인 폭주(`laneCut`) 둘 다에 쓴다.
+    const budgetAt = alarm.indexOf('const budgetView = await readBudgetState(this.env)')
     const laneAt = alarm.indexOf('const lane = lookupAlarmLane(this.lane)')
     expect(pauseAt).toBeGreaterThan(0)
     expect(budgetAt).toBeGreaterThan(pauseAt)
     expect(laneAt).toBeGreaterThan(budgetAt)
     expect(alarm.slice(budgetAt, laneAt)).toMatch(/setAlarm\(t0 \+ resolveInterval\(undefined, this\.env\)\)/)
-    expect(alarm, '쓴 행도 보고해야 원장이 쓰기를 센다').toMatch(/this\.ctx\.waitUntil\(reportReadUsage\(this\.env, this\.meter\.rr, this\.meter\.rw\)\)/)
+    expect(alarm, '쓴 행도 보고해야 원장이 쓰기를 센다').toMatch(/this\.ctx\.waitUntil\(reportReadUsage\(this\.env, this\.meter\.rr, this\.meter\.rw, this\.lane\)\)/)
   })
   it('④ DO fetch 에 /budget 라우트 — 순수 처리기에 저장소를 넘긴다', () => {
     expect(ALARM).toMatch(/if \(url\.pathname === READ_BUDGET_PATH\) return Response\.json\(await handleBudgetRequest\(url, this\.ctx\.storage, this\.env\)\)/)
     expect(ALARM.indexOf('READ_BUDGET_PATH) return')).toBeLessThan(ALARM.indexOf("if (url.pathname !== '/start')"))
   })
   it('④ cron 경로 레인(self-beat)도 회차 읽기량을 원장에 보고한다', () => {
-    expect(SELF_BEAT).toMatch(/await reportReadUsage\(env, readEnvMeter\(env\)\?\.rr, readEnvMeter\(env\)\?\.rw\)/)
+    expect(SELF_BEAT).toMatch(/await reportReadUsage\(env, readEnvMeter\(env\)\?\.rr, readEnvMeter\(env\)\?\.rw, beat\)/)
   })
   it('⑤ 원장 DO 이름은 레인 이름과 겹치지 않는다', () => {
     expect(ALARM_LANE_NAMES).not.toContain(READ_BUDGET_DO)
@@ -234,10 +235,12 @@ describe('✍️ 쓰기 예산 — 요금을 터뜨린 축', () => {
   })
 
   it('🔗 배선 — 회차가 쓴 행도 보고하고, 게이트가 두 축을 함께 본다', () => {
-    expect(ALARM, '알람 DO 가 rw 를 안 보내면 원장이 영원히 0 이다').toMatch(/reportReadUsage\(this\.env, this\.meter\.rr, this\.meter\.rw\)/)
-    expect(SELF_BEAT).toMatch(/reportReadUsage\(env, readEnvMeter\(env\)\?\.rr, readEnvMeter\(env\)\?\.rw\)/)
+    // 🧾 2026-09-15: 보고에 **레인 이름**이 붙었다(네 번째 인자). 이름이 빠지면 그 레인의 사용량이
+    //    합계에만 섞여 "누가 썼나"에서 사라진다 — 종전 계약으로 되돌아가는 것이라 여기서 막는다.
+    expect(ALARM, '알람 DO 가 rw 를 안 보내면 원장이 영원히 0 이다').toMatch(/reportReadUsage\(this\.env, this\.meter\.rr, this\.meter\.rw, this\.lane\)/)
+    expect(SELF_BEAT).toMatch(/reportReadUsage\(env, readEnvMeter\(env\)\?\.rr, readEnvMeter\(env\)\?\.rw, beat\)/)
     expect(INDEX, 'cron 진입 게이트가 쓰기 축을 봐야 한다').toMatch(/budgetBlocked\(budget\)/)
-    expect(ALARM, '알람 게이트도 같은 판정을 써야 한다').toMatch(/budgetBlocked\(await readBudgetState\(this\.env\)\)/)
+    expect(ALARM, '알람 게이트도 같은 판정을 써야 한다').toMatch(/budgetBlocked\(budgetView\)/)
   })
 
   it('🔗 하트비트에 쓰기 축이 실린다 — 안 보이면 넘었는지 알 수 없다', () => {
@@ -257,8 +260,10 @@ describe('✍️ 쓰기 예산 — 요금을 터뜨린 축', () => {
  *    그건 아래 `🔗 배선` 의 소스 단언이 대신 본다 — 마운트 경로와 순서까지.
  */
 describe('레인 진입 초크포인트 — 체인까지 막는다', () => {
-  const over = async () => true
-  const never = async () => { throw new Error('원장을 물으면 안 되는 자리에서 물었다(서브리퀘스트 낭비)') }
+  // 🧾 2026-09-15: `budgetFn` 이 boolean → 사유 문자열로 바뀌었다(`'' | 'budget' | 'runaway'`).
+  //    계정 초과와 레인 폭주를 한 이름으로 뭉치면 "왜 멈췄나"가 사라지기 때문이다(`lane-pause.ts`).
+  const over = async (): Promise<'budget'> => 'budget'
+  const never = async (): Promise<''> => { throw new Error('원장을 물으면 안 되는 자리에서 물었다(서브리퀘스트 낭비)') }
 
   it('🚧 예산을 넘으면 레인 경로를 막는다 — 체인이 다시 들어와도', async () => {
     expect(await laneEntryBlock('/__ads/collect-chain', {}, over)).toBe('budget')
@@ -284,7 +289,7 @@ describe('레인 진입 초크포인트 — 체인까지 막는다', () => {
   })
 
   it('🚧 평시엔 통과한다 — 게이트가 늘 막으면 그건 정지지 차단기가 아니다', async () => {
-    expect(await laneEntryBlock('/__ads/collect', {}, async () => false)).toBe('')
+    expect(await laneEntryBlock('/__ads/collect', {}, async () => '')).toBe('')
   })
 
   it('🔗 배선 — `/__ads/*` 에, self-beat **뒤**에 붙어 있고, 200 으로 돌려준다', () => {
@@ -297,6 +302,6 @@ describe('레인 진입 초크포인트 — 체인까지 막는다', () => {
     // 두 미들웨어 다 `/__ads/*` 전체에 걸려야 한다 — 한쪽만 좁히면 그 경로가 조용히 무방비가 된다.
     expect(GATE.match(/'\/__ads\/\*'/g)?.length, '마운트 경로가 둘 다 `/__ads/*` 여야 한다').toBe(2)
     // 5xx 로 막으면 체인 부모가 실패로 읽고 재시도한다 — 그게 또 부하다.
-    expect(GATE.slice(gate, gate + 400)).toMatch(/c\.json\(\{ ok: true, skipped: blocked \}\)/)
+    expect(GATE.slice(gate, gate + 900)).toMatch(/c\.json\(\{ ok: true, skipped: blocked \}\)/)
   })
 })

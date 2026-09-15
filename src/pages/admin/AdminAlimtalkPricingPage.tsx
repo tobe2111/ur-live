@@ -200,7 +200,7 @@ export default function AdminAlimtalkPricingPage() {
     return (
       <div className="flex h-screen items-center justify-center bg-[#F4F5F7]">
         <div className="text-center">
-          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <div className="w-10 h-10 border-4 border-brand border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-sm text-gray-500">브랜드메시지 데이터를 불러오는 중...</p>
         </div>
       </div>
@@ -216,7 +216,7 @@ export default function AdminAlimtalkPricingPage() {
           icon={<MessageSquare className="h-5 w-5" />}
         />
       {/* 💰 2026-08-10 원가 설정 — 마진 계산의 기준값. 알리고 요금제가 바뀌면 배포 없이 여기서 고친다. */}
-      <div className="bg-white rounded-xl p-4 shadow-sm flex flex-wrap items-center gap-3">
+      <div className="bg-white rounded-xl p-4 border border-rule flex flex-wrap items-center gap-3">
         <div className="min-w-0">
           <p className="text-sm font-bold text-gray-900">알림톡 원가 (건당)</p>
           <p className="text-xs text-gray-400">현재 {unitCost}원 — 우리가 알리고에 내는 돈. 판매가(패키지)와 별개로 보관합니다.</p>
@@ -229,7 +229,7 @@ export default function AdminAlimtalkPricingPage() {
             className="w-28 h-9 px-2.5 rounded-lg border border-gray-200 text-sm text-gray-900 outline-none focus:border-gray-400"
           />
           <button onClick={saveUnitCost} disabled={!costInput.trim()}
-            className="px-3 h-9 rounded-lg bg-gray-900 text-white text-xs font-semibold disabled:opacity-40">
+            className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-40">
             원가 저장
           </button>
         </div>
@@ -237,7 +237,7 @@ export default function AdminAlimtalkPricingPage() {
 
       {/* 🏬 2026-08-10 상인회(몰) 일괄 지급 — 상인회가 한 번 결제 → 소속 매장들에 크레딧 배분.
           매출은 credit_transactions 에 기록돼 위 마진 집계에 자동 반영된다. */}
-      <div className="bg-white rounded-xl p-4 shadow-sm space-y-3">
+      <div className="bg-white rounded-xl p-4 border border-rule space-y-3">
         <div>
           <p className="text-sm font-bold text-gray-900">상인회 일괄 지급</p>
           <p className="text-xs text-gray-400">
@@ -256,7 +256,7 @@ export default function AdminAlimtalkPricingPage() {
             placeholder="지급 참조(계산서번호)" className="h-9 px-2.5 rounded-lg border border-gray-200 text-sm text-gray-900 outline-none focus:border-gray-400" />
         </div>
         <button onClick={grantCredits} disabled={granting}
-          className="px-3 h-9 rounded-lg bg-gray-900 text-white text-xs font-semibold disabled:opacity-40">
+          className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-40">
           {granting ? '지급 중…' : '일괄 지급'}
         </button>
       </div>
@@ -266,12 +266,12 @@ export default function AdminAlimtalkPricingPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             // 💰 2026-08-10: 종전 '수익 (9원/건)' 은 원가를 안 뺀 **매출 추정**이었다. 매출·원가·마진을 나눠 보여준다.
-            { label: '충전 매출(누적)', value: `${fmt(stats.revenue ?? 0)}원`, icon: <DollarSign className="w-5 h-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-            { label: `발송 원가(${unitCost}원/건)`, value: `${fmt(stats.total_cost)}원`, icon: <MessageSquare className="w-5 h-5" />, color: 'text-blue-600', bg: 'bg-blue-50' },
-            { label: `마진 (${stats.margin_pct ?? 0}%)`, value: `${fmt(stats.margin ?? 0)}원`, icon: <TrendingUp className="w-5 h-5" />, color: (stats.margin ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-600', bg: (stats.margin ?? 0) >= 0 ? 'bg-emerald-50' : 'bg-red-50' },
-            { label: '미소진 잔액', value: `${fmt(stats.total_balance)}건`, icon: <Users className="w-5 h-5" />, color: 'text-amber-600', bg: 'bg-amber-50' },
+            { label: '충전 매출(누적)', value: `${fmt(stats.revenue ?? 0)}원`, icon: <DollarSign className="w-5 h-5" />, color: 'text-tone-ok', bg: 'border border-rule bg-white' },
+            { label: `발송 원가(${unitCost}원/건)`, value: `${fmt(stats.total_cost)}원`, icon: <MessageSquare className="w-5 h-5" />, color: 'text-gray-700', bg: 'border border-rule bg-white' },
+            { label: `마진 (${stats.margin_pct ?? 0}%)`, value: `${fmt(stats.margin ?? 0)}원`, icon: <TrendingUp className="w-5 h-5" />, color: (stats.margin ?? 0) >= 0 ? 'text-tone-ok' : 'text-tone-bad', bg: (stats.margin ?? 0) >= 0 ? 'border border-rule bg-white' : 'border border-rule bg-white' },
+            { label: '미소진 잔액', value: `${fmt(stats.total_balance)}건`, icon: <Users className="w-5 h-5" />, color: 'text-tone-warn', bg: 'border border-rule bg-white' },
           ].map(card => (
-            <div key={card.label} className="bg-white rounded-xl p-4 shadow-sm">
+            <div key={card.label} className="bg-white rounded-xl p-4 border border-rule">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-medium text-gray-500">{card.label}</span>
                 <div className={`w-8 h-8 rounded-lg ${card.bg} ${card.color} flex items-center justify-center`}>{card.icon}</div>
@@ -283,12 +283,12 @@ export default function AdminAlimtalkPricingPage() {
       )}
 
       {/* 패키지 관리 */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 dark:border-[#1A1A1A] flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-900">브랜드메시지 패키지 관리</h2>
           <button
             onClick={() => setShowAdd(v => !v)}
-            className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700"
+            className="ur-btn ur-btn-sm ur-btn-primary flex items-center gap-1"
           >
             <Plus className="w-3.5 h-3.5" />
             패키지 추가
@@ -297,7 +297,7 @@ export default function AdminAlimtalkPricingPage() {
 
         {/* 새 패키지 추가 폼 */}
         {showAdd && (
-          <div className="px-5 py-4 border-b border-gray-100 dark:border-[#1A1A1A] bg-blue-50">
+          <div className="px-5 py-4 border-b border-gray-100 dark:border-[#1A1A1A] bg-white">
             <div className="flex flex-wrap gap-3 items-end">
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">표시명</label>
@@ -330,7 +330,7 @@ export default function AdminAlimtalkPricingPage() {
                 />
               </div>
               <div className="flex gap-2">
-                <button onClick={addPackage} className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700">추가</button>
+                <button onClick={addPackage} className="ur-btn ur-btn-sm ur-btn-primary">추가</button>
                 <button onClick={() => setShowAdd(false)} className="px-3 py-1.5 bg-gray-100 text-gray-600 text-xs rounded-lg hover:bg-gray-200">취소</button>
               </div>
             </div>
@@ -401,7 +401,7 @@ export default function AdminAlimtalkPricingPage() {
                         <div className="flex items-center gap-2 mb-0.5">
                           <h3 className="text-sm font-semibold text-gray-900">{pkg.label}</h3>
                           <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
-                            pkg.is_active === 1 ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'
+                            pkg.is_active === 1 ? 'bg-tone-ok-bg text-tone-ok' : 'bg-gray-100 text-gray-500'
                           }`}>
                             {pkg.is_active === 1 ? '활성' : '비활성'}
                           </span>
@@ -409,7 +409,7 @@ export default function AdminAlimtalkPricingPage() {
                         <p className="text-xs text-gray-400">
                           {fmt(pkg.credits)}건 · {fmt(pkg.price)}원 · 건당 {unitPrice(pkg)}원
                           {/* 💰 원가 대비 마진율 — 음수(원가 이하 판매)면 빨강으로 즉시 보이게. */}
-                          <span className={`ml-1.5 font-semibold ${marginPct(pkg) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                          <span className={`ml-1.5 font-semibold ${marginPct(pkg) >= 0 ? 'text-tone-ok' : 'text-tone-bad'}`}>
                             마진 {marginPct(pkg)}%
                           </span>
                         </p>
@@ -420,7 +420,7 @@ export default function AdminAlimtalkPricingPage() {
                 <div className="flex gap-2 ml-4">
                   {editingId === pkg.id ? (
                     <>
-                      <button onClick={() => saveEdit(pkg.id)} className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100">
+                      <button onClick={() => saveEdit(pkg.id)} className="p-1.5 rounded-lg border border-rule bg-white text-tone-ok hover:bg-gray-100">
                         <Save className="w-4 h-4" />
                       </button>
                       <button onClick={() => setEditingId(null)} className="p-1.5 rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200">
@@ -442,7 +442,7 @@ export default function AdminAlimtalkPricingPage() {
                       >
                         {pkg.is_active === 1 ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
-                      <button onClick={() => startEdit(pkg)} className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100">
+                      <button onClick={() => startEdit(pkg)} className="p-1.5 rounded-lg border border-rule bg-white text-gray-700 hover:bg-gray-100">
                         <Edit2 className="w-4 h-4" />
                       </button>
                     </>
@@ -455,7 +455,7 @@ export default function AdminAlimtalkPricingPage() {
       </div>
 
       {/* 셀러 브랜드메시지 크레딧 현황 */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 dark:border-[#1A1A1A]">
           <h2 className="text-sm font-semibold text-gray-900">셀러 브랜드메시지 크레딧 현황</h2>
         </div>
@@ -476,7 +476,7 @@ export default function AdminAlimtalkPricingPage() {
                   <td className="px-4 py-3 text-xs font-medium text-gray-900">{acc.seller_name}</td>
                   <td className="px-4 py-3 text-xs text-gray-500">{acc.email}</td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs font-semibold ${acc.balance > 0 ? 'text-emerald-600' : 'text-gray-400'}`}>
+                    <span className={`text-xs font-semibold ${acc.balance > 0 ? 'text-tone-ok' : 'text-gray-400'}`}>
                       {fmt(acc.balance)}건
                     </span>
                   </td>

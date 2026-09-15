@@ -161,7 +161,7 @@ export default function AdminCouponsPage() {
           actions={
             <button
               onClick={() => { const opening = !showForm; setShowForm(opening); resetForm(); if (opening) generateCode() }}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white hover:bg-gray-900"
+              className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-1.5"
             >
               <Plus className="h-3.5 w-3.5" />
               쿠폰 생성
@@ -291,7 +291,7 @@ export default function AdminCouponsPage() {
               <button
                 onClick={handleCreate}
                 disabled={submitting}
-                className="px-6 py-2.5 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-900 disabled:opacity-50"
+                className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-50"
               >
                 {submitting
                   ? (editingId ? t('admin.coupons.k052', { defaultValue: '수정 중...' }) : t('admin.coupons.k026', { defaultValue: '생성 중...' }))
@@ -310,7 +310,7 @@ export default function AdminCouponsPage() {
         {/* 쿠폰 목록 */}
         {loading ? (
           <div className="flex justify-center py-20">
-            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-4 border-brand border-t-transparent rounded-full animate-spin" />
           </div>
         ) : coupons.length === 0 ? (
           <div className="text-center py-20">
@@ -348,7 +348,7 @@ export default function AdminCouponsPage() {
                         </td>
                         <td className="px-4 py-3 text-gray-900">{c.name}</td>
                         <td className="px-4 py-3">
-                          <span className="text-blue-600 font-medium">
+                          <span className="text-gray-700 font-medium">
                             {c.type === 'fixed' ? `${formatNumber(c.value)}원` : `${c.value}%`}
                           </span>
                           {c.min_order_amount > 0 && (
@@ -365,9 +365,9 @@ export default function AdminCouponsPage() {
                           {isExpired ? (
                             <span className="px-2 py-0.5 bg-gray-100 text-gray-500 text-xs rounded-full">{t('admin.coupons.k033', { defaultValue: '만료' })}</span>
                           ) : isSoldOut ? (
-                            <span className="px-2 py-0.5 bg-red-50 text-red-500 text-xs rounded-full">{t('admin.coupons.k037', { defaultValue: '소진' })}</span>
+                            <span className="px-2 py-0.5 bg-tone-bad-bg text-tone-bad text-xs rounded-full">{t('admin.coupons.k037', { defaultValue: '소진' })}</span>
                           ) : (
-                            <span className="px-2 py-0.5 bg-green-50 text-green-600 text-xs rounded-full">{t('admin.coupons.k038', { defaultValue: '활성' })}</span>
+                            <span className="px-2 py-0.5 bg-tone-ok-bg text-tone-ok text-xs rounded-full">{t('admin.coupons.k038', { defaultValue: '활성' })}</span>
                           )}
                         </td>
                         <td className="px-4 py-3 text-right">
@@ -381,14 +381,14 @@ export default function AdminCouponsPage() {
                             </button>
                             <button
                               onClick={() => openSegmentModal(c.id)}
-                              className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                              className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded"
                               title={t('admin.coupons.k039', { defaultValue: "세그먼트 발송" })}
                             >
                               <Send className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => handleDelete(c.id)}
-                              className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded"
+                              className="p-1.5 text-gray-400 hover:text-tone-bad hover:bg-gray-100 rounded"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -408,7 +408,7 @@ export default function AdminCouponsPage() {
       {segmentModalOpen && segmentCouponId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="fixed inset-0 bg-black/50" onClick={() => setSegmentModalOpen(false)} />
-          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+          <div className="relative bg-white rounded-[var(--dash-radius,16px)] shadow-xl w-full max-w-sm p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-bold text-gray-900">{t('admin.coupons.k040', { defaultValue: '쿠폰 타겟 발송' })}</h3>
               <button onClick={() => setSegmentModalOpen(false)} aria-label="닫기" className="text-gray-400 hover:text-gray-600">
@@ -433,7 +433,7 @@ export default function AdminCouponsPage() {
               <button
                 onClick={sendCouponToSegment}
                 disabled={sendingSegment}
-                className="w-full py-2.5 bg-gray-900 text-white rounded-lg text-sm font-bold hover:bg-gray-800 disabled:opacity-50 transition-colors"
+                className="ur-btn ur-btn-md ur-btn-primary w-full disabled:opacity-50 transition-colors"
               >
                 {sendingSegment ? t('admin.coupons.k046', { defaultValue: '발송 중...' }) : t('admin.coupons.k047', { defaultValue: '발송' })}
               </button>

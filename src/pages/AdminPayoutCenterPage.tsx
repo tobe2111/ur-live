@@ -71,7 +71,7 @@ export default function AdminPayoutCenterPage() {
             <span className="ml-2 inline-block px-2 py-0.5 bg-tone-warn-bg text-tone-warn rounded-full text-[11px] font-semibold">권장 루틴: 매주 금요일 일괄 지급</span>
           </p>
         </div>
-        <a href="/admin/wholesale-withdrawals" className="text-[12px] text-blue-600 hover:underline flex items-center gap-1">
+        <a href="/admin/wholesale-withdrawals" className="text-[12px] text-brand-text hover:underline flex items-center gap-1">
           제조사 출금은 전용 화면에서 <ExternalLink className="w-3 h-3" />
         </a>
       </div>
@@ -90,7 +90,7 @@ export default function AdminPayoutCenterPage() {
       {q.isLoading ? (
         <div className="py-16 text-center text-sm text-gray-400">불러오는 중…</div>
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-100 overflow-hidden">
           {tab === 'seller' && (
             <Table empty={!data?.sellers.length} emptyText="대기 중인 셀러 정산 신청이 없습니다"
               head={['신청일', '셀러', '기간', '금액', '입금 계좌', '처리']}>
@@ -104,7 +104,7 @@ export default function AdminPayoutCenterPage() {
                   <td className="px-4 py-3">
                     <button disabled={busy === `s${r.id}`}
                       onClick={() => act(`셀러 정산 ${formatWon(r.amount)}`, `s${r.id}`, () => api.patch(`/api/admin/payout-center/seller/${r.id}/paid`, {}))}
-                      className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-[12px] font-bold disabled:opacity-50">입금 완료</button>
+                      className="ur-btn ur-btn-sm ur-btn-primary text-[12px] disabled:opacity-50">입금 완료</button>
                   </td>
                 </tr>
               ))}
@@ -125,7 +125,7 @@ export default function AdminPayoutCenterPage() {
                   <td className="px-4 py-3 whitespace-nowrap">
                     <button disabled={busy === `c${r.id}`}
                       onClick={() => act(`환급 ${formatWon(r.net_amount)}`, `c${r.id}`, () => api.patch(`/api/admin/payout-center/curator/${r.id}/paid`, {}))}
-                      className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-[12px] font-bold disabled:opacity-50 mr-1.5">입금 완료</button>
+                      className="ur-btn ur-btn-sm ur-btn-primary text-[12px] disabled:opacity-50 mr-1.5">입금 완료</button>
                     <button disabled={busy === `cr${r.id}`}
                       onClick={async () => {
                         const reason = window.prompt('반려 사유 (신청자에게 표시 + 딜 자동 복원)')
@@ -157,7 +157,7 @@ export default function AdminPayoutCenterPage() {
                   <td className="px-4 py-3">
                     <button disabled={busy === `a${r.agency_id}` || r.payable_matured <= 0}
                       onClick={() => act(`에이전시 커미션 ${formatWon(r.payable_matured)}`, `a${r.agency_id}`, () => api.post(`/api/admin/payout-center/agency/${r.agency_id}/paid`, {}))}
-                      className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-[12px] font-bold disabled:opacity-40">일괄 입금 완료</button>
+                      className="ur-btn ur-btn-sm ur-btn-primary text-[12px] disabled:opacity-40">일괄 입금 완료</button>
                   </td>
                 </tr>
               ))}
@@ -167,7 +167,7 @@ export default function AdminPayoutCenterPage() {
       )}
 
       {/* 최근 지급 이력 */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-5">
+      <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-100 p-5">
         <h3 className="text-[14px] font-bold text-gray-900 mb-3">최근 지급 이력</h3>
         {!data?.recent_paid.length ? (
           <p className="text-[13px] text-gray-400 py-4 text-center">아직 지급 이력이 없습니다</p>
@@ -226,9 +226,9 @@ function SettlementTaxInvoicesPanel() {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-5">
+    <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-100 p-5">
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-        <h3 className="text-[14px] font-bold text-gray-900">🧾 정산 세금계산서 역발행 (사업자 유저 셀러)</h3>
+        <h3 className="text-[14px] font-bold text-gray-900">정산 세금계산서 역발행 (사업자 유저 셀러)</h3>
         <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${provider === 'none' ? 'bg-gray-100 text-gray-500' : 'bg-tone-ok-bg text-tone-ok'}`}>
           발행 연동: {provider === 'none' ? '미설정 (초안만 저장)' : provider}
         </span>
@@ -236,7 +236,7 @@ function SettlementTaxInvoicesPanel() {
       {q.isLoading ? (
         <p className="text-[13px] text-gray-400 py-6 text-center">불러오는 중…</p>
       ) : !rows.length ? (
-        <p className="text-[13px] text-gray-400 py-8 text-center">역발행 대상 정산이 아직 없습니다 ✨</p>
+        <p className="text-[13px] text-gray-400 py-8 text-center">역발행 대상 정산이 아직 없습니다</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-left">
@@ -255,7 +255,7 @@ function SettlementTaxInvoicesPanel() {
                     <td className="px-4 py-3">
                       {r.status !== 'issued' && provider !== 'none' ? (
                         <button disabled={busy === r.id} onClick={() => reissue(r.id)}
-                          className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-[12px] font-bold disabled:opacity-50">재발행</button>
+                          className="ur-btn ur-btn-sm ur-btn-primary text-[12px] disabled:opacity-50">재발행</button>
                       ) : (
                         <span className="text-[12px] text-gray-400">{r.nts_confirm_num ? `#${r.nts_confirm_num}` : '—'}</span>
                       )}
@@ -272,7 +272,7 @@ function SettlementTaxInvoicesPanel() {
 }
 
 function Table({ head, empty, emptyText, children }: { head: string[]; empty: boolean; emptyText: string; children: React.ReactNode }) {
-  if (empty) return <p className="text-[13px] text-gray-400 py-12 text-center">{emptyText} ✨</p>
+  if (empty) return <p className="text-[13px] text-gray-400 py-12 text-center">{emptyText}</p>
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left">

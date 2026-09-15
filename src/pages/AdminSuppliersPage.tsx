@@ -185,7 +185,7 @@ export default function AdminSuppliersPage() {
           <button
             type="button"
             onClick={() => navigate('/admin/products?tab=supplier-products')}
-            className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-black"
+            className="ur-btn ur-btn-md ur-btn-primary mt-3 inline-flex items-center gap-1.5"
           >
             상품 승인으로 이동 <ArrowRight className="w-4 h-4" />
           </button>
@@ -196,7 +196,7 @@ export default function AdminSuppliersPage() {
       <div className="flex items-center gap-2 mb-4">
         {filters.map(f => (
           <button key={f.key} onClick={() => setStatusFilter(f.key)}
-            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${statusFilter === f.key ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}>
+            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${statusFilter === f.key ? 'bg-brand text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}>
             {f.label}
             {f.key === 'pending' && pendingCount > 0 && <span className="ml-1.5 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full">{pendingCount}</span>}
           </button>
@@ -204,7 +204,7 @@ export default function AdminSuppliersPage() {
       </div>
 
       {loading ? (
-        <div className="py-20 text-center"><Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto" /></div>
+        <div className="py-20 text-center"><Loader2 className="w-8 h-8 animate-spin text-gray-700 mx-auto" /></div>
       ) : isError ? (
         <DashboardLoadError error={error} onRetry={refetch} loginPath="/admin/login" label="제조사 목록" />
       ) : items.length === 0 ? (
@@ -232,12 +232,12 @@ export default function AdminSuppliersPage() {
                     </p>
                     {/* 🏥 2026-07-03 규제 몰(의료용품) 인허가 신고번호 — 승인 전 검토용 + 확인 토글. */}
                     {s.license_no && (
-                      <p className="text-xs mt-0.5 font-semibold text-sky-700 flex items-center gap-2 flex-wrap">
-                        <span>🏥 인허가 신고번호: {s.license_no}
-                          {s.license_verified ? <span className="ml-1 text-emerald-600">· 확인됨</span> : <span className="ml-1 text-amber-600">· 미확인</span>}
+                      <p className="text-xs mt-0.5 font-semibold text-gray-700 flex items-center gap-2 flex-wrap">
+                        <span>인허가 신고번호: {s.license_no}
+                          {s.license_verified ? <span className="ml-1 text-tone-ok">· 확인됨</span> : <span className="ml-1 text-tone-warn">· 미확인</span>}
                         </span>
                         <button type="button" disabled={busy} onClick={() => verifyLicense(s, !s.license_verified)}
-                          className={`px-2 py-0.5 rounded-md border text-[11px] font-semibold ${s.license_verified ? 'border-gray-300 text-gray-500 hover:bg-gray-50' : 'border-emerald-300 text-emerald-700 hover:bg-emerald-50'}`}>
+                          className={`px-2 py-0.5 rounded-md border text-[11px] font-semibold ${s.license_verified ? 'border-gray-300 text-gray-500 hover:bg-gray-50' : 'border-transparent text-tone-ok hover:bg-gray-100'}`}>
                           {s.license_verified ? '확인 해제' : '확인 처리'}
                         </button>
                       </p>
@@ -261,7 +261,7 @@ export default function AdminSuppliersPage() {
                     {safeHttpHref(s.business_license_url) && (
                       <a href={safeHttpHref(s.business_license_url)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 mt-1.5">
                         <img src={safeHttpHref(s.business_license_url)} alt="사업자등록증" className="w-12 h-12 rounded border border-gray-200 object-cover" />
-                        <span className="text-[11px] text-blue-600 font-medium">사업자등록증 보기</span>
+                        <span className="text-[11px] text-gray-700 font-medium">사업자등록증 보기</span>
                       </a>
                     )}
                     {(s.bank_name || s.bank_account) && (
@@ -273,9 +273,9 @@ export default function AdminSuppliersPage() {
                     <div className="text-right">
                       <p className="text-[11px] text-gray-400">{t('admin.suppliers.balance', { defaultValue: '잔고 (대기/가능/지급)' })}</p>
                       <p className="text-sm font-semibold text-gray-700">
-                        <span className="text-amber-600">{formatWon(s.pending_amount)}</span>
-                        {' / '}<span className="text-blue-600">{formatWon(s.available_amount)}</span>
-                        {' / '}<span className="text-green-600">{formatWon(s.paid_amount)}</span>
+                        <span className="text-tone-warn">{formatWon(s.pending_amount)}</span>
+                        {' / '}<span className="text-gray-700">{formatWon(s.available_amount)}</span>
+                        {' / '}<span className="text-tone-ok">{formatWon(s.paid_amount)}</span>
                       </p>
                     </div>
                   </div>
@@ -285,11 +285,11 @@ export default function AdminSuppliersPage() {
                   {s.status === 'pending' && (
                     <>
                       <button onClick={() => setStatus(s.id, 'approved')} disabled={busy}
-                        className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-900 disabled:opacity-50">
+                        className="ur-btn ur-btn-sm ur-btn-primary flex items-center gap-1 disabled:opacity-50">
                         {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />} {t('admin.suppliers.approve', { defaultValue: '승인' })}
                       </button>
                       <button onClick={() => setStatus(s.id, 'rejected')} disabled={busy}
-                        className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50">
+                        className="ur-btn ur-btn-sm ur-btn-danger flex items-center gap-1 disabled:opacity-50">
                         <XCircle className="w-3 h-3" /> {t('admin.suppliers.reject', { defaultValue: '거부' })}
                       </button>
                     </>
@@ -297,7 +297,7 @@ export default function AdminSuppliersPage() {
                   {s.status === 'approved' && (
                     <>
                       <button onClick={() => payout(s)} disabled={busy || s.available_amount <= 0}
-                        className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-900 disabled:opacity-40">
+                        className="ur-btn ur-btn-sm ur-btn-primary flex items-center gap-1 disabled:opacity-40">
                         {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wallet className="w-3 h-3" />} {t('admin.suppliers.payout', { defaultValue: '지급 실행' })} ({formatWon(s.available_amount)})
                       </button>
                       {/* 💸 2026-07-02 IA 통합 — 돈 나가는 액션 2개(지급 실행 vs 출금 승인) 혼동 방지 안내. */}
@@ -310,7 +310,7 @@ export default function AdminSuppliersPage() {
                   )}
                   {s.status === 'suspended' && (
                     <button onClick={() => setStatus(s.id, 'approved')} disabled={busy}
-                      className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-900 disabled:opacity-50">
+                      className="ur-btn ur-btn-sm ur-btn-primary flex items-center gap-1 disabled:opacity-50">
                       <CheckCircle className="w-3 h-3" /> {t('admin.suppliers.reactivate', { defaultValue: '재활성화' })}
                     </button>
                   )}

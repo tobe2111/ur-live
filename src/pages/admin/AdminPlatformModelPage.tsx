@@ -50,7 +50,7 @@ export default function AdminPlatformModelPage() {
         ))}
       </div>
 
-      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="rounded-[var(--dash-radius,16px)] border border-gray-200 bg-white p-5 border border-rule">
         <MarkdownView source={active.src} />
       </div>
     </div>

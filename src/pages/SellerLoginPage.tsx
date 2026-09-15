@@ -158,7 +158,7 @@ export default function SellerLoginPage() {
         </div>
 
         <div className="w-full max-w-sm md:max-w-md">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+          <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white border border-gray-200 p-8">
             <div className="mb-7">
               <h2 className="text-2xl font-bold text-gray-900">{t('seller.sellerLogin')}</h2>
               <p className="text-sm text-gray-500 mt-1">{t('seller.loginSubtitle')}</p>
@@ -176,7 +176,7 @@ export default function SellerLoginPage() {
               /* 🚑 2026-07-10 (로딩 전수조사 후속): 클릭~카카오 이동 사이 무반응 구간에 공용 브랜드
                  오버레이(순수 DOM — navigation 방해 0) — 소비자 LoginPage 와 동일 UX. 라이트 고정 표면. */
               onClick={() => showKakaoLoadingOverlay({ forceLight: true })}
-              className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#FEE500] hover:bg-[#FDD800] active:opacity-90 text-[#191600] text-[15px] font-bold rounded-2xl transition-colors no-underline shadow-sm"
+              className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#FEE500] hover:bg-[#FDD800] active:opacity-90 text-[#191600] text-[15px] font-bold rounded-[var(--dash-radius,16px)] transition-colors no-underline shadow-sm"
             >
               <span className="text-lg">💬</span>
               {t('seller.kakaoLoginPrimary', { defaultValue: '카카오로 로그인 / 시작하기' })}
@@ -292,7 +292,7 @@ export default function SellerLoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-2 py-3 mt-2 bg-gradient-to-r from-[#111827] to-[#6b7280] text-white text-sm font-semibold rounded-2xl hover:opacity-90 active:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2 py-3 mt-2 bg-gradient-to-r from-[#111827] to-[#6b7280] text-white text-sm font-semibold rounded-[var(--dash-radius,16px)] hover:opacity-90 active:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? (
                   <>

@@ -32,10 +32,11 @@ export default [
   },
   {
     name: '[상세B지갑E] 💸하단 결제 바가 할인액을 다시 말한다',
-    file: GB,
-    find: `        {detail?.min_review_level && detail.min_review_level > 1 ? (`,
-    replace: `        <span>{formatNumber(totalSaving)}원 할인 중</span>
-        {detail?.min_review_level && detail.min_review_level > 1 ? (`,
+    // 🔀 2026-09-15 머지: main 이 하단 바를 부품으로 분리했다 — 앵커가 그 파일로 옮겨진다.
+    file: 'src/pages/group-buy/DealBottomBar.tsx',
+    find: `      {minReviewLevel && minReviewLevel > 1 ? (`,
+    replace: `      <span>{formatNumber(total)}원 할인 중</span>
+      {minReviewLevel && minReviewLevel > 1 ? (`,
     test: TEST,
     why:
       '같은 할인을 한 화면에서 세 번 말하던 그 세 번째다(위에 정가 취소선 + 할인율이 이미 있다). ' +
@@ -67,16 +68,18 @@ export default [
   {
     name: '[상세B지갑E] 📍매장 위치 카드에 테두리가 되살아난다',
     file: 'src/pages/group-buy/StoreLocation.tsx',
-    find: `      <div style={{ borderRadius: 14, overflow: 'hidden', background: 'var(--gbd-card)', ...LIFT }}>`,
-    replace: `      <div style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid var(--gbd-line2)' }}>`,
+    find: `      <div style={{ borderRadius: 14, overflow: 'hidden' }}>
+        {map}`,
+    replace: `      <div style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid var(--gbd-line2)' }}>
+        {map}`,
     test: TEST,
     why: '표면 규칙 ① "카드 테두리 0, 화이트만 들림 한 값". 테두리는 어디서든 조용히 되돌아온다.',
   },
   {
     name: '[상세B지갑E] ☎️매장 전화 버튼이 사라진다',
     file: 'src/pages/group-buy/StoreLocation.tsx',
-    find: '          {phone && (\n            <a href={`tel:${phone}`}',
-    replace: '          {false && (\n            <a href={`tel:x${phone}`}',
+    find: '        {phone && (\n          <a href={`tel:${phone}`}',
+    replace: '        {false && (\n          <a href={`tel:x${phone}`}',
     test: TEST,
     why:
       '전화번호를 제목 밑 주소 줄에서 뺀 짝이 이 버튼이다. 버튼만 사라지면 ' +

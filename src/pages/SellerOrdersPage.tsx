@@ -352,7 +352,7 @@ export default function SellerOrdersPage() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand"
               >
                 <option value="ALL">{t('common.all')}</option>
                 <option value="PAY_COMPLETE">{t('seller.statusDone')}</option>
@@ -375,7 +375,7 @@ export default function SellerOrdersPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder={t('seller.searchPlaceholder')}
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand"
                 />
               </div>
             </div>
@@ -389,7 +389,7 @@ export default function SellerOrdersPage() {
                 type="date"
                 value={dateFilter.start}
                 onChange={(e) => setDateFilter({ ...dateFilter, start: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand"
               />
             </div>
 
@@ -401,7 +401,7 @@ export default function SellerOrdersPage() {
                 type="date"
                 value={dateFilter.end}
                 onChange={(e) => setDateFilter({ ...dateFilter, end: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand"
               />
             </div>
           </div>
@@ -426,8 +426,8 @@ export default function SellerOrdersPage() {
 
         {/* Error Message */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <div className="flex items-center gap-2 text-red-700">
+          <div className="mb-6 p-4 bg-white border border-rule rounded-lg">
+            <div className="flex items-center gap-2 text-tone-bad">
               <XCircle className="w-5 h-5" />
               <p>{error}</p>
             </div>
@@ -445,7 +445,7 @@ export default function SellerOrdersPage() {
             <MobileOrderList orders={filteredOrders} onSelect={viewOrderDetail} onConfirm={(o) => handleStatusChange(o.order_number, 'PREPARING')} confirming={updating} />
 
             {/* Orders List — 🖥️ PC 표(의뢰서 §5.3 "사장님 대시보드는 PC 에서 넓게") */}
-            <div className="hidden md:block bg-white rounded-lg shadow-sm border">
+            <div className="hidden md:block rounded-[var(--dash-radius,16px)] border border-rule bg-white border">
               {currentOrders.length === 0 ? (
                 <div className="text-center py-20">
                   <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
@@ -477,7 +477,7 @@ export default function SellerOrdersPage() {
                             type="checkbox"
                             checked={selectedIds.size === currentOrders.length && currentOrders.length > 0}
                             onChange={toggleSelectAll}
-                            className="rounded border-gray-300 text-blue-600"
+                            className="rounded border-gray-300 text-gray-700"
                           />
                         </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">{t('seller.orderNumberHeader')}</th>
@@ -493,14 +493,14 @@ export default function SellerOrdersPage() {
                       {currentOrders.map((order) => (
                         <tr
                           key={order.order_number}
-                          className={`hover:bg-gray-50 ${selectedIds.has(order.id.toString()) ? 'bg-blue-50/50' : ''}`}
+                          className={`hover:bg-gray-50 ${selectedIds.has(order.id.toString()) ? 'border border-rule bg-white' : ''}`}
                         >
                           <td className="px-4 py-4 text-center">
                             <input
                               type="checkbox"
                               checked={selectedIds.has(order.id.toString())}
                               onChange={() => toggleSelect(order.id.toString())}
-                              className="rounded border-gray-300 text-blue-600"
+                              className="rounded border-gray-300 text-gray-700"
                             />
                           </td>
                           <td className="px-6 py-4 text-sm font-mono text-gray-900">{order.order_number}</td>
@@ -511,7 +511,7 @@ export default function SellerOrdersPage() {
                           <td className="px-6 py-4 text-sm text-right text-gray-900">{formatNumber(order.total_amount)}{t('common.won')}</td>
                           <td className="px-6 py-4 text-center"><StatusBadge status={order.status} /></td>
                           <td className="px-6 py-4 text-center">
-                            <Badge className={(order.payment_status === 'approved' || order.payment_status === 'completed') ? 'bg-green-100 text-green-800 border-green-200' : 'bg-gray-100 text-gray-800'}>
+                            <Badge className={(order.payment_status === 'approved' || order.payment_status === 'completed') ? 'bg-white text-tone-ok border-rule' : 'bg-gray-100 text-gray-800'}>
                               {(order.payment_status === 'approved' || order.payment_status === 'completed') ? t('seller.statusDone') : order.payment_status}
                             </Badge>
                           </td>
@@ -521,7 +521,7 @@ export default function SellerOrdersPage() {
                           <td className="px-6 py-4 text-center">
                             <button
                               onClick={() => viewOrderDetail(order)}
-                              className="text-blue-600 hover:text-blue-800 transition-colors"
+                              className="text-gray-700 hover:text-gray-700 transition-colors"
                             >
                               <Eye className="w-5 h-5" />
                             </button>

@@ -88,7 +88,7 @@ export default function SellerAnalyticsPage() {
             { key: 'funnel', label: '트래킹 Funnel', icon: TrendingUp },
           ].map(tabItem => (
             <button key={tabItem.key} onClick={() => setTab(tabItem.key as 'revenue' | 'customers' | 'products' | 'commission' | 'monthly' | 'funnel')}
-              className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${tab === tabItem.key ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'}`}>
+              className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${tab === tabItem.key ? 'bg-brand-tint text-brand-text' : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'}`}>
               <tabItem.icon className="h-4 w-4" />{tabItem.label}
             </button>
           ))}
@@ -105,17 +105,17 @@ export default function SellerAnalyticsPage() {
                     { d: 90, label: t('seller.daysFilter90') },
                   ].map(item => (
                     <button key={item.d} onClick={() => setDays(item.d)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium ${days === item.d ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>{item.label}</button>
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium ${days === item.d ? 'bg-tone-info-bg text-tone-info' : 'bg-gray-100 text-gray-500'}`}>{item.label}</button>
                   ))}
                 </div>
                 <div className="bg-white rounded-xl border border-gray-200 p-4">
                   <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div className="bg-blue-50 rounded-lg p-3">
-                      <p className="text-xs text-blue-600">{t('seller.totalRevenueLabel')}</p>
+                    <div className="border border-rule bg-white rounded-lg p-3">
+                      <p className="text-xs text-gray-700">{t('seller.totalRevenueLabel')}</p>
                       <p className="text-xl font-bold text-gray-900">{(data as RevenueDataPoint[]).reduce((s, d) => s + d.revenue, 0)}{t('common.won')}</p>
                     </div>
-                    <div className="bg-green-50 rounded-lg p-3">
-                      <p className="text-xs text-green-600">{t('seller.totalOrdersLabel')}</p>
+                    <div className="border border-rule bg-white rounded-lg p-3">
+                      <p className="text-xs text-tone-ok">{t('seller.totalOrdersLabel')}</p>
                       <p className="text-xl font-bold text-gray-900">{(data as RevenueDataPoint[]).reduce((s, d) => s + d.orders, 0)}{t('seller.ordersUnit')}</p>
                     </div>
                   </div>
@@ -124,7 +124,7 @@ export default function SellerAnalyticsPage() {
                   <div className="mb-4">
                     <h3 className="text-sm font-bold text-gray-900 mb-2">{t('seller.dailyRevenueTrend')}</h3>
                     {(data as RevenueDataPoint[]).length > 0 ? (
-                      <Suspense fallback={<div className="flex items-center justify-center h-[240px]"><Loader2 className="w-5 h-5 animate-spin text-blue-600" /></div>}>
+                      <Suspense fallback={<div className="flex items-center justify-center h-[240px]"><Loader2 className="w-5 h-5 animate-spin text-brand-text" /></div>}>
                         <SellerAnalyticsChart data={(data as RevenueDataPoint[]).slice(-30)} />
                       </Suspense>
                     ) : (
@@ -140,7 +140,7 @@ export default function SellerAnalyticsPage() {
                         <div key={d.date} className="flex flex-col items-center flex-1 min-w-[28px]">
                           <span className="text-[9px] text-gray-500 mb-1">{(d.revenue / 10000).toFixed(0)}{t('seller.salesUnit')}</span>
                           <div className="w-full bg-gray-100 rounded-t" style={{ height: `${Math.max(4, (d.revenue / max) * 80)}px` }}>
-                            <div className="w-full h-full bg-blue-500 rounded-t" />
+                            <div className="w-full h-full bg-brand rounded-t" />
                           </div>
                           <span className="text-[9px] text-gray-400 mt-1">{d.date.slice(5)}</span>
                         </div>
@@ -156,12 +156,12 @@ export default function SellerAnalyticsPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-white rounded-xl border border-gray-200 p-4">
                     <p className="text-xs text-gray-500">{t('seller.totalCustomersLabel')}</p>
-                    <p className="text-2xl font-bold text-gray-900">{(data as CustomerData).total_customers}{t('seller.persons')}</p>
+                    <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">{(data as CustomerData).total_customers}{t('seller.persons')}</p>
                   </div>
                   <div className="bg-white rounded-xl border border-gray-200 p-4">
                     <p className="text-xs text-gray-500">{t('seller.repeatBuyers')}</p>
-                    <p className="text-2xl font-bold text-gray-900">{(data as CustomerData).repeat_customers}{t('seller.persons')}</p>
-                    <p className="text-xs text-green-600">{(data as CustomerData).total_customers > 0 ? Math.round((data as CustomerData).repeat_customers / (data as CustomerData).total_customers * 100) : 0}%</p>
+                    <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">{(data as CustomerData).repeat_customers}{t('seller.persons')}</p>
+                    <p className="text-xs text-tone-ok">{(data as CustomerData).total_customers > 0 ? Math.round((data as CustomerData).repeat_customers / (data as CustomerData).total_customers * 100) : 0}%</p>
                   </div>
                 </div>
                 <div className="bg-white rounded-xl border border-gray-200">
@@ -224,7 +224,7 @@ export default function SellerAnalyticsPage() {
                     </div>
                     <div className="flex md:block md:text-right gap-3 text-xs text-gray-500">
                       <span className="md:hidden font-medium text-gray-400">{t('seller.stockLabel')}:</span>
-                      <span className={p.stock < 5 ? 'text-red-500 font-medium' : ''}>{p.stock}{t('common.count')}</span>
+                      <span className={p.stock < 5 ? 'text-tone-bad font-medium' : ''}>{p.stock}{t('common.count')}</span>
                     </div>
                   </div>
                 ))}
@@ -238,15 +238,15 @@ export default function SellerAnalyticsPage() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div className="bg-white rounded-xl border border-gray-200 p-4">
                       <p className="text-xs text-gray-500">출금 가능</p>
-                      <p className="text-xl font-bold text-blue-600">{formatWon(cd.summary.total_granted)}</p>
+                      <p className="text-xl font-bold text-gray-900">{formatWon(cd.summary.total_granted)}</p>
                     </div>
                     <div className="bg-white rounded-xl border border-gray-200 p-4">
                       <p className="text-xs text-gray-500">대기 중</p>
-                      <p className="text-xl font-bold text-amber-600">{formatWon(cd.summary.total_pending)}</p>
+                      <p className="text-xl font-bold text-tone-warn">{formatWon(cd.summary.total_pending)}</p>
                     </div>
                     <div className="bg-white rounded-xl border border-gray-200 p-4">
                       <p className="text-xs text-gray-500">누적 출금</p>
-                      <p className="text-xl font-bold text-emerald-600">{formatWon(cd.summary.total_paid_out)}</p>
+                      <p className="text-xl font-bold text-tone-ok">{formatWon(cd.summary.total_paid_out)}</p>
                     </div>
                     <div className="bg-white rounded-xl border border-gray-200 p-4">
                       <p className="text-xs text-gray-500">추천한 고객수</p>
@@ -256,7 +256,7 @@ export default function SellerAnalyticsPage() {
                   <div className="bg-white rounded-xl border border-gray-200">
                     <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
                       <h3 className="text-sm font-bold text-gray-900">상위 추천 고객</h3>
-                      <a href="/my-commissions" className="text-xs text-blue-600 hover:underline">출금 신청 →</a>
+                      <a href="/my-commissions" className="text-xs text-brand-text hover:underline">출금 신청 →</a>
                     </div>
                     {cd.top_referred.length === 0 ? (
                       <p className="text-center text-gray-500 text-xs py-6">아직 추천 commission 이 없습니다.</p>
@@ -290,7 +290,7 @@ export default function SellerAnalyticsPage() {
                         <div key={m.month} className="flex items-center gap-3">
                           <span className="text-xs font-medium text-gray-700 w-16">{m.month}</span>
                           <div className="flex-1 bg-gray-100 rounded-full h-6 overflow-hidden relative">
-                            <div className="bg-blue-500 h-full rounded-full" style={{ width: `${(m.new_products / max) * 100}%` }} />
+                            <div className="bg-brand h-full rounded-full" style={{ width: `${(m.new_products / max) * 100}%` }} />
                             <span className="absolute inset-0 flex items-center px-2 text-xs font-medium text-gray-900">
                               {m.new_products}개 (이용권 {m.new_vouchers}개)
                             </span>
@@ -310,28 +310,28 @@ export default function SellerAnalyticsPage() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div className="bg-white rounded-xl border border-gray-200 p-4">
                       <p className="text-xs text-gray-500">총 클릭</p>
-                      <p className="text-2xl font-bold text-blue-600">{k.clicks_total.toLocaleString()}</p>
+                      <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">{k.clicks_total.toLocaleString()}</p>
                       <p className="text-[10px] text-gray-400 mt-1">최근 {k.days}일</p>
                     </div>
                     <div className="bg-white rounded-xl border border-gray-200 p-4">
                       <p className="text-xs text-gray-500">고유 방문자</p>
-                      <p className="text-2xl font-bold text-gray-900">{k.unique_visitors.toLocaleString()}</p>
+                      <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">{k.unique_visitors.toLocaleString()}</p>
                       <p className="text-[10px] text-gray-400 mt-1">IP + UA 기준</p>
                     </div>
                     <div className="bg-white rounded-xl border border-gray-200 p-4">
                       <p className="text-xs text-gray-500">결제 발생</p>
-                      <p className="text-2xl font-bold text-emerald-600">{k.orders.toLocaleString()}</p>
+                      <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">{k.orders.toLocaleString()}</p>
                       <p className="text-[10px] text-gray-400 mt-1">commission 기준</p>
                     </div>
                     <div className="bg-white rounded-xl border border-gray-200 p-4">
                       <p className="text-xs text-gray-500">전환율</p>
-                      <p className="text-2xl font-bold text-brand-text">{k.conversion_rate}%</p>
+                      <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">{k.conversion_rate}%</p>
                       <p className="text-[10px] text-gray-400 mt-1">클릭 → 결제</p>
                     </div>
                   </div>
-                  <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
-                    <p className="text-sm font-bold text-purple-900">누적 commission ({k.days}일): {formatWon(k.commission_total)}</p>
-                    <p className="text-xs text-purple-600 mt-1 leading-relaxed">
+                  <div className="bg-white border border-rule rounded-xl p-4">
+                    <p className="text-sm font-bold text-gray-700">누적 commission ({k.days}일): {formatWon(k.commission_total)}</p>
+                    <p className="text-xs text-gray-700 mt-1 leading-relaxed">
                       • 클릭 → 결제 전환율이 1% 미만이면 콘텐츠/상품 매력 점검<br />
                       • 클릭 vs 고유 방문자 비율로 같은 사람 재방문 측정 가능<br />
                       • 실시간 ledger: <a href="/seller/ledger" className="underline">/seller/ledger</a>

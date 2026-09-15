@@ -11,19 +11,19 @@ export default function LivePriceSection({ formData, onChange, onToggle }: Props
   const { t } = useTranslation()
 
   return (
-    <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl">
+    <div className="p-4 bg-white border border-rule rounded-xl">
       <div className="flex items-center gap-2 mb-3">
         <input
           type="checkbox"
           id="live_price_enabled"
           checked={formData.live_price_enabled}
           onChange={e => onToggle(e.target.checked)}
-          className="rounded border-orange-300 text-orange-600"
+          className="rounded border-rule text-tone-warn"
         />
-        <label htmlFor="live_price_enabled" className="text-sm font-semibold text-orange-800">
+        <label htmlFor="live_price_enabled" className="text-sm font-semibold text-tone-warn">
           {t('seller.liveOnly')}
         </label>
-        <span className="text-xs text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full">{t('seller.liveOnlyDuring')}</span>
+        <span className="text-xs text-tone-warn bg-tone-warn-bg px-2 py-0.5 rounded-full">{t('seller.liveOnlyDuring')}</span>
       </div>
       {formData.live_price_enabled && (
         <div>
@@ -34,9 +34,9 @@ export default function LivePriceSection({ formData, onChange, onToggle }: Props
             onChange={onChange}
             placeholder={t('seller.liveOnlyPricePlaceholder')}
             min="0"
-            className="w-full px-3 py-2 border border-orange-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 bg-white"
+            className="w-full px-3 py-2 border border-rule rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 bg-white"
           />
-          <p className="text-xs text-orange-600 mt-1">{t('seller.liveOnlyPriceDesc')}</p>
+          <p className="text-xs text-tone-warn mt-1">{t('seller.liveOnlyPriceDesc')}</p>
         </div>
       )}
     </div>

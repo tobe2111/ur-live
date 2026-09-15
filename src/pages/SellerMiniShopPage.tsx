@@ -173,7 +173,7 @@ export default function SellerMiniShopPage() {
             href={`/profile/${sellerSlug}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="bg-white rounded-2xl p-3 border border-gray-200 flex items-center gap-3 hover:bg-gray-50 transition-colors"
+            className="bg-white rounded-[var(--dash-radius,16px)] p-3 border border-gray-200 flex items-center gap-3 hover:bg-gray-50 transition-colors"
           >
             <Eye className="w-4 h-4 text-brand-text" />
             <span className="text-sm font-medium text-gray-700">내 유어샵 미리보기</span>
@@ -182,7 +182,7 @@ export default function SellerMiniShopPage() {
         )}
 
         {/* 1. 배너 이미지 */}
-        <div className="bg-white rounded-2xl p-5 border border-gray-200 space-y-3">
+        <div className="bg-white rounded-[var(--dash-radius,16px)] p-5 border border-gray-200 space-y-3">
           <div className="flex items-center gap-2">
             <ImageIcon className="w-5 h-5 text-brand-text" />
             <h3 className="text-base font-bold text-gray-900">헤더 배너 이미지</h3>
@@ -221,7 +221,7 @@ export default function SellerMiniShopPage() {
         </div>
 
         {/* 2. 브랜드 컬러 */}
-        <div className="bg-white rounded-2xl p-5 border border-gray-200 space-y-3">
+        <div className="bg-white rounded-[var(--dash-radius,16px)] p-5 border border-gray-200 space-y-3">
           <div className="flex items-center gap-2">
             <Palette className="w-5 h-5 text-brand-text" />
             <h3 className="text-base font-bold text-gray-900">브랜드 컬러</h3>
@@ -261,7 +261,7 @@ export default function SellerMiniShopPage() {
         </div>
 
         {/* 3. 외부 라이브 URL */}
-        <div className="bg-white rounded-2xl p-5 border border-gray-200 space-y-3">
+        <div className="bg-white rounded-[var(--dash-radius,16px)] p-5 border border-gray-200 space-y-3">
           <div className="flex items-center gap-2">
             <ExternalLink className="w-5 h-5 text-brand-text" />
             <h3 className="text-base font-bold text-gray-900">다채널 라이브 URL</h3>

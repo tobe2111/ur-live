@@ -109,7 +109,7 @@ export default function AdminWholesaleQuotesPage() {
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {STATUS_FILTERS.map(s => (
           <button key={s || 'all'} onClick={() => setStatusFilter(s)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium ${statusFilter === s ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}>
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium ${statusFilter === s ? 'bg-brand text-white' : 'bg-white text-gray-600 border border-gray-200'}`}>
             {s === '' ? '전체' : (STATUS_LABEL[s]?.label || s)}
           </button>
         ))}
@@ -150,12 +150,12 @@ export default function AdminWholesaleQuotesPage() {
                         {q.valid_until ? ` · 유효 ${String(q.valid_until).slice(0, 10)}` : ''}
                       </p>
                     ) : null}
-                    {q.order_id ? <p className="text-xs text-emerald-600 mt-1">✓ 발주 #{q.order_id} 전환됨</p> : null}
+                    {q.order_id ? <p className="text-xs text-tone-ok mt-1">발주 #{q.order_id} 전환됨</p> : null}
                     <p className="text-[10px] text-gray-400 mt-1">{(q.created_at || '').slice(0, 16).replace('T', ' ')}</p>
                   </div>
                   {canRespond && !isOpen ? (
                     <button onClick={() => openRespond(q)}
-                      className="shrink-0 inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-gray-900 text-white text-sm font-semibold">
+                      className="ur-btn ur-btn-md ur-btn-primary shrink-0 inline-flex items-center gap-1">
                       <Send className="w-4 h-4" /> {q.status === 'quoted' ? '재회신' : '회신'}
                     </button>
                   ) : null}
@@ -182,7 +182,7 @@ export default function AdminWholesaleQuotesPage() {
                     <div className="sm:col-span-4 flex gap-2 justify-end">
                       <button onClick={() => setRespondId(null)} className="px-4 py-2 rounded-lg border border-gray-200 text-gray-600 text-sm font-medium">취소</button>
                       <button onClick={() => submitRespond(q.id)} disabled={busy}
-                        className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold disabled:opacity-60">
+                        className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-60">
                         {busy ? '회신 중...' : '견적 회신'}
                       </button>
                     </div>

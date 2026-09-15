@@ -83,7 +83,7 @@ export default function BannerMediaUpload({
         className="hidden"
         onChange={e => { const f = e.target.files?.[0]; if (f) pick(f) }}
       />
-      {err && <p className="mt-1.5 text-xs text-red-600">{err}</p>}
+      {err && <p className="mt-1.5 text-xs text-tone-bad">{err}</p>}
       <p className="mt-1.5 text-xs text-gray-400">
         {isVideo
           ? 'MP4 · WebM · 최대 10MB(5MB 이하 권장 — 홈 최상단이라 클수록 첫 화면이 느려집니다).'

@@ -83,7 +83,7 @@ export default function SellerOnboardingChecklist() {
   const progress = Math.round((completedRequired / totalRequired) * 100)
 
   return (
-    <div className="bg-gray-50 border-2 border-rule rounded-2xl p-5 mb-5">
+    <div className="bg-gray-50 border-2 border-rule rounded-[var(--dash-radius,16px)] p-5 mb-5">
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-brand-text" />
@@ -119,7 +119,7 @@ export default function SellerOnboardingChecklist() {
             }`}
           >
             {item.done ? (
-              <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
+              <CheckCircle2 className="w-5 h-5 text-tone-ok shrink-0" />
             ) : (
               <Circle className="w-5 h-5 text-gray-300 shrink-0" />
             )}

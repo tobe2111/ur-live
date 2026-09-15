@@ -54,8 +54,8 @@ export default function CafeTrackToggle() {
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-3">
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-sm font-bold text-gray-900">🏘️ 네이버 카페 수집</span>
-        <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${gate.enabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+        <span className="text-sm font-bold text-gray-900">네이버 카페 수집</span>
+        <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${gate.enabled ? 'bg-tone-ok-bg text-tone-ok' : 'bg-gray-100 text-gray-600'}`}>
           {gate.enabled ? 'ON' : 'OFF'}
         </span>
         {gate.setting === null && (
@@ -75,12 +75,12 @@ export default function CafeTrackToggle() {
       {/* 📊 켤 가치 — 전수 실측(표본 아님). 이 숫자가 스위치의 근거다. */}
       <div className="mt-2 grid grid-cols-3 gap-2 text-center">
         <div><p className="text-[10px] text-gray-500">수집된 카페</p><p className="text-sm font-bold text-gray-900">{formatNumber(gate.leads)}</p></div>
-        <div><p className="text-[10px] text-gray-500">이메일 확보</p><p className={`text-sm font-bold ${gate.emails > 0 ? 'text-gray-900' : 'text-red-600'}`}>{formatNumber(gate.emails)}</p></div>
-        <div><p className="text-[10px] text-gray-500">연락 가능률</p><p className={`text-sm font-bold ${emailRate >= 1 ? 'text-gray-900' : 'text-red-600'}`}>{emailRate.toFixed(1)}%</p></div>
+        <div><p className="text-[10px] text-gray-500">이메일 확보</p><p className={`text-sm font-bold ${gate.emails > 0 ? 'text-gray-900' : 'text-tone-bad'}`}>{formatNumber(gate.emails)}</p></div>
+        <div><p className="text-[10px] text-gray-500">연락 가능률</p><p className={`text-sm font-bold ${emailRate >= 1 ? 'text-gray-900' : 'text-tone-bad'}`}>{emailRate.toFixed(1)}%</p></div>
       </div>
       <p className="mt-2 text-[11px] text-gray-500">
         {gate.emails === 0
-          ? '⚠️ 지금까지 수집한 카페에서 이메일이 0건입니다 — 카페는 보강(측정) 경로가 없어 제휴 제안을 보낼 수 없습니다.'
+          ? '지금까지 수집한 카페에서 이메일이 0건입니다 — 카페는 보강(측정) 경로가 없어 제휴 제안을 보낼 수 없습니다.'
           : '카페 리드의 연락 가능률입니다.'}
         {' '}회차 예산이 상한에 닿아 있어, 켜면 키워드마다 호출을 1개씩 더 써 <b>돌 수 있는 키워드 수가 줄어듭니다</b>.
         언제든 이 버튼으로 되돌릴 수 있고, 다음 회차부터 반영됩니다.

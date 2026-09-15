@@ -79,7 +79,7 @@ function Delta({ v }: { v: number }) {
   if (!v) return <span className="text-gray-400">±0</span>
   const up = v > 0
   return (
-    <span className={up ? 'text-red-600' : 'text-emerald-600'}>
+    <span className={up ? 'text-tone-bad' : 'text-tone-ok'}>
       {up ? '+' : '−'}{formatWon(Math.abs(v))}
     </span>
   )
@@ -128,10 +128,10 @@ export default function AdminFeeBreakdownComparePage() {
     try {
       const res = await api.post('/api/admin/fee-breakdown/backfill', { limit: 300, recompute })
       const d = res.data as { attempted?: number; recorded_total?: number; note?: string }
-      setBackfillMsg(`✅ ${d.note || ''} (처리 ${d.attempted ?? 0}건 · 누적 기록 ${d.recorded_total ?? 0}건)`)
+      setBackfillMsg(`${d.note || ''} (처리 ${d.attempted ?? 0}건 · 누적 기록 ${d.recorded_total ?? 0}건)`)
       await refetch()
     } catch {
-      setBackfillMsg('❌ 백필에 실패했습니다. 다시 시도해 주세요.')
+      setBackfillMsg('백필에 실패했습니다. 다시 시도해 주세요.')
     } finally {
       setBackfilling(false)
     }
@@ -152,15 +152,15 @@ export default function AdminFeeBreakdownComparePage() {
       />
 
       {/* 안내 */}
-      <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900 space-y-1">
-        <p className="font-bold text-sm">📖 이 화면은 무엇인가요?</p>
+      <div className="mb-4 p-4 bg-white border border-rule rounded-lg text-xs text-gray-700 space-y-1">
+        <p className="font-bold text-sm">이 화면은 무엇인가요?</p>
         <p>
           새 수수료 규칙(플랫폼 3P 5%/1P 0% · 에이전시 1%/24개월)을 <strong>실제 정산에 적용하기 전</strong>,
           현행 정산과 얼마나 달라지는지 <strong>계산만 해서</strong> 나란히 보여줍니다. 이 화면은 어떤 돈도 이동시키지 않습니다.
         </p>
         <ol className="list-decimal list-inside space-y-0.5 mt-1">
           <li><strong>가장 빠른 방법</strong>: 아래 <strong>"과거 주문으로 즉시 백필"</strong> 버튼 — 스위치 안 켜고도 실제 과거 데이터로 바로 비교</li>
-          <li>(또는) <code className="font-mono bg-blue-100 px-1 rounded">FEE_RESOLVER_ENABLED=true</code> 설정 → 새 결제마다 자동 기록</li>
+          <li>(또는) <code className="font-mono border border-rule bg-white px-1 rounded">FEE_RESOLVER_ENABLED=true</code> 설정 → 새 결제마다 자동 기록</li>
           <li>차이가 의도대로면 → authoritative 전환(별도 작업, 잠긴 결제파일, 대표 승인 필요)</li>
         </ol>
       </div>
@@ -170,7 +170,7 @@ export default function AdminFeeBreakdownComparePage() {
         <button
           onClick={() => runBackfill(false)}
           disabled={backfilling}
-          className="inline-flex items-center gap-1.5 px-3 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-50"
+          className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-1.5 disabled:opacity-50"
         >
           <Database className="w-4 h-4" />
           {backfilling ? '처리 중…' : '과거 주문으로 즉시 백필 (최근 300건)'}
@@ -190,8 +190,8 @@ export default function AdminFeeBreakdownComparePage() {
 
       {/* 리졸버 OFF / 데이터 없음 경고 */}
       {!isLoading && !hasShadow && (
-        <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-900 flex gap-3">
-          <AlertTriangle className="w-5 h-5 shrink-0 text-amber-500" />
+        <div className="mb-4 p-4 bg-white border border-rule rounded-lg text-sm text-tone-warn flex gap-3">
+          <AlertTriangle className="w-5 h-5 shrink-0 text-tone-warn" />
           <div>
             <p className="font-bold mb-0.5">아직 비교할 그림자 기록이 없습니다.</p>
             <p className="text-xs leading-relaxed">
@@ -200,7 +200,7 @@ export default function AdminFeeBreakdownComparePage() {
                 : 'FEE_RESOLVER_ENABLED 가 꺼져 있습니다. 스테이징에서 켜고 결제를 발생시키면 기록이 쌓입니다.')}
             </p>
             <p className="text-[11px] mt-1">
-              리졸버 상태: <strong className={resolverOn ? 'text-emerald-700' : 'text-gray-500'}>
+              리졸버 상태: <strong className={resolverOn ? 'text-tone-ok' : 'text-gray-500'}>
                 {resolverOn ? 'ON (그림자 기록 중)' : 'OFF'}
               </strong>
             </p>
@@ -209,9 +209,9 @@ export default function AdminFeeBreakdownComparePage() {
       )}
 
       {isError && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800 flex items-center justify-between">
+        <div className="mb-4 p-4 bg-white border border-rule rounded-lg text-sm text-tone-bad flex items-center justify-between">
           <span>데이터를 불러오지 못했습니다.</span>
-          <button onClick={() => refetch()} className="px-3 py-1 bg-red-600 text-white rounded text-xs font-medium hover:bg-red-700">
+          <button onClick={() => refetch()} className="ur-btn ur-btn-sm ur-btn-danger rounded">
             다시 시도
           </button>
         </div>
@@ -226,7 +226,7 @@ export default function AdminFeeBreakdownComparePage() {
             <p className="text-sm font-bold text-gray-700">
               합계 — 그림자 기록 {totals.order_count.toLocaleString()}건 (총 결제 {formatWon(totals.order_total)})
             </p>
-            <span className="text-[11px] text-emerald-700">리졸버 ON</span>
+            <span className="text-[11px] text-tone-ok">리졸버 ON</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
             <SummaryCard
@@ -248,7 +248,7 @@ export default function AdminFeeBreakdownComparePage() {
 
           {/* 모델 차이 주석 */}
           <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg text-[11px] text-gray-600 leading-relaxed">
-            <strong className="text-gray-700">⚠️ 모델 차이 해석 주의:</strong>{' '}
+            <strong className="text-gray-700">모델 차이 해석 주의:</strong>{' '}
             영입자(인플) 인센티브는 <strong>현행=플랫폼 비용</strong>(순이익에서 차감)이지만{' '}
             <strong>새 모델=주인 자율 promo</strong>(플랫폼 비용 아님)라 ③ 플랫폼 순이익 산식이 다릅니다.{' '}
             공급가(supply)는 공급라인 공급가로 계산되며(현행과 동일 base), promo 만 미모델링(0)입니다. 핵심 비교는 ①플랫폼·②에이전시입니다.{' '}
@@ -278,7 +278,7 @@ export default function AdminFeeBreakdownComparePage() {
                     <td className="px-3 py-2 text-gray-600 max-w-[120px] truncate">{r.seller_name}</td>
                     <td className="px-2 py-2 text-center">
                       <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                        r.ownership === '1P' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'
+                        r.ownership === '1P' ? 'bg-tone-info-bg text-tone-info' : 'bg-gray-100 text-gray-600'
                       }`}>{r.ownership}</span>
                     </td>
                     <td className="px-3 py-2 text-right font-medium text-gray-900">{formatWon(r.order_total)}</td>

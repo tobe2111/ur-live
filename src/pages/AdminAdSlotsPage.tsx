@@ -97,10 +97,10 @@ export default function AdminAdSlotsPage() {
       <div className="grid grid-cols-3 gap-3 mt-4 mb-5">
         {[
           { label: t('admin.adSlots.cardAllSlots', { defaultValue: '전체 슬롯' }), value: slots.length, icon: <Megaphone className="w-4 h-4 text-gray-400" /> },
-          { label: t('admin.adSlots.cardCurrentlyShowing', { defaultValue: '현재 노출 중' }), value: activeCount, icon: <Trophy className="w-4 h-4 text-green-500" /> },
-          { label: t('admin.adSlots.cardActiveBids', { defaultValue: '활성 입찰' }), value: totalBids, icon: <TrendingUp className="w-4 h-4 text-blue-500" /> },
+          { label: t('admin.adSlots.cardCurrentlyShowing', { defaultValue: '현재 노출 중' }), value: activeCount, icon: <Trophy className="w-4 h-4 text-tone-ok" /> },
+          { label: t('admin.adSlots.cardActiveBids', { defaultValue: '활성 입찰' }), value: totalBids, icon: <TrendingUp className="w-4 h-4 text-gray-700" /> },
         ].map(c => (
-          <div key={c.label} className="bg-white rounded-2xl border border-gray-200 p-4">
+          <div key={c.label} className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-4">
             <div className="flex items-center gap-2 mb-1">{c.icon}<p className="text-[11px] text-gray-500">{c.label}</p></div>
             <p className="text-[22px] font-black text-gray-900">{c.value}</p>
           </div>
@@ -130,14 +130,14 @@ export default function AdminAdSlotsPage() {
       ) : tab === 'slots' ? (
         <div className="space-y-3">
           {slots.map(slot => (
-            <div key={slot.slot_id} className="bg-white rounded-2xl border border-gray-200 p-4">
+            <div key={slot.slot_id} className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[13px] font-bold text-gray-900">{slot.display_name}</p>
                   <p className="text-[11px] text-gray-500">{slot.description}</p>
                 </div>
                 <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
-                  slot.current_seller_id ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                  slot.current_seller_id ? 'bg-tone-ok-bg text-tone-ok' : 'bg-gray-100 text-gray-500'
                 }`}>
                   {slot.current_seller_id ? t('admin.adSlots.showing', { defaultValue: '노출 중' }) : t('admin.adSlots.waiting', { defaultValue: '대기' })}
                 </span>
@@ -169,7 +169,7 @@ export default function AdminAdSlotsPage() {
           ))}
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px]">
               <thead>

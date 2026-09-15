@@ -30,8 +30,8 @@ export default function AdminAccountsPage() {
   // 🛡️ 2026-06-14: 제한 권한 역할 세분화 (사용자 요구). desc = 운영자가 어떤 접근권한인지 알 수 있게.
   //   ops/cs/finance 는 worker requireAdminRole 게이트와 정합 (정산/반품 등 민감 작업 제한).
   const ROLE_LABELS: Record<string, { label: string; color: string; desc: string }> = {
-    super_admin: { label: t('admin.accounts.roleSuperAdmin', { defaultValue: '슈퍼관리자' }), color: 'bg-red-100 text-red-700', desc: '전체 권한 (계정·정산·설정 포함)' },
-    admin: { label: t('admin.accounts.roleAdmin', { defaultValue: '일반관리자' }), color: 'bg-blue-100 text-blue-700', desc: '일반 운영 (계정 관리·정산 게이트 제외)' },
+    super_admin: { label: t('admin.accounts.roleSuperAdmin', { defaultValue: '슈퍼관리자' }), color: 'border border-rule bg-white text-tone-bad', desc: '전체 권한 (계정·정산·설정 포함)' },
+    admin: { label: t('admin.accounts.roleAdmin', { defaultValue: '일반관리자' }), color: 'border border-rule bg-white text-gray-700', desc: '일반 운영 (계정 관리·정산 게이트 제외)' },
     ops: { label: '운영(주문/상품)', color: 'bg-tone-info-bg text-tone-info', desc: '주문·상품·배송 처리' },
     cs: { label: '고객응대(CS)', color: 'bg-tone-ok-bg text-tone-ok', desc: '주문 조회·반품·문의 응대' },
     finance: { label: '정산/회계', color: 'bg-tone-ok-bg text-tone-ok', desc: '정산·출금·세금 처리' },
@@ -207,7 +207,7 @@ export default function AdminAccountsPage() {
           subtitle={t('admin.accounts.listHeader', { count: admins.length })}
           icon={<UserCog className="h-5 w-5" />}
           actions={
-            <button onClick={() => setShowCreate(true)} className="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white hover:bg-gray-900">
+            <button onClick={() => setShowCreate(true)} className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-1.5">
               <Plus className="h-3.5 w-3.5" /> {t('admin.accounts.newAdmin')}
             </button>
           }
@@ -215,7 +215,7 @@ export default function AdminAccountsPage() {
       {loading ? (
         <DashboardLoading />
       ) : (
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
             <UserCog className="w-4 h-4 text-gray-500" />
             <h2 className="text-sm font-semibold text-gray-900">{t('admin.accounts.listHeader', { count: admins.length })}</h2>
@@ -245,10 +245,10 @@ export default function AdminAccountsPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <button onClick={() => openEdit(admin)} className="p-1 rounded hover:bg-gray-100" aria-label={t("common.edit", { defaultValue: "수정" })} title={t("common.edit")}><Edit2 className="w-3.5 h-3.5 text-gray-500" /></button>
-                          <button onClick={() => { setShowResetPw(admin); setNewPassword('') }} className="p-1 rounded hover:bg-gray-100" aria-label={t("admin.accounts.changePassword", { defaultValue: "비밀번호 변경" })} title={t("admin.accounts.changePassword")}><Key className="w-3.5 h-3.5 text-amber-500" /></button>
-                          <button onClick={() => setShowSessions(admin)} className="p-1 rounded hover:bg-gray-100" aria-label="로그인된 기기" title="로그인된 기기 보기 / 개별 로그아웃"><Monitor className="w-3.5 h-3.5 text-blue-500" /></button>
-                          <button onClick={() => resetPin(admin)} className="p-1 rounded hover:bg-gray-100" aria-label="로그인 PIN 초기화" title="로그인 PIN 초기화 (분실 복구)"><ShieldOff className="w-3.5 h-3.5 text-orange-500" /></button>
-                          <button onClick={() => deleteAdmin(admin)} className="p-1 rounded hover:bg-gray-100" aria-label={t("common.delete", { defaultValue: "삭제" })} title={t("common.delete")}><Trash2 className="w-3.5 h-3.5 text-red-500" /></button>
+                          <button onClick={() => { setShowResetPw(admin); setNewPassword('') }} className="p-1 rounded hover:bg-gray-100" aria-label={t("admin.accounts.changePassword", { defaultValue: "비밀번호 변경" })} title={t("admin.accounts.changePassword")}><Key className="w-3.5 h-3.5 text-tone-warn" /></button>
+                          <button onClick={() => setShowSessions(admin)} className="p-1 rounded hover:bg-gray-100" aria-label="로그인된 기기" title="로그인된 기기 보기 / 개별 로그아웃"><Monitor className="w-3.5 h-3.5 text-gray-700" /></button>
+                          <button onClick={() => resetPin(admin)} className="p-1 rounded hover:bg-gray-100" aria-label="로그인 PIN 초기화" title="로그인 PIN 초기화 (분실 복구)"><ShieldOff className="w-3.5 h-3.5 text-tone-warn" /></button>
+                          <button onClick={() => deleteAdmin(admin)} className="p-1 rounded hover:bg-gray-100" aria-label={t("common.delete", { defaultValue: "삭제" })} title={t("common.delete")}><Trash2 className="w-3.5 h-3.5 text-tone-bad" /></button>
                         </div>
                       </td>
                     </tr>
@@ -288,7 +288,7 @@ export default function AdminAccountsPage() {
             </div>
             <div className="flex gap-2 mt-5">
               <button onClick={() => setShowCreate(false)} className="flex-1 py-2.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg">{t('common.cancel')}</button>
-              <button onClick={createAdmin} disabled={saving} className="flex-1 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg disabled:opacity-50">
+              <button onClick={createAdmin} disabled={saving} className="ur-btn ur-btn-md ur-btn-primary flex-1 disabled:opacity-50">
                 {saving ? t('common.creating') : t('seller.coupons.createBtn')}
               </button>
             </div>
@@ -318,7 +318,7 @@ export default function AdminAccountsPage() {
             </div>
             <div className="flex gap-2 mt-5">
               <button onClick={() => setShowEdit(null)} className="flex-1 py-2.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg">{t('common.cancel')}</button>
-              <button onClick={updateAdmin} disabled={saving} className="flex-1 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg disabled:opacity-50">
+              <button onClick={updateAdmin} disabled={saving} className="ur-btn ur-btn-md ur-btn-primary flex-1 disabled:opacity-50">
                 {saving ? t('common.saving') : t('common.save')}
               </button>
             </div>
@@ -336,7 +336,7 @@ export default function AdminAccountsPage() {
               className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white [color-scheme:light]" />
             <div className="flex gap-2 mt-5">
               <button onClick={() => setShowResetPw(null)} className="flex-1 py-2.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg">{t('common.cancel')}</button>
-              <button onClick={resetPassword} disabled={saving} className="flex-1 py-2.5 bg-amber-500 text-white text-sm font-medium rounded-lg disabled:opacity-50">
+              <button onClick={resetPassword} disabled={saving} className="ur-btn ur-btn-md ur-btn-primary flex-1 disabled:opacity-50">
                 {saving ? t('admin.accounts.changing') : t('common.change')}
               </button>
             </div>

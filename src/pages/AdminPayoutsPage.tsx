@@ -202,32 +202,32 @@ export default function AdminPayoutsPage() {
       <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 flex items-center gap-2 flex-wrap">
         <button
           onClick={() => setTab('pending_ledger')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium ${tab === 'pending_ledger' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium ${tab === 'pending_ledger' ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700'}`}
         >
-          📊 ledger 잔액
+          ledger 잔액
         </button>
         <button
           onClick={() => setTab('payouts')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium ${tab === 'payouts' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium ${tab === 'payouts' ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700'}`}
         >
-          💸 payouts 목록
+          payouts 목록
         </button>
         <button
           onClick={() => setTab('rates')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium ${tab === 'rates' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium ${tab === 'rates' ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700'}`}
         >
-          ⚙️ 수수료율
+          수수료율
         </button>
         <button
           onClick={() => setTab('annual')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium ${tab === 'annual' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium ${tab === 'annual' ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700'}`}
         >
-          📄 연말 리포트
+          연말 리포트
         </button>
         {(tab === 'pending_ledger' || tab === 'payouts') && (
           <button
             onClick={generate}
-            className="ml-auto px-3 py-1.5 bg-gray-900 text-white rounded-lg text-xs font-bold hover:bg-gray-900"
+            className="ur-btn ur-btn-sm ur-btn-primary ml-auto"
           >
             + 지난주 정산 생성
           </button>
@@ -269,7 +269,7 @@ export default function AdminPayoutsPage() {
                     <td className="px-4 py-3 font-mono">{p.account}</td>
                     <td className="px-4 py-3 text-right text-gray-700">{formatWon(p.total_credited)}</td>
                     <td className="px-4 py-3 text-right text-gray-500">{formatWon(p.total_paid)}</td>
-                    <td className="px-4 py-3 text-right font-bold text-amber-700">{formatWon(p.pending_amount)}</td>
+                    <td className="px-4 py-3 text-right font-bold text-tone-warn">{formatWon(p.pending_amount)}</td>
                     <td className="px-4 py-3 text-right">
                       {/* 매장 계정만 — 소유자가 바뀔 수 있는 건 매장뿐이다. */}
                       {p.account.startsWith('seller:') && p.pending_amount > 0 ? (
@@ -295,7 +295,7 @@ export default function AdminPayoutsPage() {
               <button
                 key={s}
                 onClick={() => setFilter(s)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium ${filter === s ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium ${filter === s ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700'}`}
               >
                 {s === 'pending' ? '검토 대기' : s === 'approved' ? '승인됨' : s === 'sent' ? '송금 완료' : '전체'}
               </button>
@@ -360,15 +360,15 @@ export default function AdminPayoutsPage() {
                         <td className="px-4 py-3 text-right font-bold">
                           {formatWon(p.amount)}
                           {p._stale && (
-                            <div className="mt-0.5 text-[10px] font-medium text-red-600" title="정산식 정정 이전에 생성된 금액입니다. 현재 정산 가능액과 다릅니다 — 취소 후 재생성 권장(승인 시 자동 차단).">
-                              ⚠️ 확인 필요 · 현재 {formatWon(p._available ?? 0)}
+                            <div className="mt-0.5 text-[10px] font-medium text-tone-bad" title="정산식 정정 이전에 생성된 금액입니다. 현재 정산 가능액과 다릅니다 — 취소 후 재생성 권장(승인 시 자동 차단).">
+                              확인 필요 · 현재 {formatWon(p._available ?? 0)}
                             </div>
                           )}
                         </td>
                         <td className="px-4 py-3 text-gray-700">
                           {p.account_holder || '-'}
                           {p.account_number && <div className="font-mono text-[10px]">{p.account_number}</div>}
-                          {p.transaction_id && <div className="text-[10px] text-emerald-600">TX: {p.transaction_id}</div>}
+                          {p.transaction_id && <div className="text-[10px] text-tone-ok">TX: {p.transaction_id}</div>}
                         </td>
                         <td className="px-4 py-3 text-center">
                           <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium ${meta.cls}`}>{meta.label}</span>
@@ -376,7 +376,7 @@ export default function AdminPayoutsPage() {
                         <td className="px-4 py-3 text-center">
                           {p.status === 'pending' && (
                             <div className="flex items-center justify-center gap-1">
-                              <button onClick={() => approve(p)} className="px-2 py-1 bg-gray-900 text-white rounded text-[10px] flex items-center gap-1">
+                              <button onClick={() => approve(p)} className="ur-btn ur-btn-sm ur-btn-primary rounded text-[10px] flex items-center gap-1">
                                 <CheckCircle className="w-3 h-3" /> 승인
                               </button>
                               <button onClick={() => cancel(p)} className="px-2 py-1 bg-gray-500 text-white rounded text-[10px] flex items-center gap-1">
@@ -385,7 +385,7 @@ export default function AdminPayoutsPage() {
                             </div>
                           )}
                           {p.status === 'approved' && (
-                            <button onClick={() => markSent(p)} className="px-2 py-1 bg-gray-900 text-white rounded text-[10px] flex items-center gap-1 mx-auto">
+                            <button onClick={() => markSent(p)} className="ur-btn ur-btn-sm ur-btn-primary rounded text-[10px] flex items-center gap-1 mx-auto">
                               <Send className="w-3 h-3" /> 송금완료
                             </button>
                           )}
@@ -403,7 +403,7 @@ export default function AdminPayoutsPage() {
       {/* ⚙️ 수수료율 조정 (어드민) — 변경 시 다음 voucher 부터 자동 적용 */}
       {tab === 'rates' && (
         <div className="bg-white rounded-xl border border-gray-200 p-6 max-w-xl">
-          <h2 className="text-sm font-bold text-gray-900 mb-4">⚙️ 수수료율 조정</h2>
+          <h2 className="text-sm font-bold text-gray-900 mb-4">수수료율 조정</h2>
           <p className="text-xs text-gray-500 mb-4 leading-relaxed">
             • voucher 사용 시점에 자동으로 ledger entry 생성 시 적용됨<br />
             • 변경 즉시 다음 voucher 부터 새 비율 사용 (기존 entry 영향 X)<br />
@@ -416,7 +416,7 @@ export default function AdminPayoutsPage() {
                 type="number" min={0} max={30} step={0.5}
                 value={rates.platform_fee_pct}
                 onChange={e => setRates(r => ({ ...r, platform_fee_pct: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-brand"
               />
               <p className="text-[10px] text-gray-400 mt-1">전체 매출에서 플랫폼이 가져가는 비율</p>
             </div>
@@ -426,17 +426,17 @@ export default function AdminPayoutsPage() {
                 type="number" min={0} max={50} step={0.5}
                 value={rates.seller_commission_pct}
                 onChange={e => setRates(r => ({ ...r, seller_commission_pct: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-brand"
               />
               <p className="text-[10px] text-gray-400 mt-1">위탁 판매 (consignment) 시 셀러 commission</p>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">🎤 인플루언서 입점 유치 % <span className="text-gray-400">(default 20)</span></label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">인플루언서 입점 유치 % <span className="text-gray-400">(default 20)</span></label>
               <input
                 type="number" min={0} max={100} step={1}
                 value={rates.influencer_intro_share_pct}
                 onChange={e => setRates(r => ({ ...r, influencer_intro_share_pct: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-brand"
               />
               <p className="text-[10px] text-gray-400 mt-1">
                 인플루언서가 매장 입점 유치 시 영구 % (introduced_by_influencer_id 있는 가게만).<br />
@@ -472,7 +472,7 @@ export default function AdminPayoutsPage() {
       {/* 📄 연말 정산 리포트 — CSV download */}
       {tab === 'annual' && (
         <div className="bg-white rounded-xl border border-gray-200 p-6 max-w-xl">
-          <h2 className="text-sm font-bold text-gray-900 mb-4">📄 연말 정산 리포트</h2>
+          <h2 className="text-sm font-bold text-gray-900 mb-4">연말 정산 리포트</h2>
           <p className="text-xs text-gray-500 mb-4 leading-relaxed">
             • payouts.sent + ledger 합산 → payee 별 연간 수입 CSV<br />
             • 사업자등록번호 / 계좌 / 입금 횟수 / 첫·마지막 입금일 포함<br />
@@ -496,9 +496,9 @@ export default function AdminPayoutsPage() {
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white"
               >
                 <option value="all">전체</option>
-                <option value="store_owner">🏪 사장님 (store_owner)</option>
-                <option value="seller">📺 셀러 (seller)</option>
-                <option value="agency">🤵 에이전시 (agency)</option>
+                <option value="store_owner">사장님 (store_owner)</option>
+                <option value="seller">셀러 (seller)</option>
+                <option value="agency">에이전시 (agency)</option>
               </select>
             </div>
           </div>
@@ -528,7 +528,7 @@ export default function AdminPayoutsPage() {
             href={`/api/admin/tax/annual-report?year=${annualYear}&payee_type=${annualType}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="block mt-2 text-center py-2 text-xs text-blue-600 hover:underline"
+            className="block mt-2 text-center py-2 text-xs text-brand-text hover:underline"
           >
             JSON 미리보기 →
           </a>

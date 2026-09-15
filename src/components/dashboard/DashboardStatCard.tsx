@@ -57,7 +57,7 @@ export default function DashboardStatCard({
       {loading ? (
         <div className="mt-2 h-7 w-20 animate-pulse rounded bg-gray-100" />
       ) : (
-        <p className="mt-1.5 text-[24px] font-extrabold leading-tight tracking-tight text-gray-900">{value}</p>
+        <p className="dash-num mt-1.5 text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">{value}</p>
       )}
 
       {hint && <p className="mt-1 text-[12px] text-gray-400">{hint}</p>}
@@ -71,7 +71,7 @@ export default function DashboardStatCard({
     </>
   )
 
-  const base = 'relative block rounded-2xl border border-rule bg-white p-4'
+  const base = 'relative block rounded-[var(--dash-radius,16px)] border border-rule bg-white p-4'
 
   // to 지정 시 카드 전체를 Link 로 — 클릭 affordance(커서/hover) + 우상단 화살표 표시.
   if (to) {

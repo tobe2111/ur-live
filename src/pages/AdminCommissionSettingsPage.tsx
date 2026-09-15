@@ -121,23 +121,23 @@ export default function AdminCommissionSettingsPage() {
         {/* 🔎 2026-08-01 (대표: "이거는 무슨 정산 마진인거지? 왜 이렇게 된거야? 공구 마진??")
             질문이 나왔다는 것 자체가 화면의 결함이다 — 어느 서비스의 무슨 값인지 페이지가 말하지 않았다.
             같은 이름의 설정이 **두 군데** 있어서 더 헷갈린다(아래 카드에 그대로 적는다). */}
-        <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-[13px] leading-relaxed text-sky-900">
+        <div className="rounded-xl border border-rule bg-white p-4 text-[13px] leading-relaxed text-gray-700">
           <p className="font-bold">이 페이지가 조정하는 것</p>
           <p className="mt-1">
             <strong>공구(이용권) 주문</strong>의 매출 분배 비율입니다. 소비자가 이용권을 결제하면 그 금액을
             유어딜·인플루언서·구매자·에이전시·셀러가 아래 비율로 나눠 갖습니다.
           </p>
-          <p className="mt-2 text-[12px] text-sky-800">
+          <p className="mt-2 text-[12px] text-gray-700">
             저장하면 <code>platform_settings</code> 에 쓰이고, 공구 결제·정산 계산이 그 값을 읽습니다.
             (읽는 곳: <code>features/group-buy/api/commission-rates.ts</code> → <code>group-buy.routes.ts</code>)
           </p>
-          <p className="mt-2 border-t border-sky-200 pt-2 text-[12px]">
-            ⚠️ <strong>여기가 아닌 곳</strong>: 쇼핑 주문의 플랫폼 수수료(기본 5%)와 후원 수수료(15%)는
+          <p className="mt-2 border-t border-rule pt-2 text-[12px]">
+            <strong>여기가 아닌 곳</strong>: 쇼핑 주문의 플랫폼 수수료(기본 5%)와 후원 수수료(15%)는
             별도 키(<code>commission_rate_default</code> / <code>commission_rate_donation</code>)이고
             <strong> 이 화면에서 안 바뀝니다.</strong> 셀러별 수수료는 셀러 상세에서 개별 조정합니다.
           </p>
           <p className="mt-2 text-[12px]">
-            📌 <strong>2026-07-08 대표 확정 재원 원칙과의 관계</strong>: "유어딜 5%는 어떤 커미션에도 쓰지
+            <strong>2026-07-08 대표 확정 재원 원칙과의 관계</strong>: "유어딜 5%는 어떤 커미션에도 쓰지
             않는다(전부 매장 promo 재원)"로 방향이 정해졌지만, 아래 모델은 아직 <strong>그 이전 구조</strong>
             (커미션을 매출에서 함께 차감)입니다. 전환은 <code>commission_budget_enabled</code> 게이트로
             예정돼 있고 현재 기본 OFF입니다 — 그래서 지금 화면은 옛 모델대로 보입니다.
@@ -156,14 +156,14 @@ export default function AdminCommissionSettingsPage() {
             <div className="bg-emerald-500" style={{ width: `${sellerReceives}%` }} title={`셀러 ${sellerReceives}%`} />
           </div>
           <div className="grid grid-cols-5 gap-2 text-[10px] text-center">
-            <span className="text-purple-700">유어딜 {form.platform_margin_pct}%</span>
+            <span className="text-gray-700">유어딜 {form.platform_margin_pct}%</span>
             <span className="text-brand-text">인플 {form.influencer_commission_pct}%</span>
-            <span className="text-yellow-700">유저 {form.user_referral_bonus_pct}%</span>
-            <span className="text-blue-700">에이전시 {form.agency_commission_pct}%</span>
-            <span className="text-emerald-700">셀러 {sellerReceives.toFixed(1)}%</span>
+            <span className="text-tone-warn">유저 {form.user_referral_bonus_pct}%</span>
+            <span className="text-gray-700">에이전시 {form.agency_commission_pct}%</span>
+            <span className="text-tone-ok">셀러 {sellerReceives.toFixed(1)}%</span>
           </div>
           {totalCommission > 50 && (
-            <p className="text-xs text-red-600 font-bold">⚠️ 총 수수료가 50% 초과 — 셀러 매출이 비정상적으로 낮습니다</p>
+            <p className="text-xs text-tone-bad font-bold">총 수수료가 50% 초과 — 셀러 매출이 비정상적으로 낮습니다</p>
           )}
         </div>
 
@@ -330,7 +330,7 @@ export default function AdminCommissionSettingsPage() {
                 className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900"
               />
               <p className="text-[11px] text-gray-500 mt-1">
-                🛑 2026-09-07 대표 확정(결재 Q2-1): <b>상한 없음</b>. 이 값은 제안·정산 어디서도 더 이상 읽지 않는다(과거 정산 조회 호환으로만 남김).
+                2026-09-07 대표 확정(결재 Q2-1): <b>상한 없음</b>. 이 값은 제안·정산 어디서도 더 이상 읽지 않는다(과거 정산 조회 호환으로만 남김).
                 소개비는 <b>매장 지갑</b>에서 나가므로(유어딜 몫 불변) 유어딜을 보호하는 값이 아니었다. 유일한 검증선은 결제 엔진의 90(역마진 차단).
               </p>
             </div>
@@ -341,7 +341,7 @@ export default function AdminCommissionSettingsPage() {
           <button
             onClick={handleSave}
             disabled={saving || totalCommission > 50}
-            className="flex items-center gap-2 px-5 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-bold disabled:opacity-50"
+            className="ur-btn ur-btn-md ur-btn-primary flex items-center gap-2 disabled:opacity-50"
           >
             <Save className="w-4 h-4" /> {saving ? '저장 중...' : '저장'}
           </button>

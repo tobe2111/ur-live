@@ -54,8 +54,12 @@ export default function DealPurchaseBox({
   //   ⇒ 데모에도 **돈이 나간다는 사실**을 라벨에 박는다. '구매하기'(대표가 데모엔 안 맞다고 한 말)
   //     대신 '결제하기' 를 쓴다 — 무료 응모와 확실히 갈리고, 데모라는 정체성도 해치지 않는다.
   const ctaLabel = isDemo ? '결제하기' : '구매하기'
+  // 🪟 2026-09-15 안 3 예외 — **이 박스만 안 2(들림)**. 스크롤을 따라다니며 본문 위에 얹히는
+  //   물건이라 정말로 떠 있어야 하고, 체계가 그 자리를 위해 `--lift` 를 정의해 뒀다.
+  //   ⚠️ 하드코딩 그림자를 쓰면 안 된다 — 다크는 `--lift: none` 이라 그림자가 꺼져야 하는데
+  //   `0 6px 24px rgba(0,0,0,.06)` 은 테마를 모른다(그래서 토큰으로 바꿨다).
   return (
-    <div style={{ border: '1px solid var(--gbd-line2)', borderRadius: 18, padding: 18, background: 'var(--gbd-card)', boxShadow: '0 6px 24px rgba(0,0,0,.06)' }}>
+    <div style={{ borderRadius: 18, padding: 18, background: 'var(--gbd-card)', boxShadow: 'var(--lift)' }}>
       {/* 💰 가격 헤드라인 (2026-08-19 — 대표 확정 상세 1안). PC 본문에서 가격 블록을 뺐으므로
           **최종가는 여기 하나뿐**이다. 할인율 pill → 판매가 → 정가 취소선 순서(그루폰과 동일:
           "얼마 깎였나 → 얼마인가 → 원래 얼마였나"). 정가가 없거나 같으면 취소선을 그리지 않는다 —

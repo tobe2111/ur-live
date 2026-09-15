@@ -68,12 +68,12 @@ export default function SellerStoresPage() {
         </div>
 
         {error && (
-          <div className="rounded-xl bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+          <div className="rounded-xl bg-white border border-rule p-3 text-sm text-tone-bad">
             {error} <button onClick={load} className="underline font-semibold ml-1">다시 시도</button>
           </div>
         )}
 
-        <div className="rounded-2xl bg-white border border-gray-200 overflow-hidden">
+        <div className="rounded-[var(--dash-radius,16px)] bg-white border border-gray-200 overflow-hidden">
           {loading ? (
             <div className="p-8 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-gray-400" /></div>
           ) : stores.length === 0 ? (
@@ -92,8 +92,8 @@ export default function SellerStoresPage() {
                     <p className="text-sm font-bold text-gray-900 truncate">
                       {s.business_name || s.name || `매장 #${s.seller_id}`}
                       {s.role === 'owner'
-                        ? <span className="ml-1.5 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">소유</span>
-                        : <span className="ml-1.5 text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">위임</span>}
+                        ? <span className="ml-1.5 text-[10px] font-bold text-tone-ok bg-tone-ok-bg px-1.5 py-0.5 rounded">소유</span>
+                        : <span className="ml-1.5 text-[10px] font-bold text-tone-warn bg-tone-warn-bg px-1.5 py-0.5 rounded">위임</span>}
                     </p>
                     <p className="text-[11px] text-gray-500">
                       {s.status === 'approved' || s.status === 'active' ? '운영 중' : s.status === 'pending' ? '승인 대기 (사업자 확인 중)' : s.status}

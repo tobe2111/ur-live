@@ -40,8 +40,8 @@ interface Partnership {
 // STATUS_LABEL is built dynamically using t() in the component
 
 const STATUS_COLOR: Record<Partnership['status'], string> = {
-  pending: 'bg-yellow-50 text-yellow-700 border-yellow-200',
-  active: 'bg-green-50 text-green-700 border-green-200',
+  pending: 'bg-white text-tone-warn border-rule',
+  active: 'bg-white text-tone-ok border-rule',
   paused: 'bg-gray-50 text-gray-700 border-gray-200',
   ended: 'bg-gray-50 text-gray-500 border-gray-200',
 }
@@ -125,7 +125,7 @@ export default function SellerConsignmentPage() {
               onClick={() => setRoleFilter(f.key)}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
                 roleFilter === f.key
-                  ? 'bg-gray-900 text-white border-gray-900'
+                  ? 'bg-brand-tint text-brand-text border-gray-900'
                   : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
               }`}
             >{f.label}</button>
@@ -139,7 +139,7 @@ export default function SellerConsignmentPage() {
               onClick={() => setStatusFilter(s)}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
                 statusFilter === s
-                  ? 'bg-gray-900 text-white border-gray-900'
+                  ? 'bg-brand-tint text-brand-text border-gray-900'
                   : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
               }`}
             >{s === 'all' ? t('seller.consignment.all', { defaultValue: '전체' }) : STATUS_LABEL[s as Partnership['status']]}</button>
@@ -232,7 +232,7 @@ export default function SellerConsignmentPage() {
                       <button
                         onClick={() => handleTerminate(p.id)}
                         disabled={actingId === p.id}
-                        className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-white border border-red-300 text-red-600 rounded-lg text-xs font-bold hover:bg-red-50 disabled:opacity-50"
+                        className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-white border border-rule text-tone-bad rounded-lg text-xs font-bold hover:bg-gray-100 disabled:opacity-50"
                       >
                         <XCircle className="w-3 h-3" /> {t('seller.consignment.terminateBtn', { defaultValue: '종료' })}
                       </button>

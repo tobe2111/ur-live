@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react'
 import api from '@/lib/api'
 import KakaoMapPicker, { type KakaoPlace } from '@/components/KakaoMapPicker'
 import { formatPhone, isValidMobilePhone, digitsOnly } from '@/utils/format-phone'
-import { Loader2, Map, MapPin } from 'lucide-react'
+import { Loader2, Map, MapPin, X } from 'lucide-react'
 
 interface Props {
   sellerId: number
@@ -84,10 +84,10 @@ export default function StoreProfileModal({ sellerId, storeName, onClose, onDone
 
   return (
     <div className="fixed inset-0 z-[10500] flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4" onClick={onClose}>
-      <div className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl max-h-[92dvh] flex flex-col" onClick={e => e.stopPropagation()}>
+      <div className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)] max-h-[92dvh] flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between shrink-0">
           <h2 className="text-sm font-bold text-gray-900 truncate">매장 정보 {storeName ? `— ${storeName}` : ''}</h2>
-          <button onClick={onClose} className="text-gray-400 text-sm px-2">✕</button>
+          <button onClick={onClose} aria-label="닫기" className="ur-btn ur-btn-sm ur-btn-icon ur-btn-ghost"><X className="h-4 w-4" /></button>
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
           {loading ? (
@@ -95,7 +95,7 @@ export default function StoreProfileModal({ sellerId, storeName, onClose, onDone
           ) : (
             <>
               {productCount > 0 && (
-                <p className="text-[11px] text-blue-700 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+                <p className="text-[11px] text-gray-700 bg-white border border-rule rounded-lg px-3 py-2">
                   저장하면 이 매장의 이용권 <b>{productCount}개</b>에 모두 반영돼요 — 매장 정보는 여기 한 곳에서 관리합니다.
                 </p>
               )}
@@ -109,7 +109,7 @@ export default function StoreProfileModal({ sellerId, storeName, onClose, onDone
                 <input value={address} onChange={e => setAddress(e.target.value)}
                   className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-900" />
                 {lat && lng && (
-                  <p className="text-[10px] text-emerald-600 mt-1 flex items-center gap-0.5">
+                  <p className="text-[10px] text-tone-ok mt-1 flex items-center gap-0.5">
                     <MapPin className="w-3 h-3" /> 좌표 {Number(lat).toFixed(5)}, {Number(lng).toFixed(5)}
                   </p>
                 )}
@@ -152,7 +152,7 @@ export default function StoreProfileModal({ sellerId, storeName, onClose, onDone
         </div>
         <div className="p-4 border-t border-gray-100 shrink-0">
           <button onClick={save} disabled={loading || saving}
-            className="w-full py-3 rounded-xl bg-brand hover:bg-brand-dark text-white text-sm font-bold disabled:opacity-40 transition">
+            className="ur-btn ur-btn-lg ur-btn-primary w-full disabled:opacity-40 transition">
             {saving ? '저장 중…' : productCount > 0 ? `저장하고 이용권 ${productCount}개에 반영` : '저장'}
           </button>
         </div>

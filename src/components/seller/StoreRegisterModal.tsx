@@ -43,7 +43,7 @@ import { formatPhone, isValidMobilePhone, digitsOnly } from '@/utils/format-phon
 import { readStoreReferrer, clearStoreReferrer } from '@/utils/store-referrer'
 import { enterStoreSeat } from '@/utils/enter-store'
 import { toast } from '@/hooks/useToast'
-import { Loader2, MapPin, CheckCircle2, XCircle, BadgeCheck, FileImage, ArrowLeft } from 'lucide-react'
+import { Loader2, MapPin, CheckCircle2, XCircle, BadgeCheck, FileImage, ArrowLeft, X } from 'lucide-react'
 
 export interface RegisterPlace {
   id?: string
@@ -233,7 +233,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
     return (
       <div className="fixed inset-0 z-[10500] flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4"
         onClick={dismissOnBackdrop ? onClose : undefined}>
-        <div className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl" onClick={e => e.stopPropagation()}>
+        <div className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)]" onClick={e => e.stopPropagation()}>
           <div className="p-5">
             <h2 className="text-base font-bold text-gray-900">이미 유어딜에 등록된 매장이에요</h2>
             {/* ⚠️ 누구 것인지 단정하지 않는다 — 내 매장이어도 승인 대기면 좌석이 안 열려 여기로 온다. */}
@@ -244,7 +244,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
             <div className="mt-4 space-y-2">
               {taken.sellerId && (
                 <button onClick={tryEnterExisting} disabled={submitting}
-                  className="w-full py-3 rounded-xl bg-brand hover:bg-brand-dark text-white text-sm font-bold disabled:opacity-40 transition">
+                  className="ur-btn ur-btn-lg ur-btn-primary w-full disabled:opacity-40 transition">
                   {submitting ? '확인 중…' : '내가 등록한 매장인지 확인하기'}
                 </button>
               )}
@@ -291,7 +291,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
         * ⚠️ `light-fixed` 주석은 가드 면제용 부표일 뿐 런타임엔 아무 일도 안 한다(CLAUDE.md 🏝️ 절).
         * ⚠️ 이 블록의 이어지는 줄이 `*` 로 시작하는 이유: `check-dashboard-theme.sh` 가 여러 줄 JSX
         *    주석의 둘째 줄부터를 실코드로 보고 다크 유틸 표기를 위반으로 잡는다(오탐 방향이라 안전). */}
-      <div className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl max-h-[92dvh] flex flex-col" onClick={e => e.stopPropagation()}>
+      <div className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)] max-h-[92dvh] flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="px-4 pt-3 pb-2 shrink-0">
           <div className="flex items-center justify-between">
             <button
@@ -299,7 +299,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
               aria-label={step === 0 ? '닫기' : '이전 단계'}
               className="-ml-1 p-1 text-gray-400 hover:text-gray-700"
             >
-              {step === 0 ? <span className="text-sm px-1">✕</span> : <ArrowLeft className="w-4 h-4" />}
+              {step === 0 ? <X className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
             </button>
             <span className="text-[11px] font-bold text-gray-400 tabular-nums">{step + 1} / {STEPS.length}</span>
           </div>
@@ -380,7 +380,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
                   앞 세 단계는 답하고 나면 화면에서 사라지므로, 여기서 다시 안 보여 주면 사장님은
                   자기가 무엇을 골랐는지 기억에만 의존해 [매장 등록]을 누르게 된다. 매장명이 한 글자
                   다른 지점을 골랐어도 이 카드가 없으면 등록 후에야 안다.
-                  ⚠️ 새 데이터를 부르지 않는다 — 이미 손에 든 값만 다시 보여 준다(요청 0). */}
+                  새 데이터를 부르지 않는다 — 이미 손에 든 값만 다시 보여 준다(요청 0). */}
               <div className="rounded-xl bg-gray-50 border border-gray-200 divide-y divide-gray-200">
                 {[
                   { k: '매장', v: picked?.name, sub: picked?.address, to: 0 },
@@ -399,13 +399,13 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
                 ))}
               </div>
               {/* 📄 사업자등록증 사본 — 개업일·대표자명을 외워 적는 대신 사진 1장. 이게 심사의 근거다. */}
-              <label className={`flex items-center gap-2.5 px-3 py-3 rounded-lg border border-dashed cursor-pointer ${certUrl ? 'border-emerald-300 bg-emerald-50' : 'border-gray-300 bg-gray-50'}`}>
+              <label className={`flex items-center gap-2.5 px-3 py-3 rounded-lg border border-dashed cursor-pointer ${certUrl ? 'border-rule bg-white' : 'border-gray-300 bg-gray-50'}`}>
                 <input
                   type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
                   onChange={e => { const f = e.target.files?.[0]; if (f) void uploadCert(f); e.target.value = '' }}
                 />
                 {uploading ? <Loader2 className="w-4 h-4 animate-spin text-gray-400 shrink-0" />
-                  : certUrl ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  : certUrl ? <CheckCircle2 className="w-4 h-4 text-tone-ok shrink-0" />
                   : <FileImage className="w-4 h-4 text-gray-400 shrink-0" />}
                 <span className="min-w-0">
                   <span className="block text-[12.5px] font-bold text-gray-900">
@@ -429,7 +429,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
                   {verifying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BadgeCheck className="w-3.5 h-3.5" />} 국세청 확인
                 </button>
                 {nts && (
-                  <p className={`text-[11px] flex items-center gap-1 mt-1.5 ${nts.valid === true ? 'text-emerald-600' : nts.valid === false ? 'text-red-600' : 'text-gray-500'}`}>
+                  <p className={`text-[11px] flex items-center gap-1 mt-1.5 ${nts.valid === true ? 'text-tone-ok' : nts.valid === false ? 'text-tone-bad' : 'text-gray-500'}`}>
                     {nts.valid === true ? <CheckCircle2 className="w-3.5 h-3.5" /> : nts.valid === false ? <XCircle className="w-3.5 h-3.5" /> : null}
                     {nts.valid === true ? `국세청에 등록된 번호예요${nts.message ? ` (${nts.message})` : ''}` : nts.valid === false ? '조회되지 않는 번호예요 — 입력을 확인해주세요' : (nts.message || '확인 불가 — 등록 후 검토됩니다')}
                   </p>
@@ -443,7 +443,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
           <button
             onClick={() => (last ? void submit() : setStep(step + 1))}
             disabled={!!blocked || submitting}
-            className="w-full py-3 rounded-xl bg-brand hover:bg-brand-dark text-white text-sm font-bold disabled:opacity-40 transition"
+            className="ur-btn ur-btn-lg ur-btn-primary w-full disabled:opacity-40 transition"
           >
             {submitting ? '등록 중…' : last ? '매장 등록' : '다음'}
           </button>

@@ -35,7 +35,7 @@ export default function InflowTimeline({ byDay, label = '연락 가능', todayKs
   const max = Math.max(1, ...byDay.map(x => x.n))
   const t = summarizeInflow(byDay, todayKst)
   const pct = Math.round(t.deltaRatio * 100)
-  const tone = t.verdict === 'down' ? 'text-rose-600' : t.verdict === 'up' ? 'text-emerald-600' : 'text-gray-500'
+  const tone = t.verdict === 'down' ? 'text-tone-bad' : t.verdict === 'up' ? 'text-tone-ok' : 'text-gray-500'
   return (
     <div className="mb-5 rounded-xl border border-gray-200 bg-white p-3">
       <div className="flex items-baseline justify-between gap-2 mb-2">
@@ -48,7 +48,7 @@ export default function InflowTimeline({ byDay, label = '연락 가능', todayKs
               <span className="ml-1 font-normal text-gray-400">7일 평균 {formatNumber(Math.round(t.recentAvg))}/일</span>
             </div>
           )}
-          <div className="text-[11px] text-gray-500">숫자 = <b className="text-indigo-600">{label}</b> / 전체</div>
+          <div className="text-[11px] text-gray-500">숫자 = <b className="text-gray-700">{label}</b> / 전체</div>
         </div>
       </div>
       <div className="flex items-end gap-1.5 overflow-x-auto pb-1">
@@ -63,7 +63,7 @@ export default function InflowTimeline({ byDay, label = '연락 가능', todayKs
                 </div>
               </div>
               <div className="mt-1 text-[10px] tabular-nums text-gray-500">{x.d.slice(5)}</div>
-              <div className="text-[10px] tabular-nums"><b className="text-indigo-600">{formatNumber(x.reachable)}</b><span className="text-gray-400">/{formatNumber(x.n)}</span></div>
+              <div className="text-[10px] tabular-nums"><b className="text-gray-700">{formatNumber(x.reachable)}</b><span className="text-gray-400">/{formatNumber(x.n)}</span></div>
               {today && <div className="text-[9px] text-gray-400 leading-tight">진행 중</div>}
             </div>
           )

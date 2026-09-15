@@ -174,7 +174,7 @@ export default function AdminStoreOwnerPage() {
       />
 
       {/* ── 매장 조회 ─────────────────────────────────────────── */}
-      <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+      <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-4 mb-4">
         <div className="flex gap-2 items-center">
           <input
             value={sellerId} onChange={(e) => setSellerId(e.target.value)}
@@ -183,12 +183,12 @@ export default function AdminStoreOwnerPage() {
             className="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-900 w-56"
           />
           <button onClick={() => void lookup()} disabled={busy}
-            className="px-4 py-2 rounded-md bg-gray-900 text-white text-sm disabled:opacity-50">조회</button>
+            className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-50">조회</button>
         </div>
       </div>
 
       {state && (
-        <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
+        <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-4 mb-6">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
               <p className="text-base font-semibold text-gray-900">
@@ -206,7 +206,7 @@ export default function AdminStoreOwnerPage() {
           </div>
 
           {state.owner_unknown ? (
-            <p className="mt-3 text-sm text-amber-700 bg-amber-50 rounded-md px-3 py-2">
+            <p className="mt-3 text-sm text-tone-warn border border-rule bg-white rounded-md px-3 py-2">
               <ShieldAlert className="w-4 h-4 inline mr-1" />
               현재 소유자를 확인할 수 없습니다. 이 상태에서는 변경이 막힙니다.
             </p>
@@ -249,13 +249,13 @@ export default function AdminStoreOwnerPage() {
               className="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-900 flex-1 min-w-[260px]"
             />
             <button onClick={() => void transfer()} disabled={busy}
-              className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm disabled:opacity-50">소유자 변경</button>
+              className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-50">소유자 변경</button>
           </div>
         </div>
       )}
 
       {/* ── 소유권 신청 심사 ───────────────────────────────────── */}
-      <div className="bg-white rounded-lg shadow-sm p-4">
+      <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-4">
         <p className="text-base font-semibold text-gray-900 mb-1">
           <FileText className="w-4 h-4 inline mr-1" />소유권 신청 ({claims.length})
         </p>
@@ -280,17 +280,17 @@ export default function AdminStoreOwnerPage() {
                   </p>
                   <p className="text-gray-600 mt-0.5">
                     사업자번호 {cl.business_number || '미기재'}{' '}
-                    {cl.bno_match === 1 && <span className="text-green-700">· 매장과 일치</span>}
-                    {cl.bno_match === 0 && <span className="text-red-600">· 매장과 불일치</span>}
+                    {cl.bno_match === 1 && <span className="text-tone-ok">· 매장과 일치</span>}
+                    {cl.bno_match === 0 && <span className="text-tone-bad">· 매장과 불일치</span>}
                     {cl.bno_match == null && <span className="text-gray-400">· 대조 불가</span>}
                   </p>
                   {cl.note && <p className="text-gray-500 mt-0.5">“{cl.note}”</p>}
                   <a href={cl.cert_url} target="_blank" rel="noreferrer"
-                    className="text-blue-600 underline text-xs mt-1 inline-block">사업자등록증 사본 열기</a>
+                    className="text-brand-text underline text-xs mt-1 inline-block">사업자등록증 사본 열기</a>
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => void decide(cl, true)} disabled={busy}
-                    className="px-3 py-1.5 rounded-md bg-blue-600 text-white text-sm disabled:opacity-50">승인</button>
+                    className="ur-btn ur-btn-sm ur-btn-primary disabled:opacity-50">승인</button>
                   <button onClick={() => void decide(cl, false)} disabled={busy}
                     className="px-3 py-1.5 rounded-md bg-white border border-gray-300 text-gray-700 text-sm disabled:opacity-50">거절</button>
                 </div>

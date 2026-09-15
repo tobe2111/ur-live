@@ -59,9 +59,9 @@ export default function AdminKakaoTestCallbackPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="text-center">
-          <p className="text-red-600 font-bold mb-2">인증 실패</p>
+          <p className="text-tone-bad font-bold mb-2">인증 실패</p>
           <p className="text-sm text-gray-500 mb-4">{error}</p>
-          <button onClick={() => navigate('/admin/kakao-test')} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">
+          <button onClick={() => navigate('/admin/kakao-test')} className="ur-btn ur-btn-md ur-btn-primary">
             다시 시도
           </button>
         </div>
@@ -72,7 +72,7 @@ export default function AdminKakaoTestCallbackPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <div className="text-center">
-        <Loader2 className="w-8 h-8 animate-spin text-yellow-500 mx-auto mb-3" />
+        <Loader2 className="w-8 h-8 animate-spin text-tone-warn mx-auto mb-3" />
         <p className="text-sm text-gray-600">카카오 인증 처리 중...</p>
       </div>
     </div>

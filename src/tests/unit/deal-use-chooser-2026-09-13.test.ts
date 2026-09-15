@@ -81,6 +81,9 @@ describe('🔌 배선 — 고른 값이 서버까지 가는가', () => {
   const page = stripComments(readFileSync('src/pages/GroupBuyDetailPage.tsx', 'utf8'))
   const route = stripComments(readFileSync('src/features/group-buy/api/group-buy.routes.ts', 'utf8'))
   const chooser = stripComments(readFileSync('src/pages/group-buy/DealUseChooser.tsx', 'utf8'))
+  // 🧺 2026-09-15: 모바일 하단 결제 바가 `DealBottomBar` 로 분리됐다(상세가 동결선에 붙어 자리가 없었다).
+  //    성질은 그대로라 **지우지 않고 재조준**한다 — 고르는 자리가 구매 버튼 위여야 한다.
+  const bottomBar = stripComments(readFileSync('src/pages/group-buy/DealBottomBar.tsx', 'utf8'))
   const plan = stripComments(readFileSync('src/features/group-buy/api/deal-plan.routes.ts', 'utf8'))
 
   it('상세 화면이 고른 값을 /join 에 실어 보낸다', () => {
@@ -115,10 +118,10 @@ describe('🔌 배선 — 고른 값이 서버까지 가는가', () => {
     // 아래에 두면 "누르고 나서 고르라"는 순서가 된다. 그리고 이 바는 fixed bottom-0 이라
     // 아래로 자란 만큼이 모든 방문자의 화면을 영구히 먹는다.
     // ⚠️ 페이지 전체에서 indexOf 하면 **PC 박스**가 먼저 잡혀 헛돈다(첫 판이 실제로 그랬다).
-    //    모바일 고정 바 구간만 잘라서 그 안의 순서를 본다.
-    const barAt = page.indexOf('fixed bottom-0 inset-x-0')
+    //    모바일 고정 바 구간만 잘라서 그 안의 순서를 본다(이제 그 바는 `DealBottomBar` 다).
+    const barAt = bottomBar.indexOf('fixed bottom-0 inset-x-0')
     expect(barAt).toBeGreaterThan(-1)
-    const bar = page.slice(barAt)
+    const bar = bottomBar.slice(barAt)
     const chooserAt = bar.indexOf('<DealUseChooser plan=')
     const ctaAt = bar.indexOf('disabled={(!isJoinable && !isPrelaunch) || joining}')
     expect(chooserAt).toBeGreaterThan(-1)

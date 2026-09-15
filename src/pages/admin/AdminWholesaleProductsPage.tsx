@@ -163,7 +163,7 @@ export default function AdminWholesaleProductsPage() {
               </button>
             ))}
             <AdminMallSelect value={mallId} onChange={setMallId} />
-            <span className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-amber-600">
+            <span className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-tone-warn">
               <Crown className="w-3.5 h-3.5" />
               {t('admin.wholesaleProducts.premiumCount', { defaultValue: '프리미엄' })} {premiumCount}
             </span>
@@ -171,7 +171,7 @@ export default function AdminWholesaleProductsPage() {
         </div>
 
         {loading ? (
-          <div className="py-20 text-center"><Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto" /></div>
+          <div className="py-20 text-center"><Loader2 className="w-8 h-8 animate-spin text-gray-700 mx-auto" /></div>
         ) : isError ? (
           // 🛡️ 2026-06-29 (audit): fetch 실패를 '상품 없음'으로 위장 금지 — 에러+재시도(상품 미노출 오판 방지).
           <DashboardLoadError error={error} onRetry={refetch} loginPath="/admin/login" label="도매 상품" />
@@ -187,7 +187,7 @@ export default function AdminWholesaleProductsPage() {
               <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
                 <input type="checkbox" checked={allSelected} ref={(el) => { if (el) el.indeterminate = someSelected }} onChange={toggleSelectAll}
                   aria-label={t('admin.wholesaleProducts.selectAll', { defaultValue: '전체 선택' })}
-                  className="h-4 w-4 rounded border-gray-300 text-amber-500 focus:ring-amber-500 cursor-pointer" />
+                  className="h-4 w-4 rounded border-gray-300 text-tone-warn focus:ring-amber-500 cursor-pointer" />
                 {t('admin.wholesaleProducts.selectAll', { defaultValue: '전체 선택' })}
               </label>
               {selectedIds.size > 0 && (
@@ -195,7 +195,7 @@ export default function AdminWholesaleProductsPage() {
                   <span className="text-xs text-gray-500 font-medium">{t('admin.wholesaleProducts.selectedN', { count: selectedIds.size, defaultValue: `${selectedIds.size}개 선택됨` })}</span>
                   <button type="button" onClick={() => setSelectedIds(new Set())} className="text-xs text-gray-500 hover:text-gray-700 underline underline-offset-2">{t('admin.wholesaleProducts.clearSel', { defaultValue: '선택 해제' })}</button>
                   <button type="button" onClick={() => bulkSetPremium(1)} disabled={bulkBusy}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-amber-500 text-white text-xs font-semibold rounded-lg hover:bg-amber-600 disabled:opacity-50">
+                    className="ur-btn ur-btn-sm ur-btn-primary inline-flex items-center gap-1 disabled:opacity-50">
                     <Crown className="w-3.5 h-3.5" /> {t('admin.wholesaleProducts.bulkAddPremium', { defaultValue: '프리미엄 추가' })}
                   </button>
                   <button type="button" onClick={() => bulkSetPremium(0)} disabled={bulkBusy}
@@ -211,13 +211,13 @@ export default function AdminWholesaleProductsPage() {
               const busy = togglingId === p.id
               const checked = selectedIds.has(p.id)
               return (
-                <div key={p.id} className={`bg-white rounded-xl border p-4 flex items-center gap-4 ${isPremium ? 'border-amber-200 bg-amber-50/30' : 'border-gray-200'} ${checked ? 'ring-2 ring-amber-300' : ''}`}>
+                <div key={p.id} className={`bg-white rounded-xl border p-4 flex items-center gap-4 ${isPremium ? 'border-rule bg-white' : 'border-gray-200'} ${checked ? 'ring-2 ring-amber-300' : ''}`}>
                   <input type="checkbox" checked={checked} onChange={() => toggleSelect(p.id)}
                     aria-label={t('admin.wholesaleProducts.selectOne', { defaultValue: `"${p.name}" 선택` })}
-                    className="h-4 w-4 rounded border-gray-300 text-amber-500 focus:ring-amber-500 cursor-pointer shrink-0" />
+                    className="h-4 w-4 rounded border-gray-300 text-tone-warn focus:ring-amber-500 cursor-pointer shrink-0" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      {isPremium && <Crown className="w-4 h-4 text-amber-500 shrink-0" />}
+                      {isPremium && <Crown className="w-4 h-4 text-tone-warn shrink-0" />}
                       <p className="font-semibold text-gray-900 truncate">{p.name || t('admin.wholesaleProducts.noName', { defaultValue: '(이름 없음)' })}</p>
                       {p.is_active !== 1 && (
                         <span className="px-2 py-0.5 rounded-full border text-[11px] font-medium bg-gray-100 text-gray-500 border-gray-200 shrink-0">

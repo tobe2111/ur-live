@@ -36,7 +36,7 @@ export default function MallAdvancedFields({ form, setForm }: { form: MallForm; 
         <span className="text-[11px] text-gray-400">— 도매몰·규제몰용. 공구 몰은 안 건드려도 됩니다</span>
         {/* 🔴 접힌 상태에서도 '안 열림'은 보여야 한다 — 접혀 있다고 404 를 모르면 안 된다. */}
         {!form.consumer_path && (
-          <span className="ml-auto text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 shrink-0">
+          <span className="ml-auto text-[11px] font-semibold text-tone-warn bg-tone-warn-bg border border-transparent rounded px-1.5 py-0.5 shrink-0">
             손님 링크 꺼짐
           </span>
         )}
@@ -54,8 +54,8 @@ export default function MallAdvancedFields({ form, setForm }: { form: MallForm; 
               공구 몰은 <b>켠 채로 둡니다</b>(기본값). 자기 도메인을 쓰는 도매몰만 끕니다.
             </p>
             {!form.consumer_path && (
-              <p className="flex items-start gap-1.5 text-[11.5px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5">
-                <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-[1px] text-amber-500" />
+              <p className="flex items-start gap-1.5 text-[11.5px] text-tone-warn bg-white border border-rule rounded-md px-2 py-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-[1px] text-tone-warn" />
                 <span>
                   지금 상태로 만들면 <b>손님 링크가 열리지 않습니다</b> — <code className="bg-white/70 px-1 rounded">urdeal.kr/{form.slug || '{주소}'}</code> 는 404 가 됩니다.
                 </span>

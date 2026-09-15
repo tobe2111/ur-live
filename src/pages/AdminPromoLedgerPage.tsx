@@ -104,7 +104,7 @@ function SwitchChip({ label, value, on }: { label: string; value: string; on: bo
       <span className="text-xs text-gray-500">{label}</span>
       <span
         className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
-          on ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'
+          on ? 'bg-tone-ok-bg text-tone-ok' : 'bg-gray-100 text-gray-500'
         }`}
       >
         {value}
@@ -125,11 +125,11 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
 
 function ErrorRetry({ onRetry }: { onRetry: () => void }) {
   return (
-    <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800 flex items-center justify-between">
+    <div className="mb-4 p-4 bg-white border border-rule rounded-lg text-sm text-tone-bad flex items-center justify-between">
       <span>데이터를 불러오지 못했습니다.</span>
       <button
         onClick={onRetry}
-        className="px-3 py-1 bg-red-600 text-white rounded text-xs font-medium hover:bg-red-700"
+        className="ur-btn ur-btn-sm ur-btn-danger rounded"
       >
         다시 시도
       </button>
@@ -218,7 +218,7 @@ export default function AdminPromoLedgerPage() {
         <p className="mt-2 text-[11px] text-gray-500 flex items-center gap-1">
           <Settings className="w-3 h-3" />
           이 화면은 상태 표시 전용 — 전환은{' '}
-          <Link to="/admin/platform-settings" className="text-blue-600 underline font-medium">
+          <Link to="/admin/platform-settings" className="text-brand-text underline font-medium">
             플랫폼 설정
           </Link>
           에서 합니다.
@@ -290,21 +290,21 @@ export default function AdminPromoLedgerPage() {
 
           {/* ── 🎬 WP-A 비정산 마킹: 0원 체험권 발급 (매장 자기부담) ────────── */}
           {s.experience_noncash && s.experience_noncash.count > 0 && (
-            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <div className="mb-4 rounded-lg border border-rule bg-white p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-sm font-bold text-amber-800">
+                <p className="text-sm font-bold text-tone-warn">
                   비정산 — 0원 체험권 발급 ({formatNumber(s.experience_noncash.count)}건)
                 </p>
                 <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold border ${
                   s.experience_noncash.sum_amount === 0
-                    ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
-                    : 'bg-red-100 text-red-700 border-red-200'
+                    ? 'bg-tone-ok-bg text-tone-ok border-transparent'
+                    : 'bg-tone-bad-bg text-tone-bad border-transparent'
                 }`}>
                   결제액 합 {formatWon(s.experience_noncash.sum_amount)}
-                  {s.experience_noncash.sum_amount === 0 ? ' ✓ 0원 정상' : ' ⚠︎ 회귀 의심'}
+                  {s.experience_noncash.sum_amount === 0 ? ' 0원 정상' : ' ︎ 회귀 의심'}
                 </span>
               </div>
-              <p className="mt-1.5 text-[11px] leading-relaxed text-amber-700">
+              <p className="mt-1.5 text-[11px] leading-relaxed text-tone-warn">
                 매장 자기부담 체험 제공 — 정산·커미션·유어딜 5% 무관(사용 시 원장/커미션 amount&gt;0 게이트로 자동 skip).
                 QR 사용확인은 정상 기록됩니다.
               </p>
@@ -315,15 +315,15 @@ export default function AdminPromoLedgerPage() {
           {inv && (
             <div className="mb-4 bg-white border border-gray-200 rounded-lg p-4">
               <p className="text-sm font-bold text-gray-800 mb-3">
-                🔒 불변식 #44 — 원장 platform:revenue 대칭 (성장 커미션 debit 0)
+                불변식 #44 — 원장 platform:revenue 대칭 (성장 커미션 debit 0)
               </p>
               <div className="grid grid-cols-2 gap-3 mb-3">
-                <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-lg">
-                  <p className="text-[11px] text-emerald-700 font-medium">credit (수수료 5% 유입)</p>
-                  <p className="text-lg font-bold text-emerald-800">
+                <div className="p-3 bg-white border border-rule rounded-lg">
+                  <p className="text-[11px] text-tone-ok font-medium">credit (수수료 5% 유입)</p>
+                  <p className="text-lg font-bold text-tone-ok">
                     {formatWon(inv.platform_revenue_credit_sum)}
                   </p>
-                  <p className="text-[11px] text-emerald-600">
+                  <p className="text-[11px] text-tone-ok">
                     {formatNumber(inv.platform_revenue_credit_count)}건
                   </p>
                 </div>
@@ -340,8 +340,8 @@ export default function AdminPromoLedgerPage() {
 
               {/* 판정 — flip 전(platform)은 info, flip 후(owner)는 strict */}
               {!fundingOwner ? (
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900 flex gap-2">
-                  <Info className="w-4 h-4 shrink-0 text-blue-500" />
+                <div className="p-3 bg-white border border-rule rounded-lg text-xs text-gray-700 flex gap-2">
+                  <Info className="w-4 h-4 shrink-0 text-gray-700" />
                   <span>
                     <strong>전환 전(promo_funding_source=platform)</strong> — 현행 모델에선 커미션이
                     플랫폼 재원(아래 목록은 <strong>예상된 현행 항목</strong>). 8월 flip(owner 전환) 후에는
@@ -349,16 +349,16 @@ export default function AdminPromoLedgerPage() {
                   </span>
                 </div>
               ) : suspectCount === 0 ? (
-                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-800 flex gap-2 font-bold">
-                  <ShieldCheck className="w-5 h-5 shrink-0 text-emerald-600" />
-                  <span>✅ 불변식 #44 준수 — 성장 커미션 debit 0 (유어딜 5% 불가침 유지)</span>
+                <div className="p-3 bg-white border border-rule rounded-lg text-sm text-tone-ok flex gap-2 font-bold">
+                  <ShieldCheck className="w-5 h-5 shrink-0 text-tone-ok" />
+                  <span>불변식 #44 준수 — 성장 커미션 debit 0 (유어딜 5% 불가침 유지)</span>
                 </div>
               ) : (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800 flex gap-2">
-                  <ShieldAlert className="w-5 h-5 shrink-0 text-red-500" />
+                <div className="p-3 bg-white border border-rule rounded-lg text-sm text-tone-bad flex gap-2">
+                  <ShieldAlert className="w-5 h-5 shrink-0 text-tone-bad" />
                   <span>
                     <strong>
-                      🔴 불변식 #44 위반 — 성장 커미션이 platform:revenue 를 debit 중 ({formatNumber(suspectCount)}건)
+                      불변식 #44 위반 — 성장 커미션이 platform:revenue 를 debit 중 ({formatNumber(suspectCount)}건)
                     </strong>
                     <br />
                     owner 재원 전환 후엔 어떤 커미션도 유어딜 5%를 건드리면 안 됩니다. 아래 항목을 확인하세요.
@@ -380,7 +380,7 @@ export default function AdminPromoLedgerPage() {
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {suspects.map((d) => (
-                        <tr key={d.id} className={fundingOwner ? 'bg-red-50/40' : ''}>
+                        <tr key={d.id} className={fundingOwner ? 'border border-rule bg-white' : ''}>
                           <td className="px-3 py-2 font-mono text-gray-700">{d.event_type}</td>
                           <td className="px-3 py-2 text-right font-medium text-gray-900">
                             {formatWon(d.amount)}
@@ -440,7 +440,7 @@ export default function AdminPromoLedgerPage() {
       {orders && rows.length === 0 && !ordersQ.isLoading && (
         <div className="p-6 bg-gray-50 border border-gray-200 rounded-lg text-center text-sm text-gray-500">
           {s?.month || month} 의 그림자 기록이 없습니다. (FEE_RESOLVER_ENABLED 그림자 기록 또는{' '}
-          <Link to="/admin/fee-breakdown" className="text-blue-600 underline">
+          <Link to="/admin/fee-breakdown" className="text-brand-text underline">
             수수료 규칙 검증
           </Link>
           의 백필로 채워집니다.)

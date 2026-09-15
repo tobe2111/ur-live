@@ -65,7 +65,7 @@ export default function StoreChannelRequired({ onDone }: { onDone: (channel: Cha
           t('seller.mealVoucher.channelBrokeredHint', { defaultValue: '사장님을 대신해 등록·관리해요' }))}
       </div>
       <button type="button" onClick={save} disabled={!picked || saving}
-        className="mt-2.5 w-full py-2.5 rounded-xl bg-brand text-white text-sm font-bold disabled:bg-gray-300 disabled:text-gray-500">
+        className="ur-btn ur-btn-md ur-btn-primary mt-2.5 w-full disabled:bg-gray-300 disabled:text-gray-500">
         {saving
           ? t('seller.mealVoucher.channelSaving', { defaultValue: '저장 중…' })
           : t('seller.mealVoucher.channelConfirm', { defaultValue: '이렇게 운영해요' })}

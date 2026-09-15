@@ -159,7 +159,7 @@ export default function SellerYoutubeGrowthPage() {
     return (
       <SellerLayout title={t('seller.youtubeGrowth')}>
         <div className="py-16 text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-red-500 mx-auto" />
+          <Loader2 className="w-8 h-8 animate-spin text-tone-bad mx-auto" />
         </div>
       </SellerLayout>
     )
@@ -175,9 +175,9 @@ export default function SellerYoutubeGrowthPage() {
           icon={<Youtube className="h-5 w-5" />}
         />
         {/* 안내 */}
-        <div className="bg-gray-50 rounded-xl p-5 border border-red-100">
+        <div className="bg-gray-50 rounded-xl p-5 border border-rule">
           <div className="flex items-start gap-3">
-            <Youtube className="w-6 h-6 text-red-500 shrink-0 mt-0.5" />
+            <Youtube className="w-6 h-6 text-tone-bad shrink-0 mt-0.5" />
             <div>
               <h3 className="text-sm font-bold text-gray-900">{t('seller.subscriberGrowthService')}</h3>
               <p className="text-xs text-gray-600 mt-1">
@@ -189,9 +189,9 @@ export default function SellerYoutubeGrowthPage() {
 
         {/* 신청 폼 */}
         {!hasPending && !showWidget && (
-          <div className="bg-white rounded-xl shadow-sm p-5">
+          <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-5">
             <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Users className="w-4 h-4 text-red-500" />
+              <Users className="w-4 h-4 text-tone-bad" />
               {t('seller.subscriberPackageSelect')}
             </h3>
 
@@ -219,7 +219,7 @@ export default function SellerYoutubeGrowthPage() {
                       onClick={() => setSelected(pkg)}
                       className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl border-2 transition-all ${
                         selected?.subscribers === pkg.subscribers
-                          ? 'border-red-500 bg-red-50'
+                          ? 'border-brand bg-brand-tint'
                           : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
@@ -227,7 +227,7 @@ export default function SellerYoutubeGrowthPage() {
                         {String(t('seller.subscriberPlus', { count: formatNumber(pkg.subscribers) } as Record<string, string>))}
                       </span>
                       <span className={`text-sm font-bold ${
-                        selected?.subscribers === pkg.subscribers ? 'text-red-600' : 'text-gray-600'
+                        selected?.subscribers === pkg.subscribers ? 'text-tone-bad' : 'text-gray-600'
                       }`}>
                         {formatNumber(pkg.price)}{t('common.won')}
                       </span>
@@ -237,16 +237,16 @@ export default function SellerYoutubeGrowthPage() {
               </div>
 
               {/* 결제 안내 */}
-              <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
-                <p className="text-xs text-amber-700 font-medium">{t('seller.noRefundNotice')}</p>
-                <p className="text-xs text-amber-600 mt-0.5">{t('seller.adminReviewNotice')}</p>
+              <div className="bg-white border border-rule rounded-lg px-3 py-2.5">
+                <p className="text-xs text-tone-warn font-medium">{t('seller.noRefundNotice')}</p>
+                <p className="text-xs text-tone-warn mt-0.5">{t('seller.adminReviewNotice')}</p>
               </div>
 
               {/* 결제 버튼 */}
               <button
                 onClick={handleStartPayment}
                 disabled={!selected || !channelUrl.trim() || processing}
-                className="w-full py-3.5 bg-red-500 text-white text-sm font-bold rounded-xl hover:bg-red-600 disabled:opacity-50 transition-colors"
+                className="ur-btn ur-btn-lg ur-btn-primary w-full"
               >
                 {processing ? (
                   <span className="flex items-center justify-center gap-2">
@@ -264,16 +264,16 @@ export default function SellerYoutubeGrowthPage() {
 
         {/* 토스 결제 위젯 */}
         {showWidget && (
-          <div className="bg-white rounded-xl shadow-sm p-5 space-y-4">
-            <div className="bg-red-50 rounded-xl px-4 py-3 flex justify-between items-center">
+          <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-5 space-y-4">
+            <div className="border border-rule bg-white rounded-xl px-4 py-3 flex justify-between items-center">
               <span className="text-sm text-gray-600">{t('seller.paymentContent')}</span>
-              <span className="text-sm font-bold text-red-600">
+              <span className="text-sm font-bold text-tone-bad">
                 {String(t('seller.subscriberPlus', { count: formatNumber(selected?.subscribers) } as Record<string, string>))} / {formatNumber(selected?.price)}{t('common.won')}
               </span>
             </div>
             <div id="ytg-payment-method" className="min-h-[200px] bg-white rounded-xl border border-gray-200 p-2" />
             <div id="ytg-agreement" className="min-h-[80px] bg-white rounded-xl border border-gray-200 p-2" />
-            <p className="text-xs text-center text-amber-600 font-medium">{t('seller.noRefundNotice')}</p>
+            <p className="text-xs text-center text-tone-warn font-medium">{t('seller.noRefundNotice')}</p>
             <div className="flex gap-2">
               <button
                 onClick={cancelWidget}
@@ -284,7 +284,7 @@ export default function SellerYoutubeGrowthPage() {
               <button
                 onClick={handleConfirmPayment}
                 disabled={processing}
-                className="flex-[2] py-3.5 bg-red-500 text-white text-sm font-bold rounded-xl hover:bg-red-600 disabled:opacity-60"
+                className="ur-btn ur-btn-lg ur-btn-primary flex-[2]"
               >
                 {processing ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : `${formatNumber(selected?.price)}${t('common.won')} ${t('common.payment')}`}
               </button>
@@ -293,7 +293,7 @@ export default function SellerYoutubeGrowthPage() {
         )}
 
         {/* 신청 내역 */}
-        <div className="bg-white rounded-xl shadow-sm p-5">
+        <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-5">
           <h3 className="text-sm font-semibold text-gray-900 mb-4">{t('seller.requestHistory')}</h3>
           {requests.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-8">{t('seller.noRequestHistory')}</p>
@@ -316,13 +316,13 @@ export default function SellerYoutubeGrowthPage() {
                         {String(t('seller.subscriberPlus', { count: formatNumber(req.target_subscribers || 0) } as Record<string, string>))}
                       </p>
                       {req.price > 0 && (
-                        <p className="text-xs font-medium text-red-600">
+                        <p className="text-xs font-medium text-tone-bad">
                           {formatNumber(req.price)}{t('common.won')}
                         </p>
                       )}
                     </div>
                     {req.admin_memo && (
-                      <p className="text-xs text-blue-600 mt-2 bg-blue-50 px-2 py-1 rounded">{req.admin_memo}</p>
+                      <p className="text-xs text-tone-info mt-2 bg-tone-info-bg px-2 py-1 rounded">{req.admin_memo}</p>
                     )}
                   </div>
                 )

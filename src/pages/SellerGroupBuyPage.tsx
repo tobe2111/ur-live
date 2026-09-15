@@ -111,7 +111,7 @@ export default function SellerGroupBuyPage() {
         )}
 
         {/* ── 행 목록 ── */}
-        <div className="overflow-hidden rounded-2xl border border-rule bg-white">
+        <div className="overflow-hidden rounded-[var(--dash-radius,16px)] border border-rule bg-white">
           {/* 삭제분 행은 [사진 · 이름 · 복구] 한 줄이라 이 표 머리와 칸이 안 맞는다 — 그 세그먼트에선 안 그린다. */}
           <div className={`${seg === 'deleted' ? 'hidden' : 'hidden md:grid'} grid-cols-[56px_minmax(0,1.6fr)_1fr_.7fr_1fr_60px_90px] gap-4 border-b border-rule px-5 py-2.5 text-[11.5px] font-bold text-gray-400`}>
             <span /><span>{t('seller.tab.vouchers', { defaultValue: '이용권' })}</span><span>{t('seller.vouchers.price', { defaultValue: '가격' })}</span><span>{t('seller.vouchers.sold', { defaultValue: '판매' })}</span><span>{t('seller.sales')}</span><span>{t('seller.vouchers.onSaleShort', { defaultValue: '판매' })}</span><span />

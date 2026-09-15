@@ -92,7 +92,7 @@ export const OPS_POLICY_FIELDS: Array<{ key: string; label: string; hint: string
   {
     key: 'pickup_unclaimed_cold_pct',
     label: '냉장·냉동 미수령 환불 (%)',
-    hint: '대표 확정값 0(환불 없음 — 상품 폐기). ⚠️ 비우면 100(전액 환불)으로 동작한다',
+    hint: '대표 확정값 0(환불 없음 — 상품 폐기). 비우면 100(전액 환불)으로 동작한다',
   },
   {
     key: 'pickup_unclaimed_room_grace_days',
@@ -102,7 +102,7 @@ export const OPS_POLICY_FIELDS: Array<{ key: string; label: string; hint: string
   {
     key: 'pickup_unclaimed_room_pct',
     label: '실온 유예 경과 후 환불 (%)',
-    hint: '⚠️ 비우면 100(전액). 유예 이후를 깎으려면 **명시해야** 한다',
+    hint: '비우면 100(전액). 유예 이후를 깎으려면 **명시해야** 한다',
   },
 ]
 
@@ -254,7 +254,7 @@ export default function AdminPlatformSettingsPage() {
           icon={<Settings className="h-5 w-5" />}
           actions={
             <button onClick={save} disabled={saving}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white hover:bg-gray-900 disabled:opacity-50">
+              className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-1.5 disabled:opacity-50">
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
               {t('admin.platformSettings.save', { defaultValue: '저장' })}
             </button>
@@ -285,10 +285,10 @@ export default function AdminPlatformSettingsPage() {
           {/* 💸 [INV-CB] 커미션 예산 아비터 — 2026-07-04 재원 구조 개편. 활성화는 staging 검증 후. */}
           <div className="bg-white rounded-xl border border-gray-200">
             <div className="px-5 pt-4 pb-2">
-              <h3 className="text-sm font-bold text-gray-900">💸 커미션 예산 아비터 (INV-CB)</h3>
+              <h3 className="text-sm font-bold text-gray-900">커미션 예산 아비터 (INV-CB)</h3>
               <p className="text-xs text-gray-400 mt-0.5">
                 플랫폼 부담 성장 커미션(핀 추천·멀티티어·영입자·에이전시)의 주문당 총액 캡.
-                ⚠️ 활성화 전 staging 실결제 검증 필수 — 설계: commission-funding-restructure.md
+                활성화 전 staging 실결제 검증 필수 — 설계: commission-funding-restructure.md
               </p>
             </div>
             <div className="divide-y divide-gray-100">
@@ -321,7 +321,7 @@ export default function AdminPlatformSettingsPage() {
           {/* 🥡 운영 정책 — 결정은 있었는데 넣을 화면이 없던 값들(2026-08-03 실측) */}
           <div className="bg-white rounded-xl border border-gray-200">
             <div className="px-5 pt-4 pb-2">
-              <h3 className="text-sm font-bold text-gray-900">🥡 운영 정책 (미수령 · 문의)</h3>
+              <h3 className="text-sm font-bold text-gray-900">운영 정책 (미수령 · 문의)</h3>
               <p className="text-xs text-gray-400 mt-0.5">
                 비워 두면 <span className="font-semibold text-gray-600">소비자에게 유리한 기본값</span>(전액 환불)으로 동작한다 — 0 이 아니다.
                 미수령 정책의 실제 적용은 게이트 <code className="text-[11px]">pickup_unclaimed_policy_enabled</code>(기본 OFF, 시스템 모니터링)가 켜져야 한다.
@@ -389,21 +389,21 @@ function KtAlphaSystemSellerSection() {
   }
 
   return (
-    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-      <h3 className="text-sm font-bold text-amber-900 mb-1">🤖 KT Alpha 운영 seller 자동 설정</h3>
-      <p className="text-xs text-amber-800 mb-3">
+    <div className="bg-white border border-rule rounded-xl p-4">
+      <h3 className="text-sm font-bold text-tone-warn mb-1">KT Alpha 운영 seller 자동 설정</h3>
+      <p className="text-xs text-tone-warn mb-3">
         KT Alpha 자동발송 voucher_orders 가 누구 명의로 기록될지 결정. 기존 fallback (첫 approved seller) → '유어딜 공식 운영' 명의로 분리.<br/>
         클릭 1번 → sellers 신규 row 생성 (idempotent) + platform_settings.kt_alpha_admin_seller_id 자동 set.
       </p>
       <button
         onClick={init}
         disabled={loading}
-        className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-xs font-bold rounded-lg"
+        className="ur-btn ur-btn-sm ur-btn-primary disabled:opacity-50"
       >
-        {loading ? "처리 중..." : "🤖 자동 설정"}
+        {loading ? "처리 중..." : "자동 설정"}
       </button>
-      {result && <p className="mt-2 text-xs text-emerald-700 font-bold">✅ {result}</p>}
-      {error && <p className="mt-2 text-xs text-red-600 font-bold">❌ {error}</p>}
+      {result && <p className="mt-2 text-xs text-tone-ok font-bold">{result}</p>}
+      {error && <p className="mt-2 text-xs text-tone-bad font-bold">{error}</p>}
     </div>
   )
 }
@@ -449,7 +449,7 @@ function CommissionCapLogsSection() {
                   <tr key={l.id} className="border-b border-gray-50 last:border-0">
                     <td className="px-5 py-2 font-semibold text-gray-900">#{l.order_id}</td>
                     <td className="px-2 py-2 text-right text-gray-600">{Number(l.budget_krw).toLocaleString()}</td>
-                    <td className="px-2 py-2 text-right text-red-500 font-semibold">{Number(l.requested_krw).toLocaleString()}</td>
+                    <td className="px-2 py-2 text-right text-tone-bad font-semibold">{Number(l.requested_krw).toLocaleString()}</td>
                     <td className="px-2 py-2 text-right text-gray-900 font-semibold">{Number(l.granted_krw).toLocaleString()}</td>
                     <td className="px-5 py-2 text-[11px] text-gray-500">{axes}<span className="text-gray-300"> · {l.created_at}</span></td>
                   </tr>

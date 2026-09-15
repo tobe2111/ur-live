@@ -55,12 +55,12 @@ function Chip({ k, onToggle }: { k: CompanyKeyword; onToggle: (k: CompanyKeyword
   return (
     <button onClick={() => onToggle(k)}
       title={`${tip || '미분류'}${k.tier ? ` · ${k.tier}순위` : ''}${k.saved_total ? ` · 누적 ${k.saved_total}곳` : ''}${k.last_run_at ? ` · ${kstShort(k.last_run_at)}` : ''}`}
-      className={`px-2.5 py-1 rounded-full text-xs border ${k.active ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-400 border-gray-300 line-through'}`}>
-      {k.tier === 1 ? '⭐' : ''}{k.keyword}
+      className={`px-2.5 py-1 rounded-full text-xs border ${k.active ? 'bg-brand text-white border-gray-900' : 'bg-white text-gray-400 border-gray-300 line-through'}`}>
+      {k.tier === 1 ? '★ ' : ''}{k.keyword}
       {k.saved_total
-        ? <span className={k.active ? 'text-emerald-300' : 'text-gray-400'}> · {formatNumber(k.saved_total)}</span>
-        : (k.last_run_at ? <span className="text-red-400" title="여러 번 수집했지만 신규 0곳 — 비활성 검토">{' · 💤0'}</span> : '')}
-      {ly && <span className="text-amber-400" title={`${formatNumber(ly.found)}건 찾아 ${formatNumber(k.saved_total || 0)}곳 저장 (수확률 ${ly.pct}%) — 검색 슬롯은 쓰는데 새 업체가 거의 안 남습니다. 이미 다 모았거나(고갈) 키워드가 안 맞는 경우입니다.`}> 🪫{ly.pct}%</span>}
+        ? <span className={k.active ? 'text-gray-400' : 'text-gray-400'}> · {formatNumber(k.saved_total)}</span>
+        : (k.last_run_at ? <span className="text-gray-400" title="여러 번 수집했지만 신규 0곳 — 비활성 검토">{' · 0'}</span> : '')}
+      {ly && <span className="text-gray-400" title={`${formatNumber(ly.found)}건 찾아 ${formatNumber(k.saved_total || 0)}곳 저장 (수확률 ${ly.pct}%) — 검색 슬롯은 쓰는데 새 업체가 거의 안 남습니다. 이미 다 모았거나(고갈) 키워드가 안 맞는 경우입니다.`}>{ly.pct}%</span>}
     </button>
   )
 }
@@ -89,7 +89,7 @@ export default function CompanyKeywordManager({ keywords, onChanged }: { keyword
       //   화면만 바뀌고 실제론 안 꺼진 상태가 이 레포에서 반복된 "조용한 부재" 다.
       if (!r.data?.success) { toast.error('키워드 상태를 바꾸지 못했습니다'); return }
       await onChanged()
-      toast.success(k.active ? `⏸ '${k.keyword}' 수집 중지` : `▶️ '${k.keyword}' 수집 재개`)
+      toast.success(k.active ? `⏸ '${k.keyword}' 수집 중지` : `▶'${k.keyword}' 수집 재개`)
     } catch { toast.error('키워드 상태를 바꾸지 못했습니다') }
   }
 
@@ -102,7 +102,7 @@ export default function CompanyKeywordManager({ keywords, onChanged }: { keyword
       if (!r.data?.success) { toast.error('추가하지 못했습니다'); return }
       setNewKw('')
       await onChanged()
-      toast.success(`➕ '${kw}' 추가 — 다음 수집 회차부터 반영`)
+      toast.success(`'${kw}' 추가 — 다음 수집 회차부터 반영`)
     } catch { toast.error('추가하지 못했습니다') } finally { setBusy(false) }
   }
 
@@ -110,7 +110,7 @@ export default function CompanyKeywordManager({ keywords, onChanged }: { keyword
     <details open={open} onToggle={e => setOpen((e.currentTarget as HTMLDetailsElement).open)}
       className="rounded-xl border border-gray-200 bg-white">
       <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-gray-800">
-        🔑 수집 키워드 <span className="font-normal text-gray-500">— 수집 중 {formatNumber(active.length)} · 중지 {formatNumber(paused.length)}</span>
+        수집 키워드 <span className="font-normal text-gray-500">— 수집 중 {formatNumber(active.length)} · 중지 {formatNumber(paused.length)}</span>
       </summary>
       {open && (
         <div className="px-4 pb-4 space-y-3">
@@ -124,7 +124,7 @@ export default function CompanyKeywordManager({ keywords, onChanged }: { keyword
               placeholder="새 키워드 (예: 부산 해운대 간판)" className="flex-1 min-w-[200px] rounded-lg border border-gray-300 bg-white text-gray-900 px-3 py-2 text-sm" />
             <input value={newCat} onChange={e => setNewCat(e.target.value)} placeholder="분류(선택)" className="w-32 rounded-lg border border-gray-300 bg-white text-gray-900 px-3 py-2 text-sm" />
             <input value={newRegion} onChange={e => setNewRegion(e.target.value)} placeholder="지역(선택)" className="w-32 rounded-lg border border-gray-300 bg-white text-gray-900 px-3 py-2 text-sm" />
-            <button onClick={add} disabled={busy} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50">추가</button>
+            <button onClick={add} disabled={busy} className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-50">추가</button>
           </div>
 
           <div className="flex items-center gap-2">
