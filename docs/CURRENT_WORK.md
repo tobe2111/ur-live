@@ -5494,11 +5494,12 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 308건 · 최신순 · 이 목록은 자동 생성된다._
+_총 309건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-15**
 - [삭제한 이용권을 되돌리는 길 (2026-09-15)](handoff/2026-09-15-voucher-restore.md)
 - [2026-09-15 — verify.yml push 트리거 제거 (필수 검사 룰셋과의 충돌)](handoff/2026-09-15-verify-push-trigger.md)
+- [2026-09-15 — 시안 갤러리 `/design/variants` 신설](handoff/2026-09-15-variant-gallery.md)
 - [2026-09-15 — 매장 확정: 이용권이 "어느 매장 것인지"를 서버가 정한다](handoff/2026-09-15-store-canonical.md)
 - [2026-09-15 — 셀러 2차 페이지 정리: 색 정보상자·이모지·버튼 체계·숫자 위계 (PR 1/3)](handoff/2026-09-15-seller-tones.md)
 - [2026-09-15 — 셀러 모바일 결함 4건 (대표 스크린샷 신고)](handoff/2026-09-15-seller-mobile-fixes.md)
