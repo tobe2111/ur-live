@@ -13,7 +13,7 @@ export default function UShopQrCard() {
   const [url, setUrl] = useState('')
   useEffect(() => { if (typeof window !== 'undefined') setUrl(window.location.origin + window.location.pathname) }, [])
   return (
-    <div className="hidden lg:flex items-center gap-3 mt-4 rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift p-3.5">
+    <div className="hidden lg:flex items-center gap-3 mt-4 rounded-2xl bg-surface shadow-lift p-3.5">
       <div className="rounded-lg bg-white dark:bg-white p-1.5 shrink-0">
         <Suspense fallback={<div className="w-[76px] h-[76px] rounded bg-gray-100 dark:bg-gray-100 animate-pulse" />}>
           {url ? <QRCodeSVG value={url} size={76} level="M" /> : <div className="w-[76px] h-[76px]" />}

@@ -65,7 +65,7 @@ export default function SellOwnProductsCTA() {
       }
     }
     return (
-      <section className="mb-6 bg-gray-50 dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-xl p-4">
+      <section className="mb-6 bg-gray-50 dark:bg-[#1D1F29] border border-line rounded-xl p-4">
         <p className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5"><Store className="w-4 h-4 text-gray-400" aria-hidden="true" />판매 활성 · 내 유어샵 <VerifiedSeal size={15} /> <span className="font-medium text-gray-500 dark:text-gray-400">· 판매·현금 정산 활성</span></p>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-3">
           이용권·상품을 정식 등록(이미지·상세·옵션)하거나, 셀러 대시보드에서 주문·정산을 관리하세요. 등록한 것은 내 유어샵에 바로 진열됩니다.
@@ -81,14 +81,14 @@ export default function SellOwnProductsCTA() {
           <button
             onClick={() => goSeller('/seller/meal-voucher/new')}
             disabled={switching}
-            className="px-4 py-2 bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] text-gray-700 dark:text-gray-200 text-xs font-bold rounded-lg disabled:opacity-50"
+            className="px-4 py-2 bg-surface border border-line text-gray-700 dark:text-gray-200 text-xs font-bold rounded-lg disabled:opacity-50"
           >
             + 이용권 등록
           </button>
           <button
             onClick={() => goSeller('/seller')}
             disabled={switching}
-            className="px-4 py-2 bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] text-gray-700 dark:text-gray-200 text-xs font-bold rounded-lg disabled:opacity-50"
+            className="px-4 py-2 bg-surface border border-line text-gray-700 dark:text-gray-200 text-xs font-bold rounded-lg disabled:opacity-50"
           >
             셀러 대시보드 →
           </button>
@@ -100,7 +100,7 @@ export default function SellOwnProductsCTA() {
   // 심사 중 (셀러 신청 접수됨)
   if (hasSeller && st === 'pending') {
     return (
-      <section className="mb-6 bg-gray-50 dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-xl p-4">
+      <section className="mb-6 bg-gray-50 dark:bg-[#1D1F29] border border-line rounded-xl p-4">
         <p className="text-sm font-bold text-gray-900 dark:text-white"><Store className="w-4 h-4 inline-block align-[-3px] mr-1 text-gray-400" aria-hidden="true" />매장 등록 심사 중</p>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
           등록증을 확인하는 중이에요. 승인되면 내 유어샵에서 판매·현금 정산이 열립니다.
@@ -154,7 +154,7 @@ function BenefitsSheet({ onClose, onStart }: { onClose: () => void; onStart: () 
   return (
     <div className="fixed inset-0 z-[10600] flex items-end justify-center" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/55" onClick={onClose} />
-      <div className="relative w-full sm:max-w-md bg-white dark:bg-[#1D1F29] rounded-t-3xl px-5 pt-2 pb-7 animate-slideUp">
+      <div className="relative w-full sm:max-w-md bg-surface rounded-t-3xl px-5 pt-2 pb-7 animate-slideUp">
         <div className="w-10 h-1 rounded-full bg-gray-200 dark:bg-[#2C2F35] mx-auto mt-1.5 mb-4" />
         <h2 className="text-[21px] font-extrabold text-gray-900 dark:text-white tracking-tight">내 유어샵에서 직접 팔아보세요</h2>
         <div className="flex items-center gap-1.5 mt-2 text-[13px] text-gray-500 dark:text-gray-400 flex-wrap">

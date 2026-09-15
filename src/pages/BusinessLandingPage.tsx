@@ -76,7 +76,7 @@ export default function BusinessLandingPage() {
               >
                 공급자 가입 <ArrowRight className="w-4 h-4" />
               </button>
-              <a href="mailto:jiwon@ur-team.com" className="px-6 py-3.5 border-2 border-gray-200 dark:border-[#2C2F35] hover:border-gray-300 rounded-full font-bold flex items-center gap-2 text-gray-700 dark:text-gray-200">
+              <a href="mailto:jiwon@ur-team.com" className="px-6 py-3.5 border-2 border-line hover:border-gray-300 rounded-full font-bold flex items-center gap-2 text-gray-700 dark:text-gray-200">
                 <Phone className="w-4 h-4" /> 문의하기
               </a>
             </div>

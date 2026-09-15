@@ -187,7 +187,7 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
                   { label: t('orderDetail.stepDelivered', { defaultValue: '배송완료' }), done: status === 'DELIVERED' },
                 ]
                 return (
-                  <div className="pt-3 border-t border-gray-200 dark:border-[#2C2F35]">
+                  <div className="pt-3 border-t border-line">
                     <div className="flex items-center justify-between mb-3">
                       {steps.map((step, si) => (
                         <div key={si} className="flex items-center flex-1">
@@ -260,7 +260,7 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
                   </span>
                 </div>
               )}
-              <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-[#2C2F35]">
+              <div className="flex justify-between pt-2 border-t border-line">
                 <span className="text-gray-900 dark:text-white font-semibold">{t('orderDetail.totalAmount', { defaultValue: '총 결제금액' })}</span>
                 <span className="text-[19px] font-bold text-gray-900 dark:text-white">{formatNumber(totalAmount)}원</span>
               </div>

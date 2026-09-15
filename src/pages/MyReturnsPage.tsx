@@ -180,14 +180,14 @@ function ShippingForm({ returnId, onSubmitted }: { returnId: number; onSubmitted
           value={carrier}
           onChange={(e) => setCarrier(e.target.value)}
           placeholder="택배사 (예: cj, 한진, kr_post)"
-          className="px-2 py-1.5 text-xs bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] text-gray-900 dark:text-white rounded-lg"
+          className="px-2 py-1.5 text-xs bg-white dark:bg-[#11141C] border border-line text-gray-900 dark:text-white rounded-lg"
         />
         <input
           type="text"
           value={number}
           onChange={(e) => setNumber(e.target.value.replace(/[^0-9-]/g, ''))}
           placeholder="송장번호"
-          className="px-2 py-1.5 text-xs bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] text-gray-900 dark:text-white rounded-lg font-mono"
+          className="px-2 py-1.5 text-xs bg-white dark:bg-[#11141C] border border-line text-gray-900 dark:text-white rounded-lg font-mono"
         />
       </div>
       <button

@@ -118,7 +118,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
           <button
             onClick={() => onOpenOption(item)}
             disabled={isUpdating}
-            className="mt-1.5 inline-flex items-center gap-1 text-[12px] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2C2F35] px-2.5 py-1 rounded-full hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
+            className="mt-1.5 inline-flex items-center gap-1 text-[12px] text-gray-600 dark:text-gray-300 border border-line px-2.5 py-1 rounded-full hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
           >
             {item.option_value}
             <svg className="w-3 h-3 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -157,7 +157,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
 
         {/* v4: quantity +/- buttons (border rounded-lg) */}
         <div className="flex items-center justify-between mt-2">
-          <div className="flex items-center border border-gray-200 dark:border-[#2C2F35] rounded-lg overflow-hidden">
+          <div className="flex items-center border border-line rounded-lg overflow-hidden">
             <button
               type="button"
               onClick={() => onUpdateQuantity(item.id, -1)}
@@ -167,7 +167,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
             >
               <Minus size={14} aria-hidden="true" />
             </button>
-            <span aria-live="polite" aria-label={t('cart.qtyLabel', { qty: item.quantity, defaultValue: '수량 {{qty}}' })} className="w-8 text-center text-[13px] font-semibold text-gray-900 dark:text-white border-x border-gray-200 dark:border-[#2C2F35]">
+            <span aria-live="polite" aria-label={t('cart.qtyLabel', { qty: item.quantity, defaultValue: '수량 {{qty}}' })} className="w-8 text-center text-[13px] font-semibold text-gray-900 dark:text-white border-x border-line">
               {item.quantity}
             </span>
             <button

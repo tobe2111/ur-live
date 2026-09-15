@@ -168,7 +168,7 @@ export default function PushNotificationSetup() {
 
   return (
     <div className="fixed bottom-20 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-[400px] z-[9000] animate-sheet-up">
-      <div className="bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-2xl shadow-xl p-4 flex items-start gap-3">
+      <div className="bg-surface border border-line rounded-2xl shadow-xl p-4 flex items-start gap-3">
         <div className="w-10 h-10 rounded-xl bg-brand-tint flex items-center justify-center shrink-0">
           <Bell className="w-5 h-5 text-brand-text" />
         </div>

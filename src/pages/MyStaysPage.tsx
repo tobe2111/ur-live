@@ -101,7 +101,7 @@ export default function MyStaysPage() {
               const canCancel = ['confirmed', 'pending'].includes(b.status)
               const canReview = b.status === 'checked_out'
               return (
-                <div key={b.id} className="bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] rounded-xl p-4">
+                <div key={b.id} className="bg-white dark:bg-[#11141C] border border-line rounded-xl p-4">
                   <div className="flex items-start gap-3">
                     <Link to={`/stays/${b.product_id}`} className="w-20 h-20 shrink-0 rounded-lg overflow-hidden bg-gray-100 dark:bg-[#1D1F29]">
                       {b.image_url ? <img src={cfImage(b.image_url, { width: 200, quality: 82, format: 'auto' }) || b.image_url} alt={b.product_name} className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, b.image_url)} /> : null}
@@ -232,11 +232,11 @@ function ReviewModal({ booking, token, onClose, onSubmitted }: {
           </div>
           <div>
             <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">제목 (선택)</label>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} placeholder="예) 깨끗하고 조용한 펜션" className="w-full px-3 py-2 bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white" />
+            <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} placeholder="예) 깨끗하고 조용한 펜션" className="w-full px-3 py-2 bg-surface border border-line rounded-lg text-sm text-gray-900 dark:text-white" />
           </div>
           <div>
             <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">코멘트 *</label>
-            <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={5} maxLength={5000} placeholder="이용 경험을 자세히 알려주세요 (10자 이상)" className="w-full px-3 py-2 bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white resize-none" />
+            <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={5} maxLength={5000} placeholder="이용 경험을 자세히 알려주세요 (10자 이상)" className="w-full px-3 py-2 bg-surface border border-line rounded-lg text-sm text-gray-900 dark:text-white resize-none" />
             <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">{comment.length}/5000</p>
           </div>
           <div className="flex gap-2 pt-2">

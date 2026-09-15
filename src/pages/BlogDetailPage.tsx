@@ -198,7 +198,7 @@ export default function BlogDetailPage() {
 
           {/* 모바일 목차 (접이식) */}
           {toc.length > 0 && (
-            <div className="lg:hidden mb-8 border border-gray-200 dark:border-[#2C2F35] rounded-xl overflow-hidden">
+            <div className="lg:hidden mb-8 border border-line rounded-xl overflow-hidden">
               <button onClick={() => setTocOpen(o => !o)} className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-[#141414]">
                 <span className="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white"><List className="w-4 h-4" />목차</span>
                 <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${tocOpen ? 'rotate-180' : ''}`} />

@@ -196,7 +196,7 @@ export default function MyGroupBuysPage() {
         url="/my-group-buys"
       />
       {/* 헤더 */}
-      <header className="sticky top-0 md:top-14 z-40 bg-white dark:bg-[#11141C] border-b border-gray-200 dark:border-[#2C2F35]">
+      <header className="sticky top-0 md:top-14 z-40 bg-white dark:bg-[#11141C] border-b border-line">
         <div className="ur-content-narrow flex items-center justify-between h-14 px-4 lg:px-8">
           <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="flex items-center text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white">
             <ChevronLeft className="w-6 h-6" />
@@ -207,7 +207,7 @@ export default function MyGroupBuysPage() {
       </header>
 
       {/* 탭 */}
-      <div className="flex border-b border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#11141C] sticky top-14 z-30 overflow-x-auto">
+      <div className="flex border-b border-line bg-white dark:bg-[#11141C] sticky top-14 z-30 overflow-x-auto">
         {tabs.map(item => (
           <button
             key={item.key}
@@ -268,7 +268,7 @@ function UnifiedCard({ item }: { item: UnifiedItem }) {
   return (
     <button
       onClick={item.onClick}
-      className="w-full text-left bg-white dark:bg-[#11141C] rounded-xl border border-gray-200 dark:border-[#2C2F35] p-4 hover:border-gray-300 hover:shadow-sm transition-all"
+      className="w-full text-left bg-white dark:bg-[#11141C] rounded-xl border border-line p-4 hover:border-gray-300 hover:shadow-sm transition-all"
     >
       <div className="flex items-start gap-3">
         {/* 썸네일 */}

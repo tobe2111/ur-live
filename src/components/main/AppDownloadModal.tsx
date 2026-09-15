@@ -37,7 +37,7 @@ export default function AppDownloadModal({ onClose }: Props) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-[380px] rounded-3xl bg-white dark:bg-[#1D1F29] overflow-hidden shadow-2xl"
+        className="w-full max-w-[380px] rounded-3xl bg-surface overflow-hidden shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 헤더 */}

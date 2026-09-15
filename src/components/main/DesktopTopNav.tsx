@@ -378,7 +378,7 @@ export default function DesktopTopNav() {
               aria-label={t('nav.my', { defaultValue: '마이' })}
               aria-expanded={acctOpen}
               aria-haspopup="menu"
-              className={`flex items-center gap-0.5 pl-1 pr-1.5 h-9 rounded-full border border-gray-200 dark:border-[#2C2F35] text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/[0.06] transition-colors ${
+              className={`flex items-center gap-0.5 pl-1 pr-1.5 h-9 rounded-full border border-line text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/[0.06] transition-colors ${
                 acctOpen || isActivePath('/user/profile') ? 'bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white' : ''
               }`}
             >
@@ -471,7 +471,7 @@ export default function DesktopTopNav() {
               <button
                 onClick={() => catScrollRef.current?.scrollBy({ left: 260, behavior: 'smooth' })}
                 aria-label={t('common.more', { defaultValue: '더 보기' })}
-                className="ur-appear absolute right-0 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white dark:bg-[#141C27] border border-gray-200 dark:border-[#2C2F35] shadow-sm flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.06]"
+                className="ur-appear absolute right-0 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white dark:bg-[#141C27] border border-line shadow-sm flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.06]"
                 style={{ opacity: 1, transform: 'translateY(-50%) scale(1)' }}
               >
                 <ChevronRight className="w-4 h-4" strokeWidth={2.2} />

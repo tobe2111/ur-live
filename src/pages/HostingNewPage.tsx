@@ -137,7 +137,7 @@ export default function HostingNewPage() {
                           max={100}
                           value={target}
                           onChange={(e) => setTarget(Math.max(2, Math.min(100, Number(e.target.value) || 5)))}
-                          className="w-full px-2 py-1.5 text-sm bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] text-gray-900 dark:text-white rounded-lg"
+                          className="w-full px-2 py-1.5 text-sm bg-surface border border-line text-gray-900 dark:text-white rounded-lg"
                         />
                       </div>
                       <div>
@@ -147,7 +147,7 @@ export default function HostingNewPage() {
                           value={note}
                           onChange={(e) => setNote(e.target.value.slice(0, 200))}
                           placeholder="같이 사실 분 모집!"
-                          className="w-full px-2 py-1.5 text-sm bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] text-gray-900 dark:text-white rounded-lg"
+                          className="w-full px-2 py-1.5 text-sm bg-surface border border-line text-gray-900 dark:text-white rounded-lg"
                         />
                       </div>
                       <button

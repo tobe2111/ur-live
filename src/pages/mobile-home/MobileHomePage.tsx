@@ -121,7 +121,7 @@ export default function MobileHomePage() {
           {/* ⚠️ 하단 탭에 지도가 없으므로 **이 컨트롤이 유일한 통로**다 — 지우지 말 것.
               아이콘을 뺀 이유: 이 줄에서 아이콘이 하는 일이 없다(라벨이 이미 두 글자다). */}
           <div role="tablist" aria-label="보기 방식" className="shrink-0 flex items-center gap-0.5 rounded-lg bg-gray-100 dark:bg-white/[0.06] p-0.5">
-            <span role="tab" aria-selected="true" className="rounded-[6px] bg-white dark:bg-[#1D1F29] px-3 py-1.5 text-[12.5px] font-bold text-gray-900 dark:text-white shadow-sm">목록</span>
+            <span role="tab" aria-selected="true" className="rounded-[6px] bg-surface px-3 py-1.5 text-[12.5px] font-bold text-gray-900 dark:text-white shadow-sm">목록</span>
             <Link to="/map" role="tab" aria-selected="false" className="rounded-[6px] px-3 py-1.5 text-[12.5px] font-bold text-gray-500 dark:text-gray-400">지도</Link>
           </div>
         </div>

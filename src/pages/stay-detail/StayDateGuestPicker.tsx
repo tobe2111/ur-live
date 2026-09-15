@@ -201,7 +201,7 @@ export default function StayDateGuestPicker({
       {open === 'date' && (
         <div
           style={popMax ? { maxHeight: popMax } : undefined}
-          className="absolute left-0 right-0 top-[calc(100%+8px)] z-[10500] flex flex-col rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#141C27] shadow-[0_12px_40px_rgba(0,0,0,0.18)] p-4 lg:w-[680px] lg:left-auto lg:right-0"
+          className="absolute left-0 right-0 top-[calc(100%+8px)] z-[10500] flex flex-col rounded-2xl border border-line bg-white dark:bg-[#141C27] shadow-[0_12px_40px_rgba(0,0,0,0.18)] p-4 lg:w-[680px] lg:left-auto lg:right-0"
         >
           <div className="shrink-0 flex items-center justify-between mb-2">
             <button type="button" onClick={() => setMonthOffset(m => Math.max(0, m - 1))} disabled={monthOffset === 0}
@@ -275,7 +275,7 @@ export default function StayDateGuestPicker({
       {open === 'guest' && (
         <div
           style={popMax ? { maxHeight: popMax } : undefined}
-          className="absolute left-0 right-0 top-[calc(100%+8px)] z-[10500] overflow-y-auto rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#141C27] shadow-[0_12px_40px_rgba(0,0,0,0.18)] p-4 lg:w-[360px] lg:left-auto lg:right-0">
+          className="absolute left-0 right-0 top-[calc(100%+8px)] z-[10500] overflow-y-auto rounded-2xl border border-line bg-white dark:bg-[#141C27] shadow-[0_12px_40px_rgba(0,0,0,0.18)] p-4 lg:w-[360px] lg:left-auto lg:right-0">
           {overBase && (
             <div className="rounded-xl bg-gray-50 dark:bg-white/[0.05] p-3 mb-3">
               <p className="text-[13px] font-bold text-gray-900 dark:text-white">기준인원 초과 시 추가요금이 발생할 수 있어요.</p>

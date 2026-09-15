@@ -35,7 +35,7 @@ export default function SortBar({ mainTab, currentCount, sortBy, setSortBy, show
             />
           </button>
           {showSortDropdown && (
-            <div role="menu" className="absolute top-full right-0 mt-1 w-36 bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-xl shadow-lg z-30 overflow-hidden">
+            <div role="menu" className="absolute top-full right-0 mt-1 w-36 bg-surface border border-line rounded-xl shadow-lg z-30 overflow-hidden">
               {(Object.keys(SORT_LABELS) as SortOption[]).map((opt) => (
                 <button
                   key={opt}

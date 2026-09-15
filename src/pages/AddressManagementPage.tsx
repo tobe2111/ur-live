@@ -417,7 +417,7 @@ export default function AddressManagementPage() {
           </div>
 
           {showPostcodePopup && (
-            <div className="rounded-2xl overflow-hidden border border-gray-200 dark:border-[#2C2F35]">
+            <div className="rounded-2xl overflow-hidden border border-line">
               <div id="daum-postcode-container" style={{ width: '100%', height: '400px' }}></div>
             </div>
           )}

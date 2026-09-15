@@ -252,11 +252,11 @@ export default function LoginPage() {
             {t('login.heroSub', { defaultValue: '동네 공동구매 교환권부터 인기 기프티콘까지, 매일 새로운 딜' })}
           </p>
           <div className="flex flex-wrap items-center justify-center gap-2 mt-5">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] text-[12px] text-gray-700 dark:text-gray-300">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 dark:bg-[#1D1F29] border border-line text-[12px] text-gray-700 dark:text-gray-300">
               <MapPin className="w-3.5 h-3.5 text-emerald-500" />
               {t('login.chipDongne', { defaultValue: '동네딜 공동구매' })}
             </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] text-[12px] text-gray-700 dark:text-gray-300">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 dark:bg-[#1D1F29] border border-line text-[12px] text-gray-700 dark:text-gray-300">
               <Ticket className="w-3.5 h-3.5 text-emerald-500" />
               {t('login.chipVoucher', { defaultValue: '교환권·기프티콘' })}
             </span>

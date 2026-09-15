@@ -84,7 +84,7 @@ function MyStoresAndDeals({ ownerFunded }: { ownerFunded: boolean }) {
   }, [])
   return (
     <>
-      <div className="bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] rounded-xl p-5">
+      <div className="bg-white dark:bg-[#11141C] border border-line rounded-xl p-5">
         <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">🏪 내가 영입한 매장 ({referred.length}개)</h3>
         {referred.length === 0 ? (
           <p className="text-xs text-gray-400 text-center py-4">아직 영입한 매장이 없습니다. 매장 가입 시 추천 링크 (https://urdeal.kr/seller/register?ref=내ID) 공유 → 6개월간 +1% 추가 commission</p>
@@ -108,7 +108,7 @@ function MyStoresAndDeals({ ownerFunded }: { ownerFunded: boolean }) {
         )}
       </div>
 
-      <div className="bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] rounded-xl p-5">
+      <div className="bg-white dark:bg-[#11141C] border border-line rounded-xl p-5">
         <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">🤝 매장 협업 ({deals.length}건)</h3>
         {/* 💡 flip D1: owner-펀딩일 때만 재원 출처 표기 — platform 동안 미렌더(기존 화면 불변) */}
         {ownerFunded && (
@@ -293,7 +293,7 @@ export default function InfluencerSettlementPage() {
         </div>
 
         {/* 정산 정보 입력 */}
-        <div className="bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] rounded-xl p-5 space-y-4">
+        <div className="bg-white dark:bg-[#11141C] border border-line rounded-xl p-5 space-y-4">
           <h3 className="text-sm font-bold text-gray-900 dark:text-white">정산 정보</h3>
 
           <div>
@@ -408,7 +408,7 @@ export default function InfluencerSettlementPage() {
         <MyStoresAndDeals ownerFunded={ownerFunded} />
 
         {/* 최근 내역 */}
-        <div className="bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] rounded-xl p-5">
+        <div className="bg-white dark:bg-[#11141C] border border-line rounded-xl p-5">
           <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">최근 commission 내역 ({recent.length}건)</h3>
           {recent.length === 0 ? (
             <p className="text-xs text-gray-400 text-center py-6">아직 referral commission 이 없습니다</p>

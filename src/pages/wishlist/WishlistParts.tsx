@@ -72,7 +72,7 @@ export function WishlistSummaryRail({ s }: { s: WishlistSummary }) {
   for (const c of s.byCategory) rows.push({ label: dealCategoryMeta(c.category).label || c.category, value: c.count })
 
   return (
-    <aside className="hidden lg:block rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift dark:shadow-none p-5 self-start sticky top-20">
+    <aside className="hidden lg:block rounded-2xl bg-surface shadow-lift dark:shadow-none p-5 self-start sticky top-20">
       <div className="text-[40px] font-extrabold leading-none tracking-tight tabular-nums text-gray-900 dark:text-white">
         {headline.n}
       </div>

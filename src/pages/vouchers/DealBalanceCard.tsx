@@ -54,7 +54,7 @@ export default function DealBalanceCard({ balance, variant = 'full' }: DealBalan
       <button
         type="button"
         onClick={() => navigate(EARN_PATH)}
-        className={`w-full flex items-center justify-between gap-2 rounded-xl bg-white dark:bg-[#1D1F29] shadow-lift active:scale-[0.99] transition-transform ${compact ? 'px-3 py-2.5' : 'h-11 px-3.5'}`}
+        className={`w-full flex items-center justify-between gap-2 rounded-xl bg-surface shadow-lift active:scale-[0.99] transition-transform ${compact ? 'px-3 py-2.5' : 'h-11 px-3.5'}`}
       >
         <span className="text-[12.5px] text-gray-600 dark:text-gray-300 truncate text-left">딜을 모으면 더 싸게 살 수 있어요</span>
         <span className="shrink-0 inline-flex items-center gap-0.5 text-[11.5px] font-bold text-brand-text">
@@ -65,7 +65,7 @@ export default function DealBalanceCard({ balance, variant = 'full' }: DealBalan
   }
 
   return (
-    <div className="w-full rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift overflow-hidden">
+    <div className="w-full rounded-2xl bg-surface shadow-lift overflow-hidden">
       {/* 위층 — 라벨과 금액만. 버튼을 두지 않는다(그게 A3 의 전부다). */}
       <div className={compact ? 'px-4 pt-4 pb-3.5' : 'px-5 pt-5 pb-4'}>
         <p className={`text-gray-500 dark:text-gray-400 tracking-wide ${compact ? 'text-[11px] mb-1.5' : 'text-[12px] mb-2'}`}>내 딜 잔액</p>

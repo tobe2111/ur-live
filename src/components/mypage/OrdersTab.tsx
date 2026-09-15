@@ -188,7 +188,7 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t('ordersTab.searchPlaceholder', { defaultValue: '상품명 / 브랜드명으로 검색하세요.' })}
           aria-label={t('ordersTab.searchAria', { defaultValue: '주문 검색' })}
-          className="w-full h-11 pl-10 pr-4 rounded-xl bg-gray-50 dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/10"
+          className="w-full h-11 pl-10 pr-4 rounded-xl bg-gray-50 dark:bg-[#1D1F29] border border-line text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/10"
         />
       </div>
 
@@ -385,7 +385,7 @@ function OrderCard({
         <div className="flex items-center gap-1.5 flex-wrap justify-end">
           <button
             onClick={() => onSellerContact(order)}
-            className="flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] rounded-full hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
+            className="flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-[#11141C] border border-line rounded-full hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
             aria-label={t('ordersTab.inquiry', { defaultValue: '매장 문의' })}
           >
             <MessageCircle className="h-3 w-3" strokeWidth={2} aria-hidden="true" />
@@ -399,7 +399,7 @@ function OrderCard({
           {canReturn && (
             <button
               onClick={() => onRequestReturn!(order.id, orderNum)}
-              className="px-2.5 py-1.5 text-[12px] font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] rounded-full hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
+              className="px-2.5 py-1.5 text-[12px] font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-[#11141C] border border-line rounded-full hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
             >
               {t('ordersTab.requestReturn', { defaultValue: '반품' })}
             </button>

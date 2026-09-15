@@ -75,7 +75,7 @@ export default function InfluencerLandingPage() {
           <h2 className="text-2xl lg:text-3xl font-extrabold text-center mb-10">어떻게 되나요?</h2>
           <div className="space-y-4">
             {STEPS.map((s, i) => (
-              <div key={i} className="bg-white dark:bg-[#11141C] rounded-2xl p-6 border border-gray-200 dark:border-[#2C2F35] flex gap-4">
+              <div key={i} className="bg-white dark:bg-[#11141C] rounded-2xl p-6 border border-line flex gap-4">
                 <span className="w-11 h-11 shrink-0 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
                   <s.icon className="w-5 h-5" />
                 </span>
@@ -101,7 +101,7 @@ export default function InfluencerLandingPage() {
 
       {/* 매장을 갖고 있다면 */}
       <section className="px-6 lg:px-12 py-16 max-w-4xl mx-auto">
-        <div className="rounded-3xl border border-gray-200 dark:border-[#2C2F35] p-7 lg:p-10 text-center">
+        <div className="rounded-3xl border border-line p-7 lg:p-10 text-center">
           <span className="w-12 h-12 mx-auto rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-[#11141C] flex items-center justify-center mb-4">
             <Store className="w-6 h-6" />
           </span>

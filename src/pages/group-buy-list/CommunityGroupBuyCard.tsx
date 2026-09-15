@@ -26,7 +26,7 @@ export default function CommunityGroupBuyCard({
   return (
     <button
       onClick={() => navigate(`/community-group-buy/${g.invite_code}`)}
-      className="w-full text-left border border-gray-100 dark:border-[#2C2F35] rounded-2xl p-4 active:scale-[0.98] transition-transform bg-white dark:bg-[#1D1F29] hover:border-gray-200 dark:hover:border-[#3A3A3A]"
+      className="w-full text-left border border-gray-100 dark:border-[#2C2F35] rounded-2xl p-4 active:scale-[0.98] transition-transform bg-surface hover:border-gray-200 dark:hover:border-[#3A3A3A]"
     >
       {/* 상단: 아이콘 + 식당명 + 상태 배지 */}
       <div className="flex items-start justify-between gap-2">
@@ -49,7 +49,7 @@ export default function CommunityGroupBuyCard({
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <button
             onClick={(e) => onToggleInterest(e, g.id, g.restaurant_name)}
-            className="w-7 h-7 flex items-center justify-center rounded-full border border-gray-200 dark:border-[#2C2F35] active:scale-90 transition-transform"
+            className="w-7 h-7 flex items-center justify-center rounded-full border border-line active:scale-90 transition-transform"
             aria-label={t('common.wishlist', { defaultValue: '관심 등록' })}
           >
             <Bell

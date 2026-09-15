@@ -465,6 +465,12 @@ jobs:
         run: node scripts/check-dashboard-button-system.mjs
         continue-on-error: false
 
+      # 🎨 2026-09-15 (대표 "색 정리도 진행해줘"): 소비자 화면 806파일에서 hex 색이 2,875회 나왔다
+      #   (선언된 토큰은 65개). 그중 1,927회는 토큰과 **값이 같은데** hex 로 다시 적은 것이었다.
+      #   화면마다 색이 조금씩 갈리던 정체가 이것이라, 줄이는 건 자유·늘리는 건 차단으로 동결한다.
+      - name: 소비자 화면 hex 색 래칫 (색 정리 — 늘어나지 못하게)
+        run: node scripts/check-consumer-hex-ratchet.mjs
+
       # 🖼️ 2026-08-31: cfImage <img> 에 onError 가 없으면 리사이저/원본이 죽는 순간 **깨진 이미지
       #   아이콘**이 그대로 보인다. SSOT `cfImageOnError` 는 [원본 1회 재시도 → 숨김] 으로 처리한다.
       #   배선 전 실측: cfImage <img> 92개 중 47개가 무방비. 배선은 눈에 안 보여 계속 새로 빠진다.
