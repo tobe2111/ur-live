@@ -1,5 +1,8 @@
 // 유어딜 소개서 공통 모듈 (2026-09-13) — 사장님·인플루언서·대행사 세 덱이 같은 색·글꼴·헬퍼·공통 블록을 쓴다.
 // 대행사 v4 생성기(urdeal-agency-proposal.build.mjs)의 헬퍼를 그대로 옮겼다. 한 곳을 고치면 셋이 같이 바뀐다.
+// 2026-09-15 대표 참고 덱(히로인스 소셜 마케팅 상품 소개서 36장)에서 가져온 장치: section(구분 장 + 우상단 라벨) · takeaway(하단 한 줄 결론 바) ·
+//   callouts(화면 인출선) · personas(말풍선 페르소나 행) · procedureColumns(트랙별 절차 N열) · flywheel(플라이휠) · table hiCol(강조 열).
+//   안 가져온 것: 규모 지표 타일·ROAS·로고 월·3D 아이콘(대응 사실이 없거나 디자인 시스템과 어긋난다).
 // 사실 SSOT: docs/business/proposals/three-decks-plan-2026-09.md §0 · docs/design/actor-benefit-map.md
 import pptxgen from 'pptxgenjs';
 import sharp from 'sharp';
@@ -42,9 +45,9 @@ export async function icon(name, color, px = 256) {
   const svg = renderToStaticMarkup(React.createElement(Comp, { color: '#' + color, size: px, strokeWidth: 1.7 }));
   return 'image/png;base64,' + (await sharp(Buffer.from(svg)).png().toBuffer()).toString('base64');
 }
-export async function wordmark(fill, scale = 1) {
+export async function wordmark(fill, scale = 1, dotFill = C.brand) {
   // Poppins 가 이 환경에 없어(대체 폰트로 그려지면 점이 글자에서 떨어진다) 글자를 먼저 그려 폭을 실측한 뒤 점을 붙인다.
-  // scale: 표지처럼 크게 박을 때 해상도를 올린다(96px × scale).
+  // scale: 표지처럼 크게 박을 때 해상도를 올린다(96px × scale). dotFill: 브랜드 블루 바탕(섹션 구분 장)에서는 점을 흰색으로.
   const fs = 96 * scale;
   const textSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${900 * scale}" height="${140 * scale}"><text x="${10 * scale}" y="${106 * scale}" font-family="Pretendard" font-weight="800" font-size="${fs}" letter-spacing="${-4 * scale}" fill="#${fill}">urdeal</text></svg>`;
   const txt = sharp(Buffer.from(textSvg)).png();
@@ -52,7 +55,7 @@ export async function wordmark(fill, scale = 1) {
   const tw = trimmed.info.width, th = trimmed.info.height;
   const r = 10 * scale, gap = 12 * scale, pad = 8 * scale;
   const W_ = tw + gap + r * 2 + pad * 2, H_ = th + pad * 2;
-  const dot = `<svg xmlns="http://www.w3.org/2000/svg" width="${W_}" height="${H_}"><circle cx="${pad + tw + gap + r}" cy="${pad + th - r - 2}" r="${r}" fill="#${C.brand}"/></svg>`;
+  const dot = `<svg xmlns="http://www.w3.org/2000/svg" width="${W_}" height="${H_}"><circle cx="${pad + tw + gap + r}" cy="${pad + th - r - 2}" r="${r}" fill="#${dotFill}"/></svg>`;
   const buf = await sharp({ create: { width: W_, height: H_, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
     .composite([{ input: trimmed.data, left: pad, top: pad }, { input: Buffer.from(dot), left: 0, top: 0 }]).png().toBuffer();
   return { data: 'image/png;base64,' + buf.toString('base64'), ratio: W_ / H_ };
@@ -95,6 +98,7 @@ export async function createDeck({ title, footer, shotsDir, shotKeys = [], phone
   const wmLight = await wordmark(C.darkText);
   const wmBig = await wordmark(C.ink, 5);
   const wmBigLight = await wordmark(C.darkText, 5);
+  const wmOnBrand = await wordmark('FFFFFF', 1, 'FFFFFF');
   const wmH = 0.26, wmW = wmH * wmDark.ratio;
   const ic = {};
   const base = ['FiPercent', 'FiLayers', 'FiUsers', 'FiCreditCard', 'FiMapPin', 'FiUserCheck', 'FiSearch', 'FiEye', 'FiBarChart2',
@@ -114,14 +118,133 @@ export async function createDeck({ title, footer, shotsDir, shotKeys = [], phone
   if (missing.length) console.warn('캡처 없음 (빈 슬롯으로 그림):', missing.join(', '));
 
   let page = 0;
+  let sectionName = '';
   const T = (slide, text, o) => slide.addText(text, Object.assign({ fontFace: FONT, isTextBox: true, margin: 0 }, o));
 
-  function chrome(slide, { dark = false } = {}) {
+  /** 페이지 chrome. `fill` 을 주면 그 색 전면(섹션 구분 장). 섹션 라벨은 section()/setSection() 뒤의 모든 장 우상단에 붙는다(히로인스 류 "TRACK 1 : …"). */
+  function chrome(slide, { dark = false, fill } = {}) {
     page += 1;
-    slide.background = { color: dark ? C.dark : C.bg };
-    slide.addImage({ data: (dark ? wmLight : wmDark).data, x: M, y: 0.5, w: wmW, h: wmH });
-    T(slide, footer, { x: M, y: H - 0.62, w: 6, h: 0.25, fontSize: 9, color: dark ? C.darkMuted : C.gray, charSpacing: 0.5 });
-    T(slide, String(page).padStart(2, '0'), { x: W - M - 0.8, y: H - 0.62, w: 0.8, h: 0.25, fontSize: 9.5, bold: true, color: dark ? C.darkText : C.ink, align: 'right' });
+    const onDark = dark || fill === C.brand || fill === C.dark;
+    slide.background = { color: fill || (dark ? C.dark : C.bg) };
+    slide.addImage({ data: (fill === C.brand ? wmOnBrand : onDark ? wmLight : wmDark).data, x: M, y: 0.5, w: wmW, h: wmH });
+    if (sectionName && !fill) T(slide, sectionName, { x: W - M - 5, y: 0.5, w: 5, h: 0.26, fontSize: 9, color: onDark ? C.darkMuted : C.gray, align: 'right', charSpacing: 0.5, valign: 'middle' });
+    T(slide, footer, { x: M, y: H - 0.62, w: 6, h: 0.25, fontSize: 9, color: onDark ? C.darkMuted : C.gray, charSpacing: 0.5 });
+    T(slide, String(page).padStart(2, '0'), { x: W - M - 0.8, y: H - 0.62, w: 0.8, h: 0.25, fontSize: 9.5, bold: true, color: onDark ? C.darkText : C.ink, align: 'right' });
+  }
+  /** 섹션 구분 장(브랜드 블루 전면). 이후 장의 우상단 라벨을 함께 바꾼다. items 는 그 섹션에서 다룰 것들. */
+  function section(slide, { n, name, sub, items = [] }) {
+    chrome(slide, { fill: C.brand });
+    sectionName = `PART ${n} · ${name}`;
+    // (LibreOffice PDF 변환에서 transparency 가 걸린 런의 숫자가 사라지는 것을 실측 — 투명도 대신 옅은 색을 쓴다.)
+    const soft = 'CFE0FD';
+    T(slide, `PART ${n}`, { x: M, y: 1.75, w: 6, h: 0.4, fontSize: 14, bold: true, color: soft, charSpacing: 2 });
+    T(slide, name, { x: M, y: 2.2, w: 8.5, h: 1.2, fontSize: 40, bold: true, color: 'FFFFFF', charSpacing: -1.2, valign: 'top', lineSpacingMultiple: 1.1 });
+    if (sub) T(slide, sub, { x: M, y: 3.45, w: 7.6, h: 0.9, fontSize: 13, color: soft, lineSpacingMultiple: 1.5, valign: 'top' });
+    const lx = 8.3, ly = 4.5;
+    items.forEach((t, i) => {
+      T(slide, `${i + 1})`, { x: lx, y: ly + i * 0.38, w: 0.4, h: 0.32, fontSize: 11, bold: true, color: soft, valign: 'middle' });
+      T(slide, t, { x: lx + 0.4, y: ly + i * 0.38, w: W - M - lx - 0.4, h: 0.32, fontSize: 11, color: 'FFFFFF', valign: 'middle' });
+    });
+  }
+  /** 구분 장 없이 라벨만 바꾼다(짧은 덱). */
+  function setSection(name) { sectionName = name; }
+  /** 슬라이드 하단 "한 줄 결론 바". text 는 문자열 또는 [{text, options}] 런. 훑어 읽는 사람이 바만 읽어도 흐름이 잡히게. */
+  function takeaway(slide, text, { x = M, y = 6.18, w = W - 2 * M, h = 0.52, dark = false, size = 12 } = {}) {
+    const fill = dark ? C.darkSurface : C.tint;
+    slide.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y, w, h, rectRadius: 0.1, fill: { color: fill }, line: { color: fill, width: 0 } });
+    const runs = typeof text === 'string' ? [{ text, options: { bold: true, color: dark ? C.darkText : C.ink } }] : text;
+    T(slide, runs, { x: x + 0.35, y, w: w - 0.7, h, fontSize: size, valign: 'middle', align: 'center', charSpacing: -0.3, color: dark ? C.darkText : C.ink });
+  }
+  /** 두 점을 잇는 선(pptx LINE 은 좌상단 기준이라 방향에 따라 뒤집는다). */
+  function line(slide, x1, y1, x2, y2, { color = C.brand, width = 1, dash } = {}) {
+    const x = Math.min(x1, x2), y = Math.min(y1, y2), w = Math.abs(x2 - x1), h = Math.abs(y2 - y1);
+    const flipH = (x2 < x1) !== (y2 < y1);
+    slide.addShape(pres.shapes.LINE, { x, y, w, h, flipH, line: { color, width, dashType: dash || 'solid' } });
+  }
+  /**
+   * 화면 주석 인출선(히로인스 셀러 어드민 장). items: [{ label, sub, tx, ty }] — tx/ty 는 폰 프레임 안의 비율(0~1).
+   * 목록은 listX 에 세로로, 각 항목에서 화면의 그 자리까지 선을 긋고 점을 찍는다.
+   */
+  function callouts(slide, items, { phoneX, phoneY, phoneW, phoneH, listX, listW = 3.2, listY, gap = 0.92, side = 'left', dark = false }) {
+    items.forEach(({ label, sub, tx, ty }, i) => {
+      const ly = listY + i * gap;
+      T(slide, label, { x: listX, y: ly, w: listW, h: 0.3, fontSize: 12.5, bold: true, color: dark ? C.darkText : C.ink, charSpacing: -0.3, align: side === 'left' ? 'left' : 'right' });
+      if (sub) T(slide, sub, { x: listX, y: ly + 0.3, w: listW, h: 0.5, fontSize: 9.8, color: dark ? C.darkMuted : C.inkSoft, lineSpacingMultiple: 1.35, valign: 'top', align: side === 'left' ? 'left' : 'right' });
+      const ax = side === 'left' ? listX + listW + 0.12 : listX - 0.12, ay = ly + 0.16;
+      const px = phoneX + tx * phoneW, py = phoneY + ty * phoneH;
+      line(slide, ax, ay, px, py, { color: C.brand, width: 1 });
+      slide.addShape(pres.shapes.OVAL, { x: ax - 0.05, y: ay - 0.05, w: 0.1, h: 0.1, fill: { color: C.brand }, line: { color: C.brand, width: 0 } });
+      slide.addShape(pres.shapes.OVAL, { x: px - 0.09, y: py - 0.09, w: 0.18, h: 0.18, fill: { color: C.brand }, line: { color: 'FFFFFF', width: 1.5 } });
+    });
+  }
+  /** 말풍선(흰 알약 + 왼쪽 꼬리). 사람 말투의 인용에 쓴다. */
+  function bubble(slide, x, y, w, h, text, { size = 11, fill = C.surface, color = C.ink } = {}) {
+    slide.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y, w, h, rectRadius: 0.16, fill: { color: fill }, line: { color: fill, width: 0 } });
+    slide.addShape(pres.shapes.ISOSCELES_TRIANGLE, { x: x - 0.14, y: y + h / 2 - 0.1, w: 0.2, h: 0.2, rotate: 270, fill: { color: fill }, line: { color: fill, width: 0 } });
+    T(slide, text, { x: x + 0.22, y, w: w - 0.4, h, fontSize: size, bold: true, color, valign: 'middle', charSpacing: -0.3, lineSpacingMultiple: 1.3 });
+  }
+  /**
+   * "이런 매장에 맞습니다" 류 페르소나 행(히로인스 '이런 브랜드에게 추천합니다'). 다크 장 위.
+   * rows: [[iconName, who, quote(그 사람 말투), [answer1, answer2]]]
+   */
+  function personas(slide, rows, { y = 2.15, rowH = 1.06, gap = 0.18, dark = true, quoteW = 3.4 } = {}) {
+    const x = M, w = W - 2 * M;
+    rows.forEach(([iconName, who, quote, answers], i) => {
+      const ry = y + i * (rowH + gap);
+      card(slide, x, ry, w, rowH, { fill: dark ? C.darkSurface : C.surface });
+      iconCircle(slide, iconName, x + 0.3, ry + rowH / 2 - 0.25, 0.5);
+      T(slide, who, { x: x + 0.95, y: ry, w: 2.0, h: rowH, fontSize: 13.5, bold: true, color: dark ? C.darkText : C.ink, valign: 'middle', charSpacing: -0.3 });
+      bubble(slide, x + 3.15, ry + rowH / 2 - 0.3, quoteW, 0.6, quote, { size: 11 });
+      const ax = x + 3.15 + quoteW + 0.45, aw = w - (3.15 + quoteW + 0.75);
+      answers.forEach((a, k) => {
+        const ay = ry + rowH / 2 - (answers.length * 0.3) / 2 + k * 0.3;
+        slide.addImage({ data: ic.FiCheckW, x: ax, y: ay + 0.06, w: 0.17, h: 0.17 });
+        T(slide, a, { x: ax + 0.27, y: ay, w: aw - 0.27, h: 0.3, fontSize: 10.5, color: dark ? C.darkMuted : C.inkSoft, valign: 'middle' });
+      });
+    });
+  }
+  /** 트랙별 절차 N열(히로인스 '광고 집행 절차'). cols: [{ title, steps, note, hi }] */
+  function procedureColumns(slide, cols, { y = 2.3, h = 4.3, gap = 0.25, stepGap = 0.46 } = {}) {
+    const cw = (W - 2 * M - gap * (cols.length - 1)) / cols.length;
+    cols.forEach(({ title: t, steps, note, hi }, k) => {
+      const x = M + k * (cw + gap);
+      const head = hi ? C.brand : C.tint;
+      slide.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y, w: cw, h: 0.5, rectRadius: 0.12, fill: { color: head }, line: { color: head, width: 0 } });
+      T(slide, t, { x, y, w: cw, h: 0.5, fontSize: 12.5, bold: true, color: hi ? 'FFFFFF' : C.ink, align: 'center', valign: 'middle', charSpacing: -0.3 });
+      card(slide, x, y + 0.65, cw, h - 0.65);
+      let sy = y + 0.9;
+      steps.forEach((st, i) => {
+        numBadge(slide, i + 1, x + 0.25, sy + 0.02, 0.28, { filled: false });
+        T(slide, st, { x: x + 0.62, y: sy, w: cw - 0.85, h: stepGap, fontSize: 10.3, color: C.ink, valign: 'top', lineSpacingMultiple: 1.3 });
+        sy += stepGap;
+      });
+      if (note) {
+        hr(slide, x + 0.25, y + h - 0.62, cw - 0.5);
+        T(slide, note, { x: x + 0.25, y: y + h - 0.55, w: cw - 0.5, h: 0.45, fontSize: 9.5, bold: true, color: C.brand, valign: 'middle', lineSpacingMultiple: 1.3 });
+      }
+    });
+  }
+  /**
+   * 플라이휠(히로인스 '콘텐츠 기반 바이럴 루프'). 링 위에 노드 카드, 사이에 화살표, 가운데 브랜드 원.
+   * nodes: [[label, sub]] 시계 방향, 12시부터.
+   */
+  function flywheel(slide, cx, cy, r, nodes, { center, centerSub, nodeW = 2.05, nodeH = 0.74 } = {}) {
+    slide.addShape(pres.shapes.OVAL, { x: cx - r, y: cy - r, w: 2 * r, h: 2 * r, fill: { type: 'none' }, line: { color: C.brand, width: 2.5 } });
+    const n = nodes.length;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * 2 * Math.PI - Math.PI / 2, am = ((i + 0.5) / n) * 2 * Math.PI - Math.PI / 2;
+      const nx = cx + r * Math.cos(a), ny = cy + r * Math.sin(a);
+      const mx = cx + r * Math.cos(am), my = cy + r * Math.sin(am);
+      // 화살표: 링 위 중간 지점, 시계 방향 접선으로 회전
+      slide.addShape(pres.shapes.ISOSCELES_TRIANGLE, { x: mx - 0.13, y: my - 0.13, w: 0.26, h: 0.26, rotate: (am * 180) / Math.PI + 90 + 90, fill: { color: C.brand }, line: { color: C.brand, width: 0 } });
+      card(slide, nx - nodeW / 2, ny - nodeH / 2, nodeW, nodeH);
+      T(slide, nodes[i][0], { x: nx - nodeW / 2, y: ny - nodeH / 2 + 0.08, w: nodeW, h: 0.32, fontSize: 12.5, bold: true, color: C.ink, align: 'center', charSpacing: -0.3 });
+      if (nodes[i][1]) T(slide, nodes[i][1], { x: nx - nodeW / 2 + 0.1, y: ny - nodeH / 2 + 0.38, w: nodeW - 0.2, h: 0.32, fontSize: 9.3, color: C.inkSoft, align: 'center', valign: 'top' });
+    }
+    const d = r * 0.98;
+    slide.addShape(pres.shapes.OVAL, { x: cx - d / 2, y: cy - d / 2, w: d, h: d, fill: { color: C.brand }, line: { color: C.brand, width: 0 } });
+    T(slide, center, { x: cx - d / 2, y: cy - d / 2 + d * 0.22, w: d, h: d * 0.35, fontSize: 15, bold: true, color: 'FFFFFF', align: 'center', valign: 'middle', charSpacing: -0.5, lineSpacingMultiple: 1.15 });
+    if (centerSub) T(slide, centerSub, { x: cx - d / 2 + 0.15, y: cy + d * 0.06, w: d - 0.3, h: d * 0.3, fontSize: 9.5, color: 'CFE0FD', align: 'center', valign: 'top', lineSpacingMultiple: 1.3 });
   }
   function title(slide, text, { dark = false, y = 1.15, size = 27, w = W - 2 * M } = {}) {
     T(slide, text, { x: M, y, w, h: 0.9, fontSize: size, bold: true, color: dark ? C.darkText : C.ink, valign: 'top', lineSpacingMultiple: 1.15, charSpacing: -0.6 });
@@ -177,15 +300,18 @@ export async function createDeck({ title, footer, shotsDir, shotKeys = [], phone
     return y;
   }
   /** 텍스트 상자 표 (pptx addTable 은 PDF 변환 때 한글 자간 보정이 안 먹어 쓰지 않는다). */
-  function table(slide, { x, y, colW, hdr, body, hiRow = -1, rowH = 0.46, fontSize = 11, brandCol = -1 }) {
+  function table(slide, { x, y, colW, hdr, body, hiRow = -1, rowH = 0.46, fontSize = 11, brandCol = -1, hiCol = -1, leftAlign = false }) {
     const tw = colW.reduce((a, b) => a + b, 0);
     const colX = colW.map((_, i) => x + colW.slice(0, i).reduce((a, b) => a + b, 0));
-    hdr.forEach((h, i) => T(slide, h, { x: colX[i], y, w: colW[i], h: 0.26, fontSize: 9.5, bold: true, color: C.gray, align: i === 0 ? 'left' : 'right' }));
+    const al = (i) => (leftAlign || i === 0 ? 'left' : 'right');
+    // 강조 열(히로인스 '플랜별 기능 비교'): 열 전체에 옅은 면을 깔고 머리글을 브랜드색으로.
+    if (hiCol >= 0) slide.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: colX[hiCol] - 0.12, y: y - 0.08, w: colW[hiCol] + 0.1, h: 0.44 + body.length * rowH + 0.08, rectRadius: 0.1, fill: { color: C.tint }, line: { color: C.tint, width: 0 } });
+    hdr.forEach((h, i) => T(slide, h, { x: colX[i], y, w: colW[i] - (leftAlign ? 0.15 : 0), h: 0.26, fontSize: 9.5, bold: true, color: i === hiCol ? C.brand : C.gray, align: al(i) }));
     hr(slide, x, y + 0.3, tw);
     body.forEach((r, ri) => {
       const ry = y + 0.36 + ri * rowH, hi = ri === hiRow;
       if (hi) slide.addShape(pres.shapes.RECTANGLE, { x: x - 0.1, y: ry - 0.04, w: tw + 0.2, h: rowH, fill: { color: C.tint }, line: { color: C.tint, width: 0 } });
-      r.forEach((t, i) => T(slide, t, { x: colX[i], y: ry, w: colW[i], h: rowH - 0.08, fontSize, bold: hi || i === brandCol, color: i === brandCol ? C.brand : C.ink, align: i === 0 ? 'left' : 'right', valign: 'middle' }));
+      r.forEach((t, i) => T(slide, t, { x: colX[i], y: ry, w: colW[i] - (leftAlign ? 0.15 : 0), h: rowH - 0.08, fontSize, bold: hi || i === brandCol || i === hiCol, color: i === brandCol || i === hiCol ? C.brand : (i === 0 ? C.ink : C.ink2), align: al(i), valign: 'middle', lineSpacingMultiple: 1.25 }));
       hr(slide, x, ry + rowH - 0.04, tw);
     });
     return y + 0.36 + body.length * rowH;
@@ -262,5 +388,6 @@ export async function createDeck({ title, footer, shotsDir, shotKeys = [], phone
     if (name) iconCircle(slide, name, x + w - 0.8, y + h / 2 - 0.25, 0.5);
   }
 
-  return { pres, ic, shots, T, chrome, title, lead, card, iconCircle, numBadge, hr, label, phone, kv, table, customerSteps, honesty, cover, chip, screen, qa3, statTile };
+  return { pres, ic, shots, T, chrome, title, lead, card, iconCircle, numBadge, hr, label, phone, kv, table, customerSteps, honesty, cover, chip, screen, qa3, statTile,
+    section, setSection, takeaway, line, callouts, bubble, personas, procedureColumns, flywheel };
 }
