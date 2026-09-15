@@ -154,13 +154,13 @@ export default function SellerSupplyPage() {
         <div className="flex gap-1 mb-5 border-b border-gray-200">
           <button
             onClick={() => setActiveTab('catalog')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'catalog' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'catalog' ? 'border-brand text-brand-text' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
           >
             <span className="flex items-center gap-1.5"><ShoppingBag className="w-4 h-4" /> {t('seller.supplyProductList')}</span>
           </button>
           <button
             onClick={() => setActiveTab('my-requests')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'my-requests' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'my-requests' ? 'border-brand text-brand-text' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
           >
             <span className="flex items-center gap-1.5">
               <Package className="w-4 h-4" /> {t('seller.myRequestList')}
@@ -203,13 +203,13 @@ export default function SellerSupplyPage() {
                 className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-700 bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
               >
                 <option value="">전체 카테고리</option>
-                <option value="meal_voucher">🍽️ 이용권</option>
-                <option value="beauty_voucher">💇 뷰티</option>
-                <option value="stay_voucher">🏨 숙박</option>
-                <option value="health_voucher">💪 건강</option>
-                <option value="pet_voucher">🐶 반려</option>
-                <option value="activity_voucher">🎉 액티비티</option>
-                <option value="etc_voucher">🎯 기타</option>
+                <option value="meal_voucher">이용권</option>
+                <option value="beauty_voucher">뷰티</option>
+                <option value="stay_voucher">숙박</option>
+                <option value="health_voucher">건강</option>
+                <option value="pet_voucher">반려</option>
+                <option value="activity_voucher">액티비티</option>
+                <option value="etc_voucher">기타</option>
               </select>
               <select
                 value={filterRegion}
@@ -240,15 +240,15 @@ export default function SellerSupplyPage() {
                 onChange={e => setSortBy(e.target.value as typeof sortBy)}
                 className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-700 bg-white focus:ring-2 focus:ring-purple-500 focus:outline-none ml-auto"
               >
-                <option value="popular">🔥 인기순</option>
-                <option value="newest">🆕 신상품</option>
-                <option value="price_low">💸 낮은 가격순</option>
-                <option value="price_high">💰 높은 가격순</option>
+                <option value="popular">인기순</option>
+                <option value="newest">신상품</option>
+                <option value="price_low">낮은 가격순</option>
+                <option value="price_high">높은 가격순</option>
               </select>
             </div>
 
             {catalogLoading ? (
-              <div className="py-16 text-center"><Loader2 className="w-8 h-8 animate-spin text-purple-500 mx-auto" /></div>
+              <div className="py-16 text-center"><Loader2 className="w-8 h-8 animate-spin text-brand-text mx-auto" /></div>
             ) : products.length === 0 ? (
               <div className="py-20 text-center">
                 <Truck className="w-12 h-12 text-gray-200 mx-auto mb-3" />
@@ -276,17 +276,17 @@ export default function SellerSupplyPage() {
                         <span className="flex items-center gap-1 text-xs text-gray-600">
                           <Tag className="w-3 h-3" /> {t('seller.retailPrice')} <strong>{formatNumber(product.retail_price)}{t('common.won')}</strong>
                         </span>
-                        <span className="flex items-center gap-1 text-xs text-purple-600 font-medium">
+                        <span className="flex items-center gap-1 text-xs text-gray-700 font-medium">
                           {t('seller.supplyPrice')} <strong>{formatNumber(product.supply_price)}{t('common.won')}</strong>
                         </span>
                       </div>
                       {/* 🛡️ 2026-06-01 INC-7: 마진 표시 — 셀러가 한눈에 수익성 판단. */}
                       {product.retail_price > product.supply_price && (
-                        <div className="mt-1.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200">
-                          <span className="text-[11px] font-bold text-emerald-700">
+                        <div className="mt-1.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-tone-ok-bg border border-transparent">
+                          <span className="text-[11px] font-bold text-tone-ok">
                             {t('seller.marginLabel', { defaultValue: '마진' })} {formatNumber(product.retail_price - product.supply_price)}{t('common.won')}
                           </span>
-                          <span className="text-[10px] text-emerald-600">
+                          <span className="text-[10px] text-tone-ok">
                             ({Math.round(((product.retail_price - product.supply_price) / product.retail_price) * 100)}%)
                           </span>
                         </div>
@@ -305,17 +305,17 @@ export default function SellerSupplyPage() {
                         </button>
                       )}
                       {product.request_status === 'PENDING' && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-yellow-50 text-yellow-700 border border-yellow-200">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-tone-warn-bg text-tone-warn border border-transparent">
                           <Clock className="w-3 h-3" /> {t('seller.reviewing')}
                         </span>
                       )}
                       {product.request_status === 'APPROVED' && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-green-50 text-green-700 border border-green-200">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-tone-ok-bg text-tone-ok border border-transparent">
                           <CheckCircle className="w-3 h-3" /> {t('seller.approved')}
                         </span>
                       )}
                       {product.request_status === 'REJECTED' && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-red-50 text-red-600 border border-red-200">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg bg-tone-bad-bg text-tone-bad border border-transparent">
                           <XCircle className="w-3 h-3" /> {t('seller.rejected')}
                         </span>
                       )}
@@ -331,7 +331,7 @@ export default function SellerSupplyPage() {
         {activeTab === 'my-requests' && (
           <>
             {reqLoading ? (
-              <div className="py-16 text-center"><Loader2 className="w-8 h-8 animate-spin text-purple-500 mx-auto" /></div>
+              <div className="py-16 text-center"><Loader2 className="w-8 h-8 animate-spin text-brand-text mx-auto" /></div>
             ) : requests.length === 0 ? (
               <div className="py-20 text-center">
                 <Package className="w-12 h-12 text-gray-200 mx-auto mb-3" />
@@ -358,21 +358,21 @@ export default function SellerSupplyPage() {
                     {/* Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
-                        {req.status === 'PENDING' && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs font-medium rounded-full bg-yellow-50 text-yellow-700"><Clock className="w-3 h-3" /> {t('seller.reviewing')}</span>}
-                        {req.status === 'APPROVED' && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs font-medium rounded-full bg-green-50 text-green-700"><CheckCircle className="w-3 h-3" /> {t('seller.approved')}</span>}
-                        {req.status === 'REJECTED' && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs font-medium rounded-full bg-red-50 text-red-600"><XCircle className="w-3 h-3" /> {t('seller.rejected')}</span>}
+                        {req.status === 'PENDING' && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs font-medium rounded-full bg-tone-warn-bg text-tone-warn"><Clock className="w-3 h-3" /> {t('seller.reviewing')}</span>}
+                        {req.status === 'APPROVED' && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs font-medium rounded-full bg-tone-ok-bg text-tone-ok"><CheckCircle className="w-3 h-3" /> {t('seller.approved')}</span>}
+                        {req.status === 'REJECTED' && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs font-medium rounded-full bg-tone-bad-bg text-tone-bad"><XCircle className="w-3 h-3" /> {t('seller.rejected')}</span>}
                         <span className="text-xs text-gray-400">{formatKSTDate(req.created_at)}</span>
                       </div>
                       <p className="text-sm font-semibold text-gray-900">{req.product_name}</p>
                       <div className="flex items-center gap-3 mt-1">
                         <span className="text-xs text-gray-500">{t('seller.retailPrice')} {formatNumber(req.retail_price)}{t('common.won')}</span>
-                        <span className="text-xs text-purple-600 font-medium">{t('seller.supplyPrice')} {formatNumber(req.supply_price)}{t('common.won')}</span>
+                        <span className="text-xs text-gray-700 font-medium">{t('seller.supplyPrice')} {formatNumber(req.supply_price)}{t('common.won')}</span>
                       </div>
                       {req.seller_memo && (
                         <p className="mt-1 text-xs text-gray-500 bg-gray-50 rounded px-2 py-1">{t('seller.requestMemo')}: {req.seller_memo}</p>
                       )}
                       {req.admin_memo && (
-                        <p className="mt-1 text-xs text-blue-600 bg-blue-50 rounded px-2 py-1">{t('seller.adminMemo')}: {req.admin_memo}</p>
+                        <p className="mt-1 text-xs text-tone-info bg-tone-info-bg rounded px-2 py-1">{t('seller.adminMemo')}: {req.admin_memo}</p>
                       )}
                     </div>
 
@@ -403,14 +403,14 @@ export default function SellerSupplyPage() {
             <h3 className="text-sm font-semibold text-gray-900 mb-1">{t('seller.sampleRequestTitle')}</h3>
             <p className="text-xs text-gray-500 mb-4">{requestModal.name}</p>
 
-            <div className="bg-purple-50 rounded-lg p-3 mb-4 space-y-1">
+            <div className="border border-rule bg-white rounded-lg p-3 mb-4 space-y-1">
               <div className="flex justify-between text-xs">
                 <span className="text-gray-500">{t('seller.retailPriceLabel')}</span>
                 <span className="font-medium">{formatNumber(requestModal.retail_price)}{t('common.won')}</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-purple-700 font-medium">{t('seller.supplyPriceLabel')}</span>
-                <span className="text-purple-700 font-semibold">{formatNumber(requestModal.supply_price)}{t('common.won')}</span>
+                <span className="text-gray-700 font-medium">{t('seller.supplyPriceLabel')}</span>
+                <span className="text-gray-700 font-semibold">{formatNumber(requestModal.supply_price)}{t('common.won')}</span>
               </div>
             </div>
 
@@ -448,16 +448,16 @@ export default function SellerSupplyPage() {
             <h3 className="text-sm font-semibold text-gray-900 mb-1">{t('seller.storeRegisterTitle')}</h3>
             <p className="text-xs text-gray-500 mb-4">{registerModal.product_name}</p>
 
-            <div className="bg-green-50 rounded-lg p-3 mb-4 space-y-1">
+            <div className="border border-rule bg-white rounded-lg p-3 mb-4 space-y-1">
               <div className="flex justify-between text-xs">
                 <span className="text-gray-500">{t('seller.supplyPriceCost')}</span>
-                <span className="font-medium text-purple-700">{formatNumber(registerModal.supply_price)}{t('common.won')}</span>
+                <span className="font-medium text-gray-700">{formatNumber(registerModal.supply_price)}{t('common.won')}</span>
               </div>
-              <p className="text-xs text-green-700 mt-1">{t('seller.profitExplain')}</p>
+              <p className="text-xs text-tone-ok mt-1">{t('seller.profitExplain')}</p>
             </div>
 
             <div className="mb-4">
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('seller.setSellerPrice')} <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">{t('seller.setSellerPrice')} <span className="text-tone-bad">*</span></label>
               <input
                 type="number"
                 value={sellerPrice}
@@ -467,7 +467,7 @@ export default function SellerSupplyPage() {
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-green-500 focus:outline-none"
               />
               {sellerPrice && Number(sellerPrice) > (registerModal.supply_price || 0) && (
-                <p className="text-xs text-green-600 mt-1 font-medium">
+                <p className="text-xs text-tone-ok mt-1 font-medium">
                   {t('seller.expectedMargin', { amount: (Number(sellerPrice) - (registerModal.supply_price || 0)).toLocaleString() })}
                 </p>
               )}

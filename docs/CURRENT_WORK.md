@@ -5499,6 +5499,7 @@ _총 296건 · 최신순 · 이 목록은 자동 생성된다._
 **2026-09-15**
 - [삭제한 이용권을 되돌리는 길 (2026-09-15)](handoff/2026-09-15-voucher-restore.md)
 - [2026-09-15 — verify.yml push 트리거 제거 (필수 검사 룰셋과의 충돌)](handoff/2026-09-15-verify-push-trigger.md)
+- [2026-09-15 — 셀러 2차 페이지 정리: 색 정보상자·이모지·버튼 체계·숫자 위계 (PR 1/3)](handoff/2026-09-15-seller-tones.md)
 - [2026-09-15 — 셀러 대시보드 3차: D3 밀도·데이터 + A2 매장이 제목 + B2 전 매장 합계 + C 정산 안 소개 수익](handoff/2026-09-15-seller-d3.md)
 - [2026-09-15 — 결재함 오기 정정 · 죽은 PR 둘 닫기 · S1 판정 패널](handoff/2026-09-15-pr-cleanup-and-s1-verdict.md)
 - [날짜 창 잘림 · 테두리 시안 · 이용권 장바구니 (2026-09-15)](handoff/2026-09-15-date-popover-borders-cart.md)

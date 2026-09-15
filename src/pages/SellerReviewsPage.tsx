@@ -53,7 +53,7 @@ export default function SellerReviewsPage() {
                     <p className="text-sm font-medium text-gray-900">{r.product_name}</p>
                     <div className="flex items-center gap-1 mt-0.5">
                       {Array.from({ length: 5 }).map((_, i) => (
-                        <Star key={i} className={`w-3.5 h-3.5 ${i < r.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200'}`} />
+                        <Star key={i} className={`w-3.5 h-3.5 ${i < r.rating ? 'text-gray-400 fill-yellow-400' : 'text-gray-200'}`} />
                       ))}
                       <span className="text-xs text-gray-500 ml-1">{r.user_name || t('seller.reviews.customer')}</span>
                     </div>
@@ -62,8 +62,8 @@ export default function SellerReviewsPage() {
                 </div>
                 <p className="text-sm text-gray-700">{r.content}</p>
                 {r.seller_reply ? (
-                  <div className="mt-3 bg-blue-50 rounded-lg p-3">
-                    <p className="text-xs text-blue-600 font-medium mb-1">{t('seller.reviews.sellerReply')}</p>
+                  <div className="mt-3 border border-rule bg-white rounded-lg p-3">
+                    <p className="text-xs text-gray-700 font-medium mb-1">{t('seller.reviews.sellerReply')}</p>
                     <p className="text-sm text-gray-700">{r.seller_reply}</p>
                   </div>
                 ) : replyId === r.id ? (
@@ -75,7 +75,7 @@ export default function SellerReviewsPage() {
                   </div>
                 ) : (
                   <button onClick={() => { setReplyId(r.id); setReplyText('') }}
-                    className="mt-2 text-xs text-blue-600 font-medium flex items-center gap-1">
+                    className="mt-2 text-xs text-gray-700 font-medium flex items-center gap-1">
                     <MessageCircle className="w-3.5 h-3.5" /> {t('seller.reviews.writeReply')}
                   </button>
                 )}

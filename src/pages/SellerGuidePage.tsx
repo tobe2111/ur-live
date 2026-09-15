@@ -30,8 +30,8 @@ export default function SellerGuidePage() {
           icon={<BookOpen className="h-5 w-5" />}
         />
 
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-800">
-          💡 이 가이드는 유어딜 운영팀이 직접 작성하고 업데이트합니다. 궁금한 점이 있으면 각 섹션을 펼쳐서 확인하세요.
+        <div className="bg-white border border-rule rounded-xl p-3 text-xs text-gray-700">
+          이 가이드는 유어딜 운영팀이 직접 작성하고 업데이트합니다. 궁금한 점이 있으면 각 섹션을 펼쳐서 확인하세요.
         </div>
 
         <GuideViewer guideType="seller" token={token} editable={false} />

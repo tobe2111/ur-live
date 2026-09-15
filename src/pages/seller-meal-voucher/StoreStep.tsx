@@ -143,7 +143,7 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
   return (
     <div className="space-y-4">
       {/* 🏪 매장 선택 칩 — **전환할 곳이 있을 때만** 보인다.
-          ⚠️ 2026-09-02 정정: 종전 조건은 `stores.length >= 2` 였다. 그러면 **매장이 딱 하나인데
+          2026-09-02 정정: 종전 조건은 `stores.length >= 2` 였다. 그러면 **매장이 딱 하나인데
             개인 좌석에 앉아 있는 사람**에게 칩이 하나도 안 보인다 — 자기 매장이 있는데 고를 수가 없고,
             화면은 "매장을 등록하세요" 만 반복했다(대표 실사례: 매장 1개 + 개인 좌석). 조건을
             "**앉아 있지 않은 매장이 하나라도 있는가**" 로 바꾼다. 이미 그 매장에 앉아 있으면 여전히
@@ -176,7 +176,7 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
                     <span className="text-[10px] font-bold text-gray-600 bg-gray-200 px-1 py-0.5 rounded">승인 대기</span>
                   )}
                   {seatable(s) && s.role === 'operator' && (
-                    <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1 py-0.5 rounded">위임</span>
+                    <span className="text-[10px] font-bold text-tone-warn bg-tone-warn-bg px-1 py-0.5 rounded">위임</span>
                   )}
                 </button>
               )
@@ -187,22 +187,22 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <div className="flex items-center gap-2 mb-4">
-          <MapPin className="w-5 h-5 text-orange-500" />
+          <MapPin className="w-5 h-5 text-tone-warn" />
           <h2 className="text-base font-bold text-gray-900">{t('seller.mealVoucher.restaurantInfo')}</h2>
         </div>
 
         <div className="space-y-4">
           {/* 자동 상속된 매장 요약 — 있으면 지도 대신 이 카드가 먼저 */}
           {hasStoreInfo && !showMap && (
-            <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start justify-between gap-3">
+            <div className="bg-white border border-rule rounded-xl p-4 flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
-                  <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
+                  <CheckCircle className="w-4 h-4 text-tone-ok shrink-0" />
                   <span className="truncate">{form.restaurant_name}</span>
                 </p>
                 {form.restaurant_address && <p className="text-xs text-gray-600 mt-1 truncate">{form.restaurant_address}</p>}
                 {form.restaurant_phone && <p className="text-[11px] text-gray-500 mt-0.5">{form.restaurant_phone}</p>}
-                <p className="text-[10px] text-green-700 mt-1">{t('seller.mealVoucher.storeAutoFilled', { defaultValue: '등록된 매장 정보를 자동으로 불러왔어요' })}</p>
+                <p className="text-[10px] text-tone-ok mt-1">{t('seller.mealVoucher.storeAutoFilled', { defaultValue: '등록된 매장 정보를 자동으로 불러왔어요' })}</p>
               </div>
               <button
                 type="button"
@@ -224,7 +224,7 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
                   <p className="text-[11px] text-gray-500 mt-0.5">{t('seller.mealVoucher.findOnMapDesc')}</p>
                 </div>
                 {placeSelected && (
-                  <div className="flex items-center gap-1 text-xs text-green-600 shrink-0">
+                  <div className="flex items-center gap-1 text-xs text-tone-ok shrink-0">
                     <CheckCircle className="w-3.5 h-3.5" />
                     {t('seller.mealVoucher.selected')}
                   </div>
@@ -244,16 +244,16 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
           )}
 
           {/* 🏪 지도에서 방금 찾은 매장 → 매장 관리에 바로 등록(다음부터 자동 상속 + 다매장 목록).
-              🚪 storeRequired(등록 매장 0)면 이 등록이 **필수** — 완료 전엔 다음 단계가 잠긴다. */}
+              storeRequired(등록 매장 0)면 이 등록이 **필수** — 완료 전엔 다음 단계가 잠긴다. */}
           {(placeSelected || storeRequired) && (
             <div className={`flex items-center justify-between rounded-lg px-3 py-2.5 border ${
-              storeRequired ? 'bg-amber-50 border-amber-300' : 'bg-blue-50 border-blue-100'
+              storeRequired ? 'bg-white border-rule' : 'bg-white border-rule'
             }`}>
               <p className="text-[11px] text-gray-700 leading-snug">
                 {storeRequired
                   ? (placeSelected
-                    ? t('seller.mealVoucher.registerStoreRequired', { defaultValue: '⚠️ 매장 등록이 필수예요 — [매장 등록]을 완료해야 다음 단계로 갈 수 있어요' })
-                    : t('seller.mealVoucher.registerStoreFirst', { defaultValue: '⚠️ 첫 단계는 매장 등록이에요 — 위 지도에서 매장을 찾은 뒤 등록을 완료해주세요' }))
+                    ? t('seller.mealVoucher.registerStoreRequired', { defaultValue: '매장 등록이 필수예요 — [매장 등록]을 완료해야 다음 단계로 갈 수 있어요' })
+                    : t('seller.mealVoucher.registerStoreFirst', { defaultValue: '첫 단계는 매장 등록이에요 — 위 지도에서 매장을 찾은 뒤 등록을 완료해주세요' }))
                   : hasOtherStore
                     /* 이미 운영 중인 매장이 있는데 다른 좌석에 앉아 있다 — 시켜야 할 일은 '등록'이 아니라 '선택'이다.
                        (등록을 시키면 같은 가게가 두 번 등록될 뿐이다.) */
@@ -301,8 +301,8 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
               </button>
             </div>
             {form.restaurant_lat && form.restaurant_lng && (
-              <p className="text-[10px] text-green-600 mt-1">
-                ✓ {t('seller.mealVoucher.coordinates')}: {Number(form.restaurant_lat).toFixed(6)}, {Number(form.restaurant_lng).toFixed(6)} ({t('seller.mealVoucher.shownOnMap')})
+              <p className="text-[10px] text-tone-ok mt-1">
+                {t('seller.mealVoucher.coordinates')}: {Number(form.restaurant_lat).toFixed(6)}, {Number(form.restaurant_lng).toFixed(6)} ({t('seller.mealVoucher.shownOnMap')})
               </p>
             )}
           </div>

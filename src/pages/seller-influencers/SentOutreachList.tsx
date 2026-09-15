@@ -41,7 +41,7 @@ export default function SentOutreachList({ refreshKey }: { refreshKey?: number }
               </div>
               <div className="flex items-center gap-1.5 flex-shrink-0">
                 {r.accepted_count > 0 && (
-                  <span className="px-2 py-0.5 rounded-full bg-brand/10 text-brand font-bold">✓ {r.accepted_count}명 수락</span>
+                  <span className="px-2 py-0.5 rounded-full bg-brand/10 text-brand font-bold">{r.accepted_count}명 수락</span>
                 )}
                 <span className={`px-2 py-0.5 rounded-full ${st.cls}`}>{st.label}</span>
               </div>

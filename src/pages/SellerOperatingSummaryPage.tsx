@@ -67,14 +67,14 @@ export default function SellerOperatingSummaryPage() {
         title="운영 매장 요약"
         subtitle="내가 운영을 맡은 매장들의 실적 — 매장과 정산을 정할 때 쓰는 근거"
         actions={
-          <button onClick={load} className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-md text-[12px] font-bold flex items-center gap-1">
+          <button onClick={load} className="ur-btn ur-btn-sm ur-btn-secondary gap-1">
             <RefreshCw className="w-3.5 h-3.5" /> 새로고침
           </button>
         }
       />
 
       {loading ? <DashboardLoading /> : error ? (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+        <div className="p-4 bg-white border border-rule rounded-xl text-sm text-tone-bad">
           {error}
           <button onClick={load} className="ml-2 underline font-bold">다시 시도</button>
         </div>

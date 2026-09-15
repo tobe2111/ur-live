@@ -41,7 +41,7 @@ interface PromoCode {
 const AUDIENCE_LABEL: Record<string, string> = {
   all: '모두',
   followers_only: '단골만',
-  new_users_only: '🆕 신규만',
+  new_users_only: '신규만',
 }
 
 export default function SellerPromoCodesPage() {
@@ -92,7 +92,7 @@ export default function SellerPromoCodesPage() {
         description: form.description,
       }, { headers })
       if (res.data?.success) {
-        toast.success(`✅ ${code} 코드 발급 완료!`)
+        toast.success(`${code} 코드 발급 완료!`)
         setShowCreate(false)
         setForm({ ...form, code: '', description: '' })
         loadCodes()
@@ -126,7 +126,7 @@ export default function SellerPromoCodesPage() {
   }
 
   async function shareCode(c: PromoCode) {
-    const text = `🎁 ${c.discount_pct}% 할인 코드: ${c.code}\n${c.description || ''}\n공구에서 사용하세요!`
+    const text = `${c.discount_pct}% 할인 코드: ${c.code}\n${c.description || ''}\n공구에서 사용하세요!`
     if (navigator.share) {
       try { await navigator.share({ title: `${c.discount_pct}% 할인`, text }); return } catch { /* canceled */ }
     }
@@ -142,7 +142,7 @@ export default function SellerPromoCodesPage() {
     try {
       const audienceLabel = c.audience === 'followers_only' ? '단골 전용' : c.audience === 'new_users_only' ? '신규 전용' : '모두'
       const res = await api.post('/api/seller-public/notify-followers', {
-        title: `🎁 ${c.discount_pct}% 할인 코드 ${c.code}`,
+        title: `${c.discount_pct}% 할인 코드 ${c.code}`,
         message: `${c.description || audienceLabel + ' 할인'} — 공구에서 코드 입력 후 적용`,
         url: '/group-buy',
         reason: 'custom',
@@ -150,7 +150,7 @@ export default function SellerPromoCodesPage() {
       if (res.data?.success) {
         const sent = res.data.data?.sent ?? 0
         const total = res.data.data?.total_followers ?? 0
-        toast.success(`✅ ${sent}/${total} 단골에게 발송 완료`)
+        toast.success(`${sent}/${total} 단골에게 발송 완료`)
       } else {
         toast.error(res.data?.error || '발송 실패')
       }
@@ -208,7 +208,7 @@ export default function SellerPromoCodesPage() {
                   className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
                 >
                   <option value="followers_only">단골만 (권장)</option>
-                  <option value="new_users_only">🆕 신규 고객만</option>
+                  <option value="new_users_only">신규 고객만</option>
                   <option value="all">모두</option>
                 </select>
               </div>
@@ -304,8 +304,8 @@ export default function SellerPromoCodesPage() {
                       >
                         <Megaphone className="w-3.5 h-3.5 text-brand-text" />
                       </button>
-                      <button onClick={() => deleteCode(c.id, c.code)} className="p-1.5 hover:bg-red-50 rounded" aria-label="비활성화">
-                        <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                      <button onClick={() => deleteCode(c.id, c.code)} className="p-1.5 hover:bg-gray-100 rounded" aria-label="비활성화">
+                        <Trash2 className="w-3.5 h-3.5 text-tone-bad" />
                       </button>
                     </div>
                   )}
@@ -315,7 +315,7 @@ export default function SellerPromoCodesPage() {
           </div>
         )}
 
-        <div className="bg-amber-50 border border-amber-200 rounded-[var(--dash-radius,16px)] p-4 text-xs text-amber-800">
+        <div className="bg-white border border-rule rounded-[var(--dash-radius,16px)] p-4 text-xs text-tone-warn">
           <p className="font-bold mb-1">단골 코드 활용 팁</p>
           <ul className="list-disc pl-4 space-y-0.5">
             <li>"단골만 (followers_only)" 옵션 → 단골 등록 사용자만 적용</li>

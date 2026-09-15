@@ -34,7 +34,7 @@ import { enclosingTagName, BUTTONISH } from '../lib/jsx-enclosing-tag.mjs'
 const WRITE = process.argv.includes('--write')
 
 const files = execSync(
-  "git ls-files 'src/pages/Seller*.tsx' 'src/components/seller/**/*.tsx' 'src/pages/seller-*/**/*.tsx'",
+  "git ls-files ':(glob)src/pages/Seller*.tsx' ':(glob)src/components/seller/**/*.tsx' ':(glob)src/pages/seller-*/**/*.tsx'",
   { encoding: 'utf-8' },
 ).trim().split('\n').filter(Boolean)
 

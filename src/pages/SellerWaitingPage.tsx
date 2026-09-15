@@ -107,8 +107,8 @@ export default function SellerWaitingPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <SEO title={`${t('sellerWaiting.errorTitle', { defaultValue: '셀러 상태 조회 오류' })} - 유어딜`} description={t('sellerWaiting.errorTitle', { defaultValue: '셀러 상태 조회에 실패했습니다' })} url="/seller/waiting" noindex />
         <div className="bg-white rounded-[var(--dash-radius,16px)] max-w-sm w-full p-6">
-          <div className="w-16 h-16 rounded-full mx-auto mb-4 bg-red-100 flex items-center justify-center">
-            <AlertCircle className="w-8 h-8 text-red-500" />
+          <div className="w-16 h-16 rounded-full mx-auto mb-4 bg-tone-bad-bg flex items-center justify-center">
+            <AlertCircle className="w-8 h-8 text-tone-bad" />
           </div>
           <div className="text-center space-y-2 mb-6">
             <h2 className="text-lg font-bold text-gray-900">{t('sellerWaiting.errorTitle', { defaultValue: '상태 확인 실패' })}</h2>
@@ -141,11 +141,11 @@ export default function SellerWaitingPage() {
       <SEO title={`${t('sellerWaiting.title')} - 유어딜`} description={t('sellerWaiting.description')} url="/seller/waiting" noindex />
       <div className="bg-white rounded-[var(--dash-radius,16px)] max-w-sm w-full p-6">
         <div className={`w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center ${
-          isRejected ? 'bg-red-100' : 'bg-amber-100'
+          isRejected ? 'bg-tone-bad-bg' : 'bg-tone-warn-bg'
         }`}>
           {isRejected
-            ? <AlertCircle className="w-8 h-8 text-red-500" />
-            : <Clock className="w-8 h-8 text-amber-600" />}
+            ? <AlertCircle className="w-8 h-8 text-tone-bad" />
+            : <Clock className="w-8 h-8 text-tone-warn" />}
         </div>
 
         <div className="text-center space-y-2 mb-6">
@@ -169,7 +169,7 @@ export default function SellerWaitingPage() {
                 {rejectReason && (
                   <>
                     <br />
-                    <span className="font-semibold text-red-500">
+                    <span className="font-semibold text-tone-bad">
                       {t('sellerWaiting.rejectReason', { defaultValue: '거절 사유' })}: {rejectReason}
                     </span>
                   </>
@@ -189,7 +189,7 @@ export default function SellerWaitingPage() {
             </ul>
             {/* 🏁 2026-07-02 (#3 2단계 심사 투명화): 현금 정산 = 사업자등록증 인증 1회 추가 필요 사전 고지 */}
             <p className="text-[11px] text-gray-400 pt-1 border-t border-gray-100">
-              {t('sellerWaiting.secondGate', { defaultValue: '💳 승인 후 현금 정산을 받으려면 사업자등록증 인증 1회가 추가로 필요해요 (대시보드 → 사업자 정보).' })}
+              {t('sellerWaiting.secondGate', { defaultValue: '승인 후 현금 정산을 받으려면 사업자등록증 인증 1회가 추가로 필요해요 (대시보드 → 사업자 정보).' })}
             </p>
           </div>
         )}

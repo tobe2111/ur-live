@@ -119,7 +119,7 @@ export default function SellerOnboardingChecklist() {
             }`}
           >
             {item.done ? (
-              <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
+              <CheckCircle2 className="w-5 h-5 text-tone-ok shrink-0" />
             ) : (
               <Circle className="w-5 h-5 text-gray-300 shrink-0" />
             )}

@@ -143,14 +143,14 @@ export default function SellerProductsPage() {
               ⓑ **검정이 둘**이라 무엇이 주 행동인지 화면이 말하지 못했다.
             ⇒ 주 1개(상품 등록) · 보조 1개(빠른 공구) · 나머지는 ⋯ 로 접는다.
                대량등록은 쓰는 사람만 쓴다 — 늘 보일 이유가 없다.
-            🧹 제목도 뺐다: 상단바 "상품 관리" · 탭 "상품 관리" · 제목 "상품 관리" 로 **세 번**이었다. */}
+            제목도 뺐다: 상단바 "상품 관리" · 탭 "상품 관리" · 제목 "상품 관리" 로 **세 번**이었다. */}
         <DashboardPageHeader
           actions={
             <DashboardActions
               primary={
                 <Button
                   onClick={() => navigate('/seller/products/new')}
-                  className="ur-btn ur-btn-md bg-gray-900 px-4 text-white hover:bg-brand-tint"
+                  className="ur-btn ur-btn-md ur-btn-secondary"
                 >
                   <Plus className="mr-1.5 h-4 w-4" />
                   <span>{t('seller.addProduct')}</span>
@@ -158,7 +158,7 @@ export default function SellerProductsPage() {
               }
               secondary={
                 /* ⚡ 2026-08-01 — 3분 등록 진입점.
-                   🔴 이 버튼이 없으면 `/seller/products/quick` 은 **아무도 못 찾는 죽은 페이지**다
+                   이 버튼이 없으면 `/seller/products/quick` 은 **아무도 못 찾는 죽은 페이지**다
                       (라우트만 있고 링크 0 — 이 레포가 반복해 만난 "조용한 부재" 클래스).
                       내부-링크 가드는 링크→라우트 방향만 보므로 이 방향은 안 잡아 준다. */
                 <Button
@@ -182,8 +182,8 @@ export default function SellerProductsPage() {
 
         {/* Error Message */}
         {error && (
-          <div className="mb-6 rounded-[var(--dash-radius,16px)] border border-red-200 bg-red-50 p-4">
-            <div className="flex items-center gap-2 text-red-700">
+          <div className="mb-6 rounded-[var(--dash-radius,16px)] border border-rule bg-white p-4">
+            <div className="flex items-center gap-2 text-tone-bad">
               <Trash2 className="h-5 w-5" />
               <p className="text-sm font-medium">{error}</p>
             </div>
@@ -299,7 +299,7 @@ export default function SellerProductsPage() {
                             {formatPrice(product.price)}{t('common.won')}
                           </td>
                           <td className="px-6 py-4 text-center">
-                            <Badge className={product.stock > 0 ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'}>
+                            <Badge className={product.stock > 0 ? 'bg-white text-tone-ok border-rule' : 'bg-white text-tone-bad border-rule'}>
                               {product.stock > 0 ? `${product.stock}${t('common.count')}` : t('seller.soldOut')}
                             </Badge>
                           </td>
@@ -309,7 +309,7 @@ export default function SellerProductsPage() {
                               className="inline-flex items-center gap-1"
                             >
                               {product.is_active ? (
-                                <Badge className="bg-blue-100 text-blue-800 border-blue-200 cursor-pointer hover:bg-blue-200">
+                                <Badge className="bg-white text-gray-700 border-rule cursor-pointer hover:bg-gray-100">
                                   <Eye className="w-3 h-3 mr-1" />
                                   {t('seller.onSale')}
                                 </Badge>
@@ -328,7 +328,7 @@ export default function SellerProductsPage() {
                             <div className="flex items-center justify-center gap-2">
                               <button
                                 onClick={() => navigate(`/seller/products/${product.id}/edit`)}
-                                className="text-blue-600 hover:text-blue-800 transition-colors p-1"
+                                className="text-gray-700 hover:text-gray-700 transition-colors p-1"
                                 title={t('common.edit')}
                               >
                                 <Edit className="w-5 h-5" />
@@ -336,7 +336,7 @@ export default function SellerProductsPage() {
                               <button
                                 onClick={() => handleDelete(product.id)}
                                 disabled={deleting === product.id}
-                                className="text-red-600 hover:text-red-800 transition-colors p-1 disabled:opacity-50"
+                                className="text-tone-bad hover:text-tone-bad transition-colors p-1 disabled:opacity-50"
                                 title={t('common.delete')}
                               >
                                 {deleting === product.id ? (
@@ -383,7 +383,7 @@ export default function SellerProductsPage() {
                               className="flex-shrink-0"
                             >
                               {product.is_active ? (
-                                <Badge className="bg-blue-100 text-blue-800 border-blue-200 cursor-pointer hover:bg-blue-200 text-xs">
+                                <Badge className="bg-white text-gray-700 border-rule cursor-pointer hover:bg-gray-100 text-xs">
                                   <Eye className="w-3 h-3 mr-1" />
                                   {t('seller.onSale')}
                                 </Badge>
@@ -404,12 +404,12 @@ export default function SellerProductsPage() {
 
                           <div className="flex items-center gap-2 mb-2">
                             <div className="flex items-center gap-1 text-gray-900">
-                              <DollarSign className="w-4 h-4 text-green-600" />
+                              <DollarSign className="w-4 h-4 text-tone-ok" />
                               <span className="text-base sm:text-lg font-bold">
                                 {formatPrice(product.price)}{t('common.won')}
                               </span>
                             </div>
-                            <Badge className={product.stock > 0 ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'}>
+                            <Badge className={product.stock > 0 ? 'bg-white text-tone-ok border-rule' : 'bg-white text-tone-bad border-rule'}>
                               <Box className="w-3 h-3 mr-1" />
                               {product.stock > 0 ? `${product.stock}${t('common.count')}` : t('seller.soldOut')}
                             </Badge>
@@ -417,7 +417,7 @@ export default function SellerProductsPage() {
 
                           {product.live_stream_title && (
                             <p className="text-xs text-gray-500 mb-2">
-                              📺 {product.live_stream_title}
+                              {product.live_stream_title}
                             </p>
                           )}
 
@@ -433,7 +433,7 @@ export default function SellerProductsPage() {
                             <button
                               onClick={() => handleDelete(product.id)}
                               disabled={deleting === product.id}
-                              className="flex-1 sm:flex-none px-3 sm:px-4 py-1.5 sm:py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 text-xs sm:text-sm"
+                              className="ur-btn ur-btn-sm ur-btn-danger flex-1 sm:flex-none gap-1.5"
                             >
                               {deleting === product.id ? (
                                 <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
@@ -460,24 +460,24 @@ export default function SellerProductsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
             <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white border p-4">
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <Package className="w-5 h-5 text-blue-600" />
+                <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                  <Package className="w-5 h-5 text-gray-700" />
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">{t('common.product')}</p>
-                  <p className="text-2xl font-bold text-gray-900">{products.length}{t('common.count')}</p>
+                  <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">{products.length}{t('common.count')}</p>
                 </div>
               </div>
             </div>
 
             <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white border p-4">
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                  <Eye className="w-5 h-5 text-green-600" />
+                <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                  <Eye className="w-5 h-5 text-tone-ok" />
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">{t('seller.onSale')}</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">
                     {products.filter(p => p.is_active).length}{t('common.count')}
                   </p>
                 </div>
@@ -486,12 +486,12 @@ export default function SellerProductsPage() {
 
             <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white border p-4">
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                  <Box className="w-5 h-5 text-orange-600" />
+                <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                  <Box className="w-5 h-5 text-tone-warn" />
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">{t('common.stock')}</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">
                     {products.reduce((sum, p) => sum + p.stock, 0)}{t('common.count')}
                   </p>
                 </div>

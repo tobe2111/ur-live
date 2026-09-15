@@ -57,17 +57,17 @@ export default function SellerTierPage() {
     diamond: {
       label: t('tierBadge.tierDiamond', { defaultValue: '다이아몬드' }),
       Icon: Gem,
-      color: 'text-blue-700',
+      color: 'text-gray-700',
       bg: 'bg-gradient-to-br from-gray-100 to-gray-50',
-      border: 'border-blue-300',
+      border: 'border-rule',
       benefits: ['수수료 3% (최저)', '노출 가중치 4×', 'TimeDeal 무제한', '메인 hero 우선', '알림톡 1만건/월 무료'],
     },
     gold: {
       label: t('tierBadge.tierGold', { defaultValue: '골드' }),
       Icon: Star,
-      color: 'text-amber-700',
+      color: 'text-tone-warn',
       bg: 'bg-gradient-to-br from-gray-100 to-gray-50',
-      border: 'border-amber-300',
+      border: 'border-rule',
       benefits: ['수수료 4%', '노출 가중치 2.5×', 'TimeDeal 일 5회', '카테고리 상위'],
     },
     silver: {
@@ -81,17 +81,17 @@ export default function SellerTierPage() {
     bronze: {
       label: t('tierBadge.tierBronze', { defaultValue: '브론즈' }),
       Icon: Award,
-      color: 'text-orange-700',
+      color: 'text-tone-warn',
       bg: 'bg-gray-50',
-      border: 'border-orange-200',
+      border: 'border-rule',
       benefits: ['수수료 5%', '노출 가중치 1×', 'TimeDeal 주 3회'],
     },
     new: {
       label: t('tierBadge.tierNew', { defaultValue: '신규' }),
       Icon: Sprout,
-      color: 'text-purple-700',
+      color: 'text-gray-700',
       bg: 'bg-gray-50',
-      border: 'border-purple-200',
+      border: 'border-rule',
       benefits: ['가입 30일 보호', '온보딩 가이드', 'TimeDeal 주 1회'],
     },
   }
@@ -133,7 +133,7 @@ export default function SellerTierPage() {
           <div className={`rounded-[var(--dash-radius,16px)] border-2 ${meta.border} ${meta.bg} p-5`}>
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className={`text-2xl font-extrabold ${meta.color}`}>
+                <p className={`dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight ${meta.color}`}>
                   <meta.Icon className="w-4 h-4 inline-block align-[-3px] mr-1" aria-hidden="true" />{meta.label}
                 </p>
                 <p className="text-sm text-gray-600 mt-1">

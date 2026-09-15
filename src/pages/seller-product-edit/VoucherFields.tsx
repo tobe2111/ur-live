@@ -30,8 +30,8 @@ export default function VoucherFields({
   const { t } = useTranslation()
   const handleChange = onChange
   return (
-    <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 space-y-3">
-      <h3 className="text-sm font-bold text-orange-800">{t('seller.products.mealVoucherInfo')}</h3>
+    <div className="bg-white border border-rule rounded-xl p-4 space-y-3">
+      <h3 className="text-sm font-bold text-tone-warn">{t('seller.products.mealVoucherInfo')}</h3>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.storeName', { defaultValue: '매장명' })}</label>
         <input name="restaurant_name" value={formData.restaurant_name} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />

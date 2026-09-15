@@ -26,10 +26,10 @@ interface RestaurantSettlement {
 }
 
 const STATUS_STYLE: Record<string, string> = {
-  pending: 'bg-amber-50 text-amber-700',
-  processing: 'bg-blue-50 text-blue-700',
-  completed: 'bg-emerald-50 text-emerald-700',
-  failed: 'bg-red-50 text-red-600',
+  pending: 'bg-tone-warn-bg text-tone-warn',
+  processing: 'bg-tone-info-bg text-tone-info',
+  completed: 'bg-tone-ok-bg text-tone-ok',
+  failed: 'bg-tone-bad-bg text-tone-bad',
 }
 
 export default function RestaurantSettlementsSection() {
