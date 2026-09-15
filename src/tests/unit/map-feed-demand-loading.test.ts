@@ -87,7 +87,14 @@ describe('개수는 서버가 말한다', () => {
   })
 
   it('화면의 "N곳" 은 필터가 없을 때 서버 total 을 쓴다', () => {
-    expect(page.match(/filteredCount=\{!needsAll && !search \? \(feedTotal \?\? /g)?.length).toBe(2)
+    // 🔄 2026-09-15: 앞에 "아직 모른다(null)" 분기가 생겼다 — 불변식(서버 total 이 출처)은 그대로라
+    //    모양만 재조준한다. 지우면 그 자리가 다시 빈다.
+    expect(page.match(/filteredCount=\{[\s\S]{0,70}?\(feedTotal \?\? /g)?.length).toBe(2)
+  })
+
+  it('받기 전에는 숫자를 말하지 않는다 (0곳 이라고 단정하지 않는다)', () => {
+    // 렌더 실측(2026-09-15): 696ms "0곳" → 957ms "336곳" 이었다. 그 "0곳"은 거짓이었다.
+    expect(page.match(/filteredCount=\{loading && displayList\.length === 0 \? null :/g)?.length).toBe(2)
   })
 })
 

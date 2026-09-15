@@ -6,7 +6,7 @@
 import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys } from './queryKeys'
-import { readCache, readCacheOrNull, writeCache } from './localCache'
+import { readCache, readCacheOrNull, writeCache, cachedInitialData } from './localCache'
 import { isLoggedInSync } from '@/utils/auth'
 
 export interface DigitalAccess {
@@ -48,7 +48,7 @@ export function useDigitalLibrary() {
           if (cached) return cached
           throw err
         }),
-    initialData: () => readCache<DigitalAccess[]>(CACHE_KEY, []),
+    initialData: () => cachedInitialData<DigitalAccess[]>(CACHE_KEY),
     enabled: isLoggedInSync(),
     staleTime: 2 * 60 * 1000,
     gcTime: 30 * 60 * 1000,

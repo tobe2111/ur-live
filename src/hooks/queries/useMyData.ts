@@ -8,7 +8,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys } from './queryKeys'
-import { readCache, readCacheOrNull, writeCache } from './localCache'
+import { readCache, readCacheOrNull, writeCache, cachedInitialData } from './localCache'
 import { isLoggedInSync } from '@/utils/auth'
 
 interface MyOrder {
@@ -60,7 +60,7 @@ export function useMyOrders(filters?: { status?: string; limit?: number }) {
         throw err
       })
     },
-    initialData: () => readCache<MyOrder[]>(cacheKey, []),
+    initialData: () => cachedInitialData<MyOrder[]>(cacheKey),
     enabled: isLoggedInSync(),
     staleTime: 2 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
@@ -84,7 +84,7 @@ export function useMyVouchers() {
         if (cached) return cached
         throw err
       }),
-    initialData: () => readCache<MyVoucher[]>('my-vouchers', []),
+    initialData: () => cachedInitialData<MyVoucher[]>('my-vouchers'),
     enabled: isLoggedInSync(),
     staleTime: 2 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
@@ -109,7 +109,7 @@ export function useMyAppointments() {
         if (cached) return cached
         throw err
       }),
-    initialData: () => readCache<MyAppointment[]>('my-appointments', []),
+    initialData: () => cachedInitialData<MyAppointment[]>('my-appointments'),
     enabled: isLoggedInSync(),
     staleTime: 2 * 60 * 1000,
     gcTime: 30 * 60 * 1000,

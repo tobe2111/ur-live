@@ -6,7 +6,7 @@
 import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys } from './queryKeys'
-import { readCache, writeCache } from './localCache'
+import { readCache, writeCache, cachedInitialData } from './localCache'
 import { isLoggedInSync } from '@/utils/auth'
 
 export type EntryMethod = 'free' | 'password' | 'intercom' | 'pickup_box'
@@ -42,7 +42,7 @@ export function useAddresses() {
           return arr
         })
         .catch(() => readCache<ShippingAddress[]>(CACHE_KEY, [])),
-    initialData: () => readCache<ShippingAddress[]>(CACHE_KEY, []),
+    initialData: () => cachedInitialData<ShippingAddress[]>(CACHE_KEY),
     enabled: isLoggedInSync(),
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,

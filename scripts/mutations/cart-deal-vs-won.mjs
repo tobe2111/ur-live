@@ -30,8 +30,8 @@ export default [
   {
     name: '[장바구니금액] 섞임 안내를 지운다 (누른 뒤에야 거절당한다)',
     file: SUM,
-    find: '      {mixed && (',
-    replace: '      {false && (',
+    find: '      {mixed && mixedHint && (',
+    replace: '      {false && mixedHint && (',
     test: TEST,
     why: '되는 줄 알고 누르게 만드는 버튼이다 — 이유는 누르기 전에 화면에 있어야 한다.',
   },
@@ -46,8 +46,8 @@ export default [
   {
     name: '[장바구니금액] 합계 루프가 딜을 원에 더한다 (88,000원 재발)',
     file: TOTALS,
-    find: '    if (isDealOnlyCartItem(item)) { deal += line; dealCount += item.quantity }\n    else sum += line',
-    replace: '    sum += line',
+    find: '    if (isDealOnlyCartItem(item)) { deal += line; dealCount += item.quantity }',
+    replace: '    if (false) { deal += line; dealCount += item.quantity }',
     test: TEST,
     why: '라이브에 실제로 떠 있던 값이다 — 74,500원 + 13,500딜 = "88,000원".',
   },
@@ -59,18 +59,20 @@ export default [
     test: TEST,
     why: '요약이 기본값(딜 0)으로 떨어져 화면은 종전과 똑같아진다.',
   },
+  // 🔄 2026-09-15(2차): "섞이면 버튼을 잠근다" 는 **대표 지시로 폐기**됐다(이제 버튼이 골라 준다).
+  //    그 자리를 지키던 주입 대신, 바뀐 의도를 지키는 주입을 둔다 — 페이지가 라벨을 다시 직접 짓는 것.
   {
-    name: '[장바구니금액] 섞여도 주문 버튼이 살아 있다',
+    name: '[장바구니금액] 페이지가 라벨을 다시 직접 짓는다 (판정이 두 곳으로 갈린다)',
     file: PAGE,
-    find: "  const ctaDisabled = selectedIds.size === 0 || updating || cartKind === 'mixed'",
-    replace: '  const ctaDisabled = selectedIds.size === 0 || updating',
+    find: '  const cta = cartCta({ selected: selectedItems, cardTotal: total, dealAmount, updating, fmt: formatNumber, t })',
+    replace: "  const cta = { label: cartKind === 'mixed' ? '따로 골라서 결제해주세요' : t('cart.placeOrder', { amount: formatNumber(total) }), disabled: cartKind === 'mixed', payItems: selectedItems, hint: null as string | null }",
     test: TEST,
-    why: '거절을 모달로만 알리면 사용자는 결제되는 줄 알고 누른다.',
+    why: '버튼이 고른 것과 화면 안내가 다른 곳에서 나오면 둘이 다른 말을 하는 날이 온다.',
   },
   {
     name: '[장바구니금액] 모바일 하단바만 옛 인라인 라벨로 되돌아간다',
     file: PAGE,
-    find: '              <CartCtaButton onClick={handleCheckout} disabled={ctaDisabled} label={ctaLabel} />',
+    find: '              <CartCtaButton onClick={handleCheckout} disabled={cta.disabled} label={cta.label} />',
     replace: "              <CartCtaButton onClick={handleCheckout} disabled={selectedIds.size === 0 || updating}\n                label={selectedIds.size === 0 ? t('cart.selectProductsFirst') : t('cart.placeOrder', { amount: formatNumber(total) })} />",
     test: TEST,
     why: 'PC 와 모바일이 서로 다른 금액을 말하게 된다 — 한쪽만 고치는 전형적 자리.',

@@ -16,6 +16,7 @@ import { getCartItemPrice } from '@/types/cart'
 import { getNoShippingKind, isNoShippingProduct } from '@/shared/product-flow'
 import { routeCartCheckout } from './cart/voucher-checkout'
 import { computeCartTotals } from './cart/cart-totals'
+import { cartCta } from './cart/cart-cta'
 import { formatNumber } from '@/utils/format'
 import { hasConsumerSession } from '@/utils/auth'
 import CustomModal from './cart/CustomModal'
@@ -370,31 +371,35 @@ function CartPageContent() {
 
   // 🏷️ 합계는 **순수 함수**가 낸다(`cart/cart-totals.ts`) — 통화가 둘이라 실행해서 재야 하고,
   //    페이지 안에 두면 렌더 없이는 못 잰다.
-  const { totalItems, dealItems, subtotal, shippingFee, dealAmount, cartKind } =
+  const { totalItems, dealItems, subtotal, shippingFee, dealAmount, savedAmount, cartKind } =
     useMemo(() => computeCartTotals(cartItems, selectedIds), [cartItems, selectedIds])
 
   /** 카드로 청구될 금액. 딜은 여기 안 들어간다(통화가 다르다). */
   const total = subtotal + shippingFee
 
+  // 🔘 버튼이 **무엇을 결제할지까지** 정한다(`cart/cart-cta.ts` 순수 함수).
+  //    섞여 있으면 잠그는 대신 한 종류를 골라 주고 나머지는 장바구니에 남긴다 —
+  //    체크박스를 푸는 노동을 사용자한테 떠넘기지 않는다(대표 "따로 골라서 결제할 필요 없지 않나").
+  const selectedItems = useMemo(
+    () => cartItems.filter(item => selectedIds.has(item.id)),
+    [cartItems, selectedIds],
+  )
+  const cta = cartCta({ selected: selectedItems, cardTotal: total, dealAmount, updating, fmt: formatNumber, t })
+
   const handleCheckout = async () => {
-    if (selectedIds.size === 0) {
+    if (cta.payItems.length === 0) {
       showAlert(t('cart.selectProductsFirst'), 'alert', t('cart.alertTitle'))
       return
     }
-    // 🧺 2026-09-15: 어디로 보낼지는 `cart/voucher-checkout` 한 곳이 정한다. 이용권은 발급이 있는
-    //    공구 레일로, 배송 상품은 종전 `/checkout` 으로 — 섞여 있으면 보내지 않고 이유를 말한다.
-    const err = await routeCartCheckout(cartItems.filter(item => selectedIds.has(item.id)), navigate)
+    // 섞여 있었다면 버튼이 고른 종류만 남기고 선택을 좁힌다 — 돌아왔을 때 나머지가 이어서 보인다.
+    if (cta.payItems.length !== selectedItems.length) {
+      setSelectedIds(new Set(cta.payItems.map(i => i.id as string | number)))
+    }
+    // 🧺 어디로 보낼지는 `cart/voucher-checkout` 한 곳이 정한다(이용권=발급 있는 공구 레일,
+    //    교환권·배송=종전 `/checkout`). 상태 반영을 기다리지 않고 **고른 배열을 그대로** 넘긴다.
+    const err = await routeCartCheckout(cta.payItems, navigate)
     if (err) showAlert(err, 'alert', t('cart.alertTitle'))
   }
-
-  // 🔘 버튼이 **누르기 전에** 말한다. 종전엔 섞인 장바구니도 "N원 주문하기" 로 보이고,
-  //    누른 뒤에야 모달로 거절했다 — 되는 줄 알고 누르게 만드는 버튼이다.
-  const ctaLabel =
-    selectedIds.size === 0 ? t('cart.selectProductsFirst')
-    : cartKind === 'mixed' ? '따로 골라서 결제해주세요'
-    : cartKind === 'deal' ? `${formatNumber(dealAmount)}딜로 주문하기`
-    : t('cart.placeOrder', { amount: formatNumber(total) })
-  const ctaDisabled = selectedIds.size === 0 || updating || cartKind === 'mixed'
 
   // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): ad-hoc 스피너 → BrandLoader (라우트 청크 로더와 위상 연속).
   if (loading) {
@@ -553,9 +558,11 @@ function CartPageContent() {
                 total={total}
                 dealAmount={dealAmount}
                 cartKind={cartKind}
+                savedAmount={savedAmount}
+                mixedHint={cta.hint}
                 noShipping={cartItems.length > 0 && cartItems.every(isNoShippingItem)}
               />
-              <CartCtaButton onClick={handleCheckout} disabled={ctaDisabled} className="hidden lg:block mt-4" label={ctaLabel} />
+              <CartCtaButton onClick={handleCheckout} disabled={cta.disabled} className="hidden lg:block mt-4" label={cta.label} />
             </aside>
           </main>
 
@@ -563,7 +570,7 @@ function CartPageContent() {
           {/* 🛡️ 2026-05-04: PC xl+ 사이드바 (224px) 우측부터 시작하도록 xl:left-56 추가. */}
           <div className="fixed bottom-0 left-0 right-0 xl:left-56 app-frame-bar z-20 bg-white dark:bg-[#11141C] border-t border-gray-100 dark:border-[#2C2F35] safe-bottom lg:hidden">
             <div className="ur-content-narrow px-4 py-3">
-              <CartCtaButton onClick={handleCheckout} disabled={ctaDisabled} label={ctaLabel} />
+              <CartCtaButton onClick={handleCheckout} disabled={cta.disabled} label={cta.label} />
             </div>
           </div>
         </>

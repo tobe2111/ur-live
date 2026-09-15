@@ -71,19 +71,22 @@ describe('통화가 둘이면 줄도 둘이다', () => {
 })
 
 describe('섞였으면 **누르기 전에** 말한다', () => {
-  it('섞임이면 이유가 화면에 있다', () => {
+  // 🔄 2026-09-15(같은 날 2차): 문구를 요약이 직접 쓰지 않는다 — `cart-cta.ts` 가 만든 `mixedHint` 를
+  //    받는다. 버튼이 고른 덩어리와 안내가 **한 함수에서** 나와야 둘이 다른 말을 안 한다.
+  it('섞임이면 받은 안내를 그대로 보여 준다', () => {
     const { container } = render(
       <CartSummary totalItems={2} subtotal={74500} shippingFee={0} total={74500}
-        dealAmount={13500} cartKind="mixed" noShipping />,
+        dealAmount={13500} cartKind="mixed" mixedHint="교환권 3개는 장바구니에 남겨 둘게요." noShipping />,
     )
-    expect(txt(container)).toMatch(/한 번에 결제할 수 없어요/)
+    expect(txt(container)).toContain('장바구니에 남겨 둘게요')
   })
 
-  it('안 섞였으면 그 문장이 없다 (늘 떠 있으면 아무도 안 읽는다)', () => {
+  it('안 섞였으면 안내를 안 그린다 (늘 떠 있으면 아무도 안 읽는다)', () => {
     const { container } = render(
-      <CartSummary totalItems={1} subtotal={74500} shippingFee={0} total={74500} cartKind="voucher" noShipping />,
+      <CartSummary totalItems={1} subtotal={74500} shippingFee={0} total={74500}
+        cartKind="voucher" mixedHint="이건 안 떠야 한다" noShipping />,
     )
-    expect(txt(container)).not.toMatch(/한 번에 결제할 수 없어요/)
+    expect(txt(container)).not.toContain('이건 안 떠야 한다')
   })
 })
 
@@ -133,16 +136,20 @@ describe('배선 — CartPage 가 딜을 따로 센다', () => {
     expect(PAGE).toMatch(/totalItems=\{totalItems - dealItems\}/)
   })
 
-  it('버튼이 섞임이면 **비활성** 이고 교환권만이면 "딜로 주문하기" 라고 쓴다', () => {
-    expect(PAGE).toMatch(/cartKind === 'mixed' \? '따로 골라서 결제해주세요'/)
-    expect(PAGE).toMatch(/cartKind === 'deal' \? `\$\{formatNumber\(dealAmount\)\}딜로 주문하기`/)
-    expect(PAGE).toMatch(/const ctaDisabled = selectedIds\.size === 0 \|\| updating \|\| cartKind === 'mixed'/)
+  // 🔄 2026-09-15(2차): 라벨·비활성·결제대상 판정이 `cart/cart-cta.ts` 순수 함수로 갔다
+  //    (동작 자체는 `cart-cta-and-loading` 테스트가 **실행해서** 잰다). 여기서는 배선만 본다.
+  it('페이지가 라벨을 직접 짓지 않는다 — 한 곳에서만 정한다', () => {
+    expect(PAGE).toMatch(/const cta = cartCta\(/)
+    expect(PAGE).not.toMatch(/cartKind === 'mixed' \?/)   // 옛 인라인 판정 부활 금지
   })
 
-  it('두 CTA(모바일 하단바·PC 사이드)가 **같은 라벨**을 쓴다 — 한쪽만 고치면 갈린다', () => {
-    expect((PAGE.match(/label=\{ctaLabel\}/g) || []).length).toBe(2)
-    expect((PAGE.match(/disabled=\{ctaDisabled\}/g) || []).length).toBe(2)
-    // 옛 인라인 라벨이 되살아나면 그쪽만 합산본을 쓴다.
+  it('두 CTA(모바일 하단바·PC 사이드)가 **같은 결과**를 쓴다 — 한쪽만 고치면 갈린다', () => {
+    expect((PAGE.match(/label=\{cta\.label\}/g) || []).length).toBe(2)
+    expect((PAGE.match(/disabled=\{cta\.disabled\}/g) || []).length).toBe(2)
     expect(PAGE).not.toMatch(/label=\{selectedIds\.size === 0 \?/)
+  })
+
+  it('결제로 보내는 것은 **버튼이 고른 것** 이다 (전체 선택분이 아니다)', () => {
+    expect(PAGE).toMatch(/routeCartCheckout\(cta\.payItems, navigate\)/)
   })
 })
