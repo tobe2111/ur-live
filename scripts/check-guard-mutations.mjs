@@ -2289,8 +2289,10 @@ const MUTATIONS = [
   },
   {
     name: '상세 제목이 다시 번역투가 된다(무엇을 기대하세요?)',
-    file: 'src/pages/GroupBuyDetailPage.tsx',
-    find: ">딜 안내</div>",
+    // 🔄 2026-09-15: 제목이 옮겨졌다. '딜 안내'(하드코딩 3줄) 블록이 사라지고 그 자리에
+    //   실제 스펙표 `UsageGuide`(제목 '이용 안내')가 올라왔다 — 앵커를 그 파일로 옮긴다.
+    file: 'src/pages/group-buy/UsageGuide.tsx',
+    find: ">이용 안내</div>",
     replace: ">무엇을 기대하세요?</div>",
     test: 'src/tests/unit/detail-page-plainness.test.ts',
     why:

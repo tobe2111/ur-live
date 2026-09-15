@@ -129,14 +129,14 @@ export default function VoucherMap<T extends VoucherMapItem>({
 
   if (vouchers.length === 0) {
     return (
-      <div className="bg-white dark:bg-[#11141C] rounded-xl border border-gray-200 dark:border-[#2C2F35] p-12 text-center">
+      <div className="bg-white dark:bg-[#11141C] rounded-xl shadow-lift p-12 text-center">
         <p className="text-sm text-gray-500 dark:text-gray-400">지도에 표시할 미사용 이용권이 없어요</p>
       </div>
     )
   }
 
   return (
-    <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-[#2C2F35]" style={{ height: 400 }}>
+    <div className="relative rounded-xl overflow-hidden shadow-lift" style={{ height: 400 }}>
       <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
       {/* 🎨 현위치 재중심 버튼 (시안 우상단) */}
       {userLocation && (
