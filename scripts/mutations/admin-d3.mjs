@@ -8,8 +8,8 @@ export default [
   {
     name: '🧮 어드민 D3 블록이 사라져 어드민 카드가 종전 16px 로 되돌아간다',
     file: 'src/index.css',
-    find: '.admin-light-theme {\n  --dash-radius: 8px;\n  --dash-h1: 17px;',
-    replace: '.admin-light-theme {\n  --dash-h1: 17px;',
+    find: '  --dash-radius: 8px;\n  --dash-h1: 17px;\n  --dash-h1-sm: 18px;\n  --dash-stat: 22px;\n  --dash-gap: 14px;\n  --dash-pad-x: 16px;\n  --dash-pad-y: 12px;\n}',
+    replace: '  --dash-h1: 17px;\n  --dash-h1-sm: 18px;\n  --dash-stat: 22px;\n  --dash-gap: 14px;\n  --dash-pad-x: 16px;\n  --dash-pad-y: 12px;\n}',
     test: TEST,
     why: '공용 부품은 변수 폴백으로 그린다 — 블록이 빠지면 에러 없이 어드민만 옛 밀도로 돌아가고 아무도 모른다.',
   },

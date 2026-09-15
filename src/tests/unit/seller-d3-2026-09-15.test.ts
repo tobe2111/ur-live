@@ -36,10 +36,10 @@ describe('D3 토큰 — 셀러 스코프에서만, 공용 부품은 변수를 �
     expect(CSS.slice(j, CSS.indexOf('}', j))).not.toContain('--dash-radius')
     // 🧮 2026-09-15 (대표 "다른 대시보드들의 페이지들도 개선 계속") — 어드민은 **자기 블록**에서 같은 값을 선언한다.
     //    오전의 "어드민은 종전 값 유지" 는 이 결정으로 대체됐다.
-    const k = CSS.indexOf('\n.admin-light-theme {\n  --dash-radius: 8px;')
+    const k = CSS.indexOf('\n.admin-light-theme {\n  --brand-tint: #EAF1FE;')
     expect(k, '어드민 D3 블록').toBeGreaterThan(0)
     const adminBlock = CSS.slice(k, CSS.indexOf('}', k))
-    for (const v of ['--dash-h1: 17px', '--dash-stat: 22px', '--dash-pad-x: 16px', '--brand-tint: #EAF1FE']) expect(adminBlock, v).toContain(v)
+    for (const v of ['--dash-radius: 8px', '--dash-h1: 17px', '--dash-stat: 22px', '--dash-pad-x: 16px', '--brand-tint: #EAF1FE']) expect(adminBlock, v).toContain(v)
     expect(CSS).toContain('.admin-light-theme .dash-header-icon { display: none; }')
   })
 })
