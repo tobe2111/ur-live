@@ -1,4 +1,5 @@
-// 유어딜 인플루언서 제휴 소개서 (.pptx) 생성기 — v1 (2026-09-13). 16:9 · Pretendard · 라이브 캡처 · 예시 데이터 화면
+// 유어딜 인플루언서 제휴 소개서 (.pptx) 생성기 — v2 (2026-09-15). 16:9 · Pretendard · 라이브 캡처 · 예시 데이터 화면
+// v2: 참고 덱(히로인스) 장치 — PART 구분 장 3 + 우상단 라벨 · 플라이휠 · "이런 채널에 맞습니다" 페르소나 · 유어샵 화면 인출선 · 두 경로+정산 절차 3열 · 하단 결론 바. 14 → 20장.
 // 기획: docs/business/proposals/three-decks-plan-2026-09.md §3 · 사실 SSOT: 같은 문서 §0 + docs/design/actor-benefit-map.md
 // 기존 9장 HTML(public/static/proposals/influencer-proposal.html)을 대체한다. 정산 문구는 influencer-payout.ts 실값.
 // 재생성: cd /tmp/deck && npm i pptxgenjs sharp react react-dom react-icons
@@ -13,9 +14,9 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
   const d = await createDeck({
     title: '유어딜 인플루언서 제휴 소개서', footer: '유어딜 인플루언서 제휴 소개', shotsDir: SHOTS_DIR,
     shotKeys: ['home', 'detail', 'use', 'shop', 'ushop', 'influencer-offer', 'influencer-settlement', 'creators-apply'],
-    icons: ['FiLink', 'FiPackage', 'FiTruck', 'FiHeadphones', 'FiSend', 'FiInbox', 'FiGift'],
+    icons: ['FiLink', 'FiPackage', 'FiTruck', 'FiHeadphones', 'FiSend', 'FiInbox', 'FiGift', 'FiEdit3'],
   });
-  const { pres, ic, T, chrome, title, lead, card, iconCircle, numBadge, hr, label, phone, kv, customerSteps, honesty, cover, chip, qa3 } = d;
+  const { pres, ic, T, chrome, title, lead, card, iconCircle, numBadge, hr, label, phone, kv, customerSteps, honesty, cover, chip, qa3, section, takeaway, flywheel, personas, callouts, procedureColumns } = d;
 
   // ───────── 00 로고 표지 ─────────
   {
@@ -38,6 +39,12 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     });
     phone(s, 'ushop', 9.3, 1.1, 5.7, { dark: true });
     s.addNotes('딜 소개비: 매장 제안 %, 상한 없음, 매장 부담(actor-benefit-map Q2-1). 영입 2%: influencer-store-intro-commission.ts (직접 입점만, 1년, 유어딜 몫). 비용 0.');
+  }
+
+  // ───────── PART 1 구분 장 ─────────
+  {
+    const s = pres.addSlide();
+    section(s, { n: 1, name: '이게 무엇이고, 나는 무엇을 하나', sub: '배송되는 물건이 아니라 동네에서 바로 쓰는 권리를 팝니다. 내가 하는 일은 링크 하나입니다.', items: ['이용권, 유어샵, 내 링크', '팔로워가 겪는 네 화면', '이런 채널에 맞습니다'] });
   }
 
   // ───────── 02 이게 뭔가 ─────────
@@ -71,6 +78,27 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     lead(s, '오늘 urdeal.kr 에서 그대로 캡처한 화면입니다. 앱을 새로 깔거나 가입을 강요하는 구간은 없습니다. 가격은 매장이 정한 실제 판매가입니다.', { y: 2.0, h: 0.4 });
     customerSteps(s, { y: 3.1, h: 3.1 });
     s.addNotes('캡처 4장: home / detail / use / shop. 사장님 덱 3장과 같은 블록(customerSteps).');
+  }
+
+  // ───────── 03-2 이런 채널에 맞습니다 (페르소나 + 말풍선) ─────────
+  {
+    const s = pres.addSlide();
+    chrome(s, { dark: true });
+    title(s, '이런 채널에 맞습니다. 팔로워 수보다 동네와 주제가 먼저입니다.', { dark: true });
+    lead(s, '조회수와 좋아요는 세지 않고 결제만 셉니다. 그래서 큰 채널보다 지역과 카테고리가 뚜렷한 채널이 잘 맞습니다.', { y: 2.0, h: 0.4, dark: true });
+    personas(s, [
+      ['FiEdit3', '동네 맛집 블로거', '"검색은 되는데 돈이 된 적은 없어요."', ['글 안 링크로 팔린 건마다 소개비. 글은 유효기간 내내 팝니다', '팔로워 하한 없음. 지역과 메뉴가 뚜렷할수록 맞습니다']],
+      ['FiVideo', '지역 유튜버 · 쇼츠', '"협찬은 한 번 받으면 끝이잖아요."', ['설명란 링크 하나로 이용권 여러 개를 함께 소개합니다', '영상이 내려가도 유어샵에서는 계속 팔립니다']],
+      ['FiCamera', '팔로워가 적은 인스타', '"천 명도 안 되는데 될까요?"', ['됩니다. 동네 손님 열 명이 결제하면 그게 소개비입니다', '프로필 링크는 유어샵 주소 하나면 됩니다']],
+      ['FiMapPin', '아는 사장님이 있는 사람', '"단골 가게 사장님을 소개해 드릴 수 있어요."', ['초대 링크로 직접 입점하면 그 매장 매출의 ' + FACTS.introPct + '가 ' + FACTS.introTerm + '간', '내가 공유하지 않아도, 다른 사람 링크로 팔려도 쌓입니다']],
+    ], { y: 2.6, rowH: 0.92, gap: 0.14 });
+    s.addNotes('09-15 참고 덱 "이런 브랜드에게 추천합니다" 장치. 사실: 결제 기준 커미션(order-commissions.ts) · 팔로워 하한 없음(creator-apply) · 영입 2% 1년 직접 입점(influencer-store-intro-commission.ts).');
+  }
+
+  // ───────── PART 2 구분 장 ─────────
+  {
+    const s = pres.addSlide();
+    section(s, { n: 2, name: '돈은 어디서 나와 어디로 가나', sub: '손님이 낸 돈이 갈리는 그림, 두 갈래 수익, 실제 이용권으로 넣은 계산, 그리고 왜 쌓이는지.', items: ['돈의 흐름', '수익 두 갈래', '계산해 보면', '쌓이는 플라이휠'] });
   }
 
   // ───────── 04 돈의 흐름 ─────────
@@ -171,6 +199,41 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     s.addNotes('상품 2888 실측 16,500원. 16,500×42=693,000 · ×12%=83,160 · ×8.8%=7,318(내림) · 75,842. 영입 2%: 693,000×2%=13,860. 원천징수 SSOT tax-withholding.ts (3.3/8.8). 회수: clawback (T+7).');
   }
 
+  // ───────── 06-2 쌓이는 플라이휠 ─────────
+  {
+    const s = pres.addSlide();
+    chrome(s);
+    title(s, '협찬은 한 번으로 끝나지만, 이 바퀴는 돌수록 커집니다.', { w: 8 });
+    lead(s, '한 바퀴가 돌 때마다 내 유어샵에 이용권과 실적이 남고, 다음 제안이 더 쉽게 옵니다.', { y: 2.0, h: 0.4, w: 7.5 });
+    flywheel(s, 4.35, 4.55, 1.62, [
+      ['이용권을 소개', '유어샵·콘텐츠에 링크'],
+      ['손님이 결제', '내 링크로 자동 귀속'],
+      ['매장에서 사용', 'QR 한 번, 노쇼는 환불'],
+      ['소개비 확정', FACTS.clawbackWindow + ' 뒤, 유어딜이 지급'],
+      ['매장이 다시 제안', '실적이 보이는 사람에게'],
+    ], { center: '쌓이는\n플라이휠', centerSub: '유어샵에 남는다' });
+    const rx = 8.35, rw = W - M - rx;
+    const why = [
+      ['FiHome', '유어샵이 남습니다', '캠페인이 끝나도 담아 둔 이용권과 링크는 그대로입니다. 매번 새로 시작하지 않습니다.'],
+      ['FiBarChart2', '실적이 보입니다', '내 정산 화면에 딜별 주문과 확정 금액이 쌓입니다. 매장은 공개된 소개자 프로필과 실적을 보고 제안합니다.'],
+      ['FiTrendingUp', '매장이 늘수록 커집니다', '내가 데려온 직접 입점 매장은 ' + FACTS.introTerm + '간 ' + FACTS.introPct + '가 따로 붙습니다. 매장 하나가 바퀴 하나를 더 만듭니다.'],
+    ];
+    let wy = 2.75;
+    why.forEach(([i, h, p]) => {
+      iconCircle(s, i, rx, wy, 0.44);
+      T(s, h, { x: rx + 0.62, y: wy, w: rw - 0.62, h: 0.32, fontSize: 13.5, bold: true, color: C.ink, charSpacing: -0.3 });
+      T(s, p, { x: rx + 0.62, y: wy + 0.35, w: rw - 0.62, h: 0.85, fontSize: 10.5, color: C.inkSoft, lineSpacingMultiple: 1.42, valign: 'top' });
+      wy += 1.32;
+    });
+    s.addNotes('09-15 참고 덱 "콘텐츠 기반 바이럴 루프" 장치. 각 노드는 현행 기능: 링크 귀속(affiliate) · QR 사용(group-buy-voucher) · 만료 환불(auto-settlement) · T+7 확정 지급(influencer-payout) · 소개자 프로필 공개(/influencer/settlement). "돌수록 커진다"는 구조 설명이지 성과 약속이 아니다.');
+  }
+
+  // ───────── PART 3 구분 장 ─────────
+  {
+    const s = pres.addSlide();
+    section(s, { n: 3, name: '어떻게 시작하고, 언제 받나', sub: '제안을 받는 길과 매장을 데려오는 길, 링크를 두는 자리, 정산 시점, 자주 묻는 질문, 신청.', items: ['경로 A · 제안을 받는다', '경로 B · 매장을 데려온다', '유어샵과 채널별 자리', '정산과 원천징수', '신청'] });
+  }
+
   // ───────── 07 경로 A ─────────
   {
     const s = pres.addSlide();
@@ -190,8 +253,12 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
       T(s, p, { x: M + 0.55, y: y + 0.34, w: 7.6, h: 0.55, fontSize: 10.5, color: C.inkSoft, lineSpacingMultiple: 1.4, valign: 'top' });
       y += 0.86;
     });
-    T(s, '내가 하지 않아도 되는 일: 가격 협상, 재고 관리, 배송과 포장, 결제 처리, 환불 응대, 세금계산서, 쿠폰 코드 확인.', { x: M, y: y + 0.02, w: 8.2, h: 0.5, fontSize: 10.5, color: C.ink, bold: true, lineSpacingMultiple: 1.4, valign: 'top' });
+    takeaway(s, [
+      { text: '내가 하지 않아도 되는 일: ', options: { color: C.inkSoft } },
+      { text: '가격 협상, 재고, 배송, 결제, 환불 응대, 세금계산서, 쿠폰 코드 확인.', options: { bold: true, color: C.ink } },
+    ], { y: y + 0.02, w: 8.2, h: 0.5, size: 11 });
     phone(s, 'influencer-offer', 9.7, 1.05, 5.35, { caption: '매장이 보낸 제안 (예시 데이터로 렌더한 실제 화면)' });
+    chip(s, 9.7 - 0.5, 1.05 + 2.35, '소개비 %와 촬영 지원이 먼저 보입니다');
     s.addNotes('CreatorApplyPage(/creators/apply → /api/creator-apply). 제안 수락: /i/offer/:token (InfluencerOfferAcceptPage) → tracking_url 발급. 정산 화면: /influencer/settlement.');
   }
 
@@ -257,20 +324,15 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     iconCircle(s, 'FiVideo', M + 0.3, 5.45, 0.46);
     T(s, '유어쇼츠', { x: M + 0.95, y: 5.5, w: cw - 1.2, h: 0.34, fontSize: 14.5, bold: true, color: C.ink, charSpacing: -0.4 });
     T(s, '세로 영상 아래 구매 버튼이 붙는 자리입니다. 영상 자체에 대한 몫은 없고, 그 이용권에 매장과 맺은 딜이 있을 때 소개비가 붙습니다.', { x: M + 0.3, y: 5.9, w: cw - 0.6, h: 0.75, fontSize: 10.5, color: C.inkSoft, lineSpacingMultiple: 1.4, valign: 'top' });
-    phone(s, 'ushop', 6.7, 1.1, 5.5, { caption: '유어샵 (라이브 화면)' });
-    chip(s, 6.7 - 0.45, 1.1 + 1.45, '프로필 링크는 이 주소 하나');
-    // 오른쪽: 담기 3단계
-    const rx = 10.15, rw = W - M - rx;
-    label(s, '담는 방법', rx, 2.2, rw);
-    const steps = [['이용권 상세에서 담기', '마음에 드는 이용권 상세 화면의 담기 버튼을 누릅니다.'], ['유어샵에 진열', '담은 순서대로 내 유어샵 카드가 됩니다. 순서는 바꿀 수 있습니다.'], ['주소 하나만 공유', '프로필, 스토리, 더보기에 내 유어샵 주소를 겁니다.']];
-    let sy = 2.55;
-    steps.forEach(([h, p], i) => {
-      numBadge(s, i + 1, rx, sy, 0.36);
-      T(s, h, { x: rx + 0.5, y: sy - 0.02, w: rw - 0.5, h: 0.36, fontSize: 12, bold: true, color: C.ink, valign: 'middle', charSpacing: -0.3 });
-      T(s, p, { x: rx, y: sy + 0.42, w: rw, h: 0.6, fontSize: 10, color: C.inkSoft, lineSpacingMultiple: 1.38, valign: 'top' });
-      sy += 1.15;
-    });
-    s.addNotes('유어샵: CuratorPage /u/:handle (핀). 유어쇼츠: /videos (urshorts.routes, 크리에이터 몫 0 — 09-08 동의 게이트 폐기). 담기 보상 0 (affiliate_program_enabled OFF).');
+    const ux = 6.7, uy = 1.1, uh = 5.5;
+    const uw = phone(s, 'ushop', ux, uy, uh, { caption: '유어샵 (라이브 화면)' });
+    // 오른쪽: 화면 인출선(참고 덱 셀러 어드민 장치) — 담는 방법 3단계를 화면의 자리에 직접 잇는다
+    callouts(s, [
+      { label: '프로필 링크는 이 주소 하나', sub: 'urdeal.kr/u/내주소. 스토리, 더보기, 블로그 어디든 이것만 겁니다', tx: 0.55, ty: 0.08 },
+      { label: '담은 이용권이 카드로 진열', sub: '이용권 상세의 담기 버튼 한 번. 순서는 바꿀 수 있습니다', tx: 0.5, ty: 0.48 },
+      { label: '콘텐츠가 내려가도 여기서 팝니다', sub: '유효기간 동안 계속. 딜이 있는 이용권은 소개비가 붙습니다', tx: 0.5, ty: 0.8 },
+    ], { phoneX: ux, phoneY: uy, phoneW: uw, phoneH: uh, listX: ux + uw + 0.55, listW: W - M - (ux + uw + 0.55), listY: 1.6, gap: 1.75, side: 'left' });
+    s.addNotes('유어샵: CuratorPage /u/:handle (핀). 유어쇼츠: /videos (urshorts.routes, 크리에이터 몫 0 — 09-08 동의 게이트 폐기). 담기 보상 0 (affiliate_program_enabled OFF). 인출선 좌표는 ushop.jpg 실측(프로필 8% · 첫 카드 48% · 아래 카드 80%).');
   }
 
   // ───────── 09-2 채널별로 링크를 어디에 두나 ─────────
@@ -348,6 +410,20 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     s.addNotes('09-14: 정직 고지 블록 제거(대표 — 사장님 덱과 같은 판단). FAQ 6 개를 크게.');
   }
 
+  // ───────── 11-2 두 경로와 정산, 한 장에 (절차 3열) ─────────
+  {
+    const s = pres.addSlide();
+    chrome(s);
+    title(s, '두 경로와 정산을 한 장에 놓았습니다. 어느 열이든 내가 내는 돈은 없습니다.', { size: 25 });
+    lead(s, '경로 A 와 B 는 4번부터 같은 길로 합쳐지고, 정산은 유어딜이 합니다.', { y: 2.0, h: 0.4 });
+    procedureColumns(s, [
+      { title: '경로 A · 제안을 받는다', hi: true, steps: ['urdeal.kr/creators/apply 에 신청 (3분)', '카카오 로그인 뒤 소개자 프로필 공개', '매장 제안 수신 (소개비 %, 촬영 지원)', '수락하면 전용 링크 발급', '콘텐츠와 유어샵에 링크', '정산 화면에서 주문·확정 확인'], note: '수락 전까지 아무 의무도 없습니다' },
+      { title: '경로 B · 매장을 데려온다', steps: ['아는 사장님 가게를 고른다', '정산 화면의 매장 초대 링크를 보낸다', '사장님이 본인 카카오로 직접 입점 (10분)', '그 매장 매출의 ' + FACTS.introPct + '가 ' + FACTS.introTerm + '간 나에게', '매장 제안이 오면 경로 A 와 같다', '정산 화면에서 영입분 확인'], note: '직접 입점 매장만. 유어딜 몫에서 냅니다' },
+      { title: '정산 · 유어딜이 한다', steps: ['링크로 들어온 주문에 자동 귀속', FACTS.clawbackWindow + ' 뒤 확정 (환불 건은 그 건만 회수)', FACTS.influencerPayoutDay + ' 지급 가능 금액 집계', '현금은 ' + FACTS.influencerPayoutMin + '부터, 원천징수 뒤 송금', '딜로 받으면 하한 없이 잔액으로', '못 미치면 다음 달로 이월'], note: '매장에 돈을 달라고 할 일이 없습니다' },
+    ], { y: 2.55, h: 4.2 });
+    s.addNotes('09-15 참고 덱 "광고 집행 절차" 장치. 사실: creator-apply · /i/offer/:token 수락 · /store/new?ref= 초대 · influencer-payout.ts(T+7 · 매월 1일 · 10만원 · 딜 하한 없음 · 이월).');
+  }
+
   // ───────── 12 신청 + 연락처 ─────────
   {
     const s = pres.addSlide();
@@ -379,5 +455,5 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
   }
 
   await pres.writeFile({ fileName: OUT });
-  console.log('wrote', OUT, '(14 slides)');
+  console.log('wrote', OUT, '(20 slides)');
 })();
