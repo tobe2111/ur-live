@@ -15,6 +15,7 @@ import { formatNumber } from '@/utils/format'
 import DealUseChooser from './DealUseChooser'
 import DealPayButton from './DealPayButton'
 import AddToCartButton from './AddToCartButton'
+import { VOUCHER_CART_UI_ENABLED } from '@/shared/feature-flags'
 import type { DealPlan } from './DealUseChooser'
 
 export default function DealBottomBar({
@@ -81,7 +82,7 @@ export default function DealBottomBar({
       </button>
       <DealPayButton show={canPayWithDeal && !isPrelaunch && isJoinable} joining={joining} dealBalance={dealBalance} onPay={() => onJoin(true)} />
       {/* 🧺 2026-09-15 담기 — 결제 버튼 **아래**에 둔다. 위에 두면 주 행동이 둘로 보인다. */}
-      <AddToCartButton productId={productId} qty={quantity} show={isJoinable && !isPrelaunch} />
+      <AddToCartButton productId={productId} qty={quantity} show={VOUCHER_CART_UI_ENABLED && isJoinable && !isPrelaunch} />
     </div>{/* /bar box */}
     </footer>
     </>
