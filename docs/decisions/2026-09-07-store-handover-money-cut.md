@@ -196,6 +196,38 @@ introduced_by 붙은 매장   0곳
 3. 영입자 재배정이 `introduced_at` 을 되감음 — `reassign-introducer.ts:131`
 
 ## 반영 커밋
-**아직 없음 — 승인은 됐고 구현이 안 됐다.** 🔴 머니 경로라 **단독 세션 + staging
-실결제**가 붙어, 결정을 기록한 2026-09-14 세션(UI 작업 중)에서는 착수하지 않았다.
-착수 좌표는 바로 위 §"이 결정이 실제로 요구하는 것".
+
+### 🩸 2026-09-15 정정 — 여기 "아직 없음" 이라고 적혀 있었다. **틀렸다.**
+
+2026-09-14 세션(나)이 결정을 기록하면서 **이 파일의 위쪽을 안 읽고** 맨 아래에
+*"승인은 됐고 구현이 안 됐다"* 고 적었다. 실제로는 09-08·09-09 세션이 **이미 다 만들었다.**
+그대로 뒀으면 다음 세션이 **있는 것을 다시 구현**했을 것이다 — 이 레포가 반복해 당한
+"낡은 지도" 를 결재함 안에서 한 번 더 만든 셈이다.
+
+**코드로 재확인했다(2026-09-15, 문서가 아니라 파일·배선·시험으로):**
+
+| 무엇 | 어디 | 상태 |
+|---|---|---|
+| (a) 승계 흐름 | `worker/utils/store-ownership-transfer.ts` (103줄) | ✅ 있음 |
+| ↳ 사장님 신청 → 어드민 심사 | `worker/utils/store-ownership-claims.ts` | ✅ 있음 |
+| ↳ 어드민 라우트 | `features/admin/api/admin-store-owner.routes.ts:143` | ✅ 배선 |
+| (b) 자물쇠 | `worker/utils/store-handover-guard.ts` (142줄) | ✅ **4경로** 배선 |
+| ↳ 배선처 | transfer · `admin-sellers.routes:540` · `seller-kakao-link.routes:93,161` | ✅ |
+| (b) 마감 창구 | `features/admin/api/admin-payouts/handover-closeout.ts` (115줄) | ✅ `admin-payouts.routes:393` |
+| 선행① `seller:null` | `ledger.ts` `sellerLedgerAccount()` + payouts-generate 2차 방어 | ✅ |
+| 선행② 운영자 열람 범위 | `worker/utils/settlement-scope.ts` (57줄) | ✅ |
+| 선행③ 영입자 재배정 만료일 | `admin-sellers/reassign-introducer.ts` | ✅ |
+
+그리고 위 §"아직 안 막은 것"(마감 payout 을 손바뀜 뒤에 취소하면 잔액이 새 주인에게)**도
+이미 막혀 있다** — `admin-payouts.routes.ts:523-566` 이 `kind='handover_closeout'` 이고
+`resolveStoreOwnerUserId` 로 물어 주인이 **바뀐 경우에만** `confirm_release` 를 요구한다
+(하드 블록이 아니라 확인 — 막다른 길을 안 만들려는 의도적 선택, 감사로그에 남는다).
+
+**시험**: `store-handover-money-2026-09-07` · `store-handover-behavior-2026-09-08` ·
+`store-ownership-transfer-2026-09-09` · `store-owner-judgment-2026-09-09` ·
+`store-owner-signal-2026-09-09` — **5파일 88건 전부 pass**(2026-09-15 실행).
+
+### ⚠️ 그래서 지금 남은 것은 **코드가 아니라 staging 판정 하나**다
+
+전부 텍스트 가드로만 확인됐고 **실제 D1 동작·실제 송금은 아무도 안 봤다.** 판정 절차는
+`docs/STAGING_CHECKLIST.md` 의 손바뀜 항목을 따른다. 이건 **대표만 할 수 있다.**
