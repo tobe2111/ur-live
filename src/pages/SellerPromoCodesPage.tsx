@@ -163,7 +163,7 @@ export default function SellerPromoCodesPage() {
 
   return (
     <SellerLayout title="할인 코드">
-      <div className="mx-auto max-w-2xl space-y-4 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-4">
         <DashboardPageHeader
           title="할인 코드 (Promo)"
           subtitle="단골 전용 / 신규 전용 / 모두 — 직접 발급하고 단골에게 공유"

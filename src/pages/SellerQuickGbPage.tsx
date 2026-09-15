@@ -332,7 +332,7 @@ export default function SellerQuickGbPage() {
         <div className="max-w-lg mx-auto">
           <button type="button" onClick={submit} disabled={saving}
             className={`w-full h-14 rounded-[14px] text-[16.5px] font-extrabold tracking-[-0.03em] inline-flex items-center justify-center gap-2 transition-colors ${
-              canSubmit ? 'bg-[#1A1719] text-white active:bg-black' : 'bg-[#F1EDEF] text-[#A9A2A6]'
+              canSubmit ? 'bg-brand text-white active:bg-brand-dark' : 'bg-gray-100 text-gray-400'
             }`}>
             {saving && <Loader2 className="w-5 h-5 animate-spin" />}
             {orphanId ? '공구 설정 다시 시도' : '공구 열기'}

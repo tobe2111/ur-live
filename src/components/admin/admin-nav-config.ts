@@ -292,9 +292,13 @@ export const navSectionOf = (g: NavGroup): NavSectionKey =>
         : 'common'
 export const NAV_SECTIONS: Array<{ key: NavSectionKey; label?: string; accent?: string }> = [
   { key: 'home' },
-  { key: 'urdeal', label: '🎟️ 유어딜 · 소비자', accent: '#a5b4fc' },
-  { key: 'wholesale', label: '🏭 유통스타트 · 도매몰 (B2B)', accent: '#fbbf24' },
-  { key: 'common', label: '⚙️ 공통 · 회원·재무·검증·시스템', accent: '#94a3b8' },
+  /* 🎨 2026-09-14 (대표 Rinda 시안 — 사이드바가 검정 → 흰 면으로 바뀌었다):
+     이 세 값은 **어두운 배경 위에서 읽히도록** 고른 밝은 색이었다(#a5b4fc·#fbbf24·#94a3b8).
+     흰 배경에 그대로 두면 대비가 각각 약 1.9 : 1.8 : 2.8 로 무너져 **섹션 이름이 거의 안 보인다.**
+     같은 계열의 진한 값으로 내린다(4.5:1 이상). 유어딜은 마침 브랜드 블루가 제 색이다. */
+  { key: 'urdeal', label: '🎟️ 유어딜 · 소비자', accent: '#1C69EF' },
+  { key: 'wholesale', label: '🏭 유통스타트 · 도매몰 (B2B)', accent: '#B45309' },
+  { key: 'common', label: '⚙️ 공통 · 회원·재무·검증·시스템', accent: '#475569' },
 ]
 
 // 🛡️ 2026-06-17 (대표 신고 — 로그인 시 화면이 미친듯이 깜빡): 강제 보안 설정/계정 보안 페이지는

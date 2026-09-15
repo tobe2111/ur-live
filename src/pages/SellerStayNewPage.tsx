@@ -145,7 +145,7 @@ export default function SellerStayNewPage() {
 
   return (
     <SellerLayout title="숙소 등록">
-      <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-6">
         <DashboardPageHeader
           title="숙소 등록"
           subtitle="기본 정보 입력 후 다음 단계에서 객실/가격/캘린더를 추가합니다"
