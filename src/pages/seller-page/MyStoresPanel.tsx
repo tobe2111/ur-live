@@ -162,46 +162,45 @@ export default function MyStoresPanel({ onGateChange, gateOnly = false }: Props)
           <Plus className="w-3.5 h-3.5" /> {t('seller.stores.addStore', { defaultValue: '매장 추가' })}
         </button>
       </div>
-      <div className="grid sm:grid-cols-2 gap-2">
+      {/* 🧮 2026-09-15 D3 (대표 신고 "버튼이랑 글자 깨지고"): 이 패널은 PC 홈 우측 340px 열에 산다. 2열 카드 그리드는 카드
+          한 장을 ~150px 로 눌러 "이용권 등록" 이 두 줄로 꺾이고 주소가 잘렸다. → 폭 전체를 쓰는 **행 목록**. 버튼은 줄바꿈 금지,
+          현재 좌석은 카드 색면 대신 이름 옆 체크 하나. */}
+      <div className="-mx-4 -mb-4 divide-y divide-rule border-t border-rule">
         {registered.map(s => {
           const active = s.seller_id === currentId
           return (
-            <div key={s.seller_id} className={`rounded-xl border p-3 ${active ? 'border-brand bg-brand-tint' : 'border-rule'}`}>
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-[13px] font-extrabold text-gray-900 truncate flex items-center gap-1">
-                    {storeLabel(s)}
-                    {active && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+            <div key={s.seller_id} className="flex flex-col gap-2.5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0 flex-1">
+                <p className="flex items-center gap-1 truncate text-[13px] font-extrabold text-gray-900">
+                  <span className="truncate">{storeLabel(s)}</span>
+                  {active && <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-brand-text" aria-label={t('seller.stores.current', { defaultValue: '현재 매장' })} />}
+                </p>
+                {s.address && (
+                  <p className="mt-0.5 flex items-center gap-0.5 truncate text-[11.5px] text-gray-500">
+                    <MapPin className="h-3 w-3 shrink-0" /> <span className="truncate">{s.address}</span>
                   </p>
-                  {s.address && (
-                    <p className="text-[11px] text-gray-500 truncate flex items-center gap-0.5 mt-0.5">
-                      <MapPin className="w-3 h-3 shrink-0" /> {s.address}
-                    </p>
-                  )}
-                  <p className="text-[10px] mt-0.5 font-semibold text-gray-400">
-                    {isApproved(s)
-                      ? t('seller.stores.operating', { defaultValue: '운영 중' })
-                      : t('seller.stores.pending', { defaultValue: '승인 대기 (사업자 확인 중)' })}
-                    {s.role === 'operator' && ` · ${t('seller.stores.delegated', { defaultValue: '위임' })}`}
-                  </p>
-                </div>
+                )}
+                <p className="mt-0.5 text-[10.5px] font-semibold text-gray-400">
+                  {isApproved(s)
+                    ? t('seller.stores.operating', { defaultValue: '운영 중' })
+                    : t('seller.stores.pending', { defaultValue: '승인 대기 (사업자 확인 중)' })}
+                  {s.role === 'operator' && ` · ${t('seller.stores.delegated', { defaultValue: '위임' })}`}
+                </p>
               </div>
-              <div className="flex gap-1.5 mt-2.5">
+              <div className="flex shrink-0 gap-1.5">
                 <button
                   onClick={() => registerVoucherFor(s)}
                   disabled={switching != null}
-                  className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-[11px] font-extrabold active:scale-[0.98] disabled:opacity-60 ${
-                    isApproved(s) ? 'bg-brand text-white hover:bg-brand-dark' : 'bg-gray-100 text-gray-400'
-                  }`}
+                  className={`ur-btn ur-btn-sm flex-1 whitespace-nowrap sm:flex-none ${isApproved(s) ? 'ur-btn-primary' : 'ur-btn-secondary'}`}
                 >
-                  {switching === s.seller_id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Ticket className="w-3.5 h-3.5" />}
+                  {switching === s.seller_id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Ticket className="h-3.5 w-3.5" />}
                   {t('seller.registerVoucher', { defaultValue: '이용권 등록' })}
                 </button>
                 <button
                   onClick={() => setEditing(s)}
-                  className="flex items-center gap-1 rounded-lg border border-rule px-3 py-2 text-[11px] font-bold text-gray-600 hover:bg-gray-50"
+                  className="ur-btn ur-btn-sm ur-btn-secondary whitespace-nowrap"
                 >
-                  <Settings2 className="w-3.5 h-3.5" /> {t('seller.stores.info', { defaultValue: '정보' })}
+                  <Settings2 className="h-3.5 w-3.5" /> {t('seller.stores.info', { defaultValue: '정보' })}
                 </button>
               </div>
             </div>

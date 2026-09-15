@@ -83,73 +83,71 @@ export default function DealBalanceCard() {
   return (
     <DashboardCard>
       <div className="space-y-3">
-        <div className="flex items-start justify-between gap-3">
+        {/* 📱 2026-09-15 모바일 특화 + 🎫 규칙 ⑥: 잔액 큰 숫자 한 줄 → 행동 버튼은 폰에서 **한 줄 전체**(둘이면 반반), PC 는 우측.
+            이모지·색깔 상자(emerald/amber) 제거 — 톤은 글자 색 한 곳으로만. */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-xs font-bold text-gray-500">딜 잔액</p>
-            <p className="text-2xl font-extrabold text-gray-900 mt-1">
-              {balance.total.toLocaleString()}<span className="text-sm font-medium ml-1">딜</span>
+            <p className="dash-num mt-1 text-[22px] font-extrabold text-gray-900 sm:text-2xl">
+              {balance.total.toLocaleString()}<span className="ml-1 text-sm font-medium">딜</span>
             </p>
           </div>
-          {balance.business_verified && balance.withdrawable > 0 && (
-            <button
-              type="button"
-              onClick={() => setWithdrawOpen(true)}
-              className="px-3 py-1.5 bg-brand-tint text-brand-text text-xs font-bold rounded-lg hover:bg-gray-900"
-            >
-              💸 환급 신청
-            </button>
-          )}
-          {/* 🛡️ 2026-05-19: 모든 셀러 (검증/미검증 둘 다) 가 교환권으로 받기 가능 */}
-          {balance.total > 0 && (
-            <button
-              type="button"
-              onClick={() => setVoucherOpen(true)}
-              className="px-3 py-1.5 bg-brand text-white text-xs font-bold rounded-lg hover:bg-brand-dark ml-2"
-            >
-              🎁 교환권으로 받기
-            </button>
+          {(balance.total > 0 || (balance.business_verified && balance.withdrawable > 0)) && (
+            <div className="flex gap-2">
+              {balance.business_verified && balance.withdrawable > 0 && (
+                <button type="button" onClick={() => setWithdrawOpen(true)} className="ur-btn ur-btn-sm ur-btn-secondary flex-1 sm:flex-none">
+                  환급 신청
+                </button>
+              )}
+              {/* 🛡️ 2026-05-19: 모든 셀러 (검증/미검증 둘 다) 가 교환권으로 받기 가능 */}
+              {balance.total > 0 && (
+                <button type="button" onClick={() => setVoucherOpen(true)} className="ur-btn ur-btn-sm ur-btn-primary flex-1 sm:flex-none">
+                  교환권으로 받기
+                </button>
+              )}
+            </div>
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          <div className="p-2 bg-emerald-50 rounded">
-            <p className="text-emerald-700 font-bold">환급 가능</p>
-            <p className="text-base font-extrabold text-gray-900 mt-0.5">
+        <div className="grid grid-cols-2 divide-x divide-rule rounded-lg border border-rule text-xs">
+          <div className="px-3 py-2">
+            <p className="font-semibold text-gray-500">환급 가능</p>
+            <p className="dash-num mt-0.5 text-[15px] font-extrabold text-gray-900">
               {balance.withdrawable.toLocaleString()}
             </p>
           </div>
-          <div className="p-2 bg-gray-50 rounded">
-            <p className="text-gray-600 font-bold">플랫폼 내 사용 only</p>
-            <p className="text-base font-extrabold text-gray-900 mt-0.5">
+          <div className="px-3 py-2">
+            <p className="font-semibold text-gray-500">플랫폼 안에서만 사용</p>
+            <p className="dash-num mt-0.5 text-[15px] font-extrabold text-gray-900">
               {(balance.total - balance.withdrawable).toLocaleString()}
             </p>
           </div>
         </div>
 
-        <p className="text-[11px] text-gray-500 italic">{balance.notice}</p>
+        <p className="text-[11px] text-gray-500">{balance.notice}</p>
 
         {/* 원천징수 현황 (verified 셀러만) */}
         {balance.business_verified && tax && tax.payouts_count > 0 && (
-          <div className="mt-2 pt-3 border-t border-gray-100">
-            <p className="text-xs font-bold text-gray-500 mb-2">📊 {tax.year}년 원천징수 현황</p>
+          <div className="mt-2 border-t border-rule pt-3">
+            <p className="mb-2 text-xs font-bold text-gray-500">{tax.year}년 원천징수 현황</p>
             <div className="grid grid-cols-3 gap-2 text-xs">
-              <div>
-                <p className="text-gray-500 text-[10px]">총 지급</p>
-                <p className="font-bold">₩{tax.total_gross.toLocaleString()}</p>
+              <div className="min-w-0">
+                <p className="text-[10px] text-gray-500">총 지급</p>
+                <p className="dash-num truncate font-bold text-gray-900">₩{tax.total_gross.toLocaleString()}</p>
               </div>
-              <div>
-                <p className="text-gray-500 text-[10px]">원천징수 3.3%/8.8%</p>
-                <p className="font-bold text-red-600">-₩{tax.total_withheld.toLocaleString()}</p>
+              <div className="min-w-0">
+                <p className="text-[10px] text-gray-500">원천징수 3.3%/8.8%</p>
+                <p className="dash-num truncate font-bold text-tone-bad">-₩{tax.total_withheld.toLocaleString()}</p>
               </div>
-              <div>
-                <p className="text-gray-500 text-[10px]">실 수령</p>
-                <p className="font-bold text-emerald-600">₩{tax.total_net.toLocaleString()}</p>
+              <div className="min-w-0">
+                <p className="text-[10px] text-gray-500">실 수령</p>
+                <p className="dash-num truncate font-bold text-tone-ok">₩{tax.total_net.toLocaleString()}</p>
               </div>
             </div>
             {tax.reportable && (
-              <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-[11px] text-amber-900">
-                ⚠️ 연 누계 300만원 초과 — 다음 해 5월 종합소득세 신고 의무 (분리과세 X)
-              </div>
+              <p className="mt-2 text-[11px] font-semibold text-tone-warn">
+                연 누계 300만원 초과. 다음 해 5월 종합소득세 신고 의무 (분리과세 아님)
+              </p>
             )}
           </div>
         )}
@@ -188,11 +186,11 @@ export default function DealBalanceCard() {
             </div>
             <div className="flex gap-2 mt-5">
               <button type="button" onClick={() => setWithdrawOpen(false)} disabled={submitting}
-                className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg disabled:opacity-50">
+                className="ur-btn ur-btn-md ur-btn-secondary flex-1">
                 취소
               </button>
               <button type="button" onClick={withdraw} disabled={submitting || Number(withdrawAmount) < 10000}
-                className="flex-1 px-4 py-2 bg-brand-tint text-brand-text text-sm font-semibold rounded-lg hover:bg-gray-900 disabled:opacity-50">
+                className="ur-btn ur-btn-md ur-btn-primary flex-1">
                 {submitting ? '신청 중...' : '환급 신청'}
               </button>
             </div>

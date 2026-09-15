@@ -35,6 +35,19 @@ export default function WeekSummary({ revenue, orders, delta, week7, hasDaily }:
           </span>
           <ChevronRight size={16} className="shrink-0 text-gray-300" />
         </Link>
+        {/* 📱 2026-09-15 모바일 특화: 폰은 7일 미니 막대(div 7개 — 라이브러리 0, 한눈에 흐름). 마지막 막대 = 오늘(브랜드). */}
+        {hasDaily && week7.length > 0 && (
+          <div className="flex items-end gap-1 border-t border-rule px-4 pb-3 pt-2.5 lg:hidden" aria-hidden>
+            {(() => { const max = Math.max(1, ...week7.map((d) => d.sales)); return week7.map((d, i) => (
+              <div key={d.date} className="flex min-w-0 flex-1 flex-col items-center gap-1">
+                <div className="flex h-9 w-full items-end">
+                  <div className={`w-full rounded-sm ${i === week7.length - 1 ? 'bg-brand' : 'bg-gray-200'}`} style={{ height: `${Math.max(6, Math.round((d.sales / max) * 100))}%` }} />
+                </div>
+                <span className="text-[9.5px] leading-none text-gray-400">{d.date.slice(-2)}</span>
+              </div>
+            )) })()}
+          </div>
+        )}
         {/* 🧮 D3 (2026-09-15): PC 는 차트 대신 일별 표 — 숫자를 읽는 화면. 차트는 성과 페이지(/seller/analytics)가 맡는다. */}
         {hasDaily && (
           <table className="hidden w-full border-collapse border-t border-rule text-[12.5px] lg:table">

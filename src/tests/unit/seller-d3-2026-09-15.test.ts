@@ -104,3 +104,44 @@ describe('세부 페이지 정리 — 옛 패턴 0 (래칫)', () => {
     expect(bad, bad.join('\n')).toEqual([])
   })
 })
+
+describe('📱 모바일 특화 (2026-09-15 대표 "모바일로도 특화가 되어야 해") — 폰 전용 분기가 살아 있다', () => {
+  const PAYOUT = read('src/pages/seller-settlements/AutoPayoutSection.tsx')
+  const BIZ = read('src/pages/seller-settlements/BizRegStatusBanner.tsx')
+  const DEAL = read('src/pages/seller-settlements/DealBalanceCard.tsx')
+  const STORES = read('src/pages/seller-page/MyStoresPanel.tsx')
+  const WEEK = read('src/pages/seller-page/WeekSummary.tsx')
+  it('소개 수익 카드 — 폰은 라벨·숫자 행(sm:hidden), PC 는 세 칸(hidden … sm:grid)', () => {
+    const src = stripComments(REF)
+    expect(src).toMatch(/className="divide-y divide-rule sm:hidden"/)
+    expect(src).toMatch(/className="hidden grid-cols-3 divide-x divide-rule sm:grid"/)
+  })
+  it('정산 지급 현황 — 폰은 한 줄 타일 셋(grid-cols-3 … sm:hidden), 스탯 카드는 sm 부터', () => {
+    const src = stripComments(PAYOUT)
+    expect(src).toMatch(/className="grid grid-cols-3 gap-2 sm:hidden"/)
+    expect(src).toMatch(/className="hidden gap-3 sm:grid sm:grid-cols-3"/)
+  })
+  it('정산 화면에 이모지·색깔 정보상자가 없다 (🎫 규칙 ⑥) — 상태는 톤 글자 한 곳', () => {
+    for (const [name, src] of [['BizReg', BIZ], ['Deal', DEAL], ['Payout', PAYOUT]] as const) {
+      const body = stripComments(src)
+      expect(body, `${name}: 이모지`).not.toMatch(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u)
+      expect(body, `${name}: 색깔 상자`).not.toMatch(/\bbg-(?:blue|amber|emerald|red)-50\b/)
+    }
+    expect(stripComments(SETTLE)).not.toMatch(/\bbg-(?:blue|amber)-50\b/)
+  })
+  it('정산 새로고침 — 폰은 아이콘 하나(aria-label), 라벨 버튼은 md 부터', () => {
+    const src = stripComments(SETTLE)
+    expect(src).toMatch(/aria-label=\{t\('common\.refresh'\)\}[^>]*md:hidden/)
+    expect(src).toMatch(/className="hidden [^"]*md:inline-flex"/)
+  })
+  it('내 매장 패널 — 좁은 열에서 카드 그리드로 돌아가지 않는다(버튼 두 줄 사고) · 버튼은 줄바꿈 금지', () => {
+    const src = stripComments(STORES)
+    expect(src).not.toMatch(/grid sm:grid-cols-2/)
+    expect(src).toMatch(/ur-btn ur-btn-sm flex-1 whitespace-nowrap/)
+  })
+  it('이번 주 — 폰 7일 미니 막대(lg:hidden)가 있고 차트 라이브러리는 안 쓴다', () => {
+    const src = stripComments(WEEK)
+    expect(src).toMatch(/border-t border-rule px-4 pb-3 pt-2\.5 lg:hidden/)
+    expect(src).not.toMatch(/recharts|LazyChart/)
+  })
+})

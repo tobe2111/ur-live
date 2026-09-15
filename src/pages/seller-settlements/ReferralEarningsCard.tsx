@@ -57,7 +57,16 @@ export default function ReferralEarningsCard() {
       }
       noPadding
     >
-      <div className="grid grid-cols-3 divide-x divide-rule">
+      {/* 📱 2026-09-15 모바일 특화: 폰은 라벨 왼쪽·숫자 오른쪽 행(세 칸에 ₩1,180,000 을 22px 로 넣으면 넘친다). PC 는 세 칸. */}
+      <div className="divide-y divide-rule sm:hidden">
+        {cells.map((c) => (
+          <div key={c.label} className="flex items-center justify-between gap-3 px-4 py-3">
+            <p className="text-[12.5px] text-gray-500">{c.label}</p>
+            <p className={`dash-num text-[16px] font-extrabold leading-tight ${c.strong ? 'text-gray-900' : 'text-gray-700'}`}>{c.value}</p>
+          </div>
+        ))}
+      </div>
+      <div className="hidden grid-cols-3 divide-x divide-rule sm:grid">
         {cells.map((c) => (
           <div key={c.label} className="px-4 py-3">
             <p className={`dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight ${c.strong ? 'text-gray-900' : 'text-gray-700'}`}>{c.value}</p>

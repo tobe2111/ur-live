@@ -53,4 +53,20 @@ export default [
     test: TEST,
     why: '이메일 로그인 셀러는 소비자 세션이 없어 401 이다 — 그때 카드가 남으면 0원짜리 수익 칸이 정산 화면에 박힌다.',
   },
+  {
+    name: '📱 소개 수익 카드의 폰 행이 사라져 세 칸이 폰까지 덮는다 (₩1,180,000 이 22px 세 칸에서 넘친다)',
+    file: 'src/pages/seller-settlements/ReferralEarningsCard.tsx',
+    find: 'className="hidden grid-cols-3 divide-x divide-rule sm:grid"',
+    replace: 'className="grid grid-cols-3 divide-x divide-rule"',
+    test: TEST,
+    why: '폰 폭 390 에서 세 칸은 칸당 ~120px 인데 ₩1,180,000 을 22px 모노로 넣으면 넘친다 — 폰은 행, PC 는 칸.',
+  },
+  {
+    name: '📱 내 매장 패널이 2열 카드 그리드로 돌아간다 (340px 열에서 "이용권 등록" 이 두 줄로 꺾인다)',
+    file: 'src/pages/seller-page/MyStoresPanel.tsx',
+    find: 'className="-mx-4 -mb-4 divide-y divide-rule border-t border-rule"',
+    replace: 'className="grid sm:grid-cols-2 gap-2"',
+    test: TEST,
+    why: '대표 신고(2026-09-15) "버튼이랑 글자 깨지고" — PC 홈 우측 340px 열에서 카드 한 장이 ~150px 로 눌렸다.',
+  },
 ]

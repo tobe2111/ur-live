@@ -84,12 +84,12 @@ export default function TodayTicket({ loading, storeName, todayRevenue, todayOrd
                 const cur = s.seller_id === summary!.current_seller_id
                 return (
                   <tr key={s.seller_id} onClick={() => go(s.seller_id, s.name)} className={`${cur ? '' : 'cursor-pointer hover:bg-gray-50'} [&+&>td]:border-t [&+&>td]:border-rule`}>
-                    <td className="px-3 py-2.5">
+                    <td className="px-3 py-3 sm:py-2.5">
                       <span className={`block truncate ${cur ? 'font-extrabold text-gray-900' : 'font-semibold text-gray-700'}`}>{s.name}</span>
                       {s.role === 'operator' && <span className="text-[10.5px] text-gray-400">{t('seller.home.delegated', { defaultValue: '위임 운영' })}</span>}
                     </td>
-                    <td className="dash-num px-3 py-2.5 text-right font-semibold text-gray-900">{formatNumber(s.today_revenue)}</td>
-                    <td className={`dash-num px-3 py-2.5 text-right font-bold ${s.pending > 0 ? 'text-brand-text' : 'text-gray-400'}`}>{s.pending}</td>
+                    <td className="dash-num px-3 py-3 text-right font-semibold text-gray-900 sm:py-2.5">{formatNumber(s.today_revenue)}</td>
+                    <td className={`dash-num px-3 py-3 text-right font-bold sm:py-2.5 ${s.pending > 0 ? 'text-brand-text' : 'text-gray-400'}`}>{s.pending}</td>
                     <td className="pr-3 text-right text-gray-400">
                       {switching === s.seller_id ? <Loader2 size={14} className="inline animate-spin" /> : cur ? <Check size={14} className="inline text-gray-900" /> : null}
                     </td>

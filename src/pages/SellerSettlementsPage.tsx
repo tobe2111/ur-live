@@ -163,9 +163,13 @@ export default function SellerSettlementsPage() {
     )
   }
 
+  // 📱 2026-09-15 모바일 특화: 폰 헤더는 매장 이름이 차지하므로 새로고침은 아이콘 하나(44px 터치)만. PC 는 라벨 버튼.
   const headerRight = (
     <div className="flex gap-2">
-      <Button onClick={() => loadSettlements()} variant="outline" size="sm" className="border-gray-300 text-gray-700 hover:bg-gray-100">
+      <button type="button" onClick={() => loadSettlements()} aria-label={t('common.refresh')} className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 md:hidden">
+        <RefreshCw className="h-[18px] w-[18px]" />
+      </button>
+      <Button onClick={() => loadSettlements()} variant="outline" size="sm" className="hidden border-gray-300 text-gray-700 hover:bg-gray-100 md:inline-flex">
         <RefreshCw className="w-4 h-4 mr-2" />
         {t('common.refresh')}
       </Button>
@@ -201,13 +205,14 @@ export default function SellerSettlementsPage() {
         <ReferralEarningsCard />
 
         {/* Bank info warning */}
+        {/* 🎫 규칙 ⑥: 색깔 정보상자 대신 흰 카드 + 톤 글자 하나. 폰에선 버튼이 한 줄을 다 쓴다(엄지 폭). */}
         {!hasBankInfo && (
-          <div className="rounded-[var(--dash-radius,16px)] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
-            <p className="font-semibold text-amber-900">{t('seller.bankInfoMissing')}</p>
-            <p className="mt-0.5 text-xs">{t('seller.bankInfoMissingDesc')}</p>
+          <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-4">
+            <p className="text-[13px] font-bold text-tone-warn">{t('seller.bankInfoMissing')}</p>
+            <p className="mt-0.5 text-[12px] text-gray-500">{t('seller.bankInfoMissingDesc')}</p>
             <button
               onClick={() => navigate('/seller/business-info#bank-info-section')}
-              className="mt-3 rounded-lg bg-amber-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-amber-700"
+              className="ur-btn ur-btn-sm ur-btn-primary mt-3 w-full sm:w-auto"
             >
               {t('seller.registerBankInfo')}
             </button>
@@ -250,12 +255,13 @@ export default function SellerSettlementsPage() {
         <>
         {/* Period Filter */}
         <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-4">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
             <label className="text-sm font-medium text-gray-700">
               <Calendar className="w-4 h-4 inline mr-2" />
               {t('seller.periodSelect')}:
             </label>
-            <div className="flex gap-2">
+            {/* 📱 폰: 칩이 줄바꿈 대신 가로 스크롤(다섯 개가 두 줄로 꺾이면 어느 줄이 선택인지 안 보인다). */}
+            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none]">
               {[
                 { value: 'all', label: t('common.all') },
                 { value: '1m', label: t('seller.recent1Month') },
@@ -266,7 +272,7 @@ export default function SellerSettlementsPage() {
                 <button
                   key={period.value}
                   onClick={() => setSelectedPeriod(period.value)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`shrink-0 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     selectedPeriod === period.value
                       ? 'bg-brand-tint text-brand-text'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -296,9 +302,9 @@ export default function SellerSettlementsPage() {
         </div>
 
         {/* Help Text */}
-        <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-blue-900 mb-3">{t('seller.settlementGuide')}</h3>
-          <ul className="space-y-2 text-sm text-blue-800">
+        <div className="mt-8 rounded-[var(--dash-radius,16px)] border border-rule bg-white p-4 sm:p-6">
+          <h3 className="mb-3 text-[14px] font-bold text-gray-900">{t('seller.settlementGuide')}</h3>
+          <ul className="space-y-2 text-[13px] leading-relaxed text-gray-600">
             <li>• {t('seller.settlementGuide1')}</li>
             <li>• {t('seller.settlementGuide2')}</li>
             <li>• {t('seller.settlementGuide3')}</li>
