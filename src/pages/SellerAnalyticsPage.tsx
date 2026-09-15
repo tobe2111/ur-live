@@ -1,14 +1,27 @@
-import { useState, useEffect, lazy, Suspense } from 'react'
+/**
+ * 📊 셀러 매출 분석 — **안 C** (2026-09-15 대표 확정 "안 C로 가자").
+ *
+ * 시안 갤러리 `/design/variants?set=seller-analytics` 에서 세 안을 나란히 놓고 고른 결과다.
+ * 고른 근거는 실측이었다: 내용이 나오기 전에 질문이 셋(탭 6 → 기간 3)이고 **그 답이 전부 0** 으로 갔다.
+ *
+ * ## 안 C 가 하는 일
+ *   · 전 기간 판매가 0 이면 → **재는 도구를 안 그린다**(`NoSalesEver`). 지금 할 수 있는 일 하나만.
+ *   · 이 기간에만 0 이면 → 기간을 넓히라고 한다(`AnalyticsOverview` 안). 온보딩 문구를 쓰면 틀린 말이 된다.
+ *   · 판매가 있으면 → 안 B 구조(`AnalyticsOverview`): 기간 하나 → 큰 숫자 하나 → 목록의 줄.
+ *
+ * ## 기능은 하나도 안 줄었다
+ *   종전 탭 6개는 전부 남아 있고, **버튼 줄이 아니라 목록의 줄**로 들어간다(자주 안 쓰는 셋은 `더 보기` 뒤).
+ *   안쪽 화면에서는 ← 로 요약으로 돌아온다.
+ */
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SellerLayout from '@/components/SellerLayout'
-import { DashboardPageHeader, DashboardStatCard, DashboardLoading } from '@/components/dashboard'
-import { BarChart2, Users, Package, Loader2, TrendingUp, Repeat, ArrowUpRight, Gift, Calendar } from 'lucide-react'
+import { DashboardLoading } from '@/components/dashboard'
+import { ChevronLeft } from 'lucide-react'
 import { formatNumber, formatWon } from '@/utils/format'
-
-// Recharts lazy load (377KB → 차트 영역만 지연 로드)
-const SellerAnalyticsChart = lazy(() => import('@/components/charts/SellerAnalyticsChart'))
+import AnalyticsOverview, { type RevenuePoint, type SubView } from './seller-analytics/AnalyticsOverview'
+import { NoSalesEver } from './seller-analytics/NoSalesYet'
 
 export default function SellerAnalyticsPage() {
   const { t } = useTranslation()
@@ -37,118 +50,39 @@ export default function SellerAnalyticsPage() {
     ['seller', 'analytics-detailed'], '/api/seller/analytics/detailed', { select: (r: any) => (r?.success ? r.data : null) },
   )
 
+  const [showMore, setShowMore] = useState(false)
+  const points: RevenuePoint[] = tab === 'revenue' && Array.isArray(data) ? (data as RevenuePoint[]) : []
+  const windowRevenue = points.reduce((sum, d) => sum + d.revenue, 0)
+  const windowOrders = points.reduce((sum, d) => sum + d.orders, 0)
+  // ⚠️ `total_buyers` 는 **전 기간** 집계다(`/analytics/detailed` 는 날짜 필터가 없다). 그래서
+  //   "한 번도 판 적 없음" 의 근거로 쓸 수 있다 — 기간 합계로 판정하면 60일 전에 판 사람에게 거짓말을 한다.
+  const everSold = !!detailedData && detailedData.total_buyers > 0
+
   return (
     <SellerLayout title={t('seller.analyticsTitle')}>
       <div className="mx-auto max-w-5xl space-y-6">
-        {/* 🛡️ 2026-04-22 배치 129: 디자인 시스템 적용 */}
-        <DashboardPageHeader
-          title={t('seller.analyticsTitle')}
-          subtitle={t('seller.analyticsSubtitle', { defaultValue: '매출, 고객, 상품 퍼포먼스 분석' })}
-          icon={<BarChart2 className="h-5 w-5" />}
-        />
-
-        {/* KPI 카드 */}
-        {detailedData && (
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <DashboardStatCard
-              label={t('seller.conversionRate')}
-              value={`${detailedData.conversion_rate}%`}
-              icon={<TrendingUp className="h-4 w-4" />}
-              accent="blue"
-            />
-            <DashboardStatCard
-              label={t('seller.repeatPurchaseRate')}
-              value={`${detailedData.repeat_purchase_rate}%`}
-              hint={`${detailedData.repeat_buyers}${t('seller.persons')} / ${detailedData.total_buyers}${t('seller.persons')}`}
-              icon={<Repeat className="h-4 w-4" />}
-              accent="green"
-            />
-            <DashboardStatCard
-              label={t('seller.totalCustomersLabel')}
-              value={`${detailedData.total_buyers}${t('seller.persons')}`}
-              icon={<Users className="h-4 w-4" />}
-              accent="violet"
-            />
-            <DashboardStatCard
-              label={t('seller.repeatBuyers')}
-              value={`${detailedData.repeat_buyers}${t('seller.persons')}`}
-              icon={<ArrowUpRight className="h-4 w-4" />}
-              accent="amber"
-            />
-          </div>
+        {/* 안쪽 화면에서 돌아오는 길 — 탭 버튼 줄이 없어진 자리를 대신한다. */}
+        {tab !== 'revenue' && (
+          <button type="button" onClick={() => setTab('revenue')}
+            className="inline-flex items-center gap-1 text-[13px] font-bold text-gray-500 hover:text-gray-900">
+            <ChevronLeft className="h-4 w-4" />{t('seller.analyticsView.back', { defaultValue: '매출 요약으로' })}
+          </button>
         )}
-
-        <div className="flex flex-wrap gap-2">
-          {[
-            { key: 'revenue', label: t('seller.revenueChart'), icon: BarChart2 },
-            { key: 'customers', label: t('seller.customerAnalysis'), icon: Users },
-            { key: 'products', label: t('seller.productPerformance'), icon: Package },
-            { key: 'commission', label: '추천 Commission', icon: Gift },
-            { key: 'monthly', label: '월별 입점 추이', icon: Calendar },
-            { key: 'funnel', label: '트래킹 Funnel', icon: TrendingUp },
-          ].map(tabItem => (
-            <button key={tabItem.key} onClick={() => setTab(tabItem.key as 'revenue' | 'customers' | 'products' | 'commission' | 'monthly' | 'funnel')}
-              className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${tab === tabItem.key ? 'bg-brand-tint text-brand-text' : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'}`}>
-              <tabItem.icon className="h-4 w-4" />{tabItem.label}
-            </button>
-          ))}
-        </div>
 
         {loading ? <DashboardLoading /> : (
           <>
-            {tab === 'revenue' && data && (
-              <div>
-                <div className="flex gap-2 mb-4">
-                  {[
-                    { d: 7, label: t('seller.daysFilter7') },
-                    { d: 30, label: t('seller.daysFilter30') },
-                    { d: 90, label: t('seller.daysFilter90') },
-                  ].map(item => (
-                    <button key={item.d} onClick={() => setDays(item.d)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium ${days === item.d ? 'bg-tone-info-bg text-tone-info' : 'bg-gray-100 text-gray-500'}`}>{item.label}</button>
-                  ))}
-                </div>
-                <div className="bg-white rounded-xl border border-gray-200 p-4">
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div className="border border-rule bg-white rounded-lg p-3">
-                      <p className="text-xs text-gray-700">{t('seller.totalRevenueLabel')}</p>
-                      <p className="text-xl font-bold text-gray-900">{(data as RevenueDataPoint[]).reduce((s, d) => s + d.revenue, 0)}{t('common.won')}</p>
-                    </div>
-                    <div className="border border-rule bg-white rounded-lg p-3">
-                      <p className="text-xs text-tone-ok">{t('seller.totalOrdersLabel')}</p>
-                      <p className="text-xl font-bold text-gray-900">{(data as RevenueDataPoint[]).reduce((s, d) => s + d.orders, 0)}{t('seller.ordersUnit')}</p>
-                    </div>
-                  </div>
-
-                  {/* Recharts Line Chart for Revenue Trend */}
-                  <div className="mb-4">
-                    <h3 className="text-sm font-bold text-gray-900 mb-2">{t('seller.dailyRevenueTrend')}</h3>
-                    {(data as RevenueDataPoint[]).length > 0 ? (
-                      <Suspense fallback={<div className="flex items-center justify-center h-[240px]"><Loader2 className="w-5 h-5 animate-spin text-brand-text" /></div>}>
-                        <SellerAnalyticsChart data={(data as RevenueDataPoint[]).slice(-30)} />
-                      </Suspense>
-                    ) : (
-                      <p className="text-center text-gray-500 text-xs py-8">{t('seller.noRevenueData')}</p>
-                    )}
-                  </div>
-
-                  {/* Bar chart fallback (existing) */}
-                  <div className="flex items-end gap-1 overflow-x-auto scrollbar-hide" style={{ minHeight: 120 }}>
-                    {(data as RevenueDataPoint[]).slice(-14).map((d) => {
-                      const max = Math.max(...(data as RevenueDataPoint[]).map((x) => x.revenue)) || 1
-                      return (
-                        <div key={d.date} className="flex flex-col items-center flex-1 min-w-[28px]">
-                          <span className="text-[9px] text-gray-500 mb-1">{(d.revenue / 10000).toFixed(0)}{t('seller.salesUnit')}</span>
-                          <div className="w-full bg-gray-100 rounded-t" style={{ height: `${Math.max(4, (d.revenue / max) * 80)}px` }}>
-                            <div className="w-full h-full bg-brand rounded-t" />
-                          </div>
-                          <span className="text-[9px] text-gray-400 mt-1">{d.date.slice(5)}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              </div>
+            {tab === 'revenue' && (
+              !everSold ? <NoSalesEver /> : (
+                <AnalyticsOverview
+                  days={days} onDays={setDays}
+                  points={points} revenue={windowRevenue} orders={windowOrders}
+                  buyers={detailedData?.total_buyers ?? 0}
+                  repeatRate={detailedData?.repeat_purchase_rate ?? 0}
+                  conversionRate={detailedData?.conversion_rate ?? 0}
+                  showMore={showMore} onShowMore={() => setShowMore(true)}
+                  onOpen={(v: SubView) => setTab(v)}
+                />
+              )
             )}
 
             {tab === 'customers' && data && (
