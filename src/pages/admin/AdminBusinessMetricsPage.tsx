@@ -100,14 +100,14 @@ export default function AdminBusinessMetricsPage() {
         </div>
 
         {/* 추정치 disclaimer */}
-        <div className="mb-5 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-          <Info className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-          <p className="text-sm text-amber-800 leading-relaxed">
+        <div className="mb-5 flex items-start gap-3 rounded-xl border border-rule bg-white px-4 py-3">
+          <Info className="w-5 h-5 text-tone-warn shrink-0 mt-0.5" />
+          <p className="text-sm text-tone-warn leading-relaxed">
             {t('admin.bizMetrics.disclaimer', {
               defaultValue: '순수익률은 추정치입니다. 가정 — PG 수수료 2.5%, 플랫폼 수수료 5%, 후원 수수료 15%. 실제 PG 정산서가 아닙니다.',
             })}
             {data?.assumptions && (
-              <span className="block text-xs text-amber-700 mt-1">
+              <span className="block text-xs text-tone-warn mt-1">
                 {t('admin.bizMetrics.assumptionsApplied', { defaultValue: '적용된 가정' })}: PG {safeNum(data.assumptions.pg_fee_pct)}% · {t('admin.bizMetrics.commission', { defaultValue: '수수료' })} {safeNum(data.assumptions.consumer_commission_pct)}% · {t('admin.bizMetrics.donationFee', { defaultValue: '후원' })} {safeNum(data.assumptions.donation_fee_pct)}%
               </span>
             )}
@@ -177,7 +177,7 @@ export default function AdminBusinessMetricsPage() {
             <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
               <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
                 {t('admin.bizMetrics.revenueBreakdown', { defaultValue: '순수익 구성 (추정)' })}
-                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">
+                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-tone-warn-bg text-tone-warn">
                   {t('admin.bizMetrics.estimateBadge', { defaultValue: '추정' })}
                 </span>
               </h3>
@@ -249,13 +249,13 @@ function KpiCard({ icon, label, value, sub, danger, estimate }: {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4">
       <div className="flex items-center gap-2 text-gray-500 mb-2">
-        <span className={danger ? 'text-rose-500' : 'text-gray-400'}>{icon}</span>
+        <span className={danger ? 'text-tone-bad' : 'text-gray-400'}>{icon}</span>
         <span className="text-xs font-medium">{label}</span>
         {estimate && (
-          <span className="text-[10px] font-medium px-1 py-0.5 rounded bg-amber-100 text-amber-700">추정</span>
+          <span className="text-[10px] font-medium px-1 py-0.5 rounded bg-tone-warn-bg text-tone-warn">추정</span>
         )}
       </div>
-      <div className={`text-2xl font-bold tabular-nums ${danger ? 'text-rose-600' : 'text-gray-900'}`}>{value}</div>
+      <div className={`text-2xl font-bold tabular-nums ${danger ? 'text-tone-bad' : 'text-gray-900'}`}>{value}</div>
       {sub && <div className="text-xs text-gray-400 mt-1 leading-snug">{sub}</div>}
     </div>
   )
@@ -268,7 +268,7 @@ function RevenueLine({ label, value, positive, negative, emphasize }: {
   negative?: boolean
   emphasize?: boolean
 }) {
-  const color = emphasize ? 'text-gray-900' : negative ? 'text-rose-600' : positive ? 'text-emerald-600' : 'text-gray-700'
+  const color = emphasize ? 'text-gray-900' : negative ? 'text-tone-bad' : positive ? 'text-tone-ok' : 'text-gray-700'
   const prefix = negative ? '−' : ''
   return (
     <div>

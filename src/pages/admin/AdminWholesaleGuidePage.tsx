@@ -16,18 +16,18 @@ export default function AdminWholesaleGuidePage() {
     <AdminLayout title="도매몰 운영 가이드">
       <div className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
-          title="🏭 도매몰(유통스타트) 운영 가이드"
+          title="도매몰(유통스타트) 운영 가이드"
           subtitle="제조사·판매사 온보딩부터 등급/마진·상품 검수·주문/배송·정산·세금까지 — 여기서 수정하면 즉시 반영됩니다"
           icon={<Factory className="h-5 w-5" />}
         />
 
         {/* 안내 박스 */}
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-900">
-          <p className="font-semibold mb-1">💡 편집 팁</p>
+        <div className="bg-white border border-rule rounded-xl p-3 text-sm text-tone-warn">
+          <p className="font-semibold mb-1">편집 팁</p>
           <ul className="text-xs space-y-0.5 list-disc pl-4">
             <li>각 섹션의 <strong>연필 아이콘</strong>을 클릭하면 바로 편집 가능합니다</li>
-            <li>Markdown 문법 사용 가능: <code className="bg-amber-100 px-1 rounded">**bold**</code>, <code className="bg-amber-100 px-1 rounded">### 제목</code>, 리스트, 표 등</li>
-            <li>맨 아래 <strong>코드 자동 참조</strong> 섹션은 도매 코드(제조사/판매사/공급 API) 변경 시 자동 갱신됩니다 (<code className="bg-amber-100 px-1 rounded">npm run generate:guide-refs</code>)</li>
+            <li>Markdown 문법 사용 가능: <code className="border border-rule bg-white px-1 rounded">**bold**</code>, <code className="border border-rule bg-white px-1 rounded">### 제목</code>, 리스트, 표 등</li>
+            <li>맨 아래 <strong>코드 자동 참조</strong> 섹션은 도매 코드(제조사/판매사/공급 API) 변경 시 자동 갱신됩니다 (<code className="border border-rule bg-white px-1 rounded">npm run generate:guide-refs</code>)</li>
           </ul>
         </div>
 

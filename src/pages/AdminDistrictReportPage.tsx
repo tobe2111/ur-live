@@ -66,7 +66,7 @@ function FacilityQrMaker({ regionCode }: { regionCode: string }) {
               <code className="bg-gray-50 px-1.5 py-0.5 rounded">{url}</code>
             </p>
           ) : (
-            <p className="mt-2 text-xs text-red-500">소스명은 소문자/숫자/하이픈 1~40자</p>
+            <p className="mt-2 text-xs text-tone-bad">소스명은 소문자/숫자/하이픈 1~40자</p>
           )}
           <p className="mt-1 text-[11px] text-gray-400">QR 을 우클릭 저장하거나, 인쇄 업체에 URL 을 그대로 전달하세요. 스캔 유입은 위 소스별 퍼널에 집계됩니다.</p>
         </div>
@@ -122,7 +122,7 @@ export default function AdminDistrictReportPage() {
         {/* 컨트롤 — 인쇄 시 숨김 */}
         <div className="print:hidden">
           <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-blue-600" /> 상권 성과 리포트
+            <BarChart3 className="w-5 h-5 text-gray-700" /> 상권 성과 리포트
           </h1>
           <p className="text-sm text-gray-500 mt-1">
             상권(지역코드) 단위 매장·동네딜·이용권·체험단 성과 집계 — B2G 제출용 인쇄 지원
@@ -145,13 +145,13 @@ export default function AdminDistrictReportPage() {
               {PERIODS.map(d => <option key={d} value={d}>최근 {d}일</option>)}
             </select>
             <button type="button" onClick={() => void load(code, days)} disabled={loading}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-900 text-white text-xs font-bold disabled:opacity-50">
+              className="ur-btn ur-btn-sm ur-btn-primary inline-flex items-center gap-1.5 disabled:opacity-50">
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> 집계
             </button>
             {report && (
               <>
                 <button type="button" onClick={() => window.print()}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-900 text-white text-xs font-bold">
+                  className="ur-btn ur-btn-sm ur-btn-primary inline-flex items-center gap-1.5">
                   <Printer className="w-3.5 h-3.5" /> 인쇄/PDF
                 </button>
                 <a href={`/local/${report.region.code}`} target="_blank" rel="noreferrer"
@@ -161,7 +161,7 @@ export default function AdminDistrictReportPage() {
               </>
             )}
           </div>
-          {error && <p className="mt-3 text-sm font-bold text-red-600">{error}</p>}
+          {error && <p className="mt-3 text-sm font-bold text-tone-bad">{error}</p>}
         </div>
 
         {/* 리포트 본문 — 인쇄 대상 */}
@@ -169,7 +169,7 @@ export default function AdminDistrictReportPage() {
           <div className="mt-6 space-y-6">
             <div>
               <h2 className="text-lg font-extrabold text-gray-900 flex items-center gap-1.5">
-                <MapPin className="w-4 h-4 text-blue-600" /> {regionName} 상권 성과 (최근 {report.days}일)
+                <MapPin className="w-4 h-4 text-gray-700" /> {regionName} 상권 성과 (최근 {report.days}일)
               </h2>
               <p className="text-[11px] text-gray-400 mt-0.5">지역코드 {report.region.code} · 생성 {new Date().toLocaleDateString('ko-KR')} · 유어딜(UR Deal)</p>
             </div>

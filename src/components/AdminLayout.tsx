@@ -300,7 +300,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
             pinned ? 'opacity-100' : 'opacity-0 group-hover/nav:opacity-100 focus:opacity-100'
           }`}
         >
-          <Star size={12} strokeWidth={2} className={pinned ? 'fill-amber-400 text-amber-400' : 'text-gray-300 hover:text-gray-500'} />
+          <Star size={12} strokeWidth={2} className={pinned ? 'fill-amber-400 text-gray-400' : 'text-gray-300 hover:text-gray-500'} />
         </button>
       </div>
     )

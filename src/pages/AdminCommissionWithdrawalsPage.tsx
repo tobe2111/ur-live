@@ -165,7 +165,7 @@ export default function AdminCommissionWithdrawalsPage() {
                     <td className="px-4 py-3 text-center">
                       <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium ${meta.cls}`}>{meta.label}</span>
                       {w.rejection_reason && (
-                        <div className="text-[10px] text-red-500 mt-1 max-w-[160px] line-clamp-2">{w.rejection_reason}</div>
+                        <div className="text-[10px] text-tone-bad mt-1 max-w-[160px] line-clamp-2">{w.rejection_reason}</div>
                       )}
                       {w.admin_memo && (
                         <div className="text-[10px] text-gray-500 mt-1 max-w-[160px] line-clamp-2">{w.admin_memo}</div>
@@ -177,14 +177,14 @@ export default function AdminCommissionWithdrawalsPage() {
                           <button
                             disabled={actionId === w.id}
                             onClick={() => approve(w)}
-                            className="px-2 py-1 bg-gray-900 text-white rounded text-[10px] font-medium hover:bg-gray-900 disabled:opacity-50 flex items-center gap-1"
+                            className="ur-btn ur-btn-sm ur-btn-primary rounded text-[10px] disabled:opacity-50 flex items-center gap-1"
                           >
                             <CheckCircle className="w-3 h-3" /> 송금완료
                           </button>
                           <button
                             disabled={actionId === w.id}
                             onClick={() => reject(w)}
-                            className="px-2 py-1 bg-red-600 text-white rounded text-[10px] font-medium hover:bg-red-700 disabled:opacity-50 flex items-center gap-1"
+                            className="ur-btn ur-btn-sm ur-btn-danger rounded disabled:opacity-50 flex items-center gap-1"
                           >
                             <XCircle className="w-3 h-3" /> 거절
                           </button>

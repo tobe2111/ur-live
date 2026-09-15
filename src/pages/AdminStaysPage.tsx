@@ -143,15 +143,15 @@ export default function AdminStaysPage() {
         {/* KPI */}
         {kpi && (
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            <KpiCard label="활성 숙소" value={`${formatNumber(kpi.active_properties)}/${formatNumber(kpi.total_properties)}`} icon={<Building2 className="w-5 h-5" />} color="text-blue-600 bg-blue-50" />
-            <KpiCard label="총 객실" value={formatNumber(kpi.total_rooms)} icon={<Users className="w-5 h-5" />} color="text-emerald-600 bg-emerald-50" />
-            <KpiCard label="예약" value={`${formatNumber(kpi.confirmed_bookings)}/${formatNumber(kpi.total_bookings)}`} icon={<TrendingUp className="w-5 h-5" />} color="text-violet-600 bg-violet-50" />
+            <KpiCard label="활성 숙소" value={`${formatNumber(kpi.active_properties)}/${formatNumber(kpi.total_properties)}`} icon={<Building2 className="w-5 h-5" />} color="text-gray-700 border border-rule bg-white" />
+            <KpiCard label="총 객실" value={formatNumber(kpi.total_rooms)} icon={<Users className="w-5 h-5" />} color="text-tone-ok border border-rule bg-white" />
+            <KpiCard label="예약" value={`${formatNumber(kpi.confirmed_bookings)}/${formatNumber(kpi.total_bookings)}`} icon={<TrendingUp className="w-5 h-5" />} color="text-gray-700 border border-rule bg-white" />
             <KpiCard label="누적 매출" value={`₩${formatNumber(kpi.total_revenue)}`} icon={<DollarSign className="w-5 h-5" />} color="text-brand-text bg-brand-tint" />
             <KpiCard
               label="평균 평점"
               value={kpi.avg_rating ? kpi.avg_rating.toFixed(1) : '-'}
               icon={<Star className="w-5 h-5" />}
-              color="text-amber-600 bg-amber-50"
+              color="text-tone-warn border border-rule bg-white"
               sub={kpi.no_show_bookings > 0 ? `노쇼 ${kpi.no_show_bookings}건` : undefined}
             />
           </div>
@@ -166,14 +166,14 @@ export default function AdminStaysPage() {
             <button
               key={tb.k}
               onClick={() => setTab(tb.k)}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${tab === tb.k ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${tab === tb.k ? 'border-brand text-brand-text' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
             >{tb.l}</button>
           ))}
         </div>
 
         {loading ? <DashboardLoading /> : (
           tab === 'stays' ? (
-            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[900px]">
                   <thead>
@@ -188,14 +188,14 @@ export default function AdminStaysPage() {
                       <tr key={s.id} className="hover:bg-gray-50 text-xs">
                         <td className="px-3 py-3 max-w-[200px]">
                           <p className="font-medium text-gray-900 line-clamp-1">{s.name}</p>
-                          {s.star_rating ? <p className="text-[10px] text-amber-500">{'★'.repeat(s.star_rating)}</p> : null}
+                          {s.star_rating ? <p className="text-[10px] text-tone-warn">{'★'.repeat(s.star_rating)}</p> : null}
                         </td>
                         <td className="px-3 py-3 text-gray-700">{s.seller_name}</td>
                         <td className="px-3 py-3">
                           {s.business_registration_status === 'verified' ? (
-                            <span className="inline-flex px-1.5 py-0.5 text-[10px] bg-emerald-100 text-emerald-700 rounded">검증</span>
+                            <span className="inline-flex px-1.5 py-0.5 text-[10px] bg-tone-ok-bg text-tone-ok rounded">검증</span>
                           ) : s.business_registration_status === 'pending' ? (
-                            <span className="inline-flex px-1.5 py-0.5 text-[10px] bg-amber-100 text-amber-700 rounded">대기</span>
+                            <span className="inline-flex px-1.5 py-0.5 text-[10px] bg-tone-warn-bg text-tone-warn rounded">대기</span>
                           ) : (
                             <span className="inline-flex px-1.5 py-0.5 text-[10px] bg-gray-100 text-gray-500 rounded">미등록</span>
                           )}
@@ -206,7 +206,7 @@ export default function AdminStaysPage() {
                         <td className="px-3 py-3 font-semibold text-gray-900 text-center">{s.active_bookings || 0}</td>
                         <td className="px-3 py-3 text-gray-700">{s.avg_rating ? s.avg_rating.toFixed(1) : '-'}</td>
                         <td className="px-3 py-3">
-                          {(s.no_show_count || 0) > 0 ? <span className="text-red-600 font-semibold">{s.no_show_count}건</span> : '-'}
+                          {(s.no_show_count || 0) > 0 ? <span className="text-tone-bad font-semibold">{s.no_show_count}건</span> : '-'}
                         </td>
                       </tr>
                     ))}
@@ -232,7 +232,7 @@ export default function AdminStaysPage() {
                 ))}
               </div>
 
-              <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+              <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[900px]">
                     <thead>
@@ -267,12 +267,12 @@ export default function AdminStaysPage() {
                             <td className="px-3 py-3">
                               <div className="flex gap-1">
                                 {['confirmed', 'checked_in', 'no_show'].includes(b.status) && (
-                                  <button onClick={() => refund(b.id)} className="p-1.5 text-amber-600 hover:bg-amber-50 rounded" title="환불">
+                                  <button onClick={() => refund(b.id)} className="p-1.5 text-tone-warn hover:bg-gray-100 rounded" title="환불">
                                     <DollarSign className="w-4 h-4" />
                                   </button>
                                 )}
                                 {b.status !== 'dispute' && !['cancelled', 'refunded'].includes(b.status) && (
-                                  <button onClick={() => markDispute(b.id)} className="p-1.5 text-orange-600 hover:bg-orange-50 rounded" title="분쟁 마킹">
+                                  <button onClick={() => markDispute(b.id)} className="p-1.5 text-tone-warn hover:bg-gray-100 rounded" title="분쟁 마킹">
                                     <MessageSquare className="w-4 h-4" />
                                   </button>
                                 )}
@@ -295,13 +295,13 @@ export default function AdminStaysPage() {
 
 function KpiCard({ label, value, sub, color, icon }: { label: string; value: string; sub?: string; color: string; icon: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100">
+    <div className="bg-white rounded-xl p-3 sm:p-4 border border-rule border border-gray-100">
       <div className="flex items-center justify-between mb-2">
         <span className="text-[10px] sm:text-xs font-medium text-gray-500">{label}</span>
         <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg ${color} flex items-center justify-center`}>{icon}</div>
       </div>
       <p className="text-base sm:text-lg font-extrabold text-gray-900">{value}</p>
-      {sub && <p className="text-[10px] text-red-600 mt-0.5 font-semibold">⚠ {sub}</p>}
+      {sub && <p className="text-[10px] text-tone-bad mt-0.5 font-semibold">{sub}</p>}
     </div>
   )
 }

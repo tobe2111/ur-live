@@ -68,7 +68,7 @@ export default function WeeklyPicksPanel({ onStatusChange }: { onStatusChange: (
     <div className="mb-4 rounded-xl border border-gray-200 bg-white">
       <button type="button" onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between px-4 py-3 text-left">
         <div>
-          <span className="text-sm font-semibold text-gray-900">🗓️ 이번 주 영입 {w.config.n}곳</span>
+          <span className="text-sm font-semibold text-gray-900">이번 주 영입 {w.config.n}곳</span>
           <span className="ml-2 text-xs text-gray-500">주 시작 {w.week} · 연락함 {t.contacted}/{t.total} · 응답 {t.responded} · 입점 {t.onboarded}</span>
         </div>
         <span className="text-xs text-gray-400">{open ? '접기' : '펼치기'}</span>
@@ -90,15 +90,15 @@ export default function WeeklyPicksPanel({ onStatusChange }: { onStatusChange: (
                   {w.rows.map(r => (
                     <tr key={r.id} className="border-t border-gray-100 align-top">
                       <td className="py-1.5 pr-2 tabular-nums text-gray-400">{r.rank}</td>
-                      <td className="py-1.5 pr-2"><div className="font-medium text-gray-900">{r.biz_name}{r.is_new_open ? <span className="ml-1 text-[10px] text-rose-600 font-semibold">개업</span> : null}</div><div className="text-[11px] text-gray-400 truncate max-w-[220px]">{r.addr_road || ''}</div></td>
+                      <td className="py-1.5 pr-2"><div className="font-medium text-gray-900">{r.biz_name}{r.is_new_open ? <span className="ml-1 text-[10px] text-tone-bad font-semibold">개업</span> : null}</div><div className="text-[11px] text-gray-400 truncate max-w-[220px]">{r.addr_road || ''}</div></td>
                       <td className="py-1.5 pr-2">{r.category || '—'}<div className="text-[11px] text-gray-400">{r.region || ''}</div></td>
-                      <td className="py-1.5 pr-2">{r.phone ? <a href={`tel:${r.phone}`} className="text-blue-600">{r.phone}</a> : <span className="text-gray-300">전화 없음</span>}{r.email ? <div className="text-[11px] text-indigo-600 truncate max-w-[180px]">{r.email}</div> : null}</td>
+                      <td className="py-1.5 pr-2">{r.phone ? <a href={`tel:${r.phone}`} className="text-gray-700">{r.phone}</a> : <span className="text-gray-300">전화 없음</span>}{r.email ? <div className="text-[11px] text-gray-700 truncate max-w-[180px]">{r.email}</div> : null}</td>
                       <td className="py-1.5 pr-2">
                         <select value={r.status} onChange={e => setStatus(r.id, e.target.value)} className={`text-xs rounded px-2 py-1 border-0 ${STATUS_META[r.status]?.cls || 'bg-gray-100 text-gray-700'}`}>
                           {STATUSES.map(s => <option key={s} value={s}>{STATUS_META[s]?.label || s}</option>)}
                         </select>
                       </td>
-                      <td className="py-1.5"><button onClick={() => setProposal(r)} className="px-2.5 py-1 rounded-lg bg-gray-900 text-white text-[11px] font-semibold">제안 문구</button></td>
+                      <td className="py-1.5"><button onClick={() => setProposal(r)} className="ur-btn ur-btn-sm ur-btn-primary text-[11px]">제안 문구</button></td>
                     </tr>
                   ))}
                 </tbody>

@@ -141,7 +141,7 @@ export default function AdminDistrictCouponsPage() {
       />
 
       {/* 캠페인 생성 */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-5 mt-4 mb-5">
+      <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-5 mt-4 mb-5">
         <h3 className="text-[14px] font-bold text-gray-900 mb-3">새 캠페인</h3>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <label className="text-[12px] text-gray-600">slug (소비자 URL)
@@ -175,7 +175,7 @@ export default function AdminDistrictCouponsPage() {
           <div className="col-span-2 lg:col-span-4 mt-1 p-3 rounded-xl bg-gray-50 border border-gray-200">
             <label className="flex items-center gap-2 text-[13px] font-semibold text-gray-900">
               <input type="checkbox" checked={form.auto_issue_enabled} onChange={(e) => setForm((f) => ({ ...f, auto_issue_enabled: e.target.checked }))} className="w-4 h-4" />
-              🧾 온라인 결제 자동발급(경로 B) — 유어딜 결제 시 기준액 이상이면 자동 쿠폰 지급
+              온라인 결제 자동발급(경로 B) — 유어딜 결제 시 기준액 이상이면 자동 쿠폰 지급
             </label>
             <p className="mt-1 text-[11px] text-gray-500">행사 기간(기준액은 위 보상구간 재사용) 내에만 발급. 실제 발급엔 서버 마스터 스위치 필요.</p>
             <div className="mt-2 grid grid-cols-2 gap-2">
@@ -192,12 +192,12 @@ export default function AdminDistrictCouponsPage() {
           </div>
         </div>
         <div className="mt-3 flex justify-end">
-          <button type="button" disabled={busy} onClick={createCampaign} className="px-4 py-2 rounded-xl bg-gray-900 text-white text-[13px] font-semibold disabled:opacity-50">캠페인 생성</button>
+          <button type="button" disabled={busy} onClick={createCampaign} className="ur-btn ur-btn-md ur-btn-primary text-[13px] disabled:opacity-50">캠페인 생성</button>
         </div>
       </div>
 
       {/* 캠페인 목록 */}
-      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 overflow-hidden">
         {loading ? <div className="p-8 text-center text-gray-400 text-[13px]">로딩 중…</div>
         : campaigns.length === 0 ? <div className="p-8 text-center text-gray-400 text-[13px]">캠페인이 없습니다.</div>
         : campaigns.map((c) => (
@@ -207,8 +207,8 @@ export default function AdminDistrictCouponsPage() {
                 <p className="text-[13px] font-semibold text-gray-900 truncate">{c.name} <span className="font-mono text-[11px] text-gray-400">/district/{c.slug}</span></p>
                 <p className="text-[11px] text-gray-500">매장 {formatNumber(c.store_count)} · 발급 {formatWon(c.issued_total || 0)}{c.budget_total ? ` / 예산 ${formatWon(c.budget_total)}` : ''}</p>
               </div>
-              {(c.pending_receipts || 0) > 0 && <span className="shrink-0 rounded-full bg-amber-100 text-amber-700 text-[11px] font-bold px-2 py-0.5">검수 대기 {c.pending_receipts}</span>}
-              <span className={`shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full ${c.status === 'open' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>{c.status === 'open' ? '진행중' : '종료'}</span>
+              {(c.pending_receipts || 0) > 0 && <span className="shrink-0 rounded-full bg-tone-warn-bg text-tone-warn text-[11px] font-bold px-2 py-0.5">검수 대기 {c.pending_receipts}</span>}
+              <span className={`shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full ${c.status === 'open' ? 'bg-tone-ok-bg text-tone-ok' : 'bg-gray-100 text-gray-600'}`}>{c.status === 'open' ? '진행중' : '종료'}</span>
             </button>
             {expanded === c.id && (
               <div className="px-4 pb-4 bg-gray-50/60">
@@ -232,13 +232,13 @@ export default function AdminDistrictCouponsPage() {
                       <div className="max-h-[28rem] overflow-auto divide-y divide-gray-50">
                         {receipts.map((r) => (
                           <div key={r.id} className="flex flex-wrap items-center gap-2 px-3 py-2.5">
-                            <a href={`/api/media/${r.image_key}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[11px] font-bold text-blue-600 underline shrink-0"><ImageIcon className="w-3.5 h-3.5" />사진</a>
+                            <a href={`/api/media/${r.image_key}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[11px] font-bold text-brand-text underline shrink-0"><ImageIcon className="w-3.5 h-3.5" />사진</a>
                             <div className="flex-1 min-w-[180px]">
                               <p className="text-[12.5px] font-semibold text-gray-900">{formatWon(r.amount)} · {r.store_name || '매장?'} <span className="font-mono text-[10px] text-gray-400">{r.card_approval_no}</span></p>
                               <p className="text-[10.5px] text-gray-500">{r.user_name || r.user_id} · 기승인 {r.user_approved_count ?? 0}건 · {formatKST(r.created_at)}</p>
                             </div>
-                            <button type="button" onClick={() => void decide(c.id, r.id, 'approve')} className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-emerald-200 text-emerald-600 text-[11px] font-bold hover:bg-emerald-50"><Check className="w-3 h-3" />승인·지급</button>
-                            <button type="button" onClick={() => void decide(c.id, r.id, 'reject')} className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-red-200 text-red-600 text-[11px] font-bold hover:bg-red-50"><X className="w-3 h-3" />반려</button>
+                            <button type="button" onClick={() => void decide(c.id, r.id, 'approve')} className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-transparent text-tone-ok text-[11px] font-bold hover:bg-gray-100"><Check className="w-3 h-3" />승인·지급</button>
+                            <button type="button" onClick={() => void decide(c.id, r.id, 'reject')} className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-transparent text-tone-bad text-[11px] font-bold hover:bg-gray-100"><X className="w-3 h-3" />반려</button>
                           </div>
                         ))}
                       </div>
@@ -251,14 +251,14 @@ export default function AdminDistrictCouponsPage() {
                     <div className="bg-white rounded-xl border border-gray-200 p-3">
                       <p className="text-[12px] font-bold text-gray-900 mb-1.5 flex items-center gap-1"><Store className="w-3.5 h-3.5" />매장 일괄 등록 — 한 줄에 한 매장, <code className="text-[10px]">이름|주소|전화|은행|계좌|예금주|유어딜매장ID(선택 — 딜 병기 연결)</code></p>
                       <textarea value={bulkLines} onChange={(e) => setBulkLines(e.target.value)} rows={4} placeholder={'김밥천국 서초점|서초대로 1|02-123-4567|국민|123-45|김밥천\n...'} className="w-full px-3 py-2 border border-gray-200 rounded-xl text-[12px] text-gray-900 font-mono" />
-                      <div className="mt-2 flex justify-end"><button type="button" disabled={busy} onClick={() => void bulkStores(c.id)} className="px-3 py-1.5 rounded-lg bg-gray-900 text-white text-[12px] font-semibold disabled:opacity-50">등록 (PIN 자동발급)</button></div>
+                      <div className="mt-2 flex justify-end"><button type="button" disabled={busy} onClick={() => void bulkStores(c.id)} className="ur-btn ur-btn-sm ur-btn-primary text-[12px] disabled:opacity-50">등록 (PIN 자동발급)</button></div>
                     </div>
                     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                       <p className="text-[12px] font-bold text-gray-900 px-3 py-2 border-b border-gray-100">매장 ({stores.length}) — PIN 은 각 매장 카운터에 전달</p>
                       <div className="max-h-80 overflow-auto">
                         {stores.map((s) => (
                           <div key={s.id} className="flex items-center gap-2 px-3 py-1.5 text-[11.5px] border-t border-gray-50">
-                            <span className={`flex-1 truncate ${s.is_active ? 'text-gray-800' : 'text-gray-300 line-through'}`}>{s.name}{s.seller_id ? <span className="ml-1 text-[9.5px] text-emerald-600 font-bold">🔗딜연결</span> : null}</span>
+                            <span className={`flex-1 truncate ${s.is_active ? 'text-gray-800' : 'text-gray-300 line-through'}`}>{s.name}{s.seller_id ? <span className="ml-1 text-[9.5px] text-tone-ok font-bold">딜연결</span> : null}</span>
                             <code className="shrink-0 font-mono font-bold text-gray-900 bg-gray-100 rounded px-1.5 py-0.5">{s.store_code}</code>
                             <span className="shrink-0 text-gray-400">사용 {formatNumber(s.used_count)}건 · {formatWon(s.used_amount || 0)}</span>
                             <button type="button" onClick={async () => { await api.post(`/api/admin/district/stores/${s.id}/toggle`).catch(() => null); await loadDetail(c.id, 'stores') }} className="shrink-0 text-[10px] text-gray-400 underline">{s.is_active ? '비활성' : '활성'}</button>
@@ -285,11 +285,11 @@ export default function AdminDistrictCouponsPage() {
                         <div className="max-h-56 overflow-auto">
                           {(report.by_source || []).map((s, i) => (
                             <div key={i} className="flex items-center gap-2 px-3 py-1.5 text-[11.5px] border-t border-gray-50">
-                              <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold ${String(s.source) === 'online' ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-600'}`}>{String(s.source) === 'online' ? '경로B 온라인' : '경로A 영수증'}</span>
+                              <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold ${String(s.source) === 'online' ? 'bg-tone-info-bg text-tone-info' : 'bg-gray-100 text-gray-600'}`}>{String(s.source) === 'online' ? '경로B 온라인' : '경로A 영수증'}</span>
                               <span className="shrink-0 text-gray-400">{String(s.funding_source) === 'urteam' ? '유어팀' : '재단'}</span>
                               <span className="flex-1 text-right text-gray-400">{formatNumber(Number(s.issued_count) || 0)}건</span>
                               <span className="shrink-0 font-bold text-gray-900">{formatWon(Number(s.issued_amount) || 0)}</span>
-                              <span className="shrink-0 text-emerald-600">사용 {formatWon(Number(s.used_amount) || 0)}</span>
+                              <span className="shrink-0 text-tone-ok">사용 {formatWon(Number(s.used_amount) || 0)}</span>
                             </div>
                           ))}
                         </div>

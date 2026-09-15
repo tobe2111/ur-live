@@ -242,7 +242,7 @@ export default function AdminWholesaleImportPage() {
     }
   }
 
-  const card = 'bg-white rounded-2xl border border-gray-200 p-5'
+  const card = 'bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-5'
   const label = 'block text-xs font-semibold text-gray-500 mb-1.5'
   const input = 'w-full px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm'
 
@@ -256,19 +256,19 @@ export default function AdminWholesaleImportPage() {
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-5 flex-wrap">
                 <div><p className="text-[11px] text-gray-400">전체 공급상품</p><p className="text-xl font-bold text-gray-900">{(stats.total || 0).toLocaleString()}</p></div>
-                <div><p className="text-[11px] text-gray-400">실상품</p><p className="text-xl font-bold text-emerald-600">{(stats.real || 0).toLocaleString()}</p></div>
-                <div><p className="text-[11px] text-gray-400">데모</p><p className="text-xl font-bold text-amber-500">{(stats.demo || 0).toLocaleString()}</p></div>
+                <div><p className="text-[11px] text-gray-400">실상품</p><p className="text-xl font-bold text-tone-ok">{(stats.real || 0).toLocaleString()}</p></div>
+                <div><p className="text-[11px] text-gray-400">데모</p><p className="text-xl font-bold text-tone-warn">{(stats.demo || 0).toLocaleString()}</p></div>
                 <div><p className="text-[11px] text-gray-400">노출중</p><p className="text-xl font-bold text-gray-700">{(stats.active || 0).toLocaleString()}</p></div>
                 <div><p className="text-[11px] text-gray-400">승인 제조사</p><p className="text-xl font-bold text-gray-700">{(stats.suppliers || 0).toLocaleString()}</p></div>
               </div>
               <div className="flex items-center gap-2">
                 {stats.demo > 0 && (
-                  <button onClick={clearDemo} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50">데모 {stats.demo}개 정리</button>
+                  <button onClick={clearDemo} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold border border-rule bg-white text-tone-bad hover:bg-gray-100 disabled:opacity-50">데모 {stats.demo}개 정리</button>
                 )}
                 <button onClick={seedDemo} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50">데모 채우기</button>
               </div>
             </div>
-            {stats.demo > 0 && <p className="text-[11px] text-amber-600 mt-2">⚠️ 데모 상품 {stats.demo}개가 카탈로그에 섞여 있습니다 — 실상품 등록 전 정리를 권장합니다.</p>}
+            {stats.demo > 0 && <p className="text-[11px] text-tone-warn mt-2">데모 상품 {stats.demo}개가 카탈로그에 섞여 있습니다 — 실상품 등록 전 정리를 권장합니다.</p>}
           </div>
         )}
 
@@ -276,10 +276,10 @@ export default function AdminWholesaleImportPage() {
         <div className={card}>
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
-              <p className="text-sm font-bold text-gray-900">🩺 카탈로그 노출 진단</p>
+              <p className="text-sm font-bold text-gray-900">카탈로그 노출 진단</p>
               <p className="text-[11px] text-gray-400 mt-0.5">상품을 등록했는데 도매몰에 안 보일 때 — 왜 숨겨졌는지 사유별로 진단하고 한 번에 정정합니다.</p>
             </div>
-            <button onClick={runDiagnostic} disabled={diagLoading} className="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-900 text-white hover:bg-gray-900 disabled:opacity-50 whitespace-nowrap">{diagLoading ? '진단 중…' : '진단 실행'}</button>
+            <button onClick={runDiagnostic} disabled={diagLoading} className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-50 whitespace-nowrap">{diagLoading ? '진단 중…' : '진단 실행'}</button>
           </div>
           {diag && (() => {
             const s = diag.summary || {}
@@ -296,18 +296,18 @@ export default function AdminWholesaleImportPage() {
               <div className="mt-4 space-y-4">
                 <div className="flex items-center gap-6 flex-wrap">
                   <div><p className="text-[11px] text-gray-400">공급원본 전체</p><p className="text-xl font-bold text-gray-900">{(s.total || 0).toLocaleString()}</p></div>
-                  <div><p className="text-[11px] text-gray-400">카탈로그 노출</p><p className="text-xl font-bold text-emerald-600">{(s.catalog_visible || 0).toLocaleString()}</p></div>
-                  <div><p className="text-[11px] text-gray-400">숨김</p><p className="text-xl font-bold text-red-600">{hidden.toLocaleString()}</p></div>
+                  <div><p className="text-[11px] text-gray-400">카탈로그 노출</p><p className="text-xl font-bold text-tone-ok">{(s.catalog_visible || 0).toLocaleString()}</p></div>
+                  <div><p className="text-[11px] text-gray-400">숨김</p><p className="text-xl font-bold text-tone-bad">{hidden.toLocaleString()}</p></div>
                 </div>
 
                 {reasons.length === 0 ? (
-                  <p className="text-sm text-emerald-600">✅ 숨김 사유 없음 — 모든 공급원본이 카탈로그 조건을 통과합니다. 그래도 안 보이면 캐시/콜드부팅 — 60초 후 도매몰 새로고침하세요.</p>
+                  <p className="text-sm text-tone-ok">숨김 사유 없음 — 모든 공급원본이 카탈로그 조건을 통과합니다. 그래도 안 보이면 캐시/콜드부팅 — 60초 후 도매몰 새로고침하세요.</p>
                 ) : (
                   <div className="text-sm">
                     <p className="font-semibold text-gray-700 mb-1.5">숨김 사유 (조건별 — 중복 가능)</p>
                     <ul className="space-y-1">
                       {reasons.map(r => (
-                        <li key={r.k} className="flex justify-between gap-3 text-gray-600"><span>{r.k}</span><span className="font-bold text-red-600">{r.v.toLocaleString()}개</span></li>
+                        <li key={r.k} className="flex justify-between gap-3 text-gray-600"><span>{r.k}</span><span className="font-bold text-tone-bad">{r.v.toLocaleString()}개</span></li>
                       ))}
                     </ul>
                   </div>
@@ -318,7 +318,7 @@ export default function AdminWholesaleImportPage() {
                     <p className="font-semibold text-gray-700 mb-1.5">몰별 공급원본 분포</p>
                     <ul className="space-y-1">
                       {(diag.by_mall || []).map(m => (
-                        <li key={m.mall_id} className="flex justify-between gap-3 text-gray-600"><span>몰 #{m.mall_id}{m.mall_id !== 1 ? ' ⚠️' : ''}</span><span className="font-semibold text-gray-800">{m.c.toLocaleString()}개</span></li>
+                        <li key={m.mall_id} className="flex justify-between gap-3 text-gray-600"><span>몰 #{m.mall_id}{m.mall_id !== 1 ? ' ' : ''}</span><span className="font-semibold text-gray-800">{m.c.toLocaleString()}개</span></li>
                       ))}
                     </ul>
                   </div>
@@ -333,8 +333,8 @@ export default function AdminWholesaleImportPage() {
                 </div>
 
                 {(diag.malls || []).length > 1 && (
-                  <div className="text-[12px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-                    ⚠️ 몰이 {diag.malls.length}개 있습니다. 판매사 계정이 속한 몰과 상품의 몰이 다르면 상품이 안 보입니다 — 위 '몰별 분포'와 대조하세요.
+                  <div className="text-[12px] text-tone-warn bg-white border border-rule rounded-lg px-3 py-2">
+                    몰이 {diag.malls.length}개 있습니다. 판매사 계정이 속한 몰과 상품의 몰이 다르면 상품이 안 보입니다 — 위 '몰별 분포'와 대조하세요.
                     <div className="mt-1 space-y-0.5">{diag.malls.map(m => <div key={m.id}>· 몰 #{m.id} {m.name || ''} {m.host ? `(${m.host})` : ''} {m.active ? '' : '[비활성]'}</div>)}</div>
                   </div>
                 )}
@@ -351,10 +351,10 @@ export default function AdminWholesaleImportPage() {
                           {diag.hidden_sample.map(p => (
                             <tr key={p.id} className="border-t border-gray-50 text-gray-600">
                               <td className="px-2 py-1.5 text-gray-900">{p.name}{p.is_demo ? ' (데모)' : ''}</td>
-                              <td className="px-2 py-1.5 text-center">{p.is_active ? '✅' : '❌'}</td>
+                              <td className="px-2 py-1.5 text-center">{p.is_active ? 'OK' : 'FAIL'}</td>
                               <td className="px-2 py-1.5 text-center">{p.supply_source_id == null ? 'NULL' : p.supply_source_id}</td>
                               <td className="px-2 py-1.5 text-right">{(p.supply_price || 0).toLocaleString()}</td>
-                              <td className="px-2 py-1.5 text-center">{p.mall_id !== 1 ? `${p.mall_id} ⚠️` : p.mall_id}</td>
+                              <td className="px-2 py-1.5 text-center">{p.mall_id !== 1 ? `${p.mall_id} (주의)` : p.mall_id}</td>
                               <td className="px-2 py-1.5 text-center">{p.supply_visibility}</td>
                             </tr>
                           ))}
@@ -366,7 +366,7 @@ export default function AdminWholesaleImportPage() {
 
                 {hidden > 0 && (
                   <div className="flex flex-wrap gap-2 pt-1">
-                    <button onClick={() => runRepair({})} disabled={repairing} className="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-900 text-white hover:bg-gray-900 disabled:opacity-50">데이터 정합 정정 (소스·몰)</button>
+                    <button onClick={() => runRepair({})} disabled={repairing} className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-50">데이터 정합 정정 (소스·몰)</button>
                     <button onClick={() => runRepair({ activate: true })} disabled={repairing} className="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50">+ 비활성 상품 노출</button>
                     <button onClick={() => runRepair({ activate: true, open_visibility: true })} disabled={repairing} className="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50">+ 공급범위까지 전체 공개</button>
                   </div>
@@ -387,11 +387,11 @@ export default function AdminWholesaleImportPage() {
             </form>
           </div>
           {selectedIds.size > 0 && (
-            <div className="flex items-center justify-between gap-3 mb-3 px-3 py-2 rounded-lg bg-red-50 border border-red-100">
-              <span className="text-sm font-semibold text-red-700">{selectedIds.size}개 선택됨</span>
+            <div className="flex items-center justify-between gap-3 mb-3 px-3 py-2 rounded-lg bg-white border border-rule">
+              <span className="text-sm font-semibold text-tone-bad">{selectedIds.size}개 선택됨</span>
               <div className="flex items-center gap-2">
                 <button onClick={() => setSelectedIds(new Set())} className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-white text-gray-600 border border-gray-200 hover:bg-gray-50">선택 해제</button>
-                <button onClick={bulkDelete} disabled={bulkDeleting} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-bold bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">
+                <button onClick={bulkDelete} disabled={bulkDeleting} className="ur-btn ur-btn-sm ur-btn-danger inline-flex items-center gap-1 disabled:opacity-50">
                   <Trash2 className="w-4 h-4" /> {bulkDeleting ? '삭제 중…' : `선택 ${selectedIds.size}개 삭제`}
                 </button>
               </div>
@@ -420,7 +420,7 @@ export default function AdminWholesaleImportPage() {
                 </thead>
                 <tbody>
                   {products.map(p => (
-                    <tr key={p.id} className={'border-t border-gray-100 ' + (selectedIds.has(p.id) ? 'bg-red-50/50' : '')}>
+                    <tr key={p.id} className={'border-t border-gray-100 ' + (selectedIds.has(p.id) ? 'border border-rule bg-white' : '')}>
                       <td className="px-3 py-2 text-center">
                         <input type="checkbox" checked={selectedIds.has(p.id)} onChange={() => toggleOne(p.id)}
                           aria-label={`${p.name} 선택`} className="w-4 h-4 accent-red-600 cursor-pointer" />
@@ -441,14 +441,14 @@ export default function AdminWholesaleImportPage() {
                       <td className="px-3 py-2 text-gray-600 truncate max-w-[120px]">{p.supplier || '-'}</td>
                       <td className="px-3 py-2 text-center whitespace-nowrap">
                         {p.is_demo
-                          ? <span className="text-[11px] font-semibold text-amber-600">데모</span>
+                          ? <span className="text-[11px] font-semibold text-tone-warn">데모</span>
                           : Number(p.is_active) === 1
-                            ? <span className="text-[11px] font-semibold text-emerald-600">노출</span>
+                            ? <span className="text-[11px] font-semibold text-tone-ok">노출</span>
                             : <span className="text-[11px] text-gray-400">숨김</span>}
                       </td>
                       <td className="px-3 py-2 text-right">
                         <button onClick={() => deleteProduct(p)} disabled={deletingId === p.id}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[12px] font-semibold bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50">
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[12px] font-semibold border border-rule bg-white text-tone-bad hover:bg-gray-100 disabled:opacity-50">
                           <Trash2 className="w-3.5 h-3.5" /> {deletingId === p.id ? '삭제 중' : '삭제'}
                         </button>
                       </td>
@@ -522,10 +522,10 @@ export default function AdminWholesaleImportPage() {
         {result && (
           <div className={card}>
             <div className="flex items-center gap-2 mb-3">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+              <CheckCircle2 className="w-5 h-5 text-tone-ok" />
               <p className="text-sm font-bold text-gray-900">
-                등록 완료 — 총 {result.summary.total}행 중 <span className="text-emerald-600">{result.summary.created}개 성공</span>
-                {result.summary.failed > 0 && <span className="text-red-600"> · {result.summary.failed}개 실패</span>}
+                등록 완료 — 총 {result.summary.total}행 중 <span className="text-tone-ok">{result.summary.created}개 성공</span>
+                {result.summary.failed > 0 && <span className="text-tone-bad"> · {result.summary.failed}개 실패</span>}
                 <span className="text-gray-400 font-normal"> (제조사 #{result.supplier_id})</span>
               </p>
             </div>
@@ -540,7 +540,7 @@ export default function AdminWholesaleImportPage() {
                       <tr key={i} className="border-t border-gray-100">
                         <td className="px-3 py-1.5 text-gray-500">{r.row}</td>
                         <td className="px-3 py-1.5 text-gray-700">{r.name || '-'}</td>
-                        <td className="px-3 py-1.5 text-red-600 flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" />{r.reason}</td>
+                        <td className="px-3 py-1.5 text-tone-bad flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" />{r.reason}</td>
                       </tr>
                     ))}
                   </tbody>

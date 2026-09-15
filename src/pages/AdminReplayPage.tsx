@@ -139,7 +139,7 @@ export default function AdminReplayPage() {
           actions={
             <button
               onClick={() => { setShowForm(!showForm); if (editingId) resetForm() }}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700"
+              className="ur-btn ur-btn-md ur-btn-danger inline-flex items-center gap-1.5"
             >
               <Plus className="h-3.5 w-3.5" />
               {t('admin.replay.createBtn', { defaultValue: '다시보기 생성' })}
@@ -202,7 +202,7 @@ export default function AdminReplayPage() {
                     />
                     {videoPreviewId && (
                       <a href={`https://youtube.com/watch?v=${videoPreviewId}`} target="_blank" rel="noopener"
-                        className="px-3 py-2 bg-red-50 text-red-600 rounded-lg text-sm flex items-center gap-1 shrink-0">
+                        className="px-3 py-2 border border-rule bg-white text-tone-bad rounded-lg text-sm flex items-center gap-1 shrink-0">
                         <ExternalLink className="w-3.5 h-3.5" /> {t('admin.replay.verifyLink', { defaultValue: '확인' })}
                       </a>
                     )}
@@ -238,7 +238,7 @@ export default function AdminReplayPage() {
                     {form.product_ids.map(pid => {
                       const p = products.find(pp => pp.id === pid)
                       return (
-                        <span key={pid} className="flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium">
+                        <span key={pid} className="flex items-center gap-1 px-2 py-1 bg-tone-info-bg text-tone-info rounded-lg text-xs font-medium">
                           {p?.name || `#${pid}`}
                           <button onClick={() => setForm(f => ({ ...f, product_ids: f.product_ids.filter(id => id !== pid) }))}>
                             <X className="w-3 h-3" />
@@ -263,13 +263,13 @@ export default function AdminReplayPage() {
                             : [...f.product_ids, p.id]
                         }))}
                         className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm border-b border-gray-50 last:border-0 ${
-                          selected ? 'bg-blue-50' : 'hover:bg-gray-50'
+                          selected ? 'border border-rule bg-white' : 'hover:bg-gray-50'
                         }`}
                       >
                         {p.image_url && <img src={p.image_url} alt="" className="w-8 h-8 rounded object-cover shrink-0" loading="lazy" />}
                         <span className="flex-1 truncate">{p.name}</span>
                         <span className="text-xs text-gray-400 shrink-0">{formatNumber(p.price)}원</span>
-                        {selected && <Check className="w-4 h-4 text-blue-600 shrink-0" />}
+                        {selected && <Check className="w-4 h-4 text-gray-700 shrink-0" />}
                       </button>
                     )
                   })}
@@ -279,7 +279,7 @@ export default function AdminReplayPage() {
 
             <div className="flex gap-2 mt-5">
               <button onClick={handleSubmit} disabled={submitting}
-                className="px-6 py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 disabled:opacity-50">
+                className="ur-btn ur-btn-md ur-btn-danger disabled:opacity-50">
                 {submitting ? t('admin.replay.processing', { defaultValue: '처리 중...' }) : editingId ? t('admin.replay.formEdit', { defaultValue: '수정' }) : t('admin.replay.formCreate', { defaultValue: '생성' })}
               </button>
               <button onClick={resetForm} className="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200">
@@ -292,7 +292,7 @@ export default function AdminReplayPage() {
         {/* 다시보기 목록 */}
         {loading ? (
           <div className="flex justify-center py-20">
-            <div className="w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-4 border-brand border-t-transparent rounded-full animate-spin" />
           </div>
         ) : streams.length === 0 ? (
           <div className="text-center py-20">
@@ -335,13 +335,13 @@ export default function AdminReplayPage() {
                     {/* 🗑️ 2026-07-07 라이브커머스 제거: /live 뷰어 링크 삭제(관리 기능만 유지). */}
                     <button
                       onClick={() => startEdit(s)}
-                      className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-600 text-xs font-medium rounded-lg hover:bg-blue-100"
+                      className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 bg-tone-info-bg text-tone-info text-xs font-medium rounded-lg hover:bg-gray-100"
                     >
                       <Edit2 className="w-3 h-3" /> 수정
                     </button>
                     <button
                       onClick={() => handleDelete(s.id)}
-                      className="flex items-center justify-center px-2 py-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                      className="flex items-center justify-center px-2 py-1.5 text-gray-400 hover:text-tone-bad hover:bg-gray-100 rounded-lg"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>

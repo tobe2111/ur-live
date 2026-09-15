@@ -67,21 +67,21 @@ export default function AdminFunnelPage() {
         subtitle="최근 14일 · 익명 계측(개인정보 0) · 유어딜 정체성 결정 근거"
       />
 
-      <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900">
-        <p className="font-bold text-sm mb-1">📖 이 화면은?</p>
+      <div className="mb-4 p-4 bg-white border border-rule rounded-lg text-xs text-gray-700">
+        <p className="font-bold text-sm mb-1">이 화면은?</p>
         <p>사용자가 <strong>어디서 이탈하는지</strong>를 실제 이벤트로 측정합니다. 계측을 방금 심었으니 <strong>데이터가 쌓이는 데 며칠</strong> 걸려요. 숫자가 충분해지면 "동네딜 vs 유어샵" 정체성 결정을 감이 아니라 근거로 하실 수 있습니다.</p>
       </div>
 
       {isError && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800 flex items-center justify-between">
+        <div className="mb-4 p-4 bg-white border border-rule rounded-lg text-sm text-tone-bad flex items-center justify-between">
           <span>데이터를 불러오지 못했습니다.</span>
-          <button onClick={() => refetch()} className="px-3 py-1 bg-red-600 text-white rounded text-xs font-medium">다시 시도</button>
+          <button onClick={() => refetch()} className="ur-btn ur-btn-sm ur-btn-danger rounded">다시 시도</button>
         </div>
       )}
       {isLoading && <p className="text-sm text-gray-400 py-8 text-center">불러오는 중…</p>}
 
       {!isLoading && !hasData && (
-        <div className="p-6 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-900">
+        <div className="p-6 bg-white border border-rule rounded-lg text-sm text-tone-warn">
           아직 쌓인 데이터가 없습니다. 계측을 방금 배포했다면 사용자 트래픽이 발생한 뒤(수 시간~며칠) 여기에 나타납니다.
         </div>
       )}

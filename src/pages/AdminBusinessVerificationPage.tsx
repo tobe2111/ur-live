@@ -93,8 +93,8 @@ export default function AdminBusinessVerificationPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900">
-              ⚠️ <strong>{sellers.length}건</strong> 검증 대기 — 보통 1-3 영업일 내 처리 권장.
+            <div className="bg-white border border-rule rounded-xl p-3 text-xs text-tone-warn">
+              <strong>{sellers.length}건</strong> 검증 대기 — 보통 1-3 영업일 내 처리 권장.
               승인 시 셀러는 현금 정산 + 딜 환급 가능 (세법 기준 원천징수 자동 적용 — 사업소득 3.3% / 기타소득 8.8%).
             </div>
 
@@ -124,7 +124,7 @@ export default function AdminBusinessVerificationPage() {
                         <h3 className="text-base font-bold text-gray-900">{s.name}</h3>
                         <p className="text-xs text-gray-500 mt-0.5">셀러 ID #{s.id}</p>
                       </div>
-                      <span className="inline-flex px-2 py-0.5 text-[10px] font-bold rounded-full bg-amber-100 text-amber-800">
+                      <span className="inline-flex px-2 py-0.5 text-[10px] font-bold rounded-full bg-tone-warn-bg text-tone-warn">
                         {s.business_registration_reject_reason ? '재제출' : '검증 대기'}
                       </span>
                     </div>
@@ -145,12 +145,12 @@ export default function AdminBusinessVerificationPage() {
                     </dl>
 
                     {s.business_registration_reject_reason && (
-                      <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded text-[11px] text-red-700">
-                        ⚠️ 이전 반려 사유: {s.business_registration_reject_reason}
+                      <div className="mt-3 p-2 bg-white border border-rule rounded text-[11px] text-tone-bad">
+                        이전 반려 사유: {s.business_registration_reject_reason}
                       </div>
                     )}
 
-                    <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-[11px] text-blue-900 space-y-1">
+                    <div className="mt-4 p-3 bg-white border border-rule rounded text-[11px] text-gray-700 space-y-1">
                       <p className="font-bold">검증 체크리스트</p>
                       <ul className="space-y-0.5 ml-3 list-disc">
                         <li>이미지가 사업자등록증인지 확인</li>
@@ -164,18 +164,18 @@ export default function AdminBusinessVerificationPage() {
                     {s.business_number && (
                       <a href={`https://teht.hometax.go.kr/websquare/websquare.html?w2xPath=/ui/ab/a/a/UTEABAAA13.xml`}
                         target="_blank" rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 mt-3 text-[11px] text-blue-600 hover:underline">
+                        className="inline-flex items-center gap-1 mt-3 text-[11px] text-brand-text hover:underline">
                         <ExternalLink className="w-3 h-3" /> 홈택스에서 사업자번호 진위 확인
                       </a>
                     )}
 
                     <div className="flex gap-2 mt-5">
                       <button onClick={() => reject(s.id)}
-                        className="flex-1 inline-flex items-center justify-center gap-1 px-3 py-2 bg-red-50 text-red-700 text-xs font-semibold rounded-lg hover:bg-red-100">
+                        className="flex-1 inline-flex items-center justify-center gap-1 px-3 py-2 border border-rule bg-white text-tone-bad text-xs font-semibold rounded-lg hover:bg-gray-100">
                         <XCircle className="w-3.5 h-3.5" /> 반려
                       </button>
                       <button onClick={() => verify(s.id)}
-                        className="flex-1 inline-flex items-center justify-center gap-1 px-3 py-2 bg-gray-900 text-white text-xs font-bold rounded-lg hover:bg-gray-900">
+                        className="ur-btn ur-btn-md ur-btn-primary flex-1 inline-flex items-center justify-center gap-1">
                         <CheckCircle className="w-3.5 h-3.5" /> 승인
                       </button>
                     </div>
@@ -186,18 +186,18 @@ export default function AdminBusinessVerificationPage() {
                         try {
                           const r = await api.post(`/api/admin/sellers/${s.id}/notify-magic-link`, {}, { headers: h() })
                           if (r.data?.success) {
-                            void alertDialog(`✅ 발송 완료\n링크: ${r.data.data?.stats_url || ''}`)
+                            void alertDialog(`발송 완료\n링크: ${r.data.data?.stats_url || ''}`)
                           } else {
-                            void alertDialog(`❌ ${r.data?.error || '실패'}`)
+                            void alertDialog(`${r.data?.error || '실패'}`)
                           }
                         } catch (err: unknown) {
                           const ax = err as { response?: { data?: { error?: string } } }
-                          void alertDialog(`❌ ${ax.response?.data?.error || '실패'}`)
+                          void alertDialog(`${ax.response?.data?.error || '실패'}`)
                         }
                       }}
-                      className="w-full mt-2 inline-flex items-center justify-center gap-1 px-3 py-2 bg-blue-50 text-blue-700 text-xs font-semibold rounded-lg hover:bg-blue-100"
+                      className="w-full mt-2 inline-flex items-center justify-center gap-1 px-3 py-2 border border-rule bg-white text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-100"
                     >
-                      📱 매장 사장님께 매직링크 카톡 발송
+                      매장 사장님께 매직링크 카톡 발송
                     </button>
                   </div>
                 </div>

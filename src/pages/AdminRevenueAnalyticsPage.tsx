@@ -93,10 +93,10 @@ export default function AdminRevenueAnalyticsPage() {
   const loading = revenueQ.isLoading || topSellersQ.isLoading || topProductsQ.isLoading || categoriesQ.isLoading
 
   const summaryCards = [
-    { label: '총 매출', value: `${fmt(summary?.total_revenue)}원`, icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-    { label: '일 평균 매출', value: `${fmt(summary?.average_daily)}원`, icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { label: '주문 건수', value: `${fmt(summary?.order_count)}건`, icon: ShoppingCart, color: 'text-purple-600', bg: 'bg-purple-50' },
-    { label: '평균 주문 금액', value: `${fmt(summary?.average_order_value)}원`, icon: BarChart2, color: 'text-amber-600', bg: 'bg-amber-50' },
+    { label: '총 매출', value: `${fmt(summary?.total_revenue)}원`, icon: DollarSign, color: 'text-tone-ok', bg: 'border border-rule bg-white' },
+    { label: '일 평균 매출', value: `${fmt(summary?.average_daily)}원`, icon: TrendingUp, color: 'text-gray-700', bg: 'border border-rule bg-white' },
+    { label: '주문 건수', value: `${fmt(summary?.order_count)}건`, icon: ShoppingCart, color: 'text-gray-700', bg: 'border border-rule bg-white' },
+    { label: '평균 주문 금액', value: `${fmt(summary?.average_order_value)}원`, icon: BarChart2, color: 'text-tone-warn', bg: 'border border-rule bg-white' },
   ]
 
   return (
@@ -133,7 +133,7 @@ export default function AdminRevenueAnalyticsPage() {
           {/* Summary Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {summaryCards.map(card => (
-              <div key={card.label} className="bg-white rounded-xl shadow-sm p-5">
+              <div key={card.label} className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-5">
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-lg ${card.bg} flex items-center justify-center`}>
                     <card.icon className={`w-5 h-5 ${card.color}`} />
@@ -148,7 +148,7 @@ export default function AdminRevenueAnalyticsPage() {
           </div>
 
           {/* Revenue Chart */}
-          <div className="bg-white rounded-xl shadow-sm p-5">
+          <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-5">
             <h3 className="text-sm font-semibold text-gray-900 mb-4">매출 추이</h3>
             {chartData.length > 0 ? (
               <Suspense fallback={<ChartFallback height={320} />}>
@@ -161,7 +161,7 @@ export default function AdminRevenueAnalyticsPage() {
 
           {/* Order Count Line Chart */}
           {chartData.length > 0 && (
-            <div className="bg-white rounded-xl shadow-sm p-5">
+            <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-5">
               <h3 className="text-sm font-semibold text-gray-900 mb-4">주문 건수 추이</h3>
               <Suspense fallback={<ChartFallback height={280} />}>
                 <OrderCountLineChart chartData={chartData} />
@@ -172,7 +172,7 @@ export default function AdminRevenueAnalyticsPage() {
           {/* Two column: Top Sellers + Category Pie */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Top Sellers */}
-            <div className="bg-white rounded-xl shadow-sm p-5">
+            <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-5">
               <h3 className="text-sm font-semibold text-gray-900 mb-4">TOP 10 셀러</h3>
               {topSellers.length > 0 ? (
                 <div className="overflow-x-auto">
@@ -203,7 +203,7 @@ export default function AdminRevenueAnalyticsPage() {
             </div>
 
             {/* Category Pie Chart */}
-            <div className="bg-white rounded-xl shadow-sm p-5">
+            <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-5">
               <h3 className="text-sm font-semibold text-gray-900 mb-4">카테고리별 매출</h3>
               {categories.length > 0 ? (
                 <div className="flex flex-col items-center">
@@ -226,7 +226,7 @@ export default function AdminRevenueAnalyticsPage() {
           </div>
 
           {/* Top Products */}
-          <div className="bg-white rounded-xl shadow-sm p-5">
+          <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-5">
             <h3 className="text-sm font-semibold text-gray-900 mb-4">TOP 10 상품</h3>
             {topProducts.length > 0 ? (
               <div className="overflow-x-auto">

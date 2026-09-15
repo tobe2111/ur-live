@@ -112,14 +112,14 @@ export default function AdminInfluencerDisputesPage() {
                     <button
                       onClick={() => resolve(d, 'resolved')}
                       disabled={processing === d.id}
-                      className="px-3 py-1.5 text-xs font-bold bg-gray-900 text-white rounded-lg flex items-center gap-1 disabled:opacity-40"
+                      className="ur-btn ur-btn-sm ur-btn-primary flex items-center gap-1 disabled:opacity-40"
                     >
                       <CheckCircle className="w-3 h-3" /> 해결
                     </button>
                     <button
                       onClick={() => resolve(d, 'rejected')}
                       disabled={processing === d.id}
-                      className="px-3 py-1.5 text-xs font-bold bg-red-500 text-white rounded-lg flex items-center gap-1 disabled:opacity-40"
+                      className="ur-btn ur-btn-sm ur-btn-danger flex items-center gap-1 disabled:opacity-40"
                     >
                       <XCircle className="w-3 h-3" /> 거절
                     </button>

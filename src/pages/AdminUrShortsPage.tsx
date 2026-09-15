@@ -174,12 +174,12 @@ export default function AdminUrShortsPage() {
 
         {msg && (
           <div className={`rounded-lg px-4 py-3 text-sm ${
-            msg.kind === 'ok' ? 'bg-blue-50 text-blue-700' : msg.kind === 'warn' ? 'bg-amber-50 text-amber-800' : 'bg-red-50 text-red-700'}`}>
+            msg.kind === 'ok' ? 'border border-rule bg-white text-gray-700' : msg.kind === 'warn' ? 'border border-rule bg-white text-tone-warn' : 'border border-rule bg-white text-tone-bad'}`}>
             {msg.text}
           </div>
         )}
 
-        <div className="rounded-xl bg-white p-4 shadow-sm sm:p-5">
+        <div className="rounded-xl bg-white p-4 border border-rule sm:p-5">
           <div className="mb-1 text-[14px] font-bold text-gray-900">채널</div>
           <p className="mb-3 text-[12.5px] text-gray-500">
             채널을 적어 두면 나중에 새 영상을 자동으로 받아올 수 있습니다. 지금은 기록용입니다.
@@ -197,7 +197,7 @@ export default function AdminUrShortsPage() {
           </div>
         </div>
 
-        <div className="rounded-xl bg-white p-4 shadow-sm sm:p-5">
+        <div className="rounded-xl bg-white p-4 border border-rule sm:p-5">
           <div className="mb-1 text-[14px] font-bold text-gray-900">영상 추가</div>
           <p className="mb-3 text-[12.5px] text-gray-500">
             쇼츠 주소를 붙여 넣으세요 — <b>여러 개를 한 번에</b> 넣어도 됩니다(한 줄에 하나, 최대 {URSHORTS_BULK_MAX}개).
@@ -212,14 +212,14 @@ export default function AdminUrShortsPage() {
               className="min-w-[240px] flex-1 resize-y rounded-lg border border-gray-200 px-3 py-2 text-[13px] leading-relaxed text-gray-900"
             />
             <button onClick={() => void add()} disabled={busy || parsed.ok.length === 0}
-              className="flex h-fit items-center gap-1.5 rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white disabled:opacity-40">
+              className="ur-btn ur-btn-md ur-btn-primary flex h-fit items-center gap-1.5 text-[13px] disabled:opacity-40">
               <Plus size={15} />
               {progress ? `${progress.done}/${progress.total}` : parsed.ok.length > 1 ? `${Math.min(parsed.ok.length, URSHORTS_BULK_MAX)}개 추가` : '추가'}
             </button>
           </div>
           {hint && (
             <p className={`mt-2 text-[12px] ${
-              hint.kind === 'ok' ? 'text-blue-600' : hint.kind === 'warn' ? 'text-amber-600' : 'text-red-600'}`}>
+              hint.kind === 'ok' ? 'text-gray-700' : hint.kind === 'warn' ? 'text-tone-warn' : 'text-tone-bad'}`}>
               {hint.text}
             </p>
           )}
@@ -241,7 +241,7 @@ export default function AdminUrShortsPage() {
           </label>
         </div>
 
-        <div className="rounded-xl bg-white shadow-sm">
+        <div className="rounded-xl bg-white border border-rule">
           <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-gray-100 px-4 py-3 sm:px-5">
             <div className="text-[14px] font-bold text-gray-900">
               영상 {rows.length}편
@@ -251,12 +251,12 @@ export default function AdminUrShortsPage() {
             </div>
             <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
               {orphan > 0 && (
-                <span className="flex items-center gap-1 text-[12.5px] font-semibold text-red-600">
+                <span className="flex items-center gap-1 text-[12.5px] font-semibold text-tone-bad">
                   <AlertCircle size={14} /> 이용권을 안 고른 영상 {orphan}편
                 </span>
               )}
               {noConsent > 0 && (
-                <span className="flex items-center gap-1 text-[12.5px] font-semibold text-amber-600">
+                <span className="flex items-center gap-1 text-[12.5px] font-semibold text-tone-warn">
                   <AlertCircle size={14} /> 허락 미확인 {noConsent}편
                 </span>
               )}
@@ -290,7 +290,7 @@ export default function AdminUrShortsPage() {
                         <button
                           onClick={() => void refreshMeta(r.id)}
                           title="유튜브에서 제목·채널 가져오기"
-                          className="flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-semibold text-blue-600 hover:bg-blue-50"
+                          className="flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-semibold text-tone-info hover:bg-gray-100"
                         >
                           <RefreshCw size={10} /> 가져오기
                         </button>
@@ -299,7 +299,7 @@ export default function AdminUrShortsPage() {
                   </div>
 
                   {/* 🔴 이용권 연결이 이 화면의 전부다. 안 고른 것은 빨갛게 남아 할 일이 보인다.
-                      🔎 2026-09-08 (대표 *"ID 하나하나 다 모르는데"*): 숫자 입력 + 상태 pill 두 칸이던
+                      2026-09-08 (대표 *"ID 하나하나 다 모르는데"*): 숫자 입력 + 상태 pill 두 칸이던
                          것을 **고르는 칸 하나**로 합쳤다. 번호를 아는 사람은 아무도 없고, 틀린 번호는
                          에러도 안 나고 엉뚱한 이용권에 조용히 붙는다. 이제 이름·매장명으로 찾아 누른다. */}
                   <ProductPicker
@@ -317,7 +317,7 @@ export default function AdminUrShortsPage() {
                     onClick={() => void patch(r.id, { consent: !r.consent })}
                     title={r.consent ? '허락 확인됨 — 누르면 취소' : '허락 미확인 — 누르면 확인 (기록용, 홈 노출과 무관)'}
                     className={`shrink-0 rounded-lg px-2.5 py-2 text-[11px] font-bold ${
-                      r.consent ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'}`}
+                      r.consent ? 'border border-rule bg-white text-gray-700' : 'border border-rule bg-white text-tone-warn'}`}
                   >
                     {r.consent ? '허락 O' : '허락 ?'}
                   </button>

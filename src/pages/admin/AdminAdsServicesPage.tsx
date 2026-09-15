@@ -66,7 +66,7 @@ export default function AdminAdsServicesPage() {
       if (r.data?.success) {
         const s = r.data.stats || {}
         const pct = (n: number, d: number) => d > 0 ? ` (${Math.round(n / d * 100)}%)` : ''
-        toast.success(`📈 주문 이후 이메일 아웃리치 — 발송 ${s.sent ?? 0} · 개봉 ${s.opened ?? 0}${pct(s.opened, s.sent)} · 회신 ${s.replied ?? 0}${pct(s.replied, s.sent)}${s.bounced ? ` · 반송 ${s.bounced}` : ''} (풀 전체 기간 근사)`)
+        toast.success(`주문 이후 이메일 아웃리치 — 발송 ${s.sent ?? 0} · 개봉 ${s.opened ?? 0}${pct(s.opened, s.sent)} · 회신 ${s.replied ?? 0}${pct(s.replied, s.sent)}${s.bounced ? ` · 반송 ${s.bounced}` : ''} (풀 전체 기간 근사)`)
       } else toast.error(r.data?.error || '성과 조회 실패')
     } catch { toast.error('성과 조회 실패') } finally { setBusy(null) }
   }
@@ -136,30 +136,30 @@ export default function AdminAdsServicesPage() {
                         const upsell = `협찬 게시물에 판매 링크까지 붙이고 싶으시면 유어딜을 연결해 드려요 — 등록은 무료이고, 판매될 때만 비용이 나갑니다. 원하시면 바로 셋업 도와드릴게요!`
                         return (
                           <div className="mt-1 flex flex-wrap gap-1.5">
-                            {isMatch && <a href={`/admin/influencer-pool?q=${encodeURIComponent(region)}&category=${encodeURIComponent(cat)}&store=${encodeURIComponent(store)}`} target="_blank" rel="noreferrer" className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[11.5px] font-semibold">🎯 인플루언서 풀에서 이행 →</a>}
-                            {isOutreach && <a href={`/admin/partner-pool?q=${encodeURIComponent(region || cat)}`} target="_blank" rel="noreferrer" className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[11.5px] font-semibold">🎯 파트너 풀에서 이행 →</a>}
+                            {isMatch && <a href={`/admin/influencer-pool?q=${encodeURIComponent(region)}&category=${encodeURIComponent(cat)}&store=${encodeURIComponent(store)}`} target="_blank" rel="noreferrer" className="px-2 py-0.5 rounded bg-tone-info-bg text-tone-info text-[11.5px] font-semibold">인플루언서 풀에서 이행 →</a>}
+                            {isOutreach && <a href={`/admin/partner-pool?q=${encodeURIComponent(region || cat)}`} target="_blank" rel="noreferrer" className="px-2 py-0.5 rounded bg-tone-info-bg text-tone-info text-[11.5px] font-semibold">파트너 풀에서 이행 →</a>}
                             <button onClick={() => { navigator.clipboard?.writeText(upsell).then(() => toast.success('유어딜 업셀 문구 복사됨 — 이행 완료 안내에 붙여 보내세요')) }}
-                              className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[11.5px] font-semibold" title="이행 완료 시 사장님께: 협찬→유어딜 입점 깔때기">🔁 유어딜 업셀 문구</button>
+                              className="px-2 py-0.5 rounded bg-tone-ok-bg text-tone-ok text-[11.5px] font-semibold" title="이행 완료 시 사장님께: 협찬→유어딜 입점 깔때기">유어딜 업셀 문구</button>
                             <button onClick={() => outreachStats(o.id)} disabled={busy === o.id}
-                              className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[11.5px] font-semibold disabled:opacity-50" title="주문 생성 이후 이메일 아웃리치 발송/개봉/회신(풀 전체 기간 근사)">📈 발송 성과</button>
+                              className="px-2 py-0.5 rounded bg-tone-info-bg text-tone-info text-[11.5px] font-semibold disabled:opacity-50" title="주문 생성 이후 이메일 아웃리치 발송/개봉/회신(풀 전체 기간 근사)">발송 성과</button>
                           </div>
                         )
                       })()}
                     </div>
                     <div className="flex flex-col items-end gap-1.5 shrink-0">
                       <div className="flex items-center gap-1.5">
-                        {o.toss_payment_key ? <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 text-[10.5px] font-bold" title="토스 카드/간편결제 완료 주문">💳 카드</span> : null}
+                        {o.toss_payment_key ? <span className="px-1.5 py-0.5 rounded bg-tone-info-bg text-tone-info text-[10.5px] font-bold" title="토스 카드/간편결제 완료 주문">카드</span> : null}
                         <button disabled={busy === o.id} onClick={() => patchOrder(o.id, { payment_status: o.payment_status === 'paid' ? 'unpaid' : 'paid' }, o.payment_status === 'paid' ? '입금 대기로' : '입금 확인')}
-                          className={`px-2 py-0.5 rounded text-[11.5px] font-bold ${o.payment_status === 'paid' ? 'bg-emerald-50 text-emerald-600' : o.payment_status === 'refunded' ? 'bg-gray-100 text-gray-500' : 'bg-amber-50 text-amber-600'}`}>
+                          className={`px-2 py-0.5 rounded text-[11.5px] font-bold ${o.payment_status === 'paid' ? 'bg-tone-ok-bg text-tone-ok' : o.payment_status === 'refunded' ? 'bg-gray-100 text-gray-500' : 'bg-tone-warn-bg text-tone-warn'}`}>
                           {PAY_KO[o.payment_status] || o.payment_status}{o.payment_status === 'unpaid' ? ' → 확인' : ''}
                         </button>
                         {o.payment_status === 'paid' && (
                           o.toss_payment_key ? (
                             <button disabled={busy === o.id} onClick={() => tossRefund(o.id)}
-                              className="px-1.5 py-0.5 rounded text-[11px] font-semibold text-rose-500 hover:bg-rose-50 disabled:opacity-40" title="토스 결제 주문 — 실제 결제 취소(전액)까지 함께 실행됩니다">💳 환불</button>
+                              className="px-1.5 py-0.5 rounded text-[11px] font-semibold text-tone-bad hover:bg-gray-100 disabled:opacity-40" title="토스 결제 주문 — 실제 결제 취소(전액)까지 함께 실행됩니다">환불</button>
                           ) : (
                             <button disabled={busy === o.id} onClick={() => { if (window.confirm('이 주문을 환불 처리로 표시할까요? (매출·마진 집계에서 제외됩니다)')) patchOrder(o.id, { payment_status: 'refunded' }, '환불 처리') }}
-                              className="px-1.5 py-0.5 rounded text-[11px] font-semibold text-rose-500 hover:bg-rose-50 disabled:opacity-40">환불</button>
+                              className="px-1.5 py-0.5 rounded text-[11px] font-semibold text-tone-bad hover:bg-gray-100 disabled:opacity-40">환불</button>
                           )
                         )}
                       </div>
@@ -181,7 +181,7 @@ export default function AdminAdsServicesPage() {
                     <input defaultValue={o.supplier || ''} placeholder="공급처" onBlur={e => { if (e.target.value !== (o.supplier || '')) patchOrder(o.id, { supplier: e.target.value }, '공급처') }} className="w-28 h-7 rounded border border-gray-200 px-2 text-[11.5px] text-gray-900" />
                     <input defaultValue={o.supplier_order_id || ''} placeholder="상위 주문번호" onBlur={e => { if (e.target.value !== (o.supplier_order_id || '')) patchOrder(o.id, { supplier_order_id: e.target.value }, '주문번호') }} className="w-28 h-7 rounded border border-gray-200 px-2 text-[11.5px] text-gray-900" />
                     <input type="number" defaultValue={o.supplier_cost || 0} placeholder="원가" onBlur={e => { const v = Number(e.target.value) || 0; if (v !== (o.supplier_cost || 0)) patchOrder(o.id, { supplier_cost: v }, '원가') }} className="w-24 h-7 rounded border border-gray-200 px-2 text-[11.5px] text-gray-900 text-right" />
-                    <span className="text-[11.5px] text-gray-500">원가 {formatNumber(o.supplier_cost || 0)}원 → 판매 {formatNumber(o.total_amount)}원 · 마진 <b className={o.margin >= 0 ? 'text-emerald-600' : 'text-red-500'}>{formatNumber(o.margin)}원</b>{o.total_amount > 0 ? ` (${Math.round((o.margin / o.total_amount) * 100)}%)` : ''}</span>
+                    <span className="text-[11.5px] text-gray-500">원가 {formatNumber(o.supplier_cost || 0)}원 → 판매 {formatNumber(o.total_amount)}원 · 마진 <b className={o.margin >= 0 ? 'text-tone-ok' : 'text-tone-bad'}>{formatNumber(o.margin)}원</b>{o.total_amount > 0 ? ` (${Math.round((o.margin / o.total_amount) * 100)}%)` : ''}</span>
                   </div>
                 </div>
               ))}
@@ -201,7 +201,7 @@ export default function AdminAdsServicesPage() {
                   <td className="py-2.5 px-3"><span className="font-medium text-gray-900">{s.name}</span><span className="block text-[11px] text-gray-400">{s.subtitle}</span></td>
                   <td className="py-2.5 px-3 text-right tabular-nums">{formatNumber(s.pricing.unitPrice)}원/{s.pricing.unit}</td>
                   <td className="py-2.5 px-3 text-center">
-                    <button disabled={busy === -s.id} onClick={() => toggleService(s)} className={`px-1.5 py-0.5 rounded text-[11px] font-bold ${s.active ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-400'}`}>{s.active ? '노출' : '숨김'}</button>
+                    <button disabled={busy === -s.id} onClick={() => toggleService(s)} className={`px-1.5 py-0.5 rounded text-[11px] font-bold ${s.active ? 'bg-tone-ok-bg text-tone-ok' : 'bg-gray-100 text-gray-400'}`}>{s.active ? '노출' : '숨김'}</button>
                   </td>
                 </tr>
               ))}
@@ -219,11 +219,11 @@ export default function AdminAdsServicesPage() {
               <div key={r.id} className="rounded-xl border border-gray-200 bg-white p-3 text-[13px]">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <span className="text-amber-500">{'★'.repeat(r.rating)}</span> <span className="font-bold text-gray-900">{r.title}</span>
+                    <span className="text-tone-warn">{'★'.repeat(r.rating)}</span> <span className="font-bold text-gray-900">{r.title}</span>
                     <div className="text-[12px] text-gray-600 mt-0.5 whitespace-pre-wrap">{r.body}</div>
                     <div className="text-[10.5px] text-gray-400 mt-0.5">{r.author_masked} · 상품#{r.service_id} · 계정#{r.account_id} · {(r.created_at || '').slice(0, 10)}</div>
                   </div>
-                  <button disabled={busy === r.id} onClick={() => setReviewStatus(r.id, r.status === 'hidden' ? 'visible' : 'hidden')} className={`shrink-0 px-2 py-1 rounded text-[11.5px] font-bold ${r.status === 'hidden' ? 'bg-gray-100 text-gray-500' : 'bg-emerald-50 text-emerald-600'}`}>{r.status === 'hidden' ? '숨김' : '노출'}</button>
+                  <button disabled={busy === r.id} onClick={() => setReviewStatus(r.id, r.status === 'hidden' ? 'visible' : 'hidden')} className={`shrink-0 px-2 py-1 rounded text-[11.5px] font-bold ${r.status === 'hidden' ? 'bg-gray-100 text-gray-500' : 'border border-rule bg-white text-tone-ok'}`}>{r.status === 'hidden' ? '숨김' : '노출'}</button>
                 </div>
               </div>
             ))}
@@ -237,13 +237,13 @@ export default function AdminAdsServicesPage() {
               <div key={l.id} className="rounded-xl border border-gray-200 bg-white p-3 text-[13px]">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <span className={`font-bold ${l.active ? 'text-blue-600' : 'text-gray-400 line-through'}`}>/l/{l.code}</span>
+                    <span className={`font-bold ${l.active ? 'text-gray-700' : 'text-gray-400 line-through'}`}>/l/{l.code}</span>
                     {l.title && <span className="ml-2 text-[11.5px] text-gray-500">{l.title}</span>}
                     <span className="ml-2 text-[11.5px] text-gray-400 tabular-nums">{formatNumber(l.click_count)} 클릭</span>
                     <div className="text-[11px] text-gray-400 mt-0.5 break-all">{l.target_url}</div>
                     <div className="text-[10.5px] text-gray-400 mt-0.5">계정#{l.account_id} · {(l.created_at || '').slice(0, 10)}</div>
                   </div>
-                  <button disabled={busy === l.id} onClick={() => toggleShortLink(l)} className={`shrink-0 px-2 py-1 rounded text-[11.5px] font-bold ${l.active ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-500'}`}>{l.active ? '활성' : '비활성'}</button>
+                  <button disabled={busy === l.id} onClick={() => toggleShortLink(l)} className={`shrink-0 px-2 py-1 rounded text-[11.5px] font-bold ${l.active ? 'border border-rule bg-white text-tone-ok' : 'bg-gray-100 text-gray-500'}`}>{l.active ? '활성' : '비활성'}</button>
                 </div>
               </div>
             ))}

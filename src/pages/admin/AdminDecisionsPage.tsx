@@ -20,10 +20,10 @@ const STATUS_LABEL: Record<DecisionStatus, string> = {
   open: '답 필요', approved: '승인 · 구현 중', done: '반영 끝', rejected: '반려', expired: '만료',
 }
 const STATUS_CLS: Record<DecisionStatus, string> = {
-  open: 'bg-amber-100 text-amber-800',
-  approved: 'bg-blue-100 text-blue-800',
+  open: 'bg-tone-warn-bg text-tone-warn',
+  approved: 'bg-tone-info-bg text-tone-info',
   done: 'bg-gray-100 text-gray-600',
-  rejected: 'bg-red-100 text-red-700',
+  rejected: 'bg-tone-bad-bg text-tone-bad',
   expired: 'bg-gray-100 text-gray-500',
 }
 
@@ -43,7 +43,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function DecisionCard({ d, open, onToggle, pending, onSaved }: { d: Decision; open: boolean; onToggle: () => void; pending: PendingAnswer | null; onSaved: (p: PendingAnswer) => void }) {
   const st = effectiveStatus(d)
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+    <div className="rounded-[var(--dash-radius,16px)] border border-gray-200 bg-white border border-rule">
       <button type="button" onClick={onToggle} className="w-full text-left px-5 py-4 flex items-start gap-3">
         <span className={`shrink-0 mt-0.5 px-2 py-0.5 rounded-full text-[11px] font-bold ${STATUS_CLS[st]}`}>{STATUS_LABEL[st]}</span>
         <span className="flex-1 min-w-0">
@@ -132,7 +132,7 @@ export default function AdminDecisionsPage() {
       </p>
 
       {decisions.length === 0 ? (
-        <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center text-[13px] text-gray-500">열린 결재가 없습니다.</div>
+        <div className="rounded-[var(--dash-radius,16px)] border border-gray-200 bg-white p-8 text-center text-[13px] text-gray-500">열린 결재가 없습니다.</div>
       ) : (
         <div className="space-y-3">
           {decisions.map(d => (

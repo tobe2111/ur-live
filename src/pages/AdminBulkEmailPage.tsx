@@ -186,7 +186,7 @@ export default function AdminBulkEmailPage() {
   }
 
   const inputCls =
-    'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500'
+    'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand focus:outline-none focus:ring-1 focus:ring-blue-500'
 
   return (
     <AdminLayout title={t('admin.bulkEmail.title', { defaultValue: '단체메일' })}>
@@ -202,7 +202,7 @@ export default function AdminBulkEmailPage() {
           {/* 수신자 필터 */}
           <div className="rounded-xl border border-gray-200 bg-white p-5">
             <h2 className="mb-4 flex items-center gap-2 text-sm font-bold text-gray-900">
-              <Users className="h-4 w-4 text-blue-600" />
+              <Users className="h-4 w-4 text-gray-700" />
               {t('admin.bulkEmail.recipientFilter', { defaultValue: '수신자 필터' })}
             </h2>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -246,17 +246,17 @@ export default function AdminBulkEmailPage() {
             </div>
 
             {/* 미리보기 결과 */}
-            <div className="mt-4 flex items-center justify-between rounded-lg bg-blue-50 px-4 py-3">
+            <div className="mt-4 flex items-center justify-between rounded-lg border border-rule bg-white px-4 py-3">
               <div className="text-sm">
                 {previewing ? (
                   <span className="text-gray-500">{t('admin.bulkEmail.counting', { defaultValue: '집계 중…' })}</span>
                 ) : (
-                  <span className="font-semibold text-blue-700">
+                  <span className="font-semibold text-gray-700">
                     {t('admin.bulkEmail.willSendTo', {
                       defaultValue: `${formatNumber(preview?.count ?? 0)}명에게 발송`,
                     })}
                     {preview?.capped && (
-                      <span className="ml-2 text-xs font-normal text-amber-600">
+                      <span className="ml-2 text-xs font-normal text-tone-warn">
                         {t('admin.bulkEmail.capped', { defaultValue: '(상한 도달 — 일부만 표시)' })}
                       </span>
                     )}
@@ -265,7 +265,7 @@ export default function AdminBulkEmailPage() {
               </div>
               <button
                 onClick={loadPreview}
-                className="flex items-center gap-1 rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-50"
+                className="flex items-center gap-1 rounded-lg border border-transparent bg-white px-3 py-1.5 text-xs font-semibold text-tone-info hover:bg-gray-100"
               >
                 <RefreshCw className="h-3 w-3" />
                 {t('admin.bulkEmail.refresh', { defaultValue: '새로고침' })}
@@ -282,7 +282,7 @@ export default function AdminBulkEmailPage() {
           {/* 메일 작성 */}
           <div className="rounded-xl border border-gray-200 bg-white p-5">
             <h2 className="mb-4 flex items-center gap-2 text-sm font-bold text-gray-900">
-              <Mail className="h-4 w-4 text-blue-600" />
+              <Mail className="h-4 w-4 text-gray-700" />
               {t('admin.bulkEmail.compose', { defaultValue: '메일 작성' })}
             </h2>
             <div className="space-y-3">
@@ -329,7 +329,7 @@ export default function AdminBulkEmailPage() {
               <button
                 onClick={() => handleSend(false)}
                 disabled={sending || (preview?.count ?? 0) === 0}
-                className="flex items-center gap-2 rounded-lg bg-gray-900 px-5 py-2 text-sm font-semibold text-white hover:bg-gray-900 disabled:opacity-50"
+                className="ur-btn ur-btn-md ur-btn-primary flex items-center gap-2 disabled:opacity-50"
               >
                 <Send className="h-4 w-4" />
                 {sending
@@ -349,7 +349,7 @@ export default function AdminBulkEmailPage() {
         <div className="rounded-xl border border-gray-200 bg-white p-5">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-sm font-bold text-gray-900">
-              <Clock className="h-4 w-4 text-blue-600" />
+              <Clock className="h-4 w-4 text-gray-700" />
               {t('admin.bulkEmail.jobsTitle', { defaultValue: '발송 작업 (큐)' })}
             </h2>
             <button onClick={loadJobs} className="text-gray-400 hover:text-gray-600" aria-label="새로고침">
@@ -376,10 +376,10 @@ export default function AdminBulkEmailPage() {
                         : t('admin.bulkEmail.jobPending', { defaultValue: '대기 중' })
                 const badgeCls =
                   job.status === 'done'
-                    ? 'bg-green-100 text-green-700'
+                    ? 'border border-rule bg-white text-tone-ok'
                     : job.status === 'failed'
-                      ? 'bg-red-100 text-red-700'
-                      : 'bg-blue-100 text-blue-700'
+                      ? 'border border-rule bg-white text-tone-bad'
+                      : 'border border-rule bg-white text-gray-700'
                 return (
                   <li key={job.id} className="rounded-lg border border-gray-100 bg-gray-50 p-3">
                     <div className="flex items-start justify-between gap-2">
@@ -395,11 +395,11 @@ export default function AdminBulkEmailPage() {
                       />
                     </div>
                     <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-500">
-                      <span className="text-green-600">
+                      <span className="text-tone-ok">
                         {t('admin.bulkEmail.logSent', { defaultValue: '성공' })} {formatNumber(job.sent)}
                       </span>
                       {job.failed > 0 && (
-                        <span className="text-red-500">
+                        <span className="text-tone-bad">
                           {t('admin.bulkEmail.logFailed', { defaultValue: '실패' })} {formatNumber(job.failed)}
                         </span>
                       )}
@@ -407,7 +407,7 @@ export default function AdminBulkEmailPage() {
                       <span className="ml-auto text-gray-400">{pct}%</span>
                     </div>
                     {active && (
-                      <p className="mt-1 text-[11px] text-blue-500">
+                      <p className="mt-1 text-[11px] text-gray-700">
                         {t('admin.bulkEmail.jobAutoRefresh', { defaultValue: '큐 처리 중 — 자동 갱신됩니다' })}
                       </p>
                     )}
@@ -445,16 +445,16 @@ export default function AdminBulkEmailPage() {
                     )}
                   </div>
                   <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-500">
-                    <span className="text-green-600">
+                    <span className="text-tone-ok">
                       {t('admin.bulkEmail.logSent', { defaultValue: '성공' })} {formatNumber(row.sent_count)}
                     </span>
                     {row.failed_count > 0 && (
-                      <span className="text-red-500">
+                      <span className="text-tone-bad">
                         {t('admin.bulkEmail.logFailed', { defaultValue: '실패' })} {formatNumber(row.failed_count)}
                       </span>
                     )}
                     {row.skipped_count > 0 && (
-                      <span className="text-amber-500">
+                      <span className="text-tone-warn">
                         {t('admin.bulkEmail.logSkipped', { defaultValue: '건너뜀' })} {formatNumber(row.skipped_count)}
                       </span>
                     )}

@@ -43,7 +43,7 @@ export default function AdminRegionDensityPage() {
         <div className="flex items-center justify-between mb-5">
           <div>
             <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-blue-600" /> 동네별 딜 밀도
+              <MapPin className="w-5 h-5 text-gray-700" /> 동네별 딜 밀도
             </h1>
             <p className="text-sm text-gray-500 mt-1">
               매장 행정동 태깅 기반 — 어느 동네에 딜이 깔렸나 / 어디가 비었나 (영입 타겟 결정용)
@@ -58,7 +58,7 @@ export default function AdminRegionDensityPage() {
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{error}</div>
+          <div className="mb-4 p-3 bg-white border border-rule rounded-lg text-sm text-tone-bad">{error}</div>
         )}
 
         <div className="mb-5 grid grid-cols-3 gap-3">

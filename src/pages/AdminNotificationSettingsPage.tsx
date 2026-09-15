@@ -74,7 +74,7 @@ export default function AdminNotificationSettingsPage() {
         />
 
         {/* 채널 비용 안내 */}
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-xs text-blue-900 leading-relaxed">
+        <div className="bg-white border border-rule rounded-xl p-4 text-xs text-gray-700 leading-relaxed">
           <div className="font-bold mb-1">채널별 비용</div>
           <ul className="space-y-0.5 list-disc list-inside">
             <li><b>대시보드</b>: 무료, 사용자가 대시보드 들어와야 봄</li>
@@ -166,8 +166,8 @@ export default function AdminNotificationSettingsPage() {
               if (uncategorized.length === 0) return null
               return (
                 <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                  <div className="px-4 py-2.5 bg-orange-50 border-b border-orange-200">
-                    <h3 className="text-xs font-bold text-orange-700 uppercase tracking-wider">{t('admin.notificationSettings.uncategorized', { defaultValue: '기타 (미분류 — 코드 그룹 추가 필요)' })}</h3>
+                  <div className="px-4 py-2.5 bg-white border-b border-rule">
+                    <h3 className="text-xs font-bold text-tone-warn uppercase tracking-wider">{t('admin.notificationSettings.uncategorized', { defaultValue: '기타 (미분류 — 코드 그룹 추가 필요)' })}</h3>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">

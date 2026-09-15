@@ -129,7 +129,7 @@ export default function AdminWholesaleOrdersPage() {
       {/* 상세 모달 */}
       {detail && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setDetail(null)}>
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-[var(--dash-radius,16px)] max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-gray-900">주문 #{detail.order.id} 상세</h3>
               <button onClick={() => setDetail(null)}><X className="w-5 h-5 text-gray-400" /></button>
@@ -163,7 +163,7 @@ export default function AdminWholesaleOrdersPage() {
             </table>
             </div>
             {['PAID', 'ACCEPTED', 'SHIPPED', 'PARTIAL_REFUNDED', 'DONE'].includes(detail.order.status as string) && (
-              <button onClick={() => forceRefund(detail.order.id)} disabled={refunding} className="inline-flex items-center gap-1.5 px-4 py-2 bg-rose-600 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+              <button onClick={() => forceRefund(detail.order.id)} disabled={refunding} className="ur-btn ur-btn-md ur-btn-danger inline-flex items-center gap-1.5 disabled:opacity-50">
                 {refunding ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />} 관리자 강제 전액환불
               </button>
             )}

@@ -531,7 +531,7 @@ export default function AdminDistributorGradesPage() {
                 {grades.map(g => (
                   <tr key={g.grade} className="border-b border-gray-50">
                     <td className="py-2 pr-4">
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold ${g.is_special ? 'bg-rose-50 text-rose-600' : 'bg-gray-100 text-gray-700'}`}>
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold ${g.is_special ? 'bg-tone-bad-bg text-tone-bad' : 'bg-gray-100 text-gray-700'}`}>
                         <Tag className="w-3 h-3" />{g.grade}
                       </span>
                       {GRADE_NAME[g.grade] && GRADE_NAME[g.grade] !== g.grade && (
@@ -565,7 +565,7 @@ export default function AdminDistributorGradesPage() {
                     <td className="py-2">
                       <button
                         onClick={() => saveGrade(g)} disabled={savingGrade === g.grade}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-900 text-white rounded text-xs font-medium hover:bg-gray-800 disabled:opacity-50"
+                        className="ur-btn ur-btn-sm ur-btn-primary inline-flex items-center gap-1 rounded disabled:opacity-50"
                       >
                         {savingGrade === g.grade ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
                         저장
@@ -584,7 +584,7 @@ export default function AdminDistributorGradesPage() {
         {/* ── 🏭 BIZ-7 등급 자동화 (GMV 기반 auto-grade) ── */}
         <section className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900 mb-1">
-            <TrendingUp className="w-4 h-4 text-indigo-600" /> 등급 자동화 (거래액 기반 자동 승급)
+            <TrendingUp className="w-4 h-4 text-gray-700" /> 등급 자동화 (거래액 기반 자동 승급)
           </h2>
           <p className="text-sm text-gray-500 mb-4">
             판매사의 최근 거래액(GMV)이 임계값을 넘으면 매주 자동으로 <b>상위 등급으로 승급</b>합니다.
@@ -602,7 +602,7 @@ export default function AdminDistributorGradesPage() {
                   <input type="checkbox" checked={agEnabled} onChange={e => setAgEnabled(e.target.checked)} className="w-4 h-4" />
                   <span className="text-sm font-semibold text-gray-900">자동 승급 활성화</span>
                 </label>
-                <span className={`text-xs font-medium px-2 py-0.5 rounded ${agEnabled ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                <span className={`text-xs font-medium px-2 py-0.5 rounded ${agEnabled ? 'bg-tone-ok-bg text-tone-ok' : 'bg-gray-100 text-gray-500'}`}>
                   {agEnabled ? 'ON — 매주 월요일 자동 평가' : 'OFF — 자동 평가 안 함'}
                 </span>
                 <span className="text-xs text-gray-400 ml-auto">
@@ -622,7 +622,7 @@ export default function AdminDistributorGradesPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">🏅 프로 연 구독료 (예치금 결제)</label>
+                  <label className="block text-xs text-gray-500 mb-1">프로 연 구독료 (예치금 결제)</label>
                   <div className="relative">
                     <input type="number" min={1000} max={10000000} step={1000} value={agPlusFee}
                       onChange={e => setAgPlusFee(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
@@ -631,7 +631,7 @@ export default function AdminDistributorGradesPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">💰 기본 플랫폼 마진율 (제조사가 위에 가산)</label>
+                  <label className="block text-xs text-gray-500 mb-1">기본 플랫폼 마진율 (제조사가 위에 가산)</label>
                   <div className="relative">
                     <input type="number" min={0} max={90} step={0.5} value={agCommPct}
                       onChange={e => setAgCommPct(Math.max(0, Math.min(90, Number(e.target.value) || 0)))}
@@ -641,7 +641,7 @@ export default function AdminDistributorGradesPage() {
                 </div>
               </div>
               <p className="text-xs text-gray-400">Standard(B)는 판매사가 연 구독료를 <b>예치금에서 결제</b>해 1년간 적용(PG 미사용). Premium(A)은 위 매출 임계 자동 승급. Basic(C)은 가입 승인 기본.</p>
-              <p className="text-xs text-gray-400">💰 <b>기본 플랫폼 마진율</b>: 제조사가 받을 금액(공급원가) <b>위에</b> 붙이는 기본 마진(%). 공급가 = 공급원가 × (1 + 이 값), 제조사 정산 = 공급원가 전액, 플랫폼 = 공급가 − 공급원가. 예) 마진 10% · 공급원가 10,000 → 공급가 11,000 / 제조사 10,000 / 플랫폼 1,000. <b>상품별로</b> 다르게(스프레드 큰 상품은 더 높게) 설정 가능하며, 고등급(Standard/Premium) 판매사는 마진을 낮춰 더 싸게 공급합니다.</p>
+              <p className="text-xs text-gray-400"><b>기본 플랫폼 마진율</b>: 제조사가 받을 금액(공급원가) <b>위에</b> 붙이는 기본 마진(%). 공급가 = 공급원가 × (1 + 이 값), 제조사 정산 = 공급원가 전액, 플랫폼 = 공급가 − 공급원가. 예) 마진 10% · 공급원가 10,000 → 공급가 11,000 / 제조사 10,000 / 플랫폼 1,000. <b>상품별로</b> 다르게(스프레드 큰 상품은 더 높게) 설정 가능하며, 고등급(Standard/Premium) 판매사는 마진을 낮춰 더 싸게 공급합니다.</p>
 
               {/* 임계값 테이블 */}
               <div>
@@ -679,7 +679,7 @@ export default function AdminDistributorGradesPage() {
                           </td>
                           <td className="py-2 pr-4 text-gray-600 tabular-nums">{formatWon(t.min_gmv)}</td>
                           <td className="py-2">
-                            <button onClick={() => removeThreshold(idx)} className="text-gray-400 hover:text-rose-500"><X className="w-4 h-4" /></button>
+                            <button onClick={() => removeThreshold(idx)} className="text-gray-400 hover:text-tone-bad"><X className="w-4 h-4" /></button>
                           </td>
                         </tr>
                       ))}
@@ -690,10 +690,10 @@ export default function AdminDistributorGradesPage() {
 
               {/* 액션 */}
               <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-gray-100">
-                <button onClick={saveAutoGrade} disabled={agSaving} className="inline-flex items-center gap-1 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-50">
+                <button onClick={saveAutoGrade} disabled={agSaving} className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-1 disabled:opacity-50">
                   {agSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} 설정 저장
                 </button>
-                <button onClick={runAutoGradeNow} disabled={agRunning} className="inline-flex items-center gap-1 px-4 py-2 border border-indigo-300 text-indigo-700 rounded-lg text-sm font-medium hover:bg-indigo-50 disabled:opacity-50">
+                <button onClick={runAutoGradeNow} disabled={agRunning} className="inline-flex items-center gap-1 px-4 py-2 border border-rule text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-100 disabled:opacity-50">
                   {agRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />} 지금 평가 실행
                 </button>
                 <button onClick={loadAutoGrade} disabled={agLoading} className="inline-flex items-center gap-1 px-3 py-2 text-gray-500 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50">
@@ -725,7 +725,7 @@ export default function AdminDistributorGradesPage() {
                 className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-gray-900"
               />
             </div>
-            <button type="submit" disabled={searching} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-50">
+            <button type="submit" disabled={searching} className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-50">
               {searching ? '검색중…' : '검색'}
             </button>
             <button type="button" onClick={() => { setSearch(''); loadDistributors('', true) }} className="px-4 py-2 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50">
@@ -761,20 +761,20 @@ export default function AdminDistributorGradesPage() {
         {/* ── 여신/외상 관리 (BIZ-2 v1) ── */}
         <section className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900 mb-1">
-            <Wallet className="w-4 h-4 text-emerald-600" /> 여신 · 외상 관리
+            <Wallet className="w-4 h-4 text-tone-ok" /> 여신 · 외상 관리
           </h2>
           {/* 🏭 2026-07-01 (라이브 감사 — 여신 잔재 정리): 도매 주문은 현재 예치금(선결제) 단일화라
               외상(ON_CREDIT) 결제 경로가 없다. 이전 카피는 "외상 주문 가능"을 약속했으나 한도를 줘도
               외상 결제가 열리지 않음(모순) → 현행 동작을 정직하게 표기. 미수금 원장/상환은 기록·회수용
               으로 유지, 외상 결제 재개는 별도 기능으로 준비. */}
-          <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-[13px] text-amber-800">
-            ⚠️ 현재 도매 주문은 <b>예치금(선결제) 전용</b>입니다. 외상(ON_CREDIT) 결제 기능은 <b>비활성</b> 상태로,
+          <div className="mb-4 rounded-lg bg-white border border-rule px-3 py-2 text-[13px] text-tone-warn">
+            현재 도매 주문은 <b>예치금(선결제) 전용</b>입니다. 외상(ON_CREDIT) 결제 기능은 <b>비활성</b> 상태로,
             한도를 부여해도 외상 주문은 아직 열리지 않습니다. 이 화면의 한도·미수금·상환은 <b>기록/회수 관리용</b>이며,
             외상 결제 재개는 별도 기능으로 준비 중입니다.
           </div>
           <div className="flex flex-wrap items-end gap-2 mb-4">
             <input type="number" value={creditSellerId} onChange={e => setCreditSellerId(e.target.value)} placeholder="판매사 ID" className="w-32 px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
-            <button onClick={() => loadCredit(creditSellerId)} disabled={creditBusy} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-50">{creditBusy ? '처리중…' : '여신 조회'}</button>
+            <button onClick={() => loadCredit(creditSellerId)} disabled={creditBusy} className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-50">{creditBusy ? '처리중…' : '여신 조회'}</button>
           </div>
 
           {creditData && (
@@ -791,12 +791,12 @@ export default function AdminDistributorGradesPage() {
                 </div>
                 <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
                   <div className="text-xs text-gray-500">미수금</div>
-                  <div className="text-sm font-bold text-rose-600 tabular-nums">{Number(creditData.credit.outstanding).toLocaleString('ko-KR')}원</div>
+                  <div className="text-sm font-bold text-tone-bad tabular-nums">{Number(creditData.credit.outstanding).toLocaleString('ko-KR')}원</div>
                 </div>
                 <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
                   <div className="text-xs text-gray-500">가용 한도</div>
-                  <div className="text-sm font-bold text-emerald-700 tabular-nums">{Number(creditData.credit.available).toLocaleString('ko-KR')}원</div>
-                  {creditData.credit.frozen === 1 && <span className="inline-flex items-center gap-1 mt-1 text-[11px] font-bold text-sky-700"><Snowflake className="w-3 h-3" />동결됨</span>}
+                  <div className="text-sm font-bold text-tone-ok tabular-nums">{Number(creditData.credit.available).toLocaleString('ko-KR')}원</div>
+                  {creditData.credit.frozen === 1 && <span className="inline-flex items-center gap-1 mt-1 text-[11px] font-bold text-gray-700"><Snowflake className="w-3 h-3" />동결됨</span>}
                 </div>
               </div>
 
@@ -805,13 +805,13 @@ export default function AdminDistributorGradesPage() {
                   <label className="block text-xs text-gray-500 mb-1">여신 한도 설정</label>
                   <input type="number" min={0} value={creditLimitInput} onChange={e => setCreditLimitInput(e.target.value)} placeholder="한도(원)" className="w-36 px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
                 </div>
-                <button onClick={saveCreditLimit} disabled={creditBusy} className="inline-flex items-center gap-1 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+                <button onClick={saveCreditLimit} disabled={creditBusy} className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-1 disabled:opacity-50">
                   <Save className="w-4 h-4" /> 한도 저장
                 </button>
                 {creditData.credit.frozen === 1 ? (
                   <button onClick={() => toggleFreeze(false)} disabled={creditBusy} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium disabled:opacity-50">동결 해제</button>
                 ) : (
-                  <button onClick={() => toggleFreeze(true)} disabled={creditBusy} className="inline-flex items-center gap-1 px-4 py-2 border border-sky-300 text-sky-700 rounded-lg text-sm font-medium disabled:opacity-50">
+                  <button onClick={() => toggleFreeze(true)} disabled={creditBusy} className="inline-flex items-center gap-1 px-4 py-2 border border-rule text-gray-700 rounded-lg text-sm font-medium disabled:opacity-50">
                     <Snowflake className="w-4 h-4" /> 여신 동결
                   </button>
                 )}
@@ -823,7 +823,7 @@ export default function AdminDistributorGradesPage() {
                   <input type="number" min={0} value={repayInput} onChange={e => setRepayInput(e.target.value)} placeholder="상환액(원)" className="w-36 px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
                 </div>
                 <input type="text" value={repayMemo} onChange={e => setRepayMemo(e.target.value)} placeholder="메모(선택)" maxLength={200} className="flex-1 min-w-[160px] px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
-                <button onClick={recordRepayment} disabled={creditBusy} className="inline-flex items-center gap-1 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+                <button onClick={recordRepayment} disabled={creditBusy} className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-1 disabled:opacity-50">
                   <BadgeDollarSign className="w-4 h-4" /> 상환 기록
                 </button>
               </div>
@@ -840,7 +840,7 @@ export default function AdminDistributorGradesPage() {
                         {creditData.ledger.map((l) => (
                           <tr key={l.id} className="border-b border-gray-50">
                             <td className="py-1.5 text-gray-600 whitespace-nowrap">{(l.created_at || '').slice(0, 16).replace('T', ' ')}</td>
-                            <td className={l.type === 'repayment' ? 'text-emerald-700 font-medium' : l.type === 'charge' ? 'text-rose-600 font-medium' : 'text-gray-600'}>
+                            <td className={l.type === 'repayment' ? 'text-tone-ok font-medium' : l.type === 'charge' ? 'text-tone-bad font-medium' : 'text-gray-600'}>
                               {l.type === 'charge' ? '청구(외상)' : l.type === 'repayment' ? '상환' : '조정'}
                             </td>
                             <td className="text-gray-500">{l.order_id ? `#${l.order_id}` : '-'}</td>
@@ -863,14 +863,14 @@ export default function AdminDistributorGradesPage() {
         {/* ── 상품 제안 (어드민 → 판매사) ── */}
         <section className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900 mb-1">
-            <Sparkles className="w-4 h-4 text-amber-500" /> 상품 제안
+            <Sparkles className="w-4 h-4 text-tone-warn" /> 상품 제안
           </h2>
           <p className="text-sm text-gray-500 mb-4">판매사에게 도매 상품을 추천합니다. 판매사 카탈로그 상단 &ldquo;추천 상품 제안&rdquo;에 노출됩니다.</p>
           <div className="flex flex-wrap items-end gap-2 mb-4">
             <input type="number" value={propSeller} onChange={e => setPropSeller(e.target.value)} placeholder="판매사 ID" className="w-28 px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
             <input type="number" value={propProduct} onChange={e => setPropProduct(e.target.value)} placeholder="상품 ID" className="w-28 px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
             <input type="text" value={propNote} onChange={e => setPropNote(e.target.value)} placeholder="메모(선택)" maxLength={200} className="flex-1 min-w-[160px] px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
-            <button onClick={createProposal} disabled={propBusy} className="inline-flex items-center gap-1 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+            <button onClick={createProposal} disabled={propBusy} className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-1 disabled:opacity-50">
               {propBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} 제안
             </button>
           </div>
@@ -881,7 +881,7 @@ export default function AdminDistributorGradesPage() {
               {proposals.map(p => (
                 <li key={p.id} className="flex items-center justify-between py-2 text-sm">
                   <span className="text-gray-700">판매사 #{p.distributor_seller_id} → <b className="text-gray-900">{p.product_name}</b> (상품#{p.product_id}){p.note ? ` · ${p.note}` : ''}</span>
-                  <button onClick={() => withdrawProposal(p.id)} className="text-gray-400 hover:text-rose-500"><X className="w-4 h-4" /></button>
+                  <button onClick={() => withdrawProposal(p.id)} className="text-gray-400 hover:text-tone-bad"><X className="w-4 h-4" /></button>
                 </li>
               ))}
             </ul>
@@ -896,7 +896,7 @@ export default function AdminDistributorGradesPage() {
           <p className="text-sm text-gray-500 mb-4">월별 거래액 집계. 유통스타트→판매사(매출) / 제조사→유통스타트(매입) 세금계산서를 수동 발행할 때 참고합니다.</p>
           <div className="flex items-end gap-2 mb-4">
             <input type="month" value={taxMonth} onChange={e => setTaxMonth(e.target.value)} className="px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
-            <button onClick={loadTax} disabled={taxLoading} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-50">{taxLoading ? '조회중…' : '조회'}</button>
+            <button onClick={loadTax} disabled={taxLoading} className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-50">{taxLoading ? '조회중…' : '조회'}</button>
           </div>
           {taxData && (
             <div className="grid lg:grid-cols-2 gap-4">
@@ -944,7 +944,7 @@ export default function AdminDistributorGradesPage() {
                   placeholder={label} className="px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900" />
               ))}
             </div>
-            <button onClick={saveCompany} disabled={companyBusy} className="inline-flex items-center gap-1 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+            <button onClick={saveCompany} disabled={companyBusy} className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-1 disabled:opacity-50">
               {companyBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} 사업자정보 저장
             </button>
           </div>
@@ -953,7 +953,7 @@ export default function AdminDistributorGradesPage() {
           <div className="mt-5 pt-5 border-t border-gray-100">
             <div className="flex items-center gap-2 flex-wrap mb-3">
               <h3 className="text-sm font-semibold text-gray-700">세금계산서 / 거래명세서 발행</h3>
-              <button onClick={() => issueTaxDocs('tax_invoice')} disabled={issuing} className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-xs font-bold disabled:opacity-50">
+              <button onClick={() => issueTaxDocs('tax_invoice')} disabled={issuing} className="ur-btn ur-btn-sm ur-btn-primary disabled:opacity-50">
                 {taxMonth} 세금계산서 발행
               </button>
               <button onClick={() => issueTaxDocs('transaction_statement')} disabled={issuing} className="px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg text-xs font-bold disabled:opacity-50">
@@ -982,8 +982,8 @@ export default function AdminDistributorGradesPage() {
                           <button onClick={() => openTaxDoc(d.id)} className="px-2 py-1 bg-gray-100 rounded font-medium">인쇄</button>
                           {d.direction === 'sales' && (
                             d.nts_confirm_num
-                              ? <span className="ml-1 text-[10px] text-emerald-600 font-medium">국세청✓</span>
-                              : <button onClick={() => issueNts(d.id)} className="ml-1 px-2 py-1 bg-gray-900 text-white rounded font-medium">국세청발행</button>
+                              ? <span className="ml-1 text-[10px] text-tone-ok font-medium">국세청</span>
+                              : <button onClick={() => issueNts(d.id)} className="ur-btn ur-btn-sm ur-btn-primary ml-1 rounded">국세청발행</button>
                           )}
                         </td>
                       </tr>
@@ -1005,9 +1005,9 @@ export default function AdminDistributorGradesPage() {
           <p className="text-sm text-gray-500 mb-4">'승인한 유통채널 / 유통스타트 유통채널' 공급 상품은 여기서 선정한 판매사에게만 노출·주문됩니다. (전체공급 상품은 선정 불필요)</p>
           <div className="flex flex-wrap items-end gap-2 mb-3">
             <input type="number" value={accessProductId} onChange={e => setAccessProductId(e.target.value)} placeholder="상품 ID" className="w-28 px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
-            <button onClick={() => { setEditGrades(null); setAccessProductQuery(accessProductId) }} className="px-3 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium">조회</button>
+            <button onClick={() => { setEditGrades(null); setAccessProductQuery(accessProductId) }} className="ur-btn ur-btn-md ur-btn-primary">조회</button>
             <input type="number" value={accessSeller} onChange={e => setAccessSeller(e.target.value)} placeholder="판매사 ID 선정" className="w-32 px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
-            <button onClick={grantAccess} className="inline-flex items-center gap-1 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium"><Plus className="w-4 h-4" /> 선정</button>
+            <button onClick={grantAccess} className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-1"><Plus className="w-4 h-4" /> 선정</button>
           </div>
           {accessQ.data && (
             <div>
@@ -1020,13 +1020,13 @@ export default function AdminDistributorGradesPage() {
                     const on = effGrades.includes(g.grade)
                     return (
                       <button key={g.grade} type="button" onClick={() => toggleGrade(g.grade)}
-                        className={`px-2.5 py-1 rounded-full text-xs font-medium border ${on ? 'bg-gray-900 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200'}`}>
+                        className={`px-2.5 py-1 rounded-full text-xs font-medium border ${on ? 'bg-gray-900 text-white border-brand' : 'bg-white text-gray-600 border-gray-200'}`}>
                         {g.grade}{g.label ? ` ${g.label}` : ''}
                       </button>
                     )
                   })}
                   {editGrades !== null && (
-                    <button type="button" onClick={saveVisibleGrades} className="ml-1 px-3 py-1 rounded-full text-xs font-semibold bg-gray-900 text-white">저장</button>
+                    <button type="button" onClick={saveVisibleGrades} className="ur-btn ur-btn-sm ur-btn-primary ml-1">저장</button>
                   )}
                 </div>
                 <p className="text-[11px] text-gray-400 mt-1.5">현재: {effGrades.length ? effGrades.join(', ') : '전체 노출(제한 없음)'}</p>
@@ -1038,7 +1038,7 @@ export default function AdminDistributorGradesPage() {
                   {accessQ.data.distributors.map((d) => (
                     <li key={d.id} className="flex items-center justify-between py-2 text-sm">
                       <span className="text-gray-700">{d.business_name || d.seller_name || `#${d.distributor_seller_id}`} <span className="text-gray-400 text-xs">{d.distributor_grade || '미배정(C)'}</span></span>
-                      <button onClick={() => revokeAccess(d.id)} className="text-gray-400 hover:text-rose-500"><X className="w-4 h-4" /></button>
+                      <button onClick={() => revokeAccess(d.id)} className="text-gray-400 hover:text-tone-bad"><X className="w-4 h-4" /></button>
                     </li>
                   ))}
                 </ul>
@@ -1050,7 +1050,7 @@ export default function AdminDistributorGradesPage() {
         {/* ── 상품별 마진(특가) 설정 ── */}
         <section className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900 mb-1">
-            <Percent className="w-4 h-4 text-rose-500" /> 상품별 마진 (특가/전략상품)
+            <Percent className="w-4 h-4 text-tone-bad" /> 상품별 마진 (특가/전략상품)
           </h2>
           <p className="text-sm text-gray-500 mb-4">
             특정 상품에 마진율을 고정하면 <b>등급(A/B/C/D) 무관 모든 판매사가 같은 공급가</b>로 구매합니다. 전략·특가 상품용. 비워서 해제하면 등급별 마진으로 복귀합니다.
@@ -1061,7 +1061,7 @@ export default function AdminDistributorGradesPage() {
               <input type="number" min={0} max={500} step={0.1} value={marginPct} onChange={e => setMarginPct(e.target.value)} placeholder="마진율" className="w-28 pl-3 pr-7 py-2 border border-gray-200 rounded-lg text-gray-900" />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
             </div>
-            <button onClick={() => setMarginOverride(false)} disabled={marginBusy} className="inline-flex items-center gap-1 px-4 py-2 bg-rose-600 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+            <button onClick={() => setMarginOverride(false)} disabled={marginBusy} className="ur-btn ur-btn-md ur-btn-danger inline-flex items-center gap-1 disabled:opacity-50">
               {marginBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Tag className="w-4 h-4" />} 특가 적용
             </button>
             <button onClick={() => setMarginOverride(true)} disabled={marginBusy} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium disabled:opacity-50">
@@ -1081,7 +1081,7 @@ export default function AdminDistributorGradesPage() {
             <p className="text-sm text-gray-500 mb-3">위 상품 ID 기준. 등급가 위에 <b>구매 수량별 추가 할인</b>을 적용합니다. <code className="text-gray-700">수량:할인%</code> 쌍을 쉼표로 — 예: <code className="text-gray-700">100:5, 500:10</code> (100개↑ 5%, 500개↑ 10%).</p>
             <div className="flex flex-wrap items-end gap-2">
               <input value={tierText} onChange={e => setTierText(e.target.value)} placeholder="100:5, 500:10" className="flex-1 min-w-[200px] px-3 py-2 border border-gray-200 rounded-lg text-gray-900" />
-              <button onClick={() => saveTiers(false)} disabled={tierBusy} className="inline-flex items-center gap-1 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+              <button onClick={() => saveTiers(false)} disabled={tierBusy} className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-1 disabled:opacity-50">
                 {tierBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} 구간 저장
               </button>
               <button onClick={() => saveTiers(true)} disabled={tierBusy} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium disabled:opacity-50">해제</button>
@@ -1093,7 +1093,7 @@ export default function AdminDistributorGradesPage() {
         <section className="bg-white rounded-xl border border-gray-200 p-5">
           <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
             <h2 className="flex items-center gap-2 text-base font-semibold text-gray-900">
-              <Sparkles className="w-4 h-4 text-amber-500" /> OEM / ODM 신청 관리
+              <Sparkles className="w-4 h-4 text-tone-warn" /> OEM / ODM 신청 관리
             </h2>
             <select value={oemStatus} onChange={e => setOemStatus(e.target.value)} className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-900">
               <option value="">전체</option><option value="open">접수</option><option value="matching">매칭중</option>
@@ -1168,7 +1168,7 @@ function DistributorRowEditor({
         <button
           onClick={() => onSave(row, grade || null, special ? new Date(special + 'T23:59:59').toISOString() : null)}
           disabled={saving}
-          className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-900 text-white rounded text-xs font-medium hover:bg-gray-800 disabled:opacity-50"
+          className="ur-btn ur-btn-sm ur-btn-primary inline-flex items-center gap-1 rounded disabled:opacity-50"
         >
           {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
           저장
@@ -1226,7 +1226,7 @@ function ChannelThresholdsSection() {
         — 공급가를 낮출수록 더 많은 채널이 열리는 잠금해제 안내(표시 전용, 결제가·노출에는 영향 없음).
       </p>
       {isDefault && !loading && (
-        <p className="text-xs text-amber-600 mb-3">⚠️ 아직 기본값입니다 — 영업단 확정 기준으로 저장해주세요.</p>
+        <p className="text-xs text-tone-warn mb-3">아직 기본값입니다 — 영업단 확정 기준으로 저장해주세요.</p>
       )}
       {loading ? (
         <div className="py-6 text-center"><Loader2 className="w-4 h-4 animate-spin text-gray-300 mx-auto" /></div>
@@ -1251,7 +1251,7 @@ function ChannelThresholdsSection() {
           <div className="flex items-center justify-between mt-4">
             <p className="text-xs text-gray-400">예: 폐쇄몰 70% = 권장 소비자가 10,000원 상품은 공급가 7,000원 이하일 때 폐쇄몰 제안 가능으로 표시.</p>
             <button onClick={save} disabled={saving}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-semibold disabled:opacity-60">
+              className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-1.5 disabled:opacity-60">
               {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />} 저장
             </button>
           </div>

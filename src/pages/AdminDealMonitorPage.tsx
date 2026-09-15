@@ -129,7 +129,7 @@ export default function AdminDealMonitorPage() {
       {/* 전금법(선불업) 모니터링 — 발행잔액/연간 발행 집계 (docs/design/pre-flip-risk-audit-2026-07.md §①) */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5">
         <div className="flex items-center gap-2">
-          <Scale className="w-4 h-4 text-indigo-600" />
+          <Scale className="w-4 h-4 text-gray-700" />
           <h2 className="text-sm font-semibold text-gray-900">전금법 모니터링 — 선불전자지급수단 발행 집계</h2>
         </div>
         <p className="text-xs text-gray-500 mt-1 mb-4">
@@ -198,25 +198,25 @@ export default function AdminDealMonitorPage() {
           bg="bg-brand-tint"
         />
         <StatCard
-          icon={<Zap className="w-5 h-5 text-amber-600" />}
+          icon={<Zap className="w-5 h-5 text-tone-warn" />}
           label={t('admin.dealMonitor.k003', { defaultValue: "발급 딜" })}
           value={`${fmt(s?.totals.total_points_issued)}딜`}
           sub={`후원 ${fmt(s?.donations.total_donated)}딜`}
-          bg="bg-amber-50"
+          bg="border border-rule bg-white"
         />
         <StatCard
-          icon={<TrendingUp className="w-5 h-5 text-blue-600" />}
+          icon={<TrendingUp className="w-5 h-5 text-gray-700" />}
           label={t('admin.dealMonitor.k004', { defaultValue: "오늘" })}
           value={`${fmt(s?.today.amount)}원`}
           sub={`${fmt(s?.today.count)}건`}
-          bg="bg-blue-50"
+          bg="border border-rule bg-white"
         />
         <StatCard
-          icon={<Users className="w-5 h-5 text-green-600" />}
+          icon={<Users className="w-5 h-5 text-tone-ok" />}
           label={t('admin.dealMonitor.k005', { defaultValue: "충전 유저" })}
           value={`${fmt(s?.totals.unique_users)}명`}
           sub={`이번 달 ${fmt(s?.thisMonth.amount)}원`}
-          bg="bg-green-50"
+          bg="border border-rule bg-white"
         />
       </div>
 
@@ -250,7 +250,7 @@ export default function AdminDealMonitorPage() {
                   value={searchInput}
                   onChange={e => setSearchInput(e.target.value)}
                   placeholder={t('admin.dealMonitor.k006', { defaultValue: "이름 / 이메일 / 주문번호" })}
-                  className="pl-9 pr-3 py-2 text-sm text-gray-900 border rounded-lg w-56 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="pl-9 pr-3 py-2 text-sm text-gray-900 border rounded-lg w-56 focus:ring-2 focus:ring-blue-500 focus:border-brand"
                 />
               </div>
               <button type="submit" className="px-3 py-2 bg-gray-100 text-sm rounded-lg hover:bg-gray-200">
@@ -276,7 +276,7 @@ export default function AdminDealMonitorPage() {
         <div className="overflow-x-auto">
           {loading ? (
             <div className="flex justify-center py-16">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand" />
             </div>
           ) : tab === 'charges' ? (
             <table className="w-full text-sm">
@@ -356,7 +356,7 @@ export default function AdminDealMonitorPage() {
                     </td>
                     <td className="px-4 py-3 text-right">{fmt(u.charge_count)}회</td>
                     <td className="px-4 py-3 text-right font-medium">{fmt(u.total_charged)}딜</td>
-                    <td className="px-4 py-3 text-right text-amber-600">{fmt(u.total_donated)}딜</td>
+                    <td className="px-4 py-3 text-right text-tone-warn">{fmt(u.total_donated)}딜</td>
                     <td className="px-4 py-3 text-right text-brand-text font-medium">{fmt(u.balance)}딜</td>
                     <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{u.last_charged ? formatKST(u.last_charged) : '-'}</td>
                     <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{u.first_charge_date ? formatKST(u.first_charge_date) : '-'}</td>

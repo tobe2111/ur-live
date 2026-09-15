@@ -127,8 +127,8 @@ export default function AdminCafe24Page() {
         {/* Status Card */}
         <div className="bg-white rounded-xl border border-gray-200 dark:border-[#2A2A2A] p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-              <Store className="w-5 h-5 text-blue-600" />
+            <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+              <Store className="w-5 h-5 text-gray-700" />
             </div>
             <div>
               <h2 className="text-lg font-semibold text-gray-900">Cafe24 연동 상태</h2>
@@ -143,19 +143,19 @@ export default function AdminCafe24Page() {
           ) : status?.connected ? (
             <div className="space-y-4">
               {/* Connected badge */}
-              <div className="flex items-center gap-2 px-3 py-2 bg-green-50 rounded-lg">
-                <CheckCircle className="w-4 h-4 text-green-600" />
-                <span className="text-sm font-medium text-green-700">연결됨</span>
-                <span className="text-xs text-green-600 ml-auto">
+              <div className="flex items-center gap-2 px-3 py-2 border border-rule bg-white rounded-lg">
+                <CheckCircle className="w-4 h-4 text-tone-ok" />
+                <span className="text-sm font-medium text-tone-ok">연결됨</span>
+                <span className="text-xs text-tone-ok ml-auto">
                   Mall ID: {status.mall_id}
                 </span>
               </div>
 
               {/* Token status */}
               {status.token_expired && (
-                <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 rounded-lg">
-                  <AlertCircle className="w-4 h-4 text-amber-600" />
-                  <span className="text-sm text-amber-700">
+                <div className="flex items-center gap-2 px-3 py-2 border border-rule bg-white rounded-lg">
+                  <AlertCircle className="w-4 h-4 text-tone-warn" />
+                  <span className="text-sm text-tone-warn">
                     토큰이 만료되었습니다. 동기화 시 자동으로 갱신됩니다.
                   </span>
                 </div>
@@ -190,7 +190,7 @@ export default function AdminCafe24Page() {
                 <button
                   onClick={handleSync}
                   disabled={syncing}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm font-medium"
+                  className="ur-btn ur-btn-md ur-btn-primary flex-1 flex items-center justify-center gap-2 disabled:opacity-50 transition-colors"
                 >
                   {syncing ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -202,7 +202,7 @@ export default function AdminCafe24Page() {
                 <button
                   onClick={handleDisconnect}
                   disabled={disconnecting}
-                  className="flex items-center gap-2 px-4 py-2.5 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-50 transition-colors text-sm"
+                  className="flex items-center gap-2 px-4 py-2.5 border border-rule text-tone-bad rounded-lg hover:bg-gray-100 disabled:opacity-50 transition-colors text-sm"
                 >
                   {disconnecting ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -225,7 +225,7 @@ export default function AdminCafe24Page() {
               <button
                 onClick={handleConnect}
                 disabled={connecting}
-                className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm font-medium"
+                className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-2 disabled:opacity-50 transition-colors"
               >
                 {connecting ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -243,23 +243,23 @@ export default function AdminCafe24Page() {
           <h3 className="text-sm font-semibold text-gray-900 mb-3">연동 안내</h3>
           <ul className="space-y-2 text-sm text-gray-600">
             <li className="flex items-start gap-2">
-              <span className="text-blue-500 mt-0.5">1.</span>
+              <span className="text-gray-700 mt-0.5">1.</span>
               <span>Cafe24 쇼핑몰에 등록된 상품이 자동으로 동기화됩니다.</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-blue-500 mt-0.5">2.</span>
+              <span className="text-gray-700 mt-0.5">2.</span>
               <span>상품명, 가격, 재고, 이미지 등 주요 정보가 동기화됩니다.</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-blue-500 mt-0.5">3.</span>
+              <span className="text-gray-700 mt-0.5">3.</span>
               <span>주문 정보(읽기/쓰기) 권한도 포함되어 있어 추후 주문 연동이 가능합니다.</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-blue-500 mt-0.5">4.</span>
+              <span className="text-gray-700 mt-0.5">4.</span>
               <span>결제는 기존 토스페이먼츠 PG를 계속 사용합니다.</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-blue-500 mt-0.5">5.</span>
+              <span className="text-gray-700 mt-0.5">5.</span>
               <span>어드민 대시보드에서 직접 상품을 추가할 수도 있습니다.</span>
             </li>
           </ul>

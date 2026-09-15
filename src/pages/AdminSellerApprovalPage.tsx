@@ -55,11 +55,11 @@ const STATUS_OPTIONS = [
 ] as const
 
 const STATUS_BADGE: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-  active: 'bg-green-100 text-green-700 border-green-200',
-  approved: 'bg-green-100 text-green-700 border-green-200', // 🛡️ 2026-06-25: 승인 액션이 status='approved' 로 세팅 → '활성'과 동일 취급
+  pending: 'bg-white text-tone-warn border-rule',
+  active: 'bg-white text-tone-ok border-rule',
+  approved: 'bg-white text-tone-ok border-rule', // 🛡️ 2026-06-25: 승인 액션이 status='approved' 로 세팅 → '활성'과 동일 취급
   suspended: 'bg-gray-200 text-gray-600 border-gray-300',
-  rejected: 'bg-red-100 text-red-700 border-red-200',
+  rejected: 'bg-white text-tone-bad border-rule',
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -164,7 +164,7 @@ export default function AdminSellerApprovalPage() {
         const d = res.data.data
         // 자격증명을 한번에 노출 — 어드민이 가게에 전달.
         await alertDialog(
-          `✅ 공급자 등록 완료\n\n` +
+          `공급자 등록 완료\n\n` +
           `가게: ${d.business_name}\n담당자: ${d.contact_name}\n수수료율: ${d.commission_rate}%\n\n` +
           `[로그인 정보 — 가게에 전달]\n` +
           `URL: https://urdeal.kr${d.login_url}\n` +
@@ -253,9 +253,9 @@ export default function AdminSellerApprovalPage() {
             <button
               type="button"
               onClick={handleStoreOwnerQuickAdd}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-lg bg-gray-900 text-white hover:bg-gray-900 transition-colors"
+              className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-1.5 transition-colors"
             >
-              <span>🏪</span> 공급자 빠른 등록
+              공급자 빠른 등록
             </button>
           }
         />
@@ -296,11 +296,11 @@ export default function AdminSellerApprovalPage() {
               title="도매(유통스타트) 판매사를 목록에서 숨깁니다. 겸업(소비자+도매)도 함께 숨겨집니다."
               className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
                 hideDistributor
-                  ? 'bg-amber-500 text-white border-amber-500'
-                  : 'bg-white text-amber-700 border-amber-200 hover:border-amber-400'
+                  ? 'bg-amber-500 text-white border-brand'
+                  : 'bg-white text-tone-warn border-transparent hover:border-amber-400'
               }`}
             >
-              {hideDistributor ? '🏭 도매 숨김 ON' : '🏭 도매 제외'}
+              {hideDistributor ? '도매 숨김 ON' : '도매 제외'}
             </button>
           </div>
         </div>
@@ -309,8 +309,8 @@ export default function AdminSellerApprovalPage() {
         {loading ? <DashboardLoading /> : isError ? (
           /* 🛡️ 2026-06-25: 로드 실패를 '셀러 없음'과 구분 — 기존엔 401/500 도 빈 목록으로 보여 데이터 0 처럼 오인.
              서버 오류/세션만료 시 명시 안내 + 재시도 + 재로그인 경로. (HTTP 상태 노출 = 진단용) */
-          <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center">
-            <p className="text-sm font-bold text-red-700">셀러 목록을 불러오지 못했습니다</p>
+          <div className="rounded-xl border border-rule bg-white p-6 text-center">
+            <p className="text-sm font-bold text-tone-bad">셀러 목록을 불러오지 못했습니다</p>
             {(() => {
               const st = (error as { response?: { status?: number } } | undefined)?.response?.status
               // 🛡️ 2026-06-25: 상태별 정확 안내 — 403(IP 화이트리스트/권한)이 가장 흔한 원인. '세션만료'는 401 에만.
@@ -318,10 +318,10 @@ export default function AdminSellerApprovalPage() {
                 : st === 401 ? '로그인 세션이 만료되었습니다 — 다시 로그인해주세요'
                 : st === 500 ? '서버 오류가 발생했습니다 — 잠시 후 다시 시도해주세요'
                 : '목록을 불러오지 못했습니다 — 네트워크/서버 상태를 확인해주세요'
-              return <p className="mt-1 text-xs text-red-600">{msg}{st ? ` (HTTP ${st})` : ''}</p>
+              return <p className="mt-1 text-xs text-tone-bad">{msg}{st ? ` (HTTP ${st})` : ''}</p>
             })()}
             <div className="mt-4 flex items-center justify-center gap-2">
-              <button onClick={() => load()} className="px-4 py-2 rounded-lg text-sm font-semibold bg-gray-900 text-white hover:bg-gray-800">다시 시도</button>
+              <button onClick={() => load()} className="ur-btn ur-btn-md ur-btn-primary">다시 시도</button>
               <button onClick={() => navigate('/admin/login', { replace: true })} className="px-4 py-2 rounded-lg text-sm font-semibold bg-white border border-gray-300 text-gray-700 hover:bg-gray-50">다시 로그인</button>
             </div>
           </div>
@@ -336,9 +336,9 @@ export default function AdminSellerApprovalPage() {
               const isExpanded = expandedId === s.id
               const bizStatus = (s.business_registration_status || 'none') as 'none' | 'pending' | 'verified' | 'rejected' | string
               const bizBadge =
-                bizStatus === 'verified' ? 'bg-green-100 text-green-700 border-green-200' :
-                bizStatus === 'pending' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
-                bizStatus === 'rejected' ? 'bg-red-100 text-red-700 border-red-200' :
+                bizStatus === 'verified' ? 'bg-white text-tone-ok border-rule' :
+                bizStatus === 'pending' ? 'bg-white text-tone-warn border-rule' :
+                bizStatus === 'rejected' ? 'bg-white text-tone-bad border-rule' :
                 'bg-gray-100 text-gray-500 border-gray-200'
               const bizLabel =
                 bizStatus === 'verified' ? '사업자 검증 완료' :
@@ -358,9 +358,9 @@ export default function AdminSellerApprovalPage() {
                     </span>
                     {/* 🧱 2026-06-30 (서비스 분리): 도매 판매사 구분 배지 — 유어딜 셀러 목록에 섞인 도매 회원 식별. */}
                     {Number(s.is_distributor) === 1 && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-amber-100 text-amber-800 border-amber-200"
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-tone-warn-bg text-tone-warn border-transparent"
                         title={`도매(유통스타트) 판매사${s.distributor_grade ? ` · 등급 ${s.distributor_grade}` : ''} — 도매 관리는 '판매사 관리'`}>
-                        🏭 도매 판매사
+                        도매 판매사
                       </span>
                     )}
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${bizBadge}`}>
@@ -381,11 +381,11 @@ export default function AdminSellerApprovalPage() {
                   {s.status === 'pending' && (
                     <>
                       <button onClick={() => approve(s.id)} disabled={actingId === s.id}
-                        className="px-3 py-1.5 bg-gray-900 text-white rounded-md text-[11px] font-bold flex items-center gap-1 disabled:opacity-50">
+                        className="ur-btn ur-btn-sm ur-btn-primary text-[11px] flex items-center gap-1 disabled:opacity-50">
                         {actingId === s.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <UserCheck className="w-3 h-3" />} 승인
                       </button>
                       <button onClick={() => reject(s.id)} disabled={actingId === s.id}
-                        className="px-3 py-1.5 bg-red-100 text-red-600 rounded-md text-[11px] font-bold flex items-center gap-1 disabled:opacity-50">
+                        className="px-3 py-1.5 bg-tone-bad-bg text-tone-bad rounded-md text-[11px] font-bold flex items-center gap-1 disabled:opacity-50">
                         <UserX className="w-3 h-3" /> 거절
                       </button>
                     </>
@@ -396,7 +396,7 @@ export default function AdminSellerApprovalPage() {
                     <button onClick={() => toggleSuspend(s)} disabled={actingId === s.id}
                       className={`px-3 py-1.5 rounded-md text-[11px] font-bold flex items-center gap-1 disabled:opacity-50 ${
                         s.status === 'suspended'
-                          ? 'bg-blue-100 text-blue-700'
+                          ? 'bg-tone-info-bg text-tone-info'
                           : 'bg-gray-100 text-gray-700'
                       }`}>
                       {s.status === 'suspended' ? <><Play className="w-3 h-3" /> 재활성</> : <><Pause className="w-3 h-3" /> 정지</>}
@@ -405,13 +405,13 @@ export default function AdminSellerApprovalPage() {
                   {/* 🗑️ 2026-09-04: 빈 매장 완전 삭제 — 정지된 껍데기가 목록에 쌓이는 것을 끝낸다.
                       상품·주문이 있으면 서버가 409 로 거부하므로 버튼은 항상 보여도 안전하다. */}
                   <button onClick={() => purgeSeller(s)} disabled={actingId === s.id}
-                    className="px-3 py-1.5 bg-red-50 text-red-700 rounded-md text-[11px] font-bold flex items-center gap-1 disabled:opacity-50">
+                    className="px-3 py-1.5 bg-tone-bad-bg text-tone-bad rounded-md text-[11px] font-bold flex items-center gap-1 disabled:opacity-50">
                     <Trash2 className="w-3 h-3" /> 삭제
                   </button>
                   {/* 🛡️ rejected 셀러도 다시 활성화 가능 — 잘못 거절된 케이스 복구 */}
                   {s.status === 'rejected' && (
                     <button onClick={() => approve(s.id)} disabled={actingId === s.id}
-                      className="px-3 py-1.5 bg-green-100 text-green-700 rounded-md text-[11px] font-bold flex items-center gap-1 disabled:opacity-50">
+                      className="px-3 py-1.5 bg-tone-ok-bg text-tone-ok rounded-md text-[11px] font-bold flex items-center gap-1 disabled:opacity-50">
                       <UserCheck className="w-3 h-3" /> 활성화
                     </button>
                   )}
@@ -512,12 +512,12 @@ export default function AdminSellerApprovalPage() {
                             alt="사업자등록증"
                             className="w-full max-h-56 object-contain rounded-md border border-gray-200 bg-white"
                           />
-                          <p className="text-[10px] text-blue-600 mt-1 inline-flex items-center gap-1">
+                          <p className="text-[10px] text-gray-700 mt-1 inline-flex items-center gap-1">
                             <ExternalLink className="w-3 h-3" /> 원본 보기
                           </p>
                         </a>
                         {bizStatus === 'rejected' && s.business_registration_reject_reason && (
-                          <p className="text-[11px] text-red-600 bg-red-50 border border-red-100 rounded p-2 mb-2">
+                          <p className="text-[11px] text-tone-bad bg-white border border-rule rounded p-2 mb-2">
                             <strong>반려 사유:</strong> {s.business_registration_reject_reason}
                           </p>
                         )}
@@ -526,7 +526,7 @@ export default function AdminSellerApprovalPage() {
                             <button
                               onClick={() => verifyBizReg(s.id)}
                               disabled={bizActingId === s.id}
-                              className="flex-1 px-3 py-1.5 bg-gray-900 text-white rounded-md text-[11px] font-bold flex items-center justify-center gap-1 disabled:opacity-50"
+                              className="ur-btn ur-btn-sm ur-btn-primary flex-1 text-[11px] flex items-center justify-center gap-1 disabled:opacity-50"
                             >
                               {bizActingId === s.id
                                 ? <Loader2 className="w-3 h-3 animate-spin" />
@@ -535,7 +535,7 @@ export default function AdminSellerApprovalPage() {
                             <button
                               onClick={() => rejectBizReg(s.id)}
                               disabled={bizActingId === s.id}
-                              className="flex-1 px-3 py-1.5 bg-red-100 text-red-700 rounded-md text-[11px] font-bold flex items-center justify-center gap-1 disabled:opacity-50"
+                              className="flex-1 px-3 py-1.5 bg-tone-bad-bg text-tone-bad rounded-md text-[11px] font-bold flex items-center justify-center gap-1 disabled:opacity-50"
                             >
                               <FileX className="w-3 h-3" /> 반려
                             </button>
@@ -545,7 +545,7 @@ export default function AdminSellerApprovalPage() {
                           <button
                             onClick={() => rejectBizReg(s.id)}
                             disabled={bizActingId === s.id}
-                            className="w-full px-3 py-1.5 bg-red-50 text-red-600 rounded-md text-[11px] font-bold flex items-center justify-center gap-1 disabled:opacity-50"
+                            className="w-full px-3 py-1.5 bg-tone-bad-bg text-tone-bad rounded-md text-[11px] font-bold flex items-center justify-center gap-1 disabled:opacity-50"
                           >
                             <FileX className="w-3 h-3" /> 검증 취소 (반려 사유 입력)
                           </button>

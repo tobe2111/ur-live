@@ -78,18 +78,18 @@ export default function AdminGovNoticesPage() {
   return (
     <AdminLayout title="공고 스캐너">
       <div className="p-4 lg:p-6 max-w-7xl mx-auto">
-        <DashboardPageHeader title="📢 공고 스캐너" subtitle="나라장터 입찰 + 기업마당 지원사업 — 상권활성화·소상공인·마케팅 키워드 자동 스캔" />
+        <DashboardPageHeader title="공고 스캐너" subtitle="나라장터 입찰 + 기업마당 지원사업 — 상권활성화·소상공인·마케팅 키워드 자동 스캔" />
 
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
           {statCard('전체', stats?.total || 0)}
           {statCard('입찰(나라장터)', stats?.bid || 0)}
           {statCard('지원사업(기업마당)', stats?.grant || 0)}
-          {statCard('진행 중', stats?.actionable || 0, 'text-blue-600')}
+          {statCard('진행 중', stats?.actionable || 0, 'text-gray-700')}
           {statCard('최근 7일', stats?.recent7 || 0)}
         </div>
 
         <div className="flex flex-wrap items-center gap-2 mb-3">
-          <button onClick={runCollect} disabled={collecting || !collect?.adsBinding} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50">{collecting ? '스캔 중…' : '📢 지금 스캔'}</button>
+          <button onClick={runCollect} disabled={collecting || !collect?.adsBinding} className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-50">{collecting ? '스캔 중…' : '지금 스캔'}</button>
           <select value={fSource} onChange={e => setFSource(e.target.value)} className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm">
             <option value="">전체</option>
             <option value="bid">입찰(나라장터)</option>
@@ -101,8 +101,8 @@ export default function AdminGovNoticesPage() {
 
         {collect && (
           <div className="mb-3 text-xs text-gray-500">
-            자동 스캔 <span className={collect.gate ? 'text-green-600 font-semibold' : 'text-gray-400'}>{collect.gate ? 'ON · 매일' : 'OFF'}</span>
-            {collect.run?.diag?.error ? <span className="text-amber-600"> · {collect.run.diag.error}</span>
+            자동 스캔 <span className={collect.gate ? 'text-tone-ok font-semibold' : 'text-gray-400'}>{collect.gate ? 'ON · 매일' : 'OFF'}</span>
+            {collect.run?.diag?.error ? <span className="text-tone-warn"> · {collect.run.diag.error}</span>
               : collect.run?.last_run ? <span> · 최근 {kstShort(collect.run.last_run)} · 입찰 {collect.run.bid ?? 0} / 지원 {collect.run.grant ?? 0} · 저장 {collect.run.saved ?? 0}</span>
                 : <span className="text-gray-400"> · 아직 실행 안 됨</span>}
           </div>
@@ -126,7 +126,7 @@ export default function AdminGovNoticesPage() {
                   <tr><td colSpan={4} className="px-3 py-8 text-center text-gray-400">공고가 없습니다. '지금 스캔'을 눌러 수집하세요.</td></tr>
                 ) : rows.map(r => (
                   <tr key={r.id}>
-                    <td className="px-3 py-2"><span className={`text-[11px] px-1.5 py-0.5 rounded ${r.source === 'bid' ? 'bg-sky-100 text-sky-700' : 'bg-violet-100 text-violet-700'}`}>{r.source === 'bid' ? '입찰' : '지원'}</span></td>
+                    <td className="px-3 py-2"><span className={`text-[11px] px-1.5 py-0.5 rounded ${r.source === 'bid' ? 'bg-tone-info-bg text-tone-info' : 'bg-tone-info-bg text-tone-info'}`}>{r.source === 'bid' ? '입찰' : '지원'}</span></td>
                     <td className="px-3 py-2 text-gray-900">
                       {r.url ? <a href={r.url} target="_blank" rel="noreferrer" className="hover:underline">{r.title}</a> : r.title}
                       <div className="text-[11px] text-gray-400">{[r.org, r.keyword && `#${r.keyword}`, r.amount].filter(Boolean).join(' · ')}</div>

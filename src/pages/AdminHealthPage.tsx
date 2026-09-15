@@ -27,9 +27,9 @@ interface Metrics {
 type Severity = 'ok' | 'warn' | 'crit'
 
 function severityClasses(sev: Severity): string {
-  if (sev === 'crit') return 'bg-red-50 border-red-300 text-red-700'
-  if (sev === 'warn') return 'bg-amber-50 border-amber-300 text-amber-700'
-  return 'bg-green-50 border-green-300 text-green-700'
+  if (sev === 'crit') return 'bg-white border-rule text-tone-bad'
+  if (sev === 'warn') return 'bg-white border-rule text-tone-warn'
+  return 'bg-white border-rule text-tone-ok'
 }
 
 function fmt(n: number | null | undefined): string {
@@ -110,7 +110,7 @@ export default function AdminHealthPage() {
         />
 
         {error && (
-          <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="mb-4 rounded-md border border-rule bg-white px-4 py-3 text-sm text-tone-bad">
             {error}
           </div>
         )}
@@ -141,13 +141,13 @@ export default function AdminHealthPage() {
               label="지연 주문 (PENDING > 5분)"
               value={metrics?.stuck_pending_orders}
               severity={stuckSeverity}
-              hint={stuckSeverity === 'crit' ? '⚠ 10건 초과 — 결제 시스템 점검' : '정상 < 5'}
+              hint={stuckSeverity === 'crit' ? '10건 초과 — 결제 시스템 점검' : '정상 < 5'}
             />
             <MetricCard
               label="실패한 웹훅 (1시간)"
               value={metrics?.failed_webhooks_last_hour}
               severity={failedSeverity}
-              hint={failedSeverity !== 'ok' ? '⚠ Toss/Stripe 연동 점검' : '정상'}
+              hint={failedSeverity !== 'ok' ? 'Toss/Stripe 연동 점검' : '정상'}
             />
             <MetricCard
               label="활성 유저 (최근 5분)"
@@ -280,7 +280,7 @@ function SchemaRepairSection() {
           <button
             onClick={runQuick}
             disabled={quickRunning}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-600 disabled:opacity-60"
+            className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-1.5 disabled:opacity-60"
             title="핵심 컬럼만 빠르게 적용 + 존재 진단 (전체 복구가 524/오류일 때)"
           >
             {quickRunning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Database className="h-3.5 w-3.5" />}
@@ -289,7 +289,7 @@ function SchemaRepairSection() {
           <button
             onClick={run}
             disabled={running}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-4 py-2 text-xs font-semibold text-white hover:bg-gray-800 disabled:opacity-60"
+            className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-1.5 disabled:opacity-60"
           >
             {running ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Database className="h-3.5 w-3.5" />}
             {running ? '실행 중...' : '지금 스키마 복구 (전체)'}
@@ -300,24 +300,24 @@ function SchemaRepairSection() {
       {quick && (
         <div className="mt-4 space-y-2 text-xs">
           {quick._err ? (
-            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-red-700">⚠️ {quick._err}</div>
+            <div className="rounded-md border border-rule bg-white px-3 py-2 text-tone-bad">{quick._err}</div>
           ) : (
             <>
-              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800">
-                🔎 컬럼 존재 진단 (기능 의존)
+              <div className="rounded-md border border-rule bg-white px-3 py-2 text-tone-warn">
+                컬럼 존재 진단 (기능 의존)
                 <ul className="mt-1 space-y-0.5">
                   {Object.entries(quick.present ?? {}).map(([k, v]) => (
-                    <li key={k} className="font-mono">{v ? '✅' : '❌'} {k}</li>
+                    <li key={k} className="font-mono">{v ? 'OK' : 'FAIL'} {k}</li>
                   ))}
                 </ul>
               </div>
               {(quick.ran?.length ?? 0) > 0 && (
-                <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-green-700">
+                <div className="rounded-md border border-rule bg-white px-3 py-2 text-tone-ok">
                   실행: {quick.ran!.join(' · ')}
                 </div>
               )}
               {(quick.errors?.length ?? 0) > 0 && (
-                <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-red-700">
+                <div className="rounded-md border border-rule bg-white px-3 py-2 text-tone-bad">
                   오류: {quick.errors!.map((e) => `${e.step} (${e.error})`).join(' · ')}
                 </div>
               )}
@@ -329,17 +329,17 @@ function SchemaRepairSection() {
       {result && (
         <div className="mt-4 space-y-2 text-xs">
           {result._clientError ? (
-            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-red-700">
-              ⚠️ 실행 실패 — {result._clientError}
+            <div className="rounded-md border border-rule bg-white px-3 py-2 text-tone-bad">
+              실행 실패 — {result._clientError}
             </div>
           ) : errs.length === 0 ? (
-            <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-green-700">
-              ✅ 완료 — 확인 {checkedCount}개 · 추가 {added.length}개 · 기존 {existsCount}개
-              {added.length === 0 && <span className="block text-green-600 mt-0.5">이미 최신 상태입니다 (추가할 항목 없음)</span>}
+            <div className="rounded-md border border-rule bg-white px-3 py-2 text-tone-ok">
+              완료 — 확인 {checkedCount}개 · 추가 {added.length}개 · 기존 {existsCount}개
+              {added.length === 0 && <span className="block text-tone-ok mt-0.5">이미 최신 상태입니다 (추가할 항목 없음)</span>}
             </div>
           ) : (
-            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-red-700">
-              ⚠️ {errs.length}건 오류:
+            <div className="rounded-md border border-rule bg-white px-3 py-2 text-tone-bad">
+              {errs.length}건 오류:
               <ul className="mt-1 list-disc pl-4">
                 {errs.map((e, i) => (
                   <li key={i}>{e}</li>
@@ -413,20 +413,20 @@ function GroupBuySettlementAuditSection() {
           </div>
         </div>
         <button onClick={run} disabled={running}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-4 py-2 text-xs font-semibold text-white hover:bg-gray-800 disabled:opacity-60">
+          className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-1.5 disabled:opacity-60">
           {running ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Database className="h-3.5 w-3.5" />}
           {running ? '점검 중...' : '정합성 점검'}
         </button>
       </div>
 
-      {err && <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">⚠️ {err}</div>}
+      {err && <div className="mt-4 rounded-md border border-rule bg-white px-3 py-2 text-xs text-tone-bad">{err}</div>}
 
       {res && (
         <div className="mt-4 space-y-2 text-xs">
-          <div className={`rounded-md border px-3 py-2 ${missing === 0 ? 'border-green-200 bg-green-50 text-green-700' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
+          <div className={`rounded-md border px-3 py-2 ${missing === 0 ? 'border-rule bg-white text-tone-ok' : 'border-rule bg-white text-tone-warn'}`}>
             {missing === 0
-              ? `✅ 정합 — 최근 ${res.period_days}일 공구 ${res.total_orders}건(${won(res.total_amount)}) 전부 ledger·정산기록 보유`
-              : `⚠️ 누락 발견 — ledger ${res.missing_ledger.n}건 · 정산기록 ${res.missing_donation.n}건 (총 공구 ${res.total_orders}건 중)`}
+              ? `정합 — 최근 ${res.period_days}일 공구 ${res.total_orders}건(${won(res.total_amount)}) 전부 ledger·정산기록 보유`
+              : `누락 발견 — ledger ${res.missing_ledger.n}건 · 정산기록 ${res.missing_donation.n}건 (총 공구 ${res.total_orders}건 중)`}
           </div>
           <div className="text-gray-600">결제수단별: {res.by_method.map((m) => `${m.method} ${m.n}`).join(' · ') || '없음'}</div>
           {!res.missing_ledger.available && <div className="text-gray-400">· ledger_entries 테이블 없음 (점검 불가)</div>}
@@ -510,9 +510,9 @@ function WebhookFailuresSection() {
   }
 
   return (
-    <div className="mt-8 bg-white rounded-2xl border border-gray-200 p-5">
+    <div className="mt-8 bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-5">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-bold text-gray-900">📡 Webhook 실패 (TD-009)</h3>
+        <h3 className="text-sm font-bold text-gray-900">Webhook 실패 (TD-009)</h3>
         <select value={hours} onChange={e => setHours(Number(e.target.value))}
           className="text-xs border border-gray-200 rounded px-2 py-1 text-gray-900">
           <option value={1}>1시간</option>
@@ -528,13 +528,13 @@ function WebhookFailuresSection() {
         <>
           {stats && (
             <div className="grid grid-cols-3 gap-3 mb-4">
-              <div className={`rounded-xl p-3 ${stats.total > 0 ? 'bg-red-50' : 'bg-green-50'}`}>
+              <div className={`rounded-xl p-3 ${stats.total > 0 ? 'border border-rule bg-white' : 'border border-rule bg-white'}`}>
                 <p className="text-xs text-gray-600 font-bold">총 실패</p>
                 <p className="text-2xl font-extrabold text-gray-900">{stats.total}</p>
               </div>
-              <div className={`rounded-xl p-3 ${stats.escalated > 0 ? 'bg-red-100' : 'bg-gray-50'}`}>
+              <div className={`rounded-xl p-3 ${stats.escalated > 0 ? 'border border-rule bg-white' : 'bg-gray-50'}`}>
                 <p className="text-xs text-gray-600 font-bold">escalated (retry≥3)</p>
-                <p className="text-2xl font-extrabold text-red-600">{stats.escalated}</p>
+                <p className="text-2xl font-extrabold text-tone-bad">{stats.escalated}</p>
               </div>
               <div className="rounded-xl p-3 bg-gray-50">
                 <p className="text-xs text-gray-600 font-bold">소스</p>
@@ -546,12 +546,12 @@ function WebhookFailuresSection() {
           )}
 
           {recent.length === 0 ? (
-            <p className="text-xs text-gray-400 text-center py-6">실패 이벤트 없음 ✓</p>
+            <p className="text-xs text-gray-400 text-center py-6">실패 이벤트 없음</p>
           ) : (
             <div className="space-y-1 max-h-96 overflow-y-auto">
               {recent.map(r => (
                 <div key={r.id} className={`text-xs p-2 rounded border ${
-                  r.status === 'FAILED' ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-100'
+                  r.status === 'FAILED' ? 'bg-white border-rule' : 'bg-gray-50 border-gray-100'
                 }`}>
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex-1 min-w-0">
@@ -567,13 +567,13 @@ function WebhookFailuresSection() {
                     </div>
                     {r.status === 'FAILED' && (
                       <button onClick={() => retry(r.id)}
-                        className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded hover:bg-blue-200 font-bold">
+                        className="text-[10px] bg-tone-info-bg text-tone-info px-2 py-0.5 rounded hover:bg-blue-200 font-bold">
                         재처리
                       </button>
                     )}
                   </div>
                   {r.error_message && (
-                    <p className="text-[10px] text-red-600 mt-1 line-clamp-2">{r.error_message}</p>
+                    <p className="text-[10px] text-tone-bad mt-1 line-clamp-2">{r.error_message}</p>
                   )}
                   <p className="text-[10px] text-gray-400 mt-0.5">{formatKST(r.created_at)}</p>
                 </div>

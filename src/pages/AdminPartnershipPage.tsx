@@ -25,7 +25,7 @@ interface InquiryRow {
   created_at: string
 }
 
-const TYPE_LABEL: Record<string, string> = { ad: '📣 광고', partnership: '🤝 제휴', store: '🏪 매장 입점', supply: '📦 상품 공급', other: '💬 기타' }
+const TYPE_LABEL: Record<string, string> = { ad: '광고', partnership: '제휴', store: '매장 입점', supply: '상품 공급', other: '기타' }
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   new: { label: '신규', cls: 'bg-tone-bad-bg text-tone-bad' },
   in_progress: { label: '진행 중', cls: 'bg-tone-warn-bg text-tone-warn' },
@@ -87,14 +87,14 @@ export default function AdminPartnershipPage() {
       {loading ? (
         <div className="py-16 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto text-gray-400" /></div>
       ) : rows.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-200 py-16 text-center text-sm text-gray-400">접수된 문의가 없어요</div>
+        <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 py-16 text-center text-sm text-gray-400">접수된 문의가 없어요</div>
       ) : (
         <div className="space-y-2">
           {rows.map(r => {
             const st = STATUS_META[r.status] || STATUS_META.new
             const open = openId === r.id
             return (
-              <div key={r.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+              <div key={r.id} className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 overflow-hidden">
                 <button onClick={() => { setOpenId(open ? null : r.id); setMemo(r.admin_memo || '') }}
                   className="w-full flex items-center gap-3 px-4 py-3.5 text-left">
                   <span className={`shrink-0 px-2 py-0.5 rounded-full text-[11px] font-bold ${st.cls}`}>{st.label}</span>

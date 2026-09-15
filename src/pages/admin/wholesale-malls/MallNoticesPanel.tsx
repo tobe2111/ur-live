@@ -80,7 +80,7 @@ export default function MallNoticesPanel({ mallId }: { mallId: number }) {
             className={INPUT} title="게시 종료일(선택)" />
         </div>
         <button onClick={create} disabled={busy}
-          className="px-3 py-1.5 rounded-lg bg-gray-900 text-white text-xs font-semibold disabled:opacity-50">
+          className="ur-btn ur-btn-sm ur-btn-primary disabled:opacity-50">
           {busy ? '생성 중…' : '공지 추가'}
         </button>
       </div>
@@ -94,7 +94,7 @@ export default function MallNoticesPanel({ mallId }: { mallId: number }) {
         <ul className="space-y-2">
           {notices.map((n) => (
             <li key={n.id} className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2">
-              <span className={`shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded ${n.type === 'popup' ? 'bg-violet-50 text-violet-700' : 'bg-sky-50 text-sky-700'}`}>
+              <span className={`shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded ${n.type === 'popup' ? 'bg-tone-info-bg text-tone-info' : 'bg-tone-info-bg text-tone-info'}`}>
                 {n.type === 'popup' ? '팝업' : '배너'}
               </span>
               <div className="flex-1 min-w-0">
@@ -104,10 +104,10 @@ export default function MallNoticesPanel({ mallId }: { mallId: number }) {
                 </p>
               </div>
               <button onClick={() => toggle(n)}
-                className={`shrink-0 px-2 py-1 rounded text-[11px] font-semibold border ${n.active ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-50 text-gray-500 border-gray-200'}`}>
+                className={`shrink-0 px-2 py-1 rounded text-[11px] font-semibold border ${n.active ? 'bg-tone-ok-bg text-tone-ok border-transparent' : 'bg-gray-50 text-gray-500 border-gray-200'}`}>
                 {n.active ? '게시 중' : '숨김'}
               </button>
-              <button onClick={() => remove(n)} className="shrink-0 p-1.5 text-gray-400 hover:text-red-600" title="삭제">
+              <button onClick={() => remove(n)} className="shrink-0 p-1.5 text-gray-400 hover:text-tone-bad" title="삭제">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </li>

@@ -216,7 +216,7 @@ export default function AdminReturnsPage() {
                           <div className="flex items-center justify-center gap-1">
                             <button
                               onClick={() => setExpandedId(isExpanded ? null : r.id)}
-                              className="px-2 py-1 text-xs text-blue-600 bg-blue-50 rounded hover:bg-blue-100"
+                              className="px-2 py-1 text-xs text-tone-info bg-tone-info-bg rounded hover:bg-gray-100"
                             >
                               {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                             </button>
@@ -224,20 +224,20 @@ export default function AdminReturnsPage() {
                         </td>
                       </tr>
                       {isExpanded && (
-                        <tr className="bg-blue-50/30">
+                        <tr className="border border-rule bg-white">
                           <td colSpan={8} className="px-4 py-4">
                             <div className="space-y-3">
                               {/* 회수 송장 */}
                               {r.return_tracking_number && (
                                 <div className="bg-white rounded-lg p-3 border border-gray-200">
-                                  <p className="text-xs font-bold text-gray-700 mb-1">📦 회수 송장</p>
+                                  <p className="text-xs font-bold text-gray-700 mb-1">회수 송장</p>
                                   <div className="flex items-center justify-between">
                                     <span className="text-sm font-mono">{r.return_shipping_company} · {r.return_tracking_number}</span>
                                     <button
                                       onClick={() => setTrackingTarget({ carrier: r.return_shipping_company!, number: r.return_tracking_number! })}
                                       className="text-xs text-brand-text font-bold"
                                     >
-                                      📦 추적 →
+                                      추적 →
                                     </button>
                                   </div>
                                 </div>
@@ -246,15 +246,15 @@ export default function AdminReturnsPage() {
                               {/* 검수 / 환불 결과 */}
                               {r.inspection_result && (
                                 <div className="bg-white rounded-lg p-3 border border-gray-200 text-xs">
-                                  <strong>검수 결과:</strong> {r.inspection_result === 'approved' ? '✅ 승인' : '❌ 반려'}
+                                  <strong>검수 결과:</strong> {r.inspection_result === 'approved' ? '승인' : '반려'}
                                 </div>
                               )}
                               {/* 🔴 2026-08-01 fix: `refund_amount` 는 **반품 신청 시점**에 주문 총액으로 채워진다.
                                   status 를 안 보고 그리면 신청하자마자 "환불 완료" 가 떠서, 아직 돈이 안 나갔는데
                                   나간 것처럼 보였다. 실제로 나간 뒤(`refunded`)에만 그린다. */}
                               {r.status === 'refunded' && r.refund_amount != null && (
-                                <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-200 text-xs text-emerald-700">
-                                  💰 환불 완료: {formatNumber(r.refund_amount)}원
+                                <div className="bg-white rounded-lg p-3 border border-rule text-xs text-tone-ok">
+                                  환불 완료: {formatNumber(r.refund_amount)}원
                                 </div>
                               )}
 
@@ -262,21 +262,21 @@ export default function AdminReturnsPage() {
                               <div className="flex flex-wrap gap-2">
                                 {r.status === 'requested' && (
                                   <>
-                                    <button onClick={() => handleApprove(r.id)} className="px-3 py-1.5 text-xs font-bold text-white bg-gray-900 rounded hover:bg-gray-900">
-                                      ✓ 승인
+                                    <button onClick={() => handleApprove(r.id)} className="ur-btn ur-btn-sm ur-btn-primary rounded">
+                                      승인
                                     </button>
-                                    <button onClick={() => handleReject(r.id)} className="px-3 py-1.5 text-xs font-bold text-white bg-red-500 rounded hover:bg-red-600">
-                                      ✕ 반려
+                                    <button onClick={() => handleReject(r.id)} className="ur-btn ur-btn-sm ur-btn-danger rounded">
+                                      반려
                                     </button>
                                   </>
                                 )}
                                 {/* 🏁 2026-06-12: 'received' 전이 endpoint 부재로 영구 공집합이던 탭 — shipped 에도 검수 노출 (서버 inspect 허용 확인) */}
                                 {(r.status === 'received' || r.status === 'shipped') && (
                                   <>
-                                    <button onClick={() => handleInspect(r.id, 'approved')} className="px-3 py-1.5 text-xs font-bold text-white bg-gray-900 rounded hover:bg-gray-900">
+                                    <button onClick={() => handleInspect(r.id, 'approved')} className="ur-btn ur-btn-sm ur-btn-primary rounded">
                                       검수 통과
                                     </button>
-                                    <button onClick={() => handleInspect(r.id, 'rejected')} className="px-3 py-1.5 text-xs font-bold text-white bg-red-500 rounded hover:bg-red-600">
+                                    <button onClick={() => handleInspect(r.id, 'rejected')} className="ur-btn ur-btn-sm ur-btn-danger rounded">
                                       검수 반려
                                     </button>
                                   </>
@@ -291,8 +291,8 @@ export default function AdminReturnsPage() {
                                       onSaved={loadReturns}
                                       config={h}
                                     />
-                                    <button onClick={() => handleRefund(r.id)} className="px-3 py-1.5 text-xs font-bold text-white bg-gray-900 rounded hover:bg-gray-900">
-                                      💰 환불 처리
+                                    <button onClick={() => handleRefund(r.id)} className="ur-btn ur-btn-sm ur-btn-primary rounded">
+                                      환불 처리
                                     </button>
                                   </>
                                 )}

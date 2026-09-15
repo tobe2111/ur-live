@@ -40,7 +40,7 @@ ${link}
 신청해두시면 ${name}님 채널과 맞는 매장 협찬 제안이 있을 때 우선 안내드립니다.`
       await navigator.clipboard?.writeText(msg).catch(() => null)
       const what = r.data.mode === 'join' ? '가입 안내' : '모집 안내'
-      toast.success(`📣 ${what} 복사됨 — ${hasEmail ? '메일·' : ''}인스타 DM·블로그 댓글로 전달하세요 (전환은 통계에 자동 집계)`)
+      toast.success(`${what} 복사됨 — ${hasEmail ? '메일·' : ''}인스타 DM·블로그 댓글로 전달하세요 (전환은 통계에 자동 집계)`)
     } catch (e: unknown) {
       const ax = e as { response?: { data?: { error?: string; already_joined?: boolean } } }
       toast.error(ax.response?.data?.error || '모집 링크 생성 실패')
@@ -49,6 +49,6 @@ ${link}
 
   return (
     <button onClick={run} disabled={busy} title="모집 안내 문구 + 전용 추적링크 복사 — 신청(동의)하면 자동 발송 대상이 됩니다"
-      className="text-[12px] font-semibold text-rose-600 hover:underline disabled:opacity-40">📣</button>
+      className="text-[12px] font-semibold text-brand-text hover:underline disabled:opacity-40"></button>
   )
 }
