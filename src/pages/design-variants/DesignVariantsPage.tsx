@@ -32,7 +32,10 @@ export default function DesignVariantsPage() {
   const setId = params.get('set') || SET_INDEX[0].id
   const dataMode = params.get('data') === 'empty' ? 'empty' : 'full'
   const widthId = params.get('w') || 'phone'
-  const side = params.get('side') === '1'
+  // 🩸 2026-09-15 — 기본값을 뒤집었다. 처음엔 "하나씩"이 기본이라 첫 안(= **지금 쓰는 화면 그대로**)만
+  //   떴고, 대표가 열어 보고 *"시안이 안보이는데?"* 했다. 맞는 말이다 — 이미 아는 화면 한 장이 떠 있었다.
+  //   이 화면의 목적은 **비교**이므로 기본은 전부 나란히다. 한 안만 크게 보고 싶으면 `?side=0`.
+  const side = params.get('side') !== '0'
   const [set, setSet] = useState<VariantSet | null>(null)
   const [failed, setFailed] = useState(false)
 
@@ -73,14 +76,12 @@ export default function DesignVariantsPage() {
           <Picker label="폭" value={width.id} onPick={(v) => put('w', v)}
             options={WIDTHS.map(w => ({ id: w.id, label: w.label }))} />
 
-          <label className="flex items-center gap-1.5 text-[12px] font-bold text-gray-600">
-            <input type="checkbox" checked={side} onChange={e => put('side', e.target.checked ? '1' : '0')} />
-            나란히
-          </label>
+          <Picker label="보기" value={side ? '1' : '0'} onPick={(v) => put('side', v)}
+            options={[{ id: '1', label: '나란히' }, { id: '0', label: '하나씩' }]} />
         </div>
         {set && (
           <p className="mx-auto mt-2 max-w-[1600px] text-[11.5px] leading-relaxed text-gray-500">
-            <span className="font-bold text-gray-700">{set.route}</span> · {set.problem}
+            <span className="font-bold text-gray-700">{set.route}</span>, 안 {set.variants.length}개 · {set.problem}
           </p>
         )}
       </header>

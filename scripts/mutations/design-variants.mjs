@@ -69,4 +69,28 @@ export default [
     test: TEST,
     why: '대표가 불편해한 화면은 숫자가 전부 0 이었다 — 데이터가 있을 때만 보면 그 문제가 안 보인다.',
   },
+  {
+    name: '🎨 열자마자 한 장만 뜬다 (기본이 "하나씩" 으로 되돌아감)',
+    file: 'src/pages/design-variants/DesignVariantsPage.tsx',
+    find: "const side = params.get('side') !== '0'",
+    replace: "const side = params.get('side') === '1'",
+    test: TEST,
+    why: '실사고 2026-09-15 — 기본이 한 장이면 첫 안(= 지금 쓰는 화면)만 떠서 "시안이 안보이는데?" 가 된다.',
+  },
+  {
+    name: '🎨 나란히인데 첫 안만 그린다',
+    file: 'src/pages/design-variants/DesignVariantsPage.tsx',
+    find: 'const shown = set ? (side ? set.variants : set.variants.filter',
+    replace: 'const shown = set ? (false ? set.variants : set.variants.filter',
+    test: TEST,
+    why: '나란히를 켜도 한 장만 나오면 비교 도구가 아니다.',
+  },
+  {
+    name: '🎨 안 개수 표시가 사라진다 (한 장만 보여도 이상한 줄 모른다)',
+    file: 'src/pages/design-variants/DesignVariantsPage.tsx',
+    find: ', 안 {set.variants.length}개',
+    replace: '',
+    test: TEST,
+    why: '"안 3개" 라고 적혀 있어야 한 장만 뜬 날 화면이 스스로 어긋남을 말해 준다.',
+  },
 ]

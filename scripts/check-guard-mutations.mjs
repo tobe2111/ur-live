@@ -209,9 +209,11 @@ const MUTATIONS = [
   },
   {
     name: '뒤로가기 복원 — POP 조회를 무력화',
-    file: 'src/pages/VouchersPage.tsx',
-    find: "navType === 'POP' ? readListView<VouchersViewState>(viewKey) : null",
-    replace: 'null',
+    // 🔀 2026-09-15: 이 판정이 `VouchersPage` → `vouchers/warm-seed.ts` 로 **옮겨졌다**(웜 시드와
+    //    한 자리에 모으면서). 불변식은 그대로라 주입을 지우지 않고 새 자리로 재조준한다.
+    file: 'src/pages/vouchers/warm-seed.ts',
+    find: "const restored = navType === 'POP' ? readListView<S>(viewKey) : null",
+    replace: 'const restored = null',
     test: 'src/tests/unit/list-view-restore-2026-09-13.test.ts',
     why: '이 한 줄이 이 사고의 귀속 지점이다(되돌려-검증: 브라우저 실측 4항목 전부 빨간불).',
   },
