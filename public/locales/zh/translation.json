@@ -3278,7 +3278,11 @@
       "noContact": "未登记门店电话 — 去登记",
       "pinWarn": "最近7天 PIN 错误 {{errors}} 次多于成功 {{ok}} 次。请确认告知门店的 PIN。",
       "deleteConfirm": "要删除 '{{name}}' 使用券吗？\n已发放的使用券仍可使用，只会停止新的销售。",
-      "deleteFailed": "删除失败"
+      "deleteFailed": "删除失败",
+      "deletedSeg": "已删除",
+      "restore": "恢复",
+      "restored": "已重新开始销售该优惠券",
+      "deletedNote": "仅停止新的销售。已发放的优惠券仍可使用。"
     },
     "ordersM3": {
       "today": "今天",

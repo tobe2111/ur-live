@@ -34,9 +34,14 @@
  */
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { changedScope, inScope } from './guard-mutations-scope.mjs'
+import { GUARD_RUNNER, touchesGuardScripts } from './guard-mutations-scope.mjs'
+import {
+  changedInjectionNames, runnerLogicChanged, testSpawnsSubprocess,
+} from './guard-mutations-manifest-diff.mjs'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const STRICT = process.argv.includes('-s') || process.argv.includes('--strict')
@@ -93,6 +98,14 @@ const MAP_ONLY = process.argv.includes('--map-only')
  * (실제로 "주입 대상이 2곳" 으로 잡혀 이 파일에서 뽑아냈다).
  * 🔴 좁힌 만큼은 `guard-mutations-full.yml`(main push + 야간)이 전수로 되찾는다 — 둘은 짝이다.
  */
+/**
+ * 📤 `--dump-manifest` — 주입 목록만 JSON 으로 찍고 **아무것도 하지 않고** 끝낸다.
+ *
+ * 왜: `--changed` 가 "이 PR 이 실제로 바꾼 주입" 을 고르려면 **base(main) 의 목록**이 필요한데,
+ * 이 파일은 최상위 스크립트라 import 하면 그대로 실행돼 버린다. 그래서 base 소스를 임시로 풀어
+ * 이 모드로 **하위 프로세스에서** 한 번 찍게 한다(소스 접근·자물쇠 이전에 끝난다).
+ */
+const DUMP_MANIFEST = process.argv.includes('--dump-manifest')
 const CHANGED = process.argv.includes('--changed')
 const SCOPE = changedScope({
   enabled: CHANGED,
@@ -10400,6 +10413,90 @@ const ALL = [...MUTATIONS, ...SPLIT]
     process.exit(1)
   }
 }
+
+// 📤 목록만 찍고 끝 — base 쪽을 이 모드로 부른다. 소스도 안 읽고 자물쇠도 안 건다.
+if (DUMP_MANIFEST) {
+  // ⚠️ `process.stdout.write` + `process.exit` 는 **flush 를 기다리지 않는다** — 파이프로 보내면
+  //    큰 JSON 이 중간에서 잘린다(실측: 55,166자에서 끊겼다). 동기 write 로 끝까지 밀어 넣는다.
+  fs.writeSync(1, JSON.stringify(
+    ALL.map(({ name, file, find, replace, test }) => ({ name, file, find, replace, test })),
+  ))
+  process.exit(0)
+}
+
+/**
+ * 🔎 **이 브랜치가 실제로 바꾼 주입** — `scripts/` 를 건드려도 전수로 안 가게 하는 자리.
+ *
+ * 근거·측정은 `guard-mutations-manifest-diff.mjs` 머리주석. 요약: 머지 PR 25건 중 23건이
+ * 전수였고 그중 11건이 **이 파일에 주입을 한 줄 더한 것**뿐이었다. 규칙을 지킬수록 40분을 물었다.
+ *
+ * 🔴 **모든 실패는 전수로 떨어진다**(base 를 못 풀든, 앵커가 사라졌든, JSON 이 깨졌든).
+ *    좁히다 틀리는 것보다 넓게 도는 쪽이 싸다.
+ */
+function scopeFromManifestDiff() {
+  if (!CHANGED || SCOPE.full) return null
+  const touched = SCOPE.files
+  const runnerChanged = touched.has(GUARD_RUNNER)
+  const manifestChanged = [...touched].some((f) => f.startsWith('scripts/mutations/'))
+  const otherScripts = touchesGuardScripts(touched)
+  if (!runnerChanged && !manifestChanged && !otherScripts) return null
+
+  /** base 의 `scripts/` 만 풀어서 목록을 받아 온다(전체 체크아웃 아님 — 수백 ms). */
+  let baseList = null
+  let baseRunnerSrc = null
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gm-base-'))
+  try {
+    const baseRef = process.env.GUARD_MUTATIONS_BASE || 'origin/main'
+    const tar = execFileSync('git', ['archive', baseRef, 'scripts'], { cwd: ROOT, maxBuffer: 256 * 1024 * 1024 })
+    execFileSync('tar', ['-x', '-C', tmp], { input: tar, maxBuffer: 256 * 1024 * 1024 })
+    baseRunnerSrc = fs.readFileSync(path.join(tmp, 'scripts', 'check-guard-mutations.mjs'), 'utf8')
+    // 🔴 **부르기 전에 지원 여부를 본다.** 모르는 플래그를 받은 옛 러너는 무시하고 **전수를 돈다** —
+    //    그러면 이 하위 프로세스가 40분을 태우고 소스에 주입까지 한다(실측으로 걸렸다).
+    //    이 PR 이 머지되기 전까지는 base 에 이 모드가 없으므로, 여기서 조용히 전수로 떨어진다.
+    if (!baseRunnerSrc.includes('--dump-manifest')) {
+      return { full: true, why: 'base 러너에 --dump-manifest 가 없다(이 기능 이전 버전) — 전수로 돈다' }
+    }
+    const out = execFileSync(process.execPath, [path.join(tmp, 'scripts', 'check-guard-mutations.mjs'), '--dump-manifest'],
+      { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, timeout: 60_000 })
+    baseList = JSON.parse(out)
+  } catch (err) {
+    return { full: true, why: `base 주입 목록을 못 읽었다(${String(err?.message ?? err).slice(0, 80)}) — 전수로 돈다` }
+  } finally {
+    try { fs.rmSync(tmp, { recursive: true, force: true }) } catch { /* 최선 노력 */ }
+  }
+
+  // 러너의 **판정 로직**이 바뀌었으면 내가 안 건드린 주입도 다르게 판정될 수 있다 ⇒ 전수.
+  if (runnerChanged) {
+    const headSrc = fs.readFileSync(path.join(ROOT, GUARD_RUNNER), 'utf8')
+    if (runnerLogicChanged(baseRunnerSrc, headSrc)) {
+      return { full: true, why: `${GUARD_RUNNER} 의 판정 로직이 바뀌었다 — 전수` }
+    }
+  }
+
+  const names = changedInjectionNames(baseList, ALL)
+
+  // 🕳️ `scripts/check-*.mjs` 가 바뀌면, **하위 프로세스로 그 가드를 돌리는 테스트**(실측 14개)를
+  //    쓰는 주입은 `file`·`test` 가 diff 에 없어도 판정이 달라질 수 있다. 그 구멍만 메운다.
+  if (otherScripts) {
+    const spawns = new Map()
+    for (const m of ALL) {
+      if (!spawns.has(m.test)) {
+        let src = ''
+        try { src = fs.readFileSync(path.join(ROOT, m.test), 'utf8') } catch { src = 'execFileSync(' }
+        spawns.set(m.test, testSpawnsSubprocess(src))
+      }
+      if (spawns.get(m.test)) names.add(m.name)
+    }
+  }
+  return { names }
+}
+const MANIFEST_SCOPE = scopeFromManifestDiff()
+if (MANIFEST_SCOPE?.full) {
+  SCOPE.full = true
+  SCOPE.why = MANIFEST_SCOPE.why
+}
+/** 매니페스트 diff 로 추가로 골라야 하는 주입 이름(없으면 빈 집합). */
+const CHANGED_NAMES = MANIFEST_SCOPE?.names ?? new Set()
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).
  *
@@ -10672,7 +10769,7 @@ if (integrity.length) {
   process.exit(1)
 }
 
-const planned = ALL.filter((m) => (!ONLY || m.name.includes(ONLY)) && inScope(m, SCOPE)).length
+const planned = ALL.filter((m) => (!ONLY || m.name.includes(ONLY)) && (inScope(m, SCOPE) || CHANGED_NAMES.has(m.name))).length
 if (SCOPE.full) {
   console.log(`🧬 guard-mutations: ${ALL.length}개 주입 검증 (각각 소스를 잠깐 고쳤다가 되돌린다)\n`)
   if (CHANGED) console.log(`   ⚠️ 전수로 돈다 — ${SCOPE.why}\n`)
@@ -10685,7 +10782,7 @@ let onlyMatched = 0
 for (const m of ALL) {
   if (ONLY && !m.name.includes(ONLY)) continue
   if (ONLY) onlyMatched += 1
-  if (!inScope(m, SCOPE)) continue
+  if (!inScope(m, SCOPE) && !CHANGED_NAMES.has(m.name)) continue
   const abs = path.join(ROOT, m.file)
   if (!fs.existsSync(abs)) { problems.push(`${m.name}: 파일 없음 — ${m.file} (코드가 옮겨갔다)`); continue }
   const src = fs.readFileSync(abs, 'utf8')
