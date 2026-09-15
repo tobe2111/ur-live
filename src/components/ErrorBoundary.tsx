@@ -76,10 +76,10 @@ class ErrorBoundary extends Component<Props, State> {
       if (this.state.isChunkError) {
         const exhausted = this.state.chunkExhausted;
         return (
-          <div className="min-h-[100dvh] flex items-center justify-center bg-gray-50 dark:bg-[#11141C] px-4">
+          <div className="min-h-[100dvh] flex items-center justify-center bg-warm px-4">
             <div className="max-w-sm w-full text-center">
               {!exhausted && (
-                <div className="w-12 h-12 mx-auto mb-4 rounded-full border-2 border-gray-200 dark:border-[#2C2F35] border-t-gray-900 dark:border-t-white animate-spin" />
+                <div className="w-12 h-12 mx-auto mb-4 rounded-full border-2 border-line border-t-gray-900 dark:border-t-white animate-spin" />
               )}
               <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
                 {exhausted ? '새 버전이 배포됐어요' : '화면을 업데이트하고 있어요'}

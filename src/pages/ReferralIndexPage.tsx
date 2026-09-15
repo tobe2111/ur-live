@@ -101,7 +101,7 @@ export default function ReferralIndexPage() {
           </button>
           <button
             onClick={() => navigate('/group-buy')}
-            className="w-full py-3.5 bg-white dark:bg-[#11141C] text-gray-900 dark:text-white border border-gray-200 dark:border-[#2C2F35] text-[14px] font-semibold rounded-full hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
+            className="w-full py-3.5 bg-white dark:bg-[#11141C] text-gray-900 dark:text-white border border-line text-[14px] font-semibold rounded-full hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
           >
             {t('referral.ctaList', { defaultValue: '진행 중인 공동구매 모아보기' })}
           </button>

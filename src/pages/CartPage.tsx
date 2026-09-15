@@ -407,7 +407,7 @@ function CartPageContent() {
 
   return (
     // 🩸 2026-09-02 (대표 "장바구니 페이지도 심각하다"): 이 래퍼만 dark: 없이 라이트 회색이라 다크에서 아래 절반이 회색으로 남았다.
-    <div className="flex flex-col min-h-[100dvh] bg-[#F8F7FC] dark:bg-[#11141C]">
+    <div className="flex flex-col min-h-[100dvh] bg-warm">
       <SEO title={t('cart.seoTitle')} description={t('cart.seoDesc')} url="/cart" noindex />
 
       {/* v4 Header + Select All */}
@@ -441,7 +441,7 @@ function CartPageContent() {
                 : 0
 
               return (
-                <div key={group.seller_id} className="mt-2 bg-white dark:bg-[#1D1F29] lg:rounded-2xl lg:shadow-lift lg:overflow-hidden">
+                <div key={group.seller_id} className="mt-2 bg-surface lg:rounded-2xl lg:shadow-lift lg:overflow-hidden">
                   {/* Seller header with checkbox + badge + name + chevron */}
                   <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-50 dark:border-[#2C2F35]">
                     <span
@@ -545,7 +545,7 @@ function CartPageContent() {
             })}
 
             </div>{/* /좌측 아이템 컬럼 */}
-            <aside className="mt-2 bg-white dark:bg-[#1D1F29] px-4 py-4 lg:sticky lg:top-[64px] lg:rounded-2xl lg:shadow-lift">
+            <aside className="mt-2 bg-surface px-4 py-4 lg:sticky lg:top-[64px] lg:rounded-2xl lg:shadow-lift">
               <CartSummary
                 totalItems={totalItems - dealItems}
                 subtotal={subtotal}

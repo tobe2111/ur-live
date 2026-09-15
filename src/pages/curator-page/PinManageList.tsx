@@ -86,7 +86,7 @@ export default function PinManageList({ pins, onReorder, onDeleted }: { pins: Cu
             <div
               key={pin.id}
               data-pinrow
-              className={`flex items-center gap-3 rounded-2xl border p-2.5 bg-white dark:bg-[#1D1F29] ${dragging ? 'border-[#6b7280] shadow-lg' : 'border-gray-200 dark:border-[#2C2F35]'}`}
+              className={`flex items-center gap-3 rounded-2xl border p-2.5 bg-surface ${dragging ? 'border-[#6b7280] shadow-lg' : 'border-gray-200 dark:border-[#2C2F35]'}`}
               style={{ opacity: dragging ? 0.92 : 1 }}
             >
               <span

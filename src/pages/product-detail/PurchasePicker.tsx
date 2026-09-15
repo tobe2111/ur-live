@@ -172,7 +172,7 @@ export default function PurchasePicker({
           })}
         </div>
       ) : (
-        <button className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 dark:border-[#2C2F35]">
+        <button className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-line">
           <span className="text-[12px] text-gray-500 dark:text-gray-400">{t('productDetail.optionPlaceholder')}</span>
           <svg className="w-3.5 h-3.5 text-gray-900 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9" /></svg>
         </button>
@@ -182,7 +182,7 @@ export default function PurchasePicker({
       {/* 🚑 2026-07-02 (상세 리뷰): 수량 스텝퍼 부재 — setQuantity 미배선이라 2개 이상 즉시구매 불가하던 것 */}
       <div className="flex items-center justify-between mt-3">
         <span className="text-[12px] font-bold text-gray-900 dark:text-white">{t('productDetail.quantity', { defaultValue: '수량' })}</span>
-        <div className="flex items-center gap-3 border border-gray-200 dark:border-[#2C2F35] rounded-xl px-2 py-1">
+        <div className="flex items-center gap-3 border border-line rounded-xl px-2 py-1">
           <button type="button" aria-label="수량 감소" onClick={dec}
             className="w-8 h-8 flex items-center justify-center text-gray-900 dark:text-white font-bold disabled:opacity-30" disabled={quantity <= 1}>−</button>
           <span className="min-w-[2ch] text-center text-[14px] font-bold text-gray-900 dark:text-white">{quantity}</span>

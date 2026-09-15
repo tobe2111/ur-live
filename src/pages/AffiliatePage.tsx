@@ -103,7 +103,7 @@ export default function AffiliatePage() {
               />
             </p>
             <div className="flex gap-2">
-              <div className="flex-1 px-3 py-2.5 bg-gray-50 dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-xl text-xs text-gray-600 dark:text-gray-300 truncate">
+              <div className="flex-1 px-3 py-2.5 bg-gray-50 dark:bg-[#1D1F29] border border-line rounded-xl text-xs text-gray-600 dark:text-gray-300 truncate">
                 {data.share_url}
               </div>
               <button onClick={() => copyLink(data.share_url)}

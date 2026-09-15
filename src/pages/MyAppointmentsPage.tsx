@@ -184,7 +184,7 @@ export default function MyAppointmentsPage() {
             {items.map(a => {
               const meta = STATUS_LABEL[a.status] ?? STATUS_LABEL_FALLBACK
               return (
-                <div key={a.id} className="rounded-2xl border border-gray-200 dark:border-[#2C2F35] p-4">
+                <div key={a.id} className="rounded-2xl border border-line p-4">
                   <div className="flex items-start gap-3">
                     <div className="w-16 h-16 rounded-lg bg-gray-100 dark:bg-[#1D1F29] overflow-hidden flex-shrink-0">
                       {a.image_url ? (
@@ -330,7 +330,7 @@ function AppointmentBookingModal({ item, onClose, onBooked }: {
               value={date}
               min={todayIso}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full px-3 py-2 bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 bg-surface border border-line rounded-lg text-sm text-gray-900 dark:text-white"
             />
           </div>
           <div>
@@ -374,7 +374,7 @@ function AppointmentBookingModal({ item, onClose, onBooked }: {
             <input
               value={form.user_name}
               onChange={(e) => setForm({ ...form, user_name: e.target.value })}
-              className="w-full px-3 py-2 bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 bg-surface border border-line rounded-lg text-sm text-gray-900 dark:text-white"
             />
           </div>
           <div>
@@ -385,7 +385,7 @@ function AppointmentBookingModal({ item, onClose, onBooked }: {
               value={form.user_phone}
               onChange={(e) => setForm({ ...form, user_phone: e.target.value })}
               placeholder="010-1234-5678"
-              className="w-full px-3 py-2 bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 bg-surface border border-line rounded-lg text-sm text-gray-900 dark:text-white"
             />
           </div>
           <div>
@@ -396,7 +396,7 @@ function AppointmentBookingModal({ item, onClose, onBooked }: {
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
               rows={2}
-              className="w-full px-3 py-2 bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white resize-none"
+              className="w-full px-3 py-2 bg-surface border border-line rounded-lg text-sm text-gray-900 dark:text-white resize-none"
             />
           </div>
           <div className="flex gap-2">

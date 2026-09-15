@@ -464,7 +464,7 @@ export default function GroupBuyFeed({
           ) : (
             <button
               onClick={loadMore}
-              className="px-5 py-3 bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-full text-sm font-bold text-gray-900 dark:text-white"
+              className="px-5 py-3 bg-surface border border-line rounded-full text-sm font-bold text-gray-900 dark:text-white"
             >
               더 보기
             </button>
@@ -540,7 +540,7 @@ function EmptyStateWithFallback({ category, onReset }: { category: CategoryKey; 
               </Link>
               <Link
                 to="/map"
-                className="ur-btn ur-btn-md border border-gray-200 dark:border-[#2C2F35] text-gray-700 dark:text-gray-200 px-4"
+                className="ur-btn ur-btn-md border border-line text-gray-700 dark:text-gray-200 px-4"
               >
                 지도에서 찾기
               </Link>

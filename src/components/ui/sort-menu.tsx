@@ -36,7 +36,7 @@ export function SortMenu<T extends string>({
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="inline-flex items-center gap-1 rounded-full border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] px-3 py-1.5 text-[12px] font-bold text-gray-900 dark:text-white active:scale-[0.98] transition-transform"
+        className="inline-flex items-center gap-1 rounded-full border border-line bg-surface px-3 py-1.5 text-[12px] font-bold text-gray-900 dark:text-white active:scale-[0.98] transition-transform"
       >
         {current?.Icon && <current.Icon className="w-3.5 h-3.5 text-gray-400" aria-hidden="true" />}
         {current?.label}

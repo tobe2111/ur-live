@@ -237,7 +237,7 @@ function KtAlphaVoucherCard({ v, muted, t }: {
     <div
       /* 🎨 2026-09-15: 회색 테두리 네모 → 흰 면 + 들림 한 값. 이 카드만 옛 체계(테두리 + 임의 그림자 +
          체계 밖 카드색)에 남아, 같은 지갑 안에서 티켓 카드와 **모양이 갈렸다**(대표 "AI로 만든 것 같아"). */
-      className={`relative rounded-2xl bg-white dark:bg-[#1D1F29] p-[13px] ${muted ? '' : 'shadow-lift'}`}
+      className={`relative rounded-2xl bg-surface p-[13px] ${muted ? '' : 'shadow-lift'}`}
       style={{ opacity: muted ? 0.55 : 1 }}
     >
       <div className="flex items-stretch gap-3">
@@ -309,7 +309,7 @@ function KtAlphaVoucherCard({ v, muted, t }: {
 
       {/* PIN 모드 인앱 바코드 — 하단 (매장 제시용) */}
       {hasBarcode && (
-        <div className="mt-3 px-3 py-3 rounded-xl bg-gray-50 dark:bg-[#11141C] border border-gray-100 dark:border-[#2C2F35] flex flex-col items-center gap-1.5">
+        <div className="mt-3 px-3 py-3 rounded-xl bg-warm border border-gray-100 dark:border-[#2C2F35] flex flex-col items-center gap-1.5">
           <Barcode value={v.kt_pin as string} />
           <span className="text-[12px] font-mono font-bold tracking-[0.15em] text-gray-900 dark:text-white">{v.kt_pin}</span>
         </div>

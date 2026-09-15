@@ -132,7 +132,7 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
               placeholder="010-1234-5678"
               type="tel"
               required
-              className="w-full px-4 py-3 bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-rule"
+              className="w-full px-4 py-3 bg-white dark:bg-[#11141C] border border-line rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-rule"
             />
             <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">{t('gift.recipientPhoneHint', { defaultValue: '카카오톡 알림으로 선물 링크가 발송됩니다' })}</p>
           </div>
@@ -143,7 +143,7 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
               value={recipientName}
               onChange={e => setRecipientName(e.target.value)}
               placeholder={t('gift.placeholders.recipientName')}
-              className="w-full px-4 py-3 bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-rule"
+              className="w-full px-4 py-3 bg-white dark:bg-[#11141C] border border-line rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-rule"
             />
           </div>
 
@@ -158,7 +158,7 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
               placeholder={t('gift.placeholders.message')}
               rows={3}
               maxLength={MAX_MESSAGE}
-              className="w-full px-4 py-3 bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-rule resize-none"
+              className="w-full px-4 py-3 bg-white dark:bg-[#11141C] border border-line rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-rule resize-none"
             />
             <div className="flex justify-end mt-1">
               <span className={`text-[10px] ${message.length > MAX_MESSAGE ? 'text-red-500' : 'text-gray-400 dark:text-gray-500'}`}>

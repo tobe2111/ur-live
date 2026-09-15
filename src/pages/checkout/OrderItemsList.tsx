@@ -25,13 +25,13 @@ export default function OrderItemsList({ sellerGroups, totalItemCount }: Props) 
 
       <div className="mt-5 flex flex-col gap-5">
         {Object.values(sellerGroups).map((group) => (
-          <div key={group.seller_id} className="border border-gray-200 dark:border-[#2C2F35] rounded-2xl p-4">
+          <div key={group.seller_id} className="border border-line rounded-2xl p-4">
             <p className="text-[13px] font-semibold text-gray-500 dark:text-gray-400 mb-3">
               {group.seller_name}
             </p>
 
             {group.items.map((item) => (
-              <div key={item.id} className="flex gap-4 py-3 border-t border-gray-200 dark:border-[#2C2F35] first:border-t-0">
+              <div key={item.id} className="flex gap-4 py-3 border-t border-line first:border-t-0">
                 <div className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-2xl bg-gray-50 dark:bg-[#1D1F29]">
                   {item.image_url ? (
                     <img
@@ -69,7 +69,7 @@ export default function OrderItemsList({ sellerGroups, totalItemCount }: Props) 
                 바로 위에서 "배송지 입력이 필요 없어요" 라고 해 놓고 아래에 배송비 3,000원을
                 찍고 있었다(그리고 합계엔 안 들어갔다). 한 화면이 스스로와 어긋나 있었다. */}
             {!group.no_shipping && (<>
-            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-[#2C2F35] flex justify-between text-[13px]">
+            <div className="mt-3 pt-3 border-t border-line flex justify-between text-[13px]">
               <span className="text-gray-400 dark:text-gray-500">{t('checkout.summary.shippingFee', { defaultValue: '배송비' })}</span>
               <span className="font-semibold text-gray-900 dark:text-white">
                 {group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold

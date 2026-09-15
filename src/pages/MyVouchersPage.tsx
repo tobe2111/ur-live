@@ -204,7 +204,7 @@ export default function MyVouchersPage() {
                       key={v.id}
                       type="button"
                       onClick={() => setMapSelected(v)}
-                      className={`snap-start shrink-0 w-[80%] max-w-[300px] flex items-center gap-3 rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift p-3 text-left transition-colors ${selected ? 'ring-2 ring-brand' : ''}`}
+                      className={`snap-start shrink-0 w-[80%] max-w-[300px] flex items-center gap-3 rounded-2xl bg-surface shadow-lift p-3 text-left transition-colors ${selected ? 'ring-2 ring-brand' : ''}`}
                       style={{ boxShadow: '0 8px 28px rgba(10,10,10,0.18)' }}
                     >
                       <div className="w-[52px] h-[52px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-brand-tint">
@@ -334,7 +334,7 @@ export default function MyVouchersPage() {
                   <div className="space-y-3">
                     <VoucherTicket key={shown[0].id} v={shown[0]} muted={false} locale={locale} t={t} onShowQr={() => setQrVoucher(shown[0])} />
                     {shown.length > 1 && (
-                      <div className="overflow-hidden rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift divide-y divide-rule">
+                      <div className="overflow-hidden rounded-2xl bg-surface shadow-lift divide-y divide-rule">
                         {shown.slice(1).map(v => <WalletRow key={v.id} v={v} t={t} onOpen={() => setQrVoucher(v)} />)}
                       </div>
                     )}

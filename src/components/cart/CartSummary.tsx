@@ -75,7 +75,7 @@ export const CartSummary = React.memo(function CartSummary({
       </div>
 
       {/* Dashed border divider */}
-      <div className="my-3 border-t border-dashed border-gray-200 dark:border-[#2C2F35]" />
+      <div className="my-3 border-t border-dashed border-line" />
 
       {/* v4 결제예정금액 (18px bold) — 청구되는 통화 하나만 크게 말한다.
           🔴 섞였으면 **결제 자체가 안 열리므로 합계를 말하지 않는다** — 위 두 줄이 이미 각각의 금액을

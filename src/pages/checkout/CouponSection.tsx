@@ -43,7 +43,7 @@ export default function CouponSection({ couponCode, setCouponCode, couponDiscoun
           onChange={e => setCouponCode(e.target.value.toUpperCase())}
           placeholder={t('checkout.coupon.placeholder', { defaultValue: '쿠폰 코드 입력' })}
           aria-label={t('checkout.coupon.placeholder', { defaultValue: '쿠폰 코드 입력' })}
-          className="flex-1 min-w-0 px-3 py-2.5 border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:text-gray-500 focus:border-blue-400 focus:outline-none"
+          className="flex-1 min-w-0 px-3 py-2.5 border border-line rounded-lg text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:text-gray-500 focus:border-blue-400 focus:outline-none"
         />
         <button
           onClick={handleApply}

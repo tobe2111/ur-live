@@ -1063,7 +1063,8 @@ const MUTATIONS = [
   {
     name: '🚦 always-light 래퍼가 상태 색을 안 되박는다 — 흰 카드 위에 다크용 밝은 초록',
     file: 'src/index.css',
-    find: `.light-island, .force-light-theme, .admin-light-theme, .agency-light-theme {`,
+    // 🔀 2026-09-15: 목록에 `.seller-light-theme` 가 추가됐다(표면 토큰을 변수로 돌리며 그 스코프만 빠져 있었다).
+    find: `.light-island, .force-light-theme, .admin-light-theme, .agency-light-theme, .seller-light-theme {`,
     replace: `.zz-removed-always-light {`,
     test: 'src/tests/unit/status-tone-tokens.test.ts',
     why: '대시보드는 화이트 고정인데 html.dark 면 :root 의 다크 토큰이 새어 들어온다(--lift 가 09-02 에 같은 사고).',
@@ -1854,7 +1855,8 @@ const MUTATIONS = [
   {
     name: '지갑이 다크 모드에서 흰 배경 + 흰 글자가 된다',
     file: 'src/components/wallet/WalletAtoms.tsx',
-    find: 'bg-[#F8F7FC] dark:bg-[#11141C] text-gray-900 dark:text-white',
+    // 🔀 2026-09-15: 표면 토큰 채택으로 `bg-[#F8F7FC] dark:bg-[#11141C]` → `bg-warm`(같은 값).
+    find: 'bg-warm text-gray-900 dark:text-white',
     replace: 'bg-[#F8F7FC] text-gray-900',
     test: 'src/tests/unit/voucher-wallet-split.test.ts',
     why:
@@ -9900,7 +9902,8 @@ canvas {
   {
     name: '🎫 리뷰 textarea 다크 배경이 다시 빠진다 (흰 바탕에 흰 글자)',
     file: 'src/pages/product-detail/ProductReviews.tsx',
-    find: 'bg-[#F8F7FC] dark:bg-[#11141C] text-sm text-gray-900 dark:text-white',
+    // 🔀 2026-09-15: 〃
+    find: 'bg-warm text-sm text-gray-900 dark:text-white',
     replace: 'text-sm text-gray-900 dark:text-white',
     test: 'src/tests/unit/consumer-popups-dark.test.ts',
     why:
@@ -9910,7 +9913,8 @@ canvas {
   {
     name: '🎫 장바구니 래퍼가 다시 라이트 단독 배경 (다크에서 화면 절반 회색)',
     file: 'src/pages/CartPage.tsx',
-    find: 'min-h-[100dvh] bg-[#F8F7FC] dark:bg-[#11141C]">',
+    // 🔀 2026-09-15: 〃
+    find: 'min-h-[100dvh] bg-warm">',
     replace: 'min-h-[100dvh] bg-[#F4F4F4]">',
     test: 'src/tests/unit/consumer-popups-dark.test.ts',
     why:

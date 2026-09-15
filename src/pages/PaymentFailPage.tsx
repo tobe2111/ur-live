@@ -99,7 +99,7 @@ export default function PaymentFailPage() {
     <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#11141C] flex items-center justify-center p-4">
       <SEO title={isUserCancel ? '결제 취소' : t('paymentFail.title')} description={heroSub} url="/payment/fail" noindex />
       <div className="ur-content-narrow w-full">
-        <div className="bg-white dark:bg-[#1D1F29] rounded-2xl p-8 shadow-lg border border-[#e5e5e7] dark:border-[#2C2F35]">
+        <div className="bg-surface rounded-2xl p-8 shadow-lg border border-[#e5e5e7] dark:border-[#2C2F35]">
           {/* hero 아이콘 + 제목 — code 별로 색/문구 분기 */}
           <div className="text-center mb-8">
             <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full ${heroIconBg} mb-4`}>

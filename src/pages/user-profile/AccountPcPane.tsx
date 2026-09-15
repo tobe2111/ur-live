@@ -76,7 +76,7 @@ export default function AccountPcPane({ counts, userName, profileImage, onEditPr
   return (
     <div className="space-y-5 pb-2">
       {/* ① 프로필 한 줄 카드 — 보라 그라디언트 띠 대신 */}
-      <div className="flex items-center gap-3.5 rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift px-5 py-4">
+      <div className="flex items-center gap-3.5 rounded-2xl bg-surface shadow-lift px-5 py-4">
         <img
           src={profileImage ? cfImage(profileImage, { width: 96 }) : `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=1C69EF&color=ffffff&size=96`}
           alt=""

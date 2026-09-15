@@ -89,7 +89,7 @@ export function CustomModal({
         {isCustom ? (
           <>
             {/* Custom Modal Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-[#2C2F35]">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-line">
               <h3 id="modal-title" className="text-[17px] font-bold text-gray-900 dark:text-white">
                 {title}
               </h3>

@@ -86,7 +86,7 @@ export function NotificationToggleSection() {
   return (
     <div className="ur-content-medium px-4 lg:px-8 pt-5">
       <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-2">{t('accountSettings.sectionNotification', { defaultValue: '알림 설정' })}</p>
-      <div className="rounded-2xl overflow-hidden bg-white dark:bg-[#1D1F29]">
+      <div className="rounded-2xl overflow-hidden bg-surface">
         <Toggle
           icon={<Bell className="w-4 h-4" aria-hidden="true" />}
           label={t('accountSettings.togglePush', { defaultValue: '푸시 알림' })}
@@ -306,7 +306,7 @@ export function ProfileEditModal({ isOpen, onClose, initial, onSaved }: {
             <input
               id="account-name" required value={form.name}
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              className="w-full px-4 py-3 bg-white dark:bg-[#1D1F29] border border-gray-300 dark:border-[#2C2F35] rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:border-transparent outline-none"
+              className="w-full px-4 py-3 bg-surface border border-gray-300 dark:border-[#2C2F35] rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:border-transparent outline-none"
               placeholder={t('accountSettings.editNamePlaceholder', { defaultValue: '홍길동' })}
             />
           </div>
@@ -318,7 +318,7 @@ export function ProfileEditModal({ isOpen, onClose, initial, onSaved }: {
               id="account-phone" type="tel" required inputMode="numeric" value={form.phone}
               onChange={e => setForm(f => ({ ...f, phone: formatPhone(e.target.value) }))}
               maxLength={13}
-              className="w-full px-4 py-3 bg-white dark:bg-[#1D1F29] border border-gray-300 dark:border-[#2C2F35] rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:border-transparent outline-none"
+              className="w-full px-4 py-3 bg-surface border border-gray-300 dark:border-[#2C2F35] rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:border-transparent outline-none"
               placeholder="010-0000-0000"
             />
             <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">

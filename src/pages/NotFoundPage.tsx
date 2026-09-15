@@ -85,7 +85,7 @@ export default function NotFoundPage() {
             </Link>
             <button
               type="button" onClick={() => navigate(-1)} aria-label="뒤로 가기"
-              className="inline-flex items-center justify-center gap-2 h-12 rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300 font-bold text-[15px] hover:bg-gray-50 dark:hover:bg-[#2C2F35] hover:border-gray-300 dark:hover:border-[#3A3A3A] transition-all duration-200 active:scale-[0.98]"
+              className="inline-flex items-center justify-center gap-2 h-12 rounded-2xl border border-line bg-surface text-gray-700 dark:text-gray-300 font-bold text-[15px] hover:bg-gray-50 dark:hover:bg-[#2C2F35] hover:border-gray-300 dark:hover:border-[#3A3A3A] transition-all duration-200 active:scale-[0.98]"
             >
               <ArrowLeft className="h-4 w-4" />
               {t('notFound.goBack')}
@@ -102,7 +102,7 @@ export default function NotFoundPage() {
                 <Link
                   key={to}
                   to={to}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] text-sm font-semibold text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-[#3A3A3A] hover:bg-gray-50 dark:hover:bg-[#2C2F35] hover:text-gray-900 dark:hover:text-white transition-all duration-200 active:scale-[0.98] shadow-sm"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-surface border border-line text-sm font-semibold text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-[#3A3A3A] hover:bg-gray-50 dark:hover:bg-[#2C2F35] hover:text-gray-900 dark:hover:text-white transition-all duration-200 active:scale-[0.98] shadow-sm"
                 >
                   <Icon className="h-3.5 w-3.5" />
                   {label}

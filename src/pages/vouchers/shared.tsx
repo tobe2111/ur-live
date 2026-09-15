@@ -55,7 +55,7 @@ export const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: Vouc
       onMouseEnter={() => prefetchProduct(p.id)}
       onTouchStart={() => prefetchProduct(p.id)}
       onFocus={() => prefetchProduct(p.id)}
-      className="ur-cv-card text-left active:scale-[0.98] transition-transform w-full flex flex-col rounded-2xl overflow-hidden bg-white dark:bg-[#1D1F29] shadow-lift"
+      className="ur-cv-card text-left active:scale-[0.98] transition-transform w-full flex flex-col rounded-2xl overflow-hidden bg-surface shadow-lift"
     >
       {/* 🎨 이미지 영역 — 상세와 동톤(은은한 그라데이션). dominant_color 있으면 로딩 플레이스홀더로(잠금). */}
       <div

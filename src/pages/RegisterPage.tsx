@@ -148,7 +148,7 @@ export default function RegisterPage() {
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder={t('register.namePlaceholder', { defaultValue: '홍길동' })}
               required
-              className="w-full h-[48px] px-4 border border-gray-200 dark:border-[#2C2F35] rounded-xl bg-white dark:bg-[#1D1F29] text-[14px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-gray-400 placeholder:dark:text-gray-500"
+              className="w-full h-[48px] px-4 border border-line rounded-xl bg-surface text-[14px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-gray-400 placeholder:dark:text-gray-500"
             />
           </div>
 
@@ -164,7 +164,7 @@ export default function RegisterPage() {
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               placeholder="example@email.com"
               required
-              className="w-full h-[48px] px-4 border border-gray-200 dark:border-[#2C2F35] rounded-xl bg-white dark:bg-[#1D1F29] text-[14px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-gray-400 placeholder:dark:text-gray-500"
+              className="w-full h-[48px] px-4 border border-line rounded-xl bg-surface text-[14px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-gray-400 placeholder:dark:text-gray-500"
             />
           </div>
 
@@ -182,7 +182,7 @@ export default function RegisterPage() {
                 placeholder={t('register.passwordPlaceholder', { defaultValue: '8자 이상 입력해주세요' })}
                 required
                 minLength={8}
-                className="w-full h-[48px] px-4 pr-12 border border-gray-200 dark:border-[#2C2F35] rounded-xl bg-white dark:bg-[#1D1F29] text-[14px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-gray-400 placeholder:dark:text-gray-500"
+                className="w-full h-[48px] px-4 pr-12 border border-line rounded-xl bg-surface text-[14px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-gray-400 placeholder:dark:text-gray-500"
               />
               <button
                 type="button"
@@ -209,7 +209,7 @@ export default function RegisterPage() {
                 placeholder={t('register.confirmPasswordPlaceholder', { defaultValue: '비밀번호를 다시 입력해주세요' })}
                 required
                 minLength={8}
-                className="w-full h-[48px] px-4 pr-12 border border-gray-200 dark:border-[#2C2F35] rounded-xl bg-white dark:bg-[#1D1F29] text-[14px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-gray-400 placeholder:dark:text-gray-500"
+                className="w-full h-[48px] px-4 pr-12 border border-line rounded-xl bg-surface text-[14px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-gray-400 placeholder:dark:text-gray-500"
               />
               <button
                 type="button"

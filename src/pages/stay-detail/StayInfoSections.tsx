@@ -57,7 +57,7 @@ export function AmenityFlow({ items }: { items: Array<{ key: string; label: stri
  */
 export function InfoBlock({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="border-t border-gray-200 dark:border-[#2C2F35] pt-3.5 mt-3.5 first:mt-0">
+    <div className="border-t border-line pt-3.5 mt-3.5 first:mt-0">
       <div className="text-[13px] text-gray-500 dark:text-gray-400">{label}</div>
       <div className="mt-1.5 text-[14px] leading-relaxed text-gray-900 dark:text-white">{children}</div>
     </div>
@@ -107,7 +107,7 @@ export function StayReviews({ productId }: { productId: number }) {
  */
 export function StaySoldOutCard({ onPickDates }: { onPickDates: () => void }) {
   return (
-    <div className="rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift p-5 text-center">
+    <div className="rounded-2xl bg-surface shadow-lift p-5 text-center">
       <p className="text-[15px] font-extrabold tracking-[-0.02em] text-gray-900 dark:text-white">고른 날짜는 모두 예약됐어요</p>
       <p className="mt-1.5 text-[13px] text-gray-500 dark:text-gray-400">날짜를 바꾸면 남은 객실을 볼 수 있어요.</p>
       <button type="button" onClick={onPickDates} className="mt-4 w-full py-3 bg-brand text-white text-sm font-bold rounded-xl hover:bg-brand-dark">

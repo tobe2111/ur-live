@@ -80,7 +80,7 @@ export default function GbMarketplacePage() {
               /* 🎫 2026-09-03: 자체 카드 → 줄 SSOT(`DealRow`) + 그 아래 소개자 전용 액션.
                  딜 자체를 보여 주는 부분은 다른 화면과 같은 그림이어야 하고, '소개비·담기' 는
                  이 화면에만 있는 것이라 카드 밖에 둔다. */
-              <div key={d.product_id} className="rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift overflow-hidden">
+              <div key={d.product_id} className="rounded-2xl bg-surface shadow-lift overflow-hidden">
                 <DealRow
                   imageUrl={d.image_url}
                   eyebrow={`${d.restaurant_name || ''}${d.region_gu ? ` · ${d.region_gu}` : ''}` || undefined}

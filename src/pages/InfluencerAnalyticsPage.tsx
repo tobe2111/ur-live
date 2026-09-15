@@ -48,7 +48,7 @@ export default function InfluencerAnalyticsPage() {
 
       <main className="ur-content-narrow mx-auto px-4 py-4 space-y-5">
         {/* 총 commission 5계정 split */}
-        <div className="bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] rounded-xl p-5">
+        <div className="bg-white dark:bg-[#11141C] border border-line rounded-xl p-5">
           <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-brand-text" /> 총 commission ({data.summary.total_attributions}건)
           </h3>
@@ -74,7 +74,7 @@ export default function InfluencerAnalyticsPage() {
         </div>
 
         {/* 일별 추세 (지난 30일) — 간단 가로 막대 */}
-        <div className="bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] rounded-xl p-5">
+        <div className="bg-white dark:bg-[#11141C] border border-line rounded-xl p-5">
           <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
             <Clock className="w-4 h-4 text-blue-500" /> 일별 추세 (지난 30일)
           </h3>
@@ -96,7 +96,7 @@ export default function InfluencerAnalyticsPage() {
         </div>
 
         {/* 매장별 TOP 10 */}
-        <div className="bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] rounded-xl p-5">
+        <div className="bg-white dark:bg-[#11141C] border border-line rounded-xl p-5">
           <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
             <Award className="w-4 h-4 text-amber-500" /> 매장별 Top 10
           </h3>
@@ -117,7 +117,7 @@ export default function InfluencerAnalyticsPage() {
         </div>
 
         {/* 상품별 TOP 10 */}
-        <div className="bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] rounded-xl p-5">
+        <div className="bg-white dark:bg-[#11141C] border border-line rounded-xl p-5">
           <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">상품별 Top 10</h3>
           {data.top_products.length === 0 ? (
             <p className="text-xs text-gray-400 text-center py-6">데이터 없음</p>

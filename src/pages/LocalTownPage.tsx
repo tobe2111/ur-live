@@ -189,7 +189,7 @@ export default function LocalTownPage() {
           <button
             type="button"
             onClick={() => navigate('/')}
-            className="w-full py-3.5 rounded-2xl border border-gray-200 dark:border-[#2C2F35] text-[13.5px] font-bold text-gray-700 dark:text-gray-200 flex items-center justify-center gap-1.5"
+            className="w-full py-3.5 rounded-2xl border border-line text-[13.5px] font-bold text-gray-700 dark:text-gray-200 flex items-center justify-center gap-1.5"
           >
             <MapPin className="w-4 h-4" /> {t('local.viewOnMap', { defaultValue: '지도에서 보기' })}
           </button>
