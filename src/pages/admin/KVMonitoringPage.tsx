@@ -58,7 +58,7 @@ export default function KVMonitoringPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">KV 사용량 모니터링</h1>
+          <h1 className="text-lg font-bold text-gray-900">KV 사용량 모니터링</h1>
           <p className="text-gray-600 mt-1">Cloudflare Workers KV 실시간 사용량</p>
         </div>
         
@@ -179,21 +179,21 @@ export default function KVMonitoringPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <div className="text-sm text-gray-600">로그인 KV Write</div>
-                    <div className="text-2xl font-bold text-gray-900">
+                    <div className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">
                       1 → <span className="text-tone-ok">0</span>
                     </div>
                     <div className="text-xs text-tone-ok font-medium">-100%</div>
                   </div>
                   <div>
                     <div className="text-sm text-gray-600">인증 확인 속도</div>
-                    <div className="text-2xl font-bold text-gray-900">
+                    <div className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">
                       100ms → <span className="text-tone-ok">10ms</span>
                     </div>
                     <div className="text-xs text-tone-ok font-medium">10배 빠름</div>
                   </div>
                   <div>
                     <div className="text-sm text-gray-600">예상 절감율</div>
-                    <div className="text-2xl font-bold text-tone-ok">
+                    <div className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-tone-ok">
                       90%
                     </div>
                     <div className="text-xs text-gray-600">KV Write 감소</div>

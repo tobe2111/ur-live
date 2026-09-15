@@ -546,7 +546,7 @@ export default function AdminOrdersPage() {
                 if (p < 1) p = 1
                 if (p > totalPages) return null
                 return (
-                  <button key={i} onClick={() => setCurrentPage(p)} className={`w-8 h-8 text-xs rounded-lg font-medium ${currentPage === p ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-100'}`}>{p}</button>
+                  <button key={i} onClick={() => setCurrentPage(p)} className={`w-8 h-8 text-xs rounded-lg font-medium ${currentPage === p ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-100'}`}>{p}</button>
                 )
               })}
               <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40">

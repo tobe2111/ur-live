@@ -55,7 +55,7 @@ function Chip({ k, onToggle }: { k: CompanyKeyword; onToggle: (k: CompanyKeyword
   return (
     <button onClick={() => onToggle(k)}
       title={`${tip || '미분류'}${k.tier ? ` · ${k.tier}순위` : ''}${k.saved_total ? ` · 누적 ${k.saved_total}곳` : ''}${k.last_run_at ? ` · ${kstShort(k.last_run_at)}` : ''}`}
-      className={`px-2.5 py-1 rounded-full text-xs border ${k.active ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-400 border-gray-300 line-through'}`}>
+      className={`px-2.5 py-1 rounded-full text-xs border ${k.active ? 'bg-brand text-white border-gray-900' : 'bg-white text-gray-400 border-gray-300 line-through'}`}>
       {k.tier === 1 ? '★ ' : ''}{k.keyword}
       {k.saved_total
         ? <span className={k.active ? 'text-gray-400' : 'text-gray-400'}> · {formatNumber(k.saved_total)}</span>

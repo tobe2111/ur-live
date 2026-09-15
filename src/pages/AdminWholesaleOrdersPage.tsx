@@ -102,7 +102,7 @@ export default function AdminWholesaleOrdersPage() {
 
         <div className="flex flex-wrap items-center gap-2 my-4">
           {FILTERS.map(f => (
-            <button key={f || 'all'} onClick={() => setStatus(f)} className={`px-3 py-1.5 rounded-lg text-sm font-medium ${status === f ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-700'}`}>
+            <button key={f || 'all'} onClick={() => setStatus(f)} className={`px-3 py-1.5 rounded-lg text-sm font-medium ${status === f ? 'bg-brand text-white' : 'bg-white border border-gray-200 text-gray-700'}`}>
               {f ? (STATUS[f]?.t || f) : '전체'}
             </button>
           ))}

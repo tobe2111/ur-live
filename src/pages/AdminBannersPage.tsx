@@ -187,7 +187,7 @@ export default function AdminBannersPage() {
                     aria-pressed={formData.banner_slot === bt}
                     className={`px-3 py-1.5 rounded-lg border text-xs font-semibold ${
                       formData.banner_slot === bt
-                        ? 'bg-gray-900 border-brand text-white'
+                        ? 'bg-brand border-brand text-white'
                         : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
                     }`}
                   >

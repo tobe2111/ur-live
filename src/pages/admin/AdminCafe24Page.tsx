@@ -168,7 +168,7 @@ export default function AdminCafe24Page() {
                     <Package className="w-4 h-4 text-gray-500" />
                     <span className="text-xs text-gray-500">동기화된 상품</span>
                   </div>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">
                     {status.synced_products ?? 0}
                   </p>
                 </div>

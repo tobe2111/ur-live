@@ -90,7 +90,7 @@ export default function AdminBusinessMetricsPage() {
               onClick={() => setPeriod(p.key)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 period === p.key
-                  ? 'bg-gray-900 text-white'
+                  ? 'bg-brand text-white'
                   : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
               }`}
             >
@@ -255,7 +255,7 @@ function KpiCard({ icon, label, value, sub, danger, estimate }: {
           <span className="text-[10px] font-medium px-1 py-0.5 rounded bg-tone-warn-bg text-tone-warn">추정</span>
         )}
       </div>
-      <div className={`text-2xl font-bold tabular-nums ${danger ? 'text-tone-bad' : 'text-gray-900'}`}>{value}</div>
+      <div className={`dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight ${danger ? 'text-tone-bad' : 'text-gray-900'}`}>{value}</div>
       {sub && <div className="text-xs text-gray-400 mt-1 leading-snug">{sub}</div>}
     </div>
   )

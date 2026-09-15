@@ -143,9 +143,9 @@ export default function AdminSocialPage() {
 
       {/* 플랫폼 필터 */}
       <div className="mb-4 flex gap-2">
-        <button onClick={() => setPlatform('')} className={`rounded-full px-3 py-1 text-sm ${platform === '' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>전체</button>
+        <button onClick={() => setPlatform('')} className={`rounded-full px-3 py-1 text-sm ${platform === '' ? 'bg-brand text-white' : 'bg-gray-100 text-gray-600'}`}>전체</button>
         {PLATFORMS.map(({ key, label, emoji }) => (
-          <button key={key} onClick={() => setPlatform(key)} className={`rounded-full px-3 py-1 text-sm ${platform === key ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>
+          <button key={key} onClick={() => setPlatform(key)} className={`rounded-full px-3 py-1 text-sm ${platform === key ? 'bg-brand text-white' : 'bg-gray-100 text-gray-600'}`}>
             {emoji} {label}
           </button>
         ))}

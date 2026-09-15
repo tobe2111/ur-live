@@ -530,11 +530,11 @@ function WebhookFailuresSection() {
             <div className="grid grid-cols-3 gap-3 mb-4">
               <div className={`rounded-xl p-3 ${stats.total > 0 ? 'border border-rule bg-white' : 'border border-rule bg-white'}`}>
                 <p className="text-xs text-gray-600 font-bold">총 실패</p>
-                <p className="text-2xl font-extrabold text-gray-900">{stats.total}</p>
+                <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">{stats.total}</p>
               </div>
               <div className={`rounded-xl p-3 ${stats.escalated > 0 ? 'border border-rule bg-white' : 'bg-gray-50'}`}>
                 <p className="text-xs text-gray-600 font-bold">escalated (retry≥3)</p>
-                <p className="text-2xl font-extrabold text-tone-bad">{stats.escalated}</p>
+                <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-tone-bad">{stats.escalated}</p>
               </div>
               <div className="rounded-xl p-3 bg-gray-50">
                 <p className="text-xs text-gray-600 font-bold">소스</p>

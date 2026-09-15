@@ -236,12 +236,12 @@ export default function AdminWholesaleMallsPage() {
                 <div className="flex items-center gap-1 shrink-0">
                   {/* 🏪 2026-08-03: 매장을 몰에 붙이는 유일한 경로 — 이게 없으면 몰 홈이 영원히 비어 있다. */}
                   <button onClick={() => setOpenSellers(openSellers === m.id ? null : m.id)}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg border ${openSellers === m.id ? 'bg-gray-900 text-white border-gray-900' : 'text-gray-600 hover:bg-gray-50 border-gray-200'}`}>
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg border ${openSellers === m.id ? 'bg-brand text-white border-gray-900' : 'text-gray-600 hover:bg-gray-50 border-gray-200'}`}>
                     매장
                   </button>
                   {/* 📣 몰 팝업/공지 배너 — 몰 홈 상단 띠·1회 팝업으로 렌더(과업①). */}
                   <button onClick={() => setOpenNotices(openNotices === m.id ? null : m.id)}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg border ${openNotices === m.id ? 'bg-gray-900 text-white border-gray-900' : 'text-gray-600 hover:bg-gray-50 border-gray-200'}`}>
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg border ${openNotices === m.id ? 'bg-brand text-white border-gray-900' : 'text-gray-600 hover:bg-gray-50 border-gray-200'}`}>
                     공지
                   </button>
                   <button onClick={() => toggleActive(m)} title={m.active ? '비활성화' : '활성화'} className="px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 rounded-lg border border-gray-200">

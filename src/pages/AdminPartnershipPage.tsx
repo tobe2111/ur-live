@@ -78,7 +78,7 @@ export default function AdminPartnershipPage() {
       <div className="flex gap-2 mb-4">
         {([['', '전체'], ['new', '신규'], ['in_progress', '진행 중'], ['done', '완료']] as const).map(([v, l]) => (
           <button key={v} onClick={() => setStatusFilter(v)}
-            className={`px-3.5 h-9 rounded-full text-[13px] font-bold ${statusFilter === v ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}>
+            className={`px-3.5 h-9 rounded-full text-[13px] font-bold ${statusFilter === v ? 'bg-brand text-white' : 'bg-white text-gray-600 border border-gray-200'}`}>
             {l}
           </button>
         ))}
@@ -120,7 +120,7 @@ export default function AdminPartnershipPage() {
                     <div className="flex gap-2">
                       {(['in_progress', 'done'] as const).map(sv => (
                         <button key={sv} onClick={() => update(r.id, { status: sv, admin_memo: memo })}
-                          className={`px-4 h-10 rounded-xl text-[13px] font-bold ${sv === 'done' ? 'bg-gray-900 text-white' : 'bg-amber-500 text-white'}`}>
+                          className={`px-4 h-10 rounded-xl text-[13px] font-bold ${sv === 'done' ? 'bg-brand text-white' : 'bg-amber-500 text-white'}`}>
                           {sv === 'done' ? '완료 처리' : '진행 중으로'}
                         </button>
                       ))}

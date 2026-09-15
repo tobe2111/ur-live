@@ -351,11 +351,11 @@ export default function AdminVoucherTransactionsPage() {
         <div className="grid grid-cols-2 gap-3 mb-4">
           <div className="bg-white rounded-lg shadow p-4">
             <p className="text-xs text-gray-500">오늘 거래 수</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{todayStatsQ.isError ? '—' : formatNumber(todayStats.count)}</p>
+            <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900 mt-1">{todayStatsQ.isError ? '—' : formatNumber(todayStats.count)}</p>
           </div>
           <div className="bg-white rounded-lg shadow p-4">
             <p className="text-xs text-gray-500">오늘 거래 금액 (applied_price 합)</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{todayStatsQ.isError ? '—' : formatWon(todayStats.amount)}</p>
+            <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900 mt-1">{todayStatsQ.isError ? '—' : formatWon(todayStats.amount)}</p>
           </div>
         </div>
 

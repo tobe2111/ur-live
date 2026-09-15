@@ -48,7 +48,7 @@ export default function AdminNoticesPage() {
             <div className="flex gap-2">
               {([{ v: 'all' as const, l: '전체' }, { v: 'sellers' as const, l: '셀러만' }, { v: 'users' as const, l: '사용자만' }]).map(t => (
                 <button key={t.v} onClick={() => setTarget(t.v)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium ${target === t.v ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}>
+                  className={`px-4 py-2 rounded-lg text-sm font-medium ${target === t.v ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700'}`}>
                   {t.l}
                 </button>
               ))}

@@ -88,7 +88,7 @@ function StatCard({ label, value }: { label: string; value: number }) {
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-4">
       <div className="text-xs text-gray-500">{label}</div>
-      <div className="text-2xl font-bold text-gray-900 mt-1">{Number(value || 0).toLocaleString('ko-KR')}</div>
+      <div className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900 mt-1">{Number(value || 0).toLocaleString('ko-KR')}</div>
     </div>
   )
 }

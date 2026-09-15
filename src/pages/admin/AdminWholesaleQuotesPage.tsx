@@ -109,7 +109,7 @@ export default function AdminWholesaleQuotesPage() {
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {STATUS_FILTERS.map(s => (
           <button key={s || 'all'} onClick={() => setStatusFilter(s)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium ${statusFilter === s ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}>
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium ${statusFilter === s ? 'bg-brand text-white' : 'bg-white text-gray-600 border border-gray-200'}`}>
             {s === '' ? '전체' : (STATUS_LABEL[s]?.label || s)}
           </button>
         ))}

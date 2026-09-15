@@ -150,7 +150,7 @@ export default function AdminVisitRewardsPage() {
                     className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-900" />
                   {PRESETS.map(p => (
                     <button key={p.code} type="button" onClick={() => setForm(f => ({ ...f, region_code: p.code }))}
-                      className={`px-2 py-1 rounded-lg text-[11px] font-bold border ${form.region_code === p.code ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
+                      className={`px-2 py-1 rounded-lg text-[11px] font-bold border ${form.region_code === p.code ? 'bg-brand text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
                       {p.label}
                     </button>
                   ))}
@@ -232,7 +232,7 @@ export default function AdminVisitRewardsPage() {
                           <span>{spentPct}%</span>
                         </div>
                         <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div className="h-full bg-gray-900 rounded-full" style={{ width: `${spentPct}%` }} />
+                          <div className="h-full bg-brand rounded-full" style={{ width: `${spentPct}%` }} />
                         </div>
                       </div>
                     </div>

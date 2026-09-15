@@ -81,7 +81,7 @@ export default function AdminKakaoReviewsPage() {
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold ${tab === t ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold ${tab === t ? 'bg-brand text-white' : 'bg-white text-gray-700 border border-gray-200'}`}
             >
               {t === 'submitted' ? '검증 대기' : t === 'paid' ? '지급됨' : '거절됨'}
             </button>

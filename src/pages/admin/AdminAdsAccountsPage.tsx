@@ -97,7 +97,7 @@ export default function AdminAdsAccountsPage() {
         {statCards.map((m) => (
           <div key={m.l} className="rounded-xl border border-gray-200 bg-white p-4">
             <div className="text-[12px] text-gray-500">{m.l}</div>
-            <div className="mt-1 text-2xl font-bold text-gray-900 tabular-nums">{m.v != null ? formatNumber(m.v) : '–'}</div>
+            <div className="mt-1 dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900 tabular-nums">{m.v != null ? formatNumber(m.v) : '–'}</div>
           </div>
         ))}
       </div>

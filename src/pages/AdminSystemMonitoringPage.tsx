@@ -218,7 +218,7 @@ export default function AdminSystemMonitoringPage() {
         <div className="flex gap-2">
           <button onClick={() => setTab('cron')}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition ${
-              tab === 'cron' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'
+              tab === 'cron' ? 'bg-brand text-white' : 'bg-white border border-gray-200 text-gray-600'
             }`}>
             <AlertTriangle className="w-4 h-4" /> Cron 실패
             {cronCounts.reduce((s, c) => s + c.cnt, 0) > 0 && tab !== 'cron' && (
@@ -229,7 +229,7 @@ export default function AdminSystemMonitoringPage() {
           </button>
           <button onClick={() => setTab('alimtalk')}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition ${
-              tab === 'alimtalk' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'
+              tab === 'alimtalk' ? 'bg-brand text-white' : 'bg-white border border-gray-200 text-gray-600'
             }`}>
             <MessageSquare className="w-4 h-4" /> 알림톡 실패
             {alimtalkStats.pending + alimtalkStats.abandoned > 0 && tab !== 'alimtalk' && (
@@ -240,20 +240,20 @@ export default function AdminSystemMonitoringPage() {
           </button>
           <button onClick={() => setTab('delivery')}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition ${
-              tab === 'delivery' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'
+              tab === 'delivery' ? 'bg-brand text-white' : 'bg-white border border-gray-200 text-gray-600'
             }`}>
             <Bell className="w-4 h-4" /> 푸시·이메일 실패
           </button>
           <button onClick={() => setTab('ops')}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition ${
-              tab === 'ops' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'
+              tab === 'ops' ? 'bg-brand text-white' : 'bg-white border border-gray-200 text-gray-600'
             }`}>
             <Gauge className="w-4 h-4" /> 게이트·하트비트
           </button>
           {/* 🩹 2026-08-31: 잔액 정비 — 도구를 API 로만 만들어 두면 "사람이 누른다" 가 성립하지 않는다. */}
           <button onClick={() => setTab('points')}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition ${
-              tab === 'points' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'
+              tab === 'points' ? 'bg-brand text-white' : 'bg-white border border-gray-200 text-gray-600'
             }`}>
             <Wrench className="w-4 h-4" /> 딜 잔액 정비
           </button>

@@ -40,7 +40,7 @@ function Chip({ k, onToggle }: { k: Keyword; onToggle: (k: Keyword) => void | Pr
   const ly = lowYield(k)
   return (
     <button onClick={() => onToggle(k)} title={`${k.category || '일반'} · ${k.source}${k.saved_total ? ` · 누적 ${k.saved_total}명(직전 ${k.last_saved || 0})` : ''}${k.last_run_at ? ` · ${k.last_run_at.slice(5, 16)}` : ''}${k.hits ? ` · ${k.hits}회 등장` : ''}`}
-      className={`px-2.5 py-1 rounded-full text-xs border ${k.active ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-400 border-gray-300 line-through'}`}>
+      className={`px-2.5 py-1 rounded-full text-xs border ${k.active ? 'bg-brand text-white border-gray-900' : 'bg-white text-gray-400 border-gray-300 line-through'}`}>
       {PRIORITY_CATS.includes(k.category || '') ? '★ ' : ''}{k.keyword}{k.source === 'auto' ? ' (자동)' : ''}{k.saved_total ? <span className={k.active ? 'text-gray-400' : 'text-gray-400'}> · {formatNumber(k.saved_total)}</span> : (k.last_run_at ? <span className="text-gray-400" title="이 키워드로 여러 번 수집했지만 신규 0명 — 비활성 검토">{' · 0'}</span> : '')}
       {ly && <span className="text-gray-400" title={`${formatNumber(ly.found)}건 찾아 ${formatNumber(k.saved_total || 0)}명 저장 (수확률 ${ly.pct}%) — 검색 슬롯을 쓰지만 리드가 거의 안 남습니다. 이미 다 모았거나(고갈) 키워드가 안 맞는 경우입니다. 점수에서 자동 감점되지만, 확실하면 눌러서 비활성.`}>{ly.pct}%</span>}
     </button>

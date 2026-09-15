@@ -313,7 +313,7 @@ export default function AdminPartnerPoolPage() {
         className={`text-left rounded-xl border p-4 transition ${on ? 'border-gray-900 bg-gray-900 text-white shadow-sm' : 'border-gray-200 bg-white hover:border-gray-400'}`}
         title={`클릭하면 이 조건으로 목록을 거릅니다${hint ? ` (${hint})` : ''}`}>
         <div className={`text-xs ${on ? 'text-gray-300' : 'text-gray-500'}`}>{label}</div>
-        <div className={`mt-1 text-2xl font-bold ${on ? 'text-white' : 'text-gray-900'}`}>{formatNumber(val)}</div>
+        <div className={`mt-1 dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight ${on ? 'text-white' : 'text-gray-900'}`}>{formatNumber(val)}</div>
         {hint && <div className={`mt-0.5 text-[11px] ${on ? 'text-gray-400' : 'text-gray-400'}`}>{hint}</div>}
       </button>
     )

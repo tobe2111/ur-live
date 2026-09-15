@@ -169,13 +169,13 @@ export default function AdminWholesaleTaxPage() {
         />
 
         <div className="flex items-center gap-2 my-4">
-          <button onClick={() => setTab('aging')} className={`px-3.5 py-1.5 rounded-lg text-sm font-medium ${tab === 'aging' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-700'}`}>
+          <button onClick={() => setTab('aging')} className={`px-3.5 py-1.5 rounded-lg text-sm font-medium ${tab === 'aging' ? 'bg-brand text-white' : 'bg-white border border-gray-200 text-gray-700'}`}>
             {t('admin.wsTax.tabAging', { defaultValue: '미수/미지급 Aging' })}
           </button>
-          <button onClick={() => setTab('invoices')} className={`px-3.5 py-1.5 rounded-lg text-sm font-medium ${tab === 'invoices' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-700'}`}>
+          <button onClick={() => setTab('invoices')} className={`px-3.5 py-1.5 rounded-lg text-sm font-medium ${tab === 'invoices' ? 'bg-brand text-white' : 'bg-white border border-gray-200 text-gray-700'}`}>
             {t('admin.wsTax.tabInvoices', { defaultValue: '매입 세금계산서(역발행)' })}
           </button>
-          <button onClick={() => setTab('auto')} className={`px-3.5 py-1.5 rounded-lg text-sm font-medium ${tab === 'auto' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-700'}`}>
+          <button onClick={() => setTab('auto')} className={`px-3.5 py-1.5 rounded-lg text-sm font-medium ${tab === 'auto' ? 'bg-brand text-white' : 'bg-white border border-gray-200 text-gray-700'}`}>
             {t('admin.wsTax.tabAuto', { defaultValue: '거래별 세금계산서(자동)' })}
           </button>
         </div>
@@ -192,12 +192,12 @@ export default function AdminWholesaleTaxPage() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="bg-white rounded-xl border border-gray-200 p-5">
                   <div className="text-sm font-semibold text-gray-500 mb-1">{t('admin.wsTax.payableTotal', { defaultValue: '미지급 합계 (제조사)' })}</div>
-                  <div className="text-2xl font-bold text-gray-900">{formatWon(payableSum?.total || 0)}</div>
+                  <div className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">{formatWon(payableSum?.total || 0)}</div>
                   <div className="text-xs text-gray-400 mt-1">{payableSum?.count || 0}건 미정산</div>
                 </div>
                 <div className="bg-white rounded-xl border border-gray-200 p-5">
                   <div className="text-sm font-semibold text-gray-500 mb-1">{t('admin.wsTax.receivableTotal', { defaultValue: '미수 합계 (판매사 외상)' })}</div>
-                  <div className="text-2xl font-bold text-gray-900">{formatWon(receivableSum?.total || 0)}</div>
+                  <div className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">{formatWon(receivableSum?.total || 0)}</div>
                   <div className="text-xs text-gray-400 mt-1">{receivableSum?.count || 0}개 판매사</div>
                 </div>
               </div>

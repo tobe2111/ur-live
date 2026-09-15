@@ -115,7 +115,7 @@ export default function AdminCommissionWithdrawalsPage() {
           <button
             key={s}
             onClick={() => setFilter(s)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium ${filter === s ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium ${filter === s ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
           >
             {s === 'pending' ? '대기' : s === 'approved' ? '송금완료' : s === 'rejected' ? '거절' : '전체'}
           </button>

@@ -113,7 +113,7 @@ export default function AdminWholesaleBoardPage() {
       <div className="flex gap-2 mb-4">
         {([['', '전체'], ['notice', '공지사항'], ['archive', '자료실'], ['shipping', '배송안내']] as const).map(([v, l]) => (
           <button key={v} onClick={() => setTypeFilter(v)}
-            className={`px-3.5 h-9 rounded-full text-[13px] font-bold ${typeFilter === v ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}>
+            className={`px-3.5 h-9 rounded-full text-[13px] font-bold ${typeFilter === v ? 'bg-brand text-white' : 'bg-white text-gray-600 border border-gray-200'}`}>
             {l}
           </button>
         ))}
@@ -165,7 +165,7 @@ export default function AdminWholesaleBoardPage() {
               <div className="grid grid-cols-2 gap-2 mb-3">
                 {([['notice', '공지사항'], ['archive', '상품 자료실'], ['shipping', '배송안내']] as const).map(([v, l]) => (
                   <button key={v} onClick={() => setForm(f => ({ ...f, board_type: v }))}
-                    className={`h-11 rounded-xl text-[13px] font-bold ${form.board_type === v ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                    className={`h-11 rounded-xl text-[13px] font-bold ${form.board_type === v ? 'bg-brand text-white' : 'bg-gray-100 text-gray-600'}`}>
                     {l}
                   </button>
                 ))}

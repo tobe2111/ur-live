@@ -562,10 +562,10 @@ export default function AdminProductsPage() {
 
             {/* 상태 탭 */}
             <div className="flex flex-wrap gap-1 text-xs">
-              <button onClick={() => { setStatusFilter('all'); setPage(1) }} className={`px-3 py-1.5 rounded-lg font-semibold ${statusFilter === 'all' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}>
+              <button onClick={() => { setStatusFilter('all'); setPage(1) }} className={`px-3 py-1.5 rounded-lg font-semibold ${statusFilter === 'all' ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700'}`}>
                 전체 <span className="opacity-70 ml-1">{tabCounts.all_count.toLocaleString()}</span>
               </button>
-              <button onClick={() => { setStatusFilter('active'); setPage(1) }} className={`px-3 py-1.5 rounded-lg font-semibold ${statusFilter === 'active' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}>
+              <button onClick={() => { setStatusFilter('active'); setPage(1) }} className={`px-3 py-1.5 rounded-lg font-semibold ${statusFilter === 'active' ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700'}`}>
                 판매중 <span className="opacity-70 ml-1">{tabCounts.active_count.toLocaleString()}</span>
               </button>
               <button onClick={() => { setStatusFilter('inactive'); setPage(1) }} className={`px-3 py-1.5 rounded-lg font-semibold ${statusFilter === 'inactive' ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-700'}`}>
@@ -590,12 +590,12 @@ export default function AdminProductsPage() {
               <div className="flex flex-wrap gap-1 text-xs items-center">
                 <span className="text-gray-500 mr-1">카테고리:</span>
                 <button onClick={() => { setCategoryFilter(''); setPage(1) }}
-                  className={`px-2 py-1 rounded ${!categoryFilter ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}>
+                  className={`px-2 py-1 rounded ${!categoryFilter ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700'}`}>
                   전체
                 </button>
                 {categoryList.slice(0, 20).map((c) => (
                   <button key={c.category} onClick={() => { setCategoryFilter(c.category); setPage(1) }}
-                    className={`px-2 py-1 rounded ${categoryFilter === c.category ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}>
+                    className={`px-2 py-1 rounded ${categoryFilter === c.category ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700'}`}>
                     {c.category} <span className="opacity-60 ml-0.5">{c.cnt}</span>
                   </button>
                 ))}

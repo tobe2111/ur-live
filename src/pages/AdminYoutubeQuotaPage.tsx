@@ -85,7 +85,7 @@ export default function AdminYoutubeQuotaPage() {
                 'bg-white border-gray-200'
               }`}>
                 <p className="text-xs font-semibold text-gray-700 mb-1">오늘 사용량</p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">
                   {formatNum(data.quota.today.total)}
                   <span className="text-sm text-gray-500 font-normal"> / {formatNum(data.quota.today.limit)}</span>
                 </p>
@@ -106,7 +106,7 @@ export default function AdminYoutubeQuotaPage() {
 
               <div className="rounded-[var(--dash-radius,16px)] p-5 border bg-white border-gray-200">
                 <p className="text-xs font-semibold text-gray-700 mb-1">어제 사용량</p>
-                <p className="text-2xl font-bold text-gray-900">{formatNum(data.quota.yesterday.total)}</p>
+                <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">{formatNum(data.quota.yesterday.total)}</p>
                 <p className="text-[11px] text-gray-500 mt-1">{data.quota.yesterday.date}</p>
                 {data.quota.today.total > 0 && data.quota.yesterday.total > 0 && (
                   <p className={`text-xs font-semibold mt-2 ${data.quota.today.total > data.quota.yesterday.total ? 'text-tone-bad' : 'text-tone-ok'}`}>

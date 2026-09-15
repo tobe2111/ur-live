@@ -150,7 +150,7 @@ export default function AdminWholesaleDepositsPage({ embedded = false }: { embed
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium ${filter === f ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-700'}`}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium ${filter === f ? 'bg-brand text-white' : 'bg-white border border-gray-200 text-gray-700'}`}
             >
               {label}
             </button>

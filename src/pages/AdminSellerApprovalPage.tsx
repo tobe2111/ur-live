@@ -282,7 +282,7 @@ export default function AdminSellerApprovalPage() {
                 onClick={() => onFilterChange(opt.key)}
                 className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
                   filter === opt.key
-                    ? 'bg-gray-900 text-white border-gray-900'
+                    ? 'bg-brand text-white border-gray-900'
                     : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
                 }`}
               >

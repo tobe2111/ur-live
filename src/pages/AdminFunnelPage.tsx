@@ -35,7 +35,7 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4">
       <p className="text-xs font-medium text-gray-500">{label}</p>
-      <p className="text-2xl font-extrabold text-gray-900 mt-1">{value}</p>
+      <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900 mt-1">{value}</p>
       {sub && <p className="text-[11px] text-gray-400 mt-0.5">{sub}</p>}
     </div>
   )
@@ -139,7 +139,7 @@ export default function AdminFunnelPage() {
                 <div key={day} className="flex items-center gap-2 text-xs">
                   <span className="w-20 text-gray-500 font-mono">{day.slice(5)}</span>
                   <div className="flex-1 bg-gray-100 rounded-full h-4 overflow-hidden">
-                    <div className="h-full bg-gray-900 rounded-full" style={{ width: `${Math.round((n / maxDau) * 100)}%` }} />
+                    <div className="h-full bg-brand rounded-full" style={{ width: `${Math.round((n / maxDau) * 100)}%` }} />
                   </div>
                   <span className="w-12 text-right font-bold text-gray-900">{formatNumber(n)}</span>
                 </div>

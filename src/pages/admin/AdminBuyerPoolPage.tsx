@@ -425,7 +425,7 @@ export default function AdminBuyerPoolPage() {
           ].map(s => (
             <div key={s.l} className="rounded-xl border border-gray-200 bg-white p-4">
               <div className="text-xs text-gray-500">{s.l}</div>
-              <div className="text-2xl font-bold text-gray-900">{formatNumber(s.v)}</div>
+              <div className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">{formatNumber(s.v)}</div>
             </div>
           ))}
         </div>
@@ -453,13 +453,13 @@ export default function AdminBuyerPoolPage() {
                   <div className="rounded-xl border border-gray-200 bg-white p-3">
                     <div className="text-xs font-semibold text-gray-500 mb-2">국가별 (클릭해 필터)</div>
                     <div className="flex flex-wrap gap-1.5">
-                      {byCountry.map(d => <button key={d.k} onClick={() => setCountry(country === d.k ? '' : d.k)} className={`px-2 py-1 rounded-full text-xs ${country === d.k ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}>{d.k} {d.n}</button>)}
+                      {byCountry.map(d => <button key={d.k} onClick={() => setCountry(country === d.k ? '' : d.k)} className={`px-2 py-1 rounded-full text-xs ${country === d.k ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700'}`}>{d.k} {d.n}</button>)}
                     </div>
                   </div>
                   <div className="rounded-xl border border-gray-200 bg-white p-3">
                     <div className="text-xs font-semibold text-gray-500 mb-2">카테고리별</div>
                     <div className="flex flex-wrap gap-1.5">
-                      {byCategory.map(d => <button key={d.k} onClick={() => setCategory(category === d.k ? '' : d.k)} className={`px-2 py-1 rounded-full text-xs ${category === d.k ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}>{d.k} {d.n}</button>)}
+                      {byCategory.map(d => <button key={d.k} onClick={() => setCategory(category === d.k ? '' : d.k)} className={`px-2 py-1 rounded-full text-xs ${category === d.k ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700'}`}>{d.k} {d.n}</button>)}
                     </div>
                   </div>
                 </div>

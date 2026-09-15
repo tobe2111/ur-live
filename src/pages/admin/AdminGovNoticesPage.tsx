@@ -71,7 +71,7 @@ export default function AdminGovNoticesPage() {
   const statCard = (label: string, val: number, accent?: string) => (
     <div className="rounded-xl border border-gray-200 bg-white p-4">
       <div className="text-xs text-gray-500">{label}</div>
-      <div className={`mt-1 text-2xl font-bold ${accent || 'text-gray-900'}`}>{formatNumber(val)}</div>
+      <div className={`mt-1 dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight ${accent || 'text-gray-900'}`}>{formatNumber(val)}</div>
     </div>
   )
 

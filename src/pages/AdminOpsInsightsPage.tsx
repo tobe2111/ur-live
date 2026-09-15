@@ -187,7 +187,7 @@ function SummaryCard(props: { label: string; value: number; icon: React.ElementT
         <span className="text-xs">{props.label}</span>
         <Icon className="w-4 h-4 opacity-60" />
       </div>
-      <div className="text-2xl font-bold">{props.value}</div>
+      <div className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight">{props.value}</div>
     </div>
   )
 }

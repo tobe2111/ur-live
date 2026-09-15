@@ -219,7 +219,7 @@ function Kpi({ label, value, sub, accent }: { label: string; value: string; sub?
   return (
     <div className="bg-white rounded-xl p-4 border border-rule border border-gray-100">
       <p className="text-xs text-gray-500 font-medium">{label}</p>
-      <p className={`text-2xl font-extrabold mt-1 ${color}`}>{value}</p>
+      <p className={`dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight mt-1 ${color}`}>{value}</p>
       {sub && <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>}
     </div>
   )

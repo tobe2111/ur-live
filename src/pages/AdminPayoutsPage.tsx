@@ -202,25 +202,25 @@ export default function AdminPayoutsPage() {
       <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 flex items-center gap-2 flex-wrap">
         <button
           onClick={() => setTab('pending_ledger')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium ${tab === 'pending_ledger' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium ${tab === 'pending_ledger' ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700'}`}
         >
           ledger 잔액
         </button>
         <button
           onClick={() => setTab('payouts')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium ${tab === 'payouts' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium ${tab === 'payouts' ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700'}`}
         >
           payouts 목록
         </button>
         <button
           onClick={() => setTab('rates')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium ${tab === 'rates' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium ${tab === 'rates' ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700'}`}
         >
           수수료율
         </button>
         <button
           onClick={() => setTab('annual')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium ${tab === 'annual' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium ${tab === 'annual' ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700'}`}
         >
           연말 리포트
         </button>
@@ -295,7 +295,7 @@ export default function AdminPayoutsPage() {
               <button
                 key={s}
                 onClick={() => setFilter(s)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium ${filter === s ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium ${filter === s ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700'}`}
               >
                 {s === 'pending' ? '검토 대기' : s === 'approved' ? '승인됨' : s === 'sent' ? '송금 완료' : '전체'}
               </button>

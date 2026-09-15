@@ -130,7 +130,7 @@ export default function AdminDistrictReportPage() {
           <div className="mt-4 flex flex-wrap items-center gap-2">
             {PRESETS.map(pz => (
               <button key={pz.code} type="button" onClick={() => { setCode(pz.code); void load(pz.code, days) }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${code === pz.code ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-300'}`}>
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${code === pz.code ? 'bg-brand text-white border-gray-900' : 'bg-white text-gray-700 border-gray-300'}`}>
                 {pz.label}
               </button>
             ))}

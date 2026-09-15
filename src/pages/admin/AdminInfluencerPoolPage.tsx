@@ -349,7 +349,7 @@ export default function AdminInfluencerPoolPage() {
             { v: 'contracted', label: '계약', n: stats.st_contracted },
           ].map(s => (
             <button key={s.v || 'all'} onClick={() => { setStatusFilter(s.v); setNeedFollowup(false) }}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium border ${statusFilter === s.v && !needFollowup ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'}`}>
+              className={`px-3 py-1.5 rounded-full text-xs font-medium border ${statusFilter === s.v && !needFollowup ? 'bg-brand text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'}`}>
               {s.label} {s.n != null ? formatNumber(s.n) : ''}
             </button>
           ))}

@@ -78,7 +78,7 @@ export default function AdminInfluencerDisputesPage() {
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold ${tab === t ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold ${tab === t ? 'bg-brand text-white' : 'bg-white text-gray-700 border border-gray-200'}`}
             >
               {t === 'open' ? '대기 중' : t === 'resolved' ? '해결됨' : '거절됨'}
             </button>

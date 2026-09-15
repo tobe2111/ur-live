@@ -100,7 +100,7 @@ export default function AdminWholesaleProposalsPage() {
         <div className="flex items-center gap-2 my-4 flex-wrap">
           {FILTERS.map((f) => (
             <button key={f.id} onClick={() => setFilter(f.id)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium ${filter === f.id ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-700'}`}>
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium ${filter === f.id ? 'bg-brand text-white' : 'bg-white border border-gray-200 text-gray-700'}`}>
               {f.label}
             </button>
           ))}

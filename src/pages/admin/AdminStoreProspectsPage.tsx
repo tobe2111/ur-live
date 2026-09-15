@@ -176,7 +176,7 @@ export default function AdminStoreProspectsPage() {
   const statCard = (label: string, val: number, hint?: string, accent?: string) => (
     <div className="rounded-xl border border-gray-200 bg-white p-4">
       <div className="text-xs text-gray-500">{label}</div>
-      <div className={`mt-1 text-2xl font-bold ${accent || 'text-gray-900'}`}>{formatNumber(val)}</div>
+      <div className={`mt-1 dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight ${accent || 'text-gray-900'}`}>{formatNumber(val)}</div>
       {hint && <div className="mt-0.5 text-[11px] text-gray-400">{hint}</div>}
     </div>
   )

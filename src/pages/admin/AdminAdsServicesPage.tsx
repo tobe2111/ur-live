@@ -103,15 +103,15 @@ export default function AdminAdsServicesPage() {
 
       <div className="flex gap-2 mb-4">
         {(['orders', 'catalog', 'reviews', 'links'] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)} className={`h-9 px-4 rounded-lg text-sm font-semibold ${tab === t ? 'bg-gray-900 text-white' : 'border border-gray-200 text-gray-600'}`}>{t === 'orders' ? '주문 접수함' : t === 'catalog' ? '상품 관리' : t === 'reviews' ? '리뷰 관리' : '단축링크'}</button>
+          <button key={t} onClick={() => setTab(t)} className={`h-9 px-4 rounded-lg text-sm font-semibold ${tab === t ? 'bg-brand text-white' : 'border border-gray-200 text-gray-600'}`}>{t === 'orders' ? '주문 접수함' : t === 'catalog' ? '상품 관리' : t === 'reviews' ? '리뷰 관리' : '단축링크'}</button>
         ))}
       </div>
 
       {tab === 'orders' && (
         <>
           <div className="flex flex-wrap gap-1.5 mb-3">
-            <button onClick={() => { setFilter(''); load('') }} className={`px-2.5 py-1 rounded-full text-[12px] font-semibold ${!filter ? 'bg-gray-900 text-white' : 'border border-gray-200 text-gray-600'}`}>전체</button>
-            {STATUSES.map(s => <button key={s} onClick={() => { setFilter(s); load(s) }} className={`px-2.5 py-1 rounded-full text-[12px] font-semibold ${filter === s ? 'bg-gray-900 text-white' : 'border border-gray-200 text-gray-600'}`}>{STATUS_KO[s]}</button>)}
+            <button onClick={() => { setFilter(''); load('') }} className={`px-2.5 py-1 rounded-full text-[12px] font-semibold ${!filter ? 'bg-brand text-white' : 'border border-gray-200 text-gray-600'}`}>전체</button>
+            {STATUSES.map(s => <button key={s} onClick={() => { setFilter(s); load(s) }} className={`px-2.5 py-1 rounded-full text-[12px] font-semibold ${filter === s ? 'bg-brand text-white' : 'border border-gray-200 text-gray-600'}`}>{STATUS_KO[s]}</button>)}
           </div>
           <div className="space-y-2">
             {loading ? <p className="py-10 text-center text-gray-400 text-sm">불러오는 중…</p>

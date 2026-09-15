@@ -215,7 +215,7 @@ export default function AdminDistrictCouponsPage() {
                 <div className="flex flex-wrap items-center gap-2 py-3">
                   {(['receipts', 'stores', 'report'] as const).map((tb) => (
                     <button key={tb} type="button" onClick={() => void switchTab(c.id, tb)}
-                      className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold ${tab === tb ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>
+                      className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold ${tab === tb ? 'bg-brand text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>
                       {tb === 'receipts' ? '영수증 검수' : tb === 'stores' ? '매장' : '리포트'}
                     </button>
                   ))}

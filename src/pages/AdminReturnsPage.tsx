@@ -153,7 +153,7 @@ export default function AdminReturnsPage() {
               onClick={() => setStatusFilter(opt.key)}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
                 statusFilter === opt.key
-                  ? 'bg-gray-900 text-white'
+                  ? 'bg-brand text-white'
                   : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
               }`}
             >

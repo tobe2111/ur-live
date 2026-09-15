@@ -1020,7 +1020,7 @@ export default function AdminDistributorGradesPage() {
                     const on = effGrades.includes(g.grade)
                     return (
                       <button key={g.grade} type="button" onClick={() => toggleGrade(g.grade)}
-                        className={`px-2.5 py-1 rounded-full text-xs font-medium border ${on ? 'bg-gray-900 text-white border-brand' : 'bg-white text-gray-600 border-gray-200'}`}>
+                        className={`px-2.5 py-1 rounded-full text-xs font-medium border ${on ? 'bg-brand text-white border-brand' : 'bg-white text-gray-600 border-gray-200'}`}>
                         {g.grade}{g.label ? ` ${g.label}` : ''}
                       </button>
                     )

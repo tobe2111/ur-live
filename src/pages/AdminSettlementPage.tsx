@@ -226,7 +226,7 @@ export default function AdminSettlementPage() {
       {/* 기간 필터 */}
       <div className="flex items-center gap-2">
         {[['today', t('admin.settlement.today', { defaultValue: '오늘' })], ['week', t('admin.settlement.thisWeek', { defaultValue: '이번 주' })], ['month', t('admin.settlement.thisMonth', { defaultValue: '이번 달' })], ['all', t('admin.settlement.all', { defaultValue: '전체' })]].map(([v, l]) => (
-          <button key={v} onClick={() => setPeriod(v)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${period === v ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-100 shadow-sm'}`}>{l}</button>
+          <button key={v} onClick={() => setPeriod(v)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${period === v ? 'bg-brand text-white' : 'bg-white text-gray-600 hover:bg-gray-100 shadow-sm'}`}>{l}</button>
         ))}
       </div>
 
@@ -305,7 +305,7 @@ export default function AdminSettlementPage() {
           <h2 className="text-sm font-semibold text-gray-900">{t('admin.settlement.historyTitle', { defaultValue: '정산 내역' })}</h2>
           <div className="flex items-center gap-2">
             {[['all', t('admin.settlement.statusAll', { defaultValue: '전체' })], ['pending', t('admin.settlement.statusPending', { defaultValue: '대기중' })], ['completed', t('admin.settlement.statusCompleted', { defaultValue: '완료' })]].map(([v, l]) => (
-              <button key={v} onClick={() => setStatusFilter(v)} className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${statusFilter === v ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{l}</button>
+              <button key={v} onClick={() => setStatusFilter(v)} className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${statusFilter === v ? 'bg-brand text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{l}</button>
             ))}
             {pendingOrders.length > 0 && (
               <button onClick={() => batchComplete(pendingOrders.map(r => r.id))} className="ur-btn ur-btn-sm ur-btn-primary ml-2">

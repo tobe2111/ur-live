@@ -45,7 +45,7 @@ export default function PoolStatCards({
           className={`text-left rounded-lg border p-4 transition-colors ${c.on ? 'border-brand bg-brand-tint ring-1 ring-indigo-500' : 'border-gray-200 bg-white hover:border-rule hover:bg-gray-100/40'}`}
         >
           <div className={`text-xs ${c.on ? 'text-gray-700' : 'text-gray-500'}`}>{c.label}</div>
-          <div className={`text-2xl font-bold ${c.on ? 'text-gray-900' : 'text-gray-900'}`}>{formatNumber(c.value)}</div>
+          <div className={`dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight ${c.on ? 'text-gray-900' : 'text-gray-900'}`}>{formatNumber(c.value)}</div>
         </button>
       ))}
     </div>

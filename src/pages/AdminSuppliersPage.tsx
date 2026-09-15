@@ -196,7 +196,7 @@ export default function AdminSuppliersPage() {
       <div className="flex items-center gap-2 mb-4">
         {filters.map(f => (
           <button key={f.key} onClick={() => setStatusFilter(f.key)}
-            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${statusFilter === f.key ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}>
+            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${statusFilter === f.key ? 'bg-brand text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}>
             {f.label}
             {f.key === 'pending' && pendingCount > 0 && <span className="ml-1.5 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full">{pendingCount}</span>}
           </button>
