@@ -5,6 +5,7 @@
 import { useNavigate } from 'react-router-dom'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useTranslation } from 'react-i18next'
+import { ListLoadError } from '@/components/ui/list-load-error'
 import { ChevronLeft, Bell, Trash2 } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
@@ -53,15 +54,7 @@ export default function InterestListPage() {
         ) : isError ? (
           /* 🩸 2026-09-15: 못 불러온 것과 "관심 맛집이 없음"은 다른 상태다 — 섞으면
              등록해 둔 알림이 사라진 줄 안다. */
-          <div className="text-center py-20">
-            <p className="text-gray-900 dark:text-white text-[15px] mb-4">{t('common.loadFailed')}</p>
-            <button
-              onClick={() => refetch()}
-              className="px-6 py-2.5 rounded-full bg-brand text-white text-[13px] font-bold active:opacity-90"
-            >
-              {t('common.retry')}
-            </button>
-          </div>
+          <ListLoadError onRetry={() => refetch()} className="py-20" />
         ) : items.length === 0 ? (
           <div className="text-center py-20">
             <Bell className="w-10 h-10 text-gray-600 mx-auto mb-3" />
