@@ -5495,6 +5495,7 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
 _총 313건 · 최신순 · 이 목록은 자동 생성된다._
+_총 311건 · 최신순 · 이 목록은 자동 생성된다._
 _총 310건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-15**
@@ -5507,6 +5508,7 @@ _총 310건 · 최신순 · 이 목록은 자동 생성된다._
 - [2026-09-15 — 셀러 모바일 결함 4건 (대표 스크린샷 신고)](handoff/2026-09-15-seller-mobile-fixes.md)
 - [2026-09-15 — 셀러 대시보드 3차: D3 밀도·데이터 + A2 매장이 제목 + B2 전 매장 합계 + C 정산 안 소개 수익](handoff/2026-09-15-seller-d3.md)
 - [태블릿·화면고정 재조사 — 세 결함 중 **하나만 살아 있었다** (2026-09-15)](handoff/2026-09-15-search-header-sticky-revive.md)
+- [PR 정리(triage) — 막혀 있던 **10건**을 전부 판정했다 (2026-09-15)](handoff/2026-09-15-pr-triage.md)
 - [셀러 매출 분석 — 안 C 구현 (2026-09-15)](handoff/2026-09-15-seller-analytics-variant-c.md)
 - [2026-09-15 — 결재함 오기 정정 · 죽은 PR 둘 닫기 · S1 판정 패널](handoff/2026-09-15-pr-cleanup-and-s1-verdict.md)
 - [🚨 검사기 자신이 "실패할 수 없는" 구멍을 갖고 있었다 (2026-09-15, 4차)](handoff/2026-09-15-guard-self-hole.md)
