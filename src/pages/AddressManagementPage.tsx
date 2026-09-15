@@ -47,7 +47,7 @@ export default function AddressManagementPage() {
   ]
   const navigate = useNavigate()
   // 🛡️ 2026-06-01 Tier2: 수동 페칭 → React Query. CRUD mutation 후 refetch.
-  const { data: addresses = [], isLoading: loading, refetch } = useAddresses()
+  const { data: addresses = [], isLoading: loading, isError, refetch } = useAddresses()
   const [showForm, setShowForm] = useState(false)
   const [showPostcodePopup, setShowPostcodePopup] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -185,6 +185,24 @@ export default function AddressManagementPage() {
     return (
       <div className="min-h-[100dvh] bg-white dark:bg-[#11141C]">
         <BrandLoader fullScreen />
+      </div>
+    )
+  }
+
+  // 🩸 2026-09-15: 못 불러온 것을 "배송지가 없어요"로 말하지 않는다. 그 둘은 다른 상태이고,
+  //    섞으면 사장님이 멀쩡히 저장해 둔 주소를 지워진 줄 안다.
+  if (isError) {
+    return (
+      <div className="min-h-[100dvh] bg-white dark:bg-[#11141C] flex items-center justify-center px-6">
+        <div className="text-center">
+          <p className="mb-4 text-[15px] text-gray-900 dark:text-white">{t('common.loadFailed')}</p>
+          <button
+            onClick={() => refetch()}
+            className="px-6 py-2.5 rounded-full bg-brand text-white text-[13px] font-bold active:opacity-90"
+          >
+            {t('common.retry')}
+          </button>
+        </div>
       </div>
     )
   }

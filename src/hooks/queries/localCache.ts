@@ -64,6 +64,25 @@ export function cachedInitialData<T>(key: string): T | undefined {
   return readCacheOrNull<T>(key) ?? undefined
 }
 
+/**
+ * 🩸 **`queryFn` 의 `.catch` 전용** — 캐시가 있으면 last-known 을 주고, 없으면 **원래 에러를 다시 던진다**.
+ *
+ * ## 왜 헬퍼로 두는가 (2026-09-15)
+ * 이 패턴은 2026-07-02 에 손으로 쓰이기 시작했는데 **`if (cached)` 로 판정**하고 있었다.
+ * 배열엔 맞지만 숫자엔 틀린다 — 캐시된 **`0`(장바구니 0개·안 읽은 알림 0개)이 falsy** 라
+ * "캐시 없음"으로 읽혀 멀쩡한 값을 버리고 에러를 던진다. 판정은 `!== null` 이어야 하고,
+ * 그 한 글자를 훅마다 다시 쓰게 두면 언젠가 또 틀린다. 그래서 한 곳에만 둔다.
+ *
+ * ⚠️ 던지는 것이 목적이다. `readCache(key, [])` 로 폴백하면 네트워크 오류가 **"빈 목록"으로
+ *    위장**되고, 페이지가 가진 에러 UI 는 영원히 안 뜨는 죽은 가지가 된다
+ *    (`WishlistPage` 의 `isError` 분기가 실제로 그 상태였다).
+ */
+export function cacheOrRethrow<T>(key: string, err: unknown): T {
+  const cached = readCacheOrNull<T>(key)
+  if (cached !== null) return cached
+  throw err
+}
+
 export function writeCache<T>(key: string, value: T): void {
   try {
     localStorage.setItem(PREFIX + key, JSON.stringify(value))

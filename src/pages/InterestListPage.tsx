@@ -14,7 +14,7 @@ export default function InterestListPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   // 🛡️ 2026-06-01 Tier2: 수동 페칭 → React Query (목록 캐싱 + optimistic 삭제/롤백).
-  const { data: items = [], isLoading: loading } = useMyInterests()
+  const { data: items = [], isLoading: loading, isError, refetch } = useMyInterests()
   const removeMut = useRemoveInterest()
 
   const handleRemove = async (item: InterestItem) => {
@@ -49,6 +49,18 @@ export default function InterestListPage() {
                 <div className="h-3 bg-gray-700 rounded w-1/3" />
               </div>
             ))}
+          </div>
+        ) : isError ? (
+          /* 🩸 2026-09-15: 못 불러온 것과 "관심 맛집이 없음"은 다른 상태다 — 섞으면
+             등록해 둔 알림이 사라진 줄 안다. */
+          <div className="text-center py-20">
+            <p className="text-gray-900 dark:text-white text-[15px] mb-4">{t('common.loadFailed')}</p>
+            <button
+              onClick={() => refetch()}
+              className="px-6 py-2.5 rounded-full bg-brand text-white text-[13px] font-bold active:opacity-90"
+            >
+              {t('common.retry')}
+            </button>
           </div>
         ) : items.length === 0 ? (
           <div className="text-center py-20">
