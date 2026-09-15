@@ -1006,7 +1006,6 @@
     "streamingSetup": "Streaming Setup",
     "brandMessage": "ブランドメッセージ",
     "businessInfo": "事業者情報",
-    "analytics": "売上分析",
     "reviews": {
       "title": "レビュー管理",
       "empty": "受信したレビューはありません",
@@ -3343,6 +3342,26 @@
       "progress": "必須 {{filled}} / 5",
       "submitProgress": "申請（必須 {{filled}}/5）",
       "submit": "申請する"
+    },
+    "analytics": "売上分析",
+    "analyticsView": {
+      "noSalesTitle": "まだ販売がありません",
+      "noSalesBody": "最初の利用券が売れると、売上・顧客・リピート率がここに表示されます。今は見る数字がないので空にしています。",
+      "noSalesCta": "利用券を登録する",
+      "windowEmptyTitle": "直近{{days}}日間の販売はありません",
+      "windowEmptyBody": "期間を広げて見るか、利用券を新しく登録してみてください。",
+      "widen90": "90日で見る",
+      "windowRevenue": "直近{{days}}日の売上",
+      "daysLabel": "{{n}}日",
+      "sumOrders": "注文{{n}}件",
+      "sumBuyers": "顧客{{n}}人",
+      "sumRepeat": "リピート{{n}}%",
+      "sumConversion": "転換{{n}}%",
+      "rowCommission": "紹介収益",
+      "rowMonthly": "月別出品推移",
+      "rowFunnel": "流入経路",
+      "more": "もっと見る（紹介収益、出品推移、流入経路）",
+      "back": "売上サマリーへ"
     }
   },
   "admin": {

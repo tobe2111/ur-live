@@ -1007,7 +1007,6 @@
     "streamingSetup": "Streaming Setup",
     "brandMessage": "Brand Messages",
     "businessInfo": "Business Info",
-    "analytics": "Sales Analytics",
     "reviews": {
       "title": "Review Management",
       "empty": "No reviews received",
@@ -3343,6 +3342,26 @@
       "progress": "Required {{filled}} / 5",
       "submitProgress": "Apply ({{filled}}/5 required)",
       "submit": "Apply now"
+    },
+    "analytics": "Sales Analytics",
+    "analyticsView": {
+      "noSalesTitle": "No sales yet",
+      "noSalesBody": "Once your first pass sells, revenue, customers and repeat rate will show up here. There is nothing to measure yet, so we left it empty.",
+      "noSalesCta": "Add a pass",
+      "windowEmptyTitle": "No sales in the last {{days}} days",
+      "windowEmptyBody": "Try a wider period, or add a new pass.",
+      "widen90": "View 90 days",
+      "windowRevenue": "Revenue, last {{days}} days",
+      "daysLabel": "{{n}}d",
+      "sumOrders": "{{n}} orders",
+      "sumBuyers": "{{n}} customers",
+      "sumRepeat": "{{n}}% repeat",
+      "sumConversion": "{{n}}% conversion",
+      "rowCommission": "Referral earnings",
+      "rowMonthly": "Monthly listings",
+      "rowFunnel": "Traffic sources",
+      "more": "Show more (referral earnings, monthly listings, traffic sources)",
+      "back": "Back to summary"
     }
   },
   "admin": {

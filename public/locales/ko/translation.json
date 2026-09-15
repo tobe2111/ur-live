@@ -1038,7 +1038,6 @@
     "streamingSetup": "송출 키 설정",
     "brandMessage": "브랜드메시지",
     "businessInfo": "사업자 정보",
-    "analytics": "매출 분석",
     "reviews": {
       "title": "리뷰 관리",
       "empty": "받은 리뷰가 없습니다",
@@ -3343,6 +3342,26 @@
       "progress": "필수 {{filled}} / 5",
       "submitProgress": "가입 신청 (필수 {{filled}}/5)",
       "submit": "가입 신청하기"
+    },
+    "analytics": "매출 분석",
+    "analyticsView": {
+      "noSalesTitle": "아직 판매가 없어요",
+      "noSalesBody": "첫 이용권이 팔리면 여기에 매출·고객·재구매가 쌓입니다. 지금은 볼 숫자가 없어서 비워 뒀어요.",
+      "noSalesCta": "이용권 등록하기",
+      "windowEmptyTitle": "최근 {{days}}일에는 판매가 없어요",
+      "windowEmptyBody": "기간을 넓혀서 보시거나, 이용권을 새로 올려 보세요.",
+      "widen90": "90일로 보기",
+      "windowRevenue": "최근 {{days}}일 매출",
+      "daysLabel": "{{n}}일",
+      "sumOrders": "주문 {{n}}건",
+      "sumBuyers": "고객 {{n}}명",
+      "sumRepeat": "재구매 {{n}}%",
+      "sumConversion": "전환 {{n}}%",
+      "rowCommission": "추천 수익",
+      "rowMonthly": "월별 입점 추이",
+      "rowFunnel": "유입 경로",
+      "more": "더 보기 (추천 수익, 입점 추이, 유입 경로)",
+      "back": "매출 요약으로"
     }
   },
   "admin": {
