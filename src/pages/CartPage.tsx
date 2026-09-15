@@ -14,6 +14,7 @@ import { ShoppingCart, ChevronRight, Store, X, PackageCheck } from 'lucide-react
 import type { CartItem } from '@/types/cart'
 import { getCartItemPrice } from '@/types/cart'
 import { getNoShippingKind, isNoShippingProduct } from '@/shared/product-flow'
+import { routeCartCheckout } from './cart/voucher-checkout'
 import { formatNumber } from '@/utils/format'
 import { hasConsumerSession } from '@/utils/auth'
 import CustomModal from './cart/CustomModal'
@@ -421,24 +422,15 @@ function CartPageContent() {
 
   const total = subtotal + shippingFee
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (selectedIds.size === 0) {
       showAlert(t('cart.selectProductsFirst'), 'alert', t('cart.alertTitle'))
       return
     }
-
-    // 토스 SDK 프리로드 (체크아웃 진입 전)
-    // ⚡ 2026-07-02 (결제 체감속도): bare npm 청크 import → toss-preload 모듈 import 로 승격.
-    //   기존엔 npm 청크만 데워지고 실제 js.tosspayments.com 브라우저 SDK 는 CheckoutPage 도착 후에야
-    //   fetch 시작 — toss-preload 는 모듈 평가 시 loadTossPayments() 까지 즉시 실행(진짜 워밍).
-    import('@/lib/toss-preload').catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
-    const selectedItems = cartItems.filter(item => selectedIds.has(item.id))
-    navigate('/checkout', {
-      state: {
-        cartItems: selectedItems,
-        fromCart: true
-      }
-    })
+    // 🧺 2026-09-15: 어디로 보낼지는 `cart/voucher-checkout` 한 곳이 정한다. 이용권은 발급이 있는
+    //    공구 레일로, 배송 상품은 종전 `/checkout` 으로 — 섞여 있으면 보내지 않고 이유를 말한다.
+    const err = await routeCartCheckout(cartItems.filter(item => selectedIds.has(item.id)), navigate)
+    if (err) showAlert(err, 'alert', t('cart.alertTitle'))
   }
 
   // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): ad-hoc 스피너 → BrandLoader (라우트 청크 로더와 위상 연속).

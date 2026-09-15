@@ -51,10 +51,11 @@ export default [
   },
   {
     name: '🪙선택 고르는 자리가 구매 버튼 아래로 내려간다',
-    file: 'src/pages/GroupBuyDetailPage.tsx',
-    find: `        <DealUseChooser plan={!isPrelaunch && isJoinable ? dealPlan : null} value={dealUse ?? dealPlan?.max_deal_usable ?? 0} onChange={setDealUse} />
-        <button`,
-    replace: `        <button`,
+    // 🧺 2026-09-15: 모바일 바가 `DealBottomBar` 로 이사했다 — 성질은 그대로라 자리만 재조준.
+    file: 'src/pages/group-buy/DealBottomBar.tsx',
+    find: `      <DealUseChooser plan={dealPlan} value={dealUse ?? dealPlan?.max_deal_usable ?? 0} onChange={setDealUse} />
+      <button`,
+    replace: `      <button`,
     test: 'src/tests/unit/deal-use-chooser-2026-09-13.test.ts',
     why:
       '모바일 결제 바에서 고르는 자리가 누르는 버튼 **아래**로 가면 순서가 거꾸로다. ' +

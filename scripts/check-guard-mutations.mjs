@@ -124,8 +124,11 @@ const MUTATIONS = [
   {
     name: '🧭 라이트 래퍼가 --brand-tint 를 안 되박는다 (다크 모드에서 활성 메뉴가 검어진다)',
     file: 'src/index.css',
-    find: '  --brand-tint: #EAF1FE;\n  --brand-text: #1C69EF;\n}\n.light-island',
-    replace: '}\n.light-island',
+    // ⚠️ 2026-09-15: 앵커가 `}\n.light-island` 로 **다음 블록에 붙어** 있었다. 그 사이에 주석 한 줄이
+    //    들어오자(같은 날 다른 세션의 되박기 설명) 지도가 낡아 CI 가 빨간불을 냈다.
+    //    ⇒ 블록 **자기 끝**만 가리킨다 — 옆 블록이 무엇이든 상관없게.
+    find: '  --brand-tint: #EAF1FE;\n  --brand-text: #1C69EF;\n}',
+    replace: '}',
     test: 'src/tests/unit/dashboard-rinda-shell.test.ts',
     why:
       '사이드바가 흰 면이 되면서 비로소 도달 가능해진 경로다. 사용자가 OS/앱 다크 모드를 켜 두면 ' +

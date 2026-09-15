@@ -1,3 +1,20 @@
+/**
+ * 🗺️ 지도에서 고른 딜 — 지도 위에 뜨는 가로 카드.
+ *
+ * 🏝️ **이 카드는 `light-island` 다 — 테마와 무관하게 늘 흰색이다**(지도 타일이 다크에서도 밝다).
+ *    그래서 안쪽 `dark:` 유틸은 전부 꺼진다. 새 글자를 넣을 때 `dark:` 를 붙여도 아무 일도 안 난다.
+ *
+ * 🩸 2026-09-15 (대표 신고 *"글자가 안보여 … 다크모드일 때 저러나봐"* — 실측으로 원인이 둘이었다):
+ *   ① 이 카드가 `light-island` 인데 **자기 자신에 `dark:bg-[#11141C]` 도 같이** 걸려 있었다.
+ *      `light-island` 는 *자손*의 `dark:` 만 끄고 **자기 자신은 안 끈다** ⇒ 배경만 검어지고 글자는
+ *      라이트 색(거의 검정)으로 남았다. 제목이 통째로 안 보였다.
+ *   ② 할인율 `text-sale` 이 다크 빨강(#FF5C69)으로 떴다 — `.light-island` 가 `--tone-*` 은 되박으면서
+ *      `--sale` 은 안 되박고 있었다(흰 카드 위 **3.01:1**). 토큰 목록을 `index.css` 에서 완성했다.
+ *   ③ 작은 글자들이 `text-gray-400`(=`--ink-faint`, **비활성·플레이스홀더용**)이라 3.65:1 이었다 ⇒
+ *      본문으로 읽는 값(주소·정가·쿠폰가 라벨·위치)은 `text-gray-500`(5.30:1)으로 올렸다.
+ *   실측: `scripts/check-dark-contrast.mjs` 는 `/map` 은 보지만 **핀을 누른 뒤의 이 카드는 못 봤다** —
+ *   그게 이 결함이 살던 자리다.
+ */
 import CatIcon from './CatIcon'
 import { priceDisplay } from '@/shared/price-display'
 import { useRef } from 'react'
@@ -126,7 +143,7 @@ export default function SelectedDealCard({
     >
       <div
         ref={cardRef}
-        className="light-island ur-content-wide pointer-events-auto relative rounded-2xl border border-gray-100 dark:border-[#2C2F35] bg-white dark:bg-[#11141C] shadow-[0_8px_28px_rgba(0,0,0,0.18)] select-none lg:cursor-grab lg:active:cursor-grabbing focus:outline-none"
+        className="light-island ur-content-wide pointer-events-auto relative rounded-2xl border border-gray-100 bg-white shadow-[0_8px_28px_rgba(0,0,0,0.18)] select-none lg:cursor-grab lg:active:cursor-grabbing focus:outline-none"
         style={{ touchAction: 'pan-y' }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -181,7 +198,7 @@ export default function SelectedDealCard({
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1 flex items-center gap-0.5 truncate">
+            <p className="text-[11px] text-gray-500 mt-1 flex items-center gap-0.5 truncate">
               <MapPin className="w-3 h-3 shrink-0" />
               {selected.name && selected.restaurant_name && (
                 <span className="shrink-0 font-semibold text-gray-500 dark:text-gray-400">{selected.restaurant_name} ·</span>
@@ -192,11 +209,11 @@ export default function SelectedDealCard({
             <div className="flex items-baseline gap-1.5 mt-2">
               {discount > 0 && <span className="text-[13px] font-extrabold text-sale dark:text-[#4D8DF5] shrink-0">{discount}%</span>}
               {selected.original_price > selected.price && (
-                <span className="text-[11px] text-gray-400 dark:text-gray-500 line-through">{formatNumber(selected.original_price)}원</span>
+                <span className="text-[11px] text-gray-500 line-through">{formatNumber(selected.original_price)}원</span>
               )}
             </div>
             <div className="flex items-baseline gap-1">
-              <span className="text-[10px] text-gray-400 dark:text-gray-500">쿠폰가</span>
+              <span className="text-[10px] text-gray-500">쿠폰가</span>
               <span className="text-[18px] font-extrabold text-gray-900 dark:text-white">{formatNumber(selected.price)}원~</span>
             </div>
           </div>
@@ -204,7 +221,7 @@ export default function SelectedDealCard({
 
         {/* 위치 인디케이터 (n / total) */}
         {total > 1 && (
-          <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-gray-400 dark:text-gray-500 bg-white/80 dark:bg-[#11141C]/80 px-1.5 rounded-full">
+          <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-gray-500 bg-white/80 px-1.5 rounded-full">
             {position} / {total}
           </div>
         )}
