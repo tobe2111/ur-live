@@ -11,9 +11,9 @@
  *   판정 전(loading)에는 게이트를 띄우지 않는다(오탐으로 정상 셀러를 잠그면 안 됨 — fail-open).
  */
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { CheckCircle2, Loader2, Map, MapPin, Plus, Settings2, Store, Ticket } from 'lucide-react'
+import { CheckCircle2, ChevronRight, Loader2, Map, MapPin, Plus, Settings2, Store, Ticket } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import StoreRegisterModal from '@/components/seller/StoreRegisterModal'
@@ -48,29 +48,35 @@ export default function MyStoresPanel({ onGateChange, gateOnly = false }: Props)
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [stores, setStores] = useState<OperableStore[] | null>(null)
-  const [seatReady, setSeatReady] = useState<boolean | null>(null)
+  /** `undefined` = 판정 중 · `null` = 판정 실패(fail-open) · boolean = 서버 답. 셋을 구분해야 게이트가 깜빡이지 않는다. */
+  const [seatReady, setSeatReady] = useState<boolean | null | undefined>(undefined)
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState<OperableStore | null>(null)
   const [switching, setSwitching] = useState<number | null>(null)
   const currentId = Number(localStorage.getItem('seller_id') || 0)
 
-  async function load() {
-    const [storesR, ctxR] = await Promise.allSettled([
-      api.get('/api/seller/my-stores'),
-      api.get('/api/seller/stores/context'),
-    ])
-    if (storesR.status === 'fulfilled' && storesR.value.data?.success) {
-      setStores(storesR.value.data.data || [])
-    } else { setStores([]) }
-    if (ctxR.status === 'fulfilled' && ctxR.value.data?.success) {
-      setSeatReady(!!ctxR.value.data.data?.store_ready)
-    } else { setSeatReady(null) }
+  /**
+   * 🩸 2026-09-15 (대표 신고 *"왜 내 매장 부분에 로딩이 걸리는거지?"*) — 종전엔 `await Promise.allSettled([A, B])`
+   *   라 **둘 다 끝나야** `setStores` 가 돌았다. 매장 목록(A)이 이미 손에 있어도 좌석 프리필(B)이 느리면
+   *   그동안 계속 스피너다. 두 값은 서로를 안 기다려도 되므로 **각자 도착하는 대로** 반영한다.
+   *   (axios timeout 15s — 종전엔 B 가 죽으면 최악 15초를 스피너로 보냈다.)
+   */
+  function load() {
+    setSeatReady(undefined)
+    api.get('/api/seller/my-stores')
+      .then(r => setStores(r.data?.success ? (r.data.data || []) : []))
+      .catch(() => setStores([]))
+    api.get('/api/seller/stores/context')
+      .then(r => setSeatReady(r.data?.success ? !!r.data.data?.store_ready : null))
+      .catch(() => setSeatReady(null))
   }
   useEffect(() => { load() }, [])
 
   // '등록 매장' = 주소가 있는 매장 행, 또는 현재 좌석이 등록 매장(운영 이력 포함).
   const registered = (stores || []).filter(s => !!s.address || (s.seller_id === currentId && seatReady === true))
-  const loading = stores === null
+  // 목록이 오면 **곧바로** 그린다. 좌석 판정(B)은 게이트를 정할 때만 기다린다 — 등록 매장이 이미 있으면
+  // 게이트는 어차피 false 라 B 를 기다릴 이유가 없다.
+  const loading = stores === null || (registered.length === 0 && seatReady === undefined)
   // 게이트: 판정이 끝났고(loading X) 등록 매장이 하나도 없을 때만. 좌석 판정 실패(null)면 fail-open.
   const gated = loading ? null : (registered.length === 0 && seatReady === false)
 
@@ -206,6 +212,19 @@ export default function MyStoresPanel({ onGateChange, gateOnly = false }: Props)
             </div>
           )
         })}
+        {/* 🛠️ 2026-09-15 (대표 *"3번째 이미지에선 내 매장 관리가 가능해야 할 것 같아"*): 이 카드의 행동은
+            [이용권 등록]·[정보] 둘뿐이었고, 위임·삭제·이관은 `/seller/stores` 에만 있어 **더보기를 거쳐야만**
+            닿았다. 버튼을 셋으로 늘리면 폰에서 줄이 꺾이므로, 목록의 마지막 줄로 내보낸다. */}
+        <Link
+          to="/seller/stores"
+          className="flex items-center justify-between px-4 py-2.5 text-[12px] font-bold text-gray-500 hover:bg-gray-50"
+        >
+          <span className="flex items-center gap-1.5">
+            <Settings2 className="h-3.5 w-3.5" />
+            {t('seller.stores.manageAll', { defaultValue: '매장 관리 · 위임 · 삭제' })}
+          </span>
+          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+        </Link>
       </div>
       {adding && <StoreRegisterModal onClose={() => setAdding(false)} onDone={onRegistered} />}
       {editing && (

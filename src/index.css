@@ -1708,3 +1708,14 @@ canvas {
 @media (min-width: 1024px) {
   .ur-account-pane .ur-content-medium.pt-3 { padding-top: 0; }
 }
+
+/* 📱 셀러 폰 상담 FAB — 페이지가 자기 하단 고정 바를 그리면 그만큼 비켜 준다 (2026-09-15).
+   대표 신고 *"버튼들이 겹치는 경우도 있고"*: 종전 FAB 은 `bottom-24`(96px 고정, safe-area 무시)였고
+   `SellerBottomBar` 는 하단 탭(60px) 위 ~64px 을 덮었다 → 60~124px 과 96~136px 이 정면 충돌.
+   ⚠️ 60px = `SELLER_TABBAR_H` · 64px = `SELLER_BOTTOM_BAR_H` 의 미러다. 한쪽만 바꾸면 다시 겹친다 —
+      `seller-fab-clearance-2026-09-15.test.ts` 가 세 값의 일치를 고정한다.
+   ⚠️ PC(min-width:768px)는 여기서 손대지 않는다 — 바가 없고 FAB 은 `md:bottom-4` 로 구석에 산다. */
+@media (max-width: 767px) {
+  .seller-chat-fab { bottom: calc(60px + env(safe-area-inset-bottom) + 12px); }
+  body.seller-has-bottom-bar .seller-chat-fab { bottom: calc(60px + env(safe-area-inset-bottom) + 64px + 12px); }
+}

@@ -321,11 +321,14 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
 
       <SellerBottomTabs pendingOrders={pendingOrders} />
 
-      {/* 카카오 채널 상담 — 폰에선 하단 탭 위로 올린다. */}
+      {/* 카카오 채널 상담 — 폰에선 하단 탭 위로 올린다.
+          ⚠️ 위치는 `index.css` 의 `.seller-chat-fab` 이 정한다(Tailwind `bottom-24` 아님). 페이지가
+          자기 하단 고정 바(`SellerBottomBar`)를 그리면 그만큼 비켜야 하는데, 그건 이 컴포넌트가 알 수
+          없어서 **바가 body 에 켜 주는 신호**로 CSS 가 처리한다. 2026-09-15 대표 신고 "버튼들이 겹친다". */}
       <a
         href="http://pf.kakao.com/_AITdn/chat"
         target="_blank" rel="noopener noreferrer"
-        className="fixed bottom-24 md:bottom-4 right-4 z-[35] flex items-center justify-center w-10 h-10 rounded-full bg-brand hover:bg-[#1557C8] text-white shadow-md hover:shadow-lg transition-all duration-200 opacity-70 hover:opacity-100"
+        className="seller-chat-fab fixed md:bottom-4 right-4 z-[35] flex items-center justify-center w-10 h-10 rounded-full bg-brand hover:bg-[#1557C8] text-white shadow-md hover:shadow-lg transition-all duration-200 opacity-70 hover:opacity-100"
         title={t('seller.kakaoChat')}
       >
         <MessageCircle className="w-4 h-4" />

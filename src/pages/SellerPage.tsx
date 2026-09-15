@@ -90,7 +90,11 @@ export default function SellerPage() {
           {/* 게이트 중엔 폰에서 STEP 1 티켓이 잠금 안내보다 위로 온다(order-first). */}
           <div className={`min-w-0 space-y-5 lg:sticky lg:top-0 ${storeGated === true ? 'order-first lg:order-none' : ''}`}>
             {isPc && storeGated !== true && <TodoRows pendingOrders={home.pendingOrders} withdrawable={home.withdrawable} hasVouchers={home.vouchers.length > 0} />}
-            <MyStoresPanel onGateChange={onGateChange} gateOnly={!isPc} />
+            {/* 📱 2026-09-15 (대표 신고 *"모바일로 볼 때는 왜 매장 등록하는게 안보이지?"*): 폰에서도 그린다.
+                09-14 시안은 폰 홈에서 매장 블록을 빼고 관리를 `더보기 › 매장` 으로 보냈는데, 그러면 매장을
+                보거나 **추가할** 길이 홈에 한 곳도 없다(오늘 티켓은 이름만 말하고 누를 수 없다). 대표 지시가
+                그 결정을 뒤집었다. 폰에서는 이 열이 아래로 쌓이므로 자리는 홈 맨 끝이다. */}
+            <MyStoresPanel onGateChange={onGateChange} />
           </div>
         </div>
 
