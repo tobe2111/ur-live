@@ -61,13 +61,13 @@ describe('② 애매하면 전수', () => {
   })
 
   it('매니페스트 내용만 다르면 로직은 안 바뀐 것', () => {
-    const mk = (body: string) => `머리\nconst MUTATIONS = [${body}]\nconst MUTATIONS_DIR = x\n꼬리`
-    expect(runnerLogicChanged(mk('1'), mk('1,2,3'))).toBe(false)
+    const withManifest = (body: string) => `머리\nconst MUTATIONS = [${body}]\nconst MUTATIONS_DIR = x\n꼬리`
+    expect(runnerLogicChanged(withManifest('1'), withManifest('1,2,3'))).toBe(false)
   })
 
   it('🔴 매니페스트 밖이 바뀌면 전수', () => {
-    const mk = (tail: string) => `머리\nconst MUTATIONS = [1]\nconst MUTATIONS_DIR = x\n${tail}`
-    expect(runnerLogicChanged(mk('꼬리'), mk('다른 꼬리'))).toBe(true)
+    const withTail = (tail: string) => `머리\nconst MUTATIONS = [1]\nconst MUTATIONS_DIR = x\n${tail}`
+    expect(runnerLogicChanged(withTail('꼬리'), withTail('다른 꼬리'))).toBe(true)
   })
 })
 
