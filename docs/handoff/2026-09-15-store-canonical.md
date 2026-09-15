@@ -70,3 +70,15 @@
    - 일부러 다른 상호를 타이핑해도 저장된 상호가 매장명으로 정정되는가(워커 로그 `[seller:store-canonical]`)
 2. 남은 것(이번 범위 밖): 셀러 화면에 **전 매장 통합 이용권 목록**이 없다(좌석이 곧 필터). 매장 2곳 이상이 되면
    그때 필요해진다. 임시저장 초안이 매장 간에 넘나드는 것(`voucher-form.ts` 로컬 키가 브라우저당 1개)도 그때.
+
+## ✅ 머지 (E3 — 배포 판정은 화면이 아니라 등록 1건이다)
+
+- PR #1445 머지 18:30 KST (`7feed72db`).
+- ⚠️ **이 수리는 워커(서버) 코드라 엔트리 해시로 판정되지 않는다.** 클라이언트 번들은 한 줄도 안 바뀐다.
+  판정하려면 **실제로 이용권을 1건 등록**해 보는 수밖에 없다:
+  1. 대표 계정(user 3 정지원 / tobe2111@kakao.com, 홍대돈까스 매장에 **operator** 로 착석)으로 로그인
+  2. 이용권 등록에서 상호를 **일부러 다른 이름**으로 타이핑 → 저장 후 D1 에서 `products.restaurant_name` 확인
+     → 매장명(`홍대돈까스`)으로 정정돼 있으면 성공. 워커 로그에 `[seller:store-canonical]` 도 남는다.
+  3. 빠른 등록(`/seller/products/quick`)으로 1건 → `restaurant_lat/lng` 가 채워졌는지 확인(= 지도에 뜬다)
+- 판정 쿼리:
+  `SELECT id, name, restaurant_name, restaurant_lat, restaurant_lng, seller_id FROM products WHERE seller_id = 14 ORDER BY id DESC LIMIT 3`
