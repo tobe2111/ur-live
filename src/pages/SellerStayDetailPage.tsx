@@ -352,7 +352,7 @@ function RoomFormModal({ productId, room, onClose, onSaved }: {
 
   return (
     <div className="fixed inset-0 z-[10500] bg-black/50 backdrop-blur-sm p-4 flex items-start justify-center overflow-y-auto" onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-2xl my-8 p-6" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white rounded-[var(--dash-radius,16px)] w-full max-w-2xl my-8 p-6" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-lg font-bold text-gray-900 mb-4">{room ? '객실 수정' : '객실 추가'}</h3>
         <div className="space-y-3">
           <Inp label="객실명 *" value={f.name} onChange={(v) => setF({ ...f, name: v as string })} placeholder="스탠다드 더블" />
@@ -516,7 +516,7 @@ function CalendarTab({ productId, rooms, calendar, onChanged }: {
             type="button"
             onClick={() => { setActiveRoomId(r.id); setEdits({}) }}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap ${
-              activeRoomId === r.id ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'
+              activeRoomId === r.id ? 'bg-brand-tint text-brand-text' : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'
             }`}
           >
             {r.name} (재고 {r.total_inventory})

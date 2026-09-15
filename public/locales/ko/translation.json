@@ -3253,7 +3253,19 @@
       "seePerf": "성과 보기",
       "weekOrders": "주문 {{count}}건",
       "vsLastWeek": "지난주보다",
-      "myStore": "내 매장"
+      "myStore": "내 매장",
+      "allStores": "내 매장 {{count}}곳 전체",
+      "store": "매장",
+      "todayWon": "오늘 ₩",
+      "pendingShort": "대기",
+      "delegated": "위임 운영",
+      "voucher": "이용권",
+      "listPrice": "정가 ₩",
+      "salePrice": "판매가 ₩",
+      "soldHead": "판매",
+      "revenueWon": "매출 ₩",
+      "status": "상태",
+      "date": "날짜"
     },
     "vouchers": {
       "paused": "판매 중지",
@@ -3279,6 +3291,7 @@
       "pinWarn": "최근 7일 PIN 오류 {{errors}}건이 성공 {{ok}}건보다 많아요. 가게에 안내된 PIN 을 확인해 주세요.",
       "deleteConfirm": "'{{name}}' 이용권을 삭제할까요?\n이미 발급된 이용권은 그대로 사용할 수 있고, 새 판매만 중단됩니다.",
       "deleteFailed": "삭제 실패",
+      "selling": "판매 중",
       "deletedSeg": "삭제됨",
       "restore": "복구",
       "restored": "이용권을 다시 판매합니다",
@@ -3298,6 +3311,38 @@
       "listPrice": "정가 (할인 전 가격)",
       "listPriceDiscount": "소비자 화면에 {{pct}}% 할인으로 보입니다.",
       "listPriceHint": "판매가보다 높게 넣으면 할인율이 표시됩니다. 비우면 할인 표시가 없습니다."
+    },
+    "referral": {
+      "title": "소개 수익",
+      "subtitle": "유어샵에 담은 남의 이용권이 팔리면 쌓이는 커미션",
+      "confirmed": "확정 (출금 가능)",
+      "pending": "보류 (T+7)",
+      "conv": "전환율 30일",
+      "console": "소개 콘솔"
+    },
+    "signup": {
+      "title": "사업자 유저 가입",
+      "band": "내 가게 등록",
+      "bandStep": "1단계 / 3",
+      "bandActive": "사업자 유저",
+      "bandPending": "심사 중",
+      "heroTitle": "가게를 등록하면 내 유어샵에서 이용권을 팔 수 있어요",
+      "heroDesc": "판매 대금은 매주 자동으로 계좌에 정산돼요. 사업자등록증 한 장이면 3분이면 끝나요.",
+      "step1": "정보 입력",
+      "step1Sub": "지금 이 화면",
+      "step2": "심사",
+      "step2Sub": "국세청 정보와 일치하면 바로, 아니면 1~2 영업일",
+      "step3": "판매 시작",
+      "step3Sub": "승인 알림 후 셀러 대시보드에서 이용권 등록",
+      "bizSection": "사업자 정보",
+      "bizSectionSub": "사업자등록증에 적힌 그대로. 국세청 정보와 일치하면 심사 없이 바로 승인돼요.",
+      "storeSection": "가게 정보",
+      "storeSectionSub": "유어샵과 이용권에 그대로 보여요. 나중에 대시보드에서 바꿀 수 있어요.",
+      "note1": "결과는 앱 알림과 알림톡으로 알려드려요. 국세청 정보와 일치하면 바로 승인돼요.",
+      "note2": "현금 정산에는 승인 뒤 사업자등록증 사진 인증이 한 번 더 필요해요 (대시보드 › 사업자 정보).",
+      "progress": "필수 {{filled}} / 5",
+      "submitProgress": "가입 신청 (필수 {{filled}}/5)",
+      "submit": "가입 신청하기"
     }
   },
   "admin": {

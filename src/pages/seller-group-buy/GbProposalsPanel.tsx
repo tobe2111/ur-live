@@ -70,7 +70,7 @@ export default function GbProposalsPanel({ products, headers }: { products: Prod
           </div>
           {r.status === 'proposed' ? (
             <div className="flex gap-1.5 shrink-0">
-              <button disabled={busy === r.id} onClick={() => respond(r.id, 'approve')} className="px-2.5 py-1 rounded-lg bg-gray-900 text-white text-[11px] font-bold disabled:opacity-50">{busy === r.id ? <Loader2 className="w-3 h-3 animate-spin" /> : '승인'}</button>
+              <button disabled={busy === r.id} onClick={() => respond(r.id, 'approve')} className="px-2.5 py-1 rounded-lg bg-brand-tint text-brand-text text-[11px] font-bold disabled:opacity-50">{busy === r.id ? <Loader2 className="w-3 h-3 animate-spin" /> : '승인'}</button>
               <button disabled={busy === r.id} onClick={() => respond(r.id, 'reject')} className="px-2.5 py-1 rounded-lg border border-gray-300 text-gray-600 text-[11px] font-semibold disabled:opacity-50">거절</button>
             </div>
           ) : <span className="text-[11px] text-gray-400 shrink-0">{STATUS_LABEL[r.status] || r.status}</span>}
@@ -131,7 +131,7 @@ function ProposeForm({ products, headers, onDone }: { products: ProductOpt[]; he
         <label className="text-[12px] text-gray-600">소개비</label>
         <input type="number" min={0} max={50} value={promo} onChange={e => setPromo(Math.max(0, Math.min(50, Number(e.target.value))))} className="w-16 px-2 py-1.5 border border-gray-300 rounded-lg text-[12px] text-gray-900" />
         <span className="text-[12px] text-gray-600">%</span>
-        <button onClick={submit} disabled={saving} className="ml-auto px-3 py-1.5 bg-gray-900 text-white text-[12px] font-bold rounded-lg disabled:opacity-50">{saving ? '전송…' : '제안 보내기'}</button>
+        <button onClick={submit} disabled={saving} className="ml-auto px-3 py-1.5 bg-brand-tint text-brand-text text-[12px] font-bold rounded-lg disabled:opacity-50">{saving ? '전송…' : '제안 보내기'}</button>
       </div>
     </div>
   )

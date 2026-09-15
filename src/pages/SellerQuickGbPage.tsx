@@ -82,7 +82,7 @@ function kstParts(d: Date) {
   return { m: k.getUTCMonth() + 1, d: k.getUTCDate(), dow: DOW[k.getUTCDay()], ymd: k.toISOString().slice(0, 10) }
 }
 
-const CARD = 'bg-white border border-[#EAE5E7] rounded-2xl p-4 flex flex-col gap-[18px]'
+const CARD = 'bg-white border border-[#EAE5E7] rounded-[var(--dash-radius,16px)] p-4 flex flex-col gap-[18px]'
 const INPUT = 'w-full h-14 px-[15px] rounded-xl border border-[#DFD9DC] bg-white text-[15.5px] font-semibold text-[#1A1719] tracking-[-0.02em] outline-none focus:border-[1.5px] focus:border-[#1A1719]'
 const LABEL = 'block text-[12.5px] font-bold text-[#4A4448] tracking-[-0.02em] mb-2'
 /** 안 고른 것도 **면**이다 — 테두리 박스로 그리면 세그먼트가 아니라 박스의 나열이 된다. */

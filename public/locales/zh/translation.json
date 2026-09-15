@@ -3253,7 +3253,19 @@
       "seePerf": "查看业绩",
       "weekOrders": "订单 {{count}} 件",
       "vsLastWeek": "较上周",
-      "myStore": "我的店铺"
+      "myStore": "我的店铺",
+      "allStores": "全部{{count}}家门店",
+      "store": "门店",
+      "todayWon": "今日 ₩",
+      "pendingShort": "待处理",
+      "delegated": "委托运营",
+      "voucher": "使用券",
+      "listPrice": "原价 ₩",
+      "salePrice": "售价 ₩",
+      "soldHead": "已售",
+      "revenueWon": "销售额 ₩",
+      "status": "状态",
+      "date": "日期"
     },
     "vouchers": {
       "paused": "已停售",
@@ -3279,6 +3291,7 @@
       "pinWarn": "最近7天 PIN 错误 {{errors}} 次多于成功 {{ok}} 次。请确认告知门店的 PIN。",
       "deleteConfirm": "要删除 '{{name}}' 使用券吗？\n已发放的使用券仍可使用，只会停止新的销售。",
       "deleteFailed": "删除失败",
+      "selling": "销售中",
       "deletedSeg": "已删除",
       "restore": "恢复",
       "restored": "已重新开始销售该优惠券",
@@ -3298,6 +3311,38 @@
       "listPrice": "原价（折扣前价格）",
       "listPriceDiscount": "顾客将看到 {{pct}}% 折扣。",
       "listPriceHint": "填写高于售价的金额即显示折扣率。留空则不显示。"
+    },
+    "referral": {
+      "title": "推荐收益",
+      "subtitle": "您在UrShop中添加的他人使用券售出时累积的佣金",
+      "confirmed": "已确认（可提现）",
+      "pending": "待定（T+7）",
+      "conv": "转化率 30天",
+      "console": "推荐控制台"
+    },
+    "signup": {
+      "title": "商家用户注册",
+      "band": "注册我的店铺",
+      "bandStep": "第 1 步 / 3",
+      "bandActive": "商家用户",
+      "bandPending": "审核中",
+      "heroTitle": "注册店铺后即可在 UrShop 销售使用券",
+      "heroDesc": "销售款每周自动结算到账户。只需一张营业执照，3 分钟完成。",
+      "step1": "填写信息",
+      "step1Sub": "当前页面",
+      "step2": "审核",
+      "step2Sub": "与国税厅信息一致则即时通过，否则 1~2 个工作日",
+      "step3": "开始销售",
+      "step3Sub": "审核通过后在卖家后台登记使用券",
+      "bizSection": "商家信息",
+      "bizSectionSub": "按营业执照原样填写。与国税厅信息一致可免审即时通过。",
+      "storeSection": "店铺信息",
+      "storeSectionSub": "将显示在 UrShop 和使用券上。之后可在后台修改。",
+      "note1": "结果通过应用通知和 KakaoTalk 告知。与国税厅信息一致则即时通过。",
+      "note2": "现金结算需在通过后额外进行一次营业执照照片认证（后台 › 商家信息）。",
+      "progress": "必填 {{filled}} / 5",
+      "submitProgress": "提交申请（必填 {{filled}}/5）",
+      "submit": "提交申请"
     }
   },
   "admin": {

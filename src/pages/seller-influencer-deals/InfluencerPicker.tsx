@@ -83,7 +83,7 @@ export default function InfluencerPicker({
           <button
             key={k || 'all'} type="button" onClick={() => setCat(k)}
             className={`rounded-full border px-2.5 py-1 text-xs font-medium ${
-              cat === k ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-200 bg-white text-gray-700'
+              cat === k ? 'border-gray-900 bg-brand-tint text-brand-text' : 'border-gray-200 bg-white text-gray-700'
             }`}
           >{label}</button>
         ))}

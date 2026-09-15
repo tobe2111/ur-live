@@ -58,7 +58,7 @@ export default function ScanDeviceManager() {
 
   const active = devices.filter(d => !d.revoked_at)
   return (
-    <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-4">
+    <section className="mt-6 rounded-[var(--dash-radius,16px)] border border-gray-200 bg-white p-4">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <Smartphone className="w-4 h-4 text-brand shrink-0" />

@@ -187,7 +187,7 @@ export default function SellerAlimtalkPage() {
         {/* 🛡️ 2026-04-22 배치 129: 리디자인 */}
         {/* 🎫 2026-09-14 (모바일 우선 재설계 ④ — 검은 면·그라디언트 0): 검정 그라디언트 잔액 카드 → 티켓(파란 밴드 + 흰 본문).
             숫자가 주인공이고 장식 원 두 개는 뜻이 없어 뺐다. */}
-        <div className="overflow-hidden rounded-2xl border border-rule bg-white">
+        <div className="overflow-hidden rounded-[var(--dash-radius,16px)] border border-rule bg-white">
           <div className="flex h-11 items-center px-4 text-[13px] font-bold text-white bg-brand">{t('seller.brandMessageCredits')}</div>
           <div className="p-5">
             <p className="text-[30px] font-extrabold leading-tight tracking-tight text-gray-900 sm:text-[34px]">
@@ -217,7 +217,7 @@ export default function SellerAlimtalkPage() {
 
         {/* Auto Send List Tab */}
         {activeTab === 'overview' && (
-          <div className="bg-white rounded-xl shadow-sm divide-y divide-gray-50">
+          <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white divide-y divide-gray-50">
             {[
               { trigger: t('seller.orderReceivedTrigger'),   desc: t('seller.orderReceivedDesc'),     active: true },
               { trigger: t('seller.deliveryStartedTrigger'),  desc: t('seller.deliveryStartedDesc'),   active: true },
@@ -245,7 +245,7 @@ export default function SellerAlimtalkPage() {
 
         {/* Charge History Tab */}
         {activeTab === 'history' && (
-          <div className="bg-white rounded-xl shadow-sm">
+          <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white">
             {creditHistory.length === 0 ? (
               <div className="py-16 text-center">
                 <CreditCard className="w-10 h-10 text-gray-200 mx-auto mb-3" />
@@ -279,7 +279,7 @@ export default function SellerAlimtalkPage() {
 
         {/* Send History Tab */}
         {activeTab === 'logs' && (
-          <div className="bg-white rounded-xl shadow-sm">
+          <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white">
             {logsLoading ? (
               <div className="py-12 text-center"><Loader2 className="w-6 h-6 animate-spin text-blue-500 mx-auto" /></div>
             ) : logs.length === 0 ? (
@@ -315,7 +315,7 @@ export default function SellerAlimtalkPage() {
       {chargeModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 pb-4">
           <div className="fixed inset-0 bg-black/50" onClick={() => setChargeModal(false)} />
-          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm max-h-[85dvh] overflow-y-auto p-5">
+          <div className="relative rounded-[var(--dash-radius,16px)] border border-rule bg-white-xl w-full max-w-sm max-h-[85dvh] overflow-y-auto p-5">
             <h3 className="text-sm font-semibold text-gray-900 mb-1">{t('seller.creditChargeTitle')}</h3>
             <p className="text-xs text-gray-400 mb-4">{t('seller.creditChargeDesc')}</p>
 

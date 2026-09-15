@@ -64,12 +64,12 @@ export default function SellerVoucherOrdersPage() {
 
         {/* KPI */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+          <div className="bg-white rounded-xl p-4 border border-gray-100">
             <p className="text-xs text-gray-500 font-medium">발송 성공</p>
             <p className="text-2xl font-extrabold text-gray-900 mt-1">{totalSent}건</p>
             <p className="text-[10px] text-gray-400">전체 {orders.length}건</p>
           </div>
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+          <div className="bg-white rounded-xl p-4 border border-gray-100">
             <p className="text-xs text-gray-500 font-medium">누적 차감액</p>
             <p className="text-2xl font-extrabold text-brand-text mt-1">₩{totalAmount.toLocaleString()}</p>
             <p className="text-[10px] text-gray-400">발송 성공 건 기준</p>
@@ -96,7 +96,7 @@ export default function SellerVoucherOrdersPage() {
             </button>
           </div>
         ) : (
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[800px]">
                 <thead>

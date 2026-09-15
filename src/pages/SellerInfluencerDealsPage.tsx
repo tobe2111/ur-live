@@ -171,7 +171,7 @@ export default function SellerInfluencerDealsPage() {
         />
 
         {/* 적용 범위 안내 — 재원 주장 없이 중립 카피만 */}
-        <div className="flex items-start gap-2.5 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3">
+        <div className="flex items-start gap-2.5 rounded-[var(--dash-radius,16px)] border border-blue-200 bg-blue-50 px-4 py-3">
           <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
           <p className="text-[11px] leading-relaxed text-blue-700">
             {t('seller.influencerDeals.pinNote', { defaultValue: '우대 커미션은 소개(핀)로 팔린 건에만 적용됩니다.' })}
@@ -179,7 +179,7 @@ export default function SellerInfluencerDealsPage() {
         </div>
 
         {/* 제안 폼 (인라인 토글) */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-4">
+        <div className="rounded-[var(--dash-radius,16px)] border border-gray-200 bg-white p-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold text-gray-900">
               {t('seller.influencerDeals.propose', { defaultValue: '우대 커미션 제안' })}
@@ -289,7 +289,7 @@ export default function SellerInfluencerDealsPage() {
         {dealsQ.isLoading ? (
           <DashboardLoading />
         ) : dealsQ.isError ? (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
+          <div className="rounded-[var(--dash-radius,16px)] border border-red-200 bg-red-50 p-6 text-center">
             <p className="text-sm font-bold text-red-700">
               {t('seller.influencerDeals.loadFailed', { defaultValue: '협업 deal 을 불러오지 못했습니다' })}
             </p>
@@ -306,7 +306,7 @@ export default function SellerInfluencerDealsPage() {
             </button>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
+          <div className="overflow-hidden rounded-[var(--dash-radius,16px)] border border-gray-200 bg-white">
             <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
               <h2 className="text-sm font-bold text-gray-900">
                 {t('seller.influencerDeals.listTitle', { defaultValue: '협업 deal' })} ({formatNumber(deals.length)})

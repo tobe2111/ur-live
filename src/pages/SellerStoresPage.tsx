@@ -73,7 +73,7 @@ export default function SellerStoresPage() {
           </div>
         )}
 
-        <div className="rounded-2xl bg-white border border-gray-200 overflow-hidden">
+        <div className="rounded-[var(--dash-radius,16px)] bg-white border border-gray-200 overflow-hidden">
           {loading ? (
             <div className="p-8 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-gray-400" /></div>
           ) : stores.length === 0 ? (

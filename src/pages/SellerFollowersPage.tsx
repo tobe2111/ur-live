@@ -66,7 +66,7 @@ export default function SellerFollowersPage() {
         />
 
         {/* 총합 카드 */}
-        <div className="bg-gray-800 rounded-2xl p-5 text-white">
+        <div className="bg-gray-800 rounded-[var(--dash-radius,16px)] p-5 text-white">
           <div className="flex items-center justify-between mb-3">
             <div>
               <p className="text-xs opacity-80 font-bold">총 단골</p>
@@ -80,7 +80,7 @@ export default function SellerFollowersPage() {
         </div>
 
         {/* 알림 ON 비율 */}
-        <div className="bg-white rounded-2xl p-5 border border-gray-200">
+        <div className="bg-white rounded-[var(--dash-radius,16px)] p-5 border border-gray-200">
           <p className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-1">
             <Bell className="w-4 h-4 text-brand-text" /> 알림 ON 비율
           </p>
@@ -109,7 +109,7 @@ export default function SellerFollowersPage() {
         </div>
 
         {/* 일별 신규 단골 (30일) */}
-        <div className="bg-white rounded-2xl p-5 border border-gray-200">
+        <div className="bg-white rounded-[var(--dash-radius,16px)] p-5 border border-gray-200">
           <p className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-1">
             <TrendingUp className="w-4 h-4 text-brand-text" /> 최근 30일 신규 단골
           </p>
@@ -140,7 +140,7 @@ export default function SellerFollowersPage() {
         </div>
 
         {/* 최근 단골 */}
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-100">
             <p className="text-sm font-bold text-gray-900">최근 단골 등록자</p>
           </div>

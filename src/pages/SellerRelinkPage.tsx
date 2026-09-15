@@ -57,7 +57,7 @@ export default function SellerRelinkPage() {
   return (
     <div className="force-light-theme min-h-[100dvh] bg-[#F8F7FC] flex flex-col items-center px-5 py-10">
       <Link to="/seller/login" className="self-start mb-8"><UrDealLogo size={20} forceLight /></Link>
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-sm p-7">
+      <div className="w-full max-w-md bg-white rounded-3xl p-7">
         <div className="flex items-center gap-2 mb-1.5">
           <RefreshCw className="w-5 h-5 text-brand" />
           <h1 className="text-[20px] font-extrabold text-[#16181C]">{t('seller.relink.title', { defaultValue: '카카오 계정이 바뀌셨나요?' })}</h1>

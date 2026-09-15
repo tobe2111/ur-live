@@ -77,7 +77,7 @@ function UsageConditionsCard() {
 
   if (!loaded) return null
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-2">
+    <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-4 space-y-2">
       <p className="text-sm font-bold text-gray-900">매장 사용 조건 <span className="text-[11px] font-normal text-gray-400">(손님 이용권 ‘이용 안내’에 표시)</span></p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
         {VOUCHER_USAGE_PRESETS.map((p) => (
@@ -142,7 +142,7 @@ function RedemptionModeCard() {
     { value: 'store_code', label: '매장 확인코드', desc: '손님이 셀프 사용 시 카운터의 확인코드 입력 필수 (추천)' },
   ]
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-2">
+    <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-4 space-y-2">
       <p className="text-sm font-bold text-gray-900">현지 사용 방식</p>
       <div className="space-y-1.5">
         {OPTIONS.map((o) => (

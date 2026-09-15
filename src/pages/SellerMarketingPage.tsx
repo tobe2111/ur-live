@@ -91,7 +91,7 @@ function DealsSection() {
       {/* 🛡️ 2026-05-16: 제안 modal (prompt 대신 정식 form) */}
       {showProposeModal && (
         <div className="fixed inset-0 z-[10500] flex items-center justify-center bg-black/60 p-4" onClick={() => setShowProposeModal(false)}>
-          <div className="bg-white rounded-2xl p-5 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white rounded-[var(--dash-radius,16px)] p-5 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-base font-bold text-gray-900 mb-4">우대 commission 제안</h3>
             <div className="space-y-3">
               <div>
@@ -210,7 +210,7 @@ export default function SellerMarketingPage() {
           <button
             onClick={toggleMarketing}
             disabled={loading}
-            className={`px-4 py-2 rounded-full text-xs font-bold ${marketingEnabled ? 'bg-gray-900 text-white' : 'bg-gray-300 text-gray-700'}`}
+            className={`px-4 py-2 rounded-full text-xs font-bold ${marketingEnabled ? 'bg-brand-tint text-brand-text' : 'bg-gray-300 text-gray-700'}`}
           >
             {marketingEnabled ? 'ON' : 'OFF'}
           </button>

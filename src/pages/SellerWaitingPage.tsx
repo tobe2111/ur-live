@@ -106,7 +106,7 @@ export default function SellerWaitingPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <SEO title={`${t('sellerWaiting.errorTitle', { defaultValue: '셀러 상태 조회 오류' })} - 유어딜`} description={t('sellerWaiting.errorTitle', { defaultValue: '셀러 상태 조회에 실패했습니다' })} url="/seller/waiting" noindex />
-        <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-sm">
+        <div className="bg-white rounded-[var(--dash-radius,16px)] max-w-sm w-full p-6">
           <div className="w-16 h-16 rounded-full mx-auto mb-4 bg-red-100 flex items-center justify-center">
             <AlertCircle className="w-8 h-8 text-red-500" />
           </div>
@@ -139,7 +139,7 @@ export default function SellerWaitingPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <SEO title={`${t('sellerWaiting.title')} - 유어딜`} description={t('sellerWaiting.description')} url="/seller/waiting" noindex />
-      <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-sm">
+      <div className="bg-white rounded-[var(--dash-radius,16px)] max-w-sm w-full p-6">
         <div className={`w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center ${
           isRejected ? 'bg-red-100' : 'bg-amber-100'
         }`}>

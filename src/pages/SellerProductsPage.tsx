@@ -150,7 +150,7 @@ export default function SellerProductsPage() {
               primary={
                 <Button
                   onClick={() => navigate('/seller/products/new')}
-                  className="ur-btn ur-btn-md bg-gray-900 px-4 text-white hover:bg-gray-800"
+                  className="ur-btn ur-btn-md bg-gray-900 px-4 text-white hover:bg-brand-tint"
                 >
                   <Plus className="mr-1.5 h-4 w-4" />
                   <span>{t('seller.addProduct')}</span>
@@ -182,7 +182,7 @@ export default function SellerProductsPage() {
 
         {/* Error Message */}
         {error && (
-          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4">
+          <div className="mb-6 rounded-[var(--dash-radius,16px)] border border-red-200 bg-red-50 p-4">
             <div className="flex items-center gap-2 text-red-700">
               <Trash2 className="h-5 w-5" />
               <p className="text-sm font-medium">{error}</p>
@@ -198,7 +198,7 @@ export default function SellerProductsPage() {
           <button
             onClick={() => setActiveTab('my')}
             className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-              activeTab === 'my' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
+              activeTab === 'my' ? 'bg-brand-tint text-brand-text' : 'text-gray-500 hover:text-gray-900'
             }`}
           >
             {t('seller.myProducts')} <span className="ml-1 opacity-70">{products.length}</span>
@@ -206,7 +206,7 @@ export default function SellerProductsPage() {
           <button
             onClick={() => setActiveTab('supply')}
             className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-              activeTab === 'supply' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
+              activeTab === 'supply' ? 'bg-brand-tint text-brand-text' : 'text-gray-500 hover:text-gray-900'
             }`}
           >
             {t('seller.supplyProductsTab')} <span className="ml-1 opacity-70">{supplyProducts.length}</span>
@@ -220,7 +220,7 @@ export default function SellerProductsPage() {
             <button
               onClick={() => setMyKind('product')}
               className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                myKind === 'product' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
+                myKind === 'product' ? 'bg-brand-tint text-brand-text' : 'text-gray-500 hover:text-gray-900'
               }`}
             >
               <ShoppingBag className="w-4 h-4 inline-block align-[-3px] mr-1" aria-hidden="true" />{t('seller.onlineProductsTab', { defaultValue: '온라인 상품' })} <span className="ml-1 opacity-70">{myOnline.length}</span>
@@ -228,7 +228,7 @@ export default function SellerProductsPage() {
             <button
               onClick={() => setMyKind('voucher')}
               className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                myKind === 'voucher' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
+                myKind === 'voucher' ? 'bg-brand-tint text-brand-text' : 'text-gray-500 hover:text-gray-900'
               }`}
             >
               <Ticket className="w-4 h-4 inline-block align-[-3px] mr-1" aria-hidden="true" />{t('seller.vouchersTab', { defaultValue: '이용권' })} <span className="ml-1 opacity-70">{myVouchers.length}</span>
@@ -259,7 +259,7 @@ export default function SellerProductsPage() {
             ) : (
               <>
                 {/* Desktop Table View - Hidden on mobile */}
-                <div className="hidden lg:block bg-white rounded-lg shadow-sm border overflow-x-auto">
+                <div className="hidden lg:block rounded-[var(--dash-radius,16px)] border border-rule bg-white border overflow-x-auto">
                   <table className="w-full">
                     <thead className="bg-gray-50 border-b">
                       <tr>
@@ -356,7 +356,7 @@ export default function SellerProductsPage() {
                 {/* Mobile Card View - Shown on mobile/tablet */}
                 <div className="lg:hidden space-y-3 sm:space-y-4">
                   {displayList.map((product) => (
-                    <div key={product.id} className="bg-white rounded-lg shadow-sm border p-3 sm:p-4">
+                    <div key={product.id} className="rounded-[var(--dash-radius,16px)] border border-rule bg-white border p-3 sm:p-4">
                       <div className="flex gap-3 sm:gap-4">
                         {/* Product Image */}
                         <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center flex-shrink-0">
@@ -458,7 +458,7 @@ export default function SellerProductsPage() {
         {/* Stats Card */}
         {products.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
-            <div className="bg-white rounded-lg shadow-sm border p-4">
+            <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white border p-4">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
                   <Package className="w-5 h-5 text-blue-600" />
@@ -470,7 +470,7 @@ export default function SellerProductsPage() {
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border p-4">
+            <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white border p-4">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
                   <Eye className="w-5 h-5 text-green-600" />
@@ -484,7 +484,7 @@ export default function SellerProductsPage() {
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border p-4">
+            <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white border p-4">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
                   <Box className="w-5 h-5 text-orange-600" />

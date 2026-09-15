@@ -25,7 +25,7 @@ interface SellerLayoutProps {
 }
 
 /** 사이드바 한 줄 — 다섯 대분류와 더보기 항목이 **같은 그림**이어야 한다(활성 = 연파랑 알약). */
-const ROW = 'flex items-center gap-2.5 rounded-lg px-2.5 py-[9px] text-[13px] transition-colors'
+const ROW = 'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12.5px] transition-colors'
 const ROW_ON = 'font-bold text-gray-900 ur-seller-nav-active'
 const ROW_OFF = 'font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-900'
 
@@ -141,8 +141,8 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
 
   // 🛡️ 사이드바를 JSX 변수로 — 함수 컴포넌트로 두면 부모 re-render 마다 remount 된다.
   const sidebar = (
-    // 🧭 2026-09-14 (Rinda 시안): 어두운 면 → **흰 면 + 헤어라인**, 260px, 글자 13px.
-    <aside className="w-[260px] flex-shrink-0 flex flex-col h-full bg-white border-r border-rule">
+    // 🧭 2026-09-14 (Rinda 시안): 어두운 면 → **흰 면 + 헤어라인**. 🧮 2026-09-15 D3: 224px · 글자 12.5px(밀도).
+    <aside className="w-[224px] flex-shrink-0 flex flex-col h-full bg-white border-r border-rule">
       <div className="px-4 pt-5 pb-3">
         <div className="flex items-center gap-2.5">
           <UrDealLogo size={15} />
@@ -152,10 +152,10 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
 
       {/* 🏪 워크스페이스 카드 — "내가 무슨 자격으로 로그인해 있나". */}
       <div className="px-4 pb-3">
-        <div className="rounded-xl border border-rule px-3 py-2.5">
+        <div className="rounded-lg border border-rule px-3 py-2">
           <p className="text-[10px] font-semibold text-gray-400">{t('seller.layout.workspace', { defaultValue: '내 계정' })}</p>
           <div className="mt-0.5 flex items-center gap-2">
-            <p className="min-w-0 flex-1 truncate text-[13px] font-bold text-gray-900">{sellerName}</p>
+            <p className="min-w-0 flex-1 truncate text-[12.5px] font-bold text-gray-900">{sellerName}</p>
             <span className="shrink-0 rounded-md bg-brand-tint px-1.5 py-0.5 text-[10px] font-bold text-brand-text">{sellerTypeLabel}</span>
           </div>
         </div>
@@ -176,7 +176,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
       {ctaItem && (
         <Link
           to={ctaItem.path}
-          className="mx-4 mb-3 flex items-center justify-center gap-1.5 rounded-lg bg-brand px-3 py-2.5 text-[13px] font-bold text-white transition-colors hover:bg-brand-dark"
+          className="mx-4 mb-3 flex items-center justify-center gap-1.5 rounded-lg bg-brand px-3 py-2 text-[12.5px] font-bold text-white transition-colors hover:bg-brand-dark"
         >
           <ctaItem.icon size={16} strokeWidth={2.4} />
           {t(ctaItem.labelKey)}
@@ -247,14 +247,23 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
       <div className="hidden md:flex">{sidebar}</div>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="flex h-14 md:h-16 flex-shrink-0 items-center justify-between border-b border-rule bg-white px-4 lg:px-6">
-          <div className="flex min-w-0 items-center gap-2">
-            <UrDealLogo size={13} className="md:hidden" />
-            <h1 className="truncate text-[15px] font-bold text-gray-900">{title}</h1>
+        {/* 🏷️ 2026-09-15 A2 "매장이 제목" + 🧮 D3 (대표 확정). 폰: 헤더 제목 자리 = 매장(전환 겸용), 페이지 제목은 아래 한 줄.
+            PC: 브레드크럼 `매장 / 제목` — 페이지 제목(h1)은 본문의 DashboardPageHeader 가 17px 로 그린다. */}
+        <header className="flex h-14 md:h-12 flex-shrink-0 items-center justify-between border-b border-rule bg-white px-3 md:px-6">
+          <div className="flex min-w-0 items-center gap-2 md:hidden">
+            <StoreSwitcher variant="title" />
+          </div>
+          <div className="hidden min-w-0 items-center gap-1.5 text-[13px] md:flex">
+            <span className="truncate font-semibold text-gray-500">{sellerName}</span>
+            <span className="text-gray-300">/</span>
+            <h1 className="truncate text-[13px] font-bold text-gray-900">{title}</h1>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2">
-            {/* 🏪 2026-08-19 매장 전환 — 운영 매장이 2곳 이상일 때만 스스로 렌더한다. */}
-            <StoreSwitcher />
+            {/* 🏪 2026-08-19 매장 전환 — PC 는 우측 드롭다운(2곳 이상일 때만), 폰은 위 제목형이 맡는다. */}
+            <div className="hidden md:block"><StoreSwitcher /></div>
+            <button type="button" onClick={() => setPaletteOpen(true)} aria-label={t('seller.pageSearch', { defaultValue: '페이지 검색' })} className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 md:hidden">
+              <Search size={18} />
+            </button>
             {/* 🏠 2026-07-16 (대표): 셀러 대시보드에서 유어딜 소비자 홈(/)으로. */}
             <Link
               to="/"
@@ -298,6 +307,10 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
           className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-5 space-y-3 sm:space-y-5 md:!pb-5"
           style={{ paddingBottom: `calc(${SELLER_TABBAR_H}px + env(safe-area-inset-bottom) + 12px)` }}
         >
+          {/* 📱 A2: 폰의 페이지 제목 줄 — 헤더는 매장이 차지했으므로 제목은 여기 한 번만(공용 DashboardPageHeader 의 h1 은 폰에서 숨긴다). */}
+          <div className="dash-phone-title flex items-center justify-between gap-2 px-1 md:hidden">
+            <h2 className="truncate text-[17px] font-extrabold tracking-tight text-gray-900">{title}</h2>
+          </div>
           {/* 🔗 카카오 미연동 이메일 셀러 → 연동 권유 (dismissible, 1회 status 조회) */}
           <SellerKakaoLinkBanner />
           {/* 🧭 2026-09-03: 묶음 안의 탭 줄 — 레이아웃 한 곳에서 그린다(페이지마다 붙이면 안 붙인 페이지가 생긴다). */}

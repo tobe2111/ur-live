@@ -3253,7 +3253,19 @@
       "seePerf": "See performance",
       "weekOrders": "{{count}} orders",
       "vsLastWeek": "vs last week",
-      "myStore": "My store"
+      "myStore": "My store",
+      "allStores": "All {{count}} stores",
+      "store": "Store",
+      "todayWon": "Today ₩",
+      "pendingShort": "Pending",
+      "delegated": "Delegated",
+      "voucher": "Voucher",
+      "listPrice": "List ₩",
+      "salePrice": "Sale ₩",
+      "soldHead": "Sold",
+      "revenueWon": "Revenue ₩",
+      "status": "Status",
+      "date": "Date"
     },
     "vouchers": {
       "paused": "Paused",
@@ -3279,6 +3291,7 @@
       "pinWarn": "In the last 7 days, PIN errors ({{errors}}) exceeded successes ({{ok}}). Check the PIN given to the store.",
       "deleteConfirm": "Delete the voucher '{{name}}'?\nAlready issued vouchers stay usable; only new sales stop.",
       "deleteFailed": "Delete failed",
+      "selling": "On sale",
       "deletedSeg": "Deleted",
       "restore": "Restore",
       "restored": "The voucher is on sale again",
@@ -3298,6 +3311,38 @@
       "listPrice": "List price (before discount)",
       "listPriceDiscount": "Shown to customers as {{pct}}% off.",
       "listPriceHint": "Enter a value above the selling price to show a discount. Leave empty for none."
+    },
+    "referral": {
+      "title": "Referral earnings",
+      "subtitle": "Commission when vouchers you added to your UrShop sell",
+      "confirmed": "Confirmed (withdrawable)",
+      "pending": "Pending (T+7)",
+      "conv": "Conversion 30d",
+      "console": "Referral console"
+    },
+    "signup": {
+      "title": "Business account signup",
+      "band": "Register my store",
+      "bandStep": "Step 1 / 3",
+      "bandActive": "Business user",
+      "bandPending": "Under review",
+      "heroTitle": "Register your store and sell vouchers in your UrShop",
+      "heroDesc": "Sales are paid out to your bank account automatically every week. All you need is your business registration certificate.",
+      "step1": "Enter details",
+      "step1Sub": "This screen",
+      "step2": "Review",
+      "step2Sub": "Instant if it matches the tax office record, otherwise 1–2 business days",
+      "step3": "Start selling",
+      "step3Sub": "After approval, register vouchers in the seller dashboard",
+      "bizSection": "Business details",
+      "bizSectionSub": "Exactly as printed on your business registration. A match with the tax office record is approved instantly.",
+      "storeSection": "Store details",
+      "storeSectionSub": "Shown on your UrShop and vouchers. You can change these later in the dashboard.",
+      "note1": "We notify you in the app and via KakaoTalk. A tax-office match is approved right away.",
+      "note2": "Cash payouts require one extra photo verification of your certificate after approval (Dashboard › Business info).",
+      "progress": "Required {{filled}} / 5",
+      "submitProgress": "Apply ({{filled}}/5 required)",
+      "submit": "Apply now"
     }
   },
   "admin": {
