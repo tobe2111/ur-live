@@ -24,7 +24,11 @@ const BASE = process.env.BASE || 'https://live.ur-team.com'
 const DEFAULT_URLS = ['/', '/vouchers', '/browse', '/group-buy/2609', '/vouchers/118', '/u/jiwon1228', '/blog', '/wholesale']
 const urls = process.argv.slice(2).length ? process.argv.slice(2) : DEFAULT_URLS
 
-const b = await chromium.launch({ headless: true, args: ['--no-sandbox'] })
+// 🩸 원격 세션: 번들 playwright 버전과 설치된 chromium 리비전이 어긋나 headless-shell 이 없다.
+//    `npx playwright install` 은 이 환경 정책상 못 돈다 → 있는 chromium 을 직접 가리킨다.
+const EXE = process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
+const { existsSync } = await import('node:fs')
+const b = await chromium.launch({ headless: true, args: ['--no-sandbox'], ...(existsSync(EXE) ? { executablePath: EXE } : {}) })
 for (const path of urls) {
   const ctx = await b.newContext({ ...devices['iPhone 13'], ignoreHTTPSErrors: true, locale: 'ko-KR' })
   if (process.env.PROXY_RELAY === '1') {

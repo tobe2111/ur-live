@@ -6,7 +6,7 @@
 import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys } from './queryKeys'
-import { readCache, readCacheOrNull, writeCache } from './localCache'
+import { readCache, readCacheOrNull, writeCache, cachedInitialData } from './localCache'
 import { isLoggedInSync } from '@/utils/auth'
 
 export interface MyBooking {
@@ -54,7 +54,7 @@ export function useMyStays() {
           if (cached) return cached
           throw err
         }),
-    initialData: () => readCache<MyBooking[]>(CACHE_KEY, []),
+    initialData: () => cachedInitialData<MyBooking[]>(CACHE_KEY),
     enabled: isLoggedInSync(),
     staleTime: 2 * 60 * 1000,
     gcTime: 30 * 60 * 1000,

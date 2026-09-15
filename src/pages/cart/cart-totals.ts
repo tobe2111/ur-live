@@ -13,6 +13,7 @@ import type { CartItem } from '@/types/cart'
 import { getCartItemPrice } from '@/types/cart'
 import { isNoShippingProduct } from '@/shared/product-flow'
 import { classifyCart, isDealOnlyCartItem, type CartKind } from './voucher-checkout'
+import { priceDisplay } from '@/shared/price-display'
 
 export interface CartTotals {
   /** 고른 것 전체 수량(교환권 포함) */
@@ -24,6 +25,8 @@ export interface CartTotals {
   shippingFee: number
   /** 딜로 낼 금액(교환권) */
   dealAmount: number
+  /** 💸 정가 대비 아낀 금액(원화 줄만). 0 이면 줄을 안 그린다 — 0원 아꼈다는 말은 소음이다. */
+  savedAmount: number
   cartKind: CartKind
 }
 
@@ -35,6 +38,7 @@ export function computeCartTotals(cartItems: CartItem[], selectedIds: Set<string
   let dealCount = 0
   let sum = 0
   let deal = 0
+  let saved = 0
 
   // 🛡️ 2026-05-19: 판매 종료 (product_is_active=0) 상품은 자동 제외 — 사용자 의도 무관하게
   //   결제 흐름에서 빠짐 (백엔드도 차단하지만 프론트 calc 도 정합).
@@ -60,7 +64,12 @@ export function computeCartTotals(cartItems: CartItem[], selectedIds: Set<string
     count += item.quantity
     const line = getCartItemPrice(item) * item.quantity
     if (isDealOnlyCartItem(item)) { deal += line; dealCount += item.quantity }
-    else sum += line
+    else {
+      sum += line
+      // 표시 규칙은 홈 카드와 같은 SSOT — 정가가 실제로 더 클 때만 센다.
+      const d = priceDisplay({ price: getCartItemPrice(item), original_price: item.original_price, discount_rate: item.discount_rate })
+      if (d.showOriginal) saved += (d.originalPrice - d.price) * item.quantity
+    }
   }
 
   const shippingFee = Object.values(groups).reduce((total, g) => {
@@ -71,5 +80,5 @@ export function computeCartTotals(cartItems: CartItem[], selectedIds: Set<string
     return total + g.shipping_fee
   }, 0)
 
-  return { totalItems: count, dealItems: dealCount, subtotal: sum, shippingFee, dealAmount: deal, cartKind: classifyCart(selectedItems) }
+  return { totalItems: count, dealItems: dealCount, subtotal: sum, shippingFee, dealAmount: deal, savedAmount: saved, cartKind: classifyCart(selectedItems) }
 }

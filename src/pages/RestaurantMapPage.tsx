@@ -657,7 +657,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             requestNearMe={requestNearMe}
             voucherType={voucherType}
             setVoucherType={selectVoucherType}
-            filteredCount={!needsAll && !search ? (feedTotal ?? displayList.length) : filtered.length}
+            filteredCount={loading && displayList.length === 0 ? null : (!needsAll && !search ? (feedTotal ?? displayList.length) : filtered.length)}
             userLoc={userLoc}
             sortBy={sortBy}
             setSortBy={chooseSort}
@@ -834,7 +834,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             requestNearMe={requestNearMe}
             voucherType={voucherType}
             setVoucherType={setVoucherType}
-            filteredCount={!needsAll && !search ? (feedTotal ?? displayList.length) : displayList.length}
+            filteredCount={loading && displayList.length === 0 ? null : (!needsAll && !search ? (feedTotal ?? displayList.length) : displayList.length)}
             viewportCount={viewportInCount}
             regionLabel={viewportRegion}
             userLoc={userLoc}

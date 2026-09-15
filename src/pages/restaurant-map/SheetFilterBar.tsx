@@ -19,7 +19,12 @@ interface Props {
   requestNearMe: () => void
   voucherType: MapVoucherType
   setVoucherType: (v: MapVoucherType) => void
-  filteredCount: number
+  /**
+   * 🩸 2026-09-15: `null` = **아직 모른다**(로딩 중). 0 과 구분한다 —
+   *   렌더 실측에서 696ms "0곳" → 957ms "336곳" 이었고, 그 "0곳"은 거짓이었다.
+   *   "모른다"를 0 으로 표현하면 화면이 단정해 버린다(이 PR 전체가 그 교훈이다).
+   */
+  filteredCount: number | null
   /** 🗺️ 2026-07-15: 지도 뷰포트에 보이는 딜 수(있으면 "이 지역 N · 전체 M" 표기). 미지정=전체만. */
   viewportCount?: number | null
   userLoc: { lat: number; lng: number } | null
@@ -62,7 +67,7 @@ export default function SheetFilterBar({
   const { t } = useTranslation()
   const [sortOpen, setSortOpen] = useState(false)
   // "이 지역 N · 전체 M" — 뷰포트 수가 전체보다 적을 때만 이중 표기(지도가 특정 영역을 보고 있을 때).
-  const showViewport = viewportCount != null && viewportCount < filteredCount
+  const showViewport = viewportCount != null && filteredCount != null && viewportCount < filteredCount
 
   return (
     <div className="px-3 pb-2 border-b border-gray-100 dark:border-[#2C2F35] shrink-0">
@@ -127,7 +132,7 @@ export default function SheetFilterBar({
                 <span className="ml-1 text-gray-400 dark:text-gray-500">· {t('map.sheet.total', { defaultValue: '전체' })} {filteredCount}{t('map.sheet.count', { defaultValue: '곳' })}</span>
               </>
             ) : (
-              <><span className="font-bold text-gray-900 dark:text-white">{filteredCount}</span>{t('map.sheet.count', { defaultValue: '곳' })}</>
+              <><span className="font-bold text-gray-900 dark:text-white">{filteredCount ?? '…'}</span>{t('map.sheet.count', { defaultValue: '곳' })}</>
             )}
           </span>
           {favorites.length > 0 && (

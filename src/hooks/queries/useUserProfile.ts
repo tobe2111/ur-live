@@ -7,7 +7,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys } from './queryKeys'
-import { readCache, writeCache } from './localCache'
+import { readCache, writeCache, cachedInitialData } from './localCache'
 import { isLoggedInSync } from '@/utils/auth'
 
 const CACHE_KEY = 'user-profile'
@@ -63,7 +63,7 @@ export function useUserProfile() {
         }
         return null
       }).catch(() => readCache<UserProfile | null>(CACHE_KEY, null)),
-    initialData: () => readCache<UserProfile | null>(CACHE_KEY, null),
+    initialData: () => cachedInitialData<UserProfile>(CACHE_KEY),
     // 🛠️ 2026-06-17 (근본수정): 캐시 seed 즉시 stale → cold mount 보정. 없으면 미캐시 시 null 프로필을
     //   10분간 fresh 로 간주(refetch 안 함) → 이름/아바타 안 뜸.
     initialDataUpdatedAt: 0,
