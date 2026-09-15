@@ -15,7 +15,7 @@
  * · 미들웨어가 실제 Hono 요청에서 도는지는 vitest 가 못 본다(워커를 못 올린다) → 소스 단언으로 본다.
  */
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'fs'
+import { readCode } from '../helpers/source-text'
 import {
   laneLedgerKey, runawayRound, applyRead, laneCut, cutLaneNames, topLaneSpend,
   handleBudgetRequest, budgetBeatFields, READ_BUDGET_STORAGE_KEY,
@@ -25,31 +25,14 @@ import {
 import { laneEntryBlock, entryLaneKey } from '@/worker-ads/lane-pause'
 import { laneKey as domainLaneKey } from '@/worker-ads/lane-domains'
 
-const GATE = readFileSync('src/worker-ads/lane-gate.ts', 'utf8')
-const ALARM = readFileSync('src/worker-ads/lane-alarm.ts', 'utf8')
-const SELF_BEAT = readFileSync('src/worker-ads/self-beat.ts', 'utf8')
-const BUDGET = readFileSync('src/worker-ads/read-budget.ts', 'utf8')
-
-/**
- * 주석을 지운 소스 — 설명에 쓴 단어가 코드 단언에 걸리는 사고가 이 레포에서 세 번 났다.
- *
- * 🩸 **정규식으로 하면 안 된다**(이번에 직접 밟았다): `/\*[\s\S]*?\*\//` 는 코드 안의
- *   `'/__ads/*'` 의 `/*` 를 주석 시작으로 보고 **거기서 다음 `*\/` 까지 진짜 코드를 통째로 먹는다**
- *   — lane-alarm.ts 11,180자가 3,615자로 줄어 배선 단언이 전부 헛돌았다(가짜 빨간불).
- *   ⇒ **줄이 `/*` 로 시작할 때만** 블록으로 본다. 문자열 안의 `/*` 는 줄 시작이 아니다.
- */
-function code(src: string): string {
-  const out: string[] = []
-  let inBlock = false
-  for (const line of src.split('\n')) {
-    const t = line.trim()
-    if (inBlock) { if (t.endsWith('*/')) inBlock = false; continue }
-    if (t.startsWith('/*')) { if (!t.includes('*/')) inBlock = true; continue }
-    if (t.startsWith('//')) continue
-    out.push(line)
-  }
-  return out.join('\n')
-}
+// 🧹 주석 제거는 **SSOT 헬퍼만** 쓴다 — 자체 제거기는 문자열 안의 `/` + `*`(이 파일의 경우
+//    `'/__ads/*'`)를 주석 시작으로 읽어 소스를 통째로 먹는다. 실제로 이번에 밟았고
+//    (`lane-alarm.ts` 11,180자 → 3,615자, 배선 단언 전부 헛돔), `check-comment-stripper` 가 잡았다.
+//    근거·피해 실측은 그 가드의 docblock 이 SSOT.
+const GATE = readCode('src/worker-ads/lane-gate.ts')
+const ALARM = readCode('src/worker-ads/lane-alarm.ts')
+const SELF_BEAT = readCode('src/worker-ads/self-beat.ts')
+const BUDGET = readCode('src/worker-ads/read-budget.ts')
 
 /**
  * 📏 **라이브 실측 — 2026-09-15 어드민 하트비트 67레인, 회차당 쓴 행.**
@@ -297,28 +280,28 @@ describe('🚧 게이트 배선 — 세 진입로 모두', () => {
   })
 
   it('🔗 HTTP 초크포인트가 `_beat` 를 넘기고 원장을 **한 번만** 읽는다', () => {
-    const g = code(GATE)
+    const g = GATE
     expect(g, 'beat 이름을 안 넘기면 잘린 레인이 게이트에서 매칭되지 않는다').toMatch(/readBeatParams\(c\.req\.url\)\?\.beat/)
     expect(g, '폭주 판정이 초크포인트에서 빠졌다').toMatch(/laneCut\(v, lane\)/)
     expect(g.match(/readBudgetState\(/g)?.length, '원장을 두 번 읽으면 레인마다 서브리퀘스트가 하나 더 붙는다').toBe(1)
   })
 
   it('🔗 DO 알람 경로에도 있다 — 거긴 미들웨어를 안 지난다', () => {
-    const a = code(ALARM)
+    const a = ALARM
     // 알람은 `lane.run()` 을 직접 부른다. 여기가 비면 알람 레인은 폭주해도 안 잘린다.
     expect(a).toMatch(/budgetBlocked\(budgetView\) \|\| laneCut\(budgetView, this\.lane\)/)
     expect(a.match(/readBudgetState\(this\.env\)/g)?.length, '원장 조회가 늘면 알람마다 비용이 붙는다').toBe(1)
   })
 
   it('🔗 두 보고자 모두 레인 이름을 싣는다 — 하나라도 빠지면 그 레인이 합계에만 섞인다', () => {
-    expect(code(ALARM)).toMatch(/reportReadUsage\(this\.env, this\.meter\.rr, this\.meter\.rw, this\.lane\)/)
-    expect(code(SELF_BEAT)).toMatch(/reportReadUsage\(env, readEnvMeter\(env\)\?\.rr, readEnvMeter\(env\)\?\.rw, beat\)/)
+    expect(ALARM).toMatch(/reportReadUsage\(this\.env, this\.meter\.rr, this\.meter\.rw, this\.lane\)/)
+    expect(SELF_BEAT).toMatch(/reportReadUsage\(env, readEnvMeter\(env\)\?\.rr, readEnvMeter\(env\)\?\.rw, beat\)/)
   })
 
   it('🚨 예산을 끄면 폭주 감지도 함께 꺼진다 — 몰라서 당하지 않도록 못 박아 둔다', () => {
     // `reportReadUsage` 는 두 예산이 모두 0(=끔)이면 원장을 아예 안 부른다. 즉 `=0` 은 **무제한**이고
     // 귀속도 차단도 없다. 이 성질을 바꾸려면 시험부터 바꿔야 한다(모르는 채로 바뀌면 안 된다).
-    expect(code(BUDGET)).toMatch(/if \(resolveReadBudget\(env\) <= 0 && resolveWriteBudget\(env\) <= 0\) return/)
+    expect(BUDGET).toMatch(/if \(resolveReadBudget\(env\) <= 0 && resolveWriteBudget\(env\) <= 0\) return/)
   })
 })
 
