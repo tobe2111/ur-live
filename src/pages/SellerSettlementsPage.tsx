@@ -261,7 +261,7 @@ export default function SellerSettlementsPage() {
               {t('seller.periodSelect')}:
             </label>
             {/* 📱 폰: 칩이 줄바꿈 대신 가로 스크롤(다섯 개가 두 줄로 꺾이면 어느 줄이 선택인지 안 보인다). */}
-            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none]">
+            <div className="-mx-1 flex gap-2 scrollbar-hide overflow-x-auto px-1 pb-0.5">
               {[
                 { value: 'all', label: t('common.all') },
                 { value: '1m', label: t('seller.recent1Month') },
