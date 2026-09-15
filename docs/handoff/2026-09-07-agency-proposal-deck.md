@@ -186,3 +186,16 @@ v1 은 구조 설명이었고 "그래서 내일 어디 가서 뭘 하면 얼마�
 - Verify 가 02bc2e4 에서 한 번 빨갛게 났다: 내가 `/about/print` 표에 행을 하나 더 넣어 `AboutPage.tsx` 가 778줄(baseline 777) 이 됐다. 두 행을 한 행으로 합쳐 250d056 에서 GREEN. 🧭 baseline 동결 파일은 **한 줄도** 못 늘어난다(pre-commit 은 안 막고 CI 만 막는다 — `--changed-only` 를 로컬에서 먼저 돌릴 것).
 - **다음 세션 첫 액션**: 대표가 PR #1381 을 머지하면 ① `curl -s https://urdeal.kr/terms/influencer | grep -o '매월 1일'` · `curl -s https://urdeal.kr/partners | grep -o '수수료 10%'` 로 E4 판정 ② Notion 개발 로그에 한 줄(서비스: 유어딜 · 유형: 문구 정정 + 대외 소개서 · 머니 경로: 없음 · PR 링크).
 - 남은 결정: 머지(대표). 유어쇼츠 캡처는 이 환경에서 불가(YouTube 차단) — 대표 PC 에서 `/videos` 캡처를 `shots/shorts.jpg` 로 주면 덱 생성기가 바로 싣는다(`capture-seller-shots.mjs` 의 `shorts` 슬롯).
+
+## 09-15 (11): [E4] PR #1381 머지 · 배포 · 라이브 판정 (대표 "머지해줘")
+
+- 머지: 스쿼시 `390727f`(main 관례와 동일). 머지 직전 main 이 두 번 움직여(#1434·#1436) `origin/main` 을 한 번 더 합쳤고(7ca8a3b, 충돌 0) 그 head 의 Verify GREEN 을 보고 머지했다. 배포: `Deploy to Cloudflare Pages` success, 라이브 `/api/version` = `index-CZGt7B_9.js`.
+- E4 판정 방법: 이 환경은 브라우저가 프록시 CA 를 못 믿어 `page.goto` 가 `ERR_CERT_AUTHORITY_INVALID` 로 죽는다(TLS 검증을 끄지 않는다). 대신 **라이브 엔트리 청크에서 페이지 청크 이름을 찾아 그 청크 본문을 grep** 했다(curl 은 CA 번들로 통과). 결과:
+  - `InfluencerTermsPage-Dp9lfZA9.js`: `매월 1일` · `10만원` 있음 · `0.5%` 없음
+  - `InfluencerLandingPage-DIT1jUcb.js`: `매월 1일` · `10만원` 있음 · `최소 1만원` 없음
+  - `PartnersPage-YhVfeDhg.js`: `수수료 10%` 있음 · `수수료 5%` 없음
+  - `BusinessLandingPage-CVowf8X9.js`: 요율 리터럴 `.1` 1개, 구간별 🎉 문구 0
+  - `AboutPage-BZ4qSkBt.js`: `대행사 경유 5%` 있음
+  - 이전 판 (10) 에 적어 둔 `curl … | grep '매월 1일'` 은 **안 된다** — 그 페이지들은 프리렌더가 아니라 SPA 라 HTML 에 본문이 없다. 청크 grep 이 맞는 방법이다.
+- Notion 개발 업데이트 로그 1행 기록(유어딜 · 문서/설계 · 머니 경로 없음 · PR #1381).
+- ⚠️ 못 한 것: 실제 렌더된 DOM 확인(대표 브라우저에서 `/terms/influencer` 제4조와 `/partners` 계산기를 한 번 열어 보면 끝). 유어쇼츠 캡처는 여전히 대표 PC 몫.
