@@ -122,7 +122,7 @@ export default function SellerBundlesPage() {
 
         {/* 생성/수정 폼 */}
         {showForm && (
-          <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-4">
+          <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-5 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold text-gray-900">
                 {editId ? t('seller.bundleEdit', '번들 수정') : t('seller.bundleCreate', '번들 만들기')}

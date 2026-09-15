@@ -98,7 +98,7 @@ export default function Seller2FASetupPage() {
         />
 
         {/* 현재 상태 */}
-        <div className={`rounded-2xl p-5 border-2 flex items-center gap-4 ${enabled ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
+        <div className={`rounded-[var(--dash-radius,16px)] p-5 border-2 flex items-center gap-4 ${enabled ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
           {enabled ? (
             <ShieldCheck className="w-10 h-10 text-green-600 shrink-0" />
           ) : (
@@ -118,7 +118,7 @@ export default function Seller2FASetupPage() {
 
         {/* setup flow (비활성화 상태) */}
         {!enabled && !setupData && (
-          <div className="bg-white rounded-2xl p-6 border border-gray-200 text-center">
+          <div className="bg-white rounded-[var(--dash-radius,16px)] p-6 border border-gray-200 text-center">
             <KeyRound className="w-12 h-12 text-brand-text mx-auto mb-3" />
             <h3 className="text-base font-bold text-gray-900 mb-2">2FA 설정 시작</h3>
             <p className="text-sm text-gray-600 mb-4">
@@ -138,7 +138,7 @@ export default function Seller2FASetupPage() {
 
         {/* QR 코드 + 검증 (setup 진행 중) */}
         {!enabled && setupData && (
-          <div className="bg-white rounded-2xl p-6 border border-gray-200 space-y-5">
+          <div className="bg-white rounded-[var(--dash-radius,16px)] p-6 border border-gray-200 space-y-5">
             <div>
               <h3 className="text-base font-bold text-gray-900 mb-2">1. QR 코드 스캔</h3>
               <p className="text-xs text-gray-500 mb-4">인증 앱에서 QR 코드를 스캔하세요.</p>
@@ -188,7 +188,7 @@ export default function Seller2FASetupPage() {
 
         {/* 활성화 상태 — 비활성화 옵션 */}
         {enabled && (
-          <div className="bg-white rounded-2xl p-6 border border-gray-200 space-y-3">
+          <div className="bg-white rounded-[var(--dash-radius,16px)] p-6 border border-gray-200 space-y-3">
             <h3 className="text-base font-bold text-gray-900">2FA 비활성화</h3>
             <p className="text-xs text-gray-500">
               현재 활성화된 인증 앱의 6자리 코드를 입력하세요.

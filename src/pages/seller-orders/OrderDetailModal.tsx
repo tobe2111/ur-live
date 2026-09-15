@@ -38,7 +38,7 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90dvh] overflow-y-auto">
+      <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white-xl max-w-2xl w-full max-h-[90dvh] overflow-y-auto">
         <div className="p-6">
           {/* Modal Header */}
           <div className="flex items-center justify-between mb-6">
@@ -176,7 +176,7 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
                 <Button
                   onClick={() => onStatusChange(order.order_number, next)}
                   disabled={updating}
-                  className="w-full py-3 bg-gray-900 hover:bg-gray-900 text-white"
+                  className="w-full py-3 bg-gray-900 hover:bg-brand-tint text-brand-text"
                 >
                   {updating ? (
                     <span className="flex items-center justify-center gap-2">
@@ -238,7 +238,7 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
                   <Button
                     type="submit"
                     disabled={updating}
-                    className="w-full py-3 bg-gray-900 hover:bg-gray-900 text-white"
+                    className="w-full py-3 bg-gray-900 hover:bg-brand-tint text-brand-text"
                   >
                     {updating ? (
                       <span className="flex items-center justify-center gap-2">

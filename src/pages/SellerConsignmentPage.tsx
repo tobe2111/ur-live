@@ -125,7 +125,7 @@ export default function SellerConsignmentPage() {
               onClick={() => setRoleFilter(f.key)}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
                 roleFilter === f.key
-                  ? 'bg-gray-900 text-white border-gray-900'
+                  ? 'bg-brand-tint text-brand-text border-gray-900'
                   : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
               }`}
             >{f.label}</button>
@@ -139,7 +139,7 @@ export default function SellerConsignmentPage() {
               onClick={() => setStatusFilter(s)}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
                 statusFilter === s
-                  ? 'bg-gray-900 text-white border-gray-900'
+                  ? 'bg-brand-tint text-brand-text border-gray-900'
                   : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
               }`}
             >{s === 'all' ? t('seller.consignment.all', { defaultValue: '전체' }) : STATUS_LABEL[s as Partnership['status']]}</button>

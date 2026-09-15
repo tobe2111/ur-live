@@ -67,7 +67,7 @@ export default function SellerYoutubeGrowthSuccessPage() {
   if (error) {
     return (
       <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center p-4">
-        <div className="max-w-md w-full text-center bg-white rounded-2xl p-8 shadow-lg">
+        <div className="max-w-md w-full text-center bg-white rounded-[var(--dash-radius,16px)] p-8 shadow-lg">
           <p className="text-red-600 mb-4">{error}</p>
           <button onClick={() => navigate('/seller/youtube-growth')} className="px-6 py-3 bg-red-500 text-white rounded-xl font-bold">
             {t('seller.goBackButton')}
@@ -79,7 +79,7 @@ export default function SellerYoutubeGrowthSuccessPage() {
 
   return (
     <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-2xl p-8 shadow-lg text-center">
+      <div className="max-w-md w-full bg-white rounded-[var(--dash-radius,16px)] p-8 shadow-lg text-center">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-4">
           <CheckCircle className="w-10 h-10 text-green-600" />
         </div>

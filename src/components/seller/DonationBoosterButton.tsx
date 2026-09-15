@@ -90,7 +90,7 @@ export default function DonationBoosterButton({ liveStreamId }: Props) {
     const mm = Math.floor(remainingSec / 60)
     const ss = remainingSec % 60
     return (
-      <div className="bg-gray-800 text-white rounded-xl p-3 shadow-lg">
+      <div className="bg-brand-tint text-brand-text rounded-xl p-3 shadow-lg">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5 text-sm font-bold">
             <Zap className="w-4 h-4 fill-white" />
@@ -120,7 +120,7 @@ export default function DonationBoosterButton({ liveStreamId }: Props) {
   // 발동 버튼 + 옵션
   if (showOptions) {
     return (
-      <div className="bg-white border border-purple-200 rounded-xl p-3 shadow">
+      <div className="bg-white border border-purple-200 rounded-xl p-3">
         <div className="flex items-center justify-between mb-3">
           <h4 className="text-sm font-bold text-gray-900">{t('seller.boosterOptions', { defaultValue: '후원 부스터 옵션' })}</h4>
           <button onClick={() => setShowOptions(false)} className="text-gray-400 hover:text-gray-600">

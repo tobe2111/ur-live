@@ -44,7 +44,7 @@ export default function TodoRows({ pendingOrders, withdrawable, hasVouchers }: P
         {t('seller.home.todoTitle', { defaultValue: '지금 처리할 일' })}
         {rows.length > 0 && <Link to="/seller/orders" className="text-[12px] font-bold text-brand-text">{t('seller.all')}</Link>}
       </h2>
-      <div className="overflow-hidden rounded-2xl border border-rule bg-white">
+      <div className="overflow-hidden rounded-[var(--dash-radius,16px)] border border-rule bg-white">
         {rows.length === 0 ? (
           <p className="px-4 py-4 text-[13px] leading-relaxed text-gray-500">
             {hasVouchers

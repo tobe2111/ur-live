@@ -240,7 +240,7 @@ export default function SellerInventoryPage() {
           icon={<ArchiveRestore className="h-5 w-5" />}
         />
       {/* 바코드 스캔 */}
-      <div className="bg-white rounded-xl shadow-sm p-5">
+      <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-5">
         <div className="flex gap-2">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -286,7 +286,7 @@ export default function SellerInventoryPage() {
       )}
 
       {/* 상품 목록 */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white overflow-hidden">
         <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-gray-900">
             <Package className="w-4 h-4 inline mr-1" />{t('seller.inventory')}
@@ -334,7 +334,7 @@ export default function SellerInventoryPage() {
       {showModal && selectedProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="fixed inset-0 bg-black/50" onClick={() => setShowModal(false)} />
-          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[85dvh] overflow-y-auto">
+          <div className="relative rounded-[var(--dash-radius,16px)] border border-rule bg-white-xl w-full max-w-lg max-h-[85dvh] overflow-y-auto">
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-900">{selectedProduct.name}</h3>
               <button onClick={() => setShowModal(false)} aria-label={t('common.close')} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
@@ -426,7 +426,7 @@ export default function SellerInventoryPage() {
                       key={type}
                       onClick={() => { setStockAction(type); setQuantity(0) }}
                       className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${
-                        stockAction === type ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'
+                        stockAction === type ? 'bg-brand-tint text-brand-text' : 'bg-gray-100 text-gray-600'
                       }`}
                     >
                       {type === 'in' ? t('seller.stockIn') : type === 'out' ? t('seller.stockOut') : t('seller.stockAdjust')}
@@ -494,7 +494,7 @@ export default function SellerInventoryPage() {
       {showCamera && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="fixed inset-0 bg-black/70" onClick={stopCamera} />
-          <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+          <div className="relative rounded-[var(--dash-radius,16px)] border border-rule bg-white-xl w-full max-w-md overflow-hidden">
             <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                 <Camera className="w-4 h-4 text-blue-600" />

@@ -124,8 +124,11 @@ const MUTATIONS = [
   {
     name: '🧭 라이트 래퍼가 --brand-tint 를 안 되박는다 (다크 모드에서 활성 메뉴가 검어진다)',
     file: 'src/index.css',
-    find: '  --brand-tint: #EAF1FE;\n  --brand-text: #1C69EF;\n}\n.light-island',
-    replace: '}\n.light-island',
+    // ⚠️ 2026-09-15: 앵커가 `}\n.light-island` 로 **다음 블록에 붙어** 있었다. 그 사이에 주석 한 줄이
+    //    들어오자(같은 날 다른 세션의 되박기 설명) 지도가 낡아 CI 가 빨간불을 냈다.
+    //    ⇒ 블록 **자기 끝**만 가리킨다 — 옆 블록이 무엇이든 상관없게.
+    find: '  --brand-tint: #EAF1FE;\n  --brand-text: #1C69EF;\n}',
+    replace: '}',
     test: 'src/tests/unit/dashboard-rinda-shell.test.ts',
     why:
       '사이드바가 흰 면이 되면서 비로소 도달 가능해진 경로다. 사용자가 OS/앱 다크 모드를 켜 두면 ' +
@@ -10032,8 +10035,8 @@ canvas {
   {
     name: '🏝️ 매장 등록 모달이 다시 흰 판 위 흰 글자가 된다 (light-island 소실)',
     file: 'src/components/seller/StoreRegisterModal.tsx',
-    find: 'className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl max-h-[92dvh]',
-    replace: 'className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl max-h-[92dvh]',
+    find: 'className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)] max-h-[92dvh]',
+    replace: 'className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)] max-h-[92dvh]',
     test: 'src/tests/unit/store-claim-2026-09-07.test.ts',
     why:
       '이 패널은 bg-white 뿐이라 늘 흰데 소비자 라우트(/store/new)에서도 열린다. 전역 .dark input' +
@@ -10066,8 +10069,8 @@ canvas {
   {
     name: '🏝️ 409 안내 패널만 light-island 를 잃는다 (한 파일 안 두 표면 중 하나)',
     file: 'src/components/seller/StoreRegisterModal.tsx',
-    find: '        <div className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl" onClick={e => e.stopPropagation()}>',
-    replace: '        <div className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl" onClick={e => e.stopPropagation()}>',
+    find: '        <div className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)]" onClick={e => e.stopPropagation()}>',
+    replace: '        <div className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)]" onClick={e => e.stopPropagation()}>',
     test: 'src/tests/unit/store-claim-2026-09-07.test.ts',
     why:
       '이 파일엔 늘-흰 패널이 **둘**이다(등록 폼 · 409 안내). 실제로 409 화면이 light-island 없이 ' +

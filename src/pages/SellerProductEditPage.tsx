@@ -277,7 +277,7 @@ export default function SellerProductEditPage() {
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm border p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="rounded-[var(--dash-radius,16px)] border border-rule bg-white border p-6 space-y-6">
           {/* Product Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">

@@ -39,7 +39,7 @@ export default function NewSellerSteps({ isStoreOwner }: { isStoreOwner: boolean
     },
   ]
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl p-4 sm:p-5">
+    <div className="bg-white border border-gray-200 rounded-[var(--dash-radius,16px)] p-4 sm:p-5">
       <h3 className="text-sm font-extrabold text-gray-900">
         👋 {t('seller.newSteps.title', { defaultValue: '시작해 볼까요?' })}
       </h3>

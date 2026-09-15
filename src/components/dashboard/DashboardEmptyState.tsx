@@ -16,7 +16,7 @@ interface DashboardEmptyStateProps {
 
 export default function DashboardEmptyState({ icon, title, description, action }: DashboardEmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-2xl bg-gray-50 px-6 py-14 text-center">
+    <div className="flex flex-col items-center justify-center rounded-[var(--dash-radius,16px)] bg-gray-50 px-6 py-14 text-center">
       {icon && (
         <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-white text-gray-300">
           {icon}

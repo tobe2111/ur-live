@@ -106,7 +106,7 @@ export default function SellerInfluencersPage() {
         </div>
 
         {/* 리스트 (참고 UI: 프로필 · 팔로워 · 게시물 · 평균 조회 · 평균 댓글) */}
-        <div className="rounded-2xl bg-white border border-gray-200 overflow-hidden">
+        <div className="rounded-[var(--dash-radius,16px)] bg-white border border-gray-200 overflow-hidden">
           <div className="hidden sm:grid grid-cols-[1fr_90px_80px_100px_90px] px-4 py-2 bg-gray-50 text-[10px] font-bold text-gray-400 border-b border-gray-100">
             <span>프로필</span><span className="text-right">팔로워</span><span className="text-right">게시물</span><span className="text-right">평균 조회</span><span className="text-right">평균 댓글</span>
           </div>
@@ -228,7 +228,7 @@ function ProposalModal({ count, leadIds, contactFee, onClose, onDone }: {
 
   return (
     <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4" onClick={onClose}>
-      <div className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl max-h-[92dvh] flex flex-col" onClick={e => e.stopPropagation()}>
+      <div className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)] max-h-[92dvh] flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between shrink-0">
           <h2 className="text-sm font-bold text-gray-900">협업 제안 — {count}명</h2>
           <button onClick={onClose} className="text-gray-400 text-sm px-2">✕</button>
@@ -270,7 +270,7 @@ function ProposalModal({ count, leadIds, contactFee, onClose, onDone }: {
             <div className="flex flex-wrap gap-1.5 mt-1">
               {CHANNELS.map(ch => (
                 <button key={ch.key} onClick={() => setChannels(prev => { const n = new Set(prev); n.has(ch.key) ? n.delete(ch.key) : n.add(ch.key); return n })}
-                  className={`px-2.5 py-1.5 rounded-full border text-[11px] font-bold ${channels.has(ch.key) ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-200 text-gray-500'}`}>
+                  className={`px-2.5 py-1.5 rounded-full border text-[11px] font-bold ${channels.has(ch.key) ? 'border-gray-900 bg-brand-tint text-brand-text' : 'border-gray-200 text-gray-500'}`}>
                   {ch.label}
                 </button>
               ))}

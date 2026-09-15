@@ -60,7 +60,7 @@ export default function SellerTikTokCallbackPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-sm">
+      <div className="bg-white rounded-[var(--dash-radius,16px)] max-w-sm w-full p-6">
         {status === 'pending' && (
           <>
             <BrandLoader />

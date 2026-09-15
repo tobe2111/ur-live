@@ -58,7 +58,7 @@ export default function ReviewBonusCard() {
   }
 
   return (
-    <div className="rounded-2xl bg-white border border-gray-200 p-4">
+    <div className="rounded-[var(--dash-radius,16px)] bg-white border border-gray-200 p-4">
       <div className="flex items-center gap-2 mb-1">
         <MessageSquareHeart className="w-4 h-4 text-gray-500" />
         <h2 className="text-sm font-bold text-gray-900">후기 보너스</h2>

@@ -299,7 +299,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
             <div className="space-y-2.5">
               <button
                 onClick={() => { setShowAddSheet(false); navigate('/seller/products/new') }}
-                className="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-gray-50 dark:bg-[#1D1F29] active:scale-[0.99] transition-transform text-left"
+                className="w-full flex items-center gap-3 p-3.5 rounded-[var(--dash-radius,16px)] border border-gray-200 dark:border-[#2C2F35] bg-gray-50 dark:bg-[#1D1F29] active:scale-[0.99] transition-transform text-left"
               >
                 <span className="w-11 h-11 rounded-xl bg-white dark:bg-[#222] flex items-center justify-center text-xl shrink-0">🛍️</span>
                 <span className="min-w-0">
@@ -309,7 +309,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
               </button>
               <button
                 onClick={() => { setShowAddSheet(false); navigate('/seller/meal-voucher/new') }}
-                className="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-gray-50 dark:bg-[#1D1F29] active:scale-[0.99] transition-transform text-left"
+                className="w-full flex items-center gap-3 p-3.5 rounded-[var(--dash-radius,16px)] border border-gray-200 dark:border-[#2C2F35] bg-gray-50 dark:bg-[#1D1F29] active:scale-[0.99] transition-transform text-left"
               >
                 <span className="w-11 h-11 rounded-xl bg-white dark:bg-[#222] flex items-center justify-center text-xl shrink-0">🎟️</span>
                 <span className="min-w-0">
@@ -424,8 +424,8 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
           shopProducts.length === 0 ? (
             // 🎨 2026-07-07 리디자인: 밋밋한 "상품 0" 행 → "쇼핑몰을 채워보세요" 초대 카드(소유자 동기부여).
             //   내 상품이 유어샵의 주인공이라는 메시지 + 정식 등록 풀페이지로.
-            <div className="mt-7 rounded-2xl border border-dashed border-gray-300 dark:border-[#2E2E2E] bg-gray-50 dark:bg-[#101010] px-5 py-7 text-center">
-              <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-[#11141C] flex items-center justify-center">
+            <div className="mt-7 rounded-[var(--dash-radius,16px)] border border-dashed border-gray-300 dark:border-[#2E2E2E] bg-gray-50 dark:bg-[#101010] px-5 py-7 text-center">
+              <div className="w-12 h-12 mx-auto mb-3 rounded-[var(--dash-radius,16px)] bg-gray-900 dark:bg-white text-white dark:text-[#11141C] flex items-center justify-center">
                 <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
               </div>
               <h3 className="text-[15px] font-extrabold text-gray-900 dark:text-white">{t('seller.publicPage.emptyShopTitle', { defaultValue: '첫 이용권을 올려 유어샵을 채워보세요' })}</h3>

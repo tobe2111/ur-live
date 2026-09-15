@@ -80,6 +80,59 @@ app.get('/my-stores', async (c) => {
   }
 })
 
+// ── GET /my-stores/summary — 🧮 B2 "합계 + 매장별" (2026-09-15 대표 확정) ──────────────
+//   사람 기준: 앉을 수 있는 매장(active|approved) 전부의 **오늘**(KST) 매출·주문·처리 대기를 한 번에.
+//   읽기 전용 집계. 권한은 listOperableStores 가 이미 판정한 좌석 집합 안에서만 센다(좌석 토큰 발급과 같은 근거).
+//   ⚠️ 판정 규칙은 `/dashboard/stats`(seller-settlements.routes)와 **같아야** 한다 — PAID/DONE · DATE(created_at,'+9 hours').
+//   처리 대기 = 결제됐는데 아직 확인 전(useSellerHome AWAITING_CONFIRM 과 같은 집합), 최근 30일.
+app.get('/my-stores/summary', async (c) => {
+  try {
+    const userId = await resolveActorUserId(c)
+    if (!userId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+    const stores = (await listOperableStores(c.env.DB, userId))
+      .filter(s => s.status === 'active' || s.status === 'approved')
+      .slice(0, 20)
+    const currentSellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+    if (stores.length === 0) {
+      return c.json({ success: true, data: { stores: [], totals: { today_revenue: 0, today_orders: 0, pending: 0 }, current_seller_id: currentSellerId ?? null } })
+    }
+    const ids = stores.map(s => s.seller_id)
+    const marks = ids.map(() => '?').join(',')
+    const todayKst = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10)
+    const [today, pending] = await Promise.all([
+      c.env.DB.prepare(
+        `SELECT seller_id, COUNT(*) AS n, COALESCE(SUM(total_amount), 0) AS rev
+           FROM orders
+          WHERE seller_id IN (${marks}) AND status IN ('PAID','DONE') AND DATE(created_at, '+9 hours') = ?
+          GROUP BY seller_id`
+      ).bind(...ids, todayKst).all<{ seller_id: number; n: number; rev: number }>().catch(() => ({ results: [] as { seller_id: number; n: number; rev: number }[] })),
+      c.env.DB.prepare(
+        `SELECT seller_id, COUNT(*) AS n
+           FROM orders
+          WHERE seller_id IN (${marks}) AND status IN ('PAID','DONE','PAY_COMPLETE') AND created_at >= datetime('now', '-30 days')
+          GROUP BY seller_id`
+      ).bind(...ids).all<{ seller_id: number; n: number }>().catch(() => ({ results: [] as { seller_id: number; n: number }[] })),
+    ])
+    const tMap = new Map((today.results || []).map(r => [Number(r.seller_id), r]))
+    const pMap = new Map((pending.results || []).map(r => [Number(r.seller_id), Number(r.n) || 0]))
+    const rows = stores.map(s => {
+      const t = tMap.get(s.seller_id)
+      return {
+        seller_id: s.seller_id,
+        name: s.business_name || s.name || `매장 #${s.seller_id}`,
+        role: s.role,
+        today_revenue: Number(t?.rev) || 0,
+        today_orders: Number(t?.n) || 0,
+        pending: pMap.get(s.seller_id) || 0,
+      }
+    })
+    const totals = rows.reduce((a, r) => ({ today_revenue: a.today_revenue + r.today_revenue, today_orders: a.today_orders + r.today_orders, pending: a.pending + r.pending }), { today_revenue: 0, today_orders: 0, pending: 0 })
+    return c.json({ success: true, data: { stores: rows, totals, current_seller_id: currentSellerId ?? null } })
+  } catch (err) {
+    return safeError(c, err, '매장 요약을 불러오지 못했습니다', '[seller-operators]')
+  }
+})
+
 // ── POST /stores/:sellerId/token — 🔐 매장 전환 (보안 급소) ─────────────────
 app.post('/stores/:sellerId/token', rateLimit({ action: 'seller_store_switch', max: 30, windowSec: 300 }), async (c) => {
   try {

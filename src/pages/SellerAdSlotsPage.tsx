@@ -120,7 +120,7 @@ function SlotCard({ slot, labels, onBid }: { slot: AdSlot; labels: SlotLabels; o
   const tlabels = { waiting: labels.waiting, closed: labels.closed };
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+    <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 overflow-hidden">
       <div className="px-4 py-3 border-b border-gray-100 flex items-start justify-between gap-2">
         <div>
           <p className="text-[13px] font-bold text-gray-900">{slot.display_name}</p>
@@ -366,7 +366,7 @@ export default function SellerAdSlotsPage() {
 
       <div className="max-w-xl mx-auto px-4 py-5">
         {/* 안내 */}
-        <div className="bg-gray-50 border border-rule rounded-2xl p-4 mb-5">
+        <div className="bg-gray-50 border border-rule rounded-[var(--dash-radius,16px)] p-4 mb-5">
           <div className="flex items-center gap-2 mb-2">
             <Gavel className="w-4 h-4 text-brand-text" />
             <p className="text-[13px] font-bold text-gray-900">{t('seller.adSlots.whatIsAdSlot', { defaultValue: '광고 슬롯이란?' })}</p>
@@ -385,7 +385,7 @@ export default function SellerAdSlotsPage() {
         {loading ? (
           <div className="space-y-3">
             {[1, 2, 3].map(i => (
-              <div key={i} className="h-32 bg-white rounded-2xl border border-gray-200 animate-pulse" />
+              <div key={i} className="h-32 bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 animate-pulse" />
             ))}
           </div>
         ) : slots.length === 0 ? (

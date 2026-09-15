@@ -232,15 +232,21 @@ describe('⑦ 데모 결제 버튼이 "무료 응모"로 오인되지 않는다'
   //   `onBuy` → `handleJoin` 은 토스 카드/딜 차감으로 간다. 결제 오인은 환불 분쟁으로 직행한다.
   const box = code('src/pages/group-buy/DealPurchaseBox.tsx')
   const detail = code('src/pages/GroupBuyDetailPage.tsx')
+  // 🧺 2026-09-15: 모바일 푸터가 `DealBottomBar` 로 분리됐다(상세가 동결선에 붙어 자리가 없었다).
+  //    성질은 그대로라 **재조준**한다 — 두 변형이 같은 말을 해야 한다.
+  //    ⚠️ 옮긴 뒤에도 `detail` 을 그대로 보면 "없으니 통과" 가 된다(부정 단언이 헛돈다).
+  const bar = code('src/pages/group-buy/DealBottomBar.tsx')
 
   it('🔴 결제 CTA 가 데모에서도 "응모"라고 말하지 않는다 (두 변형 모두)', () => {
     expect(box, 'PC 패널 결제 버튼이 응모로 되돌아갔다').not.toMatch(/isDemo \?\s*'응모하기'/)
-    expect(detail, '모바일 푸터 결제 버튼이 응모로 되돌아갔다').not.toMatch(/isDemoDeal \?\s*'응모하기'/)
+    expect(bar, '모바일 푸터 결제 버튼이 응모로 되돌아갔다').not.toMatch(/isDemoDeal \?\s*'응모하기'/)
+    // 부정 단언이 "문자열 자체가 사라져서" 통과하지 않게 — 그 버튼이 그 파일에 실재하는지 먼저 본다.
+    expect(bar).toMatch(/isDemoDeal \? '결제하기'/)
   })
 
   it('데모 결제 CTA 는 돈이 나간다고 말한다', () => {
     expect(box).toContain("isDemo ? '결제하기' : '구매하기'")
-    expect(detail).toContain("isDemoDeal ? '결제하기' : '구매하기'")
+    expect(bar).toContain("isDemoDeal ? '결제하기' : '구매하기'")
   })
 
   it('무료 추첨 응모 블록은 그대로 남는다 — 없애는 게 아니라 갈라놓는 것이다', () => {

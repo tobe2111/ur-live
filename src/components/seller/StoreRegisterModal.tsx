@@ -233,7 +233,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
     return (
       <div className="fixed inset-0 z-[10500] flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4"
         onClick={dismissOnBackdrop ? onClose : undefined}>
-        <div className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl" onClick={e => e.stopPropagation()}>
+        <div className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)]" onClick={e => e.stopPropagation()}>
           <div className="p-5">
             <h2 className="text-base font-bold text-gray-900">이미 유어딜에 등록된 매장이에요</h2>
             {/* ⚠️ 누구 것인지 단정하지 않는다 — 내 매장이어도 승인 대기면 좌석이 안 열려 여기로 온다. */}
@@ -291,7 +291,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
         * ⚠️ `light-fixed` 주석은 가드 면제용 부표일 뿐 런타임엔 아무 일도 안 한다(CLAUDE.md 🏝️ 절).
         * ⚠️ 이 블록의 이어지는 줄이 `*` 로 시작하는 이유: `check-dashboard-theme.sh` 가 여러 줄 JSX
         *    주석의 둘째 줄부터를 실코드로 보고 다크 유틸 표기를 위반으로 잡는다(오탐 방향이라 안전). */}
-      <div className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl max-h-[92dvh] flex flex-col" onClick={e => e.stopPropagation()}>
+      <div className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)] max-h-[92dvh] flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="px-4 pt-3 pb-2 shrink-0">
           <div className="flex items-center justify-between">
             <button

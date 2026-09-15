@@ -125,7 +125,7 @@ export default function VoucherPhotoSection({ form, update, suggestedImages, loa
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-xs text-gray-900 focus:border-brand focus:outline-none"
                 />
                 <button type="button" onClick={() => { addPhoto(pasted); setPasted('') }}
-                  className="px-3 py-2 rounded-lg bg-gray-900 text-white text-xs font-bold">
+                  className="px-3 py-2 rounded-lg bg-brand-tint text-brand-text text-xs font-bold">
                   {t('common.add', { defaultValue: '담기' })}
                 </button>
               </div>
