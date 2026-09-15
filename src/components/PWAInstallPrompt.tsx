@@ -159,7 +159,7 @@ export default function PWAInstallPrompt() {
   if (show && deferredPrompt) {
     return (
       <div className="fixed bottom-20 left-3 right-3 z-[60] sm:left-auto sm:right-4 sm:bottom-4 sm:max-w-sm pointer-events-auto">
-        <div className="bg-white dark:bg-[#11141C] rounded-2xl shadow-2xl border border-gray-100 dark:border-[#2C2F35] p-4">
+        <div className="bg-surface rounded-2xl shadow-2xl border border-gray-100 dark:border-[#2C2F35] p-4">
           <div className="flex items-start gap-3">
             {/* 🛡️ 2026-05-27 사용자 요청: 좌측 분홍 네모 (smartphone icon 컨테이너) 제거. */}
             <div className="flex-1 min-w-0">
@@ -195,7 +195,7 @@ export default function PWAInstallPrompt() {
     const isIOSDevice = isIOS()
     return (
       <div className="fixed bottom-20 left-3 right-3 z-[60] sm:left-auto sm:right-4 sm:bottom-4 sm:max-w-sm pointer-events-auto">
-        <div className="bg-white dark:bg-[#11141C] rounded-2xl shadow-2xl border-2 border-rule p-4">
+        <div className="bg-surface rounded-2xl shadow-2xl border-2 border-rule p-4">
           <div className="flex items-start gap-3 mb-2">
             {/* 🛡️ 2026-05-27 사용자 요청: 좌측 분홍 네모 (smartphone icon 컨테이너) 제거. */}
             <div className="flex-1 min-w-0">

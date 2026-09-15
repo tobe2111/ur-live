@@ -408,7 +408,7 @@ export default function CuratorHeader({
                   value={snsForm[key]}
                   onChange={(e) => setSnsForm(s => ({ ...s, [key]: e.target.value }))}
                   placeholder="@핸들 또는 링크"
-                  className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg border border-rule bg-white dark:bg-[#11141C] text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none"
+                  className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg border border-rule bg-surface text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none"
                 />
               </div>
             ))}
@@ -435,7 +435,7 @@ export default function CuratorHeader({
             </div>
             {editingHandle ? (
               <div>
-                <div className="flex items-center gap-1 px-3 py-2.5 rounded-xl border border-rule-strong bg-white dark:bg-[#11141C]">
+                <div className="flex items-center gap-1 px-3 py-2.5 rounded-xl border border-rule-strong bg-surface">
                   <span className="shrink-0 text-[13px] font-mono text-gray-400">{shareHost}/u/</span>
                   <input
                     value={handleVal}

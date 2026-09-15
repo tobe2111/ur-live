@@ -122,19 +122,19 @@ export default function MyCommissionsPage() {
                 value={bankName}
                 onChange={e => setBankName(e.target.value)}
                 placeholder="은행명 (예: 신한은행)"
-                className="w-full px-3 py-2.5 border border-line rounded-lg text-sm bg-white dark:bg-[#11141C] text-gray-900 dark:text-white"
+                className="w-full px-3 py-2.5 border border-line rounded-lg text-sm bg-surface text-gray-900 dark:text-white"
               />
               <input
                 value={accountNumber}
                 onChange={e => setAccountNumber(e.target.value)}
                 placeholder="계좌번호 (- 포함 가능)"
-                className="w-full px-3 py-2.5 border border-line rounded-lg text-sm bg-white dark:bg-[#11141C] text-gray-900 dark:text-white"
+                className="w-full px-3 py-2.5 border border-line rounded-lg text-sm bg-surface text-gray-900 dark:text-white"
               />
               <input
                 value={accountHolder}
                 onChange={e => setAccountHolder(e.target.value)}
                 placeholder="예금주명"
-                className="w-full px-3 py-2.5 border border-line rounded-lg text-sm bg-white dark:bg-[#11141C] text-gray-900 dark:text-white"
+                className="w-full px-3 py-2.5 border border-line rounded-lg text-sm bg-surface text-gray-900 dark:text-white"
               />
             </div>
             <div className="flex gap-2 mt-3">

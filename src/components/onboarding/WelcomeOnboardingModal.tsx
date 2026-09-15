@@ -133,7 +133,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
       role="presentation"
     >
       <div
-        className="bg-white dark:bg-[#11141C] w-full max-w-md rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col max-h-[92dvh]"
+        className="bg-surface w-full max-w-md rounded-t-3xl sm:rounded-3xl overflow-hidden flex flex-col max-h-[92dvh]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="welcome-title"
@@ -202,7 +202,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
                   </div>
                 </div>
                 {couponClaimed ? (
-                  <div className="mt-3 px-3 py-2 bg-white dark:bg-[#11141C] rounded-xl text-center text-[13px] font-bold text-brand-text flex items-center justify-center gap-1">
+                  <div className="mt-3 px-3 py-2 bg-surface rounded-xl text-center text-[13px] font-bold text-brand-text flex items-center justify-center gap-1">
                     <Check className="w-4 h-4" /> {t('welcomeOnboarding.couponClaimed', { defaultValue: '발급 완료!' })}
                   </div>
                 ) : (

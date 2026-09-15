@@ -101,7 +101,7 @@ export default function MyStaysPage() {
               const canCancel = ['confirmed', 'pending'].includes(b.status)
               const canReview = b.status === 'checked_out'
               return (
-                <div key={b.id} className="bg-white dark:bg-[#11141C] border border-line rounded-xl p-4">
+                <div key={b.id} className="bg-surface border border-line rounded-xl p-4">
                   <div className="flex items-start gap-3">
                     <Link to={`/stays/${b.product_id}`} className="w-20 h-20 shrink-0 rounded-lg overflow-hidden bg-gray-100 dark:bg-[#1D1F29]">
                       {b.image_url ? <img src={cfImage(b.image_url, { width: 200, quality: 82, format: 'auto' }) || b.image_url} alt={b.product_name} className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, b.image_url)} /> : null}
@@ -216,7 +216,7 @@ function ReviewModal({ booking, token, onClose, onSubmitted }: {
 
   return (
     <div className="fixed inset-0 z-[10600] bg-black/60 dark:bg-black/80 backdrop-blur flex items-end sm:items-center justify-center" onClick={onClose}>
-      <div className="bg-white dark:bg-[#11141C] w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-gray-100 dark:border-[#2C2F35] max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-surface w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-gray-100 dark:border-[#2C2F35] max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="sticky top-0 bg-white dark:bg-[#11141C] px-5 py-4 border-b border-gray-100 dark:border-[#2C2F35]">
           <h3 className="text-base font-bold text-gray-900 dark:text-white">리뷰 작성</h3>
           <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{booking.product_name}</p>

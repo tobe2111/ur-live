@@ -280,7 +280,7 @@ function OrderCard({
   const openDetail = () => onSelectOrder(order)
 
   return (
-    <article className="bg-white dark:bg-[#11141C] rounded-2xl border border-gray-100 dark:border-[#2C2F35] overflow-hidden">
+    <article className="bg-surface rounded-2xl border border-gray-100 dark:border-[#2C2F35] overflow-hidden">
       {/* 클릭 영역: 상태 + 판매처 + 상품 → 상세 */}
       <div
         role="button"
@@ -455,7 +455,7 @@ function EmptyState({ kindFilter, searching, t }: { kindFilter: KindFilter; sear
     desc = t('ordersTab.emptyDesc', { defaultValue: '마음에 드는 상품을 둘러보세요' })
   }
   return (
-    <div className="bg-white dark:bg-[#11141C] rounded-2xl border border-gray-100 dark:border-[#2C2F35] p-12 text-center">
+    <div className="bg-surface rounded-2xl border border-gray-100 dark:border-[#2C2F35] p-12 text-center">
       <div className="w-20 h-20 bg-gray-50 dark:bg-[#1D1F29] rounded-full flex items-center justify-center mx-auto mb-5">
         <Package className="h-10 w-10 text-gray-400 dark:text-gray-500" strokeWidth={1.5} aria-hidden="true" />
       </div>

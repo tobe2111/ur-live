@@ -106,7 +106,7 @@ export default function RestoreAccountModal() {
       role="presentation"
     >
       <div
-        className="bg-white dark:bg-[#11141C] w-full max-w-md rounded-3xl overflow-hidden shadow-2xl"
+        className="bg-surface w-full max-w-md rounded-3xl overflow-hidden shadow-2xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby="restore-title"
