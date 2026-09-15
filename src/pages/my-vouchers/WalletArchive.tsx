@@ -20,13 +20,14 @@ export default function WalletArchive({ used, archived, locale, t, onShowQr }: {
   ] as const).filter(g => g.items.length > 0)
   if (groups.length === 0) return null
 
+  // 🎨 2026-09-15: 회색 테두리 상자 → 흰 면 + 들림 한 값(표면 규칙 ① "카드 테두리 0").
   return (
-    <div className="mt-4 rounded-2xl border border-gray-200 dark:border-[#2C2F35] overflow-hidden">
+    <div className="mt-4 rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift overflow-hidden">
       {groups.map((g, idx) => {
         const open = expanded.has(g.key)
         return (
           <Fragment key={g.key}>
-            {idx > 0 && <div className="h-px bg-gray-100 dark:bg-[#2C2F35] mx-[15px]" />}
+            {idx > 0 && <div className="border-t border-rule mx-[15px]" />}
             <button type="button"
               onClick={() => setExpanded(prev => { const n = new Set(prev); if (n.has(g.key)) n.delete(g.key); else n.add(g.key); return n })}
               className="w-full flex items-center justify-between px-[15px] py-3.5 text-left">
