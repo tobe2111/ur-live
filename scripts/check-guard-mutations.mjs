@@ -1733,7 +1733,7 @@ const MUTATIONS = [
   {
     name: '📉 DO 알람 레인이 읽기 예산 게이트를 건너뛴다',
     file: 'src/worker-ads/lane-alarm.ts',
-    find: '    if (budgetBlocked(await readBudgetState(this.env))) {',
+    find: '    if (budgetBlocked(budgetView) || laneCut(budgetView, this.lane)) {',
     replace: '    if (false) {',
     test: 'src/tests/unit/ads-read-budget.test.ts',
     why:
@@ -1743,7 +1743,7 @@ const MUTATIONS = [
   {
     name: '📉 cron 경로 레인이 읽기량을 원장에 안 보고한다(원장이 절반만 센다)',
     file: 'src/worker-ads/self-beat.ts',
-    find: '    await reportReadUsage(env, readEnvMeter(env)?.rr, readEnvMeter(env)?.rw)\n',
+    find: '    await reportReadUsage(env, readEnvMeter(env)?.rr, readEnvMeter(env)?.rw, beat)\n',
     replace: '',
     test: 'src/tests/unit/ads-read-budget.test.ts',
     why:
@@ -8583,11 +8583,95 @@ canvas {
     name: '🚧 초크포인트가 원장을 늘 묻는다(면제·정지에서도 서브리퀘스트 낭비)',
     file: 'src/worker-ads/lane-pause.ts',
     find: '  if (pauseExempt(path)) return \'\'\n  if (lanesPaused(env)) return \'paused\'',
-    replace: '  const forced = await overFn(env)\n  if (pauseExempt(path)) return \'\'\n  if (lanesPaused(env)) return \'paused\'\n  void forced',
+    replace: '  const forced = await budgetFn(env, \'x\')\n  if (pauseExempt(path)) return \'\'\n  if (lanesPaused(env)) return \'paused\'\n  void forced',
     test: 'src/tests/unit/ads-read-budget.test.ts',
     why:
       '원장 조회는 서브리퀘스트 1 이다. 면제 경로(관측)와 수동 정지에서까지 물으면 정지 중에도 ' +
       '예산을 계속 태우고, 관측 창이 원장 장애에 함께 죽는다.',
+  },
+
+  // ── 🧾 레인 귀속 + 폭주 레인만 자르기 (2026-09-15) ────────────────────────
+  {
+    name: '🚨 폭주 절대 임계가 사라진다(한 회차가 월 포함분을 먹어도 통과)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: "  if (rw >= RUNAWAY_ROUND_WRITES) return 'abs'",
+    replace: "  if (false) return 'abs'",
+    test: 'src/tests/unit/ads-lane-attribution.test.ts',
+    why:
+      '9/2 폭주는 쿼리 하나가 10만~15만 행을 썼다(시간당 350만, 하루 4,554만 = 월 포함분의 89%). ' +
+      '이 한 줄이 절대 임계다 — 빠지면 배수 규칙만 남는데, 기준선이 없는 첫 회차는 배수로 못 잡으므로 ' +
+      '"부팅 직후 폭주"가 정확히 무방비가 된다(9/2 가 바로 그 모양이었다).',
+  },
+  {
+    name: '🚨 기준선 없는 첫 회차를 폭주로 잡는다(새 레인이 태어나자마자 잘림)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: "  if (!baseline || !(baseline > 0)) return ''",
+    replace: "  if (!baseline || !(baseline > 0)) return 'rel'",
+    test: 'src/tests/unit/ads-lane-attribution.test.ts',
+    why:
+      '반대 방향의 사고 — 차단기가 정상을 자르는 경우다. 0 에서 시작한 레인의 첫 일이 폭주로 잡히면 ' +
+      '새 레인은 영영 못 돈다. 대표 지시가 "관리가 안 된다"였지 "더 막아라"가 아니었다.',
+  },
+  {
+    name: '🚨 폭주 회차가 기준선을 올린다(차단기가 스스로를 무디게 만든다)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: '      base: verdict',
+    replace: '      base: false',
+    test: 'src/tests/unit/ads-lane-attribution.test.ts',
+    why:
+      '폭주를 EMA 에 섞으면 그 레인의 평소치가 폭주 쪽으로 끌려가, 다음 폭주가 "평소와 비슷함"이 된다. ' +
+      '차단기가 자기 눈을 가리는 형태 — 처음엔 잡고 두 번째부터 못 잡는다.',
+  },
+  {
+    name: '🚨 날이 바뀌며 기준선까지 버린다(매일 아침 배수 규칙이 눈을 감는다)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: '    if (v?.base && v.base > 0) out[k] = { r: 0, w: 0, n: 0, base: v.base }',
+    replace: '    void k; void v',
+    test: 'src/tests/unit/ads-lane-attribution.test.ts',
+    why:
+      '오늘 계수(r/w/n)와 `cut` 은 날마다 버려야 하지만 `base` 는 학습값이다. 함께 버리면 매일 UTC 자정 ' +
+      '이후 모든 레인이 "기준선 없음"이 되어, 배수 규칙이 하루의 첫 회차마다 통째로 쉰다.',
+  },
+  {
+    name: '🚨 폭주 판정을 이번 회차를 **섞은 뒤** 기준선으로 한다',
+    file: 'src/worker-ads/read-budget.ts',
+    find: "  const verdict: RunawayVerdict = laneKeyed ? runawayRound(rw, prev?.lanes?.[laneKeyed]?.base) : ''",
+    replace: "  const verdict: RunawayVerdict = ''",
+    test: 'src/tests/unit/ads-lane-attribution.test.ts',
+    why:
+      '판정이 사라지면 원장은 레인별로 정확히 세면서 아무도 안 자른다 — 9/2 이전 상태로 되돌아간다. ' +
+      '(섞은 뒤 기준선으로 재는 변형도 같은 클래스다: 폭주가 자기 기준선을 올려 스스로를 정상으로 만든다.)',
+  },
+  {
+    name: '🧾 원장 기본 응답이 레인 전체 표를 싣는다(레인 인보케이션마다 96줄)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: '  const { lanes: _allLanes, ...totals } = next',
+    replace: '  const totals = next',
+    test: 'src/tests/unit/ads-lane-attribution.test.ts',
+    why:
+      '이 뷰는 **레인이 돌 때마다** 읽힌다. 전체 표를 기본으로 실으면 게이트가 매번 96줄을 받는다 — ' +
+      '작성 중 실제로 밟은 버그이고, 시험이 잡았다. 전체 표는 `?full=1` 일 때만.',
+  },
+  {
+    name: '🚧 HTTP 초크포인트가 `_beat` 를 안 넘긴다(잘린 레인이 매칭되지 않는다)',
+    file: 'src/worker-ads/lane-gate.ts',
+    find: '      readBeatParams(c.req.url)?.beat,',
+    replace: '      undefined,',
+    test: 'src/tests/unit/ads-lane-attribution.test.ts',
+    why:
+      '원장에 보고하는 이름은 `_beat` 인데 게이트가 경로에서 뽑으면 둘이 갈린다 — ' +
+      '`/__ads/enrich-company-driver` 는 beat 이름이 `enrich-company` 다. 그러면 그 레인은 잘려도 ' +
+      '게이트를 그냥 통과한다(잘린 줄 알고 있는데 계속 도는, 이 레포가 가장 자주 당한 모양).',
+  },
+  {
+    name: '🧾 원장이 잘린 레인 목록을 안 돌려준다(게이트가 볼 게 없다)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: '    cutLanes: cutLaneNames(next, nowMs),',
+    replace: '    cutLanes: [],',
+    test: 'src/tests/unit/ads-lane-attribution.test.ts',
+    why:
+      '원장은 자르고 응답엔 안 싣는 형태 — 판정은 도는데 아무 효과가 없다. 실패가 아니라 부재라 ' +
+      '배포는 초록이고 폭주 레인만 조용히 계속 돈다.',
   },
   {
     name: '✍️ 쓰기 예산이 게이트에서 빠진다(요금을 터뜨린 축이 다시 무방비)',
@@ -8655,7 +8739,7 @@ canvas {
   {
     name: '✍️ 회차가 쓴 행을 보고하지 않는다(원장이 영원히 0 — 조용한 무방비)',
     file: 'src/worker-ads/lane-alarm.ts',
-    find: 'reportReadUsage(this.env, this.meter.rr, this.meter.rw)',
+    find: 'reportReadUsage(this.env, this.meter.rr, this.meter.rw, this.lane)',
     replace: 'reportReadUsage(this.env, this.meter.rr)',
     test: 'src/tests/unit/ads-read-budget.test.ts',
     why:
