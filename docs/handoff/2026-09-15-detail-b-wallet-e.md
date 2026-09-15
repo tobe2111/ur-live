@@ -85,13 +85,13 @@
    없어 **API 변경이 필요**하다 — 별건. 그리고 `/my-gifticons`(교환권 지갑)의 레이아웃은
    이번에 **표면만** 정리했고 구조는 그대로다.
 
-## 7) 🔴 CI 가 안 붙었다 — "빨간불"이 아니라 **부재** (2026-09-15 실측)
+## 7) 🔴 CI 가 안 붙었다 — "빨간불"이 아니라 **부재**. 원인은 머지 충돌이었다 (2026-09-15 실측)
 
 PR #1446 을 열고 나서 head `8d08c474b` 에 **Verify run 이 하나도 생기지 않았다.**
 붙은 체크는 `Cloudflare Pages`(도매몰 프리뷰) 하나뿐이었다.
 
 ```
-get_check_runs #1446        → total_count 1 (Cloudflare Pages · success)
+get_check_runs #1446        → total_count 1 (Cloudflare Pages)
 list_workflow_runs(branch)  → 이 브랜치 최신 run 은 06:31 의 472c6c8c (이전 작업분)
 verify.yml                  → on: pull_request: branches:[main] · draft 제외 조건 없음
 ```
@@ -100,13 +100,18 @@ verify.yml                  → on: pull_request: branches:[main] · draft 제�
 **하나도 없는데** 머지가 막히고, PR 화면만 훑으면 초록으로 보인다 — 이 레포가 반복해 당한
 **조용한 부재**다(같은 클래스: 취소된 push-run · paths-ignore 로 run 자체가 안 생긴 것).
 
-**유력한 원인**: PR 을 **MCP(GitHub App 토큰)로 열면** GitHub 가 그 `opened` 이벤트로
-워크플로를 발동시키지 않는다(앱/`GITHUB_TOKEN` 발 이벤트의 재귀 방지 규칙). 같은 브랜치의
-이전 run 들은 전부 **PR 이 이미 열린 뒤의 push(`synchronize`)** 로 생긴 것이었다.
+### 🩸 내가 틀린 가설 (남겨 둔다 — 같은 오진을 막으려고)
 
-**처방(검증 중)**: PR 을 연 뒤 **코드 커밋을 한 번 더 밀어** `synchronize` 로 붙인다.
-⚠️ 빈 커밋은 금지다 — 실제 내용이 있는 커밋이어야 한다.
+처음엔 *"PR 을 MCP(GitHub App 토큰)로 열면 `opened` 이벤트가 워크플로를 발동시키지 않는다"* 고
+단정하고, 그 가설대로 커밋을 하나 더 밀어 `synchronize` 를 노렸다. **그래도 안 붙었다.**
 
-> 🧭 **다음 세션이 할 것**: PR 을 열자마자 `get_check_runs` 로 **Verify 가 실제로 붙었는지**
-> 확인할 것. 없으면 위 처방. 이 가설이 확정되면 `ci-verify-coverage.test.ts` 에
-> 규약으로 못 박거나(레포가 볼 수 있는 범위에서), 최소한 이 문단을 근거로 남길 것.
+### ✅ 진짜 원인 — `mergeable_state: "dirty"`
+
+PR 을 `get` 으로 읽어 보고서야 나왔다. main 이 09:30 에 움직였고(#1445) 내 브랜치는 그 이전
+기준이라 **충돌 상태**였다. 충돌이면 GitHub 가 `refs/pull/N/merge` 를 만들지 못하고,
+`pull_request` 워크플로는 그 병합 커밋 위에서 도므로 **run 자체가 생기지 않는다.**
+base 를 머지해 충돌을 풀자 **곧바로 Verify 가 붙었다**(`in_progress`, `mergeable: true`).
+
+> 🧭 **다음 세션이 할 것**: PR 을 연 직후 `get_check_runs` 만 보지 말고 **`get` 의
+> `mergeable_state` 를 함께 볼 것.** `dirty` 면 CI 는 영원히 안 붙는다 — 기다릴 일이 아니라
+> 지금 base 를 머지할 일이다. (`blocked` 는 다르다 — 그건 CI 가 도는 중이거나 승인 대기다.)
