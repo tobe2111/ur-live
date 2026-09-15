@@ -36,7 +36,8 @@ import type { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { selfBeatMiddleware } from './self-beat'
 import { laneEntryBlock } from './lane-pause'
-import { readBudgetState, budgetBlocked } from './read-budget'
+import { readBeatParams } from './self-beat'
+import { readBudgetState, budgetBlocked, laneCut } from './read-budget'
 
 export function mountLaneMiddleware(app: Hono<{ Bindings: Env }>): void {
   // 🫀 레인이 자기 하트비트를 쓴다 — 미들웨어 본체와 근거는 `self-beat.ts`(그 모듈의 관심사다).
@@ -46,7 +47,15 @@ export function mountLaneMiddleware(app: Hono<{ Bindings: Env }>): void {
     const blocked = await laneEntryBlock(
       new URL(c.req.url).pathname,
       c.env,
-      async (env) => budgetBlocked(await readBudgetState(env)),
+      // ⚠️ 원장은 **한 번만** 읽는다 — 계정 초과와 레인 폭주를 따로 조회하면 레인 인보케이션마다
+      //    서브리퀘스트가 하나 더 붙는다(무료 천장 56 중 51 을 이미 쓰고 있다).
+      async (env, lane) => {
+        const v = await readBudgetState(env)
+        if (budgetBlocked(v)) return 'budget'
+        return laneCut(v, lane) ? 'runaway' : ''
+      },
+      // 🧾 부모가 넘긴 `_beat` 가 정답이다 — 원장에 보고할 때 쓰는 이름과 **같아야** 잘린 레인이 매칭된다.
+      readBeatParams(c.req.url)?.beat,
     )
     if (!blocked) return next()
     return c.json({ ok: true, skipped: blocked })
