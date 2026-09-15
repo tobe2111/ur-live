@@ -81,3 +81,50 @@
    `/refund` 7건(`text-green-600` 이 다크에서 안 밝아진다) · `/influencer` 1건.
    원인은 패널이 `bg-gray-50` 에 다크 대응이 **없는데** 글자만 `dark:text-gray-200` 로 밝아지는 것.
    ⚠️ 경로를 먼저 추가해 **빨간불을 확인한 뒤** 고칠 것(안 그러면 고쳤는지 알 수 없다).
+
+---
+
+## 7) 🔴 곁다리로 드러난 **테마 가드의 큰 사각지대** (별건이지만 중요)
+
+푸시 게이트가 `check-theme-consistency` 에서 막았다. 조사해 보니 **내 회귀가 아니라 가드의 눈먼 자리**였다.
+
+```js
+// scripts/check-theme-consistency.mjs:85
+if (/bg-\[#020202\]|bg-\[#0F151D\]|bg-\[#11141C\]|data-mobile-only/.test(src)) continue
+```
+
+이 정규식은 **`dark:bg-[#11141C]`(올바른 다크 variant)와 bare `bg-[#11141C]`(순수 다크 페이지)를
+구분하지 않는다.** 그래서 **다크 대응을 제대로 한 파일일수록 테마 검사에서 통째로 면제**됐다.
+
+**실측: 그 면제를 받는 파일 150개 중 143개가 순수 다크 페이지가 아니다.**
+`/vouchers` · `/checkout` · `/search` · `ProductDetailPage` · `CuratorPage` · `BottomNav` … 가 전부 포함된다.
+
+내 코드모드가 그 파일들에서 `dark:bg-[#11141C]` 를 걷어내자 **검사 대상으로 돌아왔고**,
+숨어 있던 선재 결함 3건이 드러났다(카드 안의 밝은 회색 우물에 다크 짝이 없음 — 다크에서
+`#1D1F29` 카드 위 near-white 상자, 그 위 글자는 `dark:text-gray-200`).
+
+### 이 PR 에서 고친 것 — 3건뿐
+| 자리 | 처방 | 라이트 |
+|---|---|---|
+| `RestoreAccountModal:123` `bg-gray-100` | `+ dark:bg-warm` | **불변** |
+| `RestoreAccountModal:137` `bg-gray-50` | → `bg-warm` | **불변**(gray-50 = `--bg` 라이트 = #F8F7FC) |
+| `PWAInstallPrompt:209` `bg-gray-50` | → `bg-warm` | **불변** |
+
+⚠️ `dark:bg-warm` 은 hex 를 안 늘리면서 다크 우물 톤을 준다(`var(--bg)` = #11141C).
+`bg-gray-100`(#F3EEEA)은 **대표 판단 대기 중인 세 번째 톤**이라 라이트 값을 건드리지 않았다.
+
+### 🔴 다음 세션이 할 것 — 가드 수리 (별건 PR)
+스크래치에서 판정을 `(?<!dark:)bg-\[#…\]` 로 고쳐 재 보니 **17건 / 13파일**이 드러난다:
+
+```
+CuratorPage 2 · TossWidgetPayPage 2 · RestoreAccountModal 2 · WelcomeOnboardingModal 2
+BusinessLandingPage · InfluencerSettlementPage · UserProfilePage · CuratorHeader
+MapTopBar · SelectedDealCard · PWAInstallPrompt · DetailFloatingHeader · BottomNav  각 1
+```
+
+⚠️ **전부 결함은 아니다** — `MapTopBar`·`SelectedDealCard` 는 지도 타일 위 오버레이라
+`light-fixed` 주석이 있어야 할 자리일 수 있고(2026-09-02 규칙), `TossWidgetPayPage` 는 **Toss 잠금**이다.
+그래서 이 PR 에 섞지 않았다 — 13파일 17건은 각각 판단이 필요하고, 섞으면 리뷰가 불가능해진다.
+
+**순서**: ① 정규식을 `(?<!dark:)` 로 고쳐 **빨간불을 먼저 확인** ② 17건을 하나씩 판단
+(진짜 결함은 고치고, 의도된 고정은 `light-fixed` 주석) ③ 그 뒤 strict 유지.
