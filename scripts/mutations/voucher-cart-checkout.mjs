@@ -133,7 +133,7 @@ export default [
   {
     name: '[장바구니] 섞인 장바구니를 그냥 결제한다',
     file: CLIENT,
-    find: "  if (kind === 'mixed') return '이용권과 배송 상품은 함께 결제할 수 없어요. 따로 골라서 결제해주세요.'",
+    find: "  if (kind === 'mixed') return '함께 결제할 수 없는 상품이 섞여 있어요.",
     replace: '  /* 섞임 차단 제거 */',
     test: TEST,
     why: '한 결제로 묶으면 둘 중 한쪽 레일의 후처리가 반드시 빠진다.',
@@ -145,5 +145,38 @@ export default [
     replace: '  const raw = `${first}${suffix}`\n  return raw.length > 100 ? `${raw.slice(0, 97)}...` : raw',
     test: TEST,
     why: '내가 처음 쓴 코드 그대로다 — 무엇을 사는지 가리는 결제창은 금액이 맞아도 틀린 화면이다.',
+  },
+  // ⑦ 교환권(딜) ↔ 이용권(카드) — 게이트 켜기 직전에 실측으로 드러난 머니 버그 자리
+  {
+    name: '[장바구니] 교환권을 이용권과 한 덩어리로 본다 (딜로 살 것을 카드로 청구)',
+    file: CLIENT,
+    find: "  const deal = items.filter(isDealOnlyCartItem).length",
+    replace: "  const deal = 0",
+    test: TEST,
+    why: '첫 판이 정확히 이랬다 — 둘 다 배송이 없다는 이유로 갈리지 않아 교환권이 카드 레일로 갔다.',
+  },
+  {
+    name: '[장바구니] 교환권만 담겨도 카드 레일로 보낸다',
+    file: CLIENT,
+    find: "  if (deal === items.length) return 'deal'",
+    replace: "  if (deal === items.length) return 'voucher'",
+    test: TEST,
+    why: '`/checkout` 이 강제하던 딜 모드를 건너뛴다 — 13,500딜짜리를 13,500원으로 받는다.',
+  },
+  {
+    name: '[장바구니] 교환권+이용권 섞임을 섞임으로 안 본다',
+    file: CLIENT,
+    find: "  const card = items.filter((i) => isVoucherCartItem(i) && !isDealOnlyCartItem(i)).length",
+    replace: "  const card = items.filter(isVoucherCartItem).length",
+    test: TEST,
+    why: '교환권이 card 에도 세어져 섞인 장바구니가 `voucher` 로 통과한다(총액이 딜+원화 합산).',
+  },
+  {
+    name: '[장바구니·서버] 교환권을 카드 레일에서 거절하지 않는다',
+    file: LINES,
+    find: "    if (Number(p.deal_only) === 1) {",
+    replace: "    if (false) {",
+    test: TEST,
+    why: '경계는 서버다 — 화면을 우회해 상품 id 를 직접 보내면 여기서만 막힌다.',
   },
 ]

@@ -21,6 +21,8 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { stripComments } from '../helpers/source-text'
 import { normalizeCartLines, cartOrderName, MAX_CART_LINES } from '../../features/group-buy/api/cart-lines'
+import { classifyCart, isDealOnlyCartItem, isVoucherCartItem } from '../../pages/cart/voucher-checkout'
+import type { CartItem } from '../../types/cart'
 
 const read = (p: string) => stripComments(readFileSync(p, 'utf-8'))
 const ROUTES = read('src/features/group-buy/api/cart-checkout.routes.ts')
@@ -191,5 +193,86 @@ describe('게이트·값매김이 단일 구매와 같은 함수를 쓴다', () 
 
   it('도매 원본은 장바구니에도 못 들어온다 (서비스 분리)', () => {
     expect(LINES).toMatch(/NOT \(COALESCE\(is_supply_product,0\) = 1 AND supply_source_id IS NULL\)/)
+  })
+})
+
+/**
+ * ⑦ 교환권(딜) 과 이용권(카드) 은 **다른 결제 수단**이다 (2026-09-15 — 게이트 켜기 직전 실측으로 발견)
+ *
+ * 🩸 첫 판이 둘을 한 덩어리로 봤다. 이유가 그럴듯해서 더 위험했다 — **둘 다 배송이 없다.**
+ *    그래서 `isNoShippingProduct` 하나로 갈랐고, 교환권이 카드 레일(`/api/group-buy/cart/*`)로 갔다.
+ *    라이브 번들을 실제로 렌더해 보니 장바구니 총액이 **88,000원 = 74,500원 + 13,500딜** —
+ *    딜을 원화로 더하고 있었다. `/checkout` 은 이 경우 이미 '딜 모드'를 강제하는데(2026-05-21)
+ *    새 레일이 그 처리를 안 물려받은 것이다.
+ *
+ * ⇒ **판정을 실행해서 잰다.** 소스 문자열로 재면 `deal_only` 라는 단어가 파일 어딘가에 있기만 해도
+ *    통과한다(이 레포가 반복해 당한 헛도는 가드). 아래는 전부 `classifyCart` 를 진짜로 부른다.
+ */
+const item = (o: Partial<CartItem>): CartItem => ({
+  id: 1, product_id: 1, product_name: 'x', quantity: 1, price: 1000, ...o,
+} as CartItem)
+
+const DEAL = item({ id: 'd', product_id: 11, deal_only: 1, category: 'etc' })          // 교환권(기프티콘)
+const CARD = item({ id: 'v', product_id: 22, deal_only: 0, category: 'meal_voucher' }) // 이용권(식사)
+const SHIP = item({ id: 's', product_id: 33, deal_only: 0, category: 'fashion' })      // 배송 상품
+
+describe('⑦ 교환권은 딜, 이용권은 카드 — 섞으면 안 보낸다', () => {
+  it('교환권만이면 `deal` — 카드 레일이 아니다', () => {
+    expect(classifyCart([DEAL])).toBe('deal')
+    expect(classifyCart([DEAL, { ...DEAL, id: 'd2', product_id: 12 }])).toBe('deal')
+  })
+
+  it('이용권만이면 `voucher`(카드 · 공구 레일)', () => {
+    expect(classifyCart([CARD])).toBe('voucher')
+  })
+
+  it('🔴 교환권 + 이용권은 `mixed` — 결제 수단이 달라서 한 번에 못 받는다', () => {
+    expect(classifyCart([DEAL, CARD])).toBe('mixed')
+    expect(classifyCart([CARD, DEAL])).toBe('mixed')
+  })
+
+  it('배송 상품이 섞여도 `mixed`', () => {
+    expect(classifyCart([CARD, SHIP])).toBe('mixed')
+    expect(classifyCart([DEAL, SHIP])).toBe('mixed')
+  })
+
+  it('배송만이면 `shipping`, 비었으면 `empty`', () => {
+    expect(classifyCart([SHIP])).toBe('shipping')
+    expect(classifyCart([])).toBe('empty')
+  })
+
+  it('두 판정이 실제로 갈린다 — 교환권은 "배송 없음"이면서 "딜"이다', () => {
+    expect(isVoucherCartItem(DEAL)).toBe(true)    // 배송은 없고
+    expect(isDealOnlyCartItem(DEAL)).toBe(true)   // 딜로 산다
+    expect(isVoucherCartItem(CARD)).toBe(true)
+    expect(isDealOnlyCartItem(CARD)).toBe(false)  // 이용권은 카드
+  })
+
+  it('`deal_only` 가 문자열 "1" 로 와도 딜로 본다 (서버 응답이 숫자를 보장하지 않는다)', () => {
+    expect(classifyCart([item({ deal_only: '1' as unknown as number, category: 'etc' })])).toBe('deal')
+  })
+
+  it('카드 레일로 보내는 것은 `voucher` 뿐 — 나머지는 종전 `/checkout`', () => {
+    // 배선까지 확인: 'deal'/'shipping' 이 startVoucherCartCheckout 로 안 간다.
+    expect(CLIENT).toMatch(/if \(kind === 'voucher'\) \{[\s\S]{0,200}startVoucherCartCheckout/)
+    expect(CLIENT).not.toMatch(/kind === 'deal'[\s\S]{0,200}startVoucherCartCheckout/)
+  })
+})
+
+describe('⑦-서버: 경계는 서버다 (화면은 편의일 뿐)', () => {
+  it('교환권이 카드 레일에 오면 **거절**한다 — 화면을 우회해 id 를 직접 보내도 막힌다', () => {
+    expect(LINES).toMatch(/if \(Number\(p\.deal_only\) === 1\) \{[\s\S]{0,240}DEAL_ONLY_NOT_SUPPORTED/)
+  })
+
+  it('그 거절이 **카테고리 검사보다 먼저** 온다 (교환권 카테고리가 이용권과 겹쳐도 딜로 잡힌다)', () => {
+    const iDeal = LINES.indexOf('DEAL_ONLY_NOT_SUPPORTED')
+    const iCat = LINES.indexOf('NOT_VOUCHER')
+    expect(iDeal).toBeGreaterThan(0)
+    expect(iCat).toBeGreaterThan(0)
+    expect(iDeal).toBeLessThan(iCat)
+  })
+
+  it('거절은 `ok: false` 라 **값매김 전체가 실패**한다 (그 줄만 빼고 사지 않는다)', () => {
+    expect(LINES).toMatch(/return \{ ok: false, error: `교환권은 딜로 결제합니다/)
   })
 })

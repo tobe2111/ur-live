@@ -90,6 +90,19 @@ export function findStrictTrueGates(root = ROOT) {
       const at = lines.findIndex((l) => l.includes(`'${k}'`))
       if (at >= 0 && cmp.some((c) => c >= at - 2 && c <= at + 8)) found.set(k, `${rel}:${at + 1}`)
     }
+    // ③ 🩸 2026-09-15 — **바인드 + 이름상수** 형태를 통째로 놓치고 있었다.
+    //    `const GATE_KEY = 'voucher_cart_enabled'` + `WHERE key = ?` + `.bind(GATE_KEY)` 면
+    //    소스 어디에도 `key = 'voucher_cart_enabled'` 가 없어 ①의 정규식이 안 걸린다.
+    //    그래서 이용권 장바구니 게이트가 등재 없이 배포됐고 어드민에 손잡이가 없었다.
+    //    좁게 본다: `platform_settings` 를 쓰는 파일에서 `*KEY` 상수를 `bind()` 에 넘기고,
+    //    그 근처(±15줄)에 strict-true 비교가 있을 때만.
+    for (const m of whole.matchAll(/\bconst\s+([A-Z][A-Z0-9_]*KEY)\s*=\s*'([a-z0-9_]+)'/g)) {
+      const [, ident, k] = m
+      if (found.has(k)) continue
+      if (!new RegExp(`\\.bind\\(\\s*${ident}\\b`).test(whole)) continue
+      const at = lines.findIndex((l) => l.includes(`const ${ident} `))
+      if (at >= 0 && cmp.some((c) => c >= at - 2 && c <= at + 15)) found.set(k, `${rel}:${at + 1}`)
+    }
     // ② IN(...) 다중 읽기 — **좌변이 그 키 이름일 때만**.
     for (const k of multi) {
       if (found.has(k)) continue
