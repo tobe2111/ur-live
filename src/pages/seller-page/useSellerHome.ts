@@ -30,6 +30,8 @@ export interface HomeVoucher {
   original_price?: number | null
   image_url?: string | null
   is_active: boolean
+  /** `ACTIVE` · `HIDDEN` · `DELETED` …. 삭제분은 `useSellerVouchers` 가 걸러 내고 `useSellerDeletedVouchers` 만 준다. */
+  status?: string | null
   group_buy_status?: string | null
   /** 판매 수(참여 수). 서버 `group_buy_current`. */
   sold: number
@@ -89,11 +91,18 @@ export function useSellerWithdrawable() {
 }
 
 /** 내 이용권 목록 — `/api/seller/products` 중 이용권 카테고리. 홈 레일과 이용권 탭이 같은 캐시를 쓴다. */
-export function useSellerVouchers() {
-  return useQuery<HomeVoucher[]>({
-    queryKey: ['seller', 'home', 'vouchers'],
-    queryFn: async () => {
-      const r = await api.get('/api/seller/products', { headers: H() })
+/**
+ * 내 이용권 — **삭제분까지** 한 번에 받아 온다(`include_deleted=1`).
+ *
+ * 🗑️ 2026-09-15 (대표가 삭제를 눌러 보고 드러난 구멍): 삭제한 이용권은 어느 화면에도 안 나와서
+ *   **되돌릴 방법이 0** 이었다(어드민 PATCH 는 `status` 를 아예 안 받는다). 그래서 목록은 삭제분까지
+ *   받고, **나누는 일은 select 가 한다** — 요청은 여전히 하나이고 캐시도 한 벌이다.
+ */
+function vouchersQuery() {
+  return {
+    queryKey: ['seller', 'home', 'vouchers'] as const,
+    queryFn: async (): Promise<HomeVoucher[]> => {
+      const r = await api.get('/api/seller/products', { headers: H(), params: { include_deleted: 1 } })
       const list = (r.data?.success ? (r.data.data || []) : []) as Array<Record<string, unknown>>
       return list
         .filter((p) => isVoucherCategory(p.category as string))
@@ -102,6 +111,7 @@ export function useSellerVouchers() {
           original_price: p.original_price == null ? null : Number(p.original_price),
           image_url: (p.image_url as string) || null,
           is_active: p.is_active === undefined ? true : !!Number(p.is_active),
+          status: (p.status as string) || null,
           group_buy_status: (p.group_buy_status as string) || null,
           sold: Number(p.group_buy_current) || 0,
           restaurant_name: (p.restaurant_name as string) || null,
@@ -111,7 +121,17 @@ export function useSellerVouchers() {
         }))
     },
     enabled: isSellerAuthenticated(), staleTime: 60_000, refetchOnWindowFocus: false,
-  })
+  }
+}
+
+/** 살아 있는 이용권만 — 홈(M2)·이용권 탭의 세 세그먼트가 쓰는 목록(종전과 같은 내용). */
+export function useSellerVouchers() {
+  return useQuery({ ...vouchersQuery(), select: (l: HomeVoucher[]) => l.filter((v) => v.status !== 'DELETED') })
+}
+
+/** 삭제된 이용권만 — '삭제됨' 세그먼트. 같은 queryKey 라 **요청이 늘지 않는다**. */
+export function useSellerDeletedVouchers() {
+  return useQuery({ ...vouchersQuery(), select: (l: HomeVoucher[]) => l.filter((v) => v.status === 'DELETED') })
 }
 
 export interface StoreSummaryRow { seller_id: number; name: string; role: 'owner' | 'operator'; today_revenue: number; today_orders: number; pending: number }

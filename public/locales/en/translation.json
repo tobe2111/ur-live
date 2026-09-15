@@ -3291,7 +3291,11 @@
       "pinWarn": "In the last 7 days, PIN errors ({{errors}}) exceeded successes ({{ok}}). Check the PIN given to the store.",
       "deleteConfirm": "Delete the voucher '{{name}}'?\nAlready issued vouchers stay usable; only new sales stop.",
       "deleteFailed": "Delete failed",
-      "selling": "On sale"
+      "selling": "On sale",
+      "deletedSeg": "Deleted",
+      "restore": "Restore",
+      "restored": "The voucher is on sale again",
+      "deletedNote": "Only new sales stopped. Vouchers already issued still work."
     },
     "ordersM3": {
       "today": "Today",

@@ -17,11 +17,11 @@ import BrandLoader from '@/components/brand/BrandLoader'
 import { SELLER_TABBAR_H } from '@/components/seller-layout/SellerBottomTabs'
 import { GB_ENGINE_ENABLED } from '@/shared/feature-flags'
 import { formatNumber, formatWon, safeNum } from '@/utils/format'
-import { useSellerStats, useSellerVouchers, useSellerWithdrawable, monthRevenue } from './seller-page/useSellerHome'
+import { useSellerStats, useSellerVouchers, useSellerDeletedVouchers, useSellerWithdrawable, monthRevenue } from './seller-page/useSellerHome'
 import VoucherRow, { type VoucherStat } from './seller-group-buy/VoucherRow'
 import GbProposalsPanel from './seller-group-buy/GbProposalsPanel'
 
-type Seg = 'on' | 'off' | 'ended'
+type Seg = 'on' | 'off' | 'ended' | 'deleted'
 interface VoucherLogSummary { total: number; success_count: number; pin_errors: number; expired_errors: number; already_used_errors: number }
 
 export default function SellerGroupBuyPage() {
@@ -30,6 +30,8 @@ export default function SellerGroupBuyPage() {
   const headers = { Authorization: `Bearer ${localStorage.getItem('seller_token')}` }
 
   const vouchersQ = useSellerVouchers()
+  // 🗑️ 2026-09-15: 같은 queryKey 를 select 만 달리해 읽는다 — 요청·캐시는 한 벌이다.
+  const deletedQ = useSellerDeletedVouchers()
   const statsQ = useSellerStats()
   const balanceQ = useSellerWithdrawable()
   const products = vouchersQ.data ?? []
@@ -44,13 +46,14 @@ export default function SellerGroupBuyPage() {
   const logs = voucherLogsQ.data
 
   const [seg, setSeg] = useState<Seg>('on')
+  const deletedProducts = deletedQ.data ?? []
   const buckets = useMemo(() => {
     const ended = products.filter((p) => p.group_buy_status === 'closed' || p.group_buy_status === 'achieved')
     const endedIds = new Set(ended.map((p) => p.id))
     const on = products.filter((p) => p.is_active && !endedIds.has(p.id))
     const off = products.filter((p) => !p.is_active && !endedIds.has(p.id))
-    return { on, off, ended }
-  }, [products])
+    return { on, off, ended, deleted: deletedProducts }
+  }, [products, deletedProducts])
   const rows = buckets[seg]
   const totalSold = products.reduce((s, p) => s + safeNum(p.sold), 0)
   const month = monthRevenue(statsQ.data?.daily ?? [])
@@ -82,7 +85,13 @@ export default function SellerGroupBuyPage() {
 
         {/* ── 세그먼트 — 안 고른 것도 흰 면 위 글자다(테두리 박스로 그리지 않는다). ── */}
         <div className="flex rounded-xl bg-white p-1 border border-rule md:w-fit">
-          {([['on', t('seller.vouchers.onSale', { defaultValue: '판매 중' }), buckets.on.length], ['off', t('seller.vouchers.paused', { defaultValue: '판매 중지' }), buckets.off.length], ['ended', t('seller.vouchers.ended', { defaultValue: '종료' }), buckets.ended.length]] as Array<[Seg, string, number]>).map(([k, label, n]) => (
+          {([
+            ['on', t('seller.vouchers.onSale', { defaultValue: '판매 중' }), buckets.on.length],
+            ['off', t('seller.vouchers.paused', { defaultValue: '판매 중지' }), buckets.off.length],
+            ['ended', t('seller.vouchers.ended', { defaultValue: '종료' }), buckets.ended.length],
+            // 🗑️ 삭제분이 있을 때만 칸을 만든다 — 늘 비어 있는 탭은 자리만 먹는다.
+            ...(buckets.deleted.length > 0 ? [['deleted', t('seller.vouchers.deletedSeg', { defaultValue: '삭제됨' }), buckets.deleted.length] as [Seg, string, number]] : []),
+          ] as Array<[Seg, string, number]>).map(([k, label, n]) => (
             <button key={k} type="button" onClick={() => setSeg(k)} aria-pressed={seg === k}
               className={`flex-1 rounded-lg px-4 py-2 text-[13.5px] font-bold transition-colors md:flex-none ${seg === k ? 'bg-brand text-white' : 'text-gray-400 hover:text-gray-700'}`}>
               {label} {formatNumber(n)}
@@ -103,7 +112,8 @@ export default function SellerGroupBuyPage() {
 
         {/* ── 행 목록 ── */}
         <div className="overflow-hidden rounded-[var(--dash-radius,16px)] border border-rule bg-white">
-          <div className="hidden grid-cols-[56px_minmax(0,1.6fr)_1fr_.7fr_1fr_60px_90px] gap-4 border-b border-rule px-5 py-2.5 text-[11.5px] font-bold text-gray-400 md:grid">
+          {/* 삭제분 행은 [사진 · 이름 · 복구] 한 줄이라 이 표 머리와 칸이 안 맞는다 — 그 세그먼트에선 안 그린다. */}
+          <div className={`${seg === 'deleted' ? 'hidden' : 'hidden md:grid'} grid-cols-[56px_minmax(0,1.6fr)_1fr_.7fr_1fr_60px_90px] gap-4 border-b border-rule px-5 py-2.5 text-[11.5px] font-bold text-gray-400`}>
             <span /><span>{t('seller.tab.vouchers', { defaultValue: '이용권' })}</span><span>{t('seller.vouchers.price', { defaultValue: '가격' })}</span><span>{t('seller.vouchers.sold', { defaultValue: '판매' })}</span><span>{t('seller.sales')}</span><span>{t('seller.vouchers.onSaleShort', { defaultValue: '판매' })}</span><span />
           </div>
           {rows.length === 0 ? (

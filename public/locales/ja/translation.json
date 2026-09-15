@@ -3291,7 +3291,11 @@
       "pinWarn": "直近7日のPINエラー {{errors}}件が成功 {{ok}}件より多いです。店舗に案内したPINを確認してください。",
       "deleteConfirm": "'{{name}}' 利用券を削除しますか？\n発行済みの利用券はそのまま使え、新規販売のみ停止します。",
       "deleteFailed": "削除に失敗しました",
-      "selling": "販売中"
+      "selling": "販売中",
+      "deletedSeg": "削除済み",
+      "restore": "復元",
+      "restored": "利用券の販売を再開しました",
+      "deletedNote": "新規販売のみ停止しました。発行済みの利用券はそのまま使えます。"
     },
     "ordersM3": {
       "today": "今日",
