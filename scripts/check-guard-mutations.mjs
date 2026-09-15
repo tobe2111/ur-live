@@ -6372,8 +6372,8 @@ canvas {
   {
     name: 'PR 검증이 다시 건너뛰어짐(미검증 코드 머지)',
     file: '.github/workflows/verify.yml',
-    find: '  pull_request:\n    branches: [main]\n  push:',
-    replace: "  pull_request:\n    branches: [main]\n    paths-ignore: ['docs/**']\n  push:",
+    find: '  pull_request:\n    branches: [main]\n  # 🔴 `push:`',
+    replace: "  pull_request:\n    branches: [main]\n    paths-ignore: ['docs/**']\n  # 🔴 `push:`",
     test: 'src/tests/unit/ci-verify-coverage.test.ts',
     why:
       '문서 커밋을 코드 커밋 뒤에 밀면 concurrency 가 앞 run 을 취소하고 뒤 커밋은 자기 run 을 안 만든다 ' +
