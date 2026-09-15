@@ -5494,17 +5494,18 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 298건 · 최신순 · 이 목록은 자동 생성된다._
+_총 300건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-15**
 - [삭제한 이용권을 되돌리는 길 (2026-09-15)](handoff/2026-09-15-voucher-restore.md)
 - [2026-09-15 — verify.yml push 트리거 제거 (필수 검사 룰셋과의 충돌)](handoff/2026-09-15-verify-push-trigger.md)
+- [2026-09-15 — 매장 확정: 이용권이 "어느 매장 것인지"를 서버가 정한다](handoff/2026-09-15-store-canonical.md)
 - [2026-09-15 — 셀러 2차 페이지 정리: 색 정보상자·이모지·버튼 체계·숫자 위계 (PR 1/3)](handoff/2026-09-15-seller-tones.md)
 - [2026-09-15 — 셀러 대시보드 3차: D3 밀도·데이터 + A2 매장이 제목 + B2 전 매장 합계 + C 정산 안 소개 수익](handoff/2026-09-15-seller-d3.md)
 - [2026-09-15 — 결재함 오기 정정 · 죽은 PR 둘 닫기 · S1 판정 패널](handoff/2026-09-15-pr-cleanup-and-s1-verdict.md)
 - [날짜 창 잘림 · 테두리 시안 · 이용권 장바구니 (2026-09-15)](handoff/2026-09-15-date-popover-borders-cart.md)
-- [2026-09-15 — 어드민 대시보드 D3 합류: 셸 + 163 페이지 코드모드 (PR 2/2)](handoff/2026-09-15-admin-d3.md)
 - [유어애즈 — 레인 귀속 + 폭주 레인만 자르기 (2026-09-15)](handoff/2026-09-15-ads-lane-attribution.md)
+- [2026-09-15 — 어드민 대시보드 D3 합류: 셸 + 163 페이지 코드모드 (PR 2/2)](handoff/2026-09-15-admin-d3.md)
 **2026-09-14**
 - [이용권 관리 — 수정·삭제·정가 (2026-09-14)](handoff/2026-09-14-voucher-manage-actions.md)
 - [2026-09-14 — 유어쇼츠: 위로 되돌아가는 스와이프 + 닫기 버튼 겹침](handoff/2026-09-14-urshorts-swipe-back-and-close-button.md)
