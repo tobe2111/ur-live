@@ -24,8 +24,8 @@ interface Row {
 
 const MODE_LABEL: Record<GbMode, string> = { off: '없음', scheduled: '예약', live: '진행중', ended: '종료' }
 const MODE_BADGE: Record<GbMode, string> = {
-  off: 'bg-gray-100 text-gray-500', scheduled: 'bg-amber-50 text-amber-600',
-  live: 'bg-emerald-50 text-emerald-600', ended: 'bg-gray-100 text-gray-400',
+  off: 'bg-gray-100 text-gray-500', scheduled: 'border border-rule bg-white text-tone-warn',
+  live: 'bg-tone-ok-bg text-tone-ok', ended: 'bg-gray-100 text-gray-400',
 }
 
 // ISO ↔ datetime-local('YYYY-MM-DDTHH:MM') 변환(입력 편의).
@@ -77,7 +77,7 @@ function EditForm({ row, onSaved }: { row: Row; onSaved: () => void }) {
         {active && <>
           <label className="text-[12px] text-gray-600">공구 특가(원) · 상시가 {formatWon(row.price)}
             <input value={price} onChange={(e) => setPrice(e.target.value.replace(/\D/g, ''))} inputMode="numeric" className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-[13px] text-gray-900" />
-            {discount > 0 && <span className="text-[10px] text-emerald-600">할인 {discount}%</span>}
+            {discount > 0 && <span className="text-[10px] text-tone-ok">할인 {discount}%</span>}
           </label>
           <label className="text-[12px] text-gray-600">소개비율 %(0~50)
             <input value={promoPct} onChange={(e) => setPromoPct(e.target.value.replace(/[^0-9.]/g, ''))} inputMode="decimal" className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-[13px] text-gray-900" />
@@ -88,7 +88,7 @@ function EditForm({ row, onSaved }: { row: Row; onSaved: () => void }) {
           <label className="text-[12px] text-gray-600">시작(선택 — 예약)
             <input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-[13px] text-gray-900" />
           </label>
-          <label className="text-[12px] text-gray-600">마감 <span className="text-red-500">*</span>
+          <label className="text-[12px] text-gray-600">마감 <span className="text-tone-bad">*</span>
             <input type="datetime-local" value={deadline} onChange={(e) => setDeadline(e.target.value)} className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-[13px] text-gray-900" />
           </label>
           <label className="col-span-2 flex items-center gap-2 text-[12px] text-gray-700 mt-1">
@@ -98,7 +98,7 @@ function EditForm({ row, onSaved }: { row: Row; onSaved: () => void }) {
         </>}
       </div>
       <div className="flex justify-end">
-        <button type="button" disabled={busy} onClick={save} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-[13px] font-semibold disabled:opacity-50">저장</button>
+        <button type="button" disabled={busy} onClick={save} className="ur-btn ur-btn-md ur-btn-primary text-[13px] disabled:opacity-50">저장</button>
       </div>
     </div>
   )
@@ -125,7 +125,7 @@ export default function AdminGbCockpitPage() {
       <DashboardPageHeader icon={<Rocket className="w-5 h-5" />} title="공구 엔진 조종석" subtitle="상품별 공구(gb_mode) 설정 — 진행 상태·특가·마감·소개비율" />
 
       {gbEngine === false && (
-        <div className="mb-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[12px] text-amber-800">
+        <div className="mb-3 flex items-start gap-2 rounded-xl border border-rule bg-white p-3 text-[12px] text-tone-warn">
           <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
           <span>공구 엔진 게이트가 <b>OFF</b>입니다(<code>gb_engine_enabled</code>). 지금 설정은 저장되지만 소비자/결제엔 <b>미적용</b> — 파일럿 검증 후 플랫폼 설정에서 켜면 활성화됩니다.</span>
         </div>
@@ -152,7 +152,7 @@ export default function AdminGbCockpitPage() {
                 <span className="flex-1 truncate text-[13px] font-semibold text-gray-900">{r.name}</span>
                 {r.restaurant_name && <span className="shrink-0 text-[11px] text-gray-400 truncate max-w-[120px]">{r.restaurant_name}</span>}
                 <span className="shrink-0 text-[12px] text-gray-500">{formatWon(r.price)}</span>
-                {r.gb?.mode !== 'off' && r.gb?.price ? <span className="shrink-0 text-[11px] text-emerald-600 font-bold">공구 {formatWon(r.gb.price)}</span> : null}
+                {r.gb?.mode !== 'off' && r.gb?.price ? <span className="shrink-0 text-[11px] text-tone-ok font-bold">공구 {formatWon(r.gb.price)}</span> : null}
               </button>
               {expanded === r.id && <EditForm row={r} onSaved={() => void load()} />}
             </div>

@@ -46,7 +46,7 @@ export default function AdminPinSetupPage() {
   return (
     <AdminLayout title="로그인 보안 PIN">
       <div className="ur-content-narrow px-4 py-8">
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 max-w-md mx-auto">
+        <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-6 max-w-md mx-auto">
           <div className="flex items-center gap-2 mb-1">
             <ShieldCheck className="w-5 h-5 text-[#0C2454]" />
             <h2 className="text-base font-bold text-gray-900">로그인 보안 PIN 설정</h2>
@@ -67,7 +67,7 @@ export default function AdminPinSetupPage() {
             className="w-full mt-6 py-3 rounded-xl text-sm font-bold text-white bg-[#0C2454] hover:bg-[#0a1d44] disabled:opacity-50 inline-flex items-center justify-center gap-2">
             {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> 저장 중…</> : 'PIN 설정하기'}
           </button>
-          <p className="text-[11px] text-gray-400 mt-3 text-center">⚠️ PIN을 잊으면 슈퍼관리자가 초기화해 줄 수 있습니다.</p>
+          <p className="text-[11px] text-gray-400 mt-3 text-center">PIN을 잊으면 슈퍼관리자가 초기화해 줄 수 있습니다.</p>
         </div>
       </div>
     </AdminLayout>

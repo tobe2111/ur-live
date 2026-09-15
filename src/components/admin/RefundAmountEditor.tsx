@@ -75,7 +75,7 @@ export default function RefundAmountEditor({ returnId, current, onSaved, config 
       <button
         onClick={save}
         disabled={busy}
-        className="px-3 py-1.5 text-xs font-bold text-white bg-gray-900 rounded disabled:opacity-50 inline-flex items-center gap-1"
+        className="ur-btn ur-btn-sm ur-btn-primary rounded disabled:opacity-50 inline-flex items-center gap-1"
       >
         {busy && <Loader2 className="w-3 h-3 animate-spin" />} 저장
       </button>

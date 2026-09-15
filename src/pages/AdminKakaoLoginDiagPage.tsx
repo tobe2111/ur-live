@@ -90,15 +90,15 @@ export default function AdminKakaoLoginDiagPage() {
         <div className="flex items-center justify-between mb-5">
           <h1 className="text-xl font-bold text-gray-900">카카오 로그인 진단 <span className="text-sm font-normal text-gray-500">(최근 7일)</span></h1>
           <button onClick={() => void load()} disabled={loading}
-            className="px-3 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50">
+            className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-50">
             {loading ? '조회 중…' : '새로고침'}
           </button>
         </div>
 
-        {error && <div className="rounded-xl bg-red-50 border border-red-200 text-red-700 p-4 mb-4 text-sm">{error}</div>}
+        {error && <div className="rounded-xl bg-white border border-rule text-tone-bad p-4 mb-4 text-sm">{error}</div>}
 
         {/* 서버 처리 시간 */}
-        <div className="rounded-2xl bg-white border border-gray-200 p-5 mb-4">
+        <div className="rounded-[var(--dash-radius,16px)] bg-white border border-gray-200 p-5 mb-4">
           <h2 className="text-sm font-semibold text-gray-500 mb-3">서버 처리 시간 (우리 콜백이 쓰는 ms)</h2>
           {t ? (
             <>
@@ -110,10 +110,10 @@ export default function AdminKakaoLoginDiagPage() {
               </div>
               <div className="text-xs text-gray-500">표본 {t.samples ?? 0}건 · p95 {t.p95_total_ms ?? '–'}ms · 최대 {t.max_total_ms ?? '–'}ms</div>
               {oidcActive !== null && (
-                <div className={`mt-3 rounded-lg p-3 text-sm ${oidcActive ? 'bg-green-50 text-green-800' : 'bg-amber-50 text-amber-800'}`}>
+                <div className={`mt-3 rounded-lg p-3 text-sm ${oidcActive ? 'border border-rule bg-white text-tone-ok' : 'border border-rule bg-white text-tone-warn'}`}>
                   {oidcActive
-                    ? `✅ OIDC fast path 작동 중 — 최신 로그인 사용자정보 ${latestTiming ? `${latestTiming.ms_userinfo}ms` : '≈0'}(왕복 제거됨). 위 7일 평균(${t.avg_userinfo_ms}ms)은 OIDC 켜기 전 옛 로그인이 섞여 높게 보이는 것이니 무시하세요.`
-                    : `⚠️ OIDC 미작동(폴백 중) — 최신 로그인 사용자정보 왕복이 ${latestTiming?.ms_userinfo ?? t.avg_userinfo_ms}ms. parseIdToken/scope 점검 필요.`}
+                    ? `OIDC fast path 작동 중 — 최신 로그인 사용자정보 ${latestTiming ? `${latestTiming.ms_userinfo}ms` : '≈0'}(왕복 제거됨). 위 7일 평균(${t.avg_userinfo_ms}ms)은 OIDC 켜기 전 옛 로그인이 섞여 높게 보이는 것이니 무시하세요.`
+                    : `OIDC 미작동(폴백 중) — 최신 로그인 사용자정보 왕복이 ${latestTiming?.ms_userinfo ?? t.avg_userinfo_ms}ms. parseIdToken/scope 점검 필요.`}
                 </div>
               )}
             </>
@@ -121,7 +121,7 @@ export default function AdminKakaoLoginDiagPage() {
         </div>
 
         {/* iOS 요약 */}
-        <div className="rounded-2xl bg-white border border-gray-200 p-5 mb-4">
+        <div className="rounded-[var(--dash-radius,16px)] bg-white border border-gray-200 p-5 mb-4">
           <h2 className="text-sm font-semibold text-gray-500 mb-3">iOS(WebKit) 로그인 결과</h2>
           <div className="text-sm text-gray-900">
             성공 <strong>{iosSuccess}</strong> / 전체 {iosTotal}건
@@ -131,7 +131,7 @@ export default function AdminKakaoLoginDiagPage() {
         </div>
 
         {/* 최근 로그인별 OIDC 상태 — 7일 평균 왜곡 보정용 ground truth */}
-        <div className="rounded-2xl bg-white border border-gray-200 p-5 mb-4">
+        <div className="rounded-[var(--dash-radius,16px)] bg-white border border-gray-200 p-5 mb-4">
           <h2 className="text-sm font-semibold text-gray-500 mb-1">최근 로그인별 (최신 {recentLogins.length}건)</h2>
           <p className="text-xs text-gray-400 mb-3">
             사용자정보 0ms = OIDC 지름길 작동. 7일 평균은 OIDC 켜기 전 옛 로그인이 섞여 높게 보일 수 있어,
@@ -159,9 +159,9 @@ export default function AdminKakaoLoginDiagPage() {
                       <tr key={i} className="border-b border-gray-50">
                         <td className="py-1.5 pr-3 text-gray-500 whitespace-nowrap">{(r.created_at || '').replace('T', ' ').slice(5, 16)}</td>
                         <td className="py-1.5 pr-3 text-gray-900 font-medium">{r.ms_total ?? '–'}<span className="text-gray-400">ms</span></td>
-                        <td className={`py-1.5 pr-3 font-medium ${oidc ? 'text-green-700' : 'text-amber-700'}`}>{r.ms_userinfo ?? '–'}<span className="text-gray-400">ms</span></td>
+                        <td className={`py-1.5 pr-3 font-medium ${oidc ? 'text-tone-ok' : 'text-tone-warn'}`}>{r.ms_userinfo ?? '–'}<span className="text-gray-400">ms</span></td>
                         <td className="py-1.5 pr-3 text-gray-600">{r.ms_db ?? '–'}<span className="text-gray-400">ms</span></td>
-                        <td className="py-1.5">{oidc ? <span className="text-green-700">✅</span> : <span className="text-amber-600">폴백</span>}</td>
+                        <td className="py-1.5">{oidc ? <span className="text-tone-ok">OIDC</span> : <span className="text-tone-warn">폴백</span>}</td>
                       </tr>
                     )
                   })}
@@ -172,7 +172,7 @@ export default function AdminKakaoLoginDiagPage() {
         </div>
 
         {/* 원본 */}
-        <details className="rounded-2xl bg-white border border-gray-200 p-5">
+        <details className="rounded-[var(--dash-radius,16px)] bg-white border border-gray-200 p-5">
           <summary className="text-sm font-semibold text-gray-500 cursor-pointer">원본 JSON (전체)</summary>
           {data?.note && <p className="mt-3 text-xs text-gray-500">{data.note}</p>}
           <pre className="mt-3 text-xs text-gray-700 overflow-auto whitespace-pre-wrap">{JSON.stringify(data, null, 2)}</pre>

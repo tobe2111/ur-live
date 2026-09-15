@@ -196,7 +196,7 @@ export default function AdminWholesaleMallsPage() {
             title={t('admin.mall.heading', { defaultValue: '도매 몰 관리' })}
             subtitle={t('admin.mall.subtitle', { defaultValue: '카테고리별 도매몰(식품/패션 등)을 생성·관리합니다. 호스트별 브랜딩(이름·로고·색)이 적용됩니다.' })}
           />
-          <button onClick={openNew} className="inline-flex items-center gap-1.5 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-semibold shrink-0">
+          <button onClick={openNew} className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-1.5 shrink-0">
             <Plus className="w-4 h-4" /> {t('admin.mall.addMall', { defaultValue: '몰 추가' })}
           </button>
         </div>
@@ -221,10 +221,10 @@ export default function AdminWholesaleMallsPage() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-bold text-gray-900 truncate">{m.name}</span>
                     <span className="text-xs font-mono text-gray-500">{m.slug}</span>
-                    {m.id === DEFAULT_MALL_ID && <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">기본 몰</span>}
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${m.active ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>{m.active ? '활성' : '비활성'}</span>
+                    {m.id === DEFAULT_MALL_ID && <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-tone-info-bg text-tone-info">기본 몰</span>}
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${m.active ? 'bg-tone-ok-bg text-tone-ok' : 'bg-gray-100 text-gray-500'}`}>{m.active ? '활성' : '비활성'}</span>
                     {!!m.consumer_path && (
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-sky-50 text-sky-700" title="소비자 도메인 경로로 열림">소비자 공개</span>
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-tone-info-bg text-tone-info" title="소비자 도메인 경로로 열림">소비자 공개</span>
                     )}
                   </div>
                   {/* 🔗 2026-08-03 (대표 "매장 링크를 어드민에서도"): 손님 링크 + 안 열리면 그 이유. */}
@@ -236,12 +236,12 @@ export default function AdminWholesaleMallsPage() {
                 <div className="flex items-center gap-1 shrink-0">
                   {/* 🏪 2026-08-03: 매장을 몰에 붙이는 유일한 경로 — 이게 없으면 몰 홈이 영원히 비어 있다. */}
                   <button onClick={() => setOpenSellers(openSellers === m.id ? null : m.id)}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg border ${openSellers === m.id ? 'bg-gray-900 text-white border-gray-900' : 'text-gray-600 hover:bg-gray-50 border-gray-200'}`}>
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg border ${openSellers === m.id ? 'bg-brand text-white border-gray-900' : 'text-gray-600 hover:bg-gray-50 border-gray-200'}`}>
                     매장
                   </button>
                   {/* 📣 몰 팝업/공지 배너 — 몰 홈 상단 띠·1회 팝업으로 렌더(과업①). */}
                   <button onClick={() => setOpenNotices(openNotices === m.id ? null : m.id)}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg border ${openNotices === m.id ? 'bg-gray-900 text-white border-gray-900' : 'text-gray-600 hover:bg-gray-50 border-gray-200'}`}>
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg border ${openNotices === m.id ? 'bg-brand text-white border-gray-900' : 'text-gray-600 hover:bg-gray-50 border-gray-200'}`}>
                     공지
                   </button>
                   <button onClick={() => toggleActive(m)} title={m.active ? '비활성화' : '활성화'} className="px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 rounded-lg border border-gray-200">
@@ -264,7 +264,7 @@ export default function AdminWholesaleMallsPage() {
 
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowForm(false)}>
-          <div className="w-full max-w-lg bg-white rounded-2xl p-5 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-lg bg-white rounded-[var(--dash-radius,16px)] p-5 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-gray-900">{editing ? t('admin.mall.editMall', { defaultValue: '몰 수정' }) : t('admin.mall.addMall', { defaultValue: '몰 추가' })}</h3>
               <button onClick={() => setShowForm(false)} aria-label={t('common.close', { defaultValue: '닫기' })}><X className="w-5 h-5 text-gray-400" /></button>
@@ -308,7 +308,7 @@ export default function AdminWholesaleMallsPage() {
                   {(() => {
                     const v = validateMallColor(form.brand_color)
                     if (v.ok) return null
-                    return <p className="mt-1.5 text-[11px] text-red-600">{v.reason}</p>
+                    return <p className="mt-1.5 text-[11px] text-tone-bad">{v.reason}</p>
                   })()}
                 </div>
               </div>
@@ -329,7 +329,7 @@ export default function AdminWholesaleMallsPage() {
                 {!!editing && editing.id === DEFAULT_MALL_ID && <span className="text-[11px] text-gray-400">({t('admin.mall.defaultLocked', { defaultValue: '기본 몰은 항상 활성' })})</span>}
               </label>
 
-              <button type="submit" disabled={saving} className="w-full h-11 bg-gray-900 text-white rounded-lg text-sm font-bold disabled:opacity-60 inline-flex items-center justify-center gap-1.5">
+              <button type="submit" disabled={saving} className="ur-btn ur-btn-md ur-btn-primary w-full disabled:opacity-60 inline-flex items-center justify-center gap-1.5">
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} {editing ? t('admin.mall.saveEdit', { defaultValue: '수정 저장' }) : t('admin.mall.createMall', { defaultValue: '몰 생성' })}
               </button>
             </form>

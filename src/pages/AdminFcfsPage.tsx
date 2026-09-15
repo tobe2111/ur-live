@@ -99,11 +99,11 @@ export default function AdminFcfsPage() {
     <AdminLayout title="추첨 응모 관리">
       <div className="max-w-3xl mx-auto p-4 space-y-5">
         {/* 상품 로드 */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-5">
+        <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-5">
           <p className="text-sm font-bold text-gray-900 mb-2">공구 상품 ID</p>
           <div className="flex gap-2">
             <input value={productId} onChange={(e) => setProductId(e.target.value.replace(/[^0-9]/g, ''))} placeholder="예: 1234" className={inputCls} />
-            <button onClick={load} disabled={loading} className="shrink-0 px-5 h-10 rounded-lg bg-gray-900 text-white text-sm font-bold disabled:opacity-50">불러오기</button>
+            <button onClick={load} disabled={loading} className="ur-btn ur-btn-md ur-btn-primary shrink-0 disabled:opacity-50">불러오기</button>
           </div>
           <p className="text-[12px] text-gray-500 mt-2">기존 공구 상품의 ID를 입력해 추첨으로 지정합니다. (그 상품만 추첨 적용)</p>
         </div>
@@ -111,7 +111,7 @@ export default function AdminFcfsPage() {
         {valid && (
           <>
             {/* 설정 */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-4">
+            <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-bold text-gray-900">추첨 설정 (상품 #{pid})</p>
                 <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
@@ -135,18 +135,18 @@ export default function AdminFcfsPage() {
               </div>
               <div className="flex items-center justify-between pt-1">
                 <p className="text-[13px] text-gray-700">표시: <b className="text-gray-900">추첨 {formatNumber(displayApplied)}/{formatNumber(cfg.spots)}명</b> <span className="text-gray-400">(실제 응모 {realApplied})</span></p>
-                <button onClick={saveConfig} disabled={loading} className="px-5 h-10 rounded-lg bg-gray-900 text-white text-sm font-bold disabled:opacity-50">설정 저장</button>
+                <button onClick={saveConfig} disabled={loading} className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-50">설정 저장</button>
               </div>
             </div>
 
             {/* 지원자 + 선정 */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-5">
+            <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-5">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-bold text-gray-900">응모자 ({applicants.length})</p>
                 <div className="flex items-center gap-2">
                   <input value={randomCount} onChange={(e) => setRandomCount(e.target.value.replace(/[^0-9]/g, ''))} placeholder="랜덤 N명" className="w-24 px-2 h-9 rounded-lg border border-gray-300 text-sm text-gray-900" />
                   <button onClick={() => select({ count: parseInt(randomCount, 10) || 0 })} disabled={loading || !randomCount} className="px-3 h-9 rounded-lg bg-gray-100 text-gray-900 text-[13px] font-bold disabled:opacity-50">랜덤 선정</button>
-                  <button onClick={() => select({ winners: [...checked] })} disabled={loading || checked.size === 0} className="px-3 h-9 rounded-lg bg-gray-900 text-white text-[13px] font-bold disabled:opacity-50">선택 {checked.size}명 선정</button>
+                  <button onClick={() => select({ winners: [...checked] })} disabled={loading || checked.size === 0} className="ur-btn ur-btn-md ur-btn-primary text-[13px] disabled:opacity-50">선택 {checked.size}명 선정</button>
                 </div>
               </div>
               {applicants.length === 0 ? (
@@ -177,7 +177,7 @@ export default function AdminFcfsPage() {
 
             {/* 추첨 실행 이력 — 공정성 증빙(실행자·방식·응모 풀·당첨자) */}
             {draws.length > 0 && (
-              <div className="bg-white rounded-2xl border border-gray-200 p-5">
+              <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-5">
                 <p className="text-sm font-bold text-gray-900 mb-1">추첨 실행 이력 ({draws.length})</p>
                 <p className="text-[11px] text-gray-400 mb-3">모든 추첨은 crypto 난수 + 응모자 풀 스냅샷과 함께 기록됩니다 — 공정성 증빙용</p>
                 <div className="divide-y divide-gray-100">
@@ -186,7 +186,7 @@ export default function AdminFcfsPage() {
                     try { winnersCount = (JSON.parse(dr.winners) as string[]).length } catch { /* 표시용 */ }
                     return (
                       <div key={dr.id} className="py-2.5 flex items-center gap-3 text-sm">
-                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 ${dr.method === 'manual' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 ${dr.method === 'manual' ? 'bg-tone-warn-bg text-tone-warn' : 'bg-tone-ok-bg text-tone-ok'}`}>
                           {dr.method === 'manual' ? '수동 지정' : 'crypto 랜덤'}
                         </span>
                         <span className="text-gray-900 font-semibold">{winnersCount}명 당첨</span>

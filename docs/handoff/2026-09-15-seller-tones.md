@@ -56,3 +56,10 @@
 ## 남은 결정 없음
 
 머니 경로 0 · 잠금 파일 0 · 게이트 0. (대표가 "게이트 on" 을 말했지만 이 PR 엔 켤 게이트가 없다.)
+
+## ✅ 머지·배포 (E3)
+
+- PR #1440 — CI Verify 15분(주입 검증이 `--changed` 로 좁게 돈 덕) → auto-merge 16:42 KST (`7b21ba7cf`).
+- 라이브 판정 17:01 KST: `/api/version` 엔트리 `index-fMLi3JDE` → `index-BUgUn7Kz`, ko 로케일 `seller.kakaoNotify.sentLabel` = `발송됨`(✓ 제거), `/seller/products` 200.
+- Notion 개발 업데이트 로그: https://app.notion.com/p/3dc0adee652b81d4bc37c94c4b5898c2
+- E4(눈으로) 는 셀러 로그인이 필요해 대표 확인 대상: `/seller/stays/new` 상단 등급 카드가 흰 카드인지, `/seller/analytics` KPI 숫자가 mono 인지.

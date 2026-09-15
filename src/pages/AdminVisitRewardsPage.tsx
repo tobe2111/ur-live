@@ -121,7 +121,7 @@ export default function AdminVisitRewardsPage() {
             <button
               type="button"
               onClick={() => setShowForm(v => !v)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gray-900 text-white text-sm font-bold hover:bg-gray-800"
+              className="ur-btn ur-btn-md ur-btn-primary flex items-center gap-1.5"
             >
               <Plus className="w-4 h-4" /> 캠페인 만들기
             </button>
@@ -150,7 +150,7 @@ export default function AdminVisitRewardsPage() {
                     className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-900" />
                   {PRESETS.map(p => (
                     <button key={p.code} type="button" onClick={() => setForm(f => ({ ...f, region_code: p.code }))}
-                      className={`px-2 py-1 rounded-lg text-[11px] font-bold border ${form.region_code === p.code ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
+                      className={`px-2 py-1 rounded-lg text-[11px] font-bold border ${form.region_code === p.code ? 'bg-brand text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
                       {p.label}
                     </button>
                   ))}
@@ -180,7 +180,7 @@ export default function AdminVisitRewardsPage() {
             <div className="mt-3 flex justify-end gap-2">
               <button type="button" onClick={() => setShowForm(false)} className="px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 bg-white hover:bg-gray-50">취소</button>
               <button type="button" onClick={create} disabled={saving}
-                className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-bold hover:bg-gray-800 disabled:opacity-50">
+                className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-50">
                 {saving ? '생성 중…' : '생성'}
               </button>
             </div>
@@ -188,7 +188,7 @@ export default function AdminVisitRewardsPage() {
         )}
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl p-3 mb-4 flex items-center justify-between">
+          <div className="bg-white border border-rule text-tone-bad text-sm rounded-xl p-3 mb-4 flex items-center justify-between">
             <span>{error}</span>
             <button type="button" onClick={load} className="text-xs font-bold underline underline-offset-2">다시 시도</button>
           </div>
@@ -212,7 +212,7 @@ export default function AdminVisitRewardsPage() {
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-bold text-gray-900">{camp.name}</span>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${camp.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${camp.status === 'active' ? 'bg-tone-ok-bg text-tone-ok' : 'bg-gray-100 text-gray-500'}`}>
                           {camp.status === 'active' ? '진행 중' : '종료'}
                         </span>
                         <span className="text-[11px] text-gray-400">지역 {camp.region_code}</span>
@@ -232,7 +232,7 @@ export default function AdminVisitRewardsPage() {
                           <span>{spentPct}%</span>
                         </div>
                         <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div className="h-full bg-gray-900 rounded-full" style={{ width: `${spentPct}%` }} />
+                          <div className="h-full bg-brand rounded-full" style={{ width: `${spentPct}%` }} />
                         </div>
                       </div>
                     </div>

@@ -216,11 +216,11 @@ export default function AdminBlogPage() {
           icon={<FileText className="h-5 w-5" />}
           actions={
             <div className="flex items-center gap-2">
-              <Button onClick={generateAiDraft} disabled={aiLoading} variant="outline" className="h-9 px-3 text-xs border-purple-300 text-purple-700 hover:bg-purple-50" title="현재 서비스 기준 홍보 글 초안을 AI로 생성합니다 (비공개 — 검토 후 발행)">
+              <Button onClick={generateAiDraft} disabled={aiLoading} variant="outline" className="h-9 px-3 text-xs border-rule text-gray-700 hover:bg-gray-100" title="현재 서비스 기준 홍보 글 초안을 AI로 생성합니다 (비공개 — 검토 후 발행)">
                 {aiLoading ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 mr-1.5" />}
                 AI 홍보 초안
               </Button>
-              <Button onClick={() => openEdit()} className="bg-gray-900 hover:bg-gray-900 text-white h-9 px-3 text-xs">
+              <Button onClick={() => openEdit()} className="ur-btn ur-btn-md ur-btn-primary">
                 <Plus className="w-3.5 h-3.5 mr-1.5" /> 새 글 작성
               </Button>
             </div>
@@ -230,41 +230,41 @@ export default function AdminBlogPage() {
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-gray-400" /></div>
         ) : posts.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-2xl border border-gray-200">
+          <div className="text-center py-20 bg-white rounded-[var(--dash-radius,16px)] border border-gray-200">
             <p className="text-gray-400 mb-4">{t('admin.blog.k017', { defaultValue: '작성된 글이 없습니다' })}</p>
-            <Button onClick={() => openEdit()} className="bg-gray-900 hover:bg-gray-900 text-white">
+            <Button onClick={() => openEdit()} className="ur-btn ur-btn-md ur-btn-primary">
               <Plus className="w-4 h-4 mr-2" /> 첫 글 작성하기
             </Button>
           </div>
         ) : (
           <div className="space-y-3">
             {posts.map(post => (
-              <div key={post.id} className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-4 hover:shadow-sm transition-shadow">
+              <div key={post.id} className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-4 hover:border border-rule transition-shadow">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      post.is_published ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                      post.is_published ? 'bg-tone-ok-bg text-tone-ok' : 'bg-gray-100 text-gray-500'
                     }`}>
                       {post.is_published ? t('admin.blog.k014', { defaultValue: '발행됨' }) : t('admin.blog.k018', { defaultValue: '임시저장' })}
                     </span>
                     {/* 📝 AI 초안 배지 — 검토 후 발행 대상 */}
                     {post.ai_generated === 1 && post.is_published !== 1 && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700" title="AI가 생성한 홍보 초안 — 검토 후 발행하세요. 수정하면 '수동편집·보존'으로 바뀝니다">
-                        ✨ AI 초안
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-tone-info-bg text-tone-info" title="AI가 생성한 홍보 초안 — 검토 후 발행하세요. 수정하면 '수동편집·보존'으로 바뀝니다">
+                        AI 초안
                       </span>
                     )}
                     {/* 📝 시드 관리 상태 배지 — 재시드 동작을 관리자가 예측할 수 있게 */}
                     {post.manually_edited === 1 ? (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700" title="관리자가 수정/작성한 글 — 재시드해도 덮어쓰지 않고 보존됩니다">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-tone-warn-bg text-tone-warn" title="관리자가 수정/작성한 글 — 재시드해도 덮어쓰지 않고 보존됩니다">
                         수동편집 · 보존
                       </span>
                     ) : post.is_seed === 1 ? (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700" title="코드 시드가 관리하는 글 — 배포 시 최신 시드 내용으로 자동 갱신됩니다. 여기서 수정하면 '수동편집·보존'으로 바뀝니다">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-tone-info-bg text-tone-info" title="코드 시드가 관리하는 글 — 배포 시 최신 시드 내용으로 자동 갱신됩니다. 여기서 수정하면 '수동편집·보존'으로 바뀝니다">
                         시드 · 자동갱신
                       </span>
                     ) : null}
                     {parseTags(post.tags).slice(0, 3).map(tag => (
-                      <span key={tag} className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded">{tag}</span>
+                      <span key={tag} className="text-[10px] px-1.5 py-0.5 bg-tone-info-bg text-tone-info rounded">{tag}</span>
                     ))}
                   </div>
                   <p className="text-sm font-semibold text-gray-900 truncate">{post.title}</p>
@@ -272,7 +272,7 @@ export default function AdminBlogPage() {
                     {post.author} · {post.published_at
                       ? formatKSTDate(post.published_at)
                       : formatKSTDate(post.created_at)}
-                    {' · '}👁 {(post.view_count ?? 0).toLocaleString()}
+                    {' · '}조회 {(post.view_count ?? 0).toLocaleString()}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -285,7 +285,7 @@ export default function AdminBlogPage() {
                       title={post.is_published ? '공개 블로그 글 보기' : '미리보기 (미발행)'}
                       className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium ${
                         post.is_published
-                          ? 'text-blue-600 bg-blue-50 hover:bg-blue-100'
+                          ? 'text-tone-info bg-tone-info-bg hover:bg-gray-100'
                           : 'text-gray-400 bg-gray-50 hover:bg-gray-100'
                       }`}
                     >
@@ -308,7 +308,7 @@ export default function AdminBlogPage() {
                   </button>
                   <button
                     onClick={() => deletePost(post.id)}
-                    className="p-2 rounded-lg hover:bg-red-50 text-red-400"
+                    className="p-2 rounded-lg hover:bg-gray-100 text-gray-400"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -338,22 +338,22 @@ export default function AdminBlogPage() {
               {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
               임시저장
             </Button>
-            <Button onClick={() => save(true)} disabled={saving} className="bg-gray-900 hover:bg-gray-900 text-white">
+            <Button onClick={() => save(true)} disabled={saving} className="ur-btn ur-btn-md ur-btn-primary">
               {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
               발행하기
             </Button>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
+        <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-6 space-y-5">
           {/* 제목 */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.blog.k021', { defaultValue: '제목' })} <span className="text-red-500">*</span></label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.blog.k021', { defaultValue: '제목' })} <span className="text-tone-bad">*</span></label>
             <input
               value={form.title}
               onChange={e => handleTitleChange(e.target.value)}
               placeholder={t('admin.blog.k022', { defaultValue: "블로그 글 제목" })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl text-base text-gray-900 font-semibold focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl text-base text-gray-900 font-semibold focus:ring-2 focus:ring-blue-500 focus:border-brand"
             />
           </div>
 
@@ -366,7 +366,7 @@ export default function AdminBlogPage() {
                 value={form.slug}
                 onChange={e => setForm(f => ({ ...f, slug: e.target.value }))}
                 placeholder="url-friendly-slug"
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 font-mono focus:ring-2 focus:ring-blue-500 focus:border-brand"
               />
             </div>
           </div>
@@ -380,7 +380,7 @@ export default function AdminBlogPage() {
               placeholder={t('admin.blog.k025', { defaultValue: "검색 결과와 소셜 미리보기에 표시될 요약 (150자 이내 권장)" })}
               rows={2}
               maxLength={300}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand resize-none"
             />
             <p className="text-xs text-gray-400 mt-1 text-right">{form.summary.length}/300</p>
           </div>
@@ -392,7 +392,7 @@ export default function AdminBlogPage() {
               value={form.tagsInput}
               onChange={e => setForm(f => ({ ...f, tagsInput: e.target.value }))}
               placeholder={t('admin.blog.k027', { defaultValue: "셀러, 라이브방송, 팁  (콤마로 구분)" })}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand"
             />
           </div>
 
@@ -403,7 +403,7 @@ export default function AdminBlogPage() {
               value={form.author}
               onChange={e => setForm(f => ({ ...f, author: e.target.value }))}
               placeholder={t('admin.blog.k001', { defaultValue: "유어딜 팀" })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand"
             />
           </div>
 
@@ -421,7 +421,7 @@ export default function AdminBlogPage() {
         </div>
 
         {/* 본문 에디터 — 작성/미리보기 탭(미리보기 = 공개 페이지와 동일 렌더러) */}
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 overflow-hidden">
           <div className="flex items-center gap-1 px-4 py-2.5 border-b border-gray-100 bg-gray-50">
             <button type="button" onClick={() => setPreview(false)}
               className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${!preview ? 'bg-white border border-gray-200 text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
@@ -471,7 +471,7 @@ export default function AdminBlogPage() {
             {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
             임시저장
           </Button>
-          <Button onClick={() => save(true)} disabled={saving} className="bg-gray-900 hover:bg-gray-900 text-white px-6">
+          <Button onClick={() => save(true)} disabled={saving} className="ur-btn ur-btn-md ur-btn-primary">
             {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
             발행하기
           </Button>

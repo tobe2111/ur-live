@@ -51,9 +51,9 @@ interface DeliveryStats { abandoned: number; pending: number; succeeded: number 
 const EMPTY_DELIVERY = { items: [], stats: { abandoned: 0, pending: 0, succeeded: 0 } }
 
 const SEVERITY_BADGE: Record<string, string> = {
-  warning: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-  error: 'bg-red-100 text-red-700 border-red-200',
-  critical: 'bg-purple-100 text-purple-700 border-purple-200',
+  warning: 'bg-white text-tone-warn border-rule',
+  error: 'bg-white text-tone-bad border-rule',
+  critical: 'bg-white text-gray-700 border-rule',
 }
 
 // 🔔 2026-07-01: 알림 채널별 설정 키(모두 있어야 해당 채널 발송 동작). /api/version 존재여부로 판정.
@@ -195,21 +195,21 @@ export default function AdminSystemMonitoringPage() {
                 return (
                   <span key={label}
                     className={`px-2.5 py-1 rounded-full text-xs font-bold border ${
-                      ok ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'
+                      ok ? 'bg-tone-ok-bg text-tone-ok border-transparent' : 'bg-tone-bad-bg text-tone-bad border-transparent'
                     }`}>
-                    {ok ? '✓' : '✕'} {label}
+                    {ok ? 'O' : 'X'} {label}
                   </span>
                 )
               })}
               <div className="flex-1" />
               <button onClick={sendTestPush} disabled={testing}
-                className="px-3 py-2 bg-gray-900 text-white rounded-lg text-xs font-semibold flex items-center gap-1 disabled:opacity-50">
+                className="ur-btn ur-btn-md ur-btn-primary flex items-center gap-1 disabled:opacity-50">
                 {testing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Activity className="w-3 h-3" />}
                 나에게 테스트 푸시
               </button>
             </div>
             <p className="text-[11px] text-gray-500 mt-2">
-              ✕ 채널은 Cloudflare에 키 미설정으로 조용히 발송되지 않습니다. 테스트 푸시는 이 브라우저에서 알림을 켠 뒤 눌러야 도달합니다.
+              채널은 Cloudflare에 키 미설정으로 조용히 발송되지 않습니다. 테스트 푸시는 이 브라우저에서 알림을 켠 뒤 눌러야 도달합니다.
             </p>
           </DashboardCard>
         )}
@@ -218,7 +218,7 @@ export default function AdminSystemMonitoringPage() {
         <div className="flex gap-2">
           <button onClick={() => setTab('cron')}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition ${
-              tab === 'cron' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'
+              tab === 'cron' ? 'bg-brand text-white' : 'bg-white border border-gray-200 text-gray-600'
             }`}>
             <AlertTriangle className="w-4 h-4" /> Cron 실패
             {cronCounts.reduce((s, c) => s + c.cnt, 0) > 0 && tab !== 'cron' && (
@@ -229,7 +229,7 @@ export default function AdminSystemMonitoringPage() {
           </button>
           <button onClick={() => setTab('alimtalk')}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition ${
-              tab === 'alimtalk' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'
+              tab === 'alimtalk' ? 'bg-brand text-white' : 'bg-white border border-gray-200 text-gray-600'
             }`}>
             <MessageSquare className="w-4 h-4" /> 알림톡 실패
             {alimtalkStats.pending + alimtalkStats.abandoned > 0 && tab !== 'alimtalk' && (
@@ -240,20 +240,20 @@ export default function AdminSystemMonitoringPage() {
           </button>
           <button onClick={() => setTab('delivery')}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition ${
-              tab === 'delivery' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'
+              tab === 'delivery' ? 'bg-brand text-white' : 'bg-white border border-gray-200 text-gray-600'
             }`}>
             <Bell className="w-4 h-4" /> 푸시·이메일 실패
           </button>
           <button onClick={() => setTab('ops')}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition ${
-              tab === 'ops' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'
+              tab === 'ops' ? 'bg-brand text-white' : 'bg-white border border-gray-200 text-gray-600'
             }`}>
             <Gauge className="w-4 h-4" /> 게이트·하트비트
           </button>
           {/* 🩹 2026-08-31: 잔액 정비 — 도구를 API 로만 만들어 두면 "사람이 누른다" 가 성립하지 않는다. */}
           <button onClick={() => setTab('points')}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition ${
-              tab === 'points' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'
+              tab === 'points' ? 'bg-brand text-white' : 'bg-white border border-gray-200 text-gray-600'
             }`}>
             <Wrench className="w-4 h-4" /> 딜 잔액 정비
           </button>
@@ -290,15 +290,15 @@ export default function AdminSystemMonitoringPage() {
             <div className="grid grid-cols-3 gap-2 text-center">
               <div>
                 <p className="text-xs text-gray-500">7일 성공</p>
-                <p className="text-lg font-bold text-green-600">{alimtalkStats.succeeded}</p>
+                <p className="text-lg font-bold text-tone-ok">{alimtalkStats.succeeded}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">대기 중</p>
-                <p className="text-lg font-bold text-amber-600">{alimtalkStats.pending}</p>
+                <p className="text-lg font-bold text-tone-warn">{alimtalkStats.pending}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">포기됨 (max 3회 초과)</p>
-                <p className="text-lg font-bold text-red-600">{alimtalkStats.abandoned}</p>
+                <p className="text-lg font-bold text-tone-bad">{alimtalkStats.abandoned}</p>
               </div>
             </div>
           </DashboardCard>
@@ -311,9 +311,9 @@ export default function AdminSystemMonitoringPage() {
                 <div key={label} className="text-center">
                   <p className="text-xs font-bold text-gray-700 mb-1">{label} (7일)</p>
                   <div className="grid grid-cols-3 gap-1">
-                    <div><p className="text-[10px] text-gray-500">복구</p><p className="text-sm font-bold text-green-600">{s.succeeded}</p></div>
-                    <div><p className="text-[10px] text-gray-500">대기</p><p className="text-sm font-bold text-amber-600">{s.pending}</p></div>
-                    <div><p className="text-[10px] text-gray-500">포기</p><p className="text-sm font-bold text-red-600">{s.abandoned}</p></div>
+                    <div><p className="text-[10px] text-gray-500">복구</p><p className="text-sm font-bold text-tone-ok">{s.succeeded}</p></div>
+                    <div><p className="text-[10px] text-gray-500">대기</p><p className="text-sm font-bold text-tone-warn">{s.pending}</p></div>
+                    <div><p className="text-[10px] text-gray-500">포기</p><p className="text-sm font-bold text-tone-bad">{s.abandoned}</p></div>
                   </div>
                 </div>
               ))}
@@ -329,7 +329,7 @@ export default function AdminSystemMonitoringPage() {
           <DashboardCard className="!p-3">
             <p className="text-xs font-semibold text-gray-700 mb-2">템플릿별 진단 (미해결 기준)</p>
             <p className="text-[11px] text-gray-500 mb-2 leading-snug">
-              ⚠️ <b>미등록</b> 템플릿이 반복 실패하면 Aligo 콘솔에 해당 <code>tpl_code</code>로 템플릿을 등록·승인해야 합니다.
+              <b>미등록</b> 템플릿이 반복 실패하면 Aligo 콘솔에 해당 <code>tpl_code</code>로 템플릿을 등록·승인해야 합니다.
               (알림톡엔 SMS 폴백이 없어 그동안 해당 알림은 전달되지 않고 인앱/푸시로만 도달합니다.)
             </p>
             <div className="space-y-1">
@@ -338,9 +338,9 @@ export default function AdminSystemMonitoringPage() {
                   <div className="flex items-center gap-1.5 min-w-0">
                     <code className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-700 shrink-0">{t.template_code}</code>
                     {t.registered ? (
-                      <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded shrink-0">등록됨</span>
+                      <span className="text-[10px] bg-tone-ok-bg text-tone-ok px-1.5 py-0.5 rounded shrink-0">등록됨</span>
                     ) : (
-                      <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded shrink-0">미등록</span>
+                      <span className="text-[10px] bg-tone-bad-bg text-tone-bad px-1.5 py-0.5 rounded shrink-0">미등록</span>
                     )}
                     {t.last_error && <span className="text-gray-400 truncate">{t.last_error}</span>}
                   </div>
@@ -354,7 +354,7 @@ export default function AdminSystemMonitoringPage() {
         {/* 목록 */}
         {tab === 'points' ? <PointsRepairTab /> : tab === 'ops' ? <OpsStatusTab /> : loading ? <DashboardLoading /> : tab === 'cron' ? (
           cronFailures.length === 0 ? (
-            <DashboardEmptyState icon={<CheckCircle2 className="h-7 w-7 text-green-500" />} title={showResolved ? '해결된 실패 없음' : '🎉 미해결 cron 실패 없음'} />
+            <DashboardEmptyState icon={<CheckCircle2 className="h-7 w-7 text-tone-ok" />} title={showResolved ? '해결된 실패 없음' : '미해결 cron 실패 없음'} />
           ) : (
             <div className="space-y-2">
               {cronFailures.map(f => (
@@ -372,7 +372,7 @@ export default function AdminSystemMonitoringPage() {
                     </div>
                     {!f.resolved && (
                       <button onClick={() => resolveCron(f.id)} disabled={acting === f.id}
-                        className="shrink-0 px-3 py-1.5 bg-green-100 text-green-700 rounded text-[11px] font-bold disabled:opacity-50">
+                        className="shrink-0 px-3 py-1.5 bg-tone-ok-bg text-tone-ok rounded text-[11px] font-bold disabled:opacity-50">
                         {acting === f.id ? <Loader2 className="w-3 h-3 animate-spin" /> : '해결'}
                       </button>
                     )}
@@ -383,7 +383,7 @@ export default function AdminSystemMonitoringPage() {
           )
         ) : tab === 'delivery' ? (
           deliveryPush.items.length === 0 && deliveryEmail.items.length === 0 ? (
-            <DashboardEmptyState icon={<CheckCircle2 className="h-7 w-7 text-green-500" />} title={showResolved ? '복구된 발송 없음' : '🎉 미해결 푸시·이메일 실패 없음'} />
+            <DashboardEmptyState icon={<CheckCircle2 className="h-7 w-7 text-tone-ok" />} title={showResolved ? '복구된 발송 없음' : '미해결 푸시·이메일 실패 없음'} />
           ) : (
             <div className="space-y-2">
               {deliveryPush.items.map(f => (
@@ -394,7 +394,7 @@ export default function AdminSystemMonitoringPage() {
                         <span className="text-[10px] bg-brand-tint text-brand-text px-1.5 py-0.5 rounded font-bold shrink-0">웹푸시</span>
                         <p className="text-sm font-bold text-gray-900 truncate">{f.title}</p>
                         <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0 ${
-                          f.retry_count >= f.max_retries && !f.resolved ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                          f.retry_count >= f.max_retries && !f.resolved ? 'bg-tone-bad-bg text-tone-bad' : 'bg-tone-warn-bg text-tone-warn'
                         }`}>{f.retry_count}/{f.max_retries}회</span>
                       </div>
                       <p className="text-xs text-gray-600 line-clamp-2">{f.body}</p>
@@ -404,7 +404,7 @@ export default function AdminSystemMonitoringPage() {
                     </div>
                     {!f.resolved && (
                       <button onClick={() => retryDelivery('push', f.id)} disabled={acting === f.id}
-                        className="shrink-0 px-3 py-1.5 bg-blue-100 text-blue-700 rounded text-[11px] font-bold disabled:opacity-50">
+                        className="shrink-0 px-3 py-1.5 bg-tone-info-bg text-tone-info rounded text-[11px] font-bold disabled:opacity-50">
                         {acting === f.id ? <Loader2 className="w-3 h-3 animate-spin" /> : '즉시 재시도'}
                       </button>
                     )}
@@ -416,19 +416,19 @@ export default function AdminSystemMonitoringPage() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-bold shrink-0">이메일</span>
+                        <span className="text-[10px] bg-tone-info-bg text-tone-info px-1.5 py-0.5 rounded font-bold shrink-0">이메일</span>
                         <p className="text-sm font-bold text-gray-900 truncate">{f.subject}</p>
                         <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0 ${
-                          f.retry_count >= f.max_retries && !f.resolved ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                          f.retry_count >= f.max_retries && !f.resolved ? 'bg-tone-bad-bg text-tone-bad' : 'bg-tone-warn-bg text-tone-warn'
                         }`}>{f.retry_count}/{f.max_retries}회</span>
                       </div>
                       <p className="text-xs text-gray-600 truncate">{f.recipient}</p>
-                      {f.error && <p className="text-[10px] text-red-500 mt-1">에러: {f.error}</p>}
+                      {f.error && <p className="text-[10px] text-tone-bad mt-1">에러: {f.error}</p>}
                       <p className="text-[10px] text-gray-400 mt-1">{formatKST(f.created_at)}</p>
                     </div>
                     {!f.resolved && (
                       <button onClick={() => retryDelivery('email', f.id)} disabled={acting === f.id}
-                        className="shrink-0 px-3 py-1.5 bg-blue-100 text-blue-700 rounded text-[11px] font-bold disabled:opacity-50">
+                        className="shrink-0 px-3 py-1.5 bg-tone-info-bg text-tone-info rounded text-[11px] font-bold disabled:opacity-50">
                         {acting === f.id ? <Loader2 className="w-3 h-3 animate-spin" /> : '즉시 재시도'}
                       </button>
                     )}
@@ -439,7 +439,7 @@ export default function AdminSystemMonitoringPage() {
           )
         ) : (
           alimtalkFailures.length === 0 ? (
-            <DashboardEmptyState icon={<CheckCircle2 className="h-7 w-7 text-green-500" />} title={showResolved ? '성공한 발송 없음' : '🎉 미해결 알림톡 실패 없음'} />
+            <DashboardEmptyState icon={<CheckCircle2 className="h-7 w-7 text-tone-ok" />} title={showResolved ? '성공한 발송 없음' : '미해결 알림톡 실패 없음'} />
           ) : (
             <div className="space-y-2">
               {alimtalkFailures.map(f => {
@@ -452,20 +452,20 @@ export default function AdminSystemMonitoringPage() {
                           <p className="text-sm font-mono text-gray-900">{f.phone}</p>
                           <span className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">{f.template_code}</span>
                           <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
-                            abandoned ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                            abandoned ? 'bg-tone-bad-bg text-tone-bad' : 'bg-tone-warn-bg text-tone-warn'
                           }`}>
                             {f.retry_count}/{f.max_retries}회
                           </span>
                         </div>
                         <p className="text-xs text-gray-600 line-clamp-2">{f.message}</p>
-                        {f.error && <p className="text-[10px] text-red-500 mt-1">에러: {f.error}</p>}
+                        {f.error && <p className="text-[10px] text-tone-bad mt-1">에러: {f.error}</p>}
                         <p className="text-[10px] text-gray-400 mt-1">
                           생성: {formatKST(f.created_at)} · 다음 시도: {new Date(f.next_retry_at).toLocaleString('ko-KR')}
                         </p>
                       </div>
                       {!f.resolved && (
                         <button onClick={() => retryAlimtalk(f.id)} disabled={acting === f.id}
-                          className="shrink-0 px-3 py-1.5 bg-blue-100 text-blue-700 rounded text-[11px] font-bold disabled:opacity-50">
+                          className="shrink-0 px-3 py-1.5 bg-tone-info-bg text-tone-info rounded text-[11px] font-bold disabled:opacity-50">
                           {acting === f.id ? <Loader2 className="w-3 h-3 animate-spin" /> : '즉시 재시도'}
                         </button>
                       )}

@@ -33,10 +33,12 @@ import { enclosingTagName, BUTTONISH } from '../lib/jsx-enclosing-tag.mjs'
 
 const WRITE = process.argv.includes('--write')
 
-const files = execSync(
-  "git ls-files ':(glob)src/pages/Seller*.tsx' ':(glob)src/components/seller/**/*.tsx' ':(glob)src/pages/seller-*/**/*.tsx'",
-  { encoding: 'utf-8' },
-).trim().split('\n').filter(Boolean)
+// 🧮 2026-09-15: `--scope=admin` 으로 어드민 표면도 같은 규칙(대표 "다른 대시보드들도"). 기본은 셀러.
+const SCOPE = (process.argv.find((a) => a.startsWith('--scope=')) || '--scope=seller').slice(8)
+const GLOB = SCOPE === 'admin'
+  ? "':(glob)src/pages/Admin*.tsx' ':(glob)src/pages/admin/**/*.tsx' ':(glob)src/components/admin/**/*.tsx'"
+  : "':(glob)src/pages/Seller*.tsx' ':(glob)src/components/seller/**/*.tsx' ':(glob)src/pages/seller-*/**/*.tsx'"
+const files = execSync(`git ls-files ${GLOB}`, { encoding: 'utf-8' }).trim().split('\n').filter(Boolean)
 
 /** 걷어낼 토큰 — 버튼의 *생김새* 결정분. 변형(hover: 등) 포함. */
 const STRIP = /^(?:[a-z-]+:)*(?:bg-(?:gray-900|gray-800|black|brand|brand-dark)|text-white|rounded-(?:sm|md|lg|xl|2xl|3xl|full)|text-(?:xs|sm|base)|font-(?:medium|semibold|bold|extrabold|black)|h-(?:8|9|10|11|12)|px-[\d.]+|py-[\d.]+)$/

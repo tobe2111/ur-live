@@ -55,11 +55,11 @@ export default function SendModeButtons<T extends QueueLead>({ leads, selectedId
 
   return (
     <>
-      <button onClick={openToday} disabled={today.loading} className="px-4 py-2 rounded-lg border border-emerald-300 bg-emerald-600 text-white text-sm font-semibold disabled:opacity-50" title="서버가 '지금 열 수 있고 · 아직 접촉 안 했고 · 점수 높은' 순으로 골라줍니다 — 누구부터 보낼지 고민할 필요 없이 바로 시작">
-        {today.loading ? '큐 준비 중…' : `🎯 오늘 보낼 ${TODAY_N}명`}
+      <button onClick={openToday} disabled={today.loading} className="ur-btn ur-btn-md ur-btn-primary border border-rule disabled:opacity-50" title="서버가 '지금 열 수 있고 · 아직 접촉 안 했고 · 점수 높은' 순으로 골라줍니다 — 누구부터 보낼지 고민할 필요 없이 바로 시작">
+        {today.loading ? '큐 준비 중…' : `오늘 보낼 ${TODAY_N}명`}
       </button>
-      <button onClick={openFiltered} disabled={!leads.length} className="px-4 py-2 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 text-sm font-medium disabled:opacity-50" title="현재 필터의 리드를 한 명씩 넘기며 원클릭 발송(Enter) — 자동 발송 아님, 사람이 직접 보냄">
-        🚀 발송 모드{selectedIds.size ? ` (선택 ${selectedIds.size})` : ` (${leads.length})`}
+      <button onClick={openFiltered} disabled={!leads.length} className="px-4 py-2 rounded-lg border border-rule bg-white text-tone-ok text-sm font-medium disabled:opacity-50" title="현재 필터의 리드를 한 명씩 넘기며 원클릭 발송(Enter) — 자동 발송 아님, 사람이 직접 보냄">
+        발송 모드{selectedIds.size ? ` (선택 ${selectedIds.size})` : ` (${leads.length})`}
       </button>
       {queue && <SendQueueModal leads={queue} onReach={onReach} onClose={() => { setQueue(null); today.reset() }} />}
     </>

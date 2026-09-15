@@ -68,7 +68,7 @@ export default function AdminProspectsPage() {
       <div className="min-h-screen bg-gray-50 pb-24">
         <header className="sticky top-0 z-20 bg-white border-b border-gray-200">
           <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-            <h1 className="text-lg font-bold text-gray-900">🤝 영업 prospects ({prospects.length})</h1>
+            <h1 className="text-lg font-bold text-gray-900">영업 prospects ({prospects.length})</h1>
             <Link to="/admin" className="text-xs text-gray-500">← admin</Link>
           </div>
           <div className="max-w-5xl mx-auto px-4 pb-3 flex gap-2">
@@ -95,8 +95,8 @@ export default function AdminProspectsPage() {
                 {topIntroducers.map(([key, count]) => {
                   const [type, id] = key.split(':')
                   return (
-                    <span key={key} className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-[11px] font-bold">
-                      {type === 'agency' ? '🏢' : '🎤'} {id}: {count}건
+                    <span key={key} className="px-2 py-1 bg-tone-info-bg text-tone-info rounded text-[11px] font-bold">
+                      {type === 'agency' ? '대행사' : '인플루언서'} {id}: {count}건
                     </span>
                   )
                 })}
@@ -110,13 +110,12 @@ export default function AdminProspectsPage() {
             <div className="text-center py-12 text-gray-400 text-sm">로딩 중...</div>
           ) : prospects.length === 0 ? (
             <div className="text-center py-16">
-              <p className="text-4xl mb-3">📋</p>
               <p className="text-sm text-gray-500">{STATUS_META[status].label} prospects 없음</p>
             </div>
           ) : (
             prospects.map((p) => {
               const meta = STATUS_META[p.status]
-              const introducerLabel = '🎤 영입자'
+              const introducerLabel = '영입자'
               return (
                 <div key={p.id} className="bg-white rounded-xl border border-gray-200 p-4">
                   <div className="flex items-start justify-between gap-3 mb-2">
@@ -134,11 +133,11 @@ export default function AdminProspectsPage() {
 
                   <div className="flex items-center gap-2 text-[11px] text-gray-600 mb-2">
                     <span>{introducerLabel} #{p.introducer_id}</span>
-                    {p.business_address && <span>· 📍 {p.business_address}</span>}
+                    {p.business_address && <span>· {p.business_address}</span>}
                   </div>
 
                   {p.notes && (
-                    <p className="text-[11px] text-gray-500 italic mb-2">💬 {p.notes}</p>
+                    <p className="text-[11px] text-gray-500 italic mb-2">{p.notes}</p>
                   )}
 
                   {p.proof_image_url && (
@@ -151,9 +150,9 @@ export default function AdminProspectsPage() {
                     <div className="mt-2 pt-2 border-t border-gray-100 text-[11px]">
                       <span className="text-gray-600">셀러 #{p.converted_seller_id}</span>
                       {p.first_sale_at ? (
-                        <span className="ml-2 text-green-600 font-bold">✅ 첫 매출 {new Date(p.first_sale_at).toLocaleDateString('ko-KR')} — commission 활성</span>
+                        <span className="ml-2 text-tone-ok font-bold">첫 매출 {new Date(p.first_sale_at).toLocaleDateString('ko-KR')} — commission 활성</span>
                       ) : (
-                        <span className="ml-2 text-amber-600">⏳ 첫 매출 대기</span>
+                        <span className="ml-2 text-tone-warn">첫 매출 대기</span>
                       )}
                     </div>
                   )}
