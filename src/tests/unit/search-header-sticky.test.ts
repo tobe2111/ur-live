@@ -1,10 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { stripComments as codeOnly } from '../helpers/source-text'
 
-/** 주석 제거 — 배선은 **코드**에 있어야 한다(설명만 남아도 통과하는 함정 차단). */
-const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
-const read = (p: string) => strip(readFileSync(join(process.cwd(), p), 'utf8'))
+/** 주석 제거 — 배선은 **코드**에 있어야 한다(설명만 남아도 통과하는 함정 차단).
+ *  ⚠️ 자체 제거기를 손으로 짜지 않는다: 순진한 정규식은 **문자열 안의 `/*`** 에 물려 소스를
+ *  통째로 날려 버리고, 그러면 이 테스트는 빈 문자열을 검사하며 조용히 통과한다(`check-comment-stripper`). */
+const read = (p: string) => codeOnly(readFileSync(join(process.cwd(), p), 'utf8'))
 
 const HEADER = read('src/components/search/SearchHeader.tsx')
 const NAV = read('src/components/main/DesktopTopNav.tsx')
