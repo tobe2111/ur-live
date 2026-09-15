@@ -15,7 +15,9 @@ import { SELLER_SEARCH_ONLY, NAV_GROUPS } from '@/components/seller/seller-nav'
 
 const LAYOUT = readFileSync('src/components/SellerLayout.tsx', 'utf8')
 /** 주석 제거본 — 설명 주석에 남은 이름을 배선으로 세면 가짜 초록이 된다(오늘만 네 번째로 겪었다). */
-const LAYOUT_CODE = LAYOUT.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+// 📱 2026-09-14: 색인 계산은 `useSellerNavModel`(SSOT)로 이동 — 레이아웃은 그리기만 한다.
+const MODEL = readFileSync('src/components/seller-layout/useSellerNavModel.ts', 'utf8')
+const LAYOUT_CODE = MODEL.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 const ADMIN = readFileSync('src/components/AdminLayout.tsx', 'utf8')
 const ROUTES = readFileSync('src/routes/seller.routes.tsx', 'utf8')
 const PALETTE = 'src/components/dashboard/CommandPalette.tsx'

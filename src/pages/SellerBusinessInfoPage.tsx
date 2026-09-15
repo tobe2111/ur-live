@@ -366,7 +366,7 @@ export default function SellerBusinessInfoPage() {
   if (loading) {
     return (
       <SellerLayout title={t('seller.businessInfoManagement')}>
-        <div className="mx-auto max-w-4xl p-4 sm:p-6 lg:p-8">
+        <div className="mx-auto max-w-5xl">
           <DashboardLoading text={t('common.loading', { defaultValue: '불러오는 중...' })} />
         </div>
       </SellerLayout>
@@ -375,7 +375,7 @@ export default function SellerBusinessInfoPage() {
 
   return (
     <SellerLayout title={t('seller.businessInfoManagement')}>
-      <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-6">
         {/* 🛡️ 2026-04-22 배치 128: 디자인 시스템 적용 */}
         <DashboardPageHeader
           title={t('seller.businessInfoManagement')}

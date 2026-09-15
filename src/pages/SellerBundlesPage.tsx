@@ -107,7 +107,7 @@ export default function SellerBundlesPage() {
   return (
     <SellerLayout title={t('seller.nav.bundles', '번들 상품')}>
       <SellerProductTabs />
-      <div className="mx-auto max-w-3xl space-y-5 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-5">
         <DashboardPageHeader
           title={t('seller.nav.bundles', '번들 상품')}
           subtitle={t('seller.bundlesSubtitle', '여러 상품을 묶어 세트 할인 판매')}

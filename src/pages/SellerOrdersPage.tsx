@@ -327,19 +327,16 @@ export default function SellerOrdersPage() {
 
   return (
     <SellerLayout title={t('seller.orders')}>
-      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
-        {/* 🛡️ 2026-04-22 배치 129: 디자인 시스템 적용 */}
+      <div className="mx-auto max-w-5xl space-y-5">
+        {/* 📱 2026-09-14 M3: 폰에선 제목·CSV·필터를 접는다 — 타임라인 세그먼트가 그 일을 한다. */}
+        <div className="hidden md:block space-y-5">
         <DashboardPageHeader
           title={t('seller.orders')}
           subtitle={t('seller.totalFiltered', { total: orders.length, filtered: filteredOrders.length })}
           icon={<Package className="h-5 w-5" />}
           actions={
-            <Button
-              onClick={exportToCSV}
-              className="ur-btn ur-btn-md ur-btn-primary"
-            >
-              <Download className="mr-1.5 h-3.5 w-3.5" />
-              {t('seller.csvDownload')}
+            <Button onClick={exportToCSV} className="ur-btn ur-btn-md ur-btn-primary">
+              <Download className="mr-1.5 h-3.5 w-3.5" />{t('seller.csvDownload')}
             </Button>
           }
         />
@@ -437,13 +434,15 @@ export default function SellerOrdersPage() {
           </div>
         )}
 
+        </div>
+
         {/* Loading */}
         {loading ? (
           <BrandLoader />
         ) : (
           <>
             {/* 📱 모바일 — 카드 뷰(시안 화면 C). PC 표는 아래 그대로 유지한다. */}
-            <MobileOrderList orders={filteredOrders} onSelect={viewOrderDetail} />
+            <MobileOrderList orders={filteredOrders} onSelect={viewOrderDetail} onConfirm={(o) => handleStatusChange(o.order_number, 'PREPARING')} confirming={updating} />
 
             {/* Orders List — 🖥️ PC 표(의뢰서 §5.3 "사장님 대시보드는 PC 에서 넓게") */}
             <div className="hidden md:block bg-white rounded-lg shadow-sm border">

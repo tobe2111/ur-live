@@ -167,7 +167,7 @@ export default function SellerYoutubeGrowthPage() {
 
   return (
     <SellerLayout title={t('seller.youtubeGrowth')}>
-      <div className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-6">
         {/* 🛡️ 2026-04-22 배치 131: 디자인 시스템 적용 */}
         <DashboardPageHeader
           title={t('seller.youtubeGrowth')}

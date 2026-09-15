@@ -130,7 +130,7 @@ export default function SellerStaysBookingsPage() {
 
   return (
     <SellerLayout title="숙소 예약 관리">
-      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-6">
         <DashboardPageHeader
           title="숙소 예약 관리"
           subtitle="KPI 분석 + 예약 처리 (체크인 / 체크아웃 / 노쇼)"

@@ -159,7 +159,7 @@ export default function SellerMiniShopPage() {
 
   return (
     <SellerLayout title="유어샵 설정">
-      <div className="mx-auto max-w-2xl space-y-5 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-5">
         <DashboardPageHeader
           title="유어샵 설정"
           subtitle="셀러 페이지를 본인 브랜드에 맞게 커스터마이징"

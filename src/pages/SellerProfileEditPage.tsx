@@ -343,7 +343,7 @@ export default function SellerProfileEditPage() {
   if (loading) {
     return (
       <SellerLayout title={t('seller.profileEdit')}>
-        <div className="mx-auto max-w-[980px] p-4 sm:p-6 lg:p-8">
+        <div className="mx-auto max-w-5xl">
           <DashboardLoading text={t('seller.profileLoading')} />
         </div>
       </SellerLayout>
@@ -352,7 +352,7 @@ export default function SellerProfileEditPage() {
 
   return (
     <SellerLayout title={t('seller.profileEdit')}>
-      <div className="mx-auto max-w-[980px] space-y-6 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-6">
         {/* 🛡️ 2026-04-22 배치 129: 디자인 시스템 적용 */}
         <DashboardPageHeader
           title={t('seller.profileEdit')}

@@ -20,7 +20,7 @@ export default function SellerVoucherScanPage() {
   return (
     <SellerLayout title={t('seller.scan.title', { defaultValue: '바우처 스캔' })}>
       {/* 🎟️ 2026-09-03 대표 — 이용권 일을 한 페이지처럼: nav 는 하나, 여기서 탭 이동. */}
-      <div className="mx-auto max-w-xl space-y-4 p-4 sm:p-6">
+      <div className="mx-auto max-w-5xl space-y-4">
         <DashboardPageHeader
           icon={<Camera className="w-5 h-5" />}
           title={t('seller.scan.title', { defaultValue: '바우처 스캔' })}
