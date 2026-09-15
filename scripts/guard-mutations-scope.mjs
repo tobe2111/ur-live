@@ -23,13 +23,41 @@
  * 특히 매니페스트를 고치는 PR 은 항상 전수여야 **새로 넣은 주입이 그 PR 에서 검증된다.**
  */
 export const ALWAYS_FULL = [
-  'scripts/',                        // 가드 스크립트 자신(매니페스트 · 이 파일 포함)
+  // 🔎 **판정 자신**. 이게 바뀌면 무엇이 어떻게 판정될지 모른다.
+  'scripts/guard-mutations-scope.mjs',
+  'scripts/guard-mutations-manifest-diff.mjs',
   'package.json',
   'package-lock.json',
   'vitest.config',
   '.github/workflows/verify.yml',
   'src/tests/helpers/',              // 여러 테스트가 함께 쓰는 소스 리더
 ]
+
+/**
+ * 🩸 **2026-09-15 — 여기 `'scripts/'` 한 줄이 있었고, 그게 CI 의 92% 를 느린 길로 보냈다.**
+ *
+ * 실측(Verify 최근 100 run · 머지 PR 25건): 성공 run 중앙값 **55.9분** vs 좁혀 돈 run **12.1분**.
+ * 그런데 **25건 중 23건이 전수**였고, 이유를 세어 보니 —
+ *   `check-guard-mutations.mjs` 를 건드림 **11건** · 판정과 무관한 `*-baseline.json`·`live-shot.mjs`·
+ *   `install-git-hooks.sh` **6건** · `scripts/mutations/*.mjs` **3건**.
+ *
+ * 즉 `CLAUDE.md` 가 요구하는 *"새 가드를 만들면 주입을 한 줄 추가하라"* 를 **지킬수록 느려졌다.**
+ * 규칙을 지키는 행위가 40분 벌금을 물리는 구조였고, 그래서 이 줄을 걷어냈다.
+ *
+ * ⚠️ 대신 **좁힌 만큼을 두 가지가 메운다**:
+ *   ① 러너·매니페스트 변경은 `guardRunnerScope`(아래)가 **base 와 head 의 주입 목록을 실제로 비교**해
+ *      바뀐 주입만 고른다. 로직이 바뀌었으면 전수로 떨어진다.
+ *   ② 그 밖의 `scripts/*` 변경은 **하위 프로세스를 띄우는 테스트**(실측 14개)를 쓰는 주입을 함께 고른다 —
+ *      그 테스트들은 가드 스크립트를 직접 돌려서, 주입의 `file`·`test` 가 diff 에 없어도 판정이 달라진다.
+ *   ③ 그리고 전수는 `guard-mutations-full.yml`(main push + 야간)이 여전히 돈다.
+ */
+export const GUARD_RUNNER = 'scripts/check-guard-mutations.mjs'
+
+/** `scripts/` 안에서 **주입 판정에 닿을 수 있는** 변경인가(러너·매니페스트 제외). */
+export function touchesGuardScripts(files) {
+  const list = files ? [...files] : []
+  return list.some((f) => f.startsWith('scripts/') && f !== GUARD_RUNNER && !f.startsWith('scripts/mutations/'))
+}
 
 /**
  * 순수 — 바뀐 파일 집합을 보고 **전수로 돌 사유**를 돌려준다(좁혀도 되면 `null`).

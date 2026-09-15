@@ -2597,7 +2597,11 @@
       "noContact": "Sin teléfono del local — añadir",
       "pinWarn": "En 7 días hubo más errores de PIN ({{errors}}) que aciertos ({{ok}}). Revisa el PIN entregado al local.",
       "deleteConfirm": "¿Eliminar el cupón '{{name}}'?\nLos cupones ya emitidos siguen siendo válidos; solo se detienen las ventas nuevas.",
-      "deleteFailed": "Error al eliminar"
+      "deleteFailed": "Error al eliminar",
+      "deletedSeg": "Eliminados",
+      "restore": "Restaurar",
+      "restored": "El cupón vuelve a estar a la venta",
+      "deletedNote": "Solo se detuvieron las nuevas ventas. Los cupones ya emitidos siguen siendo válidos."
     },
     "ordersM3": {
       "today": "Hoy",

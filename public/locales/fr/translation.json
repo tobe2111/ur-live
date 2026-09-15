@@ -2597,7 +2597,11 @@
       "noContact": "Téléphone du commerce manquant — ajouter",
       "pinWarn": "Sur 7 jours, les erreurs de PIN ({{errors}}) dépassent les succès ({{ok}}). Vérifiez le PIN remis au commerce.",
       "deleteConfirm": "Supprimer le bon '{{name}}' ?\nLes bons déjà émis restent utilisables ; seules les nouvelles ventes s'arrêtent.",
-      "deleteFailed": "Échec de la suppression"
+      "deleteFailed": "Échec de la suppression",
+      "deletedSeg": "Supprimés",
+      "restore": "Restaurer",
+      "restored": "Le bon est de nouveau en vente",
+      "deletedNote": "Seules les nouvelles ventes sont arrêtées. Les bons déjà émis restent utilisables."
     },
     "ordersM3": {
       "today": "Aujourd'hui",

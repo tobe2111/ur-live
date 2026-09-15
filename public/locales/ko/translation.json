@@ -3278,7 +3278,11 @@
       "noContact": "식당 연락처 미등록 — 등록하기",
       "pinWarn": "최근 7일 PIN 오류 {{errors}}건이 성공 {{ok}}건보다 많아요. 가게에 안내된 PIN 을 확인해 주세요.",
       "deleteConfirm": "'{{name}}' 이용권을 삭제할까요?\n이미 발급된 이용권은 그대로 사용할 수 있고, 새 판매만 중단됩니다.",
-      "deleteFailed": "삭제 실패"
+      "deleteFailed": "삭제 실패",
+      "deletedSeg": "삭제됨",
+      "restore": "복구",
+      "restored": "이용권을 다시 판매합니다",
+      "deletedNote": "새 판매만 멈췄어요. 이미 발급된 이용권은 그대로 쓸 수 있습니다."
     },
     "ordersM3": {
       "today": "오늘",

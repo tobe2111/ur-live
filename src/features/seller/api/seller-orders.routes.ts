@@ -26,6 +26,8 @@ import { writeDigitalProductFields, writeVoucherProductFields, writeProductText 
 
 import { invalidateGroupBuyProductsCache } from '../../group-buy/api/cache-keys';
 import { ensureSupplyVisibilitySchema } from '../../supply/api/supply-visibility';
+import { ensureTables as ensureGroupBuyColumns } from '../../group-buy/api/helpers';
+import { buildSellerProductsQuery } from './seller-products-query';
 import { intParam } from '@/shared/pagination'
 import { normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url'
 import { mallIdForSeller } from '../../../shared/mall/resolve';
@@ -489,60 +491,27 @@ sellerOrdersRoutes.get('/products', async (c) => {
     // isolate / fresh D1 the column may be missing → "no such column" 500.
     // Memoized (WeakMap-promise) — runs the ALTERs at most once per isolate.
     await ensureSupplyVisibilitySchema(db);
+    // 🎟️ 2026-09-15: 목록이 이용권 메타(restaurant_phone·group_buy_current·store_owner_token …)를 읽는다.
+    //   그 컬럼들은 마이그레이션이 아니라 `ensureTables` 의 ALTER 로 생기므로, 콜드 D1 에서 부르지 않으면
+    //   셀러가 가장 먼저 보는 화면이 "no such column" 500 이 된다. WeakSet 메모이즈라 두 번째부터 공짜.
+    await ensureGroupBuyColumns(db);
     const limit = Math.min(intParam(c.req.query('limit'), 100), 500);
     const offset = intParam(c.req.query('offset'), 0);
-    const sort = c.req.query('sort') === 'asc' ? 'ASC' : 'DESC';
+    const sort: 'ASC' | 'DESC' = c.req.query('sort') === 'asc' ? 'ASC' : 'DESC';
     const search = c.req.query('search') || '';
+    // 🗑️ 2026-09-15 (대표가 삭제를 눌러 보고 드러난 구멍): 삭제분은 기본적으로 계속 숨긴다.
+    //   `?include_deleted=1` 을 **명시한 호출만** 삭제분까지 받는다(이용권 관리의 '삭제됨' 세그먼트).
+    //   플래그가 없으면 나오는 SQL·결과는 종전과 한 글자도 안 다르다.
+    const includeDeleted = c.req.query('include_deleted') === '1';
 
-    // COALESCE로 신/구 컬럼 모두 대응 (image_url, thumbnail_url, image 순으로 fallback)
-    let query = `
-      SELECT
-        p.id,
-        p.name,
-        p.description,
-        p.price,
-        COALESCE(p.stock, p.stock_quantity, 0)                    AS stock,
-        COALESCE(p.thumbnail_url, p.image_url)                    AS image_url,
-        COALESCE(p.status, 'ACTIVE')                              AS status,
-        COALESCE(p.is_active, 1)                                  AS is_active,
-        p.category,
-        p.created_at,
-        p.updated_at,
-        COUNT(DISTINCT oi.id)                                      AS order_count,
-        COALESCE(SUM(
-          CASE WHEN o.status NOT IN ('CANCELLED', 'FAILED', 'REFUNDED')
-               THEN oi.quantity ELSE 0 END
-        ), 0)                                                      AS total_sold
-      FROM products p
-      LEFT JOIN order_items oi ON p.id = oi.product_id
-      LEFT JOIN orders o ON oi.order_id = o.id
-      WHERE p.seller_id = ?
-        AND COALESCE(p.status, 'ACTIVE') != 'DELETED'
-        AND COALESCE(p.is_supply_product, 0) = 0
-    `;
-    // 🛡️ 2026-07-02 (쇼핑 전수조사): 재고 COALESCE 순서 stock 우선(canonical) + is_active 반환(배지/토글 정상화)
-    //   + 필터를 is_active=1 → status != DELETED 로 변경(비활성/일시중지 상품도 목록에 보여 재활성화 가능,
-    //   삭제만 숨김). 이전엔 비활성화 즉시 목록에서 사라져 재활성화 경로가 0이었음.
-    const params: unknown[] = [sellerId];
-
-    if (search) {
-      query += ` AND (p.name LIKE ? OR p.description LIKE ?)`;
-      params.push(`%${search}%`, `%${search}%`);
-    }
-
-    query += ` GROUP BY p.id ORDER BY p.created_at ${sort} LIMIT ? OFFSET ?`;
-    params.push(limit, offset);
+    // 🧾 목록 SQL 은 순수 빌더로 나가 있다(`seller-products-query.ts`) — 목록과 count 가 같은 필터를
+    //   쓰도록 한 곳에서 정하고, 가드가 소스 grep 대신 그 함수를 불러 SQL 을 직접 본다.
+    const { query, params, countQuery, countParams } = buildSellerProductsQuery({
+      sellerId, limit, offset, sort, search, includeDeleted,
+    });
 
     const products = await db.prepare(query).bind(...params).all();
 
-    // 🛡️ 2026-07-02 (쇼핑 전수조사): count 도 목록과 동일 필터(DELETED 제외 + 도매 원본 제외) — 이전엔
-    //   is_active=1 만이라 목록 쿼리와 불일치(도매상품 보유 셀러 total 과대, 비활성 상품 카운트 누락).
-    let countQuery = `SELECT COUNT(*) as total FROM products WHERE seller_id = ? AND COALESCE(status, 'ACTIVE') != 'DELETED' AND COALESCE(is_supply_product, 0) = 0`;
-    const countParams: unknown[] = [sellerId];
-    if (search) {
-      countQuery += ` AND (name LIKE ? OR description LIKE ?)`;
-      countParams.push(`%${search}%`, `%${search}%`);
-    }
     const countResult = await db.prepare(countQuery).bind(...countParams).first<{ total: number }>();
 
     return c.json({

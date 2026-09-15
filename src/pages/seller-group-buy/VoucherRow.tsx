@@ -8,7 +8,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { AlertCircle, ChevronDown, Copy, Pencil, RefreshCw, Send, Trash2 } from 'lucide-react'
+import { AlertCircle, ChevronDown, Copy, Pencil, RefreshCw, RotateCcw, Send, Trash2 } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
@@ -40,18 +40,23 @@ export default function VoucherRow({ v, stat, commissionRate, onChanged }: Props
   const net = gross - Math.round(gross * safeNum(commissionRate))
   const discounted = v.original_price != null && v.original_price > v.price
 
-  async function toggleActive(next: boolean) {
+  /**
+   * 판매 상태를 바꾼다. **복구도 같은 호출**이다 — 삭제는 soft delete(`status='DELETED', is_active=0`)라
+   * 되돌리기는 `{ is_active: true, status: 'ACTIVE' }` 를 쓰는 것으로 끝난다. 서버에 새 경로를 안 만든다.
+   */
+  async function setSale(next: boolean, okMsg: string) {
     if (busy) return
     setBusy(true)
     try {
       const r = await api.put(`/api/seller/products/${v.id}`, { is_active: next, status: next ? 'ACTIVE' : 'HIDDEN' }, { headers })
-      if (r.data?.success) { toast.success(t('seller.productStatusChanged')); onChanged() }
+      if (r.data?.success) { toast.success(okMsg); onChanged() }
       else toast.error(r.data?.error || t('seller.productStatusChangeFailed'))
     } catch (err: unknown) {
       const e = err as { response?: { data?: { error?: string } } }
       toast.error(e?.response?.data?.error || t('seller.productStatusChangeFailed'))
     } finally { setBusy(false) }
   }
+  const toggleActive = (next: boolean) => setSale(next, t('seller.productStatusChanged'))
 
   // ✏️ 수정 진입점은 **하나**이고 조건이 없다. 종전(#1430 이전)엔 '연락처 미등록' 배너 안에만 있어
   //   연락처가 등록된 매장은 수정 화면에 닿을 방법이 없었다(라이브의 유일한 실제 매장이 그 경우였다).
@@ -96,6 +101,31 @@ export default function VoucherRow({ v, stat, commissionRate, onChanged }: Props
       : `${window.location.origin}/store/stats/${v.id}`
     navigator.clipboard.writeText(url)
     toast.success(t('seller.groupBuy.linkCopied'))
+  }
+
+  // 🗑️ 2026-09-15: 삭제된 이용권은 **복구 하나만** 할 수 있다. 판매 스위치·편집·펼침(재발행·알림톡·삭제)은
+  //   내려간 상품에 아무 의미가 없어 안 그린다 — 대신 복구를 조건 없이 놓는다(진입점이 하나여야 안 죽는다).
+  if (v.status === 'DELETED') {
+    return (
+      <div className="flex items-center gap-3 border-b border-rule px-3 py-3 last:border-b-0 md:px-5">
+        <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-brand-tint opacity-60">
+          {v.image_url && (
+            <img src={cfImage(v.image_url, { width: 160 })} alt="" loading="lazy" className="h-full w-full object-cover"
+              onError={(e) => cfImageOnError(e.currentTarget, v.image_url)} />
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[15px] font-extrabold text-gray-400 line-through">{v.name}</p>
+          <p className="mt-0.5 text-[12.5px] text-gray-500">
+            {t('seller.vouchers.deletedNote', { defaultValue: '새 판매만 멈췄어요. 이미 발급된 이용권은 그대로 쓸 수 있습니다.' })}
+          </p>
+        </div>
+        <button type="button" disabled={busy} onClick={() => setSale(true, t('seller.vouchers.restored', { defaultValue: '이용권을 다시 판매합니다' }))}
+          className={`${GHOST} shrink-0 disabled:opacity-60`}>
+          <RotateCcw size={13} /> {t('seller.vouchers.restore', { defaultValue: '복구' })}
+        </button>
+      </div>
+    )
   }
 
   return (

@@ -51,7 +51,15 @@ describe('PR 은 변경분만 돈다', () => {
   it('러너가 --changed 를 실제로 해석하고 루프에서 거른다', () => {
     expect(RUNNER).toMatch(/const CHANGED = process\.argv\.includes\('--changed'\)/)
     expect(RUNNER, '판정 모듈을 안 쓴다').toMatch(/from '\.\/guard-mutations-scope\.mjs'/)
-    expect(RUNNER, '루프에 필터가 없다').toMatch(/if \(!inScope\(m, SCOPE\)\) continue/)
+    // 🩸 2026-09-15: 여기 `if (!inScope(m, SCOPE)) continue` 를 글자 그대로 봤는데, 같은 날
+    //   매니페스트 diff 가 붙으면서 조건이 하나 늘었다(`|| CHANGED_NAMES.has(...)`).
+    //   **모양이 아니라 뜻**을 본다 — 루프가 스코프로 거르는가.
+    expect(RUNNER, '루프에 필터가 없다').toMatch(/if \(!inScope\(m, SCOPE\).*\) continue/)
+    // 🩸 처음엔 그냥 `/CHANGED_NAMES\.has\(m\.name\)/` 로 썼는데 **헛돌았다** — 그 이름이
+    //   위쪽 `planned` 줄에도 있어서, 루프에서 빼도 초록이 떴다(되돌려-검증이 잡았다).
+    //   **루프 조건 자체**를 앵커로 잡는다.
+    expect(RUNNER, '루프가 바뀐 주입을 함께 고르지 않는다')
+      .toMatch(/if \(!inScope\(m, SCOPE\) && !CHANGED_NAMES\.has\(m\.name\)\) continue/)
   })
 })
 
@@ -75,9 +83,26 @@ describe('🔴 전수는 반드시 어딘가에서 돈다', () => {
 })
 
 describe('🔴 애매하면 전수 (fail-safe) — 실제로 함수를 돌린다', () => {
-  it('가드 자신을 고치면 전수다 — 안 그러면 새 주입이 그 PR 에서 검증되지 않는다', () => {
-    expect(fullReasonFor(new Set(['scripts/check-guard-mutations.mjs']))).toBeTruthy()
+  it('🔴 **판정 자신**을 고치면 전수다 — 안 그러면 좁힘이 자기를 검사 못 한다', () => {
     expect(fullReasonFor(new Set(['scripts/guard-mutations-scope.mjs']))).toBeTruthy()
+    expect(fullReasonFor(new Set(['scripts/guard-mutations-manifest-diff.mjs']))).toBeTruthy()
+  })
+
+  it('🩸 2026-09-15 — **러너(매니페스트)를 고치는 것은 더 이상 전수가 아니다**', () => {
+    // 여기 원래 `check-guard-mutations.mjs` 도 전수라고 적혀 있었다. 사유는 옳았다 —
+    // "새로 넣은 주입이 그 PR 에서 검증돼야 한다". 그런데 처방이 과했다:
+    // 그 요구는 **바뀐 주입만** 돌려도 충족되는데 1,144건을 다 돌고 있었다.
+    //
+    // 실측(Verify 100 run · 머지 PR 25건): 성공 중앙값 55.9분 vs 좁혀 돈 run 12.1분,
+    // 그리고 25건 중 23건이 전수 — 그중 11건이 **이 파일에 주입을 한 줄 더한 것**뿐이었다.
+    // 즉 CLAUDE.md 의 "새 가드 → 주입 한 줄" 규칙을 지킬수록 40분을 물었다.
+    //
+    // 대신 러너 변경은 `guard-mutations-manifest-diff` 가 base 와 head 의 주입 목록을
+    // 실제로 견줘 바뀐 것만 고르고, **판정 로직이 바뀌었으면 거기서 전수로 떨어진다.**
+    expect(fullReasonFor(new Set(['scripts/check-guard-mutations.mjs']))).toBeNull()
+    expect(fullReasonFor(new Set(['scripts/mutations/foo.mjs']))).toBeNull()
+    // 좁힌 만큼은 전수 워크플로가 되찾는다 — 둘은 짝이다.
+    expect(FULL).toMatch(/guard-mutations\.mjs/)
   })
 
   it('러너 환경·공용 헬퍼가 바뀌어도 전수다', () => {

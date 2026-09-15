@@ -115,6 +115,41 @@
 한 줄씩 표시된다(`OPS_GATES.turn_on_when`). **점등 조건 없는 게이트는 영원히 안 켜진다** —
 실제로 13개가 전부 미설정인 채로 있었다.
 
+### 🔍 S1 절차 — 손으로 더하지 않는다 (2026-09-15 신설)
+
+S1 의 통과 기준은 *"Σ적립 ≤ 주문당 예산"* 인데, 그걸 보려면 `affiliate_earnings` ·
+`referral_commissions` · `influencer_attributions` · `agency_store_intro_commissions` ·
+`ledger_entries` 를 **손으로 조회해 더해야** 했다. **손으로 더해야 하는 검증은 아무도 안 한다** —
+그래서 2026-07-04 에 배선된 이 게이트가 두 달 넘게 미검증으로 남았다. 이제 서버가 판정한다.
+
+```
+GET /api/admin/promo-ledger/order/:orderNumber      (read-only, finance 권한)
+```
+
+응답의 **`verdict` 두 줄**이 판정이다.
+
+| 필드 | 뜻 |
+|---|---|
+| `within_budget` | Σ적립 ≤ 예산인가 — **S1 의 합격선** |
+| `over_by_krw` | 넘었다면 얼마나 |
+
+같이 오는 것: `budget`(이 주문의 실제 원장 `fee_amount` − PG 준비금) · `grants`(4축 적립,
+축별 금액·행수) · `platform_revenue`(credit/debit).
+
+**절차 4단계**
+
+1. **게이트를 끈 채로** 결제 1건 — 커미션 축이 **겹치게**(직접 입점 매장 · `introduced_by_influencer_id`
+   있음 · `multi_tier_enabled` ON). 여기서 `within_budget: false` 가 나오는 것이
+   **이 게이트가 필요하다는 증거**다. `true` 가 나오면 축이 안 겹친 것이니 준비물을 다시 본다.
+2. `commission_budget_enabled = 'true'` 로 켜고 같은 조건으로 결제 1건 → `within_budget: true`.
+3. 그 주문을 **환불** → 4축 적립이 전부 역전되는지(`grants` 가 0 으로).
+4. 게이트 `'false'` 복귀 → 종전 동작과 같은지.
+
+⚠️ **`platform_revenue.debit_krw > 0` 은 결함이 아니다.** 2026-09-07 결재 Q4-2 로
+*"유어딜 5% 는 어떤 커미션에도 안 쓴다"*(2026-07-08 원칙)가 **폐기**됐다 — 성장 커미션은
+플랫폼 수수료 안에서 부담하되 총합이 예산을 못 넘게 아비터가 강제하는 쪽으로 갔다.
+그래서 S1 의 합격선은 `within_budget` **하나**이고, 원장 debit 은 참고 수치다.
+
 ## 검증 데이 권장 순서 (반나절)
 
 1. staging 배포 + `bash scripts/audit-gate.sh` GREEN 확인
