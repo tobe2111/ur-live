@@ -1,0 +1,270 @@
+#!/usr/bin/env node
+/**
+ * 셀러 대시보드 화면 캡처 — 실제 urdeal.kr 프론트를 띄우되, 셀러 API 응답만 예시 데이터로 대체한다.
+ * 프로덕션 DB 에는 아무것도 쓰지 않는다(로그인도 하지 않는다). 토큰은 클라이언트 가드가 exp 만 보므로 서명 없는 JWT.
+ *
+ *   NODE_PATH=... NODE_USE_ENV_PROXY=1 node capture-seller.mjs /tmp/shots
+ */
+import { createRequire } from 'node:module'
+import path from 'node:path'
+import fs from 'node:fs'
+const require = createRequire(import.meta.url)
+const { chromium } = require('playwright-core')
+const sharp = require('sharp')
+
+const OUT = path.resolve(process.argv[2] || 'seller-shots')
+const CHROME = process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
+const ORIGIN = 'https://urdeal.kr'
+const W = 430, H = 930
+
+// ── 예시 데이터 (덱에 "예시" 로 표기) ──
+const STORES = [
+  { seller_id: 101, role: 'operator', source: 'grant', business_name: '홍대돈까스', name: '홍대돈까스', status: 'approved', username: 'hongdae-donkatsu' },
+  { seller_id: 102, role: 'operator', source: 'grant', business_name: '한우한돈정육점', name: '한우한돈정육점', status: 'approved', username: 'hanwoo-butcher' },
+  { seller_id: 103, role: 'owner', source: 'link', business_name: '선유동 네일스튜디오', name: '선유동 네일스튜디오', status: 'pending', username: 'seonyu-nail' },
+]
+const OPERATING = [
+  { seller_id: 101, business_name: '홍대돈까스', username: 'hongdae-donkatsu', status: 'approved', role: 'operator', source: 'grant', granted_at: '2026-07-14 03:12:00', products_active: 3, orders_total: 172, revenue_total: 3420000, orders_since_grant: 61, revenue_since_grant: 1180000 },
+  { seller_id: 102, business_name: '한우한돈정육점', username: 'hanwoo-butcher', status: 'approved', role: 'operator', source: 'grant', granted_at: '2026-08-02 06:40:00', products_active: 2, orders_total: 58, revenue_total: 2024000, orders_since_grant: 34, revenue_since_grant: 1186600 },
+  { seller_id: 103, business_name: '선유동 네일스튜디오', username: 'seonyu-nail', status: 'pending', role: 'owner', source: 'link', granted_at: null, products_active: 1, orders_total: 0, revenue_total: 0, orders_since_grant: null, revenue_since_grant: null },
+]
+const OPERATORS = [
+  { user_id: 501, role: 'operator', granted_at: '2026-07-14 03:12:00', revoked_at: null, user_name: '유어딜 파트너스', user_handle: 'urdeal-partners', user_email: null },
+  { user_id: 502, role: 'operator', granted_at: '2026-08-20 01:05:00', revoked_at: null, user_name: '김민수', user_handle: 'minsu-k', user_email: null },
+]
+const LEADS = [
+  { id: 1, platform: 'naver_blog', handle: 'mapo_eats', name: '마포 먹방일기', category: '맛집', region: '서울 마포구', thumbnail: null, subscriber_count: 18400, video_count: 612, recent_avg_views: 2100, recent_avg_comments: 34, last_post_at: '2026-09-05' },
+  { id: 2, platform: 'youtube', handle: 'seoulfoodtrip', name: '서울푸드트립', category: '맛집', region: '서울', thumbnail: null, subscriber_count: 42300, video_count: 188, recent_avg_views: 9800, recent_avg_comments: 120, last_post_at: '2026-09-04' },
+  { id: 3, platform: 'naver_blog', handle: 'hongdae_daily', name: '홍대 데일리', category: '카페', region: '서울 마포구', thumbnail: null, subscriber_count: 9700, video_count: 421, recent_avg_views: 1500, recent_avg_comments: 21, last_post_at: '2026-09-06' },
+  { id: 4, platform: 'youtube', handle: 'yeongdeungpo_tv', name: '영등포 동네TV', category: '맛집', region: '서울 영등포구', thumbnail: null, subscriber_count: 12100, video_count: 96, recent_avg_views: 4300, recent_avg_comments: 58, last_post_at: '2026-09-01' },
+  { id: 5, platform: 'naver_blog', handle: 'nailholic_sy', name: '네일홀릭', category: '미용', region: '서울 영등포구', thumbnail: null, subscriber_count: 6300, video_count: 233, recent_avg_views: 900, recent_avg_comments: 12, last_post_at: '2026-09-03' },
+  { id: 6, platform: 'naver_blog', handle: 'weekend_seoul', name: '주말엔 서울', category: '맛집', region: '서울', thumbnail: null, subscriber_count: 27600, video_count: 540, recent_avg_views: 3300, recent_avg_comments: 47, last_post_at: '2026-09-06' },
+]
+const CATEGORIES = [{ category: '맛집', n: 41230 }, { category: '카페', n: 18877 }, { category: '미용', n: 9142 }, { category: '여행', n: 22015 }, { category: '육아', n: 7301 }]
+
+function mock(url) {
+  const u = new URL(url)
+  const p = u.pathname
+  const json = (obj) => ({ status: 200, headers: { 'content-type': 'application/json' }, body: JSON.stringify(obj) })
+  if (p === '/api/seller/surface') return json({ success: true, wholesale_only: false })
+  if (p === '/api/seller/my-stores') return json({ success: true, data: STORES })
+  if (p === '/api/seller/operating-summary') return json({ success: true, data: OPERATING })
+  if (p === '/api/seller/operators') return json({ success: true, data: OPERATORS })
+  if (p === '/api/seller/influencers/list') return json({ success: true, configured: true, data: LEADS, total: 198704, page: 1, limit: 20, contact_fee_krw: 0 })
+  if (p === '/api/seller/influencers/categories') return json({ success: true, data: CATEGORIES })
+  if (p === '/api/seller/products') return json({ success: true, data: [{ id: 2876, name: '한우 런치 정식 2인' }, { id: 2879, name: '치즈돈가스 2인 세트 할인권' }] })
+  if (p === '/api/seller/refresh') return json({ success: true, token: FAKE_TOKEN })
+  // 정산 화면 (/seller/settlements) — 예시 데이터
+  if (p === '/api/seller/profile') return json({ success: true, data: { id: 999, name: '유어딜 파트너스', business_name: '홍대돈까스', bank_name: '국민은행', bank_account: '******1234', account_holder: '정**', status: 'approved', commission_rate: 10 } })
+  if (p === '/api/seller/settlements/stats') return json({ success: true, data: { total_pending: 1, total_approved: 1, total_paid: 6, pending_amount: 412500, approved_amount: 297000, paid_amount: 2184300 } })
+  if (p === '/api/seller/settlements') return json({ success: true, data: [
+    { id: 8, seller_id: 999, period_start: '2026-09-01', period_end: '2026-09-07', total_sales: 458333, commission_rate: 10, commission_amount: 45833, settlement_amount: 412500, status: 'pending', requested_at: '2026-09-08 00:45:00', approved_at: null, paid_at: null, created_at: '2026-09-08 00:45:00', updated_at: '2026-09-08 00:45:00' },
+    { id: 7, seller_id: 999, period_start: '2026-08-25', period_end: '2026-08-31', total_sales: 330000, commission_rate: 10, commission_amount: 33000, settlement_amount: 297000, status: 'approved', requested_at: '2026-09-01 00:45:00', approved_at: '2026-09-02 09:10:00', paid_at: null, created_at: '2026-09-01 00:45:00', updated_at: '2026-09-02 09:10:00' },
+    { id: 6, seller_id: 999, period_start: '2026-08-18', period_end: '2026-08-24', total_sales: 385000, commission_rate: 10, commission_amount: 38500, settlement_amount: 346500, status: 'paid', requested_at: '2026-08-25 00:45:00', approved_at: '2026-08-26 09:00:00', paid_at: '2026-08-26 10:12:00', created_at: '2026-08-25 00:45:00', updated_at: '2026-08-26 10:12:00' },
+  ] })
+  if (p === '/api/seller/dashboard/stats') return json({ success: true, data: { daily_revenue: Array.from({ length: 30 }, (_, i) => ({ date: `2026-08-${String(15 + (i % 16)).padStart(2, '0')}`, revenue: 33000 + ((i * 7919) % 90000) })) } })
+  if (p === '/api/seller/settlement-options') return json({ success: true, data: { business_registration: { status: 'verified', image_url: null, reject_reason: null }, auto_payout: true } })
+  if (p === '/api/seller/payouts') return json({ success: true, data: { payable: 412500, scheduled_total: 297000, sent_total: 2184300, payouts: [
+    { id: 31, amount: 297000, status: 'approved', created_at: '2026-09-08 00:45:00', period: '8/25 ~ 8/31' },
+    { id: 30, amount: 346500, status: 'sent', created_at: '2026-09-01 00:45:00', sent_at: '2026-09-04 10:12:00', period: '8/18 ~ 8/24' },
+    { id: 29, amount: 391000, status: 'sent', created_at: '2026-08-25 00:45:00', sent_at: '2026-08-28 09:40:00', period: '8/11 ~ 8/17' },
+  ] } })
+  if (p === '/api/seller/deal-balance') return json({ success: true, data: { total: 0, withdrawable: 0, notice: null, business_verified: true } })
+  if (p === '/api/seller/tax-summary') return json({ success: true, data: { year: 2026, total_gross: 0, total_withheld: 0, total_net: 0, payouts_count: 0, reportable: false, threshold: 3000000 } })
+  // 매장 등록 마법사 (/store/new) — 카카오맵 검색을 예시 결과로
+  if (p === '/api/kakao/place/search') return json({ success: true, data: { documents: [
+    { id: '1', place_name: '홍대돈까스 본점', road_address_name: '서울 마포구 와우산로 29길 14', address_name: '서울 마포구 서교동 358-12', phone: '02-333-1234', category_name: '음식점 > 일식 > 돈까스,우동', x: '126.9239', y: '37.5545' },
+    { id: '2', place_name: '홍대돈까스 합정점', road_address_name: '서울 마포구 양화로 45', address_name: '서울 마포구 서교동 400-1', phone: '02-333-5678', category_name: '음식점 > 일식 > 돈까스,우동', x: '126.9142', y: '37.5498' },
+  ] } })
+  // 소비자 세션 신호(user_id)를 넣으면 화면 장식이 큐레이터 API 를 부르고, 401 이면 소비자 클라이언트가 로그아웃시킨다 → 성공 응답으로 대체
+  if (/^\/api\/(wishlists|notifications|my-[a-z-]+|users?\/me|user\/[a-z-]+|points\/balance|deal-balance)/.test(p)) return json({ success: true, data: [] })
+  if (p.startsWith('/api/curator/me')) return json({ success: true, data: { handle: 'jiwon1228', name: '정지원', pins: [], items: [], stats: { clicks: 0, orders: 0 }, earnings: { pending: 0, granted: 0 } } })
+  if (p === '/api/auth/session/health') return json({ success: true, data: { session: true } })
+  if (p === '/api/auth/me' || p === '/api/users/me' || p === '/api/auth/session') return json({ success: true, data: { id: 999, name: '정지원', handle: 'jiwon1228', email: null } })
+  if (p === '/api/seller/stores/review-bonus') return json({ success: true, data: { amount: 1000, store_set: false, funded_by: 'platform' } })
+  // 화면 장식 위젯이 부르는 부가 API 두 개(알림 벨·유입 바인딩) — 세션이 없어 401 이 나면 stores 페이지의
+  // 소비자용 클라이언트가 throw 해 에러 경계가 뜬다. 스크린샷용으로 빈 목록/무응답을 준다.
+  if (p === '/api/seller/stores/review-bonus') return json({ success: true, data: { amount: 1000, store_set: false, funded_by: 'platform' } })
+  if (p === '/api/dashboard-notifications') return json({ success: true, data: [], unread: 0 })
+  if (p === '/api/acquisition/inflow/bind') return json({ success: true })
+  // ── 인플루언서 덱용 화면 (예시 데이터) ──
+  // 제안 수락 화면 /i/offer/:token — 매장이 보낸 제안 하나
+  if (p === '/api/group-buy/redemption-settings') return json({ success: true, data: { mode: 'store_code', store_code: '482913', usage_conditions: ['매장 방문 시 이용권 화면 제시', '1인 1매'], usage_custom: '' } })
+  if (p === '/api/seller/streams') return json({ success: true, data: [] })
+  if (p === '/api/seller/scan-devices') return json({ success: true, data: [] })
+  if (p.startsWith('/api/influencer-offers/')) return json({ success: true, data: {
+    seller_name: '홍대돈까스', product_name: '치즈돈가스 2인 세트 할인권', product_price: 16500, product_image: null,
+    commission_pct: 12, product_support: 'free', channels: JSON.stringify(['instagram', 'naver_blog']),
+    message: '마포구 맛집 콘텐츠 잘 보고 있습니다. 런치 세트 이용권을 소개해 주시면 판매가의 12%를 드리고, 촬영용 2인 세트는 무상으로 준비해 두겠습니다.', status: 'pending' } })
+  // 내 정산 화면 /influencer/settlement
+  if (p === '/api/influencer-settlement/me') return json({ success: true, data: { funding_source: 'platform', balance: {
+    pending_amount: 71280, available_amount: 115920, total_paid_out: 386400, business_number: null, tax_type: 'other_income',
+    bank_name: null, bank_account: null, account_holder: null, payout_method: 'cash' }, recent: [
+    { id: 1, order_id: 9112, product_id: 2888, seller_id: 14, commission_amount: 1980, status: 'pending', created_at: '2026-09-12 03:12:00', available_at: '2026-09-19 03:12:00', paid_at: null },
+    { id: 2, order_id: 9107, product_id: 2888, seller_id: 14, commission_amount: 1980, status: 'pending', created_at: '2026-09-11 11:40:00', available_at: '2026-09-18 11:40:00', paid_at: null },
+    { id: 3, order_id: 9080, product_id: 2876, seller_id: 102, commission_amount: 3900, status: 'available', created_at: '2026-09-04 08:05:00', available_at: '2026-09-11 08:05:00', paid_at: null },
+    { id: 4, order_id: 9061, product_id: 2876, seller_id: 102, commission_amount: 3900, status: 'available', created_at: '2026-09-02 02:30:00', available_at: '2026-09-09 02:30:00', paid_at: null },
+    { id: 5, order_id: 8990, product_id: 2888, seller_id: 14, commission_amount: 1980, status: 'paid', created_at: '2026-08-21 07:15:00', available_at: '2026-08-28 07:15:00', paid_at: '2026-09-01 09:00:00' },
+  ] } })
+  if (p === '/api/influencer-settlement/my-stores') return json({ success: true, data: {
+    referred: [{ id: 14, name: '홍대돈까스', referral_bonus_until: '2027-08-14 00:00:00', total_commission: 24600 }],
+    deals: [
+      { id: 1, seller_id: 14, seller_name: '홍대돈까스', commission_pct: 12, status: 'active', proposed_by: 'seller', created_at: '2026-08-14 02:00:00', ends_at: null },
+      { id: 2, seller_id: 102, seller_name: '한우한돈정육점', commission_pct: 10, status: 'active', proposed_by: 'seller', created_at: '2026-08-30 05:00:00', ends_at: '2026-12-31 00:00:00' },
+    ] } })
+  if (p === '/api/influencer-settlement/my-rank') return json({ success: true, data: { national_rank: 3, national_total_participants: 41, my_commission: 187200 } })
+  if (p === '/api/influencer-settlement/deals') return json({ success: true, data: [] })
+  if (p === '/api/influencer-profile/me') return json({ success: true, data: { is_open: 1, intro: '마포구 맛집과 카페를 다닙니다.', channels: [{ kind: 'instagram', url: 'https://instagram.com/mapo_eats', followers: 18400 }], categories: ['meal_voucher'], regions: ['서울 마포구'] } })
+  if (p.startsWith('/api/influencer-profile/')) return json({ success: true, data: { categories: ['meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher'], regions: ['서울 마포구', '서울 영등포구'] } })
+  if (p.startsWith('/api/influencer-settlement/')) return json({ success: true, data: [] })
+  // 유어쇼츠(/videos): 이 환경은 유튜브가 막혀 있어 재생기 자리를 어두운 예시 화면으로 대체한다(캡션에 "예시" 명시).
+  if (/youtube(-nocookie)?\.com\/embed\//.test(url)) return { status: 200, headers: { 'content-type': 'text/html' }, body: '<html><body style="margin:0;background:#0b0d12;height:100vh;display:flex;align-items:center;justify-content:center;font-family:sans-serif"><div style="width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center"><div style="width:0;height:0;border-left:26px solid #fff;border-top:16px solid transparent;border-bottom:16px solid transparent;margin-left:8px"></div></div></body></html>' }
+
+  if (p.startsWith('/api/seller/') || p.startsWith('/api/seller-public/') || p.startsWith('/api/disputes/')) return json({ success: true, data: [] })
+  return null
+}
+
+const b64url = (s) => Buffer.from(s).toString('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
+const FAKE_TOKEN = `${b64url(JSON.stringify({ alg: 'none', typ: 'JWT' }))}.${b64url(JSON.stringify({ sub: 999, seller_id: 999, role: 'seller', exp: 1900000000 }))}.x`
+
+const SHOTS = [
+  { name: 'seller-stores', url: '/seller/stores' },
+  { name: 'seller-influencers', url: '/seller/influencers' },
+  { name: 'seller-operating', url: '/seller/operating' },
+  { name: 'seller-operators', url: '/seller/operators' },
+  { name: 'seller-settlements', url: '/seller/settlements' },
+  // 매장 등록 마법사 — 소비자 로그인 상태로 연다(ProtectedRoute requireUser). drive 가 단계를 진행시킨다.
+  // 사장님 덱: 첫 이용권 등록 폼 · 매장 QR 사용 처리 화면
+  { name: 'seller-product-new', url: '/seller/products/new' },
+  { name: 'seller-scan', url: '/seller/scan' },
+  { name: 'store-new', url: '/store/new', user: true },
+  { name: 'store-new-channel', url: '/store/new', user: true, drive: 'channel' },
+  // ── 인플루언서 덱 ──
+  { name: 'influencer-offer', url: '/i/offer/demo' },                     // 제안 수락 화면 (예시 데이터)
+  { name: 'influencer-settlement', url: '/influencer/settlement', user: true }, // 내 정산 (예시 데이터)
+  { name: 'ushop', url: '/u/jiwon1228' },                                  // 유어샵 (라이브, 공개 페이지)
+  { name: 'shorts', url: '/videos' },                                      // 유어쇼츠 (라이브)
+  { name: 'creators-apply', url: '/creators/apply' },                      // 신청 폼 (라이브)
+]
+
+/** 마법사를 "누가 운영하나요" 단계까지 진행시킨다. 실패하면 도달한 단계에서 찍는다. */
+async function driveWizard(page, step) {
+  try {
+    const input = page.locator('input[placeholder*="매장 이름"]').first()
+    await input.waitFor({ timeout: 15000 })
+    await input.fill('홍대돈까스')
+    await input.press('Enter')
+    const hit = page.locator('button:has-text("홍대돈까스 본점")').first()
+    await hit.waitFor({ timeout: 10000 })
+    await hit.click()
+    await page.waitForTimeout(600)
+    await page.locator('button:has-text("다음")').first().click()
+    await page.waitForTimeout(500)
+    const phone = page.locator('input[placeholder="010-0000-0000"]').first()
+    await phone.waitFor({ timeout: 8000 })
+    await phone.fill('010-1234-5678')
+    await page.waitForTimeout(300)
+    await page.locator('button:has-text("다음")').first().click()
+    await page.waitForTimeout(800)
+    if (step === 'business') {
+      await page.locator('button:has-text("내 가게에요")').first().click()
+      await page.waitForTimeout(300)
+      await page.locator('button:has-text("다음")').first().click()
+      await page.waitForTimeout(800)
+    }
+  } catch (err) { console.log(`  [drive] ${String(err.message).split('\n')[0]}`) }
+}
+
+async function main() {
+  fs.mkdirSync(OUT, { recursive: true })
+  const browser = await chromium.launch({ executablePath: CHROME, args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-background-networking'] })
+  const ctx = await browser.newContext({
+    viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true,
+    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+    locale: 'ko-KR', timezoneId: 'Asia/Seoul',
+  })
+  await ctx.addInitScript(() => {
+    // DEBUG 용: 에러 경계가 삼키는 렌더 오류를 붙잡아 둔다
+    window.__errs = []
+    const orig = console.error
+    console.error = (...a) => { try { window.__errs.push(a.map((x) => (x && x.stack) ? String(x.stack).slice(0, 600) : String(x)).join(' ').slice(0, 800)) } catch {} ; orig.apply(console, a) }
+    window.addEventListener('error', (e) => { try { window.__errs.push('window.error ' + (e.error?.stack || e.message || '').slice(0, 600)) } catch {} })
+    window.addEventListener('unhandledrejection', (e) => { try { window.__errs.push('unhandled ' + String(e.reason?.stack || e.reason).slice(0, 600)) } catch {} })
+  })
+  await ctx.addInitScript(({ token }) => {
+    localStorage.setItem('seller_token', token)
+    localStorage.setItem('seller_id', '999')
+    localStorage.setItem('seller_username', 'urdeal-partners')
+    localStorage.setItem('seller_name', '유어딜 파트너스')
+    localStorage.setItem('seller_type', 'store_owner')
+    localStorage.setItem('user_type', 'seller')
+    localStorage.setItem('ur_seller_full_menu', '1')
+    sessionStorage.setItem('ur_seller_surface', 'seller')
+    localStorage.setItem('seller_kakao_link_banner_dismissed_v1', '1')
+    // 소비자 로그인 신호(ProtectedRoute requireUser 는 user_id 존재로 판단)
+    localStorage.setItem('user_id', '999')
+    localStorage.setItem('user_name', '정지원')
+    localStorage.setItem('user_handle', 'jiwon1228')
+  }, { token: FAKE_TOKEN })
+
+  await ctx.route('**', async (route) => {
+    const req = route.request()
+    const url = req.url()
+    if (!/^https?:/.test(url)) return route.continue()
+    if (url.includes('sentry.io')) {
+      const body = req.postData() || ''
+      if (process.env.DEBUG_API) fs.appendFileSync(path.join(OUT, '_sentry.log'), body + '\n')
+      const hit = body.match(/"(?:type|value)":"([^"]{0,300})"/g)
+      console.log('  [sentry]', (hit || []).slice(0, 4).join(' | '))
+      const st = body.match(/"filename":"([^"]{0,120})","function":"([^"]{0,60})"/)
+      if (st) console.log('  [sentry-frame]', st[1], st[2])
+      return route.fulfill({ status: 200, body: '{}' })
+    }
+    const m = mock(url)
+    if (m) return route.fulfill(m)
+    try {
+      const headers = { ...req.headers() }
+      delete headers['accept-encoding']
+      const init = { method: req.method(), headers, redirect: 'follow' }
+      const post = req.postDataBuffer()
+      if (post) init.body = post
+      const res = await fetch(url, init)
+      const body = Buffer.from(await res.arrayBuffer())
+      const out = {}
+      for (const [k, v] of res.headers) {
+        const lk = k.toLowerCase()
+        if (lk === 'content-encoding' || lk === 'content-length' || lk === 'content-security-policy') continue
+        out[k] = v
+      }
+      await route.fulfill({ status: res.status, headers: out, body })
+    } catch { await route.abort() }
+  })
+
+  const only = process.env.ONLY ? process.env.ONLY.split(',') : null
+  for (const shot of SHOTS) {
+    if (only && !only.includes(shot.name)) continue
+    const page = await ctx.newPage()
+    if (process.env.DEBUG_API) page.on('request', (r) => { if (r.url().includes('/api/')) console.log(`  [api] ${r.method()} ${r.url().slice(0, 120)}`) })
+    page.on('requestfailed', (r) => console.log(`  [failed] ${r.url().slice(0, 110)} ${r.failure()?.errorText}`))
+    page.on('response', (r) => { if (r.status() >= 400) console.log(`  [${r.status()}] ${r.url().slice(0, 110)}`) })
+    page.on('pageerror', (e) => console.log(`  [pageerror] ${shot.name}: ${String(e.message).split('\n')[0]}`))
+    page.on('console', (m) => { if (m.type() === 'error' || process.env.DEBUG_API) console.log(`  [console:${m.type()}] ${shot.name}: ${m.text().slice(0, 300)}`) })
+    const raw = path.join(OUT, `${shot.name}.png`)
+    try {
+      if (shot.user) await page.addInitScript(() => { localStorage.setItem('user_type', 'user') })
+      await page.goto(ORIGIN + shot.url, { waitUntil: 'domcontentloaded', timeout: 60000 })
+      await page.waitForTimeout(6000)
+      if (shot.drive) await driveWizard(page, shot.drive)
+      // 등록 마법사는 바텀시트라 뒤가 검게 가려진다(bg-black/40). 덱에서는 뒤 화면이 보이도록 딤을 옅게 한다.
+      if (shot.url === '/store/new') { await page.addStyleTag({ content: 'div.fixed.inset-0.bg-black\\/40{background-color:rgba(17,20,28,.12)!important}' }); await page.waitForTimeout(300) }
+      await page.screenshot({ path: raw })
+      if (process.env.DEBUG_API) { const errs = await page.evaluate(() => window.__errs || []); for (const e of errs) console.log('  [errs]', e.replace(/\n/g, ' | ').slice(0, 700)) }
+      const meta = await sharp(raw).metadata()
+      await sharp(raw).resize({ width: W, height: H, fit: 'cover', position: 'top' }).jpeg({ quality: 88 }).toFile(path.join(OUT, `${shot.name}.jpg`))
+      console.log(`${shot.name} OK ${meta.width}x${meta.height} url=${page.url()}`)
+    } catch (err) { console.log(`${shot.name} FAIL ${String(err.message).split('\n')[0]}`) }
+    await page.close()
+  }
+  await browser.close()
+}
+main()
