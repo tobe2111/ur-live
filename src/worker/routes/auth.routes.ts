@@ -230,12 +230,34 @@ authRouter.get('/me', async (c) => {
   const sessionUser = await parseSessionCookie(cookieHeader, c.env.JWT_SECRET);
 
   if (sessionUser) {
+    // 📞 2026-09-15 (대표 — "이미 가입을 한 고객의 정보로 등록이 되지 않아?"): **전화번호를 같이 내린다.**
+    //
+    //   왜 없었나: 세션 쿠키는 JWT 라 `userId·name·email·profileImage` 만 담는다(전화번호는 안 담는다 —
+    //   담으면 토큰이 커지고, 프로필 수정 뒤 낡은 값이 토큰 만료까지 남는다). 그래서 이 분기는
+    //   전화번호를 돌려줄 방법이 없었고, **아래 Bearer 분기만** `users.phone` 을 읽고 있었다.
+    //   한국 소비자는 카카오 **세션 쿠키**를 쓰므로 실제로는 아무도 전화번호를 못 받았다.
+    //
+    //   그 결과 소비자 화면 네 곳이 조용히 빈칸이었다 — 숙소 단일/묶음 예약 · 예약(어포인트먼트) 폼 ·
+    //   토스 결제창 `customerMobilePhone`. 서버는 알고 있었다(`users.phone` 은 알림톡 cron 8곳이 읽는다).
+    //
+    //   ⚠️ 이 한 줄이 D1 point 조회 1회를 더한다. `/me` 는 `useUserProfile` 이 **10분 staleTime +
+    //   localStorage 캐시**로 부르므로 호출량이 낮고, PK 단건이라 값이 싸다. 실패하면 null 로 떨어진다
+    //   (전화번호가 없다고 프로필 화면이 막히면 안 된다).
+    let phone: string | null = null;
+    try {
+      const row = await c.env.DB.prepare('SELECT phone FROM users WHERE id = ?')
+        .bind(sessionUser.userId)
+        .first<{ phone: string | null }>();
+      phone = row?.phone ?? null;
+    } catch { /* 전화번호 없이 진행 — 폼이 물어보는 쪽으로 떨어진다 */ }
+
     return c.json({
       success: true,
       data: {
         id: sessionUser.userId,
         name: sessionUser.name,
         email: sessionUser.email,
+        phone,
         profileImage: sessionUser.profileImage || null,
         role: sessionUser.role || 'user',
       },

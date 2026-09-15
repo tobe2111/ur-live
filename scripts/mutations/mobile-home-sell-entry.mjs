@@ -70,4 +70,19 @@ export default function PcHomePage`,
       'PC 홈은 푸터가 있어 상시 문을 이미 갖는다. 두 벌이 되면 한쪽만 고쳐지는 사고가 ' +
       '나고, 이 줄은 모바일의 **푸터 부재**를 메우려고 만든 것이라 PC 에선 중복이다.',
   },
+  {
+    name: '🏪공유 피드가 자기 판매 진입점을 다시 그린다 (문이 둘)',
+    file: 'src/pages/main-home/GroupBuyFeed.tsx',
+    find: `      {!loading && sorted.length > 0 && canLoadMore && (`,
+    replace:
+      `      {!loading && sorted.length > 0 && (\n` +
+      `        <button onClick={() => navigate(sellerEntryPath())}>유어딜에서 판매하세요</button>\n` +
+      `      )}\n` +
+      `      {!loading && sorted.length > 0 && canLoadMore && (`,
+    test: TEST,
+    why:
+      '2026-09-15 대표가 실제로 본 것이 이 상태다 — 09-14 에 안 1 을 넣었는데 08-31 알약이 ' +
+      '같은 자리에 남아 문이 둘 겹쳤다. 규칙도 갈려 있었다(알약=sellerEntryPath / 안 1=' +
+      'seller_token 미노출 + /store/new). 에러가 안 나서 2주간 아무도 몰랐다.',
+  },
 ]
