@@ -29,6 +29,16 @@ describe('🏪 자리', () => {
     const pc = readFileSync('src/pages/pc-home/PcHomePage.tsx', 'utf8')
     expect(pc).not.toMatch(/SellOnUrdealRow/)
   })
+
+  it('🔴 피드 끝의 문은 **하나**다 — 공유 피드가 자기 판매 진입점을 다시 그리지 않는다', () => {
+    // 2026-09-15 대표 *"피드 끝 한줄 안 1로 변경할 수 있나?"* — 09-14 에 안 1 을 넣을 때
+    // 08-31 알약(`🏪 유어딜에서 판매하세요`)이 같은 자리에 남아 **둘이 겹쳐** 있었다.
+    // 규칙도 갈려 있었다(알약=sellerEntryPath / 안 1=seller_token 미노출 + /store/new).
+    // 공유 피드가 자기 문을 다시 그리면 그 중복이 조용히 돌아온다 — 에러가 안 난다.
+    const feed = stripComments(readFileSync('src/pages/main-home/GroupBuyFeed.tsx', 'utf8'))
+    expect(feed).not.toMatch(/sellerEntryPath/)
+    expect(feed).not.toMatch(/판매하세요/)
+  })
 })
 
 describe('🏪 노출 · 목적지', () => {

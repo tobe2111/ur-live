@@ -9,11 +9,13 @@
  * 마운트: /api/admin/promo-ledger
  *   GET /summary?month=YYYY-MM — 스위치 상태 + 월 집계 + 불변식 #44 패널 데이터
  *   GET /orders?month=&page=   — order_fee_breakdown(그림자) 주문별 감사 테이블
+ *   GET /order/:orderNumber    — 주문 1건 S1 판정(Σ적립 ≤ 예산) — 손으로 더하지 않게
  */
 import { Hono } from 'hono'
 import { safeError } from '@/worker/utils/safe-error'
 import { requireAdminRole } from '../../../worker/middleware/auth'
 import { intParam } from '../../../shared/pagination'
+import { computeCommissionBudget, DEFAULT_PG_RESERVE_PCT } from '../../../worker/utils/commission-budget'
 import type { Env } from '../../../worker/types/env'
 
 export const adminPromoLedgerRoutes = new Hono<{ Bindings: Env }>()
@@ -198,5 +200,131 @@ adminPromoLedgerRoutes.get('/orders', requireAdminRole('finance'), async (c) => 
     })
   } catch (err) {
     return safeError(c, err, 'promo 원장 주문 목록 조회 중 오류가 발생했습니다', '[admin-promo-ledger]')
+  }
+})
+
+// ─── GET /order/:orderNumber — 주문 1건 S1 판정 패널 (read-only) ──────────────
+/**
+ * 🔍 **주문 하나를 두고 "예산 아비터를 켜도 되는가"를 판정한다.**
+ *
+ * 왜 필요한가: S1(`commission_budget_enabled`)의 통과 기준은 *"Σ적립 ≤ 주문당 예산"* 인데,
+ * 그걸 보려면 `affiliate_earnings` · `referral_commissions` · `influencer_attributions` ·
+ * `agency_store_intro_commissions` · `ledger_entries` 를 **손으로 조회해 더해야** 했다.
+ * **손으로 더해야 하는 검증은 아무도 안 한다** — 그래서 이 게이트가 2026-07-04 배선 이후
+ * 두 달 넘게 미검증으로 남았다. 여기서 한 화면에 답이 나오면 실결제 1건으로 판정된다.
+ *
+ * 🔑 **예산은 요율을 다시 계산하지 않는다** — 이 주문의 `ledger_entries.fee_amount`(실제로
+ * 찍힌 수수료)를 진실로 삼는다. 여기서 다시 계산하면 실제 청구와 갈릴 수 있고, **갈리는 것이
+ * 이 레포의 단골 사고다**(채널 요율 표시가 실제 청구와 달랐던 건과 같은 클래스).
+ *
+ * ⚠️ **`platform_revenue.debit_krw > 0` 은 결함이 아니다.** 2026-09-07 결재 Q4-2 로
+ * *"유어딜 5% 는 어떤 커미션에도 안 쓴다"*(2026-07-08 원칙)가 **폐기**됐다 — 성장 커미션은
+ * 플랫폼 수수료 안에서 부담하되 **총합이 예산을 못 넘게 아비터가 강제**하는 쪽으로 갔다.
+ * 그래서 S1 의 합격선은 `verdict.within_budget` **하나**이고, 원장 debit 은 판정이 아니라
+ * 참고 수치다(전 축 owner-promo flip 은 추진하지 않는다).
+ *
+ * 돈 이동 0 · 정산 로직 무접촉 — 조회만 한다.
+ */
+adminPromoLedgerRoutes.get('/order/:orderNumber', requireAdminRole('finance'), async (c) => {
+  const { DB } = c.env
+  try {
+    const orderNumber = String(c.req.param('orderNumber') || '').trim()
+    if (!orderNumber || orderNumber.length > 64) {
+      return c.json({ success: false, error: '주문번호가 올바르지 않습니다' }, 400)
+    }
+
+    // 한 주문번호에 주문 행이 여럿일 수 있다(셀러별 분할) — 전부 묶어서 판정한다.
+    const orders = await DB.prepare(
+      `SELECT id, order_number, seller_id, status, total_amount, COALESCE(deal_used, 0) AS deal_used, created_at
+         FROM orders WHERE order_number = ?`
+    ).bind(orderNumber).all<{
+      id: number; order_number: string; seller_id: number | null; status: string
+      total_amount: number; deal_used: number; created_at: string
+    }>().catch(() => ({ results: [] as { id: number; order_number: string; seller_id: number | null; status: string; total_amount: number; deal_used: number; created_at: string }[] }))
+    const orderRows = orders.results || []
+    if (orderRows.length === 0) {
+      return c.json({ success: false, error: '주문을 찾을 수 없습니다' }, 404)
+    }
+    const orderIds = orderRows.map((o) => Number(o.id))
+    const idPh = orderIds.map(() => '?').join(', ')
+    const refs = orderIds.map((id) => `order:${id}`)
+    const refPh = refs.map(() => '?').join(', ')
+    const amountKrw = orderRows.reduce((s, o) => s + (Number(o.total_amount) || 0), 0)
+
+    // ① 예산 = max(0, 플랫폼 수수료 − PG 준비금). 수수료는 이 주문의 원장 fee 가 진실.
+    const feeRow = await DB.prepare(
+      `SELECT COALESCE(SUM(fee_amount), 0) AS fee FROM ledger_entries
+        WHERE credit_account = 'platform:revenue' AND reference_id IN (${refPh})`
+    ).bind(...refs).first<{ fee: number }>().catch(() => null)
+    const settingRow = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'pg_reserve_pct'")
+      .first<{ value: string | null }>().catch(() => null)
+    const pgReserveRaw = Number(settingRow?.value ?? NaN)
+    const pgReservePct = Number.isFinite(pgReserveRaw) ? pgReserveRaw : DEFAULT_PG_RESERVE_PCT
+    const platformFeeKrw = Math.max(0, Math.round(Number(feeRow?.fee ?? 0)))
+    const budgetKrw = computeCommissionBudget({ amountKrw, platformFeeKrw, pgReservePct })
+
+    // ② 이 주문에 붙은 성장 커미션 적립 — 축마다 사는 테이블이 다르다.
+    const grants: Array<{ axis: string; amount: number; rows: number }> = []
+    const collect = async (axis: string, sql: string) => {
+      const r = await DB.prepare(sql).bind(...orderIds)
+        .first<{ total: number; cnt: number }>().catch(() => null)
+      grants.push({ axis, amount: Math.round(Number(r?.total ?? 0)), rows: Number(r?.cnt ?? 0) })
+    }
+    await collect('affiliate',
+      `SELECT COALESCE(SUM(commission), 0) AS total, COUNT(*) AS cnt FROM affiliate_earnings
+        WHERE order_id IN (${idPh}) AND COALESCE(status, '') IN ('holding', 'granted')`)
+    await collect('multi_tier',
+      `SELECT COALESCE(SUM(commission_amount), 0) AS total, COUNT(*) AS cnt FROM referral_commissions
+        WHERE order_id IN (${idPh}) AND COALESCE(status, '') != 'withdrawn'`)
+    await collect('influencer_store_intro',
+      `SELECT COALESCE(SUM(commission_amount), 0) AS total, COUNT(*) AS cnt FROM influencer_attributions
+        WHERE order_id IN (${idPh}) AND COALESCE(source, '') = 'store_intro'`)
+    // 🌇 에이전시 축은 2026-08-31 폐지(라이브 0행) — 그래도 **0 임을 보여 주려고** 남긴다.
+    //    빼 버리면 "안 센 것"과 "0 인 것"을 화면에서 구분할 수 없다.
+    await collect('agency_store_intro',
+      `SELECT COALESCE(SUM(commission_amount), 0) AS total, COUNT(*) AS cnt FROM agency_store_intro_commissions
+        WHERE order_id IN (${idPh})`)
+    const grantedTotal = grants.reduce((s, g) => s + g.amount, 0)
+
+    // ③ platform:revenue 원장 — 참고 수치(판정 아님, 위 주석 참조).
+    const credit = await DB.prepare(
+      `SELECT COALESCE(SUM(amount), 0) AS total FROM ledger_entries
+        WHERE credit_account = 'platform:revenue' AND reference_id IN (${refPh})`
+    ).bind(...refs).first<{ total: number }>().catch(() => null)
+    const debits = await DB.prepare(
+      `SELECT event_type, amount, reference_id FROM ledger_entries
+        WHERE debit_account = 'platform:revenue' AND reference_id IN (${refPh})
+        ORDER BY id DESC LIMIT 20`
+    ).bind(...refs).all<{ event_type: string; amount: number; reference_id: string | null }>()
+      .catch(() => ({ results: [] as { event_type: string; amount: number; reference_id: string | null }[] }))
+    const debitRows = debits.results || []
+    const debitTotal = debitRows.reduce((s, d) => s + (Number(d.amount) || 0), 0)
+
+    const gateRow = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'commission_budget_enabled'")
+      .first<{ value: string | null }>().catch(() => null)
+
+    return c.json({
+      success: true,
+      data: {
+        order: { order_number: orderNumber, rows: orderRows, amount_krw: amountKrw },
+        gate: { commission_budget_enabled: gateRow?.value || 'false' },
+        budget: { platform_fee_krw: platformFeeKrw, pg_reserve_pct: pgReservePct, budget_krw: budgetKrw },
+        grants,
+        granted_total_krw: grantedTotal,
+        platform_revenue: {
+          credit_krw: Math.round(Number(credit?.total ?? 0)),
+          debit_krw: debitTotal,
+          debit_rows: debitRows,
+          note: 'debit > 0 은 정상 — 2026-09-07 결재 Q4-2 로 성장 커미션은 플랫폼 수수료 안에서 부담한다(판정 아님)',
+        },
+        // 👇 이 두 줄이 S1 판정이다. 손으로 더할 필요가 없게.
+        verdict: {
+          within_budget: grantedTotal <= budgetKrw,
+          over_by_krw: Math.max(0, grantedTotal - budgetKrw),
+        },
+      },
+    })
+  } catch (err) {
+    return safeError(c, err, '주문 커미션 판정 조회 중 오류가 발생했습니다', '[admin-promo-ledger]')
   }
 })

@@ -5499,6 +5499,7 @@ _총 292건 · 최신순 · 이 목록은 자동 생성된다._
 **2026-09-15**
 - [삭제한 이용권을 되돌리는 길 (2026-09-15)](handoff/2026-09-15-voucher-restore.md)
 - [2026-09-15 — verify.yml push 트리거 제거 (필수 검사 룰셋과의 충돌)](handoff/2026-09-15-verify-push-trigger.md)
+- [2026-09-15 — 결재함 오기 정정 · 죽은 PR 둘 닫기 · S1 판정 패널](handoff/2026-09-15-pr-cleanup-and-s1-verdict.md)
 **2026-09-14**
 - [이용권 관리 — 수정·삭제·정가 (2026-09-14)](handoff/2026-09-14-voucher-manage-actions.md)
 - [2026-09-14 — 유어쇼츠: 위로 되돌아가는 스와이프 + 닫기 버튼 겹침](handoff/2026-09-14-urshorts-swipe-back-and-close-button.md)
