@@ -26,14 +26,21 @@ describe('D3 토큰 — 셀러 스코프에서만, 공용 부품은 변수를 �
     for (const v of ['--dash-radius: 8px', '--dash-h1: 17px', '--dash-stat: 22px', '--dash-pad-x: 16px']) expect(block, v).toContain(v)
     expect(CSS).toMatch(/\.dash-num \{ font-family: ui-monospace/)
   })
-  it('공용 부품 셋이 폴백 있는 변수로 그린다 — 어드민이 종전 값(16px·19px·24px)을 유지하는 근거', () => {
+  it('공용 부품 셋이 폴백 있는 변수로 그린다 — 셀러·어드민은 각자 블록에서 같은 D3 값을 선언한다', () => {
     expect(read('src/components/dashboard/DashboardCard.tsx')).toContain('rounded-[var(--dash-radius,16px)]')
     expect(read('src/components/dashboard/DashboardPageHeader.tsx')).toContain('text-[length:var(--dash-h1,19px)]')
     expect(read('src/components/dashboard/DashboardPageHeader.tsx')).toContain('dash-page-title')
     expect(read('src/components/dashboard/DashboardStatCard.tsx')).toContain('text-[length:var(--dash-stat,24px)]')
-    // 어드민 래퍼는 이 변수를 선언하지 않는다 — 선언하는 순간 어드민도 D3 가 된다(의도라면 이 줄을 고칠 것).
+    // 공용 블록(셀러+어드민 한 몸)에는 두지 않는다 — 거기 두면 한쪽만 조정할 수 없다.
     const j = CSS.indexOf('.seller-light-theme,\n.admin-light-theme {')
     expect(CSS.slice(j, CSS.indexOf('}', j))).not.toContain('--dash-radius')
+    // 🧮 2026-09-15 (대표 "다른 대시보드들의 페이지들도 개선 계속") — 어드민은 **자기 블록**에서 같은 값을 선언한다.
+    //    오전의 "어드민은 종전 값 유지" 는 이 결정으로 대체됐다.
+    const k = CSS.indexOf('\n.admin-light-theme {\n  --dash-radius: 8px;')
+    expect(k, '어드민 D3 블록').toBeGreaterThan(0)
+    const adminBlock = CSS.slice(k, CSS.indexOf('}', k))
+    for (const v of ['--dash-h1: 17px', '--dash-stat: 22px', '--dash-pad-x: 16px', '--brand-tint: #EAF1FE']) expect(adminBlock, v).toContain(v)
+    expect(CSS).toContain('.admin-light-theme .dash-header-icon { display: none; }')
   })
 })
 

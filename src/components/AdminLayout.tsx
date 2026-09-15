@@ -276,7 +276,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
           to={path}
           onClick={() => setSidebarOpen(false)}
           // 🛡️ 2026-05-20: inline style + onMouseEnter/Leave 제거 (CSP unsafe-inline). amber 강조는 .ur-admin-nav-active.
-          className={`flex min-w-0 flex-1 items-center gap-2.5 rounded-lg py-[9px] pl-2.5 pr-1 text-[13px] transition-colors ${
+          className={`flex min-w-0 flex-1 items-center gap-2.5 rounded-lg py-[7px] pl-2.5 pr-1 text-[12.5px] transition-colors ${
             active ? 'font-bold text-gray-900' : 'font-medium text-gray-500 group-hover/nav:text-gray-900'
           }`}
         >
@@ -287,7 +287,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
           )}
           {/* 🏁 2026-06-14: 신규 이슈(미읽음 알림) 배지 */}
           {(navBadges[path] || 0) > 0 && (
-            <span className="flex-shrink-0 rounded-full bg-amber-500 px-1.5 text-[10px] font-extrabold text-white">{navBadges[path]}</span>
+            <span className="flex-shrink-0 rounded-full bg-tone-warn px-1.5 text-[10px] font-extrabold text-white">{navBadges[path]}</span>
           )}
         </Link>
         <button
@@ -310,7 +310,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
   // (이전엔 navigation 마다 unmount/remount → <nav> 스크롤 reset 버그 발생).
   const sidebar = (
     // 🧭 2026-09-14 (대표 Rinda 시안 — 셀러와 **같은 껍데기**. 두 대시보드가 서로 다르게 생길 이유가 없다)
-    <aside className="flex h-full w-[260px] flex-shrink-0 flex-col border-r border-rule bg-white">
+    <aside className="flex h-full w-[224px] flex-shrink-0 flex-col border-r border-rule bg-white">
       {/* Branding */}
       <div className="px-4 pb-3 pt-5">
         <div className="flex items-center gap-2.5">
@@ -369,9 +369,9 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
       <nav ref={navScrollRef} className="flex-1 overflow-y-auto scrollbar-hide pb-2">
         {/* ⭐ 즐겨찾기(고정) — 대표 "자주 쓰는 페이지를 좌측 상단에". 각 메뉴 ★ 토글로 큐레이션. */}
         {pinnedItems.length > 0 && (
-          <div className="mt-1 mb-1 pb-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-            <div className="px-4 py-1.5 flex items-center gap-1.5 font-extrabold uppercase text-amber-300/80" style={{ fontSize: '9px', letterSpacing: '0.12em' }}>
-              <Star size={10} strokeWidth={2.5} className="fill-amber-300/80" />
+          <div className="mt-1 mb-1 border-b border-rule pb-2">
+            <div className="px-4 py-1.5 flex items-center gap-1.5 font-extrabold uppercase text-gray-400" style={{ fontSize: '9px', letterSpacing: '0.12em' }}>
+              <Star size={10} strokeWidth={2.5} className="fill-gray-300 text-gray-300" />
               <span>즐겨찾기</span>
             </div>
             {pinnedItems.map((item) => renderNavItem(item))}
@@ -385,7 +385,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
             {sec.label && (
               <div className="mt-5 mb-0.5 px-4 flex items-center gap-2">
                 <span className="text-[10px] font-black tracking-wider whitespace-nowrap" style={{ color: sec.accent }}>{sec.label}</span>
-                <span className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${sec.accent}55, transparent)` }} />
+                <span className="h-px flex-1 bg-rule" />
               </div>
             )}
             {secGroups.map((group) => {
@@ -403,7 +403,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
               <span>{group.title}</span>
               <span className="flex items-center gap-1">
                 {collapsed && groupBadgeTotal(group.items) > 0 && (
-                  <span className="rounded-full bg-amber-500 px-1.5 text-[9px] font-extrabold normal-case tracking-normal text-white">{groupBadgeTotal(group.items)}</span>
+                  <span className="rounded-full bg-tone-warn px-1.5 text-[9px] font-extrabold normal-case tracking-normal text-white">{groupBadgeTotal(group.items)}</span>
                 )}
                 {collapsed && <span className="font-bold normal-case tracking-normal text-gray-300">{group.items.length}</span>}
                 <ChevronDown size={11} className={`transition-transform ${collapsed ? '-rotate-90' : ''}`} />
@@ -419,28 +419,22 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
       </nav>
 
       {/* Bottom user profile */}
-      <div className="px-4 py-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+      <div className="border-t border-rule px-4 py-3">
         <div className="flex items-center gap-2.5">
-          <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-extrabold flex-shrink-0"
-            style={{
-              background: '#F3F4F6',
-              color: '#16181C',
-            }}
-          >
+          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 text-[11px] font-extrabold text-gray-900">
             {adminName.charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-[12px] font-extrabold text-gray-900">{adminName}</p>
             <p className="text-[10px] text-gray-400">
-              플랫폼 운영팀 · <span className={adminRole === 'viewer' ? 'text-amber-600' : adminRole === 'super' ? 'text-red-600' : 'text-gray-600'}>{ADMIN_ROLE_LABEL[adminRole]}</span>
+              플랫폼 운영팀 · <span className={adminRole === 'viewer' ? 'text-tone-warn' : adminRole === 'super' ? 'text-brand-text' : 'text-gray-600'}>{ADMIN_ROLE_LABEL[adminRole]}</span>
               {adminRole === 'viewer' && ' (읽기전용)'}
             </p>
           </div>
         </div>
         <button
           onClick={logout}
-          className="mt-2.5 flex items-center gap-2 rounded-lg px-2.5 py-2 text-[12px] font-medium text-red-600 transition-colors hover:bg-red-50"
+          className="mt-2.5 flex items-center gap-2 rounded-lg px-2.5 py-2 text-[12px] font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
         >
           <LogOut size={12} strokeWidth={2} />
           로그아웃
@@ -478,7 +472,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
       </div>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="flex h-16 flex-shrink-0 items-center justify-between border-b border-rule bg-white px-4 lg:px-6">
+        <header className="flex h-14 flex-shrink-0 items-center justify-between border-b border-rule bg-white px-3 md:h-12 md:px-6">
           <div className="flex items-center gap-3">
             <button
               aria-label={sidebarOpen ? t('common.closeSidebar', { defaultValue: '사이드바 닫기' }) : t('common.openSidebar', { defaultValue: '사이드바 열기' })}
@@ -488,7 +482,8 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
             >
               {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
-            <h1 className="text-base font-semibold text-gray-900">{title}</h1>
+            {/* 🧮 2026-09-15 D3(어드민 합류): 제목은 셀러와 같은 13px 굵게 — 상단바가 본문보다 무거워지지 않게. */}
+            <h1 className="dash-phone-title truncate text-[13px] font-bold text-gray-900">{title}</h1>
           </div>
           <div className="flex items-center gap-2">
             <DashboardNotificationBell tokenKey="admin_token" />
@@ -496,7 +491,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-3 sm:space-y-5">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
           {children}
         </main>
       </div>
