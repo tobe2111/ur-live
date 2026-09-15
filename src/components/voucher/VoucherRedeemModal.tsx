@@ -119,7 +119,7 @@ export default function VoucherRedeemModal({
   return (
     <div className="fixed inset-0 z-[10000] bg-black/60 flex items-end sm:items-center justify-center" onClick={phase === 'confirm' ? onClose : undefined} role="presentation">
       <div
-        className="relative bg-white dark:bg-[#11141C] rounded-t-3xl sm:rounded-3xl w-full max-w-[430px] p-6"
+        className="relative bg-surface rounded-t-3xl sm:rounded-3xl w-full max-w-[430px] p-6"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

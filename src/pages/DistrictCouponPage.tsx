@@ -64,7 +64,7 @@ function ReceiptForm({ campaign, stores, onDone }: { campaign: Campaign; stores:
   }
 
   return (
-    <div className="rounded-2xl border border-line bg-white dark:bg-[#11141C] p-4 space-y-3">
+    <div className="rounded-2xl border border-line bg-surface p-4 space-y-3">
       <h2 className="flex items-center gap-1.5 text-sm font-bold text-gray-900 dark:text-white"><Receipt className="w-4 h-4" />영수증 등록</h2>
       <div>
         <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-200">구매 매장</label>
@@ -130,7 +130,7 @@ function RedeemModal({ coupon, stores, onClose, onRedeemed }: { coupon: MyCoupon
   if (doneBridge) {
     return (
       <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center bg-black/60" onClick={onClose} role="presentation">
-        <div className="w-full sm:max-w-xs sm:mx-4 rounded-t-3xl sm:rounded-3xl bg-white dark:bg-[#11141C] p-6 text-center" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+        <div className="w-full sm:max-w-xs sm:mx-4 rounded-t-3xl sm:rounded-3xl bg-surface p-6 text-center" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
           <p className="text-3xl" aria-hidden>✅</p>
           <p className="mt-2 text-[17px] font-extrabold text-gray-900 dark:text-white">사용 완료!</p>
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">결제 금액에서 쿠폰 금액을 빼고 결제하세요</p>
@@ -146,7 +146,7 @@ function RedeemModal({ coupon, stores, onClose, onRedeemed }: { coupon: MyCoupon
   }
   return (
     <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center bg-black/60" onClick={onClose} role="presentation">
-      <div className="w-full sm:max-w-xs sm:mx-4 rounded-t-3xl sm:rounded-3xl bg-white dark:bg-[#11141C] p-6" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+      <div className="w-full sm:max-w-xs sm:mx-4 rounded-t-3xl sm:rounded-3xl bg-surface p-6" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         <p className="text-center text-[17px] font-extrabold text-gray-900 dark:text-white">{formatWon(coupon.face_value)} 상권 쿠폰</p>
         <p className="mt-1 text-center font-mono text-sm font-bold tracking-widest text-gray-500 dark:text-gray-400">{coupon.code}</p>
         <div className="mt-4 space-y-3">
@@ -228,7 +228,7 @@ export default function DistrictCouponPage() {
         {/* 캠페인 랜딩 */}
         {!isMy && campaign && (
           <>
-            <div className="rounded-2xl border border-line bg-white dark:bg-[#11141C] p-4">
+            <div className="rounded-2xl border border-line bg-surface p-4">
               <p className="flex items-center gap-1.5 text-sm font-extrabold text-gray-900 dark:text-white"><TicketPercent className="h-4 w-4" />영수증 페이백</p>
               {campaign.description && <p className="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400 whitespace-pre-wrap">{campaign.description}</p>}
               <ul className="mt-2 space-y-1">
@@ -242,8 +242,8 @@ export default function DistrictCouponPage() {
             </div>
             {campaign.status === 'open'
               ? <ReceiptForm campaign={campaign} stores={stores} onDone={loadMy} />
-              : <div className="rounded-2xl border border-line bg-white dark:bg-[#11141C] p-5 text-center text-sm font-bold text-gray-500 dark:text-gray-400">접수가 종료된 캠페인입니다</div>}
-            <div className="rounded-2xl border border-line bg-white dark:bg-[#11141C] p-4">
+              : <div className="rounded-2xl border border-line bg-surface p-5 text-center text-sm font-bold text-gray-500 dark:text-gray-400">접수가 종료된 캠페인입니다</div>}
+            <div className="rounded-2xl border border-line bg-surface p-4">
               <p className="mb-2 flex items-center gap-1.5 text-sm font-bold text-gray-900 dark:text-white"><Store className="h-4 w-4" />참여 점포 ({stores.length})</p>
               <ul className="max-h-56 space-y-1.5 overflow-y-auto">
                 {stores.map((s) => (
@@ -272,11 +272,11 @@ export default function DistrictCouponPage() {
           <div className="space-y-2.5">
             <p className="text-[13px] font-semibold text-gray-500 dark:text-gray-400">사용 가능 쿠폰 <span className="text-gray-400 dark:text-gray-500">{unusedCoupons.length}</span></p>
             {unusedCoupons.length === 0 && isMy && (
-              <div className="rounded-2xl border border-line bg-white dark:bg-[#11141C] p-6 text-center text-sm text-gray-400 dark:text-gray-500">아직 쿠폰이 없어요 — 영수증을 등록해보세요</div>
+              <div className="rounded-2xl border border-line bg-surface p-6 text-center text-sm text-gray-400 dark:text-gray-500">아직 쿠폰이 없어요 — 영수증을 등록해보세요</div>
             )}
             {unusedCoupons.map((cp) => (
               <button key={cp.id} type="button" onClick={() => void openRedeem(cp)}
-                className="flex w-full items-center gap-3 rounded-2xl border border-line bg-white dark:bg-[#11141C] p-4 text-left active:scale-[0.99] transition-transform">
+                className="flex w-full items-center gap-3 rounded-2xl border border-line bg-surface p-4 text-left active:scale-[0.99] transition-transform">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-50 dark:bg-emerald-900/20">
                   <TicketPercent className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                 </div>
@@ -297,7 +297,7 @@ export default function DistrictCouponPage() {
             {receipts.map((r) => {
               const st = RECEIPT_STATUS[r.status] || { label: r.status, cls: 'bg-gray-100 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400' }
               return (
-                <div key={r.id} className="flex items-center gap-3 rounded-xl border border-line bg-white dark:bg-[#11141C] px-4 py-3">
+                <div key={r.id} className="flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3">
                   <div className="min-w-0 flex-1">
                     <p className="text-[13px] font-bold text-gray-900 dark:text-white">{formatWon(r.amount)} <span className="font-normal text-gray-400 dark:text-gray-500">· {r.store_name || '매장'}</span></p>
                     <p className="text-[10.5px] text-gray-400 dark:text-gray-500">{formatKSTDate(r.created_at)}{r.status === 'rejected' && r.reject_reason ? ` · ${r.reject_reason}` : ''}</p>
@@ -307,7 +307,7 @@ export default function DistrictCouponPage() {
               )
             })}
             {pastCoupons.map((cp) => (
-              <div key={cp.id} className="flex items-center gap-3 rounded-xl border border-line bg-white dark:bg-[#11141C] px-4 py-3 opacity-60">
+              <div key={cp.id} className="flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3 opacity-60">
                 <div className="min-w-0 flex-1">
                   <p className="text-[13px] font-bold text-gray-900 dark:text-white">{formatWon(cp.face_value)} 쿠폰</p>
                   <p className="text-[10.5px] text-gray-400 dark:text-gray-500">

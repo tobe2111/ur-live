@@ -46,7 +46,7 @@ export default function NearbyEmptyBanner({ loading, userLoc, sortBy, list, onOp
       </p>
       <button
         onClick={onOpenRegion}
-        className="shrink-0 px-3 py-2 rounded-lg bg-white dark:bg-[#11141C] border border-line text-[12px] font-bold text-gray-900 dark:text-white active:scale-95 transition-transform"
+        className="shrink-0 px-3 py-2 rounded-lg bg-surface border border-line text-[12px] font-bold text-gray-900 dark:text-white active:scale-95 transition-transform"
       >
         {t('restaurantMap.farBannerCta', { defaultValue: '지역 선택' })}
       </button>

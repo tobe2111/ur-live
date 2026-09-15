@@ -539,7 +539,9 @@ function PinCard({ pin, handle, isOwner, aboveFold, index, onDeleted }: { pin: C
              (할인은 2026-08-31 에 좌하단으로 내려가 이제 자리도 안 겹친다).
           🎫 2026-09-02 (대표 확정 안3/안P1 공통 — "순번 배지 흰 원 + 잉크 숫자"): 잉크 사각 칩 → 흰 원.
              사진 위 유일한 표식이라 흰 원 하나가 어떤 사진 위에서도 읽힌다(잉크 칩은 어두운 사진에서 묻혔다). */}
-      <span className="absolute top-2 left-2 z-10 w-6 h-6 rounded-full bg-white text-[#16181C] text-[11.5px] font-black tabular-nums flex items-center justify-center shadow-lift pointer-events-none">
+      {/* 사진 위 순번 배지(2026-09-02 대표 확정 "흰 원 + 잉크 숫자"). 뒤가 늘 사진이라 테마와 무관하게
+                  흰 원이어야 어떤 사진에서도 읽힌다 — dark: 를 달면 어두운 사진 위에서 사라진다. */}
+                <span className="absolute top-2 left-2 z-10 w-6 h-6 rounded-full bg-white text-[#16181C] text-[11.5px] font-black tabular-nums flex items-center justify-center shadow-lift pointer-events-none">  {/* light-fixed: 사진 위 */}
         {index + 1}
       </span>
       {isOwner && (

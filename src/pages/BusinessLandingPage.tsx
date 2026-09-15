@@ -86,16 +86,16 @@ export default function BusinessLandingPage() {
           <div className="hidden lg:flex justify-center">
             <div className="relative w-[300px] aspect-[9/19.5] rounded-[40px] border-[8px] border-gray-900 bg-gray-100 dark:bg-[#1D1F29] overflow-hidden shadow-2xl">
               <div className="absolute inset-0 p-4 flex flex-col gap-3">
-                <div className="bg-white dark:bg-[#11141C] rounded-2xl p-4 shadow-sm">
+                <div className="bg-surface rounded-2xl p-4 shadow-sm">
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">매장 검색</p>
                   <p className="text-sm font-bold text-gray-900 dark:text-white">동래원 본점</p>
                   <p className="text-[10px] text-gray-400 mt-1">부산 동래구 충렬대로...</p>
                 </div>
-                <div className="bg-white dark:bg-[#11141C] rounded-2xl p-4 shadow-sm">
+                <div className="bg-surface rounded-2xl p-4 shadow-sm">
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">💰 공구 가격</p>
                   <p className="text-2xl font-extrabold text-brand-text">15,000<span className="text-sm font-bold">딜</span></p>
                 </div>
-                <div className="bg-white dark:bg-[#11141C] rounded-2xl p-4 shadow-sm">
+                <div className="bg-surface rounded-2xl p-4 shadow-sm">
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">🎯 진행 현황</p>
                   <div className="w-full bg-gray-100 dark:bg-[#1D1F29] rounded-full h-2 mb-2">
                     <div className="h-full rounded-full bg-gray-800" style={{ width: '85%' }} />
@@ -112,7 +112,12 @@ export default function BusinessLandingPage() {
       </section>
 
       {/* 4 핵심 가치 */}
-      <section className="bg-gray-50 dark:bg-[#1D1F29] px-6 lg:px-12 py-16">
+      {/* 🎫 2026-09-15: 이 띠는 **섹션**이지 카드가 아니다 — 다크에서 카드색(#1D1F29)을 쓰고 있어서,
+          같은 색이 된 안쪽 카드들이 묻혔다(두 빌드 A/B 실측: 구분 8 → 4). 페이지 톤으로 내린다.
+          ⚠️ 라이트 불변 — `bg-gray-50` 과 `--bg` 라이트가 둘 다 #F8F7FC.
+          ⚠️ 같은 짝(`bg-gray-50 dark:bg-[#1D1F29]`)을 일괄 치환하면 안 된다 — `/refund` 에서는
+          그 짝이 **카드**라, 일괄로 바꿨더니 16개가 페이지에 묻혔다(실측 후 되돌림). */}
+      <section className="bg-warm px-6 lg:px-12 py-16">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl lg:text-4xl font-extrabold text-center mb-12">
             왜 사장님들이 유어딜을 선택할까요?
@@ -124,7 +129,7 @@ export default function BusinessLandingPage() {
               { icon: Shield, title: '사용 후 정산', desc: '교환권이 실제 사용된 만큼만 정산. 노쇼·미사용 리스크 없음.' },
               { icon: TrendingUp, title: '실시간 통계', desc: '오늘 매출, 사용 voucher, 정산 예정 — 실시간 알림톡.' },
             ].map((f, i) => (
-              <div key={i} className="bg-white dark:bg-[#11141C] rounded-2xl p-6 border border-gray-100 dark:border-[#2C2F35]">
+              <div key={i} className="bg-surface rounded-2xl p-6 border border-gray-100 dark:border-[#2C2F35]">
                 <f.icon className="w-8 h-8 text-brand-text mb-3" />
                 <h3 className="text-base font-bold mb-2">{f.title}</h3>
                 <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{f.desc}</p>
@@ -144,7 +149,7 @@ export default function BusinessLandingPage() {
             <p className="text-gray-600 dark:text-gray-300">슬라이더로 직접 계산해보세요</p>
           </div>
 
-          <div className="bg-gray-50 rounded-3xl p-6 lg:p-10 border border-rule">
+          <div className="bg-warm rounded-3xl p-6 lg:p-10 border border-rule">
             <div className="space-y-6">
               <div>
                 <div className="flex items-center justify-between mb-2">
@@ -171,11 +176,11 @@ export default function BusinessLandingPage() {
               </div>
 
               <div className="border-t border-rule pt-6 grid grid-cols-2 gap-4">
-                <div className="bg-white dark:bg-[#11141C] rounded-2xl p-4 text-center">
+                <div className="bg-surface rounded-2xl p-4 text-center">
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">월 GMV</p>
                   <p className="text-xl font-extrabold text-gray-900 dark:text-white">{monthlyGmv.toLocaleString()}원</p>
                 </div>
-                <div className="bg-white dark:bg-[#11141C] rounded-2xl p-4 text-center">
+                <div className="bg-surface rounded-2xl p-4 text-center">
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">수수료 ({(commissionRate * 100).toFixed(0)}%)</p>
                   <p className="text-xl font-extrabold text-gray-400">-{commission.toLocaleString()}원</p>
                 </div>
