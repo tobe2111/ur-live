@@ -9,6 +9,7 @@ import { Settings, Save, Loader2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import PromoBarSection from './admin-platform-settings/PromoBarSection'
+import MapMarkerSection from './admin-platform-settings/MapMarkerSection'
 import CloudflareCredsSection from './admin-platform-settings/CloudflareCredsSection'
 import { CREDENTIAL_KEYS, buildSettingsPayload } from './admin-platform-settings/settings-payload'
 import { COMMISSION_BUDGET_FIELDS } from './admin-platform-settings/money-switch-fields'
@@ -346,6 +347,7 @@ export default function AdminPlatformSettingsPage() {
 
           {/* 📣 2026-08-19 (대표 확정): 소비자 홈 최상단 프로모 바 — 켜고 끄기 + 문구/버튼/색 */}
           <PromoBarSection settings={settings} setSettings={setSettings} />
+          <MapMarkerSection settings={settings} setSettings={setSettings} />
 
           {/* ☁️ 진단용 Cloudflare 자격 — 입력칸이 없어 대표가 넣을 방법이 없던 것(2026-07-29) */}
           <CloudflareCredsSection settings={settings} setSettings={setSettings} savedTick={savedTick} onSave={save} saving={saving} />

@@ -169,6 +169,25 @@ const DEALS = DEAL_TITLES.map(([name, sub, was, now], i) => ({
 }))
 
 /**
+ * 🎬 2026-09-08 유어쇼츠 레일 시드 — `/api/urshorts`.
+ *   이게 없으면 레일이 `items.length === 0` 으로 **통째로 안 그려져서**(빈 관측 div 만 남는다)
+ *   레일 디자인을 화면으로 판단할 방법이 아예 없었다. 위 브랜드 스트립과 같은 클래스의 함정이다.
+ *   ⚠️ **라이브의 실제 모습을 섞는다** — 지금 올라간 3편은 이용권이 안 붙어 있어
+ *      `product_id·store_name·price` 가 전부 null 이고 글자 띠가 안 그려진다. 붙은 카드만
+ *      넣고 보면 "정보 없는 카드"의 생김새를 못 본다.
+ */
+const SHORTS_SEED = [
+  { id: 1, video_id: 'JLyX_qcuEig', thumb_url: null, title: null, channel: null, duration_sec: null,
+    product_id: null, product_name: null, store_name: null, price: null, original_price: null },
+  { id: 2, video_id: 'uSPgWrjU3-4', thumb_url: null, title: '수제 돈가스', channel: '맛집탐방',
+    duration_sec: 47, product_id: 2888, product_name: '치즈돈가스 2인 세트', store_name: '동탄 왕돈가스',
+    price: 12900, original_price: 19000, discount_rate: 32 },
+  { id: 3, video_id: 'Q7WEeklpYEE', thumb_url: null, title: null, channel: null, duration_sec: 18,
+    product_id: 2901, product_name: '아메리카노 2잔', store_name: '카페 온', price: 4500,
+    original_price: 7000, discount_rate: 35 },
+]
+
+/**
  * 🎫 2026-08-31 `--deals` 에 교환권 **카테고리 칩 + 브랜드 스트립**을 추가한다.
  *   ⚠️ 이게 없어서 실제로 잘못된 시안을 냈다: `/api/vouchers/categories` 가 빈 배열이라
  *   칩 행(50px)과 브랜드 스트립(113px)이 **통째로 안 그려졌고**, 그 화면으로
@@ -324,6 +343,8 @@ function serve() {
           if (p === '/api/coupons/my') return res.end(JSON.stringify({ success: true, data: [] }))
           if (p === '/api/payments/client-key') return res.end(JSON.stringify({ success: true, data: { clientKey: 'test_ck_preview' }, clientKey: 'test_ck_preview' }))
         }
+        // 🎬 레일은 홈 어느 경로에서든 뜬다 — 플래그 없이 항상 준다.
+        if (p === '/api/urshorts') return res.end(JSON.stringify({ success: true, data: SHORTS_SEED }))
         if (args.wallet && p === '/api/vouchers/my')
           return res.end(JSON.stringify({ success: true, data: WALLET_VOUCHERS }))
         if (args.deals) {

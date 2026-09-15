@@ -13,6 +13,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
+import { stripComments } from '../helpers/source-text'
 
 const CURATOR = readFileSync('src/worker/routes/curator.routes.ts', 'utf8')
 const VOUCHER = readFileSync('src/pages/VoucherDetailPage.tsx', 'utf8')
@@ -77,7 +78,7 @@ describe('③ 가입 화면 브랜드', () => {
   it('폐기된 옛 브랜드명이 화면 문자열로 남아 있지 않다', () => {
     // ⚠️ 주석은 뺀다 — 왜 걷어냈는지 적어 둔 설명이 위반으로 잡히면 그 설명을 지우게 된다
     //   (이 레포가 이미 한 번 밟은 함정).
-    const code = REGISTER.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
+    const code = stripComments(REGISTER)
     expect(code).not.toContain('UR' + ' LIVE')
   })
   it('워드마크는 SSOT 컴포넌트를 쓴다 — 문자열을 다시 박으면 또 갈린다', () => {

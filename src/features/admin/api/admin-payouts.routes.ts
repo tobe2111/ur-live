@@ -523,13 +523,49 @@ adminPayoutsRoutes.patch('/admin/payouts/commission-rates', requireAdminRole('fi
 adminPayoutsRoutes.patch('/admin/payouts/:id/cancel', requireAdmin(), require2FA(), auditLog('payouts.cancel'), async (c) => {
   const id = parseInt(c.req.param('id') || '', 10)
   if (!Number.isFinite(id)) return c.json({ success: false, error: 'Invalid id' }, 400)
-  const body = await c.req.json<{ reason?: string }>().catch(() => ({} as { reason?: string }))
+  const body = await c.req.json<{ reason?: string; confirm_release?: boolean }>()
+    .catch(() => ({} as { reason?: string; confirm_release?: boolean }))
   const { DB } = c.env
-  const row = await DB.prepare('SELECT status FROM payouts WHERE id = ?').bind(id).first<{ status: string }>()
+  const row = await DB.prepare('SELECT status, kind, payee_type, payee_id, payee_user_id, amount FROM payouts WHERE id = ?')
+    .bind(id).first<{ status: string; kind: string | null; payee_type: string; payee_id: string; payee_user_id: number | null; amount: number }>()
+    .catch(() => null)
   if (!row) return c.json({ success: false, error: 'Not found' }, 404)
   if (row.status === 'sent') return c.json({ success: false, error: '이미 송금됨 — reverse 는 별도 처리' }, 409)
+  /**
+   * 🤝 2026-09-08: **손바뀜 마감 행은 취소가 곧 돈의 방향을 바꾼다.**
+   *   집계(`payouts-generate`)는 `cancelled`/`failed` 를 안 빼므로, 이 행을 취소하면 금액이
+   *   원장으로 되살아난다. 주인이 **이미 바뀐 뒤**라면 그 돈은 다음 주에 **새 주인 계좌**로 나간다 —
+   *   대표 확정(*"이전 주인에게 정산되어야지"*)과 정반대다.
+   *
+   * ⚠️ **막지 않고 확인을 요구한다.** 하드 블록은 막다른 길을 만든다(금액을 잘못 적었으면 손쓸
+   *   방법이 없어진다 — 이 PR 의 자물쇠가 처음에 정확히 그 실수를 했다). 무엇이 일어나는지
+   *   말해 주고 `confirm_release: true` 를 받는다. 감사로그가 그 선택을 남긴다.
+   */
+  if (row.kind === 'handover_closeout' && row.payee_user_id && row.payee_type === 'seller' && !body.confirm_release) {
+    /**
+     * 🪑 2026-09-09: 종전엔 `sellers.linked_user_id` 하나로 "지금 주인"을 물었다. 그 칸은
+     *   `/store/new` 매장에서 **항상 비어 있어서**(주인은 `seller_operators.role='owner'`) 비교가
+     *   늘 `NaN !== N` → 참이 되고, **주인이 그대로인데도** 확인을 요구했다. 출금·인증·마감 판정과
+     *   **같은 함수**로 묻는다 — 신호가 갈리면 화면과 실제가 갈린다.
+     *
+     * 🔒 모름(undefined)은 "바뀌었다"로 다룬다. 근거 없이 통과시키면 그 돈이 새 주인에게 간다.
+     */
+    const { resolveStoreOwnerUserId } = await import('../../../worker/utils/seller-operators')
+    const nowOwner = await resolveStoreOwnerUserId(DB, Number(row.payee_id))
+    if (nowOwner === undefined || Number(nowOwner) !== Number(row.payee_user_id)) {
+      return c.json({
+        success: false,
+        code: 'HANDOVER_CLOSEOUT_RELEASE',
+        error: `이 건은 손바뀜 마감(${row.amount.toLocaleString('ko-KR')}원)이고 매장은 이미 주인이 바뀌었습니다. `
+          + '지금 취소하면 이 돈이 **새 소유자** 몫으로 돌아갑니다. 그래도 취소하려면 confirm_release 를 함께 보내세요.',
+      }, 409)
+    }
+  }
   await DB.prepare(
     `UPDATE payouts SET status = 'cancelled', error_message = ? WHERE id = ?`,
-  ).bind(body.reason || '관리자 취소', id).run()
+  ).bind(
+    (body.reason || '관리자 취소') + (body.confirm_release ? ' [손바뀜 마감 해제 — 새 소유자 몫으로 환원 확인함]' : ''),
+    id,
+  ).run()
   return c.json({ success: true })
 })

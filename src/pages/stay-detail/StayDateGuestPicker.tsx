@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Calendar, User, ChevronRight, ChevronLeft } from 'lucide-react'
+import { ChevronRight, ChevronLeft } from 'lucide-react'
+import { FieldCard, FieldSplit, FieldRow, FieldNote } from '@/components/ticket/FieldCard'
 
 /**
  * 🏨 숙소 날짜·인원 선택 (2026-08-19 대표 시안 — 야놀자/NOL).
@@ -49,6 +50,10 @@ const parseIso = (s: string) => { const [y, m, d] = s.split('-').map(Number); re
 const addDays = (s: string, n: number) => { const d = parseIso(s); d.setDate(d.getDate() + n); return iso(d) }
 const nightsBetween = (a: string, b: string) => Math.max(1, Math.round((parseIso(b).getTime() - parseIso(a).getTime()) / 86400000))
 const fmtTrigger = (s: string) => { const d = parseIso(s); return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}(${WEEK[d.getDay()]})` }
+/** 카드용 짧은 날짜 `09.14` — 연도는 카드에 안 쓴다(패널 하단 요약이 연도까지 말한다). */
+const fmtMd = (s: string) => { const d = parseIso(s); return `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}` }
+/** 요일 한 글자 — 값 뒤에 작게 붙는다. */
+const dow = (s: string) => WEEK[parseIso(s).getDay()]
 /** 25.7만 — 야놀자 표기. 만 단위 아래는 버린다(칸이 좁아 원 단위는 못 읽는다). */
 const fmtMan = (won: number) => (won >= 10000 ? `${Math.round(won / 1000) / 10}만` : `${Math.round(won / 1000)}천`)
 
@@ -62,10 +67,14 @@ function monthMatrix(year: number, month: number): Array<string | null> {
 
 export default function StayDateGuestPicker({
   checkIn, checkOut, guests, onApply, dayPrices = [], maxGuests = 20, baseGuests,
+  checkInTime, checkOutTime,
 }: {
   checkIn: string
   checkOut: string
   guests: number
+  /** 카드 맨 아래 각주로 들어간다. 둘 다 있을 때만 그린다(모르는 값을 지어내지 않는다). */
+  checkInTime?: string
+  checkOutTime?: string
   onApply: (v: { checkIn: string; checkOut: string; guests: number }) => void
   /** 서버가 주는 날짜별 1박 요금(있으면 달력에 표시, 없으면 숨김). */
   dayPrices?: DayPrice[]
@@ -114,22 +123,31 @@ export default function StayDateGuestPicker({
   const totalGuests = adults + kids
   const overBase = !!baseGuests && totalGuests > baseGuests
 
-  const trigger = 'flex-1 min-w-0 flex items-center justify-center gap-2 h-12 rounded-xl border text-[14px] font-bold transition-colors'
-  const on = 'border-brand text-brand bg-brand/[0.06]'
-  const off = 'border-gray-200 dark:border-[#2C2F35] text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-white/[0.04]'
-
   return (
     <div ref={boxRef} className="relative">
-      <div className="flex flex-col gap-2">
-        <button type="button" onClick={() => { setPhase('in'); setOpen(o => (o === 'date' ? 'none' : 'date')) }} className={`${trigger} ${open === 'date' ? on : off}`}>
-          <Calendar className="w-4 h-4 shrink-0" aria-hidden="true" />
-          <span className="truncate">{fmtTrigger(checkIn)} ~ {fmtTrigger(checkOut).slice(5)} · {nightsBetween(checkIn, checkOut)}박</span>
-        </button>
-        <button type="button" onClick={() => setOpen(o => (o === 'guest' ? 'none' : 'guest'))} className={`${trigger} ${open === 'guest' ? on : off}`}>
-          <User className="w-4 h-4 shrink-0" aria-hidden="true" />
-          <span className="truncate">성인 {Math.max(1, guests)}{kids > 0 ? `, 아동 ${kids}` : ''}</span>
-        </button>
-      </div>
+      {/* 🎫 2026-09-14 대표 확정 **안 B(분할 카드형)** — 시안 승인 후 구현.
+          종전: 48px 트리거 두 개가 각자 테두리를 두르고, 바깥 카드가 또 테두리를 둘러 **세 겹**이었다.
+          값(고른 날짜·인원)인데 라벨 없이 가운데 정렬이라 '누를 버튼'으로 읽혔고, 날짜·박수가
+          14px 한 줄에 다 들어가 좁으면 통째로 잘렸다.
+          ⇒ 테두리 0 카드 한 장 안에서 [체크인 → 1박 → 체크아웃] / [인원] / [시각 각주].
+          가운데 배지가 두 날짜의 관계를 말하므로 박수를 **다른 줄에서 또 말하지 않는다**.
+          부품은 공구 상세와 공유한다(`components/ticket/FieldCard`). */}
+      <FieldCard>
+        <FieldSplit
+          leftLabel="체크인" leftValue={fmtMd(checkIn)} leftSub={dow(checkIn)}
+          badge={`${nightsBetween(checkIn, checkOut)}박`}
+          rightLabel="체크아웃" rightValue={fmtMd(checkOut)} rightSub={dow(checkOut)}
+          onClick={() => { setPhase('in'); setOpen(o => (o === 'date' ? 'none' : 'date')) }}
+        />
+        <FieldRow
+          divider label="인원"
+          value={`성인 ${Math.max(1, guests)}${kids > 0 ? `, 아동 ${kids}` : ''}`}
+          onClick={() => setOpen(o => (o === 'guest' ? 'none' : 'guest'))}
+        />
+        {checkInTime && checkOutTime ? (
+          <FieldNote>체크인 {checkInTime} · 체크아웃 {checkOutTime}</FieldNote>
+        ) : null}
+      </FieldCard>
 
       {open === 'date' && (
         <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-[10500] rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#141C27] shadow-[0_12px_40px_rgba(0,0,0,0.18)] p-4 lg:w-[680px] lg:left-auto lg:right-0">

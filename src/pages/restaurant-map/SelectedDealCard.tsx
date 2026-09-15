@@ -1,4 +1,5 @@
 import CatIcon from './CatIcon'
+import { priceDisplay } from '@/shared/price-display'
 import { useRef } from 'react'
 import { MapPin, X, Star, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -46,7 +47,7 @@ export default function SelectedDealCard({
   const drag = useRef<{ id: number; x0: number; y0: number; dx: number; axis: 'h' | 'v' | null; raf: number } | null>(null)
 
   const discount = selected.original_price > selected.price
-    ? Math.round((1 - selected.price / selected.original_price) * 100)
+    ? priceDisplay(selected).discount
     : 0
   const dist = userLoc && selected.restaurant_lat && selected.restaurant_lng
     ? distanceKm(userLoc.lat, userLoc.lng, selected.restaurant_lat, selected.restaurant_lng)

@@ -46,6 +46,7 @@ if domain auth; then
   run "라이트 입력 가시성"               env STRICT_LIGHT_INPUT=1      node scripts/check-light-input-guard.mjs
   run "내부 링크 dead-link"             env STRICT_LINKS=1            node scripts/check-internal-links.mjs
   run "라우트 경로 중복(조용히 죽는 페이지)" env STRICT_DUP_ROUTES=1       node scripts/check-duplicate-routes.mjs
+  run "결제 복귀 주소 실재(승인 뒤 갈 곳)"                                   node scripts/check-payment-redirect-routes.mjs
   run "서버 라우트 중복(한 번도 안 도는 핸들러)" env STRICT_DUP_ROUTES=1 node scripts/check-duplicate-hono-routes.mjs
   run "게이트 미등재(켤 화면을 못 만드는 원인)" env STRICT_GATE_REGISTRY=1 node scripts/check-gate-registry.mjs
   run "꺼진 적립을 약속하는 새 경로"        env STRICT_AFFILIATE_GATE=1 node scripts/check-affiliate-display-gate.mjs
@@ -125,6 +126,8 @@ if domain ui; then
   run "커서 저장이 무한 루프 뒤(전진 0)"    node scripts/check-cursor-after-loop.mjs --strict
   # 2026-07-29 신규 등록 — 셋 다 파일은 예전부터 있었는데 어디에서도 실행되지 않고 있었다.
   run "input 라이트 가시성(흰글자)"       env STRICT_INPUT_TEXT=1       node scripts/check-input-text-color.mjs
+  run "자체 주석 제거기 래칫"            env STRICT_COMMENT_STRIPPER=1 node scripts/check-comment-stripper.mjs
+  run "로컬↔CI 차단 동등성"             node scripts/check-local-ci-parity.mjs
   run "i18n 6개 언어 동기화"             node scripts/check-i18n-sync.mjs
 fi
 

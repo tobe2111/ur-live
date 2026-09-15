@@ -17,15 +17,15 @@
 import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
+import { stripComments } from '../helpers/source-text'
 
 const read = (p: string) => fs.readFileSync(path.join(process.cwd(), p), 'utf-8')
-const code = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+const code = (src: string) => stripComments(src)
 
 const TOPBAR = 'src/pages/restaurant-map/MapTopBar.tsx'
 const DEFS = 'src/pages/restaurant-map/voucher-types.ts'
 const PAGE = 'src/pages/RestaurantMapPage.tsx'
 const PINS = 'src/pages/restaurant-map/map-overlays.ts'
-const HERO = 'src/pages/restaurant-map/HeroCarousel.tsx'
 const SHEET = 'src/pages/restaurant-map/SheetFilterBar.tsx'
 
 describe('① 지도 위 오버레이는 테마를 따르지 않는다', () => {
@@ -80,8 +80,20 @@ describe('④ 핀 링 = 잉크 하나 + 선택/라이브 블루', () => {
   it('카테고리 팔레트가 없다', () => {
     expect(s).not.toMatch(/#ec4899|#10b981|#8b5cf6|#f59e0b|categoryColor|categoryEmoji/i)
   })
-  it('ring 은 isLive || isSelected 일 때만 브랜드', () => {
-    expect(s).toMatch(/const ring = isLive \|\| isSelected \? PIN_RING_BRAND : PIN_RING_INK/)
+  // 🗺️ 2026-09-09 (안 D4): 핀이 원형 사진+링 → **알약**이 되면서 `ring` 변수는 사라졌다.
+  //   지키려던 것은 변수 이름이 아니라 *"강조색은 브랜드 하나, 자리는 선택뿐"* 이라는 규칙이므로
+  //   그 규칙 자체로 다시 겨눈다(테스트를 지우는 것과 다르다 — 계약은 그대로 살아 있다).
+  //   `isLive` 는 라이브커머스 영구중단으로 항상 빈 Set 이라 09-09 에 제거됐다.
+  it('브랜드 색은 선택(면)·즐겨찾기(선)에만 — 카테고리·평점 등으로 번지지 않는다', () => {
+    const brandUses = [...s.matchAll(/PIN_RING_BRAND/g)].length
+    expect(brandUses, 'PIN_RING_BRAND 가 사라졌다').toBeGreaterThan(0)
+    // 선택 알약 배경 + 즐겨찾기 윤곽선. 그 밖에서 브랜드가 쓰이기 시작하면 자리가 늘어난 것이다.
+    expect(brandUses, `브랜드 색 사용처가 ${brandUses}곳으로 늘었다`).toBeLessThanOrEqual(3)
+    expect(s).toMatch(/isFav && !isSelected \? `outline:1\.5px solid \$\{PIN_RING_BRAND\}/)
+  })
+  it('무게 3단계가 pinTierStyle 한 곳에서 나온다(호출부가 색을 따로 정하지 않는다)', () => {
+    expect(s).toMatch(/export function pinTierStyle\(tier: MapMarkerTier\)/)
+    for (const t of ['selected', 'seen', 'highlight']) expect(s).toContain(`tier === '${t}'`)
   })
   it('버블·핀 폴백에 이모지·그라디언트가 없다', () => {
     expect(s).not.toMatch(/linear-gradient\(135deg/)
@@ -89,18 +101,29 @@ describe('④ 핀 링 = 잉크 하나 + 선택/라이브 블루', () => {
   })
 })
 
-describe('⑤ 오늘의 핫딜 카드', () => {
-  const s = code(read(HERO))
-  it('할인율이 사진 위(absolute) 배지가 아니라 가격 줄에 있다', () => {
-    expect(s).not.toMatch(/absolute top-1\.5 left-1\.5 bg-brand/)
-    /* 할인 강조색은 `--sale`(빨강)이다 — 2026-09-07 대표 "할인율도 빨강으로 유지".
-       블루는 행동(버튼·선택 칩) 전용이고 이건 가격 이득이라 역할이 다르다.
-       계약은 "할인율이 한 색으로 강조된다" 이고, 그 색만 바뀌었다(완화 아님). */
-    expect(s).toMatch(/discount > 0 && <span className="text-sale/)
-  })
-  it('카드 테두리 0 · shadow-lift · 이모지 0', () => {
-    expect(s).toMatch(/shadow-lift/)
-    expect(s).not.toMatch(/border border-gray-100/)
-    expect(s).not.toMatch(/[\u{1F300}-\u{1FAFF}]|⚡/u)
+/**
+ * ⑤ **'오늘의 핫딜'은 지도에서 제거됐다** (2026-09-08 대표 *"거리순이 가장 우선이야"* ·
+ *   *"오늘의 핫딜은 원래 없었지 않아? 왜 생긴거지?"*).
+ *
+ * 여기 있던 검사들은 그 캐러셀의 **생김새**를 고정하고 있었다(할인율 자리·테두리 0·이모지 0).
+ * 캐러셀이 사라졌으니 그 계약도 갈 곳이 없다 — 지우는 대신 **"되살아나지 않는다"로 재조준**한다.
+ *
+ * ## 왜 없앴나 (셋 다 실측)
+ * ① **거리순을 가로챘다** — 시트는 거리순인데 그 위에 할인율순 다섯 장이 먼저 서 있었다.
+ * ② **바로 아래 첫 줄과 겹쳤다** — 거리 1등과 할인 1등이 같으면 한 화면에 같은 카드가 두 번.
+ *    홈에서 2026-09-06 에 고친 "같은 이용권이 두 번"과 같은 클래스인데 지도엔 그 처방이 안 갔다.
+ * ③ **"5곳"이 전체에서 고른 게 아니었다** — 2026-09-03 수요 로딩 이후 화면은 가까운 50개만 갖고 있다.
+ *    위에 "338곳"이라 적혀 있어도 실제로는 그 50개 중 top 5 였다.
+ *
+ * ⚠️ 이 테스트가 못 막는 것: **다른 이름의 같은 물건**(예: '지금 뜨는 딜')을 새로 얹는 것.
+ *   막는 것은 이 컴포넌트·이 배선의 부활까지다.
+ */
+describe('⑤ 지도 시트 맨 위는 거리순이 갖는다', () => {
+  const map = code(read(PAGE))
+  it('핫딜 캐러셀이 되살아나지 않았다', () => {
+    expect(map, 'HeroCarousel 배선이 돌아왔다').not.toMatch(/<HeroCarousel/)
+    expect(map, '할인율 TOP5 파생이 돌아왔다').not.toMatch(/const heroDeals =/)
+    expect(fs.existsSync(path.join(process.cwd(), 'src/pages/restaurant-map/HeroCarousel.tsx')),
+      '컴포넌트 파일이 돌아왔다').toBe(false)
   })
 })

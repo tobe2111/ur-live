@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Search, Bell, ShoppingCart } from 'lucide-react'
 import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
+import SellOnUrdealRow from './SellOnUrdealRow'
 import GroupBuyFeed from '@/pages/main-home/GroupBuyFeed'
 import { useHomeQuerySync } from '@/pages/main-home/useHomeQuerySync'
 import HomeSections from '@/components/home/HomeSections'
@@ -12,6 +13,8 @@ import HomeBannerStrip from '@/components/home/HomeBannerStrip'
 import PcHomeLocationBar, { readHomeRegion, type HomeRegion } from '@/pages/pc-home/PcHomeLocationBar'
 import { readCachedLoc } from '@/shared/utils/cached-loc'
 import { DEAL_CATS, type DealCategory } from '@/pages/pc-home/PcHomeRail'
+import { ShortsIcon } from '@/components/icons/urdeal-icons'
+import { URSHORTS_VIEWER_PATH } from '@/shared/urshorts'
 import { HOME_SHOWCASE_ENABLED } from '@/shared/feature-flags'
 
 /**
@@ -33,7 +36,7 @@ import { HOME_SHOWCASE_ENABLED } from '@/shared/feature-flags'
  */
 export default function MobileHomePage() {
   const navigate = useNavigate()
-  const [region, setRegion] = useState<HomeRegion>(() => readHomeRegion())
+  const [region, setRegion] = useState<HomeRegion>(() => (readCachedLoc() ? {} : readHomeRegion()))
   /**
    * 🧭 2026-09-05 (대표 "주말에 떠나는 숙소 섹션 아래의 일반 이용권들은 기본 디폴트가 현재 위치에서
    *   가까운 순대로"): **새로 묻지 않는다** — 지도 홈·위치바가 저장해 둔 마지막 측위만 읽는다
@@ -47,13 +50,24 @@ export default function MobileHomePage() {
   const dong = useCurrentDong(userLoc)
   const [category, setCategory] = useState<DealCategory>('all')
   /**
-   * ⚠️ 지역을 직접 고른 사람에겐 '가까운 순'을 씌우지 않는다 — 지역 필터와 거리순이 겹치면
-   *   무엇을 기준으로 걸러진 목록인지 화면이 말할 수 없다(지도의 `useNearMeAuto` 와 같은 가드).
-   *   섹션 '더보기'(`/?sort=popular`)는 `useHomeQuerySync` 가 그 위를 덮는다 — 대표 지시대로
-   *   "더보기 = 인기순"이 유지된다.
+   * 🧭 **위치가 저장된 지역을 이긴다** (2026-09-08 대표 *"여기엔 거리순, 가장 가까운 순이 먼저 떠야해"*).
+   *
+   * 🩸 이전 판은 `readCachedLoc() && !readHomeRegion().regionKey` 였다. 그래서 **예전에 지역을 골라 둔
+   *   사람**은 위치가 잡혀 있어도 영영 '인기순'이었는데, 헤더는 `located` 를 우선해 "동탄5동"을 띄운다.
+   *   화면은 "당신은 동탄에 있다"고 말하고 목록은 저장된 지역으로 걸러 인기순으로 줄 세운 셈이다.
+   *   그 지역에 딜이 0건이면 전체 폴백까지 걸려 **동탄5동 아래 서울 강남 딜**이 떴다(대표 실측).
+   *
+   * ⇒ 좌표가 있으면 저장된 지역은 **적용하지 않는다**(localStorage 는 그대로 둔다 — 지역을 다시 고르면
+   *   `handleRegion` 이 위치를 비우고 그 지역으로 간다). 헤더가 이미 내리는 판단을 목록도 내리게 하는 것뿐이다.
+   *
+   * ⚠️ 좌표가 없으면 거리순은 **만들 수 없다** → 그때만 '인기순'. 홈에서 위치를 새로 묻지는 않는다
+   *   (2026-09-05 결정 유지 — 화면 열자마자 권한 팝업은 과하다).
+   * 📌 여기 있던 "지역을 고른 사람에겐 가까운 순을 안 씌운다" 규칙은 이 결정으로 폐기됐다. 겹침 걱정은
+   *   위 `region` 초기화가 해결한다 — 좌표가 있으면 지역을 아예 안 씌우므로 두 기준이 겹칠 일이 없다.
+   *   섹션 '더보기'(`/?sort=popular`)는 `useHomeQuerySync` 가 그 위를 덮는다(더보기 = 인기순 유지).
    */
   const [sort, setSort] = useState<'popular' | 'newest' | 'discount' | 'near'>(
-    () => (readCachedLoc() && !readHomeRegion().regionKey ? 'near' : 'popular'),
+    () => (readCachedLoc() ? 'near' : 'popular'),
   )
 
   /**
@@ -112,8 +126,19 @@ export default function MobileHomePage() {
           </div>
         </div>
 
-        {/* 카테고리 — 라벨 SSOT 는 PC 헤더와 같은 `DEAL_CATS`(둘이 갈리지 않게). */}
-        <nav aria-label="카테고리" className="flex gap-5 overflow-x-auto scrollbar-hide px-4">
+        {/* 카테고리 — 라벨 SSOT 는 PC 헤더와 같은 `DEAL_CATS`(둘이 갈리지 않게).
+
+            🎬 2026-09-09 (대표 지시 — 캡처에 빨간 박스로 자리를 찍어 줬다): 이 줄 **오른쪽 끝**에
+            유어쇼츠 진입점. 그전까지 유어쇼츠로 가는 문은 레일 안 「전체 보기」 하나뿐이었고,
+            그 레일은 인기 이용권 다음이라(2026-09-07 확정 — 위로 올리면 첫 딜 표시가 늦어진다)
+            거기까지 스크롤한 사람만 존재를 알았다.
+
+            🔴 **진입점은 스크롤 밖에 있어야 한다.** 카테고리는 `overflow-x-auto` 라, 진입점을
+               그 안에 넣으면 카테고리가 **하나만 늘어도 같이 밀려 화면 밖으로 사라진다.**
+               지금은 다섯 개가 다 들어와 스크롤이 안 생겨서 티가 안 날 뿐이다.
+               그래서 줄을 [스크롤 영역][고정 진입점] 두 칸으로 나눈다. */}
+        <div className="flex items-end gap-3 px-4">
+        <nav aria-label="카테고리" className="flex min-w-0 flex-1 gap-5 overflow-x-auto scrollbar-hide">
           {DEAL_CATS.map(({ key, label }) => {
             const on = category === key
             return (
@@ -132,6 +157,25 @@ export default function MobileHomePage() {
             )
           })}
         </nav>
+        {/* 🎬 유어쇼츠 진입점 (대표 확정 2026-09-09 — 자리·아이콘·마침표 전부 시안에서 확정).
+            글자를 빼지 않는 이유: 유어쇼츠는 새 이름이라 아이콘만으론 무엇인지 모른다.
+            면(알약)을 안 쓰는 이유: 이 줄의 유일한 면이 되어 정작 필터인 카테고리보다 무거워진다
+            (09-01 "색이 아니라 무게로").
+
+            🔵 **마침표는 로고 `urdeal.` 과 같은 장치다.** 점을 띄우면 바로 옆 알림 종 때문에
+               뱃지("새 것 있음")로 읽혀, 상시로 켜 두면 한 주 만에 배경이 되고 진짜 뱃지의
+               신뢰도까지 깎인다. 붙이면 서명이라 안 낡는다.
+            ⏳ 반짝임(펄스)은 **일부러 안 넣었다** — `live-pulse`(index.css)가 지도 LIVE 핀에서
+               "지금 방송 중"을 뜻하고 있어 같은 손짓이 두 가지를 뜻하게 된다. 새 영상이 쌓이면
+               "마지막 방문 이후 새 영상이 있을 때만" 조건으로 얹는다. */}
+        <Link
+          to={URSHORTS_VIEWER_PATH}
+          className="flex shrink-0 items-center gap-1.5 whitespace-nowrap pb-2 text-[12.5px] font-bold text-gray-600 dark:text-gray-300"
+        >
+          <ShortsIcon size={16} />
+          유어쇼츠<span className="-ml-[3px] text-brand-text">.</span>
+        </Link>
+        </div>
       </div>
 
       {/* 어드민 편성(섹션·배너) — 카테고리를 고르면 숨긴다(PC 홈과 같은 규칙: 화면 맨 위가 그 카테고리여야 한다). */}
@@ -168,6 +212,11 @@ export default function MobileHomePage() {
           userLoc={userLoc}
         />
       </section>
+
+      {/* 🏪 판매 진입점 — **피드를 다 본 뒤**가 자리다(대표 확정 2026-09-14, 안 1).
+            8/26 에 지도 모달에서 뺀 것과 같은 물건이 되지 않으려면 위로 올리면 안 된다.
+            사유·노출 규칙은 `./SellOnUrdealRow` 머리주석. */}
+      <SellOnUrdealRow />
     </div>
   )
 }

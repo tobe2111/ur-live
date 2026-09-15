@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { Ticket, Copy, Send, RefreshCw, DollarSign, AlertCircle, CheckCircle2, Plus } from 'lucide-react'
+import { Ticket, Copy, Send, RefreshCw, DollarSign, AlertCircle, CheckCircle2, Plus, Pencil, Trash2 } from 'lucide-react'
 import api from '@/lib/api'
 import { isVoucherCategory } from '@/shared/constants/voucher-categories'
 import { safeNum, formatNumber, formatWon } from '@/utils/format'
@@ -75,6 +75,27 @@ export default function SellerGroupBuyPage() {
     const commission = Math.round(gross * safeNum(commissionRate))
     const netToSeller = gross - commission
     return { gross, commission, netToSeller }
+  }
+
+  // 🗑️ 2026-09-14 (대표 "이용권 관리 맡아서 해줘"): 삭제 — 서버는 2026-05-15 부터 준비돼 있었는데
+  //   **버튼이 없어서** 셀러가 자기 이용권을 내릴 방법이 화면에 없었다(`/seller/products` 목록은
+  //   SELLER_STORE_ONLY_MODE 로 nav 에서 빠져 있다). 서버가 소유권(`AND seller_id = ?`)과
+  //   **진행 중 공구**(참여자 1명 이상이면 409)를 막으므로 여기서는 확인만 받는다.
+  async function deleteVoucher(p: GroupBuyProduct) {
+    if (!(await confirmDialog(`'${p.name}' 이용권을 삭제할까요?\n이미 발급된 이용권은 그대로 사용할 수 있고, 새 판매만 중단됩니다.`))) return
+    try {
+      const res = await api.delete(`/api/seller/products/${p.id}`, { headers })
+      if (res.data?.success) {
+        toast.success(t('seller.groupBuy.deleted', { defaultValue: '이용권이 삭제되었습니다' }))
+        loadData()
+      } else {
+        toast.error(res.data?.error || '삭제 실패')
+      }
+    } catch (err: unknown) {
+      // 409(진행 중 공구)는 서버가 쓴 이유를 그대로 보여준다 — "삭제 실패" 만으로는 할 수 있는 게 없다.
+      const e = err as { response?: { data?: { error?: string } } }
+      toast.error(e?.response?.data?.error || '삭제 실패')
+    }
   }
 
   // 🛡️ 2026-04-27: 사장님께 알림톡 재발송 (Magic Link)
@@ -291,6 +312,24 @@ export default function SellerGroupBuyPage() {
                   >
                     <RefreshCw className="w-3.5 h-3.5" /> {t('seller.groupBuy.reissue', { defaultValue: '같은 내용으로 재발행' })}
                   </button>
+
+                  {/* ✏️🗑️ 2026-09-14: 수정·삭제 — 이 카드가 이용권을 관리하는 **유일한 화면**이다.
+                      종전엔 수정 링크가 '연락처 미등록' 배너 안에만 있어, 연락처가 등록된 매장은
+                      수정 화면에 닿을 방법이 아예 없었다(라이브 실측: 유일한 실제 매장이 그 경우였다). */}
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => navigate(`/seller/products/${p.id}/edit`)}
+                      className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-gray-700 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-[0.98] transition"
+                    >
+                      <Pencil className="w-3.5 h-3.5" /> {t('common.edit', { defaultValue: '수정' })}
+                    </button>
+                    <button
+                      onClick={() => deleteVoucher(p)}
+                      className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-red-600 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-[0.98] transition"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" /> {t('common.delete', { defaultValue: '삭제' })}
+                    </button>
+                  </div>
 
                   {/* 🎟️ 2026-07-06 (§2-A 방향 A): 매장이 공구 열기 — GB_ENGINE_ENABLED 게이트(기본 OFF) */}
                   {GB_ENGINE_ENABLED && (

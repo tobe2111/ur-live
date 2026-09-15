@@ -334,12 +334,30 @@ export async function recordIntroductionCommissionShare(
   ).bind(ref).first().catch(() => null)
   if (existing) return { influencer_id: null, amount: 0 }
 
-  // 매장의 입점 유치 인플루언서 조회
+  /**
+   * 🤝 2026-09-09: **판 시점의 도장을 먼저 읽는다**(대표 *"귀속되는 시점부터 계산"*).
+   *
+   * 아래 매장 조회는 이제 **옛 이용권 전용 폴백**이다. 도장(`intro_stamped_at`)이 찍혀 있으면
+   * 그 이용권은 팔릴 때 이미 판정된 것이므로 매장의 *현재* 영입자를 보지 않는다 — 그래야
+   * 영입자가 바뀌어도 과거 판매분이 소급되지 않는다.
+   *
+   * ⚠️ 도장이 NULL 인 것과 도장이 **없는** 것은 다르다: 전자는 "팔 때 받을 사람이 없었다"(0원),
+   *   후자는 "이 변경 이전에 팔렸다"(폴백). `intro_stamped_at` 이 그 둘을 가른다.
+   */
+  const stamp = await DB.prepare(
+    'SELECT introduced_by_influencer_id AS iid, intro_stamped_at FROM vouchers WHERE id = ? LIMIT 1',
+  ).bind(params.voucher_id).first<{ iid: number | null; intro_stamped_at: string | null }>().catch(() => null)
+  const stamped = !!stamp?.intro_stamped_at
+  if (stamped && !stamp?.iid) return { influencer_id: null, amount: 0 }
+
+  // 매장의 입점 유치 인플루언서 조회 (도장이 없는 옛 이용권 폴백)
   // 🛡️ 2026-05-27 (사용자 결정): 매장별 commission 기간 체크 (referral_bonus_until).
   const seller = await DB.prepare(
-    'SELECT introduced_by_influencer_id, referral_bonus_until FROM sellers WHERE id = ?',
-  ).bind(params.merchant_id).first<{ introduced_by_influencer_id: number | null; referral_bonus_until: string | null }>().catch(() => null)
-  if (!seller?.introduced_by_influencer_id) return { influencer_id: null, amount: 0 }
+    'SELECT introduced_by_influencer_id, introduced_at, referral_bonus_until FROM sellers WHERE id = ?',
+  ).bind(params.merchant_id).first<{ introduced_by_influencer_id: number | null; introduced_at: string | null; referral_bonus_until: string | null }>().catch(() => null)
+  // 도장이 있으면 그 사람이 받는다 — 매장의 현재 영입자가 누구든 상관없다.
+  const payeeId = stamped ? Number(stamp!.iid) : (seller?.introduced_by_influencer_id ?? null)
+  if (!payeeId) return { influencer_id: null, amount: 0 }
   /**
    * ⏳ 2026-09-07: 만료 판정을 **결제 레일과 같은 SSOT**(`isStoreIntroExpired`)로 통일.
    *
@@ -362,7 +380,9 @@ export async function recordIntroductionCommissionShare(
   const introMonths = Number(monthsRow?.value) > 0
     ? Number(monthsRow?.value)
     : CD.INFLUENCER_STORE_INTRO_MONTHS
-  if (isStoreIntroExpired(seller, introMonths)) {
+  // 도장이 찍힌 이용권은 **판 시점에 이미 판정**했다 — 여기서 오늘 기준으로 다시 자르면
+  // 그때 정당하게 얻은 보상이 나중에 사라진다(그게 소급의 반대 방향 사고다).
+  if (!stamped && isStoreIntroExpired(seller, introMonths)) {
     return { influencer_id: null, amount: 0 }
   }
 
@@ -375,16 +395,16 @@ export async function recordIntroductionCommissionShare(
   try {
     const v = await DB.prepare('SELECT order_id, user_id FROM vouchers WHERE id = ?')
       .bind(params.voucher_id).first<{ order_id: number | null; user_id: string | number | null }>().catch(() => null)
-    if (v?.user_id != null && String(v.user_id) === String(seller.introduced_by_influencer_id)) {
-      return { influencer_id: seller.introduced_by_influencer_id, amount: 0 }
+    if (v?.user_id != null && String(v.user_id) === String(payeeId)) {
+      return { influencer_id: payeeId, amount: 0 }
     }
     if (v?.order_id) {
       const dup = await DB.prepare(
         `SELECT id FROM influencer_attributions
           WHERE order_id = ? AND influencer_id = ? AND source = 'store_intro'
             AND COALESCE(status, 'pending') NOT IN ('clawed_back', 'cancelled') LIMIT 1`,
-      ).bind(v.order_id, String(seller.introduced_by_influencer_id)).first().catch(() => null)
-      if (dup) return { influencer_id: seller.introduced_by_influencer_id, amount: 0 }
+      ).bind(v.order_id, String(payeeId)).first().catch(() => null)
+      if (dup) return { influencer_id: payeeId, amount: 0 }
     }
   } catch { /* dedup 조회 실패 → 기존 동작(지급) — 멱등 ref 가 재실행 이중은 막음 */ }
 
@@ -400,9 +420,10 @@ export async function recordIntroductionCommissionShare(
   } catch { /* default */ }
 
   const amount = Math.floor(params.platform_fee * sharePct)
-  if (amount <= 0) return { influencer_id: seller.introduced_by_influencer_id, amount: 0 }
+  if (amount <= 0) return { influencer_id: payeeId, amount: 0 }
 
-  const influencerUserId = seller.introduced_by_influencer_id
+  // 🤝 받는 사람은 **도장 우선**이다 — 여기가 seller 를 다시 읽으면 도장이 무의미해진다.
+  const influencerUserId = payeeId
 
   // 🛡️ 2026-05-28: introduced_by_influencer_id 는 users.id (sellers.id 아님!).
   //   현금/딜 분기는 통합 SSOT creditUserCommission 으로 위임. event_type 은

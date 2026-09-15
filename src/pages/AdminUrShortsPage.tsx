@@ -7,7 +7,7 @@ import ProductPicker from './admin-urshorts/ProductPicker'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
-import { parseYouTubeUrl, URSHORTS_RAIL_LIMIT } from '@/shared/urshorts'
+import { parseYouTubeUrl, parseYouTubeUrlList, URSHORTS_RAIL_LIMIT, URSHORTS_BULK_MAX } from '@/shared/urshorts'
 
 /**
  * 🎬 `/admin/urshorts` — 유어쇼츠 관리 (2026-09-07).
@@ -44,7 +44,9 @@ export default function AdminUrShortsPage() {
   const [url, setUrl] = useState('')
   const [consent, setConsent] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [msg, setMsg] = useState<{ kind: 'ok' | 'bad'; text: string } | null>(null)
+  const [msg, setMsg] = useState<{ kind: 'ok' | 'bad' | 'warn'; text: string } | null>(null)
+  /** 여러 개를 넣는 동안 몇 번째인지 — 서른 개면 수십 초가 걸린다. 진행이 안 보이면 멈춘 줄 안다. */
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -57,26 +59,65 @@ export default function AdminUrShortsPage() {
   }, [])
   useEffect(() => { void load() }, [load])
 
-  /** 붙여 넣는 즉시 알려 준다 — 서버까지 갔다 거부당하는 왕복을 줄인다. */
+  /**
+   * 붙여 넣는 즉시 알려 준다 — 서버까지 갔다 거부당하는 왕복을 줄인다.
+   * 🎬 2026-09-09: 여러 줄을 받게 되면서 **보내기 전에 세어 준다** — 서른 개를 넣고
+   *   스무 번째에서 거부당하면 어느 줄이 문제인지 알 수 없다.
+   */
+  const parsed = useMemo(() => parseYouTubeUrlList(url), [url])
   const hint = useMemo(() => {
     if (!url.trim()) return null
-    const p = parseYouTubeUrl(url)
-    if (!p) return { kind: 'bad' as const, text: '유튜브 주소가 아닙니다' }
-    if (p.form === 'shorts') return { kind: 'ok' as const, text: '쇼츠 주소입니다' }
-    return { kind: 'warn' as const, text: '쇼츠인지 서버에서 길이를 확인합니다 (3분 이하만)' }
-  }, [url])
+    const { ok, bad, dupes } = parsed
+    if (ok.length === 0) return { kind: 'bad' as const, text: '유튜브 주소를 찾지 못했습니다' }
+    if (ok.length === 1 && bad.length === 0 && dupes.length === 0) {
+      return ok[0].form === 'shorts'
+        ? { kind: 'ok' as const, text: '쇼츠 주소입니다' }
+        : { kind: 'warn' as const, text: '쇼츠인지 서버에서 길이를 확인합니다 (3분 이하만)' }
+    }
+    const parts = [`${ok.length}개 인식`]
+    if (dupes.length) parts.push(`${dupes.length}개 중복(제외)`)
+    if (bad.length) parts.push(`${bad.length}개 못 읽음`)
+    const over = ok.length > URSHORTS_BULK_MAX
+    if (over) parts.push(`한 번에 ${URSHORTS_BULK_MAX}개까지`)
+    return { kind: (bad.length || over ? 'warn' : 'ok') as 'ok' | 'warn', text: parts.join(' · ') }
+  }, [url, parsed])
 
+  /**
+   * 🎬 여러 개를 **한 줄씩 순서대로** 보낸다.
+   *
+   * 🔴 병렬로 보내지 않는다 — 건당 유튜브 조회 1 unit + D1 왕복 하나라, 서른 개를 동시에
+   *   던지면 쿼터를 순간적으로 태우고 실패해도 어느 것이 실패했는지 뒤섞인다.
+   *   느린 대신 **몇 번째 줄이 왜 실패했는지** 그대로 말해 줄 수 있다.
+   * 🔴 하나가 실패해도 멈추지 않는다 — 스물아홉 개가 멀쩡한데 하나 때문에 전부 버리면
+   *   사람이 다시 스물아홉 개를 붙여 넣어야 한다.
+   */
   const add = async () => {
-    if (busy || !url.trim()) return
-    setBusy(true); setMsg(null)
-    try {
-      await api.post('/api/admin/urshorts', { url, consent })
-      setUrl(''); await load()
-      setMsg({ kind: 'ok', text: '추가했습니다. 이용권을 골라야 홈에 나갑니다' })
-    } catch (e) {
-      const detail = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-      setMsg({ kind: 'bad', text: detail || '추가하지 못했습니다' })
-    } finally { setBusy(false) }
+    if (busy || parsed.ok.length === 0) return
+    const items = parsed.ok.slice(0, URSHORTS_BULK_MAX)
+    setBusy(true); setMsg(null); setProgress(items.length > 1 ? { done: 0, total: items.length } : null)
+    const failed: string[] = []
+    for (const [i, it] of items.entries()) {
+      try {
+        await api.post('/api/admin/urshorts', { url: it.url, consent })
+      } catch (e) {
+        const detail = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
+        failed.push(`${it.id}: ${detail || '실패'}`)
+      }
+      if (items.length > 1) setProgress({ done: i + 1, total: items.length })
+    }
+    setProgress(null)
+    const added = items.length - failed.length
+    // 성공분만 입력칸에서 비운다 — 실패한 줄은 남겨 둬야 고쳐서 다시 넣을 수 있다.
+    setUrl(failed.length ? failed.map((f) => f.split(':')[0]).join('\n') : '')
+    await load()
+    if (failed.length === 0) {
+      setMsg({ kind: 'ok', text: `${added}개 추가했습니다. 이용권을 골라야 홈에 나갑니다` })
+    } else if (added === 0) {
+      setMsg({ kind: 'bad', text: `추가하지 못했습니다 — ${failed[0]}` })
+    } else {
+      setMsg({ kind: 'warn', text: `${added}개 추가 · ${failed.length}개 실패(입력칸에 남겨 뒀습니다) — ${failed[0]}` })
+    }
+    setBusy(false)
   }
 
   const patch = async (id: number, body: Record<string, unknown>) => {
@@ -117,7 +158,9 @@ export default function AdminUrShortsPage() {
     } catch { setMsg({ kind: 'bad', text: '저장하지 못했습니다' }) }
   }
 
-  const live = rows.filter((r) => r.is_active && r.product_id && r.consent).length
+  // 🔁 2026-09-08 대표 지시로 홈 노출 조건이 `is_active` 하나가 됐다(허락·이용권 무관).
+  //    이 숫자가 서버의 공개 쿼리와 다르면 화면이 거짓말을 한다 — 조건을 같이 옮긴다.
+  const live = rows.filter((r) => r.is_active).length
   const noConsent = rows.filter((r) => !r.consent).length
   const orphan = rows.filter((r) => !r.product_id).length
 
@@ -131,7 +174,7 @@ export default function AdminUrShortsPage() {
 
         {msg && (
           <div className={`rounded-lg px-4 py-3 text-sm ${
-            msg.kind === 'ok' ? 'bg-blue-50 text-blue-700' : 'bg-red-50 text-red-700'}`}>
+            msg.kind === 'ok' ? 'bg-blue-50 text-blue-700' : msg.kind === 'warn' ? 'bg-amber-50 text-amber-800' : 'bg-red-50 text-red-700'}`}>
             {msg.text}
           </div>
         )}
@@ -157,18 +200,21 @@ export default function AdminUrShortsPage() {
         <div className="rounded-xl bg-white p-4 shadow-sm sm:p-5">
           <div className="mb-1 text-[14px] font-bold text-gray-900">영상 추가</div>
           <p className="mb-3 text-[12.5px] text-gray-500">
-            쇼츠 주소를 붙여 넣으세요. 제목·채널·썸네일은 유튜브에서 자동으로 채워집니다.
+            쇼츠 주소를 붙여 넣으세요 — <b>여러 개를 한 번에</b> 넣어도 됩니다(한 줄에 하나, 최대 {URSHORTS_BULK_MAX}개).
+            제목·채널·썸네일은 유튜브에서 자동으로 채워집니다.
           </p>
           <div className="flex flex-wrap gap-2">
-            <input
+            <textarea
               value={url} onChange={(e) => setUrl(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') void add() }}
-              placeholder="https://www.youtube.com/shorts/..."
-              className="min-w-[240px] flex-1 rounded-lg border border-gray-200 px-3 py-2 text-[13px] text-gray-900"
+              onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) void add() }}
+              rows={url.includes('\n') ? 6 : 2}
+              placeholder={'https://www.youtube.com/shorts/...\n한 줄에 하나씩 — 여러 개를 한 번에 붙여 넣어도 됩니다'}
+              className="min-w-[240px] flex-1 resize-y rounded-lg border border-gray-200 px-3 py-2 text-[13px] leading-relaxed text-gray-900"
             />
-            <button onClick={() => void add()} disabled={busy || !url.trim()}
-              className="flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white disabled:opacity-40">
-              <Plus size={15} /> 추가
+            <button onClick={() => void add()} disabled={busy || parsed.ok.length === 0}
+              className="flex h-fit items-center gap-1.5 rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white disabled:opacity-40">
+              <Plus size={15} />
+              {progress ? `${progress.done}/${progress.total}` : parsed.ok.length > 1 ? `${Math.min(parsed.ok.length, URSHORTS_BULK_MAX)}개 추가` : '추가'}
             </button>
           </div>
           {hint && (
@@ -177,9 +223,10 @@ export default function AdminUrShortsPage() {
               {hint.text}
             </p>
           )}
-          {/* 🔴 허락 확인. 남의 영상을 구매 버튼 옆에 두면 그 창작자가 이 딜을 보증한 것으로 읽히는데
-              그는 그런 적이 없다. 게다가 유어애즈가 바로 그 채널들에게 제휴 제안을 보낼 참이라,
-              자기 영상이 이미 우리 판매에 쓰이는 걸 보면 그 제안이 열리기도 전에 죽는다. */}
+          {/* 🔁 허락 확인 — **기록용**이다(2026-09-08 대표: 허락 무관하게 홈에 노출).
+              위험은 그대로다: 남의 영상을 구매 버튼 옆에 두면 그 창작자가 이 딜을 보증한 것으로
+              읽히고, 유어애즈가 그 채널에 제휴 제안을 보낼 때 불리해진다. 그래서 체크는 남긴다 —
+              어떤 영상에 허락을 받아 뒀는지 알아야 제안을 보낼 수 있다. 다만 노출은 안 막는다. */}
           <label className="mt-3 flex items-start gap-2 text-[12.5px] text-gray-700">
             <input
               type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)}
@@ -188,7 +235,7 @@ export default function AdminUrShortsPage() {
             <span>
               <b>우리가 만든 영상이거나, 매장 영상이거나, 창작자에게 허락받았습니다.</b>
               <span className="block text-gray-500">
-                확인 안 하면 목록에는 남지만 홈에는 안 나갑니다. 허락은 유어애즈 제휴 제안으로 받으세요.
+                기록용입니다 — 확인 안 해도 홈에는 나갑니다. 허락은 유어애즈 제휴 제안으로 받으세요.
               </span>
             </span>
           </label>
@@ -268,7 +315,7 @@ export default function AdminUrShortsPage() {
 
                   <button
                     onClick={() => void patch(r.id, { consent: !r.consent })}
-                    title={r.consent ? '허락 확인됨 — 누르면 취소' : '허락 미확인 — 누르면 확인'}
+                    title={r.consent ? '허락 확인됨 — 누르면 취소' : '허락 미확인 — 누르면 확인 (기록용, 홈 노출과 무관)'}
                     className={`shrink-0 rounded-lg px-2.5 py-2 text-[11px] font-bold ${
                       r.consent ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'}`}
                   >

@@ -1,4 +1,5 @@
 import CatIcon from './CatIcon'
+import { priceDisplay } from '@/shared/price-display'
 import { Radio, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -42,7 +43,7 @@ export default function SelectedPeekCard({ selected, liveSellerIds, onClose }: P
               {/* 🎨 2026-07-19 (대표 — 브랜드 컬러 통일): 할인 뱃지 순수 빨강 → 웜 로즈 brand 토큰. */}
               {selected.original_price > selected.price && (
                 <span className="text-[10px] bg-brand text-white font-bold px-1 py-0.5 rounded">
-                  -{Math.round((1 - selected.price / selected.original_price) * 100)}%
+                  -{priceDisplay(selected).discount}%
                 </span>
               )}
             </div>

@@ -27,12 +27,16 @@ const STEPS: readonly { n: string; t: string; d: string }[] = [
   { n: '3', t: '스캔이 안 되면 매장 확인코드를 물어보세요', d: '직원에게 4~6자리 확인코드를 받아 화면에 입력하면 사용됩니다.' },
 ]
 
-export default function RedeemHowTo() {
+export default function RedeemHowTo({ hideTitle = false }: { hideTitle?: boolean } = {}) {
   return (
-    <div style={{ marginTop: 18 }}>
-      <div style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--gbd-ink)', marginBottom: 10 }}>
-        매장에서 사용하는 방법
-      </div>
+    <div style={{ marginTop: hideTitle ? 12 : 18 }}>
+      {/* 🔽 2026-09-14: 접기 안에서 쓸 때는 제목을 숨긴다 — 트리거가 같은 문구를 이미 말한다
+          (`UsageGuide.tsx`). 기본값은 종전 그대로라 다른 호출부는 byte-동일하게 렌더된다. */}
+      {!hideTitle && (
+        <div style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--gbd-ink)', marginBottom: 10 }}>
+          매장에서 사용하는 방법
+        </div>
+      )}
       <ol style={{ display: 'flex', flexDirection: 'column', gap: 12, margin: 0, padding: 0, listStyle: 'none' }}>
         {STEPS.map((s) => (
           <li key={s.n} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>

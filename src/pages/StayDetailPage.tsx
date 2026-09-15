@@ -10,15 +10,18 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
-import { MapPin, Calendar, Users, Star, Wifi, Coffee, Car, Waves, Sparkles, Flame, Utensils, Wind, Bath, Dumbbell, Check, PawPrint, CigaretteOff, Hotel, TicketPercent } from 'lucide-react'
+import { MapPin, Calendar, Users, Star, Sparkles, Hotel, TicketPercent } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
-import { SectionTitle, AmenityFlow, InfoBlock, propertyTypeLabel } from './stay-detail/StayInfoSections'
+import StayStickyBar from './stay-detail/StayStickyBar'
+import { SectionTitle, AmenityFlow, InfoBlock, propertyTypeLabel, StayReviews, StaySoldOutCard } from './stay-detail/StayInfoSections'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import DetailGallery from './group-buy/DetailGallery'
 import DetailTitleHeader from './group-buy/DetailTitleHeader'
 import DetailBreadcrumb, { stayCrumbs } from '@/components/deal/DetailBreadcrumb'
 import DetailFloatingHeader from '@/components/deal/DetailFloatingHeader'
 import StayDateGuestPicker, { type DayPrice } from './stay-detail/StayDateGuestPicker'
+import { amenityMeta } from './stay-detail/amenity-meta'
+import { stayAddressLine, stayRegionLabel } from '@/shared/stay-address'
 import StayBookingPanel, { cancellationLabel } from './stay-detail/StayBookingPanel'
 import BrandLoader from '@/components/brand/BrandLoader'
 
@@ -89,26 +92,6 @@ interface AvailRoom {
 // 🏨 2026-07-21 (대표 "시설 아이콘이 점으로만 뜸"): 시드가 시설을 **한글**(무료 주차/와이파이/조식 등)로
 //   저장하는데 기존 매핑은 영문 키(wifi/parking)만 알아 매칭 실패 → 점(•) 폴백. 한글/영문 **키워드 매칭**으로
 //   교체(부분일치) — 시드/수기/미래 표현 다 인식. 미매칭도 점 대신 체크 아이콘(설정된 시설로 보이게).
-const AMENITY_ICON_CLS = 'w-4 h-4 text-gray-500 dark:text-gray-400'
-
-function amenityMeta(a: string): { label: string; icon: React.ReactNode } {
-  const s = String(a || '').toLowerCase()
-  const has = (...keys: string[]) => keys.some((k) => s.includes(k))
-  let icon: React.ReactNode = <Check className={AMENITY_ICON_CLS} />
-  if (has('주차', 'parking')) icon = <Car className={AMENITY_ICON_CLS} />
-  else if (has('와이파이', '와이', 'wifi', 'wi-fi', '인터넷')) icon = <Wifi className={AMENITY_ICON_CLS} />
-  else if (has('조식', '아침', 'breakfast')) icon = <Coffee className={AMENITY_ICON_CLS} />
-  else if (has('수영', '풀', 'pool')) icon = <Waves className={AMENITY_ICON_CLS} />
-  else if (has('스파', '사우나', '온천', '온수풀', 'spa', 'sauna', '자쿠지', '욕조', 'bath')) icon = <Bath className={AMENITY_ICON_CLS} />
-  else if (has('화로', '바비큐', 'bbq', '불멍', '캠프파이어', 'grill')) icon = <Flame className={AMENITY_ICON_CLS} />
-  else if (has('취사', '주방', '조리', '키친', 'kitchen', '요리')) icon = <Utensils className={AMENITY_ICON_CLS} />
-  else if (has('에어컨', '냉난방', '냉방', '난방', 'air')) icon = <Wind className={AMENITY_ICON_CLS} />
-  else if (has('헬스', '피트니스', 'gym', 'fitness')) icon = <Dumbbell className={AMENITY_ICON_CLS} />
-  else if (has('반려', '애견', '펫', 'pet')) icon = <PawPrint className={AMENITY_ICON_CLS} />
-  else if (has('금연', 'non-smoking', 'no smoking')) icon = <CigaretteOff className={AMENITY_ICON_CLS} />
-  return { label: a, icon }
-}
-
 function todayIso() { return new Date().toISOString().slice(0, 10) }
 function tomorrowIso() { return new Date(Date.now() + 86400000).toISOString().slice(0, 10) }
 
@@ -254,6 +237,10 @@ export default function StayDetailPage() {
   const cartItems = rooms.filter((r) => (cartQty[r.room_id] || 0) > 0)
   const cartTotalQty = cartItems.reduce((s, r) => s + (cartQty[r.room_id] || 0), 0)
   const cartSubtotal = cartItems.reduce((s, r) => s + r.total_price * (cartQty[r.room_id] || 0), 0)
+  // 🏨 담기 전 하단 바가 말할 값 — 팔 수 있는 객실 중 최저 총액. 하나도 없으면 null(바 미렌더).
+  const sellableRooms = rooms.filter((r) => r.available && r.total_price > 0)
+  const minRoomPrice = sellableRooms.length ? Math.min(...sellableRooms.map((r) => r.total_price)) : null
+  const roomsPriceLabel = isVoucherMode ? `숙소 이용권 ${voucherNights}박` : `${nights}박 총액`
 
   const modeTabs = stay.sale_mode === 'both' ? (
     <div className="flex gap-1.5">
@@ -276,8 +263,13 @@ export default function StayDetailPage() {
   ) : null
 
   const inputCls = 'w-full px-3 py-2 bg-white dark:bg-[#1D1F29] border border-gray-300 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white'
+  /* 🩸 2026-09-14: 날짜 모드는 `FieldCard` 가 표면을 맡으므로 래퍼가 **껍데기**다(트리거 테두리만
+     걷고 여기를 남겼더니 화면엔 상자가 두 겹이었다 — 유닛은 초록이고 렌더해 보고서야 보였다).
+     ⚠️ 이용권 모드는 자체 표면이 없어 카드 유지. 경위: docs/design/stay-detail-booking-card-2026-09.md */
   const selectorBox = (
-    <div className="bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] rounded-xl p-4 shadow-sm">
+    <div className={isVoucherMode
+      ? 'bg-white dark:bg-[#1D1F29] rounded-2xl p-4 shadow-lift'
+      : ''}>
       {isVoucherMode ? (
         <>
           {/* voucher 모드: 평일/주말 + 박수 */}
@@ -323,9 +315,12 @@ export default function StayDetailPage() {
             dayPrices={dayPrices}
             maxGuests={rooms.reduce((m, r) => Math.max(m, r.max_guests || 0), 0) || 20}
             baseGuests={rooms.reduce((m, r) => Math.max(m, r.base_guests || 0), 0) || undefined}
+            checkInTime={stay.check_in_time}
+            checkOutTime={stay.check_out_time}
             onApply={({ checkIn: ci, checkOut: co, guests: g }) => { setCheckIn(ci); setCheckOut(co); setGuests(g) }}
           />
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{nights}박 · 체크인 {stay.check_in_time} / 체크아웃 {stay.check_out_time}</p>
+          {/* 🩸 2026-09-14: "N박 · 체크인 … / 체크아웃 …" 한 줄을 지웠다 — 박수는 카드 배지가,
+              시각은 카드 각주가 말한다. 두 자리에서 말하면 한쪽만 고쳐져 어긋난다(대표 지적 ④). */}
         </>
       )}
     </div>
@@ -343,7 +338,7 @@ export default function StayDetailPage() {
       {/* 🔘 이용권 상세와 **같은 컴포넌트**(대표 "왜 계속 다르게 하는거지?"). 경위는 detail-hero-crop.test.ts */}
       <DetailFloatingHeader
         productId={stay.id} title={stay.restaurant_name || stay.name}
-        shareDescription={[stay.region_sido, stay.region_sigungu].filter(Boolean).join(' ') || '숙소 이용권'}
+        shareDescription={stayRegionLabel(stay.region_sido, stay.region_sigungu, stay.address) || '숙소 이용권'}
         shareImageUrl={stay.image_url || ''} shareLink={`https://urdeal.kr/stays/${stay.id}`}
         myUserId={localStorage.getItem('user_id') || ''} heroRef={heroRef} onBack={() => navigate(-1)}
       />
@@ -351,7 +346,7 @@ export default function StayDetailPage() {
       <DetailTitleHeader
         name={stay.restaurant_name || stay.name}
         storeName={propertyTypeLabel(stay.property_type)}
-        address={[stay.region_sido, stay.region_sigungu, stay.address].filter(Boolean).join(' ')}
+        address={stayAddressLine(stay.region_sido, stay.region_sigungu, stay.address)}
         rating={stay.avg_rating ?? undefined}
         reviewCount={stay.review_count ?? undefined}
       />
@@ -383,7 +378,10 @@ export default function StayDetailPage() {
           <h1 className="text-xl lg:text-2xl font-extrabold">{stay.restaurant_name || stay.name}</h1>
           <div className="flex items-center gap-2 mt-1 text-xs text-gray-500 dark:text-gray-400">
             <MapPin className="w-3 h-3" />
-            <span>{stay.region_sido} {stay.region_sigungu} · {stay.address}</span>
+            {/* 📍 2026-09-14: "경북 경주시 · 경북 경주시 손곡3길 37-14" 로 찍히던 자리.
+                라이브 50건 중 12건은 지역 항목과 주소가 아예 달라, 이어 붙이면 **틀린 주소**가 됐다.
+                판정은 `shared/stay-address.ts` 하나로. */}
+            <span>{stayAddressLine(stay.region_sido, stay.region_sigungu, stay.address)}</span>
           </div>
           {stay.avg_rating ? (
             <div className="flex items-center gap-1.5 mt-2">
@@ -406,7 +404,7 @@ export default function StayDetailPage() {
         )}
 
         {/* 모드 탭 + 날짜/인원 선택 — 모바일 인라인 (PC 는 우측 아사이드가 동일 JSX 렌더) */}
-        <div className="lg:hidden space-y-3 mb-5">
+        <div id="stay-sec-dates" className="lg:hidden space-y-3 mb-5" style={{ scrollMarginTop: 96 }}>
           {modeTabs}
           {selectorBox}
         </div>
@@ -431,14 +429,17 @@ export default function StayDetailPage() {
         )}
 
         {/* Rooms — 📱 모바일 카드. 🖥️ PC(lg+)는 우측 `StayBookingPanel` 의 객실 행이 담당(B안) → 여기 숨김. */}
-        <div className="mb-5 lg:hidden">
+        <div id="stay-sec-rooms" className="mb-5 lg:hidden" style={{ scrollMarginTop: 96 }}>
           <SectionTitle className="mb-3">객실 선택 ({rooms.length})</SectionTitle>
           {roomsLoading ? (
             <p className="text-xs text-gray-500 dark:text-gray-400">가용 객실 조회 중...</p>
           ) : rooms.length === 0 ? (
-            <p className="text-xs text-gray-500 dark:text-gray-400">해당 기간 가용 객실이 없습니다</p>
+            <StaySoldOutCard onPickDates={() => document.getElementById('stay-sec-dates')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} />
           ) : (
             <div className="space-y-3">
+              {rooms.every((r) => !r.available) && (
+                <StaySoldOutCard onPickDates={() => document.getElementById('stay-sec-dates')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} />
+              )}
               {rooms.map((r) => (
                 /* 🛏️ 2026-08-30 (대표 "AI 티 안나는 디자인으로") — 객실 카드 재구성.
                    이전엔 카드 오른쪽 절반에 [가격 → 작은 로즈 버튼 → "묶기 − 0 +" 스테퍼]가
@@ -549,6 +550,8 @@ export default function StayDetailPage() {
           </div>
         </div>
 
+        <StayReviews productId={productId} />
+
         </div>{/* /좌측 콘텐츠 */}
 
         {/* 🖥️ PC 우측 sticky 예약 패널 — B안(2026-09-02). `lg:z-20`: sticky 는 스택 컨텍스트를 만드는데
@@ -586,24 +589,17 @@ export default function StayDetailPage() {
         />
       )}
 
-      {/* 🛡️ 2026-05-19: 다객실 묶음 결제 sticky bar — 모바일 전용(PC 는 아사이드 요약이 담당).
-          ⚠️ app-frame-bar 미사용(pc-fullbleed 가 숨김) + lg:hidden — pc-fullbleed 등재 전제조건. */}
-      {cartItems.length > 0 && (
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-black/95 backdrop-blur border-t border-gray-200 p-3">
-          <div className="max-w-md mx-auto flex items-center gap-3">
-            <div className="flex-1 min-w-0">
-              <p className="text-[10px] text-gray-500 dark:text-gray-400">{cartItems.length}종 객실 / {cartTotalQty}객실</p>
-              <p className="text-base font-extrabold text-brand ">₩{formatNumber(cartSubtotal)}</p>
-            </div>
-            <button onClick={() => setCartQty({})}
-              className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">비우기</button>
-            <button onClick={() => setMultiBookingOpen(true)}
-              className="px-4 py-2.5 bg-brand text-white text-sm font-bold rounded-lg hover:bg-brand-dark">
-              묶음 예약 →
-            </button>
-          </div>
-        </div>
-      )}
+      {/* 🏨 2026-09-14 (안 B): 하단 구매 바 — 담기 전에도 **가격이 보인다**(종전엔 담아야 떴다). */}
+      <StayStickyBar
+        minPrice={minRoomPrice}
+        nightsLabel={roomsPriceLabel}
+        cartCount={cartItems.length}
+        cartTotalQty={cartTotalQty}
+        cartSubtotal={cartSubtotal}
+        onClear={() => setCartQty({})}
+        onBook={() => setMultiBookingOpen(true)}
+        onPickRoom={() => document.getElementById('stay-sec-rooms')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+      />
 
       {multiBookingOpen && (
         <MultiBookingModal

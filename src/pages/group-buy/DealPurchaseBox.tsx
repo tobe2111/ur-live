@@ -6,6 +6,8 @@
  *   상태/핸들러는 전부 GroupBuyDetailPage 소유(controlled) — 결제 로직(handleJoin) 무수정 재사용.
  *   색은 .gbd CSS 변수(테마 자동) — 상세 표면과 동톤.
  */
+import type { ReactNode } from 'react'
+import { FieldCard, FieldRow } from '@/components/ticket/FieldCard'
 import { ShieldCheck, Zap, Lock, Bell } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 
@@ -29,12 +31,14 @@ interface Props {
   joining: boolean
   onBuy: () => void
   onPrelaunchApply: () => void
+  /** 🪙 CTA 바로 위 슬롯 — 지금은 딜 사용 선택(`DealUseChooser`). 모바일 결제 바와 같은 자리·같은 순서. */
+  dealSlot?: ReactNode
 }
 
 export default function DealPurchaseBox({
   name, discountPct, unitPrice, refPrice, unitSaving, totalSaving, total,
   quantity, setQuantity, maxQty, maxPerPerson,
-  buyable, isJoinable, isPrelaunch, isDemo, joining, onBuy, onPrelaunchApply,
+  buyable, isJoinable, isPrelaunch, isDemo, joining, onBuy, onPrelaunchApply, dealSlot,
 }: Props) {
   // 🎭 2026-08-08 (대표 "데모 상품들만 상품페이지에 구매하기 버튼 대신 응모하기로"): 데모는 '구매하기'가
   //   어울리지 않아 문구를 바꿨다. 동작(onBuy)은 그대로.
@@ -89,16 +93,25 @@ export default function DealPurchaseBox({
         )}
       </div>
 
-      {/* 수량 스테퍼 — 하단 바와 동일 state 공유 */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid var(--gbd-line2)', borderRadius: 10, padding: '8px 12px', margin: '12px 0' }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gbd-ink)' }}>
-          수량{maxPerPerson && maxPerPerson > 0 ? <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gbd-sub)', marginLeft: 6 }}>1인당 최대 {maxPerPerson}개</span> : null}
-        </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 2 }} role="group" aria-label="수량 조절">
-          <button onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={!buyable || quantity <= 1} aria-label="수량 감소" style={{ width: 30, height: 30, border: 'none', background: 'transparent', color: 'var(--gbd-ink)', fontSize: 18, cursor: 'pointer', opacity: (!buyable || quantity <= 1) ? .35 : 1 }}>−</button>
-          <span style={{ minWidth: 28, textAlign: 'center', fontSize: 14, fontWeight: 800, color: 'var(--gbd-ink)' }} aria-live="polite">{quantity}</span>
-          <button onClick={() => setQuantity(q => Math.min(maxQty, q + 1))} disabled={!buyable || quantity >= maxQty} aria-label="수량 증가" style={{ width: 30, height: 30, border: 'none', background: 'transparent', color: 'var(--gbd-ink)', fontSize: 18, cursor: 'pointer', opacity: (!buyable || quantity >= maxQty) ? .35 : 1 }}>+</button>
-        </span>
+      {/* 🎫 2026-09-14 대표 확정 *"두 상세가 같은 부품을 쓰도록 해줘"* — 수량 행이 **숙소 상세의 인원 행과
+          같은 부품**(`components/ticket/FieldCard`)이 됐다. 종전엔 여기만 1px 테두리 상자였다(티켓 체계
+          규칙 ①은 카드 테두리 0). 라벨·값 위계도 그쪽과 같아진다.
+          ⚠️ 스테퍼 **동작·state·aria 는 그대로** — 하단 바와 같은 state 를 공유한다(결제 무관, 마크업만). */}
+      <div style={{ margin: '12px 0' }}>
+        <FieldCard>
+          <FieldRow
+            label="수량"
+            hint={maxPerPerson && maxPerPerson > 0 ? `1인당 최대 ${maxPerPerson}개` : undefined}
+            value={`${quantity}개`}
+            right={
+              <span style={{ display: 'flex', alignItems: 'center', gap: 2 }} role="group" aria-label="수량 조절">
+                <button onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={!buyable || quantity <= 1} aria-label="수량 감소" style={{ width: 30, height: 30, border: 'none', background: 'transparent', color: 'var(--gbd-ink)', fontSize: 18, cursor: 'pointer', opacity: (!buyable || quantity <= 1) ? .35 : 1 }}>−</button>
+                <span style={{ minWidth: 28, textAlign: 'center', fontSize: 14, fontWeight: 800, color: 'var(--gbd-ink)' }} aria-live="polite">{quantity}</span>
+                <button onClick={() => setQuantity(q => Math.min(maxQty, q + 1))} disabled={!buyable || quantity >= maxQty} aria-label="수량 증가" style={{ width: 30, height: 30, border: 'none', background: 'transparent', color: 'var(--gbd-ink)', fontSize: 18, cursor: 'pointer', opacity: (!buyable || quantity >= maxQty) ? .35 : 1 }}>+</button>
+              </span>
+            }
+          />
+        </FieldCard>
       </div>
 
       {isJoinable && totalSaving > 0 && (
@@ -106,6 +119,8 @@ export default function DealPurchaseBox({
           {quantity > 1 ? `총 ${formatNumber(totalSaving)}원 할인 중` : `${formatNumber(unitSaving)}원 할인 중`}
         </div>
       )}
+
+      {dealSlot}
 
       {/* CTA — 하단 바와 동일 핸들러(결제 로직 무수정) */}
       <button

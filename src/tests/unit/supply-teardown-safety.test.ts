@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync, existsSync } from 'fs'
 import { resolve } from 'path'
+import { stripComments } from '../helpers/source-text'
 
 /**
  * 🧨 도매몰 철거 안전망 (2026-07-29 — 대표 "도매몰 안 한다, 덮어써도 된다")
@@ -98,9 +99,7 @@ describe('도매 철거 — 소비자 표면에 도매 유입 진입점이 없�
 
   for (const [f, why] of CONSUMER_SURFACES) {
     it(`${f.split('/').pop()} — ${why} 에 /supplier·/wholesale 링크 0`, () => {
-      const code = read(f)
-        .replace(/\/\*[\s\S]*?\*\//g, '')   // 블록 주석 제거 — "왜 지웠는지" 설명에 경로가 남아 있다
-        .replace(/^\s*\/\/.*$/gm, '')
+      const code = stripComments(read(f))
       expect(code).not.toMatch(/(?:to|href)=["']\/(?:supplier|wholesale)/)
     })
   }

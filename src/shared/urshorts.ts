@@ -6,10 +6,13 @@
  * 대표가 확정한 것: 이름 "유어쇼츠" · 뷰어 `/videos` · 카드 125×222 고정(영상 수와 무관) ·
  * 자리는 인기 이용권 다음 · 홈 레일은 최신 12편 + 끝에 전체 보기 타일.
  *
- * ## 🔴 이 파일이 지키는 규칙 하나
- * **이용권이 안 붙은 영상은 홈에 못 나간다.** 안 묶으면 홈에 유튜브를 켜 주는 셈이고
- * 사용자는 관련 영상을 타고 나간다 — 그 순간 이 기능은 매출 장치가 아니라 이탈 장치가 된다.
- * 서버 쿼리(`urshorts.routes`)가 INNER JOIN 으로 그걸 강제하고, 테스트가 그 조인을 고정한다.
+ * ## 🔴 이용권은 **붙어 있으면 좋고, 없어도 나간다** (2026-09-08 대표 확정)
+ * 원래는 INNER JOIN 으로 "이용권 없는 영상은 홈에 못 나간다"를 강제했다. 대표가 뒤집었다 —
+ * *"이용권 정보를 입력하지 않으면 그냥 정보 없이 두는걸로"* · *"허락 받은 유무 상관없이"*.
+ * 지금은 LEFT JOIN 이고, 상품이 없으면 카드는 글자 띠를, 뷰어는 구매 바를 **아예 안 그린다**
+ * (빈 껍데기를 그리면 `/group-buy/null` 로 가는 버튼이 생긴다).
+ * ⚠️ `AND p.is_active = 1` 을 LEFT JOIN 옆에 그냥 붙이면 NULL 행이 걸러져 **에러 없이 INNER 로
+ *   되돌아간다** — 그래서 조건이 `(p.id IS NULL OR p.is_active = 1)` 이고 테스트가 그걸 고정한다.
  *
  * ## 크기를 왜 고정하나 (실측)
  * 처음 시안은 한 줄 6개(217×386)였는데 제목 줄까지 430px 이라 **바로 위 딜 카드(299px)보다
@@ -65,6 +68,45 @@ export function parseYouTubeUrl(input: string | null | undefined): { id: string;
   return m ? { id: m[1], form: 'watch' } : null
 }
 
+/**
+ * 여러 줄로 붙여 넣은 주소를 한 번에 읽는다 (2026-09-09 대표 *"여러개 영상 업로드"*).
+ *
+ * ## 왜 클라에서 먼저 읽나
+ * 서른 개를 붙여 넣고 서버에 하나씩 보내다가 스무 번째에서 "주소가 아닙니다" 를 만나면
+ * **어느 줄이 잘못됐는지 알 수 없다.** 보내기 전에 줄 단위로 갈라 놓으면 화면이
+ * "27개 인식 · 2개 못 읽음 · 1개 중복" 을 먼저 말해 줄 수 있다.
+ *
+ * 줄바꿈·쉼표·공백 아무거나로 나눈다 — 사람이 어디서 복사해 오는지 우리가 못 정한다.
+ * ⚠️ 같은 영상이 두 번 들어오면 **먼저 나온 것만** 남긴다(서버도 막지만, 보내기 전에 세어야
+ *   화면의 개수가 실제로 추가될 개수와 같아진다).
+ */
+export interface YouTubeUrlListResult {
+  /** 보낼 것 — 입력 순서 유지, 중복 제거됨. */
+  ok: { url: string; id: string; form: YouTubeUrlForm }[]
+  /** 유튜브 주소로 못 읽은 조각(원문 그대로 — 사람이 어느 줄인지 찾을 수 있게). */
+  bad: string[]
+  /** 같은 영상이 여러 번 나온 경우의 2번째 이후. */
+  dupes: string[]
+}
+
+export function parseYouTubeUrlList(text: string | null | undefined): YouTubeUrlListResult {
+  const out: YouTubeUrlListResult = { ok: [], bad: [], dupes: [] }
+  const seen = new Set<string>()
+  for (const piece of (text ?? '').split(/[\s,]+/)) {
+    const raw = piece.trim()
+    if (!raw) continue
+    const p = parseYouTubeUrl(raw)
+    if (!p) { out.bad.push(raw); continue }
+    if (seen.has(p.id)) { out.dupes.push(raw); continue }
+    seen.add(p.id)
+    out.ok.push({ url: raw, id: p.id, form: p.form })
+  }
+  return out
+}
+
+/** 한 번에 보낼 수 있는 최대 개수. 유튜브 조회가 건당 1 unit 이고 D1 왕복도 건당 하나다. */
+export const URSHORTS_BULK_MAX = 30
+
 /** id 만 필요할 때. 모양 판단이 필요하면 `parseYouTubeUrl` 을 쓸 것. */
 export function parseYouTubeVideoId(input: string | null | undefined): string | null {
   return parseYouTubeUrl(input)?.id ?? null
@@ -95,17 +137,46 @@ export function youTubeThumbUrl(videoId: string): string {
   return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
 }
 
+/** 재생 옵션. URL 로 갈 때(`youTubeEmbedUrl`)와 IFrame API 로 갈 때가 **같은 값**을 쓴다. */
+export interface YouTubePlayOpts {
+  autoplay?: boolean
+  /** `false` 면 유튜브 컨트롤(진행 바·시간·전체화면·상단 아이콘)을 안 그리도록 요청한다. */
+  controls?: boolean
+}
+
+/**
+ * 재생 파라미터 **SSOT**. 뷰어는 두 길로 영상을 튼다 — IFrame API(`playerVars` 객체)와
+ * 폴백 iframe(쿼리스트링). 값을 두 벌 두면 반드시 갈라지므로 여기서 한 번만 정한다.
+ *
+ * - `playsinline=1` 이 없으면 iOS 가 전체화면을 강제로 띄워 우리 구매 바를 덮는다.
+ * - `rel=0` — 끝나고 남의 채널 영상을 추천하지 않는다.
+ * - `cc_load_policy=0` — 자막을 **켜지 말라**는 요청. ⚠️ 문서에 있는 건 `1`(켜라)뿐이라
+ *   유튜브가 무시할 수 있다. 확실한 자막 끄기는 API 쪽 `unloadModule('captions')` 이 한다
+ *   (`pages/videos/youtube-player.ts`). 이건 그 앞에 두는 값싼 한 겹이다.
+ * - `iv_load_policy=3` — 영상 위 주석(annotation)을 안 띄운다.
+ */
+export function youTubePlayerVars(opts?: YouTubePlayOpts): Record<string, string> {
+  const p: Record<string, string> = {
+    playsinline: '1',
+    rel: '0',
+    modestbranding: '1',
+    cc_load_policy: '0',
+    iv_load_policy: '3',
+  }
+  if (opts?.autoplay) p.autoplay = '1'
+  // 🧹 2026-09-08 대표 *"3/3 이런거 안나오면 좋겠어 지금 번잡해 … 깔끔하게"*.
+  //    실측(라이브 스크린샷): 아래 컨트롤 바·시간·전체화면과 **상단 스피커·CC·⚙️ 까지** 사라졌다.
+  //    남는 것(제목 띠·🔗·Shorts 로고)은 유튜브가 정하고, 덮는 것은 embed 약관 위반이다.
+  if (opts?.controls === false) p.controls = '0'
+  return p
+}
+
 /**
  * 재생용 embed 주소. **누른 뒤에만** 만든다 — 미리 만들면 홈 첫 화면이 재생기 무게를 받는다.
- * `playsinline=1` 이 없으면 iOS 가 전체화면을 강제로 띄워 우리 구매 바를 덮는다.
+ * 지금은 **폴백 경로**(IFrame API 가 안 왔을 때)와 미리보기가 쓴다.
  */
-export function youTubeEmbedUrl(videoId: string, opts?: { autoplay?: boolean }): string {
-  const p = new URLSearchParams({
-    playsinline: '1',
-    rel: '0',            // 끝나고 남의 채널 영상을 추천하지 않는다
-    modestbranding: '1',
-  })
-  if (opts?.autoplay) p.set('autoplay', '1')
+export function youTubeEmbedUrl(videoId: string, opts?: YouTubePlayOpts): string {
+  const p = new URLSearchParams(youTubePlayerVars(opts))
   return `https://www.youtube-nocookie.com/embed/${videoId}?${p.toString()}`
 }
 
@@ -116,8 +187,9 @@ export interface UrShortItem {
   title: string | null
   channel: string | null
   thumb_url: string | null
-  /** 🔴 항상 존재한다 — 서버가 INNER JOIN 으로 강제한다. */
-  product_id: number
+  /** 🔴 **비어 있을 수 있다** — 2026-09-08 부터 이용권 안 붙인 영상도 홈에 나간다(LEFT JOIN).
+   *  이 값이 없으면 카드는 글자 띠를, 뷰어는 구매 바를 아예 안 그린다. */
+  product_id: number | null
   /** 초. 쇼츠 판정에 쓴 값이라 남겨 둔다(모르면 null). */
   duration_sec?: number | null
   product_name: string | null

@@ -11,6 +11,7 @@
  * - GET  /settlements/:id/download   — 정산서 다운로드
  */
 import { Hono } from 'hono'
+import { resolveKtSellerMarkupPct } from '../../admin/api/admin-kt-alpha/markup'
 import { cors } from 'hono/cors'
 import { verify } from 'hono/jwt'
 import type { JWTPayload } from 'hono/utils/jwt/types'
@@ -352,7 +353,7 @@ sellerSettlementsRoutes.get('/voucher-catalog', async (c) => {
     const settings = await c.env.DB.prepare(
       "SELECT value FROM platform_settings WHERE key = 'kt_alpha_markup_pct'"
     ).first<{ value: string }>().catch(() => null)
-    const markupPct = Number(settings?.value) || 5
+    const markupPct = resolveKtSellerMarkupPct(settings?.value) // 0 은 0 (옛 `|| 5` 는 0 을 삼켰다 — markup.ts)
 
     const seller = await c.env.DB.prepare(
       'SELECT phone, business_registration_status FROM sellers WHERE id = ?'
@@ -434,7 +435,7 @@ sellerSettlementsRoutes.post('/voucher-redeem', rateLimit({ action: 'seller_vouc
     const settingsMap: Record<string, string> = {}
     for (const r of (settings.results || [])) settingsMap[r.key] = r.value
 
-    const markupPct = Number(settingsMap.kt_alpha_markup_pct) || 5
+    const markupPct = resolveKtSellerMarkupPct(settingsMap.kt_alpha_markup_pct) // 0 은 0 (markup.ts)
     const ktUserId = settingsMap.kt_alpha_user_id
     const callbackNo = settingsMap.kt_alpha_callback_no
     const templateId = settingsMap.kt_alpha_template_id || undefined

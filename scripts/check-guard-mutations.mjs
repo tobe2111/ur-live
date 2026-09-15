@@ -35,7 +35,8 @@
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+import { changedScope, inScope } from './guard-mutations-scope.mjs'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const STRICT = process.argv.includes('-s') || process.argv.includes('--strict')
@@ -81,12 +82,125 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 const MAP_ONLY = process.argv.includes('--map-only')
 
 /**
+ * ⏱️ `--changed` — **PR 에서는 이 변경이 건드린 주입만** 돌린다 (2026-09-08 대표 지시).
+ *
+ * 실측: Verify 48분 29초 중 이 스크립트가 **37분 24초 = 77%**(job 101957335695 스텝 타이밍).
+ * 950건을 넘어 선형으로 는다. 그 길이의 2차 피해가 더 컸다 — CI 가 도는 동안 main 이 움직이고,
+ * 거의 모든 PR 이 이 매니페스트를 건드리니 **머지마다 충돌**했다(하루 4번 중 3번이 405 conflict).
+ *
+ * 판정은 `guard-mutations-scope.mjs` 에 있다 — **순수 함수라 테스트가 동작을 직접 잰다.**
+ * 여기 두면 그것을 지키는 주입의 `find` 가 이 파일의 매니페스트 안에도 있어 **자기참조**가 된다
+ * (실제로 "주입 대상이 2곳" 으로 잡혀 이 파일에서 뽑아냈다).
+ * 🔴 좁힌 만큼은 `guard-mutations-full.yml`(main push + 야간)이 전수로 되찾는다 — 둘은 짝이다.
+ */
+const CHANGED = process.argv.includes('--changed')
+const SCOPE = changedScope({
+  enabled: CHANGED,
+  baseRef: process.env.GUARD_MUTATIONS_BASE,
+  run: (args) => execFileSync('git', args, { cwd: ROOT, encoding: 'utf8' }),
+})
+
+/**
  * @typedef {{name:string, file:string, find:string, replace:string, test:string, why:string}} Mutation
  * `find` 는 소스에 **정확히 한 번** 나타나는 문자열이어야 한다(여러 번이면 첫 번째만 바뀌어
  * 의도한 결함이 아닐 수 있다 — 그래서 개수도 검사한다).
  */
 /** @type {Mutation[]} */
 const MUTATIONS = [
+  {
+    name: '뒤로가기 복원 — /browse POP 조회 무력화',
+    file: 'src/pages/browse/list-restore.ts',
+    find: "navType === 'POP' ? readListView<BrowseViewState>(keyRef.current) : null",
+    replace: 'null',
+    test: 'src/tests/unit/list-view-restore-2026-09-13.test.ts',
+    why: '귀속 지점. 이 한 줄을 무력화하면 뒤로 왔을 때 목록이 1페이지로 무너지고 맨 위 항목이 달라진다.',
+  },
+  {
+    name: '뒤로가기 복원 — /browse 마운트 리셋 스킵 제거',
+    file: 'src/pages/BrowsePage.tsx',
+    find: 'if (browseSkipFirstRef.current) { browseSkipFirstRef.current = false; return }',
+    replace: 'if (false) { return }',
+    test: 'src/tests/unit/list-view-restore-2026-09-13.test.ts',
+    why: "setProducts([]) 가 복원본을 지우고 1페이지만 다시 받아 목록이 도로 짧아진다.",
+  },
+  {
+    name: '뒤로가기 복원 — /map 모듈 캐시 동기 소비 제거',
+    file: 'src/hooks/queries/useMapProducts.ts',
+    find: 'useState<Entry>(() => seedOf(cacheKey)',
+    replace: 'useState<Entry>(() => (null as Entry | null)',
+    test: 'src/tests/unit/list-view-restore-2026-09-13.test.ts',
+    why: '/map 은 이미 정상인데(실측) 이 한 줄이 사라지면 뒤로가기가 1페이지로 무너진다 — 그 장치를 잠근다.',
+  },
+  {
+    name: '뒤로가기 복원 — 유어샵 메모리 캐시 소비 제거',
+    file: 'src/pages/CuratorPage.tsx',
+    find: 'return getCuratorCache(handle)',
+    replace: 'return null',
+    test: 'src/tests/unit/list-view-restore-2026-09-13.test.ts',
+    why: '유어샵도 이미 정상인데 이 줄이 사라지면 재진입마다 cold fetch 로 되돌아간다.',
+  },
+  {
+    name: '뒤로가기 복원 — POP 조회를 무력화',
+    file: 'src/pages/VouchersPage.tsx',
+    find: "navType === 'POP' ? readListView<VouchersViewState>(viewKey) : null",
+    replace: 'null',
+    test: 'src/tests/unit/list-view-restore-2026-09-13.test.ts',
+    why: '이 한 줄이 이 사고의 귀속 지점이다(되돌려-검증: 브라우저 실측 4항목 전부 빨간불).',
+  },
+  {
+    name: '뒤로가기 복원 — 마운트 재fetch 스킵 제거',
+    file: 'src/pages/VouchersPage.tsx',
+    find: 'if (restored != null || ssrSeedRef.current != null) return',
+    replace: 'if (ssrSeedRef.current != null) return',
+    test: 'src/tests/unit/list-view-restore-2026-09-13.test.ts',
+    why: '재fetch 하면 응답이 1페이지뿐이라 되살린 목록이 도로 20개로 잘린다(증상 재발).',
+  },
+  {
+    name: "뒤로가기 복원 — '더보기' cap 리셋 스킵 제거",
+    file: 'src/pages/VouchersPage.tsx',
+    find: 'if (embedResetSkipRef.current) { embedResetSkipRef.current = false; return }',
+    replace: 'if (false) { return }',
+    test: 'src/tests/unit/list-view-restore-2026-09-13.test.ts',
+    why: '마운트에서 cap 이 8 로 돌아가 문서가 짧아지고, 그러면 스크롤 복원도 같이 깨진다.',
+  },
+  {
+    name: '뒤로가기 복원 — 필터 스탬프 검사 제거',
+    file: 'src/pages/VouchersPage.tsx',
+    find: 'productsKeyRef.current !== viewKey) return',
+    replace: 'false) return',
+    test: 'src/tests/unit/list-view-restore-2026-09-13.test.ts',
+    why: '필터 전환 중에 보관하면 새 키에 옛 카테고리 목록이 들어간다.',
+  },
+  {
+    name: '🏷️ 매장명이 없어도 빈 줄이 남는다 (카드 높이가 갈린다)',
+    file: 'src/components/home/UrShortsRail.tsx',
+    find: '          {item.store_name && (',
+    replace: '          {true && (',
+    test: 'src/tests/unit/urshorts-card-info.test.ts',
+    why:
+      '매장이 안 붙은 이용권에서 빈 줄이 남아 카드마다 글자 시작 높이가 달라진다. ' +
+      '화면엔 그냥 여백으로 보여서 아무도 버그로 안 읽고, 레일만 들쭉날쭉해진다.',
+  },
+  {
+    name: '🏷️ 재생시간 배지가 아래로 내려가 가격 위에 얹힌다',
+    file: 'src/components/home/UrShortsRail.tsx',
+    find: 'className="absolute right-1.5 top-1.5 rounded bg-black/60',
+    replace: 'className="absolute right-1.5 bottom-1.5 rounded bg-black/60',
+    test: 'src/tests/unit/urshorts-card-info.test.ts',
+    why:
+      '글자가 네 줄이라 카드 아래쪽은 스크림이 다 차지한다. 배지를 내리면 판매가 위에 겹쳐 ' +
+      '가격이 가려지는데, 시간이 없는 영상에서는 안 겹쳐서 일부 카드에서만 깨진다.',
+  },
+  {
+    name: '🏷️ 레일 카드가 할인율을 또 자체 계산한다 (세 번째 정의)',
+    file: 'src/components/home/UrShortsRail.tsx',
+    find: '  const pd = priceDisplay(item)',
+    replace: '  const pd = { ...priceDisplay(item), discount: Number(item.discount_rate) || 0 }',
+    test: 'src/tests/unit/urshorts-card-info.test.ts',
+    why:
+      '같은 상품이 홈 딜 카드·구매 바·레일 카드에서 서로 다른 %를 보이게 된다. ' +
+      '셋 다 에러를 안 내므로 사용자가 신고할 때까지 아무도 모른다.',
+  },
   {
     name: '🔎 이용권을 다시 숫자 ID 로 넣게 한다 (고르는 칸 제거)',
     file: 'src/pages/AdminUrShortsPage.tsx',
@@ -178,15 +292,66 @@ const MUTATIONS = [
       '이용권인지 알 수 없는데, 화면은 깔끔해 보여서 문제로 안 읽힌다.',
   },
   {
-    name: '🎬 허락 안 받은 영상이 홈에 나간다 (consent 게이트 제거)',
+    name: '🎬 이용권 없는 영상이 다시 홈에서 사라진다 (LEFT → INNER)',
     file: 'src/features/urshorts/api/urshorts.routes.ts',
-    find: '     AND s.consent = 1',
-    replace: '     AND 1 = 1',
+    find: '    LEFT JOIN products p ON p.id = s.product_id\n   WHERE s.is_active = 1',
+    replace: '    JOIN products p ON p.id = s.product_id\n   WHERE s.is_active = 1',
     test: 'src/tests/unit/urshorts-core.test.ts',
     why:
-      '남의 영상 옆에 "지금 구매"가 붙으면 그 창작자가 이 딜을 보증한 것으로 읽히는데 그는 그런 적이 ' +
-      '없다. 게다가 유어애즈가 바로 그 채널들에게 제휴 제안을 보낼 참이라, 자기 영상이 이미 우리 ' +
-      '판매에 쓰이는 걸 보면 그 제안이 열리기도 전에 죽는다 — 만들려는 관계를 태우는 셈이다.',
+      '대표가 2026-09-08 에 "이용권 정보를 입력하지 않으면 그냥 정보 없이 두는걸로" 를 확정했다. ' +
+      'INNER 로 되돌리면 영상을 넣어 놓고 이용권을 못 고른 순간 레일이 통째로 비는데, 에러가 없어 ' +
+      '"왜 홈에 안 나오지" 를 다시 사람이 물어야 드러난다(실제로 그렇게 드러났다).',
+  },
+  {
+    name: '🎬 LEFT JOIN 이 조용히 INNER 가 된다 (NULL 가드 제거)',
+    file: 'src/features/urshorts/api/urshorts.routes.ts',
+    find: '     AND (p.id IS NULL OR p.is_active = 1)',
+    replace: '     AND p.is_active = 1',
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      'SQL 은 LEFT JOIN 인데 WHERE 가 NULL 을 걸러 결과는 INNER 와 같아진다. 이게 더 나쁘다 — ' +
+      '쿼리를 읽으면 고쳐진 것처럼 보이는데 레일은 여전히 비고, 아무 에러도 안 난다.',
+  },
+  {
+    name: '🎬 이용권 없는 카드에 빈 검정 띠가 남는다',
+    file: 'src/components/home/UrShortsRail.tsx',
+    find: '        {hasInfo && (',
+    replace: '        {true && (',
+    test: 'src/tests/unit/urshorts-card-info.test.ts',
+    why:
+      '값이 하나도 없는데 그라디언트만 그리면 사진 아래가 이유 없이 어두워진다. "정보 없음" 이 ' +
+      '아니라 렌더가 깨진 것처럼 보이는데, 콘솔에는 아무것도 안 찍힌다.',
+  },
+  {
+    name: '🎬 살 게 없는 영상에 구매 버튼이 뜬다 (/group-buy/null)',
+    file: 'src/pages/VideosPage.tsx',
+    find: '      {cur && cur.product_id ? (',
+    replace: '      {cur ? (',
+    test: 'src/tests/unit/videos-buy-bar.test.ts',
+    why:
+      '이용권이 안 붙은 영상에서 "구매" 를 누르면 /group-buy/null 로 간다. 404 화면이 아니라 ' +
+      '상세 페이지가 빈 채로 뜨는 경로라, 사는 사람은 자기가 뭘 잘못 눌렀다고 생각한다.',
+  },
+  {
+    name: '🎬 허락 게이트가 되살아나 어드민 영상이 홈에서 사라진다',
+    file: 'src/features/urshorts/api/urshorts.routes.ts',
+    find: '     AND (p.id IS NULL OR p.is_active = 1)\n   ORDER BY s.sort_order',
+    replace: '     AND (p.id IS NULL OR p.is_active = 1)\n     AND s.consent = 1\n   ORDER BY s.sort_order',
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      '2026-09-08 대표가 "허락 받은 유무 상관없이 메인에 보여지도록" 확정했다. 게이트가 돌아오면 ' +
+      '어드민이 올린 영상이 조용히 홈에서 사라지는데, 에러가 없어서 "왜 또 안 나오지" 를 사람이 ' +
+      '다시 물어야 드러난다(이 프로젝트에서 이미 한 번 그렇게 드러났다).',
+  },
+  {
+    name: '🎬 어드민 화면이 홈 노출 규칙을 거짓으로 말한다',
+    file: 'src/pages/AdminUrShortsPage.tsx',
+    find: '확인 안 해도 홈에는 나갑니다',
+    replace: '홈에는 안 나갑니다',
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      '서버는 내보내는데 화면이 "안 나간다" 고 하면 대표가 있지도 않은 체크를 찾아 헤맨다. ' +
+      '코드가 아니라 문구만 낡는 종류라 테스트 말고는 아무도 안 잡는다.',
   },
   {
     name: '🎬 셀러가 남의 상품에 영상을 걸 수 있다 (소유권 검사 제거)',
@@ -207,16 +372,6 @@ const MUTATIONS = [
     why:
       '`urdeal.kr/{몰슬러그}` 는 한 세그먼트라, 어떤 몰이 videos 를 슬러그로 잡으면 유어쇼츠 뷰어가 ' +
       '통째로 죽는다. 개설되기 전까지는 아무 일도 안 일어나서 몇 달 뒤에 터진다.',
-  },
-  {
-    name: '🎬 미연결 영상이 홈으로 샌다 (LEFT JOIN)',
-    file: 'src/features/urshorts/api/urshorts.routes.ts',
-    find: '    JOIN products p ON p.id = s.product_id\n   WHERE s.is_active = 1',
-    replace: '    LEFT JOIN products p ON p.id = s.product_id\n   WHERE s.is_active = 1',
-    test: 'src/tests/unit/urshorts-core.test.ts',
-    why:
-      '이용권이 안 붙은 영상이 홈에 뜨면 누른 사람이 살 수가 없다 — 그 순간 유어쇼츠는 매출 장치가 ' +
-      '아니라 유튜브로 나가는 문이 된다. 에러가 안 나고 "영상이 많아졌네"로만 보인다.',
   },
   {
     name: '🎬 재생기가 여러 개 살아남는다 (iframe key 제거)',
@@ -705,7 +860,9 @@ const MUTATIONS = [
   {
     name: '🧭 홈 기본 정렬이 다시 인기순으로 굳는다 (위치를 알아도 무시)',
     file: 'src/pages/mobile-home/MobileHomePage.tsx',
-    find: "    () => (readCachedLoc() && !readHomeRegion().regionKey ? 'near' : 'popular'),",
+    // 🗺️ 2026-09-08: 대표 *"거리순이 가장 우선"* 으로 규칙에서 지역 조건이 빠졌다 — 지도도 따라간다.
+    //    (안 옮기면 "낡은 지도"로 빨간불이고, 그게 이 검사가 하라고 만든 일이다. 실제로 그렇게 잡혔다.)
+    find: "    () => (readCachedLoc() ? 'near' : 'popular'),",
     replace: "    () => 'popular',",
     test: 'src/tests/unit/home-top-banner-and-near-default.test.ts',
     why:
@@ -903,7 +1060,7 @@ const MUTATIONS = [
   {
     name: '🩸 near 와 sort 를 같이 보낸다 — 서버가 sort 를 무시해 정렬이 조용히 틀린다',
     file: 'src/pages/restaurant-map/useFeedWindow.ts',
-    find: "const near = sortBy === 'distance' ? userLoc : null",
+    find: "const near = eff === 'distance' ? userLoc : null",
     replace: 'const near = userLoc',
     test: 'src/tests/unit/map-feed-demand-loading.test.ts',
     why: '서버는 baseOrder = hasNear ? 거리 : sort — near 가 이긴다. 전량 로딩을 걷어낸 뒤로는 이게 곧 틀린 목록이다.',
@@ -1282,8 +1439,15 @@ const MUTATIONS = [
   {
     name: '💰 교환권 마진 SSOT 가 0 을 도로 20 으로 삼킨다 (어드민에서 0% 를 못 만든다)',
     file: 'src/features/admin/api/admin-kt-alpha/markup.ts',
-    find: '  return Math.min(100, Math.max(0, n))\n',
-    replace: '  return Math.min(100, Math.max(0, n || KT_CONSUMER_MARKUP_DEFAULT_PCT))\n',
+    // ⚠️ 앵커에 앞줄을 붙여 둔 이유: 2026-09-14 에 같은 파일로 **셀러 축**
+    //    `resolveKtSellerMarkupPct` 가 들어오면서 클램프 줄이 byte-동일로 두 번이 됐다.
+    //    `Math.min(...)` 한 줄만으로는 어느 함수인지 못 가린다 — 줄이지 말 것.
+    find:
+      '  if (!Number.isFinite(n)) return KT_CONSUMER_MARKUP_DEFAULT_PCT\n' +
+      '  return Math.min(100, Math.max(0, n))\n',
+    replace:
+      '  if (!Number.isFinite(n)) return KT_CONSUMER_MARKUP_DEFAULT_PCT\n' +
+      '  return Math.min(100, Math.max(0, n || KT_CONSUMER_MARKUP_DEFAULT_PCT))\n',
     test: 'src/tests/unit/kt-alpha-markup-zero.test.ts',
     why: '2026-09-02 라이브: 설정 20 → 교환권 2,260개가 액면가 ×1.19. 0 을 넣어도 `|| 20` 이 삼켰다.',
   },
@@ -2289,17 +2453,15 @@ const MUTATIONS = [
   {
     name: '한도 재검증(과금 직전)이 사라져 다른 탭으로 뚫린다',
     file: 'src/features/group-buy/api/group-buy.routes.ts',
-    find: `      const ownedRow = await DB.prepare(
-        "SELECT COUNT(*) AS n FROM vouchers WHERE product_id = ? AND user_id = ? AND status IN ('unused','used')"
-      ).bind(productId, userId).first<{ n: number }>().catch(() => ({ n: 0 }))
-      const owned = Number(ownedRow?.n ?? 0)
-      if (owned + qty > maxPerPerson) {`,
-    replace: '      const owned = 0\n      if (owned + qty > maxPerPerson) {',
+    find: '    const lim2 = await recheck(DB, productId, userId, qty, mppRaw)',
+    replace: '    const lim2 = { ok: true } as { ok: true } | { ok: false; error: string }',
     test: 'src/tests/unit/seller-voucher-limit.test.ts',
     why:
-      '같은 쿼리가 두 곳에 있다(사전검증 / 과금 직전 레이스 차단). 한쪽만 지워도 정상 구매는 ' +
-      '전부 통과해서 눈으로는 못 본다. ⚠️ 이 가드는 처음에 "파일에 쿼리가 있는가" 로 판정해 ' +
-      '**헛돌았다** — 되돌려-검증에서 잡아 개수 판정으로 고쳤다.',
+      '두 지점(사전검증 / 과금 직전 레이스 차단) 중 하나만 지워도 정상 구매는 전부 통과해서 ' +
+      '눈으로는 못 본다. ⚠️ 이 가드는 처음에 "파일에 쿼리가 있는가" 로 판정해 **헛돌았다** — ' +
+      '되돌려-검증에서 잡아 개수 판정으로 고쳤다. 🔁 2026-09-14: 두 벌이던 인라인 판정을 ' +
+      '`purchase-cap.ts` 헬퍼로 합치면서 이 주입의 **대상이 사라졌다**(낡은 지도로 CI 가 잡았다) — ' +
+      '호출 자리를 겨냥하도록 재조준.',
   },
   {
     name: '즐겨찾기가 다시 localStorage 단독 저장이 된다',
@@ -9080,10 +9242,14 @@ canvas {
     why: '2026-09-02 대표 신고 "눌렀는지 안눌렀는지 확인도 안돼". 켜짐은 블루 면이어야 다크·라이트 어디서든 갈린다.',
   },
   {
-    name: '/map B안 — 핀 링이 카테고리 팔레트로 되돌아간다',
+    // 🗺️ 2026-09-09 (안 D4): 핀이 원형 사진+링 → 알약이 되면서 `const ring = …` 이 사라졌다.
+    //   지키는 규칙은 그대로 살아 있으므로(강조색은 브랜드 하나, 자리는 선택뿐) 새 구조로 재조준한다.
+    //   ⚠️ 이 건은 CI 가 "낡은 지도"로 잡아 줬다 — 로컬에서 `--only='🗺️'` 로만 돌려 이름이
+    //   `/map` 으로 시작하는 이 항목을 놓쳤다. 구조를 바꿀 땐 이름이 아니라 **파일**로 훑을 것.
+    name: '/map B안 — 핀 강조색이 카테고리 팔레트로 되돌아간다',
     file: 'src/pages/restaurant-map/map-overlays.ts',
-    find: "const ring = isLive || isSelected ? PIN_RING_BRAND : PIN_RING_INK",
-    replace: "const ring = isLive ? PIN_RING_BRAND : '#ec4899'",
+    find: "return { pillBg: '#fff', pillFg: PIN_RING_INK, iconFg: '#3D4350', discountFg: PIN_RING_INK,",
+    replace: "return { pillBg: '#ec4899', pillFg: PIN_RING_INK, iconFg: '#10b981', discountFg: PIN_RING_INK,",
     test: 'src/tests/unit/map-chips-b.test.ts',
     why: '칩을 블루 하나로 정리해도 핀이 알록달록하면 정리가 무효다. 강조색은 하나, 자리는 선택뿐.',
   },
@@ -9854,17 +10020,6 @@ canvas {
       '이유를 모른다 — 에러가 없어 아무도 모른다. 2026-08-30 에 제안 문에서 걷어낸 캡이 정산 쪽에서 되살아나는 모습.',
   },
   {
-    name: '🎬 허락 안 받은 영상이 홈에 나간다 (consent 게이트 제거)',
-    file: 'src/features/urshorts/api/urshorts.routes.ts',
-    find: '     AND s.consent = 1',
-    replace: '     AND 1 = 1',
-    test: 'src/tests/unit/urshorts-core.test.ts',
-    why:
-      '남의 영상 옆에 "지금 구매"가 붙으면 그 창작자가 이 딜을 보증한 것으로 읽히는데 그는 그런 적이 ' +
-      '없다. 게다가 유어애즈가 바로 그 채널들에게 제휴 제안을 보낼 참이라, 자기 영상이 이미 우리 ' +
-      '판매에 쓰이는 걸 보면 그 제안이 열리기도 전에 죽는다 — 만들려는 관계를 태우는 셈이다.',
-  },
-  {
     name: '🔐 손바뀜 잔액 가드가 fail-open 이 된다 (모르면 통과)',
     file: 'src/worker/utils/store-handover-guard.ts',
     find: "  } catch {\n    return {\n      blocked: true,\n      receivable: 0,\n      prevUserId,\n      reason: '정산 잔액을 확인할 수 없어 소유자 변경을 보류했어요',",
@@ -9925,6 +10080,129 @@ canvas {
       '모르면 안 보여 주는 쪽이 언제나 싸다 — 못 본 정산은 물어보면 되지만, 본 정산은 되돌릴 수 없다.',
   },
   {
+    name: '🕳️ 자물쇠가 두 번째 주인 자리를 다시 못 본다 (지금 만드는 모든 매장에서 무력)',
+    // 🚚 2026-09-09: 주인 조회가 seller-operators.ts 로 이사했다(출금·자가구매 판정과 같은 규칙을
+    //    쓰려고). 지키는 불변식은 그대로라 지우지 않고 **새 자리로 재조준**한다.
+    file: 'src/worker/utils/seller-operators.ts',
+    find: "      WHERE seller_id = ? AND role = 'owner' AND revoked_at IS NULL",
+    replace: "      WHERE seller_id = ? AND role = 'nonexistent-role' AND revoked_at IS NULL",
+    test: 'src/tests/unit/store-handover-behavior-2026-09-08.test.ts',
+    why:
+      '/store/new 는 linked_user_id 를 비우고 seller_operators.role=owner 로 주인을 적는다. ' +
+      '앞쪽만 보면 라이브의 모든 매장에서 자물쇠가 통과만 한다 — 잠긴 것처럼 보이는데 안 잠긴다.',
+  },
+  {
+    name: '🕳️ 주인 조회 실패를 "주인 없음"으로 접는다 (fail-open)',
+    file: 'src/worker/utils/seller-operators.ts',   // 🚚 2026-09-09 이사 — 위 항목과 같은 사유
+    find: '  if (owner === undefined) return undefined\n  return owner ? Number(owner.user_id) : null',
+    replace: '  return owner ? Number(owner.user_id) : null',
+    test: 'src/tests/unit/store-handover-behavior-2026-09-08.test.ts',
+    why:
+      '"모름"과 "없음"이 섞이면 모름이 곧 통과가 된다. 돈이 걸린 판단에서 그 둘을 구분하는 것이 ' +
+      'fail-closed 의 전부다.',
+  },
+  {
+    name: '🧭 위치 없이 거리순이면 정렬이 통째로 사라진다 (화면은 "거리순"이라 표시)',
+    file: 'src/pages/restaurant-map/effective-sort.ts',
+    find: "  return sortBy === 'distance' && !hasLocation ? NO_LOCATION_FALLBACK : sortBy",
+    replace: '  return sortBy',
+    test: 'src/tests/unit/map-sort-no-location-2026-09-09.test.ts',
+    why:
+      '위치가 없으면 서버 sort 는 비워지고(거리순이니까) near 도 없어서 기본 순서가 오고, ' +
+      '클라 재정렬도 userLoc 가드에 걸려 건너뛴다 — 아무 정렬도 안 된 목록이 "거리순" 라벨을 단다. ' +
+      '대표가 실제로 신고한 증상이다(동탄에서 거리순인데 서울 송파·서초가 먼저).',
+  },
+  {
+    name: '🧭 서버 요청만 raw sortBy 로 돌아간다 (서버·클라 정렬이 갈린다)',
+    file: 'src/pages/restaurant-map/useFeedWindow.ts',
+    find: '  const eff = effectiveSort(sortBy, !!userLoc)',
+    replace: '  const eff = sortBy',
+    test: 'src/tests/unit/map-sort-no-location-2026-09-09.test.ts',
+    why:
+      '서버가 고른 50개와 클라가 매기는 순서가 다른 정의를 쓰면 조용히 틀린 목록이 된다 — ' +
+      '2026-09-03 에 "인기순"이 인기순이 아니었던 그 클래스.',
+  },
+  {
+    name: '🤝 이용권 커미션이 다시 소급된다 (오늘의 영입자가 과거 판매분을 가져감)',
+    file: 'src/worker/utils/ledger.ts',
+    find: '  const payeeId = stamped ? Number(stamp!.iid) : (seller?.introduced_by_influencer_id ?? null)',
+    replace: '  const payeeId = seller?.introduced_by_influencer_id ?? null',
+    test: 'src/tests/unit/voucher-intro-stamp-2026-09-09.test.ts',
+    why:
+      '사용 시점에 매장의 현재 영입자를 읽으면, 영입자가 바뀐 뒤 과거에 팔린 이용권의 커미션까지 ' +
+      '새 사람에게 간다. 대표 원칙("귀속되는 시점부터 계산")과 정반대이고 에러가 안 난다.',
+  },
+  {
+    name: '🤝 지급 대상이 도장을 무시하고 매장에서 다시 나온다',
+    file: 'src/worker/utils/ledger.ts',
+    find: '  const influencerUserId = payeeId',
+    replace: '  const influencerUserId = seller?.introduced_by_influencer_id ?? null',
+    test: 'src/tests/unit/voucher-intro-stamp-2026-09-09.test.ts',
+    why:
+      '판정은 도장으로 해 놓고 지급만 매장에서 꺼내면 **판정과 돈이 갈린다** — 가장 조용한 종류의 ' +
+      '오지급이다(로그도 화면도 정상이고 받는 사람만 다르다).',
+  },
+  {
+    name: '🤝 이용권에 도장을 안 찍는다 (판정할 근거가 사라짐)',
+    file: 'src/features/group-buy/api/experience-campaign.routes.ts',
+    find: '    const introStamp = await resolveVoucherIntroStamp(DB, campaign.seller_id)',
+    replace: '    const introStamp = { introducerId: null as number | null, stampedAt: null as string | null }',
+    test: 'src/tests/unit/voucher-intro-stamp-2026-09-09.test.ts',
+    why:
+      '읽는 코드가 멀쩡해도 찍는 쪽이 비면 조용히 옛 규칙(소급)으로 떨어진다 — "실패가 아니라 부재".',
+  },
+  {
+    name: '🪑 직접 등록 사장님이 다시 운영자로 오판된다 (정산 계좌 못 넣음 = 돈 못 받음)',
+    file: 'src/worker/utils/store-actor.ts',
+    find: '    const isOwner = role ? role === \'owner\' : operatorUserId === null',
+    replace: '    const isOwner = operatorUserId === null',
+    test: 'src/tests/unit/store-owner-judgment-2026-09-09.test.ts',
+    why:
+      '/store/new 는 설계상 linked_user_id 를 비워 두므로 직접 등록한 진짜 사장님도 source:grant 로 ' +
+      '들어온다. 역할을 안 보면 그 사장님이 운영자로 오판돼 자기 매장 정산 계좌를 못 넣는다 — ' +
+      '즉 그 매장은 돈을 받을 방법이 없다. 에러도 안 나고 "권한이 없습니다" 만 뜬다.',
+  },
+  {
+    name: '🪑 토큰이 역할을 안 싣는다 (판정할 근거가 사라짐)',
+    file: 'src/features/seller/api/seller-operators.routes.ts',
+    find: '    if (access.role) payload.store_role = access.role',
+    replace: '',
+    test: 'src/tests/unit/store-owner-judgment-2026-09-09.test.ts',
+    why:
+      '판정 코드가 멀쩡해도 입력이 비면 조용히 옛 규칙으로 떨어진다 — 이 레포가 반복해 당한 ' +
+      '"실패가 아니라 부재" 클래스다. 그래서 싣는 쪽과 읽는 쪽을 각각 고정한다.',
+  },
+  {
+    name: '🔒 마감 행 취소가 무음으로 열린다 (돈이 새 주인에게)',
+    file: 'src/features/admin/api/admin-payouts.routes.ts',
+    find: "  if (row.kind === 'handover_closeout' && row.payee_user_id && row.payee_type === 'seller' && !body.confirm_release) {",
+    replace: '  if (false) {',
+    test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
+    why:
+      '집계는 cancelled 를 안 뺀다 — 마감 행을 취소하면 금액이 원장으로 되살아나고, 주인이 이미 ' +
+      '바뀌었다면 다음 주에 새 주인 계좌로 나간다. 대표 확정과 정반대 방향이다.',
+  },
+  {
+    name: '🔒 마감 행에 "누구 것이었는지" 를 안 박는다',
+    file: 'src/features/admin/api/admin-payouts/handover-closeout.ts',
+    find: "         VALUES ('seller', ?, ?, ?, ?, 'pending', ?, ?, ?, 'handover_closeout', ?)`,",
+    replace: "         VALUES ('seller', ?, ?, ?, ?, 'pending', ?, ?, ?, NULL, NULL)`,",
+    test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
+    why:
+      'kind·payee_user_id 가 없으면 취소 게이트가 이 행을 알아보지 못한다. 게이트 코드가 멀쩡해도 ' +
+      '입력이 비어 조용히 통과한다 — 이 레포가 반복해 당한 "실패가 아니라 부재" 클래스다.',
+  },
+  {
+    name: '🖥️ 마감 창구가 화면에서 사라진다 (API 만 남음)',
+    file: 'src/pages/AdminPayoutsPage.tsx',
+    find: "      const res = await api.post('/api/admin/payouts/handover-closeout', { seller_id: sellerId, reason })",
+    replace: '      const res = { data: { success: false } }',
+    test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
+    why:
+      '대표가 "마감 화면이 없다" 를 고치라고 했다. API 만 있고 화면이 없으면 아무도 못 쓰고, ' +
+      '그러면 자물쇠는 그냥 손바뀜을 막는 장치로만 남는다.',
+  },
+  {
     name: '🧪 [행동] 마감해도 손바뀜이 안 열린다 — 가드가 순수 원장을 본다',
     file: 'src/worker/utils/store-handover-guard.ts',
     find: '    receivable = await getUnsettledBalance(DB, `seller:${sellerId}`)',
@@ -9967,8 +10245,10 @@ canvas {
   {
     name: '🤝 마감이 계좌를 스냅샷하지 않는다 (새 주인에게 송금)',
     file: 'src/features/admin/api/admin-payouts/handover-closeout.ts',
-    find: "      ).bind(String(sellerId), amount, today, today, seller.bank_account, seller.business_name || null, memo).run()",
-    replace: "      ).bind(String(sellerId), amount, today, today, null, seller.business_name || null, memo).run()",
+    // 🪑 2026-09-09 재앵커: payee_user_id 를 `seller.linked_user_id` → `resolveStoreOwnerUserId` 로
+    //   바꾸면서 이 줄이 달라졌다(그 칸은 /store/new 매장에서 항상 비어 있다). 계좌 스냅샷만 잰다.
+    find: "      ).bind(String(sellerId), amount, today, today, seller.bank_account, seller.business_name || null, memo, ownerUserId ?? null).run()",
+    replace: "      ).bind(String(sellerId), amount, today, today, null, seller.business_name || null, memo, ownerUserId ?? null).run()",
     test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
     why:
       'payout 행이 계좌를 안 들고 있으면, 송금 시점에 sellers.bank_account 를 다시 읽게 되고 ' +
@@ -9997,14 +10277,74 @@ canvas {
   {
     name: '⏳ 이용권 사용 레일이 다시 무기한 커미션이 된다',
     file: 'src/worker/utils/ledger.ts',
-    find: '  if (isStoreIntroExpired(seller, introMonths)) {',
-    replace: '  if (seller.referral_bonus_until && new Date(seller.referral_bonus_until) < new Date()) {',
+    find: '  if (!stamped && isStoreIntroExpired(seller, introMonths)) {',
+    replace: '  if (!stamped && seller?.referral_bonus_until && new Date(seller.referral_bonus_until) < new Date()) {',
     test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
     why:
       'referral_bonus_until 은 백필로만 채워져 대부분 NULL 이고, NULL 이면 종전 규칙은 **무기한**이었다. ' +
       '결제 레일은 1년으로 끊는데 사용 레일만 영구라, 같은 영입 관계의 기간이 레일마다 달랐다.',
   },
 ]
+
+/**
+ * 📁 **분할 매니페스트** — 새 주입은 `scripts/mutations/<도메인>.mjs` 에 넣는다 (2026-09-08).
+ *
+ * ## 왜 (실측)
+ * 위 배열은 한 파일에 950건이 쌓여 **10,000줄이 넘는다.** 모든 PR 이 그 배열 **끝에 덧붙이니**
+ * 충돌이 필연이었다 — 2026-09-08 하루 머지 충돌 4번 중 **3번이 이 파일**이었다.
+ * 도메인별로 갈라 두면 서로 다른 영역을 만지는 세션은 **충돌 자체가 안 난다.**
+ *
+ * ## 🔴 위 배열은 **옮기지 않는다**
+ * 지금 열려 있는 다른 세션의 브랜치들이 그 배열에 덧붙이고 있다. 통째로 옮기면 그 브랜치가
+ * 전부 깨진다. 그래서 **읽는 곳만 늘린다** — 옛 배열은 그대로 두고 시간이 지나며 자연히 빈다.
+ *
+ * ## 계약
+ * 각 파일은 `export default [ …주입… ]` 하나. 형태는 위와 같다(`name·file·find·replace·test·why`).
+ * 이름은 **전체에서 유일**해야 한다 — `--only` 가 부분일치라 같은 이름이 둘이면 무엇이 돌았는지 모른다.
+ */
+const MUTATIONS_DIR = path.join(ROOT, 'scripts', 'mutations')
+const SPLIT_FILES = fs.existsSync(MUTATIONS_DIR)
+  ? fs.readdirSync(MUTATIONS_DIR).filter((f) => f.endsWith('.mjs')).sort()
+  : []
+/** @type {Mutation[]} */
+const SPLIT = []
+/** 파일 → 그 파일이 내보낸 주입 수. 무결성 검사가 소스 객체 수와 대조한다. */
+const SPLIT_COUNT = new Map()
+for (const f of SPLIT_FILES) {
+  const rel = `scripts/mutations/${f}`
+  const mod = await import(pathToFileURL(path.join(MUTATIONS_DIR, f)).href)
+  const arr = mod.default
+  if (!Array.isArray(arr)) {
+    console.error(`❌ ${rel}: \`export default [ … ]\` 가 아니다 — 배열 하나만 내보낸다.`)
+    process.exit(1)
+  }
+  // 🔴 형태를 여기서 막는다. 필드 하나가 비면 그 주입은 조용히 아무것도 안 한다.
+  for (const m of arr) {
+    for (const k of ['name', 'file', 'find', 'test', 'why']) {
+      if (typeof m?.[k] !== 'string' || !m[k]) {
+        console.error(`❌ ${rel}: \`${k}\` 가 없거나 빈 주입이 있다 — ${m?.name ?? '(이름 없음)'}`)
+        process.exit(1)
+      }
+    }
+    if (typeof m.replace !== 'string') {
+      console.error(`❌ ${rel}: \`replace\` 가 문자열이 아니다 — ${m.name}`)
+      process.exit(1)
+    }
+    SPLIT.push(m)
+  }
+  SPLIT_COUNT.set(f, arr.length)
+}
+/** 인라인 + 분할. 이 아래는 전부 이 목록으로 돈다. */
+const ALL = [...MUTATIONS, ...SPLIT]
+{
+  // 이름 중복은 `--only` 를 모호하게 만든다(부분일치라 둘 다 돌거나 엉뚱한 게 돈다).
+  const seen = new Set()
+  const dup = [...new Set(ALL.map((m) => m.name).filter((n) => (seen.has(n) ? true : (seen.add(n), false))))]
+  if (dup.length) {
+    console.error(`❌ 주입 이름 중복 ${dup.length}건 — --only 가 무엇을 돌렸는지 알 수 없게 된다\n   • ${dup.join('\n   • ')}`)
+    process.exit(1)
+  }
+}
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).
  *
@@ -10070,7 +10410,7 @@ function baselineGreen(testPath) {
   return baselineCache.get(testPath)
 }
 
-if (MUTATIONS.length === 0) {
+if (ALL.length === 0) {
   console.error('❌ guard-mutations: 등록된 주입이 0건 — 통과가 아니라 실패다.')
   process.exit(1)
 }
@@ -10137,7 +10477,7 @@ let mapOk = 0  // --map-only: 지도가 성한 주입 수
 // 🧹 잔재 확인 전용 모드 — 주입은 건드리지 않고 "지금 트리에 남아 있나"만 본다(위 VERIFY_CLEAN 주석).
 if (VERIFY_CLEAN) {
   const dirty = []
-  for (const m of MUTATIONS) {
+  for (const m of ALL) {
     const abs = path.join(ROOT, m.file)
     if (!fs.existsSync(abs)) continue // 파일 이동은 전수 모드가 "낡은 지도"로 따로 보고한다
     const s = fs.readFileSync(abs, 'utf8')
@@ -10159,7 +10499,7 @@ if (VERIFY_CLEAN) {
     console.error(`\n   복원: git checkout -- <위 파일들>\n`)
     process.exit(1)
   }
-  console.log(`✅ 주입 잔재 0 — 작업트리 깨끗함 (${MUTATIONS.length}건 확인)`)
+  console.log(`✅ 주입 잔재 0 — 작업트리 깨끗함 (${ALL.length}건 확인)`)
   process.exit(0)
 }
 
@@ -10175,10 +10515,9 @@ if (VERIFY_CLEAN) {
  *   ⚠️ `MUTATIONS.length` 로는 절대 못 잡는다. 융합된 항목은 배열에서 애초에 세어지지 않는다.
  *   그래서 **소스 텍스트를 직접** 읽어 객체마다 중복 키가 있는지 본다.
  */
-function selfIntegrity() {
-  const self = fs.readFileSync(fileURLToPath(import.meta.url), 'utf8')
-  const start = self.indexOf('const MUTATIONS = [')
-  if (start === -1) return ['자기 검사 실패: `const MUTATIONS = [` 를 못 찾았다']
+function scanIntegrity(self, anchor, expected, label) {
+  const start = self.indexOf(anchor)
+  if (start === -1) return [`${label}: \`${anchor}\` 를 못 찾았다`]
   // 문자열·주석을 건너뛰며 깊이 1(배열 바로 아래) 객체를 뜬다.
   let i = self.indexOf('[', start) + 1
   let depth = 0
@@ -10250,12 +10589,27 @@ function selfIntegrity() {
       bad.push(`한 객체에 키가 두 벌 [${[...dup].join(', ')}] — 병합이 \`},{\` 경계를 삼켜 주입 둘이 융합됐다 (첫 항목: ${first ? first[1].slice(0, 40) : '?'})`)
     }
   }
-  if (objects.length !== MUTATIONS.length) {
-    bad.push(`소스의 객체 ${objects.length}개 ≠ 배열 ${MUTATIONS.length}개 — 세지 못한 항목이 있다`)
+  if (objects.length !== expected) {
+    bad.push(`${label}: 소스의 객체 ${objects.length}개 ≠ 배열 ${expected}개 — 세지 못한 항목이 있다`)
   }
   return bad
 }
-const integrity = selfIntegrity()
+
+/**
+ * 🔴 **분할 파일도 같은 검사를 받는다.** 안 하면 융합-키 사고(주입이 조용히 사라지는 형태)가
+ * 새 파일에서 그대로 재발한다 — 나누면서 보호만 빠지는 것이 가장 흔한 퇴행이다.
+ */
+const integrity = [
+  ...scanIntegrity(fs.readFileSync(fileURLToPath(import.meta.url), 'utf8'),
+    'const MUTATIONS = [', MUTATIONS.length, 'check-guard-mutations.mjs'),
+  ...SPLIT_FILES.flatMap((f) => scanIntegrity(
+    fs.readFileSync(path.join(MUTATIONS_DIR, f), 'utf8'),
+    // 🩸 앵커에 줄바꿈까지 넣는다 — `export default [` 만 쓰면 **헤더 주석 안의 설명 문장**
+    //    ("요지는 `export default [ … ]` 하나")이 먼저 잡혀 거기서부터 훑고 객체 0개를 센다.
+    //    첫 판이 실제로 그랬고, 이 무결성 검사가 그걸 잡았다.
+    'export default [\n', SPLIT_COUNT.get(f) ?? 0, `scripts/mutations/${f}`,
+  )),
+]
 if (integrity.length) {
   console.error('\n❌ guard-mutations 자기 무결성 실패 — 주입 지도가 조용히 항목을 잃었다\n')
   for (const b of integrity) console.error(`   • ${b}`)
@@ -10263,12 +10617,20 @@ if (integrity.length) {
   process.exit(1)
 }
 
-console.log(`🧬 guard-mutations: ${MUTATIONS.length}개 주입 검증 (각각 소스를 잠깐 고쳤다가 되돌린다)\n`)
+const planned = ALL.filter((m) => (!ONLY || m.name.includes(ONLY)) && inScope(m, SCOPE)).length
+if (SCOPE.full) {
+  console.log(`🧬 guard-mutations: ${ALL.length}개 주입 검증 (각각 소스를 잠깐 고쳤다가 되돌린다)\n`)
+  if (CHANGED) console.log(`   ⚠️ 전수로 돈다 — ${SCOPE.why}\n`)
+} else {
+  console.log(`🧬 guard-mutations(--changed): ${ALL.length}건 중 **${planned}건** — 이 브랜치가 바꾼 파일 ${SCOPE.files.size}개에 걸린 것만.`)
+  console.log('   ⚠️ 전수는 main push·야간(guard-mutations-full.yml)이 돈다. 여기서 초록이라고 전수가 초록인 건 아니다.\n')
+}
 
 let onlyMatched = 0
-for (const m of MUTATIONS) {
+for (const m of ALL) {
   if (ONLY && !m.name.includes(ONLY)) continue
   if (ONLY) onlyMatched += 1
+  if (!inScope(m, SCOPE)) continue
   const abs = path.join(ROOT, m.file)
   if (!fs.existsSync(abs)) { problems.push(`${m.name}: 파일 없음 — ${m.file} (코드가 옮겨갔다)`); continue }
   const src = fs.readFileSync(abs, 'utf8')
@@ -10318,7 +10680,7 @@ for (const m of MUTATIONS) {
 }
 
 // 🔒 마지막 안전 확인 — 어떤 경로로든 소스가 바뀐 채 남지 않았는지.
-for (const m of MUTATIONS) {
+for (const m of ALL) {
   const abs = path.join(ROOT, m.file)
   if (fs.existsSync(abs) && fs.readFileSync(abs, 'utf8').includes(m.replace) && m.replace && !fs.readFileSync(abs, 'utf8').includes(m.find)) {
     problems.push(`⚠️ 복원 실패 의심: ${m.file} — \`git diff\` 로 확인할 것`)
@@ -10352,4 +10714,4 @@ if (ONLY && onlyMatched === 0) {
   console.error('   여러 건을 돌리려면 각각 따로 부르거나 인자 없이 전수로 돌려라.')
   process.exit(1)
 }
-console.log(`\n✅ guard-mutations: ${ONLY ? `${onlyMatched}개(--only "${ONLY}")` : `${MUTATIONS.length}개`} 주입 전부 빨간불 확인 — 가드가 실제로 실패할 수 있다.`)
+console.log(`\n✅ guard-mutations: ${ONLY ? `${onlyMatched}개(--only "${ONLY}")` : `${planned}개`} 주입 전부 빨간불 확인 — 가드가 실제로 실패할 수 있다.`)

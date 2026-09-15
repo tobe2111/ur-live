@@ -117,7 +117,9 @@
             //   클래스는 시간이 지나면 저절로 낫는다(대표 실측 "시간 지나니까 정상"). 사용자가 버튼을 안 눌러도
             //   30초 뒤 __cb reload 로 스스로 복구 시도(전파 완료 시점에 자동 정상화). 실패해도 다음 문서의
             //   오버레이가 다시 30초 타이머를 재장전 → 주기적 자동 치유(무한 고속 루프 아님 — 30s 간격).
-            setTimeout(bustReload, 30000);
+            //   🛡️ 2026-09-13: **예산을 지나서** 재시도한다(종전엔 bustReload 직행 → 카운터 우회 → 폭주).
+            //     소진되면 자동 재시도는 멈추고 오버레이와 버튼이 남는다(사용자는 갇히지 않는다).
+            setTimeout(function () { if (takeReloadBudget()) bustReload(); }, 30000);
           } catch (e) { /* DOM 미준비 — 무시(리소스 error 는 body 이후) */ }
         }
         // 캐시버스트 reload — bfcache/heuristic/edge 의 옛 index.html 재서빙 우회(plain reload 는 stale 재서빙 시 또 404).
@@ -141,15 +143,30 @@
           Promise.all(jobs).then(bustReload, bustReload);
           setTimeout(bustReload, 1500); // SW/caches API 가 걸려도 최대 1.5s 뒤 강제 진행
         }
-        function reloadOnce() {
-          if (reloadPending) return; // 이미 재시도 예약됨 — 같은 버스트의 추가 청크에러는 무시(카운트 1회만).
+        // 🛡️ 2026-09-13 (대표 "결제의 다른 문제는?" — 라이브 실측): **재시도 예산 SSOT.**
+        //   `/group-buy/confirm-payment` 가 51초에 **31번** 다시 로드된 기록이 있다(서로 다른 문서 31개,
+        //   frontend_errors 의 boot-stuck 비콘). 설계는 '5분 내 8회 + 지수 백오프'인데 그 상한이 안 먹혔다 —
+        //   카운터가 `reloadOnce` **안에** 있어서, 오버레이의 30초 자동 재시도가 `bustReload()` 를 **직접**
+        //   부르며 예산을 통째로 우회했기 때문이다(아래 showStuckUI 참조).
+        //   ⇒ 세는 자리를 함수로 빼서 **두 경로가 같은 카운터**를 쓰게 한다. 상한에 걸리면 자동 재시도는
+        //     멈추고 오버레이(+버튼)만 남는다 — 그게 애초에 8회 캡을 둔 이유다.
+        //   ⚠️ sessionStorage 가 막힌 환경에선 1 을 돌려준다(= 막지 않음, 종전과 동일 동작).
+        function takeReloadBudget() {
           try {
             var KEY = '__ur_chunk_reload__', now = Date.now(), st = { n: 0, t: 0 };
             try { var raw = sessionStorage.getItem(KEY); if (raw) { var p = JSON.parse(raw); if (p && typeof p === 'object') st = p; } } catch (e) { /* 옛 '1' 포맷 — 리셋 */ }
             var within = now - st.t < 300000;
-            if (within && st.n >= 8) { showStuckUI('chunk'); return; } // 5분 내 8회 — stale 고착 → 무한 reload 대신 복구 UI
+            if (within && st.n >= 8) return 0; // 5분 내 8회 소진
             var attempt = within ? st.n + 1 : 1;
             sessionStorage.setItem(KEY, JSON.stringify({ n: attempt, t: now }));
+            return attempt;
+          } catch (e) { return 1; }
+        }
+        function reloadOnce() {
+          if (reloadPending) return; // 이미 재시도 예약됨 — 같은 버스트의 추가 청크에러는 무시(카운트 1회만).
+          try {
+            var attempt = takeReloadBudget();
+            if (!attempt) { showStuckUI('chunk'); return; } // 예산 소진 — 무한 reload 대신 복구 UI
             // 🛡️ 2026-07-21 (대표 "배포해도 유저 불편"): 재시도 전 유예(배포 전파 대기).
             // 🛡️ 2026-07-27 (대표 "복구 화면이 고객에게 드러나면 안돼"): 전파 창이 '수초' 가정(0.7~2.5s×3회/90s)
             //   보다 실제(수십 초~수분)로 길어, 창 안에서 재시도 소진 → 오버레이 + 버튼도 창 안이라 무효 →

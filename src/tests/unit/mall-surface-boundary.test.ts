@@ -20,6 +20,7 @@ import { resolve } from 'node:path'
 import { isMallSlugCandidate, isMallSurfacePath, isMallProduct, mallRedirectPathFor, MAIN_MALL } from '@/shared/mall/resolve'
 import { RESERVED_SLUGS } from '@/shared/mall/slug'
 import { hasPickupInfo } from '@/pages/product-detail/ReceiveMethodNotice'
+import { stripComments } from '../helpers/source-text'
 
 const read = (p: string) => readFileSync(resolve(process.cwd(), p), 'utf8')
 
@@ -243,7 +244,7 @@ describe('몰 상품 목록 — 공구 후보를 SQL 에서 좁힌다', () => {
     // ⚠️ **주석을 벗기고 본다.** 처음엔 원문 그대로 검사했는데, 같은 파일의 *설명 주석*에
     //   "그전엔 `LIMIT 200` 으로…" 라고 적힌 것을 잡아 **정상 코드가 빨강**이 됐다 —
     //   이 파일 헤더가 경고하는 바로 그 '주석 함정' 이다(이번엔 반대 방향으로 걸렸다).
-    const code = routes.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
+    const code = stripComments(routes)
     // 🔴 되돌아가면 즉시 빨강 — 이 리터럴이 바로 절단의 원인이었다.
     expect(/LIMIT 200/.test(code)).toBe(false)
   })

@@ -124,6 +124,19 @@ app.post('/stores/:sellerId/token', rateLimit({ action: 'seller_store_switch', m
     //   안 그러면 시트가 ('seller', 매장id) 라 운영자가 들어가는 순간 **사장님이 튕긴다**.
     //   소유자 본인은 기존 시트를 그대로 써야 기존 단일 세션 규칙이 유지된다.
     if (access.source === 'grant') payload.operator_user_id = userId
+    /**
+     * 🔑 2026-09-09: **역할을 토큰에 함께 싣는다.**
+     *
+     * 🩸 그 전엔 `operator_user_id` 유무 하나로 소유자를 판정했는데(`store-actor.ts`),
+     *   `/store/new` 는 설계상 `linked_user_id` 를 비워 두므로 **직접(direct) 등록한 진짜 사장님도
+     *   `source:'grant'`** 로 들어온다. 그래서 `role` 이 `'owner'` 인데도 운영자로 오판됐고,
+     *   소유자 전용 게이트가 전부 닫혔다 — 특히 **정산 계좌를 못 넣어 돈을 아예 못 받는다.**
+     *   (라이브에 직접 등록 매장이 아직 0이라 안 터졌을 뿐, 다음 첫 사장님이 바로 밟는다.)
+     *
+     * ⚠️ `operator_user_id` 는 **그대로 둔다** — 그건 소유 판정이 아니라 *시트 분리*용이고,
+     *   빼면 운영자가 들어갈 때 사장님이 튕긴다(위 주석의 사고).
+     */
+    if (access.role) payload.store_role = access.role
 
     const token = await jwtSign(payload, c.env.JWT_SECRET)
     const seat = access.source === 'grant'

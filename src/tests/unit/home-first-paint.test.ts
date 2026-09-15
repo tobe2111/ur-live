@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
+import { stripComments } from '../helpers/source-text'
 
 const read = (p: string) => readFileSync(p, 'utf8')
-const code = (p: string) =>
-  read(p).replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
+const code = (p: string) => stripComments(read(p))
 
 /**
  * 🏠 홈 첫 화면 순서 (2026-08-19 대표 신고 — "첫 접속하면 지금 인기 이용권이 먼저 안뜨고

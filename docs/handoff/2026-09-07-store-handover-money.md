@@ -102,6 +102,27 @@ seller_operators   1건 (seller 14 ← user 3, 2026-08-26)
 ### 아직 안 막은 것
 마감 payout 을 손바뀜 **뒤에** 취소하면 잔액이 되살아나 새 주인에게 간다(집계가 `cancelled`/`failed` 를 안 뺀다).
 
+## ✅ 2026-09-08 후속 — 대표 "모두 해줘" (남아 있던 둘 처리)
+
+1. **마감 화면** — `/admin/payouts` "미정산 잔액" 탭의 매장(`seller:N`) 행에 **[마감]** 버튼.
+   금액·무엇이 일어나는지 보여 주고 사유를 받아 `POST /api/admin/payouts/handover-closeout`.
+   ⚠️ 송금이 아니라는 것을 문구로 못 박았다("정산 목록에 검토 대기로 올라갑니다").
+2. **취소로 되살아나는 구멍** — 집계가 `cancelled`/`failed` 를 안 빼므로 마감 행을 취소하면
+   금액이 원장으로 되살아난다. 실측: 릴리스 경로는 **어드민 취소 라우트 하나뿐**이다
+   (`status='failed'` 를 쓰는 코드가 레포에 0건). 그래서 거기에만 게이트를 건다:
+   `payouts.kind='handover_closeout'` + `payee_user_id`(만들 때의 주인)를 행에 박고,
+   취소 시 **주인이 바뀌었으면** `confirm_release` 를 요구한다.
+   ⚠️ **하드 블록이 아니다** — 금액을 잘못 적었을 때 손쓸 방법이 없어지면 그게 막다른 길이고,
+   이 PR 의 자물쇠가 처음에 정확히 그 실수를 했다. 화면이 경고를 받아 한 번 더 확인시킨다.
+
+스키마: `migrations/0288_payouts_handover_kind.sql` + repair-schema 미러(`payouts.kind`,
+`payouts.payee_user_id`). `payouts` 는 컬럼 예산 대상이 아니다(products·sellers 만).
+
+가드: 행동 시험 12건(+5, 실제 SQLite — 취소하면 잔액이 **실제로 되살아나는 것**까지 보인다) +
+배선 26건(+5) + 주입 3건 되돌려-검증 빨간불.
+🩸 그 과정에서 **또 헛도는 단언을 잡았다**: 게이트 조건을 `if (false)` 로 바꿔도 본문 문자열
+(`HANDOVER_CLOSEOUT_RELEASE`·`SELECT linked_user_id…`)이 남아 초록이 떴다 → **조건 자체**로 앵커 이동.
+
 ## 남은 결정 (대표 판단 대기)
 
 선택지는 확정됐다(위). 남은 것:

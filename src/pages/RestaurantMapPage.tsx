@@ -3,22 +3,23 @@ import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { MapPin, Map as MapIcon, ChevronDown, Search, Bell, ShoppingCart, LocateFixed, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
+import { priceDisplay } from '@/shared/price-display'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { isKorea } from '@/shared/config/region'
 import { storage } from '@/shared/utils/storage'
 
-// 🛡️ 2026-05-02: TD-018 추가 분할 — types/utils/HeroCarousel 추출.
+// 🛡️ 2026-05-02: TD-018 추가 분할 — types/utils 추출(HeroCarousel 은 2026-09-08 제거).
 // 🛡️ 2026-05-05: TD-006 추가 분할 — RestaurantList / SelectedPeekCard / SelectedDetailCard 추출.
 // 🛡️ 2026-05-06: TD-006 추가 분할 — SheetFilterBar 추출. (MapSearchHeader 는 2026-07-20 MapTopBar 로 대체·삭제.)
 import FilterSheet, { type PriceRange } from './restaurant-map/FilterSheet'
 import SuggestionModal from './restaurant-map/SuggestionModal'
-import HeroCarousel from './restaurant-map/HeroCarousel'
 import RestaurantList from './restaurant-map/RestaurantList'; import SiteFooter from '@/components/main/SiteFooter'
 import NearbyEmptyBanner from './restaurant-map/NearbyEmptyBanner'
 import { useGeocodeMissing } from './restaurant-map/useGeocodeMissing'
 import { useNearMeAuto } from './restaurant-map/useNearMeAuto'
+import { effectiveSort } from './restaurant-map/effective-sort'
 import SelectedDealCard from './restaurant-map/SelectedDealCard'
 import MapTopBar from './restaurant-map/MapTopBar'
 import SheetFilterBar from './restaurant-map/SheetFilterBar'
@@ -26,11 +27,13 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Screen } from '@/components/ui/screen'
 import { type MapVoucherType } from './restaurant-map/voucher-types'
 import { useKakaoMap, type ServerCluster } from './restaurant-map/useKakaoMap'
+import { useViewportRegion } from './restaurant-map/useViewportRegion'
 import { useSheetDrag, SHEET_BASE_TOP, SHEET_SNAP_TRANSLATE, SHEET_SNAP_TRANSITION } from './restaurant-map/useSheetDrag'
 import { distanceKm } from './restaurant-map/utils'
 import type { Restaurant, KakaoPlace, SortBy } from './restaurant-map/types'
 import { useFeedWindow } from './restaurant-map/useFeedWindow'
 import { pickViewportList } from './restaurant-map/viewport-list'
+import { groupByCoord } from './restaurant-map/coord-groups'
 import { matchAddress, findRegionByKey, findDistrictGroup } from '@/shared/constants/korea-regions'
 import { panToRegionAccurate } from './restaurant-map/pan-to-region'
 import { useSearchPan, useSearchDeals } from './restaurant-map/useSearchPan'
@@ -151,7 +154,6 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   // 옵션 B: 카카오 일반 맛집 + 클릭 시 수요 신호 모달
   const [kakaoPlaces, setKakaoPlaces] = useState<KakaoPlace[]>([])
   const [suggestionFor, setSuggestionFor] = useState<KakaoPlace | null>(null)
-  const [liveSellerIds] = useState<Set<number>>(new Set())  // 라이브커머스 영구중단 → 항상 빈 Set(LIVE 배지 미표시)
   const activeFilterCount = ((region || district) ? 1 : 0) + (radiusKm > 0 ? 1 : 0) + (priceRange !== 'all' ? 1 : 0)
   // 🗺️ 2026-06-20 (대표 — 홈=지도 / "상품 1개일 때 공백 남음"): 기본 snap 을 peek 으로 → 지도 우선 +
   //   콘텐츠 적을 때 큰 흰 공백 제거(컴팩트). 더 보려면 시트를 위로 드래그(mid/full).
@@ -283,20 +285,23 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       return true
     })
 
-    // 정렬
+    // 정렬 — 🧭 2026-09-09: 서버 요청과 **같은 함수**로 정한다(둘이 갈리면 조용히 틀린 목록이 된다).
+    const eff = effectiveSort(sortBy, !!userLoc)
     items = [...items].sort((a, b) => {
-      if (sortBy === 'distance' && userLoc) {
+      if (eff === 'distance' && userLoc) {
         const da = a.restaurant_lat ? distanceKm(userLoc.lat, userLoc.lng, a.restaurant_lat, a.restaurant_lng) : Infinity
         const db = b.restaurant_lat ? distanceKm(userLoc.lat, userLoc.lng, b.restaurant_lat, b.restaurant_lng) : Infinity
         return da - db
       }
-      if (sortBy === 'discount') {
-        const dA = a.original_price > a.price ? (1 - a.price / a.original_price) : 0
-        const dB = b.original_price > b.price ? (1 - b.price / b.original_price) : 0
-        return dB - dA
+      if (eff === 'discount') {
+        // 🐛 2026-09-09: 종전엔 여기서 할인율을 **자체 계산**해 서버 정렬(MAX(discount_rate, 계산값))·
+        //   카드(priceDisplay)와 정의가 셋으로 갈려 있었다. 같은 상품이 화면마다 다른 할인율을 보이면
+        //   그건 버그가 아니라 거짓말이다 — SSOT 경유로 통일(마커 D4 강조도 같은 값을 쓴다).
+        //   ⚠️ 조건은 `eff`(위치 없을 때의 대체 정렬까지 반영) — 같은 날 다른 PR 이 고친 것이라 둘 다 산다.
+        return priceDisplay(b).discount - priceDisplay(a).discount
       }
-      if (sortBy === 'price') return (a.price || 0) - (b.price || 0)
-      if (sortBy === 'rating') return (b.rating || 0) - (a.rating || 0)
+      if (eff === 'price') return (a.price || 0) - (b.price || 0)
+      if (eff === 'rating') return (b.rating || 0) - (a.rating || 0)
       return 0
     })
     return items
@@ -317,43 +322,9 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     [mode, mapBounds, aggClusters, displayList, search],
   )
 
-  // 🛡️ 2026-04-30 Phase 3: hero carousel — 인기 (할인율 높은 순) 상위 5개
-  const heroDeals = useMemo(() => {
-    return [...filtered]
-      .filter(r => r.original_price > r.price)
-      .sort((a, b) => {
-        const dA = 1 - a.price / a.original_price
-        const dB = 1 - b.price / b.original_price
-        return dB - dA
-      })
-      .slice(0, 5)
-  }, [filtered])
-
-  // 🛡️ 2026-04-28: 동일 좌표 이용권 그룹화 (핀 겹침 방지).
-  //   같은 매장에 이용권 여러 개 등록 시 핀 1개 + 개수 배지.
-  //   그룹 대표 = 첫 번째 (정렬 순서 따름).
-  const withCoords = useMemo(() => {
-    const list = filtered.filter(r => r.restaurant_lat && r.restaurant_lng)
-    const groups = new Map<string, Restaurant[]>()
-    for (const r of list) {
-      // 5자리 반올림 → ~1m 정밀도 (효과적으로 동일 매장)
-      const key = `${r.restaurant_lat.toFixed(5)}_${r.restaurant_lng.toFixed(5)}`
-      if (!groups.has(key)) groups.set(key, [])
-      groups.get(key)!.push(r)
-    }
-    // 그룹 대표만 반환 (count 별도로 노출은 핀 markup 에서)
-    return Array.from(groups.values()).map(g => g[0])
-  }, [filtered])
-
-  // 좌표 키 → 그룹 size 매핑 (핀 markup 에서 배지 표시용)
-  const coordGroupSize = useMemo(() => {
-    const map = new Map<string, number>()
-    for (const r of filtered.filter(x => x.restaurant_lat && x.restaurant_lng)) {
-      const key = `${r.restaurant_lat.toFixed(5)}_${r.restaurant_lng.toFixed(5)}`
-      map.set(key, (map.get(key) || 0) + 1)
-    }
-    return map
-  }, [filtered])
+  // 🛡️ 2026-04-28: 동일 좌표 이용권 그룹화(핀 겹침 방지) — 대표 1개 + 좌표별 개수.
+  //   🔴 둘은 **한 번의 순회**에서 같이 나와야 한다(근거·함정은 coord-groups.ts).
+  const { withCoords, coordGroupSize } = useMemo(() => groupByCoord(filtered), [filtered])
 
   const { mapRef, mapInstance, sdkLoaded, sdkError, panToProduct } = useKakaoMap({
     kr,
@@ -365,11 +336,12 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     kakaoPlaces,
     setSuggestionFor,
     userLoc,
-    liveSellerIds,
     favorites,
     sheetSnap,
     serverClusters: aggClusters,
   })
+  // 📍 2026-09-09 (대표 확정 "안 R1"): 시트의 "이 지역"을 지금 보는 화면의 실제 이름으로(동탄6동 …).
+  const viewportRegion = useViewportRegion({ mapInstance, enabled: mode === 'map' && sdkLoaded })
 
   // 🛡️ 2026-04-30 Phase 5: '내 주변' 클릭 — GPS 요청 + 거리순 + 위치로 pan
   // 🗺️ 2026-06-23 (대표 — 취소 가능): 이미 활성이면 다시 누르면 토글 off(거리순 → 기본 정렬 복귀).
@@ -455,6 +427,14 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
     }).catch(() => { /* 미지원(iOS 등) — onchange 없이 사용자가 '위치 허용/다시 시도'로 재요청 */ })
     return () => { cancelled = true; if (status) status.onchange = null }
   }, [geoHelp, requestNearMe])
+
+  // 🧭 2026-09-09 (대표 "거리순인데 정렬이 안 되어 있다"): 거리순을 고르면 위치를 요청한다.
+  //   못 얻으면 effective-sort.ts 가 안전망(사유는 그 헤더). 이미 '내 주변' 모드면 안 부른다 —
+  //   requestNearMe 가 그 경우 토글이라 정렬을 되돌린다.
+  const chooseSort = useCallback((s: SortBy) => {
+    setSortByUser(s)
+    if (s === 'distance' && !userLoc && !nearMeMode) requestNearMe()
+  }, [setSortByUser, userLoc, nearMeMode, requestNearMe])
 
   // 📜 2026-07-08 (대표 "카테고리 버튼 누를 때마다 상단으로"): 카테고리 전환 시 리스트 최상단으로 스크롤.
   const selectVoucherType = useCallback((v: MapVoucherType) => {
@@ -680,7 +660,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             filteredCount={!needsAll && !search ? (feedTotal ?? displayList.length) : filtered.length}
             userLoc={userLoc}
             sortBy={sortBy}
-            setSortBy={setSortByUser}
+            setSortBy={chooseSort}
             favorites={favorites}
             showFavoritesOnly={showFavoritesOnly}
             setShowFavoritesOnly={setShowFavoritesOnly}
@@ -718,7 +698,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             region={region} district={district} sortBy={sortBy} radiusKm={radiusKm} priceRange={priceRange}
             hasUserLoc={!!userLoc} countFor={countFor}
             onApply={(rg, dist, sort, radius, price) => {
-              setRegion(rg); setDistrict(dist); setSortByUser(sort); setRadiusKm(radius); setPriceRange(price); setFilterSheetOpen(false)
+              setRegion(rg); setDistrict(dist); chooseSort(sort); setRadiusKm(radius); setPriceRange(price); setFilterSheetOpen(false)
             }}
             onClose={() => setFilterSheetOpen(false)}
           />
@@ -856,9 +836,10 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             setVoucherType={setVoucherType}
             filteredCount={!needsAll && !search ? (feedTotal ?? displayList.length) : displayList.length}
             viewportCount={viewportInCount}
+            regionLabel={viewportRegion}
             userLoc={userLoc}
             sortBy={sortBy}
-            setSortBy={setSortByUser}
+            setSortBy={chooseSort}
             favorites={favorites}
             showFavoritesOnly={showFavoritesOnly}
             setShowFavoritesOnly={setShowFavoritesOnly}
@@ -875,15 +856,18 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             className="px-3 pt-3 pb-24"
             style={{ overscrollBehavior: 'contain', touchAction: !isLgViewport && sheetSnap !== 'full' ? 'none' : undefined }}
           >
-            {/* 🛡️ 2026-04-30 Phase 3: hero carousel — 할인율 TOP5 */}
-            {!loading && (
-              <HeroCarousel
-                heroDeals={heroDeals}
-                userLoc={userLoc}
-                liveSellerIds={liveSellerIds}
-                onSelect={selectAndPan}
-              />
-            )}
+            {/* 🗑️ 2026-09-08 (대표 *"거리순이 가장 우선이야"* + *"오늘의 핫딜은 원래 없었지 않아? 왜 생긴거지?"*):
+                여기 있던 '오늘의 핫딜' 캐러셀(할인율 TOP5, 2026-04-30 `eb153b842`)을 제거했다. 이유 셋:
+                ① **거리순을 가로챘다** — 시트는 거리순인데 그 위에 할인율순 다섯 장이 먼저 서 있었다.
+                   "가까운 순이 가장 우선"이면 화면 맨 위가 가까운 것이어야 한다.
+                ② **바로 아래 첫 줄과 겹쳤다** — 거리 1등과 할인 1등이 같은 상품이면 한 화면에 두 번 뜬다
+                   (대표 실측 캡처). 홈에서 2026-09-06 에 고친 "같은 이용권이 두 번"과 같은 클래스인데
+                   지도엔 그 처방이 안 갔다.
+                ③ **"5곳"이 전체에서 고른 게 아니었다** — 2026-09-03 수요 로딩 이후 화면은 가까운 50개만
+                   갖고 있어서, 위에 "338곳"이라 적혀 있어도 실제로는 그 50개 중 top 5 였다.
+                🔁 되살리려면 `git revert` 로 이 커밋의 이 블록 + `heroDeals` + 컴포넌트 파일을 복원한다.
+                   (같은 이름의 쇼핑/메인 '오늘의 핫딜'은 이미 2026-06-04 에 "불필요"로 제거됐다 — 그때
+                    지도 쪽만 남아 있었고, 2026-09-03 재디자인으로 모양이 바뀌어 새것처럼 보였다.) */}
             <RestaurantList
               loading={loading}
               filtered={viewportList}
@@ -921,7 +905,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
           onApply={(rg, dist, sort, radius, price) => {
             setRegion(rg)
             setDistrict(dist)
-            setSortByUser(sort)
+            chooseSort(sort)
             setRadiusKm(radius)
             setPriceRange(price)
             setMapView(true)

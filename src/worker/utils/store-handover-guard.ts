@@ -35,10 +35,19 @@
  *     마감이 이전 주인 몫을 payout 으로 떼어 냈으므로, 그 뒤 쌓이는 것은 자연히 새 주인 몫이다.
  *   - 마감 payout 을 손바뀜 **뒤에** 취소하면 잔액이 되살아나 새 주인에게 간다
  *     (`getUnsettledBalance` 헤더 참조). 그 취소를 막는 장치는 아직 없다.
- *   - **최초 연결**(`linked_user_id` 가 NULL → 값)은 손바뀜이 아니므로 검사하지 않는다.
- *   - `seller_operators` 로 운영자를 추가하는 것도 손바뀜이 아니다(정산 목적지가 안 바뀐다).
+ *   - **최초 연결**(주인이 없던 매장에 주인이 생기는 것)은 손바뀜이 아니므로 검사하지 않는다.
+ *   - `seller_operators` 로 **운영자**(`role='operator'`)를 추가하는 것도 손바뀜이 아니다 —
+ *     운영자는 정산 계좌를 못 바꾼다(`seller-profile.routes.ts` 소유자 게이트).
+ *
+ * 🕳️ **2026-09-09 사각지대 수리 — 주인은 두 곳에 적힌다.**
+ *   이 자물쇠는 처음에 `sellers.linked_user_id` 만 봤다. 그런데 `/store/new` 는 설계상 그 칸을
+ *   **비워 두고**(UNIQUE 1인1행) `seller_operators.role='owner'` 로 주인을 적는다
+ *   (`seller-stores.routes.ts:12-14`). ⇒ **지금 만들어지는 모든 매장에서 자물쇠가 무력**이었다.
+ *   라이브 실측(2026-09-09): 매장 1곳 전부 `linked_user_id` NULL. 승계(3단계)가 지나갈 문도
+ *   바로 이 `role` 승격이다. 그래서 **두 신호를 함께** 본다.
  */
 import type { D1Database } from '@cloudflare/workers-types'
+import { resolveStoreOwnerUserId } from './seller-operators'
 
 export interface HandoverCheck {
   /** 막아야 하는가 */
@@ -67,23 +76,36 @@ export const STORE_HANDOVER_BLOCKED = 'STORE_HANDOVER_BLOCKED'
  *   판단에서 "모르겠으면 통과" 는 오지급으로 직행한다. (조회 실패는 D1 장애뿐이고, 그때는
  *   손바뀜을 미루는 편이 언제나 싸다.)
  */
+/**
+ * 지금 이 매장의 **주인**은 누구인가 — 두 신호를 함께 본다.
+ *
+ * ① `sellers.linked_user_id` (옛 방식 · 1인 1행 UNIQUE)
+ * ② `seller_operators.role = 'owner'` (지금 `/store/new` 가 쓰는 방식)
+ *
+ * @returns 주인의 user id · 주인이 없으면 `null` · **판단 근거를 못 얻으면 `undefined`**
+ *          (셋을 구분해야 "주인 없음"과 "모름"이 안 섞인다 — 섞이면 모름이 통과가 된다).
+ */
+export async function resolveCurrentOwner(
+  DB: D1Database,
+  sellerId: number,
+): Promise<number | null | undefined> {
+  // 규칙 본체는 `seller-operators.ts` 하나뿐이다 — 출금·인증 판정도 같은 함수를 쓴다.
+  return await resolveStoreOwnerUserId(DB, sellerId)
+}
+
 export async function checkStoreHandover(
   DB: D1Database,
   sellerId: number,
   nextUserId: number,
 ): Promise<HandoverCheck> {
-  const seller = await DB.prepare('SELECT linked_user_id FROM sellers WHERE id = ? LIMIT 1')
-    .bind(sellerId)
-    .first<{ linked_user_id: number | null }>()
-    .catch(() => undefined)
+  const prev = await resolveCurrentOwner(DB, sellerId)
 
-  // 매장 조회 자체가 실패했으면 판단 근거가 없다 → 막는다(fail-closed).
-  if (seller === undefined) {
+  // 판단 근거를 못 얻었으면 막는다(fail-closed).
+  if (prev === undefined) {
     return { blocked: true, receivable: 0, reason: '매장 정보를 확인할 수 없어 소유자 변경을 보류했어요' }
   }
-  if (!seller) return { blocked: false, receivable: 0 }
 
-  const prevUserId = seller.linked_user_id
+  const prevUserId = prev
   // 최초 연결이거나 같은 사람이면 손바뀜이 아니다 — 오늘까지의 흐름 그대로.
   if (!prevUserId || Number(prevUserId) === Number(nextUserId)) {
     return { blocked: false, receivable: 0, prevUserId }

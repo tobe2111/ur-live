@@ -12,6 +12,7 @@
  */
 import { adjustUserPoints } from './point-ledger'
 import { DEFAULT_AFFILIATE_RATE } from '../../shared/affiliate-rate'
+import { resolveStoreOwnerUserId } from './seller-operators'
 
 // 🛡️ 2026-06-17 (대표 결정 — 1인 치킨게임): 추천 적립 기본 fallback 5% → 2%.
 //   추천은 CAC(획득비)라 끄지 않고 낮춤. 어드민 platform_settings.affiliate_commission_rate 로 추가 조정/0 가능
@@ -157,9 +158,20 @@ export async function creditAffiliateForOrder(
     }
 
     try {
-      const sellerOwner = await DB.prepare(
-        `SELECT s.linked_user_id AS user_id FROM orders o JOIN sellers s ON o.seller_id = s.id WHERE o.id = ? LIMIT 1`
-      ).bind(order.id).first<{ user_id: string }>()
+      /**
+       * 🪑 2026-09-09: 종전엔 `sellers.linked_user_id` 하나로 매장 주인을 찾았는데, `/store/new` 는
+       *   그 칸을 **설계상 비워 두고** `seller_operators.role='owner'` 로 소유권을 준다.
+       *   ⇒ 오늘 등록되는 모든 매장에서 아래 두 가드가 **조용히 통과**했다:
+       *     ① 자가구매(주인이 자기 매장 상품을 자기 추천링크로) ② 주인=추천인 이중지급
+       *   (②는 2026-07-07 대표 결정으로 넣은 가드다 — 판매수익 + 추천수수료를 동시에 가져가는 것.)
+       *   조회 실패(`undefined`)는 종전처럼 **모름 → 가드 통과** 다: 지급 자체를 막지는 않는다.
+       */
+      const ownerRow = await DB.prepare('SELECT seller_id FROM orders WHERE id = ? LIMIT 1')
+        .bind(order.id).first<{ seller_id: number | null }>().catch(() => null)
+      const ownerUserId = ownerRow?.seller_id
+        ? await resolveStoreOwnerUserId(DB, Number(ownerRow.seller_id))
+        : null
+      const sellerOwner = ownerUserId ? { user_id: String(ownerUserId) } : null
       if (sellerOwner?.user_id && String(sellerOwner.user_id) === String(order.user_id)) {
         await DB.prepare(
           `INSERT INTO abuse_detections (pattern, user_id, ref_type, ref_id, evidence, severity)
