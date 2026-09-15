@@ -49,7 +49,7 @@ function MyRankCard() {
   }, [])
   if (!rank) return null
   return (
-    <a href="/influencer/rankings" className="block bg-gray-50 border border-amber-200 rounded-xl p-4">
+    <a href="/influencer/rankings" className="block bg-warm border border-amber-200 rounded-xl p-4">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-[11px] text-amber-700 font-medium">🏆 이번 달 나의 순위</p>

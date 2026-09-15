@@ -172,7 +172,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
 
               {/* 🛡️ 2026-05-20: 신규 가입 보너스 3000딜 — 자동 적립 완료 카드 (bonusAmount > 0 일 때만). */}
               {bonusAmount > 0 && (
-                <div className="bg-gray-50 border border-amber-200 rounded-2xl p-5 mt-6 text-left">
+                <div className="bg-warm border border-amber-200 rounded-2xl p-5 mt-6 text-left">
                   <div className="flex items-start gap-3">
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center shrink-0 shadow-md">
                       <Sparkles className="w-6 h-6 text-white" />
@@ -190,7 +190,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
                 </div>
               )}
 
-              <div className="bg-gray-50 border border-rule rounded-2xl p-5 mt-6 text-left">
+              <div className="bg-warm border border-rule rounded-2xl p-5 mt-6 text-left">
                 <div className="flex items-start gap-3">
                   <div className="w-12 h-12 rounded-2xl bg-brand flex items-center justify-center shrink-0 shadow-md">
                     <Gift className="w-6 h-6 text-white" />

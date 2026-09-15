@@ -149,7 +149,7 @@ export default function BusinessLandingPage() {
             <p className="text-gray-600 dark:text-gray-300">슬라이더로 직접 계산해보세요</p>
           </div>
 
-          <div className="bg-gray-50 rounded-3xl p-6 lg:p-10 border border-rule">
+          <div className="bg-warm rounded-3xl p-6 lg:p-10 border border-rule">
             <div className="space-y-6">
               <div>
                 <div className="flex items-center justify-between mb-2">

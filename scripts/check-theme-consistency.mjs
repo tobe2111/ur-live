@@ -82,19 +82,49 @@ for (const f of targetFiles) {
   if (!/dark:(bg|text|border)/.test(src)) continue
   // 🖤 2026-08-30 잉크 검정 전환: 다크 배경이 #0F151D → #11141C. 구 값도 남겨 둔다
   //    (외부 브랜치·미이행 파일이 옛 hex 로 들어와도 순수 다크 판정이 유지되도록).
-  if (/bg-\[#020202\]|bg-\[#0F151D\]|bg-\[#11141C\]|data-mobile-only/.test(src)) continue
+  //
+  // 🩸 2026-09-15 수리 — 이 판정이 **가장 큰 사각지대**였다.
+  //    종전 정규식은 `dark:bg-[#11141C]`(올바른 **다크 variant**)와 bare `bg-[#11141C]`
+  //    (순수 다크 페이지)를 구분하지 않았다. 결과가 정확히 거꾸로였다:
+  //    **다크 대응을 제대로 한 파일일수록 이 검사에서 통째로 면제**됐다.
+  //    실측: 면제받던 150파일 중 **143개가 순수 다크 페이지가 아니었다** —
+  //    /vouchers · /checkout · /search · ProductDetailPage · CuratorPage · BottomNav …
+  //    대표가 반복해 신고한 "글자가 안 보여" 가 바로 이 검사의 관할인데 그 화면들을 한 번도 안 봤다.
+  //    ⇒ bare(= `dark:` 접두사 없는) 형태일 때만 순수 다크로 본다.
+  if (/(?<!dark:)bg-\[#020202\]|(?<!dark:)bg-\[#0F151D\]|(?<!dark:)bg-\[#11141C\]|data-mobile-only/.test(src)) continue
   const lines = src.split('\n')
+  // 🩸 2026-09-15 수리 — 주석 판정이 **줄 단위**라 여러 줄 주석의 **가운데 줄**을 코드로 오인했다.
+  //    이 레포가 반복해 당한 클래스다(CLAUDE.md 「텍스트 가드가 자기 주석 제거기를 만듦」).
+  //    실측 오탐 4건: 색 이름을 설명하는 주석 줄이 그대로 위반으로 잡혔다
+  //    (BusinessLandingPage:117 · CuratorPage:265 · UserProfilePage:140 · MapTopBar:88).
+  //    ⇒ `{/*` · `/*` 로 열린 블록이 닫힐 때까지 **전부 주석으로 본다**.
+  //    ⚠️ 문자열 안의 `/*` 는 안 센다 — className 값에 그런 게 없어서 이 근사로 충분하다.
+  const inBlockComment = new Array(lines.length).fill(false)
+  {
+    let open = false
+    for (let i = 0; i < lines.length; i++) {
+      const t = lines[i]
+      const opensHere = !open && /\{?\/\*/.test(t)
+      if (open) inBlockComment[i] = true
+      if (opensHere && !/\*\/|\*\/\}/.test(t.slice(t.search(/\{?\/\*/) + 2))) open = true
+      else if (open && /\*\//.test(t)) open = false
+    }
+  }
   lines.forEach((line, i) => {
     // 주석 줄(// 또는 * 로 시작)은 className 아님 → 스킵 (오탐 방지)
     const trimmed = line.trim()
-    if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) return
+    if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*') || trimmed.startsWith('{/*')) return
+    if (inBlockComment[i]) return
     // 🗺️ 2026-09-02 `light-fixed` — **배경이 테마와 무관하게 늘 밝은 자리**(카카오 지도 타일 위 오버레이).
     //    거기서 dark: 로 남색을 주면 파스텔 지도 위에 검은 덩어리가 된다(대표 신고 "색깔이 눈에 잘 안 들어와").
     //    🎫 2026-09-03 추가: **PC 홈 잉크 히어로 색면**(`--home-field`)도 같은 부류다 — 라이트/다크 어느
     //    쪽이든 늘 잉크라, 그 위 흰 알약에 `dark:` 를 달면 다크에서 검은 알약이 되어 안 보인다.
     //    줄에 `light-fixed` 주석이 있으면 그 줄의 라이트 토큰은 의도된 고정으로 본다.
     //    남용 금지 — **배경이 테마와 무관하게 늘 정해진 자리**(지도 타일 위 · 잉크 히어로 위)만.
-    if (line.includes('light-fixed')) return
+    // 🏝️ 2026-09-15 추가: `light-island` 는 **클래스**로 늘 밝은 표면을 선언한다(토스 결제 위젯 ·
+    //    지도 위 딜 카드). `light-fixed`(주석 부표)와 같은 부류인데 가드가 몰라서 오탐 3건이 났다.
+    //    차이는 이쪽이 **런타임에도 실제로 동작한다**는 것이다(tailwind darkMode variant 가 안쪽 `dark:` 를 끈다).
+    if (line.includes('light-fixed') || line.includes('light-island')) return
     for (const tok of LIGHT_TOKENS) {
       tok.re.lastIndex = 0
       let m
