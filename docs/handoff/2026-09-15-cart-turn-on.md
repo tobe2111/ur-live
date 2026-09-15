@@ -46,23 +46,23 @@ curl -sS "https://live.ur-team.com/api/admin/system-monitoring/ops-status" \
 4. **첫 로드에 이미 전체 선택돼 있다**(`selectionInitedRef`). 하네스에서 "전체선택"을 누르면
    오히려 **해제**된다 — 0/3 을 보고 클릭이 안 먹은 줄 알았다.
 
-## 🩸 CI 함정 하나 — **PR 을 push 뒤에 열면 Verify 가 안 돈다**(2026-09-15 신규)
+## 🩸 CI 함정 — **충돌이 있으면 Verify 가 빨간불이 아니라 *아예 안 뜬다*** (2026-09-15)
 
-같은 날 `verify.yml` 에서 `push:` 트리거를 뺐다(취소된 push-run 이 필수 검사 실패본으로 남아
-머지를 막던 문제 — 그 결정 자체는 근거가 있다). 그 부작용이 이 PR 에서 처음 드러났다:
+PR #1447 에 `Cloudflare Pages` 하나만 붙고 **Verify 가 없었다.** 빨간불이 아니라 부재다 —
+이 레포가 반복해 당하는 클래스라 한참 원인을 헤맸다.
 
-```
-git push (새 브랜치)        → push 이벤트로는 이제 run 이 안 생긴다
-PR 을 MCP 로 open           → pull_request(opened) 가 run 을 안 만들었다 (실측)
-결과                        → PR 에 `Cloudflare Pages` 하나뿐. **Verify 가 아예 없다**
-```
+**진짜 원인**: `pull_request` 이벤트는 GitHub 이 *head 를 base 에 병합한 커밋* 위에서 돈다.
+그 병합이 안 되면(`mergeable_state: "dirty"`) **run 자체가 만들어지지 않는다.**
+푸시를 두 번 더 해도 마찬가지였다. `origin/main` 을 머지하니 즉시 Verify 가 붙었다.
 
-이 레포가 반복해 당하는 **"실패가 아니라 조용한 부재"** 다 — 빨간불이 아니라 검사가 없다.
-필수 검사라 머지는 막히니 위험하진 않지만, 모르면 "왜 CI 가 안 끝나지" 로 한참 기다린다.
+🩸 **내가 처음 내린 진단은 틀렸다.** *"오늘 `verify.yml` 에서 `push:` 를 뺀 부작용이라
+push → PR open 순서에서 어느 이벤트도 run 을 안 만든다"* 고 적고 그 내용으로 커밋까지 했다.
+그럴듯했지만 **재현이 안 됐다** — 그 가설대로면 그다음 푸시(synchronize)에서는 돌았어야 했는데
+안 돌았다. 그 불일치를 무시하지 말았어야 했다.
 
-**대처**: `actions_run_trigger`(workflow_dispatch)는 **403**(앱 토큰 권한 밖). ⇒ **커밋을 하나 더
-밀어 `synchronize` 를 일으키는 것이 유일한 방법**이다. 그러니 **PR 을 먼저 열고 그다음에 푸시**하거나,
-푸시 뒤 PR 을 열었다면 **Verify 가 붙었는지 확인**할 것(`pull_request_read method=get_check_runs`).
+⇒ **다음 세션의 판정 순서**: Verify 가 안 보이면 먼저 `pull_request_read method=get` 으로
+`mergeable_state` 를 본다. `dirty` 면 머지가 답이고, 토큰·트리거를 의심할 일이 아니다.
+(참고: `actions_run_trigger`(workflow_dispatch)는 앱 토큰 권한 밖 — **403**. 수동 킥은 불가.)
 
 ## 남은 결정 / 대기
 
