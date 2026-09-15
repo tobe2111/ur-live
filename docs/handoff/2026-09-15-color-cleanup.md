@@ -109,3 +109,65 @@ consumer                  →  배경 rgb(17,20,28)    · 카드 rgb(29,31,41)  
    바꿨으니 눈으로 한 바퀴. 특히 `/`(홈) · `/vouchers` · `/my-vouchers` · `/group-buy/:id`.
 2. **§4 의 두 결정**을 대표에게 물을 것. (a) 는 489곳, (b) 는 421곳이라 합치면 **남은 hex 의 절반**이다.
    결정만 나면 같은 코드모드에 규칙 두 줄 더해 끝난다.
+
+---
+
+## 8) 🩸 PR #1450 첫 CI 가 빨갛게 났다 — 원인과, 그게 드러낸 더 큰 구멍
+
+### 무엇이 났나
+`src/tests/unit/voucher-wallet-split.test.ts:118` 가 라이트 지갑 래퍼에서
+`bg-[#F8F7FC] dark:bg-[#11141C]` **그 hex 짝 그대로**를 찾는데, 내 코드모드가 같은 값의 토큰
+`bg-warm` 으로 접으면서 **정상인데 빨간불**이 됐다(§5-3 과 같은 클래스의 다섯 번째).
+
+**재조준했다. 그리고 판정 기준을 hex 에서 불변식으로 옮겼다** — 그 시험이 지키려던 것은
+"저 두 hex 가 적혀 있다" 가 아니라 **"라이트 지갑의 배경을 인라인으로 칠하지 않는다"**(2026-08-31 에
+흰 배경 + 흰 글자가 된 원인)이고, 토큰 쪽이 그 불변식을 더 강하게 만족한다. 앵커 자기검증 1건도 함께 넣었다.
+되돌려-검증: 라이트 분기에 `background: t.bg` 를 심으니 ②가 빨간불 → 복원.
+
+### 🔴 진짜 문제는 그게 아니라 **로컬 게이트가 그 스텝을 안 돈다**는 것
+`pre-push` 게이트는 **95개를 통과시키고** 푸시를 내보냈다. 이유는 구조적이다:
+
+```
+local-ci-parity.mjs  →  verify.yml 에서 scripts/check-*.{mjs,sh} 만 긁는다
+verify.yml:68-69     →  - name: Run unit tests
+                          run: npm test -- --run        ← check-* 가 아니라 **안 보인다**
+```
+
+즉 **CI 가 차단하는 스텝 하나가 로컬 게이트의 모델 밖에 통째로 있다.** 이건 그 게이트가
+없애려고 만들어진 바로 그 "CI 는 막는데 로컬은 안 막음"(2026-09-14)이고, 하필 **그 게이트 자신**이
+같은 구멍을 갖고 있었다 — 오늘 CI 한 바퀴를 그 구멍으로 태웠다.
+
+⚠️ **주의: `vitest related` 로는 못 막는다.** 이 레포의 가드형 시험은 대상 파일을
+`readFileSync('src/...')` 로 **문자열**로 읽는다. 모듈 그래프에 간선이 없어서 `related` 가 못 찾는다
+(`voucher-wallet-split.test.ts` 가 정확히 그 모양이다). 스코핑하려면 **테스트 본문에서 바뀐 파일 경로를
+문자열로 grep** 해야 한다.
+
+## 9) 🔴 곁다리로 드러난 **대외 랜딩 다크 결함** (내 PR 무관 — main 에 이미 있다)
+
+§8 을 파다 `check-dark-contrast` 의 경로 목록을 봤더니 **대외 랜딩 5개가 사각지대**였다
+(`/business` · `/creators` · `/partners` · `/influencer` · `/introduce` — 전부 sitemap 제출 대상).
+브라우저로 실제 렌더해 재 봤다(다크, 430px):
+
+| 경로 | 대비 3:1 미만 | 최악 |
+|---|---|---|
+| `/business` | **4건** | **1.18:1** — "공구당 참여자 수"·"공구 가격"·"월 공구 횟수" |
+| `/introduce` | **8건** | 1.28:1 (clip-text) · 1:1 (흰 글자 위 흰 반투명) · 푸터 2.4:1 |
+| `/refund` | **7건** | 2.14:1 — `text-green-600` 이 다크에서 안 밝아진다 |
+| `/influencer` | 1건 | 1:1 — `bg-brand/10` 위 `text-brand` |
+| `/creators`·`/creators/apply`·`/partners`·`/terms`·`/privacy` | 0건 | — |
+
+**`/business` 의 원인**(사장님 유치용 랜딩이다):
+```jsx
+<div className="bg-gray-50 rounded-3xl p-6 lg:p-10 border border-rule">   // ← dark: 없음
+  <label className="text-sm font-bold text-gray-700 dark:text-gray-200">월 공구 횟수</label>
+```
+패널이 `bg-gray-50`(#F8F7FC)에 다크 대응이 **없어** 다크에서도 near-white 로 남는데, 그 위 글자는
+`dark:text-gray-200`(#EAE4E0)로 밝아진다 ⇒ **near-white on near-white**.
+**`origin/main:147` 과 동일 — 내 PR 무접촉**(`git diff origin/main...HEAD` 로 확인).
+
+**처방(다음 세션)**: ① 그 5개 경로를 `check-dark-contrast.mjs` 의 `ROUTES` 에 추가 → 빨간불 확인
+② 드러난 것들 수정. ⚠️ `text-green-600`(#557 계열로 측정됨)은 `--tone-ok` 로 가는 게 맞고,
+그건 §4 의 색 정리와 같은 줄기다.
+
+🧭 **교훈**: 가드의 **경로 목록이 곧 범위**다. `contrast` 가 초록이라고 "다크는 괜찮다"가 아니라
+**"목록에 있는 17곳은 괜찮다"** 는 뜻이다. 대외 랜딩은 그 목록에 한 번도 없었다.
