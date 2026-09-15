@@ -137,10 +137,29 @@ verify.yml:68-69     →  - name: Run unit tests
 없애려고 만들어진 바로 그 "CI 는 막는데 로컬은 안 막음"(2026-09-14)이고, 하필 **그 게이트 자신**이
 같은 구멍을 갖고 있었다 — 오늘 CI 한 바퀴를 그 구멍으로 태웠다.
 
-⚠️ **주의: `vitest related` 로는 못 막는다.** 이 레포의 가드형 시험은 대상 파일을
+⚠️ **`vitest related` 로는 못 막는다.** 이 레포의 가드형 시험은 대상 파일을
 `readFileSync('src/...')` 로 **문자열**로 읽는다. 모듈 그래프에 간선이 없어서 `related` 가 못 찾는다
-(`voucher-wallet-split.test.ts` 가 정확히 그 모양이다). 스코핑하려면 **테스트 본문에서 바뀐 파일 경로를
-문자열로 grep** 해야 한다.
+(`voucher-wallet-split.test.ts` 가 정확히 그 모양이다).
+
+### 🩸 그리고 내가 제안한 대안도 틀렸다 — **스코핑 자체가 이 레포에선 헛돈다**
+
+위 자리에 처음엔 *"테스트 본문에서 바뀐 파일 경로를 문자열로 grep 하면 된다"* 고 적었다. **실측으로 뒤집혔다.**
+
+그 방식으로 뽑으면 위험군 **81개**(전체 672개 중)가 나오고 1분이면 돈다. 그런데 전체를 돌려 보니
+**낡은 앵커는 4개 파일에 7건**이었고, 그중 **3개 파일을 그 그물이 통째로 놓쳤다**:
+
+| 놓친 시험 | 왜 |
+|---|---|
+| `consumer-popups-dark.test.ts` (4건) | `R('components/ToastContainer.tsx')` — **헬퍼로 경로를 조립**해 원문에 `src/…` 문자열이 없다 |
+| `stay-detail-pc-booking-panel.test.ts` | 〃 (`R('pages/stay-detail/StayBookingPanel.tsx')`) |
+| `deal-card-shapes.test.ts` | 파일 **목록을 돌며** 읽는다(이름이 변수) |
+
+⇒ **스코핑한 게이트를 만들었다면 그 자체가 "헛도는 가드"가 됐을 것이다** — 초록을 찍고 CI 는 빨갛게.
+전체 시험은 이 컨테이너에서 **425초**다. 게이트에 넣을 값으로 못 쓸 수는 없지만(현재 게이트 20초),
+그건 다음 세션이 대표 판단과 함께 정할 일이다. **확실한 것 하나**: 스코핑으로 빠져나갈 수는 없다.
+
+🧭 **교훈**: 스코핑 휴리스틱은 **전수와 대조해 보기 전에는 믿지 말 것.** 나는 한 사례
+(`voucher-wallet-split`)가 맞는 걸 보고 일반화했고, 그 사례가 하필 **직접 경로를 쓰는 소수파**였다.
 
 ## 9) 🔴 곁다리로 드러난 **대외 랜딩 다크 결함** (내 PR 무관 — main 에 이미 있다)
 
@@ -171,3 +190,36 @@ verify.yml:68-69     →  - name: Run unit tests
 
 🧭 **교훈**: 가드의 **경로 목록이 곧 범위**다. `contrast` 가 초록이라고 "다크는 괜찮다"가 아니라
 **"목록에 있는 17곳은 괜찮다"** 는 뜻이다. 대외 랜딩은 그 목록에 한 번도 없었다.
+
+
+## 10) 낡은 앵커 7건 — 전부 재조준했고, **철자 SSOT** 로 재발을 막았다
+
+| 시험 | 건 | 앵커였던 것 |
+|---|---|---|
+| `voucher-wallet-split` | 1 | `bg-[#F8F7FC] dark:bg-[#11141C]` |
+| `dashboard-rinda-shell` | 1 | 라이트 고정 **셀렉터 목록 문자열 통째로** |
+| `consumer-popups-dark` | 4 | `bg-white dark:bg-[#1D1F29]` · `dark:bg-[#11141C]` · `dark:bg-[#` |
+| `deal-card-shapes` | 1 | `bg-white dark:bg-[#1D1F29]` |
+| `stay-detail-pc-booking-panel` | 1 | 〃 |
+
+**하나도 지우지 않았다.** 전부 같은 병이라 **개별로 깁지 않고 이름을 붙였다** —
+신규 `src/tests/helpers/surface-class.ts`:
+
+```ts
+CARD_BG  = (?:bg-surface\b|bg-white dark:bg-\[#1D1F29\])      // --surface
+PAGE_BG  = (?:bg-warm\b|bg-(?:gray-50|\[#F8F7FC\]) dark:bg-\[#11141C\])  // --bg
+DARK_AWARE_BG = (?:bg-surface\b|bg-warm\b|dark:bg-\[#)        // "다크를 아는가" 만 물을 때
+```
+
+정규식 **조각**이라 앞뒤로 이어 쓴다: ``new RegExp(`rounded-2xl ${CARD_BG} shadow-lift`)``.
+다음에 또 접히면 **고칠 곳은 이 파일 하나**다.
+
+`dashboard-rinda-shell` 은 성격이 달라 따로 고쳤다 — 셀렉터 목록을 앵커로 쓰면
+**스코프를 늘리는 올바른 변경이 시험을 깬다**(늘리는 건 장려할 방향이다). ⇒ 목록이 아니라
+"`--brand-tint` 되박기가 admin·agency·light-island 를 **덮는가**" 를 묻도록.
+🩸 첫 재조준은 `indexOf` 로 첫 선언을 집었다가 **`:root` 의 라이트 기본값**을 잡아 여전히 빨간불이었다
+(같은 값이 거기에도 있다) — 라이트 고정 스코프 안의 선언만 고르도록 다시 고쳤다.
+
+**되돌려-검증 7건 전부 빨간불 확인** (소스에 `bg-surface`→`bg-white`, `bg-warm`→`bg-gray-50` 주입 후 복원).
+🩸 그 과정에서 `git checkout -- <파일들>` 이 **경로 하나가 틀리면 전부 복원을 안 한다**는 걸 밟았다
+(주입된 5개가 그대로 남아 있었다). 복원 뒤 `git status` 로 확인할 것 — 명령 성공을 믿지 말고.
