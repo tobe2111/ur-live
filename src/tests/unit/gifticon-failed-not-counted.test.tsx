@@ -48,6 +48,10 @@ describe('① 판정 SSOT', () => {
 const vouchers = vi.fn()
 vi.mock('@/hooks/queries/useMyData', () => ({ useMyVouchers: () => ({ data: vouchers(), isLoading: false, isError: false, refetch: vi.fn() }) }))
 vi.mock('@/hooks/queries', () => ({ useMyVouchers: () => ({ data: vouchers(), isLoading: false, isError: false, refetch: vi.fn() }) }))
+// 🩸 2026-09-15: `useMyCounts` 가 위시리스트·쿠폰도 **RQ 훅으로** 읽게 바뀌었다(중복 요청 제거).
+//   이 파일이 재는 불변식(실패 교환권을 안 센다)은 그대로라, 훅을 mock 해 의존만 채운다.
+vi.mock('@/hooks/queries/useWishlist', () => ({ useWishlist: () => ({ data: [], isLoading: false, isError: false }) }))
+vi.mock('@/hooks/queries/useMyCoupons', () => ({ useMyCoupons: () => ({ data: [], isLoading: false, isError: false }) }))
 vi.mock('react-router-dom', () => ({ useNavigate: () => vi.fn(), Link: (p: Record<string, unknown>) => <a href={String(p.to)}>{p.children as never}</a> }))
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({

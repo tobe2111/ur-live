@@ -7,7 +7,7 @@
 import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys } from './queryKeys'
-import { readCache, writeCache, cachedInitialData } from './localCache'
+import { writeCache, cachedInitialData, cacheOrRethrow } from './localCache'
 
 interface SellerPublic {
   id: number
@@ -26,7 +26,7 @@ export function useSellerPublic(id: number | string | undefined) {
         const data = r.data?.data as SellerPublic | null
         if (data) writeCache(`seller:${sellerId}`, data)
         return data ?? null
-      }).catch(() => readCache<SellerPublic | null>(`seller:${sellerId}`, null)),
+      }).catch((err) => cacheOrRethrow<SellerPublic | null>(`seller:${sellerId}`, err)),
     initialData: () => cachedInitialData<SellerPublic>(`seller:${sellerId}`),
     // 🛠️ 2026-06-17 (근본수정): 캐시 seed 즉시 stale → cold mount 1회 서버 보정(SSR 0-RTT paint 무관).
     initialDataUpdatedAt: 0,

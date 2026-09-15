@@ -6,7 +6,7 @@
 import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys } from './queryKeys'
-import { readCache, writeCache, cachedInitialData } from './localCache'
+import { writeCache, cachedInitialData, cacheOrRethrow } from './localCache'
 import { isLoggedInSync } from '@/utils/auth'
 
 export interface WishlistItem {
@@ -53,7 +53,7 @@ export function useWishlist() {
           writeCache(CACHE_KEY, arr)
           return arr
         })
-        .catch(() => readCache<WishlistItem[]>(CACHE_KEY, [])),
+        .catch((err) => cacheOrRethrow<WishlistItem[]>(CACHE_KEY, err)),
     initialData: () => cachedInitialData<WishlistItem[]>(CACHE_KEY),
     enabled: isLoggedInSync(),
     staleTime: 2 * 60 * 1000,

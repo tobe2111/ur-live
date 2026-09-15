@@ -5,7 +5,7 @@
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys } from './queryKeys'
-import { readCache, writeCache, cachedInitialData } from './localCache'
+import { writeCache, cachedInitialData, cacheOrRethrow } from './localCache'
 
 export interface GroupBuyProduct {
   id: number
@@ -33,7 +33,7 @@ export function useGroupBuyProduct(id: number | string | undefined) {
 
   return useQuery<GroupBuyProduct | null>({
     queryKey: queryKeys.groupBuyProduct(productId || 'none'),
-    queryFn: () => fetchGroupBuyProduct(productId).catch(() => readCache<GroupBuyProduct | null>(`gb:${productId}`, null)),
+    queryFn: () => fetchGroupBuyProduct(productId).catch((err) => cacheOrRethrow<GroupBuyProduct | null>(`gb:${productId}`, err)),
     initialData: () => cachedInitialData<GroupBuyProduct>(`gb:${productId}`),
     // 🛠️ 2026-06-17 (근본수정): 캐시 seed 즉시 stale → cold mount 1회 서버 보정(SSR 0-RTT paint 무관).
     initialDataUpdatedAt: 0,

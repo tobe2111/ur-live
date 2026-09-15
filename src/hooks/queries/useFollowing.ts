@@ -6,7 +6,7 @@
 import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys } from './queryKeys'
-import { readCache, writeCache, cachedInitialData } from './localCache'
+import { writeCache, cachedInitialData, cacheOrRethrow } from './localCache'
 import { isLoggedInSync } from '@/utils/auth'
 
 export interface FollowedSeller {
@@ -29,7 +29,7 @@ export function useFollowing() {
           writeCache(CACHE_KEY, arr)
           return arr
         })
-        .catch(() => readCache<FollowedSeller[]>(CACHE_KEY, [])),
+        .catch((err) => cacheOrRethrow<FollowedSeller[]>(CACHE_KEY, err)),
     initialData: () => cachedInitialData<FollowedSeller[]>(CACHE_KEY),
     enabled: isLoggedInSync(),
     staleTime: 2 * 60 * 1000,

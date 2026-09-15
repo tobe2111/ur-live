@@ -9,7 +9,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys } from './queryKeys'
-import { readCache, writeCache, cachedInitialData } from './localCache'
+import { writeCache, cachedInitialData, cacheOrRethrow } from './localCache'
 import { isLoggedInSync } from '@/utils/auth'
 
 export interface NotificationItem {
@@ -37,7 +37,7 @@ export function useNotifications() {
           writeCache(CACHE_KEY, arr)
           return arr
         })
-        .catch(() => readCache<NotificationItem[]>(CACHE_KEY, [])),
+        .catch((err) => cacheOrRethrow<NotificationItem[]>(CACHE_KEY, err)),
     initialData: () => cachedInitialData<NotificationItem[]>(CACHE_KEY),
     enabled: isLoggedInSync(),
     staleTime: 60 * 1000,
