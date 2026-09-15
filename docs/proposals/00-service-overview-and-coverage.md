@@ -302,12 +302,12 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 366 | 1120 |
+| 전체 | 366 | 1122 |
 | 도메인 버킷 (5개 소개서) | 166 | 460 |
 | 공통/인프라 (의도적 제외) | 166 | 477 |
-| **미커버 (점검 필요)** | **34** | **183** |
+| **미커버 (점검 필요)** | **34** | **185** |
 
-⚠️ **미커버 217건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 219건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -402,6 +402,8 @@
 - `POST /api/voucher-dispute/report` (`src/features/group-buy/api/voucher-dispute.routes.ts`)
 - `POST /become` (`src/features/supply/api/supplier-auth.routes.ts`)
 - `POST /become-distributor` (`src/features/supply/api/wholesale.routes.ts`)
+- `POST /cart/confirm-toss` (`src/features/group-buy/api/cart-checkout.routes.ts`)
+- `POST /cart/init` (`src/features/group-buy/api/cart-checkout.routes.ts`)
 - `GET /catalog` (`src/features/supply/api/wholesale.routes.ts`)
 - `GET /catalog-export` (`src/features/supply/api/wholesale-documents.routes.ts`)
 - `GET /catalog/:id{[0-9]+}` (`src/features/supply/api/wholesale.routes.ts`)
@@ -1726,7 +1728,7 @@
 
 
 
-> 마지막 생성: 2026-09-15T05:59:57.105Z
+> 마지막 생성: 2026-09-15T07:53:20.202Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->
