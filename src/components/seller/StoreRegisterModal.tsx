@@ -40,6 +40,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import KakaoMapPicker, { type KakaoPlace } from '@/components/KakaoMapPicker'
 import { formatPhone, isValidMobilePhone, digitsOnly } from '@/utils/format-phone'
+import { compressForDocument } from '@/lib/image-compress'
 import { readStoreReferrer, clearStoreReferrer } from '@/utils/store-referrer'
 import { enterStoreSeat } from '@/utils/enter-store'
 import { toast } from '@/hooks/useToast'
@@ -138,8 +139,11 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
   async function uploadCert(file: File) {
     setUploading(true)
     try {
+      // 📄 2026-09-15 (대표 신고 413): 폰 사진은 서버 상한(10MB)을 쉽게 넘는다. 여기만 압축을 안 거쳐
+      //   등록증 단계에서 매장 등록이 통째로 막혔다. 실패해도 원본으로 시도한다(압축이 등록을 막지 않는다).
+      const prepared = await compressForDocument(file).catch(() => file)
       const fd = new FormData()
-      fd.append('file', file)
+      fd.append('file', prepared)
       const r = await api.post('/api/upload/business-cert', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
       const url = r.data?.data?.url
       if (!r.data?.success || !url) throw new Error(r.data?.error || '업로드 실패')

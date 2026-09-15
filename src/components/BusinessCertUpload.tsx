@@ -5,6 +5,7 @@
  */
 import { useRef, useState, type ChangeEvent } from 'react'
 import { toast } from '@/hooks/useToast'
+import { compressForDocument } from '@/lib/image-compress'
 
 export default function BusinessCertUpload({ value, onChange, required }: { value: string; onChange: (url: string) => void; required?: boolean }) {
   const inputRef = useRef<HTMLInputElement | null>(null)
@@ -14,11 +15,14 @@ export default function BusinessCertUpload({ value, onChange, required }: { valu
     const file = e.target.files?.[0]
     if (e.target) e.target.value = ''
     if (!file) return
-    if (file.size > 10 * 1024 * 1024) { toast.error('이미지는 10MB 이하만 가능해요'); return }
     setBusy(true)
     try {
+      // 📄 2026-09-15: 종전엔 10MB 넘으면 **그냥 거절**했다 — 폰 사진은 그걸 쉽게 넘는데 사장님이
+      //   할 수 있는 일이 없었다(가입이 거기서 막힌다). 거절 대신 줄여서 올린다.
+      const prepared = await compressForDocument(file).catch(() => file)
+      if (prepared.size > 10 * 1024 * 1024) { toast.error('이미지가 너무 커요 — 다시 찍거나 다른 사진을 골라주세요'); return }
       const fd = new FormData()
-      fd.append('file', file)
+      fd.append('file', prepared)
       const res = await fetch('/api/upload/business-cert', { method: 'POST', body: fd })
       const data = await res.json().catch(() => ({})) as { success?: boolean; error?: string; data?: { url: string } }
       if (data?.success && data.data?.url) { onChange(data.data.url); toast.success('사업자등록증이 업로드됐어요') }
