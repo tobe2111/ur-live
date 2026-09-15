@@ -198,4 +198,5 @@ v1 은 구조 설명이었고 "그래서 내일 어디 가서 뭘 하면 얼마�
   - `AboutPage-BZ4qSkBt.js`: `대행사 경유 5%` 있음
   - 이전 판 (10) 에 적어 둔 `curl … | grep '매월 1일'` 은 **안 된다** — 그 페이지들은 프리렌더가 아니라 SPA 라 HTML 에 본문이 없다. 청크 grep 이 맞는 방법이다.
 - Notion 개발 업데이트 로그 1행 기록(유어딜 · 문서/설계 · 머니 경로 없음 · PR #1381).
-- ⚠️ 못 한 것: 실제 렌더된 DOM 확인(대표 브라우저에서 `/terms/influencer` 제4조와 `/partners` 계산기를 한 번 열어 보면 끝). 유어쇼츠 캡처는 여전히 대표 PC 몫.
+- ✅ 렌더된 DOM 도 확인했다(같은 날 후속): 헤드리스 Chrome 을 CDP 로 붙여 `document.body.innerText` 를 읽었다 — `/terms/influencer`(매월 1일·10만원·2%) · `/influencer`(매월 1일·10만원) · `/partners`(수수료 10%) · `/business`(10%) 전부 있음, 옛 문구 0. 🔑 이 환경에서 Chromium 이 `ERR_CERT_AUTHORITY_INVALID` 를 내는 이유는 정책이 아니라 **NSS 저장소(9/7)가 프록시 CA 번들(당일 재발급)보다 낡아서**다. TLS 검증을 끄지 않고, 번들 안의 Anthropic 프록시 CA 6개 SPKI 만 `--ignore-certificate-errors-spki-list` 로 신뢰시키면 된다(그 외 인증서는 그대로 검증). 스크립트는 세션 스크래치 `e4cdp.mjs` 였고 레포엔 안 넣었다.
+- ⚠️ 못 한 것: 유어쇼츠 캡처는 여전히 대표 PC 몫.
