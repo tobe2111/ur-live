@@ -14,7 +14,7 @@ import { ShoppingCart, ChevronRight, Store, X, PackageCheck } from 'lucide-react
 import type { CartItem } from '@/types/cart'
 import { getCartItemPrice } from '@/types/cart'
 import { getNoShippingKind, isNoShippingProduct } from '@/shared/product-flow'
-import { routeCartCheckout } from './cart/voucher-checkout'
+import { routeCartCheckout, classifyCart, isDealOnlyCartItem } from './cart/voucher-checkout'
 import { formatNumber } from '@/utils/format'
 import { hasConsumerSession } from '@/utils/auth'
 import CustomModal from './cart/CustomModal'
@@ -367,9 +367,14 @@ function CartPageContent() {
     }>)
   }, [cartItems])
 
-  const { totalItems, subtotal, shippingFee } = useMemo(() => {
+  // 🏷️ 2026-09-15: 총액을 **결제 수단별로** 센다. 교환권(`deal_only=1`)은 딜로 사고 이용권·배송 상품은
+  //    카드로 산다 — 한 숫자로 더하면 "88,000원"(74,500원 + 13,500딜) 같은 존재하지 않는 금액이 나온다.
+  //    라이브 번들을 실제로 렌더해 보고서야 보였다(테스트는 전부 초록이었다).
+  const { totalItems, dealItems, subtotal, shippingFee, dealAmount, cartKind } = useMemo(() => {
     let count = 0
+    let dealCount = 0
     let sum = 0
+    let deal = 0
 
     // 🛡️ 2026-05-19: 판매 종료 (product_is_active=0) 상품은 자동 제외 — 사용자 의도 무관하게
     //   결제 흐름에서 빠짐 (백엔드도 차단하지만 프론트 calc 도 정합).
@@ -402,7 +407,9 @@ function CartPageContent() {
     // 전체 상품 개수 및 소계 계산
     for (const item of selectedItems) {
       count += item.quantity
-      sum += (getCartItemPrice(item) * item.quantity)
+      const line = getCartItemPrice(item) * item.quantity
+      if (isDealOnlyCartItem(item)) { deal += line; dealCount += item.quantity }
+      else sum += line
     }
 
     // 셀러별 배송비 계산
@@ -417,9 +424,10 @@ function CartPageContent() {
       return total + group.shipping_fee
     }, 0)
 
-    return { totalItems: count, subtotal: sum, shippingFee: totalShippingFee }
+    return { totalItems: count, dealItems: dealCount, subtotal: sum, shippingFee: totalShippingFee, dealAmount: deal, cartKind: classifyCart(selectedItems) }
   }, [cartItems, selectedIds])
 
+  /** 카드로 청구될 금액. 딜은 여기 안 들어간다(통화가 다르다). */
   const total = subtotal + shippingFee
 
   const handleCheckout = async () => {
@@ -432,6 +440,15 @@ function CartPageContent() {
     const err = await routeCartCheckout(cartItems.filter(item => selectedIds.has(item.id)), navigate)
     if (err) showAlert(err, 'alert', t('cart.alertTitle'))
   }
+
+  // 🔘 버튼이 **누르기 전에** 말한다. 종전엔 섞인 장바구니도 "N원 주문하기" 로 보이고,
+  //    누른 뒤에야 모달로 거절했다 — 되는 줄 알고 누르게 만드는 버튼이다.
+  const ctaLabel =
+    selectedIds.size === 0 ? t('cart.selectProductsFirst')
+    : cartKind === 'mixed' ? '따로 골라서 결제해주세요'
+    : cartKind === 'deal' ? `${formatNumber(dealAmount)}딜로 주문하기`
+    : t('cart.placeOrder', { amount: formatNumber(total) })
+  const ctaDisabled = selectedIds.size === 0 || updating || cartKind === 'mixed'
 
   // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): ad-hoc 스피너 → BrandLoader (라우트 청크 로더와 위상 연속).
   if (loading) {
@@ -584,14 +601,15 @@ function CartPageContent() {
             </div>{/* /좌측 아이템 컬럼 */}
             <aside className="mt-2 bg-white dark:bg-[#1D1F29] px-4 py-4 lg:sticky lg:top-[64px] lg:rounded-2xl lg:shadow-lift">
               <CartSummary
-                totalItems={totalItems}
+                totalItems={totalItems - dealItems}
                 subtotal={subtotal}
                 shippingFee={shippingFee}
                 total={total}
+                dealAmount={dealAmount}
+                cartKind={cartKind}
                 noShipping={cartItems.length > 0 && cartItems.every(isNoShippingItem)}
               />
-              <CartCtaButton onClick={handleCheckout} disabled={selectedIds.size === 0 || updating} className="hidden lg:block mt-4"
-                label={selectedIds.size === 0 ? t('cart.selectProductsFirst') : t('cart.placeOrder', { amount: formatNumber(total) })} />
+              <CartCtaButton onClick={handleCheckout} disabled={ctaDisabled} className="hidden lg:block mt-4" label={ctaLabel} />
             </aside>
           </main>
 
@@ -599,8 +617,7 @@ function CartPageContent() {
           {/* 🛡️ 2026-05-04: PC xl+ 사이드바 (224px) 우측부터 시작하도록 xl:left-56 추가. */}
           <div className="fixed bottom-0 left-0 right-0 xl:left-56 app-frame-bar z-20 bg-white dark:bg-[#11141C] border-t border-gray-100 dark:border-[#2C2F35] safe-bottom lg:hidden">
             <div className="ur-content-narrow px-4 py-3">
-              <CartCtaButton onClick={handleCheckout} disabled={selectedIds.size === 0 || updating}
-                label={selectedIds.size === 0 ? t('cart.selectProductsFirst') : t('cart.placeOrder', { amount: formatNumber(total) })} />
+              <CartCtaButton onClick={handleCheckout} disabled={ctaDisabled} label={ctaLabel} />
             </div>
           </div>
         </>

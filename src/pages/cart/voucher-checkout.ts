@@ -21,19 +21,38 @@ import { appendPaySummary } from '@/shared/pay-summary'
 import { resolveTossFlow } from '@/lib/toss-key-type'
 import api from '@/lib/api'
 
-/** 이 줄이 이용권/교환권인가 — 배송비 판정과 **같은 SSOT**(두 벌이면 언젠가 갈린다). */
+/** 이 줄이 **배송이 없는가** — 배송비 판정과 같은 SSOT. 교환권·이용권 둘 다 참이다. */
 export function isVoucherCartItem(item: CartItem): boolean {
   return isNoShippingProduct({ deal_only: item.deal_only, category: item.category })
 }
 
-export type CartKind = 'voucher' | 'shipping' | 'mixed' | 'empty'
+/**
+ * 🏷️ 이 줄이 **딜로 사는 것**인가 (교환권 = 기프티콘·KT).
+ *
+ * ⚠️ **교환권 ≠ 이용권.** 둘 다 배송이 없어서 위 판정으로는 안 갈린다:
+ *   교환권(`deal_only=1`) → **딜 결제** · 이용권(`meal_voucher` 등) → **카드 결제**
+ * 이 구분을 빠뜨리면 딜로 살 것을 카드로 청구한다(`product-flow.ts` 가 경고하는 바로 그 혼동).
+ */
+export function isDealOnlyCartItem(item: CartItem): boolean {
+  return Number(item.deal_only) === 1
+}
 
-/** 고른 것들이 어느 레일인지. `mixed` 면 결제하지 않는다. */
+export type CartKind = 'voucher' | 'deal' | 'shipping' | 'mixed' | 'empty'
+
+/**
+ * 고른 것들이 어느 레일인지. `mixed` 면 결제하지 않는다.
+ *
+ * 🩸 2026-09-15: 첫 판이 **교환권과 이용권을 한 덩어리로** 봤다(둘 다 배송이 없다는 이유로).
+ *    그러면 딜로 살 교환권이 카드 결제창으로 간다. `/checkout` 은 그 경우 이미 '딜 모드'를
+ *    강제하고 있었는데, 새 레일이 그 처리를 안 물려받은 것이다 → 딜 줄을 따로 센다.
+ */
 export function classifyCart(items: CartItem[]): CartKind {
   if (items.length === 0) return 'empty'
-  const v = items.filter(isVoucherCartItem).length
-  if (v === items.length) return 'voucher'
-  if (v === 0) return 'shipping'
+  const deal = items.filter(isDealOnlyCartItem).length
+  const card = items.filter((i) => isVoucherCartItem(i) && !isDealOnlyCartItem(i)).length
+  if (deal === items.length) return 'deal'      // 전부 교환권 → 종전 `/checkout` 딜 모드
+  if (card === items.length) return 'voucher'   // 전부 이용권 → 카드(공구 레일)
+  if (deal === 0 && card === 0) return 'shipping'
   return 'mixed'
 }
 
@@ -111,13 +130,16 @@ export async function routeCartCheckout(
   // ⚡ 토스 SDK 워밍 — 어느 레일이든 다음 화면이 결제창이다(모듈 평가 시 loadTossPayments 까지 실행).
   import('@/lib/toss-preload').catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
 
-  if (kind === 'mixed') return '이용권과 배송 상품은 함께 결제할 수 없어요. 따로 골라서 결제해주세요.'
+  // 🏷️ 섞였으면 보내지 않는다 — 결제 수단(딜/카드)과 끝나는 방식(발급/배송)이 줄마다 다르다.
+  if (kind === 'mixed') return '함께 결제할 수 없는 상품이 섞여 있어요. 교환권·이용권·배송 상품을 따로 골라 결제해주세요.'
   if (kind === 'voucher') {
     const r = await startVoucherCartCheckout(picked)
     if (!r.ok) return r.error
     go(r.payUrl)
     return null
   }
+  // 'deal'(전부 교환권) · 'shipping' 은 종전 `/checkout` 이 맞다 —
+  // 그 화면이 교환권만 담겼을 때 **딜 모드를 강제**하고 토스 옵션을 숨긴다(2026-05-21).
   go('/checkout', { state: { cartItems: picked, fromCart: true } })
   return null
 }
