@@ -25,7 +25,7 @@ export default function DashboardPageHeader({
   actions,
 }: DashboardPageHeaderProps) {
   return (
-    <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div className="flex items-start gap-3">
         {/* 🎨 2026-08-31: 아이콘 칩이 `bg-blue-50 text-blue-600` 이었다 — 파랑은 이 제품의 색이 아니고
             (잉크 + 로즈), 여기서 **아무 뜻도 하지 않는다**. 중립 톤으로. */}
@@ -36,8 +36,8 @@ export default function DashboardPageHeader({
         )}
         {title && (
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-gray-900 sm:text-2xl">{title}</h1>
-            {subtitle && <p className="mt-0.5 text-sm text-gray-500">{subtitle}</p>}
+            <h1 className="text-[19px] font-extrabold tracking-tight text-gray-900 sm:text-[22px]">{title}</h1>
+            {subtitle && <p className="mt-1 text-[13px] text-gray-500">{subtitle}</p>}
           </div>
         )}
       </div>

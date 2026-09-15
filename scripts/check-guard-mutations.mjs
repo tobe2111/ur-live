@@ -107,6 +107,58 @@ const SCOPE = changedScope({
  */
 /** @type {Mutation[]} */
 const MUTATIONS = [
+  // ── 🧭 대시보드 Rinda 껍데기 (2026-09-14 대표 시안) — docs/design/dashboard-rinda-2026-09.md ──
+  {
+    name: '🧭 라이트 래퍼가 --brand-tint 를 안 되박는다 (다크 모드에서 활성 메뉴가 검어진다)',
+    file: 'src/index.css',
+    find: '  --brand-tint: #EAF1FE;\n  --brand-text: #1C69EF;\n}\n.light-island',
+    replace: '}\n.light-island',
+    test: 'src/tests/unit/dashboard-rinda-shell.test.ts',
+    why:
+      '사이드바가 흰 면이 되면서 비로소 도달 가능해진 경로다. 사용자가 OS/앱 다크 모드를 켜 두면 ' +
+      ':root.dark 의 --brand-tint(#16243D, 남색)가 새어 들어와 활성 메뉴 알약이 검게 뜬다. ' +
+      'index.css 가 --lift 에 대해 이미 경고해 둔 사고의 재발이고, 화면엔 "색이 좀 이상하다"로만 보인다.',
+  },
+  {
+    name: '🧭 사이드바 CTA 필터가 검색 색인까지 먹는다 (이용권 등록이 ⌘K 에서 사라진다)',
+    file: 'src/components/seller-layout/useSellerNavModel.ts',
+    find: '...orderedNavGroups.flatMap((g) => g.items.map',
+    replace: '...renderedNavGroups.flatMap((g) => g.items.map',
+    test: 'src/tests/unit/dashboard-rinda-shell.test.ts',
+    why:
+      "'이용권 등록'을 파란 CTA 로 뽑아내면서 **그리는 목록만** 걸러야 한다. 색인 원본까지 거르면 " +
+      '그 페이지는 메뉴에도 검색에도 없어진다 — 이 레포가 반복해 겪은 "페이지는 있는데 닿을 수 없다".',
+  },
+  {
+    name: '🧭 홈 할 일 행의 칩이 검은 타일로 되돌아온다 (무엇이 급한지 구별이 사라진다)',
+    file: 'src/pages/seller-page/TodoRows.tsx',
+    find: "const ACT = 'rounded-lg bg-brand-tint px-3 py-2 text-xs font-bold text-brand-text'",
+    replace: "const ACT = 'rounded-lg bg-gray-900 px-3 py-2 text-xs font-bold text-white'",
+    test: 'src/tests/unit/dashboard-rinda-shell.test.ts',
+    why:
+      '종전엔 bg-gray-900 타일이 조건에 따라 동시에 셋까지 떴다(이용권 등록 + 미처리 주문 + 정산). ' +
+      '셋이 똑같이 새까매서 우선순위를 전혀 말해 주지 못했다 — 대표가 말한 "헷갈린다"의 한 축.',
+  },
+  {
+    name: '🧭 셀러 사이드바가 다시 어두워진다',
+    file: 'src/components/SellerLayout.tsx',
+    find: "text-gray-500 hover:bg-gray-50 hover:text-gray-900'",
+    replace: "text-white/55 hover:text-white'",
+    test: 'src/tests/unit/dashboard-rinda-shell.test.ts',
+    why:
+      '흰 면 위에 흰 글자가 된다. 빌드도 타입체크도 통과하고 화면에서만 글자가 사라지는 부류라 ' +
+      '가드가 없으면 배포 뒤에야 드러난다.',
+  },
+  {
+    name: '💸 정산 금액을 다시 건수로 말한다 (₩412,000 → "412000건")',
+    file: 'src/pages/seller-page/TodoRows.tsx',
+    find: 'settlementAvailableAmount',
+    replace: 'settlementAvailableCount',
+    test: 'src/tests/unit/dashboard-rinda-shell.test.ts',
+    why:
+      '{{count}}건 문자열에 원화 금액을 넘기던 자리. 에러가 안 나고 숫자도 맞아 보여서 ' +
+      '셀러가 "정산 가능 412000건" 을 그대로 믿는다.',
+  },
   {
     name: '뒤로가기 복원 — /browse POP 조회 무력화',
     file: 'src/pages/browse/list-restore.ts',

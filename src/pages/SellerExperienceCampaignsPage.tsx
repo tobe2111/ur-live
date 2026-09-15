@@ -96,7 +96,7 @@ export default function SellerExperienceCampaignsPage() {
 
   return (
     <SellerLayout title={t('seller.nav.experienceCampaigns', { defaultValue: '체험 캠페인' })}>
-      <div className="mx-auto max-w-4xl p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl">
         <DashboardPageHeader
           title={t('seller.nav.experienceCampaigns', { defaultValue: '체험 캠페인' })}
           subtitle={t('seller.expCampaigns.subtitle', { defaultValue: '무료 응모·공정 추첨 체험단. 선정자에게 0원 체험권이 자동 발급됩니다 (매장 자기부담 · 정산·수수료 무관).' })}

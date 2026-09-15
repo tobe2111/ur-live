@@ -8,7 +8,8 @@
  * 가드: src/tests/unit/voucher-manage-actions-2026-09-14.test.ts
  *       src/tests/unit/voucher-nav-reachability-2026-09-03.test.ts (④ 강화분)
  */
-const MANAGE = 'src/pages/SellerGroupBuyPage.tsx'
+// 📱 2026-09-14: M4 재설계로 행이 `VoucherRow.tsx` 로 나갔다 — 수정·삭제 진입점은 거기 있다.
+const MANAGE = 'src/pages/seller-group-buy/VoucherRow.tsx'
 const EDIT = 'src/pages/SellerProductEditPage.tsx'
 const FIELDS = 'src/pages/seller-product-edit/PriceStockFields.tsx'
 const CHARGE = 'src/worker/utils/gb-order-pricing.ts'
@@ -20,7 +21,7 @@ export default [
   {
     name: '🕳️ 이용권 삭제 버튼을 뗀다 (셀러가 자기 이용권을 내릴 방법이 사라진다)',
     file: MANAGE,
-    find: 'onClick={() => deleteVoucher(p)}',
+    find: 'onClick={() => deleteVoucher()}',
     replace: 'onClick={() => undefined}',
     test: ACTIONS_TEST,
     why:
@@ -30,16 +31,16 @@ export default [
   {
     name: '🕳️ 삭제를 확인 없이 즉시 실행한다 (오탭 한 번에 판매가 멈춘다)',
     file: MANAGE,
-    find: "    if (!(await confirmDialog(`'${p.name}' 이용권을 삭제할까요?",
-    replace: "    if (false && !(await confirmDialog(`'${p.name}' 이용권을 삭제할까요?",
+    find: "    if (!(await confirmDialog(t('seller.vouchers.deleteConfirm',",
+    replace: "    if (false && !(await confirmDialog(t('seller.vouchers.deleteConfirm',",
     test: ACTIONS_TEST,
     why: '되돌릴 수 없는 동작이다. 확인 없이 도는 삭제는 사고가 아니라 시간문제다.',
   },
   {
     name: '🕳️ 서버 거절 사유를 삼킨다 (진행 중 공구 409 가 "삭제 실패" 로만 보인다)',
     file: MANAGE,
-    find: "      toast.error(e?.response?.data?.error || '삭제 실패')",
-    replace: "      toast.error('삭제 실패')",
+    find: "      toast.error(e?.response?.data?.error || t('seller.vouchers.deleteFailed', { defaultValue: '삭제 실패' }))",
+    replace: "      toast.error(t('seller.vouchers.deleteFailed', { defaultValue: '삭제 실패' }))",
     test: ACTIONS_TEST,
     why:
       '서버는 "참여자 환불 후 삭제하세요" 라고 무엇을 해야 하는지 알려 준다. ' +
@@ -48,14 +49,10 @@ export default [
   {
     name: '🕳️ 수정 버튼을 연락처 분기 안으로 되돌린다 (연락처 있는 매장은 갇힌다)',
     file: MANAGE,
-    // ⚠️ 앵커에 className 을 붙인다 — 들여쓰기만 다른 '연락처 등록 →' 링크가 **부분일치**로 걸린다
-    //    (22칸 앵커가 26칸 줄의 뒷부분과 겹친다). 실제로 한 번 밟았다.
-    find:
-      'onClick={() => navigate(`/seller/products/${p.id}/edit`)}\n' +
-      '                      className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-gray-700',
-    replace:
-      'onClick={() => undefined}\n' +
-      '                      className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-gray-700',
+    // M4 행: 진입점은 행 헤더의 `onClick={goEdit}` 하나다(aria-label 로 앵커를 고정 — 연락처 분기 안의
+    //    같은 `onClick={goEdit}` 와 구분). 이걸 죽이면 남는 건 연락처 없는 매장만 보는 배너뿐 = 2026-09-14 의 그 상태.
+    find: 'onClick={goEdit} aria-label=',
+    replace: 'onClick={() => undefined} aria-label=',
     test: REACH_TEST,
     why:
       '이것이 2026-09-14 에 실제로 발견한 상태다. 라이브의 유일한 실제 매장이 정확히 그 경우였고, ' +

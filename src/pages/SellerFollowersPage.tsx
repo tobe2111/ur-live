@@ -58,7 +58,7 @@ export default function SellerFollowersPage() {
 
   return (
     <SellerLayout title="단골 분석">
-      <div className="mx-auto max-w-3xl space-y-5 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-5">
         <DashboardPageHeader
           title="단골 분석"
           subtitle="내 단골 수 + 알림 ON 비율 + 신규 추이"
@@ -123,7 +123,7 @@ export default function SellerFollowersPage() {
                   return (
                     <div
                       key={i}
-                      className="flex-1 bg-gradient-to-t from-gray-800 to-gray-700 rounded-t hover:from-gray-900 hover:to-gray-800 transition-colors cursor-pointer"
+                      className="flex-1 rounded-t bg-brand/70 transition-colors hover:bg-brand cursor-pointer"
                       style={{ height: h }}
                       title={`${d.day}: ${d.new_count}명`}
                     />

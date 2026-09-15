@@ -1,403 +1,134 @@
-import { useState, useEffect } from 'react'
+/**
+ * 🎟️ **이용권 탭 = M4** (2026-09-14 대표 승인 — 모바일 우선 재설계). 시안: `docs/design/seller-dashboard-mobile-first-2026-09.md`.
+ *   [이번 달 매출 한 줄] → [판매 중 / 판매 중지 / 종료 세그먼트] → [내 이용권 행(판매수·매출·스위치)] → [하단 고정 등록 버튼].
+ *   대표가 꼽은 셋(등록·관리·매출)을 한 화면에 직접 놓는다. PC 는 같은 행이 표로 늘어나고 등록 버튼은 헤더로 간다.
+ *
+ *   지운 것: 검은 그라디언트 '예상 정산' 카드(표면 규칙 ⑥ 그라디언트 0 · 검은 면) → 각 행의 펼침 안으로. 요약 카드 셋 → 세그먼트 숫자로.
+ *   '최근 7일 사용 시도' 카드 → PIN 오류가 성공보다 많을 때만 한 줄 경고(그때만 의미가 있는 정보다).
+ *   공구 엔진 패널(`GB_ENGINE_ENABLED`, 기본 OFF)은 그대로 게이트 뒤에 둔다.
+ */
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { Ticket, Copy, Send, RefreshCw, DollarSign, AlertCircle, CheckCircle2, Plus, Pencil, Trash2 } from 'lucide-react'
-import api from '@/lib/api'
-import { isVoucherCategory } from '@/shared/constants/voucher-categories'
-import { safeNum, formatNumber, formatWon } from '@/utils/format'
-import { toast } from '@/hooks/useToast'
-import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
+import { AlertCircle, Plus, Ticket } from 'lucide-react'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SellerLayout from '@/components/SellerLayout'
 import BrandLoader from '@/components/brand/BrandLoader'
-import { DashboardPageHeader } from '@/components/dashboard'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { SELLER_TABBAR_H } from '@/components/seller-layout/SellerBottomTabs'
 import { GB_ENGINE_ENABLED } from '@/shared/feature-flags'
-import GroupBuyOpenPanel from './seller-group-buy/GroupBuyOpenPanel'
+import { formatNumber, formatWon, safeNum } from '@/utils/format'
+import { useSellerStats, useSellerVouchers, useSellerWithdrawable, monthRevenue } from './seller-page/useSellerHome'
+import VoucherRow, { type VoucherStat } from './seller-group-buy/VoucherRow'
 import GbProposalsPanel from './seller-group-buy/GbProposalsPanel'
 
-interface GroupBuyProduct {
-  id: number; name: string; price: number; image_url?: string; category?: string
-  restaurant_name?: string; restaurant_phone?: string
-  group_buy_target: number; group_buy_current: number
-  group_buy_deadline?: string; group_buy_status: string; store_verify_pin?: string
-  store_owner_token?: string
-}
-
-interface VoucherStat {
-  product_id: number; total: number; used: number; unused: number; expired: number
-}
-
-interface VoucherLogSummary {
-  total: number; success_count: number; pin_errors: number; expired_errors: number; already_used_errors: number
-}
+type Seg = 'on' | 'off' | 'ended'
+interface VoucherLogSummary { total: number; success_count: number; pin_errors: number; expired_errors: number; already_used_errors: number }
 
 export default function SellerGroupBuyPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const headers = { Authorization: `Bearer ${localStorage.getItem('seller_token')}` }
 
-  const headers = { Authorization: `Bearer ${getSellerToken()}` }
-
-  useEffect(() => {
-    if (!isSellerAuthenticated()) redirectToLogin(navigate)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // 🛡️ 2026-06-03 Tier2(대시보드): 수동 Promise.all 체인 → useApiQuery (products → stats 의존 + logs + 수수료율).
-  const productsQ = useApiQuery<GroupBuyProduct[]>(['seller', 'gb-products'], '/api/seller/products', {
-    headers,
-    select: (r: any) => (r?.success ? (r.data || []).filter((p: { category?: string }) => isVoucherCategory(p.category)) : []),
-  })
-  const products = productsQ.data ?? []
-  const productIds = products.map(p => p.id).join(',')
-  const statsQ = useApiQuery<Record<number, VoucherStat>>(['seller', 'gb-voucher-stats', productIds], '/api/group-buy/seller-voucher-stats', {
-    params: { product_ids: productIds },
-    headers,
-    enabled: products.length > 0,
-    select: (r: any) => {
-      const map: Record<number, VoucherStat> = {}
-      if (r?.success) for (const s of (r.data || [])) map[s.product_id] = s
-      return map
-    },
+  const vouchersQ = useSellerVouchers()
+  const statsQ = useSellerStats()
+  const balanceQ = useSellerWithdrawable()
+  const products = vouchersQ.data ?? []
+  const productIds = products.map((p) => p.id).join(',')
+  const statsByIdQ = useApiQuery<Record<number, VoucherStat>>(['seller', 'gb-voucher-stats', productIds], '/api/group-buy/seller-voucher-stats', {
+    params: { product_ids: productIds }, headers, enabled: products.length > 0,
+    select: (r: any) => { const map: Record<number, VoucherStat> = {}; if (r?.success) for (const s of (r.data || [])) map[s.product_id] = s; return map },
   })
   const voucherLogsQ = useApiQuery<VoucherLogSummary | null>(['seller', 'gb-voucher-logs'], '/api/group-buy/voucher-logs', { headers, select: (r: any) => (r?.data?.summary ?? null) })
   const commissionQ = useApiQuery<number>(['seller', 'gb-commission-rate'], '/api/group-buy/commission-rate', { select: (r: any) => (r?.rate ? Number(r.rate) : 0.05) })
-  const voucherStats = statsQ.data ?? {}
-  const voucherLogSummary = voucherLogsQ.data ?? null
   const commissionRate = commissionQ.data ?? 0.05
-  const loading = productsQ.isLoading
-  const loadData = () => { productsQ.refetch(); statsQ.refetch(); voucherLogsQ.refetch() }
+  const logs = voucherLogsQ.data
 
-  // 정산액 계산: 셀러 수령액 = 가격 × 참여 × (1 - 수수료율)
-  // 🛡️ 2026-05-17: safeNum 으로 NaN 방지 (DB null → 0 변환)
-  function calcSettlement(product: GroupBuyProduct) {
-    const gross = safeNum(product.price) * safeNum(product.group_buy_current)
-    const commission = Math.round(gross * safeNum(commissionRate))
-    const netToSeller = gross - commission
-    return { gross, commission, netToSeller }
+  const [seg, setSeg] = useState<Seg>('on')
+  const buckets = useMemo(() => {
+    const ended = products.filter((p) => p.group_buy_status === 'closed' || p.group_buy_status === 'achieved')
+    const endedIds = new Set(ended.map((p) => p.id))
+    const on = products.filter((p) => p.is_active && !endedIds.has(p.id))
+    const off = products.filter((p) => !p.is_active && !endedIds.has(p.id))
+    return { on, off, ended }
+  }, [products])
+  const rows = buckets[seg]
+  const totalSold = products.reduce((s, p) => s + safeNum(p.sold), 0)
+  const month = monthRevenue(statsQ.data?.daily ?? [])
+
+  if (vouchersQ.isLoading) {
+    return <SellerLayout title={t('seller.nav.voucherManage', { defaultValue: '이용권 관리' })}><BrandLoader /></SellerLayout>
   }
 
-  // 🗑️ 2026-09-14 (대표 "이용권 관리 맡아서 해줘"): 삭제 — 서버는 2026-05-15 부터 준비돼 있었는데
-  //   **버튼이 없어서** 셀러가 자기 이용권을 내릴 방법이 화면에 없었다(`/seller/products` 목록은
-  //   SELLER_STORE_ONLY_MODE 로 nav 에서 빠져 있다). 서버가 소유권(`AND seller_id = ?`)과
-  //   **진행 중 공구**(참여자 1명 이상이면 409)를 막으므로 여기서는 확인만 받는다.
-  async function deleteVoucher(p: GroupBuyProduct) {
-    if (!(await confirmDialog(`'${p.name}' 이용권을 삭제할까요?\n이미 발급된 이용권은 그대로 사용할 수 있고, 새 판매만 중단됩니다.`))) return
-    try {
-      const res = await api.delete(`/api/seller/products/${p.id}`, { headers })
-      if (res.data?.success) {
-        toast.success(t('seller.groupBuy.deleted', { defaultValue: '이용권이 삭제되었습니다' }))
-        loadData()
-      } else {
-        toast.error(res.data?.error || '삭제 실패')
-      }
-    } catch (err: unknown) {
-      // 409(진행 중 공구)는 서버가 쓴 이유를 그대로 보여준다 — "삭제 실패" 만으로는 할 수 있는 게 없다.
-      const e = err as { response?: { data?: { error?: string } } }
-      toast.error(e?.response?.data?.error || '삭제 실패')
-    }
-  }
-
-  // 🛡️ 2026-04-27: 사장님께 알림톡 재발송 (Magic Link)
-  async function resendStoreLink(productId: number, rotate = false) {
-    try {
-      const res = await api.post(`/api/seller/products/${productId}/resend-store-link`, { rotate }, { headers })
-      if (res.data.success) {
-        toast.success(rotate
-          ? t('seller.groupBuy.linkRotated', { defaultValue: '새 링크로 재발송되었습니다 (이전 링크 만료)' })
-          : t('seller.groupBuy.alimtalkSent', { defaultValue: '사장님께 알림톡이 발송되었습니다' })
-        )
-        loadData()
-      } else {
-        toast.error(res.data.error || '발송 실패')
-      }
-    } catch (err: unknown) {
-      const e = err as { response?: { data?: { error?: string } } }
-      toast.error(e?.response?.data?.error || '발송 실패')
-    }
-  }
-
-  if (loading) {
-    return <SellerLayout title={t('seller.nav.mealVoucher')}><BrandLoader /></SellerLayout>
-  }
+  const registerBtn = (cls: string) => (
+    <button type="button" onClick={() => navigate('/seller/meal-voucher/new')} className={cls}>
+      <Plus className="h-4 w-4" /> {t('seller.registerVoucher', { defaultValue: '이용권 등록' })}
+    </button>
+  )
 
   return (
     <SellerLayout title={t('seller.nav.voucherManage', { defaultValue: '이용권 관리' })}>
-      {/* 🎟️ 2026-09-03 대표 — 이용권 일을 한 페이지처럼: nav 는 하나, 여기서 탭 이동. */}
-      <div className="mx-auto max-w-3xl space-y-5 p-4 sm:p-6 lg:p-8">
-        {/* 🛡️ 2026-04-22 배치 131: 디자인 시스템 적용 */}
-        <DashboardPageHeader
-          title={t('seller.nav.voucherManage', { defaultValue: '이용권 관리' })}
-          subtitle={t('seller.groupBuySubtitle', { defaultValue: '발행 현황 · 매장 확인코드 · 수정' })}
-          icon={<Ticket className="h-5 w-5" />}
-          actions={
-            <button
-              onClick={() => navigate('/seller/meal-voucher/new')}
-              className="ur-btn ur-btn-md ur-btn-primary"
-            >
-              <Plus className="h-4 w-4" />
-              {t('seller.groupBuy.registerVoucher', { defaultValue: '이용권 등록' })}
-            </button>
-          }
-        />
+      <div className="mx-auto max-w-5xl space-y-4">
+        {/* ── 이번 달 한 줄 — 숫자가 주인공. PC 는 오른쪽에 등록 버튼. ── */}
+        <div className="flex items-end justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[12.5px] font-semibold text-gray-400">{t('seller.vouchers.thisMonth', { defaultValue: '이번 달' })}</p>
+            <p className="text-[28px] font-extrabold leading-tight tracking-tight text-gray-900 lg:text-[32px]">{formatWon(month)}</p>
+            <p className="mt-1 text-[12.5px] text-gray-500">
+              {t('seller.vouchers.soldTotal', { defaultValue: '판매 {{count}}건', count: totalSold })} · {t('seller.home.settleAvail', { defaultValue: '정산 가능' })} <b className="text-gray-900">{formatWon(balanceQ.data ?? 0)}</b>
+            </p>
+          </div>
+          {registerBtn('ur-btn ur-btn-md ur-btn-primary hidden md:inline-flex')}
+        </div>
 
-        {/* 요약 카드 */}
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { label: t('seller.groupBuy.active'), value: products.filter(p => p.group_buy_status === 'active').length, color: 'text-tone-info', bg: 'bg-tone-info-bg' },
-            { label: t('seller.groupBuy.achieved'), value: products.filter(p => p.group_buy_status === 'achieved').length, color: 'text-tone-ok', bg: 'bg-tone-ok-bg' },
-            { label: t('seller.groupBuy.totalParticipants'), value: products.reduce((s, p) => s + safeNum(p.group_buy_current), 0), color: 'text-tone-info', bg: 'bg-tone-info-bg' },
-          ].map(s => (
-            <div key={s.label} className="bg-white rounded-xl p-4 border border-gray-200 text-center">
-              <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
-              <p className="text-xs text-gray-500 mt-1">{s.label}</p>
-            </div>
+        {/* ── 세그먼트 — 안 고른 것도 흰 면 위 글자다(테두리 박스로 그리지 않는다). ── */}
+        <div className="flex rounded-xl bg-white p-1 border border-rule md:w-fit">
+          {([['on', t('seller.vouchers.onSale', { defaultValue: '판매 중' }), buckets.on.length], ['off', t('seller.vouchers.paused', { defaultValue: '판매 중지' }), buckets.off.length], ['ended', t('seller.vouchers.ended', { defaultValue: '종료' }), buckets.ended.length]] as Array<[Seg, string, number]>).map(([k, label, n]) => (
+            <button key={k} type="button" onClick={() => setSeg(k)} aria-pressed={seg === k}
+              className={`flex-1 rounded-lg px-4 py-2 text-[13.5px] font-bold transition-colors md:flex-none ${seg === k ? 'bg-brand text-white' : 'text-gray-400 hover:text-gray-700'}`}>
+              {label} {formatNumber(n)}
+            </button>
           ))}
         </div>
 
-        {/* 🛡️ 2026-05-13 (공구 UX #1): 정산 대시보드 — 총 매출 / 수수료 / 셀러 수령액 */}
-        {products.length > 0 && (() => {
-          // 🛡️ 2026-05-17: safeNum 으로 NaN 영구 차단 — 신규 등록 직후 price/current 가 null 일 때 ₩NaN 노출되던 문제
-          const totalGross = products.reduce((s, p) => s + safeNum(p.price) * safeNum(p.group_buy_current), 0)
-          const totalCommission = Math.round(totalGross * safeNum(commissionRate))
-          const totalNet = totalGross - totalCommission
-          return (
-            <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-5 text-white">
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <p className="text-[11px] opacity-80">예상 정산</p>
-                  <p className="text-3xl font-extrabold mt-0.5">{formatWon(totalNet)}</p>
-                </div>
-                <DollarSign className="w-8 h-8 opacity-70" />
-              </div>
-              <div className="grid grid-cols-2 gap-2 pt-3 border-t border-white/20 text-xs">
-                <div>
-                  <p className="opacity-70">총 매출</p>
-                  <p className="font-bold">{formatWon(totalGross)}</p>
-                </div>
-                <div>
-                  <p className="opacity-70">플랫폼 수수료 ({(safeNum(commissionRate) * 100).toFixed(1)}%)</p>
-                  <p className="font-bold">-{formatWon(totalCommission)}</p>
-                </div>
-              </div>
-              <p className="text-[10px] opacity-70 mt-2">실제 정산은 바우처 사용 완료 후 매월 정산일에 입금됩니다.</p>
-            </div>
-          )
-        })()}
-
-        {/* 🛡️ 2026-05-13 (공구 UX #2): 바우처 사용 추적 요약 (최근 7일) */}
-        {voucherLogSummary && voucherLogSummary.total > 0 && (
-          <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-sm font-bold text-gray-900 mb-3">최근 7일 바우처 사용 시도</p>
-            <div className="grid grid-cols-4 gap-2 text-center">
-              <div>
-                <p className="text-lg font-bold text-green-600">{voucherLogSummary.success_count}</p>
-                <p className="text-[10px] text-gray-500">성공</p>
-              </div>
-              <div>
-                <p className="text-lg font-bold text-red-500">{voucherLogSummary.pin_errors}</p>
-                <p className="text-[10px] text-gray-500">PIN 오류</p>
-              </div>
-              <div>
-                <p className="text-lg font-bold text-amber-500">{voucherLogSummary.expired_errors}</p>
-                <p className="text-[10px] text-gray-500">만료</p>
-              </div>
-              <div>
-                <p className="text-lg font-bold text-gray-500">{voucherLogSummary.already_used_errors}</p>
-                <p className="text-[10px] text-gray-500">중복</p>
-              </div>
-            </div>
-            {voucherLogSummary.pin_errors > voucherLogSummary.success_count && voucherLogSummary.total > 5 && (
-              <p className="text-[11px] text-amber-700 bg-amber-50 rounded-lg px-2 py-1.5 mt-2 flex items-center gap-1">
-                <AlertCircle className="w-3 h-3" /> PIN 오류가 많습니다. 가게에 안내된 PIN 을 확인해주세요.
-              </p>
-            )}
-          </div>
+        {logs && logs.total > 5 && logs.pin_errors > logs.success_count && (
+          <p className="flex items-center gap-1.5 rounded-lg bg-tone-warn-bg px-3 py-2 text-[12px] font-semibold text-tone-warn">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" /> {t('seller.vouchers.pinWarn', { defaultValue: '최근 7일 PIN 오류 {{errors}}건이 성공 {{ok}}건보다 많아요. 가게에 안내된 PIN 을 확인해 주세요.', errors: logs.pin_errors, ok: logs.success_count })}
+          </p>
         )}
 
-        {/* 🎟️ 2026-07-06 (§2-B): 공구 제안 인박스(받은 제안 승인/거절 + 인플루언서에게 협업 제안) — 게이트 OFF */}
+        {/* 🎟️ 2026-07-06 (§2-B): 공구 제안 인박스 — 게이트 OFF */}
         {GB_ENGINE_ENABLED && products.length > 0 && (
-          <GbProposalsPanel products={products.map(p => ({ id: p.id, name: p.name, price: safeNum(p.price) }))} headers={headers} />
+          <GbProposalsPanel products={products.map((p) => ({ id: p.id, name: p.name, price: safeNum(p.price) }))} headers={headers} />
         )}
 
-        {/* 상품 없음 */}
-        {products.length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-            <Ticket className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-900 font-bold mb-1">{t('seller.groupBuy.noVouchers')}</p>
-            <p className="text-sm text-gray-500 mb-4">{t('seller.groupBuy.noVouchersDesc')}</p>
-            <button onClick={() => navigate('/seller/meal-voucher/new')} className="ur-btn ur-btn-md ur-btn-primary">{t('seller.groupBuy.registerVoucher')}</button>
+        {/* ── 행 목록 ── */}
+        <div className="overflow-hidden rounded-2xl border border-rule bg-white">
+          <div className="hidden grid-cols-[56px_minmax(0,1.6fr)_1fr_.7fr_1fr_60px_90px] gap-4 border-b border-rule px-5 py-2.5 text-[11.5px] font-bold text-gray-400 md:grid">
+            <span /><span>{t('seller.tab.vouchers', { defaultValue: '이용권' })}</span><span>{t('seller.vouchers.price', { defaultValue: '가격' })}</span><span>{t('seller.vouchers.sold', { defaultValue: '판매' })}</span><span>{t('seller.sales')}</span><span>{t('seller.vouchers.onSaleShort', { defaultValue: '판매' })}</span><span />
           </div>
-        ) : (
-          <div className="space-y-3">
-            {products.map(p => {
-              // 🛡️ 2026-05-17: safeNum 으로 NaN/null 방어 (target=0 또는 null 일 때 0% 표시)
-              const targetNum = safeNum(p.group_buy_target)
-              const currentNum = safeNum(p.group_buy_current)
-              const progress = targetNum > 0 ? Math.min(100, (currentNum / targetNum) * 100) : 0
-              const isActive = p.group_buy_status === 'active'
-              const isAchieved = p.group_buy_status === 'achieved'
+          {rows.length === 0 ? (
+            <div className="px-6 py-12 text-center">
+              <Ticket className="mx-auto mb-3 h-10 w-10 text-gray-300" />
+              {products.length === 0 ? (
+                <>
+                  <p className="font-bold text-gray-900">{t('seller.groupBuy.noVouchers')}</p>
+                  <p className="mt-1 text-[13px] text-gray-500">{t('seller.groupBuy.noVouchersDesc')}</p>
+                  <div className="mt-4 flex justify-center">{registerBtn('ur-btn ur-btn-md ur-btn-primary')}</div>
+                </>
+              ) : (
+                <p className="text-[13px] text-gray-500">{t('seller.vouchers.segEmpty', { defaultValue: '이 상태의 이용권이 없어요' })}</p>
+              )}
+            </div>
+          ) : rows.map((v) => (
+            <VoucherRow key={v.id} v={v} stat={statsByIdQ.data?.[v.id]} commissionRate={commissionRate} onChanged={() => { vouchersQ.refetch(); statsByIdQ.refetch() }} />
+          ))}
+        </div>
 
-              return (
-                <div key={p.id} className="bg-white rounded-xl border border-gray-200 p-4">
-                  <div className="flex gap-3">
-                    {p.image_url && <img src={p.image_url} alt="" className="w-16 h-16 rounded-lg object-cover shrink-0" loading="lazy" />}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          isActive ? 'bg-blue-100 text-blue-600' :
-                          isAchieved ? 'bg-green-100 text-green-600' :
-                          'bg-gray-100 text-gray-500'
-                        }`}>
-                          {isActive ? t('seller.groupBuy.active') : isAchieved ? t('seller.groupBuy.achieved') : t('seller.groupBuy.closed')}
-                        </span>
-                        <h4 className="text-sm font-bold text-gray-900 truncate">{p.name}</h4>
-                      </div>
-                      {p.restaurant_name && <p className="text-xs text-gray-500">{p.restaurant_name}</p>}
-
-                      {/* 진행률 */}
-                      <div className="mt-2">
-                        <div className="flex items-center justify-between text-xs mb-1">
-                          <span className="text-gray-500">{t('seller.groupBuy.participantCount', { current: currentNum, target: targetNum })}</span>
-                          <span className="font-bold text-brand-text">{Math.round(progress)}%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div className={`h-full rounded-full transition-all ${isAchieved ? 'bg-green-500' : 'bg-brand'}`} style={{ width: `${progress}%` }} />
-                        </div>
-                      </div>
-
-                      {/* 마감일 */}
-                      {p.group_buy_deadline && (
-                        <p className="text-[10px] text-gray-400 mt-1.5">
-                          {t('seller.groupBuy.deadline')}: {new Date(p.group_buy_deadline).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* 🛡️ 2026-05-13 (공구 UX #1+#2): 상품별 정산 + 바우처 통계 */}
-                  <div className="mt-3 pt-3 border-t border-gray-100 grid grid-cols-2 gap-3 text-xs">
-                    <div>
-                      <p className="text-gray-500">예상 정산액</p>
-                      <p className="font-bold text-emerald-600 text-sm mt-0.5">
-                        {formatWon(calcSettlement(p).netToSeller)}
-                      </p>
-                      <p className="text-[10px] text-gray-400">총 {formatNumber(safeNum(p.price) * currentNum)}원 - 수수료 {(safeNum(commissionRate) * 100).toFixed(1)}%</p>
-                    </div>
-                    {voucherStats[p.id] ? (
-                      <div>
-                        <p className="text-gray-500">바우처 사용 현황</p>
-                        <div className="flex items-center gap-1 mt-0.5 text-[11px]">
-                          <CheckCircle2 className="w-3 h-3 text-green-500" />
-                          <span className="font-semibold text-gray-900">{voucherStats[p.id].used}</span>
-                          <span className="text-gray-400">/ {voucherStats[p.id].total}</span>
-                          {voucherStats[p.id].expired > 0 && (
-                            <span className="text-amber-600 ml-1">· 만료 {voucherStats[p.id].expired}</span>
-                          )}
-                        </div>
-                        <p className="text-[10px] text-gray-400">미사용 {voucherStats[p.id].unused}장</p>
-                      </div>
-                    ) : (
-                      <div>
-                        <p className="text-gray-500">바우처</p>
-                        <p className="text-[11px] text-gray-400 mt-0.5">발급 0장</p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* 🧭 2026-06-10 (재방문 루프 갭): 종료/진행 공구를 1탭으로 복사 재발행 — 매번 처음부터 입력하던 마찰 제거 */}
-                  <button
-                    onClick={() => navigate(`/seller/meal-voucher/new?copyFrom=${p.id}`)}
-                    className="mt-3 w-full px-3 py-2 rounded-lg bg-brand-tint border border-rule text-brand-text text-xs font-bold flex items-center justify-center gap-1.5 active:scale-[0.98] transition"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" /> {t('seller.groupBuy.reissue', { defaultValue: '같은 내용으로 재발행' })}
-                  </button>
-
-                  {/* ✏️🗑️ 2026-09-14: 수정·삭제 — 이 카드가 이용권을 관리하는 **유일한 화면**이다.
-                      종전엔 수정 링크가 '연락처 미등록' 배너 안에만 있어, 연락처가 등록된 매장은
-                      수정 화면에 닿을 방법이 아예 없었다(라이브 실측: 유일한 실제 매장이 그 경우였다). */}
-                  <div className="mt-2 grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => navigate(`/seller/products/${p.id}/edit`)}
-                      className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-gray-700 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-[0.98] transition"
-                    >
-                      <Pencil className="w-3.5 h-3.5" /> {t('common.edit', { defaultValue: '수정' })}
-                    </button>
-                    <button
-                      onClick={() => deleteVoucher(p)}
-                      className="px-3 py-2 rounded-lg bg-white border border-gray-200 text-red-600 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-[0.98] transition"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" /> {t('common.delete', { defaultValue: '삭제' })}
-                    </button>
-                  </div>
-
-                  {/* 🎟️ 2026-07-06 (§2-A 방향 A): 매장이 공구 열기 — GB_ENGINE_ENABLED 게이트(기본 OFF) */}
-                  {GB_ENGINE_ENABLED && (
-                    <GroupBuyOpenPanel productId={p.id} listPrice={safeNum(p.price)} category={p.category || 'meal_voucher'} headers={headers} />
-                  )}
-
-                  {/* 식당 사장 공유 링크 (Magic Link 우선) */}
-                  <div className="mt-3 p-2.5 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[10px] text-gray-500 flex items-center gap-1">
-                          {p.store_owner_token ? '사장님 전용 링크 (자동 인증)' : t('seller.groupBuy.storeOwnerStatsLink')}
-                        </p>
-                        <p className="text-xs text-gray-700 truncate font-mono">
-                          {window.location.origin}/store/stats/{p.id}
-                          {p.store_owner_token && '?t=...'}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => {
-                          const url = p.store_owner_token
-                            ? `${window.location.origin}/store/stats/${p.id}?t=${p.store_owner_token}`
-                            : `${window.location.origin}/store/stats/${p.id}`
-                          navigator.clipboard.writeText(url)
-                          toast.success(t('seller.groupBuy.linkCopied'))
-                        }}
-                        className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 shrink-0 flex items-center gap-1"
-                      >
-                        <Copy className="w-3 h-3" /> {t('common.copy')}
-                      </button>
-                    </div>
-                    {p.restaurant_phone ? (
-                      <div className="flex gap-2 mt-2">
-                        <button
-                          onClick={() => resendStoreLink(p.id, false)}
-                          className="flex-1 px-3 py-1.5 bg-blue-50 border border-blue-200 text-blue-600 rounded-lg text-xs font-medium flex items-center justify-center gap-1"
-                        >
-                          <Send className="w-3 h-3" /> 사장님께 알림톡 발송
-                        </button>
-                        <button
-                          onClick={async () => {
-                            if (await confirmDialog('이전 링크가 만료되고 새 링크가 발송됩니다. 진행하시겠습니까?')) resendStoreLink(p.id, true)
-                          }}
-                          className="px-3 py-1.5 bg-white border border-gray-200 text-gray-600 rounded-lg text-xs font-medium flex items-center gap-1"
-                          title="새 링크 발급 (이전 링크 무효화)"
-                        >
-                          <RefreshCw className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="mt-2 px-2 py-1.5 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between gap-2">
-                        <p className="text-[10px] text-amber-700 flex items-center gap-1">
-                          <AlertCircle className="w-3 h-3" /> 식당 연락처 미등록 — 알림톡 불가
-                        </p>
-                        <button
-                          onClick={() => navigate(`/seller/products/${p.id}/edit`)}
-                          className="text-[10px] text-amber-700 font-bold underline underline-offset-2 shrink-0"
-                        >
-                          연락처 등록 →
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
+        {/* 📱 폰: 하단 탭 바로 위에 고정 등록 버튼 — 스크롤 어디서든 한 번에. spacer 가 마지막 행을 가리지 않게 한다. */}
+        <div className="md:hidden" aria-hidden style={{ height: 64 }} />
+        <div className="fixed inset-x-0 z-[40] px-4 pb-3 pt-2 md:hidden" style={{ bottom: `calc(${SELLER_TABBAR_H}px + env(safe-area-inset-bottom))`, background: 'linear-gradient(180deg, rgba(248,247,252,0), #F8F7FC 40%)' }}>
+          {registerBtn('ur-btn ur-btn-lg ur-btn-primary w-full')}
+        </div>
       </div>
     </SellerLayout>
   )

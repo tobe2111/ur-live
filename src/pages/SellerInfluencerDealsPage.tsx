@@ -163,7 +163,7 @@ export default function SellerInfluencerDealsPage() {
 
   return (
     <SellerLayout title={t('seller.influencerDeals.title', { defaultValue: '인플 협업' })}>
-      <div className="mx-auto max-w-4xl space-y-4 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-4">
         <DashboardPageHeader
           title={t('seller.influencerDeals.title', { defaultValue: '인플 협업' })}
           subtitle={t('seller.influencerDeals.subtitle', { defaultValue: '소개해 줄 사람에게 우대 커미션을 제안하고, 받은 신청에 응답합니다' })}

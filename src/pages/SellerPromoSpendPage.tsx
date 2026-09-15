@@ -101,7 +101,7 @@ export default function SellerPromoSpendPage() {
 
   return (
     <SellerLayout title={pageTitle}>
-      <div className="mx-auto max-w-4xl space-y-4 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-4">
         <DashboardPageHeader
           title={
             ownerFunded
