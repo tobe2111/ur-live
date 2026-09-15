@@ -4,7 +4,7 @@
  * 핵심 메시지:
  * - 3분 등록 (Magic Link)
  * - 운영 마찰 0 (자동 환불 / 알림톡 / 통계)
- * - 수수료 5% (대형 셀러 차등 4%/3%)
+ * - 수수료: 직접 입점 10% (2026-09-15 정정. 예전 '5% + 대형 셀러 차등 4%/3%' 는 코드에 없는 수치였다. fee-resolver 채널 요율 SSOT)
  * - 수익 시뮬레이터
  */
 import { useState, useEffect } from 'react'
@@ -20,7 +20,7 @@ export default function BusinessLandingPage() {
   const [campaigns, setCampaigns] = useState(4)
 
   const monthlyGmv = participants * price * campaigns
-  const commissionRate = monthlyGmv >= 100_000_000 ? 0.03 : monthlyGmv >= 10_000_000 ? 0.04 : 0.05
+  const commissionRate = 0.10 // 직접 입점 매장 수수료. 대행사 경유(중개)는 5%. 매출 구간별 차등은 없다.
   const commission = Math.round(monthlyGmv * commissionRate)
   const netRevenue = monthlyGmv - commission
 
@@ -184,9 +184,6 @@ export default function BusinessLandingPage() {
               <div className="bg-gray-800 rounded-2xl p-6 text-center text-white">
                 <p className="text-sm opacity-90 mb-1">사장님이 받는 금액</p>
                 <p className="text-4xl font-extrabold">{netRevenue.toLocaleString()}<span className="text-xl font-bold">원/월</span></p>
-                {monthlyGmv >= 10_000_000 && (
-                  <p className="text-xs opacity-90 mt-2">🎉 월 GMV {monthlyGmv >= 100_000_000 ? '1억+ → 수수료 3%' : '1천만+ → 수수료 4%'} 차등 적용</p>
-                )}
               </div>
             </div>
           </div>
