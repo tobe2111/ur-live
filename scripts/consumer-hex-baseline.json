@@ -1,11 +1,11 @@
 {
-  "total": 2400,
+  "total": 2401,
   "files": {
     "src/pages/AboutPage.tsx": 26,
     "src/pages/AboutServicePage.tsx": 48,
     "src/pages/AccountDeleteWarningPage.tsx": 3,
     "src/pages/AccountDeletedPage.tsx": 1,
-    "src/pages/AddressManagementPage.tsx": 34,
+    "src/pages/AddressManagementPage.tsx": 35,
     "src/pages/AffiliatePage.tsx": 25,
     "src/pages/AreaReportPage.tsx": 10,
     "src/pages/BlogDetailPage.tsx": 11,
