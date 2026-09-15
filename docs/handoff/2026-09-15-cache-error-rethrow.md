@@ -68,6 +68,25 @@ node scripts/probe-loading.mjs / /vouchers /browse
 4. ⚠️ **canonical 패턴을 그대로 복제하지 말 것.** `useMyStays` 의 `if (cached)` 를 11곳에
    그대로 퍼뜨렸으면 숫자 훅 두 개가 조용히 틀렸을 것이다. 베끼기 전에 타입을 보라.
 
+## 덧붙임 — 안 쓸 요청을 첫 화면에서 받아 오던 것 (같은 세션 후속)
+
+대표의 *"더 빨라지거나"* 를 답하려고 워터폴을 재다 찾았다. `PushNotificationSetup` 은
+구독(`subscribe`)을 **8초 미뤄** 두었는데 **VAPID 키 조회는 안 미뤘다** — 권한이 `'default'`
+(=아직 안 물어본 대다수)인 사람도 진입마다 `/api/push/vapid-public-key` 를 받아 놓고
+바로 다음 줄 `if (permission !== 'granted') return` 에서 돌아섰다. **결과를 안 쓰는 요청**이다.
+
+또 "지연 의도가 절반만 적용" 된 경우다(이 세션에서 세 번째 만난 그 모양).
+
+수정은 그 검사를 `resolveVapidKey()` **위로** 옮긴 것 하나다. 키는 granted 경로에서만 쓰이고
+`_vapidKeyPromise` 가 메모하므로 순서만 바꾸면 동작이 같다(호출처 2곳 전수 확인).
+
+가드 `push-vapid-defer-2026-09-15.test.tsx` 는 **fetch 가 실제로 나갔는지**를 잰다(소스 문자열
+아님). granted 에서 **받아 오는지도** 함께 잰다 — 그게 없으면 fetch 를 통째로 지워도 초록이 된다.
+
+🩸 **내 시험 자체에 결함이 있었다**: `_vapidKeyPromise` 가 모듈 스코프 메모라 시험끼리 상태가
+   샜다(한 번 받아 오면 다음 시험에선 fetch 가 안 나간다). `vi.resetModules()` + 동적 import 로
+   격리했다. **모듈 스코프 메모가 있는 파일을 시험할 때는 모듈을 매번 새로 불러올 것.**
+
 ## 남은 것
 
 - **죽은 훅 2개**: `useGroupBuyProduct` · `useSellerPublic` 은 배럴 재수출 외 참조 0.
