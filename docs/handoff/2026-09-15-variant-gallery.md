@@ -40,6 +40,18 @@ src/pages/design-variants/
 2. **내 가드가 내 주석을 링크로 신고했다.** "어디에서도 링크하지 않는다" 를 raw 파일 문자열로 검사해서,
    `MobileAppLayout` 에 내가 쓴 *설명 주석*이 위반으로 잡혔다 → 주석을 걷어내고 본다(주석은 링크가 아니다).
 
+## 🩸 CI 가 잡은 넷째 — 몰 슬러그와 라우트가 같은 뿌리를 쓴다
+
+`mall-branding.test.ts` 가 빨간불: **`design` 이 `RESERVED_SLUGS` 에 없다.**
+
+공구 서비스(운영자 몰)는 `urdeal.kr/{몰슬러그}` 를 **루트 1세그먼트**로 서빙한다. 누군가 `design`
+이라는 슬러그로 몰을 열면 **내 `/design/variants` 가 그 몰에 먹히거나 몰이 죽는다.** 새 최상위
+라우트를 만들 때마다 예약어를 함께 늘려야 하고, 그 테스트가 그걸 강제한다. ⇒ `'design'` 추가.
+
+⚠️ **pre-push 게이트가 이걸 못 막는다** — 게이트는 `scripts/check-*` 만 돌리고 **vitest 는 안 돈다**
+(#1450 핸드오프가 이미 지적한 구조적 구멍: `local-ci-parity` 가 verify.yml 에서 스크립트 스텝만
+긁어서 `npm test` 스텝이 모델 밖이다). ⇒ **최상위 라우트를 추가했으면 푸시 전에 vitest 를 돌릴 것.**
+
 ## 검증 (E2)
 
 - tsc **0** · 신규 `design-variants-2026-09-15.test.ts` **12건** · pre-push 게이트 **가드 94개 통과**
