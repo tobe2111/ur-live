@@ -325,7 +325,6 @@
     "streamingSetup": "Streaming Setup",
     "brandMessage": "Messages de marque",
     "businessInfo": "Informations commerciales",
-    "analytics": "Analyse des ventes",
     "reviews": {
       "title": "Gestion des avis",
       "empty": "Aucun avis reçu",
@@ -2662,6 +2661,26 @@
       "progress": "Obligatoires {{filled}} / 5",
       "submitProgress": "Envoyer ({{filled}}/5 obligatoires)",
       "submit": "Envoyer la demande"
+    },
+    "analytics": "Analyse des ventes",
+    "analyticsView": {
+      "noSalesTitle": "Pas encore de ventes",
+      "noSalesBody": "Dès que votre premier pass sera vendu, le chiffre d'affaires, les clients et le taux de réachat s'afficheront ici. Il n'y a rien à mesurer pour l'instant, alors nous avons laissé vide.",
+      "noSalesCta": "Ajouter un pass",
+      "windowEmptyTitle": "Aucune vente sur les {{days}} derniers jours",
+      "windowEmptyBody": "Essayez une période plus large ou ajoutez un nouveau pass.",
+      "widen90": "Voir 90 jours",
+      "windowRevenue": "Chiffre d'affaires, {{days}} derniers jours",
+      "daysLabel": "{{n}} j",
+      "sumOrders": "{{n}} commandes",
+      "sumBuyers": "{{n}} clients",
+      "sumRepeat": "{{n}} % réachat",
+      "sumConversion": "{{n}} % conversion",
+      "rowCommission": "Revenus de recommandation",
+      "rowMonthly": "Mises en ligne par mois",
+      "rowFunnel": "Sources de trafic",
+      "more": "Voir plus (revenus de recommandation, mises en ligne, sources de trafic)",
+      "back": "Retour au résumé"
     }
   },
   "admin": {

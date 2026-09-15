@@ -1006,7 +1006,6 @@
     "streamingSetup": "Streaming Setup",
     "brandMessage": "品牌消息",
     "businessInfo": "商家信息",
-    "analytics": "销售分析",
     "reviews": {
       "title": "评价管理",
       "empty": "暂无收到的评价",
@@ -3343,6 +3342,26 @@
       "progress": "必填 {{filled}} / 5",
       "submitProgress": "提交申请（必填 {{filled}}/5）",
       "submit": "提交申请"
+    },
+    "analytics": "销售分析",
+    "analyticsView": {
+      "noSalesTitle": "还没有销售",
+      "noSalesBody": "第一张使用券售出后，这里会显示销售额、客户和复购率。现在没有可看的数字，所以留空。",
+      "noSalesCta": "登记使用券",
+      "windowEmptyTitle": "最近{{days}}天没有销售",
+      "windowEmptyBody": "可以把时间范围拉长，或者新登记一张使用券。",
+      "widen90": "查看90天",
+      "windowRevenue": "最近{{days}}天销售额",
+      "daysLabel": "{{n}}天",
+      "sumOrders": "订单{{n}}笔",
+      "sumBuyers": "客户{{n}}人",
+      "sumRepeat": "复购{{n}}%",
+      "sumConversion": "转化{{n}}%",
+      "rowCommission": "推荐收益",
+      "rowMonthly": "每月上架趋势",
+      "rowFunnel": "流量来源",
+      "more": "查看更多（推荐收益、上架趋势、流量来源）",
+      "back": "返回销售摘要"
     }
   },
   "admin": {
