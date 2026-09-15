@@ -211,7 +211,7 @@ export default function SellerRegisterSupplierPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <SEO title="사업자 유저 가입 - 유어딜" description="사업자 인증 — 내 상품·이용권 판매" url="/seller/register/supplier" noindex />
-        <div className="bg-white rounded-2xl ur-content-narrow w-full p-6 text-center space-y-4 shadow-sm">
+        <div className="bg-white rounded-[var(--dash-radius,16px)] ur-content-narrow w-full p-6 text-center space-y-4">
           <div className={`w-16 h-16 rounded-full mx-auto flex items-center justify-center ${
             existingStatus === 'active' ? 'bg-emerald-100' : 'bg-amber-100'
           }`}>
@@ -269,7 +269,7 @@ export default function SellerRegisterSupplierPage() {
           </div>
         )}
 
-        <div className="bg-gray-50 rounded-2xl p-5 text-center">
+        <div className="bg-gray-50 rounded-[var(--dash-radius,16px)] p-5 text-center">
           <div className="w-14 h-14 mx-auto mb-3 bg-white rounded-full flex items-center justify-center">
             <Store className="w-7 h-7 text-emerald-600" />
           </div>
@@ -288,7 +288,7 @@ export default function SellerRegisterSupplierPage() {
           {t('seller.gateway.escapeSuffix', { defaultValue: '에서 바로 시작할 수 있어요.' })}
         </p>
 
-        <div className="bg-white rounded-2xl p-5 space-y-4 border border-gray-100">
+        <div className="bg-white rounded-[var(--dash-radius,16px)] p-5 space-y-4 border border-gray-100">
           <Field label="가게명" required>
             <input value={form.business_name}
               onChange={e => setForm(f => ({ ...f, business_name: e.target.value }))}

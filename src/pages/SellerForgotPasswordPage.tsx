@@ -53,7 +53,7 @@ export default function SellerForgotPasswordPage() {
           <span className="text-xl font-bold text-gray-900">Ur Seller</span>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+        <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white border border-gray-200 p-8">
           {sent ? (
             <div className="text-center">
               <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-4">

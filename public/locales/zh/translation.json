@@ -3253,7 +3253,19 @@
       "seePerf": "查看业绩",
       "weekOrders": "订单 {{count}} 件",
       "vsLastWeek": "较上周",
-      "myStore": "我的店铺"
+      "myStore": "我的店铺",
+      "allStores": "全部{{count}}家门店",
+      "store": "门店",
+      "todayWon": "今日 ₩",
+      "pendingShort": "待处理",
+      "delegated": "委托运营",
+      "voucher": "使用券",
+      "listPrice": "原价 ₩",
+      "salePrice": "售价 ₩",
+      "soldHead": "已售",
+      "revenueWon": "销售额 ₩",
+      "status": "状态",
+      "date": "日期"
     },
     "vouchers": {
       "paused": "已停售",
@@ -3278,7 +3290,8 @@
       "noContact": "未登记门店电话 — 去登记",
       "pinWarn": "最近7天 PIN 错误 {{errors}} 次多于成功 {{ok}} 次。请确认告知门店的 PIN。",
       "deleteConfirm": "要删除 '{{name}}' 使用券吗？\n已发放的使用券仍可使用，只会停止新的销售。",
-      "deleteFailed": "删除失败"
+      "deleteFailed": "删除失败",
+      "selling": "销售中"
     },
     "ordersM3": {
       "today": "今天",
@@ -3294,6 +3307,14 @@
       "listPrice": "原价（折扣前价格）",
       "listPriceDiscount": "顾客将看到 {{pct}}% 折扣。",
       "listPriceHint": "填写高于售价的金额即显示折扣率。留空则不显示。"
+    },
+    "referral": {
+      "title": "推荐收益",
+      "subtitle": "您在UrShop中添加的他人使用券售出时累积的佣金",
+      "confirmed": "已确认（可提现）",
+      "pending": "待定（T+7）",
+      "conv": "转化率 30天",
+      "console": "推荐控制台"
     }
   },
   "admin": {

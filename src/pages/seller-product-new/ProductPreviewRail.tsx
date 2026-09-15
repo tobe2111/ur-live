@@ -20,7 +20,7 @@ export default function ProductPreviewRail({ formData, categoryLabel }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="rounded-[var(--dash-radius,16px)] border border-gray-200 bg-white p-4">
         <p className="mb-3 text-xs font-bold text-gray-400">
           {t('seller.products.previewTitle', { defaultValue: '미리보기' })}
         </p>
@@ -70,7 +70,7 @@ export default function ProductPreviewRail({ formData, categoryLabel }: Props) {
         )}
       </div>
 
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+      <div className="rounded-[var(--dash-radius,16px)] border border-amber-200 bg-amber-50 p-4">
         <div className="mb-2 flex items-center gap-1.5 text-sm font-bold text-amber-800">
           <Lightbulb className="h-4 w-4" />
           {t('seller.products.tipsTitle', { defaultValue: '등록 팁' })}

@@ -78,6 +78,7 @@ export default function SellerPage() {
                   todayOrders={home.todayOrders}
                   pendingOrders={home.pendingOrders}
                   withdrawable={home.withdrawable}
+                  summary={home.storesSummary}
                 />
                 {/* 📱 폰: 할 일은 티켓 바로 아래(M2). PC: 우측 열로 간다(P-홈). 같은 부품 하나를 자리만 바꿔 그린다. */}
                 {!isPc && <TodoRows pendingOrders={home.pendingOrders} withdrawable={home.withdrawable} hasVouchers={home.vouchers.length > 0} />}

@@ -46,7 +46,7 @@ export default function BulkUploadTools() {
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+    <div className="flex flex-col gap-3 rounded-[var(--dash-radius,16px)] border border-gray-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"

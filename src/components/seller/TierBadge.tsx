@@ -85,7 +85,7 @@ export default function TierBadge() {
   const progress = nextScore ? Math.min(100, (score / nextScore) * 100) : 100
 
   return (
-    <div className={`rounded-2xl border-2 ${meta.border} ${meta.bg} p-4 shadow-sm`}>
+    <div className={`rounded-[var(--dash-radius,16px)] border-2 ${meta.border} ${meta.bg} p-4 shadow-sm`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <meta.Icon className="w-7 h-7" aria-hidden="true" />

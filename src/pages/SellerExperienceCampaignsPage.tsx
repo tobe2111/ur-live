@@ -106,7 +106,7 @@ export default function SellerExperienceCampaignsPage() {
 
         {/* 생성 폼 — 게이트 ON 일 때만. OFF 면 안내 배너 */}
         {enabled ? (
-          <div className="bg-white rounded-2xl border border-gray-200 p-5 mt-4 mb-5">
+          <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-5 mt-4 mb-5">
             <h3 className="text-[14px] font-bold text-gray-900 mb-3">{t('seller.expCampaigns.newTitle', { defaultValue: '새 체험 캠페인' })}</h3>
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
               <label className="text-[12px] text-gray-600">{t('seller.expCampaigns.productId', { defaultValue: '제공 이용권 상품 ID' })}
@@ -133,7 +133,7 @@ export default function SellerExperienceCampaignsPage() {
             </div>
           </div>
         ) : (
-          <div className="mt-4 mb-5 flex items-start gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <div className="mt-4 mb-5 flex items-start gap-2.5 rounded-[var(--dash-radius,16px)] border border-amber-200 bg-amber-50 px-4 py-3">
             <Lock className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
             <p className="text-[12px] leading-relaxed text-amber-800">
               {t('seller.expCampaigns.gateNotice', { defaultValue: '셀러 셀프 캠페인 개설은 준비 중입니다. 지금은 유어딜 담당자가 대신 개설해 드립니다 — 개설을 원하시면 관리자에게 문의해주세요. (개설된 캠페인의 응모자 조회·추첨·리포트는 아래에서 가능합니다.)' })}
@@ -142,7 +142,7 @@ export default function SellerExperienceCampaignsPage() {
         )}
 
         {/* 캠페인 목록 */}
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 overflow-hidden">
           {loading ? <div className="p-8 text-center text-gray-400 text-[13px]">{t('seller.expCampaigns.loading', { defaultValue: '로딩 중…' })}</div>
           : campaigns.length === 0 ? <div className="p-8 text-center text-gray-400 text-[13px]">{t('seller.expCampaigns.empty', { defaultValue: '개설된 캠페인이 없습니다.' })}</div>
           : campaigns.map(c => (

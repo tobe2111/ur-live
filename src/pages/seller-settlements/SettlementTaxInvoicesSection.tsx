@@ -65,7 +65,7 @@ export default function SettlementTaxInvoicesSection() {
   // 역발행 세금계산서가 하나도 없으면 섹션 자체를 접어 안내만(사업자 유저 아닌 셀러엔 비어 있음).
   if (!q.isLoading && items.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-200 p-5">
+      <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-5">
         <div className="flex items-center gap-2 mb-1.5">
           <FileText className="w-4 h-4 text-gray-500" />
           <h3 className="text-sm font-semibold text-gray-900">{t('seller.taxinv.title', { defaultValue: '세금계산서 (역발행)' })}</h3>
@@ -78,7 +78,7 @@ export default function SettlementTaxInvoicesSection() {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 overflow-hidden">
       <div className="px-5 py-4 border-b border-gray-100">
         <div className="flex items-center gap-2">
           <FileText className="w-4 h-4 text-gray-500" />

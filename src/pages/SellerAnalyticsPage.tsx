@@ -88,7 +88,7 @@ export default function SellerAnalyticsPage() {
             { key: 'funnel', label: '트래킹 Funnel', icon: TrendingUp },
           ].map(tabItem => (
             <button key={tabItem.key} onClick={() => setTab(tabItem.key as 'revenue' | 'customers' | 'products' | 'commission' | 'monthly' | 'funnel')}
-              className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${tab === tabItem.key ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'}`}>
+              className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${tab === tabItem.key ? 'bg-brand-tint text-brand-text' : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'}`}>
               <tabItem.icon className="h-4 w-4" />{tabItem.label}
             </button>
           ))}

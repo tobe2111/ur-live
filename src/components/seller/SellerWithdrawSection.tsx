@@ -74,7 +74,7 @@ export default function SellerWithdrawSection() {
 
       {open && (
         <div className="fixed inset-0 z-[10500] flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4" onClick={() => !submitting && setOpen(false)}>
-          <div className="w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl max-h-[92dvh] flex flex-col" onClick={e => e.stopPropagation()}>
+          <div className="w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)] max-h-[92dvh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between shrink-0">
               <h2 className="text-sm font-bold text-gray-900">셀러 탈퇴</h2>
               <button onClick={() => !submitting && setOpen(false)} className="text-gray-400 text-sm px-2">✕</button>

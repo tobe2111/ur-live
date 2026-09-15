@@ -179,7 +179,7 @@ export default function SellerPromoCodesPage() {
             <Plus className="w-4 h-4" /> 새 할인 코드 발급
           </button>
         ) : (
-          <div className="bg-white rounded-2xl p-5 border border-gray-200 space-y-3">
+          <div className="bg-white rounded-[var(--dash-radius,16px)] p-5 border border-gray-200 space-y-3">
             <p className="text-sm font-bold text-gray-900">새 코드 발급</p>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">코드 (영문대문자 + 숫자 4-20자)</label>
@@ -264,7 +264,7 @@ export default function SellerPromoCodesPage() {
         {loading ? (
           <BrandLoader />
         ) : codes.length === 0 ? (
-          <div className="bg-white rounded-2xl p-8 border border-gray-200 text-center">
+          <div className="bg-white rounded-[var(--dash-radius,16px)] p-8 border border-gray-200 text-center">
             <Tag className="w-12 h-12 text-gray-300 mx-auto mb-3" />
             <p className="text-sm font-bold text-gray-900">발급한 코드 없음</p>
             <p className="text-xs text-gray-500 mt-1">위 버튼으로 첫 코드를 만들어보세요</p>
@@ -272,7 +272,7 @@ export default function SellerPromoCodesPage() {
         ) : (
           <div className="space-y-2">
             {codes.map(c => (
-              <div key={c.id} className={`bg-white rounded-2xl p-4 border ${c.is_active ? 'border-gray-200' : 'border-gray-100 opacity-60'}`}>
+              <div key={c.id} className={`bg-white rounded-[var(--dash-radius,16px)] p-4 border ${c.is_active ? 'border-gray-200' : 'border-gray-100 opacity-60'}`}>
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline gap-2">
@@ -315,7 +315,7 @@ export default function SellerPromoCodesPage() {
           </div>
         )}
 
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs text-amber-800">
+        <div className="bg-amber-50 border border-amber-200 rounded-[var(--dash-radius,16px)] p-4 text-xs text-amber-800">
           <p className="font-bold mb-1">단골 코드 활용 팁</p>
           <ul className="list-disc pl-4 space-y-0.5">
             <li>"단골만 (followers_only)" 옵션 → 단골 등록 사용자만 적용</li>

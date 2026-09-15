@@ -114,10 +114,27 @@ export function useSellerVouchers() {
   })
 }
 
+export interface StoreSummaryRow { seller_id: number; name: string; role: 'owner' | 'operator'; today_revenue: number; today_orders: number; pending: number }
+export interface StoresSummary { stores: StoreSummaryRow[]; totals: { today_revenue: number; today_orders: number; pending: number }; current_seller_id: number | null }
+
+/** 🧮 B2 (2026-09-15): 사람 기준 전 매장 오늘 합계 + 매장별. 매장 1곳이면 화면은 종전(현재 좌석)과 같다. fail-soft null. */
+export function useStoresSummary() {
+  return useQuery<StoresSummary | null>({
+    queryKey: ['seller', 'home', 'stores-summary'],
+    queryFn: async () => {
+      const r = await api.get('/api/seller/my-stores/summary', { headers: H() }).catch(() => null)
+      const d = r?.data?.success ? (r.data.data as StoresSummary) : null
+      return d && Array.isArray(d.stores) ? d : null
+    },
+    enabled: isSellerAuthenticated(), staleTime: 60_000, refetchOnWindowFocus: false,
+  })
+}
+
 export function useSellerHome() {
   const statsQ = useSellerStats()
   const balanceQ = useSellerWithdrawable()
   const vouchersQ = useSellerVouchers()
+  const summaryQ = useStoresSummary()
 
   // 🔔 10초 폴링 — 새 주문 감지(useNewOrderAlert)가 이 목록의 최대 id 변화를 본다.
   const ordersQ = useQuery<Order[]>({
@@ -160,6 +177,7 @@ export function useSellerHome() {
     withdrawable: balanceQ.data ?? 0,
     vouchers,
     vouchersLoaded: vouchersQ.isFetched,
+    storesSummary: summaryQ.data ?? null,
     weekRevenue, weekOrders, weekDelta, week7, hasDaily: daily.length > 0,
   }
 }

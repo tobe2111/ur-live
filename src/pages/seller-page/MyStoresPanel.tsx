@@ -105,7 +105,7 @@ export default function MyStoresPanel({ onGateChange, gateOnly = false }: Props)
 
   if (loading) {
     if (gateOnly) return null
-    return <div className="flex items-center gap-2 rounded-2xl border border-rule bg-white p-4 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin" /> {t('seller.stores.loading', { defaultValue: '내 매장 확인 중…' })}</div>
+    return <div className="flex items-center gap-2 rounded-[var(--dash-radius,16px)] border border-rule bg-white p-4 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin" /> {t('seller.stores.loading', { defaultValue: '내 매장 확인 중…' })}</div>
   }
 
   // ── 1단계 게이트 — 등록 매장 0: 매장 등록 없이는 아무것도 시작되지 않는다 ──
@@ -114,7 +114,7 @@ export default function MyStoresPanel({ onGateChange, gateOnly = false }: Props)
       <>
         {/* 🎫 2026-09-02 (대표 확정 — 셀러 B안): 잉크 STEP 카드 → 티켓 부품(블루 밴드 + 흰 본문). 잉크 사이드바와
             잉크 카드와 잉크 버튼이 한 화면에서 셋이 경쟁하던 것을, 강조는 밴드 하나로. 소비자 지갑·결제 완료와 같은 문법. */}
-        <div className="overflow-hidden rounded-2xl border border-rule bg-white">
+        <div className="overflow-hidden rounded-[var(--dash-radius,16px)] border border-rule bg-white">
           <div className="flex items-center justify-between h-11 px-4 text-[14px] text-white bg-brand tabular-nums">
             <span className="font-bold">STEP 1 · {t('seller.stores.step1', { defaultValue: '매장 등록' })}</span>
             <span className="font-medium">1 / 4</span>
@@ -149,7 +149,7 @@ export default function MyStoresPanel({ onGateChange, gateOnly = false }: Props)
 
   // ── 매장 카드 목록 — 여러 매장이면 여러 카드, 카드마다 이용권 등록 ──
   return (
-    <div className="rounded-2xl border border-rule bg-white p-4">
+    <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-4">
       <div className="flex items-center justify-between mb-2.5">
         <h2 className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
           <Store className="w-4 h-4 text-gray-500" /> {t('seller.stores.myStores', { defaultValue: '내 매장' })}

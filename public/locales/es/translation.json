@@ -2572,7 +2572,19 @@
       "seePerf": "Ver rendimiento",
       "weekOrders": "{{count}} pedidos",
       "vsLastWeek": "vs semana pasada",
-      "myStore": "Mi tienda"
+      "myStore": "Mi tienda",
+      "allStores": "Las {{count}} tiendas",
+      "store": "Tienda",
+      "todayWon": "Hoy ₩",
+      "pendingShort": "Pend.",
+      "delegated": "Delegada",
+      "voucher": "Cupón",
+      "listPrice": "Precio ₩",
+      "salePrice": "Venta ₩",
+      "soldHead": "Vendidos",
+      "revenueWon": "Ingresos ₩",
+      "status": "Estado",
+      "date": "Fecha"
     },
     "vouchers": {
       "paused": "Pausado",
@@ -2597,7 +2609,8 @@
       "noContact": "Sin teléfono del local — añadir",
       "pinWarn": "En 7 días hubo más errores de PIN ({{errors}}) que aciertos ({{ok}}). Revisa el PIN entregado al local.",
       "deleteConfirm": "¿Eliminar el cupón '{{name}}'?\nLos cupones ya emitidos siguen siendo válidos; solo se detienen las ventas nuevas.",
-      "deleteFailed": "Error al eliminar"
+      "deleteFailed": "Error al eliminar",
+      "selling": "En venta"
     },
     "ordersM3": {
       "today": "Hoy",
@@ -2613,6 +2626,14 @@
       "listPrice": "Precio de lista (antes del descuento)",
       "listPriceDiscount": "Se muestra a los clientes como {{pct}}% de descuento.",
       "listPriceHint": "Introduce un valor superior al precio de venta para mostrar un descuento. Déjalo vacío para no mostrarlo."
+    },
+    "referral": {
+      "title": "Ingresos por recomendación",
+      "subtitle": "Comisión cuando se venden los cupones que añadiste a tu UrShop",
+      "confirmed": "Confirmado (retirable)",
+      "pending": "Pendiente (T+7)",
+      "conv": "Conversión 30d",
+      "console": "Consola de recomendación"
     }
   },
   "admin": {

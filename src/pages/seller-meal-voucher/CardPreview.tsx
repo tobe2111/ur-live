@@ -28,7 +28,7 @@ export default function CardPreview({ form }: { form: VoucherForm }) {
       <p className="text-[11px] font-bold text-gray-500 mb-3">
         📱 {t('seller.mealVoucher.previewTitle', { defaultValue: '소비자 화면 미리보기' })}
       </p>
-      <div className="max-w-[280px] mx-auto rounded-2xl overflow-hidden bg-white border border-gray-200 shadow-sm">
+      <div className="max-w-[280px] mx-auto rounded-[var(--dash-radius,16px)] overflow-hidden bg-white border border-gray-200">
         {/* 커버 — 이미지가 없으면 자리 표시 */}
         <div className="relative aspect-[4/3] bg-gray-100">
           {form.image_url ? (

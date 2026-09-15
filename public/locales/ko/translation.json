@@ -3253,7 +3253,19 @@
       "seePerf": "성과 보기",
       "weekOrders": "주문 {{count}}건",
       "vsLastWeek": "지난주보다",
-      "myStore": "내 매장"
+      "myStore": "내 매장",
+      "allStores": "내 매장 {{count}}곳 전체",
+      "store": "매장",
+      "todayWon": "오늘 ₩",
+      "pendingShort": "대기",
+      "delegated": "위임 운영",
+      "voucher": "이용권",
+      "listPrice": "정가 ₩",
+      "salePrice": "판매가 ₩",
+      "soldHead": "판매",
+      "revenueWon": "매출 ₩",
+      "status": "상태",
+      "date": "날짜"
     },
     "vouchers": {
       "paused": "판매 중지",
@@ -3278,7 +3290,8 @@
       "noContact": "식당 연락처 미등록 — 등록하기",
       "pinWarn": "최근 7일 PIN 오류 {{errors}}건이 성공 {{ok}}건보다 많아요. 가게에 안내된 PIN 을 확인해 주세요.",
       "deleteConfirm": "'{{name}}' 이용권을 삭제할까요?\n이미 발급된 이용권은 그대로 사용할 수 있고, 새 판매만 중단됩니다.",
-      "deleteFailed": "삭제 실패"
+      "deleteFailed": "삭제 실패",
+      "selling": "판매 중"
     },
     "ordersM3": {
       "today": "오늘",
@@ -3294,6 +3307,14 @@
       "listPrice": "정가 (할인 전 가격)",
       "listPriceDiscount": "소비자 화면에 {{pct}}% 할인으로 보입니다.",
       "listPriceHint": "판매가보다 높게 넣으면 할인율이 표시됩니다. 비우면 할인 표시가 없습니다."
+    },
+    "referral": {
+      "title": "소개 수익",
+      "subtitle": "유어샵에 담은 남의 이용권이 팔리면 쌓이는 커미션",
+      "confirmed": "확정 (출금 가능)",
+      "pending": "보류 (T+7)",
+      "conv": "전환율 30일",
+      "console": "소개 콘솔"
     }
   },
   "admin": {

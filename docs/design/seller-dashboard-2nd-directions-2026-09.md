@@ -36,9 +36,20 @@
 
 내 가게 매출 정산(셀러 좌석, `payouts`) 아래에 **소개 수익** 카드(확정·보류 T+7·전환율, `/api/curator/me/dashboard`). 지급 내역도 두 종류를 한 목록에. 일반 유저용 `/u/me/earnings` 는 그대로 둔다(소개 수익만 보는 화면). 좌석에 연결된 유저 계정(`sellers.linked_user_id`)이 있을 때만 그린다.
 
-## 구현 todo (대표가 조합을 고르면)
+## ✅ 대표 확정 (2026-09-15) — **D3 밀도·데이터 + A2 매장이 제목 + B2 합계·매장별 + C 정산 안 소개 수익**
 
-- [ ] A: `SellerLayout` 헤더에서 `title` 을 빼고 페이지가 자기 제목을 그린다(`SellerPageTitle` 부품 신설) — 39페이지 배선
-- [ ] B1: `TodayTicket` 밴드 우측 → 매장 칩 + `StoreSheet`(바텀시트, `StoreSwitcher` 의 토큰 계약 재사용) · B2/B3 면 `GET /api/seller/my-stores/summary`(사람 기준 오늘 합계) 신설
-- [ ] C: `SellerSettlementsPage` 에 `ReferralEarningsCard` — 좌석↔유저 연결 시만
-- [ ] 시안 확정 뒤 `docs/design/README.md` 상태 갱신
+대표: *"3번째가 좋은 것 같네? a2 매장이 제목, 다른건 알아서 해줘. B2 합계 + 매장별이 좋은 것 같기도 하고"* · *"다른 세부페이지들도 정리가 필요해."*
+
+캔버스 v2 에 있던 **D 디자인 방향 3안**(D1 여백·히어로 / D2 종이·티켓 / D3 밀도·데이터, 폰+PC) 중 **D3** 를 골랐다. 그래서 이 조합이 됐고, 아래처럼 구현했다(phone + PC 둘 다).
+
+| 항목 | 구현 | 자리 |
+|---|---|---|
+| **D3 토큰** | 셀러 스코프(`.seller-light-theme`)에서만 CSS 변수로 덮는다 — radius 8px · h1 17/18px · 통계 숫자 22px 모노 tabular(`dash-num`) · 카드 여백 16/12px · 간격 14px. 공용 `components/dashboard/*` 부품은 변수를 읽고 **어드민은 폴백값(16px/19px/24px)** 그대로 | `src/index.css` · `DashboardCard` · `DashboardPageHeader` · `DashboardStatCard` · `DashboardEmptyState` |
+| **A2 매장이 제목** | 폰 헤더 제목 자리 = `StoreSwitcher variant="title"`(매장 아이콘 + 이름 + `내 매장 N곳`/`· 위임 운영`, 2곳 이상이면 탭해서 전환). 페이지 제목은 본문 첫 줄 17px. PC 는 `매장 / 페이지` 브레드크럼 13px + 우측 드롭다운. 사이드바 224px·행 12.5px 로 조임 | `SellerLayout` · `StoreSwitcher`(`switchStore` export) |
+| **B2 합계 + 매장별** | 신규 `GET /api/seller/my-stores/summary` — 사람(`resolveActorUserId`) 기준 운영 가능 좌석 중 **active/approved 만** 오늘 매출·주문·처리 대기(30일)를 두 그룹 쿼리로. 홈 오늘 티켓이 **2곳 이상일 때만** 전 매장 합계 타일 + 매장별 표(행 클릭 = 좌석 전환, 현재 좌석 ✓). 1곳이면 종전 화면 그대로 | `seller-operators.routes.ts` · `useSellerHome.useStoresSummary` · `TodayTicket` |
+| **C 소개 수익** | 정산 탭 `DealBalanceCard` 아래 `ReferralEarningsCard`(확정 / 보류 T+7 / 전환율 30일, `/api/curator/me/dashboard`). 소비자 세션이 없으면 **카드 자체를 안 그린다**(빈 카드는 "소개 수익 0" 으로 읽힌다). `/u/me/earnings` 는 그대로 | `seller-settlements/ReferralEarningsCard.tsx` |
+| **세부 페이지 정리** | 코드모드 98파일: `bg-white rounded-* shadow*` → `rounded-[var(--dash-radius,16px)] border border-rule bg-white`(그림자 제거) · `bg-gray-900/800 text-white` 토글·칩 → `bg-brand-tint text-brand-text`. 홈 이용권 레일·이번 주(PC)는 D3 표로 | `src/pages/Seller*.tsx` · `seller-*/**` · `components/seller/*` |
+
+가드: `src/tests/unit/seller-d3-2026-09-15.test.ts` 10건 + `scripts/mutations/seller-d3.mjs` 주입 6건(어드민 스코프 누수 · 폰 헤더 환원 · 승인 대기 좌석 합산 · UTC 날짜 · 1곳에서 합계 모드 · 세션 없을 때 빈 카드) — 전부 되돌려-검증 빨간불 확인.
+
+⚠️ 남긴 것: 셀러 페이지의 색깔 정보상자(`bg-blue-50/amber-50…` 175곳)는 이번에 안 건드렸다(🎫 절 규칙 ⑥ 위반이지만 문구 판단이 필요해 별건). `DashboardPageHeader icon={}` prop 은 셀러 스코프에서 CSS 로만 숨긴다.

@@ -48,7 +48,7 @@ export default function RestaurantSettlementsSection() {
     : t('seller.gbSettle.statusPending', { defaultValue: '대기' })
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-5">
+    <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-100 p-5">
       <div className="flex items-center justify-between mb-1">
         <h3 className="text-[15px] font-bold text-gray-900">
           {t('seller.gbSettle.title', { defaultValue: '공구 자동정산 내역' })}

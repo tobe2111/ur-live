@@ -36,7 +36,7 @@ export default function SellerMorePage() {
             {group.labelKey && (
               <h2 className="mb-1.5 px-1 text-[12px] font-bold text-gray-400">{t(group.labelKey, { defaultValue: '' })}</h2>
             )}
-            <div className="overflow-hidden rounded-2xl border border-rule bg-white">
+            <div className="overflow-hidden rounded-[var(--dash-radius,16px)] border border-rule bg-white">
               {group.items.map(({ path, labelKey, icon: Icon }) => (
                 <Link key={path} to={path} className={ROW}>
                   <Icon size={18} strokeWidth={1.8} className="shrink-0 text-gray-400" />
@@ -50,7 +50,7 @@ export default function SellerMorePage() {
 
         <section>
           <h2 className="mb-1.5 px-1 text-[12px] font-bold text-gray-400">{t('seller.more.account', { defaultValue: '계정' })}</h2>
-          <div className="overflow-hidden rounded-2xl border border-rule bg-white">
+          <div className="overflow-hidden rounded-[var(--dash-radius,16px)] border border-rule bg-white">
             <Link to="/seller/profile?tab=business" className={ROW}>
               <Settings size={18} strokeWidth={1.8} className="shrink-0 text-gray-400" />
               <span className="flex-1">{t('seller.settings')}</span>

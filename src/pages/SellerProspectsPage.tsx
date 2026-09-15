@@ -234,7 +234,7 @@ export default function SellerProspectsPage() {
         {/* 등록 모달 */}
         {showAdd && (
           <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-4">
-            <div className="bg-white w-full max-w-md rounded-2xl p-5 space-y-3">
+            <div className="bg-white w-full max-w-md rounded-[var(--dash-radius,16px)] p-5 space-y-3">
               <h2 className="text-lg font-bold text-gray-900">매장 사전 등록</h2>
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">매장명 (선택)</label>

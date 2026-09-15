@@ -209,7 +209,7 @@ export default function SellerStaysBookingsPage() {
               key={s.v}
               onClick={() => setStatusFilter(s.v)}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap ${
-                statusFilter === s.v ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 border border-gray-200'
+                statusFilter === s.v ? 'bg-brand-tint text-brand-text' : 'bg-white text-gray-700 border border-gray-200'
               }`}
             >{s.l}</button>
           ))}
@@ -224,7 +224,7 @@ export default function SellerStaysBookingsPage() {
             <p className="text-sm text-gray-500">예약이 없습니다</p>
           </div>
         ) : (
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[900px]">
                 <thead>
@@ -325,7 +325,7 @@ export default function SellerStaysBookingsPage() {
 
 function KpiCard({ label, value, sub, color, icon }: { label: string; value: string; sub?: string; color: string; icon: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100">
+    <div className="bg-white rounded-xl p-3 sm:p-4 border border-gray-100">
       <div className="flex items-center justify-between mb-2">
         <span className="text-[10px] sm:text-xs font-medium text-gray-500">{label}</span>
         <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg ${color} flex items-center justify-center`}>{icon}</div>

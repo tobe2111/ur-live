@@ -1,13 +1,11 @@
 /**
  * 📈 이번 주 — 홈 마지막 블록 (M2 시안 · 2026-09-14). 폰은 한 줄(매출 · 주문 N건 · 지난주 대비), PC 는 그 아래 7일 차트.
- *   차트는 `LazyChart`(recharts 지연 로드) — 폰에서는 안 그린다(번들·세로 공간 모두 아깝다).
+ *   🧮 2026-09-15 D3: 차트(LazyChart) 대신 PC 일별 표 — 숫자를 읽는 화면. 차트는 /seller/analytics 가 맡는다.
  */
-import { Suspense } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ChevronRight } from 'lucide-react'
-import { formatWon } from '@/utils/format'
-import LazyChart from './LazyChart'
+import { formatNumber, formatWon } from '@/utils/format'
 
 interface Props {
   revenue: number
@@ -26,10 +24,10 @@ export default function WeekSummary({ revenue, orders, delta, week7, hasDaily }:
         {t('seller.home.thisWeek', { defaultValue: '이번 주' })}
         <Link to="/seller/analytics" className="text-[12px] font-bold text-brand-text">{t('seller.home.seePerf', { defaultValue: '성과 보기' })}</Link>
       </h2>
-      <div className="rounded-2xl border border-rule bg-white">
+      <div className="overflow-hidden rounded-[var(--dash-radius,16px)] border border-rule bg-white">
         <Link to="/seller/analytics" className="flex items-center gap-3 px-4 py-3.5">
           <span className="min-w-0 flex-1">
-            <span className="block text-[20px] font-extrabold tracking-tight text-gray-900 lg:text-[24px]">{formatWon(revenue)}</span>
+            <span className="dash-num block text-[20px] font-extrabold tracking-tight text-gray-900 lg:text-[22px]">{formatWon(revenue)}</span>
             <span className="block text-[12px] text-gray-400">
               {t('seller.home.weekOrders', { defaultValue: '주문 {{count}}건', count: orders })}
               {hasDaily && <> · {t('seller.home.vsLastWeek', { defaultValue: '지난주보다' })} <em className={`not-italic font-bold ${delta >= 0 ? 'text-brand-text' : 'text-tone-bad'}`}>{deltaText}</em></>}
@@ -37,12 +35,24 @@ export default function WeekSummary({ revenue, orders, delta, week7, hasDaily }:
           </span>
           <ChevronRight size={16} className="shrink-0 text-gray-300" />
         </Link>
+        {/* 🧮 D3 (2026-09-15): PC 는 차트 대신 일별 표 — 숫자를 읽는 화면. 차트는 성과 페이지(/seller/analytics)가 맡는다. */}
         {hasDaily && (
-          <div className="hidden border-t border-rule px-3 pb-3 pt-2 lg:block" style={{ height: 200 }}>
-            <Suspense fallback={<div className="flex h-full items-center justify-center text-sm text-gray-400">{t('seller.chartLoading')}</div>}>
-              <LazyChart data={week7} salesLabel={t('seller.sales')} ordersLabel={t('seller.order')} />
-            </Suspense>
-          </div>
+          <table className="hidden w-full border-collapse border-t border-rule text-[12.5px] lg:table">
+            <thead>
+              <tr className="text-[11px] font-semibold text-gray-500">
+                <th className="border-b border-rule px-4 py-2 text-left">{t('seller.home.date', { defaultValue: '날짜' })}</th>
+                <th className="border-b border-rule px-4 py-2 text-right">{t('seller.home.revenueWon', { defaultValue: '매출 ₩' })}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {week7.map((d, i) => (
+                <tr key={d.date} className={i === week7.length - 1 ? 'font-bold' : ''}>
+                  <td className={`px-4 py-1.5 text-gray-700 ${i > 0 ? 'border-t border-rule' : ''}`}>{d.date}</td>
+                  <td className={`dash-num px-4 py-1.5 text-right text-gray-900 ${i > 0 ? 'border-t border-rule' : ''}`}>{formatNumber(d.sales)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
     </section>

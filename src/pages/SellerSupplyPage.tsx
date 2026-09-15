@@ -165,7 +165,7 @@ export default function SellerSupplyPage() {
             <span className="flex items-center gap-1.5">
               <Package className="w-4 h-4" /> {t('seller.myRequestList')}
               {approvedCount > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 bg-gray-900 text-white text-xs rounded-full">{approvedCount}</span>
+                <span className="ml-1 px-1.5 py-0.5 bg-brand-tint text-brand-text text-xs rounded-full">{approvedCount}</span>
               )}
             </span>
           </button>
@@ -257,7 +257,7 @@ export default function SellerSupplyPage() {
             ) : (
               <div className="space-y-3">
                 {products.map(product => (
-                  <div key={product.id} className="bg-white rounded-xl shadow-sm p-4 flex gap-4 items-start">
+                  <div key={product.id} className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-4 flex gap-4 items-start">
                     {/* Image */}
                     <div className="w-20 h-20 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
                       {product.image_url
@@ -346,7 +346,7 @@ export default function SellerSupplyPage() {
             ) : (
               <div className="space-y-3">
                 {requests.map(req => (
-                  <div key={req.id} className="bg-white rounded-xl shadow-sm p-4 flex gap-4 items-start">
+                  <div key={req.id} className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-4 flex gap-4 items-start">
                     {/* Image */}
                     <div className="w-16 h-16 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
                       {req.product_image
@@ -399,7 +399,7 @@ export default function SellerSupplyPage() {
       {requestModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 pb-4">
           <div className="fixed inset-0 bg-black/50" onClick={() => setRequestModal(null)} />
-          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm p-5">
+          <div className="relative rounded-[var(--dash-radius,16px)] border border-rule bg-white-xl w-full max-w-sm p-5">
             <h3 className="text-sm font-semibold text-gray-900 mb-1">{t('seller.sampleRequestTitle')}</h3>
             <p className="text-xs text-gray-500 mb-4">{requestModal.name}</p>
 
@@ -444,7 +444,7 @@ export default function SellerSupplyPage() {
       {registerModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 pb-4">
           <div className="fixed inset-0 bg-black/50" onClick={() => setRegisterModal(null)} />
-          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm p-5">
+          <div className="relative rounded-[var(--dash-radius,16px)] border border-rule bg-white-xl w-full max-w-sm p-5">
             <h3 className="text-sm font-semibold text-gray-900 mb-1">{t('seller.storeRegisterTitle')}</h3>
             <p className="text-xs text-gray-500 mb-4">{registerModal.product_name}</p>
 

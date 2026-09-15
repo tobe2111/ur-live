@@ -445,7 +445,7 @@ export default function SellerOrdersPage() {
             <MobileOrderList orders={filteredOrders} onSelect={viewOrderDetail} onConfirm={(o) => handleStatusChange(o.order_number, 'PREPARING')} confirming={updating} />
 
             {/* Orders List — 🖥️ PC 표(의뢰서 §5.3 "사장님 대시보드는 PC 에서 넓게") */}
-            <div className="hidden md:block bg-white rounded-lg shadow-sm border">
+            <div className="hidden md:block rounded-[var(--dash-radius,16px)] border border-rule bg-white border">
               {currentOrders.length === 0 ? (
                 <div className="text-center py-20">
                   <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />

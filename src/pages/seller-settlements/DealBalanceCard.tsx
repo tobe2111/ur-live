@@ -94,7 +94,7 @@ export default function DealBalanceCard() {
             <button
               type="button"
               onClick={() => setWithdrawOpen(true)}
-              className="px-3 py-1.5 bg-gray-900 text-white text-xs font-bold rounded-lg hover:bg-gray-900"
+              className="px-3 py-1.5 bg-brand-tint text-brand-text text-xs font-bold rounded-lg hover:bg-gray-900"
             >
               💸 환급 신청
             </button>
@@ -159,7 +159,7 @@ export default function DealBalanceCard() {
       {withdrawOpen && (
         <div className="fixed inset-0 z-[10500] bg-black/50 backdrop-blur-sm p-4 flex items-center justify-center"
           onClick={() => !submitting && setWithdrawOpen(false)}>
-          <div className="bg-white rounded-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-[var(--dash-radius,16px)] w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-gray-900 mb-1">딜 환급 신청</h3>
             <p className="text-xs text-gray-500 mb-4">원천징수(사업자 3.3% / 비사업자 8.8%) 후 계좌 입금 — 최소 10,000 딜</p>
             <div>
@@ -192,7 +192,7 @@ export default function DealBalanceCard() {
                 취소
               </button>
               <button type="button" onClick={withdraw} disabled={submitting || Number(withdrawAmount) < 10000}
-                className="flex-1 px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-gray-900 disabled:opacity-50">
+                className="flex-1 px-4 py-2 bg-brand-tint text-brand-text text-sm font-semibold rounded-lg hover:bg-gray-900 disabled:opacity-50">
                 {submitting ? '신청 중...' : '환급 신청'}
               </button>
             </div>

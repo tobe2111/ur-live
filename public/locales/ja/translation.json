@@ -3253,7 +3253,19 @@
       "seePerf": "実績を見る",
       "weekOrders": "注文 {{count}}件",
       "vsLastWeek": "先週比",
-      "myStore": "マイ店舗"
+      "myStore": "マイ店舗",
+      "allStores": "全{{count}}店舗",
+      "store": "店舗",
+      "todayWon": "本日 ₩",
+      "pendingShort": "待ち",
+      "delegated": "委任運営",
+      "voucher": "利用券",
+      "listPrice": "定価 ₩",
+      "salePrice": "販売価 ₩",
+      "soldHead": "販売",
+      "revenueWon": "売上 ₩",
+      "status": "状態",
+      "date": "日付"
     },
     "vouchers": {
       "paused": "販売停止",
@@ -3278,7 +3290,8 @@
       "noContact": "店舗連絡先未登録 — 登録する",
       "pinWarn": "直近7日のPINエラー {{errors}}件が成功 {{ok}}件より多いです。店舗に案内したPINを確認してください。",
       "deleteConfirm": "'{{name}}' 利用券を削除しますか？\n発行済みの利用券はそのまま使え、新規販売のみ停止します。",
-      "deleteFailed": "削除に失敗しました"
+      "deleteFailed": "削除に失敗しました",
+      "selling": "販売中"
     },
     "ordersM3": {
       "today": "今日",
@@ -3294,6 +3307,14 @@
       "listPrice": "定価（割引前の価格）",
       "listPriceDiscount": "お客様には{{pct}}%割引と表示されます。",
       "listPriceHint": "販売価格より高く入力すると割引率が表示されます。空欄なら表示されません。"
+    },
+    "referral": {
+      "title": "紹介収益",
+      "subtitle": "UrShopに追加した他店の利用券が売れると貯まるコミッション",
+      "confirmed": "確定（出金可）",
+      "pending": "保留（T+7）",
+      "conv": "転換率 30日",
+      "console": "紹介コンソール"
     }
   },
   "admin": {

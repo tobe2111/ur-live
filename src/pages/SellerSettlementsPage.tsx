@@ -27,6 +27,7 @@ import BizRegSubmitModal from './seller-settlements/BizRegSubmitModal'
 import SettlementsTable from './seller-settlements/SettlementsTable'
 import RestaurantSettlementsSection from './seller-settlements/RestaurantSettlementsSection'
 import SettlementTaxInvoicesSection from './seller-settlements/SettlementTaxInvoicesSection'
+import ReferralEarningsCard from './seller-settlements/ReferralEarningsCard'
 
 export default function SellerSettlementsPage() {
   const { t } = useTranslation()
@@ -196,9 +197,12 @@ export default function SellerSettlementsPage() {
         {/* 🛡️ 2026-05-18: 딜 잔액 + 환급 + 원천징수 현황 (비사업자 교환권/원천징수) */}
         <DealBalanceCard />
 
+        {/* 🧾 2026-09-15 C안: 소개 수익(유저 커미션)을 매장 정산 옆에 — 사업자 유저의 돈 두 종류를 한 화면에. 세션 없으면 자기가 안 그린다. */}
+        <ReferralEarningsCard />
+
         {/* Bank info warning */}
         {!hasBankInfo && (
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
+          <div className="rounded-[var(--dash-radius,16px)] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
             <p className="font-semibold text-amber-900">{t('seller.bankInfoMissing')}</p>
             <p className="mt-0.5 text-xs">{t('seller.bankInfoMissingDesc')}</p>
             <button
@@ -211,13 +215,13 @@ export default function SellerSettlementsPage() {
         )}
 
         {/* View Mode Toggle */}
-        <div className="bg-white rounded-lg shadow p-4 mb-6">
+        <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-4">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setViewMode('table')}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 viewMode === 'table'
-                  ? 'bg-gray-900 text-white'
+                  ? 'bg-brand-tint text-brand-text'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -228,7 +232,7 @@ export default function SellerSettlementsPage() {
               onClick={() => setViewMode('calendar')}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 viewMode === 'calendar'
-                  ? 'bg-gray-900 text-white'
+                  ? 'bg-brand-tint text-brand-text'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -239,13 +243,13 @@ export default function SellerSettlementsPage() {
         </div>
 
         {viewMode === 'calendar' ? (
-          <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-6">
             <RevenueCalendar dailyData={dailyRevenue} />
           </div>
         ) : (
         <>
         {/* Period Filter */}
-        <div className="bg-white rounded-lg shadow p-4 mb-6">
+        <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-4">
           <div className="flex items-center gap-4">
             <label className="text-sm font-medium text-gray-700">
               <Calendar className="w-4 h-4 inline mr-2" />
@@ -264,7 +268,7 @@ export default function SellerSettlementsPage() {
                   onClick={() => setSelectedPeriod(period.value)}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     selectedPeriod === period.value
-                      ? 'bg-gray-900 text-white'
+                      ? 'bg-brand-tint text-brand-text'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >

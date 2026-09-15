@@ -130,7 +130,7 @@ export default function SellerTierPage() {
 
         {/* 현재 등급 카드 */}
         <DashboardCard className="mt-4">
-          <div className={`rounded-2xl border-2 ${meta.border} ${meta.bg} p-5`}>
+          <div className={`rounded-[var(--dash-radius,16px)] border-2 ${meta.border} ${meta.bg} p-5`}>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className={`text-2xl font-extrabold ${meta.color}`}>

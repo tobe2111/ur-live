@@ -2572,7 +2572,19 @@
       "seePerf": "Voir les résultats",
       "weekOrders": "{{count}} commandes",
       "vsLastWeek": "vs semaine dernière",
-      "myStore": "Mon magasin"
+      "myStore": "Mon magasin",
+      "allStores": "Les {{count}} boutiques",
+      "store": "Boutique",
+      "todayWon": "Aujourd'hui ₩",
+      "pendingShort": "En attente",
+      "delegated": "Déléguée",
+      "voucher": "Bon",
+      "listPrice": "Prix ₩",
+      "salePrice": "Vente ₩",
+      "soldHead": "Vendus",
+      "revenueWon": "Revenu ₩",
+      "status": "Statut",
+      "date": "Date"
     },
     "vouchers": {
       "paused": "En pause",
@@ -2597,7 +2609,8 @@
       "noContact": "Téléphone du commerce manquant — ajouter",
       "pinWarn": "Sur 7 jours, les erreurs de PIN ({{errors}}) dépassent les succès ({{ok}}). Vérifiez le PIN remis au commerce.",
       "deleteConfirm": "Supprimer le bon '{{name}}' ?\nLes bons déjà émis restent utilisables ; seules les nouvelles ventes s'arrêtent.",
-      "deleteFailed": "Échec de la suppression"
+      "deleteFailed": "Échec de la suppression",
+      "selling": "En vente"
     },
     "ordersM3": {
       "today": "Aujourd'hui",
@@ -2613,6 +2626,14 @@
       "listPrice": "Prix de référence (avant remise)",
       "listPriceDiscount": "Affiché aux clients comme {{pct}} % de réduction.",
       "listPriceHint": "Saisissez un montant supérieur au prix de vente pour afficher une remise. Laissez vide pour ne rien afficher."
+    },
+    "referral": {
+      "title": "Revenus de recommandation",
+      "subtitle": "Commission lorsque les bons ajoutés à votre UrShop se vendent",
+      "confirmed": "Confirmé (retirable)",
+      "pending": "En attente (T+7)",
+      "conv": "Conversion 30j",
+      "console": "Console de recommandation"
     }
   },
   "admin": {
