@@ -68,3 +68,57 @@ main 이 스쿼시 머지를 반복해 그 브랜치와 **공통 조상이 없�
 
 tsc 0 · 신규 vitest 6 pass · SQL bind/column/table 가드 0 · pre-push 게이트 94개 통과 ·
 주입 4건 **되돌려-검증 전부 빨간불 확인** · 주입 지도 1143건 성함.
+
+---
+
+## 🕐 2026-09-15 후반 — CI 시간을 재고 고쳤다 (대표 *"왜이렇게 늦어?"*)
+
+### 측정 (Verify 최근 100 run · 머지 PR 25건)
+
+| | |
+|---|---|
+| 성공 run 중앙값 | **55.9분** (24건) |
+| 좁혀 돈 run | **12.1분** (5건) |
+| 취소된 run | 56건 (합계 4.1시간) |
+| 머지 PR 25건 중 **전수 스윕** | **23건** |
+
+전수를 부른 이유: `check-guard-mutations.mjs` 를 건드림(= 인라인 주입 추가) **11건** ·
+판정과 무관한 `*-baseline.json`·`live-shot.mjs`·`install-git-hooks.sh` **6건** ·
+`scripts/mutations/*` **3건**. 범인은 `ALWAYS_FULL` 의 `'scripts/'` 접두사 하나였고,
+**`CLAUDE.md` 의 "새 가드 → 주입 한 줄" 을 지킬수록 40분을 무는 구조**였다.
+
+### 처방 — 매니페스트를 옮기지 않는다
+
+인라인 966건을 `scripts/mutations/` 로 들어내면 해결되지만 **열린 PR 9개**가 같은
+10,717줄 파일의 배열 안쪽에 추가 중이라 전부 충돌한다. 대신 `guard-mutations-manifest-diff.mjs`
+가 **base 와 head 의 주입 목록을 실제로 비교**한다(`--dump-manifest` + `git archive`).
+
+### 🩸 밟은 것 넷 — 다음 세션이 같은 데 빠지지 않게
+
+1. **base 러너에는 `--dump-manifest` 가 없다.** 그대로 부르면 옛 러너가 플래그를 무시하고
+   **40분 전수를 돌며 소스에 결함을 심는다.** 실제로 `vite.config.ts`·`scheduled.ts` 에
+   주입이 남아 걷어냈다. ⇒ 부르기 전에 **소스 텍스트로 지원 여부를 본다.**
+2. `process.stdout.write` + `process.exit` 는 flush 를 안 기다린다 — **JSON 이 55,166자에서
+   잘렸다.** `fs.writeSync(1, …)` 로.
+3. **내 시험 하나가 헛돌았다** — `CHANGED_NAMES` 가 `planned` 줄에도 있어 루프에서 빼도 초록.
+   되돌려-검증이 잡았다. 루프 **조건 자체**를 앵커로.
+4. `check-branch-scope` 가 내 테스트 헬퍼 이름 `mk` 를 **주입 시그니처로 오인**했다.
+   가드를 끄지 않고 이름을 바꿨다(`withManifest`/`withTail`).
+
+### 🔴 머지가 막히는 자리 — 취소된 `push` run (다음 세션이 반드시 알아야 한다)
+
+같은 커밋에 **`push` 와 `pull_request` 두 run** 이 3초 차로 뜨고, 워크플로의 concurrency 가
+앞의 `push` run 을 **취소**한다. `pull_request` run 은 초록인데 **브랜치 규칙이 취소된 쪽을 보고
+머지를 막는다**(`Required status check "Verify" is cancelled.`).
+
+- #1429 도 같은 일을 겪었고 **취소된 push run 을 재실행**해서 풀었다(09-14 17:06 PR run 성공 →
+  09-15 01:28 push run 재실행).
+- ⚠️ **세션 토큰엔 `actions:write` 가 없다** — 재실행은 403 이다.
+- ✅ **세션이 쓸 수 있는 길**: `push` 트리거에만 `paths-ignore: ['docs/**', '**/*.md']` 가 있다.
+  ⇒ **문서만 바꿔 푸시하면 `push` run 이 안 뜨고 `pull_request` run 하나만 돈다** — 취소된
+  체크가 애초에 안 생긴다. (코드 검증은 그대로다. `pull_request` 에는 paths-ignore 가 없어
+  전체 트리를 검사한다 — 2026-08-03 사고 뒤 일부러 그렇게 뒀다.)
+
+🧭 **구조적으로는 대표가 고칠 자리다**: 브랜치 규칙의 필수 체크가 `push` run 의 취소를
+보지 않게 하거나, `push` 트리거를 빼면 이 왕복이 사라진다. 세션은 레포 설정을 바꾸지 않는다.
+
