@@ -22,6 +22,14 @@ function run(script: string): string {
   return execFileSync('node', [script], { encoding: 'utf8' })
 }
 
+/** 스캐너가 **무엇을** 찾았는지 — 개수만 보면 특정 형태의 사각지대가 안 보인다. */
+function scannedGates(): Map<string, string> {
+  const out = execFileSync('node', ['-e',
+    "import('./scripts/check-gate-registry.mjs').then(m=>console.log(JSON.stringify([...m.findStrictTrueGates()])))",
+  ], { encoding: 'utf8' })
+  return new Map(JSON.parse(out) as Array<[string, string]>)
+}
+
 describe('게이트 등재 + 적립 표시 게이트 (2026-09-07)', () => {
   it('① strict-true 게이트가 전부 OPS_GATES 에 등재돼 있다', () => {
     const out = run('scripts/check-gate-registry.mjs')
@@ -31,6 +39,14 @@ describe('게이트 등재 + 적립 표시 게이트 (2026-09-07)', () => {
   it('① 스캐너가 실제로 게이트를 보고 있다 (측정 0 = 실패)', () => {
     const n = Number(run('scripts/check-gate-registry.mjs').match(/게이트 (\d+)개/)?.[1] ?? 0)
     expect(n, '게이트를 거의 못 찾았다 — 패턴이나 경로가 바뀌었다').toBeGreaterThanOrEqual(8)
+  })
+
+  // 🩸 2026-09-15: 스캐너가 `const GATE_KEY = 'x'` + `WHERE key = ?` + `.bind(GATE_KEY)` 형태를
+  //   통째로 못 봤다. 이용권 장바구니 게이트가 그 형태라 **등재 없이 배포**됐고 어드민에 손잡이가
+  //   없었다. 개수 하한만으로는 이 구멍이 안 보인다 — 그 형태 하나를 이름으로 못 박는다.
+  it('① 스캐너가 **바인드+이름상수** 형태도 본다 (voucher_cart_enabled)', () => {
+    expect(scannedGates().get('voucher_cart_enabled'),
+      '`const GATE_KEY` + `.bind(GATE_KEY)` 게이트를 못 찾는다 — check-gate-registry 의 ③ 분기 확인').toBeTruthy()
   })
 
   it('② 소비자 표면의 referral_enabled 가 전부 게이트/기준선 안에 있다', () => {

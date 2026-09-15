@@ -15,6 +15,7 @@ import type { CartItem } from '@/types/cart'
 import { getCartItemPrice } from '@/types/cart'
 import { getNoShippingKind, isNoShippingProduct } from '@/shared/product-flow'
 import { routeCartCheckout } from './cart/voucher-checkout'
+import { computeCartTotals } from './cart/cart-totals'
 import { formatNumber } from '@/utils/format'
 import { hasConsumerSession } from '@/utils/auth'
 import CustomModal from './cart/CustomModal'
@@ -367,59 +368,12 @@ function CartPageContent() {
     }>)
   }, [cartItems])
 
-  const { totalItems, subtotal, shippingFee } = useMemo(() => {
-    let count = 0
-    let sum = 0
+  // 🏷️ 합계는 **순수 함수**가 낸다(`cart/cart-totals.ts`) — 통화가 둘이라 실행해서 재야 하고,
+  //    페이지 안에 두면 렌더 없이는 못 잰다.
+  const { totalItems, dealItems, subtotal, shippingFee, dealAmount, cartKind } =
+    useMemo(() => computeCartTotals(cartItems, selectedIds), [cartItems, selectedIds])
 
-    // 🛡️ 2026-05-19: 판매 종료 (product_is_active=0) 상품은 자동 제외 — 사용자 의도 무관하게
-    //   결제 흐름에서 빠짐 (백엔드도 차단하지만 프론트 calc 도 정합).
-    const isAvailable = (item: CartItem) => item.product_is_active === undefined || Number(item.product_is_active) === 1
-
-    // 선택된 상품들 (판매 종료 자동 제외)
-    const selectedItems = cartItems.filter(item => selectedIds.has(item.id) && isAvailable(item))
-
-    // 셀러별로 그룹화
-    const selectedSellerGroups = selectedItems.reduce((groups, item) => {
-      const sellerId = item.seller_id || 0
-      if (!groups[sellerId]) {
-        groups[sellerId] = {
-          items: [],
-          subtotal: 0,
-          shipping_fee: item.shipping_fee ?? 3000,  // `||` 는 명시한 0 을 3,000 으로 되돌린다
-          free_shipping_threshold: item.free_shipping_threshold || 0,
-        }
-      }
-      groups[sellerId].items.push(item)
-      groups[sellerId].subtotal += (getCartItemPrice(item) * item.quantity)
-      return groups
-    }, {} as Record<string | number, {
-      items: CartItem[]
-      subtotal: number
-      shipping_fee: number
-      free_shipping_threshold: number
-    }>)
-
-    // 전체 상품 개수 및 소계 계산
-    for (const item of selectedItems) {
-      count += item.quantity
-      sum += (getCartItemPrice(item) * item.quantity)
-    }
-
-    // 셀러별 배송비 계산
-    const totalShippingFee = Object.values(selectedSellerGroups).reduce((total, group) => {
-      // 🛡️ 교환권은 휴대폰 발송, 이용권은 매장 사용 — 둘 다 배송비 없음.
-      const allNoShip = group.items.length > 0 && group.items.every(isNoShippingItem)
-      if (allNoShip) return total
-      // 무료배송 기준액이 설정되어 있고, 해당 셀러의 소계가 기준액 이상이면 배송비 0원
-      if (group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold) {
-        return total
-      }
-      return total + group.shipping_fee
-    }, 0)
-
-    return { totalItems: count, subtotal: sum, shippingFee: totalShippingFee }
-  }, [cartItems, selectedIds])
-
+  /** 카드로 청구될 금액. 딜은 여기 안 들어간다(통화가 다르다). */
   const total = subtotal + shippingFee
 
   const handleCheckout = async () => {
@@ -432,6 +386,15 @@ function CartPageContent() {
     const err = await routeCartCheckout(cartItems.filter(item => selectedIds.has(item.id)), navigate)
     if (err) showAlert(err, 'alert', t('cart.alertTitle'))
   }
+
+  // 🔘 버튼이 **누르기 전에** 말한다. 종전엔 섞인 장바구니도 "N원 주문하기" 로 보이고,
+  //    누른 뒤에야 모달로 거절했다 — 되는 줄 알고 누르게 만드는 버튼이다.
+  const ctaLabel =
+    selectedIds.size === 0 ? t('cart.selectProductsFirst')
+    : cartKind === 'mixed' ? '따로 골라서 결제해주세요'
+    : cartKind === 'deal' ? `${formatNumber(dealAmount)}딜로 주문하기`
+    : t('cart.placeOrder', { amount: formatNumber(total) })
+  const ctaDisabled = selectedIds.size === 0 || updating || cartKind === 'mixed'
 
   // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): ad-hoc 스피너 → BrandLoader (라우트 청크 로더와 위상 연속).
   if (loading) {
@@ -584,14 +547,15 @@ function CartPageContent() {
             </div>{/* /좌측 아이템 컬럼 */}
             <aside className="mt-2 bg-white dark:bg-[#1D1F29] px-4 py-4 lg:sticky lg:top-[64px] lg:rounded-2xl lg:shadow-lift">
               <CartSummary
-                totalItems={totalItems}
+                totalItems={totalItems - dealItems}
                 subtotal={subtotal}
                 shippingFee={shippingFee}
                 total={total}
+                dealAmount={dealAmount}
+                cartKind={cartKind}
                 noShipping={cartItems.length > 0 && cartItems.every(isNoShippingItem)}
               />
-              <CartCtaButton onClick={handleCheckout} disabled={selectedIds.size === 0 || updating} className="hidden lg:block mt-4"
-                label={selectedIds.size === 0 ? t('cart.selectProductsFirst') : t('cart.placeOrder', { amount: formatNumber(total) })} />
+              <CartCtaButton onClick={handleCheckout} disabled={ctaDisabled} className="hidden lg:block mt-4" label={ctaLabel} />
             </aside>
           </main>
 
@@ -599,8 +563,7 @@ function CartPageContent() {
           {/* 🛡️ 2026-05-04: PC xl+ 사이드바 (224px) 우측부터 시작하도록 xl:left-56 추가. */}
           <div className="fixed bottom-0 left-0 right-0 xl:left-56 app-frame-bar z-20 bg-white dark:bg-[#11141C] border-t border-gray-100 dark:border-[#2C2F35] safe-bottom lg:hidden">
             <div className="ur-content-narrow px-4 py-3">
-              <CartCtaButton onClick={handleCheckout} disabled={selectedIds.size === 0 || updating}
-                label={selectedIds.size === 0 ? t('cart.selectProductsFirst') : t('cart.placeOrder', { amount: formatNumber(total) })} />
+              <CartCtaButton onClick={handleCheckout} disabled={ctaDisabled} label={ctaLabel} />
             </div>
           </div>
         </>

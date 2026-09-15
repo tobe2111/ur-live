@@ -126,6 +126,13 @@ export const COMMISSION_BUDGET_FIELDS: MoneySwitchField[] = [
     options: [{ value: 'false', label: 'OFF (현행 — 전부-딜 또는 전부-카드)' }, { value: 'true', label: 'ON — 가진 딜만큼 카드 청구액 차감' }],
     hint: '🔴 머니 경로. **먼저 딜 보너스(influencer_deal_bonus_pct)를 0 으로** — 20%가 살아 있으면 딜이 액면가보다 비싸서(1,000딜 = 부채 1,200원) 마진 5~10%인 이용권에 쓰일수록 적자다. 그다음 이걸 켜면 딜 잔액만큼 카드 청구액이 줄고 차액이 딜에서 빠진다. 매장 정산은 총액 기준 그대로(딜도 유저가 낸 현금). 끄면 즉시 현행 복귀. 검증 절차: docs/STAGING_CHECKLIST.md (S12)',
   },
+  // 🧺 2026-09-15: 이용권 장바구니 결제 레일. 게이트를 만들면서 이 손잡이를 빠뜨려
+  //   `ops-gate-reachable` 가 잡았다 — 같은 클래스가 이 파일에서만 세 번째다.
+  {
+    key: 'voucher_cart_enabled', label: '⑧ 이용권 장바구니 결제', default: 'false',
+    options: [{ value: 'false', label: 'OFF (현행 — 이용권은 한 개씩만 구매)' }, { value: 'true', label: 'ON — 여러 이용권을 담아 한 번에 결제' }],
+    hint: '🔴 머니 경로. ON 이면 `/api/group-buy/cart/init`·`/cart/confirm-toss` 가 열린다(발급이 있는 공구 레일). **담기 버튼은 별개 스위치**(코드 `VOUCHER_CART_UI_ENABLED`)라 배포가 필요하다 — 서버만 켜면 이미 장바구니에 이용권이 든 사람만 결제할 수 있다. 교환권(딜)은 이 레일이 거절한다. 끄면 즉시 403 = 현행 복귀. 검증 절차: docs/STAGING_CHECKLIST.md (S-CART)',
+  },
   // 🚨 2026-08-12: **킬스위치인데 당길 손잡이가 없었다.**
   //   `gb_pricing_enabled` 는 *"잘못 설정된 공구가로 과소청구가 날 때 false 로 저장해 즉시 상시가로
   //   되돌린다"* 는 긴급 안전장치인데(OPS_GATES 의 turn_on_when), 어느 화면에도 없었다 —
