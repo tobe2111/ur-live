@@ -62,10 +62,22 @@ describe('할인율은 한 색이다', () => {
 
 describe('--sale 토큰', () => {
   const CSS = read('src/index.css')
+  // ⚠️ 2026-09-15: 종전엔 **파일 어디에든** `--sale: #DC2626` 이 있으면 통과였다. 그 뒤
+  //    `light-island` 되박기 블록이 같은 값을 한 번 더 선언하면서(늘 밝은 표면이 다크 값을 물려받으면
+  //    흰 카드 위 글자가 안 읽힌다), `:root` 를 미달 값으로 바꿔도 **섬 쪽 사본 때문에 초록**이 됐다.
+  //    주입 검증이 그것을 잡았다 → 블록을 잘라 **각각** 본다.
+  const dStart = CSS.indexOf('.dark, [data-theme="dark"] {')
+  const light = CSS.slice(CSS.lastIndexOf(':root {', dStart), dStart)
+  const dark = CSS.slice(dStart, CSS.indexOf('\n  }', dStart))
+
+  it('블록을 실제로 잘랐는지 — 못 자르면 아래 시험이 헛돈다', () => {
+    expect((light.match(/--[a-z0-9-]+:/g) || []).length, '라이트 토큰 블록을 못 찾았다').toBeGreaterThan(20)
+    expect((dark.match(/--[a-z0-9-]+:/g) || []).length, '다크 토큰 블록을 못 찾았다').toBeGreaterThan(10)
+  })
 
   it('라이트·다크 값이 둘 다 정의돼 있다', () => {
-    expect(CSS).toMatch(/--sale:\s*#DC2626/)  // 흰 카드 위 4.83:1
-    expect(CSS).toMatch(/--sale:\s*#FF5C69/)  // 다크 카드 위 5.46:1
+    expect(light).toMatch(/--sale:\s*#DC2626/)  // 흰 카드 위 4.83:1
+    expect(dark).toMatch(/--sale:\s*#FF5C69/)   // 다크 카드 위 5.46:1
   })
 
   it('tailwind 가 그 변수를 가리킨다 (값을 두 벌로 두지 않는다)', () => {
