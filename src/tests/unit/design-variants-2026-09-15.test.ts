@@ -108,3 +108,20 @@ describe('⑥ 데이터 스위치 — 이 도구의 핵심', () => {
     expect(PAGE).toMatch(/'empty'/)
   })
 })
+
+describe('⑦ 열자마자 비교가 보인다 (2026-09-15 대표 "시안이 안보이는데?")', () => {
+  // 🩸 실사고: 기본이 "하나씩"이라 첫 안 — 즉 **지금 쓰는 화면 그대로** — 한 장만 떴다. 배포도 번들도
+  //   멀쩡했고(청크 전부 200) 화면도 그려졌는데, 대표 눈에는 아무것도 안 바뀐 것이었다. 이 도구의
+  //   존재 이유가 비교이므로 "열었을 때 전부 보인다"가 계약이다.
+  it('side 기본값이 켜짐이다 — 꺼려면 명시적으로 ?side=0', () => {
+    expect(PAGE).toMatch(/const side = params\.get\('side'\) !== '0'/)
+    // === '1' 로 되돌리면 기본이 다시 한 장이 된다.
+    expect(PAGE).not.toMatch(/const side = params\.get\('side'\) === '1'/)
+  })
+  it('나란히일 때 모든 안을 그린다 (첫 안만 거르지 않는다)', () => {
+    expect(PAGE).toMatch(/const shown = set \? \(side \? set\.variants : set\.variants\.filter/)
+  })
+  it('안이 몇 개인지 머리말에 적는다 — 한 장만 보이면 잘못된 걸 알 수 있게', () => {
+    expect(PAGE).toMatch(/안 \{set\.variants\.length\}개/)
+  })
+})
