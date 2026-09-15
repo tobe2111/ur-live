@@ -20,7 +20,7 @@ import type { DealPlan } from './DealUseChooser'
 
 export default function DealBottomBar({
   isJoinable, isPrelaunch, isDemoDeal, buyable, joining,
-  quantity, total, unitSaving, totalSaving, minReviewLevel,
+  quantity, total, minReviewLevel,
   dealPlan, dealUse, setDealUse, canPayWithDeal, dealBalance,
   productId, onJoin,
 }: {
@@ -31,8 +31,6 @@ export default function DealBottomBar({
   joining: boolean
   quantity: number
   total: number
-  unitSaving: number
-  totalSaving: number
   minReviewLevel?: number | null
   dealPlan: DealPlan | null
   dealUse: number | null
@@ -55,17 +53,12 @@ export default function DealBottomBar({
     <div
       style={{ background: 'var(--gbd-card)', borderTop: '1px solid var(--gbd-line2)', padding: '7px 16px calc(8px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 30px -18px rgba(0,0,0,.3)' }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
-          <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-ink2)', whiteSpace: 'nowrap' }}>
-            {isJoinable && totalSaving > 0 ? (quantity > 1 ? `총 ${formatNumber(totalSaving)}원 할인 중` : `${formatNumber(unitSaving)}원 할인 중`) : ''}
-          </span>
-          {/* 🗺️ 2026-07-02 카카오맵 리뷰 게이미피케이션 — 레벨 전용 이용권 배지 (서버 게이트의 UX 안내) */}
-          {minReviewLevel && minReviewLevel > 1 ? (
-            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--gbd-ink)', whiteSpace: 'nowrap' }}>동네 리뷰어 Lv.{minReviewLevel} 전용</span>
-          ) : null}
-        </div>
-      </div>
+      {/* 💸 2026-09-15 (대표 확정 "안 B"): 'N원 할인 중' 제거 — 같은 할인을 **한 화면에서 세 번**
+          말하고 있었다(상세 가격 블록의 정가 취소선 + 할인율, 그리고 여기). 살 금액은 아래 CTA 가 말한다.
+          🗺️ 레벨 전용 배지(서버 게이트의 UX 안내)는 그 자체가 정보라 남긴다 — 값이 있을 때만 줄을 만든다. */}
+      {minReviewLevel && minReviewLevel > 1 ? (
+        <div style={{ marginBottom: 6, fontSize: 11, fontWeight: 700, color: 'var(--gbd-ink)', whiteSpace: 'nowrap' }}>동네 리뷰어 Lv.{minReviewLevel} 전용</div>
+      ) : null}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, marginBottom: 6 }}>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--gbd-sub)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
         <span style={{ fontSize: 11.5, color: 'var(--gbd-sub)', fontWeight: 500, whiteSpace: 'nowrap' }}>{isPrelaunch ? '오픈 협의 중 매장 · 응모는 무료, 오픈 시 알림을 드려요' : '토스로 3초 안전결제 · 미사용 시 100% 자동환불'}</span>

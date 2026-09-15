@@ -9,11 +9,14 @@ const TEST = 'src/tests/unit/gb-detail-borders-2026-09-15.test.ts'
 const DETAIL = 'src/pages/GroupBuyDetailPage.tsx'
 const BOX = 'src/pages/group-buy/DealPurchaseBox.tsx'
 const USAGE = 'src/pages/group-buy/UsageGuide.tsx'
+// 🔀 2026-09-15 머지: 매장 위치 블록이 `StoreLocation` 부품으로 추출됐다(같은 날 안 B 작업).
+//   그 블록을 앵커하던 주입 셋이 낡아 여기로 옮긴다 — 지키는 불변식은 그대로다.
+const STORE = 'src/pages/group-buy/StoreLocation.tsx'
 
 export default [
   {
     name: '[테두리] 지도 상자가 되살아난다 (섹션 갭과 경계가 두 겹)',
-    file: DETAIL,
+    file: STORE,
     find: "<div style={{ borderRadius: 14, overflow: 'hidden' }}>",
     replace: "<div style={{ borderRadius: '14px 14px 0 0', overflow: 'hidden', border: '1px solid var(--gbd-line2)', borderBottom: 'none' }}>",
     test: TEST,
@@ -21,7 +24,7 @@ export default [
   },
   {
     name: '[테두리] 주소 줄이 다시 상자 안으로 들어가 좌우가 어긋난다',
-    file: DETAIL,
+    file: STORE,
     find: "gap: 11, padding: '13px 0 0' }}>",
     replace: "gap: 11, padding: '13px 14px', border: '1px solid var(--gbd-line2)', borderTop: 'none', borderRadius: '0 0 14px 14px' }}>",
     test: TEST,
@@ -61,7 +64,7 @@ export default [
   },
   {
     name: '[테두리] 컨트롤이 다시 카드선 토큰을 쓴다',
-    file: DETAIL,
+    file: STORE,
     find: "padding: '9px 14px', border: '1px solid var(--rule-strong)', borderRadius: 11",
     replace: "padding: '9px 14px', border: '1px solid var(--gbd-line2)', borderRadius: 11",
     test: TEST,

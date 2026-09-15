@@ -124,9 +124,19 @@ export async function priceCartLines(
     const p = byId.get(productId)
     if (!p) return { ok: false, error: '판매 중이 아닌 상품이 있습니다', code: 'PRODUCT_UNAVAILABLE', productId }
 
-    // 🎟️ 이용권/교환권만 — 배송 상품은 이 레일이 아니다(발급이 아니라 배송이 필요하다).
-    const isVoucher = Number(p.deal_only) === 1 || isVoucherCategory(p.category)
-    if (!isVoucher) return { ok: false, error: '이용권이 아닌 상품이 있습니다', code: 'NOT_VOUCHER', productId }
+    // 🏷️ **교환권은 이 레일이 아니다.** `deal_only=1`(기프티콘·KT)은 **딜로 사는 것**이고
+    //    이 레일은 카드로 청구한다 — 섞으면 딜로 살 것을 원화로 받는다.
+    //    교환권만 담긴 장바구니는 종전 `/checkout` 이 '딜 모드'로 처리한다(2026-05-21).
+    //    🩸 첫 판이 이 줄을 `deal_only === 1 || isVoucherCategory(...)` 로 써서 교환권을 통과시켰다.
+    //       화면 쪽도 같이 틀렸었고(둘 다 '배송 없음' 이라는 이유로 한 덩어리로 봤다), 게이트를
+    //       켜는 순간 드러났을 머니 버그다. 경계는 여기다 — 화면은 편의일 뿐이다.
+    if (Number(p.deal_only) === 1) {
+      return { ok: false, error: `교환권은 딜로 결제합니다 (${p.name})`, code: 'DEAL_ONLY_NOT_SUPPORTED', productId }
+    }
+    // 🎟️ 이용권만 — 배송 상품은 이 레일이 아니다(발급이 아니라 배송이 필요하다).
+    if (!isVoucherCategory(p.category)) {
+      return { ok: false, error: '이용권이 아닌 상품이 있습니다', code: 'NOT_VOUCHER', productId }
+    }
 
     if (p.group_buy_status === 'expired' || p.group_buy_status === 'cancelled') {
       return { ok: false, error: `종료된 공동구매가 있습니다 (${p.name})`, code: 'GB_CLOSED', productId }

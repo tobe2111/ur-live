@@ -337,6 +337,11 @@ const OPS_GATES: OpsGate[] = [
   { key: 'settlement_skip_ledgered', kind: 'setting', label: '자동정산에서 원장 기록분 제외', default_value: 'false', staging_ref: null, turn_on_when: '🔴 머니 경로. 원장 적립(SHOPPING_LEDGER 계열)이 실제로 돌기 시작해 같은 매출이 두 번 정산될 위험이 생겼을 때. 그전엔 켜면 정산이 통째로 빠진다' },
   { key: 'outreach_auto_send', kind: 'setting', label: '인플루언서 제휴 제안 자동 발송', default_value: 'false', staging_ref: null, turn_on_when: '📮 콜드 발송은 법·평판 문제라 **대표가 직접 판단**한다. 세션이 켜지 않는다' },
   { key: 'promo_bar_enabled', kind: 'setting', label: '소비자 홈 프로모 바', default_value: 'false', staging_ref: null, turn_on_when: '홍보 문구가 정해지면 (문구·버튼·색은 같은 화면의 프로모 바 섹션에서)' },
+  // 🧺 2026-09-15 — 이용권 **장바구니 결제** 레일. 만들 때 이 표에 안 넣어서 어드민에 손잡이가
+  //   없었다(`check-gate-registry` 도 못 봤다 — read-site 가 `=== 'true'` 가 아니라 helper 안에 있다).
+  //   ⚠️ **두 겹이다**: 이 서버 키가 보안 경계이고, 담기 버튼은 클라 `VOUCHER_CART_UI_ENABLED` 가 가른다.
+  //   서버만 켜면 기존 장바구니에 이용권이 든 사람은 결제까지 갈 수 있다(담기 버튼은 안 보여도).
+  { key: 'voucher_cart_enabled', kind: 'setting', label: '이용권 장바구니 결제 (⚠️ 2겹 — 클라 VOUCHER_CART_UI_ENABLED 도 함께)', default_value: 'false', staging_ref: 'S-CART', turn_on_when: '🔴 머니 경로. S-CART 15항목(특히 S-CART-2 서로 다른 매장 2종 발급 · S-CART-3 셀러별 정산 · S-CART-13 교환권 거절)을 staging 실결제로 통과한 뒤. 끄면 두 엔드포인트가 즉시 403 이라 되돌리기는 1초다' },
   // 아래 둘은 **되살리지 않기로 한** 축이다(2026-08-23 종료, 다단계 성격). 화면이 없는 게 정상.
   { key: 'invite_reward_enabled', kind: 'setting', label: '초대 보상 (2026-08-23 종료)', default_value: 'false', staging_ref: null, turn_on_when: '켜지 않는다 — 심플 모델로 정리하며 종료한 축이다' },
   { key: 'multi_tier_enabled', kind: 'setting', label: '멀티티어 추천 (2026-08-23 종료)', default_value: 'false', staging_ref: null, turn_on_when: '켜지 않는다 — 다단계 성격이라 되살릴 이유가 없다' },

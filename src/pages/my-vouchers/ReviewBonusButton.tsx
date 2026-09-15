@@ -108,7 +108,7 @@ export default function ReviewBonusButton(
               </div>
             )}
             <div className="grid grid-cols-2 gap-2 mt-5">
-              <button onClick={() => setOpen(false)} className="py-2 border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm font-bold text-gray-700 dark:text-gray-200">취소</button>
+              <button onClick={() => setOpen(false)} className="py-2 border border-rule-strong rounded-lg text-sm font-bold text-gray-700 dark:text-gray-200">취소</button>
               <button onClick={submit} disabled={submitting || uploading}
                 className="py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold disabled:opacity-50">
                 {submitting ? '제출 중...' : '제출'}
