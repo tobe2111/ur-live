@@ -107,7 +107,7 @@ export default function SellerReturnsPage() {
   return (
     <SellerLayout title="환불 요청">
       <SEO title="환불 요청 - 유어딜" description="내 상품의 환불 요청" noindex />
-      <div className="p-4 max-w-4xl mx-auto">
+      <div className="mx-auto max-w-5xl">
         {/* 🔴 이 화면의 권한 경계를 첫 줄에 말한다 — 승인은 하되 돈은 못 만진다. */}
         <div className="flex gap-2 rounded-[10px] bg-[#F5F2F3] px-3 py-[11px]">
           <AlertCircle className="w-[15px] h-[15px] text-[#8A8288] flex-none mt-px" strokeWidth={2} />

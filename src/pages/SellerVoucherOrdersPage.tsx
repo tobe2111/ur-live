@@ -55,7 +55,7 @@ export default function SellerVoucherOrdersPage() {
 
   return (
     <SellerLayout title="발송 교환권">
-      <div className="mx-auto max-w-7xl space-y-5 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-5">
         <DashboardPageHeader
           title="🎁 발송한 교환권 이력"
           subtitle="적립금으로 받은 기프티쇼 교환권 — 발송된 휴대폰으로 MMS 도착"

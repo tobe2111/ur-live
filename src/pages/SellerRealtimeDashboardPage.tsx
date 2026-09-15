@@ -54,7 +54,7 @@ export default function SellerRealtimeDashboardPage() {
 
   return (
     <SellerLayout title="실시간 매출 대시보드">
-      <div className="mx-auto max-w-4xl space-y-5 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-5">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">

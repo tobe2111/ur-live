@@ -29,7 +29,9 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { stripComments as strip } from '../helpers/source-text'
 
-const MANAGE = strip(readFileSync('src/pages/SellerGroupBuyPage.tsx', 'utf8'))
+// 📱 2026-09-14 (M4 재설계와 같은 날 머지): 관리 화면의 행 하나가 `seller-group-buy/VoucherRow.tsx` 로 나갔다 —
+//   수정·삭제 진입점은 그 행 안에 있다(페이지 파일엔 목록·세그먼트만 남았다).
+const MANAGE = strip(readFileSync('src/pages/seller-group-buy/VoucherRow.tsx', 'utf8'))
 const EDIT = strip(readFileSync('src/pages/SellerProductEditPage.tsx', 'utf8'))
 const PRICE_FIELDS = strip(readFileSync('src/pages/seller-product-edit/PriceStockFields.tsx', 'utf8'))
 const SERVER = strip(readFileSync('src/features/seller/api/seller-orders.routes.ts', 'utf8'))
@@ -53,7 +55,7 @@ const DELETE_FN = fnBody(MANAGE, 'async function deleteVoucher')
 
 describe('① 삭제 — 버튼이 있고, 서버가 지켜 준다', () => {
   it('관리 카드에 삭제 버튼이 있다', () => {
-    expect(MANAGE).toMatch(/onClick=\{\(\) => deleteVoucher\(p\)\}/)
+    expect(MANAGE).toMatch(/onClick=\{\(\) => deleteVoucher\(\)\}/)
   })
 
   it('삭제는 되돌릴 수 없으니 확인을 받는다 — 거절하면 **아무 일도 안 일어난다**', () => {
@@ -63,7 +65,7 @@ describe('① 삭제 — 버튼이 있고, 서버가 지켜 준다', () => {
   })
 
   it('DELETE 를 그 상품 id 로 부른다', () => {
-    expect(MANAGE).toContain('api.delete(`/api/seller/products/${p.id}`')
+    expect(MANAGE).toContain('api.delete(`/api/seller/products/${v.id}`')
   })
 
   it('🔒 서버 거절 사유를 그대로 보여준다 — "삭제 실패" 만으로는 할 수 있는 게 없다', () => {
@@ -80,8 +82,9 @@ describe('① 삭제 — 버튼이 있고, 서버가 지켜 준다', () => {
     expect(body).toContain("status = 'DELETED'")
   })
 
-  it('삭제 뒤 목록을 다시 읽는다 — 안 하면 지운 카드가 남아 있다', () => {
-    expect(DELETE_FN).toContain('loadData()')
+  it('삭제 뒤 목록을 다시 읽는다 — 안 하면 지운 행이 남아 있다', () => {
+    // 행은 부모(목록)의 refetch 를 `onChanged` 로 받는다.
+    expect(DELETE_FN).toContain('onChanged()')
   })
 
   it('🛡️ 본문 자르기가 실제로 함수에서 끝난다 (측정 0/과다는 통과가 아니다)', () => {

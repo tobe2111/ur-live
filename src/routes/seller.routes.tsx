@@ -8,6 +8,8 @@ import ErrorBoundary from '@/components/ErrorBoundary'
 import { ProtectedRoute, PublicRoute } from '@/components/auth/RouteGuards'
 
 const SellerPage = lazy(() => import('@/pages/SellerPage'))
+// 📱 2026-09-14: 다섯 번째 탭 '더보기' — 폰에서 사이드바를 대신한다(seller-primary-nav).
+const SellerMorePage = lazy(() => import('@/pages/SellerMorePage'))
 const SellerLoginPage = lazy(() => import('@/pages/SellerLoginPage')); const SellerRelinkPage = lazy(() => import('@/pages/SellerRelinkPage')) // 🔁 카카오 재연결
 // 🏁 2026-07-02 (대표 "B — 단일 퍼널"): 셀러 가입 단일 관문 = /seller/register/supplier.
 //   레거시 /seller/register(별도 아이디/비번 독립계정)·/seller/register/business(막다른 안내)는
@@ -113,6 +115,11 @@ export function SellerRoutes() {
         </ProtectedRoute>
       } />
       <Route path="/seller/dashboard" element={<Navigate to="/seller" replace />} />
+      <Route path="/seller/more" element={
+        <ProtectedRoute requireSeller>
+          <SellerMorePage />
+        </ProtectedRoute>
+      } />
       <Route path="/seller/tier" element={
         <ProtectedRoute requireSeller>
           <SellerTierPage />

@@ -93,7 +93,7 @@ export default function SellerStayDetailPage() {
 
   return (
     <SellerLayout title={info.name}>
-      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-6">
         <DashboardPageHeader
           title={info.name}
           subtitle={`${info.region_sido} ${info.region_sigungu} · 체크인 ${info.check_in_time} / 체크아웃 ${info.check_out_time}`}

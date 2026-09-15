@@ -183,19 +183,18 @@ export default function SellerAlimtalkPage() {
 
   return (
     <SellerLayout title={t('seller.brandMessage')} headerRight={headerRight}>
-      <div className="mx-auto max-w-3xl space-y-5 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-5">
         {/* 🛡️ 2026-04-22 배치 129: 리디자인 */}
-        {/* Balance Card — 모던 그라데이션 */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-6 text-white shadow-lg">
-          <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10" />
-          <div className="absolute -bottom-8 -right-2 h-16 w-16 rounded-full bg-white/10" />
-          <div className="relative">
-            <p className="text-xs font-medium text-blue-100">{t('seller.brandMessageCredits')}</p>
-            <p className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">
+        {/* 🎫 2026-09-14 (모바일 우선 재설계 ④ — 검은 면·그라디언트 0): 검정 그라디언트 잔액 카드 → 티켓(파란 밴드 + 흰 본문).
+            숫자가 주인공이고 장식 원 두 개는 뜻이 없어 뺐다. */}
+        <div className="overflow-hidden rounded-2xl border border-rule bg-white">
+          <div className="flex h-11 items-center px-4 text-[13px] font-bold text-white bg-brand">{t('seller.brandMessageCredits')}</div>
+          <div className="p-5">
+            <p className="text-[30px] font-extrabold leading-tight tracking-tight text-gray-900 sm:text-[34px]">
               {formatNumber(balance)}
-              <span className="ml-1 text-lg font-normal">{t('seller.creditsUnit')}</span>
+              <span className="ml-1 text-[15px] font-semibold text-gray-500">{t('seller.creditsUnit')}</span>
             </p>
-            <p className="mt-2 text-xs text-blue-100/90">{t('seller.brandMessageDesc')}</p>
+            <p className="mt-2 text-[12.5px] text-gray-500">{t('seller.brandMessageDesc')}</p>
           </div>
         </div>
 

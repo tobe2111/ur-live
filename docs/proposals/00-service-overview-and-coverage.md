@@ -291,9 +291,9 @@
 |---|---|---|---|
 | 도매몰 (유통스타트) | `wholesale-mall-brief.md` | 43 | 4 |
 | 오프라인 공구 / 동네딜 | `offline-groupbuy-brief.md` | 29 | 95 |
-| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 70 | 272 |
+| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 71 | 272 |
 | 유어샵 / 담기·소개 | `linkshop-brief.md` | 23 | 88 |
-| **합계** | — | **165** | **459** |
+| **합계** | — | **166** | **459** |
 
 ### 전체 커버리지 검증 (자동 — 빠진 기능 보증)
 
@@ -302,12 +302,12 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 365 | 1120 |
-| 도메인 버킷 (5개 소개서) | 165 | 459 |
+| 전체 | 366 | 1118 |
+| 도메인 버킷 (5개 소개서) | 166 | 459 |
 | 공통/인프라 (의도적 제외) | 166 | 476 |
-| **미커버 (점검 필요)** | **34** | **185** |
+| **미커버 (점검 필요)** | **34** | **183** |
 
-⚠️ **미커버 219건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 217건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -402,8 +402,6 @@
 - `POST /api/voucher-dispute/report` (`src/features/group-buy/api/voucher-dispute.routes.ts`)
 - `POST /become` (`src/features/supply/api/supplier-auth.routes.ts`)
 - `POST /become-distributor` (`src/features/supply/api/wholesale.routes.ts`)
-- `POST /cart/confirm-toss` (`src/features/group-buy/api/cart-checkout.routes.ts`)
-- `POST /cart/init` (`src/features/group-buy/api/cart-checkout.routes.ts`)
 - `GET /catalog` (`src/features/supply/api/wholesale.routes.ts`)
 - `GET /catalog-export` (`src/features/supply/api/wholesale-documents.routes.ts`)
 - `GET /catalog/:id{[0-9]+}` (`src/features/supply/api/wholesale.routes.ts`)
@@ -886,7 +884,7 @@
 
 #### 온라인 입점 / 라이브커머스
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (70개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (71개)
 
 - `/browse`
 - `/cart`
@@ -918,6 +916,7 @@
 - `/seller/ledger`
 - `/seller/login`
 - `/seller/marketing`
+- `/seller/more`
 - `/seller/notify-followers`
 - `/seller/operating`
 - `/seller/operators`
@@ -1726,7 +1725,7 @@
 
 
 
-> 마지막 생성: 2026-09-15T02:24:45.260Z
+> 마지막 생성: 2026-09-14T12:17:57.329Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

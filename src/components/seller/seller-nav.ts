@@ -5,7 +5,7 @@
  * (docs/design/seller-dashboard-v2.md — 매장업주·중개자 공용 콘솔)에서 nav 가 계속 바뀔 파일이라
  * 레이아웃 셸과 분리해 두는 것이 맞다. **여기는 데이터만** — 렌더링/필터링은 SellerLayout 이 한다.
  */
-import { LayoutDashboard, PlusCircle, ShoppingBag, Package, DollarSign, Megaphone, Bell, Building2, Heart, BarChart3, Ticket, Star, BarChart2, BookOpen, Tag, Sparkles, Boxes, ScanLine, Handshake, Receipt, Gift, Play, Rocket, Undo2, Users } from 'lucide-react'
+import { LayoutDashboard, PlusCircle, ShoppingBag, Package, DollarSign, Megaphone, Bell, Building2, BarChart3, Ticket, Star, BarChart2, BookOpen, Tag, Sparkles, Boxes, ScanLine, Handshake, Receipt, Gift, Rocket, Undo2, Users } from 'lucide-react'
 import { LIVE_COMMERCE_SUSPENDED, SELLER_STORE_ONLY_MODE } from '@/shared/feature-flags'
 import { SELLER_TAB_GROUPS, tabGroupSiblings } from './seller-tab-groups'
 
@@ -116,14 +116,8 @@ export const NAV_GROUPS: {
       // 🏭 크리에이터 전용 — 매장 사장님에겐 숨긴다(hideFor 는 항목 단위로 유지).
       { path: '/u/me/earnings', labelKey: 'seller.nav.curatorEarnings', icon: Sparkles, mode: 'common' as SellerMode, hideFor: ['store_owner'] as SellerType[] },
       { path: '/seller/prospects', labelKey: 'seller.nav.prospects', icon: Sparkles, mode: 'common' as SellerMode, hideFor: ['store_owner'] as SellerType[] },
-      /**
-       * 🎥 **라이브 전용 — 지금은 아무에게도 안 보인다**(`LIVE_COMMERCE_SUSPENDED` 가 렌더에서 거른다).
-       * 2026-09-03 통폐합 때 이 줄들을 **빠뜨렸다가 `check-orphan-routes` 가 잡았다.**
-       * 화면엔 어차피 안 뜨지만 정의에서 지우면 **라우트가 어디에서도 닿을 수 없는 상태**가 되고,
-       * 라이브가 돌아오는 날 조용히 사라진 채로 남는다. **숨기는 것과 없애는 것은 다르다.**
-       */
-      { path: '/seller/donations', labelKey: 'seller.donations', icon: Heart, mode: 'live' as SellerMode, hideFor: ['store_owner'] as SellerType[] },
-      { path: '/seller/castings', labelKey: 'seller.nav.castings', icon: Megaphone, mode: 'live' as SellerMode },
+      // 🗑️ 2026-09-14 (대표 "삭제할 건 없어?"): `/seller/donations`·`/seller/castings` 항목 삭제 — **라우트가 이미 없다**
+      //   (라이브 영구 중단 뒤 지워졌다). 라우트 없는 메뉴 정의는 "숨긴 것"이 아니라 낡은 지도다.
     ],
   },
   {
@@ -132,8 +126,8 @@ export const NAV_GROUPS: {
       { path: '/seller/business-info', labelKey: 'seller.businessInfo', icon: Building2, mode: 'common' as SellerMode },
       navFromGroup('/seller/stores'),
       navFromGroup('/seller/alimtalk'),
-      // 🎥 라이브 전용 — 위와 같은 이유로 정의에 남긴다(렌더에서는 게이트가 숨긴다).
-      { path: '/seller/streaming-guide', labelKey: 'seller.nav.streamingGuide', icon: Play, mode: 'live' as SellerMode },
+      // 🎥 라이브 전용 — 라우트가 살아 있는 것만 정의에 남긴다(렌더에서는 게이트가 숨긴다). `/seller/streaming-guide` 는
+      //   라우트가 없어 2026-09-14 에 지웠다.
       { path: '/seller/notify-followers', labelKey: 'seller.nav.notifyFollowers', icon: Megaphone, mode: 'live' as SellerMode },
     ],
   },

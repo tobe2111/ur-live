@@ -294,7 +294,7 @@ export default function SellerMealVoucherNewPage() {
   if (done) {
     return (
       <SellerLayout title={t('seller.mealVoucher.title')}>
-        <div className="mx-auto max-w-xl p-4 sm:p-6 lg:p-8">
+        <div className="mx-auto max-w-5xl">
           <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center mt-8">
             <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
             <h2 className="text-lg font-bold text-gray-900">{t('seller.mealVoucher.doneTitle', { defaultValue: '이용권이 등록됐어요!' })}</h2>
@@ -346,7 +346,7 @@ export default function SellerMealVoucherNewPage() {
 
   return (
     <SellerLayout title={t('seller.mealVoucher.title')}>
-      <div className="mx-auto max-w-3xl space-y-4 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-4">
         <DashboardPageHeader
           title={t('seller.mealVoucher.title')}
           subtitle={t('seller.mealVoucher.subtitle', { defaultValue: '이용권/공동구매 상품 등록' })}

@@ -92,7 +92,7 @@ export default function SellerBookingSlotsPage() {
 
   return (
     <SellerLayout title="예약 시간 관리">
-      <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-6">
         <DashboardPageHeader
           icon={<Calendar className="h-5 w-5" />}
           title="예약 시간 관리"

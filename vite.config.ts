@@ -277,6 +277,11 @@ export default defineConfig({
           // 🛡️ 2026-05-27 (loading P1): app-components 305KB 추가 분할.
           //   기존 'seller' 폴더 외에 SellerLayout / BulkUploadModal / ProductOptionForm /
           //   seller-public 폴더도 셀러 전용 → app-seller-components 로 묶음.
+          // 📱 2026-09-14 (모바일 우선 재설계): `components/seller-layout/`(하단 탭·nav 모델)은 SellerLayout 의 부품이라
+          //   셀러 봉투다. 규칙이 없으면 `components/` catch-all 로 app-components 에 떨어지고, 그 파일들이
+          //   `components/seller/seller-primary-nav` 를 import 하므로 **app-components → app-seller-components 순환**이 생겨
+          //   상세·유어샵·교환권 표면이 셀러 봉투(+app-dashboard)를 첫 페인트에 받았다(CI surface-role-leak 8건, 빌드 경고 'Circular chunk').
+          if (id.includes('/src/components/seller-layout/')) return 'app-seller-components'
           if (id.includes('/src/components/seller/')) return 'app-seller-components'
           if (id.includes('/src/components/SellerLayout')) return 'app-seller-components'
           if (id.includes('/src/components/seller-public/')) return 'app-seller-components'

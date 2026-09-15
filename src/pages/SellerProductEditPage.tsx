@@ -249,7 +249,7 @@ export default function SellerProductEditPage() {
 
   return (
     <SellerLayout title={t('seller.productEdit')}>
-      <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-6">
         {/* 🛡️ 2026-04-22 배치 132: SellerLayout 으로 전환 */}
         <DashboardPageHeader
           title={t('seller.productEdit')}

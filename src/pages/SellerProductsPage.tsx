@@ -133,7 +133,7 @@ export default function SellerProductsPage() {
   return (
     <SellerLayout title={t('seller.nav.products')}>
       <SellerProductTabs />
-      <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl">
         {/* 🛡️ 2026-04-22 배치 127: 디자인 시스템 적용 */}
         {/* 🎛️ 2026-08-31 (대표 — "버튼 배치가 중구난방이고 체계적이지 않다"): 액션 체계 적용.
             이전: [대량등록 양식 다운로드(에메랄드 아웃라인)] [대량등록(오렌지 아웃라인)]
