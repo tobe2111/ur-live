@@ -112,7 +112,12 @@ export default function BusinessLandingPage() {
       </section>
 
       {/* 4 핵심 가치 */}
-      <section className="bg-gray-50 dark:bg-[#1D1F29] px-6 lg:px-12 py-16">
+      {/* 🎫 2026-09-15: 이 띠는 **섹션**이지 카드가 아니다 — 다크에서 카드색(#1D1F29)을 쓰고 있어서,
+          같은 색이 된 안쪽 카드들이 묻혔다(두 빌드 A/B 실측: 구분 8 → 4). 페이지 톤으로 내린다.
+          ⚠️ 라이트 불변 — `bg-gray-50` 과 `--bg` 라이트가 둘 다 #F8F7FC.
+          ⚠️ 같은 짝(`bg-gray-50 dark:bg-[#1D1F29]`)을 일괄 치환하면 안 된다 — `/refund` 에서는
+          그 짝이 **카드**라, 일괄로 바꿨더니 16개가 페이지에 묻혔다(실측 후 되돌림). */}
+      <section className="bg-warm px-6 lg:px-12 py-16">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl lg:text-4xl font-extrabold text-center mb-12">
             왜 사장님들이 유어딜을 선택할까요?
