@@ -24,23 +24,23 @@ export default function BusinessSegments({ segments, onPick }: {
   onPick: (category: string, quick: 'email' | 'contact') => void
 }) {
   const card = (
-    tone: 'indigo' | 'emerald', emoji: string, title: string, n: number, hint: string,
+    tone: 'indigo' | 'emerald', _emoji: string, title: string, n: number, hint: string,
     cat: string, quick: 'email' | 'contact',
   ) => (
     <button onClick={() => onPick(cat, quick)}
       className={`text-left rounded-xl border-2 p-4 ${tone === 'indigo'
-        ? 'border-indigo-200 bg-indigo-50 hover:border-indigo-400'
-        : 'border-emerald-200 bg-emerald-50 hover:border-emerald-400'}`}>
-      <div className={`text-xs font-semibold ${tone === 'indigo' ? 'text-indigo-700' : 'text-emerald-700'}`}>{emoji} {title}</div>
-      <div className={`mt-1 text-3xl font-bold tabular-nums ${tone === 'indigo' ? 'text-indigo-700' : 'text-emerald-700'}`}>{formatNumber(n)}</div>
-      <div className={`mt-1 text-[11px] ${tone === 'indigo' ? 'text-indigo-600/80' : 'text-emerald-600/80'}`}>{hint}</div>
+        ? 'border-rule bg-white hover:border-indigo-400'
+        : 'border-rule bg-white hover:border-emerald-400'}`}>
+      <div className={`text-xs font-semibold ${tone === 'indigo' ? 'text-gray-700' : 'text-tone-ok'}`}>{title}</div>
+      <div className={`mt-1 text-3xl font-bold tabular-nums ${tone === 'indigo' ? 'text-gray-900' : 'text-tone-ok'}`}>{formatNumber(n)}</div>
+      <div className={`mt-1 text-[11px] ${tone === 'indigo' ? 'text-gray-700/80' : 'text-tone-ok/80'}`}>{hint}</div>
     </button>
   )
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-      {card('indigo', '💸', '페이백 — 지금 보낼 수 있는 명단', segments?.payback_ready || 0,
+      {card('indigo', '', '페이백 — 지금 보낼 수 있는 명단', segments?.payback_ready || 0,
         '온라인판매 · 이메일 보유 — 클릭하면 이 명단만 봅니다', '온라인판매', 'email')}
-      {card('emerald', '🤝', '제휴 대행 — 연락 가능한 대행사', segments?.agency_ready || 0,
+      {card('emerald', '', '제휴 대행 — 연락 가능한 대행사', segments?.agency_ready || 0,
         '대행사 · 전화 또는 이메일 — 지금은 얇습니다(새 수집 루트 필요)', '대행사', 'contact')}
     </div>
   )

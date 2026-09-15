@@ -135,34 +135,34 @@ export default function AdminVoucherOrdersPage() {
           </p>
 
           {/* 🛡️ 2026-06-17: 전체 발송 실패 배너 — 기간 무관(대시보드 "실패 N"과 일치). 시간창에 가려 안 보이던 문제 해소.
-              🔁 일괄 재발송 버튼 통합(머지) — 자동 3회 재시도 후에도 남은 실패분을 운영자가 한 번에 강제 재발송. */}
+              일괄 재발송 버튼 통합(머지) — 자동 3회 재시도 후에도 남은 실패분을 운영자가 한 번에 강제 재발송. */}
           {stats.failed_all > 0 && (
-            <div className="mb-3 px-4 py-3 rounded-lg border border-red-300 bg-red-50 flex flex-wrap items-center gap-2">
-              <span className="text-sm font-bold text-red-700">⚠️ 발송 실패 {stats.failed_all}건 (기간 무관 전체)</span>
-              <span className="text-xs text-red-600">— 아래 기간 필터와 무관하게 모든 실패 건입니다.</span>
+            <div className="mb-3 px-4 py-3 rounded-lg border border-rule bg-white flex flex-wrap items-center gap-2">
+              <span className="text-sm font-bold text-tone-bad">발송 실패 {stats.failed_all}건 (기간 무관 전체)</span>
+              <span className="text-xs text-tone-bad">— 아래 기간 필터와 무관하게 모든 실패 건입니다.</span>
               <div className="ml-auto flex items-center gap-2">
                 {statusFilter !== 'failed' && (
                   <button onClick={() => setStatusFilter('failed')}
-                    className="px-3 py-1.5 text-xs font-semibold bg-white text-red-700 border border-red-300 rounded hover:bg-red-100">
+                    className="px-3 py-1.5 text-xs font-semibold bg-white text-tone-bad border border-transparent rounded hover:bg-gray-100">
                     실패 {stats.failed_all}건 모두 보기 →
                   </button>
                 )}
                 {/* 🔁 2026-06-17: 발송 실패분 일괄 재발송 (옛 ERR0807 backlog 등 — 새 거래ID로 한 번에) */}
                 <button onClick={handleResendAllFailed} disabled={bulkResending}
-                  className="px-3 py-1.5 text-xs font-bold bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+                  className="ur-btn ur-btn-sm ur-btn-danger rounded disabled:opacity-50"
                   title="발송 실패한 교환권을 새 거래ID로 일괄 재발송 (최근 90일·최대 200건)">
-                  {bulkResending ? '재발송 중…' : '🔁 일괄 재발송'}
+                  {bulkResending ? '재발송 중…' : '일괄 재발송'}
                 </button>
               </div>
             </div>
           )}
 
           {/* 🎫 2026-06-17 (사용자 요청 "문제 없게"): 자동 복구 동작 안내 — 운영자가 매번 수동 재발송 안 해도 됨을 명시. */}
-          <div className="mb-3 px-4 py-3 rounded-lg border border-blue-200 bg-blue-50 text-xs text-blue-800 leading-relaxed">
-            <span className="font-bold">🤖 자동 복구 동작 중</span> — 발송 실패 건은 매시간 자동으로 최대 3회 재시도됩니다
+          <div className="mb-3 px-4 py-3 rounded-lg border border-rule bg-white text-xs text-gray-700 leading-relaxed">
+            <span className="font-bold">자동 복구 동작 중</span> — 발송 실패 건은 매시간 자동으로 최대 3회 재시도됩니다
             (미발송 확정 건이라 중복 발송 위험 없음). 3회까지 실패한 건만 아래에서 <span className="font-semibold">수동 재발송</span>하면 됩니다.
             <br />
-            <span className="text-blue-600">
+            <span className="text-gray-700">
               ※ "처리 중"이 30분 넘게 멈춘 건은 발송 여부가 불확실하여 중복 발송 방지를 위해 자동 재시도하지 않고 실패로 표시됩니다 — KT Alpha 구매내역 확인 후 필요 시 수동 재발송하세요.
             </span>
           </div>
@@ -170,11 +170,11 @@ export default function AdminVoucherOrdersPage() {
           {/* 🎫 2026-06-17: 실패 사유 집계 — 전화번호 없음 / API 에러 등 패턴 한눈에. */}
           {failureSummary.length > 0 && (
             <div className="mb-3 px-4 py-3 rounded-lg border border-gray-200 bg-white">
-              <div className="text-xs font-bold text-gray-700 mb-2">📊 실패 사유 분포 (기간 무관)</div>
+              <div className="text-xs font-bold text-gray-700 mb-2">실패 사유 분포 (기간 무관)</div>
               <div className="space-y-1">
                 {failureSummary.map((f, i) => (
                   <div key={i} className="flex items-center gap-2 text-xs">
-                    <span className="shrink-0 font-bold text-red-600 w-10 text-right">{f.cnt}건</span>
+                    <span className="shrink-0 font-bold text-tone-bad w-10 text-right">{f.cnt}건</span>
                     <span className="text-gray-600 truncate">{f.reason || '(사유 없음)'}</span>
                   </div>
                 ))}
@@ -193,23 +193,23 @@ export default function AdminVoucherOrdersPage() {
           </div>
 
           {ktStatus && (
-            <div className={`mb-3 px-4 py-3 rounded border ${ktStatus.dev_mode ? 'bg-amber-50 border-amber-300' : 'bg-green-50 border-green-300'}`}>
+            <div className={`mb-3 px-4 py-3 rounded border ${ktStatus.dev_mode ? 'bg-white border-rule' : 'bg-white border-rule'}`}>
               <div className="flex items-center gap-2 text-sm font-bold">
                 {ktStatus.dev_mode ? (
                   <>
-                    <span className="text-amber-700">⚠️ DEV 모드 — 실제 발송 안 됨 (기프티쇼 구매관리에 안 보임)</span>
+                    <span className="text-tone-warn">DEV 모드 — 실제 발송 안 됨 (기프티쇼 구매관리에 안 보임)</span>
                   </>
                 ) : (
-                  <span className="text-green-700">✅ LIVE 모드 — 실제 발송 + 기프티쇼 구매관리 반영</span>
+                  <span className="text-tone-ok">LIVE 모드 — 실제 발송 + 기프티쇼 구매관리 반영</span>
                 )}
               </div>
               <div className="text-xs text-gray-600 mt-1">
-                api_enabled: {ktStatus.api_enabled ? '✅' : '❌'} ·
-                user_id: {ktStatus.has_user_id ? '✅' : '❌'} ·
-                callback_no: {ktStatus.has_callback_no ? '✅' : '❌'}
+                api_enabled: {ktStatus.api_enabled ? 'OK' : 'FAIL'} ·
+                user_id: {ktStatus.has_user_id ? 'OK' : 'FAIL'} ·
+                callback_no: {ktStatus.has_callback_no ? 'OK' : 'FAIL'}
               </div>
               {ktStatus.dev_mode && (
-                <p className="text-xs text-amber-700 mt-2">
+                <p className="text-xs text-tone-warn mt-2">
                   해결: <code>/admin/kt-alpha/settings</code> 에서 dev_mode = 0 (또는 Cloudflare env KT_ALPHA_DEV_MODE=N)
                 </p>
               )}
@@ -217,13 +217,13 @@ export default function AdminVoucherOrdersPage() {
           )}
           <div className="flex gap-2 mb-3">
             {([1, 6, 24, 168] as const).map(h => (
-              <button key={h} onClick={() => setHours(h)} className={`px-3 py-1.5 text-sm rounded ${hours === h ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}>
+              <button key={h} onClick={() => setHours(h)} className={`px-3 py-1.5 text-sm rounded ${hours === h ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700'}`}>
                 {h === 168 ? '7일' : `${h}h`}
               </button>
             ))}
             <button onClick={load} className="px-3 py-1.5 text-sm bg-gray-100 rounded">새로고침</button>
             {statusFilter === 'failed' && (
-              <span className="self-center text-xs text-red-600 font-medium">※ 발송 실패 목록은 기간 무관 전체 표시</span>
+              <span className="self-center text-xs text-tone-bad font-medium">※ 발송 실패 목록은 기간 무관 전체 표시</span>
             )}
           </div>
           <div className="flex gap-2 mb-3">
@@ -234,17 +234,17 @@ export default function AdminVoucherOrdersPage() {
             ))}
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <div className="bg-amber-50 border border-amber-200 rounded p-3 text-center">
-              <div className="text-xs text-amber-700">처리 중</div>
-              <div className="text-xl font-extrabold text-amber-700">{stats.processing}</div>
+            <div className="bg-white border border-rule rounded p-3 text-center">
+              <div className="text-xs text-tone-warn">처리 중</div>
+              <div className="text-xl font-extrabold text-tone-warn">{stats.processing}</div>
             </div>
-            <div className="bg-green-50 border border-green-200 rounded p-3 text-center">
-              <div className="text-xs text-green-700">발송 완료</div>
-              <div className="text-xl font-extrabold text-green-700">{stats.sent}</div>
+            <div className="bg-white border border-rule rounded p-3 text-center">
+              <div className="text-xs text-tone-ok">발송 완료</div>
+              <div className="text-xl font-extrabold text-tone-ok">{stats.sent}</div>
             </div>
-            <div className="bg-red-50 border border-red-200 rounded p-3 text-center">
-              <div className="text-xs text-red-700">실패</div>
-              <div className="text-xl font-extrabold text-red-700">{stats.failed}</div>
+            <div className="bg-white border border-rule rounded p-3 text-center">
+              <div className="text-xs text-tone-bad">실패</div>
+              <div className="text-xl font-extrabold text-tone-bad">{stats.failed}</div>
             </div>
           </div>
         </div>
@@ -258,8 +258,8 @@ export default function AdminVoucherOrdersPage() {
         <div className="space-y-2">
           {rows.map(r => (
             <div key={r.id} className={`bg-white rounded-lg shadow p-3 border-l-4 ${
-              r.status === 'sent' ? 'border-green-500' :
-              r.status === 'failed' ? 'border-red-500' : 'border-amber-500'
+              r.status === 'sent' ? 'border-brand' :
+              r.status === 'failed' ? 'border-brand' : 'border-brand'
             }`}>
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
@@ -271,28 +271,28 @@ export default function AdminVoucherOrdersPage() {
                   </div>
                   <p className="text-sm font-bold text-gray-900 truncate">{r.goods_name}</p>
                   <p className="text-xs text-gray-600 mt-1">
-                    <span className="text-gray-400">받는 분</span> 📱 {r.recipient_phone}
+                    <span className="text-gray-400">받는 분</span> {r.recipient_phone}
                     <span className="mx-1.5 text-gray-300">|</span>
                     <span className="text-gray-400">단가</span> {r.unit_price.toLocaleString('ko-KR')}원
                     <span className="mx-1.5 text-gray-300">|</span>
                     <span className="text-gray-400">수량</span> {r.quantity}개
                   </p>
                   {r.sent_at && r.status === 'sent' && (
-                    <p className="text-[11px] text-green-600 mt-0.5">✅ 발송 완료: {formatKST(r.sent_at)}</p>
+                    <p className="text-[11px] text-tone-ok mt-0.5">발송 완료: {formatKST(r.sent_at)}</p>
                   )}
                   {r.external_order_id && <p className="text-[10px] text-gray-400 font-mono mt-1">KT 주문번호: {r.external_order_id}</p>}
                   {r.failure_reason && (
-                    <p className="text-[11px] text-red-700 mt-2 p-2 bg-red-50 rounded">⚠️ 실패 사유: {r.failure_reason}</p>
+                    <p className="text-[11px] text-tone-bad mt-2 p-2 border border-rule bg-white rounded">실패 사유: {r.failure_reason}</p>
                   )}
                   {/* 🎫 2026-06-17: 자동 재시도 횟수 — 3회 도달 시 수동 재발송만 남음을 안내. */}
                   {r.status === 'failed' && r.retry_count > 0 && (
                     <p className="text-[10px] text-gray-500 mt-1">
-                      🤖 자동 재시도 {r.retry_count}/3회{r.retry_count >= 3 ? ' — 자동 복구 소진, 수동 재발송 필요' : ' (다음 시간대 자동 재시도 예정)'}
+                      자동 재시도 {r.retry_count}/3회{r.retry_count >= 3 ? ' — 자동 복구 소진, 수동 재발송 필요' : ' (다음 시간대 자동 재시도 예정)'}
                     </p>
                   )}
                 </div>
                 {r.status === 'failed' && (
-                  <button onClick={() => handleResend(r.id)} className="ml-2 px-3 py-1.5 text-xs bg-gray-900 text-white rounded font-bold shrink-0">재발송</button>
+                  <button onClick={() => handleResend(r.id)} className="ur-btn ur-btn-sm ur-btn-primary ml-2 rounded shrink-0">재발송</button>
                 )}
               </div>
             </div>

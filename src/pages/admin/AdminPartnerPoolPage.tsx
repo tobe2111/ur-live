@@ -236,13 +236,13 @@ export default function AdminPartnerPoolPage() {
         if (run && parseStamp(runStamp(run)) >= clickedAt - 20_000) {
           const summary = fmtRun(run)
           const err = (run as { diag?: { error?: string } }).diag?.error
-          if (err) toast.error(`${label} 완료 — ⚠️ ${err}`, { duration: 12000 })
-          else toast.success(`✅ ${label} 완료${summary ? ` — ${summary}` : ''}`, { duration: 10000 })
+          if (err) toast.error(`${label} 완료 — ${err}`, { duration: 12000 })
+          else toast.success(`${label} 완료${summary ? ` — ${summary}` : ''}`, { duration: 10000 })
           await Promise.all([loadStats(), loadLeads()]) // 완료 시점에만 무거운 집계를 새로 받는다
           return
         }
       }
-      toast.info(`⏳ ${label} 아직 진행 중 — 완료 결과는 알림벨/상태줄에 반영됩니다`, { duration: 8000 })
+      toast.info(`${label} 아직 진행 중 — 완료 결과는 알림벨/상태줄에 반영됩니다`, { duration: 8000 })
       await Promise.all([loadStats(), loadLeads()])
     } catch (e) {
       // 409(이중 실행 잠금) = 실패가 아니라 "이미 돌고 있음" — 서버 메시지 그대로 안내(2026-07-27 대표 신고).
@@ -266,12 +266,12 @@ export default function AdminPartnerPoolPage() {
         const run = d ? (d as { reclassifyBurst?: { at?: string; scanned?: number; done?: boolean } }).reclassifyBurst : null
         if (run?.at && parseStamp(run.at) >= clickedAt - 20_000) {
           const done = !!run.done
-          toast.success(`✅ 분류 정리 완료 — ${fmtRun(run)}${done ? ' · 재검사 전량 소진' : ' · 잔여 있음(재클릭 또는 시간당 자동)'}`, { duration: 12000 })
+          toast.success(`분류 정리 완료 — ${fmtRun(run)}${done ? ' · 재검사 전량 소진' : ' · 잔여 있음(재클릭 또는 시간당 자동)'}`, { duration: 12000 })
           await loadLeads()
           return
         }
       }
-      toast.info('⏳ 분류 정리 아직 진행 중 — 완료 결과는 알림벨/상태줄에 반영됩니다', { duration: 8000 })
+      toast.info('분류 정리 아직 진행 중 — 완료 결과는 알림벨/상태줄에 반영됩니다', { duration: 8000 })
       await Promise.all([loadStats(), loadLeads()])
     } catch (e) {
       // 409(이중 실행 잠금) = 이전 클릭이 이미 돌고 있음 — 실패 아님(2026-07-27 대표 "분류 실패도 뜨네?").
@@ -313,7 +313,7 @@ export default function AdminPartnerPoolPage() {
         className={`text-left rounded-xl border p-4 transition ${on ? 'border-gray-900 bg-gray-900 text-white shadow-sm' : 'border-gray-200 bg-white hover:border-gray-400'}`}
         title={`클릭하면 이 조건으로 목록을 거릅니다${hint ? ` (${hint})` : ''}`}>
         <div className={`text-xs ${on ? 'text-gray-300' : 'text-gray-500'}`}>{label}</div>
-        <div className={`mt-1 text-2xl font-bold ${on ? 'text-white' : 'text-gray-900'}`}>{formatNumber(val)}</div>
+        <div className={`mt-1 dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight ${on ? 'text-white' : 'text-gray-900'}`}>{formatNumber(val)}</div>
         {hint && <div className={`mt-0.5 text-[11px] ${on ? 'text-gray-400' : 'text-gray-400'}`}>{hint}</div>}
       </button>
     )
@@ -326,7 +326,7 @@ export default function AdminPartnerPoolPage() {
   return (
     <AdminLayout title="파트너 풀">
       <div className="p-4 lg:p-6 max-w-7xl mx-auto">
-        <DashboardPageHeader title="🤝 파트너 풀" subtitle="유어딜 매장 입점을 대신 데려올 업체 DB — 수동입력·아웃리치 관리 (수집 ≠ 발송)" />
+        <DashboardPageHeader title="파트너 풀" subtitle="유어딜 매장 입점을 대신 데려올 업체 DB — 수동입력·아웃리치 관리 (수집 ≠ 발송)" />
 
         {/* 📬 오늘의 컨택 — 이메일 우선(대표 지시), 미접촉만 */}
         <TradePanel endpoint="/api/admin/partner-pool/keyword-trades" />
@@ -337,12 +337,12 @@ export default function AdminPartnerPoolPage() {
 
         {/* 통계 스트립 — 카드 클릭 = 필터 */}
         {laneHealth.length > 0 && (
-          <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-3">
-            <div className="text-sm font-semibold text-amber-800">⚠️ 수확이 없는 수집 레인</div>
+          <div className="mb-4 rounded-xl border border-rule bg-white p-3">
+            <div className="text-sm font-semibold text-tone-warn">수확이 없는 수집 레인</div>
             <ul className="mt-1 space-y-0.5">
-              {laneHealth.map(h => <li key={h.lane} className="text-xs text-amber-900"><span className="font-mono font-semibold">{h.lane}</span> — {h.message}</li>)}
+              {laneHealth.map(h => <li key={h.lane} className="text-xs text-tone-warn"><span className="font-mono font-semibold">{h.lane}</span> — {h.message}</li>)}
             </ul>
-            <div className="mt-1.5 text-[11px] text-amber-700">계속 이 상태면 해당 레인의 게이트를 끄는 것을 검토하세요 — 죽은 레인도 같은 도메인의 다른 레인과 회차 순번을 나눠 갖습니다.</div>
+            <div className="mt-1.5 text-[11px] text-tone-warn">계속 이 상태면 해당 레인의 게이트를 끄는 것을 검토하세요 — 죽은 레인도 같은 도메인의 다른 레인과 회차 순번을 나눠 갖습니다.</div>
           </div>
         )}
 
@@ -362,34 +362,34 @@ export default function AdminPartnerPoolPage() {
 
         {/* 액션 바 — 수집 5종 / 정리·보강 4종을 드롭다운으로 묶음(상시 노출 축소) */}
         <div className="flex flex-wrap items-center gap-2 mb-3">
-          <button onClick={() => setShowAdd(v => !v)} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium">{showAdd ? '입력 닫기' : '＋ 업체 추가'}</button>
+          <button onClick={() => setShowAdd(v => !v)} className="ur-btn ur-btn-md ur-btn-primary">{showAdd ? '입력 닫기' : '＋ 업체 추가'}</button>
           {/* 🚀 원클릭 전체 실행(2026-07-27 대표 "버튼이 너무 많달까?") — 수집 전 레인→보강→정리 한 사이클.
               개별 버튼(드롭다운)은 특정 레인 재실행/디버깅용으로 존치. */}
           <button onClick={() => runAction('run-all', '원클릭 전체 실행', 60)} disabled={busy !== ''}
-            className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50"
+            className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-50"
             title="수집 전 레인(네이버·카카오·상가정보·통신판매·프랜차이즈·나라장터·고용24·국민연금·폐업·메일검증) → 연락처 보강 → 분류 정리를 순서대로 전부 실행 — 완료되면 통합 결과를 알림">
-            {busy === 'run-all' || running?.runAll ? '⏳ 전체 실행 중…' : '🚀 전체 실행'}
+            {busy === 'run-all' || running?.runAll ? '전체 실행 중…' : '전체 실행'}
           </button>
-          <ActionMenu label="🔍 수집" busy={busy.startsWith('collect')} items={[
+          <ActionMenu label="수집" busy={busy.startsWith('collect')} items={[
             { label: '네이버 지역·웹 검색', desc: '대행사 등 tier1 — 지도 + 자체 사이트', onClick: () => runAction('collect', '레인 A 수집') },
             { label: '공공 상가정보', desc: 'tier 2~5 업종 통째 + 전화 역조회', onClick: () => runAction('collect-storeinfo', '상가정보 수집') },
             { label: '통신판매사업자', desc: '공정위 — 대표자 이메일이 붙어 옴', onClick: () => runAction('collect-commerce', '통신판매 수집') },
             { label: '프랜차이즈 본사', desc: '공정위 가맹 정보공개서', onClick: () => runAction('collect-franchise', '프랜차이즈 수집') },
             { label: '나라장터 상권 용역', desc: '상권활성화 계약 수주사 + 발주기관 담당자', onClick: () => runAction('collect-nara', '상권 용역 계약 수집') },
           ]} />
-          <ActionMenu label="🧹 정리·보강" busy={['enrich', 'enrich-burst', 'reclassify', 'sweep-nts', 'sweep-mx', 'collect-nps', 'match-registry?passes=5'].includes(busy)} items={[
-            { label: '📧 연락처 보강', desc: '홈페이지 크롤·네이버 발견으로 이메일 소급(허위 0)', onClick: () => runAction('enrich', '연락처 보강') },
-            { label: '🔗 원부 이메일 이식', desc: '통신판매 원부의 이메일을 상호+주소 확신 매칭으로 이식 — 크롤 0회·요청한도 무관(허위 0)', onClick: () => runAction('match-registry?passes=5', '원부 이메일 이식') },
-            { label: '🚀 보강 풀가동', desc: '연속 라운드로 몰아서 소진 — 잔여는 매시간 자동이 이어받음(중복 크롤 잠금)', onClick: () => runAction('enrich-burst', '이메일 보강 풀가동', 60) },
-            { label: '🧭 분류 정리 풀가동', desc: '공고·기사제목·정부기관 제거 + 업종 재분류 — 클릭당 최대 2.5만 행 소진', onClick: runReclassify },
-            { label: '🏛 폐업 정리', desc: '국세청 상태조회로 폐업 리드 정리', onClick: () => runAction('sweep-nts', '폐업 스윕') },
-            { label: '📮 메일 재검증', desc: '죽은 도메인(반송 확정) 이메일만 비움', onClick: () => runAction('sweep-mx', '이메일 재검증') },
-            { label: '👥 규모 조회(국민연금)', desc: '대행사 우선 — 직원수(가입자수)로 실조직/1인 구분. 엄격 매칭만 저장', onClick: () => runAction('collect-nps', '국민연금 규모 조회') },
+          <ActionMenu label="정리·보강" busy={['enrich', 'enrich-burst', 'reclassify', 'sweep-nts', 'sweep-mx', 'collect-nps', 'match-registry?passes=5'].includes(busy)} items={[
+            { label: '연락처 보강', desc: '홈페이지 크롤·네이버 발견으로 이메일 소급(허위 0)', onClick: () => runAction('enrich', '연락처 보강') },
+            { label: '원부 이메일 이식', desc: '통신판매 원부의 이메일을 상호+주소 확신 매칭으로 이식 — 크롤 0회·요청한도 무관(허위 0)', onClick: () => runAction('match-registry?passes=5', '원부 이메일 이식') },
+            { label: '보강 풀가동', desc: '연속 라운드로 몰아서 소진 — 잔여는 매시간 자동이 이어받음(중복 크롤 잠금)', onClick: () => runAction('enrich-burst', '이메일 보강 풀가동', 60) },
+            { label: '분류 정리 풀가동', desc: '공고·기사제목·정부기관 제거 + 업종 재분류 — 클릭당 최대 2.5만 행 소진', onClick: runReclassify },
+            { label: '폐업 정리', desc: '국세청 상태조회로 폐업 리드 정리', onClick: () => runAction('sweep-nts', '폐업 스윕') },
+            { label: '메일 재검증', desc: '죽은 도메인(반송 확정) 이메일만 비움', onClick: () => runAction('sweep-mx', '이메일 재검증') },
+            { label: '규모 조회(국민연금)', desc: '대행사 우선 — 직원수(가입자수)로 실조직/1인 구분. 엄격 매칭만 저장', onClick: () => runAction('collect-nps', '국민연금 규모 조회') },
           ]} />
-          <button onClick={() => setShowImport(v => !v)} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium" title="공정위 프랜차이즈 정보공개서·상인회 명부 CSV/TSV 붙여넣기(레인 B·C)">{showImport ? '닫기' : '📋 명부 붙여넣기'}</button>
+          <button onClick={() => setShowImport(v => !v)} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium" title="공정위 프랜차이즈 정보공개서·상인회 명부 CSV/TSV 붙여넣기(레인 B·C)">{showImport ? '닫기' : '명부 붙여넣기'}</button>
           <button onClick={() => downloadCsv(`/api/admin/partner-pool/export?format=csv&${buildQuery().toString()}`, `partner-leads-${new Date().toISOString().slice(0, 10)}.csv`)} className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-600 text-sm font-medium" title="⬇ 지금 화면 필터 그대로 CSV 로 — 엑셀 호환(BOM). 상한을 넘으면 파일 마지막 줄에 잘렸다고 적힙니다">⬇ CSV</button>
           {selected.size > 0 && (
-            <button onClick={deleteSelected} className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700">🗑 선택 삭제 ({selected.size})</button>
+            <button onClick={deleteSelected} className="ur-btn ur-btn-md ur-btn-danger">선택 삭제 ({selected.size})</button>
           )}
           <div className="grow" />
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="업체명·지역·전화·이메일·주소 검색" title="여러 단어를 넣으면 모두 포함된 업체만 나옵니다" className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm w-60" />
@@ -398,13 +398,13 @@ export default function AdminPartnerPoolPage() {
         {/* 수집·정리 상태줄 묶음(레인A/정리진행률/퍼널/통신판매/프랜차이즈/폐업/국민연금) */}
         {/* ⏳ 서버에서 도는 작업 표시 — 페이지를 떠났다 돌아와도 보임(작업은 브라우저와 무관하게 계속됨). */}
         {(running?.runAll || running?.enrich || running?.reclassify) && (
-          <div className="mb-3 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
-            ⏳ 백그라운드 실행 중: {[running.runAll && '전체 실행', running.enrich && '연락처 보강', running.reclassify && '분류 정리'].filter(Boolean).join(' · ')}
-            <span className="text-emerald-600"> — 페이지를 닫거나 이동해도 계속됩니다. 완료되면 알림벨에 결과가 남습니다.</span>
+          <div className="mb-3 text-xs text-tone-ok bg-white border border-rule rounded-lg px-3 py-2">
+            백그라운드 실행 중: {[running.runAll && '전체 실행', running.enrich && '연락처 보강', running.reclassify && '분류 정리'].filter(Boolean).join(' · ')}
+            <span className="text-tone-ok"> — 페이지를 닫거나 이동해도 계속됩니다. 완료되면 알림벨에 결과가 남습니다.</span>
           </div>
         )}
         {/* 🗂️ 수집 상태·키워드는 매일 볼 것이 아니라 기본으로 접는다(대표 "지금은 복잡함").
-            ⚠️ 숨김이 아니라 접기다 — 고장은 무수확 경고(laneHealth)가 위에서 따로 띄운다. */}
+            숨김이 아니라 접기다 — 고장은 무수확 경고(laneHealth)가 위에서 따로 띄운다. */}
         <button onClick={() => setShowOps(v => !v)} className="mb-2 text-xs text-gray-500 hover:text-gray-800">
           {showOps ? '▾ 수집 상태·키워드 접기' : '▸ 수집 상태·키워드 펼치기'}
         </button>
@@ -441,7 +441,7 @@ export default function AdminPartnerPoolPage() {
             <input value={add.website} onChange={e => setAdd({ ...add, website: e.target.value })} placeholder="홈페이지" className="px-3 py-2 rounded-lg border border-gray-300 text-gray-900 text-sm" />
             <input value={add.address} onChange={e => setAdd({ ...add, address: e.target.value })} placeholder="주소" className="px-3 py-2 rounded-lg border border-gray-300 text-gray-900 text-sm" />
             <div className="md:col-span-3 flex justify-end">
-              <button onClick={submitAdd} disabled={saving} className="px-5 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50">{saving ? '저장 중…' : '저장'}</button>
+              <button onClick={submitAdd} disabled={saving} className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-50">{saving ? '저장 중…' : '저장'}</button>
             </div>
           </div>
         )}
@@ -509,7 +509,7 @@ export default function AdminPartnerPoolPage() {
                 <tr><td colSpan={9} className="px-3 py-10 text-center text-gray-400">
                   조건에 맞는 업체가 없습니다.
                   {(quick || fType || fCategory || fTier || fStatus || q.trim()) && (
-                    <span> 위 &lsquo;적용 중&rsquo; 칩의 조건이 <b>모두 동시에</b> 걸려 있습니다 — <button onClick={() => { setQuick(''); setFType(''); setFCategory(''); setFTier(''); setFStatus(''); setQ('') }} className="text-blue-600 underline">전체 해제</button></span>
+                    <span> 위 &lsquo;적용 중&rsquo; 칩의 조건이 <b>모두 동시에</b> 걸려 있습니다 — <button onClick={() => { setQuick(''); setFType(''); setFCategory(''); setFTier(''); setFStatus(''); setQ('') }} className="text-brand-text underline">전체 해제</button></span>
                   )}
                 </td></tr>
               ) : leads.map(l => (
@@ -546,7 +546,7 @@ const LeadRow = memo(function LeadRow({ lead: l, checked, onToggle, onPatch, onR
 }) {
   const type = TYPE_META[l.lead_type || 'unknown'] || TYPE_META.unknown
   return (
-    <tr className={`border-b border-gray-100 align-top ${checked ? 'bg-rose-50' : ''}`}>
+    <tr className={`border-b border-gray-100 align-top ${checked ? 'border border-rule bg-white' : ''}`}>
       <td className="px-3 py-2">
         <input type="checkbox" aria-label={`${l.company_name} 선택`} checked={checked} onChange={e => onToggle(l.id, e.target.checked)} />
       </td>
@@ -558,21 +558,21 @@ const LeadRow = memo(function LeadRow({ lead: l, checked, onToggle, onPatch, onR
       </td>
       <td className="px-3 py-2">
         <div className="font-medium text-gray-900">
-          {l.active === 0 && <span className="mr-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-semibold" title="전화·이메일 미확보 — 주소로 수동 접촉 대상">연락처 미확보</span>}
+          {l.active === 0 && <span className="mr-1 text-[10px] px-1.5 py-0.5 rounded bg-tone-warn-bg text-tone-warn font-semibold" title="전화·이메일 미확보 — 주소로 수동 접촉 대상">연락처 미확보</span>}
           {l.company_name}
         </div>
         <div className="text-xs text-gray-400">
           <span className={`mr-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${type.cls}`} title={l.classify_confidence === 'registry' ? '정부 등록부 공식 업종' : l.classify_confidence === 'evidence' ? '업체 정보에 근거한 분류' : '검색 키워드로 추정한 분류 — 확인 필요'}>{type.label}</span>
           {[l.category, l.subcategory].filter(Boolean).join(' · ') || '—'}
-          {l.nps_members != null && <span className="ml-1 text-[10px] px-1 py-0.5 rounded bg-teal-50 text-teal-700 font-semibold" title="국민연금 가입자수(직원 규모) — 공개 가입내역 기반">👥 {l.nps_members}명</span>}
-          {l.website && <> · <a href={l.website.startsWith('http') ? l.website : `https://${l.website}`} target="_blank" rel="noreferrer" className="text-blue-600">홈</a></>}
+          {l.nps_members != null && <span className="ml-1 text-[10px] px-1 py-0.5 rounded bg-teal-50 text-teal-700 font-semibold" title="국민연금 가입자수(직원 규모) — 공개 가입내역 기반">{l.nps_members}명</span>}
+          {l.website && <> · <a href={l.website.startsWith('http') ? l.website : `https://${l.website}`} target="_blank" rel="noreferrer" className="text-gray-700">홈</a></>}
         </div>
-        {l.memo && <div className="text-xs text-gray-500 mt-0.5">📝 {l.memo}</div>}
+        {l.memo && <div className="text-xs text-gray-500 mt-0.5">{l.memo}</div>}
       </td>
       <td className="px-3 py-2 text-gray-700">{l.region || '—'}</td>
       <td className="px-3 py-2 text-gray-700">
-        {l.phone ? <div>📞 {l.phone}</div> : null}
-        {l.email ? <div className="text-xs text-gray-500">✉ {l.email} <button onClick={() => onBounce(l.id, l.email!)} className="ml-1 text-[10px] text-gray-300 hover:text-red-500" title="반송된 주소로 기록(억제 목록 — 재수집 차단)">반송</button></div> : null}
+        {l.phone ? <div>{l.phone}</div> : null}
+        {l.email ? <div className="text-xs text-gray-500">{l.email} <button onClick={() => onBounce(l.id, l.email!)} className="ml-1 text-[10px] text-gray-300 hover:text-tone-bad" title="반송된 주소로 기록(억제 목록 — 재수집 차단)">반송</button></div> : null}
         {!l.phone && !l.email && <span className="text-gray-300">—</span>}
         {(l.phone || l.email) && l.contact_source && <div className="text-[10px] text-gray-400 mt-0.5" title="연락처 출처">출처: {SRC_LABEL[l.contact_source] || l.contact_source}</div>}
       </td>
@@ -592,7 +592,7 @@ const LeadRow = memo(function LeadRow({ lead: l, checked, onToggle, onPatch, onR
       </td>
       <td className="px-3 py-2 whitespace-nowrap text-right">
         <button onClick={() => { const m = window.prompt('메모', l.memo || ''); if (m !== null) onPatch(l.id, { memo: m }) }} className="text-gray-400 hover:text-gray-700 text-xs mr-2">메모</button>
-        <button onClick={() => onRemove(l.id)} className="text-red-400 hover:text-red-600 text-xs">삭제</button>
+        <button onClick={() => onRemove(l.id)} className="text-gray-400 hover:text-tone-bad text-xs">삭제</button>
       </td>
     </tr>
   )

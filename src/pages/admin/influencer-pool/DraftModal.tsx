@@ -1,3 +1,4 @@
+import { X } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
 /**
@@ -23,19 +24,19 @@ export default function DraftModal({ name, email, draft, onClose, onOpenMail }: 
     <div className="fixed inset-0 z-[10500] flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div className="w-full max-w-lg max-h-[85dvh] overflow-y-auto rounded-xl bg-white p-5 shadow-xl" onClick={e => e.stopPropagation()}>
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-900">✍ {name} — 제안 초안</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 text-sm" aria-label="닫기">✕</button>
+          <h3 className="text-sm font-semibold text-gray-900">{name} — 제안 초안</h3>
+          <button onClick={onClose} className="ur-btn ur-btn-sm ur-btn-icon ur-btn-ghost" aria-label="닫기"><X className="h-4 w-4" /></button>
         </div>
 
         <div className="mb-1 flex items-center justify-between">
           <span className="text-xs font-medium text-gray-500">이메일 제목</span>
-          <button onClick={() => copy(draft.subject, '제목')} className="text-xs text-blue-600 hover:underline">복사</button>
+          <button onClick={() => copy(draft.subject, '제목')} className="text-xs text-brand-text hover:underline">복사</button>
         </div>
         <div className="mb-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900">{draft.subject}</div>
 
         <div className="mb-1 flex items-center justify-between">
           <span className="text-xs font-medium text-gray-500">이메일 본문</span>
-          <button onClick={() => copy(draft.body, '본문')} className="text-xs text-blue-600 hover:underline">복사</button>
+          <button onClick={() => copy(draft.body, '본문')} className="text-xs text-brand-text hover:underline">복사</button>
         </div>
         <div className="mb-3 whitespace-pre-wrap rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs leading-relaxed text-gray-800">{draft.body}</div>
 
@@ -43,7 +44,7 @@ export default function DraftModal({ name, email, draft, onClose, onOpenMail }: 
           <>
             <div className="mb-1 flex items-center justify-between">
               <span className="text-xs font-medium text-gray-500">DM · 쪽지용 짧은 버전</span>
-              <button onClick={() => copy(draft.dm, 'DM 버전')} className="text-xs text-blue-600 hover:underline">복사</button>
+              <button onClick={() => copy(draft.dm, 'DM 버전')} className="text-xs text-brand-text hover:underline">복사</button>
             </div>
             <div className="mb-3 whitespace-pre-wrap rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs leading-relaxed text-gray-800">{draft.dm}</div>
           </>
@@ -51,7 +52,7 @@ export default function DraftModal({ name, email, draft, onClose, onOpenMail }: 
 
         <div className="flex items-center justify-between gap-2">
           <span className="text-[11px] text-gray-400">{draft.generated_at ? `생성 ${draft.generated_at.slice(5, 16)}` : ''} · 검토·수정 후 직접 발송하세요(자동 발송 없음)</span>
-          {email && <button onClick={onOpenMail} className="shrink-0 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700">✉ 이 초안으로 메일 열기</button>}
+          {email && <button onClick={onOpenMail} className="ur-btn ur-btn-sm ur-btn-primary shrink-0">이 초안으로 메일 열기</button>}
         </div>
       </div>
     </div>

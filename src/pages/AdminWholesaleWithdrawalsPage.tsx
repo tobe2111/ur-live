@@ -105,7 +105,7 @@ export default function AdminWholesaleWithdrawalsPage({ embedded = false }: { em
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium ${filter === f ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-700'}`}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium ${filter === f ? 'bg-brand text-white' : 'bg-white border border-gray-200 text-gray-700'}`}
             >
               {label}
             </button>
@@ -154,7 +154,7 @@ export default function AdminWholesaleWithdrawalsPage({ embedded = false }: { em
                           <button
                             onClick={() => approve(req)}
                             disabled={actingId === req.id}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-900 text-white rounded-lg text-xs font-medium disabled:opacity-50"
+                            className="ur-btn ur-btn-sm ur-btn-primary inline-flex items-center gap-1 disabled:opacity-50"
                           >
                             {actingId === req.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} 송금 완료
                           </button>

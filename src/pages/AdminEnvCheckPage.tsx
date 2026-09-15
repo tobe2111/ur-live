@@ -71,9 +71,9 @@ export default function AdminEnvCheckPage() {
 
   const StatusBadge = ({ ok, label }: { ok: boolean; label?: string }) => (
     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-      ok ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+      ok ? 'bg-tone-ok-bg text-tone-ok' : 'bg-tone-bad-bg text-tone-bad'
     }`}>
-      {ok ? '✅' : '❌'} {label || (ok ? 'OK' : 'FAIL')}
+      {label || (ok ? 'OK' : 'FAIL')}
     </span>
   )
 
@@ -90,26 +90,26 @@ export default function AdminEnvCheckPage() {
             </button>
           </div>
           {healthy !== null && (
-            <div className={`mt-2 px-4 py-3 rounded ${healthy ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+            <div className={`mt-2 px-4 py-3 rounded ${healthy ? 'bg-white border border-rule' : 'bg-white border border-rule'}`}>
               {healthy ? (
-                <p className="text-sm font-bold text-green-800">✅ 모든 환경변수 정상 — production 결제 정상 동작</p>
+                <p className="text-sm font-bold text-tone-ok">모든 환경변수 정상 — production 결제 정상 동작</p>
               ) : (
-                <p className="text-sm font-bold text-red-800">❌ 환경변수에 이슈 있음 — 아래 조치 필요</p>
+                <p className="text-sm font-bold text-tone-bad">환경변수에 이슈 있음 — 아래 조치 필요</p>
               )}
             </div>
           )}
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded p-3 mb-4 text-sm text-red-800">
-            ⚠️ API 호출 실패: {error}
+          <div className="bg-white border border-rule rounded p-3 mb-4 text-sm text-tone-bad">
+            API 호출 실패: {error}
           </div>
         )}
 
         {/* 🆕 운영 인프라 점검 — 1인 운영 필수 env/바인딩 ✅·❌ (설정 후 재검증으로 확인) */}
         {bindings && (
           <div className="bg-white rounded-lg shadow overflow-hidden mb-4">
-            <h2 className="text-sm font-bold text-gray-900 px-4 py-3 border-b border-gray-100">🛠️ 운영 인프라 (1인 운영 필수)</h2>
+            <h2 className="text-sm font-bold text-gray-900 px-4 py-3 border-b border-gray-100">운영 인프라 (1인 운영 필수)</h2>
             <table className="w-full text-sm">
               <tbody>
                 <tr className="border-b border-gray-100">
@@ -130,7 +130,7 @@ export default function AdminEnvCheckPage() {
                 </tr>
                 <tr>
                   <td className="px-4 py-3 font-medium text-gray-700">KT 인앱 바코드(PIN) 모드 <span className="text-xs text-gray-500">KT_ALPHA_PIN_MODE</span></td>
-                  <td className="px-4 py-3 text-gray-600">{bindings.ktAlphaPinMode ? '✅ ON (인앱 바코드)' : '— OFF (문자 발송, 정상)'}</td>
+                  <td className="px-4 py-3 text-gray-600">{bindings.ktAlphaPinMode ? 'ON (인앱 바코드)' : '— OFF (문자 발송, 정상)'}</td>
                 </tr>
               </tbody>
             </table>
@@ -140,14 +140,14 @@ export default function AdminEnvCheckPage() {
         {data && (
           <>
             {data.issues.length > 0 && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-                <h2 className="text-sm font-bold text-red-900 mb-2">발견된 issues</h2>
+              <div className="bg-white border border-rule rounded-lg p-4 mb-4">
+                <h2 className="text-sm font-bold text-tone-bad mb-2">발견된 issues</h2>
                 <ul className="space-y-1">
                   {data.issues.map((i, idx) => (
-                    <li key={idx} className="text-sm text-red-800">• {i}</li>
+                    <li key={idx} className="text-sm text-tone-bad">• {i}</li>
                   ))}
                 </ul>
-                <div className="mt-3 pt-3 border-t border-red-200 text-xs text-red-700">
+                <div className="mt-3 pt-3 border-t border-rule text-xs text-tone-bad">
                   <p className="font-bold mb-1">해결:</p>
                   <ol className="list-decimal list-inside space-y-0.5">
                     <li>Cloudflare Dashboard → Pages → ur-live → Settings → Environment variables and secrets</li>

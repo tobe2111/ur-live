@@ -20,6 +20,8 @@
  *     상품 단위 수정이 매장 프로필을 덮으면 안 된다.
  */
 import { getSellerMeta, setSellerMeta } from './seller-meta'
+// ⚠️ worker 는 `@/` alias 를 못 쓴다(상대경로 필수). 역할 판정은 SSOT 헬퍼만 — 직접 비교는 `both`(매장 겸업)를 놓친다.
+import { isStoreOwner } from '../../shared/seller-roles'
 
 export interface StoreProfile {
   name: string
@@ -175,4 +177,62 @@ export async function adoptStoreProfileFromProduct(
   fill('store_lng', f.restaurant_lng)
   fill('store_verify_pin', f.store_verify_pin)
   if (Object.keys(patch).length > 0) await setSellerMeta(DB, sellerId, patch)
+}
+
+/**
+ * 🔒 등록 시 매장 필드를 **좌석의 canonical** 로 확정 (2026-09-15 대표 "매장을 등록해야 그 매장에 맞는 이용권만 만들지").
+ *
+ * ## 무엇을 막는가 — 상호와 귀속이 갈리는 사고
+ *   이용권↔매장 결합의 유일한 키는 `products.seller_id`(= 제출 순간 앉아 있던 좌석)인데, 폼의
+ *   상호·주소·좌표는 **검증 없는 텍스트 복사본**으로 따로 저장된다. 그래서 좌석 A 에 앉아 매장 B 의
+ *   상호를 타이핑하면 **소비자에겐 B 로 보이고 정산·주문·통계는 A 로 가는** 상품이 만들어진다.
+ *   서버는 그 둘을 한 번도 대조하지 않았다(등록 핸들러 전체에 대조 로직 0).
+ *
+ * ## 방식 — 막지 않고 **정정**한다 (fail-open)
+ *   canonical 이 있으면 폼 값을 무시하고 canonical 로 덮는다. 400 으로 막지 않는 이유: 매장명 표기가
+ *   조금만 달라도(지점명·띄어쓰기) 정상 등록이 통째로 막힌다 — 이 레포가 반복해 당한 lock-out 클래스다.
+ *   정정은 조용히 하지 않는다: 바뀐 필드 이름을 `corrected` 로 돌려줘 호출부가 로그를 남긴다.
+ *
+ * ## canonical 판정 — 명시적 신호만 신뢰
+ *   `seller_meta.store_name`(첫 이용권 등록이 채운 값) → **`seller_type='store_owner'` 인 좌석의**
+ *   `business_name`/`name`(매장 등록이 채운 값). 개인 셀러 계정의 `name` 은 사람 이름일 수 있어
+ *   매장명으로 쓰지 않는다 ⇒ 매장 프로필이 없는 좌석은 **영향 0**(폼 값 그대로, adopt 가 프로필을 만든다).
+ *
+ * ⚠️ 좌표·주소·전화는 canonical 에 **값이 있을 때만** 덮는다. 없으면 폼 값을 살린다 —
+ *    지도에서 처음 고른 좌표가 프로필에 없다는 이유로 버려지면 소비자 지도에서 사라진다.
+ * ⚠️ PIN 은 건드리지 않는다(위 신중 노트 — 매장 검증 무장해제 방지).
+ */
+export async function resolveStoreFieldsForProduct(
+  DB: D1Database,
+  sellerId: number,
+  body: { restaurant_name?: unknown; restaurant_address?: unknown; restaurant_phone?: unknown
+          restaurant_lat?: unknown; restaurant_lng?: unknown },
+): Promise<{ fields: Record<string, string>; corrected: string[] }> {
+  const empty = { fields: {}, corrected: [] as string[] }
+  const meta = await getSellerMeta(DB, [sellerId]).then((m) => m.get(sellerId) || {}).catch(() => null)
+  if (meta === null) return empty // 조회 실패 — 폼 값 그대로(등록을 막지 않는다)
+  const seller = await DB.prepare(
+    `SELECT name, business_name, phone, address, seller_type FROM sellers WHERE id = ?`
+  ).bind(sellerId).first<{
+    name: string | null; business_name: string | null; phone: string | null
+    address: string | null; seller_type: string | null
+  }>().catch(() => null)
+
+  const isStore = isStoreOwner(seller?.seller_type)
+  const name = s(meta.store_name) || (isStore ? s(seller?.business_name) || s(seller?.name) : '')
+  if (!name) return empty // 매장 프로필 없음 = 첫 등록 — adopt(fill-if-empty)가 이 값을 프로필로 승격시킨다
+
+  const canonical: Record<string, string> = { restaurant_name: name }
+  const put = (key: string, v: string) => { if (v) canonical[key] = v }
+  put('restaurant_address', s(meta.store_address) || (isStore ? s(seller?.address) : ''))
+  put('restaurant_phone', s(meta.store_phone) || (isStore ? s(seller?.phone) : ''))
+  put('restaurant_lat', s(meta.store_lat))
+  put('restaurant_lng', s(meta.store_lng))
+
+  const corrected: string[] = []
+  for (const [k, v] of Object.entries(canonical)) {
+    const given = s((body as Record<string, unknown>)[k])
+    if (given && given !== v) corrected.push(k)
+  }
+  return { fields: canonical, corrected }
 }

@@ -111,3 +111,12 @@
 ## ✅ 구현 완료
 
 (구현하면서 commit hash 를 여기에 적는다)
+
+
+## ✅ 어드민 합류 (2026-09-15 — 대표 "다른 대시보드들의 페이지들도 개선 계속")
+
+대표의 "된다면 어드민 대시보드도"가 실행됐다. 어드민 셸(`AdminLayout`)이 셀러와 같은 224px 흰 사이드바·헤어라인·
+13px 상단바이고, `.admin-light-theme` 이 자기 블록에서 D3 토큰(8px·17px·22px)을 선언한다. 163 페이지는 코드모드로
+색 정보상자 460 → 0 · 이모지 743 → 0 · 원시/색 단색 버튼 255 → `ur-btn` · `rounded-2xl` 70 → 토큰.
+가드: `admin-tones-2026-09-15.test.ts` · 주입 `scripts/mutations/admin-{d3,tones}.mjs`. 인계: `docs/handoff/2026-09-15-admin-d3.md`.
+남은 것: 어드민 `text-2xl` 숫자 30곳의 `dash-num` 이행, 홈의 Rinda 빈 상태 문구.

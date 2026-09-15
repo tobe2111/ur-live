@@ -884,6 +884,23 @@ sellerOrdersRoutes.post('/products', async (c) => {
     // 🛡️ 디지털 상품 필드 저장 — 컬럼별 개별 UPDATE(마이그레이션 미실행 환경 대비). SSOT: product-field-writers.
     await writeDigitalProductFields(db, Number(productId), body);
 
+    // 🔒 2026-09-15 (대표 "매장을 등록해야 그 매장에 맞는 이용권만 만들지") — **매장 확정**.
+    //   이용권↔매장 결합의 유일한 키는 이 좌석(seller_id)인데 상호·주소·좌표는 폼에서 온 텍스트라
+    //   서로 갈릴 수 있었다(좌석 A + 매장 B 상호 → 소비자는 B, 정산은 A). 좌석에 매장 프로필이 있으면
+    //   그것으로 **정정**한다(막지 않는다 — 표기 차이로 등록이 잠기면 안 된다). SSOT: utils/store-profile.
+    //   ⚠️ 빠른 등록(/seller/products/quick)은 매장을 아예 안 묻는다 → 여기서 채워야 지도에 뜬다.
+    try {
+      const { resolveStoreFieldsForProduct } = await import('../../../worker/utils/store-profile');
+      const { fields, corrected } = await resolveStoreFieldsForProduct(db, Number(sellerId), body);
+      if (Object.keys(fields).length > 0) {
+        // 조용히 바꾸지 않는다 — 무엇이 정정됐는지 남긴다(셀러 문의 시 유일한 근거).
+        if (corrected.length > 0) console.warn('[seller:store-canonical]', JSON.stringify({ productId, sellerId, corrected }));
+        Object.assign(body, fields);
+        // 이용권 카테고리면 바로 아래 writer 가 쓴다. 아니면(빠른 등록·공구) 여기서 직접.
+        if (!isVoucherCategory(category)) await writeVoucherProductFields(db, Number(productId), fields);
+      }
+    } catch { /* fail-soft — 매장 확정 실패가 상품 등록을 막으면 안 된다 */ }
+
     if (isVoucherCategory(category)) { // 손으로 적던 6-way 목록 → SSOT 판정(정규화 후라 충분)
       await writeVoucherProductFields(db, Number(productId), body as Record<string, unknown>);
 

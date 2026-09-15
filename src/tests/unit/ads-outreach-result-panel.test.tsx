@@ -34,7 +34,7 @@ const PAGE = readFileSync(join(process.cwd(), 'src/pages/admin/AdminInfluencerPo
 
 function openPanel() {
   const r = render(<OutreachResultPanel />)
-  fireEvent.click(r.getByText('📬 발송 결과 반영'))
+  fireEvent.click(r.getByText('발송 결과 반영'))
   return r
 }
 const paste = (r: ReturnType<typeof render>, text: string) =>

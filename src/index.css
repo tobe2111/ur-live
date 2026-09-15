@@ -471,6 +471,20 @@
   --brand-tint: #EAF1FE;
   --brand-text: #1C69EF;
 }
+/* 🧮 2026-09-15 (대표 "다른 대시보드들의 페이지들도 개선 계속") — 어드민도 같은 D3 밀도. 값은 셀러 블록과 **같은 숫자**를
+   따로 선언한다(공용 블록에 두면 두 스코프가 한 몸이 되어 한쪽만 조정할 수 없다). 09-15 오전의 "셀러만 D3" 약속은
+   이 결정으로 대체됐다 — 가드 `seller-d3-2026-09-15.test.ts` 가 이 블록을 고정한다. */
+.admin-light-theme {
+  --brand-tint: #EAF1FE;   /* 셀러 블록과 같은 되박기 — 순서만 다르다(주입 앵커 "블록 자기 끝" 이 셀러 블록만 가리키게) */
+  --brand-text: #1C69EF;
+  --dash-radius: 8px;
+  --dash-h1: 17px;
+  --dash-h1-sm: 18px;
+  --dash-stat: 22px;
+  --dash-gap: 14px;
+  --dash-pad-x: 16px;
+  --dash-pad-y: 12px;
+}
 /* 🏝️ 늘 밝은 표면 — **테마가 갈리는 토큰을 전부 라이트 값으로 되박는다.**
    ⚠️ 2026-09-15 (대표 신고 "글자가 안보여 … 다크모드일 때 저러나봐"): 종전엔 이 목록이 `--lift`·
    `--rule*`·`--tone-*` 뿐이라 **나머지가 다크 값 그대로 샜다.** 지도 위 딜 카드의 할인율이
@@ -1480,10 +1494,10 @@ html.dark .gbd, [data-theme="dark"] .gbd {
 
 /* 🧮 2026-09-15 D3: 숫자는 표처럼 — 모노스페이스·고정폭 자릿수. 페이지가 아니라 숫자 요소에 붙인다(제목·본문엔 금지). */
 .dash-num { font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
-/* 🧮 D3: 셀러 스코프에서 페이지 헤더의 장식 아이콘 칩은 그리지 않는다(어드민은 그대로). 폰에서는 페이지 제목도 숨긴다 —
-   레이아웃의 폰 제목 줄(SellerLayout `.dash-phone-title`)이 같은 글자를 한 번만 그린다(두 번 말하지 않는다). */
-.seller-light-theme .dash-header-icon { display: none; }
-@media (max-width: 767px) { .seller-light-theme .dash-page-title { display: none; } }
+/* 🧮 D3: 셀러·어드민 스코프에서 페이지 헤더의 장식 아이콘 칩은 그리지 않는다(2026-09-15 어드민 합류). 폰에서는 페이지
+   제목도 숨긴다 — 레이아웃의 폰 제목 줄(`.dash-phone-title`)이 같은 글자를 한 번만 그린다(두 번 말하지 않는다). */
+.seller-light-theme .dash-header-icon, .admin-light-theme .dash-header-icon { display: none; }
+@media (max-width: 767px) { .seller-light-theme .dash-page-title, .admin-light-theme .dash-page-title { display: none; } }
 
 /* 🛡️ 2026-05-20: 라이브/쇼츠/숏폼 카드 공통 utility (CSP unsafe-inline 제거 — style={{}} 일괄 제거) */
 .ur-live-pill {

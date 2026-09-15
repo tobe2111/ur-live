@@ -149,7 +149,7 @@ export default function AdminErrorsPage() {
                   key={h}
                   onClick={() => setHours(h)}
                   className={`px-3 py-1.5 text-sm rounded ${
-                    hours === h ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'
+                    hours === h ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700'
                   }`}
                 >
                   {h === 168 ? '7일' : `${h}h`}
@@ -159,9 +159,9 @@ export default function AdminErrorsPage() {
               {groups.length > 0 && (
                 <button
                   onClick={() => doCopy('__all__', groups.map(formatGroupText).join('\n\n'))}
-                  className="px-3 py-1.5 text-sm bg-gray-900 text-white rounded"
+                  className="ur-btn ur-btn-sm ur-btn-primary rounded"
                 >
-                  {copiedKey === '__all__' ? '✓ 복사됨' : '전체 복사'}
+                  {copiedKey === '__all__' ? '복사됨' : '전체 복사'}
                 </button>
               )}
             </div>
@@ -172,8 +172,8 @@ export default function AdminErrorsPage() {
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded p-3 mb-4 text-sm text-red-800">
-            ⚠️ {error}
+          <div className="bg-white border border-rule rounded p-3 mb-4 text-sm text-tone-bad">
+            {error}
           </div>
         )}
 
@@ -181,7 +181,7 @@ export default function AdminErrorsPage() {
 
         {!loading && groups.length === 0 && (
           <div className="bg-white rounded-lg p-8 text-center text-gray-500">
-            🎉 최근 {hours}시간 동안 발생한 에러 없음
+            최근 {hours}시간 동안 발생한 에러 없음
           </div>
         )}
 
@@ -204,9 +204,9 @@ export default function AdminErrorsPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${
-                          g.type === 'error' ? 'bg-red-100 text-red-700' :
-                          g.type === 'unhandledrejection' ? 'bg-orange-100 text-orange-700' :
-                          'bg-blue-100 text-blue-700'
+                          g.type === 'error' ? 'bg-tone-bad-bg text-tone-bad' :
+                          g.type === 'unhandledrejection' ? 'bg-tone-warn-bg text-tone-warn' :
+                          'bg-tone-info-bg text-tone-info'
                         }`}>
                           {g.type}
                         </span>
@@ -221,7 +221,7 @@ export default function AdminErrorsPage() {
                           <span key={ua} className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">{ua} {n}</span>
                         ))}
                         {g.botCount > 0 && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700" title="봇/크롤러가 만든 건수 — 사람 트래픽과 분리해서 볼 것">
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-tone-info-bg text-tone-info" title="봇/크롤러가 만든 건수 — 사람 트래픽과 분리해서 볼 것">
                             봇 {g.botCount}
                           </span>
                         )}
@@ -235,7 +235,7 @@ export default function AdminErrorsPage() {
                     title="이 에러 문구 복사"
                     className="shrink-0 px-3 border-l border-gray-100 text-xs font-medium text-gray-600 hover:bg-gray-50"
                   >
-                    {copiedKey === key ? '✓ 복사됨' : '복사'}
+                    {copiedKey === key ? '복사됨' : '복사'}
                   </button>
                 </div>
 
@@ -274,7 +274,7 @@ export default function AdminErrorsPage() {
                               </span>
                             ))}
                           </div>
-                          {note && <p className="mt-1.5 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">{note}</p>}
+                          {note && <p className="mt-1.5 text-[11px] text-tone-warn bg-tone-warn-bg border border-transparent rounded px-2 py-1">{note}</p>}
                           {f.lastErr && f.lastErr !== '(none)' && (
                             <p className="mt-1.5 text-[11px] font-mono text-gray-700 break-all">마지막 에러: {f.lastErr}</p>
                           )}
@@ -293,7 +293,7 @@ export default function AdminErrorsPage() {
                             {' '}
                             <span className="text-gray-400">user={r.user_id || 'anon'}</span>
                             {' '}
-                            <span className="text-indigo-600">{shortUA(r.user_agent)}</span>
+                            <span className="text-gray-700">{shortUA(r.user_agent)}</span>
                           </div>
                         ))}
                       </div>

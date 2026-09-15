@@ -27,14 +27,14 @@ ${region ? `${region} 지역` : '지역'}에서 ${cat || '로컬'} 콘텐츠를 
 ※ 이런 제안을 원치 않으시면 "수신거부"라고 회신 주세요. 목록에서 즉시 제외되며 다시 연락드리지 않습니다.`
 
   return (
-    <div className="mb-3 rounded-lg border border-indigo-300 bg-indigo-50 px-4 py-3">
+    <div className="mb-3 rounded-lg border border-rule bg-white px-4 py-3">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="text-[13px] text-indigo-900">
-          <b>🎯 주문 이행 중</b> — 의뢰 매장: <b>{store}</b>{region ? ` · ${region}` : ''}{cat ? ` · ${cat}` : ''}
-          <div className="text-[11px] text-indigo-700 mt-0.5">발송 명의 규칙: <b>유어애즈 명의 + "의뢰: {store}" 병기</b>(매장 사칭 금지) · 수신거부 문구 필수 — 아래 템플릿에 반영됨</div>
+        <div className="text-[13px] text-gray-700">
+          <b>주문 이행 중</b> — 의뢰 매장: <b>{store}</b>{region ? ` · ${region}` : ''}{cat ? ` · ${cat}` : ''}
+          <div className="text-[11px] text-gray-700 mt-0.5">발송 명의 규칙: <b>유어애즈 명의 + "의뢰: {store}" 병기</b>(매장 사칭 금지) · 수신거부 문구 필수 — 아래 템플릿에 반영됨</div>
         </div>
         <button onClick={() => { navigator.clipboard?.writeText(template).then(() => toast.success('협찬 제안 템플릿 복사됨 — 발송 모드에서 붙여넣고 {인플루언서명}만 바꿔 보내세요')) }}
-          className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold shrink-0">📋 제안 템플릿 복사</button>
+          className="ur-btn ur-btn-sm ur-btn-primary shrink-0">제안 템플릿 복사</button>
       </div>
     </div>
   )
