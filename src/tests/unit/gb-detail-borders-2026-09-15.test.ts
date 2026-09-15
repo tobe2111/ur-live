@@ -27,18 +27,22 @@ const BOX = stripComments(readFileSync('src/pages/group-buy/DealPurchaseBox.tsx'
 const MENU = stripComments(readFileSync('src/pages/group-buy/DealMenuList.tsx', 'utf-8'))
 const USAGE = stripComments(readFileSync('src/pages/group-buy/UsageGuide.tsx', 'utf-8'))
 const BAR = stripComments(readFileSync('src/pages/group-buy/DealBottomBar.tsx', 'utf-8'))
+// 🔀 2026-09-15 머지: 매장 위치 블록이 `StoreLocation` 부품으로 추출됐다(같은 날 안 B 작업).
+//   불변식은 그대로이고 **읽을 파일만** 옮긴다 — 안 옮기면 이 시험은 코드가 이사한 순간
+//   "정상인데 빨간불" 이 되고, 억지로 지우면 그 자리는 아무도 안 지키게 된다.
+const STORE = stripComments(readFileSync('src/pages/group-buy/StoreLocation.tsx', 'utf-8'))
 
 describe('걷어낸 것 — 카드를 두르던 테두리 4곳', () => {
   it('① 매장 위치: 지도 상자와 주소 줄이 한 상자를 이루지 않는다', () => {
     // 종전: 지도 `border … borderBottom:none` + 주소 `border … borderTop:none` 으로 상자 한 개.
-    expect(DETAIL).not.toMatch(/borderRadius: '14px 14px 0 0'/)
-    expect(DETAIL).not.toMatch(/borderRadius: '0 0 14px 14px'/)
-    expect(DETAIL).toMatch(/<div style=\{\{ borderRadius: 14, overflow: 'hidden' \}\}>/)
+    expect(STORE).not.toMatch(/borderRadius: '14px 14px 0 0'/)
+    expect(STORE).not.toMatch(/borderRadius: '0 0 14px 14px'/)
+    expect(STORE).toMatch(/<div style=\{\{ borderRadius: 14, overflow: 'hidden' \}\}>/)
   })
 
   it('② 주소 줄이 섹션 본문 여백에 맞는다 (좌우 패딩 0)', () => {
     // 상자를 없앴으니 안쪽 패딩도 없어야 다른 섹션과 왼쪽이 맞는다.
-    expect(DETAIL).toMatch(/gap: 11, padding: '13px 0 0' \}\}>/)
+    expect(STORE).toMatch(/gap: 11, padding: '13px 0 0' \}\}>/)
   })
 
   it('③ 내 공구 CTA 는 테두리 대신 옅은 면', () => {
@@ -73,20 +77,27 @@ describe('남긴 것 — 구분선 7곳 (과잉교정 차단)', () => {
   it('PC 구매 박스 안 구분선', () => {
     expect(BOX).toMatch(/borderTop: '1px solid var\(--gbd-line2\)'/)
   })
-  it('전화번호 밑줄', () => {
-    expect(DETAIL).toMatch(/borderBottom: '1px solid var\(--gbd-line2\)'/)
+  it('매장 전화는 밑줄 링크가 아니라 outline 버튼이다 (2026-09-15 안 B)', () => {
+    // 🔀 종전엔 제목 밑 주소 줄에 밑줄 링크로 끼어 있었다. 라이브 2888 실측에서 `063-251-6785` 가
+    //   **두 줄로 깨지며 주소를 밀어냈다** — 전화는 "가기 직전에 누르는 것"이라 지도 옆이 제자리다.
+    //   ⇒ 이 줄이 지키는 것은 "밑줄이 있다" 가 아니라 **전화로 갈 길이 화면에 있다** 이다.
+    expect(DETAIL, '주소 줄에 밑줄 전화 링크가 되살아났다').not.toMatch(/borderBottom: '1px solid var\(--gbd-line2\)'/)
+    expect(STORE, '매장 전화 버튼이 사라졌다 — 번호가 화면 어디에도 없어진다').toContain('`tel:${phone}`')
   })
 })
 
 describe('바꾼 것 — outline 컨트롤은 전용 토큰을 쓴다', () => {
   it('수량 −/+ · 셀러 방문 · 길찾기 넷 다 `--rule-strong`', () => {
     // `--gbd-line2`(=`--line`, 카드선)가 아니라 체계가 outline 버튼·칩용으로 정의한 값.
+    // 길찾기·전화는 `StoreLocation` 으로 옮겨졌고 거기선 **버튼 스타일 상수 하나**를 둘이 공유한다.
     const strong = (DETAIL.match(/1px solid var\(--rule-strong\)/g) || []).length
-    expect(strong).toBe(4)
+    expect(strong, '상세의 outline 컨트롤(수량 −/+ · 셀러 방문)이 토큰을 잃었다').toBe(3)
+    expect((STORE.match(/1px solid var\(--rule-strong\)/g) || []).length, '매장 위치 버튼이 토큰을 잃었다').toBe(1)
   })
 
-  it('상세에 카드선을 쓰는 테두리는 전화번호 밑줄 하나뿐이다', () => {
-    const left = (DETAIL.match(/1px solid var\(--gbd-line2\)/g) || []).length
-    expect(left).toBe(1)
+  it('상세·매장위치에 카드선(--gbd-line2) 테두리가 남아 있지 않다', () => {
+    // 🔀 종전엔 전화번호 밑줄 하나가 남아 1이었다. 그 밑줄이 outline 버튼으로 바뀌며 0이 됐다.
+    expect((DETAIL.match(/1px solid var\(--gbd-line2\)/g) || []).length, '상세에 카드선 테두리가 되살아났다').toBe(0)
+    expect((STORE.match(/1px solid var\(--gbd-line2\)/g) || []).length, '매장 위치에 카드선 테두리가 되살아났다').toBe(0)
   })
 })

@@ -56,12 +56,14 @@ export default function WalletHeader({ title, hideTitle = false, amount, unit, s
       </div>
 
       {stats.length > 0 && (
-        <div className="mt-2.5 pt-2.5 border-t border-gray-200 dark:border-[#2C2F35] flex items-center gap-4 text-[12px]">
+        <div className="mt-2.5 pt-2.5 border-t border-rule flex items-center gap-4 text-[12px]">
           {stats.map((s) => (
             <span key={s.label} className="text-gray-500 dark:text-gray-400">
               {s.label}{' '}
               <b className={`font-extrabold ${s.mono ? 'font-mono' : ''} ${
-                s.tone === 'danger' ? 'text-[#DC2626]' : s.tone === 'success' ? 'text-[#16A34A]' : 'text-gray-900 dark:text-white'
+                /* 🎨 2026-09-15: 툴킷 기본 빨강·초록을 hex 로 직접 적고 있었다 — 체계 토큰
+                   (`--tone-bad`/`--tone-ok`)과 값이 달라 같은 '위험'이 화면마다 다른 빨강이었다. */
+                s.tone === 'danger' ? 'text-tone-bad' : s.tone === 'success' ? 'text-tone-ok' : 'text-gray-900 dark:text-white'
               }`}>{s.value}</b>
             </span>
           ))}

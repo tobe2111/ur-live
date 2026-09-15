@@ -25,8 +25,9 @@ export default [
   {
     name: '[상세0914] 🎟️ 설명이 제목과 같아도 그대로 그린다 (상품명 중복 부활)',
     file: GB,
-    find: "{detail.description && detail.description.trim() !== (detail.name || '').trim() && <p style={{ margin: '14px 0 0'",
-    replace: "{detail.description && <p style={{ margin: '14px 0 0'",
+    // 🔄 2026-09-15: 블록이 '딜 안내' 밑에서 스펙표 밑으로 옮겨지며 margin 이 바뀌었다.
+    find: "{detail.description && detail.description.trim() !== (detail.name || '').trim() && <p style={{ margin: '0 18px 22px'",
+    replace: "{detail.description && <p style={{ margin: '0 18px 22px'",
     test: TEST,
     why: '라이브 상품(2888)은 description 이 name 과 같은 문자열이라 제목이 화면에 세 번 찍힌다.',
   },
