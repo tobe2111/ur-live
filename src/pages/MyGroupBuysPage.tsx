@@ -268,7 +268,7 @@ function UnifiedCard({ item }: { item: UnifiedItem }) {
   return (
     <button
       onClick={item.onClick}
-      className="w-full text-left bg-white dark:bg-[#11141C] rounded-xl border border-line p-4 hover:border-gray-300 hover:shadow-sm transition-all"
+      className="w-full text-left bg-surface rounded-xl border border-line p-4 hover:border-gray-300 hover:shadow-sm transition-all"
     >
       <div className="flex items-start gap-3">
         {/* 썸네일 */}

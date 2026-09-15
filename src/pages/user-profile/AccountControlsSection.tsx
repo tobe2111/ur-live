@@ -293,7 +293,7 @@ export function ProfileEditModal({ isOpen, onClose, initial, onSaved }: {
 
   return (
     <div className="fixed inset-0 z-[10100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose} role="presentation">
-      <div className="bg-white dark:bg-[#11141C] rounded-2xl w-full max-w-md p-6 shadow-2xl mb-16 sm:mb-0" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+      <div className="bg-surface rounded-2xl w-full max-w-md p-6 shadow-2xl mb-16 sm:mb-0" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('accountSettings.editProfile', { defaultValue: '프로필 수정' })}</h3>
           <button onClick={onClose} aria-label="닫기"><X className="w-5 h-5 text-gray-500 dark:text-gray-400" /></button>

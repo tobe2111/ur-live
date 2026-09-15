@@ -5,9 +5,9 @@
 | 문서 | 파일 | 어드민 |
 |---|---|---|
 | 인플루언서 제휴 제안 (16:9, 9장) | `public/static/proposals/influencer-proposal.html` | `/admin/proposals` |
-| 대행사 제휴 제안 (16:9, 21장 v6 — 로고 표지·비교표·인플루언서 기준·채널별, PowerPoint, 매장 모집 실행서) | `docs/business/proposals/urdeal-agency-proposal.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-agency-proposal.build.mjs`) | 없음. 파일로 전달 |
-| 매장 사장님 소개 (16:9, 11장 — 로고 표지 + 대표 최종 구성안 9장 + 손님 흐름, PowerPoint. 상세판 17장은 `urdeal-store-owner-deck-detail.*`) | `docs/business/proposals/urdeal-store-owner-deck.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-store-owner-deck.build.mjs`, 공통 모듈 `deck-common.mjs`) | 없음. 파일로 전달 |
-| 인플루언서 제휴 소개 (16:9, 14장 v1.3 — 로고 표지·채널별, PowerPoint) | `docs/business/proposals/urdeal-influencer-deck.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-influencer-deck.build.mjs`, 공통 모듈 `deck-common.mjs`). 기존 9장 HTML(`public/static/proposals/influencer-proposal.html`)을 대체한다 | 없음. 파일로 전달 (어드민 `/admin/proposals` 의 HTML 은 구판) |
+| 대행사 제휴 제안 (16:9, 30장 v7 — PART 구분 장 4·직접 vs 경유 표·플라이휠·페르소나·목표별 설계·인출선·절차 3열, PowerPoint, 매장 모집 실행서) | `docs/business/proposals/urdeal-agency-proposal.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-agency-proposal.build.mjs`) | 없음. 파일로 전달 |
+| 매장 사장님 소개 (16:9, 15장 v7 — 대표 최종 구성안 9장 + 손님 흐름 + 페르소나·목표별 설계·쌓이는 자산·절차 3열, PowerPoint. 상세판 17장은 `urdeal-store-owner-deck-detail.*`) | `docs/business/proposals/urdeal-store-owner-deck.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-store-owner-deck.build.mjs`, 공통 모듈 `deck-common.mjs`) | 없음. 파일로 전달 |
+| 인플루언서 제휴 소개 (16:9, 20장 v2 — PART 구분 장 3·플라이휠·페르소나·유어샵 인출선·절차 3열, PowerPoint) | `docs/business/proposals/urdeal-influencer-deck.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-influencer-deck.build.mjs`, 공통 모듈 `deck-common.mjs`). 기존 9장 HTML(`public/static/proposals/influencer-proposal.html`)을 대체한다 | 없음. 파일로 전달 (어드민 `/admin/proposals` 의 HTML 은 구판) |
 | 소개서 3종 기획서 | `docs/business/proposals/three-decks-plan-2026-09.md` | 없음 |
 
 ## 왜 docs/ 가 아니라 public/static/ 인가
@@ -35,6 +35,15 @@ NODE_USE_ENV_PROXY=1 node scripts/capture-proposal-shots.mjs /tmp/shots
 - 유어샵은 `/u/jiwon1228`(대표 계정)을 씁니다. 남의 유어샵을 대외 문서에 넣지 마세요.
 - 색은 `src/index.css` 의 `--ink` / `--ink-soft` 를 **복사해 쓰는 구조**라 자동으로 안 따라옵니다.
   서비스 테마가 바뀌면 제안서도 같이 고쳐야 합니다.
+
+## 참고 덱에서 가져온 장치 (2026-09-15)
+
+대표가 보낸 두 번째 참고 덱(히로인스 소셜 마케팅 상품 소개서 36장)에서 **구조를 보여주는 장치**만 가져와 `deck-common.mjs` 헬퍼로 넣었다.
+세 덱이 같은 헬퍼를 쓴다: `section`(브랜드 블루 구분 장 + 이후 장 우상단 "PART n · …" 라벨) · `takeaway`(하단 한 줄 결론 바) ·
+`callouts`(화면 인출선, 폰 프레임 안 비율 좌표) · `personas`(말풍선 페르소나 행, 다크) · `procedureColumns`(트랙별 절차 N열) ·
+`flywheel`(링 + 노드 + 화살표) · `table({ hiCol, leftAlign })`(강조 열). **안 가져온 것**: 규모 지표 타일·ROAS·만족도 도넛(대응 숫자가 없고
+"매출 O%" 금지) · 로고 월 · 3D 광택 아이콘(아이콘 규칙 위반) · 경쟁 채널 시장가 표(출처 없는 남의 가격).
+🩸 LibreOffice PDF 변환에서 `transparency` 가 걸린 텍스트 런의 **숫자가 사라진다**(`PART 1` → `PART`). 투명도 대신 옅은 색(`CFE0FD`)을 쓴다.
 
 ## 공통 모듈 `deck-common.mjs` (2026-09-13)
 

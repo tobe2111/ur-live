@@ -262,7 +262,7 @@ export default function PointsChargePage() {
 
             {/* 충전 후 잔액 미리보기 */}
             {selected && (
-              <section className="bg-white dark:bg-[#11141C] rounded-2xl border border-gray-100 dark:border-[#2C2F35] p-4">
+              <section className="bg-surface rounded-2xl border border-gray-100 dark:border-[#2C2F35] p-4">
                 <div className="flex items-center justify-between text-[13px]">
                   <span className="text-gray-500 dark:text-gray-400">{t('pointsCharge.currentBalance', { defaultValue: '현재 잔액' })}</span>
                   <span className="font-semibold text-gray-900 dark:text-white">{formatNumber(balance)}딜</span>

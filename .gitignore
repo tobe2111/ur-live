@@ -87,5 +87,7 @@ artifacts/
 /_*.mjs
 
 # 🖼️ visual-preview.mjs 산출 스크린샷 (로컬 확인용)
-out/visual/
+# 🔬 브라우저 실측·시안 캡처 등 일회성 산출물. 추적되는 파일 0개이고,
+#   playwright 스크립트는 모듈 해석 때문에 레포 안에 둬야 해서 여기로 모은다.
+out/
 docs/business/proposals/node_modules

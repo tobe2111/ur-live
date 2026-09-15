@@ -1,5 +1,7 @@
-// 유어딜 매장 사장님 소개서 (.pptx) 생성기 — v6 (2026-09-14): 대표 최종 구성안 9장 + 로고 표지 + 손님 흐름 1장 = 11장.
-// 로고 표지 → 헤드라인 → 한계 → 차별점·실계산 → 손님 흐름(화면 4장) → 노출·판매(크리에이터 풀) → 활용 시나리오 → FAQ → 등록 → 운영·정산 → 마무리.
+// 유어딜 매장 사장님 소개서 (.pptx) 생성기 — v7 (2026-09-15): v6 11장 + 참고 덱(히로인스) 장치 4장 = 15장.
+// 로고 표지 → 헤드라인 → 한계 → 차별점·실계산 → 이런 매장에 맞습니다 → 목표별 이용권 설계 → 손님 흐름(화면 4장) → 노출·판매(크리에이터 풀)
+//   → 쌓이는 자산 → 활용 시나리오 → FAQ → 등록 → 운영·정산(인출선) → 시작하는 세 가지 길 → 마무리.
+// v7 장치: 하단 한 줄 결론 바(takeaway) · 우상단 섹션 라벨(setSection) · 페르소나 말풍선(personas) · 강조 열 표(table hiCol) · 화면 인출선(callouts) · 절차 3열(procedureColumns).
 // 성과 수치("매출 O% 증가")는 쓰지 않는다. 상세판(16장, 이용 안내·기대 수익 표)은 urdeal-store-owner-deck-detail.build.mjs.
 // 기획: docs/business/proposals/three-decks-plan-2026-09.md §2 · 사실 SSOT: 같은 문서 §0 + docs/design/actor-benefit-map.md
 // 재생성: cd /tmp/deck && npm i pptxgenjs sharp react react-dom react-icons  (node_modules 심링크는 README 참조)
@@ -14,10 +16,10 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
 (async () => {
   const d = await createDeck({
     title: '유어딜 매장 사장님 소개서', footer: '유어딜 매장 사장님 소개', shotsDir: SHOTS_DIR,
-    shotKeys: ['home', 'detail', 'use', 'shop', 'store-new', 'store-new-channel', 'seller-settlements'],
-    icons: ['FiCalendar', 'FiLink', 'FiGrid'],
+    shotKeys: ['home', 'detail', 'use', 'shop', 'ushop', 'store-new', 'store-new-channel', 'seller-settlements'],
+    icons: ['FiCalendar', 'FiLink', 'FiGrid', 'FiSunrise', 'FiCoffee', 'FiHeart', 'FiSun'],
   });
-  const { pres, ic, T, chrome, title, lead, card, iconCircle, numBadge, hr, label, phone, kv, cover, chip, screen, customerSteps } = d;
+  const { pres, ic, T, chrome, title, lead, card, iconCircle, numBadge, hr, label, phone, kv, cover, chip, screen, customerSteps, setSection, takeaway, personas, table, callouts, procedureColumns } = d;
 
   // ───────── 00 로고 표지 ─────────
   {
@@ -44,6 +46,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
   }
 
   // ───────── 02 기존 방식의 한계 ─────────
+  setSection('왜 유어딜인가');
   {
     const s = pres.addSlide();
     chrome(s);
@@ -69,13 +72,11 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
       r.forEach((t, i) => T(s, t, { x: colX[i], y, w: colW[i] - 0.2, h: rh - 0.08, fontSize: i === 0 ? 12.5 : 11, bold: i === 0 || hi, color: hi ? (i === 0 ? C.brand : C.ink) : (i === 0 ? C.ink : C.inkSoft), valign: 'middle', lineSpacingMultiple: 1.25 }));
       if (!hi) hr(s, tx, y + rh - 0.04, tw);
     });
-    const ly = ty + 0.4 + rows.length * rh + 0.35;
-    card(s, M, ly, tw, 0.95);
-    T(s, [
+    takeaway(s, [
       { text: '체험단은 밥을 공짜로 드리고 후기를 받습니다. ', options: { color: C.inkSoft } },
       { text: '유어딜은 손님이 돈을 내고 옵니다. 후기는 그 다음에 따라옵니다.', options: { bold: true, color: C.ink } },
-    ], { x: M + 0.35, y: ly, w: tw - 0.7, h: 0.95, fontSize: 12.5, valign: 'middle', lineSpacingMultiple: 1.4 });
-    s.addNotes('이 문서의 심장. "돈이 나가는 시점"과 "측정 가능성"만 비교한다. 성과 수치는 실측 전이라 전부 배제.');
+    ], { y: ty + 0.4 + rows.length * rh + 0.3, h: 0.62 });
+    s.addNotes('이 문서의 심장. "돈이 나가는 시점"과 "측정 가능성"만 비교한다. 성과 수치는 실측 전이라 전부 배제. 하단 결론 바는 09-15 참고 덱 장치.');
   }
 
   // ───────── 03 차별점 + 실계산 ─────────
@@ -83,32 +84,76 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     const s = pres.addSlide();
     chrome(s);
     title(s, '여기는 손님이 돈을 내고 옵니다.');
-    card(s, M, 2.15, 5.9, 4.65);
+    card(s, M, 2.15, 5.9, 3.85);
     const x = M + 0.35, w = 5.2;
     label(s, '지금 팔리는 실제 상품 (치즈돈가스 2인 세트)', x, 2.35, w);
     const yEnd = kv(s, [
       ['정가', '25,000원', 0], ['이용권 판매가 (할인율은 사장님이 정함)', '16,500원', 0, true],
       ['유어딜 10%', '−1,650원', 0], ['카드 수수료', '0원 (유어딜 부담)', 0, true],
       ['사장님 계좌에', '14,850원', 2],
-    ], x, 2.7, w, { rowH: 0.46 });
-    T(s, '체험단 한 팀에 나가는 무료 식사값이면, 유어딜에선 돈 내는 손님이 옵니다. 그 손님이 몇 명인지, 언제 왔는지, 얼마를 썼는지가 매장 화면에 그대로 남습니다. "효과가 있었나?"를 감으로 판단할 필요가 없습니다.',
-      { x, y: yEnd + 0.2, w, h: 1.4, fontSize: 11, color: C.ink, lineSpacingMultiple: 1.45, valign: 'top' });
+    ], x, 2.7, w, { rowH: 0.44 });
+    T(s, '그 손님이 몇 명인지, 언제 왔는지, 얼마를 썼는지가 매장 화면에 그대로 남습니다. "효과가 있었나?"를 감으로 판단할 필요가 없습니다.',
+      { x, y: yEnd + 0.12, w, h: 0.95, fontSize: 10.5, color: C.ink, lineSpacingMultiple: 1.42, valign: 'top' });
     const pts = [
       ['FiCreditCard', '결제가 먼저', '이용권은 후기 약속이 아니라 매출입니다.'],
       ['FiCheckCircle', '노쇼 손실 0', '손님이 실제로 쓴 것만 정산 대상입니다.'],
       ['FiTag', '손해 보는 구조를 만들 수 없음', '할인율, 수량, 유효기간 전부 사장님이 정합니다.'],
     ];
-    let py = 2.3;
+    let py = 2.25;
     pts.forEach(([i, h, p]) => {
       iconCircle(s, i, 7.05, py, 0.5);
       T(s, h, { x: 7.75, y: py, w: W - M - 7.75, h: 0.36, fontSize: 15, bold: true, color: C.ink, charSpacing: -0.3 });
-      T(s, p, { x: 7.75, y: py + 0.42, w: W - M - 7.75, h: 0.8, fontSize: 11, color: C.inkSoft, lineSpacingMultiple: 1.45, valign: 'top' });
-      py += 1.5;
+      T(s, p, { x: 7.75, y: py + 0.42, w: W - M - 7.75, h: 0.7, fontSize: 11, color: C.inkSoft, lineSpacingMultiple: 1.45, valign: 'top' });
+      py += 1.25;
     });
+    takeaway(s, [
+      { text: '체험단 한 팀에 나가는 무료 식사값이면, ', options: { color: C.inkSoft } },
+      { text: '유어딜에선 돈 내는 손님이 옵니다. 안 팔리면 0원, 팔리면 새 손님입니다.', options: { bold: true, color: C.ink } },
+    ]);
     s.addNotes('상품 2888 실측: 정가 25,000 / 판매가 16,500 → 수수료 1,650 → 입금 14,850. 카드 수수료(현재 약 2.75%, 변동 가능)는 유어딜 부담. 월 판매 시나리오와 업종 평균가 표는 상세판 5장.');
   }
 
-  // ───────── 03-2 손님 쪽 흐름 (라이브 화면 4장) ─────────
+  // ───────── 03-1 이런 매장에 맞습니다 (페르소나 + 말풍선) ─────────
+  {
+    const s = pres.addSlide();
+    chrome(s, { dark: true });
+    title(s, '이런 매장에 맞습니다. 사장님 말로 적었습니다.', { dark: true });
+    lead(s, '오른쪽은 유어딜이 답이 되는 이유가 아니라, 이용권을 어떻게 열면 되는지입니다. 전부 등록 화면에서 사장님이 직접 정하는 값입니다.', { y: 2.0, h: 0.4, dark: true });
+    personas(s, [
+      ['FiSunrise', '새로 연 가게', '"오픈했는데 아직 아무도 모르는데요."', ['대표 메뉴 하나를 20~30% 할인가로, 수량 30장 한정으로 엽니다', '홈 인기 목록과 지도에 자동으로 뜨고, 첫 손님이 첫 후기를 남깁니다']],
+      ['FiCoffee', '평일이 한가한 가게', '"주말은 꽉 차는데 화요일 점심이 비어요."', ['"평일 점심에만 사용" 조건을 걸어 그 시간만 할인합니다', '빈 테이블은 어차피 0원이라, 할인해서 채우면 전부 더 번 돈입니다']],
+      ['FiHeart', '단골을 늘리고 싶은 가게', '"한 번 온 손님이 다시 안 와요."', ['매장 페이지 주소를 QR 로 테이블에 붙여 "다음"을 미리 결제하게 합니다', '이용권마다 링크가 생기니 단골 단톡방과 인스타에 그대로 올립니다']],
+      ['FiSun', '광고비가 아까운 가게', '"배달앱 광고비는 매달 나가는데 효과는 모르겠어요."', ['미리 내는 돈이 없습니다. 팔린 이용권의 10%만 나갑니다', '몇 장 팔리고 몇 명이 왔는지가 화면에 숫자로 남습니다']],
+    ], { y: 2.6, rowH: 0.92, gap: 0.14 });
+    s.addNotes('09-15 참고 덱 "이런 브랜드에게 추천합니다" 장치. 사용 조건 프리셋 voucher-usage-conditions.ts, 수량 한정 상품 필드, 매장 QR 은 주소를 QR 로 만드는 것(전용 기능 없음). 성과 약속 0 — 전부 설정으로 답한다.');
+  }
+
+  // ───────── 03-2 목표별 이용권 설계 (강조 열 표) ─────────
+  {
+    const s = pres.addSlide();
+    chrome(s);
+    title(s, '목표에 따라 이용권을 이렇게 엽니다. 다섯 칸 전부 사장님이 정하는 값입니다.', { size: 25 });
+    lead(s, '유어딜이 정해 주는 요율이 아니라 등록 화면의 입력칸입니다. 시작할 때 이 표에서 한 줄을 고르시면 됩니다.', { y: 2.0, h: 0.4 });
+    table(s, {
+      x: M, y: 2.7, colW: [2.1, 1.35, 1.35, 1.6, 2.5, 2.93], leftAlign: true, hiCol: 5, rowH: 0.56, fontSize: 10.5,
+      hdr: ['목표', '할인율', '수량', '유효기간', '사용 조건', '인플루언서 소개비'],
+      body: [
+        ['첫 손님 만들기', '20~30%', '30장 한정', '30일', '없음', '10% 정도 제안. 동네 채널 한두 곳이면 됩니다'],
+        ['평일 매출 채우기', '15~20%', '제한 없음', '60일', '평일 점심 11~15시', '없어도 됩니다. 조건이 곧 홍보입니다'],
+        ['새 메뉴 반응 보기', '10~15%', '30장 한정', '14일', '없음', '없음. 팔리는 속도가 곧 답입니다'],
+        ['단골 늘리기', '10%', '제한 없음', '90일', '없음', '없음. 링크를 단골 단톡방에 직접'],
+        ['숙박·뷰티처럼 객단가가 큰 곳', '10~15%', '주간 20장', '60일', '예약 필수', '5~8%. 단가가 커서 % 는 낮게'],
+      ],
+    });
+    takeaway(s, [
+      { text: '할인율·수량·기간·조건·소개비, ', options: { color: C.inkSoft } },
+      { text: '다섯 칸을 언제든 바꾸거나 판매를 멈출 수 있습니다. 계약 기간이 없습니다.', options: { bold: true, color: C.ink } },
+    ], { y: 6.2 });
+    s.addNotes('09-15 참고 덱 "목표별 추천 조합" 장치. 값은 권장 설정이지 성과 약속이 아니다. 필드: 상품 할인율·수량·유효기간·사용조건 프리셋(voucher-usage-conditions.ts)·influencer-deals 소개비 %.');
+  }
+
+  // ───────── 03-3 손님 쪽 흐름 (라이브 화면 4장) ─────────
+  setSection('어떻게 돌아가나');
   {
     const s = pres.addSlide();
     chrome(s);
@@ -141,6 +186,35 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     chip(s, ix + iw - 2.35, 3.1 - 0.12, '연락처는 가렸습니다', { tone: 'ink' });
     chip(s, ix - 0.15, 3.1 + ih - 0.16, '채널 · 구독자 · 카테고리로 고릅니다');
     s.addNotes('노출 4곳: 홈 섹션/지도(/map)/검색·카톡 OG/유어쇼츠(/videos). 크리에이터 풀: /api/admin/ads/influencer-pool/stats 2026-09-13 실측 youtube 18,170 / naver_blog 172,755. 오른쪽은 /admin/influencer-pool 데스크톱 캡처(capture-admin-shots.mjs — 이메일·IG·TT 블러, 아바타는 외부 CDN 차단이라 중립 원). 소개비: 매장 제안 %·매장 부담.');
+  }
+
+  // ───────── 04-2 쌓이는 자산 (한 번 판 이용권이 남는 곳) ─────────
+  {
+    const s = pres.addSlide();
+    chrome(s);
+    title(s, '광고는 끄면 끝나지만, 이용권은 세 곳에 남습니다.', { w: 7.2 });
+    lead(s, '한 번 올린 이용권과 한 번 온 손님이 어디에 쌓이는지입니다. 시간이 갈수록 이 세 곳이 사장님 대신 팝니다.', { y: 2.0, h: 0.6, w: 7.0 });
+    const items = [
+      ['FiHome', '매장 페이지', '사장님의 유어샵 주소(urdeal.kr/u/…)에 이용권과 후기가 쌓입니다. 카톡 미리보기 카드와 네이버, 구글 검색에 잡히는 자리라 광고를 끄듯 사라지지 않습니다.'],
+      ['FiUsers', '소개해 준 사람의 유어샵', '인플루언서가 담아 둔 이용권은 그 사람의 유어샵에 그대로 남습니다. 콘텐츠가 내려가도 그 진열대에서는 계속 팔립니다.'],
+      ['FiRefreshCcw', '손님의 지갑', '이용권을 산 손님의 지갑에 매장이 남고, 다시 찾을 때 검색 없이 옵니다. 후기는 첫 손님에게 유어딜이 포인트를 드려 저절로 쌓입니다.'],
+    ];
+    let y = 2.85;
+    items.forEach(([i, h, p]) => {
+      iconCircle(s, i, M, y, 0.46);
+      T(s, h, { x: M + 0.65, y, w: 6.3, h: 0.32, fontSize: 14, bold: true, color: C.ink, charSpacing: -0.3 });
+      T(s, p, { x: M + 0.65, y: y + 0.36, w: 6.3, h: 0.72, fontSize: 10.5, color: C.inkSoft, lineSpacingMultiple: 1.42, valign: 'top' });
+      y += 1.12;
+    });
+    const ph = 5.0, pw = ph * ((780 + 44) / (1688 + 44));
+    const px = W - M - pw - 0.3;
+    phone(s, 'shop', px, 1.1, ph, { caption: '매장 페이지 (라이브 화면)' });
+    chip(s, px - 0.4, 1.1 + 0.55, '이용권과 후기가 여기 쌓입니다');
+    takeaway(s, [
+      { text: '한 번 판 이용권은 ', options: { color: C.inkSoft } },
+      { text: '매장 페이지, 소개자의 유어샵, 손님 지갑에 남아 다음 판매를 만듭니다.', options: { bold: true, color: C.ink } },
+    ], { y: 6.2, w: 7.0 });
+    s.addNotes('09-15 참고 덱 "누적 자산화" 프레임. 매장 페이지 = CuratorPage(/u/:handle, linked_seller 인라인). 소개자 유어샵 = 핀. 손님 지갑 = /my-vouchers(로그인 필요라 캡처 없음). 리뷰 보너스 1,000딜 유어딜 부담. 오른쪽은 /u/jiwon1228 라이브 캡처.');
   }
 
   // ───────── 05 활용 시나리오 ─────────
@@ -191,6 +265,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
   }
 
   // ───────── 07 등록 ─────────
+  setSection('시작하기');
   {
     const s = pres.addSlide();
     chrome(s);
@@ -223,25 +298,45 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
   {
     const s = pres.addSlide();
     chrome(s);
-    title(s, '사장님은 장사만 하세요. 나머지는 알아서 돌아갑니다.', { w: 8.8 });
+    title(s, '사장님은 장사만 하세요. 나머지는 알아서 돌아갑니다.', { w: 8.8, size: 25 });
+    const lw = 6.4;
     label(s, '운영', M, 2.15, 4);
     iconCircle(s, 'FiSmartphone', M, 2.5, 0.46);
-    T(s, '손님이 오면 폰으로 QR 한 번 찍기', { x: M + 0.65, y: 2.5, w: 7.3, h: 0.32, fontSize: 13.5, bold: true, color: C.ink, charSpacing: -0.3 });
-    T(s, '하실 일은 이게 전부입니다.', { x: M + 0.65, y: 2.85, w: 7.3, h: 0.35, fontSize: 10.5, color: C.inkSoft, lineSpacingMultiple: 1.4, valign: 'top' });
+    T(s, '손님이 오면 폰으로 QR 한 번 찍기', { x: M + 0.65, y: 2.5, w: lw - 0.65, h: 0.32, fontSize: 13.5, bold: true, color: C.ink, charSpacing: -0.3 });
+    T(s, '하실 일은 이게 전부입니다.', { x: M + 0.65, y: 2.85, w: lw - 0.65, h: 0.35, fontSize: 10.5, color: C.inkSoft, lineSpacingMultiple: 1.4, valign: 'top' });
     label(s, '정산', M, 3.4, 4);
-    T(s, '손님이 실제로 쓴 이용권만 모아 매주 등록 계좌로 들어옵니다. 수수료 뗀 금액 그대로, 별도 정산 수수료 없이. 얼마 팔렸고 얼마 들어올지는 매장 화면에 항상 떠 있어서 궁금해서 전화하실 일이 없습니다. 어떤 이용권이 언제 많이 팔리는지도 보입니다. 다음 이용권을 뭘로 올릴지, 숫자가 알려줍니다.',
-      { x: M, y: 3.75, w: 8.0, h: 1.25, fontSize: 11.5, color: C.ink, lineSpacingMultiple: 1.5, valign: 'top' });
-    label(s, '바꾸고 싶을 때', M, 5.05, 4);
+    T(s, '손님이 실제로 쓴 이용권만 모아 매주 등록 계좌로 들어옵니다. 수수료 뗀 금액 그대로, 별도 정산 수수료 없이. 얼마 팔렸고 얼마 들어올지는 매장 화면에 항상 떠 있어서 궁금해서 전화하실 일이 없습니다. 어떤 이용권이 언제 많이 팔리는지도 보입니다.',
+      { x: M, y: 3.75, w: lw, h: 1.3, fontSize: 11, color: C.ink, lineSpacingMultiple: 1.45, valign: 'top' });
+    label(s, '바꾸고 싶을 때', M, 5.1, 4);
     T(s, '가격, 수량, 유효기간은 언제든 수정, 바쁘면 판매 중지. 계약 기간이 없으니 그만두는 것도 사장님 마음입니다.',
-      { x: M, y: 5.4, w: 8.0, h: 0.55, fontSize: 11.5, color: C.ink, lineSpacingMultiple: 1.5, valign: 'top' });
-    card(s, M, 6.0, 8.0, 0.75, { fill: C.tint });
-    T(s, [
+      { x: M, y: 5.42, w: lw, h: 0.6, fontSize: 11, color: C.ink, lineSpacingMultiple: 1.45, valign: 'top' });
+    takeaway(s, [
       { text: '정산 계좌는 사장님 본인만 바꿀 수 있습니다. ', options: { bold: true, color: C.ink } },
       { text: '운영을 누구에게 맡겨도.', options: { color: C.inkSoft } },
-    ], { x: M + 0.3, y: 6.0, w: 7.4, h: 0.75, fontSize: 12, valign: 'middle' });
-    phone(s, 'seller-settlements', 10.0, 1.05, 5.35, { caption: '정산 화면 (예시 데이터)' });
-    chip(s, 10.0 - 0.35, 1.05 + 1.3, '매주 월요일, 등록 계좌로');
-    s.addNotes('사용 처리: group-buy-voucher.routes.ts. payouts-generate.ts: 매주 월요일, 최소 10,000원(이월), 승인·송금은 사람. 계좌 변경 owner 전용. 판매 추이: 셀러 대시보드 daily_revenue + 상품별 판매 수.');
+    ], { y: 6.12, w: lw, h: 0.58, size: 11.5 });
+    // 오른쪽: 정산 화면 + 인출선(참고 덱 셀러 어드민 장치)
+    const px = 10.15, py = 1.05, ph = 5.35;
+    const pw = phone(s, 'seller-settlements', px, py, ph, { caption: '정산 화면 (예시 데이터)' });
+    callouts(s, [
+      ['정산은 매주 자동', '신청할 것이 없습니다', 0.5, 0.30],
+      ['이번 주 들어올 돈', '집계 끝난 금액이 먼저 보입니다', 0.5, 0.58],
+      ['지급 내역과 상태', '언제 얼마가 갔는지 남습니다', 0.5, 0.85],
+    ].map(([label, sub, tx, ty]) => ({ label, sub, tx, ty })), { phoneX: px, phoneY: py, phoneW: pw, phoneH: ph, listX: 7.45, listW: 2.3, listY: 2.3, gap: 1.45, side: 'right' });
+    s.addNotes('사용 처리: group-buy-voucher.routes.ts. payouts-generate.ts: 매주 월요일, 최소 10,000원(이월), 승인·송금은 사람. 계좌 변경 owner 전용. 판매 추이: 셀러 대시보드 daily_revenue + 상품별 판매 수. 인출선 좌표는 seller-settlements.jpg 실측(자동 정산 카드 30% · 지급 예정 58% · 지급 내역 85%).');
+  }
+
+  // ───────── 08-2 시작하는 세 가지 길 (절차 3열) ─────────
+  {
+    const s = pres.addSlide();
+    chrome(s);
+    title(s, '시작하는 길은 셋입니다. 어느 길이든 손님이 낸 돈은 매장 계좌로만 갑니다.', { size: 25 });
+    lead(s, '직접 하시면 10%, 대행사와 함께하시면 5%입니다. 대행사 보수는 사장님과 대행사가 정하고, 유어딜 장부에는 나오지 않습니다.', { y: 2.0, h: 0.4 });
+    procedureColumns(s, [
+      { title: '사장님이 직접 (수수료 10%)', hi: true, steps: ['urdeal.kr 카카오 로그인', '카카오맵에서 내 가게 찾기', '사업자등록증 사진 한 장', '승인 문자 받고 첫 이용권 올리기', '손님 오면 QR 한 번 찍기', '매주 정산 확인'], note: '10분. 막히면 카카오톡 채널로 "등록 도와주세요"' },
+      { title: '유어딜이 대신 (수수료 10%)', steps: ['카카오톡 채널에 "등록 도와주세요"', '전화로 메뉴, 가격, 사진을 받습니다', '유어딜이 매장과 첫 이용권을 만듭니다', '사장님은 등록증 사진과 승인 확인만', '손님 오면 QR 한 번 찍기', '매주 정산 확인'], note: '폰이 익숙하지 않으셔도 됩니다. 사람이 합니다' },
+      { title: '대행사와 함께 (수수료 5%)', steps: ['대행사가 매장을 "중개"로 등록', '대행사가 이용권과 인플루언서를 운영', '사장님은 본인 카카오로 소유자 확인', '정산 계좌는 사장님만 등록', '손님 오면 QR 한 번 찍기', '대행사 보수는 매장과 대행사가 직접'], note: '대행사는 계좌를 못 건드립니다. 권한은 언제든 회수' },
+    ], { y: 2.55, h: 4.2 });
+    s.addNotes('09-15 참고 덱 "광고 집행 절차" 장치. 직접 10% / 중개 5%: fee-resolver.ts(fee_channel_rates_enabled). 소유자 지정·계좌 owner 전용: store-operator-model §7. "대신 만들어 드립니다"는 대표 운영 약속.');
   }
 
   // ───────── 09 마무리 ─────────
@@ -278,5 +373,5 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
   }
 
   await pres.writeFile({ fileName: OUT });
-  console.log('wrote', OUT, '(11 slides)');
+  console.log('wrote', OUT, '(15 slides)');
 })();

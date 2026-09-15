@@ -63,7 +63,7 @@ export default function AffiliatePage() {
           </div>
 
           {/* 🆕 내 성과(잔존 장치 ⓑ) — 클릭·전환율·적립예정·정산예정일 (본인 ref 한정 읽기전용) */}
-          <div className="bg-white dark:bg-[#11141C] rounded-2xl p-4 shadow-sm">
+          <div className="bg-surface rounded-2xl p-4 shadow-sm">
             <div className="flex items-center gap-2 mb-3">
               <TrendingUp className="w-4 h-4 text-violet-600" />
               <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t('affiliate.perfTitle', { defaultValue: '내 성과' })}</p>
@@ -90,7 +90,7 @@ export default function AffiliatePage() {
           </div>
 
           {/* 추천 링크 */}
-          <div className="bg-white dark:bg-[#11141C] rounded-2xl p-4 shadow-sm">
+          <div className="bg-surface rounded-2xl p-4 shadow-sm">
             <div className="flex items-center gap-2 mb-3">
               <Share2 className="w-4 h-4 text-violet-600" />
               <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t('affiliate.myLinkTitle')}</p>
@@ -114,7 +114,7 @@ export default function AffiliatePage() {
           </div>
 
           {/* 이용 방법 */}
-          <div className="bg-white dark:bg-[#11141C] rounded-2xl p-4 shadow-sm">
+          <div className="bg-surface rounded-2xl p-4 shadow-sm">
             <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">{t('affiliate.howToTitle')}</p>
             <div className="space-y-3">
               {[
@@ -131,7 +131,7 @@ export default function AffiliatePage() {
           </div>
 
           {/* 수수료 안내 */}
-          <div className="bg-white dark:bg-[#11141C] rounded-2xl overflow-hidden shadow-sm">
+          <div className="bg-surface rounded-2xl overflow-hidden shadow-sm">
             <div className="px-4 py-3 border-b border-gray-100 dark:border-[#2C2F35]">
               <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t('affiliate.feeTitle')}</p>
             </div>
@@ -157,7 +157,7 @@ export default function AffiliatePage() {
           <TopGroupsToShare />
 
           {/* 최근 내역 */}
-          <div className="bg-white dark:bg-[#11141C] rounded-2xl overflow-hidden shadow-sm">
+          <div className="bg-surface rounded-2xl overflow-hidden shadow-sm">
             <div className="px-4 py-3 border-b border-gray-100 dark:border-[#2C2F35] flex items-center justify-between">
               <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t('affiliate.historyTitle')}</p>
               <span className="text-xs text-gray-400 dark:text-gray-500">{t('affiliate.historyCount', { count: (data.recent || []).length })}</span>
@@ -207,7 +207,7 @@ function TopGroupsToShare() {
   if (groups.length === 0) return null
 
   return (
-    <div className="bg-white dark:bg-[#11141C] rounded-2xl overflow-hidden shadow-sm">
+    <div className="bg-surface rounded-2xl overflow-hidden shadow-sm">
       <div className="px-4 py-3 border-b border-gray-100 dark:border-[#2C2F35]">
         <p className="text-[15px] font-bold text-gray-900 dark:text-white">🔥 지금 share 하기 좋은 공구</p>
         <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">마감임박 + 진행률 높음 = 친구 가입 가능성 높음</p>
@@ -263,7 +263,7 @@ function FunnelStats() {
   const maxDailyCount = Math.max(...data.daily.map(d => d.count), 1)
 
   return (
-    <div className="bg-white dark:bg-[#11141C] rounded-2xl overflow-hidden shadow-sm">
+    <div className="bg-surface rounded-2xl overflow-hidden shadow-sm">
       <div className="px-4 py-3 border-b border-gray-100 dark:border-[#2C2F35]">
         <p className="text-[15px] font-bold text-gray-900 dark:text-white">📊 내 share 성과</p>
         <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">친구 가입 → 보상 받은 횟수 + 카테고리별 / 일별 추이</p>

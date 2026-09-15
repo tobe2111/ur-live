@@ -24,7 +24,7 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
     return (
       <div className="space-y-4">
         <div className="text-center py-2">
-          <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gray-100 flex items-center justify-center">
+          <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gray-100 dark:bg-warm flex items-center justify-center">
             <Radio className="w-7 h-7 text-gray-700 dark:text-gray-300" />
           </div>
           <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">

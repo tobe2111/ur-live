@@ -195,7 +195,7 @@ export default function CommunityGroupBuyMessagesPage() {
           </p>
         ) : (
           messages.map((m) => (
-            <div key={m.id} className="bg-white dark:bg-[#11141C] rounded-2xl p-3 border border-gray-100 dark:border-[#2C2F35]">
+            <div key={m.id} className="bg-surface rounded-2xl p-3 border border-gray-100 dark:border-[#2C2F35]">
               <div className="flex items-center gap-2">
                 <span className="text-[12px] font-bold text-gray-900 dark:text-white">
                   {m.sender_name || t('groupbuyMessages.anonymous', { defaultValue: '익명' })}

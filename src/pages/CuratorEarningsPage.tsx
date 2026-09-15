@@ -289,7 +289,7 @@ function WithdrawalCard({ info, onWithdraw, onAckUpgrade }: { info: WithdrawalIn
           <button
             onClick={onWithdraw}
             disabled={info.available < info.min_withdrawal}
-            className="w-full py-2.5 bg-white dark:bg-[#11141C] text-brand-text font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-2.5 bg-surface text-brand-text font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {info.available < info.min_withdrawal
               ? `최소 ${formatWon(info.min_withdrawal)} 부터 출금 가능`
@@ -305,7 +305,7 @@ function WithdrawalCard({ info, onWithdraw, onAckUpgrade }: { info: WithdrawalIn
           </p>
           <Link
             to="/browse"
-            className="block w-full py-2.5 bg-white dark:bg-[#11141C] text-orange-600 font-bold rounded-lg text-center"
+            className="block w-full py-2.5 bg-surface text-orange-600 font-bold rounded-lg text-center"
           >
             🛍️ 쇼핑 둘러보기
           </Link>

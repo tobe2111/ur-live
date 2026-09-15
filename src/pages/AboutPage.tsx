@@ -445,7 +445,7 @@ export default function AboutPage() {
 
             <button
               onClick={handleDownloadPdf}
-              className="no-print inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-white dark:bg-[#11141C] text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#1D1F29] font-bold text-base transition-colors shadow-xl"
+              className="no-print inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-surface text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#1D1F29] font-bold text-base transition-colors shadow-xl"
             >
               <Printer className="w-5 h-5" />
               PDF 로 다운로드 (인쇄 → PDF 저장)

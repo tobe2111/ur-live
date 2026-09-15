@@ -78,7 +78,7 @@ export default function ConditionalDealsSection() {
   if (!loaded || deals.length === 0) return null
 
   return (
-    <div className="bg-white dark:bg-[#11141C] border border-amber-200 dark:border-amber-900/40 rounded-xl p-4 space-y-3">
+    <div className="bg-surface border border-amber-200 dark:border-amber-900/40 rounded-xl p-4 space-y-3">
       <div className="flex items-center gap-2">
         <Sparkles className="w-4 h-4 text-amber-500" />
         <h3 className="text-sm font-bold text-gray-900 dark:text-white">조건부 우대 커미션 제안</h3>

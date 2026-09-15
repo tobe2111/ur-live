@@ -129,7 +129,7 @@ export default function VoucherMap<T extends VoucherMapItem>({
 
   if (vouchers.length === 0) {
     return (
-      <div className="bg-white dark:bg-[#11141C] rounded-xl shadow-lift p-12 text-center">
+      <div className="bg-surface rounded-xl shadow-lift p-12 text-center">
         <p className="text-sm text-gray-500 dark:text-gray-400">지도에 표시할 미사용 이용권이 없어요</p>
       </div>
     )
