@@ -456,10 +456,28 @@
   --tone-bad: #C62828;     --tone-bad-bg: #FBEAEA;
   --tone-info: #1C69EF;    --tone-info-bg: #EAF1FE;
 }
+/* 🏝️ 늘 밝은 표면 — **테마가 갈리는 토큰을 전부 라이트 값으로 되박는다.**
+   ⚠️ 2026-09-15 (대표 신고 "글자가 안보여 … 다크모드일 때 저러나봐"): 종전엔 이 목록이 `--lift`·
+   `--rule*`·`--tone-*` 뿐이라 **나머지가 다크 값 그대로 샜다.** 지도 위 딜 카드의 할인율이
+   `text-sale` 인데 html.dark 에서 `--sale` 이 다크 빨강(#FF5C69)으로 남아 **흰 카드 위 3.01:1** 이었다
+   (실측). 같은 블록이 `--tone-*` 을 이미 같은 이유로 되박고 있었는데 목록이 불완전했던 것이다.
+   ⇒ 빠뜨리기 쉬운 구조라 **`:root` 에서 테마가 갈리는 토큰은 여기 전부** 적는다.
+   회귀 감시: `scripts/check-dark-contrast.mjs`(실제 렌더 대비) + `light-island-tokens` 유닛(목록 대조). */
 .light-island, .force-light-theme, .admin-light-theme, .agency-light-theme {
+  --brand-tint: #EAF1FE;
+  --ink: #16181C;
+  --ink2: #3D3C3A;
+  --ink-soft: #6E6B68;
+  --ink-faint: #8A8580;
+  --bg: #F8F7FC;
+  --surface: #FFFFFF;
+  --line: #EAE4E0;
+  --brand-text: #1C69EF;
+  --sale: #DC2626;
   --lift: 0 2px 10px rgb(22 24 28 / 0.06);
   --rule: rgb(22 24 28 / 0.08);
   --rule-strong: rgb(22 24 28 / 0.28);
+  --wash: rgb(22 24 28 / 0.05);
   /* 🚦 상태 색도 라이트 값으로 되박는다 — 안 그러면 html.dark 에서 흰 카드 위에 다크용 밝은 초록이 뜬다. */
   --tone-ok: #0F7B45;      --tone-ok-bg: #E7F4EC;
   --tone-warn: #8A5A00;    --tone-warn-bg: #FBF1DC;
