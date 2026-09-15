@@ -10035,8 +10035,8 @@ canvas {
   {
     name: '🏝️ 매장 등록 모달이 다시 흰 판 위 흰 글자가 된다 (light-island 소실)',
     file: 'src/components/seller/StoreRegisterModal.tsx',
-    find: 'className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl max-h-[92dvh]',
-    replace: 'className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl max-h-[92dvh]',
+    find: 'className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)] max-h-[92dvh]',
+    replace: 'className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)] max-h-[92dvh]',
     test: 'src/tests/unit/store-claim-2026-09-07.test.ts',
     why:
       '이 패널은 bg-white 뿐이라 늘 흰데 소비자 라우트(/store/new)에서도 열린다. 전역 .dark input' +
@@ -10069,8 +10069,8 @@ canvas {
   {
     name: '🏝️ 409 안내 패널만 light-island 를 잃는다 (한 파일 안 두 표면 중 하나)',
     file: 'src/components/seller/StoreRegisterModal.tsx',
-    find: '        <div className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl" onClick={e => e.stopPropagation()}>',
-    replace: '        <div className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl" onClick={e => e.stopPropagation()}>',
+    find: '        <div className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)]" onClick={e => e.stopPropagation()}>',
+    replace: '        <div className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)]" onClick={e => e.stopPropagation()}>',
     test: 'src/tests/unit/store-claim-2026-09-07.test.ts',
     why:
       '이 파일엔 늘-흰 패널이 **둘**이다(등록 폼 · 409 안내). 실제로 409 화면이 light-island 없이 ' +

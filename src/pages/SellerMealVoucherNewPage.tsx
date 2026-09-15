@@ -295,7 +295,7 @@ export default function SellerMealVoucherNewPage() {
     return (
       <SellerLayout title={t('seller.mealVoucher.title')}>
         <div className="mx-auto max-w-5xl">
-          <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center mt-8">
+          <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-8 text-center mt-8">
             <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
             <h2 className="text-lg font-bold text-gray-900">{t('seller.mealVoucher.doneTitle', { defaultValue: '이용권이 등록됐어요!' })}</h2>
             <p className="text-sm text-gray-500 mt-2">
@@ -389,7 +389,7 @@ export default function SellerMealVoucherNewPage() {
               type="button"
               onClick={() => { if (i < step || (validateStep(0) && (i < 2 || validateStep(1)))) setStep(i) }}
               className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${
-                i === step ? 'bg-gray-900 text-white' : i < step ? 'bg-brand-tint text-brand-text' : 'bg-gray-100 text-gray-400'
+                i === step ? 'bg-brand-tint text-brand-text' : i < step ? 'bg-brand-tint text-brand-text' : 'bg-gray-100 text-gray-400'
               }`}
             >
               {i + 1}. {label}

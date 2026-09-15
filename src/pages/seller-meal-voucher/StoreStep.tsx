@@ -264,7 +264,7 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
                 type="button"
                 onClick={() => setRegistering(true)}
                 disabled={!form.restaurant_name}
-                className="shrink-0 ml-2 px-3 py-1.5 rounded-lg bg-gray-900 text-white text-[11px] font-bold disabled:opacity-40"
+                className="shrink-0 ml-2 px-3 py-1.5 rounded-lg bg-brand-tint text-brand-text text-[11px] font-bold disabled:opacity-40"
               >
                 {t('seller.mealVoucher.registerStore', { defaultValue: '매장 등록' })}
               </button>

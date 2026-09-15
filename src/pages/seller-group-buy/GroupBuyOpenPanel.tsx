@@ -107,7 +107,7 @@ export default function GroupBuyOpenPanel({ productId, listPrice, category, head
             링크 전용 (상시 노출 숨김 · 추천 링크로만 공구가) — 미체크 시 공구가로 통일
           </label>
           <button onClick={openGb} disabled={saving}
-            className="w-full py-2.5 bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-white text-[13px] font-bold rounded-xl flex items-center justify-center gap-2">
+            className="w-full py-2.5 bg-gray-900 hover:bg-brand-tint disabled:opacity-50 text-white text-[13px] font-bold rounded-xl flex items-center justify-center gap-2">
             {saving && <Loader2 className="w-4 h-4 animate-spin" />}
             공구 시작 · 소비자 {formatNumber(gbPrice)}원
           </button>

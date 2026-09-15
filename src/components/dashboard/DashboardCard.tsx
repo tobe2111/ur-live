@@ -27,9 +27,9 @@ export default function DashboardCard({
   className = '',
 }: DashboardCardProps) {
   return (
-    <section className={`overflow-hidden rounded-2xl border border-rule bg-white ${className}`}>
+    <section className={`overflow-hidden rounded-[var(--dash-radius,16px)] border border-rule bg-white ${className}`}>
       {(title || actions) && (
-        <header className="flex items-center justify-between gap-3 border-b border-rule px-5 py-4">
+        <header className="flex items-center justify-between gap-3 border-b border-rule px-[var(--dash-pad-x,20px)] py-[var(--dash-pad-y,16px)]">
           <div className="min-w-0">
             {title && <h2 className="truncate text-sm font-semibold text-gray-900">{title}</h2>}
             {subtitle && <p className="mt-0.5 truncate text-xs text-gray-500">{subtitle}</p>}
@@ -37,7 +37,7 @@ export default function DashboardCard({
           {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
         </header>
       )}
-      <div className={noPadding ? '' : 'p-5'}>{children}</div>
+      <div className={noPadding ? '' : 'px-[var(--dash-pad-x,20px)] py-[var(--dash-pad-y,16px)]'}>{children}</div>
     </section>
   )
 }

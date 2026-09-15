@@ -114,7 +114,7 @@ export default function SellerPromoSpendPage() {
 
         {/* 재원 프레이밍 — owner 확인 시에만 owner 문구, 그 외(현행 platform)는 중립 고지 */}
         {ownerFunded ? (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+          <div className="rounded-[var(--dash-radius,16px)] border border-emerald-200 bg-emerald-50 px-4 py-3">
             <p className="text-xs font-bold text-emerald-800">
               {t('seller.promoSpend.ownerBanner', { defaultValue: '이 지출은 매장 promo 재원(매장 95% 안)에서 나갑니다 — 유어딜 5% 와 무관합니다.' })}
             </p>
@@ -124,7 +124,7 @@ export default function SellerPromoSpendPage() {
             </p>
           </div>
         ) : (
-          <div className="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3">
+          <div className="rounded-[var(--dash-radius,16px)] border border-gray-200 bg-gray-50 px-4 py-3">
             <p className="text-xs leading-relaxed text-gray-600">
               {t('seller.promoSpend.platformNotice', { defaultValue: '현재는 플랫폼 부담 구조(재원 전환 전)입니다 — 8월 전환 후 매장 promo 재원으로 표시됩니다.' })}
             </p>
@@ -132,7 +132,7 @@ export default function SellerPromoSpendPage() {
         )}
 
         {/* 🔒 불변원칙 #1 리마인더 */}
-        <div className="flex items-start gap-2.5 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3">
+        <div className="flex items-start gap-2.5 rounded-[var(--dash-radius,16px)] border border-blue-200 bg-blue-50 px-4 py-3">
           <Eye className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
           <p className="text-[11px] leading-relaxed text-blue-700">
             {t('seller.promoSpend.transparencyNote', { defaultValue: '이 내역은 위임 모드와 무관하게 항상 조회할 수 있습니다 (투명성 원칙 — 완전위임형이어도).' })}
@@ -140,7 +140,7 @@ export default function SellerPromoSpendPage() {
         </div>
 
         {/* 기간 선택 (1/3/6/12개월) */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-4">
+        <div className="rounded-[var(--dash-radius,16px)] border border-gray-200 bg-white p-4">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-bold text-gray-700">
               {t('seller.promoSpend.period', { defaultValue: '조회 기간' })}
@@ -152,7 +152,7 @@ export default function SellerPromoSpendPage() {
                 onClick={() => setMonths(m)}
                 className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors ${
                   months === m
-                    ? 'bg-gray-900 text-white'
+                    ? 'bg-brand-tint text-brand-text'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
@@ -173,7 +173,7 @@ export default function SellerPromoSpendPage() {
         {q.isLoading ? (
           <DashboardLoading />
         ) : q.isError ? (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
+          <div className="rounded-[var(--dash-radius,16px)] border border-red-200 bg-red-50 p-6 text-center">
             <p className="text-sm font-bold text-red-700">
               {t('seller.promoSpend.loadFailed', { defaultValue: 'promo 지출 내역을 불러오지 못했습니다' })}
             </p>
@@ -190,7 +190,7 @@ export default function SellerPromoSpendPage() {
             </button>
           </div>
         ) : rows.length === 0 && recipients.length === 0 ? (
-          <div className="rounded-2xl border border-gray-200 bg-white">
+          <div className="rounded-[var(--dash-radius,16px)] border border-gray-200 bg-white">
             <DashboardEmptyState
               icon={<Receipt className="h-7 w-7" />}
               title={t('seller.promoSpend.empty', { defaultValue: '기간 내 promo 지출이 없습니다' })}
@@ -200,7 +200,7 @@ export default function SellerPromoSpendPage() {
         ) : (
           <>
             {/* 상태별 합계 */}
-            <div className="rounded-2xl border border-gray-200 bg-white p-4">
+            <div className="rounded-[var(--dash-radius,16px)] border border-gray-200 bg-white p-4">
               <h2 className="mb-3 text-sm font-bold text-gray-900">
                 {t('seller.promoSpend.totalsTitle', { defaultValue: '상태별 합계' })}
               </h2>
@@ -229,7 +229,7 @@ export default function SellerPromoSpendPage() {
             </div>
 
             {/* 수령인별 집계 — §4.3 투명성의 핵심 ("누구에게 얼마") */}
-            <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
+            <div className="overflow-hidden rounded-[var(--dash-radius,16px)] border border-gray-200 bg-white">
               <div className="flex items-center gap-2 border-b border-gray-100 px-4 py-3">
                 <Users className="h-4 w-4 text-gray-500" />
                 <h2 className="text-sm font-bold text-gray-900">
@@ -261,7 +261,7 @@ export default function SellerPromoSpendPage() {
             </div>
 
             {/* 행 단위 내역 */}
-            <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
+            <div className="overflow-hidden rounded-[var(--dash-radius,16px)] border border-gray-200 bg-white">
               <div className="border-b border-gray-100 px-4 py-3">
                 <h2 className="text-sm font-bold text-gray-900">
                   {t('seller.promoSpend.rowsTitle', { defaultValue: '지출 내역' })} ({formatNumber(rows.length)})

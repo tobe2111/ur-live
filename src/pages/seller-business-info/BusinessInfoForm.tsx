@@ -30,7 +30,7 @@ export default function BusinessInfoForm({
   const { t } = useTranslation()
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+    <form onSubmit={onSubmit} className="space-y-6 rounded-[var(--dash-radius,16px)] border border-gray-200 bg-white p-6">
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
           {t('seller.businessNumber')} <span className="text-red-500">*</span>
@@ -241,7 +241,7 @@ export default function BusinessInfoForm({
           <Button
             type="submit"
             disabled={submitting}
-            className="w-full py-3 bg-gray-900 hover:bg-gray-900 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-3 bg-gray-900 hover:bg-brand-tint text-brand-text font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? (
               <span className="flex items-center justify-center gap-2">

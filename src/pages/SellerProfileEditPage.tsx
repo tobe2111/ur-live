@@ -362,14 +362,14 @@ export default function SellerProfileEditPage() {
 
         {/* Success/Error Messages */}
         {successMessage && (
-          <div className="flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+          <div className="flex items-center gap-3 rounded-[var(--dash-radius,16px)] border border-emerald-200 bg-emerald-50 p-4">
             <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-emerald-600" />
             <p className="text-sm font-medium text-emerald-700">{successMessage}</p>
           </div>
         )}
 
         {errorMessage && (
-          <div className="flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 p-4">
+          <div className="flex items-center gap-3 rounded-[var(--dash-radius,16px)] border border-red-200 bg-red-50 p-4">
             <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-600" />
             <p className="text-sm font-medium text-red-700">{errorMessage}</p>
           </div>

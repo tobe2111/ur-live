@@ -385,7 +385,7 @@ export default function SellerBusinessInfoPage() {
 
         {/* Status Banner */}
         {businessInfo && (
-          <div className={`rounded-2xl border p-4 ${
+          <div className={`rounded-[var(--dash-radius,16px)] border p-4 ${
             businessInfo.is_verified
               ? 'border-emerald-200 bg-emerald-50'
               : 'border-amber-200 bg-amber-50'
@@ -416,7 +416,7 @@ export default function SellerBusinessInfoPage() {
 
         {/* Error Message */}
         {error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
+          <div className="rounded-[var(--dash-radius,16px)] border border-red-200 bg-red-50 p-4">
             <div className="flex items-center gap-2 text-red-700">
               <AlertCircle className="h-5 w-5" />
               <p className="text-sm font-medium">{error}</p>
@@ -426,7 +426,7 @@ export default function SellerBusinessInfoPage() {
 
         {/* Success Message */}
         {success && (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+          <div className="rounded-[var(--dash-radius,16px)] border border-emerald-200 bg-emerald-50 p-4">
             <div className="flex items-center gap-2 text-emerald-700">
               <CheckCircle2 className="h-5 w-5" />
               <p className="text-sm font-medium">{success}</p>
@@ -435,14 +435,14 @@ export default function SellerBusinessInfoPage() {
         )}
 
         {/* 🛡️ 2026-06-10: 탭 바 — 사업자 정보 / 정산 계좌 정보 / 사업자등록증 검증 (URL ?tab= 동기화) */}
-        <div className="bg-white rounded-lg shadow p-4">
+        <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-4">
           <div className="flex items-center gap-2 overflow-x-auto">
             <button
               type="button"
               onClick={() => switchTab('business')}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'business'
-                  ? 'bg-gray-900 text-white'
+                  ? 'bg-brand-tint text-brand-text'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -454,7 +454,7 @@ export default function SellerBusinessInfoPage() {
               onClick={() => switchTab('bank')}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'bank'
-                  ? 'bg-gray-900 text-white'
+                  ? 'bg-brand-tint text-brand-text'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -466,7 +466,7 @@ export default function SellerBusinessInfoPage() {
               onClick={() => switchTab('certificate')}
               className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'certificate'
-                  ? 'bg-gray-900 text-white'
+                  ? 'bg-brand-tint text-brand-text'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >

@@ -15,7 +15,7 @@ interface Props {
  */
 export default function FormSection({ title, desc, icon, aside, children }: Props) {
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
+    <section className="rounded-[var(--dash-radius,16px)] border border-gray-200 bg-white p-4 sm:p-6">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
           {icon && (

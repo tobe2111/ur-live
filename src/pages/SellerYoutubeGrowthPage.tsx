@@ -189,7 +189,7 @@ export default function SellerYoutubeGrowthPage() {
 
         {/* 신청 폼 */}
         {!hasPending && !showWidget && (
-          <div className="bg-white rounded-xl shadow-sm p-5">
+          <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-5">
             <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <Users className="w-4 h-4 text-red-500" />
               {t('seller.subscriberPackageSelect')}
@@ -264,7 +264,7 @@ export default function SellerYoutubeGrowthPage() {
 
         {/* 토스 결제 위젯 */}
         {showWidget && (
-          <div className="bg-white rounded-xl shadow-sm p-5 space-y-4">
+          <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-5 space-y-4">
             <div className="bg-red-50 rounded-xl px-4 py-3 flex justify-between items-center">
               <span className="text-sm text-gray-600">{t('seller.paymentContent')}</span>
               <span className="text-sm font-bold text-red-600">
@@ -293,7 +293,7 @@ export default function SellerYoutubeGrowthPage() {
         )}
 
         {/* 신청 내역 */}
-        <div className="bg-white rounded-xl shadow-sm p-5">
+        <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-5">
           <h3 className="text-sm font-semibold text-gray-900 mb-4">{t('seller.requestHistory')}</h3>
           {requests.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-8">{t('seller.noRequestHistory')}</p>

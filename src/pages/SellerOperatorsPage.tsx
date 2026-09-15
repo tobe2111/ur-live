@@ -83,7 +83,7 @@ export default function SellerOperatorsPage() {
       <SEO title="운영자 관리 - 유어딜 셀러" description="매장 운영 권한 관리" url="/seller/operators" />
 
       <div className="ur-content-medium space-y-4">
-        <div className="rounded-2xl bg-white border border-gray-200 p-5">
+        <div className="rounded-[var(--dash-radius,16px)] bg-white border border-gray-200 p-5">
           <div className="flex items-start gap-3 mb-4">
             <ShieldCheck className="w-5 h-5 text-gray-500 mt-0.5 shrink-0" />
             <div>
@@ -125,7 +125,7 @@ export default function SellerOperatorsPage() {
           </div>
         )}
 
-        <div className="rounded-2xl bg-white border border-gray-200 overflow-hidden">
+        <div className="rounded-[var(--dash-radius,16px)] bg-white border border-gray-200 overflow-hidden">
           <div className="px-5 py-3 border-b border-gray-100">
             <h3 className="text-sm font-bold text-gray-900">현재 운영자 {active.length}명</h3>
           </div>
@@ -161,7 +161,7 @@ export default function SellerOperatorsPage() {
         </div>
 
         {past.length > 0 && (
-          <div className="rounded-2xl bg-white border border-gray-200 overflow-hidden">
+          <div className="rounded-[var(--dash-radius,16px)] bg-white border border-gray-200 overflow-hidden">
             <div className="px-5 py-3 border-b border-gray-100">
               <h3 className="text-sm font-bold text-gray-900">지난 운영자 {past.length}명</h3>
               <p className="text-[11px] text-gray-500 mt-0.5">기록은 남깁니다 — 누가 언제 운영했는지가 분쟁 시 근거가 됩니다.</p>

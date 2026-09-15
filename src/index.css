@@ -455,6 +455,16 @@
   --tone-warn: #8A5A00;    --tone-warn-bg: #FBF1DC;
   --tone-bad: #C62828;     --tone-bad-bg: #FBEAEA;
   --tone-info: #1C69EF;    --tone-info-bg: #EAF1FE;
+  /* 🧮 2026-09-15 D3 밀도·데이터 (대표 "3번째가 좋은 것 같네" — docs/design/seller-dashboard-2nd-directions-2026-09.md).
+     공용 대시보드 부품(components/dashboard)은 이 변수를 읽고, 변수가 없는 어드민·에이전시는 종전 값(16px·19px)으로 그린다.
+     ⇒ 셀러만 D3, 어드민 무접촉. 값을 바꾸려면 여기 한 곳. */
+  --dash-radius: 8px;        /* 카드 모서리 (종전 16px) */
+  --dash-h1: 17px;           /* 페이지 제목 (종전 19px, sm 22px) */
+  --dash-h1-sm: 18px;
+  --dash-stat: 22px;         /* 스탯 숫자 (종전 24px) */
+  --dash-gap: 14px;          /* 페이지 제목 아래 여백 (종전 20px) */
+  --dash-pad-x: 16px;        /* 카드 안 여백 (종전 20px) */
+  --dash-pad-y: 12px;        /*            (종전 16px) */
   /* 🧭 2026-09-14 (Rinda 시안): 브랜드 틴트도 같은 이유로 되박는다. 이게 없으면 html.dark 에서
      `:root.dark` 의 `--brand-tint: #16243D`(남색)가 새어 들어와 **활성 메뉴 알약이 검게** 뜬다.
      위 `--lift` 주석이 경고한 바로 그 사고이고, 사이드바가 흰 면으로 바뀌면서 실제로 도달 가능해졌다. */
@@ -1467,6 +1477,13 @@ html.dark .gbd, [data-theme="dark"] .gbd {
 .ur-seller-nav-active,
 .ur-admin-nav-active,
 .ur-agency-nav-active { background: var(--brand-tint); }
+
+/* 🧮 2026-09-15 D3: 숫자는 표처럼 — 모노스페이스·고정폭 자릿수. 페이지가 아니라 숫자 요소에 붙인다(제목·본문엔 금지). */
+.dash-num { font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+/* 🧮 D3: 셀러 스코프에서 페이지 헤더의 장식 아이콘 칩은 그리지 않는다(어드민은 그대로). 폰에서는 페이지 제목도 숨긴다 —
+   레이아웃의 폰 제목 줄(SellerLayout `.dash-phone-title`)이 같은 글자를 한 번만 그린다(두 번 말하지 않는다). */
+.seller-light-theme .dash-header-icon { display: none; }
+@media (max-width: 767px) { .seller-light-theme .dash-page-title { display: none; } }
 
 /* 🛡️ 2026-05-20: 라이브/쇼츠/숏폼 카드 공통 utility (CSP unsafe-inline 제거 — style={{}} 일괄 제거) */
 .ur-live-pill {

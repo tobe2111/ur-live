@@ -84,7 +84,7 @@ export default function StoreProfileModal({ sellerId, storeName, onClose, onDone
 
   return (
     <div className="fixed inset-0 z-[10500] flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4" onClick={onClose}>
-      <div className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl max-h-[92dvh] flex flex-col" onClick={e => e.stopPropagation()}>
+      <div className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)] max-h-[92dvh] flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between shrink-0">
           <h2 className="text-sm font-bold text-gray-900 truncate">매장 정보 {storeName ? `— ${storeName}` : ''}</h2>
           <button onClick={onClose} className="text-gray-400 text-sm px-2">✕</button>
