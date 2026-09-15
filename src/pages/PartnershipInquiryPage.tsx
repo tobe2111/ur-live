@@ -111,7 +111,7 @@ export default function PartnershipInquiryPage() {
           <p className="text-[11.5px] text-gray-400 dark:text-gray-500 -mt-1">연락처 또는 이메일 중 하나는 꼭 남겨주세요.</p>
           <textarea value={form.message} onChange={set('message')} maxLength={4000} rows={6}
             placeholder="문의 내용 * — 제안 배경, 원하시는 협업 형태, 일정 등을 자유롭게 적어주세요"
-            className="w-full rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] px-3.5 py-3 text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 resize-none focus:outline-none focus:border-gray-900 dark:focus:border-white" />
+            className="w-full rounded-xl border border-line bg-surface px-3.5 py-3 text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 resize-none focus:outline-none focus:border-gray-900 dark:focus:border-white" />
           <button type="submit" disabled={submitting}
             className="w-full h-13 py-3.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#11141C] text-[15px] font-bold disabled:opacity-50">
             {submitting ? '접수 중…' : '문의 접수하기'}

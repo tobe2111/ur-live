@@ -64,7 +64,7 @@ export default function MyReferralCard() {
   const pendingCount = rewards.filter(r => r.status !== 'granted').length
 
   return (
-    <div className="rounded-2xl p-5 mt-3 bg-gray-100 dark:bg-white/[0.04] border border-gray-200 dark:border-[#2C2F35]">
+    <div className="rounded-2xl p-5 mt-3 bg-gray-100 dark:bg-white/[0.04] border border-line">
       <div className="flex items-center gap-2 mb-3">
         <Gift className="w-5 h-5 text-gray-700 dark:text-white" />
         <h3 className="text-base font-extrabold text-gray-900 dark:text-white">{t('inviteCard.title', { defaultValue: '친구 초대' })}</h3>
@@ -105,7 +105,7 @@ export default function MyReferralCard() {
       </div>
 
       {rewards.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-gray-200 dark:border-[#2C2F35]">
+        <div className="mt-3 pt-3 border-t border-line">
           <p className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1 mb-1">
             <Users className="w-3 h-3" /> {t('inviteCard.recent', { defaultValue: '최근 초대' })} ({rewards.length})
           </p>

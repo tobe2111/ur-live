@@ -105,7 +105,7 @@ export default function SearchHeader({
             )}
           </form>
           {showSuggestions && suggestions.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1.5 bg-white dark:bg-[#11141C] rounded-xl shadow-lg border border-gray-200 dark:border-[#2C2F35] overflow-hidden z-50">
+            <div className="absolute top-full left-0 right-0 mt-1.5 bg-white dark:bg-[#11141C] rounded-xl shadow-lg border border-line overflow-hidden z-50">
               {suggestions.map((suggestion, index) => (
                 <button
                   key={`${suggestion.type}-${suggestion.text}-${index}`}

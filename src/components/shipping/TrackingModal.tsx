@@ -122,7 +122,7 @@ export default function TrackingModal({ orderId, carrier, trackingNumber, title,
   return (
     <div className="fixed inset-0 z-[10001] bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
       <div
-        className="w-full sm:max-w-md max-h-[85vh] bg-white dark:bg-[#1D1F29] rounded-t-2xl sm:rounded-2xl flex flex-col overflow-hidden"
+        className="w-full sm:max-w-md max-h-[85vh] bg-surface rounded-t-2xl sm:rounded-2xl flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         <header className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-[#2C2F35]">
@@ -148,7 +148,7 @@ export default function TrackingModal({ orderId, carrier, trackingNumber, title,
             </div>
           ) : (
             <>
-              <section className="mb-5 p-3 bg-gray-50 dark:bg-[#11141C] rounded-xl">
+              <section className="mb-5 p-3 bg-warm rounded-xl">
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
                   {data.courier?.name || '택배사'} · {data.tracking_number}
                 </p>
@@ -162,7 +162,7 @@ export default function TrackingModal({ orderId, carrier, trackingNumber, title,
 
               {/* Timeline */}
               {data.events && data.events.length > 0 ? (
-                <ol className="relative border-l-2 border-gray-200 dark:border-[#2C2F35] ml-2 space-y-4">
+                <ol className="relative border-l-2 border-line ml-2 space-y-4">
                   {[...data.events].reverse().map((ev, i) => {
                     const isLatest = i === 0
                     return (

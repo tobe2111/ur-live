@@ -162,7 +162,7 @@ export default function CouponClaimPage() {
             <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-1">{t('couponClaim.celebrate')}</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{t('couponClaim.issuedHint')}</p>
 
-            <div className="relative bg-white dark:bg-[#1D1F29] rounded-3xl p-6 border-2 border-dashed border-rule shadow-xl overflow-hidden">
+            <div className="relative bg-surface rounded-3xl p-6 border-2 border-dashed border-rule shadow-xl overflow-hidden">
               <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-gradient-to-b from-gray-50 to-white dark:bg-none dark:bg-[#11141C] rounded-full" />
               <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-gradient-to-b from-gray-50 to-white dark:bg-none dark:bg-[#11141C] rounded-full" />
 

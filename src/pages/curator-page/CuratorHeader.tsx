@@ -326,7 +326,7 @@ export default function CuratorHeader({
                   onChange={(e) => setEditBio(e.target.value)}
                   rows={2}
                   maxLength={200}
-                  className="w-full text-[13.5px] text-gray-900 dark:text-white bg-white dark:bg-[#1D1F29] border border-gray-900 dark:border-white rounded-lg p-2 focus:outline-none resize-none"
+                  className="w-full text-[13.5px] text-gray-900 dark:text-white bg-surface border border-gray-900 dark:border-white rounded-lg p-2 focus:outline-none resize-none"
                 />
                 <div className="flex gap-2 mt-1">
                   <button onClick={() => saveField('bio', editBio)} disabled={saving} className="px-3 py-1 bg-gray-900 dark:bg-white text-white dark:text-[#11141C] text-xs font-bold rounded-lg">저장</button>
@@ -400,7 +400,7 @@ export default function CuratorHeader({
 
         {/* SNS 편집 패널 (편집 모드) */}
         {isOwner && editingSns && (
-          <div className="mt-3 rounded-xl bg-white dark:bg-[#1D1F29] shadow-lift p-3 space-y-2">
+          <div className="mt-3 rounded-xl bg-surface shadow-lift p-3 space-y-2">
             {([['youtube_url', '유튜브'], ['instagram_url', '인스타그램'], ['tiktok_url', '틱톡']] as const).map(([key, label]) => (
               <div key={key} className="flex items-center gap-2">
                 <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 w-14 shrink-0">{label}</span>
@@ -421,7 +421,7 @@ export default function CuratorHeader({
 
         {/* 편집 모드: 내 유어샵 주소 카드(주소 변경). 공유는 위 버튼으로 일원화. */}
         {isOwner && (
-          <div className="mt-3 rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift p-3.5">
+          <div className="mt-3 rounded-2xl bg-surface shadow-lift p-3.5">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[12px] font-bold text-gray-500 dark:text-gray-400">내 유어샵 주소</span>
               {!editingHandle && (
@@ -454,7 +454,7 @@ export default function CuratorHeader({
                 </div>
               </div>
             ) : (
-              <div className="flex items-center px-3 py-2.5 rounded-xl bg-gray-50 dark:bg-[#11141C]">
+              <div className="flex items-center px-3 py-2.5 rounded-xl bg-warm">
                 <span className="truncate text-[13px] font-mono text-gray-700 dark:text-gray-300">{shareHost}/u/{curator.handle}</span>
               </div>
             )}

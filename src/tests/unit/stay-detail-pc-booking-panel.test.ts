@@ -16,6 +16,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { pickRange } from '@/pages/stay-detail/StayDateGuestPicker'
+import { CARD_BG } from '../helpers/surface-class'
 
 const R = (p: string) => readFileSync(resolve(__dirname, '../../', p), 'utf-8')
 const TODAY = '2026-09-01'
@@ -60,7 +61,7 @@ describe('③ PC 예약 패널(B안) · 트리거 · 라벨', () => {
     expect(page).toMatch(/<div id="stay-sec-rooms"[^>]*className="mb-5 lg:hidden"[\s\S]{0,120}?<SectionTitle className="mb-3">객실 선택/)
   })
   it('패널: 객실 행 + 총액 + 단일 주 행동, 카드 테두리 0', () => {
-    expect(panel).toMatch(/rounded-2xl bg-white dark:bg-\[#1D1F29\] shadow-lift/)
+    expect(panel).toMatch(new RegExp(`rounded-2xl ${CARD_BG} shadow-lift`))
     expect(panel).toMatch(/예약하기/)
     expect(panel).not.toMatch(/border border-gray/)
   })

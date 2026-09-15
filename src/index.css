@@ -492,7 +492,13 @@
    (실측). 같은 블록이 `--tone-*` 을 이미 같은 이유로 되박고 있었는데 목록이 불완전했던 것이다.
    ⇒ 빠뜨리기 쉬운 구조라 **`:root` 에서 테마가 갈리는 토큰은 여기 전부** 적는다.
    회귀 감시: `scripts/check-dark-contrast.mjs`(실제 렌더 대비) + `light-island-tokens` 유닛(목록 대조). */
-.light-island, .force-light-theme, .admin-light-theme, .agency-light-theme {
+/* 🩸 2026-09-15: 이 목록에 **`.seller-light-theme` 만 빠져 있었다.** 그 스코프는 아래 자기 블록에서
+   `--lift`/`--rule`/`--tone-*`/`--brand-tint` 만 되박고 `--bg`/`--surface`/`--line`/`--ink*` 는 안 박는다.
+   지금까지 안 터진 이유는 `bg-warm`·`surface`·`line` 이 tailwind 에 **고정 hex** 로 박혀 있어서 변수를
+   안 읽었기 때문이다 — 그 셋을 테마 변수로 돌리는 순간(같은 커밋) `html.dark` 에서 **셀러 대시보드
+   배경이 검게** 뜬다(CLAUDE.md "🚨 절대 규칙" 위반). 목록에 넣어 미리 막는다.
+   ⚠️ 셀러 블록의 겹치는 선언은 그대로 둔다 — 값이 같고, `dashboard-rinda-shell` 가드가 그 블록을 본다. */
+.light-island, .force-light-theme, .admin-light-theme, .agency-light-theme, .seller-light-theme {
   --brand-tint: #EAF1FE;
   --ink: #16181C;
   --ink2: #3D3C3A;

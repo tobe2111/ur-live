@@ -35,7 +35,7 @@ export function GifticonBoxRailRow() {
   const { t } = useTranslation()
   return (
     <button type="button" onClick={() => navigate('/my-gifticons')}
-      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-gray-200 dark:border-[#2C2F35] text-left hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors">
+      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-line text-left hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors">
       <Wallet className="w-[18px] h-[18px] shrink-0 text-gray-500 dark:text-gray-400" strokeWidth={1.8} />
       <span className="flex-1 text-[13px] font-bold text-gray-900 dark:text-white">{t('voucher.myGifticons', { defaultValue: '내 교환권' })}</span>
       <ChevronRight className="w-4 h-4 shrink-0 text-gray-300 dark:text-gray-600" />

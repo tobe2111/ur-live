@@ -89,7 +89,7 @@ export default function OrderStatusBar() {
   return (
     <div className="ur-content-medium px-4 lg:px-8 pt-3">
       <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-3">{t('voucherStatus.sectionTitle', { defaultValue: '이용권 현황' })}</p>
-      <div className="flex items-center justify-between rounded-2xl px-2 py-4 bg-white dark:bg-[#1D1F29]">
+      <div className="flex items-center justify-between rounded-2xl px-2 py-4 bg-surface">
         {items.map(o => (
           <button key={o.label} onClick={() => navigate(o.path)} className="flex-1 text-center">
             <p className={`text-[18px] font-extrabold ${counts[o.key] ? 'text-gray-900 dark:text-white' : 'text-gray-300 dark:text-white/20'}`} style={{ letterSpacing: '-0.02em' }}>

@@ -88,7 +88,7 @@ export default function AboutPage() {
                 </Link>
                 <button
                   onClick={handleDownloadPdf}
-                  className="no-print inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-[#1D1F29] font-bold text-sm lg:text-base transition-colors"
+                  className="no-print inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-surface border border-line text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-[#1D1F29] font-bold text-sm lg:text-base transition-colors"
                 >
                   <Download className="w-4 h-4" />
                   PDF 다운로드
@@ -328,7 +328,7 @@ export default function AboutPage() {
             ].map((f, i) => (
               <div
                 key={i}
-                className="p-4 rounded-2xl bg-white dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35] hover:border-rule transition-colors"
+                className="p-4 rounded-2xl bg-surface border border-gray-100 dark:border-[#2C2F35] hover:border-rule transition-colors"
               >
                 <div className="w-10 h-10 rounded-xl bg-brand-tint text-brand-text flex items-center justify-center mb-3">
                   {f.icon}
@@ -517,7 +517,7 @@ function ValueCard({
     emerald: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-300',
   }
   return (
-    <div className="p-5 lg:p-6 rounded-2xl bg-white dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35]">
+    <div className="p-5 lg:p-6 rounded-2xl bg-surface border border-gray-100 dark:border-[#2C2F35]">
       <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${map[color]}`}>{icon}</div>
       <div className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-2">{tag}</div>
       <h3 className="text-lg lg:text-xl font-bold text-gray-900 dark:text-white mb-2">{title}</h3>
@@ -540,7 +540,7 @@ function ComparisonTable({
   return (
     <div>
       <h3 className="text-lg lg:text-xl font-bold text-gray-900 dark:text-white mb-4">{title}</h3>
-      <div className="overflow-x-auto rounded-2xl border border-gray-200 dark:border-[#2C2F35]">
+      <div className="overflow-x-auto rounded-2xl border border-line">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50 dark:bg-[#1D1F29]">
@@ -587,7 +587,7 @@ function ComparisonTable({
 
 function SimpleTable({ headers, rows }: { headers: string[]; rows: string[][] }) {
   return (
-    <div className="overflow-x-auto rounded-2xl border border-gray-200 dark:border-[#2C2F35]">
+    <div className="overflow-x-auto rounded-2xl border border-line">
       <table className="w-full text-sm">
         <thead>
           <tr className="bg-gray-50 dark:bg-[#1D1F29]">
@@ -631,7 +631,7 @@ function SubBlock({
   children: React.ReactNode
 }) {
   return (
-    <div className="p-5 lg:p-6 rounded-2xl bg-white dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35]">
+    <div className="p-5 lg:p-6 rounded-2xl bg-surface border border-gray-100 dark:border-[#2C2F35]">
       <div className="flex items-center gap-3 mb-4">
         <div className="w-9 h-9 rounded-lg bg-brand-tint text-brand-text flex items-center justify-center">
           {icon}
@@ -653,7 +653,7 @@ function FeatureCard({
   desc: string
 }) {
   return (
-    <div className="p-5 lg:p-6 rounded-2xl bg-white dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35]">
+    <div className="p-5 lg:p-6 rounded-2xl bg-surface border border-gray-100 dark:border-[#2C2F35]">
       <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-300 flex items-center justify-center mb-3">
         {icon}
       </div>
@@ -677,7 +677,7 @@ function WowMoment({
   tagline?: string
 }) {
   return (
-    <div className="p-5 lg:p-8 rounded-2xl bg-white dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35]">
+    <div className="p-5 lg:p-8 rounded-2xl bg-surface border border-gray-100 dark:border-[#2C2F35]">
       <div className="flex items-center gap-3 mb-4">
         <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-300 flex items-center justify-center">
           {icon}
@@ -714,7 +714,7 @@ function RoadmapCard({
   items: string[]
 }) {
   return (
-    <div className="p-5 lg:p-6 rounded-2xl bg-white dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35]">
+    <div className="p-5 lg:p-6 rounded-2xl bg-surface border border-gray-100 dark:border-[#2C2F35]">
       <div className="flex items-center gap-3 mb-4">
         <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-300 flex items-center justify-center">
           {icon}
@@ -743,7 +743,7 @@ function FitCard({
   items: string[]
 }) {
   return (
-    <div className="p-5 lg:p-6 rounded-2xl bg-white dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35]">
+    <div className="p-5 lg:p-6 rounded-2xl bg-surface border border-gray-100 dark:border-[#2C2F35]">
       <div className="flex items-center gap-3 mb-4">
         <div className="w-10 h-10 rounded-xl bg-brand-tint text-brand-text flex items-center justify-center">
           {icon}

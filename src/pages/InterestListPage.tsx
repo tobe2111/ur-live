@@ -45,7 +45,7 @@ export default function InterestListPage() {
         {loading ? (
           <div className="space-y-3">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-4 animate-pulse border border-gray-200 dark:border-[#2C2F35]">
+              <div key={i} className="bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-4 animate-pulse border border-line">
                 <div className="h-4 bg-gray-700 rounded w-2/3 mb-2" />
                 <div className="h-3 bg-gray-700 rounded w-1/3" />
               </div>
@@ -76,7 +76,7 @@ export default function InterestListPage() {
             {items.map(item => (
               <div
                 key={item.id}
-                className="flex items-center justify-between bg-gray-50 dark:bg-[#1D1F29] rounded-xl px-4 py-3.5 border border-gray-200 dark:border-[#2C2F35]"
+                className="flex items-center justify-between bg-gray-50 dark:bg-[#1D1F29] rounded-xl px-4 py-3.5 border border-line"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-9 h-9 rounded-lg bg-brand/10 flex items-center justify-center flex-shrink-0">

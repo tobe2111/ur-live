@@ -270,7 +270,7 @@ export default function SearchPage() {
                   <button
                     key={keyword}
                     onClick={() => handleSearch(keyword)}
-                    className="px-4 py-2 rounded-full border border-gray-200 dark:border-[#2C2F35] text-[13px] text-gray-600 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-[#1D1F29] active:bg-gray-100 dark:bg-[#1D1F29] dark:active:bg-[#1D1F29] transition-colors"
+                    className="px-4 py-2 rounded-full border border-line text-[13px] text-gray-600 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-[#1D1F29] active:bg-gray-100 dark:bg-[#1D1F29] dark:active:bg-[#1D1F29] transition-colors"
                   >
                     {keyword}
                   </button>

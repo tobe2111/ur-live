@@ -34,7 +34,7 @@ export function TicketCard({ bandLeft, bandRight, muted, children, className = '
       role={interactive ? 'button' : undefined}
       tabIndex={interactive ? 0 : undefined}
       onKeyDown={interactive ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } } : undefined}
-      className={`overflow-hidden rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift ${muted ? 'opacity-60' : ''} ${interactive ? 'cursor-pointer active:opacity-90' : ''} ${className}`}
+      className={`overflow-hidden rounded-2xl bg-surface shadow-lift ${muted ? 'opacity-60' : ''} ${interactive ? 'cursor-pointer active:opacity-90' : ''} ${className}`}
     >
       <div className={`flex items-center justify-between h-11 px-4 text-[14px] text-white tabular-nums ${muted ? 'bg-gray-400 dark:bg-[#3A3D44]' : 'bg-brand'}`}>
         <span className="font-bold">{bandLeft}</span>

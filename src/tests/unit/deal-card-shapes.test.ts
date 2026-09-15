@@ -22,6 +22,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { CARD_BG_RE } from '../helpers/surface-class'
 
 const read = (p: string) => readFileSync(resolve(__dirname, '../../', p), 'utf-8')
 
@@ -32,7 +33,7 @@ const ROW = read('components/deal/DealRow.tsx')
 describe('딜 카드 형태 3종', () => {
   it('① 미니·줄은 09-02 표면 규칙을 쓴다 — 흰 카드 + 들림, 테두리 0', () => {
     for (const [name, src] of [['DealMiniCard', MINI], ['DealRow', ROW]] as const) {
-      expect(src, `${name}: 흰 표면`).toMatch(/bg-white dark:bg-\[#1D1F29\]/)
+      expect(src, `${name}: 흰 표면`).toMatch(CARD_BG_RE)
       expect(src, `${name}: 들림 하나`).toContain('shadow-lift')
       // 카드 테두리는 0 — 표면 규칙 ①. (`border-` 가 아예 없어야 한다는 뜻은 아니고
       //  루트 컨테이너에 테두리를 두르지 않는다는 뜻이라 클래스 존재로 본다.)

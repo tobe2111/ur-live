@@ -22,7 +22,7 @@ export default function WalletArchive({ used, archived, locale, t, onShowQr }: {
 
   // 🎨 2026-09-15: 회색 테두리 상자 → 흰 면 + 들림 한 값(표면 규칙 ① "카드 테두리 0").
   return (
-    <div className="mt-4 rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift overflow-hidden">
+    <div className="mt-4 rounded-2xl bg-surface shadow-lift overflow-hidden">
       {groups.map((g, idx) => {
         const open = expanded.has(g.key)
         return (

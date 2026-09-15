@@ -21,7 +21,7 @@ export default function CartComplete({ qty, kinds, amount }: { qty: number; kind
   const navigate = useNavigate()
 
   return (
-    <div className="min-h-[100dvh] bg-[#F8F7FC] dark:bg-[#11141C] text-gray-900 dark:text-white">
+    <div className="min-h-[100dvh] bg-warm text-gray-900 dark:text-white">
       <div className="ur-content-narrow px-4 lg:px-8 pt-3 pb-10">
         <div className="flex justify-end">
           <button type="button" onClick={() => navigate('/')} aria-label="닫기" className="w-10 h-10 -mr-2 flex items-center justify-center text-gray-500 dark:text-gray-400">

@@ -151,13 +151,13 @@ export default function InfluencerDiscoverPage() {
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               placeholder="공구명/매장명 검색"
-              className="w-full pl-9 pr-3 py-2 border border-gray-200 dark:border-[#2C2F35] rounded-full text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand/40"
+              className="w-full pl-9 pr-3 py-2 border border-line rounded-full text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand/40"
             />
           </div>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as 'latest' | 'popular')}
-            className="px-3 py-2 border border-gray-200 dark:border-[#2C2F35] rounded-full text-xs text-gray-900 dark:text-white font-medium bg-white dark:bg-[#11141C]"
+            className="px-3 py-2 border border-line rounded-full text-xs text-gray-900 dark:text-white font-medium bg-white dark:bg-[#11141C]"
           >
             <option value="latest">최신순</option>
             <option value="popular">인기순</option>
@@ -175,7 +175,7 @@ export default function InfluencerDiscoverPage() {
               return (
                 /* 🎫 2026-09-03: 자체 카드 → 줄 SSOT(`DealRow`) + 소개자 전용 액션.
                    딜을 보여 주는 부분은 다른 화면과 같은 그림이고, 모집 진척·링크 복사는 이 화면 것이다. */
-                <li key={p.id} className="bg-white dark:bg-[#1D1F29] rounded-2xl shadow-lift overflow-hidden">
+                <li key={p.id} className="bg-surface rounded-2xl shadow-lift overflow-hidden">
                   <DealRow
                     imageUrl={p.image_url}
                     eyebrow={p.restaurant_name || p.seller_name || '-'}

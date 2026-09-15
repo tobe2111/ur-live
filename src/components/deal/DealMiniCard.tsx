@@ -37,7 +37,7 @@ export default memo(function DealMiniCard({
   return (
     <Link
       to={to}
-      className={`block text-left rounded-2xl overflow-hidden bg-white dark:bg-[#1D1F29] shadow-lift active:scale-[0.98] transition-transform ${className}`}
+      className={`block text-left rounded-2xl overflow-hidden bg-surface shadow-lift active:scale-[0.98] transition-transform ${className}`}
     >
       <div className="aspect-square overflow-hidden bg-gray-100 dark:bg-[#222225]">
         {imageUrl ? (

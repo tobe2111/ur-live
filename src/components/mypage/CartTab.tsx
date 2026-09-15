@@ -68,7 +68,7 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
             </div>
 
             <div className="flex items-center justify-between">
-              <div className="inline-flex items-center rounded-full border border-gray-200 dark:border-[#2C2F35] overflow-hidden">
+              <div className="inline-flex items-center rounded-full border border-line overflow-hidden">
                 <button
                   onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
                   disabled={item.quantity <= 1}

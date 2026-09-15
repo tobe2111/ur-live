@@ -128,7 +128,7 @@ export default function ReferralSection({
   if (REFERRAL_GROUP_DISCOUNT_DISABLED) return null
 
   return (
-    <div className="mx-4 mb-3 bg-white dark:bg-[#11141C] rounded-xl border border-gray-200 dark:border-[#2C2F35] p-4">
+    <div className="mx-4 mb-3 bg-white dark:bg-[#11141C] rounded-xl border border-line p-4">
       {/* 헤더 */}
       <div className="flex items-center gap-2 mb-1.5">
         <Gift className="w-4 h-4 text-gray-900 dark:text-white" />
@@ -173,7 +173,7 @@ export default function ReferralSection({
                 <button
                   key={g.invite_code}
                   onClick={() => navigate(`/referral/${g.invite_code}`)}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#11141C] text-left hover:bg-gray-50 dark:hover:bg-[#1D1F29] active:scale-[0.99] transition"
+                  className="w-full flex items-center gap-3 p-3 rounded-xl border border-line bg-white dark:bg-[#11141C] text-left hover:bg-gray-50 dark:hover:bg-[#1D1F29] active:scale-[0.99] transition"
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 mb-1">

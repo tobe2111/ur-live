@@ -92,7 +92,7 @@ export default function ConditionalDealsSection() {
           const ps = d.proof_status
           const canSubmit = d.status === 'proposed' && (ps === 'pending' || ps === 'rejected')
           return (
-            <div key={d.id} className="rounded-lg border border-gray-200 dark:border-[#2C2F35] p-3">
+            <div key={d.id} className="rounded-lg border border-line p-3">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-bold text-gray-900 dark:text-white">
                   매장 #{d.seller_id} · {d.commission_pct}%
@@ -128,7 +128,7 @@ export default function ConditionalDealsSection() {
                     value={urlById[d.id] || ''}
                     onChange={(e) => setUrlById((m) => ({ ...m, [d.id]: e.target.value }))}
                     placeholder="https://blog.naver.com/..."
-                    className="flex-1 rounded-lg border border-gray-300 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] px-3 py-2 text-sm text-gray-900 dark:text-white"
+                    className="flex-1 rounded-lg border border-gray-300 dark:border-[#2C2F35] bg-surface px-3 py-2 text-sm text-gray-900 dark:text-white"
                   />
                   <button
                     type="button"

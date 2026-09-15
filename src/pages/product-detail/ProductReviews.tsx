@@ -73,7 +73,7 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
   // 🎫 2026-09-02 (대표 "리뷰 작성란 다크에서 글자 안 보임 · 디자인도 손봐야"): 카드 테두리 0 + surface 두 톤,
   //   핑크 정보상자·선물 이모지 → 회색 한 줄, 별은 브랜드 글자색 하나. textarea 는 아래 주석 참조.
   return (
-    <div className="mt-3 rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift p-4">
+    <div className="mt-3 rounded-2xl bg-surface shadow-lift p-4">
       <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-1">{t('reviews.title', { defaultValue: '리뷰 작성' })}</h3>
       <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-3">{t('reviews.rewardBanner', { defaultValue: '텍스트 {{text}}딜, 사진 {{image}}딜, 영상 {{video}}딜 리워드', text: rewards.text, image: rewards.image, video: rewards.video })}</p>
       <div className="flex gap-1 mb-3" role="radiogroup" aria-label={t('reviews.rating', { defaultValue: '별점' })}>
@@ -91,7 +91,7 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
         aria-label={t('reviews.contentLabel', { defaultValue: '리뷰 내용' })}
         // 🩸 2026-09-02: `dark:bg-*` 가 없어 다크에서 브라우저 기본 흰 배경 + 전역 `.dark textarea{color:gray-100}` 글자
         //   = 흰 바탕에 흰 글자(placeholder 만 보임). 입력창은 카드 안의 한 톤 낮은 면(--bg)이다.
-        className="w-full px-3 py-2 rounded-xl bg-[#F8F7FC] dark:bg-[#11141C] text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-brand/40"
+        className="w-full px-3 py-2 rounded-xl bg-warm text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-brand/40"
       />
 
       {/* 남은 글자 안내(항상) + 클릭·서버 판정 사유(hint). 둘은 같은 자리에 쓴다 — 사용자가

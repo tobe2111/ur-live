@@ -228,22 +228,22 @@ export default function StaysSearchPage() {
                   value={filters.region}
                   onChange={(e) => setFilters({ ...filters, region: e.target.value })}
                   placeholder="서울 / 제주 / 부산 등"
-                  className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none"
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border border-line rounded-lg text-sm text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none"
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">체크인</label>
-                  <input type="date" value={filters.check_in} onChange={(e) => setFilters({ ...filters, check_in: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white" />
+                  <input type="date" value={filters.check_in} onChange={(e) => setFilters({ ...filters, check_in: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border border-line rounded-lg text-sm text-gray-900 dark:text-white" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">체크아웃</label>
-                  <input type="date" value={filters.check_out} onChange={(e) => setFilters({ ...filters, check_out: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white" />
+                  <input type="date" value={filters.check_out} onChange={(e) => setFilters({ ...filters, check_out: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border border-line rounded-lg text-sm text-gray-900 dark:text-white" />
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">인원</label>
-                <input type="number" min={1} max={20} value={filters.guests} onChange={(e) => setFilters({ ...filters, guests: Number(e.target.value) || 1 })} className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white" />
+                <input type="number" min={1} max={20} value={filters.guests} onChange={(e) => setFilters({ ...filters, guests: Number(e.target.value) || 1 })} className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border border-line rounded-lg text-sm text-gray-900 dark:text-white" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">숙소 타입</label>
@@ -277,7 +277,7 @@ export default function StaysSearchPage() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">정렬</label>
-                <select value={filters.sort} onChange={(e) => setFilters({ ...filters, sort: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white">
+                <select value={filters.sort} onChange={(e) => setFilters({ ...filters, sort: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border border-line rounded-lg text-sm text-gray-900 dark:text-white">
                   <option value="recent">최신 등록</option>
                   <option value="price_asc">가격 낮은순</option>
                   <option value="price_desc">가격 높은순</option>

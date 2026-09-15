@@ -97,15 +97,15 @@ export default function GuestIdentityFields({
     <>
       <div>
         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">{nameLabel} *</label>
-        <input value={value.guest_name} onChange={set('guest_name')} className="w-full px-3 py-2 bg-white dark:bg-[#1D1F29] border border-gray-300 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white" />
+        <input value={value.guest_name} onChange={set('guest_name')} className="w-full px-3 py-2 bg-surface border border-gray-300 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white" />
       </div>
       <div>
         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">전화번호 *</label>
-        <input value={value.guest_phone} onChange={set('guest_phone')} placeholder="010-1234-5678" className="w-full px-3 py-2 bg-white dark:bg-[#1D1F29] border border-gray-300 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white" />
+        <input value={value.guest_phone} onChange={set('guest_phone')} placeholder="010-1234-5678" className="w-full px-3 py-2 bg-surface border border-gray-300 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white" />
       </div>
       <div>
         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">이메일</label>
-        <input type="email" value={value.guest_email} onChange={set('guest_email')} className="w-full px-3 py-2 bg-white dark:bg-[#1D1F29] border border-gray-300 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white" />
+        <input type="email" value={value.guest_email} onChange={set('guest_email')} className="w-full px-3 py-2 bg-surface border border-gray-300 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white" />
       </div>
     </>
   )

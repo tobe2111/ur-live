@@ -105,7 +105,7 @@ export default function GroupBuyConfirmPaymentPage() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-[#F8F7FC] dark:bg-[#11141C] flex items-center justify-center px-4">
+    <div className="min-h-[100dvh] bg-warm flex items-center justify-center px-4">
       <SEO title="공구 결제 처리" url="/group-buy/confirm-payment" noindex />
       <div className="text-center max-w-sm">
         {state === 'processing' && (

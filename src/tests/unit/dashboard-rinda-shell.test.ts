@@ -60,9 +60,30 @@ describe('R2 라이트 래퍼가 브랜드 틴트를 되박는다 (다크 모드
     expect(block('.seller-light-theme {')).toMatch(/--brand-tint:\s*#EAF1FE/i)
   })
   it('어드민/에이전시 래퍼도 같이 고정한다', () => {
-    expect(block('.light-island, .force-light-theme, .admin-light-theme, .agency-light-theme {'))
-      .toMatch(/--brand-tint:\s*#EAF1FE/i)
+    /**
+     * 🔀 2026-09-15 재조준 — 종전엔 **셀렉터 목록 문자열 통째로**를 앵커로 썼는데,
+     *   그 목록에 `.seller-light-theme` 을 더하자(같은 날 색 정리) 정상인데 빨간불이 났다.
+     *   ⚠️ 목록을 앵커로 쓰면 **스코프를 늘리는 올바른 변경이 시험을 깬다** — 늘리는 건
+     *   이 시험이 장려해야 할 방향이다. ⇒ 목록이 아니라 **덮는가**를 묻는다.
+     *
+     * 🩸 그리고 첫 재조준은 `indexOf` 로 첫 선언을 집었다가 **`:root` 의 라이트 기본값**을
+     *   잡았다(거기에도 같은 값이 있다). 라이트 고정 스코프 안의 선언만 골라야 한다.
+     */
+    const decl = /--brand-tint:\s*#EAF1FE/gi
+    const covering: string[] = []
+    for (const m of css.matchAll(decl)) {
+      const at = m.index!
+      const selector = css.slice(css.lastIndexOf('}', at) + 1, css.lastIndexOf('{', at))
+      if (selector.includes('light-theme') || selector.includes('light-island')) covering.push(selector)
+    }
+    expect(covering.length, '라이트 고정 스코프에서 --brand-tint 를 되박는 블록이 없다').toBeGreaterThan(0)
+    const all = covering.join(' ')
+    for (const scope of ['.light-island', '.force-light-theme', '.admin-light-theme', '.agency-light-theme']) {
+      expect(all, `${scope} 가 --brand-tint 되박기에서 빠졌다 — html.dark 에서 활성 알약이 남색으로 뜬다`)
+        .toContain(scope)
+    }
   })
+
   it('활성 메뉴 알약이 그 토큰을 쓴다', () => {
     expect(css).toMatch(/\.ur-seller-nav-active[\s\S]{0,160}background:\s*var\(--brand-tint\)/)
   })

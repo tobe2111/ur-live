@@ -25,7 +25,7 @@ import type { ReactNode } from 'react'
 /** 테두리 없는 카드 한 장. 자식 행 사이 구분선은 각 행이 스스로 긋는다. */
 export function FieldCard({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`overflow-hidden rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift ${className}`}>
+    <div className={`overflow-hidden rounded-2xl bg-surface shadow-lift ${className}`}>
       {children}
     </div>
   )

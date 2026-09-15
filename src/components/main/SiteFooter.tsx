@@ -25,7 +25,7 @@ export default function SiteFooter() {
             <p className="mt-2.5 text-[13px] leading-relaxed text-gray-500 dark:text-gray-400">
               우리 동네 이용권·공동구매·교환권을<br />할인가로, 매장에서 QR로 바로.
             </p>
-            <a href="/partnership" className="inline-block mt-3 text-[12px] font-bold text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-[#2C2F35] rounded-full px-3.5 py-1.5 hover:border-brand hover:text-brand transition-colors">
+            <a href="/partnership" className="inline-block mt-3 text-[12px] font-bold text-gray-700 dark:text-gray-200 border border-line rounded-full px-3.5 py-1.5 hover:border-brand hover:text-brand transition-colors">
               광고·제휴 문의 →
             </a>
           </div>

@@ -137,13 +137,13 @@ export default function HostingPage() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => copyInvite(host)}
-                        className="flex-1 py-2 bg-white dark:bg-[#1D1F29] hover:bg-gray-100 dark:hover:bg-[#2C2F35] text-gray-700 dark:text-gray-300 text-xs font-bold rounded-lg border border-gray-200 dark:border-[#2C2F35]"
+                        className="flex-1 py-2 bg-surface hover:bg-gray-100 dark:hover:bg-[#2C2F35] text-gray-700 dark:text-gray-300 text-xs font-bold rounded-lg border border-line"
                       >
                         🔗 초대 링크
                       </button>
                       <Link
                         to={`/host/${host.id}`}
-                        className="flex-1 py-2 bg-white dark:bg-[#1D1F29] hover:bg-gray-100 dark:hover:bg-[#2C2F35] text-gray-700 dark:text-gray-300 text-xs font-bold rounded-lg text-center border border-gray-200 dark:border-[#2C2F35]"
+                        className="flex-1 py-2 bg-surface hover:bg-gray-100 dark:hover:bg-[#2C2F35] text-gray-700 dark:text-gray-300 text-xs font-bold rounded-lg text-center border border-line"
                       >
                         👥 참여자
                       </Link>

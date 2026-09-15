@@ -37,7 +37,7 @@ function TopupClosedNotice() {
         </button>
         <button
           onClick={() => navigate('/my-deal-history')}
-          className="rounded-xl border border-gray-200 dark:border-[#2C2F35] px-5 py-3 text-[14px] font-bold text-gray-700 dark:text-gray-200"
+          className="rounded-xl border border-line px-5 py-3 text-[14px] font-bold text-gray-700 dark:text-gray-200"
         >
           내 딜 내역
         </button>

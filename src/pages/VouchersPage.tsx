@@ -721,7 +721,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             // 🏠 홈/PC — 2/3/4/5열 그리드 카드 스켈레톤 (main 의 PC 확장 lg:4 xl:5 반영).
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-2.5">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="animate-pulse rounded-2xl overflow-hidden border border-gray-100 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29]">
+                <div key={i} className="animate-pulse rounded-2xl overflow-hidden border border-gray-100 dark:border-[#2C2F35] bg-surface">
                   <div className="aspect-square bg-gray-100 dark:bg-[#1D1F29]" />
                   <div className="px-2.5 pt-2 pb-2.5">
                     <div className="h-3 bg-gray-100 dark:bg-[#1D1F29] rounded w-3/4" />
