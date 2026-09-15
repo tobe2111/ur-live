@@ -16,7 +16,10 @@
  *
  * ⚠️ 여기서 이모지 아이콘(📋 🔑 🛡️)을 쓰지 말 것. 되돌아오면 그 자리만 톤이 튄다.
  */
-import React from 'react'
+import React, { lazy, Suspense } from 'react'
+import DeferUntilVisible from '../group-buy/DeferUntilVisible'
+
+const ProductReviews = lazy(() => import('../product-detail/ProductReviews'))
 
 /** 섹션 제목 — 상세 페이지 전체에서 이것 하나만 쓴다(공구 상세 16/800/-.02em 와 동일 스펙). */
 export function SectionTitle({ children, className = '' }: { children: React.ReactNode; className?: string }) {
@@ -29,7 +32,7 @@ export function SectionTitle({ children, className = '' }: { children: React.Rea
 
 /**
  * 시설 — 아이콘 + 낱말이 줄바꿈되며 흐른다. 카드·테두리 없음.
- * `items` 는 이미 아이콘이 매핑된 상태로 받는다(아이콘 매핑 SSOT 는 StayDetailPage.amenityMeta).
+ * `items` 는 이미 아이콘이 매핑된 상태로 받는다(아이콘 매핑 SSOT 는 stay-detail/amenity-meta.tsx).
  */
 export function AmenityFlow({ items }: { items: Array<{ key: string; label: string; icon: React.ReactNode }> }) {
   if (!items.length) return null
@@ -73,4 +76,43 @@ const PROPERTY_TYPE_LABELS: Record<string, string> = {
 export function propertyTypeLabel(t?: string | null): string {
   const key = String(t || '').trim().toLowerCase()
   return PROPERTY_TYPE_LABELS[key] || (t || '숙소')
+}
+
+/**
+ * ⭐ 리뷰 (2026-09-14 안 B) — 공구 상세가 쓰는 `ProductReviews` 를 그대로 붙인다. 새로 만들지 않는다.
+ *
+ * 숙소 상세엔 평점 **숫자만** 있고 후기 본문이 한 줄도 없었다(라이브에 30건이 쌓여 있는데도).
+ * 리뷰를 쓰는 진입도 이 컴포넌트가 들고 있다 — 주문 상세의 작성 버튼은 **배송완료** 조건이라
+ * 배송이 없는 숙소·이용권엔 열리지 않는다. 그래서 여기가 사실상 유일한 작성 자리다.
+ *
+ * 끝에 하단 구매 바 높이만큼 자리를 비운다 — 그 바는 이제 담기 전에도 상시 떠 있다.
+ */
+export function StayReviews({ productId }: { productId: number }) {
+  return (
+    <div className="mb-6">
+      <DeferUntilVisible minHeight={80}>
+        <Suspense fallback={<div className="h-20 rounded-xl bg-gray-100 dark:bg-[#1D1F29]" />}>
+          <ProductReviews productId={productId} limit={5} />
+        </Suspense>
+      </DeferUntilVisible>
+      <div className="lg:hidden h-[76px]" aria-hidden="true" />
+    </div>
+  )
+}
+
+/**
+ * 🚫 만실 (2026-09-14 안 B) — 종전엔 객실 카드마다 붉은 '매진' 글자뿐이라, 전부 매진인 날에도
+ * 사용자가 카드를 하나씩 훑고서야 알았고 **다음에 뭘 해야 하는지**는 아무도 말하지 않았다.
+ * 카드 한 장 + 주 행동(다른 날짜 고르기) 하나로 그 자리에서 끝낸다.
+ */
+export function StaySoldOutCard({ onPickDates }: { onPickDates: () => void }) {
+  return (
+    <div className="rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift p-5 text-center">
+      <p className="text-[15px] font-extrabold tracking-[-0.02em] text-gray-900 dark:text-white">고른 날짜는 모두 예약됐어요</p>
+      <p className="mt-1.5 text-[13px] text-gray-500 dark:text-gray-400">날짜를 바꾸면 남은 객실을 볼 수 있어요.</p>
+      <button type="button" onClick={onPickDates} className="mt-4 w-full py-3 bg-brand text-white text-sm font-bold rounded-xl hover:bg-brand-dark">
+        다른 날짜 고르기
+      </button>
+    </div>
+  )
 }

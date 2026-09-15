@@ -2232,6 +2232,7 @@
     "unprocessedOrderCount": "미처리 주문 {{count}}건",
     "lowStockCount": "재고 부족 {{count}}건",
     "settlementAvailableCount": "정산 가능 {{count}}건",
+    "settlementAvailableAmount": "정산 가능 {{amount}}",
     "insightPendingOrdersTitle": "미처리 주문 {{count}}건",
     "insightPendingOrdersDesc": "빠른 처리가 필요합니다",
     "insightManageOrders": "주문 관리",
@@ -2305,7 +2306,8 @@
       "alimtalkSent": "사장님께 알림톡이 발송되었습니다",
       "reissue": "같은 내용으로 재발행",
       "copyLoaded": "이전 공구 내용을 불러왔어요 — 날짜만 확인하고 발행하세요!",
-      "copyFailed": "이전 공구를 불러오지 못했어요"
+      "copyFailed": "이전 공구를 불러오지 못했어요",
+      "deleted": "이용권이 삭제되었습니다"
     },
     "voucher": {
       "categoryTitle": "이용권 종류",
@@ -3216,7 +3218,83 @@
       "orders": "주문"
     },
     "bizFromRegistration": "매장 등록 때 입력하신 내용을 채워 뒀어요",
-    "bizFromRegistrationDesc": "아직 사업자 정보로는 등록되지 않았습니다 — 확인 후 저장을 눌러 주세요."
+    "bizFromRegistrationDesc": "아직 사업자 정보로는 등록되지 않았습니다 — 확인 후 저장을 눌러 주세요.",
+    "tab": {
+      "home": "홈",
+      "orders": "주문",
+      "vouchers": "이용권",
+      "settlements": "정산",
+      "more": "더보기"
+    },
+    "more": {
+      "account": "계정",
+      "language": "언어"
+    },
+    "home": {
+      "today": "오늘",
+      "revenue": "매출",
+      "orders": "주문",
+      "pending": "처리 대기",
+      "settleAvail": "정산 가능",
+      "newOrders": "새 주문 {{count}}건",
+      "newOrdersSub": "확인하고 준비를 시작하세요",
+      "confirm": "확인",
+      "settleSub": "지금 출금 신청할 수 있어요",
+      "withdraw": "출금",
+      "todoTitle": "지금 처리할 일",
+      "todoEmpty": "지금 처리할 일이 없어요. 새 주문과 정산이 여기에 모입니다.",
+      "myVouchers": "내 이용권",
+      "manageAll": "전체 관리",
+      "register": "등록",
+      "soldCount": "{{count}}건",
+      "noVouchers": "아직 등록한 이용권이 없어요. 첫 이용권을 만들면 여기에 보여요.",
+      "moreVouchers": "외 {{count}}개",
+      "thisWeek": "이번 주",
+      "seePerf": "성과 보기",
+      "weekOrders": "주문 {{count}}건",
+      "vsLastWeek": "지난주보다",
+      "myStore": "내 매장"
+    },
+    "vouchers": {
+      "paused": "판매 중지",
+      "thisMonth": "이번 달",
+      "soldTotal": "판매 {{count}}건",
+      "onSale": "판매 중",
+      "onSaleShort": "판매",
+      "ended": "종료",
+      "segEmpty": "이 상태의 이용권이 없어요",
+      "price": "가격",
+      "sold": "판매",
+      "edit": "편집",
+      "more": "더 보기",
+      "expectedNet": "예상 정산액",
+      "feeNote": "수수료 {{pct}}% 차감",
+      "usage": "바우처 사용",
+      "expired": "만료 {{count}}",
+      "copyStoreLink": "사장님 링크 복사",
+      "sendAlimtalk": "사장님께 알림톡",
+      "rotateLink": "새 링크 발급 (이전 링크 무효화)",
+      "rotateConfirm": "이전 링크가 만료되고 새 링크가 발송됩니다. 진행하시겠습니까?",
+      "noContact": "식당 연락처 미등록 — 등록하기",
+      "pinWarn": "최근 7일 PIN 오류 {{errors}}건이 성공 {{ok}}건보다 많아요. 가게에 안내된 PIN 을 확인해 주세요.",
+      "deleteConfirm": "'{{name}}' 이용권을 삭제할까요?\n이미 발급된 이용권은 그대로 사용할 수 있고, 새 판매만 중단됩니다.",
+      "deleteFailed": "삭제 실패"
+    },
+    "ordersM3": {
+      "today": "오늘",
+      "yesterday": "어제",
+      "waiting": "처리 대기",
+      "preparing": "준비 중",
+      "done": "완료",
+      "none": "해당하는 주문이 없어요",
+      "pickupAt": "사용 예정 {{date}}",
+      "confirm": "주문 확인"
+    },
+    "edit": {
+      "listPrice": "정가 (할인 전 가격)",
+      "listPriceDiscount": "소비자 화면에 {{pct}}% 할인으로 보입니다.",
+      "listPriceHint": "판매가보다 높게 넣으면 할인율이 표시됩니다. 비우면 할인 표시가 없습니다."
+    }
   },
   "admin": {
     "login": {

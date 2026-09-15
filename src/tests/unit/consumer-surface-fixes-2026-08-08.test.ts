@@ -16,12 +16,10 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { isBlockedPhotoUrl } from '../../worker/utils/demo-photo-set'
 import { PRODUCT_DETAIL_FIELDS } from '../../shared/db/product-columns'
+import { stripComments } from '../helpers/source-text'
 
 /** 주석은 배선이 아니다 — 실행 코드만 남기고 판정한다(이 레포가 반복해 걸린 함정). */
-const code = (p: string) =>
-  readFileSync(p, 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .split('\n').filter((l) => !/^\s*(\/\/|\*)/.test(l)).join('\n')
+const code = (p: string) => stripComments(readFileSync(p, 'utf8'))
 
 describe('① 교환권 페이지 검색은 교환권만', () => {
   it('/vouchers 검색 버튼이 scope 를 붙여 보낸다', () => {

@@ -20,3 +20,24 @@ export function resolveKtConsumerMarkupPct(raw: unknown): number {
   if (!Number.isFinite(n)) return KT_CONSUMER_MARKUP_DEFAULT_PCT
   return Math.min(100, Math.max(0, n))
 }
+
+/**
+ * 🧑‍💼 **셀러 축 마진율** — 위와 같은 함정, 다른 기본값(5).
+ *
+ * 2026-09-02 에 소비자 축만 고치고 셀러 축 두 자리(`seller-settlements.routes.ts` 354·437)는
+ * `Number(...) || 5` 로 남았다. 당시 라이브 값이 `5` 라 **영향이 0 이어서 눈에 안 띄었다** —
+ * 그게 이 결함의 성질이다. 어드민에서 0 을 저장하면 저장은 되고(`Number.isFinite` 검증)
+ * 읽는 쪽이 5 로 되돌린다. 에러가 없어 "슬라이더를 0 으로 내렸는데 가격이 그대로"로만 보인다.
+ *
+ * ⚠️ 현재 값(5)에서는 이 함수와 옛 `|| 5` 의 결과가 **같다**. 달라지는 것은 0 을 넣었을 때뿐이다.
+ */
+export const KT_SELLER_MARKUP_DEFAULT_PCT = 5
+
+export function resolveKtSellerMarkupPct(raw: unknown): number {
+  if (raw === null || raw === undefined) return KT_SELLER_MARKUP_DEFAULT_PCT
+  const s = String(raw).trim()
+  if (s === '') return KT_SELLER_MARKUP_DEFAULT_PCT
+  const n = Number(s)
+  if (!Number.isFinite(n)) return KT_SELLER_MARKUP_DEFAULT_PCT
+  return Math.min(100, Math.max(0, n))
+}

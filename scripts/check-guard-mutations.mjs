@@ -107,6 +107,122 @@ const SCOPE = changedScope({
  */
 /** @type {Mutation[]} */
 const MUTATIONS = [
+  // ── 🧭 대시보드 Rinda 껍데기 (2026-09-14 대표 시안) — docs/design/dashboard-rinda-2026-09.md ──
+  {
+    name: '🧭 라이트 래퍼가 --brand-tint 를 안 되박는다 (다크 모드에서 활성 메뉴가 검어진다)',
+    file: 'src/index.css',
+    find: '  --brand-tint: #EAF1FE;\n  --brand-text: #1C69EF;\n}\n.light-island',
+    replace: '}\n.light-island',
+    test: 'src/tests/unit/dashboard-rinda-shell.test.ts',
+    why:
+      '사이드바가 흰 면이 되면서 비로소 도달 가능해진 경로다. 사용자가 OS/앱 다크 모드를 켜 두면 ' +
+      ':root.dark 의 --brand-tint(#16243D, 남색)가 새어 들어와 활성 메뉴 알약이 검게 뜬다. ' +
+      'index.css 가 --lift 에 대해 이미 경고해 둔 사고의 재발이고, 화면엔 "색이 좀 이상하다"로만 보인다.',
+  },
+  {
+    name: '🧭 사이드바 CTA 필터가 검색 색인까지 먹는다 (이용권 등록이 ⌘K 에서 사라진다)',
+    file: 'src/components/seller-layout/useSellerNavModel.ts',
+    find: '...orderedNavGroups.flatMap((g) => g.items.map',
+    replace: '...renderedNavGroups.flatMap((g) => g.items.map',
+    test: 'src/tests/unit/dashboard-rinda-shell.test.ts',
+    why:
+      "'이용권 등록'을 파란 CTA 로 뽑아내면서 **그리는 목록만** 걸러야 한다. 색인 원본까지 거르면 " +
+      '그 페이지는 메뉴에도 검색에도 없어진다 — 이 레포가 반복해 겪은 "페이지는 있는데 닿을 수 없다".',
+  },
+  {
+    name: '🧭 홈 할 일 행의 칩이 검은 타일로 되돌아온다 (무엇이 급한지 구별이 사라진다)',
+    file: 'src/pages/seller-page/TodoRows.tsx',
+    find: "const ACT = 'rounded-lg bg-brand-tint px-3 py-2 text-xs font-bold text-brand-text'",
+    replace: "const ACT = 'rounded-lg bg-gray-900 px-3 py-2 text-xs font-bold text-white'",
+    test: 'src/tests/unit/dashboard-rinda-shell.test.ts',
+    why:
+      '종전엔 bg-gray-900 타일이 조건에 따라 동시에 셋까지 떴다(이용권 등록 + 미처리 주문 + 정산). ' +
+      '셋이 똑같이 새까매서 우선순위를 전혀 말해 주지 못했다 — 대표가 말한 "헷갈린다"의 한 축.',
+  },
+  {
+    name: '🧭 셀러 사이드바가 다시 어두워진다',
+    file: 'src/components/SellerLayout.tsx',
+    find: "text-gray-500 hover:bg-gray-50 hover:text-gray-900'",
+    replace: "text-white/55 hover:text-white'",
+    test: 'src/tests/unit/dashboard-rinda-shell.test.ts',
+    why:
+      '흰 면 위에 흰 글자가 된다. 빌드도 타입체크도 통과하고 화면에서만 글자가 사라지는 부류라 ' +
+      '가드가 없으면 배포 뒤에야 드러난다.',
+  },
+  {
+    name: '💸 정산 금액을 다시 건수로 말한다 (₩412,000 → "412000건")',
+    file: 'src/pages/seller-page/TodoRows.tsx',
+    find: 'settlementAvailableAmount',
+    replace: 'settlementAvailableCount',
+    test: 'src/tests/unit/dashboard-rinda-shell.test.ts',
+    why:
+      '{{count}}건 문자열에 원화 금액을 넘기던 자리. 에러가 안 나고 숫자도 맞아 보여서 ' +
+      '셀러가 "정산 가능 412000건" 을 그대로 믿는다.',
+  },
+  {
+    name: '뒤로가기 복원 — /browse POP 조회 무력화',
+    file: 'src/pages/browse/list-restore.ts',
+    find: "navType === 'POP' ? readListView<BrowseViewState>(keyRef.current) : null",
+    replace: 'null',
+    test: 'src/tests/unit/list-view-restore-2026-09-13.test.ts',
+    why: '귀속 지점. 이 한 줄을 무력화하면 뒤로 왔을 때 목록이 1페이지로 무너지고 맨 위 항목이 달라진다.',
+  },
+  {
+    name: '뒤로가기 복원 — /browse 마운트 리셋 스킵 제거',
+    file: 'src/pages/BrowsePage.tsx',
+    find: 'if (browseSkipFirstRef.current) { browseSkipFirstRef.current = false; return }',
+    replace: 'if (false) { return }',
+    test: 'src/tests/unit/list-view-restore-2026-09-13.test.ts',
+    why: "setProducts([]) 가 복원본을 지우고 1페이지만 다시 받아 목록이 도로 짧아진다.",
+  },
+  {
+    name: '뒤로가기 복원 — /map 모듈 캐시 동기 소비 제거',
+    file: 'src/hooks/queries/useMapProducts.ts',
+    find: 'useState<Entry>(() => seedOf(cacheKey)',
+    replace: 'useState<Entry>(() => (null as Entry | null)',
+    test: 'src/tests/unit/list-view-restore-2026-09-13.test.ts',
+    why: '/map 은 이미 정상인데(실측) 이 한 줄이 사라지면 뒤로가기가 1페이지로 무너진다 — 그 장치를 잠근다.',
+  },
+  {
+    name: '뒤로가기 복원 — 유어샵 메모리 캐시 소비 제거',
+    file: 'src/pages/CuratorPage.tsx',
+    find: 'return getCuratorCache(handle)',
+    replace: 'return null',
+    test: 'src/tests/unit/list-view-restore-2026-09-13.test.ts',
+    why: '유어샵도 이미 정상인데 이 줄이 사라지면 재진입마다 cold fetch 로 되돌아간다.',
+  },
+  {
+    name: '뒤로가기 복원 — POP 조회를 무력화',
+    file: 'src/pages/VouchersPage.tsx',
+    find: "navType === 'POP' ? readListView<VouchersViewState>(viewKey) : null",
+    replace: 'null',
+    test: 'src/tests/unit/list-view-restore-2026-09-13.test.ts',
+    why: '이 한 줄이 이 사고의 귀속 지점이다(되돌려-검증: 브라우저 실측 4항목 전부 빨간불).',
+  },
+  {
+    name: '뒤로가기 복원 — 마운트 재fetch 스킵 제거',
+    file: 'src/pages/VouchersPage.tsx',
+    find: 'if (restored != null || ssrSeedRef.current != null) return',
+    replace: 'if (ssrSeedRef.current != null) return',
+    test: 'src/tests/unit/list-view-restore-2026-09-13.test.ts',
+    why: '재fetch 하면 응답이 1페이지뿐이라 되살린 목록이 도로 20개로 잘린다(증상 재발).',
+  },
+  {
+    name: "뒤로가기 복원 — '더보기' cap 리셋 스킵 제거",
+    file: 'src/pages/VouchersPage.tsx',
+    find: 'if (embedResetSkipRef.current) { embedResetSkipRef.current = false; return }',
+    replace: 'if (false) { return }',
+    test: 'src/tests/unit/list-view-restore-2026-09-13.test.ts',
+    why: '마운트에서 cap 이 8 로 돌아가 문서가 짧아지고, 그러면 스크롤 복원도 같이 깨진다.',
+  },
+  {
+    name: '뒤로가기 복원 — 필터 스탬프 검사 제거',
+    file: 'src/pages/VouchersPage.tsx',
+    find: 'productsKeyRef.current !== viewKey) return',
+    replace: 'false) return',
+    test: 'src/tests/unit/list-view-restore-2026-09-13.test.ts',
+    why: '필터 전환 중에 보관하면 새 키에 옛 카테고리 목록이 들어간다.',
+  },
   {
     name: '🏷️ 매장명이 없어도 빈 줄이 남는다 (카드 높이가 갈린다)',
     file: 'src/components/home/UrShortsRail.tsx',
@@ -1375,8 +1491,15 @@ const MUTATIONS = [
   {
     name: '💰 교환권 마진 SSOT 가 0 을 도로 20 으로 삼킨다 (어드민에서 0% 를 못 만든다)',
     file: 'src/features/admin/api/admin-kt-alpha/markup.ts',
-    find: '  return Math.min(100, Math.max(0, n))\n',
-    replace: '  return Math.min(100, Math.max(0, n || KT_CONSUMER_MARKUP_DEFAULT_PCT))\n',
+    // ⚠️ 앵커에 앞줄을 붙여 둔 이유: 2026-09-14 에 같은 파일로 **셀러 축**
+    //    `resolveKtSellerMarkupPct` 가 들어오면서 클램프 줄이 byte-동일로 두 번이 됐다.
+    //    `Math.min(...)` 한 줄만으로는 어느 함수인지 못 가린다 — 줄이지 말 것.
+    find:
+      '  if (!Number.isFinite(n)) return KT_CONSUMER_MARKUP_DEFAULT_PCT\n' +
+      '  return Math.min(100, Math.max(0, n))\n',
+    replace:
+      '  if (!Number.isFinite(n)) return KT_CONSUMER_MARKUP_DEFAULT_PCT\n' +
+      '  return Math.min(100, Math.max(0, n || KT_CONSUMER_MARKUP_DEFAULT_PCT))\n',
     test: 'src/tests/unit/kt-alpha-markup-zero.test.ts',
     why: '2026-09-02 라이브: 설정 20 → 교환권 2,260개가 액면가 ×1.19. 0 을 넣어도 `|| 20` 이 삼켰다.',
   },
@@ -2382,17 +2505,15 @@ const MUTATIONS = [
   {
     name: '한도 재검증(과금 직전)이 사라져 다른 탭으로 뚫린다',
     file: 'src/features/group-buy/api/group-buy.routes.ts',
-    find: `      const ownedRow = await DB.prepare(
-        "SELECT COUNT(*) AS n FROM vouchers WHERE product_id = ? AND user_id = ? AND status IN ('unused','used')"
-      ).bind(productId, userId).first<{ n: number }>().catch(() => ({ n: 0 }))
-      const owned = Number(ownedRow?.n ?? 0)
-      if (owned + qty > maxPerPerson) {`,
-    replace: '      const owned = 0\n      if (owned + qty > maxPerPerson) {',
+    find: '    const lim2 = await recheck(DB, productId, userId, qty, mppRaw)',
+    replace: '    const lim2 = { ok: true } as { ok: true } | { ok: false; error: string }',
     test: 'src/tests/unit/seller-voucher-limit.test.ts',
     why:
-      '같은 쿼리가 두 곳에 있다(사전검증 / 과금 직전 레이스 차단). 한쪽만 지워도 정상 구매는 ' +
-      '전부 통과해서 눈으로는 못 본다. ⚠️ 이 가드는 처음에 "파일에 쿼리가 있는가" 로 판정해 ' +
-      '**헛돌았다** — 되돌려-검증에서 잡아 개수 판정으로 고쳤다.',
+      '두 지점(사전검증 / 과금 직전 레이스 차단) 중 하나만 지워도 정상 구매는 전부 통과해서 ' +
+      '눈으로는 못 본다. ⚠️ 이 가드는 처음에 "파일에 쿼리가 있는가" 로 판정해 **헛돌았다** — ' +
+      '되돌려-검증에서 잡아 개수 판정으로 고쳤다. 🔁 2026-09-14: 두 벌이던 인라인 판정을 ' +
+      '`purchase-cap.ts` 헬퍼로 합치면서 이 주입의 **대상이 사라졌다**(낡은 지도로 CI 가 잡았다) — ' +
+      '호출 자리를 겨냥하도록 재조준.',
   },
   {
     name: '즐겨찾기가 다시 localStorage 단독 저장이 된다',
@@ -9173,10 +9294,14 @@ canvas {
     why: '2026-09-02 대표 신고 "눌렀는지 안눌렀는지 확인도 안돼". 켜짐은 블루 면이어야 다크·라이트 어디서든 갈린다.',
   },
   {
-    name: '/map B안 — 핀 링이 카테고리 팔레트로 되돌아간다',
+    // 🗺️ 2026-09-09 (안 D4): 핀이 원형 사진+링 → 알약이 되면서 `const ring = …` 이 사라졌다.
+    //   지키는 규칙은 그대로 살아 있으므로(강조색은 브랜드 하나, 자리는 선택뿐) 새 구조로 재조준한다.
+    //   ⚠️ 이 건은 CI 가 "낡은 지도"로 잡아 줬다 — 로컬에서 `--only='🗺️'` 로만 돌려 이름이
+    //   `/map` 으로 시작하는 이 항목을 놓쳤다. 구조를 바꿀 땐 이름이 아니라 **파일**로 훑을 것.
+    name: '/map B안 — 핀 강조색이 카테고리 팔레트로 되돌아간다',
     file: 'src/pages/restaurant-map/map-overlays.ts',
-    find: "const ring = isLive || isSelected ? PIN_RING_BRAND : PIN_RING_INK",
-    replace: "const ring = isLive ? PIN_RING_BRAND : '#ec4899'",
+    find: "return { pillBg: '#fff', pillFg: PIN_RING_INK, iconFg: '#3D4350', discountFg: PIN_RING_INK,",
+    replace: "return { pillBg: '#ec4899', pillFg: PIN_RING_INK, iconFg: '#10b981', discountFg: PIN_RING_INK,",
     test: 'src/tests/unit/map-chips-b.test.ts',
     why: '칩을 블루 하나로 정리해도 핀이 알록달록하면 정리가 무효다. 강조색은 하나, 자리는 선택뿐.',
   },

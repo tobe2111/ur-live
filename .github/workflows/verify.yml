@@ -277,6 +277,12 @@ jobs:
         run: node scripts/check-duplicate-hono-routes.mjs -s
         continue-on-error: false
 
+      # 🧾 2026-09-13 (대표 "결제의 다른 부분은?"): 토스가 승인 뒤 돌려보내는 주소가 실재하는
+      #   라우트인지. 문자열이라 빌드·타입체크·테스트가 전부 못 본다 — 결제가 끝나고 아무 데도
+      #   아닌 곳으로 돌아와도 초록불이다. 예외 `payment-redirect-ok`.
+      - name: 결제 복귀 주소가 실재 라우트인지 (strict)
+        run: node scripts/check-payment-redirect-routes.mjs
+
       # 🎛️ 2026-09-07: **게이트를 만들고 표에 안 넣으면 `ops-gate-reachable` 의 검사 밖으로 나간다.**
       #   그래서 담기 적립의 주 스위치가 한 달 넘게 손잡이 없이 남았다(읽는 곳 둘 · 쓰는 화면 0).
       #   등재가 곧 검사 범위다 — 이 가드가 등재 자체를 강제한다. 첫 실행에서 미등재 5개를 찾았다.
@@ -671,6 +677,20 @@ jobs:
       #   variant-aware 로 고쳐 위반 0 확인 → strict 등록.
       - name: Input text color guard (strict)
         run: STRICT_INPUT_TEXT=1 node scripts/check-input-text-color.mjs
+        continue-on-error: false
+
+      # 🔬 2026-09-13: 텍스트 가드가 **자기 주석 제거기를 새로 쓰는 것**을 동결한다.
+      #   `.replace(/\/\*[\s\S]*?\*\//g,'')` 는 문자열 안의 `/*` 에 물려 소스를 통째로 먹는다
+      #   (실측: worker/index.ts 코드의 76% 증발 → not.toContain 류가 무조건 통과).
+      #   SSOT 는 helpers/source-text 의 stripComments. 남은 98개는 동결만(줄이는 건 자유).
+      - name: Comment stripper ratchet (strict)
+        run: STRICT_COMMENT_STRIPPER=1 node scripts/check-comment-stripper.mjs
+
+      # 🛡️ 2026-09-14: "CI 가 막는 것은 로컬도 막는다" — 실측 91개 가드가 CI strict 인데
+      #   로컬은 무방비였다(합쳐 20초인데도). 위반 하나가 CI 57분을 태우던 원인.
+      #   새 strict 가드는 pre-push 게이트가 돌리거나 EXCLUDE 에 사유를 적어야 한다.
+      - name: 로컬↔CI 차단 동등성 (pre-push 게이트 누수)
+        run: node scripts/check-local-ci-parity.mjs
         continue-on-error: false
 
       # 🛡️ 2026-06-30: 배포-청크 자가복구(흰화면/무한로딩) 시스템 회귀 방지 — 현재 위반 0 → strict.

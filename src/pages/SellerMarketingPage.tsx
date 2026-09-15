@@ -193,7 +193,7 @@ export default function SellerMarketingPage() {
 
   return (
     <SellerLayout title="인플루언서 마케팅">
-      <div className="mx-auto max-w-2xl space-y-5 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-5">
         <div>
           <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
             <Megaphone className="w-5 h-5 text-brand-text" /> 인플루언서 마케팅 관리

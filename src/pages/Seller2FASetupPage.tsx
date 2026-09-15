@@ -90,7 +90,7 @@ export default function Seller2FASetupPage() {
 
   return (
     <SellerLayout title="2단계 인증 (2FA)">
-      <div className="mx-auto max-w-2xl space-y-5 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-5">
         <DashboardPageHeader
           title="2단계 인증"
           subtitle="비밀번호 외 OTP 코드로 로그인 보호"

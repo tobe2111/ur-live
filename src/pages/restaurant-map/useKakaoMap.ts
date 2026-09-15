@@ -1,7 +1,10 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
 import { distanceKm } from './utils'
 import { attachKakaoTouchShim } from '@/lib/kakao-touch-shim'
-import { buildAggContent, buildClusterContent, buildPinContent, buildPlaceContent, buildMeContent } from './map-overlays'
+import { buildAggContent, buildClusterContent, buildPinContent, buildPlaceContent, buildMeContent, applyPinTierStyle } from './map-overlays'
+import { mapMarkerTier, shouldShowMarkerLabel, setMapHighlightPct, mapHighlightPct } from '@/shared/map-marker'
+import { priceDisplay } from '@/shared/price-display'
+import { readRecentlyViewedIds } from '@/components/group-buy/RecentlyViewedStrip'
 import type { Restaurant, KakaoPlace } from './types'
 
 // 🗺️ 2026-06-22 (대표 — "중앙 기준이 하단 시트 크기에 따라 달라진다"): 선택 핀을 *보이는 지도 영역*
@@ -46,7 +49,6 @@ interface UseKakaoMapParams {
   kakaoPlaces: KakaoPlace[]
   setSuggestionFor: (p: KakaoPlace | null) => void
   userLoc: { lat: number; lng: number } | null
-  liveSellerIds: Set<number>
   favorites: number[]
   /** 현재 바텀시트 snap — 핀 클릭 시 보이는 영역 중앙 오프셋 계산에 사용. */
   sheetSnap?: 'peek' | 'mid' | 'full'
@@ -64,7 +66,6 @@ export function useKakaoMap({
   kakaoPlaces,
   setSuggestionFor,
   userLoc,
-  liveSellerIds,
   favorites,
   sheetSnap = 'peek',
   serverClusters = null,
@@ -83,6 +84,8 @@ export function useKakaoMap({
   const selectedIdRef = useRef<number | null>(null)
   selectedIdRef.current = selected?.id ?? null
   const pinElsRef = useRef(new Map<number, HTMLElement>())
+  /** 선택 restyle 이 무게 3단계를 다시 계산하려면 그 핀의 원본 값이 필요하다(가격·할인율). */
+  const pinDataRef = useRef(new Map<number, Restaurant>())
   // ⚡ 뷰포트 컬링: 지도 idle(이동/줌 멈춤)마다 rev 를 올려 보이는 영역만 다시 그림(diff 라 무변경 핀은 무접촉).
   const [viewportRev, setViewportRev] = useState(0)
   // 🛡️ 2026-06-20 (대표 — 줌 전수조사): 초기 fit(setBounds/setLevel)은 데이터 로드 후 '한 번만'.
@@ -267,22 +270,41 @@ export function useKakaoMap({
       })
     }
 
+    // 🗺️ 2026-09-09 (안 D4): 이름 라벨 솎아내기용 — **개별로 그려질 핀**이 차지한 격자 칸.
+    //   클러스터로 접히는 칸은 넣지 않는다(그 칸엔 개별 핀이 없다).
+    const occupiedCells = new Set<string>()
+    if (!aggMode && gridSize > 0) {
+      visible.forEach(r => {
+        const gx = Math.floor(r.restaurant_lng / gridSize)
+        const gy = Math.floor(r.restaurant_lat / gridSize)
+        const k = `${gx}_${gy}`
+        if (!clusteredKeys.has(k)) occupiedCells.add(k)
+      })
+    }
+    // 이미 본 이용권(localStorage) — 무게 3단계의 가운데 층.
+    const seenIds = readRecentlyViewedIds()
+
     ;(aggMode ? [] : visible).forEach(r => {
       if (gridSize > 0) {
         const gx = Math.floor(r.restaurant_lng / gridSize)
         const gy = Math.floor(r.restaurant_lat / gridSize)
         if (clusteredKeys.has(`${gx}_${gy}`)) return
       }
-      const isLive = r.seller_id ? liveSellerIds.has(r.seller_id) : false
       const isFav = favorites.includes(r.id)
       const groupKey = `${r.restaurant_lat.toFixed(5)}_${r.restaurant_lng.toFixed(5)}`
       const groupSize = coordGroupSize.get(groupKey) || 1
-      // 배지에 영향 주는 값만 key 에 — 값이 같으면(팬/줌/검색 재실행) 기존 핀 무접촉(깜빡임 0, L4:
+      // 🗺️ 2026-09-09 (안 D4): 이름 라벨은 **옆 칸이 비었을 때만** — 규칙은 shared/map-marker SSOT.
+      const cellKey = gridSize > 0
+        ? `${Math.floor(r.restaurant_lng / gridSize)}_${Math.floor(r.restaurant_lat / gridSize)}`
+        : null
+      const showLabel = shouldShowMarkerLabel(cellKey, occupiedCells)
+      const isSeen = seenIds.has(r.id)
+      // 마커 모양에 영향 주는 값만 key 에 — 값이 같으면(팬/줌/검색 재실행) 기존 핀 무접촉(깜빡임 0, L4:
       //   즐겨찾기 토글도 해당 핀 1개만 교체). 선택 강조는 key 무관 — 아래 restyle effect 가 DOM 직접 갱신.
-      const key = `pin:${r.id}:${isFav ? 1 : 0}:${groupSize}:${isLive ? 1 : 0}:${r.price ?? 0}`
+      const key = `pin:${r.id}:${isFav ? 1 : 0}:${groupSize}:${r.price ?? 0}:${isSeen ? 1 : 0}:${showLabel ? 1 : 0}`
       desired.set(key, () => {
         const pos = new window.kakao.maps.LatLng(r.restaurant_lat, r.restaurant_lng)
-        const content = buildPinContent(r, { isLive, isFav, isSelected: selectedIdRef.current === r.id, groupSize })
+        const content = buildPinContent(r, { isFav, isSelected: selectedIdRef.current === r.id, groupSize, isSeen, showLabel })
         content.addEventListener('click', () => {
           setSelected(r)
           // 🗺️ 2026-06-22: 핀 클릭 시 납작한 선택 카드가 뜨므로 'card' 기준으로 넓은 지도 중앙에 배치. 줌 유지.
@@ -290,14 +312,17 @@ export function useKakaoMap({
         })
         // 🗺️ 2026-08-17 (UX 전수검사 P1 — 핀·가격버블 상호 가림): 개별 핀에 기본 zIndex(3: 회색 장소 1 ↑,
         //   클러스터 5 ↓) + 호버/터치 시 최상위(9)로 — 겹친 핀도 가리키면 온전히 드러나 클릭 가능.
+        // 🗺️ 2026-09-09 (안 D4): yAnchor 0.5 → 1. 종전 원형 핀은 좌표 위에 '얹혀' 있었는데,
+        //   꼬리가 달린 핀은 **바닥이 그 자리를 가리켜야** 한다(안 그러면 꼬리가 엉뚱한 곳을 짚는다).
         const overlay = new window.kakao.maps.CustomOverlay({
-          position: pos, content, yAnchor: 0.5, xAnchor: 0.5, zIndex: 3, map: mapInstance.current,
+          position: pos, content, yAnchor: 1, xAnchor: 0.5, zIndex: 3, map: mapInstance.current,
         })
         content.addEventListener('mouseenter', () => { try { overlay.setZIndex(9) } catch { /* SDK 구버전 */ } })
         content.addEventListener('mouseleave', () => { try { overlay.setZIndex(3) } catch { /* SDK 구버전 */ } })
         // ⚡ 선택 restyle 용 registry — 핀 루트 div 기억(선택 변경 시 전량 재빌드 없이 이 노드만 갱신).
         const rootEl = content.firstElementChild as HTMLElement | null
         if (rootEl) pinElsRef.current.set(r.id, rootEl)
+        pinDataRef.current.set(r.id, r)
         return overlay
       })
     })
@@ -332,7 +357,11 @@ export function useKakaoMap({
       if (!desired.has(key)) {
         try { ov.setMap?.(null) } catch { /* silent */ }
         registry.delete(key)
-        if (key.startsWith('pin:')) pinElsRef.current.delete(Number(key.split(':')[1]))
+        if (key.startsWith('pin:')) {
+          const pid = Number(key.split(':')[1])
+          pinElsRef.current.delete(pid)
+          pinDataRef.current.delete(pid)
+        }
       }
     }
     desired.forEach((build, key) => {
@@ -380,19 +409,55 @@ export function useKakaoMap({
     //   viewportRev(idle)·serverClusters 추가 — diff 재조정이라 재실행 비용은 '변한 오버레이'만.
     //   gridSize 는 initMap 내부에서 map.getLevel() 로 직접 계산(M3 — 상태 경유 X).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sdkLoaded, withCoords, kakaoPlaces, userLoc, liveSellerIds, favorites, coordGroupSize, setSelected, setSuggestionFor, panToProduct, viewportRev, serverClusters])
+  }, [sdkLoaded, withCoords, kakaoPlaces, userLoc, favorites, coordGroupSize, setSelected, setSuggestionFor, panToProduct, viewportRev, serverClusters])
 
   useEffect(() => { initMap() }, [initMap])
 
+  /**
+   * 🎛️ 2026-09-09: 할인 강조 임계값의 **어드민 조정값**을 받아 온다.
+   *
+   * 🔴 **첫 화면을 막지 않는다** — 마커는 이미 코드 상수로 그려져 있고, 값이 도착하면 색만 다시
+   *   칠한다. 실패·지연이면 상수 그대로라 오늘과 완전히 같은 동작이다(로딩 규칙: 새 블로킹 왕복 0).
+   * 🔴 값이 실제로 **달라졌을 때만** 다시 칠한다 — 매번 칠하면 선택 상태가 깜빡인다.
+   */
+  useEffect(() => {
+    if (!enabled) return
+    let alive = true
+    import('@/lib/api').then(({ default: api }) => api.get('/api/consumer-settings'))
+      .then((r) => {
+        if (!alive) return
+        const v = (r.data as { data?: { map_highlight_discount_pct?: number } })?.data?.map_highlight_discount_pct
+        if (v == null) return
+        const before = mapHighlightPct()
+        setMapHighlightPct(v)
+        if (mapHighlightPct() === before) return
+        const seen = readRecentlyViewedIds()
+        pinElsRef.current.forEach((el, id) => {
+          const r2 = pinDataRef.current.get(id)
+          applyPinTierStyle(el, mapMarkerTier({
+            discount: r2 ? priceDisplay(r2).discount : 0,
+            isSelected: selectedIdRef.current === id,
+            isSeen: seen.has(id),
+          }))
+        })
+      })
+      .catch(() => { /* 조정값 없음 = 코드 상수 유지(현행과 동일) */ })
+    return () => { alive = false }
+  }, [enabled])
+
   // ⚡ 2026-07-08 (레이어 4의 핫패스): 선택 변경 시 해당 핀 DOM 만 직접 restyle — 전량 재빌드 0.
   useEffect(() => {
+    // 🗺️ 2026-09-09 (안 D4): 값을 여기 또 적지 않는다 — 빌드와 **같은** `applyPinTierStyle` 을 부른다.
+    //   종전엔 크기·그림자 숫자가 빌더와 여기 두 곳에 있어 한쪽만 고치면 조용히 갈렸다.
+    const seen = readRecentlyViewedIds()
     pinElsRef.current.forEach((el, id) => {
-      const sel = selected?.id === id
-      const size = sel ? 50 : 42
-      el.style.width = `${size}px`
-      el.style.height = `${size}px`
-      el.style.boxShadow = `0 4px 12px rgba(0,0,0,0.30)${sel ? ', 0 0 0 3px rgba(28,105,239,0.9)' : ''}`
-      el.style.transform = `translate(-50%, -50%) scale(${sel ? 1.08 : 1})`
+      const r = pinDataRef.current.get(id)
+      const tier = mapMarkerTier({
+        discount: r ? priceDisplay(r).discount : 0,
+        isSelected: selected?.id === id,
+        isSeen: seen.has(id),
+      })
+      applyPinTierStyle(el, tier)
     })
   }, [selected?.id])
 
@@ -404,6 +469,7 @@ export function useKakaoMap({
         overlayRegistryRef.current.forEach(o => o.setMap?.(null))
         overlayRegistryRef.current.clear()
         pinElsRef.current.clear()
+        pinDataRef.current.clear()
         mapInstance.current = null
       } catch { /* ignore */ }
     }

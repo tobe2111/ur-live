@@ -291,9 +291,9 @@
 |---|---|---|---|
 | 도매몰 (유통스타트) | `wholesale-mall-brief.md` | 43 | 4 |
 | 오프라인 공구 / 동네딜 | `offline-groupbuy-brief.md` | 29 | 95 |
-| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 70 | 272 |
+| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 71 | 272 |
 | 유어샵 / 담기·소개 | `linkshop-brief.md` | 23 | 88 |
-| **합계** | — | **165** | **459** |
+| **합계** | — | **166** | **459** |
 
 ### 전체 커버리지 검증 (자동 — 빠진 기능 보증)
 
@@ -302,12 +302,12 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 365 | 1117 |
-| 도메인 버킷 (5개 소개서) | 165 | 459 |
+| 전체 | 366 | 1118 |
+| 도메인 버킷 (5개 소개서) | 166 | 459 |
 | 공통/인프라 (의도적 제외) | 166 | 476 |
-| **미커버 (점검 필요)** | **34** | **182** |
+| **미커버 (점검 필요)** | **34** | **183** |
 
-⚠️ **미커버 216건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 217건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -365,6 +365,7 @@
 - `POST /api/acquisition/landing` (`src/worker/routes/acquisition.routes.ts`)
 - `POST /api/buyer-ingest/` (`src/features/supply/api/buyer-ingest.routes.ts`)
 - `POST /api/buyer-ingest/known` (`src/features/supply/api/buyer-ingest.routes.ts`)
+- `GET /api/consumer-settings` (`src/worker/routes/public-utility.routes.ts`)
 - `POST /api/cs/kakao-skill` (`src/worker/routes/kakao-skill-webhook.routes.ts`)
 - `GET /api/experience-campaigns/` (`src/features/group-buy/api/experience-campaign.routes.ts`)
 - `GET /api/experience-campaigns/:id` (`src/features/group-buy/api/experience-campaign.routes.ts`)
@@ -883,7 +884,7 @@
 
 #### 온라인 입점 / 라이브커머스
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (70개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (71개)
 
 - `/browse`
 - `/cart`
@@ -915,6 +916,7 @@
 - `/seller/ledger`
 - `/seller/login`
 - `/seller/marketing`
+- `/seller/more`
 - `/seller/notify-followers`
 - `/seller/operating`
 - `/seller/operators`
@@ -1723,7 +1725,7 @@
 
 
 
-> 마지막 생성: 2026-09-13T09:37:01.200Z
+> 마지막 생성: 2026-09-14T12:17:57.329Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

@@ -51,6 +51,8 @@ export default function VideosPage() {
   const wheelAt = useRef(0)
   // 📱 터치 뒤에 브라우저가 합성 click 을 한 번 더 쏜다 — 안 막으면 탭 한 번에 두 번 토글된다.
   const touchEndAt = useRef(0)
+  /** 이번 손짓에서 이미 넘겼는가 — 이동 중 판정과 뗄 때 판정이 겹쳐 두 칸 가는 것을 막는다. */
+  const swiped = useRef(false)
 
   const hostRef = useRef<HTMLDivElement | null>(null)
   const playerRef = useRef<YtPlayer | null>(null)
@@ -207,7 +209,7 @@ export default function VideosPage() {
   const thumb = cur?.thumb_url || cur?.product_image || ''
 
   return (
-    <div className="relative min-h-[100dvh] overflow-hidden bg-[#0A0C12]">
+    <div className="relative min-h-[100dvh] overflow-hidden overscroll-none bg-[#0A0C12]">
       <SEO title="유어쇼츠 - 유어딜" description="영상으로 보고 바로 구매하는 이용권" url="/videos" noindex />
 
       {/* ▶️ **재생기 자리.** API 가 왔으면 이 껍데기 안에 우리가 만든 재생기 하나가 산다
@@ -235,19 +237,49 @@ export default function VideosPage() {
           ⚠️ 대가는 **유튜브 조작을 전부 우리가 대신해야 한다**는 것이다. 2026-09-08 에 탭
              일시정지를 `togglePlay()` 로 돌려줬다(IFrame API 를 쓰는 진짜 이유 중 하나).
              ⛔ 이 층을 지우면 스와이프가 죽는다 — 옮기지 말 것. */}
+      {/* 🩸 2026-09-13 대표 신고 *"아래로는 넘겨지는데 위로는 다시 안됨"* — **한 방향만** 죽어 있었다.
+             원인은 우리 계산이 아니라 **브라우저가 그 제스처를 먼저 가져간 것**이다: 이 화면은
+             스크롤이 없으므로(`overflow-hidden`) 화면 맨 위에서의 **아래로 끄는 손짓**이 인앱
+             브라우저의 당겨서-새로고침으로 잡힌다. 그 순간 브라우저는 `touchcancel` 을 쏘고
+             **`touchend` 는 오지 않는다** → 이전 영상으로 가는 `go(-1)` 이 영영 안 불린다.
+             위로 끄는 손짓엔 그런 네이티브 제스처가 없어서 다음 영상만 멀쩡히 됐다.
+          🔴 방어 셋 — 하나만으로는 기기·브라우저마다 샌다:
+             ① `touch-none` — 이 층의 세로 팬을 브라우저가 안 가져간다(근본).
+             ② 루트 `overscroll-none` — 그래도 새는 당겨서-새로고침을 막는다.
+             ③ **판정을 `touchend` 가 아니라 `touchmove` 임계에서** 한다 — 뗄 때를 기다리지
+                않으므로, 취소가 나도 이미 넘어가 있다. ①②가 실패해도 동작이 남는다. */}
       <div
-        className="absolute inset-0 z-10"
-        onTouchStart={(e) => { touchY.current = e.touches[0]?.clientY ?? null; touchAt.current = Date.now() }}
+        className="absolute inset-0 z-10 touch-none"
+        onTouchStart={(e) => {
+          touchY.current = e.touches[0]?.clientY ?? null
+          touchAt.current = Date.now()
+          swiped.current = false
+        }}
+        onTouchMove={(e) => {
+          const from = touchY.current
+          const y = e.touches[0]?.clientY
+          if (from == null || y == null || swiped.current) return
+          const dy = y - from
+          if (Math.abs(dy) > 60) { swiped.current = true; go(dy < 0 ? 1 : -1) }
+        }}
         onTouchEnd={(e) => {
           const from = touchY.current
           const end = e.changedTouches[0]?.clientY
           touchY.current = null
           touchEndAt.current = Date.now()
+          // 이미 이동 중에 넘겼으면 뗄 때 또 넘기지 않는다(두 칸 점프).
+          if (swiped.current) { swiped.current = false; return }
           if (from == null || end == null) return
           const dy = end - from
           if (Math.abs(dy) > 60) { go(dy < 0 ? 1 : -1); return }
           // 짧고 안 움직였으면 **탭**이다 — 길게 눌렀다 뗀 것은 아무것도 아니다.
           if (Math.abs(dy) < 12 && Date.now() - touchAt.current < 400) togglePlay()
+        }}
+        onTouchCancel={() => {
+          // 브라우저가 제스처를 가져간 경우. 여기서 안 지우면 다음 터치가 옛 시작점으로 잰다.
+          touchY.current = null
+          touchEndAt.current = Date.now()
+          swiped.current = false
         }}
         onClick={() => {
           // 터치 뒤 브라우저가 쏘는 합성 click 이면 무시한다(위에서 이미 토글했다).
@@ -273,9 +305,21 @@ export default function VideosPage() {
         </div>
       )}
 
+      {/* 🩸 2026-09-13 대표 신고(스크린샷) *"좌측 위 x표시가 겹침"* — 우리 X 가 유튜브가 그리는
+             **Shorts 로고와 같은 자리**에 있었다(로고의 'S' 가 우리 원에 가려 "horts" 로 보인다).
+          🔴 **덮어서 해결하면 안 된다** — 유튜브가 남기는 제목 띠·🔗·Shorts 로고를 가리는 것은
+             embed 약관 위반이다(`shared/urshorts.ts` 의 같은 주석). 우리 것을 비켜 준다.
+          📏 스크린샷 픽셀 실측(2026-09-14 재측정 — 첫 판의 *980px ÷ 2.5* 는 **틀렸다.**
+             원본은 1080×2203 이고 인앱 브라우저 주소창이 y=157 까지 차지한다 ⇒ **페이지 원점 157,
+             배율 3**). 페이지 기준 CSS 로 환산하면:
+               · 유튜브 Shorts 워드마크  y **13~31**, x 22~80  (우리 원이 'S' 를 가려 "horts" 로 보였다)
+               · 우리 X (`top-3`, h-9)  y **12~48**             → 정면 충돌
+               · `top-14`(56) 로 내리면 y **56~92** → 로고 아래 **25px 여유**, 그 자리는 검정 여백뿐.
+             ⚠️ 위쪽 가로 띠는 통째로 유튜브 것이다(왼쪽 로고 · 오른쪽 음량/⋮) — 좌우로 피할
+                자리가 없어서 **아래로** 내린다. */}
       <button
         type="button" onClick={() => navigate(-1)} aria-label="닫기"
-        className="absolute left-3 top-3 z-20 grid h-9 w-9 place-items-center rounded-full bg-black/45 text-white backdrop-blur"
+        className="absolute left-3 top-14 z-20 grid h-9 w-9 place-items-center rounded-full bg-black/45 text-white backdrop-blur"
       >
         <X size={18} />
       </button>

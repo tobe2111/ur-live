@@ -266,6 +266,10 @@ node scripts/check-mobile-viewport.mjs || true
 echo "==> Pre-commit: AI 디자인 흔적 래칫 (warn-only)..."
 node scripts/check-design-slop.mjs || true
 node scripts/check-dashboard-button-system.mjs || true
+# 🩸 2026-09-14: 같은 가족인 카피 래칫 둘이 pre-commit 에 없어서, 주석 한 줄의 가운뎃점 때문에
+#   56분짜리 Verify 를 통째로 한 번 태웠다(PR #1425). 0.1초면 여기서 알려 준다. warn-only(차단은 CI).
+node scripts/check-anti-slop-copy.mjs || true
+node scripts/check-middle-dot-chain.mjs || true
 
 # 🛡️ 2026-06-29: 파일 크기 래칫 — god 파일 재발 방지. 신규 600줄 초과 / baseline 동결 파일 성장 경고.
 #   staged 파일만 검사. 줄인 뒤엔 `node scripts/check-file-size.mjs --rebaseline` 로 동결값 갱신. warn-only.
@@ -499,6 +503,23 @@ echo "  6. 소개서 동기화 권고 + 자동 참조 재생성 (warn-only, 매 
 echo "  7. TypeScript (npx tsc)"
 echo "  8. 파일 중간 import 검출"
 echo "  9. Worker 번들 빌드 (런타임 crash catch)"
+
+# 🛡️ 2026-09-14 — pre-push 게이트: "CI 가 막을 것을 푸시 전에 먼저 막는다"
+#   배경(실측): CI Verify 1회가 57분인데, CI 가 차단하는 가드 91개 중 로컬에서 막는 건 0개였다
+#   (경고이거나 아예 없음). 그래서 사소한 위반 하나가 57분을 태웠다 — 그 91개는 합쳐 20초다.
+#   목록은 손으로 관리하지 않는다: scripts/local-ci-parity.mjs 가 verify.yml 에서 매번 뽑는다.
+PUSH_HOOK="$HOOK_DIR/pre-push"
+cat > "$PUSH_HOOK" <<'PREPUSH_EOF'
+#!/bin/sh
+# 자동 생성 — scripts/install-git-hooks.sh
+# 우회: SKIP_PREPUSH_GATE=1 git push ...   (우회해도 CI 가 다시 막는다)
+exec node scripts/pre-push-gate.mjs
+PREPUSH_EOF
+chmod +x "$PUSH_HOOK"
+echo ""
+echo "✅ Git pre-push hook installed at $PUSH_HOOK"
+echo "    푸시 직전 verify.yml 의 strict 가드를 전부 돌린다(실측 ~20초)."
+echo "    우회: SKIP_PREPUSH_GATE=1 git push ..."
 
 # 🔀 병합 드라이버 등록 (.gitattributes 의 merge=filesize-baseline 이 이걸 필요로 한다).
 #   미등록 환경은 평소대로 충돌이 날 뿐이라 안전하다 — 조용한 오작동은 없다.

@@ -15,6 +15,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync, existsSync } from 'node:fs'
+import { stripComments } from '../helpers/source-text'
 
 const read = (p: string) => readFileSync(p, 'utf-8')
 /**
@@ -27,8 +28,7 @@ const read = (p: string) => readFileSync(p, 'utf-8')
  *   ⚠️ 이 강화는 `not.toMatch` 를 더 엄격하게만 만든다. 반대로 `toMatch`(과잉 삭제 방지) 단언이
  *      주석 덕에 통과하고 있었다면 이제 빨간불이 되는데, 그건 **헛도는 가드였다는 뜻**이라 옳다.
  */
-const stripBlockComments = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '')
-const code = (p: string) => stripBlockComments(read(p)).split('\n').filter(l => !l.trim().startsWith('//')).join('\n')
+const code = (p: string) => stripComments(read(p))
 
 describe('마감 개념 — 소비자 정렬에서 제거된 상태 유지', () => {
   it('모바일 홈 피드 SORTS 에 deadline 칩이 없다', () => {

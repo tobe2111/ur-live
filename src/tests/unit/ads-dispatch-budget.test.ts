@@ -16,6 +16,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { laneCadenceFields } from '@/worker-ads/lane-cadence'
 import { join } from 'node:path'
+import { stripComments } from '../helpers/source-text'
 import {
   resolvePlan, lanesPerTick, isDeferrable, selectLanesForTick, dispatchSnapshot,
   FREE_LANES_PER_TICK, PAID_LANES_PER_TICK, assignKey, laneRole, readCursors,
@@ -339,7 +340,7 @@ describe('🚧 배선 — 스케줄러가 실제로 예산 분산을 쓰는가',
     // ⚠️ **주석을 걷어내고 본다.** 첫 판은 이 검사가 빨간불이었는데 원인이 코드가 아니라 *설명 주석*
     //   안의 `if (sel.deferred.length)` 였다 — 이 레포가 잠금표에서 겪은 "주석이 판정을 뒤집는" 클래스의
     //   반대 방향(주석 때문에 멀쩡한 코드가 위반으로 잡힘). 소스 검사 가드는 항상 주석을 지우고 볼 것.
-    const src = raw.replace(/\/\*[\s\S]*?\*\//g, '').split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n')
+    const src = stripComments(raw)
     const snapAt = src.indexOf("bind('ads_dispatch_last', snap)")
     const guardAt = src.indexOf('if (sel.deferred.length)')
     // ⚠️ **쓰기 형태로** 찾는다 — `bind(DISPATCH_CURSOR_KEY)` 만 보면 파일 위쪽의 **읽기**(커서 SELECT)에
@@ -492,8 +493,7 @@ describe('미루기 판정은 주기(periodMin)로 — 침묵 임계(gapMin)로 
   })
 
   it('🚫 부풀린 값에서 주기를 역산하지 않는다 — 공식이 바뀌면 조용히 깨진다', () => {
-    const src = readFileSync(join(process.cwd(), 'src/worker-ads/dispatch-budget.ts'), 'utf8')
-      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+    const src = stripComments(readFileSync(join(process.cwd(), 'src/worker-ads/dispatch-budget.ts'), 'utf8'))
     expect(src).not.toMatch(/gapMin[^\n]*-\s*30/)
     expect(src).toMatch(/const period = Number\(lane\.periodMin\)/)
   })

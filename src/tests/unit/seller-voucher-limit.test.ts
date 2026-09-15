@@ -114,12 +114,17 @@ describe('서버 강제 — 화면만 고치면 아무것도 아니다', () => {
     //    한쪽을 지워도 초록이 떴다(되돌려-검증에서 잡힘). 판정은 **개수**로 한다.
     //    두 지점은 서로 다른 일을 한다 — (1) `/join` 사전검증 (2) 과금 직전 재검증(다른 탭에서
     //    한도를 채우는 레이스 차단). 하나만 남으면 그 레이스로 한도가 뚫린다.
+    // 🔁 2026-09-14: 두 지점이 **같은 코드 두 벌**이던 것을 `purchase-cap.ts` 헬퍼로 합쳤다
+    //   (한쪽만 고쳐지는 사고를 구조적으로 없앤다). 그래서 쿼리는 헬퍼에 하나이고,
+    //   **지켜야 할 성질은 그대로** — 두 지점이 각각 한도를 확인하는가.
     const s = read(JOIN)
-    const owned = s.match(
+    const calls = s.match(/await (checkPerPersonLimit|recheck)\(DB, productId, userId, qty, mppRaw\)/g)
+    expect(calls?.length ?? 0, '한도 확인 지점이 2곳 미만이다 — 사전검증/과금직전 중 하나가 사라졌다')
+      .toBeGreaterThanOrEqual(2)
+    const owned = read('src/worker/utils/purchase-cap.ts').match(
       /SELECT COUNT\(\*\) AS n FROM vouchers WHERE product_id = \? AND user_id = \?/g,
     )
-    expect(owned?.length ?? 0, '보유분 합산 검사 지점이 2곳 미만이다 — 사전검증/과금직전 중 하나가 사라졌다')
-      .toBeGreaterThanOrEqual(2)
+    expect(owned?.length ?? 0, '보유분 합산 쿼리가 헬퍼에서 사라졌다').toBeGreaterThanOrEqual(1)
     const limits = s.match(/PER_PERSON_LIMIT/g)
     expect(limits?.length ?? 0).toBeGreaterThanOrEqual(2)
   })

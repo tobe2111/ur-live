@@ -11,6 +11,7 @@
  * - GET  /settlements/:id/download   — 정산서 다운로드
  */
 import { Hono } from 'hono'
+import { resolveKtSellerMarkupPct } from '../../admin/api/admin-kt-alpha/markup'
 import { cors } from 'hono/cors'
 import { verify } from 'hono/jwt'
 import type { JWTPayload } from 'hono/utils/jwt/types'
@@ -352,7 +353,7 @@ sellerSettlementsRoutes.get('/voucher-catalog', async (c) => {
     const settings = await c.env.DB.prepare(
       "SELECT value FROM platform_settings WHERE key = 'kt_alpha_markup_pct'"
     ).first<{ value: string }>().catch(() => null)
-    const markupPct = Number(settings?.value) || 5
+    const markupPct = resolveKtSellerMarkupPct(settings?.value) // 0 은 0 (옛 `|| 5` 는 0 을 삼켰다 — markup.ts)
 
     const seller = await c.env.DB.prepare(
       'SELECT phone, business_registration_status FROM sellers WHERE id = ?'
@@ -434,7 +435,7 @@ sellerSettlementsRoutes.post('/voucher-redeem', rateLimit({ action: 'seller_vouc
     const settingsMap: Record<string, string> = {}
     for (const r of (settings.results || [])) settingsMap[r.key] = r.value
 
-    const markupPct = Number(settingsMap.kt_alpha_markup_pct) || 5
+    const markupPct = resolveKtSellerMarkupPct(settingsMap.kt_alpha_markup_pct) // 0 은 0 (markup.ts)
     const ktUserId = settingsMap.kt_alpha_user_id
     const callbackNo = settingsMap.kt_alpha_callback_no
     const templateId = settingsMap.kt_alpha_template_id || undefined
@@ -939,13 +940,13 @@ sellerSettlementsRoutes.get('/dashboard/stats', async (c) => {
   if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
   try {
-    const today = new Date().toISOString().slice(0, 10);
+    const todayKst = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10); // 🕐 2026-09-14: KST 달력일 + PAID/DONE 만(종전 UTC + 결제실패 합산)
     const [orderStats, productStats, streamStats, dailyRevenue] = await Promise.all([
       DB.prepare(`
         SELECT COUNT(*) as total_orders,
                COALESCE(SUM(total_amount), 0) as total_revenue
-        FROM orders WHERE seller_id = ? AND DATE(created_at) = ?
-      `).bind(sellerId, today).first<{ total_orders: number; total_revenue: number }>(),
+        FROM orders WHERE seller_id = ? AND status IN ('PAID','DONE') AND DATE(created_at, '+9 hours') = ?
+      `).bind(sellerId, todayKst).first<{ total_orders: number; total_revenue: number }>(),
       DB.prepare(`
         SELECT COUNT(*) as total_products,
                SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active_products
@@ -959,11 +960,11 @@ sellerSettlementsRoutes.get('/dashboard/stats', async (c) => {
       // 📅 2026-06-25: 매출 캘린더(SellerSettlementsPage dailyQ)가 daily_revenue 를 읽는데
       //   핸들러가 안 줘서 항상 빈값이었음. 최근 30일 일별 매출(PAID/DONE) 집계 추가.
       DB.prepare(`
-        SELECT DATE(created_at) AS date, COALESCE(SUM(total_amount), 0) AS revenue
+        SELECT DATE(created_at, '+9 hours') AS date, COALESCE(SUM(total_amount), 0) AS revenue
         FROM orders
         WHERE seller_id = ? AND status IN ('PAID','DONE')
           AND created_at >= date('now', '-30 days')
-        GROUP BY DATE(created_at) ORDER BY date ASC
+        GROUP BY DATE(created_at, '+9 hours') ORDER BY date ASC
       `).bind(sellerId).all<{ date: string; revenue: number }>().catch(() => ({ results: [] })),
     ]);
 

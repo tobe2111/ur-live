@@ -15,21 +15,23 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
+import { stripComments as strip } from '../helpers/source-text'
 import { NAV_GROUPS } from '@/components/seller/seller-nav'
 import { publicSellerHandle, isAutoSellerUsername } from '@/shared/seller-handle'
 import { SELLER_TAB_GROUPS, findSellerTabGroup, tabGroupSiblings } from '@/components/seller/seller-tab-groups'
 
 const items = NAV_GROUPS.flatMap(g => g.items)
 const byPath = (p: string) => items.find(i => i.path === p)
-const SIMPLE = readFileSync('src/components/seller-layout/SellerSimpleNav.tsx', 'utf8')
-/** 주석 제거본 — 옛 이름을 *설명하는 주석*까지 위반으로 세면 가짜 빨강이 된다(오늘 실제로 걸렸다). */
-const SIMPLE_CODE = SIMPLE.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
-const MANAGE_PAGE = readFileSync('src/pages/SellerGroupBuyPage.tsx', 'utf8')
+// 📱 2026-09-14 (모바일 우선 재설계): 심플 nav(매장 단독 3메뉴)는 삭제됐다 — 다섯 대분류 하단 탭이 그 역할이다.
+import { SELLER_PRIMARY_NAV, activePrimaryKey, isCoveredByPrimary } from '@/components/seller/seller-primary-nav'
+// 📱 2026-09-14 (M4): 행 하나가 `seller-group-buy/VoucherRow.tsx` 로 나갔다 — 수정 진입점은 그 행 안에 있다.
+const MANAGE_PAGE = readFileSync('src/pages/seller-group-buy/VoucherRow.tsx', 'utf8')
 // ⚠️ 셀러 라우트는 **두 파일에 흩어져 있다** — 대부분은 `routes/seller.routes.tsx` 인데
 //   `/seller/proxy-products` 같은 일부는 `App.tsx` 에 남아 있다. 한쪽만 보면 '라우트 없음'
 //   오판이 난다(이 테스트를 처음 짤 때 실제로 그렇게 틀렸다).
 const ROUTES = readFileSync('src/routes/seller.routes.tsx', 'utf8') + readFileSync('src/App.tsx', 'utf8')
-const LAYOUT = readFileSync('src/components/SellerLayout.tsx', 'utf8')
+// 📱 2026-09-14: 그룹 순서·검색 색인 계산은 `useSellerNavModel`(SSOT)로 이동.
+const LAYOUT = readFileSync('src/components/seller-layout/useSellerNavModel.ts', 'utf8')
 
 describe('① 등록과 관리는 같은 가시성 — 한쪽만 보이면 막다른 길이 된다', () => {
   const reg = byPath('/seller/meal-voucher/new')
@@ -112,20 +114,28 @@ describe('② 한 페이지처럼 — nav 는 하나, 안에서 탭', () => {
   })
 })
 
-describe('③ 심플 nav(매장 단독) — 이름이 하는 일과 같아야 한다', () => {
-  it('🔒 "내 딜" 이라는 내부 표현을 쓰지 않는다', () => {
-    // 대표가 "이용권 관리"를 찾는데 화면엔 "내 딜" 이라고 적혀 있었다.
-    expect(SIMPLE_CODE).not.toContain('내 딜')
+describe('③ 다섯 대분류(하단 탭 = PC 사이드바) — 이용권 탭이 등록·관리·수정 전부에서 켜진다', () => {
+  const vouchers = SELLER_PRIMARY_NAV.find(p => p.key === 'vouchers')!
+
+  it('이용권 탭의 착지점이 관리 페이지다', () => {
+    expect(vouchers.path).toBe('/seller/group-buy')
   })
 
-  it('이용권 관리가 심플 nav 에도 있다', () => {
-    expect(SIMPLE).toContain("path: '/seller/group-buy'")
-    expect(SIMPLE).toContain('이용권 관리')
+  it('🔒 등록 위저드·수정 화면·탭 형제에서도 이용권 탭이 켜진다 — 꺼지면 사용자가 위치를 잃는다', () => {
+    for (const p of ['/seller/meal-voucher/new', '/seller/products/12/edit', '/seller/scan', '/seller/review-verifications']) {
+      expect(activePrimaryKey(p), p).toBe('vouchers')
+    }
   })
 
-  it('수정 화면에서도 이용권 관리가 활성으로 표시된다', () => {
-    const line = SIMPLE.split('\n').find(l => l.includes("path: '/seller/group-buy'"))!
-    expect(line).toContain('/seller/products/')
+  it('🔒 숙소는 이용권 탭이 켜지지만 더보기에서 사라지지 않는다 — 탭 줄에 없어 거기서만 닿는다', () => {
+    expect(activePrimaryKey('/seller/stays')).toBe('vouchers')
+    expect(isCoveredByPrimary('/seller/stays')).toBe(false)
+  })
+
+  it('🔒 다섯 대분류 밖 화면은 더보기다 (사이드바 없는 폰에서 갈 곳이 있어야 한다)', () => {
+    expect(activePrimaryKey('/seller/stores')).toBe('more')
+    expect(activePrimaryKey('/seller/more')).toBe('more')
+    expect(activePrimaryKey('/')).toBeNull()
   })
 })
 
@@ -133,8 +143,24 @@ describe('④ 관리 → 수정 진입점이 살아 있다', () => {
   it('관리 페이지에 수정 링크가 있다 — 이 버튼이 유일한 이용권 수정 진입점이다', () => {
     // `/seller/products`(목록)는 SELLER_STORE_ONLY_MODE 로 nav 에서 빠져 있어, 이 링크가 끊기면
     // 이용권을 수정할 방법이 화면에서 사라진다.
-    expect(MANAGE_PAGE).toMatch(/navigate\(`\/seller\/products\/\$\{p\.id\}\/edit`\)/)
+    expect(MANAGE_PAGE).toMatch(/navigate\(`\/seller\/products\/\$\{v\.id\}\/edit`\)/)
     expect(ROUTES).toContain('path="/seller/products/:id/edit"')
+  })
+
+  // 🩸 2026-09-14 (#1430): 위 단언은 **파일 안에 그 문자열이 있는지**만 봤다. 그런데 실제 링크는
+  //   `restaurant_phone` 이 **없을 때만** 뜨는 '연락처 등록 →' 배너 안에 있었다 — 연락처가 등록된 매장은
+  //   수정 화면에 닿을 방법이 아예 없었는데도 이 검사는 초록이었다. 라이브 실측: 셀러 소유 활성 이용권은
+  //   1건뿐이고(홍대돈까스) 연락처가 등록돼 있어 **정확히 그 경우**였다. ⇒ "있다" 가 아니라 "조건 없이 보인다" 를 본다.
+  //   M4 행에서는 진입점이 `goEdit` 하나이고, 그 버튼이 연락처 분기 **앞**(행 헤더)에 있어야 한다.
+  it('🔒 수정 버튼이 연락처 분기 **밖**에 있다 — 조건부면 그 조건을 만족 못 하는 매장은 갇힌다', () => {
+    const code = strip(MANAGE_PAGE)
+    const editBtn = code.indexOf('onClick={goEdit}')
+    const phoneBranch = code.indexOf('v.restaurant_phone ?')
+    expect(editBtn, '수정 진입점이 없다').toBeGreaterThan(-1)
+    expect(phoneBranch, '연락처 분기를 못 찾았다 — 이 검사가 헛돌고 있다').toBeGreaterThan(-1)
+    expect(editBtn, '수정 진입점이 연락처 분기 안에만 있다').toBeLessThan(phoneBranch)
+    // 그리고 그 진입점이 실제로 수정 화면으로 간다(이름만 남고 몸통이 빈 경우 차단).
+    expect(code).toMatch(/const goEdit = \(\) => navigate\(`\/seller\/products\/\$\{v\.id\}\/edit`\)/)
   })
 })
 
@@ -164,7 +190,8 @@ describe('⑤ 자동 발급 셀러 아이디는 손님에게 안 보인다', () 
 })
 
 describe('⑥ 통폐합 — 접은 화면이 사라지면 안 된다 (2026-09-03 대표 승인 "전부")', () => {
-  const LAYOUT_SRC = readFileSync('src/components/SellerLayout.tsx', 'utf8')
+  // 📱 2026-09-14: 색인 계산은 `useSellerNavModel`(SSOT)에 있다.
+  const LAYOUT_SRC = readFileSync('src/components/seller-layout/useSellerNavModel.ts', 'utf8')
 
   it('🔒 탭 안으로 접힌 형제 화면이 검색에 들어간다', () => {
     // 사이드바에서 사라진 화면을 검색에도 안 넣으면, 통폐합이 그대로 "못 찾는 페이지 16개"가 된다.
@@ -204,8 +231,9 @@ describe('⑦ 숨기는 것과 없애는 것은 다르다', () => {
     // 🌇 2026-09-04: `/seller/promote-boosts` 는 목록에서 뺐다 — **숨긴 게 아니라 삭제**했다.
     //    그 쿠폰은 에이전시만 발급할 수 있었고(에이전시 일몰) 라이브에서 쓰는 것이었다(영구 중단).
     //    라이브 실측 `promote_boost_coupons` 0행 — 되살릴 대상이 없다.
-    for (const p of ['/seller/castings', '/seller/donations',
-                     '/seller/streaming-guide', '/seller/notify-followers']) {
+    // 🗑️ 2026-09-14 (대표 "삭제할 건 없어?"): castings·donations·streaming-guide 는 **라우트 자체가 이미 없어**
+    //    정의에서도 뺐다 — 라우트 없는 메뉴는 "숨긴 것"이 아니라 낡은 지도다. 라우트가 살아 있는 것만 지킨다.
+    for (const p of ['/seller/notify-followers']) {
       const it_ = items.find(i => i.path === p)
       expect(it_, `라이브 전용 항목이 nav 정의에서 사라졌다: ${p}`).toBeTruthy()
       expect(it_!.mode, `${p} 는 live 모드여야 한다(안 그러면 화면에 뜬다)`).toBe('live')

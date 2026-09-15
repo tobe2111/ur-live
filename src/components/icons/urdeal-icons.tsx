@@ -193,3 +193,63 @@ export const StayLineIcon = forwardRef<SVGSVGElement, IconProps>(function StayLi
     </svg>
   )
 })
+
+/**
+ * 유어쇼츠 — **세로 화면 + 재생**. (2026-09-09 대표 확정 "아이콘 1")
+ *
+ * 왜 이 그림인가: 쇼츠는 **9:16 세로**라는 형태 자체가 정체성이다. 원 + 삼각형(범용 재생)은
+ * 읽기는 쉬워도 "유어쇼츠"라는 신호가 없고, 카드 두 장을 겹친 안은 실제로 쓰이는 **16px 에서
+ * 뒤 장이 앞 장에 먹혔다**(시안 3안을 40px·16px 나란히 놓고 판정 — `docs/design/`).
+ *
+ * ⚠️ 삼각형만 `fill="currentColor" stroke="none"` 이다. 선으로 그리면 16px 에서 속이 비어
+ *    무엇인지 안 읽힌다. 나머지 획은 세트 규약대로 1.6.
+ * ⚠️ `filled` 는 안 받는다 — 하단 탭이 아니라 헤더 링크에만 쓰여 활성 상태가 없다.
+ */
+export const ShortsIcon = forwardRef<SVGSVGElement, IconProps>(function ShortsIcon({ size = 24, filled: _f, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <rect x="6.5" y="3" width="11" height="18" rx="3.2" />
+      <path d="M10.6 9.2v5.6l4.6-2.8z" fill="currentColor" stroke="none" />
+    </svg>
+  )
+})
+
+/**
+ * 🧭 셀러 대시보드 하단 탭 (2026-09-14 대표 승인 — 모바일 우선 재설계, `docs/design/seller-dashboard-mobile-first-2026-09.md`).
+ *   다섯 대분류 `홈 · 주문 · 이용권 · 정산 · 더보기` 중 홈(`HomeIcon`)·이용권(`TicketStubIcon`)은 소비자 탭과
+ *   같은 물건을 쓰고, 나머지 셋만 여기 더 그린다. 규약은 위와 같다(24 그리드 · 1.6 · round · `filled` = 면).
+ */
+
+/** 주문 — 영수증. 아래가 톱니로 찢긴 종이 + 줄 두 개. 면 버전은 줄을 흰 선으로 남긴다. */
+export const ReceiptIcon = forwardRef<SVGSVGElement, IconProps>(function ReceiptIcon({ size = 24, filled, ...props }, ref) {
+  const d = 'M6 3.5h12v16.2l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4-2 1.4z'
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <path d={d} fill={filled ? 'currentColor' : 'none'} />
+      <path d="M9 8.5h6M9 12h6" stroke={filled ? 'var(--surface, #fff)' : 'currentColor'} />
+    </svg>
+  )
+})
+
+/** 정산 — 동전 하나에 ₩. 돈이 들어오는 자리라 원화 기호를 그대로 쓴다(그래프·지갑보다 뜻이 곧다). */
+export const WonCoinIcon = forwardRef<SVGSVGElement, IconProps>(function WonCoinIcon({ size = 24, filled, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <circle cx="12" cy="12" r="8.5" fill={filled ? 'currentColor' : 'none'} />
+      <path d="M8 8.5 9.8 15l2.2-6 2.2 6L16 8.5M7.5 12h9" stroke={filled ? 'var(--surface, #fff)' : 'currentColor'} />
+    </svg>
+  )
+})
+
+/** 더보기 — 점 넷. 격자(전체)와 구분하려고 네모가 아니라 점이다. 면 버전은 점이 굵어진다. */
+export const MoreDotsIcon = forwardRef<SVGSVGElement, IconProps>(function MoreDotsIcon({ size = 24, filled, ...props }, ref) {
+  const r = filled ? 2.6 : 2
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <circle cx="7.5" cy="7.5" r={r} fill={filled ? 'currentColor' : 'none'} />
+      <circle cx="16.5" cy="7.5" r={r} fill={filled ? 'currentColor' : 'none'} />
+      <circle cx="7.5" cy="16.5" r={r} fill={filled ? 'currentColor' : 'none'} />
+      <circle cx="16.5" cy="16.5" r={r} fill={filled ? 'currentColor' : 'none'} />
+    </svg>
+  )
+})

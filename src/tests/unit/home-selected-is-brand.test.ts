@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
+import { stripComments } from '../helpers/source-text'
 
 /**
  * 🎨 2026-09-07 (대표 승인 — 홈 개선 안 B·C)
@@ -23,8 +24,7 @@ import { readFileSync } from 'node:fs'
 
 const read = (p: string) => readFileSync(p, 'utf8')
 /** 주석을 지운 소스 — 경위를 설명하는 주석이 판정에 걸려 늘 통과하는 것을 막는다. */
-const code = (p: string) =>
-  read(p).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+const code = (p: string) => stripComments(read(p))
 
 const PC_HOME = 'src/pages/pc-home/PcHomePage.tsx'
 const FEED = 'src/pages/main-home/GroupBuyFeed.tsx'

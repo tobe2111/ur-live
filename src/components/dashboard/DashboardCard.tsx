@@ -1,5 +1,11 @@
 /**
  * 🛡️ 2026-04-22 배치 127: 일반 카드 — 섹션 그룹화
+ *
+ * 🎨 2026-09-14 (대표 Rinda 시안 — docs/design/dashboard-rinda-2026-09.md §3):
+ *   `shadow-lift` → **헤어라인 테두리**. 소비자 표면은 "카드 테두리 0 + 그림자 한 값"(🎫)이 정본이지만
+ *   대시보드는 한 화면에 카드가 10장 넘게 깔린다 — 그림자 10개는 화면을 뿌옇게 만들고 시선이 안 잡힌다.
+ *   ⚠️ 이 규칙을 소비자 카드로 옮기지 말 것(🎫 절이 그쪽 정본이다).
+ *   덤으로 `dark:border-[#2C2F35]` 도 사라졌다 — 대시보드는 라이트 고정이라 닿지 않는 죽은 값이었다.
  */
 import type { ReactNode } from 'react'
 
@@ -21,9 +27,9 @@ export default function DashboardCard({
   className = '',
 }: DashboardCardProps) {
   return (
-    <section className={`overflow-hidden rounded-2xl bg-white shadow-lift ${className}`}>
+    <section className={`overflow-hidden rounded-2xl border border-rule bg-white ${className}`}>
       {(title || actions) && (
-        <header className="flex items-center justify-between gap-3 border-b border-gray-100 dark:border-[#2C2F35] px-5 py-4">
+        <header className="flex items-center justify-between gap-3 border-b border-rule px-5 py-4">
           <div className="min-w-0">
             {title && <h2 className="truncate text-sm font-semibold text-gray-900">{title}</h2>}
             {subtitle && <p className="mt-0.5 truncate text-xs text-gray-500">{subtitle}</p>}
