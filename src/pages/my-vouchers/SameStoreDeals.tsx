@@ -40,7 +40,7 @@ export default function SameStoreDeals({ productId, hideTitle }: { productId?: n
         {deals.map((d) => (
           <DealRow
             key={d.id}
-            to={`/group-buy/${d.id}`}
+            to={`/pass/${d.id}`}
             imageUrl={d.image_url}
             thumbSize="sm"
             title={d.name}

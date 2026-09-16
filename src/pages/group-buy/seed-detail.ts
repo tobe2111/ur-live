@@ -1,7 +1,7 @@
 /**
  * 🧭 2026-06-22: 공구 상세 첫 paint 시드 선택 SSOT (pure helper — 테스트 가능).
  *
- * 배경(전수조사): `/group-buy/:id` 첫 도달 시 SSR inject(`__SSR_INITIAL_DETAIL__`)가 detail 을
+ * 배경(전수조사): `/pass/:id` 첫 도달 시 SSR inject(`__SSR_INITIAL_DETAIL__`)가 detail 을
  *   즉시 채워도 `loading=true` 라 skeleton 이 항상 떴고, 홈 카드가 hover/viewport 로 warm 한
  *   React Query 캐시는 페이지가 raw axios 로 다시 cold fetch 하느라 통째로 낭비됐다.
  *   → 첫 render 에 "이미 가진 데이터"(RQ 캐시 / SSR inject / localCache)를 즉시 소비해 skeleton 을 건너뛴다.

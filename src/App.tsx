@@ -149,8 +149,7 @@ const MarketingUnlockPage = lazy(() => import('./pages/marketing/MarketingUnlock
 const MarketingDashboardPage = lazy(() => import('./pages/marketing/MarketingDashboardPage'))
 const MarketingKakaoCallbackPage = lazy(() => import('./pages/marketing/MarketingKakaoCallbackPage'))
 const VoucherDetailPage = lazy(() => import('./pages/VoucherDetailPage'))
-// 🗺️ 2026-07-03 (대표 결정 — /group-buy 은퇴): 홈(/)이 동네딜 목록·지도·지역선택을 담당 → 중복.
-//   /group-buy 는 홈으로 리다이렉트(아래 Route). GroupBuyListPage 는 미라우팅(파일 보존). /group-buy/:id 상세는 유지.
+// 🗺️ 2026-07-03 /group-buy 은퇴(홈이 담당) → 홈 리다이렉트. 🎟️ 09-16 상세 정본은 `/pass/:id`(옛 주소는 301).
 const GroupBuyDetailPage = lazy(() => import('./pages/GroupBuyDetailPage'))
 const GroupBuyConfirmPaymentPage = lazy(() => import('./pages/GroupBuyConfirmPaymentPage'))
 // 🛡️ 2026-05-18: 숙소 공구 사용자 페이지 — PR 3/6, PR 6/6.
@@ -227,9 +226,10 @@ const FAQPage = lazy(() => import('./pages/FAQPage'))
 const KakaoDebugPage = lazy(() => import('./pages/KakaoDebugPage'))
 
 // Redirect component for old product URL
-function ProductRedirect() {
+// 옛 `:id` 경로 → 정본 (앱 내부 이동용; 하드로드용 301 은 `shared/seo/consumer-redirects.ts`).
+function PathRedirect({ base }: { base: string }) {
   const { id } = useParams<{ id: string }>();
-  return <Navigate to={`/products/${id}`} replace />;
+  return <Navigate to={`${base}/${id}`} replace />;
 }
 
 // 🛡️ 2026-05-25 (migration 0278): 큐레이터 핀 SPA fallback
@@ -724,9 +724,9 @@ function AppContent() {
             <Route path="/meal-vouchers" element={<Navigate to="/?category=meal_voucher" replace />} />
             {/* 🗺️ 2026-07-03 (대표 결정): /group-buy 은퇴 → 홈 리다이렉트. 기존 15+ 링크·북마크·SEO 모두 홈으로 흡수. */}
             <Route path="/group-buy" element={<Navigate to="/" replace />} />
-            {/* confirm-payment 가 :id 매칭 우선 — 더 구체적인 path 먼저 */}
-            <Route path="/group-buy/confirm-payment" element={<GroupBuyConfirmPaymentPage />} />
-            <Route path="/group-buy/:id" element={<GroupBuyDetailPage />} />
+            <Route path="/group-buy/confirm-payment" element={<GroupBuyConfirmPaymentPage />} />{/* :id 보다 먼저 — 더 구체적인 path */}
+            <Route path="/pass/:id" element={<GroupBuyDetailPage />} />{/* 🎟️ 이용권 상세 정본(2026-09-16) */}
+            <Route path="/group-buy/:id" element={<PathRedirect base="/pass" />} />{/* 지우면 앱 안에서 갈 곳이 없다(301 은 하드로드만) */}
             {/* 🏙️ 2026-07-04 상권관 랜딩 — 지역코드 하나로 그 상권의 동네딜+체험단 전체(B2G QR/링크 진입). */}
             <Route path="/local/:code" element={<LocalTownPage />} />
             <Route path="/district/:slug" element={<ErrorBoundary><DistrictCouponPage /></ErrorBoundary>} />
@@ -746,7 +746,7 @@ function AppContent() {
             {/* 🗑️ 2026-07-07 라이브커머스 제거: /live·/live/recap·/live/:streamId 라우트 제거 */}
             <Route path="/products/:id" element={<ErrorBoundary><ProductDetailPage /></ErrorBoundary>} />
             {/* Redirect old single product URL to plural */}
-            <Route path="/product/:id" element={<ProductRedirect />} />
+            <Route path="/product/:id" element={<PathRedirect base="/products" />} />
             <Route path="/search" element={<SearchPage />} />
 
             {/* 🛡️ 2026-05-25 큐레이터 유어샵 (migration 0278) */}

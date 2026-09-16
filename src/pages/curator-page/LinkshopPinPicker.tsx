@@ -388,7 +388,7 @@ function PickCard({ item, pinned, busy, onToggle }: { item: PickItem; pinned: bo
     dominant_color: item.dominant_color,
     deal_only: item.deal_only,
   }
-  const to = item.gb ? `/group-buy/${item.id}` : `/products/${item.id}`
+  const to = item.gb ? `/pass/${item.id}` : `/products/${item.id}`
   const commission = affiliateRatePct(item)
 
   function handleToggle(e: React.MouseEvent) {

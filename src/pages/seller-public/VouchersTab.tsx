@@ -5,7 +5,7 @@
 //   유어샵은 7월에 통일했던 그라데이션 카드.
 //
 // 🧭 목적지도 함께 고쳤다: 종전 `to={/products/:id}` 는 **쇼핑 상세**라 이용권이 거기 도착한 뒤
-//   `canonicalDetailPath` 가 `/group-buy/:id` 로 되돌린다. 결과는 맞지만 **페이지 한 장을 헛로드**한다.
+//   `canonicalDetailPath` 가 `/pass/:id` 로 되돌린다. 결과는 맞지만 **페이지 한 장을 헛로드**한다.
 //   이제 카드가 SSOT 로 바로 간다(`to` 를 안 넘기면 `canonicalDetailPath` 가 목적지를 정한다).
 //   ⚠️ 여기서는 `to` 를 **주면 안 된다** — 이 그리드는 매장 자기 이용권이라 귀속이 없다.
 //      담은 핀(`CuratorPinsSection`·`CuratorPage`)만 `/u/{handle}/p/{id}` 를 넘긴다.

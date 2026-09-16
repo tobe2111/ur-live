@@ -41,7 +41,7 @@ const FULLBLEED_PC_PATHS = new Set<string>([
 //   ⚠️ 여기 등재하려면 그 페이지의 하단 구매바가 `.app-frame-bar` 를 쓰지 않아야 함(pc-fullbleed 가 숨김).
 //   교환권 상세(VoucherDetailPage)는 구매바가 app-frame-bar 미사용(ur-content-narrow lg:max-w) → 안전.
 //   숙소 상세(StayDetailPage)는 2026-07-20 하단 묶음바에서 app-frame-bar 제거 + lg:hidden(아사이드 대체) → 안전.
-const FULLBLEED_PC_PREFIXES = ['/vouchers/', '/group-buy/', '/stays/']
+const FULLBLEED_PC_PREFIXES = ['/vouchers/', '/pass/', '/stays/']
 
 // 🛍️ 2026-09-02 (대표 확정 — 유어샵 안P1 "왼쪽 프로필 고정 + 오른쪽 3열 진열대"): 유어샵 진열대만
 //   액자를 벗는다. **정확히 한 세그먼트**(`/u/{handle}` · `/profile/{x}` · `/s/{x}`)만 — `/u/me/add`(핀 고르기)·

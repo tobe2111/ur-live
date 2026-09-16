@@ -80,7 +80,7 @@ export function buildHomeCardPreloadLinks(ssrExtraPayload: string): string[] {
  * seed 의 `image_url` 로 클라와 **동일 함수**로 URL 을 만들어 주입하면 HTML 파싱 즉시 병렬로 받고,
  * 렌더 시점엔 캐시에 적중한다(byte-일치 보장).
  *
- * ⚠️ **표면별 정합**: `/group-buy/:id` 히어로 = `cfImage(900)` 단일 URL ↔ `/vouchers/:id` 히어로 =
+ * ⚠️ **표면별 정합**: `/pass/:id` 히어로 = `cfImage(900)` 단일 URL ↔ `/vouchers/:id` 히어로 =
  *   `cfImage(800)` + `cfSrcSet(800)` 밀도 srcSet. 형태가 다르면 **이중 다운로드**가 된다.
  * ⚠️ Save-Data 사용자만 quality 65 라 URL 이 달라 미적중 — 히어로 1장 한정 허용 트레이드오프.
  *

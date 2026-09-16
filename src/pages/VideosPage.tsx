@@ -337,7 +337,7 @@ export default function VideosPage() {
 
       {/* 🔴 구매 바는 영상 위에 항상. 끝나기를 기다리면 이미 늦다.
           단 **살 게 있을 때만** — 2026-09-08 부터 이용권 안 붙인 영상도 여기 온다(대표 확정).
-          상품이 없으면 `/group-buy/null` 로 가는 버튼이 되므로 바 전체를 안 그린다. */}
+          상품이 없으면 `/pass/null` 로 가는 버튼이 되므로 바 전체를 안 그린다. */}
       {cur && cur.product_id ? (
         <div className="absolute inset-x-2.5 bottom-2.5 z-20 flex items-center gap-2.5 rounded-2xl bg-white/97 p-2.5 shadow-2xl">
           {thumb && (
@@ -378,7 +378,7 @@ export default function VideosPage() {
             </div>
           </div>
           <Link
-            to={`/group-buy/${cur.product_id}`}
+            to={`/pass/${cur.product_id}`}
             className="shrink-0 rounded-[10px] bg-brand px-[15px] py-[11px] text-[13.5px] font-bold text-white"
           >
             구매

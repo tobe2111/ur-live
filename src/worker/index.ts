@@ -612,8 +612,8 @@ app.use('*', async (c, next) => {
       // 🛡️ 2026-05-30 (loading): /products/:id 상세 SSR inject — 기존엔 누락되어 마운트 후
       //   useProduct fetch 워터폴(HTML→JS→fetch 3-RTT). /api/products/:id 는 publicCache(120) → edge-hit.
       const productMatch = url.pathname.match(/^\/products\/(\d+)(?:[/?#]|$)/);
-      // 🛡️ 2026-05-27: /group-buy/:id 와 /vouchers/:id 둘 다 같은 endpoint 사용 → 같은 SSR slot.
-      const detailMatch = url.pathname.match(/^\/(?:group-buy|vouchers)\/(\d+)(?:[/?#]|$)/);
+      // 🛡️ 2026-05-27: 셋 다 같은 endpoint → 같은 SSR slot. 🎟️ 09-16 정본 `/pass/:id`(옛 주소도 방어적으로 남김).
+      const detailMatch = url.pathname.match(/^\/(?:pass|group-buy|vouchers)\/(\d+)(?:[/?#]|$)/);
       // 🏨 2026-07-20 (대표 — 숙소 상세 SSR/OG): /stays/:id 도 DETAIL 패턴으로 0-RTT + 서버 메타.
       const stayMatch = url.pathname.match(/^\/stays\/(\d+)(?:[/?#]|$)/);
       if (productMatch) {
@@ -707,7 +707,7 @@ app.use('*', async (c, next) => {
     //   맵은 빌드 시 vite manifest 로 생성(generate-route-chunk-map.mjs → generated/route-chunk-map.ts,
     //   같은 빌드의 해시와 항상 일치). 맵에 없는 표면/빈 맵(로컬 워커 단독 빌드)은 조용히 생략.
     const chunkSurface = url.pathname === '/' || url.pathname === '/index.html' ? 'home'
-      : /^\/group-buy\/\d+(?:[/?#]|$)/.test(url.pathname) ? 'gbDetail'
+      : /^\/(?:pass|group-buy)\/\d+(?:[/?#]|$)/.test(url.pathname) ? 'gbDetail'
       : /^\/vouchers\/\d+(?:[/?#]|$)/.test(url.pathname) ? 'voucherDetail'
       : /^\/products\/\d+(?:[/?#]|$)/.test(url.pathname) ? 'product'
       : /^\/(u|profile|s)(\/|$)/.test(url.pathname) ? 'linkshop'
@@ -996,7 +996,7 @@ app.use('*', async (c, next) => {
       if (sm) rb = applySurfaceMeta(rb, sm);
     }
     // 🪦 2026-07-29 (소비자 SEO 실측): **사라진 상세 페이지가 `200 + index,follow` 로 나가고 있었다.**
-    //   `/group-buy/99999999` → HTTP 200 · 제네릭 홈 메타 · robots `index, follow`. 워커 자신의 SSR
+    //   `/group-buy/99999999`(당시 주소) → HTTP 200 · 제네릭 홈 메타 · robots `index, follow`. 워커 자신의 SSR
     //   self-fetch 는 그 순간 **404 를 받고 있었다**(`X-SSR-Status: DETAIL:self-fetch-404`) — 알고도 안 썼다.
     //   sitemap 이 상세 URL 을 829건(공구 329·상품 500) 제출하는데 상품은 내려간다. 내려갈 때마다
     //   "홈과 똑같은 내용의 색인 가능한 URL" 이 하나씩 생기는 구조였다(soft-404 — 에러가 없어 안 보인다).
@@ -1025,7 +1025,7 @@ app.use('*', async (c, next) => {
       rb = rb.on('#root', {
         element(el) { el.setInnerContent(blogBody, { html: true }); },
       });
-    } else if (ssrSlot === 'DETAIL' && ssrPayload && url.pathname.startsWith('/group-buy/')) {
+    } else if (ssrSlot === 'DETAIL' && ssrPayload && (url.pathname.startsWith('/pass/') || url.pathname.startsWith('/group-buy/'))) {
       // 🖼️ 2026-09-15 [UNLOCK_LOADING] (대표 "꼭 로딩이 걸려야 해?"): 시드에 상품이 이미 있고 히어로도 preload 로
       //   당겨 놨는데 React 가 깨어날 때까지(실측 1.2초) 사진이 캐시에 앉아 기다렸다 → 서버가 [빵부스러기 + 히어로]
       //   까지 그리고 그 아래에만 로더를 둔다(마운트 때 사진은 제자리 — box·URL 실측 일치). `/vouchers/:id` 는 같은

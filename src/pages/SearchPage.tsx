@@ -242,7 +242,7 @@ export default function SearchPage() {
                   }}
                   isSelected={false}
                   userLoc={null}
-                  onSelect={(r) => navigate(`/group-buy/${r.id}`)}
+                  onSelect={(r) => navigate(`/pass/${r.id}`)}
                 />
               ))}
             </div>

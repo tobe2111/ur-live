@@ -138,7 +138,7 @@ export default function LocalTownPage() {
               {(fcfs || []).map(p => (
                 <DealRow
                   key={p.id}
-                  to={`/group-buy/${p.id}`}
+                  to={`/pass/${p.id}`}
                   imageUrl={p.image_url}
                   eyebrow={p.restaurant_name || undefined}
                   title={p.name}

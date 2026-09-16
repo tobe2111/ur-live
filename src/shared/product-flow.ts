@@ -111,7 +111,7 @@ export const FLOW_CONFIG: Record<ProductFlow, {
     buttonLabel: '🎁 딜로 교환하기',
   },
   group_buy_toss: {
-    detailPath: id => `/group-buy/${id}`,
+    detailPath: id => `/pass/${id}`,
     apiPath: id => `/api/group-buy/join/${id}`,
     paymentMethod: 'toss',
     successPath: '/group-buy/confirm-payment',

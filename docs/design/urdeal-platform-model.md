@@ -139,7 +139,7 @@
 | **이용권** | 할인가로 즉시 구매 → 매장에서 QR/PIN 사용 (식사·미용·숙박·액티비티) | `category ∈ {meal,beauty,stay,etc}_voucher` | `/vouchers`, `/vouchers/:id` | 3P 5% |
 | **교환권** | 기프티콘·KT 등 즉시 교환권 | `deal_only=1` | `/vouchers`(딜only), 카탈로그 | 3P 5% / 공급자 정산 |
 | **동네딜** | 내 주변 로컬 공동구매 딜 (지도+리스트) | 지역태그 + voucher category | `/group-buy`, `/restaurant-map`(홈 `/`) | 3P 5% |
-| **공동구매(공구)** | 즉시판매 단일가 모델(이름만 공구, 최대 tier 할인 즉시적용) | `group_buy_*` | `/group-buy/:id` | 3P 5% |
+| **공동구매(공구)** | 즉시판매 단일가 모델(이름만 공구, 최대 tier 할인 즉시적용) | `group_buy_*` | `/pass/:id` | 3P 5% |
 | **픽업 공구** 🏪 | **공구 서비스(운영자 몰)의 주력** — 운영자가 기간·특가·픽업일을 걸어 자기 몰에서 판다. **인원 무관**(목표는 표시용) | `product_supply_meta` `gb_*` 세션(`mode/price/deadline`) + `products.mall_id` | `urdeal.kr/{몰슬러그}`, `/{슬러그}/p/:id` | 3P 5% (+ 운영자 promo) |
 | **커뮤니티 공구** | 유저 제안형 공동구매 (수요신호) | `community-group-buy` | `/community-group-buy/*` | — (`COMMUNITY_PROPOSAL_HIDDEN` 꺼짐) |
 
@@ -148,7 +148,7 @@
 >
 > | 무엇 | 서비스 | 인원이 가격을 바꾸나 | 상태 |
 > |---|---|---|---|
-> | 이용권 공구 (`/group-buy/:id`) | 🎟️ 유어딜 | **아니오** — 즉시 단일가(2026-05-30 A2) | 라이브 |
+> | 이용권 공구 (`/pass/:id`) | 🎟️ 유어딜 | **아니오** — 즉시 단일가(2026-05-30 A2) | 라이브 |
 > | 픽업 공구 (`/{몰슬러그}`) | 🏪 공구 서비스 | **아니오** — 기간 한정 특가. `resolveGbPricing` 은 `target` 을 읽지 않는다 | 라이브 |
 > | 커뮤니티 공구 | 🎟️ 유어딜 | 목표 개념 있음(수요신호) | **꺼짐** |
 > | B2B 발주 | 🏭 도매몰 | 해당 없음 | 라이브 |
@@ -178,7 +178,7 @@
 
 ### 소비자 (다크/화이트 테마)
 - **발견**: `/`(동네딜 지도) · `/vouchers`(이용권+쇼핑) · `/group-buy`(동네딜) · `/browse`(쇼핑,숨김) · `/search` · `/blog` · **`/local/:code`(상권관 — B2G 상권 패키지 지역 랜딩, 2026-07-04)**
-- **상세/구매**: `/vouchers/:id` · `/group-buy/:id` · `/products/:id` · `/stays/:id` · `/checkout` · `/points/charge`
+- **상세/구매**: `/vouchers/:id` · `/pass/:id`(2026-09-16 정본 — 옛 `/group-buy/:id` 는 영구 301) · `/products/:id` · `/stays/:id` · `/checkout` · `/points/charge`
 - **유어샵**: `/u/:handle`(단일화) · `/u/me`(본인) · `/u/me/add`(핀 추가) · `/u/me/earnings` · `/profile/:username`·`/s/:id`(셀러 공개)
 - **마이**: `/user/profile` · `/my-vouchers`(이용권 지갑) · **`/my-gifticons`(교환권 보관함 — 2026-08-31 분리: 교환권은 `/vouchers` 에서 사고 여기서 확인, 이용권은 `/my-vouchers`)** · `/my-orders` · `/my-deal-history` · `/my-commissions` · `/notifications` · `/account/settings`
 - **성장**: `/referral` · `/g/:invite_code` · `/influencer/*`(랭킹·정산·발굴) · **`/experience`(체험 캠페인 응모, 2026-07-12)**

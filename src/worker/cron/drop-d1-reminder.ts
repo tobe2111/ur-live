@@ -81,7 +81,7 @@ export async function runDropD1Reminder(env: Env): Promise<{ notified: number; a
         r.user_id, notifType,
         `⏰ 내일 마감 — ${productName}`,
         `응모하신 ${productName}${where} 이(가) 내일(${deadlineDay}) 마감·추첨돼요. 놓치지 마세요!`,
-        `/group-buy/${r.product_id}`,
+        `/pass/${r.product_id}`,
       ).run().catch(() => { /* table/컬럼 없으면 silent */ })
       out.notified++
 
