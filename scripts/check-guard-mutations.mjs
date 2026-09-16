@@ -1267,8 +1267,8 @@ const MUTATIONS = [
   {
     name: '🎟️ 권한 연결 재시도가 사라진다 — 방금 만든 매장에 아무도 못 들어간다',
     file: 'src/features/seller/api/seller-stores.routes.ts',
-    find: '      granted = await grantOperator(c.env.DB, newSellerId, userId, userId, role).then(() => true).catch(() => false)',
-    replace: '      granted = false',
+    find: 'if (!granted) granted = await tryGrant()',
+    replace: '// no retry',
     test: 'src/tests/unit/voucher-flow-audit-2026-09-02.test.ts',
     why: 'linked_user_id 를 비워 두는 설계라 접근 경로가 seller_operators 하나뿐이다.',
   },
