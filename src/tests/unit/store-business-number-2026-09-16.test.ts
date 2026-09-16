@@ -103,6 +103,19 @@ describe('③ 배선 — 쓰는 쪽과 읽는 쪽이 짝을 이룬다', () => {
     expect(CLAIM).toMatch(/const storeBno = await resolveBusinessNumber\(DB, seller\)/)
   })
 
+  it('권한 연결 판정이 반환값을 읽는다 (예외가 아니라 {ok:false} 로 온다)', () => {
+    // 🩸 `.then(() => true)` 였다 — grantOperator 는 예외를 삼키고 resolve 하므로 **언제나 참**이었다.
+    //   그래서 "매장은 만들어졌는데 아무도 못 들어간다" 를 막으려던 분기가 실행될 수 없었다.
+    expect(ROUTE).not.toMatch(/grantOperator\([^)]*\)\s*\.then\(\(\) => true\)/)
+    expect(ROUTE).toMatch(/\.then\(\(r\) => !!r\?\.ok\)/)
+  })
+
+  it('grantOperator 는 실제로 던지지 않고 ok 로 알린다 (위 판정의 전제)', () => {
+    // 전제가 바뀌면(던지도록 바뀌면) 위 시험이 틀린 것을 지키게 된다 — 그 짝을 여기서 고정한다.
+    const OPS = readCode('src/worker/utils/seller-operators.ts')
+    expect(OPS).toMatch(/return \{ ok: false, reason: 'db' \}/)
+  })
+
   it('어드민 승인 화면이 meta 폴백을 탄다 (안 그러면 심사 칸이 빈다)', () => {
     const ADMIN = readCode('src/worker/routes/internal-admin-tools.routes.ts')
     // 목록(심사 큐)과 재검증 둘 다 — 하나만 타면 그 화면만 조용히 빈칸이 된다.

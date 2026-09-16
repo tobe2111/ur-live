@@ -510,10 +510,18 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
 
     // 등록자 권한 — 직접=owner / 중개=operator(사장님 자리는 비워 둔다: owner 승계 3단계)
     const role = b.channel === 'direct' ? 'owner' : 'operator'
-    let granted = await grantOperator(c.env.DB, newSellerId, userId, userId, role).then(() => true).catch(() => false)
-    if (!granted) {
-      granted = await grantOperator(c.env.DB, newSellerId, userId, userId, role).then(() => true).catch(() => false)
-    }
+    /**
+     * 🩸 2026-09-16: 이 판정이 **실패할 수 없는 코드**였다 — `.then(() => true)`.
+     *   `grantOperator` 는 예외를 **스스로 삼키고** `{ ok: false, reason }` 로 **resolve** 한다.
+     *   그래서 `.catch` 는 영원히 안 걸리고 `granted` 는 항상 `true` 였다. 바로 위 주석이
+     *   "이게 실패하면 방금 만든 매장에 아무도 못 들어간다" 고 경고하며 세운 분기가,
+     *   정작 **그 상황에서 한 번도 실행될 수 없었다**(들어갈 수 없는 매장이 조용히 생긴다).
+     *   ⇒ 반환값 `.ok` 를 읽는다. `catch` 는 시그니처가 바뀌는 날을 위한 안전판으로만 남긴다.
+     */
+    const tryGrant = () => grantOperator(c.env.DB, newSellerId, userId, userId, role)
+      .then((r) => !!r?.ok).catch(() => false)
+    let granted = await tryGrant()
+    if (!granted) granted = await tryGrant()
     if (!granted) {
       return c.json({
         success: false,

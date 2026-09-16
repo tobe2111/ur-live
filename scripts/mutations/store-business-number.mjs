@@ -56,4 +56,12 @@ export default [
     test: TEST,
     why: '두 번째 매장은 컬럼이 비어 있다 — 안 풀면 재검증이 빈 문자열로 국세청에 나간다.',
   },
+  {
+    name: '🧾 권한 연결 판정이 다시 실패할 수 없는 코드로 (들어갈 수 없는 매장이 조용히 생긴다)',
+    file: ROUTE,
+    find: '.then((r) => !!r?.ok).catch(() => false)',
+    replace: '.then(() => true).catch(() => false)',
+    test: TEST,
+    why: 'grantOperator 는 예외를 삼키고 {ok:false} 로 resolve 한다 — .then(()=>true) 면 실패를 영원히 못 본다.',
+  },
 ]
