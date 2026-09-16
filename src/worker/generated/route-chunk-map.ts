@@ -3,26 +3,26 @@
 export const ROUTE_CHUNK_MAP: Record<string, { js: string[]; css: string[] }> = {
   "home": {
     "js": [
-      "/assets/PcHomePage-D1lfiIUb.js",
-      "/assets/MobileHomePage-BHEvvkfv.js",
-      "/assets/app-home-3JXQ6tqn.js",
+      "/assets/PcHomePage-B58obr_W.js",
+      "/assets/MobileHomePage-Dxo15gV3.js",
+      "/assets/app-home-CeIuVYMr.js",
       "/assets/app-constants-DnkrHW7X.js",
-      "/assets/lucide-CwvXv557.js",
-      "/assets/GroupBuyFeed-CquJ11mS.js",
+      "/assets/lucide-DHl4is3P.js",
+      "/assets/GroupBuyFeed-BPQblnQK.js",
       "/assets/useHomeQuerySync-BXd_YI4h.js"
     ],
     "css": []
   },
   "gbDetail": {
     "js": [
-      "/assets/GroupBuyDetailPage-DgYo4CKf.js",
-      "/assets/DeferUntilVisible-iv0UwoJQ.js",
-      "/assets/app-misc-D5AnkWXq.js",
-      "/assets/lucide-CwvXv557.js",
-      "/assets/app-home-3JXQ6tqn.js",
+      "/assets/GroupBuyDetailPage-D9wCvhHP.js",
+      "/assets/DeferUntilVisible-DhdVvk1b.js",
+      "/assets/app-misc-1XJyDV13.js",
+      "/assets/lucide-DHl4is3P.js",
+      "/assets/app-home-CeIuVYMr.js",
       "/assets/app-constants-DnkrHW7X.js",
-      "/assets/app-components-BeynFVeB.js",
-      "/assets/app-utils-deferred-TbV12dA-.js",
+      "/assets/app-components-WdSQg94E.js",
+      "/assets/app-utils-deferred-Cl-EXoEE.js",
       "/assets/radix-ui-7il725KW.js",
       "/assets/app-ui-utils-msoul5Oj.js"
     ],
@@ -30,25 +30,25 @@ export const ROUTE_CHUNK_MAP: Record<string, { js: string[]; css: string[] }> = 
   },
   "voucherDetail": {
     "js": [
-      "/assets/VoucherDetailPage-C10ofTlg.js",
+      "/assets/VoucherDetailPage-ZGykT1lC.js",
       "/assets/seed-detail-wgQTwj3-.js",
-      "/assets/app-home-3JXQ6tqn.js",
+      "/assets/app-home-CeIuVYMr.js",
       "/assets/app-constants-DnkrHW7X.js",
-      "/assets/lucide-CwvXv557.js",
-      "/assets/app-utils-deferred-TbV12dA-.js"
+      "/assets/lucide-DHl4is3P.js",
+      "/assets/app-utils-deferred-Cl-EXoEE.js"
     ],
     "css": []
   },
   "product": {
     "js": [
-      "/assets/ProductDetailPage-d2GGRrXc.js",
-      "/assets/app-home-3JXQ6tqn.js",
+      "/assets/ProductDetailPage-VXd3UL1K.js",
+      "/assets/app-home-CeIuVYMr.js",
       "/assets/app-constants-DnkrHW7X.js",
-      "/assets/lucide-CwvXv557.js",
-      "/assets/app-utils-deferred-TbV12dA-.js",
-      "/assets/app-product-components-lMB0hJ72.js",
+      "/assets/lucide-DHl4is3P.js",
+      "/assets/app-utils-deferred-Cl-EXoEE.js",
+      "/assets/app-product-components-BG5T4H_N.js",
       "/assets/embla-XVrp4Y8g.js",
-      "/assets/app-components-BeynFVeB.js",
+      "/assets/app-components-WdSQg94E.js",
       "/assets/radix-ui-7il725KW.js",
       "/assets/app-ui-utils-msoul5Oj.js"
     ],
@@ -56,42 +56,42 @@ export const ROUTE_CHUNK_MAP: Record<string, { js: string[]; css: string[] }> = 
   },
   "linkshop": {
     "js": [
-      "/assets/CuratorPage-DUqUSt-C.js",
-      "/assets/SellerPublicPage-pjvaIB-y.js",
-      "/assets/app-home-3JXQ6tqn.js",
+      "/assets/CuratorPage-Cb8I2u-b.js",
+      "/assets/SellerPublicPage-DgTXa0X9.js",
+      "/assets/app-home-CeIuVYMr.js",
       "/assets/app-constants-DnkrHW7X.js",
-      "/assets/lucide-CwvXv557.js",
-      "/assets/app-features-LgG5Skl3.js",
-      "/assets/seller-public-fetch-CMdSbbPX.js",
-      "/assets/app-components-BeynFVeB.js",
-      "/assets/app-utils-deferred-TbV12dA-.js",
+      "/assets/lucide-DHl4is3P.js",
+      "/assets/app-features-GuwkKVJ0.js",
+      "/assets/seller-public-fetch-DdNIVF3H.js",
+      "/assets/app-components-WdSQg94E.js",
+      "/assets/app-utils-deferred-Cl-EXoEE.js",
       "/assets/radix-ui-7il725KW.js"
     ],
     "css": []
   },
   "vouchers": {
     "js": [
-      "/assets/VouchersPage-CL048B0F.js",
-      "/assets/lucide-CwvXv557.js",
-      "/assets/app-home-3JXQ6tqn.js",
+      "/assets/VouchersPage-CSkBpRLR.js",
+      "/assets/lucide-DHl4is3P.js",
+      "/assets/app-home-CeIuVYMr.js",
       "/assets/app-constants-DnkrHW7X.js",
-      "/assets/app-components-BeynFVeB.js",
-      "/assets/app-utils-deferred-TbV12dA-.js",
+      "/assets/app-components-WdSQg94E.js",
+      "/assets/app-utils-deferred-Cl-EXoEE.js",
       "/assets/radix-ui-7il725KW.js",
       "/assets/app-ui-utils-msoul5Oj.js",
-      "/assets/app-features-LgG5Skl3.js",
+      "/assets/app-features-GuwkKVJ0.js",
       "/assets/app-kakao-sdk-HAM5uC3L.js"
     ],
     "css": []
   },
   "browse": {
     "js": [
-      "/assets/BrowsePage-BPFS8dGn.js",
-      "/assets/app-home-3JXQ6tqn.js",
+      "/assets/BrowsePage-Bt1C5SBA.js",
+      "/assets/app-home-CeIuVYMr.js",
       "/assets/app-constants-DnkrHW7X.js",
-      "/assets/lucide-CwvXv557.js",
-      "/assets/app-utils-deferred-TbV12dA-.js",
-      "/assets/BrowseProductCard-CMjM_JMt.js"
+      "/assets/lucide-DHl4is3P.js",
+      "/assets/app-utils-deferred-Cl-EXoEE.js",
+      "/assets/BrowseProductCard-zKfl6PKL.js"
     ],
     "css": []
   }

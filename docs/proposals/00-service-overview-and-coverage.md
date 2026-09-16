@@ -291,9 +291,9 @@
 |---|---|---|---|
 | 도매몰 (유통스타트) | `wholesale-mall-brief.md` | 43 | 4 |
 | 오프라인 공구 / 동네딜 | `offline-groupbuy-brief.md` | 29 | 95 |
-| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 72 | 270 |
+| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 71 | 275 |
 | 유어샵 / 담기·소개 | `linkshop-brief.md` | 23 | 88 |
-| **합계** | — | **167** | **457** |
+| **합계** | — | **166** | **462** |
 
 ### 전체 커버리지 검증 (자동 — 빠진 기능 보증)
 
@@ -302,12 +302,12 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 369 | 1120 |
-| 도메인 버킷 (5개 소개서) | 167 | 457 |
-| 공통/인프라 (의도적 제외) | 166 | 478 |
-| **미커버 (점검 필요)** | **36** | **185** |
+| 전체 | 368 | 1125 |
+| 도메인 버킷 (5개 소개서) | 166 | 462 |
+| 공통/인프라 (의도적 제외) | 166 | 477 |
+| **미커버 (점검 필요)** | **36** | **186** |
 
-⚠️ **미커버 221건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 222건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -352,6 +352,7 @@
 - `PATCH /:id` (`src/features/supply/api/wholesale-board.routes.ts`)
 - `POST /:id{[0-9]+}/view` (`src/features/products/api/product-view.routes.ts`)
 - `PATCH /:id/amount` (`src/features/returns/api/return-amount.routes.ts`)
+- `POST /:id/approve` (`src/worker/routes/mall-applications-admin.routes.ts`)
 - `POST /:id/confirm` (`src/features/supply/api/wholesale-deposit.routes.ts`)
 - `POST /:id/reject` (`src/features/supply/api/wholesale-deposit.routes.ts`)
 - `POST /:id/respond` (`src/features/seller/api/seller-transfer-respond.routes.ts`)
@@ -888,7 +889,7 @@
 
 #### 온라인 입점 / 라이브커머스
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (72개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (71개)
 
 - `/browse`
 - `/cart`
@@ -945,7 +946,6 @@
 - `/seller/scan`
 - `/seller/settlements`
 - `/seller/signup`
-- `/seller/store`
 - `/seller/stores`
 - `/seller/tier`
 - `/seller/tiktok-callback`
@@ -963,7 +963,7 @@
 - `/vouchers/:id`
 - `/wishlist`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (270개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (275개)
 
 
 **/api/admin-review-bonus/:id**
@@ -1197,6 +1197,8 @@
 **/api/seller/gb**
 - `GET /api/seller/gb/:id`
 - `PUT /api/seller/gb/:id`
+- `GET /api/seller/gb/mall`
+- `POST /api/seller/gb/mall/apply`
 - `GET /api/seller/gb/support-contact`
 
 **/api/seller/influencers**
@@ -1213,6 +1215,9 @@
 
 **/api/seller/login**
 - `POST /api/seller/login`
+
+**/api/seller/my-seller-status**
+- `GET /api/seller/my-seller-status`
 
 **/api/seller/my-stores**
 - `GET /api/seller/my-stores`
@@ -1359,6 +1364,12 @@
 
 **/api/seller/surface**
 - `GET /api/seller/surface`
+
+**/api/seller/switch-to-seller**
+- `POST /api/seller/switch-to-seller`
+
+**/api/seller/switch-to-user**
+- `POST /api/seller/switch-to-user`
 
 **/api/seller/tax-summary**
 - `GET /api/seller/tax-summary`
@@ -1722,7 +1733,7 @@
 
 
 
-> 마지막 생성: 2026-09-16T09:03:56.080Z
+> 마지막 생성: 2026-09-16T09:54:14.513Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

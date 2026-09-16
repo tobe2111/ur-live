@@ -17,15 +17,18 @@ import { readMallOrigin } from '@/shared/mall/origin'
 export default function ContinueShoppingLink({
   onFallback,
   className = 'text-[13px] text-gray-500 dark:text-gray-400 underline',
+  label = '쇼핑 계속하기',
 }: {
   onFallback: () => void
   className?: string
+  /** 흔적이 없을 때(본진 손님)의 문구. 몰 손님 문구는 고정이다 — 가게로 보내는 말은 하나면 된다. */
+  label?: string
 }) {
   const navigate = useNavigate()
   const slug = readMallOrigin()
   return (
     <button type="button" onClick={() => (slug ? navigate(`/${slug}`) : onFallback())} className={className}>
-      {slug ? '가게로 돌아가기' : '쇼핑 계속하기'}
+      {slug ? '가게로 돌아가기' : label}
     </button>
   )
 }
