@@ -14,6 +14,7 @@
 import { Hono } from 'hono';
 import type { Env } from '@/worker/types/env';
 import { requireAdmin } from '../middleware/auth';
+import { patchBusinessNumbers } from '../utils/seller-business-number'
 import { hashPassword } from '@/lib/password';
 import { rateLimit } from '../middleware/rate-limit';
 
@@ -952,7 +953,8 @@ internalAdminToolsRoutes.get('/api/admin/pending-sellers', requireAdmin(), async
         ORDER BY s.created_at DESC
         LIMIT 100`
     ).all().catch(() => ({ results: [] }))
-    return c.json({ success: true, data: results })
+    // 🧾 2026-09-16: 대표가 등록증과 번호를 대조하는 자리 — 두 번째 매장부터는 번호가 meta 에 있다.
+    return c.json({ success: true, data: await patchBusinessNumbers(c.env.DB, (results || []) as Array<{ id: number; business_number?: string | null }>) })
   } catch (err) {
     return c.json({ success: false, error: 'pending sellers 조회 실패' }, 500)
   }
@@ -1040,18 +1042,16 @@ internalAdminToolsRoutes.post('/api/admin/sellers/:id/recheck-nts', requireAdmin
     const id = Number(c.req.param('id'))
     if (!Number.isFinite(id)) return c.json({ success: false, error: 'invalid id' }, 400)
 
-    const seller = await c.env.DB.prepare(
-      `SELECT business_number, representative_name, business_start_date FROM sellers WHERE id = ?`
-    ).bind(id).first<{ business_number: string; representative_name: string | null; business_start_date: string | null }>()
+    const seller = await c.env.DB.prepare(`SELECT id, business_number, representative_name, business_start_date FROM sellers WHERE id = ?`)
+      .bind(id).first<{ id: number; business_number: string | null; representative_name: string | null; business_start_date: string | null }>()
     if (!seller) return c.json({ success: false, error: 'seller 없음' }, 404)
-    if (!seller.representative_name || !seller.business_start_date) {
-      return c.json({ success: false, error: '대표자명 / 개업일 누락 — 재검증 불가' }, 400)
-    }
+    await patchBusinessNumbers(c.env.DB, [seller]) // 🧾 컬럼이 비면 meta 에서(`seller-business-number.ts`)
+    if (!seller.representative_name || !seller.business_start_date) return c.json({ success: false, error: '대표자명 / 개업일 누락 — 재검증 불가' }, 400)
 
     const { ntsValidateBusiness } = await import('../utils/nts-business-verify')
     const ntsKey = (c.env as { NTS_API_KEY?: string }).NTS_API_KEY
     const r = await ntsValidateBusiness(ntsKey, {
-      businessNumber: seller.business_number,
+      businessNumber: seller.business_number || '',
       startDate: seller.business_start_date,
       representative: seller.representative_name,
     })
