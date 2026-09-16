@@ -15,7 +15,14 @@
  *      안 C  사진 먼저          — 음식 사진을 화면 전체에. 커머스 톤(그루폰·쿠팡 계열)
  *      안 D  돈 그림           — 10,000원이 어디로 가는지 도해 하나로
  *
- * 🔒 규칙(registry.ts): API 0 · 쓰기 0 · 가짜 데이터. 캡처는 `public/partners/*.jpg`(정적).
+ * ✅ **2026-09-16 대표 확정 — 안 B.** (*"모바일은 오케이, 근데 PC 버전은 전혀 PC 버전 같지 않은데?
+ *    안 B로 하는데 우리 유어딜 서비스의 차별점, 장점 그리고 기존 체험단 서비스와 비교하는 것
+ *    그런게 필요해"*) `/partners` 본체가 안 B 로 다시 지어졌다 — 라이브 캡처 8장(히어로 2 ·
+ *    사장님 화면 4 · 환불 안내 1 · 등록 1) + PC 타이포 단계 + 섹션별 레이아웃 계열 분리.
+ *    ⚠️ 이 파일은 **그대로 둔다**(A·C·D 는 기각 기록이고, 나중에 다시 고를 때의 비교 대상이다).
+ *    본체와 코드를 공유하지 않으므로 여기를 고쳐도 랜딩은 안 바뀐다 — 반대도 마찬가지다.
+ *
+ * 🔒 규칙(registry.ts): API 0 · 쓰기 0 · 가짜 데이터. 캡처는 `public/static/partners/*.jpg`(정적).
  * ⚠️ 판단 뒤에는 **고른 안 하나만** `/partners` 에 구현한다. 여기 코드는 랜딩 본체와 공유하지 않는다
  *    (시안이 본체를 물면 시안을 못 버린다).
  */
@@ -23,7 +30,14 @@ import { ArrowRight } from 'lucide-react'
 import type { VariantSet, VariantCtx } from '../registry'
 import { PARTNER_FACTS as F } from '@/shared/partners-facts'
 
-const SHOT = (n: string) => `/partners/${n}.jpg`
+/**
+ * 🩸 2026-09-16 — 처음엔 `/partners/<n>.jpg` 에 뒀는데 **라이브에서 404** 였다.
+ *   `public/_routes.json` 은 `/*` 를 전부 워커로 보내고 **명시 목록만** 정적으로 뺀다.
+ *   `/partners/*.jpg` 는 그 목록에 없어 워커로 갔고, 워커는 `/assets/*` 만 서빙해서 404 가 났다.
+ *   ⚠️ `/partners/*` 를 exclude 에 새로 넣는 건 위험하다 — 그 파일 주석이 경고하는 #598 클래스로
+ *      랜딩 경로 자체를 정적 404 로 삼킬 수 있다. 이미 검증된 `/static/*` 제외를 쓴다.
+ */
+const SHOT = (n: string) => `/static/partners/${n}.jpg`
 const won = (n: number) => n.toLocaleString('ko-KR')
 
 /** 폰 프레임 — 덱(`phone-frame.mjs`)이 쓰는 그림을 웹으로 옮긴 것. 캡처가 430x930 이라 비율 고정. */

@@ -65,7 +65,7 @@ beforeEach(() => {
 describe('① 서버 마크업과 클라 상수가 같은 id 를 쓴다', () => {
   it('🔴 서버가 첫 화면을 `BOOT_FIRST_SCREEN_ID` 로 감싼다 (갈리면 폴백이 조용히 no-op)', () => {
     const html = buildDetailFirstScreen(SEED, LOADER)
-    expect(html).toContain(`<div id="${BOOT_FIRST_SCREEN_ID}">`)
+    expect(html).toContain(`<div id="${BOOT_FIRST_SCREEN_ID}" `)
   })
 
   it('감싼 것은 [빵부스러기 + 히어로]까지 — 로더는 그 **밖**(마운트 때 사라져야 한다)', () => {

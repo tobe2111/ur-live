@@ -58,9 +58,19 @@ describe('🪙 확정 구조 (안 A3)', () => {
   })
 
   it('🔴 잔액 0 은 큰 카드를 쓰지 않는다 — 첫 진입이 "당신은 0" 이 되지 않게', () => {
-    expect(card).toMatch(/if \(!balance\)/)
-    const zero = card.slice(card.indexOf('if (!balance)'), card.indexOf('내 딜 잔액'))
+    expect(card).toMatch(/if \(!balance && !awaiting\)/)
+    const zero = card.slice(card.indexOf('if (!balance && !awaiting)'), card.indexOf('내 딜 잔액'))
     expect(zero).not.toMatch(/text-\[42px\]/)
+  })
+
+  it('🔴 기다리는 카드는 **로그인한 사람에게만** — 비로그인은 종전대로 한 줄 바다', () => {
+    // 이 조건이 `balance == null` 만 되면 비로그인 방문자에게도 빈 카드가 떠서,
+    // 2026-09-01 에 고친 "당신은 0" 문제가 모양만 바꿔 되살아난다.
+    expect(card).toContain('const awaiting = balance == null && loggedIn')
+  })
+
+  it('🔴 숫자를 모를 땐 0 을 적지 않는다 (빈 자리로 높이만 잡는다)', () => {
+    expect(card).toMatch(/awaiting \? <span[^>]*aria-hidden="true" \/> : formatNumber\(balance\)/)
   })
 })
 

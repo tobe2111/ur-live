@@ -19,7 +19,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readCode } from '../helpers/source-text'
-import { buildDetailFirstScreen, DETAIL_CRUMB_CLASS } from '@/worker/utils/detail-ssr-body'
+import { buildDetailFirstScreen, DETAIL_CRUMB_CLASS, DETAIL_TITLE_STYLES, DETAIL_ONNURI_CLASS } from '@/worker/utils/detail-ssr-body'
 import { DETAIL_HERO_MOBILE_WIDTH, detailHeroMobileUrl } from '@/shared/detail-hero-image'
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
 
@@ -84,15 +84,100 @@ describe('② 빵부스러기 — 클래스와 라벨이 컴포넌트와 같다'
   })
 })
 
-describe('③ 히어로 아래는 한 픽셀도 안 그린다 — per-user 블록이 밀어내지 못하게', () => {
-  // `ShareRewardBanner`(딜 보유자에게만) 가 제목 **위**에 있다. 제목·가격을 서버가 그리면
-  // 딜 가진 사용자에게만 마운트 때 아래로 밀린다 — "대부분은 안 밀린다"로 통과시키지 않는다.
-  it('🔴 제목·가격·매장명이 본문으로 안 나온다', () => {
+describe('③ 제목 — 컴포넌트와 같은 값으로 그린다', () => {
+  const page = readCode('src/pages/GroupBuyDetailPage.tsx')
+
+  it('🔴 매장명·제목이 본문으로 나온다 (서버가 이제 제목까지 그린다)', () => {
     const html = buildDetailFirstScreen(seed(), LOADER)
-    const body = html.replace(/aria-label="[^"]*"/g, '')
-    expect(body).not.toContain('치즈돈가스')
-    expect(body).not.toContain('16,500')
-    expect(body).not.toContain('행복돈가스')
+    expect(html).toContain('<h1 ')
+    expect(html).toContain('치즈돈가스 2인 세트')
+    expect(html).toContain('행복돈가스')
+  })
+
+  it('🔴 h1 스타일이 페이지의 모바일 h1 과 **한 값도 안 다르다** (갈리면 마운트 때 제목이 튀다)', () => {
+    // 페이지는 React inline style 객체다 → 숫자는 px, `lineHeight` 는 단위없음으로 직렬된다.
+    const m = page.match(/<h1 style=\{\{([^}]+)\}\}/)
+    expect(m, '페이지의 h1 inline style 을 못 찾았다 — 이 시험이 낡았다').toBeTruthy()
+    const expected = m![1]
+      .split(',')
+      .map(kv => kv.trim())
+      .filter(Boolean)
+      .map(kv => {
+        const i = kv.indexOf(':')
+        const key = kv.slice(0, i).trim().replace(/[A-Z]/g, c => '-' + c.toLowerCase())
+        let val = kv.slice(i + 1).trim().replace(/^['"]|['"]$/g, '')
+        // 단위없음으로 직렬되는 속성 밖의 순수 숫자는 React 가 px 를 붙인다.
+        if (/^-?\d+(\.\d+)?$/.test(val) && !['line-height', 'font-weight', 'opacity', 'z-index', 'flex'].includes(key)) val += 'px'
+        return `${key}:${val}`
+      })
+      .join(';')
+    expect(DETAIL_TITLE_STYLES.h1).toBe(expected)
+  })
+
+  it('🔴 매장명·온누리·오픈예정 뱃지의 토큰이 페이지에 그대로 있다', () => {
+    expect(page).toContain(DETAIL_ONNURI_CLASS)
+    expect(page).toContain('오픈 예정 · 사전 응모 받는 중')
+    expect(page).toContain("padding: '14px 18px 0'")   // 제목 블록 wrap
+    expect(DETAIL_TITLE_STYLES.wrap).toBe('padding:14px 18px 0')
+  })
+
+  it('온누리·오픈예정은 시드가 말할 때만 그린다 (기본은 없음)', () => {
+    const plain = buildDetailFirstScreen(seed(), LOADER)
+    expect(plain).not.toContain('온누리 사용 가능')
+    expect(plain).not.toContain('오픈 예정')
+    const rich = buildDetailFirstScreen(seed({ onnuri_merchant: true, prelaunch: 1 }), LOADER)
+    expect(rich).toContain('온누리 사용 가능')
+    expect(rich).toContain('오픈 예정 · 사전 응모 받는 중')
+  })
+
+  it('매장명이 없으면 그 줄을 안 그린다 — 컴포넌트와 같은 조건', () => {
+    expect(page).toContain('{detail.restaurant_name && (')
+    const html = buildDetailFirstScreen(seed({ restaurant_name: null }), LOADER)
+    expect(html).toContain('<h1 ')
+    expect(html).not.toContain(DETAIL_TITLE_STYLES.merchant)
+  })
+})
+
+describe('③-2 제목 위에 per-user 블록이 남아 있으면 안 된다', () => {
+  const page = readCode('src/pages/GroupBuyDetailPage.tsx')
+
+  it('🔴 `ShareRewardBanner` 는 제목 **아래**에 있다 (위에 있으면 딜 보유자에게만 제목이 밀린다)', () => {
+    const banner = page.indexOf('<ShareRewardBanner')
+    const h1 = page.indexOf('<h1 style=')
+    expect(banner).toBeGreaterThan(0)
+    expect(h1).toBeGreaterThan(0)
+    expect(banner).toBeGreaterThan(h1)
+  })
+
+  it('배너가 null 이면 그 칸이 통째로 접힌다 (`empty:hidden`) — 안 그러면 16px 빈칸이 남는다', () => {
+    const line = page.split('\n').find(l => l.includes('<ShareRewardBanner'))
+    expect(line).toBeTruthy()
+    expect(line!).toContain('empty:hidden')
+  })
+
+  it('🔴 `?ref=` 일 때는 제목을 접는다 — 추천 배너가 제목 위에 끼는 유일한 경우', () => {
+    expect(page).toContain("searchParams.get('ref')")
+    const withRef = buildDetailFirstScreen(seed(), LOADER, '?ref=42')
+    expect(withRef).not.toContain('<h1 ')
+    expect(withRef).toContain('aspect-ratio:3/2')     // 히어로는 그대로(09-15 동작)
+    const noRef = buildDetailFirstScreen(seed(), LOADER, '?utm_source=kakao')
+    expect(noRef).toContain('<h1 ')
+  })
+})
+
+describe('③-3 감싸는 노드가 페이지와 같은 표면을 들고 다닌다', () => {
+  it('🔴 `class="gbd"` — 없으면 `--gbd-*` 가 안 풀려 제목이 기본색이 된다', () => {
+    const html = buildDetailFirstScreen(seed(), LOADER)
+    expect(html).toContain('id="ur-first-screen" class="gbd"')
+    expect(html).toContain('background:var(--gbd-card)')
+    expect(html).toContain('color:var(--gbd-ink)')
+  })
+
+  it('페이지 루트가 쓰는 값과 같다', () => {
+    const page = readCode('src/pages/GroupBuyDetailPage.tsx')
+    expect(page).toContain('className="gbd"')
+    expect(page).toContain("background: 'var(--gbd-card)'")
+    expect(page).toContain("color: 'var(--gbd-ink)'")
   })
 
   it('로더가 사진 **아래**에 남고, 화면 높이를 다 먹지 않는다', () => {
@@ -100,6 +185,12 @@ describe('③ 히어로 아래는 한 픽셀도 안 그린다 — per-user 블�
     expect(html.indexOf('urdeal.')).toBeGreaterThan(html.indexOf('aspect-ratio:3/2'))
     expect(html).not.toContain('min-height:100dvh')
     expect(html).toContain('min-height:34dvh')
+  })
+
+  it('🔴 주소·가격은 여전히 안 그린다 — 주소 줄의 `· N km` 는 per-user 라 되감길 수 있다', () => {
+    const html = buildDetailFirstScreen(seed(), LOADER)
+    expect(html).not.toContain('16,500')
+    expect(html).not.toContain('결제 즉시 교환권 발급')
   })
 })
 
