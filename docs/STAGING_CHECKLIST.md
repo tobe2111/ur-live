@@ -276,3 +276,7 @@ GET /api/admin/promo-ledger/order/:orderNumber      (read-only, finance 권한)
 | S-OCR-4 | 게이트 OFF 상태에서 완전 일치 건 | `sellers.business_registration_status` **불변** · 응답 `autoVerified=false` |
 | S-OCR-5 | 게이트 ON 후 완전 일치 건 | `verified` 로 1회 전이 · 어드민 audit 에 남는다 |
 | S-OCR-6 | 인허가 원장에 없는 정상 매장 | `ledgerNote` 가 "이상 신호가 아닙니다" 라고 분명히 말한다(원장 커버리지 1% 미만) |
+| S-OCR-7 | 🍽️ 셀러 대시보드 → 서류 탭에서 **영업신고증** 사진 업로드 | `seller_meta.food_permit_url` 에 `/api/media/...` 저장 · 새로고침해도 남아 있다 |
+| S-OCR-8 | 🍽️ `?kind=business_license` 로 OCR 호출 | 응답 `kind='business_license'` · **영업신고증** 이미지를 읽는다(등록증이 아니라) |
+| S-OCR-9 | 📄 **8MB 폰 사진**을 등록증·영업신고증 양쪽에 업로드 | 둘 다 성공(압축 후 ≤2MB) — 거절 문구가 뜨지 않는다 |
+| S-OCR-10 | 🔒 운영자(중개사) 토큰으로 `GET /api/seller/business-info` | `food_permit_url` 이 `null` · `POST /api/seller/food-permit` 는 403 |

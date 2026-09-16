@@ -19,6 +19,7 @@
 import { Hono } from 'hono'
 import type { Env } from '../../../worker/types/env'
 import { adsLeadsDb } from '../../../shared/ads/leads-db'
+import { DOC_LABEL, type DocKind } from '../../../worker/utils/ocr-license'
 
 export const adminSellerOcrRoutes = new Hono<{ Bindings: Env }>()
 
@@ -26,10 +27,14 @@ export const adminSellerOcrRoutes = new Hono<{ Bindings: Env }>()
 const MAX_BYTES = 6 * 1024 * 1024
 
 /**
- * `POST /sellers/:id/business-registration/ocr`
+ * `POST /sellers/:id/business-registration/ocr`  (?kind=business_registration|business_license)
  *
- * 이미 제출된 등록증 이미지를 내려받아 읽고, 등록 매장과 대조한 결과를 돌려준다.
+ * 이미 제출된 서류 이미지를 내려받아 읽고, 등록 매장과 대조한 결과를 돌려준다.
  * 어드민이 버튼을 눌러야만 돈다(자동 실행 없음 — 추론 비용을 사람이 쥔다).
+ *
+ * 🍽️ 2026-09-16: `kind` 로 **영업신고증** 축이 붙었다. 둘은 저장 자리가 다르다 —
+ * 등록증은 `sellers.business_registration_image_url`, 영업신고증은 `seller_meta.food_permit_url`
+ * (sellers 는 100컬럼 = D1 한도라 ALTER 금지).
  */
 adminSellerOcrRoutes.post('/sellers/:id/business-registration/ocr', async (c) => {
   const idRaw = c.req.param('id')
@@ -37,6 +42,9 @@ adminSellerOcrRoutes.post('/sellers/:id/business-registration/ocr', async (c) =>
     return c.json({ success: false, error: 'Invalid ID' }, 400)
   }
   const sellerId = Number(idRaw)
+
+  // 기본값은 등록증 — 종전 호출부(파라미터 없음)가 그대로 돈다
+  const kind: DocKind = c.req.query('kind') === 'business_license' ? 'business_license' : 'business_registration'
 
   if (!c.env.AI) {
     // ⚠️ 실패가 아니라 **부재**다. 화면이 "실패했다" 고 하면 운영자가 사진을 다시 받으려 든다.
@@ -52,8 +60,16 @@ adminSellerOcrRoutes.post('/sellers/:id/business-registration/ocr', async (c) =>
   ).bind(sellerId).first<{ business_registration_image_url: string | null }>().catch(() => null)
 
   if (!row) return c.json({ success: false, error: '셀러를 찾을 수 없습니다' }, 404)
-  const url = (row.business_registration_image_url || '').trim()
-  if (!url) return c.json({ success: false, error: '제출된 사업자등록증 이미지가 없습니다' }, 400)
+
+  let url = ''
+  if (kind === 'business_license') {
+    const { getSellerMeta } = await import('../../../worker/utils/seller-meta')
+    const meta = await getSellerMeta(c.env.DB, [sellerId]).catch(() => new Map<number, Record<string, string>>())
+    url = (meta.get(sellerId)?.food_permit_url || '').trim()
+  } else {
+    url = (row.business_registration_image_url || '').trim()
+  }
+  if (!url) return c.json({ success: false, error: `제출된 ${DOC_LABEL[kind]} 이미지가 없습니다` }, 400)
 
   // 이미지 가져오기 — 우리 R2(`/api/media/*`) 또는 절대 URL
   let bytes: Uint8Array
@@ -73,7 +89,7 @@ adminSellerOcrRoutes.post('/sellers/:id/business-registration/ocr', async (c) =>
   const { ocrDocument } = await import('../../../worker/utils/ocr-license')
   const { verifyAndStoreDocument } = await import('../../../worker/utils/document-verify')
 
-  const ocr = await ocrDocument(c.env.AI, bytes, 'business_registration')
+  const ocr = await ocrDocument(c.env.AI, bytes, kind)
   // 🔀 `adsLeadsDb` 는 SQL 을 보고 DB 를 고르는 라우팅 프록시다 — `sellers`/`seller_meta` 는 메인,
   //   `store_prospects`(인허가 원장) 는 ads-leads D1 로 간다.
   //   ⚠️ 여기에 생 `c.env.DB` 를 넘기면 원장 조회가 **메인의 멈춘 사본**을 읽는다(2026-08-19 에 정지).
@@ -82,6 +98,8 @@ adminSellerOcrRoutes.post('/sellers/:id/business-registration/ocr', async (c) =>
 
   return c.json({
     success: true,
+    kind,
+    kindLabel: DOC_LABEL[kind],
     verdict: result.verdict,
     summary: result.summary,
     // 나란히 보기 — 화면은 이 두 줄만 그리면 된다

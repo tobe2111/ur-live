@@ -10,6 +10,7 @@
  */
 const DOC = 'src/tests/unit/document-verify-2026-09-16.test.ts'
 const ADDR = 'src/tests/unit/korean-address-2026-09-16.test.ts'
+const PERMIT = 'src/tests/unit/food-permit-2026-09-16.test.ts'
 
 export default [
   {
@@ -67,5 +68,54 @@ export default [
     replace: "    return { verdict: 'differ', reason: '시·군·구를 읽지 못했습니다', a, b }",
     test: ADDR,
     why: 'OCR 이 못 읽은 것을 "주소가 다르다" 로 바꾸면 그 길로 자동 반려가 흘러든다.',
+  },
+  {
+    name: '🍽️ 영업신고증 업로드가 원본을 올린다 (413 재발)',
+    file: 'src/components/seller/FoodPermitUpload.tsx',
+    find: "      fd.append('file', prepared)",
+    replace: "      fd.append('file', file)",
+    test: PERMIT,
+    why: '폰 사진은 서버 상한을 쉽게 넘는다. 2026-09-15 에 등록증 두 문을 고쳤는데 세 번째 문을 같은 결함으로 새로 내면 아무 소용이 없다.',
+  },
+  {
+    name: '🍽️ 영업신고증 URL 로 아무 주소나 받는다 (SSRF)',
+    file: 'src/features/seller/api/seller-profile/business-info.ts',
+    find: "    if (raw && !/^\\/api\\/media\\/[A-Za-z0-9/_.\\-]+$/.test(raw)) {",
+    replace: "    if (false) {",
+    test: PERMIT,
+    why: '이 값은 어드민 OCR 라우트가 **서버에서 fetch** 한다 — 셀러가 넣은 주소를 우리 워커가 대신 두드리게 된다. 에러가 안 나서 아무도 모른다.',
+  },
+  {
+    name: '🍽️ 영업신고증 저장을 운영자(중개사)도 할 수 있다',
+    file: 'src/features/seller/api/seller-profile/business-info.ts',
+    find: "    if (!actor.isOwner) return c.json({ success: false, error: `영업신고증은 ${OWNER_ONLY_MESSAGE}` }, 403);",
+    replace: "    if (false) return c.json({ success: false, error: 'x' }, 403);",
+    test: PERMIT,
+    why: '명의를 증명하는 서류를 대신 운영하는 사람이 갈아끼울 수 있으면, 심사 대상이 조용히 바뀐다(사업자 정보와 같은 레일).',
+  },
+  {
+    name: '🍽️ 운영자 마스킹에서 서류 사진만 빠진다',
+    file: 'src/features/seller/api/seller-profile/business-info.ts',
+    // ⚠️ 마스킹 블록이 둘이라(행 있음 / 시드) 앞줄까지 붙여 자리를 고정한다
+    find: "      const b = businessInfo as Record<string, unknown>;\n      b.business_number = maskBusinessNumber(b.business_number);\n      b.ceo_name = maskName(b.ceo_name);\n      for (const k of ['postal_code', 'address', 'address_detail', 'phone', 'email', 'food_permit_url']) b[k] = null;",
+    replace: "      const b = businessInfo as Record<string, unknown>;\n      b.business_number = maskBusinessNumber(b.business_number);\n      b.ceo_name = maskName(b.ceo_name);\n      for (const k of ['postal_code', 'address', 'address_detail', 'phone', 'email']) b[k] = null;",
+    test: PERMIT,
+    why: '주소·연락처는 가리면서 그게 전부 찍힌 사진 한 장을 그대로 주면 마스킹이 무의미하다. 한 필드만 빠져도 그 길로 샌다.',
+  },
+  {
+    name: '📄 대시보드 등록증이 다시 "5MB 넘으면 거절" 로 돌아간다',
+    file: 'src/pages/SellerBusinessInfoPage.tsx',
+    find: "      const prepared = await compressForDocument(file).catch(() => file)",
+    replace: "      const prepared = file\n      if (file.size > 5 * 1024 * 1024) { toast.error('5MB 이하 이미지만 가능합니다'); return }",
+    test: PERMIT,
+    why: '2026-09-15 수리가 가입 폼만 덮고 대시보드를 비켜갔다 — 사장님이 폰으로 찍은 등록증을 제출할 방법이 없어진다.',
+  },
+  {
+    name: '🍽️ 어드민 OCR 이 영업신고증도 sellers 컬럼에서 읽는다',
+    file: 'src/features/admin/api/admin-seller-ocr.routes.ts',
+    find: "  if (kind === 'business_license') {",
+    replace: '  if (false) {',
+    test: PERMIT,
+    why: '저장 자리가 다르다(seller_meta). 잘못 읽으면 영업신고증을 눌러도 등록증을 읽고, 화면엔 "영업신고증" 이라고 적힌다 — 가장 나쁜 종류의 조용한 오판이다.',
   },
 ]
