@@ -187,4 +187,15 @@ export default [
       '뜻을 안 보태고 말투만 얹었다. 페이지 전체가 되돌아가는 경우는 한 줄 주입으로 못 만들지만, ' +
       'h1 한 줄은 만들 수 있고 그 자리가 가장 많이 읽힌다.',
   },
+  {
+    name: '🏪 캡션 회색이 다시 옅어진다 (AA 미달)',
+    file: 'src/pages/partners/PartnerCompare.tsx',
+    find: `              <p key={i} className="text-[13px] font-bold text-gray-500 dark:text-gray-400">{h}</p>`,
+    replace: `              <p key={i} className="text-[13px] font-bold text-gray-400 dark:text-gray-500">{h}</p>`,
+    test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
+    why:
+      '대표 신고 당시 이 짝이 라이트 3.21~3.65 · 다크 3.10~3.48 로 **두 테마 모두** AA(4.5) 미달이었다 ' +
+      '(1440 렌더 · 알파 합성 실측). 다크만의 문제로 오해하기 쉬운데 처음부터 안 읽히는 회색이었고, ' +
+      '표 머리·캡션·주석처럼 "작아도 읽어야 하는" 자리에 쓰여 있었다.',
+  },
 ]

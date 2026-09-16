@@ -76,7 +76,7 @@ export default function PartnerCompare() {
         <div className="hidden lg:block mt-20">
           <div className={`grid ${GRID} gap-x-8 pb-4 border-b border-rule`}>
             {HEAD.map((h, i) => (
-              <p key={i} className="text-[13px] font-bold text-gray-400 dark:text-gray-500">{h}</p>
+              <p key={i} className="text-[13px] font-bold text-gray-500 dark:text-gray-400">{h}</p>
             ))}
           </div>
           <div className="mt-2">
@@ -99,7 +99,7 @@ export default function PartnerCompare() {
               <dl className="mt-2.5 space-y-1.5">
                 {cells.map((c, i) => (
                   <div key={i} className="flex gap-3 text-[12.5px]">
-                    <dt className="w-[6.5rem] shrink-0 text-gray-400 dark:text-gray-500">{HEAD[i + 1]}</dt>
+                    <dt className="w-[6.5rem] shrink-0 text-gray-500 dark:text-gray-400">{HEAD[i + 1]}</dt>
                     <dd className={ours ? 'font-semibold text-ink' : 'text-gray-600 dark:text-gray-300'}>{c}</dd>
                   </div>
                 ))}
@@ -111,7 +111,7 @@ export default function PartnerCompare() {
         <p className="mt-12 lg:mt-20 text-[17px] lg:text-[28px] leading-[1.55] tracking-[-0.02em] text-ink font-extrabold max-w-[18em]">
           체험단은 밥을 공짜로 드립니다. 여기는 손님이 돈을 내고 옵니다.
         </p>
-        <p className="mt-5 text-[12.5px] lg:text-[14px] text-gray-400 dark:text-gray-500 max-w-[44em]">
+        <p className="mt-5 text-[12.5px] lg:text-[14px] text-gray-500 dark:text-gray-400 max-w-[44em]">
           {F.pgNote}
         </p>
       </div>
