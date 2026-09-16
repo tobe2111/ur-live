@@ -409,7 +409,21 @@ sellerRoutes.get('/surface', requireSeller(), async (c) => {
       return c.json({ success: true, wholesale_only: false })
     }
     const wholesaleOnly = await computeWholesaleOnly(c.env.DB, sellerId).catch(() => false)
-    return c.json({ success: true, wholesale_only: wholesaleOnly })
+    // 🥕 2026-09-16 (대표 — *"반려는 되더라도 쓸 수는 있게"*): 대시보드가 대기·반려 상태에서도 열리므로
+    //   **화면이 그 상태를 말해야 한다**. 이 응답이 `SellerApprovalBanner` 의 유일한 근거다.
+    //   ⚠️ 토큰의 `status` 를 쓰지 않는다 — 7일짜리 스냅샷이라 승인된 뒤에도 배너가 안 사라진다.
+    //   ⚠️ 등록증 **URL 은 안 내보낸다**. 도착 여부(boolean)만 있으면 배너가 할 말을 정할 수 있다.
+    const row = await c.env.DB.prepare(
+      'SELECT status, reject_reason, business_registration_image_url FROM sellers WHERE id = ? LIMIT 1',
+    ).bind(sellerId).first<{ status: string; reject_reason: string | null; business_registration_image_url: string | null }>()
+      .catch(() => null)
+    return c.json({
+      success: true,
+      wholesale_only: wholesaleOnly,
+      status: row?.status ?? null,
+      reject_reason: row?.reject_reason ?? null,
+      has_business_cert: !!row?.business_registration_image_url,
+    })
   } catch {
     // fail-open: 판정 실패해도 셀러 대시보드 유지(lock-out 금지).
     return c.json({ success: true, wholesale_only: false })

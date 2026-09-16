@@ -32,6 +32,8 @@ import { getActiveFeedTotal } from './feed-total'
 // 🍽️ 2026-06-17 (#5 대표 메뉴): products god-table 증식 차단용 K-V 사이드테이블에서 메뉴 읽기.
 import { getSupplyMeta } from '../../../worker/utils/product-supply-meta'
 import { intParam } from '@/shared/pagination'
+// 🏪 2026-09-16 (대표 — "승인이 되어야 메인에 노출"): 승인 전 매장의 이용권을 피드·지도에서 가린다.
+import { approvedSellerProductSql } from '@/shared/db/consumer-visible-product'
 
 // 🛡️ 2026-05-22 module-scope: gift_catalog JOIN 가능 여부 캐시.
 //   null = 미확인, true = 가능, false = table 부재 → fallback 만 사용.
@@ -244,6 +246,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
                 WHERE p.category IN (${placeholders}) AND p.is_active = 1
                   AND (p.group_buy_status = ? OR ? = 'all')
                   AND NOT (COALESCE(p.is_supply_product,0) = 1 AND COALESCE(p.supply_source_id,0) = 0)
+                  AND ${approvedSellerProductSql('p')}
                   ${regionWhere}
                   ${bboxWhere}
                   ${qWhere}
@@ -265,6 +268,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
             WHERE p.category IN (${placeholders}) AND p.is_active = 1
               AND (p.group_buy_status = ? OR ? = 'all')
               AND NOT (COALESCE(p.is_supply_product,0) = 1 AND COALESCE(p.supply_source_id,0) = 0)
+              AND ${approvedSellerProductSql('p')}
               ${regionWhere}
               ${bboxWhere}
               ${qWhere}
@@ -449,6 +453,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
             WHERE p.category IN (${placeholders}) AND p.is_active = 1
               AND p.group_buy_status = 'active'
               AND NOT (COALESCE(p.is_supply_product,0) = 1 AND COALESCE(p.supply_source_id,0) = 0)
+              AND ${approvedSellerProductSql('p')}
               AND p.restaurant_lat BETWEEN ? AND ? AND p.restaurant_lng BETWEEN ? AND ?
             GROUP BY CAST(p.restaurant_lat / ${cell} AS INTEGER), CAST(p.restaurant_lng / ${cell} AS INTEGER)
             LIMIT 400

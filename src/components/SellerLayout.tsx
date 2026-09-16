@@ -12,6 +12,7 @@ import { applyBizFavicon, restoreDefaultFavicon } from '@/lib/biz-favicon'
 import DashboardNotificationBell from './DashboardNotificationBell'
 import StoreSwitcher from '@/components/seller/StoreSwitcher'
 import SellerKakaoLinkBanner from './SellerKakaoLinkBanner'
+import SellerApprovalBanner from '@/components/seller/SellerApprovalBanner'
 import SellerGroupTabs from './seller/SellerGroupTabs'
 import SellerBottomTabs, { SELLER_TABBAR_H } from './seller-layout/SellerBottomTabs'
 import { useSellerNavModel } from './seller-layout/useSellerNavModel'
@@ -311,6 +312,8 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
           <div className="dash-phone-title flex items-center justify-between gap-2 px-1 md:hidden">
             <h2 className="truncate text-[17px] font-extrabold tracking-tight text-gray-900">{title}</h2>
           </div>
+          {/* 🥕 2026-09-16: 대기·반려도 대시보드를 쓰므로 화면이 상태를 말한다(승인이면 아무것도 안 그린다). */}
+          <SellerApprovalBanner />
           {/* 🔗 카카오 미연동 이메일 셀러 → 연동 권유 (dismissible, 1회 status 조회) */}
           <SellerKakaoLinkBanner />
           {/* 🧭 2026-09-03: 묶음 안의 탭 줄 — 레이아웃 한 곳에서 그린다(페이지마다 붙이면 안 붙인 페이지가 생긴다). */}

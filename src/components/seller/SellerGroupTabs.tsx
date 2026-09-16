@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { isStoreOwner, type SellerRole } from '@/shared/seller-roles'
 import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import { findSellerTabGroup } from './seller-tab-groups'
+import { readSellerStatus, shouldHideAdsDbNav } from '@/shared/seller-approval'
 
 /**
  * 🧭 **묶음 안의 탭 줄** — `SellerLayout` 이 한 곳에서 그린다(2026-09-03 대표 승인 "전부").
@@ -23,8 +24,11 @@ export default function SellerGroupTabs() {
   if (!group) return null
 
   const sellerType = (typeof window !== 'undefined' ? localStorage.getItem('seller_type') : null) as SellerRole | null
+  const sellerStatus = readSellerStatus()
   const visible = group.tabs.filter(tab => {
     if (tab.hideFor?.includes(sellerType as never)) return false
+    // 🔒 2026-09-16: 사이드바(`useSellerNavModel`)와 **같은 규칙** — 한쪽만 숨기면 다른 쪽으로 들어간다.
+    if (tab.path === '/seller/influencers' && shouldHideAdsDbNav(sellerStatus)) return false
     const mode = tab.mode || 'common'
     if (LIVE_COMMERCE_SUSPENDED) {
       if (mode === 'live') return false
