@@ -116,7 +116,10 @@ export function buildDetailFirstScreen(ssrPayload: string, loaderHtml: string): 
 
     // 로더는 사진 **아래**로 — 종전 `min-height:100dvh` 그대로면 사진 때문에 문서가 화면보다 길어진다.
     const shortLoader = loaderHtml.replace('min-height:100dvh', 'min-height:34dvh')
-    return crumbHtml(d.category) + hero + shortLoader
+    // 🧷 2026-09-16 (대표 판정 후속): 첫 화면을 id 로 감싼다 — 클라(`lib/boot-first-screen.ts`)가 이
+    //   **노드 자체**를 들고 있다가 Suspense 폴백에 도로 붙인다(불투명 풀스크린 로더가 방금 도착한
+    //   사진을 덮던 것 제거). 리터럴이 갈리면 조용히 no-op 이라 `BOOT_FIRST_SCREEN_ID` 와 대조한다.
+    return `<div id="ur-first-screen">${crumbHtml(d.category)}${hero}</div>` + shortLoader
   } catch {
     return '' // seed 파싱 실패 — 로더로 폴백(치명 아님)
   }

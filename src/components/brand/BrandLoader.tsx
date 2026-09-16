@@ -10,6 +10,7 @@
  *   이 로더는 *라우트 전환/청크 다운로드* 순간 전용. (도매몰은 별도 WholesaleLoader — 서비스 분리)
  */
 import UrDealLogo from './UrDealLogo'
+import { takeBootFirstScreen } from '@/lib/boot-first-screen'
 
 interface BrandLoaderProps {
   /** 전체화면 중앙(라우트 Suspense fallback). false 면 섹션 인라인 로더. */
@@ -81,5 +82,36 @@ export default function BrandLoader({ fullScreen = false, size = 34, label, forc
       ) : null}
       <span className="sr-only">{label || '페이지 로딩 중…'}</span>
     </div>
+  )
+}
+
+/**
+ * 🖼️ 청크 로딩 폴백 — 서버가 이미 첫 화면을 그려 놨으면 **그 사진을 덮지 않는다** (2026-09-16).
+ *
+ * 2026-09-15 에 워커가 `/group-buy/:id` 의 `#root` 에 [빵부스러기 + 히어로]를 그리게 했는데,
+ * 라이브 판정에서 그 사진이 **중간에 한 번 사라졌다**:
+ *
+ *     4,070ms  사진 보임(서버)  →  4,926ms  풀스크린 로더가 덮음  →  5,463ms  사진 다시(React)
+ *
+ * 범인은 히어로가 아니라 이 폴백이다. React 가 `#root` 를 비우는 순간 상세 청크는 아직 오는
+ * 중이라 `fullScreen` 로더(=`fixed inset-0` **불투명** 오버레이, 2026-07-18 에 일부러 그렇게
+ * 만든 것)가 먼저 그려져 사진을 덮었다. 대표가 2026-07-01 에 금지한 "로딩 화면 2~3개".
+ *
+ * ⇒ 서버 노드가 있으면 **같은 노드를 도로 붙이고**(재파싱·재다운로드 0, 픽셀 차이 0) 그 아래에만
+ * 인라인 로더를 둔다 — 서버가 그린 34dvh 로더 자리와 같은 높이·같은 위상(FCP 기준 음수 delay).
+ * 없으면(교환권 상세·목록·SPA 내부 이동) 종전 `fullScreen` 로더 그대로 — **무회귀**.
+ *
+ * ⚠️ `ref` 콜백으로 붙인다(커밋 중 = 페인트 전). `useEffect` 면 한 프레임 빈 채로 그려질 수 있다.
+ */
+export function BootFirstScreenLoader() {
+  const node = typeof window !== 'undefined' ? takeBootFirstScreen(window.location.pathname) : null
+  if (!node) return <BrandLoader fullScreen />
+  return (
+    <>
+      <div ref={(el) => { if (el && node.parentNode !== el) el.appendChild(node) }} />
+      <div style={{ minHeight: '34dvh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <BrandLoader />
+      </div>
+    </>
   )
 }
