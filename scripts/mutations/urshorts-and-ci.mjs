@@ -12,8 +12,9 @@ export default [
   {
     name: '🎬 뷰어에 영상 번호(1 / 3)가 되돌아온다',
     file: 'src/pages/VideosPage.tsx',
-    find: '        <X size={18} />',
-    replace: "        <X size={18} />\n      </button>\n      <span>{idx + 1} / {items.length}",
+    // 2026-09-16: 옛 앵커(닫기 X)는 대표 지시로 제거됐다. 불변식은 그대로 — 우상단 번호 부재.
+    find: '      {/* 위아래 이동 — 손가락은 스와이프, 마우스는 이 버튼 */}',
+    replace: "      <span>{idx + 1} / {items.length}</span>\n      {/* 위아래 이동 — 손가락은 스와이프, 마우스는 이 버튼 */}",
     test: 'src/tests/unit/urshorts-viewer-chrome.test.ts',
     why:
       '대표가 2026-09-08 에 "3/3 이런거 안나오면 좋겠어 지금 번잡해" 로 지웠다. 우상단 숫자 하나가 ' +

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
-import { X, ChevronUp, ChevronDown, Play } from 'lucide-react'
+import { ChevronUp, ChevronDown, Play } from 'lucide-react'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
 import BrandLoader from '@/components/brand/BrandLoader'
@@ -305,29 +305,6 @@ export default function VideosPage() {
         </div>
       )}
 
-      {/* 🩸 2026-09-13 대표 신고(스크린샷) *"좌측 위 x표시가 겹침"* — 우리 X 가 유튜브가 그리는
-             **Shorts 로고와 같은 자리**에 있었다(로고의 'S' 가 우리 원에 가려 "horts" 로 보인다).
-          🔴 **덮어서 해결하면 안 된다** — 유튜브가 남기는 제목 띠·🔗·Shorts 로고를 가리는 것은
-             embed 약관 위반이다(`shared/urshorts.ts` 의 같은 주석). 우리 것을 비켜 준다.
-          ⚖️ **범위 주의(2026-09-16 대표 확정 *"워터마크 가려도 돼"*)**: 이 '비켜 준다' 는
-             **닫기 X 한 곳의 규칙**이다. 아래 구매 바는 예외다 — 바가 화면 아래를 덮으면서
-             유튜브 Shorts 워터마크를 가리는데, 대표가 그대로 가도 된다고 확정했다.
-             ⛔ 그러니 이 주석을 근거로 **구매 바를 위로 올리지 말 것.** 바는 이 화면의 본체이고
-             (위 "구매 바가 영상 위에 항상 있는 이유"), 올리면 영상을 더 가린다.
-          📏 스크린샷 픽셀 실측(2026-09-14 재측정 — 첫 판의 *980px ÷ 2.5* 는 **틀렸다.**
-             원본은 1080×2203 이고 인앱 브라우저 주소창이 y=157 까지 차지한다 ⇒ **페이지 원점 157,
-             배율 3**). 페이지 기준 CSS 로 환산하면:
-               · 유튜브 Shorts 워드마크  y **13~31**, x 22~80  (우리 원이 'S' 를 가려 "horts" 로 보였다)
-               · 우리 X (`top-3`, h-9)  y **12~48**             → 정면 충돌
-               · `top-14`(56) 로 내리면 y **56~92** → 로고 아래 **25px 여유**, 그 자리는 검정 여백뿐.
-             ⚠️ 위쪽 가로 띠는 통째로 유튜브 것이다(왼쪽 로고 · 오른쪽 음량/⋮) — 좌우로 피할
-                자리가 없어서 **아래로** 내린다. */}
-      <button
-        type="button" onClick={() => navigate(-1)} aria-label="닫기"
-        className="absolute left-3 top-14 z-20 grid h-9 w-9 place-items-center rounded-full bg-black/45 text-white backdrop-blur"
-      >
-        <X size={18} />
-      </button>
       {/* 위아래 이동 — 손가락은 스와이프, 마우스는 이 버튼 */}
       <div className="absolute right-3 top-1/2 z-20 hidden -translate-y-1/2 gap-2 [@media(hover:hover)_and_(pointer:fine)]:grid">
         <button type="button" aria-label="이전 영상" onClick={() => go(-1)} disabled={idx === 0}
@@ -342,7 +319,11 @@ export default function VideosPage() {
 
       {/* 🔴 구매 바는 영상 위에 항상. 끝나기를 기다리면 이미 늦다.
           단 **살 게 있을 때만** — 2026-09-08 부터 이용권 안 붙인 영상도 여기 온다(대표 확정).
-          상품이 없으면 `/group-buy/null` 로 가는 버튼이 되므로 바 전체를 안 그린다. */}
+          상품이 없으면 `/group-buy/null` 로 가는 버튼이 되므로 바 전체를 안 그린다.
+          ⚖️ **워터마크(2026-09-16 대표 확정 *"워터마크 가려도 돼"*)**: 이 바가 화면 아래를 덮으면서
+             유튜브 Shorts 워터마크를 가린다. 대표가 그대로 가도 된다고 확정했으므로 ⛔ 이 바를
+             위로 올리지 말 것 — 바는 이 화면의 본체이고, 올리면 영상을 더 가린다.
+             (같은 날 대표 지시로 좌상단 닫기 X 는 제거됐다. 나가는 길은 브라우저 뒤로가기·Esc.) */}
       {cur && cur.product_id ? (
         <div className="absolute inset-x-2.5 bottom-2.5 z-20 flex items-center gap-2.5 rounded-2xl bg-white/95 p-2.5 shadow-2xl">
           {thumb && (
