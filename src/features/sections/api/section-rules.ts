@@ -21,7 +21,7 @@ import type { Env } from '@/worker/types/env'
 import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories'
 import { demoSlugSql } from '@/shared/constants/demo-products'
 import { mainScopeFor } from '@/worker/utils/consumer-scope'
-import { consumerVisibleProductSql } from '@/shared/db/consumer-visible-product'
+import { consumerVisibleProductSql, approvedSellerProductSql } from '@/shared/db/consumer-visible-product'
 import {
   clampSectionLimit,
   normalizeSectionSource,
@@ -168,6 +168,7 @@ export async function resolveSectionProducts(
         AND ${a}.is_active = 1
         AND ${a}.group_buy_status = 'active'
         AND ${consumerVisibleProductSql(a)}
+        AND ${approvedSellerProductSql(a)}
         ${(rule.where ?? '').replaceAll('p.', `${a}.`)}${await mainScopeFor(env.DB, 'products', a)}`
     // 🖼️ 위 섹션이 이미 쓴 상품은 이 줄에서 뺀다. 자리는 다음 후보가 자동으로 메운다
     //   (LIMIT 은 그대로라 섹션 길이가 줄지 않는다).
