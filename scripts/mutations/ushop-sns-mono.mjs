@@ -26,8 +26,8 @@ export default [
   {
     name: '🎨 글리프에 흰색을 박는다 (테마·hover 를 못 따라간다)',
     file: SRC,
-    find: '<svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor">',
-    replace: '<svg width="19" height="19" viewBox="0 0 24 24" fill="#fff">',
+    find: '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5',
+    replace: '<svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M23.5',
     test: TEST,
     why: 'currentColor 라야 바깥 className 이 색을 정한다 — 흰색을 박으면 라이트에서 안 보인다.',
   },
