@@ -95,11 +95,11 @@ export default function PartnersPage() {
             </p>
             <div className="mt-10 lg:mt-12 flex flex-col sm:flex-row gap-3 justify-center max-w-[32rem] mx-auto">
               <Link to="/store/new"
-                className="flex-1 h-[52px] lg:h-[60px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-extrabold active:scale-[0.98] transition-transform">
+                className="sm:flex-1 h-[52px] lg:h-[60px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-extrabold active:scale-[0.98] transition-transform">
                 내 가게 등록하기 <ArrowRight className="w-4 h-4 lg:w-[18px] lg:h-[18px]" />
               </Link>
               <a href={F.kakaoChannel} target="_blank" rel="noopener noreferrer"
-                className="flex-1 h-[52px] lg:h-[60px] rounded-2xl border border-white/25 flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-bold text-white/90">
+                className="sm:flex-1 h-[52px] lg:h-[60px] rounded-2xl bg-white/[0.10] border border-white/20 flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-bold text-white">
                 <MessageCircle className="w-4 h-4 lg:w-[18px] lg:h-[18px]" /> 카카오로 물어보기
               </a>
             </div>

@@ -459,6 +459,10 @@ jobs:
         run: node scripts/check-middle-dot-chain.mjs
       - name: 모양 잠금 — 체계 밖 모서리 (래칫)
         run: node scripts/check-shape-lock.mjs
+      # 📏 2026-09-16 (대표 "버튼 크기도 세로길이가 짧고"): 세로 스택에서 `flex-1` 은 주축이 높이라
+      #   `flex-basis: 0` 이 `h-[52px]` 를 이긴다. PC(가로 배치)는 멀쩡해서 **리뷰로는 절대 안 보인다.**
+      - name: 세로 스택 버튼 높이 뭉개짐
+        run: node scripts/check-flex-col-fixed-height.mjs
       - name: Dashboard button system ratchet (strict)
         env:
           STRICT_DASHBOARD_BUTTON: '1'
