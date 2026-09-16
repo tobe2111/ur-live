@@ -92,3 +92,17 @@ export async function bnoColumnFree(DB: D1Database, bno: string): Promise<boolea
     .bind(v).first<{ id: number }>().catch(() => null)
   return !hit
 }
+
+/**
+ * 조회 결과의 `business_number` 빈칸을 meta 로 **제자리에서** 채운다.
+ * 목록 화면(어드민 심사)이 한 줄로 쓰게 하려고 여기 둔다 — 호출부마다 루프를 복제하면
+ * 한 곳만 빠뜨렸을 때 그 화면만 조용히 빈칸이 된다(이 결함이 정확히 그 모양이었다).
+ */
+export async function patchBusinessNumbers<T extends { id: number; business_number?: string | null }>(
+  DB: D1Database,
+  rows: T[],
+): Promise<T[]> {
+  const m = await resolveBusinessNumbers(DB, rows).catch(() => new Map<number, string>())
+  for (const r of rows) if (!r.business_number) r.business_number = m.get(r.id) || null
+  return rows
+}

@@ -41,11 +41,19 @@ export default [
     why: 'bno_match 가 null 로 굳으면 사업자등록증 대조가 심사에서 통째로 빠진다.',
   },
   {
-    name: '🧾 어드민 승인 화면이 컬럼만 본다 (심사 칸이 빈다)',
+    name: '🧾 어드민 승인 목록이 컬럼만 본다 (심사 칸이 빈다)',
     file: ADMIN,
-    find: 'const bnos = await resolveBusinessNumbers(c.env.DB, rows).catch(() => new Map<number, string>())',
-    replace: 'const bnos = new Map<number, string>()',
+    find: 'data: await patchBusinessNumbers(c.env.DB, (results || [])',
+    replace: 'data: ((results || [])',
     test: TEST,
     why: '대표가 등록증과 번호를 대조하는 자리다 — 비면 승인 자체를 못 한다.',
+  },
+  {
+    name: '🧾 국세청 재검증이 컬럼만 본다 (빈 번호로 조회가 나간다)',
+    file: ADMIN,
+    find: 'await patchBusinessNumbers(c.env.DB, [seller])',
+    replace: 'void 0',
+    test: TEST,
+    why: '두 번째 매장은 컬럼이 비어 있다 — 안 풀면 재검증이 빈 문자열로 국세청에 나간다.',
   },
 ]

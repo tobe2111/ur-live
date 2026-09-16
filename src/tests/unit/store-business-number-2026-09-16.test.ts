@@ -105,7 +105,7 @@ describe('③ 배선 — 쓰는 쪽과 읽는 쪽이 짝을 이룬다', () => {
 
   it('어드민 승인 화면이 meta 폴백을 탄다 (안 그러면 심사 칸이 빈다)', () => {
     const ADMIN = readCode('src/worker/routes/internal-admin-tools.routes.ts')
-    expect(ADMIN).toMatch(/resolveBusinessNumbers\(c\.env\.DB, rows\)/)
-    expect(ADMIN).toMatch(/resolveBusinessNumber\(c\.env\.DB, seller\)/)
+    // 목록(심사 큐)과 재검증 둘 다 — 하나만 타면 그 화면만 조용히 빈칸이 된다.
+    expect(ADMIN.match(/patchBusinessNumbers\(c\.env\.DB/g)?.length ?? 0).toBeGreaterThanOrEqual(2)
   })
 })
