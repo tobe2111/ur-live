@@ -142,12 +142,19 @@ function MyStoresAndDeals({ ownerFunded }: { ownerFunded: boolean }) {
   )
 }
 
-const STATUS_LABEL: Record<string, { label: string; color: string }> = {
-  pending: { label: '환불기간 (대기)', color: 'bg-tone-warn-bg text-tone-warn' },
+/**
+ * 🔒 2026-09-16 — pending 라벨이 **보류 이유를 정확히** 말하게 한다.
+ *
+ * 종전엔 무조건 "환불기간 (대기)" 였다. 사용 확인 게이트가 켜지면 그 말이 거짓이 된다 —
+ * 환불창은 진작 지났는데 **이용권이 아직 안 쓰여서** 묶여 있는 것이기 때문이다. 이유를
+ * 틀리게 적으면 소개자는 고장으로 읽는다. 게이트 상태(`requires_voucher_use`)를 받아 고른다.
+ */
+const statusLabel = (status: string, useGate: boolean): { label: string; color: string } => ({
+  pending: { label: useGate ? '사용 확인 대기' : '환불기간 (대기)', color: 'bg-tone-warn-bg text-tone-warn' },
   available: { label: '송금 대기', color: 'bg-tone-info-bg text-tone-info' },
   paid: { label: '송금 완료', color: 'bg-tone-ok-bg text-tone-ok' },
   clawed_back: { label: '회수됨 (환불)', color: 'bg-tone-bad-bg text-tone-bad' },
-}
+}[status] ?? { label: status, color: 'bg-tone-warn-bg text-tone-warn' })
 
 export default function InfluencerSettlementPage() {
   const [balance, setBalance] = useState<Balance | null>(null)
@@ -157,6 +164,8 @@ export default function InfluencerSettlementPage() {
   // 💡 2026-07-11 (flip D1 선반영): 재원 게이트 — /me 응답의 funding_source 가 'owner' 일 때만
   // "매장 promo 재원" 프레이밍. 미확인/로딩/platform(현행 기본)은 기존 문구 byte-동일.
   const [ownerFunded, setOwnerFunded] = useState(false)
+  /** 사용 확인 게이트가 켜져 있는가 — 보류 문구를 고르는 데만 쓴다. */
+  const [useGate, setUseGate] = useState(false)
   const [form, setForm] = useState({
     business_number: '',
     tax_type: 'other_income' as 'business_income' | 'other_income' | 'unreported',
@@ -180,6 +189,7 @@ export default function InfluencerSettlementPage() {
           setBalance(b)
           setRecent(r.data.data.recent || [])
           setOwnerFunded(r.data.data.funding_source === 'owner')
+          setUseGate(!!r.data.data.requires_voucher_use)
           setForm({
             business_number: b.business_number || '',
             tax_type: (b.tax_type as 'business_income' | 'other_income' | 'unreported') || 'other_income',
@@ -277,7 +287,7 @@ export default function InfluencerSettlementPage() {
         <div className="grid grid-cols-3 gap-2">
           <div className="bg-yellow-50 rounded-xl p-3 text-center">
             <Clock className="w-4 h-4 text-yellow-700 mx-auto mb-1" />
-            <p className="text-[10px] text-yellow-700 font-medium">대기 (환불기간)</p>
+            <p className="text-[10px] text-yellow-700 font-medium">{useGate ? '대기 (사용 확인)' : '대기 (환불기간)'}</p>
             <p className="text-sm font-extrabold text-yellow-800 mt-0.5">{(balance?.pending_amount ?? 0).toLocaleString()}원</p>
           </div>
           <div className="bg-blue-50 rounded-xl p-3 text-center">
@@ -415,7 +425,7 @@ export default function InfluencerSettlementPage() {
           ) : (
             <ul className="space-y-2">
               {recent.map(r => {
-                const status = STATUS_LABEL[r.status] || { label: r.status, color: 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200' }
+                const status = statusLabel(r.status, useGate)
                 return (
                   <li key={r.id} className="flex items-center justify-between gap-3 border-b border-gray-100 dark:border-[#2C2F35] pb-2 last:border-0 last:pb-0">
                     <div className="flex-1 min-w-0">
