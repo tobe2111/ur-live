@@ -47,12 +47,12 @@ export default function PartnerMath() {
           </p>
 
           <div className="mt-8 lg:mt-12 rounded-2xl bg-surface shadow-lift p-5 lg:p-8">
-            <p className="text-[12px] font-bold text-gray-400 dark:text-gray-500">{F.sample.name}</p>
+            <p className="text-[12px] font-bold text-gray-500 dark:text-gray-400">{F.sample.name}</p>
             <div className="mt-4 grid grid-cols-2 gap-3">
               <Field label="정가 (원)" value={list} onChange={setList} />
               <Field label="이용권 판매가 (원)" value={sale} onChange={setSale} />
             </div>
-            <p className="mt-2 text-[11.5px] text-gray-400 dark:text-gray-500">
+            <p className="mt-2 text-[11.5px] text-gray-500 dark:text-gray-400">
               할인율 {calc.off}%. 얼마나 깎을지는 사장님이 정합니다.
             </p>
 
@@ -68,7 +68,7 @@ export default function PartnerMath() {
               </div>
             </dl>
           </div>
-          <p className="mt-3.5 text-[12px] leading-relaxed text-gray-400 dark:text-gray-500">
+          <p className="mt-3.5 text-[12px] leading-relaxed text-gray-500 dark:text-gray-400">
             가입비와 월 이용료, 선불 광고비, 정산 수수료가 모두 0원입니다. 중개(대행사)를 통해 들어오시면 수수료는 {F.feeBrokered}입니다.
           </p>
         </div>

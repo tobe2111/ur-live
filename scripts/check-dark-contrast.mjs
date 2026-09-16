@@ -124,6 +124,15 @@ const ROUTES = [
   { route: '/about', name: '소개', fill: true },
   { route: '/faq', name: 'FAQ', fill: true },
   { route: '/login', name: '로그인', fill: true },
+  /**
+   * 🩸 2026-09-16 — **입점 랜딩이 이 목록에 없어서** 다크에서 제목이 통째로 안 보이는 채
+   *   배포됐다(대표 캡처: `bg-warm` 다크 #11141C 위 `text-ink` #16181C = 1.05:1).
+   *   원인은 `text-ink` 가 tailwind 에 **고정 hex** 로 박혀 배경만 테마를 따라간 것인데,
+   *   그 클래스를 쓰는 화면이 사실상 이 랜딩뿐이라 **다른 경로를 아무리 돌아도 안 잡힌다.**
+   *   ⇒ 경로 목록이 곧 이 가드의 범위다. PC 도 함께 — 액자를 벗은 별도 레이아웃이다.
+   */
+  { route: '/partners', name: '입점 랜딩', fill: true },
+  { route: '/partners', name: '입점 랜딩(PC)', pc: true, fill: true },
 
   /**
    * 🩸 2026-09-07 — **입력을 받는 화면**을 채운다. 이번에 `/store/new` 의 검색창이 다크에서
