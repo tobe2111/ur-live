@@ -4,6 +4,12 @@
  * `wholesale-malls-admin.routes.ts` 에서 분리했다(2026-09-16 — 그 파일이 625줄로 자라
  * 파일크기 래칫에 걸렸다. CLAUDE.md "새 페이지 체크리스트" ⑨: 600줄 넘어가면 **그 시점에** 추출).
  *
+ * 🔴 **`features/supply/` 가 아니라 `worker/routes/` 에 둔다.** `mall-admin-api-bundle.test.ts` 가
+ *   몰 어드민 라우트의 supply 이웃 import 를 **`./wholesale-malls` 하나로** 잠가 뒀다 — 그 규칙은
+ *   2026-08-03 실사고(그 라우트가 도매 게이트 안에 있어 소비자 빌드에서 DCE 로 사라져 404)의 수습이고,
+ *   허용목록을 늘리면 그 방어가 한 칸씩 무너진다. 그리고 이 모듈은 실제로 도매가 아니다 —
+ *   다루는 대상이 `urdeal.kr/{슬러그}`(소비자 경로 몰)라 형제 `worker/utils/mall-applications.ts` 와 같은 자리다.
+ *
  * 마운트: `app.route('/applications', mallApplicationRoutes)` — 부모의 `/:id` 라우트들보다
  * **앞에서** 마운트한다. Hono 는 등록 순서로 매칭하므로 뒤에 두면 `/applications` 가
  * `/:id` 로 삼켜진다(같은 날 seller-gb 에서 `/support-contact` 가 그렇게 죽어 있었다).
@@ -16,9 +22,9 @@ import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { safeError } from '@/worker/utils/safe-error'
 import { rateLimit } from '@/worker/middleware/rate-limit'
-import { ensureMallSchema, invalidateMallCache, DEFAULT_MALL_ID } from './wholesale-malls'
-import { ensureMallApplications } from '../../../worker/utils/mall-applications'
-import { requireSuperAdmin, rejectReservedSlug } from './wholesale-malls-admin-shared'
+import { ensureMallSchema, invalidateMallCache, DEFAULT_MALL_ID } from '@/features/supply/api/wholesale-malls'
+import { ensureMallApplications } from '../utils/mall-applications'
+import { requireSuperAdmin, rejectReservedSlug } from '../utils/mall-admin-shared'
 
 const app = new Hono<{ Bindings: Env }>()
 

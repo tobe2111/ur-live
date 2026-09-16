@@ -352,7 +352,7 @@
 - `PATCH /:id` (`src/features/supply/api/wholesale-board.routes.ts`)
 - `POST /:id{[0-9]+}/view` (`src/features/products/api/product-view.routes.ts`)
 - `PATCH /:id/amount` (`src/features/returns/api/return-amount.routes.ts`)
-- `POST /:id/approve` (`src/features/supply/api/wholesale-mall-applications.routes.ts`)
+- `POST /:id/approve` (`src/worker/routes/mall-applications-admin.routes.ts`)
 - `POST /:id/confirm` (`src/features/supply/api/wholesale-deposit.routes.ts`)
 - `POST /:id/reject` (`src/features/supply/api/wholesale-deposit.routes.ts`)
 - `POST /:id/respond` (`src/features/seller/api/seller-transfer-respond.routes.ts`)
@@ -1733,7 +1733,7 @@
 
 
 
-> 마지막 생성: 2026-09-16T09:23:42.480Z
+> 마지막 생성: 2026-09-16T09:54:14.513Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

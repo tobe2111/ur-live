@@ -518,7 +518,7 @@ describe('가게 개설 신청 — 신청은 아무것도 만들지 않는다', 
   const sellerRoutes = readF('src/features/seller/api/seller-gb.routes.ts')
   const adminRoutes = readF('src/features/supply/api/wholesale-malls-admin.routes.ts')
   // 승인/반려 본문은 2026-09-16 에 서브라우터로 분리됐다(부모가 625줄 → 파일크기 래칫).
-  const appRoutes = readF('src/features/supply/api/wholesale-mall-applications.routes.ts')
+  const appRoutes = readF('src/worker/routes/mall-applications-admin.routes.ts')
 
   /**
    * 승인 핸들러 본문. **앵커 존재부터 단언한다** — `indexOf` 는 없으면 -1 이고 `slice(-1)` 은

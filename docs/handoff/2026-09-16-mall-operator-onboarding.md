@@ -69,8 +69,8 @@ CLAUDE.md 가 `check-query-iserror` 로 막는 **바로 그 클래스**인데, �
 ### ⑥ 커밋이 파일크기 래칫에 걸렸다 — 추출로 갚았다
 `wholesale-malls-admin.routes.ts` 가 **506 → 625줄**(내 +119). CLAUDE.md 체크리스트 ⑨ 대로
 `[SKIP_SIZE]` 로 넘기지 않고 그 시점에 추출했다:
-- `wholesale-mall-applications.routes.ts`(139줄) — 신청 목록/승인/반려. 부모는 **마운트 한 줄**
-- `wholesale-malls-admin-shared.ts` — `requireSuperAdmin`·`rejectReservedSlug`.
+- `worker/routes/mall-applications-admin.routes.ts`(139줄) — 신청 목록/승인/반려. 부모는 **마운트 한 줄**
+- `worker/utils/mall-admin-shared.ts` — `requireSuperAdmin`·`rejectReservedSlug`.
   **복사하지 않는다**: 슬러그 판정이 갈리면 *신청 경유로만 통과하는 예약어*가 생기고,
   그게 예약어면 소비자 라우트가 통째로 죽는다.
 - 부모 **483줄**(main 506보다 작다).
@@ -80,6 +80,29 @@ CLAUDE.md 가 `check-query-iserror` 로 막는 **바로 그 클래스**인데, �
 단언들이 "검사는 하는데 아무것도 못 보는" 상태가 된다. 다행히 다섯 개가 빨간불을 냈지만,
 `toBeGreaterThan(0)` 을 안 쓴 단언이었다면 **조용히 통과**했다. ⇒ 앵커를 `approveHandler()` 하나로 모으고
 **존재부터 단언**한다. (⑤와 같은 −1 함정이 하루에 두 번 나왔다.)
+
+### ⑦ 🩸 CI 가 잡은 것 둘 — 부분 검증의 대가
+푸시 뒤 Verify 의 `Run unit tests` 가 빨간불이었다. **전체 스위트를 재현하니 실패가 둘**이었고,
+둘 다 내가 몰 관련 테스트만 돌려서 못 본 것이다.
+
+1. **`bg-amber-50` 정보상자** — 체리픽해 온 어드민 패널이 **2026-08-12** 코드라 09-02 티켓 시스템
+   (⑥ *"색깔 정보상자 0"*)보다 앞선다. 손으로 매핑하지 않고 레포 코드모드
+   (`adopt-dashboard-tones.mjs --scope=admin`)를 돌렸다 — 09-15 에 어드민 460곳이 받은 **같은 변환**이고
+   건드린 파일은 내 것 하나였다(`bg-white border-rule` + `text-tone-warn`).
+2. **⑥의 추출이 몰 어드민 번들 규칙을 깼다** — `mall-admin-api-bundle.test.ts` 가 그 라우트의 supply
+   이웃 import 를 **`./wholesale-malls` 하나로** 잠가 뒀는데 내가 뽑은 모듈 둘이 같은 폴더에 앉아 셋이 됐다.
+   그 규칙은 **2026-08-03 실사고**(라우트가 도매 게이트 안에 있어 소비자 빌드에서 DCE → `POST
+   /api/admin/wholesale-malls` 404)의 수습이라 **허용목록을 늘리면 방어가 한 칸 무너진다.**
+   ⇒ 대신 모듈을 **`features/supply/` 밖으로** 옮겼다(`worker/routes/mall-applications-admin.routes.ts`
+   · `worker/utils/mall-admin-shared.ts`). 우회가 아니라 맞는 답인 근거는 그 테스트 헤더 자신이다 —
+   *"이 API 가 지배하는 대상이 도매몰이 아니라는 게 판정의 핵심"*. 다루는 건 `urdeal.kr/{슬러그}`
+   (소비자 경로 몰)이고 형제 `mall-applications.ts` 는 이미 `worker/utils/` 에 있다.
+
+🧭 **교훈**: 잠금·경계 규칙을 어겼을 때 **허용목록을 넓히는 쪽으로 먼저 손이 간다.** 그 규칙이 왜 생겼는지
+(사고 기록)를 먼저 읽으면 대개 *코드를 옮기는 쪽*이 맞는 답이다.
+
+🧭 **그리고 부분 검증은 두 번 비싸다** — 관련 테스트만 돌려 푸시했다가 CI 한 바퀴(+충돌 재발)를 태웠다.
+잠금 파일·경계 파일을 건드린 커밋은 **전체 스위트**를 돌린다.
 
 ## 4. 주입 매니페스트 (원 PR 은 **한 건도 안 남겼다**)
 
@@ -112,5 +135,5 @@ CLAUDE.md 가 `check-query-iserror` 로 막는 **바로 그 클래스**인데, �
 
 ## 7. 검증
 
-`tsc 0` · `build 0` · `pre-push 게이트 가드 95개 통과` · 관련 유닛 108건 pass ·
+`tsc 0` · `build 0` · `pre-push 게이트 가드 95개 통과` · **전체 vitest 723파일 9,146건 pass** ·
 주입 `[온보딩]` 9 + `[그림자가드]` 1 + `[몰결제]` 7 전부 빨간불 확인.

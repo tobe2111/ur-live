@@ -16,7 +16,7 @@ const BOUNDARY = 'src/tests/unit/mall-surface-boundary.test.ts'
 const SELLER_GB = 'src/features/seller/api/seller-gb.routes.ts'
 const ADMIN = 'src/features/supply/api/wholesale-malls-admin.routes.ts'
 // 승인/반려 본문은 2026-09-16 에 서브라우터로 분리됐다(부모가 625줄 → 파일크기 래칫).
-const APPROVE = 'src/features/supply/api/wholesale-mall-applications.routes.ts'
+const APPROVE = 'src/worker/routes/mall-applications-admin.routes.ts'
 const MYMALL = 'src/components/seller/MyMallAddress.tsx'
 
 export default [

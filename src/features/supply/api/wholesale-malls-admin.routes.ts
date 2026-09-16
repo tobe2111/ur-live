@@ -18,9 +18,9 @@ import { requireAdmin } from '@/worker/middleware/auth'
 import { adminIpWhitelist, adminAuditMiddleware } from '@/worker/middleware/admin-security'
 import { ensureMallSchema, invalidateMallCache, DEFAULT_MALL_ID } from './wholesale-malls'
 import { RESERVED_SLUGS, auditMallSlugs } from '@/shared/mall/slug'
-import { requireSuperAdmin, rejectReservedSlug } from './wholesale-malls-admin-shared'
+import { requireSuperAdmin, rejectReservedSlug } from '@/worker/utils/mall-admin-shared'
 import { validateMallColor } from '@/shared/mall/branding'
-import { mallApplicationRoutes } from './wholesale-mall-applications.routes'
+import { mallApplicationRoutes } from '@/worker/routes/mall-applications-admin.routes'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', adminIpWhitelist())
@@ -130,7 +130,10 @@ app.get('/slug-conflicts', async (c) => {
 // ── 🏪 가게 개설 신청 — 목록/승인/반려 (2026-08-12 운영자 셀프 온보딩 최소안) ──────
 //   ⚠️ 정적 경로 `/applications*` 는 아래 `/:id` **앞에** 마운트해야 한다 — Hono 는 등록 순서대로
 //     매칭한다(같은 날 `seller-gb` 에서 `/support-contact` 가 `/:id` 에 삼켜진 것을 실측했다).
-//   본문은 `wholesale-mall-applications.routes.ts` 로 분리(파일크기 래칫 — 625줄이었다).
+//   본문은 `worker/routes/mall-applications-admin.routes.ts` 로 분리(파일크기 래칫 — 625줄이었다).
+//   🔴 `features/supply/` 밖에 둔다 — `mall-admin-api-bundle.test.ts` 가 이 파일의 supply 이웃 import 를
+//     `./wholesale-malls` 하나로 잠가 뒀고(2026-08-03 소비자 빌드 404 사고의 수습), 이 모듈은 실제로
+//     도매가 아니라 소비자 경로 몰을 다룬다.
 app.route('/applications', mallApplicationRoutes)
 
 // ── POST / — 몰 생성 ──────────────────────────────────────────────────────────

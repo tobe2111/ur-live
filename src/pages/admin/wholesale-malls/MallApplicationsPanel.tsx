@@ -59,8 +59,8 @@ export default function MallApplicationsPanel() {
   //    그 가드의 스캔 범위 밖이라 조용히 통과했다).
   if (isError) {
     return (
-      <div className="mt-4 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3">
-        <p className="flex-1 text-sm font-semibold text-amber-900">신청 목록을 불러오지 못했습니다 — 대기 건이 있어도 지금은 안 보입니다.</p>
+      <div className="mt-4 flex items-center gap-2 rounded-xl border border-rule bg-white p-3">
+        <p className="flex-1 text-sm font-semibold text-tone-warn">신청 목록을 불러오지 못했습니다 — 대기 건이 있어도 지금은 안 보입니다.</p>
         <button type="button" onClick={() => refetch()} className="ur-btn ur-btn-sm ur-btn-secondary">다시 시도</button>
       </div>
     )
@@ -69,11 +69,11 @@ export default function MallApplicationsPanel() {
   if (items.length === 0) return null
 
   return (
-    <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3">
-      <p className="text-sm font-bold text-amber-900">가게 개설 신청 {items.length}건</p>
+    <div className="mt-4 rounded-xl border border-rule bg-white p-3">
+      <p className="text-sm font-bold text-tone-warn">가게 개설 신청 {items.length}건</p>
       <div className="mt-2 grid gap-2">
         {items.map((a) => (
-          <div key={a.id} className="flex items-center gap-3 rounded-lg bg-white border border-amber-200 px-3 py-2.5">
+          <div key={a.id} className="flex items-center gap-3 rounded-lg bg-white border border-rule px-3 py-2.5">
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-gray-900">
                 {a.name} <span className="font-mono text-xs text-gray-500">urdeal.kr/{a.slug}</span>
