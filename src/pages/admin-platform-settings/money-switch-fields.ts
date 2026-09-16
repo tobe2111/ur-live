@@ -170,4 +170,11 @@ export const COMMISSION_BUDGET_FIELDS: MoneySwitchField[] = [
     options: [{ value: 'false', label: 'OFF (현행 — 사람이 보낸다)' }, { value: 'true', label: 'ON — 승인된 제안을 자동 발송' }],
     hint: '📮 콜드 발송은 법·평판 문제라 **대표 판단 사항**이다. 켜면 사람 확인 없이 나간다',
   },
+  // 🧾 2026-09-01: 후기 보너스를 **매장 부담**으로 돌리는 스위치(대표 "매장 사장님이 부담하게끔").
+  //   ⚠️ 게이트를 만들면서 이 손잡이를 안 만들면 `ops-gate-reachable` 가 즉시 잡는다 — 이번에도 잡혔다.
+  {
+    key: 'review_bonus_owner_funded', label: '⑪ 후기 보너스 매장 부담', default: 'false',
+    options: [{ value: 'false', label: 'OFF (현행 — 유어딜 부담)' }, { value: 'true', label: 'ON — 매장 정산에서 차감' }],
+    hint: '🔴 머니 경로. 켜면 **매장이 금액을 직접 설정한 건만** 그 매장 정산에서 빠진다(설정 안 한 매장은 그대로 유어딜 부담). 끄면 즉시 현행 복귀. 검증 절차: docs/STAGING_CHECKLIST.md (S11)',
+  },
 ]
