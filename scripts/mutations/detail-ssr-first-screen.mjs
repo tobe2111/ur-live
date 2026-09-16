@@ -35,12 +35,16 @@ export default [
     why: '상세 헤더가 fixed 로 사진 위에 떠 있어 64px 을 비켜 줘야 한다. 갈리면 마운트 때 크럼이 위로 점프한다.',
   },
   {
-    name: '🖼️ 서버가 제목까지 그린다 (딜 보유자에게만 마운트 때 아래로 밀린다)',
+    // 🔁 2026-09-16: 이 자리에 있던 `서버가 제목까지 그린다` 는 **폐기**됐다 — 제목 위 per-user 블록 둘을
+    //   치우고 경계를 제목까지 밀었으므로 그건 이제 의도된 동작이다(감사 로그 2026-09-16 참조).
+    //   경계는 한 칸 아래로 옮겨졌다: **가격**은 여전히 안 그린다(주소 줄의 `· N km` 가 per-user 라
+    //   되감기면 가격이 밀린다). 그 새 경계를 지키는 주입으로 교체한다.
+    name: '🖼️ 서버가 가격까지 그린다 (주소 줄이 되감기면 그 가격이 밀린다)',
     file: BODY,
-    find: '`<div id="ur-first-screen">${crumbHtml(d.category)}${hero}</div>` + shortLoader',
-    replace: '`<div id="ur-first-screen">${crumbHtml(d.category)}${hero}<h1>${escText(d.name)}</h1></div>` + shortLoader',
+    find: "`<h1 style=\"${DETAIL_TITLE_STYLES.h1}\">${escText(d.name || '')}</h1>` +",
+    replace: "`<h1 style=\"${DETAIL_TITLE_STYLES.h1}\">${escText(d.name || '')}</h1><div>16,500원</div>` +",
     test: TEST,
-    why: '제목 위에 per-user 블록(ShareRewardBanner)이 있다. "대부분은 안 밀린다"를 기준으로 통과시키면 안 된다.',
+    why: '제목 아래 주소 줄에 내 위치 기준 거리가 문장 안으로 들어간다 — 서버가 모르는 값이라 마운트 때 한 줄이 두 줄로 되감길 수 있고, 그러면 바로 아래 가격이 밀린다.',
   },
   {
     name: '🖼️ 로더가 화면 높이를 다 먹는다 (사진 아래로 빈 한 화면이 생긴다)',
