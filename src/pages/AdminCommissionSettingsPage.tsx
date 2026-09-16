@@ -285,38 +285,29 @@ export default function AdminCommissionSettingsPage() {
               />
               <p className="text-[11px] text-gray-500 mt-1">매장 가입 후 이 기간 동안 영입 보너스 적용 (기본 6개월)</p>
             </div>
-            {/* 🏪 2026-08-27 (대표 확정): 매장 영입 커미션 — 위 '영입 보너스'(내 링크 판매분 가산)와 **다르다**.
-                이건 그 매장의 **모든** 매출에서 나가는 패시브 수익이고, 별개 레일(source='store_intro')이라
-                딜 커미션과 겹쳐 지급된다. */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">매장 영입 커미션 (%)</label>
-              <input
-                type="number"
-                step="0.1"
-                min="0"
-                max="20"
-                value={form.influencer_store_intro_pct}
-                onChange={(e) => setForm((f) => ({ ...f, influencer_store_intro_pct: e.target.value }))}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900"
-              />
-              <p className="text-[11px] text-gray-500 mt-1">
-                소개자가 데려온 매장의 <b>모든</b> 매출에서 지급 (누가 사든). 위 &lsquo;영입 보너스&rsquo;와 별개 레일.
+            {/* 🛑 2026-09-16 (대표 확정 "매장 데려온 사람 2%는 이제 아예 없는거야") — 매장 영입 커미션 **폐지**.
+                입력란을 지우지 않고 **끈 채로 남기는 이유**: 값은 `platform_settings` 에 남아 있고, 지우면
+                저장 payload 가 달라져 다른 값까지 흔든다. 그리고 여기가 비어 있으면 다음 사람이
+                "그런 게 있었나" 하고 다시 만든다 — 폐지됐다는 사실 자체가 정보다. */}
+            <div className="sm:col-span-2 rounded-xl border border-rule bg-white p-4">
+              <p className="text-sm font-bold text-gray-900">매장 영입 커미션 — 폐지됨</p>
+              <p className="mt-1 text-[12px] leading-relaxed text-gray-500">
+                2026-09-16 대표 확정으로 <b>지급하지 않습니다</b>. 적립 코드는 그 전부터 호출부가 없어
+                실제로 지급된 적이 없고(라이브 적립 0건), 아래 값은 <b>아무 효과가 없습니다</b>.
+                매장을 데려오는 보상은 <b>중개사 계약</b>(매장과 맺는 요율)으로 옮겨갔습니다.
               </p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">매장 영입 커미션 유효기간 (개월)</label>
-              <input
-                type="number"
-                step="1"
-                min="1"
-                max="120"
-                value={form.influencer_store_intro_months}
-                onChange={(e) => setForm((f) => ({ ...f, influencer_store_intro_months: e.target.value }))}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900"
-              />
-              <p className="text-[11px] text-gray-500 mt-1">
-                매장 등록일(<code>introduced_at</code>) 기산. 매장별 <code>referral_bonus_until</code> 이 있으면 그 값이 우선.
-              </p>
+              <div className="mt-3 grid grid-cols-2 gap-3 opacity-50">
+                <div>
+                  <label className="block text-[12px] font-medium text-gray-500 mb-1">옛 요율 (%)</label>
+                  <input type="number" value={form.influencer_store_intro_pct} disabled
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-500 bg-gray-50" />
+                </div>
+                <div>
+                  <label className="block text-[12px] font-medium text-gray-500 mb-1">옛 유효기간 (개월)</label>
+                  <input type="number" value={form.influencer_store_intro_months} disabled
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-500 bg-gray-50" />
+                </div>
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">인플 commission 최대 cap (%) — 미사용</label>

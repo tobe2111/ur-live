@@ -87,7 +87,7 @@ function MyStoresAndDeals({ ownerFunded }: { ownerFunded: boolean }) {
       <div className="bg-surface border border-line rounded-xl p-5">
         <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">🏪 내가 영입한 매장 ({referred.length}개)</h3>
         {referred.length === 0 ? (
-          <p className="text-xs text-gray-400 text-center py-4">아직 영입한 매장이 없습니다. 매장 가입 시 추천 링크 (https://urdeal.kr/seller/register?ref=내ID) 공유 → 6개월간 +1% 추가 commission</p>
+          <p className="text-xs text-gray-400 text-center py-4">아직 영입한 매장이 없습니다.</p>
         ) : (
           <ul className="space-y-2">
             {referred.map(s => {

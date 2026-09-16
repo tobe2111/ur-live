@@ -339,7 +339,7 @@ export default function CuratorPage() {
             **빈 유어샵일수록** 뭘 해야 하는지가 필요하고, 그때 보이는 건 "적립 ₩0" 뿐이었다. */}
         {ownerView && !reorderMode && (
           <Suspense fallback={null}>
-            <EarnLadder curatorId={curator.id} dealCount={dealPins.length} pinCount={pins.length} />
+            <EarnLadder dealCount={dealPins.length} pinCount={pins.length} />
           </Suspense>
         )}
         {/* 🏁 2026-06-18 (사용자 결정 — 사업자 진입 "상태별 직접 노출"): 오너 화면에 판매 진입 CTA

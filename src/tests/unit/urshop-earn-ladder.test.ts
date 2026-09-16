@@ -98,16 +98,24 @@ describe('④ 사다리는 빈 유어샵에서도 보인다', () => {
     expect(guard, '빈 유어샵에서 사다리가 숨으면, 그때 보이는 건 "적립 ₩0" 뿐이다')
       .not.toContain('pins.length > 0')
   })
-  it('1단(영입)·2단(딜)·3단(담기)이 모두 있다', () => {
+  /**
+   * 🛑 2026-09-16 — 이 검사는 **재조준**됐다(삭제가 아니다).
+   *
+   *   원래는 1단(영입 2%)·2단(딜)·3단(담기) 셋을 요구했는데, 대표 확정으로 영입 2% 가 폐지되면서
+   *   1단이 사라졌다(*"매장 데려온 사람 2%는 이제 아예 없는거야"*). 그런데 그 2% 는 애초에
+   *   **적립 호출부가 0** 이라 아무도 받은 적이 없었다 — 즉 이 가드는 **거짓 약속을 지키고 있었다.**
+   *
+   *   그래서 요구를 뒤집는다: 셋이 있는지가 아니라 **없어진 것이 안 돌아오는지**를 본다.
+   *   폐지 자체의 전수 검사는 `store-intro-abolished-2026-09-16.test.ts` 가 한다.
+   */
+  it('사다리가 딜 → 담기 두 단이고, 폐지된 영입 단이 돌아오지 않는다', () => {
     const l = read(LADDER)
-    expect(l).toContain('가게를 데려오세요')
     expect(l).toContain('소개비를 정하세요')
     expect(l).toContain('담아서 파세요')
-    // 요율은 하드코딩하지 않는다 — 어드민이 바꾸는 값이다.
-    expect(l).toContain('COMMISSION_DEFAULTS.INFLUENCER_STORE_INTRO_PCT')
-  })
-  it('초대 링크가 ?ref= 로 나간다 (귀속의 유일한 자동 경로)', () => {
-    expect(read(LADDER)).toContain('/store/new?ref=')
+    const code = codeOnly(l)
+    expect(code, '폐지된 영입 단이 돌아왔다').not.toContain('가게를 데려오세요')
+    expect(code, '영입 초대 링크가 돌아왔다 — 보상이 없는 링크다').not.toContain('/store/new?ref=')
+    expect(code, '폐지된 요율 상수가 화면에 돌아왔다').not.toContain('INFLUENCER_STORE_INTRO_PCT')
   })
 })
 
