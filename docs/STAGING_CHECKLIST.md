@@ -259,7 +259,7 @@ GET /api/admin/promo-ledger/order/:orderNumber      (read-only, finance 권한)
 | S-USEGATE-7 | `voucher_expiry` 미설정(무기한) 이용권, 발급 후 천장일 경과 | 성숙 — 무기한 이용권의 소개비가 영구히 갇히지 않는지 |
 | S-USEGATE-8 | `/influencer/settlement` 화면 | 게이트 ON 이면 보류 라벨이 **"사용 확인 대기"** · OFF 면 "환불기간 (대기)" |
 
-## S-OCR — 서류 OCR 자동 승인 (2026-09-16)
+## **S-OCR** — 서류 OCR 자동 승인 (2026-09-16)
 
 게이트 `platform_settings.ocr_auto_verify_enabled`(기본 `false`). 결재
 `docs/decisions/2026-09-16-ocr-license-automation.md`.

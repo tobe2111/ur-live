@@ -18,6 +18,7 @@
 
 import { Hono } from 'hono'
 import type { Env } from '../../../worker/types/env'
+import { adsLeadsDb } from '../../../shared/ads/leads-db'
 
 export const adminSellerOcrRoutes = new Hono<{ Bindings: Env }>()
 
@@ -73,7 +74,11 @@ adminSellerOcrRoutes.post('/sellers/:id/business-registration/ocr', async (c) =>
   const { verifyAndStoreDocument } = await import('../../../worker/utils/document-verify')
 
   const ocr = await ocrDocument(c.env.AI, bytes, 'business_registration')
-  const result = await verifyAndStoreDocument(c.env.DB, sellerId, ocr)
+  // 🔀 `adsLeadsDb` 는 SQL 을 보고 DB 를 고르는 라우팅 프록시다 — `sellers`/`seller_meta` 는 메인,
+  //   `store_prospects`(인허가 원장) 는 ads-leads D1 로 간다.
+  //   ⚠️ 여기에 생 `c.env.DB` 를 넘기면 원장 조회가 **메인의 멈춘 사본**을 읽는다(2026-08-19 에 정지).
+  //   에러가 안 나서 아무도 모른다 — `ads-leads-db.test.ts` R4 가 이 커밋에서 실제로 잡아냈다.
+  const result = await verifyAndStoreDocument(adsLeadsDb(c.env), sellerId, ocr)
 
   return c.json({
     success: true,
