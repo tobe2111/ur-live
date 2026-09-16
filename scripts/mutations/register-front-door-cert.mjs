@@ -57,8 +57,8 @@ export default [
   },
   {
     name: 'register-cert: 사본 도착 여부를 화면에 안 알려 준다',
-    file: 'src/features/seller/api/seller-registration.routes.ts',
-    find: '          has_business_cert: !!seller.business_registration_image_url,',
+    file: 'src/features/seller/api/seller-registration/session-routes.ts',
+    find: 'has_business_cert: !!seller.business_registration_image_url,',
     replace: '',
     test: TEST,
     why: '선택으로 바꾼 대가는 "나중에 반드시 알린다" 이다. 신호가 없으면 아무도 안 올리고 심사가 멈춘다.',

@@ -9,6 +9,13 @@
 당근비즈니스 화면 6장을 보내 주시며 확정. 앞서 *"간판 사진 제출은 좀 아닌 것 같고"* 로
 간판 사진은 제외, *"복잡해서도 안되긴 하는데"* 로 앞문 등록증은 **필수 → 선택**.
 
+## ✅ 라이브 판정 끝남 (2026-09-16 15:5x KST) — **다시 하지 말 것**
+
+프로덕션 `0135adb71` 확인. 술어를 새로 붙인 세 자리 전부 정상:
+`/api/sections` 2줄 × 4개 · `/api/group-buy/products` **total 336**(변화 없음) · bbox 클러스터 50행.
+⚠️ **E4 는 아니다** — 셀러 1곳(승인됨)·셀러 소유 활성 상품 0건이라 *가릴 대상이 없다*.
+확인된 것은 "배포됐고 플랫폼 상품을 안 가린다" 까지다.
+
 ## 다음 세션의 첫 액션
 
 ```bash
@@ -19,6 +26,7 @@ gh pr view --json state,mergeStateStatus   # (이 환경은 gh 없음 → mcp__g
 #    셀러 1곳(id 14, approved) · 활성 상품 2,598건 전부 seller_id IS NULL
 curl -s 'https://urdeal.kr/api/group-buy/products?status=active' | python3 -c "import sys,json;d=json.load(sys.stdin);print(len(d.get('data',[])))"
 #    → 이 숫자가 배포 전후로 같아야 한다. 줄었으면 술어가 플랫폼 상품까지 가린 것이다(즉시 롤백).
+#    ✅ 2026-09-16 실측: 336 (변화 없음). 이 확인은 **이미 끝났다**.
 ```
 
 ## 완료분

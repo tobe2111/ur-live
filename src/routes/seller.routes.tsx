@@ -48,6 +48,8 @@ const SellerSettlementsPage = lazy(() => import('@/pages/SellerSettlementsPage')
 const SellerOperatorsPage = lazy(() => import('@/pages/SellerOperatorsPage'))
 // 🏪📣 2026-08-20 seller-dashboard-v2: 매장 관리(카카오맵 등록·삭제·위임) · 인플루언서 탐색/제안
 const SellerStoresPage = lazy(() => import('@/pages/SellerStoresPage'))
+// 🏪 2026-09-16 (대표 — "업체 정보 입력하는 페이지는 하나로 통일"): 모달·유어샵 설정·프로필이 한 장으로.
+const SellerStoreInfoPage = lazy(() => import('@/pages/SellerStoreInfoPage'))
 // 🏪 2026-09-04 (대표 확정 '운영 매장 요약 대시보드'): 중개사가 매장에 청구할 근거를 보는 화면.
 const SellerOperatingSummaryPage = lazy(() => import('@/pages/SellerOperatingSummaryPage'))
 const SellerInfluencersPage = lazy(() => import('@/pages/SellerInfluencersPage'))
@@ -77,7 +79,6 @@ const SellerStaysBookingsPage = lazy(() => import('@/pages/SellerStaysBookingsPa
 const SellerVoucherOrdersPage = lazy(() => import('@/pages/SellerVoucherOrdersPage'))
 const Seller2FASetupPage = lazy(() => import('@/pages/Seller2FASetupPage'))
 const SellerNotifyFollowersPage = lazy(() => import('@/pages/SellerNotifyFollowersPage'))
-const SellerMiniShopPage = lazy(() => import('@/pages/SellerMiniShopPage'))
 const SellerPromoCodesPage = lazy(() => import('@/pages/SellerPromoCodesPage'))
 const SellerFollowersPage = lazy(() => import('@/pages/SellerFollowersPage'))
 const YouTubeCallbackPage = lazy(() => import('@/pages/YouTubeCallbackPage'))
@@ -230,6 +231,11 @@ export function SellerRoutes() {
           <SellerStoresPage />
         </ProtectedRoute>
       } />
+      <Route path="/seller/store" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerStoreInfoPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
       <Route path="/seller/operating" element={
         <ProtectedRoute requireSeller>
           <SellerOperatingSummaryPage />
@@ -345,12 +351,9 @@ export function SellerRoutes() {
           <ErrorBoundary><SellerNotifyFollowersPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
-      {/* 🛡️ 2026-05-15 (PRISM 따라잡기): 미니샵 커스터마이징 */}
-      <Route path="/seller/mini-shop" element={
-        <ProtectedRoute requireSeller>
-          <ErrorBoundary><SellerMiniShopPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
+      {/* 🏪 2026-09-16: 유어샵 설정 → 업체 정보로 흡수(배너·브랜드 컬러가 거기로 갔다).
+          라우트는 남긴다 — 북마크·안내 문구에 이 주소가 이미 퍼져 있어 지우면 404 가 된다. */}
+      <Route path="/seller/mini-shop" element={<Navigate to="/seller/store" replace />} />
       {/* 🛡️ 2026-05-15: 셀러 promo 코드 (단골 전용 할인) */}
       <Route path="/seller/promo-codes" element={
         <ProtectedRoute requireSeller>

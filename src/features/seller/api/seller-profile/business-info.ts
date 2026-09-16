@@ -63,7 +63,7 @@ sellerProfileRoutes.get('/business-info', async (c) => {
         const b = seeded as unknown as Record<string, unknown>;
         b.business_number = maskBusinessNumber(b.business_number);
         b.ceo_name = maskName(b.ceo_name);
-        for (const k of ['postal_code', 'address', 'address_detail', 'phone', 'email']) b[k] = null;
+        for (const k of ['postal_code', 'address', 'address_detail', 'phone', 'email', 'food_permit_url']) b[k] = null;
         b.masked_for_operator = true;
       }
       return c.json({ success: true, data: seeded });
@@ -82,6 +82,9 @@ sellerProfileRoutes.get('/business-info', async (c) => {
       const { getSellerMeta } = await import('../../../../worker/utils/seller-meta');
       const sm = await getSellerMeta(db, [Number(sellerId)]);
       (businessInfo as Record<string, unknown>).onnuri_merchant = sm.get(Number(sellerId))?.onnuri_merchant === '1';
+      // 🍽️ 2026-09-16 영업신고증 이미지 (seller_meta K-V). 키 이름 주의 — 레포 안에서
+      //   `business_license_url` 은 이미 *사업자등록증*을 가리킨다(suppliers/가입 폼).
+      (businessInfo as Record<string, unknown>).food_permit_url = sm.get(Number(sellerId))?.food_permit_url || null;
     } catch { /* additive — fail-soft */ }
 
     // 🏪 2026-09-04: 운영자(중개사)에게는 가려서 준다 — 등록번호 끝 4자리·대표자명 첫 글자만,
@@ -91,7 +94,7 @@ sellerProfileRoutes.get('/business-info', async (c) => {
       const b = businessInfo as Record<string, unknown>;
       b.business_number = maskBusinessNumber(b.business_number);
       b.ceo_name = maskName(b.ceo_name);
-      for (const k of ['postal_code', 'address', 'address_detail', 'phone', 'email']) b[k] = null;
+      for (const k of ['postal_code', 'address', 'address_detail', 'phone', 'email', 'food_permit_url']) b[k] = null;
       b.masked_for_operator = true;
     }
 
@@ -310,6 +313,43 @@ sellerProfileRoutes.on(['POST', 'PUT', 'PATCH'], '/business-info', async (c) => 
       return c.json({ success: false, error: '필수 항목을 모두 입력해주세요 (사업자번호, 상호명, 대표자명).' }, 400);
     }
     return safeError(c, error, '사업자 정보 저장 중 오류가 발생했습니다', '[seller-profile]');
+  }
+});
+
+/**
+ * POST /api/seller/food-permit  { url }
+ *
+ * 🍽️ 2026-09-16 영업신고증 이미지 저장. 빈 문자열이면 삭제.
+ *
+ * ## 왜 별도 라우트인가
+ * `/business-info` 는 사업자번호·상호·대표자명을 **필수**로 받는 UPSERT 라, 서류 한 장 올리려고
+ * 그 폼 전체를 다시 제출하게 만들 수 없다. 저장 자리도 다르다(`seller_meta` K-V).
+ *
+ * ## 🔒 URL 은 우리 업로드 결과만 받는다
+ * 이 값은 나중에 어드민 OCR 라우트가 **서버에서 fetch** 한다. 임의 URL 을 받으면 셀러가
+ * 우리 워커로 원하는 주소를 두드리게 만들 수 있다(SSRF). 그래서 `/api/media/...` 한 형태만
+ * 통과시킨다 — `POST /api/upload/business-cert` 가 정확히 그 형태를 돌려준다.
+ */
+sellerProfileRoutes.post('/food-permit', async (c) => {
+  try {
+    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
+    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
+
+    // 🏪 사업자 정보와 같은 레일 — 명의를 증명하는 서류는 소유자만 올린다.
+    const actor = await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET);
+    if (!actor.isOwner) return c.json({ success: false, error: `영업신고증은 ${OWNER_ONLY_MESSAGE}` }, 403);
+
+    const body = await c.req.json<{ url?: string }>().catch(() => ({} as { url?: string }));
+    const raw = String(body.url || '').trim().slice(0, 500);
+    if (raw && !/^\/api\/media\/[A-Za-z0-9/_.\-]+$/.test(raw)) {
+      return c.json({ success: false, error: '업로드된 이미지만 저장할 수 있습니다' }, 400);
+    }
+
+    const { setSellerMeta } = await import('../../../../worker/utils/seller-meta');
+    await setSellerMeta(c.env.DB, Number(sellerId), { food_permit_url: raw || null });
+    return c.json({ success: true, data: { food_permit_url: raw || null } });
+  } catch (error: unknown) {
+    return safeError(c, error, '영업신고증 저장 중 오류가 발생했습니다', '[seller-profile]');
   }
 });
 }

@@ -92,7 +92,7 @@ export default function PartnerFlow() {
 
           <div className="max-w-[15rem] mx-auto lg:mx-0 lg:max-w-none lg:pt-4">
             <PartnerPhone src={SHOT('use')} alt="손님이 보는 사용 안내와 환불 조건 화면" />
-            <p className="mt-4 text-[12.5px] lg:text-[13.5px] text-gray-400 dark:text-gray-500">손님이 보는 사용 안내와 환불 조건</p>
+            <p className="mt-4 text-[12.5px] lg:text-[13.5px] text-gray-500 dark:text-gray-400">손님이 보는 사용 안내와 환불 조건</p>
           </div>
         </div>
       </section>

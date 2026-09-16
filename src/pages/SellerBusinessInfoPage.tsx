@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
+import { compressForDocument } from '@/lib/image-compress'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import {
@@ -21,6 +22,7 @@ import type { BusinessInfo, BankInfo } from './seller-business-info/types'
 import BusinessInfoForm from './seller-business-info/BusinessInfoForm'
 import BankInfoSection from './seller-business-info/BankInfoSection'
 import BizRegSection from './seller-business-info/BizRegSection'
+import FoodPermitUpload from '@/components/seller/FoodPermitUpload'
 
 // 🛡️ 2026-06-10: 사업자 정보 / 계좌 정보 / 증명서 3개 영역 탭 분리.
 //   기존 deep link 호환: ?tab=business|bank|certificate + 기존 해시 진입(#bank-info-section → bank 탭) 유지.
@@ -128,19 +130,26 @@ export default function SellerBusinessInfoPage() {
   async function handleBizRegFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    // 클라이언트 검증: 5MB 이하, image/* 만.
+    // 클라이언트 검증: image/* 만 (크기는 아래에서 압축으로 해결한다).
     if (!file.type.startsWith('image/')) {
       toast.error('이미지 파일만 업로드 가능합니다 (JPG / PNG / WebP)')
       return
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('5MB 이하 이미지만 가능합니다')
-      return
-    }
     setBizRegUploading(true)
     try {
+      // 📄 2026-09-16: 종전엔 5MB 넘으면 **그냥 거절**했다 — 폰 사진은 그걸 쉽게 넘는데 사장님이
+      //   할 수 있는 일이 없었다(등록증 제출이 거기서 막힌다). 가입 폼은 2026-09-15 에 같은 결함을
+      //   고쳤는데 대시보드 쪽만 남아 있었다. 거절 대신 줄여서 올린다.
+      const prepared = await compressForDocument(file).catch(() => file)
+      // ⚠️ 상한 5MB — 이 화면이 쓰는 `/api/seller/upload-image` 의 서버 상한(`MAX_UPLOAD_BYTES`)이다.
+      //   가입 폼은 `/api/upload/business-cert`(10MB) 라 값이 다르다. 압축 목표가 2MB 라 실제로
+      //   여기 걸리는 일은 거의 없지만, 클라 상한이 서버보다 크면 "올렸는데 실패" 가 된다.
+      if (prepared.size > 5 * 1024 * 1024) {
+        toast.error('이미지가 너무 커요 — 다시 찍거나 다른 사진을 골라주세요')
+        return
+      }
       const fd = new FormData()
-      fd.append('image', file)
+      fd.append('image', prepared)
       const r = await api.post('/api/seller/upload-image', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
@@ -563,6 +572,9 @@ export default function SellerBusinessInfoPage() {
             onSubmit={handleBizRegSubmit}
           />
         )}
+
+        {/* 🍽️ 2026-09-16 영업신고증 — 등록증과 다른 서류다(구청 발급 · 인허가 원장 대조용). */}
+        {activeTab === 'certificate' && <div className="mt-6"><FoodPermitUpload /></div>}
       </div>
     </SellerLayout>
   )

@@ -73,7 +73,7 @@ export default function BizRegSection({ imageUrl, status, rejectReason, uploadin
               disabled={uploading}
               className="block w-full text-sm text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:border-rule bg-white file:text-gray-700 hover:file:border-rule bg-white disabled:opacity-50"
             />
-            <p className="text-[11px] text-gray-500">JPG / PNG / WebP, 최대 5MB</p>
+            <p className="text-[11px] text-gray-500">JPG / PNG / WebP — 사진이 커도 올리면서 자동으로 줄입니다</p>
             {uploading && (
               <p className="text-xs text-gray-700 flex items-center gap-1">
                 <Loader2 className="h-3 w-3 animate-spin" /> 업로드 중...

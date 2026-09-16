@@ -439,7 +439,7 @@ adminSellersRoutes.get('/sellers/business-registration/pending', cors(), async (
       business_registration_reject_reason: string | null;
       created_at: string; updated_at: string;
     }> }));
-    return c.json({ success: true, data: rows.results || [] });
+    return c.json({ success: true, data: await (await import('./seller-permit-flag')).attachFoodPermitFlag(DB, rows.results || []) }); // 🍽️ 영업신고증 플래그 additive
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }

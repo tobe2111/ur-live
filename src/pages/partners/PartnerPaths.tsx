@@ -66,7 +66,7 @@ export default function PartnerPaths() {
           {/* 등록의 첫 관문 — 카카오맵에서 내 가게를 찾는 화면. "어렵지 않다" 는 말보다 이게 빠르다 */}
           <div className="hidden lg:block">
             <PartnerPhone src={SHOT('store-new')} alt="카카오맵에서 내 가게를 찾는 등록 화면" className="max-w-[11rem] ml-auto" />
-            <p className="mt-4 text-right text-[13px] text-gray-400 dark:text-gray-500">카카오맵에서 내 가게 찾기</p>
+            <p className="mt-4 text-right text-[13px] text-gray-500 dark:text-gray-400">카카오맵에서 내 가게 찾기</p>
           </div>
         </div>
 
@@ -86,7 +86,7 @@ export default function PartnerPaths() {
                   </li>
                 ))}
               </ol>
-              <p className="mt-6 pt-5 border-t border-rule text-[12px] lg:text-[13.5px] leading-relaxed text-gray-400 dark:text-gray-500">{note}</p>
+              <p className="mt-6 pt-5 border-t border-rule text-[12px] lg:text-[13.5px] leading-relaxed text-gray-500 dark:text-gray-400">{note}</p>
               {'to' in cta ? (
                 <Link to={cta.to}
                   className="mt-6 h-12 lg:h-14 rounded-2xl bg-brand text-white flex items-center justify-center gap-1.5 text-[14px] font-extrabold active:scale-[0.98] transition-transform">
