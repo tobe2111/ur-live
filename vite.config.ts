@@ -39,6 +39,20 @@ function swVersionPlugin() {
   };
 }
 
+/**
+ * 🩺 셀(엔트리 정적 폐쇄)이 실제로 쓰는 lucide 아이콘 — 파일명(kebab) 기준.
+ * 이 목록은 손으로 고치지 말 것: `src/tests/unit/lucide-shell-icons.test.ts` 가 `src/main.tsx` 에서
+ * 정적 import 를 따라 가 **다시 계산**하고 불일치하면 빨간불을 낸다(새 아이콘을 셀에 넣었는데
+ * 여기 안 적으면 첫 화면이 다시 256개짜리 봉투를 끌고 온다 — 에러 없이 느려지는 부류).
+ */
+const LUCIDE_SHELL_ICONS = new Set([
+  'alert-circle', 'bed-double', 'bell', 'book-open', 'check', 'check-circle-2', 'chevron-down',
+  'chevron-right', 'circle-alert', 'circle-check', 'circle-help', 'coins', 'compass', 'gift', 'heart',
+  'help-circle', 'home', 'house', 'info', 'layout-dashboard', 'layout-grid', 'log-in', 'log-out', 'map-pin',
+  'message-circle', 'package', 'plus', 'radio', 'refresh-cw', 'scissors', 'search', 'settings', 'shapes',
+  'shopping-cart', 'smartphone', 'sparkles', 'store', 'ticket', 'user', 'user-plus', 'utensils', 'x', 'zap',
+])
+
 export default defineConfig({
   plugins: [
     react(),
@@ -96,7 +110,20 @@ export default defineConfig({
           //   이제 charts 청크는 dashboard 페이지가 lazy-load 할 때만 fetch.
           if (id.includes('recharts') || id.includes('d3-') || id.includes('/src/components/charts/')) return 'charts'
           // Icons
-          if (id.includes('lucide-react')) return 'lucide'
+          // 🩺 2026-09-16 [UNLOCK_LOADING] 아이콘 다이어트 — 셀이 쓰는 42개만 첫 화면으로.
+          //   실측(번들러 모듈→청크 그래프): 트리쉐이킹은 멀정하다(1,534개 중 260개만 남는다).
+          //   문제는 그 260개가 **한 봉투**라, 어드민·셀러 페이지에서만 쓰는 아이콘까지
+          //   홈 첫 화면이 같이 받고 있었다(셀 폐쇄는 42개만 닿는다 — 64.8KB 중 약 11KB).
+          //   ⚠️ 규칙을 지우면 될 것 같지만 아니다 — 지워 보니 Rollup 이 256개를 통째로
+          //   `app-shell` 에 넣어 총량이 그대로였다(695.0 → 694.0KB). 명시 분할만 효과가 있다.
+          //   가드: `lucide-shell-icons.test.ts` 가 소스에서 셀 폐쇄를 **다시 계산**해 이 목록과 대조한다
+          //   (셀 파일에 새 아이콘을 추가하고 여기 안 적으면 조용히 큰 봉투를 다시 끌고 온다 — 그걸 막는다).
+          if (id.includes('lucide-react')) {
+            const icon = id.replace(/\\/g, '/').match(/\/icons\/([a-z0-9-]+)\.js$/)
+            // 아이콘이 아닌 코어(Icon/createLucideIcon/defaultAttributes/utils/배럴)는 셀 쪽에.
+            //   배럴은 트리쉐이킹 후 0바이트라 의존을 만들지 않는다(실측 확인).
+            return !icon || LUCIDE_SHELL_ICONS.has(icon[1]) ? 'lucide-shell' : 'lucide'
+          }
           // Sentry
           if (id.includes('@sentry')) return 'sentry'
           // Embla carousel
@@ -149,8 +176,12 @@ export default defineConfig({
           if (id.includes('/src/shared/constants/') || id.includes('/src/shared/types/')) return 'app-constants'
           // 레이아웃 컴포넌트: BottomNav, DesktopTopNav, DesktopLiveSidebar 등
           if (id.includes('/src/components/main/')) return 'app-layout'
-          // 인증 컴포넌트: RouteGuards, KakaoLinkButton 등
-          if (id.includes('/src/components/auth/')) return 'app-auth'
+          // 인증 컴포넌트 — 🩺 2026-09-16: **`RouteGuards` 만** 여기다.
+          //   이전엔 `auth/` 폴더를 통째로 묶었는데, 그 봉투는 `RouteGuards`(셀 폐쇄) 때문에
+          //   첫 페인트에 올라온다 → 같은 폴더의 `KakaoLinkButton`·`SellerPinPrompt`(셀러 프로필 편집
+          //   페이지 **하나만** 쓴다)가 같이 딸려왔다(13.7KB + lucide 아이콘 6개).
+          //   나머지는 아래 일반 규칙으로 떨어져 lazy 페이지와 함께 받는다.
+          if (id.includes('/src/components/auth/RouteGuards')) return 'app-auth'
           // 🛡️ 2026-05-27 (loading P1 phase 4): utils/hooks/lib 중 페이지 전용 파일 별도 chunk.
           //   라이브 페이지만 사용하는 hook 은 app-live-components 로 묶음.
           if (id.includes('/src/hooks/useLiveStream')) return 'app-live-components'
