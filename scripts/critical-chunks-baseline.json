@@ -1,6 +1,6 @@
 {
   "_comment": "index.html 의 entry <script> + <link rel=modulepreload> 에 등장해도 되는 청크 이름(해시 제외). 새 이름이 들어오면 = eager import 가 청크 하나를 통째로 크리티컬 패스로 끌고 온 것. scripts/check-critical-chunks.mjs 참조.",
-  "_measured": "2026-07-29 · critical path 216.1 KB gzip (CI run 30451981959) · 17 chunks · app-components/app-ui-utils/app-wholesale-hooks 를 크리티컬에서 들어낸 직후 기준",
+  "_measured": "2026-09-16 — `lucide`(64.8KB · 260아이콘) → `lucide-shell`(10.8KB · 셀이 실제로 쓰는 42개만). 갯수는 17로 같고 첫 페인트 총량이 695.0 → 642.2KB raw(gzip 195.9KB)로 줄었다. 근거·가드: vite.config `LUCIDE_SHELL_ICONS` + `lucide-shell-icons.test.ts`.",
   "chunks": [
     "app-auth",
     "app-layout",
@@ -14,7 +14,7 @@
     "helmet",
     "i18n",
     "index",
-    "lucide",
+    "lucide-shell",
     "react-core",
     "react-router",
     "tanstack-query",

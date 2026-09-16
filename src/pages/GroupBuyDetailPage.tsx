@@ -649,8 +649,6 @@ export default function GroupBuyDetailPage() {
           </div>
         )}
 
-        {/* 🎁 2026-08-26: 활성 딜 보유자에게만 뜬다(딜 없으면 null) — 근거는 ShareRewardBanner 헤더 주석. */}
-        <div className="px-[18px]"><ShareRewardBanner sellerId={detail.seller_id as number | null} productId={detail.id} /></div>
         {/* 타이틀 — 📱 모바일 전용. PC 는 위 `DetailTitleHeader`(둘 다 그리면 제목이 두 번 나온다). */}
         <div className="lg:hidden" style={{ padding: '14px 18px 0' }}>
           {/* 🎨 색: 2026-08-31 에 나와 main(#1251)이 **각자 같은 판단**을 했다 — 로즈였던 이 줄을
@@ -701,6 +699,8 @@ export default function GroupBuyDetailPage() {
           <div style={{ marginTop: 6, fontSize: 13, color: 'var(--gbd-ink2)', fontWeight: 500 }}>결제 즉시 교환권 발급</div>
         </div>
 
+        {/* 🎁 딜 보유자에게만(없으면 null·`empty:hidden`). 📍 2026-09-16 제목 **위**에서 여기로 — 서버 조회 뒤에 떠서 딜 보유자만 제목·가격이 밀렸다(`detail-ssr-body.ts` 참조). */}
+        <div className="px-[18px] pb-4 empty:hidden"><ShareRewardBanner sellerId={detail.seller_id as number | null} productId={detail.id} /></div>
         {/* 🎫 살 조건 — 수량. **숙소 '인원' 행과 같은 부품**(`FieldRow`)이다(대표 "두 상세가 같은 부품을 쓰도록").
             📱 모바일 전용: PC 는 우측 `DealPurchaseBox` 가 담당(두 곳에 두면 어느 쪽이 진짜인지 흐려진다).
             종전엔 하단 바 안에 32px 스테퍼로 끼어 있어 살 조건이 화면 맨 아래에만 있었다. */}

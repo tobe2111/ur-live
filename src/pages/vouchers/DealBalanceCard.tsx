@@ -26,6 +26,15 @@
  * `dealBalance` 는 **비로그인 방문자에게도 0** 이다. 큰 카드를 그대로 쓰면 첫 진입이
  * "당신은 0" 이라고 알리는 상자로 시작한다(2026-09-01 에 이미 한 번 고친 실수).
  * 그래서 0 이면 한 줄 바로 접고, 문구도 잔액이 아니라 **할 수 있는 일**을 말한다.
+ *
+ * ## 🧮 2026-09-16 — 로그인한 사람은 숫자가 오기 전에도 카드를 두고 기다린다
+ * 잔액은 마운트 뒤 API 로 온다. 그래서 첫 커밋은 **누구든 `null`** 이고, 이 부품은 그걸 44px 한 줄
+ * 바로 그렸다 — 응답이 오면 170px 카드로 바뀌면서 **아래 목록 전체가 한 번 밀렸다.** 딜을 가진
+ * 사람일수록 매번 겪는 밀림이다.
+ *
+ * ⇒ 로그인 여부는 **동기로 알 수 있다**(`getUserIdSync`). 로그인이면 숫자만 비운 같은 카드를 먼저
+ * 그리고(=높이 동일), 비로그인이면 종전대로 한 줄 바다. 어느 쪽도 **밀리지 않는다.**
+ * ⚠️ 빈 자리에 0 을 적지 않는다 — 모르는 것과 0 은 다르고, 잠깐 0 을 보여 줄 이유가 없다.
  */
 import { useNavigate } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
@@ -42,14 +51,21 @@ export interface DealBalanceCardProps {
   balance: number | null
   /** `compact` = PC 좌측 레일(248px). 같은 구조를 좁은 폭으로 낸다. */
   variant?: 'full' | 'compact'
+  /**
+   * 로그인한 사람인가(동기 판정). `balance` 가 아직 `null` 일 때 **높이를 잡기 위해서**만 쓴다 —
+   * 로그인이면 숫자만 비운 카드, 아니면 한 줄 바. 생략하면 종전대로 전부 한 줄 바다.
+   */
+  loggedIn?: boolean
 }
 
-export default function DealBalanceCard({ balance, variant = 'full' }: DealBalanceCardProps) {
+export default function DealBalanceCard({ balance, variant = 'full', loggedIn = false }: DealBalanceCardProps) {
   const navigate = useNavigate()
   const compact = variant === 'compact'
 
   // 0(또는 미조회)은 한 줄 바 — 위 주석의 "당신은 0" 문제.
-  if (!balance) {
+  // 로그인했는데 숫자가 아직 안 왔다 → 같은 카드를 숫자만 비워 그린다(높이 동일 → 밀림 0).
+  const awaiting = balance == null && loggedIn
+  if (!balance && !awaiting) {
     return (
       <button
         type="button"
@@ -65,13 +81,14 @@ export default function DealBalanceCard({ balance, variant = 'full' }: DealBalan
   }
 
   return (
-    <div className="w-full rounded-2xl bg-surface shadow-lift overflow-hidden">
+    <div className="w-full rounded-2xl bg-surface shadow-lift overflow-hidden" aria-busy={awaiting || undefined}>
       {/* 위층 — 라벨과 금액만. 버튼을 두지 않는다(그게 A3 의 전부다). */}
       <div className={compact ? 'px-4 pt-4 pb-3.5' : 'px-5 pt-5 pb-4'}>
         <p className={`text-gray-500 dark:text-gray-400 tracking-wide ${compact ? 'text-[11px] mb-1.5' : 'text-[12px] mb-2'}`}>내 딜 잔액</p>
         <div className="flex items-baseline gap-1.5">
           <span className={`font-extrabold text-gray-900 dark:text-white leading-none tracking-tight tabular-nums ${compact ? 'text-[30px]' : 'text-[42px]'}`}>
-            {formatNumber(balance)}
+            {/* ⏳ 숫자를 모를 땐 빈 자리를 둔다 — 0 을 적으면 거짓말이고, 비워 두면 높이만 잡힌다. */}
+            {awaiting ? <span className="inline-block w-[2.2em] h-[0.72em] rounded bg-wash align-baseline" aria-hidden="true" /> : formatNumber(balance)}
           </span>
           <span className={`font-bold text-gray-400 dark:text-gray-500 ${compact ? 'text-[15px]' : 'text-[18px]'}`}>딜</span>
         </div>
