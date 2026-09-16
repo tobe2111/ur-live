@@ -355,24 +355,32 @@ export default function CuratorHeader({
           </p>
         )}
 
-        {/* SNS 버튼 (유튜브/인스타/틱톡) + 편집 모드 토글 — 왼정렬 */}
+        {/* SNS 링크 (유튜브/인스타/틱톡) + 편집 모드 토글 — 왼정렬.
+            🎨 2026-09-16 (대표 *"로고 너무 촌스러운데"*): 브랜드 색 타일 3개(순수 빨강 · 3-stop
+            그라디언트 · 검정) → **잉크 한 색 글리프**. 표면 규칙 ②("강조색 하나, 자리 셋")를
+            정면으로 어기고 있었다 — 바로 아래 '유어샵 편집' 블루 버튼까지 치면 한 화면에 색 면이 넷.
+            ⑥("그라디언트 0")도 인스타 타일이 그대로 위반. 링크는 자랑거리가 아니라 링크다. */}
         {(hasSns || isOwner) && (
           <div className="flex items-center gap-2 mt-3">
+            {/* 타일이 없어지면 글리프가 원 안에서 가운데라 왼쪽이 ~8px 들어가 보인다 → 그만큼 당겨
+                위 줄(이름·소개·숫자)과 시각적으로 같은 선에서 시작하게 한다. 편집 버튼은 안 당긴다. */}
+            <div className="flex items-center -ml-2 empty:hidden">
             {curator.youtube_url && (
-              <a href={snsUrl('youtube', curator.youtube_url)} target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="w-[34px] h-[34px] rounded-[10px] bg-[#FF0000] flex items-center justify-center">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="#fff"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.6V8.4l6.2 3.6-6.2 3.6Z" /></svg>
+              <a href={snsUrl('youtube', curator.youtube_url)} target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="w-9 h-9 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-wash active:opacity-70 transition-colors">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.6V8.4l6.2 3.6-6.2 3.6Z" /></svg>
               </a>
             )}
             {curator.instagram_url && (
-              <a href={snsUrl('instagram', curator.instagram_url)} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="w-[34px] h-[34px] rounded-[10px] flex items-center justify-center" style={{ background: 'linear-gradient(45deg,#F9CE34,#EE2A7B,#6228D7)' }}>
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="5" /><circle cx="12" cy="12" r="3.7" /><circle cx="17.3" cy="6.7" r="1.1" fill="#fff" stroke="none" /></svg>
+              <a href={snsUrl('instagram', curator.instagram_url)} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="w-9 h-9 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-wash active:opacity-70 transition-colors">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="5" /><circle cx="12" cy="12" r="3.7" /><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none" /></svg>
               </a>
             )}
             {curator.tiktok_url && (
-              <a href={snsUrl('tiktok', curator.tiktok_url)} target="_blank" rel="noopener noreferrer" aria-label="TikTok" /* theme-dual — 틱톡 브랜드 검정. 표면이 아니라 로고 타일이라 두 테마에서 같아야 한다. */ className="w-[34px] h-[34px] rounded-[10px] bg-[#1D1F29] flex items-center justify-center">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M16.5 3c.3 2.2 1.6 3.9 3.8 4.1v2.6c-1.3.1-2.5-.3-3.8-1v5.7c0 4.4-3.4 6.9-6.9 5.8-3.2-1-4.1-5-1.7-7.2 1-.9 2.4-1.3 3.8-1.1v2.7c-.4-.1-.8-.1-1.2 0-1.2.3-1.7 1.4-1.3 2.5.4 1.1 1.8 1.5 2.7.7.5-.4.7-1 .7-1.7V3h3.9Z" /></svg>
+              <a href={snsUrl('tiktok', curator.tiktok_url)} target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="w-9 h-9 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-wash active:opacity-70 transition-colors">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 3c.3 2.2 1.6 3.9 3.8 4.1v2.6c-1.3.1-2.5-.3-3.8-1v5.7c0 4.4-3.4 6.9-6.9 5.8-3.2-1-4.1-5-1.7-7.2 1-.9 2.4-1.3 3.8-1.1v2.7c-.4-.1-.8-.1-1.2 0-1.2.3-1.7 1.4-1.3 2.5.4 1.1 1.8 1.5 2.7.7.5-.4.7-1 .7-1.7V3h3.9Z" /></svg>
               </a>
             )}
+            </div>
             {isOwner && (
               <button onClick={() => setEditingSns(v => !v)} className="text-[11px] font-bold text-gray-400 dark:text-gray-500 px-1.5 py-1 active:opacity-70">
                 {hasSns ? 'SNS 편집' : '+ SNS 링크'}
