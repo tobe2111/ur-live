@@ -399,6 +399,17 @@ if ! git diff --quiet docs/proposals 2>/dev/null; then
   echo "   ✓ docs/proposals/*.md 재생성 + staged"
 fi
 
+# 📋 감사 레지스트리 개수 자동 갱신 — `docs/AUDIT_INVARIANTS.md` 의 "전체 (N개 불변식)" 한 줄.
+#   그 숫자는 `audit-gate.sh` 의 `run "` 줄 수에서 **기계적으로 나온다**. 손으로 두면 (a) 가드를 더한
+#   세션이 잊어서 CI 가 빨간불이 되고 (b) 동시에 도는 세션들이 **같은 한 줄**을 다퉈 충돌한다
+#   (2026-09-16 하루에 두 번 손으로 고쳤다: 112→113, 113→114).
+#   ⚠️ 개수만 고친다 — 표에서 **빠진 가드**는 자동 수정 대상이 아니고 여전히 CI 가 막는다.
+node scripts/check-audit-registry-sync.mjs --fix > /dev/null 2>&1 || true
+if ! git diff --quiet docs/AUDIT_INVARIANTS.md 2>/dev/null; then
+  git add docs/AUDIT_INVARIANTS.md 2>/dev/null || true
+  echo "   ✓ docs/AUDIT_INVARIANTS.md 개수 갱신 + staged"
+fi
+
 echo "==> Pre-commit: TypeScript check..."
 npx tsc --noEmit --skipLibCheck || {
   echo "❌ Commit blocked. Fix TypeScript errors."
