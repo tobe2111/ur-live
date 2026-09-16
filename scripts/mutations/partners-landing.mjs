@@ -40,7 +40,7 @@ export default [
   {
     name: '🏪 금지된 표시광고 문구가 들어온다 ("업계 최저")',
     file: 'src/pages/partners/PartnerMath.tsx',
-    find: `            여기는 손님이 돈을 내고 옵니다`,
+    find: `            그래서 얼마 남나`,
     replace: `            업계 최저 수수료입니다`,
     test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
     why:
@@ -102,7 +102,7 @@ export default [
   {
     name: '🏪 꺼진 공구 엔진을 랜딩이 약속한다',
     file: 'src/pages/partners/PartnerBenefits.tsx',
-    find: `    k: '선불 비용 0원',`,
+    find: `    k: '가입비 0원, 월 이용료 0원, 광고비 0원',`,
     replace: `    k: '기간한정 공구를 원할 때 켜고 끕니다',`,
     test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
     why:
@@ -113,8 +113,8 @@ export default [
   {
     name: '🏪 섹션이 폭 제한을 잃는다 (액자를 벗은 뒤의 함정)',
     file: 'src/pages/partners/PartnerCompare.tsx',
-    find: `      <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-32">`,
-    replace: `      <div className="px-5 lg:px-10 py-16 lg:py-32">`,
+    find: `      <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-28">`,
+    replace: `      <div className="px-5 lg:px-10 py-16 lg:py-28">`,
     test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
     why:
       '액자를 벗기면 폭 제한은 페이지 자신이 져야 한다. 없으면 1920 모니터에서 표 한 줄이 ' +
@@ -145,8 +145,8 @@ export default [
   {
     name: '🏪 PC 타이포가 모바일 치수로 되돌아간다',
     file: 'src/pages/partners/PartnerCompare.tsx',
-    find: `        <h2 className="text-[25px] lg:text-[42px] xl:text-[48px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2] max-w-[16em]">`,
-    replace: `        <h2 className="text-[23px] lg:text-[38px] font-extrabold tracking-[-0.02em] text-ink leading-[1.28] max-w-[16em]">`,
+    find: `        <h2 className="text-[26px] lg:text-[40px] xl:text-[46px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2] max-w-[14em]">`,
+    replace: `        <h2 className="text-[23px] lg:text-[38px] font-extrabold tracking-[-0.02em] text-ink leading-[1.28] max-w-[14em]">`,
     test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
     why:
       '대표 *"PC 버전은 전혀 PC 버전 같지 않은데?"* 의 절반이 이것이었다 — 1440px 에서도 제목이 ' +
@@ -162,5 +162,29 @@ export default [
     why:
       '1차에서 실제로 그랬다. 섹션이 `overflow-hidden` 이라 폰 아랫부분이 잘렸고, 랜딩에서 ' +
       '잘린 스크린샷은 의도가 아니라 **고장**으로 읽힌다.',
+  },
+  {
+    name: '🏪 장점 섹션에 01/02/03 번호가 돌아온다',
+    file: 'src/pages/partners/PartnerBenefits.tsx',
+    find: `              <p className="text-[21px] lg:text-[32px] xl:text-[36px] font-extrabold text-ink leading-[1.3] tracking-[-0.025em]">{k}</p>`,
+    replace: `              <p className="text-[13px] font-extrabold text-brand-text tabular-nums">0{i + 1}</p>
+              <p className="text-[21px] lg:text-[32px] xl:text-[36px] font-extrabold text-ink leading-[1.3] tracking-[-0.025em]">{k}</p>`,
+    test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
+    why:
+      '대표가 *"AI 가 만든 디자인"* 이라고 한 화면에서 가장 큰 단일 원인이었다. anti-slop 스킬이 ' +
+      '"section-number eyebrow" 로 이름 붙여 금지한 그림이고, 순서에 뜻이 없는 셋이라 번호는 ' +
+      '아무것도 안 알려 주는 장식이다.',
+  },
+  {
+    name: '🏪 h1 이 다시 "…입니다" 완결문이 된다',
+    file: 'src/pages/partners/PartnerHero.tsx',
+    find: `            <span className="text-brand-text">계산하는 손님</span>`,
+    replace: `            <span className="text-brand-text">계산하는 손님</span>을 부르는 방법입니다`,
+    test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
+    why:
+      '2차 판의 제목 아홉 개가 전부 "-습니다/-입니다" 로 끝났고, 그 균일함이 대표가 지적한 ' +
+      '말투의 정체였다. h1 이 그 클래스의 대표 사례다 — *"…부르는 방법입니다"* 에서 뒤 네 글자는 ' +
+      '뜻을 안 보태고 말투만 얹었다. 페이지 전체가 되돌아가는 경우는 한 줄 주입으로 못 만들지만, ' +
+      'h1 한 줄은 만들 수 있고 그 자리가 가장 많이 읽힌다.',
   },
 ]
