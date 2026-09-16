@@ -103,7 +103,6 @@ ${wholesaleUrls.map(u => `  <url>\n    <loc>${WHOLESALE_BASE}${u.loc}</loc>\n   
     { loc: '/experience', priority: 0.7, changefreq: 'daily' },    // 무료 체험단 응모 — 검색 유입 강한 키워드
     { loc: '/new-openings', priority: 0.7, changefreq: 'daily' },  // 우리 동네 새로 생긴 가게(공공 데이터)
     { loc: '/area-report', priority: 0.6, changefreq: 'weekly' },  // 상권 리포트 허브(지역별은 아래 동적 블록)
-    { loc: '/business', priority: 0.75, changefreq: 'weekly' },    // 사장님 입점 랜딩 — /partners 와 짝
     { loc: '/influencer', priority: 0.7, changefreq: 'weekly' },   // 소개로 수익 랜딩
     { loc: '/introduce', priority: 0.6, changefreq: 'monthly' },   // 서비스 소개
     { loc: '/faq', priority: 0.6, changefreq: 'weekly' },          // FAQPage JSON-LD 보유 → 리치 결과 후보

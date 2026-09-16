@@ -40,6 +40,10 @@ const ALIAS_EXACT: Readonly<Record<string, string>> = {
   //   데이터는 224건 있는데 화면은 "상품이 없습니다" + 엉뚱한 쇼핑 칩(식품/패션/뷰티)이었다.
   //   정본은 홈의 카테고리 필터다 — `StaysSearchPage` 의 칩도 이미 `/?category=meal_voucher` 로 간다.
   '/meal-vouchers': '/?category=meal_voucher',
+  /* 🗑️ 2026-09-16 (대표 "지워줘") — `/business` 는 `/partners` 와 **같은 사람에게 같은 말을 하는 두 번째 랜딩**이었다.
+     고아였고(네비 한 곳에서만 링크), 적힌 수수료가 낡아 있었다(옛 5%/4%/3% 등급제 — `fee-resolver` 엔 그런 규칙이 없다).
+     페이지는 지우되 URL 은 **301 로 살린다** — sitemap 에 올라가 있었고 밖에 뿌려진 링크를 죽이면 그 신호를 버리는 것이다. */
+  '/business': '/partners',
 }
 
 /** `/product/:id` → `/products/:id` (단수/복수 두 URL 이 같은 상품을 가리키던 것). */

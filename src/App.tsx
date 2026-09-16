@@ -162,7 +162,6 @@ const StayCheckoutReturnPage = lazy(() => import('./pages/StayCheckoutReturnPage
 // 🛡️ 2026-05-18: 인플루언서 referral 대시보드.
 const InfluencerDashboardPage = lazy(() => import('./pages/InfluencerDashboardPage'))
 // 🛡️ 2026-05-15: PC 랜딩 (자영업자/인플루언서/에이전시 영업)
-const BusinessLandingPage = lazy(() => import('./pages/BusinessLandingPage'))
 const SellerProspectsPage = lazy(() => import('./pages/SellerProspectsPage'))
 const SellerProxyProductsPage = lazy(() => import('./pages/SellerProxyProductsPage'))
 const SellerPlusFriendGuidePage = lazy(() => import('./pages/SellerPlusFriendGuidePage'))
@@ -738,7 +737,8 @@ function AppContent() {
             <Route path="/my-stays" element={<MyStaysPage />} />
             <Route path="/influencer/dashboard" element={<InfluencerDashboardPage />} />
             {/* 🛡️ 2026-05-15: B2B 랜딩 — PC 풀 너비, 영업/모집용. ⚠️ 2026-07-29: `/influencer` 가 중복 등록돼 이 랜딩이 두 달간 도달 불가였다(대시보드가 선점) → 대시보드를 /influencer/dashboard 로 이사. 가드: check-duplicate-routes */}
-            <Route path="/business" element={<BusinessLandingPage />} />
+            {/* 🗑️ 2026-09-16 (대표 "지워줘") — 랜딩은 `/partners` 하나다. 앱 안 이동용 폴백(서버는 301). */}
+            <Route path="/business" element={<Navigate to="/partners" replace />} />
             <Route path="/influencer" element={<InfluencerLandingPage />} /><Route path="/i/offer/:token" element={<InfluencerOfferAcceptPage />} />
             <Route path="/seller/prospects" element={<SellerProspectsPage />} />
             <Route path="/seller/proxy-products" element={<SellerProxyProductsPage />} />

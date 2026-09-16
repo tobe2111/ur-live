@@ -40,7 +40,7 @@ export default function InfluencerLandingPage() {
       <nav className="sticky top-0 z-30 bg-white/90 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35] px-4 lg:px-12 py-4 flex items-center justify-between">
         <Link to="/" className="text-lg font-extrabold tracking-tight">유어딜</Link>
         <div className="flex items-center gap-3">
-          <Link to="/business" className="hidden sm:inline text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">사장님</Link>
+          <Link to="/partners" className="hidden sm:inline text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">사장님</Link>
           <Link to="/agency-partner" className="hidden sm:inline text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">에이전시</Link>
           <button onClick={() => navigate('/login?returnUrl=%2Fu%2Fme')} className="px-4 py-2 bg-brand hover:bg-brand-dark text-white rounded-full text-sm font-bold">
             시작하기

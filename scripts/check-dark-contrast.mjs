@@ -121,7 +121,6 @@ const ROUTES = [
   { route: '/wishlist', name: '찜', auth: 'user', fill: true },
   { route: '/my-deal-history', name: '딜 내역', auth: 'user', fill: true },
   // 대외·정적
-  { route: '/about', name: '소개', fill: true },
   { route: '/faq', name: 'FAQ', fill: true },
   { route: '/login', name: '로그인', fill: true },
   /**
@@ -133,6 +132,15 @@ const ROUTES = [
    */
   { route: '/partners', name: '입점 랜딩', fill: true },
   { route: '/partners', name: '입점 랜딩(PC)', pc: true, fill: true },
+  /**
+   * 🧭 2026-09-16 — 형제 랜딩 둘(대표 *"PC를 같은 수준으로"*). 같은 토큰(`bg-warm` + `text-ink`)과
+   *   같은 잉크 색면(`ur-panel-ink`)을 쓰므로 위 사고와 **같은 클래스**에 속한다.
+   *   PC 도 함께 넣는다 — 액자를 벗은 뒤 섹션 레이아웃이 모바일과 달라 글자가 앉는 배경이 갈린다.
+   */
+  { route: '/about', name: '서비스 소개', fill: true },
+  { route: '/about', name: '서비스 소개(PC)', pc: true, fill: true },
+  { route: '/creators', name: '소개 파트너 모집', fill: true },
+  { route: '/creators', name: '소개 파트너 모집(PC)', pc: true, fill: true },
 
   /**
    * 🩸 2026-09-07 — **입력을 받는 화면**을 채운다. 이번에 `/store/new` 의 검색창이 다크에서

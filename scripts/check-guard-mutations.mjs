@@ -3240,8 +3240,11 @@ canvas {
   {
     name: '🌇 일몰한 /agency 라우트가 앱에 다시 그려진다',
     file: 'src/App.tsx',
-    find: '            <Route path="/business" element={<BusinessLandingPage />} />',
-    replace: '            <Route path="/agency" element={<BusinessLandingPage />} />\n            <Route path="/business" element={<BusinessLandingPage />} />',
+    // 🗑️ 2026-09-16: 앵커를 갱신했다. `/business` 랜딩(BusinessLandingPage)은 삭제됐고 그 경로는
+    //    `/partners` 로 가는 리다이렉트만 남았다. 주입의 목적은 **`/agency` 라우트를 되살리는 것**이라
+    //    앵커가 무엇이든 상관없다 — 살아 있는 줄이기만 하면 된다.
+    find: '            <Route path="/business" element={<Navigate to="/partners" replace />} />',
+    replace: '            <Route path="/agency" element={<Navigate to="/partners" replace />} />\n            <Route path="/business" element={<Navigate to="/partners" replace />} />',
     test: 'src/tests/unit/agency-sunset-final.test.ts',
     why:
       '중개사는 별도 대시보드가 아니라 셀러 대시보드를 쓴다(대표 확정). /agency 가 다시 생기면 ' +
