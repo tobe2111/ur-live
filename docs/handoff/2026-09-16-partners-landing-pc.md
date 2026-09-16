@@ -95,6 +95,27 @@ npm run build:client && node out/shot.mjs /partners 1440 pc   # out/shot.mjs 는
 ⇒ **셀러 대시보드의 자기 문구가 틀렸다.** 랜딩 문구는 맞게 썼지만, 그 캡처를 랜딩에 쓰면
 화면과 글이 서로 다른 말을 한다. §0-5 의 "라이브 문구 수리" 목록에 속하는 별건.
 
+## 3-3. 🩸 `public/` 에 넣은 이미지가 라이브에서 404 였다 (머지 후 실측으로 잡음)
+
+시안을 머지하고 `curl https://urdeal.kr/partners/deal-photo.jpg` → **404(9B)**.
+빌드는 멀쩡했다(`dist/client/partners/*.jpg` 존재). **라우팅 문제다.**
+
+`public/_routes.json` 은 `"include": ["/*"]` 로 **전부 워커로 보내고**, `exclude` 의
+**명시 목록만** 정적으로 뺀다. `/partners/*.jpg` 는 그 목록에 없어 워커로 갔고,
+워커는 `/assets/*` 만 직접 서빙하므로(`index.ts`) 404 가 났다.
+
+⚠️ **`/partners/*` 를 exclude 에 새로 넣지 말 것.** 그 파일 주석이 경고하는 #598 클래스다 —
+urdeal.kr 에서 exclude 경로는 파일이 없으면 **정적 404** 가 나므로, 랜딩 경로(`/partners`)
+자체를 삼킬 위험이 있다. 이미 검증된 **`/static/*`** 아래로 옮기는 것이 답이다.
+
+```
+public/partners/*.jpg  →  public/static/partners/*.jpg   (커밋 85d685a)
+```
+
+🔑 **다음 세션에게**: 이 레포에서 `public/` 에 새 정적 파일을 두면 **기본이 404 다.**
+`_routes.json` 의 exclude 목록에 있거나 `/static/`·`/locales/` 아래여야 서빙된다.
+빌드 산출물에 파일이 보인다고 서빙되는 게 아니다 — **배포 후 curl 로 확인할 것.**
+
 ## 4. 이번에 틀렸던 판단 (다음 세션이 같은 함정을 밟지 않게)
 
 1. **`/초기 서비스/` 로 정직 고지를 지켰다고 착각했다.** 같은 파일 FAQ 답변에도 그 말이 있어
