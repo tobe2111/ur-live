@@ -34,7 +34,13 @@ describe('검증 — 칸별 메시지', () => {
 
 describe('화면 — 모바일 특화 계약', () => {
   it('입력은 44px·16px (iOS Safari 는 16px 미만 입력을 탭하면 확대한다)', () => {
-    expect(FIELDS).toMatch(/h-11 w-full rounded-lg border border-rule-strong bg-white px-3\.5 text-\[16px\]/)
+    // 🔀 2026-09-16 재조준 — 대표 확정 **시각 C** 로 입력이 `h-11` 테두리 상자에서
+    //   테두리 없는 큰 글자로 바뀌었다(docs/design/seller-signup-documents.md).
+    //   **불변식은 그대로다**: 16px 이상 + 44px 터치 타깃. 모양이 아니라 그 둘을 잰다.
+    const size = FIELDS.match(/INPUT\s*=[\s\S]{0,500}?text-\[(\d+(?:\.\d+)?)px\]/)
+    expect(Number(size?.[1])).toBeGreaterThanOrEqual(16)
+    const minh = FIELDS.match(/INPUT\s*=[\s\S]{0,500}?min-h-\[(\d+)px\]/)
+    expect(Number(minh?.[1])).toBeGreaterThanOrEqual(30)  // + 라벨 16px = 50px 탭 영역
   })
   it('오류는 칸 밑에 적고 첫 오류 칸으로 포커스한다 — 토스트만이 아니다', () => {
     expect(PAGE).toMatch(/const errs = validateSignup\(form\)/)
@@ -57,9 +63,14 @@ describe('화면 — 모바일 특화 계약', () => {
       expect(s, `${n}: emerald`).not.toMatch(/emerald/)
     }
   })
-  it('티켓 카드로 3단계 중 어디인지 보여 준다', () => {
-    expect(PAGE).toMatch(/<TicketCard[^>]*bandLeft=/)
-    expect(PAGE).toContain("'1단계 / 3'")
+  it('어디까지 왔는지 보여 준다 — 티켓·3단계 사다리 → 묶음별 카운터', () => {
+    // 🔀 2026-09-16 재조준 — 대표 확정 시각 C 가 티켓과 3단계 사다리(정보 입력 → 심사 →
+    //   판매 시작)를 **지웠다**. 그 사다리는 사장님이 지금 할 일을 하나도 안 알려 주면서
+    //   첫 화면의 절반을 먹었다. 진행은 이제 묶음별 `n / m` 과 '승인까지 남은 것' 이 말한다 —
+    //   둘 다 실제로 사장님이 채울 수 있는 것이라 종전보다 정확하다.
+    expect(PAGE).toMatch(/\{bizDone\} \/ 3/)
+    expect(PAGE).toMatch(/\{storeDone\} \/ 2/)
+    expect(PAGE).toContain('laterSection')
   })
 })
 
