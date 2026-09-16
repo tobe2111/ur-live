@@ -127,6 +127,79 @@ export async function stampConsumerMall(
 }
 
 /**
+ * 🧾 **주문 목록에 "어느 가게에서 산 것인가" 를 찍는다** — 2026-08-12 (대표 *"완전 별개, 분리"*)
+ *
+ * 왜 서버가 해야 하는가: 결제 화면까지는 **세션 흔적**(`shared/mall/origin.ts`)으로 가게를 알 수 있지만,
+ * 주문 내역은 **지난 주문**이라 흔적이 없다("이번 세션에 몰을 지나갔다"와 "이 주문이 몰 주문이다"는
+ * 다른 명제다). 그래서 여기서만은 **서버 데이터**(`products.mall_id`)가 답이다.
+ *
+ * 🔴 fail-closed 3중은 `pickConsumerMall` 과 동일 — `consumer_path=1` · `active=1` 인 몰만.
+ *   도매몰(유통스타트·메디스타트)이 소비자 주문 내역에 가게로 뜨면 서비스 분리가 깨진다.
+ * 🔴 **본진(`MAIN_MALL`)은 아예 제외한다** — `stampConsumerMall` 과 같은 불변식이다. 본진은
+ *   "되돌아갈 가게"가 아니고, 그 행의 이름은 도매 브랜드(`유통스타트`)라 소비자 주문에 뜨면 안 된다.
+ *   지금은 그 행이 `consumer_path=0` 이라 어차피 안 걸리지만, 누가 그 플래그를 켜는 날
+ *   **모든 유어딜 주문에 도매 브랜드가 찍힌다.** 조건에 적어 두는 값이 0원이다.
+ *
+ * 성능: 주문 N 개에 **쿼리 1회**(IN + GROUP BY). 본진 전용 주문만 있으면 결과 0행이라 표시도 없다.
+ * 실패·컬럼 미적용은 조용히 no-op — **주문 목록이 안 뜨는 것보다 가게 이름이 없는 편이 낫다.**
+ */
+export async function stampOrdersMall(
+  DB: D1Database | undefined,
+  orders: Array<Record<string, unknown>> | null | undefined,
+): Promise<void> {
+  if (!DB || !Array.isArray(orders) || orders.length === 0) return
+  const ids = orders.map((o) => Number(o?.id)).filter((n) => Number.isFinite(n) && n > 0)
+  if (ids.length === 0) return
+  try {
+    const ph = ids.map(() => '?').join(',')
+    const { results } = await DB.prepare(
+      `SELECT oi.order_id AS oid, m.id AS mid, m.slug AS slug,
+              COALESCE(NULLIF(TRIM(m.brand_name), ''), m.name) AS name,
+              COUNT(*) AS n
+         FROM order_items oi
+         JOIN products p ON p.id = oi.product_id
+         JOIN wholesale_malls m ON m.id = p.mall_id
+        WHERE oi.order_id IN (${ph})
+          AND m.id != ?
+          AND COALESCE(m.consumer_path, 0) = 1 AND COALESCE(m.active, 1) = 1
+        GROUP BY oi.order_id, m.id`,
+    ).bind(...ids, MAIN_MALL).all<OrderMallRow>()
+    if (!results?.length) return
+    const byOrder = pickOrderMall(results)
+    for (const o of orders) {
+      const hit = byOrder.get(Number(o?.id))
+      if (hit) { o.mall_slug = hit.slug; o.mall_name = hit.name }
+    }
+  } catch { /* 컬럼/테이블 미적용 — 가게 표시 없이 정상 동작 */ }
+}
+
+export interface OrderMallRow { oid: number; mid: number; slug: string; name: string; n: number }
+
+/**
+ * 🧾 **한 주문에 두 가게가 섞이면 누가 이기는가** — 순수 함수(테스트가 이 판정을 고정한다).
+ *
+ * 장바구니는 가게를 안 가리므로 한 주문에 두 몰의 상품이 들어갈 수 있다. 그때 SQL 이
+ * `GROUP BY oi.order_id` 하나로 뭉개면 **어느 행이 살아남는지 SQLite 마음**이라, 같은 주문이
+ * 새로고침할 때마다 다른 가게 이름으로 보일 수 있다. 화면이 흔들리는 것보다 **규칙을 적어 두는** 편이 낫다.
+ *
+ * 승자 = **품목 수가 많은 가게**, 같으면 **id 가 작은 쪽**(먼저 만들어진 가게 — 임의가 아니라 고정).
+ */
+export function pickOrderMall(rows: readonly OrderMallRow[] | null | undefined): Map<number, { slug: string; name: string }> {
+  const best = new Map<number, OrderMallRow>()
+  for (const r of rows ?? []) {
+    const oid = Number(r?.oid)
+    if (!Number.isFinite(oid) || !r?.slug) continue
+    const cur = best.get(oid)
+    if (!cur || Number(r.n) > Number(cur.n) || (Number(r.n) === Number(cur.n) && Number(r.mid) < Number(cur.mid))) {
+      best.set(oid, r)
+    }
+  }
+  const out = new Map<number, { slug: string; name: string }>()
+  for (const [oid, r] of best) out.set(oid, { slug: String(r.slug), name: String(r.name || '') })
+  return out
+}
+
+/**
  * 몰 **id → 슬러그** (2026-08-11). 소비자 상품 상세가 "이 상품은 어느 가게 것인가"를 알아야
  * 몰 손님을 그 가게로 돌려보낼 수 있다(`/products/:id` → `/{슬러그}/p/:id`).
  *

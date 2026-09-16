@@ -21,6 +21,7 @@ import { isMallSlugCandidate, isMallSurfacePath, isMallProduct, mallRedirectPath
 import { RESERVED_SLUGS } from '@/shared/mall/slug'
 import { hasPickupInfo } from '@/pages/product-detail/ReceiveMethodNotice'
 import { stripComments } from '../helpers/source-text'
+import { pickOrderMall } from '@/worker/utils/mall-consumer'
 
 const read = (p: string) => readFileSync(resolve(process.cwd(), p), 'utf8')
 
@@ -146,6 +147,122 @@ describe('배선 — 앱 셸이 몰 표면에서 유어딜 크롬을 안 그린�
     it('거터 레일은 framed 를 따라가므로 자동으로 꺼진다(그 연결이 유지되는지)', () => {
       expect(/const showFrameRails = framed\b/.test(layout)).toBe(true)
     })
+  })
+})
+
+// 🏪 2026-08-12 — **결제 이후 동선에서 유어딜이 손님을 데려가지 않는다** (대표 "완전 별개, 분리")
+//   몰 홈·상품 상세를 분리해도, 손님이 **담는 순간부터** 유어딜 화면으로 넘어가면 분리가 아니다.
+//   실측이었던 것: 결제 완료 화면이 몰 손님에게도 "내 쇼핑몰에서도 팔 수 있어요"를 띄우고 있었다
+//   — 운영자가 데려온 손님에게 유어딜이 셀러 전환을 권하는 화면(브랜딩이 아니라 고객 가로채기).
+describe('배선 — 유어딜 자기영업이 몰 손님에게 안 뜬다', () => {
+  it('셀러 전환 넛지가 몰 세션이면 스스로 꺼진다', () => {
+    const nudge = read('src/pages/payment-success/SellerConversionNudge.tsx')
+    expect(/isFromMallSession/.test(nudge)).toBe(true)
+    // 조기 return 조건 안에 있어야 한다 — 아래에 두면 렌더는 그대로 된다.
+    expect(/if \([^)]*isFromMallSession\(\)\)\s*return/.test(nudge)).toBe(true)
+  })
+
+  it('호출부(PaymentSuccessPage)는 무접촉 — Toss 감사 잠금 파일이다', () => {
+    const page = read('src/pages/PaymentSuccessPage.tsx')
+    // 잠금 파일에 몰 분기를 심는 순간 승인 절차를 우회하게 된다. 넛지가 스스로 꺼져야 한다.
+    expect(/isFromMallSession|readMallOrigin/.test(page)).toBe(false)
+  })
+
+  // ⚠️ **import 줄을 벗기고 본다.** 첫 판정은 `/ContinueShoppingLink/` 로만 봤는데, 컴포넌트를
+  //   화면에서 통째로 들어내도 **import 문이 남아 초록**이었다(되돌려-검증에서 잡음).
+  //   주석 함정과 같은 클래스 — "언급이 있다"와 "실제로 쓴다"는 다르다.
+  const noImports = (s: string) => s.replace(/^\s*import[^\n]*$/gm, '')
+
+  it('장바구니의 "계속 쇼핑"이 몰 손님을 유어딜 홈으로 보내지 않는다', () => {
+    const cart = noImports(read('src/pages/CartPage.tsx'))
+    expect(/<ContinueShoppingLink\b/.test(cart)).toBe(true)   // 렌더돼야 한다(참조만으로는 부족)
+  })
+
+  it('그 링크가 흔적을 실제로 읽는다 — 없으면 폴백', () => {
+    const link = noImports(read('src/components/mall/ContinueShoppingLink.tsx'))
+    expect(/=\s*readMallOrigin\(\)/.test(link)).toBe(true)     // 호출 결과를 쓴다
+    expect(/onFallback\(\)/.test(link)).toBe(true)             // 흔적 없으면 종전 동작
+  })
+
+  // 🏪 결제 동선의 **가게 간판** (2026-08-12 [UNLOCK] — 대표 "허가해줄게")
+  it('체크아웃·결제완료에 가게 간판이 걸린다', () => {
+    for (const f of ['src/pages/CheckoutPage.tsx', 'src/pages/PaymentSuccessPage.tsx']) {
+      expect(/<MallOriginBanner\b/.test(noImports(read(f)))).toBe(true)
+    }
+  })
+
+  it('본진 손님 화면은 byte-불변 — 흔적/브랜드가 없으면 아무것도 안 그린다', () => {
+    const b = noImports(read('src/components/mall/MallOriginBanner.tsx'))
+    expect(/if \(!slug\) return/.test(b)).toBe(true)        // 흔적 없음 → 조회조차 안 한다
+    expect(/if \(!brand\) return null/.test(b)).toBe(true)  // 조회 실패 → 간판 없음(추측 금지)
+  })
+
+  // 🧾 주문 내역은 **지난 주문**이라 세션 흔적이 없다("이번 세션에 몰을 지나갔다" ≠ "이 주문이 몰 주문").
+  //    그래서 여기서만은 서버(`products.mall_id`)가 답이다.
+  it('주문 목록에 가게를 서버가 찍는다 — 클라 흔적으로 추측하지 않는다', () => {
+    const route = noImports(read('src/worker/routes/order.routes.ts'))
+    expect(/stampOrdersMall\(/.test(route)).toBe(true)
+    const util = read('src/worker/utils/mall-consumer.ts')
+    // fail-closed 3중 — 도매몰이 소비자 주문 내역에 가게로 뜨면 서비스 분리가 깨진다.
+    const fn = util.slice(util.indexOf('export async function stampOrdersMall'))
+    expect(/consumer_path, 0\) = 1/.test(fn)).toBe(true)
+    expect(/active, 1\) = 1/.test(fn)).toBe(true)
+  })
+
+  it('주문 카드가 몰 이름을 판매처보다 앞세운다 — 본진 주문은 종전 표시', () => {
+    const tab = noImports(read('src/components/mypage/OrdersTab.tsx'))
+    expect(/order\.mall_name \?/.test(tab)).toBe(true)
+    expect(/order\.seller_name \?/.test(tab)).toBe(true)   // 폴백이 살아 있어야 한다
+  })
+
+  // 🏪 2026-09-16 [UNLOCK] (대표 "허가 — 배너 + 버튼 둘 다"): 간판만으론 부족하다 —
+  //    손님은 **가장 큰 버튼**을 누른다. 그 버튼이 몰 손님도 유어딜 홈으로 보내고 있었다.
+  it('결제 완료의 가장 큰 버튼이 가게로 돌아간다 — 흔적 없으면 종전대로', () => {
+    // ⚠️ **주석까지 벗긴다.** 첫 판이 여기서 빨간불이었는데 원인은 코드가 아니라 내가 방금 쓴
+    //   주석의 `쇼핑 계속하기` 였다 — 이 레포가 반복해 당한 주석 함정의 거울상이다.
+    const page = stripComments(noImports(read('src/pages/PaymentSuccessPage.tsx')))
+    expect(/<ContinueShoppingLink\b/.test(page)).toBe(true)
+    // 폴백이 살아 있어야 본진 손님 화면이 종전과 같다(`쇼핑 계속하기` → `/`).
+    expect(/onFallback=\{\(\) => navigate\('\/'\)\}/.test(page)).toBe(true)
+    // 종전 버튼이 남아 있으면 **둘 다 뜬다** — 교체지 추가가 아니다.
+    expect(/쇼핑 계속하기/.test(page)).toBe(false)
+  })
+
+  it('🔒 Toss 잠금 파일은 결제 로직 무접촉 — 몰 판정이 여기 없다', () => {
+    const page = read('src/pages/PaymentSuccessPage.tsx')
+    // 잠금 파일에서 몰을 **판정**하면 안 된다. 배너·링크가 스스로 판정하고, 이 파일은 렌더만 한다.
+    expect(/readMallOrigin|isFromMallSession|mall_id/.test(page)).toBe(false)
+  })
+})
+
+// 🧾 한 주문에 두 가게가 섞이는 경우 — **화면이 흔들리지 않게** 승자를 규칙으로 고정한다.
+//    (SQL 로 `GROUP BY oi.order_id` 하나만 하면 어느 행이 남는지 SQLite 마음이다.)
+describe('주문의 가게 — 섞였을 때 누가 이기는가', () => {
+  const rows = (...r: Array<[number, number, string, number]>) =>
+    r.map(([oid, mid, slug, n]) => ({ oid, mid, slug, name: slug.toUpperCase(), n }))
+
+  it('품목이 많은 가게가 이긴다', () => {
+    const m = pickOrderMall(rows([7, 3, 'a', 1], [7, 5, 'b', 4]))
+    expect(m.get(7)?.slug).toBe('b')
+  })
+
+  it('같으면 id 가 작은 쪽 — 임의가 아니라 고정이다', () => {
+    const a = pickOrderMall(rows([7, 9, 'z', 2], [7, 4, 'y', 2]))
+    const b = pickOrderMall(rows([7, 4, 'y', 2], [7, 9, 'z', 2]))   // 입력 순서를 뒤집어도
+    expect(a.get(7)?.slug).toBe('y')
+    expect(b.get(7)?.slug).toBe('y')                                 // 같은 답이어야 한다
+  })
+
+  it('슬러그 없는 행·빈 입력은 조용히 없는 것 — 주문 목록이 더 중요하다', () => {
+    expect(pickOrderMall(rows([7, 3, '', 9])).size).toBe(0)
+    expect(pickOrderMall(null).size).toBe(0)
+  })
+
+  it('🔴 본진은 조회 조건에서 아예 빠진다 — 켜지는 날 모든 유어딜 주문에 도매 브랜드가 찍힌다', () => {
+    const util = read('src/worker/utils/mall-consumer.ts')
+    const fn = util.slice(util.indexOf('export async function stampOrdersMall'))
+    expect(/m\.id != \?/.test(fn)).toBe(true)
+    expect(/\.bind\(\.\.\.ids, MAIN_MALL\)/.test(fn)).toBe(true)
   })
 })
 
