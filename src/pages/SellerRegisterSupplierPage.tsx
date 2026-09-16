@@ -28,6 +28,7 @@ import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { ChevronLeft, Loader2, CheckCircle2, Handshake, UserRound } from 'lucide-react'
 import TermsConsentBox from '@/components/terms/TermsConsentBox'
+import BusinessCertUpload from '@/components/BusinessCertUpload'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { TicketCard } from '@/components/ticket/TicketCard'
 import { TERMS_CURRENT_VERSION } from './terms/terms-types'
@@ -47,6 +48,10 @@ export default function SellerRegisterSupplierPage() {
   const [loading, setLoading] = useState(false)
   // 📜 2026-07-05 판매자 이용약관 v1.0: 가입 시 동의 필수
   const [termsAgreed, setTermsAgreed] = useState(false)
+  // 🪪 2026-09-16 (대표 *"그게 가장 이상적이면 그렇게 해줘"*): 앞문에도 등록증 사본.
+  //   남의 가게를 주장하는 뒷문(`/store/find`)은 이미 필수인데 새 가게를 만드는 여기는 안 받았다.
+  //   국세청은 번호·대표자·개업일만 확인하므로 **상호·주소가 진짜인지는 사람이 사진과 대조**해야 한다.
+  const [certUrl, setCertUrl] = useState('')
   const [statusChecked, setStatusChecked] = useState(false)
   const [existingStatus, setExistingStatus] = useState<'none' | 'pending' | 'active' | 'suspended'>('none')
   const [errors, setErrors] = useState<SignupErrors>({})
@@ -146,6 +151,14 @@ export default function SellerRegisterSupplierPage() {
       ;(el as HTMLElement | null)?.focus?.()
       return
     }
+    // 🪪 등록증 사본 — 약관과 같은 층(폼 칸이 아니라 별도 상태)이라 여기서 본다.
+    //   토스트 한 줄로 끝내지 않고 그 자리로 데려간다 — 어느 칸인지 모르면 사장님이 헤맨다.
+    if (!certUrl) {
+      toast.error(t('seller.signup.certRequired', { defaultValue: '사업자등록증 사본을 첨부해 주세요' }))
+      const el = document.getElementById('f-cert')
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      return
+    }
     if (!termsAgreed) {
       toast.error(t('seller.gateway.termsRequired', { defaultValue: '판매자 이용약관에 동의해주세요' }))
       termsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -170,6 +183,7 @@ export default function SellerRegisterSupplierPage() {
         phone: form.phone,
         seller_type: 'store_owner',
         description: descWithMeta,
+        business_cert_url: certUrl || undefined,
         terms_agreed_version: TERMS_CURRENT_VERSION,
       })
       if (res.data?.success) {
@@ -235,7 +249,9 @@ export default function SellerRegisterSupplierPage() {
     )
   }
 
-  const filled = filledRequired(form)
+  // 🪪 등록증 사본도 필수가 됐으므로 진행 표시에 포함한다 — 바가 "5/5" 인데 제출이 막히면
+  //   사장님은 고장으로 읽는다(무엇이 남았는지 화면이 말해야 한다).
+  const filled = filledRequired(form) + (certUrl ? 1 : 0)
   const cls = (k: keyof SignupForm) => `${INPUT} ${errors[k] ? INPUT_BAD : ''}`
   const steps = [
     { n: 1, label: t('seller.signup.step1', { defaultValue: '정보 입력' }), sub: t('seller.signup.step1Sub', { defaultValue: '지금 이 화면' }) },
@@ -330,6 +346,12 @@ export default function SellerRegisterSupplierPage() {
                 aria-invalid={!!errors.business_start_date}
                 className={cls('business_start_date')} />
             </Field>
+            {/* 🪪 등록증 사본 — 어드민이 위 세 칸·아래 가게 정보와 **눈으로 대조**하는 유일한 근거.
+                국세청 API 는 상호·주소를 주지 않는다(실측) — 기계로는 못 잡는 자리다. */}
+            <Field id="f-cert" label={t('seller.signup.cert', { defaultValue: '사업자등록증 사본' })} required
+              hint={t('seller.signup.certHint', { defaultValue: '적어 주신 상호·주소가 등록증과 같은지 확인합니다. 사진도 괜찮아요.' })}>
+              <BusinessCertUpload value={certUrl} onChange={setCertUrl} required />
+            </Field>
           </div>
         </section>
 
@@ -391,15 +413,15 @@ export default function SellerRegisterSupplierPage() {
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-rule bg-white" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="mx-auto flex max-w-[560px] items-center gap-3 px-3 py-3 sm:px-4">
           <p className="hidden shrink-0 text-[12px] text-gray-500 sm:block">
-            {t('seller.signup.progress', { defaultValue: '필수 {{filled}} / 5', filled })}
+            {t('seller.signup.progress', { defaultValue: '필수 {{filled}} / 6', filled })}
           </p>
           <button onClick={submit} disabled={loading}
             className="ur-btn ur-btn-lg ur-btn-primary w-full disabled:opacity-50">
             {loading && <Loader2 className="h-5 w-5 animate-spin" />}
             {loading
               ? t('seller.gateway.submitting', { defaultValue: '신청 중...' })
-              : filled < 5
-                ? t('seller.signup.submitProgress', { defaultValue: '가입 신청 (필수 {{filled}}/5)', filled })
+              : filled < 6
+                ? t('seller.signup.submitProgress', { defaultValue: '가입 신청 (필수 {{filled}}/6)', filled })
                 : t('seller.signup.submit', { defaultValue: '가입 신청하기' })}
           </button>
         </div>

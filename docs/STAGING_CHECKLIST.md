@@ -240,3 +240,21 @@ GET /api/admin/promo-ledger/order/:orderNumber      (read-only, finance 권한)
 | S-CART-13 | 🏷️ **교환권(`deal_only=1`) 을 카드 레일에 직접 밀어 넣기** — 화면을 거치지 않고 `POST /api/group-buy/cart/init` 에 그 상품 id 를 보낸다 | 400 `DEAL_ONLY_NOT_SUPPORTED` — **원화로 청구되지 않는다** |
 | S-CART-14 | 교환권 + 이용권을 함께 골라 `/cart` 에서 주문 시도 | 주문 버튼이 **비활성**이고 이유가 화면에 있다 · 총액이 두 줄(`N원` / `N딜`)로 갈려 있다 |
 | S-CART-15 | 교환권만 골라 주문 | 종전 `/checkout` **딜 모드** 로 간다(토스 옵션 없음) · 결제예정금액이 `N딜` |
+
+## 🔒 S-USEGATE — 소개 커미션 사용 확인 게이트 (2026-09-16)
+
+**S-USEGATE** — 대표 확정 *"모든게 다 이용권을 쓰고 나서 정산 할 때 정산되는거고"* (2026-09-16).
+
+게이트: `platform_settings.payout_requires_voucher_use` (기본 OFF) · 천장: `payout_unused_max_wait_days`(기본 180).
+**OFF 인 동안은 종전과 byte-동일**이라 배포만으로는 아무것도 안 바뀐다 — 켜는 것이 등급 C 다.
+
+| # | 확인 | 통과 기준 |
+|---|---|---|
+| S-USEGATE-1 | 게이트 OFF 로 `influencer-payout` cron 실행 | 종전대로 환불창(T+7)만 보고 성숙 — 회귀 0 |
+| S-USEGATE-2 | 게이트 ON + 이용권 **미사용** 상태로 T+7 경과 후 cron | `influencer_attributions` 가 `pending` 유지 · 송금 대기에 **안 뜬다** |
+| S-USEGATE-3 | 같은 건을 매장에서 **1장 사용** 처리 후 cron | 즉시 `available` 로 성숙 · 금액이 종전과 동일 |
+| S-USEGATE-4 | qty 3 중 1장만 사용한 주문 | 성숙된다 — 전량 소진을 기다리지 않는다(정상 소비자를 막지 않는지) |
+| S-USEGATE-5 | 이용권이 아닌 주문(쇼핑·교환권)의 소개 적립 | 게이트와 무관하게 성숙 — 영영 갇히지 않는지 |
+| S-USEGATE-6 | 만료일이 지났지만 `auto-settlement` 가 아직 안 돈 건 | `pending` 유지 → cron 이 돌면 고객 100% 환불 + `clawback` 으로 **회수**(성숙 후 회수가 아니라) |
+| S-USEGATE-7 | `voucher_expiry` 미설정(무기한) 이용권, 발급 후 천장일 경과 | 성숙 — 무기한 이용권의 소개비가 영구히 갇히지 않는지 |
+| S-USEGATE-8 | `/influencer/settlement` 화면 | 게이트 ON 이면 보류 라벨이 **"사용 확인 대기"** · OFF 면 "환불기간 (대기)" |

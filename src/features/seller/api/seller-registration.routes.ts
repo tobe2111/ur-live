@@ -24,6 +24,7 @@ import { swallow } from '@/worker/utils/swallow'
 import { startDashboardSession } from '@/worker/utils/dashboard-session'
 import { getSellerIdFromToken, type SellerJWTPayload } from '@/lib/seller-shared'
 import { copyCuratorProfileToSeller, stampSignupStoreChannel } from './seller-signup-meta'
+import { BIZ_CERT_PATH } from '../../../worker/utils/store-ownership-claims'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string }
 
@@ -68,6 +69,12 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
     const { username, email, password, name, business_name, business_number, phone, address, description, youtube_email, seller_type } = body;
     const representative_name = body.representative_name?.trim()
     const business_start_date = body.business_start_date?.trim()
+    // 🪪 2026-09-16 앞문 등록증 사본 — 뒷문(`/store/find`)은 필수인데 새 가게를 만드는 여기는
+    //   증거를 한 장도 안 받았다. 국세청 API 는 상호·주소를 주지 않으므로(b_no·start_dt·p_nm 만)
+    //   **기계 대조가 불가능**하고 어드민이 사진과 눈으로 대조해야 한다. 배경: 2026-09-16 handoff.
+    //   경로가 우리 업로드 자리일 때만 저장한다 — 임의 URL 이면 어드민 화면이 남의 서버를 띄운다.
+    const certUrl = String((body as { business_cert_url?: unknown }).business_cert_url || '').trim()
+    const certStored = BIZ_CERT_PATH.test(certUrl) ? certUrl : null
 
     // 필수 필드 검증 (youtube_email 은 라이브커머스 중단으로 선택 필드)
     if (!username || !email || !password || !name || !business_name || !business_number || !phone) {
@@ -156,8 +163,9 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
         username, email, password_hash, name, business_name, business_number,
         phone, address, description, youtube_email, seller_type,
         representative_name, business_start_date, nts_verified_at, nts_verify_result,
+        business_registration_image_url, business_registration_status,
         status, commission_rate, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${DEFAULT_COMMISSION_RATE}, datetime('now'), datetime('now'))
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${DEFAULT_COMMISSION_RATE}, datetime('now'), datetime('now'))
     `).bind(
       username,
       email,
@@ -174,6 +182,8 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
       business_start_date || null,
       ntsVerifiedAt,
       ntsResultJson,
+      certStored,
+      certStored ? 'pending' : null,   // 사본이 있어야 어드민 화면에 승인/반려가 뜬다
       autoStatus
     ).run();
 
