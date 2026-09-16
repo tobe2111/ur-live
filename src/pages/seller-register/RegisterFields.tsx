@@ -17,23 +17,52 @@ export const STORE_CATEGORIES = [
   { value: 'etc', label: '기타' },
 ] as const
 
+/**
+ * 🎨 2026-09-16 대표 확정 **시안 C(큰 입력)** — 시안: docs/design/seller-signup-documents.md
+ *
+ * 종전엔 `h-11` 테두리 상자에 16px 글자였다. 그러면 **채운 칸과 빈 칸의 무게가 같아서**
+ * 스크롤하며 어디까지 했는지가 안 보인다 — 대표 *"페이지 디자인 자체가 너무 별로인데?"* 의
+ * 큰 몫이 그것이었다. 이 화면에서 사장님이 하는 일은 읽는 게 아니라 **채우는 것**이다.
+ *
+ * ⇒ 라벨은 작게 죽이고(10.5px) **값을 크게**(17px) 세운다. 채우면 `font-bold`, 비면
+ *   placeholder 가 `font-normal text-gray-300` 이라 **글자 굵기만으로** 진행이 읽힌다.
+ *   상자를 지운 대신 구획은 `Field` 의 행 구분선이, 지금 칸은 포커스 때 왼쪽 브랜드 바가 맡는다.
+ *
+ * ⚠️ 16px 미만으로 내리지 말 것 — iOS Safari 가 **입력 포커스 시 화면을 확대**한다.
+ *   17px 은 그 하한 위에서 고른 값이다(시안의 17.5 는 목업 스케일).
+ *
+ * ⚠️ `min-h-[34px]` 도 지우지 말 것 — 상자를 없앴다고 **터치 타깃까지** 작아지면 안 된다.
+ *   라벨(16px)과 입력(34px)이 붙어 있고 `htmlFor` 로 둘 다 같은 칸을 포커스하므로
+ *   실제로 누를 수 있는 높이는 50px 이다(WCAG 2.5.5 의 44px 위).
+ */
 export const INPUT =
-  'h-11 w-full rounded-lg border border-rule-strong bg-white px-3.5 text-[16px] text-gray-900 placeholder:text-gray-400 ' +
-  'focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20'
-export const INPUT_BAD = 'border-tone-bad focus:border-tone-bad focus:ring-[var(--tone-bad-bg)]'
+  'min-h-[34px] w-full border-0 bg-transparent p-0 text-[17px] font-bold leading-[1.35] tracking-[-.02em] text-gray-900 ' +
+  'placeholder:font-normal placeholder:tracking-normal placeholder:text-gray-300 focus:outline-none'
+export const INPUT_BAD = 'text-tone-bad placeholder:text-tone-bad/50'
 
+/**
+ * 한 줄 = 한 항목. 상자 대신 **행 구분선**이 구획하고, 지금 칸은 왼쪽 브랜드 바가 가리킨다.
+ *
+ * 🔴 `focus-within` 으로 바를 켠다 — 상자 테두리를 없앴으므로 **포커스가 유일한 위치 신호**다.
+ *    이것을 지우면 키보드 사용자가 자기가 어느 칸에 있는지 알 수 없다(접근성 회귀).
+ *    바는 자리를 미리 차지해(`pl-3`) 포커스에 글자가 밀리지 않는다.
+ */
 export function Field({ id, label, required, hint, error, children }: {
   id: string; label: string; required?: boolean; hint?: string; error?: string; children: ReactNode
 }) {
   return (
-    <div>
-      <label htmlFor={id} className="mb-1.5 block text-[13px] font-semibold text-gray-800">
-        {label}{required && <span className="ml-0.5 text-brand-text" aria-hidden>*</span>}
+    <div className="group relative border-t border-rule py-2.5 pl-3 first:border-t-0">
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-y-2 left-0 w-[2px] rounded-full bg-brand opacity-0 transition-opacity group-focus-within:opacity-100"
+      />
+      <label htmlFor={id} className="mb-0.5 block text-[10.5px] font-bold uppercase tracking-[.055em] text-gray-500">
+        {label}{required && <span className="ml-1 text-brand-text" aria-hidden>*</span>}
       </label>
       {children}
       {error
         ? <p id={`${id}-err`} role="alert" className="mt-1 text-[12px] font-semibold text-tone-bad">{error}</p>
-        : hint ? <p className="mt-1 text-[12px] text-gray-500">{hint}</p> : null}
+        : hint ? <p className="mt-1 text-[11.5px] text-gray-500">{hint}</p> : null}
     </div>
   )
 }
