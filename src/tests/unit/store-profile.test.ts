@@ -142,7 +142,11 @@ describe('R10 담당자 전화번호 (2026-08-26 대표 — "매장 등록 과�
   it('R10c 저장한 값을 다시 보여준다 — 프로필 응답에 실려 편집 가능', () => {
     const s = read(ROUTES)
     expect(s).toContain("manager_phone: meta.manager_phone || ''")
-    const modal = read('src/components/seller/StoreProfileModal.tsx')
-    expect(modal, '읽기만 되고 못 고치면 번호가 바뀌었을 때 손댈 곳이 없다').toContain('manager_phone: digitsOnly(managerPhone)')
+    // 🏪 2026-09-16: 편집 접점이 모달 → **업체 정보 한 페이지**로 옮겨졌다(대표 — "하나로 통일").
+    //   불변식은 그대로다: *읽기만 되고 못 고치면* 번호가 바뀌었을 때 손댈 곳이 없다.
+    const hook = read('src/pages/seller-store-info/useStoreInfo.ts')
+    expect(hook, '담당자 번호가 폼에 없으면 화면에서 고칠 수가 없다').toContain('manager_phone')
+    expect(hook, '매장 PATCH 로 안 실리면 저장해도 서버에 안 간다')
+      .toMatch(/STORE_KEYS[\s\S]{0,200}'manager_phone'/)
   })
 })
