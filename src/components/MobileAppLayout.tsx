@@ -55,6 +55,16 @@ const HIDE_SIDEBAR_PREFIXES = [
   //   ⚠️ `/partnership`(입점 문의 폼)은 다른 페이지다. 이 목록의 판정은 정확일치 또는 `'/partners/'`
   //      접두사라 `/partnership` 은 걸리지 않는다 — 접두사를 `'/partner'` 로 줄이지 말 것.
   '/partners',
+  // 🧭 2026-09-16 (대표 *"PC를 같은 수준으로 만들어주고"* — `/partners` 를 PC 로 세운 직후):
+  //   형제 랜딩 둘도 같은 이유로 갇혀 있었다. `/about` 은 서비스를 알아보러 온 제휴처가,
+  //   `/creators` 는 소개로 돈을 벌러 온 사람이 보는 화면인데, 430px 액자가 만든 빈 거터를
+  //   `ConsumerFrameRails`(소비자 앱 바로가기 + 설치 QR)가 채우고 있었다.
+  //   `App.tsx` 가 이미 둘 다 fullScreen 으로 처리하므로(상·하단 네비 없음) 프레임만 풀면 된다.
+  //   ⚠️ 접두사가 하위 경로까지 먹는다 — `/about/print`(인쇄용 상세 소개서)와
+  //      `/creators/apply`·`/creators/start`(신청 폼)가 함께 풀린다. **셋 다 그게 맞다**:
+  //      상세 소개서는 원래 `ur-content-wide` 로 짜여 있고, 폼 둘은 자기 `max-w-lg`·`max-w-md` 로
+  //      가운데 정렬하므로 풀너비에서 퍼지지 않는다.
+  '/about', '/creators',
 ]
 
 // 🎨 2026-06-18 (사용자 시안): 유어샵 진입 시 PC 좌측 카테고리 사이드바 숨김 → 깔끔한 액자.

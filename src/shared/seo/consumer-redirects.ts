@@ -40,10 +40,26 @@ const ALIAS_EXACT: Readonly<Record<string, string>> = {
   //   데이터는 224건 있는데 화면은 "상품이 없습니다" + 엉뚱한 쇼핑 칩(식품/패션/뷰티)이었다.
   //   정본은 홈의 카테고리 필터다 — `StaysSearchPage` 의 칩도 이미 `/?category=meal_voucher` 로 간다.
   '/meal-vouchers': '/?category=meal_voucher',
+  /* 🗑️ 2026-09-16 (대표 "지워줘") — `/business` 는 `/partners` 와 **같은 사람에게 같은 말을 하는 두 번째 랜딩**이었다.
+     고아였고(네비 한 곳에서만 링크), 적힌 수수료가 낡아 있었다(옛 5%/4%/3% 등급제 — `fee-resolver` 엔 그런 규칙이 없다).
+     페이지는 지우되 URL 은 **301 로 살린다** — sitemap 에 올라가 있었고 밖에 뿌려진 링크를 죽이면 그 신호를 버리는 것이다. */
+  '/business': '/partners',
 }
 
 /** `/product/:id` → `/products/:id` (단수/복수 두 URL 이 같은 상품을 가리키던 것). */
 const PRODUCT_SINGULAR = /^\/product\/([^/]+)\/?$/
+
+/**
+ * 🎟️ `/group-buy/:id` → `/pass/:id` — 이용권 상세 정본 이전 (2026-08-12 대표 확정 · 2026-09-16 시행).
+ *
+ * 🔴 **숫자 id 만** 잡는다. `/group-buy/confirm-payment` 은 **다른 화면**이고 그 자리에 남아 있어,
+ *   `[^/]+` 로 잡으면 결제 확인 페이지가 `/pass/confirm-payment`(없는 라우트)로 튕겨 **결제 흐름이 끊긴다.**
+ *   돈이 빠져나간 **직후**라 사용자는 결제가 됐는지조차 알 수 없게 된다.
+ *
+ * ⚠️ 이 301 은 지워도 되는 종류가 아니다 — 카톡 공유 카드·검색 색인·QR 에 박힌 옛 주소가
+ *   **우리 배포와 무관하게** 남아 있고, 그 회수 시점의 통제권이 우리에게 없다.
+ */
+const GROUP_BUY_DETAIL = /^\/group-buy\/(\d+)\/?$/
 
 /**
  * 별칭이면 정본 경로를, 아니면 `null`.
@@ -60,6 +76,8 @@ export function resolveConsumerAlias(pathname: string): string | null {
     // id 는 원문 그대로 넘긴다(이미 URL 인코딩된 상태). 빈 값이면 리다이렉트하지 않는다.
     return m[1] ? `/products/${m[1]}` : null
   }
+  const gb = GROUP_BUY_DETAIL.exec(p)
+  if (gb) return `/pass/${gb[1]}`
   return null
 }
 

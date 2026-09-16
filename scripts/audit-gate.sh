@@ -99,6 +99,7 @@ if domain classify; then
   echo "🏷️  상품 종류 판별 · 라우팅"
   run "group_buy_status 종류판별 금지"   node scripts/check-groupbuy-status-classify.mjs
   run "동네딜↔쇼핑 완전분리(general)"    node scripts/check-dongnedeal-separation.mjs
+  run "공구 인원조건 할인 약속 금지"     node scripts/check-groupbuy-headcount-claim.mjs --strict
   run "도매주문 상태 무결성"             env STRICT_WHS_STATUS=1       node scripts/check-wholesale-order-status.mjs
 fi
 
@@ -122,6 +123,7 @@ if domain ui; then
   run "배송비 판정 SSOT(장바구니↔결제)"    node scripts/check-no-shipping-ssot.mjs
   run "띄어 쓴 가운뎃점 사슬(래칫)"         node scripts/check-middle-dot-chain.mjs
   run "모양 잠금(체계 밖 모서리 래칫)"      node scripts/check-shape-lock.mjs
+  run "세로 스택 버튼 높이 뭉개짐"          node scripts/check-flex-col-fixed-height.mjs
   run "기능 현황판 동기(꺼진 기능)"        node scripts/generate-feature-status.mjs --check
   run "소비자 이미지 cfImage 경유"        env STRICT_RAW_IMG=1 node scripts/check-consumer-img-cfimage.mjs
   run "KST 타임스탬프 파싱(9시간 어긋남)"  env STRICT_UTC_DATE=1 node scripts/check-utc-date-parse.mjs

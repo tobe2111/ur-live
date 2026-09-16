@@ -13,6 +13,7 @@ import { cors } from 'hono/cors';
 import type { Env } from '@/worker/types/env';
 import { executeQuery } from '@/worker/utils/database';
 import { intParam } from '@/shared/pagination'
+import { parseAdminMallScope, productScopeSql, orderScopeSql } from '@/worker/utils/admin-mall-scope'
 
 export const adminStatsRoutes = new Hono<{ Bindings: Env }>();
 
@@ -128,6 +129,22 @@ adminStatsRoutes.get('/dashboard/stats', cors(), async (c) => {
   const { DB } = c.env;
   const today = new Date().toISOString().split('T')[0];
 
+  /**
+   * 🏪 2026-08-16 (대표 "모두 다 해줘") — **대표가 매일 첫 화면에서 보는 숫자**인데
+   *   `mall_id` 를 한 번도 안 봤다. 운영자 가게 주문이 `orders` 에 그대로 들어오므로
+   *   오늘 매출·주문수·미발송이 **남의 가게 실적을 포함**하고 있었다.
+   *   주문엔 몰 표시가 없어 품목의 상품으로 판정한다(`orderScopeSql` — JOIN 아닌 EXISTS).
+   */
+  const scope = parseAdminMallScope(c.req.query('mall'));
+  const orderScope = await orderScopeSql(DB, scope, 'o');
+  // 교환권은 상품에 직접 걸린다(vouchers.product_id).
+  const voucherScope = scope === 'all' ? '' : await (async () => {
+    const inner = await productScopeSql(DB, scope, 'vp');
+    return inner
+      ? ` AND EXISTS (SELECT 1 FROM products vp WHERE vp.id = v.product_id${inner})`
+      : '';
+  })();
+
   const safe = async <T>(q: string, p: unknown[] = []): Promise<T[]> => {
     try { return await executeQuery<T>(DB, q, p); } catch { return []; }
   };
@@ -138,13 +155,13 @@ adminStatsRoutes.get('/dashboard/stats', cors(), async (c) => {
     //   각 쿼리 fail-soft (테이블/상태 없으면 0). 미발송 주문 = 결제완료인데 배송 미시작.
     unshippedOrders, pendingReturns, pendingPayouts, pendingSellers, pendingSuppliers, failedVouchers,
   ] = await Promise.all([
-    safe<SalesRow>(`SELECT COALESCE(SUM(total_amount),0) as total FROM orders WHERE DATE(created_at, '+9 hours')=? AND status IN ('DONE','PAID','DELIVERED')`, [today]),
-    safe<CountRow>("SELECT COUNT(*) as count FROM orders WHERE DATE(created_at, '+9 hours')=?", [today]),
+    safe<SalesRow>(`SELECT COALESCE(SUM(o.total_amount),0) as total FROM orders o WHERE DATE(o.created_at, '+9 hours')=? AND o.status IN ('DONE','PAID','DELIVERED')${orderScope}`, [today]),
+    safe<CountRow>(`SELECT COUNT(*) as count FROM orders o WHERE DATE(o.created_at, '+9 hours')=?${orderScope}`, [today]),
     safe<CountRow>("SELECT COUNT(*) as count FROM live_streams WHERE status='live'"),
     // 🛡️ 2026-05-24 Q1: 어드민 대시보드에 교환권 거래 분리 표시 (사용자 요청).
-    safe<CountRow>(`SELECT COUNT(*) as count FROM vouchers WHERE DATE(created_at, '+9 hours')=?`, [today]),
-    safe<SalesRow>(`SELECT COALESCE(SUM(applied_price),0) as total FROM vouchers WHERE DATE(created_at, '+9 hours')=?`, [today]),
-    safe<CountRow>("SELECT COUNT(*) as count FROM orders WHERE UPPER(status) IN ('PAID','DONE','PREPARING')"),
+    safe<CountRow>(`SELECT COUNT(*) as count FROM vouchers v WHERE DATE(v.created_at, '+9 hours')=?${voucherScope}`, [today]),
+    safe<SalesRow>(`SELECT COALESCE(SUM(v.applied_price),0) as total FROM vouchers v WHERE DATE(v.created_at, '+9 hours')=?${voucherScope}`, [today]),
+    safe<CountRow>(`SELECT COUNT(*) as count FROM orders o WHERE UPPER(o.status) IN ('PAID','DONE','PREPARING')${orderScope}`),
     safe<CountRow>("SELECT COUNT(*) as count FROM returns WHERE status = 'requested'"),
     safe<CountRow>("SELECT COUNT(*) as count FROM payouts WHERE status = 'pending'"),
     safe<CountRow>("SELECT COUNT(*) as count FROM sellers WHERE status = 'pending'"),

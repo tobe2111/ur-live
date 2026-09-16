@@ -5,7 +5,7 @@
  * 흐름: 셀러 제안(influencer_outreach_requests) → 타깃 리드별 수락 토큰(influencer_offer_invites)
  *   → 유어딜이 대행 발송(어드민 큐에서 수락 URL 복사) → 인플루언서가 /i/offer/{token} 열고
  *   카카오 로그인 → 수락 → **seller_influencer_deals(status='active', 제안서의 커미션 %)** 생성
- *   → 전용 링크(`/group-buy/{productId}?ref={userId}`) 발급. 이후 판매·적립·환불회수·지급은
+ *   → 전용 링크(`/pass/{productId}?ref={userId}`) 발급. 이후 판매·적립·환불회수·지급은
  *   기존 레일(applyGroupBuyReferral → influencer_attributions → payout)이 그대로 처리한다.
  *
  * 🔑 심플 모델(2026-08-22 대표 "어필리에이트 전략은 빼려고 해"): 인플루언서 수익은 이 딜 % 하나.
@@ -212,7 +212,7 @@ function acceptPayload(productId: number | null, userId: string) {
   return {
     accepted: true,
     // 전용 홍보 링크 — 기존 ?ref 귀속 레일이 그대로 소비(주문 귀속 → 딜 % 적립 → 환불 회수 → 지급)
-    tracking_url: productId ? `https://urdeal.kr/group-buy/${productId}?ref=${userId}` : `https://urdeal.kr/?ref=${userId}`,
+    tracking_url: productId ? `https://urdeal.kr/pass/${productId}?ref=${userId}` : `https://urdeal.kr/?ref=${userId}`,
     linkshop_hint: '가입하며 만들어진 내 유어샵(/u/내핸들)에도 이 이용권을 핀해서 함께 홍보할 수 있어요.',
   }
 }

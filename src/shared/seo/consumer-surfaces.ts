@@ -103,10 +103,6 @@ export const CONSUMER_SURFACE_SEO: Readonly<Record<string, ConsumerSurfaceSeo>> 
     title: '우리 동네 새로 생긴 가게 - 이번 달 신규 오픈',
     description: '이번 달 우리 동네에 새로 문을 연 가게를 공공 인허가 데이터로 먼저 확인하세요. 오픈 기념 이용권이 올라오면 바로 보입니다.',
   },
-  '/business': {
-    title: '유어딜 사장님 - 내 가게 이용권 팔기',
-    description: '카카오맵에서 우리 가게를 찾아 등록하면 바로 이용권을 올릴 수 있습니다. 손님이 QR 로 쓰면 정산되고, 수수료는 팔린 만큼만 5%. 광고비 선불 없음.',
-  },
   '/influencer': {
     title: '동네 딜 소개로 수익 만들기',
     description: '매장을 직접 섭외하지 않아도 됩니다. 마음에 든 이용권을 내 유어샵에 담아 링크로 소개하면, 그 링크로 팔릴 때마다 몫이 쌓입니다.',

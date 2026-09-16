@@ -57,7 +57,9 @@ export default [
   {
     name: '🖼️ 교환권 상세에도 이용권 히어로를 그린다 (없는 레이아웃을 그린다)',
     file: 'src/worker/index.ts',
-    find: "ssrSlot === 'DETAIL' && ssrPayload && url.pathname.startsWith('/group-buy/')",
+    // 🎟️ 2026-09-16 재조준: 상세 정본이 `/pass/:id` 로 옮겨가 조건이 두 갈래가 됐다(옛 주소도 방어적으로 남김).
+    //   불변식은 그대로 — **pathname 으로 가른다**. 낡은 `find` 를 남기면 이 주입이 조용히 헛돈다.
+    find: "ssrSlot === 'DETAIL' && ssrPayload && (url.pathname.startsWith('/pass/') || url.pathname.startsWith('/group-buy/'))",
     replace: "ssrSlot === 'DETAIL' && ssrPayload",
     test: TEST,
     why: '`/vouchers/:id` 는 같은 DETAIL 슬롯이지만 VoucherDetailPage 라 레이아웃이 다르다 — 그리면 마운트 때 통째로 갈린다.',

@@ -14,6 +14,7 @@ import type { Env } from '../../../worker/types/env'
 import { requireAdmin } from '../../../worker/middleware/auth'
 import { intParam } from '../../../shared/pagination'
 import { getGbSession, getGbSessions, saveGbSession } from '../../../worker/utils/gb-session-store'
+import { parseAdminMallScope, productScopeSql } from '../../../worker/utils/admin-mall-scope'
 import { validateGbSession, resolveGbStatus, type GbSession, type GbMode } from '../../../shared/gb-session'
 
 const app = new Hono<{ Bindings: Env }>()
@@ -33,10 +34,16 @@ app.get('/products', async (c) => {
   const q = (c.req.query('q') || '').trim().slice(0, 60)
   const limit = Math.min(100, Math.max(1, intParam(c.req.query('limit'), 40)))
   const cols = 'id, name, price, original_price, category, seller_id, restaurant_name, is_active'
+  // 🏪 2026-08-16 (대표 "모두 다 해줘"): 이 조종석은 **유어딜** 공구 엔진 설정 화면인데 상품 검색이
+  //   `mall_id` 를 안 봐서 **운영자 가게 상품까지 나왔다.** 그 상태로 gb 세션을 저장하면 유어딜
+  //   어드민이 남의 가게 공구가를 바꾸게 된다(그 상품도 같은 `resolveGbPricing` 을 탄다).
+  //   기본 `main`. 몰 상품 설정은 `?mall=mall|all` 로 **명시**해야 한다.
+  const scope = parseAdminMallScope(c.req.query('mall'))
+  const scopeSql = await productScopeSql(db, scope)
   const rows = q
-    ? await db.prepare(`SELECT ${cols} FROM products WHERE is_active = 1 AND (name LIKE ? OR restaurant_name LIKE ?) ORDER BY id DESC LIMIT ?`)
+    ? await db.prepare(`SELECT ${cols} FROM products WHERE is_active = 1 AND (name LIKE ? OR restaurant_name LIKE ?)${scopeSql} ORDER BY id DESC LIMIT ?`)
         .bind(`%${q}%`, `%${q}%`, limit).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }))
-    : await db.prepare(`SELECT ${cols} FROM products WHERE is_active = 1 ORDER BY id DESC LIMIT ?`)
+    : await db.prepare(`SELECT ${cols} FROM products WHERE is_active = 1${scopeSql} ORDER BY id DESC LIMIT ?`)
         .bind(limit).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }))
   const list = rows.results || []
   const ids = list.map((r) => Number(r.id)).filter((n) => Number.isFinite(n) && n > 0)

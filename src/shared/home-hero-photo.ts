@@ -40,7 +40,7 @@ export function pickHeroPhotoFrom(data: unknown): HeroPhotoPick | null {
     const slug = typeof raw?.slug === 'string' ? raw.slug : ''
     const id = raw?.id
     if (!img) continue
-    const hit: HeroPhotoPick = { src: img, href: id != null ? `/group-buy/${id}` : '/' }
+    const hit: HeroPhotoPick = { src: img, href: id != null ? `/pass/${id}` : '/' }
     if (slug.startsWith('demo-deal-')) {
       // 데모는 **마지막 수단**이고, 그중에서도 우리가 올린 사진만. 실상품을 계속 찾는다.
       if (!ownDemo && isOwnMedia(img)) ownDemo = hit

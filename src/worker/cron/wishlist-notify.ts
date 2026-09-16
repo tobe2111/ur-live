@@ -71,7 +71,7 @@ export async function ensureWishlistBaselineTables(DB: D1Database) {
 const ensureTables = ensureWishlistBaselineTables
 
 function productLink(productId: number, category: string | null): string {
-  return isVoucherCategory(category) ? `/group-buy/${productId}` : `/products/${productId}`
+  return isVoucherCategory(category) ? `/pass/${productId}` : `/products/${productId}`
 }
 
 /**

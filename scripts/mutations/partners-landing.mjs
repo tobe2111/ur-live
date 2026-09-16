@@ -9,8 +9,10 @@ export default [
   {
     name: '🏪 /partners 가 다시 430px 소비자 액자에 갇힌다',
     file: 'src/components/MobileAppLayout.tsx',
-    find: `  '/partners',\n]`,
-    replace: `]`,
+    // 🗑️ 2026-09-16: 앵커를 `…\n]` 에서 줄 하나로 바꿨다. 형제 랜딩 둘(`/about`·`/creators`)이
+    //    같은 목록에 추가되면서 `'/partners',` 뒤가 더는 `]` 가 아니다.
+    find: `  '/partners',\n`,
+    replace: ``,
     test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
     why:
       '이 한 줄이 빠지면 입점 검토하러 온 사장님 화면이 폰 폭으로 접히고, 빈 거터를 ' +

@@ -192,7 +192,8 @@ describe('④ 재생기는 항상 하나만', () => {
 
   it('구매 바가 영상 위에 항상 있다 (끝나기를 기다리면 늦다)', () => {
     expect(V).toMatch(/absolute inset-x-2\.5 bottom-2\.5/)
-    expect(V).toMatch(/to=\{`\/group-buy\/\$\{cur\.product_id\}`\}/)
+    // 🎟️ 2026-09-16: 이용권 상세 정본이 `/pass/:id` 로 옮겨졌다(옛 주소는 서버 301 + 앱 폴백).
+    expect(V).toMatch(/to=\{`\/pass\/\$\{cur\.product_id\}`\}/)
   })
 
   it('embed 는 nocookie · playsinline · rel=0 이다', () => {

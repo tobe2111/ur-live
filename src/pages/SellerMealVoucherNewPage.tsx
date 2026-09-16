@@ -308,13 +308,13 @@ export default function SellerMealVoucherNewPage() {
                   title={form.name || t('seller.mealVoucher.title')}
                   description={form.restaurant_name ? `${form.restaurant_name} · ${t('seller.mealVoucher.shareDesc', { defaultValue: '유어딜에서 할인가로 만나요' })}` : t('seller.mealVoucher.shareDesc', { defaultValue: '유어딜에서 할인가로 만나요' })}
                   imageUrl={form.image_url && !form.image_url.startsWith('data:') ? form.image_url : undefined}
-                  link={`/group-buy/${createdId}`}
+                  link={`/pass/${createdId}`}
                   regularPrice={form.original_price > form.price ? form.original_price : undefined}
                   salePrice={form.price || undefined}
                 />
                 <button
                   onClick={() => {
-                    navigator.clipboard?.writeText(`https://urdeal.kr/group-buy/${createdId}`)
+                    navigator.clipboard?.writeText(`https://urdeal.kr/pass/${createdId}`)
                       .then(() => toast.success(t('seller.mealVoucher.linkCopied', { defaultValue: '링크가 복사됐어요 — 단골 채팅방에 붙여넣어 보세요' })))
                       .catch(() => toast.error(t('common.copyFailed', { defaultValue: '복사에 실패했습니다' })))
                   }}

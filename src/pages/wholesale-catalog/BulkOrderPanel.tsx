@@ -126,10 +126,10 @@ export default function BulkOrderPanel({ token }: { token: string | null }) {
               </div>
               <p className="text-[12px] mb-3" style={{ color: WT.ink3 }}>{t('wholesale.bulk.desc', { defaultValue: '양식을 받아 한 행에 한 명씩(상품·옵션·수량·받는사람·주소)을 채워 업로드하면, 제조사가 각 받는사람에게 직접 발송합니다. 상품은 product_id 또는 상품코드로 매칭돼요.' })}</p>
               <div className="flex flex-col sm:flex-row gap-2">
-                <button onClick={downloadOrderForm} className="flex-1 flex items-center justify-center gap-1.5 rounded-xl h-11 text-[13px] font-bold" style={{ background: '#fff', color: WT.ink, border: '1px solid ' + WT.line }}>
+                <button onClick={downloadOrderForm} className="sm:flex-1 flex items-center justify-center gap-1.5 rounded-xl h-11 text-[13px] font-bold" style={{ background: '#fff', color: WT.ink, border: '1px solid ' + WT.line }}>
                   <Download className="w-4 h-4" /> {t('wholesale.bulk.download', { defaultValue: '주문 양식 다운로드' })}
                 </button>
-                <button onClick={() => bulkInputRef.current?.click()} disabled={bulkBusy} className="flex-1 flex items-center justify-center gap-1.5 rounded-xl h-11 text-[13px] font-bold text-white disabled:opacity-60" style={{ background: WT.ink }}>
+                <button onClick={() => bulkInputRef.current?.click()} disabled={bulkBusy} className="sm:flex-1 flex items-center justify-center gap-1.5 rounded-xl h-11 text-[13px] font-bold text-white disabled:opacity-60" style={{ background: WT.ink }}>
                   {bulkBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />} {t('wholesale.bulk.upload', { defaultValue: '작성본 업로드 → 검토' })}
                 </button>
                 <input ref={bulkInputRef} type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={onBulkFile} className="hidden" />
@@ -200,10 +200,10 @@ export default function BulkOrderPanel({ token }: { token: string | null }) {
                 </div>
               )}
               <div className="mt-2 flex flex-col sm:flex-row gap-2">
-                <button onClick={exportCatalog} className="flex-1 flex items-center justify-center gap-1.5 rounded-xl h-10 text-[12px] font-bold" style={{ background: '#fff', color: WT.ink3, border: '1px solid ' + WT.line }}>
+                <button onClick={exportCatalog} className="sm:flex-1 flex items-center justify-center gap-1.5 rounded-xl h-10 text-[12px] font-bold" style={{ background: '#fff', color: WT.ink3, border: '1px solid ' + WT.line }}>
                   <FileSpreadsheet className="w-3.5 h-3.5" /> 단가표 (.xlsx)
                 </button>
-                <button onClick={exportPriceListCsv} className="flex-1 flex items-center justify-center gap-1.5 rounded-xl h-10 text-[12px] font-bold" style={{ background: '#fff', color: WT.ink3, border: '1px solid ' + WT.line }}>
+                <button onClick={exportPriceListCsv} className="sm:flex-1 flex items-center justify-center gap-1.5 rounded-xl h-10 text-[12px] font-bold" style={{ background: '#fff', color: WT.ink3, border: '1px solid ' + WT.line }}>
                   <Download className="w-3.5 h-3.5" /> 단가표 다운로드 (CSV)
                 </button>
               </div>

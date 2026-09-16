@@ -32,7 +32,7 @@ export default function OtherDealsRow({ deals, sellerHandle, sellerUsername }: {
           {deals.map((o) => {
             const pct = o.discount_pct || (o.original_price && o.original_price > o.price ? Math.round((1 - o.price / o.original_price) * 100) : 0)
             return (
-              <a key={o.id} href={`/group-buy/${o.id}`} style={{ flex: '0 0 152px', textDecoration: 'none', scrollSnapAlign: 'start' }}>
+              <a key={o.id} href={`/pass/${o.id}`} style={{ flex: '0 0 152px', textDecoration: 'none', scrollSnapAlign: 'start' }}>
                 <div style={{ position: 'relative', width: 152, height: 152, borderRadius: 14, overflow: 'hidden', backgroundColor: 'var(--gbd-chip)', backgroundImage: o.image_url ? `url("${cfImage(o.image_url, { width: 300, format: 'auto' }) || o.image_url}")` : undefined, backgroundSize: 'cover', backgroundPosition: 'center' }}>
                 </div>
                 <div style={{ marginTop: 9, fontSize: 13, fontWeight: 600, color: 'var(--gbd-ink)', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.name}</div>

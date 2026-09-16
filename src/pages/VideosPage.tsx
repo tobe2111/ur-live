@@ -319,7 +319,7 @@ export default function VideosPage() {
 
       {/* 🔴 구매 바는 영상 위에 항상. 끝나기를 기다리면 이미 늦다.
           단 **살 게 있을 때만** — 2026-09-08 부터 이용권 안 붙인 영상도 여기 온다(대표 확정).
-          상품이 없으면 `/group-buy/null` 로 가는 버튼이 되므로 바 전체를 안 그린다.
+          상품이 없으면 `/pass/null` 로 가는 버튼이 되므로 바 전체를 안 그린다.
           ⚖️ **워터마크(2026-09-16 대표 확정 *"워터마크 가려도 돼"*)**: 이 바가 화면 아래를 덮으면서
              유튜브 Shorts 워터마크를 가린다. 대표가 그대로 가도 된다고 확정했으므로 ⛔ 이 바를
              위로 올리지 말 것 — 바는 이 화면의 본체이고, 올리면 영상을 더 가린다.
@@ -364,7 +364,7 @@ export default function VideosPage() {
             </div>
           </div>
           <Link
-            to={`/group-buy/${cur.product_id}`}
+            to={`/pass/${cur.product_id}`}
             className="shrink-0 rounded-[10px] bg-brand px-[15px] py-[11px] text-[13.5px] font-bold text-white"
           >
             구매

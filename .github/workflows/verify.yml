@@ -459,6 +459,10 @@ jobs:
         run: node scripts/check-middle-dot-chain.mjs
       - name: 모양 잠금 — 체계 밖 모서리 (래칫)
         run: node scripts/check-shape-lock.mjs
+      # 📏 2026-09-16 (대표 "버튼 크기도 세로길이가 짧고"): 세로 스택에서 `flex-1` 은 주축이 높이라
+      #   `flex-basis: 0` 이 `h-[52px]` 를 이긴다. PC(가로 배치)는 멀쩡해서 **리뷰로는 절대 안 보인다.**
+      - name: 세로 스택 버튼 높이 뭉개짐
+        run: node scripts/check-flex-col-fixed-height.mjs
       - name: Dashboard button system ratchet (strict)
         env:
           STRICT_DASHBOARD_BUTTON: '1'
@@ -556,6 +560,12 @@ jobs:
       # 🛡️ 2026-07-02: 동네딜↔쇼핑 완전 분리(대표 확정) — 동네딜 표면/도구에 배송형(general) 유입 차단.
       - name: dongnedeal separation guard (strict)
         run: node scripts/check-dongnedeal-separation.mjs
+
+      # 🎟️🏪 2026-08-14 (대표 "지금 공동구매 정의도 잘 된거야?"): 라이브 두 공구는 인원과 무관하다
+      #   (유어딜=즉시 단일가 · 공구 서비스=기간 특가). "모이면 할인" 문구는 거짓 표시가 된다.
+      #   2026-06-16 에 정직화해 놓고 가드가 없어, 한 줄이면 조용히 되돌아갈 수 있었다.
+      - name: 공구 인원조건 할인 약속 금지 (strict)
+        run: node scripts/check-groupbuy-headcount-claim.mjs --strict
         continue-on-error: false
 
       # 🛡️ 2026-07-01: pagination parseInt/Number NaN 크래시 방어 — 현재 위반 0 → strict.

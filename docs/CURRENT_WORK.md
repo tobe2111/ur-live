@@ -5494,6 +5494,7 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
+_총 333건 · 최신순 · 이 목록은 자동 생성된다._
 _총 331건 · 최신순 · 이 목록은 자동 생성된다._
 _총 328건 · 최신순 · 이 목록은 자동 생성된다._
 _총 329건 · 최신순 · 이 목록은 자동 생성된다._
@@ -5505,6 +5506,7 @@ _총 329건 · 최신순 · 이 목록은 자동 생성된다._
 - [업체 정보 — 세 곳에 흩어진 것을 한 페이지로 (2026-09-16)](handoff/2026-09-16-store-info-one-page.md)
 - [남은 후속 넷을 끝까지 — 서버 첫 화면 확장 · PC 판단 · JS 다이어트 · 잔액 밀림 〔2026-09-16〕](handoff/2026-09-16-remaining-followups.md)
 - [소개 커미션 사용 확인 게이트 (2026-09-16)](handoff/2026-09-16-payout-use-gate.md)
+- [🎟️ 이용권 상세 주소 이전 `/group-buy/:id` → `/pass/:id` (#1149 조각 ④ = 항목 ⑫)](handoff/2026-09-16-pass-route-migration.md)
 - [입점 랜딩(/partners) 전면 재작성 — PC 신설 + 덱 정합 (2026-09-16)](handoff/2026-09-16-partners-landing-pc.md)
 - [서류 OCR — 읽고, 등록 매장과 맞춰 보기 (2026-09-16)](handoff/2026-09-16-ocr-document-verify.md)
 - [공구 서비스 분리 — 결제 동선 조각(#1149 의 첫 조각을 되살림)](handoff/2026-09-16-mall-payment-flow-chunk1.md)
@@ -5513,6 +5515,7 @@ _총 329건 · 최신순 · 이 목록은 자동 생성된다._
 - [등록된 동네딜 검색 (2026-09-16)](handoff/2026-09-16-dongnedeal-search.md)
 - [2026-09-16 — 다크 대비 가드가 **죽은 화면을 재고 살아 있는 결제 화면을 안 보고 있었다**](handoff/2026-09-16-dark-contrast-money-screens.md)
 - [당근 모델 — 들여보내되, 승인 전엔 열지 않는다 (2026-09-16)](handoff/2026-09-16-danggeun-approval-gates.md)
+- [🏛️ 어드민에서 네 서비스가 섞이지 않는다 — #1149 세 번째 조각 (2026-09-16)](handoff/2026-09-16-admin-service-separation.md)
 **2026-09-15**
 - [🔥 탭을 누를 때마다 화면이 덮이던 것 + 이번 세션 전체 판정 (2026-09-15, 5차)](handoff/2026-09-15-warm-seed-and-verdict.md)
 - [삭제한 이용권을 되돌리는 길 (2026-09-15)](handoff/2026-09-15-voucher-restore.md)

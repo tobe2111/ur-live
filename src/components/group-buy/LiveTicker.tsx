@@ -77,7 +77,7 @@ export default function LiveTicker({ className = '' }: { className?: string }) {
 
   return (
     <Link
-      to={`/group-buy/${e.product_id}`}
+      to={`/pass/${e.product_id}`}
       className={`flex items-center gap-2 px-3 py-2 rounded-full bg-surface border border-line shadow-sm hover:shadow transition-shadow ${className}`}
       role="status"
       aria-live="polite"

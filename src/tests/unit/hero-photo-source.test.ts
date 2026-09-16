@@ -31,13 +31,13 @@ describe('고르는 규칙(SSOT)', () => {
       { id: 1, slug: 'demo-deal-x', image_url: '/api/media/a.jpg' },
       { id: 2, slug: 'real-deal', image_url: 'https://cdn.example/b.jpg' },
     ])
-    expect(pick).toEqual({ src: 'https://cdn.example/b.jpg', href: '/group-buy/2' })
+    expect(pick).toEqual({ src: 'https://cdn.example/b.jpg', href: '/pass/2' })
   })
 
   it('④ 남의 호스트 데모 사진은 어느 단계에서도 안 쓴다 (2026-08-04 워터마크 보도사진 사고)', () => {
     expect(pickHeroPhotoFrom([{ id: 1, slug: 'demo-deal-x', image_url: 'https://news.example/x.jpg' }])).toBeNull()
     expect(pickHeroPhotoFrom([{ id: 1, slug: 'demo-deal-x', image_url: '/api/media/ours.jpg' }]))
-      .toEqual({ src: '/api/media/ours.jpg', href: '/group-buy/1' })
+      .toEqual({ src: '/api/media/ours.jpg', href: '/pass/1' })
   })
 
   it('깨진 시드에도 안 터진다', () => {

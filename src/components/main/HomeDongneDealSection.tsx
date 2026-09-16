@@ -75,7 +75,7 @@ export default function HomeDongneDealSection() {
           {items.map((p) => (
             <DealMiniCard
               key={p.id}
-              to={`/group-buy/${p.id}`}
+              to={`/pass/${p.id}`}
               imageUrl={p.image_url}
               title={p.restaurant_name || p.name}
               price={p.current_price ?? p.price}

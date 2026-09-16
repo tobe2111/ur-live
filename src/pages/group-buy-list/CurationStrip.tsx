@@ -36,7 +36,7 @@ export default function CurationStrip({
           return (
             <button
               key={p.id}
-              onClick={() => navigate(`/group-buy/${p.id}`)}
+              onClick={() => navigate(`/pass/${p.id}`)}
               className="snap-start shrink-0 w-[160px] text-left rounded-2xl overflow-hidden border border-line bg-surface hover:shadow-md transition-shadow"
             >
               {/* 🏭 2026-06-04 (카드 로딩 체감): 큐레이션 스트립도 cfImage(리사이즈)+srcSet+dominant_color

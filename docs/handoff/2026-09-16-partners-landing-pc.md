@@ -318,6 +318,51 @@ tsc 0 · build 0 · vitest 724파일 9,159건 · pre-push 가드 95개
 🔑 **새 소비자 화면을 만들면 `check-dark-contrast` 경로 목록에 한 줄 추가할 것.** 그 파일 주석이
 이미 그렇게 적어 뒀는데(2026-09-07 `/store/new` 사고) 이번에도 안 지켰다. 목록이 곧 범위다.
 
+## 5-6. 5차 — 버튼이 모바일에서만 찌그러져 있었다 (대표 *"버튼 크기도 세로길이가 짧고, 버튼이 이게 뭐야"*)
+
+### 실측 — PC 는 멀쩡하고 모바일만 깨진다
+
+CTA 버튼 넷이 `h-[52px]` 를 달고도 **모바일에서 23~25px** 로 렌더됐다(PC 58~60px 정상).
+
+```
+<div className="flex flex-col sm:flex-row …">     ← 모바일은 세로 스택 = 주축이 '높이'
+  <a className="flex-1 h-[52px] …">               ← flex-basis: 0% 가 height 를 이긴다
+```
+
+컨테이너 높이가 `auto` 라 나눠 줄 여유 공간이 0 → 버튼이 글자 높이까지 줄어든다.
+`sm:flex-row` 로 바뀌는 순간 주축이 가로가 되어 `height` 가 되살아나므로 **PC 에서는 아무 문제가 없다.**
+
+⇒ 개발도 리뷰도 PC 로 한다. **눈으로 찾는 부류가 아니라 기계가 찾아야 하는 부류**였다.
+
+### 수정
+
+| | |
+|---|---|
+| 높이 | `flex-1` → `sm:flex-1` (세로 스택에선 `align-items: stretch` 가 이미 가로를 채우므로 `flex-1` 이 할 일이 없다) |
+| 보조 버튼 | 잉크 패널 위 실선 테두리만(`border-white/25`)이라 버튼으로 안 읽혔다 → `bg-white/[0.10]` 면 + 글자 `text-white/90` → `text-white` |
+
+**전수 스캔에서 같은 결함이 도매몰에도 있었다** — `wholesale-catalog/BulkOrderPanel.tsx` 버튼 4개
+(`h-11`·`h-10`). 🧱 서비스 분리 룰 4의 세 줄 보고: **(a) 레일** 도매몰 + 소비자(유어딜) 둘 다(같은 CSS 결함)
+· **(b) 머니 경로** 없음(className 한 토큰) · **(c) 롤백** `sm:flex-1` → `flex-1` 환원.
+
+### 오진할 뻔한 것
+
+바닥 고정 바가 사업자 정보를 22px 가린 것처럼 보여 여백을 늘리려 했는데, **스크롤이 끝까지 안 간 상태**로 잰 값이었다.
+제대로 바닥까지 내려 다시 재니 **87px 여유**였다. 고칠 게 없었다 — 없는 결함을 고치지 않았다.
+
+### 검증
+
+```
+버튼 높이  모바일 23·25px → 52·52px  ·  PC 58·60px 그대로
+tsc 0 · build 0 · vitest 729파일 9,247건 · pre-push 가드 96개
+주입 2건 되돌려-검증 빨간불
+```
+
+### 다음 세션용
+
+🔑 **`flex-col` 안에서 `flex-1` 과 고정 높이를 같이 쓰지 말 것.** 가드가 생겼다
+(`check-flex-col-fixed-height`) — 이 레포의 "PC 에선 멀쩡해서 아무도 못 보는" 부류다.
+
 ## 6. 남은 것 (이번 범위 밖)
 
 - **형제 랜딩도 같은 액자에 갇혀 있다** — `/about`·`/creators` 는 그대로다(대표가 지목한 건 `/partners`).
@@ -331,5 +376,83 @@ tsc 0 · build 0 · vitest 724파일 9,159건 · pre-push 가드 95개
 
 ## 7. 대표 판단 대기
 
-- `/business` 를 `/partners` 로 합칠지, 지울지.
-- 형제 랜딩(`/about`·`/creators`)도 같은 수준으로 PC 를 만들지.
+~~`/business` 를 `/partners` 로 합칠지, 지울지.~~ · ~~형제 랜딩도 같은 수준으로 PC 를 만들지.~~
+→ **둘 다 2026-09-16 대표 답변으로 확정됐다**: *"지워줘. PC를 같은 수준으로 만들어주고."* (§8)
+
+---
+
+## 8. `/business` 삭제 + 형제 랜딩 PC 판 (대표 *"지워줘. PC를 같은 수준으로 만들어주고."*)
+
+### 8-1. `/business` 삭제 — 페이지는 지우고 URL 은 살린다
+
+`/partners` 와 **같은 사람에게 같은 말을 하는 두 번째 랜딩**이었다. 고아였고(네비 한 곳에서만
+링크), 적힌 수수료가 낡아 있었다(옛 5%/4%/3% 등급제 — `fee-resolver` 엔 그런 규칙이 없다).
+
+🔑 **URL 은 301 로 남긴다.** sitemap 에 올라가 있었고 밖에 뿌려진 링크가 있다. 페이지를 지웠다고
+경로까지 404 로 만들면 그 신호를 버리는 것이다.
+
+| 무엇 | 어디 |
+|---|---|
+| 서버 301 | `shared/seo/consumer-redirects.ts` `ALIAS_EXACT` 에 `'/business': '/partners'` |
+| 앱 안 이동 | `App.tsx` 라우트를 `<Navigate to="/partners" replace />` 로 (SPA 내부 이동은 서버를 안 탄다) |
+| 제출 중단 | `sitemap.routes.ts` 정적 목록에서 제거 |
+| 메타 | `shared/seo/consumer-surfaces.ts` 항목 제거(설명이 *"수수료는 팔린 만큼만 5%"* 로 낡아 있었다) |
+| 유입 링크 | `InfluencerLandingPage.tsx:43` → `/partners` |
+| 파일 | `src/pages/BusinessLandingPage.tsx` 삭제(247줄) |
+
+🩸 **삭제가 건드리는 자리는 파일 하나가 아니었다.** 함께 갱신해야 했던 것들:
+`scripts/consumer-hex-baseline.json` · `docs/PAGE_AUDIT.md` ·
+`check-guard-mutations.mjs` 의 주입 하나(그 라우트 줄을 **앵커로 쓰고 있었다** → 갱신 안 하면
+"낡은 지도" 로 빨간불). ⚠️ `check-image-fallback` 은 `git ls-files` 로 목록을 만들어서
+**삭제를 스테이징하기 전까지 ENOENT 로 죽는다** — 가드가 깨진 게 아니라 순서 문제다.
+
+### 8-2. `/about`·`/creators` PC 판
+
+`/partners` 가 안고 있던 문제 셋을 **똑같이** 갖고 있었다: ① 430px 액자(빈 거터를
+`ConsumerFrameRails` 가 앱 설치 QR 로 채웠다) ② 본문 `max-w-xl`(576px) 고정 ③ 사진 0장.
+`/creators` 는 거기 더해 **성과 화면 자리가 "(화면 준비 중)" 플레이스홀더 두 칸**이었다.
+
+⇒ `/partners` 와 같은 규약으로 맞췄다: `HIDE_SIDEBAR_PREFIXES` 등재 · 잉크 헤더 ·
+`ur-content-wide` · PC 타이포 단계 · 섹션마다 다른 레이아웃 계열(분할 / 고정제목+헤어라인 /
+3열 레일 / 가로 타임라인 / 비대칭 / 색면) · 모바일 전용 고정 CTA(`lg:hidden`).
+
+**캡처**는 대표 승인 덱이 쓰는 **같은 파일**을 쓴다(`public/static/partners/`, 새 부품
+`pages/landing/PhoneShot.tsx`). `/creators` 의 플레이스홀더 두 칸은 실제 화면 셋으로 바꾸고
+캡션을 덱 문구 그대로 달았다(`예시 데이터` / `라이브 화면`).
+⚠️ **없앤 것**: *"실시간 적립 알림"* 칸. 그 장치는 아직 없다 — 없는 기능을 그림으로 약속하지 않는다.
+
+### 8-3. 1440px 실측에서 두 번 고친 것 (눈으로만 잡히는 부류)
+
+| 증상 | 원인 | 처방 |
+|---|---|---|
+| `/about` h1 이 `…매장에서 QR / 로` 로 끊겨 **낱말 하나가 홀로** | 60px 에서 어느 자리로 끊어도 마지막 낱말이 남는다 | 한 단 내림(`lg:46 / xl:52`) + 3줄 배치 |
+| `/creators` 히어로 폰이 **섹션 밖으로 잘림** | `lg:w-full` 이 0.62fr 열에서 520px 가 됐다 | `lg:w-[19rem] xl:w-[21rem]` 로 상한 |
+| 폰 캡션이 잉크 색면 위에서 **2.5:1** | `text-gray-500` 고정 | 색을 안 박고 `opacity-60` 으로(부모 색 상속) |
+
+🧭 **교훈**: 시험에 `lg:text-[52px]` 를 **숫자로 박았다가** 바로 그 숫자를 내려야 했다.
+크기를 못 박으면 문장이 바뀔 때마다 시험이 디자인을 가로막는다 → **단계가 있는가**(lg ≥ 44 ·
+xl ≥ lg · lg > base)로 바꿨다.
+
+### 8-4. 가드
+
+- `src/tests/unit/landing-pc-2026-09-16.test.ts` 22건 — 액자 · 폭 · 타이포 단계 · 고정 바 ·
+  캡처 실재 · 플레이스홀더 금지 · 다크 목록 · `/business` 삭제 5종.
+- `scripts/mutations/landing-pc.mjs` 8건 **전부 되돌려-검증 빨간불 확인**.
+- `check-dark-contrast` 경로 목록에 `/about`·`/creators` 모바일·PC 추가(옛 `/about` 한 줄은 흡수).
+- ⚠️ 못 보는 것: **픽셀**. 여백 리듬·레이아웃 계열 반복은 렌더해서 눈으로 봐야 한다.
+
+### 8-5. 검증
+
+```
+tsc 0 · build 0 · vitest 737파일 9,347건 pass · pre-push 가드 97개
+dark-contrast 53경로 1,957텍스트 0건 · 주입 8건 빨간불
+1440 렌더: about 액자 false / main img 2 · creators 액자 false / main img 4
+```
+
+### 8-6. 다음 세션 첫 액션
+
+1. **라이브 판정(E4)** — 배포 뒤 `urdeal.kr/about`·`urdeal.kr/creators` 를 **1440px 로** 열어
+   ⓐ 좌우에 소비자 앱 거터가 없는지 ⓑ 제목이 한 낱말만 남기고 끊기지 않는지
+   ⓒ `/creators` 폰 석 장이 섹션 안에 들어오는지.
+2. `curl -sI https://urdeal.kr/business` → **301, Location `/partners`**.
+3. Notion 개발 로그 1행(서비스: 유어딜 / 유형: UI / 머니 경로 false).
