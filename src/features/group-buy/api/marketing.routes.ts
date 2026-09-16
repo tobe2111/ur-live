@@ -14,7 +14,6 @@ import { ensureInfluencerProfileTable, parseChannels, maxFollowers, parseJsonLis
 import { intParam } from '@/shared/pagination'
 import { registerDiscoveryRoutes } from './marketing/discovery'
 import { DEAL_PCT_MAX } from './commission-rates'
-import { resolvePayoutUseGate } from '../../../worker/utils/payout-use-gate'
 
 // 🛡️ 2026-05-20: Hono `c.get('user'/'seller')` 가 ContextVariableMap 미선언으로 'never' 가 됨.
 //   각 미들웨어 (requireAuth/requireSeller) 가 ctx 에 박는 형태를 Variables 로 명시.
@@ -216,24 +215,16 @@ influencerApp.get('/me', async (c) => {
   // 💡 2026-07-11 (flip 체크리스트 D1 선반영 — additive): 재원 스위치를 함께 반환해
   //   클라 프레이밍을 게이트('platform' 기본 = 현행 문구 불변, 'owner' = 매장 promo 재원 문구).
   //   fail-soft — 이 read 가 실패해도 정산 응답을 절대 막지 않음 (agency-delegation.routes.ts 패턴).
-  const fund = await DB.prepare(
-    `SELECT value FROM platform_settings WHERE key = 'promo_funding_source'`
-  ).first<{ value: string }>().catch(() => null)
-
-  // 🔒 2026-09-16 사용 확인 게이트 — **화면이 보류 이유를 틀리게 말하지 않도록** 함께 내려준다.
-  //   이 화면은 pending 을 "환불기간 (대기)" 라고 적어 왔는데, 게이트가 켜지면 그 말이
-  //   **거짓**이 된다 — 환불창은 진작 지났는데 이용권이 안 쓰여서 묶여 있는 것이기 때문이다.
-  //   이유를 모르면 소개자는 고장으로 읽고, 우리는 문의를 받는다. 위 `funding_source` 와
-  //   같은 방식(스위치를 내려 클라가 문구를 고른다) · 같은 fail-soft.
-  const useGate = await resolvePayoutUseGate(DB).catch(() => ({ enabled: false }))
-
+  //   🔒 2026-09-16 사용 확인 게이트도 **같은 이유로** 함께 — 안 내려주면 보류 라벨이 "환불기간 (대기)" 로 굳어 게이트가 켜진 뒤엔 거짓말이 된다(`payout-use-gate.ts`). 같은 테이블이라 한 번에 읽는다(2왕복 → 1왕복).
+  const st = await DB.prepare(`SELECT key, value FROM platform_settings WHERE key IN ('promo_funding_source','payout_requires_voucher_use')`).all<{ key: string; value: string }>().catch(() => ({ results: [] as { key: string; value: string }[] }))
+  const setting = (k: string) => (st.results || []).find((r) => r.key === k)?.value
   return c.json({
     success: true,
     data: {
       balance: balance || { pending_amount: 0, available_amount: 0, total_paid_out: 0 },
       recent: recent.results || [],
-      funding_source: fund?.value || 'platform',
-      requires_voucher_use: !!useGate.enabled,
+      funding_source: setting('promo_funding_source') || 'platform',
+      requires_voucher_use: setting('payout_requires_voucher_use') === 'true',
     },
   })
 })
