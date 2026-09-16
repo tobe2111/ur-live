@@ -399,7 +399,7 @@ export default function StayDetailPage() {
             <TicketPercent className="w-5 h-5 shrink-0 text-brand-text " strokeWidth={1.8} aria-hidden />
             <div className="flex-1 min-w-0">
               <p className="text-xs font-bold text-brand-text ">추천 할인 {stay.influencer_discount_pct}% 적용</p>
-              <p className="text-[10px] text-brand-text/80 mt-0.5">결제 시 자동 적용됩니다</p>
+              <p className="text-[10px] text-brand-text opacity-80 mt-0.5">결제 시 자동 적용됩니다</p>
             </div>
           </div>
         )}

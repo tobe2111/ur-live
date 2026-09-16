@@ -75,7 +75,7 @@ export default function ProductPreviewRail({ formData, categoryLabel }: Props) {
           <Lightbulb className="h-4 w-4" />
           {t('seller.products.tipsTitle', { defaultValue: '등록 팁' })}
         </div>
-        <ul className="space-y-1.5 text-xs text-tone-warn/80">
+        <ul className="space-y-1.5 text-xs text-tone-warn opacity-80">
           <li>• {t('seller.products.tip1', { defaultValue: '이미지는 정사각형(1:1)이 가장 예쁘게 나와요' })}</li>
           <li>• {t('seller.products.tip2', { defaultValue: '상품명 앞쪽에 핵심 키워드를 넣으세요' })}</li>
           <li>• {t('seller.products.tip3', { defaultValue: '등록 후에도 언제든 수정할 수 있어요' })}</li>

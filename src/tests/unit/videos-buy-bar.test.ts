@@ -25,6 +25,7 @@
 import { describe, it, expect } from 'vitest'
 import { readCode } from '../helpers/source-text'
 import { priceDisplay } from '@/shared/price-display'
+import defaultTheme from 'tailwindcss/defaultTheme'
 
 const V = readCode('src/pages/VideosPage.tsx')
 const CARD = readCode('src/pages/main-home/GroupBuyFeedCard.tsx')
@@ -129,5 +130,45 @@ describe('살 게 없으면 구매 바를 안 그린다', () => {
   it('매장명이 없으면 빈 줄을 남기지 않는다', () => {
     expect(V).not.toMatch(/\{cur\.store_name \|\| ''\}/)
     expect(V).toMatch(/\{cur\.store_name && \(/)
+  })
+})
+
+/**
+ * 🩸 2026-09-16 대표 신고 *"유어쇼츠 왜이래? 밑에 이용권 카드? 섹션도 지금 엉망이고"*
+ *
+ * **구매 바에 배경이 없었다.** 첫 판(#1385)부터 `bg-white/97` 이었는데 Tailwind 불투명도
+ * 스케일에 97 이 없어 그 클래스는 **생성조차 되지 않았다** — 빌드도 타입도 이 파일의
+ * 기존 검사도 전부 초록이었고, 화면에서만 흰 카드가 사라졌다. 브라우저 실측:
+ * `getComputedStyle(bar).backgroundColor === 'rgba(0, 0, 0, 0)'`.
+ * 그래서 상품명·가격이 영상 위에 맨살로 떠 유튜브 Shorts 워터마크와 겹쳤다.
+ *
+ * 🔑 위 검사들이 다 통과한 이유가 중요하다 — 전부 **글자와 배치**만 봤다.
+ *    "그 글자가 읽히는 바닥이 있는가" 는 아무도 안 봤다.
+ *
+ * ⚠️ 여기서는 **이 파일 한 곳**만 본다. 같은 클래스의 전수 차단은 레포 전체를 훑는
+ *    `scripts/check-tailwind-opacity-scale.mjs` 의 몫이다(스케일 밖 값 12건을 같이 잡았다).
+ */
+describe('구매 바는 배경이 있는 카드다 (2026-09-16 실사고)', () => {
+  const bar = V.slice(V.indexOf('inset-x-2.5 bottom-2.5'), V.indexOf('inset-x-2.5 bottom-2.5') + 220)
+
+  it('흰 배경 클래스가 있다', () => {
+    expect(bar, '구매 바에 배경 클래스가 없다 — 글자가 영상 위에 맨살로 뜬다').toMatch(/\bbg-white(\/[\w.[\]]+)?/)
+  })
+
+  it('🔒 불투명도 값이 **실제 스케일 안**이다 — 밖이면 클래스가 안 만들어진다', () => {
+    const m = bar.match(/\bbg-white\/([\w.[\]]+)/)
+    expect(m, 'bg-white 에 불투명도 수식어가 없으면 이 검사는 무의미해진다(있어도 되고 없어도 된다)').toBeTruthy()
+    const v = m![1]
+    // 대괄호 임의값(`/[.97]`)은 Tailwind 가 그대로 만들어 준다 — 통과.
+    if (!v.startsWith('[')) {
+      const scale = Object.keys(defaultTheme.opacity ?? {})
+      expect(scale.length, '스케일을 못 읽었다 — 이 검사가 무의미해진다').toBeGreaterThan(5)
+      expect(scale, `bg-white/${v} 는 스케일 밖이라 클래스가 생성되지 않는다`).toContain(v)
+    }
+  })
+
+  it('🔒 거의 불투명하다 — 영상 위에서 검은 글자가 읽혀야 한다', () => {
+    const m = bar.match(/\bbg-white\/(\d+)\b/)
+    if (m) expect(Number(m[1]), '너무 투명하면 영상이 비쳐 상품명·가격이 안 읽힌다').toBeGreaterThanOrEqual(90)
   })
 })

@@ -33,7 +33,7 @@ export default function BusinessSegments({ segments, onPick }: {
         : 'border-rule bg-white hover:border-emerald-400'}`}>
       <div className={`text-xs font-semibold ${tone === 'indigo' ? 'text-gray-700' : 'text-tone-ok'}`}>{title}</div>
       <div className={`mt-1 text-3xl font-bold tabular-nums ${tone === 'indigo' ? 'text-gray-900' : 'text-tone-ok'}`}>{formatNumber(n)}</div>
-      <div className={`mt-1 text-[11px] ${tone === 'indigo' ? 'text-gray-700/80' : 'text-tone-ok/80'}`}>{hint}</div>
+      <div className={`mt-1 text-[11px] ${tone === 'indigo' ? 'text-gray-700/80' : 'text-tone-ok opacity-80'}`}>{hint}</div>
     </button>
   )
   return (

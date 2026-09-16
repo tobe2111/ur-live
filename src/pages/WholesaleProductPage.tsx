@@ -391,7 +391,7 @@ export default function WholesaleProductPage() {
               className="mt-3 w-full h-12 rounded-xl text-[14px] font-bold flex items-center justify-center gap-2"
               style={{ background: WT.fill, color: WT.ink, border: '1px solid ' + WT.line }}
             >
-              <MessageCircle className="w-4.5 h-4.5" style={{ color: WT.brand }} />
+              <MessageCircle className="w-[18px] h-[18px]" style={{ color: WT.brand }} />
               제조사에 문의
             </button>
           )}

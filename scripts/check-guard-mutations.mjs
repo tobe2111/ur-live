@@ -2146,8 +2146,10 @@ const MUTATIONS = [
   {
     name: '유어샵 핀 딜 매칭이 무음으로 항상 실패한다',
     file: 'src/worker/routes/curator.routes.ts',
-    find: '                p.seller_id,\n',
-    replace: '',
+    // 2026-09-16: 파일 크기 래칫 때문에 `p.seller_id` 줄에 deal_only 를 접어 넣었다.
+    //   의도는 그대로 — SELECT 에서 **seller_id 만** 뺀다(deal_only 는 남긴다).
+    find: '                p.seller_id, COALESCE(p.deal_only, 0) AS deal_only,',
+    replace: '                COALESCE(p.deal_only, 0) AS deal_only,',
     test: 'src/tests/unit/urshop-earn-ladder.test.ts',
     why:
       '핀↔딜 매칭 키가 SELECT 목록에서 빠지면 `deal_pct` 가 전부 null 이 되어 "내 계약 매장" ' +

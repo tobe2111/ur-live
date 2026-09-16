@@ -116,7 +116,7 @@ export default function AboutServicePage() {
             {STEPS.map(([t, d], i) => (
               <li key={t} className="flex gap-3">
                 <span aria-hidden className="shrink-0 mt-[3px] w-5 text-[11px] font-extrabold tabular-nums text-gray-400 dark:text-gray-500">{i + 1}</span>
-                <div className="min-w-0 border-b border-[#16181C]/8 dark:border-[#2C2F35] pb-4 flex-1 last:border-0">
+                <div className="min-w-0 border-b border-[#16181C]/10 dark:border-[#2C2F35] pb-4 flex-1 last:border-0">
                   <p className="text-[14.5px] font-extrabold text-[#16181C] dark:text-[#F5F3F1]">{t}</p>
                   <p className="text-[12.5px] text-gray-500 dark:text-gray-400 leading-relaxed mt-1">{d}</p>
                 </div>
