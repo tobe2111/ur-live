@@ -266,6 +266,46 @@ per-user chrome 은 풀렸지만, `/vouchers`·홈의 첫 화면은 곧 **상품
 검증: tsc 0 · build 0 · **vitest 718파일 9,017건 pass** · pre-push 게이트 95개 통과 ·
 `critical-chunks` 리베이스라인(`_measured` 에 사유).
 
+## 배포 후 판정 (E4)
+
+머지 `29978210d`(#1486) · `7b5f43f65`(SNS 글리프) 배포 후 라이브 실측.
+
+| | 판정 | 값 |
+|---|---|---|
+| 교환권 상단 예약 | ✅ | 첫 상품 카드 y **1종(340)** · 칩 56 · 브랜드 117 (2회 동일) |
+| 유어샵 SNS 글리프 | ✅ | 36×36 · `background` 투명 · `background-image: none` · 잉크 `rgb(110,107,104)` |
+
+재현:
+```
+node <scratch>/v4.mjs     # /vouchers 첫 카드 y 가 한 종류인가
+node <scratch>/verdict-sns.mjs   # SNS 링크에 색 면이 남아 있는가
+```
+⚠️ 이 컨테이너에서 라이브를 브라우저로 열려면 `--ignore-certificate-errors` +
+`ignoreHTTPSErrors: true` 가 필요하다(프록시 CA). 없으면 `ERR_CERT_AUTHORITY_INVALID`.
+
+### 🩸 판정 하네스가 두 번 속였다 — 값이 아니라 *무엇을 재고 있는지*
+
+1. 앵커가 `main img, [class*="grid"] img, img` 라 **단계마다 다른 사진**을 집었다.
+2. 고쳐서 "사진 가진 첫 `<button>`" 으로 잡았더니 **브랜드 칩도 `<button>` 안에 `<img>`** 다.
+   로고가 늦게 뜨는 순간 앵커가 상품 카드(340) → 브랜드 칩(200)으로 갈아타
+   **140px 밀린 것처럼** 보였다. 두 번 다 같은 값이라 "결정론적이니 진짜"로 읽혔다.
+
+⇒ 브랜드 스트립 안쪽을 명시적으로 제외한 뒤에야 1종이 나왔다.
+**재현되는 숫자라고 해서 그 숫자가 내가 재려던 것은 아니다.**
+
+### ⚠️ main 의 `Cloudflare Pages` 체크가 빨간불인데 실제 배포는 성공이다
+
+머지 커밋 `29978210d` 에서 GitHub 체크 `Cloudflare Pages: failure` 가 떴는데,
+**Cloudflare 자신의 기록은 전 단계 success** 였다(1차 출처로 확인):
+
+```
+deployment 0d5e7c38-a14f-4c17-8a8e-0bd2fd36f5ca  env=production
+  queued success · initialize success · clone_repo success · build success · deploy success
+```
+우리 파이프라인의 `deploy-wholesale` 잡도 success. 같은 코드가 PR head(`7b5f43f6`)에서는
+그 체크도 초록이었다. ⇒ **CF git-integration 체크런의 보고 아티팩트**로 판단했다.
+다음 세션이 이 빨간불을 보고 오진하지 않도록 남긴다 — 판정은 CF API 의 `stages` 로 할 것.
+
 ## 이번에 틀렸던 판단
 
 1. **"규칙을 지우면 Rollup 이 알아서 나눈다"** — 아니었다. 256개를 통째로 `app-shell` 에 넣어
