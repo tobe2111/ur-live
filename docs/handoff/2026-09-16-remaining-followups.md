@@ -36,10 +36,17 @@
 
 ## 🩸 이번에 시간 날린 함정 둘 (다음 세션이 또 밟는다)
 
-### 1. PR 을 열어도 Verify 가 안 돌아간다
+### 1. PR 을 열었는데 Verify 가 안 돌았다 (원인 미규명)
 
-`verify.yml` 은 `pull_request`(기본 types: opened·synchronize·reopened)인데, **이 세션이 만든 PR 의 `opened`
-이벤트는 워크플로를 만들지 않는다**(재귀 방지). 같은 시각 다른 PR 들의 Verify 는 정상이라 큐 문제가 아니었다.
+`verify.yml` 은 `pull_request`(기본 types: opened·synchronize·reopened)인데, PR #1473 을 연 뒤
+**20분 동안 Verify run 이 하나도 안 만들어졌다.** 같은 시각 다른 PR 들의 Verify 는 정상이라 큐 문제가 아니었다.
+
+> 🩸 **나는 이걸 "integration 토큰으로 만든 PR 의 `opened` 는 워크플로를 안 만든다(재귀 방지)" 라고 단정했다가
+> 같은 날 뒤집혔다.** 똑같은 흐름(브랜치 푸시 → PR 생성)으로 만든 **#1478 에서는 Verify 가 정상 발동**했다.
+> ⇒ **원인은 모른다.** GitHub 쪽 일시 현상일 가능성이 크다(그 시간대에 CCR/GraphQL 도 40분간 죽어 있었다).
+> 한 번 보고 규칙을 만들지 말 것 — 이 문서에 오진을 적으면 다음 세션이 그걸 믿고 엉뚱한 데를 판다.
+
+**증상 인식법과 처방은 그대로 유효하다:**
 
 - 증상: 체크런이 `Cloudflare Pages` **하나뿐**이다 → “느린 게 아니라 안 도는 것”
 - `workflow_dispatch` 는 **403**(권한 없음). 빈 커밋·close/reopen 은 금지.
