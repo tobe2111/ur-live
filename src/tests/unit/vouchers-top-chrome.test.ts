@@ -24,9 +24,13 @@ describe('교환권 탭 상단', () => {
     //   `pages/vouchers/DealBalanceCard.tsx` 부품으로 빠졌다(대표 확정 안 A3 — 파일크기 래칫도 겸함).
     //   가드를 푸는 대신 재조준한다. 지키는 것은 여전히 하나: **처음 온 사람에게 "당신은 0" 이
     //   첫 화면이 되면 안 된다**(비로그인도 dealBalance 가 0 이다).
+    //   🧮 2026-09-16: 조건이 `if (!balance && !awaiting)` 로 넓어졌다 — 로그인한 사람은 숫자가
+    //   오기 전에도 **같은 높이의** 카드를 두고 기다린다(밀림 제거). 불변식은 그대로다:
+    //   비로그인(=`loggedIn` 거짓)은 여전히 한 줄 바이고, 거기에 42px 숫자가 없다.
     const CARD = readFileSync(resolve(__dirname, '../../pages/vouchers/DealBalanceCard.tsx'), 'utf-8')
-    const zeroAt = CARD.indexOf('if (!balance)')
+    const zeroAt = CARD.indexOf('if (!balance && !awaiting)')
     expect(zeroAt).toBeGreaterThan(-1)
+    expect(CARD).toContain('const awaiting = balance == null && loggedIn')
     const bigAt = CARD.indexOf('text-[42px]')          // 큰 카드의 표식 = 확정된 숫자 크기
     expect(bigAt).toBeGreaterThan(zeroAt)              // 큰 카드는 0 분기 **뒤**에만 있다
     // ⚠️ `toMatch(/<DealBalanceCard balance=\{dealBalance\}/)` 로는 부족하다 — **PC 호출부에도 매치**돼

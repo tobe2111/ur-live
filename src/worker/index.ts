@@ -1029,7 +1029,7 @@ app.use('*', async (c, next) => {
       //   당겨 놨는데 React 가 깨어날 때까지(실측 1.2초) 사진이 캐시에 앉아 기다렸다 → 서버가 [빵부스러기 + 히어로]
       //   까지 그리고 그 아래에만 로더를 둔다(마운트 때 사진은 제자리 — box·URL 실측 일치). `/vouchers/:id` 는 같은
       //   슬롯이라도 다른 페이지라 pathname 으로 가른다. 사유·경계·폴백(''→로더): `utils/detail-ssr-body.ts`.
-      const firstScreen = buildDetailFirstScreen(ssrPayload, urdealLoaderHtml);
+      const firstScreen = buildDetailFirstScreen(ssrPayload, urdealLoaderHtml, url.search);
       rb = rb.on('#root', { element(el) { el.setInnerContent(firstScreen || urdealLoaderHtml, { html: true }); } });
     } else {
       // 🖼️ 2026-07-07 [UNLOCK_LOADING] (대표 신고 "로딩 중간에 이상한 페이지들" — 전수조사 + "홈도 이상적으로"):
