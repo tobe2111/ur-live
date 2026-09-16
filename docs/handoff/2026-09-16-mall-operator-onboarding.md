@@ -66,6 +66,21 @@ CLAUDE.md 가 `check-query-iserror` 로 막는 **바로 그 클래스**인데, �
 `indexOf` 는 없으면 **−1** 이라 분기를 통째로 지워도 `-1 < N` 이 참이다. 주입 러너가 즉시 빨간불을 냈다.
 ⇒ **존재부터 본다**(`toBeGreaterThan(0)`). 🔑 손으로 확인했으면 못 잡았다.
 
+### ⑥ 커밋이 파일크기 래칫에 걸렸다 — 추출로 갚았다
+`wholesale-malls-admin.routes.ts` 가 **506 → 625줄**(내 +119). CLAUDE.md 체크리스트 ⑨ 대로
+`[SKIP_SIZE]` 로 넘기지 않고 그 시점에 추출했다:
+- `wholesale-mall-applications.routes.ts`(139줄) — 신청 목록/승인/반려. 부모는 **마운트 한 줄**
+- `wholesale-malls-admin-shared.ts` — `requireSuperAdmin`·`rejectReservedSlug`.
+  **복사하지 않는다**: 슬러그 판정이 갈리면 *신청 경유로만 통과하는 예약어*가 생기고,
+  그게 예약어면 소비자 라우트가 통째로 죽는다.
+- 부모 **483줄**(main 506보다 작다).
+
+🩸 **그리고 추출이 테스트를 낡은 지도로 만들었다.** 앵커가 `app.post('/applications/:id/approve'` 였는데
+서브라우터는 `/:id/approve` 다 — `indexOf` 가 −1, `slice(-1)` 은 빈 문자열이 아니라 **마지막 한 글자**라
+단언들이 "검사는 하는데 아무것도 못 보는" 상태가 된다. 다행히 다섯 개가 빨간불을 냈지만,
+`toBeGreaterThan(0)` 을 안 쓴 단언이었다면 **조용히 통과**했다. ⇒ 앵커를 `approveHandler()` 하나로 모으고
+**존재부터 단언**한다. (⑤와 같은 −1 함정이 하루에 두 번 나왔다.)
+
 ## 4. 주입 매니페스트 (원 PR 은 **한 건도 안 남겼다**)
 
 세 커밋 모두 가드는 썼는데 주입이 0이다 — 그 가드들이 실제로 실패할 수 있는지 아무도 확인한 적이 없다.
@@ -97,5 +112,5 @@ CLAUDE.md 가 `check-query-iserror` 로 막는 **바로 그 클래스**인데, �
 
 ## 7. 검증
 
-`tsc 0` · `build 0` · `pre-push 게이트 가드 95개 통과` · 관련 유닛 102건 pass ·
+`tsc 0` · `build 0` · `pre-push 게이트 가드 95개 통과` · 관련 유닛 108건 pass ·
 주입 `[온보딩]` 9 + `[그림자가드]` 1 + `[몰결제]` 7 전부 빨간불 확인.

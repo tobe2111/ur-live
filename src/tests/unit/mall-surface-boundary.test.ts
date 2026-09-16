@@ -517,6 +517,19 @@ describe('가게 개설 신청 — 신청은 아무것도 만들지 않는다', 
   const readF = (p: string) => readFileSync(resolve(process.cwd(), p), 'utf8')
   const sellerRoutes = readF('src/features/seller/api/seller-gb.routes.ts')
   const adminRoutes = readF('src/features/supply/api/wholesale-malls-admin.routes.ts')
+  // 승인/반려 본문은 2026-09-16 에 서브라우터로 분리됐다(부모가 625줄 → 파일크기 래칫).
+  const appRoutes = readF('src/features/supply/api/wholesale-mall-applications.routes.ts')
+
+  /**
+   * 승인 핸들러 본문. **앵커 존재부터 단언한다** — `indexOf` 는 없으면 -1 이고 `slice(-1)` 은
+   * 빈 문자열이 아니라 **마지막 한 글자**라, 앵커가 낡으면 아래 단언들이 "검사는 하는데
+   * 아무것도 못 보는" 상태가 된다(2026-09-16 서브라우터 추출에서 실제로 그랬다).
+   */
+  const approveHandler = () => {
+    const at = appRoutes.indexOf("app.post('/:id/approve'")
+    expect(at, '승인 라우트 앵커가 낡았다 — 아래 단언들이 한 글자만 보게 된다').toBeGreaterThan(0)
+    return appRoutes.slice(at)
+  }
 
   it('신청 경로는 몰을 만들지 않는다 — INSERT 대상은 신청 테이블뿐', () => {
     const apply = sellerRoutes.slice(sellerRoutes.indexOf("app.post('/mall/apply'"))
@@ -532,7 +545,7 @@ describe('가게 개설 신청 — 신청은 아무것도 만들지 않는다', 
   })
 
   it('승인은 **선점 먼저** — 동시 승인이 몰을 둘 만들지 않는다', () => {
-    const ap = adminRoutes.slice(adminRoutes.indexOf("app.post('/applications/:id/approve'"))
+    const ap = approveHandler()
     const claim = ap.indexOf("SET status = 'approved'")
     const create = ap.indexOf('INSERT INTO wholesale_malls')
     expect(claim).toBeGreaterThan(0)
@@ -542,7 +555,7 @@ describe('가게 개설 신청 — 신청은 아무것도 만들지 않는다', 
   })
 
   it('승인 실패하면 pending 으로 되돌린다 — 신청이 대기열에서 사라지지 않게', () => {
-    const ap = adminRoutes.slice(adminRoutes.indexOf("app.post('/applications/:id/approve'"))
+    const ap = approveHandler()
     expect(/SET status = 'pending', reviewed_at = NULL/.test(ap)).toBe(true)
   })
 
@@ -557,7 +570,7 @@ describe('가게 개설 신청 — 신청은 아무것도 만들지 않는다', 
    *   문장 존재만 본다). 바인딩이 틀려 0행 삭제여도 여기서는 통과한다.
    */
   it('🔴 실패 시 **만든 몰까지** 지운다 — 안 그러면 그 슬러그는 영원히 재승인 불가', () => {
-    const ap = adminRoutes.slice(adminRoutes.indexOf("app.post('/applications/:id/approve'"))
+    const ap = approveHandler()
     const catchAt = ap.indexOf('} catch (e) {')
     expect(catchAt).toBeGreaterThan(0)
     const rollback = ap.slice(catchAt, ap.indexOf('throw e') + 8)
@@ -567,7 +580,7 @@ describe('가게 개설 신청 — 신청은 아무것도 만들지 않는다', 
   })
 
   it('🔴 셀러 연결은 **본진에 있을 때만** — 묵은 신청이 남의 몰 연결을 덮어쓰지 않는다', () => {
-    const ap = adminRoutes.slice(adminRoutes.indexOf("app.post('/applications/:id/approve'"))
+    const ap = approveHandler()
     const link = ap.slice(ap.indexOf('UPDATE sellers SET mall_id'))
     // 가드 없는 `WHERE id = ?` 단독이면 어드민이 수동 연결해 둔 몰을 덮어쓴다.
     expect(/WHERE id = \? AND COALESCE\(mall_id, \?\) = \?/.test(link)).toBe(true)
@@ -576,7 +589,7 @@ describe('가게 개설 신청 — 신청은 아무것도 만들지 않는다', 
   })
 
   it('🔴 상품 이관 실패를 삼키지 않는다 — 조용히 빈 가게가 열리면 안 된다', () => {
-    const ap = adminRoutes.slice(adminRoutes.indexOf("app.post('/applications/:id/approve'"))
+    const ap = approveHandler()
     const migrate = ap.slice(ap.indexOf('UPDATE products SET mall_id'))
     const stmtEnd = migrate.indexOf('.run()') + 6
     // `.run().catch(() => null)` 이면 실패가 성공처럼 보인다 — ⑤가 없애려던 바로 그 혼란이다.
@@ -584,23 +597,25 @@ describe('가게 개설 신청 — 신청은 아무것도 만들지 않는다', 
   })
 
   it('승인이 만드는 몰은 소비자 경로로 열린다(consumer_path=1)', () => {
-    const ap = adminRoutes.slice(adminRoutes.indexOf("app.post('/applications/:id/approve'"))
+    const ap = approveHandler()
     expect(/INSERT INTO wholesale_malls[\s\S]{0,200}consumer_path/.test(ap)).toBe(true)
   })
 
-  it('🔴 정적 `/applications*` 가 `/:id` 보다 앞에 등록된다', () => {
+  it('🔴 신청 서브라우터가 `/:id` 보다 **앞에** 마운트된다', () => {
+    // 본문은 2026-09-16 에 서브라우터로 분리됐고 부모는 **마운트만** 한다.
+    // 마운트가 `/:id` 뒤로 가면 `/applications` 요청이 id='applications' 로 삼켜진다
+    // (같은 날 seller-gb 에서 `/support-contact` 가 그렇게 죽어 있었다).
     const param = adminRoutes.indexOf("app.patch('/:id'")
-    expect(param).toBeGreaterThan(0)
-    for (const s of ["app.get('/applications'", "app.post('/applications/:id/approve'", "app.post('/applications/:id/reject'"]) {
-      expect(adminRoutes.indexOf(s)).toBeGreaterThan(0)
-      expect(adminRoutes.indexOf(s)).toBeLessThan(param)
-    }
+    expect(param, '부모의 `/:id` 라우트가 사라졌다').toBeGreaterThan(0)
+    const mount = adminRoutes.indexOf("app.route('/applications'")
+    expect(mount, '신청 서브라우터 마운트가 없다').toBeGreaterThan(0)
+    expect(mount).toBeLessThan(param)
   })
 
   it('승인/반려는 슈퍼관리자만', () => {
-    for (const s of ["app.post('/applications/:id/approve'", "app.post('/applications/:id/reject'"]) {
-      const i = adminRoutes.indexOf(s)
-      expect(adminRoutes.slice(i, i + 200)).toMatch(/requireSuperAdmin\(\)/)
+    for (const s of ["app.post('/:id/approve'", "app.post('/:id/reject'"]) {
+      const i = appRoutes.indexOf(s)
+      expect(appRoutes.slice(i, i + 200)).toMatch(/requireSuperAdmin\(\)/)
     }
   })
 

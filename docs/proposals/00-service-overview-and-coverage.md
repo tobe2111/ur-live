@@ -302,12 +302,12 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 368 | 1127 |
+| 전체 | 368 | 1125 |
 | 도메인 버킷 (5개 소개서) | 166 | 462 |
-| 공통/인프라 (의도적 제외) | 166 | 480 |
-| **미커버 (점검 필요)** | **36** | **185** |
+| 공통/인프라 (의도적 제외) | 166 | 477 |
+| **미커버 (점검 필요)** | **36** | **186** |
 
-⚠️ **미커버 221건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 222건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -352,6 +352,7 @@
 - `PATCH /:id` (`src/features/supply/api/wholesale-board.routes.ts`)
 - `POST /:id{[0-9]+}/view` (`src/features/products/api/product-view.routes.ts`)
 - `PATCH /:id/amount` (`src/features/returns/api/return-amount.routes.ts`)
+- `POST /:id/approve` (`src/features/supply/api/wholesale-mall-applications.routes.ts`)
 - `POST /:id/confirm` (`src/features/supply/api/wholesale-deposit.routes.ts`)
 - `POST /:id/reject` (`src/features/supply/api/wholesale-deposit.routes.ts`)
 - `POST /:id/respond` (`src/features/seller/api/seller-transfer-respond.routes.ts`)
@@ -1732,7 +1733,7 @@
 
 
 
-> 마지막 생성: 2026-09-16T09:13:10.360Z
+> 마지막 생성: 2026-09-16T09:23:42.480Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

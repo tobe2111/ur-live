@@ -15,6 +15,8 @@
 const BOUNDARY = 'src/tests/unit/mall-surface-boundary.test.ts'
 const SELLER_GB = 'src/features/seller/api/seller-gb.routes.ts'
 const ADMIN = 'src/features/supply/api/wholesale-malls-admin.routes.ts'
+// 승인/반려 본문은 2026-09-16 에 서브라우터로 분리됐다(부모가 625줄 → 파일크기 래칫).
+const APPROVE = 'src/features/supply/api/wholesale-mall-applications.routes.ts'
 const MYMALL = 'src/components/seller/MyMallAddress.tsx'
 
 export default [
@@ -36,7 +38,7 @@ export default [
   },
   {
     name: '[온보딩] 승인 CAS 를 몰 생성 뒤로 (동시 승인이 몰을 둘 만듦)',
-    file: ADMIN,
+    file: APPROVE,
     find: "      \"UPDATE mall_applications SET status = 'approved', reviewed_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'pending'\",",
     replace: "      \"UPDATE mall_applications SET reviewed_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'pending'\",",
     test: BOUNDARY,
@@ -44,7 +46,7 @@ export default [
   },
   {
     name: '[온보딩] 실패 롤백에서 몰 삭제를 빼먹음 (그 슬러그 영원히 409)',
-    file: ADMIN,
+    file: APPROVE,
     find: "        await DB.prepare('DELETE FROM wholesale_malls WHERE id = ? AND slug = ?')",
     replace: "        await DB.prepare('SELECT 1 FROM wholesale_malls WHERE id = ? AND slug = ?')",
     test: BOUNDARY,
@@ -52,7 +54,7 @@ export default [
   },
   {
     name: '[온보딩] 셀러 연결에서 본진 조건 제거 (남의 몰 연결을 덮어씀)',
-    file: ADMIN,
+    file: APPROVE,
     find: "        'UPDATE sellers SET mall_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND COALESCE(mall_id, ?) = ?',",
     replace: "        'UPDATE sellers SET mall_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND ? = ? -- COALESCE(mall_id',",
     test: BOUNDARY,
@@ -60,7 +62,7 @@ export default [
   },
   {
     name: '[온보딩] 상품 이관 실패를 삼킴 (조용히 빈 가게가 열림)',
-    file: ADMIN,
+    file: APPROVE,
     find: "      ).bind(createdMallId, row.seller_id, DEFAULT_MALL_ID, DEFAULT_MALL_ID).run()\n      movedProducts = true",
     replace: "      ).bind(createdMallId, row.seller_id, DEFAULT_MALL_ID, DEFAULT_MALL_ID).run()\n        .catch(() => null)\n      movedProducts = true",
     test: BOUNDARY,
@@ -69,8 +71,8 @@ export default [
   {
     name: '[온보딩] 어드민 정적 `/applications` 를 `/:id` 뒤로',
     file: ADMIN,
-    find: "app.get('/applications', requireSuperAdmin(), async (c) => {",
-    replace: "app.get('/zzz-applications', requireSuperAdmin(), async (c) => {",
+    find: "app.route('/applications', mallApplicationRoutes)",
+    replace: "app.route('/zzz-applications', mallApplicationRoutes)",
     test: BOUNDARY,
     why: '순서 규칙이 깨졌는지는 경로 문자열 비교로 못 잡는다(라우트 중복 가드가 통과한다). 같은 날 seller-gb 에서 실제로 `/support-contact` 가 `/:id` 에 삼켜졌다.',
   },
