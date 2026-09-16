@@ -14,8 +14,13 @@
  *      수익 사례)은 표시광고 위험이거나 코드가 그렇게 동작하지 않는다.
  *   R4 **정직 고지와 세 갈래 진입이 살아 있다.** 둘 다 대표 승인 덱의 장이고, 빠지면
  *      "초기 서비스" 라는 사실과 "폰이 익숙하지 않은 사장님" 의 길이 함께 사라진다.
+ *   R6 **PC 가 "넓어진 모바일" 로 되돌아가지 않는다.** (2026-09-16 2차 — 대표
+ *      *"PC 버전은 전혀 PC 버전 같지 않은데? 안 B로 하는데"*) 1440px 실측으로 확인한 두 가지:
+ *      ⓐ 사진이 **0장**이었다 ⓑ h2 가 1440 에서도 38px 이고 여백 리듬이 전 섹션 동일했다.
+ *      ⇒ 안 B(라이브 캡처 + 폰 프레임)와 PC 타이포 단계를 불변식으로 박는다.
  *
  * ■ 이 테스트가 **못 잡는 것** (사람이 봐야 한다)
+ *   · 캡처가 최신 화면인가 — 파일 존재만 본다(내용이 낡아도 초록이다).
  *   · 실제 PC 레이아웃이 예쁜가 — 렌더해서 눈으로 볼 것(`node out/shot.mjs` 류 하네스).
  *   · eyebrow 예산·레이아웃 계열 반복(anti-slop 의 사람 판정 항목).
  *   · 문구가 설득력이 있는가. 사실 정합만 본다.
@@ -206,21 +211,29 @@ describe('R5 — 대표 확정 골격 (2026-09-16 장점 3 · 차별점 3 · 도
 
   it('예약솔루션과의 차이가 "새 손님" 이라는 축으로 서 있다', () => {
     // 이 행의 존재 이유다. 축이 흐려지면 "또 하나의 매장 솔루션" 으로 읽힌다.
+    // 🩸 2026-09-16 2차: 처음엔 파일 전체에서 문구를 찾았는데, 같은 말이 위쪽 '차별점 3' 블록에도
+    //   생기면서 **표의 행을 통째로 뭉개도 초록**이 됐다(주입 러너가 잡았다). ⇒ 그 행에서만 찾는다.
     const src = visible('src/pages/partners/PartnerCompare.tsx')
-    expect(src).toMatch(/이미 오기로 한 손님/)
-    expect(src).toMatch(/결제까지 마친 새 손님/)
+    const row = (k: string) => src.match(new RegExp(`\\{ k: '${k}[^}]*\\}`))?.[0] ?? ''
+    expect(row('예약, 포스 솔루션')).toMatch(/이미 오기로 한 손님/)
+    expect(row('예약, 포스 솔루션')).toMatch(/온 손님 관리/)
+    expect(row('유어딜')).toMatch(/결제까지 마친 새 손님/)
   })
 
   it('소개비를 매장이 정하고 내역이 남는다는 점을 말한다', () => {
-    expect(visible('src/pages/partners/PartnerCompare.tsx')).toMatch(/사장님이 정하고 매장 화면에 내역이 그대로 남습니다/)
+    // 2026-09-16 2차: 이 문장이 닫는 문단 → '차별점 3'(vs 배달앱) 블록으로 옮겨졌다. 불변식은 그대로다.
+    expect(visible('src/pages/partners/PartnerCompare.tsx')).toMatch(/사장님이 정하고, 그 내역이 매장 화면에 그대로 남습니다/)
   })
 
   it('가입을 "자동 승인" 으로 말하지 않는다 (라이브는 어드민 수동 승인)', () => {
-    const tools = visible('src/pages/partners/PartnerTools.tsx')
-    expect(tools).toMatch(/국세청에 자동으로 조회/)   // 자동인 것은 진위확인뿐
-    expect(tools).toMatch(/사람이 한 번 보고 승인/)
+    // 2026-09-16 2차: 이 고지가 '도구'(PartnerTools) → '시작하는 세 가지 길'(PartnerPaths) 로 옮겨졌다.
+    // 가입 절차를 말하는 자리가 맞는 집이다. 불변식은 그대로 — 자동인 것은 진위확인뿐이다.
+    const paths = visible('src/pages/partners/PartnerPaths.tsx')
+    expect(paths).toMatch(/국세청에 자동으로 조회/)   // 자동인 것은 진위확인뿐
+    expect(paths).toMatch(/사람이 한 번 보고 승인/)
     // R3 이 전 페이지에서 '자동 승인' 을 이미 막지만, 이 자리가 가장 유혹적이라 한 번 더 못박는다.
-    expect(tools).not.toMatch(/자동\s*승인/)
+    expect(paths).not.toMatch(/자동\s*승인/)
+    expect(visible('src/pages/partners/PartnerTools.tsx')).not.toMatch(/자동\s*승인/)
   })
 
   it('정산은 "자동 계산" 까지만 말하고 송금은 사람이라고 적는다', () => {
@@ -239,5 +252,69 @@ describe('R5 — 대표 확정 골격 (2026-09-16 장점 3 · 차별점 3 · 도
   it('공구 엔진 내용이 없다 (GB_ENGINE_ENABLED 가 꺼져 있다 · 대표 2026-09-16)', () => {
     // 꺼진 기능을 랜딩이 약속하면 사장님이 가입한 뒤에 없다는 걸 발견한다.
     expect(ALL_VISIBLE).not.toMatch(/링크 전용가|기간한정 공구|공구 특가|딜 초안을 제안/)
+  })
+})
+
+describe('R6 — PC 가 "넓어진 모바일" 로 되돌아가지 않는다 (2026-09-16 2차)', () => {
+  /**
+   * 🩸 1차 판을 1440px 로 실제 렌더해 재 보니 대표 지적이 맞았다:
+   *   `main img` **0개** · h1 48px · h2 전부 38px · 전 섹션 `py-24` 동일.
+   * 아래 셋은 그 세 가지가 조용히 되돌아가는 것을 막는다. **예쁜지는 못 본다** — 그건 렌더해서 볼 일이다.
+   */
+  const usesPhone = SECTIONS.filter(f => visible(f).includes('<PartnerPhone'))
+
+  it('안 B — 라이브 캡처를 폰 프레임으로 쓴다 (섹션 셋 이상)', () => {
+    // "사진 0장" 으로의 회귀 차단. 히어로만 남기고 아래를 다 지우는 것도 막는다.
+    expect(usesPhone.length).toBeGreaterThanOrEqual(3)
+    expect(visible('src/pages/partners/PartnerHero.tsx')).toMatch(/<PartnerPhone[\s\S]{0,400}priority/)
+  })
+
+  it('캡처 경로가 /static/ 이고 파일이 실제로 있다 (라이브 404 사고 재발 차단)', () => {
+    // 🩸 처음엔 `public/partners/*.jpg` 에 뒀는데 `_routes.json` 이 `/*` 를 워커로 보내 **404** 였다.
+    //    검증된 제외 경로는 `/static/*` 뿐이다. 그리고 파일이 없으면 프레임만 하얗게 남는다.
+    const phone = visible('src/pages/partners/PartnerPhone.tsx')
+    expect(phone).toMatch(/`\/static\/partners\/\$\{n\}\.jpg`/)
+    const shots = new Set<string>()
+    // 두 가지 표기를 다 줍는다: 직접 호출 `SHOT('home')` 과 목록 항목 `{ shot: 'home', ... }`.
+    for (const f of usesPhone) {
+      const src = visible(f)
+      for (const m of src.matchAll(/SHOT\('([^']+)'\)/g)) shots.add(m[1])
+      for (const m of src.matchAll(/\bshot: '([^']+)'/g)) shots.add(m[1])
+    }
+    expect(shots.size).toBeGreaterThanOrEqual(6)
+    for (const n of shots) {
+      expect(fs.existsSync(path.join(process.cwd(), `public/static/partners/${n}.jpg`)), `캡처 없음: ${n}.jpg`).toBe(true)
+    }
+  })
+
+  it('폰을 섹션 밖으로 흘려 잘리게 두지 않는다', () => {
+    // 1차에서 작은 폰을 `absolute bottom-[-2.5rem]` 로 내렸더니 `overflow-hidden` 이 잘라
+    // **고장처럼** 읽혔다. 랜딩에서 잘린 스크린샷은 의도가 아니라 실수로 보인다.
+    expect(visible('src/pages/partners/PartnerHero.tsx')).not.toMatch(/bottom-\[-/)
+  })
+
+  it('PC 타이포 단계가 모바일 치수로 되돌아가지 않는다', () => {
+    const h1 = visible('src/pages/partners/PartnerHero.tsx').match(/<h1[^>]*className="([^"]+)"/)?.[1] ?? ''
+    const lgPx = (cls: string) => Number(cls.match(/\blg:text-\[(\d+(?:\.\d+)?)px\]/)?.[1] ?? 0)
+    expect(lgPx(h1), 'h1 의 lg 치수').toBeGreaterThanOrEqual(50)
+
+    // 섹션 제목은 전부 lg 에서 40px 이상. 38px 로 돌아가면 1440 에서 다시 "문서" 가 된다.
+    const heads = [...ALL_VISIBLE.matchAll(/<h2[^>]*className="([^"]+)"/g)].map(m => m[1])
+    expect(heads.length).toBeGreaterThanOrEqual(7)
+    for (const h of heads) expect(lgPx(h), `h2 의 lg 치수: ${h}`).toBeGreaterThanOrEqual(40)
+  })
+
+  it('섹션 여백 리듬이 전부 같은 값이 아니다 (PC 에서 단조로움의 정체)', () => {
+    // 1차는 모든 섹션이 `lg:py-24` 였다. 값이 한 종류면 스크롤이 평평해진다.
+    const pys = new Set([...ALL_VISIBLE.matchAll(/\blg:py-(\d+)\b/g)].map(m => m[1]))
+    expect(pys.size).toBeGreaterThanOrEqual(2)
+  })
+
+  it('대표 확정 차별점 3의 상대가 체험단 · 배달앱 · 예약솔루션이다', () => {
+    const vs = [...visible('src/pages/partners/PartnerCompare.tsx').matchAll(/vs: '([^']+)'/g)].map(m => m[1])
+    expect(vs).toHaveLength(3)
+    expect(vs[0]).toMatch(/체험단/)
+    expect(vs[1]).toMatch(/배달앱/)
+    expect(vs[2]).toMatch(/예약/)
   })
 })
