@@ -266,6 +266,112 @@ per-user chrome 은 풀렸지만, `/vouchers`·홈의 첫 화면은 곧 **상품
 검증: tsc 0 · build 0 · **vitest 718파일 9,017건 pass** · pre-push 게이트 95개 통과 ·
 `critical-chunks` 리베이스라인(`_measured` 에 사유).
 
+## 배포 후 판정 (E4)
+
+머지 `29978210d`(#1486) · `7b5f43f65`(SNS 글리프) 배포 후 라이브 실측.
+
+| | 판정 | 값 |
+|---|---|---|
+| 교환권 상단 예약 | ✅ | 첫 상품 카드 y **1종(340)** · 칩 56 · 브랜드 117 (2회 동일) |
+| 유어샵 SNS 글리프 | ✅ | 36×36 · `background` 투명 · `background-image: none` · 잉크 `rgb(110,107,104)` |
+
+재현:
+```
+node <scratch>/v4.mjs     # /vouchers 첫 카드 y 가 한 종류인가
+node <scratch>/verdict-sns.mjs   # SNS 링크에 색 면이 남아 있는가
+```
+⚠️ 이 컨테이너에서 라이브를 브라우저로 열려면 `--ignore-certificate-errors` +
+`ignoreHTTPSErrors: true` 가 필요하다(프록시 CA). 없으면 `ERR_CERT_AUTHORITY_INVALID`.
+
+### 🩸 판정 하네스가 두 번 속였다 — 값이 아니라 *무엇을 재고 있는지*
+
+1. 앵커가 `main img, [class*="grid"] img, img` 라 **단계마다 다른 사진**을 집었다.
+2. 고쳐서 "사진 가진 첫 `<button>`" 으로 잡았더니 **브랜드 칩도 `<button>` 안에 `<img>`** 다.
+   로고가 늦게 뜨는 순간 앵커가 상품 카드(340) → 브랜드 칩(200)으로 갈아타
+   **140px 밀린 것처럼** 보였다. 두 번 다 같은 값이라 "결정론적이니 진짜"로 읽혔다.
+
+⇒ 브랜드 스트립 안쪽을 명시적으로 제외한 뒤에야 1종이 나왔다.
+**재현되는 숫자라고 해서 그 숫자가 내가 재려던 것은 아니다.**
+
+### ⚠️ main 의 `Cloudflare Pages` 체크가 빨간불인데 실제 배포는 성공이다
+
+머지 커밋 `29978210d` 에서 GitHub 체크 `Cloudflare Pages: failure` 가 떴는데,
+**Cloudflare 자신의 기록은 전 단계 success** 였다(1차 출처로 확인):
+
+```
+deployment 0d5e7c38-a14f-4c17-8a8e-0bd2fd36f5ca  env=production
+  queued success · initialize success · clone_repo success · build success · deploy success
+```
+우리 파이프라인의 `deploy-wholesale` 잡도 success. 같은 코드가 PR head(`7b5f43f6`)에서는
+그 체크도 초록이었다. ⇒ **CF git-integration 체크런의 보고 아티팩트**로 판단했다.
+다음 세션이 이 빨간불을 보고 오진하지 않도록 남긴다 — 판정은 CF API 의 `stages` 로 할 것.
+
+## 🔴 매장 등록이 3주간 100% 실패하고 있었다 (대표 신고 — `POST /api/seller/stores` 500)
+
+**라이브 `sellers` 에 행이 하나뿐이다** — id=14 홍대돈까스, 2026-08-26. 그 뒤로 매장이
+한 곳도 등록되지 못했다. 화면엔 원인 없는 500 만 떴다.
+
+### 원인
+
+```sql
+business_number TEXT UNIQUE,   -- 프로덕션 sellers 컬럼 선언
+```
+
+**한 사업자번호 = 셀러 행 하나.** 한 사업자가 지점을 여럿 내는 게 정상인데 스키마가 막는다.
+id=14 가 이미 `4790902930` 을 쥐고 있어서, 같은 번호로 등록하면 `INSERT` 가 UNIQUE 로 던지고
+바깥 catch 가 **"매장 등록 중 오류가 발생했습니다"** 로 뭉갰다.
+
+⚠️ **2026-09-02 의 `email=''` 사고와 같은 클래스다** — 같은 파일, 같은 INSERT, 같은 문구.
+그때는 빈 문자열이 UNIQUE 슬롯을 먹었고 이번엔 진짜 값이 먹었다.
+그 INSERT 는 이 핸들러에서 **유일하게 `.catch()` 가 없던 DB 호출**이었다.
+
+### 처방 — 컬럼을 버리지 않는다
+
+`sellers.business_number` 는 소유권 이전 대조(`bno_match`)·어드민 심사·정산이 읽는다.
+meta 로 **옮기면** 그 전부가 조용히 빈칸이 된다. 그래서:
+
+- 등록은 번호를 **항상 `seller_meta.business_number`** 에 쓴다(여기가 진실)
+- 컬럼에는 **비어 있을 때만** 쓴다(그 번호의 첫 매장이 차지 → 기존 읽기 무회귀)
+- 읽기는 `resolveBusinessNumber`(신규 SSOT)가 컬럼 → meta 순으로 푼다
+- UNIQUE 경합이면 번호를 빼고 **한 번 더** 시도한다(D1 엔 트랜잭션이 없다)
+
+읽기 폴백을 배선한 자리 셋: 소유권 이전 대조 · 어드민 승인 목록 · 국세청 재검증.
+**셋 다 안 하면 두 번째 매장부터 심사 자체가 불가능해진다**(빈칸 + 대조 "모름").
+
+### 🩸 그리고 그 바로 뒤에 **실패할 수 없는 판정**이 하나 더 있었다
+
+UNIQUE 를 통과하면 다음 단계가 `grantOperator` 인데, 호출부가 이랬다:
+
+```ts
+let granted = await grantOperator(...).then(() => true).catch(() => false)
+```
+
+`grantOperator` 는 **예외를 스스로 삼키고** `{ ok: false, reason: 'db' }` 로 **resolve** 한다.
+그래서 `.catch` 는 영원히 안 걸리고 `granted` 는 **항상 `true`** 였다.
+
+바로 위 주석이 *"이게 실패하면 방금 만든 매장에 아무도 못 들어간다"* 고 경고하며 세운 분기가,
+**정작 그 상황에서 한 번도 실행될 수 없었다.** `linked_user_id` 는 설계상 비우므로 접근 경로가
+`seller_operators` 하나뿐이다 — 실패하면 **들어갈 수 없는 매장이 "등록 접수되었습니다" 와 함께
+조용히 생긴다.**
+
+⇒ `.then((r) => !!r?.ok)`. `catch` 는 시그니처가 바뀌는 날의 안전판으로만 남긴다.
+전제(`grantOperator` 가 던지지 않는다)도 시험이 함께 고정한다 — 한쪽만 바뀌면 다시 헛돈다.
+
+**이번 세션에서 같은 클래스를 네 번 만났다**: 헛도는 가드 · 하네스 앵커 · 실패할 수 없는 판정 ·
+CF 체크런의 가짜 빨간불. 공통점은 **"틀렸다고 말할 수 없는 검사"** 다.
+
+### 🔭 진짜 끝은 결재함이다
+
+SQLite 는 **컬럼 선언의 UNIQUE 를 떼어낼 수 없다**(자동 인덱스라 `DROP INDEX` 불가) —
+104컬럼짜리 프로덕션 `sellers` 재생성이 유일한 길이고 그건 **등급 C**.
+레포의 의도는 이미 비-UNIQUE 쪽이다: `internal-admin-tools` 의 수리가
+`CREATE INDEX idx_sellers_business_number …`(UNIQUE 없음)를 만든다.
+**옛 `CREATE TABLE` 의 `UNIQUE` 만 남아 모델과 어긋나 있는 것이다.**
+제약이 제거되면 컬럼이 늘 채워지므로 이 폴백은 저절로 no-op 이 된다.
+
+가드: `store-business-number-2026-09-16.test.ts` 9건 — **진짜 SQLite 에 같은 제약을 걸고
+INSERT 를 돌려** 실패를 재현한다(문자열 검사로는 "제약이 어떻게 터지는가" 를 못 잰다) + 주입 5건.
+
 ## 이번에 틀렸던 판단
 
 1. **"규칙을 지우면 Rollup 이 알아서 나눈다"** — 아니었다. 256개를 통째로 `app-shell` 에 넣어

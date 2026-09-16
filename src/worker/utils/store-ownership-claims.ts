@@ -25,6 +25,7 @@
 import type { D1Database } from '@cloudflare/workers-types'
 import { resolveStoreOwnerUserId } from './seller-operators'
 import { transferStoreOwnership, type TransferResult } from './store-ownership-transfer'
+import { resolveBusinessNumber } from './seller-business-number'
 
 export type ClaimStatus = 'pending' | 'approved' | 'rejected' | 'cancelled'
 
@@ -113,7 +114,9 @@ export async function submitStoreClaim(
     return { ok: false, code: 'ALREADY_OWNER', error: '이미 이 매장의 소유자입니다' }
   }
 
-  const storeBno = String(seller.business_number || '').replace(/-/g, '')
+  // 🧾 2026-09-16: 컬럼이 비어 있어도 meta 에 번호가 있다(같은 사업자의 두 번째 매장부터 그렇다 —
+  //   `seller-business-number.ts` 에 전말). 컬럼만 보면 **대조가 영원히 "모름"** 으로 굳는다.
+  const storeBno = await resolveBusinessNumber(DB, seller)
   // 번호가 한쪽이라도 없으면 대조 자체를 못 한다 — 불일치(false)가 아니라 모름(null)이다.
   const bnoMatch: boolean | null = bno && storeBno ? bno === storeBno : null
 

@@ -258,9 +258,18 @@ describe('①-b 행이 만들어진 뒤의 실패는 "등록 실패" 가 아니�
   })
 
   it('권한 연결은 한 번 더 시도한다 — 실패하면 아무도 그 매장에 못 들어간다', () => {
-    const grants = post.match(/grantOperator\(c\.env\.DB, newSellerId/g) || []
-    expect(grants.length, 'linked_user_id 를 비워 두는 설계라 접근 경로가 seller_operators 하나뿐이다')
+    /**
+     * 🩸 2026-09-16: 이 판정이 원래 `grantOperator(...)` **호출 횟수**를 셌는데, 같은 날 그 호출을
+     *   `tryGrant()` 로 추출하자 1로 떨어져 **빨간불이 났다** — 불변식은 "두 번 시도한다" 이지
+     *   "그 문자열이 두 번 나온다" 가 아니다. 세는 대상을 *시도*로 옮긴다(추출에도 견딘다).
+     *   ⚠️ 그때 이 가드가 실제로 잡아 줬다는 점이 중요하다 — 그래서 약화가 아니라 재조준이다.
+     */
+    const attempts = (post.match(/await tryGrant\(\)/g) || []).length
+      || (post.match(/grantOperator\(c\.env\.DB, newSellerId/g) || []).length
+    expect(attempts, 'linked_user_id 를 비워 두는 설계라 접근 경로가 seller_operators 하나뿐이다')
       .toBeGreaterThanOrEqual(2)
+    // 그리고 그 시도가 **실제로 grantOperator 를 부르는지**(빈 함수로 전락 금지).
+    expect(post).toMatch(/tryGrant = \(\) => grantOperator\(c\.env\.DB, newSellerId/)
   })
 
   it('그래도 실패하면 "등록 실패" 라고 말하지 않고 매장 번호를 돌려준다', () => {
