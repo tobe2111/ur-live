@@ -389,3 +389,24 @@ describe('R7 — 말투가 AI 로 되돌아가지 않는다 (2026-09-16 3차)', 
     expect(shapes.size, `제목: ${headings.join(' / ')}`).toBeGreaterThanOrEqual(2)
   })
 })
+
+/**
+ * R8 — 글자가 읽히는가 (2026-09-16 대표 *"글자들 개선해. 색깔이 뭐야 이게"*)
+ *
+ * 대표가 보낸 다크 캡처의 **진짜** 원인은 토큰 드리프트였고 그건 `ink-token-theme-2026-09-16`
+ * 이 고정한다. 여기서 막는 것은 **같은 화면에서 함께 드러난 둘째 결함** — 캡션·표 머리·주석에
+ * 쓰던 옅은 짝 `text-gray-400 dark:text-gray-500` 이다.
+ *
+ * 실측(1440 렌더, 알파 합성 후 WCAG): **라이트 3.21~3.65 · 다크 3.10~3.48** 로 둘 다 AA(4.5) 미달이었다.
+ * 즉 다크만의 문제가 아니라 **처음부터 안 읽히는 회색**을 쓰고 있었다. 한 단계 올린
+ * `text-gray-500 dark:text-gray-400`(본문과 같은 짝)으로 라이트 미달 0건이 됐다.
+ *
+ * ⚠️ 이 시험이 **못** 보는 것: 실제 대비값. 그건 `check-dark-contrast` 가 렌더해서 잰다.
+ *    여기서는 "그 옅은 짝이 이 랜딩에 다시 들어오는 것"만 막는다.
+ */
+describe('R8 · 보조 글자가 너무 옅지 않다', () => {
+  it('캡션·주석에 `text-gray-400 dark:text-gray-500` 짝을 쓰지 않는다', () => {
+    const offenders = [PAGE, ...SECTIONS].filter(f => visible(f).includes('text-gray-400 dark:text-gray-500'))
+    expect(offenders, `AA 미달 회색이 돌아왔다: ${offenders.join(', ')}`).toEqual([])
+  })
+})

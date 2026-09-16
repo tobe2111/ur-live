@@ -64,7 +64,7 @@ export default function PartnerFaq() {
 
         {/* 정직 고지 — 세 소개서와 같은 내용 */}
         <div className="mt-14 lg:mt-20 pt-10 lg:pt-14 border-t border-rule">
-          <p className="text-[12px] font-bold text-gray-400 dark:text-gray-500 mb-4">숨기지 않고 말씀드립니다</p>
+          <p className="text-[12px] font-bold text-gray-500 dark:text-gray-400 mb-4">숨기지 않고 말씀드립니다</p>
           <p className="text-[15px] lg:text-[22px] leading-[1.75] text-ink max-w-[40em] font-medium">
             유어딜은 초기 서비스입니다. {F.liveMeasuredAt} 기준 판매 중인 이용권 {F.activeVouchers}건 가운데
             실제 매장이 등록한 것은 {F.realStores}건이고, 나머지는 시범 운영을 위한 예시입니다.
