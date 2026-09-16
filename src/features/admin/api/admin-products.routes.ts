@@ -26,6 +26,7 @@ import { distributorPriceFromCost } from '@/lib/distributor-pricing';
 import { invalidateGroupBuyProductsCache } from '../../group-buy/api/cache-keys';
 import { isValidKakaoPlaceUrl, normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url';
 import { intParam } from '@/shared/pagination'
+import { dongnedealTextFilters } from './dongnedeal-search';
 // 🎯 2026-07-21: 시드 커버 재호스팅 — 본체는 worker/utils/rehost-image.ts (demo-image-rehost cron 과 공유 SSOT).
 import { rehostImageToR2 } from '@/worker/utils/rehost-image';
 
@@ -1907,13 +1908,10 @@ adminProductsRoutes.get('/dongnedeal/list', cors(), async (c) => {
       where.push(`category IN (${cats.map(() => '?').join(',')})`); params.push(...cats);
     }
 
-    // 지역: 공백 토큰(예 "서울 강남") 전부 restaurant_address 에 포함(AND) — 최대 3토큰.
-    const regionParam = String(c.req.query('region') || '').trim();
-    if (regionParam) {
-      for (const tok of regionParam.split(/\s+/).filter(Boolean).slice(0, 3)) {
-        where.push('restaurant_address LIKE ?'); params.push(`%${tok}%`);
-      }
-    }
+    // 지역(주소)·검색(매장명·상품명·주소·id) — 규칙과 바인딩 순서는 `dongnedeal-search.ts` 가 정한다.
+    //   🔎 2026-09-16 (대표 "등록된 동네딜 검색도 가능하게. 매장명이라던지. 급해")로 q 가 합류했다.
+    const textFilters = dongnedealTextFilters({ region: c.req.query('region'), q: c.req.query('q') });
+    where.push(...textFilters.sql); params.push(...textFilters.params);
 
     // 데모/실등록 source.
     const source = String(c.req.query('source') || '').trim();
