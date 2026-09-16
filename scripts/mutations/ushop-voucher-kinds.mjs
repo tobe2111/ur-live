@@ -35,8 +35,8 @@ export default [
   {
     name: '🎟️ 핀 SELECT 에서 deal_only 를 다시 뺀다 (담은 교환권이 추천템으로)',
     file: CURATOR,
-    find: '                COALESCE(p.deal_only, 0) AS deal_only,',
-    replace: '                0 AS not_deal_only,',
+    find: 'p.seller_id, COALESCE(p.deal_only, 0) AS deal_only,',
+    replace: 'p.seller_id, 0 AS not_deal_only,',
     test: TEST,
     why:
       '클라가 `deal_only === 1` 을 보는데 값이 안 오면 그 분기는 한 번도 참이 안 된다 — ' +
