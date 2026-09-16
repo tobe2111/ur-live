@@ -774,6 +774,55 @@ curl -sS -X POST "$CF/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$DB/query" -H 
 > 이 접근이 없어서 오늘 막혔던 것들: `Workers Builds: ur-live-global` 이 매 PR 마다 실패하는데 **빌드 로그가
 > 대시보드에만 있어** 원인을 못 밝히고 "선재 실패"로만 넘겼다 · `SUPPLY_MAKER_COLLECT_ENABLED` 게이트를
 > 못 켜 제조사 풀이 수동 실행분(85건)에 머물렀다.
+
+## 🔀 PR 머지는 세션이 끝낸다 — 대표에게 버튼을 떠넘기지 않는다 (2026-09-16 대표 지시 "앞으로 너가 하도록 설정해줘 모든 세션에서")
+
+**대표가 "초록 뜨면 머지" 라고 했으면, 머지까지가 세션의 일이다.** draft 해제·auto-merge·머지·머지 후
+브랜치 정리는 전부 세션이 한다. *"GitHub API 가 막혀서 대표님이 눌러 주세요"* 는 **답이 아니다.**
+
+> 🩸 **이 규칙은 실제로 떠넘긴 뒤에 생겼다.** 2026-09-16, PR #1472 는 CI 초록·충돌 0 인데 draft 라
+> 머지가 405 였다. `mcp__github__update_pull_request` 가 rate limit(`for user ID 64677275`)이라
+> 대표에게 "Ready for review 눌러 주세요" 라고 했다. **그런데 그때 이미 다른 경로가 멀쩡한 걸 확인해
+> 놓고 있었다** — 그 경로로 한 번 시도했다가 `GitHub is temporarily unavailable. Retry shortly.`
+> (일시 오류, 재시도하면 되는 것)를 받고 포기했다. 대표: *"내가 해야하는 작업마저 너가 할 수 없나?"*
+
+### 경로가 둘이고, 버킷이 다르다
+
+| | 쓰는 신원 | 한도 |
+|---|---|---|
+| `mcp__github__*` 쓰기 | **대표 계정(user OAuth)** — 동시에 도는 모든 세션이 **한 버킷을 나눠 쓴다** | 자주 소진된다 |
+| `curl https://api.github.com/...` | **앱 설치 토큰**(에이전트 프록시가 주입) — repo `admin:true` | 실측 core 15,000 / graphql 10,000, 보통 **0 사용** |
+
+⇒ **MCP 쓰기가 rate limit 이면 그대로 curl 로 간다.** 토큰을 직접 넣지 않는다(프록시가 붙인다).
+`GH_TOKEN`/`GITHUB_TOKEN` 환경변수는 14자 `proxy…` 자리표시자라 **그 값을 쓰면 안 된다.**
+
+### ⚠️ GraphQL 은 막혀 있다 — CCR REST 경로를 쓴다
+
+`POST /graphql` 은 *"GitHub GraphQL is not available from Claude Code sessions"* 로 거부된다.
+draft·auto-merge·리뷰 스레드는 GraphQL 전용 기능이라 **전용 REST 경로**가 따로 있다:
+
+```bash
+G=https://api.github.com/repos/tobe2111/ur-live/pulls/<번호>
+curl -sS -X POST "$G/ccr/ready_for_review"            # draft 해제
+curl -sS -X POST "$G/ccr/convert_to_draft"            # 다시 draft 로
+curl -sS -X PUT    "$G/ccr/auto_merge"                # 초록 뜨면 자동 머지 (DELETE 로 해제)
+curl -sS       "$G/ccr/review_threads"                # 리뷰 스레드 조회
+curl -sS -X POST "$G/ccr/comments/<id>/resolve"       # 스레드 해결 (또는 /unresolve)
+curl -sS -X PUT  "$G/merge" -H 'Content-Type: application/json' \
+  --data '{"merge_method":"squash","sha":"<head sha>"}'   # 머지(REST 로 됨)
+```
+
+🔴 **`GitHub is temporarily unavailable. Retry shortly.` 는 실패가 아니라 재시도 신호다.**
+한 번 받고 멈추지 말 것 — 몇 초 간격으로 3~4회. 그 문장을 보고 포기한 것이 이 규칙이 생긴 이유다.
+
+### 그래도 바뀌지 않는 것
+
+이 규칙은 **머지 버튼을 누가 누르느냐**만 정한다. 승인 자체를 대신하지 않는다:
+- 대표가 머지를 지시하지 않았으면 **초록 사실만 보고하고 기다린다**(종전과 동일).
+- **CI 를 우회하지 않는다** — Verify 가 이 커밋(head sha 대조!)에 실제로 초록이어야 머지한다.
+  `check_runs` 가 비어 있는데 PR 이 초록처럼 보이는 경우가 있다(옛 커밋의 통과 기록이 붙는다).
+- **머니 경로·게이트 ON·발행/발송·삭제/purge 는 여전히 결재(C)** — 이 절과 무관하다.
+
 ## 🧪 원격 세션 검증 능력 — **npm 은 세션마다 다르다. 먼저 확인할 것** (2026-08-02 정정)
 
 ⚠️ **이 섹션은 2026-07-28 에 "npm 정상화"로 단정돼 있었다. 그 단정이 틀렸다** — 정책은 세션마다 바뀐다.
