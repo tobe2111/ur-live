@@ -281,7 +281,7 @@ export default function AccountDeleteWarningPage() {
         {/* 머무름 안내 */}
         <div className="text-center mb-2">
           <p className="text-[12px] text-gray-500 dark:text-white/40 leading-relaxed flex items-center justify-center gap-1.5">
-            <Heart className="w-3.5 h-3.5 text-brand-text/60" />
+            <Heart className="w-3.5 h-3.5 text-brand-text opacity-60" />
             언제든지 돌아올 수 있어요
           </p>
         </div>

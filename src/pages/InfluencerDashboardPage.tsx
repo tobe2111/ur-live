@@ -162,17 +162,17 @@ export default function InfluencerDashboardPage() {
           <>
             {/* 적립 누계 */}
             <div className="bg-gray-800/[0.15] border border-brand/30 rounded-2xl p-5">
-              <p className="text-[10px] font-bold text-brand-text/70 tracking-[0.14em]">{t('influencer.earned', { defaultValue: '누적 적립' })}</p>
+              <p className="text-[10px] font-bold text-brand-text opacity-70 tracking-[0.14em]">{t('influencer.earned', { defaultValue: '누적 적립' })}</p>
               <p className="text-3xl font-black text-brand-text mt-1">
                 ₩{formatNumber(stats?.total_earned || 0)}
               </p>
               <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-brand/20">
                 <div>
-                  <p className="text-[10px] text-brand-text/70">{t('influencer.refCount', { defaultValue: '추천 결제' })}</p>
+                  <p className="text-[10px] text-brand-text opacity-70">{t('influencer.refCount', { defaultValue: '추천 결제' })}</p>
                   <p className="text-base font-extrabold text-white">{formatNumber(stats?.total_referrals || 0)}건</p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-brand-text/70">{t('influencer.refSales', { defaultValue: '유발 매출' })}</p>
+                  <p className="text-[10px] text-brand-text opacity-70">{t('influencer.refSales', { defaultValue: '유발 매출' })}</p>
                   <p className="text-base font-extrabold text-white">₩{formatNumber(stats?.total_sales || 0)}</p>
                 </div>
               </div>

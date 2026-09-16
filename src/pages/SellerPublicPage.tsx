@@ -26,6 +26,7 @@ import { getThemeTokens } from './seller-public/theme'
 import BrandLoader from '@/components/brand/BrandLoader'
 import type { Seller, Product } from './seller-public/types'
 import { fetchSellerPublicShared } from './seller-public/seller-public-fetch'
+import { isVoucherCategory } from '@/shared/constants/voucher-categories'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types / FollowButton / StreamCard 를
 //   ./seller-public/ 디렉토리로 추출.
@@ -254,14 +255,24 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
     </div>
   )
 
-  const mealVouchers = products.filter(p => p.category === 'meal_voucher')
+  // 🩸 2026-09-16 (대표 *"셀러가 셀러대시보드에서 이용권을 올려도 셀러의 계정의 유어샵에 이용권들
+  //   보여주는걸로 하자"*): 여기가 `=== 'meal_voucher'` **한 종류로 박혀** 있었다. 이용권은 네 종류다
+  //   (`VOUCHER_CATEGORIES` — 식사·미용·숙소·기타). 서버는 네 종류를 다 내려주는데(`/api/products?seller_id`
+  //   에는 deal_only/voucher 제외 필터가 안 걸린다) **화면이 세 종류를 못 알아봤다.**
+  //   🔴 사라지지 않아서 더 나빴다 — 아래 `shopProducts` 의 여집합으로 흘러들어 **'내 상품'(쇼핑) 섹션**에
+  //   섞였고, 카드 목적지도 `/products/:id`(쇼핑 상세)로 갔다. 분류·제목·카운트·목적지가 전부 틀렸는데
+  //   에러가 없어 아무도 몰랐다. 미용 이용권 하나만 올린 셀러는 히어로 한 장만 뜨고 화면에 '이용권' 이라는
+  //   단어가 한 번도 안 나왔다.
+  //   ⚠️ 판정은 반드시 SSOT `isVoucherCategory` 로 — 레거시 카테고리(health/pet/activity)까지 같이 본다.
+  //   (일반 유저 유어샵 `CuratorPage` 와 카테고리 칩은 이미 4종을 다뤘다. 사업자 페이지만 뒤처져 있었다.)
+  const vouchers = products.filter(p => isVoucherCategory(p.category))
   // 🛡️ 2026-05-19: '상품' 탭 — 이용권 외 일반 상품 (deal_only 교환권은 셀러가 등록 안 하므로 자동 제외).
-  const shopProducts = products.filter(p => p.category !== 'meal_voucher' && Number(p.deal_only) !== 1)
+  const shopProducts = products.filter(p => !isVoucherCategory(p.category) && Number(p.deal_only) !== 1)
   // 🎨 2026-07-07 리디자인(휑함 해소): 대표 1개를 큰 '이번 주 픽' 히어로로.
   //   featured 는 자기 섹션 그리드에서 제외(중복 방지) → 아이템 적어도 "큐레이션"으로 보이게.
   //
   // 🔄 2026-08-26 (대표 확정 — "유어샵은 사장님의 이용권들이 올라오는 곳"): 우선순위를 **뒤집었다**.
-  //   종전엔 `shopProducts[0] || mealVouchers[0]` 라 일반 상품이 히어로를 무조건 선점했다. 그러면
+  //   종전엔 `shopProducts[0] || vouchers[0]` 라 일반 상품이 히어로를 무조건 선점했다. 그러면
   //   이용권만 파는 매장(대다수)은 자기 주력이 히어로에도 못 오르고 두 번째 섹션으로 밀렸다.
   //   유어샵의 주인공은 이용권이다 — 없을 때만 일반 상품이 그 자리를 대신한다.
   // 📊 2026-08-26 (대표 승인): 헤더 실적 한 줄 — 이 매장 상품들의 **실측** 평점/후기/판매.
@@ -273,10 +284,10 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
     const sold = products.reduce((a, p) => a + (Number(p.sold_count) || 0), 0)
     return { rating, reviews, sold }
   })()
-  const featured = mealVouchers[0] || shopProducts[0] || null
-  const featuredIsProduct = !mealVouchers[0] && !!shopProducts[0]
+  const featured = vouchers[0] || shopProducts[0] || null
+  const featuredIsProduct = !vouchers[0] && !!shopProducts[0]
   const gridProducts = featuredIsProduct ? shopProducts.slice(1) : shopProducts
-  const gridVouchers = (!featuredIsProduct && mealVouchers[0]) ? mealVouchers.slice(1) : mealVouchers
+  const gridVouchers = (!featuredIsProduct && vouchers[0]) ? vouchers.slice(1) : vouchers
 
   return (
     <div className={`min-h-[100dvh] ${T.bg} pb-28`}>
@@ -351,7 +362,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
         canEdit={isOwner}
         onEnterEdit={() => { setPreviewAsVisitor(false); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
         onExitEdit={() => { setPreviewAsVisitor(true); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
-        counts={{ pins: mealVouchers.length, products: shopProducts.length }}
+        counts={{ pins: vouchers.length, products: shopProducts.length }}
         accountType="business"
         stats={headerStats}
         onCopyLink={copyLink}
@@ -380,7 +391,7 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
           순서: 내 상품 → 교환권 → 영상/라이브 → 정보. (추천 핀 섹션 제거 — 일반 유저 유어샵은 유지) */}
       <div className="ur-content-wide px-4 lg:px-8 py-5">
         {/* 🎨 2026-07-07 리디자인 3차: 컬렉션 칩 — 상품·이용권 둘 다 있을 때 섹션 점프(스크롤). */}
-        {shopProducts.length > 0 && mealVouchers.length > 0 && (
+        {shopProducts.length > 0 && vouchers.length > 0 && (
           <div className="flex gap-2 mb-4 overflow-x-auto -mx-1 px-1 scrollbar-hide">
             {([
               { label: t('seller.publicPage.chipAll', { defaultValue: '전체' }), to: null as string | null },
@@ -413,14 +424,14 @@ export default function SellerPublicPage({ sellerIdOverride, curator, sellerNume
         {gridVouchers.length > 0 && (
           <section id="ls-vou" className="scroll-mt-4 pt-7">
             <h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-3">{t('seller.publicPage.vouchers', { defaultValue: '이용권' })} {gridVouchers.length}</h3>
-            <VouchersTab mealVouchers={gridVouchers} />
+            <VouchersTab vouchers={gridVouchers} />
           </section>
         )}
 
         {/* ② 내 상품 — featured 로 뽑힌 첫 상품은 그리드에서 제외(gridProducts).
             🔄 2026-08-26: '상품 0' 초대 카드는 **이용권도 0일 때만** 띄운다. 이용권을 이미 올린
             사장님에게 "첫 상품을 올려 쇼핑몰을 채워보세요"는 사실과 다른 잔소리다. */}
-        {(gridProducts.length > 0 || (ownerView && shopProducts.length === 0 && mealVouchers.length === 0)) && (
+        {(gridProducts.length > 0 || (ownerView && shopProducts.length === 0 && vouchers.length === 0)) && (
           shopProducts.length === 0 ? (
             // 🎨 2026-07-07 리디자인: 밋밋한 "상품 0" 행 → "쇼핑몰을 채워보세요" 초대 카드(소유자 동기부여).
             //   내 상품이 유어샵의 주인공이라는 메시지 + 정식 등록 풀페이지로.

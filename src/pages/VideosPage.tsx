@@ -309,6 +309,11 @@ export default function VideosPage() {
              **Shorts 로고와 같은 자리**에 있었다(로고의 'S' 가 우리 원에 가려 "horts" 로 보인다).
           🔴 **덮어서 해결하면 안 된다** — 유튜브가 남기는 제목 띠·🔗·Shorts 로고를 가리는 것은
              embed 약관 위반이다(`shared/urshorts.ts` 의 같은 주석). 우리 것을 비켜 준다.
+          ⚖️ **범위 주의(2026-09-16 대표 확정 *"워터마크 가려도 돼"*)**: 이 '비켜 준다' 는
+             **닫기 X 한 곳의 규칙**이다. 아래 구매 바는 예외다 — 바가 화면 아래를 덮으면서
+             유튜브 Shorts 워터마크를 가리는데, 대표가 그대로 가도 된다고 확정했다.
+             ⛔ 그러니 이 주석을 근거로 **구매 바를 위로 올리지 말 것.** 바는 이 화면의 본체이고
+             (위 "구매 바가 영상 위에 항상 있는 이유"), 올리면 영상을 더 가린다.
           📏 스크린샷 픽셀 실측(2026-09-14 재측정 — 첫 판의 *980px ÷ 2.5* 는 **틀렸다.**
              원본은 1080×2203 이고 인앱 브라우저 주소창이 y=157 까지 차지한다 ⇒ **페이지 원점 157,
              배율 3**). 페이지 기준 CSS 로 환산하면:
@@ -339,7 +344,7 @@ export default function VideosPage() {
           단 **살 게 있을 때만** — 2026-09-08 부터 이용권 안 붙인 영상도 여기 온다(대표 확정).
           상품이 없으면 `/group-buy/null` 로 가는 버튼이 되므로 바 전체를 안 그린다. */}
       {cur && cur.product_id ? (
-        <div className="absolute inset-x-2.5 bottom-2.5 z-20 flex items-center gap-2.5 rounded-2xl bg-white/97 p-2.5 shadow-2xl">
+        <div className="absolute inset-x-2.5 bottom-2.5 z-20 flex items-center gap-2.5 rounded-2xl bg-white/95 p-2.5 shadow-2xl">
           {thumb && (
             <img
               src={cfImage(thumb, { width: 120 })} alt=""
