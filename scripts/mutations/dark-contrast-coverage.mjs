@@ -90,4 +90,12 @@ export default [
     test: 'src/tests/unit/dark-contrast-coverage-2026-09-16.test.ts',
     why: '배열을 못 받으면 [고르기 → 새로 추가] 형태의 입력은 "못 잰다"로 영구히 남는다.',
   },
+  {
+    name: '[다크대비] 새 화면 파일을 워크플로 paths 에서 뺌 (목록만 늘고 안 돎)',
+    file: '.github/workflows/dark-contrast.yml',
+    find: "      - 'src/pages/InfluencerSettlementPage.tsx'\n",
+    replace: '',
+    test: 'src/tests/unit/dark-contrast-coverage-2026-09-16.test.ts',
+    why: '1.07:1 이 실제로 나온 그 파일이다. paths 에 없으면 그 파일을 고쳐도 검사가 안 돈다 — 목록에 있으니 지켜진다는 착각이 정확히 이 모양.',
+  },
 ]

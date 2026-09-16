@@ -170,6 +170,30 @@ describe('dark-contrast 가드 커버리지 (2026-09-16)', () => {
     expect(guard).toContain('data-testid="address-add"')
   })
 
+  /**
+   * 🩸 2026-09-16 (두 번째) — **같은 실수를 한 층 위에서 또 했다.**
+   *
+   * 워크플로 자신의 주석이 *"목록에 넣는 것만으로는 부족하고 **언제 도는가**도 맞아야 한다"* 고
+   * 적어 뒀는데, 그날 입력 화면 6곳을 ROUTES 에 넣으면서 **그 파일들을 `paths:` 에 안 넣었다.**
+   * 그러면 누가 `InfluencerSettlementPage.tsx` 를 고쳐도 이 검사는 안 돈다 — 하필 그 파일에서
+   * 1.07:1(흰 판 위 흰 글자)이 나왔는데도. 목록은 늘었는데 **도는 조건은 안 늘었다.**
+   *
+   * ⚠️ 이 검사가 못 하는 것: 경로 → 파일 매핑은 기계로 못 푼다(`/vouchers/2192` 가 어느 컴포넌트를
+   *   그리는지 정적으로 단정할 수 없다). 그래서 **이번에 넣은 파일 이름만** 못 박는다 —
+   *   다음에 ROUTES 를 늘리는 세션은 이 표에도 한 줄 더할 것.
+   */
+  it('⑩ 새로 재기 시작한 화면의 파일이 워크플로 paths 에도 있다 — 목록만 늘면 안 돈다', () => {
+    const wf = readFileSync('.github/workflows/dark-contrast.yml', 'utf8')
+    for (const f of [
+      'src/pages/InfluencerSettlementPage.tsx',
+      'src/pages/InfluencerDiscoverPage.tsx',
+      'src/pages/AddressManagementPage.tsx',
+      'src/pages/VoucherDetailPage.tsx',
+      'src/pages/VoucherVerifyPage.tsx',
+      'src/pages/StoreStatsPage.tsx',
+    ]) expect(wf, `${f} 가 dark-contrast.yml 의 paths 에 없다 — 그 파일을 고쳐도 검사가 안 돈다`).toContain(f)
+  })
+
   it('⑨ open 이 여러 단계를 받는다 — 2단 깊이 모달을 못 연다고 포기하지 않게', () => {
     // 배송지 폼처럼 [고르기 모달 → 새로 추가] 2단인 입력이 있다. 문자열 하나만 받으면
     // 그 화면은 영원히 "못 잰다"로 남는다.
