@@ -42,7 +42,6 @@ export default function InfluencerTermsPage() {
         <h2 className="text-lg font-bold mt-6 mb-2">제3조 (Commission 정책)</h2>
         <ul className="text-sm list-disc pl-5 space-y-1">
           <li>딜 소개비: 매장이 딜마다 정한 비율(이용권 판매가 기준)을 매장이 부담합니다. 회사는 비율의 상한을 두지 않으며, 비율은 이용권 상세 화면에 표시됩니다. <strong>매장과 맺은 딜이 없는 이용권은 소개해도 적립되지 않습니다.</strong></li>
-          <li>매장 영입: 인플루언서가 직접 데려온 매장(직접 입점)의 매출 <strong>2%</strong>를 <strong>가입 후 1년간</strong> 회사 몫에서 적립합니다(platform_settings 로 조정 가능, 대행사 등 중개 경유 매장은 제외).</li>
           <li>소개비는 결제 후 환불 가능 기간(7일)이 지나야 확정되며, 확정 전 환불된 주문은 적립에서 제외됩니다.</li>
           <li>사용자 친구 추천 보너스는 별도 프로그램이며 현재 운영하지 않습니다.</li>
         </ul>
