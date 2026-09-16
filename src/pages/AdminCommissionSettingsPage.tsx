@@ -275,7 +275,7 @@ export default function AdminCommissionSettingsPage() {
               계좌 송금을 택했을 때만 제합니다. 딜 수령은 수수료가 없습니다. <b>0 = 안 걷음(기본).</b>
             </p>
             <p className="text-[11px] text-amber-700 mt-1">
-              ⚠️ 위 &lsquo;딜 선택 시 보너스&rsquo;와 <b>한 쌍</b>입니다. 보너스를 0 으로 내리면서 이 수수료를
+              위 &lsquo;딜 선택 시 보너스&rsquo;와 <b>한 쌍</b>입니다. 보너스를 0 으로 내리면서 이 수수료를
               올리는 것이 2026-08-31 확정 방향이고, 한쪽만 움직이면 정산 경제가 어긋납니다.
             </p>
           </div>
