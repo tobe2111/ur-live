@@ -22,7 +22,21 @@ const MONO = INK
 export default {
   // 🛡️ 2026-05-02: 화이트 테마 페이지 사용자 토글 다크 모드 (CLAUDE.md A안).
   //   `dark` 클래스는 useTheme 스토어에서 <html> 에 적용. 시스템 기본값 = system 모드.
-  darkMode: 'class',
+  // 🌗 2026-09-02 (대표 확정 "안A · 다크에서도 패널은 흰색"): `dark:` 유틸은 **.light-island 안에서는 꺼진다**.
+  //   배경이 늘 정해진 자리(잉크 색면 위 홈 패널, 지도 타일 위 오버레이)는 테마를 따르면 안 되는데,
+  //   그동안은 그런 자리마다 `dark:` 를 손으로 빼거나 !important 로 덮었다. 이제 섬(island) 한 클래스로 끝난다.
+  //   기존 동작: `.dark\:x:is(.dark *)` → 이제 `:not(.light-island *)` 만 붙는다(섬 밖은 byte-동일).
+  //
+  // 🩸 2026-09-02 (대표 신고 "글자도 잘 안보이네 흰색 글자라서" — 이용권 등록 1단계 매장 검색 결과):
+  //   대시보드(셀러/어드민/에이전시)는 **화이트 고정**인데(CLAUDE.md "🚨 절대 규칙"), 그 안에서 렌더되는
+  //   *공용* 컴포넌트는 소비자 화면에서도 쓰이므로 `dark:` 를 정상적으로 달고 있다. html.dark 가 켜지면
+  //   그 `dark:` 가 흰 카드 위에서 그대로 살아나 **흰 글자 on 흰 배경**이 된다(`KakaoMapPicker` 의
+  //   `text-gray-900 dark:text-white` 매장명이 실제 사례 — 그 자체는 올바른 코드다).
+  //   `check-dashboard-theme.sh` 는 `src/pages/Seller*` 만 보고 `.force-light-theme` 는 **입력 글자만** 지켜
+  //   둘 다 이 클래스를 못 막았다. ⇒ 라이트 고정 래퍼를 `.light-island` 와 같은 자리에 넣어
+  //   **그 안의 모든 `dark:` 유틸을 끈다**. 개별 컴포넌트를 손대지 않고 클래스 전체가 닫힌다.
+  //   ⚠️ 도매몰은 자체 다크 팔레트를 쓰므로 넣지 않는다(`wholesale-theme`).
+  darkMode: ['variant', '&:is(.dark *):not(.light-island *):not(.seller-light-theme *):not(.admin-light-theme *):not(.agency-light-theme *):not(.force-light-theme *)'],
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
@@ -76,16 +90,45 @@ export default {
           tint: 'var(--brand-tint)', // 옅은 로즈 배경 — 라이트 #EAF1FE / 다크 #16243D (index.css)
           text: 'var(--brand-text)', // 로즈 '글자·뱃지' — 라이트 #1C69EF / 다크 #4D8DF5 (§6 보정값)
         },
+        /* 🏷️ 2026-09-07 (대표 — "할인율도 빨강으로 유지"): 할인 강조 **전용** 색.
+           블루는 '행동'(버튼·선택), 이 빨강은 '가격 이득'이다 — 역할이 다르므로 색이 둘이어도
+           규칙이 흐려지지 않는다. 값은 index.css 의 `--sale` 이 정한다(라이트/다크 자동 전환).
+           ⚠️ 경고·오류(destructive)와는 다른 토큰이다. 할인율 외에 쓰지 말 것. */
+        sale: 'var(--sale)',
+        /* 🩸 2026-09-16 (대표 신고 "글자들 개선해. 색깔이 뭐야 이게" — 다크 `/partners` 캡처):
+           이 셋만 **고정 hex 로 남아 있었다.** 9-15 '색 정리' 가 `surface`·`line`·`warm`·`rule` 을
+           테마 변수로 돌리면서 잉크는 빠뜨렸고, 그래서 `bg-warm`(= var(--bg), 다크 #11141C)은 어두워지는데
+           그 위 `text-ink` 는 #16181C 로 **고정** — 다크에서 대비 1.05:1, 글자가 배경에 잠긴다.
+           `--ink*` 는 index.css 가 이미 라이트/다크 양쪽 값을 갖고 있고, 라이트 고정 스코프
+           (`.light-island`/`.force-light-theme`/대시보드 3종)가 같은 파일에서 라이트 값으로 되박는다
+           — 즉 변수를 가리키는 순간 전 표면이 자동으로 맞는다.
+           ⚠️ 값을 여기 다시 적지 말 것(그 순간 두 벌이 갈린다). SSOT 는 index.css 의 `--ink*`. */
         ink: {
-          DEFAULT: '#16181C',  // 차콜 블랙 — 제목/본문/가격 (= --home-field)
-          soft: '#6E6B68',     // 보조 텍스트 (중성 그레이)
-          faint: '#8A8580',    // 비활성/플레이스홀더
+          DEFAULT: 'var(--ink)',       // 제목/본문/가격 — 라이트 #16181C / 다크 #F5F3F1
+          soft: 'var(--ink-soft)',     // 보조 텍스트
+          faint: 'var(--ink-faint)',   // 비활성/플레이스홀더
         },
-        surface: '#FFFFFF',
-        line: '#EAE4E0',
+        /* 🎨 2026-09-15 (대표 "색 정리도 진행해줘") — 표면·구분선·바탕을 **테마 변수**로.
+           그전엔 고정 hex 라 다크 값을 화면마다 `dark:bg-[#1D1F29]` 처럼 손으로 적어야 했고,
+           실측 결과 소비자 화면에 그 hex 가 **1,868 짝**으로 흩어져 있었다(같은 값을 1,776번 재입력).
+           변수를 가리키면 `bg-surface` 한 클래스가 두 테마를 다 덮는다.
+           ⚠️ 라이트 고정 스코프(대시보드·light-island)는 index.css 에서 이 셋을 라이트 값으로
+              되박는다 — 그 목록에 `.seller-light-theme` 를 같은 커밋에서 추가했다. */
+        surface: 'var(--surface)',
+        /* 🚦 2026-09-03 상태 색 — 아래 MONO 중화를 **통과하지 않는** 유일한 의미 색 집합.
+           대시보드 상태 배지(대기/완료/반려)가 중화 뒤 같은 회색이 되던 실측 결함의 수리.
+           값·이유·라이트 되박기는 `src/index.css` 의 `--tone-*` 주석 참조.
+           ⚠️ 장식으로 쓰지 말 것 — 이건 "지금 어떤 상태인가" 를 말하는 자리 전용이다. */
+        tone: {
+          ok: { DEFAULT: 'var(--tone-ok)', bg: 'var(--tone-ok-bg)' },
+          warn: { DEFAULT: 'var(--tone-warn)', bg: 'var(--tone-warn-bg)' },
+          bad: { DEFAULT: 'var(--tone-bad)', bg: 'var(--tone-bad-bg)' },
+          info: { DEFAULT: 'var(--tone-info)', bg: 'var(--tone-info-bg)' },
+        },
+        line: 'var(--line)',
         // 🎫 2026-09-02 표면 체계 — 카드 안 구분선·outline 테두리는 이 둘로만(테마별 값은 index.css).
         rule: { DEFAULT: 'var(--rule)', strong: 'var(--rule-strong)' },
-        warm: '#F8F7FC',       // 페이지 배경(웜 화이트)
+        warm: 'var(--bg)',     // 페이지 배경 — 라이트 #F8F7FC / 다크 #11141C (index.css)
         // 🎨 gray → 잉크 스케일 리매핑(위 INK 주석 참조). 클래스명 무변 — 값만 브랜드 정렬.
         gray: INK,
         // 🖤 전 장식 색조 → 잉크 스케일 중화. `red` 만 제외(기능 빨강). (2026-06-19 흑백 결정의 웜 승계)

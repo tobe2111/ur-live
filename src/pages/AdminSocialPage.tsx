@@ -127,7 +127,7 @@ export default function AdminSocialPage() {
       {/* 초안 생성 버튼 */}
       <div className="mb-6 rounded-xl border border-gray-200 bg-white p-4">
         <div className="mb-3 flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-purple-500" />
+          <Sparkles className="h-4 w-4 text-gray-700" />
           <span className="font-semibold text-gray-900">AI 초안 생성</span>
           <span className="text-xs text-gray-400">유어딜 홍보 문구를 사람 톤으로 자동 생성 (비공개 초안)</span>
         </div>
@@ -143,9 +143,9 @@ export default function AdminSocialPage() {
 
       {/* 플랫폼 필터 */}
       <div className="mb-4 flex gap-2">
-        <button onClick={() => setPlatform('')} className={`rounded-full px-3 py-1 text-sm ${platform === '' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>전체</button>
+        <button onClick={() => setPlatform('')} className={`rounded-full px-3 py-1 text-sm ${platform === '' ? 'bg-brand text-white' : 'bg-gray-100 text-gray-600'}`}>전체</button>
         {PLATFORMS.map(({ key, label, emoji }) => (
-          <button key={key} onClick={() => setPlatform(key)} className={`rounded-full px-3 py-1 text-sm ${platform === key ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>
+          <button key={key} onClick={() => setPlatform(key)} className={`rounded-full px-3 py-1 text-sm ${platform === key ? 'bg-brand text-white' : 'bg-gray-100 text-gray-600'}`}>
             {emoji} {label}
           </button>
         ))}
@@ -155,7 +155,7 @@ export default function AdminSocialPage() {
       {isLoading ? (
         <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-gray-400" /></div>
       ) : isError ? (
-        <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div className="flex items-center gap-2 rounded-xl border border-rule bg-white p-4 text-sm text-tone-bad">
           <AlertTriangle className="h-4 w-4" /> 목록을 불러오지 못했습니다.
           <button onClick={() => refetchPosts()} className="ml-2 underline">다시 시도</button>
         </div>
@@ -179,25 +179,25 @@ export default function AdminSocialPage() {
                       <span>{meta?.emoji}</span>
                       <span className="text-xs font-medium text-gray-500">{meta?.label}</span>
                       <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${st.cls}`}>{st.label}</span>
-                      {post.ai_generated ? <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs text-purple-700">AI</span> : null}
+                      {post.ai_generated ? <span className="rounded-full bg-tone-info-bg px-2 py-0.5 text-xs text-tone-info">AI</span> : null}
                       {post.media_kind === 'image' && <ImageIcon className="h-3.5 w-3.5 text-gray-400" />}
                       {post.media_kind === 'video' && <Video className="h-3.5 w-3.5 text-gray-400" />}
                       {post.scheduled_at && post.status !== 'published' && (
-                        <span className="inline-flex items-center gap-0.5 rounded-full bg-indigo-100 px-2 py-0.5 text-xs text-indigo-700">
+                        <span className="inline-flex items-center gap-0.5 rounded-full bg-tone-info-bg px-2 py-0.5 text-xs text-tone-info">
                           <Clock className="h-3 w-3" /> {parseUTCDate(post.scheduled_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })} 예약
                         </span>
                       )}
                     </div>
                     {post.title && <div className="truncate font-semibold text-gray-900">{post.title}</div>}
                     <p className="mt-1 whitespace-pre-wrap text-sm text-gray-600 line-clamp-3">{post.body}</p>
-                    {tags.length > 0 && <div className="mt-2 flex flex-wrap gap-1">{tags.map((t) => <span key={t} className="text-xs text-blue-500">#{t}</span>)}</div>}
+                    {tags.length > 0 && <div className="mt-2 flex flex-wrap gap-1">{tags.map((t) => <span key={t} className="text-xs text-gray-700">#{t}</span>)}</div>}
                     {post.status === 'published' && post.external_url && (
-                      <a href={post.external_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs text-green-600 hover:underline">
+                      <a href={post.external_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs text-brand-text hover:underline">
                         <ExternalLink className="h-3 w-3" /> 게시물 보기
                       </a>
                     )}
                     {post.status === 'failed' && post.error && (
-                      <div className="mt-2 flex items-start gap-1 text-xs text-red-600"><AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />{post.error}</div>
+                      <div className="mt-2 flex items-start gap-1 text-xs text-tone-bad"><AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />{post.error}</div>
                     )}
                     {/* 릴스/쇼츠 영상 컨트롤 — 유튜브·인스타 초안(미발행)만 */}
                     {(post.platform === 'youtube' || post.platform === 'instagram') && post.status !== 'published' && post.status !== 'archived' && (
@@ -213,17 +213,17 @@ export default function AdminSocialPage() {
                       </button>
                     )}
                     {post.status === 'draft' && (
-                      <button onClick={() => approve(post)} className="flex items-center gap-1 rounded-lg bg-gray-900 px-2.5 py-1 text-xs text-white hover:bg-gray-900 disabled:opacity-50" disabled={busy}>
+                      <button onClick={() => approve(post)} className="ur-btn ur-btn-sm ur-btn-primary flex items-center gap-1 disabled:opacity-50" disabled={busy}>
                         <CheckCircle2 className="h-3 w-3" /> 승인
                       </button>
                     )}
                     {post.status === 'approved' && (
                       <button onClick={() => publish(post)} title={pub.ok ? '' : pub.reason}
-                        className="flex items-center gap-1 rounded-lg bg-gray-900 px-2.5 py-1 text-xs text-white hover:bg-gray-900 disabled:cursor-not-allowed disabled:opacity-40" disabled={busy || !pub.ok}>
+                        className="ur-btn ur-btn-sm ur-btn-primary flex items-center gap-1 disabled:cursor-not-allowed disabled:opacity-40" disabled={busy || !pub.ok}>
                         {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />} 발행
                       </button>
                     )}
-                    {post.status === 'approved' && !pub.ok && <span className="text-[10px] text-amber-600">{pub.reason}</span>}
+                    {post.status === 'approved' && !pub.ok && <span className="text-[10px] text-tone-warn">{pub.reason}</span>}
                     {post.status !== 'published' && (
                       <button onClick={() => archive(post)} className="flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1 text-xs text-gray-400 hover:bg-gray-50" disabled={busy}>
                         <Trash2 className="h-3 w-3" /> 보관

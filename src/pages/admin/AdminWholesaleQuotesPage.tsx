@@ -40,12 +40,12 @@ interface QuoteRow {
 const won = (n: number | null | undefined) => '₩' + Number(n || 0).toLocaleString('ko-KR')
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
-  requested: { label: '요청접수', cls: 'bg-blue-100 text-blue-700' },
-  quoted: { label: '회신완료', cls: 'bg-amber-100 text-amber-700' },
-  accepted: { label: '수락됨', cls: 'bg-emerald-100 text-emerald-700' },
-  rejected: { label: '반려', cls: 'bg-red-100 text-red-700' },
+  requested: { label: '요청접수', cls: 'bg-tone-info-bg text-tone-info' },
+  quoted: { label: '회신완료', cls: 'bg-tone-warn-bg text-tone-warn' },
+  accepted: { label: '수락됨', cls: 'bg-tone-ok-bg text-tone-ok' },
+  rejected: { label: '반려', cls: 'bg-tone-bad-bg text-tone-bad' },
   expired: { label: '기간만료', cls: 'bg-gray-100 text-gray-600' },
-  converted: { label: '발주전환', cls: 'bg-emerald-100 text-emerald-700' },
+  converted: { label: '발주전환', cls: 'bg-tone-ok-bg text-tone-ok' },
 }
 
 const STATUS_FILTERS = ['', 'requested', 'quoted', 'accepted', 'rejected', 'converted'] as const
@@ -109,7 +109,7 @@ export default function AdminWholesaleQuotesPage() {
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {STATUS_FILTERS.map(s => (
           <button key={s || 'all'} onClick={() => setStatusFilter(s)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium ${statusFilter === s ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}>
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium ${statusFilter === s ? 'bg-brand text-white' : 'bg-white text-gray-600 border border-gray-200'}`}>
             {s === '' ? '전체' : (STATUS_LABEL[s]?.label || s)}
           </button>
         ))}
@@ -150,12 +150,12 @@ export default function AdminWholesaleQuotesPage() {
                         {q.valid_until ? ` · 유효 ${String(q.valid_until).slice(0, 10)}` : ''}
                       </p>
                     ) : null}
-                    {q.order_id ? <p className="text-xs text-emerald-600 mt-1">✓ 발주 #{q.order_id} 전환됨</p> : null}
+                    {q.order_id ? <p className="text-xs text-tone-ok mt-1">발주 #{q.order_id} 전환됨</p> : null}
                     <p className="text-[10px] text-gray-400 mt-1">{(q.created_at || '').slice(0, 16).replace('T', ' ')}</p>
                   </div>
                   {canRespond && !isOpen ? (
                     <button onClick={() => openRespond(q)}
-                      className="shrink-0 inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-gray-900 text-white text-sm font-semibold">
+                      className="ur-btn ur-btn-md ur-btn-primary shrink-0 inline-flex items-center gap-1">
                       <Send className="w-4 h-4" /> {q.status === 'quoted' ? '재회신' : '회신'}
                     </button>
                   ) : null}
@@ -182,7 +182,7 @@ export default function AdminWholesaleQuotesPage() {
                     <div className="sm:col-span-4 flex gap-2 justify-end">
                       <button onClick={() => setRespondId(null)} className="px-4 py-2 rounded-lg border border-gray-200 text-gray-600 text-sm font-medium">취소</button>
                       <button onClick={() => submitRespond(q.id)} disabled={busy}
-                        className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold disabled:opacity-60">
+                        className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-60">
                         {busy ? '회신 중...' : '견적 회신'}
                       </button>
                     </div>

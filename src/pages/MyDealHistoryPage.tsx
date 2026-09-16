@@ -195,12 +195,12 @@ export default function MyDealHistoryPage() {
             <button
               onClick={() => setPage(p => Math.max(0, p - 1))}
               disabled={page === 0}
-              className="px-3 py-1.5 text-xs border border-gray-200 dark:border-[#2C2F35] text-gray-700 dark:text-gray-300 rounded disabled:opacity-40"
+              className="px-3 py-1.5 text-xs border border-line text-gray-700 dark:text-gray-300 rounded disabled:opacity-40"
             >이전</button>
             <button
               onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
               disabled={page >= totalPages - 1}
-              className="px-3 py-1.5 text-xs border border-gray-200 dark:border-[#2C2F35] text-gray-700 dark:text-gray-300 rounded disabled:opacity-40"
+              className="px-3 py-1.5 text-xs border border-line text-gray-700 dark:text-gray-300 rounded disabled:opacity-40"
             >다음</button>
           </div>
         </div>

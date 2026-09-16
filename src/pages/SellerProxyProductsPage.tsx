@@ -66,7 +66,7 @@ export default function SellerProxyProductsPage() {
         </header>
 
         <div className="max-w-3xl mx-auto px-4 py-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-900 leading-relaxed">
+          <div className="bg-white border border-rule rounded-xl p-3 text-xs text-gray-700 leading-relaxed">
             크리에이터·에이전시가 우리 매장을 대신해 등록한 공구입니다. 내용을 확인하고 승인하면 공개돼요.
             정산은 항상 우리 매장으로 들어옵니다.
           </div>
@@ -93,7 +93,7 @@ export default function SellerProxyProductsPage() {
                   </div>
                 </div>
                 <div className="flex gap-2 mt-3">
-                  <button onClick={() => act(p.id, 'approve')} disabled={busy === p.id} className="flex-1 py-2 bg-pink-500 text-white text-sm font-bold rounded-lg disabled:opacity-50">
+                  <button onClick={() => act(p.id, 'approve')} disabled={busy === p.id} className="ur-btn ur-btn-md ur-btn-primary flex-1">
                     승인 (공개)
                   </button>
                   <button onClick={() => act(p.id, 'reject')} disabled={busy === p.id} className="px-4 py-2 border border-gray-300 text-gray-600 text-sm font-bold rounded-lg disabled:opacity-50">

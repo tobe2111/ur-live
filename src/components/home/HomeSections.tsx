@@ -1,7 +1,9 @@
+import { DEAL_GRID_GAP } from '@/shared/deal-card-grid'
 import { Fragment, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { resolveSectionMoreHref, isDeadEndHref } from './section-more-href'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
+import { readHomeSectionsSeed } from '@/shared/home-section-ids'
 import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import {
@@ -12,7 +14,7 @@ import {
  * 🏠 ① 카테고리 섹션 + 더보기 (2026-08-04 대표 시안 승인).
  *
  * 어드민이 만든 홈 섹션(`homepage_sections`)을 주제별 한 줄씩 그린다.
- * 상품은 규칙(인기·마감임박·최신·카테고리) 또는 직접 고른 목록에서 온다 — 서버가 정한다.
+ * 상품은 규칙(인기·최신·카테고리) 또는 직접 고른 목록에서 온다 — 서버가 정한다.
  *
  * 🚫 **상품이 0건인 섹션은 서버가 목록에서 빼고 내려준다.** 여기서 또 거르지 않아도 되지만,
  *    방어적으로 한 번 더 본다(서버가 바뀌어도 홈에 빈 제목이 남지 않게).
@@ -58,7 +60,9 @@ interface HomeSection {
  * @param midBanner 첫 섹션 **뒤에** 끼워 넣을 노드(③ 중간 배너). 섹션이 하나도 없으면 이것만
  *   남는다 — 배너 컴포넌트 자신이 "없으면 null" 이라 결국 아무것도 안 그려진다.
  */
-export default function HomeSections({ midBanner }: { midBanner?: React.ReactNode }) {
+export default function HomeSections(
+  { midBanner, shortsRail }: { midBanner?: React.ReactNode; shortsRail?: React.ReactNode },
+) {
   /**
    * 🖼️ 카드 사진 해상도 — 열 수를 아는 쪽이 정한다(2026-08-27).
    *   이 섹션은 룩을 위해 `pc` 를 **항상** 넘기는데, 예전엔 그 플래그가 이미지 폭까지 정해서
@@ -76,16 +80,9 @@ export default function HomeSections({ midBanner }: { midBanner?: React.ReactNod
    * 스켈레톤이 한 번 깜빡이고, 그게 대표가 본 "늦게 끼어든다"의 실체다.
    * 시드가 없으면(다른 표면·콜드 타임아웃) undefined → 평소대로 fetch. 회귀 0.
    */
-  const ssrSections = useMemo<HomeSection[] | undefined>(() => {
-    try {
-      const el = document.getElementById('__SSR_INITIAL_SECTIONS__')
-      if (!el?.textContent) return undefined
-      const r = JSON.parse(el.textContent) as { success?: boolean; data?: HomeSection[] }
-      return r?.success && Array.isArray(r.data) ? r.data : undefined
-    } catch {
-      return undefined // 깨진 시드 하나가 홈을 못 열게 하면 안 된다
-    }
-  }, [])
+  //   시드 파싱은 `shared/home-section-ids` 가 SSOT 다 — 바로 아래 피드도 같은 시드를 읽는다
+  //   (섹션에 뜬 상품을 자기 밴드 뒤로 미루려고). 파서가 둘이면 한쪽만 고쳐지고 결국 갈린다.
+  const ssrSections = useMemo(() => readHomeSectionsSeed<HomeSection>(), [])
 
   const { data: sections = [], isLoading } = useApiQuery<HomeSection[]>(
     ['home', 'sections'],
@@ -115,10 +112,10 @@ export default function HomeSections({ midBanner }: { midBanner?: React.ReactNod
   if (isLoading && visible.length === 0) {
     return (
       <>
-        <section className="ur-home-panel" aria-hidden="true">
+        <section className="ur-home-panel light-island" aria-hidden="true">
           <div className="h-[22px] w-40 rounded bg-gray-100 dark:bg-white/[0.06] mb-1" />
           <div className="h-[15px] w-56 rounded bg-gray-100 dark:bg-white/[0.06] mb-3" />
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 lg:gap-4">
+          <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 ${DEAL_GRID_GAP}`}>
             {[0, 1, 2, 3].map((i) => (
               <div key={i}>
                 <div className="aspect-[4/3] rounded-xl bg-gray-100 dark:bg-white/[0.06]" />
@@ -133,7 +130,7 @@ export default function HomeSections({ midBanner }: { midBanner?: React.ReactNod
     )
   }
 
-  if (visible.length === 0) return <>{midBanner}</>
+  if (visible.length === 0) return <>{shortsRail}{midBanner}</>
 
   return (
     <>
@@ -148,7 +145,7 @@ export default function HomeSections({ midBanner }: { midBanner?: React.ReactNod
           <Fragment key={sec.id}>
           {/* 📐 가로 여백은 홈 컨테이너가 준다 — 여기서 또 주면 좌우가 어긋난다. */}
           {/* 📐 2026-08-17 (대표 — 컴팩트): 섹션 하단 여백·제목·그리드 gap 축소(피드 그리드와 동일 톤). */}
-          <section className="ur-home-panel">
+          <section className="ur-home-panel light-island">
             <div className="flex items-end justify-between gap-4 mb-3">
               <div className="min-w-0">
                 <h3 className="text-[17px] font-black tracking-tight text-gray-900 dark:text-white">
@@ -159,20 +156,33 @@ export default function HomeSections({ midBanner }: { midBanner?: React.ReactNod
                 )}
               </div>
               {more && !moreIsDeadEnd && (
+                /* 🎨 2026-09-07 (대표 승인 — 홈 개선 안 C): 테두리 알약 → 밑줄 없는 글자 링크.
+                   표면 규칙 첫 줄이 **테두리 0** 인데 섹션마다 붙는 더보기만 테두리를 그려,
+                   화면에서 가장 안 중요한 것이 제일 진하게 보였다. 화살표도 뺀다 — 더보기라는 말이
+                   이미 "눌러진다"를 말하고 있어 화살표가 같은 말을 두 번 한다.
+
+                   ⚠️ **글자색은 원래 회색 그대로다.** 처음엔 브랜드 블루로 바꿨는데 대표가
+                      *"글자 색은 흰색에서 파랑으로 넘어가진 말자"* 로 되돌렸다(다크에서 밝은 회색이
+                      파랑이 되는 게 어색하다). 블루는 **면**(버튼·선택 칩)에서만 쓰고, 본문 글자를
+                      파랑으로 물들이지 않는다. 눌러지는 신호는 hover 밑줄이 맡는다. */
                 <Link
                   to={more}
-                  className="shrink-0 px-3.5 py-1.5 rounded-full border border-gray-200 dark:border-[#2C2F35] text-[12.5px] font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors whitespace-nowrap"
+                  className="shrink-0 text-[12.5px] font-bold text-gray-600 dark:text-gray-300 hover:underline underline-offset-4 whitespace-nowrap"
                 >
-                  더보기 →
+                  더보기
                 </Link>
               )}
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 lg:gap-4">
+            <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 ${DEAL_GRID_GAP}`}>
               {sec.products.map((p, i) => (
                 <GroupBuyFeedCard key={p.id} p={p} imgWidth={cardImgWidth} aboveFold={i < HOME_CARD_ABOVE_FOLD && sIdx === 0} />
               ))}
             </div>
           </section>
+          {/* 🎬 2026-09-07 (대표 확정): 유어쇼츠는 **인기 이용권 다음**. 히어로 바로 아래로 올리면
+              홈이 첫 딜을 보여 주는 시각(559ms→304ms로 당겨 둔 값)이 늦어지고, 4열 그리드가
+              세 번 연달아 나오던 단조로움도 이 세로 레일이 끊는다. */}
+          {sIdx === 0 && shortsRail}
           {sIdx === 0 && midBanner}
           </Fragment>
         )

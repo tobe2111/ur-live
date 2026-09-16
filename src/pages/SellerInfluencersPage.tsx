@@ -10,7 +10,7 @@ import SentOutreachList from './seller-influencers/SentOutreachList'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { formatNumber } from '@/utils/format'
-import { Loader2, Send, Users, ChevronDown } from 'lucide-react'
+import { Loader2, Send, Users, ChevronDown, X } from 'lucide-react'
 
 interface Lead {
   id: number; platform: string; handle: string; name: string | null; category: string | null
@@ -76,8 +76,8 @@ export default function SellerInfluencersPage() {
   return (
     <SellerLayout title="소개 파트너 찾기">
       <SEO title="소개 파트너 찾기 - 유어딜 셀러" description="협업 인플루언서 탐색·제안" noindex />
-      <div className="mx-auto max-w-5xl space-y-3 p-3 sm:p-4">
-        <div className="rounded-xl bg-rose-50 border border-rose-100 px-4 py-3">
+      <div className="mx-auto max-w-5xl space-y-3">
+        <div className="rounded-xl bg-white border border-rule px-4 py-3">
           <p className="text-[11px] font-bold text-brand">인플루언서 협업</p>
           <p className="text-sm font-extrabold text-gray-900">내 이용권을 팔아 줄 크리에이터를 찾아 제안해 보세요</p>
           <p className="text-[11px] text-gray-600 mt-0.5">제안을 접수하면 유어딜이 검토 후 인플루언서에게 직접 전달해 드려요{contactFee > 0 ? ` · 발송 1명당 ${formatNumber(contactFee)}원` : ''}</p>
@@ -106,7 +106,7 @@ export default function SellerInfluencersPage() {
         </div>
 
         {/* 리스트 (참고 UI: 프로필 · 팔로워 · 게시물 · 평균 조회 · 평균 댓글) */}
-        <div className="rounded-2xl bg-white border border-gray-200 overflow-hidden">
+        <div className="rounded-[var(--dash-radius,16px)] bg-white border border-gray-200 overflow-hidden">
           <div className="hidden sm:grid grid-cols-[1fr_90px_80px_100px_90px] px-4 py-2 bg-gray-50 text-[10px] font-bold text-gray-400 border-b border-gray-100">
             <span>프로필</span><span className="text-right">팔로워</span><span className="text-right">게시물</span><span className="text-right">평균 조회</span><span className="text-right">평균 댓글</span>
           </div>
@@ -134,7 +134,7 @@ export default function SellerInfluencersPage() {
               {rows.map(r => (
                 <li key={r.id}>
                   <button onClick={() => toggle(r.id)}
-                    className={`w-full grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_90px_80px_100px_90px] items-center px-4 py-2.5 text-left transition ${selected.has(r.id) ? 'bg-rose-50/60' : 'hover:bg-gray-50'}`}>
+                    className={`w-full grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_90px_80px_100px_90px] items-center px-4 py-2.5 text-left transition ${selected.has(r.id) ? 'border border-rule bg-white' : 'hover:bg-gray-50'}`}>
                     <span className="flex items-center gap-2.5 min-w-0">
                       <input type="checkbox" readOnly checked={selected.has(r.id)} className="accent-brand shrink-0" />
                       {r.thumbnail
@@ -228,10 +228,10 @@ function ProposalModal({ count, leadIds, contactFee, onClose, onDone }: {
 
   return (
     <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4" onClick={onClose}>
-      <div className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl max-h-[92dvh] flex flex-col" onClick={e => e.stopPropagation()}>
+      <div className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)] max-h-[92dvh] flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between shrink-0">
           <h2 className="text-sm font-bold text-gray-900">협업 제안 — {count}명</h2>
-          <button onClick={onClose} className="text-gray-400 text-sm px-2">✕</button>
+          <button onClick={onClose} aria-label="닫기" className="ur-btn ur-btn-sm ur-btn-icon ur-btn-ghost"><X className="h-4 w-4" /></button>
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3.5">
           <label className="block">
@@ -270,7 +270,7 @@ function ProposalModal({ count, leadIds, contactFee, onClose, onDone }: {
             <div className="flex flex-wrap gap-1.5 mt-1">
               {CHANNELS.map(ch => (
                 <button key={ch.key} onClick={() => setChannels(prev => { const n = new Set(prev); n.has(ch.key) ? n.delete(ch.key) : n.add(ch.key); return n })}
-                  className={`px-2.5 py-1.5 rounded-full border text-[11px] font-bold ${channels.has(ch.key) ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-200 text-gray-500'}`}>
+                  className={`px-2.5 py-1.5 rounded-full border text-[11px] font-bold ${channels.has(ch.key) ? 'border-gray-900 bg-brand-tint text-brand-text' : 'border-gray-200 text-gray-500'}`}>
                   {ch.label}
                 </button>
               ))}
@@ -283,7 +283,7 @@ function ProposalModal({ count, leadIds, contactFee, onClose, onDone }: {
               className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400" />
           </label>
           {contactFee > 0 && (
-            <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            <p className="text-[11px] text-tone-warn bg-white border border-rule rounded-lg px-3 py-2">
               발송 확정 시 {count}명 × {formatNumber(contactFee)}원 = <b>{formatNumber(contactFee * count)}원</b>이 청구됩니다.
             </p>
           )}

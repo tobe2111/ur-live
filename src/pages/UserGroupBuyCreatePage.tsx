@@ -42,7 +42,7 @@ export default function UserGroupBuyCreatePage() {
 
   // 🛡️ 2026-05-16: 공구 등록 권한 강화 — 점주(셀러) OR 인플루언서만 등록 가능
   //   일반 user (영업/공구 등록 자격 없음) 차단 — 사용자 보고:
-  //   "아무나 이 공구를 올리면 안 될 것 같아. 점주님이나 아니면 인플루언서"
+  // "아무나 이 공구를 올리면 안 될 것 같아. 점주님이나 아니면 인플루언서"
   const [eligibleAsInfluencer, setEligibleAsInfluencer] = useState<boolean | null>(null)
   const isSeller = !!sellerToken
 
@@ -101,7 +101,7 @@ export default function UserGroupBuyCreatePage() {
         <div className="flex flex-col gap-2 w-full max-w-xs">
           <button
             onClick={() => navigate('/store/new')}
-            className="w-full py-3 bg-pink-500 text-white rounded-xl font-bold text-sm"
+            className="w-full py-3 bg-brand text-white rounded-xl font-bold text-sm"
           >
             🏪 내 가게 등록하기
           </button>
@@ -112,7 +112,7 @@ export default function UserGroupBuyCreatePage() {
             🎤 인플루언서 활동 시작 (카탈로그)
           </button>
           <button onClick={() => navigate(-1)} aria-label="뒤로 가기"
-            className="w-full py-3 border border-gray-200 dark:border-[#2C2F35] text-gray-700 dark:text-gray-300 rounded-xl font-bold text-sm"
+            className="w-full py-3 border border-line text-gray-700 dark:text-gray-300 rounded-xl font-bold text-sm"
           >
             돌아가기
           </button>
@@ -235,7 +235,7 @@ export default function UserGroupBuyCreatePage() {
 
           {/* Selected restaurant card */}
           {restaurant && (
-            <div className="mt-3 p-4 border border-gray-200 dark:border-[#2C2F35] rounded-xl bg-gray-50 dark:bg-[#1D1F29]">
+            <div className="mt-3 p-4 border border-line rounded-xl bg-gray-50 dark:bg-[#1D1F29]">
               <p className="text-[14px] font-bold text-gray-900 dark:text-white">
                 {restaurant.name}
               </p>
@@ -291,7 +291,7 @@ export default function UserGroupBuyCreatePage() {
                     setProposedPrice(e.target.value ? Number(e.target.value) : '')
                   }
                   placeholder={t('groupbuy.pricePlaceholder', { defaultValue: '예: 20000' })}
-                  className="w-full px-3 py-2.5 border border-gray-200 dark:border-[#2C2F35] rounded-lg text-[14px] text-gray-900 dark:text-white bg-white dark:bg-[#1D1F29] placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:border-gray-900 dark:focus:border-gray-400 focus:outline-none pr-10"
+                  className="w-full px-3 py-2.5 border border-line rounded-lg text-[14px] text-gray-900 dark:text-white bg-surface placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:border-gray-900 dark:focus:border-gray-400 focus:outline-none pr-10"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-gray-400 dark:text-gray-500">
                   {t('groupbuy.priceUnit', { defaultValue: '원' })}
@@ -311,7 +311,7 @@ export default function UserGroupBuyCreatePage() {
                   value={deposit}
                   onChange={(e) => setDeposit(Number(e.target.value) || 0)}
                   min={1000}
-                  className="w-full px-3 py-2.5 border border-gray-200 dark:border-[#2C2F35] rounded-lg text-[14px] text-gray-900 dark:text-white bg-white dark:bg-[#1D1F29] placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:border-gray-900 dark:focus:border-gray-400 focus:outline-none pr-10"
+                  className="w-full px-3 py-2.5 border border-line rounded-lg text-[14px] text-gray-900 dark:text-white bg-surface placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:border-gray-900 dark:focus:border-gray-400 focus:outline-none pr-10"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-gray-400 dark:text-gray-500">
                   {t('groupbuy.depositUnit', { defaultValue: '딜' })}
@@ -336,7 +336,7 @@ export default function UserGroupBuyCreatePage() {
                   value={targetCount}
                   onChange={(e) => setTargetCount(Number(e.target.value) || 0)}
                   min={3}
-                  className="w-full px-3 py-2.5 border border-gray-200 dark:border-[#2C2F35] rounded-lg text-[14px] text-gray-900 dark:text-white bg-white dark:bg-[#1D1F29] placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:border-gray-900 dark:focus:border-gray-400 focus:outline-none pr-10"
+                  className="w-full px-3 py-2.5 border border-line rounded-lg text-[14px] text-gray-900 dark:text-white bg-surface placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:border-gray-900 dark:focus:border-gray-400 focus:outline-none pr-10"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-gray-400 dark:text-gray-500">
                   {t('groupbuy.targetCountUnit', { defaultValue: '명' })}
@@ -360,7 +360,7 @@ export default function UserGroupBuyCreatePage() {
                 rows={4}
                 maxLength={1000}
                 placeholder={t('groupbuy.descriptionPlaceholder', { defaultValue: '이 공구를 소개해주세요. 어떤 메뉴인지, 왜 추천하는지, 참여하면 좋은 이유 등을 적으면 더 많은 분이 함께해요.' })}
-                className="w-full px-3 py-2.5 border border-gray-200 dark:border-[#2C2F35] rounded-lg text-[14px] text-gray-900 dark:text-white bg-white dark:bg-[#1D1F29] placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:border-gray-900 dark:focus:border-gray-400 focus:outline-none resize-none leading-relaxed"
+                className="w-full px-3 py-2.5 border border-line rounded-lg text-[14px] text-gray-900 dark:text-white bg-surface placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:border-gray-900 dark:focus:border-gray-400 focus:outline-none resize-none leading-relaxed"
               />
               <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1 text-right">
                 {description.length}/1000
@@ -389,7 +389,7 @@ export default function UserGroupBuyCreatePage() {
             </h2>
 
             {/* Summary card */}
-            <div className="border border-gray-200 dark:border-[#2C2F35] rounded-xl p-4 space-y-3 bg-white dark:bg-[#1D1F29]">
+            <div className="border border-line rounded-xl p-4 space-y-3 bg-surface">
               <div>
                 <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-0.5">{catMeta ? catMeta.place : t('groupbuy.summaryRestaurant', { defaultValue: '맛집' })}</p>
                 <p className="text-[14px] font-bold text-gray-900 dark:text-white">
@@ -425,7 +425,7 @@ export default function UserGroupBuyCreatePage() {
             {/* Balance */}
             <div className="mt-3 flex items-center justify-between px-1">
               <span className="text-[13px] text-gray-600 dark:text-gray-400">{t('groupbuy.balanceLabel', { defaultValue: '내 딜 잔액' })}</span>
-              <span className="text-[14px] font-bold text-pink-500">
+              <span className="text-[14px] font-bold text-brand-text">
                 {balance !== null
                   ? `${formatNumber(balance)}딜`
                   : t('groupbuy.balanceLoading', { defaultValue: '로딩중...' })}

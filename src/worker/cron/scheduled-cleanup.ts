@@ -236,18 +236,12 @@ export async function handleScheduled(env: Env, tiers: CleanupTiers = ALL_TIERS)
   // 🛡️ 2026-05-04: 이전엔 meal_voucher 만 → API request 시점에서도 UPDATE 했지만
   //   매 요청 100-300ms 추가됐음. cron 으로 통일 + 6종 카테고리 모두 커버.
   // 🛡️ 2026-06-11 (플로우 감사): deal_only=1 비-voucher 상품도 join 허용 대상인데 flip 누락이었음 — 포함.
-  try {
-    const { meta } = await DB.prepare(`
-      UPDATE products
-      SET group_buy_status = 'expired', updated_at = datetime('now')
-      WHERE (category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
-             OR COALESCE(deal_only, 0) = 1)
-        AND group_buy_status = 'active'
-        AND group_buy_deadline IS NOT NULL
-        AND group_buy_deadline < datetime('now')
-    `).run();
-    results.group_buys_expired = meta.changes ?? 0;
-  } catch (e) { logError('[Cron] group_buys error:', { error: String(e) }) }
+  // 🗓️ 2026-09-04 (대표 "마감 개념은 없어"): **마감으로 상품을 만료시키지 않는다.**
+  //   종전엔 셀러가 넣어 둔 날짜가 지나면 이 cron 이 group_buy_status 를 'expired' 로 뒤집었고,
+  //   그러면 구매 가드가 '종료된 공동구매입니다' 로 막았다 — 즉 마감 차단을 라우트에서만 지우면
+  //   이 cron 이 상태를 바꿔 **같은 결과를 우회로 만들어 냈다.** 두 곳이 한 쌍이라 함께 없앤다.
+  //   ⚠️ 상태 자체는 남는다 — 사람이 내린 종료(어드민·셀러)는 계속 유효하다.
+  results.group_buys_expired = 0;
 
   if (tiers.hourly) { // ⏱️ hourly 티어 — 근거: 파일 헤더 '읽기 다이어트'(2026-09-02)
   // ── 4. 바우처: 만료일 지난 바우처 자동 만료 ──

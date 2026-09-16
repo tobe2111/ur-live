@@ -1,6 +1,5 @@
 /**
  * Products API Routes
- * 
  * Endpoints:
  * - GET    /api/products                   - 상품 목록 조회
  * - GET    /api/products/search/popular    - 인기 검색어 조회
@@ -11,8 +10,7 @@
  * - PUT    /api/products/:id              - 상품 수정 (판매자 전용)
  * - DELETE /api/products/:id              - 상품 삭제 (판매자 전용)
  *
- * NOTE: app.route('/api/products', productsRoutes) 에 등록됨.
- * 내부 경로에 /api/products 를 절대 포함하지 말 것 (더블 prefix 방지).
+ * NOTE: app.route('/api/products', productsRoutes) 에 등록됨 — 내부 경로에 /api/products 를 절대 포함하지 말 것(더블 prefix 방지).
  */
 
 import { Hono } from 'hono';
@@ -34,6 +32,7 @@ import type { Env } from '@/worker/types/env';
 import { parsePickup, isEmptyPickup } from '../../../shared/pickup';
 import { getSupplyMeta } from '../../../worker/utils/product-supply-meta';
 import { MAIN_MALL } from '../../../shared/mall/resolve';
+import { registerProductViewRoutes } from './product-view.routes'
 
 // 🛡️ 2026-04-22: bare cors() 는 모든 origin 허용. 민감 routes 에 쓰지 말고 아래 tightCors 사용.
 const tightCors = () => cors({ origin: [...ALLOWED_ORIGINS], credentials: true });
@@ -44,6 +43,7 @@ type Bindings = {
 };
 
 export const productsRoutes = new Hono<{ Bindings: Bindings }>();
+registerProductViewRoutes(productsRoutes as never); // 👁️ 조회수 비콘(별도 파일 — 이 파일은 크기 동결)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 🎬 2026-07-07 (대표 — "데모 상품 심어줘"): 유어샵 리디자인 확인용 데모 상품 시드 (키 게이트 공개).

@@ -17,7 +17,7 @@ function renderInline(text: string): ReactNode[] {
     if (m[2] !== undefined) {
       nodes.push(<strong key={key++} className="font-semibold text-gray-900 dark:text-white">{m[2]}</strong>)
     } else if (m[3] !== undefined) {
-      nodes.push(<code key={key++} className="px-1 py-0.5 rounded bg-gray-100 dark:bg-[#1D1F29] text-[0.85em] text-pink-600 dark:text-pink-400 font-mono break-all">{m[3]}</code>)
+      nodes.push(<code key={key++} className="px-1 py-0.5 rounded bg-gray-100 dark:bg-[#1D1F29] text-[0.85em] text-brand-text font-mono break-all">{m[3]}</code>)
     } else if (m[4] !== undefined) {
       const href = m[5]
       const external = /^https?:\/\//.test(href)
@@ -49,7 +49,7 @@ export default function MarkdownView({ source, className = '' }: { source: strin
     if (t === '') { i++; continue }
 
     // 구분선
-    if (/^(---|===|\*\*\*)$/.test(t)) { blocks.push(<hr key={key++} className="my-6 border-gray-200 dark:border-[#2C2F35]" />); i++; continue }
+    if (/^(---|===|\*\*\*)$/.test(t)) { blocks.push(<hr key={key++} className="my-6 border-line" />); i++; continue }
 
     // 제목
     const h = t.match(/^(#{1,4})\s+(.*)$/)
@@ -71,10 +71,10 @@ export default function MarkdownView({ source, className = '' }: { source: strin
       const rows: string[][] = []
       while (i < lines.length && isTableRow(lines[i])) { rows.push(cells(lines[i])); i++ }
       blocks.push(
-        <div key={key++} className="my-3 overflow-x-auto rounded-lg border border-gray-200 dark:border-[#2C2F35]">
+        <div key={key++} className="my-3 overflow-x-auto rounded-lg border border-line">
           <table className="w-full text-[12.5px] border-collapse">
             <thead>
-              <tr>{header.map((c, j) => <th key={j} className="text-left px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border-b border-gray-200 dark:border-[#2C2F35] font-semibold text-gray-700 dark:text-gray-200 whitespace-nowrap">{renderInline(c)}</th>)}</tr>
+              <tr>{header.map((c, j) => <th key={j} className="text-left px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border-b border-line font-semibold text-gray-700 dark:text-gray-200 whitespace-nowrap">{renderInline(c)}</th>)}</tr>
             </thead>
             <tbody>
               {rows.map((r, ri) => (

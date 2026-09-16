@@ -69,12 +69,31 @@ export default function MyOrdersPage() {
   // 🛡️ 2026-07-02: 상태 필터 — 마이페이지 주문 현황 바(?status=)와 배선. 칩 클릭으로도 전환.
   const [searchParams, setSearchParams] = useSearchParams()
   const statusFilter = searchParams.get('status') || 'all'
+  /**
+   * 🎟️ 2026-09-02 (대표 "주문내역 페이지 지금 잘못됐어 · 배송 형태는 아니고")
+   *
+   * 이 칩 줄은 쇼핑몰의 **배송 5단계**였다. 유어딜이 파는 것은 매장 이용권과 문자 교환권이라
+   * 배송 단계가 아예 없어서, `배송준비/배송중/배송완료` 세 칩은 **누르면 언제나 0건**이었다
+   * (쇼핑탭은 2026-07-10 부터 숨김). 대표 스크린샷의 그 줄이 정확히 그 상태다.
+   *
+   * ⇒ 배송 칩은 **배송 주문이 실제로 있을 때만** 보여준다. 없으면 [전체 · 결제완료 · 취소·환불]
+   *   세 칩만 남는다 — 이용권/교환권 주문에 실제로 존재하는 상태들이다.
+   * ⚠️ 지우지 않고 **조건부**로 둔 이유: 쇼핑을 다시 열면 그 화면이 그대로 필요하고,
+   *   지금도 과거 배송 주문을 가진 사람에게는 그 필터가 유효하다(대표 화면에 실제로 2건 있다).
+   */
+  const hasShippingOrders = useMemo(
+    () => allOrders.some(o => ['PREPARING', 'SHIPPING', 'DELIVERED'].includes((o.status || '').toUpperCase())),
+    [allOrders],
+  )
   const STATUS_FILTERS: { key: string; label: string; match: string[] | null }[] = [
     { key: 'all', label: t('myOrders.filterAll', { defaultValue: '전체' }), match: null },
     { key: 'paid', label: t('orderStatus.paid', { defaultValue: '결제완료' }), match: ['PAID', 'DONE'] },
-    { key: 'preparing', label: t('orderStatus.preparing', { defaultValue: '배송준비' }), match: ['PREPARING'] },
-    { key: 'shipping', label: t('orderStatus.shipping', { defaultValue: '배송중' }), match: ['SHIPPING'] },
-    { key: 'delivered', label: t('orderStatus.delivered', { defaultValue: '배송완료' }), match: ['DELIVERED'] },
+    ...(hasShippingOrders ? [
+      { key: 'preparing', label: t('orderStatus.preparing', { defaultValue: '배송준비' }), match: ['PREPARING'] },
+      { key: 'shipping', label: t('orderStatus.shipping', { defaultValue: '배송중' }), match: ['SHIPPING'] },
+      { key: 'delivered', label: t('orderStatus.delivered', { defaultValue: '배송완료' }), match: ['DELIVERED'] },
+    ] : []),
+    { key: 'cancelled', label: t('orderStatus.cancelledRefunded', { defaultValue: '취소·환불' }), match: ['CANCELLED', 'REFUNDED', 'FAILED'] },
   ]
   const activeFilter = STATUS_FILTERS.find(f => f.key === statusFilter) ?? STATUS_FILTERS[0]
   const orders = useMemo(

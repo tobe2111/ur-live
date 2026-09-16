@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, Package, AlertCircle, Loader2, Clock, X, TrendingUp } from 'lucide-react'
-import api from '@/lib/api'
 import BrandLoader from '@/components/brand/BrandLoader'
+import { usePopularSearches } from '@/hooks/queries/usePopularSearches'
 
 interface SearchStatesProps {
   loading: boolean
@@ -41,21 +41,16 @@ export function addRecentSearch(query: string): void {
 export default function SearchStates({ loading, error, query, hasResults, suggestedQuery }: SearchStatesProps) {
   const navigate = useNavigate()
   const [recent, setRecent] = useState<string[]>([])
-  // 🛡️ 2026-05-19: 인기 검색어 — popular_searches 테이블 기반.
-  const [popular, setPopular] = useState<string[]>([])
+  /**
+   * 🛡️ 2026-05-19: 인기 검색어 — `popular_searches` 테이블 기반. 빈 쿼리 + 0건 결과 둘 다 표시.
+   * 🔀 2026-09-04: 자체 fetch → **공유 훅**(`usePopularSearches`). 검색 결과 화면이 같은 자리에
+   *   하드코딩 6개를 띄우고 있었어서, 값을 한 곳으로 모았다 — 두 벌이면 결국 갈린다.
+   *   (RQ 캐시라 두 화면이 오가도 요청은 한 번이다.)
+   */
+  const popular = usePopularSearches(10)
 
   useEffect(() => {
     if (!query) setRecent(loadRecent())
-    // 🛡️ 2026-05-19: 인기 검색어 — 빈 쿼리 + 0 건 결과 둘 다 표시.
-    //   1회 fetch + 캐시 활용 (api 가 60s edge cache).
-    if (popular.length === 0) {
-      api.get('/api/search/popular').then(r => {
-        if (r.data?.success && Array.isArray(r.data.data)) {
-          setPopular(r.data.data.map((x: { keyword: string }) => x.keyword).slice(0, 10))
-        }
-      }).catch(() => { /* graceful */ })
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query])
 
   const removeOne = (q: string) => {

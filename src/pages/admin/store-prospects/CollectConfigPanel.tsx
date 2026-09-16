@@ -54,7 +54,7 @@ export default function CollectConfigPanel({ lastRun }: { lastRun?: LastRun | nu
     <div className="rounded-xl border border-gray-200 bg-white mb-4">
       <details onToggle={e => setOpen((e.currentTarget as HTMLDetailsElement).open)}>
         <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-gray-800">
-          🎛️ 회차 조건
+          회차 조건
           <span className="ml-2 font-normal text-xs text-gray-500">
             {cfg ? `${cfg.regions.length ? cfg.regions.join('·') : '전국'} · 우선업종 ${Math.round(cfg.voucher_share * 100)}% · ${cfg.max_pages}페이지 · 예산 ${cfg.budget}` : '권역·비중·페이지·예산'}
           </span>
@@ -70,7 +70,7 @@ export default function CollectConfigPanel({ lastRun }: { lastRun?: LastRun | nu
                     const on = cfg.regions.includes(g)
                     return (
                       <button key={g} onClick={() => toggleGroup(g)} disabled={saving}
-                        className={`rounded-full px-2.5 py-1 text-[11px] font-medium disabled:opacity-40 ${on ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                        className={`rounded-full px-2.5 py-1 text-[11px] font-medium disabled:opacity-40 ${on ? 'bg-tone-info-bg text-tone-info ring-1 ring-indigo-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
                       >{g}</button>
                     )
                   })}
@@ -110,7 +110,7 @@ export default function CollectConfigPanel({ lastRun }: { lastRun?: LastRun | nu
                   직전 회차 · {formatNumber(lastRun.elapsed_ms ?? 0)}ms · 사용 {lastRun.spent ?? 0} ·
                   발굴 {formatNumber(lastRun.found ?? 0)} / 저장 {formatNumber(lastRun.saved ?? 0)}
                   {lastRun.stopped_by && (
-                    <span className={lastRun.stopped_by === 'deadline' ? ' font-semibold text-amber-600' : ''}>
+                    <span className={lastRun.stopped_by === 'deadline' ? ' font-semibold text-tone-warn' : ''}>
                       {' · '}{STOPPED_LABEL[lastRun.stopped_by] || lastRun.stopped_by}
                     </span>
                   )}

@@ -88,7 +88,7 @@ export default function InAppFeatureBlockedModal({ feature, onClose, onAlternati
       role="presentation"
     >
       <div
-        className="bg-white dark:bg-[#11141C] w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 pt-5 max-h-[90dvh] overflow-y-auto"
+        className="bg-surface w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 pt-5 max-h-[90dvh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -139,7 +139,7 @@ export default function InAppFeatureBlockedModal({ feature, onClose, onAlternati
           {onAlternative && alternativeLabel && (
             <button
               onClick={() => { onAlternative(); onClose() }}
-              className="w-full px-4 py-3 bg-pink-50 text-pink-600 rounded-2xl font-semibold text-[13px] border border-pink-200"
+              className="w-full px-4 py-3 bg-brand-tint text-brand-text rounded-2xl font-semibold text-[13px] border border-rule"
             >
               {alternativeLabel}
             </button>

@@ -27,8 +27,19 @@
 export const PAUSE_ENV = 'ADS_LANES_PAUSED'
 /** 하트비트 이름(`ads:` 접두는 adsBeat 가 붙인다) — 감시 쪽 상수와 같아야 한다(`cron-heartbeat.ts`). */
 export const PAUSE_BEAT = 'lanes-paused'
-/** 정지 중에도 띄우는 레인 — 사람에게 약속한 것만. 늘리려면 여기에(그리고 헤더에 이유를). */
-export const PAUSE_EXEMPT_PATHS: ReadonlySet<string> = new Set(['/__ads/consented-reminder', '/__ads/inbound-onboarding'])
+/**
+ * 정지 중에도 띄우는 레인. 늘리려면 여기에(그리고 이유를 여기 적는다).
+ *
+ * 두 부류뿐이다:
+ * 1. **사람에게 약속한 것** — 신청자 온보딩 안내 · 동의 리드 리마인드. 멈추면 사람이 답을 못 받는다.
+ * 2. **관측** — 정지·초과의 *이유*를 보는 창. ⚠️ 이걸 같이 막으면 **멈춘 이유를 볼 수 없는 상태로 멈춘다**
+ *    (이 레포가 반복해 당한 "검사가 안 도는데 아무도 모름"의 정확한 모양이다). 넷 다 읽기가 작고
+ *    체인을 안 이어 간다 — 예산을 다시 태울 위험이 없다.
+ */
+export const PAUSE_EXEMPT_PATHS: ReadonlySet<string> = new Set([
+  '/__ads/consented-reminder', '/__ads/inbound-onboarding',           // 1. 사람에게 한 약속
+  '/__ads/health', '/__ads/alert-test', '/__ads/probe-public-data', '/__ads/silence-digest', // 2. 관측
+])
 
 export function lanesPaused(env: unknown): boolean {
   return String((env as Record<string, unknown> | undefined)?.[PAUSE_ENV] ?? '').trim().toLowerCase() === 'true'
@@ -36,4 +47,37 @@ export function lanesPaused(env: unknown): boolean {
 
 export function pauseExempt(path: string): boolean {
   return PAUSE_EXEMPT_PATHS.has(path.split('?')[0] ?? path)
+}
+
+/**
+ * 레인 진입에서 막힌 이유 — 빈 문자열이면 통과. 하트비트/응답에 그대로 실린다.
+ *
+ * `runaway` 는 **그 레인만** 오늘 잘린 것이다(`budget` = 계정 몫을 넘겨 전 레인 정지와 다르다).
+ * 둘을 한 이름으로 뭉치면 "왜 멈췄나"가 사라지고, 그러면 처방이 또 '전부 조이기'로 돌아간다.
+ */
+export type LaneEntryBlock = '' | 'paused' | 'budget' | 'runaway'
+
+/**
+ * 레인 라우트 진입 판정 — **순수하게 떼어 둔 것은 게으름을 시험으로 고정하기 위해서다.**
+ *
+ * `overFn` 은 원장 DO 조회(= 서브리퀘스트 1)라, 면제 경로와 수동 정지에서는 **부르면 안 된다**.
+ * 이걸 미들웨어 안에 인라인으로 두면 "언제 부르는가"가 시험 밖으로 나가고, 나중에 조건을 한 줄
+ * 고치면서 조용히 매 요청 조회로 바뀐다(이 레포가 `useEffect` 의존성에서 겪은 것과 같은 모양).
+ */
+export async function laneEntryBlock(
+  path: string,
+  env: unknown,
+  budgetFn: (env: unknown, lane: string) => Promise<'' | 'budget' | 'runaway'>,
+  lane?: string,
+): Promise<LaneEntryBlock> {
+  if (pauseExempt(path)) return ''
+  if (lanesPaused(env)) return 'paused'
+  // 🧾 레인 이름은 호출부가 준다(`_beat` 우선 — 경로와 다른 레인이 있다: `enrich-company-driver` → `enrich-company`).
+  //    안 주면 경로에서 뽑는다 — 근사치이지 정답이 아니므로, 배선은 시험이 고정한다.
+  return budgetFn(env, (lane || '').trim() || entryLaneKey(path))
+}
+
+/** 경로 → 레인 이름(폴백). `laneLedgerKey` 와 같은 규약이지만 이 파일은 read-budget 을 import 하지 않는다(순환 방지). */
+export function entryLaneKey(path: string): string {
+  return (path.split('?')[0] ?? '').replace(/^\/__ads\//, '').replace(/^\//, '')
 }

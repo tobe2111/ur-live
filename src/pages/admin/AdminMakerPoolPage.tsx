@@ -29,20 +29,20 @@ interface EnrichInfo {
 const CRAWL_REASON_LABEL: Record<string, string> = {
   ok: '성공', no_contact: '이메일 미게시', robots: 'robots 차단', no_name: '상호 불일치',
   blocked_host: '제외 호스트', bad_url: '잘못된 주소', http_403: '봇차단(403)', http_404: '경로없음(404)',
-  http_5xx: '서버오류(5xx)', network: '접속불가(DNS·TLS)', subreq_limit: '⛔ 플랫폼 요청한도',
-  timeout: '⏱ 응답 시간초과(상대 서버)',
+  http_5xx: '서버오류(5xx)', network: '접속불가(DNS·TLS)', subreq_limit: '플랫폼 요청한도',
+  timeout: '응답 시간초과(상대 서버)',
 }
 
 const KIND_META: Record<string, { label: string; cls: string }> = {
-  maker: { label: '제조·브랜드', cls: 'bg-emerald-100 text-emerald-700' },
-  reseller: { label: '판매사 후보', cls: 'bg-sky-100 text-sky-700' },
+  maker: { label: '제조·브랜드', cls: 'bg-tone-ok-bg text-tone-ok' },
+  reseller: { label: '판매사 후보', cls: 'bg-tone-info-bg text-tone-info' },
 }
 const STATUS_META: Record<string, { label: string; cls: string }> = {
   new: { label: '신규', cls: 'bg-gray-100 text-gray-700' },
-  contacted: { label: '컨택함', cls: 'bg-blue-100 text-blue-700' },
-  interested: { label: '관심', cls: 'bg-amber-100 text-amber-700' },
-  contracted: { label: '계약', cls: 'bg-green-100 text-green-700' },
-  rejected: { label: '거절', cls: 'bg-red-100 text-red-600' },
+  contacted: { label: '컨택함', cls: 'bg-tone-info-bg text-tone-info' },
+  interested: { label: '관심', cls: 'bg-tone-warn-bg text-tone-warn' },
+  contracted: { label: '계약', cls: 'bg-tone-ok-bg text-tone-ok' },
+  rejected: { label: '거절', cls: 'bg-tone-bad-bg text-tone-bad' },
   hold: { label: '보류', cls: 'bg-gray-100 text-gray-500' },
 }
 const PAGE_SIZE = 100
@@ -61,7 +61,7 @@ const LeadRow = memo(function LeadRow({ lead, onStatus }: { lead: Lead; onStatus
       </td>
       <td className="px-3 py-2 text-gray-600">{lead.region || '—'}</td>
       <td className="px-3 py-2">
-        {lead.phone ? <a href={`tel:${lead.phone}`} className="text-blue-600">{lead.phone}</a> : <span className="text-gray-300">—</span>}
+        {lead.phone ? <a href={`tel:${lead.phone}`} className="text-gray-700">{lead.phone}</a> : <span className="text-gray-300">—</span>}
         {lead.email && <div className="text-[11px] text-gray-500 break-all">{lead.email}</div>}
         {lead.contact_source && <div className="text-[11px] text-gray-400">출처: {lead.contact_source}</div>}
       </td>
@@ -142,7 +142,7 @@ export default function AdminMakerPoolPage() {
   return (
     <AdminLayout title="제조사·판매사 풀">
       <div className="p-4 lg:p-6">
-        <DashboardPageHeader title="🏭 제조사·판매사 후보 풀" subtitle="도매몰(유통스타트) 전용 — 제조사(브랜드사) 공급자 + 판매사 후보. 소비자 파트너 풀과 별개 DB." />
+        <DashboardPageHeader title="제조사·판매사 후보 풀" subtitle="도매몰(유통스타트) 전용 — 제조사(브랜드사) 공급자 + 판매사 후보. 소비자 파트너 풀과 별개 DB." />
 
         <div className="grid grid-cols-2 lg:grid-cols-6 gap-2 mb-3">
           {card('전체', stats?.total || 0)}
@@ -155,19 +155,19 @@ export default function AdminMakerPoolPage() {
 
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <button onClick={() => run('collect', '제조사 수집')} disabled={busy !== ''}
-            className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50"
+            className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-50"
             title="카카오 로컬로 품목×지역 그리드 순회 — 제조사·브랜드사(전화·주소 직접 확보)">
-            {busy === 'collect' ? '⏳ 수집 중…' : '🏭 제조사 수집'}
+            {busy === 'collect' ? '수집 중…' : '제조사 수집'}
           </button>
           <button onClick={() => run('import-resellers', '판매사 후보 임포트')} disabled={busy !== ''}
-            className="px-4 py-2 rounded-lg bg-sky-600 text-white text-sm font-semibold hover:bg-sky-700 disabled:opacity-50"
+            className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-50"
             title="이미 수집된 통신판매사업자 원부(대표자 이메일 포함)를 판매사 후보로 복사 — 원본은 무접촉">
-            {busy === 'import-resellers' ? '⏳ 임포트 중…' : '📥 판매사 후보 임포트'}
+            {busy === 'import-resellers' ? '임포트 중…' : '판매사 후보 임포트'}
           </button>
           <button onClick={() => run('enrich', '이메일 보강')} disabled={busy !== ''}
-            className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50"
+            className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-50"
             title="홈페이지를 찾아 업체가 게시한 이메일만 수집(robots 준수). 못 찾으면 비워둠 — 추측·생성 없음">
-            {busy === 'enrich' ? '⏳ 보강 중…' : '📧 이메일 보강'}
+            {busy === 'enrich' ? '보강 중…' : '이메일 보강'}
           </button>
           <select value={kind} onChange={e => setKind(e.target.value)} className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-900 text-sm">
             <option value="">종류 전체</option>
@@ -182,26 +182,26 @@ export default function AdminMakerPoolPage() {
 
         {/* 수집·임포트 상태줄 */}
         <div className="mb-3 text-xs text-gray-500">
-          🏭 제조사 수집 <span className={collect?.gate ? 'text-green-600 font-semibold' : 'text-gray-400'}>{collect?.gate ? 'ON · 자동' : 'OFF(수동만)'}</span>
-          {collect?.run?.diag?.error ? <span className="text-amber-600"> · ⚠️ {collect.run.diag.error}</span>
+          제조사 수집 <span className={collect?.gate ? 'text-tone-ok font-semibold' : 'text-gray-400'}>{collect?.gate ? 'ON · 자동' : 'OFF(수동만)'}</span>
+          {collect?.run?.diag?.error ? <span className="text-tone-warn"> · {collect.run.diag.error}</span>
             : collect?.run?.last_run ? <span> · 최근 {kstShort(collect.run.last_run)} · 발굴 {collect.run.found ?? 0} / 저장 {collect.run.saved ?? 0} (누적 {formatNumber(collect.run.total_saved ?? 0)})</span>
               : <span className="text-gray-400"> · 아직 실행 안 됨</span>}
           <span className="mx-2 text-gray-300">|</span>
-          📥 판매사 후보 임포트
+          판매사 후보 임포트
           {importRun?.last_run
-            ? <span> · 최근 {kstShort(importRun.last_run)} · 이번 {formatNumber(importRun.saved ?? 0)} (누적 {formatNumber(importRun.total_saved ?? 0)}){importRun.done ? ' · 전량 완료 ✅' : ''}</span>
+            ? <span> · 최근 {kstShort(importRun.last_run)} · 이번 {formatNumber(importRun.saved ?? 0)} (누적 {formatNumber(importRun.total_saved ?? 0)}){importRun.done ? ' · 전량 완료 ' : ''}</span>
             : <span className="text-gray-400"> · 아직 실행 안 됨</span>}
         </div>
 
         {/* 📧 이메일 보강 레인 — 소비자 트랙의 실사고(한도 초과가 '사이트 문제'로 오진되고 재시도 쿨다운까지
             오염)를 되풀이하지 않도록, 처음부터 예산 실측·한도 도달 여부를 화면에 드러낸다. */}
         <div className="mb-3 text-xs text-gray-500">
-          📧 이메일 보강
+          이메일 보강
           {enrichLast?.last_run
-            ? <span> · 최근 {kstShort(enrichLast.last_run)} · 처리 {formatNumber(enrichLast.processed ?? 0)} · <b className="text-indigo-600">확보 {formatNumber(enrichLast.enriched ?? 0)}</b>
+            ? <span> · 최근 {kstShort(enrichLast.last_run)} · 처리 {formatNumber(enrichLast.processed ?? 0)} · <b className="text-gray-700">확보 {formatNumber(enrichLast.enriched ?? 0)}</b>
                 {(enrichLast.crawls ?? 0) > 0
-                  ? <span> · 크롤 {formatNumber(enrichLast.crawls ?? 0)}(적중 <b className={(enrichLast.hit_rate ?? 0) >= 15 ? 'text-green-600' : 'text-amber-600'}>{enrichLast.hit_rate ?? 0}%</b>)</span>
-                  : <span className="text-amber-600"> · 크롤 0회 — 홈페이지를 못 찾았거나 예산이 없음</span>}
+                  ? <span> · 크롤 {formatNumber(enrichLast.crawls ?? 0)}(적중 <b className={(enrichLast.hit_rate ?? 0) >= 15 ? 'text-tone-ok' : 'text-tone-warn'}>{enrichLast.hit_rate ?? 0}%</b>)</span>
+                  : <span className="text-tone-warn"> · 크롤 0회 — 홈페이지를 못 찾았거나 예산이 없음</span>}
                 <span className="text-gray-400"> · 이메일 미보유 잔여 {formatNumber(enrichLast.remaining ?? 0)}</span>
                 {enrichLast.crawl_reason && Object.keys(enrichLast.crawl_reason).length > 0 && (
                   <span className="text-gray-400"> · 사유 {Object.entries(enrichLast.crawl_reason).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${CRAWL_REASON_LABEL[k] || k} ${v}`).join(' / ')}</span>
@@ -212,7 +212,7 @@ export default function AdminMakerPoolPage() {
             <div className="mt-1 text-[11px] text-gray-400">
               예산 {formatNumber(enrichLast.spent)}/{formatNumber(enrichLast.budget_total ?? 0)} 사용
               {enrichLast.limit_hit
-                ? <span className="text-amber-600 font-semibold"> · ⛔ 플랫폼 요청한도 도달 → 라운드 중단(재시도 도장 미기록) · 다음 실행 상한 {formatNumber(enrichLast.learned_cap ?? 0)}</span>
+                ? <span className="text-tone-warn font-semibold"> · 플랫폼 요청한도 도달 → 라운드 중단(재시도 도장 미기록) · 다음 실행 상한 {formatNumber(enrichLast.learned_cap ?? 0)}</span>
                 : <span> · 한도 여유</span>}
             </div>
           )}
@@ -234,7 +234,7 @@ export default function AdminMakerPoolPage() {
             </thead>
             <tbody>
               {loading ? <tr><td colSpan={5} className="px-3 py-8 text-center text-gray-400">불러오는 중…</td></tr>
-                : leads.length === 0 ? <tr><td colSpan={5} className="px-3 py-8 text-center text-gray-400">아직 데이터가 없습니다 — 위 [🏭 제조사 수집] 또는 [📥 판매사 후보 임포트]를 눌러주세요</td></tr>
+                : leads.length === 0 ? <tr><td colSpan={5} className="px-3 py-8 text-center text-gray-400">아직 데이터가 없습니다 — 위 [제조사 수집] 또는 [판매사 후보 임포트]를 눌러주세요</td></tr>
                   : leads.map(l => <LeadRow key={l.id} lead={l} onStatus={setStatus} />)}
             </tbody>
           </table>

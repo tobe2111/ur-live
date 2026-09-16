@@ -103,7 +103,7 @@ export default function AdminWholesaleBoardPage() {
         title="도매 게시판"
         subtitle="공지사항 + 상품 자료실(이미지 다운로드) — 공개 페이지: /wholesale/board"
         actions={(
-          <button onClick={openCreate} className="inline-flex items-center gap-1.5 px-4 h-10 rounded-xl bg-gray-900 text-white text-sm font-bold">
+          <button onClick={openCreate} className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-1.5">
             <Plus className="w-4 h-4" /> 새 게시글
           </button>
         )}
@@ -113,7 +113,7 @@ export default function AdminWholesaleBoardPage() {
       <div className="flex gap-2 mb-4">
         {([['', '전체'], ['notice', '공지사항'], ['archive', '자료실'], ['shipping', '배송안내']] as const).map(([v, l]) => (
           <button key={v} onClick={() => setTypeFilter(v)}
-            className={`px-3.5 h-9 rounded-full text-[13px] font-bold ${typeFilter === v ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}>
+            className={`px-3.5 h-9 rounded-full text-[13px] font-bold ${typeFilter === v ? 'bg-brand text-white' : 'bg-white text-gray-600 border border-gray-200'}`}>
             {l}
           </button>
         ))}
@@ -128,18 +128,18 @@ export default function AdminWholesaleBoardPage() {
       ) : isError ? (
         <DashboardLoadError error={error} onRetry={refetch} loginPath="/admin/login" label="게시판" />
       ) : posts.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-200 py-16 text-center text-sm text-gray-400">게시글이 없어요 — 새 게시글로 시작하세요</div>
+        <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 py-16 text-center text-sm text-gray-400">게시글이 없어요 — 새 게시글로 시작하세요</div>
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 overflow-hidden">
           {posts.map((p, i) => (
             <div key={p.id} className={`flex items-center gap-3 px-4 py-3 ${i ? 'border-t border-gray-100' : ''}`}>
-              <span className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${p.board_type === 'notice' ? 'bg-blue-50 text-blue-600' : p.board_type === 'shipping' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+              <span className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${p.board_type === 'notice' ? 'bg-tone-info-bg text-tone-info' : p.board_type === 'shipping' ? 'bg-tone-ok-bg text-tone-ok' : 'bg-tone-warn-bg text-tone-warn'}`}>
                 {p.board_type === 'notice' ? <Megaphone className="w-3 h-3" /> : p.board_type === 'shipping' ? <Truck className="w-3 h-3" /> : <FolderDown className="w-3 h-3" />}
                 {p.board_type === 'notice' ? '공지' : p.board_type === 'shipping' ? '배송' : '자료실'}
               </span>
               <div className="flex-1 min-w-0">
                 <p className="text-[14px] font-bold text-gray-900 truncate">
-                  {!!p.is_pinned && <Pin className="w-3.5 h-3.5 inline mr-1 -mt-0.5 text-red-500" />}
+                  {!!p.is_pinned && <Pin className="w-3.5 h-3.5 inline mr-1 -mt-0.5 text-tone-bad" />}
                   {p.title}
                 </p>
                 <p className="text-[12px] text-gray-400 mt-0.5">
@@ -147,7 +147,7 @@ export default function AdminWholesaleBoardPage() {
                 </p>
               </div>
               <button onClick={() => openEdit(p)} aria-label="수정" className="p-2 text-gray-400 hover:text-gray-900"><Edit className="w-4 h-4" /></button>
-              <button onClick={() => remove(p)} aria-label="삭제" className="p-2 text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+              <button onClick={() => remove(p)} aria-label="삭제" className="p-2 text-gray-400 hover:text-tone-bad"><Trash2 className="w-4 h-4" /></button>
             </div>
           ))}
         </div>
@@ -156,16 +156,16 @@ export default function AdminWholesaleBoardPage() {
       {/* 작성/수정 폼 */}
       {showForm && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setShowForm(false)}>
-          <div className="bg-white rounded-2xl w-full max-w-lg p-5 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-[var(--dash-radius,16px)] w-full max-w-lg p-5 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-[16px] font-extrabold text-gray-900">{editing ? '게시글 수정' : '새 게시글'}</h3>
               <button onClick={() => setShowForm(false)} aria-label="닫기" className="p-1 text-gray-400"><X className="w-5 h-5" /></button>
             </div>
             {!editing && (
               <div className="grid grid-cols-2 gap-2 mb-3">
-                {([['notice', '📢 공지사항'], ['archive', '📁 상품 자료실'], ['shipping', '🚚 배송안내']] as const).map(([v, l]) => (
+                {([['notice', '공지사항'], ['archive', '상품 자료실'], ['shipping', '배송안내']] as const).map(([v, l]) => (
                   <button key={v} onClick={() => setForm(f => ({ ...f, board_type: v }))}
-                    className={`h-11 rounded-xl text-[13px] font-bold ${form.board_type === v ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                    className={`h-11 rounded-xl text-[13px] font-bold ${form.board_type === v ? 'bg-brand text-white' : 'bg-gray-100 text-gray-600'}`}>
                     {l}
                   </button>
                 ))}
@@ -182,10 +182,10 @@ export default function AdminWholesaleBoardPage() {
               placeholder="내용 (선택)" className="w-full rounded-xl border border-gray-200 px-3.5 py-3 text-[13px] text-gray-900 resize-none mb-2" />
             <label className="flex items-center gap-2 text-[13px] font-bold text-gray-700 mb-4">
               <input type="checkbox" checked={form.is_pinned} onChange={e => setForm(f => ({ ...f, is_pinned: e.target.checked }))} className="w-4 h-4" />
-              상단 고정 (📌)
+              상단 고정 ()
             </label>
             <button onClick={save} disabled={saving}
-              className="w-full h-12 rounded-xl bg-gray-900 text-white text-[14px] font-bold disabled:opacity-50">
+              className="ur-btn ur-btn-lg ur-btn-primary w-full text-[14px] disabled:opacity-50">
               {saving ? '저장 중…' : (editing ? '수정하기' : '등록하기')}
             </button>
           </div>

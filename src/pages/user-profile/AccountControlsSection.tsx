@@ -12,7 +12,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
-  Bell, Mail, X, Loader2, CheckCircle2, RefreshCw,
+  Bell, Mail, X,
 } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -86,7 +86,7 @@ export function NotificationToggleSection() {
   return (
     <div className="ur-content-medium px-4 lg:px-8 pt-5">
       <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-2">{t('accountSettings.sectionNotification', { defaultValue: '알림 설정' })}</p>
-      <div className="rounded-2xl overflow-hidden bg-white dark:bg-[#1D1F29]">
+      <div className="rounded-2xl overflow-hidden bg-surface">
         <Toggle
           icon={<Bell className="w-4 h-4" aria-hidden="true" />}
           label={t('accountSettings.togglePush', { defaultValue: '푸시 알림' })}
@@ -155,48 +155,67 @@ export function AppVersionSection() {
   const isLatest = !loading && serverVersion && localBuildVersion && serverVersion === localBuildVersion
   const hasUpdate = !loading && serverVersion && localBuildVersion && serverVersion !== localBuildVersion
 
+  /**
+   * 📱 2026-09-07 (대표 *"앱 정보 부분에 지금 디자인? 너무 별로야. 그냥 줄글로 보여주면 되는데"* → 시안 "안 2").
+   *
+   * 종전엔 [섹션 라벨 + 흰 카드 + 구분선 3줄] 이었다. 문제는 카드 자체가 아니라 **바로 위와의 낙차**다 -
+   * 이 위는 이미 11px 잔글씨 한 줄(고객센터/공지/약관, 평일 10:00~18:00)인데 거기서 갑자기 카드가 섰다.
+   * 게다가 그 세 줄 중 **행동이 있는 줄은 하나**이고 그 행동은 새 버전이 있을 때만 의미가 있다
+   * ⇒ 95% 의 시간 동안 빈 무게였다.
+   *
+   * 그리고 이건 취향이 아니라 이미 정해 둔 규칙이다(CLAUDE.md 🎫 표면 규칙):
+   *   ⑥ "섹션 라벨 0" 이 `앱 정보` 라벨을 금지하고, ③ "숫자가 주인공" 은 이 자리에 주인공이 될 숫자가
+   *   없다고 말한다. 이 파일의 2026-09-02 주석도 대표 지시를 *"버전 표기는 찾을 수 있으면 되는 정보"* 로
+   *   적어 뒀는데, 카드는 찾을 수 있게 하는 것을 넘어 **보라고** 말하고 있었다.
+   *
+   * ⇒ 평소엔 잔글씨 두 줄. **업데이트가 있을 때만** 파란 버튼이 선다 - 그때가 이 영역이 존재하는
+   *   유일한 순간이기 때문이다. 상태 줄은 **이미 하고 있는 조회**(마운트 시 `/api/version`)의 결과를
+   *   그대로 말하는 것이라 새 요청이 0 이다.
+   *
+   * ⚠️ 값을 `v1.4.2 (가운뎃점) 3f01ed7 (가운뎃점) 최신` 처럼 **띄어 쓴 가운뎃점으로 잇지 않는다** -
+   *   `check-middle-dot-chain` 래칫이 막는 형태다. 괄호와 줄바꿈으로 나눈 이유가 그것이다.
+   */
   return (
     <div className="ur-content-medium px-4 lg:px-8 pt-5">
-      <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-2">{t('accountSettings.appInfo', { defaultValue: '앱 정보' })}</p>
-      <div className="rounded-2xl overflow-hidden bg-white dark:bg-[#1D1F29]">
-        <div className="flex items-center justify-between px-4 py-3.5">
-          <span className="text-[13px] text-gray-900 dark:text-white/75">{t('accountSettings.currentVersion', { defaultValue: '현재 버전' })}</span>
-          <span className="text-[12px] font-medium text-gray-900 dark:text-white">v{APP_VERSION}</span>
-        </div>
-        {/* 🛡️ 2026-07-02: 인라인 흰색 고정 borderTop → 테마 클래스(라이트에서 구분선 소실 수정) */}
-        {BUILD_HASH && (
-          <div className="flex items-center justify-between px-4 py-3.5 border-t border-black/[0.06] dark:border-white/[0.06]">
-            <span className="text-[13px] text-gray-900 dark:text-white/75">{t('accountSettings.build', { defaultValue: '빌드' })}</span>
-            <span className="text-[11px] font-mono text-gray-900 dark:text-white/55">{BUILD_HASH}</span>
-          </div>
-        )}
-        <div className="flex items-center justify-between px-4 py-3.5 border-t border-black/[0.06] dark:border-white/[0.06]">
-          <span className="text-[13px] text-gray-900 dark:text-white/75">{t('accountSettings.checkLatest', { defaultValue: '최신 버전 확인' })}</span>
-          {loading ? (
-            <span className="flex items-center gap-1.5 text-[12px] text-gray-900 dark:text-white/55">
-              <Loader2 className="w-3.5 h-3.5 animate-spin" /> 확인 중...
-            </span>
-          ) : !serverVersion ? (
-            <button type="button" onClick={handleCheck} className="flex items-center gap-1 text-[12px] text-gray-900 dark:text-white/55 hover:text-gray-900 dark:hover:text-white transition-colors">
-              <RefreshCw className={`w-3.5 h-3.5 ${checking ? 'animate-spin' : ''}`} /> 다시 시도
-            </button>
-          ) : isLatest ? (
-            <span className="flex items-center gap-1.5 text-[12px] text-emerald-600 dark:text-emerald-400 font-medium">
-              <CheckCircle2 className="w-3.5 h-3.5" /> 최신 버전
-            </span>
-          ) : hasUpdate ? (
-            <button type="button" onClick={handleUpdate} className="flex items-center gap-1 px-3 py-1 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors">
-              <RefreshCw className="w-3 h-3" /> 업데이트
-            </button>
-          ) : (
-            <button type="button" onClick={handleCheck} className="flex items-center gap-1 text-[12px] text-gray-900 dark:text-white/55 hover:text-gray-900 dark:hover:text-white transition-colors">
-              <RefreshCw className={`w-3.5 h-3.5 ${checking ? 'animate-spin' : ''}`} /> 확인
-            </button>
-          )}
-        </div>
-      </div>
-      {hasUpdate && (
-        <p className="mt-2 text-[11px] text-gray-600 dark:text-gray-300 px-2 text-center">새 버전이 준비되었습니다. 업데이트 버튼을 눌러 적용하세요.</p>
+      <p className="text-[11px] text-gray-400 dark:text-white/30 text-center tabular-nums">
+        {t('accountSettings.appName', { defaultValue: '유어딜' })} v{APP_VERSION}
+        {BUILD_HASH && <span className="font-mono"> ({BUILD_HASH})</span>}
+      </p>
+
+      {loading ? (
+        <p className="mt-1 text-[11px] text-gray-500 dark:text-white/40 text-center">
+          {t('accountSettings.checking', { defaultValue: '확인 중…' })}
+        </p>
+      ) : hasUpdate ? (
+        <>
+          <p className="mt-1 text-[11px] font-semibold text-brand-text text-center">
+            {t('accountSettings.updateAvailable', { defaultValue: '새 버전이 나왔어요' })}
+          </p>
+          <button
+            type="button"
+            onClick={handleUpdate}
+            className="mt-3 w-full py-3 rounded-xl bg-brand hover:bg-brand-dark text-white text-sm font-bold transition-colors"
+          >
+            {t('accountSettings.updateNow', { defaultValue: '지금 업데이트' })}
+          </button>
+        </>
+      ) : isLatest ? (
+        <p className="mt-1 text-[11px] text-gray-500 dark:text-white/40 text-center">
+          {t('accountSettings.isLatest', { defaultValue: '최신 버전이에요' })}
+        </p>
+      ) : (
+        /* 조회 실패이거나 로컬 빌드 기록이 아직 없다 - **"최신" 이라고 말하면 안 된다.** */
+        <p className="mt-1 text-center">
+          <button
+            type="button"
+            onClick={handleCheck}
+            className="text-[11px] text-gray-500 dark:text-white/40 underline underline-offset-4 decoration-gray-300 dark:decoration-white/20 active:text-gray-800 dark:active:text-white/75"
+          >
+            {checking
+              ? t('accountSettings.checking', { defaultValue: '확인 중…' })
+              : t('accountSettings.checkLatest', { defaultValue: '최신 버전인지 확인' })}
+          </button>
+        </p>
       )}
     </div>
   )
@@ -235,6 +254,22 @@ export function ProfileEditModal({ isOpen, onClose, initial, onSaved }: {
 
   async function save() {
     if (!form.name.trim()) { toast.error(t('accountSettings.nameRequired', { defaultValue: '이름을 입력해주세요' })); return }
+    /**
+     * 📞 2026-09-02 (대표 "프로필 수정에서 전화번호 입력은 필수로 둬줘")
+     *
+     * 이 서비스에서 전화번호는 선택 정보가 아니다 — 교환권은 **MMS 로 그 번호에 발송**되고
+     * 이용권 사용·주문 안내도 알림톡으로 간다. 번호가 없으면 산 물건이 도착할 곳이 없다.
+     * (교환권 결제 경로는 서버가 이미 `PHONE_REQUIRED` 로 막지만, 그건 **결제 순간**이라
+     *  사용자는 계산대 앞에서야 알게 된다. 프로필에서 미리 받아 그 벽을 없앤다.)
+     *
+     * ⚠️ 형식까지 본다 — 빈칸만 막으면 "010" 한 글자로도 통과해 같은 문제가 남는다.
+     *   `formatPhone` 이 하이픈을 넣으므로 하이픈 포함 010-0000-0000 형태를 받는다.
+     */
+    const phone = form.phone.trim()
+    if (!phone) { toast.error(t('accountSettings.phoneRequired', { defaultValue: '전화번호를 입력해주세요 — 교환권·알림톡이 이 번호로 갑니다' })); return }
+    if (!/^01[016789]-?\d{3,4}-?\d{4}$/.test(phone)) {
+      toast.error(t('accountSettings.phoneInvalid', { defaultValue: '전화번호 형식을 확인해주세요 (010-0000-0000)' })); return
+    }
     setLoading(true)
     try {
       const res = await api.patch('/api/auth/profile', { name: form.name.trim(), phone: form.phone.trim() })
@@ -258,7 +293,7 @@ export function ProfileEditModal({ isOpen, onClose, initial, onSaved }: {
 
   return (
     <div className="fixed inset-0 z-[10100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose} role="presentation">
-      <div className="bg-white dark:bg-[#11141C] rounded-2xl w-full max-w-md p-6 shadow-2xl mb-16 sm:mb-0" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+      <div className="bg-surface rounded-2xl w-full max-w-md p-6 shadow-2xl mb-16 sm:mb-0" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('accountSettings.editProfile', { defaultValue: '프로필 수정' })}</h3>
           <button onClick={onClose} aria-label="닫기"><X className="w-5 h-5 text-gray-500 dark:text-gray-400" /></button>
@@ -271,19 +306,19 @@ export function ProfileEditModal({ isOpen, onClose, initial, onSaved }: {
             <input
               id="account-name" required value={form.name}
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              className="w-full px-4 py-3 bg-white dark:bg-[#1D1F29] border border-gray-300 dark:border-[#2C2F35] rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:border-transparent outline-none"
+              className="w-full px-4 py-3 bg-surface border border-gray-300 dark:border-[#2C2F35] rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:border-transparent outline-none"
               placeholder={t('accountSettings.editNamePlaceholder', { defaultValue: '홍길동' })}
             />
           </div>
           <div>
             <label htmlFor="account-phone" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1.5">
-              {t('accountSettings.editPhone', { defaultValue: '전화번호' })}
+              {t('accountSettings.editPhone', { defaultValue: '전화번호' })} <span className="text-red-500" aria-hidden="true">*</span>
             </label>
             <input
-              id="account-phone" type="tel" inputMode="numeric" value={form.phone}
+              id="account-phone" type="tel" required inputMode="numeric" value={form.phone}
               onChange={e => setForm(f => ({ ...f, phone: formatPhone(e.target.value) }))}
               maxLength={13}
-              className="w-full px-4 py-3 bg-white dark:bg-[#1D1F29] border border-gray-300 dark:border-[#2C2F35] rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:border-transparent outline-none"
+              className="w-full px-4 py-3 bg-surface border border-gray-300 dark:border-[#2C2F35] rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:border-transparent outline-none"
               placeholder="010-0000-0000"
             />
             <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">

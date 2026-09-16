@@ -35,6 +35,20 @@ describe('이용권 지갑', () => {
     expect(page.slice(at, at + 260)).not.toMatch(/unusedItems\.length/)
   })
 
+  /**
+   * 🎫 2026-09-03 (대표 "내 이용권 문장 삭제해줘")
+   * 화면에서 제목 줄을 지웠다. 다만 **없앤 것이 아니라 `sr-only` 로 남겼다** — 페이지가 h1 없는
+   * 문서가 되면 보조기술·크롤러가 이 화면이 무엇인지 알 방법이 사라진다.
+   * ⚠️ 이 테스트가 못 잡는 것: CSS 로 sr-only 를 무력화하는 경우(실제 렌더는 안 잰다).
+   */
+  it('제목 줄은 화면에 안 뜨지만 sr-only h1 로 남아 있다', () => {
+    expect(page).toMatch(/<WalletHeader[\s\S]{0,400}hideTitle/)
+    const header = R('pages/my-vouchers/WalletHeader.tsx')
+    expect(header).toMatch(/hideTitle && <h1 className="sr-only">\{title\}<\/h1>/)
+    // 보이는 제목은 hideTitle 이면 렌더되지 않는다(그냥 색만 바꾸는 식이면 위반).
+    expect(header).toMatch(/\{!hideTitle && \([\s\S]{0,200}<h1/)
+  })
+
   it('카드 안 가격이 상품명보다 크지 않다 — 이미 산 것이라 영수증 정보다', () => {
     const lines = R('pages/my-vouchers/VoucherTicket.tsx').split('\n')
     // ⚠️ 클래스 문자열은 `>` 앞에서 끝나므로 한 정규식으로 `>{v.product_name}` 까지 못 건넌다

@@ -34,6 +34,7 @@ import { getTossClientKey } from '@/lib/toss-preload'
 // 🛡️ 2026-06-12 (전수조사 4차 B-1): 숙소 예약 결제 분기 — /checkout?order_id=N&stay=1.
 import StayCheckout from './checkout/StayCheckout'
 import { isNoShippingProduct } from '@/shared/product-flow'
+import MallOriginBanner from '@/components/mall/MallOriginBanner'
 
 const clientKey = getTossClientKey()
 
@@ -428,7 +429,7 @@ function CartCheckout() {
   if (error) return (
     <div className="w-full p-4 sm:p-6">
       <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-lg p-4">
-        <div className="flex items-center gap-2"><AlertCircle className="w-5 h-5 text-red-600" /><p className="text-red-800">{error}</p></div>
+        <div className="flex items-center gap-2"><AlertCircle className="w-5 h-5 text-red-600" /><p className="text-red-800 dark:text-red-400">{error}</p></div>
         <div className="flex gap-2 mt-4">
           <button onClick={() => window.location.reload()} className="px-4 py-2 bg-gray-900 text-white text-sm rounded-lg">{t('common.retry', { defaultValue: '다시 시도' })}</button>
           <Button onClick={() => navigate('/cart', { replace: true })} variant="outline">{t('checkout.backToCart', { defaultValue: '장바구니로 돌아가기' })}</Button>
@@ -461,6 +462,8 @@ function CartCheckout() {
         ) : (
           <div className="flex flex-col">
             <div className="flex flex-1 flex-col lg:rounded-3xl">
+              {/* 🏪 2026-08-12: 몰 손님이면 결제 화면에도 **가게 간판**을 남긴다(흔적 없으면 미렌더). */}
+              <MallOriginBanner className="mx-5 mt-4" />
               {/* 🛡️ 2026-05-21: 교환권만 담긴 주문 — 배송지/쿠폰 섹션 숨김.
                     KT Alpha 자동 발송이 users.phone 으로 직접 처리 → 사용자 주소 입력 불요.
                     쿠폰도 deal_only 상품엔 적용 안 됨 (백엔드 차단). */}
@@ -481,7 +484,7 @@ function CartCheckout() {
               {isAllDealOnly && (
                 <section className="bg-white dark:bg-[#11141C] px-5 py-4">
                   <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">발송 방법</h2>
-                  <div className="rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-gray-50 dark:bg-[#141414] p-3 flex items-start gap-3">
+                  <div className="rounded-xl border border-line bg-gray-50 dark:bg-[#141414] p-3 flex items-start gap-3">
                     <Smartphone className="w-6 h-6 shrink-0 text-gray-400 dark:text-gray-500" strokeWidth={1.6} aria-hidden />
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px] font-bold text-gray-900 dark:text-white">휴대폰 MMS 즉시 발송</p>
@@ -495,7 +498,7 @@ function CartCheckout() {
               {noShipping && !isAllDealOnly && (
                 <section className="bg-white dark:bg-[#11141C] px-5 py-4">
                   <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">사용 방법</h2>
-                  <div className="rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-gray-50 dark:bg-[#141414] p-3 flex items-start gap-3">
+                  <div className="rounded-xl border border-line bg-gray-50 dark:bg-[#141414] p-3 flex items-start gap-3">
                     <Ticket className="w-6 h-6 shrink-0 text-gray-400 dark:text-gray-500" strokeWidth={1.6} aria-hidden />
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px] font-bold text-gray-900 dark:text-white">매장에서 바로 사용</p>

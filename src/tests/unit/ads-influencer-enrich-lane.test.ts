@@ -294,7 +294,9 @@ describe('배선 — 드라이버가 조각을 실제로 넘긴다', () => {
     // 🔧 2026-08-04: 블로거 방 계산이 `naverRoomWithYtReserve`(YT 예약분 반영)로 바뀌었다.
     //   이 테스트가 지키는 건 방 계산식이 아니라 **`slice` 가 끝까지 전달되는가** 이므로 방 함수는
     //   이름을 느슨하게 두고 마지막 인자만 고정한다(방 정책은 `ads-enrich-yt-priority` 가 본다).
-    expect(lane).toMatch(/enrichNaverActivity\(DB, budget, naverRoom\w*\([^)]*\), slice\)/)
+    // 2026-09-03: 재측정 주기 필터가 env 를 읽어야 해서 인자가 하나 늘었다. 불변식(=slice 가 레인까지
+    //   전달된다)은 그대로고, env 는 있어도 되고 없어도 되게 둔다 — 그래야 다음 인자 추가에 또 안 깨진다.
+    expect(lane).toMatch(/enrichNaverActivity\(DB, budget, naverRoom\w*\([^)]*\), slice(, env)?\)/)
   })
 
   /**

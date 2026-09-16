@@ -1,3 +1,5 @@
+import CatIcon from './CatIcon'
+import { priceDisplay } from '@/shared/price-display'
 import { Heart, MapPin, Navigation, Phone, Radio, Ticket, X } from 'lucide-react'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { useNavigate } from 'react-router-dom'
@@ -19,7 +21,7 @@ export default function SelectedDetailCard({ selected, userLoc, liveSellerIds, f
   const navigate = useNavigate()
   const { t } = useTranslation()
   return (
-    <div className="bg-pink-50 dark:bg-pink-900/20 border-2 border-pink-300 dark:border-pink-700 rounded-2xl p-4 mb-3 relative">
+    <div className="bg-brand-tint border-2 border-rule rounded-2xl p-4 mb-3 relative">
       <button onClick={onClose} aria-label={t('map.detail.deselect', { defaultValue: '선택 해제' })} className="absolute top-2.5 right-2.5 w-7 h-7 flex items-center justify-center rounded-full bg-white dark:bg-[#11141C]/80">
         <X className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
       </button>
@@ -27,8 +29,8 @@ export default function SelectedDetailCard({ selected, userLoc, liveSellerIds, f
         {selected.image_url ? (
           <img src={cfImage(selected.image_url, { width: 160, quality: 85, format: 'auto' }) || selected.image_url} alt="" className="w-20 h-20 rounded-xl object-cover shrink-0" loading="lazy" decoding="async" onError={(e) => cfImageOnError(e.currentTarget, selected.image_url)} />
         ) : (
-          <div className="w-20 h-20 rounded-xl bg-white dark:bg-[#11141C] flex items-center justify-center shrink-0">
-            <span className="text-2xl">🍽️</span>
+          <div className="w-20 h-20 rounded-xl bg-surface flex items-center justify-center shrink-0">
+            <CatIcon cat={selected.category} className="w-7 h-7 text-gray-400" />
           </div>
         )}
         <div className="flex-1 min-w-0">
@@ -55,7 +57,7 @@ export default function SelectedDetailCard({ selected, userLoc, liveSellerIds, f
                 <span className="text-xs text-gray-400 dark:text-gray-500 line-through">{formatNumber(selected.original_price)}원</span>
                 {/* 🎨 2026-07-19 (대표 — 브랜드 컬러 통일): 할인 뱃지 순수 빨강 → 웜 로즈 brand 토큰. */}
                 <span className="text-xs bg-brand text-white font-bold px-1.5 py-0.5 rounded-md">
-                  -{Math.round((1 - selected.price / selected.original_price) * 100)}%
+                  -{priceDisplay(selected).discount}%
                 </span>
               </>
             )}
@@ -73,7 +75,7 @@ export default function SelectedDetailCard({ selected, userLoc, liveSellerIds, f
           <Heart className="w-4 h-4" fill={favorites.includes(selected.id) ? 'currentColor' : 'none'} />
         </button>
         {selected.restaurant_phone && (
-          <a href={`tel:${selected.restaurant_phone}`} aria-label={t('map.detail.call', { defaultValue: '전화' })} className="flex items-center justify-center w-10 h-10 bg-white dark:bg-[#11141C] rounded-xl text-gray-700 dark:text-gray-200">
+          <a href={`tel:${selected.restaurant_phone}`} aria-label={t('map.detail.call', { defaultValue: '전화' })} className="flex items-center justify-center w-10 h-10 bg-surface rounded-xl text-gray-700 dark:text-gray-200">
             <Phone className="w-4 h-4" />
           </a>
         )}

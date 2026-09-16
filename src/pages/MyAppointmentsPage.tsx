@@ -34,10 +34,10 @@ interface Appointment {
 }
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
-  confirmed: { label: '예약 확정', cls: 'bg-emerald-100 text-emerald-700' },
+  confirmed: { label: '예약 확정', cls: 'bg-tone-ok-bg text-tone-ok' },
   cancelled: { label: '취소', cls: 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300' },
-  no_show: { label: '노쇼', cls: 'bg-red-100 text-red-700' },
-  completed: { label: '이용 완료', cls: 'bg-blue-100 text-blue-700' },
+  no_show: { label: '노쇼', cls: 'bg-tone-bad-bg text-tone-bad' },
+  completed: { label: '이용 완료', cls: 'bg-tone-info-bg text-tone-info' },
 }
 // 🛡️ 2026-07-02: 정의 밖 status 방어 — meta undefined 렌더 크래시 방지.
 const STATUS_LABEL_FALLBACK = { label: '처리 중', cls: 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300' } as const
@@ -184,7 +184,7 @@ export default function MyAppointmentsPage() {
             {items.map(a => {
               const meta = STATUS_LABEL[a.status] ?? STATUS_LABEL_FALLBACK
               return (
-                <div key={a.id} className="rounded-2xl border border-gray-200 dark:border-[#2C2F35] p-4">
+                <div key={a.id} className="rounded-2xl border border-line p-4">
                   <div className="flex items-start gap-3">
                     <div className="w-16 h-16 rounded-lg bg-gray-100 dark:bg-[#1D1F29] overflow-hidden flex-shrink-0">
                       {a.image_url ? (
@@ -311,7 +311,7 @@ function AppointmentBookingModal({ item, onClose, onBooked }: {
   return (
     <div className="fixed inset-0 z-[10600] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center" onClick={onClose}>
       <div
-        className="bg-white dark:bg-[#11141C] w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-gray-100 dark:border-[#2C2F35] max-h-[90vh] overflow-y-auto"
+        className="bg-surface w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-gray-100 dark:border-[#2C2F35] max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="sticky top-0 bg-white dark:bg-[#11141C] px-5 py-4 border-b border-gray-100 dark:border-[#2C2F35]">
@@ -330,7 +330,7 @@ function AppointmentBookingModal({ item, onClose, onBooked }: {
               value={date}
               min={todayIso}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full px-3 py-2 bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 bg-surface border border-line rounded-lg text-sm text-gray-900 dark:text-white"
             />
           </div>
           <div>
@@ -374,7 +374,7 @@ function AppointmentBookingModal({ item, onClose, onBooked }: {
             <input
               value={form.user_name}
               onChange={(e) => setForm({ ...form, user_name: e.target.value })}
-              className="w-full px-3 py-2 bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 bg-surface border border-line rounded-lg text-sm text-gray-900 dark:text-white"
             />
           </div>
           <div>
@@ -385,7 +385,7 @@ function AppointmentBookingModal({ item, onClose, onBooked }: {
               value={form.user_phone}
               onChange={(e) => setForm({ ...form, user_phone: e.target.value })}
               placeholder="010-1234-5678"
-              className="w-full px-3 py-2 bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 bg-surface border border-line rounded-lg text-sm text-gray-900 dark:text-white"
             />
           </div>
           <div>
@@ -396,7 +396,7 @@ function AppointmentBookingModal({ item, onClose, onBooked }: {
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
               rows={2}
-              className="w-full px-3 py-2 bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white resize-none"
+              className="w-full px-3 py-2 bg-surface border border-line rounded-lg text-sm text-gray-900 dark:text-white resize-none"
             />
           </div>
           <div className="flex gap-2">

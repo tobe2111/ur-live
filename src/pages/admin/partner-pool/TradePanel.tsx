@@ -38,7 +38,7 @@ const ERR_LABEL: Record<string, string> = {
   INVALID_TRADE: '업종 이름이 올바르지 않습니다',
 }
 
-export default function TradePanel({ endpoint, title = '🎛️ 수집 업종 설정', unit = '지역', adapt }: TradePanelProps) {
+export default function TradePanel({ endpoint, title = '수집 업종 설정', unit = '지역', adapt }: TradePanelProps) {
   const [rows, setRows] = useState<TradeRow[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState('')
@@ -59,7 +59,7 @@ export default function TradePanel({ endpoint, title = '🎛️ 수집 업종 �
     try {
       const r = await api.patch(endpoint, { trade: t.trade, active: next })
       if (r.data?.success) {
-        toast.success(next ? `▶️ '${t.trade}' 수집 재개` : `⏸ '${t.trade}' 수집 중지`)
+        toast.success(next ? `▶'${t.trade}' 수집 재개` : `⏸ '${t.trade}' 수집 중지`)
         await load()
       } else toast.error(ERR_LABEL[r.data?.error] || r.data?.error || '변경 실패')
     } catch (e) {
@@ -113,15 +113,15 @@ export default function TradePanel({ endpoint, title = '🎛️ 수집 업종 �
                           </td>
                           <td className="px-2 py-2 text-right text-gray-600">
                             {formatNumber(t.kw)}
-                            {partial && <span className="ml-1 text-amber-600" title="일부만 켜져 있습니다">({formatNumber(t.active_kw)})</span>}
+                            {partial && <span className="ml-1 text-tone-warn" title="일부만 켜져 있습니다">({formatNumber(t.active_kw)})</span>}
                           </td>
                           <td className="px-2 py-2 text-right text-gray-600">{formatNumber(t.found)}</td>
-                          <td className={`px-2 py-2 text-right font-semibold ${t.saved ? 'text-indigo-600' : 'text-gray-300'}`}>{formatNumber(t.saved)}</td>
+                          <td className={`px-2 py-2 text-right font-semibold ${t.saved ? 'text-gray-700' : 'text-gray-300'}`}>{formatNumber(t.saved)}</td>
                           <td className="px-2 py-2 text-gray-400">{t.last_run_at ? kstShort(t.last_run_at) : '—'}</td>
                           <td className="px-2 py-2 text-right">
                             <button
                               onClick={() => toggle(t)} disabled={busy === t.trade}
-                              className={`rounded px-2 py-1 text-[11px] font-medium disabled:opacity-40 ${on ? 'bg-green-50 text-green-700 hover:bg-green-100' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                              className={`rounded px-2 py-1 text-[11px] font-medium disabled:opacity-40 ${on ? 'bg-tone-ok-bg text-tone-ok hover:bg-gray-100' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
                             >{busy === t.trade ? '…' : on ? 'ON' : 'OFF'}</button>
                           </td>
                         </tr>

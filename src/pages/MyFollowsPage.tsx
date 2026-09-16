@@ -103,7 +103,7 @@ export default function MyFollowsPage() {
 
             <div className="space-y-3">
               {follows.map(f => (
-                <div key={f.seller_id} className="bg-white dark:bg-[#11141C] rounded-2xl border border-gray-200 dark:border-[#2C2F35] overflow-hidden">
+                <div key={f.seller_id} className="bg-surface rounded-2xl border border-line overflow-hidden">
                   {/* 셀러 정보 */}
                   <button
                     onClick={() => navigate(`/profile/${f.seller_username || f.seller_id}`)}

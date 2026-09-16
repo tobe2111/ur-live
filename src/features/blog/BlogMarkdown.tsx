@@ -76,7 +76,7 @@ export function BlogMarkdown({ content }: { content: string }) {
           <div key={i} className="overflow-x-auto my-4">
             <table className="w-full text-sm border-collapse">
               <thead>
-                <tr>{headers.map((h, j) => <th key={j} className="text-left px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border-b border-gray-200 dark:border-[#2C2F35] font-semibold text-gray-700 dark:text-gray-200">{renderInline(h, `t${i}h${j}`)}</th>)}</tr>
+                <tr>{headers.map((h, j) => <th key={j} className="text-left px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border-b border-line font-semibold text-gray-700 dark:text-gray-200">{renderInline(h, `t${i}h${j}`)}</th>)}</tr>
               </thead>
               <tbody>
                 {rows.map((row, ri) => (
@@ -100,7 +100,7 @@ export function BlogMarkdown({ content }: { content: string }) {
         <ul key={i} className="my-3 space-y-1.5">
           {items.map((item, j) => (
             <li key={j} className="flex items-start gap-2 text-[15px] text-gray-700 dark:text-gray-200 leading-relaxed">
-              <span className="text-pink-500 mt-1 shrink-0">•</span>
+              <span className="text-brand-text mt-1 shrink-0">•</span>
               <span>{renderInline(item.trim().slice(2), `u${i}i${j}`)}</span>
             </li>
           ))}
@@ -117,7 +117,7 @@ export function BlogMarkdown({ content }: { content: string }) {
             const mm = item.trim().match(/^(\d+)\.\s+(.*)$/)
             return (
               <li key={j} className="flex items-start gap-2 text-[15px] text-gray-700 dark:text-gray-200 leading-relaxed">
-                <span className="text-pink-500 font-semibold mt-0.5 shrink-0 tabular-nums">{mm?.[1] ?? j + 1}.</span>
+                <span className="text-brand-text font-semibold mt-0.5 shrink-0 tabular-nums">{mm?.[1] ?? j + 1}.</span>
                 <span>{renderInline(mm?.[2] ?? item, `o${i}i${j}`)}</span>
               </li>
             )
@@ -130,14 +130,14 @@ export function BlogMarkdown({ content }: { content: string }) {
     if (trimmed.startsWith('> ')) {
       const body = trimmed.split('\n').map(l => l.replace(/^>\s?/, '')).join(' ')
       return (
-        <blockquote key={i} className="my-4 pl-4 border-l-4 border-gray-200 dark:border-[#2C2F35] text-gray-600 dark:text-gray-300 italic">
+        <blockquote key={i} className="my-4 pl-4 border-l-4 border-line text-gray-600 dark:text-gray-300 italic">
           {renderInline(body, `q${i}`)}
         </blockquote>
       )
     }
 
     // 구분선
-    if (trimmed === '---') return <hr key={i} className="my-8 border-gray-200 dark:border-[#2C2F35]" />
+    if (trimmed === '---') return <hr key={i} className="my-8 border-line" />
 
     // 일반 단락
     return <p key={i} className="text-[15px] text-gray-700 dark:text-gray-200 leading-[1.8] my-3">{renderInline(trimmed, `p${i}`)}</p>

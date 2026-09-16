@@ -33,9 +33,10 @@ describe('① 청소 티어', () => {
   it('GC 섹션은 daily 모듈로 분리돼 게이트 하나 뒤에 있고, 시간 규칙은 hourly, 분 단위(3·6·14)는 게이트 없음', () => {
     const headersOf = (src: string) => [...src.matchAll(/^  \/\/ ── (\S+)/gm)].map((m) => m[1].replace(/\.$/, ''))
     const main = headersOf(CLEANUP), daily = headersOf(CLEANUP_DAILY)
-    expect(main.length + daily.length).toBe(35)
+    // 2026-09-15: +1 — 장바구니 의사 기록 청소(24). 섹션을 늘릴 때 이 수와 아래 목록을 같이 올린다.
+    expect(main.length + daily.length).toBe(36)
     // daily 13개 섹션은 전부 분리 모듈에만 있다 — 본진 파일로 돌아오면 게이트 없이 5분마다 돈다.
-    for (const t of ['8', '9', '9b', '15', '16', '16b', '17', '18', '19', '22', '22b', '🏁', '23']) {
+    for (const t of ['8', '9', '9b', '15', '16', '16b', '17', '18', '19', '22', '22b', '🏁', '23', '24']) {
       expect(daily, t).toContain(t)
       expect(main, t).not.toContain(t)
     }

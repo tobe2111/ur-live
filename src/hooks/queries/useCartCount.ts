@@ -8,7 +8,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys } from './queryKeys'
-import { readCache, writeCache } from './localCache'
+import { writeCache, cachedInitialData, cacheOrRethrow } from './localCache'
 import { isLoggedInSync } from '@/utils/auth'
 
 const CACHE_KEY = 'cart-count'
@@ -28,8 +28,8 @@ export function useCartCount(enabledExtra = true) {
           return count
         }
         return 0
-      }).catch(() => readCache<number>(CACHE_KEY, 0)),
-    initialData: () => readCache<number>(CACHE_KEY, 0),
+      }).catch((err) => cacheOrRethrow<number>(CACHE_KEY, err)),
+    initialData: () => cachedInitialData<number>(CACHE_KEY),
     // 🛠️ 2026-06-17 (useBalance 와 동일 근본수정): 캐시 seed 를 즉시 stale 처리 → refetchOnMount 가
     //   cold mount 1회 서버 보정. 없으면 initialData(0)가 fresh 로 간주돼 60초간 잘못된 0 뱃지.
     initialDataUpdatedAt: 0,

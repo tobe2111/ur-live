@@ -362,7 +362,7 @@ export default function GuideViewer({ guideType, editable = false }: Props) {
         const isExpanded = openKeys.has(s.section_key)
 
         return (
-          <section key={s.section_key} id={`guide-${s.section_key}`} className="bg-white rounded-xl border border-gray-200 dark:border-[#2C2F35] overflow-hidden scroll-mt-4">
+          <section key={s.section_key} id={`guide-${s.section_key}`} className="bg-white rounded-xl border border-line overflow-hidden scroll-mt-4">
             <div className="flex items-center">
               <button
                 type="button"

@@ -107,7 +107,7 @@ export default function SellerBundlesPage() {
   return (
     <SellerLayout title={t('seller.nav.bundles', '번들 상품')}>
       <SellerProductTabs />
-      <div className="mx-auto max-w-3xl space-y-5 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-5">
         <DashboardPageHeader
           title={t('seller.nav.bundles', '번들 상품')}
           subtitle={t('seller.bundlesSubtitle', '여러 상품을 묶어 세트 할인 판매')}
@@ -122,12 +122,12 @@ export default function SellerBundlesPage() {
 
         {/* 생성/수정 폼 */}
         {showForm && (
-          <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-4">
+          <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-5 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold text-gray-900">
                 {editId ? t('seller.bundleEdit', '번들 수정') : t('seller.bundleCreate', '번들 만들기')}
               </h3>
-              <button onClick={resetForm} aria-label={t('common.close', { defaultValue: '닫기' })} className="p-1 text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+              <button onClick={resetForm} aria-label={t('common.close', { defaultValue: '닫기' })} className="ur-btn ur-btn-sm ur-btn-icon ur-btn-ghost"><X className="w-4 h-4" /></button>
             </div>
 
             <div>
@@ -168,8 +168,8 @@ export default function SellerBundlesPage() {
             {/* 상품 선택 */}
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">
-                {t('seller.bundleProducts', '상품 선택')} <span className="text-red-500">*</span>
-                {form.items.length > 0 && <span className="ml-1 text-blue-600 font-normal">{t('seller.bundles.selectedCount', { defaultValue: '{{count}}개 선택', count: form.items.length })}</span>}
+                {t('seller.bundleProducts', '상품 선택')} <span className="text-tone-bad">*</span>
+                {form.items.length > 0 && <span className="ml-1 text-gray-700 font-normal">{t('seller.bundles.selectedCount', { defaultValue: '{{count}}개 선택', count: form.items.length })}</span>}
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
                 {products.filter(p => p.stock > 0).map(p => {
@@ -177,14 +177,14 @@ export default function SellerBundlesPage() {
                   return (
                     <button key={p.id} onClick={() => toggleProduct(p.id)}
                       className={`flex items-center gap-2 p-2 rounded-lg border text-left text-xs transition-all ${
-                        selected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                        selected ? 'border-brand bg-brand-tint' : 'border-gray-200 hover:border-gray-300'
                       }`}>
                       {p.image_url && <img src={p.image_url} alt={p.name} className="w-8 h-8 rounded object-cover shrink-0" loading="lazy" />}
                       <div className="flex-1 min-w-0">
                         <p className="truncate font-medium text-gray-900">{p.name}</p>
                         <p className="text-gray-500">{formatNumber(p.price)}{t('common.won', { defaultValue: '원' })}</p>
                       </div>
-                      {selected && <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />}
+                      {selected && <CheckCircle2 className="w-4 h-4 text-gray-700 shrink-0" />}
                     </button>
                   )
                 })}
@@ -193,13 +193,13 @@ export default function SellerBundlesPage() {
 
             {/* 가격 요약 */}
             {form.items.length >= 2 && (
-              <div className="bg-blue-50 rounded-lg p-3 flex items-center justify-between">
+              <div className="border border-rule bg-white rounded-lg p-3 flex items-center justify-between">
                 <div className="text-xs text-gray-600">
                   <span className="line-through">{formatNumber(selectedTotal)}{t('common.won', { defaultValue: '원' })}</span>
                   <span className="mx-1.5">→</span>
-                  <span className="text-lg font-bold text-blue-700">{formatNumber(discountedTotal)}{t('common.won', { defaultValue: '원' })}</span>
+                  <span className="text-lg font-bold text-gray-900">{formatNumber(discountedTotal)}{t('common.won', { defaultValue: '원' })}</span>
                 </div>
-                <span className="text-xs font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-full">
+                <span className="text-xs font-bold text-tone-bad bg-tone-bad-bg px-2 py-0.5 rounded-full">
                   {form.discount_type === 'percent'
                     ? t('seller.bundles.discountBadgePercent', { defaultValue: '{{value}}% OFF', value: form.discount_value })
                     : t('seller.bundles.discountBadgeFixed', { defaultValue: '{{value}}원 할인', value: formatNumber(form.discount_value) })}
@@ -229,7 +229,7 @@ export default function SellerBundlesPage() {
                   <div className="flex items-center gap-2 mb-0.5">
                     <p className="text-sm font-bold text-gray-900 truncate">{b.name}</p>
                     <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
-                      b.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                      b.is_active ? 'bg-tone-ok-bg text-tone-ok' : 'bg-gray-100 text-gray-500'
                     }`}>
                       {b.is_active ? t('common.active', '활성') : t('common.inactive', '비활성')}
                     </span>
@@ -243,10 +243,10 @@ export default function SellerBundlesPage() {
                 <div className="flex items-center gap-1.5">
                   <button onClick={() => toggleActive(b.id, b.is_active)}
                     className="p-2 rounded-lg hover:bg-gray-100" title={b.is_active ? t('seller.bundles.deactivateTitle', { defaultValue: '비활성화' }) : t('seller.bundles.activateTitle', { defaultValue: '활성화' })}>
-                    {b.is_active ? <ToggleRight className="w-5 h-5 text-green-500" /> : <ToggleLeft className="w-5 h-5 text-gray-400" />}
+                    {b.is_active ? <ToggleRight className="w-5 h-5 text-tone-ok" /> : <ToggleLeft className="w-5 h-5 text-gray-400" />}
                   </button>
                   <button onClick={() => deleteBundle(b.id)}
-                    className="p-2 rounded-lg hover:bg-red-50 text-red-400 hover:text-red-600">
+                    className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-tone-bad">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>

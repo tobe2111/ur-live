@@ -8,7 +8,7 @@ export const EmptyCart = React.memo(function EmptyCart() {
   const { t } = useTranslation()
 
   return (
-    <div className="flex flex-col items-center justify-center py-20 px-4 bg-white dark:bg-[#11141C]">
+    <div className="flex flex-col items-center justify-center py-20 px-4">
       <div className="w-20 h-20 bg-gray-50 dark:bg-[#1D1F29] rounded-full flex items-center justify-center mb-5">
         <ShoppingBag size={36} className="text-gray-300 dark:text-gray-600" />
       </div>
@@ -23,7 +23,7 @@ export const EmptyCart = React.memo(function EmptyCart() {
 
       <button
         onClick={() => navigate('/')}
-        className="px-8 py-3 bg-gray-900 text-white text-[14px] font-bold rounded-xl hover:bg-gray-800 transition-colors active:scale-[0.98]"
+        className="px-8 py-3 bg-brand text-white text-[14px] font-bold rounded-xl hover:bg-brand-dark transition-colors active:scale-[0.98]"
       >
         {t('cart.continueShop', { defaultValue: '쇼핑 계속하기' })}
       </button>

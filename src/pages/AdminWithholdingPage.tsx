@@ -88,7 +88,7 @@ export default function AdminWithholdingPage() {
         { year },
         { headers: { Authorization: `Bearer ${token}` } })
       if (r.data?.success) {
-        toast.success(`✅ ${r.data.data.updated}건 제출 완료 마킹`)
+        toast.success(`${r.data.data.updated}건 제출 완료 마킹`)
         load()
       }
     } catch (err: unknown) {
@@ -101,7 +101,7 @@ export default function AdminWithholdingPage() {
     <AdminLayout title="원천징수 / 지급조서">
       <div className="mx-auto max-w-7xl space-y-5 p-4 sm:p-6 lg:p-8">
         <DashboardPageHeader
-          title="📋 원천징수 / 지급조서"
+          title="원천징수 / 지급조서"
           subtitle="비사업자 셀러 정산 원천징수 (8.8%) 추적 · 매년 1월말 국세청 제출 의무"
           icon={<FileSpreadsheet className="h-5 w-5" />}
         />
@@ -124,7 +124,7 @@ export default function AdminWithholdingPage() {
             <Kpi label="총 지급액 (gross)" value={formatWon(totals.total_gross)} sub={`${formatNumber(totals.total_rows)}건`} />
             <Kpi label="총 원천징수액" value={formatWon(totals.total_withheld)} sub={`8.8% 기준`} accent="amber" />
             <Kpi label="대상 셀러" value={`${formatNumber(totals.unique_sellers)}명`} sub={`reportable ${totals.reportable_count}건`} />
-            <Kpi label="국세청 제출" value={`${formatNumber(totals.reported_count)}/${totals.reportable_count}`} sub={totals.reported_count === totals.reportable_count ? '✅ 완료' : '⚠️ 미제출'}
+            <Kpi label="국세청 제출" value={`${formatNumber(totals.reported_count)}/${totals.reportable_count}`} sub={totals.reported_count === totals.reportable_count ? '완료' : '미제출'}
               accent={totals.reported_count === totals.reportable_count ? 'emerald' : 'red'} />
           </div>
         )}
@@ -132,22 +132,22 @@ export default function AdminWithholdingPage() {
         {/* Action 버튼 */}
         <div className="flex flex-wrap gap-2">
           <button onClick={() => downloadCsv(false)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 bg-gray-900 text-white text-sm font-bold rounded-lg hover:bg-gray-700">
+            className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-1.5 hover:bg-gray-700">
             <Download className="w-4 h-4" /> 전체 CSV ({year})
           </button>
           <button onClick={() => downloadCsv(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 bg-amber-500 text-white text-sm font-bold rounded-lg hover:bg-amber-600">
+            className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-1.5">
             <Download className="w-4 h-4" /> 300만 초과 CSV (홈택스용)
           </button>
           <button onClick={markReported} disabled={marking}
-            className="inline-flex items-center gap-1.5 px-3 py-2 bg-gray-900 text-white text-sm font-bold rounded-lg hover:bg-gray-900 disabled:opacity-50">
+            className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-1.5 disabled:opacity-50">
             <CheckCircle2 className="w-4 h-4" /> {marking ? '처리 중...' : '제출 완료 마킹'}
           </button>
         </div>
 
         {/* 안내 */}
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-[12px] text-blue-900 space-y-1">
-          <p className="font-bold flex items-center gap-1">ℹ️ 운영 가이드</p>
+        <div className="bg-white border border-rule rounded-xl p-3 text-[12px] text-gray-700 space-y-1">
+          <p className="font-bold flex items-center gap-1">ℹ운영 가이드</p>
           <ul className="list-disc list-inside space-y-0.5 ml-1">
             <li>매년 1월 1~31일 사이에 전년도 (위 셀렉터에서 연도 변경) 지급조서 국세청 제출 (홈택스).</li>
             <li><b>'300만 초과 CSV'</b> 다운로드 → 홈택스 → "기타소득 지급명세서" → CSV 업로드.</li>
@@ -163,7 +163,7 @@ export default function AdminWithholdingPage() {
             <p className="text-sm text-gray-500">{year}년 원천징수 이력 없음</p>
           </div>
         ) : (
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[900px]">
                 <thead>
@@ -186,11 +186,11 @@ export default function AdminWithholdingPage() {
                       <td className="px-3 py-3 text-gray-600 font-mono text-[11px]">{s.business_number || '-'}</td>
                       <td className="px-3 py-3 text-gray-700 text-right">{formatNumber(s.payout_count)}건</td>
                       <td className="px-3 py-3 text-gray-700 text-right font-semibold">{formatWon(s.total_gross)}</td>
-                      <td className="px-3 py-3 text-amber-700 text-right font-bold">{formatWon(s.total_withheld)}</td>
+                      <td className="px-3 py-3 text-tone-warn text-right font-bold">{formatWon(s.total_withheld)}</td>
                       <td className="px-3 py-3 text-gray-900 text-right font-bold">{formatWon(s.total_net)}</td>
                       <td className="px-3 py-3">
                         {s.reportable ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-amber-100 text-amber-800">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-tone-warn-bg text-tone-warn">
                             <AlertTriangle className="w-3 h-3" /> 300만 초과
                           </span>
                         ) : (
@@ -212,14 +212,14 @@ export default function AdminWithholdingPage() {
 }
 
 function Kpi({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: 'amber' | 'red' | 'emerald' }) {
-  const color = accent === 'amber' ? 'text-amber-700'
-              : accent === 'red' ? 'text-red-600'
-              : accent === 'emerald' ? 'text-emerald-700'
+  const color = accent === 'amber' ? 'text-tone-warn'
+              : accent === 'red' ? 'text-tone-bad'
+              : accent === 'emerald' ? 'text-tone-ok'
               : 'text-gray-900'
   return (
-    <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+    <div className="bg-white rounded-xl p-4 border border-rule border border-gray-100">
       <p className="text-xs text-gray-500 font-medium">{label}</p>
-      <p className={`text-2xl font-extrabold mt-1 ${color}`}>{value}</p>
+      <p className={`dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight mt-1 ${color}`}>{value}</p>
       {sub && <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>}
     </div>
   )

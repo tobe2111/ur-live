@@ -42,7 +42,7 @@ const REBASE = process.argv.includes('--rebaseline')
 const STRICT = process.argv.includes('-s') || process.argv.includes('--strict')
 
 const files = execSync(
-  "git ls-files 'src/pages/Seller*.tsx' 'src/components/seller/**/*.tsx' 'src/pages/seller-*/**/*.tsx'",
+  "git ls-files ':(glob)src/pages/Seller*.tsx' ':(glob)src/components/seller/**/*.tsx' ':(glob)src/pages/seller-*/**/*.tsx' ':(glob)src/pages/Admin*.tsx' ':(glob)src/pages/admin/**/*.tsx' ':(glob)src/components/admin/**/*.tsx'",
   { encoding: 'utf-8' },
 ).trim().split('\n').filter(Boolean)
 

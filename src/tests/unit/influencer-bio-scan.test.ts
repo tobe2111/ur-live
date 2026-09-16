@@ -38,12 +38,22 @@ const schema = readFileSync('src/features/marketing/api/influencer-schema.ts', '
 const lane = readFileSync('src/features/marketing/api/influencer-bio-enrich.ts', 'utf8')
 const code = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
 
-/** 대상 선택 쿼리 본문만 잘라낸다 — 파일 어딘가가 아니라 **이 쿼리**를 봐야 한다. */
+/**
+ * 대상 선택 쿼리 본문만 잘라낸다 — 파일 어딘가가 아니라 **이 쿼리**를 봐야 한다.
+ *
+ * 🩸 **고정 길이로 자르지 않는다** (2026-09-06). 쿼리를 `BIO_WHERE` 상수 + 템플릿으로 나누자
+ *   `ORDER BY id DESC` 가 `at + 700` 창 밖으로 밀려 이 시험이 **주입 없이도 빨갛게** 됐다.
+ *   같은 세션에 `ads-lane-alarm` 가드도 고정 700자 창 때문에 이웃 레인을 대신 매치해 **결함을
+ *   심어도 초록불**이었다 — 창이 짧으면 가짜 빨강, 길면 가짜 초록이다. 둘 다 창의 문제다.
+ *   ⇒ 끝을 구조(결과를 받는 줄)로 잡는다. 쿼리가 길어져도 창이 따라 늘어난다.
+ */
 function bioQuery(): string {
   const body = code(lane)
   const at = body.indexOf('bio_checked_at IS NULL AND (email IS NULL OR instagram IS NULL)')
   expect(at, '대상 선택 쿼리를 못 찾았다(코드가 옮겼으면 이 앵커를 고칠 것)').toBeGreaterThan(-1)
-  return body.slice(Math.max(0, at - 300), at + 700)
+  const end = body.indexOf('if (!rows.length) return 0', at)
+  expect(end, '쿼리 끝 표지를 못 찾았다 — 창을 못 잡으면 이 시험은 아무것도 못 본다').toBeGreaterThan(at)
+  return body.slice(Math.max(0, at - 400), end)
 }
 
 describe('부분 인덱스 배선', () => {
@@ -114,6 +124,22 @@ describe('③ 플래너 실증 (node:sqlite)', () => {
   const plan = (db: InstanceType<typeof DatabaseSync>, sql: string) =>
     db.prepare('EXPLAIN QUERY PLAN ' + sql).all().map((x: Record<string, unknown>) => String(x.detail)).join(' | ')
 
+  /**
+   * ⚠️ **이 시험은 초록불이었는데 라이브는 다른 인덱스를 골랐다** (2026-09-06 실측).
+   *
+   *   같은 문장, 같은 스키마인데 결과가 갈렸다:
+   *   ```
+   *     여기(합성 픽스처)  idx_ad_inf_leads_bio_links        ← 초록
+   *     라이브 D1          idx_ad_inf_leads_bio  193,898행   ← 75배
+   *   ```
+   *   SQLite 계획기는 **행 수와 분포**를 본다. 픽스처는 몇 줄뿐이라 `bio_checked_at IS NULL` 이
+   *   전체의 99.9%라는 사실이 재현되지 않는다 — 그래서 여기서는 좁은 인덱스가 이기고,
+   *   18만 행짜리 라이브에서는 진다.
+   *
+   *   ⇒ **계획기 시험은 "인덱스를 탈 수 있는 모양인가"만 증명한다. "실제로 탄다"는 증명하지
+   *      못한다.** 후자는 라이브 `rows_read` 로만 판정된다. 그래서 본문은 계획기에 맡기지 않고
+   *      `INDEXED BY` 로 이름을 지정한다(`ads-bio-scan-index.test.ts` 가 그 지정을 고정한다).
+   */
   it('🔒 링크인바이오 대상 선택이 **부분 인덱스**를 탄다 (한 달을 놓친 자리)', () => {
     const db = seed()
     const q = `SELECT id, links, email, instagram, tiktok FROM ad_influencer_leads

@@ -6,6 +6,9 @@
  *   상태/핸들러는 전부 GroupBuyDetailPage 소유(controlled) — 결제 로직(handleJoin) 무수정 재사용.
  *   색은 .gbd CSS 변수(테마 자동) — 상세 표면과 동톤.
  */
+import type { ReactNode } from 'react'
+import { FieldCard, FieldRow } from '@/components/ticket/FieldCard'
+import { ShieldCheck, Zap, Lock, Bell } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 
 interface Props {
@@ -28,12 +31,14 @@ interface Props {
   joining: boolean
   onBuy: () => void
   onPrelaunchApply: () => void
+  /** 🪙 CTA 바로 위 슬롯 — 지금은 딜 사용 선택(`DealUseChooser`). 모바일 결제 바와 같은 자리·같은 순서. */
+  dealSlot?: ReactNode
 }
 
 export default function DealPurchaseBox({
   name, discountPct, unitPrice, refPrice, unitSaving, totalSaving, total,
   quantity, setQuantity, maxQty, maxPerPerson,
-  buyable, isJoinable, isPrelaunch, isDemo, joining, onBuy, onPrelaunchApply,
+  buyable, isJoinable, isPrelaunch, isDemo, joining, onBuy, onPrelaunchApply, dealSlot,
 }: Props) {
   // 🎭 2026-08-08 (대표 "데모 상품들만 상품페이지에 구매하기 버튼 대신 응모하기로"): 데모는 '구매하기'가
   //   어울리지 않아 문구를 바꿨다. 동작(onBuy)은 그대로.
@@ -49,8 +54,12 @@ export default function DealPurchaseBox({
   //   ⇒ 데모에도 **돈이 나간다는 사실**을 라벨에 박는다. '구매하기'(대표가 데모엔 안 맞다고 한 말)
   //     대신 '결제하기' 를 쓴다 — 무료 응모와 확실히 갈리고, 데모라는 정체성도 해치지 않는다.
   const ctaLabel = isDemo ? '결제하기' : '구매하기'
+  // 🪟 2026-09-15 안 3 예외 — **이 박스만 안 2(들림)**. 스크롤을 따라다니며 본문 위에 얹히는
+  //   물건이라 정말로 떠 있어야 하고, 체계가 그 자리를 위해 `--lift` 를 정의해 뒀다.
+  //   ⚠️ 하드코딩 그림자를 쓰면 안 된다 — 다크는 `--lift: none` 이라 그림자가 꺼져야 하는데
+  //   `0 6px 24px rgba(0,0,0,.06)` 은 테마를 모른다(그래서 토큰으로 바꿨다).
   return (
-    <div style={{ border: '1px solid var(--gbd-line2)', borderRadius: 18, padding: 18, background: 'var(--gbd-card)', boxShadow: '0 6px 24px rgba(0,0,0,.06)' }}>
+    <div style={{ borderRadius: 18, padding: 18, background: 'var(--gbd-card)', boxShadow: 'var(--lift)' }}>
       {/* 💰 가격 헤드라인 (2026-08-19 — 대표 확정 상세 1안). PC 본문에서 가격 블록을 뺐으므로
           **최종가는 여기 하나뿐**이다. 할인율 pill → 판매가 → 정가 취소선 순서(그루폰과 동일:
           "얼마 깎였나 → 얼마인가 → 원래 얼마였나"). 정가가 없거나 같으면 취소선을 그리지 않는다 —
@@ -88,16 +97,25 @@ export default function DealPurchaseBox({
         )}
       </div>
 
-      {/* 수량 스테퍼 — 하단 바와 동일 state 공유 */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid var(--gbd-line2)', borderRadius: 10, padding: '8px 12px', margin: '12px 0' }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--gbd-ink)' }}>
-          수량{maxPerPerson && maxPerPerson > 0 ? <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--gbd-sub)', marginLeft: 6 }}>1인당 최대 {maxPerPerson}개</span> : null}
-        </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 2 }} role="group" aria-label="수량 조절">
-          <button onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={!buyable || quantity <= 1} aria-label="수량 감소" style={{ width: 30, height: 30, border: 'none', background: 'transparent', color: 'var(--gbd-ink)', fontSize: 18, cursor: 'pointer', opacity: (!buyable || quantity <= 1) ? .35 : 1 }}>−</button>
-          <span style={{ minWidth: 28, textAlign: 'center', fontSize: 14, fontWeight: 800, color: 'var(--gbd-ink)' }} aria-live="polite">{quantity}</span>
-          <button onClick={() => setQuantity(q => Math.min(maxQty, q + 1))} disabled={!buyable || quantity >= maxQty} aria-label="수량 증가" style={{ width: 30, height: 30, border: 'none', background: 'transparent', color: 'var(--gbd-ink)', fontSize: 18, cursor: 'pointer', opacity: (!buyable || quantity >= maxQty) ? .35 : 1 }}>+</button>
-        </span>
+      {/* 🎫 2026-09-14 대표 확정 *"두 상세가 같은 부품을 쓰도록 해줘"* — 수량 행이 **숙소 상세의 인원 행과
+          같은 부품**(`components/ticket/FieldCard`)이 됐다. 종전엔 여기만 1px 테두리 상자였다(티켓 체계
+          규칙 ①은 카드 테두리 0). 라벨·값 위계도 그쪽과 같아진다.
+          ⚠️ 스테퍼 **동작·state·aria 는 그대로** — 하단 바와 같은 state 를 공유한다(결제 무관, 마크업만). */}
+      <div style={{ margin: '12px 0' }}>
+        <FieldCard>
+          <FieldRow
+            label="수량"
+            hint={maxPerPerson && maxPerPerson > 0 ? `1인당 최대 ${maxPerPerson}개` : undefined}
+            value={`${quantity}개`}
+            right={
+              <span style={{ display: 'flex', alignItems: 'center', gap: 2 }} role="group" aria-label="수량 조절">
+                <button onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={!buyable || quantity <= 1} aria-label="수량 감소" style={{ width: 30, height: 30, border: 'none', background: 'transparent', color: 'var(--gbd-ink)', fontSize: 18, cursor: 'pointer', opacity: (!buyable || quantity <= 1) ? .35 : 1 }}>−</button>
+                <span style={{ minWidth: 28, textAlign: 'center', fontSize: 14, fontWeight: 800, color: 'var(--gbd-ink)' }} aria-live="polite">{quantity}</span>
+                <button onClick={() => setQuantity(q => Math.min(maxQty, q + 1))} disabled={!buyable || quantity >= maxQty} aria-label="수량 증가" style={{ width: 30, height: 30, border: 'none', background: 'transparent', color: 'var(--gbd-ink)', fontSize: 18, cursor: 'pointer', opacity: (!buyable || quantity >= maxQty) ? .35 : 1 }}>+</button>
+              </span>
+            }
+          />
+        </FieldCard>
       </div>
 
       {isJoinable && totalSaving > 0 && (
@@ -106,6 +124,8 @@ export default function DealPurchaseBox({
         </div>
       )}
 
+      {dealSlot}
+
       {/* CTA — 하단 바와 동일 핸들러(결제 로직 무수정) */}
       <button
         onClick={isPrelaunch ? onPrelaunchApply : onBuy}
@@ -113,17 +133,23 @@ export default function DealPurchaseBox({
         aria-label={isPrelaunch ? '사전 응모하기' : isJoinable ? `${formatNumber(total)}원 ${ctaLabel}` : isDemo ? '응모 불가' : '구매 불가'}
         style={{ width: '100%', height: 50, border: 'none', borderRadius: 14, background: (buyable || isPrelaunch) ? 'var(--gbd-cta-bg)' : 'var(--gbd-sub2)', color: 'var(--gbd-cta-fg)', fontSize: 16, fontWeight: 800, letterSpacing: '-.01em', cursor: (buyable || isPrelaunch) ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
       >
-        {joining ? '처리 중…' : isPrelaunch ? '🔔 오픈 예정 — 사전 응모하기' : !isJoinable ? (isDemo ? '응모 불가' : '구매 불가') : <>{formatNumber(total)}원 {ctaLabel}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
+        {joining ? '처리 중…' : isPrelaunch ? <><Bell size={16} strokeWidth={2} aria-hidden="true" />오픈 예정 — 사전 응모하기</> : !isJoinable ? (isDemo ? '응모 불가' : '구매 불가') : <>{formatNumber(total)}원 {ctaLabel}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
       </button>
 
       {/* 안심 배지 — 그루폰 trust rows */}
       <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--gbd-line2)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {[
-          '🛡️ 미사용 시 100% 자동환불',
-          '⚡ 결제 즉시 교환권(QR) 발급',
-          '🔒 토스페이먼츠 3초 안전결제',
-        ].map((tr) => (
-          <div key={tr} style={{ fontSize: 12.5, color: 'var(--gbd-sub)', fontWeight: 600 }}>{tr}</div>
+        {/* 🎨 2026-09-03 (대표 지적 — "이런 부분에서의 아이콘도 문제 아닐까"): 이모지 셋 → 선 아이콘.
+            여기는 **돈을 내기 직전 화면의 안심 문구**인데, 이모지는 OS 마다 다른 그림이 뜨고
+            (애플 컬러 / 노토 / Segoe) 같은 화면의 lucide 선 아이콘과 언어가 갈렸다. */}
+        {([
+          [ShieldCheck, '미사용 시 100% 자동환불'],
+          [Zap, '결제 즉시 교환권(QR) 발급'],
+          [Lock, '토스페이먼츠 3초 안전결제'],
+        ] as const).map(([Icon, tr]) => (
+          <div key={tr} style={{ fontSize: 12.5, color: 'var(--gbd-sub)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 7 }}>
+            <Icon size={14} strokeWidth={1.8} aria-hidden="true" style={{ flexShrink: 0 }} />
+            {tr}
+          </div>
         ))}
         {isPrelaunch && (
           <div style={{ fontSize: 11.5, color: 'var(--gbd-sub)' }}>오픈 협의 중 매장 · 응모는 무료, 오픈 시 알림을 드려요</div>

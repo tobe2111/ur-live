@@ -36,7 +36,7 @@ export default function MallAdvancedFields({ form, setForm }: { form: MallForm; 
         <span className="text-[11px] text-gray-400">— 도매몰·규제몰용. 공구 몰은 안 건드려도 됩니다</span>
         {/* 🔴 접힌 상태에서도 '안 열림'은 보여야 한다 — 접혀 있다고 404 를 모르면 안 된다. */}
         {!form.consumer_path && (
-          <span className="ml-auto text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 shrink-0">
+          <span className="ml-auto text-[11px] font-semibold text-tone-warn bg-tone-warn-bg border border-transparent rounded px-1.5 py-0.5 shrink-0">
             손님 링크 꺼짐
           </span>
         )}
@@ -54,8 +54,8 @@ export default function MallAdvancedFields({ form, setForm }: { form: MallForm; 
               공구 몰은 <b>켠 채로 둡니다</b>(기본값). 자기 도메인을 쓰는 도매몰만 끕니다.
             </p>
             {!form.consumer_path && (
-              <p className="flex items-start gap-1.5 text-[11.5px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5">
-                <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-[1px] text-amber-500" />
+              <p className="flex items-start gap-1.5 text-[11.5px] text-tone-warn bg-white border border-rule rounded-md px-2 py-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-[1px] text-tone-warn" />
                 <span>
                   지금 상태로 만들면 <b>손님 링크가 열리지 않습니다</b> — <code className="bg-white/70 px-1 rounded">urdeal.kr/{form.slug || '{주소}'}</code> 는 404 가 됩니다.
                 </span>
@@ -117,9 +117,20 @@ export default function MallAdvancedFields({ form, setForm }: { form: MallForm; 
             <p className="text-[11px] text-gray-400 mt-1">비우면 전 기능 켜짐 — <b>대부분 비워 두면 됩니다.</b></p>
           </div>
 
-          {/* 📣 2026-08-09 과업①(상인회 SaaS) — 몰별 마케팅/고지. 전부 선택(비우면 미사용). */}
+          {/* 🏬 2026-08-10 몰 운영자 지정 — `/mall-admin` 콘솔의 유일한 열쇠(비우면 어드민 전용). */}
+          <div className="rounded-lg border border-gray-200 p-3">
+            <label className={LABEL}>몰 운영자 회원번호 <span className="font-normal text-gray-400">(users.id · 비우면 어드민 전용)</span></label>
+            <input value={form.operator_user_id} onChange={(e) => setForm((f) => ({ ...f, operator_user_id: e.target.value.replace(/\D/g, '') }))}
+              maxLength={12} inputMode="numeric" className={INPUT} placeholder="예: 1024" />
+            <p className="text-[11px] text-gray-400 mt-1">
+              지정하면 그 회원이 카카오 로그인 후 <code>/mall-admin</code> 에서 이 몰의 공지를 직접 올릴 수 있습니다.
+              (첫 진입 시 운영자 약관 동의) 없는 회원번호는 저장되지 않습니다.
+            </p>
+          </div>
+
+          {/* 📣 2026-08-09 몰별 마케팅/고지. 전부 선택(비우면 미사용). */}
           <div className="rounded-lg border border-gray-200 p-3 space-y-3">
-            <p className="text-xs font-bold text-gray-700">마케팅 · 고지 <span className="font-normal text-gray-400">— 상인회(운영자) 몰용. 비우면 미사용</span></p>
+            <p className="text-xs font-bold text-gray-700">마케팅 · 고지 <span className="font-normal text-gray-400">— 운영자 몰용. 비우면 미사용</span></p>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={LABEL}>GA4 측정 ID</label>

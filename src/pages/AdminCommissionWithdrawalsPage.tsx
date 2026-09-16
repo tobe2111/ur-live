@@ -34,9 +34,9 @@ interface Withdrawal {
 }
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
-  pending: { label: '대기', cls: 'bg-amber-100 text-amber-700' },
-  approved: { label: '송금완료', cls: 'bg-emerald-100 text-emerald-700' },
-  rejected: { label: '거절', cls: 'bg-red-100 text-red-700' },
+  pending: { label: '대기', cls: 'bg-tone-warn-bg text-tone-warn' },
+  approved: { label: '송금완료', cls: 'bg-tone-ok-bg text-tone-ok' },
+  rejected: { label: '거절', cls: 'bg-tone-bad-bg text-tone-bad' },
 }
 
 export default function AdminCommissionWithdrawalsPage() {
@@ -115,7 +115,7 @@ export default function AdminCommissionWithdrawalsPage() {
           <button
             key={s}
             onClick={() => setFilter(s)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium ${filter === s ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium ${filter === s ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
           >
             {s === 'pending' ? '대기' : s === 'approved' ? '송금완료' : s === 'rejected' ? '거절' : '전체'}
           </button>
@@ -165,7 +165,7 @@ export default function AdminCommissionWithdrawalsPage() {
                     <td className="px-4 py-3 text-center">
                       <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium ${meta.cls}`}>{meta.label}</span>
                       {w.rejection_reason && (
-                        <div className="text-[10px] text-red-500 mt-1 max-w-[160px] line-clamp-2">{w.rejection_reason}</div>
+                        <div className="text-[10px] text-tone-bad mt-1 max-w-[160px] line-clamp-2">{w.rejection_reason}</div>
                       )}
                       {w.admin_memo && (
                         <div className="text-[10px] text-gray-500 mt-1 max-w-[160px] line-clamp-2">{w.admin_memo}</div>
@@ -177,14 +177,14 @@ export default function AdminCommissionWithdrawalsPage() {
                           <button
                             disabled={actionId === w.id}
                             onClick={() => approve(w)}
-                            className="px-2 py-1 bg-gray-900 text-white rounded text-[10px] font-medium hover:bg-gray-900 disabled:opacity-50 flex items-center gap-1"
+                            className="ur-btn ur-btn-sm ur-btn-primary rounded text-[10px] disabled:opacity-50 flex items-center gap-1"
                           >
                             <CheckCircle className="w-3 h-3" /> 송금완료
                           </button>
                           <button
                             disabled={actionId === w.id}
                             onClick={() => reject(w)}
-                            className="px-2 py-1 bg-red-600 text-white rounded text-[10px] font-medium hover:bg-red-700 disabled:opacity-50 flex items-center gap-1"
+                            className="ur-btn ur-btn-sm ur-btn-danger rounded disabled:opacity-50 flex items-center gap-1"
                           >
                             <XCircle className="w-3 h-3" /> 거절
                           </button>

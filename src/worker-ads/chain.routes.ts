@@ -69,7 +69,13 @@ chainRoutes.post('/__ads/collect-chain', async (c) => {
   //   서브리퀘스트 예산**이다. 실측(05:00): 키워드 16개 중 3개만 처리 → 활성 210개 한 바퀴 42시간.
   //   ⇒ YT 와 무관하게 최소 N라운드는 잇는다(라운드 = 새 예산). 커서는 처리분만 전진하므로 중복 0.
   //   ⛔ busy(다른 실행이 lease 보유)면 즉시 중단 — 더 이어도 전부 busy 로 튕긴다.
-  const rounds = Math.min(12, Math.max(1, parseInt((c.env as unknown as { ADS_COLLECT_ROUNDS?: string }).ADS_COLLECT_ROUNDS || '', 10) || 4))
+  // 🔓 기본값 4 → 12 (2026-09-02 대표 승인 "응 다 해줘" — 최대 수집). 상한 12 는 종전 그대로라
+  //   **설계된 범위 안의 이동**이다(새 천장을 만들지 않는다). 근거는 예산 3축 실측:
+  //     쓰기 55.7만/일 → 3배여도 78만 (한도 150만의 52%)   읽기 6,800만 → 7,000만 (2억의 35%)
+  //     네이버 검색 API 0.7% → 2%                          차단 blocked 0 / ok 54,383
+  //   ⚠️ 넘어가도 요금이 새지 않는다 — 일일 예산 차단기가 자정까지 세운다(`read-budget.ts`).
+  //   🔻 롤백: 이 기본값을 4 로(또는 env `ADS_COLLECT_ROUNDS=4`).
+  const rounds = Math.min(12, Math.max(1, parseInt((c.env as unknown as { ADS_COLLECT_ROUNDS?: string }).ADS_COLLECT_ROUNDS || '', 10) || 12))
   const done = !!stats?.busy || depth >= 40 || (depth + 1 >= rounds && ytDone)
   let chained = false
   if (!done && c.env.SELF?.fetch && c.executionCtx?.waitUntil) {

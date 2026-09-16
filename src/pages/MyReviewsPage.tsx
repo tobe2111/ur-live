@@ -65,7 +65,7 @@ export default function MyReviewsPage() {
             </button>
           </div>
         ) : orders.length === 0 ? (
-          <div className="bg-white dark:bg-[#11141C] rounded-2xl border border-gray-100 dark:border-[#2C2F35] py-16 text-center">
+          <div className="bg-surface rounded-2xl border border-gray-100 dark:border-[#2C2F35] py-16 text-center">
             <div className="w-20 h-20 bg-gray-50 dark:bg-[#1D1F29] rounded-full flex items-center justify-center mx-auto mb-5">
               <MessageSquare className="h-10 w-10 text-gray-400 dark:text-gray-500" strokeWidth={1.5} />
             </div>
@@ -85,7 +85,7 @@ export default function MyReviewsPage() {
               return items.map((item: any, idx: number) => (
                 <article
                   key={`${order.id}-${idx}`}
-                  className="bg-white dark:bg-[#11141C] rounded-2xl border border-gray-100 dark:border-[#2C2F35] p-4"
+                  className="bg-surface rounded-2xl border border-gray-100 dark:border-[#2C2F35] p-4"
                 >
                   <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-1">
                     {t('myReviews.purchaseDate', { date: parseUTCDate(order.created_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: 'long', day: 'numeric' }) })}

@@ -72,3 +72,18 @@ export async function compressForUpload(
 export async function compressForThumbnail(file: File): Promise<File> {
   return compressForUpload(file, { maxSizeMB: 0.3, maxWidthOrHeight: 1024 })
 }
+
+/**
+ * 📄 문서(사업자등록증 등) — **읽을 수 있어야 하는 이미지**.
+ *
+ * 🩸 2026-09-15 (대표 신고 — 사업자등록증 업로드 413): 이 레포의 모든 이미지 업로드가
+ *   `compressForUpload` 를 거치는데 **사업자등록증 두 경로만 원본을 그대로 올리고 있었다.**
+ *   서버 상한은 10MB 인데 요즘 폰 사진은 그걸 쉽게 넘는다 → 413, 그리고 사장님은
+ *   "사진을 줄여서 다시 찍으세요" 라는 말을 들을 곳이 없다(매장 등록이 거기서 막힌다).
+ *
+ * ⚠️ 상품 사진용 기본값(500KB · 1280px)을 쓰면 **안 된다** — 등록증의 사업자번호·상호·주소가
+ *   뭉개져 어드민이 심사를 못 한다. 사람이 읽을 해상도를 남기고 크기만 확실히 낮춘다.
+ */
+export async function compressForDocument(file: File): Promise<File> {
+  return compressForUpload(file, { maxSizeMB: 2, maxWidthOrHeight: 2400 })
+}

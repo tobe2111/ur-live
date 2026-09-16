@@ -24,13 +24,13 @@ export default function BizRegSection({ imageUrl, status, rejectReason, uploadin
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-gray-700">현재 상태:</span>
           {status === 'verified' && (
-            <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">✅ 검증 완료</Badge>
+            <Badge className="border border-rule bg-white text-tone-ok hover:bg-gray-100">검증 완료</Badge>
           )}
           {status === 'pending' && (
-            <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">⏳ 검증 대기 중</Badge>
+            <Badge className="border border-rule bg-white text-tone-warn hover:bg-gray-100">검증 대기 중</Badge>
           )}
           {status === 'rejected' && (
-            <Badge className="bg-red-100 text-red-800 hover:bg-red-100">❌ 반려 — 재제출 필요</Badge>
+            <Badge className="border border-rule bg-white text-tone-bad hover:bg-gray-100">반려 — 재제출 필요</Badge>
           )}
           {status === 'none' && (
             <Badge className="bg-gray-100 text-gray-700 hover:bg-gray-100">미등록</Badge>
@@ -39,7 +39,7 @@ export default function BizRegSection({ imageUrl, status, rejectReason, uploadin
 
         {/* 반려 사유 표시 */}
         {status === 'rejected' && rejectReason && (
-          <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-xs text-red-800">
+          <div className="rounded-lg bg-white border border-rule p-3 text-xs text-tone-bad">
             <strong>반려 사유:</strong> {rejectReason}
           </div>
         )}
@@ -53,7 +53,7 @@ export default function BizRegSection({ imageUrl, status, rejectReason, uploadin
                 alt="사업자등록증"
                 className="max-h-64 mx-auto rounded shadow-sm hover:opacity-90 transition-opacity"
               />
-              <p className="text-[11px] text-blue-600 mt-2 text-center hover:underline">
+              <p className="text-[11px] text-brand-text mt-2 text-center hover:underline">
                 원본 크기로 열기 →
               </p>
             </a>
@@ -71,11 +71,11 @@ export default function BizRegSection({ imageUrl, status, rejectReason, uploadin
               accept="image/jpeg,image/png,image/webp"
               onChange={onFileChange}
               disabled={uploading}
-              className="block w-full text-sm text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50"
+              className="block w-full text-sm text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:border-rule bg-white file:text-gray-700 hover:file:border-rule bg-white disabled:opacity-50"
             />
-            <p className="text-[11px] text-gray-500">JPG / PNG / WebP, 최대 5MB</p>
+            <p className="text-[11px] text-gray-500">JPG / PNG / WebP — 사진이 커도 올리면서 자동으로 줄입니다</p>
             {uploading && (
-              <p className="text-xs text-blue-600 flex items-center gap-1">
+              <p className="text-xs text-gray-700 flex items-center gap-1">
                 <Loader2 className="h-3 w-3 animate-spin" /> 업로드 중...
               </p>
             )}
@@ -88,20 +88,20 @@ export default function BizRegSection({ imageUrl, status, rejectReason, uploadin
             type="button"
             onClick={onSubmit}
             disabled={submitting}
-            className="w-full rounded-lg bg-gray-900 py-3 font-medium text-white transition-colors hover:bg-gray-900 disabled:opacity-50"
+            className="ur-btn ur-btn-lg ur-btn-primary w-full transition-colors disabled:opacity-50"
           >
             {submitting ? (
               <span className="flex items-center justify-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" /> 제출 중...
               </span>
             ) : (
-              '🚀 어드민 검증 신청'
+              '어드민 검증 신청'
             )}
           </Button>
         )}
 
         {/* 안내 */}
-        <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-xs text-blue-800 space-y-1">
+        <div className="rounded-lg bg-white border border-rule p-3 text-xs text-gray-700 space-y-1">
           <p><strong>왜 사업자등록증이 필요한가요?</strong></p>
           <ul className="list-disc list-inside space-y-0.5 ml-1">
             <li>현금 정산 가능 (없으면 딜 환급만)</li>

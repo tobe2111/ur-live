@@ -83,13 +83,13 @@ export function CustomModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? 'modal-title' : undefined}
-        className={`bg-white dark:bg-[#11141C] rounded-3xl shadow-2xl ${getMaxWidth()} w-full ${isCustom ? 'p-0' : 'p-6'} animate-slideUp relative`}
+        className={`bg-surface rounded-3xl shadow-2xl ${getMaxWidth()} w-full ${isCustom ?'p-0' : 'p-6'} animate-slideUp relative`}
         onClick={(e) => e.stopPropagation()}
       >
         {isCustom ? (
           <>
             {/* Custom Modal Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-[#2C2F35]">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-line">
               <h3 id="modal-title" className="text-[17px] font-bold text-gray-900 dark:text-white">
                 {title}
               </h3>

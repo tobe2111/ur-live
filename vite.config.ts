@@ -39,6 +39,20 @@ function swVersionPlugin() {
   };
 }
 
+/**
+ * 🩺 셀(엔트리 정적 폐쇄)이 실제로 쓰는 lucide 아이콘 — 파일명(kebab) 기준.
+ * 이 목록은 손으로 고치지 말 것: `src/tests/unit/lucide-shell-icons.test.ts` 가 `src/main.tsx` 에서
+ * 정적 import 를 따라 가 **다시 계산**하고 불일치하면 빨간불을 낸다(새 아이콘을 셀에 넣었는데
+ * 여기 안 적으면 첫 화면이 다시 256개짜리 봉투를 끌고 온다 — 에러 없이 느려지는 부류).
+ */
+const LUCIDE_SHELL_ICONS = new Set([
+  'alert-circle', 'bed-double', 'bell', 'book-open', 'check', 'check-circle-2', 'chevron-down',
+  'chevron-right', 'circle-alert', 'circle-check', 'circle-help', 'coins', 'compass', 'gift', 'heart',
+  'help-circle', 'home', 'house', 'info', 'layout-dashboard', 'layout-grid', 'log-in', 'log-out', 'map-pin',
+  'message-circle', 'package', 'plus', 'radio', 'refresh-cw', 'scissors', 'search', 'settings', 'shapes',
+  'shopping-cart', 'smartphone', 'sparkles', 'store', 'ticket', 'user', 'user-plus', 'utensils', 'x', 'zap',
+])
+
 export default defineConfig({
   plugins: [
     react(),
@@ -96,7 +110,20 @@ export default defineConfig({
           //   이제 charts 청크는 dashboard 페이지가 lazy-load 할 때만 fetch.
           if (id.includes('recharts') || id.includes('d3-') || id.includes('/src/components/charts/')) return 'charts'
           // Icons
-          if (id.includes('lucide-react')) return 'lucide'
+          // 🩺 2026-09-16 [UNLOCK_LOADING] 아이콘 다이어트 — 셀이 쓰는 42개만 첫 화면으로.
+          //   실측(번들러 모듈→청크 그래프): 트리쉐이킹은 멀정하다(1,534개 중 260개만 남는다).
+          //   문제는 그 260개가 **한 봉투**라, 어드민·셀러 페이지에서만 쓰는 아이콘까지
+          //   홈 첫 화면이 같이 받고 있었다(셀 폐쇄는 42개만 닿는다 — 64.8KB 중 약 11KB).
+          //   ⚠️ 규칙을 지우면 될 것 같지만 아니다 — 지워 보니 Rollup 이 256개를 통째로
+          //   `app-shell` 에 넣어 총량이 그대로였다(695.0 → 694.0KB). 명시 분할만 효과가 있다.
+          //   가드: `lucide-shell-icons.test.ts` 가 소스에서 셀 폐쇄를 **다시 계산**해 이 목록과 대조한다
+          //   (셀 파일에 새 아이콘을 추가하고 여기 안 적으면 조용히 큰 봉투를 다시 끌고 온다 — 그걸 막는다).
+          if (id.includes('lucide-react')) {
+            const icon = id.replace(/\\/g, '/').match(/\/icons\/([a-z0-9-]+)\.js$/)
+            // 아이콘이 아닌 코어(Icon/createLucideIcon/defaultAttributes/utils/배럴)는 셀 쪽에.
+            //   배럴은 트리쉐이킹 후 0바이트라 의존을 만들지 않는다(실측 확인).
+            return !icon || LUCIDE_SHELL_ICONS.has(icon[1]) ? 'lucide-shell' : 'lucide'
+          }
           // Sentry
           if (id.includes('@sentry')) return 'sentry'
           // Embla carousel
@@ -140,13 +167,21 @@ export default defineConfig({
           //   이전: app-shared (critical path) 에 묶여있어 zod (validation 52KB) 도 같이 preload.
           if (id.includes('/shared/config/env-schema') || id.includes('/shared/config/env-validator')) return 'env-validator'
           // 공유 설정/유틸: region, feature-flags 등 — 변경 빈도 낮음
+          //   🩸 2026-09-03: 이 주석은 오래 "feature-flags 등"이라고 적어 놓았는데, 그 파일은
+          //   `/src/shared/feature-flags.ts` 라 **`config/` 조건에 안 걸리고** catch-all 로 떨어지고 있었다
+          //   (`home-chunk-diet` 의 거울 검사를 새로 넣자마자 드러났다 — 주석과 코드가 어긋난 전형).
           if (id.includes('/src/shared/config/') || id.includes('/src/shared/utils/')) return 'app-shared'
+          if (id.includes('/src/shared/feature-flags')) return 'app-shared'
           // 공유 타입/상수: 런타임 코드 없이 타입 + 상수 → 별도 캐싱
           if (id.includes('/src/shared/constants/') || id.includes('/src/shared/types/')) return 'app-constants'
           // 레이아웃 컴포넌트: BottomNav, DesktopTopNav, DesktopLiveSidebar 등
           if (id.includes('/src/components/main/')) return 'app-layout'
-          // 인증 컴포넌트: RouteGuards, KakaoLinkButton 등
-          if (id.includes('/src/components/auth/')) return 'app-auth'
+          // 인증 컴포넌트 — 🩺 2026-09-16: **`RouteGuards` 만** 여기다.
+          //   이전엔 `auth/` 폴더를 통째로 묶었는데, 그 봉투는 `RouteGuards`(셀 폐쇄) 때문에
+          //   첫 페인트에 올라온다 → 같은 폴더의 `KakaoLinkButton`·`SellerPinPrompt`(셀러 프로필 편집
+          //   페이지 **하나만** 쓴다)가 같이 딸려왔다(13.7KB + lucide 아이콘 6개).
+          //   나머지는 아래 일반 규칙으로 떨어져 lazy 페이지와 함께 받는다.
+          if (id.includes('/src/components/auth/RouteGuards')) return 'app-auth'
           // 🛡️ 2026-05-27 (loading P1 phase 4): utils/hooks/lib 중 페이지 전용 파일 별도 chunk.
           //   라이브 페이지만 사용하는 hook 은 app-live-components 로 묶음.
           if (id.includes('/src/hooks/useLiveStream')) return 'app-live-components'
@@ -158,6 +193,16 @@ export default defineConfig({
           //   (실측: 홈 modulepreload 에 app-seller-components 가 올라 있었다).
           //   ⚠️ 이 줄을 지우면 그 65KB 가 곧바로 돌아온다. 가드: check-critical-chunks.
           if (id.includes('/src/shared/seller-roles')) return 'app-shared'
+          // 📐 2026-09-03: 딜 카드 격자 간격 상수 — 홈·찜·유어샵·편성 섹션이 함께 읽는 한 줄짜리 SSOT.
+          //   catch-all 로 떨어지면 홈 폐쇄가 app-shared 밖 청크를 하나 더 끌고 온다(home-chunk-diet 가 잡는다).
+          if (id.includes('/src/shared/deal-card-grid')) return 'app-shared'
+          // 💸 2026-09-08: 가격·할인율 표시 규칙 SSOT — 홈 딜 카드와 유어쇼츠 구매 바가 함께 읽는다.
+          //   위 `deal-card-grid` 와 **정확히 같은 함정**이라 같은 자리에 둔다(가드가 바로 잡아냈다).
+          if (id.includes('/src/shared/price-display')) return 'app-shared'
+          // 🎬 2026-09-09: 유어쇼츠 SSOT(카드 크기·뷰어 주소·유튜브 id 파싱) — import 0 인 순수 상수 모듈인데
+          //   홈 헤더 진입점이 `URSHORTS_VIEWER_PATH` 를 읽는 순간 catch-all 로 떨어져 홈 폐쇄가
+          //   청크를 하나 더 끌고 왔다. 위 둘과 **정확히 같은 함정**이라 같은 자리에 둔다(가드가 잡았다).
+          if (id.includes('/src/shared/urshorts')) return 'app-shared'
           // 🖊️ 2026-08-30: 유어딜 전용 아이콘(`components/icons/urdeal-icons`)도 **정확히 같은 함정**에
           //   빠졌다. 60줄짜리 순수 SVG 리프 모듈인데 `/src/components/` catch-all 에 걸려
           //   `app-components`(166KB · 58모듈)로 들어갔고, 그걸 **BottomNav·DesktopTopNav**
@@ -237,6 +282,17 @@ export default defineConfig({
           //   들어가 **도매몰을 한 번도 안 여는 소비자도 매번 받고 있었다.** 엔트리 폐쇄집합에 없다(=lazy 전용).
           //   도매 페이지는 각자 lazy 청크라 그쪽에서 이 청크를 받으면 된다.
           if (id.includes('/src/hooks/queries/useWholesale')) return 'app-wholesale-hooks'
+          // 🍽️ 2026-09-02 [UNLOCK_LOADING] (대표 "모두 다 진행" — 로딩 후속 ②): **app-utils 다이어트.**
+          //   번들러 실측 그래프(#1310 과 같은 방법)로 app-utils 104.6KB 를 뜯어 보니 홈(엔트리+홈 페이지 정적 폐쇄)이
+          //   닿는 모듈은 47개 103.5KB… 가 아니라 **47개 / 103개**, 크기로는 **73.8KB(56개)가 홈 미도달**이었다 —
+          //   sentry·performance-monitor·web-vitals-report(엔트리가 *동적* import 하는데 결제/로그인 페이지가
+          //   정적으로도 써서 공유 봉투로 끌려옴) · errorHandler(결제) · kakao-login-overlay(로그인 3곳) ·
+          //   read-table-file/supplier-api/courier-tracking/useChatPoll(도매) · useMy*(마이 쿼리 훅) · in-app-warning ….
+          //   그런데 app-utils 는 엔트리가 쓰는 api.ts 와 한 봉투라 **홈이 매번 통째로 받았다.**
+          //   ⇒ 홈 미도달 모듈 중 큰 것들을 `app-utils-deferred` 로. 규칙은 **파일 이름 열거**(폴더 규칙은 #1310 에서
+          //   두 번 밟은 함정 — 필수 모듈을 같이 삼킨다). 새 모듈이 여기 없으면 종전대로 app-utils 로 간다(안전한 기본).
+          //   ⚠️ 이 목록의 모듈이 홈/엔트리 정적 폐쇄에 들어오면 `check-critical-chunks`·`home-chunk-diet` 가 빨강이다.
+          if (/\/src\/(?:lib\/(?:sentry|performance-monitor|web-vitals-report|acquisition|errorHandler|in-app-warning|kakao-touch-shim|read-table-file|supplier-api|seller-auth|biz-favicon|image-compress)|utils\/(?:kakao-login-overlay|courier-tracking|csv-download|currency|format-phone|enter-store|orderIdGenerator)|hooks\/(?:queries\/(?:useMy[A-Za-z]+|useReferral|useAffiliate|useDealHistory|useDigitalLibrary|useAddresses|useBlogPost|useFollowing|useMapProducts)|useChatPoll|useFocusTrap|useProduct|usePersistScroll|useForceLightTheme|usePrefetchProduct))\.tsx?$/.test(id)) return 'app-utils-deferred'
           // 앱 유틸: src/utils/, src/hooks/, src/lib/ — App 전체에 공유되지만 별도 캐싱
           if (id.includes('/src/utils/') || id.includes('/src/hooks/') || id.includes('/src/lib/')) return 'app-utils'
           // 기능 모듈 API — seller/admin/agency/auth 기능 코드 (대시보드에서만 사용)
@@ -252,6 +308,11 @@ export default defineConfig({
           // 🛡️ 2026-05-27 (loading P1): app-components 305KB 추가 분할.
           //   기존 'seller' 폴더 외에 SellerLayout / BulkUploadModal / ProductOptionForm /
           //   seller-public 폴더도 셀러 전용 → app-seller-components 로 묶음.
+          // 📱 2026-09-14 (모바일 우선 재설계): `components/seller-layout/`(하단 탭·nav 모델)은 SellerLayout 의 부품이라
+          //   셀러 봉투다. 규칙이 없으면 `components/` catch-all 로 app-components 에 떨어지고, 그 파일들이
+          //   `components/seller/seller-primary-nav` 를 import 하므로 **app-components → app-seller-components 순환**이 생겨
+          //   상세·유어샵·교환권 표면이 셀러 봉투(+app-dashboard)를 첫 페인트에 받았다(CI surface-role-leak 8건, 빌드 경고 'Circular chunk').
+          if (id.includes('/src/components/seller-layout/')) return 'app-seller-components'
           if (id.includes('/src/components/seller/')) return 'app-seller-components'
           if (id.includes('/src/components/SellerLayout')) return 'app-seller-components'
           if (id.includes('/src/components/seller-public/')) return 'app-seller-components'

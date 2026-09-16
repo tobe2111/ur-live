@@ -81,7 +81,7 @@ export default function PaymentCompleteTicket({ productId, qty, amount }: { prod
   const kindLabel = getVoucherShortLabel(product?.category)
 
   return (
-    <div className="min-h-[100dvh] bg-[#F8F7FC] dark:bg-[#11141C] text-gray-900 dark:text-white">
+    <div className="min-h-[100dvh] bg-warm text-gray-900 dark:text-white">
       <div className="ur-content-narrow px-4 lg:px-8 pt-3 pb-10">
         <div className="flex justify-end">
           <button type="button" onClick={() => navigate('/')} aria-label="닫기" className="w-10 h-10 -mr-2 flex items-center justify-center text-gray-700 dark:text-gray-200 active:opacity-60">
@@ -113,7 +113,7 @@ export default function PaymentCompleteTicket({ productId, qty, amount }: { prod
         </div>
 
         {/* 크로스셀 — 시안 "오는 열차도 찾아볼까요?" 자리. 같은 매장 다른 이용권(없으면 컴포넌트가 null). */}
-        <div className="rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift px-4 pt-4 pb-4">
+        <div className="rounded-2xl bg-surface shadow-lift px-4 pt-4 pb-4">
           <h2 className="text-center text-[16px] font-bold pb-3 border-b border-rule">{storeName ? `${storeName} 다른 이용권도 볼까요?` : '이런 이용권도 볼까요?'}</h2>
           <SameStoreDeals productId={productId} hideTitle />
           <div className="text-center mt-3">

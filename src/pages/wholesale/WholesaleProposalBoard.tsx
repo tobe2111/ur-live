@@ -73,7 +73,7 @@ export default function WholesaleProposalBoard() {
 
       {/* 필터 탭 3개(전체/제안/신고) + 글쓰기 */}
       <div className="flex items-center justify-between gap-2 border-b mb-0" style={{ borderColor: WT.line }}>
-        <div className="flex gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex gap-1 overflow-x-auto scrollbar-hide">
           {([['', '전체'], ['proposal', '제안'], ['report', '신고']] as const).map(([k, label]) => (
             <button key={k || 'all'} onClick={() => { setKind(k); setPage(1) }}
               className="shrink-0 px-3.5 h-11 text-[13.5px] font-bold whitespace-nowrap border-b-2"

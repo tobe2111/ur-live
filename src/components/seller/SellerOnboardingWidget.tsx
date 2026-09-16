@@ -58,13 +58,13 @@ export default function SellerOnboardingWidget() {
   }
 
   return (
-    <div className="bg-gray-50 border border-blue-200 rounded-xl p-4 mb-4">
+    <div className="bg-gray-50 border border-rule rounded-xl p-4 mb-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           {data.bootcamp_completed ? (
-            <Trophy className="w-5 h-5 text-yellow-500" />
+            <Trophy className="w-5 h-5 text-tone-warn" />
           ) : (
-            <Sparkles className="w-5 h-5 text-blue-500" />
+            <Sparkles className="w-5 h-5 text-gray-700" />
           )}
           <h3 className="text-sm font-bold text-gray-900">
             {data.bootcamp_completed ? '부트캠프 완주!' : '셀러 부트캠프'}
@@ -107,7 +107,7 @@ export default function SellerOnboardingWidget() {
               className="w-full flex items-center gap-2 text-xs px-2 py-1.5 -mx-2 rounded-lg hover:bg-white/60 active:bg-white/80 transition-colors text-left"
             >
               {s.completed ? (
-                <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
+                <CheckCircle2 className="w-4 h-4 text-tone-ok flex-shrink-0" />
               ) : (
                 <Circle className="w-4 h-4 text-gray-300 flex-shrink-0" />
               )}
@@ -122,8 +122,8 @@ export default function SellerOnboardingWidget() {
       </div>
 
       {data.bootcamp_completed && (
-        <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
-          🏆 모든 단계를 완료했습니다!
+        <div className="mt-3 p-2 bg-white border border-rule rounded text-xs text-tone-ok">
+          모든 단계를 완료했습니다!
         </div>
       )}
 

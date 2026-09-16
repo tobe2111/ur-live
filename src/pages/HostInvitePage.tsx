@@ -51,7 +51,7 @@ export default function HostInvitePage() {
       <div className="min-h-screen bg-[#11141C] text-white flex flex-col items-center justify-center px-4 text-center">
         <p className="text-5xl mb-3">😢</p>
         <p className="text-base mb-2">{error}</p>
-        <Link to="/" className="mt-4 px-6 py-3 bg-pink-500 rounded-xl font-bold">홈으로</Link>
+        <Link to="/" className="mt-4 px-6 py-3 bg-brand rounded-xl font-bold">홈으로</Link>
       </div>
     )
   }
@@ -72,7 +72,7 @@ export default function HostInvitePage() {
           {data.host_profile ? (
             <img src={data.host_profile} alt={data.host_name} className="w-16 h-16 rounded-full object-cover mx-auto mb-2 bg-[#1D1F29]" />
           ) : (
-            <div className="w-16 h-16 rounded-full bg-[#1D1F29] flex items-center justify-center text-2xl font-bold text-pink-400 mx-auto mb-2">
+            <div className="w-16 h-16 rounded-full bg-[#1D1F29] flex items-center justify-center text-2xl font-bold text-brand-text mx-auto mb-2">
               {(data.host_name || '?').slice(0, 1)}
             </div>
           )}
@@ -92,7 +92,7 @@ export default function HostInvitePage() {
             <div className="p-5">
               <p className="text-base font-bold mb-2">{data.product_name}</p>
               <div className="flex items-baseline gap-2 mb-4">
-                <span className="text-2xl font-bold text-pink-400">{formatWon(data.price)}</span>
+                <span className="text-2xl font-bold text-brand-text">{formatWon(data.price)}</span>
                 {data.original_price && data.original_price > data.price && (
                   <span className="text-sm text-gray-500 line-through">{formatWon(data.original_price)}</span>
                 )}
@@ -107,7 +107,7 @@ export default function HostInvitePage() {
                   </span>
                 </div>
                 <div className="h-2 bg-[#1D1F29] rounded-full overflow-hidden">
-                  <div className="h-full bg-pink-500" style={{ width: `${progress}%` }} />
+                  <div className="h-full bg-brand" style={{ width: `${progress}%` }} />
                 </div>
               </div>
 
@@ -115,7 +115,7 @@ export default function HostInvitePage() {
               {isActive ? (
                 <button
                   onClick={handleJoin}
-                  className="w-full py-3 bg-pink-500 hover:bg-pink-600 text-white text-base font-bold rounded-xl"
+                  className="w-full py-3 bg-brand hover:bg-brand-dark text-white text-base font-bold rounded-xl"
                 >
                   🎉 공구 참여하기
                 </button>

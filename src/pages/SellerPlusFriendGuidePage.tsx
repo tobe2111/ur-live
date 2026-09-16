@@ -36,16 +36,16 @@ export default function SellerPlusFriendGuidePage() {
         </header>
 
         <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
-          <section className="bg-white rounded-2xl border border-gray-200 p-5">
+          <section className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-5">
             <h2 className="text-xl font-bold text-gray-900 mb-2">왜 등록해야 하나요?</h2>
             <p className="text-sm text-gray-600 leading-relaxed">
               사용자가 매장 방문 / 결제 / 바우처 사용 시 사장님께 카카오 알림톡이 자동 발송됩니다.
               <br/><br/>
-              <strong className="text-pink-600">발송 비용은 유어딜이 부담</strong> — 사장님은 plus친구 추가만 하면 됩니다.
+              <strong className="text-brand-text">발송 비용은 유어딜이 부담</strong> — 사장님은 plus친구 추가만 하면 됩니다.
             </p>
           </section>
 
-          <section className="bg-white rounded-2xl border border-gray-200 p-5 space-y-3">
+          <section className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-5 space-y-3">
             <h2 className="text-xl font-bold text-gray-900">3단계 등록</h2>
             <div className="space-y-3">
               {[
@@ -54,7 +54,7 @@ export default function SellerPlusFriendGuidePage() {
                 { n: 3, title: '"채널 추가" 버튼', desc: '채널 페이지 진입 후 "채널 추가" 클릭' },
               ].map((s) => (
                 <div key={s.n} className="flex items-start gap-3">
-                  <div className="shrink-0 w-8 h-8 rounded-full bg-pink-500 text-white text-sm font-bold flex items-center justify-center">
+                  <div className="shrink-0 w-8 h-8 rounded-full bg-brand text-white text-sm font-bold flex items-center justify-center">
                     {s.n}
                   </div>
                   <div className="flex-1">
@@ -72,12 +72,12 @@ export default function SellerPlusFriendGuidePage() {
               onClick={markAsAdded}
               className="block w-full text-center mt-4 py-3 bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] rounded-xl font-bold text-sm transition-colors"
             >
-              💬 유어딜 카카오 채널 열기
+              유어딜 카카오 채널 열기
             </a>
           </section>
 
-          <section className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
-            <p className="text-xs text-blue-900 leading-relaxed">
+          <section className="bg-white border border-rule rounded-[var(--dash-radius,16px)] p-4">
+            <p className="text-xs text-gray-700 leading-relaxed">
               <strong>안내:</strong> 채널 추가 후 이 페이지로 돌아와서 아래 "추가 완료" 버튼을 눌러주세요.
               그래야 onboarding 진행률이 업데이트됩니다.
             </p>
@@ -93,9 +93,9 @@ export default function SellerPlusFriendGuidePage() {
             <button
               onClick={() => { markAsAdded(); window.location.href = '/seller' }}
               disabled={confirmed}
-              className="flex-1 py-3 bg-pink-500 hover:bg-pink-600 disabled:opacity-50 text-white rounded-xl font-bold text-sm"
+              className="ur-btn ur-btn-lg ur-btn-primary flex-1"
             >
-              {confirmed ? '✓ 완료' : '✓ 추가 완료'}
+              {confirmed ? '완료' : '추가 완료'}
             </button>
           </div>
         </div>

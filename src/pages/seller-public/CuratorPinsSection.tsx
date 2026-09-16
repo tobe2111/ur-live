@@ -9,6 +9,7 @@
  * 큐레이터 적립이 작동하는 경로. 데이터 없거나 실패 시 아무것도 그리지 않음 (fail-soft).
  * 다크 페이지(셀러 공개) 토큰 사용.
  */
+import { DEAL_GRID_GAP } from '@/shared/deal-card-grid'
 import { useEffect, useState } from 'react'
 import api from '@/lib/api'
 import { Pin } from 'lucide-react'
@@ -88,7 +89,7 @@ export default function CuratorPinsSection({ handle, initialPins }: { handle?: s
       </div>
       {/* 🏁 2026-06-25 (대표 신고 — 카드 가로폭 좁음): 유어샵은 PC 에서도 430 액자라 viewport 기반
           `sm:grid-cols-4` 가 액자 안에서 4열→카드 협소 + 우측 공백. PinGrid 와 동일하게 항상 2열. */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className={`grid grid-cols-2 ${DEAL_GRID_GAP}`}>
         {pins.map(pin => {
           const name = pin.title || pin.product_name || ''
           // 🏁 2026-06-26 (대표 — 쇼핑 카드와 동일): 할인/평점/구매수/대표색까지 전달.

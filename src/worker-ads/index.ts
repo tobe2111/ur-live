@@ -24,10 +24,10 @@ import { createBeatBatch, makeBeatWriter } from './beat-batch'
 import { closeTick } from './tail-bound'
 import { runAutobidJob, runFollowupJob, runWeeklyJob } from './side-jobs'
 import { dispatchPendingLanes, type RunnableLane } from './lane-runner'
-import { laneUrl, selfBeatMiddleware } from './self-beat'
+import { laneUrl } from './self-beat'
 import { enrichRoutes } from './enrich.routes'
 import { laneAlarmDrivesEnrich, bootstrapLaneAlarm } from './lane-alarm-boot'
-import { lanesPaused, pauseExempt, PAUSE_BEAT } from './lane-pause'; import { readBudgetState, budgetBeatFields, READ_BUDGET_BEAT } from './read-budget' // ⏸️📉 2026-09-02 한도 사고 — 정지 스위치 · 읽기 예산 차단기(각 파일 헤더)
+import { mountLaneMiddleware } from './lane-gate'; import { lanesPaused, pauseExempt, PAUSE_BEAT } from './lane-pause'; import { readBudgetState, budgetBeatFields, budgetBlocked, READ_BUDGET_BEAT } from './read-budget' // ⏸️📉 2026-09-02 한도 사고 — 정지 스위치 · 읽기 예산 차단기(각 파일 헤더)
 import { withMeteredEnv, newMeter } from '@/worker/utils/d1-read-meter'
 import { scheduleMaintenanceCron } from './maintenance-cron'
 import { healthRoutes } from './health.routes'
@@ -50,8 +50,8 @@ app.use('*', async (c, next) => {
   try { c.res.headers.set('X-Served-By', 'ur-ads') } catch { /* 불변 응답 등 — 무시 */ }
 })
 
-// 🫀 레인이 자기 하트비트를 쓴다 — 미들웨어 본체와 근거는 `self-beat.ts`(그 모듈의 관심사다).
-app.use('/__ads/*', selfBeatMiddleware())
+// 🫀🚧 레인 진입 미들웨어 — self-beat + 정지·예산 초크포인트. 근거·실측·롤백: `lane-gate.ts`.
+mountLaneMiddleware(app)
 
 // 🎯 인플루언서 수동 수집 트리거 — 메인 어드민이 env.ADS(서비스바인딩)로만 호출(공개 라우팅 대상 아님:
 //   메인 프록시는 /api/ads/* · /l/* 만 위임 → /__ads/* 는 외부에서 도달 불가). 게이트 무관(수동=의도).
@@ -261,8 +261,8 @@ async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext)
   }
 
   //   `beatName` — 경로가 바뀌어도 하트비트 이름을 고정(바꾸면 옛 행이 남아 stale watch 가 영원히 경보).
-  const budget = await readBudgetState(env) // 📉 오늘 읽기 예산(DO 원장 1회 조회) — 넘겼으면 아래 paused 가 참이 된다
-  const paused = lanesPaused(env) || budget.over // ⏸️ kick·부트스트랩·시트 미러가 함께 본다. kick 선언보다 앞(TDZ — laneAlarmOn 이 겪은 함정)
+  const budget = await readBudgetState(env) // 📉 오늘 읽기/쓰기 예산(DO 원장 1회 조회) — 넘겼으면 아래 paused 가 참이 된다
+  const paused = lanesPaused(env) || budgetBlocked(budget) // ✍️ 쓰기 축도 함께 — 요금을 터뜨린 축이 쓰기였다(2026-09-02) // ⏸️ kick·부트스트랩·시트 미러가 함께 본다. kick 선언보다 앞(TDZ — laneAlarmOn 이 겪은 함정)
   const laneReg = createLaneRegistry()
   //   `gap` — 이 레인의 **실제** 기대 간격(분). 안 주면 매시간(= event.cron)으로 본다.
   //     일 1회/N시간 레인은 `gates.dailyAt`/`gates.everyNHours` 가 조건과 함께 자동으로 넣어준다

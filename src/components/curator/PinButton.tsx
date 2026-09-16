@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useState } from 'react'
+import { Pin, Plus } from 'lucide-react'
 import { usePinAction } from '@/features/curator/hooks/usePinAction'
 import { useAuthStore } from '@/client/stores/auth.store'
 import { curatorApi } from '@/features/curator/api/curator-api'
@@ -19,8 +20,8 @@ interface PinButtonProps {
   /** 카드 컨텍스트에 따른 위치 조정 */
   variant?: 'card-overlay' | 'detail-floating' | 'inline'
   className?: string
-  /** 아이콘 override — 상세 상단바처럼 **선 아이콘으로 통일해야 하는 자리**에서 쓴다.
-   *  기본은 이모지(➕/📌)인데, 선 아이콘들 사이에 섞이면 그 버튼만 혼자 튄다(대표 지적 2026-08-31). */
+  /** 아이콘 override — 상세 상단바처럼 자기 크기·굵기를 강제하는 자리에서 쓴다.
+   *  기본도 2026-09-03 부터 선 아이콘(Pin/Plus)이라 더는 이 자리만 튀지 않는다. */
   icon?: (pinned: boolean) => React.ReactNode
 }
 
@@ -57,12 +58,18 @@ export default function PinButton({ productId, price, variant = 'card-overlay', 
 
   const baseStyle =
     variant === 'card-overlay'
-      ? 'absolute top-2 right-2 z-10 w-9 h-9 rounded-full flex items-center justify-center bg-black/60 hover:bg-pink-500 backdrop-blur transition-all'
+      /* 🧷 2026-09-03: 찜 하트가 우상단(`top-2 right-2`)을 쓰므로 핀은 **그 아래**로 내린다.
+         이전엔 둘이 같은 자리에 겹쳐 z-index 가 큰 핀이 하트를 덮었다(검색 결과 카드). */
+      ? 'absolute top-11 right-2 z-[3] w-9 h-9 rounded-full flex items-center justify-center bg-black/55 hover:bg-brand backdrop-blur transition-all text-white'
       : variant === 'detail-floating'
         ? 'flex items-center justify-center transition-all'  // chrome 은 호출부(상세 상단바)가 className 으로 준다 — 4개 버튼을 한 벌로 맞추기 위해
-        : 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-pink-500 hover:bg-pink-600 text-white text-sm font-bold transition-colors'
+        : 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand hover:bg-brand-dark text-white text-sm font-bold transition-colors'
 
-  const icon = iconOverride ? iconOverride(pinned) : (pinned ? '📌' : '➕')
+  /* 🎨 2026-09-03: 이모지(📌/➕) → 선 아이콘. 이모지는 OS 마다 다른 그림이 뜨고
+     "임시로 채워 둔 것"으로 읽힌다(카드 폴백 아이콘을 2026-08-30 에 같은 이유로 바꿨다). */
+  const icon = iconOverride
+    ? iconOverride(pinned)
+    : (pinned ? <Pin className="w-4 h-4 fill-current" aria-hidden="true" /> : <Plus className="w-4 h-4" aria-hidden="true" />)
   const label = pinned ? '핀됨' : '핀'
 
   return (
@@ -73,7 +80,7 @@ export default function PinButton({ productId, price, variant = 'card-overlay', 
       disabled={isPinning}
       className={`${baseStyle} ${className} ${isPinning ? 'opacity-50 cursor-wait' : ''}`}
     >
-      <span className={variant === 'inline' ? 'text-base' : 'text-lg'}>{icon}</span>
+      <span className="inline-flex items-center justify-center">{icon}</span>
       {variant === 'inline' && <span>{label}</span>}
     </button>
   )

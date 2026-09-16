@@ -78,12 +78,12 @@ export default function GroupBuyOpenPanel({ productId, listPrice, category, head
     <div className="mt-3 rounded-xl border border-gray-200 bg-white p-3">
       <div className="flex items-center justify-between">
         <span className="flex items-center gap-1.5 text-[12px] font-bold text-gray-800">
-          <Megaphone className="w-3.5 h-3.5 text-emerald-600" /> 공구 · <span className={isActive ? 'text-emerald-700' : 'text-gray-500'}>{MODE_LABEL[mode]}</span>
+          <Megaphone className="w-3.5 h-3.5 text-tone-ok" /> 공구 · <span className={isActive ? 'text-tone-ok' : 'text-gray-500'}>{MODE_LABEL[mode]}</span>
         </span>
         {isActive ? (
-          <button onClick={closeGb} disabled={saving} className="text-[12px] font-semibold text-red-600 disabled:opacity-50">공구 닫기</button>
+          <button onClick={closeGb} disabled={saving} className="text-[12px] font-semibold text-tone-bad disabled:opacity-50">공구 닫기</button>
         ) : (
-          <button onClick={() => setOpen(o => !o)} className="text-[12px] font-semibold text-emerald-700">{open ? '취소' : '공구 열기'}</button>
+          <button onClick={() => setOpen(o => !o)} className="text-[12px] font-semibold text-tone-ok">{open ? '취소' : '공구 열기'}</button>
         )}
       </div>
 
@@ -107,7 +107,7 @@ export default function GroupBuyOpenPanel({ productId, listPrice, category, head
             링크 전용 (상시 노출 숨김 · 추천 링크로만 공구가) — 미체크 시 공구가로 통일
           </label>
           <button onClick={openGb} disabled={saving}
-            className="w-full py-2.5 bg-gray-900 hover:bg-gray-800 disabled:opacity-50 text-white text-[13px] font-bold rounded-xl flex items-center justify-center gap-2">
+            className="ur-btn ur-btn-md ur-btn-primary w-full hover:bg-brand-tint disabled:opacity-50 text-[13px] flex items-center justify-center gap-2">
             {saving && <Loader2 className="w-4 h-4 animate-spin" />}
             공구 시작 · 소비자 {formatNumber(gbPrice)}원
           </button>

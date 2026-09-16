@@ -61,7 +61,7 @@ export default function ReviewBonusButton(
       </button>
       {open && (
         <div className="fixed inset-0 z-[10500] flex items-end sm:items-center justify-center bg-black/60" onClick={() => setOpen(false)}>
-          <div className="bg-white dark:bg-[#11141C] rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-surface rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-2"><Star className="w-4 h-4 inline-block align-[-3px] mr-1 text-gray-400" aria-hidden="true" />카카오맵 후기 작성 보너스</h3>
             <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-4">
               매장 카카오맵 후기 작성하고 인증해주시면 보너스 딜 지급 (기본 1,000딜).
@@ -108,7 +108,7 @@ export default function ReviewBonusButton(
               </div>
             )}
             <div className="grid grid-cols-2 gap-2 mt-5">
-              <button onClick={() => setOpen(false)} className="py-2 border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm font-bold text-gray-700 dark:text-gray-200">취소</button>
+              <button onClick={() => setOpen(false)} className="py-2 border border-rule-strong rounded-lg text-sm font-bold text-gray-700 dark:text-gray-200">취소</button>
               <button onClick={submit} disabled={submitting || uploading}
                 className="py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold disabled:opacity-50">
                 {submitting ? '제출 중...' : '제출'}

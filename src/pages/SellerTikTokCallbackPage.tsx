@@ -60,7 +60,7 @@ export default function SellerTikTokCallbackPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-sm">
+      <div className="bg-white rounded-[var(--dash-radius,16px)] max-w-sm w-full p-6">
         {status === 'pending' && (
           <>
             <BrandLoader />
@@ -71,8 +71,8 @@ export default function SellerTikTokCallbackPage() {
 
         {status === 'success' && (
           <>
-            <div className="w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
-              <CheckCircle2 className="w-8 h-8 text-green-600" />
+            <div className="w-16 h-16 mx-auto mb-4 bg-tone-ok-bg rounded-full flex items-center justify-center">
+              <CheckCircle2 className="w-8 h-8 text-tone-ok" />
             </div>
             <h2 className="text-lg font-bold text-center text-gray-900">TikTok 연동 완료</h2>
             {profile?.username && (
@@ -84,11 +84,11 @@ export default function SellerTikTokCallbackPage() {
 
         {status === 'error' && (
           <>
-            <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
-              <XCircle className="w-8 h-8 text-red-500" />
+            <div className="w-16 h-16 mx-auto mb-4 bg-tone-bad-bg rounded-full flex items-center justify-center">
+              <XCircle className="w-8 h-8 text-tone-bad" />
             </div>
             <h2 className="text-lg font-bold text-center text-gray-900">연동 실패</h2>
-            <p className="text-sm text-red-600 text-center mt-2">{errorMsg}</p>
+            <p className="text-sm text-tone-bad text-center mt-2">{errorMsg}</p>
             <button
               onClick={() => navigate('/seller/profile')}
               className="ur-btn ur-btn-md ur-btn-primary w-full mt-4"

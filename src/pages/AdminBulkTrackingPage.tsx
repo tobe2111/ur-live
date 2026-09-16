@@ -121,15 +121,15 @@ export default function AdminBulkTrackingPage() {
     <AdminLayout title="CSV 일괄 송장 업로드">
       <div className="space-y-6">
         {/* 안내 */}
-        <section className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-          <h3 className="text-sm font-bold text-blue-900 mb-2">📋 CSV 포맷</h3>
-          <pre className="text-xs text-blue-800 bg-white rounded p-2 overflow-x-auto">
+        <section className="bg-white border border-rule rounded-xl p-4">
+          <h3 className="text-sm font-bold text-gray-700 mb-2">CSV 포맷</h3>
+          <pre className="text-xs text-gray-700 bg-white rounded p-2 overflow-x-auto">
 {`order_id,courier,tracking_number,shipped_at
 ORD-001,cj,123456789012,2026-05-26
 ORD-002,한진,987654321098,2026-05-26
 ORD-003,롯데,111122223333,`}
           </pre>
-          <p className="text-xs text-blue-700 mt-2">
+          <p className="text-xs text-gray-700 mt-2">
             • <strong>courier</strong>: cj / hanjin / lotte / kr_post / logen / cu / gs / daesin / ilyang / kdexp / 한글 표기도 OK<br/>
             • <strong>shipped_at</strong>: 비워두면 현재 시각<br/>
             • 같은 order_id 에 동일 송장이면 자동 skip (중복 처리 X)
@@ -144,7 +144,6 @@ ORD-003,롯데,111122223333,`}
             className="border-2 border-dashed border-gray-300 rounded-xl p-12 text-center bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer"
             onClick={() => fileInputRef.current?.click()}
           >
-            <p className="text-4xl mb-3">📤</p>
             <p className="text-base font-bold text-gray-700 mb-1">CSV 파일을 드래그하거나 클릭</p>
             <p className="text-xs text-gray-500">최대 1000행</p>
             <input
@@ -164,7 +163,7 @@ ORD-003,롯데,111122223333,`}
             <section className="bg-white border border-gray-200 rounded-xl overflow-hidden">
               <header className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-bold">📄 {fileName} — {rows.length}행</p>
+                  <p className="text-sm font-bold">{fileName} — {rows.length}행</p>
                 </div>
                 <button onClick={reset} className="text-xs text-gray-500 hover:text-gray-700">초기화</button>
               </header>
@@ -202,15 +201,15 @@ ORD-003,롯데,111122223333,`}
                 disabled={loading}
                 className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl disabled:opacity-50"
               >
-                🔍 사전 검증 (dry-run)
+                사전 검증 (dry-run)
               </button>
               <button
                 onClick={() => runUpload(false)}
                 disabled={loading || !uploadResult?.dry_run}
-                className="flex-1 py-3 bg-pink-500 hover:bg-pink-600 text-white font-bold rounded-xl disabled:opacity-50"
+                className="ur-btn ur-btn-lg ur-btn-primary flex-1 disabled:opacity-50"
                 title={!uploadResult?.dry_run ? '먼저 사전 검증을 실행하세요' : ''}
               >
-                ✅ 실제 업로드
+                실제 업로드
               </button>
             </div>
 
@@ -218,35 +217,35 @@ ORD-003,롯데,111122223333,`}
             {uploadResult && (
               <section className="bg-white border border-gray-200 rounded-xl p-4">
                 <h3 className="text-sm font-bold mb-3">
-                  {uploadResult.dry_run ? '🔍 사전 검증 결과' : '✅ 업로드 결과'}
+                  {uploadResult.dry_run ? '사전 검증 결과' : '업로드 결과'}
                 </h3>
                 <div className="grid grid-cols-4 gap-3 mb-4">
                   <div className="bg-gray-50 rounded-lg p-3 text-center">
                     <p className="text-xs text-gray-500">전체</p>
                     <p className="text-xl font-bold">{uploadResult.summary.total}</p>
                   </div>
-                  <div className="bg-emerald-50 rounded-lg p-3 text-center">
-                    <p className="text-xs text-emerald-700">성공</p>
-                    <p className="text-xl font-bold text-emerald-700">{uploadResult.summary.succeeded}</p>
+                  <div className="border border-rule bg-white rounded-lg p-3 text-center">
+                    <p className="text-xs text-tone-ok">성공</p>
+                    <p className="text-xl font-bold text-tone-ok">{uploadResult.summary.succeeded}</p>
                   </div>
-                  <div className="bg-yellow-50 rounded-lg p-3 text-center">
-                    <p className="text-xs text-yellow-700">skip</p>
-                    <p className="text-xl font-bold text-yellow-700">{uploadResult.summary.skipped}</p>
+                  <div className="border border-rule bg-white rounded-lg p-3 text-center">
+                    <p className="text-xs text-tone-warn">skip</p>
+                    <p className="text-xl font-bold text-tone-warn">{uploadResult.summary.skipped}</p>
                   </div>
-                  <div className="bg-red-50 rounded-lg p-3 text-center">
-                    <p className="text-xs text-red-700">실패</p>
-                    <p className="text-xl font-bold text-red-700">{uploadResult.summary.failed}</p>
+                  <div className="border border-rule bg-white rounded-lg p-3 text-center">
+                    <p className="text-xs text-tone-bad">실패</p>
+                    <p className="text-xl font-bold text-tone-bad">{uploadResult.summary.failed}</p>
                   </div>
                 </div>
 
                 {uploadResult.summary.failed > 0 && (
-                  <div className="max-h-48 overflow-y-auto bg-red-50 rounded-lg p-3">
-                    <p className="text-xs font-bold text-red-700 mb-2">실패 행:</p>
+                  <div className="max-h-48 overflow-y-auto border border-rule bg-white rounded-lg p-3">
+                    <p className="text-xs font-bold text-tone-bad mb-2">실패 행:</p>
                     {uploadResult.results
                       .filter(r => r.status === 'error')
                       .slice(0, 50)
                       .map((r, i) => (
-                        <p key={i} className="text-xs text-red-700">
+                        <p key={i} className="text-xs text-tone-bad">
                           • <strong>{r.order_id}</strong>: {r.reason}
                         </p>
                       ))}

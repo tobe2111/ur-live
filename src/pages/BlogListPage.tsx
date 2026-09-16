@@ -137,10 +137,10 @@ export default function BlogListPage() {
             </Link>
             {featured.length > 1 && (
               <div className="flex items-center gap-2 mt-6">
-                <button onClick={() => moveHero(-1)} aria-label="이전" className="w-10 h-10 rounded-full border border-gray-200 dark:border-[#2C2F35] flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1D1F29]">
+                <button onClick={() => moveHero(-1)} aria-label="이전" className="w-10 h-10 rounded-full border border-line flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1D1F29]">
                   <ChevronLeft className="w-5 h-5" />
                 </button>
-                <button onClick={() => moveHero(1)} aria-label="다음" className="w-10 h-10 rounded-full border border-gray-200 dark:border-[#2C2F35] flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1D1F29]">
+                <button onClick={() => moveHero(1)} aria-label="다음" className="w-10 h-10 rounded-full border border-line flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1D1F29]">
                   <ChevronRight className="w-5 h-5" />
                 </button>
                 <span className="ml-2 text-xs text-gray-400 dark:text-gray-500 tabular-nums">{(heroIdx % featured.length) + 1} / {featured.length}</span>
@@ -157,7 +157,7 @@ export default function BlogListPage() {
               value={query}
               onChange={(e) => onSearch(e.target.value)}
               placeholder="블로그 검색 (이용권, 유어샵, 정산…)"
-              className="w-full h-11 pl-10 pr-10 rounded-xl bg-gray-50 dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/10 focus:border-gray-300 dark:focus:border-[#3A3A3A]"
+              className="w-full h-11 pl-10 pr-10 rounded-xl bg-gray-50 dark:bg-[#1D1F29] border border-line text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/10 focus:border-gray-300 dark:focus:border-[#3A3A3A]"
             />
             {query && (
               <button onClick={() => onSearch('')} aria-label="검색어 지우기" className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-gray-400 dark:text-gray-500 hover:bg-gray-200 dark:hover:bg-[#2C2F35]">
@@ -168,7 +168,7 @@ export default function BlogListPage() {
         </div>
 
         {/* ── 태그 필터 ── */}
-        <div className="flex gap-2 overflow-x-auto no-scrollbar py-4">
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide py-4">
           <button onClick={() => pickTag('')}
             className={`px-3.5 py-1.5 rounded-full text-sm font-medium shrink-0 ${!selectedTag ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-50 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2C2F35]'}`}>
             전체

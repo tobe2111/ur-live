@@ -7,10 +7,10 @@
  *
  * Triggers:
  *   '*\/5 * * * *' — short cleanup (every 5 min)
- *   '0 18 * * *'   — daily heavy tasks (settlement, voucher refund, agency batch)
+ *   '0 18 * * *'   — daily heavy tasks (settlement, voucher refund, growth batch)
  *   '0 19 * * *'   — reconciliation
  *   '0 20 * * 0'   — weekly D1 backup
- *   '0 0 * * 1'    — weekly agency batch (auto-settle, incentives, tier-eval, invoices)
+ *   '0 0 * * 1'    — weekly tier batch (seller tier eval, wholesale grade eval)
  *
  * Extracted from worker/index.ts (TD-006 부분, 2026-04-27).
  *
@@ -28,15 +28,10 @@ import { beginCatchup, catchupOpens, claimCatchupJob, summarizeCatchup, type Cat
 
 // 🛡️ 2026-05-18: handleScheduled (49KB) dynamic import — cron 발생 시만 로드.
 import { runReconciliation } from './cron/reconciliation';
-import { handleAgencyAutoSettle } from './cron/agency-auto-settle';
-import { handleAgencyTierEval } from './cron/agency-tier-eval';
-import { handleAgencyMonthlyInvoices } from './cron/agency-monthly-invoices';
-import { handleAgencyMonthlyReport } from './cron/agency-monthly-report';
 import { handleSellerTierEval } from './cron/seller-tier-eval';
 import { handleWholesaleGradeEval } from './cron/wholesale-grade-eval';
 import { handleWholesaleRestockNotify } from './cron/wholesale-restock-notify';
 import { handleAnomalyDetection } from './cron/anomaly-detect';
-// 🌇 일몰 정지(롤백 시 아래 호출과 함께 해제): import { handleAgencySellerMatch } from './cron/agency-seller-match';
 import { handleRetryAlimtalk } from './cron/retry-alimtalk';
 import { retryEmailFailures, retryPushFailures } from './cron/retry-notifications';
 import { handleAppointmentReminder } from './cron/appointment-reminder';
@@ -44,15 +39,12 @@ import { handleAppointmentNoshowAlert } from './cron/appointment-noshow-alert';
 import { handlePayoutsGenerate } from './cron/payouts-generate';
 import { handleTossRefundRetry } from './cron/toss-refund-retry';
 import { handleInfluencerPayout } from './cron/influencer-payout';
-import { handleGroupBuyDeadlinePush } from './cron/group-buy-deadline-push';
 import { handleGroupBuyFeedCache } from './cron/group-buy-feed-cache';
 import { handleCachePrewarm } from './cron/cache-prewarm';
 // 🛡️ 2026-06-09: 어드민 단체메일 큐 drainer (요청 안에서 발송 X → CPU/멱등 hardening).
 import { handleBulkEmailDrain } from './cron/bulk-email-drain'; import { drainOutreachEmails } from '../features/marketing/api/outreach-email';
 // 🛡️ 2026-05-24: 모든 신규 활성 상품 (공구/쇼핑/교환권) 에 자동 허위리뷰 시드.
 import { handleAutoSeedReviews } from './cron/auto-seed-reviews';
-import { calculateAllAgencyIncentives } from '../features/agency/api/agency-incentives.routes';
-import { getFeatureFlags } from './utils/feature-flags';
 // 🏭 2026-06-05 (사용자 요청 — 라이브 중단 중 cron 낭비 제거): 라이브 전용 cron 게이팅.
 //   LIVE_COMMERCE_SUSPENDED=true 동안 라이브 방송 관련 cron(5분마다 헛도는 DB 조회)을 건너뜀.
 //   플래그만 false 로 되돌리면 즉시 복원 — 코드 보존.
@@ -70,7 +62,7 @@ import { runDailyLane } from './cron/daily-lane';
 /**
  * 🔔 2026-06-12 (4차 감사 D3): cron 내부 실패 공용 통지 — logError + Discord (fail-soft).
  *
- * 배경: agency-cron-batch / agency-weekly-batch 의 내부 task 들이 `.catch(logError)` 만 해서
+ * 배경: growth-daily-batch / weekly-tier-batch 의 내부 task 들이 `.catch(logError)` 만 해서
  * batch 자체는 성공으로 끝남 → safeCron 의 Discord 경로에 절대 안 닿았음 (silent 실패).
  * safeCron 의 Discord 패턴을 그대로 재사용해 내부 task 실패도 운영자에게 도달시킨다.
  *
@@ -232,8 +224,8 @@ export async function handleCronScheduled(
     // 🛡️ 2026-05-12: 이메일 / 푸시 dead-letter 재시도 drainer
     ctx.waitUntil(safeCron('retry-email-failures', () => retryEmailFailures(env)));
     ctx.waitUntil(safeCron('retry-push-failures', () => retryPushFailures(env)));
-    // 🛡️ 2026-05-16: 공구 마감 3시간/1시간 전 push 알림 (5분마다 체크)
-    ctx.waitUntil(safeCron('group-buy-deadline-push', () => handleGroupBuyDeadlinePush(env)));
+    // 🪦 2026-09-05: '공구 마감 3시간/1시간 전 push' cron 제거 — 마감 개념이 없어져 영구히 0건이었다.
+    //   5분마다 products 를 창 3개로 훑고(하루 ~150만 행) 매번 ALTER 를 두 번 시도하던 자리다.
     // 🛡️ 2026-05-21 Phase E-3: 예약 시작 +30분 지난 confirmed 노쇼 자동 알림.
     ctx.waitUntil(safeCron('appointment-noshow-alert', () => handleAppointmentNoshowAlert(env)));
     // 🛡️ 2026-05-22: group-buy 피드 materialized cache 갱신 (5분).
@@ -491,34 +483,20 @@ export async function handleCronScheduled(
     //   const { handleSocialDraft } = await import('./cron/social-draft');
     //   return handleSocialDraft(env);
     // }));
-    ctx.waitUntil(slotCron('45 0 * * 1')('agency-weekly-batch', async () => {
-      const flags = await getFeatureFlags((env as any).RATE_LIMIT_KV, env.DB);
-      const now = new Date();
-      const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const monthStr = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}`;
-      const dayOfMonth = now.getUTCDate();
-
-      if (flags.enable_agency_auto_settle) {
-        await handleAgencyAutoSettle(env).catch(e => notifyCronFailure(env, 'agency-weekly-batch/auto-settle', e));
-      }
-      await calculateAllAgencyIncentives(env.DB, monthStr).catch(e => notifyCronFailure(env, 'agency-weekly-batch/incentives', e));
-      if (flags.enable_agency_tier_eval && dayOfMonth <= 7) {
-        await handleAgencyTierEval(env).catch(e => notifyCronFailure(env, 'agency-weekly-batch/tier-eval', e));
-      }
+    // 🌇 2026-09-04 에이전시 일몰(대표 확정) — 이 주간 배치에서 에이전시 작업 5종을 **삭제**했다:
+    //    auto-settle(정산 송금) · incentives · tier-eval · monthly-invoices · monthly-report.
+    //    라이브 실측: 관계 0 · 지급 이력 0(한 번도 실행 결과가 없다). 중개는 셀러 대시보드 계정이 맡는다.
+    //    설계 SSOT: docs/design/store-operator-model.md
+    //    ⚠️ 남은 2개는 에이전시와 무관해서 유지한다(셀러 등급 평가 · 판매사 도매 등급 평가).
+    ctx.waitUntil(slotCron('45 0 * * 1')('weekly-tier-batch', async () => {
+      const dayOfMonth = new Date().getUTCDate();
       // 2026-04-27: 셀러 등급 자동 평가 (월 1주차)
       if (dayOfMonth <= 7) {
-        await handleSellerTierEval(env).catch(e => notifyCronFailure(env, 'agency-weekly-batch/seller-tier-eval', e));
+        await handleSellerTierEval(env).catch(e => notifyCronFailure(env, 'weekly-tier-batch/seller-tier-eval', e));
       }
       // 🏭 BIZ-7 (2026-06-08): 판매사 도매 등급 자동 평가 (GMV 기반 승급 전용).
       //   매주 월요일 — platform_settings.wholesale_auto_grade_enabled='1' 일 때만 동작(off=no-op).
-      await handleWholesaleGradeEval(env).catch(e => notifyCronFailure(env, 'agency-weekly-batch/wholesale-grade-eval', e));
-      if (flags.enable_agency_monthly_invoices && dayOfMonth <= 7) {
-        await handleAgencyMonthlyInvoices(env as any).catch(e => notifyCronFailure(env, 'agency-weekly-batch/invoices', e));
-      }
-      // Phase 2-6: 월간 리포트 (1주차에만 실행, 내부 멱등)
-      if (dayOfMonth <= 7) {
-        await handleAgencyMonthlyReport(env).catch(e => notifyCronFailure(env, 'agency-weekly-batch/monthly-report', e));
-      }
+      await handleWholesaleGradeEval(env).catch(e => notifyCronFailure(env, 'weekly-tier-batch/wholesale-grade-eval', e));
       // 🎯 [urads-split Phase E 2026-07-18] 유어애즈 AI 주간 리포트 → ur-ads worker cron("0 0 * * 1")으로
       //   이관(src/worker-ads/index.ts, 주당 1회 멱등 유지) — 메인의 마지막 marketing cron 참조 제거. 재도입=원복.
     }));

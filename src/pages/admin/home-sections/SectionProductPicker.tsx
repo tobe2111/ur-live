@@ -8,7 +8,7 @@ import { formatWon } from '@/utils/format'
 /**
  * 🏠 "직접 고르기" 섹션에 상품을 담는 패널 (2026-08-04 대표 요청).
  *
- * 규칙 섹션(인기순·마감임박…)은 서버가 알아서 채우지만, `source='manual'` 섹션은
+ * 규칙 섹션(인기순·카테고리…)은 서버가 알아서 채우지만, `source='manual'` 섹션은
  * **여기서 담기 전까지 빈 줄**이고 빈 줄은 홈에서 아예 빠진다. 그래서 이 화면이 없으면
  * 직접 고르기는 선택은 되는데 쓸 수는 없는 반쪽 기능이었다(이 패널이 그 구멍을 메운다).
  *
@@ -118,7 +118,7 @@ export default function SectionProductPicker({
                   <button type="button" onClick={() => move(i, 1)} disabled={i === picked.length - 1} aria-label="아래로"
                     className="p-1 rounded hover:bg-gray-200 disabled:opacity-30"><ArrowDown className="w-3.5 h-3.5 text-gray-500" /></button>
                   <button type="button" onClick={() => remove(p.id)} aria-label="빼기"
-                    className="p-1 rounded hover:bg-red-50"><X className="w-3.5 h-3.5 text-red-400" /></button>
+                    className="p-1 rounded hover:bg-gray-100"><X className="w-3.5 h-3.5 text-gray-400" /></button>
                 </li>
               ))}
             </ul>
@@ -126,7 +126,7 @@ export default function SectionProductPicker({
           <div className="flex gap-2 mt-3">
             <button type="button" onClick={onClose} className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">닫기</button>
             <button type="button" onClick={save} disabled={saving}
-              className="flex-1 px-3 py-2 rounded-lg text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
+              className="ur-btn ur-btn-md ur-btn-primary flex-1 disabled:opacity-50">
               {saving ? '저장 중...' : '저장'}
             </button>
           </div>
@@ -144,7 +144,7 @@ export default function SectionProductPicker({
             />
           </div>
           {full && (
-            <p className="mb-2 text-xs text-amber-600">최대 {SECTION_MAX_LIMIT}개까지 담을 수 있습니다.</p>
+            <p className="mb-2 text-xs text-tone-warn">최대 {SECTION_MAX_LIMIT}개까지 담을 수 있습니다.</p>
           )}
           {isError ? (
             // 🛡️ 빈 결과와 조회 실패를 구분한다 — 둘 다 "0건"으로 보이면 원인을 못 찾는다.

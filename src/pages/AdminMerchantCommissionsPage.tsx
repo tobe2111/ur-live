@@ -161,7 +161,7 @@ export default function AdminMerchantCommissionsPage() {
               placeholder="매장(셀러) id"
               className="px-3 py-2 text-sm rounded-lg border border-gray-300 text-gray-900 w-40"
             />
-            <button onClick={loadSeller} disabled={loading} className="px-4 py-2 bg-gray-900 text-white text-sm font-bold rounded-lg disabled:opacity-50">
+            <button onClick={loadSeller} disabled={loading} className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-50">
               {loading ? '조회 중…' : '조회'}
             </button>
           </div>
@@ -189,7 +189,7 @@ export default function AdminMerchantCommissionsPage() {
               </div>
               <div className="flex justify-between border-b border-gray-100 pb-2">
                 <span className="text-gray-500">현재 기간 만료</span>
-                <span className="text-gray-900">{cs.referral_bonus_until ? cs.referral_bonus_until.slice(0, 10) : '⚠️ 무기한(레거시 — 캡 설정 권장)'}</span>
+                <span className="text-gray-900">{cs.referral_bonus_until ? cs.referral_bonus_until.slice(0, 10) : '무기한(레거시 — 캡 설정 권장)'}</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
                 <label className="text-xs text-gray-600">
@@ -205,7 +205,7 @@ export default function AdminMerchantCommissionsPage() {
                   <input value={rate} onChange={(e) => setRate(e.target.value)} placeholder="예: 5" className="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 text-gray-900" />
                 </label>
               </div>
-              <button onClick={save} className="mt-2 px-4 py-2 bg-pink-500 text-white text-sm font-bold rounded-lg">저장</button>
+              <button onClick={save} className="ur-btn ur-btn-md ur-btn-primary mt-2">저장</button>
             </div>
           )}
         </section>
@@ -221,11 +221,11 @@ export default function AdminMerchantCommissionsPage() {
               <p className="text-xs text-gray-600 mb-3">
                 영향 유저 <b>{audit.affected_users}</b>명 · 합계 <b>{formatWon(audit.grand_total)}</b>
                 {audit.affected_users > 0 && (
-                  <button onClick={() => backfill()} className="ml-3 px-3 py-1 bg-amber-500 text-white rounded-lg font-bold">전체 backfill</button>
+                  <button onClick={() => backfill()} className="ur-btn ur-btn-sm ur-btn-primary ml-3">전체 backfill</button>
                 )}
               </p>
               {audit.data.length === 0 ? (
-                <p className="text-sm text-gray-400">불일치 없음 ✅</p>
+                <p className="text-sm text-gray-400">불일치 없음</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
@@ -237,12 +237,12 @@ export default function AdminMerchantCommissionsPage() {
                     <tbody>
                       {audit.data.map((r) => (
                         <tr key={r.user_id} className="border-b border-gray-50">
-                          <td className="py-2 text-gray-900">{r.handle ? '@' + r.handle : (r.name || `#${r.user_id}`)}{!r.user_exists && <span className="text-red-500"> (없음)</span>}</td>
+                          <td className="py-2 text-gray-900">{r.handle ? '@' + r.handle : (r.name || `#${r.user_id}`)}{!r.user_exists && <span className="text-tone-bad"> (없음)</span>}</td>
                           <td className="text-gray-600">{r.business_status}</td>
                           <td className="text-gray-600">{r.entry_count}</td>
                           <td className="text-gray-900 font-bold">{formatWon(r.total_amount)}</td>
-                          <td className={r.possibly_mispaid_to_seller > 0 ? 'text-red-600 font-bold' : 'text-gray-400'}>{r.possibly_mispaid_to_seller > 0 ? formatWon(r.possibly_mispaid_to_seller) : '-'}</td>
-                          <td>{r.user_exists && <button onClick={() => backfill(r.user_id)} className="px-2 py-1 bg-amber-500 text-white rounded font-bold">backfill</button>}</td>
+                          <td className={r.possibly_mispaid_to_seller > 0 ? 'text-tone-bad font-bold' : 'text-gray-400'}>{r.possibly_mispaid_to_seller > 0 ? formatWon(r.possibly_mispaid_to_seller) : '-'}</td>
+                          <td>{r.user_exists && <button onClick={() => backfill(r.user_id)} className="ur-btn ur-btn-sm ur-btn-primary rounded">backfill</button>}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -260,7 +260,7 @@ export default function AdminMerchantCommissionsPage() {
             <button onClick={loadPendingBiz} className="text-xs text-gray-500 underline">새로고침</button>
           </div>
           {pendingBiz.length === 0 ? (
-            <p className="text-sm text-gray-400">대기 중인 사업자 등록이 없습니다 ✅</p>
+            <p className="text-sm text-gray-400">대기 중인 사업자 등록이 없습니다</p>
           ) : (
             <div className="space-y-2">
               {pendingBiz.map((u) => (
@@ -270,7 +270,7 @@ export default function AdminMerchantCommissionsPage() {
                     <p className="text-gray-500">사업자 {u.business_number || '-'} · {u.tax_type === 'other_income' ? '기타소득 8.8%' : '사업소득 3.3%'} · {u.bank_name} {u.bank_account} ({u.account_holder})</p>
                   </div>
                   <div className="flex gap-2 shrink-0">
-                    <button onClick={() => actBiz(u.id, 'business-approve')} className="px-3 py-1 bg-pink-500 text-white text-xs font-bold rounded-lg">승인</button>
+                    <button onClick={() => actBiz(u.id, 'business-approve')} className="ur-btn ur-btn-sm ur-btn-primary">승인</button>
                     <button onClick={() => actBiz(u.id, 'business-reject')} className="px-3 py-1 border border-gray-300 text-gray-600 text-xs font-bold rounded-lg">거부</button>
                   </div>
                 </div>

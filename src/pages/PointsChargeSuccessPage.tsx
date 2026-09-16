@@ -74,7 +74,7 @@ export default function PointsChargeSuccessPage() {
     return (
       <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#11141C] flex items-center justify-center p-4">
         <SEO title={t('pointsCharge.failTitle', { defaultValue: '딜 충전 실패' })} description={t('pointsCharge.failDesc', { defaultValue: '딜 포인트 충전에 실패했습니다' })} url="/points/charge/success" noindex />
-        <div className="max-w-md w-full text-center bg-white dark:bg-[#11141C] rounded-2xl p-8 shadow-lg border border-gray-100 dark:border-[#2C2F35]">
+        <div className="max-w-md w-full text-center bg-surface rounded-2xl p-8 shadow-lg border border-gray-100 dark:border-[#2C2F35]">
           <p className="text-red-600 mb-4">{error}</p>
           {/* 🚪 2026-08-11 (AB 스윕): 이 화면은 **막다른 길**이었다 — 헤더·네비 없이 텍스트 한 줄과
               `다시 시도` 버튼뿐인데, 그 버튼이 보내는 `/points/charge` 는 2026-07-18 딜 충전 종료
@@ -101,7 +101,7 @@ export default function PointsChargeSuccessPage() {
   return (
     <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#11141C] flex items-center justify-center p-4">
       <SEO title={t('pointsCharge.successTitle', { defaultValue: '딜 충전 완료' })} description={t('pointsCharge.successDesc', { defaultValue: '딜 포인트 충전이 완료되었습니다' })} url="/points/charge/success" noindex />
-      <div className="max-w-md w-full bg-white dark:bg-[#11141C] rounded-2xl p-8 shadow-lg text-center border border-gray-100 dark:border-[#2C2F35]">
+      <div className="max-w-md w-full bg-surface rounded-2xl p-8 shadow-lg text-center border border-gray-100 dark:border-[#2C2F35]">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 mb-4">
           <CheckCircle className="w-10 h-10 text-green-600 dark:text-green-400" />
         </div>

@@ -94,7 +94,7 @@ export function FloatingActionBar({
         {onToggleWishlist && (
           <button
             onClick={onToggleWishlist}
-            className="flex flex-col items-center justify-center w-12 h-12 rounded-xl border border-gray-200 dark:border-[#2C2F35] transition-all active:scale-95"
+            className="flex flex-col items-center justify-center w-12 h-12 rounded-xl border border-line transition-all active:scale-95"
           >
             <Heart
               className={`h-[18px] w-[18px] transition-colors ${

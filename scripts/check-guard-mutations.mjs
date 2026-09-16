@@ -34,8 +34,14 @@
  */
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+import { changedScope, inScope } from './guard-mutations-scope.mjs'
+import { GUARD_RUNNER, touchesGuardScripts } from './guard-mutations-scope.mjs'
+import {
+  changedInjectionNames, runnerLogicChanged, testSpawnsSubprocess,
+} from './guard-mutations-manifest-diff.mjs'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const STRICT = process.argv.includes('-s') || process.argv.includes('--strict')
@@ -81,12 +87,1489 @@ const VERIFY_CLEAN = process.argv.includes('--verify-clean')
 const MAP_ONLY = process.argv.includes('--map-only')
 
 /**
+ * ⏱️ `--changed` — **PR 에서는 이 변경이 건드린 주입만** 돌린다 (2026-09-08 대표 지시).
+ *
+ * 실측: Verify 48분 29초 중 이 스크립트가 **37분 24초 = 77%**(job 101957335695 스텝 타이밍).
+ * 950건을 넘어 선형으로 는다. 그 길이의 2차 피해가 더 컸다 — CI 가 도는 동안 main 이 움직이고,
+ * 거의 모든 PR 이 이 매니페스트를 건드리니 **머지마다 충돌**했다(하루 4번 중 3번이 405 conflict).
+ *
+ * 판정은 `guard-mutations-scope.mjs` 에 있다 — **순수 함수라 테스트가 동작을 직접 잰다.**
+ * 여기 두면 그것을 지키는 주입의 `find` 가 이 파일의 매니페스트 안에도 있어 **자기참조**가 된다
+ * (실제로 "주입 대상이 2곳" 으로 잡혀 이 파일에서 뽑아냈다).
+ * 🔴 좁힌 만큼은 `guard-mutations-full.yml`(main push + 야간)이 전수로 되찾는다 — 둘은 짝이다.
+ */
+/**
+ * 📤 `--dump-manifest` — 주입 목록만 JSON 으로 찍고 **아무것도 하지 않고** 끝낸다.
+ *
+ * 왜: `--changed` 가 "이 PR 이 실제로 바꾼 주입" 을 고르려면 **base(main) 의 목록**이 필요한데,
+ * 이 파일은 최상위 스크립트라 import 하면 그대로 실행돼 버린다. 그래서 base 소스를 임시로 풀어
+ * 이 모드로 **하위 프로세스에서** 한 번 찍게 한다(소스 접근·자물쇠 이전에 끝난다).
+ */
+const DUMP_MANIFEST = process.argv.includes('--dump-manifest')
+const CHANGED = process.argv.includes('--changed')
+const SCOPE = changedScope({
+  enabled: CHANGED,
+  baseRef: process.env.GUARD_MUTATIONS_BASE,
+  run: (args) => execFileSync('git', args, { cwd: ROOT, encoding: 'utf8' }),
+})
+
+/**
  * @typedef {{name:string, file:string, find:string, replace:string, test:string, why:string}} Mutation
  * `find` 는 소스에 **정확히 한 번** 나타나는 문자열이어야 한다(여러 번이면 첫 번째만 바뀌어
  * 의도한 결함이 아닐 수 있다 — 그래서 개수도 검사한다).
  */
 /** @type {Mutation[]} */
 const MUTATIONS = [
+  // ── 🧭 대시보드 Rinda 껍데기 (2026-09-14 대표 시안) — docs/design/dashboard-rinda-2026-09.md ──
+  {
+    name: '🧭 라이트 래퍼가 --brand-tint 를 안 되박는다 (다크 모드에서 활성 메뉴가 검어진다)',
+    file: 'src/index.css',
+    // ⚠️ 2026-09-15: 앵커가 `}\n.light-island` 로 **다음 블록에 붙어** 있었다. 그 사이에 주석 한 줄이
+    //    들어오자(같은 날 다른 세션의 되박기 설명) 지도가 낡아 CI 가 빨간불을 냈다.
+    //    ⇒ 블록 **자기 끝**만 가리킨다 — 옆 블록이 무엇이든 상관없게.
+    find: '  --brand-tint: #EAF1FE;\n  --brand-text: #1C69EF;\n}',
+    replace: '}',
+    test: 'src/tests/unit/dashboard-rinda-shell.test.ts',
+    why:
+      '사이드바가 흰 면이 되면서 비로소 도달 가능해진 경로다. 사용자가 OS/앱 다크 모드를 켜 두면 ' +
+      ':root.dark 의 --brand-tint(#16243D, 남색)가 새어 들어와 활성 메뉴 알약이 검게 뜬다. ' +
+      'index.css 가 --lift 에 대해 이미 경고해 둔 사고의 재발이고, 화면엔 "색이 좀 이상하다"로만 보인다.',
+  },
+  {
+    name: '🧭 사이드바 CTA 필터가 검색 색인까지 먹는다 (이용권 등록이 ⌘K 에서 사라진다)',
+    file: 'src/components/seller-layout/useSellerNavModel.ts',
+    find: '...orderedNavGroups.flatMap((g) => g.items.map',
+    replace: '...renderedNavGroups.flatMap((g) => g.items.map',
+    test: 'src/tests/unit/dashboard-rinda-shell.test.ts',
+    why:
+      "'이용권 등록'을 파란 CTA 로 뽑아내면서 **그리는 목록만** 걸러야 한다. 색인 원본까지 거르면 " +
+      '그 페이지는 메뉴에도 검색에도 없어진다 — 이 레포가 반복해 겪은 "페이지는 있는데 닿을 수 없다".',
+  },
+  {
+    name: '🧭 홈 할 일 행의 칩이 검은 타일로 되돌아온다 (무엇이 급한지 구별이 사라진다)',
+    file: 'src/pages/seller-page/TodoRows.tsx',
+    find: "const ACT = 'rounded-lg bg-brand-tint px-3 py-2 text-xs font-bold text-brand-text'",
+    replace: "const ACT = 'rounded-lg bg-gray-900 px-3 py-2 text-xs font-bold text-white'",
+    test: 'src/tests/unit/dashboard-rinda-shell.test.ts',
+    why:
+      '종전엔 bg-gray-900 타일이 조건에 따라 동시에 셋까지 떴다(이용권 등록 + 미처리 주문 + 정산). ' +
+      '셋이 똑같이 새까매서 우선순위를 전혀 말해 주지 못했다 — 대표가 말한 "헷갈린다"의 한 축.',
+  },
+  {
+    name: '🧭 셀러 사이드바가 다시 어두워진다',
+    file: 'src/components/SellerLayout.tsx',
+    find: "text-gray-500 hover:bg-gray-50 hover:text-gray-900'",
+    replace: "text-white/55 hover:text-white'",
+    test: 'src/tests/unit/dashboard-rinda-shell.test.ts',
+    why:
+      '흰 면 위에 흰 글자가 된다. 빌드도 타입체크도 통과하고 화면에서만 글자가 사라지는 부류라 ' +
+      '가드가 없으면 배포 뒤에야 드러난다.',
+  },
+  {
+    name: '💸 정산 금액을 다시 건수로 말한다 (₩412,000 → "412000건")',
+    file: 'src/pages/seller-page/TodoRows.tsx',
+    find: 'settlementAvailableAmount',
+    replace: 'settlementAvailableCount',
+    test: 'src/tests/unit/dashboard-rinda-shell.test.ts',
+    why:
+      '{{count}}건 문자열에 원화 금액을 넘기던 자리. 에러가 안 나고 숫자도 맞아 보여서 ' +
+      '셀러가 "정산 가능 412000건" 을 그대로 믿는다.',
+  },
+  {
+    name: '뒤로가기 복원 — /browse POP 조회 무력화',
+    file: 'src/pages/browse/list-restore.ts',
+    find: "navType === 'POP' ? readListView<BrowseViewState>(keyRef.current) : null",
+    replace: 'null',
+    test: 'src/tests/unit/list-view-restore-2026-09-13.test.ts',
+    why: '귀속 지점. 이 한 줄을 무력화하면 뒤로 왔을 때 목록이 1페이지로 무너지고 맨 위 항목이 달라진다.',
+  },
+  {
+    name: '뒤로가기 복원 — /browse 마운트 리셋 스킵 제거',
+    file: 'src/pages/BrowsePage.tsx',
+    find: 'if (browseSkipFirstRef.current) { browseSkipFirstRef.current = false; return }',
+    replace: 'if (false) { return }',
+    test: 'src/tests/unit/list-view-restore-2026-09-13.test.ts',
+    why: "setProducts([]) 가 복원본을 지우고 1페이지만 다시 받아 목록이 도로 짧아진다.",
+  },
+  {
+    name: '뒤로가기 복원 — /map 모듈 캐시 동기 소비 제거',
+    file: 'src/hooks/queries/useMapProducts.ts',
+    find: 'useState<Entry>(() => seedOf(cacheKey)',
+    replace: 'useState<Entry>(() => (null as Entry | null)',
+    test: 'src/tests/unit/list-view-restore-2026-09-13.test.ts',
+    why: '/map 은 이미 정상인데(실측) 이 한 줄이 사라지면 뒤로가기가 1페이지로 무너진다 — 그 장치를 잠근다.',
+  },
+  {
+    name: '뒤로가기 복원 — 유어샵 메모리 캐시 소비 제거',
+    file: 'src/pages/CuratorPage.tsx',
+    find: 'return getCuratorCache(handle)',
+    replace: 'return null',
+    test: 'src/tests/unit/list-view-restore-2026-09-13.test.ts',
+    why: '유어샵도 이미 정상인데 이 줄이 사라지면 재진입마다 cold fetch 로 되돌아간다.',
+  },
+  {
+    name: '뒤로가기 복원 — POP 조회를 무력화',
+    // 🔀 2026-09-15: 이 판정이 `VouchersPage` → `vouchers/warm-seed.ts` 로 **옮겨졌다**(웜 시드와
+    //    한 자리에 모으면서). 불변식은 그대로라 주입을 지우지 않고 새 자리로 재조준한다.
+    file: 'src/pages/vouchers/warm-seed.ts',
+    find: "const restored = navType === 'POP' ? readListView<S>(viewKey) : null",
+    replace: 'const restored = null',
+    test: 'src/tests/unit/list-view-restore-2026-09-13.test.ts',
+    why: '이 한 줄이 이 사고의 귀속 지점이다(되돌려-검증: 브라우저 실측 4항목 전부 빨간불).',
+  },
+  {
+    name: '뒤로가기 복원 — 마운트 재fetch 스킵 제거',
+    file: 'src/pages/VouchersPage.tsx',
+    find: 'if (restored != null || ssrSeedRef.current != null) return',
+    replace: 'if (ssrSeedRef.current != null) return',
+    test: 'src/tests/unit/list-view-restore-2026-09-13.test.ts',
+    why: '재fetch 하면 응답이 1페이지뿐이라 되살린 목록이 도로 20개로 잘린다(증상 재발).',
+  },
+  {
+    name: "뒤로가기 복원 — '더보기' cap 리셋 스킵 제거",
+    file: 'src/pages/VouchersPage.tsx',
+    find: 'if (embedResetSkipRef.current) { embedResetSkipRef.current = false; return }',
+    replace: 'if (false) { return }',
+    test: 'src/tests/unit/list-view-restore-2026-09-13.test.ts',
+    why: '마운트에서 cap 이 8 로 돌아가 문서가 짧아지고, 그러면 스크롤 복원도 같이 깨진다.',
+  },
+  {
+    name: '뒤로가기 복원 — 필터 스탬프 검사 제거',
+    file: 'src/pages/VouchersPage.tsx',
+    find: 'productsKeyRef.current !== viewKey) return',
+    replace: 'false) return',
+    test: 'src/tests/unit/list-view-restore-2026-09-13.test.ts',
+    why: '필터 전환 중에 보관하면 새 키에 옛 카테고리 목록이 들어간다.',
+  },
+  {
+    name: '🏷️ 매장명이 없어도 빈 줄이 남는다 (카드 높이가 갈린다)',
+    file: 'src/components/home/UrShortsRail.tsx',
+    find: '          {item.store_name && (',
+    replace: '          {true && (',
+    test: 'src/tests/unit/urshorts-card-info.test.ts',
+    why:
+      '매장이 안 붙은 이용권에서 빈 줄이 남아 카드마다 글자 시작 높이가 달라진다. ' +
+      '화면엔 그냥 여백으로 보여서 아무도 버그로 안 읽고, 레일만 들쭉날쭉해진다.',
+  },
+  {
+    name: '🏷️ 재생시간 배지가 아래로 내려가 가격 위에 얹힌다',
+    file: 'src/components/home/UrShortsRail.tsx',
+    find: 'className="absolute right-1.5 top-1.5 rounded bg-black/60',
+    replace: 'className="absolute right-1.5 bottom-1.5 rounded bg-black/60',
+    test: 'src/tests/unit/urshorts-card-info.test.ts',
+    why:
+      '글자가 네 줄이라 카드 아래쪽은 스크림이 다 차지한다. 배지를 내리면 판매가 위에 겹쳐 ' +
+      '가격이 가려지는데, 시간이 없는 영상에서는 안 겹쳐서 일부 카드에서만 깨진다.',
+  },
+  {
+    name: '🏷️ 레일 카드가 할인율을 또 자체 계산한다 (세 번째 정의)',
+    file: 'src/components/home/UrShortsRail.tsx',
+    find: '  const pd = priceDisplay(item)',
+    replace: '  const pd = { ...priceDisplay(item), discount: Number(item.discount_rate) || 0 }',
+    test: 'src/tests/unit/urshorts-card-info.test.ts',
+    why:
+      '같은 상품이 홈 딜 카드·구매 바·레일 카드에서 서로 다른 %를 보이게 된다. ' +
+      '셋 다 에러를 안 내므로 사용자가 신고할 때까지 아무도 모른다.',
+  },
+  {
+    name: '🔎 이용권을 다시 숫자 ID 로 넣게 한다 (고르는 칸 제거)',
+    file: 'src/pages/AdminUrShortsPage.tsx',
+    find: '                  <ProductPicker',
+    replace: '                  <input placeholder="상품 ID" /> && <ProductPicker',
+    test: 'src/tests/unit/urshorts-admin-usability.test.ts',
+    why:
+      '번호를 아는 사람은 아무도 없고, **틀린 번호를 넣어도 아무 에러가 안 난다** — 존재하는 ' +
+      '다른 상품이면 엉뚱한 이용권에 영상이 조용히 붙어 그대로 홈에 나간다.',
+  },
+  {
+    name: '🔎 고르는 목록이 꺼진 상품까지 보여 준다 (붙여도 홈에 안 나온다)',
+    file: 'src/pages/admin-urshorts/ProductPicker.tsx',
+    find: '`/api/admin/products?status=active&limit=20&q=${encodeURIComponent(term)}`',
+    replace: '`/api/admin/products?limit=20&q=${encodeURIComponent(term)}`',
+    test: 'src/tests/unit/urshorts-admin-usability.test.ts',
+    why:
+      '공개 쿼리가 `p.is_active = 1` 로 거르므로 꺼진 상품에 연결하면 홈에 영영 안 나온다. ' +
+      '어드민 화면은 "연결됨"으로 보여서 왜 안 뜨는지 알 길이 없다.',
+  },
+  {
+    name: '📝 제목·채널 자동 채우기가 사라진다 (snippet 제거)',
+    file: 'src/features/urshorts/api/urshorts.routes.ts',
+    find: 'part=contentDetails,snippet',
+    replace: 'part=contentDetails',
+    test: 'src/tests/unit/urshorts-admin-usability.test.ts',
+    why:
+      'videos.list 는 파트를 늘려도 1 unit 이라 snippet 은 공짜인데, 빼면 화면이 다시 ' +
+      '"채널 미상"이 되고 사람이 제목을 손으로 적어야 한다. 쿼터는 한 푼도 안 아낀다.',
+  },
+  {
+    name: '📝 유튜브 값이 사람이 고쳐 쓴 제목을 덮어쓴다',
+    file: 'src/features/urshorts/api/urshorts.routes.ts',
+    find: "(body?.title ?? '').slice(0, 200) || verdict.title",
+    replace: "verdict.title || (body?.title ?? '').slice(0, 200)",
+    test: 'src/tests/unit/urshorts-admin-usability.test.ts',
+    why:
+      '운영자가 다듬어 놓은 제목이 유튜브 원제로 되돌아간다. 저장은 성공하므로 다시 고칠 ' +
+      '때까지 아무도 모르고, 고쳐도 다음 저장에 또 덮인다.',
+  },
+  {
+    name: '📝 쇼츠 주소가 메타 조회 실패만으로 거부된다 (fail-soft 상실)',
+    file: 'src/features/urshorts/api/urshorts.routes.ts',
+    find: '      : { ok: true, duration: null, title: null, channel: null }',
+    replace: "      : { ok: false, reason: '영상을 찾지 못했습니다' }",
+    test: 'src/tests/unit/urshorts-admin-usability.test.ts',
+    why:
+      '`/shorts/` 주소는 그 자체로 쇼츠임을 증명하므로 원래 키 없이도 넣을 수 있었다. ' +
+      '메타 조회에 묶으면 키가 만료되거나 유튜브가 잠깐 흔들릴 때 등록이 통째로 막힌다.',
+  },
+  {
+    name: '🧾 홈 카드와 구매 바의 할인율 정의가 다시 두 벌이 된다 (SSOT 이탈)',
+    file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
+    find: '  const { price, originalPrice, discount } = priceDisplay({',
+    replace: '  const { price, originalPrice, discount } = ((x) => x)({',
+    test: 'src/tests/unit/videos-buy-bar.test.ts',
+    why:
+      '같은 상품이 홈 카드에서 30%, 유어쇼츠 구매 바에서 0% 로 보이게 된다. 어느 쪽도 에러를 ' +
+      '내지 않으므로 사용자가 신고할 때까지 아무도 모르고, 신고가 와도 "어느 쪽이 맞나" 부터 다퉈야 한다.',
+  },
+  {
+    name: '🧾 구매 바에서 정가가 사라진다 (대표 확정 "기존 가격정보도 넣어라" 무력화)',
+    file: 'src/pages/VideosPage.tsx',
+    find: '              {pd.showOriginal && (',
+    replace: '              {false && (',
+    test: 'src/tests/unit/videos-buy-bar.test.ts',
+    why:
+      '할인율만 남고 정가가 사라지면 "30% 29,500원" 이 무엇에서 30% 인지 알 수 없다. ' +
+      '화면은 멀쩡해 보이고 숫자도 맞아서 회귀를 눈으로 못 잡는다.',
+  },
+  {
+    name: '🧾 가격 줄이 여러 줄로 깨진다 (nowrap 제거 — 6자리 가격에서 바가 커진다)',
+    file: 'src/pages/VideosPage.tsx',
+    find: 'flex items-baseline whitespace-nowrap text-[15px]',
+    replace: 'flex items-baseline text-[15px]',
+    test: 'src/tests/unit/videos-buy-bar.test.ts',
+    why:
+      '숙소처럼 6~7자리 가격에서 줄이 접혀 바가 높아지고 영상을 더 가린다. 보통 가격에서는 ' +
+      '멀쩡해 보여서 개발 중에는 안 드러나고, 비싼 상품에서만 나타난다.',
+  },
+  {
+    name: '🧾 상품명 줄이 사라진다 (안 B → 안 A 로 되돌아감)',
+    file: 'src/pages/VideosPage.tsx',
+    find: '            {cur.product_name && (',
+    replace: '            {false && cur.product_name && (',
+    test: 'src/tests/unit/videos-buy-bar.test.ts',
+    why:
+      '무엇을 사는지 모른 채 구매 버튼을 누르게 된다. 매장명과 가격만으로는 그 매장의 어떤 ' +
+      '이용권인지 알 수 없는데, 화면은 깔끔해 보여서 문제로 안 읽힌다.',
+  },
+  {
+    name: '🎬 이용권 없는 영상이 다시 홈에서 사라진다 (LEFT → INNER)',
+    file: 'src/features/urshorts/api/urshorts.routes.ts',
+    find: '    LEFT JOIN products p ON p.id = s.product_id\n   WHERE s.is_active = 1',
+    replace: '    JOIN products p ON p.id = s.product_id\n   WHERE s.is_active = 1',
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      '대표가 2026-09-08 에 "이용권 정보를 입력하지 않으면 그냥 정보 없이 두는걸로" 를 확정했다. ' +
+      'INNER 로 되돌리면 영상을 넣어 놓고 이용권을 못 고른 순간 레일이 통째로 비는데, 에러가 없어 ' +
+      '"왜 홈에 안 나오지" 를 다시 사람이 물어야 드러난다(실제로 그렇게 드러났다).',
+  },
+  {
+    name: '🎬 LEFT JOIN 이 조용히 INNER 가 된다 (NULL 가드 제거)',
+    file: 'src/features/urshorts/api/urshorts.routes.ts',
+    find: '     AND (p.id IS NULL OR p.is_active = 1)',
+    replace: '     AND p.is_active = 1',
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      'SQL 은 LEFT JOIN 인데 WHERE 가 NULL 을 걸러 결과는 INNER 와 같아진다. 이게 더 나쁘다 — ' +
+      '쿼리를 읽으면 고쳐진 것처럼 보이는데 레일은 여전히 비고, 아무 에러도 안 난다.',
+  },
+  {
+    name: '🎬 이용권 없는 카드에 빈 검정 띠가 남는다',
+    file: 'src/components/home/UrShortsRail.tsx',
+    find: '        {hasInfo && (',
+    replace: '        {true && (',
+    test: 'src/tests/unit/urshorts-card-info.test.ts',
+    why:
+      '값이 하나도 없는데 그라디언트만 그리면 사진 아래가 이유 없이 어두워진다. "정보 없음" 이 ' +
+      '아니라 렌더가 깨진 것처럼 보이는데, 콘솔에는 아무것도 안 찍힌다.',
+  },
+  {
+    name: '🎬 살 게 없는 영상에 구매 버튼이 뜬다 (/group-buy/null)',
+    file: 'src/pages/VideosPage.tsx',
+    find: '      {cur && cur.product_id ? (',
+    replace: '      {cur ? (',
+    test: 'src/tests/unit/videos-buy-bar.test.ts',
+    why:
+      '이용권이 안 붙은 영상에서 "구매" 를 누르면 /group-buy/null 로 간다. 404 화면이 아니라 ' +
+      '상세 페이지가 빈 채로 뜨는 경로라, 사는 사람은 자기가 뭘 잘못 눌렀다고 생각한다.',
+  },
+  {
+    name: '🎬 허락 게이트가 되살아나 어드민 영상이 홈에서 사라진다',
+    file: 'src/features/urshorts/api/urshorts.routes.ts',
+    find: '     AND (p.id IS NULL OR p.is_active = 1)\n   ORDER BY s.sort_order',
+    replace: '     AND (p.id IS NULL OR p.is_active = 1)\n     AND s.consent = 1\n   ORDER BY s.sort_order',
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      '2026-09-08 대표가 "허락 받은 유무 상관없이 메인에 보여지도록" 확정했다. 게이트가 돌아오면 ' +
+      '어드민이 올린 영상이 조용히 홈에서 사라지는데, 에러가 없어서 "왜 또 안 나오지" 를 사람이 ' +
+      '다시 물어야 드러난다(이 프로젝트에서 이미 한 번 그렇게 드러났다).',
+  },
+  {
+    name: '🎬 어드민 화면이 홈 노출 규칙을 거짓으로 말한다',
+    file: 'src/pages/AdminUrShortsPage.tsx',
+    find: '확인 안 해도 홈에는 나갑니다',
+    replace: '홈에는 안 나갑니다',
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      '서버는 내보내는데 화면이 "안 나간다" 고 하면 대표가 있지도 않은 체크를 찾아 헤맨다. ' +
+      '코드가 아니라 문구만 낡는 종류라 테스트 말고는 아무도 안 잡는다.',
+  },
+  {
+    name: '🎬 셀러가 남의 상품에 영상을 걸 수 있다 (소유권 검사 제거)',
+    file: 'src/features/urshorts/api/urshorts.routes.ts',
+    find: 'SELECT id, name FROM products WHERE id = ? AND seller_id = ?',
+    replace: 'SELECT id, name FROM products WHERE id = ?',
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      '화면이 보낸 product_id 를 그대로 믿으면 아무 셀러나 남의 상품에 영상을 건다(IDOR). ' +
+      'A 매장 이용권 옆에 B 매장 영상이 붙어 홈에서 그대로 팔리는데, 에러가 안 나서 신고가 와야 안다.',
+  },
+  {
+    name: '🎬 /videos 가 몰 슬러그 예약어에서 빠진다',
+    file: 'src/shared/mall/slug.ts',
+    find: "'u', 'user', 'v', 'videos', 'vouchers',",
+    replace: "'u', 'user', 'v', 'vouchers',",
+    test: 'src/tests/unit/mall-branding.test.ts',
+    why:
+      '`urdeal.kr/{몰슬러그}` 는 한 세그먼트라, 어떤 몰이 videos 를 슬러그로 잡으면 유어쇼츠 뷰어가 ' +
+      '통째로 죽는다. 개설되기 전까지는 아무 일도 안 일어나서 몇 달 뒤에 터진다.',
+  },
+  {
+    name: '🎬 재생기가 여러 개 살아남는다 (iframe key 제거)',
+    file: 'src/pages/VideosPage.tsx',
+    find: '          key={cur.video_id}',
+    replace: '          data-key={cur.video_id}',
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      'key 가 없으면 React 가 같은 iframe 을 재사용하지 않고 넘길 때마다 새 재생기가 쌓인다. ' +
+      '폰에서 목록이 길어질수록 조용히 느려지다 멈춘다 — 에러는 끝까지 안 난다.',
+  },
+  {
+    name: '🎬 홈 레일이 마운트하자마자 데이터를 부른다',
+    file: 'src/components/home/UrShortsRail.tsx',
+    find: '    if (!near) return\n    let alive = true',
+    replace: '    let alive = true',
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      '홈을 여는 모든 사람이 요청을 하나 더 내게 된다. 대부분은 레일까지 스크롤하지 않으므로 ' +
+      '그 요청은 통째로 낭비다 — 화면은 똑같아 보여서 아무도 못 알아챈다.',
+  },
+  {
+    name: '🎬 쇼츠가 아닌 영상도 통과시킨다 (길이 확인 생략)',
+    file: 'src/features/urshorts/api/urshorts.routes.ts',
+    find: '  if (meta.duration > URSHORTS_MAX_DURATION_SEC) {',
+    replace: '  if (false) {',
+    test: 'src/tests/unit/urshorts-core.test.ts',
+    why:
+      '가로 10분짜리가 9:16 카드에 들어가면 위아래 검은 띠가 생기고 구매 바를 띄울 화면도 아니다. ' +
+      '깨지는 게 아니라 그냥 못생겨지므로 배포까지 간다.',
+  },
+  {
+    name: '🏪 채널 미지정 좌석이 고르지 않고도 1단계를 넘는다 (결재 Q3-3 "미지정 폴백 폐지" 무력화)',
+    file: 'src/pages/SellerMealVoucherNewPage.tsx',
+    find: '    if (s === 0 && channelSet === false) {',
+    replace: '    if (false && channelSet === false) {',
+    test: 'src/tests/unit/store-channel-required-2026-09-07.test.ts',
+    why:
+      '게이트가 빠지면 옛 매장이 채널을 안 고른 채 이용권을 등록하고, 화면은 "운영 방식 미선택" 만 ' +
+      '띄운 채 정산은 조용히 중개 폴백으로 걷힌다 — 에러가 없어 아무도 모른다.',
+  },
+  {
+    name: '🏷️ 할인율이 다시 브랜드 블루로 (행동 색과 가격 색이 섞인다)',
+    file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
+    find: "font-extrabold text-sale\">{discount}%",
+    replace: "font-extrabold text-brand\">{discount}%",
+    test: 'src/tests/unit/discount-is-sale-red.test.ts',
+    why:
+      '블루는 "누르는 것", 할인 빨강은 "가격 이득" 이다. 할인율이 블루로 돌아가면 목록에서 파랑이던 ' +
+      '것이 상세에서 빨강이 되는 종전 상태로 되돌아간다 — 같은 상품의 같은 숫자인데 색이 바뀐다.',
+  },
+  {
+    name: '🏷️ --sale 이 대비 미달 값으로 바뀐다 (할인율이 안 읽힌다)',
+    file: 'src/index.css',
+    find: '    --sale: #DC2626;',
+    replace: '    --sale: #F23E4D;',
+    test: 'src/tests/unit/discount-is-sale-red.test.ts',
+    why:
+      '공구 상세가 쓰던 #F23E4D 는 흰 카드 위 3.77:1 로 본문 크기 글자엔 AA 미달이다(그쪽은 빨강 ' +
+      '**면** 위 흰 글자라 기준이 다르다). 눈으로는 "비슷한 빨강" 이라 그냥 지나간다.',
+  },
+  {
+    name: '🎨 홈 정렬 칩이 다시 잉크 검정으로 (선택 색이 서비스 안에서 둘이 된다)',
+    file: 'src/pages/pc-home/PcHomePage.tsx',
+    // 정렬 칩은 두 벌(현위치 칩 + SORT_CHIPS 루프)이라 같은 문자열이 두 번 나온다.
+    // 들여쓰기가 유일하게 갈라 주는 자리다 — 루프 쪽(22칸)을 앵커로 쓴다.
+    find: "                      ? 'bg-brand text-white border-brand'",
+    replace: "                      ? 'bg-gray-900 text-white border-gray-900'",
+    test: 'src/tests/unit/home-selected-is-brand.test.ts',
+    why:
+      '지도·유어샵·교환권 칩은 전부 블루다. 홈만 검정으로 돌아가면 같은 서비스에서 "선택됨"이 ' +
+      '두 색이 되어 사용자가 규칙을 못 배운다 — 에러는 안 난다.',
+  },
+  {
+    name: '🎨 카테고리 칩만 검정으로 남는다 (같은 줄에 선택 색 둘)',
+    file: 'src/pages/main-home/GroupBuyFeed.tsx',
+    find: "                    ? 'bg-brand text-white'",
+    replace: "                    ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'",
+    test: 'src/tests/unit/home-selected-is-brand.test.ts',
+    why:
+      '카테고리 칩과 정렬 칩은 홈에서 위아래로 붙어 있다. 한쪽만 되돌아가면 **한 화면 안에서** ' +
+      '선택 색이 갈린다 — 고치기 전보다 나쁘다.',
+  },
+  {
+    name: '🎨 섹션 더보기가 다시 테두리 알약이 된다 (표면 규칙 ① 위반)',
+    file: 'src/components/home/HomeSections.tsx',
+    find: '                  className="shrink-0 text-[12.5px] font-bold text-gray-600 dark:text-gray-300 hover:underline underline-offset-4 whitespace-nowrap"',
+    replace: '                  className="shrink-0 px-3.5 py-1.5 rounded-full border border-gray-200 text-[12.5px] font-bold text-gray-600 whitespace-nowrap"',
+    test: 'src/tests/unit/home-selected-is-brand.test.ts',
+    why:
+      '우리 표면 규칙 첫 줄이 테두리 0 이다. 이게 돌아오면 화면에서 **가장 안 중요한 것이 제일 ' +
+      '진하게** 보인다 — 섹션마다 반복돼 눈에 띄는데도 아무도 결함으로 신고하지 않는 종류다.',
+  },
+  {
+    name: '🖼️ 히어로 사진이 다시 클릭 불가가 된다 (안내 문구도 없이)',
+    file: 'src/components/home/HomeHeroDefault.tsx',
+    find: "          aria-label=\"이 사진의 딜 보기\"\n",
+    replace: '',
+    test: 'src/tests/unit/pc-home-hero-controls.test.ts',
+    why:
+      '사진은 `alt=""`(장식)라 링크가 이름을 갖지 않으면 스크린리더에 **빈 링크**로 읽힌다. ' +
+      '눈으로는 멀쩡해 보여서 아무도 못 잡는 클래스다.',
+  },
+  {
+    name: '🖼️ 사진 링크가 사진과 다른 자를 쓴다 (사진 밖으로 나가거나 덜 덮는다)',
+    file: 'src/components/home/HomeHeroDefault.tsx',
+    find: '          className="hidden md:block absolute z-20 inset-y-0 w-[46%] lg:w-[54%] right-',
+    replace: '          className="hidden md:block absolute z-20 inset-y-0 w-[40%] lg:w-[40%] right-',
+    test: 'src/tests/unit/pc-home-hero-controls.test.ts',
+    why:
+      '폭이 사진과 어긋나면 사진 오른쪽이 죽은 영역이 되거나 링크가 사진 밖 색면까지 먹는다. ' +
+      '둘은 **같이 고쳐야 하는 한 쌍**인데 소스에서는 20줄 떨어져 있어 한쪽만 고치기 쉽다.',
+  },
+  {
+    name: '🖼️ 사진 링크가 콘텐츠 층 아래로 내려간다 (눌러도 아무 일도 안 난다)',
+    file: 'src/components/home/HomeHeroDefault.tsx',
+    find: 'className="hidden md:block absolute z-20 inset-y-0',
+    replace: 'className="hidden md:block absolute z-0 inset-y-0',
+    test: 'src/tests/unit/pc-home-hero-controls.test.ts',
+    why:
+      '콘텐츠 층(z-10)이 `w-full` 이라 사진 위까지 덮는다. 그 아래로 내려가면 투명한 div 가 클릭을 ' +
+      '먼저 가로채 **커서만 바뀌고 이동은 안 된다** — 에러가 없어 배포까지 간다.',
+  },
+  {
+    name: '🤖 결정권 매트릭스에서 머니 경로를 C 에서 B 로 낮춤',
+    file: 'docs/design/ai-team-operating-model.md',
+    find: '| 결제·정산·요율·환불·원장·커미션 코드 | **C** |',
+    replace: '| 결제·정산·요율·환불·원장·커미션 코드 | B |',
+    test: 'src/tests/unit/ai-team-operating-model.test.ts',
+    why:
+      '운영 SSOT 의 한 칸이 바뀌면 여섯 역할 에이전트가 그 칸을 읽고 머니 코드를 "보고 후 진행"으로 밀어붙인다. ' +
+      '대표(2026-09-07)가 "완성됐다고 판단했는데 문제가 숨어 있던" 원인으로 지목한 것이 바로 이런 정의의 드리프트다.',
+  },
+  {
+    name: '🤖 개발 역할 파일에서 완료 판정 절 삭제',
+    file: '.claude/agents/dev.md',
+    find: '## 완료 판정 (§4)',
+    replace: '## 참고',
+    test: 'src/tests/unit/ai-team-operating-model.test.ts',
+    why:
+      '완료 판정 절이 없으면 그 역할은 E3(머지·배포)에서 "완료"라고 말하게 된다 — 이 레포가 반복해 당한 클래스. ' +
+      '절 이름만 바꿔도 테스트가 잡아야 한다(주석에 E4 가 남아 있어도 절 헤더가 없으면 빨강).',
+  },
+  {
+    name: '🎛️ 새 게이트를 표에서 뗀다 (켤 화면이 있는지 아무도 안 묻는다)',
+    file: 'src/features/admin/api/admin-system-monitoring.routes.ts',
+    find: "{ key: 'outreach_auto_send', kind: 'setting'",
+    replace: "{ key: 'outreach_auto_send_UNREGISTERED', kind: 'setting'",
+    test: 'src/tests/unit/gate-registry-and-display-2026-09-07.test.ts',
+    why:
+      '등재가 곧 검사 범위다. 표에서 빠지면 ops-gate-reachable 이 "켤 화면이 있나"를 묻지 않고, ' +
+      '그 스위치는 D1 직접 수정으로만 켤 수 있게 된다 — 담기 적립 주 스위치가 정확히 그랬다.',
+  },
+  {
+    name: '🪙 소비자 목록에서 적립 표시 게이트를 뗀다 (꺼진 적립을 다시 약속한다)',
+    file: 'src/features/products/repositories/ProductRepository.ts',
+    find: 'gateAffiliateRows(result.results || [], affiliateOn)',
+    replace: '(result.results || [])',
+    test: 'src/tests/unit/gate-registry-and-display-2026-09-07.test.ts',
+    why:
+      '이게 #1372 이전 상태다 — 프로그램은 꺼졌는데 화면은 "담으면 2%" 를 약속했다. ' +
+      '🩸 첫 판정이 `src.includes(\'gateAffiliateRows\')` 라 **이름만 남겨도 통과**했다(주입으로 잡았다). ' +
+      '지금은 호출 형태를 요구한다.',
+  },
+  {
+    name: '🎛️ 담기 적립 스위치를 어드민에서 다시 뗀다 (켤 손잡이가 사라진다)',
+    file: 'src/pages/admin-platform-settings/money-switch-fields.ts',
+    find: "    key: 'affiliate_program_enabled', label: '⑧ 담기 적립(어필리에이트) 프로그램', default: 'false',",
+    replace: "    key: 'affiliate_program_enabled_REMOVED', label: '⑧ 담기 적립(어필리에이트) 프로그램', default: 'false',",
+    test: 'src/tests/unit/admin-money-switch-ui-2026-09-07.test.ts',
+    why:
+      '이게 없던 것이 원래 상태다 — 읽는 곳 둘, 쓰는 화면 0. 머니 스위치를 D1 직접 수정으로만 ' +
+      '켤 수 있으면 오타값이 저장돼도 read-site 가 조용히 OFF 로 읽는다.',
+  },
+  {
+    name: "🎛️ 스위치 옵션 값을 'True' 로 (켠 줄 알지만 꺼진 채로 돈다)",
+    file: 'src/pages/admin-platform-settings/money-switch-fields.ts',
+    find: "{ value: 'true', label: 'ON — 담아서 팔면 소개비 적립' }",
+    replace: "{ value: 'True', label: 'ON — 담아서 팔면 소개비 적립' }",
+    test: 'src/tests/unit/admin-money-switch-ui-2026-09-07.test.ts',
+    why:
+      "read-site 둘 다 `=== 'true'` strict 비교다. 대문자 하나면 화면엔 ON 인데 지급도 배지도 " +
+      '안 켜진다 — 에러가 없어 "왜 안 켜지지" 로 며칠 간다.',
+  },
+  {
+    name: '💸 요율 폴백을 Number() 로 (칸을 비우면 수수료가 0% 가 된다)',
+    file: 'src/worker/utils/ledger-commission-policy.ts',
+    find: "    const pct = Number.parseFloat(row?.value ?? '')",
+    replace: "    const pct = Number(row?.value ?? '')",
+    test: 'src/tests/unit/admin-money-switch-ui-2026-09-07.test.ts',
+    why:
+      "Number('') 는 0 이고 0 은 0~100 범위를 통과한다 — 폴백(10%/5%)으로 안 가고 **0% 로 걷힌다**. " +
+      '이번에 요율 입력칸을 만들면서 "비울 수 있는 입구"가 처음 생겼으므로 이 폴백이 곧 안전판이다.',
+  },
+  {
+    name: '🖼️ 피드가 섹션 상품을 미루지 않는다 (같은 사진이 위아래로 두 번)',
+    file: 'src/pages/main-home/GroupBuyFeed.tsx',
+    find: 'deferSeeded(sortBand(src), sectionIds)',
+    replace: 'sortBand(src)',
+    test: 'src/tests/unit/home-feed-defers-section-items.test.ts',
+    why:
+      '라이브 실측에서 섹션 8개가 **전부** 피드에도 있었고 4개는 피드 앞 14번 안이었다. ' +
+      '배선 한 줄이 빠지면 화면은 정확히 그 상태로 돌아간다 — 에러는 안 난다.',
+  },
+  {
+    name: '🖼️ 미루기가 밴드 경계를 넘는다 (스크롤하면 이미 본 카드가 움직인다)',
+    file: 'src/shared/home-section-ids.ts',
+    find: '  return head.concat(tail)',
+    replace: '  return tail.concat(head)',
+    test: 'src/tests/unit/home-feed-defers-section-items.test.ts',
+    why:
+      '앞뒤가 뒤집히면 섹션 상품이 오히려 맨 앞으로 온다. 순서 계약이 조용히 반대가 되는 ' +
+      '클래스라 눈으로는 "그냥 정렬이 좀 다르네" 로 보인다.',
+  },
+  {
+    name: '🖼️ 피드가 섹션 상품을 아예 빼 버린다 (전체 목록이 거짓말이 된다)',
+    file: 'src/shared/home-section-ids.ts',
+    find: '    ;(typeof id === \'number\' && ids.has(id) ? tail : head).push(p)',
+    replace: '    if (!(typeof id === \'number\' && ids.has(id))) head.push(p)',
+    test: 'src/tests/unit/home-feed-defers-section-items.test.ts',
+    why:
+      '반복이 사라지니 화면은 오히려 깔끔해 보인다 — 그래서 위험하다. 전체 목록에서 그 상품을 ' +
+      '찾는 사람은 영영 못 만나고, 아무 에러도 안 난다.',
+  },
+  {
+    name: '🖼️ 섹션 id 가 매 렌더 새로 만들어진다 (스크롤 중 카드가 재배치된다)',
+    file: 'src/pages/main-home/GroupBuyFeed.tsx',
+    find: '  const sectionIds = useMemo(() => seededSectionProductIds(), [])',
+    replace: '  const sectionIds = new Set<number>()',
+    test: 'src/tests/unit/home-feed-defers-section-items.test.ts',
+    why:
+      'useMemo 가 빠지면 참조가 매 렌더 바뀌어 목록 useMemo 가 통째로 다시 돈다. 게다가 빈 Set 이라 ' +
+      '미루기 자체가 죽는다 — 화면은 수정 전으로 돌아가고 카드는 스크롤 중에 움직인다.',
+  },
+  {
+    name: '🖼️ 홈 섹션이 서로 겹치는지 다시 안 본다 (같은 사진이 위아래로 두 번)',
+    file: 'src/features/sections/api/sections.routes.ts',
+    find: '            excludeIds: [...claimed],\n',
+    replace: '',
+    test: 'src/tests/unit/home-section-no-duplicate.test.ts',
+    why:
+      '리졸버가 배제를 받아도 라우트가 안 넘기면 화면은 그대로다. 라이브 실측에서 인기 4개 중 ' +
+      '3개가 바로 아래 숙소 섹션에 그대로 다시 나왔다 — 에러가 없어 아무도 못 봤다.',
+  },
+  {
+    name: '🖼️ 섹션 배제의 바인드가 앞으로 끼어든다 (에러 없이 결과만 틀린다)',
+    file: 'src/features/sections/api/section-rules.ts',
+    find: '    binds.push(...excl)',
+    replace: '    binds.unshift(...excl)',
+    test: 'src/tests/unit/home-section-no-duplicate.test.ts',
+    why:
+      '`NOT IN` 은 SQL 에서 CROSS JOIN 분모 **뒤**에 온다. 바인드를 앞에 끼우면 카테고리와 id 가 ' +
+      '어긋나 **SQL 은 통과하고 결과만 조용히 틀린다**. 문자열 검사로는 절대 못 잡는 클래스다.',
+  },
+  {
+    name: '🖼️ 수동 큐레이션이 규칙에 밀린다 (사람이 고른 상품이 사라진다)',
+    file: 'src/features/sections/api/sections.routes.ts',
+    find: "          if (normalizeSectionSource(s.source) !== 'manual') continue;",
+    replace: "          if (normalizeSectionSource(s.source) === 'manual') continue;",
+    test: 'src/tests/unit/home-section-no-duplicate.test.ts',
+    why:
+      '어드민이 그 줄에 그 상품을 직접 골라 넣었는데 위 규칙 섹션이 먼저 집어갔다고 사라지면, ' +
+      '사람이 내린 결정이 질의에 밀리는 것이다. manual 이 먼저 자기 몫을 확정해야 한다.',
+  },
+  {
+    name: '🗑️ 부수 머니 삭제 플래그가 cascade 없이도 먹는다(실수로 열린다)',
+    file: 'src/features/admin/api/admin-sellers/purge-seller.ts',
+    find: "    const purgeAncillary = cascade && /^(1|true|yes)$/i.test(c.req.query('purge_ancillary') || '');",
+    replace: "    const purgeAncillary = /^(1|true|yes)$/i.test(c.req.query('purge_ancillary') || '');",
+    test: 'src/tests/unit/seller-purge-safety.test.ts',
+    why:
+      '되돌릴 수 없는 삭제라 문을 둘 다 열어야 한다. `cascade &&` 가 빠지면 쿼리 하나만 붙여도 ' +
+      '후원·교환권 발송 기록이 지워진다 — 오타 한 번의 거리다.',
+  },
+  {
+    name: '🗑️ 부수 머니를 감사 로그 박제 없이 지운다(사본이 사라진다)',
+    file: 'src/features/admin/api/admin-sellers/purge-seller.ts',
+    find: "          DB.prepare('SELECT * FROM donations WHERE seller_id = ?').bind(sellerId).all(),",
+    replace: '          Promise.resolve({ results: [] }),',
+    test: 'src/tests/unit/seller-purge-safety.test.ts',
+    why:
+      '이 삭제에서 감사 로그는 **유일한 사본**이다. 스냅샷이 비면 개수만 남고 금액·상대·외부 ' +
+      '주문번호가 통째로 사라진다 — 지운 뒤에는 복원할 방법이 없다.',
+  },
+  {
+    name: '🗑️ 주문·정산이 부수 머니 플래그로 함께 풀린다(정산 있는 매장이 사라진다)',
+    file: 'src/features/admin/api/admin-sellers/purge-seller.ts',
+    find: "    if (stl > 0) blockers.push(`정산 ${stl}건`);",
+    replace: '    if (stl > 0 && !purgeAncillary) blockers.push(`정산 ${stl}건`);',
+    test: 'src/tests/unit/seller-purge-safety.test.ts',
+    why:
+      '이 플래그가 덮는 것은 후원·교환권 발송 **둘뿐**이다. 정산·주문·이용권·원장까지 풀리면 ' +
+      '쿼리 하나로 회계 원장이 있는 매장이 사라진다 — 그건 이 도구가 손댈 자리가 아니다.',
+  },
+  {
+    name: '🗑️ 매장 purge 가 후원·교환권 발송을 안 센다(돈 기록이 조용히 사라진다)',
+    file: 'src/features/admin/api/admin-sellers/purge-seller.ts',
+    find: "    if (vord > 0) blockers.push(`교환권 발송 ${vord}건`);",
+    replace: '    // (제거)',
+    test: 'src/tests/unit/seller-purge-safety.test.ts',
+    why:
+      '2026-09-06 라이브에서 실제로 났다. `voucher_orders` 는 FK 가 **ON DELETE CASCADE** 라 매장을 ' +
+      '지우면 KT 교환권 발송 기록이 함께 조용히 없어진다 — 에러도 로그도 없다. `donations` 는 ' +
+      'RESTRICT 라 DB 가 막아 500 이 났는데, 그건 설계가 아니라 운이었다.',
+  },
+  {
+    name: '🗑️ 매장 purge 가 seller_business_info 를 안 지운다(매장이 영영 안 지워진다)',
+    file: 'src/features/admin/api/admin-sellers/purge-seller.ts',
+    find: "    await DB.prepare('DELETE FROM seller_business_info WHERE seller_id = ?').bind(sellerId).run().catch(swallow('admin:purge-seller:bizinfo'));",
+    replace: '    // (제거)',
+    test: 'src/tests/unit/seller-purge-safety.test.ts',
+    why:
+      '그 FK 는 ON DELETE 절이 없어 RESTRICT 다. 남아 있으면 sellers DELETE 가 던지고 ' +
+      '`safeAdminError` 가 "Internal server error" 로 덮어 원인이 안 보인다 — 라이브에서 매장 5가 ' +
+      '**상품 9건만 지워진 채** 남았다(부분 적용).',
+  },
+  {
+    name: '🌇 소개서 생성기에 에이전시 도메인이 되살아난다(없는 덱의 숫자를 다시 뽑는다)',
+    file: 'scripts/generate-proposal-refs.mjs',
+    find: "const DOMAINS = ['wholesale', 'offline-groupbuy', 'online-listing', 'linkshop']",
+    replace: "const DOMAINS = ['wholesale', 'offline-groupbuy', 'online-listing', 'linkshop', 'agency']",
+    test: 'src/tests/unit/agency-sunset-final.test.ts',
+    why:
+      '에이전시 덱이 자랑하던 코드는 전부 삭제됐다. 도메인이 남으면 생성기가 그 덱의 숫자를 다시 ' +
+      '뽑으려다 "[추출실패—수동확인]" 을 내고, 커버리지 매트릭스가 **있지도 않은 기능**을 셈한다 — ' +
+      '대표가 사업계획서 C-2 에서 지적한 것과 같은 클래스(대외 자료가 없는 서비스를 판다).',
+  },
+  {
+    name: '🌇 영입 사전등록이 다시 agencies 를 조회한다(초대 링크에 ?agency= 가 되살아난다)',
+    file: 'src/features/seller-prospects/api/seller-prospects.routes.ts',
+    find: "  const introducerType = 'influencer'",
+    replace: "  const introducerType = 'influencer'; await c.env.DB.prepare('SELECT id FROM agencies WHERE id = ?')",
+    test: 'src/tests/unit/agency-sunset-final.test.ts',
+    why:
+      '1차 일몰은 읽는 쪽(대시보드·커미션)만 지웠고 **쓰는 쪽**이 살아 있었다. 이 라우트가 발급하던 ' +
+      '`?agency=` 초대 링크가 가입 폼의 유령 입력칸을 채워 요금(직접 10% / 중개 5%)을 갈랐다.',
+  },
+  {
+    name: '🌇 어드민이 매장을 다시 에이전시에 붙일 수 있다(화면 없는 쓰기 경로)',
+    file: 'src/features/admin/api/admin-sellers/reassign-introducer.ts',
+    find: "    existsTable: 'users',",
+    replace: "    existsTable: 'agencies',",
+    test: 'src/tests/unit/agency-sunset-final.test.ts',
+    why:
+      '어드민 UI 는 reassign-influencer 하나만 부르는데 agency 쪽 라우트가 화면 없이 살아 있었다. ' +
+      '일몰된 개념에 매장을 붙일 수 있는 문은 남기지 않는다(2026-09-05 대표 "잔재 다 삭제").',
+  },
+  {
+    name: '🏪 본인 가입이 채널을 안 찍는다(직접 입점 사장님이 조용히 5% 로 돌아간다)',
+    file: 'src/features/seller/api/seller-registration.routes.ts',
+    find: '    await stampSignupStoreChannel(db, newSellerId);',
+    replace: '    // (제거)',
+    test: 'src/tests/unit/signup-store-channel-2026-09-04.test.ts',
+    why:
+      '채널이 비면 channelPlatformRate 가 undefined → 중개(5%) 폴백이다. 라이브 실측상 이 문으로 온 ' +
+      '매장 8곳 중 7곳이 미지정이었고, 에러도 경고도 없이 절반 요율로 걷혔다.',
+  },
+  {
+    name: '🏪 본인 가입 문이 중개(5%)로 찍힌다',
+    file: 'src/features/seller/api/seller-signup-meta.ts',
+    find: "  return 'direct'",
+    replace: "  return 'brokered'",
+    test: 'src/tests/unit/signup-store-channel-2026-09-04.test.ts',
+    why:
+      '이 문은 카카오 user 세션 전용 — 로그인한 본인이 자기 가게를 올린다. 여기서 brokered 가 나오면 ' +
+      '중개사가 없는 매장까지 절반 요율로 걷힌다(에이전시 일몰 후 brokered 의 출처는 /store/new 뿐).',
+  },
+  {
+    name: '🏪 매장 등록 모달이 "누가 운영하나요?" 없이 제출된다',
+    file: 'src/components/seller/StoreRegisterModal.tsx',
+    find: '    if (!picked || !channel || !managerOk || !certOk || submitting) return',
+    replace: '    if (!picked || !managerOk || !certOk || submitting) return',
+    test: 'src/tests/unit/signup-store-channel-2026-09-04.test.ts',
+    why:
+      '에이전시 일몰 후 brokered 를 만들 수 있는 문은 여기 하나다. 이 강제가 풀리면 채널 미지정 ' +
+      '매장이 다시 생기고, 미지정은 조용히 5% 로 떨어진다.',
+  },
+  {
+    name: '🌇 가입 퍼널에 에이전시 초대 코드가 되살아난다(아무도 못 켜는 스위치가 요금을 가른다)',
+    file: 'src/features/seller/api/seller-registration.routes.ts',
+    find: "    const hasInfluencerCode = !!(influencer_intro_code && influencer_intro_code.trim())",
+    replace: "    const hasInfluencerCode = !!(influencer_intro_code && influencer_intro_code.trim()); const agency_intro_code = ''",
+    test: 'src/tests/unit/signup-store-channel-2026-09-04.test.ts',
+    why:
+      '2026-09-05 대표 "에이전시 남은 잔재 다 삭제". 발급 주체(대시보드·초대 링크)가 사라졌는데 ' +
+      '읽는 쪽만 남으면, 아무도 채울 수 없는 칸이 직접 10% / 중개 5% 를 계속 가르게 된다.',
+  },
+  {
+    name: '컨테이너 스크롤을 capture 없이 들어 영원히 못 받는다',
+    file: 'src/components/ScrollToTop.tsx',
+    find: "{ passive: true, capture: true }",
+    replace: '{ passive: true }',
+    test: 'src/tests/unit/scroll-restoration.test.ts',
+    why:
+      'scroll 이벤트는 **버블하지 않는다** — window 리스너만으로는 내부 스크롤 영역(지도 목록)의 ' +
+      '위치를 한 번도 못 받는다. 저장이 조용히 0건이 되고 화면은 그대로라 아무도 모른다.',
+  },
+  {
+    name: '🎫 상단 띠가 저절로 넘어간다 (자동 재생 — 첫 화면에서 읽기를 방해한다)',
+    file: 'src/components/home/HomeBannerStrip.tsx',
+    find: '  const many = banners.length > 1',
+    replace: '  const many = banners.length > 1\n  setTimeout(() => railRef.current?.scrollBy({ left: 999 }), 4000)',
+    test: 'src/tests/unit/home-top-banner-and-near-default.test.ts',
+    why:
+      '캐러셀에 자동 재생을 얹고 싶은 유혹은 늘 생긴다. 그런데 첫 화면에서 저절로 움직이면 ' +
+      '읽던 사람이 방해받고, 무엇을 보고 있었는지 통제할 수 없게 된다.',
+  },
+  {
+    name: '🎫 한 장짜리 상단 띠에 점 하나가 덩그러니 남는다',
+    file: 'src/components/home/HomeBannerStrip.tsx',
+    find: '  const many = banners.length > 1',
+    replace: '  const many = true',
+    test: 'src/tests/unit/home-top-banner-and-near-default.test.ts',
+    why:
+      '한 장을 74% 폭으로 두면 오른쪽에 빈 자리가 생기고 점 하나짜리 인디케이터가 남는다. ' +
+      '시안(안 3)에서 바로 이 점을 약점으로 적었고, 그래서 한 장이면 꽉 채우기로 했다.',
+  },
+  {
+    name: '떠난 페이지가 스크롤 저장을 0 으로 덮어쓴다',
+    file: 'src/components/ScrollToTop.tsx',
+    find: '      if (currentKeyRef.current !== keyAtAttach) return',
+    replace: '      if (false) return',
+    test: 'src/tests/unit/scroll-restoration.test.ts',
+    why:
+      '2026-09-01 대표 "어떠한 페이지든 무조건 맨 위로 나옴". 복원 코드는 두 달간 있었는데도 ' +
+      '동작하지 않았다 — 떠나는 순간 옛 키로 0 이 저장돼 "저장된 자리 없음" 폴백을 탔다. ' +
+      '귀속 검증에서 이 한 줄만이 되돌리면 깨지는 유일한 변경이었다(실측 3/3 → 0/3).',
+  },
+  {
+    name: '🏷️ 교환권 행(VoucherRow) 할인율이 다시 썸네일 위로',
+    // 🔁 2026-09-05 재조준: VoucherRow 가 `DealRow`(줄 SSOT)에 위임하며 옛 앵커
+    //   (`shared.tsx` 의 `{/* 🎨 본문 — 우측.`)가 사라졌다. 지키는 불변식(할인율이 썸네일을
+    //   가리면 안 된다)은 **그대로**이고, 이제 그 할인율을 그리는 자리가 `DealRow` 다
+    //   — 테스트도 위임을 감지하면 그 파일을 본다. 그러니 주입도 거기로 옮긴다.
+    file: 'src/components/deal/DealRow.tsx',
+    find: `        {thumb ?? (imageUrl ? (`,
+    replace: `        {discountPct > 0 && (
+          <span className="absolute top-1.5 left-1.5 text-[10px] font-extrabold bg-[#d1d5db] rounded px-1 py-0.5">{discountPct}%</span>
+        )}
+        {thumb ?? (imageUrl ? (`,
+    test: 'src/tests/unit/voucher-card-discount-once.test.ts',
+    why:
+      '모바일 목록 행도 같은 클래스였다 — 게다가 회색 배지라 눈에 띄지도 않으면서 썸네일만 가렸다. ' +
+      '카드만 고치고 행을 두면 같은 화면 안에서 규칙이 갈린다.',
+  },
+  {
+    name: '🎟️ 손으로 친 바우처 코드가 다시 대소문자를 가린다 (폴백이 반쪽이 된다)',
+    file: 'src/components/voucher/VoucherScanner.tsx',
+    find: "  const v = (raw || '').replace(/\\s+/g, '').toUpperCase()",
+    replace: "  const v = (raw || '').trim()",
+    test: 'src/tests/unit/store-scan-manual-code.test.ts',
+    why:
+      '발급 코드는 전부 대문자인데 서버 조회는 BINARY 대조다(라이브 실측: 소문자 조회 0건). ' +
+      '폰 키보드는 소문자로 시작하므로, 정규화가 빠지면 유효한 바우처에 404 가 뜬다.',
+  },
+  {
+    name: '🎟️ 계산대 입력칸이 다시 소문자 키보드로 시작한다',
+    file: 'src/components/voucher/VoucherScanner.tsx',
+    find: '            autoCapitalize="characters"',
+    replace: '            data-removed-autocapitalize="characters"',
+    test: 'src/tests/unit/store-scan-manual-code.test.ts',
+    why:
+      '정규화가 있어도 이 속성이 빠지면 사장님이 친 글자와 화면 글자가 달라 보인다 — ' +
+      '"내가 맞게 쳤나"를 손님 앞에서 의심하게 만든다.',
+  },
+  {
+    name: '🎫 상단 띠 배너가 첫 섹션 **아래로** 내려간다',
+    file: 'src/pages/mobile-home/MobileHomePage.tsx',
+    find: '          <HomeBannerStrip variant="strip" />\n          <HomeSections',
+    replace: '          <HomeSections',
+    test: 'src/tests/unit/home-top-banner-and-near-default.test.ts',
+    why:
+      '대표 지시는 *"인기 이용권 섹션 **위**에"* 다. 배선이 빠지면 에러 없이 그냥 안 뜬다 — ' +
+      '이 레포가 반복해 겪은 "조용한 부재" 클래스라 배선 자체를 고정한다.',
+  },
+  {
+    name: '🎫 배너 자리 규격이 다시 엇갈려 참조된다 (안내 문구만 거짓말)',
+    file: 'src/components/home/HomeBannerStrip.tsx',
+    find: 'const bg = b.image_url ? cfImage(b.image_url, { width: BANNER_SLOT_SPECS.wide.requestWidth, quality: 76 }) : \'\'',
+    replace: 'const bg = b.image_url ? cfImage(b.image_url, { width: BANNER_SLOT_SPECS.inline.requestWidth, quality: 76 }) : \'\'',
+    test: 'src/tests/unit/home-top-banner-and-near-default.test.ts',
+    why:
+      '엇갈려 참조해도 **사진 크기는 맞아서** 증상이 없다. 대신 어드민 안내가 반대로 나가 ' +
+      '가로 전체 배너에 "800px 권장"을 보여 준다 — 그대로 올리면 흐려진다.',
+  },
+  {
+    name: '🧭 홈 기본 정렬이 다시 인기순으로 굳는다 (위치를 알아도 무시)',
+    file: 'src/pages/mobile-home/MobileHomePage.tsx',
+    // 🗺️ 2026-09-08: 대표 *"거리순이 가장 우선"* 으로 규칙에서 지역 조건이 빠졌다 — 지도도 따라간다.
+    //    (안 옮기면 "낡은 지도"로 빨간불이고, 그게 이 검사가 하라고 만든 일이다. 실제로 그렇게 잡혔다.)
+    find: "    () => (readCachedLoc() ? 'near' : 'popular'),",
+    replace: "    () => 'popular',",
+    test: 'src/tests/unit/home-top-banner-and-near-default.test.ts',
+    why:
+      '대표 지시 *"기본 디폴트가 현재 위치에서 가까운 순대로"*. 정렬 기본값은 화면 어디에도 ' +
+      '"왜 이 순서인가"를 안 적으므로, 되돌아가도 아무도 눈치채지 못한다.',
+  },
+  {
+    name: '🧭 홈이 진입하자마자 위치 권한 팝업을 띄운다',
+    file: 'src/pages/mobile-home/MobileHomePage.tsx',
+    find: '  const dong = useCurrentDong(userLoc)',
+    replace: '  const dong = useCurrentDong(userLoc); if (typeof navigator !== \'undefined\') navigator.geolocation?.getCurrentPosition(() => {})',
+    test: 'src/tests/unit/home-top-banner-and-near-default.test.ts',
+    why:
+      '"가까운 순"을 확실히 하려고 홈에서 측위를 시작하고 싶은 유혹이 생긴다. 홈 진입에 ' +
+      '권한 팝업을 띄우는 건 과하고, 거부당하면 어차피 캐시 경로로 돌아온다.',
+  },
+  {
+    name: '🔎 인기 검색어가 없을 때 빈 섹션 제목만 남는다',
+    file: 'src/pages/SearchPage.tsx',
+    find: '{relatedKeywords.length > 0 && (',
+    replace: '{true && (',
+    test: 'src/tests/unit/search-popular-keywords.test.ts',
+    why:
+      '서버가 빈 목록을 주면 *"인기 검색어"* 제목과 구분선만 덩그러니 남는다. ' +
+      '보여줄 게 없으면 자리도 차지하지 않는 것이 맞다.',
+  },
+  {
+    name: '🔎 빈 검색 화면이 다시 자체 fetch 를 한다 (두 화면의 인기 검색어가 갈린다)',
+    file: 'src/components/search/SearchStates.tsx',
+    find: '  const popular = usePopularSearches(10)',
+    replace: '  const popular: string[] = []',
+    test: 'src/tests/unit/search-popular-keywords.test.ts',
+    why:
+      '같은 값을 두 화면이 각자 들고 있으면 결국 갈린다 — 실제로 한쪽은 진짜 API 를 부르고 ' +
+      '다른 쪽은 하드코딩 6개를 띄우고 있었다(2026-09-04 수리). 공유 훅이 그 상태로 돌아가지 않게 한다.',
+  },
+  {
+    name: '💸 반품 환불이 카드에 총액 기준 환불액을 요청한다 (부분결제 주문에서 실패하거나 과다 환불)',
+    file: 'src/features/returns/api/returns.routes.ts',
+    find: '      refundSplit.card,',
+    replace: '      returnRecord.refund_amount || undefined,',
+    test: 'src/tests/unit/refund-partial-deal-split.test.ts',
+    why:
+      '`refund_amount` 는 **총액 기준**인데 부분결제 주문의 카드 승인액은 그보다 `deal_used` 만큼 적다. ' +
+      '총액을 넣으면 `EXCEED_CANCEL_AMOUNT` 로 환불이 실패하고, 카드 몫 이하를 넣으면 아래 딜 복원이 ' +
+      '**따로 더** 나가 총 환불이 의도를 넘는다(10,000·딜2,000 주문에서 5,000 환불 → 실제 6,000).',
+  },
+  {
+    name: '💸 딜 섞인 주문 환불이 카드에 총액을 요청한다 (환불이 통째로 막힌다)',
+    file: 'src/worker/utils/order-refund.ts',
+    find: 'opts.reason, cardAmount)',
+    replace: 'opts.reason, amount)',
+    test: 'src/tests/unit/refund-partial-deal-split.test.ts',
+    why:
+      '부분결제 주문의 `total_amount` 는 **총액**이고 카드 승인액은 그보다 `deal_used` 만큼 적다. ' +
+      '총액을 취소 요청하면 Toss 가 `EXCEED_CANCEL_AMOUNT` 로 거부하고 그 자리에서 return 하므로 ' +
+      '**상태 전이도 딜 복원도 도달하지 못한다** — 고객이 환불을 아예 못 받는다(2026-09-04 실측 결함).',
+  },
+  {
+    name: '💸 환불이 잔여액보다 많은 딜을 되돌린다 (부분반품 뒤 조용한 과다 환불)',
+    file: 'src/features/group-buy/api/partial-deal.ts',
+    find: '  const deal = Math.min(remaining, refund)',
+    replace: '  const deal = remaining',
+    test: 'src/tests/unit/refund-partial-deal-split.test.ts',
+    why:
+      '부분반품이 이미 일부를 돌려준 뒤라면 잔여 환불액(`amount`)이 `deal_used` 보다 작을 수 있다. ' +
+      '클램프가 없으면 그 초과분이 **에러 없이** 유저 지갑으로 더 나간다.',
+  },
+  {
+    name: '🪙 결제 화면이 딜 사용을 안 보여준다 (10,000원을 눌렀는데 8,000원이 뜬 이유가 사라진다)',
+    file: 'src/pages/TossWidgetPayPage.tsx',
+    find: '{summary.dealUsed ? (',
+    replace: '{false ? (',
+    test: 'src/tests/unit/pay-screen-summary.test.ts',
+    why:
+      '부분결제는 청구액이 상품값보다 **적다**. 그 차액을 화면이 설명하지 않으면 사용자는 ' +
+      '왜 금액이 달라졌는지 모른 채 결제한다 — 에러가 없어 아무도 신고하지 않는 종류의 결함이다.',
+  },
+  {
+    name: '🪙 딜 사용액을 화면이 잔액으로 추정한다 (게이트가 꺼지면 그 안내가 거짓말이 된다)',
+    file: 'src/pages/GroupBuyDetailPage.tsx',
+    find: 'dealUsed: Number(serverDealUsed) || undefined,',
+    replace: 'dealUsed: dealBalance || undefined,',
+    test: 'src/tests/unit/pay-screen-summary.test.ts',
+    why:
+      '화면은 서버 게이트(`voucher_partial_deal_enabled`)가 켜졌는지 **모른다**. 잔액만 보고 ' +
+      '"2,000딜 쓰여요" 를 지어내면 게이트가 꺼진 순간 실제로는 전액이 청구되고 안내만 틀린다. ' +
+      '그래서 싣는 값은 반드시 `/join` 이 계산해 돌려준 것이어야 한다.',
+  },
+  {
+    name: '🧾 토스 위젯 상자에서 light-island 가 빠진다 — 다크에서 이메일 칸이 흰 글자 on 흰 배경',
+    file: 'src/pages/TossWidgetPayPage.tsx',
+    find: 'className="light-island min-h-[180px] bg-white rounded-2xl shadow-lift overflow-hidden"',
+    replace: 'className="min-h-[180px] bg-white rounded-2xl shadow-lift overflow-hidden"',
+    test: 'src/tests/unit/pay-screen-summary.test.ts',
+    why: '위젯은 흰색으로 렌더되는데 전역 `.dark input`(0,5,1)이 그 입력 글자를 덮는다 — 09-03 지도 검색창과 같은 사고.',
+  },
+  {
+    name: '🧾 결제 화면 주 행동이 다시 검정 알약으로',
+    file: 'src/pages/TossWidgetPayPage.tsx',
+    find: 'className="w-full py-3.5 bg-brand hover:bg-brand-dark text-white',
+    replace: 'className="w-full py-3.5 bg-gray-800 text-white',
+    test: 'src/tests/unit/pay-screen-summary.test.ts',
+    why: '화면에서 가장 강한 행동이 브랜드가 아닌 색이면 결제 직전에 다른 서비스처럼 보인다.',
+  },
+  {
+    name: '🧾 결제 요약이 사진 없는 주문에서 터진다 (셀러 결제·구 링크)',
+    file: 'src/pages/TossWidgetPayPage.tsx',
+    find: '{summary.image && (',
+    replace: '{true && (',
+    test: 'src/tests/unit/pay-screen-summary.test.ts',
+    why: '요약은 전부 선택값이다 — 딜 충전·셀러 결제·예전에 만들어진 링크에는 사진이 없다.',
+  },
+  {
+    name: '🎨 브랜드 강조가 다시 회색으로 — 구 로즈(pink) 유틸이 되돌아온다',
+    file: 'src/components/gift/GiftSendModal.tsx',
+    find: 'bg-brand text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-brand-dark',
+    replace: 'bg-pink-500 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-pink-600',
+    test: 'src/tests/unit/brand-color-migration.test.ts',
+    why: 'tailwind 이 pink 를 MONO 로 중화한다 — 라이브 실측 .bg-pink-500 → rgb(110 107 104). 주 버튼이 조용히 회색이 된다.',
+  },
+  {
+    name: '🚦 대시보드가 다시 상태를 회색으로 — 반려와 승인이 픽셀 단위로 같아진다',
+    file: 'tailwind.config.js',
+    find: "          ok: { DEFAULT: 'var(--tone-ok)', bg: 'var(--tone-ok-bg)' },",
+    replace: '          ok: MONO,',
+    test: 'src/tests/unit/status-tone-tokens.test.ts',
+    why: '라이브 실측: .bg-rose-50 == .bg-emerald-50 == rgb(248 247 252). 에러가 안 나서 몇 달간 안 드러났다.',
+  },
+  {
+    name: '🚦 always-light 래퍼가 상태 색을 안 되박는다 — 흰 카드 위에 다크용 밝은 초록',
+    file: 'src/index.css',
+    // 🔀 2026-09-15: 목록에 `.seller-light-theme` 가 추가됐다(표면 토큰을 변수로 돌리며 그 스코프만 빠져 있었다).
+    find: `.light-island, .force-light-theme, .admin-light-theme, .agency-light-theme, .seller-light-theme {`,
+    replace: `.zz-removed-always-light {`,
+    test: 'src/tests/unit/status-tone-tokens.test.ts',
+    why: '대시보드는 화이트 고정인데 html.dark 면 :root 의 다크 토큰이 새어 들어온다(--lift 가 09-02 에 같은 사고).',
+  },
+  {
+    name: '💸 딜 없는 사람에게도 소개 링크를 준다 — 첫 정산에서 0원을 본다',
+    file: 'src/pages/InfluencerDiscoverPage.tsx',
+    find: 'p.my_deal_pct != null ? (',
+    replace: 'true ? (',
+    test: 'src/tests/unit/discover-deal-gate.test.ts',
+    why:
+      '2026-09-03 에 이 블록을 카드 통일 리팩토링으로 **통째로 지웠고** CI 가 잡았다. ' +
+      '버그가 아니라 약속 위반이라 되돌리는 비용(환급 + 신뢰)이 훨씬 크다 — 주입 지도에 박아 둔다.',
+  },
+  {
+    name: '🎫 홈 우리 동네딜이 다시 자체 미니 카드로 — 형태가 넷이 된다',
+    file: 'src/components/main/HomeDongneDealSection.tsx',
+    find: '<DealMiniCard',
+    replace: '<div data-not-a-card',
+    test: 'src/tests/unit/deal-card-shapes.test.ts',
+    why: '미니 형태를 화면이 직접 그리기 시작하면 09-02 표면 개편이 또 한쪽에만 지나간다(이번에 그래서 대표색 카드가 3개월 남았다).',
+  },
+  {
+    name: '🎫 쇼핑 카드가 다시 대표색 그라데이션 자체 카드로',
+    file: 'src/pages/browse/BrowseProductCard.tsx',
+    find: '<GroupBuyFeedCard',
+    replace: '<div data-own-card',
+    test: 'src/tests/unit/deal-card-shapes.test.ts',
+    why: '이름만 남은 어댑터가 자체 마크업을 되살리면 격자 카드가 두 벌이 된다 — 쇼핑을 재오픈하는 순간 옛 룩이 같이 살아난다.',
+  },
+  {
+    name: '🎫 교환권 카드가 다시 원 단위를 하드코딩 — 같은 상품이 화면마다 원/딜로 갈린다',
+    file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
+    find: "const unitLabel = Number(p.deal_only) === 1 ? ' 딜' : '원'",
+    replace: "const unitLabel = '원'",
+    test: 'src/tests/unit/deal-card-shapes.test.ts',
+    why: '유어샵 핀에 담긴 교환권이 격자에서 원, /vouchers 목록에서 딜 로 보이던 실제 결함이다.',
+  },
+  {
+    name: '🎫 이용권 딜 결제를 끌 수 없게 된다 (서버 키가 느슨해져 스위치가 사라진다)',
+    file: 'src/features/group-buy/api/gb-purchase-guards.ts',
+    find: "  return gate?.value === 'true'",
+    replace: '  return true',
+    test: 'src/tests/unit/voucher-deal-payment.test.ts',
+    why:
+      '2026-09-04 클라 플래그를 켜면서(대표 지시, 선행 조건 `influencer_deal_bonus_pct=0` 실측 확인) ' +
+      '**유일한 스위치가 이 서버 키 하나**가 됐다. 여기가 truthy 로 느슨해지면 어드민에서 ' +
+      "`false` 로 내려도 안 꺼진다 — 적자든 사고든 **끌 방법이 없어진다**. " +
+      '(종전 이 자리는 클라 플래그의 기본 OFF 를 지켰는데, 그 플래그가 켜져 위험의 무게가 여기로 옮겨왔다.)',
+  },
+  {
+    name: '🎫 이용권 딜 결제 게이트가 교환권까지 막는다 (기프티콘 결제 전면 중단)',
+    file: 'src/features/group-buy/api/gb-purchase-guards.ts',
+    find: '  if (product.deal_only === 1) return true',
+    replace: '  if (false) return true',
+    test: 'src/tests/unit/voucher-deal-payment.test.ts',
+    why:
+      '이 가드는 **이용권에만** 걸려야 한다. 교환권(`deal_only=1`)은 원래 딜 전용이라 ' +
+      '여기 걸리면 게이트가 꺼진 기본 상태에서 기프티콘 구매가 통째로 400 이 된다. ' +
+      '⚠️ `deal_only` 가 SELECT 목록(PRODUCT_DETAIL_FIELDS)에서 빠져도 같은 사고가 난다.',
+  },
+  {
+    name: '🩸 near 와 sort 를 같이 보낸다 — 서버가 sort 를 무시해 정렬이 조용히 틀린다',
+    file: 'src/pages/restaurant-map/useFeedWindow.ts',
+    find: "const near = eff === 'distance' ? userLoc : null",
+    replace: 'const near = userLoc',
+    test: 'src/tests/unit/map-feed-demand-loading.test.ts',
+    why: '서버는 baseOrder = hasNear ? 거리 : sort — near 가 이긴다. 전량 로딩을 걷어낸 뒤로는 이게 곧 틀린 목록이다.',
+  },
+  {
+    name: '🚦 홈 피드 다음 페이지가 정렬 없이 나간다 — 스크롤할수록 순서가 섞인다',
+    file: 'src/pages/main-home/GroupBuyFeed.tsx',
+    find: '&page=${nextPage}&limit=50${feedParams}',
+    replace: '&page=${nextPage}&limit=50',
+    test: 'src/tests/unit/feed-sort-and-sentry-noise.test.ts',
+    why: '정렬을 서버로 넘긴 뒤에는 page2 부터도 같은 정렬이어야 한다 — 빠지면 최신순 페이지가 인기순 목록에 붙는다.',
+  },
+  {
+    name: '🔇 Sentry 노이즈 필터가 스택을 안 보고 메시지만 본다 — 우리 코드의 진짜 버그를 삼킨다',
+    file: 'src/lib/sentry-noise.ts',
+    find: '&& isSentryOwnVitalsFrame(event, rawStack)) return true',
+    replace: ') return true',
+    test: 'src/tests/unit/feed-sort-and-sentry-noise.test.ts',
+    why: "같은 'startTime' 메시지는 우리 코드도 낼 수 있다. 좁게 거르지 않으면 조용히 실명한다.",
+  },
+  {
+    name: '🚦 서버 인기순이 다시 group_buy_current 만 본다 — 화면의 정의와 갈린다',
+    file: 'src/features/group-buy/api/group-buy-public.routes.ts',
+    find: "popular: 'COALESCE(p.sold_count, p.group_buy_current, 0) DESC",
+    replace: "popular: 'p.group_buy_current DESC",
+    test: 'src/tests/unit/feed-sort-and-sentry-noise.test.ts',
+    why: 'sparse 컬럼만 보면 인기순이 사실상 최신순이 된다(2026-07-16 대표 신고 "PC 정렬 무반응"의 원인).',
+  },
+  {
+    name: '🚦 목록이 다시 전량을 걷는다 — 진입마다 338건·요청 7회',
+    file: 'src/hooks/queries/useMapProducts.ts',
+    find: '    let cancelled = false\n    ;(async () => {\n      const res = await fetchPage(category, 1, near, sort)',
+    replace: '    let cancelled = false\n    ;(async () => {\n      for (let page = 1; page < 99; page++) { await fetchPage(category, page, near, sort) }\n      const res = await fetchPage(category, 1, near, sort)',
+    test: 'src/tests/unit/map-feed-demand-loading.test.ts',
+    why: '2026-09-03 실측: 활성 338건을 진입할 때마다 7회·66KB 로 전부 받았다. 화면엔 10~20장 뜨는데.',
+  },
+  {
+    name: '🚦 스크롤이 서버 다음 페이지를 안 부른다 — 50개에서 목록이 끝난다',
+    file: 'src/pages/restaurant-map/RestaurantList.tsx',
+    find: '      if (localMore) setVisibleCount(v => v + PAGE)\n      else onLoadMore?.()',
+    replace: '      if (localMore) setVisibleCount(v => v + PAGE)',
+    test: 'src/tests/unit/map-feed-demand-loading.test.ts',
+    why: '전량 순회를 걷어낸 대가로 이 센티넬이 유일한 다음-페이지 경로다. 빠지면 목록이 조용히 잘린다.',
+  },
+  {
+    name: '🔢 "N곳" 이 다시 로드된 수를 센다 — 338곳을 50곳이라 말한다',
+    file: 'src/features/group-buy/api/group-buy-public.routes.ts',
+    find: 'data: withOnnuri, ...(total != null ? { total } : {})',
+    replace: 'data: withOnnuri',
+    test: 'src/tests/unit/map-feed-demand-loading.test.ts',
+    why: '전량을 안 받으므로 개수는 서버만 안다. 응답에서 빠지면 화면이 로드된 수로 폴백해 거짓말을 한다.',
+  },
+  {
+    name: '🎟️ 승인 대기 매장까지 세어 게이트만 열린다 — 이용권이 개인 좌석으로 등록된다',
+    file: 'src/features/seller/api/seller-stores.routes.ts',
+    find: "operableCount = mine.filter(x => x.status === 'active' || x.status === 'approved').length",
+    replace: 'operableCount = mine.length',
+    test: 'src/tests/unit/voucher-flow-audit-2026-09-02.test.ts',
+    why: '좌석 토큰은 active|approved 에만 나온다 — pending 을 세면 게이트는 열리고 좌석은 안 바뀐다(잘못된 매장으로 팔린다).',
+  },
+  {
+    name: '🎟️ 화면이 승인 대기 매장을 고를 수 있는 것처럼 보여준다',
+    file: 'src/pages/seller-meal-voucher/StoreStep.tsx',
+    find: '    if (!seatable(s)) {',
+    replace: '    if (false) {',
+    test: 'src/tests/unit/voucher-flow-audit-2026-09-02.test.ts',
+    why: '고르라고 해 놓고 서버가 거부하면 사용자는 원인을 알 수 없다.',
+  },
+  {
+    name: '🎟️ 위저드가 다시 없어진 카테고리를 내민다 — 고른 것과 다른 게 저장된다',
+    file: 'src/pages/seller-meal-voucher/VoucherInfoStep.tsx',
+    find: "{ key: 'etc_voucher' as const",
+    replace: "{ key: 'activity_voucher' as const",
+    test: 'src/tests/unit/voucher-flow-audit-2026-09-02.test.ts',
+    why: 'health/pet/activity 는 2026-05-17 통합으로 사라진 값 — 고르게 두면 서버가 조용히 다른 값으로 접어 넣는다.',
+  },
+  {
+    name: '🎟️ 위저드 카테고리 타입이 다시 자체 목록으로 — SSOT 와 갈린다',
+    file: 'src/pages/seller-meal-voucher/voucher-form.ts',
+    find: "import type { VoucherCategory as PlatformVoucherCategory } from '@/shared/constants/voucher-categories'",
+    replace: "type PlatformVoucherCategory = 'meal_voucher' | 'beauty_voucher' | 'stay_voucher' | 'etc_voucher'",
+    test: 'src/tests/unit/voucher-flow-audit-2026-09-02.test.ts',
+    why: '목록을 두 벌 가지면 SSOT 가 바뀔 때 화면만 낡는다(이번 사고가 정확히 그것이다).',
+  },
+  {
+    name: '🕳️ 숙소 내 예약 경로가 다시 /:productId 그림자로 — 화면이 통째로 실패한다',
+    file: 'src/features/group-buy/api/stays-public.routes.ts',
+    find: "staysPublicRoutes.get('/stays/my-bookings'",
+    replace: "staysPublicRoutes.get('/stays/zz-shadowed-my-bookings'",
+    test: 'src/tests/unit/live-defects-2026-09-02.test.ts',
+    why: '2026-09-02 라이브: 400 "Invalid productId" — /my-stays 가 로그인과 무관하게 항상 깨져 있었다.',
+  },
+  {
+    name: '🕳️ 큐레이터 추천 경로가 다시 /:handle 그림자로',
+    file: 'src/worker/routes/curator.routes.ts',
+    find: "curatorRoutes.get('/recommendations'",
+    replace: "curatorRoutes.get('/zz-shadowed-recommendations'",
+    test: 'src/tests/unit/live-defects-2026-09-02.test.ts',
+    why: '2026-09-02 라이브: 404 "큐레이터를 찾을 수 없습니다".',
+  },
+  {
+    name: '🕳️ 그림자 가드가 정규식 제약을 무시한다 — 멀쩡한 라우트에 오탐(가드가 꺼진다)',
+    file: 'scripts/check-route-shadowing.mjs',
+    find: "const isOpenParam = (seg) => seg.startsWith(':') && !seg.includes('{')",
+    replace: "const isOpenParam = (seg) => seg.startsWith(':')",
+    test: 'src/tests/unit/live-defects-2026-09-02.test.ts',
+    why: '/sellers/:id{[0-9]+} 는 /sellers/unlinked 를 안 가린다(라이브 200 실측) — 오탐은 가드를 죽인다.',
+  },
+  {
+    name: '🏷️ 주문내역이 이용권을 다시 "공구" 라 부른다',
+    file: 'src/components/mypage/OrdersTab.tsx',
+    find: "t('ordersTab.kindGroupbuy', { defaultValue: '이용권' })",
+    replace: "t('ordersTab.kindGroupbuy', { defaultValue: '공구' })",
+    test: 'src/tests/unit/live-defects-2026-09-02.test.ts',
+    why: '2026-06-27 명칭 SSOT 가 "공구권 → 이용권" 으로 정한 바로 그 종류다(대표 신고).',
+  },
+  {
+    name: '🎟️ 교환권 주문이 다시 이용권 지갑으로 — 빈 화면에 도착한다',
+    file: 'src/components/mypage/OrdersTab.tsx',
+    find: "to={kind === 'voucher' ? '/my-gifticons' : '/my-vouchers'}",
+    replace: 'to="/my-vouchers"',
+    test: 'src/tests/unit/live-defects-2026-09-02.test.ts',
+    why: '2026-08-31 부터 /my-vouchers 는 이용권 전용이고 교환권은 /my-gifticons 다.',
+  },
+  {
+    name: '🎟️ 메타 저장 실패가 다시 매장 등록을 되돌린다 (행은 남고 사용자는 재시도 → 중복)',
+    file: 'src/features/seller/api/seller-stores.routes.ts',
+    find: '    }).catch(() => { /* 메타 실패 — 매장은 유지(프로필 수정으로 채울 수 있다) */ })',
+    replace: '    })',
+    test: 'src/tests/unit/voucher-flow-audit-2026-09-02.test.ts',
+    why: '행이 만들어진 뒤의 실패를 "등록 실패" 로 보고하면 사용자가 다시 눌러 같은 가게가 두 번 등록된다.',
+  },
+  {
+    name: '🎟️ 권한 연결 재시도가 사라진다 — 방금 만든 매장에 아무도 못 들어간다',
+    file: 'src/features/seller/api/seller-stores.routes.ts',
+    find: '      granted = await grantOperator(c.env.DB, newSellerId, userId, userId, role).then(() => true).catch(() => false)',
+    replace: '      granted = false',
+    test: 'src/tests/unit/voucher-flow-audit-2026-09-02.test.ts',
+    why: 'linked_user_id 를 비워 두는 설계라 접근 경로가 seller_operators 하나뿐이다.',
+  },
+  {
+    name: '🧹 만료 판정을 다시 손으로 조립 — ISO-Z 값에서 만료가 사용가능으로 센다',
+    file: 'src/pages/user-profile/OrderStatusBar.tsx',
+    find: 'parseUTCDate(v.expires_at).getTime() < now',
+    replace: "Date.parse(String(v.expires_at).replace(' ', 'T') + 'Z') < now",
+    test: 'src/tests/unit/mypage-cleanup-2026-09-02.test.ts',
+    why: "이미 'Z' 가 붙어 온 값이 ...ZZ → NaN 이 되고 NaN < now 는 false 라 만료가 '사용가능' 으로 센다(실행 확인).",
+  },
+  {
+    name: '🧹 마이페이지에 에이전시 모집 CTA 가 다시 들어온다',
+    file: 'src/pages/user-profile/RoleCtaGrid.tsx',
+    find: "      { Icon: ShoppingBag, title: t('roleCta.openShop'",
+    replace: "      { Icon: ShoppingBag, title: t('roleCta.agencyBiz', { defaultValue: '\uc5d0\uc774\uc804\uc2dc \uc0ac\uc5c5' }), desc: '', to: '/agency/register/business', show: () => true },\n      { Icon: ShoppingBag, title: t('roleCta.openShop'",
+    test: 'src/tests/unit/mypage-cleanup-2026-09-02.test.ts',
+    why: '\uc5d0\uc774\uc804\uc2dc\ub294 B2B \uc870\uc9c1 \ubaa8\uc9d1\uc774\ub77c \uc18c\ube44\uc790 \ub9c8\uc774\ud398\uc774\uc9c0 \ub3d9\uc120\uc5d0 \uc11e\uc744 \uc790\ub9ac\uac00 \uc544\ub2c8\ub2e4(\ub300\ud45c \uc9c0\uc2dc).',
+  },
+  {
+    name: '🧹 이용권 현황이 다시 배송 5단계로',
+    file: 'src/pages/user-profile/OrderStatusBar.tsx',
+    find: "key: 'usable', path: '/my-vouchers' }",
+    replace: "key: 'shipping', path: '/my-orders?status=shipping' }",
+    test: 'src/tests/unit/mypage-cleanup-2026-09-02.test.ts',
+    why: '\uc720\uc5b4\ub51c\uc740 \ubc30\uc1a1\uc774 \uc5c6\uc5b4 \uadf8 \uce78\uc774 \uc601\uc6d0\ud788 0\uc774\ub2e4.',
+  },
+  {
+    name: '🧹 이용권 현황이 다시 주문 훅에서 센다 (지갑과 숫자가 갈린다)',
+    file: 'src/pages/user-profile/OrderStatusBar.tsx',
+    find: "  const { data: vouchersRaw = [] } = useMyVouchers()",
+    replace: "  const { data: vouchersRaw = [] } = useMyOrders()",
+    test: 'src/tests/unit/mypage-cleanup-2026-09-02.test.ts',
+    why: '\uc0ac\ub78c\uc774 \uc138\ub294 \ub2e8\uc704\ub294 \uc774\uc6a9\uad8c \uc7a5\uc218\ub2e4 \u2014 \uc9c0\uac11\uacfc \uac19\uc740 \ud6c5\uc744 \uc368\uc57c \ub450 \ud654\uba74\uc774 \uc548 \uac08\ub9b0\ub2e4.',
+  },
+  {
+    name: '🧹 /my-orders 배송 칩이 다시 무조건 뜬다 (누르면 언제나 0건)',
+    file: 'src/pages/MyOrdersPage.tsx',
+    find: '    ...(hasShippingOrders ? [',
+    replace: '    ...(true ? [',
+    test: 'src/tests/unit/mypage-cleanup-2026-09-02.test.ts',
+    why: '\uc774\uc6a9\uad8c/\uad50\ud658\uad8c\ub9cc \uc0b0 \uc0ac\ub78c\uc5d0\uac8c \ubc30\uc1a1 \uce69\uc740 \uc601\uc6d0\ud788 \ube48 \uce78\uc774\ub2e4.',
+  },
+  {
+    name: '🧹 전화번호 필수 검사가 사라진다 (교환권이 갈 곳이 없어진다)',
+    file: 'src/pages/user-profile/AccountControlsSection.tsx',
+    find: "    if (!phone) { toast.error(t('accountSettings.phoneRequired'",
+    replace: "    if (false) { toast.error(t('accountSettings.phoneRequired'",
+    test: 'src/tests/unit/mypage-cleanup-2026-09-02.test.ts',
+    why: '\uad50\ud658\uad8c\uc740 MMS \ub85c \uadf8 \ubc88\ud638\uc5d0 \ubc1c\uc1a1\ub41c\ub2e4 \u2014 \ubc88\ud638\uac00 \uc5c6\uc73c\uba74 \uc0b0 \ubb3c\uac74\uc774 \ub3c4\ucc29\ud560 \uacf3\uc774 \uc5c6\ub2e4.',
+  },
+  {
+    name: '🎟️ 매장 등록 email 이 다시 빈 문자열 — 두 번째 매장부터 UNIQUE 로 100% 실패',
+    file: 'src/features/seller/api/seller-stores.routes.ts',
+    find: "      ) VALUES (?, ?, '', ?, ?, ?, ?, ?, 'store_owner', ?, datetime('now'), datetime('now'))",
+    replace: "      ) VALUES (?, '', '', ?, ?, ?, ?, ?, 'store_owner', ?, datetime('now'), datetime('now'))",
+    test: 'src/tests/unit/voucher-flow-audit-2026-09-02.test.ts',
+    why: "2026-09-02 라이브: sellers(email) 부분 UNIQUE 는 ''를 NULL 로 안 본다 — 첫 매장이 슬롯을 잡고 그 뒤는 전부 실패했다.",
+  },
+  {
+    name: '🎟️ /support-contact 가 다시 /:id 뒤로 — 영원히 400',
+    file: 'src/features/seller/api/seller-gb.routes.ts',
+    find: "app.get('/support-contact', async (c) => {",
+    replace: "app.get('/zz-moved-support-contact', async (c) => {",
+    test: 'src/tests/unit/voucher-flow-audit-2026-09-02.test.ts',
+    why: 'Hono 는 등록 순서로 매칭한다 — 정적 경로가 /:id 뒤면 id="support-contact" 로 잡혀 400 이 난다.',
+  },
+  {
+    name: '🎟️ 매장 게이트가 다시 좌석만 본다 — 매장 운영자가 등록을 요구받는다',
+    file: 'src/features/seller/api/seller-stores.routes.ts',
+    find: 'store_ready: data.store_ready || operableCount > 0',
+    replace: 'store_ready: data.store_ready',
+    test: 'src/tests/unit/voucher-flow-audit-2026-09-02.test.ts',
+    why: '라이브: user 3 은 매장 14 의 운영자인데 개인 좌석에 앉아 있어 게이트가 닫혔다(등록해도 중복만 생긴다).',
+  },
+  {
+    name: '🎟️ 매장 선택 칩이 다시 2곳부터 — 매장 1개인 사람은 고를 수가 없다',
+    file: 'src/pages/seller-meal-voucher/StoreStep.tsx',
+    find: '{stores.some(s => s.seller_id !== currentId) && (',
+    replace: '{stores.length >= 2 && (',
+    test: 'src/tests/unit/voucher-flow-audit-2026-09-02.test.ts',
+    why: '매장 1개 + 개인 좌석이면 칩이 0개가 되어 자기 매장을 고를 방법이 사라진다.',
+  },
+  {
+    name: '🎟️ 화이트 고정 대시보드 안에서 dark: 가 다시 살아난다 — 흰 배경에 흰 글자',
+    file: 'tailwind.config.js',
+    find: ':not(.seller-light-theme *)',
+    replace: '',
+    test: 'src/tests/unit/voucher-flow-audit-2026-09-02.test.ts',
+    why: "대표 신고 '글자도 잘 안보이네 흰색 글자라서' — 공용 컴포넌트의 정상적인 dark: 가 화이트 고정 대시보드에서 살아났다.",
+  },
+  {
+    name: '🎟️ 판매 마감이 다시 변환 없이 저장 — 셀러가 고른 시각보다 9시간 늦게 걸린다',
+    file: 'src/pages/SellerMealVoucherNewPage.tsx',
+    find: 'group_buy_deadline: kstInputToUTC(form.group_buy_deadline) || null,',
+    replace: 'group_buy_deadline: form.group_buy_deadline || null,',
+    test: 'src/tests/unit/voucher-flow-audit-2026-09-02.test.ts',
+    why: 'datetime-local 은 타임존 없는 KST 벽시계인데 워커·cron 은 UTC 로 읽는다.',
+  },
+  {
+    name: '🩸 미지 호스트를 다시 cdn-cgi 로 — 403(err=9408) 으로 사진이 사라진다',
+    file: 'src/utils/cf-image.ts',
+    find: '    if (!isSupported && !isExternalProxyable) return src  // 미지원 도메인 → 원본',
+    replace: '    if (!isSupported && !isExternalProxyable) return `/cdn-cgi/image/width=${opts.width || 400},quality=85,format=auto,onerror=redirect/${cdnCgiSafe(src)}`',
+    test: 'src/tests/unit/qa-image-host-coverage.test.ts',
+    why: '2026-09-02 실측: onerror=redirect 는 이 존에서 302 가 아니라 403(err=9408) 이라 폴백이 안 돈다. 미실측 호스트를 태우면 원본이면 보였을 사진이 깨진다.',
+  },
+  {
+    name: '🔎 정비 큐가 다시 id 순서로 — 언론사 사진이 순번을 기다린다',
+    file: 'src/worker/cron/demo-image-rehost.ts',
+    find: "      ORDER BY CASE WHEN ${blockedPhotoSql('p.image_url')} THEN 0 ELSE 1 END, p.id\n",
+    replace: '      ORDER BY p.id\n',
+    test: 'src/tests/unit/qa-image-host-coverage.test.ts',
+    why: '2026-09-02 QA: 동아일보 사진이 만화카페 카드에 라이브. 백로그 40건·시간당 3건이라 13시간이 남아 있었다.',
+  },
+  {
+    name: '🔎 실측 승격 호스트가 cdn-cgi 검증 목록에서 빠져 원본 직행으로 되돌아간다',
+    file: 'src/utils/cf-image.ts',
+    find: ", 'cloudfront.net']",
+    replace: ']',
+    test: 'src/tests/unit/qa-image-host-coverage.test.ts',
+    why: '2026-09-02 라이브 홈 실측: 목록에 없는 호스트 5장이 리사이저를 안 거치고 원본으로 내려왔다.',
+  },
+  {
+    name: '🎞️ 카드 넘김이 painted 대신 shown 을 따라 클릭 순간 빈 칸이 다시 보인다',
+    file: 'src/components/deal/DealCardMedia.tsx',
+    find: 'opacity: i === painted ? (waiting ? 0.8 : 1) : 0,',
+    replace: 'opacity: i === shown ? 1 : 0,',
+    test: 'src/tests/unit/deal-card-swipe-continuity.test.ts',
+    why: '2026-09-02 대표 신고: 화살표를 누르면 이전 사진이 사라지고 새 사진이 올 때까지 회색 칸(콜드 0.3~2초).',
+  },
+  {
+    name: '🎞️ 받는 중인데 직전 사진이 선명하게 남아 "안 넘어갔다"로 보인다 (블러 신호 소실)',
+    file: 'src/components/deal/DealCardMedia.tsx',
+    find: "                filter: i === painted && waiting ? 'blur(10px)' : 'blur(0px)',\n",
+    replace: '',
+    test: 'src/tests/unit/deal-card-swipe-continuity.test.ts',
+    why:
+      '2026-09-06 대표 신고: 모바일 4G 첫 넘김이 **2,180ms** 인데 그동안 직전 사진이 0.65 로 어둡게만 ' +
+      '남아 있었다. 밝은 사진에선 그 차이가 거의 안 보이고, 도트는 이미 다음 칸에 가 있어 ' +
+      '"점은 넘어갔는데 사진은 그대로" = 안 넘어간 것으로 읽힌다. 블러가 유일한 즉시 신호다.',
+  },
+  {
+    name: '👁️ 스쳐 지나간 카드까지 미리 받는다 (머문-시간 게이트 소실 → 트래픽 낭비)',
+    file: 'src/components/deal/DealCardMedia.tsx',
+    find: '      }, DWELL_MS)\n',
+    replace: '      }, 0)\n',
+    test: 'src/tests/unit/deal-card-swipe-continuity.test.ts',
+    why:
+      '"일찍 받기" 는 공짜가 아니다 — 2026-09-06 실측으로 같은 스크롤에서 +27%(2,624→3,326KB) 였다. ' +
+      '머문 250ms 를 조건으로 걸어야 빠르게 훑고 지나가는 카드가 걸러진다. 이 게이트가 사라져도 ' +
+      '화면은 완전히 똑같고 오히려 더 빨라 보여서 — 데이터만 조용히 더 쓴다.',
+  },
+  {
+    name: '⏱️ 카드 프리페치가 다시 늦게 시작한다 (화면에 다 들어온 뒤 · idle 2초)',
+    file: 'src/components/deal/DealCardMedia.tsx',
+    find: "    }, { threshold: 0, rootMargin: '400px' })",  // 2026-09-06 머문-시간 게이트와 짝
+    replace: '    }, { threshold: 0.6 })',
+    test: 'src/tests/unit/deal-card-swipe-continuity.test.ts',
+    why:
+      '2026-09-06 실측(4G · 카드가 보인 뒤 다음 장 준비까지): 4,650ms · 435ms · >5,000ms · 1,048ms. ' +
+      '스크롤로 만난 카드를 바로 넘기면 그 대기를 정면으로 맞는다. 되돌려도 **화면은 멀쩡하고 에러도 ' +
+      '없어서** 느려진 것을 아무도 모른다. (트래픽은 +27% 늘지만 그건 머문-시간 게이트가 맡는 몫이다.)',
+  },
+  {
+    name: '🎞️ 보이는 카드의 idle 프리페치 게이트가 뒤집혀 커버 로드 전에도 안 도는(=영영 안 도는) 상태',
+    file: 'src/components/deal/DealCardMedia.tsx',
+    find: '    if (!multi || !coverLoaded || idleDone.current) return\n',
+    replace: '    if (true) return\n',
+    test: 'src/tests/unit/deal-card-swipe-continuity.test.ts',
+    why: '2026-09-02: hover 뒤에야 받기 시작하면 클릭 시점엔 늦다 — 화면에 들어온 카드는 idle 에 다음 한 장을 미리.',
+  },
+  {
+    name: '🧵 상세 감시 <img> 의 isDesktop 게이트를 없애 폰이 PC 폭(1200)·썸네일(600×2)을 도로 받는다',
+    file: 'src/pages/group-buy/DetailGallery.tsx',
+    find: "    if (!isDesktop) {\n      list.push({ src: main, url: heroUrl(main, DETAIL_HERO_MOBILE_WIDTH) })\n      return list\n    }\n",
+    replace: '',
+    test: 'src/tests/unit/detail-image-continuity.test.ts',
+    why: '2026-09-02 라이브 워터폴: 폰에서 화면에 없는 1200 폭 179KB 가 첫 사진과 대역폭을 나눴다.',
+  },
+  {
+    name: '🧵 상세 슬라이드 ±1 게이트를 없애 갤러리 5장을 다시 한꺼번에 받는다',
+    file: 'src/pages/group-buy/DetailGallery.tsx',
+    find: "            const hi = src && near ? heroUrl(src, DETAIL_HERO_MOBILE_WIDTH) : ''\n",
+    replace: "            const hi = src ? heroUrl(src, DETAIL_HERO_MOBILE_WIDTH) : ''\n",
+    test: 'src/tests/unit/detail-image-continuity.test.ts',
+    why: '2026-09-02 라이브 워터폴: 슬라이드 넷(각 136~220KB, 콜드 2.3~4.4s)이 첫 사진과 동시에 내려왔다.',
+  },
+  {
+    name: '🖥️ PC 대형 CSS 프레임만 바뀌어 서버 크롭 비율과 갈린다 (에러 없이 피사체가 밀린다)',
+    file: 'src/pages/group-buy/DetailGallery.tsx',
+    find: "aspectRatio: multi ? '4 / 3' : '16 / 9'",
+    replace: "aspectRatio: multi ? '3 / 2' : '16 / 9'",
+    test: 'src/tests/unit/detail-hero-crop.test.ts',
+    why:
+      '서버가 4:3 으로 자른 사진을 3:2 칸에 넣으면 브라우저가 **한 번 더** 자른다 — gravity=auto 로 ' +
+      '찾아 놓은 피사체가 다시 밀려난다. 화면은 그럴듯하게 채워지고 에러도 로그도 없어 아무도 모른다.',
+  },
+  {
+    name: '🧵 워커 preload 가 옛 width:900(크롭 없음)으로 되돌아가 갤러리 URL 과 갈린다',
+    file: 'src/worker/utils/home-card-preload.ts',
+    find: '      : isMobile ? detailHeroMobileUrl(heroSrc) : detailCropUrl(heroSrc, DETAIL_HERO_DESKTOP_WIDTH, pcRatio)\n',
+    replace: "      : cfImage(heroSrc, { width: 900, format: 'auto' })\n",
+    test: 'src/tests/unit/detail-image-continuity.test.ts',
+    why: '08-31 크롭 도입 뒤 실제로 이 상태였다 — preload 111KB 를 받고 버린 뒤 같은 사진을 다시 받았다.',
+  },
+  {
+    name: '🗺️ 미니맵 관측 여백이 300px 로 돌아가 폰 첫 화면에서 지도 SDK 가 히어로와 동시에 내려온다',
+    file: 'src/components/RestaurantMiniMap.tsx',
+    find: "      { rootMargin: '120px' },",
+    replace: "      { rootMargin: '300px' },",
+    test: 'src/tests/unit/loading-followups-2026-09-02.test.ts',
+    why: '2026-09-02 클릭 프로브: SDK 0.28초 · 타일 1.3초 — 히어로 사진과 같은 순간이었다.',
+  },
+  {
+    name: '🗺️ 미니맵이 교차 즉시 SDK 를 불러 idle 지연이 사라진다',
+    file: 'src/components/RestaurantMiniMap.tsx',
+    find: '          if (e.isIntersecting) {\n            arm()\n',
+    replace: '          if (e.isIntersecting) {\n            setShouldLoadSdk(true)\n',
+    test: 'src/tests/unit/loading-followups-2026-09-02.test.ts',
+    why: '2026-09-02: 교차 판정과 SDK 호출 사이에 idle 을 두어야 히어로가 대역폭을 먼저 쓴다.',
+  },
+  {
+    name: '📈 vitals 표본율이 1% 로 돌아가 실사용자 LCP 가 다시 하루 1건이 된다',
+    file: 'src/worker/routes/analytics.routes.ts',
+    find: 'const VITALS_SAMPLE_RATE = 0.25\n',
+    replace: 'const VITALS_SAMPLE_RATE = 0.01\n',
+    test: 'src/tests/unit/loading-followups-2026-09-02.test.ts',
+    why: '2026-09-02 실측: 4일간 LCP 표본 0 — 표본율 1% 로는 실사용자 판정이 불가능했다.',
+  },
+  {
+    name: '🍽️ app-utils-deferred 규칙이 catch-all 뒤로 밀려 영원히 안 걸린다',
+    file: 'vite.config.ts',
+    find: "          // 🍽️ 2026-09-02 [UNLOCK_LOADING] (대표 \"모두 다 진행\" — 로딩 후속 ②): **app-utils 다이어트.**\n",
+    replace: "          if (id.includes('/src/utils/') || id.includes('/src/hooks/') || id.includes('/src/lib/')) return 'app-utils'\n          // 🍽️ 2026-09-02 [UNLOCK_LOADING] (대표 \"모두 다 진행\" — 로딩 후속 ②): **app-utils 다이어트.**\n",
+    test: 'src/tests/unit/app-utils-diet.test.ts',
+    why: '2026-09-02: 홈 미도달 73.8KB 가 다시 app-utils 로 — 규칙은 있는데 순서 때문에 죽는 클래스.',
+  },
+  {
+    name: '💰 교환권 마진 SSOT 가 0 을 도로 20 으로 삼킨다 (어드민에서 0% 를 못 만든다)',
+    file: 'src/features/admin/api/admin-kt-alpha/markup.ts',
+    // ⚠️ 앵커에 앞줄을 붙여 둔 이유: 2026-09-14 에 같은 파일로 **셀러 축**
+    //    `resolveKtSellerMarkupPct` 가 들어오면서 클램프 줄이 byte-동일로 두 번이 됐다.
+    //    `Math.min(...)` 한 줄만으로는 어느 함수인지 못 가린다 — 줄이지 말 것.
+    find:
+      '  if (!Number.isFinite(n)) return KT_CONSUMER_MARKUP_DEFAULT_PCT\n' +
+      '  return Math.min(100, Math.max(0, n))\n',
+    replace:
+      '  if (!Number.isFinite(n)) return KT_CONSUMER_MARKUP_DEFAULT_PCT\n' +
+      '  return Math.min(100, Math.max(0, n || KT_CONSUMER_MARKUP_DEFAULT_PCT))\n',
+    test: 'src/tests/unit/kt-alpha-markup-zero.test.ts',
+    why: '2026-09-02 라이브: 설정 20 → 교환권 2,260개가 액면가 ×1.19. 0 을 넣어도 `|| 20` 이 삼켰다.',
+  },
+  {
+    name: '🏪 실상품 이관이 정상 CDN(giftishow) 사진까지 옮긴다 (범위 확장 사고)',
+    file: 'src/worker/cron/demo-image-rehost.ts',
+    find: 'isExternalImageUrl(u) && (isDemo || isHotlinkBlockedUrl(u))',
+    replace: 'isExternalImageUrl(u)',
+    test: 'src/tests/unit/hotlink-rehost-scope.test.ts',
+    why: '2026-09-02: 실상품은 리사이즈가 안 되는 차단 호스트만 옮긴다 — 정상 CDN 2,260건을 R2 로 복사하면 안 된다.',
+  },
+  {
+    name: '🏪 실상품에도 lastTry 삭제가 적용돼 사업자 사진이 지워진다',
+    file: 'src/worker/cron/demo-image-rehost.ts',
+    find: '    const lastTry = isDemo && tries + 1 >= MAX_TRIES',
+    replace: '    const lastTry = tries + 1 >= MAX_TRIES',
+    test: 'src/tests/unit/hotlink-rehost-scope.test.ts',
+    why: '2026-09-02: 실상품은 비파괴 — 못 옮겨도 사진을 지우지 않는다.',
+  },
+  {
+    name: '🚀 유어샵 상품 동봉이 빠져 마지막 왕복이 되살아난다(콘텐츠 완성이 다시 fetch 뒤로)',
+    file: 'src/worker/routes/curator.routes.ts',
+    find: ', linked_seller_products: linkedSeller?.id ? await loadLinkedSellerProducts(c.env.DB, Number(linkedSeller.id)) : null,',
+    replace: ',',
+    test: 'src/tests/unit/linkshop-products-seed.test.ts',
+    why:
+      '2026-09-02 실측: 셀러 시드 뒤에도 /api/products?seller_id 가 JS 실행 후 나가 콘텐츠 완성(0.9~1.6s)을 정했다. ' +
+      '이 한 줄이 빠지면 클라는 조용히 폴백 fetch 로 돌아가고 아무 에러도 없다.',
+  },
+  {
+    name: '🚀 유어샵이 동봉 상품을 받고도 fetch 를 또 한다(왕복이 안 줄고 D1 만 두 번 읽는다)',
+    file: 'src/pages/SellerPublicPage.tsx',
+    find: '      if (seededProducts) return // 동봉분이 곧 /api/products?seller_id 의 data — 같은 서비스, 같은 필터\n',
+    replace: '',
+    test: 'src/tests/unit/linkshop-products-seed.test.ts',
+    why: '동봉 소비의 절반 — 시드를 그리고도 fetch 를 하면 왕복은 그대로고 서버는 같은 100행을 두 번 읽는다.',
+  },
+  {
+    name: '📱 xl 전용 레일이 폰에서도 마운트돼 QR 라이브러리 82KB 를 내려받는다',
+    file: 'src/components/MobileAppLayout.tsx',
+    find: '{showFrameRails && isXl && <Suspense',
+    replace: '{showFrameRails && <Suspense',
+    test: 'src/tests/unit/linkshop-products-seed.test.ts',
+    why:
+      '레일은 `hidden xl:flex` 라 안 보일 뿐 마운트는 되고, 안의 lazy QR 이 import 를 발사한다' +
+      '(실측: /u 모바일 워터폴 922ms 에 codes 82KB). ' +
+      '🔁 2026-09-02 표적 교체 — 옛 표적 `LinkshopVisitorRails` 는 그날 삭제됐다(유어샵이 lg+ 에서 액자를 벗어 ' +
+      '거터가 없다). 같은 불변식을 남은 레일(`ConsumerFrameRails`)에서 지킨다. ' +
+      '⚠️ 이 주입은 8-17 병합 사고로 위 항목과 한 객체에 융합돼 **한동안 아예 안 돌고 있었다** — ' +
+      '되살리자마자 낡은 지도로 드러났다.',
+  },
   {
     name: '💰 현금 정산 수수료 기본값이 0 이 아니게 된다 (머지만으로 라이브 정산이 움직인다)',
     file: 'src/shared/influencer-payout-math.ts',
@@ -137,6 +1620,8 @@ const MUTATIONS = [
     replace: "            id.includes('/src/components/deal/') ||\n",
     test: 'src/tests/unit/home-chunk-diet.test.ts',
     why: '2차 실측에서 실제로 밟았다 — 폴더 규칙은 상세 전용 헤더까지 홈 청크로 넣어 간선을 끊지 못했다.',
+  },
+  {
     name: '📏 실리뷰 최근 2,000건 인덱스의 WHERE 가 쿼리와 달라져 플래너가 함의를 못 본다',
     file: 'src/worker/routes/repair-schema/index-repairs.ts',
     find: 'ON product_reviews(created_at DESC) WHERE COALESCE(is_generated,0) = 0`',
@@ -146,15 +1631,60 @@ const MUTATIONS = [
       '2026-09-02 첫 계량: auto-seed-reviews 가 시간당 12.7만 행(하루 300만) — product_reviews 12만 행을 매시간 정렬했다. ' +
       '부분 인덱스는 쿼리 WHERE 와 글자까지 같아야 쓰인다 — `is_generated = 0` 으로 "단순화"하면 인덱스는 남고 효과만 사라진다.',
   },
+  // 🪦 2026-09-05: '공구 마감 부분 인덱스' 주입은 **대상이 사라져서** 뺐다. 그 인덱스의 유일한
+  //   독자였던 `group-buy-deadline-push` cron 을 통째로 제거했기 때문이다(마감 개념 폐지).
+  //   대신 같은 테스트가 "그 cron 이 되살아나지 않는가" 를 지키고, 그쪽 주입을 아래에 새로 넣었다.
   {
-    name: '📏 공구 마감 부분 인덱스가 사라져 5분마다 products 전수 ×3',
-    file: 'src/worker/routes/repair-schema/index-repairs.ts',
-    find: "  { name: 'idx_products_gb_deadline_active', sql: `CREATE INDEX IF NOT EXISTS idx_products_gb_deadline_active ON products(group_buy_deadline) WHERE group_buy_status = 'active' AND group_buy_deadline IS NOT NULL` },\n",
-    replace: '',
+    name: '🪦 마감 push cron 이 디스패처에 되살아난다 — 0건을 위해 하루 150만 행',
+    file: 'src/worker/scheduled.ts',
+    find: "    // 🪦 2026-09-05: '공구 마감 3시간/1시간 전 push' cron 제거",
+    replace: "    ctx.waitUntil(safeCron('group-buy-deadline-push', () => Promise.resolve()));\n    // 🪦 2026-09-05: '공구 마감 3시간/1시간 전 push' cron 제거",
     test: 'src/tests/unit/d1-diet-round2.test.ts',
     why:
-      'group-buy-deadline-push 가 5분마다 창 3개 × products 전수(5,350행/틱 = 하루 150만). 활성+마감 부분 인덱스가 빠지면 ' +
-      '조용히 전수로 되돌아간다.',
+      '마감 개념이 없어져 그 조회는 영구히 0건인데, 5분마다 products 를 창 3개로 훑고(하루 ~150만 행) ' +
+      '매번 ALTER 를 두 번 시도했다. 09-02 에 이 계정은 D1 일일 읽기 한도로 소비자 API 가 통째로 500 이었다.',
+  },
+  {
+    name: '🕐 생성물에 생성 시각이 되살아난다 — 모든 커밋이 그 파일을 건드린다',
+    file: 'scripts/generate-guide-references.mjs',
+    find: ' * Generated by: scripts/generate-guide-references.mjs\n',
+    replace: ' * Generated by: scripts/generate-guide-references.mjs\n * Generated at: ${new Date().toISOString()}\n',
+    test: 'src/tests/unit/generated-file-determinism.test.ts',
+    why:
+      'pre-commit 이 매 커밋마다 이 생성기를 돌리므로, 시각을 박으면 내용이 안 바뀌어도 파일이 늘 달라진다 — ' +
+      '동시에 도는 두 PR 이 **코드가 전혀 안 겹쳐도** 그 줄에서 충돌한다(2026-09-07 하루 세 번). 읽는 곳은 없었다.',
+  },
+  {
+    name: '🧭 현재 위치 훅이 없는 경로(/api/proxy/...)를 부른다',
+    file: 'src/hooks/useCurrentDong.ts',
+    find: 'api.get(`/api/kakao/coord2region',
+    replace: 'api.get(`/api/proxy/kakao/coord2region',
+    test: 'src/tests/unit/button-system.test.ts',
+    why:
+      '라우터는 `app.route(\'/api\', proxyRoutes)` 로 붙어 실제 경로에 `proxy` 세그먼트가 없다(파일 이름이 ' +
+      'proxy.routes.ts 라 헷갈린다). 훅의 `.catch` 가 404 를 조용히 삼켜 화면은 \'내 주변\' 으로 폴백하므로 ' +
+      '콘솔을 안 보면 영영 모른다 — 종전 가드는 두 문자열의 **존재만** 봐서 이 어긋남을 못 박고 있었다.',
+  },
+  {
+    name: '🪦 은퇴한 cron 식이 기대 목록으로 되돌아간다 — 헬스체크 영구 빨강',
+    file: 'src/worker/utils/cron-expected.ts',
+    find: "  '2,17,32,47 * * * *',\n]",
+    replace: "  '2,17,32,47 * * * *',\n  '0 20 * * 0',\n]",
+    test: 'src/tests/unit/cron-expected.test.ts',
+    why:
+      '`0 20 * * 0` 은 2026-08-25 에 트리거에서 빠졌는데 기대 목록에 남아, `findNeverFired` 가 매번 잡아내 ' +
+      '`/api/_healthcheck/cron` 이 13일간 503 이었다. 영원한 빨간불 하나가 경보 채널 전체를 침묵시킨다 — ' +
+      '진짜 cron 이 죽어도 같은 503 이라 구분이 안 된다(#1056 에서 같은 방식으로 21일을 잃었다).',
+  },
+  {
+    name: '🪦 은퇴한 cron 식의 디스패처 분기가 사라진다 — 잔존 트리거가 unmatched',
+    file: 'src/worker/scheduled.ts',
+    find: "cron === '2,17,32,47 * * * *' || cron === '0 20 * * 0' || cron === '0 20 * * SUN' || cron === '0 20 * * 7'",
+    replace: "cron === '2,17,32,47 * * * *'",
+    test: 'src/tests/unit/cron-expected.test.ts',
+    why:
+      '은퇴는 "기대하지 않는다"이지 "받지 않는다"가 아니다. 분기를 지우면 대시보드에 남은 옛 주간 트리거의 ' +
+      '회차가 `cron-unmatched` 로 조용히 버려진다 — 아무 일도 안 일어나는데 에러도 안 난다.',
   },
   {
     name: '📉 키워드 수율 재계산 6h 게이트가 헛돈다(회차마다 전수 GROUP BY)',
@@ -175,6 +1705,8 @@ const MUTATIONS = [
     why:
       '두 테이블이 다른 D1 에 살아 라우터가 문장 하나를 한 DB 로만 보낸다 — 교차 문장은 예외→catch→null 로 ' +
       '대표의 유일한 성공 지표(sendable_*)가 조용히 판정에서 빠진다. 실제로 그 상태였다.',
+  },
+  {
     name: '📉 sitemap 엣지 캐시가 빠져 크롤러마다 D1 을 다시 읽는다',
     file: 'src/worker/index.ts',
     find: "app.use('/sitemap.xml', publicCache(3600));",
@@ -193,6 +1725,8 @@ const MUTATIONS = [
     why:
       '`slug = ? OR username = ?` 는 OR 라 인덱스를 못 써 크롤러가 /profile/*·/s/* 를 칠 때마다 sellers 전수. ' +
       '두 점 조회로 나눈 것이 되돌아가도 에러가 없다.',
+  },
+  {
     name: '📉 청소 GC 티어 게이트가 사라져 5분마다 전수 스캔으로 돌아간다',
     file: 'src/worker/cron/scheduled-cleanup.ts',
     find: '  if (tiers.daily) await runDailyCleanup(DB, results)',
@@ -221,9 +1755,11 @@ const MUTATIONS = [
     why:
       '셀러/상품/큐레이터 상세 12개를 5분마다 콜드 렌더하던 것을 30분으로. 옵션을 안 읽으면 호출부가 ' +
       '무엇을 넘기든 종전 주기로 돈다 — "만든 것·넘긴 것·읽는 것" 이 셋 다 다르다.',
+  },
+  {
     name: '📉 읽기 예산 초과가 cron kick 을 못 막는다(paused 에 안 합쳐짐)',
     file: 'src/worker-ads/index.ts',
-    find: '  const paused = lanesPaused(env) || budget.over // ⏸️',
+    find: '  const paused = lanesPaused(env) || budgetBlocked(budget) // ✍️',
     replace: '  const paused = lanesPaused(env) // ⏸️',
     test: 'src/tests/unit/ads-read-budget.test.ts',
     why:
@@ -233,7 +1769,7 @@ const MUTATIONS = [
   {
     name: '📉 DO 알람 레인이 읽기 예산 게이트를 건너뛴다',
     file: 'src/worker-ads/lane-alarm.ts',
-    find: '    if ((await readBudgetState(this.env)).over) {',
+    find: '    if (budgetBlocked(budgetView) || laneCut(budgetView, this.lane)) {',
     replace: '    if (false) {',
     test: 'src/tests/unit/ads-read-budget.test.ts',
     why:
@@ -243,7 +1779,7 @@ const MUTATIONS = [
   {
     name: '📉 cron 경로 레인이 읽기량을 원장에 안 보고한다(원장이 절반만 센다)',
     file: 'src/worker-ads/self-beat.ts',
-    find: '    await reportReadUsage(env, readEnvMeter(env)?.rr)\n',
+    find: '    await reportReadUsage(env, readEnvMeter(env)?.rr, readEnvMeter(env)?.rw, beat)\n',
     replace: '',
     test: 'src/tests/unit/ads-read-budget.test.ts',
     why:
@@ -354,7 +1890,8 @@ const MUTATIONS = [
   {
     name: '지갑이 다크 모드에서 흰 배경 + 흰 글자가 된다',
     file: 'src/components/wallet/WalletAtoms.tsx',
-    find: 'bg-[#F8F7FC] dark:bg-[#11141C] text-gray-900 dark:text-white',
+    // 🔀 2026-09-15: 표면 토큰 채택으로 `bg-[#F8F7FC] dark:bg-[#11141C]` → `bg-warm`(같은 값).
+    find: 'bg-warm text-gray-900 dark:text-white',
     replace: 'bg-[#F8F7FC] text-gray-900',
     test: 'src/tests/unit/voucher-wallet-split.test.ts',
     why:
@@ -715,8 +2252,10 @@ const MUTATIONS = [
   {
     name: '홈 카드가 다시 두 벌로 갈린다(피드만 대표색 카드)',
     file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
-    find: '      className="block group active:scale-[0.98] flex flex-col"',
-    replace: '      className="block group active:scale-[0.98] flex flex-col" style={{ backgroundColor: grad.base }}',
+    // 2026-09-03: 루트에 `className` prop 이 붙으면서 리터럴이 템플릿이 됐다.
+    //   대표색 카드로 되돌리는 주입은 이제 **사진 자리 플레이스홀더 색을 카드 배경으로 끌어올리는 것**으로 표현한다.
+    find: '      className={`block group active:scale-[0.98] flex flex-col ${className}`}',
+    replace: '      className={`block group active:scale-[0.98] flex flex-col ${className}`} style={{ backgroundColor: cardColor || undefined }}',
     test: 'src/tests/unit/home-card-unify.test.ts',
     why:
       '섹션은 흰 카드, 피드는 모바일에서 대표색 그라데이션 카드였다 — 같은 화면 위아래에 다른 ' +
@@ -790,8 +2329,10 @@ const MUTATIONS = [
   },
   {
     name: '상세 제목이 다시 번역투가 된다(무엇을 기대하세요?)',
-    file: 'src/pages/GroupBuyDetailPage.tsx',
-    find: ">딜 안내</div>",
+    // 🔄 2026-09-15: 제목이 옮겨졌다. '딜 안내'(하드코딩 3줄) 블록이 사라지고 그 자리에
+    //   실제 스펙표 `UsageGuide`(제목 '이용 안내')가 올라왔다 — 앵커를 그 파일로 옮긴다.
+    file: 'src/pages/group-buy/UsageGuide.tsx',
+    find: ">이용 안내</div>",
     replace: ">무엇을 기대하세요?</div>",
     test: 'src/tests/unit/detail-page-plainness.test.ts',
     why:
@@ -1019,17 +2560,15 @@ const MUTATIONS = [
   {
     name: '한도 재검증(과금 직전)이 사라져 다른 탭으로 뚫린다',
     file: 'src/features/group-buy/api/group-buy.routes.ts',
-    find: `      const ownedRow = await DB.prepare(
-        "SELECT COUNT(*) AS n FROM vouchers WHERE product_id = ? AND user_id = ? AND status IN ('unused','used')"
-      ).bind(productId, userId).first<{ n: number }>().catch(() => ({ n: 0 }))
-      const owned = Number(ownedRow?.n ?? 0)
-      if (owned + qty > maxPerPerson) {`,
-    replace: '      const owned = 0\n      if (owned + qty > maxPerPerson) {',
+    find: '    const lim2 = await recheck(DB, productId, userId, qty, mppRaw)',
+    replace: '    const lim2 = { ok: true } as { ok: true } | { ok: false; error: string }',
     test: 'src/tests/unit/seller-voucher-limit.test.ts',
     why:
-      '같은 쿼리가 두 곳에 있다(사전검증 / 과금 직전 레이스 차단). 한쪽만 지워도 정상 구매는 ' +
-      '전부 통과해서 눈으로는 못 본다. ⚠️ 이 가드는 처음에 "파일에 쿼리가 있는가" 로 판정해 ' +
-      '**헛돌았다** — 되돌려-검증에서 잡아 개수 판정으로 고쳤다.',
+      '두 지점(사전검증 / 과금 직전 레이스 차단) 중 하나만 지워도 정상 구매는 전부 통과해서 ' +
+      '눈으로는 못 본다. ⚠️ 이 가드는 처음에 "파일에 쿼리가 있는가" 로 판정해 **헛돌았다** — ' +
+      '되돌려-검증에서 잡아 개수 판정으로 고쳤다. 🔁 2026-09-14: 두 벌이던 인라인 판정을 ' +
+      '`purchase-cap.ts` 헬퍼로 합치면서 이 주입의 **대상이 사라졌다**(낡은 지도로 CI 가 잡았다) — ' +
+      '호출 자리를 겨냥하도록 재조준.',
   },
   {
     name: '즐겨찾기가 다시 localStorage 단독 저장이 된다',
@@ -1181,7 +2720,7 @@ canvas {
   {
     name: '상세 갤러리가 썸네일의 죽은 사진을 감시하지 않는다',
     file: 'src/pages/group-buy/DetailGallery.tsx',
-    find: 'for (const t of images.slice(1, 1 + PC_THUMBS)) list.push({ src: t, w: 600 })',
+    find: 'for (const t of images.slice(1, 1 + PC_THUMBS)) list.push({ src: t, url: pcThumbUrl(t) })', // 2026-09-06 PC 크롭으로 재조준
     replace: '/* 감시 제거됨 */',
     test: 'src/tests/unit/groupon-detail-map.test.ts',
     why:
@@ -1606,35 +3145,115 @@ canvas {
       '**영원히 생성되지 않는다** — 이 레포가 반복해 만난 "실패가 아니라 조용한 부재".',
   },
   {
-    name: '에이전시 신규 가입 서버 게이트가 사라진다(화면만 막힌 반쪽 상태)',
-    file: 'src/features/agency/api/agency-sunset.ts',
-    find: "    code: 'AGENCY_SIGNUP_CLOSED',",
-    replace: "    code: 'OK',",
-    test: 'src/tests/unit/agency-sunset-invariants.test.ts',
+    name: '🏪 운영 요약이 남의 매장까지 센다 (스코프 소실)',
+    file: 'src/features/seller/api/seller-operators.routes.ts',
+    // ⚠️ `listOperableStores(...)` 호출은 파일에 2곳(/my-stores · /operating-summary)이라
+    //    그 줄만으로는 앵커가 유일하지 않다. 뒤따르는 조기반환까지 붙여 좁힌다.
+    find: '    const stores = await listOperableStores(c.env.DB, userId)\n    if (stores.length === 0) return c.json({ success: true, data: [] })',
+    replace: "    const stores = ((await c.env.DB.prepare('SELECT id AS seller_id FROM sellers').all()).results || [])",
+    test: 'src/tests/unit/store-operator-scope.test.ts',
     why:
-      '2026-08-19 에이전시 대시보드 일몰. 가입 차단은 **클라+서버 한 쌍**이다 — 화면만 막으면 ' +
-      '직접 POST 로 우회되고(계정이 조용히 생긴다), 서버만 막으면 사용자가 폼을 다 채운 뒤 403 을 본다. ' +
-      '반쪽 롤백은 화면상 멀쩡해 보여서 리뷰로 안 걸린다.',
+      '`listOperableStores` 가 이 화면의 유일한 스코프다. 빠지면 아무 셀러나 **모든 매장의 매출**을 본다 — ' +
+      '에러도 없고 화면도 정상이라 목록이 길어진 걸 누가 이상하게 여기기 전엔 모른다.',
   },
   {
-    name: '에이전시 nav 가 존재하지 않는 라우트를 가리킨다(죽은 링크 부활)',
-    file: 'src/components/AgencyLayout.tsx',
-    find: "{ path: '/agency/settlements'",
-    replace: "{ path: '/agency/streams', label: 'X', i18nKey: 'x', icon: Settings, mode: 'common' },\n      { path: '/agency/settlements'",
-    test: 'src/tests/unit/agency-sunset-invariants.test.ts',
+    name: '🏪 운영 요약이 미결제 주문까지 매출로 센다',
+    file: 'src/features/seller/api/seller-operators.routes.ts',
+    find: 'const PAID = "status IN (\'PAID\',\'DONE\',\'PREPARING\',\'SHIPPING\',\'DELIVERED\')"',
+    replace: 'const PAID = "status IN (\'PENDING\',\'PAID\',\'DONE\')"',
+    test: 'src/tests/unit/store-operator-scope.test.ts',
     why:
-      '일몰 전 이미 /agency/streams·/agency/pending 이 라우트 없이 nav 에 남아 있었다(누르면 아무 일도 ' +
-      '안 일어난다). 화면을 지우면서 nav 를 안 지우면 그 부채가 즉시 다시 쌓인다.',
+      '이 숫자는 중개사가 매장에 청구할 근거다. 결제도 안 된 주문이 섞이면 그 청구가 부풀려지고, ' +
+      '사장님은 정산서와 안 맞는 금액을 요구받는다.',
   },
   {
-    name: '일몰로 내린 에이전시 API 가 다시 마운트된다',
+    name: '🏪 운영자가 매장 정산계좌를 갈아끼울 수 있게 된다',
+    file: 'src/features/seller/api/seller-profile.routes.ts',
+    find: '      if (!actor.isOwner) {\n        return c.json({ success: false, error: `정산 계좌는 ${OWNER_ONLY_MESSAGE}` }, 403);',
+    replace: '      if (false) {\n        return c.json({ success: false, error: `정산 계좌는 ${OWNER_ONLY_MESSAGE}` }, 403);',
+    test: 'src/tests/unit/store-operator-scope.test.ts',
+    why:
+      '위임받은 중개사가 계좌를 바꾸면 그 매장의 돈이 통째로 딴 데로 간다. PIN 은 *운영자 자신의* ' +
+      'PIN 이라 못 막는다 — 권한으로 끊는 이 한 줄이 유일한 방어선이다.',
+  },
+  {
+    name: '🏪 행위자 판별이 linked_user_id 폴백으로 되돌아간다',
+    file: 'src/worker/utils/store-actor.ts',
+    find: '    const opRaw = Number(p.operator_user_id)',
+    replace: '    const opRaw = Number(p.linked_user_id)',
+    test: 'src/tests/unit/store-operator-scope.test.ts',
+    why:
+      '`linked_user_id` 는 *호출자*가 아니라 **매장 주인**의 id 다. 그걸로 판정하면 세션 없는 요청에서 ' +
+      '운영자가 주인으로 오판되고, 위의 모든 게이트가 한 번에 무의미해진다.',
+  },
+  {
+    name: '🏪 사업자정보 시드 폴백만 마스킹을 빠뜨린다',
+    file: 'src/features/seller/api/seller-profile/business-info.ts',
+    find: "      const a0 = await resolveStoreActor(c.req.header('Authorization'), c.env.JWT_SECRET);",
+    replace: '      const a0 = { isOwner: true };',
+    test: 'src/tests/unit/store-operator-scope.test.ts',
+    why:
+      '"사업자정보 행이 아직 없는 매장"에서만 원본이 샌다. 신규 매장은 흔한 상태인데 ' +
+      '평소 경로는 멀쩡해 보여서 눈에 안 띈다 — 이 레포가 반복해 만난 "조용한 부재".',
+  },
+  {
+    name: '🗑️ cascade 가 머니 잔여물 검사까지 건너뛴다 (매출 있는 매장이 사라진다)',
+    file: 'src/features/admin/api/admin-sellers/purge-seller.ts',
+    find: "    const ords = await countOr('주문', 'SELECT COUNT(*) AS n FROM orders WHERE seller_id = ?', [sellerId]);\n    if (ords > 0) blockers.push(`주문 ${ords}건`);",
+    replace: "    const ords = 0;",
+    test: 'src/tests/unit/seller-purge-safety.test.ts',
+    why:
+      'cascade 는 상품·운영자·유저연결만 덮어야 한다. 주문 검사가 그 분기 안으로 들어가거나 사라지면 ' +
+      '**매출이 있는 매장이 한 번에 사라진다** — 되돌릴 수 없고, 화면상 "정리됐다"로 보인다.',
+  },
+  {
+    name: '🗑️ 매장 완전 삭제가 잔여물 검사를 건너뛴다 (되돌릴 수 없는 파괴)',
+    file: 'src/features/admin/api/admin-sellers/purge-seller.ts',
+    find: '    if (blockers.length > 0) {',
+    replace: '    if (false) {',
+    test: 'src/tests/unit/seller-purge-safety.test.ts',
+    why:
+      '거부 분기가 죽으면 상품·주문이 있는 매장도 그냥 지워진다. 되돌릴 수 없고, ' +
+      '삭제 직후엔 화면상 "정리됐다"로 보여서 사고를 나중에야 안다.',
+  },
+  {
+    name: '🗑️ 매장 완전 삭제가 super 권한 없이 열린다',
+    file: 'src/features/admin/api/admin-sellers/purge-seller.ts',
+    find: "adminSellersRoutes.delete('/sellers/:id/purge', cors(), requireAdminRole('super'), require2FA(), async (c) => {",
+    replace: "adminSellersRoutes.delete('/sellers/:id/purge', cors(), async (c) => {",
+    test: 'src/tests/unit/seller-purge-safety.test.ts',
+    why:
+      '파괴적 작업이 일반 어드민 토큰만으로 실행된다. 계정 하나가 새면 매장이 통째로 사라진다.',
+  },
+  {
+    name: '🌇 일몰한 에이전시 API 가 워커에 다시 마운트된다',
     file: 'src/worker/index.ts',
-    find: "app.route('/api/agency/delegation', agencyDelegationRoutes);",
-    replace: "app.route('/api/agency/campaigns', agencyCampaignsRoutes);",
-    test: 'src/tests/unit/agency-sunset-invariants.test.ts',
+    find: "app.route('/api/invite', inviteRewardRoutes);",
+    replace: "app.route('/api/invite', inviteRewardRoutes);\napp.route('/api/agency', agencyRoutes);",
+    test: 'src/tests/unit/agency-sunset-final.test.ts',
     why:
-      '화면 없는 인증 API 가 살아 있으면 축소의 의미가 없다(공격 표면만 남는다). 파일은 일부러 ' +
-      '남겼기 때문에(머니 심볼 computeCommission 이 함께 export 된다) 마운트 한 줄이면 되살아난다.',
+      '에이전시는 이 레포에서 **두 번** 일몰됐고(08-19 축소 · 08-31 커미션 폐지) 두 번 다 잔재가 남아 ' +
+      '다음 세션이 "아직 쓰는 모델"로 읽었다. 09-04 완전 삭제 뒤에도 마운트 한 줄이면 되살아난다.',
+  },
+  {
+    name: '🌇 일몰한 /agency 라우트가 앱에 다시 그려진다',
+    file: 'src/App.tsx',
+    find: '            <Route path="/business" element={<BusinessLandingPage />} />',
+    replace: '            <Route path="/agency" element={<BusinessLandingPage />} />\n            <Route path="/business" element={<BusinessLandingPage />} />',
+    test: 'src/tests/unit/agency-sunset-final.test.ts',
+    why:
+      '중개사는 별도 대시보드가 아니라 셀러 대시보드를 쓴다(대표 확정). /agency 가 다시 생기면 ' +
+      '같은 역할에 문이 둘이 되고, 그게 정확히 대표가 "헷갈리지 말자" 고 한 상태다.',
+  },
+  {
+    name: '🕳️ 일몰이 소비자 친구초대까지 삼킨다',
+    file: 'src/worker/index.ts',
+    find: "app.route('/api/invite', inviteRewardRoutes);",
+    replace: '/* referral 초대 마운트 제거 */',
+    test: 'src/tests/unit/agency-sunset-final.test.ts',
+    why:
+      '에이전시 초대코드가 **같은 `/api/invite`** 에 얹혀 있었다. 이름만 보고 지우면 마이페이지의 ' +
+      "'내 추천 링크'(GET /api/invite/my)가 통째로 죽는데, 화면엔 빈 카드로 보여 신고가 안 들어온다.",
   },
   {
     name: '이용권 상세 제목이 다시 사진 아래로 내려간다',
@@ -1662,8 +3281,8 @@ canvas {
   {
     name: '/map 지도 위 컨트롤 오버레이가 PC 에서 되살아난다',
     file: 'src/pages/restaurant-map/MapTopBar.tsx',
-    find: "'lg:hidden absolute top-0",
-    replace: "'absolute top-0",
+    find: "'light-island lg:hidden absolute top-0",
+    replace: "'light-island absolute top-0",
     test: 'src/tests/unit/groupon-detail-map.test.ts',
     why:
       '2026-08-19 대표 지시 — 검색·필터 칩을 왼쪽 리스트 상단으로 옮기고 지도는 지도만 보이게. ' +
@@ -1915,7 +3534,9 @@ canvas {
   },
   {
     name: '공구가 킬스위치를 어드민 화면에서 뺀다(돈 새는 중에 멈출 손잡이가 사라진다)',
-    file: 'src/pages/AdminPlatformSettingsPage.tsx',
+    // 🩸 2026-09-07: 머니 스위치 배열이 페이지에서 이 모듈로 빠졌다(페이지가 600줄 래칫에 닿았다).
+    //   이 지도를 안 따라가면 "주입 대상을 못 찾음(낡은 지도)" 로 빨간불이 난다 — 실제로 났다.
+    file: 'src/pages/admin-platform-settings/money-switch-fields.ts',
     find: "key: 'gb_pricing_enabled'",
     replace: "key: 'gb_pricing_REMOVED'",
     test: 'src/tests/unit/ops-gate-reachable.test.ts',
@@ -4806,8 +6427,8 @@ canvas {
   {
     name: 'PR 검증이 다시 건너뛰어짐(미검증 코드 머지)',
     file: '.github/workflows/verify.yml',
-    find: '  pull_request:\n    branches: [main]\n  push:',
-    replace: "  pull_request:\n    branches: [main]\n    paths-ignore: ['docs/**']\n  push:",
+    find: '  pull_request:\n    branches: [main]\n  # 🔴 `push:`',
+    replace: "  pull_request:\n    branches: [main]\n    paths-ignore: ['docs/**']\n  # 🔴 `push:`",
     test: 'src/tests/unit/ci-verify-coverage.test.ts',
     why:
       '문서 커밋을 코드 커밋 뒤에 밀면 concurrency 가 앞 run 을 취소하고 뒤 커밋은 자기 run 을 안 만든다 ' +
@@ -5109,12 +6730,13 @@ canvas {
   {
     name: '수집 레인 시간당 상한이 조용히 증설됨',
     file: 'src/worker-ads/lane-alarm-runners.ts',
-    find: '  collect: {\n    runsPerHour: 1,\n',
+    find: '  collect: {\n    runsPerHour: 3,\n',
     replace: '  collect: {\n',
     test: 'src/tests/unit/ads-lane-alarm.test.ts',
     why:
-      '빼면 정책 기본값(12회/시간)을 받는다 = cron 설계 의도(`0 * * * *`)를 12배 넘는 증설이고, ' +
-      '**네이버로 나가는 요청량이 늘어나는 변경**이라 대표 판단 사항이다. 값이 조용히 바뀌는 것을 막는다.',
+      '빼면 정책 기본값(12회/시간)을 받는다 = 대표 승인값(3)의 4배 증설이고, **네이버로 나가는 ' +
+      '요청량이 늘어나는 변경**이라 대표 판단 사항이다. 게다가 12배면 하루 쓴 행이 예산 150만을 ' +
+      '넘겨 차단기가 자정 전에 수집을 멈춘다 — 늘리려다 오히려 줄어든다.',
   },
   {
     name: '3차 이관 match-registry cron 게이트 소실(알람과 이중 디스패치)',
@@ -5790,8 +7412,9 @@ canvas {
     name: '티스토리가 블로거 뒤로 밀림(잔여를 다 뺏겨 영원히 0)',
     file: 'src/features/marketing/api/influencer-enrich-lane.ts',
     // 🗺️ 2026-08-04 앵커 이사: 몫이 상수 → `tistoryRoom(env)` 가 되고 `if (tisRoom > 0)` 으로 감싸졌다.
-    //   지키는 불변식(티스토리가 블로거보다 **먼저**)은 그대로라 항목을 지우지 않고 따라간다.
-    find: '      try { tistory = await enrichTistoryActivity(DB, budget, tisRoom, slice) } catch (err) { note(err) }\n',
+    //   🗺️ 2026-09-03 또 이사: 재측정 주기 필터가 env 를 읽어야 해서 인자가 하나 늘었다.
+    //   지키는 불변식(티스토리가 블로거보다 **먼저**)은 두 번 다 그대로라 항목을 지우지 않고 따라간다.
+    find: '      try { tistory = await enrichTistoryActivity(DB, budget, tisRoom, slice, env) } catch (err) { note(err) }\n',
     replace: '',
     test: 'src/tests/unit/ads-tistory-enrich.test.ts',
     why:
@@ -6132,10 +7755,15 @@ canvas {
       '원장을 합산해야 드러난다.',
   },
   {
-    name: '💸 [INV-#44] 에이전시 share 가 platform:revenue 하드코딩으로 되돌아감',
+    name: '💸 사용시점 셰어의 debit 이 platform:revenue 로 하드코딩된다 (#44)',
     file: 'src/worker/utils/ledger.ts',
-    find: "    debit_account: ownerFunded ? `merchant:${params.merchant_id}` : 'platform:revenue',",
-    replace: "    debit_account: 'platform:revenue',",
+    // 🌇 2026-09-04: 앵커를 옮겼다. 이 자리를 지키던 `recordAgencyCommissionShare` 가
+    //    에이전시 일몰로 삭제됐고, 같은 성질의 코드는 `creditUserCommission` 의 flip 분기다.
+    // ⚠️ 주입 형태가 중요하다: 가드는 `debit_account: 'platform:revenue'` **리터럴**을 찾는다.
+    //    `const debitAcct = 'platform:revenue'` 로 바꾸는 주입은 같은 결함인데도 가드가 못 본다
+    //    (실제로 첫 판이 그렇게 초록불이었다). 가드가 실제로 보는 형태로 심는다.
+    find: "      debit_account: debitAcct,\n      credit_account: `user:${params.userId}`,",
+    replace: "      debit_account: 'platform:revenue',\n      credit_account: `user:${params.userId}`,",
     test: 'scripts/check-commission-budget.mjs',
     why:
       'flip 을 켜도 이 축만 조용히 5% 를 계속 잠식한다. 에러도 없고 화면도 멀쩡해서 ' +
@@ -6725,6 +8353,471 @@ canvas {
       '회당 409,697행 × 하루 200여 회 — 데이터는 멀쩡한데 계정이 읽기 한도로 마비된다.',
   },
   {
+    name: '⏰ 하루 1회 레인에 시각 고정이 되돌아온다(창 밖이면 영영 안 돈다)',
+    file: 'src/worker-ads/lane-alarm-runners.ts',
+    find: "    minIntervalHours: DAILY_INTERVAL_HOURS,   // 📅 하루 1회 — 시각은 안 고른다(위 블록 주석)\n    run: async (env) => {\n      if ((env as unknown as { ADS_FRANCHISE_ENABLED?: string }).ADS_FRANCHISE_ENABLED !== 'true') return { skipped: 'gate_off' }",
+    replace: "    run: async (env) => {\n      if ((env as unknown as { ADS_FRANCHISE_ENABLED?: string }).ADS_FRANCHISE_ENABLED !== 'true') return { skipped: 'gate_off' }\n      if (new Date().getUTCHours() !== 22) return { skipped: 'off_hour' }",
+    test: 'src/tests/unit/ads-lane-hour-pinning.test.ts',
+    why:
+      '2026-09-05 실사고: 읽기 예산 차단기가 하루 창을 00~02시 UTC 로 줄이자, 자기 시각이 그 밖에 ' +
+      '박힌 레인 9개가 영영 안 돌게 됐다(하트비트 skipped: off_hour, 에러도 경보도 없음). ' +
+      'B2B 신규 수집이 하루 4,800~7,200건에서 78건으로 무너졌다. 시각 고정은 표현부터 잘못이다.',
+  },
+  {
+    name: '⏰ 하루 1회 간격이 조여진다(공공 API 일일 한도를 두 배로 태운다)',
+    file: 'src/worker-ads/lane-adaptive-interval.ts',
+    find: '  if (base >= DAILY_INTERVAL_HOURS) return base',
+    replace: '  // (제거)',
+    test: 'src/tests/unit/ads-lane-hour-pinning.test.ts',
+    why:
+      '하루 1회를 쓰는 레인은 공공 API(지방행정 인허가·나라장터·국민연금·공정위 가맹)에 붙어 있고 ' +
+      '그 일일 한도를 우리가 모른다. 조이면 호출이 두 배가 되는데, 한도 초과는 빈 배열로 조용히 ' +
+      '돌아와 화면 어디에도 안 뜬다 — 잘못 조인 것을 알아챌 방법이 없다.',
+  },
+  {
+    name: '📏 레인 하트비트가 회차별 읽기·쓰기를 다시 버린다(출처를 추측으로 돌아감)',
+    file: 'src/worker-ads/lane-alarm.ts',
+    find: 'rr: this.meter.rr || 0, rw: this.meter.rw || 0,',
+    replace: 'rr: 0, rw: 0,',
+    test: 'src/tests/unit/ads-lane-meter-visibility.test.ts',
+    why:
+      '계측기는 원래부터 회차마다 돌았는데 공용 원장에 더하고 레인별 값은 버렸다. 그래서 "하루 ' +
+      '쓰기 37만·읽기 2억이 어느 레인 것인가"에 아무도 답을 못 했고, 그 자리를 추측으로 메우다 ' +
+      '두 번 틀렸다(#1333·#1348 — 둘 다 배포 후 감소 0). 상수를 박으면 그 상태로 되돌아간다.',
+  },
+  {
+    name: '🪞 재분류가 안 바뀐 판정도 다시 쓴다(업체 DB 쓰기 폭주 복귀)',
+    file: 'src/features/marketing/api/company-discovery.ts',
+    find: '    if (!changed) {',
+    replace: '    if (false) {',
+    test: 'src/tests/unit/ads-reclassify-noop.test.ts',
+    why:
+      '이 랩은 규칙 버전이 오를 때마다 업체 41만 행을 다시 판정한다. 라이브 실측상 실제로 판정이 ' +
+      '바뀌는 비율은 0.14%(reg_seen 28,777 / reg_changed 40) — 이 분기가 죽으면 99.86% 가 다시 ' +
+      '아무것도 안 바뀐 재기록이 되고, 행마다 판정 5개 컬럼의 인덱스 다발까지 다시 쓴다.',
+  },
+  {
+    name: '🪞 재분류가 재검사 도장을 안 찍는다(그 행이 영영 미검사로 되돌아온다)',
+    file: 'src/features/marketing/api/company-discovery.ts',
+    find: 'if (r.classified_v !== CLASSIFY_RULES_VERSION) stampOnly.push(r.id)',
+    replace: '// (제거)',
+    test: 'src/tests/unit/ads-reclassify-noop.test.ts',
+    why:
+      '쓰기를 아끼려고 판정 컬럼을 건너뛰면서 도장까지 안 찍으면, 그 행은 매 회차 다시 읽히고 ' +
+      '영영 "미검사"로 남는다 — 쓰기를 아끼려다 읽기를 무한히 태우는 반대편 사고다.',
+  },
+  {
+    name: '🪞 재검사 도장이 행당 UPDATE 로 풀린다(묶음 해제 = 절약 소멸)',
+    file: 'src/features/marketing/api/company-discovery.ts',
+    find: 'UPDATE ad_company_leads SET classified_v = ? WHERE id IN',
+    replace: 'UPDATE ad_company_leads SET classified_v = ? WHERE id = ? AND id IN',
+    test: 'src/tests/unit/ads-reclassify-noop.test.ts',
+    why:
+      '도장을 100건씩 한 문장으로 묶어야 절약이 남는다. 행당 UPDATE 로 풀면 아끼려던 쓰기가 ' +
+      '고스란히 돌아온다(행 수는 같고 문장 수만 늘어난다).',
+  },
+  {
+    name: '🪞 백필이 거른 목록 대신 전체를 다시 쓴다(no-op 재기록 복귀)',
+    file: 'src/features/marketing/api/influencer-save.ts',
+    find: 'DB.batch(changed.map',
+    replace: 'DB.batch(existing.map',
+    test: 'src/tests/unit/ads-backfill-noop.test.ts',
+    why:
+      '거르는 함수를 불러 놓고 결과를 안 쓰면 절약이 정확히 0 이다 — 호출은 남아 있어 코드만 보면 ' +
+      '고쳐진 것처럼 보인다. 그러면 값이 안 바뀐 재조우마다 행+인덱스 13개를 다시 써서 하루 쓰기 예산을 ' +
+      '태우고, 차단기가 8~12시간 만에 걸려 남은 시간의 발굴이 통째로 멈춘다.',
+  },
+  {
+    name: '🪞 백필 조회 실패를 fail-closed 로 바꾼다(갱신이 조용히 멎는다)',
+    file: 'src/features/marketing/api/influencer-save.ts',
+    find: 'if (!res?.results) return existing',
+    replace: 'if (!res?.results) return []',
+    test: 'src/tests/unit/ads-backfill-noop.test.ts',
+    why:
+      '읽기가 실패했을 때 "모르니까 안 쓴다"로 기울면 구독자수·소개글이 영원히 수집 당시 값에 머문다 — ' +
+      '2026-07-23(F-32)이 고쳤던 그 스테일 사고가 에러 없이 돌아온다. 이 자리의 모름은 갱신이어야 한다.',
+  },
+  {
+    name: '🗓️ 월 몫 소진 시 0 을 돌려준다(차단기가 꺼져 무제한이 된다)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: '  if (!(left > 0)) return MONTH_SPENT_FLOOR',
+    replace: '  if (!(left > 0)) return 0',
+    test: 'src/tests/unit/ads-monthly-write-budget.test.ts',
+    why:
+      '이 파일에서 0 은 "끔"(무제한)이다. 월 몫이 다 떨어졌을 때 0 을 돌려주면 차단기가 꺼져 ' +
+      '정확히 정반대 — 가장 조여야 할 순간에 무제한이 된다. 에러도 경보도 없이 그 달 요금이 터진다.',
+  },
+  {
+    name: '🗓️ 월 누적이 달 경계에서 리셋 안 된다(다음 달이 지난달 값에 눌린다)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: '    writtenMonth: (sameMonth ? prev.writtenMonth || 0 : 0) + pos(rw),',
+    replace: '    writtenMonth: (prev?.writtenMonth || 0) + pos(rw),',
+    test: 'src/tests/unit/ads-monthly-write-budget.test.ts',
+    why:
+      '포함분은 UTC 월 경계에서 리셋된다. 누적이 안 끊기면 11월 1일이 10월 실적에 눌려 ' +
+      '바닥값으로 시작하고, 그 상태로 한 달이 간다 — 수집이 40분의 1인데 에러는 0 이다.',
+  },
+  {
+    name: '🕐 일중 페이싱이 사라진다(하루치를 반나절에 태우고 절벽처럼 멈춘다)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: '    writeOver: writeBudgetOver(next, writeBudget, nowMs) || pacedWriteOver(next, writeBudget, nowMs),',
+    replace: '    writeOver: writeBudgetOver(next, writeBudget, nowMs),',
+    test: 'src/tests/unit/ads-monthly-write-budget.test.ts',
+    why:
+      '2026-09-07 실측: 12시간에 하루치를 소진하고 나머지 12시간 수집이 0 이었다. 총량은 같은데 ' +
+      '절반이 죽은 시간이 되고, 그 사이 창 밖 레인이 통째로 죽는다(9/4 B2B 붕괴가 그 모양). ' +
+      '페이싱이 빠져도 하루 총량은 그대로라 요금 지표로는 안 보인다.',
+  },
+  {
+    name: '🚨 9월 쓰기 스로틀이 스스로 안 풀린다(10월에도 3만에 묶인다)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: '  return nowMs < SEPT_2026_THROTTLE_UNTIL_MS ? SEPT_2026_WRITE_THROTTLE : DEFAULT_DAILY_WRITE_BUDGET',
+    replace: '  return SEPT_2026_WRITE_THROTTLE',
+    test: 'src/tests/unit/ads-sept-write-throttle.test.ts',
+    why:
+      '한시 조치는 스스로 풀려야 한다. 날짜 조건이 빠지면 10월에도 하루 3만에 묶이는데 ' +
+      '에러가 안 나서 아무도 모른다 — 수집이 40분의 1로 줄어든 채 몇 주가 갈 수 있다. ' +
+      '이 레포가 반복해 만난 "실패가 아니라 조용한 부재" 를 이 자리에서 만들지 않는다.',
+  },
+  {
+    name: '🚨 9월 쓰기 스로틀이 env 를 덮어쓴다(대표가 되돌릴 수 없게 된다)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: '  if (explicit) return resolveBudget(env, WRITE_BUDGET_ENV, DEFAULT_DAILY_WRITE_BUDGET)',
+    replace: '  if (false) return resolveBudget(env, WRITE_BUDGET_ENV, DEFAULT_DAILY_WRITE_BUDGET)',
+    test: 'src/tests/unit/ads-sept-write-throttle.test.ts',
+    why:
+      'env 를 명시하면 그 값이 이겨야 한다 — 그게 대표가 코드 배포 없이 되돌리는 유일한 손잡이다. ' +
+      '코드가 env 를 덮으면 라이브에서 값을 바꿔도 아무 일이 안 일어나고, 화면엔 바꾼 값이 보여서 ' +
+      '"반영됐다"고 오판하게 된다(2026-08-02 platform-settings 저장 UI 사고와 같은 모양).',
+  },
+  {
+    name: '🗂️ 매장정보 재보강 큐 인덱스가 사라진다(20건 뽑으려고 38.7만 행)',
+    file: 'src/features/marketing/api/company-ddl-indexes.ts',
+    find: '`CREATE INDEX IF NOT EXISTS idx_company_leads_storeinfo_queue ON ad_company_leads(source, id)',
+    replace: '`CREATE INDEX IF NOT EXISTS idx_company_leads_storeinfo_queue ON ad_company_leads(active, id)',
+    test: 'src/tests/unit/company-read-amplification.test.ts',
+    why:
+      'source 가 선두 키가 아니면 등호 하나로 범위가 안 잡히고 정렬 키가 id 로 안 끝나 임시 B-트리가 ' +
+      '되돌아온다. 2026-09-07 라이브: 이 큐가 20건을 뽑으려고 387,003행을 읽었고 2시간마다 돌아 ' +
+      '하루 460만 행이었다 — 그 대가로 얻은 신규는 6일 연속 0. 결과는 똑같아서 눈에 안 보인다.',
+  },
+  {
+    name: '🎯 링크인바이오 조회가 계획기에 맡겨진다(19만 행 전수 스캔 복귀)',
+    file: 'src/features/marketing/api/influencer-bio-enrich.ts',
+    find: "  const res = await pick(' INDEXED BY idx_ad_inf_leads_bio_links') || await pick('')",
+    replace: "  const res = await pick('')",
+    test: 'src/tests/unit/ads-bio-scan-index.test.ts',
+    why:
+      '부분 인덱스가 있어도 계획기는 idx_ad_inf_leads_bio 를 고른다 — bio_checked_at IS NULL 이 전체의 ' +
+      '99.9%라 거르는 일을 못 하는데 통계가 없으니 모른다. 라이브 실측 193,898행 vs 2,573행(75배). ' +
+      '2026-09-06 실사고: 큐가 고갈돼 결과가 0건이라 상태줄에 흔적이 없는 채, 샤드 4개 × 시간당 30회차가 ' +
+      '시간당 2,330만 행을 읽고 아무 일도 안 했다. 그 읽기가 일일 예산을 태워 B2B 수집이 멈췄다.',
+  },
+  {
+    name: '🎯 링크인바이오 WHERE 에서 부분 인덱스 조건이 빠진다(인덱스가 조용히 무효)',
+    file: 'src/features/marketing/api/influencer-bio-enrich.ts',
+    find: 'account_id = ? AND bio_checked_at IS NULL AND (email IS NULL OR instagram IS NULL)',
+    replace: 'account_id = ? AND (email IS NULL OR instagram IS NULL)',
+    test: 'src/tests/unit/ads-bio-scan-index.test.ts',
+    why:
+      '부분 인덱스는 WHERE 가 그 조건을 함의할 때만 쓰인다. 하나만 빠져도 SQLite 는 못 쓴다고 판단하는데 ' +
+      '**결과는 똑같아서** 눈에 안 보인다 — 비용만 75배가 된다(2026-08-27 주석이 이미 경고한 함정).',
+  },
+  {
+    name: '🪞 백필 조회가 platform 을 빼먹는다(회차마다 계정 전체를 훑는다)',
+    file: 'src/features/marketing/api/influencer-save.ts',
+    find: 'WHERE account_id = ? AND platform = ? AND channel_id IN',
+    replace: 'WHERE account_id = ? AND channel_id IN',
+    test: 'src/tests/unit/ads-backfill-noop.test.ts',
+    why:
+      '유니크 인덱스가 (account_id, platform, channel_id) 복합이라 platform 이 빠지면 그 인덱스를 못 타고 ' +
+      '18.9만 행을 훑는다. 2026-09-05 실사고: collect 레인이 회차당 883만 행을 읽어 3시간 실측 2억의 39%를 ' +
+      '혼자 썼고, 그 읽기가 일일 예산을 태워 레인 창을 3시간으로 좁혀 창 밖 B2B 레인이 통째로 죽었다. ' +
+      '느려지는 것이 아니라 다른 서비스가 멈춘다 — 그리고 에러는 하나도 안 난다.',
+  },
+  {
+    name: '🪞 백필 판정에서 소개글 규칙이 사라진다(재분류가 낡은 글로 판정)',
+    file: 'src/features/marketing/api/influencer-backfill-diff.ts',
+    find: "  if (inc.description !== '' && (cur.description ?? null) !== inc.description) return true",
+    replace: '  // (제거)',
+    test: 'src/tests/unit/ads-backfill-noop.test.ts',
+    why:
+      '이 순수함수는 backfillSql 의 SET 절 거울이라, 규칙 하나가 빠지면 그 컬럼만 조용히 갱신이 멎는다. ' +
+      '소개글은 카테고리 재분류의 입력이므로 낡으면 분류 전체가 낡는다 — 화면에는 아무 에러도 안 뜬다.',
+  },
+  {
+    name: '🔁 재측정 필터가 배선에서 빠진다(쓰기 2배 초과로 복귀 · 에러 0)',
+    file: 'src/features/marketing/api/influencer-performance.ts',
+    find: '  rows = dueForRemeasure(rows, env)',
+    replace: '  rows = rows',
+    test: 'src/tests/unit/ads-remeasure-window.test.ts',
+    why:
+      '모듈이 있어도 레인이 안 부르면 아무 일도 안 일어난다. 그러면 전체 18만 건을 1.2일마다 다시 재던 ' +
+      '상태로 돌아가고, D1 쓴 행이 월 9,900만(포함분 5,000만의 198%)이 되어 월 $49 가 붙는다.',
+  },
+  {
+    name: '🔁 재측정 SELECT 가 perf_checked_at 을 안 뽑는다(필터가 전부 통과 = 무효)',
+    file: 'src/features/marketing/api/influencer-performance.ts',
+    find: 'median_long_views, perf_checked_at FROM ad_influencer_leads',
+    replace: 'median_long_views FROM ad_influencer_leads',
+    test: 'src/tests/unit/ads-remeasure-window.test.ts',
+    why:
+      '스탬프를 안 뽑으면 필터가 받는 값이 전부 undefined 이고, fail-open 규약상 **전부 통과**한다. ' +
+      '필터는 그대로 있는데 효과만 0 인 상태 — 이 레포가 반복해 만난 "지키는 척하는 가드" 그 모양이다.',
+  },
+  {
+    name: '🔁 빈 env 를 0(끔)으로 읽는다(기능이 꺼진 채 배포)',
+    file: 'src/features/marketing/api/influencer-remeasure-window.ts',
+    find: "  if (raw0 === '') return REMEASURE_AFTER_DAYS",
+    replace: "  if (false) return REMEASURE_AFTER_DAYS",
+    test: 'src/tests/unit/ads-remeasure-window.test.ts',
+    why:
+      "`Number('')` 은 NaN 이 아니라 0 이고 0 은 이 정책에서 '끔'이다. env 를 안 걸면(정상 상태) " +
+      '기능이 통째로 꺼진 채 배포된다 — 에러도 로그도 없다. 실제로 첫 구현이 이 상태였고 시험이 잡았다.',
+  },
+  {
+    name: '📉 수집 회차 수가 승인값에서 조용히 내려간다(라이브 총량을 정하는 유일한 축)',
+    file: 'src/worker-ads/lane-alarm-runners.ts',
+    find: '  collect: {\n    runsPerHour: 3,',
+    replace: '  collect: {\n    runsPerHour: 1,',
+    test: 'src/tests/unit/ads-lane-alarm.test.ts',
+    why:
+      '알람이 모는 구성에서 발굴 총량을 실제로 정하는 값은 이것 하나다(체인 회차·폭 cap 은 각각 ' +
+      '게이트와 서브리퀘스트 예산에 막혀 안 먹는 것으로 2026-09-02 실측). 조용히 1 로 돌아가면 ' +
+      '발굴이 3분의 1이 되는데 에러가 없다.',
+  },
+  {
+    name: '📉 회차 기본값이 조용히 되돌아간다(발굴량 3분의 1, 에러 0)',
+    file: 'src/worker-ads/chain.routes.ts',
+    find: "ADS_COLLECT_ROUNDS || '', 10) || 12))",
+    replace: "ADS_COLLECT_ROUNDS || '', 10) || 4))",
+    test: 'src/tests/unit/ads-collect-gates.test.ts',
+    why:
+      '이 값은 env 로도 덮이므로 코드 기본값이 되돌아가도 라이브는 한동안 멀쩡해 보인다. ' +
+      '그러다 env 를 지우는 순간 하루 발굴이 1.2만 → 4천으로 떨어지는데 에러가 없어 아무도 모른다.',
+  },
+  {
+    name: '📉 회차 폭이 승인값에서 조용히 내려간다(같은 클래스, 곱해지는 축)',
+    file: 'src/features/marketing/api/influencer-round-width.ts',
+    find: 'export const COLLECT_KEYWORDS_PER_ROUND = 14',
+    replace: 'export const COLLECT_KEYWORDS_PER_ROUND = 9',
+    test: 'src/tests/unit/ads-keyword-focus-split.test.ts',
+    why:
+      '폭 × 회차 = 하루 발굴량이다. 폭은 네이버 차단 리스크를 지고 대표가 매번 판단한 값이라, ' +
+      '승인 없이 오르내리면 안 된다(내리는 쪽도 마찬가지 — 조용한 후퇴는 안 보인다).',
+  },
+  {
+    name: '🚧 레인 진입 초크포인트가 사라진다(자기-체인이 차단기를 우회)',
+    file: 'src/worker-ads/lane-gate.ts',
+    find: "    const blocked = await laneEntryBlock(",
+    replace: "    const blocked = ''; void laneEntryBlock; if (false) await (async () => (",
+    test: 'src/tests/unit/ads-read-budget.test.ts',
+    why:
+      '2026-09-02 라이브 실측: 원장이 over=true 인데도 레인이 계속 돌았다(10:15 collect rr 85,130 · ' +
+      'collect-neis rw 40,004 · 10:24 enrich rr 194,610). 레인을 띄우는 길이 셋인데 게이트가 둘에만 ' +
+      '있었기 때문이다 — 자기-체인 SELF.fetch 는 부모 판단을 한 번도 안 거친다. 같은 구멍이 수동 정지 ' +
+      '스위치에도 있어, 대표가 껐다고 믿는 동안에도 체인이 돈다.',
+  },
+  {
+    name: '🚧 초크포인트가 원장을 늘 묻는다(면제·정지에서도 서브리퀘스트 낭비)',
+    file: 'src/worker-ads/lane-pause.ts',
+    find: '  if (pauseExempt(path)) return \'\'\n  if (lanesPaused(env)) return \'paused\'',
+    replace: '  const forced = await budgetFn(env, \'x\')\n  if (pauseExempt(path)) return \'\'\n  if (lanesPaused(env)) return \'paused\'\n  void forced',
+    test: 'src/tests/unit/ads-read-budget.test.ts',
+    why:
+      '원장 조회는 서브리퀘스트 1 이다. 면제 경로(관측)와 수동 정지에서까지 물으면 정지 중에도 ' +
+      '예산을 계속 태우고, 관측 창이 원장 장애에 함께 죽는다.',
+  },
+
+  // ── 🧾 레인 귀속 + 폭주 레인만 자르기 (2026-09-15) ────────────────────────
+  {
+    name: '🚨 폭주 절대 임계가 사라진다(한 회차가 월 포함분을 먹어도 통과)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: "  if (rw >= RUNAWAY_ROUND_WRITES) return 'abs'",
+    replace: "  if (false) return 'abs'",
+    test: 'src/tests/unit/ads-lane-attribution.test.ts',
+    why:
+      '9/2 폭주는 쿼리 하나가 10만~15만 행을 썼다(시간당 350만, 하루 4,554만 = 월 포함분의 89%). ' +
+      '이 한 줄이 절대 임계다 — 빠지면 배수 규칙만 남는데, 기준선이 없는 첫 회차는 배수로 못 잡으므로 ' +
+      '"부팅 직후 폭주"가 정확히 무방비가 된다(9/2 가 바로 그 모양이었다).',
+  },
+  {
+    name: '🚨 기준선 없는 첫 회차를 폭주로 잡는다(새 레인이 태어나자마자 잘림)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: "  if (!baseline || !(baseline > 0)) return ''",
+    replace: "  if (!baseline || !(baseline > 0)) return 'rel'",
+    test: 'src/tests/unit/ads-lane-attribution.test.ts',
+    why:
+      '반대 방향의 사고 — 차단기가 정상을 자르는 경우다. 0 에서 시작한 레인의 첫 일이 폭주로 잡히면 ' +
+      '새 레인은 영영 못 돈다. 대표 지시가 "관리가 안 된다"였지 "더 막아라"가 아니었다.',
+  },
+  {
+    name: '🚨 폭주 회차가 기준선을 올린다(차단기가 스스로를 무디게 만든다)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: '      base: verdict',
+    replace: '      base: false',
+    test: 'src/tests/unit/ads-lane-attribution.test.ts',
+    why:
+      '폭주를 EMA 에 섞으면 그 레인의 평소치가 폭주 쪽으로 끌려가, 다음 폭주가 "평소와 비슷함"이 된다. ' +
+      '차단기가 자기 눈을 가리는 형태 — 처음엔 잡고 두 번째부터 못 잡는다.',
+  },
+  {
+    name: '🚨 날이 바뀌며 기준선까지 버린다(매일 아침 배수 규칙이 눈을 감는다)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: '    if (v?.base && v.base > 0) out[k] = { r: 0, w: 0, n: 0, base: v.base }',
+    replace: '    void k; void v',
+    test: 'src/tests/unit/ads-lane-attribution.test.ts',
+    why:
+      '오늘 계수(r/w/n)와 `cut` 은 날마다 버려야 하지만 `base` 는 학습값이다. 함께 버리면 매일 UTC 자정 ' +
+      '이후 모든 레인이 "기준선 없음"이 되어, 배수 규칙이 하루의 첫 회차마다 통째로 쉰다.',
+  },
+  {
+    name: '🚨 폭주 판정을 이번 회차를 **섞은 뒤** 기준선으로 한다',
+    file: 'src/worker-ads/read-budget.ts',
+    find: "  const verdict: RunawayVerdict = laneKeyed ? runawayRound(rw, prev?.lanes?.[laneKeyed]?.base) : ''",
+    replace: "  const verdict: RunawayVerdict = ''",
+    test: 'src/tests/unit/ads-lane-attribution.test.ts',
+    why:
+      '판정이 사라지면 원장은 레인별로 정확히 세면서 아무도 안 자른다 — 9/2 이전 상태로 되돌아간다. ' +
+      '(섞은 뒤 기준선으로 재는 변형도 같은 클래스다: 폭주가 자기 기준선을 올려 스스로를 정상으로 만든다.)',
+  },
+  {
+    name: '🧾 원장 기본 응답이 레인 전체 표를 싣는다(레인 인보케이션마다 96줄)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: '  const { lanes: _allLanes, ...totals } = next',
+    replace: '  const totals = next',
+    test: 'src/tests/unit/ads-lane-attribution.test.ts',
+    why:
+      '이 뷰는 **레인이 돌 때마다** 읽힌다. 전체 표를 기본으로 실으면 게이트가 매번 96줄을 받는다 — ' +
+      '작성 중 실제로 밟은 버그이고, 시험이 잡았다. 전체 표는 `?full=1` 일 때만.',
+  },
+  {
+    name: '🚧 HTTP 초크포인트가 `_beat` 를 안 넘긴다(잘린 레인이 매칭되지 않는다)',
+    file: 'src/worker-ads/lane-gate.ts',
+    find: '      readBeatParams(c.req.url)?.beat,',
+    replace: '      undefined,',
+    test: 'src/tests/unit/ads-lane-attribution.test.ts',
+    why:
+      '원장에 보고하는 이름은 `_beat` 인데 게이트가 경로에서 뽑으면 둘이 갈린다 — ' +
+      '`/__ads/enrich-company-driver` 는 beat 이름이 `enrich-company` 다. 그러면 그 레인은 잘려도 ' +
+      '게이트를 그냥 통과한다(잘린 줄 알고 있는데 계속 도는, 이 레포가 가장 자주 당한 모양).',
+  },
+  {
+    name: '📻 하트비트에서 `top` 이 다시 앞으로 와 사건 신호를 밀어낸다',
+    file: 'src/worker-ads/read-budget.ts',
+    find: '    // \ud83d\udea8 "\ub204\uac00 \uc798\ub838\ub098" \u2014 \uc0ac\uac74\uc774\ubbc0\ub85c \uc6d4 \uc0c1\ud0dc\ubcf4\ub2e4 \uc55e. \ud3c9\uc2dc\uc5d4 \ube44\uc5b4 \uc788\uc5b4 \ud55c \uae00\uc790\ub3c4 \uc548 \uba39\ub294\ub2e4.',
+    replace: '    ...(top ? { top } : {}),',
+    test: 'src/tests/unit/ads-lane-attribution.test.ts',
+    why:
+      '2026-09-16 라이브에서 실제로 터진 모양 그대로다. `summarizeResult` 는 160자에서 **자르는 게 아니라 ' +
+      '루프를 멈춘다** — `top`(레인 이름 3개 = 70자+)이 앞에 있으면 뒤의 `cut`\u00b7`wmonth`\u00b7`mleft`\u00b7`dleft` 가 ' +
+      '한 글자도 안 실린다. `cut` 이 밀려나는 것이 특히 나쁘다: 폭주 레인을 잘라 놓고 **운영자가 그 사실을 ' +
+      '못 본다**(차단기를 만들고 발화를 안 보이게 한 셈). 전날 시험은 `budgetBeatFields` 의 반환 키만 봐서 ' +
+      '전부 초록이었다 — 죽은 것은 그 다음 단계였다.',
+  },
+  {
+    name: '📻 하트비트 top 레인 수 상한이 풀린다(다시 앞자리를 먹는다)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: 'export const BEAT_TOP_LANES = 2',
+    replace: 'export const BEAT_TOP_LANES = 5',
+    test: 'src/tests/unit/ads-lane-attribution.test.ts',
+    why:
+      '맨 뒤로 옮겨도 길이를 안 묶으면 레인 이름이 길어질 때 다시 앞자리를 위협한다. 실측상 3개가 70자였다.',
+  },
+  {
+    name: '🧾 원장이 잘린 레인 목록을 안 돌려준다(게이트가 볼 게 없다)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: '    cutLanes: cutLaneNames(next, nowMs),',
+    replace: '    cutLanes: [],',
+    test: 'src/tests/unit/ads-lane-attribution.test.ts',
+    why:
+      '원장은 자르고 응답엔 안 싣는 형태 — 판정은 도는데 아무 효과가 없다. 실패가 아니라 부재라 ' +
+      '배포는 초록이고 폭주 레인만 조용히 계속 돈다.',
+  },
+  {
+    name: '✍️ 쓰기 예산이 게이트에서 빠진다(요금을 터뜨린 축이 다시 무방비)',
+    file: 'src/worker-ads/index.ts',
+    find: 'const paused = lanesPaused(env) || budgetBlocked(budget)',
+    replace: 'const paused = lanesPaused(env) || budget.over',
+    test: 'src/tests/unit/ads-read-budget.test.ts',
+    why:
+      '읽기 축만 보면 2026-09-02 와 같은 폭주(시간당 300만 쓰기, 월 $427)를 못 막는다. ' +
+      '포함분 비율이 읽기 250억 : 쓰기 5,000만 = 500배라, 쓰기가 먼저 요금이 된다.',
+  },
+  {
+    name: '🏆 인기 점수가 정규화를 잃는다(결제 하나가 혼자 결정)',
+    file: 'src/features/sections/api/section-rules.ts',
+    find: '* 1.0 / MAX(mx.ms, 1))',
+    replace: ')',
+    test: 'src/tests/unit/popular-score-2026-09-03.test.ts',
+    why:
+      '라이브 실측 결제 최대 259 vs 리뷰 최대 34 — 생값을 더하면 결제가 사실상 혼자 순서를 정해 ' +
+      '종전(sold_count DESC)과 같아진다. 리뷰·클릭을 넣은 의미가 사라진다.',
+  },
+  {
+    name: '👁️ 조회수 비콘이 세션 가드를 잃는다(새로고침이 순위를 흔든다)',
+    file: 'src/hooks/useProductViewBeacon.ts',
+    find: 'if (sessionStorage.getItem(key)) return',
+    replace: 'if (false) return',
+    test: 'src/tests/unit/popular-score-2026-09-03.test.ts',
+    why:
+      '클릭은 홈 인기순의 신호다. 세션당 1회 가드가 없으면 한 사람의 새로고침이 그 상품을 ' +
+      '홈 상단으로 밀어 올린다 — 그리고 조회마다 D1 쓰기가 늘어 쓰기 예산도 먹는다.',
+  },
+  {
+    name: '🧱 유어샵 핀 목록이 도매 원본 제외를 잃는다(카드는 뜨는데 클릭하면 404)',
+    file: 'src/worker/routes/curator.routes.ts',
+    find: "AND ${consumerVisibleProductSql('p')}\n         ORDER BY pp.position ASC",
+    replace: "AND 1=1\n         ORDER BY pp.position ASC",
+    test: 'src/tests/unit/qa-round1-fixes-2026-09-03.test.ts',
+    why:
+      '2026-09-03 QA 실측: /u/jongmun 의 핀이 도매 원본(id 6)이라 소비자 API 어디에도 없는데 ' +
+      '카드는 이름·가격·별점까지 그려졌다(핀 행이 products 를 JOIN 하니까). 클릭하면 404. ' +
+      '같은 파일의 픽커 쿼리엔 이 조건이 있고 표시 쿼리엔 없던 것이 사고의 모양이다.',
+  },
+  {
+    name: '🚦 /vouchers/:id 가 카드 결제 상품을 딜 결제 화면으로 그린다',
+    file: 'src/pages/VoucherDetailPage.tsx',
+    find: "if (flow !== 'voucher_deal') {",
+    replace: 'if (false) {',
+    test: 'src/tests/unit/qa-round1-fixes-2026-09-03.test.ts',
+    why:
+      '2026-09-03 QA 실측: 카드로 사는 숙박 이용권(2887)이 이 URL 에선 "209,000 딜 · 딜로 교환하기 · ' +
+      '환불 불가" 로 떴다 — 결제 수단과 가격 단위가 통째로 틀린 화면이다. 반대 방향(ProductDetailPage)은 ' +
+      '이미 막혀 있었다.',
+  },
+  {
+    name: '✍️ 쓰기 예산이 본진 몫을 안 뺀 값으로 돌아간다(계정 합계가 포함분에 붙는다)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: 'export const DEFAULT_DAILY_WRITE_BUDGET = 1_200_000',
+    replace: 'export const DEFAULT_DAILY_WRITE_BUDGET = 1_500_000',
+    test: 'src/tests/unit/ads-read-budget.test.ts',
+    why:
+      '포함분은 계정 단위인데 150만은 유어애즈만 보고 잡은 값이었다 — 본진 월 300만을 더하면 ' +
+      '4,800만/5,000만 = 96%(여유 4%). 본진 트래픽은 사용자가 늘면 커지고, 그때 넘는 것은 ' +
+      '유어애즈가 아니라 계정이라 유어딜이 같이 죽는다.',
+  },
+  {
+    name: '✍️ 회차가 쓴 행을 보고하지 않는다(원장이 영원히 0 — 조용한 무방비)',
+    file: 'src/worker-ads/lane-alarm.ts',
+    find: 'reportReadUsage(this.env, this.meter.rr, this.meter.rw, this.lane)',
+    replace: 'reportReadUsage(this.env, this.meter.rr)',
+    test: 'src/tests/unit/ads-read-budget.test.ts',
+    why:
+      '차단기는 서 있는데 계량기가 0 만 보낸다. 초과가 영원히 안 잡히고, 에러도 로그도 없다 — ' +
+      '이 레포가 반복해 만난 "실패가 아니라 조용한 부재" 그대로다.',
+  },
+  {
+    name: '✍️ 읽기를 끄면 쓰기 감시까지 사라진다(한쪽만 꺼도 무제한)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: '  if (budget <= 0 && writeBudget <= 0) return { ...idle, over: false, writeOver: false }',
+    replace: '  if (budget <= 0) return { ...idle, over: false, writeOver: false }',
+    test: 'src/tests/unit/ads-read-budget.test.ts',
+    why:
+      '읽기 예산을 0 으로 두는 건 흔한 조치인데(유료 전환 뒤 "읽기는 넉넉하니 끄자"), 그때 쓰기 ' +
+      '차단기까지 같이 죽으면 요금 상한이 통째로 사라진다.',
+  },
+  {
     name: '🪦 거르지 못하는 bio 인덱스가 되살아난다(부분 인덱스를 이겨 다시 하루 4,111만 행)',
     file: 'src/features/marketing/api/influencer-schema.ts',
     find: "'DROP INDEX IF EXISTS idx_ad_inf_leads_bio',",
@@ -6965,7 +9058,7 @@ canvas {
       '**에러 없이 엉뚱한 사람에게 2% 가 간다** — 가장 조용한 머니 사고다.',
   },
   {
-    name: '🔀 라우트가 반대편 종류로 위임한다 (사람↔에이전시 뒤바뀜)',
+    name: '🔀 재배정 라우트가 영입자(users.id) 아닌 종류로 위임한다',
     file: 'src/features/admin/api/admin-sellers.routes.ts',
     find: "reassignIntroducer(c, 'influencer', safeAdminError)",
     replace: "reassignIntroducer(c, 'agency', safeAdminError)",
@@ -6988,24 +9081,27 @@ canvas {
   {
     name: '🛑 폐지한 에이전시 영입 1% 축이 타입으로 되살아난다',
     file: 'src/worker/utils/order-commissions.ts',
-    find: "export type CommissionAxis = 'affiliate' | 'multi_tier' | 'influencer_intro' | 'supplier'",
-    replace: "export type CommissionAxis = 'affiliate' | 'multi_tier' | 'influencer_intro' | 'agency_intro' | 'supplier'",
-    test: 'src/tests/unit/agency-intro-retired.test.ts',
+    // 🗺️ 2026-09-05: 크리에이터 영입 2% 폐지로 'influencer_intro' 가 타입에서 빠져 이 지도가 낡았다.
+    //   (pre-commit 의 '낡은 지도' 검사가 잡았다 — 그게 이 검사의 두 번째 역할이다.)
+    // 🌇 같은 날 에이전시 일몰로 `agency-intro-retired.test.ts` 가 `agency-sunset-final.test.ts` 로
+    //   대체됐다(그 파일의 "역전은 남는다"가 일몰과 정반대라 지웠다) — 지키는 불변식은 동일하다.
+    find: "export type CommissionAxis = 'affiliate' | 'multi_tier' | 'supplier'",
+    replace: "export type CommissionAxis = 'affiliate' | 'multi_tier' | 'agency_intro' | 'supplier'",
+    test: 'src/tests/unit/agency-sunset-final.test.ts',
     why:
       '타입에서 뺀 것이 이 폐지의 자물쇠다 — 호출부가 컴파일로 막힌다. 되살아나면 같은 행위(매장 영입)에 ' +
       '신분별 이중 보상이 돌아오고, 대행 5% 매장에서 유어딜이 0.25% 만 남는 적자 구간이 다시 열린다.',
   },
   {
-    name: '🛑 환불 역전만 지워 비대칭이 된다',
+    name: '🌇 일몰한 에이전시 환불 역전이 되살아난다',
     file: 'src/worker/utils/order-refund.ts',
-    // ⚠️ 이름만으로는 import·호출 두 곳에 걸린다 — 호출 줄로 앵커를 좁힌다.
-    find: "await reverseAgencyStoreIntroOnRefund(DB, orderId, 'order_refund')",
-    replace: '/* 역전 제거 */',
-    test: 'src/tests/unit/agency-intro-retired.test.ts',
+    find: '  // 🌇 2026-09-04 에이전시 일몰 — `reverseAgencyStoreIntroOnRefund` 호출을 삭제했다. 적립은',
+    replace: "  await (await import('./agency-store-intro-commission')).reverseAgencyStoreIntroOnRefund(DB, orderId, 'order_refund')\n  //",
+    test: 'src/tests/unit/agency-sunset-final.test.ts',
     why:
-      '적립만 없애고 역전까지 지우면 과거·수동 행이 환불돼도 안 돌아온다. ' +
-      '⚠️ 이 주입은 처음에 통과했다 — 가드가 `toContain(이름)` 이라 `_REMOVED` 접미사가 붙어도 ' +
-      '앞부분이 일치했기 때문이다. 호출 형태(`이름(`)로 보도록 고쳤다.',
+      '2026-08-31 에는 "역전은 남긴다"가 맞았고 이 자리의 주입은 정반대 방향이었다. ' +
+      '2026-09-04 대표 확정으로 에이전시가 통째로 일몰이라 방향이 뒤집혔다 — 라이브 ' +
+      '`agency_store_intro_commissions` 0행이라 역전할 대상이 없고, 되살아나면 삭제한 파일을 다시 import 한다.',
   },
   {
     name: '🕳️ 빌드 CSS 가드를 워크플로에서 떼어낸다 (파일만 남고 안 돎)',
@@ -7092,6 +9188,26 @@ canvas {
       '대표가 "무상딜을 받을 수 있는 방법이 없는데?" 라고 물어 이 절이 생겼다.',
   },
   {
+    name: '💸 후기 보너스 차감이 지급보다 먼저 돈다 (지급 없이 청구)',
+    file: 'src/features/group-buy/api/review-bonus.routes.ts',
+    find: "  const paid = await payBonus(DB, submission.user_id, bonusAmount, submission.voucher_id)",
+    replace: "  await debitStoreForReviewBonus(DB, { submissionId: id, sellerId: submission.seller_id, amount: bonusAmount, fundedBy: bonusPolicy.fundedBy }).catch(() => {})\n  const paid = await payBonus(DB, submission.user_id, bonusAmount, submission.voucher_id)",
+    test: 'src/tests/unit/review-bonus-debit.test.ts',
+    why:
+      '지급이 실패하면 상태가 원복되는데, 차감이 먼저 돌면 **손님은 딜을 못 받았는데 매장만 청구**된다. ' +
+      '순서 자체가 안전장치라 코드가 아니라 배치가 계약이다.',
+  },
+  {
+    name: '💸 후기 보너스 차감이 유어딜 부담 건까지 매장에 물린다',
+    file: 'src/features/group-buy/api/review-bonus-funding.ts',
+    find: "  if (params.fundedBy !== 'owner') return false",
+    replace: "  if (false) return false",
+    test: 'src/tests/unit/review-bonus-debit.test.ts',
+    why:
+      '게이트가 꺼져 있거나 매장이 금액을 안 정한 건은 **유어딜 부담**이다. 이 조건이 빠지면 ' +
+      '매장이 아무것도 안 했는데 정산에서 빠진다 — 매장 입장에선 설명 없는 차감이다.',
+  },
+  {
     name: '🧾 후기 보너스 게이트가 없어져 매장이 모르는 사이 청구된다',
     file: 'src/features/group-buy/api/review-bonus-funding.ts',
     find: 'fundedBy: ownerGateOn && storeSet ? \'owner\' : \'platform\',',
@@ -7110,6 +9226,46 @@ canvas {
     why:
       '매장이 셀러 대시보드에서 정한 값이 안 먹으면, 화면엔 3,000원이라고 떠 있는데 실제로는 ' +
       '플랫폼 기본값이 나간다 — 표시와 지급이 갈리는 이 레포의 단골 사고다.',
+  },
+  {
+    name: '🪙 부분결제 게이트에서 딜 보너스 선행 조건이 사라진다',
+    file: 'src/features/admin/api/admin-system-monitoring.routes.ts',
+    find: "turn_on_when: '🔴 **먼저 influencer_deal_bonus_pct = 0**",
+    replace: "turn_on_when: '딜 잔액이 남아 못 쓰는 유저가 생기면",
+    test: 'src/tests/unit/voucher-partial-deal.test.ts',
+    why:
+      '켜는 사람은 어드민 화면의 이 한 줄로 판단한다. 선행이 지워지면 딜 보너스 20% 가 살아 있는 채 ' +
+      '켜져서 **팔릴수록 적자**가 된다 — 에러도 경보도 없이 마진에서만 샌다.',
+  },
+  {
+    name: '🪙 부분결제가 카드에 총액을 청구한다 (딜을 쓰고도 전액 결제)',
+    file: 'src/features/group-buy/api/group-buy.routes.ts',
+    find: '    amount: chargedAmount,\n  })',
+    replace: '    amount: expectedAmount,\n  })',
+    test: 'src/tests/unit/voucher-partial-deal.test.ts',
+    why:
+      '딜을 3,000 쓰기로 해 놓고 카드에서 10,000 을 긁으면 **유저가 13,000 을 낸다**. ' +
+      '이 레포에서 금액을 두 갈래로 나눌 때 가장 먼저 나는 사고이고, 화면엔 아무 표시도 안 난다.',
+  },
+  {
+    name: '🪙 부분결제가 매장 정산을 카드 청구액으로 줄인다',
+    file: 'src/features/group-buy/api/group-buy.routes.ts',
+    find: 'product.seller_id, expectedAmount, expectedAmount, paymentKey, paymentKey',
+    replace: 'product.seller_id, chargedAmount, chargedAmount, paymentKey, paymentKey',
+    test: 'src/tests/unit/voucher-partial-deal.test.ts',
+    why:
+      '딜도 유저가 현금으로 충전한 돈이라 매장 몫은 총액 기준이다(대표: "어차피 원래 정산을 ' +
+      '해줬어야 하는 돈"). 여기가 카드 청구액으로 바뀌면 딜을 쓴 만큼 **매장이 덜 받는다**.',
+  },
+  {
+    name: '🪙 부분결제 딜 차감의 잔액 가드가 사라진다 (마이너스 잔액)',
+    file: 'src/features/group-buy/api/partial-deal.ts',
+    find: "    type: 'usage',\n    guardBalance: true,",
+    replace: "      type: 'usage',\n      orderId: orderNumber,",
+    test: 'src/tests/unit/voucher-partial-deal.test.ts',
+    why:
+      '결제창에 머무는 동안 다른 탭에서 딜을 다 써도 차감이 그냥 통과한다 — 잔액이 음수가 되거나 ' +
+      '실제로는 못 받은 돈으로 이용권이 나간다. 원자 CAS 가 이 레일의 유일한 진실이다.',
   },
   {
     name: '📖 운영백서 숫자표 검사를 CI 에서 뗀다 (다른 세션 변경이 문서에 안 닿음)',
@@ -7158,8 +9314,10 @@ canvas {
   },
   {
     name: '🖼️ cfImage <img> 에서 onError 가 사라진다 (깨진 이미지 아이콘 노출)',
-    file: 'src/components/search/ProductCard.tsx',
-    find: 'onError={(e) => cfImageOnError(e.currentTarget, product.image_url)}',
+    // 2026-09-03: 검색 카드가 격자 SSOT 어댑터가 되면서 자체 <img> 가 사라졌다.
+    //   같은 불변식을 **지금 실제로 <img> 를 그리는** 미니 카드에서 지킨다.
+    file: 'src/components/deal/DealMiniCard.tsx',
+    find: 'onError={(e) => cfImageOnError(e.currentTarget, imageUrl)}',
     // ⚠️ 빈 문자열로 지우지 않는다 — `replace: ''` 는 --verify-clean 이 잔재를 **구분할 수 없다**
     //    (지웠는지 코드가 옮겨갔는지 같아 보인다). 눈에 띄는 표식을 남겨 잔재를 잡히게 한다.
     replace: 'data-mutation-removed-onerror',
@@ -7269,13 +9427,12 @@ canvas {
       '대표 2026-08-31 "할인율이 사진 안으로 들어가면 안돼" 를 형제 컴포넌트에도 적용한 것이라 못으로 박는다.',
   },
   {
-    name: '🏷️ 교환권 행(VoucherRow) 할인율이 다시 썸네일 위로',
+    name: '🏷️ 교환권 행(VoucherRow)이 줄 SSOT 에 할인율을 안 넘긴다 — 화면에서 조용히 사라진다',
     file: 'src/pages/vouchers/shared.tsx',
-    find: `      {/* 🎨 본문 — 우측.`,
-    replace: `        {discountRate > 0 && (
-          <span className="absolute top-1.5 left-1.5 text-[10px] font-extrabold bg-[#d1d5db] rounded px-1 py-0.5">{discountRate}%</span>
-        )}
-      {/* 🎨 본문 — 우측.`,
+    // 2026-09-03: 행 마크업이 `DealRow`(SSOT)로 옮겨져 옛 앵커(본문 주석)가 사라졌다.
+    //   이제 위험한 것은 "배지를 사진 위로 되돌리는 것"이 아니라 **위임했는데 값을 안 넘기는 것**이다.
+    find: 'discountPct={discountRate}',
+    replace: 'discountPct={0}',
     test: 'src/tests/unit/voucher-card-discount-once.test.ts',
     why:
       '모바일 목록 행도 같은 클래스였다 — 게다가 회색 배지라 눈에 띄지도 않으면서 썸네일만 가렸다. ' +
@@ -7292,16 +9449,1223 @@ canvas {
       '얹히기 쉬워서 다섯이 됐다. 접기 게이트가 사라지면 그 상태로 돌아간다.',
   },
   {
-    name: '🎫 딥링크 브랜드인데 스트립이 접힌 채 시작 (왜 걸러졌는지 알 수 없다)',
+    name: '🎫 브랜드 스트립이 다시 기본 접힘으로 (대표 09-02 "브랜드 펼침 · 로고가 보이게" 역행)',
     file: 'src/pages/VouchersPage.tsx',
-    find: "useState(() => !!searchParams.get('brand'))",
-    replace: 'useState(false)',
+    find: "const [brandsOpen, setBrandsOpen] = useState(true)",
+    replace: "const [brandsOpen, setBrandsOpen] = useState(false)",
     test: 'src/tests/unit/vouchers-top-chrome.test.ts',
     why:
       '브랜드가 이미 선택된 채 들어오면(공유 링크·재진입) 목록은 걸러져 있는데 그 이유가 화면에 ' +
       '안 보인다. 접기를 넣으면서 같이 생기는 사각지대라 못으로 박는다.',
   },
+  {
+    name: '/map B안 — 지도 위 칩이 다시 테마를 따른다(다크에서 남색 알약)',
+    file: 'src/pages/restaurant-map/MapTopBar.tsx',
+    find: "const OVERLAY_SURF = 'bg-white text-gray-800",
+    replace: "const OVERLAY_SURF = 'bg-white dark:bg-[#11141C] text-gray-800",
+    test: 'src/tests/unit/map-chips-b.test.ts',
+    why:
+      '2026-09-02 대표 신고 "색깔이 눈에 잘 안 들어와" — 카카오 지도 타일은 다크에서도 밝다. ' +
+      '테마 가드는 dark: 추가를 오히려 권장하므로 이 회귀는 가드가 아니라 계약 테스트만 막는다.',
+  },
+  {
+    name: '/map B안 — 현위치 버튼 켜짐이 다시 잉크 면(다크에서 꺼짐과 같은 그림)',
+    file: 'src/pages/RestaurantMapPage.tsx',
+    find: "(nearMeMode || locating) ? 'bg-brand text-white' : 'bg-white text-gray-800'",
+    replace: "(nearMeMode || locating) ? 'bg-gray-900 text-white' : 'bg-white text-gray-800'",
+    test: 'src/tests/unit/map-chips-b.test.ts',
+    why: '2026-09-02 대표 신고 "눌렀는지 안눌렀는지 확인도 안돼". 켜짐은 블루 면이어야 다크·라이트 어디서든 갈린다.',
+  },
+  {
+    // 🗺️ 2026-09-09 (안 D4): 핀이 원형 사진+링 → 알약이 되면서 `const ring = …` 이 사라졌다.
+    //   지키는 규칙은 그대로 살아 있으므로(강조색은 브랜드 하나, 자리는 선택뿐) 새 구조로 재조준한다.
+    //   ⚠️ 이 건은 CI 가 "낡은 지도"로 잡아 줬다 — 로컬에서 `--only='🗺️'` 로만 돌려 이름이
+    //   `/map` 으로 시작하는 이 항목을 놓쳤다. 구조를 바꿀 땐 이름이 아니라 **파일**로 훑을 것.
+    name: '/map B안 — 핀 강조색이 카테고리 팔레트로 되돌아간다',
+    file: 'src/pages/restaurant-map/map-overlays.ts',
+    find: "return { pillBg: '#fff', pillFg: PIN_RING_INK, iconFg: '#3D4350', discountFg: PIN_RING_INK,",
+    replace: "return { pillBg: '#ec4899', pillFg: PIN_RING_INK, iconFg: '#10b981', discountFg: PIN_RING_INK,",
+    test: 'src/tests/unit/map-chips-b.test.ts',
+    why: '칩을 블루 하나로 정리해도 핀이 알록달록하면 정리가 무효다. 강조색은 하나, 자리는 선택뿐.',
+  },
+  {
+    name: '유어샵 안3 — 헤더가 방문자에게 팔로우 버튼을 준다',
+    file: 'src/pages/curator-page/CuratorHeader.tsx',
+    find: "{canEdit && !isOwner && (",
+    replace: "{!canEdit && <button type=\"button\" className={editBtnCls}>팔로우</button>}\n          {canEdit && !isOwner && (",
+    test: 'src/tests/unit/ushop-a3-p1.test.ts',
+    why:
+      '2026-09-02 대표: "그냥 방문자는 안보이면 되잖아". 시안 목업에 있던 "방문자일 때: 팔로우" 띠는 ' +
+      '설명용이었고 대표가 그 자리를 비우라고 했다. 방문자 화면과 주인 화면의 차이는 버튼 하나의 부재뿐.',
+  },
+  {
+    name: '유어샵 안3 — 주인 상단 안내 띠가 되살아난다',
+    file: 'src/pages/CuratorPage.tsx',
+    find: "        {/* 🩸 2026-08-26: `ownerView` 게이트라",
+    replace: "        {isOwner && previewAsVisitor && <div className=\"sticky top-0\">{t('curator.ownerViewBar', { defaultValue: '내 유어샵' })}</div>}\n        {/* 🩸 2026-08-26: `ownerView` 게이트라",
+    test: 'src/tests/unit/ushop-a3-p1.test.ts',
+    why: '2026-09-02 대표 "편집하기 UI 가 번잡하다" — 편집 진입은 헤더 블루 버튼 하나여야 한다.',
+  },
+  {
+    name: '유어샵 안P1 — 도구 화면(/u/me/add)까지 액자를 벗긴다',
+    file: 'src/shared/pc-fullbleed.ts',
+    find: "const USHOP_PC_RE = /^\\/(?:u|profile|s)\\/[^/]+$/",
+    replace: "const USHOP_PC_RE = /^\\/(?:u|profile|s)\\//",
+    test: 'src/tests/unit/ushop-a3-p1.test.ts',
+    why: '/u/me/add·/u/me/earnings 는 폰 폭으로 만든 도구 화면이라 액자에 남아야 한다. startsWith 로 잡으면 같이 벗겨진다.',
+  },
+  {
+    name: 'PC 마이 — 우측 칸이 다시 모바일 메뉴 목록으로(isPc 분기 제거)',
+    file: 'src/pages/UserProfilePage.tsx',
+    find: "      {isPc ? (\n        <AccountPcPane",
+    replace: "      {false ? (\n        <AccountPcPane",
+    test: 'src/tests/unit/account-pc-pane.test.ts',
+    why: '2026-09-02 대표 "PC 모드 답지 않은 페이지야". 좌우가 같은 메뉴를 두 번 보여 주던 화면으로 돌아간다.',
+  },
+  {
+    name: 'PC 마이 — 보라 그라디언트 헤더 띠가 되살아난다',
+    file: 'src/pages/UserProfilePage.tsx',
+    find: "<div className={isPc ? 'hidden' : ''}>",
+    replace: "<div className={`bg-gradient-to-b from-white via-warm to-warm dark:from-[#171026] ${isPc ? 'hidden' : ''}`}>",
+    test: 'src/tests/unit/account-pc-pane.test.ts',
+    why: '표면 규칙 ⑥ 그라디언트 0. 다크의 #171026 보라는 체계 밖 색이었다.',
+  },
+  {
+    name: '셀러 B안 — STEP 카드 밴드가 다시 잉크(사이드바·카드·버튼 셋이 검정)',
+    file: 'src/pages/seller-page/MyStoresPanel.tsx',
+    find: "h-11 px-4 text-[14px] text-white bg-brand tabular-nums",
+    replace: "h-11 px-4 text-[14px] text-white bg-gray-900 tabular-nums",
+    test: 'src/tests/unit/seller-dashboard-b.test.ts',
+    why: '2026-09-02 대표 확정 B안. 강조는 밴드 하나(블루)여야 잉크 사이드바와 경쟁하지 않는다.',
+  },
+  {
+    name: '셀러 B안 — 상담 FAB 이 카카오 노랑으로 돌아간다',
+    file: 'src/components/SellerLayout.tsx',
+    find: "rounded-full bg-brand hover:bg-[#1557C8] text-white shadow-md",
+    replace: "rounded-full bg-[#FEE500] hover:bg-[#FDD835] text-[#3C1E1E] shadow-md",
+    test: 'src/tests/unit/seller-dashboard-b.test.ts',
+    why: '표면 규칙 ② 강조색 하나. 화면 구석의 노랑 원은 체계 밖 색이었다.',
+  },
+  {
+    name: '스크롤바 — thumb 이 브랜드 블루가 된다(가구가 강조색 예산을 먹음)',
+    file: 'src/index.css',
+    find: "  background: rgb(22 24 28 / .22);\n  border-radius: 99px;",
+    replace: "  background: rgb(28 105 239 / .55);\n  border-radius: 99px;",
+    test: 'src/tests/unit/scrollbar-ink.test.ts',
+    why:
+      '2026-09-03 대표 확정 "안 1". 스크롤바는 가구지 강조 대상이 아니다 — 이 서비스의 색은 파랑 ' +
+      '하나이고 그 자리는 주 행동이 쓴다. 화면마다 파란 막대가 서면 정작 결제 버튼이 덜 띈다.',
+  },
+  {
+    name: '스크롤바 — 4px 로 얇아져 마우스로 못 잡는다',
+    file: 'src/index.css',
+    find: "::-webkit-scrollbar {\n  width: 8px;",
+    replace: "::-webkit-scrollbar {\n  width: 4px;",
+    test: 'src/tests/unit/scrollbar-ink.test.ts',
+    why: '시안 2안이 탈락한 이유. 윈도우 사용자는 지금도 막대를 끈다 — 4px 은 끌어 잡기 어렵다.',
+  },
+  {
+    name: '스크롤바 — 늘 밝은 대시보드에서 다크 흰 막대가 그대로 이긴다',
+    file: 'src/index.css',
+    find: '.dark .admin-light-theme ::-webkit-scrollbar-thumb,\n',
+    replace: '',
+    test: 'src/tests/unit/scrollbar-ink.test.ts',
+    why:
+      '2026-09-03 — 처음엔 light-island 하나만 덮었다. 셀러·어드민·에이전시·도매 대시보드는 다크모드에서도 ' +
+      '통째로 라이트라, 흰 배경 위에 흰 막대가 떠 스크롤바가 안 보였다. 어제 지도 검색창에서 잡은 ' +
+      '"밝은 면 위 밝은 글자"를 스크롤바로 그대로 반복한 것.',
+  },
+  {
+    name: '스크롤바 — 숨김 표기가 다시 즉석 arbitrary 로 갈린다(파이어폭스만 막대 남음)',
+    file: 'src/pages/SellerPublicPage.tsx',
+    find: 'overflow-x-auto -mx-1 px-1 scrollbar-hide',
+    replace: 'overflow-x-auto -mx-1 px-1 [&::-webkit-scrollbar]:hidden',
+    test: 'src/tests/unit/scrollbar-ink.test.ts',
+    why:
+      '이름이 셋(scrollbar-hide / no-scrollbar / noscroll)에 즉석 표기까지 섞여 있었고, 즉석 표기 몇은 ' +
+      '웹킷만 끄고 scrollbar-width 를 빼먹어 파이어폭스에서만 막대가 남았다. 표기는 하나로 고정한다.',
+  },
+  {
+    name: '지도 검색 — 결과 핀보다 지명 지오코딩을 먼저 한다(목록과 지도가 다른 도시)',
+    file: 'src/pages/restaurant-map/pan-to-region.ts',
+    find: '  if (fitToPins(map, pins)) return true\n  return panToPlaceQuery(map, query)',
+    replace: '  const geo = await panToPlaceQuery(map, query)\n  return geo || fitToPins(map, pins)',
+    test: 'src/tests/unit/map-search-follows-results.test.ts',
+    why:
+      '2026-09-03 대표 신고 "검색을 했을 때 무관한 지도 위치가 떠. 심각한 문제야". `커트` 결과는 동탄 2건인데 ' +
+      '지도는 인천 부평으로 갔다 — 카카오 장소검색이 "커트"에 걸리는 아무 상호를 물어다 주기 때문. ' +
+      '지도는 검색 결과를 따라가야 하고, 지명 해석은 결과가 0일 때만이다.',
+  },
+  {
+    name: '지도 검색 — 서버 검색이 끝나기 전에 지명으로 단정한다',
+    file: 'src/pages/restaurant-map/useSearchPan.ts',
+    find: '    if (pins.length === 0 && resultsReadyFor !== key) return',
+    replace: '',
+    test: 'src/tests/unit/map-search-follows-results.test.ts',
+    why:
+      '클라가 들고 있는 딜만으로는 0건이어도 서버 q검색이 곧 결과를 준다. 그 사이에 지명으로 날아가면 ' +
+      '결과가 도착해도 지도는 이미 엉뚱한 도시에 가 있다.',
+  },
+  {
+    name: '홈 히어로 — 사진 소스가 하드로드 시드 하나로 되돌아간다(새로고침해야 보임)',
+    file: 'src/components/home/useHeroPhoto.ts',
+    find: 'for (const [, data] of qc.getQueriesData({ queryKey: FEED_PREFIX })) {',
+    replace: 'for (const [, data] of [] as [unknown, unknown][]) {',
+    test: 'src/tests/unit/hero-photo-source.test.ts',
+    why:
+      '2026-09-03 대표 신고 "히어로 이미지가 항상 새로고침을 해야 보이네..? 심각해". 사진 출처가 ' +
+      '`__SSR_INITIAL_MAIN__` 시드 하나뿐이었는데 그 시드는 `/` **하드로드에서만** 문서에 들어간다. ' +
+      '앱 안에서 홈 탭으로 들어오면 색면만 남았고 에러가 없어 아무도 몰랐다(어드민 히어로 배너 0건이라 ' +
+      '대안도 없었다 — 라이브 실측).',
+  },
+  {
+    name: '숙소 목록 — 카드가 다시 갈린다(네 번째 세대)',
+    file: 'src/pages/StaysSearchPage.tsx',
+    find: '<GroupBuyFeedCard',
+    replace: '<div',
+    test: 'src/tests/unit/urshop-card-unify.test.ts',
+    why:
+      '2026-09-03 대표 "여기 UI도 통일화 해야지". 숙소 목록은 테두리 카드 + hover 그림자 + 사진 위 배지 2개 ' +
+      '+ 편의시설 pill 로 **네 번째 카드 세대**였다. 각 세대는 따로 보면 멀쩡해서 나란히 놓고 봐야만 드러난다.',
+  },
+  {
+    name: '숙소 카드 — 날짜·인원을 잃는다(상세가 오늘 날짜로 다시 잡아 요금이 달라짐)',
+    file: 'src/pages/StaysSearchPage.tsx',
+    find: '?check_in=${filters.check_in}&check_out=${filters.check_out}&guests=${filters.guests}',
+    replace: '',
+    test: 'src/tests/unit/urshop-card-unify.test.ts',
+    why:
+      '카드 통일에서 조용히 빠지기 쉬운 자리. 화면엔 149,000원인데 상세는 다른 날짜 요금을 보여준다 — ' +
+      '에러가 안 나고 사용자가 결제 직전에야 안다.',
+  },
+  {
+    name: '유어샵 내 상품 — 옛 대표색 카드로 되돌아간다(같은 상품이 홈과 달라 보임)',
+    file: 'src/pages/SellerPublicPage.tsx',
+    find: '<GroupBuyFeedCard',
+    replace: '<BrowseProductCard',
+    test: 'src/tests/unit/urshop-card-unify.test.ts',
+    why:
+      '2026-09-03 대표 "홈 카드로 동일해야지 — 안 A". 8-27 유어샵 통일에서 **내 상품 그리드만 빠져** ' +
+      '같은 상품이 홈에서는 사진+맨 텍스트, 유어샵에서는 사진 대표색 색면 카드(+사진 위 그라디언트, ' +
+      '코랄 할인율)로 나왔다. 카드가 두 벌이면 반드시 갈린다 — 이 레포가 세 번째로 겪은 자리.',
+  },
+  {
+    name: '딜 카드 격자 — 세로 간격이 다시 가로와 같아진다(카드 경계가 안 읽힌다)',
+    file: 'src/shared/deal-card-grid.ts',
+    find: "'gap-x-3 gap-y-6 lg:gap-x-4 lg:gap-y-7'",
+    replace: "'gap-x-3 gap-y-3 lg:gap-x-4 lg:gap-y-4'",
+    test: 'src/tests/unit/deal-card-grid-gap.test.ts',
+    why:
+      '2026-09-03 대표 "이용권 간의 세로폭이 있어야할 것 같은데" → 안 1 확정. 카드 안 여백이 2~8px 인데 ' +
+      '카드 사이가 12px 이면 안팎 차이가 없어 어디까지가 한 카드인지 안 끊긴다. 세로만 24px 로 벌린다.',
+  },
+  {
+    name: '딜 카드 격자 — 한 화면만 간격을 손으로 적어 갈린다',
+    file: 'src/pages/WishlistPage.tsx',
+    find: 'xl:grid-cols-4 ${DEAL_GRID_GAP}`',
+    replace: 'xl:grid-cols-4 gap-3`',
+    test: 'src/tests/unit/deal-card-grid-gap.test.ts',
+    why:
+      '이 카드는 홈·찜·유어샵·편성 섹션이 같이 쓴다. 격자마다 gap 을 손으로 적으면 같은 상품이 화면마다 ' +
+      '다른 간격으로 놓인다 — 카드 자체로 이미 한 번 겪은 일(홈 섹션 카드 ↔ 피드 카드가 두 벌이었다).',
+  },
+  {
+    name: '지도 오버레이 — light-island 가 빠져 흰 검색창에 흰 글자',
+    file: 'src/pages/restaurant-map/MapTopBar.tsx',
+    find: "'light-island lg:hidden absolute top-0 left-0 right-0 z-40 px-3 pt-3 pointer-events-none'",
+    replace: "'lg:hidden absolute top-0 left-0 right-0 z-40 px-3 pt-3 pointer-events-none'",
+    test: 'src/tests/unit/light-island-inputs.test.ts',
+    why:
+      '2026-09-03 대표 신고 "글자가 또 하얘". 전역 .dark input(0,5,1)이 text-gray-900(0,1,0)을 언제나 ' +
+      '이겨서, light-island 가 없으면 흰 검색창 글자가 다크에서 gray-100 이 된다(실측 대비 1.1:1). ' +
+      'light-fixed 주석은 가드 면제일 뿐 런타임 효력이 없다.',
+  },
+  {
+    name: '지도 패널 — 테마 대응이 사라진다(패널까지 light-island)',
+    file: 'src/pages/restaurant-map/MapTopBar.tsx',
+    find: "? 'hidden lg:block px-3 pt-3 pb-2.5 space-y-2 border-b border-gray-100 dark:border-[#2C2F35]'",
+    replace: "? 'light-island hidden lg:block px-3 pt-3 pb-2.5 space-y-2 border-b border-gray-100'",
+    test: 'src/tests/unit/light-island-inputs.test.ts',
+    why: 'PC 리스트 패널은 지도 위가 아니라 앱 안이라 테마를 따라야 한다. 섬을 남발하면 다크에서 흰 덩어리가 된다.',
+  },
+  {
+    name: 'light-island — placeholder/autofill 규칙에서 다시 빠진다',
+    file: 'src/index.css',
+    find: ".light-island input::placeholder, .light-island textarea::placeholder {",
+    replace: ".light-island-DISABLED input::placeholder, .light-island-DISABLED textarea::placeholder {",
+    test: 'src/tests/unit/light-island-inputs.test.ts',
+    why:
+      '색 규칙에만 있고 placeholder/autofill 에 빠져 있던 것이 2026-09-03 실측으로 드러났다. ' +
+      '하나라도 빠지면 그 상태(빈 입력·자동완성)만 다크색으로 남는다.',
+  },
+  {
+    name: 'PC 홈 히어로 — 위치 컨트롤이 다시 칩 둘로 쪼개진다',
+    file: 'src/pages/pc-home/PcHomeLocationBar.tsx',
+    find: "? 'inline-flex items-stretch h-8 rounded-full overflow-hidden bg-white text-[#16181C]'",
+    replace: "? 'flex items-center gap-2'",
+    test: 'src/tests/unit/pc-home-hero-controls.test.ts',
+    why:
+      '2026-09-03 대표 "AI 느낌" 의 정체는 위계 부재였다. "어디를 볼까" 하나의 일이 같은 무게 알약 ' +
+      '둘로 쪼개지면 다시 그 화면이 된다.',
+  },
+  {
+    name: 'PC 홈 히어로 — 흰 칩이 블루 버튼과 같은 높이가 된다',
+    file: 'src/pages/pc-home/PcHomeLocationBar.tsx',
+    find: 'inline-flex items-stretch h-8 rounded-full',
+    replace: 'inline-flex items-stretch h-[38px] rounded-full',
+    test: 'src/tests/unit/pc-home-hero-controls.test.ts',
+    why:
+      '대표 확정 "한 단계 작게". 같은 높이면 화면에서 가장 밝은 흰 덩어리가 주 행동(블루)보다 먼저 ' +
+      '읽혀 위계가 뒤집힌다.',
+  },
+  {
+    name: 'PC 홈 히어로 — 주 행동이 다시 테두리 고스트 알약이 된다',
+    file: 'src/components/home/HomeHeroDefault.tsx',
+    find: 'rounded-full bg-brand text-white text-[13.5px] font-extrabold hover:bg-[#1557C8]',
+    replace: 'rounded-full border border-white/25 text-white text-[13.5px] font-extrabold hover:bg-white/10',
+    test: 'src/tests/unit/pc-home-hero-controls.test.ts',
+    why: '표면 규칙 ② 강조색 하나, 자리 셋 — 히어로에서 그 자리는 주 행동이다. 블루가 빠지면 넷 다 같은 무게로 돌아간다.',
+  },
+  {
+    name: '홈 패널 라이트 섬 — darkMode variant 에서 예외가 사라진다',
+    file: 'tailwind.config.js',
+    find: "&:is(.dark *):not(.light-island *)",
+    replace: "&:is(.dark *)",
+    test: 'src/tests/unit/home-panel-light-island.test.ts',
+    why: '2026-09-02 대표 확정 안A. 예외가 사라지면 패널 안 dark: 유틸이 다시 켜져 흰 패널 위에 흰 글자가 뜬다.',
+  },
+  {
+    name: '홈 패널 라이트 섬 — 패널 한 곳에서 light-island 가 빠진다',
+    file: 'src/pages/pc-home/PcHomePage.tsx',
+    find: 'className="ur-home-panel light-island"',
+    replace: 'className="ur-home-panel"',
+    test: 'src/tests/unit/home-panel-light-island.test.ts',
+    why: '섬 클래스가 빠진 패널은 다크에서 흰 배경 + 다크 글자색이 섞여 안 보인다.',
+  },
+  {
+    name: '🎫 이용권 리뷰가 다시 "구매만 하면" 쓸 수 있게 된다',
+    file: 'src/features/reviews/api/review-eligibility.ts',
+    find: "AND user_id = ? AND status = 'used' ORDER BY used_at DESC LIMIT 1",
+    replace: "AND user_id = ? AND status IN ('unused','used') ORDER BY used_at DESC LIMIT 1",
+    test: 'src/tests/unit/review-requires-voucher-use.test.ts',
+    why:
+      '이용권은 결제 즉시 주문이 DONE 이라 구매 기준으로는 매장에 가기 전에도 리뷰와 리워드가 났다. ' +
+      '분기 하나가 죽으면 소리 없이 그 상태로 돌아간다.',
+  },
+  {
+    name: '🎫 리뷰 이용권 게이트가 카테고리 조건을 잃어 배송 상품 구매자가 리뷰를 영영 못 쓴다',
+    file: 'src/features/reviews/api/review-eligibility.ts',
+    find: "getProductFlow(prod) === 'group_buy_toss' && isVoucherCategory(prod.category)",
+    replace: "getProductFlow(prod) === 'group_buy_toss'",
+    test: 'src/tests/unit/review-requires-voucher-use.test.ts',
+    why:
+      'migration 0146 이 `group_buy_status` 에 **모든 상품 DEFAULT active** 를 박아, 결제수단 판정만으로는 ' +
+      '배송되는 물건까지 이용권으로 분류된다(2026-09-02 라이브 실측 8건 — 한우 등심·참기름·명란젓·밀키트· ' +
+      '쌀조청·갈치·Canvas Tote Bag). 매장에서 쓸 일이 없으니 `used` 가 될 수 없고 ⇒ 리뷰가 **영구 차단**된다. ' +
+      '첫 판이 실제로 그 상태로 배포됐다.',
+  },
+  {
+    name: '🎫 리뷰 이용권 조회가 발급과 다른 user_id 정규화로 돌아간다',
+    file: 'src/features/reviews/api/review-eligibility.ts',
+    find: 'const voucherUserId = await resolveUserIdString(DB, userId, isDbId)',
+    replace: 'const voucherUserId = String(userId)',
+    test: 'src/tests/unit/review-requires-voucher-use.test.ts',
+    why:
+      '발급(`group-buy.routes`)은 `resolveUserIdString` 로 쓴다. 읽기만 raw 로 돌아가면 정규화가 갈리는 ' +
+      '계정에서 **자기 이용권을 못 찾아** 매장에 다녀온 사람이 리뷰를 못 쓴다 — 에러가 아니라 "안 다녀온 것" 으로 보인다.',
+  },
+  {
+    name: '🎫 리뷰 자격 조회 실패가 다시 "자격 없음" 으로 위장한다',
+    file: 'src/features/reviews/api/review-eligibility.ts',
+    find: "        error_code: 'REVIEW_ELIGIBILITY_UNAVAILABLE',",
+    replace: "        error_code: 'VOUCHER_NOT_USED',",
+    test: 'src/tests/unit/review-requires-voucher-use.test.ts',
+    why:
+      '조회 자체가 실패한 것(테이블 부재·일시 오류)을 403 자격 없음으로 말하면, 매장에 다녀온 사용자가 ' +
+      '"다녀오라" 는 문구를 본다. 원인을 알 길이 없는 문구라 문의조차 못 한다 — 503 으로 갈라야 한다.',
+  },
+  {
+    name: '🎟️ 발송 실패한 교환권을 다시 "내 교환권" 으로 센다',
+    file: 'src/pages/user-profile/useMyCounts.ts',
+    find: 'vouchers.filter(v => isGifticonVoucher(v) && !isFailedGifticon(v)).length',
+    replace: 'vouchers.filter(isGifticonVoucher).length',
+    test: 'src/tests/unit/gifticon-failed-not-counted.test.tsx',
+    why:
+      '대표가 지목한 숫자가 정확히 이것이다 — 문자조차 못 받은 교환권을 "내 교환권 1" 로 말하면 거짓이다. ' +
+      'KT 병합이 발송 실패를 status:unused 로 눌러 담기 때문에 kt_status 를 안 보면 되살아난다. ' +
+      '⚠️ 이 항목은 되돌려-검증에서 **처음엔 통과했다** — 지갑 페이지만 테스트하고 이 카운트를 안 봤다.',
+  },
+  {
+    name: '🎟️ 교환권 지갑이 발송 실패분을 다시 사용가능·합계에 넣는다',
+    file: 'src/pages/MyGifticonsPage.tsx',
+    find: '  const owned = items.filter(v => !isFailedGifticon(v))',
+    replace: '  const owned = items.filter(() => true)',
+    test: 'src/tests/unit/gifticon-failed-not-counted.test.tsx',
+    why:
+      "실패분이 '사용 가능 N장' 과 상단 딜 합계에 섞이면 쓸 수 없는 것을 자산으로 표시하는 것이다. " +
+      '카드는 계속 보여야 하지만(문의 경로) 세면 안 된다.',
+  },
+  {
+    name: '🎟️ 이용권 현황이 교환권까지 센다 (마이가 자기 자신과 모순)',
+    file: 'src/pages/user-profile/OrderStatusBar.tsx',
+    find: '      if (!isStoreVoucher(v)) continue',
+    replace: '      if (false && !isStoreVoucher(v)) continue',
+    test: 'src/tests/unit/voucher-status-wallet-split.test.tsx',
+    why:
+      '대표 신고가 정확히 이 상태였다 — 위는 "이용권 현황 구매완료 1 · 사용가능 1", 아래 "내 이용권" 은 0. ' +
+      '한 배열로 오는 두 지갑을 아래 두 행(`useMyCounts`)만 `voucher-wallet` SSOT 로 갈라서, ' +
+      '이 바만 통째로 세면 같은 화면이 서로 다른 답을 말한다.',
+  },
+  {
+    name: "🎟️ '사용가능' 이 다시 else 폴백 (모르는 상태를 전부 쓸 수 있다고 말한다)",
+    file: 'src/pages/user-profile/OrderStatusBar.tsx',
+    find: "      if (st === 'unused' || st === '') c.usable++",
+    replace: '      c.usable++',
+    test: 'src/tests/unit/voucher-status-wallet-split.test.tsx',
+    why:
+      'KT 병합은 **발송 실패**를 `status:\'unused\'` + `kt_status:\'failed\'` 로 실어 보낸다(카드가 실패 UI 를 ' +
+      '그리라고). else 폴백이면 문자조차 못 받은 교환권이 "지금 쓸 수 있음" 으로 집계된다 — 실측된 그 1건이다. ' +
+      '틀린 칸에 넣느니 안 세는 게 낫다.',
+  },
+  {
+    name: '📝 리뷰 버튼이 다시 글자 수로 hard-disable (잠기면 아무도 이유를 모른다)',
+    file: 'src/pages/product-detail/ProductReviews.tsx',
+    find: '          disabled={submitting}',
+    replace: '          disabled={content.length < MIN_REVIEW_LEN || submitting}',
+    test: 'src/tests/unit/review-gate-clicktime.test.tsx',
+    why:
+      '대표 신고가 정확히 이 상태였다 — 10자 이상인데 흐릿한 비활성. 클라 state 에 버튼을 묶으면 ' +
+      'IME·재렌더·캐시와 desync 되는 순간 버튼이 잠기고, 잠긴 버튼은 이유를 말할 방법이 없다. ' +
+      '2026-06-26 TossPaymentWidget 이 같은 사고를 내고 클릭-시점 검증으로 옮겼다.',
+  },
+  {
+    name: '🎫 리뷰 자격을 미리 알리지 않고 다 쓴 뒤에 거절한다',
+    file: 'src/pages/product-detail/ProductReviews.tsx',
+    find: "              const r = await api.get(`/api/reviews/product/${productId}/eligibility`)",
+    replace: '              const r = { data: { data: { ok: true } } }',
+    test: 'src/tests/unit/review-gate-clicktime.test.tsx',
+    why:
+      '대표 지시 — "이용권 사용해야 리뷰 쓸 수 있게 해야지". 미리 안 물으면 사용자는 별점 고르고 ' +
+      '사진 붙이고 열 줄 쓴 다음에야 안 된다는 걸 안다. 그 헛수고가 이 조회 한 번의 값이다.',
+  },
+  {
+    name: '📝 서버 거절 사유가 토스트로만 간다 (화면 맨 위 — 리뷰 폼은 맨 아래)',
+    file: 'src/pages/product-detail/ProductReviews.tsx',
+    find: '                setHint(msg)',
+    replace: '                void msg',
+    test: 'src/tests/unit/review-gate-clicktime.test.tsx',
+    why:
+      '토스트는 `fixed top-4` 다. 리뷰 폼은 페이지 맨 아래이고 모바일은 키보드까지 올라와 있어 ' +
+      '사용자에겐 "아무 일도 안 일어났다" 로 보인다 — 대표가 "안 눌러진다" 고 읽은 것이 이것일 수 있다.',
+  },
+  {
+    name: '🔎 검색이 다시 접두사 매칭으로 — 단어 안쪽을 못 찾는다',
+    file: 'src/features/products/repositories/search-query.ts',
+    find: '      const like = `%${escapeLike(v)}%`',
+    replace: '      const like = `${escapeLike(v)}%`',
+    test: 'src/tests/unit/search-engine-rebuild.test.ts',
+    why:
+      '라이브가 정확히 이 상태였다(porter FTS 접두사 매칭) — `돈가스` 로 "치즈돈가스 2인 세트" 를 ' +
+      '못 찾아 0건이었다. 한국어 상품명은 낱말이 붙어 있어 접두사만으로는 대부분 못 잡는다.',
+  },
+  {
+    name: '🔎 검색 대상에서 매장명이 빠진다 (이용권은 매장이 본질)',
+    file: 'src/features/products/repositories/search-query.ts',
+    find: "export const SEARCH_COLUMNS = ['name', 'restaurant_name', 'description', 'category'] as const",
+    replace: "export const SEARCH_COLUMNS = ['name', 'description', 'category'] as const",
+    test: 'src/tests/unit/search-engine-rebuild.test.ts',
+    why:
+      '옛 FTS 인덱스가 이 상태였다 — name/description/category 만 담아 **매장명으로는 검색이 안 됐다.** ' +
+      '"홍대돈가스" 처럼 매장으로 찾는 것이 이용권 검색의 절반인데 그 절반이 없었다.',
+  },
+  {
+    name: '🎫 검색 결과가 다시 쇼핑 카드로 (이용권에 장바구니·무료배송 UI)',
+    file: 'src/pages/SearchPage.tsx',
+    find: "import RestaurantRow from '@/pages/restaurant-map/RestaurantRow'",
+    replace: "import ProductCard from '@/components/search/ProductCard'",
+    test: 'src/tests/unit/search-engine-rebuild.test.ts',
+    why:
+      '결과는 이용권만인데 그리는 옷이 배송 상품 것이었다(대표 신고). 홈과 같은 행을 쓰지 않으면 ' +
+      '두 표면이 갈리고, 다음 사람은 어느 쪽이 정본인지 알 수 없다.',
+  },
+  {
+    name: '🎟️ 이용권 셀프 사용 기본값이 다시 self_free 로 (설정 안 한 매장 전부 무방비)',
+    file: 'src/worker/utils/redemption-settings.ts',
+    find: "export const DEFAULT_REDEMPTION_MODE: RedemptionMode = 'store_code'",
+    replace: "export const DEFAULT_REDEMPTION_MODE: RedemptionMode = 'self_free'",
+    test: 'src/tests/unit/voucher-redeem-and-photos.test.ts',
+    why:
+      '2026-09-03 대표 확정 — "우리는 QR 아니면 매장 확인코드야". 기본이 느슨하면 사장님이 아무것도 ' +
+      '안 한 매장에서 손님이 **집에서도 이용권을 소각**할 수 있다. 실제로 그 상태로 라이브에 있었다.',
+  },
+  {
+    name: '🎟️ 판매자 없는 상품이 다시 셀프 사용 게이트를 통째로 건너뛴다',
+    file: 'src/features/group-buy/api/group-buy-public.routes.ts',
+    find: "      if (pre.status === 'unused') {",
+    replace: "      if (pre.seller_id != null && pre.status === 'unused') {",
+    test: 'src/tests/unit/voucher-redeem-and-photos.test.ts',
+    why:
+      '`seller_id != null` 조건 하나가 데모 이용권 100개 전량을 무방비로 두고 있었다. 게이트가 ' +
+      '있는 것과 도달하는 것은 다른 일이다 — 조건이 되살아나면 조용히 그 상태로 돌아간다.',
+  },
+  {
+    name: '🎟️ 셀프 사용 라우트가 게이트를 부르고도 거절을 무시한다',
+    file: 'src/features/group-buy/api/group-buy-public.routes.ts',
+    find: '        if (!gate.ok) return c.json({ success: false, code: gate.code, error: gate.error }, gate.status)',
+    replace: '        void gate',
+    test: 'src/tests/unit/voucher-redeem-and-photos.test.ts',
+    why:
+      '게이트를 별도 파일(self-redeem-gate)로 뽑고 나면 **배선이 눈에 안 보인다** — 판정을 부르고도 ' +
+      '반환하지 않으면 라우트는 그대로 통과시킨다. 판정 로직이 아무리 옳아도 결과가 같다.',
+  },
+  {
+    name: '🖼️ 커버 이관이 다시 갤러리 첫 칸을 안 고쳐 같은 사진이 두 장이 된다',
+    file: 'src/worker/cron/demo-image-rehost.ts',
+    find: 'const nextImages = replaceGalleryUrl(row.images, row.image_url, hosted)',
+    replace: 'const nextImages: string | null = null',
+    test: 'src/tests/unit/voucher-redeem-and-photos.test.ts',
+    why:
+      '`images[0]` 은 저장 시점의 커버인데 이관이 `image_url` 만 바꾸면 둘이 갈린다. R2 키가 랜덤 ' +
+      'UUID 라 표시 쪽에선 사본임을 알 길이 없다 — 실측 활성 이용권 100개 중 99개가 그 상태였다.',
+  },
+  {
+    name: '🖼️ 갤러리 정리 패스가 다시 넓게 골라 40건에서 조용히 멈춘다',
+    file: 'src/worker/cron/demo-image-rehost.ts',
+    find: "        AND json_extract(images, '$[0]') LIKE 'http%'`",
+    replace: "        AND images LIKE '%http%'`",
+    test: 'src/tests/unit/voucher-redeem-and-photos.test.ts',
+    why:
+      '갤러리는 3~5장이라 첫 칸을 고쳐도 뒤쪽 외부 주소 때문에 행이 후보로 남는다. 그렇게 고쳐진 ' +
+      '행이 ORDER BY 창 앞자리를 채우다 40개를 넘기면 창 전체가 no-op — 에러 없이 멈춘다.',
+  },
+  {
+    name: '🖼️ 갤러리 정리 패스가 R2 바인딩 조기반환 뒤로 밀린다 (영영 안 돎)',
+    file: 'src/worker/cron/demo-image-rehost.ts',
+    find: '  const gal = await repairGalleryCoverDrift(env).catch(() => ({ scanned: 0, fixed: 0, remaining: -1 }))',
+    replace: '  const gal = { scanned: 0, fixed: 0, remaining: -1 }',
+    test: 'src/tests/unit/voucher-redeem-and-photos.test.ts',
+    why:
+      '정리는 주소만 맞추는 DB 작업이라 버킷이 필요 없다. 조기반환 뒤에 두면 바인딩 없는 배포에서 ' +
+      '한 번도 안 돈다 — 같은 자리에서 이관이 넉 달간 죽어 있던 전례가 이 파일 주석에 있다.',
+  },
+  {
+    name: '📝 리뷰 최소 글자 안내가 사라져 버튼이 왜 안 눌리는지 아무도 모른다',
+    file: 'src/pages/product-detail/ProductReviews.tsx',
+    find: '      {content.length < MIN_REVIEW_LEN && !hint && (',
+    replace: '      {false && (',
+    test: 'src/tests/unit/voucher-redeem-and-photos.test.ts',
+    why:
+      '2026-09-03 대표 신고 — 두 글자 쓰고 "버튼이 아예 안 눌러진다". 규칙은 타당하지만 이유를 ' +
+      '안 쓰면 사용자는 고장으로 읽고 떠나므로, 그 뒤에 붙는 서버 판정 문구를 볼 기회조차 없다.',
+  },
+  {
+    name: '🎫 리뷰 라우트가 자격 판정을 부르고도 판정을 무시한다',
+    file: 'src/features/reviews/api/reviews.routes.ts',
+    find: '    if (!verdict.ok) {',
+    replace: '    if (false) {',
+    test: 'src/tests/unit/review-requires-voucher-use.test.ts',
+    why:
+      '판정을 모듈로 분리한 대가는 **배선이 눈에 안 보인다**는 것이다. 호출은 남고 판정만 죽으면 ' +
+      '게이트가 통째로 사라지는데 에러도 로그도 없다 — 이 레포가 반복해 만난 "실패가 아니라 조용한 부재".',
+  },
+  {
+    name: '🎫 담기 토스트가 409(이미 담김)를 다시 "오류" 로 보고한다',
+    file: 'src/features/curator/hooks/usePinAction.ts',
+    find: "      if (code === 'ALREADY_PINNED') toast.info(MSG.already)\n      else toast.error(error && error.length <= 30 ? error : MSG.failed)",
+    replace: '      toast.error(MSG.failed)',
+    test: 'src/tests/unit/consumer-popups-dark.test.ts',
+    why:
+      '서버 409 + ALREADY_PINNED 는 axios 가 throw 하므로 catch 안에서 읽어야 한다. 이 분기가 사라지면 ' +
+      '이미 담은 상품을 또 누른 사용자에게 "오류" 가 뜬다 — 2026-09-02 대표 신고의 본체.',
+  },
+  {
+    name: '🎫 리뷰 textarea 다크 배경이 다시 빠진다 (흰 바탕에 흰 글자)',
+    file: 'src/pages/product-detail/ProductReviews.tsx',
+    // 🔀 2026-09-15: 〃
+    find: 'bg-warm text-sm text-gray-900 dark:text-white',
+    replace: 'text-sm text-gray-900 dark:text-white',
+    test: 'src/tests/unit/consumer-popups-dark.test.ts',
+    why:
+      '전역 `.dark textarea{color:gray-100}` 가 글자를 흰색으로 만들므로 배경이 없으면 브라우저 기본 흰 바탕에 ' +
+      '흰 글자다. 테마 가드는 bg 토큰의 짝만 보고 "bg 가 아예 없음" 은 못 본다.',
+  },
+  {
+    name: '🎫 장바구니 래퍼가 다시 라이트 단독 배경 (다크에서 화면 절반 회색)',
+    file: 'src/pages/CartPage.tsx',
+    // 🔀 2026-09-15: 〃
+    find: 'min-h-[100dvh] bg-warm">',
+    replace: 'min-h-[100dvh] bg-[#F4F4F4]">',
+    test: 'src/tests/unit/consumer-popups-dark.test.ts',
+    why:
+      '장바구니 로그인 래퍼 하나만 dark: 가 없어 빈 장바구니 아래가 회색으로 남았다. 같은 파일의 다른 래퍼는 ' +
+      '전부 짝이 있어서 눈으로는 안 잡힌다.',
+  },
+  {
+    name: '🏨 숙소 달력 연박이 다시 막힌다 (체크아웃 단계가 죽음)',
+    file: 'src/pages/stay-detail/StayDateGuestPicker.tsx',
+    find: "  if (phase === 'out' && day > draftIn) return { draftIn, draftOut: day, phase: 'in' }",
+    replace: '',
+    test: 'src/tests/unit/stay-detail-pc-booking-panel.test.ts',
+    why:
+      '초기값이 늘 체크인+1박이라 "범위가 잡혔으면 새 체크인" 규칙으로는 체크아웃을 영영 못 찍었다. ' +
+      '이 한 줄이 없으면 그 상태로 돌아가는데 화면에선 에러가 없다.',
+  },
+  {
+    name: '🏨 숙소 달력이 다시 카카오맵 아래로 깔린다 (아사이드 z 제거)',
+    file: 'src/pages/StayDetailPage.tsx',
+    find: 'lg:sticky lg:top-[116px] lg:z-20">',
+    replace: 'lg:sticky lg:top-[116px]">',
+    test: 'src/tests/unit/stay-detail-pc-booking-panel.test.ts',
+    why:
+      'sticky 는 스택 컨텍스트를 만들고 z 가 없으면 지도 레이어(z≥1) 아래로 깔린다. 클래스 하나라 ' +
+      '정리하다 지우기 쉽다.',
+  },
+  {
+    name: '🗓️ 에이전시 위험 집계가 마감 기준으로 회귀 — 영구히 0 만 내는 지표',
+    file: 'src/worker/routes/disputes.routes.ts',
+    find: '        SELECT COUNT(*) AS active_count\n        FROM products p',
+    replace: '        SELECT\n          COUNT(*) AS active_count,\n          SUM(CASE WHEN p.group_buy_deadline < ? THEN 1 ELSE 0 END) AS at_risk_count\n        FROM products p',
+    test: 'src/tests/unit/no-deadline-sort.test.ts',
+    why: '마감이 없어졌으므로 NULL 비교라 언제나 0 이다. 크래시가 아니라 조용한 부재 — 화면은 멀쩡해 보인다.',
+  },
+  {
+    name: "🗓️ 홈·지도 피드 카드에 '마감 임박' 빨간 배지가 부활",
+    file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
+    find: '  const brandName = p.brand_name',
+    replace: "  const remaining = p.expires_at ? '\ub9c8\uac10 3\uc2dc\uac04' : null\n  const isUrgent = !!remaining\n  const brandName = p.brand_name",
+    test: 'src/tests/unit/no-deadline-sort.test.ts',
+    why: "리스트 API 가 판매 마감을 `p.group_buy_deadline AS expires_at` 으로 **이름을 바꿔** 내려서, 카드 코드만 보면 사용 기한처럼 읽힌다(원 필드명으로 grep 하면 안 걸린다). 게다가 시간·분 단위일 때만 떠서 평소엔 보이지도 않는다 — 2026-09-07 실측으로 09-09 부터 24시간만 켜질 예정이던 것을 잡았다.",
+  },
+  // 🌇 2026-09-05 에이전시 일몰 — `AgencyGroupBuyAlert.tsx` 주입 항목 삭제(파일이 없어졌다).
+  //    그 불변식은 `no-deadline-sort.test.ts` 의 **파일 부재** 단언이 더 강하게 대신한다.
+  {
+    name: '🗓️ 찜 목록에 하는 일이 없는 \'마감 임박\' 정렬 칩이 부활',
+    file: 'src/pages/wishlist/WishlistParts.tsx',
+    find: "  { key: 'discount', label: '할인율', pcOnly: true },",
+    replace: "  { key: 'deadline', label: '마감 임박' },\n  { key: 'discount', label: '할인율', pcOnly: true },",
+    test: 'src/tests/unit/wishlist-signals.test.ts',
+    why: '마감이 없으니 남은 일수가 전부 null = 정렬이 전부 동점 → 눌러도 순서가 그대로다. 하는 일이 없는 칩.',
+  },
+  {
+    name: '🗓️ 찜 신호 모듈에 마감 정렬 키가 되살아난다',
+    file: 'src/pages/wishlist/wishlist-signals.ts',
+    find: "export type WishlistSort = 'recent' | 'drop' | 'discount'",
+    replace: "export type WishlistSort = 'recent' | 'drop' | 'deadline' | 'discount'",
+    test: 'src/tests/unit/wishlist-signals.test.ts',
+    why: '타입이 먼저 살아나면 칩과 분기가 따라 들어온다 — 되살아나는 입구다.',
+  },
+  {
+    name: '🪦 서버 라우트 중복 가드가 2겹 중복을 놓친다 (실제 사고가 딱 2겹이었다)',
+    file: 'scripts/check-duplicate-hono-routes.mjs',
+    find: 'if (at.length > 1) violations.push',
+    replace: 'if (at.length > 2) violations.push',
+    test: 'src/tests/unit/duplicate-hono-routes-2026-09-05.test.ts',
+    why:
+      '오늘 찾은 실제 중복은 정확히 **2겹**이었다(GET /products/:id). 임계를 하나만 올리면 그 사고가 ' +
+      '그대로 통과한다. ⚠️ 오탐 필터(앵커·라우터명·경로 접두)는 서로 겹쳐 있어 하나 빼도 안 무너지므로 ' +
+      '(실측 확인) 주입 지점으로 쓸 수 없다 — 판정 임계가 이 가드의 유일한 단일 실패점이다.',
+  },
+  {
+    name: '💰 소개비 저장이 다시 등록 화면 전용이 된다 (한번 정하면 못 바꿈)',
+    file: 'src/features/seller/api/seller-orders.routes.ts',
+    find: `    // 💰 2026-09-05 (대표 확정 플로우 — 소개비는 매장이 정한다): 수정 화면에서도 변경 가능하게.
+    await applySellerPromoRate(db, productId, sellerId, body)`,
+    replace: '',
+    test: 'src/tests/unit/promo-lever-manage-2026-09-05.test.ts',
+    why:
+      '가격·재고는 다 고칠 수 있는데 마케팅 예산만 못 고치는 상태로 되돌아간다. 화면은 그대로 ' +
+      '입력을 받고 저장 성공처럼 보이므로 매장 입장에선 "바꿨는데 안 바뀐다" 가 된다.',
+  },
+  {
+    name: '🚨 소개비 게이트가 사라진다 (매장이 건 소개비를 유어딜이 문다)',
+    file: 'src/worker/utils/seller-promo-rate.ts',
+    find: "if (gate?.value !== 'true' || !Number.isFinite(rate) || rate < 0 || rate > 0.5) return",
+    replace: 'if (!Number.isFinite(rate) || rate < 0 || rate > 0.5) return',
+    test: 'src/tests/unit/promo-lever-manage-2026-09-05.test.ts',
+    why:
+      '재원이 아직 플랫폼 부담(promo_funding_source≠owner)인데 게이트가 빠지면 매장이 건 소개비를 ' +
+      '유어딜이 대신 문다(재원 설계의 −14% 누수). 화면 플래그만으론 못 막는다 — API 직접 호출이 통한다.',
+  },
+  {
+    name: '🛑 꺼진 어필리에이트 적립이 다시 목록 API 로 새어 화면에 뜬다',
+    file: 'src/features/products/repositories/ProductRepository.ts',
+    find: 'return capGalleries(gateAffiliateRows(result.results || [], affiliateOn));',
+    replace: 'return capGalleries(result.results || []);',
+    test: 'src/tests/unit/affiliate-program-gate-2026-09-06.test.ts',
+    why:
+      '프로그램은 2026-08-22 에 꺼졌는데 유어샵 담기 화면이 "쓰면 2%" 를 약속하던 자리다. ' +
+      '지급은 0 인데 화면만 약속하므로 사용자가 담고 팔아도 아무 일이 안 일어난다 — 에러도 안 난다.',
+  },
+  {
+    name: '🛑 스위치를 못 읽을 때 적립을 약속하는 쪽으로 열린다 (fail-open 회귀)',
+    file: 'src/worker/utils/affiliate-program.ts',
+    find: `  } catch {
+    on = false                    // 못 읽으면 약속하지 않는다`,
+    replace: `  } catch {
+    on = true                     // (주입) 못 읽으면 약속한다`,
+    test: 'src/tests/unit/affiliate-program-gate-2026-09-06.test.ts',
+    why:
+      '설정 조회 실패는 "모름"이지 "켜짐"이 아니다. 이 자리가 열리면 D1 이 잠깐 흔들릴 때마다 ' +
+      '꺼진 프로그램의 적립이 화면에 떴다 사라진다 — 재현도 안 되고 로그도 조용하다.',
+  },
+  {
+    name: '💸 핀 관리가 적립 분수를 다시 100 으로 나눈다 (₩5,000 → ₩50)',
+    file: 'src/pages/curator-page/PinManageList.tsx',
+    find: 'const est = estRate != null ? Math.round(pin.price * estRate) : 0',
+    replace: 'const est = estRate != null ? Math.round(pin.price * estRate / 100) : 0',
+    test: 'src/tests/unit/affiliate-rate-ssot-2026-09-05.test.ts',
+    why:
+      'rate 는 분수(0.05)인데 퍼센트로 오해해 또 나누면 실제의 1/100 이 된다. 숫자가 뜨긴 떠서 ' +
+      '화면만 보면 안 틀린 것처럼 보인다 — 사람을 모으는 화면이 수익을 100배 작게 말한다.',
+  },
+  {
+    name: '💸 서버가 적립률 NULL 을 다시 0 으로 뭉갠다 (배지가 영원히 안 뜸)',
+    file: 'src/worker/routes/curator.routes.ts',
+    find: '              p.referral_commission_rate AS commission_rate, COALESCE(p.referral_enabled, 0) AS referral_enabled,',
+    replace: '              COALESCE(p.referral_commission_rate, 0) AS commission_rate,',
+    test: 'src/tests/unit/affiliate-rate-ssot-2026-09-05.test.ts',
+    why:
+      'NULL 은 "설정 없음 → 플랫폼 기본(2%)" 이고 0 은 "정말 0%" 다. 뭉개면 라이브 상품 전부가 ' +
+      '(rate 가 전부 NULL 이라) 적립 없음으로 읽혀 안내가 통째로 사라진다. 에러는 안 난다.',
+  },
+  {
+    name: '💸 적립 기본값이 다시 화면마다 갈린다 (worker 만 2%, 나머지 5%)',
+    file: 'src/shared/affiliate-rate.ts',
+    find: 'export const DEFAULT_AFFILIATE_RATE = 0.02',
+    replace: 'export const DEFAULT_AFFILIATE_RATE = 0.05',
+    test: 'src/tests/unit/affiliate-rate-ssot-2026-09-05.test.ts',
+    why:
+      '2026-06-17 대표 결정(5%→2%)이 적립 경로에만 반영되고 표시 상수는 5 로 남아 몇 달간 ' +
+      '어드민 정책 표가 2.5배 틀린 숫자를 보여 줬다. 상수를 되돌리면 그 상태로 돌아간다.',
+  },
+  {
+    name: '🏪 매장 등록 페이지가 다시 다크에 노출된다 (사장님이 자기 입력을 못 본다)',
+    file: 'src/pages/StoreClaimPage.tsx',
+    find: '<div className="force-light-theme min-h-[100dvh] bg-gray-50">',
+    replace: '<div className="min-h-[100dvh] bg-gray-50 dark:bg-[#11141C]">',
+    test: 'src/tests/unit/store-register-wizard.test.ts',
+    why:
+      '전역 `.dark input`(특이도 0,5,1)이 모달의 text-gray-900(0,1,0)을 이겨 **흰 배경 위 흰 글자**가 ' +
+      '된다(브라우저 실측 1.00:1). 화면은 멀쩡해 보이고 에러도 없다 — 사장님이 사업자번호를 치는 ' +
+      '동안 자기가 뭘 쳤는지 못 볼 뿐이다. 하필 매장 유치 퍼널의 유일한 문이다.',
+  },
+  {
+    name: '🏪 이미 등록된 매장이 다시 막다른 alert 이 된다',
+    file: 'src/components/seller/StoreRegisterModal.tsx',
+    find: "      if (e?.response?.status === 409 && e?.response?.data?.code === 'STORE_EXISTS') {",
+    replace: '      if (false) {',
+    test: 'src/tests/unit/store-register-wizard.test.ts',
+    why:
+      '서버는 중복이면 그 매장의 seller_id 까지 돌려주는데(seller-stores.routes.ts:357) 분기를 지우면 ' +
+      '화면은 "이미 등록된 매장입니다" 토스트 하나 띄우고 끝난다. 자기 매장을 다른 계정으로 등록해 둔 ' +
+      '사장님은 거기서 갈 곳이 없다 — 실패가 아니라 **조용한 포기**라 우리는 영영 모른다.',
+  },
+  {
+    name: '🏪 위저드가 다시 한 화면 네 질문으로 (회색 버튼 이유가 사라진다)',
+    file: 'src/components/seller/StoreRegisterModal.tsx',
+    find: '          {blocked && <p className="text-[11.5px] text-gray-500 text-center mt-2">{blocked}</p>}',
+    replace: '',
+    test: 'src/tests/unit/store-register-wizard.test.ts',
+    why:
+      'blockReason 을 계산만 하고 안 그리면 종전과 똑같다 — 사장님은 무엇이 빠졌는지 모른 채 회색 ' +
+      '버튼을 바라본다. 이 레포가 토스 결제에서 한 번 고친 "구조적으로 잠기는 버튼" 클래스다.',
+  },
+  {
+    name: '🏪 좌석 없는 소비자에게 requireSeller 경로를 권한다 (새 막다른 길)',
+    file: 'src/components/seller/StoreRegisterModal.tsx',
+    find: '              {hasSellerSeat && (',
+    replace: '              {true && (',
+    test: 'src/tests/unit/store-register-wizard.test.ts',
+    why:
+      '`/seller/stores` 는 requireSeller 다. 푸터로 들어온 소비자(seller_token 없음)에게 이 버튼을 ' +
+      '보이면 셀러 로그인 화면으로 튕긴다 — 막다른 길을 없애러 와서 하나 더 놓는 셈이고, 화면상 ' +
+      '멀쩡해 보여 리뷰에서도 안 잡힌다. 실제로 내가 첫 판에 이대로 썼다가 적대적 재독에서 잡았다.',
+  },
+  {
+    name: '🏪 등록 안 했는데 "매장이 등록됐어요" 라고 말한다',
+    file: 'src/pages/StoreClaimPage.tsx',
+    find: '          if (!opts?.existing) {',
+    replace: '          if (true) {',
+    test: 'src/tests/unit/store-register-wizard.test.ts',
+    why:
+      '이미 갖고 있던 매장으로 들어간 경우엔 아무것도 등록되지 않았다. 그런데 같은 문구를 띄우면 ' +
+      '사장님은 매장이 하나 더 생긴 줄 안다 — 거짓말이고, 좌석도 이미 잡혀 있어 재발급이 낭비다.',
+  },
+  {
+    name: '🏪 등록 직전 요약에서 되돌아갈 길이 사라진다',
+    file: 'src/components/seller/StoreRegisterModal.tsx',
+    find: '                    <button onClick={() => setStep(r.to)} className="text-[11px] text-gray-400 underline shrink-0 pt-0.5">수정</button>',
+    replace: '',
+    test: 'src/tests/unit/store-register-wizard.test.ts',
+    why:
+      '요약은 틀린 걸 발견하라고 있는 것이다. 발견해도 고칠 길이 없으면 불안만 주고, 사장님은 ' +
+      '취소하고 처음부터 다시 하거나 그냥 잘못된 채로 등록한다. 화면은 멀쩡해 보인다.',
+  },
+  {
+    name: '🏝️ 매장 등록 모달이 다시 흰 판 위 흰 글자가 된다 (light-island 소실)',
+    file: 'src/components/seller/StoreRegisterModal.tsx',
+    find: 'className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)] max-h-[92dvh]',
+    replace: 'className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)] max-h-[92dvh]',
+    test: 'src/tests/unit/store-claim-2026-09-07.test.ts',
+    why:
+      '이 패널은 bg-white 뿐이라 늘 흰데 소비자 라우트(/store/new)에서도 열린다. 전역 .dark input' +
+      '(특이도 0,5,1)이 text-gray-900(0,1,0)을 이기므로 클래스 유틸로는 못 이기고, light-island 만이 ' +
+      '안쪽 dark: 를 끈다. 2026-09-07 대표가 검색창에 친 글자를 못 봤다 — 이 레포 세 번째 재발.',
+  },
+  {
+    name: '🔗 면제한 auth 페이지가 실제 렌더 측정 목록에서 빠진다 (아무도 안 보는 화면)',
+    file: 'scripts/check-dark-contrast.mjs',
+    find: "  { route: '/register', name: '가입', fill: true },",
+    replace: '',
+    test: 'src/tests/unit/theme-guard-pairing-2026-09-07.test.ts',
+    why:
+      'check-light-input-guard 의 CONSUMER_EXCLUDE 는 "이 페이지는 양 테마를 지원한다"는 선언이라 ' +
+      '라이트 고정 검사를 면제한다. 그 선언이 사실인지는 dark-contrast 의 실제 렌더 측정만 안다. ' +
+      '2026-09-07 에 RegisterPage 가 면제 목록에 있으면서 다크 이행이 반만 돼 있어 가입 폼 전체가 ' +
+      '안 읽혔다(약관 링크 1.03:1 · 입력 1.00:1). 면제는 약속이고 이 짝이 그 약속을 지킨다.',
+  },
+  {
+    name: '🚪 매장 등록 페이지가 다시 배경 클릭으로 꺼진다 (폼 통째로 날아감)',
+    file: 'src/pages/StoreClaimPage.tsx',
+    find: '        dismissOnBackdrop={false}',
+    replace: '',
+    test: 'src/tests/unit/store-claim-2026-09-07.test.ts',
+    why:
+      '/store/new 는 모달이 곧 페이지라 배경 뒤에 아무것도 없다. 사업자등록증까지 올린 폼이 ' +
+      '스치는 클릭 한 번에 사라지고 화면을 떠난다(2026-09-07 대표 신고). 대시보드에서 겹쳐 뜰 때와 ' +
+      '닫기의 의미가 다르다.',
+  },
+  {
+    name: '🏝️ 409 안내 패널만 light-island 를 잃는다 (한 파일 안 두 표면 중 하나)',
+    file: 'src/components/seller/StoreRegisterModal.tsx',
+    find: '        <div className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)]" onClick={e => e.stopPropagation()}>',
+    replace: '        <div className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)]" onClick={e => e.stopPropagation()}>',
+    test: 'src/tests/unit/store-claim-2026-09-07.test.ts',
+    why:
+      '이 파일엔 늘-흰 패널이 **둘**이다(등록 폼 · 409 안내). 실제로 409 화면이 light-island 없이 ' +
+      '들어왔고, 그때 가드가 `.find()` 로 첫 하나만 봐서 통과시켰다. 한 파일 안에 같은 성질의 표면이 ' +
+      '둘이면 하나만 고치고 끝났다고 믿기 쉽다 — 그래서 둘 다 주입해 본다.',
+  },
+  {
+    name: '💸 매칭 정산에 2% 상한이 되살아난다 (결재 Q2-1 "상한 없음" 무력화)',
+    file: 'src/worker/utils/matching-settlement.ts',
+    find: '  const pct = Math.max(0, Number(input.commissionPct) || 0)',
+    replace: '  const pct = Math.min(2, Math.max(0, Number(input.commissionPct) || 0))',
+    test: 'src/tests/unit/deal-pct-no-cap-2026-09-07.test.ts',
+    why:
+      '매장이 "10% 드릴게요" 라고 약속했는데 정산이 2% 만 적립하면 소개자는 약속의 1/5 을 받고 매장은 ' +
+      '이유를 모른다 — 에러가 없어 아무도 모른다. 2026-08-30 에 제안 문에서 걷어낸 캡이 정산 쪽에서 되살아나는 모습.',
+  },
+  {
+    name: '🔐 손바뀜 잔액 가드가 fail-open 이 된다 (모르면 통과)',
+    file: 'src/worker/utils/store-handover-guard.ts',
+    find: "  } catch {\n    return {\n      blocked: true,\n      receivable: 0,\n      prevUserId,\n      reason: '정산 잔액을 확인할 수 없어 소유자 변경을 보류했어요',",
+    replace: "  } catch {\n    return {\n      blocked: false,\n      receivable: 0,\n      prevUserId,\n      reason: '',",
+    test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
+    why:
+      'D1 이 흔들리는 순간 손바뀜이 그대로 열린다. 돈이 걸린 판단에서 "모르겠으면 통과" 는 ' +
+      '오지급으로 직행하고, 오지급은 되돌릴 수 없다.',
+  },
+  {
+    name: '🔐 어드민 매장-유저 링크에서 잔액 가드가 빠진다',
+    file: 'src/features/admin/api/admin-sellers.routes.ts',
+    find: '    const handover = await checkStoreHandover(DB, Number(sellerId), userId);',
+    replace: '    const handover = { blocked: false, receivable: 0 };',
+    test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
+    why:
+      '이 라우트가 손바뀜의 정문이다. 여기가 열리면 미지급 잔액이 남은 매장의 주인이 바뀌고, ' +
+      '그 매장이 창업 이래 쌓은 돈이 다음 주 cron 에서 새 계좌로 통째로 나간다.',
+  },
+  {
+    name: '🏷️ 판매자 없는 상품이 다시 seller:null 로 적립된다',
+    file: 'src/worker/utils/ledger.ts',
+    find: "  return Number.isFinite(id) && id > 0 ? `seller:${id}` : 'platform:revenue'",
+    replace: '  return `seller:${sellerId}`',
+    test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
+    why:
+      'products.seller_id 는 nullable 인데(플랫폼 상품) 타입 선언은 number 라 컴파일러가 안 잡는다. ' +
+      "라이브 원장에 실제로 'seller:null' 행이 있었고, 잔액이 최소출금액을 넘으면 계좌 없는 유령 payout 이 된다.",
+  },
+  {
+    name: '🏷️ payout 이 숫자 아닌 계정 id 를 다시 통과시킨다',
+    file: 'src/worker/cron/payouts-generate.ts',
+    find: '      if (!/^\\d+$/.test(id)) continue',
+    replace: '',
+    test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
+    why:
+      "'seller:null' 은 split(':') 이 id='null'(truthy 문자열)을 내서 기존 `if (!id) continue` 를 " +
+      '통과한다. 두 번째 방어선이 없으면 오염 계정 하나가 그대로 지급 큐에 들어간다.',
+  },
+  {
+    name: '👥 운영자가 다시 합류 전 정산까지 본다',
+    file: 'src/features/seller/api/seller-settlements/payouts.ts',
+    find: '          AND (? IS NULL OR created_at >= ?)',
+    replace: '',
+    test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
+    why:
+      '기준(granted_at)을 계산해 놓고 WHERE 에 안 넣으면 종전과 똑같다 — 위임받아 들어온 사람에게 ' +
+      '이전 주인의 정산 이력이 통째로 열리고, 합류 전 매출이 자기 실적으로 보인다.',
+  },
+  {
+    name: '👥 운영자 범위 해석이 fail-open 이 된다 (관계를 못 찾으면 다 보여 준다)',
+    file: 'src/worker/utils/settlement-scope.ts',
+    find: "  const since = g?.granted_at || DENY_ALL",
+    replace: '  const since = g?.granted_at || null',
+    test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
+    why:
+      'granted_at 이 NULL 이거나 조회가 실패했을 때 제한을 푸는 건, 게이트가 아예 없는 것과 같다. ' +
+      '모르면 안 보여 주는 쪽이 언제나 싸다 — 못 본 정산은 물어보면 되지만, 본 정산은 되돌릴 수 없다.',
+  },
+  {
+    name: '🕳️ 자물쇠가 두 번째 주인 자리를 다시 못 본다 (지금 만드는 모든 매장에서 무력)',
+    // 🚚 2026-09-09: 주인 조회가 seller-operators.ts 로 이사했다(출금·자가구매 판정과 같은 규칙을
+    //    쓰려고). 지키는 불변식은 그대로라 지우지 않고 **새 자리로 재조준**한다.
+    file: 'src/worker/utils/seller-operators.ts',
+    find: "      WHERE seller_id = ? AND role = 'owner' AND revoked_at IS NULL",
+    replace: "      WHERE seller_id = ? AND role = 'nonexistent-role' AND revoked_at IS NULL",
+    test: 'src/tests/unit/store-handover-behavior-2026-09-08.test.ts',
+    why:
+      '/store/new 는 linked_user_id 를 비우고 seller_operators.role=owner 로 주인을 적는다. ' +
+      '앞쪽만 보면 라이브의 모든 매장에서 자물쇠가 통과만 한다 — 잠긴 것처럼 보이는데 안 잠긴다.',
+  },
+  {
+    name: '🕳️ 주인 조회 실패를 "주인 없음"으로 접는다 (fail-open)',
+    file: 'src/worker/utils/seller-operators.ts',   // 🚚 2026-09-09 이사 — 위 항목과 같은 사유
+    find: '  if (owner === undefined) return undefined\n  return owner ? Number(owner.user_id) : null',
+    replace: '  return owner ? Number(owner.user_id) : null',
+    test: 'src/tests/unit/store-handover-behavior-2026-09-08.test.ts',
+    why:
+      '"모름"과 "없음"이 섞이면 모름이 곧 통과가 된다. 돈이 걸린 판단에서 그 둘을 구분하는 것이 ' +
+      'fail-closed 의 전부다.',
+  },
+  {
+    name: '🧭 위치 없이 거리순이면 정렬이 통째로 사라진다 (화면은 "거리순"이라 표시)',
+    file: 'src/pages/restaurant-map/effective-sort.ts',
+    find: "  return sortBy === 'distance' && !hasLocation ? NO_LOCATION_FALLBACK : sortBy",
+    replace: '  return sortBy',
+    test: 'src/tests/unit/map-sort-no-location-2026-09-09.test.ts',
+    why:
+      '위치가 없으면 서버 sort 는 비워지고(거리순이니까) near 도 없어서 기본 순서가 오고, ' +
+      '클라 재정렬도 userLoc 가드에 걸려 건너뛴다 — 아무 정렬도 안 된 목록이 "거리순" 라벨을 단다. ' +
+      '대표가 실제로 신고한 증상이다(동탄에서 거리순인데 서울 송파·서초가 먼저).',
+  },
+  {
+    name: '🧭 서버 요청만 raw sortBy 로 돌아간다 (서버·클라 정렬이 갈린다)',
+    file: 'src/pages/restaurant-map/useFeedWindow.ts',
+    find: '  const eff = effectiveSort(sortBy, !!userLoc)',
+    replace: '  const eff = sortBy',
+    test: 'src/tests/unit/map-sort-no-location-2026-09-09.test.ts',
+    why:
+      '서버가 고른 50개와 클라가 매기는 순서가 다른 정의를 쓰면 조용히 틀린 목록이 된다 — ' +
+      '2026-09-03 에 "인기순"이 인기순이 아니었던 그 클래스.',
+  },
+  {
+    name: '🤝 이용권 커미션이 다시 소급된다 (오늘의 영입자가 과거 판매분을 가져감)',
+    file: 'src/worker/utils/ledger.ts',
+    find: '  const payeeId = stamped ? Number(stamp!.iid) : (seller?.introduced_by_influencer_id ?? null)',
+    replace: '  const payeeId = seller?.introduced_by_influencer_id ?? null',
+    test: 'src/tests/unit/voucher-intro-stamp-2026-09-09.test.ts',
+    why:
+      '사용 시점에 매장의 현재 영입자를 읽으면, 영입자가 바뀐 뒤 과거에 팔린 이용권의 커미션까지 ' +
+      '새 사람에게 간다. 대표 원칙("귀속되는 시점부터 계산")과 정반대이고 에러가 안 난다.',
+  },
+  {
+    name: '🤝 지급 대상이 도장을 무시하고 매장에서 다시 나온다',
+    file: 'src/worker/utils/ledger.ts',
+    find: '  const influencerUserId = payeeId',
+    replace: '  const influencerUserId = seller?.introduced_by_influencer_id ?? null',
+    test: 'src/tests/unit/voucher-intro-stamp-2026-09-09.test.ts',
+    why:
+      '판정은 도장으로 해 놓고 지급만 매장에서 꺼내면 **판정과 돈이 갈린다** — 가장 조용한 종류의 ' +
+      '오지급이다(로그도 화면도 정상이고 받는 사람만 다르다).',
+  },
+  {
+    name: '🤝 이용권에 도장을 안 찍는다 (판정할 근거가 사라짐)',
+    file: 'src/features/group-buy/api/experience-campaign.routes.ts',
+    find: '    const introStamp = await resolveVoucherIntroStamp(DB, campaign.seller_id)',
+    replace: '    const introStamp = { introducerId: null as number | null, stampedAt: null as string | null }',
+    test: 'src/tests/unit/voucher-intro-stamp-2026-09-09.test.ts',
+    why:
+      '읽는 코드가 멀쩡해도 찍는 쪽이 비면 조용히 옛 규칙(소급)으로 떨어진다 — "실패가 아니라 부재".',
+  },
+  {
+    name: '🪑 직접 등록 사장님이 다시 운영자로 오판된다 (정산 계좌 못 넣음 = 돈 못 받음)',
+    file: 'src/worker/utils/store-actor.ts',
+    find: '    const isOwner = role ? role === \'owner\' : operatorUserId === null',
+    replace: '    const isOwner = operatorUserId === null',
+    test: 'src/tests/unit/store-owner-judgment-2026-09-09.test.ts',
+    why:
+      '/store/new 는 설계상 linked_user_id 를 비워 두므로 직접 등록한 진짜 사장님도 source:grant 로 ' +
+      '들어온다. 역할을 안 보면 그 사장님이 운영자로 오판돼 자기 매장 정산 계좌를 못 넣는다 — ' +
+      '즉 그 매장은 돈을 받을 방법이 없다. 에러도 안 나고 "권한이 없습니다" 만 뜬다.',
+  },
+  {
+    name: '🪑 토큰이 역할을 안 싣는다 (판정할 근거가 사라짐)',
+    file: 'src/features/seller/api/seller-operators.routes.ts',
+    find: '    if (access.role) payload.store_role = access.role',
+    replace: '',
+    test: 'src/tests/unit/store-owner-judgment-2026-09-09.test.ts',
+    why:
+      '판정 코드가 멀쩡해도 입력이 비면 조용히 옛 규칙으로 떨어진다 — 이 레포가 반복해 당한 ' +
+      '"실패가 아니라 부재" 클래스다. 그래서 싣는 쪽과 읽는 쪽을 각각 고정한다.',
+  },
+  {
+    name: '🔒 마감 행 취소가 무음으로 열린다 (돈이 새 주인에게)',
+    file: 'src/features/admin/api/admin-payouts.routes.ts',
+    find: "  if (row.kind === 'handover_closeout' && row.payee_user_id && row.payee_type === 'seller' && !body.confirm_release) {",
+    replace: '  if (false) {',
+    test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
+    why:
+      '집계는 cancelled 를 안 뺀다 — 마감 행을 취소하면 금액이 원장으로 되살아나고, 주인이 이미 ' +
+      '바뀌었다면 다음 주에 새 주인 계좌로 나간다. 대표 확정과 정반대 방향이다.',
+  },
+  {
+    name: '🔒 마감 행에 "누구 것이었는지" 를 안 박는다',
+    file: 'src/features/admin/api/admin-payouts/handover-closeout.ts',
+    find: "         VALUES ('seller', ?, ?, ?, ?, 'pending', ?, ?, ?, 'handover_closeout', ?)`,",
+    replace: "         VALUES ('seller', ?, ?, ?, ?, 'pending', ?, ?, ?, NULL, NULL)`,",
+    test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
+    why:
+      'kind·payee_user_id 가 없으면 취소 게이트가 이 행을 알아보지 못한다. 게이트 코드가 멀쩡해도 ' +
+      '입력이 비어 조용히 통과한다 — 이 레포가 반복해 당한 "실패가 아니라 부재" 클래스다.',
+  },
+  {
+    name: '🖥️ 마감 창구가 화면에서 사라진다 (API 만 남음)',
+    file: 'src/pages/AdminPayoutsPage.tsx',
+    find: "      const res = await api.post('/api/admin/payouts/handover-closeout', { seller_id: sellerId, reason })",
+    replace: '      const res = { data: { success: false } }',
+    test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
+    why:
+      '대표가 "마감 화면이 없다" 를 고치라고 했다. API 만 있고 화면이 없으면 아무도 못 쓰고, ' +
+      '그러면 자물쇠는 그냥 손바뀜을 막는 장치로만 남는다.',
+  },
+  {
+    name: '🧪 [행동] 마감해도 손바뀜이 안 열린다 — 가드가 순수 원장을 본다',
+    file: 'src/worker/utils/store-handover-guard.ts',
+    find: '    receivable = await getUnsettledBalance(DB, `seller:${sellerId}`)',
+    replace: '    receivable = await getLedgerReceivable(DB, `seller:${sellerId}`)',
+    test: 'src/tests/unit/store-handover-behavior-2026-09-08.test.ts',
+    why:
+      '이 인과 사슬(마감 → 잔액 0 → 자물쇠 열림)이 이 변경의 핵심 주장이다. 실제 DB 로 돌려서 ' +
+      '깨지는지 본다 — 배선만 보는 짝 시험이 못 잡는 층이다.',
+  },
+  {
+    name: '🧪 [행동] 배정 잔액이 pending 을 안 빼서 사슬이 끊긴다',
+    file: 'src/worker/utils/ledger.ts',
+    find: "      WHERE (payee_type || ':' || payee_id) = ? AND status IN ('pending','approved','sent')",
+    replace: "      WHERE (payee_type || ':' || payee_id) = ? AND status IN ('approved','sent')",
+    test: 'src/tests/unit/store-handover-behavior-2026-09-08.test.ts',
+    why:
+      '마감이 만드는 행은 pending 이다. 안 빼면 마감 직후에도 잔액이 그대로라 손바뀜이 안 열린다. ' +
+      '실제 DB 로 돌려야 이 값이 정말 0 이 되는지 알 수 있다.',
+  },
+  {
+    name: '🤝 손바뀜 가드가 순수 원장을 다시 본다 (마감해도 안 열리는 막다른 길)',
+    file: 'src/worker/utils/store-handover-guard.ts',
+    find: '    receivable = await getUnsettledBalance(DB, `seller:${sellerId}`)',
+    replace: '    receivable = await getLedgerReceivable(DB, `seller:${sellerId}`)',
+    test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
+    why:
+      '순수 원장은 정산 마감을 해도 안 줄어든다. 그 값으로 막으면 마감을 마쳐도 손바뀜이 ' +
+      '영원히 안 열려서, 자물쇠가 안전장치가 아니라 막다른 길이 된다(실제로 그렇게 짰다가 고쳤다).',
+  },
+  {
+    name: '🤝 배정 잔액이 pending 을 안 뺀다 (마감이 문을 못 연다)',
+    file: 'src/worker/utils/ledger.ts',
+    find: "      WHERE (payee_type || ':' || payee_id) = ? AND status IN ('pending','approved','sent')",
+    replace: "      WHERE (payee_type || ':' || payee_id) = ? AND status IN ('approved','sent')",
+    test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
+    why:
+      '마감이 만드는 행은 pending 이다. 그걸 안 빼면 마감 직후에도 잔액이 그대로라 손바뀜이 ' +
+      '계속 막히고, payouts-generate 의 집계 공식과도 어긋난다.',
+  },
+  {
+    name: '🤝 마감이 계좌를 스냅샷하지 않는다 (새 주인에게 송금)',
+    file: 'src/features/admin/api/admin-payouts/handover-closeout.ts',
+    // 🪑 2026-09-09 재앵커: payee_user_id 를 `seller.linked_user_id` → `resolveStoreOwnerUserId` 로
+    //   바꾸면서 이 줄이 달라졌다(그 칸은 /store/new 매장에서 항상 비어 있다). 계좌 스냅샷만 잰다.
+    find: "      ).bind(String(sellerId), amount, today, today, seller.bank_account, seller.business_name || null, memo, ownerUserId ?? null).run()",
+    replace: "      ).bind(String(sellerId), amount, today, today, null, seller.business_name || null, memo, ownerUserId ?? null).run()",
+    test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
+    why:
+      'payout 행이 계좌를 안 들고 있으면, 송금 시점에 sellers.bank_account 를 다시 읽게 되고 ' +
+      '그때는 이미 **새 주인 계좌**다. 마감의 의미가 통째로 뒤집힌다.',
+  },
+  {
+    name: '🤝 마감 창구가 finance 권한 없이 열린다',
+    file: 'src/features/admin/api/admin-payouts.routes.ts',
+    find: "adminPayoutsRoutes.post('/admin/payouts/handover-closeout',\n  requireAdminRole('finance'), require2FA(), auditLog('payouts.handover_closeout'),",
+    replace: "adminPayoutsRoutes.post('/admin/payouts/handover-closeout',\n  requireAdmin(),",
+    test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
+    why:
+      '돈을 사람에게 배정하는 창구다. 일반 어드민 아무나 열 수 있으면 감사로그도 2FA 도 없이 ' +
+      '남의 매장 잔액을 임의 계좌로 떼어 낼 수 있다.',
+  },
+  {
+    name: '⏳ 새 영입자에게 이전 영입자의 만료일이 그대로 적용된다',
+    file: 'src/features/admin/api/admin-sellers/reassign-introducer.ts',
+    find: "      ? `, introduced_at = datetime('now'), referral_bonus_until = NULL`",
+    replace: "      ? `, introduced_at = datetime('now')`",
+    test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
+    why:
+      'isStoreIntroExpired 는 referral_bonus_until 이 있으면 **그것만 보고** introduced_at 을 무시한다. ' +
+      '안 지우면 새 영입자는 첫 주문부터 만료 처리될 수 있고, 아무 에러도 안 난다.',
+  },
+  {
+    name: '⏳ 이용권 사용 레일이 다시 무기한 커미션이 된다',
+    file: 'src/worker/utils/ledger.ts',
+    find: '  if (!stamped && isStoreIntroExpired(seller, introMonths)) {',
+    replace: '  if (!stamped && seller?.referral_bonus_until && new Date(seller.referral_bonus_until) < new Date()) {',
+    test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
+    why:
+      'referral_bonus_until 은 백필로만 채워져 대부분 NULL 이고, NULL 이면 종전 규칙은 **무기한**이었다. ' +
+      '결제 레일은 1년으로 끊는데 사용 레일만 영구라, 같은 영입 관계의 기간이 레일마다 달랐다.',
+  },
 ]
+
+/**
+ * 📁 **분할 매니페스트** — 새 주입은 `scripts/mutations/<도메인>.mjs` 에 넣는다 (2026-09-08).
+ *
+ * ## 왜 (실측)
+ * 위 배열은 한 파일에 950건이 쌓여 **10,000줄이 넘는다.** 모든 PR 이 그 배열 **끝에 덧붙이니**
+ * 충돌이 필연이었다 — 2026-09-08 하루 머지 충돌 4번 중 **3번이 이 파일**이었다.
+ * 도메인별로 갈라 두면 서로 다른 영역을 만지는 세션은 **충돌 자체가 안 난다.**
+ *
+ * ## 🔴 위 배열은 **옮기지 않는다**
+ * 지금 열려 있는 다른 세션의 브랜치들이 그 배열에 덧붙이고 있다. 통째로 옮기면 그 브랜치가
+ * 전부 깨진다. 그래서 **읽는 곳만 늘린다** — 옛 배열은 그대로 두고 시간이 지나며 자연히 빈다.
+ *
+ * ## 계약
+ * 각 파일은 `export default [ …주입… ]` 하나. 형태는 위와 같다(`name·file·find·replace·test·why`).
+ * 이름은 **전체에서 유일**해야 한다 — `--only` 가 부분일치라 같은 이름이 둘이면 무엇이 돌았는지 모른다.
+ */
+const MUTATIONS_DIR = path.join(ROOT, 'scripts', 'mutations')
+const SPLIT_FILES = fs.existsSync(MUTATIONS_DIR)
+  ? fs.readdirSync(MUTATIONS_DIR).filter((f) => f.endsWith('.mjs')).sort()
+  : []
+/** @type {Mutation[]} */
+const SPLIT = []
+/** 파일 → 그 파일이 내보낸 주입 수. 무결성 검사가 소스 객체 수와 대조한다. */
+const SPLIT_COUNT = new Map()
+for (const f of SPLIT_FILES) {
+  const rel = `scripts/mutations/${f}`
+  const mod = await import(pathToFileURL(path.join(MUTATIONS_DIR, f)).href)
+  const arr = mod.default
+  if (!Array.isArray(arr)) {
+    console.error(`❌ ${rel}: \`export default [ … ]\` 가 아니다 — 배열 하나만 내보낸다.`)
+    process.exit(1)
+  }
+  // 🔴 형태를 여기서 막는다. 필드 하나가 비면 그 주입은 조용히 아무것도 안 한다.
+  for (const m of arr) {
+    for (const k of ['name', 'file', 'find', 'test', 'why']) {
+      if (typeof m?.[k] !== 'string' || !m[k]) {
+        console.error(`❌ ${rel}: \`${k}\` 가 없거나 빈 주입이 있다 — ${m?.name ?? '(이름 없음)'}`)
+        process.exit(1)
+      }
+    }
+    if (typeof m.replace !== 'string') {
+      console.error(`❌ ${rel}: \`replace\` 가 문자열이 아니다 — ${m.name}`)
+      process.exit(1)
+    }
+    SPLIT.push(m)
+  }
+  SPLIT_COUNT.set(f, arr.length)
+}
+/** 인라인 + 분할. 이 아래는 전부 이 목록으로 돈다. */
+const ALL = [...MUTATIONS, ...SPLIT]
+{
+  // 이름 중복은 `--only` 를 모호하게 만든다(부분일치라 둘 다 돌거나 엉뚱한 게 돈다).
+  const seen = new Set()
+  const dup = [...new Set(ALL.map((m) => m.name).filter((n) => (seen.has(n) ? true : (seen.add(n), false))))]
+  if (dup.length) {
+    console.error(`❌ 주입 이름 중복 ${dup.length}건 — --only 가 무엇을 돌렸는지 알 수 없게 된다\n   • ${dup.join('\n   • ')}`)
+    process.exit(1)
+  }
+}
+
+// 📤 목록만 찍고 끝 — base 쪽을 이 모드로 부른다. 소스도 안 읽고 자물쇠도 안 건다.
+if (DUMP_MANIFEST) {
+  // ⚠️ `process.stdout.write` + `process.exit` 는 **flush 를 기다리지 않는다** — 파이프로 보내면
+  //    큰 JSON 이 중간에서 잘린다(실측: 55,166자에서 끊겼다). 동기 write 로 끝까지 밀어 넣는다.
+  fs.writeSync(1, JSON.stringify(
+    ALL.map(({ name, file, find, replace, test }) => ({ name, file, find, replace, test })),
+  ))
+  process.exit(0)
+}
+
+/**
+ * 🔎 **이 브랜치가 실제로 바꾼 주입** — `scripts/` 를 건드려도 전수로 안 가게 하는 자리.
+ *
+ * 근거·측정은 `guard-mutations-manifest-diff.mjs` 머리주석. 요약: 머지 PR 25건 중 23건이
+ * 전수였고 그중 11건이 **이 파일에 주입을 한 줄 더한 것**뿐이었다. 규칙을 지킬수록 40분을 물었다.
+ *
+ * 🔴 **모든 실패는 전수로 떨어진다**(base 를 못 풀든, 앵커가 사라졌든, JSON 이 깨졌든).
+ *    좁히다 틀리는 것보다 넓게 도는 쪽이 싸다.
+ */
+function scopeFromManifestDiff() {
+  if (!CHANGED || SCOPE.full) return null
+  const touched = SCOPE.files
+  const runnerChanged = touched.has(GUARD_RUNNER)
+  const manifestChanged = [...touched].some((f) => f.startsWith('scripts/mutations/'))
+  const otherScripts = touchesGuardScripts(touched)
+  if (!runnerChanged && !manifestChanged && !otherScripts) return null
+
+  /** base 의 `scripts/` 만 풀어서 목록을 받아 온다(전체 체크아웃 아님 — 수백 ms). */
+  let baseList = null
+  let baseRunnerSrc = null
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gm-base-'))
+  try {
+    const baseRef = process.env.GUARD_MUTATIONS_BASE || 'origin/main'
+    const tar = execFileSync('git', ['archive', baseRef, 'scripts'], { cwd: ROOT, maxBuffer: 256 * 1024 * 1024 })
+    execFileSync('tar', ['-x', '-C', tmp], { input: tar, maxBuffer: 256 * 1024 * 1024 })
+    baseRunnerSrc = fs.readFileSync(path.join(tmp, 'scripts', 'check-guard-mutations.mjs'), 'utf8')
+    // 🔴 **부르기 전에 지원 여부를 본다.** 모르는 플래그를 받은 옛 러너는 무시하고 **전수를 돈다** —
+    //    그러면 이 하위 프로세스가 40분을 태우고 소스에 주입까지 한다(실측으로 걸렸다).
+    //    이 PR 이 머지되기 전까지는 base 에 이 모드가 없으므로, 여기서 조용히 전수로 떨어진다.
+    if (!baseRunnerSrc.includes('--dump-manifest')) {
+      return { full: true, why: 'base 러너에 --dump-manifest 가 없다(이 기능 이전 버전) — 전수로 돈다' }
+    }
+    const out = execFileSync(process.execPath, [path.join(tmp, 'scripts', 'check-guard-mutations.mjs'), '--dump-manifest'],
+      { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, timeout: 60_000 })
+    baseList = JSON.parse(out)
+  } catch (err) {
+    return { full: true, why: `base 주입 목록을 못 읽었다(${String(err?.message ?? err).slice(0, 80)}) — 전수로 돈다` }
+  } finally {
+    try { fs.rmSync(tmp, { recursive: true, force: true }) } catch { /* 최선 노력 */ }
+  }
+
+  // 러너의 **판정 로직**이 바뀌었으면 내가 안 건드린 주입도 다르게 판정될 수 있다 ⇒ 전수.
+  if (runnerChanged) {
+    const headSrc = fs.readFileSync(path.join(ROOT, GUARD_RUNNER), 'utf8')
+    if (runnerLogicChanged(baseRunnerSrc, headSrc)) {
+      return { full: true, why: `${GUARD_RUNNER} 의 판정 로직이 바뀌었다 — 전수` }
+    }
+  }
+
+  const names = changedInjectionNames(baseList, ALL)
+
+  // 🕳️ `scripts/check-*.mjs` 가 바뀌면, **하위 프로세스로 그 가드를 돌리는 테스트**(실측 14개)를
+  //    쓰는 주입은 `file`·`test` 가 diff 에 없어도 판정이 달라질 수 있다. 그 구멍만 메운다.
+  if (otherScripts) {
+    const spawns = new Map()
+    for (const m of ALL) {
+      if (!spawns.has(m.test)) {
+        let src = ''
+        try { src = fs.readFileSync(path.join(ROOT, m.test), 'utf8') } catch { src = 'execFileSync(' }
+        spawns.set(m.test, testSpawnsSubprocess(src))
+      }
+      if (spawns.get(m.test)) names.add(m.name)
+    }
+  }
+  return { names }
+}
+const MANIFEST_SCOPE = scopeFromManifestDiff()
+if (MANIFEST_SCOPE?.full) {
+  SCOPE.full = true
+  SCOPE.why = MANIFEST_SCOPE.why
+}
+/** 매니페스트 diff 로 추가로 골라야 하는 주입 이름(없으면 빈 집합). */
+const CHANGED_NAMES = MANIFEST_SCOPE?.names ?? new Set()
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).
  *
@@ -7367,7 +10731,7 @@ function baselineGreen(testPath) {
   return baselineCache.get(testPath)
 }
 
-if (MUTATIONS.length === 0) {
+if (ALL.length === 0) {
   console.error('❌ guard-mutations: 등록된 주입이 0건 — 통과가 아니라 실패다.')
   process.exit(1)
 }
@@ -7434,7 +10798,7 @@ let mapOk = 0  // --map-only: 지도가 성한 주입 수
 // 🧹 잔재 확인 전용 모드 — 주입은 건드리지 않고 "지금 트리에 남아 있나"만 본다(위 VERIFY_CLEAN 주석).
 if (VERIFY_CLEAN) {
   const dirty = []
-  for (const m of MUTATIONS) {
+  for (const m of ALL) {
     const abs = path.join(ROOT, m.file)
     if (!fs.existsSync(abs)) continue // 파일 이동은 전수 모드가 "낡은 지도"로 따로 보고한다
     const s = fs.readFileSync(abs, 'utf8')
@@ -7456,16 +10820,138 @@ if (VERIFY_CLEAN) {
     console.error(`\n   복원: git checkout -- <위 파일들>\n`)
     process.exit(1)
   }
-  console.log(`✅ 주입 잔재 0 — 작업트리 깨끗함 (${MUTATIONS.length}건 확인)`)
+  console.log(`✅ 주입 잔재 0 — 작업트리 깨끗함 (${ALL.length}건 확인)`)
   process.exit(0)
 }
 
-console.log(`🧬 guard-mutations: ${MUTATIONS.length}개 주입 검증 (각각 소스를 잠깐 고쳤다가 되돌린다)\n`)
+/**
+ * 🩸 자기 무결성 — **주입이 조용히 사라지는 세 번째 형태**: 병합이 `},\n  {` 경계를 삼켜
+ *   두 항목이 **한 객체로 융합**된다. JS 객체 리터럴은 같은 키가 두 번 나오면 **뒤엣 것이 이기고**
+ *   앞 항목은 통째로 사라진다 — 문법 오류도, 카운트 경고도, 빨간불도 없다.
+ *
+ *   이건 가정이 아니라 실측이다: 2026-08-17 에 한 건이 그렇게 사라진 흔적이 이 파일 주석에 남아 있고,
+ *   2026-09-02 에 다시 세어 보니 **10건이 그 상태로 main 에 있었다**(694개가 도는데 지도에는 704개).
+ *   그 10건 중 하나는 되살리자마자 "낡은 지도" 로 드러났다 — 즉 그동안 아무것도 안 지키고 있었다.
+ *
+ *   ⚠️ `MUTATIONS.length` 로는 절대 못 잡는다. 융합된 항목은 배열에서 애초에 세어지지 않는다.
+ *   그래서 **소스 텍스트를 직접** 읽어 객체마다 중복 키가 있는지 본다.
+ */
+function scanIntegrity(self, anchor, expected, label) {
+  const start = self.indexOf(anchor)
+  if (start === -1) return [`${label}: \`${anchor}\` 를 못 찾았다`]
+  // 문자열·주석을 건너뛰며 깊이 1(배열 바로 아래) 객체를 뜬다.
+  let i = self.indexOf('[', start) + 1
+  let depth = 0
+  let objStart = -1
+  const objects = []
+  const n = self.length
+  while (i < n) {
+    const c = self[i]
+    if (c === "'" || c === '"' || c === '`') {
+      const q = c
+      i += 1
+      while (i < n) {
+        if (self[i] === '\\') { i += 2; continue }
+        if (self[i] === q) break
+        i += 1
+      }
+      i += 1
+      continue
+    }
+    if (c === '/' && self[i + 1] === '/') { while (i < n && self[i] !== '\n') i += 1; continue }
+    if (c === '/' && self[i + 1] === '*') { i = self.indexOf('*/', i) + 2; continue }
+    if (c === '{' || c === '[' || c === '(') { if (c === '{' && depth === 0) objStart = i; depth += 1; i += 1; continue }
+    if (c === '}' || c === ']' || c === ')') {
+      if (c === ']' && depth === 0) break
+      depth -= 1
+      if (depth === 0 && c === '}') objects.push(self.slice(objStart + 1, i))
+      i += 1
+      continue
+    }
+    i += 1
+  }
+  const bad = []
+  for (const body of objects) {
+    // 깊이 0 의 `키:` 만 센다(문자열 안의 콜론은 위 스캐너가 이미 건너뛴다).
+    const seen = new Set()
+    const dup = new Set()
+    let d = 0
+    let j = 0
+    while (j < body.length) {
+      const c = body[j]
+      if (c === "'" || c === '"' || c === '`') {
+        const q = c
+        j += 1
+        while (j < body.length) {
+          if (body[j] === '\\') { j += 2; continue }
+          if (body[j] === q) break
+          j += 1
+        }
+        j += 1
+        continue
+      }
+      if (c === '/' && body[j + 1] === '/') { while (j < body.length && body[j] !== '\n') j += 1; continue }
+      if (c === '/' && body[j + 1] === '*') { j = body.indexOf('*/', j) + 2; continue }
+      if (c === '{' || c === '[' || c === '(') { d += 1; j += 1; continue }
+      if (c === '}' || c === ']' || c === ')') { d -= 1; j += 1; continue }
+      if (d === 0) {
+        const m = /^(name|file|find|replace|test|why)\s*:/.exec(body.slice(j, j + 12))
+        if (m && (j === 0 || ' \n\t'.includes(body[j - 1]))) {
+          if (seen.has(m[1])) dup.add(m[1])
+          seen.add(m[1])
+          j += m[0].length
+          continue
+        }
+      }
+      j += 1
+    }
+    if (dup.size) {
+      const first = /name\s*:\s*'((?:[^'\\]|\\.)*)'/.exec(body)
+      bad.push(`한 객체에 키가 두 벌 [${[...dup].join(', ')}] — 병합이 \`},{\` 경계를 삼켜 주입 둘이 융합됐다 (첫 항목: ${first ? first[1].slice(0, 40) : '?'})`)
+    }
+  }
+  if (objects.length !== expected) {
+    bad.push(`${label}: 소스의 객체 ${objects.length}개 ≠ 배열 ${expected}개 — 세지 못한 항목이 있다`)
+  }
+  return bad
+}
+
+/**
+ * 🔴 **분할 파일도 같은 검사를 받는다.** 안 하면 융합-키 사고(주입이 조용히 사라지는 형태)가
+ * 새 파일에서 그대로 재발한다 — 나누면서 보호만 빠지는 것이 가장 흔한 퇴행이다.
+ */
+const integrity = [
+  ...scanIntegrity(fs.readFileSync(fileURLToPath(import.meta.url), 'utf8'),
+    'const MUTATIONS = [', MUTATIONS.length, 'check-guard-mutations.mjs'),
+  ...SPLIT_FILES.flatMap((f) => scanIntegrity(
+    fs.readFileSync(path.join(MUTATIONS_DIR, f), 'utf8'),
+    // 🩸 앵커에 줄바꿈까지 넣는다 — `export default [` 만 쓰면 **헤더 주석 안의 설명 문장**
+    //    ("요지는 `export default [ … ]` 하나")이 먼저 잡혀 거기서부터 훑고 객체 0개를 센다.
+    //    첫 판이 실제로 그랬고, 이 무결성 검사가 그걸 잡았다.
+    'export default [\n', SPLIT_COUNT.get(f) ?? 0, `scripts/mutations/${f}`,
+  )),
+]
+if (integrity.length) {
+  console.error('\n❌ guard-mutations 자기 무결성 실패 — 주입 지도가 조용히 항목을 잃었다\n')
+  for (const b of integrity) console.error(`   • ${b}`)
+  console.error('\n   조치: 융합된 객체를 `},\\n  {` 로 다시 가른다. JS 는 뒤엣 키가 이기므로 **앞 항목이 통째로 사라진 상태**다.\n')
+  process.exit(1)
+}
+
+const planned = ALL.filter((m) => (!ONLY || m.name.includes(ONLY)) && (inScope(m, SCOPE) || CHANGED_NAMES.has(m.name))).length
+if (SCOPE.full) {
+  console.log(`🧬 guard-mutations: ${ALL.length}개 주입 검증 (각각 소스를 잠깐 고쳤다가 되돌린다)\n`)
+  if (CHANGED) console.log(`   ⚠️ 전수로 돈다 — ${SCOPE.why}\n`)
+} else {
+  console.log(`🧬 guard-mutations(--changed): ${ALL.length}건 중 **${planned}건** — 이 브랜치가 바꾼 파일 ${SCOPE.files.size}개에 걸린 것만.`)
+  console.log('   ⚠️ 전수는 main push·야간(guard-mutations-full.yml)이 돈다. 여기서 초록이라고 전수가 초록인 건 아니다.\n')
+}
 
 let onlyMatched = 0
-for (const m of MUTATIONS) {
+for (const m of ALL) {
   if (ONLY && !m.name.includes(ONLY)) continue
   if (ONLY) onlyMatched += 1
+  if (!inScope(m, SCOPE) && !CHANGED_NAMES.has(m.name)) continue
   const abs = path.join(ROOT, m.file)
   if (!fs.existsSync(abs)) { problems.push(`${m.name}: 파일 없음 — ${m.file} (코드가 옮겨갔다)`); continue }
   const src = fs.readFileSync(abs, 'utf8')
@@ -7515,7 +11001,7 @@ for (const m of MUTATIONS) {
 }
 
 // 🔒 마지막 안전 확인 — 어떤 경로로든 소스가 바뀐 채 남지 않았는지.
-for (const m of MUTATIONS) {
+for (const m of ALL) {
   const abs = path.join(ROOT, m.file)
   if (fs.existsSync(abs) && fs.readFileSync(abs, 'utf8').includes(m.replace) && m.replace && !fs.readFileSync(abs, 'utf8').includes(m.find)) {
     problems.push(`⚠️ 복원 실패 의심: ${m.file} — \`git diff\` 로 확인할 것`)
@@ -7531,6 +11017,21 @@ if (problems.length) {
 `)
   process.exit(STRICT ? 1 : 0)
 }
+/**
+ * 🚨 `--only` 가 아무것도 못 고르면 **실패**다 — `--map-only` 에서도 마찬가지다.
+ *
+ * 🩸 2026-09-15: 이 검사가 아래 `MAP_ONLY` **조기 종료 뒤에** 있었다. 그래서
+ *    `--map-only --only <오타>` 는 `✅ 주입 지도 0건 성함` 을 찍고 **exit 0** 했다.
+ *    하필 `--map-only` 가 커밋 전에 돌리는 모드라, 가짜 초록불이 가장 필요한 순간에 떴다.
+ *    (실제로 파일명으로 불러서 그 초록불을 받았다 — 필터는 이름 부분일치다.)
+ *    이 파일의 존재 이유가 "검사가 실패할 수 없음" 을 막는 것인데 그 구멍이 자기 안에 있었다.
+ */
+if (ONLY && onlyMatched === 0 && mapOk === 0) {
+  console.error(`\n❌ guard-mutations: --only "${ONLY}" 에 걸린 주입이 0건이다.`)
+  console.error('   이 필터는 정규식이 아니라 이름 **부분일치**다 — "a|b" 같은 건 안 먹고, 파일명도 안 먹는다.')
+  console.error('   여러 건을 돌리려면 각각 따로 부르거나 인자 없이 전수로 돌려라.')
+  process.exit(1)
+}
 if (MAP_ONLY) {
   console.log(`\n✅ guard-mutations(--map-only): 주입 지도 ${mapOk}건 성함 — find 가 코드에 유일하게 존재.`)
   console.log('   ⚠️ 이 모드는 **되돌려-검증을 하지 않는다**(가드가 실제로 실패하는지는 안 봄).')
@@ -7538,7 +11039,7 @@ if (MAP_ONLY) {
   process.exit(0)
 }
 /**
- * 🚨 `--only` 가 아무것도 못 고르면 **실패**다.
+ * 🚨 되돌려-검증 모드에서도 같은 판정(위에서 이미 걸렀으면 여기 안 온다).
  *   전에는 0건을 돌고도 "전부 빨간불 확인" 을 찍었다 — 2026-08-27 에 `--only "a|b|c"` 로 부르고
  *   (이 필터는 정규식이 아니라 **단순 부분일치**다) 초록불을 받았는데 실제로 돈 주입은 0건이었다.
  *   "검사가 실패할 수 없음" 이 이 레포가 반복해 당한 자리고, 하필 그 검사기 자신이 그랬다.
@@ -7549,4 +11050,4 @@ if (ONLY && onlyMatched === 0) {
   console.error('   여러 건을 돌리려면 각각 따로 부르거나 인자 없이 전수로 돌려라.')
   process.exit(1)
 }
-console.log(`\n✅ guard-mutations: ${ONLY ? `${onlyMatched}개(--only "${ONLY}")` : `${MUTATIONS.length}개`} 주입 전부 빨간불 확인 — 가드가 실제로 실패할 수 있다.`)
+console.log(`\n✅ guard-mutations: ${ONLY ? `${onlyMatched}개(--only "${ONLY}")` : `${planned}개`} 주입 전부 빨간불 확인 — 가드가 실제로 실패할 수 있다.`)

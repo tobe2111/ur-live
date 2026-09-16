@@ -39,7 +39,7 @@ const STEPS = [
 
 export default function AboutServicePage() {
   return (
-    <div className="min-h-[100dvh] bg-[#F8F7FC] dark:bg-[#11141C]">
+    <div className="min-h-[100dvh] bg-warm">
       <SEO title="서비스 소개 - 유어딜" description="유어딜은 동네 가게의 할인 이용권을 앱에서 사고 매장에서 QR 로 쓰는 로컬 딜 플랫폼입니다." url="/about" />
       <header className="sticky top-0 z-20 flex items-center justify-between px-4 h-12 bg-[#F8F7FC]/90 dark:bg-[#11141C]/90 backdrop-blur-sm">
         <Link to="/" aria-label="유어딜 홈"><UrDealLogo size={18} /></Link>
@@ -88,7 +88,7 @@ export default function AboutServicePage() {
             <span aria-hidden className="absolute left-[5px] top-2 bottom-2 w-px bg-[#16181C]/20 dark:bg-[#3A3D44]" />
             {TRIANGLE.map(({ icon: Icon, t, gives, gets }) => (
               <li key={t} className="relative pb-5 last:pb-0">
-                <span aria-hidden className="absolute -left-5 top-1.5 w-[11px] h-[11px] rounded-full bg-[#F8F7FC] dark:bg-[#11141C] ring-2 ring-brand" />
+                <span aria-hidden className="absolute -left-5 top-1.5 w-[11px] h-[11px] rounded-full bg-warm ring-2 ring-brand" />
                 <p className="flex items-center gap-1.5 text-[14.5px] font-extrabold text-[#16181C] dark:text-[#F5F3F1]">
                   <Icon className="w-[15px] h-[15px] text-brand" strokeWidth={1.9} aria-hidden />{t}
                 </p>
@@ -115,7 +115,7 @@ export default function AboutServicePage() {
           <ol className="mt-4 space-y-4">
             {STEPS.map(([t, d], i) => (
               <li key={t} className="flex gap-3">
-                <span aria-hidden className="shrink-0 mt-[3px] w-5 text-[11px] font-extrabold tabular-nums text-gray-300 dark:text-gray-600">{i + 1}</span>
+                <span aria-hidden className="shrink-0 mt-[3px] w-5 text-[11px] font-extrabold tabular-nums text-gray-400 dark:text-gray-500">{i + 1}</span>
                 <div className="min-w-0 border-b border-[#16181C]/8 dark:border-[#2C2F35] pb-4 flex-1 last:border-0">
                   <p className="text-[14.5px] font-extrabold text-[#16181C] dark:text-[#F5F3F1]">{t}</p>
                   <p className="text-[12.5px] text-gray-500 dark:text-gray-400 leading-relaxed mt-1">{d}</p>

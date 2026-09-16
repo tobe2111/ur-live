@@ -19,7 +19,7 @@ import api from '@/lib/api'
 import { formatNumber } from '@/utils/format'
 
 export default function NetProceedsCard({ price, promoPct }: { price: number; promoPct?: number }) {
-  const [fee, setFee] = useState<{ channel: string; platform_fee_pct: number; channel_rates_active?: boolean } | null>(null)
+  const [fee, setFee] = useState<{ channel: string | null; platform_fee_pct: number; channel_rates_active?: boolean } | null>(null)
   useEffect(() => {
     api.get('/api/seller/fee-context')
       .then(r => { if (r.data?.success) setFee(r.data.data) })
@@ -33,12 +33,12 @@ export default function NetProceedsCard({ price, promoPct }: { price: number; pr
   const net = price - platformCut - promoCut
 
   return (
-    <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3.5">
-      <p className="text-[11px] font-bold text-emerald-800 mb-2">💰 판매 1건당 실수령 (예상)</p>
+    <div className="mt-3 rounded-xl border border-rule bg-white p-3.5">
+      <p className="text-[11px] font-bold text-tone-ok mb-2">판매 1건당 실수령 (예상)</p>
       <div className="space-y-1 text-xs">
         <div className="flex justify-between text-gray-600"><span>판매가</span><span>{formatNumber(price)}원</span></div>
         <div className="flex justify-between text-gray-600">
-          <span>플랫폼 수수료 ({fee.platform_fee_pct}%{fee.channel === 'direct' ? ' · 직접 운영' : ' · 중개 운영'})</span>
+          <span>플랫폼 수수료 ({fee.platform_fee_pct}%{fee.channel === 'direct' ? ' · 직접 운영' : fee.channel === 'brokered' ? ' · 중개 운영' : ' · 운영 방식 미선택'})</span>
           <span>−{formatNumber(platformCut)}원</span>
         </div>
         {promo > 0 && (
@@ -47,7 +47,7 @@ export default function NetProceedsCard({ price, promoPct }: { price: number; pr
             <span>−{formatNumber(promoCut)}원</span>
           </div>
         )}
-        <div className="flex justify-between font-extrabold text-emerald-800 pt-1.5 border-t border-emerald-200">
+        <div className="flex justify-between font-extrabold text-tone-ok pt-1.5 border-t border-rule">
           <span>매장 실수령</span><span>{formatNumber(net)}원</span>
         </div>
       </div>

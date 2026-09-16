@@ -216,16 +216,16 @@ influencerApp.get('/me', async (c) => {
   // 💡 2026-07-11 (flip 체크리스트 D1 선반영 — additive): 재원 스위치를 함께 반환해
   //   클라 프레이밍을 게이트('platform' 기본 = 현행 문구 불변, 'owner' = 매장 promo 재원 문구).
   //   fail-soft — 이 read 가 실패해도 정산 응답을 절대 막지 않음 (agency-delegation.routes.ts 패턴).
-  const fund = await DB.prepare(
-    `SELECT value FROM platform_settings WHERE key = 'promo_funding_source'`
-  ).first<{ value: string }>().catch(() => null)
-
+  //   🔒 2026-09-16 사용 확인 게이트도 **같은 이유로** 함께 — 안 내려주면 보류 라벨이 "환불기간 (대기)" 로 굳어 게이트가 켜진 뒤엔 거짓말이 된다(`payout-use-gate.ts`). 같은 테이블이라 한 번에 읽는다(2왕복 → 1왕복).
+  const st = await DB.prepare(`SELECT key, value FROM platform_settings WHERE key IN ('promo_funding_source','payout_requires_voucher_use')`).all<{ key: string; value: string }>().catch(() => ({ results: [] as { key: string; value: string }[] }))
+  const setting = (k: string) => (st.results || []).find((r) => r.key === k)?.value
   return c.json({
     success: true,
     data: {
       balance: balance || { pending_amount: 0, available_amount: 0, total_paid_out: 0 },
       recent: recent.results || [],
-      funding_source: fund?.value || 'platform',
+      funding_source: setting('promo_funding_source') || 'platform',
+      requires_voucher_use: setting('payout_requires_voucher_use') === 'true',
     },
   })
 })

@@ -72,20 +72,20 @@ export default function AdminYoutubeQuotaPage() {
         />
 
         {!data ? (
-          <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
+          <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-12 text-center">
             <Loader2 className="w-6 h-6 animate-spin text-gray-400 mx-auto" />
           </div>
         ) : (
           <>
             {/* Quota 카드 */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <div className={`rounded-2xl p-5 border ${
-                data.quota.today.warning === 'critical' ? 'bg-red-50 border-red-200' :
-                data.quota.today.warning === 'warn' ? 'bg-amber-50 border-amber-200' :
+              <div className={`rounded-[var(--dash-radius,16px)] p-5 border ${
+                data.quota.today.warning === 'critical' ? 'bg-white border-rule' :
+                data.quota.today.warning === 'warn' ? 'bg-white border-rule' :
                 'bg-white border-gray-200'
               }`}>
                 <p className="text-xs font-semibold text-gray-700 mb-1">오늘 사용량</p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">
                   {formatNum(data.quota.today.total)}
                   <span className="text-sm text-gray-500 font-normal"> / {formatNum(data.quota.today.limit)}</span>
                 </p>
@@ -97,33 +97,33 @@ export default function AdminYoutubeQuotaPage() {
                 </div>
                 <p className="text-[11px] text-gray-500 mt-1">{(data.quota.today.ratio * 100).toFixed(1)}% 사용</p>
                 {data.quota.today.warning !== 'ok' && (
-                  <p className="text-xs font-semibold text-red-700 mt-2 flex items-center gap-1">
+                  <p className="text-xs font-semibold text-tone-bad mt-2 flex items-center gap-1">
                     <AlertTriangle className="w-3.5 h-3.5" />
                     {data.quota.today.warning === 'critical' ? '95% 도달 — 새 broadcast 생성 차단됨' : '80% 도달 — 곧 한도 임박'}
                   </p>
                 )}
               </div>
 
-              <div className="rounded-2xl p-5 border bg-white border-gray-200">
+              <div className="rounded-[var(--dash-radius,16px)] p-5 border bg-white border-gray-200">
                 <p className="text-xs font-semibold text-gray-700 mb-1">어제 사용량</p>
-                <p className="text-2xl font-bold text-gray-900">{formatNum(data.quota.yesterday.total)}</p>
+                <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">{formatNum(data.quota.yesterday.total)}</p>
                 <p className="text-[11px] text-gray-500 mt-1">{data.quota.yesterday.date}</p>
                 {data.quota.today.total > 0 && data.quota.yesterday.total > 0 && (
-                  <p className={`text-xs font-semibold mt-2 ${data.quota.today.total > data.quota.yesterday.total ? 'text-red-600' : 'text-green-600'}`}>
+                  <p className={`text-xs font-semibold mt-2 ${data.quota.today.total > data.quota.yesterday.total ? 'text-tone-bad' : 'text-tone-ok'}`}>
                     {data.quota.today.total > data.quota.yesterday.total ? '▲' : '▼'}{' '}
                     {Math.abs(((data.quota.today.total - data.quota.yesterday.total) / data.quota.yesterday.total) * 100).toFixed(0)}%
                   </p>
                 )}
               </div>
 
-              <div className="rounded-2xl p-5 border bg-white border-gray-200">
+              <div className="rounded-[var(--dash-radius,16px)] p-5 border bg-white border-gray-200">
                 <p className="text-xs font-semibold text-gray-700 mb-1">24h Stream 통계</p>
                 <div className="space-y-1.5 mt-2">
                   {Object.entries(data.stream_counts_24h).map(([status, count]) => (
                     <div key={status} className="flex items-center justify-between text-sm">
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        status === 'live' ? 'bg-red-100 text-red-700' :
-                        status === 'scheduled' ? 'bg-blue-100 text-blue-700' :
+                        status === 'live' ? 'bg-tone-bad-bg text-tone-bad' :
+                        status === 'scheduled' ? 'bg-tone-info-bg text-tone-info' :
                         'bg-gray-100 text-gray-700'
                       }`}>
                         {status}
@@ -137,7 +137,7 @@ export default function AdminYoutubeQuotaPage() {
 
             {/* API call 분포 */}
             {Object.keys(data.quota.today.calls).length > 0 && (
-              <div className="bg-white rounded-2xl border border-gray-200 p-5">
+              <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-5">
                 <p className="text-sm font-bold text-gray-900 mb-3">오늘 API 호출 분포 (units)</p>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {Object.entries(data.quota.today.calls)
@@ -153,7 +153,7 @@ export default function AdminYoutubeQuotaPage() {
             )}
 
             {/* 셀러별 일일 생성 */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-5">
+            <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-5">
               <p className="text-sm font-bold text-gray-900 mb-3">셀러별 오늘 라이브 생성 ({data.sellers_today.length}명)</p>
               {data.sellers_today.length === 0 ? (
                 <p className="text-sm text-gray-500">오늘 라이브 생성 0건</p>
@@ -168,7 +168,7 @@ export default function AdminYoutubeQuotaPage() {
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-gray-900">{s.count}</span>
                         <span className="text-[10px] text-gray-500">/ 5</span>
-                        {s.count >= 5 && <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-bold">한도</span>}
+                        {s.count >= 5 && <span className="text-[10px] bg-tone-bad-bg text-tone-bad px-1.5 py-0.5 rounded-full font-bold">한도</span>}
                       </div>
                     </div>
                   ))}
@@ -177,11 +177,11 @@ export default function AdminYoutubeQuotaPage() {
             </div>
 
             {/* 좀비 의심 */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-5">
+            <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-5">
               <p className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
                 좀비 의심 Streams
                 {data.zombie_suspect.length > 0 && (
-                  <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">
+                  <span className="text-[10px] bg-tone-warn-bg text-tone-warn px-2 py-0.5 rounded-full font-bold">
                     {data.zombie_suspect.length}건
                   </span>
                 )}
@@ -190,20 +190,20 @@ export default function AdminYoutubeQuotaPage() {
                 status='live' 인데 started_at &gt; 5분 — cron 이 자동 복구. 직접 확인 가능.
               </p>
               {data.zombie_suspect.length === 0 ? (
-                <p className="text-sm text-green-700">✅ 좀비 의심 없음</p>
+                <p className="text-sm text-tone-ok">좀비 의심 없음</p>
               ) : (
                 <div className="space-y-2">
                   {data.zombie_suspect.map((z) => (
-                    <div key={z.id} className="border border-amber-200 bg-amber-50 rounded-lg p-3">
+                    <div key={z.id} className="border border-rule bg-white rounded-lg p-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold text-gray-900 truncate">#{z.id} · {z.title}</p>
                           <p className="text-[11px] text-gray-600 mt-0.5">셀러 ID {z.seller_id} · 시작 {z.started_at}</p>
-                          {z.last_error && <p className="text-[11px] text-red-600 mt-1 truncate">⚠️ {z.last_error}</p>}
+                          {z.last_error && <p className="text-[11px] text-tone-bad mt-1 truncate">{z.last_error}</p>}
                         </div>
                         <button
                           onClick={() => handleForceEnd(z.id, z.title)}
-                          className="shrink-0 px-2.5 py-1 rounded-md bg-red-600 text-white text-[11px] font-bold hover:bg-red-700"
+                          className="ur-btn ur-btn-sm ur-btn-danger shrink-0"
                         >
                           강제 종료
                         </button>

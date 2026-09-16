@@ -31,7 +31,7 @@ export default function ExcelExportButtons({ variant }: { variant: 'all' | 'cont
       a.href = url; a.download = `인플루언서풀-${label}-${new Date().toISOString().slice(0, 10)}.xls`; a.click()
       URL.revokeObjectURL(url)
       const size = (r.data as Blob).size
-      toast.success(`📊 ${label} 다운로드 완료 (${size > 1048576 ? `${(size / 1048576).toFixed(1)}MB` : `${Math.round(size / 1024)}KB`})`)
+      toast.success(`${label} 다운로드 완료 (${size > 1048576 ? `${(size / 1048576).toFixed(1)}MB` : `${Math.round(size / 1024)}KB`})`)
     } catch (e) {
       const ax = e as { code?: string; response?: { status?: number } }
       if (ax.code === 'ECONNABORTED') toast.error('엑셀 내보내기 시간 초과 — 데이터가 많습니다. 잠시 후 다시 시도하거나 CSV를 이용하세요')
@@ -42,9 +42,9 @@ export default function ExcelExportButtons({ variant }: { variant: 'all' | 'cont
   if (variant === 'contactable') {
     return (
       <button onClick={() => exportExcel(undefined, true)} disabled={exporting}
-        className="px-4 py-2 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 text-sm font-medium disabled:opacity-40"
+        className="px-4 py-2 rounded-lg border border-rule bg-white text-tone-ok text-sm font-medium disabled:opacity-40"
         title="수기 제휴 제안용 — 이메일 보유 · 브랜드 제외 · 미접촉 · 반송이력 없음. 유어딜 적합 카테고리(맛집·뷰티·여행·숙소·카페 등)가 위, 그 안에서 점수 높은 순">
-        {exporting ? '내보내는 중…' : '📇 연락 대상만 받기'}
+        {exporting ? '내보내는 중…' : '연락 대상만 받기'}
       </button>
     )
   }
@@ -52,16 +52,16 @@ export default function ExcelExportButtons({ variant }: { variant: 'all' | 'cont
   return (
     <>
       <button onClick={() => exportExcel()} disabled={exporting}
-        className="px-4 py-2 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 text-sm font-medium disabled:opacity-50"
+        className="px-4 py-2 rounded-lg border border-rule bg-white text-tone-ok text-sm font-medium disabled:opacity-50"
         title="풀 전체를 카테고리별 시트로 — 점수순 정렬·숫자 열·메일상태 포함(29열)">
-        {exporting ? '내보내는 중…' : '📊 엑셀 다운로드 (전체)'}
+        {exporting ? '내보내는 중…' : '엑셀 다운로드 (전체)'}
       </button>
       {/* 🎯 매체별 분리 다운로드 — 같은 양식(29열·카테고리별 시트), 그 매체 행만. 파일명으로 구분됨. */}
       {EXPORT_PLATS.map(p => (
         <button key={p.v} onClick={() => exportExcel(p.v)} disabled={exporting}
-          className="px-3 py-2 rounded-lg border border-emerald-200 bg-white text-emerald-700 text-sm disabled:opacity-50"
+          className="px-3 py-2 rounded-lg border border-rule bg-white text-tone-ok text-sm disabled:opacity-50"
           title={`${p.label} 리드만 엑셀로 — 전체와 같은 양식(카테고리별 시트)`}>
-          📊 {p.label}
+          {p.label}
         </button>
       ))}
     </>

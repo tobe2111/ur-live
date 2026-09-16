@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { execSync } from 'node:child_process'
+import { stripComments } from '../helpers/source-text'
 
 /**
  * 🧱 **100컬럼 테이블에 컬럼을 더하는 런타임 코드는 조용히 실패한다.**
@@ -74,8 +75,6 @@ const KNOWN: Record<string, string> = {
     '🔴 라이브에 없음 — 잠재 500: sellers.plus_until',
   'src/features/supply/api/wholesale.routes.ts':
     '🔴 라이브에 없음 — 잠재 500: sellers.nts_status',
-  'src/worker/cron/group-buy-deadline-push.ts':
-    '컬럼은 현재 라이브에 존재(같은 클래스, 잠복)',
   'src/worker/cron/seller-daily-report.ts':
     '컬럼은 현재 라이브에 존재(같은 클래스, 잠복)',
 }
@@ -89,8 +88,7 @@ const SRC = execSync(`git ls-files 'src/**/*.ts' | grep -v '/tests/'`, { encodin
  * 첫 스캔이 그 문장을 위반으로 셌다. 사고 기록을 남길수록 가드가 시끄러워지면 기록을 안 하게 된다.
  */
 function codeOnly(src: string): string {
-  return src.replace(/\/\*[\s\S]*?\*\//g, '')
-    .split('\n').filter((l) => !/^\s*(\/\/|\*)/.test(l)).join('\n')
+  return stripComments(src)
 }
 
 describe('넓은 테이블 인라인 ALTER — 조용한 실패 차단', () => {

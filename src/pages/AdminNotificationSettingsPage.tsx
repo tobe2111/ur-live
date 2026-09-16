@@ -22,10 +22,10 @@ interface Setting {
 }
 
 const CHANNEL_INFO: Record<string, { label: string; icon: typeof Bell; cost: string; color: string }> = {
-  dashboard: { label: '대시보드', icon: Bell, cost: '무료', color: 'text-blue-600' },
-  email: { label: '이메일', icon: Mail, cost: '무료 3000건/월', color: 'text-purple-600' },
-  alimtalk: { label: '카카오 알림톡', icon: MessageSquare, cost: '8원/건', color: 'text-yellow-600' },
-  push: { label: 'Web Push', icon: Smartphone, cost: '무료', color: 'text-green-600' },
+  dashboard: { label: '대시보드', icon: Bell, cost: '무료', color: 'text-tone-info' },
+  email: { label: '이메일', icon: Mail, cost: '무료 3000건/월', color: 'text-tone-info' },
+  alimtalk: { label: '카카오 알림톡', icon: MessageSquare, cost: '8원/건', color: 'text-tone-warn' },
+  push: { label: 'Web Push', icon: Smartphone, cost: '무료', color: 'text-tone-ok' },
 }
 
 // 🛡️ 2026-04-28: 38종 type 카테고리 grouping (UX). 코드 시드 순서와 일치.
@@ -74,7 +74,7 @@ export default function AdminNotificationSettingsPage() {
         />
 
         {/* 채널 비용 안내 */}
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-xs text-blue-900 leading-relaxed">
+        <div className="bg-white border border-rule rounded-xl p-4 text-xs text-gray-700 leading-relaxed">
           <div className="font-bold mb-1">채널별 비용</div>
           <ul className="space-y-0.5 list-disc list-inside">
             <li><b>대시보드</b>: 무료, 사용자가 대시보드 들어와야 봄</li>
@@ -136,8 +136,8 @@ export default function AdminNotificationSettingsPage() {
                                   ) : (
                                     <button
                                       onClick={() => toggle(s.notification_type, col, !isOn)}
-                                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-pink-300 ${
-                                        isOn ? 'bg-pink-500' : 'bg-gray-300'
+                                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-brand/40 ${
+                                        isOn ? 'bg-brand' : 'bg-gray-300'
                                       }`}
                                       aria-label={`${s.notification_type} ${col.replace('_enabled', '')} ${isOn ? '끄기' : '켜기'}`}
                                       aria-pressed={isOn}
@@ -166,8 +166,8 @@ export default function AdminNotificationSettingsPage() {
               if (uncategorized.length === 0) return null
               return (
                 <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                  <div className="px-4 py-2.5 bg-orange-50 border-b border-orange-200">
-                    <h3 className="text-xs font-bold text-orange-700 uppercase tracking-wider">{t('admin.notificationSettings.uncategorized', { defaultValue: '기타 (미분류 — 코드 그룹 추가 필요)' })}</h3>
+                  <div className="px-4 py-2.5 bg-white border-b border-rule">
+                    <h3 className="text-xs font-bold text-tone-warn uppercase tracking-wider">{t('admin.notificationSettings.uncategorized', { defaultValue: '기타 (미분류 — 코드 그룹 추가 필요)' })}</h3>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
@@ -188,7 +188,7 @@ export default function AdminNotificationSettingsPage() {
                                   ) : (
                                     <button
                                       onClick={() => toggle(s.notification_type, col, !isOn)}
-                                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${isOn ? 'bg-pink-500' : 'bg-gray-300'}`}
+                                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${isOn ? 'bg-brand' : 'bg-gray-300'}`}
                                       aria-label={`${s.notification_type} ${col.replace('_enabled', '')} 토글`}
                                       aria-pressed={isOn}
                                     >

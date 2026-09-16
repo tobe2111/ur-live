@@ -13,7 +13,7 @@ export default function ImportPanel({ text, onText, busy, onSubmit }: {
         placeholder={'회사명\t전화\t주소\t홈페이지\nOO간판\t02-...\t서초구...\thttp://...'}
         className="w-full px-3 py-2 rounded-lg border border-gray-300 text-gray-900 text-sm font-mono" />
       <div className="flex justify-end mt-2">
-        <button onClick={onSubmit} disabled={busy} className="px-5 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50">{busy ? '저장 중…' : '임포트'}</button>
+        <button onClick={onSubmit} disabled={busy} className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-50">{busy ? '저장 중…' : '임포트'}</button>
       </div>
     </div>
   )

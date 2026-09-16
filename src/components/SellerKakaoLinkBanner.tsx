@@ -15,7 +15,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
-import { X } from 'lucide-react'
+import { X, MessageCircle } from 'lucide-react'
 
 const DISMISS_KEY = 'seller_kakao_link_banner_dismissed_v1'
 const SESSION_KEY = 'seller_kakao_link_banner_session_v1'  // 'show' | 'hide' — 세션당 1회 조회 캐시
@@ -64,8 +64,8 @@ export default function SellerKakaoLinkBanner() {
   }
 
   return (
-    <div className="relative rounded-2xl border border-gray-200 bg-white shadow-sm px-4 py-3.5 flex items-center gap-3">
-      <div className="w-10 h-10 rounded-full bg-[#FEE500] flex items-center justify-center text-lg shrink-0">💬</div>
+    <div className="relative rounded-2xl bg-white shadow-lift px-4 py-3.5 flex items-center gap-3">
+      <div className="w-10 h-10 rounded-full bg-brand-tint text-brand-text flex items-center justify-center shrink-0"><MessageCircle className="w-5 h-5" strokeWidth={1.6} aria-hidden="true" /></div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-bold text-gray-900">
           {t('seller.kakaoBannerTitle', { defaultValue: '카카오 로그인으로 더 간편하게' })}
@@ -77,7 +77,7 @@ export default function SellerKakaoLinkBanner() {
       <button
         type="button"
         onClick={() => navigate('/seller/profile')}
-        className="shrink-0 px-3.5 py-2 bg-[#111827] hover:bg-black text-white text-xs font-bold rounded-xl transition-colors"
+        className="ur-btn ur-btn-sm ur-btn-primary shrink-0"
       >
         {t('seller.kakaoBannerCta', { defaultValue: '연동하기' })}
       </button>

@@ -5,7 +5,8 @@
  *
  *   [1 매장] 등록 매장 자동 상속(GET /stores/context) · 다매장 칩 선택 · 카카오맵 검색
  *   [2 이용권] 종류·이름·가격·사진·실수령가
- *   [3 판매 설정] 재고·한도·마감 · 유효기간 기본 무기한 · 미리보기 → 등록
+ *   [3 판매 설정] 재고·한도 · 유효기간 기본 무기한 · 미리보기 → 등록
+ *   (2026-09-04 대표 "마감 개념은 없어" — '판매 마감' 입력은 이 단계에서 제거됐다.)
  *
  *   임시저장 = localStorage 드래프트(voucher-form.ts) — 자동저장 + 명시 버튼 + 복원 배너.
  *   제출 payload 는 종전과 동일 계약(POST /api/seller/products) — 단 group_buy_target 은
@@ -17,6 +18,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Utensils, CheckCircle, ChevronLeft, ChevronRight, Save } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import { kstInputToUTC } from '@/utils/date'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
 import { SELLER_PROMO_FIELD_ENABLED } from '@/shared/feature-flags'
 import SellerLayout from '@/components/SellerLayout'
@@ -24,6 +26,7 @@ import KakaoShareButton from '@/components/KakaoShareButton'
 import { DashboardPageHeader } from '@/components/dashboard'
 import type { KakaoPlace } from '@/components/KakaoMapPicker'
 import StoreStep from './seller-meal-voucher/StoreStep'
+import StoreChannelRequired from './seller-meal-voucher/StoreChannelRequired'
 import VoucherInfoStep from './seller-meal-voucher/VoucherInfoStep'
 import SaleSettingsStep from './seller-meal-voucher/SaleSettingsStep'
 import {
@@ -52,6 +55,9 @@ export default function SellerMealVoucherNewPage() {
   // 🚪 2026-08-24 (대표): 매장 등록이 무조건 선행 — 서버 판정(store_ready). false 면 1단계에서
   //   등록을 완료해야 다음 단계로 넘어갈 수 있다. null(판정 중/실패)은 막지 않는다(fail-open).
   const [storeReady, setStoreReady] = useState<boolean | null>(null)
+  // 🏪 2026-09-07 결재 Q3-3: 채널(직접/중개) 미지정 좌석은 1단계에서 **고르고** 넘어간다(서버 set-once).
+  //   null(판정 중/실패)은 막지 않는다(fail-open — storeReady 와 같은 규칙). 새 매장은 등록 문에서 이미 골랐다.
+  const [channelSet, setChannelSet] = useState<boolean | null>(null)
 
   // 🧭 재발행 복사: ?copyFrom=<productId> 면 본인 소유 공구를 불러와 프리필(날짜는 리셋).
   useEffect(() => {
@@ -72,6 +78,13 @@ export default function SellerMealVoucherNewPage() {
           price: num(src.price) || f.price,
           original_price: num(src.original_price),
           image_url: str(src.image_url),
+          images: (() => {
+            // 이전 공구 복사 — 사진도 함께. 문자열(JSON)/배열 둘 다 온다.
+            const raw = src.images
+            const arr = typeof raw === 'string' ? (() => { try { return JSON.parse(raw) } catch { return [] } })() : raw
+            const list = Array.isArray(arr) ? arr.filter((u): u is string => typeof u === 'string' && !!u) : []
+            return list.length ? list : (str(src.image_url) ? [str(src.image_url)] : [])
+          })(),
           category: (str(src.category) || f.category) as VoucherForm['category'],
           restaurant_name: str(src.restaurant_name),
           restaurant_address: str(src.restaurant_address),
@@ -80,7 +93,8 @@ export default function SellerMealVoucherNewPage() {
           restaurant_lng: src.restaurant_lng != null ? String(src.restaurant_lng) : '',
           voucher_terms: str(src.voucher_terms),
           stock: num(src.stock) || f.stock,
-          // 마감(group_buy_deadline)/만료(voucher_expiry)는 기본값 유지 — 새 공구 기준 재계산.
+          // 만료(voucher_expiry)는 기본값 유지 — 값을 물려받지 않으므로 utcToKstInput 이 필요 없다.
+          //   (마감은 2026-09-04 에 개념째 없어졌다 — 물려받을 값 자체가 없다.)
         }))
         toast.success(t('seller.groupBuy.copyLoaded', { defaultValue: '이전 공구 내용을 불러왔어요 — 날짜만 확인하고 발행하세요!' }))
       })
@@ -117,6 +131,9 @@ export default function SellerMealVoucherNewPage() {
         setForm(f => (f.restaurant_name ? f : applyStoreContext(f, s)))
       })
       .catch(() => { /* 프리필 실패는 조용히 — 지도 검색이 언제나 대안 */ })
+    api.get('/api/seller/fee-context')
+      .then(r => { if (alive && r.data?.success && typeof r.data.data?.channel_set === 'boolean') setChannelSet(r.data.data.channel_set) })
+      .catch(() => { /* 판정 실패는 막지 않는다 */ })
     return () => { alive = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -143,7 +160,8 @@ export default function SellerMealVoucherNewPage() {
   const token = getSellerToken()
   const headers = { Authorization: `Bearer ${token}` }
   const KAKAO_JS_KEY = import.meta.env?.VITE_KAKAO_JAVASCRIPT_KEY || ''
-  const update = (key: string, value: string | number) => setForm(f => ({ ...f, [key]: value }))
+  // 🖼️ 2026-09-03: 사진 목록(`images`)이 배열이라 값 타입을 넓혔다.
+  const update = (key: string, value: string | number | string[]) => setForm(f => ({ ...f, [key]: value }))
 
   function searchImages(query: string) {
     setLoadingImages(true)
@@ -188,6 +206,11 @@ export default function SellerMealVoucherNewPage() {
       toast.error(t('seller.mealVoucher.needStore', { defaultValue: '매장을 먼저 선택하거나 입력해주세요' }))
       return false
     }
+    // 🏪 채널 미지정 좌석 — 한 번 고르기 전엔 다음 단계로 못 간다(결재 Q3-3 "미지정 폴백 폐지").
+    if (s === 0 && channelSet === false) {
+      toast.error(t('seller.mealVoucher.channelFirst', { defaultValue: '이 매장을 누가 운영하는지 먼저 골라주세요' }))
+      return false
+    }
     if (s === 1 && (!form.name.trim() || !(form.price > 0))) {
       toast.error(t('seller.mealVoucher.requiredFields'))
       return false
@@ -209,6 +232,9 @@ export default function SellerMealVoucherNewPage() {
         price: form.price,
         original_price: form.original_price || form.price,
         image_url: form.image_url,
+        // 🖼️ 2026-09-03: 사진 여러 장. 소비자 카드 캐러셀·상세 갤러리가 `products.images` 를 읽는다.
+        //   첫 장은 `image_url` 과 같은 값(대표) — 서버가 그대로 저장한다.
+        images: form.images.length ? JSON.stringify(form.images) : null,
         category: form.category,
         product_type: 'featured',
         stock: form.stock,
@@ -222,7 +248,9 @@ export default function SellerMealVoucherNewPage() {
         voucher_terms: form.voucher_terms || null,
         // 🎯 목표 인원 입력 제거(2026-08-23) — 즉시판매 단일가 모델이라 항상 0(=바로 판매).
         group_buy_target: 0,
-        group_buy_deadline: form.group_buy_deadline || null,
+        // 🕐 2026-09-02: 칸은 KST 벽시계, 저장은 UTC — 경계에서 한 번만 바꾼다(SSOT `utils/date`).
+        //   종전엔 datetime-local 값을 그대로 보내 서버가 UTC 로 읽어 **마감이 9시간 늦게** 걸렸다.
+        group_buy_deadline: kstInputToUTC(form.group_buy_deadline) || null,
         store_verify_pin: form.store_verify_pin || null,
         external_booking_url: form.external_booking_url || null,
         // 지역 자동 파싱 — restaurant_address 첫 단어 = region_si.
@@ -266,9 +294,9 @@ export default function SellerMealVoucherNewPage() {
   if (done) {
     return (
       <SellerLayout title={t('seller.mealVoucher.title')}>
-        <div className="mx-auto max-w-xl p-4 sm:p-6 lg:p-8">
-          <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center mt-8">
-            <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
+        <div className="mx-auto max-w-5xl">
+          <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-8 text-center mt-8">
+            <CheckCircle className="w-12 h-12 text-tone-ok mx-auto mb-3" />
             <h2 className="text-lg font-bold text-gray-900">{t('seller.mealVoucher.doneTitle', { defaultValue: '이용권이 등록됐어요!' })}</h2>
             <p className="text-sm text-gray-500 mt-2">
               {t('seller.mealVoucher.doneDesc', { defaultValue: '소개해 줄 사람에게 제안을 보내면 소개 판매가 시작돼요. 커미션은 팔렸을 때만 발생합니다.' })}
@@ -305,7 +333,7 @@ export default function SellerMealVoucherNewPage() {
               </button>
               <button
                 onClick={() => navigate('/seller/influencers')}
-                className="flex-[2] py-3 bg-pink-500 text-white rounded-xl font-bold text-sm"
+                className="ur-btn ur-btn-lg ur-btn-primary flex-[2]"
               >
                 {t('seller.mealVoucher.findInfluencers', { defaultValue: '소개 파트너 찾기 →' })}
               </button>
@@ -318,7 +346,7 @@ export default function SellerMealVoucherNewPage() {
 
   return (
     <SellerLayout title={t('seller.mealVoucher.title')}>
-      <div className="mx-auto max-w-3xl space-y-4 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-4">
         <DashboardPageHeader
           title={t('seller.mealVoucher.title')}
           subtitle={t('seller.mealVoucher.subtitle', { defaultValue: '이용권/공동구매 상품 등록' })}
@@ -327,7 +355,7 @@ export default function SellerMealVoucherNewPage() {
 
         {/* 💾 임시저장 복원 배너 */}
         {pendingDraft && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between gap-3">
+          <div className="bg-white border border-rule rounded-xl p-4 flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="text-sm font-bold text-gray-900">{t('seller.mealVoucher.draftFound', { defaultValue: '임시저장된 작성 내용이 있어요' })}</p>
               <p className="text-[11px] text-gray-500 mt-0.5 truncate">
@@ -361,7 +389,7 @@ export default function SellerMealVoucherNewPage() {
               type="button"
               onClick={() => { if (i < step || (validateStep(0) && (i < 2 || validateStep(1)))) setStep(i) }}
               className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${
-                i === step ? 'bg-gray-900 text-white' : i < step ? 'bg-pink-100 text-pink-700' : 'bg-gray-100 text-gray-400'
+                i === step ? 'bg-brand-tint text-brand-text' : i < step ? 'bg-brand-tint text-brand-text' : 'bg-gray-100 text-gray-400'
               }`}
             >
               {i + 1}. {label}
@@ -381,6 +409,9 @@ export default function SellerMealVoucherNewPage() {
               storeRequired={storeReady === false}
               onStoreReady={() => setStoreReady(true)}
             />
+          )}
+          {step === 0 && channelSet === false && (
+            <StoreChannelRequired onDone={() => setChannelSet(true)} />
           )}
           {step === 1 && (
             <VoucherInfoStep
@@ -426,7 +457,7 @@ export default function SellerMealVoucherNewPage() {
               <button
                 type="button"
                 onClick={() => { if (validateStep(step)) setStep(s => Math.min(2, s + 1)) }}
-                className="flex-[2] py-3 bg-pink-500 text-white rounded-xl font-bold text-sm active:scale-[0.98] flex items-center justify-center gap-1"
+                className="ur-btn ur-btn-lg ur-btn-primary flex-[2]"
               >
                 {t('common.next', { defaultValue: '다음' })} <ChevronRight className="w-4 h-4" />
               </button>
@@ -434,7 +465,7 @@ export default function SellerMealVoucherNewPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="flex-[2] py-3 bg-pink-500 text-white rounded-xl font-bold text-sm disabled:opacity-50 active:scale-[0.98]"
+                className="ur-btn ur-btn-lg ur-btn-primary flex-[2]"
               >
                 {submitting ? t('seller.registering') : t('seller.mealVoucher.registerSubmit')}
               </button>

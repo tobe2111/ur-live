@@ -93,8 +93,8 @@ export default function AdminExperienceCampaignsPage() {
 
   const statusBadge = (s: string) => {
     const m: Record<string, { t: string; c: string }> = {
-      open: { t: '모집중', c: 'bg-green-100 text-green-700' },
-      drawn: { t: '추첨완료', c: 'bg-blue-100 text-blue-700' },
+      open: { t: '모집중', c: 'bg-tone-ok-bg text-tone-ok' },
+      drawn: { t: '추첨완료', c: 'bg-tone-info-bg text-tone-info' },
       closed: { t: '종료', c: 'bg-gray-100 text-gray-600' },
     }
     const x = m[s] || { t: s, c: 'bg-gray-100 text-gray-600' }
@@ -111,7 +111,7 @@ export default function AdminExperienceCampaignsPage() {
       />
 
       {/* 대행 생성 폼 */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-5 mt-4 mb-5">
+      <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-5 mt-4 mb-5">
         <h3 className="text-[14px] font-bold text-gray-900 mb-3">새 체험 캠페인 (대행 개설)</h3>
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
           <label className="text-[12px] text-gray-600">매장 ID(seller_id)
@@ -137,12 +137,12 @@ export default function AdminExperienceCampaignsPage() {
           </label>
         </div>
         <div className="mt-3 flex justify-end">
-          <button type="button" disabled={creating} onClick={create} className="px-4 py-2 rounded-xl bg-gray-900 text-white text-[13px] font-semibold disabled:opacity-50">{creating ? '생성 중…' : '캠페인 개설'}</button>
+          <button type="button" disabled={creating} onClick={create} className="ur-btn ur-btn-md ur-btn-primary text-[13px] disabled:opacity-50">{creating ? '생성 중…' : '캠페인 개설'}</button>
         </div>
       </div>
 
       {/* 캠페인 목록 */}
-      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 overflow-hidden">
         {loading ? <div className="p-8 text-center text-gray-400 text-[13px]">로딩 중…</div>
         : campaigns.length === 0 ? <div className="p-8 text-center text-gray-400 text-[13px]">개설된 캠페인이 없습니다.</div>
         : campaigns.map(c => (
@@ -159,7 +159,7 @@ export default function AdminExperienceCampaignsPage() {
               <div className="px-4 pb-4 bg-gray-50/60">
                 {/* 액션 */}
                 <div className="flex flex-wrap gap-2 py-3">
-                  {c.status === 'open' && <button type="button" onClick={() => void draw(c.id, c.slots)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-900 text-white text-[12px] font-semibold"><Dice5 className="w-3.5 h-3.5" />공정 추첨 실행</button>}
+                  {c.status === 'open' && <button type="button" onClick={() => void draw(c.id, c.slots)} className="ur-btn ur-btn-sm ur-btn-primary flex items-center gap-1.5 text-[12px]"><Dice5 className="w-3.5 h-3.5" />공정 추첨 실행</button>}
                   <button type="button" onClick={() => void downloadCsv(c.id)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-[12px]"><FileDown className="w-3.5 h-3.5" />리포트 CSV</button>
                 </div>
                 {/* 리포트 요약 */}
@@ -173,7 +173,7 @@ export default function AdminExperienceCampaignsPage() {
                 {/* 추첨 이력 (B2G 증빙) */}
                 {draws.length > 0 && (
                   <div className="bg-white rounded-xl border border-gray-200 p-3 mb-3">
-                    <p className="text-[12px] font-bold text-gray-900 flex items-center gap-1 mb-2"><ShieldCheck className="w-3.5 h-3.5 text-blue-600" />추첨 이력 (조작불가 증빙)</p>
+                    <p className="text-[12px] font-bold text-gray-900 flex items-center gap-1 mb-2"><ShieldCheck className="w-3.5 h-3.5 text-gray-700" />추첨 이력 (조작불가 증빙)</p>
                     {draws.map(d => (
                       <div key={d.id} className="text-[11px] text-gray-600 border-t border-gray-100 py-1.5 first:border-t-0">
                         <span className="text-gray-400">{formatKST(d.created_at)}</span> · 방식 {d.method} · 풀 {d.pool_size}명 · 당첨 {(() => { try { return JSON.parse(d.winners).length } catch { return '?' } })()}명
@@ -189,7 +189,7 @@ export default function AdminExperienceCampaignsPage() {
                     {entries.length === 0 ? <p className="p-3 text-[12px] text-gray-400">응모자 없음</p> : entries.map(e => (
                       <div key={e.id} className="flex items-center justify-between px-3 py-1.5 text-[11px] border-t border-gray-50">
                         <span className="text-gray-700">{e.user_name || `user ${e.user_id}`}</span>
-                        <span className={e.status === 'selected' ? 'text-blue-600 font-semibold' : 'text-gray-400'}>{e.status === 'selected' ? `선정 (체험권 #${e.voucher_id})` : e.status === 'applied' ? '응모' : e.status}</span>
+                        <span className={e.status === 'selected' ? 'text-gray-700 font-semibold' : 'text-gray-400'}>{e.status === 'selected' ? `선정 (체험권 #${e.voucher_id})` : e.status === 'applied' ? '응모' : e.status}</span>
                       </div>
                     ))}
                   </div>

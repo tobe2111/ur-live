@@ -22,7 +22,12 @@ interface OperableStore {
   business_name: string | null
   name: string | null
   username: string | null
+  /** 서버 상태 — 승인 전(pending)은 좌석 전환이 거부된다(`/stores/:id/token`). */
+  status: string | null
 }
+
+/** 좌석에 앉을 수 있는가 — 서버의 토큰 발급 조건과 같은 판정. */
+const seatable = (s: OperableStore) => s.status === 'active' || s.status === 'approved'
 
 const storeLabel = (s: OperableStore) => s.business_name || s.name || `매장 #${s.seller_id}`
 
@@ -59,6 +64,9 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
   const [switching, setSwitching] = useState<number | null>(null)
   const [currentId, setCurrentId] = useState(() => Number(localStorage.getItem('seller_id') || 0))
   const hasStoreInfo = !!form.restaurant_name
+  /** 지금 앉아 있지 않은 **앉을 수 있는** 매장이 있는가 — 안내를 '등록' 대신 '선택'으로 바꾸는 신호.
+      승인 대기 매장은 아직 고를 수 없으므로 이 신호에서 뺀다(고르라고 해 놓고 거부하면 안 된다). */
+  const hasOtherStore = stores.some(s => s.seller_id !== currentId && seatable(s))
   // 매장 정보가 이미 있으면 지도는 접어 둔다 — "다시 검색"으로 언제든 편다.
   const [showMap, setShowMap] = useState(!hasStoreInfo)
   const mapAutoOpened = useRef(false)
@@ -80,6 +88,10 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
   /** 🔁 다른 매장 선택 = 좌석 전환(StoreSwitcher 와 동일 계약) + 그 매장 정보로 프리필. */
   async function pickStore(s: OperableStore) {
     if (s.seller_id === currentId || switching != null) return
+    if (!seatable(s)) {
+      toast.info(t('seller.mealVoucher.storePendingNotice', { defaultValue: '매장이 등록 접수됐어요 — 사업자 확인(승인) 후 이용권을 등록할 수 있어요' }))
+      return
+    }
     setSwitching(s.seller_id)
     try {
       const r = await api.post(`/api/seller/stores/${s.seller_id}/token`)
@@ -130,8 +142,13 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
 
   return (
     <div className="space-y-4">
-      {/* 다매장 선택 칩 — 전환할 곳이 있을 때만(1곳뿐이면 소음) */}
-      {stores.length >= 2 && (
+      {/* 🏪 매장 선택 칩 — **전환할 곳이 있을 때만** 보인다.
+          2026-09-02 정정: 종전 조건은 `stores.length >= 2` 였다. 그러면 **매장이 딱 하나인데
+            개인 좌석에 앉아 있는 사람**에게 칩이 하나도 안 보인다 — 자기 매장이 있는데 고를 수가 없고,
+            화면은 "매장을 등록하세요" 만 반복했다(대표 실사례: 매장 1개 + 개인 좌석). 조건을
+            "**앉아 있지 않은 매장이 하나라도 있는가**" 로 바꾼다. 이미 그 매장에 앉아 있으면 여전히
+            안 보인다(1곳뿐일 때 소음을 막던 원래 의도는 그대로). */}
+      {stores.some(s => s.seller_id !== currentId) && (
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <p className="text-sm font-bold text-gray-900 mb-2 flex items-center gap-1.5">
             <Store className="w-4 h-4 text-gray-500" />
@@ -147,13 +164,19 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
                   onClick={() => pickStore(s)}
                   disabled={switching != null}
                   className={`px-3 py-2 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-60 ${
-                    active ? 'border-pink-500 bg-pink-50 text-pink-700' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                    active ? 'border-brand bg-brand-tint text-brand-text'
+                      : seatable(s) ? 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                      /* 승인 대기 — 눌러도 서버가 거부한다. 숨기지 않고 '왜 못 고르는지'를 보여준다. */
+                      : 'border-gray-200 bg-gray-50 text-gray-400'
                   }`}
                 >
                   {switching === s.seller_id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : active && <CheckCircle className="w-3.5 h-3.5" />}
                   <span className="max-w-[160px] truncate">{storeLabel(s)}</span>
-                  {s.role === 'operator' && (
-                    <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1 py-0.5 rounded">위임</span>
+                  {!seatable(s) && (
+                    <span className="text-[10px] font-bold text-gray-600 bg-gray-200 px-1 py-0.5 rounded">승인 대기</span>
+                  )}
+                  {seatable(s) && s.role === 'operator' && (
+                    <span className="text-[10px] font-bold text-tone-warn bg-tone-warn-bg px-1 py-0.5 rounded">위임</span>
                   )}
                 </button>
               )
@@ -164,22 +187,22 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
 
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <div className="flex items-center gap-2 mb-4">
-          <MapPin className="w-5 h-5 text-orange-500" />
+          <MapPin className="w-5 h-5 text-tone-warn" />
           <h2 className="text-base font-bold text-gray-900">{t('seller.mealVoucher.restaurantInfo')}</h2>
         </div>
 
         <div className="space-y-4">
           {/* 자동 상속된 매장 요약 — 있으면 지도 대신 이 카드가 먼저 */}
           {hasStoreInfo && !showMap && (
-            <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start justify-between gap-3">
+            <div className="bg-white border border-rule rounded-xl p-4 flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
-                  <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
+                  <CheckCircle className="w-4 h-4 text-tone-ok shrink-0" />
                   <span className="truncate">{form.restaurant_name}</span>
                 </p>
                 {form.restaurant_address && <p className="text-xs text-gray-600 mt-1 truncate">{form.restaurant_address}</p>}
                 {form.restaurant_phone && <p className="text-[11px] text-gray-500 mt-0.5">{form.restaurant_phone}</p>}
-                <p className="text-[10px] text-green-700 mt-1">{t('seller.mealVoucher.storeAutoFilled', { defaultValue: '등록된 매장 정보를 자동으로 불러왔어요' })}</p>
+                <p className="text-[10px] text-tone-ok mt-1">{t('seller.mealVoucher.storeAutoFilled', { defaultValue: '등록된 매장 정보를 자동으로 불러왔어요' })}</p>
               </div>
               <button
                 type="button"
@@ -201,7 +224,7 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
                   <p className="text-[11px] text-gray-500 mt-0.5">{t('seller.mealVoucher.findOnMapDesc')}</p>
                 </div>
                 {placeSelected && (
-                  <div className="flex items-center gap-1 text-xs text-green-600 shrink-0">
+                  <div className="flex items-center gap-1 text-xs text-tone-ok shrink-0">
                     <CheckCircle className="w-3.5 h-3.5" />
                     {t('seller.mealVoucher.selected')}
                   </div>
@@ -221,23 +244,27 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
           )}
 
           {/* 🏪 지도에서 방금 찾은 매장 → 매장 관리에 바로 등록(다음부터 자동 상속 + 다매장 목록).
-              🚪 storeRequired(등록 매장 0)면 이 등록이 **필수** — 완료 전엔 다음 단계가 잠긴다. */}
+              storeRequired(등록 매장 0)면 이 등록이 **필수** — 완료 전엔 다음 단계가 잠긴다. */}
           {(placeSelected || storeRequired) && (
             <div className={`flex items-center justify-between rounded-lg px-3 py-2.5 border ${
-              storeRequired ? 'bg-amber-50 border-amber-300' : 'bg-blue-50 border-blue-100'
+              storeRequired ? 'bg-white border-rule' : 'bg-white border-rule'
             }`}>
               <p className="text-[11px] text-gray-700 leading-snug">
                 {storeRequired
                   ? (placeSelected
-                    ? t('seller.mealVoucher.registerStoreRequired', { defaultValue: '⚠️ 매장 등록이 필수예요 — [매장 등록]을 완료해야 다음 단계로 갈 수 있어요' })
-                    : t('seller.mealVoucher.registerStoreFirst', { defaultValue: '⚠️ 첫 단계는 매장 등록이에요 — 위 지도에서 매장을 찾은 뒤 등록을 완료해주세요' }))
-                  : t('seller.mealVoucher.registerStoreHint', { defaultValue: '이 매장을 매장 관리에 등록하면 다음부터 자동으로 불러와요' })}
+                    ? t('seller.mealVoucher.registerStoreRequired', { defaultValue: '매장 등록이 필수예요 — [매장 등록]을 완료해야 다음 단계로 갈 수 있어요' })
+                    : t('seller.mealVoucher.registerStoreFirst', { defaultValue: '첫 단계는 매장 등록이에요 — 위 지도에서 매장을 찾은 뒤 등록을 완료해주세요' }))
+                  : hasOtherStore
+                    /* 이미 운영 중인 매장이 있는데 다른 좌석에 앉아 있다 — 시켜야 할 일은 '등록'이 아니라 '선택'이다.
+                       (등록을 시키면 같은 가게가 두 번 등록될 뿐이다.) */
+                    ? t('seller.mealVoucher.pickStoreHint', { defaultValue: '위에서 매장을 고르면 그 매장의 이용권으로 등록돼요 — 새 매장이면 아래로 등록하세요' })
+                    : t('seller.mealVoucher.registerStoreHint', { defaultValue: '이 매장을 매장 관리에 등록하면 다음부터 자동으로 불러와요' })}
               </p>
               <button
                 type="button"
                 onClick={() => setRegistering(true)}
                 disabled={!form.restaurant_name}
-                className="shrink-0 ml-2 px-3 py-1.5 rounded-lg bg-gray-900 text-white text-[11px] font-bold disabled:opacity-40"
+                className="shrink-0 ml-2 px-3 py-1.5 rounded-lg bg-brand-tint text-brand-text text-[11px] font-bold disabled:opacity-40"
               >
                 {t('seller.mealVoucher.registerStore', { defaultValue: '매장 등록' })}
               </button>
@@ -251,7 +278,7 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
               value={form.restaurant_name}
               onChange={e => update('restaurant_name', e.target.value)}
               placeholder={t('seller.mealVoucher.restaurantNamePlaceholder')}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
               required
             />
           </div>
@@ -263,7 +290,7 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
                 value={form.restaurant_address}
                 onChange={e => update('restaurant_address', e.target.value)}
                 placeholder={t('seller.mealVoucher.addressPlaceholder')}
-                className="flex-1 min-w-0 px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                className="flex-1 min-w-0 px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
               />
               <button
                 type="button"
@@ -274,8 +301,8 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
               </button>
             </div>
             {form.restaurant_lat && form.restaurant_lng && (
-              <p className="text-[10px] text-green-600 mt-1">
-                ✓ {t('seller.mealVoucher.coordinates')}: {Number(form.restaurant_lat).toFixed(6)}, {Number(form.restaurant_lng).toFixed(6)} ({t('seller.mealVoucher.shownOnMap')})
+              <p className="text-[10px] text-tone-ok mt-1">
+                {t('seller.mealVoucher.coordinates')}: {Number(form.restaurant_lat).toFixed(6)}, {Number(form.restaurant_lng).toFixed(6)} ({t('seller.mealVoucher.shownOnMap')})
               </p>
             )}
           </div>
@@ -287,7 +314,7 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
                 value={form.restaurant_phone}
                 onChange={e => update('restaurant_phone', e.target.value)}
                 placeholder={t('seller.mealVoucher.addressPlaceholder')}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
               />
             </div>
             <div>
@@ -298,7 +325,7 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
                 value={form.store_verify_pin}
                 onChange={e => update('store_verify_pin', e.target.value)}
                 placeholder={t('seller.mealVoucher.pinPlaceholder')}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
               />
               <p className="text-[10px] text-gray-400 mt-1">
                 {t('seller.mealVoucher.pinHint', { defaultValue: '식당 전화번호를 입력하시면 사장님께 통계 페이지 링크가 알림톡으로 자동 발송됩니다 (PIN 불필요).' })}

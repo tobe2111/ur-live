@@ -25,6 +25,7 @@ import SupplySalesTab from './admin-products/SupplySalesTab'
 import SupplierProductsTab from './admin-products/SupplierProductsTab'
 import type { SupplierProductRow } from './admin-products/SupplierProductsTab'
 import type { ProductOption } from '@/components/ProductOptionForm'
+import { DEFAULT_AFFILIATE_RATE } from '@/shared/affiliate-rate'
 
 const EMPTY_TABS = { all_count: 0, active_count: 0, inactive_count: 0, out_of_stock: 0, kt_alpha_count: 0 }
 
@@ -329,7 +330,7 @@ export default function AdminProductsPage() {
       const token = localStorage.getItem('admin_token') || localStorage.getItem('access_token')
       await api.patch(`/api/admin/products/${productId}`, { referral_commission_rate: value }, { headers: { Authorization: `Bearer ${token}` } })
       toast.success(value === null
-        ? t('admin.products.referralRateDefault', { defaultValue: '기본 보상률 (5%) 적용' })
+        ? t('admin.products.referralRateDefault', { defaultValue: `기본 보상률 (${DEFAULT_AFFILIATE_RATE * 100}%) 적용` })
         : t('admin.products.referralRateSet', { rate: ratePercent, defaultValue: `보상률 ${ratePercent}% 적용` }))
     } catch (err) {
       const axiosErr = err as { response?: { data?: { error?: string } } }
@@ -370,7 +371,7 @@ export default function AdminProductsPage() {
     return (
       <div className="flex h-screen items-center justify-center bg-[#F4F5F7]">
         <div className="text-center">
-          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <div className="w-10 h-10 border-4 border-brand border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-sm text-gray-500">{t('admin.products.k016', { defaultValue: '상품 목록을 불러오는 중...' })}</p>
         </div>
       </div>
@@ -385,19 +386,19 @@ export default function AdminProductsPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={downloadAdminTemplate}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 border border-green-200 text-xs font-semibold rounded-lg hover:bg-green-100"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-tone-ok-bg text-tone-ok border border-transparent text-xs font-semibold rounded-lg hover:bg-gray-100"
             >
               <Download className="w-3.5 h-3.5" /> {t('admin.products.downloadTemplate', { defaultValue: '양식 다운로드' })}
             </button>
             <button
               onClick={() => setShowBulkUpload(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 text-orange-700 border border-orange-200 text-xs font-semibold rounded-lg hover:bg-orange-100"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-tone-warn-bg text-tone-warn border border-transparent text-xs font-semibold rounded-lg hover:bg-gray-100"
             >
               <Upload className="w-3.5 h-3.5" /> {t('admin.products.bulkRegister', { defaultValue: '대량등록' })}
             </button>
             <button
               onClick={() => { setEditingProduct(null); setFormData(EMPTY_FORM); setShowModal(true) }}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 text-white text-xs font-semibold rounded-lg hover:bg-gray-900"
+              className="ur-btn ur-btn-sm ur-btn-primary flex items-center gap-1.5"
             >
               <Plus className="w-3.5 h-3.5" /> {t('admin.products.k049', { defaultValue: '상품 등록' })}
             </button>
@@ -410,7 +411,7 @@ export default function AdminProductsPage() {
         {!isWholesaleAdmin && (
           <button
             onClick={() => setActiveTab('products')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'products' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'products' ? 'border-brand text-brand-text' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
           >
             <span className="flex items-center gap-1.5"><Package className="w-4 h-4" /> {t('admin.products.k018', { defaultValue: '상품 목록' })}</span>
           </button>
@@ -418,7 +419,7 @@ export default function AdminProductsPage() {
         {!isWholesaleAdmin && (
           <button
             onClick={() => setActiveTab('sample-requests')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'sample-requests' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'sample-requests' ? 'border-brand text-brand-text' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
           >
             <span className="flex items-center gap-1.5">
               <Truck className="w-4 h-4" /> {t('admin.products.sampleRequestsTab', { defaultValue: '샘플 신청 목록' })}
@@ -430,31 +431,31 @@ export default function AdminProductsPage() {
         )}
         <button
           onClick={() => setActiveTab('supplier-products')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'supplier-products' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'supplier-products' ? 'border-brand text-brand-text' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
         >
           <span className="flex items-center gap-1.5"><Boxes className="w-4 h-4" /> {t('admin.products.supplierProductsTab', { defaultValue: '제조사 등록 상품' })}</span>
         </button>
         {!isWholesaleAdmin && (
           <button
             onClick={() => setActiveTab('supply-sales')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'supply-sales' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'supply-sales' ? 'border-brand text-brand-text' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
           >
             <span className="flex items-center gap-1.5"><BarChart2 className="w-4 h-4" /> {t('admin.products.k019', { defaultValue: '공급 판매 현황' })}</span>
           </button>
         )}
       </div>
 
-      {error && <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 mb-4">{error}</div>}
+      {error && <div className="p-4 bg-white border border-rule rounded-xl text-sm text-tone-bad mb-4">{error}</div>}
 
       {/* 🛡️ 2026-05-18: 일괄 작업 액션 바 — 1건 이상 선택 시 노출. */}
       {activeTab === 'products' && selectedIds.size > 0 && (
-        <div className="mb-3 flex items-center justify-between rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5">
+        <div className="mb-3 flex items-center justify-between rounded-xl border border-rule bg-white px-4 py-2.5">
           <div className="flex items-center gap-3">
-            <span className="text-sm font-semibold text-blue-900">{selectedIds.size}개 선택됨</span>
+            <span className="text-sm font-semibold text-gray-700">{selectedIds.size}개 선택됨</span>
             <button
               type="button"
               onClick={() => setSelectedIds(new Set())}
-              className="text-xs text-blue-700 underline underline-offset-2 hover:text-blue-900"
+              className="text-xs text-brand-text underline underline-offset-2 hover:text-gray-700"
             >
               선택 해제
             </button>
@@ -464,7 +465,7 @@ export default function AdminProductsPage() {
               type="button"
               onClick={() => handleBulkAction('activate')}
               disabled={bulkAction !== null}
-              className="inline-flex items-center gap-1 rounded-md bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-900 disabled:opacity-50"
+              className="ur-btn ur-btn-sm ur-btn-primary inline-flex items-center gap-1 disabled:opacity-50"
             >
               <Eye className="w-3 h-3" /> {bulkAction === 'activate' ? '처리 중...' : '활성화'}
             </button>
@@ -480,7 +481,7 @@ export default function AdminProductsPage() {
               type="button"
               onClick={() => handleBulkAction('delete')}
               disabled={bulkAction !== null}
-              className="inline-flex items-center gap-1 rounded-md bg-red-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-600 disabled:opacity-50"
+              className="ur-btn ur-btn-sm ur-btn-danger inline-flex items-center gap-1 disabled:opacity-50"
             >
               <Trash2 className="w-3 h-3" /> {bulkAction === 'delete' ? '처리 중...' : `${selectedIds.size}건 삭제`}
             </button>
@@ -502,16 +503,16 @@ export default function AdminProductsPage() {
               onClick={() => { setSourceFilter(seg.key); setPage(1) }}
               className={`flex-1 min-w-[180px] text-left px-4 py-3 rounded-xl border-2 transition-colors ${
                 sourceFilter === seg.key
-                  ? 'border-blue-500 bg-blue-50'
+                  ? 'border-brand bg-brand-tint'
                   : 'border-gray-200 bg-white hover:border-gray-300'
               }`}
             >
               <div className="flex items-center gap-2">
                 <seg.Icon className="w-[18px] h-[18px] shrink-0 text-gray-500" strokeWidth={1.9} aria-hidden />
                 <div>
-                  <p className={`text-sm font-bold ${sourceFilter === seg.key ? 'text-blue-700' : 'text-gray-900'}`}>
+                  <p className={`text-sm font-bold ${sourceFilter === seg.key ? 'text-gray-700' : 'text-gray-900'}`}>
                     {seg.label}
-                    {seg.key === 'kt_alpha' && <span className="ml-1.5 text-xs font-medium text-amber-600">{tabCounts.kt_alpha_count.toLocaleString()}</span>}
+                    {seg.key === 'kt_alpha' && <span className="ml-1.5 text-xs font-medium text-tone-warn">{tabCounts.kt_alpha_count.toLocaleString()}</span>}
                   </p>
                   <p className="text-[11px] text-gray-500">{seg.desc}</p>
                 </div>
@@ -524,7 +525,7 @@ export default function AdminProductsPage() {
       {/* 상품 목록 탭 */}
       {/* 🛡️ 2026-05-19: Coupang WING 스타일 필터 + 검색 + 탭 + 페이지네이션 */}
       {activeTab === 'products' && (
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-4">
+        <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white overflow-hidden mb-4">
           {/* 상단 검색 + 정렬 */}
           <div className="p-4 border-b border-gray-100 space-y-3">
             <div className="flex flex-wrap gap-2 items-center">
@@ -535,7 +536,7 @@ export default function AdminProductsPage() {
                   onKeyDown={(e) => { if (e.key === 'Enter') { setPage(1); setSearch(searchInput) } }}
                   className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm"
                 />
-                <button onClick={() => { setPage(1); setSearch(searchInput) }} className="px-3 py-2 bg-gray-900 text-white text-sm font-bold rounded-lg">검색</button>
+                <button onClick={() => { setPage(1); setSearch(searchInput) }} className="ur-btn ur-btn-md ur-btn-primary">검색</button>
               </div>
               <select value={`${sortField}-${sortOrder}`} onChange={(e) => {
                 const [f, o] = e.target.value.split('-')
@@ -561,25 +562,25 @@ export default function AdminProductsPage() {
 
             {/* 상태 탭 */}
             <div className="flex flex-wrap gap-1 text-xs">
-              <button onClick={() => { setStatusFilter('all'); setPage(1) }} className={`px-3 py-1.5 rounded-lg font-semibold ${statusFilter === 'all' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}>
+              <button onClick={() => { setStatusFilter('all'); setPage(1) }} className={`px-3 py-1.5 rounded-lg font-semibold ${statusFilter === 'all' ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700'}`}>
                 전체 <span className="opacity-70 ml-1">{tabCounts.all_count.toLocaleString()}</span>
               </button>
-              <button onClick={() => { setStatusFilter('active'); setPage(1) }} className={`px-3 py-1.5 rounded-lg font-semibold ${statusFilter === 'active' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}>
+              <button onClick={() => { setStatusFilter('active'); setPage(1) }} className={`px-3 py-1.5 rounded-lg font-semibold ${statusFilter === 'active' ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700'}`}>
                 판매중 <span className="opacity-70 ml-1">{tabCounts.active_count.toLocaleString()}</span>
               </button>
               <button onClick={() => { setStatusFilter('inactive'); setPage(1) }} className={`px-3 py-1.5 rounded-lg font-semibold ${statusFilter === 'inactive' ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-700'}`}>
                 일시중지 <span className="opacity-70 ml-1">{tabCounts.inactive_count.toLocaleString()}</span>
               </button>
               {tabCounts.out_of_stock > 0 && (
-                <button className="px-3 py-1.5 rounded-lg font-semibold bg-amber-100 text-amber-700 cursor-default">
+                <button className="px-3 py-1.5 rounded-lg font-semibold border border-rule bg-white text-tone-warn cursor-default">
                   품절 {tabCounts.out_of_stock.toLocaleString()}
                 </button>
               )}
               {/* 교환권/쇼핑 출처 분리는 상단 세그먼트로 이전 (2026-06-14). 현재 선택 표시만. */}
               {sourceFilter !== 'all' && (
-                <span className="ml-2 self-center inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 text-xs font-semibold">
-                  {sourceFilter === 'kt_alpha' ? '🎁 교환권만 보기' : '🛍️ 쇼핑 상품만 보기'}
-                  <button onClick={() => { setSourceFilter('all'); setPage(1) }} className="ml-0.5 text-blue-400 hover:text-blue-700" aria-label="출처 필터 해제">✕</button>
+                <span className="ml-2 self-center inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-tone-info-bg text-tone-info text-xs font-semibold">
+                  {sourceFilter === 'kt_alpha' ? '교환권만 보기' : '쇼핑 상품만 보기'}
+                  <button onClick={() => { setSourceFilter('all'); setPage(1) }} className="ml-0.5 text-gray-400 hover:text-gray-700" aria-label="출처 필터 해제"></button>
                 </span>
               )}
             </div>
@@ -589,12 +590,12 @@ export default function AdminProductsPage() {
               <div className="flex flex-wrap gap-1 text-xs items-center">
                 <span className="text-gray-500 mr-1">카테고리:</span>
                 <button onClick={() => { setCategoryFilter(''); setPage(1) }}
-                  className={`px-2 py-1 rounded ${!categoryFilter ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}>
+                  className={`px-2 py-1 rounded ${!categoryFilter ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700'}`}>
                   전체
                 </button>
                 {categoryList.slice(0, 20).map((c) => (
                   <button key={c.category} onClick={() => { setCategoryFilter(c.category); setPage(1) }}
-                    className={`px-2 py-1 rounded ${categoryFilter === c.category ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'}`}>
+                    className={`px-2 py-1 rounded ${categoryFilter === c.category ? 'bg-brand text-white' : 'bg-gray-100 text-gray-700'}`}>
                     {c.category} <span className="opacity-60 ml-0.5">{c.cnt}</span>
                   </button>
                 ))}
@@ -605,7 +606,7 @@ export default function AdminProductsPage() {
               전체 {totalCount.toLocaleString()}건 중 {((page - 1) * pageLimit + 1).toLocaleString()}-{Math.min(page * pageLimit, totalCount).toLocaleString()} 표시
               {(search || categoryFilter || statusFilter !== 'all' || sourceFilter !== 'all') && (
                 <button onClick={() => { setSearch(''); setSearchInput(''); setCategoryFilter(''); setStatusFilter('all'); setSourceFilter('all'); setPage(1) }}
-                  className="ml-2 text-blue-600 hover:underline">필터 초기화</button>
+                  className="ml-2 text-brand-text hover:underline">필터 초기화</button>
               )}
             </p>
           </div>
@@ -613,12 +614,12 @@ export default function AdminProductsPage() {
       )}
 
       {activeTab === 'products' && (
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white overflow-hidden">
           {products.length === 0 ? (
             <div className="py-20 text-center">
               <Package className="w-12 h-12 text-gray-200 mx-auto mb-3" />
               <p className="text-sm text-gray-400 mb-4">{t('admin.products.k020', { defaultValue: '등록된 상품이 없습니다.' })}</p>
-              <button onClick={() => setShowModal(true)} className="flex items-center gap-1.5 px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-900 mx-auto">
+              <button onClick={() => setShowModal(true)} className="ur-btn ur-btn-md ur-btn-primary flex items-center gap-1.5 mx-auto">
                 <Plus className="w-4 h-4" /> {t('admin.products.firstRegister', { defaultValue: '첫 상품 등록하기' })}
               </button>
             </div>
@@ -637,7 +638,7 @@ export default function AdminProductsPage() {
                         }}
                         onChange={toggleSelectAll}
                         aria-label="전체 선택"
-                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                        className="h-4 w-4 rounded border-gray-300 text-gray-700 focus:ring-blue-500 cursor-pointer"
                       />
                     </th>
                     {[
@@ -659,14 +660,14 @@ export default function AdminProductsPage() {
                   {products.map(product => {
                     const checked = selectedIds.has(product.id)
                     return (
-                    <tr key={product.id} className={`hover:bg-gray-50 ${checked ? 'bg-blue-50/40' : ''}`}>
+                    <tr key={product.id} className={`hover:bg-gray-50 ${checked ? 'border border-rule bg-white' : ''}`}>
                       <td className="px-3 py-3 w-10">
                         <input
                           type="checkbox"
                           checked={checked}
                           onChange={() => toggleSelect(product.id)}
                           aria-label={`"${product.name}" 선택`}
-                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                          className="h-4 w-4 rounded border-gray-300 text-gray-700 focus:ring-blue-500 cursor-pointer"
                         />
                       </td>
                       <td className="px-4 py-3">
@@ -678,7 +679,7 @@ export default function AdminProductsPage() {
                         <p className="text-sm font-medium text-gray-900">{product.name}</p>
                         <p className="text-xs text-gray-400 line-clamp-1 mt-0.5">{product.description || t('admin.products.k029', { defaultValue: '설명 없음' })}</p>
                         {product.is_supply_product && (
-                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 mt-1 text-xs font-medium rounded-full bg-purple-50 text-purple-700">
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 mt-1 text-xs font-medium rounded-full bg-tone-info-bg text-tone-info">
                             <Truck className="w-3 h-3" /> {t('admin.products.supplyProduct', { defaultValue: '공급 상품' })}
                           </span>
                         )}
@@ -686,15 +687,15 @@ export default function AdminProductsPage() {
                       <td className="px-4 py-3">
                         {/* 🛡️ 2026-06-14: 교환권 vs 쇼핑 한눈 구분 배지 우선 표시 */}
                         {product.kt_alpha_gift_code ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-amber-50 text-amber-700">
-                            🎁 교환권
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-tone-warn-bg text-tone-warn">
+                            교환권
                           </span>
                         ) : product.product_type === 'featured' ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-blue-50 text-blue-700">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-tone-info-bg text-tone-info">
                             <Star className="w-3 h-3" /> {t('admin.products.typeFeatured', { defaultValue: 'Ur 특가' })}
                           </span>
                         ) : (
-                          <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-50 text-emerald-600">🛍️ 쇼핑</span>
+                          <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-tone-ok-bg text-tone-ok">쇼핑</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -702,9 +703,9 @@ export default function AdminProductsPage() {
                             일반 상품은 판매가 주 표시. */}
                         {product.is_supply_product && product.supply_price != null && product.supply_price > 0 ? (
                           <>
-                            <p className="text-sm font-bold text-purple-700">
+                            <p className="text-sm font-bold text-gray-700">
                               {formatNumber(product.supply_price)}{t('common.won', { defaultValue: '원' })}
-                              <span className="ml-1 text-[10px] font-medium text-purple-500">{t('admin.products.supplyPriceLabel', { defaultValue: '공급가' })}</span>
+                              <span className="ml-1 text-[10px] font-medium text-gray-700">{t('admin.products.supplyPriceLabel', { defaultValue: '공급가' })}</span>
                             </p>
                             <p className="text-[11px] text-gray-400 mt-0.5">{t('admin.products.recoRetailLabel', { defaultValue: '권장판매가' })} {formatNumber(product.price)}{t('common.won', { defaultValue: '원' })}</p>
                           </>
@@ -724,10 +725,10 @@ export default function AdminProductsPage() {
                           aria-label={`"${product.name}" 재고 수정`}
                           className={`w-16 px-1.5 py-1 text-xs text-center border rounded-lg focus:outline-none ${
                             product.stock === 0
-                              ? 'border-red-300 bg-red-50 text-red-600 focus:border-red-500'
+                              ? 'border-transparent bg-brand-tint text-brand-text focus:border-brand'
                               : product.stock < 10
-                                ? 'border-amber-300 bg-amber-50 text-amber-700 focus:border-amber-500'
-                                : 'border-emerald-200 bg-white text-gray-900 focus:border-emerald-500'
+                                ? 'border-transparent bg-brand-tint text-brand-text focus:border-brand'
+                                : 'border-transparent bg-white text-gray-900 focus:border-brand'
                           }`}
                           onBlur={async (e) => {
                             const val = Number(e.target.value)
@@ -773,7 +774,7 @@ export default function AdminProductsPage() {
                       <td className="px-4 py-3 text-center">
                         <button onClick={() => handleToggleActive(product.id, product.is_active)}>
                           {product.is_active ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-tone-info-bg text-tone-info hover:bg-gray-100 cursor-pointer">
                               <Eye className="w-3 h-3" /> {t('admin.products.statusActive', { defaultValue: '판매중' })}
                             </span>
                           ) : (
@@ -790,12 +791,12 @@ export default function AdminProductsPage() {
                             onClick={() => handleToggleReferral(product.id, Number(product.referral_enabled) || 0)}
                             className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full cursor-pointer transition-colors ${
                               Number(product.referral_enabled) === 1
-                                ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                                ? 'bg-tone-ok-bg text-tone-ok hover:bg-gray-100'
                                 : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                             }`}
                             title={Number(product.referral_enabled) === 1 ? '추천 ON — 클릭하면 OFF' : '추천 OFF — 클릭하면 ON'}
                           >
-                            {Number(product.referral_enabled) === 1 ? '🎁 ON' : 'OFF'}
+                            {Number(product.referral_enabled) === 1 ? 'ON' : 'OFF'}
                           </button>
                           {Number(product.referral_enabled) === 1 && (
                             <input
@@ -803,21 +804,20 @@ export default function AdminProductsPage() {
                               min={0}
                               max={50}
                               step={0.5}
-                              defaultValue={
-                                product.referral_commission_rate != null
-                                  ? Math.round(Number(product.referral_commission_rate) * 1000) / 10  // 0.05 → 5
-                                  : 5  // platform default
-                              }
+                              // 0.05 → 5. 기본값은 SSOT(2026-09-05: 5 하드코딩이라 라이브 2% 와 갈려 있었다)
+                              defaultValue={product.referral_commission_rate != null
+                                ? Math.round(Number(product.referral_commission_rate) * 1000) / 10
+                                : DEFAULT_AFFILIATE_RATE * 100}
                               className="w-14 px-1.5 py-0.5 text-xs text-right border border-gray-200 rounded text-gray-900 focus:border-emerald-400 focus:outline-none"
                               onBlur={(e) => {
                                 const v = e.target.value.trim()
                                 const n = v === '' ? null : Number(v)
                                 if (n !== null && (!Number.isFinite(n) || n < 0 || n > 50)) return
                                 // 5 (default) 와 같으면 NULL 로 (platform default 사용)
-                                handleSetReferralRate(product.id, n === 5 ? null : n)
+                                handleSetReferralRate(product.id, n === DEFAULT_AFFILIATE_RATE * 100 ? null : n)
                               }}
                               onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
-                              title="추천 보상률 (%) — 0~50, 빈 값 또는 5 입력 시 기본값 적용"
+                              title={`추천 보상률 (%) — 0~50, 빈 값 또는 ${DEFAULT_AFFILIATE_RATE * 100} 입력 시 기본값 적용`}
                             />
                           )}
                           {Number(product.referral_enabled) === 1 && <span className="text-[10px] text-gray-400">%</span>}
@@ -825,10 +825,10 @@ export default function AdminProductsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <button onClick={() => handleEdit(product)} className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-blue-600">
+                          <button onClick={() => handleEdit(product)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700">
                             <Edit className="w-4 h-4" />
                           </button>
-                          <button onClick={() => handleDelete(product.id)} disabled={deleting === product.id} className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 disabled:opacity-50">
+                          <button onClick={() => handleDelete(product.id)} disabled={deleting === product.id} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-tone-bad disabled:opacity-50">
                             {deleting === product.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                           </button>
                         </div>

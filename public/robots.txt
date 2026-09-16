@@ -6,8 +6,6 @@ Disallow: /admin/*
 Disallow: /static/proposals/
 Disallow: /seller/login
 Disallow: /seller/register
-Disallow: /agency/login
-Disallow: /agency/register
 Disallow: /api/
 Disallow: /auth/
 Disallow: /checkout
@@ -24,6 +22,9 @@ Disallow: /wishlist
 Disallow: /notifications
 Disallow: /embed/
 Disallow: /debug/
+# 🎨 내부 시안 갤러리(구조가 다른 디자인 안들을 나란히 보는 화면). 어디에서도 링크하지 않지만
+#   주소가 새어도 색인되지 않게 막는다 — 페이지도 noindex 를 스스로 선언한다.
+Disallow: /design/
 Disallow: /search
 
 # 🔒 2026-07-29: 로그인 필요한 표면 일괄 차단.
@@ -35,7 +36,6 @@ Disallow: /search
 #     · `/u/me` 는 `$` 로 앵커했다 — 안 그러면 `/u/melon` 같은 **실제 링크샵 핸들**이 통째로 차단된다.
 #   ('$' 와 '*' 는 Google·네이버 모두 지원. 가드: scripts/check-robots-private-routes.mjs)
 Disallow: /seller
-Disallow: /agency/
 Disallow: /supplier/
 Disallow: /influencer/
 Disallow: /my-
@@ -43,6 +43,7 @@ Disallow: /my/
 Disallow: /mypage
 Disallow: /orders
 Disallow: /host
+Disallow: /mall-admin
 Disallow: /pay/
 Disallow: /u/me$
 Disallow: /u/me/

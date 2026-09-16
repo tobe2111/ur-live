@@ -81,7 +81,7 @@ const WRITE_DOMAINS: Record<'ops' | 'cs' | 'finance', readonly string[]> = {
   finance: [
     'settlements', 'settlement', 'payout-center', 'payouts', 'withholding', 'wholesale-withdrawal',
     'wholesale-deposits', 'wholesale-deposit-account', 'commission-settings', 'tax', 'restaurant-settlement',
-    'distributor', 'agencies', 'agency-creator-approvals', 'wholesale', 'metrics', 'business-metrics',
+    'distributor', 'wholesale', 'metrics', 'business-metrics',
   ],
 };
 

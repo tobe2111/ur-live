@@ -40,19 +40,19 @@ interface Dispute {
 type Tab = 'escalated' | 'auto_refunded' | 'resolved' | 'rejected' | 'all'
 
 const ACTION_COLOR: Record<string, string> = {
-  escalated: 'bg-amber-100 text-amber-700',
-  auto_refunded: 'bg-green-100 text-green-700',
-  resolved: 'bg-blue-100 text-blue-700',
+  escalated: 'bg-tone-warn-bg text-tone-warn',
+  auto_refunded: 'bg-tone-ok-bg text-tone-ok',
+  resolved: 'bg-tone-info-bg text-tone-info',
   rejected: 'bg-gray-200 text-gray-600',
   pending: 'bg-gray-100 text-gray-600',
 }
 
 const CATEGORY_LABEL: Record<string, string> = {
-  voucher_refused: '🚫 사장님 거부',
-  merchant_closed: '🏚️ 매장 폐업/휴업',
-  quality_issue: '😞 품질 불만',
-  already_used: '⚠️ 이미 사용 표시',
-  other: '🤷 기타',
+  voucher_refused: '사장님 거부',
+  merchant_closed: '매장 폐업/휴업',
+  quality_issue: '품질 불만',
+  already_used: '이미 사용 표시',
+  other: '기타',
 }
 
 export default function AdminDisputesPage() {
@@ -80,14 +80,14 @@ export default function AdminDisputesPage() {
       const headers = { Authorization: `Bearer ${localStorage.getItem('admin_token') || ''}` }
       const res = await api.post(`/api/disputes/admin/${d.id}/approve`, { admin_notes: notes }, { headers })
       if (res.data?.success) {
-        void alertDialog('✅ 환불 처리 완료')
+        void alertDialog('환불 처리 완료')
         loadList(tab)
       } else {
-        void alertDialog(`❌ ${res.data?.error || '환불 실패'}`)
+        void alertDialog(`${res.data?.error || '환불 실패'}`)
       }
     } catch (err) {
       const e = err as { response?: { data?: { error?: string } } }
-      void alertDialog(`❌ ${e?.response?.data?.error || '환불 처리 실패'}`)
+      void alertDialog(`${e?.response?.data?.error || '환불 처리 실패'}`)
     } finally {
       setSubmitting(null)
     }
@@ -101,14 +101,14 @@ export default function AdminDisputesPage() {
       const headers = { Authorization: `Bearer ${localStorage.getItem('admin_token') || ''}` }
       const res = await api.post(`/api/disputes/admin/${d.id}/reject`, { admin_notes: notes.trim() }, { headers })
       if (res.data?.success) {
-        void alertDialog('✅ 거절 처리 완료')
+        void alertDialog('거절 처리 완료')
         loadList(tab)
       } else {
-        void alertDialog(`❌ ${res.data?.error || '거절 실패'}`)
+        void alertDialog(`${res.data?.error || '거절 실패'}`)
       }
     } catch (err) {
       const e = err as { response?: { data?: { error?: string } } }
-      void alertDialog(`❌ ${e?.response?.data?.error || '거절 처리 실패'}`)
+      void alertDialog(`${e?.response?.data?.error || '거절 처리 실패'}`)
     } finally {
       setSubmitting(null)
     }
@@ -129,7 +129,7 @@ export default function AdminDisputesPage() {
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`px-4 py-2 text-sm font-bold border-b-2 whitespace-nowrap transition-colors ${tab === t ? 'border-pink-500 text-pink-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+              className={`px-4 py-2 text-sm font-bold border-b-2 whitespace-nowrap transition-colors ${tab === t ? 'border-brand text-brand-text' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
             >
               {t === 'escalated' && <><Clock className="w-3.5 h-3.5 inline mr-1" /> 검토 필요</>}
               {t === 'auto_refunded' && <><Bot className="w-3.5 h-3.5 inline mr-1" /> AI 자동</>}
@@ -141,7 +141,7 @@ export default function AdminDisputesPage() {
         </div>
 
         {loading ? (
-          <div className="py-20 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-pink-500" /></div>
+          <div className="py-20 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-brand-text" /></div>
         ) : items.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
             <CheckCircle2 className="w-12 h-12 text-gray-300 mx-auto mb-3" />
@@ -177,13 +177,13 @@ export default function AdminDisputesPage() {
                       {d.evidence_url && (
                         <div>
                           <p className="text-[11px] font-bold text-gray-500 uppercase mb-1">증거</p>
-                          <a href={d.evidence_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 underline break-all">{d.evidence_url}</a>
+                          <a href={d.evidence_url} target="_blank" rel="noopener noreferrer" className="text-sm text-brand-text underline break-all">{d.evidence_url}</a>
                         </div>
                       )}
                       {d.ai_reasoning && (
-                        <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-                          <p className="text-[11px] font-bold text-purple-700 uppercase mb-1">🤖 AI 분석</p>
-                          <p className="text-sm text-purple-900">{d.ai_reasoning}</p>
+                        <div className="bg-white border border-rule rounded-lg p-3">
+                          <p className="text-[11px] font-bold text-gray-700 uppercase mb-1">AI 분석</p>
+                          <p className="text-sm text-gray-700">{d.ai_reasoning}</p>
                         </div>
                       )}
                       {d.action === 'escalated' && (
@@ -191,16 +191,16 @@ export default function AdminDisputesPage() {
                           <button
                             onClick={() => approveRefund(d)}
                             disabled={submitting === d.id}
-                            className="flex-1 px-3 py-2 bg-gray-900 hover:bg-gray-900 disabled:opacity-50 text-white rounded-lg text-xs font-bold"
+                            className="ur-btn ur-btn-md ur-btn-primary flex-1 disabled:opacity-50"
                           >
-                            ✅ 환불 승인
+                            환불 승인
                           </button>
                           <button
                             onClick={() => rejectDispute(d)}
                             disabled={submitting === d.id}
-                            className="flex-1 px-3 py-2 bg-gray-700 hover:bg-gray-800 disabled:opacity-50 text-white rounded-lg text-xs font-bold"
+                            className="ur-btn ur-btn-md ur-btn-primary flex-1 bg-gray-700 disabled:opacity-50"
                           >
-                            🗙 거절
+                            거절
                           </button>
                         </div>
                       )}

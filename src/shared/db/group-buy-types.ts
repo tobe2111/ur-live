@@ -16,6 +16,8 @@ export interface GroupBuyProductRow {
   seller_id: number
   is_active: number
   stock: number | null
+  /** 1 = 교환권(기프티콘·KT — 딜 결제 전용). 이용권은 0/null 이다(명칭 SSOT: 교환권 ≠ 이용권). */
+  deal_only?: number | null
 
   // group-buy fields
   group_buy_target: number

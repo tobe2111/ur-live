@@ -48,7 +48,7 @@ export default function DemandPanel({ onClose, onRaw }: { onClose: () => void; o
     try {
       const r = await api.post('/api/admin/buyer-pool/demand/collect', {})
       const res = r.data?.result
-      if (res?.ran) toast.success(`무역통계 ${res.fetched}건 조회 · ${res.saved}건 저장${res.fetched > 0 && res.mapped === 0 ? ' (⚠️ 필드 매핑 0 — 진단 확인)' : ''}`)
+      if (res?.ran) toast.success(`무역통계 ${res.fetched}건 조회 · ${res.saved}건 저장${res.fetched > 0 && res.mapped === 0 ? ' (필드 매핑 0 — 진단 확인)' : ''}`)
       else toast.error(res?.reason || '수집 실패')
       onRaw?.(JSON.stringify(res?.perUrl ?? res, null, 2)) // 매핑 실패 시 원본 키가 여기 보임
       await load()
@@ -64,20 +64,20 @@ export default function DemandPanel({ onClose, onRaw }: { onClose: () => void; o
   }
 
   return (
-    <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
+    <div className="mb-4 rounded-xl border border-rule bg-white p-4">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-        <div className="text-sm font-semibold text-gray-900">📊 수요 인텔리전스 — 어느 나라가 무엇을 사는가</div>
+        <div className="text-sm font-semibold text-gray-900">수요 인텔리전스 — 어느 나라가 무엇을 사는가</div>
         <div className="flex items-center gap-2">
-          <button onClick={collect} disabled={busy} className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-medium disabled:opacity-50">{busy ? '처리 중…' : '관세청 통계 수집'}</button>
-          <button onClick={diag} disabled={busy} className="px-3 py-1.5 rounded-lg bg-white border border-amber-300 text-amber-700 text-xs disabled:opacity-50">🔍 필드 진단</button>
+          <button onClick={collect} disabled={busy} className="ur-btn ur-btn-sm ur-btn-primary disabled:opacity-50">{busy ? '처리 중…' : '관세청 통계 수집'}</button>
+          <button onClick={diag} disabled={busy} className="px-3 py-1.5 rounded-lg bg-white border border-transparent text-tone-warn text-xs disabled:opacity-50">필드 진단</button>
           <button onClick={onClose} className="text-xs text-gray-500 underline">닫기</button>
         </div>
       </div>
 
       {err && (
-        <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700 flex items-center justify-between gap-2">
-          <span>⚠️ 수요 데이터를 불러오지 못했습니다(조회 실패 — 0건과 다릅니다).</span>
-          <button onClick={load} className="px-2 py-1 rounded bg-red-600 text-white text-xs shrink-0">다시 시도</button>
+        <div className="mb-3 rounded-lg border border-rule bg-white p-2 text-xs text-tone-bad flex items-center justify-between gap-2">
+          <span>수요 데이터를 불러오지 못했습니다(조회 실패 — 0건과 다릅니다).</span>
+          <button onClick={load} className="ur-btn ur-btn-sm ur-btn-danger rounded shrink-0">다시 시도</button>
         </div>
       )}
 
@@ -86,21 +86,21 @@ export default function DemandPanel({ onClose, onRaw }: { onClose: () => void; o
         <div>
           <div className="text-xs font-semibold text-gray-700 mb-1">
             ① 관세청 무역통계 — {drill ? <>{drill} 가 사가는 품목</> : dim ? DIM_LABEL[dim] || dim : '국가별 한국산 수요'}
-            {drill && <button onClick={() => setDrill('')} className="ml-2 text-emerald-700 underline font-normal">← 전체</button>}
+            {drill && <button onClick={() => setDrill('')} className="ml-2 text-brand-text underline font-normal">← 전체</button>}
           </div>
           {dims.length > 0 && !drill && (
             <div className="flex flex-wrap gap-1 mb-2">
-              <button onClick={() => setDim('')} className={`px-2 py-0.5 rounded-full text-xs border ${!dim ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-700 border-emerald-200'}`}>국가</button>
+              <button onClick={() => setDim('')} className={`px-2 py-0.5 rounded-full text-xs border ${!dim ? 'bg-emerald-600 text-white border-brand' : 'bg-white text-gray-700 border-transparent'}`}>국가</button>
               {dims.filter(d => String(d.dim_type) !== 'country' && String(d.dim_type) !== 'item_country').map((d, i) => (
                 <button key={i} onClick={() => setDim(String(d.dim_type))}
-                  className={`px-2 py-0.5 rounded-full text-xs border ${dim === String(d.dim_type) ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-700 border-emerald-200'}`}>
+                  className={`px-2 py-0.5 rounded-full text-xs border ${dim === String(d.dim_type) ? 'bg-emerald-600 text-white border-brand' : 'bg-white text-gray-700 border-transparent'}`}>
                   {DIM_LABEL[String(d.dim_type)] || String(d.dim_type)} <b>{String(d.values_n ?? 0)}</b>
                 </button>
               ))}
             </div>
           )}
           {rows.length === 0 ? (
-            <div className="text-xs text-gray-500 bg-white rounded-lg border border-emerald-100 p-3 leading-relaxed">
+            <div className="text-xs text-gray-500 bg-white rounded-lg border border-rule p-3 leading-relaxed">
               아직 데이터가 없습니다. Cloudflare 환경변수 <code className="bg-gray-100 px-1 rounded">TRADE_STATS_URLS</code> 에
               관세청 오픈API URL(serviceKey 포함)을 넣고 「관세청 통계 수집」을 누르세요.
               <div className="mt-2 pt-2 border-t border-gray-100 text-gray-600">
@@ -110,12 +110,12 @@ export default function DemandPanel({ onClose, onRaw }: { onClose: () => void; o
                   item_country|https://apis.data.go.kr/1220000/nitemtrade/…,country|https://…/nationtrade/…,fx|https://…
                 </div>
                 <div className="mt-1"><b className="text-gray-800">축 태그</b>: item_country · country · item · continent · economy · nature · region · customs · port · total · <b>fx</b>(관세환율) · <b>restriction</b>(세관장확인물품)</div>
-                <div className="mt-1 text-emerald-700">⭐ 우선순위: <b>품목별 국가별</b> → 국가별 → 품목별 (나머지는 보조 인사이트)</div>
-                <div className="mt-1 text-gray-500">💵 금액 단위 <b>천불(US$1,000)</b> → USD 자동 환산. 🔎 데이터셋마다 <b>활용신청 승인</b>이 개별로 필요합니다.</div>
+                <div className="mt-1 text-tone-ok">우선순위: <b>품목별 국가별</b> → 국가별 → 품목별 (나머지는 보조 인사이트)</div>
+                <div className="mt-1 text-gray-500">금액 단위 <b>천불(US$1,000)</b> → USD 자동 환산. 데이터셋마다 <b>활용신청 승인</b>이 개별로 필요합니다.</div>
               </div>
             </div>
           ) : (
-            <div className="bg-white rounded-lg border border-emerald-100 overflow-x-auto">
+            <div className="bg-white rounded-lg border border-rule overflow-x-auto">
               <table className="w-full text-xs">
                 <thead className="bg-gray-50 text-gray-600"><tr><th className="text-left px-2 py-1.5">{drill ? '품목' : '구분'}</th><th className="text-right px-2 py-1.5">한국→수출(USD)</th><th className="text-right px-2 py-1.5">기간</th></tr></thead>
                 <tbody>
@@ -126,7 +126,7 @@ export default function DemandPanel({ onClose, onRaw }: { onClose: () => void; o
                     <tr key={i} className="border-t border-gray-100">
                       <td className="px-2 py-1.5 text-gray-900">
                         {canDrill
-                          ? <button onClick={() => setDrill(String(r.country ?? label))} className="text-emerald-700 hover:underline">{label}</button>
+                          ? <button onClick={() => setDrill(String(r.country ?? label))} className="text-brand-text hover:underline">{label}</button>
                           : label}
                         {r.item_name ? <span className="text-gray-500"> · {String(r.item_name)}</span> : null}
                         {r.hs_code ? <span className="text-gray-400"> ({String(r.hs_code)})</span> : null}
@@ -146,11 +146,11 @@ export default function DemandPanel({ onClose, onRaw }: { onClose: () => void; o
           <div className="text-xs font-semibold text-gray-700 mb-1">② 수집 인콰이어리 — 지금 찾는 품목</div>
           <div className="flex flex-wrap gap-1 mb-2">
             {inq.byCategory.map((c, i) => (
-              <span key={i} className="px-2 py-0.5 rounded-full bg-white border border-emerald-200 text-xs text-gray-700">{String(c.category ?? '?')} <b className="text-emerald-700">{String(c.n ?? 0)}</b></span>
+              <span key={i} className="px-2 py-0.5 rounded-full bg-white border border-transparent text-xs text-gray-700">{String(c.category ?? '?')} <b className="text-tone-ok">{String(c.n ?? 0)}</b></span>
             ))}
             {inq.byCategory.length === 0 && <span className="text-xs text-gray-500">수집된 인콰이어리가 없습니다.</span>}
           </div>
-          <div className="bg-white rounded-lg border border-emerald-100 max-h-56 overflow-auto">
+          <div className="bg-white rounded-lg border border-rule max-h-56 overflow-auto">
             {inq.recent.map((r, i) => (
               <div key={i} className="px-2 py-1.5 border-b border-gray-100 last:border-0 text-xs">
                 <div className="text-gray-900">{String(r.inquiry_title ?? '')}</div>
@@ -162,8 +162,8 @@ export default function DemandPanel({ onClose, onRaw }: { onClose: () => void; o
         </div>
       </div>
 
-      <div className="mt-3 rounded-lg bg-white border border-emerald-100 p-3 text-xs text-gray-700 leading-relaxed">
-        <b>💡 이 데이터를 쓰는 법</b> — 바이어 <b>연락처는 플랫폼이 원천 마스킹</b>하지만 <b>국가·품목·수량은 항상 보입니다</b>.
+      <div className="mt-3 rounded-lg bg-white border border-rule p-3 text-xs text-gray-700 leading-relaxed">
+        <b>이 데이터를 쓰는 법</b> — 바이어 <b>연락처는 플랫폼이 원천 마스킹</b>하지만 <b>국가·품목·수량은 항상 보입니다</b>.
         수요가 확인된 품목을 <b>buyKorea 판매자센터에 상품 등록</b>하면 KOTRA 해외무역관을 통해 바이어 문의가 들어옵니다(무료).
         또 <b>tradeKorea 바이어DB</b>에서는 이메일 없이 <b>거래제안서를 바로 발송</b>할 수 있습니다 — 합법적이고 지속 가능한 경로입니다.
       </div>

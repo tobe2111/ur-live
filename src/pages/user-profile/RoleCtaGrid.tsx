@@ -3,7 +3,6 @@
  *
  * v4 (2026-05-21): 보유한 role 의 "대시보드 바로가기" 단축 카드 추가.
  *   - 셀러 토큰 있으면: 📊 셀러 대시보드 → /seller
- *   - 에이전시 토큰 있으면: 📊 에이전시 대시보드 → /agency
  *   - 둘 다 있는 사용자도 양쪽 진입 가능 (셀러+에이전시 겸업).
  *
  * v3 영구 디자인:
@@ -16,7 +15,7 @@
 import { Link } from 'react-router-dom'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight, Store, LayoutDashboard, Building2, Handshake, ShoppingBag, Briefcase, type LucideIcon } from 'lucide-react'
+import { ChevronRight, Store, LayoutDashboard, Handshake, ShoppingBag, type LucideIcon } from 'lucide-react'
 import { COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
 
 interface Cta {
@@ -35,12 +34,10 @@ export default function RoleCtaGrid() {
   const { t } = useTranslation()
   const { dashboardItems, signupItems } = useMemo(() => {
     const hasSellerToken = typeof window !== 'undefined' && !!localStorage.getItem('seller_token')
-    const hasAgencyToken = typeof window !== 'undefined' && !!localStorage.getItem('agency_token')
     // 내 바로가기 (모든 유저가 가진 유어샵 + 보유 role 의 대시보드 단축)
     const dash: Cta[] = [
       { Icon: Store, title: t('roleCta.linkshop', { defaultValue: '내 유어샵' }), desc: t('roleCta.linkshopDesc', { defaultValue: '이용권을 담아 진열하고 소개해요' }), to: '/u/me', show: () => true, accent: true },
       { Icon: LayoutDashboard, title: t('roleCta.sellerDash', { defaultValue: '셀러 대시보드' }), desc: t('roleCta.sellerDashDesc', { defaultValue: '내 상품·공구·정산 관리' }), to: '/seller', show: () => hasSellerToken, accent: true },
-      { Icon: Building2, title: t('roleCta.agencyDash', { defaultValue: '에이전시 대시보드' }), desc: t('roleCta.agencyDashDesc', { defaultValue: '소속 사업자·소개 가게 수익' }), to: '/agency', show: () => hasAgencyToken, accent: true },
     ]
     // 신규 가입 CTA (보유 안 한 role 만)
     const signup: Cta[] = [
@@ -50,7 +47,8 @@ export default function RoleCtaGrid() {
       // 🏷️ 2026-08-26: '내 쇼핑몰 열기' → '내 가게 등록'. 유어샵은 가입하면 **이미 있다** — 여기서
       //   새로 만드는 건 매장이다. 목적지도 매장 등록(/store/new)으로(대표 확정 '매장 등록이 선행').
       { Icon: ShoppingBag, title: t('roleCta.openShop', { defaultValue: '내 가게 등록' }), desc: t('roleCta.openShopDesc', { defaultValue: '카카오맵에서 내 가게를 찾아 이용권을 팔아요' }), to: '/store/new', show: () => !hasSellerToken },
-      { Icon: Briefcase, title: t('roleCta.agencyBiz', { defaultValue: '에이전시 사업' }), desc: t('roleCta.agencyBizDesc', { defaultValue: '가게 영업 → 2% 영구 수익' }), to: '/agency/register/business', show: () => !hasAgencyToken },
+      // 🌇 2026-09-04 에이전시 완전 일몰(대표 확정) — 09-02 에 신규 가입 CTA 만 뺐고 "이미 에이전시인
+      //   사람의 대시보드 바로가기는 유지" 했는데, 그 대시보드 자체가 사라졌다. 바로가기도 함께 제거.
     ]
     return {
       dashboardItems: dash.filter(c => c.show()),
@@ -88,7 +86,7 @@ export default function RoleCtaGrid() {
           <p className="text-[12px] font-bold text-gray-600 dark:text-gray-400 mb-2 px-1">
             {t('roleCta.myShortcuts', { defaultValue: '내 바로가기' })}
           </p>
-          <div className="rounded-2xl bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] overflow-hidden">
+          <div className="rounded-2xl bg-surface border border-line overflow-hidden">
             {dashboardItems.map((c, i) => Row(c, i))}
           </div>
         </div>
@@ -98,7 +96,7 @@ export default function RoleCtaGrid() {
           <p className="text-[12px] font-bold text-gray-600 dark:text-gray-400 mb-2 px-1">
             {t('roleCta.startNewRole', { defaultValue: '추가 역할로 시작하기' })}
           </p>
-          <div className="rounded-2xl bg-white dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35] overflow-hidden">
+          <div className="rounded-2xl bg-surface border border-gray-100 dark:border-[#2C2F35] overflow-hidden">
             {signupItems.map((c, i) => Row(c, i))}
           </div>
         </div>

@@ -58,12 +58,26 @@ function readGates(): Array<{ key: string; kind: string; turnOnWhen: string; sta
   return out
 }
 
-/** 어드민 화면 전체를 코드만 이어붙인다(편집 배열이 어느 Admin 화면에 있든 인정). */
+/**
+ * 어드민 화면 전체를 코드만 이어붙인다(편집 배열이 어느 Admin 화면에 있든 인정).
+ *
+ * 🩸 2026-09-07: 예전엔 `src/pages/Admin*.tsx` **최상위만** 봤다. 그런데 이 레포는 큰 어드민
+ *   화면을 같은이름 폴더로 쪼갠다(파일크기 래칫이 그렇게 시킨다) — `admin-platform-settings/`
+ *   의 `PromoBarSection.tsx` 처럼. 그러면 **손잡이가 실재하는데 이 시험엔 안 보여서**
+ *   "화면이 없다"는 가짜 빨간불이 나거나, 그 게이트를 아예 등재하지 않게 된다(실제로 후자였다).
+ *   ⇒ `admin-*` 하위 폴더의 `.tsx` 도 어드민 화면으로 인정한다.
+ */
 function adminScreensCode(): string {
   const dir = 'src/pages'
-  const files = readdirSync(dir).filter((f) => f.startsWith('Admin') && f.endsWith('.tsx'))
+  const files = readdirSync(dir).filter((f) => f.startsWith('Admin') && f.endsWith('.tsx')).map((f) => join(dir, f))
+  for (const sub of readdirSync(dir, { withFileTypes: true })) {
+    if (!sub.isDirectory() || !sub.name.startsWith('admin-')) continue
+    for (const f of readdirSync(join(dir, sub.name))) {
+      if (f.endsWith('.tsx') || f.endsWith('.ts')) files.push(join(dir, sub.name, f))
+    }
+  }
   expect(files.length, '어드민 화면 파일을 하나도 못 찾았다 — 경로 규약이 바뀌었다').toBeGreaterThan(5)
-  return files.map((f) => codeOnly(readFileSync(join(dir, f), 'utf8'))).join('\n')
+  return files.map((f) => codeOnly(readFileSync(f, 'utf8'))).join('\n')
 }
 
 describe('OPS_GATES: setting 게이트는 켤 화면이 있어야 한다', () => {

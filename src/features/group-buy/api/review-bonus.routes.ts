@@ -24,7 +24,7 @@ import { Hono } from 'hono'
 import type { Env } from '@/worker/types/env'
 import { requireAuth } from '@/worker/middleware/auth'
 import type { AuthUser } from '@/worker/middleware/auth'
-import { resolveReviewBonus } from './review-bonus-funding'
+import { resolveReviewBonus, debitStoreForReviewBonus } from './review-bonus-funding'
 import { swallow } from '@/worker/utils/swallow'
 import { creditReviewScoreOnApproval, getUserReviewLevelSummary } from '@/worker/utils/review-level'
 
@@ -216,6 +216,16 @@ async function approveSubmission(
       .bind(id).run().catch(swallow('review-bonus:approve-revert'))
     return { ok: false, httpStatus: 500, error: '지급 실패 — 다시 시도해주세요' }
   }
+
+  // 💸 2026-09-01: 재원이 매장이면 **여기서** 매장 정산에서 뺀다. CAS 승자만 도달하고
+  //   `payBonus` 가 성공한 뒤라, 지급 없이 청구되는 일은 없다(순서가 곧 안전장치다).
+  //   게이트 OFF 이거나 매장이 금액을 안 정했으면 `fundedBy='platform'` 이라 no-op.
+  await debitStoreForReviewBonus(DB, {
+    submissionId: id,
+    sellerId: submission.seller_id,
+    amount: bonusAmount,
+    fundedBy: bonusPolicy.fundedBy,
+  }).catch(swallow('review-bonus:debit'))
 
   // 🗺️ 리뷰 점수/레벨 적립 (CAS 승자만 도달 → 멱등) + 유저 알림 — fail-soft
   await creditReviewScoreOnApproval(DB, submission.user_id).catch(swallow('review-bonus:score'))

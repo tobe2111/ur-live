@@ -1,7 +1,7 @@
 /**
  * 🛡️ 2026-05-18: 인플루언서 referral 대시보드 — 본인 추천 실적.
  *
- *   기존 /api/affiliate/stats (commission 누적) + /funnel (클릭→가입→결제) +
+ *   기존 /api/affiliate/stats (commission 누적) + /funnel (클릭→가입→결제) +   status-tone-ok: 퍼널 숫자는 상태가 아니라 데이터다
  *   /top-groups (추천 권장 상품) 활용.
  *
  *   사용자 메인 (다크 테마) 컨텍스트.
@@ -161,18 +161,18 @@ export default function InfluencerDashboardPage() {
         ) : (
           <>
             {/* 적립 누계 */}
-            <div className="bg-gray-800/[0.15] border border-pink-500/30 rounded-2xl p-5">
-              <p className="text-[10px] font-bold text-pink-200/70 tracking-[0.14em]">{t('influencer.earned', { defaultValue: '누적 적립' })}</p>
-              <p className="text-3xl font-black text-pink-300 mt-1">
+            <div className="bg-gray-800/[0.15] border border-brand/30 rounded-2xl p-5">
+              <p className="text-[10px] font-bold text-brand-text/70 tracking-[0.14em]">{t('influencer.earned', { defaultValue: '누적 적립' })}</p>
+              <p className="text-3xl font-black text-brand-text mt-1">
                 ₩{formatNumber(stats?.total_earned || 0)}
               </p>
-              <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-pink-500/20">
+              <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-brand/20">
                 <div>
-                  <p className="text-[10px] text-pink-200/70">{t('influencer.refCount', { defaultValue: '추천 결제' })}</p>
+                  <p className="text-[10px] text-brand-text/70">{t('influencer.refCount', { defaultValue: '추천 결제' })}</p>
                   <p className="text-base font-extrabold text-white">{formatNumber(stats?.total_referrals || 0)}건</p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-pink-200/70">{t('influencer.refSales', { defaultValue: '유발 매출' })}</p>
+                  <p className="text-[10px] text-brand-text/70">{t('influencer.refSales', { defaultValue: '유발 매출' })}</p>
                   <p className="text-base font-extrabold text-white">₩{formatNumber(stats?.total_sales || 0)}</p>
                 </div>
               </div>
@@ -186,7 +186,7 @@ export default function InfluencerDashboardPage() {
                   {[
                     { label: '클릭', value: funnel.clicks, color: 'text-blue-300' },
                     { label: '가입', value: funnel.signups, color: 'text-emerald-300' },
-                    { label: '결제', value: funnel.paid, color: 'text-pink-300' },
+                    { label: '결제', value: funnel.paid, color: 'text-brand-text' },
                     { label: '적립', value: `₩${formatNumber(funnel.earned)}`, color: 'text-amber-300' },
                   ].map((f) => (
                     <div key={f.label} className="p-2 bg-white/[0.04] rounded">
@@ -227,7 +227,7 @@ export default function InfluencerDashboardPage() {
                              item.type === 'group-buy' ? '🏪 공구' : '🛍️ 상품'}
                           </span>
                           {item.discount_pct ? (
-                            <span className="text-[9px] text-pink-300 font-bold">소비자 -{item.discount_pct}%</span>
+                            <span className="text-[9px] text-brand-text font-bold">소비자 -{item.discount_pct}%</span>
                           ) : null}
                           {item.commission_pct ? (
                             <span className="text-[9px] text-emerald-300 font-bold">커미션 {item.commission_pct}%</span>
@@ -241,7 +241,7 @@ export default function InfluencerDashboardPage() {
                           💬
                         </button>
                         <button onClick={() => copyLink(item.type, item.id)}
-                          className="p-2 bg-pink-500 text-white rounded-lg"
+                          className="p-2 bg-brand text-white rounded-lg"
                           title="링크 복사">
                           <Share2 className="w-4 h-4" />
                         </button>

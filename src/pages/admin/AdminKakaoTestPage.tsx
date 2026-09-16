@@ -53,7 +53,7 @@ export default function AdminKakaoTestPage() {
       const templateObject = JSON.stringify({
         object_type: 'feed',
         content: {
-          title: '🔴 유어딜 라이브 커머스',
+          title: '유어딜 라이브 커머스',
           description: '테스트 메시지입니다.',
           image_url: 'https://urdeal.kr/og-image.png',
           link: { web_url: 'https://urdeal.kr', mobile_web_url: 'https://urdeal.kr' },
@@ -102,7 +102,7 @@ export default function AdminKakaoTestPage() {
       const templateObject = JSON.stringify({
         object_type: 'feed',
         content: {
-          title: '🔴 유어딜 라이브 커머스',
+          title: '유어딜 라이브 커머스',
           description: '친구에게 보내는 테스트 메시지입니다.',
           image_url: 'https://urdeal.kr/og-image.png',
           link: { web_url: 'https://urdeal.kr', mobile_web_url: 'https://urdeal.kr' },
@@ -133,7 +133,7 @@ export default function AdminKakaoTestPage() {
       start.setMinutes(Math.ceil(start.getMinutes() / 5) * 5, 0, 0)
       const end = new Date(start.getTime() + 3600000)
       const event = {
-        title: '🔴 유어딜 라이브 테스트',
+        title: '유어딜 라이브 테스트',
         time: { start_at: start.toISOString(), end_at: end.toISOString(), time_zone: 'Asia/Seoul' },
         description: '카카오 캘린더 API 테스트',
         reminders: [30],
@@ -186,7 +186,7 @@ export default function AdminKakaoTestPage() {
           </div>
           {accessToken ? (
             <div className="space-y-2">
-              <div className="flex items-center gap-2 text-xs text-green-600 bg-green-50 p-3 rounded-lg">
+              <div className="flex items-center gap-2 text-xs text-tone-ok border border-rule bg-white p-3 rounded-lg">
                 <CheckCircle className="w-4 h-4" />
                 <span>토큰 확보됨: {accessToken.slice(0, 20)}...</span>
               </div>
@@ -210,10 +210,10 @@ export default function AdminKakaoTestPage() {
                   <button onClick={() => {
                     const val = (document.getElementById('manual-token') as HTMLInputElement)?.value?.trim()
                     if (val) { setAccessToken(val); localStorage.setItem('kakao_test_token', val); toast.success('토큰 설정 완료!') }
-                  }} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-xs font-bold shrink-0">설정</button>
+                  }} className="ur-btn ur-btn-md ur-btn-primary shrink-0">설정</button>
                 </div>
                 <a href="https://developers.kakao.com/tool/rest-api/open/get/v2-user-me" target="_blank" rel="noopener"
-                  className="inline-flex items-center gap-1 mt-2 text-xs text-blue-600">
+                  className="inline-flex items-center gap-1 mt-2 text-xs text-gray-700">
                   카카오 REST API 테스트 도구 열기 <ExternalLink className="w-3 h-3" />
                 </a>
               </div>
@@ -242,8 +242,8 @@ export default function AdminKakaoTestPage() {
         ))}
 
         <button onClick={runAllTests} disabled={!accessToken || loading}
-          className="w-full py-3 bg-gray-800 text-white rounded-xl font-bold text-sm mb-6 disabled:opacity-40 active:scale-[0.97]">
-          🚀 전체 테스트 실행
+          className="ur-btn ur-btn-lg ur-btn-primary w-full mb-6 disabled:opacity-40 active:scale-[0.97]">
+          전체 테스트 실행
         </button>
 
         {/* 결과 */}
@@ -252,19 +252,19 @@ export default function AdminKakaoTestPage() {
             <h2 className="text-sm font-bold text-gray-900 mb-3">테스트 결과</h2>
             <div className="space-y-2">
               {results.map((r, i) => (
-                <div key={i} className={`flex items-start gap-2 p-3 rounded-lg text-xs ${r.success ? 'bg-green-50' : 'bg-red-50'}`}>
-                  {r.success ? <CheckCircle className="w-4 h-4 text-green-500 shrink-0 mt-0.5" /> : <XCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />}
+                <div key={i} className={`flex items-start gap-2 p-3 rounded-lg text-xs ${r.success ? 'border border-rule bg-white' : 'border border-rule bg-white'}`}>
+                  {r.success ? <CheckCircle className="w-4 h-4 text-tone-ok shrink-0 mt-0.5" /> : <XCircle className="w-4 h-4 text-tone-bad shrink-0 mt-0.5" />}
                   <div>
-                    <p className={`font-bold ${r.success ? 'text-green-700' : 'text-red-700'}`}>{r.step}</p>
-                    <p className={`mt-0.5 ${r.success ? 'text-green-600' : 'text-red-600'}`}>{r.detail}</p>
+                    <p className={`font-bold ${r.success ? 'text-tone-ok' : 'text-tone-bad'}`}>{r.step}</p>
+                    <p className={`mt-0.5 ${r.success ? 'text-tone-ok' : 'text-tone-bad'}`}>{r.detail}</p>
                   </div>
                 </div>
               ))}
             </div>
             {results.every(r => r.success) && (
-              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-xs font-bold text-yellow-800">✅ 모든 테스트 통과!</p>
-                <p className="text-xs text-yellow-700 mt-1">이 스크린샷을 카카오 심사에 첨부하세요.</p>
+              <div className="mt-4 p-3 bg-white border border-rule rounded-lg">
+                <p className="text-xs font-bold text-tone-warn">모든 테스트 통과!</p>
+                <p className="text-xs text-tone-warn mt-1">이 스크린샷을 카카오 심사에 첨부하세요.</p>
               </div>
             )}
           </div>

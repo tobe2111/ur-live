@@ -290,15 +290,23 @@ interface OpsGate {
 }
 
 const OPS_GATES: OpsGate[] = [
-  { key: 'commission_budget_enabled', kind: 'setting', label: '커미션 예산 아비터 [INV-CB]', default_value: 'false', staging_ref: 'S1', turn_on_when: '영입+트리 커미션이 겹친 주문에서 Σ적립 ≤ 예산이 확인되면(S1)' },
+  { key: 'commission_budget_enabled', kind: 'setting', label: '커미션 예산 아비터 [INV-CB]', default_value: 'false', staging_ref: 'S1', turn_on_when: '영입+트리가 겹친 주문 1건을 `GET /api/admin/promo-ledger/order/:orderNumber` 로 보고 verdict.within_budget=true 면(S1 절차)' },
   { key: 'promo_funding_source', kind: 'setting', label: '프로모 owner-펀딩', default_value: 'platform', staging_ref: 'S2', turn_on_when: '이용권 구매→사용→환불에서 매장 원장 promo debit 1회가 확인되면(S2)' },
   { key: 'SHOPPING_LEDGER_ENABLED', kind: 'env', label: '쇼핑 주문 원장 크레딧', default_value: 'false', staging_ref: 'S3', turn_on_when: '쇼핑탭 재오픈이 결정되고 S3 실결제로 net 크레딧 1회가 확인되면' },
   { key: 'FEE_RESOLVER_ENABLED', kind: 'env', label: 'fee-resolver 그림자 기록', default_value: 'false', staging_ref: 'S4', turn_on_when: '그림자 기록(order_fee_breakdown) vs 현행 정산 비교가 일치하면(S4)' },
+  // 🔍 2026-09-16 (결재 `2026-09-16-ocr-license-automation.md` §안전 레일 ①):
+  //   서류 OCR 추출값으로 **자동 승인**을 낼지. 기본 OFF = 추출만 하고 어드민에 나란히 띄운다.
+  //   ⚠️ 이 게이트가 없던 동안(2026-05-27~09-16) 코드는 게이트 없이 승인을 냈다 — AI 바인딩이
+  //   없어 안 돌았을 뿐이고, 대표가 바인딩을 켠 2026-09-16 그날부터 살아날 상태였다.
+  { key: 'ocr_auto_verify_enabled', kind: 'setting', label: '서류 OCR 자동 승인', default_value: 'false', staging_ref: 'S-OCR', turn_on_when: '실사진으로 추출 정확도를 재고(어드민 OCR 버튼의 fill·addressCheck), 오탐 0 을 확인한 뒤 대표 판단으로' },
   // 💸 2026-08-25 (누락 발견): **플랫폼 take 율 자체를 정하는 게이트인데 이 명부에 없었다.**
   //   `channelPlatformRate` 가 이 값으로 직판 10% / 중개 5% 를 가른다(OFF 면 종전 `commission_rate`).
   //   CLAUDE.md 는 게이트 플래그를 여기 등록하라고 규정하는데 이것만 빠져 있어, 운영 화면에서
   //   **켜져 있는지조차 볼 수 없었다** — 머니 경로에서 가장 보여야 할 값이다.
   { key: 'fee_channel_rates_enabled', kind: 'setting', label: '채널별 플랫폼 요율(직판 10% / 중개 5%)', default_value: 'false', staging_ref: 'S7', turn_on_when: '직판·중개 주문 각 1건의 원장 fee 가 의도한 요율로 찍히는 것이 staging 실결제로 확인되면' },
+  // 🔒 2026-09-16 (사기 방어 ①): 소개 커미션 성숙을 **사용 확인 뒤로**. 켜지기 전엔 서비스가
+  //   한 번도 안 일어나도 T+7 이면 송금 대기에 올랐다(가짜 매장이 돈을 가져가는 경로).
+  { key: 'payout_requires_voucher_use', kind: 'setting', label: '소개 커미션 사용 확인 게이트', default_value: 'false', staging_ref: 'S-USEGATE', turn_on_when: 'S-USEGATE 8건 통과 시 — 특히 ②(미사용은 pending 유지) ③(1장 사용 즉시 성숙) ⑦(무기한 이용권이 천장일에 풀림)이 확인되면. 라이브 attribution 0건이라 켜도 오늘 영향 0' },
   { key: 'BLOG_AI_DRAFTS_ENABLED', kind: 'env', label: '블로그 AI 초안 주간 cron', default_value: 'false', staging_ref: null, turn_on_when: '주간 AI 초안이 필요해지고 ANTHROPIC_API_KEY 가 ur-live 에 설정되면' },
   { key: 'ADS_AUTOBID_ENABLED', kind: 'env', label: '유어애즈 자동입찰', default_value: 'false', staging_ref: null, turn_on_when: '유어애즈 광고주가 실제로 입찰을 시작하면(현재 인플루언서 DB 수집 단계라 미해당)' },
   { key: 'wholesale_auto_grade_enabled', kind: 'setting', label: '도매 등급 자동평가', default_value: '0', staging_ref: null, turn_on_when: '🔴 켜지 않는다 — 도매몰은 철거 대상(2026-08-02 대표 확정 ⑦)' },
@@ -308,12 +316,24 @@ const OPS_GATES: OpsGate[] = [
   //   ⇒ 공구 특가를 결제에 배선해도(#844) **둘 다 켜지기 전에는 어디에도 적용되지 않는다.**
   //   여기 등재는 서버 겹만 값으로 보여준다 — 클라 겹은 배포가 필요하므로 라벨에 함께 적는다.
   { key: 'gb_engine_enabled', kind: 'setting', label: '공구 엔진 (⚠️ 2겹 — 클라 GB_ENGINE_ENABLED 도 함께 켜야 적용)', default_value: 'false', staging_ref: null, turn_on_when: 'P9 실결제 통과 시(⑤ 1순위). ⚠️ 클라 GB_ENGINE_ENABLED 도 함께 켜야 적용. ⚠️ 공구가 청구는 이 키가 아니라 gb_pricing_enabled 가 지배한다(2026-08-11 정정)' },
+  { key: 'voucher_deal_payment_enabled', kind: 'setting', label: '이용권 딜 결제 (⚠️ 2겹 — 클라 VOUCHER_DEAL_PAYMENT_ENABLED 도 함께)', default_value: 'false', staging_ref: 'S9', turn_on_when: '🔴 선행 필수: influencer_deal_bonus_pct=0. 보너스 20% 가 이용권 마진(5~10%)보다 커서 켜면 팔릴수록 건당 8~14원 적자(2026-08-31 실측). 순서: ① 교환권 마진 0+재계산 ② 딜 보너스 0 + 현금 정산 수수료 ③ 이 키 + 클라 플래그' },
   // 🔌 2026-08-11 — **끄는 스위치**(기본 ON). 다른 게이트와 방향이 반대라 라벨에 명시한다:
   //   미설정/조회실패 = 공구가 적용(현행). `'false'` 를 저장한 순간에만 상시가로 되돌아간다.
   { key: 'gb_pricing_enabled', kind: 'setting', label: '공구가 청구 (🔴 킬스위치 — 기본 ON, false 로 저장해야 꺼짐)', default_value: 'true', staging_ref: null, turn_on_when: '항상 ON 이 정상. 잘못 설정된 공구가로 과소청구가 날 때 `false` 로 저장해 즉시 상시가로 되돌린다' },
   // 8월 promo flip 스코프 스위치 — 값이 비어 있지 않으면 그 매장만 flip 경로.
   { key: 'flip_pilot_seller_ids', kind: 'setting', label: '8월 flip 파일럿 매장 스코프', default_value: '', staging_ref: null, turn_on_when: '8월 promo flip 파일럿 매장이 정해지면 그 seller_id 를 넣는다' },
   { key: 'seller_promo_field_enabled', kind: 'setting', label: '셀러 promo% 입력 UI', default_value: 'false', staging_ref: null, turn_on_when: 'flip 파일럿 매장이 스스로 promo% 를 입력할 단계가 되면' },
+  // 🪙 2026-09-07 — **한 달 넘게 이 표에 없었다.** 그래서 `ops-gate-reachable`(등재된 게이트만 본다)이
+  //   "켤 화면이 없다"를 잡지 못했고, 어드민에 손잡이가 없는 채로 남았다. 등재가 곧 검사 범위다.
+  //   2026-09-06 에 표시 게이트(affiliate-program.ts)가 같은 키를 읽게 되면서 이 스위치 하나가
+  //   **지급과 화면 배지를 동시에** 가른다 — 끄면 배지도 사라지고 켜면 함께 돌아온다.
+  { key: 'affiliate_program_enabled', kind: 'setting', label: '담기 적립(어필리에이트) — 지급 + 화면 배지', default_value: 'false', staging_ref: null, turn_on_when: "🔴 **promo_funding_source='owner' 를 먼저** 켤 것. 'platform' 인 채로 켜면 매장이 건 소개비를 유어딜이 문다. 그리고 담을 남의 가게(매장)가 있어야 의미가 생긴다 — 대표 권고 기준선은 매장 10곳" },
+  // 🪙 2026-09-01 — 이용권을 "딜 일부 + 카드 나머지" 로 살 수 있게 하는 스위치(대표 "포인트 차감처럼").
+  //   OFF 면 딜 사용액이 항상 0 이고 총액과 다른 청구액은 종전처럼 AMOUNT_MISMATCH 로 막힌다.
+  { key: 'voucher_partial_deal_enabled', kind: 'setting', label: '이용권 부분결제(딜+카드)', default_value: 'false', staging_ref: 'S12', turn_on_when: '🔴 **먼저 influencer_deal_bonus_pct = 0** — 딜 보너스 20%가 살아 있으면 딜은 액면가보다 비싸고(1,000딜 = 유어딜 부채 1,200원), 마진 5~10%인 이용권에 쓰이면 팔릴수록 적자다(교환권은 소비자 마크업 20%가 상쇄하지만 이용권엔 그 상쇄가 없다). 그다음 S12 실결제로 카드+딜=총액·매장 정산 총액 불변·환불 복원 확인' },
+  // 🧾 2026-09-01 — 후기 보너스를 **매장 부담**으로 돌리는 스위치(대표 "매장 사장님이 부담하게끔").
+  //   OFF 면 판정이 항상 `platform` 이라 차감 경로에 아무것도 안 들어온다(= 오늘과 동일).
+  { key: 'review_bonus_owner_funded', kind: 'setting', label: '후기 보너스 매장 부담(정산 차감)', default_value: 'false', staging_ref: 'S11', turn_on_when: '매장이 셀러 대시보드에서 금액을 직접 넣기 시작하고, S11 로 원장 debit 1회·재승인 이중차감 0 이 확인되면' },
   { key: 'DISTRICT_AUTO_ISSUE_ENABLED', kind: 'env', label: '상권 쿠폰 온라인 자동발급(경로 B)', default_value: 'false', staging_ref: null, turn_on_when: '상권 캠페인 파일럿 매장이 확정되고 재원(예산 풀)이 배정되면' },
   // 💸 2026-08-01 ④-b: 미수령(픽업 안 찾아감) 환불을 보관구분에 따라 가른다.
   //   🔴 **이미 흐르는 환불의 방향을 바꾼다** — 안 돌던 걸 켜는 게 아니다(cron `0 18` 실행 확인됨).
@@ -322,6 +342,20 @@ const OPS_GATES: OpsGate[] = [
   // 💸 2026-08-01 ④-c: 부분환불 **금액을 정할 입구**. 그간 `returns.refund_amount` 를 바꾸는 경로가
   //   아예 없어 실질적으로 전액 환불만 가능했다. OFF 면 금액 설정 API 가 403 → 현행(전액) 그대로.
   { key: 'partial_refund_enabled', kind: 'setting', label: '부분환불 금액 설정 ④-c', default_value: 'false', staging_ref: 'P11', turn_on_when: '**첫 픽업 공구 개설과 동시**(⑤ 3순위) — ④-b 와 같이 켠다' },
+  // 🎛️ 2026-09-07 — `check-gate-registry` 가 찾아낸 **미등재 strict-true 게이트 5개**.
+  //   전부 read-site 가 `=== 'true'` 인데 이 표에 없어서 `ops-gate-reachable` 의 사각지대였다.
+  //   등재가 곧 검사 범위다 — 넣는 순간 "켤 화면이 있나"를 기계가 묻기 시작한다.
+  { key: 'settlement_skip_ledgered', kind: 'setting', label: '자동정산에서 원장 기록분 제외', default_value: 'false', staging_ref: null, turn_on_when: '🔴 머니 경로. 원장 적립(SHOPPING_LEDGER 계열)이 실제로 돌기 시작해 같은 매출이 두 번 정산될 위험이 생겼을 때. 그전엔 켜면 정산이 통째로 빠진다' },
+  { key: 'outreach_auto_send', kind: 'setting', label: '인플루언서 제휴 제안 자동 발송', default_value: 'false', staging_ref: null, turn_on_when: '📮 콜드 발송은 법·평판 문제라 **대표가 직접 판단**한다. 세션이 켜지 않는다' },
+  { key: 'promo_bar_enabled', kind: 'setting', label: '소비자 홈 프로모 바', default_value: 'false', staging_ref: null, turn_on_when: '홍보 문구가 정해지면 (문구·버튼·색은 같은 화면의 프로모 바 섹션에서)' },
+  // 🧺 2026-09-15 — 이용권 **장바구니 결제** 레일. 만들 때 이 표에 안 넣어서 어드민에 손잡이가
+  //   없었다(`check-gate-registry` 도 못 봤다 — read-site 가 `=== 'true'` 가 아니라 helper 안에 있다).
+  //   ⚠️ **두 겹이다**: 이 서버 키가 보안 경계이고, 담기 버튼은 클라 `VOUCHER_CART_UI_ENABLED` 가 가른다.
+  //   서버만 켜면 기존 장바구니에 이용권이 든 사람은 결제까지 갈 수 있다(담기 버튼은 안 보여도).
+  { key: 'voucher_cart_enabled', kind: 'setting', label: '이용권 장바구니 결제 (⚠️ 2겹 — 클라 VOUCHER_CART_UI_ENABLED 도 함께)', default_value: 'false', staging_ref: 'S-CART', turn_on_when: '🔴 머니 경로. S-CART 15항목(특히 S-CART-2 서로 다른 매장 2종 발급 · S-CART-3 셀러별 정산 · S-CART-13 교환권 거절)을 staging 실결제로 통과한 뒤. 끄면 두 엔드포인트가 즉시 403 이라 되돌리기는 1초다' },
+  // 아래 둘은 **되살리지 않기로 한** 축이다(2026-08-23 종료, 다단계 성격). 화면이 없는 게 정상.
+  { key: 'invite_reward_enabled', kind: 'setting', label: '초대 보상 (2026-08-23 종료)', default_value: 'false', staging_ref: null, turn_on_when: '켜지 않는다 — 심플 모델로 정리하며 종료한 축이다' },
+  { key: 'multi_tier_enabled', kind: 'setting', label: '멀티티어 추천 (2026-08-23 종료)', default_value: 'false', staging_ref: null, turn_on_when: '켜지 않는다 — 다단계 성격이라 되살릴 이유가 없다' },
 ]
 
 adminSystemMonitoringRoutes.get('/ops-status', async (c) => {

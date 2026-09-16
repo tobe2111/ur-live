@@ -119,7 +119,7 @@ export default function VoucherRedeemModal({
   return (
     <div className="fixed inset-0 z-[10000] bg-black/60 flex items-end sm:items-center justify-center" onClick={phase === 'confirm' ? onClose : undefined} role="presentation">
       <div
-        className="relative bg-white dark:bg-[#11141C] rounded-t-3xl sm:rounded-3xl w-full max-w-[430px] p-6"
+        className="relative bg-surface rounded-t-3xl sm:rounded-3xl w-full max-w-[430px] p-6"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -151,12 +151,12 @@ export default function VoucherRedeemModal({
                 inputMode="numeric"
                 maxLength={6}
                 placeholder="매장 확인코드"
-                className="mt-4 w-full text-center tracking-[0.5em] text-[22px] font-black py-3 rounded-2xl border-2 border-gray-300 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] text-gray-900 dark:text-white"
+                className="mt-4 w-full text-center tracking-[0.5em] text-[22px] font-black py-3 rounded-2xl border-2 border-gray-300 dark:border-[#2C2F35] bg-surface text-gray-900 dark:text-white"
                 autoFocus
               />
             )}
             <div className="flex gap-2 mt-5">
-              <button onClick={onClose} className="ur-btn ur-btn-lg flex-1 border border-gray-200 dark:border-[#2C2F35] text-gray-700 dark:text-gray-200">닫기</button>
+              <button onClick={onClose} className="ur-btn ur-btn-lg flex-1 border border-line text-gray-700 dark:text-gray-200">닫기</button>
               <button onClick={redeem} className="ur-btn ur-btn-lg flex-[2] bg-gray-900 dark:bg-white text-white dark:text-gray-900">사용하기</button>
             </div>
           </>
@@ -193,7 +193,7 @@ export default function VoucherRedeemModal({
               href={`https://map.kakao.com/?q=${encodeURIComponent(storeAddress ? `${store} ${storeAddress}` : store)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="ur-btn ur-btn-md ur-btn-block mt-2 border border-gray-200 dark:border-[#2C2F35] text-gray-600 dark:text-gray-300"
+              className="ur-btn ur-btn-md ur-btn-block mt-2 border border-line text-gray-600 dark:text-gray-300"
             >
               🗺️ 카카오맵에 후기 남기기
             </a>

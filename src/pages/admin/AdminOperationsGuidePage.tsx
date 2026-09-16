@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState } from 'react'  /* status-tone-ok: 가이드 3종 아이콘 타일 색은 상태가 아니라 분류다 */
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { BookOpen, Shield, Store, Building2 } from 'lucide-react'
@@ -49,11 +49,11 @@ export default function AdminOperationsGuidePage() {
         </div>
 
         {/* 안내 박스 */}
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-900">
-          <p className="font-semibold mb-1">💡 편집 팁</p>
+        <div className="bg-white border border-rule rounded-xl p-3 text-sm text-tone-warn">
+          <p className="font-semibold mb-1">편집 팁</p>
           <ul className="text-xs space-y-0.5 list-disc pl-4">
             <li>각 섹션의 <strong>연필 아이콘</strong>을 클릭하면 바로 편집 가능합니다</li>
-            <li>Markdown 문법 사용 가능: <code className="bg-amber-100 px-1 rounded">**bold**</code>, <code className="bg-amber-100 px-1 rounded">### 제목</code>, 리스트, 표 등</li>
+            <li>Markdown 문법 사용 가능: <code className="border border-rule bg-white px-1 rounded">**bold**</code>, <code className="border border-rule bg-white px-1 rounded">### 제목</code>, 리스트, 표 등</li>
             <li>저장 즉시 셀러/에이전시 대시보드에도 반영됩니다 (캐시 없음)</li>
             <li>순서 번호를 조정해 섹션 순서를 변경할 수 있습니다</li>
           </ul>

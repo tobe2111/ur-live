@@ -101,7 +101,7 @@ export default function AdminAuditLogPage() {
           icon={<Shield className="h-5 w-5" />}
         />
       {/* Filter Section */}
-      <div className="bg-white rounded-xl shadow-sm p-4">
+      <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-4">
         <button
           onClick={() => setShowFilters(!showFilters)}
           className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
@@ -167,7 +167,7 @@ export default function AdminAuditLogPage() {
             <div className="sm:col-span-2 lg:col-span-5 flex gap-2">
               <button
                 type="submit"
-                className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-900"
+                className="ur-btn ur-btn-md ur-btn-primary"
               >
                 검색
               </button>
@@ -184,7 +184,7 @@ export default function AdminAuditLogPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
@@ -218,9 +218,9 @@ export default function AdminAuditLogPage() {
                       <td className="px-4 py-3 text-gray-700">{log.admin_email}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
-                          log.action?.toUpperCase().includes('DELETE') ? 'bg-red-50 text-red-700' :
-                          log.action?.toUpperCase().includes('CREATE') ? 'bg-emerald-50 text-emerald-700' :
-                          log.action?.toUpperCase().includes('UPDATE') ? 'bg-blue-50 text-blue-700' :
+                          log.action?.toUpperCase().includes('DELETE') ? 'bg-tone-bad-bg text-tone-bad' :
+                          log.action?.toUpperCase().includes('CREATE') ? 'bg-tone-ok-bg text-tone-ok' :
+                          log.action?.toUpperCase().includes('UPDATE') ? 'bg-tone-info-bg text-tone-info' :
                           'bg-gray-100 text-gray-700'
                         }`}>
                           {log.action}

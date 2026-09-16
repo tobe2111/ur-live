@@ -62,13 +62,13 @@ interface Booking {
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   pending: { label: '결제 대기', color: 'bg-gray-100 text-gray-700' },
-  confirmed: { label: '결제 완료', color: 'bg-blue-100 text-blue-700' },
-  checked_in: { label: '체크인 완료', color: 'bg-emerald-100 text-emerald-700' },
-  checked_out: { label: '체크아웃 완료', color: 'bg-purple-100 text-purple-700' },
+  confirmed: { label: '결제 완료', color: 'bg-tone-info-bg text-tone-info' },
+  checked_in: { label: '체크인 완료', color: 'bg-tone-ok-bg text-tone-ok' },
+  checked_out: { label: '체크아웃 완료', color: 'bg-tone-info-bg text-tone-info' },
   cancelled: { label: '취소됨', color: 'bg-gray-100 text-gray-500' },
-  no_show: { label: '노쇼', color: 'bg-red-100 text-red-700' },
-  refunded: { label: '환불됨', color: 'bg-amber-100 text-amber-700' },
-  dispute: { label: '분쟁 중', color: 'bg-orange-100 text-orange-800' },
+  no_show: { label: '노쇼', color: 'bg-tone-bad-bg text-tone-bad' },
+  refunded: { label: '환불됨', color: 'bg-tone-warn-bg text-tone-warn' },
+  dispute: { label: '분쟁 중', color: 'bg-tone-warn-bg text-tone-warn' },
 }
 
 export default function SellerStaysBookingsPage() {
@@ -130,7 +130,7 @@ export default function SellerStaysBookingsPage() {
 
   return (
     <SellerLayout title="숙소 예약 관리">
-      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-6">
         <DashboardPageHeader
           title="숙소 예약 관리"
           subtitle="KPI 분석 + 예약 처리 (체크인 / 체크아웃 / 노쇼)"
@@ -151,28 +151,28 @@ export default function SellerStaysBookingsPage() {
               label="예약률 (OCC)"
               value={`${kpi.occupancy_rate}%`}
               sub={`${kpi.room_nights}/${kpi.available_room_nights} 객실-일`}
-              color="text-emerald-600 bg-emerald-50"
+              color="text-tone-ok border border-rule bg-white"
               icon={<TrendingUp className="w-5 h-5" />}
             />
             <KpiCard
               label="평균 객단가 (ADR)"
               value={`₩${formatNumber(kpi.adr)}`}
               sub="예약된 객실당"
-              color="text-blue-600 bg-blue-50"
+              color="text-gray-700 border border-rule bg-white"
               icon={<Users className="w-5 h-5" />}
             />
             <KpiCard
               label="RevPAR"
               value={`₩${formatNumber(kpi.revpar)}`}
               sub="전체 객실당 매출"
-              color="text-violet-600 bg-violet-50"
+              color="text-gray-700 border border-rule bg-white"
               icon={<Building2 className="w-5 h-5" />}
             />
             <KpiCard
               label={`매출 (최근 ${kpi.period_days}일)`}
               value={`₩${formatNumber(kpi.revenue)}`}
               sub={`${kpi.bookings}건 예약`}
-              color="text-pink-600 bg-pink-50"
+              color="text-brand-text bg-brand-tint"
               icon={<Calendar className="w-5 h-5" />}
             />
           </div>
@@ -180,11 +180,11 @@ export default function SellerStaysBookingsPage() {
 
         {/* 경고 카드 (노쇼/분쟁 발생 시) */}
         {kpi && (kpi.no_show_count > 0 || kpi.dispute_count > 0) && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="bg-white border border-rule rounded-xl p-4 flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-tone-warn shrink-0 mt-0.5" />
             <div className="flex-1 text-xs">
-              <p className="font-bold text-amber-900">주의 — 운영 이슈</p>
-              <div className="flex gap-4 mt-1 text-amber-800">
+              <p className="font-bold text-tone-warn">주의 — 운영 이슈</p>
+              <div className="flex gap-4 mt-1 text-tone-warn">
                 {kpi.no_show_count > 0 && <span>노쇼 {kpi.no_show_count}건</span>}
                 {kpi.dispute_count > 0 && <span>분쟁 {kpi.dispute_count}건</span>}
                 {kpi.cancelled_count > 0 && <span>취소 {kpi.cancelled_count}건</span>}
@@ -209,7 +209,7 @@ export default function SellerStaysBookingsPage() {
               key={s.v}
               onClick={() => setStatusFilter(s.v)}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap ${
-                statusFilter === s.v ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 border border-gray-200'
+                statusFilter === s.v ? 'bg-brand-tint text-brand-text' : 'bg-white text-gray-700 border border-gray-200'
               }`}
             >{s.l}</button>
           ))}
@@ -224,7 +224,7 @@ export default function SellerStaysBookingsPage() {
             <p className="text-sm text-gray-500">예약이 없습니다</p>
           </div>
         ) : (
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[900px]">
                 <thead>
@@ -251,7 +251,7 @@ export default function SellerStaysBookingsPage() {
                             <Phone className="w-2.5 h-2.5" />{b.guest_phone}
                           </p>
                           {b.check_in_code && (
-                            <p className="text-[10px] text-blue-600 font-mono mt-0.5">{b.check_in_code}</p>
+                            <p className="text-[10px] text-gray-700 font-mono mt-0.5">{b.check_in_code}</p>
                           )}
                         </td>
                         <td className="px-3 py-3 text-gray-700 text-center">{b.guest_count}명</td>
@@ -261,8 +261,8 @@ export default function SellerStaysBookingsPage() {
                             {status.label}
                           </span>
                           {b.special_request && (
-                            <p className="text-[10px] text-amber-700 mt-1 max-w-[200px] truncate" title={b.special_request}>
-                              ⚠ {b.special_request}
+                            <p className="text-[10px] text-tone-warn mt-1 max-w-[200px] truncate" title={b.special_request}>
+                              {b.special_request}
                             </p>
                           )}
                         </td>
@@ -270,31 +270,31 @@ export default function SellerStaysBookingsPage() {
                           <div className="flex gap-1 flex-wrap">
                             {/* 🛡️ 2026-05-18: voucher 모드 — 사용 처리 별도 버튼 (확정 상태에서만). */}
                             {b.sale_mode === 'voucher' && b.status === 'confirmed' && !b.voucher_used_at && (
-                              <button onClick={() => useVoucher(b)} className="px-2 py-1 bg-pink-500 text-white text-[10px] font-bold rounded hover:bg-pink-600" title="voucher 사용 처리 (날짜 협의 후)">
-                                🎫 사용 처리
+                              <button onClick={() => useVoucher(b)} className="ur-btn ur-btn-sm ur-btn-primary" title="voucher 사용 처리 (날짜 협의 후)">
+                                사용 처리
                               </button>
                             )}
                             {b.sale_mode === 'voucher' && b.voucher_used_at && (
-                              <span className="text-[10px] text-purple-600 font-semibold">✓ 사용 완료</span>
+                              <span className="text-[10px] text-gray-700 font-semibold">사용 완료</span>
                             )}
                             {/* date 모드 또는 voucher 사용 전 — 일반 체크인/체크아웃/노쇼 */}
                             {b.sale_mode !== 'voucher' && b.status === 'confirmed' && (
                               <>
-                                <button onClick={() => transition(b.id, 'check-in')} className="p-1.5 rounded text-emerald-600 hover:bg-emerald-50" title="체크인">
+                                <button onClick={() => transition(b.id, 'check-in')} className="p-1.5 rounded text-tone-ok hover:bg-gray-100" title="체크인">
                                   <LogIn className="w-4 h-4" />
                                 </button>
-                                <button onClick={() => transition(b.id, 'no-show')} className="p-1.5 rounded text-red-600 hover:bg-red-50" title="노쇼">
+                                <button onClick={() => transition(b.id, 'no-show')} className="p-1.5 rounded text-tone-bad hover:bg-gray-100" title="노쇼">
                                   <XCircle className="w-4 h-4" />
                                 </button>
                               </>
                             )}
                             {b.sale_mode !== 'voucher' && b.status === 'checked_in' && (
-                              <button onClick={() => transition(b.id, 'check-out')} className="p-1.5 rounded text-purple-600 hover:bg-purple-50" title="체크아웃">
+                              <button onClick={() => transition(b.id, 'check-out')} className="p-1.5 rounded text-gray-700 hover:bg-gray-100" title="체크아웃">
                                 <LogOutIcon className="w-4 h-4" />
                               </button>
                             )}
                             {b.sale_mode !== 'voucher' && b.status === 'checked_out' && (
-                              <span className="text-[10px] text-purple-600 font-semibold">완료 ✓</span>
+                              <span className="text-[10px] text-gray-700 font-semibold">완료</span>
                             )}
                           </div>
                         </td>
@@ -310,12 +310,12 @@ export default function SellerStaysBookingsPage() {
         {/* 평점 카드 */}
         {kpi?.avg_rating && (
           <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3">
-            <CheckCircle className="w-5 h-5 text-emerald-600" />
+            <CheckCircle className="w-5 h-5 text-tone-ok" />
             <div className="flex-1">
               <p className="text-xs font-bold text-gray-900">평균 평점</p>
               <p className="text-[11px] text-gray-500">{kpi.review_count}개 리뷰</p>
             </div>
-            <p className="text-xl font-extrabold text-amber-500">{kpi.avg_rating.toFixed(1)}<span className="text-xs">/5.0</span></p>
+            <p className="text-xl font-extrabold text-tone-warn">{kpi.avg_rating.toFixed(1)}<span className="text-xs">/5.0</span></p>
           </div>
         )}
       </div>
@@ -325,7 +325,7 @@ export default function SellerStaysBookingsPage() {
 
 function KpiCard({ label, value, sub, color, icon }: { label: string; value: string; sub?: string; color: string; icon: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100">
+    <div className="bg-white rounded-xl p-3 sm:p-4 border border-gray-100">
       <div className="flex items-center justify-between mb-2">
         <span className="text-[10px] sm:text-xs font-medium text-gray-500">{label}</span>
         <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg ${color} flex items-center justify-center`}>{icon}</div>

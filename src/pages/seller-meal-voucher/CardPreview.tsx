@@ -13,7 +13,7 @@
  *   `dark:` variant 를 쓸 수 없으므로(check-dashboard-theme) **라이트 단일**로 그린다.
  */
 import { useTranslation } from 'react-i18next'
-import { MapPin } from 'lucide-react'
+import { MapPin, Ticket } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import type { VoucherForm } from './voucher-form'
 
@@ -26,15 +26,15 @@ export default function CardPreview({ form }: { form: VoucherForm }) {
   return (
     <div className="rounded-xl bg-gray-50 border border-gray-200 p-4">
       <p className="text-[11px] font-bold text-gray-500 mb-3">
-        📱 {t('seller.mealVoucher.previewTitle', { defaultValue: '소비자 화면 미리보기' })}
+        {t('seller.mealVoucher.previewTitle', { defaultValue: '소비자 화면 미리보기' })}
       </p>
-      <div className="max-w-[280px] mx-auto rounded-2xl overflow-hidden bg-white border border-gray-200 shadow-sm">
+      <div className="max-w-[280px] mx-auto rounded-[var(--dash-radius,16px)] overflow-hidden bg-white border border-gray-200">
         {/* 커버 — 이미지가 없으면 자리 표시 */}
         <div className="relative aspect-[4/3] bg-gray-100">
           {form.image_url ? (
             <img src={form.image_url} alt="" className="w-full h-full object-cover" loading="lazy" />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-3xl">🎟️</div>
+            <div className="w-full h-full flex items-center justify-center text-gray-300"><Ticket className="h-8 w-8" /></div>
           )}
           {discount > 0 && (
             <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-brand text-white text-[11px] font-extrabold">

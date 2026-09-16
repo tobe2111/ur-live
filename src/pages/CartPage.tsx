@@ -14,10 +14,14 @@ import { ShoppingCart, ChevronRight, Store, X, PackageCheck } from 'lucide-react
 import type { CartItem } from '@/types/cart'
 import { getCartItemPrice } from '@/types/cart'
 import { getNoShippingKind, isNoShippingProduct } from '@/shared/product-flow'
+import { routeCartCheckout } from './cart/voucher-checkout'
+import { computeCartTotals } from './cart/cart-totals'
+import { cartCta } from './cart/cart-cta'
 import { formatNumber } from '@/utils/format'
 import { hasConsumerSession } from '@/utils/auth'
 import CustomModal from './cart/CustomModal'
 import BrandLoader from '@/components/brand/BrandLoader'
+import ContinueShoppingLink from '@/components/mall/ContinueShoppingLink'
 
 // 🛡️ 2026-05-02: TD-018 분할 — CustomModal 을 ./cart/CustomModal 로 추출.
 //   CustomModal 내부에서 쓰던 lucide 아이콘 (AlertCircle, CheckCircle, Info) 은
@@ -63,13 +67,12 @@ export default function CartPage() {
           <button
             type="button"
             onClick={() => navigate(`/login?returnUrl=${encodeURIComponent('/cart')}`)}
-            className="w-full max-w-xs rounded-xl bg-gray-900 py-3.5 text-[14px] font-bold text-white hover:bg-gray-800 active:scale-[0.98] transition-all"
+            className="w-full max-w-xs rounded-xl bg-brand py-3.5 text-[14px] font-bold text-white hover:bg-brand-dark active:scale-[0.98] transition-all"
           >
             {t('common.loginButton')}
           </button>
-          <button onClick={() => navigate('/')} className="text-[13px] text-gray-500 dark:text-gray-400 underline">
-            쇼핑 계속하기
-          </button>
+          {/* 🏪 2026-08-12: 몰을 거쳐 온 손님은 유어딜 홈이 아니라 **그 가게로** (근거는 컴포넌트 주석) */}
+          <ContinueShoppingLink onFallback={() => navigate('/')} />
         </div>
       </div>
     )
@@ -304,7 +307,7 @@ function CartPageContent() {
   }, [selectedIds, removeItemMutation, showAlert, showConfirm, t])
 
   // 🛡️ 2026-05-20: 판매종료 (product_is_active === 0) 항목만 일괄 삭제. 사용자 신고:
-  //   "만료된 상품들 하나씩 삭제하기 번거롭다". 자동 제외만으로는 cart 가 깔끔하지 않음.
+  // "만료된 상품들 하나씩 삭제하기 번거롭다". 자동 제외만으로는 cart 가 깔끔하지 않음.
   const inactiveIds = useMemo(() => {
     return cartItems
       .filter((it: CartItem) => it.product_is_active !== undefined && Number(it.product_is_active) !== 1)
@@ -366,79 +369,36 @@ function CartPageContent() {
     }>)
   }, [cartItems])
 
-  const { totalItems, subtotal, shippingFee } = useMemo(() => {
-    let count = 0
-    let sum = 0
+  // 🏷️ 합계는 **순수 함수**가 낸다(`cart/cart-totals.ts`) — 통화가 둘이라 실행해서 재야 하고,
+  //    페이지 안에 두면 렌더 없이는 못 잰다.
+  const { totalItems, dealItems, subtotal, shippingFee, dealAmount, savedAmount, cartKind } =
+    useMemo(() => computeCartTotals(cartItems, selectedIds), [cartItems, selectedIds])
 
-    // 🛡️ 2026-05-19: 판매 종료 (product_is_active=0) 상품은 자동 제외 — 사용자 의도 무관하게
-    //   결제 흐름에서 빠짐 (백엔드도 차단하지만 프론트 calc 도 정합).
-    const isAvailable = (item: CartItem) => item.product_is_active === undefined || Number(item.product_is_active) === 1
-
-    // 선택된 상품들 (판매 종료 자동 제외)
-    const selectedItems = cartItems.filter(item => selectedIds.has(item.id) && isAvailable(item))
-
-    // 셀러별로 그룹화
-    const selectedSellerGroups = selectedItems.reduce((groups, item) => {
-      const sellerId = item.seller_id || 0
-      if (!groups[sellerId]) {
-        groups[sellerId] = {
-          items: [],
-          subtotal: 0,
-          shipping_fee: item.shipping_fee ?? 3000,  // `||` 는 명시한 0 을 3,000 으로 되돌린다
-          free_shipping_threshold: item.free_shipping_threshold || 0,
-        }
-      }
-      groups[sellerId].items.push(item)
-      groups[sellerId].subtotal += (getCartItemPrice(item) * item.quantity)
-      return groups
-    }, {} as Record<string | number, {
-      items: CartItem[]
-      subtotal: number
-      shipping_fee: number
-      free_shipping_threshold: number
-    }>)
-
-    // 전체 상품 개수 및 소계 계산
-    for (const item of selectedItems) {
-      count += item.quantity
-      sum += (getCartItemPrice(item) * item.quantity)
-    }
-
-    // 셀러별 배송비 계산
-    const totalShippingFee = Object.values(selectedSellerGroups).reduce((total, group) => {
-      // 🛡️ 교환권은 휴대폰 발송, 이용권은 매장 사용 — 둘 다 배송비 없음.
-      const allNoShip = group.items.length > 0 && group.items.every(isNoShippingItem)
-      if (allNoShip) return total
-      // 무료배송 기준액이 설정되어 있고, 해당 셀러의 소계가 기준액 이상이면 배송비 0원
-      if (group.free_shipping_threshold > 0 && group.subtotal >= group.free_shipping_threshold) {
-        return total
-      }
-      return total + group.shipping_fee
-    }, 0)
-
-    return { totalItems: count, subtotal: sum, shippingFee: totalShippingFee }
-  }, [cartItems, selectedIds])
-
+  /** 카드로 청구될 금액. 딜은 여기 안 들어간다(통화가 다르다). */
   const total = subtotal + shippingFee
 
-  const handleCheckout = () => {
-    if (selectedIds.size === 0) {
+  // 🔘 버튼이 **무엇을 결제할지까지** 정한다(`cart/cart-cta.ts` 순수 함수).
+  //    섞여 있으면 잠그는 대신 한 종류를 골라 주고 나머지는 장바구니에 남긴다 —
+  //    체크박스를 푸는 노동을 사용자한테 떠넘기지 않는다(대표 "따로 골라서 결제할 필요 없지 않나").
+  const selectedItems = useMemo(
+    () => cartItems.filter(item => selectedIds.has(item.id)),
+    [cartItems, selectedIds],
+  )
+  const cta = cartCta({ selected: selectedItems, cardTotal: total, dealAmount, updating, fmt: formatNumber, t })
+
+  const handleCheckout = async () => {
+    if (cta.payItems.length === 0) {
       showAlert(t('cart.selectProductsFirst'), 'alert', t('cart.alertTitle'))
       return
     }
-
-    // 토스 SDK 프리로드 (체크아웃 진입 전)
-    // ⚡ 2026-07-02 (결제 체감속도): bare npm 청크 import → toss-preload 모듈 import 로 승격.
-    //   기존엔 npm 청크만 데워지고 실제 js.tosspayments.com 브라우저 SDK 는 CheckoutPage 도착 후에야
-    //   fetch 시작 — toss-preload 는 모듈 평가 시 loadTossPayments() 까지 즉시 실행(진짜 워밍).
-    import('@/lib/toss-preload').catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
-    const selectedItems = cartItems.filter(item => selectedIds.has(item.id))
-    navigate('/checkout', {
-      state: {
-        cartItems: selectedItems,
-        fromCart: true
-      }
-    })
+    // 섞여 있었다면 버튼이 고른 종류만 남기고 선택을 좁힌다 — 돌아왔을 때 나머지가 이어서 보인다.
+    if (cta.payItems.length !== selectedItems.length) {
+      setSelectedIds(new Set(cta.payItems.map(i => i.id as string | number)))
+    }
+    // 🧺 어디로 보낼지는 `cart/voucher-checkout` 한 곳이 정한다(이용권=발급 있는 공구 레일,
+    //    교환권·배송=종전 `/checkout`). 상태 반영을 기다리지 않고 **고른 배열을 그대로** 넘긴다.
+    const err = await routeCartCheckout(cta.payItems, navigate)
+    if (err) showAlert(err, 'alert', t('cart.alertTitle'))
   }
 
   // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): ad-hoc 스피너 → BrandLoader (라우트 청크 로더와 위상 연속).
@@ -451,7 +411,8 @@ function CartPageContent() {
   }
 
   return (
-    <div className="flex flex-col min-h-[100dvh] bg-[#F4F4F4]">
+    // 🩸 2026-09-02 (대표 "장바구니 페이지도 심각하다"): 이 래퍼만 dark: 없이 라이트 회색이라 다크에서 아래 절반이 회색으로 남았다.
+    <div className="flex flex-col min-h-[100dvh] bg-warm">
       <SEO title={t('cart.seoTitle')} description={t('cart.seoDesc')} url="/cart" noindex />
 
       {/* v4 Header + Select All */}
@@ -485,7 +446,7 @@ function CartPageContent() {
                 : 0
 
               return (
-                <div key={group.seller_id} className="mt-2 bg-white dark:bg-[#11141C]">
+                <div key={group.seller_id} className="mt-2 bg-surface lg:rounded-2xl lg:shadow-lift lg:overflow-hidden">
                   {/* Seller header with checkbox + badge + name + chevron */}
                   <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-50 dark:border-[#2C2F35]">
                     <span
@@ -503,8 +464,8 @@ function CartPageContent() {
                       }}
                       className={`w-5 h-5 rounded-md flex items-center justify-center border-2 shrink-0 cursor-pointer transition-colors ${
                         groupAllSelected
-                          ? 'bg-pink-500 border-pink-500'
-                          : 'bg-white dark:bg-[#11141C] border-gray-300 dark:border-[#3A3A3A]'
+                          ? 'bg-brand border-brand'
+                          : 'bg-white dark:bg-[#1D1F29] border-rule-strong'
                       }`}
                     >
                       {groupAllSelected && (
@@ -527,7 +488,7 @@ function CartPageContent() {
                         }
                         const hasBundle = Array.from(bundlingMap.values()).some(v => v >= 2)
                         return hasBundle ? (
-                          <span className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-pink-50 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400">
+                          <span className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-brand-tint text-brand-text ">
                             <PackageCheck className="w-3 h-3" strokeWidth={2} aria-hidden />합배송
                           </span>
                         ) : null
@@ -536,23 +497,22 @@ function CartPageContent() {
                     <ChevronRight size={16} className="text-gray-300 dark:text-gray-600 shrink-0" />
                   </div>
 
-                  {/* v4 Free shipping progress bar (pink) */}
                   {freeShipThreshold > 0 && remaining > 0 && (
-                    <div className="mx-4 mt-3 px-3 py-2.5 bg-[#f9fafb] rounded-lg">
-                      <p className="text-[12px] text-pink-600 font-medium mb-1.5">
-                        {formatNumber(remaining)}원 더 담으면 무료배송!
+                    <div className="mx-4 mt-3">
+                      <p className="text-[12px] text-gray-600 dark:text-gray-300 font-medium mb-1.5">
+                        <span className="text-brand-text font-bold tabular-nums">{formatNumber(remaining)}원</span> 더 담으면 무료배송
                       </p>
-                      <div className="w-full h-1.5 bg-pink-100 rounded-full overflow-hidden">
+                      <div className="w-full h-1.5 bg-gray-100 dark:bg-white/10 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-pink-500 rounded-full transition-all"
+                          className="h-full bg-brand rounded-full transition-all"
                           style={{ width: `${shippingProgress}%` }}
                         />
                       </div>
                     </div>
                   )}
                   {freeShipThreshold > 0 && remaining <= 0 && (
-                    <div className="mx-4 mt-3 px-3 py-2 bg-[#f9fafb] rounded-lg">
-                      <p className="text-[12px] text-pink-600 font-semibold">{t('cart.freeShipping')}</p>
+                    <div className="mx-4 mt-3">
+                      <p className="text-[12px] text-brand-text font-semibold">{t('cart.freeShipping')}</p>
                     </div>
                   )}
 
@@ -590,16 +550,19 @@ function CartPageContent() {
             })}
 
             </div>{/* /좌측 아이템 컬럼 */}
-            <aside className="mt-2 bg-white dark:bg-[#11141C] px-4 py-4 lg:sticky lg:top-[64px] lg:rounded-2xl lg:border lg:border-gray-100 dark:lg:border-[#2C2F35]">
+            <aside className="mt-2 bg-surface px-4 py-4 lg:sticky lg:top-[64px] lg:rounded-2xl lg:shadow-lift">
               <CartSummary
-                totalItems={totalItems}
+                totalItems={totalItems - dealItems}
                 subtotal={subtotal}
                 shippingFee={shippingFee}
                 total={total}
+                dealAmount={dealAmount}
+                cartKind={cartKind}
+                savedAmount={savedAmount}
+                mixedHint={cta.hint}
                 noShipping={cartItems.length > 0 && cartItems.every(isNoShippingItem)}
               />
-              <CartCtaButton onClick={handleCheckout} disabled={selectedIds.size === 0 || updating} className="hidden lg:block mt-4"
-                label={selectedIds.size === 0 ? t('cart.selectProductsFirst') : t('cart.placeOrder', { amount: formatNumber(total) })} />
+              <CartCtaButton onClick={handleCheckout} disabled={cta.disabled} className="hidden lg:block mt-4" label={cta.label} />
             </aside>
           </main>
 
@@ -607,8 +570,7 @@ function CartPageContent() {
           {/* 🛡️ 2026-05-04: PC xl+ 사이드바 (224px) 우측부터 시작하도록 xl:left-56 추가. */}
           <div className="fixed bottom-0 left-0 right-0 xl:left-56 app-frame-bar z-20 bg-white dark:bg-[#11141C] border-t border-gray-100 dark:border-[#2C2F35] safe-bottom lg:hidden">
             <div className="ur-content-narrow px-4 py-3">
-              <CartCtaButton onClick={handleCheckout} disabled={selectedIds.size === 0 || updating}
-                label={selectedIds.size === 0 ? t('cart.selectProductsFirst') : t('cart.placeOrder', { amount: formatNumber(total) })} />
+              <CartCtaButton onClick={handleCheckout} disabled={cta.disabled} label={cta.label} />
             </div>
           </div>
         </>

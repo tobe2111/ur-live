@@ -109,14 +109,14 @@ export default function AdminWholesaleOverviewPage() {
         ) : (
           <>
             {/* ── 🗂️ 통합 승인 큐 (2026-06-12 감사 개선) — 수동 승인 정책의 "오늘 처리할 것" 한 곳에. ── */}
-            <section className={`mt-5 rounded-xl border p-4 ${queueTotal > 0 ? 'border-amber-200 bg-amber-50/60' : 'border-gray-200 bg-white'}`}>
+            <section className={`mt-5 rounded-xl border p-4 ${queueTotal > 0 ? 'border-rule bg-white' : 'border-gray-200 bg-white'}`}>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
                   <Inbox className="w-4 h-4 text-gray-500" />
                   {t('admin.wsOverview.queueTitle', { defaultValue: '오늘 처리할 것 (승인 대기)' })}
                   {queueTotal > 0 && <span className="px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[11px] font-bold">{formatNumber(queueTotal)}</span>}
                 </h2>
-                {queueTotal === 0 && <span className="text-xs text-gray-400">{t('admin.wsOverview.queueEmpty', { defaultValue: '대기 없음 — 깨끗해요 ✨' })}</span>}
+                {queueTotal === 0 && <span className="text-xs text-gray-400">{t('admin.wsOverview.queueEmpty', { defaultValue: '대기 없음 — 깨끗해요 ' })}</span>}
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
                 {([
@@ -128,9 +128,9 @@ export default function AdminWholesaleOverviewPage() {
                   [queue.quotes_pending, '견적 회신', '/admin/wholesale-quotes'],
                 ] as Array<[number, string, string]>).map(([n, label, to]) => (
                   <Link key={label} to={to}
-                    className={`rounded-lg border px-3 py-2.5 flex items-center justify-between gap-2 transition-colors ${n > 0 ? 'border-amber-300 bg-white hover:bg-amber-50' : 'border-gray-100 bg-white/60 hover:bg-gray-50'}`}>
+                    className={`rounded-lg border px-3 py-2.5 flex items-center justify-between gap-2 transition-colors ${n > 0 ? 'border-rule bg-white hover:bg-gray-100' : 'border-gray-100 bg-white/60 hover:bg-gray-50'}`}>
                     <span className="text-[12px] font-semibold text-gray-700 truncate">{label}</span>
-                    <span className={`text-[14px] font-extrabold tabular-nums ${n > 0 ? 'text-amber-600' : 'text-gray-300'}`}>{formatNumber(n)}</span>
+                    <span className={`text-[14px] font-extrabold tabular-nums ${n > 0 ? 'text-tone-warn' : 'text-gray-300'}`}>{formatNumber(n)}</span>
                   </Link>
                 ))}
               </div>
@@ -194,20 +194,20 @@ export default function AdminWholesaleOverviewPage() {
                   return (
                     <div
                       key={m.mall_id}
-                      className={`rounded-2xl border bg-white p-4 shadow-sm ${hasPending ? 'border-amber-300 ring-1 ring-amber-100' : 'border-gray-200'}`}
+                      className={`rounded-[var(--dash-radius,16px)] border bg-white p-4 shadow-sm ${hasPending ? 'border-rule ring-1 ring-amber-100' : 'border-gray-200'}`}
                     >
                       {/* 헤더: 몰 이름 + 상태 + 대기 배지 */}
                       <div className="flex items-center justify-between gap-2 flex-wrap">
                         <div className="flex items-center gap-2 min-w-0">
                           <span className="text-base font-bold text-gray-900 truncate">{m.mall_name}</span>
                           <span className="text-[11px] font-mono text-gray-400">#{m.mall_id}</span>
-                          {m.mall_id === 1 && <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">{t('admin.wsOverview.defaultMall', { defaultValue: '기본' })}</span>}
-                          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${m.active ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                          {m.mall_id === 1 && <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-tone-info-bg text-tone-info">{t('admin.wsOverview.defaultMall', { defaultValue: '기본' })}</span>}
+                          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${m.active ? 'bg-tone-ok-bg text-tone-ok' : 'bg-gray-100 text-gray-500'}`}>
                             {m.active ? t('admin.wsOverview.active', { defaultValue: '활성' }) : t('admin.wsOverview.inactive', { defaultValue: '비활성' })}
                           </span>
                         </div>
                         {hasPending && (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-800">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-full bg-tone-warn-bg text-tone-warn">
                             <AlertCircle className="w-3 h-3" />
                             {t('admin.wsOverview.actionNeeded', { defaultValue: '대기 액션' })}
                           </span>
@@ -220,11 +220,11 @@ export default function AdminWholesaleOverviewPage() {
                         <Metric icon={<ShoppingBag className="w-3.5 h-3.5" />} label={t('admin.wsOverview.ordersMonth', { defaultValue: '주문(월)' })} value={`${formatNumber(m.orders_month)}건`} />
                         {/* 예치금 부채 — 시각적으로 구분(rose) */}
                         <div className="min-w-0">
-                          <div className="flex items-center gap-1 text-[11px] text-rose-500">
+                          <div className="flex items-center gap-1 text-[11px] text-tone-bad">
                             <Wallet className="w-3.5 h-3.5" />
                             <span className="truncate">{t('admin.wsOverview.liability', { defaultValue: '예치금 부채' })}</span>
                           </div>
-                          <p className="mt-0.5 text-sm font-bold text-rose-600">{formatWon(m.deposit_liability)}</p>
+                          <p className="mt-0.5 text-sm font-bold text-tone-bad">{formatWon(m.deposit_liability)}</p>
                         </div>
                         <Metric icon={<Users className="w-3.5 h-3.5" />} label={t('admin.wsOverview.distributors', { defaultValue: '판매사' })} value={`${formatNumber(m.distributors)}`} />
                         <Metric icon={<Store className="w-3.5 h-3.5" />} label={t('admin.wsOverview.suppliers', { defaultValue: '제조사' })} value={`${formatNumber(m.suppliers)}`} />
@@ -235,13 +235,13 @@ export default function AdminWholesaleOverviewPage() {
                       {hasPending && (
                         <div className="mt-3 flex flex-wrap items-center gap-2">
                           {m.pending_charge_requests > 0 && (
-                            <span className="inline-flex items-center gap-1 text-[12px] font-semibold px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800">
+                            <span className="inline-flex items-center gap-1 text-[12px] font-semibold px-2.5 py-1 rounded-lg border border-rule bg-white text-tone-warn">
                               <Inbox className="w-3.5 h-3.5" />
                               {t('admin.wsOverview.pendingChargeN', { defaultValue: '입금확인 {{n}}건', n: formatNumber(m.pending_charge_requests) })}
                             </span>
                           )}
                           {m.pending_proposals > 0 && (
-                            <span className="inline-flex items-center gap-1 text-[12px] font-semibold px-2.5 py-1 rounded-lg bg-violet-50 text-violet-700">
+                            <span className="inline-flex items-center gap-1 text-[12px] font-semibold px-2.5 py-1 rounded-lg border border-rule bg-white text-gray-700">
                               <MessageSquare className="w-3.5 h-3.5" />
                               {t('admin.wsOverview.pendingProposalN', { defaultValue: '제안 {{n}}건', n: formatNumber(m.pending_proposals) })}
                             </span>
@@ -254,7 +254,7 @@ export default function AdminWholesaleOverviewPage() {
                         <QuickLink to="/admin/wholesale-deposits" icon={<Inbox className="w-3.5 h-3.5" />} label={t('admin.wsOverview.linkDeposits', { defaultValue: '입금확인' })} highlight={m.pending_charge_requests > 0} />
                         <QuickLink to="/admin/wholesale-proposals" icon={<MessageSquare className="w-3.5 h-3.5" />} label={t('admin.wsOverview.linkProposals', { defaultValue: '제안' })} highlight={m.pending_proposals > 0} />
                         {/* 🏬 2026-08-03: '몰 설정'(/admin/wholesale-malls) 링크 제거 — 그 화면은 이제
-                            도매가 아니라 **운영자 몰(소비자 표면)** 관리이고, `🏪 오프라인 공구` 그룹으로 옮겼다.
+                            도매가 아니라 **운영자 몰(소비자 표면)** 관리이고, `오프라인 공구` 그룹으로 옮겼다.
                             여기 두면 도매 role 이 눌러도 wholesale-overview 로 튕긴다(nav 도달성 가드가 잡았다).
                             애초에 super-only 화면이라 도매 파트너에겐 처음부터 열린 적이 없다. */}
                       </div>
@@ -290,7 +290,7 @@ function QuickLink({ to, icon, label, highlight }: { to: string; icon: React.Rea
   return (
     <Link
       to={to}
-      className={`inline-flex items-center gap-1 text-[12px] font-semibold transition-colors ${highlight ? 'text-amber-700 hover:text-amber-900' : 'text-gray-500 hover:text-gray-900'}`}
+      className={`inline-flex items-center gap-1 text-[12px] font-semibold transition-colors ${highlight ? 'text-tone-warn hover:text-tone-warn' : 'text-gray-500 hover:text-gray-900'}`}
     >
       {icon}
       {label}

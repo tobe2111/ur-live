@@ -1,3 +1,4 @@
+import { X } from 'lucide-react'
 import { useState } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -56,7 +57,7 @@ export default function ColdSendPanel() {
       if (!r.data?.success) { toast.error(r.data?.error || '발송 실패'); return }
       const sent = r.data.sent || 0
       const skipped = (r.data.skipped || []).length
-      if (sent) toast.success(`📮 ${formatNumber(sent)}건 발송${skipped ? ` · 제외 ${skipped}` : ''} · 오늘 남은 한도 ${formatNumber(r.data.remaining_today ?? 0)}건`)
+      if (sent) toast.success(`${formatNumber(sent)}건 발송${skipped ? ` · 제외 ${skipped}` : ''} · 오늘 남은 한도 ${formatNumber(r.data.remaining_today ?? 0)}건`)
       else toast.info(r.data.note || '발송 가능한 리드가 없습니다')
       setTargets(prev => (prev ? prev.filter(t => !ids.includes(t.id)) : prev))
     } catch (e) {
@@ -68,19 +69,19 @@ export default function ColdSendPanel() {
 
   return (
     <>
-      <button onClick={openPanel} className="px-4 py-2 rounded-lg border border-amber-300 bg-amber-50 text-amber-700 text-sm font-medium" title="수집한 공개 제휴문의 주소로 제안 발송 — 광고표기·수신거부·야간금지·1일 상한을 서버가 강제">
-        📮 콜드 제휴 제안
+      <button onClick={openPanel} className="px-4 py-2 rounded-lg border border-rule bg-white text-tone-warn text-sm font-medium" title="수집한 공개 제휴문의 주소로 제안 발송 — 광고표기·수신거부·야간금지·1일 상한을 서버가 강제">
+        콜드 제휴 제안
       </button>
       {open && (
         <div className="fixed inset-0 z-[10500] flex items-center justify-center bg-black/50 p-4" onClick={() => setOpen(false)}>
           <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl" onClick={e => e.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-900">📮 콜드 제휴 제안 (수집 풀)</h3>
-              <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-700 text-sm" aria-label="닫기">✕</button>
+              <h3 className="text-sm font-semibold text-gray-900">콜드 제휴 제안 (수집 풀)</h3>
+              <button onClick={() => setOpen(false)} className="ur-btn ur-btn-sm ur-btn-icon ur-btn-ghost" aria-label="닫기"><X className="h-4 w-4" /></button>
             </div>
-            <div className="mb-3 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800 leading-relaxed">
+            <div className="mb-3 rounded-lg bg-white border border-rule px-3 py-2 text-xs text-tone-warn leading-relaxed">
               대상: <b>{targets == null ? '조회 중…' : `${formatNumber(targets.length)}명`}</b> (미동의 · 이메일 보유) — 이번 발송 <b>{formatNumber(batchCount)}명</b>
-              <div className="mt-1 text-[11px] text-amber-700">
+              <div className="mt-1 text-[11px] text-tone-warn">
                 제목 <b>(광고)</b> 표기 · 수신거부 안내 · 전송자 정보가 자동 첨부되고, 야간(21~08시)과 30일 내 재발송은 서버가 막습니다.
               </div>
             </div>
@@ -88,7 +89,7 @@ export default function ColdSendPanel() {
             <input value={subject} onChange={e => setSubject(e.target.value)} className="w-full mb-3 px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900" />
             <label className="block text-xs font-medium text-gray-500 mb-1">본문 — <code className="text-[11px]">{'{name}'}</code> 은 이름으로 치환</label>
             <textarea value={body} onChange={e => setBody(e.target.value)} rows={9} className="w-full mb-3 px-3 py-2 rounded-lg border border-gray-300 text-xs text-gray-900 leading-relaxed" />
-            <button onClick={send} disabled={busy || !batchCount || body.trim().length < 20} className="w-full py-2.5 rounded-lg bg-amber-600 text-white text-sm font-semibold disabled:opacity-40">
+            <button onClick={send} disabled={busy || !batchCount || body.trim().length < 20} className="ur-btn ur-btn-md ur-btn-primary w-full disabled:opacity-40">
               {busy ? '발송 중…' : `발송 (${formatNumber(batchCount)}명)`}
             </button>
           </div>

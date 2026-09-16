@@ -107,8 +107,29 @@ if (indexHtmlPath) {
   }, 0);
 }
 
-const totalSize = jsFiles.reduce((s, f) => s + f.size, 0);
-const totalGzip = jsFiles.reduce((s, f) => s + f.gzip, 0);
+/**
+ * 🌐 **언어 청크는 서로 배타적이다 — 여섯을 다 세면 아무도 안 받는 바이트를 재게 된다.**
+ *
+ * `src/i18n.ts` 는 사용자 언어 **하나만** dynamic import 한다(ko/en/ja/zh/es/fr 각각 별도 청크).
+ * 그런데 총량 예산은 여섯을 전부 더해 왔다 — 합계 약 **1.55 MB**, 총 raw 의 **18%** 가
+ * *어떤 사용자도 받지 않는* 바이트다. 그래서 이 예산은 실제 무게가 아니라 **번역을 추가했는지**를
+ * 재고 있었고, CLAUDE.md 가 6개 언어 동시 추가를 **의무화**하므로 라벨을 몇 개만 늘려도 선을 넘었다
+ * (2026-09-03 실제로 그랬다 — 라벨 30여 개에 8.60 → 8.61).
+ *
+ * ⇒ **가장 큰 언어 하나만 센다**(최악의 사용자가 실제로 받는 양). 여섯이 같은 키를 공유하며 함께
+ *   자라므로 제일 큰 것 하나가 나머지를 비례로 대표한다.
+ * ⚠️ 이건 완화가 아니라 **교정**이다 — 임계값도 그만큼 내려서(아래 BUDGET) 비-언어 코드에 걸리는
+ *   압력은 오히려 세졌다. 종전엔 1.55 MB 의 언어 청크가 완충재 노릇을 해 실제 증가를 가렸다.
+ *   이 파일의 이력이 남긴 지침 그대로다: *"다음에 닿으면 상향이 아니라 lazy 청크 정리가 답"*
+ *   (2026-08-03) · *"정리 후보: … locale-ja/ko 각 ~280KB"* (2026-08-04).
+ */
+const LOCALE_RE = /^locale-(?:ko|en|ja|zh|es|fr)-/;
+const localeFiles = jsFiles.filter(f => LOCALE_RE.test(f.name));
+const biggestLocale = localeFiles.reduce((a, f) => (!a || f.size > a.size ? f : a), null);
+const countedFiles = jsFiles.filter(f => !LOCALE_RE.test(f.name) || f === biggestLocale);
+
+const totalSize = countedFiles.reduce((s, f) => s + f.size, 0);
+const totalGzip = countedFiles.reduce((s, f) => s + f.gzip, 0);
 const totalBrotli = jsFiles.reduce((s, f) => s + f.brotli, 0);
 const totalCss = cssFiles.reduce((s, f) => s + f.size, 0);
 const totalCssGzip = cssFiles.reduce((s, f) => s + f.gzip, 0);
@@ -152,7 +173,12 @@ const BUDGET = {
   //   🔴 **이 값은 8번 올라가기만 했다. 처음으로 내린다** — 상향의 근거가 사라졌으면 되돌리는 게 맞다.
   //     여유 ~0.09 MB. 다음에 닿으면 또 "무엇이 왜 늘었는지" 부터 볼 것(정리 후보: charts 520KB ·
   //     sentry 431KB · locale-ja/ko 각 ~280KB — 전부 lazy 라 사용자 체감은 0 이지만 저장소엔 쌓인다).
-  totalRawMB: 8.6,
+  // ✅ 2026-09-03: 8.6 → **7.45**. 값을 내렸지만 **완화가 아니라 측정 대상 교정**이다 —
+  //   위 `countedFiles` 주석대로 **서로 배타적인 언어 청크 5개(약 1.29 MB)를 빼고** 센다.
+  //   아무도 받지 않는 바이트를 총량에서 제외하면 남는 건 실제 코드이고, 그 코드에 걸리는 압력은
+  //   오히려 세진다(종전 여유 0.09 MB 는 1.55 MB 의 언어 완충재 위에 있었다).
+  //   실측 교정 후 **7.34 MB** → 헤드룸 0.11 MB(2026-08-01 이 정한 "0.05~0.1" 규율과 같은 폭).
+  totalRawMB: 7.45,
   // ✅ 2026-07-29 교정 완료 — **CI 실측 2.707 MB**(run 30426592229, main+가드 변경 기준).
   //   ⚠️ 교정 전 추정은 "2.2~2.5MB" 였고 **틀렸다**. 그 추정값으로 켰다면 전 PR 이 red 였다.
   //   숫자를 지어내지 말고 반드시 CI 의 "Bundle size report" 로그에서 읽을 것.
@@ -160,7 +186,8 @@ const BUDGET = {
   //   (gzip 기준 수백 KB)은 잡는다.
   //   📌 이 값을 올릴 때는 **무엇이 늘었는지 한 줄 적을 것.** raw 예산이 5번 올라가는 동안
   //      "gzip 은 여유 있다" 가 근거로 인용됐는데 그 값은 **죽어 있었다**(항상 0). 이제 진짜 값이다.
-  totalGzipMB: 2.9,
+  // ✅ 2026-09-03: 2.9 → **2.45**(같은 교정 — 언어 청크 5개 제외). 실측 2.30 MB → 헤드룸 0.15.
+  totalGzipMB: 2.45,
   // 🛡️ 2026-05-03: 800 → 900 상향. i18n 적용 확장 (15+ 페이지, 260+ 키) 으로
   // index 청크가 800.6KB 로 0.6KB 초과 → CI 실패. 100KB 헤드룸 확보하되
   // 비대 감지 임계는 유지 (900KB 넘으면 진짜 코드 분할 필요).

@@ -124,7 +124,7 @@ export default function CatalogHeader({
 
       {/* 3. 카테고리 네비 (시안) — ≡ 전체 카테고리 + 브랜드관/월간베스트/신상품/고마진특가/프리미엄 */}
       <div className="bg-white" style={{ borderBottom: '1px solid ' + WT.line }}>
-        <div className="ur-content-wide px-5 lg:px-8 flex items-center h-[46px] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="ur-content-wide px-5 lg:px-8 flex items-center h-[46px] overflow-x-auto scrollbar-hide">
           <button onClick={() => setMegaOpen(v => !v)} aria-expanded={megaOpen}
             className="shrink-0 inline-flex items-center gap-2 font-extrabold text-[13.5px] pr-5 h-full self-center" style={{ color: WT.ink, borderRight: '1px solid ' + WT.line }}>
             <span className="flex flex-col gap-[3px]">

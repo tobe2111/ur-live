@@ -43,6 +43,46 @@ export function readCacheOrNull<T>(key: string): T | null {
   }
 }
 
+/**
+ * 🩸 **`initialData` 전용** — 캐시가 있을 때만 값을 준다, 없으면 `undefined`.
+ *
+ * ## 왜 필요한가 (2026-09-15 실측)
+ * `initialData: () => readCache(key, [])` 는 캐시가 없어도 **빈 배열을 "진짜 데이터"로** 넘긴다.
+ * 그러면 React Query 가 `isLoading: false` 로 보고하고, 화면은 로더 대신 **"받아둔 이용권이 없어요"**
+ * 를 그린다 — 아직 안 받았을 뿐인데 없다고 단정하는 것이다. 첫 방문·새 기기·저장소 비운 사람이
+ * 전부 이 거짓말을 본다. 렌더 실측: `/my-vouchers` 가 806ms 에 "없어요", 그 뒤에 진짜 결과.
+ *
+ * `null`/`0` 폴백도 같다 — "상품을 찾을 수 없습니다", "잔액 0" 이 먼저 뜬다.
+ *
+ * ⚠️ 이 함정은 2026-07-02 에 **에러 폴백 방향**으로 이미 발견돼 `readCacheOrNull` 이 생겼는데
+ *    (위 주석), **로딩 방향**엔 안 붙였다. 같은 함정의 나머지 반쪽이 이 함수다.
+ *
+ * ⚠️ 쓰는 쪽은 `data` 가 **`undefined` 일 수 있다**는 걸 받아들여야 한다(그게 곧 "로딩 중"이다).
+ *    타입이 그걸 강제하므로 tsc 가 빠진 자리를 알려 준다.
+ */
+export function cachedInitialData<T>(key: string): T | undefined {
+  return readCacheOrNull<T>(key) ?? undefined
+}
+
+/**
+ * 🩸 **`queryFn` 의 `.catch` 전용** — 캐시가 있으면 last-known 을 주고, 없으면 **원래 에러를 다시 던진다**.
+ *
+ * ## 왜 헬퍼로 두는가 (2026-09-15)
+ * 이 패턴은 2026-07-02 에 손으로 쓰이기 시작했는데 **`if (cached)` 로 판정**하고 있었다.
+ * 배열엔 맞지만 숫자엔 틀린다 — 캐시된 **`0`(장바구니 0개·안 읽은 알림 0개)이 falsy** 라
+ * "캐시 없음"으로 읽혀 멀쩡한 값을 버리고 에러를 던진다. 판정은 `!== null` 이어야 하고,
+ * 그 한 글자를 훅마다 다시 쓰게 두면 언젠가 또 틀린다. 그래서 한 곳에만 둔다.
+ *
+ * ⚠️ 던지는 것이 목적이다. `readCache(key, [])` 로 폴백하면 네트워크 오류가 **"빈 목록"으로
+ *    위장**되고, 페이지가 가진 에러 UI 는 영원히 안 뜨는 죽은 가지가 된다
+ *    (`WishlistPage` 의 `isError` 분기가 실제로 그 상태였다).
+ */
+export function cacheOrRethrow<T>(key: string, err: unknown): T {
+  const cached = readCacheOrNull<T>(key)
+  if (cached !== null) return cached
+  throw err
+}
+
 export function writeCache<T>(key: string, value: T): void {
   try {
     localStorage.setItem(PREFIX + key, JSON.stringify(value))

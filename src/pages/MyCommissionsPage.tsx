@@ -16,9 +16,9 @@ import CollabPerformance from './my-commissions/CollabPerformance'
 import { formatKST, formatKSTDate } from '@/utils/date'
 
 const STATUS_BADGE: Record<string, { label: string; cls: string; icon: typeof CheckCircle }> = {
-  pending: { label: '심사 대기', cls: 'bg-amber-100 text-amber-700', icon: Clock },
-  approved: { label: '송금 완료', cls: 'bg-emerald-100 text-emerald-700', icon: CheckCircle },
-  rejected: { label: '거절', cls: 'bg-red-100 text-red-700', icon: XCircle },
+  pending: { label: '심사 대기', cls: 'bg-tone-warn-bg text-tone-warn', icon: Clock },
+  approved: { label: '송금 완료', cls: 'bg-tone-ok-bg text-tone-ok', icon: CheckCircle },
+  rejected: { label: '거절', cls: 'bg-tone-bad-bg text-tone-bad', icon: XCircle },
 }
 // 🛡️ 2026-07-02: 정의 밖 status 방어 — meta undefined 렌더 크래시 방지.
 const STATUS_FALLBACK = { label: '처리 중', cls: 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300', icon: Clock } as const
@@ -115,26 +115,26 @@ export default function MyCommissionsPage() {
 
         {/* 출금 폼 */}
         {showForm && (
-          <div className="rounded-2xl border border-gray-200 dark:border-[#2C2F35] p-4 mb-4 bg-gray-50 dark:bg-[#1D1F29]">
+          <div className="rounded-2xl border border-line p-4 mb-4 bg-gray-50 dark:bg-[#1D1F29]">
             <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">계좌 정보 입력</h3>
             <div className="space-y-2">
               <input
                 value={bankName}
                 onChange={e => setBankName(e.target.value)}
                 placeholder="은행명 (예: 신한은행)"
-                className="w-full px-3 py-2.5 border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm bg-white dark:bg-[#11141C] text-gray-900 dark:text-white"
+                className="w-full px-3 py-2.5 border border-line rounded-lg text-sm bg-surface text-gray-900 dark:text-white"
               />
               <input
                 value={accountNumber}
                 onChange={e => setAccountNumber(e.target.value)}
                 placeholder="계좌번호 (- 포함 가능)"
-                className="w-full px-3 py-2.5 border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm bg-white dark:bg-[#11141C] text-gray-900 dark:text-white"
+                className="w-full px-3 py-2.5 border border-line rounded-lg text-sm bg-surface text-gray-900 dark:text-white"
               />
               <input
                 value={accountHolder}
                 onChange={e => setAccountHolder(e.target.value)}
                 placeholder="예금주명"
-                className="w-full px-3 py-2.5 border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm bg-white dark:bg-[#11141C] text-gray-900 dark:text-white"
+                className="w-full px-3 py-2.5 border border-line rounded-lg text-sm bg-surface text-gray-900 dark:text-white"
               />
             </div>
             <div className="flex gap-2 mt-3">
@@ -155,7 +155,7 @@ export default function MyCommissionsPage() {
                 const meta = STATUS_BADGE[w.status] ?? STATUS_FALLBACK
                 const Icon = meta.icon
                 return (
-                  <div key={w.id} className="rounded-xl border border-gray-200 dark:border-[#2C2F35] p-3">
+                  <div key={w.id} className="rounded-xl border border-line p-3">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-bold text-gray-900 dark:text-white">{formatWon(w.total_amount)}</span>
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${meta.cls}`}>

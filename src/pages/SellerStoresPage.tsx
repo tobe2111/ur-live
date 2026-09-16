@@ -14,7 +14,6 @@ import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { Store, Plus, Loader2, Trash2, Users } from 'lucide-react'
 import StoreRegisterModal from '@/components/seller/StoreRegisterModal'
-import StoreProfileModal from '@/components/seller/StoreProfileModal'
 import SellerWithdrawSection from '@/components/seller/SellerWithdrawSection'
 import ReviewBonusCard from '@/components/seller/ReviewBonusCard'
 
@@ -28,7 +27,6 @@ export default function SellerStoresPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
-  const [editing, setEditing] = useState<OperableStore | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true); setError(null)
@@ -58,7 +56,7 @@ export default function SellerStoresPage() {
   return (
     <SellerLayout title="매장 관리">
       <SEO title="매장 관리 - 유어딜 셀러" description="매장 추가·삭제·위임" noindex />
-      <div className="mx-auto max-w-4xl space-y-3 p-3 sm:p-4">
+      <div className="mx-auto max-w-5xl space-y-3">
         <div className="flex items-center justify-between">
           <p className="text-xs text-gray-600">내 가게든, 관리를 맡은 가게든 — 여기서 추가하고 전환해서 운영해요.</p>
           <button onClick={() => setAdding(true)}
@@ -68,12 +66,12 @@ export default function SellerStoresPage() {
         </div>
 
         {error && (
-          <div className="rounded-xl bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+          <div className="rounded-xl bg-white border border-rule p-3 text-sm text-tone-bad">
             {error} <button onClick={load} className="underline font-semibold ml-1">다시 시도</button>
           </div>
         )}
 
-        <div className="rounded-2xl bg-white border border-gray-200 overflow-hidden">
+        <div className="rounded-[var(--dash-radius,16px)] bg-white border border-gray-200 overflow-hidden">
           {loading ? (
             <div className="p-8 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-gray-400" /></div>
           ) : stores.length === 0 ? (
@@ -92,17 +90,19 @@ export default function SellerStoresPage() {
                     <p className="text-sm font-bold text-gray-900 truncate">
                       {s.business_name || s.name || `매장 #${s.seller_id}`}
                       {s.role === 'owner'
-                        ? <span className="ml-1.5 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">소유</span>
-                        : <span className="ml-1.5 text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">위임</span>}
+                        ? <span className="ml-1.5 text-[10px] font-bold text-tone-ok bg-tone-ok-bg px-1.5 py-0.5 rounded">소유</span>
+                        : <span className="ml-1.5 text-[10px] font-bold text-tone-warn bg-tone-warn-bg px-1.5 py-0.5 rounded">위임</span>}
                     </p>
                     <p className="text-[11px] text-gray-500">
                       {s.status === 'approved' || s.status === 'active' ? '운영 중' : s.status === 'pending' ? '승인 대기 (사업자 확인 중)' : s.status}
                     </p>
                   </div>
-                  <button onClick={() => setEditing(s)}
+                  {/* 🏪 2026-09-16 (대표 — "업체 정보 입력하는 페이지는 하나로 통일"): 모달 → 한 페이지.
+                      모달은 좁아서 소개·사진·SNS 를 담을 수 없었고, 그래서 그것들이 다른 화면으로 흩어져 있었다. */}
+                  <Link to={`/seller/store?id=${s.seller_id}`}
                     className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-[11px] font-semibold hover:bg-gray-50">
                     정보
-                  </button>
+                  </Link>
                   {s.role === 'owner' && (
                     <Link to="/seller/operators" className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-[11px] font-semibold hover:bg-gray-50">
                       <Users className="w-3.5 h-3.5" /> 위임
@@ -133,14 +133,6 @@ export default function SellerStoresPage() {
       </div>
 
       {adding && <StoreRegisterModal onClose={() => setAdding(false)} onDone={() => { setAdding(false); load() }} />}
-      {editing && (
-        <StoreProfileModal
-          sellerId={editing.seller_id}
-          storeName={editing.business_name || editing.name || undefined}
-          onClose={() => setEditing(null)}
-          onDone={(n) => { setEditing(null); load(); alert(n > 0 ? `매장 정보가 저장됐어요 — 이용권 ${n}개에 반영됐습니다` : '매장 정보가 저장됐어요') }}
-        />
-      )}
     </SellerLayout>
   )
 }

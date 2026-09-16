@@ -21,11 +21,11 @@ export interface SettlementTaxInvoice {
 }
 
 const STATUS_META: Record<string, { label: string; cls: string }> = {
-  draft: { label: '발행대기', cls: 'bg-amber-50 text-amber-700' },
-  requested: { label: '승인대기', cls: 'bg-blue-50 text-blue-700' },
-  approved: { label: '승인완료', cls: 'bg-indigo-50 text-indigo-700' },
-  issued: { label: '발행완료', cls: 'bg-emerald-50 text-emerald-700' },
-  failed: { label: '발행실패', cls: 'bg-red-50 text-red-700' },
+  draft: { label: '발행대기', cls: 'bg-tone-warn-bg text-tone-warn' },
+  requested: { label: '승인대기', cls: 'bg-tone-info-bg text-tone-info' },
+  approved: { label: '승인완료', cls: 'bg-tone-info-bg text-tone-info' },
+  issued: { label: '발행완료', cls: 'bg-tone-ok-bg text-tone-ok' },
+  failed: { label: '발행실패', cls: 'bg-tone-bad-bg text-tone-bad' },
   cancelled: { label: '취소', cls: 'bg-gray-100 text-gray-500' },
 }
 const APPROVABLE = new Set(['draft', 'requested', 'failed'])
@@ -65,7 +65,7 @@ export default function SettlementTaxInvoicesSection() {
   // 역발행 세금계산서가 하나도 없으면 섹션 자체를 접어 안내만(사업자 유저 아닌 셀러엔 비어 있음).
   if (!q.isLoading && items.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-200 p-5">
+      <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-5">
         <div className="flex items-center gap-2 mb-1.5">
           <FileText className="w-4 h-4 text-gray-500" />
           <h3 className="text-sm font-semibold text-gray-900">{t('seller.taxinv.title', { defaultValue: '세금계산서 (역발행)' })}</h3>
@@ -78,7 +78,7 @@ export default function SettlementTaxInvoicesSection() {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 overflow-hidden">
       <div className="px-5 py-4 border-b border-gray-100">
         <div className="flex items-center gap-2">
           <FileText className="w-4 h-4 text-gray-500" />
@@ -117,7 +117,7 @@ export default function SettlementTaxInvoicesSection() {
                       <button
                         onClick={() => approve(inv.id)}
                         disabled={approving === inv.id}
-                        className="inline-flex items-center gap-1 rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-900 disabled:opacity-50"
+                        className="ur-btn ur-btn-sm ur-btn-primary inline-flex items-center gap-1 disabled:opacity-50"
                       >
                         <CheckCircle className="w-3.5 h-3.5" />
                         {approving === inv.id ? t('common.processing', { defaultValue: '처리 중…' }) : t('seller.taxinv.approve', { defaultValue: '승인' })}

@@ -12,42 +12,52 @@
  *   3. POST /api/seller/register-from-user, seller_type='store_owner' (같은 계정 업그레이드,
  *      linked_user_id 즉시 연결 + 큐레이터 프로필 승계)
  *   4. 'pending' → /seller/waiting (자동 갱신) → 승인 시 소비자 알림 + 대시보드 진입
+ *
+ * 📱 2026-09-15 개편 (대표 *"여기도 개편해야 해. 셀러 계정을 만드는 부분이니까 가장 중요해"*):
+ *   - 티켓 카드(블루 밴드)로 **3단계 중 어디인지** 먼저 보여 준다(정보 입력 → 심사 → 판매 시작).
+ *   - 폼을 두 카드로 나눴다: [사업자 정보 = 국세청 확인용 3칸] / [가게 정보]. 사장님이 사업자등록증을 꺼내 드는 순간이 한 번이다.
+ *   - 입력 44px·16px(iOS 확대 방지) · 카테고리 칩 · 오류는 칸 밑 + 첫 오류 칸으로 포커스 · 하단 고정 제출 바(필수 N/5).
+ *   - 이모지 0 · 색깔 정보상자 0 · 초록(emerald) 0 — 🎫 규칙 ⑥. 제출 payload·prefill·라우팅은 종전과 **byte-동일**.
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
-import { ChevronLeft, Loader2, Store, CheckCircle2 } from 'lucide-react'
+import { ChevronLeft, Loader2, CheckCircle2, Handshake, UserRound } from 'lucide-react'
 import TermsConsentBox from '@/components/terms/TermsConsentBox'
+import BusinessCertUpload from '@/components/BusinessCertUpload'
+import BrandLoader from '@/components/brand/BrandLoader'
+import { TicketCard } from '@/components/ticket/TicketCard'
 import { TERMS_CURRENT_VERSION } from './terms/terms-types'
-
-const STORE_CATEGORIES = [
-  { value: 'restaurant', label: '음식점' },
-  { value: 'cafe', label: '카페/베이커리' },
-  { value: 'beauty', label: '뷰티/네일' },
-  { value: 'fitness', label: '피트니스/요가' },
-  { value: 'retail', label: '소매/매장' },
-  { value: 'service', label: '서비스 (마사지/세탁 등)' },
-  { value: 'stay', label: '숙박' },
-  { value: 'etc', label: '기타' },
-] as const
+import {
+  STORE_CATEGORIES, INPUT, INPUT_BAD, Field, ChipGroup, formatBusinessNumber, formatPhone,
+  validateSignup, filledRequired, type SignupForm, type SignupErrors,
+} from './seller-register/RegisterFields'
 
 export default function SellerRegisterSupplierPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  // 🛡️ 2026-05-20: 에이전시 가입 링크 (/seller/register/supplier?agency=AG-XXXXXXXX) 자동 prefill.
+  // 🌇 2026-09-05 에이전시 일몰 — `?agency=AG-XXXXXXXX` 자동 prefill + 추천코드 입력칸 삭제.
+  //   코드를 발급하던 대시보드·초대 링크가 전부 없어져 **아무도 채울 수 없는 칸**이 남아 있었고,
+  //   그 값이 요금(직접 10% / 중개 5%)을 갈랐다. 이 문은 이제 언제나 직접 입점이다.
   const [searchParams] = useSearchParams()
-  const agencyFromUrl = (searchParams.get('agency') || '').toUpperCase().slice(0, 12)
   const userName = typeof window !== 'undefined' ? localStorage.getItem('user_name') : null
   const [loading, setLoading] = useState(false)
   // 📜 2026-07-05 판매자 이용약관 v1.0: 가입 시 동의 필수
   const [termsAgreed, setTermsAgreed] = useState(false)
+  // 🪪 2026-09-16 앞문 등록증 사본 — **선택**(대표 *"복잡해서도 안되긴 하는데"*).
+  //   국세청은 번호·대표자·개업일만 확인하므로 **상호·주소가 진짜인지는 사람이 사진과 대조**해야 한다.
+  //   그런데 여기서 막을 이유가 없다: 승인 전엔 어차피 못 판다(`status='pending'`) + 사후 업로드
+  //   경로가 이미 있다(`POST /api/seller/settlements/business-registration/submit`).
+  //   ⇒ 막는 대신 **가장 좋은 순간에 권한다** — 지금 사장님은 등록증을 손에 들고 번호를 옮겨 적는 중이다.
+  const [certUrl, setCertUrl] = useState('')
   const [statusChecked, setStatusChecked] = useState(false)
   const [existingStatus, setExistingStatus] = useState<'none' | 'pending' | 'active' | 'suspended'>('none')
-  const [form, setForm] = useState({
+  const [errors, setErrors] = useState<SignupErrors>({})
+  const [form, setForm] = useState<SignupForm>({
     business_name: '',
     business_number: '',
     representative_name: '',     // 🛡️ 2026-05-27 (사용자 결정): 국세청 진위확인용
@@ -56,31 +66,12 @@ export default function SellerRegisterSupplierPage() {
     store_category: '',
     address: '',
     description: '',
-    // 🛡️ 2026-05-20: 에이전시 (입점 영업) 가 가게에 추천 코드 전달 → 가입 시 입력.
-    //   서버는 agency_intro_code 로 에이전시 매칭 + sellers.introduced_by_agency_id 자동 채움.
-    //   URL ?agency=AG-XXXXXXXX 가 있으면 useEffect 에서 자동 prefill.
-    agency_intro_code: agencyFromUrl,
   })
-
-  // URL query 변경 시 (drag-n-drop, copy 링크) prefill 갱신.
-  useEffect(() => {
-    if (agencyFromUrl && agencyFromUrl !== '') {
-      setForm(f => f.agency_intro_code === agencyFromUrl ? f : { ...f, agency_intro_code: agencyFromUrl })
-    }
-  }, [agencyFromUrl])
-
-  const formatBusinessNumber = (input: string) => {
-    const d = input.replace(/\D/g, '').slice(0, 10)
-    if (d.length <= 3) return d
-    if (d.length <= 5) return `${d.slice(0, 3)}-${d.slice(3)}`
-    return `${d.slice(0, 3)}-${d.slice(3, 5)}-${d.slice(5)}`
+  const set = <K extends keyof SignupForm>(k: K) => (v: SignupForm[K]) => {
+    setForm(f => ({ ...f, [k]: v }))
+    if (errors[k]) setErrors(e => ({ ...e, [k]: undefined }))
   }
-  const formatPhone = (input: string) => {
-    const d = input.replace(/\D/g, '').slice(0, 11)
-    if (d.length <= 3) return d
-    if (d.length <= 7) return `${d.slice(0, 3)}-${d.slice(3)}`
-    return `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`
-  }
+  const termsRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     // 🏁 2026-07-02 단일 퍼널: 로그인 게이트를 마운트로 — 폼 다 채운 뒤 401 로 발견하는 좌절 제거.
@@ -152,16 +143,19 @@ export default function SellerRegisterSupplierPage() {
   }, [fromCurator])
 
   async function submit() {
-    if (!form.business_name.trim() || !form.business_number.trim() || !form.phone.trim() || !form.representative_name.trim() || !form.business_start_date) {
-      toast.error(t('seller.register.requiredFields', { defaultValue: '필수 항목을 입력해주세요' }))
-      return
-    }
-    if (!/^\d{3}-\d{2}-\d{5}$/.test(form.business_number)) {
-      toast.error(t('seller.register.businessNumberFormat', { defaultValue: '사업자번호 형식: XXX-XX-XXXXX' }))
+    // 📱 오류는 칸 밑에 적고 첫 오류 칸으로 간다 — 토스트 한 줄로는 어느 칸인지 모른다.
+    const errs = validateSignup(form)
+    setErrors(errs)
+    const first = (Object.keys(errs) as (keyof SignupForm)[]).find(k => errs[k])
+    if (first) {
+      const el = document.getElementById(`f-${first}`)
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      ;(el as HTMLElement | null)?.focus?.()
       return
     }
     if (!termsAgreed) {
       toast.error(t('seller.gateway.termsRequired', { defaultValue: '판매자 이용약관에 동의해주세요' }))
+      termsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       return
     }
 
@@ -183,7 +177,7 @@ export default function SellerRegisterSupplierPage() {
         phone: form.phone,
         seller_type: 'store_owner',
         description: descWithMeta,
-        agency_intro_code: form.agency_intro_code.trim() || undefined,
+        business_cert_url: certUrl || undefined,
         terms_agreed_version: TERMS_CURRENT_VERSION,
       })
       if (res.data?.success) {
@@ -211,228 +205,219 @@ export default function SellerRegisterSupplierPage() {
   }
 
   if (!statusChecked) {
-    return (
-      <div className="force-light-theme min-h-screen flex items-center justify-center bg-gray-50">
-        <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
-      </div>
-    )
+    return <div className="force-light-theme"><BrandLoader fullScreen forceLight /></div>
   }
 
   if (existingStatus === 'pending' || existingStatus === 'active') {
+    const active = existingStatus === 'active'
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="force-light-theme flex min-h-[100dvh] items-center justify-center bg-warm p-4">
         <SEO title="사업자 유저 가입 - 유어딜" description="사업자 인증 — 내 상품·이용권 판매" url="/seller/register/supplier" noindex />
-        <div className="bg-white rounded-2xl ur-content-narrow w-full p-6 text-center space-y-4 shadow-sm">
-          <div className={`w-16 h-16 rounded-full mx-auto flex items-center justify-center ${
-            existingStatus === 'active' ? 'bg-emerald-100' : 'bg-amber-100'
-          }`}>
-            {existingStatus === 'active'
-              ? <CheckCircle2 className="w-8 h-8 text-emerald-600" />
-              : <Loader2 className="w-8 h-8 text-amber-600 animate-spin" />}
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-gray-900">
-              {existingStatus === 'active'
+        <TicketCard
+          className="w-full max-w-[480px]"
+          bandLeft={active ? t('seller.signup.bandActive', { defaultValue: '사업자 유저' }) : t('seller.signup.bandPending', { defaultValue: '심사 중' })}
+          bandRight={active ? '3 / 3' : '2 / 3'}
+        >
+          <div className="p-6 text-center">
+            {active
+              ? <CheckCircle2 className="mx-auto h-10 w-10 text-brand-text" />
+              : <Loader2 className="mx-auto h-10 w-10 animate-spin text-gray-400" />}
+            <h2 className="mt-3 text-[18px] font-extrabold text-gray-900">
+              {active
                 ? t('seller.gateway.alreadyActive', { defaultValue: '이미 사업자 유저예요' })
                 : t('seller.gateway.pendingTitle', { defaultValue: '승인 대기 중' })}
             </h2>
-            <p className="text-sm text-gray-500 mt-1">
-              {existingStatus === 'active'
+            <p className="mt-1.5 text-[13px] leading-relaxed text-gray-500">
+              {active
                 ? t('seller.gateway.alreadyActiveDesc', { defaultValue: '셀러 대시보드로 바로 이동할 수 있습니다.' })
                 : t('seller.gateway.pendingDesc', { defaultValue: '관리자가 검토 후 앱 알림·알림톡으로 안내드립니다 (1-2 영업일).' })}
             </p>
+            <button onClick={() => navigate(active ? '/seller' : '/seller/waiting')} className="ur-btn ur-btn-lg ur-btn-primary mt-5 w-full">
+              {active
+                ? t('seller.gateway.goDashboard', { defaultValue: '셀러 대시보드' })
+                : t('seller.gateway.viewStatus', { defaultValue: '심사 상태 보기' })}
+            </button>
           </div>
-          <button
-            onClick={() => navigate(existingStatus === 'active' ? '/seller' : '/seller/waiting')}
-            className="ur-btn ur-btn-lg ur-btn-primary w-full">
-            {existingStatus === 'active'
-              ? t('seller.gateway.goDashboard', { defaultValue: '셀러 대시보드' })
-              : t('seller.gateway.viewStatus', { defaultValue: '심사 상태 보기' })}
-          </button>
-        </div>
+        </TicketCard>
       </div>
     )
   }
 
+  const filled = filledRequired(form)
+  const cls = (k: keyof SignupForm) => `${INPUT} ${errors[k] ? INPUT_BAD : ''}`
+  const steps = [
+    { n: 1, label: t('seller.signup.step1', { defaultValue: '정보 입력' }), sub: t('seller.signup.step1Sub', { defaultValue: '지금 이 화면' }) },
+    { n: 2, label: t('seller.signup.step2', { defaultValue: '심사' }), sub: t('seller.signup.step2Sub', { defaultValue: '국세청 정보와 일치하면 바로, 아니면 1~2 영업일' }) },
+    { n: 3, label: t('seller.signup.step3', { defaultValue: '판매 시작' }), sub: t('seller.signup.step3Sub', { defaultValue: '승인 알림 후 셀러 대시보드에서 이용권 등록' }) },
+  ]
+
   return (
-    <div className="force-light-theme min-h-screen bg-gray-50 pb-20">
+    <div className="force-light-theme min-h-[100dvh] bg-warm" style={{ paddingBottom: 'calc(88px + env(safe-area-inset-bottom))' }}>
       <SEO title="사업자 유저 가입 - 유어딜" description="사업자 인증 후 내 상품·이용권 판매" url="/seller/register/supplier" noindex />
 
-      <div className="sticky top-0 z-20 bg-white border-b border-gray-100">
-        <div className="flex items-center gap-3 px-4 py-3 max-w-2xl mx-auto">
-          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="p-1 -ml-1">
-            <ChevronLeft className="w-5 h-5 text-gray-700" />
+      <div className="sticky top-0 z-20 border-b border-rule bg-white">
+        <div className="mx-auto flex h-12 max-w-[560px] items-center gap-2 px-3">
+          <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-700 hover:bg-gray-100">
+            <ChevronLeft className="h-5 w-5" />
           </button>
-          <h1 className="text-base font-bold text-gray-900 flex-1">{t('seller.gateway.title', { defaultValue: '사업자 인증 — 내 상품 팔기' })}</h1>
+          <h1 className="flex-1 truncate text-[15px] font-bold text-gray-900">{t('seller.signup.title', { defaultValue: '사업자 유저 가입' })}</h1>
+          <span className="dash-num text-[12px] font-semibold text-gray-400">1 / 3</span>
         </div>
       </div>
 
-      <div className="ur-content-narrow px-4 lg:px-8 py-4 lg:py-6 space-y-4">
+      <div className="mx-auto max-w-[560px] space-y-3 px-3 py-3 sm:px-4 sm:py-5">
+        {/* 계정 한 줄 — 색깔 상자 대신 흰 카드. 누구 계정에 붙는지 한 번만. */}
         {userName && (
-          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-900">
-            <strong>{userName}</strong> {t('seller.gateway.kakaoBanner', { defaultValue: '카카오 계정에 판매 기능이 추가됩니다. 유어샵·구매내역은 그대로 유지돼요.' })}
+          <div className="flex items-center gap-3 rounded-[var(--dash-radius,16px)] border border-rule bg-white px-4 py-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-tint text-brand-text"><UserRound size={18} /></span>
+            <p className="min-w-0 text-[13px] leading-snug text-gray-600">
+              <strong className="text-gray-900">{userName}</strong> {t('seller.gateway.kakaoBanner', { defaultValue: '카카오 계정에 판매 기능이 추가됩니다. 유어샵·구매내역은 그대로 유지돼요.' })}
+            </p>
           </div>
         )}
 
         {prospectIntro && (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-900">
-            🤝 <strong>{prospectIntro}</strong>{t('seller.gateway.prospectBanner', { defaultValue: ' 에이전시가 매장 정보를 미리 준비했어요. 내용 확인 후 제출만 하면 됩니다.' })}
+          <div className="flex items-center gap-3 rounded-[var(--dash-radius,16px)] border border-rule bg-white px-4 py-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500"><Handshake size={18} /></span>
+            <p className="min-w-0 text-[13px] leading-snug text-gray-600"><strong className="text-gray-900">{prospectIntro}</strong>{t('seller.gateway.prospectBanner', { defaultValue: ' 에이전시가 매장 정보를 미리 준비했어요. 내용 확인 후 제출만 하면 됩니다.' })}</p>
           </div>
         )}
 
-        <div className="bg-gray-50 rounded-2xl p-5 text-center">
-          <div className="w-14 h-14 mx-auto mb-3 bg-white rounded-full flex items-center justify-center">
-            <Store className="w-7 h-7 text-emerald-600" />
+        {/* 🎫 티켓 — 어디까지 왔는지. 밴드 하나가 강조색을 다 맡는다. */}
+        <TicketCard bandLeft={t('seller.signup.band', { defaultValue: '내 가게 등록' })} bandRight={t('seller.signup.bandStep', { defaultValue: '1단계 / 3' })}>
+          <div className="p-4 sm:p-5">
+            <h2 className="text-[18px] font-extrabold leading-snug text-gray-900">{t('seller.signup.heroTitle', { defaultValue: '가게를 등록하면 내 유어샵에서 이용권을 팔 수 있어요' })}</h2>
+            <p className="mt-1 text-[13px] leading-relaxed text-gray-500">{t('seller.signup.heroDesc', { defaultValue: '판매 대금은 매주 자동으로 계좌에 정산돼요. 사업자등록증 한 장이면 3분이면 끝나요.' })}</p>
+            <ol className="mt-4 space-y-2.5">
+              {steps.map((s) => (
+                <li key={s.n} className="flex items-start gap-3">
+                  <span className={`dash-num mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[12px] font-extrabold ${s.n === 1 ? 'bg-brand text-white' : 'bg-gray-100 text-gray-500'}`}>{s.n}</span>
+                  <span className="min-w-0">
+                    <span className={`block text-[13.5px] font-bold ${s.n === 1 ? 'text-gray-900' : 'text-gray-600'}`}>{s.label}</span>
+                    <span className="block text-[12px] text-gray-500">{s.sub}</span>
+                  </span>
+                </li>
+              ))}
+            </ol>
           </div>
-          <h2 className="text-base font-bold text-gray-900">{t('seller.gateway.heroTitle', { defaultValue: '내 유어샵에서 직접 판매하기' })}</h2>
-          <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-            {t('seller.gateway.heroDesc', { defaultValue: '내 가게를 등록하면 내 유어샵에서 이용권·상품을 팔고 현금으로 정산받아요 (플랫폼 수수료 기본 5%).' })}
-          </p>
-        </div>
+        </TicketCard>
 
         {/* 🏁 탈출구: 크리에이터(추천·커미션만)는 가입 불필요 — JoinChoice 모델과 동일 안내 */}
-        <p className="text-[11px] text-gray-500 text-center">
+        <p className="px-1 text-center text-[12px] text-gray-500">
           {t('seller.gateway.escape', { defaultValue: '상품 추천·커미션만 원하시나요? 가입 없이' })}{' '}
-          <button onClick={() => navigate('/u/me')} className="font-bold text-emerald-700 underline underline-offset-2">
+          <button onClick={() => navigate('/u/me')} className="font-bold text-brand-text underline underline-offset-2">
             {t('seller.gateway.escapeLink', { defaultValue: '내 유어샵' })}
           </button>
           {t('seller.gateway.escapeSuffix', { defaultValue: '에서 바로 시작할 수 있어요.' })}
         </p>
 
-        <div className="bg-white rounded-2xl p-5 space-y-4 border border-gray-100">
-          <Field label="가게명" required>
-            <input value={form.business_name}
-              onChange={e => setForm(f => ({ ...f, business_name: e.target.value }))}
-              placeholder="예: 홍대 매운돈까스"
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900" />
-          </Field>
+        {/* 카드 1 — 국세청 확인용 3칸. 사업자등록증을 꺼내는 순간이 한 번이게 묶는다. */}
+        <section className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-4 sm:p-5">
+          <h3 className="text-[15px] font-extrabold text-gray-900">{t('seller.signup.bizSection', { defaultValue: '사업자 정보' })}</h3>
+          <p className="mt-0.5 text-[12.5px] text-gray-500">{t('seller.signup.bizSectionSub', { defaultValue: '사업자등록증에 적힌 그대로. 국세청 정보와 일치하면 심사 없이 바로 승인돼요.' })}</p>
+          <div className="mt-4 space-y-4">
+            <Field id="f-business_number" label="사업자번호" required error={errors.business_number}>
+              <input id="f-business_number" value={form.business_number}
+                onChange={e => set('business_number')(formatBusinessNumber(e.target.value))}
+                inputMode="numeric" autoComplete="off" maxLength={12} placeholder="000-00-00000"
+                aria-invalid={!!errors.business_number}
+                className={`${cls('business_number')} dash-num`} />
+            </Field>
+            {/* 🛡️ 2026-05-27 (사용자 결정): 국세청 진위확인 — 대표자 + 개업일 함께 입력 시 자동 승인 */}
+            <Field id="f-representative_name" label="대표자명" required hint="사업자등록증 기재 명의자" error={errors.representative_name}>
+              <input id="f-representative_name" value={form.representative_name}
+                onChange={e => set('representative_name')(e.target.value)}
+                maxLength={20} placeholder="예: 홍길동" autoComplete="name"
+                aria-invalid={!!errors.representative_name}
+                className={cls('representative_name')} />
+            </Field>
+            <Field id="f-business_start_date" label="개업일" required hint="사업자등록증의 개업연월일" error={errors.business_start_date}>
+              <input id="f-business_start_date" type="date" value={form.business_start_date}
+                onChange={e => set('business_start_date')(e.target.value)}
+                max={new Date().toISOString().split('T')[0]}
+                aria-invalid={!!errors.business_start_date}
+                className={cls('business_start_date')} />
+            </Field>
+            {/* 🪪 등록증 사본 — 어드민이 위 세 칸·아래 가게 정보와 **눈으로 대조**하는 유일한 근거.
+                국세청 API 는 상호·주소를 주지 않는다(실측) — 기계로는 못 잡는 자리다. */}
+            <Field id="f-cert" label={t('seller.signup.cert', { defaultValue: '사업자등록증 사본 (선택)' })}
+              hint={t('seller.signup.certHint', { defaultValue: '지금 등록증을 보고 계시면 한 장 찍어 올려 주세요 — 심사가 빨라집니다. 나중에 올려도 괜찮아요.' })}>
+              <BusinessCertUpload value={certUrl} onChange={setCertUrl} />
+            </Field>
+          </div>
+        </section>
 
-          <Field label="사업자번호" required>
-            <input value={form.business_number}
-              onChange={e => setForm(f => ({ ...f, business_number: formatBusinessNumber(e.target.value) }))}
-              inputMode="numeric"
-              maxLength={12}
-              placeholder="000-00-00000"
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 font-mono" />
-          </Field>
+        {/* 카드 2 — 손님이 보는 가게 정보 */}
+        <section className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-4 sm:p-5">
+          <h3 className="text-[15px] font-extrabold text-gray-900">{t('seller.signup.storeSection', { defaultValue: '가게 정보' })}</h3>
+          <p className="mt-0.5 text-[12.5px] text-gray-500">{t('seller.signup.storeSectionSub', { defaultValue: '유어샵과 이용권에 그대로 보여요. 나중에 대시보드에서 바꿀 수 있어요.' })}</p>
+          <div className="mt-4 space-y-4">
+            <Field id="f-business_name" label="가게명" required error={errors.business_name}>
+              <input id="f-business_name" value={form.business_name}
+                onChange={e => set('business_name')(e.target.value)}
+                placeholder="예: 홍대 매운돈까스" autoComplete="organization"
+                aria-invalid={!!errors.business_name}
+                className={cls('business_name')} />
+            </Field>
+            <Field id="f-phone" label="연락처 (담당자 휴대폰)" required hint="주문·정산 알림톡을 받는 번호" error={errors.phone}>
+              <input id="f-phone" type="tel" value={form.phone}
+                onChange={e => set('phone')(formatPhone(e.target.value))}
+                inputMode="numeric" autoComplete="tel" maxLength={13} placeholder="010-1234-5678"
+                aria-invalid={!!errors.phone}
+                className={`${cls('phone')} dash-num`} />
+            </Field>
+            <Field id="f-store_category" label="매장 종류">
+              <ChipGroup name="매장 종류" value={form.store_category} onChange={set('store_category')} options={STORE_CATEGORIES} />
+            </Field>
+            <Field id="f-address" label="매장 주소">
+              <input id="f-address" value={form.address}
+                onChange={e => set('address')(e.target.value)}
+                placeholder="예: 서울 마포구 양화로 162" autoComplete="street-address"
+                className={cls('address')} />
+            </Field>
+            <Field id="f-description" label="매장 소개 (선택)">
+              <textarea id="f-description" value={form.description}
+                onChange={e => set('description')(e.target.value)}
+                placeholder="매장 분위기, 대표 메뉴, 운영 시간 등"
+                rows={3} maxLength={500}
+                className={`${INPUT} h-auto resize-none py-2.5`} />
+            </Field>
+          </div>
+        </section>
 
-          {/* 🛡️ 2026-05-27 (사용자 결정): 국세청 진위확인 — 대표자 + 개업일 함께 입력 시 자동 승인 */}
-          <Field label="대표자명" required>
-            <input value={form.representative_name}
-              onChange={e => setForm(f => ({ ...f, representative_name: e.target.value }))}
-              maxLength={20}
-              placeholder="예: 홍길동"
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900" />
-            <p className="text-[11px] text-gray-500 mt-1">사업자등록증 기재 명의자</p>
-          </Field>
-
-          <Field label="개업일" required>
-            <input type="date" value={form.business_start_date}
-              onChange={e => setForm(f => ({ ...f, business_start_date: e.target.value }))}
-              max={new Date().toISOString().split('T')[0]}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900" />
-            <p className="text-[11px] text-gray-500 mt-1">국세청 등록 정보와 일치 시 자동 승인</p>
-          </Field>
-
-          <Field label="연락처 (담당자 휴대폰)" required>
-            <input type="tel" value={form.phone}
-              onChange={e => setForm(f => ({ ...f, phone: formatPhone(e.target.value) }))}
-              inputMode="numeric"
-              maxLength={13}
-              placeholder="010-1234-5678"
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900" />
-          </Field>
-
-          <Field label="매장 카테고리">
-            <select value={form.store_category}
-              onChange={e => setForm(f => ({ ...f, store_category: e.target.value }))}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white">
-              <option value="">선택해주세요</option>
-              {STORE_CATEGORIES.map(c => (
-                <option key={c.value} value={c.value}>{c.label}</option>
-              ))}
-            </select>
-          </Field>
-
-          <Field label="매장 주소">
-            <input value={form.address}
-              onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
-              placeholder="예: 서울 마포구 양화로 162"
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900" />
-          </Field>
-
-          <Field label="매장 소개 (선택)">
-            <textarea value={form.description}
-              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-              placeholder="매장 분위기, 대표 메뉴, 운영 시간 등"
-              rows={3} maxLength={500}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 resize-none" />
-          </Field>
-
-          {/* 🛡️ 2026-05-20: 에이전시 추천 코드 — 입점 영업 에이전시가 가게에 알려준 코드.
-              URL query 로 자동 prefill 시 emerald 배지로 시각 강조. */}
-          <Field label={
-            agencyFromUrl
-              ? '에이전시 추천 코드 ✓ 자동 입력됨'
-              : '에이전시 추천 코드 (선택)'
-          }>
-            <input value={form.agency_intro_code}
-              onChange={e => setForm(f => ({ ...f, agency_intro_code: e.target.value.toUpperCase().slice(0, 12) }))}
-              placeholder="예: AG-A8K3F1 (없으면 비워두세요)"
-              className={`w-full px-3 py-2.5 border rounded-lg text-sm text-gray-900 font-mono uppercase ${
-                agencyFromUrl
-                  ? 'bg-emerald-50 border-emerald-300 focus:border-emerald-500'
-                  : 'border-gray-300'
-              }`} />
-            <p className="text-[10px] mt-1">
-              {agencyFromUrl ? (
-                <span className="text-emerald-600 font-bold">
-                  ✓ 추천 링크로 들어오셨어요. 에이전시 코드가 자동 입력됐습니다.
-                </span>
-              ) : (
-                <span className="text-gray-500">
-                  영업 에이전시가 직접 추천해서 가입하시는 경우만 입력하세요.
-                </span>
-              )}
-            </p>
-          </Field>
+        <div ref={termsRef}>
+          <TermsConsentBox
+            termsLabel={t('seller.gateway.termsAgree', { defaultValue: '유어딜 판매자 이용약관(v1.0)에 동의합니다' })}
+            termsPath="/terms/seller"
+            agreed={termsAgreed}
+            onAgreedChange={setTermsAgreed}
+          />
         </div>
 
-        <TermsConsentBox
-          termsLabel={t('seller.gateway.termsAgree', { defaultValue: '유어딜 판매자 이용약관(v1.0)에 동의합니다' })}
-          termsPath="/terms/seller"
-          agreed={termsAgreed}
-          onAgreedChange={setTermsAgreed}
-        />
-
-        <p className="text-[11px] text-gray-500 text-center leading-relaxed">
-          {t('seller.gateway.reviewNote', { defaultValue: '신청 후 1-2 영업일 내 관리자 검토 → 앱 알림·알림톡으로 결과 안내. 국세청 정보 일치 시 자동 승인.' })}
-          <br />
-          {t('seller.gateway.reviewNote2', { defaultValue: '승인되면 셀러 대시보드에서 상품·이용권을 등록할 수 있어요.' })}
-          <br />
+        <ul className="space-y-1 px-1 text-[12px] leading-relaxed text-gray-500">
+          <li>{t('seller.signup.note1', { defaultValue: '결과는 앱 알림과 알림톡으로 알려드려요. 국세청 정보와 일치하면 바로 승인돼요.' })}</li>
           {/* 🏁 2026-07-02 (#3 2단계 심사 투명화): 정산 직전에야 벽을 만나던 것 → 가입 시점에 고지 */}
-          {t('seller.gateway.secondGate', { defaultValue: '💳 현금 정산에는 승인 후 사업자등록증 인증 1회가 추가로 필요해요 (대시보드 → 사업자 정보).' })}
-        </p>
-
-        <button onClick={submit} disabled={loading}
-          className="ur-btn ur-btn-lg ur-btn-primary w-full disabled:opacity-50 flex items-center justify-center gap-2">
-          {loading && <Loader2 className="w-5 h-5 animate-spin" />}
-          {loading
-            ? t('seller.gateway.submitting', { defaultValue: '신청 중...' })
-            : t('seller.gateway.submit', { defaultValue: '사업자 가입 신청' })}
-        </button>
+          <li>{t('seller.signup.note2', { defaultValue: '현금 정산에는 승인 뒤 사업자등록증 사진 인증이 한 번 더 필요해요 (대시보드 › 사업자 정보).' })}</li>
+        </ul>
       </div>
-    </div>
-  )
-}
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
-      {children}
+      {/* 📱 하단 고정 제출 바 — 엄지 자리. 필수 5칸 진행을 같이 보여 준다. */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-rule bg-white" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <div className="mx-auto flex max-w-[560px] items-center gap-3 px-3 py-3 sm:px-4">
+          <p className="hidden shrink-0 text-[12px] text-gray-500 sm:block">
+            {t('seller.signup.progress', { defaultValue: '필수 {{filled}} / 5', filled })}
+          </p>
+          <button onClick={submit} disabled={loading}
+            className="ur-btn ur-btn-lg ur-btn-primary w-full disabled:opacity-50">
+            {loading && <Loader2 className="h-5 w-5 animate-spin" />}
+            {loading
+              ? t('seller.gateway.submitting', { defaultValue: '신청 중...' })
+              : filled < 5
+                ? t('seller.signup.submitProgress', { defaultValue: '가입 신청 (필수 {{filled}}/5)', filled })
+                : t('seller.signup.submit', { defaultValue: '가입 신청하기' })}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

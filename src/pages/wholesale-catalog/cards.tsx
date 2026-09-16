@@ -232,5 +232,5 @@ export function SectionHead({ title, sub, onMore }: { title: string; sub?: strin
 }
 
 export function Rail({ children }: { children: React.ReactNode }) {
-  return <div className="flex gap-3.5 overflow-x-auto pb-1 snap-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{children}</div>
+  return <div className="flex gap-3.5 overflow-x-auto pb-1 snap-x scrollbar-hide">{children}</div>
 }

@@ -77,29 +77,10 @@ export default function AdminOpsInsightsPage() {
         ) : data ? (
           <>
             {/* 부진 에이전시 */}
-            <Section title="🔴 부진 에이전시 (이번 달 매출 0)" count={data.inactive_agencies.length}>
-              {data.inactive_agencies.length === 0 ? (
-                <Empty />
-              ) : (
-                <Table headers={['에이전시', '이메일', '소속 셀러', '월 매출']}>
-                  {data.inactive_agencies.map(a => (
-                    <tr key={a.id} className="border-t border-gray-100">
-                      <td className="py-2 px-3 text-sm">
-                        <a href={`/admin/agencies?id=${a.id}`} className="text-blue-600 hover:underline inline-flex items-center gap-0.5">
-                          {a.name} <ExternalLink className="w-3 h-3" />
-                        </a>
-                      </td>
-                      <td className="py-2 px-3 text-xs text-gray-500">{a.email}</td>
-                      <td className="py-2 px-3 text-sm text-center">{a.seller_count}</td>
-                      <td className="py-2 px-3 text-sm text-right">{(a.monthly_revenue / 10_000).toFixed(0)}만</td>
-                    </tr>
-                  ))}
-                </Table>
-              )}
-            </Section>
+            {/* 🌇 2026-09-04 에이전시 완전 일몰 — '부진 에이전시' 섹션 제거(대상 자체가 없다). */}
 
             {/* 신규 가입 후 미접속 셀러 */}
-            <Section title="🟡 신규 가입 후 7일 미접속 셀러" count={data.dormant_new_sellers.length}>
+            <Section title="신규 가입 후 7일 미접속 셀러" count={data.dormant_new_sellers.length}>
               {data.dormant_new_sellers.length === 0 ? (
                 <Empty />
               ) : (
@@ -117,7 +98,7 @@ export default function AdminOpsInsightsPage() {
             </Section>
 
             {/* 결제 PENDING 24h+ */}
-            <Section title="🔴 결제 PENDING (24시간 이상 — 수동 검토 필요)" count={data.stuck_pending_orders.length}>
+            <Section title="결제 PENDING (24시간 이상 — 수동 검토 필요)" count={data.stuck_pending_orders.length}>
               {data.stuck_pending_orders.length === 0 ? (
                 <Empty />
               ) : (
@@ -134,7 +115,7 @@ export default function AdminOpsInsightsPage() {
             </Section>
 
             {/* 휴면 셀러 */}
-            <Section title="⚪ 휴면 셀러 (30일+ 무라이브 + 무매출)" count={data.dormant_sellers.length}>
+            <Section title="휴면 셀러 (30일+ 무라이브 + 무매출)" count={data.dormant_sellers.length}>
               {data.dormant_sellers.length === 0 ? (
                 <Empty />
               ) : (
@@ -155,13 +136,13 @@ export default function AdminOpsInsightsPage() {
 
             {/* Webhook 실패 (TD-009) */}
             {data.failed_webhooks_24h && data.failed_webhooks_24h.length > 0 && (
-              <Section title="🔴 Webhook 실패 (24h)" count={data.failed_webhooks_24h.length}>
+              <Section title="Webhook 실패 (24h)" count={data.failed_webhooks_24h.length}>
                 <Table headers={['Source', 'Event', '오류', 'Retry', '시각']}>
                   {data.failed_webhooks_24h.map(w => (
                     <tr key={w.id} className="border-t border-gray-100">
                       <td className="py-2 px-3 text-sm">{w.source}</td>
                       <td className="py-2 px-3 text-xs text-gray-700">{w.event_type}</td>
-                      <td className="py-2 px-3 text-xs text-red-600 max-w-md truncate" title={w.error_message}>{w.error_message}</td>
+                      <td className="py-2 px-3 text-xs text-tone-bad max-w-md truncate" title={w.error_message}>{w.error_message}</td>
                       <td className="py-2 px-3 text-xs text-center">{w.retry_count}</td>
                       <td className="py-2 px-3 text-xs text-gray-500">{w.created_at?.slice(0, 16)}</td>
                     </tr>
@@ -172,7 +153,7 @@ export default function AdminOpsInsightsPage() {
 
             {/* 24h 알림 통계 */}
             {data.notifications_24h.length > 0 && (
-              <Section title="📊 24시간 알림 통계" count={data.notifications_24h.length}>
+              <Section title="24시간 알림 통계" count={data.notifications_24h.length}>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 p-3">
                   {data.notifications_24h.map(n => (
                     <div key={n.type} className="bg-gray-50 rounded p-2 text-xs">
@@ -195,9 +176,9 @@ export default function AdminOpsInsightsPage() {
 function SummaryCard(props: { label: string; value: number; icon: React.ElementType; color: string }) {
   const Icon = props.icon
   const colors: Record<string, string> = {
-    amber: 'bg-amber-50 border-amber-200 text-amber-700',
-    orange: 'bg-orange-50 border-orange-200 text-orange-700',
-    red: 'bg-red-50 border-red-200 text-red-700',
+    amber: 'bg-white border-rule text-tone-warn',
+    orange: 'bg-white border-rule text-tone-warn',
+    red: 'bg-white border-rule text-tone-bad',
     gray: 'bg-gray-50 border-gray-200 text-gray-700',
   }
   return (
@@ -206,7 +187,7 @@ function SummaryCard(props: { label: string; value: number; icon: React.ElementT
         <span className="text-xs">{props.label}</span>
         <Icon className="w-4 h-4 opacity-60" />
       </div>
-      <div className="text-2xl font-bold">{props.value}</div>
+      <div className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight">{props.value}</div>
     </div>
   )
 }
@@ -241,5 +222,5 @@ function Table(props: { headers: string[]; children: React.ReactNode }) {
 }
 
 function Empty() {
-  return <div className="p-6 text-center text-xs text-gray-400">✅ 검출된 항목 없음</div>
+  return <div className="p-6 text-center text-xs text-gray-400">검출된 항목 없음</div>
 }

@@ -16,14 +16,14 @@ interface DashboardEmptyStateProps {
 
 export default function DashboardEmptyState({ icon, title, description, action }: DashboardEmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-2xl bg-gray-50 dark:bg-white/[0.03] px-6 py-16 text-center">
+    <div className="flex flex-col items-center justify-center rounded-[var(--dash-radius,16px)] bg-gray-50 px-6 py-14 text-center">
       {icon && (
-        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white text-gray-400 shadow-sm">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-white text-gray-300">
           {icon}
         </div>
       )}
-      <h3 className="text-base font-semibold text-gray-900">{title}</h3>
-      {description && <p className="mt-1 max-w-sm text-sm text-gray-500">{description}</p>}
+      <h3 className="text-[15px] font-bold text-gray-900">{title}</h3>
+      {description && <p className="mt-1.5 max-w-sm text-[13px] leading-relaxed text-gray-500">{description}</p>}
       {action && <div className="mt-5">{action}</div>}
     </div>
   )

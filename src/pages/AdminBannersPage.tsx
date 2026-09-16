@@ -114,7 +114,7 @@ export default function AdminBannersPage() {
     return (
       <div className="flex h-screen items-center justify-center bg-[#F4F5F7]">
         <div className="text-center">
-          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <div className="w-10 h-10 border-4 border-brand border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-sm text-gray-500">{t('admin.banners.k010', { defaultValue: '배너를 불러오는 중...' })}</p>
         </div>
       </div>
@@ -129,21 +129,21 @@ export default function AdminBannersPage() {
           subtitle={t('admin.banners.k011', { defaultValue: "메인 배너 등록 · 표시 순서 관리" })}
           icon={<ImageIcon className="h-5 w-5" />}
           actions={
-            <button onClick={handleNew} className="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white hover:bg-gray-900">
+            <button onClick={handleNew} className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-1.5">
               <Plus className="h-3.5 w-3.5" /> 새 배너 추가
             </button>
           }
         />
       {/* 알림 */}
       {alertMsg && (
-        <div className={`p-4 rounded-xl text-sm font-medium ${alertMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+        <div className={`p-4 rounded-xl text-sm font-medium ${alertMsg.type === 'success' ? 'bg-white text-tone-ok border border-rule' : 'bg-white text-tone-bad border border-rule'}`}>
           {alertMsg.text}
         </div>
       )}
 
       {/* 배너 등록/수정 폼 */}
       {showForm && (
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-gray-900">{editingBanner ? t('admin.banners.k012', { defaultValue: '배너 수정' }) : t('admin.banners.k013', { defaultValue: '새 배너 추가' })}</h2>
             <button onClick={() => setShowForm(false)} aria-label="닫기" className="p-1.5 rounded-lg hover:bg-gray-100">
@@ -187,7 +187,7 @@ export default function AdminBannersPage() {
                     aria-pressed={formData.banner_slot === bt}
                     className={`px-3 py-1.5 rounded-lg border text-xs font-semibold ${
                       formData.banner_slot === bt
-                        ? 'bg-gray-900 border-blue-600 text-white'
+                        ? 'bg-brand border-brand text-white'
                         : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
                     }`}
                   >
@@ -210,24 +210,24 @@ export default function AdminBannersPage() {
               {formData.banner_slot ? (() => {
                 const spec = BANNER_SLOT_SPECS[formData.banner_slot as BannerSlot]
                 return (
-                  <div className="mt-2 p-3 bg-blue-50 border border-blue-100 rounded-lg">
-                    <p className="text-xs font-semibold text-blue-700 mb-1.5">
-                      📐 {BANNER_SLOT_LABELS[formData.banner_slot as BannerSlot]} — 권장 규격
+                  <div className="mt-2 p-3 bg-white border border-rule rounded-lg">
+                    <p className="text-xs font-semibold text-gray-700 mb-1.5">
+                      {BANNER_SLOT_LABELS[formData.banner_slot as BannerSlot]} — 권장 규격
                     </p>
-                    <ul className="space-y-1 text-xs text-blue-600">
+                    <ul className="space-y-1 text-xs text-gray-700">
                       <li>
-                        <strong>⭐ 원본 최소:</strong> {spec.recommendedWidth.toLocaleString()} × {spec.recommendedHeight.toLocaleString()} px
-                        <span className="text-blue-500"> — 이보다 작으면 확대가 안 돼 흐립니다</span>
+                        <strong>원본 최소:</strong> {spec.recommendedWidth.toLocaleString()} × {spec.recommendedHeight.toLocaleString()} px
+                        <span className="text-gray-700"> — 이보다 작으면 확대가 안 돼 흐립니다</span>
                       </li>
                       <li><strong>실제 표시:</strong> {spec.renderedNote}</li>
                       <li>
                         <strong>용량:</strong> {BANNER_MAX_UPLOAD_MB}MB 이하
-                        <span className="text-blue-500"> — 작게 줄이지 마세요. 화면 크기에 맞춰 자동 변환되므로 <strong>원본이 커야 선명</strong>합니다</span>
+                        <span className="text-gray-700"> — 작게 줄이지 마세요. 화면 크기에 맞춰 자동 변환되므로 <strong>원본이 커야 선명</strong>합니다</span>
                       </li>
                       <li><strong>형식:</strong> WebP &gt; PNG &gt; JPEG (사진은 WebP/JPEG 권장)</li>
                     </ul>
                     {spec.notes.map((n, i) => (
-                      <p key={i} className="text-xs text-blue-500 mt-1.5">※ {n}</p>
+                      <p key={i} className="text-xs text-gray-700 mt-1.5">※ {n}</p>
                     ))}
                   </div>
                 )
@@ -268,12 +268,12 @@ export default function AdminBannersPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <input type="checkbox" id="is_active" checked={formData.is_active} onChange={e => setFormData({ ...formData, is_active: e.target.checked })} className="w-4 h-4 rounded border-gray-300 text-blue-600" />
+              <input type="checkbox" id="is_active" checked={formData.is_active} onChange={e => setFormData({ ...formData, is_active: e.target.checked })} className="w-4 h-4 rounded border-gray-300 text-gray-700" />
               <label htmlFor="is_active" className="text-sm font-medium text-gray-700">{t('admin.banners.k035', { defaultValue: '활성화' })}</label>
             </div>
             <div className="flex gap-3 pt-2">
               <button type="button" onClick={() => setShowForm(false)} className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">{t('admin.banners.k036', { defaultValue: '취소' })}</button>
-              <button type="submit" className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-gray-900 text-white hover:bg-gray-900">{editingBanner ? t('admin.banners.k037', { defaultValue: '수정' }) : t('admin.banners.k038', { defaultValue: '생성' })}</button>
+              <button type="submit" className="ur-btn ur-btn-md ur-btn-primary flex-1">{editingBanner ? t('admin.banners.k037', { defaultValue: '수정' }) : t('admin.banners.k038', { defaultValue: '생성' })}</button>
             </div>
           </form>
         </div>
@@ -282,15 +282,15 @@ export default function AdminBannersPage() {
       {/* 배너 목록 */}
       <div className="space-y-3">
         {banners.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-sm py-20 text-center">
+          <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white py-20 text-center">
             <ImageIcon className="w-12 h-12 text-gray-200 mx-auto mb-3" />
             <p className="text-sm text-gray-400 mb-4">{t('admin.banners.k039', { defaultValue: '등록된 배너가 없습니다.' })}</p>
-            <button onClick={handleNew} className="flex items-center gap-1.5 px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-900 mx-auto">
+            <button onClick={handleNew} className="ur-btn ur-btn-md ur-btn-primary flex items-center gap-1.5 mx-auto">
               <Plus className="w-4 h-4" /> 첫 배너 추가하기
             </button>
           </div>
         ) : banners.map(banner => (
-          <div key={banner.id} className={`bg-white rounded-xl shadow-sm p-4 flex items-start gap-4 ${!banner.is_active ? 'opacity-60' : ''}`}>
+          <div key={banner.id} className={`rounded-[var(--dash-radius,16px)] border border-rule bg-white p-4 flex items-start gap-4 ${!banner.is_active ? 'opacity-60' : ''}`}>
             <div className="relative w-40 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-gray-100">
               <img src={banner.image_url} alt={banner.title || t('admin.banners.noTitleAlt', { defaultValue: '배너 이미지' })} className="w-full h-full object-cover" loading="lazy" />
               {!banner.is_active && (
@@ -304,13 +304,13 @@ export default function AdminBannersPage() {
                 <h3 className={`text-sm font-semibold ${banner.title ? 'text-gray-900' : 'text-gray-400 italic'}`}>{banner.title || t('admin.banners.noTitle', { defaultValue: '(제목 없음 — 이미지만)' })}</h3>
                 <div className="flex items-center gap-2 ml-4 flex-shrink-0">
                   <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
-                    banner.banner_slot ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-500'
+                    banner.banner_slot ? 'bg-tone-info-bg text-tone-info' : 'bg-gray-100 text-gray-500'
                   }`}>
                     {banner.banner_slot ? BANNER_SLOT_LABELS[banner.banner_slot] : '홈 미노출'}
                   </span>
-                  {banner.video_url && <span className="text-xs text-gray-400">🎬 영상</span>}
+                  {banner.video_url && <span className="text-xs text-gray-400">영상</span>}
                   <span className="text-xs text-gray-400">순서 {banner.display_order}</span>
-                  <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${banner.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                  <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${banner.is_active ? 'bg-tone-ok-bg text-tone-ok' : 'bg-gray-100 text-gray-500'}`}>
                     {banner.is_active ? t('admin.banners.k040', { defaultValue: '활성' }) : t('admin.banners.k041', { defaultValue: '비활성' })}
                   </span>
                 </div>
@@ -328,7 +328,7 @@ export default function AdminBannersPage() {
                 <button onClick={() => toggleActive(banner)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200">
                   {banner.is_active ? <><EyeOff className="w-3.5 h-3.5" /> {t('admin.banners.k042', { defaultValue: '비활성화' })}</> : <><Eye className="w-3.5 h-3.5" /> {t('admin.banners.k035', { defaultValue: '활성화' })}</>}
                 </button>
-                <button onClick={() => handleDelete(banner.id)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-red-500 bg-red-50 hover:bg-red-100">
+                <button onClick={() => handleDelete(banner.id)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-tone-bad bg-tone-bad-bg hover:bg-gray-100">
                   <Trash2 className="w-3.5 h-3.5" /> 삭제
                 </button>
               </div>

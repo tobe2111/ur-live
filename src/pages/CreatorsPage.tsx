@@ -22,7 +22,7 @@ const STEPS = [
 
 export default function CreatorsPage() {
   return (
-    <div className="min-h-[100dvh] bg-[#F8F7FC] dark:bg-[#11141C]">
+    <div className="min-h-[100dvh] bg-warm">
       {/* 🔎 2026-07-29: 문구 SSOT = shared/seo/consumer-surfaces (워커 메타와 같은 값). */}
       <SEO title={CONSUMER_SURFACE_SEO['/creators'].title} description={CONSUMER_SURFACE_SEO['/creators'].description} url="/creators" />
       <header className="sticky top-0 z-20 flex items-center justify-between px-4 h-12 bg-[#F8F7FC]/90 dark:bg-[#11141C]/90 backdrop-blur-sm">
@@ -45,7 +45,7 @@ export default function CreatorsPage() {
         {/* 수익 구조 */}
         <section className="pb-10">
           <h2 className="text-[19px] font-extrabold text-[#16181C] dark:text-[#F5F3F1] mb-4">수익 구조는 단순합니다</h2>
-          <div className="rounded-2xl bg-white dark:bg-[#1D1F29] p-5">
+          <div className="rounded-2xl bg-surface p-5">
             <div className="flex items-center gap-2 text-[14px] font-bold text-[#16181C] dark:text-[#F5F3F1]">
               <Link2 className="w-4 h-4 text-brand shrink-0" />
               내 링크로 판매될 때마다 <span className="text-brand">판매액의 소개비(promo%)</span> 적립
@@ -63,7 +63,7 @@ export default function CreatorsPage() {
           <h2 className="text-[19px] font-extrabold text-[#16181C] dark:text-[#F5F3F1] mb-4">시작은 3단계</h2>
           <div className="space-y-2.5">
             {STEPS.map(({ icon: Icon, t, d }, i) => (
-              <div key={t} className="flex items-start gap-3.5 rounded-2xl bg-white dark:bg-[#1D1F29] p-4">
+              <div key={t} className="flex items-start gap-3.5 rounded-2xl bg-surface p-4">
                 <div className="w-9 h-9 rounded-xl bg-[var(--brand-tint)] dark:bg-[#16243D] flex items-center justify-center shrink-0">
                   <Icon className="w-[18px] h-[18px] text-brand" />
                 </div>
@@ -81,12 +81,12 @@ export default function CreatorsPage() {
           <h2 className="text-[19px] font-extrabold text-[#16181C] dark:text-[#F5F3F1] mb-4">팔리는 순간, 바로 알려드려요</h2>
           <div className="grid grid-cols-2 gap-2.5">
             {/* 📸 잔존 장치 2종(실시간 적립 알림·내 성과 탭) 완성 후 실제 캡처로 교체 */}
-            <div className="rounded-2xl bg-white dark:bg-[#1D1F29] p-4 aspect-[3/4] flex flex-col items-center justify-center text-center gap-2">
+            <div className="rounded-2xl bg-surface p-4 aspect-[3/4] flex flex-col items-center justify-center text-center gap-2">
               <Bell className="w-7 h-7 text-brand" />
               <p className="text-[13px] font-extrabold text-[#16181C] dark:text-[#F5F3F1]">실시간 적립 알림</p>
               <p className="text-[11px] text-gray-400 dark:text-gray-500">"방금 내 링크로 1건 판매!"<br />(화면 준비 중)</p>
             </div>
-            <div className="rounded-2xl bg-white dark:bg-[#1D1F29] p-4 aspect-[3/4] flex flex-col items-center justify-center text-center gap-2">
+            <div className="rounded-2xl bg-surface p-4 aspect-[3/4] flex flex-col items-center justify-center text-center gap-2">
               <BarChart3 className="w-7 h-7 text-brand" />
               <p className="text-[13px] font-extrabold text-[#16181C] dark:text-[#F5F3F1]">내 성과 탭</p>
               <p className="text-[11px] text-gray-400 dark:text-gray-500">클릭·판매·적립 한눈에<br />(화면 준비 중)</p>
@@ -98,7 +98,7 @@ export default function CreatorsPage() {
         <section id="apply" className="pb-6">
           <h2 className="text-[19px] font-extrabold text-[#16181C] dark:text-[#F5F3F1] mb-4">1기 소개 파트너 모집</h2>
           {GOOGLE_FORM_URL ? (
-            <div className="rounded-2xl overflow-hidden bg-white dark:bg-[#1D1F29]">
+            <div className="rounded-2xl overflow-hidden bg-surface">
               <iframe src={GOOGLE_FORM_URL} title="1기 소개 파트너 지원 폼" className="w-full h-[640px] border-0" loading="lazy" />
             </div>
           ) : (

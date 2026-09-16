@@ -20,6 +20,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import type { Env } from '@/worker/types/env'
 import { cacheGet } from '@/worker/utils/cache'
 import { normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url'
+import { buildDetailMeta } from './detail-meta-enrich'
 import { demoSlugSql, isDemoSlug } from '@/shared/constants/demo-products'
 import { safeError } from '@/worker/utils/safe-error'
 import { productDetailCols, productDetailColsHealed, withColumnPruning } from '@/shared/db/product-columns'
@@ -27,9 +28,12 @@ import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories'
 import type { GroupBuyProductRow, VoucherRow } from '@/shared/db/group-buy-types'
 import { ensureTables, maxTierDiscount, getMealVoucherCommissionRate, getSellerCommissionRate } from './helpers'
 import { sliceCardGallery } from './card-gallery'
+import { getActiveFeedTotal } from './feed-total'
 // 🍽️ 2026-06-17 (#5 대표 메뉴): products god-table 증식 차단용 K-V 사이드테이블에서 메뉴 읽기.
 import { getSupplyMeta } from '../../../worker/utils/product-supply-meta'
 import { intParam } from '@/shared/pagination'
+// 🏪 2026-09-16 (대표 — "승인이 되어야 메인에 노출"): 승인 전 매장의 이용권을 피드·지도에서 가린다.
+import { approvedSellerProductSql } from '@/shared/db/consumer-visible-product'
 
 // 🛡️ 2026-05-22 module-scope: gift_catalog JOIN 가능 여부 캐시.
 //   null = 미확인, true = 가능, false = table 부재 → fallback 만 사용.
@@ -110,10 +114,14 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
     //   ⚠️ 기본 요청(파라미터 없음)은 키·쿼리·materialized·LIMIT 50 전부 그대로 → SSR 0-RTT/캐시 불변.
     //   필터/정렬/페이지가 붙은 요청만 새 캐시키 + 라이브쿼리(정렬/LIMIT/OFFSET)로 분기.
     const ALLOWED_GB_SORT: Record<string, string> = {
-      popular: 'p.group_buy_current DESC, p.created_at DESC',
+      // 🚦 2026-09-03: 정의는 **화면과 같아야 한다** — 클라 `soldOf`/`discountOf`(GroupBuyFeed) 미러.
+      popular: 'COALESCE(p.sold_count, p.group_buy_current, 0) DESC, p.created_at DESC',
       newest: 'p.created_at DESC',
       deadline: 'p.group_buy_deadline ASC',
-      discount: 'p.discount_rate DESC, p.created_at DESC',
+      discount: 'MAX(COALESCE(p.discount_rate,0), CASE WHEN p.original_price > p.price AND p.original_price > 0 THEN CAST((p.original_price - p.price) * 100 / p.original_price AS INTEGER) ELSE 0 END) DESC, p.created_at DESC',
+      // 🚦 2026-09-03: 서버에 없던 둘 — 없으면 클라가 로드된 50개 안에서만 정렬해 "전체 중" 이 거짓이 된다.
+      price: 'p.price ASC, p.created_at DESC',
+      rating: 'p.avg_rating DESC, p.review_count DESC, p.created_at DESC',
     }
     const sortParam = c.req.query('sort') || ''
     // 🎯 2026-07-04 [UNLOCK_LOADING] (대표 "데모 이용권 노출은 항상 후순위"): 어떤 정렬이든 1차 키 =
@@ -238,6 +246,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
                 WHERE p.category IN (${placeholders}) AND p.is_active = 1
                   AND (p.group_buy_status = ? OR ? = 'all')
                   AND NOT (COALESCE(p.is_supply_product,0) = 1 AND COALESCE(p.supply_source_id,0) = 0)
+                  AND ${approvedSellerProductSql('p')}
                   ${regionWhere}
                   ${bboxWhere}
                   ${qWhere}
@@ -259,6 +268,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
             WHERE p.category IN (${placeholders}) AND p.is_active = 1
               AND (p.group_buy_status = ? OR ? = 'all')
               AND NOT (COALESCE(p.is_supply_product,0) = 1 AND COALESCE(p.supply_source_id,0) = 0)
+              AND ${approvedSellerProductSql('p')}
               ${regionWhere}
               ${bboxWhere}
               ${qWhere}
@@ -396,7 +406,10 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       }
     } catch { /* fail-soft */ }
 
-    return c.json({ success: true, data: withOnnuri })
+    // 🔢 2026-09-03 [UNLOCK_LOADING]: 전체 개수 — 클라가 전량을 안 받고도 "N곳" 을 정확히 말한다.
+    //   필터 없는 피드에서만(조합 5종·900s 캐시) · fail-soft null · 기존 필드/캐시키/헤더 전부 불변.
+    const total = (!hasRegion && !hasQ && !hasBbox) ? await getActiveFeedTotal(c.env, DB, status, categories) : null
+    return c.json({ success: true, data: withOnnuri, ...(total != null ? { total } : {}) })
   })
 
   // ── GET /products/map-clusters — 🌍 2026-07-08 (대표 "수천개 대비 가장 이상적으로" — 레이어 3) ──
@@ -440,6 +453,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
             WHERE p.category IN (${placeholders}) AND p.is_active = 1
               AND p.group_buy_status = 'active'
               AND NOT (COALESCE(p.is_supply_product,0) = 1 AND COALESCE(p.supply_source_id,0) = 0)
+              AND ${approvedSellerProductSql('p')}
               AND p.restaurant_lat BETWEEN ? AND ? AND p.restaurant_lng BETWEEN ? AND ?
             GROUP BY CAST(p.restaurant_lat / ${cell} AS INTEGER), CAST(p.restaurant_lng / ${cell} AS INTEGER)
             LIMIT 400
@@ -607,32 +621,10 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
           WHERE p.id = ? AND u.handle IS NOT NULL AND u.handle != '' LIMIT 1`
       ).bind(id).first<{ handle: string }>().catch(() => null),
     ])
-    let menu: Array<{ name: string; desc?: string; price?: string; image?: string; hot?: boolean }> | undefined
-    try {
-      const raw = metaMap?.get(Number(id))?.menu
-      if (raw) { const arr = JSON.parse(raw); if (Array.isArray(arr) && arr.length) menu = arr }
-    } catch { /* meta 데이터 invalid — 메뉴 없음 */ }
     const seller_handle = (handleRow?.handle && handleRow.handle.toLowerCase() !== 'me') ? handleRow.handle : null
-    // 🛡️ 2026-07-01 (대표 "1인당 결제 최대 한도" — 셀러가 등록 시 설정): product_supply_meta.max_per_person.
-    //   0/미설정=무제한. 클라 스텝퍼 cap + 서버 주문검증(group-buy.routes)이 함께 사용.
-    const mppRaw = metaMap?.get(Number(id))?.max_per_person
-    const max_per_person = mppRaw != null && Number.isFinite(Number(mppRaw)) && Number(mppRaw) > 0 ? Math.floor(Number(mppRaw)) : null
-    // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): 등록 시 캡처한 place_url (있으면 상세 지도가 직접 연결).
-    const kakao_place_url = normalizeKakaoPlaceUrl(metaMap?.get(Number(id))?.kakao_place_url)
-    // 🗺️ 2026-07-02 (카카오맵 리뷰 게이미피케이션): 레벨 전용 이용권 — 클라 배지/안내 + 서버 주문검증(group-buy.routes)이 함께 사용.
-    const mrlRaw = metaMap?.get(Number(id))?.min_review_level
-    const min_review_level = mrlRaw != null && Number.isFinite(Number(mrlRaw)) && Number(mrlRaw) > 1 ? Math.floor(Number(mrlRaw)) : null
-    const prelaunch = metaMap?.get(Number(id))?.prelaunch === '1'  // 🏷️ 오픈 예정형(상세 배지·구매 CTA 분기)
-    // 🏪 2026-07-05 온누리 가맹 뱃지 (B2G): seller_meta.onnuri_merchant='1' 이면 상세에 additive 동봉.
-    let onnuri_merchant = false
-    try {
-      const sid = Number((product as { seller_id?: number }).seller_id)
-      if (Number.isFinite(sid) && sid > 0) {
-        const { getSellerMeta } = await import('../../../worker/utils/seller-meta')
-        const sm = await getSellerMeta(DB, [sid])
-        onnuri_merchant = sm.get(sid)?.onnuri_merchant === '1'
-      }
-    } catch { /* fail-soft */ }
+    // 🎟️ meta 파생값 묶음(메뉴·한도·실효상한·장소URL·레벨·오픈예정·온누리) — `detail-meta-enrich.ts`
+    const { menu, max_per_person, qty_cap, kakao_place_url, min_review_level, prelaunch, onnuri_merchant } =
+      await buildDetailMeta(DB, id, metaMap, (product as { seller_id?: number }).seller_id)
 
     return c.json({
       success: true,
@@ -645,6 +637,7 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         ...(seller_handle ? { seller_handle } : {}),  // 🔗 셀러 유어샵 handle (있을 때만)
         ...(menu ? { menu } : {}),                // 🍽️ #5: 대표 메뉴 (있을 때만)
         ...(max_per_person ? { max_per_person } : {}),  // 🎯 1인당 구매 한도 (있을 때만)
+        ...(qty_cap ? { qty_cap } : {}),  // 🧾 실효 상한(상품별 ?? 플랫폼 기본) — 스테퍼 cap
         ...(prelaunch ? { prelaunch: true } : {}),  // 🏷️ 오픈 예정형
         ...(kakao_place_url ? { kakao_place_url } : {}),  // 🎯 카카오 장소 페이지 URL (있을 때만)
         ...(min_review_level ? { min_review_level } : {}),  // 🗺️ 동네 리뷰어 레벨 전용 (있을 때만)
@@ -936,23 +929,15 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
         'SELECT v.id, v.status, p.seller_id FROM vouchers v JOIN products p ON p.id = v.product_id WHERE v.code=? AND v.user_id=?'
       ).bind(code, user.id).first<{ id: number; status: string; seller_id: number | null }>().catch(() => null)
       if (!pre) return c.json({ success: false, error: '이용권을 찾을 수 없습니다' }, 404)
-      let redemptionMode: 'scan_only' | 'store_code' | 'self_free' = 'self_free'
-      if (pre.seller_id != null && pre.status === 'unused') {
-        try {
-          const { getRedemptionSettings } = await import('../../../worker/utils/redemption-settings')
-          const s = await getRedemptionSettings(DB, Number(pre.seller_id))
-          redemptionMode = s.mode
-          if (redemptionMode === 'scan_only') {
-            return c.json({ success: false, code: 'SCAN_ONLY_MODE', error: '이 매장은 직원 확인 방식이에요. 직원에게 QR 화면을 보여주세요.' }, 403)
-          }
-          if (redemptionMode === 'store_code') {
-            const input = String(body.store_code || '').trim()
-            if (!input || !s.store_code || input !== s.store_code) {
-              // 🛡️ 자릿수 하드코딩 제거(신규 6자리·기존 4자리 병존) — 이 403 도 rate limit 카운트에 잡힘(브루트포스 소진).
-              return c.json({ success: false, code: 'STORE_CODE_REQUIRED', error: '매장에 비치된 확인코드를 입력해주세요.' }, 403)
-            }
-          }
-        } catch { /* fail-open — 기존 self_free 동작 */ }
+      // 🔒 2026-09-03 (대표 — "우리는 QR 아니면 매장 확인코드야"): 셀프 사용은 **매장에 실제로
+      //   있어야만** 된다. 판정은 `worker/utils/self-redeem-gate` SSOT — 매장 없음/설정 조회 실패/
+      //   scan_only/코드 불일치를 전부 403 으로 닫는다(직원 QR 은 이 게이트 밖이라 그대로 열려 있다).
+      //   ⚠️ 조건은 `status === 'unused'` 하나다 — 예전의 `seller_id != null` 은 **판매자 없는 상품이
+      //   게이트를 통째로 건너뛰게** 만들어 데모 100개 전량을 무방비로 뒀다.
+      if (pre.status === 'unused') {
+        const { checkSelfRedeemGate } = await import('../../../worker/utils/self-redeem-gate')
+        const gate = await checkSelfRedeemGate(DB, pre.seller_id, String(body.store_code || ''))
+        if (!gate.ok) return c.json({ success: false, code: gate.code, error: gate.error }, gate.status)
       }
 
       // 🛡️ 머니룰: claim-before-credit — 미사용+본인 일 때만 원자적 used 선점.
@@ -1011,9 +996,9 @@ export function registerPublicEndpoints(router: Hono<{ Bindings: Env }>): void {
       }
       // claimed === true (방금 사용) 또는 이미 used(멱등 반환)
       const usedAtMs = row.used_at ? Date.parse(row.used_at.replace(' ', 'T') + 'Z') : Date.now()
-      // 🎟️ 셀프취소(60초)는 self_free 모드에서만 — store_code 모드는 2단계 입력이라 오탭이 거의 불가,
-      //   취소 권한은 매장(사장님 스캔 화면)으로. 취소창 0 = "보여주고 나가서 취소" 악용 차단.
-      const cancelableUntil = redemptionMode === 'self_free' ? usedAtMs + 60_000 : usedAtMs
+      // 🎟️ 셀프취소창 0 — 셀프 사용은 이제 매장 확인코드 2단계 입력이라 오탭이 거의 불가하고,
+      //   취소 권한은 매장(사장님 스캔 화면)에 있다. "보여주고 나가서 취소" 악용도 함께 닫힌다.
+      const cancelableUntil = usedAtMs
       return c.json({
         success: true,
         data: {

@@ -47,17 +47,17 @@ export default function SellerForgotPasswordPage() {
       />
       <div className="w-full max-w-md">
         <div className="flex items-center gap-3 mb-8">
-          <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center">
+          <div className="w-9 h-9 rounded-xl bg-brand flex items-center justify-center">
             <span className="text-white text-lg font-bold">U</span>
           </div>
           <span className="text-xl font-bold text-gray-900">Ur Seller</span>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+        <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white border border-gray-200 p-8">
           {sent ? (
             <div className="text-center">
-              <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-4">
-                <CheckCircle2 className="w-6 h-6 text-blue-600" />
+              <div className="w-12 h-12 rounded-full bg-tone-info-bg flex items-center justify-center mx-auto mb-4">
+                <CheckCircle2 className="w-6 h-6 text-gray-700" />
               </div>
               <h2 className="text-xl font-bold text-gray-900 mb-2">{t('seller.forgotPassword.checkEmailTitle')}</h2>
               <p className="text-sm text-gray-500 leading-relaxed mb-6">
@@ -65,7 +65,7 @@ export default function SellerForgotPasswordPage() {
               </p>
               <Link
                 to="/seller/login"
-                className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700"
+                className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-700"
               >
                 <ArrowLeft className="w-4 h-4" /> {t('seller.forgotPassword.backToLogin')}
               </Link>
@@ -78,8 +78,8 @@ export default function SellerForgotPasswordPage() {
               </p>
 
               {error && (
-                <div className="mb-5 px-4 py-3 bg-red-50 border border-red-200 rounded-xl">
-                  <p className="text-sm text-red-700">{error}</p>
+                <div className="mb-5 px-4 py-3 bg-white border border-rule rounded-xl">
+                  <p className="text-sm text-tone-bad">{error}</p>
                 </div>
               )}
 

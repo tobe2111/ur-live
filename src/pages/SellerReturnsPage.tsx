@@ -107,7 +107,7 @@ export default function SellerReturnsPage() {
   return (
     <SellerLayout title="환불 요청">
       <SEO title="환불 요청 - 유어딜" description="내 상품의 환불 요청" noindex />
-      <div className="p-4 max-w-4xl mx-auto">
+      <div className="mx-auto max-w-5xl">
         {/* 🔴 이 화면의 권한 경계를 첫 줄에 말한다 — 승인은 하되 돈은 못 만진다. */}
         <div className="flex gap-2 rounded-[10px] bg-[#F5F2F3] px-3 py-[11px]">
           <AlertCircle className="w-[15px] h-[15px] text-[#8A8288] flex-none mt-px" strokeWidth={2} />
@@ -149,7 +149,7 @@ export default function SellerReturnsPage() {
             {rows.map((r) => {
               const st = STATUS_STYLE[r.status] ?? { label: r.status, cls: 'text-[#8A8288] bg-[#F1EDEF]' }
               return (
-                <li key={r.id} className="bg-white border border-[#EAE5E7] rounded-2xl p-4">
+                <li key={r.id} className="bg-white border border-[#EAE5E7] rounded-[var(--dash-radius,16px)] p-4">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-[11.5px] font-bold text-[#8A8288] tracking-[0.01em]">#{r.order_id}</span>
                     <span className={`shrink-0 text-[10.5px] font-extrabold px-[7px] py-1 rounded-md tracking-[-0.02em] ${st.cls}`}>

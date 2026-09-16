@@ -14,7 +14,7 @@ import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
-import { Building2, Bed, Calendar, ArrowLeft, Plus, Trash2, Save, ChevronLeft, ChevronRight, Ban, Edit } from 'lucide-react'
+import { Building2, Bed, Calendar, ArrowLeft, Plus, Trash2, Save, ChevronLeft, ChevronRight, Ban, Edit, Link2 } from 'lucide-react'
 import { MultiImageUpload } from '@/components/upload/ImageUpload'
 import { formatNumber } from '@/utils/format'
 
@@ -93,7 +93,7 @@ export default function SellerStayDetailPage() {
 
   return (
     <SellerLayout title={info.name}>
-      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-6">
         <DashboardPageHeader
           title={info.name}
           subtitle={`${info.region_sido} ${info.region_sigungu} · 체크인 ${info.check_in_time} / 체크아웃 ${info.check_out_time}`}
@@ -124,7 +124,7 @@ export default function SellerStayDetailPage() {
               type="button"
               onClick={() => setTab(tb.key)}
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
-                tab === tb.key ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                tab === tb.key ? 'border-brand text-brand-text' : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
               {tb.icon} {tb.label}
@@ -244,7 +244,7 @@ function RoomsTab({ productId, rooms, onChanged }: { productId: number; rooms: S
                   <button
                     type="button"
                     onClick={() => { setEditing(r); setShowForm(true) }}
-                    className="p-1.5 rounded-lg text-gray-400 hover:bg-blue-50 hover:text-blue-600"
+                    className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700"
                   ><Edit className="w-4 h-4" /></button>
                   <RoomDeleteButton productId={productId} roomId={r.id} onDeleted={onChanged} />
                 </div>
@@ -254,13 +254,13 @@ function RoomsTab({ productId, rooms, onChanged }: { productId: number; rooms: S
                   <p className="text-gray-500">평일</p>
                   <p className="font-bold text-gray-900">₩{formatNumber(r.base_price_weekday)}</p>
                 </div>
-                <div className="p-2 bg-amber-50 rounded">
-                  <p className="text-amber-700">주말</p>
+                <div className="p-2 border border-rule bg-white rounded">
+                  <p className="text-tone-warn">주말</p>
                   <p className="font-bold text-gray-900">₩{formatNumber(r.base_price_weekend)}</p>
                 </div>
               </div>
               {!r.is_active && (
-                <p className="text-[10px] text-red-600 mt-2 font-semibold">⊘ 비활성</p>
+                <p className="text-[10px] text-tone-bad mt-2 font-semibold">⊘ 비활성</p>
               )}
             </div>
           ))}
@@ -298,7 +298,7 @@ function RoomDeleteButton({ productId, roomId, onDeleted }: { productId: number;
       type="button"
       onClick={del}
       disabled={busy}
-      className="p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+      className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-tone-bad disabled:opacity-50"
     ><Trash2 className="w-4 h-4" /></button>
   )
 }
@@ -352,7 +352,7 @@ function RoomFormModal({ productId, room, onClose, onSaved }: {
 
   return (
     <div className="fixed inset-0 z-[10500] bg-black/50 backdrop-blur-sm p-4 flex items-start justify-center overflow-y-auto" onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-2xl my-8 p-6" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white rounded-[var(--dash-radius,16px)] w-full max-w-2xl my-8 p-6" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-lg font-bold text-gray-900 mb-4">{room ? '객실 수정' : '객실 추가'}</h3>
         <div className="space-y-3">
           <Inp label="객실명 *" value={f.name} onChange={(v) => setF({ ...f, name: v as string })} placeholder="스탠다드 더블" />
@@ -381,7 +381,7 @@ function RoomFormModal({ productId, room, onClose, onSaved }: {
           />
         </div>
         <div className="flex gap-2 mt-5">
-          <button type="button" onClick={onClose} disabled={saving} className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 disabled:opacity-50">취소</button>
+          <button type="button" onClick={onClose} disabled={saving} className="ur-btn ur-btn-md ur-btn-secondary flex-1">취소</button>
           <button type="button" onClick={submit} disabled={saving} className="ur-btn ur-btn-md ur-btn-primary flex-1 disabled:opacity-50">
             {saving ? '저장 중...' : (room ? '수정' : '추가')}
           </button>
@@ -516,7 +516,7 @@ function CalendarTab({ productId, rooms, calendar, onChanged }: {
             type="button"
             onClick={() => { setActiveRoomId(r.id); setEdits({}) }}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap ${
-              activeRoomId === r.id ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'
+              activeRoomId === r.id ? 'bg-brand-tint text-brand-text' : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'
             }`}
           >
             {r.name} (재고 {r.total_inventory})
@@ -531,7 +531,7 @@ function CalendarTab({ productId, rooms, calendar, onChanged }: {
         </button>
         <p className="text-sm font-bold text-gray-900">
           {baseMonth.getFullYear()}년 {baseMonth.getMonth() + 1}월
-          {Object.keys(edits).length > 0 && <span className="text-xs text-blue-600 ml-2">· 미저장 {Object.keys(edits).length}일</span>}
+          {Object.keys(edits).length > 0 && <span className="text-xs text-gray-700 ml-2">· 미저장 {Object.keys(edits).length}일</span>}
         </p>
         <button type="button" onClick={() => setMonthOffset((o) => o + 1)} className="p-1.5 rounded hover:bg-gray-100">
           <ChevronRight className="w-4 h-4" />
@@ -539,7 +539,7 @@ function CalendarTab({ productId, rooms, calendar, onChanged }: {
       </div>
 
       <div className="flex gap-2">
-        <button type="button" onClick={applyBulkInventory} className="text-xs px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+        <button type="button" onClick={applyBulkInventory} className="ur-btn ur-btn-sm ur-btn-secondary">
           이번 달 일괄 재고 적용
         </button>
         <button type="button" onClick={saveBulk} disabled={saving || Object.keys(edits).length === 0} className="ur-btn ur-btn-sm ur-btn-primary ml-auto disabled:opacity-50 inline-flex items-center gap-1">
@@ -590,16 +590,16 @@ function CalendarTab({ productId, rooms, calendar, onChanged }: {
                 }}
                 className={`aspect-[3/4] rounded-lg text-left p-1 border transition-all ${
                   past ? 'bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed' :
-                  eff.is_blocked ? 'bg-red-50 border-red-200 hover:bg-red-100' :
-                  eff.hasEdit ? 'bg-blue-50 border-blue-300 hover:bg-blue-100' :
-                  'bg-white border-gray-200 hover:border-blue-300'
+                  eff.is_blocked ? 'bg-white border-rule hover:bg-gray-100' :
+                  eff.hasEdit ? 'bg-white border-rule hover:bg-gray-100' :
+                  'bg-white border-gray-200 hover:border-rule'
                 }`}
               >
-                <p className={`text-[10px] font-bold ${isWeekend && !past && !eff.is_blocked ? 'text-amber-600' : ''}`}>{cell.getDate()}</p>
+                <p className={`text-[10px] font-bold ${isWeekend && !past && !eff.is_blocked ? 'text-tone-warn' : ''}`}>{cell.getDate()}</p>
                 {!past && (
                   <>
                     {eff.is_blocked ? (
-                      <div className="text-[8px] font-bold text-red-600 mt-1">차단</div>
+                      <div className="text-[8px] font-bold text-tone-bad mt-1">차단</div>
                     ) : (
                       <>
                         <p className="text-[8px] text-gray-600 mt-0.5">잔 {eff.available_count}</p>
@@ -630,7 +630,7 @@ function ShareLinkButton({ productId }: { productId: number }) {
       const url = r.data?.data?.url
       if (!url) { toast.error('링크 생성 실패'); return }
       await navigator.clipboard.writeText(url)
-      toast.success('🔗 소개 링크 복사 완료 — 소개해 줄 분에게 공유')
+      toast.success('소개 링크를 복사했어요. 소개해 줄 분에게 공유하세요')
     } catch {
       toast.error('링크 복사 실패')
     }
@@ -639,10 +639,10 @@ function ShareLinkButton({ productId }: { productId: number }) {
     <button
       type="button"
       onClick={copyLink}
-      className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-pink-50 text-pink-700 text-xs font-semibold rounded-lg hover:bg-pink-100"
+      className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-brand-tint text-brand-text text-xs font-semibold rounded-lg hover:bg-brand-tint"
       title="이 숙소의 소개 링크 복사"
     >
-      🔗 referral 링크
+      <Link2 className="h-3.5 w-3.5" /> 소개 링크
     </button>
   )
 }

@@ -80,6 +80,59 @@ app.get('/my-stores', async (c) => {
   }
 })
 
+// ── GET /my-stores/summary — 🧮 B2 "합계 + 매장별" (2026-09-15 대표 확정) ──────────────
+//   사람 기준: 앉을 수 있는 매장(active|approved) 전부의 **오늘**(KST) 매출·주문·처리 대기를 한 번에.
+//   읽기 전용 집계. 권한은 listOperableStores 가 이미 판정한 좌석 집합 안에서만 센다(좌석 토큰 발급과 같은 근거).
+//   ⚠️ 판정 규칙은 `/dashboard/stats`(seller-settlements.routes)와 **같아야** 한다 — PAID/DONE · DATE(created_at,'+9 hours').
+//   처리 대기 = 결제됐는데 아직 확인 전(useSellerHome AWAITING_CONFIRM 과 같은 집합), 최근 30일.
+app.get('/my-stores/summary', async (c) => {
+  try {
+    const userId = await resolveActorUserId(c)
+    if (!userId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+    const stores = (await listOperableStores(c.env.DB, userId))
+      .filter(s => s.status === 'active' || s.status === 'approved')
+      .slice(0, 20)
+    const currentSellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
+    if (stores.length === 0) {
+      return c.json({ success: true, data: { stores: [], totals: { today_revenue: 0, today_orders: 0, pending: 0 }, current_seller_id: currentSellerId ?? null } })
+    }
+    const ids = stores.map(s => s.seller_id)
+    const marks = ids.map(() => '?').join(',')
+    const todayKst = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10)
+    const [today, pending] = await Promise.all([
+      c.env.DB.prepare(
+        `SELECT seller_id, COUNT(*) AS n, COALESCE(SUM(total_amount), 0) AS rev
+           FROM orders
+          WHERE seller_id IN (${marks}) AND status IN ('PAID','DONE') AND DATE(created_at, '+9 hours') = ?
+          GROUP BY seller_id`
+      ).bind(...ids, todayKst).all<{ seller_id: number; n: number; rev: number }>().catch(() => ({ results: [] as { seller_id: number; n: number; rev: number }[] })),
+      c.env.DB.prepare(
+        `SELECT seller_id, COUNT(*) AS n
+           FROM orders
+          WHERE seller_id IN (${marks}) AND status IN ('PAID','DONE','PAY_COMPLETE') AND created_at >= datetime('now', '-30 days')
+          GROUP BY seller_id`
+      ).bind(...ids).all<{ seller_id: number; n: number }>().catch(() => ({ results: [] as { seller_id: number; n: number }[] })),
+    ])
+    const tMap = new Map((today.results || []).map(r => [Number(r.seller_id), r]))
+    const pMap = new Map((pending.results || []).map(r => [Number(r.seller_id), Number(r.n) || 0]))
+    const rows = stores.map(s => {
+      const t = tMap.get(s.seller_id)
+      return {
+        seller_id: s.seller_id,
+        name: s.business_name || s.name || `매장 #${s.seller_id}`,
+        role: s.role,
+        today_revenue: Number(t?.rev) || 0,
+        today_orders: Number(t?.n) || 0,
+        pending: pMap.get(s.seller_id) || 0,
+      }
+    })
+    const totals = rows.reduce((a, r) => ({ today_revenue: a.today_revenue + r.today_revenue, today_orders: a.today_orders + r.today_orders, pending: a.pending + r.pending }), { today_revenue: 0, today_orders: 0, pending: 0 })
+    return c.json({ success: true, data: { stores: rows, totals, current_seller_id: currentSellerId ?? null } })
+  } catch (err) {
+    return safeError(c, err, '매장 요약을 불러오지 못했습니다', '[seller-operators]')
+  }
+})
+
 // ── POST /stores/:sellerId/token — 🔐 매장 전환 (보안 급소) ─────────────────
 app.post('/stores/:sellerId/token', rateLimit({ action: 'seller_store_switch', max: 30, windowSec: 300 }), async (c) => {
   try {
@@ -124,6 +177,19 @@ app.post('/stores/:sellerId/token', rateLimit({ action: 'seller_store_switch', m
     //   안 그러면 시트가 ('seller', 매장id) 라 운영자가 들어가는 순간 **사장님이 튕긴다**.
     //   소유자 본인은 기존 시트를 그대로 써야 기존 단일 세션 규칙이 유지된다.
     if (access.source === 'grant') payload.operator_user_id = userId
+    /**
+     * 🔑 2026-09-09: **역할을 토큰에 함께 싣는다.**
+     *
+     * 🩸 그 전엔 `operator_user_id` 유무 하나로 소유자를 판정했는데(`store-actor.ts`),
+     *   `/store/new` 는 설계상 `linked_user_id` 를 비워 두므로 **직접(direct) 등록한 진짜 사장님도
+     *   `source:'grant'`** 로 들어온다. 그래서 `role` 이 `'owner'` 인데도 운영자로 오판됐고,
+     *   소유자 전용 게이트가 전부 닫혔다 — 특히 **정산 계좌를 못 넣어 돈을 아예 못 받는다.**
+     *   (라이브에 직접 등록 매장이 아직 0이라 안 터졌을 뿐, 다음 첫 사장님이 바로 밟는다.)
+     *
+     * ⚠️ `operator_user_id` 는 **그대로 둔다** — 그건 소유 판정이 아니라 *시트 분리*용이고,
+     *   빼면 운영자가 들어갈 때 사장님이 튕긴다(위 주석의 사고).
+     */
+    if (access.role) payload.store_role = access.role
 
     const token = await jwtSign(payload, c.env.JWT_SECRET)
     const seat = access.source === 'grant'
@@ -219,6 +285,81 @@ app.post('/operators/:userId/revoke', async (c) => {
     return c.json({ success: true, data: { revoked: r.changed } })
   } catch (err) {
     return safeError(c, err, '운영자 회수 중 오류가 발생했습니다', '[seller-operators]')
+  }
+})
+
+// ── GET /operating-summary — 내가 운영하는 매장 요약 ──────────────────────
+/**
+ * 🏪 2026-09-04 (대표 확정 "운영 매장 요약 대시보드") — 중개사가 **매장에 청구할 근거**를 보는 화면.
+ *
+ * ## 왜 필요한가
+ * 중개사 보수는 유어딜이 주지 않는다. 매장 몫(95%)에서 매장과 직접 정한다. 그러면 "얼마를 받을지"를
+ * 정할 근거가 필요한데, 지금은 매장을 하나씩 전환해 들어가 보는 수밖에 없었다.
+ *
+ * ## 🔴 정직하게 보여줄 것 — 이건 "내 성과"가 아니다
+ * 운영자별 매출 귀속은 추적하지 않는다. 그래서 **매장의 총액**을 주되, 위임받은 매장은
+ * `revenue_since_grant`(운영 시작 이후)를 함께 준다 — 그 구간이 그나마 방어 가능한 청구 근거다.
+ * 화면은 이 차이를 **문장으로** 밝혀야 한다. "내가 만든 매출"이라고 쓰면 거짓말이 된다.
+ *
+ * 스코프: `listOperableStores` 가 이미 이 유저가 운영 가능한 매장으로 좁힌다(남의 매장 안 샌다).
+ */
+app.get('/operating-summary', async (c) => {
+  try {
+    const userId = await resolveActorUserId(c)
+    if (!userId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+
+    const stores = await listOperableStores(c.env.DB, userId)
+    if (stores.length === 0) return c.json({ success: true, data: [] })
+
+    // 위임 매장의 운영 시작일 — 청구 구간의 시작점.
+    const grants = new Map<number, string>()
+    try {
+      const g = await c.env.DB.prepare(
+        `SELECT seller_id, granted_at FROM seller_operators
+          WHERE user_id = ? AND revoked_at IS NULL`
+      ).bind(userId).all<{ seller_id: number; granted_at: string | null }>()
+      for (const r of g.results || []) if (r.granted_at) grants.set(r.seller_id, r.granted_at)
+    } catch { /* 테이블 없으면 구간 없이 총액만 */ }
+
+    const out = []
+    for (const st of stores) {
+      const since = grants.get(st.seller_id) || null
+      // ⚠️ 확정된 주문만 센다 — PENDING 을 매출로 보여주면 청구 근거가 부풀려진다.
+      const PAID = "status IN ('PAID','DONE','PREPARING','SHIPPING','DELIVERED')"
+      const agg = await c.env.DB.prepare(
+        `SELECT COUNT(*) AS orders, COALESCE(SUM(total_amount), 0) AS revenue
+           FROM orders WHERE seller_id = ? AND ${PAID}`
+      ).bind(st.seller_id).first<{ orders: number; revenue: number }>().catch(() => null)
+      const sinceAgg = since
+        ? await c.env.DB.prepare(
+            `SELECT COUNT(*) AS orders, COALESCE(SUM(total_amount), 0) AS revenue
+               FROM orders WHERE seller_id = ? AND ${PAID} AND created_at >= ?`
+          ).bind(st.seller_id, since).first<{ orders: number; revenue: number }>().catch(() => null)
+        : null
+      const prods = await c.env.DB.prepare(
+        'SELECT COUNT(*) AS n FROM products WHERE seller_id = ? AND is_active = 1'
+      ).bind(st.seller_id).first<{ n: number }>().catch(() => null)
+
+      out.push({
+        seller_id: st.seller_id,
+        business_name: st.business_name || st.name,
+        username: st.username,
+        status: st.status,
+        role: st.role,
+        source: st.source,
+        granted_at: since,
+        products_active: Number(prods?.n) || 0,
+        orders_total: Number(agg?.orders) || 0,
+        revenue_total: Number(agg?.revenue) || 0,
+        orders_since_grant: sinceAgg ? Number(sinceAgg.orders) || 0 : null,
+        revenue_since_grant: sinceAgg ? Number(sinceAgg.revenue) || 0 : null,
+      })
+    }
+    // 위임 매장을 위로 — 이 화면을 여는 이유가 그쪽이다.
+    out.sort((a, b) => (a.source === b.source ? b.revenue_total - a.revenue_total : a.source === 'grant' ? -1 : 1))
+    return c.json({ success: true, data: out })
+  } catch (err) {
+    return safeError(c, err, '운영 매장 요약을 불러오지 못했습니다', '[seller-operators]')
   }
 })
 

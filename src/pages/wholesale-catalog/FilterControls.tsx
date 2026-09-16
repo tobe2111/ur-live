@@ -45,7 +45,7 @@ export default function FilterControls({ sort, setSort, loggedIn, inStock, setIn
             </button>
             {/* 가격대 칩 — 공급가는 로그인 시에만 보이므로 비로그인엔 숨김 */}
             {loggedIn && (
-            <div className="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
               {PRICE_BANDS.map(b => {
                 const on = priceBand === b.id
                 return (

@@ -75,9 +75,44 @@ function geocode(query: string): Promise<LL | null> {
   })
 }
 
+/** 핀들이 다 보이도록 지도를 맞춘다. 핀이 하나면 그 자리로 동네 줌. */
+export function fitToPins(map: any, pins: LL[], singleLevel = 5): boolean {
+  const kakao = (window as unknown as { kakao?: any }).kakao
+  const coords = (pins || []).filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng))
+  if (!map || !kakao?.maps || coords.length === 0) return false
+  if (coords.length === 1) {
+    map.setCenter(new kakao.maps.LatLng(coords[0].lat, coords[0].lng))
+    map.setLevel(singleLevel)
+    return true
+  }
+  const b = new kakao.maps.LatLngBounds()
+  for (const p of coords) b.extend(new kakao.maps.LatLng(p.lat, p.lng))
+  map.setBounds(b)
+  return true
+}
+
+/**
+ * 🔴 2026-09-03 (대표 신고 — **"검색을 했을 때 무관한 지도 위치가 떠. 심각한 문제야"**)
+ *
+ *   실측: `커트` 를 치면 결과 딜 2건은 **동탄**인데 지도는 **인천 부평**으로 갔다. 원인은
+ *   `panToPlaceQuery` 가 검색어를 **무조건 지명으로 지오코딩**했기 때문이다 — 카카오 장소검색이
+ *   "커트"에 걸리는 아무 상호나 하나 물어다 주고, 지도는 거기로 날아간다. 그러면 화면 왼쪽 목록과
+ *   오른쪽 지도가 **서로 다른 도시**를 가리킨다.
+ *
+ *   ⚠️ 이 파일 안에 이미 올바른 규칙이 있었다 — `panToRegionAccurate` 는 **딜 핀 먼저, 지오코딩은
+ *   폴백**이다(그게 "가장 정확"하다고 주석이 말한다). 검색 경로만 그 1단계를 건너뛰고 있었다.
+ *   ⇒ 지도는 **검색 결과를 따라간다.** 결과가 하나도 없을 때만 지명으로 해석한다
+ *     (그때는 "부산" 같은 지역어일 가능성이 높고, 어차피 보여 줄 딜이 없다).
+ */
+export async function panToSearchResults(map: any, query: string, pins: LL[]): Promise<boolean> {
+  if (fitToPins(map, pins)) return true
+  return panToPlaceQuery(map, query)
+}
+
 /**
  * 🔎 2026-07-20 (대표 — "지도에서 검색하면 지도에서 계속 나와야"): 자유 검색어(예 "부산", "해운대",
  *   "강남역")를 지오코딩해 지도를 그 위치로 이동. 지역/장소명이면 이동, 매칭 실패 시 no-op(딜 텍스트 필터만).
+ *   ⚠️ **직접 부르지 말 것** — 검색 경로는 `panToSearchResults`(결과 우선)를 쓴다. 이 함수는 그 폴백이다.
  *   @returns 이동했으면 true(지역/장소로 해석됨), 실패 시 false.
  */
 export async function panToPlaceQuery(map: any, query: string): Promise<boolean> {
@@ -109,19 +144,8 @@ export async function panToRegionAccurate(
   const kakao = (window as unknown as { kakao?: any }).kakao
   if (!map || !kakao?.maps || !regionKey) return
 
-  // 1) 매칭 딜 핀에 fit — 실제 딜 위치라 가장 정확.
-  const coordPins = pins.filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng))
-  if (coordPins.length >= 2) {
-    const b = new kakao.maps.LatLngBounds()
-    for (const p of coordPins) b.extend(new kakao.maps.LatLng(p.lat, p.lng))
-    map.setBounds(b)
-    return
-  }
-  if (coordPins.length === 1) {
-    map.setCenter(new kakao.maps.LatLng(coordPins[0].lat, coordPins[0].lng))
-    map.setLevel(districtKey ? 5 : 7)
-    return
-  }
+  // 1) 매칭 딜 핀에 fit — 실제 딜 위치라 가장 정확. (검색 경로도 같은 헬퍼를 쓴다.)
+  if (fitToPins(map, pins, districtKey ? 5 : 7)) return
 
   // 2) 딜 없음 → 지오코딩으로 지명 중심 이동.
   const geo = await geocode(geocoderQuery(regionKey, districtKey))

@@ -8,6 +8,7 @@ import { toast } from '@/hooks/useToast'
 import { hasConsumerSession } from '@/utils/auth'
 import { Eye, EyeOff } from 'lucide-react'
 import BrandLoader from '@/components/brand/BrandLoader'
+import UrDealLogo from '@/components/brand/UrDealLogo'
 
 export default function RegisterPage() {
   const { t } = useTranslation()
@@ -119,17 +120,17 @@ export default function RegisterPage() {
 
         {/* Logo */}
         <div className="text-center mb-12">
-          <h1 className="text-[32px] font-bold tracking-[0.08em] text-[#111]">
-            UR LIVE
-          </h1>
-          <p className="text-[14px] text-[#999] mt-3 font-light">
+          {/* 🏷️ 2026-09-03 (QA 1라운드): 폐기된 브랜드명 "UR LIVE" 가 소비자 화면에 이 한 곳만 남아 있었다.
+              로그인 화면과 같은 워드마크 SSOT(UrDealLogo)로 — 문자열을 다시 박으면 또 갈린다. */}
+          <div className="flex justify-center"><UrDealLogo size={34} /></div>
+          <p className="text-[14px] text-gray-500 dark:text-gray-400 mt-3 font-light">
             {t('register.title', { defaultValue: '회원가입' })}
           </p>
         </div>
 
         {/* Error Message */}
         {error && (
-          <div className="mb-5 px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-[13px] text-red-600 text-center">
+          <div className="mb-5 px-4 py-3 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/40 rounded-xl text-[13px] text-red-600 dark:text-red-400 text-center">
             {error}
           </div>
         )}
@@ -138,7 +139,7 @@ export default function RegisterPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Name */}
           <div>
-            <label className="block text-[12px] font-medium text-[#555] mb-1.5">
+            <label className="block text-[12px] font-medium text-gray-600 dark:text-gray-400 mb-1.5">
               {t('register.nameLabel', { defaultValue: '이름' })}
             </label>
             <input
@@ -147,13 +148,13 @@ export default function RegisterPage() {
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder={t('register.namePlaceholder', { defaultValue: '홍길동' })}
               required
-              className="w-full h-[48px] px-4 border border-[#E0E0E0] rounded-xl text-[14px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
+              className="w-full h-[48px] px-4 border border-line rounded-xl bg-surface text-[14px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-gray-400 placeholder:dark:text-gray-500"
             />
           </div>
 
           {/* Email */}
           <div>
-            <label className="block text-[12px] font-medium text-[#555] mb-1.5">
+            <label className="block text-[12px] font-medium text-gray-600 dark:text-gray-400 mb-1.5">
               {t('register.emailLabel', { defaultValue: '이메일' })}
             </label>
             <input
@@ -163,13 +164,13 @@ export default function RegisterPage() {
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               placeholder="example@email.com"
               required
-              className="w-full h-[48px] px-4 border border-[#E0E0E0] rounded-xl text-[14px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
+              className="w-full h-[48px] px-4 border border-line rounded-xl bg-surface text-[14px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-gray-400 placeholder:dark:text-gray-500"
             />
           </div>
 
           {/* Password */}
           <div>
-            <label className="block text-[12px] font-medium text-[#555] mb-1.5">
+            <label className="block text-[12px] font-medium text-gray-600 dark:text-gray-400 mb-1.5">
               {t('register.passwordLabel', { defaultValue: '비밀번호' })}
             </label>
             <div className="relative">
@@ -181,13 +182,13 @@ export default function RegisterPage() {
                 placeholder={t('register.passwordPlaceholder', { defaultValue: '8자 이상 입력해주세요' })}
                 required
                 minLength={8}
-                className="w-full h-[48px] px-4 pr-12 border border-[#E0E0E0] rounded-xl text-[14px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
+                className="w-full h-[48px] px-4 pr-12 border border-line rounded-xl bg-surface text-[14px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-gray-400 placeholder:dark:text-gray-500"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 aria-label={showPassword ? t('register.hidePassword', { defaultValue: '비밀번호 숨기기' }) : t('register.showPassword', { defaultValue: '비밀번호 표시' })}
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-[#bbb] hover:text-[#555]"
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 hover:dark:text-gray-400"
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
@@ -196,7 +197,7 @@ export default function RegisterPage() {
 
           {/* Confirm Password */}
           <div>
-            <label className="block text-[12px] font-medium text-[#555] mb-1.5">
+            <label className="block text-[12px] font-medium text-gray-600 dark:text-gray-400 mb-1.5">
               {t('register.confirmPasswordLabel', { defaultValue: '비밀번호 확인' })}
             </label>
             <div className="relative">
@@ -208,13 +209,13 @@ export default function RegisterPage() {
                 placeholder={t('register.confirmPasswordPlaceholder', { defaultValue: '비밀번호를 다시 입력해주세요' })}
                 required
                 minLength={8}
-                className="w-full h-[48px] px-4 pr-12 border border-[#E0E0E0] rounded-xl text-[14px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
+                className="w-full h-[48px] px-4 pr-12 border border-line rounded-xl bg-surface text-[14px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-gray-400 placeholder:dark:text-gray-500"
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 aria-label={showConfirmPassword ? t('register.hideConfirmPassword', { defaultValue: '비밀번호 확인 숨기기' }) : t('register.showConfirmPassword', { defaultValue: '비밀번호 확인 표시' })}
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-[#bbb] hover:text-[#555]"
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 hover:dark:text-gray-400"
               >
                 {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
@@ -230,11 +231,11 @@ export default function RegisterPage() {
                 onChange={(e) => setTermsAgreed(e.target.checked)}
                 className="mt-0.5 w-4 h-4 rounded border-[#E0E0E0] text-[#111] focus:ring-[#111] cursor-pointer accent-[#111]"
               />
-              <span className="text-[12px] text-[#888] leading-relaxed group-hover:text-[#555] transition-colors">
-                <span className="font-medium text-[#555]">{t('register.requiredLabel', { defaultValue: '[필수]' })}</span>{' '}
+              <span className="text-[12px] text-gray-500 dark:text-gray-400 leading-relaxed group-hover:text-gray-600 group-hover:dark:text-gray-400 transition-colors">
+                <span className="font-medium text-gray-600 dark:text-gray-400">{t('register.requiredLabel', { defaultValue: '[필수]' })}</span>{' '}
                 <Link
                   to="/terms"
-                  className="text-[#111] underline underline-offset-4 decoration-1 hover:text-[#555]"
+                  className="text-gray-900 dark:text-white underline underline-offset-4 decoration-1 hover:text-gray-600 hover:dark:text-gray-400"
                   target="_blank" rel="noopener noreferrer"
                 >
                   {t('register.agreeTerms', { defaultValue: '서비스 이용약관' })}
@@ -250,11 +251,11 @@ export default function RegisterPage() {
                 onChange={(e) => setPrivacyAgreed(e.target.checked)}
                 className="mt-0.5 w-4 h-4 rounded border-[#E0E0E0] text-[#111] focus:ring-[#111] cursor-pointer accent-[#111]"
               />
-              <span className="text-[12px] text-[#888] leading-relaxed group-hover:text-[#555] transition-colors">
-                <span className="font-medium text-[#555]">{t('register.requiredLabel', { defaultValue: '[필수]' })}</span>{' '}
+              <span className="text-[12px] text-gray-500 dark:text-gray-400 leading-relaxed group-hover:text-gray-600 group-hover:dark:text-gray-400 transition-colors">
+                <span className="font-medium text-gray-600 dark:text-gray-400">{t('register.requiredLabel', { defaultValue: '[필수]' })}</span>{' '}
                 <Link
                   to="/privacy"
-                  className="text-[#111] underline underline-offset-4 decoration-1 hover:text-[#555]"
+                  className="text-gray-900 dark:text-white underline underline-offset-4 decoration-1 hover:text-gray-600 hover:dark:text-gray-400"
                   target="_blank" rel="noopener noreferrer"
                 >
                   {t('register.agreePrivacy', { defaultValue: '개인정보처리방침' })}
@@ -270,8 +271,8 @@ export default function RegisterPage() {
                 onChange={(e) => setAgeConfirmed(e.target.checked)}
                 className="mt-0.5 w-4 h-4 rounded border-[#E0E0E0] text-[#111] focus:ring-[#111] cursor-pointer accent-[#111]"
               />
-              <span className="text-[12px] text-[#888] leading-relaxed group-hover:text-[#555] transition-colors">
-                <span className="font-medium text-[#555]">{t('register.requiredLabel', { defaultValue: '[필수]' })}</span>{' '}
+              <span className="text-[12px] text-gray-500 dark:text-gray-400 leading-relaxed group-hover:text-gray-600 group-hover:dark:text-gray-400 transition-colors">
+                <span className="font-medium text-gray-600 dark:text-gray-400">{t('register.requiredLabel', { defaultValue: '[필수]' })}</span>{' '}
                 {t('register.agreeAge', { defaultValue: '본인은 만 14세 이상입니다.' })}
               </span>
             </label>
@@ -283,8 +284,8 @@ export default function RegisterPage() {
                 onChange={(e) => setMarketingAgreed(e.target.checked)}
                 className="mt-0.5 w-4 h-4 rounded border-[#E0E0E0] text-[#111] focus:ring-[#111] cursor-pointer accent-[#111]"
               />
-              <span className="text-[12px] text-[#888] leading-relaxed group-hover:text-[#555] transition-colors">
-                <span className="text-[#aaa]">{t('register.optionalLabel', { defaultValue: '[선택]' })}</span>{' '}
+              <span className="text-[12px] text-gray-500 dark:text-gray-400 leading-relaxed group-hover:text-gray-600 group-hover:dark:text-gray-400 transition-colors">
+                <span className="text-gray-400 dark:text-gray-500">{t('register.optionalLabel', { defaultValue: '[선택]' })}</span>{' '}
                 {t('register.agreeMarketing', { defaultValue: '마케팅 정보 수신에 동의합니다.' })}
               </span>
             </label>
@@ -301,11 +302,11 @@ export default function RegisterPage() {
         </form>
 
         {/* Login Link */}
-        <div className="text-center text-[13px] text-[#aaa] mt-8 font-light">
+        <div className="text-center text-[13px] text-gray-400 dark:text-gray-500 mt-8 font-light">
           {t('register.alreadyHaveAccount', { defaultValue: '이미 계정이 있으신가요?' })}{' '}
           <Link
             to="/login"
-            className="text-[#111] font-medium hover:underline underline-offset-4 decoration-1"
+            className="text-gray-900 dark:text-white font-medium hover:underline underline-offset-4 decoration-1"
           >
             {t('register.loginLink', { defaultValue: '로그인' })}
           </Link>

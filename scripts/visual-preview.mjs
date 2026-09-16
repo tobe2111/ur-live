@@ -122,6 +122,8 @@ const MIME = {
 function shell() {
   let html = fs.readFileSync(path.join(DIST, 'index.html'), 'utf8')
   const seed = `<script type="application/json" id="__SSR_INITIAL_CURATOR__">${JSON.stringify(CURATOR_SEED)}</script>`
+    // MAIN_SEED 는 아래(DEALS 뒤)에서 정의된다 — shell() 은 서버가 뜬 뒤 요청 시점에 불리므로 안전.
+    + (MAIN_SEED ? `<script type="application/json" id="__SSR_INITIAL_MAIN__">${JSON.stringify(MAIN_SEED)}</script>` : '')
   html = html.replace('</head>', `${seed}\n</head>`)
   // prerender 된 #root 껍데기는 비운다 — 워커의 needsRootBlank 와 같은 효과
   html = html.replace(/<div id="root">[\s\S]*?<\/div>\s*(?=<script)/, '<div id="root"></div>\n')
@@ -165,6 +167,25 @@ const DEALS = DEAL_TITLES.map(([name, sub, was, now], i) => ({
   slug: `sample-${i}`,
   seller_id: 1,
 }))
+
+/**
+ * 🎬 2026-09-08 유어쇼츠 레일 시드 — `/api/urshorts`.
+ *   이게 없으면 레일이 `items.length === 0` 으로 **통째로 안 그려져서**(빈 관측 div 만 남는다)
+ *   레일 디자인을 화면으로 판단할 방법이 아예 없었다. 위 브랜드 스트립과 같은 클래스의 함정이다.
+ *   ⚠️ **라이브의 실제 모습을 섞는다** — 지금 올라간 3편은 이용권이 안 붙어 있어
+ *      `product_id·store_name·price` 가 전부 null 이고 글자 띠가 안 그려진다. 붙은 카드만
+ *      넣고 보면 "정보 없는 카드"의 생김새를 못 본다.
+ */
+const SHORTS_SEED = [
+  { id: 1, video_id: 'JLyX_qcuEig', thumb_url: null, title: null, channel: null, duration_sec: null,
+    product_id: null, product_name: null, store_name: null, price: null, original_price: null },
+  { id: 2, video_id: 'uSPgWrjU3-4', thumb_url: null, title: '수제 돈가스', channel: '맛집탐방',
+    duration_sec: 47, product_id: 2888, product_name: '치즈돈가스 2인 세트', store_name: '동탄 왕돈가스',
+    price: 12900, original_price: 19000, discount_rate: 32 },
+  { id: 3, video_id: 'Q7WEeklpYEE', thumb_url: null, title: null, channel: null, duration_sec: 18,
+    product_id: 2901, product_name: '아메리카노 2잔', store_name: '카페 온', price: 4500,
+    original_price: 7000, discount_rate: 35 },
+]
 
 /**
  * 🎫 2026-08-31 `--deals` 에 교환권 **카테고리 칩 + 브랜드 스트립**을 추가한다.
@@ -282,6 +303,34 @@ const CART_SEED = (() => {
   return { pickup, shipping, dealOnly }
 })()
 
+/**
+ * 🖼️ 2026-09-02 `--hero=<사진 파일>` — **PC 홈 히어로에 사진이 실린 상태**를 본다.
+ *   히어로 사진은 API 가 아니라 `__SSR_INITIAL_MAIN__` 시드에서 **동기 1회** 고른다(`pickHeroPhoto`).
+ *   그래서 `--deals` 로 API 만 채워도 히어로는 빈 색면이다 — 라이브에서 D1 이 죽어 시드가 빠졌을 때와
+ *   똑같은 그림이라, 그걸 보고 "사진이 없어졌다" 고 오진할 수 있다(2026-09-02 실제로 그 질문이 왔다).
+ *   외부 이미지 호스트는 이 하네스가 차단하므로 파일을 data: URL 로 박는다(`cfImage` 는 data: 를 그대로 둔다).
+ */
+const HERO_FILE = typeof args.hero === 'string' ? args.hero : ''
+const MAIN_SEED = (() => {
+  if (!HERO_FILE) return null
+  const buf = fs.readFileSync(HERO_FILE)
+  const mime = MIME[path.extname(HERO_FILE)] || 'image/jpeg'
+  const data = `data:${mime};base64,${buf.toString('base64')}`
+  return { success: true, data: DEALS.map((d, i) => (i === 0 ? { ...d, image_url: data } : d)) }
+})()
+
+/**
+ * 📊 `--analytics` — 셀러 매출 분석(안 C) 시드.
+ *   ⚠️ 플래그가 없으면 기본 폴백(`data: []`)이 떨어져 **"한 번도 판 적 없음"** 화면이 뜬다.
+ *      그게 우연이 아니라 의도다 — 안 C 의 절반은 그 빈 화면이라 기본으로 보이는 편이 낫다.
+ *   계약 출처: `/api/seller/analytics/chart/revenue`(RevenueDataPoint[]) · `/analytics/detailed`.
+ */
+const ANALYTICS_DAYS = [31, 44, 28, 52, 61, 47, 38, 55, 72, 49, 63, 58, 41, 69]
+const ANALYTICS_REVENUE = ANALYTICS_DAYS.map((v, i) => ({
+  date: `2026-08-${String(i + 18).padStart(2, '0')}`, revenue: v * 10000, orders: Math.max(1, Math.round(v / 6)),
+}))
+const ANALYTICS_DETAILED = { conversion_rate: 3.4, repeat_purchase_rate: 28, repeat_buyers: 52, total_buyers: 186 }
+
 function serve() {
   return new Promise((resolve) => {
     const s = http.createServer((req, res) => {
@@ -306,6 +355,16 @@ function serve() {
           if (p === '/api/coupons/my') return res.end(JSON.stringify({ success: true, data: [] }))
           if (p === '/api/payments/client-key') return res.end(JSON.stringify({ success: true, data: { clientKey: 'test_ck_preview' }, clientKey: 'test_ck_preview' }))
         }
+        if (args.analytics) {
+          if (p === '/api/seller/analytics/detailed') return res.end(JSON.stringify({ success: true, data: ANALYTICS_DETAILED }))
+          if (p.startsWith('/api/seller/analytics/chart/revenue')) {
+            // `--analytics=empty` — 판 적은 있으나 이 기간엔 없음(안 C 의 두 번째 "없음").
+            const rows = args.analytics === 'empty' ? [] : ANALYTICS_REVENUE
+            return res.end(JSON.stringify({ success: true, data: rows }))
+          }
+        }
+        // 🎬 레일은 홈 어느 경로에서든 뜬다 — 플래그 없이 항상 준다.
+        if (p === '/api/urshorts') return res.end(JSON.stringify({ success: true, data: SHORTS_SEED }))
         if (args.wallet && p === '/api/vouchers/my')
           return res.end(JSON.stringify({ success: true, data: WALLET_VOUCHERS }))
         if (args.deals) {

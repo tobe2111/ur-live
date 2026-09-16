@@ -152,7 +152,7 @@ export default function MyStorePage() {
               key={a.to}
               type="button"
               onClick={() => navigate(a.to)}
-              className="flex flex-col items-center gap-1 rounded-2xl border border-gray-100 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] py-3 active:opacity-80 transition-opacity"
+              className="flex flex-col items-center gap-1 rounded-2xl border border-gray-100 dark:border-[#2C2F35] bg-surface py-3 active:opacity-80 transition-opacity"
             >
               <a.Icon className="w-[18px] h-[18px] text-gray-500" aria-hidden="true" />
               <span className="text-[11px] font-bold text-gray-900 dark:text-white">{a.label}</span>
@@ -174,7 +174,7 @@ export default function MyStorePage() {
             {/* 요약 */}
             <div className="grid grid-cols-2 gap-2.5">
               {stats.map(s => (
-                <div key={s.label} className="rounded-2xl border border-gray-100 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] p-3.5">
+                <div key={s.label} className="rounded-2xl border border-gray-100 dark:border-[#2C2F35] bg-surface p-3.5">
                   <p className="text-[11px] text-gray-500 dark:text-gray-400">{s.label}</p>
                   <p className="text-[18px] font-extrabold text-gray-900 dark:text-white mt-0.5">{s.value}</p>
                   {s.sub && <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{s.sub}</p>}
@@ -196,7 +196,7 @@ export default function MyStorePage() {
                     const draft = stockDraft[p.id]
                     const dirty = draft !== undefined && draft !== String(p.stock ?? 0)
                     return (
-                      <div key={p.id} className="flex items-center gap-2 rounded-xl border border-gray-100 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] px-3.5 py-3">
+                      <div key={p.id} className="flex items-center gap-2 rounded-xl border border-gray-100 dark:border-[#2C2F35] bg-surface px-3.5 py-3">
                         <div className="flex-1 min-w-0">
                           <p className="text-[13px] font-bold text-gray-900 dark:text-white truncate">{p.name}</p>
                           <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{formatNumber(p.price)}원 · 재고</p>
@@ -206,7 +206,7 @@ export default function MyStorePage() {
                             type="number" inputMode="numeric" min={0}
                             value={draft ?? String(p.stock ?? 0)}
                             onChange={e => setStockDraft(prev => ({ ...prev, [p.id]: e.target.value }))}
-                            className="w-16 px-2 py-1 rounded-lg border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#11141C] text-gray-900 dark:text-white text-[12px] text-right"
+                            className="w-16 px-2 py-1 rounded-lg border border-line bg-surface text-gray-900 dark:text-white text-[12px] text-right"
                             aria-label={`${p.name} 재고`}
                           />
                           {dirty && (
@@ -237,7 +237,7 @@ export default function MyStorePage() {
                   {fcfs.map(f => {
                     const closed = !!(f.deadline && new Date(f.deadline).getTime() < Date.now())
                     return (
-                      <div key={f.product_id} className="rounded-xl border border-gray-100 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] px-3.5 py-3">
+                      <div key={f.product_id} className="rounded-xl border border-gray-100 dark:border-[#2C2F35] bg-surface px-3.5 py-3">
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-[13px] font-bold text-gray-900 dark:text-white truncate">{f.name}</p>
                           <span className={`shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full ${closed ? 'bg-gray-100 dark:bg-[#1D1F29] text-gray-400 dark:text-gray-500' : 'bg-gray-900/10 dark:bg-white/15 text-gray-900 dark:text-white'}`}>
@@ -265,7 +265,7 @@ export default function MyStorePage() {
                   const disputed = disputedIds.has(v.id)
                   const canReport = v.status === 'used' && v.settlement_id == null && !disputed
                   return (
-                    <div key={v.id} className="flex items-center gap-3 rounded-xl border border-gray-100 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] px-3.5 py-3">
+                    <div key={v.id} className="flex items-center gap-3 rounded-xl border border-gray-100 dark:border-[#2C2F35] bg-surface px-3.5 py-3">
                       <div className="flex-1 min-w-0">
                         <p className="text-[13px] font-bold text-gray-900 dark:text-white truncate">{v.restaurant_name || v.product_name || `이용권 #${v.id}`}</p>
                         <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
@@ -281,7 +281,7 @@ export default function MyStorePage() {
                       ) : v.status === 'used' && v.settlement_id != null ? (
                         <span className="flex items-center gap-1 text-[11px] font-bold text-gray-400 dark:text-gray-500 shrink-0"><CheckCircle2 className="w-3.5 h-3.5" />정산완료</span>
                       ) : canReport ? (
-                        <button onClick={() => report(v)} disabled={busy === v.id} className="shrink-0 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-[#2C2F35] text-gray-600 dark:text-gray-300 text-[12px] font-bold disabled:opacity-50">안 왔어요</button>
+                        <button onClick={() => report(v)} disabled={busy === v.id} className="shrink-0 px-3 py-1.5 rounded-lg border border-line text-gray-600 dark:text-gray-300 text-[12px] font-bold disabled:opacity-50">안 왔어요</button>
                       ) : null}
                     </div>
                   )

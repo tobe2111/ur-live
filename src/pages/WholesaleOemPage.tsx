@@ -20,11 +20,11 @@ const sellerToken = () => (typeof window !== 'undefined' ? localStorage.getItem(
 const auth = () => { const t = sellerToken(); return { headers: t ? { Authorization: `Bearer ${t}` } : {} } }
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
-  open: { label: '접수', cls: 'bg-blue-100 text-blue-700' },
-  matching: { label: '매칭중', cls: 'bg-amber-100 text-amber-700' },
-  matched: { label: '매칭완료', cls: 'bg-emerald-100 text-emerald-700' },
+  open: { label: '접수', cls: 'bg-tone-info-bg text-tone-info' },
+  matching: { label: '매칭중', cls: 'bg-tone-warn-bg text-tone-warn' },
+  matched: { label: '매칭완료', cls: 'bg-tone-ok-bg text-tone-ok' },
   closed: { label: '종료', cls: 'bg-[#ECEEF1] text-[#4E5560]' },
-  rejected: { label: '반려', cls: 'bg-red-100 text-red-700' },
+  rejected: { label: '반려', cls: 'bg-tone-bad-bg text-tone-bad' },
 }
 
 async function downloadCsv(path: string, filename: string) {

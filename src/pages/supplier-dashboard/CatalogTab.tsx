@@ -12,9 +12,9 @@ import type { CatalogItem } from './types'
 const StoreImportModal = lazy(() => import('./StoreImportModal'))
 
 const STATUS_BADGE: Record<string, { label: string; cls: string; Icon: typeof Clock }> = {
-  pending: { label: '승인 대기', cls: 'bg-amber-50 text-amber-700 border-amber-200', Icon: Clock },
-  approved: { label: '승인됨', cls: 'bg-green-50 text-green-700 border-green-200', Icon: CheckCircle },
-  rejected: { label: '거부됨', cls: 'bg-red-50 text-red-700 border-red-200', Icon: XCircle },
+  pending: { label: '승인 대기', cls: 'bg-tone-warn-bg text-tone-warn', Icon: Clock },
+  approved: { label: '승인됨', cls: 'bg-tone-ok-bg text-tone-ok', Icon: CheckCircle },
+  rejected: { label: '거부됨', cls: 'bg-tone-bad-bg text-tone-bad', Icon: XCircle },
 }
 
 export default function CatalogTab({ items, t, onAdd, onEdit, onBulkDone, onManageChannel, onRequestPriceChange, onBulkPrice }: { items: CatalogItem[]; t: (k: string, o?: Record<string, unknown>) => string; onAdd: () => void; onEdit: (item: CatalogItem) => void; onBulkDone: () => void; onManageChannel: (item: CatalogItem) => void; onRequestPriceChange: (item: CatalogItem) => void; onBulkPrice: () => void }) {

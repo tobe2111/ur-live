@@ -178,7 +178,7 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey }: 
             onChange={e => setQuery(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); search() } }}
             placeholder={t('map.picker.placeholder', { defaultValue: '매장 이름 또는 주소 (예: 광화문 김밥천국)' })}
-            className="w-full pl-9 pr-3 py-2.5 border border-gray-200 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-gray-900 focus:outline-none"
+            className="w-full pl-9 pr-3 py-2.5 border border-line rounded-lg text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-gray-900 focus:outline-none"
           />
         </div>
         <button
@@ -192,7 +192,7 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey }: 
       </div>
 
       {/* 카카오맵 — 🛡️ 2026-05-19: SDK 실패 시 graceful fallback (페이지 크래시 방지). */}
-      <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-[#2C2F35]">
+      <div className="relative rounded-xl overflow-hidden border border-line">
         <div ref={mapContainerRef} className="w-full h-[320px] bg-gray-100 dark:bg-[#1D1F29]" />
         {sdkError ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 dark:bg-[#1D1F29] p-4 text-center">

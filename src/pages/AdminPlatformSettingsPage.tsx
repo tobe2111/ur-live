@@ -9,8 +9,10 @@ import { Settings, Save, Loader2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import PromoBarSection from './admin-platform-settings/PromoBarSection'
+import MapMarkerSection from './admin-platform-settings/MapMarkerSection'
 import CloudflareCredsSection from './admin-platform-settings/CloudflareCredsSection'
 import { CREDENTIAL_KEYS, buildSettingsPayload } from './admin-platform-settings/settings-payload'
+import { COMMISSION_BUDGET_FIELDS } from './admin-platform-settings/money-switch-fields'
 
 /**
  * 🔁 재수출 — 이 페이지가 이 두 심볼의 **공개 표면**이다(시험·다른 화면이 여기서 가져간다).
@@ -53,93 +55,6 @@ const SETTINGS_FIELDS = [
   { key: 'island_extra_fee', label: '도서산간 추가 배송비 (원)', default: '5000' },
 ]
 
-// 💸 2026-07-04 [INV-CB] 커미션 예산 아비터 스위치 (docs/design/commission-funding-restructure.md).
-//   전부 미설정=현행. 활성화는 staging 실결제 검증 후(설계 §5). select 형은 숫자 검증 제외.
-const COMMISSION_BUDGET_FIELDS: Array<{ key: string; label: string; default: string; options?: Array<{ value: string; label: string }>; hint?: string }> = [
-  {
-    key: 'commission_budget_enabled', label: '① 커미션 예산 캡 활성화', default: 'false',
-    options: [{ value: 'false', label: 'OFF (현행)' }, { value: 'true', label: 'ON — 예산 캡 적용' }],
-    hint: '3P 주문당 성장 커미션 총합 ≤ 수수료 − PG준비금 (비례 축소). ⚠️ staging 검증 후 ON',
-  },
-  {
-    key: 'pg_reserve_pct', label: 'PG 준비금 (%)', default: '2.5',
-    hint: '예산 = 플랫폼 수수료 − 결제액×이 비율',
-  },
-  {
-    // 💸 2026-08-25 (누락 발견): **플랫폼 take 율 자체를 정하는 게이트인데 켤 화면이 없었다.**
-    //   `channelPlatformRate` 가 이 값으로 직판 10% / 중개 5% 를 가른다(OFF 면 종전 `commission_rate`).
-    //   `ops-gate-reachable` 가 즉시 잡아 줬다 — 그 시험의 docblock 이 말하는
-    //   *"안 켠 게 아니라 못 켠"* 경우다. 게이트를 만들 때 손잡이를 같이 만들지 않으면 이렇게 된다.
-    key: 'fee_channel_rates_enabled', label: '③ 채널별 플랫폼 요율 (직판 10% / 중개 5%)', default: 'false',
-    options: [{ value: 'false', label: 'OFF (현행 — sellers.commission_rate)' }, { value: 'true', label: 'ON — 채널로 요율 분기' }],
-    hint: '직판(자기 상품)=10% · 중개(벤더 상품)=5%. ⚠️ 원장 fee 가 바뀐다 — staging 실결제 각 1건 확인 후 ON',
-  },
-  {
-    key: 'promo_funding_source', label: '② 핀 추천(어필리에이트) 재원', default: 'platform',
-    options: [{ value: 'platform', label: '플랫폼 부담 (현행)' }, { value: 'owner', label: '주인(셀러) 부담 — promo 슬라이스' }],
-    hint: "'owner' 시 추천인 딜 적립은 유지, 같은 금액을 매장/셀러 정산에서 차감",
-  },
-  {
-    key: 'invite_reward_monthly_budget_krw', label: '초대 보상 월 예산 (딜, 0=무제한)', default: '0',
-    hint: '이달 지급 합계가 예산 초과 시 자동 skip',
-  },
-  {
-    key: 'agency_signup_bonus_monthly_budget_krw', label: '에이전시 signup 보너스 월 예산 (원, 0=무제한)', default: '0',
-    hint: '₩30,000 정액 보너스의 월 상한',
-  },
-  // 🥇 2026-07-05 (운영 감사 Q10): 캡 발동 시 어느 축을 먼저 보전할지 — "에이전시 1% 보호 최우선" 자문.
-  {
-    key: 'commission_priority_axes', label: '캡 발동 시 우선 보전 축', default: 'agency_intro',
-    options: [
-      { value: 'agency_intro', label: '에이전시 매장영입 최우선 (권장)' },
-      { value: '', label: '우선 없음 — 전 축 비례 축소' },
-    ],
-    hint: '계약 기반(24개월) 에이전시 커미션을 캡 축소에서 먼저 보전. 발동 이력은 아래 표',
-  },
-  // 💰 2026-07-05 (§1 인플루언서 엔진): 셀러 딜 등록 화면의 소개비(promo)% 저장 게이트.
-  {
-    key: 'seller_promo_field_enabled', label: '③ 셀러 소개비(promo)% 필드 저장', default: 'false',
-    options: [{ value: 'false', label: 'OFF (현행 — 저장 안 함)' }, { value: 'true', label: 'ON — referral_commission_rate 저장' }],
-    hint: "⚠️ owner-funding('주인 부담') 을 먼저 켜고 staging 검증한 뒤에만 ON. 안 그러면 매장 소개비를 플랫폼이 부담(누수). 클라 플래그 SELLER_PROMO_FIELD_ENABLED 도 함께 배포",
-  },
-  // 🎟️ 2026-07-10 (flip-ui-checklist A1): 공구 엔진 서버 게이트 — gb-marketplace/gb-proposals/seller-orders 가
-  //   platform_settings.gb_engine_enabled==='true' 로 읽음. 8월 flip 단계 ④ 조종석 토글.
-  {
-    key: 'gb_engine_enabled', label: '④ 공구 엔진 (gb_engine)', default: 'false',
-    options: [{ value: 'false', label: 'OFF (현행 — 표면 미노출)' }, { value: 'true', label: 'ON — 공구 엔진 서버 게이트' }],
-    hint: '활성화 순서 ④ — ①예산캡 ②owner펀딩 ③promo필드가 staging 검증 후 켜진 뒤에만. ⚠️ 서버 게이트만 켜짐 — 클라 표면은 GB_ENGINE_ENABLED(코드 배포) 별도. 런북: commission-funding-restructure.md §1',
-  },
-  // 🥡💳 2026-08-12: **켤 화면이 없어서 영영 못 켜던 게이트 2개** (검증 데이 블로커).
-  //   실측: `pickup_unclaimed_policy_enabled` 는 이 화면에 *"시스템 모니터링에서 켜라"* 는 **안내문만**
-  //   있었는데 그 화면(`/admin/system-monitoring`)은 **조회 전용**이라 쓰기 API 가 없다.
-  //   `partial_refund_enabled` 는 어느 화면에도 **아예 없었다**.
-  //   ⇒ 대표가 검증(P10·P11)을 시작할 방법 자체가 없었다. 같은 클래스가 바로 위 OPS_POLICY_FIELDS
-  //   주석이 기록한 사고(*"결정은 했는데 넣을 화면이 없어 값이 비어 있었다"*)와 동일하다.
-  //   기본값·환불 로직·계산은 전부 무변경 — **토글 노출만** 추가한다.
-  {
-    key: 'pickup_unclaimed_policy_enabled', label: '⑤ 미수령 환불 정책 (보관구분별)', default: 'false',
-    options: [{ value: 'false', label: 'OFF (현행 — 항상 전액 환불)' }, { value: 'true', label: 'ON — 아래 보관구분 비율 적용' }],
-    hint: '🔴 머니 경로. 켜면 이미 흐르던 환불의 **금액이 바뀐다**. 아래 "운영 정책" 의 비율을 먼저 채울 것 — 비우면 100%(전액)로 동작한다. 끄면 즉시 전액 환불로 복귀. 검증 절차: docs/VERIFICATION_DAY.md (P10)',
-  },
-  {
-    key: 'partial_refund_enabled', label: '⑥ 부분환불 금액 지정', default: 'false',
-    options: [{ value: 'false', label: 'OFF (현행 — 전액 환불만)' }, { value: 'true', label: 'ON — 반품 화면에서 금액 지정 가능' }],
-    hint: '🔴 머니 경로. OFF 면 금액 설정 API 가 403 이다(=현행 전액 환불 그대로). ON 시 결제액 초과는 서버가 클램프하고, 환불 실행 후에는 변경 불가. 검증 절차: docs/VERIFICATION_DAY.md (P11)',
-  },
-  // 🚨 2026-08-12: **킬스위치인데 당길 손잡이가 없었다.**
-  //   `gb_pricing_enabled` 는 *"잘못 설정된 공구가로 과소청구가 날 때 false 로 저장해 즉시 상시가로
-  //   되돌린다"* 는 긴급 안전장치인데(OPS_GATES 의 turn_on_when), 어느 화면에도 없었다 —
-  //   즉 **돈이 새는 중에 멈출 방법이 없었다.** 위 ⑤⑥ 과 같은 클래스이고 이쪽이 더 급하다.
-  //
-  //   🔴 **다른 게이트와 반대로 기본이 ON 이다.** 그래서 `default: 'true'` 여야 한다 —
-  //   'false' 로 적으면 이 페이지를 **한 번 저장하는 것만으로** 공구가 청구가 꺼져
-  //   전 공구가 상시가로 청구된다(대표가 의도하지 않은 머니 변경). 바꾸지 말 것.
-  {
-    key: 'gb_pricing_enabled', label: '🚨 공구가 청구 킬스위치', default: 'true',
-    options: [{ value: 'true', label: 'ON (정상 — 공구가로 청구)' }, { value: 'false', label: 'OFF — 긴급 정지: 즉시 상시가로 청구' }],
-    hint: '🔴 평소엔 ON 이 정상이다. 잘못된 공구가로 **과소청구**가 발생할 때만 OFF 로 내려 즉시 상시가로 되돌린다. 되돌리면 곧바로 복구되므로 사고 시 주저하지 말 것',
-  },
-]
 
 /**
  * 🥡 **운영 정책 — 입력칸이 없어 대표가 넣을 방법이 없던 값들** (2026-08-03 신설)
@@ -175,9 +90,17 @@ export const OPS_POLICY_FIELDS: Array<{ key: string; label: string; hint: string
     text: true,
   },
   {
+    // 🔍 2026-09-16 (결재 `2026-09-16-ocr-license-automation.md`): 서류 OCR 자동 승인.
+    //   ⚠️ `text: true` — 값이 'true'/'false' 문자열이라 숫자 검증 배열에 두면 저장이 거부된다.
+    key: 'ocr_auto_verify_enabled',
+    label: '서류 OCR 자동 승인',
+    hint: "기본 꺼짐. 'true' 로 켜면 등록증 추출값이 전부 맞을 때 승인이 자동으로 난다. 켜기 전 S-OCR 절차(실사진 정확도)를 먼저 돌 것 — 자동 반려는 어떤 값으로도 켜지지 않는다",
+    text: true,
+  },
+  {
     key: 'pickup_unclaimed_cold_pct',
     label: '냉장·냉동 미수령 환불 (%)',
-    hint: '대표 확정값 0(환불 없음 — 상품 폐기). ⚠️ 비우면 100(전액 환불)으로 동작한다',
+    hint: '대표 확정값 0(환불 없음 — 상품 폐기). 비우면 100(전액 환불)으로 동작한다',
   },
   {
     key: 'pickup_unclaimed_room_grace_days',
@@ -187,7 +110,7 @@ export const OPS_POLICY_FIELDS: Array<{ key: string; label: string; hint: string
   {
     key: 'pickup_unclaimed_room_pct',
     label: '실온 유예 경과 후 환불 (%)',
-    hint: '⚠️ 비우면 100(전액). 유예 이후를 깎으려면 **명시해야** 한다',
+    hint: '비우면 100(전액). 유예 이후를 깎으려면 **명시해야** 한다',
   },
 ]
 
@@ -339,7 +262,7 @@ export default function AdminPlatformSettingsPage() {
           icon={<Settings className="h-5 w-5" />}
           actions={
             <button onClick={save} disabled={saving}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white hover:bg-gray-900 disabled:opacity-50">
+              className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-1.5 disabled:opacity-50">
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
               {t('admin.platformSettings.save', { defaultValue: '저장' })}
             </button>
@@ -370,10 +293,10 @@ export default function AdminPlatformSettingsPage() {
           {/* 💸 [INV-CB] 커미션 예산 아비터 — 2026-07-04 재원 구조 개편. 활성화는 staging 검증 후. */}
           <div className="bg-white rounded-xl border border-gray-200">
             <div className="px-5 pt-4 pb-2">
-              <h3 className="text-sm font-bold text-gray-900">💸 커미션 예산 아비터 (INV-CB)</h3>
+              <h3 className="text-sm font-bold text-gray-900">커미션 예산 아비터 (INV-CB)</h3>
               <p className="text-xs text-gray-400 mt-0.5">
                 플랫폼 부담 성장 커미션(핀 추천·멀티티어·영입자·에이전시)의 주문당 총액 캡.
-                ⚠️ 활성화 전 staging 실결제 검증 필수 — 설계: commission-funding-restructure.md
+                활성화 전 staging 실결제 검증 필수 — 설계: commission-funding-restructure.md
               </p>
             </div>
             <div className="divide-y divide-gray-100">
@@ -406,7 +329,7 @@ export default function AdminPlatformSettingsPage() {
           {/* 🥡 운영 정책 — 결정은 있었는데 넣을 화면이 없던 값들(2026-08-03 실측) */}
           <div className="bg-white rounded-xl border border-gray-200">
             <div className="px-5 pt-4 pb-2">
-              <h3 className="text-sm font-bold text-gray-900">🥡 운영 정책 (미수령 · 문의)</h3>
+              <h3 className="text-sm font-bold text-gray-900">운영 정책 (미수령 · 문의)</h3>
               <p className="text-xs text-gray-400 mt-0.5">
                 비워 두면 <span className="font-semibold text-gray-600">소비자에게 유리한 기본값</span>(전액 환불)으로 동작한다 — 0 이 아니다.
                 미수령 정책의 실제 적용은 게이트 <code className="text-[11px]">pickup_unclaimed_policy_enabled</code>(기본 OFF, 시스템 모니터링)가 켜져야 한다.
@@ -432,6 +355,7 @@ export default function AdminPlatformSettingsPage() {
 
           {/* 📣 2026-08-19 (대표 확정): 소비자 홈 최상단 프로모 바 — 켜고 끄기 + 문구/버튼/색 */}
           <PromoBarSection settings={settings} setSettings={setSettings} />
+          <MapMarkerSection settings={settings} setSettings={setSettings} />
 
           {/* ☁️ 진단용 Cloudflare 자격 — 입력칸이 없어 대표가 넣을 방법이 없던 것(2026-07-29) */}
           <CloudflareCredsSection settings={settings} setSettings={setSettings} savedTick={savedTick} onSave={save} saving={saving} />
@@ -473,21 +397,21 @@ function KtAlphaSystemSellerSection() {
   }
 
   return (
-    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-      <h3 className="text-sm font-bold text-amber-900 mb-1">🤖 KT Alpha 운영 seller 자동 설정</h3>
-      <p className="text-xs text-amber-800 mb-3">
+    <div className="bg-white border border-rule rounded-xl p-4">
+      <h3 className="text-sm font-bold text-tone-warn mb-1">KT Alpha 운영 seller 자동 설정</h3>
+      <p className="text-xs text-tone-warn mb-3">
         KT Alpha 자동발송 voucher_orders 가 누구 명의로 기록될지 결정. 기존 fallback (첫 approved seller) → '유어딜 공식 운영' 명의로 분리.<br/>
         클릭 1번 → sellers 신규 row 생성 (idempotent) + platform_settings.kt_alpha_admin_seller_id 자동 set.
       </p>
       <button
         onClick={init}
         disabled={loading}
-        className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-xs font-bold rounded-lg"
+        className="ur-btn ur-btn-sm ur-btn-primary disabled:opacity-50"
       >
-        {loading ? "처리 중..." : "🤖 자동 설정"}
+        {loading ? "처리 중..." : "자동 설정"}
       </button>
-      {result && <p className="mt-2 text-xs text-emerald-700 font-bold">✅ {result}</p>}
-      {error && <p className="mt-2 text-xs text-red-600 font-bold">❌ {error}</p>}
+      {result && <p className="mt-2 text-xs text-tone-ok font-bold">{result}</p>}
+      {error && <p className="mt-2 text-xs text-tone-bad font-bold">{error}</p>}
     </div>
   )
 }
@@ -533,7 +457,7 @@ function CommissionCapLogsSection() {
                   <tr key={l.id} className="border-b border-gray-50 last:border-0">
                     <td className="px-5 py-2 font-semibold text-gray-900">#{l.order_id}</td>
                     <td className="px-2 py-2 text-right text-gray-600">{Number(l.budget_krw).toLocaleString()}</td>
-                    <td className="px-2 py-2 text-right text-red-500 font-semibold">{Number(l.requested_krw).toLocaleString()}</td>
+                    <td className="px-2 py-2 text-right text-tone-bad font-semibold">{Number(l.requested_krw).toLocaleString()}</td>
                     <td className="px-2 py-2 text-right text-gray-900 font-semibold">{Number(l.granted_krw).toLocaleString()}</td>
                     <td className="px-5 py-2 text-[11px] text-gray-500">{axes}<span className="text-gray-300"> · {l.created_at}</span></td>
                   </tr>

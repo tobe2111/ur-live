@@ -3,7 +3,10 @@
  */
 
 export interface BusinessInfo {
-  id: number
+  /** 🏪 2026-09-03: 아직 저장된 행이 아니라 **매장 등록 때 받은 값**이면 null (서버 `from_registration`). */
+  id: number | null
+  /** 매장 등록에서 넘어온 값 — 저장을 눌러야 정식 등록이 된다(서버가 붙인다). */
+  from_registration?: boolean
   business_number: string
   business_name: string
   ceo_name: string

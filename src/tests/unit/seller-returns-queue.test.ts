@@ -11,6 +11,7 @@
  * ⚠️ 못 막는 것: 실제 렌더·권한(서버 `user.type !== 'seller'` → 403 이 지킨다) · 반품 정책 자체.
  */
 import { describe, it, expect } from 'vitest'
+import { findSellerTabGroup } from '@/components/seller/seller-tab-groups'
 import { readCode, usesSymbol, sliceFrom } from '../helpers/source-text'
 
 const page = readCode('src/pages/SellerReturnsPage.tsx')
@@ -57,7 +58,17 @@ describe('🔴 도달 가능하다 — 화면만 만들고 안 붙이면 없는 
     expect(usesSymbol(routes, 'SellerReturnsPage')).toBe(true)
   })
 
-  it('셀러 네비에 항목이 있다 — URL 을 아는 사람만 쓰는 화면이 되지 않게', () => {
-    expect(layout).toContain("'/seller/returns'")
+  it('셀러가 닿을 수 있다 — URL 을 아는 사람만 쓰는 화면이 되지 않게', () => {
+    /**
+     * 🧭 2026-09-03 (통폐합, 대표 승인 "전부"): 사이드바 36줄 → 13줄로 접으면서 반품은
+     * **'주문' 묶음의 탭**으로 들어갔다. 그래서 `seller-nav.ts` 안에서 문자열로 찾으면 없다.
+     * **불변식은 그대로다 — "닿을 수 있는가".** 무엇이 그것을 보장하는지만 바뀌었다:
+     *   ① 탭 묶음에 들어 있고 ② 그 묶음의 착지점이 사이드바에 있으며(`navFromGroup`)
+     *   ③ 레이아웃이 탭을 그린다 — 셋은 `voucher-nav-reachability` 가 함께 강제한다.
+     * ⚠️ 여기서 그냥 지웠으면 이 화면은 다시 "URL 을 아는 사람만" 쓰는 화면이 됐을 것이다.
+     */
+    const group = findSellerTabGroup('/seller/returns')
+    expect(group, '반품이 어느 묶음에도 없다').toBeTruthy()
+    expect(layout).toContain(`navFromGroup('${group!.tabs[0].path}'`)
   })
 })

@@ -20,6 +20,8 @@ import { hasOwnHeaderPc, isFullBleedPcPath } from '@/shared/pc-fullbleed'
 import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
 import { useLinkshopPath } from '@/hooks/useLinkshopPath'
 import UrDealLogo from '@/components/brand/UrDealLogo'
+import { ShortsIcon } from '@/components/icons/urdeal-icons'
+import { URSHORTS_VIEWER_PATH } from '@/shared/urshorts'
 import NotificationDropdown from './NotificationDropdown'
 
 export default function DesktopTopNav() {
@@ -376,7 +378,7 @@ export default function DesktopTopNav() {
               aria-label={t('nav.my', { defaultValue: '마이' })}
               aria-expanded={acctOpen}
               aria-haspopup="menu"
-              className={`flex items-center gap-0.5 pl-1 pr-1.5 h-9 rounded-full border border-gray-200 dark:border-[#2C2F35] text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/[0.06] transition-colors ${
+              className={`flex items-center gap-0.5 pl-1 pr-1.5 h-9 rounded-full border border-line text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/[0.06] transition-colors ${
                 acctOpen || isActivePath('/user/profile') ? 'bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white' : ''
               }`}
             >
@@ -407,12 +409,16 @@ export default function DesktopTopNav() {
           리마운트 0(2026-08-17 '더보기 플래시' 수리와 같은 경로). 라벨/아이콘 SSOT 는 `DEAL_CATS`. */}
       {isHome && (
         <div className="border-t border-gray-100 dark:border-[#2C2F35]">
-          <div className="relative max-w-[1440px] mx-auto w-full px-6 lg:px-8">
+          {/* 🎬 2026-09-09 (대표 "추천대로 할게" — 모바일과 같은 자리): 유어쇼츠 진입점은 카테고리
+              **스크롤 영역 밖**에 고정한다. 이 줄은 overflow-x-auto 라 안에 넣으면 카테고리가 느는 날
+              밀려 사라지고, 그건 에러가 안 나서 아무도 모른다(모바일에서 같은 함정을 이미 밟았다). */}
+          <div className="max-w-[1440px] mx-auto w-full px-6 lg:px-8 flex items-center gap-3">
+            <div className="relative flex-1 min-w-0">
             <nav
               ref={catScrollRef}
               onScroll={syncCatArrow}
               aria-label={t('nav.categories', { defaultValue: '카테고리' })}
-              className="h-11 flex items-center gap-1 overflow-x-auto no-scrollbar scroll-smooth"
+              className="h-11 flex items-center gap-1 overflow-x-auto scrollbar-hide scroll-smooth"
             >
               {categoryItems.map((item) => {
                 const active = isActivePath(item.path)
@@ -465,12 +471,21 @@ export default function DesktopTopNav() {
               <button
                 onClick={() => catScrollRef.current?.scrollBy({ left: 260, behavior: 'smooth' })}
                 aria-label={t('common.more', { defaultValue: '더 보기' })}
-                className="ur-appear absolute right-4 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white dark:bg-[#141C27] border border-gray-200 dark:border-[#2C2F35] shadow-sm flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.06]"
+                className="ur-appear absolute right-0 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white dark:bg-[#141C27] border border-line shadow-sm flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.06]"
                 style={{ opacity: 1, transform: 'translateY(-50%) scale(1)' }}
               >
                 <ChevronRight className="w-4 h-4" strokeWidth={2.2} />
               </button>
             )}
+            </div>
+
+            <Link
+              to={URSHORTS_VIEWER_PATH}
+              className="shrink-0 flex items-center gap-1.5 whitespace-nowrap px-2 text-[13px] font-bold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+            >
+              <ShortsIcon size={16} />
+              유어쇼츠<span aria-hidden="true" className="-ml-[3px] text-brand-text">.</span>
+            </Link>
           </div>
         </div>
       )}

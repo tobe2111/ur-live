@@ -36,10 +36,10 @@ interface ClaimRow {
 }
 
 const STATUS: Record<string, { t: string; c: string }> = {
-  open: { t: '접수', c: 'bg-amber-50 text-amber-700' },
-  reviewing: { t: '검토중', c: 'bg-blue-50 text-blue-700' },
-  approved: { t: '승인(환불)', c: 'bg-emerald-50 text-emerald-700' },
-  rejected: { t: '반려', c: 'bg-rose-50 text-rose-700' },
+  open: { t: '접수', c: 'bg-tone-warn-bg text-tone-warn' },
+  reviewing: { t: '검토중', c: 'bg-tone-info-bg text-tone-info' },
+  approved: { t: '승인(환불)', c: 'bg-tone-ok-bg text-tone-ok' },
+  rejected: { t: '반려', c: 'bg-tone-bad-bg text-tone-bad' },
   resolved: { t: '해결', c: 'bg-gray-100 text-gray-600' },
 }
 const REASON: Record<string, string> = {
@@ -100,7 +100,7 @@ export default function AdminWholesaleClaimsPage() {
 
         <div className="flex flex-wrap items-center gap-2 my-4">
           {FILTERS.map(f => (
-            <button key={f || 'all'} onClick={() => setStatus(f)} className={`px-3 py-1.5 rounded-lg text-sm font-medium ${status === f ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-700'}`}>
+            <button key={f || 'all'} onClick={() => setStatus(f)} className={`px-3 py-1.5 rounded-lg text-sm font-medium ${status === f ? 'bg-brand text-white' : 'bg-white border border-gray-200 text-gray-700'}`}>
               {f ? (STATUS[f]?.t || f) : '전체'}
             </button>
           ))}
@@ -147,7 +147,7 @@ export default function AdminWholesaleClaimsPage() {
       {/* 상세 + 처리 모달 */}
       {detail && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setDetail(null)}>
-          <div className="bg-white rounded-2xl max-w-xl w-full max-h-[88vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-[var(--dash-radius,16px)] max-w-xl w-full max-h-[88vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-gray-900">클레임 #{detail.id}</h3>
               <button onClick={() => setDetail(null)}><X className="w-5 h-5 text-gray-400" /></button>
@@ -164,7 +164,7 @@ export default function AdminWholesaleClaimsPage() {
               <div className="text-sm text-gray-700 bg-gray-50 rounded-lg p-3 mb-3 whitespace-pre-wrap">{detail.reason_text}</div>
             )}
             {detail.evidence_url && (
-              <a href={detail.evidence_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-blue-600 mb-4">
+              <a href={detail.evidence_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-gray-700 mb-4">
                 <ExternalLink className="w-4 h-4" /> 증빙 보기
               </a>
             )}
@@ -179,13 +179,13 @@ export default function AdminWholesaleClaimsPage() {
             ) : (
               <div className="flex flex-wrap gap-2">
                 {detail.status === 'open' && (
-                  <button onClick={() => act('reviewing')} disabled={busy} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-50">검토중</button>
+                  <button onClick={() => act('reviewing')} disabled={busy} className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-50">검토중</button>
                 )}
-                <button onClick={() => act('approve')} disabled={busy} className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+                <button onClick={() => act('approve')} disabled={busy} className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-1.5 disabled:opacity-50">
                   {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />} 승인 + 환불
                 </button>
                 <button onClick={() => act('resolve')} disabled={busy} className="px-4 py-2 bg-gray-700 text-white rounded-lg text-sm font-medium disabled:opacity-50">무환불 해결</button>
-                <button onClick={() => act('reject')} disabled={busy} className="px-4 py-2 bg-rose-600 text-white rounded-lg text-sm font-medium disabled:opacity-50">반려</button>
+                <button onClick={() => act('reject')} disabled={busy} className="ur-btn ur-btn-md ur-btn-danger disabled:opacity-50">반려</button>
               </div>
             )}
             <p className="text-[11px] text-gray-400 mt-3">승인 시 정산 보류 유지 + 강제환불 집행. 반려/해결 시 정산 보류 해제(정상 지급 재개).</p>

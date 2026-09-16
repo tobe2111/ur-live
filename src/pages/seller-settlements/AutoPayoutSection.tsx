@@ -28,10 +28,10 @@ type PayoutData = {
 }
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
-  pending: { label: '집계됨 · 지급대기', cls: 'bg-amber-100 text-amber-800' },
-  approved: { label: '승인 · 송금예정', cls: 'bg-blue-100 text-blue-800' },
-  sent: { label: '지급완료', cls: 'bg-green-100 text-green-800' },
-  failed: { label: '실패', cls: 'bg-red-100 text-red-700' },
+  pending: { label: '집계됨 · 지급대기', cls: 'bg-tone-warn-bg text-tone-warn' },
+  approved: { label: '승인 · 송금예정', cls: 'bg-tone-info-bg text-tone-info' },
+  sent: { label: '지급완료', cls: 'bg-tone-ok-bg text-tone-ok' },
+  failed: { label: '실패', cls: 'bg-tone-bad-bg text-tone-bad' },
   cancelled: { label: '취소', cls: 'bg-gray-100 text-gray-600' },
 }
 
@@ -59,7 +59,7 @@ export default function AutoPayoutSection() {
       {/* 자동 정산 안내 */}
       <DashboardCard>
         <div className="flex items-start gap-3">
-          <div className="mt-0.5 rounded-lg bg-blue-50 p-2 text-blue-600">
+          <div className="mt-0.5 rounded-lg bg-gray-100 p-2 text-gray-500">
             <CalendarClock className="h-5 w-5" />
           </div>
           <div className="space-y-1 text-sm">
@@ -76,7 +76,20 @@ export default function AutoPayoutSection() {
       </DashboardCard>
 
       {/* 실제 지급 현황 (payouts SSOT) */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      {/* 📱 2026-09-15 모바일 특화: 폰은 세 숫자를 한 줄 타일로(세로로 쌓으면 첫 화면이 숫자 셋으로 끝난다). PC 는 스탯 카드. */}
+      <div className="grid grid-cols-3 gap-2 sm:hidden">
+        {[
+          { label: t('seller.autoPayout.payableShort', { defaultValue: '미지급' }), value: payable, tone: 'text-tone-warn' },
+          { label: t('seller.autoPayout.scheduledShort', { defaultValue: '지급 예정' }), value: scheduled, tone: 'text-brand-text' },
+          { label: t('seller.autoPayout.sentShort', { defaultValue: '지급 완료' }), value: sent, tone: 'text-gray-900' },
+        ].map((c) => (
+          <div key={c.label} className="min-w-0 rounded-[var(--dash-radius,16px)] border border-rule bg-white px-3 py-2.5">
+            <p className="truncate text-[11px] font-semibold text-gray-500">{c.label}</p>
+            <p className={`dash-num mt-0.5 truncate text-[15px] font-extrabold leading-tight ${c.tone}`}>{formatNumber(c.value)}</p>
+          </div>
+        ))}
+      </div>
+      <div className="hidden gap-3 sm:grid sm:grid-cols-3">
         <DashboardStatCard
           label={t('seller.autoPayout.payable', { defaultValue: '미지급 (정산 예정 잔액)' })}
           value={`₩${formatNumber(payable)}`}

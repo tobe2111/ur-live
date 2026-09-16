@@ -57,7 +57,7 @@ export default function AdminLoginHistoryPage() {
 
   useEffect(() => { load(1) }, [load])
 
-  const card = 'bg-white rounded-2xl border border-gray-200'
+  const card = 'bg-white rounded-[var(--dash-radius,16px)] border border-gray-200'
 
   return (
     <AdminLayout title="관리자 로그인 이력">
@@ -91,7 +91,7 @@ export default function AdminLoginHistoryPage() {
                       <td className="px-4 py-2.5 text-gray-500 whitespace-nowrap tabular-nums">{fmtTime(r.created_at)}</td>
                       <td className="px-4 py-2.5 whitespace-nowrap">
                         <span className="font-semibold text-gray-900">{r.admin_name}</span>
-                        {r.admin_role && <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold ${r.admin_role === 'wholesale' ? 'bg-orange-100 text-orange-700' : r.admin_role === 'super_admin' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'}`}>{ROLE_LABEL[r.admin_role] || r.admin_role}</span>}
+                        {r.admin_role && <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold ${r.admin_role === 'wholesale' ? 'bg-tone-warn-bg text-tone-warn' : r.admin_role === 'super_admin' ? 'bg-tone-bad-bg text-tone-bad' : 'bg-gray-100 text-gray-600'}`}>{ROLE_LABEL[r.admin_role] || r.admin_role}</span>}
                         {r.email && <span className="block text-[11px] text-gray-400">{r.email}</span>}
                       </td>
                       <td className="px-4 py-2.5 whitespace-nowrap text-gray-700 font-mono text-[12px]"><MapPin className="w-3.5 h-3.5 inline text-gray-400 mr-1" />{r.ip || '-'}</td>

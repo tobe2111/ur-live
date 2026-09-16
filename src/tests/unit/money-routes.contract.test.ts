@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
 import { referralTreeRoutes } from '@/features/referral/api/referral-tree.routes'
-import { agencySettlementsRoutes } from '@/features/agency/api/agency-settlements.routes'
 import { adminSettlementsRoutes } from '@/features/admin/api/admin-settlements.routes'
 
 /**
@@ -8,7 +7,6 @@ import { adminSettlementsRoutes } from '@/features/admin/api/admin-settlements.r
  *
  * 대상(테스트 0개였음):
  *   - referral-tree: 추천 commission 적립(calculate-commission) + 출금 승인/거부(돈 out)
- *   - agency-settlements: 에이전시 정산 청구
  *   - admin-settlements: 어드민 정산 실행/완료/원천징수 (돈 out)
  *
  * 막는 회귀: 핸들러 소실(계약) + 인증 게이트 누락으로 무권한자가 출금승인·정산실행 트리거.
@@ -43,20 +41,6 @@ describe('referral-tree (commission/출금) 계약 + 인증', () => {
       const res = await referralTreeRoutes.request(path, { method, headers: { 'content-type': 'application/json' }, body: '{}' }, env)
       expect([401, 403], `${method} ${path} 무권한 거절`).toContain(res.status)
     }
-  })
-})
-
-describe('agency-settlements 계약 + 인증', () => {
-  const EXPECTED = [
-    'GET /settlement-invoices', 'GET /settlement-invoices/:id', 'GET /settlements', 'POST /settlements/request',
-  ]
-  it('엔드포인트 전부 마운트', () => {
-    const m = mounted(agencySettlementsRoutes as never)
-    expect(EXPECTED.filter((r) => !m.has(r))).toEqual([])
-  })
-  it('정산 청구는 무권한 요청 401', async () => {
-    const res = await agencySettlementsRoutes.request('/settlements/request', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }, env)
-    expect(res.status).toBe(401)
   })
 })
 

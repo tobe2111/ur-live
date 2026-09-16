@@ -43,9 +43,16 @@ const FULLBLEED_PC_PATHS = new Set<string>([
 //   숙소 상세(StayDetailPage)는 2026-07-20 하단 묶음바에서 app-frame-bar 제거 + lg:hidden(아사이드 대체) → 안전.
 const FULLBLEED_PC_PREFIXES = ['/vouchers/', '/group-buy/', '/stays/']
 
+// 🛍️ 2026-09-02 (대표 확정 — 유어샵 안P1 "왼쪽 프로필 고정 + 오른쪽 3열 진열대"): 유어샵 진열대만
+//   액자를 벗는다. **정확히 한 세그먼트**(`/u/{handle}` · `/profile/{x}` · `/s/{x}`)만 — `/u/me/add`(핀 고르기)·
+//   `/u/me/earnings`(수익 콘솔)는 폰 폭으로 만든 도구 화면이라 액자에 남긴다(startsWith 로 잡으면 같이 벗겨진다).
+//   ⚠️ 2026-06-18 "유어샵은 사이드바 없는 액자 + 우하단 QR" 결정을 이 경로에 한해 대체한다 — QR 은
+//   PC 좌측 프로필 열(`UShopQrCard`)로 옮겼다.
+const USHOP_PC_RE = /^\/(?:u|profile|s)\/[^/]+$/
+
 /** 이 경로는 lg+ 에서 풀너비(프레임/사이드바/거터 제외 + 하단네비 숨김). */
 export function isFullBleedPcPath(pathname: string): boolean {
-  return FULLBLEED_PC_PATHS.has(pathname) || FULLBLEED_PC_PREFIXES.some((p) => pathname.startsWith(p))
+  return FULLBLEED_PC_PATHS.has(pathname) || FULLBLEED_PC_PREFIXES.some((p) => pathname.startsWith(p)) || USHOP_PC_RE.test(pathname)
 }
 
 /** 풀너비지만 페이지 자체 상단 헤더를 쓰는 경로 → 전역 DesktopTopNav 숨김.
