@@ -69,9 +69,9 @@ export default [
   },
   {
     name: '🏪 "자동 승인" 이 랜딩에 들어온다 (라이브는 수동 승인)',
-    file: 'src/pages/partners/PartnerTools.tsx',
-    find: `    t: '사업자번호는 국세청에 자동으로 조회됩니다',`,
-    replace: `    t: '사업자번호만 맞으면 자동 승인됩니다',`,
+    file: 'src/pages/partners/PartnerPaths.tsx',
+    find: `          어느 길이든 사업자등록번호는 국세청에 자동으로 조회됩니다. 등록증 사본은 사람이 한 번 보고 승인합니다.`,
+    replace: `          어느 길이든 사업자등록번호만 맞으면 자동 승인됩니다.`,
     test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
     why:
       'seller-registration.routes.ts:239 이 명시한다 — "자동승인 말고 수동 승인. 모든 사업자 가입은 ' +
@@ -91,8 +91,8 @@ export default [
   {
     name: '🏪 인플루언서 성과를 "유입 몇 명" 으로 부풀린다',
     file: 'src/pages/partners/PartnerTools.tsx',
-    find: `    d: '소개해 준 사람별로 몇 건이 팔렸고 소개비가 얼마 나갔는지가 매장 화면에 쌓입니다.`,
-    replace: `    d: '소개해 준 사람별로 몇 명이 눌렀고 소개비가 얼마 나갔는지가 매장 화면에 쌓입니다.`,
+    find: `    d: '소개해 준 사람별로 몇 건이 팔렸고 소개비가 얼마 나갔는지가 쌓입니다.`,
+    replace: `    d: '소개해 준 사람별로 몇 명이 눌렀고 소개비가 얼마 나갔는지가 쌓입니다.`,
     test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
     why:
       'influencer_attributions(migration 0247)는 order_id·voucher_id·commission_amount 를 담는다. ' +
@@ -113,11 +113,54 @@ export default [
   {
     name: '🏪 섹션이 폭 제한을 잃는다 (액자를 벗은 뒤의 함정)',
     file: 'src/pages/partners/PartnerCompare.tsx',
-    find: `      <div className="ur-content-wide mx-auto px-5 lg:px-10 py-14 lg:py-24">`,
-    replace: `      <div className="px-5 lg:px-10 py-14 lg:py-24">`,
+    find: `      <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-32">`,
+    replace: `      <div className="px-5 lg:px-10 py-16 lg:py-32">`,
     test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
     why:
       '액자를 벗기면 폭 제한은 페이지 자신이 져야 한다. 없으면 1920 모니터에서 표 한 줄이 ' +
       '화면 끝까지 늘어나 읽을 수 없게 된다 — 액자를 푸는 변경과 짝을 이루는 불변식이다.',
+  },
+  {
+    name: '🏪 안 B 가 사라진다 (사진 0장으로 회귀)',
+    file: 'src/pages/partners/PartnerTools.tsx',
+    find: `              <PartnerPhone src={SHOT(shot)} alt={cap} />`,
+    replace: `              <span />`,
+    test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
+    why:
+      '대표가 1차 판을 보고 "지금 디자인이라곤 뭐가 없네" 라고 한 것의 정체는 취향이 아니라 ' +
+      '**사진 0장**이었다(1440 실측 `main img` 0개). 2026-09-16 에 안 B(라이브 캡처 + 폰 프레임)로 ' +
+      '확정했고, 히어로만 남기고 아래를 지우면 조용히 그 상태로 돌아간다.',
+  },
+  {
+    name: '🏪 캡처 경로가 다시 /partners/*.jpg 로 돌아간다 (라이브 404)',
+    file: 'src/pages/partners/PartnerPhone.tsx',
+    find: `export const SHOT = (n: string) => \`/static/partners/\${n}.jpg\``,
+    replace: `export const SHOT = (n: string) => \`/partners/\${n}.jpg\``,
+    test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
+    why:
+      '실제로 났던 사고다. `public/_routes.json` 은 `/*` 를 전부 워커로 보내고 **명시 목록만** ' +
+      '정적으로 뺀다. `/partners/*.jpg` 는 그 목록에 없어 워커로 갔고 404 가 났다 — 빌드도 ' +
+      '타입체크도 통과하고 **라이브에서만** 프레임이 하얗게 남는다.',
+  },
+  {
+    name: '🏪 PC 타이포가 모바일 치수로 되돌아간다',
+    file: 'src/pages/partners/PartnerCompare.tsx',
+    find: `        <h2 className="text-[25px] lg:text-[42px] xl:text-[48px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2] max-w-[16em]">`,
+    replace: `        <h2 className="text-[23px] lg:text-[38px] font-extrabold tracking-[-0.02em] text-ink leading-[1.28] max-w-[16em]">`,
+    test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
+    why:
+      '대표 *"PC 버전은 전혀 PC 버전 같지 않은데?"* 의 절반이 이것이었다 — 1440px 에서도 제목이 ' +
+      '38px 이라 화면이 "잘 정리된 문서" 로 읽혔다. 한 섹션만 되돌려도 리듬이 깨지므로 ' +
+      '섹션별로 하한을 건다.',
+  },
+  {
+    name: '🏪 히어로 폰이 다시 섹션 밖으로 잘린다',
+    file: 'src/pages/partners/PartnerHero.tsx',
+    find: `              className="w-[38%] max-w-[12.5rem] lg:w-[44%] lg:mb-12" />`,
+    replace: `              className="w-[38%] max-w-[12.5rem] lg:absolute lg:w-[54%] lg:-right-2 lg:bottom-[-2.5rem]" />`,
+    test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
+    why:
+      '1차에서 실제로 그랬다. 섹션이 `overflow-hidden` 이라 폰 아랫부분이 잘렸고, 랜딩에서 ' +
+      '잘린 스크린샷은 의도가 아니라 **고장**으로 읽힌다.',
   },
 ]
