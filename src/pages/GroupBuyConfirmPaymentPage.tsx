@@ -121,7 +121,7 @@ export default function GroupBuyConfirmPaymentPage() {
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-3 leading-relaxed">{errorMsg}</p>
             <p className="text-xs text-gray-400 dark:text-gray-500 mt-3">고객센터에 문의해주세요.<br/>결제 정보: {orderId.slice(0, 20)}</p>
             <button
-              onClick={() => navigate(isCart ? '/cart' : `/group-buy/${productId}`)}
+              onClick={() => navigate(isCart ? '/cart' : `/pass/${productId}`)}
               className="mt-6 px-6 py-3 bg-brand text-white rounded-full text-sm font-bold active:opacity-80"
             >
               {isCart ? '장바구니로 돌아가기' : '상품 페이지로 돌아가기'}

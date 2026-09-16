@@ -221,7 +221,7 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
       ref={linkRef}
       // 🏨 2026-07-20 (숙소 상세 SSOT): 숙소 카드는 객실·날짜 예약이 있는 /stays/:id 로 —
       //   목적지는 canonicalDetailPath(라우팅 SSOT) 위임(그 외 카테고리는 기존 /group-buy/:id 동일).
-      to={to ?? canonicalDetailPath(p) ?? `/group-buy/${p.id}`}
+      to={to ?? canonicalDetailPath(p) ?? `/pass/${p.id}`}
       onMouseEnter={() => { prefetch(p.id); prefetchDetailChunk() }}
       onTouchStart={() => { prefetch(p.id); prefetchDetailChunk() }}
       onFocus={() => { prefetch(p.id); prefetchDetailChunk() }}

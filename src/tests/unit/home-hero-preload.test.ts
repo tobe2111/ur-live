@@ -27,7 +27,7 @@ describe('홈 히어로 preload', () => {
       { image_url: 'https://media.ur-team.com/real.jpg', slug: 'real-shop', id: 2 },
     ])
     expect(pick?.src).toBe('https://media.ur-team.com/real.jpg')
-    expect(pick?.href).toBe('/group-buy/2')
+    expect(pick?.href).toBe('/pass/2')
   })
 
   /** 2026-08-04 사고: 데모에 타사 워터마크 보도사진이 섞여 홈 최상단에 오를 뻔했다. */

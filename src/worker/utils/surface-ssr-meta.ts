@@ -135,7 +135,7 @@ const ENTITY_SLOTS = new Set(['DETAIL', 'PRODUCT', 'STAYDETAIL', 'SELLER', 'CURA
 /**
  * 사라진 상세 페이지를 색인에서 빼야 하는가.
  *
- * 실측: `/group-buy/99999999` 가 **200 + 제네릭 홈 메타 + `robots: index, follow`** 로 나갔다.
+ * 실측: `/group-buy/99999999`(당시 주소) 가 **200 + 제네릭 홈 메타 + `robots: index, follow`** 로 나갔다.
  * 워커의 SSR self-fetch 는 그 순간 404 를 받고 있었는데(`X-SSR-Status: DETAIL:self-fetch-404`) 쓰지 않았다.
  * sitemap 이 상세 URL 829건(공구 329·상품 500)을 제출하고 상품은 내려가므로, 내려갈 때마다
  * "홈과 똑같은 색인 가능한 URL" 이 하나씩 생기는 구조였다.

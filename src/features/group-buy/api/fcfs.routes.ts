@@ -330,7 +330,7 @@ adminApp.post('/:productId/select', async (c) => {
     //   를 실어 당첨자가 바로 구매(일반 결제 플로우)로 이어지게 함. 경로는 종류판별 SSOT(교환권/이용권
     //   =/group-buy, 일반=/products — deal_only/isVoucherCategory, group_buy_status 사용 금지 룰 준수).
     const buyPath = (Number(prod?.deal_only) === 1 || isVoucherCategory(prod?.category))
-      ? `/group-buy/${productId}` : `/products/${productId}`
+      ? `/pass/${productId}` : `/products/${productId}`
 
     // 🔔 2026-07-05: 이번 선정이 '승계'(재선정)인지 판정 — 이번 winners 를 제외하고 이미 선정 이력
     //   (selected/paid)이 있으면, 초기 선정 이후의 재선정 = 예비 당첨 승계로 본다. 알림톡 문안 분기용.

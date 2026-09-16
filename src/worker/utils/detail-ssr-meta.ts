@@ -56,9 +56,10 @@ function absImage(raw: string, origin: string, id: number | string | undefined, 
 }
 
 /**
- * 공구/이용권 상세(/group-buy/:id · /vouchers/:id) 서버 메타.
+ * 공구/이용권 상세(/pass/:id · /vouchers/:id) 서버 메타.
  *   - /vouchers/:id (교환권) → noindex(클라 대칭) + OG 는 공유 카드용으로 여전히 주입, JSON-LD 없음.
- *   - /group-buy/:id (이용권/동네딜) → 인덱싱 + Product/Offer/Breadcrumb JSON-LD.
+ *   - /pass/:id (이용권/동네딜) → 인덱싱 + Product/Offer/Breadcrumb JSON-LD.
+ *     (옛 `/group-buy/:id` 는 워커 진입부에서 301 되므로 canonical 은 언제나 정본이다.)
  * payload 없거나 파싱 실패 시 null(기본 메타 유지).
  */
 export function buildDetailMeta(ssrPayload: string, origin: string, pathname: string): DetailMeta | null {
@@ -109,7 +110,9 @@ export function buildDetailMeta(ssrPayload: string, origin: string, pathname: st
       '@context': 'https://schema.org', '@type': 'BreadcrumbList',
       itemListElement: [
         { '@type': 'ListItem', position: 1, name: '홈', item: `${origin}/` },
-        { '@type': 'ListItem', position: 2, name: '동네딜', item: `${origin}/group-buy` },
+        // 🎟️ 2026-09-16: `/group-buy` 는 홈으로 301 되는 별칭이라 **빵부스러기가 리다이렉트를
+        //   가리키고 있었다**(색인 신호가 한 홉 낭비된다). 정본인 홈으로 직접.
+        { '@type': 'ListItem', position: 2, name: '동네딜', item: `${origin}/` },
         { '@type': 'ListItem', position: 3, name, item: canonical },
       ],
     }

@@ -65,6 +65,15 @@ const allowed = new Set()
   const arr = layout.match(/WHOLESALE_EXTRA_ALLOWED_PATHS\s*=\s*\[([^\]]*)\]/)
   if (arr) for (const pm of arr[1].matchAll(/'(\/admin\/[^']+)'/g)) allowed.add(pm[1])
 }
+// 🔒 2026-08-16: `AdminLayout` 은 도매 역할 nav 에 `stripSuperOnly` 를 먹인다 — 즉 SUPER_ONLY_NAV 항목은
+//   도매 파트너에게 **애초에 안 보인다.** 이 가드는 그걸 모델링하지 않아 super 전용 화면까지
+//   "도매 도달 가능"으로 세고 있었다(도매 밴드에 super 전용 항목이 처음 생긴 날 오탐으로 드러났다).
+//   ⚠️ 이게 침묵 스위치가 되지 않는 이유: SUPER_ONLY_NAV 는 짧은 명시 목록이고, 아래 "검사 화면 0개 = 실패"
+//   자기검증이 목록을 부풀려 검사를 비우는 것을 막는다.
+{
+  const arr = layout.match(/SUPER_ONLY_NAV\s*=\s*new Set\(\[([^\]]*)\]/)
+  if (arr) for (const pm of arr[1].matchAll(/'(\/admin\/[^']+)'/g)) allowed.delete(pm[1])
+}
 const lazyMap = {}
 for (const m of routes.matchAll(/const\s+([A-Za-z0-9_]+)\s*=\s*lazy\(\(\)\s*=>\s*import\('(@\/pages\/[^']+)'\)\)/g)) {
   lazyMap[m[1]] = m[2].replace('@/', 'src/') + '.tsx'
