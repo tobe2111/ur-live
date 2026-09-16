@@ -200,6 +200,7 @@
 3. 본 CLAUDE.md 의 audit log 에 변경 commit 추가
 
 ### 변경 audit log
+- 2026-09-16 `[UNLOCK_LOADING]` `group-buy-public.routes.ts`(피드 2 + 지도 클러스터 1) + `group-buy-feed-cache.ts`(cron) + `section-rules.ts`(홈 섹션) **메인 노출은 승인된 매장만** (대표 *"최종 이용권 등록은 되지만 반려가 아닌 승인이 되어야 메인에 노출이 되게끔 하고"*). **배경**: 같은 커밋에서 셀러 대시보드를 **대기·반려 상태에서도 열어 줬다**(당근 모델 — 들여보내고 배너로 알린다). 종전엔 `switch-to-seller` 가 비승인 계정에 토큰을 안 줘서 **이용권을 등록할 수조차 없었다**. 문을 열면 그 방어가 통째로 사라지므로, 노출 쪽에 벽을 같은 커밋에서 세운다 — 안 그러면 가입 직후 남의 가게 이름으로 만든 이용권이 메인 피드에 뜬다. **수정(WHERE 술어 1개 additive)**: 신규 SSOT `approvedSellerProductSql`(`shared/db/consumer-visible-product.ts` — `consumerVisibleProductSql` 과 같은 파일, 같은 클래스)을 **네 자리에 동시 배선**. 술어는 `NOT EXISTS (… sellers WHERE id = p.seller_id AND status NOT IN ('approved','active'))` — **`seller_id IS NULL` 인 플랫폼 상품(교환권·KT·데모)은 그대로 통과**한다(심사할 매장이 없다. 여기를 조이면 홈이 통째로 빈다 — 테스트가 그 방향을 따로 고정한다). 셀러 행이 없는 dangling `seller_id` 도 **의도적으로 관대**(조인이 깨진 날 전멸 방지 — `ProductRepository` 의 기존 `is_active=0` 필터와 같은 `NOT EXISTS` 모양이라 판정이 갈리지 않는다). **⚠️ 잠긴 항목 전부 byte-불변**: `Cache-Control: max-age=60` / `CDN-Cache-Control: max-age=900` 분리 · 캐시키 · `group_buy_tiers` 서버 parse · SSR 0-RTT 시드 · materialized 경로 · `idx_products_groupbuy_feed` — 바뀐 것은 **WHERE 한 줄**뿐이다(2026-06-26 도매 원본 제외와 동일 additive 클래스). **⚠️ 못 막는 것**: **직링크 상세·구매는 막지 않는다**(대표 지시가 *"메인에 노출"* 이고 구매 차단은 결제 경로=등급 C). 승인 전 매장이 자기 링크를 직접 뿌리면 여전히 팔 수 있고, 그 돈은 `payout_requires_voucher_use` 게이트가 잡는다. **라이브 영향 0(실측 2026-09-16)**: 셀러 **1곳뿐**(id 14, `approved`) · 활성 상품 2,598건 **전부 `seller_id IS NULL`** → 오늘 걸러지는 행 0. 가드: `danggeun-approval-gates-2026-09-16.test.ts` 19건(**실제 `node:sqlite` 에 넣고 보이는 상품 id 를 센다** — 문자열 검사 아님) + 주입 12건 **되돌려-검증 빨간불 확인**. 🩸 **주입이 내 시험 넷을 헛돈다고 잡았다**: ① 배선 검사를 `toContain('approvedSellerProductSql')` 로 썼는데 **import 줄 때문에** SQL 의 술어를 지워도 초록이었다(cron·섹션 두 곳) ② 정지 판정을 `toContain("'SUSPENDED'")` 로 썼는데 `if (false)` 로 바꿔도 문자열이 남아 초록 ③ 네비도 같은 이유 → 전부 **호출 형태**(`AND ${approvedSellerProductSql(`)로 앵커 교체. 검증: tsc 0 · 관련 유닛 pass. 롤백: 네 자리의 `AND ${approvedSellerProductSql(...)}` 제거(SSOT 파일은 남아도 무해).
 - 2026-09-16 `[LOADING_ADDITIVE]` `App.tsx`(폴백 1줄) + `BrandLoader.tsx`(신규 `BootFirstScreenLoader`) + `main.tsx`(캡처 1줄) **서버가 그린 첫 화면을 폴백이 덮지 않는다 — 09-15 판정에서 나온 결함 수리** (대표 *"승인할게 머지하고 판정까지도 해줘"* → 그 판정). **배경(라이브 프레임 캡처, iPhone 13, `urdeal.kr/group-buy/2888`)**: 전날 수리는 **절반만 맞았다** — 사진은 실제로 **React 보다 1.4초 먼저**(4,070ms vs 5,463ms) 떴고 히어로 박스는 **한 종류**(`[0,87,390,260]`)에 URL 도 한 종류(재다운로드 0)였는데, **4,926ms 에 사진이 사라지고 풀스크린 로더가 540ms 화면을 덮었다.** 범인은 히어로가 아니라 **그 다음 단계**다 — React 는 `createRoot`(비-hydrate)라 마운트 때 `#root` 를 비우는데 그 순간 상세 청크가 아직 안 와서 `App.tsx` 의 `<Suspense fallback>` 이 먼저 그려지고, 그 폴백이 `BrandLoader fullScreen` = **`fixed inset-0` 불투명 오버레이**(2026-07-18 에 *"로딩 순간 유어딜 로더 말고도 보임"* 을 고치며 **일부러** 그렇게 만든 것)라 방금 도착한 사진을 덮었다. 대표가 2026-07-01 에 금지한 **"로딩 화면 2~3개"** 가 정확히 이 모양이다. **수정(같은 HTML 을 다시 만들지 않는다 — 같은 *노드*를 들고 있는다)**: ① 워커 첫 화면을 `<div id="ur-first-screen">` 로 감싼다 ② `main.tsx` 가 **`createRoot` 직전에** 그 DOM 노드를 참조로 잡는다(신규 `lib/boot-first-screen.ts`) ③ 소비자 폴백(`PageLoader`)이 `BootFirstScreenLoader` 로 — 노드가 있으면 `appendChild` 로 **그 노드 그대로** 도로 붙이고 그 아래에만 인라인 로더(34dvh, FCP 기준 위상동기)를 둔다. ⇒ **재파싱 0 · 재다운로드 0 · 픽셀 차이 구조적으로 0**(문자열을 다시 조립하면 두 벌이 갈린다 — 이 레포가 반복해 당한 클래스). **⚠️ 노드를 미리 `remove()` 하지 않는다** — 떼면 [떼어냄 → React 커밋] 사이에 페인트가 끼어 한 프레임 사라질 수 있다(`root.render()` 는 즉시 커밋을 보장하지 않는다). React 의 컨테이너 비우기와 폴백 삽입은 **같은 커밋**이다. **⚠️ 무회귀**: 서버 노드가 없으면(교환권 상세·목록·PC 콜드·SPA 내부 이동) 종전 `fullScreen` 로더 **그대로**. **⚠️ `App.tsx` 는 줄 수 불변**(1112 — import 1줄에 named export 를 얹고 `PageLoader` 본문 1줄 교체, 동결 준수). 가드: `boot-first-screen-2026-09-16.test.tsx` 10건(**실제로 렌더해** 서버 노드가 폴백 안에 **같은 노드로** 들어오는지 · `fixed inset-0` 오버레이가 0인지 · 노드 없으면 풀스크린 · 경로 다르면 미사용 · 배선 3) + 주입 5건 **되돌려-검증 빨간불 확인**. 검증: tsc 0 · build 0 · 관련 유닛 60건 pass. ⚠️ **배포 후 판정**: 같은 하네스로 `풀스크린 로더 등장 0회` + 히어로 박스 한 종류. **✅ E4 판정 통과(배포 후 라이브 2회)**: `풀스크린 로더 0회`(직전 1회) · 히어로 박스 1종 · URL 1종 · 사진이 React 보다 먼저(2,614→4,269ms / 429→1,599ms). 2회차는 10초 동안 **상태 변화가 둘뿐**(사진 등장 → 마운트) — 사진이 첫 프레임부터 있고 사라지지도 움직이지도 않는다. ⚠️ 두 회차의 ms 차이는 프록시 릴레이 편차이지 성능 변화가 아니다(판정은 순서·개수). 롤백: `PageLoader` 를 `<BrandLoader fullScreen />` 로 환원(그때 위 가드가 빨간불이 되므로 함께 판단할 것).
 - 2026-09-15 `[UNLOCK_LOADING]` `worker/index.ts` **이용권 상세 첫 화면을 서버가 그린다 — 로더 대신 히어로** (대표 *"꼭 로딩이 걸려야 해?"* → *"없어지는게 좋으면 없애도 돼. 그게 가장 이상적이야?"*). **배경(실측)**: 하드로드 타임라인이 `HTML 0.2s(상품 시드 포함) → 히어로 사진 0.5s(워커 preload) → React 마운트 1.4s` 였다. 즉 **그릴 것도 그릴 사진도 진작 도착해 있는데** 화면은 1.2초 동안 `urdeal.` 워드마크만 보였다. CPU 프로파일상 그 1초의 대부분이 앱 함수가 아니라 **`(program) 967ms`(V8 파싱·컴파일)** 라, 코드를 고쳐 줄일 수 있는 성질이 아니다 — 번들을 줄이거나(−15% 추정) **기다리지 않고 그리거나** 둘뿐이다. 🔎 **그리고 이 레포엔 진짜 React SSR 기계가 이미 있다**(`entry-server.tsx` + `prerender-main.mjs`, 매 빌드 실행) — 2026-07-07 이 그 산출물을 버린 이유는 *"구워진 홈 shell 이 `__SSR_INITIAL_MAIN__` 을 안 먹어 순수 낭비"* 였고 **그 판단은 지금도 옳다**(빌드 시점엔 라이브 데이터가 없다). ⇒ 남는 길은 **워커가 시드로 첫 화면을 그리는 것**이고, 그 선례도 이미 있다(`/blog` 의 `blog-ssr-body.ts`). **수정(분기 1개 + 신규 순수 모듈)**: `#root` catch-all **앞**에 `DETAIL && /group-buy/` 분기 — `buildDetailFirstScreen`(신규 `utils/detail-ssr-body.ts`)이 [빵부스러기 + 히어로]를 그리고 **그 아래에만** 로더를 둔다(`min-height:100dvh`→`34dvh`). **⚠️ 히어로까지만 그린다** — 제목·가격 위에 `ShareRewardBanner`(딜 보유자에게만 뜨는 per-user 블록)가 있어 서버가 그리면 **그 사용자들에게만** 마운트 때 아래로 밀린다("대부분은 안 밀린다"를 기준으로 이 클래스를 통과시키지 않는다). **PC(lg+)는 무접촉**(제목헤더+4:3/16:9 대형+썸네일 2칸 별도 레이아웃 — 복제 면적이 몇 배). **`/vouchers/:id`(교환권)는 같은 DETAIL 슬롯이지만 다른 페이지**(`VoucherDetailPage`)라 pathname 으로 가른다. **🔬 안 튀는지는 약속이 아니라 실측으로 확인했다** — 로컬 프레임 캡처(서버가 그린 것) vs **라이브 `urdeal.kr/group-buy/2888` 마운트 후**(iPhone 13): 히어로 box `[0,87,390,260]` **완전 일치** · 배경색 `#1D1F29` 일치 · 배경 URL `/cdn-cgi/image/width=900,quality=85,format=auto,onerror=redirect,height=600,fit=cover,gravity=auto/…` **byte-일치**(= preload 가 이미 받아 둔 그 URL → 추가 요청 0) · 크럼 클래스 문자열 일치. **⚠️ 잠긴 항목 전부 불변**: `__SSR_INITIAL_DETAIL__` 주입(`<head>`)·0-RTT·`caches.default`·HOT_PATHS·`Cache-Control` 분리·히어로 preload·catch-all 로더(`const urdealLoaderHtml` + `else{}` 그대로 — `check-loader-continuity` 불변식 ② 무접촉) — 바뀐 것은 **DETAIL 한 분기**뿐이고 실패하면 `''` → 종전 로더(무회귀). 가드: `detail-ssr-first-screen-2026-09-15.test.ts` 17건(히어로 URL SSOT · 3:2 프레임 · 크럼 클래스 **컴포넌트 소스와 대조** · 제목·가격 미노출 · 폴백 5종 · 배선 3) + 주입 6건 **되돌려-검증 빨간불 확인**. 파일: worker 2638→2645(래칫 +7 — 본체 123줄은 신규 모듈로 추출했고, 남은 7줄은 `check-loader-continuity` 가 이 파일에 있으라고 요구하는 배선이다). 검증: tsc 0 · build 0. ⚠️ **배포 후 판정**: `/group-buy/:id` 하드로드에서 사진이 로더보다 먼저 뜨고 마운트 때 **안 움직이는지**(프레임). 롤백: `#root` 의 DETAIL 분기 1개 제거(모듈은 남아도 무해).
 - 2026-09-15 `[UNLOCK_LOADING]` `VouchersPage.tsx` **탭 재진입 웜 시드 — 매번 뜨던 풀스크린 로더 제거** (대표 *"특히 로딩은 더 문제가 있을 것 같은데"* → 시안 질의에 *"가장 이상적으로"*). **배경(브라우저 실측)**: 하단바 '교환권' 을 누를 때마다 **1·2·3회차 전부** 풀스크린 로더가 떴다(마이 탭은 2회차부터 안 뜬다). 방금 보고 나온 목록인데도 화면 전체가 덮인다. 원인은 **각자 옳은 결정 둘이 겹친 자리**다 — ① `VouchersPage:412` *"콜드 진입은 풀스크린 로더가 맞다(정적 청크 로더와 이어져 '한 번'으로 보인다)"*(2026-07-01) ② `list-view-cache` *"PUSH 로 들어온 목록은 복원하지 않는다(탭을 새로 누른 사람은 맨 위를 기대한다)"*(2026-09-13). ⇒ **콜드용 처방이 웜 재방문에도 그대로** 걸렸다. 재방문엔 청크 로더가 아예 없으므로 ①의 근거가 성립하지 않는다. **수정(시드 1종 추가 — 제거 0)**: 신규 `pages/vouchers/warm-seed.ts` 가 POP 복원(`restored`)과 웜 시드(`warm`)를 **한 자리에서** 고른다(`useListSeed`). PUSH 재진입이고 보관본이 있으면 **첫 페이지 분량만** 돌려준다 → `loadProducts(1,true)` 의 `productsRef.current.length === 0` 가 거짓이라 **로더를 안 켜고** 응답이 오면 조용히 교체(2026-06-05 "비우지 않고 백그라운드 교체" 와 같은 길). **⚠️ 잠긴 항목 전부 불변**: `__SSR_INITIAL_VOUCHERS__` 즉시 소비(순서에서 여전히 살아 있고, 하드로드엔 메모리 보관함이 비어 있어 둘이 부딪칠 일이 없다) · 기본 정렬 `price_low` · VoucherCard/VoucherRow 이미지 속성 · 카테고리/브랜드 선택 동작 — 바뀐 것은 **초기값 두 줄**뿐이다. **⚠️ 맨 위 기대는 그대로** — 되돌리는 건 *데이터*지 스크롤이 아니다(`ScrollToTop` 이 PUSH 에서 맨 위로 보낸다). **⚠️ 1페이지분으로 자르는 이유**: 더보기로 편 긴 목록을 통째로 시드하면 곧 도착할 1페이지 응답이 **도로 짧게** 만든다(2026-09-13 이 POP 에서 겪은 그 증상). **실측(로컬 빌드, 430px)**: 교환권 탭 1·2·3회차 로더 프레임 **전부 0**(이전 2·2·2), 마이 1회차 콜드 로더는 유지. 파일 837 → **829**(동결 이내 — 시드 선택을 모듈로 추출). 가드: `vouchers-warm-seed-2026-09-15.test.ts` 9건(모듈 6 + **배선 3**) + 주입 5건 **되돌려-검증 빨간불 확인**. 🩸 **첫 판은 모듈만 재서 배선을 끊어도 초록이었다** — 주입 러너가 잡아 배선 검사를 추가했다. 🔀 동반: 기존 주입 `뒤로가기 복원 — POP 조회를 무력화` 와 `list-view-restore-2026-09-13.test.ts` 2건을 **지우지 않고 새 자리로 재조준**(판정이 `warm-seed.ts` 로 옮겨졌을 뿐 불변식은 그대로). 검증: tsc 0 · build 0 · vitest 704파일 8,878건 pass · pre-push 가드 95개. 롤백: 초기값 두 줄에서 `warm ??` / `warm == null &&` 제거(그때 위 가드가 빨간불이 되므로 함께 판단할 것).
@@ -774,6 +775,55 @@ curl -sS -X POST "$CF/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database/$DB/query" -H 
 > 이 접근이 없어서 오늘 막혔던 것들: `Workers Builds: ur-live-global` 이 매 PR 마다 실패하는데 **빌드 로그가
 > 대시보드에만 있어** 원인을 못 밝히고 "선재 실패"로만 넘겼다 · `SUPPLY_MAKER_COLLECT_ENABLED` 게이트를
 > 못 켜 제조사 풀이 수동 실행분(85건)에 머물렀다.
+
+## 🔀 PR 머지는 세션이 끝낸다 — 대표에게 버튼을 떠넘기지 않는다 (2026-09-16 대표 지시 "앞으로 너가 하도록 설정해줘 모든 세션에서")
+
+**대표가 "초록 뜨면 머지" 라고 했으면, 머지까지가 세션의 일이다.** draft 해제·auto-merge·머지·머지 후
+브랜치 정리는 전부 세션이 한다. *"GitHub API 가 막혀서 대표님이 눌러 주세요"* 는 **답이 아니다.**
+
+> 🩸 **이 규칙은 실제로 떠넘긴 뒤에 생겼다.** 2026-09-16, PR #1472 는 CI 초록·충돌 0 인데 draft 라
+> 머지가 405 였다. `mcp__github__update_pull_request` 가 rate limit(`for user ID 64677275`)이라
+> 대표에게 "Ready for review 눌러 주세요" 라고 했다. **그런데 그때 이미 다른 경로가 멀쩡한 걸 확인해
+> 놓고 있었다** — 그 경로로 한 번 시도했다가 `GitHub is temporarily unavailable. Retry shortly.`
+> (일시 오류, 재시도하면 되는 것)를 받고 포기했다. 대표: *"내가 해야하는 작업마저 너가 할 수 없나?"*
+
+### 경로가 둘이고, 버킷이 다르다
+
+| | 쓰는 신원 | 한도 |
+|---|---|---|
+| `mcp__github__*` 쓰기 | **대표 계정(user OAuth)** — 동시에 도는 모든 세션이 **한 버킷을 나눠 쓴다** | 자주 소진된다 |
+| `curl https://api.github.com/...` | **앱 설치 토큰**(에이전트 프록시가 주입) — repo `admin:true` | 실측 core 15,000 / graphql 10,000, 보통 **0 사용** |
+
+⇒ **MCP 쓰기가 rate limit 이면 그대로 curl 로 간다.** 토큰을 직접 넣지 않는다(프록시가 붙인다).
+`GH_TOKEN`/`GITHUB_TOKEN` 환경변수는 14자 `proxy…` 자리표시자라 **그 값을 쓰면 안 된다.**
+
+### ⚠️ GraphQL 은 막혀 있다 — CCR REST 경로를 쓴다
+
+`POST /graphql` 은 *"GitHub GraphQL is not available from Claude Code sessions"* 로 거부된다.
+draft·auto-merge·리뷰 스레드는 GraphQL 전용 기능이라 **전용 REST 경로**가 따로 있다:
+
+```bash
+G=https://api.github.com/repos/tobe2111/ur-live/pulls/<번호>
+curl -sS -X POST "$G/ccr/ready_for_review"            # draft 해제
+curl -sS -X POST "$G/ccr/convert_to_draft"            # 다시 draft 로
+curl -sS -X PUT    "$G/ccr/auto_merge"                # 초록 뜨면 자동 머지 (DELETE 로 해제)
+curl -sS       "$G/ccr/review_threads"                # 리뷰 스레드 조회
+curl -sS -X POST "$G/ccr/comments/<id>/resolve"       # 스레드 해결 (또는 /unresolve)
+curl -sS -X PUT  "$G/merge" -H 'Content-Type: application/json' \
+  --data '{"merge_method":"squash","sha":"<head sha>"}'   # 머지(REST 로 됨)
+```
+
+🔴 **`GitHub is temporarily unavailable. Retry shortly.` 는 실패가 아니라 재시도 신호다.**
+한 번 받고 멈추지 말 것 — 몇 초 간격으로 3~4회. 그 문장을 보고 포기한 것이 이 규칙이 생긴 이유다.
+
+### 그래도 바뀌지 않는 것
+
+이 규칙은 **머지 버튼을 누가 누르느냐**만 정한다. 승인 자체를 대신하지 않는다:
+- 대표가 머지를 지시하지 않았으면 **초록 사실만 보고하고 기다린다**(종전과 동일).
+- **CI 를 우회하지 않는다** — Verify 가 이 커밋(head sha 대조!)에 실제로 초록이어야 머지한다.
+  `check_runs` 가 비어 있는데 PR 이 초록처럼 보이는 경우가 있다(옛 커밋의 통과 기록이 붙는다).
+- **머니 경로·게이트 ON·발행/발송·삭제/purge 는 여전히 결재(C)** — 이 절과 무관하다.
+
 ## 🧪 원격 세션 검증 능력 — **npm 은 세션마다 다르다. 먼저 확인할 것** (2026-08-02 정정)
 
 ⚠️ **이 섹션은 2026-07-28 에 "npm 정상화"로 단정돼 있었다. 그 단정이 틀렸다** — 정책은 세션마다 바뀐다.

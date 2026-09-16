@@ -48,6 +48,11 @@ function makeD1(): D1Database {
     images TEXT, is_active INTEGER, group_buy_status TEXT, created_at TEXT,
     seller_id INTEGER, is_supply_product INTEGER, supply_source_id INTEGER, mall_id INTEGER
   )`).run()
+  // 🥕 2026-09-16: 홈 섹션 WHERE 에 `approvedSellerProductSql` 이 붙었다(승인된 매장만 노출).
+  //   이 픽스처의 상품은 전부 `seller_id` 가 없어 **판정 결과는 종전과 같지만**, 테이블이 없으면
+  //   상관 서브쿼리가 던져서 리졸버의 catch 가 빈 배열을 돌려준다 — 결과가 0 이 되어
+  //   "겹침을 못 만들었다" 로 보인다(실제로 그렇게 빨간불이 났다).
+  db.prepare(`CREATE TABLE sellers (id INTEGER PRIMARY KEY, status TEXT)`).run()
   const ins = db.prepare(`INSERT INTO products
     (id,name,price,original_price,image_url,category,discount_rate,sold_count,dominant_color,
      avg_rating,review_count,view_count,deal_only,restaurant_name,restaurant_address,slug,images,
