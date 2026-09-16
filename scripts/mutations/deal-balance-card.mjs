@@ -50,7 +50,7 @@ export default [
   {
     name: '🪙잔액 0 에도 큰 카드를 쓴다',
     file: 'src/pages/vouchers/DealBalanceCard.tsx',
-    find: `  if (!balance) {`,
+    find: `  if (!balance && !awaiting) {`,
     replace: `  if (false) {`,
     test: 'src/tests/unit/deal-balance-card-2026-09-14.test.ts',
     why:
@@ -60,7 +60,7 @@ export default [
   {
     name: '🪙잔액 PC 가 모바일과 다른 카드를 쓴다',
     file: 'src/pages/VouchersPage.tsx',
-    find: `            <DealBalanceCard balance={dealBalance} variant="compact" />`,
+    find: `            <DealBalanceCard balance={dealBalance} variant="compact" loggedIn={!!userId} />`,
     replace: `            <div className="rounded-2xl p-4 bg-white shadow-lift"><p>내 딜 잔액</p></div>`,
     test: 'src/tests/unit/deal-balance-card-2026-09-14.test.ts',
     why:
@@ -70,7 +70,7 @@ export default [
   {
     name: '🪙잔액 페이지가 부품 대신 다시 인라인으로 그린다',
     file: 'src/pages/VouchersPage.tsx',
-    find: `        <DealBalanceCard balance={dealBalance} />`,
+    find: `        <DealBalanceCard balance={dealBalance} loggedIn={!!userId} />`,
     replace: `        <div className="rounded-2xl p-5 bg-white shadow-lift"><span className="text-[42px]">0</span></div>`,
     test: 'src/tests/unit/vouchers-top-chrome.test.ts',
     why:

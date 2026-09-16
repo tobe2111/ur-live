@@ -209,7 +209,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
       })
       // 🛡️ 2026-06-26 (소비자 감사 P1): 일시 오류를 잔액 0(='즉시 충전' 부족 UI)으로 위장하지 않음 —
       //   기존값 유지(잔액 있는 유저에게 '충전하세요' 오표시 방지). 서버는 결제 시 잔액 재검증.
-      .catch(() => { /* keep prior balance — do not clobber to 0 on transient error */ })
+      .catch(() => { setDealBalance(b => b ?? 0) /* 06-26: 읽은 값은 안 덮는다 / 09-16: 한 번도 못 읽었으면 0 → 빈 카드가 안 남는다 */ })
   }, [userId])
 
   // 🛡️ 2026-05-19: 카테고리 + 브랜드 sections 로드 (전용 endpoint, deal_only=1 만).
@@ -427,7 +427,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           <aside className="sticky top-[120px] self-start space-y-6">
             {/* 🪙 딜 잔액 — 모바일과 **같은 부품**(compact). 2026-09-14 전에는 두 벌이라
                   한쪽만 고쳐지는 사고가 실제로 났다(며칠 전 딜 선택 UI 에서 PC 를 통째로 잊었다). */}
-            <DealBalanceCard balance={dealBalance} variant="compact" />
+            <DealBalanceCard balance={dealBalance} variant="compact" loggedIn={!!userId} />
 
             <GifticonBoxRailRow />
 
@@ -581,7 +581,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
       {/* 🪙 2026-09-14 (대표 확정 — 안 A3 + 42px): 잔액 카드.
             구조와 지운 문구의 사유는 `./vouchers/DealBalanceCard` 머리주석. 여기는 자리와 여백만. */}
       <div className="ur-content-wide px-4 lg:px-8 pt-3">
-        <DealBalanceCard balance={dealBalance} />
+        <DealBalanceCard balance={dealBalance} loggedIn={!!userId} />
       </div>
 
       {/* 🛡️ 2026-05-19: 카테고리 바 — 사용자 요청 (전체 탭 X, KT Alpha 분류 그대로).
