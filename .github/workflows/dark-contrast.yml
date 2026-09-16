@@ -32,6 +32,18 @@ on:
       - 'src/pages/PaymentSuccessPage.tsx'
       - 'src/pages/TossWidgetPayPage.tsx'
       - 'src/components/payments/**'
+      # 🩸 2026-09-16 (두 번째) — **같은 실수를 한 층 위에서 또 했다.** 바로 위 주석이
+      #   *"목록에 넣는 것만으로는 부족하고 언제 도는가도 맞아야 한다"* 고 적어 뒀는데,
+      #   그날 입력 화면 6곳을 ROUTES 에 넣으면서 **그 파일들을 여기 안 넣었다.**
+      #   그러면 누가 `InfluencerSettlementPage.tsx` 를 고쳐도 이 검사는 안 돈다 —
+      #   하필 그 파일에서 1.07:1(흰 판 위 흰 글자)이 나왔는데도.
+      #   ⇒ ROUTES 에 경로를 넣으면 **그 화면을 그리는 파일도 여기 넣는다.**
+      - 'src/pages/InfluencerSettlementPage.tsx'
+      - 'src/pages/InfluencerDiscoverPage.tsx'
+      - 'src/pages/AddressManagementPage.tsx'
+      - 'src/pages/VoucherDetailPage.tsx'
+      - 'src/pages/VoucherVerifyPage.tsx'
+      - 'src/pages/StoreStatsPage.tsx'
       - 'scripts/check-dark-contrast.mjs'
       - 'scripts/dark-contrast-baseline.json'
 

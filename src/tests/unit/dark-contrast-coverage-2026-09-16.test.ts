@@ -95,7 +95,18 @@ describe('dark-contrast 가드 커버리지 (2026-09-16)', () => {
     expect(guard).toMatch(/perRoute\.push\(/)
     // 🩸 되돌려-검증이 잡았다: 처음엔 `filter(` 존재만 봤는데, 임계를 `r.n < 0` 으로 바꾸면
     //    (= 영원히 빈 배열) 검사가 통째로 죽는데도 통과했다. **모양이 아니라 값**을 본다.
-    expect(guard).toMatch(/const EMPTY_ROUTES = perRoute\.filter\(\(r\) => r\.n < [1-9]\d*\)/)
+    expect(guard).toMatch(/const EMPTY_ROUTES = perRoute\.filter\(\(r\) => r\.n < EMPTY_FLOOR\)/)
+    expect(guard).toMatch(/const EMPTY_FLOOR = [1-9]\d*/)
+
+    /**
+     * 🩸 그리고 그 엄격함이 **flake 를 만들었다**(같은 날 실측): `npm run build` 직후에 돌리면
+     *   `/cart`·`/checkout`·`/payment/success` 셋이 "안 그려짐"으로 빨간불이었는데, 같은 dist 를
+     *   단독으로 다시 재니 48경로 1,467텍스트 0건으로 멀쩡했다. CI 가 정확히 그 순서(빌드→측정)로 돈다.
+     *   ⇒ 무르게 되돌리는 대신 **바닥을 밑돈 경로만 한 번 더 길게** 재고 그래도 밑돌면 실패로 본다.
+     *     이 재시도가 사라지면 가드가 간헐적으로 빨개져 결국 아무도 안 믿게 된다.
+     */
+    expect(guard, '바닥 미달 경로 재시도가 없다 — 빌드 직후 실행에서 간헐 실패한다').toMatch(/if \(\(res\.measured \|\| 0\) < EMPTY_FLOOR\)/)
+    expect(guard, '재시도가 더 길게 기다리지 않으면 같은 결과만 두 번 얻는다').toMatch(/waitForTimeout\(9000\)/)
     // 판정 뒤에 반드시 종료해야 한다(로그만 찍고 통과하면 검사가 아니다).
     const blk = guard.slice(guard.indexOf('const EMPTY_ROUTES'))
     expect(blk.slice(0, 600)).toContain('process.exit(1)')
@@ -127,5 +138,65 @@ describe('dark-contrast 가드 커버리지 (2026-09-16)', () => {
     expect(guard).toMatch(/measured < \d{3}/)
     const blk = guard.slice(guard.indexOf('if (measured <'))
     expect(blk.slice(0, 400)).toContain('process.exit(1)')
+  })
+
+  /**
+   * 🕯️ 2026-09-16 (b) — **입력을 가진 소비자 화면이 목록 밖에 있으면 "괜찮다"가 아니라 "모른다"다.**
+   *
+   * 전역 `.dark input`(특이도 0,5,1)이 요소의 `text-gray-900`(0,1,0)을 **언제나** 이기므로,
+   * 입력 화면은 이 클래스의 진앙이다. 실제로 이 목록을 늘린 그날 `/influencer/settlement` 에서
+   * **선택된 칸의 글자가 흰 판 위 흰 글자(1.07:1)** 로 나왔다 — 되다 만 팔레트 이행이 원인이었고
+   * 안 재는 동안엔 아무도 몰랐다.
+   *
+   * ⚠️ 이 표가 못 보는 것: **모달 뒤에 있는 입력**. 경로가 목록에 있어도 폼이 안 열리면 0건이다
+   *   (`/mypage/addresses` 의 9개가 정확히 그랬다) — 그래서 `open` 을 함께 검사한다.
+   */
+  it('⑧ 입력을 가진 소비자 화면이 목록에 있다 — 모달 뒤 폼은 open 까지', () => {
+    const routes = [...guard.matchAll(/route:\s*'([^']+)'/g)].map((m) => m[1])
+    const has = (base: string) => routes.some((r) => r === base || r.startsWith(`${base}?`))
+    for (const [base, why] of Object.entries({
+      '/influencer/settlement': '송금 방식·계좌 입력 5개 — 여기서 1.07:1 실측이 나왔다',
+      '/influencer/discover': '검색 입력 2개',
+      '/vouchers/2192': '교환권 상세 수량·옵션 입력 2개',
+      '/v/GUARD-TEST-CODE': '교환권 확인 코드 입력 2개',
+      '/store/stats/2846': '매장 통계 기간 입력 2개',
+    })) expect(has(base), `${base} 가 가드 목록에 없다 (${why})`).toBe(true)
+
+    // 🩸 `/mypage/addresses` 는 **이미 목록에 있었는데도** 입력 9개가 통째로 안 재지고 있었다 —
+    //   폼이 모달 뒤라 닫힌 화면만 쟀기 때문. 경로 존재만으로는 부족하다는 증거라 따로 못 박는다.
+    const addr = guard.split('\n').filter((l) => l.includes("route: '/mypage/addresses'"))
+    expect(addr.length, '/mypage/addresses 항목이 없다').toBeGreaterThan(0)
+    expect(addr.some((l) => l.includes('open:')), '배송지 추가 폼을 여는 줄이 없다 — 닫힌 목록만 재게 된다').toBe(true)
+    expect(guard).toContain('data-testid="address-add"')
+  })
+
+  /**
+   * 🩸 2026-09-16 (두 번째) — **같은 실수를 한 층 위에서 또 했다.**
+   *
+   * 워크플로 자신의 주석이 *"목록에 넣는 것만으로는 부족하고 **언제 도는가**도 맞아야 한다"* 고
+   * 적어 뒀는데, 그날 입력 화면 6곳을 ROUTES 에 넣으면서 **그 파일들을 `paths:` 에 안 넣었다.**
+   * 그러면 누가 `InfluencerSettlementPage.tsx` 를 고쳐도 이 검사는 안 돈다 — 하필 그 파일에서
+   * 1.07:1(흰 판 위 흰 글자)이 나왔는데도. 목록은 늘었는데 **도는 조건은 안 늘었다.**
+   *
+   * ⚠️ 이 검사가 못 하는 것: 경로 → 파일 매핑은 기계로 못 푼다(`/vouchers/2192` 가 어느 컴포넌트를
+   *   그리는지 정적으로 단정할 수 없다). 그래서 **이번에 넣은 파일 이름만** 못 박는다 —
+   *   다음에 ROUTES 를 늘리는 세션은 이 표에도 한 줄 더할 것.
+   */
+  it('⑩ 새로 재기 시작한 화면의 파일이 워크플로 paths 에도 있다 — 목록만 늘면 안 돈다', () => {
+    const wf = readFileSync('.github/workflows/dark-contrast.yml', 'utf8')
+    for (const f of [
+      'src/pages/InfluencerSettlementPage.tsx',
+      'src/pages/InfluencerDiscoverPage.tsx',
+      'src/pages/AddressManagementPage.tsx',
+      'src/pages/VoucherDetailPage.tsx',
+      'src/pages/VoucherVerifyPage.tsx',
+      'src/pages/StoreStatsPage.tsx',
+    ]) expect(wf, `${f} 가 dark-contrast.yml 의 paths 에 없다 — 그 파일을 고쳐도 검사가 안 돈다`).toContain(f)
+  })
+
+  it('⑨ open 이 여러 단계를 받는다 — 2단 깊이 모달을 못 연다고 포기하지 않게', () => {
+    // 배송지 폼처럼 [고르기 모달 → 새로 추가] 2단인 입력이 있다. 문자열 하나만 받으면
+    // 그 화면은 영원히 "못 잰다"로 남는다.
+    expect(guard).toMatch(/Array\.isArray\(R\.open\)/)
   })
 })
