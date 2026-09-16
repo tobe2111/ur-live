@@ -230,8 +230,11 @@ export default function AddressManagementPage() {
               {addresses.length}<span className="text-[14px] font-semibold text-gray-500 dark:text-gray-400 ml-1">개</span>
             </p>
           </div>
+          {/* 🕯️ `data-testid` 는 dark-contrast 가드가 **이 폼을 열어** 입력 글자색을 재기 위한 손잡이다.
+                닫힌 화면만 보면 "0건"이 거짓 안심이 된다(그 가드가 반복해 당한 클래스). 런타임 무영향. */}
           <button
             onClick={openAddForm}
+            data-testid="address-add"
             className="flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-gray-800 text-white text-[13px] font-bold shadow-sm active:scale-[0.97] transition-transform"
           >
             <Plus className="w-4 h-4" />

@@ -185,6 +185,38 @@ const ROUTES = [
   },
   { route: '/payment/fail?code=PAY_PROCESS_CANCELED&message=%EC%82%AC%EC%9A%A9%EC%9E%90%EA%B0%80%20%EC%B7%A8%EC%86%8C&orderId=GB-1-1700000000000', name: '결제 실패', fill: true },
   { route: '/group-buy/confirm-payment?productId=2846&qty=1', name: '결제 확인', auth: 'user', fill: true },
+
+  /**
+   * 🕯️ 2026-09-16 (b) — **입력을 가진 소비자 화면 중 아직 한 번도 안 재 본 것들.**
+   *
+   * 전수로 세어 보니 소비자 입력 22개가 이 목록 밖에 있었다. 전역 `.dark input`(0,5,1)이
+   * 요소의 `text-gray-900`(0,1,0)을 **언제나** 이기므로, 안 재는 입력은 "괜찮다"가 아니라
+   * **모른다**가 맞다.
+   *
+   * ⚠️ `/mypage/addresses` 는 이미 목록에 있었지만 **폼이 모달 뒤**라 9개가 통째로 안 재지고 있었다
+   *   — 경로가 목록에 있다고 그 화면의 입력이 재진 것이 아니다. 그래서 같은 경로를 `open` 과 함께
+   *   한 줄 더 둔다(리스트 화면은 기존 줄이 계속 잰다).
+   */
+  { route: '/mypage/addresses', name: '배송지(추가 폼)', auth: 'user', fill: true, open: '[data-testid="address-add"]' },
+  { route: '/influencer/settlement', name: '정산 신청', auth: 'user', fill: true },
+  { route: '/influencer/discover', name: '소개 찾기', auth: 'user', fill: true },
+  { route: '/vouchers/2192', name: '교환권 상세', fill: true },
+  { route: '/v/GUARD-TEST-CODE', name: '교환권 확인', fill: true },
+  { route: '/store/stats/2846', name: '매장 통계', auth: 'user', fill: true },
+
+  /**
+   * 🚫 **이 하네스에서는 못 여는 입력** — 지우지 말고 여기 적어 둔다(다음 세션이 같은 조사를
+   *   처음부터 다시 하지 않도록). 전부 "안 고쳐도 된다"가 아니라 **"여기서 못 잰다"** 이다.
+   *
+   *   · `checkout/NewAddressFormModal`(5) — 배송지 고르기 모달을 **먼저** 열어야 나온다.
+   *     `open` 이 이제 배열을 받으므로 두 트리거에 `data-testid` 만 붙이면 열린다(다음 조각).
+   *   · `my-orders/CancelOrderModal`(2) · `ReturnRequestModal`(2) — 주문 카드의 버튼에서 열리는데
+   *     이 하네스엔 워커가 없어 주문이 0건이다. `/api/orders` 스텁을 만들면 열린다(다음 조각).
+   *   · `restaurant-map/SuggestionModal`(1) — **회색 지도 핀**을 눌러야 열린다. 카카오 지도 SDK 가
+   *     외부 로드라 이 환경에선 핀 자체가 없다 — 스텁으로 못 만든다.
+   *   · `components/KakaoMapPicker`(1) — 쓰는 곳이 셀러 대시보드 4곳(라이트 고정 = 범위 밖) +
+   *     `UserGroupBuyCreatePage`(`HOSTING_HIDDEN` 으로 꺼진 `/host/new`)뿐이다.
+   */
 ]
 
 const PORT = 8790
@@ -417,6 +449,33 @@ const avgRect = (png, rect) => {
   return n ? { r: Math.round(r / n), g: Math.round(g / n), b: Math.round(b / n) } : null
 }
 
+/**
+ * 시트/모달을 **열어야 잰다** — 닫힌 화면만 보면 "0건"이 거짓 안심이 된다.
+ * `open` 은 선택자 하나 또는 **차례로 누를 배열**(2단 깊이: 배송지 고르기 → 새 배송지).
+ * 🔑 첫 판과 재시도가 **같은 함수**를 쓴다 — 두 벌이면 언젠가 갈린다.
+ */
+async function openSteps(page, R) {
+  if (!R.open) return
+  for (const sel of (Array.isArray(R.open) ? R.open : [R.open])) {
+    await page.click(sel, { timeout: 4000 }).catch(() => {})
+    await page.waitForTimeout(900)
+  }
+}
+
+/** 한 경로가 이보다 적게 그렸으면 "안 그려졌다" 로 본다(재시도 후에도 그러면 실패). */
+const EMPTY_FLOOR = 5
+
+/** 입력요소 채우기 — **한 벌만 둔다.** 첫 판과 재시도가 서로 다르게 채우면 판정이 갈린다. */
+const FILL_INPUTS = () => {
+  for (const el of document.querySelectorAll('input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]), textarea')) {
+    if (!el.value) {
+      const setter = Object.getOwnPropertyDescriptor(el.constructor.prototype, 'value')?.set
+      setter?.call(el, '부산')
+      el.dispatchEvent(new Event('input', { bubbles: true }))
+    }
+  }
+}
+
 const findings = []
 let measured = 0
 /** 경로별 측정 개수 — 아래 '경로가 통째로 안 그려졌다' 검사에 쓴다. */
@@ -450,24 +509,31 @@ for (const R of ROUTES) {
   await page.goto(`http://127.0.0.1:${PORT}${R.route}`, { waitUntil: 'domcontentloaded', timeout: 40000 }).catch(() => {})
   await page.waitForTimeout(3500)
   // 시트/모달은 열어야 잰다 — 닫힌 화면만 보면 "0건"이 거짓 안심이 된다.
-  if (R.open) {
-    await page.click(R.open, { timeout: 4000 }).catch(() => {})
-    await page.waitForTimeout(900)
-  }
+  await openSteps(page, R)
   // 입력요소는 **값이 있을 때** 글자색이 보인다 — 비어 있으면 placeholder 만 재게 된다.
-  if (R.fill) {
-    await page.evaluate(() => {
-      for (const el of document.querySelectorAll('input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]), textarea')) {
-        if (!el.value) {
-          const setter = Object.getOwnPropertyDescriptor(el.constructor.prototype, 'value')?.set
-          setter?.call(el, '부산')
-          el.dispatchEvent(new Event('input', { bubbles: true }))
-        }
-      }
-    }).catch(() => {})
-    await page.waitForTimeout(600)
+  if (R.fill) { await page.evaluate(FILL_INPUTS).catch(() => {}); await page.waitForTimeout(600) }
+  let res = await page.evaluate(MEASURE).catch(() => ({ rows: [], measured: 0, pixelQueue: [] }))
+
+  /**
+   * 🩸 2026-09-16 — **고정 대기(3.5초)는 머신이 한가할 때만 맞다.**
+   *
+   *   `npm run build` 직후에 이 가드를 돌렸더니 `/cart`·`/checkout`·`/payment/success` 셋이
+   *   "아무것도 안 그려짐"으로 빨간불이 났는데, **같은 dist 를 단독으로 다시 재니 전부 정상**이었다
+   *   (48경로 1,467텍스트, 0건). 즉 화면이 깨진 게 아니라 **빌드 잔여 부하에 렌더가 못 따라온 것**이다.
+   *   그리고 CI(`dark-contrast.yml`)가 정확히 그 순서로 돈다 — 빌드하고 바로 잰다.
+   *
+   *   ⇒ 무른 판정으로 되돌리지 않는다(그러면 진짜 깨진 경로를 놓친다). 대신 **바닥을 밑돈 경로만
+   *     한 번 더, 더 길게** 재고 그래도 밑돌면 그때 실패로 본다. 진짜로 안 그려지는 경로는
+   *     두 번째에도 안 그려지므로 엄격함은 그대로다.
+   */
+  if ((res.measured || 0) < EMPTY_FLOOR) {
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 40000 }).catch(() => {})
+    await page.waitForTimeout(9000)
+    await openSteps(page, R)
+    if (R.fill) { await page.evaluate(FILL_INPUTS).catch(() => {}); await page.waitForTimeout(600) }
+    const retry = await page.evaluate(MEASURE).catch(() => ({ rows: [], measured: 0, pixelQueue: [] }))
+    if ((retry.measured || 0) > (res.measured || 0)) res = retry
   }
-  const res = await page.evaluate(MEASURE).catch(() => ({ rows: [], measured: 0, pixelQueue: [] }))
   measured += res.measured || 0
   perRoute.push({ name: R.name, route: R.route, n: res.measured || 0 })
   for (const r of (res.rows || [])) findings.push({ ...r, where: R.name, route: R.route })
@@ -579,7 +645,7 @@ if (measured < 200) {
    `/pay/widget` 을 새로 넣으면서 "정말 그려졌나"를 합계로는 확인할 수 없었다 —
    그게 이 레포가 반복해 당한 "측정할 수 없어서 통과" 의 경로별 판이다.
    ⚠️ 빈 상태 화면(주문 0건 등)도 헤더·안내문 몇 줄은 그린다. 5 미만이면 렌더 실패로 본다. */
-const EMPTY_ROUTES = perRoute.filter((r) => r.n < 5)
+const EMPTY_ROUTES = perRoute.filter((r) => r.n < EMPTY_FLOOR)
 if (EMPTY_ROUTES.length) {
   console.log(`❌ dark-contrast: 아무것도 안 그려진 경로 ${EMPTY_ROUTES.length}건 — 그 경로는 검사되지 않았다(통과 아님).`)
   for (const r of EMPTY_ROUTES) console.log(`   ${r.name}  (${r.route})  측정 ${r.n}개`)
