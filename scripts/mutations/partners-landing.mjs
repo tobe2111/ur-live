@@ -68,6 +68,49 @@ export default [
       '랜딩만 빼면 PDF 를 받은 사장님이 사이트에서 다른 태도를 본다.',
   },
   {
+    name: '🏪 "자동 승인" 이 랜딩에 들어온다 (라이브는 수동 승인)',
+    file: 'src/pages/partners/PartnerTools.tsx',
+    find: `    t: '사업자번호는 국세청에 자동으로 조회됩니다',`,
+    replace: `    t: '사업자번호만 맞으면 자동 승인됩니다',`,
+    test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
+    why:
+      'seller-registration.routes.ts:239 이 명시한다 — "자동승인 말고 수동 승인. 모든 사업자 가입은 ' +
+      '어드민 수동 승인." 국세청 결과는 승인 화면의 참고 신호로만 저장된다. 랜딩이 "당일 판매" 를 ' +
+      '약속하면 사장님은 가입하고 기다리다가 속았다고 느낀다.',
+  },
+  {
+    name: '🏪 예약솔루션과의 축("새 손님")이 흐려진다',
+    file: 'src/pages/partners/PartnerCompare.tsx',
+    find: `  { k: '예약, 포스 솔루션', cells: ['매달 구독료 선지불', '이미 오기로 한 손님', '온 손님 관리. 새 손님은 각자 알아서'] },`,
+    replace: `  { k: '예약, 포스 솔루션', cells: ['매달 구독료 선지불', '손님', '매장 관리'] },`,
+    test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
+    why:
+      '이 행의 존재 이유가 그 대비다 — 예약솔루션은 **온 손님을 관리**하고 유어딜은 **새 손님을 데려온다**. ' +
+      '축이 흐려지면 사장님 눈에 "또 하나의 매장 솔루션" 으로 읽히고, 그 순간 이 페이지는 설득을 멈춘다.',
+  },
+  {
+    name: '🏪 인플루언서 성과를 "유입 몇 명" 으로 부풀린다',
+    file: 'src/pages/partners/PartnerTools.tsx',
+    find: `    d: '소개해 준 사람별로 몇 건이 팔렸고 소개비가 얼마 나갔는지가 매장 화면에 쌓입니다.`,
+    replace: `    d: '소개해 준 사람별로 몇 명이 눌렀고 소개비가 얼마 나갔는지가 매장 화면에 쌓입니다.`,
+    test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
+    why:
+      'influencer_attributions(migration 0247)는 order_id·voucher_id·commission_amount 를 담는다. ' +
+      '**결제 건**이지 클릭이 아니다. 클릭 수는 어디에도 안 쌓이므로 "몇 명이 눌렀는지" 는 ' +
+      '사장님이 화면에서 찾다가 없는 것을 발견하게 되는 문장이다.',
+  },
+  {
+    name: '🏪 꺼진 공구 엔진을 랜딩이 약속한다',
+    file: 'src/pages/partners/PartnerBenefits.tsx',
+    find: `    k: '선불 비용 0원',`,
+    replace: `    k: '기간한정 공구를 원할 때 켜고 끕니다',`,
+    test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
+    why:
+      'GB_ENGINE_ENABLED = false. 공구 엔진(기간한정·링크 전용가·인플루언서 딜 제안)은 코드가 ' +
+      '완성돼 있지만 표면이 꺼져 있어 사장님이 오늘 쓸 수 없다. 대표가 2026-09-16 에 ' +
+      '"공구 내용은 빼줘" 로 확정했다. 켜지기 전에 되돌아오는 길을 막는다.',
+  },
+  {
     name: '🏪 섹션이 폭 제한을 잃는다 (액자를 벗은 뒤의 함정)',
     file: 'src/pages/partners/PartnerCompare.tsx',
     find: `      <div className="ur-content-wide mx-auto px-5 lg:px-10 py-14 lg:py-24">`,

@@ -31,10 +31,11 @@ const R = (p: string) => fs.readFileSync(path.join(process.cwd(), p), 'utf8')
 const PAGE = 'src/pages/PartnersPage.tsx'
 const SECTIONS = [
   'src/pages/partners/PartnerHero.tsx',
+  'src/pages/partners/PartnerBenefits.tsx',
   'src/pages/partners/PartnerCompare.tsx',
   'src/pages/partners/PartnerMath.tsx',
   'src/pages/partners/PartnerFlow.tsx',
-  'src/pages/partners/PartnerReach.tsx',
+  'src/pages/partners/PartnerTools.tsx',
   'src/pages/partners/PartnerPaths.tsx',
   'src/pages/partners/PartnerFaq.tsx',
 ]
@@ -186,5 +187,57 @@ describe('R4 — 덱이 정한 설득 구조가 살아 있다', () => {
 
   it('계산기가 카드 수수료 0원을 줄로 보여 준다 (빼기만 하던 이전 판의 수리)', () => {
     expect(visible('src/pages/partners/PartnerMath.tsx')).toMatch(/유어딜 부담/)
+  })
+})
+
+describe('R5 — 대표 확정 골격 (2026-09-16 장점 3 · 차별점 3 · 도구)', () => {
+  it('장점이 정확히 셋이다', () => {
+    const src = visible('src/pages/partners/PartnerBenefits.tsx')
+    expect((src.match(/^\s{2}\{$/gm) || []).length).toBe(3)
+    expect(src).toMatch(/선불 비용 0원/)
+    expect(src).toMatch(/실제 방문까지/)
+    expect(src).toMatch(/선결제라 매출이 먼저 확정/)
+  })
+
+  it('비교 대상이 체험단 · 배달앱 · 예약솔루션 셋이다', () => {
+    const rows = [...visible('src/pages/partners/PartnerCompare.tsx').matchAll(/\{ k: '([^']+)'/g)].map(m => m[1])
+    expect(rows).toEqual(['체험단, 블로그 마케팅', '배달앱, 검색 광고', '예약, 포스 솔루션', '유어딜'])
+  })
+
+  it('예약솔루션과의 차이가 "새 손님" 이라는 축으로 서 있다', () => {
+    // 이 행의 존재 이유다. 축이 흐려지면 "또 하나의 매장 솔루션" 으로 읽힌다.
+    const src = visible('src/pages/partners/PartnerCompare.tsx')
+    expect(src).toMatch(/이미 오기로 한 손님/)
+    expect(src).toMatch(/결제까지 마친 새 손님/)
+  })
+
+  it('소개비를 매장이 정하고 내역이 남는다는 점을 말한다', () => {
+    expect(visible('src/pages/partners/PartnerCompare.tsx')).toMatch(/사장님이 정하고 매장 화면에 내역이 그대로 남습니다/)
+  })
+
+  it('가입을 "자동 승인" 으로 말하지 않는다 (라이브는 어드민 수동 승인)', () => {
+    const tools = visible('src/pages/partners/PartnerTools.tsx')
+    expect(tools).toMatch(/국세청에 자동으로 조회/)   // 자동인 것은 진위확인뿐
+    expect(tools).toMatch(/사람이 한 번 보고 승인/)
+    // R3 이 전 페이지에서 '자동 승인' 을 이미 막지만, 이 자리가 가장 유혹적이라 한 번 더 못박는다.
+    expect(tools).not.toMatch(/자동\s*승인/)
+  })
+
+  it('정산은 "자동 계산" 까지만 말하고 송금은 사람이라고 적는다', () => {
+    const tools = visible('src/pages/partners/PartnerTools.tsx')
+    expect(tools).toMatch(/자동으로 계산/)
+    expect(tools).toMatch(/담당자가 내역을 눈으로 확인/)
+  })
+
+  it('인플루언서 성과를 "유입 몇 명" 으로 부풀리지 않는다 (그 데이터는 없다)', () => {
+    // influencer_attributions 는 결제 건만 담는다(migration 0247). 클릭·유입 수는 없다.
+    const tools = visible('src/pages/partners/PartnerTools.tsx')
+    expect(tools).toMatch(/몇 건이 팔렸고/)
+    expect(tools).not.toMatch(/몇 명이 눌렀|유입 수|클릭 수/)
+  })
+
+  it('공구 엔진 내용이 없다 (GB_ENGINE_ENABLED 가 꺼져 있다 · 대표 2026-09-16)', () => {
+    // 꺼진 기능을 랜딩이 약속하면 사장님이 가입한 뒤에 없다는 걸 발견한다.
+    expect(ALL_VISIBLE).not.toMatch(/링크 전용가|기간한정 공구|공구 특가|딜 초안을 제안/)
   })
 })

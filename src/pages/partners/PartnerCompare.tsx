@@ -8,11 +8,17 @@ import { PARTNER_FACTS as F } from '@/shared/partners-facts'
 
 const HEAD = ['', '돈이 나가는 시점', '오는 사람', '효과 확인']
 
+/**
+ * 대표 확정 "차별점 3가지"(2026-09-16)를 그대로 세 행으로 둔다 — 체험단 · 배달앱 · 예약솔루션.
+ * ⚠️ 이전 판의 '전단, 현수막' 행을 **예약솔루션**으로 교체했다. 전단은 사장님이 이미 접은 선택지이고,
+ *    지금 사장님 폰에 깔려 있는 경쟁자는 예약·POS 솔루션이다. 그쪽과의 차이가 이 서비스의 정의다:
+ *    **온 손님을 관리하는 도구**가 아니라 **새 손님을 만들어 데려오는 채널**이다.
+ */
 const ROWS: { k: string; cells: string[]; ours?: boolean }[] = [
   { k: '체험단, 블로그 마케팅', cells: ['대행비 선지불 + 무료 식사', '공짜로 먹으러 온 체험단', '후기 몇 개. 손님이 됐는지는 모름'] },
   { k: '배달앱, 검색 광고', cells: ['매달 광고비 선지불', '클릭한 사람 (방문 보장 없음)', '클릭 수. 매출 연결은 모름'] },
-  { k: '전단, 현수막', cells: ['제작비 선지불', '알 수 없음', '알 수 없음'] },
-  { k: '유어딜', cells: ['팔린 뒤에만 수수료', '결제까지 마친 손님', '몇 장 팔리고 몇 명 왔는지 숫자로'], ours: true },
+  { k: '예약, 포스 솔루션', cells: ['매달 구독료 선지불', '이미 오기로 한 손님', '온 손님 관리. 새 손님은 각자 알아서'] },
+  { k: '유어딜', cells: ['팔린 뒤에만 수수료', '결제까지 마친 새 손님', '몇 장 팔리고 몇 명 왔는지 숫자로'], ours: true },
 ]
 
 export default function PartnerCompare() {
@@ -63,6 +69,10 @@ export default function PartnerCompare() {
         <p className="mt-9 lg:mt-12 text-[14px] lg:text-[18px] leading-relaxed text-gray-500 dark:text-gray-400 max-w-[46em]">
           체험단은 밥을 공짜로 드리고 후기를 받습니다.{' '}
           <b className="font-extrabold text-ink">유어딜은 손님이 돈을 내고 옵니다. 후기는 그 다음에 따라옵니다.</b>
+        </p>
+        <p className="mt-4 text-[13px] lg:text-[14.5px] leading-relaxed text-gray-500 dark:text-gray-400 max-w-[46em]">
+          수수료 말고 따로 나가는 돈이 없습니다. 상위 노출을 사는 광고비가 없고, 소개해 준 사람에게
+          얼마를 드릴지는 <b className="font-bold text-ink">사장님이 정하고 매장 화면에 내역이 그대로 남습니다.</b>
         </p>
         <p className="mt-3 text-[12px] text-gray-400 dark:text-gray-500">
           {F.pgNote}

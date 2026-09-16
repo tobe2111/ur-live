@@ -32,10 +32,11 @@ import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { PARTNER_FACTS as F } from '@/shared/partners-facts'
 import PartnerHero from './partners/PartnerHero'
+import PartnerBenefits from './partners/PartnerBenefits'
 import PartnerCompare from './partners/PartnerCompare'
 import PartnerMath from './partners/PartnerMath'
 import PartnerFlow from './partners/PartnerFlow'
-import PartnerReach from './partners/PartnerReach'
+import PartnerTools from './partners/PartnerTools'
 import PartnerPaths from './partners/PartnerPaths'
 import PartnerFaq from './partners/PartnerFaq'
 
@@ -63,10 +64,11 @@ export default function PartnersPage() {
 
       <main className="pb-24 lg:pb-0">
         <PartnerHero />
+        <PartnerBenefits />
         <PartnerCompare />
         <PartnerMath />
         <PartnerFlow />
-        <PartnerReach />
+        <PartnerTools />
         <PartnerPaths />
         <PartnerFaq />
 
