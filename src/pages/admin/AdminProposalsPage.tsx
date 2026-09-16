@@ -32,7 +32,7 @@ const PROPOSALS = [
     key: 'influencer',
     label: '인플루언서 제휴',
     url: '/static/proposals/influencer-proposal.html',
-    summary: '매장이 제안하는 딜 커미션과 영입 커미션 2%(직접 입점 매장, 1년), 이용 흐름과 정산 조건.',
+    summary: '매장이 제안하는 딜 커미션의 이용 흐름과 정산 조건. (영입 커미션 2% 는 2026-09-16 폐지)',
     audience: '인플루언서 · 크리에이터',
     slides: 9,
   },
