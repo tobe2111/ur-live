@@ -26,6 +26,9 @@ import { validateGbSession, resolveGbStatus, type GbSession, type GbMode } from 
 import { parsePickup, pickupToMeta, validatePickup, type PickupInfo } from '../../../shared/pickup'
 import { getSupplyMeta, setSupplyMeta } from '../../../worker/utils/product-supply-meta'
 import { safeError } from '../../../worker/utils/safe-error'
+import { rateLimit } from '../../../worker/middleware/rate-limit'
+import { isMallSlugCandidate } from '../../../shared/mall/resolve'
+import { ensureMallApplications, pendingApplication } from '../../../worker/utils/mall-applications'
 
 const app = new Hono<{ Bindings: Env }>()
 const MODES: readonly GbMode[] = ['off', 'scheduled', 'live', 'ended']
@@ -59,13 +62,81 @@ async function ownedProduct(DB: D1Database, productId: number, sellerId: number)
     .bind(productId, sellerId).first<{ id: number; price: number }>().catch(() => null)
 }
 
-// ── GET /:id — 내 상품의 현재 공구 설정 ────────────────────────────────────────
+// ── 🔴 정적 경로는 `/:id` **앞에** 둔다 ───────────────────────────────────────
+//   Hono 는 **등록 순서대로** 매칭한다(실측: `/:id` 를 먼저 걸면 `/support-contact` 가
+//   `id='support-contact'` 로 삼켜진다 → `intParam` 이 0 → 400). React Router 처럼
+//   "더 구체적인 경로가 이긴다" 가 **아니다.** 아래 두 라우트가 여기 있는 이유다.
+
+// ── GET /mall — 내 가게(운영자 몰) 주소 ───────────────────────────────────────
 /**
- * ⚠️ 2026-09-02: **정적 경로는 `/:id` 보다 먼저 등록해야 한다.** Hono 는 등록 순서로 매칭하므로
- *   `/:id` 가 위에 있으면 `/support-contact` 요청이 id="support-contact" 로 잡혀 `intParam(…,0)` → 0 →
- *   **400 '잘못된 상품 ID'** 가 난다(대표 신고: 셀러 대시보드 콘솔 400). 라우트 중복 가드는 경로 문자열이
- *   달라 이 그림자를 못 잡는다 — 순서로 지킨다(`seller-gb-route-order.test.ts`).
+ * 🏪 2026-08-12: 운영자가 **자기 링크를 몰랐다.** 상품을 올려도 `urdeal.kr/{슬러그}` 가 어디에도
+ * 안 보여 카톡에 뿌릴 수가 없었다(운영자 화면 전체에 `mall_slug` 참조 0건이었다).
+ * 그리고 몰 연결이 안 된 셀러의 상품은 **조용히 본진 몰(id 1)으로** 들어간다
+ * (`mallIdForSeller` 기본값) — 운영자는 등록했는데 자기 가게에 안 뜨고, 왜인지 알 방법도 없었다.
+ * ⇒ 연결됐으면 슬러그를, 아니면 `linked:false` 를 돌려준다. **모르는 채로 두지 않는다.**
  */
+app.get('/mall', async (c) => {
+  try {
+    const sellerId = await activeSellerId(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET)
+    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401)
+    const row = await c.env.DB.prepare(
+      `SELECT m.slug AS slug, COALESCE(NULLIF(TRIM(m.brand_name), ''), m.name) AS name
+         FROM sellers s JOIN wholesale_malls m ON m.id = s.mall_id
+        WHERE s.id = ? AND COALESCE(m.consumer_path, 0) = 1 AND COALESCE(m.active, 1) = 1`,
+    ).bind(sellerId).first<{ slug: string; name: string }>().catch(() => null)
+    // 🔴 본진 몰(id 1)·미연결·도매몰은 전부 `linked:false` — 소비자 경로로 열리는 몰만 "내 가게"다.
+    const pending = row?.slug ? null : await pendingApplication(c.env.DB, sellerId)
+    return c.json({
+      success: true, linked: !!row?.slug, slug: row?.slug ?? null, name: row?.name ?? null,
+      pending: pending ? { slug: pending.slug, name: pending.name, created_at: pending.created_at } : null,
+    })
+  } catch (err) {
+    return safeError(c, err, '가게 정보를 불러오지 못했습니다', '[seller-gb]')
+  }
+})
+
+// ── POST /mall/apply — 가게 개설 신청 ─────────────────────────────────────────
+/**
+ * 🏪 2026-08-12 최소안: 운영자가 **신청**하고 어드민이 **승인만** 한다.
+ * 🔴 신청은 **아무것도 만들지 않는다** — 슬러그는 `urdeal.kr/{슬러그}` 라는 영구 주소이고,
+ *   예약어와 충돌하면 소비자 라우트가 통째로 죽는다. 사람이 한 번 보는 단계를 남긴다.
+ */
+app.post('/mall/apply', rateLimit({ action: 'seller-mall-apply', max: 5, windowSec: 3600 }), async (c) => {
+  try {
+    const sellerId = await activeSellerId(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET)
+    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401)
+    await ensureMallApplications(c.env.DB)
+
+    const b = await c.req.json<Record<string, unknown>>().catch(() => ({} as Record<string, unknown>))
+    const slug = String(b.slug ?? '').trim().toLowerCase()
+    const name = String(b.name ?? '').trim().slice(0, 60)
+    // 🔴 예약어·문법은 소비자 라우트와 **같은 SSOT** 로 본다. 여기서 갈리면 승인 시점에야 터진다.
+    if (!isMallSlugCandidate(slug)) {
+      return c.json({ success: false, error: '주소는 영문 소문자·숫자·하이픈 3~30자여야 하고, 예약된 주소는 쓸 수 없습니다' }, 400)
+    }
+    if (!name) return c.json({ success: false, error: '가게 이름을 입력해주세요' }, 400)
+
+    // 이미 연결된 셀러는 신청 불가 — 가게가 둘이 되면 상품이 어디로 갈지 모호해진다.
+    const linked = await c.env.DB.prepare(
+      'SELECT 1 AS hit FROM sellers s JOIN wholesale_malls m ON m.id = s.mall_id WHERE s.id = ? AND COALESCE(m.consumer_path, 0) = 1',
+    ).bind(sellerId).first().catch(() => null)
+    if (linked) return c.json({ success: false, error: '이미 가게가 열려 있습니다' }, 409)
+
+    // 슬러그 선점 확인(친절한 메시지 — 최종 판정은 승인 시점에 한 번 더 한다).
+    const taken = await c.env.DB.prepare('SELECT 1 AS hit FROM wholesale_malls WHERE slug = ?').bind(slug).first().catch(() => null)
+    if (taken) return c.json({ success: false, error: '이미 사용 중인 주소입니다' }, 409)
+
+    // partial UNIQUE(seller_id WHERE status='pending')가 동시 신청을 막는다 — 실패는 곧 "이미 대기 중".
+    const ins = await c.env.DB.prepare(
+      "INSERT INTO mall_applications (seller_id, slug, name, status) VALUES (?, ?, ?, 'pending')",
+    ).bind(sellerId, slug, name).run().catch(() => null)
+    if (!ins?.meta?.last_row_id) return c.json({ success: false, error: '이미 심사 중인 신청이 있습니다' }, 409)
+    return c.json({ success: true, id: Number(ins.meta.last_row_id) })
+  } catch (err) {
+    return safeError(c, err, '신청 처리 중 오류가 발생했습니다', '[seller-gb]')
+  }
+})
+
 /**
  * ── GET /support-contact — ☎️ 운영자 문의처 (체크리스트 O9 · X8 확정 ⓒ) ──────────────
  *
@@ -90,6 +161,19 @@ app.get('/support-contact', async (c) => {
   }
 })
 
+// ── GET /:id — 내 상품의 현재 공구 설정 ────────────────────────────────────────
+/**
+ * ⚠️ 2026-09-02: **정적 경로는 `/:id` 보다 먼저 등록해야 한다.** Hono 는 등록 순서로 매칭하므로
+ *   `/:id` 가 위에 있으면 `/support-contact` 요청이 id="support-contact" 로 잡혀 `intParam(…,0)` → 0 →
+ *   **400 '잘못된 상품 ID'** 가 난다(대표 신고: 셀러 대시보드 콘솔 400). 라우트 중복 가드는 경로 문자열이
+ *   달라 이 그림자를 못 잡는다 — 순서로 지킨다.
+ *
+ * 🩸 2026-09-16: 이 문장이 원래 `seller-gb-route-order.test.ts` 를 가리켰는데 **그런 파일은 없다.**
+ *   9-02 에 순서를 고치면서 가드 이름만 적어 두고 안 만든 것이다 — 즉 그날부터 이 불변식은
+ *   **아무도 안 지키고 있었고**, 순서를 되돌려도 빨간불이 안 났다(이 레포가 반복해 만나는
+ *   '조용한 부재'). 실제 가드는 `mall-surface-boundary.test.ts` 의
+ *   *'정적 경로가 `/:id` 보다 앞에 등록된다'* 이고, `/mall` 까지 함께 본다.
+ */
 app.get('/:id', async (c) => {
   try {
     const sellerId = await activeSellerId(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET)
