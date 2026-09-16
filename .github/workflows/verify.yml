@@ -893,6 +893,18 @@ jobs:
       - name: Critical path chunk composition (strict)
         run: node scripts/check-critical-chunks.mjs
 
+      # 👻 2026-09-16 (대표 "유어쇼츠 왜이래?"): Tailwind 는 **스케일 밖 값이면 클래스를 안 만든다.**
+      #   빌드·타입·테스트 전부 초록인데 화면에서만 효과가 사라진다. 불투명도 축은
+      #   check-tailwind-opacity-scale 이 빌드 없이 잡지만, 그건 한 축뿐이다 — 여기서는
+      #   **번들러가 실제로 낸 CSS** 와 소스를 통째로 대조한다(오타·스케일 밖 크기·정의 없는
+      #   애니메이션·var 색의 알파까지). 실측 첫 판에서 모달 6개가 배경 없이 떠 있었다.
+      #   ⚠️ 반드시 build 뒤에 둘 것(산출물 필요) — 없으면 가드가 스스로 실패한다.
+      - name: Ghost classes (in source, absent from CSS) (strict)
+        env:
+          STRICT_GHOST_CLASSES: '1'
+        run: node scripts/check-ghost-classes.mjs
+        continue-on-error: false
+
       # 🛡️ 2026-08-27: 위 가드는 **index.html** 만 본다. 그런데 2026-07-12 부터 워커가 표면별로
       #   modulepreload 를 **추가 주입**한다(route-chunk-map) — 홈의 실제 첫 페인트는 둘의 합이고,
       #   후자는 어느 가드도 안 보고 있었다. 그 사각지대로 홈에 셀러 대시보드 65KB, /browse 에 또 65KB 가

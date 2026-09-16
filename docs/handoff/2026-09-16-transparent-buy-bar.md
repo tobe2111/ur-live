@@ -76,3 +76,42 @@ getComputedStyle(bar).backgroundColor === 'rgba(0, 0, 0, 0)'   ← 배경이 아
   바의 실측 좌표(x 10, w 370 = `inset-x-2.5`)가 정확히 맞았고, 잘려 보인 건 유튜브 자신의 UI 였다.
   ⇒ 픽셀을 눈으로 읽어 단정하지 말고 **`getComputedStyle` 로 재라.** 배경이 없다는 사실은
   스크린샷을 아무리 노려봐도 안 나오고 한 줄 측정으로 즉시 나왔다.
+
+---
+
+## 후속 — 같은 병이 **불투명도 말고 다른 축으로도** 퍼져 있었다 (같은 날, 대표 "계속 해")
+
+불투명도 가드는 **한 축**만 본다. 그래서 **빌드된 CSS 와 소스를 통째로 대조**했더니 유령 클래스가
+더 나왔다 — 전부 "소스엔 있는데 CSS 엔 없는" 같은 클래스다.
+
+| 유령 | 곳 | 무슨 일이 일어나고 있었나 |
+|---|---|---|
+| `bg-white-xl` | 셀러·공급자 모달 **6곳** | 오타(`shadow-xl` 의 흔적). **모달 여섯 개에 배경이 없었다** |
+| `text-brand-text/70·80`, `text-tone-ok/80`, `text-tone-warn/80` | 8곳 | 색이 `var(--x)` 라 **알파를 못 붙인다** → 글자 색 미적용(부모 색 상속) |
+| `bg-surface/95` | 유어파트너스 모바일 하단 CTA 바 | 바가 투명 |
+| `bg-brand-tint/50` | 지역 선택 모달 | **고른 항목이 안 골라 보였다** |
+| `bg-wash` | 딜 잔액 스켈레톤 | `--wash` 는 index.css 에 있는데 **tailwind 표에 없어** 투명 |
+| `h-13`, `w-4.5`·`h-4.5`, `py-4.5` | 5곳 | 크기·여백 미적용 |
+| `ring-dashed` | 어드민 타임라인 | 존재하지 않는 유틸(죽은 토큰) |
+| `animate-fade-in`·`slide-up`·`overlay-in` | 7곳 | **keyframes 가 아예 없었다** — 스르륵 대신 툭 튀어나왔다 |
+| `ur-shorts-rail` | 유어쇼츠 레일 | 정의 없는 클래스. 다른 레일은 전부 `scrollbar-hide` → 이 레일만 스크롤바가 보였다 |
+
+수리 방식: 스케일 안 값으로 교체 · 알파는 `opacity-NN`(이건 스케일에 있다) · `wash` 를 색 표에 등록 ·
+keyframes 3종을 `tailwind.config` 에 정의(의도가 실제로 실행되게) · `ur-shorts-rail` → `scrollbar-hide`.
+
+### 영구 가드 — `scripts/check-ghost-classes.mjs`
+
+**번들러가 실제로 낸 CSS**(`dist/client/assets/*.css`)와 소스 `className` 토큰을 대조한다.
+추측이 아니라 결과가 기준이라 오타·스케일 밖 크기·정의 없는 애니메이션·var 색 알파를 **한꺼번에** 잡는다.
+
+- ⚠️ **`dist/` 가 있어야 한다** → `verify.yml` 의 build **뒤**에만. 산출물이 없으면 통과가 아니라 **실패**.
+- 그래서 **주입 대상이 될 수 없다**(주입 러너는 build 앞에서 돈다 → dist 없음 → 무조건 빨간불 = 헛돔).
+  ⇒ 판정의 핵심을 `scripts/ghost-classes-core.mjs` 로 빼고 `ghost-classes-2026-09-16.test.ts` 가
+  **동작을 직접 재며**, 주입 5건은 그 테스트에 건다(전부 빨간불 확인).
+- 예외는 `scripts/ghost-classes-allow.json` 에 **이유와 함께**(현재 10건 — 전부 오탐: 지도 오버레이
+  querySelector 훅 · index.css 커스텀 클래스 · 클래스가 아닌 문자열).
+- 로컬 pre-push 에서는 안 돈다 → `local-ci-parity.mjs` EXCLUDE 에 사유 등록(4번째).
+
+🩸 **이 가드를 만들며 내가 두 번 틀렸다**: ① 유니코드 이스케이프를 나중에 풀어 `content-['•']` 를
+오탐했다(`\2022` 의 `\2` 가 문자 2 로 먼저 먹힌다) ② 테스트 픽스처에 `w-` 클래스를 안 넣어
+`w-4.5` 검사가 헛돌았다(루트가 생성 집합에 없으면 커스텀 클래스로 보고 건너뛴다). 둘 다 테스트가 잡았다.

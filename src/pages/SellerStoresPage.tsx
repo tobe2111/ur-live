@@ -86,7 +86,7 @@ export default function SellerStoresPage() {
               {stores.map(s => (
                 <li key={s.seller_id} className="px-4 py-3 flex items-center gap-3">
                   <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
-                    <Store className="w-4.5 h-4.5 text-gray-500" />
+                    <Store className="w-[18px] h-[18px] text-gray-500" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-gray-900 truncate">

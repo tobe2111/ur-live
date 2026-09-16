@@ -429,7 +429,7 @@ export default function IntroducePage() {
             <div key={i} className="border border-[#2C2F35] rounded-2xl overflow-hidden">
               <button
                 onClick={() => setFaqOpen(faqOpen === i ? null : i)}
-                className="w-full flex items-center justify-between text-left px-5 py-4.5 hover:bg-[#0D0D0D] transition-colors"
+                className="w-full flex items-center justify-between text-left px-5 py-[18px] hover:bg-[#0D0D0D] transition-colors"
                 style={{ padding: '18px 20px' }}
               >
                 <span className="text-[15px] font-bold text-white">{f.q}</span>

@@ -5494,18 +5494,15 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 323건 · 최신순 · 이 목록은 자동 생성된다._
-_총 320건 · 최신순 · 이 목록은 자동 생성된다._
-_총 321건 · 최신순 · 이 목록은 자동 생성된다._
-_총 322건 · 최신순 · 이 목록은 자동 생성된다._
+_총 325건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-16**
 - [유어쇼츠 구매 바에 흰 카드가 없었다 — 스케일 밖 불투명도 (2026-09-16)](handoff/2026-09-16-transparent-buy-bar.md)
 - [매장 영입 2% 폐지 — 화면이 하던 거짓 약속을 걷어냄 (2026-09-16)](handoff/2026-09-16-store-intro-abolished.md)
 - [남은 후속 넷을 끝까지 — 서버 첫 화면 확장 · PC 판단 · JS 다이어트 · 잔액 밀림 〔2026-09-16〕](handoff/2026-09-16-remaining-followups.md)
 - [소개 커미션 사용 확인 게이트 (2026-09-16)](handoff/2026-09-16-payout-use-gate.md)
-- [공구 서비스 분리 — 결제 동선 조각(#1149 의 첫 조각을 되살림)](handoff/2026-09-16-mall-payment-flow-chunk1.md)
 - [입점 랜딩(/partners) 전면 재작성 — PC 신설 + 덱 정합 (2026-09-16)](handoff/2026-09-16-partners-landing-pc.md)
+- [공구 서비스 분리 — 결제 동선 조각(#1149 의 첫 조각을 되살림)](handoff/2026-09-16-mall-payment-flow-chunk1.md)
 - [서버가 그린 첫 화면을 폴백이 덮지 않는다 — 09-15 판정 후속 〔2026-09-16〕](handoff/2026-09-16-first-screen-fallback.md)
 - [등록된 동네딜 검색 (2026-09-16)](handoff/2026-09-16-dongnedeal-search.md)
 - [2026-09-16 — 다크 대비 가드가 **죽은 화면을 재고 살아 있는 결제 화면을 안 보고 있었다**](handoff/2026-09-16-dark-contrast-money-screens.md)
