@@ -60,10 +60,10 @@ const STATS: [string, string][] = [['0원', '미리 내는 돈'], [F.feeDirect, 
 function Cta({ dark }: { dark?: boolean }) {
   return (
     <div className="mt-7 flex flex-col gap-2.5 sm:flex-row">
-      <span className="inline-flex h-12 flex-1 items-center justify-center gap-1.5 rounded-2xl bg-brand text-[14.5px] font-extrabold text-white">
+      <span className="inline-flex h-12 sm:flex-1 items-center justify-center gap-1.5 rounded-2xl bg-brand text-[14.5px] font-extrabold text-white">
         내 가게 등록하기 <ArrowRight className="h-4 w-4" />
       </span>
-      <span className={`inline-flex h-12 flex-1 items-center justify-center rounded-2xl border text-[14.5px] font-bold ${dark ? 'border-white/25 text-white/90' : 'border-rule-strong text-ink'}`}>
+      <span className={`inline-flex h-12 sm:flex-1 items-center justify-center rounded-2xl border text-[14.5px] font-bold ${dark ? 'border-white/25 text-white/90' : 'border-rule-strong text-ink'}`}>
         카카오로 물어보기
       </span>
     </div>

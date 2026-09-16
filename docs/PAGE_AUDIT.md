@@ -45,7 +45,7 @@
 - AgencyIntroducedStoresPage.tsx (score 3) [manual-fetch, multi-get(4)]
 - AgencyPartnerLandingPage.tsx (score 3) []
 - AgencyStatsPage.tsx (score 3) [manual-fetch, multi-get(4)]
-- BusinessLandingPage.tsx (score 3) []
+- ~~BusinessLandingPage.tsx~~ (2026-09-16 삭제 — `/business` 는 `/partners` 로 301)
 - FAQPage.tsx (score 3) []
 - GDPRPage.tsx (score 3) []
 - InfluencerLandingPage.tsx (score 3) []

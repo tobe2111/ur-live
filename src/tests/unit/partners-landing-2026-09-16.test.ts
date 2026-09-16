@@ -410,3 +410,49 @@ describe('R8 · 보조 글자가 너무 옅지 않다', () => {
     expect(offenders, `AA 미달 회색이 돌아왔다: ${offenders.join(', ')}`).toEqual([])
   })
 })
+
+/**
+ * R9 — 버튼이 세로로 찌그러지지 않는다 (2026-09-16 대표 *"버튼 크기도 세로길이가 짧고, 버튼이 이게 뭐야"*)
+ *
+ * 실측: CTA 버튼 넷이 `h-[52px]` 를 달고도 **모바일에서 23~25px** 로 렌더됐다(PC 는 58~60px 정상).
+ *
+ * ```
+ * <div className="flex flex-col sm:flex-row …">     ← 모바일은 세로 스택 = 주축이 높이
+ *   <a className="flex-1 h-[52px] …">               ← flex-basis: 0% 가 height 를 이긴다
+ * ```
+ *
+ * 컨테이너 높이가 auto 라 나눠 줄 여유 공간이 0 → 버튼이 글자 높이까지 줄어든다.
+ * `sm:flex-row` 가 되는 PC 에서는 주축이 가로라 `height` 가 되살아나므로 **아무 문제가 없다.**
+ * ⇒ 개발도 리뷰도 PC 로 하니 눈으로는 못 잡는다. 고정 스캔은 `check-flex-col-fixed-height.mjs`.
+ */
+describe('R9 · 세로 스택에서 CTA 높이가 살아 있다', () => {
+  const CONTAINER = /flex-col[^"`]*\b(?:sm|md|lg|xl):flex-row/
+  const BARE_FLEX1 = /(?:^|[\s"'`{])flex-1(?=[\s"'`}]|$)/
+  const FIXED_H = /(?:^|[\s"'`{])h-(?:\[[^\]]*\]|\d+(?:\.\d+)?)(?=[\s"'`}]|$)/
+
+  it.each([PAGE, ...SECTIONS])('%s — 세로 스택 자식이 `flex-1` + 고정 높이를 함께 갖지 않는다', (file) => {
+    const lines = visible(file).split('\n')
+    const bad: string[] = []
+    for (let i = 0; i < lines.length; i++) {
+      if (!CONTAINER.test(lines[i])) continue
+      const indent = lines[i].length - lines[i].trimStart().length
+      for (let j = i + 1; j < Math.min(i + 40, lines.length); j++) {
+        const L = lines[j]
+        if (!L.trim()) continue
+        if (L.length - L.trimStart().length <= indent) break   // 블록이 닫혔다
+        if (CONTAINER.test(L)) break                            // 안쪽 컨테이너는 그쪽 소관
+        const m = L.match(/className=(?:"([^"]*)"|\{`([^`]*)`\})/)
+        const cls = m?.[1] ?? m?.[2] ?? ''
+        if (cls && BARE_FLEX1.test(cls) && FIXED_H.test(cls)) bad.push(`${j + 1}: ${cls.slice(0, 64)}`)
+      }
+    }
+    expect(bad, `세로 스택에서 높이가 뭉개진다 — \`flex-1\` 을 \`sm:flex-1\` 로:\n${bad.join('\n')}`).toEqual([])
+  })
+
+  it('가드가 실제 실행 경로에 등록돼 있다 (파일만 있고 안 돌면 없는 것과 같다)', () => {
+    const wf = fs.readFileSync('.github/workflows/verify.yml', 'utf8')
+    const gate = fs.readFileSync('scripts/audit-gate.sh', 'utf8')
+    expect(wf).toContain('check-flex-col-fixed-height.mjs')
+    expect(gate).toContain('check-flex-col-fixed-height.mjs')
+  })
+})

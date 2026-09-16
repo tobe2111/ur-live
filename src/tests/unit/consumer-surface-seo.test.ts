@@ -249,7 +249,6 @@ describe('페이지가 표를 실제로 읽는가 — 문구 두 벌 방지', ()
     ['/join', 'src/pages/JoinChoicePage.tsx'],
     ['/privacy', 'src/pages/PrivacyPolicyPage.tsx'],
     ['/gb-market', 'src/pages/GbMarketplacePage.tsx'],
-    ['/business', 'src/pages/BusinessLandingPage.tsx'],
     ['/influencer', 'src/pages/InfluencerLandingPage.tsx'],
     ['/faq', 'src/pages/FAQPage.tsx'],
     ['/refund', 'src/pages/RefundPolicyPage.tsx'],

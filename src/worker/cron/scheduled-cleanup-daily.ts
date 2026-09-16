@@ -147,7 +147,7 @@ export async function runDailyCleanup(DB: D1Database, results: Record<string, nu
   //   ※ 개별 딜을 취소해야 할 땐 셀러 수동환불(group-buy-seller.routes.ts) /
   //     어드민 강제환불(group-buy-admin.routes.ts) 사용 — 둘 다 토스 카드환불 포함.
   //   ※ 보증금형(all-or-nothing) 자동환불이 필요한 **커뮤니티 공구**는 아래 22d 블록에서 별도 처리.
-  //   ※ '미달성 시 자동환불' 마케팅(BusinessLandingPage)은 커뮤니티 공구 한정.
+  //   ※ '미달성 시 자동환불' 마케팅(입점 랜딩)은 커뮤니티 공구 한정.
 
   // ── 🏁 2026-06-12 (전 플로우 감사 🟡): 탈퇴 30일 경과분 hard purge ──
   //   delete-account.service 가 "30일 후 파기" 를 고지하는데 cron 이 없어 deleted_accounts 에
