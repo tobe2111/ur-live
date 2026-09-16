@@ -5494,9 +5494,10 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 321건 · 최신순 · 이 목록은 자동 생성된다._
+_총 323건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-16**
+- [유어쇼츠 구매 바에 흰 카드가 없었다 — 스케일 밖 불투명도 (2026-09-16)](handoff/2026-09-16-transparent-buy-bar.md)
 - [매장 영입 2% 폐지 — 화면이 하던 거짓 약속을 걷어냄 (2026-09-16)](handoff/2026-09-16-store-intro-abolished.md)
 - [소개 커미션 사용 확인 게이트 (2026-09-16)](handoff/2026-09-16-payout-use-gate.md)
 - [입점 랜딩(/partners) 전면 재작성 — PC 신설 + 덱 정합 (2026-09-16)](handoff/2026-09-16-partners-landing-pc.md)
