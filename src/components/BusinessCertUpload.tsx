@@ -7,7 +7,7 @@ import { useRef, useState, type ChangeEvent } from 'react'
 import { toast } from '@/hooks/useToast'
 import { compressForDocument } from '@/lib/image-compress'
 
-export default function BusinessCertUpload({ value, onChange, required }: { value: string; onChange: (url: string) => void; required?: boolean }) {
+export default function BusinessCertUpload({ value, onChange, required, hideLabel }: { value: string; onChange: (url: string) => void; required?: boolean; hideLabel?: boolean }) {
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -32,9 +32,15 @@ export default function BusinessCertUpload({ value, onChange, required }: { valu
 
   return (
     <div>
-      <label className="block text-[13px] font-semibold mb-1.5">
-        사업자등록증 {required ? <span className="text-[#111827]">*</span> : <span className="text-[#B6BCC4] font-normal">(선택)</span>}
-      </label>
+      {/* 🔴 2026-09-16: 호출부가 이미 라벨을 갖고 있으면 **여기서 또 그리면 안 된다.**
+          셀러 가입 화면에서 `Field` 라벨("사업자등록증 사본") 바로 아래 이 라벨이 겹쳐
+          "사업자등록증 (선택)" 이 한 번 더 떴다 — 대표가 빼라고 한 그 `(선택)` 이
+          **다른 문으로 되살아난 것**이다(렌더 실측으로 잡았다). */}
+      {!hideLabel && (
+        <label className="block text-[13px] font-semibold mb-1.5">
+          사업자등록증 {required ? <span className="text-[#111827]">*</span> : <span className="text-[#B6BCC4] font-normal">(선택)</span>}
+        </label>
+      )}
       <input ref={inputRef} type="file" accept="image/*" onChange={onFile} className="hidden" />
       {value ? (
         <div className="flex items-center gap-3 rounded-xl border border-[#ECEEF1] p-2.5">

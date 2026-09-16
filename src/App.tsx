@@ -248,7 +248,10 @@ function CuratorPinClientRedirect() {
 // 로딩 컴포넌트 — 배경 투명, 최소 UI로 흰 화면 방지
 // 🎨 2026-06-29 (대표 — 공통 페이지 로딩 애니메이션): 무채색 스피너 → UrDeal 브랜드 로더.
 //   로고 호흡 + 진행 바 스윕(BrandLoader SSOT). 라우트 청크 로딩 순간 전용 — SSR/스켈레톤 첫페인트 불변.
-const PageLoader = () => <BootFirstScreenLoader />
+// 🌑 2026-09-16 (대표 — "로딩도 좀 문제 있어보이고"): 도착이 다크 고정인 표면(/videos)은 청크 로더도
+//   다크로. 라이트 사용자에게 [흰 로더 → 검은 로더] 점프가 났다(실측 531ms). 아래 forceLight 의 반대 방향.
+const isDarkLoaderSurface = (pathname: string) => /^\/videos(\/|$)/.test(pathname)
+const PageLoader = () => <BootFirstScreenLoader forceDark={isDarkLoaderSurface(window.location.pathname)} />
 
 // 🚑 2026-07-10 [UNLOCK_LOADING] (로딩 전수조사): 대시보드(/seller·/admin)·유어애즈(/ads) 전용
 //   라이트 로더 — worker 가 이 표면들의 #root 를 라이트 #F4F5F7 placeholder 로 깔아주는데, Suspense
@@ -256,12 +259,9 @@ const PageLoader = () => <BootFirstScreenLoader />
 //   라이트 대시보드] 색 점프가 났음. 도매 WholesaleLoader 와 동일한 정합을 유어딜 브랜드로.
 //   (대시보드는 라이트 고정 규칙 — dark: variant 금지 표면이라 forceLight 가 맞는 동작.)
 const DashboardLoader = () => (
-  <div style={{ background: '#F4F5F7' }}>
-    <BrandLoader fullScreen forceLight />
-  </div>
+  <div style={{ background: '#F4F5F7' }}><BrandLoader fullScreen forceLight /></div>
 )
-const isDashboardLoaderSurface = (pathname: string) =>
-  /^\/(seller|admin|ads)(\/|$)/.test(pathname)
+const isDashboardLoaderSurface = (pathname: string) => /^\/(seller|admin|ads)(\/|$)/.test(pathname)
 
 // 🏭 2026-06-29 (대표 요청 — 도매몰 페이지 로딩 애니메이션): 도매 surface(/wholesale·/supplier)
 //   전용 *라이트* 브랜드 로더. 소비자 PageLoader 는 다크(흰 spinner) 라 라이트 도매 배경(#F4F5F7)에서

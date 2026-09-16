@@ -8,7 +8,8 @@ export default [
   {
     name: 'register-cert: 업로드 칸을 지운다',
     file: 'src/pages/SellerRegisterSupplierPage.tsx',
-    find: '<BusinessCertUpload value={certUrl} onChange={setCertUrl} />',
+    // 🔀 2026-09-16 재조준 — 시각 C 로 `hideLabel` 이 붙었다(Field 가 라벨을 갖는다).
+    find: '<BusinessCertUpload value={certUrl} onChange={setCertUrl} hideLabel />',
     replace: '<input id="cert-noop" />',
     test: TEST,
     why: '칸이 없으면 사진이 도착할 길이 자체가 없다 — 어드민이 대조할 근거가 사라진다.',

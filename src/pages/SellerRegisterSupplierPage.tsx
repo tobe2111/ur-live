@@ -29,6 +29,7 @@ import { toast } from '@/hooks/useToast'
 import { ChevronLeft, Loader2, CheckCircle2, Handshake, UserRound } from 'lucide-react'
 import TermsConsentBox from '@/components/terms/TermsConsentBox'
 import BusinessCertUpload from '@/components/BusinessCertUpload'
+import AddressPickerField from './seller-register/AddressPickerField'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { TicketCard } from '@/components/ticket/TicketCard'
 import { TERMS_CURRENT_VERSION } from './terms/terms-types'
@@ -245,11 +246,10 @@ export default function SellerRegisterSupplierPage() {
 
   const filled = filledRequired(form)
   const cls = (k: keyof SignupForm) => `${INPUT} ${errors[k] ? INPUT_BAD : ''}`
-  const steps = [
-    { n: 1, label: t('seller.signup.step1', { defaultValue: '정보 입력' }), sub: t('seller.signup.step1Sub', { defaultValue: '지금 이 화면' }) },
-    { n: 2, label: t('seller.signup.step2', { defaultValue: '심사' }), sub: t('seller.signup.step2Sub', { defaultValue: '국세청 정보와 일치하면 바로, 아니면 1~2 영업일' }) },
-    { n: 3, label: t('seller.signup.step3', { defaultValue: '판매 시작' }), sub: t('seller.signup.step3Sub', { defaultValue: '승인 알림 후 셀러 대시보드에서 이용권 등록' }) },
-  ]
+  // 🎨 시안 C — 묶음별 진행. 채운 값이 굵게 보이는 것과 같은 정보를 숫자로 한 번 더 준다.
+  //   `filledRequired` 와 같은 5칸을 쪼갠 것이라 합이 항상 `filled` 와 맞는다(따로 세지 않는다).
+  const bizDone = [form.business_number, form.representative_name, form.business_start_date].filter(v => v.trim()).length
+  const storeDone = [form.business_name, form.phone].filter(v => v.trim()).length
 
   return (
     <div className="force-light-theme min-h-[100dvh] bg-warm" style={{ paddingBottom: 'calc(88px + env(safe-area-inset-bottom))' }}>
@@ -283,24 +283,22 @@ export default function SellerRegisterSupplierPage() {
           </div>
         )}
 
-        {/* 🎫 티켓 — 어디까지 왔는지. 밴드 하나가 강조색을 다 맡는다. */}
-        <TicketCard bandLeft={t('seller.signup.band', { defaultValue: '내 가게 등록' })} bandRight={t('seller.signup.bandStep', { defaultValue: '1단계 / 3' })}>
-          <div className="p-4 sm:p-5">
-            <h2 className="text-[18px] font-extrabold leading-snug text-gray-900">{t('seller.signup.heroTitle', { defaultValue: '가게를 등록하면 내 유어샵에서 이용권을 팔 수 있어요' })}</h2>
-            <p className="mt-1 text-[13px] leading-relaxed text-gray-500">{t('seller.signup.heroDesc', { defaultValue: '판매 대금은 매주 자동으로 계좌에 정산돼요. 사업자등록증 한 장이면 3분이면 끝나요.' })}</p>
-            <ol className="mt-4 space-y-2.5">
-              {steps.map((s) => (
-                <li key={s.n} className="flex items-start gap-3">
-                  <span className={`dash-num mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[12px] font-extrabold ${s.n === 1 ? 'bg-brand text-white' : 'bg-gray-100 text-gray-500'}`}>{s.n}</span>
-                  <span className="min-w-0">
-                    <span className={`block text-[13.5px] font-bold ${s.n === 1 ? 'text-gray-900' : 'text-gray-600'}`}>{s.label}</span>
-                    <span className="block text-[12px] text-gray-500">{s.sub}</span>
-                  </span>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </TicketCard>
+        {/*
+          🎨 2026-09-16 대표 확정 **시안 C** — 시안: docs/design/seller-signup-documents.md
+          종전엔 티켓 카드 안에 [제목 + 3단계 사다리(정보 입력 → 심사 → 판매 시작)] 가 있었다.
+          그 사다리를 지운다: **사장님이 지금 할 일을 하나도 알려 주지 않으면서** 첫 화면의
+          절반을 먹었다(심사·판매 시작은 여기서 할 수 있는 일이 아니다). 진행은 아래
+          '승인까지 남은 것' 이 훨씬 정확하게 말한다 — 그건 실제로 사장님이 채울 수 있는 목록이다.
+          🎫 티켓도 걷는다 — 티켓은 **손님이 받는 것**이고 여기선 사장님이 내는 서류라 은유가 어긋난다.
+        */}
+        <header className="px-1 pb-1 pt-3">
+          <h2 className="text-[24px] font-extrabold leading-[1.26] tracking-[-.03em] text-gray-900">
+            {t('seller.signup.heroTitle', { defaultValue: '사업자번호만 맞으면 대시보드에 바로 들어가요' })}
+          </h2>
+          <p className="mt-2 text-[13px] leading-relaxed text-gray-500">
+            {t('seller.signup.heroDesc', { defaultValue: '서류는 들어가서 채워도 됩니다. 승인 전까지 손님에게는 안 보여요.' })}
+          </p>
+        </header>
 
         {/* 🏁 탈출구: 크리에이터(추천·커미션만)는 가입 불필요 — JoinChoice 모델과 동일 안내 */}
         <p className="px-1 text-center text-[12px] text-gray-500">
@@ -312,10 +310,13 @@ export default function SellerRegisterSupplierPage() {
         </p>
 
         {/* 카드 1 — 국세청 확인용 3칸. 사업자등록증을 꺼내는 순간이 한 번이게 묶는다. */}
-        <section className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-4 sm:p-5">
-          <h3 className="text-[15px] font-extrabold text-gray-900">{t('seller.signup.bizSection', { defaultValue: '사업자 정보' })}</h3>
+        <section className="rounded-[var(--dash-radius,16px)] border border-rule bg-white px-4 pb-3 pt-4 sm:px-5">
+          <div className="flex items-baseline justify-between gap-3">
+            <h3 className="text-[15px] font-extrabold text-gray-900">{t('seller.signup.bizSection', { defaultValue: '사업자 정보' })}</h3>
+            <span className="dash-num shrink-0 text-[12px] font-bold text-brand-text">{bizDone} / 3</span>
+          </div>
           <p className="mt-0.5 text-[12.5px] text-gray-500">{t('seller.signup.bizSectionSub', { defaultValue: '사업자등록증에 적힌 그대로. 국세청 정보와 일치하면 심사 없이 바로 승인돼요.' })}</p>
-          <div className="mt-4 space-y-4">
+          <div className="mt-3">
             <Field id="f-business_number" label="사업자번호" required error={errors.business_number}>
               <input id="f-business_number" value={form.business_number}
                 onChange={e => set('business_number')(formatBusinessNumber(e.target.value))}
@@ -340,18 +341,24 @@ export default function SellerRegisterSupplierPage() {
             </Field>
             {/* 🪪 등록증 사본 — 어드민이 위 세 칸·아래 가게 정보와 **눈으로 대조**하는 유일한 근거.
                 국세청 API 는 상호·주소를 주지 않는다(실측) — 기계로는 못 잡는 자리다. */}
-            <Field id="f-cert" label={t('seller.signup.cert', { defaultValue: '사업자등록증 사본 (선택)' })}
+            {/* 🔴 2026-09-16 대표 확정: 라벨에서 **`(선택)` 을 뺀다.** 승인에 실제로 필요한 서류를
+                선택이라고 쓰면 대부분 건너뛰고, 그다음 왜 승인이 안 나는지 아무도 모른다.
+                지금 안 내도 진행은 되지만(당근 모델) 그건 문구가 말하지 '선택' 이라는 라벨이 아니다. */}
+            <Field id="f-cert" label={t('seller.signup.cert', { defaultValue: '사업자등록증 사본' })}
               hint={t('seller.signup.certHint', { defaultValue: '지금 등록증을 보고 계시면 한 장 찍어 올려 주세요 — 심사가 빨라집니다. 나중에 올려도 괜찮아요.' })}>
-              <BusinessCertUpload value={certUrl} onChange={setCertUrl} />
+              <BusinessCertUpload value={certUrl} onChange={setCertUrl} hideLabel />
             </Field>
           </div>
         </section>
 
         {/* 카드 2 — 손님이 보는 가게 정보 */}
-        <section className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-4 sm:p-5">
-          <h3 className="text-[15px] font-extrabold text-gray-900">{t('seller.signup.storeSection', { defaultValue: '가게 정보' })}</h3>
+        <section className="rounded-[var(--dash-radius,16px)] border border-rule bg-white px-4 pb-3 pt-4 sm:px-5">
+          <div className="flex items-baseline justify-between gap-3">
+            <h3 className="text-[15px] font-extrabold text-gray-900">{t('seller.signup.storeSection', { defaultValue: '가게 정보' })}</h3>
+            <span className="dash-num shrink-0 text-[12px] font-bold text-brand-text">{storeDone} / 2</span>
+          </div>
           <p className="mt-0.5 text-[12.5px] text-gray-500">{t('seller.signup.storeSectionSub', { defaultValue: '유어샵과 이용권에 그대로 보여요. 나중에 대시보드에서 바꿀 수 있어요.' })}</p>
-          <div className="mt-4 space-y-4">
+          <div className="mt-3">
             <Field id="f-business_name" label="가게명" required error={errors.business_name}>
               <input id="f-business_name" value={form.business_name}
                 onChange={e => set('business_name')(e.target.value)}
@@ -369,11 +376,8 @@ export default function SellerRegisterSupplierPage() {
             <Field id="f-store_category" label="매장 종류">
               <ChipGroup name="매장 종류" value={form.store_category} onChange={set('store_category')} options={STORE_CATEGORIES} />
             </Field>
-            <Field id="f-address" label="매장 주소">
-              <input id="f-address" value={form.address}
-                onChange={e => set('address')(e.target.value)}
-                placeholder="예: 서울 마포구 양화로 162" autoComplete="street-address"
-                className={cls('address')} />
+            <Field id="f-address" label="매장 주소" hint="가게 이름으로 찾으면 주소가 자동으로 들어가요">
+              <AddressPickerField id="f-address" value={form.address} onChange={set('address')} />
             </Field>
             <Field id="f-description" label="매장 소개 (선택)">
               <textarea id="f-description" value={form.description}
@@ -385,6 +389,40 @@ export default function SellerRegisterSupplierPage() {
           </div>
         </section>
 
+        {/*
+          🔴 2026-09-16 대표 신고 *"이 페이지에 전체적으로 다 떠야하는거 아니야? 어디서 뜨는건데?"*
+          — 맞는 지적이었다. 영업신고증과 정산 계좌는 **가입을 끝내고 대시보드
+          (`/seller/business-info` 의 탭)** 에 들어가야 나온다. 사장님은 그런 탭이 있다는 걸
+          알 방법이 없어, 필수 5칸을 다 채워 제출하고도 **왜 승인이 안 나는지 화면이 한 마디도 안 했다.**
+
+          ⚠️ 그렇다고 여기서 **첨부를 강제하지는 않는다** — 같은 날 확정한 당근 모델
+          (`switch-to-seller` 가 대기·반려도 통과)과 정면으로 어긋난다. 이름만 먼저 보여 준다.
+          시안·근거: docs/design/seller-signup-documents.md (대표 확정 안 2 + 시각 C)
+        */}
+        <section className="rounded-[var(--dash-radius,16px)] border border-rule bg-white px-4 pb-3 pt-4 sm:px-5">
+          <div className="flex items-baseline justify-between gap-3">
+            <h3 className="text-[15px] font-extrabold text-gray-900">{t('seller.signup.laterSection', { defaultValue: '승인까지 남은 것' })}</h3>
+            <span className="dash-num shrink-0 text-[12px] font-bold text-tone-warn">{t('seller.signup.laterCount', { defaultValue: '{{n}} 남음', n: certUrl ? 2 : 3 })}</span>
+          </div>
+          <p className="mt-0.5 text-[12.5px] text-gray-500">{t('seller.signup.laterSub', { defaultValue: '들어가서 채워도 됩니다. 다 채우면 심사가 시작돼요.' })}</p>
+          <dl className="mt-3">
+            {[
+              { k: t('seller.signup.laterCert', { defaultValue: '사업자등록증' }),
+                v: certUrl ? t('seller.signup.laterDone', { defaultValue: '첨부됨' }) : t('seller.signup.laterCertNote', { defaultValue: '위에서 첨부' }),
+                done: !!certUrl },
+              { k: t('seller.signup.laterPermit', { defaultValue: '영업신고증' }),
+                v: t('seller.signup.laterPermitNote', { defaultValue: '음식점 필수' }), done: false },
+              { k: t('seller.signup.laterBank', { defaultValue: '정산 계좌' }),
+                v: t('seller.signup.laterBankNote', { defaultValue: '정산 전까지' }), done: false },
+            ].map((r) => (
+              <div key={r.k} className="flex items-center justify-between gap-3 border-t border-rule py-2.5 first:border-t-0">
+                <dt className="text-[13.5px] font-semibold text-gray-900">{r.k}</dt>
+                <dd className={`shrink-0 text-[11.5px] font-bold ${r.done ? 'text-tone-ok' : 'text-gray-500'}`}>{r.v}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+
         <div ref={termsRef}>
           <TermsConsentBox
             termsLabel={t('seller.gateway.termsAgree', { defaultValue: '유어딜 판매자 이용약관(v1.0)에 동의합니다' })}
@@ -393,6 +431,7 @@ export default function SellerRegisterSupplierPage() {
             onAgreedChange={setTermsAgreed}
           />
         </div>
+
 
         <ul className="space-y-1 px-1 text-[12px] leading-relaxed text-gray-500">
           <li>{t('seller.signup.note1', { defaultValue: '결과는 앱 알림과 알림톡으로 알려드려요. 국세청 정보와 일치하면 바로 승인돼요.' })}</li>

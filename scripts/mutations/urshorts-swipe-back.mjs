@@ -53,13 +53,19 @@ export default [
     why: '옛 시작점이 남으면 다음 탭이 거대한 dy 로 읽혀 엉뚱하게 영상이 넘어간다.',
   },
   {
-    name: '❌ 닫기 버튼이 다시 유튜브 Shorts 로고 자리로 (스크린샷의 그 겹침)',
+    // 2026-09-16: 대표 지시로 닫기 X 자체가 사라졌다. 종전 주입("다시 로고 자리로")은 대상이
+    //   없어져 **낡은 지도**가 되므로, 같은 불변식을 '부재를 지키는' 쪽으로 재조준한다.
+    name: '❌ 좌상단 닫기 X 가 되살아난다 (대표가 없애라고 한 그 버튼)',
     file: V,
-    find: 'className="absolute left-3 top-14 z-20 grid h-9 w-9 place-items-center rounded-full bg-black/45 text-white backdrop-blur"',
-    replace: 'className="absolute left-3 top-3 z-20 grid h-9 w-9 place-items-center rounded-full bg-black/45 text-white backdrop-blur"',
+    find: '      {/* 위아래 이동 — 손가락은 스와이프, 마우스는 이 버튼 */}',
+    replace: `      <button type="button" onClick={() => navigate(-1)} aria-label="닫기"
+        className="absolute left-3 top-3 z-20 grid h-9 w-9 place-items-center rounded-full bg-black/45 text-white">
+        <X size={18} />
+      </button>
+      {/* 위아래 이동 — 손가락은 스와이프, 마우스는 이 버튼 */}`,
     test: TEST,
     why:
-      '유튜브가 그리는 Shorts 로고와 정확히 같은 자리다(실측: 로고 y≈18~42, 우리 X y 12~48). ' +
-      '덮어서 해결하는 것은 embed 약관 위반이라 우리 것을 비켜야 한다.',
+      '다음 세션이 "닫을 방법이 없네" 하고 조용히 되살리기 쉬운 자리다. 되살아나면 2026-09-13 에 ' +
+      '고친 유튜브 Shorts 로고 겹침(embed 약관)까지 함께 돌아온다.',
   },
 ]
