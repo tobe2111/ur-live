@@ -103,9 +103,13 @@ export default function BrandLoader({ fullScreen = false, size = 34, label, forc
  *
  * ⚠️ `ref` 콜백으로 붙인다(커밋 중 = 페인트 전). `useEffect` 면 한 프레임 빈 채로 그려질 수 있다.
  */
-export function BootFirstScreenLoader() {
+export function BootFirstScreenLoader({ forceDark = false }: { forceDark?: boolean }) {
   const node = typeof window !== 'undefined' ? takeBootFirstScreen(window.location.pathname) : null
-  if (!node) return <BrandLoader fullScreen />
+  // 🌑 2026-09-16 (대표 — *"로딩도 좀 문제 있어보이고"*): 도착 화면이 **다크 고정**인 표면은
+  //   이 로더도 다크여야 한다. 안 그러면 라이트 사용자가 [흰 로더 → 검은 로더] 색 점프를 본다
+  //   (실측 `/videos` 531ms — 청크 로더는 테마 추종인데 VideosPage 자체 로더가 forceDark 라서).
+  //   대시보드의 `DashboardLoader`(forceLight)와 같은 처방을 반대 방향으로 — "로더는 도착 화면의 색을 미리 입는다".
+  if (!node) return <BrandLoader fullScreen forceDark={forceDark} />
   return (
     <>
       <div ref={(el) => { if (el && node.parentNode !== el) el.appendChild(node) }} />
