@@ -46,6 +46,14 @@ describe('① 정적 경로가 /:param 그림자에 가려 죽는다 (라이브 
       .toMatch(/isOpenParam[\s\S]{0,120}includes\('\{'\)/)
   })
 
+  it('🩸 테스트 파일은 스캔에서 제외한다 — 자기를 돕는 테스트를 위반으로 신고하지 않게', () => {
+    // 2026-09-16: 순서 불변식을 *검사하는* 테스트는 `app.get('/:id'` 를 **따옴표 안에** 담는다.
+    //   가드 정규식은 그걸 진짜 등록으로 읽어 빨간불을 냈다. 테스트는 라우트를 등록하지 않는다.
+    //   오탐은 이 레포에서 가드를 죽인 실제 원인이다(`check-input-text-color` 가 2개월+ 미등록).
+    const g = read('scripts/check-route-shadowing.mjs')
+    expect(g, '테스트 제외 필터가 사라지면 정상 코드에 빨간불이 뜬다').toMatch(/tests\/[\s\S]{0,120}\.test\\\./)
+  })
+
   it('측정 대상이 0이면 통과가 아니라 실패다 (헛도는 가드 방지)', () => {
     expect(read('scripts/check-route-shadowing.mjs')).toMatch(/scanned < \d+[\s\S]{0,200}process\.exit\(1\)/)
   })

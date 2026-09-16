@@ -463,3 +463,161 @@ describe('배선 — 슬러그 판정이 한 벌뿐이다', () => {
     expect(/new Set\(RESERVED_SLUGS\)/.test(worker)).toBe(false)
   })
 })
+
+// 🏪 **운영자 SaaS 온보딩** (2026-08-12 — 대표 "모두 다 진행해줘")
+//   실측이었던 것: 운영자 화면 전체에 `mall_slug` 참조가 0건이라 **자기 링크를 몰랐다.**
+//   그리고 몰 미연결 셀러의 상품은 `mallIdForSeller` 기본값으로 조용히 본진(mall_id=1)에 들어간다.
+describe('운영자가 자기 가게를 안다', () => {
+  const read2 = (p: string) => readFileSync(p, 'utf8')
+  // ⚠️ 주석까지 벗긴다 — `<MyMallAddress` 가 설명에만 있어도 통과하면 가드가 아니다.
+  const noImp = (s: string) => stripComments(s.replace(/^\s*import[^\n]*$/gm, ''))
+
+  it('내 가게 조회 API 가 있고, 소비자 경로로 열리는 몰만 "내 가게"다', () => {
+    const r = read2('src/features/seller/api/seller-gb.routes.ts')
+    const fn = r.slice(r.indexOf("app.get('/mall'"))
+    expect(fn.length).toBeGreaterThan(0)
+    // fail-closed — 본진·도매몰·미연결은 전부 linked:false 여야 한다.
+    expect(/consumer_path, 0\) = 1/.test(fn)).toBe(true)
+    expect(/active, 1\) = 1/.test(fn)).toBe(true)
+  })
+
+  it('🔴 정적 경로가 `/:id` 보다 **앞에** 등록된다 — Hono 는 등록 순서대로 매칭한다', () => {
+    // 실측: `/:id` 를 먼저 걸면 `/support-contact` 가 id='support-contact' 로 삼켜져 400 이 된다.
+    //   그래서 이 라우트는 **한 번도 응답한 적이 없었다**(클라 .catch 가 삼켜 조용했다).
+    const r = read2('src/features/seller/api/seller-gb.routes.ts')
+    const param = r.indexOf("app.get('/:id'")
+    expect(param).toBeGreaterThan(0)
+    for (const stat of ["app.get('/mall'", "app.get('/support-contact'"]) {
+      expect(r.indexOf(stat)).toBeGreaterThan(0)
+      expect(r.indexOf(stat)).toBeLessThan(param)
+    }
+  })
+
+  it('문의처 클라 경로가 라우터 마운트(`/api/seller/gb`)와 맞는다', () => {
+    const c = read2('src/components/seller/SellerSupportContact.tsx')
+    expect(/\/api\/seller\/gb\/support-contact/.test(c)).toBe(true)
+    expect(/get\('\/api\/seller\/support-contact'\)/.test(c)).toBe(false)  // 옛 경로 재유입 금지
+  })
+
+  it('빠른 공구 등록 화면이 내 가게 주소를 보여준다', () => {
+    expect(/<MyMallAddress\b/.test(noImp(read2('src/pages/SellerQuickGbPage.tsx')))).toBe(true)
+  })
+
+  it('미연결이면 "본점에 올라간다"고 알린다 — 조용히 넘어가지 않는다', () => {
+    const m = read2('src/components/seller/MyMallAddress.tsx')
+    expect(/!info\.linked/.test(m)).toBe(true)
+    expect(/본점/.test(m)).toBe(true)
+  })
+})
+
+// 🏪 **운영자 셀프 온보딩 최소안** (2026-08-12 — 대표 "최소안으로 진행해줘")
+//   몰 생성과 셀러↔몰 연결이 둘 다 어드민 수동이라, 매장이 열 곳만 돼도 대표가 매번 붙어야 했다.
+//   ⇒ 운영자가 신청 · 어드민은 승인만. 🔴 **자동 생성이 아니다** — 슬러그는 영구 주소라 사람이 한 번 본다.
+describe('가게 개설 신청 — 신청은 아무것도 만들지 않는다', () => {
+  const readF = (p: string) => readFileSync(resolve(process.cwd(), p), 'utf8')
+  const sellerRoutes = readF('src/features/seller/api/seller-gb.routes.ts')
+  const adminRoutes = readF('src/features/supply/api/wholesale-malls-admin.routes.ts')
+
+  it('신청 경로는 몰을 만들지 않는다 — INSERT 대상은 신청 테이블뿐', () => {
+    const apply = sellerRoutes.slice(sellerRoutes.indexOf("app.post('/mall/apply'"))
+    expect(apply.length).toBeGreaterThan(0)
+    expect(/INSERT INTO mall_applications/.test(apply)).toBe(true)
+    expect(/INSERT INTO wholesale_malls/.test(apply)).toBe(false)   // 🔴 신청이 몰을 만들면 안 된다
+    expect(/UPDATE sellers SET mall_id/.test(apply)).toBe(false)    // 🔴 연결도 승인 시점에만
+  })
+
+  it('슬러그 판정은 소비자 라우트와 같은 SSOT — 여기서 갈리면 예약어가 통과한다', () => {
+    const apply = sellerRoutes.slice(sellerRoutes.indexOf("app.post('/mall/apply'"))
+    expect(/isMallSlugCandidate\(slug\)/.test(apply)).toBe(true)
+  })
+
+  it('승인은 **선점 먼저** — 동시 승인이 몰을 둘 만들지 않는다', () => {
+    const ap = adminRoutes.slice(adminRoutes.indexOf("app.post('/applications/:id/approve'"))
+    const claim = ap.indexOf("SET status = 'approved'")
+    const create = ap.indexOf('INSERT INTO wholesale_malls')
+    expect(claim).toBeGreaterThan(0)
+    expect(create).toBeGreaterThan(0)
+    expect(claim).toBeLessThan(create)                       // CAS 가 생성보다 앞
+    expect(/meta\?\.changes/.test(ap.slice(claim, create))).toBe(true)  // 그리고 결과를 본다
+  })
+
+  it('승인 실패하면 pending 으로 되돌린다 — 신청이 대기열에서 사라지지 않게', () => {
+    const ap = adminRoutes.slice(adminRoutes.indexOf("app.post('/applications/:id/approve'"))
+    expect(/SET status = 'pending', reviewed_at = NULL/.test(ap)).toBe(true)
+  })
+
+  /**
+   * 🔴 **되돌리기는 반쪽이면 안 된다** — 첫 구현이 정확히 반쪽이었다(2026-08-12 자체 점검에서 발견).
+   *
+   * 몰 INSERT 는 성공하고 그 다음이 실패하면, 신청만 `pending` 으로 돌아오고 **몰은 남는다.**
+   * 그러면 재승인이 이 핸들러 위쪽의 slug 중복 검사(`이미 사용 중인 slug`)에 걸려 **영원히 409** 다
+   * — 대기열엔 보이는데 아무리 눌러도 안 열리고, 화면 어디에도 이유가 없다.
+   *
+   * ⚠️ 이 테스트가 못 막는 것: 되돌리기 SQL 이 **실제로 그 행을 지우는지**(DB 없이 정적 검사라
+   *   문장 존재만 본다). 바인딩이 틀려 0행 삭제여도 여기서는 통과한다.
+   */
+  it('🔴 실패 시 **만든 몰까지** 지운다 — 안 그러면 그 슬러그는 영원히 재승인 불가', () => {
+    const ap = adminRoutes.slice(adminRoutes.indexOf("app.post('/applications/:id/approve'"))
+    const catchAt = ap.indexOf('} catch (e) {')
+    expect(catchAt).toBeGreaterThan(0)
+    const rollback = ap.slice(catchAt, ap.indexOf('throw e') + 8)
+    expect(/DELETE FROM wholesale_malls/.test(rollback)).toBe(true)
+    // 셀러 연결도 같이 되돌린다 — 몰만 지우면 sellers.mall_id 가 없는 몰을 가리킨다.
+    expect(/UPDATE sellers SET mall_id/.test(rollback)).toBe(true)
+  })
+
+  it('🔴 셀러 연결은 **본진에 있을 때만** — 묵은 신청이 남의 몰 연결을 덮어쓰지 않는다', () => {
+    const ap = adminRoutes.slice(adminRoutes.indexOf("app.post('/applications/:id/approve'"))
+    const link = ap.slice(ap.indexOf('UPDATE sellers SET mall_id'))
+    // 가드 없는 `WHERE id = ?` 단독이면 어드민이 수동 연결해 둔 몰을 덮어쓴다.
+    expect(/WHERE id = \? AND COALESCE\(mall_id, \?\) = \?/.test(link)).toBe(true)
+    // 그리고 결과를 본다 — 0행이면 이미 다른 몰이라는 뜻이라 진행하면 안 된다.
+    expect(/link\.meta\?\.changes/.test(ap)).toBe(true)
+  })
+
+  it('🔴 상품 이관 실패를 삼키지 않는다 — 조용히 빈 가게가 열리면 안 된다', () => {
+    const ap = adminRoutes.slice(adminRoutes.indexOf("app.post('/applications/:id/approve'"))
+    const migrate = ap.slice(ap.indexOf('UPDATE products SET mall_id'))
+    const stmtEnd = migrate.indexOf('.run()') + 6
+    // `.run().catch(() => null)` 이면 실패가 성공처럼 보인다 — ⑤가 없애려던 바로 그 혼란이다.
+    expect(/^\s*\.catch/.test(migrate.slice(stmtEnd, stmtEnd + 20))).toBe(false)
+  })
+
+  it('승인이 만드는 몰은 소비자 경로로 열린다(consumer_path=1)', () => {
+    const ap = adminRoutes.slice(adminRoutes.indexOf("app.post('/applications/:id/approve'"))
+    expect(/INSERT INTO wholesale_malls[\s\S]{0,200}consumer_path/.test(ap)).toBe(true)
+  })
+
+  it('🔴 정적 `/applications*` 가 `/:id` 보다 앞에 등록된다', () => {
+    const param = adminRoutes.indexOf("app.patch('/:id'")
+    expect(param).toBeGreaterThan(0)
+    for (const s of ["app.get('/applications'", "app.post('/applications/:id/approve'", "app.post('/applications/:id/reject'"]) {
+      expect(adminRoutes.indexOf(s)).toBeGreaterThan(0)
+      expect(adminRoutes.indexOf(s)).toBeLessThan(param)
+    }
+  })
+
+  it('승인/반려는 슈퍼관리자만', () => {
+    for (const s of ["app.post('/applications/:id/approve'", "app.post('/applications/:id/reject'"]) {
+      const i = adminRoutes.indexOf(s)
+      expect(adminRoutes.slice(i, i + 200)).toMatch(/requireSuperAdmin\(\)/)
+    }
+  })
+
+  it('🔴 어드민 대기열이 조회 실패를 "신청 없음" 으로 위장하지 않는다', () => {
+    // 2026-09-16: `items.length === 0 → null` 만 있었다. 일시 5xx 면 대기열이 통째로 사라지고
+    //   신청한 운영자는 어드민 화면에서 안 보인다 — 에러도 안 뜬다.
+    const panel = readF('src/pages/admin/wholesale-malls/MallApplicationsPanel.tsx')
+    const at = panel.indexOf('if (isError)')
+    // ⚠️ 존재부터 본다. `indexOf` 는 없으면 **-1** 이라 `toBeLessThan` 이 늘 통과한다 —
+    //   이 단언을 먼저 안 쓰면 분기를 통째로 지워도 초록이다(주입이 그 자리를 실제로 잡았다).
+    expect(at, 'isError 분기가 없다 — 5xx 가 "신청 없음" 으로 보인다').toBeGreaterThan(0)
+    expect(at).toBeLessThan(panel.indexOf('items.length === 0'))
+  })
+
+  it('화면이 배선돼 있다 — 운영자 신청 폼 · 어드민 대기열', () => {
+    const noImp = (x: string) => stripComments(x.replace(/^\s*import[^\n]*$/gm, ''))
+    expect(/mall\/apply/.test(readF('src/components/seller/MyMallAddress.tsx'))).toBe(true)
+    expect(/<MallApplicationsPanel\b/.test(noImp(readF('src/pages/admin/AdminWholesaleMallsPage.tsx')))).toBe(true)
+  })
+})
