@@ -234,7 +234,7 @@ export default function AdminKtAlphaPage() {
     try {
       const r = await api.post('/api/admin/kt-alpha/products/delete', { category }, { headers: h() })
       if (r.data?.success) {
-        toast.success(`✅ ${r.data.data.deleted}개 삭제됨`)
+        toast.success(`${r.data.data.deleted}개 삭제됨`)
         loadCategories(); loadConsumerStats()
       }
     } catch (err: unknown) {
@@ -244,12 +244,12 @@ export default function AdminKtAlphaPage() {
   }
 
   async function deleteAllKtAlpha() {
-    if (!(await confirmDialog({ message: '⚠️ KT Alpha 상품 전체를 삭제합니다.\n복구 불가 — 정말 계속하시겠습니까?', danger: true }))) return
-    if (!(await confirmDialog({ message: '🚨 한 번 더 확인 — 정말 전체 삭제?', danger: true }))) return
+    if (!(await confirmDialog({ message: 'KT Alpha 상품 전체를 삭제합니다.\n복구 불가 — 정말 계속하시겠습니까?', danger: true }))) return
+    if (!(await confirmDialog({ message: '한 번 더 확인 — 정말 전체 삭제?', danger: true }))) return
     try {
       const r = await api.post('/api/admin/kt-alpha/products/delete', { all: true }, { headers: h() })
       if (r.data?.success) {
-        toast.success(`✅ ${r.data.data.deleted}개 전체 삭제됨`)
+        toast.success(`${r.data.data.deleted}개 전체 삭제됨`)
         loadCategories(); loadConsumerStats()
       }
     } catch (err: unknown) {
@@ -266,7 +266,7 @@ export default function AdminKtAlphaPage() {
       const r = await api.post('/api/admin/reviews/backfill-user-names', {}, { headers: h() })
       if (r.data?.success) {
         const d = r.data.data
-        toast.success(`✅ ${d.updated}개 리뷰 갱신 (남은 NULL ${d.after_null}개 — users 매칭 안 됨)`, { duration: 6000 })
+        toast.success(`${d.updated}개 리뷰 갱신 (남은 NULL ${d.after_null}개 — users 매칭 안 됨)`, { duration: 6000 })
       } else {
         toast.error(extractErrorMessage(r.data))
       }
@@ -282,7 +282,7 @@ export default function AdminKtAlphaPage() {
   //   영구 (v2): /sync-page?start_page=N&page_count=10 반복 호출. 1 호출 ~10초.
   //   진행률 toast 실시간 + 페이지 실패해도 재시작 가능.
   async function fullResyncKtAlpha() {
-    if (!(await confirmDialog('⚠️ KT Alpha 전체 재싱크 (페이지 분할 progressive).\n시간 ~1-3분. 진행률 실시간 표시. 계속?'))) return
+    if (!(await confirmDialog('KT Alpha 전체 재싱크 (페이지 분할 progressive).\n시간 ~1-3분. 진행률 실시간 표시. 계속?'))) return
     let page: number | null = 1
     let totalSynced = 0
     let totalReported = 0
@@ -306,13 +306,13 @@ export default function AdminKtAlphaPage() {
       }
       const elapsed = Math.floor((Date.now() - startTime) / 1000)
       await alertDialog(
-        `📦 KT Alpha 전체 재싱크 완료\n\n` +
+        `KT Alpha 전체 재싱크 완료\n\n` +
         `• KT API 보고 total: ${totalReported}개\n` +
         `• DB 저장: ${totalSynced}개\n` +
         `• 소요 시간: ${elapsed}초 (${iterations}회 호출)\n\n` +
         (totalSynced >= totalReported && totalReported > 0
-          ? '✅ 모든 상품 수신 완료'
-          : `ℹ️ ${totalSynced}/${totalReported}개 수신 — 부족하면 다시 실행`),
+          ? '모든 상품 수신 완료'
+          : `ℹ${totalSynced}/${totalReported}개 수신 — 부족하면 다시 실행`),
       )
     } catch (err: unknown) {
       const ax = err as { response?: { data?: unknown }; message?: string }
@@ -324,19 +324,19 @@ export default function AdminKtAlphaPage() {
   // 🛡️ 2026-05-21: "전체 즉시 실행" 메가 버튼 — categorize + brand backfill + review backfill 한 번에.
   //   매일 18 UTC cron 이 자동으로 같은 작업을 하지만, 사용자가 즉시 보고 싶을 때 한 클릭.
   async function runAllBackfills() {
-    if (!(await confirmDialog('⚡ 전체 즉시 실행:\n• products.category 자동 분류\n• products.brand_name 채움\n• 리뷰 user_name (카카오 이름) 백필\n\n계속하시겠습니까?'))) return
+    if (!(await confirmDialog('전체 즉시 실행:\n• products.category 자동 분류\n• products.brand_name 채움\n• 리뷰 user_name (카카오 이름) 백필\n\n계속하시겠습니까?'))) return
     try {
       const r = await api.post('/api/admin/kt-alpha/run-all-backfills', {}, { headers: h() })
       if (r.data?.success) {
         const d = r.data.data
         const summary =
-          `✅ 전체 즉시 실행 완료\n\n` +
+          `전체 즉시 실행 완료\n\n` +
           `• 카테고리 분류: ${d.categorized}개\n` +
           `• 브랜드 채움: ${d.brand_filled}개\n` +
           `• 리뷰 이름: ${d.review_names}개\n` +
           `• 설명 정책표기 정리: ${d.descriptions_cleaned ?? 0}개` +
-          (d.columns_added?.length ? `\n\n📐 컬럼 추가: ${d.columns_added.join(', ')}` : '') +
-          (d.errors?.length ? `\n\n⚠️ 일부 오류:\n${d.errors.join('\n')}` : '')
+          (d.columns_added?.length ? `\n\n컬럼 추가: ${d.columns_added.join(', ')}` : '') +
+          (d.errors?.length ? `\n\n일부 오류:\n${d.errors.join('\n')}` : '')
         toast.success(summary, { duration: 10000 })
       } else {
         toast.error(extractErrorMessage(r.data))
@@ -354,7 +354,7 @@ export default function AdminKtAlphaPage() {
     try {
       const r = await api.post('/api/admin/kt-alpha/cleanup-descriptions', {}, { headers: h() })
       if (r.data?.success) {
-        toast.success(`✅ ${r.data.data?.cleaned ?? 0}개 상품 설명 정리 완료`)
+        toast.success(`${r.data.data?.cleaned ?? 0}개 상품 설명 정리 완료`)
         loadAll()
       } else {
         toast.error(extractErrorMessage(r.data))
@@ -376,7 +376,7 @@ export default function AdminKtAlphaPage() {
       const d = r.data.data
       if (import.meta.env.DEV) console.log('[KT Alpha 진단]', d)
       const summary =
-        `📊 카테고리 분류 진단\n\n` +
+        `카테고리 분류 진단\n\n` +
         `▼ KT Alpha API\n  ${d.kt_alpha_api.provides_classification}\n\n` +
         `▼ gift_catalog\n` +
         `  · 전체 ${d.gift_catalog.total_rows} / 활성 ${d.gift_catalog.active_rows}\n` +
@@ -418,7 +418,7 @@ export default function AdminKtAlphaPage() {
       scopeInput.trim() === '2' ? 'admin' : 'all'
     const scopeLabel = { vouchers: '교환권', admin: '어드민 상품', all: '전체 활성 상품' }[scope]
 
-    if (!(await confirmDialog(`${scopeLabel} 에 허위 리뷰를 대량 생성합니다.\n각 상품마다 5-25개 랜덤 · 평점 4.3-4.8 분산 · is_generated=1 표시.\n\n⚠️ 운영자 자체 책임. 계속하시겠습니까?`))) return
+    if (!(await confirmDialog(`${scopeLabel} 에 허위 리뷰를 대량 생성합니다.\n각 상품마다 5-25개 랜덤 · 평점 4.3-4.8 분산 · is_generated=1 표시.\n\n운영자 자체 책임. 계속하시겠습니까?`))) return
 
     const reviewsPerInput = prompt('상품당 평균 리뷰 개수 (5-50, 기본 15)', '15')
     if (!reviewsPerInput) return
@@ -436,7 +436,7 @@ export default function AdminKtAlphaPage() {
       )
       if (r.data?.success) {
         const d = r.data.data
-        toast.success(`✅ ${scopeLabel} — ${d.products_processed}개 상품 / ${d.total_reviews_inserted}개 리뷰 / 평균 ${d.avg_reviews_per_product}개${d.errors_count ? ` / 오류 ${d.errors_count}개` : ''}`)
+        toast.success(`${scopeLabel} — ${d.products_processed}개 상품 / ${d.total_reviews_inserted}개 리뷰 / 평균 ${d.avg_reviews_per_product}개${d.errors_count ? ` / 오류 ${d.errors_count}개` : ''}`)
       } else {
         // 🛡️ 2026-05-21: error 가 string/object 둘 다 가능 — 안전 추출 + 콘솔 전문 로그.
         console.error('[bulk reviews] success=false:', r.data)
@@ -485,7 +485,7 @@ export default function AdminKtAlphaPage() {
       )
       if (r.data?.success) {
         const d = r.data.data
-        toast.success(`✅ ${d.product_name} — ${d.reviews_inserted}개 리뷰 생성 (평점 ${d.rating_range[0]}-${d.rating_range[1]})`)
+        toast.success(`${d.product_name} — ${d.reviews_inserted}개 리뷰 생성 (평점 ${d.rating_range[0]}-${d.rating_range[1]})`)
       } else {
         console.error('[per-product reviews] success=false:', r.data)
         toast.error(extractErrorMessage(r.data))
@@ -514,10 +514,10 @@ export default function AdminKtAlphaPage() {
     const scopeLabel = { vouchers: '교환권 리뷰', admin: '어드민 상품 리뷰', all: '전체 생성 리뷰' }[scope]
 
     if (!(await confirmDialog({ message: `${scopeLabel} 일괄 삭제. 복구 불가. 계속하시겠습니까?`, danger: true }))) return
-    if (!(await confirmDialog({ message: '🚨 한 번 더 확인 — 정말 전체 삭제?', danger: true }))) return
+    if (!(await confirmDialog({ message: '한 번 더 확인 — 정말 전체 삭제?', danger: true }))) return
     try {
       const r = await api.delete(`/api/admin/reviews/generated-bulk-vouchers?scope=${scope}`, { headers: h() })
-      if (r.data?.success) toast.success(`✅ ${scopeLabel} ${r.data.deleted}개 삭제됨`)
+      if (r.data?.success) toast.success(`${scopeLabel} ${r.data.deleted}개 삭제됨`)
       else toast.error(r.data?.error || '삭제 실패')
     } catch (err: unknown) {
       const ax = err as { response?: { data?: { error?: string } } }
@@ -536,7 +536,7 @@ export default function AdminKtAlphaPage() {
       if (r.data?.success) {
         const d = r.data.data
         const byCat = Object.entries(d.by_category || {}).map(([k, v]) => `${k}: ${v}`).join(', ')
-        toast.success(`✅ ${d.updated}개 재분류 (불변 ${d.unchanged}, 미매칭 ${d.unmatched})${byCat ? '\n' + byCat : ''}`)
+        toast.success(`${d.updated}개 재분류 (불변 ${d.unchanged}, 미매칭 ${d.unmatched})${byCat ? '\n' + byCat : ''}`)
         loadCategories()
       } else {
         toast.error(r.data?.error || '재분류 실패')
@@ -553,7 +553,7 @@ export default function AdminKtAlphaPage() {
     try {
       const r = await api.post('/api/admin/kt-alpha/categories/rename', { from, to }, { headers: h() })
       if (r.data?.success) {
-        toast.success(`✅ ${r.data.data.updated}개 카테고리 변경됨`)
+        toast.success(`${r.data.data.updated}개 카테고리 변경됨`)
         loadCategories()
       }
     } catch (err: unknown) {
@@ -564,8 +564,8 @@ export default function AdminKtAlphaPage() {
 
   async function runImport(dryRun: boolean) {
     if (!dryRun && !(await confirmDialog(
-      '⚠️ KT Alpha 상품을 일반 상품으로 자동 등록합니다.\n' +
-      '\n· 마진 20% (kt_alpha_consumer_markup_pct 설정값)\n' +
+      'KT Alpha 상품을 일반 상품으로 자동 등록합니다.\n' +
+      `\n· 마진 ${edit.consumer_markup_pct}% (kt_alpha_consumer_markup_pct 설정값 — 0 이면 액면가 그대로)\n` +
       '· 딜 결제 전용\n· 노출 상태는 별도 토글로 제어\n\n' +
       'KT Alpha 측 사전 승인 받으셨나요? (B2B 정책 리스크)\n계속 진행하시겠습니까?'
     ))) return
@@ -579,7 +579,7 @@ export default function AdminKtAlphaPage() {
         if (r.data?.success) {
           const d = r.data.data
           setDryRunResult({ inserted: d.inserted, updated: d.updated, markup_pct: d.markup_pct, samples: d.samples || [] })
-          toast.success(`🔍 미리보기: 신규 ${d.inserted}건 / 갱신 ${d.updated}건`)
+          toast.success(`미리보기: 신규 ${d.inserted}건 / 갱신 ${d.updated}건`)
         }
         return
       }
@@ -609,7 +609,7 @@ export default function AdminKtAlphaPage() {
         if (!d.has_more) break
         offset = d.next_offset
       }
-      toast.success(`✅ 등록 완료 — 신규 ${totalInserted}건 / 갱신 ${totalUpdated}건`)
+      toast.success(`등록 완료 — 신규 ${totalInserted}건 / 갱신 ${totalUpdated}건`)
       loadConsumerStats()
     } catch (err: unknown) {
       const ax = err as { response?: { data?: { error?: string } } }
@@ -619,7 +619,7 @@ export default function AdminKtAlphaPage() {
 
   async function toggleConsumerVisibility(enabled: boolean) {
     if (enabled && !(await confirmDialog({
-      message: '⚠️ KT Alpha 상품 전체를 일반 사용자에게 노출합니다.\n' +
+      message: 'KT Alpha 상품 전체를 일반 사용자에게 노출합니다.\n' +
       'KT Alpha 측 사전 승인 받으셨나요? (정책 위반 시 Key 회수 위험)\n계속하시겠습니까?',
       danger: true,
     }))) return
@@ -627,7 +627,7 @@ export default function AdminKtAlphaPage() {
       const r = await api.patch('/api/admin/kt-alpha/consumer-products/visibility',
         { enabled }, { headers: h() })
       if (r.data?.success) {
-        toast.success(enabled ? '✅ 노출 ON' : '🔒 노출 OFF')
+        toast.success(enabled ? '노출 ON' : '노출 OFF')
         loadConsumerStats()
       }
     } catch (err: unknown) {
@@ -650,10 +650,10 @@ export default function AdminKtAlphaPage() {
           actions={
             <div className="flex gap-2">
               <button onClick={refreshBalance} className="text-xs px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
-                💰 잔액 갱신
+                잔액 갱신
               </button>
               <button onClick={runSync} disabled={syncing}
-                className="text-xs px-3 py-1.5 bg-gray-900 text-white rounded-lg hover:bg-gray-900 disabled:opacity-50 inline-flex items-center gap-1">
+                className="ur-btn ur-btn-sm ur-btn-primary disabled:opacity-50 inline-flex items-center gap-1">
                 <RefreshCw className={`w-3 h-3 ${syncing ? 'animate-spin' : ''}`} /> {syncing ? 'sync 중...' : '수동 sync'}
               </button>
             </div>
@@ -663,17 +663,17 @@ export default function AdminKtAlphaPage() {
         {loading ? <DashboardLoading /> : (
           <>
             {/* 비즈머니 잔액 — 가장 중요 */}
-            <div className={`rounded-2xl border-2 p-5 ${
-              balanceEmpty ? 'bg-red-50 border-red-300' :
-              balanceLow ? 'bg-amber-50 border-amber-300' :
-              'bg-emerald-50 border-emerald-200'
+            <div className={`rounded-[var(--dash-radius,16px)] border-2 p-5 ${
+              balanceEmpty ? 'bg-white border-rule' :
+              balanceLow ? 'bg-white border-rule' :
+              'bg-white border-rule'
             }`}>
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-xs font-bold text-gray-600 tracking-wide">💰 비즈머니 잔액</p>
+                  <p className="text-xs font-bold text-gray-600 tracking-wide">비즈머니 잔액</p>
                   <p className={`text-3xl font-black mt-1 ${
-                    balanceEmpty ? 'text-red-700' :
-                    balanceLow ? 'text-amber-700' : 'text-emerald-700'
+                    balanceEmpty ? 'text-tone-bad' :
+                    balanceLow ? 'text-tone-warn' : 'text-tone-ok'
                   }`}>
                     ₩{balance.toLocaleString()}
                   </p>
@@ -683,29 +683,29 @@ export default function AdminKtAlphaPage() {
                 </div>
                 {balanceLow && (
                   <div className="text-right">
-                    <AlertTriangle className="w-6 h-6 text-amber-600 ml-auto" />
-                    <p className="text-[11px] text-amber-700 font-bold mt-1">잔액 부족</p>
-                    <p className="text-[10px] text-amber-700">기프티쇼 콘솔에서 충전</p>
+                    <AlertTriangle className="w-6 h-6 text-tone-warn ml-auto" />
+                    <p className="text-[11px] text-tone-warn font-bold mt-1">잔액 부족</p>
+                    <p className="text-[10px] text-tone-warn">기프티쇼 콘솔에서 충전</p>
                   </div>
                 )}
               </div>
               {balanceEmpty && (
-                <div className="mt-3 p-2 bg-red-100 rounded text-[11px] text-red-800">
-                  ⚠️ 잔액 0원 — 모든 voucher 발송 차단됩니다. 기프티쇼 콘솔에서 비즈머니 충전 필요.
+                <div className="mt-3 p-2 border border-rule bg-white rounded text-[11px] text-tone-bad">
+                  잔액 0원 — 모든 voucher 발송 차단됩니다. 기프티쇼 콘솔에서 비즈머니 충전 필요.
                 </div>
               )}
             </div>
 
             {/* KPI cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <KpiBox label="활성 상품" value={`${catalogStats.active}/${catalogStats.total}`} color="text-blue-600 bg-blue-50" icon={<Package className="w-4 h-4" />} />
-              <KpiBox label="총 발송 시도" value={String(Number(sendStats.total ?? 0))} color="text-violet-600 bg-violet-50" icon={<Gift className="w-4 h-4" />} />
-              <KpiBox label="발송 성공" value={String(Number(sendStats.sent ?? 0))} sub={Number(sendStats.failed ?? 0) > 0 ? `실패 ${sendStats.failed}` : undefined} color="text-emerald-600 bg-emerald-50" icon={<TrendingUp className="w-4 h-4" />} warn={Number(sendStats.failed ?? 0) > 0} />
-              <KpiBox label="누적 거래액" value={`₩${Number(sendStats.total_amount ?? 0).toLocaleString()}`} color="text-pink-600 bg-pink-50" icon={<DollarSign className="w-4 h-4" />} />
+              <KpiBox label="활성 상품" value={`${catalogStats.active}/${catalogStats.total}`} color="text-gray-700 border border-rule bg-white" icon={<Package className="w-4 h-4" />} />
+              <KpiBox label="총 발송 시도" value={String(Number(sendStats.total ?? 0))} color="text-gray-700 border border-rule bg-white" icon={<Gift className="w-4 h-4" />} />
+              <KpiBox label="발송 성공" value={String(Number(sendStats.sent ?? 0))} sub={Number(sendStats.failed ?? 0) > 0 ? `실패 ${sendStats.failed}` : undefined} color="text-tone-ok border border-rule bg-white" icon={<TrendingUp className="w-4 h-4" />} warn={Number(sendStats.failed ?? 0) > 0} />
+              <KpiBox label="누적 거래액" value={`₩${Number(sendStats.total_amount ?? 0).toLocaleString()}`} color="text-brand-text bg-brand-tint" icon={<DollarSign className="w-4 h-4" />} />
             </div>
 
             {/* 설정 — 마진 + API config */}
-            <div className="bg-white rounded-xl shadow-sm p-5">
+            <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-5">
               <div className="flex items-center gap-2 mb-4">
                 <Settings className="w-5 h-5 text-gray-600" />
                 <h3 className="text-sm font-bold text-gray-900">운영 설정</h3>
@@ -715,7 +715,7 @@ export default function AdminKtAlphaPage() {
                 {/* 셀러 markup % */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                    🏪 셀러 마진 markup (%)
+                    셀러 마진 markup (%)
                   </label>
                   <div className="flex items-center gap-3">
                     <input
@@ -724,7 +724,7 @@ export default function AdminKtAlphaPage() {
                       onChange={(e) => setEdit({ ...edit, markup_pct: e.target.value })}
                       className="flex-1"
                     />
-                    <span className="text-lg font-extrabold text-pink-600 w-12 text-right">{edit.markup_pct}%</span>
+                    <span className="text-lg font-extrabold text-brand-text w-12 text-right">{edit.markup_pct}%</span>
                   </div>
                   <p className="text-[10px] text-gray-500 mt-1">
                     셀러 정산: 1만원 공급가 → 셀러 차감 ₩{Math.floor(9400 * (1 + Number(edit.markup_pct) / 100)).toLocaleString()}
@@ -734,7 +734,7 @@ export default function AdminKtAlphaPage() {
                 {/* 🛡️ 2026-05-19: 소비자 직판 markup % */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                    🛒 소비자 마진 markup (%) — 딜 교환 전용
+                    소비자 마진 markup (%) — 딜 교환 전용
                   </label>
                   <div className="flex items-center gap-3">
                     <input
@@ -743,13 +743,13 @@ export default function AdminKtAlphaPage() {
                       onChange={(e) => setEdit({ ...edit, consumer_markup_pct: e.target.value })}
                       className="flex-1"
                     />
-                    <span className="text-lg font-extrabold text-amber-600 w-12 text-right">{edit.consumer_markup_pct}%</span>
+                    <span className="text-lg font-extrabold text-tone-warn w-12 text-right">{edit.consumer_markup_pct}%</span>
                   </div>
                   <p className="text-[10px] text-gray-500 mt-1">
                     소비자 직판: 1만원권 → 사용자 딜 차감 ₩{Math.floor(9400 * (1 + Number(edit.consumer_markup_pct) / 100)).toLocaleString()}
                     {Number(edit.consumer_markup_pct) !== 20 && consumerStats.total > 0 && (
-                      <span className="block text-amber-600 font-bold mt-0.5">
-                        ⚠️ 변경 후 '📦 대량 등록' 다시 실행해야 기존 {consumerStats.total}개 상품 가격 갱신
+                      <span className="block text-tone-warn font-bold mt-0.5">
+                        변경 후 '대량 등록' 다시 실행해야 기존 {consumerStats.total}개 상품 가격 갱신
                       </span>
                     )}
                   </p>
@@ -779,13 +779,13 @@ export default function AdminKtAlphaPage() {
                     미설정 시 voucher_orders INSERT 가 NOT NULL 위반으로 silent fail → 발송 기록 X. */}
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                    관리자 셀러 ID <span className="text-red-600">*</span>
+                    관리자 셀러 ID <span className="text-tone-bad">*</span>
                   </label>
                   <input type="number" value={edit.admin_seller_id}
                     onChange={(e) => setEdit({ ...edit, admin_seller_id: e.target.value })}
                     placeholder="예: 1 (관리자 sellers.id)"
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono" />
-                  <p className="text-[10px] text-red-600 mt-1">
+                  <p className="text-[10px] text-tone-bad mt-1">
                     필수 — voucher_orders.seller_id 충족용. 미설정 시 KT Alpha 발송 silent fail.
                     sellers 테이블의 관리자 계정 ID (대개 1) 입력.
                   </p>
@@ -834,17 +834,17 @@ export default function AdminKtAlphaPage() {
 
               <div className="mt-4 flex flex-wrap gap-2">
                 <button onClick={saveSettings} disabled={savingSettings}
-                  className="px-4 py-2 bg-gray-900 text-white text-xs font-bold rounded-lg hover:bg-gray-900 disabled:opacity-50">
+                  className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-50">
                   {savingSettings ? '저장 중...' : '설정 저장'}
                 </button>
                 {/* 🛡️ 2026-05-27 (사용자 요청): 마진 % 변경 후 기존 상품 가격 즉시 재계산 */}
                 <button onClick={recalcPrices}
-                  className="px-4 py-2 bg-amber-500 text-white text-xs font-bold rounded-lg hover:bg-amber-600">
-                  📊 기존 상품 가격 일괄 재계산
+                  className="ur-btn ur-btn-md ur-btn-primary">
+                  기존 상품 가격 일괄 재계산
                 </button>
               </div>
-              <p className="text-[10px] text-amber-700 mt-2">
-                ⚠️ "설정 저장" 만으로는 신규 import 상품에만 새 마진 적용. 기존 상품도 적용하려면 "일괄 재계산" 클릭.
+              <p className="text-[10px] text-tone-warn mt-2">
+                "설정 저장" 만으로는 신규 import 상품에만 새 마진 적용. 기존 상품도 적용하려면 "일괄 재계산" 클릭.
               </p>
 
               <p className="text-[10px] text-gray-400 mt-3">
@@ -853,16 +853,16 @@ export default function AdminKtAlphaPage() {
             </div>
 
             {/* 🛡️ 2026-05-19: KT Alpha 상품 대량 등록 (소비자 직판) */}
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
+            <div className="bg-white border border-rule rounded-xl p-5">
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <h3 className="text-sm font-bold text-amber-900">🛒 소비자 직판 (딜 교환 전용)</h3>
-                  <p className="text-[11px] text-amber-700 mt-0.5">
+                  <h3 className="text-sm font-bold text-tone-warn">소비자 직판 (딜 교환 전용)</h3>
+                  <p className="text-[11px] text-tone-warn mt-0.5">
                     KT Alpha 카탈로그를 일반 상품으로 등록 — 사용자가 딜로 교환 가능
                   </p>
                 </div>
                 <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${
-                  consumerStats.visible > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'
+                  consumerStats.visible > 0 ? 'bg-tone-ok-bg text-tone-ok' : 'bg-gray-100 text-gray-600'
                 }`}>
                   {consumerStats.visible > 0 ? '노출 중' : '숨김'}
                 </span>
@@ -872,15 +872,15 @@ export default function AdminKtAlphaPage() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
                 <div className="bg-white rounded-lg p-2.5">
                   <p className="text-[10px] text-gray-500">등록 상품</p>
-                  <p className="text-lg font-extrabold text-amber-900">{Number(consumerStats.total ?? 0).toLocaleString()}</p>
+                  <p className="text-lg font-extrabold text-tone-warn">{Number(consumerStats.total ?? 0).toLocaleString()}</p>
                 </div>
                 <div className="bg-white rounded-lg p-2.5">
                   <p className="text-[10px] text-gray-500">노출 중</p>
-                  <p className="text-lg font-extrabold text-emerald-700">{Number(consumerStats.visible ?? 0).toLocaleString()}</p>
+                  <p className="text-lg font-extrabold text-tone-ok">{Number(consumerStats.visible ?? 0).toLocaleString()}</p>
                 </div>
                 <div className="bg-white rounded-lg p-2.5">
                   <p className="text-[10px] text-gray-500">누적 판매</p>
-                  <p className="text-lg font-extrabold text-pink-600">{Number(consumerStats.total_sold ?? 0).toLocaleString()}</p>
+                  <p className="text-lg font-extrabold text-brand-text">{Number(consumerStats.total_sold ?? 0).toLocaleString()}</p>
                 </div>
                 <div className="bg-white rounded-lg p-2.5">
                   <p className="text-[10px] text-gray-500">평균 가격</p>
@@ -890,31 +890,31 @@ export default function AdminKtAlphaPage() {
 
               <div className="flex flex-wrap gap-2">
                 <button onClick={() => runImport(true)} disabled={importing}
-                  className="px-3 py-2 bg-gray-900 text-white text-xs font-bold rounded-lg hover:bg-gray-900 disabled:opacity-50">
-                  🔍 미리보기 (dry-run)
+                  className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-50">
+                  미리보기 (dry-run)
                 </button>
                 <button onClick={() => runImport(false)} disabled={importing || (catalogStats.active ?? 0) === 0}
-                  className="px-3 py-2 bg-amber-600 text-white text-xs font-bold rounded-lg hover:bg-amber-700 disabled:opacity-50">
-                  {importing ? '등록 중...' : `📦 대량 등록 ${Number(catalogStats.active ?? 0).toLocaleString()}개`}
+                  className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-50">
+                  {importing ? '등록 중...' : `대량 등록 ${Number(catalogStats.active ?? 0).toLocaleString()}개`}
                 </button>
                 <button onClick={() => toggleConsumerVisibility((consumerStats.visible ?? 0) === 0)} disabled={(consumerStats.total ?? 0) === 0}
                   className={`px-3 py-2 text-white text-xs font-bold rounded-lg disabled:opacity-50 ${
                     consumerStats.visible > 0 ? 'bg-gray-700 hover:bg-gray-800' : 'bg-emerald-600 hover:bg-emerald-700'
                   }`}>
-                  {consumerStats.visible > 0 ? '🔒 노출 OFF' : '🌐 노출 ON'}
+                  {consumerStats.visible > 0 ? '노출 OFF' : '노출 ON'}
                 </button>
               </div>
 
               {dryRunResult && (
                 <div className="mt-3 bg-white rounded-lg p-3 text-xs">
                   <p className="font-bold text-gray-900 mb-2">
-                    🔍 dry-run 결과 · 신규 {dryRunResult.inserted} / 갱신 {dryRunResult.updated} · 마진 {dryRunResult.markup_pct}%
+                    dry-run 결과 · 신규 {dryRunResult.inserted} / 갱신 {dryRunResult.updated} · 마진 {dryRunResult.markup_pct}%
                   </p>
                   <div className="max-h-40 overflow-y-auto space-y-1">
                     {dryRunResult.samples.map((s) => (
                       <div key={s.gift_code} className="flex justify-between text-[11px]">
                         <span className="text-gray-600 truncate">[{s.action}] {s.name}</span>
-                        <span className="font-mono text-pink-600">₩{s.price.toLocaleString()}</span>
+                        <span className="font-mono text-brand-text">₩{s.price.toLocaleString()}</span>
                       </div>
                     ))}
                   </div>
@@ -922,8 +922,8 @@ export default function AdminKtAlphaPage() {
                 </div>
               )}
 
-              <p className="text-[10px] text-amber-800 mt-3 leading-relaxed">
-                ⚠️ KT Alpha 비즈 API 가이드라인: 최종 소비자 직판 금지. 본 기능은 운영자 결정으로 활성화됨.
+              <p className="text-[10px] text-tone-warn mt-3 leading-relaxed">
+                KT Alpha 비즈 API 가이드라인: 최종 소비자 직판 금지. 본 기능은 운영자 결정으로 활성화됨.
                 <br/>승인 받기 전 노출 ON 하지 마세요 — Key 회수 위험.
                 {consumerLastImport && <><br/>· 마지막 등록: {consumerLastImport}</>}
               </p>
@@ -934,7 +934,7 @@ export default function AdminKtAlphaPage() {
               <div className="bg-white border border-gray-200 rounded-xl p-5">
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <h3 className="text-sm font-bold text-gray-900">🗂️ 카테고리별 관리</h3>
+                    <h3 className="text-sm font-bold text-gray-900">카테고리별 관리</h3>
                     <p className="text-[11px] text-gray-500 mt-0.5">
                       KT Alpha 상품은 카테고리(편의점/카페/도서 등)로 자동 분류됨. 카테고리별 삭제 가능.
                     </p>
@@ -942,69 +942,69 @@ export default function AdminKtAlphaPage() {
                   <div className="flex items-center gap-2 flex-wrap justify-end">
                     {/* 🛡️ 2026-05-21: 메가 버튼 — 카테고리/브랜드/리뷰 이름 한 번에 즉시 실행. */}
                     <button onClick={runAllBackfills}
-                      className="px-3 py-2 bg-gray-900 text-white text-xs font-extrabold rounded-lg hover:opacity-90 shadow-md"
+                      className="ur-btn ur-btn-md ur-btn-primary hover:opacity-90 shadow-md"
                       title="categorize + brand backfill + review name backfill 한 번에"
                     >
-                      ⚡ 전체 즉시 실행
+                      전체 즉시 실행
                     </button>
                     {/* 🛡️ 2026-05-21: KT Alpha 전체 강제 재싱크 — maxPages=200. */}
                     <button onClick={fullResyncKtAlpha}
                       className="px-3 py-2 bg-cyan-600 text-white text-xs font-bold rounded-lg hover:bg-cyan-700"
                       title="KT API 모든 상품 강제 fetch (maxPages=200)"
                     >
-                      📦 전체 재싱크
+                      전체 재싱크
                     </button>
                     {/* 🛡️ 2026-05-21: 카테고리 분류 종합 진단 — gift_catalog/products 상태 + 매칭율 보기. */}
                     <button onClick={diagnoseClassification}
                       className="px-3 py-2 bg-slate-600 text-white text-xs font-bold rounded-lg hover:bg-slate-700"
                       title="KT Alpha 카탈로그 / products 분류 상태 종합 진단"
                     >
-                      🔍 분류 진단
+                      분류 진단
                     </button>
                     {/* 🧹 2026-06-17: 기존 상품 설명의 '(KT Alpha B2B 정책)' 표기 일괄 제거 */}
                     <button onClick={cleanupDescriptions}
-                      className="px-3 py-2 bg-amber-600 text-white text-xs font-bold rounded-lg hover:bg-amber-700"
+                      className="ur-btn ur-btn-md ur-btn-primary"
                       title="기존 상품 description 의 '(KT Alpha B2B 정책)' 제조사 정책 표기를 DB 에서 일괄 제거"
                     >
-                      🧹 설명 정책표기 정리
+                      설명 정책표기 정리
                     </button>
                     {/* 🛡️ 2026-05-19: KT Alpha 카테고리 자동 재분류 (gift_catalog + brand 키워드). */}
                     <button onClick={autoClassifyCategories}
-                      className="px-3 py-2 bg-gray-900 text-white text-xs font-bold rounded-lg hover:bg-gray-900"
+                      className="ur-btn ur-btn-md ur-btn-primary"
                       title="goods_type_detail + brand 키워드로 자동 재분류"
                     >
-                      🗂️ 카테고리 자동 재분류
+                      카테고리 자동 재분류
                     </button>
                     {/* 🛡️ 2026-05-19: 허위 리뷰 대량 생성 / 삭제 (사용자 요청). */}
                     <button onClick={generateBulkReviews}
-                      className="px-3 py-2 bg-gray-900 text-white text-xs font-bold rounded-lg hover:bg-gray-900"
+                      className="ur-btn ur-btn-md ur-btn-primary"
                       title="모든 교환권에 상품당 5-25개 리뷰 자동 생성"
                     >
-                      ⭐ 리뷰 대량 생성
+                      리뷰 대량 생성
                     </button>
                     {/* 🛡️ 2026-05-21: 사용자 요청 — 각 상품 당 리뷰 개별 생성. */}
                     <button onClick={generateReviewsForProduct}
                       className="px-3 py-2 bg-teal-600 text-white text-xs font-bold rounded-lg hover:bg-teal-700"
                       title="특정 상품 ID 에 N개 리뷰 즉시 생성"
                     >
-                      ⭐ 개별 상품 리뷰
+                      개별 상품 리뷰
                     </button>
                     <button onClick={deleteBulkReviews}
-                      className="px-3 py-2 bg-amber-600 text-white text-xs font-bold rounded-lg hover:bg-amber-700"
+                      className="ur-btn ur-btn-md ur-btn-primary"
                       title="생성된 리뷰 일괄 삭제 (롤백)"
                     >
-                      🧹 리뷰 정리
+                      리뷰 정리
                     </button>
                     {/* 🛡️ 2026-05-21: 기존 리뷰 이름 백필 — users.name 마스킹 일괄 적용. */}
                     <button onClick={backfillReviewUserNames}
-                      className="px-3 py-2 bg-gray-900 text-white text-xs font-bold rounded-lg hover:bg-gray-900"
+                      className="ur-btn ur-btn-md ur-btn-primary"
                       title="기존 리뷰의 user_name 컬럼을 users.name 마스킹으로 채움"
                     >
-                      🔄 리뷰 이름 백필
+                      리뷰 이름 백필
                     </button>
                     <button onClick={deleteAllKtAlpha}
-                      className="px-3 py-2 bg-red-600 text-white text-xs font-bold rounded-lg hover:bg-red-700">
-                      🗑️ 상품 전체 삭제
+                      className="ur-btn ur-btn-md ur-btn-danger">
+                      상품 전체 삭제
                     </button>
                   </div>
                 </div>
@@ -1026,10 +1026,10 @@ export default function AdminKtAlphaPage() {
                         <tr key={c.category} className="hover:bg-gray-50">
                           <td className="px-3 py-2 font-bold text-gray-900">{c.category}</td>
                           <td className="px-3 py-2 text-right text-gray-700">{Number(c.total ?? 0).toLocaleString()}</td>
-                          <td className="px-3 py-2 text-right text-emerald-700 font-semibold">
+                          <td className="px-3 py-2 text-right text-tone-ok font-semibold">
                             {Number(c.visible ?? 0).toLocaleString()}
                           </td>
-                          <td className="px-3 py-2 text-right text-pink-600">{Number(c.sold ?? 0).toLocaleString()}</td>
+                          <td className="px-3 py-2 text-right text-brand-text">{Number(c.sold ?? 0).toLocaleString()}</td>
                           <td className="px-3 py-2 text-right text-gray-500 text-[10px]">
                             ₩{Number(c.min_price ?? 0).toLocaleString()} ~ ₩{Number(c.max_price ?? 0).toLocaleString()}
                           </td>
@@ -1037,11 +1037,11 @@ export default function AdminKtAlphaPage() {
                             <div className="flex gap-1 justify-end">
                               <button onClick={() => renameCategory(c.category)}
                                 className="px-2 py-1 bg-gray-100 text-gray-700 text-[10px] rounded hover:bg-gray-200">
-                                ✏️ 이름
+                                이름
                               </button>
                               <button onClick={() => deleteByCategory(c.category, c.total)}
-                                className="px-2 py-1 bg-red-50 text-red-700 text-[10px] rounded hover:bg-red-100">
-                                🗑️ 삭제
+                                className="px-2 py-1 bg-tone-bad-bg text-tone-bad text-[10px] rounded hover:bg-gray-100">
+                                삭제
                               </button>
                             </div>
                           </td>
@@ -1052,15 +1052,15 @@ export default function AdminKtAlphaPage() {
                 </div>
 
                 <p className="text-[10px] text-gray-400 mt-3">
-                  ⓘ 삭제는 복구 불가. 다시 등록하려면 '📦 대량 등록' 다시 실행.
+                  ⓘ 삭제는 복구 불가. 다시 등록하려면 '대량 등록' 다시 실행.
                 </p>
               </div>
             )}
 
             {/* 카탈로그 미리보기 */}
-            <div className="bg-white rounded-xl shadow-sm p-5">
+            <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-5">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-bold text-gray-900">📦 카탈로그 미리보기</h3>
+                <h3 className="text-sm font-bold text-gray-900">카탈로그 미리보기</h3>
                 <div className="flex gap-2">
                   <input type="text" value={q} onChange={(e) => setQ(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && searchCatalog()}
@@ -1077,7 +1077,7 @@ export default function AdminKtAlphaPage() {
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                   {catalog.map((item) => (
-                    <div key={item.gift_code} className={`border rounded-lg overflow-hidden ${item.is_active ? 'border-gray-200' : 'border-red-200 opacity-60'}`}>
+                    <div key={item.gift_code} className={`border rounded-lg overflow-hidden ${item.is_active ? 'border-gray-200' : 'border-rule opacity-60'}`}>
                       <div className="aspect-square bg-gray-100">
                         {item.image_url_small ? <img src={item.image_url_small} alt={item.name} className="w-full h-full object-cover" loading="lazy" /> : null}
                       </div>
@@ -1085,11 +1085,11 @@ export default function AdminKtAlphaPage() {
                         <p className="text-[10px] text-gray-500 font-semibold">{item.brand_name}</p>
                         <p className="text-xs font-bold text-gray-900 line-clamp-2">{item.name}</p>
                         <div className="flex items-baseline gap-1 mt-1">
-                          {Number(item.discount_rate ?? 0) > 0 && <span className="text-[10px] text-red-500 font-bold">{item.discount_rate}%</span>}
+                          {Number(item.discount_rate ?? 0) > 0 && <span className="text-[10px] text-tone-bad font-bold">{item.discount_rate}%</span>}
                           <span className="text-xs font-extrabold text-gray-900">₩{Number(item.sale_price ?? 0).toLocaleString()}</span>
                         </div>
                         <p className="text-[9px] text-gray-400 mt-0.5 font-mono">{item.gift_code}</p>
-                        {!item.is_active && <p className="text-[9px] text-red-600 mt-0.5 font-bold">⊘ 비활성</p>}
+                        {!item.is_active && <p className="text-[9px] text-tone-bad mt-0.5 font-bold">⊘ 비활성</p>}
                       </div>
                     </div>
                   ))}
@@ -1105,13 +1105,13 @@ export default function AdminKtAlphaPage() {
 
 function KpiBox({ label, value, sub, color, icon, warn }: { label: string; value: string; sub?: string; color: string; icon: React.ReactNode; warn?: boolean }) {
   return (
-    <div className="bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-100">
+    <div className="bg-white rounded-xl p-3 sm:p-4 border border-rule border border-gray-100">
       <div className="flex items-center justify-between mb-2">
         <span className="text-[10px] sm:text-xs font-medium text-gray-500">{label}</span>
         <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg ${color} flex items-center justify-center`}>{icon}</div>
       </div>
       <p className="text-base sm:text-lg font-extrabold text-gray-900">{value}</p>
-      {sub && <p className={`text-[10px] mt-0.5 font-semibold ${warn ? 'text-red-600' : 'text-gray-400'}`}>{sub}</p>}
+      {sub && <p className={`text-[10px] mt-0.5 font-semibold ${warn ? 'text-tone-bad' : 'text-gray-400'}`}>{sub}</p>}
     </div>
   )
 }

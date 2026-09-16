@@ -169,9 +169,16 @@ export async function ensureCompanySchema(DB: D1Database): Promise<number> {
   if (_schemaDone.has(DB)) return 0
   _schemaDone.add(DB)
   // 🧾 DDL 은 체크섬 기반 1회 적용(위 COMPANY_DDL 주석) — 따뜻한 DB 는 SELECT 1회.
-  const { ran } = await runDdlOnce(DB, 'ads_ddl_company', COMPANY_DDL)
+  const { ran, gateStuck } = await runDdlOnce(DB, 'ads_ddl_company', COMPANY_DDL)
+  // 🩸 **기록이 안 남는 DB 에서는 "1회 마이그레이션"을 아예 하지 않는다** (2026-09-02 실사고).
+  //   아래 세 블록(키 v2 · 오수집 정리 · 카테고리 v3)은 전부 `platform_settings` 플래그로 "이미 했다"를
+  //   기억한다. 그 표가 없거나 쓰기가 실패하면 **매 부팅마다 전수 UPDATE/DELETE 가 다시 돈다** —
+  //   실측: 회당 409,697행 × 하루 200여 회. 그날 계정의 D1 일일 읽기 한도가 그대로 소진됐다.
+  //   ⇒ 기억할 수 없으면 **안 하는 쪽이 맞다.** 데이터는 그대로 남고(정리가 늦어질 뿐), 표가 생기는
+  //     순간 다음 부팅에서 정상적으로 1회 실행된다.
   // 실비: 체크섬 SELECT 1 + (적용했다면 문장수 + platform_settings 보장 1 + 체크섬 쓰기 1)
   let spent = 1 + (ran ? COMPANY_DDL.length + 2 : 0)
+  if (!gateStuck) return spent
 
   // 🧹 키 v2 마이그레이션(1회, 플래그) — 사업자번호 보유 행을 b: 키로 통일 + 기존 중복(통신판매 현황/상세 2서비스) 병합.
   spent += 1 // v2 게이트 SELECT
@@ -400,6 +407,7 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housek
   let updated = 0, removed = 0, held = 0
   const delta = emptyDelta()   // 🔬 판정 *변화율* 계측(좁히기 판단 근거) — 동작은 안 바꾼다
   const stmts: D1PreparedStatement[] = []
+  const stampOnly: number[] = []   // 판정 불변 — 재검사 표시만 필요한 행(위 블록 참조)
   for (const r of rows) {
     const c = classifyLead(r)
     if (!c.ok) {
@@ -421,7 +429,26 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housek
       lead_type: registry && c.lead_type === 'unknown' && !suspect ? 'partner' : c.lead_type,
       confidence: registry ? 'registry' : conf,
     }
-    if (registry) {
+    /**
+     * 🪞 **판정이 안 바뀐 행은 도장만 찍는다**(2026-09-04) — 여기가 업체 DB 쓰기의 주범이었다.
+     *   이 랩은 규칙 버전이 오를 때마다 전 행(41만)을 다시 판정하는데, 아래 `changed` 를 **이미
+     *   계산해 놓고 통계에만 쓰고** 쓰기는 무조건 했다. 라이브 실측이 그 대가를 말한다:
+     *   ```
+     *     reg_seen 28,777   reg_changed 40   →  실제로 바뀐 비율 0.14%
+     *   ```
+     *   SQLite 의 UPDATE 는 값이 같아도 행을 다시 쓰고, **바뀐 컬럼을 포함한 인덱스마다** 또 쓴다.
+     *   판정 5개 컬럼을 건드리면 인덱스 다발이 따라오지만, `classified_v` 만 찍으면 그 인덱스 하나다.
+     *   ⇒ 안 바뀐 99.86% 는 재검사 표시(`classified_v`)만 남기고 판정 컬럼은 손대지 않는다.
+     *
+     *   ⚠️ **도장은 반드시 찍는다.** 안 찍으면 이 행이 영영 "미검사"로 남아 다음 회차마다 다시
+     *      읽힌다 — 쓰기를 아끼려다 읽기를 무한히 태우는 반대편 사고가 된다.
+     *   ⚠️ 이미 현재 버전이면 그마저 불필요하므로 아무것도 안 한다.
+     */
+    const branch = registry ? 'registry' : c.confidence === 'evidence' ? 'evidence' : 'other'
+    const changed = verdictChanged(r, written, branch)
+    if (!changed) {
+      if (r.classified_v !== CLASSIFY_RULES_VERSION) stampOnly.push(r.id)
+    } else if (registry) {
       stmts.push(DB.prepare("UPDATE ad_company_leads SET lead_type = ?, classify_confidence = 'registry', classified_v = ? WHERE id = ?")
         .bind(written.lead_type, CLASSIFY_RULES_VERSION, r.id))
     } else if (c.confidence === 'evidence') {
@@ -431,10 +458,16 @@ export async function reclassifyCompanyLeads(DB: D1Database, limit = 500, housek
     } else {
       stmts.push(DB.prepare('UPDATE ad_company_leads SET lead_type = ?, classify_confidence = ?, classified_v = ? WHERE id = ?').bind(written.lead_type, written.confidence, CLASSIFY_RULES_VERSION, r.id))
     }
-    tallyVerdict(delta, r.source, r.classified_v, verdictChanged(r, written, registry ? 'registry' : c.confidence === 'evidence' ? 'evidence' : 'other'))
+    tallyVerdict(delta, r.source, r.classified_v, changed)
     // 🧼 소급 위생(전화 형식·플랫폼 연락처·뉴스룸 이메일) — 판정과 근거는 `company-lead-hygiene.ts`.
     for (const st of hygieneStatements(r, sql => DB.prepare(sql))) stmts.push(st)
     updated++
+  }
+  // 판정 불변 행은 **한 문장으로 묶어** 도장만 — 행당 UPDATE 를 만들면 아끼려던 쓰기가 그대로 돌아온다.
+  for (let i = 0; i < stampOnly.length; i += 100) {
+    const ids = stampOnly.slice(i, i + 100)
+    stmts.push(DB.prepare(`UPDATE ad_company_leads SET classified_v = ? WHERE id IN (${ids.map(() => '?').join(',')})`)
+      .bind(CLASSIFY_RULES_VERSION, ...ids))
   }
   for (let i = 0; i < stmts.length; i += 100) await DB.batch(stmts.slice(i, i + 100)).catch(() => null)
   if (housekeeping) await sweepSuppressedEmails(DB)

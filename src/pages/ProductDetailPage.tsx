@@ -6,6 +6,7 @@ import api from '@/lib/api'
 import { getUserId, getUserIdSync, hasConsumerSession } from '@/utils/auth'
 import { TOPUP_DISABLED } from '@/shared/feature-flags'
 import { resolveProductFlow, canonicalDetailPath } from '@/shared/product-flow'
+import { buildDirectPurchaseItem } from './product-detail/buildDirectPurchaseItem'
 // ✅ Zustand 직접 사용
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { isKorea } from '@/config/region'
@@ -28,7 +29,6 @@ import { formatNumber } from '@/utils/format'
 import { safeDate } from '@/utils/safe-date'
 import { resolveDetailDisplay } from './product-detail/detail-display'
 import AccordionSection from './product-detail/AccordionSection'
-import GroupBuyCountdown from './product-detail/GroupBuyCountdown'
 import ProductReviews from './product-detail/ProductReviews'
 import ReferralSection from './product-detail/ReferralSection'
 import PurchasePicker from './product-detail/PurchasePicker'
@@ -36,11 +36,14 @@ import { isMallProduct, mallRedirectPathFor } from '@/shared/mall/resolve'
 import { PickupNotice, DeliveryNotice, hasPickupInfo, pickupSummaryLine } from '@/pages/product-detail/ReceiveMethodNotice'
 import { readMallOrigin } from '@/shared/mall/origin'
 import { parseUTCDate } from '@/utils/date'
-import { storeAffiliateRef } from '@/utils/affiliate-track'
+import { storeAffiliateRef, arrivedViaSomeoneElsesRef } from '@/utils/affiliate-track'
+import { useProductViewBeacon } from '@/hooks/useProductViewBeacon'
+import { effectiveAffiliateRate } from '@/shared/affiliate-rate'
 
-// 🛡️ 2026-05-02: TD-018 분할 — ReviewForm/ProductReviews/ReferralSection/AccordionSection/
-//   GroupBuyCountdown 을 ./product-detail/ 로 추출. 미사용 imports (Separator, ProgressiveImage,
-//   SharePrompt, toast, Users, Clock, Product type, lucide 일부) 제거.
+// 🛡️ 2026-05-02: TD-018 분할 — ReviewForm/ProductReviews/ReferralSection/AccordionSection 을
+//   ./product-detail/ 로 추출. 미사용 imports (Separator, ProgressiveImage, SharePrompt, toast,
+//   Users, Clock, Product type, lucide 일부) 제거.
+//   🗓️ 2026-09-04: 함께 추출했던 GroupBuyCountdown 은 마감 개념 제거로 파일째 삭제됐다.
 
 // Lazy load heavy components
 const ProductImageCarousel = lazy(() => import('@/components/product/product-image-carousel').then(m => ({ default: m.ProductImageCarousel })))
@@ -51,6 +54,8 @@ const GiftSendModal = lazy(() => import('@/components/gift/GiftSendModal'))
 export default function ProductDetailPage() {
   const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
+  // 👁️ 홈 인기순의 클릭 신호 — 세션당 1회(훅이 가드).
+  useProductViewBeacon(id)
   const navigate = useNavigate()
   const invalidateVouchers = useInvalidateMyVouchers()
   const [searchParams] = useSearchParams()
@@ -243,25 +248,7 @@ export default function ProductDetailPage() {
     // 바로구매: 장바구니 거치지 않고 해당 상품만 결제
     navigate('/checkout', {
       state: {
-        directPurchase: [{
-          id: `direct_${product.id}_${Date.now()}`,
-          product_id: product.id,
-          product_name: product.name,
-          product_description: product.description,
-          product_price: unitPrice,
-          product_image: product.image_url,
-          image_url: product.image_url,
-          quantity,
-          price_snapshot: unitPrice,
-          price: unitPrice,
-          item_total: unitPrice * quantity,
-          seller_id: product.seller_id ?? null,
-          seller_name: product.seller_name ?? null,
-          shipping_fee: 3000,
-          free_shipping_threshold: 0,
-          option_id: selectedOptions.option || null,
-          option_value: optValue,
-        }]
+        directPurchase: [buildDirectPurchaseItem(product, unitPrice, quantity, selectedOptions.option || null, optValue)],
       }
     })
   }
@@ -321,9 +308,12 @@ export default function ProductDetailPage() {
     }
 
     // 🛡️ 2026-05-19: 추천 보상률 미리 안내 — 사용자가 "공유하면 얼마 적립" 인지 알 수 있게.
-    const rateRatio = product.referral_commission_rate != null
-      ? Number(product.referral_commission_rate)
-      : 0.05  // platform default 5%
+    // 📌 2026-09-05: 기본값이 `0.05` 하드코딩이었다 — 라이브 기본은 **2%**(2026-06-17 대표 결정)라
+    //   공유 문구가 실제보다 2.5배 많은 적립을 약속하고 있었다. 해석은 SSOT 하나로.
+    const rateRatio = effectiveAffiliateRate({
+      referral_commission_rate: product.referral_commission_rate as number | null | undefined,
+      referral_enabled: (product as { referral_enabled?: number | null }).referral_enabled,
+    }) ?? 0
     const rewardPreview = Math.round(displayPrice * rateRatio)
     const shareText = isReferralEligible
       ? `${product.name} - ${formatNumber(displayPrice)}${Number(product.deal_only) === 1 ? ' 딜' : '원'}\n친구가 이 링크로 구매하면 +${formatNumber(rewardPreview)}딜 적립!`
@@ -354,7 +344,7 @@ export default function ProductDetailPage() {
   if (error || !product) {
     const mallOrigin = readMallOrigin()
     return (
-      <div className="flex min-h-screen items-center justify-center bg-white dark:bg-[#0D0F12] p-4">
+      <div className="flex min-h-screen items-center justify-center bg-white dark:bg-[#11141C] p-4">
         <div className="text-center">
           <p className="text-sm text-gray-500 dark:text-gray-400">{error?.message || t('productDetailPage.notFound')}</p>
           <button onClick={() => window.location.reload()} className="mt-3 px-4 py-2 bg-gray-900 text-white text-sm rounded-lg">{t('productDetail.retry')}</button>
@@ -415,7 +405,7 @@ export default function ProductDetailPage() {
   if (Number(product.deal_only) === 1) {
     const brandName = (product as unknown as { brand_name?: string }).brand_name || product.category || ''
     return (
-      <div className="min-h-screen bg-white dark:bg-[#0D0F12] pb-24">
+      <div className="min-h-screen bg-white dark:bg-[#11141C] pb-24">
         <SEO
           title={product.name}
           description={`${product.name} - 유어딜 교환권`}
@@ -438,7 +428,7 @@ export default function ProductDetailPage() {
           {product.image_url ? (
             <img src={cfImage(product.image_url, { width: 384, quality: 85, format: 'auto' }) || product.image_url} alt={product.name} className="w-48 h-48 object-contain" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, product.image_url)} />
           ) : (
-            <div className="w-48 h-48 bg-gray-100 dark:bg-[#1A1C21] rounded" />
+            <div className="w-48 h-48 bg-gray-100 dark:bg-[#1D1F29] rounded" />
           )}
         </div>
 
@@ -460,9 +450,9 @@ export default function ProductDetailPage() {
               onClick={() => navigate(`/browse?brand=${encodeURIComponent(brandName)}`)}
               role="button" tabIndex={0}>
               {brandIcon ? (
-                <img src={cfImage(brandIcon, { width: 96, quality: 80, format: 'auto' }) || brandIcon} alt={brandName} className="w-12 h-12 rounded-lg object-cover bg-white dark:bg-[#0D0F12] border border-amber-100" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, brandIcon)} />
+                <img src={cfImage(brandIcon, { width: 96, quality: 80, format: 'auto' }) || brandIcon} alt={brandName} className="w-12 h-12 rounded-lg object-cover bg-surface border border-amber-100" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, brandIcon)} />
               ) : (
-                <div className="w-12 h-12 bg-white dark:bg-[#0D0F12] rounded-lg flex items-center justify-center text-[10px] text-gray-400 font-bold border border-amber-100">
+                <div className="w-12 h-12 bg-surface rounded-lg flex items-center justify-center text-[10px] text-gray-400 font-bold border border-amber-100">
                   {brandName.slice(0, 4)}
                 </div>
               )}
@@ -507,7 +497,7 @@ export default function ProductDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0D0F12]">
+    <div className="min-h-screen bg-white dark:bg-[#11141C]">
       <SEO
         title={product.name}
         description={product.description?.slice(0, 160) || `${product.name} - 유어딜에서 만나보세요`}
@@ -543,7 +533,7 @@ export default function ProductDetailPage() {
         <div className="lg:grid lg:grid-cols-5 lg:gap-8 lg:pt-6">
           <div className="lg:col-span-3">
             {/* Product Images Carousel */}
-            <Suspense fallback={<div className="w-full h-96 bg-gray-100 dark:bg-[#1A1C21] animate-pulse" />}>
+            <Suspense fallback={<div className="w-full h-96 bg-gray-100 dark:bg-[#1D1F29] animate-pulse" />}>
               <ProductImageCarousel images={allImages} />
             </Suspense>
           </div>
@@ -611,7 +601,7 @@ export default function ProductDetailPage() {
                 ))}
               </div>
             ) : (
-              <div className="rounded-xl overflow-hidden mb-3 bg-gray-50 dark:bg-[#1A1C21]">
+              <div className="rounded-xl overflow-hidden mb-3 bg-gray-50 dark:bg-[#1D1F29]">
                 <img src={cfImage(detail.images[0], { width: 800, quality: 85, format: 'auto' }) || detail.images[0]} alt={product.name || t('productDetailPage.altDetail')} loading="lazy" decoding="async" fetchPriority="high" className="w-full" style={{ aspectRatio: '4/5', objectFit: 'cover' }} onError={(e) => cfImageOnError(e.currentTarget, detail.images[0])} />
               </div>
             )
@@ -622,7 +612,7 @@ export default function ProductDetailPage() {
             </p>
           )}
           {!detailExpanded && detail.canExpand && (
-            <button onClick={() => setDetailExpanded(true)} className="w-full mt-4 py-3 rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#0D0F12] text-[12px] font-semibold text-gray-700 dark:text-gray-200 active:bg-gray-50 dark:active:bg-[#1A1C21]">
+            <button onClick={() => setDetailExpanded(true)} className="w-full mt-4 py-3 rounded-xl border border-line bg-surface text-[12px] font-semibold text-gray-700 dark:text-gray-200 active:bg-gray-50 dark:active:bg-[#1D1F29]">
               {t('productDetail.expandDetails', { defaultValue: '상세정보 펼쳐보기' })}
             </button>
           )}
@@ -644,9 +634,8 @@ export default function ProductDetailPage() {
               </div>
               <div className="flex items-center justify-between mb-1 text-[11px] text-white/70">
                 <span>{t('productDetail.groupBuyProgress', { current: product.group_buy_current || 0, target: product.group_buy_target, defaultValue: `${product.group_buy_current || 0}명 참여 · ${product.group_buy_target}명 목표` })}</span>
-                {product.group_buy_deadline && <GroupBuyCountdown deadline={product.group_buy_deadline} />}
               </div>
-              <div className="w-full rounded-full overflow-hidden h-1 bg-white dark:bg-[#0D0F12]/15">
+              <div className="w-full rounded-full overflow-hidden h-1 bg-white dark:bg-[#11141C]/15">
                 <div className="h-full rounded-full bg-white dark:bg-white transition-all duration-500"
                   style={{ width: `${Math.min(100, ((product.group_buy_current || 0) / product.group_buy_target!) * 100)}%` }} />
               </div>
@@ -682,7 +671,7 @@ export default function ProductDetailPage() {
                 <div className="grid grid-cols-3 gap-2 pt-2">
                   <button type="button"
                     onClick={() => navigate(`/map?q=${encodeURIComponent(product.restaurant_address || '')}`)}
-                    className="py-2 bg-gray-100 dark:bg-[#1A1C21] hover:bg-gray-200 dark:hover:bg-[#2C2F35] text-gray-700 dark:text-gray-200 text-xs font-semibold rounded-lg flex items-center justify-center gap-1">
+                    className="py-2 bg-gray-100 dark:bg-[#1D1F29] hover:bg-gray-200 dark:hover:bg-[#2C2F35] text-gray-700 dark:text-gray-200 text-xs font-semibold rounded-lg flex items-center justify-center gap-1">
                     {<><Map className="w-3.5 h-3.5" strokeWidth={2} aria-hidden />{t('productDetail.mapLink', { defaultValue: '지도' })}</>}
                   </button>
                   <a href={`https://map.naver.com/v5/search/${encodeURIComponent(product.restaurant_name || product.restaurant_address)}`}
@@ -710,7 +699,12 @@ export default function ProductDetailPage() {
               몰 홈은 `powered by 유어딜` 조차 클릭 못 하게 막아 뒀는데 카드 한 번 누르면 여기였다.
               공유(KakaoShareButton)는 **남긴다** — 단톡방 확산은 운영자에게 이득이고 유어딜 영입이 아니다. */}
         <div className="px-5 py-3 space-y-2">
-          {!mallProduct && (() => {
+          {/* 🛡️ 2026-09-04 (대표): **남의 추천 링크로 들어왔으면 이 자리를 안 그린다.**
+                A 가 공유한 링크로 온 B 에게 "내 유어샵에 담기 + 추천 링크 복사" 를 보여 주면
+                B 가 A 의 손님을 그대로 가져간다 — 소개의 결과를 소개받은 사람이 가로챈다.
+                담기는 **유어딜에서 직접 발견했을 때만**. (몰 상품 제외와 같은 성격의 게이트.)
+                ⚠️ 저장된 ref(구매 귀속)는 그대로다 — B 가 사면 매출은 A 에게 간다. */}
+          {!mallProduct && !arrivedViaSomeoneElsesRef() && (() => {
             // 1판매당 큐레이터 적립액 = 가격 × 2% (platform_settings.curator_affiliate_pct default).
             // 🛡️ 추후 dynamic-policy 동기화 가능 (현재 default 2% — referralCopy 기존 라벨과 일관).
             const commissionPct = 2
@@ -743,7 +737,7 @@ export default function ProductDetailPage() {
                   className="w-full py-3.5 bg-gradient-to-r from-gray-800 to-gray-900 text-white rounded-xl flex flex-col items-center justify-center gap-0.5 active:scale-[0.98]"
                 >
                   <span className="flex items-center gap-1.5 text-[15px] font-bold"><Bookmark className="w-4 h-4 shrink-0" strokeWidth={2} aria-hidden />내 유어샵에 담기 + 추천 링크 복사</span>
-                  <span className="text-[11px] opacity-90">1판매당 {amountStr} 적립, 친구 공유 가능</span>
+                  <span className="text-[11px] opacity-90">손님이 사서 <b>쓰면</b> {amountStr} 적립 · 친구 공유 가능</span>
                 </button>
               )
             }
@@ -753,7 +747,7 @@ export default function ProductDetailPage() {
                 onClick={() => navigate(`/login?returnUrl=${encodeURIComponent(window.location.pathname)}`)}
                 className="w-full py-3.5 bg-gray-900 hover:bg-black text-white rounded-xl flex flex-col items-center justify-center gap-0.5 active:scale-[0.98]"
               >
-                <span className="text-[15px] font-bold">회원가입하고 1판매당 {amountStr} 적립받기</span>
+                <span className="text-[15px] font-bold">회원가입하고 손님이 쓸 때마다 {amountStr} 받기</span>
                 <span className="text-[11px] opacity-90">내 유어샵에 담아 친구에게 추천만 해도 수익</span>
               </button>
             )
@@ -825,7 +819,7 @@ export default function ProductDetailPage() {
       </main>
 
       {/* Floating Cart / Purchase Bar */}
-      <Suspense fallback={<div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] h-16 bg-gray-100 dark:bg-[#1A1C21] animate-pulse" />}>
+      <Suspense fallback={<div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] h-16 bg-gray-100 dark:bg-[#1D1F29] animate-pulse" />}>
         <FloatingActionBar
           onAddToCart={handleAddToCart}
           onBuyNow={handleBuyNow}
@@ -854,7 +848,7 @@ export default function ProductDetailPage() {
                CTA(적립액 표시 + 링크 복사 포함)가 정규 담기 진입점. floating 은 보조 액션(선물)만 유지. */}
           <button
             onClick={() => setGiftModalOpen(true)}
-            className="pointer-events-auto inline-flex items-center gap-1.5 h-10 pl-3 pr-3.5 rounded-full bg-white dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] shadow-lg active:scale-95 transition-transform"
+            className="pointer-events-auto inline-flex items-center gap-1.5 h-10 pl-3 pr-3.5 rounded-full bg-surface border border-line shadow-lg active:scale-95 transition-transform"
             aria-label={t('productDetailPage.ariaGift')}
           >
             <Gift className="w-4 h-4 text-gray-900 dark:text-white" />
@@ -879,7 +873,7 @@ export default function ProductDetailPage() {
       {/* 🏭 2026-06-05 (사용자 요청): 딜 교환 확인 — 네이티브 confirm 대체 서비스 내 모달. */}
       {dealConfirm && (
         <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => !dealBuying && setDealConfirm(null)}>
-          <div className="w-full sm:max-w-sm bg-white dark:bg-[#1A1C21] rounded-t-2xl sm:rounded-2xl p-5 m-0 sm:mx-4" onClick={e => e.stopPropagation()}>
+          <div className="w-full sm:max-w-sm bg-surface rounded-t-2xl sm:rounded-2xl p-5 m-0 sm:mx-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-3">
               {product.image_url && (
                 <img src={cfImage(product.image_url, { width: 112, quality: 80, format: 'auto' }) || product.image_url} alt="" loading="lazy" decoding="async" className="w-14 h-14 rounded-xl object-cover shrink-0" onError={(e) => cfImageOnError(e.currentTarget, product.image_url)} />

@@ -28,7 +28,11 @@ describe('COMPANY_DDL', () => {
     //   업체 DB 최대 소비자였다 — 하루 2,270만 행(전체 읽기의 22%). 근거: company-ddl-indexes ⑥.
     // 2026-09-01: 자가-치유 두 건의 부분 인덱스(`masked_email`·`placeholder_address`) 추가로 28 → 30.
     //   고칠 게 없어도 매 회차 전수 스캔이었다(합계 1,898만 행/일). 근거: company-ddl-indexes ⑦⑧.
-    expect(COMPANY_DDL).toHaveLength(30)
+    // 2026-09-07: 매장정보 재보강 큐 인덱스(`storeinfo_queue`) 추가로 30 → 31.
+    //   20건 뽑으려고 387,003행을 읽었고 2시간마다 돌아 하루 460만 행이었다(신규는 6일 연속 0).
+    //   ④ 와 같은 클래스 — 인덱스가 비활성 전량을 통과시키고 정렬을 임시 B-트리로 했다.
+    //   근거·설계: company-ddl-indexes ⑨.
+    expect(COMPANY_DDL).toHaveLength(31)
   })
 
   it('두 테이블을 만든다 — 리드 본체 + 반송 억제', () => {

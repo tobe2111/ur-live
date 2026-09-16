@@ -4,7 +4,7 @@
  * 핵심 메시지:
  * - 3분 등록 (Magic Link)
  * - 운영 마찰 0 (자동 환불 / 알림톡 / 통계)
- * - 수수료 5% (대형 셀러 차등 4%/3%)
+ * - 수수료: 직접 입점 10% (2026-09-15 정정. 예전 '5% + 대형 셀러 차등 4%/3%' 는 코드에 없는 수치였다. fee-resolver 채널 요율 SSOT)
  * - 수익 시뮬레이터
  */
 import { useState, useEffect } from 'react'
@@ -20,12 +20,12 @@ export default function BusinessLandingPage() {
   const [campaigns, setCampaigns] = useState(4)
 
   const monthlyGmv = participants * price * campaigns
-  const commissionRate = monthlyGmv >= 100_000_000 ? 0.03 : monthlyGmv >= 10_000_000 ? 0.04 : 0.05
+  const commissionRate = 0.10 // 직접 입점 매장 수수료. 대행사 경유(중개)는 5%. 매출 구간별 차등은 없다.
   const commission = Math.round(monthlyGmv * commissionRate)
   const netRevenue = monthlyGmv - commission
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0D0F12] text-gray-900 dark:text-white">
+    <div className="min-h-screen bg-white dark:bg-[#11141C] text-gray-900 dark:text-white">
       <SEO
         title={CONSUMER_SURFACE_SEO['/business'].title} description={CONSUMER_SURFACE_SEO['/business'].description}
         url="/business"
@@ -33,7 +33,7 @@ export default function BusinessLandingPage() {
       />
 
       {/* Nav */}
-      <nav className="sticky top-0 z-30 bg-white/90 dark:bg-[#0D0F12]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35] px-4 lg:px-12 py-4 flex items-center justify-between">
+      <nav className="sticky top-0 z-30 bg-white/90 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35] px-4 lg:px-12 py-4 flex items-center justify-between">
         <Link to="/" className="text-lg font-extrabold tracking-tight text-gray-900 dark:text-white">유어딜</Link>
         <div className="flex items-center gap-3">
           <Link to="/influencer" className="hidden sm:inline text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">인플루언서</Link>
@@ -42,7 +42,7 @@ export default function BusinessLandingPage() {
               이 페이지는 sitemap 에 올라가는 **공개 소비자 랜딩**이라 여기 링크가 남아 있으면
               도매몰을 접는 동안에도 신규 유입이 계속 들어온다. 라우트(`/supplier/login`)는 그대로 —
               기존 제조사·판매사는 직접 주소·utongstart.com 으로 들어온다(잔액 회수 경로 보존). */}
-          <button onClick={() => navigate('/store/new')} className="px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-full text-sm font-bold">
+          <button onClick={() => navigate('/store/new')} className="px-4 py-2 bg-brand hover:bg-brand-dark text-white rounded-full text-sm font-bold">
             무료 시작하기
           </button>
         </div>
@@ -52,7 +52,7 @@ export default function BusinessLandingPage() {
       <section className="px-6 lg:px-12 py-12 lg:py-24 max-w-6xl mx-auto">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div>
-            <span className="inline-block px-3 py-1 bg-pink-50 text-pink-600 rounded-full text-xs font-bold mb-5">🎯 자영업자 1인 사업자 전용</span>
+            <span className="inline-block px-3 py-1 bg-brand-tint text-brand-text rounded-full text-xs font-bold mb-5">🎯 자영업자 1인 사업자 전용</span>
             <h1 className="text-4xl lg:text-6xl font-extrabold leading-tight tracking-tight mb-6">
               사장님,<br />
               <span className="bg-gray-800 bg-clip-text text-transparent">3분 등록</span> 하면<br />
@@ -65,7 +65,7 @@ export default function BusinessLandingPage() {
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={() => navigate('/store/new')}
-                className="px-6 py-3.5 bg-pink-500 hover:bg-pink-600 text-white rounded-full font-bold flex items-center gap-2 shadow-lg shadow-pink-200"
+                className="px-6 py-3.5 bg-brand hover:bg-brand-dark text-white rounded-full font-bold flex items-center gap-2 shadow-lg "
               >
                 무료로 시작 <ArrowRight className="w-4 h-4" />
               </button>
@@ -76,7 +76,7 @@ export default function BusinessLandingPage() {
               >
                 공급자 가입 <ArrowRight className="w-4 h-4" />
               </button>
-              <a href="mailto:jiwon@ur-team.com" className="px-6 py-3.5 border-2 border-gray-200 dark:border-[#2C2F35] hover:border-gray-300 rounded-full font-bold flex items-center gap-2 text-gray-700 dark:text-gray-200">
+              <a href="mailto:jiwon@ur-team.com" className="px-6 py-3.5 border-2 border-line hover:border-gray-300 rounded-full font-bold flex items-center gap-2 text-gray-700 dark:text-gray-200">
                 <Phone className="w-4 h-4" /> 문의하기
               </a>
             </div>
@@ -84,23 +84,23 @@ export default function BusinessLandingPage() {
 
           {/* 모바일 액자 — 셀러 등록 미리보기 */}
           <div className="hidden lg:flex justify-center">
-            <div className="relative w-[300px] aspect-[9/19.5] rounded-[40px] border-[8px] border-gray-900 bg-gray-100 dark:bg-[#1A1C21] overflow-hidden shadow-2xl">
+            <div className="relative w-[300px] aspect-[9/19.5] rounded-[40px] border-[8px] border-gray-900 bg-gray-100 dark:bg-[#1D1F29] overflow-hidden shadow-2xl">
               <div className="absolute inset-0 p-4 flex flex-col gap-3">
-                <div className="bg-white dark:bg-[#0D0F12] rounded-2xl p-4 shadow-sm">
+                <div className="bg-surface rounded-2xl p-4 shadow-sm">
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">매장 검색</p>
                   <p className="text-sm font-bold text-gray-900 dark:text-white">동래원 본점</p>
                   <p className="text-[10px] text-gray-400 mt-1">부산 동래구 충렬대로...</p>
                 </div>
-                <div className="bg-white dark:bg-[#0D0F12] rounded-2xl p-4 shadow-sm">
+                <div className="bg-surface rounded-2xl p-4 shadow-sm">
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">💰 공구 가격</p>
-                  <p className="text-2xl font-extrabold text-pink-500">15,000<span className="text-sm font-bold">딜</span></p>
+                  <p className="text-2xl font-extrabold text-brand-text">15,000<span className="text-sm font-bold">딜</span></p>
                 </div>
-                <div className="bg-white dark:bg-[#0D0F12] rounded-2xl p-4 shadow-sm">
+                <div className="bg-surface rounded-2xl p-4 shadow-sm">
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">🎯 진행 현황</p>
-                  <div className="w-full bg-gray-100 dark:bg-[#1A1C21] rounded-full h-2 mb-2">
+                  <div className="w-full bg-gray-100 dark:bg-[#1D1F29] rounded-full h-2 mb-2">
                     <div className="h-full rounded-full bg-gray-800" style={{ width: '85%' }} />
                   </div>
-                  <p className="text-xs text-gray-700 dark:text-gray-200"><span className="font-bold">17명</span> / 20명 · <span className="text-pink-600 font-bold">3명 남음</span></p>
+                  <p className="text-xs text-gray-700 dark:text-gray-200"><span className="font-bold">17명</span> / 20명 · <span className="text-brand-text font-bold">3명 남음</span></p>
                 </div>
                 <button className="bg-gray-800 text-white rounded-xl py-3 text-sm font-bold mt-auto">
                   공구 시작하기
@@ -112,7 +112,12 @@ export default function BusinessLandingPage() {
       </section>
 
       {/* 4 핵심 가치 */}
-      <section className="bg-gray-50 dark:bg-[#1A1C21] px-6 lg:px-12 py-16">
+      {/* 🎫 2026-09-15: 이 띠는 **섹션**이지 카드가 아니다 — 다크에서 카드색(#1D1F29)을 쓰고 있어서,
+          같은 색이 된 안쪽 카드들이 묻혔다(두 빌드 A/B 실측: 구분 8 → 4). 페이지 톤으로 내린다.
+          ⚠️ 라이트 불변 — `bg-gray-50` 과 `--bg` 라이트가 둘 다 #F8F7FC.
+          ⚠️ 같은 짝(`bg-gray-50 dark:bg-[#1D1F29]`)을 일괄 치환하면 안 된다 — `/refund` 에서는
+          그 짝이 **카드**라, 일괄로 바꿨더니 16개가 페이지에 묻혔다(실측 후 되돌림). */}
+      <section className="bg-warm px-6 lg:px-12 py-16">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl lg:text-4xl font-extrabold text-center mb-12">
             왜 사장님들이 유어딜을 선택할까요?
@@ -124,8 +129,8 @@ export default function BusinessLandingPage() {
               { icon: Shield, title: '사용 후 정산', desc: '교환권이 실제 사용된 만큼만 정산. 노쇼·미사용 리스크 없음.' },
               { icon: TrendingUp, title: '실시간 통계', desc: '오늘 매출, 사용 voucher, 정산 예정 — 실시간 알림톡.' },
             ].map((f, i) => (
-              <div key={i} className="bg-white dark:bg-[#0D0F12] rounded-2xl p-6 border border-gray-100 dark:border-[#2C2F35]">
-                <f.icon className="w-8 h-8 text-pink-500 mb-3" />
+              <div key={i} className="bg-surface rounded-2xl p-6 border border-gray-100 dark:border-[#2C2F35]">
+                <f.icon className="w-8 h-8 text-brand-text mb-3" />
                 <h3 className="text-base font-bold mb-2">{f.title}</h3>
                 <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{f.desc}</p>
               </div>
@@ -144,38 +149,38 @@ export default function BusinessLandingPage() {
             <p className="text-gray-600 dark:text-gray-300">슬라이더로 직접 계산해보세요</p>
           </div>
 
-          <div className="bg-gray-50 rounded-3xl p-6 lg:p-10 border border-pink-100">
+          <div className="bg-warm rounded-3xl p-6 lg:p-10 border border-rule">
             <div className="space-y-6">
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-sm font-bold text-gray-700 dark:text-gray-200">공구당 참여자 수</label>
-                  <span className="text-2xl font-extrabold text-pink-600">{participants}명</span>
+                  <span className="text-2xl font-extrabold text-brand-text">{participants}명</span>
                 </div>
-                <input type="range" min="5" max="100" step="1" value={participants} onChange={e => setParticipants(Number(e.target.value))} className="w-full accent-pink-500" />
+                <input type="range" min="5" max="100" step="1" value={participants} onChange={e => setParticipants(Number(e.target.value))} className="w-full accent-brand" />
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-sm font-bold text-gray-700 dark:text-gray-200">공구 가격 (1인)</label>
-                  <span className="text-2xl font-extrabold text-pink-600">{price.toLocaleString()}원</span>
+                  <span className="text-2xl font-extrabold text-brand-text">{price.toLocaleString()}원</span>
                 </div>
-                <input type="range" min="5000" max="100000" step="1000" value={price} onChange={e => setPrice(Number(e.target.value))} className="w-full accent-pink-500" />
+                <input type="range" min="5000" max="100000" step="1000" value={price} onChange={e => setPrice(Number(e.target.value))} className="w-full accent-brand" />
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-sm font-bold text-gray-700 dark:text-gray-200">월 공구 횟수</label>
-                  <span className="text-2xl font-extrabold text-pink-600">{campaigns}회</span>
+                  <span className="text-2xl font-extrabold text-brand-text">{campaigns}회</span>
                 </div>
-                <input type="range" min="1" max="20" step="1" value={campaigns} onChange={e => setCampaigns(Number(e.target.value))} className="w-full accent-pink-500" />
+                <input type="range" min="1" max="20" step="1" value={campaigns} onChange={e => setCampaigns(Number(e.target.value))} className="w-full accent-brand" />
               </div>
 
-              <div className="border-t border-pink-200 pt-6 grid grid-cols-2 gap-4">
-                <div className="bg-white dark:bg-[#0D0F12] rounded-2xl p-4 text-center">
+              <div className="border-t border-rule pt-6 grid grid-cols-2 gap-4">
+                <div className="bg-surface rounded-2xl p-4 text-center">
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">월 GMV</p>
                   <p className="text-xl font-extrabold text-gray-900 dark:text-white">{monthlyGmv.toLocaleString()}원</p>
                 </div>
-                <div className="bg-white dark:bg-[#0D0F12] rounded-2xl p-4 text-center">
+                <div className="bg-surface rounded-2xl p-4 text-center">
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">수수료 ({(commissionRate * 100).toFixed(0)}%)</p>
                   <p className="text-xl font-extrabold text-gray-400">-{commission.toLocaleString()}원</p>
                 </div>
@@ -184,9 +189,6 @@ export default function BusinessLandingPage() {
               <div className="bg-gray-800 rounded-2xl p-6 text-center text-white">
                 <p className="text-sm opacity-90 mb-1">사장님이 받는 금액</p>
                 <p className="text-4xl font-extrabold">{netRevenue.toLocaleString()}<span className="text-xl font-bold">원/월</span></p>
-                {monthlyGmv >= 10_000_000 && (
-                  <p className="text-xs opacity-90 mt-2">🎉 월 GMV {monthlyGmv >= 100_000_000 ? '1억+ → 수수료 3%' : '1천만+ → 수수료 4%'} 차등 적용</p>
-                )}
               </div>
             </div>
           </div>
@@ -199,7 +201,7 @@ export default function BusinessLandingPage() {
         <p className="text-lg opacity-90 mb-8">월 5만원도, 월 5천만원도 — 사장님이 결정합니다.</p>
         <button
           onClick={() => navigate('/store/new')}
-          className="px-8 py-4 bg-white dark:bg-[#0D0F12] text-pink-600 rounded-full font-extrabold text-lg shadow-xl hover:scale-105 transition-transform"
+          className="px-8 py-4 bg-white dark:bg-[#11141C] text-brand-text rounded-full font-extrabold text-lg shadow-xl hover:scale-105 transition-transform"
         >
           무료로 시작하기 →
         </button>

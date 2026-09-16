@@ -88,7 +88,7 @@ export default function RegionPage() {
   ]
 
   return (
-    <div className="bg-white dark:bg-[#0D0F12] min-h-[100dvh]">
+    <div className="bg-white dark:bg-[#11141C] min-h-[100dvh]">
       <SEO
         title={title}
         description={description}
@@ -142,7 +142,7 @@ export default function RegionPage() {
           })}
           <Link
             to={`/map?q=${encodeURIComponent(label)}`}
-            className="shrink-0 ml-auto inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full text-[13px] font-bold border border-gray-200 dark:border-[#2C2F35] text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors"
+            className="shrink-0 ml-auto inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full text-[13px] font-bold border border-line text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors"
           >
             <MapPin className="w-3.5 h-3.5" aria-hidden />
             지도에서 보기

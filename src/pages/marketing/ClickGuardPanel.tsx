@@ -19,8 +19,8 @@ interface Site { advertiser_key: string; domain: string; created_at: string }
 interface SuspiciousIp { ip: string; country: string; clicks: number; adClicks: number; lastSeen: string; suspicious: boolean }
 interface ClickReport { days: number; totalClicks: number; uniqueIps: number; adClicks: number; suspects: SuspiciousIp[] }
 
-const card = 'rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] p-4'
-const input = 'w-full h-10 rounded-lg border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#0D0F12] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
+const card = 'rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] p-4'
+const input = 'w-full h-10 rounded-lg border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#11141C] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
 
 export default function ClickGuardPanel() {
   const [sites, setSites] = useState<Site[]>([])
@@ -112,7 +112,7 @@ export default function ClickGuardPanel() {
       {/* 사이트 등록 */}
       <div className="mt-2 flex gap-2">
         <input className={input} placeholder="내 사이트 도메인 (예: example.com)" value={domain} onChange={e => setDomain(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') addSite() }} />
-        <button onClick={addSite} disabled={busy} className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#0D0F12] disabled:opacity-50">등록</button>
+        <button onClick={addSite} disabled={busy} className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#11141C] disabled:opacity-50">등록</button>
       </div>
 
       {err && <PanelError onRetry={loadSites} />}
@@ -127,7 +127,7 @@ export default function ClickGuardPanel() {
                 <button onClick={() => removeSite(s.advertiser_key)} className="text-[11px] text-gray-400 dark:text-gray-500 hover:text-red-500">삭제</button>
               </div>
               <div className="mt-1.5 flex items-center gap-1.5">
-                <code className="flex-1 truncate rounded bg-gray-50 dark:bg-[#0D0F12] px-2 py-1 text-[10.5px] text-gray-600 dark:text-gray-300">{snippet(s.advertiser_key)}</code>
+                <code className="flex-1 truncate rounded bg-gray-50 dark:bg-[#11141C] px-2 py-1 text-[10.5px] text-gray-600 dark:text-gray-300">{snippet(s.advertiser_key)}</code>
                 <button onClick={() => copy(snippet(s.advertiser_key))} className="shrink-0 rounded border border-gray-200 dark:border-[#2C2F35] px-2 py-1 text-[10.5px] font-bold text-gray-700 dark:text-gray-200">복사</button>
               </div>
               <p className="mt-1 text-[10px] text-gray-400 dark:text-gray-500">위 스니펫을 사이트 모든 페이지 &lt;/body&gt; 앞에 붙여넣으세요.</p>
@@ -150,13 +150,13 @@ export default function ClickGuardPanel() {
             <span className="text-[12.5px] font-bold text-gray-900 dark:text-white">의심 IP 리포트</span>
             <div className="flex rounded-lg border border-gray-200 dark:border-[#2C2F35] overflow-hidden">
               {([7, 30] as const).map(d => (
-                <button key={d} onClick={() => setDays(d)} className={`px-2.5 py-0.5 text-[11px] font-semibold ${days === d ? 'bg-gray-900 dark:bg-white text-white dark:text-[#0D0F12]' : 'text-gray-500 dark:text-gray-400'}`}>{d}일</button>
+                <button key={d} onClick={() => setDays(d)} className={`px-2.5 py-0.5 text-[11px] font-semibold ${days === d ? 'bg-gray-900 dark:bg-white text-white dark:text-[#11141C]' : 'text-gray-500 dark:text-gray-400'}`}>{d}일</button>
               ))}
             </div>
           </div>
           <div className="mt-2 grid grid-cols-3 gap-2">
             {[{ l: '총 클릭', v: formatNumber(report.totalClicks) }, { l: '고유 IP', v: formatNumber(report.uniqueIps) }, { l: '광고 유입', v: formatNumber(report.adClicks) }].map(m => (
-              <div key={m.l} className="rounded-lg bg-gray-50 dark:bg-[#0D0F12] p-2 text-center">
+              <div key={m.l} className="rounded-lg bg-gray-50 dark:bg-[#11141C] p-2 text-center">
                 <div className="text-[10px] text-gray-400 dark:text-gray-500">{m.l}</div>
                 <div className="text-[12.5px] font-bold text-gray-900 dark:text-white tabular-nums">{m.v}</div>
               </div>
@@ -182,7 +182,7 @@ export default function ClickGuardPanel() {
                       <td className="py-1 pr-2">
                         {s.suspicious
                           ? <span className="px-1.5 py-0.5 rounded text-[10px] bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400">의심</span>
-                          : <span className="px-1.5 py-0.5 rounded text-[10px] bg-gray-100 dark:bg-[#1A1C21] text-gray-500 dark:text-gray-400">정상</span>}
+                          : <span className="px-1.5 py-0.5 rounded text-[10px] bg-gray-100 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400">정상</span>}
                       </td>
                       <td className="py-1 text-right">
                         {blocked
@@ -203,7 +203,7 @@ export default function ClickGuardPanel() {
         <div className="mt-3 rounded-xl border border-gray-100 dark:border-[#2C2F35] p-3">
           <div className="flex items-center justify-between">
             <span className="text-[12.5px] font-bold text-gray-900 dark:text-white">차단 목록 <span className="text-gray-400 dark:text-gray-500 font-medium">({blocklist.length}/600)</span></span>
-            <button onClick={() => copy(blocklist.map(b => b.ip).join('\n'))} className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-2.5 py-1 text-[11px] font-bold text-white dark:text-[#0D0F12]">전체 복사</button>
+            <button onClick={() => copy(blocklist.map(b => b.ip).join('\n'))} className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-2.5 py-1 text-[11px] font-bold text-white dark:text-[#11141C]">전체 복사</button>
           </div>
           <p className="mt-1 text-[10.5px] text-gray-400 dark:text-gray-500 leading-relaxed">
             '전체 복사' 후 <b>네이버 검색광고센터 &gt; 도구 &gt; 노출제한 IP 관리</b>에 붙여넣으면 해당 IP 에 광고가 노출되지 않습니다.
@@ -211,7 +211,7 @@ export default function ClickGuardPanel() {
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {blocklist.map(b => (
-              <span key={b.ip} className="inline-flex items-center gap-1 rounded bg-gray-50 dark:bg-[#0D0F12] px-1.5 py-0.5 text-[10.5px] font-mono text-gray-600 dark:text-gray-300">
+              <span key={b.ip} className="inline-flex items-center gap-1 rounded bg-gray-50 dark:bg-[#11141C] px-1.5 py-0.5 text-[10.5px] font-mono text-gray-600 dark:text-gray-300">
                 {b.ip}
                 <button onClick={() => unblockIp(b.ip)} className="text-gray-400 dark:text-gray-500 hover:text-red-500">×</button>
               </span>

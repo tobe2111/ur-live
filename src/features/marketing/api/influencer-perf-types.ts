@@ -19,6 +19,9 @@ export interface NaverEnrichDiag {
   blocked?: number
   /** 🚧 회차 말 차단 스냅샷(연속·누적·발동 여부). `tripped` 참이면 남은 행을 안 집고 멈춘 것. */
   crawl_block?: { streak: number; blocked: number; ok: number; tripped: boolean }
+  /** 🔁 **최근에 이미 재서 건너뛴 행**(2026-09-03). 이게 있으면 `selected: 0` 은 '큐가 빔'이 아니라
+   *  '전부 신선함'이다 — 둘을 못 가리면 정상 상태가 고장처럼 보인다. 근거: `influencer-remeasure-window.ts`. */
+  fresh_skipped?: number
   selected?: number   // 후보 SELECT 가 실제로 돌려준 행 수(0 이면 큐가 빈 것 · >0 인데 tried 0 이면 전량 스킵)
   skipped?: number    // 핸들을 못 살려 스킵한 행(= 복구 불가 — healNaverHandles 의 unfixable 과 같은 집합)
   healed?: number     // 🩹 이번 라운드에 channel_id/url 에서 핸들을 되살려 측정한 행

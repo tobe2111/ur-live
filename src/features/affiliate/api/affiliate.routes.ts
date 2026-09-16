@@ -2,7 +2,7 @@
  * 제휴 마케팅 (쿠팡파트너스형)
  * - 유저가 상품/라이브 링크 공유 → 누군가 구매 → 추천인에게 딜 포인트 적립
  * - 추천 링크: /products/123?ref=USER_ID 또는 /live/456?ref=USER_ID
- * - 수수료: 플랫폼 설정 (기본 2%)
+ * - 수수료: 플랫폼 설정 (기본 2% — `shared/affiliate-rate.ts`)
  * - 24시간 쿠키 추적 + 부정 방지
  */
 import { Hono } from 'hono'
@@ -10,10 +10,7 @@ import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import { creditAffiliateForOrder, resolveCommissionRate } from '../../../worker/utils/affiliate-credit'
 import type { Env } from '@/worker/types/env'
 import { ensureUserPointsTable } from '@/worker/utils/ensure-tables'
-import { COMMISSION_DEFAULTS } from '../../../shared/constants/policy'
-
-// 🛡️ 2026-05-22 정책 중앙화 — policy.ts (단일 진실원천)
-const DEFAULT_COMMISSION_RATE = COMMISSION_DEFAULTS.AFFILIATE_COMMISSION_PCT / 100
+import { DEFAULT_AFFILIATE_RATE } from '../../../shared/affiliate-rate'
 
 export const affiliateRoutes = new Hono<{ Bindings: Env }>()
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
@@ -48,7 +45,7 @@ async function ensureTable(DB: D1Database) {
  * 🛡️ 2026-05-19: 상품별 추천 보상률 해석.
  *   1) products.referral_enabled = 1 이어야 추천 적용 (아니면 null 반환 → 차단)
  *   2) products.referral_commission_rate NOT NULL 이면 그 값 사용 (상품별 override)
- *   3) 아니면 platform_settings.affiliate_commission_rate (기본 5%)
+ *   3) 아니면 platform_settings.affiliate_commission_rate (기본 2% — 2026-06-17 대표 결정)
  *   반환값은 ratio (0.05 = 5%).
  */
 // ── POST /api/affiliate/track — 주문 완료 시 추천인 수수료 기록 ──
@@ -106,7 +103,9 @@ affiliateRoutes.get('/stats', requireAuth(), async (c) => {
   await ensureTable(DB)
 
   const userId = String(user.id)
-  const rate = (await resolveCommissionRate(DB, null)) ?? 0.05
+  // 📌 2026-09-05: `?? 0.05` 였다. resolveCommissionRate(DB, null) 은 productId 가 없으면
+  //   절대 null 을 안 돌려주므로 도달조차 안 하는 값인데, 읽는 사람에게는 '기본 5%' 로 보였다.
+  const rate = (await resolveCommissionRate(DB, null)) ?? DEFAULT_AFFILIATE_RATE
   // ⏳ 확정 유예일(T+N) — 정산 예정일 파생용. platform_settings.affiliate_hold_days(기본 7).
   const hdRow = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'affiliate_hold_days'").first<{ value: string }>().catch(() => null)
   const holdDays = Math.min(90, Math.max(0, parseInt(hdRow?.value || '', 10) || 7))
@@ -224,8 +223,10 @@ affiliateRoutes.get('/funnel', requireAuth(), async (c) => {
 })
 
 // ── GET /api/affiliate/top-groups — 인플루언서 추천: 지금 share 하면 좋을 공구 ──
-// 🛡️ 2026-05-15: 알고리즘 — (1) 마감임박(72h) + (2) 진행률 높은 순
-//   = 지금 share → 친구 가입 가능성 높음 (양쪽 0.5% 보너스).
+// 🛡️ 2026-05-15: 알고리즘 — 원래는 (1) 마감임박(72h) + (2) 진행률 높은 순이었다.
+// 🗓️ 2026-09-04 (대표 "마감 개념은 없어"): **마감 조건을 걷어냈다.** 그대로 뒀으면 마감이 없는
+//   세상에서 이 쿼리가 **영구히 0건**을 돌려주고(=이 화면이 조용히 빈다), 그건 마감 제거의
+//   부작용으로 인플루언서 기능 하나가 죽는 것이다. 이제 진행률 높은 순 + 최신순으로 고른다.
 affiliateRoutes.get('/top-groups', requireAuth(), async (c) => {
   const user = getCurrentUser(c)
   if (!user) return c.json({ success: false, error: '로그인 필요' }, 401)
@@ -236,7 +237,7 @@ affiliateRoutes.get('/top-groups', requireAuth(), async (c) => {
       SELECT
         p.id, p.name, p.image_url, p.price, p.category,
         p.restaurant_name, p.group_buy_target, p.group_buy_current,
-        p.group_buy_deadline, p.group_buy_tiers,
+        p.group_buy_tiers,
         s.name AS seller_name,
         ROUND(p.group_buy_current * 100.0 / NULLIF(p.group_buy_target, 0)) AS progress_pct,
         ROUND(p.price * 0.005) AS my_potential_bonus
@@ -246,11 +247,9 @@ affiliateRoutes.get('/top-groups', requireAuth(), async (c) => {
         AND p.category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher','health_voucher','pet_voucher','activity_voucher')
         AND p.group_buy_status = 'active'
         AND p.group_buy_target > 0
-        AND p.group_buy_deadline > datetime('now')
-        AND p.group_buy_deadline < datetime('now', '+72 hours')
       ORDER BY
         (p.group_buy_current * 1.0 / p.group_buy_target) DESC,  -- 진행률 높은 순
-        p.group_buy_deadline ASC                                  -- 마감임박 순
+        p.created_at DESC                                         -- 동률이면 최신순
       LIMIT 10
     `).all().catch(() => ({ results: [] }))
 

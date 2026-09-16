@@ -17,7 +17,7 @@ export default function VouchersTopBar({ activeTab, onVouchers, onShopping }: {
   onShopping: () => void
 }) {
   return (
-    <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#0D0F12]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
+    <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
       <div className={`relative flex items-center px-2 py-1.5 ${SHOPPING_TAB_HIDDEN ? '' : 'justify-center'}`}>
         {SHOPPING_TAB_HIDDEN ? (
           /* 단일 표면 — 탭이 아니라 제목. (문서용 h1 은 페이지 상단에 sr-only 로 따로 있다.) */

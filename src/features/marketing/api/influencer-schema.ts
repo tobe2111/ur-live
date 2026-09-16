@@ -39,6 +39,9 @@ export const AD_INFLUENCER_DDL: string[] = [
   //   보강은 시간당 12라운드 × 3쿼리라, 인덱스 없이는 D1 rows-read 가 하루 수천만 행으로 튄다(무료 5M/일).
   //   ORDER BY 가 인덱스 순서와 같아야 정렬이 사라지므로, 호출부의 ORDER BY 도 함께 맞춰 두었다.
   'CREATE INDEX IF NOT EXISTS idx_ad_inf_leads_perf ON ad_influencer_leads(account_id, platform, perf_checked_at)',
+  // 📈 2026-09-02: 유입 감시(`inflow-watchdog` sampleAxis)·풀 통계·타임라인이 `collected_at >= …` 로 최근 창을 자른다.
+  //   업체 쪽(`idx_company_leads_collected_at`, 08-31)만 있고 인플루언서 쌍둥이가 없어 15.3만 행 전수였다. 기본 컬럼(CREATE 안)이라 이 자리.
+  'CREATE INDEX IF NOT EXISTS idx_ad_inf_leads_collected_at ON ad_influencer_leads(collected_at)',
   /**
    * 🪦 **`idx_ad_inf_leads_bio(account_id, bio_checked_at)` 를 지운다** (2026-09-01 — 라이브 실측).
    *
@@ -121,4 +124,13 @@ export const AD_INFLUENCER_DDL: string[] = [
    */
   `CREATE INDEX IF NOT EXISTS idx_ad_inf_leads_region_todo ON ad_influencer_leads(account_id, id)
      WHERE region IS NULL AND source_keyword IS NOT NULL AND source_keyword != ''`,
+  /**
+   * 🔗 **자기 링크 소음 후보** (2026-09-02 정적 감사 §3 #5). `cleanSelfLinkNoise` 가 `platform='naver_blog' AND links LIKE '%naver%'`
+   * 로 커서를 걷는데 둘 다 `idx_ad_inf_leads_acct` 의 후필터라 한 번 돌면 계정 전체(15.3만)를 훑고 커서를 0 으로 되감았다
+   * (23회/일 → ~350만 행). LIKE 는 원리적으로 인덱스 밖이지만, **그 앞 단계**(naver_blog + links 보유)를 줄인다 —
+   * `idx_ad_inf_leads_bio_links` 와 같은 발상. 호출부 WHERE 에 `links IS NOT NULL` 을 **명시**해야 부분 조건이 쓰인다
+   * (SQLite 는 `LIKE` 에서 IS NOT NULL 을 유도하지 않는다). `links` 가 ALTER 컬럼일 수 있어 **맨 뒤**(ALTER 뒤)에 둔다.
+   */
+  `CREATE INDEX IF NOT EXISTS idx_ad_inf_leads_selflink ON ad_influencer_leads(account_id, id)
+     WHERE platform = 'naver_blog' AND links IS NOT NULL`,
 ]

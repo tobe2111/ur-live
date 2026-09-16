@@ -50,7 +50,7 @@ export default function Admin2FASetupPage() {
     try {
       const res = await api.post('/api/2fa/verify', { code }, { headers })
       if (res.data?.success) {
-        toast.success('🎉 2FA 활성화 완료! 다음 로그인부터 인증앱 6자리 코드가 필요합니다.')
+        toast.success('2FA 활성화 완료! 다음 로그인부터 인증앱 6자리 코드가 필요합니다.')
         setEnabled(true); setSetupData(null); setCode('')
         // 🆕 강제 등록 게이트 해제 + 등록 직후 대시보드로.
         if (localStorage.getItem('admin_must_enroll_2fa')) {
@@ -81,7 +81,7 @@ export default function Admin2FASetupPage() {
   }
 
   if (loading) {
-    return <AdminLayout title="2FA"><div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-pink-500" /></div></AdminLayout>
+    return <AdminLayout title="2FA"><div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-brand-text" /></div></AdminLayout>
   }
 
   return (
@@ -93,26 +93,26 @@ export default function Admin2FASetupPage() {
           icon={<Shield className="h-5 w-5" />}
         />
 
-        <div className={`rounded-2xl p-5 border-2 flex items-center gap-4 ${enabled ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
-          {enabled ? <ShieldCheck className="w-10 h-10 text-green-600 shrink-0" /> : <ShieldAlert className="w-10 h-10 text-amber-600 shrink-0" />}
+        <div className={`rounded-[var(--dash-radius,16px)] p-5 border-2 flex items-center gap-4 ${enabled ? 'bg-white border-rule' : 'bg-white border-rule'}`}>
+          {enabled ? <ShieldCheck className="w-10 h-10 text-tone-ok shrink-0" /> : <ShieldAlert className="w-10 h-10 text-tone-warn shrink-0" />}
           <div className="flex-1">
-            <p className={`text-sm font-bold ${enabled ? 'text-green-700' : 'text-amber-700'}`}>
-              {enabled ? '✅ 2FA 활성화됨' : '⚠️ 2FA 비활성화 — 강력 권장'}
+            <p className={`text-sm font-bold ${enabled ? 'text-tone-ok' : 'text-tone-warn'}`}>
+              {enabled ? '2FA 활성화됨' : '2FA 비활성화 — 강력 권장'}
             </p>
             <p className="text-xs text-gray-600 mt-0.5">
               {enabled
                 ? '환불/분쟁 처리 시 X-2FA-Code 헤더 자동 추가됩니다.'
-                : '환불/분쟁 endpoint 가 비밀번호만으로 동작 — 보안 ⚠️'}
+                : '환불/분쟁 endpoint 가 비밀번호만으로 동작 — 보안 '}
             </p>
           </div>
         </div>
 
         {!enabled && !setupData && (
-          <div className="bg-white rounded-2xl p-6 border border-gray-200 text-center">
-            <KeyRound className="w-12 h-12 text-pink-500 mx-auto mb-3" />
+          <div className="bg-white rounded-[var(--dash-radius,16px)] p-6 border border-gray-200 text-center">
+            <KeyRound className="w-12 h-12 text-brand-text mx-auto mb-3" />
             <h3 className="text-base font-bold mb-2">어드민 2FA 설정</h3>
             <p className="text-sm text-gray-600 mb-4">Google Authenticator / 1Password / Authy</p>
-            <button onClick={startSetup} disabled={submitting} className="px-6 py-3 bg-pink-500 hover:bg-pink-600 disabled:opacity-50 text-white rounded-xl text-sm font-bold inline-flex items-center gap-2">
+            <button onClick={startSetup} disabled={submitting} className="ur-btn ur-btn-lg ur-btn-primary disabled:opacity-50 inline-flex items-center gap-2">
               {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
               설정 시작
             </button>
@@ -120,7 +120,7 @@ export default function Admin2FASetupPage() {
         )}
 
         {!enabled && setupData && (
-          <div className="bg-white rounded-2xl p-6 border border-gray-200 space-y-5">
+          <div className="bg-white rounded-[var(--dash-radius,16px)] p-6 border border-gray-200 space-y-5">
             <div>
               <h3 className="text-base font-bold mb-2">1. QR 코드 스캔</h3>
               <div className="flex justify-center bg-white p-4 rounded-xl border border-gray-100">
@@ -142,10 +142,10 @@ export default function Admin2FASetupPage() {
                 type="text" inputMode="numeric" maxLength={6}
                 value={code} onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 placeholder="000000"
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-2xl font-mono text-center focus:border-pink-500 focus:outline-none tracking-widest"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-2xl font-mono text-center focus:border-brand focus:outline-none tracking-widest"
                 autoComplete="one-time-code"
               />
-              <button onClick={verifyCode} disabled={submitting || code.length !== 6} className="w-full mt-3 px-6 py-3 bg-pink-500 hover:bg-pink-600 disabled:opacity-50 text-white rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2">
+              <button onClick={verifyCode} disabled={submitting || code.length !== 6} className="ur-btn ur-btn-lg ur-btn-primary w-full mt-3 disabled:opacity-50 inline-flex items-center justify-center gap-2">
                 {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />} 활성화
               </button>
             </div>
@@ -153,17 +153,17 @@ export default function Admin2FASetupPage() {
         )}
 
         {enabled && (
-          <div className="bg-white rounded-2xl p-6 border border-gray-200 space-y-3">
+          <div className="bg-white rounded-[var(--dash-radius,16px)] p-6 border border-gray-200 space-y-3">
             <h3 className="text-base font-bold">2FA 비활성화</h3>
             <p className="text-xs text-gray-500">현재 인증 앱의 6자리 코드 입력</p>
             <input
               type="text" inputMode="numeric" maxLength={6}
               value={code} onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
               placeholder="000000"
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-xl font-mono text-center focus:border-red-500 focus:outline-none tracking-widest"
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-xl font-mono text-center focus:border-brand focus:outline-none tracking-widest"
               autoComplete="one-time-code"
             />
-            <button onClick={disable2fa} disabled={submitting || code.length !== 6} className="w-full px-6 py-3 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white rounded-xl text-sm font-bold">
+            <button onClick={disable2fa} disabled={submitting || code.length !== 6} className="ur-btn ur-btn-lg ur-btn-danger w-full disabled:opacity-50">
               {submitting ? '처리 중…' : '비활성화'}
             </button>
           </div>

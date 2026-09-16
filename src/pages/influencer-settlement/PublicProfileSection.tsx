@@ -16,7 +16,7 @@
 import { useEffect, useState } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { Megaphone, Plus, X, Store, Copy } from 'lucide-react'
+import { Megaphone, Plus, X } from 'lucide-react'
 
 type ChannelKind = 'instagram' | 'youtube' | 'blog' | 'tiktok' | 'other'
 interface Channel { kind: ChannelKind; url: string; followers?: number | null }
@@ -72,9 +72,9 @@ export default function PublicProfileSection() {
   }
 
   return (
-    <section className="rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#0D0F12] p-4 mb-4">
+    <section className="rounded-xl border border-line bg-surface p-4 mb-4">
       <div className="flex items-start gap-2 mb-3">
-        <Megaphone className="w-5 h-5 text-pink-500 shrink-0 mt-0.5" />
+        <Megaphone className="w-5 h-5 text-brand-text shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
           <h2 className="text-sm font-bold text-gray-900 dark:text-white">소개자 프로필</h2>
           <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
@@ -86,7 +86,7 @@ export default function PublicProfileSection() {
           disabled={saving}
           onClick={() => save({ ...p, is_open: p.is_open ? 0 : 1 })}
           className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold ${
-            p.is_open ? 'bg-gray-900 text-white' : 'bg-gray-100 dark:bg-[#1A1C21] text-gray-600 dark:text-gray-300'
+            p.is_open ? 'bg-gray-900 text-white' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300'
           } disabled:opacity-50`}
         >
           {p.is_open ? '공개 중' : '비공개'}
@@ -99,7 +99,7 @@ export default function PublicProfileSection() {
         onChange={(e) => patch({ intro: e.target.value })}
         maxLength={200}
         placeholder="예) 성수동 카페를 주로 소개합니다"
-        className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#131A24] text-sm text-gray-900 dark:text-white mb-3"
+        className="w-full px-3 py-2 rounded-lg border border-line bg-white dark:bg-[#131A24] text-sm text-gray-900 dark:text-white mb-3"
       />
 
       <label className="block text-[11px] font-medium text-gray-700 dark:text-gray-200 mb-1">
@@ -111,7 +111,7 @@ export default function PublicProfileSection() {
             <select
               value={c.kind}
               onChange={(e) => patch({ channels: p.channels.map((x, j) => (j === i ? { ...x, kind: e.target.value as ChannelKind } : x)) })}
-              className="px-2 py-2 rounded-lg border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#131A24] text-xs text-gray-900 dark:text-white shrink-0"
+              className="px-2 py-2 rounded-lg border border-line bg-white dark:bg-[#131A24] text-xs text-gray-900 dark:text-white shrink-0"
             >
               {(Object.keys(KIND_LABEL) as ChannelKind[]).map((k) => <option key={k} value={k}>{KIND_LABEL[k]}</option>)}
             </select>
@@ -119,14 +119,14 @@ export default function PublicProfileSection() {
               value={c.url}
               onChange={(e) => patch({ channels: p.channels.map((x, j) => (j === i ? { ...x, url: e.target.value } : x)) })}
               placeholder="https://..."
-              className="flex-1 min-w-0 px-2 py-2 rounded-lg border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#131A24] text-xs text-gray-900 dark:text-white"
+              className="flex-1 min-w-0 px-2 py-2 rounded-lg border border-line bg-white dark:bg-[#131A24] text-xs text-gray-900 dark:text-white"
             />
             <input
               value={c.followers ?? ''}
               onChange={(e) => patch({ channels: p.channels.map((x, j) => (j === i ? { ...x, followers: e.target.value ? Number(e.target.value) : null } : x)) })}
               placeholder="팔로워"
               inputMode="numeric"
-              className="w-20 px-2 py-2 rounded-lg border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#131A24] text-xs text-gray-900 dark:text-white shrink-0"
+              className="w-20 px-2 py-2 rounded-lg border border-line bg-white dark:bg-[#131A24] text-xs text-gray-900 dark:text-white shrink-0"
             />
             <button type="button" onClick={() => patch({ channels: p.channels.filter((_, j) => j !== i) })}
               className="p-1.5 text-gray-400 hover:text-red-500 shrink-0" aria-label="채널 삭제">
@@ -136,7 +136,7 @@ export default function PublicProfileSection() {
         ))}
         {p.channels.length < 5 && (
           <button type="button" onClick={() => patch({ channels: [...p.channels, { kind: 'instagram', url: '', followers: null }] })}
-            className="flex items-center gap-1 text-xs font-bold text-pink-600">
+            className="flex items-center gap-1 text-xs font-bold text-brand-text">
             <Plus className="w-3.5 h-3.5" /> 채널 추가
           </button>
         )}
@@ -171,51 +171,6 @@ export default function PublicProfileSection() {
         {saving ? '저장 중...' : '저장'}
       </button>
 
-      <StoreInviteLink />
     </section>
-  )
-}
-
-/**
- * 🏪 매장 초대 링크 — "내가 데려온 매장"을 증거 있게 만드는 유일한 자동 경로.
- *
- * 이 링크로 등록한 매장은 **등록 순간에 나에게 귀속**된다(`introduced_by_influencer_id`).
- * 그 전엔 대표가 어드민에서 손으로 지정하는 길밖에 없었고, 분쟁 시 근거가 없었다.
- * 귀속 시각이 곧 **2% 유효기간 1년의 기산점**이다.
- */
-function StoreInviteLink() {
-  const myId = (() => {
-    try { return localStorage.getItem('user_id') || localStorage.getItem('userId') || '' } catch { return '' }
-  })()
-  if (!myId) return null
-  const url = `https://urdeal.kr/store/new?ref=${encodeURIComponent(myId)}`
-
-  return (
-    <div className="mt-4 rounded-lg border border-dashed border-gray-300 dark:border-[#2C2F35] p-3">
-      <div className="flex items-start gap-2">
-        <Store className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-bold text-gray-900 dark:text-white">매장 초대 링크</p>
-          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
-            이 링크로 등록한 매장은 내가 데려온 것으로 기록되고,
-            그 매장 매출의 <b>2%</b>를 <b>1년간</b> 받습니다.
-          </p>
-          <div className="mt-2 flex items-center gap-1.5">
-            <code className="flex-1 min-w-0 truncate rounded bg-gray-50 dark:bg-[#1A1C21] px-2 py-1.5 text-[10px] text-gray-600 dark:text-gray-300">
-              {url}
-            </code>
-            <button
-              type="button"
-              onClick={async () => {
-                try { await navigator.clipboard.writeText(url); toast.success('초대 링크 복사됨') }
-                catch { toast.error('복사하지 못했습니다') }
-              }}
-              className="shrink-0 rounded-lg border border-gray-200 dark:border-[#2C2F35] p-1.5 text-gray-600 dark:text-gray-300"
-              aria-label="초대 링크 복사"
-            ><Copy className="w-3.5 h-3.5" /></button>
-          </div>
-        </div>
-      </div>
-    </div>
   )
 }

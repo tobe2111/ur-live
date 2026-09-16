@@ -16,12 +16,10 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { isBlockedPhotoUrl } from '../../worker/utils/demo-photo-set'
 import { PRODUCT_DETAIL_FIELDS } from '../../shared/db/product-columns'
+import { stripComments } from '../helpers/source-text'
 
 /** 주석은 배선이 아니다 — 실행 코드만 남기고 판정한다(이 레포가 반복해 걸린 함정). */
-const code = (p: string) =>
-  readFileSync(p, 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .split('\n').filter((l) => !/^\s*(\/\/|\*)/.test(l)).join('\n')
+const code = (p: string) => stripComments(readFileSync(p, 'utf8'))
 
 describe('① 교환권 페이지 검색은 교환권만', () => {
   it('/vouchers 검색 버튼이 scope 를 붙여 보낸다', () => {
@@ -170,8 +168,9 @@ describe('④ 데모 상세는 "응모하기"', () => {
     //     돈이 나간다는 사실은 라벨에 박는다. 무료 응모 블록은 그대로 남는다(갈라놓은 것).
     const box = code('src/pages/group-buy/DealPurchaseBox.tsx')
     expect(box).toContain("isDemo ? '결제하기' : '구매하기'")
-    const d = code('src/pages/GroupBuyDetailPage.tsx')
-    // 모바일 푸터도 같이 바뀌어야 한다 — 한쪽만 고치면 화면에 따라 다른 말을 한다.
+    // 🧺 2026-09-15: 모바일 푸터가 `DealBottomBar` 로 분리됐다(상세가 파일크기 동결선에 붙어
+    //    장바구니 '담기' 를 넣을 자리가 없었다). **성질은 그대로** — 두 변형이 같은 말을 해야 한다.
+    const d = code('src/pages/group-buy/DealBottomBar.tsx')
     expect(d).toContain("isDemoDeal ? '결제하기' : '구매하기'")
   })
 })

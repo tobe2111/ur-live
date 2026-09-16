@@ -41,7 +41,7 @@ interface PromoCode {
 const AUDIENCE_LABEL: Record<string, string> = {
   all: '모두',
   followers_only: '단골만',
-  new_users_only: '🆕 신규만',
+  new_users_only: '신규만',
 }
 
 export default function SellerPromoCodesPage() {
@@ -92,7 +92,7 @@ export default function SellerPromoCodesPage() {
         description: form.description,
       }, { headers })
       if (res.data?.success) {
-        toast.success(`✅ ${code} 코드 발급 완료!`)
+        toast.success(`${code} 코드 발급 완료!`)
         setShowCreate(false)
         setForm({ ...form, code: '', description: '' })
         loadCodes()
@@ -126,7 +126,7 @@ export default function SellerPromoCodesPage() {
   }
 
   async function shareCode(c: PromoCode) {
-    const text = `🎁 ${c.discount_pct}% 할인 코드: ${c.code}\n${c.description || ''}\n공구에서 사용하세요!`
+    const text = `${c.discount_pct}% 할인 코드: ${c.code}\n${c.description || ''}\n공구에서 사용하세요!`
     if (navigator.share) {
       try { await navigator.share({ title: `${c.discount_pct}% 할인`, text }); return } catch { /* canceled */ }
     }
@@ -142,7 +142,7 @@ export default function SellerPromoCodesPage() {
     try {
       const audienceLabel = c.audience === 'followers_only' ? '단골 전용' : c.audience === 'new_users_only' ? '신규 전용' : '모두'
       const res = await api.post('/api/seller-public/notify-followers', {
-        title: `🎁 ${c.discount_pct}% 할인 코드 ${c.code}`,
+        title: `${c.discount_pct}% 할인 코드 ${c.code}`,
         message: `${c.description || audienceLabel + ' 할인'} — 공구에서 코드 입력 후 적용`,
         url: '/group-buy',
         reason: 'custom',
@@ -150,7 +150,7 @@ export default function SellerPromoCodesPage() {
       if (res.data?.success) {
         const sent = res.data.data?.sent ?? 0
         const total = res.data.data?.total_followers ?? 0
-        toast.success(`✅ ${sent}/${total} 단골에게 발송 완료`)
+        toast.success(`${sent}/${total} 단골에게 발송 완료`)
       } else {
         toast.error(res.data?.error || '발송 실패')
       }
@@ -163,7 +163,7 @@ export default function SellerPromoCodesPage() {
 
   return (
     <SellerLayout title="할인 코드">
-      <div className="mx-auto max-w-2xl space-y-4 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-4">
         <DashboardPageHeader
           title="할인 코드 (Promo)"
           subtitle="단골 전용 / 신규 전용 / 모두 — 직접 발급하고 단골에게 공유"
@@ -179,7 +179,7 @@ export default function SellerPromoCodesPage() {
             <Plus className="w-4 h-4" /> 새 할인 코드 발급
           </button>
         ) : (
-          <div className="bg-white rounded-2xl p-5 border border-gray-200 space-y-3">
+          <div className="bg-white rounded-[var(--dash-radius,16px)] p-5 border border-gray-200 space-y-3">
             <p className="text-sm font-bold text-gray-900">새 코드 발급</p>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">코드 (영문대문자 + 숫자 4-20자)</label>
@@ -187,7 +187,7 @@ export default function SellerPromoCodesPage() {
                 value={form.code}
                 onChange={e => setForm(f => ({ ...f, code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20) }))}
                 placeholder="DANGOL10"
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 font-mono focus:border-pink-500 focus:outline-none"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 font-mono focus:border-brand focus:outline-none"
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -197,7 +197,7 @@ export default function SellerPromoCodesPage() {
                   type="number" min="1" max="99"
                   value={form.discount_pct}
                   onChange={e => setForm(f => ({ ...f, discount_pct: Number(e.target.value) }))}
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
                 />
               </div>
               <div>
@@ -205,10 +205,10 @@ export default function SellerPromoCodesPage() {
                 <select
                   value={form.audience}
                   onChange={e => setForm(f => ({ ...f, audience: e.target.value as typeof f.audience }))}
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
                 >
                   <option value="followers_only">단골만 (권장)</option>
-                  <option value="new_users_only">🆕 신규 고객만</option>
+                  <option value="new_users_only">신규 고객만</option>
                   <option value="all">모두</option>
                 </select>
               </div>
@@ -220,7 +220,7 @@ export default function SellerPromoCodesPage() {
                   type="number" min="0" max="100000"
                   value={form.max_uses}
                   onChange={e => setForm(f => ({ ...f, max_uses: Number(e.target.value) }))}
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
                 />
               </div>
               <div>
@@ -229,7 +229,7 @@ export default function SellerPromoCodesPage() {
                   type="number" min="1" max="100"
                   value={form.per_user_limit}
                   onChange={e => setForm(f => ({ ...f, per_user_limit: Number(e.target.value) }))}
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
                 />
               </div>
             </div>
@@ -239,7 +239,7 @@ export default function SellerPromoCodesPage() {
                 type="date"
                 value={form.expires_at}
                 onChange={e => setForm(f => ({ ...f, expires_at: e.target.value }))}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
               />
             </div>
             <div>
@@ -248,12 +248,12 @@ export default function SellerPromoCodesPage() {
                 value={form.description}
                 onChange={e => setForm(f => ({ ...f, description: e.target.value.slice(0, 200) }))}
                 placeholder="단골 감사 이벤트"
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-pink-500 focus:outline-none"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
               />
             </div>
             <div className="flex gap-2">
               <button onClick={() => setShowCreate(false)} className="flex-1 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-bold">취소</button>
-              <button onClick={createCode} disabled={submitting} className="flex-1 py-2.5 bg-pink-500 hover:bg-pink-600 disabled:opacity-50 text-white rounded-lg text-sm font-bold">
+              <button onClick={createCode} disabled={submitting} className="ur-btn ur-btn-md ur-btn-primary flex-1">
                 {submitting ? '발급 중…' : '발급'}
               </button>
             </div>
@@ -264,7 +264,7 @@ export default function SellerPromoCodesPage() {
         {loading ? (
           <BrandLoader />
         ) : codes.length === 0 ? (
-          <div className="bg-white rounded-2xl p-8 border border-gray-200 text-center">
+          <div className="bg-white rounded-[var(--dash-radius,16px)] p-8 border border-gray-200 text-center">
             <Tag className="w-12 h-12 text-gray-300 mx-auto mb-3" />
             <p className="text-sm font-bold text-gray-900">발급한 코드 없음</p>
             <p className="text-xs text-gray-500 mt-1">위 버튼으로 첫 코드를 만들어보세요</p>
@@ -272,12 +272,12 @@ export default function SellerPromoCodesPage() {
         ) : (
           <div className="space-y-2">
             {codes.map(c => (
-              <div key={c.id} className={`bg-white rounded-2xl p-4 border ${c.is_active ? 'border-gray-200' : 'border-gray-100 opacity-60'}`}>
+              <div key={c.id} className={`bg-white rounded-[var(--dash-radius,16px)] p-4 border ${c.is_active ? 'border-gray-200' : 'border-gray-100 opacity-60'}`}>
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline gap-2">
-                      <code className={`font-mono text-base font-extrabold ${c.is_active ? 'text-pink-600' : 'text-gray-400'}`}>{c.code}</code>
-                      <span className="px-1.5 py-0.5 bg-pink-100 text-pink-700 rounded text-[10px] font-bold">{c.discount_pct}%</span>
+                      <code className={`font-mono text-base font-extrabold ${c.is_active ? 'text-brand-text' : 'text-gray-400'}`}>{c.code}</code>
+                      <span className="px-1.5 py-0.5 bg-brand-tint text-brand-text rounded text-[10px] font-bold">{c.discount_pct}%</span>
                       <span className="text-[10px] text-gray-500">{AUDIENCE_LABEL[c.audience] || c.audience}</span>
                       {!c.is_active && <span className="text-[10px] text-gray-400">비활성</span>}
                     </div>
@@ -298,14 +298,14 @@ export default function SellerPromoCodesPage() {
                       </button>
                       <button
                         onClick={() => pushToFollowers(c)}
-                        className="p-1.5 hover:bg-pink-50 rounded"
+                        className="p-1.5 hover:bg-brand-tint rounded"
                         aria-label="단골에게 push"
                         title="단골 전원에게 알림 발송 (10분 5회 제한)"
                       >
-                        <Megaphone className="w-3.5 h-3.5 text-pink-500" />
+                        <Megaphone className="w-3.5 h-3.5 text-brand-text" />
                       </button>
-                      <button onClick={() => deleteCode(c.id, c.code)} className="p-1.5 hover:bg-red-50 rounded" aria-label="비활성화">
-                        <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                      <button onClick={() => deleteCode(c.id, c.code)} className="p-1.5 hover:bg-gray-100 rounded" aria-label="비활성화">
+                        <Trash2 className="w-3.5 h-3.5 text-tone-bad" />
                       </button>
                     </div>
                   )}
@@ -315,7 +315,7 @@ export default function SellerPromoCodesPage() {
           </div>
         )}
 
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs text-amber-800">
+        <div className="bg-white border border-rule rounded-[var(--dash-radius,16px)] p-4 text-xs text-tone-warn">
           <p className="font-bold mb-1">단골 코드 활용 팁</p>
           <ul className="list-disc pl-4 space-y-0.5">
             <li>"단골만 (followers_only)" 옵션 → 단골 등록 사용자만 적용</li>

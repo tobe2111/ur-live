@@ -1,14 +1,27 @@
-import { useState, useEffect, lazy, Suspense } from 'react'
+/**
+ * 📊 셀러 매출 분석 — **안 C** (2026-09-15 대표 확정 "안 C로 가자").
+ *
+ * 시안 갤러리 `/design/variants?set=seller-analytics` 에서 세 안을 나란히 놓고 고른 결과다.
+ * 고른 근거는 실측이었다: 내용이 나오기 전에 질문이 셋(탭 6 → 기간 3)이고 **그 답이 전부 0** 으로 갔다.
+ *
+ * ## 안 C 가 하는 일
+ *   · 전 기간 판매가 0 이면 → **재는 도구를 안 그린다**(`NoSalesEver`). 지금 할 수 있는 일 하나만.
+ *   · 이 기간에만 0 이면 → 기간을 넓히라고 한다(`AnalyticsOverview` 안). 온보딩 문구를 쓰면 틀린 말이 된다.
+ *   · 판매가 있으면 → 안 B 구조(`AnalyticsOverview`): 기간 하나 → 큰 숫자 하나 → 목록의 줄.
+ *
+ * ## 기능은 하나도 안 줄었다
+ *   종전 탭 6개는 전부 남아 있고, **버튼 줄이 아니라 목록의 줄**로 들어간다(자주 안 쓰는 셋은 `더 보기` 뒤).
+ *   안쪽 화면에서는 ← 로 요약으로 돌아온다.
+ */
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SellerLayout from '@/components/SellerLayout'
-import { DashboardPageHeader, DashboardStatCard, DashboardLoading } from '@/components/dashboard'
-import { BarChart2, Users, Package, Loader2, TrendingUp, Repeat, ArrowUpRight, Gift, Calendar } from 'lucide-react'
+import { DashboardLoading } from '@/components/dashboard'
+import { ChevronLeft } from 'lucide-react'
 import { formatNumber, formatWon } from '@/utils/format'
-
-// Recharts lazy load (377KB → 차트 영역만 지연 로드)
-const SellerAnalyticsChart = lazy(() => import('@/components/charts/SellerAnalyticsChart'))
+import AnalyticsOverview, { type RevenuePoint, type SubView } from './seller-analytics/AnalyticsOverview'
+import { NoSalesEver } from './seller-analytics/NoSalesYet'
 
 export default function SellerAnalyticsPage() {
   const { t } = useTranslation()
@@ -37,118 +50,39 @@ export default function SellerAnalyticsPage() {
     ['seller', 'analytics-detailed'], '/api/seller/analytics/detailed', { select: (r: any) => (r?.success ? r.data : null) },
   )
 
+  const [showMore, setShowMore] = useState(false)
+  const points: RevenuePoint[] = tab === 'revenue' && Array.isArray(data) ? (data as RevenuePoint[]) : []
+  const windowRevenue = points.reduce((sum, d) => sum + d.revenue, 0)
+  const windowOrders = points.reduce((sum, d) => sum + d.orders, 0)
+  // ⚠️ `total_buyers` 는 **전 기간** 집계다(`/analytics/detailed` 는 날짜 필터가 없다). 그래서
+  //   "한 번도 판 적 없음" 의 근거로 쓸 수 있다 — 기간 합계로 판정하면 60일 전에 판 사람에게 거짓말을 한다.
+  const everSold = !!detailedData && detailedData.total_buyers > 0
+
   return (
     <SellerLayout title={t('seller.analyticsTitle')}>
-      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
-        {/* 🛡️ 2026-04-22 배치 129: 디자인 시스템 적용 */}
-        <DashboardPageHeader
-          title={t('seller.analyticsTitle')}
-          subtitle={t('seller.analyticsSubtitle', { defaultValue: '매출, 고객, 상품 퍼포먼스 분석' })}
-          icon={<BarChart2 className="h-5 w-5" />}
-        />
-
-        {/* KPI 카드 */}
-        {detailedData && (
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <DashboardStatCard
-              label={t('seller.conversionRate')}
-              value={`${detailedData.conversion_rate}%`}
-              icon={<TrendingUp className="h-4 w-4" />}
-              accent="blue"
-            />
-            <DashboardStatCard
-              label={t('seller.repeatPurchaseRate')}
-              value={`${detailedData.repeat_purchase_rate}%`}
-              hint={`${detailedData.repeat_buyers}${t('seller.persons')} / ${detailedData.total_buyers}${t('seller.persons')}`}
-              icon={<Repeat className="h-4 w-4" />}
-              accent="green"
-            />
-            <DashboardStatCard
-              label={t('seller.totalCustomersLabel')}
-              value={`${detailedData.total_buyers}${t('seller.persons')}`}
-              icon={<Users className="h-4 w-4" />}
-              accent="violet"
-            />
-            <DashboardStatCard
-              label={t('seller.repeatBuyers')}
-              value={`${detailedData.repeat_buyers}${t('seller.persons')}`}
-              icon={<ArrowUpRight className="h-4 w-4" />}
-              accent="amber"
-            />
-          </div>
+      <div className="mx-auto max-w-5xl space-y-6">
+        {/* 안쪽 화면에서 돌아오는 길 — 탭 버튼 줄이 없어진 자리를 대신한다. */}
+        {tab !== 'revenue' && (
+          <button type="button" onClick={() => setTab('revenue')}
+            className="inline-flex items-center gap-1 text-[13px] font-bold text-gray-500 hover:text-gray-900">
+            <ChevronLeft className="h-4 w-4" />{t('seller.analyticsView.back', { defaultValue: '매출 요약으로' })}
+          </button>
         )}
-
-        <div className="flex flex-wrap gap-2">
-          {[
-            { key: 'revenue', label: t('seller.revenueChart'), icon: BarChart2 },
-            { key: 'customers', label: t('seller.customerAnalysis'), icon: Users },
-            { key: 'products', label: t('seller.productPerformance'), icon: Package },
-            { key: 'commission', label: '추천 Commission', icon: Gift },
-            { key: 'monthly', label: '월별 입점 추이', icon: Calendar },
-            { key: 'funnel', label: '트래킹 Funnel', icon: TrendingUp },
-          ].map(tabItem => (
-            <button key={tabItem.key} onClick={() => setTab(tabItem.key as 'revenue' | 'customers' | 'products' | 'commission' | 'monthly' | 'funnel')}
-              className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${tab === tabItem.key ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 border border-gray-200 hover:border-gray-300'}`}>
-              <tabItem.icon className="h-4 w-4" />{tabItem.label}
-            </button>
-          ))}
-        </div>
 
         {loading ? <DashboardLoading /> : (
           <>
-            {tab === 'revenue' && data && (
-              <div>
-                <div className="flex gap-2 mb-4">
-                  {[
-                    { d: 7, label: t('seller.daysFilter7') },
-                    { d: 30, label: t('seller.daysFilter30') },
-                    { d: 90, label: t('seller.daysFilter90') },
-                  ].map(item => (
-                    <button key={item.d} onClick={() => setDays(item.d)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium ${days === item.d ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>{item.label}</button>
-                  ))}
-                </div>
-                <div className="bg-white rounded-xl border border-gray-200 p-4">
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div className="bg-blue-50 rounded-lg p-3">
-                      <p className="text-xs text-blue-600">{t('seller.totalRevenueLabel')}</p>
-                      <p className="text-xl font-bold text-gray-900">{(data as RevenueDataPoint[]).reduce((s, d) => s + d.revenue, 0)}{t('common.won')}</p>
-                    </div>
-                    <div className="bg-green-50 rounded-lg p-3">
-                      <p className="text-xs text-green-600">{t('seller.totalOrdersLabel')}</p>
-                      <p className="text-xl font-bold text-gray-900">{(data as RevenueDataPoint[]).reduce((s, d) => s + d.orders, 0)}{t('seller.ordersUnit')}</p>
-                    </div>
-                  </div>
-
-                  {/* Recharts Line Chart for Revenue Trend */}
-                  <div className="mb-4">
-                    <h3 className="text-sm font-bold text-gray-900 mb-2">{t('seller.dailyRevenueTrend')}</h3>
-                    {(data as RevenueDataPoint[]).length > 0 ? (
-                      <Suspense fallback={<div className="flex items-center justify-center h-[240px]"><Loader2 className="w-5 h-5 animate-spin text-blue-600" /></div>}>
-                        <SellerAnalyticsChart data={(data as RevenueDataPoint[]).slice(-30)} />
-                      </Suspense>
-                    ) : (
-                      <p className="text-center text-gray-500 text-xs py-8">{t('seller.noRevenueData')}</p>
-                    )}
-                  </div>
-
-                  {/* Bar chart fallback (existing) */}
-                  <div className="flex items-end gap-1 overflow-x-auto scrollbar-hide" style={{ minHeight: 120 }}>
-                    {(data as RevenueDataPoint[]).slice(-14).map((d) => {
-                      const max = Math.max(...(data as RevenueDataPoint[]).map((x) => x.revenue)) || 1
-                      return (
-                        <div key={d.date} className="flex flex-col items-center flex-1 min-w-[28px]">
-                          <span className="text-[9px] text-gray-500 mb-1">{(d.revenue / 10000).toFixed(0)}{t('seller.salesUnit')}</span>
-                          <div className="w-full bg-gray-100 rounded-t" style={{ height: `${Math.max(4, (d.revenue / max) * 80)}px` }}>
-                            <div className="w-full h-full bg-blue-500 rounded-t" />
-                          </div>
-                          <span className="text-[9px] text-gray-400 mt-1">{d.date.slice(5)}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              </div>
+            {tab === 'revenue' && (
+              !everSold ? <NoSalesEver /> : (
+                <AnalyticsOverview
+                  days={days} onDays={setDays}
+                  points={points} revenue={windowRevenue} orders={windowOrders}
+                  buyers={detailedData?.total_buyers ?? 0}
+                  repeatRate={detailedData?.repeat_purchase_rate ?? 0}
+                  conversionRate={detailedData?.conversion_rate ?? 0}
+                  showMore={showMore} onShowMore={() => setShowMore(true)}
+                  onOpen={(v: SubView) => setTab(v)}
+                />
+              )
             )}
 
             {tab === 'customers' && data && (
@@ -156,12 +90,12 @@ export default function SellerAnalyticsPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-white rounded-xl border border-gray-200 p-4">
                     <p className="text-xs text-gray-500">{t('seller.totalCustomersLabel')}</p>
-                    <p className="text-2xl font-bold text-gray-900">{(data as CustomerData).total_customers}{t('seller.persons')}</p>
+                    <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">{(data as CustomerData).total_customers}{t('seller.persons')}</p>
                   </div>
                   <div className="bg-white rounded-xl border border-gray-200 p-4">
                     <p className="text-xs text-gray-500">{t('seller.repeatBuyers')}</p>
-                    <p className="text-2xl font-bold text-gray-900">{(data as CustomerData).repeat_customers}{t('seller.persons')}</p>
-                    <p className="text-xs text-green-600">{(data as CustomerData).total_customers > 0 ? Math.round((data as CustomerData).repeat_customers / (data as CustomerData).total_customers * 100) : 0}%</p>
+                    <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">{(data as CustomerData).repeat_customers}{t('seller.persons')}</p>
+                    <p className="text-xs text-tone-ok">{(data as CustomerData).total_customers > 0 ? Math.round((data as CustomerData).repeat_customers / (data as CustomerData).total_customers * 100) : 0}%</p>
                   </div>
                 </div>
                 <div className="bg-white rounded-xl border border-gray-200">
@@ -224,7 +158,7 @@ export default function SellerAnalyticsPage() {
                     </div>
                     <div className="flex md:block md:text-right gap-3 text-xs text-gray-500">
                       <span className="md:hidden font-medium text-gray-400">{t('seller.stockLabel')}:</span>
-                      <span className={p.stock < 5 ? 'text-red-500 font-medium' : ''}>{p.stock}{t('common.count')}</span>
+                      <span className={p.stock < 5 ? 'text-tone-bad font-medium' : ''}>{p.stock}{t('common.count')}</span>
                     </div>
                   </div>
                 ))}
@@ -238,15 +172,15 @@ export default function SellerAnalyticsPage() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div className="bg-white rounded-xl border border-gray-200 p-4">
                       <p className="text-xs text-gray-500">출금 가능</p>
-                      <p className="text-xl font-bold text-blue-600">{formatWon(cd.summary.total_granted)}</p>
+                      <p className="text-xl font-bold text-gray-900">{formatWon(cd.summary.total_granted)}</p>
                     </div>
                     <div className="bg-white rounded-xl border border-gray-200 p-4">
                       <p className="text-xs text-gray-500">대기 중</p>
-                      <p className="text-xl font-bold text-amber-600">{formatWon(cd.summary.total_pending)}</p>
+                      <p className="text-xl font-bold text-tone-warn">{formatWon(cd.summary.total_pending)}</p>
                     </div>
                     <div className="bg-white rounded-xl border border-gray-200 p-4">
                       <p className="text-xs text-gray-500">누적 출금</p>
-                      <p className="text-xl font-bold text-emerald-600">{formatWon(cd.summary.total_paid_out)}</p>
+                      <p className="text-xl font-bold text-tone-ok">{formatWon(cd.summary.total_paid_out)}</p>
                     </div>
                     <div className="bg-white rounded-xl border border-gray-200 p-4">
                       <p className="text-xs text-gray-500">추천한 고객수</p>
@@ -256,7 +190,7 @@ export default function SellerAnalyticsPage() {
                   <div className="bg-white rounded-xl border border-gray-200">
                     <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
                       <h3 className="text-sm font-bold text-gray-900">상위 추천 고객</h3>
-                      <a href="/my-commissions" className="text-xs text-blue-600 hover:underline">출금 신청 →</a>
+                      <a href="/my-commissions" className="text-xs text-brand-text hover:underline">출금 신청 →</a>
                     </div>
                     {cd.top_referred.length === 0 ? (
                       <p className="text-center text-gray-500 text-xs py-6">아직 추천 commission 이 없습니다.</p>
@@ -290,7 +224,7 @@ export default function SellerAnalyticsPage() {
                         <div key={m.month} className="flex items-center gap-3">
                           <span className="text-xs font-medium text-gray-700 w-16">{m.month}</span>
                           <div className="flex-1 bg-gray-100 rounded-full h-6 overflow-hidden relative">
-                            <div className="bg-blue-500 h-full rounded-full" style={{ width: `${(m.new_products / max) * 100}%` }} />
+                            <div className="bg-brand h-full rounded-full" style={{ width: `${(m.new_products / max) * 100}%` }} />
                             <span className="absolute inset-0 flex items-center px-2 text-xs font-medium text-gray-900">
                               {m.new_products}개 (이용권 {m.new_vouchers}개)
                             </span>
@@ -310,28 +244,28 @@ export default function SellerAnalyticsPage() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div className="bg-white rounded-xl border border-gray-200 p-4">
                       <p className="text-xs text-gray-500">총 클릭</p>
-                      <p className="text-2xl font-bold text-blue-600">{k.clicks_total.toLocaleString()}</p>
+                      <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">{k.clicks_total.toLocaleString()}</p>
                       <p className="text-[10px] text-gray-400 mt-1">최근 {k.days}일</p>
                     </div>
                     <div className="bg-white rounded-xl border border-gray-200 p-4">
                       <p className="text-xs text-gray-500">고유 방문자</p>
-                      <p className="text-2xl font-bold text-gray-900">{k.unique_visitors.toLocaleString()}</p>
+                      <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">{k.unique_visitors.toLocaleString()}</p>
                       <p className="text-[10px] text-gray-400 mt-1">IP + UA 기준</p>
                     </div>
                     <div className="bg-white rounded-xl border border-gray-200 p-4">
                       <p className="text-xs text-gray-500">결제 발생</p>
-                      <p className="text-2xl font-bold text-emerald-600">{k.orders.toLocaleString()}</p>
+                      <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">{k.orders.toLocaleString()}</p>
                       <p className="text-[10px] text-gray-400 mt-1">commission 기준</p>
                     </div>
                     <div className="bg-white rounded-xl border border-gray-200 p-4">
                       <p className="text-xs text-gray-500">전환율</p>
-                      <p className="text-2xl font-bold text-pink-600">{k.conversion_rate}%</p>
+                      <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">{k.conversion_rate}%</p>
                       <p className="text-[10px] text-gray-400 mt-1">클릭 → 결제</p>
                     </div>
                   </div>
-                  <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
-                    <p className="text-sm font-bold text-purple-900">누적 commission ({k.days}일): {formatWon(k.commission_total)}</p>
-                    <p className="text-xs text-purple-600 mt-1 leading-relaxed">
+                  <div className="bg-white border border-rule rounded-xl p-4">
+                    <p className="text-sm font-bold text-gray-700">누적 commission ({k.days}일): {formatWon(k.commission_total)}</p>
+                    <p className="text-xs text-gray-700 mt-1 leading-relaxed">
                       • 클릭 → 결제 전환율이 1% 미만이면 콘텐츠/상품 매력 점검<br />
                       • 클릭 vs 고유 방문자 비율로 같은 사람 재방문 측정 가능<br />
                       • 실시간 ledger: <a href="/seller/ledger" className="underline">/seller/ledger</a>

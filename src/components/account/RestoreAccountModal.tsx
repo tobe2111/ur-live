@@ -106,7 +106,7 @@ export default function RestoreAccountModal() {
       role="presentation"
     >
       <div
-        className="bg-white dark:bg-[#0D0F12] w-full max-w-md rounded-3xl overflow-hidden shadow-2xl"
+        className="bg-surface w-full max-w-md rounded-3xl overflow-hidden shadow-2xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby="restore-title"
@@ -116,12 +116,12 @@ export default function RestoreAccountModal() {
           <button
             onClick={handleSkip}
             aria-label={t('common.close', { defaultValue: '닫기' })}
-            className="absolute top-4 right-4 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-[#1A1C21]"
+            className="absolute top-4 right-4 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-[#1D1F29]"
           >
             <X className="w-5 h-5 text-gray-400 dark:text-gray-500" />
           </button>
-          <div className="w-14 h-14 mb-4 rounded-2xl bg-gray-100 flex items-center justify-center">
-            <RotateCcw className="w-7 h-7 text-pink-500" />
+          <div className="w-14 h-14 mb-4 rounded-2xl bg-gray-100 dark:bg-warm flex items-center justify-center">
+            <RotateCcw className="w-7 h-7 text-brand-text" />
           </div>
           <h2 id="restore-title" className="text-[18px] font-bold text-gray-900 dark:text-white">
             {t('user.restoreTitle', { defaultValue: '이전에 가입했던 계정이 있어요' })}
@@ -134,9 +134,9 @@ export default function RestoreAccountModal() {
         </div>
 
         {/* 안내 박스 */}
-        <div className="mx-6 my-3 p-3 bg-gray-50 border border-pink-100 rounded-xl">
+        <div className="mx-6 my-3 p-3 bg-warm border border-rule rounded-xl">
           <p className="text-[12px] text-gray-700 dark:text-gray-200 leading-relaxed">
-            <strong className="text-pink-600">{t('user.restoreWhenRestore', { defaultValue: '복원 시' })}</strong>: {t('user.restoreWhenRestoreDesc', { defaultValue: '이전 주문 내역, 쿠폰, 딜 포인트, 위시리스트 등 모든 데이터가 다시 살아나요.' })}
+            <strong className="text-brand-text">{t('user.restoreWhenRestore', { defaultValue: '복원 시' })}</strong>: {t('user.restoreWhenRestoreDesc', { defaultValue: '이전 주문 내역, 쿠폰, 딜 포인트, 위시리스트 등 모든 데이터가 다시 살아나요.' })}
           </p>
           <p className="text-[12px] text-gray-700 dark:text-gray-200 leading-relaxed mt-1.5">
             <strong className="text-gray-500 dark:text-gray-400">{t('user.restoreWhenNew', { defaultValue: '신규 계정 선택 시' })}</strong>: {t('user.restoreWhenNewDesc', { defaultValue: '새로 시작합니다. 이전 데이터는 30일 후 영구 삭제돼요.' })}
@@ -148,7 +148,7 @@ export default function RestoreAccountModal() {
           <button
             onClick={handleRestore}
             disabled={restoring}
-            className="w-full h-12 bg-pink-500 hover:bg-pink-600 active:scale-[0.98] disabled:opacity-50 text-white rounded-xl font-bold text-[14px] transition-all"
+            className="w-full h-12 bg-brand hover:bg-brand-dark active:scale-[0.98] disabled:opacity-50 text-white rounded-xl font-bold text-[14px] transition-all"
           >
             {restoring ? t('user.restoring', { defaultValue: '복원 중...' }) : t('user.restoreBtn', { defaultValue: '이전 계정 복원하기' })}
           </button>

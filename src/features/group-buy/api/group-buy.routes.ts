@@ -12,7 +12,7 @@ import { Hono } from 'hono'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { auditLog } from '@/worker/middleware/audit-log'
-import { recordLedger } from '@/worker/utils/ledger'
+import { recordLedger, sellerLedgerAccount } from '@/worker/utils/ledger'
 import { formatKSTDate } from '@/utils/date' // 워커 TZ=UTC — 만료일 안내가 하루 이르던 것 교정
 import { swallow } from '@/worker/utils/swallow'
 import { resolveUserIdString } from '@/worker/utils/resolve-user-id'
@@ -36,8 +36,11 @@ import {
 // 🛡️ 2026-05-21: 모든 voucher 카테고리에서 동작하려면 이용권 hardcode 제거 — getVoucherShortLabel 사용.
 import { getVoucherShortLabel } from '@/shared/constants/voucher-categories'
 // 🎟️ 2026-08-12 (소비자 공구 결제 결함 3건): 자기참여 판정·주문번호·가상계좌 가드 → gb-purchase-guards.ts
-import { isSelfOwnedGroupBuy, resolveGbOrderNumber, guardAwaitingDeposit, issuedVoucherLabel } from './gb-purchase-guards'
+import { isVoucherDealPaymentAllowed, groupBuyJoinBlockReason, isSelfOwnedGroupBuy, isSelfReferral, resolveGbOrderNumber, guardAwaitingDeposit, issuedVoucherLabel } from './gb-purchase-guards'
+import { resolvePartialDealPlan, derivePartialDeal, spendPartialDeal, recordOrderDealUsed, restorePartialDeal } from './partial-deal'
 import { findActiveDealPct } from '@/worker/utils/influencer-deal'
+// 🧺 2026-09-15 이용권 장바구니 결제(`/cart/init`·`/cart/confirm-toss`, 게이트 `voucher_cart_enabled` 기본 OFF)
+import { cartCheckoutRoutes } from './cart-checkout.routes'
 
 const groupBuyRoutes = new Hono<{ Bindings: Env }>()
 
@@ -75,8 +78,9 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
   const userId = await resolveUserIdString(c.env.DB, user.id, user.isDbId)
   const body = await c.req.json<{
     quantity?: number; payment_method?: 'deal' | 'toss'; promo_code?: string; ref?: string; idempotency_key?: string
-  }>().catch(() => ({ quantity: 1, payment_method: 'deal' as const, promo_code: undefined as string | undefined, ref: undefined as string | undefined, idempotency_key: undefined as string | undefined }))
-  const { quantity, payment_method, promo_code, ref, idempotency_key } = body
+    deal_use?: number | null   // 🪙 딜로 낼 금액(없으면 최대한)
+  }>().catch(() => ({ quantity: 1, payment_method: 'deal' as const, promo_code: undefined as string | undefined, ref: undefined as string | undefined, idempotency_key: undefined as string | undefined, deal_use: undefined as number | null | undefined }))
+  const { quantity, payment_method, promo_code, ref, idempotency_key, deal_use } = body
 
   // 🛡️ 2026-05-23 idempotency — 중복 클릭 / 네트워크 retry 시 중복 발급 영구 차단.
   //   client 가 unique idempotency_key 보내고, server 가 같은 key 의 기존 order 있으면 그 결과 반환.
@@ -105,8 +109,8 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
   // 🛡️ 2026-05-21 Phase D-3: 자기 자신 attribution 차단 (셀러가 본인 링크로 매출 인플레이션).
   const refRaw = ref ? String(ref).trim() : ''
   let referralInfluencerId = refRaw && /^[a-zA-Z0-9_\-:]{1,64}$/.test(refRaw) ? refRaw : ''
-  if (referralInfluencerId && String(referralInfluencerId) === String(userId)) {
-    referralInfluencerId = ''  // 자기 자신 → silent ignore (에러 안 띄움)
+  if (referralInfluencerId && await isSelfReferral(DB, referralInfluencerId, userId)) {
+    referralInfluencerId = ''  // 본인(users.id 또는 연결 sellers.id, 2026-09-02) → 귀속만 버림. 근거: gb-purchase-guards
   }
   // 존재 검증 — 가짜 ID (?seller=999999) 차단. sellers 또는 users 둘 다 허용.
   if (referralInfluencerId) {
@@ -132,19 +136,10 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     const { getSupplyMeta } = await import('../../../worker/utils/product-supply-meta')
     const mppMeta = await getSupplyMeta(DB, [Number(productId)]).catch(() => null)
     const mppRaw = mppMeta?.get(Number(productId))?.max_per_person
-    const maxPerPerson = mppRaw != null && Number.isFinite(Number(mppRaw)) && Number(mppRaw) > 0 ? Math.floor(Number(mppRaw)) : 0
-    if (maxPerPerson > 0) {
-      if (qty > maxPerPerson) {
-        return c.json({ success: false, error: `1인당 최대 ${maxPerPerson}개까지 구매할 수 있습니다`, code: 'PER_PERSON_LIMIT' }, 400)
-      }
-      const ownedRow = await DB.prepare(
-        "SELECT COUNT(*) AS n FROM vouchers WHERE product_id = ? AND user_id = ? AND status IN ('unused','used')"
-      ).bind(productId, userId).first<{ n: number }>().catch(() => ({ n: 0 }))
-      const owned = Number(ownedRow?.n ?? 0)
-      if (owned + qty > maxPerPerson) {
-        return c.json({ success: false, error: `1인당 최대 ${maxPerPerson}개 구매 가능 — 이미 ${owned}개 보유 중입니다`, code: 'PER_PERSON_LIMIT' }, 400)
-      }
-    }
+    // 🧾 2026-09-14 미설정이면 플랫폼 기본 상한(종전엔 무제한 → API 직행 시 100장) — `purchase-cap.ts`
+    const { checkPerPersonLimit } = await import('../../../worker/utils/purchase-cap')
+    const lim = await checkPerPersonLimit(DB, productId, userId, qty, mppRaw)
+    if (!lim.ok) return c.json({ success: false, error: lim.error, code: 'PER_PERSON_LIMIT' }, 400)
     // 🗺️ 2026-07-02 (대표 "레벨이 올라가면 그 사람들에게만 보이는 이용권 구매 자격" — 카카오맵 리뷰
     //   게이미피케이션): product_supply_meta.min_review_level. 미설정=전체 공개(추가 조회 0).
     //   설정 시: 유저 동네 리뷰어 레벨(user_review_scores — 카카오맵 후기 승인으로 상승)이 그
@@ -199,9 +194,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     if (await isSelfOwnedGroupBuy(DB, product.seller_id, userId)) {
       return c.json({ success: false, error: '본인의 공동구매 상품에는 참여할 수 없습니다', code: 'SELF_PARTICIPATION_BLOCKED' }, 403)
     }
-    if (product.group_buy_deadline && new Date(product.group_buy_deadline) < new Date()) {
-      return c.json({ success: false, error: '공동구매가 마감되었습니다' }, 400)
-    }
+    // 🗓️ 2026-09-04 (대표 "마감 개념은 없어"): 마감 차단 제거 — 딜 경로(gb-purchase-guards)와 동형.
     if (product.group_buy_status === 'expired' || product.group_buy_status === 'cancelled') {
       return c.json({ success: false, error: '종료된 공동구매입니다' }, 400)
     }
@@ -211,11 +204,18 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     const tierDiscountPct = maxTierDiscount(product.group_buy_tiers)
     const totalAmount = Math.round(product.price * (1 - tierDiscountPct / 100)) * qty
     const orderId = generateTossOrderId('GB', userId)
+    // 🪙 2026-09-01 부분결제(게이트 OFF 기본): 가진 딜만큼 카드 청구액을 줄인다.
+    //   게이트가 꺼져 있으면 dealUsed=0 → `amount` 가 총액 그대로 = 종전과 byte-동일.
+    //   딜 **차감은 여기서 하지 않는다** — 아직 아무것도 청구되지 않았다(confirm-toss 가 한다).
+    const dealPlan = await resolvePartialDealPlan(DB, { userId, totalAmount, requested: deal_use })  // 🪙 없으면 최대한(종전)
     return c.json({
       success: true,
       data: {
         orderId,
-        amount: totalAmount,
+        amount: dealPlan.cardAmount,
+        // 화면이 "딜 3,000 + 카드 7,000" 을 보여줄 수 있게 — 게이트 OFF 면 0 이라 아무것도 안 뜬다.
+        dealUsed: dealPlan.dealUsed,
+        totalAmount: dealPlan.totalAmount,
         orderName: `공구: ${product.name} × ${qty}`,
         clientKey: tossKey,
         flow,
@@ -244,28 +244,20 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
 
     if (!product) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404)
 
+    // 💰 2026-08-31: 이용권 딜 결제 게이트 (기본 OFF). 판정은 `gb-purchase-guards` SSOT.
+    if (!(await isVoucherDealPaymentAllowed(DB, product))) {
+      return c.json({ success: false, error: '이 상품은 카드로 결제해주세요.', code: 'DEAL_PAYMENT_NOT_ALLOWED' }, 400)
+    }
+
     // 🛡️ 2026-04-22: 셀러가 본인 공구에 자기 참여 차단 (목표 조작 방지)
     //   🔴 2026-08-12: sellers.id ↔ users.id 를 비교하던 네임스페이스 오류 수리 (gb-purchase-guards.ts).
     if (await isSelfOwnedGroupBuy(DB, product.seller_id, userId)) {
       return c.json({ success: false, error: '본인의 공동구매 상품에는 참여할 수 없습니다', code: 'SELF_PARTICIPATION_BLOCKED' }, 403)
     }
 
-    // 공동구매 마감 확인 (마감 시간이 참여보다 먼저 체크되도록)
-    if (product.group_buy_deadline && new Date(product.group_buy_deadline) < new Date()) {
-      return c.json({ success: false, error: '공동구매가 마감되었습니다' }, 400)
-    }
-
-    // 🛡️ 2026-05-15: 이미 종료/취소된 공구 차단 (status 가드)
-    if (product.group_buy_status === 'expired' || product.group_buy_status === 'cancelled') {
-      return c.json({ success: false, error: '종료된 공동구매입니다' }, 400)
-    }
-
-    // 🛡️ 2026-05-15: voucher 만료일 가드 — 공구 마감 전에 voucher 가 먼저 만료되면 무용지물
-    if (product.voucher_expiry && product.group_buy_deadline) {
-      if (new Date(product.voucher_expiry) <= new Date(product.group_buy_deadline)) {
-        return c.json({ success: false, error: '바우처 만료일이 공구 마감 전이라 발급할 수 없습니다. 셀러에게 문의해주세요.' }, 400)
-      }
-    }
+    // 🛡️ 마감 / 종료·취소 / 바우처 만료 — 조건·순서 그대로 `gb-purchase-guards` SSOT 로 이관(2026-09-01).
+    const joinBlocked = groupBuyJoinBlockReason(product)
+    if (joinBlocked) return c.json({ success: false, error: joinBlocked }, 400)
 
     // ✅ BUG #26 FIX: Atomic stock reservation. Previous SELECT-then-UPDATE
     // pattern allowed two concurrent joiners to both pass the stock check and
@@ -512,7 +504,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
         reference_id: orderNumber,
         amount: totalAmount,
         debit_account: `user:${userId}`,                  // 유저 wallet 차감
-        credit_account: `seller:${product.seller_id}`,    // 셀러 receivable 증가
+        credit_account: sellerLedgerAccount(product.seller_id),    // 셀러 receivable 증가
         fee_amount: commissionAmount,
         fee_account: 'platform:commission',
         metadata: { product_id: productId, qty, applied_discount_pct: appliedDiscountPct },
@@ -549,7 +541,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
             event_type: 'user_referral_bonus',
             reference_id: orderNumber,
             amount: userBonusAmount,
-            debit_account: influencerActive ? `seller:${product.seller_id}` : 'platform:commission',  // 인플 활성 시 셀러 receivable 에서, 차단 시 유어딜이 떠안음
+            debit_account: influencerActive ? sellerLedgerAccount(product.seller_id) : 'platform:commission',  // 인플 활성 시 셀러 receivable 에서, 차단 시 유어딜이 떠안음
             credit_account: `user:${userId}`,
             metadata: { source: 'influencer_referral', influencer_id: referralInfluencerId, absorbed_by_platform: !influencerActive },
           })
@@ -576,7 +568,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
             event_type: 'influencer_commission',
             reference_id: orderNumber,
             amount: influencerAmount,
-            debit_account: `seller:${product.seller_id}`,
+            debit_account: sellerLedgerAccount(product.seller_id),
             credit_account: `influencer:${referralInfluencerId}`,
             metadata: { product_id: productId, available_at: availableAt },
           })
@@ -615,11 +607,15 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
         INSERT INTO order_items (order_id, product_id, product_name, unit_price, price, quantity, subtotal)
         VALUES (?, ?, ?, ?, ?, ?, ?)
       `).bind(newOrderId, productId, product.name, product.price, product.price, qty, totalAmount)
+      // 🤝 2026-09-09: **판 시점의 영입자를 도장 찍는다**(대표 "귀속되는 시점부터 계산").
+      //   안 찍으면 사용 시점에 매장의 *현재* 영입자를 읽어 과거 판매분까지 소급된다.
+      const { resolveVoucherIntroStamp } = await import('../../../worker/utils/voucher-intro-stamp')
+      const introStamp = await resolveVoucherIntroStamp(DB, product.seller_id)
       const voucherStmts = codes.map(code =>
         DB.prepare(`
-          INSERT INTO vouchers (order_id, product_id, user_id, code, expires_at, applied_discount_pct, applied_price)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
-        `).bind(newOrderId, productId, userId, code, expiresAt, appliedDiscountPct, unitPrice)
+          INSERT INTO vouchers (order_id, product_id, user_id, code, expires_at, applied_discount_pct, applied_price, introduced_by_influencer_id, intro_stamped_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).bind(newOrderId, productId, userId, code, expiresAt, appliedDiscountPct, unitPrice, introStamp.introducerId, introStamp.stampedAt)
       )
       // order_items + vouchers 같은 batch — atomic + 1 round-trip.
       await DB.batch([orderItemStmt, ...voucherStmts])
@@ -1068,11 +1064,13 @@ import { groupBuyAdminRoutes } from './group-buy-admin.routes'
 import { registerSellerEndpoints } from './group-buy-seller.routes'
 import { registerPublicEndpoints } from './group-buy-public.routes'
 import { registerVoucherEndpoints } from './group-buy-voucher.routes'
+import { registerDealPlanEndpoint } from './deal-plan.routes'
 
 groupBuyRoutes.route('/admin', groupBuyAdminRoutes)        // /admin/list, /admin/analytics, /admin/force-refund
 registerSellerEndpoints(groupBuyRoutes)                    // /refund/:productId, /seller-voucher-stats, /voucher-logs
 registerPublicEndpoints(groupBuyRoutes)                    // /products, /products/:id, /live-ticker, /participants, /commission-rate, /my, /verify/:code
 registerVoucherEndpoints(groupBuyRoutes)                   // /:code/use, /voucher/:code/partial-refund, /store-stats/:productId
+registerDealPlanEndpoint(groupBuyRoutes)                   // /deal-plan/:productId
 
 // 🛡️ 2026-05-22: 공구 토스 결제 confirm endpoint — Toss SDK success URL 에서 호출.
 //   body: { paymentKey, orderId, amount, productId, qty, promoCode?, ref? }
@@ -1116,15 +1114,10 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
     const { getSupplyMeta } = await import('../../../worker/utils/product-supply-meta')
     const mppMeta = await getSupplyMeta(DB, [Number(productId)]).catch(() => null)
     const mppRaw = mppMeta?.get(Number(productId))?.max_per_person
-    const maxPerPerson = mppRaw != null && Number.isFinite(Number(mppRaw)) && Number(mppRaw) > 0 ? Math.floor(Number(mppRaw)) : 0
-    if (maxPerPerson > 0) {
-      const ownedRow = await DB.prepare(
-        "SELECT COUNT(*) AS n FROM vouchers WHERE product_id = ? AND user_id = ? AND status IN ('unused','used')"
-      ).bind(productId, userId).first<{ n: number }>().catch(() => ({ n: 0 }))
-      if (Number(ownedRow?.n ?? 0) + qty > maxPerPerson) {
-        return c.json({ success: false, error: `1인당 최대 ${maxPerPerson}개까지 구매할 수 있습니다`, code: 'PER_PERSON_LIMIT' }, 400)
-      }
-    }
+    // 🧾 사전검증과 **같은 함수** — 두 벌이면 한쪽만 고쳐져 그 틈으로 초과 구매가 통과한다.
+    const { checkPerPersonLimit: recheck } = await import('../../../worker/utils/purchase-cap')
+    const lim2 = await recheck(DB, productId, userId, qty, mppRaw)
+    if (!lim2.ok) return c.json({ success: false, error: lim2.error, code: 'PER_PERSON_LIMIT' }, 400)
     // 🗺️ 2026-07-02 (레벨 게이트 race 차단): /join 사전검증과 대칭 — **과금 전** 재검증.
     //   초과면 403 — 승인 안 된 결제는 Toss 측 자동 만료(환불 불필요, PER_PERSON_LIMIT 동일 패턴).
     const mrlRaw = mppMeta?.get(Number(productId))?.min_review_level
@@ -1151,17 +1144,20 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
   const tierDiscountPct = maxTierDiscount(product.group_buy_tiers)
   const unitPrice = Math.round(product.price * (1 - tierDiscountPct / 100))
   const expectedAmount = unitPrice * qty
-  if (Number(amount) !== expectedAmount) {
-    return c.json({ success: false, error: '결제 금액이 일치하지 않습니다', code: 'AMOUNT_MISMATCH' }, 400)
-  }
 
-  // 2. Toss confirm — gateway helper 사용.
+  // 🪙 2026-09-01 부분결제 — 딜 사용액은 **청구액에서 역산**한다(설명은 partial-deal.ts).
+  const chargedAmount = Math.round(Number(amount))
+  const derived = await derivePartialDeal(DB, { userId, expectedAmount, chargedAmount })
+  if (!derived.ok) return c.json({ success: false, error: derived.error, code: derived.code }, 400)
+  const dealUsed = derived.dealUsed
+
+  // 2. Toss confirm — gateway helper 사용. **실제 청구액**(딜 차감 후)으로 승인한다.
   const { confirmTossPayment } = await import('../../../worker/utils/toss-gateway')
   const tossResult = await confirmTossPayment({
     env: c.env as { TOSS_SECRET_KEY?: string },
     paymentKey,
     orderId,
-    amount: expectedAmount,
+    amount: chargedAmount,
   })
   if (!tossResult.ok) {
     return c.json({ success: false, error: tossResult.message, code: tossResult.code },
@@ -1171,7 +1167,7 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
   const orderNumber = resolveGbOrderNumber(tossResult.data?.orderId, orderId, userId)
   // 🏦 가상계좌(WAITING_FOR_DEPOSIT)는 **입금 전** — 발급 금지 + 자동 취소. 카드/간편결제는 이 분기 무접촉.
   const vaBlock = await guardAwaitingDeposit(c.env, tossResult.data,
-    { paymentKey, orderNumber, userId, productId: Number(productId), sellerId: Number(product.seller_id) || null, amount: expectedAmount })
+    { paymentKey, orderNumber, userId, productId: Number(productId), sellerId: Number(product.seller_id) || null, amount: chargedAmount })
   if (vaBlock) return c.json({ success: false, error: vaBlock.error, code: vaBlock.code }, 400)
 
   // 3. 멱등성 가드 (C3, 2026-05-30): 같은 paymentKey 로 이미 발급된 주문이 있으면 재발급 금지.
@@ -1203,6 +1199,17 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
     return c.json({ success: false, error: '재고가 부족하여 결제가 자동 취소되었습니다', code: 'OUT_OF_STOCK' }, 409)
   }
 
+  // 🪙 부분결제 딜 차감(원자 CAS) — 실패하면 재고를 되돌리고 결제를 통째로 취소한다.
+  //   왜 그렇게까지 하는지, 웹훅이 왜 또 안 빼는지는 partial-deal.ts 에 적어 뒀다.
+  if (dealUsed > 0) {
+    const spent = await spendPartialDeal(DB, c.env as unknown as { TOSS_SECRET_KEY?: string }, {
+      userId, dealUsed, orderNumber, paymentKey, productId: Number(productId), qty, productName: product.name,
+    })
+    if (!spent.ok) {
+      return c.json({ success: false, error: '딜 잔액이 부족하여 결제가 자동 취소되었습니다', code: 'INSUFFICIENT_DEAL' }, 400)
+    }
+  }
+
   // 4. orders INSERT + voucher 발급 — 딜 경로(group-buy /join)의 검증된 패턴 복제.
   //    C1: RETURNING id 로 정수 order_id 획득 후 vouchers.order_id 에 바인드 (이전: order_number 문자열
   //        저장 → refund JOIN(v.order_id=o.id) 전부 실패 → 카드 환불 영구 불가).
@@ -1222,6 +1229,9 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
     const newOrderId = orderInsert?.id ?? null
     if (!newOrderId) throw new Error('order insert returned no id')
 
+    // 🪙 부분결제 딜 분을 주문에 남긴다 — **환불 역전이 이 값 하나에 걸려 있다**(머니 룰 #2).
+    if (dealUsed > 0) await recordOrderDealUsed(DB, newOrderId, dealUsed)
+
     // voucher 발급 (qty) — order_id=정수(C1) + applied_price/expires_at(C2). batch = atomic (부분발급 차단).
     //   order_items 도 같은 batch (딜 경로와 정합 — 주문 상세 표시 + 정산 근거).
     const codes = await Promise.all(Array.from({ length: qty }, () => generateUniqueVoucherCode(DB)))
@@ -1229,11 +1239,14 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
       INSERT INTO order_items (order_id, product_id, product_name, unit_price, price, quantity, subtotal)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).bind(newOrderId, productId, product.name, unitPrice, unitPrice, qty, expectedAmount)
+    // 🤝 2026-09-09: 판 시점의 영입자 도장 (위 /join 경로와 같은 SSOT).
+    const { resolveVoucherIntroStamp } = await import('../../../worker/utils/voucher-intro-stamp')
+    const introStamp = await resolveVoucherIntroStamp(DB, product.seller_id)
     const voucherStmts = codes.map(code =>
       DB.prepare(`
-        INSERT INTO vouchers (order_id, product_id, user_id, code, expires_at, applied_discount_pct, applied_price)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).bind(newOrderId, productId, userId, code, expiresAt, tierDiscountPct, unitPrice)
+        INSERT INTO vouchers (order_id, product_id, user_id, code, expires_at, applied_discount_pct, applied_price, introduced_by_influencer_id, intro_stamped_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(newOrderId, productId, userId, code, expiresAt, tierDiscountPct, unitPrice, introStamp.introducerId, introStamp.stampedAt)
     )
     await DB.batch([orderItemStmt, ...voucherStmts])
 
@@ -1336,7 +1349,7 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
         reference_id: orderNumber,
         amount: expectedAmount,
         debit_account: `user:${userId}`,
-        credit_account: `seller:${product.seller_id}`,
+        credit_account: sellerLedgerAccount(product.seller_id),
         fee_amount: commissionAmount,
         fee_account: 'platform:commission',
         metadata: { product_id: productId, qty, applied_discount_pct: tierDiscountPct, payment_method: 'toss' },
@@ -1381,6 +1394,8 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
     // 결제는 성공했으나 INSERT 실패 — 🛡️ 2026-06-10 (발급 감사 GAP#1): 수동 개입 대기 대신
     //   자동 환불 시도(SSOT cancelTossPayment, 멱등키). 성공=미회수 0 / 실패=어드민 긴급 벨.
     console.error('[group-buy:confirm-toss] post-payment INSERT failed', err)
+    // 🪙 이미 뺀 딜을 되돌린다 — 주문이 안 생겨 환불 헬퍼가 못 찾는 유일한 구간이다.
+    if (dealUsed > 0) await restorePartialDeal(DB, { userId, dealUsed, orderNumber })
     let autoRefunded = false
     try {
       const { cancelTossPayment } = await import('../../../worker/utils/toss-gateway')
@@ -1406,6 +1421,10 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
     }, 500)
   }
 })
+
+// 🧺 2026-09-15 이용권 장바구니 결제 마운트 — 같은 `/api/group-buy` 접두사.
+//   ⚠️ import 는 **파일 맨 위**에 있다(중간 import 금지 — 2026-04-22 워커 크래시 룰).
+groupBuyRoutes.route('/', cartCheckoutRoutes)
 
 // 외부 import 호환을 위해 helpers 의 generateStoreOwnerToken / sendStoreOwnerAlimtalk re-export
 export { generateStoreOwnerToken, sendStoreOwnerAlimtalk } from './helpers'

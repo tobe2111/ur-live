@@ -30,8 +30,8 @@ export default function VoucherFields({
   const { t } = useTranslation()
   const handleChange = onChange
   return (
-    <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 space-y-3">
-      <h3 className="text-sm font-bold text-orange-800">{t('seller.products.mealVoucherInfo')}</h3>
+    <div className="bg-white border border-rule rounded-xl p-4 space-y-3">
+      <h3 className="text-sm font-bold text-tone-warn">{t('seller.products.mealVoucherInfo')}</h3>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.storeName', { defaultValue: '매장명' })}</label>
         <input name="restaurant_name" value={formData.restaurant_name} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
@@ -70,10 +70,7 @@ export default function VoucherFields({
           이미 보유한 이용권까지 합산해 초과 구매를 막습니다.
         </p>
       </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.groupBuyDeadline')}</label>
-        <input type="datetime-local" name="group_buy_deadline" value={formData.group_buy_deadline} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
-      </div>
+      {/* 🗓️ 2026-09-04 (대표 "마감 개념은 없어"): '판매 마감' 입력 제거. */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.products.storeVerifyPin')}</label>
         <input name="store_verify_pin" value={formData.store_verify_pin} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />

@@ -4,6 +4,7 @@ import { declinesOutreach, looksLikeBrandChannel, scoreLead } from './influencer
 import { resolveCategory, classifyCategory } from './influencer-classify'
 import { regionFromKeyword } from './influencer-region'
 import { sanitizeLeadHandle } from './influencer-handle'
+import { backfillWouldChange, type BackfillCurrent } from './influencer-backfill-diff'
 
 /**
  * 💾 수집 리드 저장 — `influencer-auto-collect.ts` 에서 추출(2026-07-29, 600줄 캡).
@@ -97,8 +98,17 @@ export async function saveLeadsBatch(
     const rs = await DB.batch(insStmts).catch(() => null)
     const existing: typeof slice = []
     slice.forEach((l, idx) => { if (rs?.[idx]?.meta?.changes === 1) saved++; else existing.push(l) }) // 신규만 카운트
-    if (existing.length) { // 기존 행 백필(신규 아님) — 컨택 빈칸 채움 + 규모/소개글 최신화
-      await DB.batch(existing.map(l => {
+    /**
+     * 🪞 **no-op 재기록 제거**(2026-09-04) — 재조우 행 중 **값이 실제로 달라지는 것만** UPDATE.
+     *   SQLite 는 값이 같아도 행과 인덱스(이 테이블 13개)를 다시 쓴다. 발굴은 같은 채널을 계속 다시
+     *   만나므로 그 무의미한 쓰기가 하루 예산을 태워 차단기를 조기 발동시키고 **발굴 자체를 멈춰 왔다**.
+     *   읽기 1회(≤50행, 유니크 키)로 쓰기 수천 행을 아낀다 — 읽기 3.4% vs 쓰기 97.6% 라 맞는 교환.
+     *   ⚠️ **조회 실패는 fail-open**(전부 UPDATE = 종전 동작). 못 읽었다고 갱신을 건너뛰면
+     *      F-32(구독자·소개글 영구 스테일) 가 조용히 재발한다.
+     */
+    const changed = await pickChangedForBackfill(DB, accountId, existing)
+    if (changed.length) { // 기존 행 백필(신규 아님) — 컨택 빈칸 채움 + 규모/소개글 최신화
+      await DB.batch(changed.map(l => {
         const d = l.description.slice(0, 500)
         const lp = l.last_post_at ?? null
         return DB.prepare(backfillSql).bind(
@@ -113,4 +123,63 @@ export async function saveLeadsBatch(
     }
   }
   return saved
+}
+
+/**
+ * 재조우 행들의 **현재 저장값을 한 번에 읽어**, 백필이 실제로 값을 바꾸는 것만 골라낸다.
+ *
+ * 판정 자체는 순수함수 `backfillWouldChange`(SSOT) — `backfillSql` 의 SET 절과 1:1 이라
+ * 한쪽만 바뀌면 갱신을 조용히 건너뛴다. 그래서 규칙마다 시험이 붙어 있다.
+ *
+ * ⚠️ 실패하면 **전부 통과시킨다**(종전 동작). 이 자리에서의 "모름"은 갱신 생략이 아니라 갱신이어야 한다.
+ */
+async function pickChangedForBackfill(
+  DB: D1Database, accountId: number, existing: InfluencerLead[],
+): Promise<InfluencerLead[]> {
+  if (!existing.length) return existing
+  /**
+   * 🔑 **플랫폼별로 갈라 묻는다** — 유니크 인덱스가 `(account_id, platform, channel_id)` 복합이라
+   *   `platform` 을 빼면 그 인덱스를 못 타고 **계정 전체를 훑는다**. 실행계획으로 확인한 차이:
+   *   ```
+   *     platform 없음  SEARCH ... USING INDEX idx_..._instagram_ci (account_id=?)      ← 18.9만 행
+   *     platform 포함  SEARCH ... USING INDEX sqlite_autoindex_..._1
+   *                    (account_id=? AND platform=? AND channel_id=?)                   ← 찾는 행만
+   *   ```
+   *   🩸 이 조회는 2026-09-04(#1348)에 쓰기를 줄이려고 내가 넣은 것인데, `platform` 을 빠뜨려
+   *   **회차마다 수백만 행을 읽고 있었다**(계측: collect 레인 한 회차 880만 행 = 전체 읽기의 83%).
+   *   그 읽기가 일일 예산을 태워 레인 창을 하루 3시간으로 좁혔고, 창 밖 레인이 죽어 B2B 수집이
+   *   무너졌다 — 쓰기를 아끼려다 훨씬 비싼 것을 잃은 것이다.
+   *   ⇒ 한 청크에 플랫폼이 섞여 있으므로(yt·naver_blog·cafe) 플랫폼별로 나눠 묻는다.
+   *      질의 수는 청크당 최대 4개로 늘지만 각각이 점 조회다.
+   */
+  const byPlatform = new Map<string, InfluencerLead[]>()
+  for (const l of existing) {
+    const g = byPlatform.get(l.platform)
+    if (g) g.push(l); else byPlatform.set(l.platform, [l])
+  }
+  const cur = new Map<string, BackfillCurrent>()
+  for (const [platform, group] of byPlatform) {
+    const marks = group.map(() => '?').join(',')
+    const res = await DB.prepare(
+      `SELECT platform, channel_id, email, instagram, tiktok, links, subscriber_count, view_count,
+              description, last_post_at, opted_out
+         FROM ad_influencer_leads
+        WHERE account_id = ? AND platform = ? AND channel_id IN (${marks})`,
+    ).bind(accountId, platform, ...group.map(l => l.channel_id))
+      .all<BackfillCurrent & { platform: string; channel_id: string }>()
+      .catch(() => null)
+    if (!res?.results) return existing             // fail-open — 읽기 실패는 갱신 생략의 근거가 못 된다
+    for (const r of res.results) cur.set(`${r.platform} ${r.channel_id}`, r)
+  }
+  return existing.filter(l => {
+    const c = cur.get(`${l.platform} ${l.channel_id}`)
+    if (!c) return true                            // 못 찾았으면 쓴다(경합으로 방금 생겼을 수 있다)
+    return backfillWouldChange(c, {
+      email: l.email, instagram: l.instagram, tiktok: l.tiktok, links: l.links,
+      subscriber_count: l.subscriber_count, view_count: l.view_count,
+      description: l.description.slice(0, 500),    // 저장 형태와 같은 값으로 비교해야 한다
+      last_post_at: l.last_post_at ?? null,
+      optOut: declinesOutreach(l.name, l.description) ? 1 : 0,
+    })
+  })
 }

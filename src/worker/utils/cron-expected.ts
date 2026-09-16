@@ -37,10 +37,45 @@ export const EXPECTED_CRON_EXPRESSIONS: readonly string[] = [
   //   `*`+`/5` 틱 위의 백업 슬롯은 40개 작업과 예산(무료 ~50)을 나눠 써서 굶었다 —
   //   전용 트리거는 자기 인보케이션이라 예산을 통째로 쓴다. **분은 5의 배수를 피한다** —
   //   `*`+`/15` 로 넣었더니 그 분이 전부 5분 틱의 분이라 같은 스크립트에서 가려져 3/3 미발화였다.
-  //   주간 표기는 아래 별칭으로 남긴다
-  //   (대시보드에 옛 트리거가 남아 있어도 그 회차가 `cron-unmatched` 로 버려지지 않게).
   '2,17,32,47 * * * *',
+]
+
+/**
+ * 🪦 **은퇴한 식** — 디스패처는 아직 *받지만* 더는 발화를 **기대하지 않는다**.
+ *
+ * ## 이 구분이 왜 필요한가 (2026-09-07 실사고)
+ *
+ * 위 08-25 교체에서 `0 20 * * 0` 을 **기대 목록에 그대로 둔 채** 트리거만 갈아 끼웠다.
+ * `wrangler.toml` 의 `crons` 에서 빠졌으니 그 식은 **영원히 안 뛴다** — 그런데 기대 목록에
+ * 남아 있으니 `findNeverFired` 가 매번 잡아냈고, `ok = stale 0 && neverFired 0` 이라
+ * **`/api/_healthcheck/cron` 이 08-25 부터 계속 503** 이었다.
+ *
+ * ⚠️ 이건 단순한 오탐이 아니다. **영원한 빨간불 하나가 경보 채널 전체를 침묵시킨다** —
+ * 늘 빨간 신호는 아무도 안 본다. 진짜 cron 이 죽어도 같은 503 이라 구분이 안 된다.
+ * (이 레포는 #1056 에서 같은 방식으로 21일을 잃었다.)
+ *
+ * ## 그런데 왜 분기를 안 지우나
+ *
+ * 대시보드에 옛 트리거가 남아 있을 수 있고, 그러면 그 회차가 `cron-unmatched` 로 **버려진다**.
+ * 받기는 받아야 한다. ⇒ **받는 것(`ACCEPTED`)과 기대하는 것(`EXPECTED`)을 분리한다.**
+ * 백업 자체는 `2,17,32,47` 로 이사해 살아 있다(하트비트: `d1-backup` → `d1-backup-chunked`).
+ *
+ * ## 다음에 슬롯을 교체할 때
+ *
+ * 옛 식을 **지우지 말고 여기로 옮겨라.** 지우면 잔존 트리거가 unmatched 가 되고,
+ * `EXPECTED` 에 두면 헬스체크가 영구 빨강이 된다. 둘 다 조용한 사고다.
+ */
+export const RETIRED_CRON_EXPRESSIONS: readonly string[] = [
   '0 20 * * 0',
+]
+
+/**
+ * 코드가 **아는** 식 전부(기대 + 은퇴). 드리프트 검사와 요구-env 명부의 기준선이다.
+ * ⚠️ never-fired 판정에는 쓰지 말 것 — 그게 위 사고의 원인이다.
+ */
+export const KNOWN_CRON_EXPRESSIONS: readonly string[] = [
+  ...EXPECTED_CRON_EXPRESSIONS,
+  ...RETIRED_CRON_EXPRESSIONS,
 ]
 
 // 📉 2026-08-11 — 목록이 10 → 4 로 줄었다. **작업이 줄어서가 아니라 반대다.**
@@ -70,15 +105,19 @@ export const EXPECTED_CRON_EXPRESSIONS: readonly string[] = [
  *
  * ⚠️ 별칭은 `EXPECTED_CRON_EXPRESSIONS` 에 **넣지 않는다.** 넣으면 한 작업이 never-fired 목록에
  * 3줄로 나와 판정을 오염시킨다. 기대 목록은 *일정 하나당 한 줄*을 유지한다.
+ *
+ * 🪦 2026-09-07: 여기 카노니컬로 적힌 `0 20 * * 0` 은 이제 **은퇴 식**이다
+ * (`RETIRED_CRON_EXPRESSIONS`). 별칭 표는 그대로 둔다 — 잔존 트리거가 `SUN`/`7` 표기로
+ * 발화해도 카노니컬로 접혀 은퇴 분기를 타야 하기 때문이다.
  */
 export const CRON_EXPRESSION_ALIASES: Readonly<Record<string, string>> = {
   '0 20 * * SUN': '0 20 * * 0',
   '0 20 * * 7': '0 20 * * 0',
 }
 
-/** 디스패처가 **받아야 하는** 문자열 전부 = 기대 목록 + 별칭. */
+/** 디스패처가 **받아야 하는** 문자열 전부 = 기대 + 은퇴 + 별칭. */
 export const ACCEPTED_CRON_EXPRESSIONS: readonly string[] = [
-  ...EXPECTED_CRON_EXPRESSIONS,
+  ...KNOWN_CRON_EXPRESSIONS,
   ...Object.keys(CRON_EXPRESSION_ALIASES),
 ]
 

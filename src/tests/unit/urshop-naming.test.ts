@@ -18,6 +18,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
+import { stripComments } from '../helpers/source-text'
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {
@@ -128,19 +129,12 @@ describe('N4 "판매하세요" 가 로그인 벽으로 보내지 않는다', () 
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * 주석을 지운 코드만 돌려준다.
- *
- * 🩸 왜 필요한가: 아래 세 검사는 전부 "이 문구가 코드에 남아 있나"를 보는데, 이 레포는 **왜 그 문구를
- *   버렸는지**를 그 자리 주석에 남기는 것이 규칙이다. 주석을 같이 세면 그 기록이 위반이 되어,
- *   다음 세션이 같은 실수를 반복하지 않게 막아 주는 유일한 장치부터 지우게 된다.
- * ⚠️ 첫 판은 줄 단위(`^\s*(//|*|/*)`)로 지웠는데 **JSX 주석 `{/* … *\/}` 의 둘째 줄부터를 못 걸렀다**
- *   (그 줄들은 `*` 로 시작하지 않는다). 블록을 통째로 지우는 방식으로 교체했다.
+ * 🔎 주석을 지운 코드만 본다 — 이 레포는 **왜 그 문구를 버렸는지**를 그 자리 주석에 남기는 것이
+ *   규칙이라, 주석을 같이 세면 그 기록 자체가 위반이 된다(다음 세션이 같은 실수를 반복하지 않게
+ *   막아 주는 유일한 장치부터 지우게 된다).
+ * ⚠️ 2026-09-13: 자체 정규식(블록→라인)을 쓰다가 문자열 안의 `/*` 에 물려 파일 뒤쪽이 통째로
+ *   사라지는 함정을 이 레포가 여러 번 밟았다 → 문자열·정규식 리터럴을 추적하는 SSOT 스캐너 사용.
  */
-function stripComments(src: string): string {
-  return src
-    .replace(/\/\*[\s\S]*?\*\//g, '')  // /** … */ 와 {/* … */} 안쪽 전부
-    .split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n')
-}
 
 /** 소비자 화면 파일만 — 셀러/어드민 대시보드는 다른 규칙을 따른다. */
 const CONSUMER_FILES = SRC_FILES.filter(f =>

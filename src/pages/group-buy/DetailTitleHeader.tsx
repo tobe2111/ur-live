@@ -59,7 +59,7 @@ export default function DetailTitleHeader({
           </span>
         )}
         {phone && (
-          <a href={`tel:${phone}`} className="font-semibold no-underline text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-[#2C2F35]">{phone}</a>
+          <a href={`tel:${phone}`} className="font-semibold no-underline text-gray-700 dark:text-gray-200 border-b border-line">{phone}</a>
         )}
       </div>
     </header>

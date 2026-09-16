@@ -10,7 +10,7 @@ import {
   whitespaceVariantOf,
   ENV_ALL_PRESENT,
 } from '../../worker/utils/cron-required-env'
-import { EXPECTED_CRON_EXPRESSIONS, CRON_EXPRESSION_ALIASES } from '../../worker/utils/cron-expected'
+import { KNOWN_CRON_EXPRESSIONS, CRON_EXPRESSION_ALIASES } from '../../worker/utils/cron-expected'
 
 /**
  * 🔑 "돌긴 도는데 못 하는 일" 명부가 낡지 않게 한다 〔2026-08-01〕
@@ -37,8 +37,10 @@ describe('cron 요구 env 명부', () => {
 
   it('명부의 cron 식은 전부 실재한다', () => {
     // 유령 식이 있으면 그 요구사항은 영원히 평가되지 않는다(조용한 사각지대).
+    // 🪦 2026-09-07: 기준이 EXPECTED → KNOWN(기대+은퇴). 은퇴 식에 걸린 요구사항은 **남겨야**
+    //    한다 — 대시보드에 옛 트리거가 남아 그 회차가 돌면 그때도 키가 있어야 하기 때문이다.
     const ghosts = Object.keys(CRON_REQUIRED_ENV).filter(
-      (c) => !EXPECTED_CRON_EXPRESSIONS.includes(c),
+      (c) => !KNOWN_CRON_EXPRESSIONS.includes(c),
     )
     expect(ghosts, `기대 목록에 없는 cron 식: ${ghosts.join(', ')}`).toEqual([])
   })

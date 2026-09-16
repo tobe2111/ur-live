@@ -135,11 +135,15 @@ async function issueExperienceVoucher(
     if (!orderId) return null
 
     const code = await generateUniqueVoucherCode(DB)
+    // 🤝 2026-09-09: 체험단 이용권도 발급 시점의 영입자를 도장 찍는다 — 레일마다 규칙이 갈리면
+    //   그게 다음 사고다(0원 발급이라 커미션은 0 이지만, 도장이 없으면 사용 시점에 소급된다).
+    const { resolveVoucherIntroStamp } = await import('../../../worker/utils/voucher-intro-stamp')
+    const introStamp = await resolveVoucherIntroStamp(DB, campaign.seller_id)
     const vRow = await DB.prepare(`
-      INSERT INTO vouchers (order_id, product_id, user_id, code, expires_at, applied_discount_pct, applied_price, is_experience)
-      VALUES (?, ?, ?, ?, ?, 100, 0, 1)
+      INSERT INTO vouchers (order_id, product_id, user_id, code, expires_at, applied_discount_pct, applied_price, is_experience, introduced_by_influencer_id, intro_stamped_at)
+      VALUES (?, ?, ?, ?, ?, 100, 0, 1, ?, ?)
       RETURNING id
-    `).bind(orderId, campaign.product_id, userId, code, expiresAt).first<{ id: number }>().catch(() => null)
+    `).bind(orderId, campaign.product_id, userId, code, expiresAt, introStamp.introducerId, introStamp.stampedAt).first<{ id: number }>().catch(() => null)
     // 🛡️ 전수조사 fix: voucher 실패 시 order_item 생략(고아 0원 주문 부속물 방지) — 호출부가
     //   null 을 보고 선정 마킹/알림을 보류한다.
     if (!vRow?.id) return null

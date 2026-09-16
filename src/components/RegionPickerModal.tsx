@@ -40,7 +40,7 @@ export default function RegionPickerModal({ open, regionKey, districtKey, onClos
       role="presentation"
     >
       <div
-        className="bg-white dark:bg-[#0D0F12] w-full h-full sm:h-[600px] sm:max-w-2xl sm:rounded-2xl border border-gray-200 dark:border-[#2C2F35] overflow-hidden flex flex-col"
+        className="bg-surface w-full h-full sm:h-[600px] sm:max-w-2xl sm:rounded-2xl border border-line overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -51,7 +51,7 @@ export default function RegionPickerModal({ open, regionKey, districtKey, onClos
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
-              className="p-1 -ml-1 rounded-lg hover:bg-gray-50 dark:hover:bg-[#1A1C21]"
+              className="p-1 -ml-1 rounded-lg hover:bg-gray-50 dark:hover:bg-[#1D1F29]"
               aria-label="닫기"
             >
               <X className="w-5 h-5 text-gray-700 dark:text-gray-200" />
@@ -63,7 +63,7 @@ export default function RegionPickerModal({ open, regionKey, districtKey, onClos
         {/* Body: 2 column */}
         <div className="flex-1 flex min-h-0">
           {/* 좌측 시/도 sidebar */}
-          <div className="w-[88px] sm:w-[100px] border-r border-gray-100 dark:border-[#2C2F35] overflow-y-auto bg-gray-50 dark:bg-[#0D0F12]">
+          <div className="w-[88px] sm:w-[100px] border-r border-gray-100 dark:border-[#2C2F35] overflow-y-auto bg-warm">
             {KOREA_REGIONS.map(r => {
               const active = r.key === activeRegion
               return (
@@ -72,7 +72,7 @@ export default function RegionPickerModal({ open, regionKey, districtKey, onClos
                   onClick={() => setActiveRegion(r.key)}
                   className={`w-full text-center py-3.5 px-2 text-[13px] font-semibold transition-colors whitespace-pre-line leading-tight ${
                     active
-                      ? 'bg-white dark:bg-[#111] text-gray-900 dark:text-white border-l-[3px] border-pink-500'
+                      ? 'bg-white dark:bg-[#111] text-gray-900 dark:text-white border-l-[3px] border-brand'
                       : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                   }`}
                 >
@@ -92,7 +92,7 @@ export default function RegionPickerModal({ open, regionKey, districtKey, onClos
               }}
               className={`w-full flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-[#2C2F35] transition-colors ${
                 regionKey === region.key && !districtKey
-                  ? 'bg-pink-50 dark:bg-pink-950/30'
+                  ? 'bg-brand-tint '
                   : 'hover:bg-gray-50 dark:hover:bg-[#111]'
               }`}
             >
@@ -125,7 +125,7 @@ export default function RegionPickerModal({ open, regionKey, districtKey, onClos
                         }}
                         className={`w-full text-left px-5 py-3 text-[14px] transition-colors ${
                           active
-                            ? 'text-pink-600 dark:text-pink-400 font-bold bg-pink-50/50 dark:bg-pink-950/20'
+                            ? 'text-brand-text  font-bold bg-brand-tint/50 '
                             : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#111]'
                         }`}
                       >

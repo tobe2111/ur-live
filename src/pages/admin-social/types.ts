@@ -59,9 +59,9 @@ export function parseHashtags(raw: string | null): string[] {
 
 export const STATUS_META: Record<string, { label: string; cls: string }> = {
   draft: { label: '초안', cls: 'bg-gray-100 text-gray-700' },
-  approved: { label: '승인됨', cls: 'bg-blue-100 text-blue-700' },
-  publishing: { label: '발행 중', cls: 'bg-amber-100 text-amber-700' },
-  published: { label: '발행됨', cls: 'bg-green-100 text-green-700' },
-  failed: { label: '실패', cls: 'bg-red-100 text-red-700' },
+  approved: { label: '승인됨', cls: 'bg-tone-info-bg text-tone-info' },
+  publishing: { label: '발행 중', cls: 'bg-tone-warn-bg text-tone-warn' },
+  published: { label: '발행됨', cls: 'bg-tone-ok-bg text-tone-ok' },
+  failed: { label: '실패', cls: 'bg-tone-bad-bg text-tone-bad' },
   archived: { label: '보관', cls: 'bg-gray-100 text-gray-400' },
 }

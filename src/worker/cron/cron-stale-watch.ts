@@ -27,7 +27,7 @@
  *   이 작업은 매시(`0 * * * *`)에 붙어 있어, 시간당 cron 자체가 죽으면 침묵한다.
  *   그 경우는 외부 관측(uptime 워크플로 / 사이트 다운)이 잡아야 한다.
  */
-import { listCronHeartbeats } from '../utils/cron-heartbeat'
+import { listCronHeartbeats, adsLanesPausedFrom, isPausedAdsBeat } from '../utils/cron-heartbeat'
 import { classifyBeat, freshBaseNames } from '../utils/cron-beat-retirement'
 import { reportCronFailure } from '../utils/cron-reporter'
 import type { Env } from '../types/env'
@@ -59,8 +59,11 @@ export async function handleCronStaleWatch(env: Env): Promise<{ checked: number;
   //   🔒 **지우는 게 아니다** — `retired`/`superseded` 만 빼고 판정 대상(`judge`)은 그대로 신고한다.
   //   판정 기준은 그 파일의 배수(8×)와 하한(24h)이라, 예산에 밀려 늦는 정상 레인은 숨지 않는다.
   const fresh = freshBaseNames(beats)
+  // ⏸️ 유어애즈가 스위치로 멈춰 있으면(`ads:lanes-paused` 신선 + paused=true) `ads:*` 침묵은 신고하지 않는다 —
+  //   표식 없이 멈춘 것과 구분한다(그건 여전히 경보다). 근거: `worker-ads/lane-pause.ts`.
+  const adsPaused = adsLanesPausedFrom(beats)
   const stale = beats.filter(b =>
-    b.stale === true && b.name !== SELF
+    b.stale === true && b.name !== SELF && !isPausedAdsBeat(b.name, adsPaused)
     && classifyBeat({ name: b.name, age_minutes: b.age_minutes, max_gap_min: b.max_gap_min }, fresh) === 'judge')
 
   // 🔴 2026-08-31 신설 — 이 감시가 못 보던 나머지 절반: **돌긴 하는데 아무것도 못 하는 것.**

@@ -31,7 +31,7 @@ describe('⏰ 슬롯 cron 은 자기 주기를 신고한다', () => {
 
   it('🔌 배선 — safeCron 이 주기를 받아 하트비트에 넘긴다', () => {
     expect(CODE).toMatch(/const safeCron = async \(name: string, task: \(\) => Promise<unknown>, gapMin\?: number\)/)
-    expect(CODE).toMatch(/recordCronBeat\(env, name, ok, Date\.now\(\) - t0, cron, out, gapMin\)/)
+    expect(CODE).toMatch(/recordCronBeat\(env, name, ok, Date\.now\(\) - t0, cron, out, gapMin, meter\)/)
   })
 
   it('🔌 배선 — slotCron 이 cron 식을 SSOT 로 환산한다(새 상수 금지)', () => {

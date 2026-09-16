@@ -201,12 +201,12 @@ export default function AdminLoginPage() {
             <span className="text-xs font-bold tracking-widest text-[#9ca3af] uppercase">Admin</span>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+          <div className="bg-white rounded-[var(--dash-radius,16px)] border border-rule border border-gray-200 p-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-1">{t('admin.login.title')}</h2>
             <p className="text-gray-500 text-sm mb-8">{t('admin.login.subtitle')}</p>
 
             {error && (
-              <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
+              <div className="mb-6 p-3 bg-white border border-rule rounded-xl text-sm text-tone-bad">
                 {error}
               </div>
             )}

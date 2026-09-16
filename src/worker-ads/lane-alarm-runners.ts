@@ -20,6 +20,7 @@
  *   얹을 근거는 "cron 회차를 못 받아 굶는다" 또는 "회차가 죽어 진도가 안 나간다" 여야 한다 —
  *   하루 1회면 충분한 배치(주간 리포트 등)는 cron 이 맞다.
  */
+import { DAILY_INTERVAL_HOURS } from './lane-adaptive-interval'
 import type { Env } from '@/worker/types/env'
 
 export interface AlarmLane {
@@ -147,18 +148,45 @@ export const ALARM_LANES: Record<string, AlarmLane> = {
    * 6시간 20분 정지** — 그동안 리드 0건, 커서 0전진.
    * ⇒ 예산 재분배로는 못 푼다(누가 굶느냐만 바뀌고 벽은 그대로다). 자기 인보케이션이 있어야 한다.
    *
-   * ## ⚠️ `runsPerHour: 1` 인 이유 — 처리량을 미는 게 아니라 **고장을 고치는 것**
+   * ## ⚠️ 처음 `runsPerHour: 1` 이었던 이유 — 처리량을 미는 게 아니라 **고장을 고치는 것**(현재 값은 3, 아래 🔓)
    * cron 이 원래 `0 * * * *`(시간당 1회)다. 기본 12회/시간을 그대로 받으면 그건 **설계 의도를 넘는**
    * 증설이고, 대표가 경계한 네이버 부하 증가가 된다. 여기서는 **의도한 값으로 복원만** 한다.
    *   · YT 검색은 `ytBudgetTotal`(하루 90~100)이 하드캡이라 회차 수와 무관하게 총량이 같다.
    *   · 네이버는 하루 25,000 쿼터에 실사용 ~2%.
    * ⚠️ 이 값을 올리려면 **네이버 차단 리스크를 다시 판단**할 것 — 대표 확인 사항이다.
    *
+   * ## 🔓 1 → 3 (2026-09-02 대표 승인 "응 다 해줘" — 최대 수집)
+   *
+   * 🩸 **그 승인은 원래 다른 값에 대한 것이었고, 그게 이 항목이 생긴 이유다.** 같은 날 #1321 이
+   * `ADS_COLLECT_ROUNDS`(체인 깊이) 4→12 와 폭 9→14 를 올렸는데, **라이브에서 둘 다 거의 안 먹었다**:
+   * ```
+   *   배포 후 첫 정각(17:00)   last_keywords[9]   total_runs 954 → 955 (+1)
+   * ```
+   * ① 체인은 `!laneAlarmOn` 일 때만 kick 된다(`index.ts`) — 지금은 **알람이 몰고 있어** 체인 자체를
+   *    안 탄다. 즉 `ADS_COLLECT_ROUNDS` 는 이 구성에서 **죽은 손잡이**다.
+   * ② 폭 cap 을 14 로 올려도 처리 수는 **인보케이션당 서브리퀘스트 예산**이 정한다(YT 동반 회차
+   *    키워드당 ~6.2 → 예산 56 이면 ~9). cap 은 천장일 뿐 바닥을 못 민다.
+   *
+   * ⇒ **진짜 레버는 인보케이션 수**다 — 이 파일 위쪽 주석이 이미 그렇게 적어 뒀다("자기 인보케이션이
+   *   있어야 한다"). 회차 하나 = 새 예산이므로, 시간당 회차를 늘리는 것만이 총량을 민다.
+   *
+   * **왜 12 가 아니라 3 인가** — 대표에게 보여 드리고 승인받은 숫자가 "3배"였고, 예산 검증도 3배로 했다:
+   * ```
+   *   collect 회차당 쓴 행 ~4,000~5,800 → 하루 ~117,000 (전체 쓰기 693,557 의 17%)
+   *   3배 → +234,000 → 하루 ~927,000 / 예산 150만 = 62%     ✅
+   *   12배 → +1,290,000 → 하루 ~190만 > 150만               ❌ 차단기가 자정 전에 멈춘다
+   * ```
+   * 승인 문구가 "다 해줘"라고 해서 **보여 드린 것보다 큰 값**을 넣지 않는다. 12 로 가려면 쓰기 예산과
+   * 네이버 차단을 다시 재고 다시 판단받아야 한다.
+   *
+   * ⚠️ 네이버 검색 호출도 3배가 된다(하루 쿼터 25,000 대비 실사용 ~2% → ~6%). **하루 뒤
+   *   `ads_naver_crawl_block.blocked` 가 0 이 아니면 즉시 1 로 되돌린다** — 이 숫자 하나가 롤백 전부다.
+   *
    * 🔒 이중 실행은 리스(`ads_collect_lease`)가 막는다 — 알람과 cron 이 겹쳐도 한쪽만 잡는다.
    *   그래도 부모 쪽 디스패치는 게이트로 끈다(겹치면 순수 낭비이고, 부모 CPU 를 또 먹는다).
    */
   collect: {
-    runsPerHour: 1,
+    runsPerHour: 3,
     run: async (env) => {
       const { runInfluencerAutoCollect } = await import('@/features/marketing/api/influencer-auto-collect')
       return runInfluencerAutoCollect(env)
@@ -354,46 +382,44 @@ export const ALARM_LANES: Record<string, AlarmLane> = {
    */
   'maintenance-rescan': {
     runsPerHour: 1,
+    minIntervalHours: DAILY_INTERVAL_HOURS,   // 📅 하루 1회 — 시각은 안 고른다(위 블록 주석)
     run: async (env) => {
       if ((env as unknown as { ADS_AUTO_MAINTENANCE_ENABLED?: string }).ADS_AUTO_MAINTENANCE_ENABLED === 'false') return { skipped: 'gate_off' }
-      const { RESCAN_HOUR_UTC } = await import('./rescan-hour')
-      if (new Date().getUTCHours() !== RESCAN_HOUR_UTC) return { skipped: 'off_hour' }
       const { runNightlyRescan } = await import('@/features/marketing/api/influencer-maintenance')
       return runNightlyRescan(env)
     },
   },
   'collect-localdata-chain': {
     runsPerHour: 1,
+    minIntervalHours: DAILY_INTERVAL_HOURS,   // 📅 하루 1회 — 시각은 안 고른다(위 블록 주석)
     run: async (env) => {
       if ((env as unknown as { ADS_LOCALDATA_ENABLED?: string }).ADS_LOCALDATA_ENABLED !== 'true') return { skipped: 'gate_off' }
-      if (new Date().getUTCHours() !== 20) return { skipped: 'off_hour' }
       const { runLocalDataCollect } = await import('@/features/marketing/api/localdata-collect')
       return runLocalDataCollect(env)
     },
   },
   'collect-nps': {
     runsPerHour: 1,
+    minIntervalHours: DAILY_INTERVAL_HOURS,   // 📅 하루 1회 — 시각은 안 고른다(위 블록 주석)
     run: async (env) => {
       if ((env as unknown as { ADS_NPS_ENABLED?: string }).ADS_NPS_ENABLED !== 'true') return { skipped: 'gate_off' }
-      if (new Date().getUTCHours() !== 16) return { skipped: 'off_hour' }
       const { runNpsWorkplaceEnrich } = await import('@/features/marketing/api/nps-workplace-enrich')
       return runNpsWorkplaceEnrich(env)
     },
   },
   'daily-batch': {
     runsPerHour: 1,
+    minIntervalHours: DAILY_INTERVAL_HOURS,   // 📅 하루 1회 — 시각은 안 고른다(위 블록 주석)
     run: async (env) => {
-      // env 게이트 없음(cron 도 무게이트) — 시각만 지킨다.
-      if (new Date().getUTCHours() !== 18) return { skipped: 'off_hour' }
       const { runAdsDailyBatch } = await import('./daily-batch')
       return runAdsDailyBatch(env)
     },
   },
   'sweep-nts': {
     runsPerHour: 1,
+    minIntervalHours: DAILY_INTERVAL_HOURS,   // 📅 하루 1회 — 시각은 안 고른다(위 블록 주석)
     run: async (env) => {
       if (env.ADS_COMPANY_COLLECT_ENABLED !== 'true') return { skipped: 'gate_off' }
-      if (new Date().getUTCHours() !== 19) return { skipped: 'off_hour' }
       const { sweepBusinessStatus } = await import('@/features/marketing/api/business-status-sweep')
       return sweepBusinessStatus(env)
     },
@@ -401,9 +427,9 @@ export const ALARM_LANES: Record<string, AlarmLane> = {
   // ⚠️ 나라장터는 **opt-out**(기본 ON — 2026-08-04 대표 "자동으로 데이터 나오게끔") — 게이트 방향 주의.
   'collect-nara-contract': {
     runsPerHour: 1,
+    minIntervalHours: DAILY_INTERVAL_HOURS,   // 📅 하루 1회 — 시각은 안 고른다(위 블록 주석)
     run: async (env) => {
       if ((env as unknown as { ADS_NARA_CONTRACT_ENABLED?: string }).ADS_NARA_CONTRACT_ENABLED === 'false') return { skipped: 'gate_off' }
-      if (new Date().getUTCHours() !== 23) return { skipped: 'off_hour' }
       const { runNaraContractCollect } = await import('@/features/marketing/api/nara-contract-collect')
       return runNaraContractCollect(env)
     },
@@ -415,9 +441,9 @@ export const ALARM_LANES: Record<string, AlarmLane> = {
    */
   'collect-nara-vendor': {
     runsPerHour: 1,
+    minIntervalHours: DAILY_INTERVAL_HOURS,   // 📅 하루 1회 — 시각은 안 고른다(위 블록 주석)
     run: async (env) => {
       if ((env as unknown as { ADS_NARA_VENDOR_ENABLED?: string }).ADS_NARA_VENDOR_ENABLED === 'false') return { skipped: 'gate_off' }
-      if (new Date().getUTCHours() !== 15) return { skipped: 'off_hour' }
       const { runNaraVendorCollect } = await import('@/features/marketing/api/nara-vendor-collect')
       return runNaraVendorCollect(env)
     },
@@ -450,18 +476,18 @@ export const ALARM_LANES: Record<string, AlarmLane> = {
    */
   'sweep-mx': {
     runsPerHour: 1,
+    minIntervalHours: DAILY_INTERVAL_HOURS,   // 📅 하루 1회 — 시각은 안 고른다(위 블록 주석)
     run: async (env) => {
       if (env.ADS_COMPANY_COLLECT_ENABLED !== 'true') return { skipped: 'gate_off' }
-      if (new Date().getUTCHours() !== 17) return { skipped: 'off_hour' }
       const { sweepEmailMx } = await import('@/features/marketing/api/email-mx-sweep')
       return sweepEmailMx(env)
     },
   },
   'collect-franchise': {
     runsPerHour: 1,
+    minIntervalHours: DAILY_INTERVAL_HOURS,   // 📅 하루 1회 — 시각은 안 고른다(위 블록 주석)
     run: async (env) => {
       if ((env as unknown as { ADS_FRANCHISE_ENABLED?: string }).ADS_FRANCHISE_ENABLED !== 'true') return { skipped: 'gate_off' }
-      if (new Date().getUTCHours() !== 22) return { skipped: 'off_hour' }
       const { runFranchiseCollect } = await import('@/features/marketing/api/franchise-collect')
       return runFranchiseCollect(env)
     },

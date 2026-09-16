@@ -11,6 +11,8 @@ const AdminLoginPage = lazy(() => import('@/pages/AdminLoginPage'))
 const AdminSettlementPage = lazy(() => import('@/pages/AdminSettlementPage'))
 const AdminBannersPage = lazy(() => import('@/pages/AdminBannersPage'))
 const AdminHomeSectionsPage = lazy(() => import('@/pages/admin/AdminHomeSectionsPage'))
+// 🎬 2026-09-07 유어쇼츠 — 영상마다 이용권을 고르는 화면.
+const AdminUrShortsPage = lazy(() => import('@/pages/AdminUrShortsPage'))
 const AdminOrdersPage = lazy(() => import('@/pages/AdminOrdersPage'))
 // 🛡️ 2026-05-27 (사용자 결정): admin 매장 검수 통합 페이지
 const AdminPendingSellersPage = lazy(() => import('@/pages/AdminPendingSellersPage'))
@@ -84,15 +86,14 @@ const AdminKakaoTestPage = lazy(() => import('@/pages/admin/AdminKakaoTestPage')
 const AdminKakaoTestCallbackPage = lazy(() => import('@/pages/admin/AdminKakaoTestCallbackPage'))
 const AdminSampleRequestsPage = lazy(() => import('@/pages/admin/AdminSampleRequestsPage'))
 const AdminOperationsGuidePage = lazy(() => import('@/pages/admin/AdminOperationsGuidePage'))
-const AdminPlatformModelPage = lazy(() => import('@/pages/admin/AdminPlatformModelPage')); const AdminProposalsPage = lazy(() => import('@/pages/admin/AdminProposalsPage'))
+const AdminPlatformModelPage = lazy(() => import('@/pages/admin/AdminPlatformModelPage')); const AdminProposalsPage = lazy(() => import('@/pages/admin/AdminProposalsPage')); const AdminDecisionsPage = lazy(() => import('@/pages/admin/AdminDecisionsPage')) // 📥 2026-09-08 결재함(docs/decisions ?raw)
 // 🏭 2026-06-07: 도매몰(유통스타트 B2B) 전용 운영 가이드.
 const AdminWholesaleGuidePage = lazy(() => import('@/pages/admin/AdminWholesaleGuidePage'))
 const AdminBlogPage = lazy(() => import('@/pages/AdminBlogPage'))
 const AdminSocialPage = lazy(() => import('@/pages/AdminSocialPage'))
 const AdminNotificationSettingsPage = lazy(() => import('@/pages/AdminNotificationSettingsPage'))
-const AdminAgencyPage = lazy(() => import('@/pages/AdminAgencyPage'))
 const AdminSellerApprovalPage = lazy(() => import('@/pages/AdminSellerApprovalPage'))
-const AdminAgencyCreatorApprovalPage = lazy(() => import('@/pages/AdminAgencyCreatorApprovalPage'))
+const AdminStoreOwnerPage = lazy(() => import('@/pages/AdminStoreOwnerPage')) // 🪑 매장 소유자 지정·이전 (3단계)
 const AdminSettlementsBulkPage = lazy(() => import('@/pages/AdminSettlementsBulkPage'))
 const AdminNoticesPage = lazy(() => import('@/pages/AdminNoticesPage'))
 const AdminPlatformSettingsPage = lazy(() => import('@/pages/AdminPlatformSettingsPage'))
@@ -304,6 +305,11 @@ export function AdminRoutes() {
       <Route path="/admin/home-sections" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminHomeSectionsPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/urshorts" element={
+        <ProtectedRoute requireAdmin>
+          <ErrorBoundary><AdminUrShortsPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/admin/orders" element={
@@ -519,7 +525,7 @@ export function AdminRoutes() {
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminPlatformModelPage /></ErrorBoundary>
         </ProtectedRoute>
-      } /><Route path="/admin/proposals" element={<ProtectedRoute requireAdmin><ErrorBoundary><AdminProposalsPage /></ErrorBoundary></ProtectedRoute>} />
+      } /><Route path="/admin/proposals" element={<ProtectedRoute requireAdmin><ErrorBoundary><AdminProposalsPage /></ErrorBoundary></ProtectedRoute>} /><Route path="/admin/decisions" element={<ProtectedRoute requireAdmin><ErrorBoundary><AdminDecisionsPage /></ErrorBoundary></ProtectedRoute>} />
       {/* 🏭 2026-06-07: 도매몰(유통스타트 B2B) 전용 운영 가이드 */}
       <Route path="/admin/wholesale-guide" element={
         <ProtectedRoute requireAdmin>
@@ -594,10 +600,7 @@ export function AdminRoutes() {
       } />
       <Route path="/admin/seller-approval" element={
         <ProtectedRoute requireAdmin><AdminSellerApprovalPage /></ProtectedRoute>
-      } />
-      <Route path="/admin/agency-creator-approval" element={
-        <ProtectedRoute requireAdmin><AdminAgencyCreatorApprovalPage /></ProtectedRoute>
-      } />
+      } /><Route path="/admin/store-owner" element={<ProtectedRoute requireAdmin><AdminStoreOwnerPage /></ProtectedRoute>} />
       <Route path="/admin/settlements-bulk" element={
         <ProtectedRoute requireAdmin><AdminSettlementsBulkPage /></ProtectedRoute>
       } />
@@ -635,11 +638,8 @@ export function AdminRoutes() {
           <ErrorBoundary><AdminCouponsPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
-      <Route path="/admin/agencies" element={
-        <ProtectedRoute requireAdmin>
-          <ErrorBoundary><AdminAgencyPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
+      {/* 🌇 2026-09-04 에이전시 일몰 — `/admin/agencies` · `/admin/agency-creator-approval` 삭제.
+          docs/design/store-operator-model.md */}
       <Route path="/admin/abuse" element={
         <ProtectedRoute requireAdmin>
           <ErrorBoundary><AdminAbusePage /></ErrorBoundary>

@@ -39,7 +39,7 @@ export default function SellerRealtimeDashboardPage() {
     <SellerLayout title="실시간 대시보드">
       <div className="p-8 text-center">
         <p className="text-gray-500 mb-3">{isError ? '데이터를 불러오지 못했습니다' : '표시할 데이터가 없습니다'}</p>
-        <button onClick={load} className="px-4 py-2 text-sm border border-gray-300 rounded-lg text-gray-700">새로고침</button>
+        <button onClick={load} className="ur-btn ur-btn-md ur-btn-secondary">새로고침</button>
       </div>
     </SellerLayout>
   )
@@ -54,51 +54,51 @@ export default function SellerRealtimeDashboardPage() {
 
   return (
     <SellerLayout title="실시간 매출 대시보드">
-      <div className="mx-auto max-w-4xl space-y-5 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-5">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-pink-500" /> 실시간 매출
+              <TrendingUp className="w-5 h-5 text-brand-text" /> 실시간 매출
             </h2>
             <p className="text-xs text-gray-500 mt-1">60초마다 자동 새로고침</p>
           </div>
-          <button onClick={load} className="px-3 py-1.5 text-xs border border-gray-300 rounded-lg flex items-center gap-1.5">
+          <button onClick={load} className="ur-btn ur-btn-sm ur-btn-secondary gap-1.5">
             <RefreshCw className="w-3.5 h-3.5" /> 새로고침
           </button>
         </div>
 
         {/* 3 카드: 오늘 / 7일 / 30일 */}
         <div className="grid grid-cols-3 gap-3">
-          <div className="bg-pink-50 rounded-xl p-4 text-center">
-            <p className="text-[10px] text-pink-700 font-medium">오늘</p>
-            <p className="text-2xl font-extrabold text-pink-800 mt-1">{formatNumber(data.today?.amt)}원</p>
-            <p className="text-[10px] text-pink-600 mt-1">{safeNum(data.today?.cnt)}건</p>
+          <div className="bg-brand-tint rounded-xl p-4 text-center">
+            <p className="text-[10px] text-brand-text font-medium">오늘</p>
+            <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900 mt-1">{formatNumber(data.today?.amt)}원</p>
+            <p className="text-[10px] text-brand-text mt-1">{safeNum(data.today?.cnt)}건</p>
           </div>
-          <div className="bg-blue-50 rounded-xl p-4 text-center">
-            <p className="text-[10px] text-blue-700 font-medium">최근 7일</p>
-            <p className="text-2xl font-extrabold text-blue-800 mt-1">{formatNumber(data.week?.amt)}원</p>
-            <p className="text-[10px] text-blue-600 mt-1">{safeNum(data.week?.cnt)}건</p>
+          <div className="border border-rule bg-white rounded-xl p-4 text-center">
+            <p className="text-[10px] text-gray-700 font-medium">최근 7일</p>
+            <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900 mt-1">{formatNumber(data.week?.amt)}원</p>
+            <p className="text-[10px] text-gray-700 mt-1">{safeNum(data.week?.cnt)}건</p>
           </div>
-          <div className="bg-emerald-50 rounded-xl p-4 text-center">
-            <p className="text-[10px] text-emerald-700 font-medium">최근 30일</p>
-            <p className="text-2xl font-extrabold text-emerald-800 mt-1">{formatNumber(data.month?.amt)}원</p>
-            <p className="text-[10px] text-emerald-600 mt-1">{safeNum(data.month?.cnt)}건</p>
+          <div className="border border-rule bg-white rounded-xl p-4 text-center">
+            <p className="text-[10px] text-tone-ok font-medium">최근 30일</p>
+            <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900 mt-1">{formatNumber(data.month?.amt)}원</p>
+            <p className="text-[10px] text-tone-ok mt-1">{safeNum(data.month?.cnt)}건</p>
           </div>
         </div>
 
         {/* voucher 사용률 + 인플 referral */}
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-white border border-gray-200 rounded-xl p-4">
-            <h3 className="text-sm font-bold text-gray-900 mb-2 flex items-center gap-1.5"><Ticket className="w-4 h-4 text-amber-500" /> Voucher 사용률 (30일)</h3>
+            <h3 className="text-sm font-bold text-gray-900 mb-2 flex items-center gap-1.5"><Ticket className="w-4 h-4 text-tone-warn" /> Voucher 사용률 (30일)</h3>
             <p className="text-3xl font-extrabold text-gray-900">{useRate}%</p>
             <p className="text-[11px] text-gray-500 mt-1">{safeNum(data.voucher_stats?.used)} / {safeNum(data.voucher_stats?.total)}</p>
             <div className="w-full bg-gray-100 rounded-full h-2 mt-2">
-              <div className="bg-amber-500 h-full rounded-full" style={{ width: `${useRate}%` }} />
+              <div className="bg-tone-warn h-full rounded-full" style={{ width: `${useRate}%` }} />
             </div>
             <p className="text-[10px] text-gray-400 mt-2">미사용 {safeNum(data.voucher_stats?.unused)} · 만료 {safeNum(data.voucher_stats?.expired)}</p>
           </div>
           <div className="bg-white border border-gray-200 rounded-xl p-4">
-            <h3 className="text-sm font-bold text-gray-900 mb-2 flex items-center gap-1.5"><Users className="w-4 h-4 text-pink-500" /> 인플 Referral 매출 (30일)</h3>
+            <h3 className="text-sm font-bold text-gray-900 mb-2 flex items-center gap-1.5"><Users className="w-4 h-4 text-brand-text" /> 인플 Referral 매출 (30일)</h3>
             <p className="text-3xl font-extrabold text-gray-900">{safeNum(data.referral_stats?.cnt)}건</p>
             <p className="text-[11px] text-gray-500 mt-1">인플에 지급된 commission: {formatNumber(data.referral_stats?.total_commission)}원</p>
           </div>
@@ -115,7 +115,7 @@ export default function SellerRealtimeDashboardPage() {
                 <div key={d.d} className="flex items-center gap-2">
                   <span className="text-[10px] text-gray-500 w-16 font-mono">{d.d.slice(5)}</span>
                   <div className="flex-1 bg-gray-100 rounded h-4 relative overflow-hidden">
-                    <div className="bg-pink-400 h-full" style={{ width: `${(safeNum(d.amt) / maxDaily) * 100}%` }} />
+                    <div className="bg-brand h-full" style={{ width: `${(safeNum(d.amt) / maxDaily) * 100}%` }} />
                   </div>
                   <span className="text-[10px] text-gray-700 w-24 text-right font-bold">{formatNumber(d.amt)}원</span>
                 </div>

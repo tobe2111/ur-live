@@ -8,6 +8,8 @@ import ErrorBoundary from '@/components/ErrorBoundary'
 import { ProtectedRoute, PublicRoute } from '@/components/auth/RouteGuards'
 
 const SellerPage = lazy(() => import('@/pages/SellerPage'))
+// 📱 2026-09-14: 다섯 번째 탭 '더보기' — 폰에서 사이드바를 대신한다(seller-primary-nav).
+const SellerMorePage = lazy(() => import('@/pages/SellerMorePage'))
 const SellerLoginPage = lazy(() => import('@/pages/SellerLoginPage')); const SellerRelinkPage = lazy(() => import('@/pages/SellerRelinkPage')) // 🔁 카카오 재연결
 // 🏁 2026-07-02 (대표 "B — 단일 퍼널"): 셀러 가입 단일 관문 = /seller/register/supplier.
 //   레거시 /seller/register(별도 아이디/비번 독립계정)·/seller/register/business(막다른 안내)는
@@ -46,6 +48,10 @@ const SellerSettlementsPage = lazy(() => import('@/pages/SellerSettlementsPage')
 const SellerOperatorsPage = lazy(() => import('@/pages/SellerOperatorsPage'))
 // 🏪📣 2026-08-20 seller-dashboard-v2: 매장 관리(카카오맵 등록·삭제·위임) · 인플루언서 탐색/제안
 const SellerStoresPage = lazy(() => import('@/pages/SellerStoresPage'))
+// 🏪 2026-09-16 (대표 — "업체 정보 입력하는 페이지는 하나로 통일"): 모달·유어샵 설정·프로필이 한 장으로.
+const SellerStoreInfoPage = lazy(() => import('@/pages/SellerStoreInfoPage'))
+// 🏪 2026-09-04 (대표 확정 '운영 매장 요약 대시보드'): 중개사가 매장에 청구할 근거를 보는 화면.
+const SellerOperatingSummaryPage = lazy(() => import('@/pages/SellerOperatingSummaryPage'))
 const SellerInfluencersPage = lazy(() => import('@/pages/SellerInfluencersPage'))
 const SellerAlimtalkPage = lazy(() => import('@/pages/SellerAlimtalkPage'))
 const SellerYoutubeGrowthPage = lazy(() => import('@/pages/SellerYoutubeGrowthPage'))
@@ -73,13 +79,10 @@ const SellerStaysBookingsPage = lazy(() => import('@/pages/SellerStaysBookingsPa
 const SellerVoucherOrdersPage = lazy(() => import('@/pages/SellerVoucherOrdersPage'))
 const Seller2FASetupPage = lazy(() => import('@/pages/Seller2FASetupPage'))
 const SellerNotifyFollowersPage = lazy(() => import('@/pages/SellerNotifyFollowersPage'))
-const SellerMiniShopPage = lazy(() => import('@/pages/SellerMiniShopPage'))
 const SellerPromoCodesPage = lazy(() => import('@/pages/SellerPromoCodesPage'))
 const SellerFollowersPage = lazy(() => import('@/pages/SellerFollowersPage'))
-const SellerPromoteBoostsPage = lazy(() => import('@/pages/SellerPromoteBoostsPage'))
 const YouTubeCallbackPage = lazy(() => import('@/pages/YouTubeCallbackPage'))
 // 🤝 2026-07-10: 3단 위임/promo 투명성 모델 (docs/design/vendor-commission-passthrough.md §4.3)
-const SellerAgencyDelegationPage = lazy(() => import('@/pages/SellerAgencyDelegationPage'))
 const SellerPromoSpendPage = lazy(() => import('@/pages/SellerPromoSpendPage'))
 const SellerInfluencerDealsPage = lazy(() => import('@/pages/SellerInfluencerDealsPage'))
 const SellerExperienceCampaignsPage = lazy(() => import('@/pages/SellerExperienceCampaignsPage'))
@@ -113,6 +116,11 @@ export function SellerRoutes() {
         </ProtectedRoute>
       } />
       <Route path="/seller/dashboard" element={<Navigate to="/seller" replace />} />
+      <Route path="/seller/more" element={
+        <ProtectedRoute requireSeller>
+          <SellerMorePage />
+        </ProtectedRoute>
+      } />
       <Route path="/seller/tier" element={
         <ProtectedRoute requireSeller>
           <SellerTierPage />
@@ -123,11 +131,9 @@ export function SellerRoutes() {
           <SellerBusinessInfoPage />
         </ProtectedRoute>
       } />
-      <Route path="/seller/promote-boosts" element={
-        <ProtectedRoute requireSeller>
-          <SellerPromoteBoostsPage />
-        </ProtectedRoute>
-      } />
+      {/* 🌇 2026-09-04 에이전시 일몰 — `/seller/promote-boosts` 삭제. 이 쿠폰은 **에이전시만** 발급할 수
+          있었고(발급 API 가 에이전시 인증), 쓰는 곳은 라이브 방송(영구 중단)이었다. 라이브 실측
+          `promote_boost_coupons` 0행 — 발급도 사용도 된 적이 없다. */}
       <Route path="/seller/orders" element={
         <ProtectedRoute requireSeller>
           <SellerOrdersPage />
@@ -223,6 +229,16 @@ export function SellerRoutes() {
       <Route path="/seller/stores" element={
         <ProtectedRoute requireSeller>
           <SellerStoresPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/store" element={
+        <ProtectedRoute requireSeller>
+          <ErrorBoundary><SellerStoreInfoPage /></ErrorBoundary>
+        </ProtectedRoute>
+      } />
+      <Route path="/seller/operating" element={
+        <ProtectedRoute requireSeller>
+          <SellerOperatingSummaryPage />
         </ProtectedRoute>
       } />
       <Route path="/seller/influencers" element={
@@ -335,12 +351,9 @@ export function SellerRoutes() {
           <ErrorBoundary><SellerNotifyFollowersPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
-      {/* 🛡️ 2026-05-15 (PRISM 따라잡기): 미니샵 커스터마이징 */}
-      <Route path="/seller/mini-shop" element={
-        <ProtectedRoute requireSeller>
-          <ErrorBoundary><SellerMiniShopPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
+      {/* 🏪 2026-09-16: 유어샵 설정 → 업체 정보로 흡수(배너·브랜드 컬러가 거기로 갔다).
+          라우트는 남긴다 — 북마크·안내 문구에 이 주소가 이미 퍼져 있어 지우면 404 가 된다. */}
+      <Route path="/seller/mini-shop" element={<Navigate to="/seller/store" replace />} />
       {/* 🛡️ 2026-05-15: 셀러 promo 코드 (단골 전용 할인) */}
       <Route path="/seller/promo-codes" element={
         <ProtectedRoute requireSeller>
@@ -358,12 +371,9 @@ export function SellerRoutes() {
           <SellerSupplyPage />
         </ProtectedRoute>
       } />
-      {/* 🤝 2026-07-10: 에이전시 위임(3단 모델) + promo 지출 투명성 + 인플 협업 deal */}
-      <Route path="/seller/agency-delegation" element={
-        <ProtectedRoute requireSeller>
-          <ErrorBoundary><SellerAgencyDelegationPage /></ErrorBoundary>
-        </ProtectedRoute>
-      } />
+      {/* 🌇 2026-09-04 에이전시 일몰 — `/seller/agency-delegation` 제거. 매장↔중개사 위임은
+          에이전시가 아니라 `seller_operators`(owner/operator)로 다시 만든다(설계 대기).
+          docs/design/store-operator-model.md */}
       <Route path="/seller/promo-spend" element={
         <ProtectedRoute requireSeller>
           <ErrorBoundary><SellerPromoSpendPage /></ErrorBoundary>

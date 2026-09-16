@@ -92,7 +92,7 @@ export default function SellerBookingSlotsPage() {
 
   return (
     <SellerLayout title="예약 시간 관리">
-      <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-6">
         <DashboardPageHeader
           icon={<Calendar className="h-5 w-5" />}
           title="예약 시간 관리"
@@ -111,13 +111,13 @@ export default function SellerBookingSlotsPage() {
               {slots.map(s => (
                 <div key={s.id} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg">
                   <div className="flex items-center gap-3 text-sm">
-                    <span className={`w-7 h-7 rounded-full text-xs font-bold flex items-center justify-center ${s.day_of_week === 0 || s.day_of_week === 6 ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
+                    <span className={`w-7 h-7 rounded-full text-xs font-bold flex items-center justify-center ${s.day_of_week === 0 || s.day_of_week === 6 ? 'bg-tone-bad-bg text-tone-bad' : 'bg-tone-info-bg text-tone-info'}`}>
                       {DAYS[s.day_of_week]}
                     </span>
                     <span className="font-mono text-gray-900">{s.start_time} ~ {s.end_time}</span>
                     <span className="text-xs text-gray-500">동시 {s.capacity}명</span>
                   </div>
-                  <button onClick={() => remove(s.id)} className="text-gray-400 hover:text-red-500">
+                  <button onClick={() => remove(s.id)} className="text-gray-400 hover:text-tone-bad">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -163,7 +163,7 @@ export default function SellerBookingSlotsPage() {
                 />
                 <span className="text-xs text-gray-500">명</span>
                 {newSlots.length > 1 && (
-                  <button onClick={() => setNewSlots(arr => arr.filter((_, j) => j !== i))} className="text-gray-400 hover:text-red-500 ml-auto">
+                  <button onClick={() => setNewSlots(arr => arr.filter((_, j) => j !== i))} className="text-gray-400 hover:text-tone-bad ml-auto">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 )}
@@ -189,7 +189,7 @@ export default function SellerBookingSlotsPage() {
         </div>
 
         <div className="text-xs text-gray-500">
-          💡 한 슬롯에 여러 고객 동시 수용 가능 (예: 미용실 의자 3개 = 동시 3명).
+          한 슬롯에 여러 고객 동시 수용 가능 (예: 미용실 의자 3개 = 동시 3명).
           저장 시 자동으로 이 상품의 예약 시스템이 활성화됩니다.
         </div>
       </div>

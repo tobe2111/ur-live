@@ -5,6 +5,7 @@
 import { useNavigate } from 'react-router-dom'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useTranslation } from 'react-i18next'
+import { ListLoadError } from '@/components/ui/list-load-error'
 import { ChevronLeft, Bell, Trash2 } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
@@ -14,7 +15,7 @@ export default function InterestListPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   // 🛡️ 2026-06-01 Tier2: 수동 페칭 → React Query (목록 캐싱 + optimistic 삭제/롤백).
-  const { data: items = [], isLoading: loading } = useMyInterests()
+  const { data: items = [], isLoading: loading, isError, refetch } = useMyInterests()
   const removeMut = useRemoveInterest()
 
   const handleRemove = async (item: InterestItem) => {
@@ -26,11 +27,11 @@ export default function InterestListPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0D0F12] pb-20">
+    <div className="min-h-screen bg-white dark:bg-[#11141C] pb-20">
       <SEO title={t('interestList.seoTitle', { defaultValue: '관심 맛집 - 유어딜' })} description={t('interestList.seoDesc', { defaultValue: '관심 등록한 맛집과 공동구매 알림 목록' })} url="/interest-list" />
 
       {/* 헤더 */}
-      <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#0D0F12]/90 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
+      <div className="sticky top-0 md:top-14 z-40 bg-white/90 dark:bg-[#11141C]/90 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-narrow flex items-center justify-between px-5 lg:px-8 py-3">
           <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="text-gray-900 dark:text-white">
             <ChevronLeft className="w-6 h-6" />
@@ -44,12 +45,16 @@ export default function InterestListPage() {
         {loading ? (
           <div className="space-y-3">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="bg-gray-50 dark:bg-[#1A1C21] rounded-xl p-4 animate-pulse border border-gray-200 dark:border-[#2C2F35]">
+              <div key={i} className="bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-4 animate-pulse border border-line">
                 <div className="h-4 bg-gray-700 rounded w-2/3 mb-2" />
                 <div className="h-3 bg-gray-700 rounded w-1/3" />
               </div>
             ))}
           </div>
+        ) : isError ? (
+          /* 🩸 2026-09-15: 못 불러온 것과 "관심 맛집이 없음"은 다른 상태다 — 섞으면
+             등록해 둔 알림이 사라진 줄 안다. */
+          <ListLoadError onRetry={() => refetch()} className="py-20" />
         ) : items.length === 0 ? (
           <div className="text-center py-20">
             <Bell className="w-10 h-10 text-gray-600 mx-auto mb-3" />
@@ -61,7 +66,7 @@ export default function InterestListPage() {
             </p>
             <button
               onClick={() => navigate('/group-buy')}
-              className="mt-5 px-5 py-2.5 bg-pink-500 text-white text-[13px] font-semibold rounded-full"
+              className="mt-5 px-5 py-2.5 bg-brand text-white text-[13px] font-semibold rounded-full"
             >
               {t('interestList.browseGroupBuy')}
             </button>
@@ -71,11 +76,11 @@ export default function InterestListPage() {
             {items.map(item => (
               <div
                 key={item.id}
-                className="flex items-center justify-between bg-gray-50 dark:bg-[#1A1C21] rounded-xl px-4 py-3.5 border border-gray-200 dark:border-[#2C2F35]"
+                className="flex items-center justify-between bg-gray-50 dark:bg-[#1D1F29] rounded-xl px-4 py-3.5 border border-line"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-lg bg-pink-500/10 flex items-center justify-center flex-shrink-0">
-                    <Bell className="w-4 h-4 text-pink-400" />
+                  <div className="w-9 h-9 rounded-lg bg-brand/10 flex items-center justify-center flex-shrink-0">
+                    <Bell className="w-4 h-4 text-brand-text" />
                   </div>
                   <div className="min-w-0">
                     <p className="text-gray-900 dark:text-white text-[13px] font-medium truncate">

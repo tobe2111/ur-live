@@ -30,10 +30,10 @@ export default function BusinessInfoForm({
   const { t } = useTranslation()
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+    <form onSubmit={onSubmit} className="space-y-6 rounded-[var(--dash-radius,16px)] border border-gray-200 bg-white p-6">
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          {t('seller.businessNumber')} <span className="text-red-500">*</span>
+          {t('seller.businessNumber')} <span className="text-tone-bad">*</span>
         </label>
         <input
           type="text"
@@ -44,14 +44,14 @@ export default function BusinessInfoForm({
           maxLength={12}
           required
           disabled={businessInfo?.is_verified && !editMode}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand disabled:bg-gray-100 disabled:cursor-not-allowed"
         />
         <p className="text-xs text-gray-500 mt-1">{t('seller.businessNumberHint')}</p>
       </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          {t('seller.businessName')} <span className="text-red-500">*</span>
+          {t('seller.businessName')} <span className="text-tone-bad">*</span>
         </label>
         <input
           type="text"
@@ -61,13 +61,13 @@ export default function BusinessInfoForm({
           placeholder={t('seller.businessNamePlaceholder')}
           required
           disabled={businessInfo?.is_verified && !editMode}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand disabled:bg-gray-100 disabled:cursor-not-allowed"
         />
       </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          {t('seller.representative')} <span className="text-red-500">*</span>
+          {t('seller.representative')} <span className="text-tone-bad">*</span>
         </label>
         <input
           type="text"
@@ -77,7 +77,7 @@ export default function BusinessInfoForm({
           placeholder={t('seller.representativePlaceholder')}
           required
           disabled={businessInfo?.is_verified && !editMode}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand disabled:bg-gray-100 disabled:cursor-not-allowed"
         />
       </div>
 
@@ -93,7 +93,7 @@ export default function BusinessInfoForm({
             onChange={onChange}
             placeholder={t('seller.businessTypePlaceholder')}
             disabled={businessInfo?.is_verified && !editMode}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand disabled:bg-gray-100 disabled:cursor-not-allowed"
           />
         </div>
         <div>
@@ -107,7 +107,7 @@ export default function BusinessInfoForm({
             onChange={onChange}
             placeholder={t('seller.businessCategoryPlaceholder')}
             disabled={businessInfo?.is_verified && !editMode}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand disabled:bg-gray-100 disabled:cursor-not-allowed"
           />
         </div>
       </div>
@@ -125,7 +125,7 @@ export default function BusinessInfoForm({
           onChange={onChange}
           placeholder={t('seller.mailOrderNumberPlaceholder', { defaultValue: '예: 2026-서울강남-01234' })}
           disabled={businessInfo?.is_verified && !editMode}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand disabled:bg-gray-100 disabled:cursor-not-allowed"
         />
         <p className="text-xs text-gray-500 mt-1">{t('seller.mailOrderNumberHint', { defaultValue: '유어샵 판매자 정보에 공개 표시됩니다 (전자상거래법 표시 항목)' })}</p>
       </div>
@@ -152,7 +152,7 @@ export default function BusinessInfoForm({
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          {t('seller.businessAddress')} <span className="text-red-500">*</span>
+          {t('seller.businessAddress')} <span className="text-tone-bad">*</span>
         </label>
         <div className="space-y-2">
           <div className="flex gap-2">
@@ -165,7 +165,7 @@ export default function BusinessInfoForm({
               required
               readOnly
               disabled={businessInfo?.is_verified && !editMode}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand disabled:bg-gray-100 disabled:cursor-not-allowed"
             />
             {(!businessInfo?.is_verified || editMode) && (
               <Button
@@ -187,7 +187,7 @@ export default function BusinessInfoForm({
             required
             readOnly
             disabled={businessInfo?.is_verified && !editMode}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand disabled:bg-gray-100 disabled:cursor-not-allowed"
           />
           <input
             type="text"
@@ -196,7 +196,7 @@ export default function BusinessInfoForm({
             onChange={onChange}
             placeholder={t('seller.detailAddress')}
             disabled={businessInfo?.is_verified && !editMode}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand disabled:bg-gray-100 disabled:cursor-not-allowed"
           />
         </div>
       </div>
@@ -204,7 +204,7 @@ export default function BusinessInfoForm({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            {t('seller.phoneNumber')} <span className="text-red-500">*</span>
+            {t('seller.phoneNumber')} <span className="text-tone-bad">*</span>
           </label>
           <input
             type="tel"
@@ -215,13 +215,13 @@ export default function BusinessInfoForm({
             maxLength={13}
             required
             disabled={businessInfo?.is_verified && !editMode}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand disabled:bg-gray-100 disabled:cursor-not-allowed"
           />
           <p className="text-xs text-gray-500 mt-1">{t('seller.phoneNumberHint')}</p>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            {t('seller.emailLabel')} <span className="text-red-500">*</span>
+            {t('seller.emailLabel')} <span className="text-tone-bad">*</span>
           </label>
           <input
             type="email"
@@ -231,7 +231,7 @@ export default function BusinessInfoForm({
             placeholder="business@example.com"
             required
             disabled={businessInfo?.is_verified && !editMode}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand disabled:bg-gray-100 disabled:cursor-not-allowed"
           />
         </div>
       </div>
@@ -241,7 +241,7 @@ export default function BusinessInfoForm({
           <Button
             type="submit"
             disabled={submitting}
-            className="w-full py-3 bg-gray-900 hover:bg-gray-900 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-3 bg-gray-900 hover:bg-brand-tint text-brand-text font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? (
               <span className="flex items-center justify-center gap-2">

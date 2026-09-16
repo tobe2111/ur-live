@@ -15,6 +15,8 @@ export interface SellerGroup {
   subtotal: number
   shipping_fee: number
   free_shipping_threshold: number
+  /** 📦 2026-09-01: 그룹 전체가 비배송(이용권·교환권)인가 — 배송비 줄 자체를 숨긴다. */
+  no_shipping?: boolean
 }
 
 export interface ShippingAddress {

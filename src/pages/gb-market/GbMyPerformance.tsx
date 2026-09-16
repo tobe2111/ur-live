@@ -47,7 +47,7 @@ export default function GbMyPerformance() {
       </div>
       {rows.map(r => (
         <div key={r.product_id} className="flex items-center gap-2.5 py-2 border-t border-gray-50 dark:border-[#151515]">
-          <div className="w-9 h-9 shrink-0 rounded-lg overflow-hidden bg-gray-100 dark:bg-[#1A1C21]">
+          <div className="w-9 h-9 shrink-0 rounded-lg overflow-hidden bg-gray-100 dark:bg-[#1D1F29]">
             {r.image_url && <img src={cfImage(r.image_url, { width: 72 })} alt={r.name} className="w-full h-full object-cover" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, r.image_url)} />}
           </div>
           <div className="flex-1 min-w-0">

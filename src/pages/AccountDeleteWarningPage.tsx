@@ -2,7 +2,7 @@
  * 회원 탈퇴 안내 페이지
  *
  * 🛡️ 2026-05-01: 디자인 시스템 정렬 + Option B 반영.
- *   - AccountSettingsPage 와 일관된 다크 테마 (bg-white dark:bg-[#0D0F12])
+ *   - AccountSettingsPage 와 일관된 다크 테마 (bg-white dark:bg-[#11141C])
  *   - 카드 스타일: rounded-2xl bg-gray-100 dark:bg-white/[0.04], 미니멀 보더
  *   - 텍스트 정정: 30일 soft delete + 복원 가능 명시 (이전엔 "영구 삭제" 만 강조)
  *   - 이모지 과다 → 아이콘 시스템 통일
@@ -105,11 +105,11 @@ export default function AccountDeleteWarningPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0D0F12] pb-32">
+    <div className="min-h-screen bg-white dark:bg-[#11141C] pb-32">
       <SEO title={t('accountDeleteWarning.seoTitle')} description={t('accountDeleteWarning.seoDesc')} url="/account/delete-warning" noindex />
 
       {/* 헤더 — 라이트/다크 양쪽 대응 (이전: 인라인 고정 검정 → 라이트에서 본문과 불일치) */}
-      <div className="sticky top-0 md:top-14 z-40 flex items-center px-2 py-3 gap-1 bg-white/85 dark:bg-[#0D0F12]/85 backdrop-blur-xl backdrop-saturate-150 border-b border-gray-200 dark:border-white/10">
+      <div className="sticky top-0 md:top-14 z-40 flex items-center px-2 py-3 gap-1 bg-white/85 dark:bg-[#11141C]/85 backdrop-blur-xl backdrop-saturate-150 border-b border-gray-200 dark:border-white/10">
         <button
           type="button"
           onClick={() => navigate(-1)}
@@ -217,7 +217,7 @@ export default function AccountDeleteWarningPage() {
                 type="checkbox"
                 checked={agreedSoftDelete}
                 onChange={(e) => setAgreedSoftDelete(e.target.checked)}
-                className="w-[18px] h-[18px] mt-0.5 rounded accent-pink-500 shrink-0"
+                className="w-[18px] h-[18px] mt-0.5 rounded accent-brand shrink-0"
               />
               <span className="text-[12.5px] text-gray-700 dark:text-white/70 leading-relaxed">
                 탈퇴 후 <strong className="text-gray-900 dark:text-white">30일이 지나면 모든 데이터가 영구 삭제</strong>됨을 이해했습니다.
@@ -228,7 +228,7 @@ export default function AccountDeleteWarningPage() {
                 type="checkbox"
                 checked={agreedLoseBenefits}
                 onChange={(e) => setAgreedLoseBenefits(e.target.checked)}
-                className="w-[18px] h-[18px] mt-0.5 rounded accent-pink-500 shrink-0"
+                className="w-[18px] h-[18px] mt-0.5 rounded accent-brand shrink-0"
               />
               <span className="text-[12.5px] text-gray-700 dark:text-white/70 leading-relaxed">
                 30일 이후엔 <strong className="text-gray-900 dark:text-white">포인트, 쿠폰, 등급 등 모든 혜택이 복구되지 않음</strong>을 이해했습니다.
@@ -239,7 +239,7 @@ export default function AccountDeleteWarningPage() {
                 type="checkbox"
                 checked={agreedNoRefund}
                 onChange={(e) => setAgreedNoRefund(e.target.checked)}
-                className="w-[18px] h-[18px] mt-0.5 rounded accent-pink-500 shrink-0"
+                className="w-[18px] h-[18px] mt-0.5 rounded accent-brand shrink-0"
               />
               <span className="text-[12.5px] text-gray-700 dark:text-white/70 leading-relaxed">
                 탈퇴 후엔 <strong className="text-gray-900 dark:text-white">진행 중인 주문의 취소/환불이 어려울 수 있음</strong>을 이해했습니다.
@@ -262,7 +262,7 @@ export default function AccountDeleteWarningPage() {
             value={confirmText}
             onChange={(e) => setConfirmText(e.target.value)}
             placeholder={t('accountDeleteWarning.confirmPlaceholder')}
-            className="w-full px-3.5 py-3 rounded-xl bg-gray-100 dark:bg-white/[0.06] border border-gray-200 dark:border-white/10 text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/30 focus:outline-none focus:border-pink-500/50 focus:bg-white dark:focus:bg-white/[0.08]"
+            className="w-full px-3.5 py-3 rounded-xl bg-gray-100 dark:bg-white/[0.06] border border-gray-200 dark:border-white/10 text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/30 focus:outline-none focus:border-brand/50 focus:bg-white dark:focus:bg-white/[0.08]"
           />
           {confirmText && confirmText !== t('accountDeleteWarning.confirmText') && (
             <p className="text-[12px] text-red-400 mt-2 flex items-center gap-1">
@@ -281,14 +281,14 @@ export default function AccountDeleteWarningPage() {
         {/* 머무름 안내 */}
         <div className="text-center mb-2">
           <p className="text-[12px] text-gray-500 dark:text-white/40 leading-relaxed flex items-center justify-center gap-1.5">
-            <Heart className="w-3.5 h-3.5 text-pink-500/60" />
+            <Heart className="w-3.5 h-3.5 text-brand-text/60" />
             언제든지 돌아올 수 있어요
           </p>
         </div>
       </main>
 
       {/* 하단 고정 버튼 — 라이트/다크 양쪽 대응 (이전: 인라인 고정 검정 그라데이션 → 라이트 본문과 불일치) */}
-      <div className="fixed bottom-0 left-0 right-0 xl:left-56 app-frame-bar z-40 px-4 py-4 bg-white/95 dark:bg-[#0D0F12]/95 backdrop-blur-xl border-t border-gray-200 dark:border-white/10">
+      <div className="fixed bottom-0 left-0 right-0 xl:left-56 app-frame-bar z-40 px-4 py-4 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur-xl border-t border-gray-200 dark:border-white/10">
         <div className="ur-content-narrow space-y-2">
           <button
             type="button"

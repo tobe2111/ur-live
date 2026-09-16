@@ -78,7 +78,7 @@ export default function AdminInfluencerDisputesPage() {
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold ${tab === t ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold ${tab === t ? 'bg-brand text-white' : 'bg-white text-gray-700 border border-gray-200'}`}
             >
               {t === 'open' ? '대기 중' : t === 'resolved' ? '해결됨' : '거절됨'}
             </button>
@@ -96,7 +96,7 @@ export default function AdminInfluencerDisputesPage() {
                 <div className="flex items-start justify-between gap-3 mb-2">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px] px-2 py-0.5 bg-pink-100 text-pink-700 rounded font-bold">{TYPE_LABEL[d.type] || d.type}</span>
+                      <span className="text-[10px] px-2 py-0.5 bg-brand-tint text-brand-text rounded font-bold">{TYPE_LABEL[d.type] || d.type}</span>
                       <span className="text-[10px] text-gray-500">{formatKST(d.created_at)}</span>
                     </div>
                     <p className="text-sm font-medium text-gray-900">인플: <span className="font-mono">{d.influencer_id}</span></p>
@@ -112,14 +112,14 @@ export default function AdminInfluencerDisputesPage() {
                     <button
                       onClick={() => resolve(d, 'resolved')}
                       disabled={processing === d.id}
-                      className="px-3 py-1.5 text-xs font-bold bg-gray-900 text-white rounded-lg flex items-center gap-1 disabled:opacity-40"
+                      className="ur-btn ur-btn-sm ur-btn-primary flex items-center gap-1 disabled:opacity-40"
                     >
                       <CheckCircle className="w-3 h-3" /> 해결
                     </button>
                     <button
                       onClick={() => resolve(d, 'rejected')}
                       disabled={processing === d.id}
-                      className="px-3 py-1.5 text-xs font-bold bg-red-500 text-white rounded-lg flex items-center gap-1 disabled:opacity-40"
+                      className="ur-btn ur-btn-sm ur-btn-danger flex items-center gap-1 disabled:opacity-40"
                     >
                       <XCircle className="w-3 h-3" /> 거절
                     </button>

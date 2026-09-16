@@ -1,9 +1,9 @@
 /**
  * 🛡️ 2026-05-27 (영업 검증 Layer 2 — 사용자 결정): 매장 사전 등록 + 가입 시 자동 매칭.
  *
- * Layer 1: 영업자별 고유 invite URL (이미 일부 구현 — agency-invites)
+ * Layer 1: 영업자별 고유 invite URL
  * Layer 2: 사장님 사전 등록 (이 파일)
- *   - 영업자 (agency/influencer) 가 매장 영입 전에 사장님 정보 등록
+ *   - 영업자(영입자) 가 매장 영입 전에 사장님 정보 등록
  *   - 사장님 가입 시 (phone/email 매칭) 자동 introduced_by_X_id 매핑
  *   - 부정 방지: prospect 만료 (default 30일), 매장 1개당 1 영업자 (가장 빠른 prospect)
  * Layer 3: 영업 증빙 업로드 (proof_image_url)
@@ -15,7 +15,7 @@
  *   PATCH /api/prospects/:id           - 메모/증빙 수정
  *   DELETE /api/prospects/:id          - 만료 전 회수
  *
- * 보안: 영업자 본인 인증 필수 (admin_token / agency_token / seller_token influencer 권한).
+ * 보안: 영업자 본인 인증 필수 (카카오 user 세션 — `requireAuth()`).
  */
 
 import { Hono } from 'hono'
@@ -23,13 +23,6 @@ import type { Env } from '@/worker/types/env'
 import { requireAuth } from '@/worker/middleware/auth'
 
 const prospectsRoutes = new Hono<{ Bindings: Env }>()
-
-// 영업자 타입 판별 — agency_token / seller_token (influencer) / admin_token 중 하나
-function detectIntroducer(c: { req: { header: (k: string) => string | undefined } }): { type: 'agency' | 'influencer' | 'admin'; id: string } | null {
-  // 클라이언트가 Authorization header 로 보내는 토큰 type 검사
-  // 여기선 단순화 — 향후 jwt decode 로 정확히 (현재는 user_id 기반)
-  return null  // helper — 실제로는 requireAuth 에서 c.get('user') 사용
-}
 
 // 매장 사전 등록
 prospectsRoutes.post('/', requireAuth(), async (c) => {
@@ -44,7 +37,8 @@ prospectsRoutes.post('/', requireAuth(), async (c) => {
     business_address?: string
     notes?: string
     proof_image_url?: string
-    introducer_type?: 'agency' | 'influencer'
+    /** 🌇 2026-09-05 에이전시 일몰 — 영업자는 이제 **영입자(users.id)** 하나뿐. 값은 무시된다. */
+    introducer_type?: 'influencer'
   }>().catch(() => ({} as Record<string, string>))
 
   const phone = body.contact_phone?.trim().replace(/-/g, '') || null
@@ -52,22 +46,11 @@ prospectsRoutes.post('/', requireAuth(), async (c) => {
   if (!phone && !email) {
     return c.json({ success: false, error: '연락처 (전화 또는 이메일) 중 하나 필수' }, 400)
   }
-  const introducerType = body.introducer_type === 'agency' ? 'agency' : 'influencer'
-
-  // 🛡️ 2026-06-25 (대표 승인 — B4): 에이전시 영입은 대시보드/커미션이 agencies.id 로 조회하므로
-  //   introducer_id 를 canonical agencies.id 로 저장. 기존엔 user.id 를 그대로 써서, 카카오 로그인
-  //   에이전시(user.id = users.id ≠ agencies.id)의 영입 매장/커미션이 대시보드에 영영 안 잡혔음.
-  //   해소: user.id 가 곧 agencies.id(이메일 로그인) 이거나 agencies.linked_user_id(카카오)면 매핑.
-  //   `id = ?` 매치 우선(ORDER BY)으로 collision(어떤 users.id == 타 에이전시 id) 시에도 본인 우선.
-  let introducerId = String(user.id)
-  if (introducerType === 'agency') {
-    try {
-      const a = await c.env.DB.prepare(
-        'SELECT id FROM agencies WHERE id = ? OR linked_user_id = ? ORDER BY (id = ?) DESC LIMIT 1'
-      ).bind(user.id, user.id, user.id).first<{ id: number }>()
-      if (a?.id) introducerId = String(a.id)
-    } catch { /* best-effort — 해소 실패 시 user.id 폴백(기존 동작) */ }
-  }
+  // 🌇 2026-09-05 에이전시 일몰 — 영업자 종류가 하나로 줄었다. 옛 코드는 `introducer_type='agency'`
+  //   면 `agencies.id` 로 정규화해 저장했는데, 그 id 를 읽던 대시보드·커미션이 전부 삭제됐다.
+  //   이제 영업자는 언제나 **영입자(users.id)** 이고, 귀속은 `sellers.introduced_by_influencer_id` 다.
+  const introducerType = 'influencer'
+  const introducerId = String(user.id)
 
   // 중복 등록 차단 — 같은 영업자가 같은 매장 재등록 시 기존 row 재사용
   const dup = await c.env.DB.prepare(
@@ -162,24 +145,13 @@ prospectsRoutes.post('/:id/invite-link', requireAuth(), async (c) => {
     `SELECT id, introducer_type, introducer_id FROM seller_prospects WHERE id = ?`
   ).bind(id).first<{ id: number; introducer_type: string; introducer_id: string }>()
   if (!row) return c.json({ success: false, error: 'prospect 없음' }, 404)
-  // 소유권: introducer_id 는 user.id 또는 (agency 매핑) agencies.id/linked_user_id — POST / 와 동일 기준.
-  let ownerOk = String(row.introducer_id) === String(user.id)
-  if (!ownerOk && row.introducer_type === 'agency') {
-    const ag = await c.env.DB.prepare('SELECT id FROM agencies WHERE (id = ? OR linked_user_id = ?) AND id = ?')
-      .bind(user.id, user.id, Number(row.introducer_id) || 0).first().catch(() => null)
-    ownerOk = !!ag
+  // 소유권: introducer_id 는 언제나 user.id (🌇 2026-09-05 에이전시 일몰 — agencies.id 매핑 삭제).
+  if (String(row.introducer_id) !== String(user.id)) {
+    return c.json({ success: false, error: '본인 등록 prospect 아님' }, 403)
   }
-  if (!ownerOk) return c.json({ success: false, error: '본인 등록 prospect 아님' }, 403)
   const pt = await prospectToken(c.env.JWT_SECRET, id)
-  // 에이전시면 intro_code 동봉 → 가입 폼 추천코드 자동 입력(영입 커미션 lock-in 보장).
-  let agencyCode: string | null = null
-  if (row.introducer_type === 'agency') {
-    const ag = await c.env.DB.prepare('SELECT intro_code FROM agencies WHERE id = ?')
-      .bind(Number(row.introducer_id) || 0).first<{ intro_code: string | null }>().catch(() => null)
-    agencyCode = ag?.intro_code || null
-  }
+  // 🌇 에이전시 초대 코드(`?agency=`) 동봉 삭제 — 받아 줄 가입 폼 입력칸도 함께 없어졌다.
   const qs = new URLSearchParams({ prospect: String(id), pt })
-  if (agencyCode) qs.set('agency', agencyCode)
   return c.json({ success: true, path: `/seller/register/supplier?${qs.toString()}` })
 })
 
@@ -195,12 +167,8 @@ prospectsRoutes.get('/prefill/:id', async (c) => {
        FROM seller_prospects WHERE id = ?`
   ).bind(id).first<{ store_name: string | null; contact_name: string | null; contact_phone: string | null; business_address: string | null; introducer_type: string; introducer_id: string; status: string }>()
   if (!row) return c.json({ success: false, error: 'prospect 없음' }, 404)
-  let introducerName: string | null = null
-  if (row.introducer_type === 'agency') {
-    const ag = await c.env.DB.prepare('SELECT name FROM agencies WHERE id = ?')
-      .bind(Number(row.introducer_id) || 0).first<{ name: string | null }>().catch(() => null)
-    introducerName = ag?.name || null
-  }
+  // 🌇 2026-09-05 에이전시 일몰 — 영업자 이름을 `agencies` 에서 끌어오던 분기 삭제.
+  const introducerName: string | null = null
   return c.json({
     success: true,
     data: {

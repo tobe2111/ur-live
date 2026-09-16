@@ -5,21 +5,21 @@
  * 광고/배너/최근본/카테고리섹션 없음. 오롯이 공구만.
  */
 
-import { SearchX, Flame, Timer, Tag, Clock, Store } from 'lucide-react'
+import { DEAL_GRID_GAP } from '@/shared/deal-card-grid'
+import { SearchX, Flame, Tag, Clock, MapPin } from 'lucide-react'
 import { DEAL_CATS } from '@/pages/pc-home/PcHomeRail'
 import { SortMenu, type SortOptionItem } from '@/components/ui/sort-menu'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 // 🖼️ 폭·중단점은 워커의 카드 preload 와 같은 값이어야 한다(`shared/home-card-image` SSOT).
 import { HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_LG_QUERY } from '@/shared/home-card-image'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { deferSeeded, seededSectionProductIds } from '@/shared/home-section-ids'
+import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys } from '@/hooks/queries'
 import { useFcfsMap } from '@/features/group-buy/useFcfs'
 import GroupBuyFeedCard from './GroupBuyFeedCard'
-import UrDealLogo from '@/components/brand/UrDealLogo'
-import { sellerEntryPath } from '@/utils/seller-entry'
 import type { Product } from './types'
 import { matchAddress, matchRegionCoords } from '@/shared/constants/korea-regions'
 import { addressInRegion, type RegionRef } from '@/shared/constants/region-slugs'
@@ -76,14 +76,19 @@ const CATEGORIES = DEAL_CATS
  *   전부 `SortMenu`). `sort-menu.tsx` 의 주석이 스스로 밝히듯 그 컴포넌트의 존재 이유가
  *   "네이티브 select 대체" 인데, 정작 홈이 예외로 남아 있었다.
  */
-const SORTS: Array<SortOptionItem<'popular' | 'deadline' | 'discount' | 'newest'>> = [
+// 🗓️ 2026-09-04 (대표 "마감 개념은 없어"): '마감임박' 칩 제거. 이용권은 모여야 열리는 공동구매가
+//   아니라 즉시 구매라 마감이 개념으로 없다. 라이브 실측으로도 활성 338건 중 마감이 박힌 건 1건뿐이라
+//   그 칩은 사실상 아무 순서도 만들지 못했다. 구매 후 사용 기간은 `voucher_expiry`(별개 필드)가 맡는다.
+const SORTS: Array<SortOptionItem<'popular' | 'discount' | 'newest'>> = [
   { key: 'popular',  label: '인기순',   Icon: Flame },
-  { key: 'deadline', label: '마감임박', Icon: Timer },
   { key: 'discount', label: '할인율',   Icon: Tag },
   { key: 'newest',   label: '최신순',   Icon: Clock },
 ]
 
-// 🗺️ 2026-07-16 (대표 — 현위치로 가까운 순): 'near' = userLoc 기준 거리순(내부 SORTS 칩엔 없음 — PcHomePage 가 구동).
+// 🗺️ 거리순 — 위치가 있을 때만 낀다. 2026-09-08 까지 PcHomePage 전용이라 폰에서는 실제로 거리순인데
+//    알약이 "인기순"이라고 적혀 있었다(SortMenu 는 value 가 options 에 없으면 options[0] 을 그린다).
+//    근거·함정: `home-nearest-first.test.ts`.
+const NEAR_SORT: SortOptionItem<'near'> = { key: 'near', label: '거리순', Icon: MapPin }
 type SortKey = typeof SORTS[number]['key'] | 'near'
 type CategoryKey = typeof CATEGORIES[number]['key']
 
@@ -130,7 +135,6 @@ export default function GroupBuyFeed({
   // 🗺️ 2026-07-16 (대표 — 현위치로 가까운 순): sort='near' 일 때 이 좌표 기준 거리순 정렬(좌표 없는 딜은 뒤로).
   userLoc?: { lat: number; lng: number } | null
 } = {}) {
-  const navigate = useNavigate()
   const [categoryState, setCategoryState] = useState<CategoryKey>('all')
   const [sortState, setSortState] = useState<SortKey>('popular')
   const category = categoryProp ?? categoryState
@@ -155,8 +159,8 @@ export default function GroupBuyFeed({
     //   읽히고, 위 섹션 그리드(lg:grid-cols-4)와도 열 수가 같아진다(같은 화면에서 열이 갈리지 않는다).
     // 📐 2026-08-24: md(768~1023, 태블릿)가 `sm` 규칙에 걸려 **3열**이었다. 편성 섹션은 4개를
     //   뿌리므로 마지막 하나가 줄에 혼자 남아 오른쪽이 텅 비었다 — 태블릿도 4열로 맞춘다.
-    ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 lg:gap-4 pb-8'
-    : 'grid grid-cols-2 sm:grid-cols-3 gap-3 px-4 pb-8'
+    ? `grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 ${DEAL_GRID_GAP} pb-8`
+    : `grid grid-cols-2 sm:grid-cols-3 ${DEAL_GRID_GAP} px-4 pb-8`
 
   // 🎯 2026-07-01 (대표 — 동네딜 추첨 응모): 활성 추첨 상품 Map(공개, 60s 캐시) → 카드에 배지 노출.
   const { fcfsMap } = useFcfsMap()
@@ -184,10 +188,23 @@ export default function GroupBuyFeed({
 
   // 🛡️ 2026-05-24 (loading P0): staleTime/gcTime override 제거 → global default (30분/1h) 적용.
   //   refetchOnWindowFocus 는 유지 false (홈 피드는 잦은 변경 안 함 — 카테고리 칩 클릭 시 새 카테고리 fetch).
+  /**
+   * 🚦 2026-09-03 (대표 "마저 다 해줘"): **정렬을 서버로.** 이전엔 서버가 준 최신 50개(+스크롤분) 안에서만
+   *   정렬해 "인기순"이 사실은 "최근 50개 중 인기순"이었다 — 전체가 338건인데. 이제 서버가 전체에서
+   *   정렬해 상위부터 준다(정의는 서버 ALLOWED_GB_SORT 가 클라 soldOf/discountOf 를 미러).
+   *   거리순은 `sort` 가 아니라 `near`(서버 거리 랭킹)가 담당한다.
+   *   ⚠️ 좌표는 **서버 캐시키 단위(0.02°≈2km)로 반올림**해 보낸다 — 몇 m 움직일 때마다 캐시가 갈리면
+   *      엣지 적중이 무너진다. 화면에 보이는 최종 순서는 아래 `sortBand` 가 정확한 좌표로 다시 매긴다.
+   */
+  const nearKey = sort === 'near' && userLoc
+    ? `${(Math.round(userLoc.lat / 0.02) * 0.02).toFixed(2)},${(Math.round(userLoc.lng / 0.02) * 0.02).toFixed(2)}`
+    : ''
+  const serverSort = sort === 'near' ? '' : sort
+  const feedParams = `${serverSort ? `&sort=${serverSort}` : ''}${nearKey ? `&near=${nearKey}` : ''}`
   const { data: items = [], isLoading: loading, isError, refetch } = useQuery<FeedProduct[]>({
-    queryKey: queryKeys.groupBuyList('active', category),
+    queryKey: queryKeys.groupBuyList('active', category, serverSort || (nearKey && `near:${nearKey}`) || ''),
     queryFn: async () => {
-      const res = await api.get(`/api/group-buy/products?status=active&category=${category}`)
+      const res = await api.get(`/api/group-buy/products?status=active&category=${category}${feedParams}`)
       const arr: FeedProduct[] = Array.isArray(res.data?.data) ? res.data.data : []
       // hydrate individual detail cache (idempotent).
       for (const p of arr) {
@@ -198,6 +215,9 @@ export default function GroupBuyFeed({
     initialData: ssrInitial,
     initialDataUpdatedAt: ssrInitial ? Date.now() - 60_000 : 0,  // SSR 데이터를 1분 stale 로 표시 → useQuery 가 background refetch
     refetchOnWindowFocus: false,
+    // 🚦 2026-09-03: 정렬을 바꾸면 캐시키가 갈리므로 그대로 두면 **빈 화면 → 스켈레톤**이 된다.
+    //   직전 결과를 유지한 채 새 정렬을 받아 온다(그 사이 sortBand 가 로드된 것만이라도 즉시 재정렬).
+    placeholderData: (prev) => prev,
   })
 
   // 📄 2026-07-08 (대표 "전체 상품이 안 나옴 — 50곳밖에"): 서버 기본 피드는 LIMIT 50(캐시/SSR 고정).
@@ -206,8 +226,9 @@ export default function GroupBuyFeed({
   const [extraPages, setExtraPages] = useState<FeedProduct[][]>([])
   const [loadingMore, setLoadingMore] = useState(false)
   const [reachedEnd, setReachedEnd] = useState(false)
-  // 카테고리 변경 시 누적분 리셋
-  useEffect(() => { setExtraPages([]); setReachedEnd(false) }, [category])
+  // 카테고리·정렬 변경 시 누적분 리셋 (🚦 2026-09-03: 정렬이 서버로 갔으므로 옛 순서로 받은 페이지가
+  //   새 정렬 결과와 섞이면 중복·누락이 생긴다 — 밴드를 통째로 버리고 page2 부터 다시 쌓는다.)
+  useEffect(() => { setExtraPages([]); setReachedEnd(false) }, [category, serverSort, nearKey])
 
   // 🗺️ 2026-07-16 (대표 신고 — 스크롤 로드 시 이용권 배치가 제멋대로 바뀜): '누적 전체 재정렬'이 아니라
   //   페이지(밴드)별로 정렬 → 이미 보인 카드는 위치 고정, 새 페이지만 아래로 append(재정렬 없음).
@@ -230,6 +251,12 @@ export default function GroupBuyFeed({
     if (la != null && ln != null) return matchRegionCoords(la, ln, regionKey) === true
     return false
   }
+  /**
+   * 🏠 위 편성 섹션에 이미 뜬 상품 id — 홈에서만 채워진다(`/region/*` 등 다른 표면엔 시드가 없어 빈 집합).
+   *   비어 있으면 아래 `pushBand` 는 종전과 **byte-동일하게** 동작한다.
+   */
+  const sectionIds = useMemo(() => seededSectionProductIds(), [])
+
   const sortBand = (arr: FeedProduct[]) => {
     const a = [...arr]
     switch (sort) {
@@ -244,11 +271,6 @@ export default function GroupBuyFeed({
         return a.sort((x, y) => d2(x) - d2(y))
       }
       case 'popular': return a.sort((x, y) => soldOf(y) - soldOf(x))
-      case 'deadline': return a.sort((x, y) => {
-        const ax = x.expires_at ? parseUTCDate(x.expires_at).getTime() : Infinity
-        const bx = y.expires_at ? parseUTCDate(y.expires_at).getTime() : Infinity
-        return ax - bx
-      })
       case 'discount': return a.sort((x, y) => discountOf(y) - discountOf(x))
       case 'newest': return a.sort((x, y) => {
         const ax = x.created_at ? parseUTCDate(x.created_at).getTime() : 0
@@ -264,7 +286,7 @@ export default function GroupBuyFeed({
     setLoadingMore(true)
     try {
       const nextPage = extraPages.length + 2  // page1 = items → 다음은 2부터
-      const res = await api.get(`/api/group-buy/products?status=active&category=${category}&page=${nextPage}&limit=50`)
+      const res = await api.get(`/api/group-buy/products?status=active&category=${category}&page=${nextPage}&limit=50${feedParams}`)
       const arr: FeedProduct[] = Array.isArray(res.data?.data) ? res.data.data : []
       for (const p of arr) { if (p?.id != null) qc.setQueryData(queryKeys.groupBuyProduct(p.id), p) }
       setExtraPages(prev => [...prev, arr])
@@ -295,7 +317,17 @@ export default function GroupBuyFeed({
     const out: FeedProduct[] = []
     const pushBand = (band: FeedProduct[], filterRegion: boolean) => {
       const src = filterRegion ? band.filter(inRegion) : band
-      for (const p of sortBand(src)) {
+      /**
+       * 🖼️ 2026-09-06 (대표 — "메인에서 같은 이용권 사진이 두 번"의 나머지 절반):
+       *   바로 위 편성 섹션('지금 인기 이용권'·'주말에 떠나는 숙소')에 이미 뜬 상품을
+       *   **이 밴드의 뒤로 미룬다.** 빼지 않는다 — 이 피드는 *전체* 목록이라, 여기서 지우면
+       *   찾는 사람이 그 상품을 영영 못 만난다(목록이 거짓말이 된다).
+       *
+       *   ⚠️ **반드시 밴드 안에서만** 미룰 것. 밴드 경계를 넘겨 page2 로 보내면 나중 페이지가
+       *      로드될 때 이미 그려진 카드가 움직인다 — 바로 위 주석의 2026-07-16 사고 그대로다.
+       *   섹션 id 는 SSR 시드에서 첫 렌더에 확정된다(구독 아님) → 재정렬이 구조적으로 없다.
+       */
+      for (const p of deferSeeded(sortBand(src), sectionIds)) {
         if (p?.id != null && !seen.has(p.id)) { seen.add(p.id); out.push(p) }
       }
     }
@@ -311,7 +343,7 @@ export default function GroupBuyFeed({
     // inRegion/sortBand 는 매 렌더 재생성(아래 deps 를 클로저) → deps 에 원천값만 나열.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     // regionRef 는 객체라 참조가 매 렌더 바뀔 수 있어 원시값으로 분해해 넣는다(무한 재계산 방지).
-  }, [items, extraPages, sort, userLoc, regionKey, districtKey, regionRef?.sido, regionRef?.sigungu])
+  }, [items, extraPages, sort, userLoc, sectionIds, regionKey, districtKey, regionRef?.sido, regionRef?.sigungu])
 
   return (
     <>
@@ -330,8 +362,8 @@ export default function GroupBuyFeed({
              이 안의 칩은 처음부터 그 화면에선 군더더기였다.
           ⇒ 라벨을 맞추는 걸로는 부족했다. 중복은 **컨트롤 자체**였다. */}
       {!pc && !onCategoryChange && (
-      <div className="bg-white dark:bg-[#0D0F12] border-b border-gray-100 dark:border-[#2C2F35] sticky top-12 z-10">
-        <div className="flex gap-1.5 px-4 py-2.5 overflow-x-auto no-scrollbar">
+      <div className="bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35] sticky top-12 z-10">
+        <div className="flex gap-1.5 px-4 py-2.5 overflow-x-auto scrollbar-hide">
           {CATEGORIES.map(c => {
             const active = c.key === category
             return (
@@ -340,8 +372,8 @@ export default function GroupBuyFeed({
                 onClick={() => setCategory(c.key)}
                 className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-bold transition-colors ${
                   active
-                    ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
-                    : 'bg-gray-100 dark:bg-[#1A1C21] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2C2F35]'
+                    ? 'bg-brand text-white'  /* 🎨 2026-09-07 안 B: 선택 = 브랜드 블루(서비스 공통) */
+                    : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2C2F35]'
                 }`}
               >
                 {c.key !== 'all' && <c.icon className="w-3.5 h-3.5" aria-hidden="true" />}
@@ -361,7 +393,9 @@ export default function GroupBuyFeed({
       {!pc && (loading || sorted.length > 0) && (
       <div className="flex items-center justify-between px-4 py-2.5 text-[12px] text-gray-500 dark:text-gray-400">
         <span>{loading ? '불러오는 중…' : `딜 ${sorted.length}개`}</span>
-        <SortMenu value={sort as typeof SORTS[number]['key']} options={SORTS} onChange={(v) => setSort(v)} />
+        {/* ⚠️ `value` 가 `options` 안에 반드시 있어야 한다 — 없으면 알약이 남의 라벨을 조용히 그린다. */}
+        <SortMenu<SortKey> value={sort} onChange={(v) => setSort(v)}
+          options={userLoc ? [NEAR_SORT, ...SORTS] : SORTS} />
       </div>
       )}
 
@@ -430,7 +464,7 @@ export default function GroupBuyFeed({
           ) : (
             <button
               onClick={loadMore}
-              className="px-5 py-3 bg-white dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] rounded-full text-sm font-bold text-gray-900 dark:text-white"
+              className="px-5 py-3 bg-surface border border-line rounded-full text-sm font-bold text-gray-900 dark:text-white"
             >
               더 보기
             </button>
@@ -438,28 +472,17 @@ export default function GroupBuyFeed({
         </div>
       )}
 
-      {/* 하단 — 🏪 2026-08-31 (대표 — "모바일로도 '판매하세요' 가 있어야 하지 않을까? PC버전처럼").
-          ■ 왜 여기인가: PC 는 상단 네비에 이 진입점이 있는데(`DesktopTopNav` — 로고+"에서 판매하세요")
-            **모바일엔 어디에도 없었다.** 매장 사장님이 소비자 홈에서 우리를 처음 볼 때 들어올 문이
-            폰에는 없었다는 뜻이다.
-          ■ 왜 새 줄을 안 만들었나: 이 자리에 있던 "지도에서 전체 동네딜 보기"는 2026-08-30 에
-            상단 [목록|지도] 전환이 생기면서 **같은 곳으로 가는 두 번째 버튼**이 됐다. 그 중복을
-            치우고 그 자리를 쓴다 — 줄은 그대로고 없던 문이 생긴다.
-          ■ 목적지는 `sellerEntryPath()` SSOT: 셀러면 대시보드, 아니면 입점 안내(/partners).
-            2026-08-26 에 PC 에서 겪은 그 문제(아직 셀러가 아닌 사람이 로그인 벽으로 튕김)를 반복하지 않는다. */}
-      {!loading && sorted.length > 0 && (
-        <div className="px-4 pb-8 text-center">
-          <button
-            type="button"
-            onClick={() => navigate(sellerEntryPath())}
-            aria-label="유어딜에서 판매하세요"
-            className="inline-flex items-center gap-1.5 px-5 py-3 bg-white dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] rounded-full text-sm font-bold text-gray-900 dark:text-white"
-          >
-            <Store className="w-4 h-4 shrink-0" strokeWidth={1.75} aria-hidden="true" />
-            <span className="flex items-center gap-1"><UrDealLogo size={13} />에서 판매하세요</span>
-          </button>
-        </div>
-      )}
+      {/* 🏪 2026-09-15 (대표 — "피드 끝 한줄 안 1로 변경할 수 있나?"): 이 자리에 있던 알약 버튼
+          (2026-08-31 `🏪 유어딜에서 판매하세요`)을 **걷어냈다.** 없앤 게 아니라 **중복을 지웠다** —
+          2026-09-14 에 대표가 확정한 **안 1**(`SellOnUrdealRow`: 구분선 + 문장 + `시작하기 ›`)이
+          모바일 홈의 바로 아래(`MobileHomePage` 피드 다음)에 이미 있어서, 피드 끝에 **문이 둘**
+          겹쳐 있었다. 그것도 규칙이 서로 달랐다 — 알약은 `sellerEntryPath()`(셀러면 대시보드),
+          안 1 은 `seller_token` 있으면 미노출 + `/store/new`. 안 1 설계문서가 *"규칙이 둘이 되면
+          언젠가 갈린다"* 고 적어 둔 그 상태였고, 08-31 알약은 **안 1 이 생기기 2주 전** 물건이다.
+          ⇒ 남기는 쪽은 대표가 확정한 안 1. 여기(공유 피드)는 비운다.
+          ✅ 이 피드를 쓰는 다른 화면은 문이 안 사라진다 — `/region/*` 는 `SiteFooter` 를 달고
+             있고 그 안에 `/store/new`·`/partners` 가 있다(실측). 08-31 이 메우려던 구멍은
+             **푸터가 없는 모바일 홈**이었고, 그 자리는 안 1 이 맡는다. */}
     </>
   )
 }
@@ -492,7 +515,7 @@ function EmptyStateWithFallback({ category, onReset }: { category: CategoryKey; 
         {/* 🏷️ 2026-08-30: 어깨 으쓱 이모지(🤷) → 선 아이콘.
             이모지 빈 화면은 "아직 안 만든 자리"처럼 읽힌다 — 실제로는 정상 상태인데도.
             같은 화면의 '내 주변 지도로 보기' 원형 처리와 같은 언어로 맞춘다. */}
-        <div className="mx-auto mb-3 w-14 h-14 rounded-full bg-gray-100 dark:bg-[#1A1C21] flex items-center justify-center">
+        <div className="mx-auto mb-3 w-14 h-14 rounded-full bg-gray-100 dark:bg-[#1D1F29] flex items-center justify-center">
           <SearchX className="w-6 h-6 text-gray-400" aria-hidden="true" />
         </div>
         <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">
@@ -517,7 +540,7 @@ function EmptyStateWithFallback({ category, onReset }: { category: CategoryKey; 
               </Link>
               <Link
                 to="/map"
-                className="ur-btn ur-btn-md border border-gray-200 dark:border-[#2C2F35] text-gray-700 dark:text-gray-200 px-4"
+                className="ur-btn ur-btn-md border border-line text-gray-700 dark:text-gray-200 px-4"
               >
                 지도에서 찾기
               </Link>
@@ -543,13 +566,13 @@ function EmptyStateWithFallback({ category, onReset }: { category: CategoryKey; 
             </span>
           </div>
           {fbLoading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className={`grid grid-cols-2 sm:grid-cols-3 ${DEAL_GRID_GAP}`}>
               {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="aspect-square rounded-xl bg-gray-100 dark:bg-[#1A1C21] animate-pulse" />
+                <div key={i} className="aspect-square rounded-xl bg-gray-100 dark:bg-[#1D1F29] animate-pulse" />
               ))}
             </div>
           ) : fallback && fallback.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className={`grid grid-cols-2 sm:grid-cols-3 ${DEAL_GRID_GAP}`}>
               {fallback.map(p => <GroupBuyFeedCard key={p.id} p={p} />)}
             </div>
           ) : null}

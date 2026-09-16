@@ -405,12 +405,12 @@ export default function AdminPage() {
       {/* ── 실시간 통계 카드 ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         {[
-          { label: t('admin.dashboard.k023', { defaultValue: '오늘 매출' }), value: fmtPrice(dashboardStats.todaySales), sub: t('admin.dashboard.k024', { defaultValue: '실시간' }), icon: <DollarSign className="w-5 h-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-          { label: '오늘 주문', value: `${formatNumber(dashboardStats.todayOrders || 0)}건`, sub: '실시간', icon: <Package className="w-5 h-5" />, color: 'text-blue-600', bg: 'bg-blue-50' },
-          { label: '현재 방문자', value: `${formatNumber(dashboardStats.currentVisitors || 0)}명`, sub: '최근 5분', icon: <Eye className="w-5 h-5" />, color: 'text-purple-600', bg: 'bg-purple-50' },
+          { label: t('admin.dashboard.k023', { defaultValue: '오늘 매출' }), value: fmtPrice(dashboardStats.todaySales), sub: t('admin.dashboard.k024', { defaultValue: '실시간' }), icon: <DollarSign className="w-5 h-5" />, color: 'text-tone-ok', bg: 'border border-rule bg-white' },
+          { label: '오늘 주문', value: `${formatNumber(dashboardStats.todayOrders || 0)}건`, sub: '실시간', icon: <Package className="w-5 h-5" />, color: 'text-gray-700', bg: 'border border-rule bg-white' },
+          { label: '현재 방문자', value: `${formatNumber(dashboardStats.currentVisitors || 0)}명`, sub: '최근 5분', icon: <Eye className="w-5 h-5" />, color: 'text-gray-700', bg: 'border border-rule bg-white' },
           // 🗑️ 2026-07-07 라이브커머스 제거: '라이브 방송' 실시간 KPI 카드 삭제.
         ].map(card => (
-          <div key={card.label} className="bg-white rounded-xl p-3 sm:p-4 shadow-sm">
+          <div key={card.label} className="bg-white rounded-xl p-3 sm:p-4 border border-rule">
             <div className="flex items-center justify-between mb-2 sm:mb-3">
               <span className="text-[10px] sm:text-xs font-medium text-gray-500">{card.label}</span>
               <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg ${card.bg} ${card.color} flex items-center justify-center`}>
@@ -427,11 +427,11 @@ export default function AdminPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         <button
           onClick={() => navigate('/admin/voucher-transactions')}
-          className="bg-white rounded-xl p-3 sm:p-4 shadow-sm text-left active:opacity-80 transition-opacity hover:shadow-md col-span-2"
+          className="bg-white rounded-xl p-3 sm:p-4 border border-rule text-left active:opacity-80 transition-opacity hover:shadow-md col-span-2"
         >
           <div className="flex items-center justify-between mb-2 sm:mb-3">
             <span className="text-[10px] sm:text-xs font-medium text-gray-500">오늘 교환권 거래</span>
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-pink-50 text-pink-600 flex items-center justify-center">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-brand-tint text-brand-text flex items-center justify-center">
               <Ticket className="w-5 h-5" />
             </div>
           </div>
@@ -439,50 +439,50 @@ export default function AdminPage() {
             <p className="text-lg sm:text-xl font-bold text-gray-900">{formatNumber(dashboardStats.todayVouchers || 0)}건</p>
             <p className="text-sm text-gray-600">· {fmtPrice(dashboardStats.todayVouchersAmount || 0)}</p>
           </div>
-          <p className="text-[10px] sm:text-xs text-pink-600 mt-0.5">→ 자세히 보기 (사용자/시각/상품)</p>
+          <p className="text-[10px] sm:text-xs text-brand-text mt-0.5">→ 자세히 보기 (사용자/시각/상품)</p>
         </button>
         <button
           onClick={() => navigate('/admin/voucher-orders')}
-          className="bg-white rounded-xl p-3 sm:p-4 shadow-sm text-left active:opacity-80 transition-opacity hover:shadow-md col-span-2"
+          className="bg-white rounded-xl p-3 sm:p-4 border border-rule text-left active:opacity-80 transition-opacity hover:shadow-md col-span-2"
         >
           <div className="flex items-center justify-between mb-2 sm:mb-3">
             <span className="text-[10px] sm:text-xs font-medium text-gray-500">KT Alpha 자동발송 상태</span>
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gray-100 text-gray-500 flex items-center justify-center">
               <Package className="w-5 h-5" />
             </div>
           </div>
           <p className="text-sm text-gray-700">processing / sent / failed 추적</p>
-          <p className="text-[10px] sm:text-xs text-amber-600 mt-0.5">→ 발송 추적 + 재발송</p>
+          <p className="text-[10px] sm:text-xs text-tone-warn mt-0.5">→ 발송 추적 + 재발송</p>
         </button>
       </div>
 
       {/* 🛡️ 2026-06-14: 처리 대기 작업 — 운영자가 지금 처리해야 할 일 한눈에 (사용자 요구).
           각 카드 클릭 → 해당 처리 페이지. count 0 이어도 표시(안심용), >0 이면 강조. */}
-      <div className="bg-white rounded-xl shadow-sm p-4 sm:p-5">
+      <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-4 sm:p-5">
         <div className="flex items-center gap-2 mb-3">
-          <AlertTriangle className="w-4 h-4 text-amber-500" />
+          <AlertTriangle className="w-4 h-4 text-tone-warn" />
           <h2 className="text-sm font-semibold text-gray-900">처리 대기 작업</h2>
           <span className="text-xs text-gray-400">지금 확인이 필요한 운영 업무</span>
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-6 gap-2 sm:gap-3">
           {[
-            { label: '승인 대기 셀러', value: dashboardStats.pendingSellers ?? pendingSellers.length, icon: <Users className="w-4 h-4" />, link: '/admin/seller-approval', color: 'text-blue-600', bg: 'bg-blue-50' },
-            { label: '미발송 주문', value: dashboardStats.unshippedOrders ?? 0, icon: <Truck className="w-4 h-4" />, link: '/admin/orders?status=PAID', color: 'text-indigo-600', bg: 'bg-indigo-50' },
-            { label: '반품 신청', value: dashboardStats.pendingReturns ?? 0, icon: <RotateCcw className="w-4 h-4" />, link: '/admin/returns', color: 'text-rose-600', bg: 'bg-rose-50' },
-            { label: '정산 대기', value: dashboardStats.pendingPayouts ?? 0, icon: <Banknote className="w-4 h-4" />, link: '/admin/payout-center', color: 'text-emerald-600', bg: 'bg-emerald-50' },
-            { label: '제조사 승인', value: dashboardStats.pendingSuppliers ?? 0, icon: <Boxes className="w-4 h-4" />, link: '/admin/suppliers', color: 'text-purple-600', bg: 'bg-purple-50' },
-            { label: '교환권 발송실패', value: dashboardStats.failedVouchers ?? 0, icon: <Ticket className="w-4 h-4" />, link: '/admin/voucher-orders', color: 'text-amber-600', bg: 'bg-amber-50' },
+            { label: '승인 대기 셀러', value: dashboardStats.pendingSellers ?? pendingSellers.length, icon: <Users className="w-4 h-4" />, link: '/admin/seller-approval', color: 'text-tone-info', bg: 'bg-tone-info-bg' },
+            { label: '미발송 주문', value: dashboardStats.unshippedOrders ?? 0, icon: <Truck className="w-4 h-4" />, link: '/admin/orders?status=PAID', color: 'text-tone-info', bg: 'bg-tone-info-bg' },
+            { label: '반품 신청', value: dashboardStats.pendingReturns ?? 0, icon: <RotateCcw className="w-4 h-4" />, link: '/admin/returns', color: 'text-tone-bad', bg: 'bg-tone-bad-bg' },
+            { label: '정산 대기', value: dashboardStats.pendingPayouts ?? 0, icon: <Banknote className="w-4 h-4" />, link: '/admin/payout-center', color: 'text-tone-ok', bg: 'bg-tone-ok-bg' },
+            { label: '제조사 승인', value: dashboardStats.pendingSuppliers ?? 0, icon: <Boxes className="w-4 h-4" />, link: '/admin/suppliers', color: 'text-tone-info', bg: 'bg-tone-info-bg' },
+            { label: '교환권 발송실패', value: dashboardStats.failedVouchers ?? 0, icon: <Ticket className="w-4 h-4" />, link: '/admin/voucher-orders', color: 'text-tone-warn', bg: 'bg-tone-warn-bg' },
           ].map(task => (
             <button
               key={task.label}
               onClick={() => navigate(task.link)}
               className={`text-left rounded-lg p-3 border transition-all hover:shadow-sm ${
-                task.value > 0 ? 'border-amber-200 bg-amber-50/40' : 'border-gray-100 bg-white hover:bg-gray-50'
+                task.value > 0 ? 'border-rule bg-white' : 'border-gray-100 bg-white hover:bg-gray-50'
               }`}
             >
               <div className="flex items-center justify-between mb-1.5">
                 <span className={`w-7 h-7 rounded-lg ${task.bg} ${task.color} flex items-center justify-center`}>{task.icon}</span>
-                {task.value > 0 && <span className="text-[10px] font-bold text-amber-600">처리 필요</span>}
+                {task.value > 0 && <span className="text-[10px] font-bold text-tone-warn">처리 필요</span>}
               </div>
               <p className="text-lg font-bold text-gray-900">{formatNumber(task.value)}<span className="text-xs font-normal text-gray-400 ml-0.5">건</span></p>
               <p className="text-[11px] text-gray-500 truncate">{task.label}</p>
@@ -492,8 +492,7 @@ export default function AdminPage() {
       </div>
 
       {/* 🛡️ 2026-05-24: 별점 "신규" 즉시 백필 — cron 기다리지 않고 바로 시드 트리거. */}
-      <div className="bg-white rounded-xl p-3 sm:p-4 shadow-sm flex items-center gap-3">
-        <span className="text-2xl">⭐</span>
+      <div className="bg-white rounded-xl p-3 sm:p-4 border border-rule flex items-center gap-3">
         <div className="flex-1">
           <p className="text-sm font-bold text-gray-900">신규 상품 별점 자동 시드</p>
           <p className="text-[11px] text-gray-500">review_count=0 + is_active=1 인 상품에 ★4.3~4.8 즉시 시드 (cron 기다리지 않음, 매시간 자동도 동작)</p>
@@ -505,7 +504,7 @@ export default function AdminPage() {
               const res = await api.post('/api/admin/reviews/auto-seed-missing', { max_batch: 500 })
               if (res.data?.success) {
                 const r = res.data.data
-                const msg = res.data.message || `✅ ${r.seeded_products}개 상품에 ${r.seeded_reviews}개 리뷰 시드 완료`
+                const msg = res.data.message || `${r.seeded_products}개 상품에 ${r.seeded_reviews}개 리뷰 시드 완료`
                 if (r.seeded_products === 0) toast.info(msg)
                 else toast.success(msg)
               } else {
@@ -537,14 +536,14 @@ export default function AdminPage() {
       {/* ── 판매자 통계 카드 — 🛡️ 2026-04-28: 클릭 가능 (해당 페이지 이동) ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         {[
-          { label: t('admin.dashboard.k027', { defaultValue: '총 판매자' }), value: stats.totalSellers, icon: <Users className="w-5 h-5" />, color: 'text-blue-600', bg: 'bg-blue-50', link: '/admin/seller-approval' },
-          { label: t('admin.dashboard.k028', { defaultValue: '승인된 판매자' }), value: stats.activeSellers, icon: <CheckCircle className="w-5 h-5" />, color: 'text-emerald-600', bg: 'bg-emerald-50', link: '/admin/seller-approval?status=active' },
+          { label: t('admin.dashboard.k027', { defaultValue: '총 판매자' }), value: stats.totalSellers, icon: <Users className="w-5 h-5" />, color: 'text-gray-700', bg: 'border border-rule bg-white', link: '/admin/seller-approval' },
+          { label: t('admin.dashboard.k028', { defaultValue: '승인된 판매자' }), value: stats.activeSellers, icon: <CheckCircle className="w-5 h-5" />, color: 'text-tone-ok', bg: 'border border-rule bg-white', link: '/admin/seller-approval?status=active' },
           // 🗑️ 2026-07-07 라이브커머스 제거: '총 라이브'/'진행 중 라이브' KPI 카드 삭제.
         ].map(card => (
           <button
             key={card.label}
             onClick={() => navigate(card.link)}
-            className="bg-white rounded-xl p-4 shadow-sm text-left hover:shadow-md hover:bg-gray-50 transition-all group cursor-pointer"
+            className="bg-white rounded-xl p-4 border border-rule text-left hover:shadow-md hover:bg-gray-50 transition-all group cursor-pointer"
           >
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-medium text-gray-500 group-hover:text-gray-700">{card.label}</span>
@@ -561,8 +560,8 @@ export default function AdminPage() {
 
       {/* ── 수수료 설정 ── */}
       {commissionSettings.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm p-5 mb-5">
-          <h2 className="text-sm font-semibold text-gray-900 mb-3">{t('admin.dashboard.k033', { defaultValue: '💰 플랫폼 수수료 설정' })}</h2>
+        <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-5 mb-5">
+          <h2 className="text-sm font-semibold text-gray-900 mb-3">{t('admin.dashboard.k033', { defaultValue: '플랫폼 수수료 설정' })}</h2>
           <div className="space-y-3">
             {commissionSettings.map(setting => (
               <div key={setting.key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -581,7 +580,7 @@ export default function AdminPage() {
                   <span className="text-sm text-gray-500">%</span>
                   <button
                     onClick={() => updateCommission(setting.key, setting.value)}
-                    className="px-3 py-1.5 bg-gray-900 text-white text-xs font-bold rounded-lg hover:bg-gray-900"
+                    className="ur-btn ur-btn-sm ur-btn-primary"
                   >
                     적용
                   </button>

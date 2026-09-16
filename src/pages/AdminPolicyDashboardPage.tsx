@@ -35,7 +35,7 @@ function PolicyTable({ title, rows, note }: {
         {title}
       </h2>
       {note && (
-        <p className="px-4 py-2 bg-amber-50 border-b border-amber-200 text-xs text-amber-900 leading-relaxed">
+        <p className="px-4 py-2 bg-white border-b border-rule text-xs text-tone-warn leading-relaxed">
           {note}
         </p>
       )}
@@ -57,7 +57,7 @@ function PolicyTable({ title, rows, note }: {
                 </span>
                 {r.unit && <span className="ml-1 text-xs text-gray-500">{r.unit}</span>}
                 {r.dynamic && (
-                  <div className="text-[10px] text-blue-600 mt-0.5">
+                  <div className="text-[10px] text-gray-700 mt-0.5">
                     동적 적용중: <strong>{r.dynamic}</strong>
                   </div>
                 )}
@@ -83,7 +83,6 @@ export default function AdminPolicyDashboardPage() {
         return {
           platform_fee_pct: String(data.platform_fee_pct ?? ''),
           seller_commission_pct: String(data.seller_commission_pct ?? ''),
-          agency_share_pct: String(data.agency_share_pct ?? ''),
           influencer_intro_share_pct: String(data.influencer_intro_share_pct ?? ''),
         }
       },
@@ -102,29 +101,28 @@ export default function AdminPolicyDashboardPage() {
 
       {/* 🛡️ 2026-07-01 (대표 "여기서 수정 가능해야 하는 거 아냐?"): 이 화면은 '현재 적용값'을 한눈에 보는
           읽기 전용 뷰어 — 편집은 항목별 실제 편집 페이지에서. 어디서 바꾸는지 크게 안내 + 바로가기 버튼. */}
-      <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+      <div className="mb-4 rounded-xl border border-rule bg-white p-4">
         <div className="flex items-start gap-2">
-          <span className="text-lg leading-none">📖</span>
           <div className="flex-1">
-            <p className="text-sm font-bold text-amber-900">이 화면은 <span className="underline">읽기 전용</span>입니다 — 값은 여기서 못 바꿔요</p>
-            <p className="text-xs text-amber-800 mt-0.5">
+            <p className="text-sm font-bold text-tone-warn">이 화면은 <span className="underline">읽기 전용</span>입니다 — 값은 여기서 못 바꿔요</p>
+            <p className="text-xs text-tone-warn mt-0.5">
               지금 어떤 정책이 적용 중인지 한눈에 보는 용도예요. 실제 변경은 항목별 편집 페이지에서 합니다.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <a href="/admin/payouts"
-                className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-2 text-xs font-bold text-white hover:bg-amber-700">
-                ✏️ 수수료율 편집하기 (정산 센터)
+                className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-1.5">
+                수수료율 편집하기 (정산 센터)
               </a>
               <a href="/admin/commission-settings"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100">
+                className="inline-flex items-center gap-1.5 rounded-lg border border-rule bg-white px-3 py-2 text-xs font-semibold text-tone-warn hover:bg-gray-100">
                 정산 마진 설정
               </a>
               <a href="/admin/platform-settings"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100">
+                className="inline-flex items-center gap-1.5 rounded-lg border border-rule bg-white px-3 py-2 text-xs font-semibold text-tone-warn hover:bg-gray-100">
                 플랫폼 설정
               </a>
             </div>
-            <ul className="mt-3 list-disc list-inside space-y-0.5 text-[11px] text-amber-700">
+            <ul className="mt-3 list-disc list-inside space-y-0.5 text-[11px] text-tone-warn">
               <li><strong>수수료 비율</strong>(동적): 위 <strong>수수료율 편집</strong> 버튼 → platform_settings 값 변경 → 이 화면에도 반영</li>
               <li><strong>환불/시간 상수</strong>(정적): 코드 <code className="font-mono">src/shared/constants/policy.ts</code> 수정 + 배포 필요</li>
               <li><strong>원천징수율</strong>: 한국 세법(소득세법 §127) 고정 — 3.3%(사업소득) / 8.8%(기타소득)</li>
@@ -143,7 +141,7 @@ export default function AdminPolicyDashboardPage() {
               ...r,
               // 어드민이 platform_settings 로 덮어쓴 값이 있으면 "현재 적용값"으로 겹쳐 보여 준다.
               dynamic: r.dynamicKey && dynamicSettings[r.dynamicKey] ? `${dynamicSettings[r.dynamicKey]}%` : undefined,
-              desc: r.retired ? `${r.desc} · ⛔ ${r.retired}` : r.desc,
+              desc: r.retired ? `${r.desc} · ${r.retired}` : r.desc,
             }))}
           />
         ))}
@@ -152,16 +150,16 @@ export default function AdminPolicyDashboardPage() {
       <div className="mt-6 p-4 bg-gray-50 rounded-lg text-xs text-gray-600">
         <p className="font-bold mb-2 text-gray-700">관련 페이지</p>
         <div className="grid grid-cols-2 gap-2">
-          <a href="/admin/payouts" className="flex items-center gap-1 text-blue-600 hover:underline">
+          <a href="/admin/payouts" className="flex items-center gap-1 text-brand-text hover:underline">
             <ExternalLink className="w-3 h-3" /> /admin/payouts (수수료 비율 편집)
           </a>
-          <a href="/admin/withholding" className="flex items-center gap-1 text-blue-600 hover:underline">
+          <a href="/admin/withholding" className="flex items-center gap-1 text-brand-text hover:underline">
             <ExternalLink className="w-3 h-3" /> /admin/withholding (원천징수 / 지급조서)
           </a>
-          <a href="/admin/disputes" className="flex items-center gap-1 text-blue-600 hover:underline">
+          <a href="/admin/disputes" className="flex items-center gap-1 text-brand-text hover:underline">
             <ExternalLink className="w-3 h-3" /> /admin/disputes (분쟁 관리)
           </a>
-          <a href="/admin/health" className="flex items-center gap-1 text-blue-600 hover:underline">
+          <a href="/admin/health" className="flex items-center gap-1 text-brand-text hover:underline">
             <ExternalLink className="w-3 h-3" /> /admin/health (시스템 헬스)
           </a>
         </div>

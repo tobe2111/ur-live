@@ -72,8 +72,8 @@ export default function HostingNewPage() {
   return (
     <>
       <SEO title={t('hosting.newTitle', { defaultValue: '공구 열기' })} noindex />
-      <div className="min-h-screen bg-white dark:bg-[#0D0F12] text-gray-900 dark:text-white pb-24">
-        <header className="sticky top-0 z-20 bg-white/95 dark:bg-[#0D0F12]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35] px-4 py-3">
+      <div className="min-h-screen bg-white dark:bg-[#11141C] text-gray-900 dark:text-white pb-24">
+        <header className="sticky top-0 z-20 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35] px-4 py-3">
           <div className="max-w-3xl mx-auto flex items-center justify-between">
             <h1 className="text-lg font-bold">+ {t('hosting.newTitle', { defaultValue: '공구 열기' })}</h1>
             <button onClick={() => navigate('/host')} className="text-sm text-gray-500 dark:text-gray-400">{t('common.back')}</button>
@@ -86,8 +86,8 @@ export default function HostingNewPage() {
                 onClick={() => setCategory(cat.key)}
                 className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
                   category === cat.key
-                    ? 'bg-pink-500 text-white'
-                    : 'bg-gray-100 dark:bg-[#1A1C21] text-gray-700 dark:text-gray-300'
+                    ? 'bg-brand text-white'
+                    : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300'
                 }`}
               >
                 <cat.Icon className="w-3.5 h-3.5" aria-hidden="true" />{cat.label}
@@ -106,19 +106,19 @@ export default function HostingNewPage() {
           ) : (
             <div className="grid grid-cols-2 gap-3">
               {items.map(item => (
-                <div key={item.id} className={`bg-gray-50 dark:bg-[#1A1C21] rounded-xl border ${selectedId === item.id ? 'border-pink-500' : 'border-gray-100 dark:border-[#2C2F35]'} overflow-hidden`}>
+                <div key={item.id} className={`bg-gray-50 dark:bg-[#1D1F29] rounded-xl border ${selectedId === item.id ? 'border-brand' : 'border-gray-100 dark:border-[#2C2F35]'} overflow-hidden`}>
                   <button
                     onClick={() => setSelectedId(selectedId === item.id ? null : item.id)}
                     className="block w-full text-left"
                   >
-                    <div className="aspect-square bg-gray-100 dark:bg-[#1A1C21]">
+                    <div className="aspect-square bg-gray-100 dark:bg-[#1D1F29]">
                       {(item.thumbnail || item.image_url) && (
                         <img src={cfImage(item.thumbnail || item.image_url || '', { width: 400, quality: 82, format: 'auto' }) || (item.thumbnail || item.image_url || '')} alt={item.name} className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, item.thumbnail || item.image_url || '')} />
                       )}
                     </div>
                     <div className="p-3">
                       <p className="text-xs font-medium line-clamp-2 mb-1">{item.name}</p>
-                      <p className="text-sm font-bold text-pink-500 dark:text-pink-400">{formatWon(item.price)}</p>
+                      <p className="text-sm font-bold text-brand-text ">{formatWon(item.price)}</p>
                       {item.restaurant_name && <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">{item.restaurant_name}</p>}
                       {item.my_host_id && (
                         <p className="text-[10px] text-emerald-500 mt-1">✓ 호스팅 중</p>
@@ -137,7 +137,7 @@ export default function HostingNewPage() {
                           max={100}
                           value={target}
                           onChange={(e) => setTarget(Math.max(2, Math.min(100, Number(e.target.value) || 5)))}
-                          className="w-full px-2 py-1.5 text-sm bg-white dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] text-gray-900 dark:text-white rounded-lg"
+                          className="w-full px-2 py-1.5 text-sm bg-surface border border-line text-gray-900 dark:text-white rounded-lg"
                         />
                       </div>
                       <div>
@@ -147,13 +147,13 @@ export default function HostingNewPage() {
                           value={note}
                           onChange={(e) => setNote(e.target.value.slice(0, 200))}
                           placeholder="같이 사실 분 모집!"
-                          className="w-full px-2 py-1.5 text-sm bg-white dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] text-gray-900 dark:text-white rounded-lg"
+                          className="w-full px-2 py-1.5 text-sm bg-surface border border-line text-gray-900 dark:text-white rounded-lg"
                         />
                       </div>
                       <button
                         onClick={() => handleStart(item.id)}
                         disabled={submitting}
-                        className="w-full py-2 bg-pink-500 hover:bg-pink-600 disabled:opacity-50 text-white text-xs font-bold rounded-lg"
+                        className="w-full py-2 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white text-xs font-bold rounded-lg"
                       >
                         {submitting ? '시작 중...' : '🎉 공구 시작'}
                       </button>

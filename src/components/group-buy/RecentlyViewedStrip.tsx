@@ -34,6 +34,20 @@ export function recordRecentlyViewed(item: Omit<RecentItem, 'viewed_at'>): void 
   } catch { /* silent */ }
 }
 
+/**
+ * 🗺️ 2026-09-09 (지도 안 D4): 지도 마커의 "이미 본 것" 층이 읽는다.
+ *   새 저장소를 만들지 않는다 — 최근 본 것은 **이미 여기 있다**(상세 진입 시 기록, 최대 12개).
+ *   ⚠️ 이건 화면 표시용이다. 개인화 판단이나 금액 계산에 쓰지 말 것(비로그인·시크릿창이면 빈 집합).
+ */
+export function readRecentlyViewedIds(): Set<number> {
+  try {
+    const raw = localStorage.getItem(KEY)
+    if (!raw) return new Set()
+    const arr = JSON.parse(raw) as RecentItem[]
+    return new Set(Array.isArray(arr) ? arr.map(i => Number(i.id)).filter(Number.isFinite) : [])
+  } catch { return new Set() }
+}
+
 export default function RecentlyViewedStrip() {
   const navigate = useNavigate()
   const [items, setItems] = useState<RecentItem[]>([])
@@ -61,7 +75,7 @@ export default function RecentlyViewedStrip() {
             className="snap-start shrink-0 w-[120px] text-left"
             aria-label={`${item.name} 다시 보기`}
           >
-            <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A1C21]">
+            <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1D1F29]">
               {item.image_url ? (
                 <img src={cfImage(item.image_url, { width: 400, quality: 82, format: 'auto' }) || item.image_url} alt={item.name} loading="lazy" className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, item.image_url)} />
               ) : (

@@ -15,7 +15,7 @@ const authHeader = () => {
 
 interface Report { id: number; period_key: string; summary_json: string | null; advice_md: string | null; created_at: string }
 
-const card = 'rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] p-4'
+const card = 'rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] p-4'
 
 export default function WeeklyReportPanel() {
   const [reports, setReports] = useState<Report[]>([])
@@ -47,7 +47,7 @@ export default function WeeklyReportPanel() {
     <div className={`mt-3 ${card}`}>
       <div className="flex items-center justify-between">
         <div className="text-[14px] font-bold text-gray-900 dark:text-white">AI 주간 리포트 <span className="text-gray-400 dark:text-gray-500 font-medium">({reports.length})</span></div>
-        <button onClick={generate} disabled={busy} className="rounded-lg bg-gray-900 dark:bg-white px-2.5 py-1 text-[11.5px] font-bold text-white dark:text-[#0D0F12] disabled:opacity-40">{busy ? '생성 중…' : '이번 주 리포트 생성'}</button>
+        <button onClick={generate} disabled={busy} className="rounded-lg bg-gray-900 dark:bg-white px-2.5 py-1 text-[11.5px] font-bold text-white dark:text-[#11141C] disabled:opacity-40">{busy ? '생성 중…' : '이번 주 리포트 생성'}</button>
       </div>
       <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500">매주 월요일 자동 생성 · 최근 7일 실적 기반 AI 진단(읽기 전용).</p>
 

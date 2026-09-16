@@ -46,7 +46,7 @@ export default function ThreeWaySplitCalculator({
   return (
     <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-bold text-gray-900">💰 공구 3분할 계산기</p>
+        <p className="text-sm font-bold text-gray-900">공구 3분할 계산기</p>
         <span className="text-[11px] text-gray-400">정가 {formatNumber(orig)}원 기준 · 건당</span>
       </div>
 
@@ -72,13 +72,13 @@ export default function ThreeWaySplitCalculator({
           className="w-full accent-emerald-600" />
         <p className="text-[11px] text-gray-500 mt-1">{guide.label} 권장 {guide.min}~{guide.max}% · {guide.note}</p>
         {belowGuide && (
-          <p className="text-[11px] text-amber-700 bg-amber-50 rounded-lg px-2.5 py-1.5 mt-1.5">
-            ⚠️ 이 소개비 수준({promoPct}%)에서는 인플루언서 참여가 저조할 수 있습니다. (권장 {guide.min}% 이상)
+          <p className="text-[11px] text-tone-warn bg-tone-warn-bg rounded-lg px-2.5 py-1.5 mt-1.5">
+            이 소개비 수준({promoPct}%)에서는 인플루언서 참여가 저조할 수 있습니다. (권장 {guide.min}% 이상)
           </p>
         )}
         {capacityVertical && (
-          <p className="text-[11px] text-emerald-700 mt-1">
-            💡 {guide.label}는 빈 자리를 채우는 것이라 높은 소개비도 남습니다(한계비용 낮음).
+          <p className="text-[11px] text-tone-ok mt-1">
+            {guide.label}는 빈 자리를 채우는 것이라 높은 소개비도 남습니다(한계비용 낮음).
           </p>
         )}
       </div>
@@ -98,7 +98,7 @@ export default function ThreeWaySplitCalculator({
           </div>
           <p className="text-[11px] text-gray-500 mt-2.5 leading-relaxed">
             소비자 <strong className="text-gray-700">{formatNumber(consumer)}원</strong> 결제 시:
-            추천 판매 1건당 인플루언서에게 <strong className="text-emerald-700">{formatNumber(b.promo)}원</strong> 지급 ·
+            추천 판매 1건당 인플루언서에게 <strong className="text-tone-ok">{formatNumber(b.promo)}원</strong> 지급 ·
             소개비는 소비자 결제액에 추가되지 않고 매장 몫에서 나갑니다.
           </p>
         </div>

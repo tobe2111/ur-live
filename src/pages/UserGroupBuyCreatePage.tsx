@@ -42,7 +42,7 @@ export default function UserGroupBuyCreatePage() {
 
   // 🛡️ 2026-05-16: 공구 등록 권한 강화 — 점주(셀러) OR 인플루언서만 등록 가능
   //   일반 user (영업/공구 등록 자격 없음) 차단 — 사용자 보고:
-  //   "아무나 이 공구를 올리면 안 될 것 같아. 점주님이나 아니면 인플루언서"
+  // "아무나 이 공구를 올리면 안 될 것 같아. 점주님이나 아니면 인플루언서"
   const [eligibleAsInfluencer, setEligibleAsInfluencer] = useState<boolean | null>(null)
   const isSeller = !!sellerToken
 
@@ -92,7 +92,7 @@ export default function UserGroupBuyCreatePage() {
   // 자격 없음 안내 화면
   if (eligibleAsInfluencer === false) {
     return (
-      <div className="min-h-screen bg-white dark:bg-[#0D0F12] flex flex-col items-center justify-center px-6 text-center">
+      <div className="min-h-screen bg-white dark:bg-[#11141C] flex flex-col items-center justify-center px-6 text-center">
         <span className="text-5xl mb-3">🔒</span>
         <h1 className="text-lg font-extrabold text-gray-900 dark:text-white mb-2">공구 등록 권한이 필요해요</h1>
         <p className="text-sm text-gray-600 dark:text-gray-300 mb-6 max-w-sm leading-relaxed">
@@ -101,7 +101,7 @@ export default function UserGroupBuyCreatePage() {
         <div className="flex flex-col gap-2 w-full max-w-xs">
           <button
             onClick={() => navigate('/store/new')}
-            className="w-full py-3 bg-pink-500 text-white rounded-xl font-bold text-sm"
+            className="w-full py-3 bg-brand text-white rounded-xl font-bold text-sm"
           >
             🏪 내 가게 등록하기
           </button>
@@ -112,7 +112,7 @@ export default function UserGroupBuyCreatePage() {
             🎤 인플루언서 활동 시작 (카탈로그)
           </button>
           <button onClick={() => navigate(-1)} aria-label="뒤로 가기"
-            className="w-full py-3 border border-gray-200 dark:border-[#2C2F35] text-gray-700 dark:text-gray-300 rounded-xl font-bold text-sm"
+            className="w-full py-3 border border-line text-gray-700 dark:text-gray-300 rounded-xl font-bold text-sm"
           >
             돌아가기
           </button>
@@ -178,7 +178,7 @@ export default function UserGroupBuyCreatePage() {
   if (!isLoggedIn) return null
 
   return (
-    <div className="bg-white dark:bg-[#0D0F12] min-h-screen pb-24">
+    <div className="bg-white dark:bg-[#11141C] min-h-screen pb-24">
       <SEO
         title={catMeta
           ? t('groupbuy.seoTitleCat', { defaultValue: '{{label}} 공구 시작', label: catMeta.label })
@@ -189,7 +189,7 @@ export default function UserGroupBuyCreatePage() {
         url="/community-group-buy/new"
       />
       {/* Header */}
-      <header className="sticky top-0 md:top-14 z-40 bg-white dark:bg-[#0D0F12] border-b border-gray-100 dark:border-[#2C2F35]">
+      <header className="sticky top-0 md:top-14 z-40 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="flex items-center h-12 px-2">
           <button
             onClick={() => navigate(-1)}
@@ -235,7 +235,7 @@ export default function UserGroupBuyCreatePage() {
 
           {/* Selected restaurant card */}
           {restaurant && (
-            <div className="mt-3 p-4 border border-gray-200 dark:border-[#2C2F35] rounded-xl bg-gray-50 dark:bg-[#1C1C1E]">
+            <div className="mt-3 p-4 border border-line rounded-xl bg-gray-50 dark:bg-[#1D1F29]">
               <p className="text-[14px] font-bold text-gray-900 dark:text-white">
                 {restaurant.name}
               </p>
@@ -291,7 +291,7 @@ export default function UserGroupBuyCreatePage() {
                     setProposedPrice(e.target.value ? Number(e.target.value) : '')
                   }
                   placeholder={t('groupbuy.pricePlaceholder', { defaultValue: '예: 20000' })}
-                  className="w-full px-3 py-2.5 border border-gray-200 dark:border-[#2C2F35] rounded-lg text-[14px] text-gray-900 dark:text-white bg-white dark:bg-[#1C1C1E] placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:border-gray-900 dark:focus:border-gray-400 focus:outline-none pr-10"
+                  className="w-full px-3 py-2.5 border border-line rounded-lg text-[14px] text-gray-900 dark:text-white bg-surface placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:border-gray-900 dark:focus:border-gray-400 focus:outline-none pr-10"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-gray-400 dark:text-gray-500">
                   {t('groupbuy.priceUnit', { defaultValue: '원' })}
@@ -311,7 +311,7 @@ export default function UserGroupBuyCreatePage() {
                   value={deposit}
                   onChange={(e) => setDeposit(Number(e.target.value) || 0)}
                   min={1000}
-                  className="w-full px-3 py-2.5 border border-gray-200 dark:border-[#2C2F35] rounded-lg text-[14px] text-gray-900 dark:text-white bg-white dark:bg-[#1C1C1E] placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:border-gray-900 dark:focus:border-gray-400 focus:outline-none pr-10"
+                  className="w-full px-3 py-2.5 border border-line rounded-lg text-[14px] text-gray-900 dark:text-white bg-surface placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:border-gray-900 dark:focus:border-gray-400 focus:outline-none pr-10"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-gray-400 dark:text-gray-500">
                   {t('groupbuy.depositUnit', { defaultValue: '딜' })}
@@ -336,7 +336,7 @@ export default function UserGroupBuyCreatePage() {
                   value={targetCount}
                   onChange={(e) => setTargetCount(Number(e.target.value) || 0)}
                   min={3}
-                  className="w-full px-3 py-2.5 border border-gray-200 dark:border-[#2C2F35] rounded-lg text-[14px] text-gray-900 dark:text-white bg-white dark:bg-[#1C1C1E] placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:border-gray-900 dark:focus:border-gray-400 focus:outline-none pr-10"
+                  className="w-full px-3 py-2.5 border border-line rounded-lg text-[14px] text-gray-900 dark:text-white bg-surface placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:border-gray-900 dark:focus:border-gray-400 focus:outline-none pr-10"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-gray-400 dark:text-gray-500">
                   {t('groupbuy.targetCountUnit', { defaultValue: '명' })}
@@ -360,7 +360,7 @@ export default function UserGroupBuyCreatePage() {
                 rows={4}
                 maxLength={1000}
                 placeholder={t('groupbuy.descriptionPlaceholder', { defaultValue: '이 공구를 소개해주세요. 어떤 메뉴인지, 왜 추천하는지, 참여하면 좋은 이유 등을 적으면 더 많은 분이 함께해요.' })}
-                className="w-full px-3 py-2.5 border border-gray-200 dark:border-[#2C2F35] rounded-lg text-[14px] text-gray-900 dark:text-white bg-white dark:bg-[#1C1C1E] placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:border-gray-900 dark:focus:border-gray-400 focus:outline-none resize-none leading-relaxed"
+                className="w-full px-3 py-2.5 border border-line rounded-lg text-[14px] text-gray-900 dark:text-white bg-surface placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:border-gray-900 dark:focus:border-gray-400 focus:outline-none resize-none leading-relaxed"
               />
               <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1 text-right">
                 {description.length}/1000
@@ -369,7 +369,7 @@ export default function UserGroupBuyCreatePage() {
 
             {/* Calculation */}
             {step2Valid && (
-              <div className="bg-gray-50 dark:bg-[#1C1C1E] rounded-xl p-3 text-center">
+              <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-3 text-center">
                 <p className="text-[13px] text-gray-600 dark:text-gray-400">
                   {t('groupbuy.calculationDesc', { amount: formatNumber(totalRaised), defaultValue: '목표 달성 시 총 {{amount}}딜 모금' })}
                 </p>
@@ -389,7 +389,7 @@ export default function UserGroupBuyCreatePage() {
             </h2>
 
             {/* Summary card */}
-            <div className="border border-gray-200 dark:border-[#2C2F35] rounded-xl p-4 space-y-3 bg-white dark:bg-[#1C1C1E]">
+            <div className="border border-line rounded-xl p-4 space-y-3 bg-surface">
               <div>
                 <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-0.5">{catMeta ? catMeta.place : t('groupbuy.summaryRestaurant', { defaultValue: '맛집' })}</p>
                 <p className="text-[14px] font-bold text-gray-900 dark:text-white">
@@ -425,7 +425,7 @@ export default function UserGroupBuyCreatePage() {
             {/* Balance */}
             <div className="mt-3 flex items-center justify-between px-1">
               <span className="text-[13px] text-gray-600 dark:text-gray-400">{t('groupbuy.balanceLabel', { defaultValue: '내 딜 잔액' })}</span>
-              <span className="text-[14px] font-bold text-pink-500">
+              <span className="text-[14px] font-bold text-brand-text">
                 {balance !== null
                   ? `${formatNumber(balance)}딜`
                   : t('groupbuy.balanceLoading', { defaultValue: '로딩중...' })}
@@ -433,7 +433,7 @@ export default function UserGroupBuyCreatePage() {
             </div>
 
             {/* Warning */}
-            <div className="mt-3 flex gap-2 bg-gray-50 dark:bg-[#1C1C1E] rounded-xl p-3">
+            <div className="mt-3 flex gap-2 bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-3">
               <AlertCircle className="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0 mt-0.5" />
               <p className="text-[12px] text-gray-500 dark:text-gray-400 leading-relaxed">
                 {t('groupbuy.warningDeposit', { amount: formatNumber(deposit), defaultValue: '참여 시 {{amount}}딜이 예치됩니다. 미달성 시 전액 환불됩니다.' })}
@@ -445,7 +445,7 @@ export default function UserGroupBuyCreatePage() {
 
       {/* Bottom CTA */}
       {restaurant && step2Valid && (
-        <div className="fixed bottom-0 left-0 right-0 xl:left-56 app-frame-bar bg-white dark:bg-[#0D0F12] border-t border-gray-100 dark:border-[#2C2F35] px-4 py-3 z-50">
+        <div className="fixed bottom-0 left-0 right-0 xl:left-56 app-frame-bar bg-white dark:bg-[#11141C] border-t border-gray-100 dark:border-[#2C2F35] px-4 py-3 z-50">
           <button
             onClick={handleSubmit}
             disabled={!canSubmit}

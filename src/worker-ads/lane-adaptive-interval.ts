@@ -33,6 +33,9 @@ export const TIGHTEN_MIN_NOVELTY = 0.5
 /** 아무리 조여도 이 아래로는 안 간다(시간당 1회라는 별도 상한과 함께 이중 안전). */
 export const MIN_INTERVAL_HOURS = 1
 
+/** 하루 1회 레인의 기준값 — 이 이상은 **외부 API 일일 한도** 표현이라 조이지 않는다(위 함수 참조). */
+export const DAILY_INTERVAL_HOURS = 24
+
 /**
  * 🛑 **실패 재시도의 상한.** 실패한 회차는 슬롯을 안 먹지만(=다음 시간이 곧바로 재시도),
  *   그게 무한이면 **영구 장애 소스를 하루 24번 계속 두드린다.**
@@ -114,6 +117,14 @@ export function adaptiveIntervalHours(base: number, history: readonly LaneRunEnt
   // 🌵 먼저 **마름**을 본다 — 마른 레인은 조일 대상이 아니라 늦출 대상이다(둘을 같이 보면 신규율
   //   게이트가 조이기만 막고 비용은 그대로 나간다).
   if (isBarren(history)) return base * BARREN_INTERVAL_MULT
+  /**
+   * 📅 **하루 1회(24h)는 성능 손잡이가 아니라 외부 한도다** (2026-09-05).
+   *   이 값을 쓰는 레인은 공공 API(지방행정 인허가·나라장터·국민연금·공정위 가맹)에 붙어 있고,
+   *   그 API 들의 **일일 한도를 우리가 모른다**. 조이면 호출이 두 배가 되어 한도에 부딪히는데,
+   *   그 실패는 조용하다(응답이 빈 배열로 온다) — 즉 잘못 조여도 여기서는 안 보인다.
+   *   ⇒ 늦추기(마름)는 그대로 두고 **조이기만** 막는다. 값을 바꾸려면 그 API 문서를 먼저 볼 것.
+   */
+  if (base >= DAILY_INTERVAL_HOURS) return base
   if (base <= MIN_INTERVAL_HOURS) return base
   if (cleanStreak(history) < TIGHTEN_CLEAN_RUNS) return base
   const nov = recentNovelty(history)

@@ -5,9 +5,11 @@ import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
-import ImageUpload from '@/components/ImageUpload'
 import ProductOptionForm, { ProductOption } from '@/components/ProductOptionForm'
 import VoucherFields from '@/pages/seller-product-edit/VoucherFields'
+import ProductPhotoField, { parseProductPhotos } from '@/pages/seller-product-edit/ProductPhotoField'
+import ProductShortsField from '@/pages/seller-product-edit/ProductShortsField'
+import PriceStockFields from '@/pages/seller-product-edit/PriceStockFields'
 import { isVoucherCategory } from '@/shared/constants/voucher-categories'
 import { 
   ArrowLeft, 
@@ -25,6 +27,7 @@ import { DashboardPageHeader } from '@/components/dashboard'
 
 // 🛡️ 2026-05-02: TD-018 분할 — types 를 ./seller-product-edit/types 로 추출.
 import type { LiveStream, Product } from './seller-product-edit/types'
+import PromoRateField, { promoPctFromProduct, promoRateForSubmit } from './seller-product-edit/PromoRateField'
 
 /**
  * 레거시 이용권 카테고리(2026 이전 등록분). 새로 고를 수는 없고, **이미 그 값을 가진 상품을
@@ -50,6 +53,7 @@ export default function SellerProductEditPage() {
     name: '',
     description: '',
     price: '',
+    original_price: '',  // 💰 2026-09-14: 정가(표시 전용) — 서버는 받고 있었는데 화면만 안 보냈다.
     stock: '',
     image_url: '',
     live_stream_id: '',
@@ -57,6 +61,7 @@ export default function SellerProductEditPage() {
     live_price_enabled: false,
     is_active: true,
     detail_images: [] as string[],
+    photos: [] as string[],  // 🖼️ 2026-09-03 사진 목록(첫 장 = 대표 = image_url) — 등록 폼과 같은 모델
     product_type: 'featured',
     category: 'lifestyle',
     // 이용권 필드
@@ -70,6 +75,7 @@ export default function SellerProductEditPage() {
     store_verify_pin: '',
     // 🎯 2026-07-01 (대표 "1인당 결제 최대 한도"): 0/빈값 = 무제한.
     max_per_person: '',
+    promo_pct: 0,  // 💰 소개비 %(0~50) — 저장 시 /100 → 분수. 게이트 OFF 면 미노출.
   })
   
   const [productOptions, setProductOptions] = useState<ProductOption[]>([])
@@ -92,16 +98,19 @@ export default function SellerProductEditPage() {
     if (productData.detail_images) {
       detailImages = typeof productData.detail_images === 'string' ? JSON.parse(productData.detail_images) : productData.detail_images
     }
+    const photos = parseProductPhotos(productData)  // 🖼️ 2026-09-03 사진 목록(옛 상품은 대표 1장)
     setFormData({
       name: productData.name, description: productData.description || '', price: String(productData.price), stock: String(productData.stock),
+      original_price: productData.original_price ? String(productData.original_price) : '',
       image_url: productData.image_url || '', live_stream_id: productData.live_stream_id ? String(productData.live_stream_id) : '',
       live_only_price: productData.live_only_price ? String(productData.live_only_price) : '', live_price_enabled: !!productData.live_price_enabled,
-      is_active: productData.is_active, detail_images: detailImages, product_type: productData.product_type || 'featured', category: productData.category || 'lifestyle',
+      is_active: productData.is_active, detail_images: detailImages, photos, product_type: productData.product_type || 'featured', category: productData.category || 'lifestyle',
       restaurant_name: productData.restaurant_name || '', restaurant_address: productData.restaurant_address || '', restaurant_phone: productData.restaurant_phone || '',
       voucher_terms: productData.voucher_terms || '', voucher_expiry: productData.voucher_expiry || '',
       group_buy_target: productData.group_buy_target ? String(productData.group_buy_target) : '', group_buy_deadline: productData.group_buy_deadline || '',
       store_verify_pin: productData.store_verify_pin || '',
       max_per_person: productData.max_per_person ? String(productData.max_per_person) : '',
+      promo_pct: promoPctFromProduct(productData),
     })
     if (productData.options && Array.isArray(productData.options)) setProductOptions(productData.options)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -124,8 +133,11 @@ export default function SellerProductEditPage() {
         name: formData.name,
         description: formData.description,
         price: Number(formData.price),
+        // 💰 빈 칸 = 정가 없음(할인 표시 해제). 서버 검증은 0~1억 + null 허용.
+        original_price: formData.original_price === '' ? null : Number(formData.original_price),
         stock: Number(formData.stock),
-        image_url: formData.image_url,
+        image_url: formData.photos[0] || formData.image_url,
+        images: formData.photos.length ? JSON.stringify(formData.photos) : null,  // 🖼️ 없으면 수정마다 사라진다
         live_stream_id: formData.live_stream_id ? Number(formData.live_stream_id) : null,
         live_only_price: formData.live_only_price ? Number(formData.live_only_price) : null,
         live_price_enabled: formData.live_price_enabled,
@@ -144,6 +156,7 @@ export default function SellerProductEditPage() {
           store_verify_pin: formData.store_verify_pin || null,
           // 🎯 2026-07-01 (대표 "1인당 결제 최대 한도" 수정): 0=무제한 해제, 1~99=제한.
           max_per_person: Number(formData.max_per_person) > 0 ? Math.min(99, Math.floor(Number(formData.max_per_person))) : 0,
+          referral_commission_rate: promoRateForSubmit(formData.promo_pct),
         } : {}),
       }
 
@@ -236,7 +249,7 @@ export default function SellerProductEditPage() {
 
   return (
     <SellerLayout title={t('seller.productEdit')}>
-      <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-6">
         {/* 🛡️ 2026-04-22 배치 132: SellerLayout 으로 전환 */}
         <DashboardPageHeader
           title={t('seller.productEdit')}
@@ -255,8 +268,8 @@ export default function SellerProductEditPage() {
 
         {/* Error Message */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <div className="flex items-center gap-2 text-red-700">
+          <div className="mb-6 p-4 bg-white border border-rule rounded-lg">
+            <div className="flex items-center gap-2 text-tone-bad">
               <Package className="w-5 h-5" />
               <p>{error}</p>
             </div>
@@ -264,11 +277,11 @@ export default function SellerProductEditPage() {
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm border p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="rounded-[var(--dash-radius,16px)] border border-rule bg-white border p-6 space-y-6">
           {/* Product Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              {t('seller.productName')} <span className="text-red-500">*</span>
+              {t('seller.productName')} <span className="text-tone-bad">*</span>
             </label>
             <input
               type="text"
@@ -277,7 +290,7 @@ export default function SellerProductEditPage() {
               onChange={handleChange}
               placeholder={t('seller.productNamePlaceholderForm')}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand"
             />
           </div>
 
@@ -292,67 +305,32 @@ export default function SellerProductEditPage() {
               onChange={handleChange}
               placeholder={t('seller.descriptionPlaceholder')}
               rows={4}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand"
             />
           </div>
 
-          {/* Price & Stock */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('seller.originalPrice')} <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="number"
-                  name="price"
-                  value={formData.price}
-                  onChange={handleChange}
-                  placeholder="30000"
-                  required
-                  min="0"
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <p className="text-xs text-gray-500 mt-1">{t('common.enterInWon')}</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {t('seller.stockQuantity')} <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <Box className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="number"
-                  name="stock"
-                  value={formData.stock}
-                  onChange={handleChange}
-                  placeholder="100"
-                  required
-                  min="0"
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <p className="text-xs text-gray-500 mt-1">{t('common.enterInUnits')}</p>
-            </div>
-          </div>
+          {/* Price & Stock — 정가 칸 포함(파일크기 래칫 때문에 별도 파일) */}
+          <PriceStockFields
+            price={formData.price}
+            originalPrice={formData.original_price}
+            stock={formData.stock}
+            onChange={handleChange}
+          />
 
           {/* 라이브 전용 특가 */}
-          <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl">
+          <div className="p-4 bg-white border border-rule rounded-xl">
             <div className="flex items-center gap-2 mb-3">
               <input
                 type="checkbox"
                 id="live_price_enabled"
                 checked={formData.live_price_enabled}
                 onChange={e => setFormData({ ...formData, live_price_enabled: e.target.checked })}
-                className="rounded border-orange-300 text-orange-600"
+                className="rounded border-rule text-tone-warn"
               />
-              <label htmlFor="live_price_enabled" className="text-sm font-semibold text-orange-800">
+              <label htmlFor="live_price_enabled" className="text-sm font-semibold text-tone-warn">
                 {t('seller.liveOnly')}
               </label>
-              <span className="text-xs text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full">{t('seller.liveOnlyDuring')}</span>
+              <span className="text-xs text-tone-warn bg-tone-warn-bg px-2 py-0.5 rounded-full">{t('seller.liveOnlyDuring')}</span>
             </div>
             {formData.live_price_enabled && (
               <div>
@@ -363,32 +341,32 @@ export default function SellerProductEditPage() {
                   onChange={handleChange}
                   placeholder={t('seller.liveOnlyPricePlaceholder')}
                   min="0"
-                  className="w-full px-3 py-2 border border-orange-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 bg-white"
+                  className="w-full px-3 py-2 border border-rule rounded-lg text-gray-900 focus:ring-2 focus:ring-orange-500 bg-white"
                 />
-                <p className="text-xs text-orange-600 mt-1">{t('seller.liveOnlyPriceDesc')}</p>
+                <p className="text-xs text-tone-warn mt-1">{t('seller.liveOnlyPriceDesc')}</p>
               </div>
             )}
           </div>
-
-          {/* Image Upload */}
-          <ImageUpload
-            value={formData.image_url}
-            onChange={(url) => setFormData({ ...formData, image_url: url })}
-            label={t('seller.productImage')}
-            maxSizeKB={800}
+          <ProductPhotoField
+            category={formData.category}
+            photos={formData.photos}
+            imageUrl={formData.image_url}
+            onPhotos={(next) => setFormData({ ...formData, photos: next, image_url: next[0] || '' })}
+            onImageUrl={(url) => setFormData({ ...formData, image_url: url })}
           />
+          <ProductShortsField productId={id ? Number(id) : undefined} />
 
           {/* Category Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              {t('common.category')} <span className="text-red-500">*</span>
+              {t('common.category')} <span className="text-tone-bad">*</span>
             </label>
             <select
               name="category"
               value={formData.category}
               onChange={handleChange}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand"
             >
               <option value="fashion">{t('common.fashion')}</option>
               <option value="beauty">{t('common.beauty')}</option>
@@ -414,27 +392,30 @@ export default function SellerProductEditPage() {
               그래서 뷰티/숙박/기타 이용권은 1인당 한도를 처음부터 끝까지 설정할 수 없었다.
               (서버는 원래 카테고리를 안 가린다 — 막고 있던 건 이 화면뿐이었다.) */}
           {isVoucherCategory(formData.category) && (
-            <VoucherFields formData={formData} onChange={handleChange} />
+            <><VoucherFields formData={formData} onChange={handleChange} />
+              {/* 💰 2026-09-05: 등록 화면에만 있던 소개비 레버를 관리 화면에도. */}
+              <PromoRateField promoPct={formData.promo_pct} price={Number(formData.price) || 0} category={formData.category}
+                onChange={(pct) => setFormData(prev => ({ ...prev, promo_pct: pct }))} /></>
           )}
 
           {/* Product Type Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-3">
-              {t('seller.productType')} <span className="text-red-500">*</span>
+              {t('seller.productType')} <span className="text-tone-bad">*</span>
             </label>
             <div className="space-y-3">
-              <label className={`flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50 ${formData.product_type === 'live' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>
+              <label className={`flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50 ${formData.product_type === 'live' ? 'border-brand bg-brand-tint' : 'border-gray-200'}`}>
                 <input
                   type="radio"
                   name="product_type"
                   value="live"
                   checked={formData.product_type === 'live'}
                   onChange={handleChange}
-                  className="mt-1 w-4 h-4 text-blue-600"
+                  className="mt-1 w-4 h-4 text-gray-700"
                 />
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <Play className="w-5 h-5 text-red-600" />
+                    <Play className="w-5 h-5 text-tone-bad" />
                     <span className="font-semibold text-gray-900">{t('seller.liveOnlyProduct')}</span>
                   </div>
                   <p className="text-sm text-gray-600 mt-1">
@@ -443,18 +424,18 @@ export default function SellerProductEditPage() {
                 </div>
               </label>
 
-              <label className={`flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50 ${formData.product_type === 'featured' ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>
+              <label className={`flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all hover:bg-gray-50 ${formData.product_type === 'featured' ? 'border-brand bg-brand-tint' : 'border-gray-200'}`}>
                 <input
                   type="radio"
                   name="product_type"
                   value="featured"
                   checked={formData.product_type === 'featured'}
                   onChange={handleChange}
-                  className="mt-1 w-4 h-4 text-blue-600"
+                  className="mt-1 w-4 h-4 text-gray-700"
                 />
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <Package className="w-5 h-5 text-blue-600" />
+                    <Package className="w-5 h-5 text-gray-700" />
                     <span className="font-semibold text-gray-900">{t('seller.featuredProduct')}</span>
                   </div>
                   <p className="text-sm text-gray-600 mt-1">
@@ -465,19 +446,11 @@ export default function SellerProductEditPage() {
             </div>
           </div>
 
-          {/* Image Preview - Removed as ImageUpload component handles it */}
-
           {/* Detail Images */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-gray-700">
-                {t('seller.productDetailImages')}
-              </label>
-              <Button
-                type="button"
-                onClick={addDetailImage}
-                className="ur-btn ur-btn-sm ur-btn-primary"
-              >
+              <label className="block text-sm font-medium text-gray-700">{t('seller.productDetailImages')}</label>
+              <Button type="button" onClick={addDetailImage} className="ur-btn ur-btn-sm ur-btn-primary">
                 {t('seller.addImage')}
               </Button>
             </div>
@@ -503,7 +476,7 @@ export default function SellerProductEditPage() {
                     <Button
                       type="button"
                       onClick={() => removeDetailImage(index)}
-                      className="flex-shrink-0 px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm"
+                      className="ur-btn ur-btn-sm ur-btn-danger flex-shrink-0"
                     >
                       {t('common.delete')}
                     </Button>
@@ -518,7 +491,7 @@ export default function SellerProductEditPage() {
               </div>
             )}
             <p className="text-xs text-gray-500 mt-2">
-              💡 {t('seller.detailImageTip')}
+              {t('seller.detailImageTip')}
             </p>
           </div>
 
@@ -534,7 +507,7 @@ export default function SellerProductEditPage() {
                   name="live_stream_id"
                   value={formData.live_stream_id}
                   onChange={handleChange}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand appearance-none bg-white"
                 >
                   <option value="">{t('seller.selectLiveStream')}</option>
                   {liveStreams.map((stream) => (
@@ -556,7 +529,7 @@ export default function SellerProductEditPage() {
                 name="is_active"
                 checked={formData.is_active}
                 onChange={handleChange}
-                className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                className="w-5 h-5 text-gray-700 border-gray-300 rounded focus:ring-blue-500"
               />
               <div>
                 <p className="text-sm font-medium text-gray-700">{t('seller.productActivate')}</p>

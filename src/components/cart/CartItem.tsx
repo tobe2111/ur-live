@@ -1,8 +1,9 @@
 import React from 'react'
-import { Minus, Plus, X } from 'lucide-react'
+import { Minus, Plus, X, ImageOff } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { useTranslation } from 'react-i18next'
+import { priceDisplay } from '@/shared/price-display'
 
 interface CartItem {
   id: number
@@ -19,6 +20,10 @@ interface CartItem {
   // 🛡️ 2026-05-19: 판매 종료 (is_active=0) 상품도 카트에 표시 (데이터 보존).
   //   값 = 0/undefined → "판매 종료" 배지 + 선택 차단.
   product_is_active?: number
+  // 💸 2026-09-15 (대표 "할인이라던지"): 홈 카드와 **같은 규칙**(`shared/price-display.ts`)으로
+  //   정가·할인율을 보여 준다. 없으면 줄이 아예 안 생긴다.
+  original_price?: number | null
+  discount_rate?: number | null
 }
 
 interface CartItemProps {
@@ -58,8 +63,8 @@ export const CartItemComponent = React.memo(function CartItemComponent({
         onClick={() => !isUnavailable && onToggleSelect(item.id)}
         className={`mt-1 w-5 h-5 rounded-md flex items-center justify-center border-2 shrink-0 cursor-pointer transition-colors ${
           isSelected
-            ? 'bg-pink-500 border-pink-500'
-            : 'bg-white dark:bg-[#0D0F12] border-gray-300 dark:border-[#3A3A3A]'
+            ? 'bg-brand border-brand'
+            : 'bg-white dark:bg-[#1D1F29] border-rule-strong'
         } ${isUnavailable ? 'cursor-not-allowed' : ''}`}
       >
         {isSelected && (
@@ -77,14 +82,16 @@ export const CartItemComponent = React.memo(function CartItemComponent({
           <img
             src={cfImage(thumbnail, { width: 200, quality: 82, format: 'auto' }) || thumbnail}
             alt={item.product_name}
-            className="w-[72px] h-[72px] rounded-lg object-cover bg-gray-100 dark:bg-[#1A1C21] shrink-0"
+            className="w-[72px] h-[72px] rounded-lg object-cover bg-gray-100 dark:bg-[#1D1F29] shrink-0"
             loading="lazy"
             decoding="async"
             onError={(e) => cfImageOnError(e.currentTarget, thumbnail)}
           />
         ) : (
-          <div className="w-[72px] h-[72px] rounded-lg bg-gray-100 dark:bg-[#1A1C21] shrink-0 flex items-center justify-center">
-            <span className="text-gray-300 dark:text-gray-600 text-[10px]">No img</span>
+          <div className="w-[72px] h-[72px] rounded-lg bg-gray-100 dark:bg-[#1D1F29] shrink-0 flex items-center justify-center">
+            {/* 🖼️ 2026-09-01: `No img` 영문 축약이 한국어 장바구니에 그대로 노출됐다.
+                개발자 플레이스홀더지 소비자 문구가 아니다 — 조용한 선 아이콘으로. */}
+            <ImageOff className="w-5 h-5 text-gray-300 dark:text-gray-600" strokeWidth={1.6} aria-label="이미지 없음" />
           </div>
         )
       })()}
@@ -111,7 +118,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
           <button
             onClick={() => onOpenOption(item)}
             disabled={isUpdating}
-            className="mt-1.5 inline-flex items-center gap-1 text-[12px] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2C2F35] px-2.5 py-1 rounded-full hover:bg-gray-50 dark:hover:bg-[#1A1C21] transition-colors"
+            className="mt-1.5 inline-flex items-center gap-1 text-[12px] text-gray-600 dark:text-gray-300 border border-line px-2.5 py-1 rounded-full hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
           >
             {item.option_value}
             <svg className="w-3 h-3 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -120,26 +127,47 @@ export const CartItemComponent = React.memo(function CartItemComponent({
           </button>
         )}
 
-        {/* Price row */}
+        {/* 💸 가격 — 홈 딜 카드와 같은 2줄 구조(2026-08-31 대표 확정): [할인율 정가취소선] / [판매가].
+            할인이 없으면 윗줄이 안 생긴다. 규칙은 `priceDisplay` SSOT — 화면마다 다른 할인율이
+            보이면 그건 버그가 아니라 거짓말이다. */}
         <div className="mt-2">
-          <p className={`text-[15px] font-bold ${isOutOfStock ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-white'}`}>
-            {fmt(item.price_snapshot * item.quantity)}{Number(item.deal_only) === 1 ? ' 딜' : t('common.won', { defaultValue: '원' })}
-          </p>
+          {(() => {
+            const unit = Number(item.deal_only) === 1 ? ' 딜' : t('common.won', { defaultValue: '원' })
+            // 정가·할인율은 **1개 기준**이라 수량을 곱해 줄에 맞춘다(표시 전용).
+            const d = priceDisplay({ price: item.price_snapshot, original_price: item.original_price, discount_rate: item.discount_rate })
+            return (
+              <>
+                {d.hasDiscountLine && !isOutOfStock && (
+                  <p className="flex items-baseline gap-1.5 text-[12px] leading-none mb-1">
+                    {d.discount > 0 && <span className="font-extrabold text-brand-text tabular-nums">{d.discount}%</span>}
+                    {d.showOriginal && (
+                      <span className="text-gray-400 dark:text-gray-500 line-through tabular-nums">
+                        {fmt(d.originalPrice * item.quantity)}{unit}
+                      </span>
+                    )}
+                  </p>
+                )}
+                <p className={`text-[15px] font-bold tabular-nums ${isOutOfStock ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-white'}`}>
+                  {fmt(item.price_snapshot * item.quantity)}{unit}
+                </p>
+              </>
+            )
+          })()}
         </div>
 
         {/* v4: quantity +/- buttons (border rounded-lg) */}
         <div className="flex items-center justify-between mt-2">
-          <div className="flex items-center border border-gray-200 dark:border-[#2C2F35] rounded-lg overflow-hidden">
+          <div className="flex items-center border border-line rounded-lg overflow-hidden">
             <button
               type="button"
               onClick={() => onUpdateQuantity(item.id, -1)}
               disabled={item.quantity <= 1 || isUpdating || isUnavailable}
               aria-label={t('cart.decreaseQty', { defaultValue: '수량 줄이기' })}
-              className="w-8 h-8 flex items-center justify-center text-gray-500 dark:text-gray-400 disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-[#1A1C21] transition-colors"
+              className="w-8 h-8 flex items-center justify-center text-gray-500 dark:text-gray-400 disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
             >
               <Minus size={14} aria-hidden="true" />
             </button>
-            <span aria-live="polite" aria-label={t('cart.qtyLabel', { qty: item.quantity, defaultValue: '수량 {{qty}}' })} className="w-8 text-center text-[13px] font-semibold text-gray-900 dark:text-white border-x border-gray-200 dark:border-[#2C2F35]">
+            <span aria-live="polite" aria-label={t('cart.qtyLabel', { qty: item.quantity, defaultValue: '수량 {{qty}}' })} className="w-8 text-center text-[13px] font-semibold text-gray-900 dark:text-white border-x border-line">
               {item.quantity}
             </span>
             <button
@@ -147,7 +175,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
               onClick={() => onUpdateQuantity(item.id, 1)}
               disabled={isUpdating || isUnavailable || isAtStockLimit}
               aria-label={t('cart.increaseQty', { defaultValue: '수량 늘리기' })}
-              className="w-8 h-8 flex items-center justify-center text-gray-500 dark:text-gray-400 disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-[#1A1C21] transition-colors"
+              className="w-8 h-8 flex items-center justify-center text-gray-500 dark:text-gray-400 disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
             >
               <Plus size={14} aria-hidden="true" />
             </button>

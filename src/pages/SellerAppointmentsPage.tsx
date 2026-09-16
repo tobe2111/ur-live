@@ -30,10 +30,10 @@ interface Appointment {
 }
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
-  confirmed: { label: '예약 확정', cls: 'bg-emerald-100 text-emerald-700' },
+  confirmed: { label: '예약 확정', cls: 'bg-tone-ok-bg text-tone-ok' },
   cancelled: { label: '취소', cls: 'bg-gray-100 text-gray-600' },
-  no_show: { label: '노쇼', cls: 'bg-red-100 text-red-700' },
-  completed: { label: '이용 완료', cls: 'bg-blue-100 text-blue-700' },
+  no_show: { label: '노쇼', cls: 'bg-tone-bad-bg text-tone-bad' },
+  completed: { label: '이용 완료', cls: 'bg-tone-info-bg text-tone-info' },
 }
 
 export default function SellerAppointmentsPage() {
@@ -71,7 +71,7 @@ export default function SellerAppointmentsPage() {
 
   return (
     <SellerLayout title="예약 관리">
-      <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-6">
         <DashboardPageHeader
           icon={<CalendarCheck className="h-5 w-5" />}
           title="예약 관리"
@@ -84,7 +84,7 @@ export default function SellerAppointmentsPage() {
             <button
               key={s}
               onClick={() => setFilter(s)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium ${filter === s ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium ${filter === s ? 'bg-brand-tint text-brand-text' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
             >
               {s === 'confirmed' ? '확정' : s === 'completed' ? '완료' : s === 'no_show' ? '노쇼' : s === 'cancelled' ? '취소' : '전체'}
             </button>
@@ -121,7 +121,7 @@ export default function SellerAppointmentsPage() {
                       <td className="px-4 py-3 text-gray-700">
                         {a.user_name || a.user_id}
                         {a.user_phone && (
-                          <a href={`tel:${a.user_phone}`} className="flex items-center gap-1 text-blue-600 mt-0.5">
+                          <a href={`tel:${a.user_phone}`} className="flex items-center gap-1 text-gray-700 mt-0.5">
                             <Phone className="w-3 h-3" /> {a.user_phone}
                           </a>
                         )}
@@ -135,7 +135,7 @@ export default function SellerAppointmentsPage() {
                             <button onClick={() => markComplete(a)} className="ur-btn ur-btn-sm ur-btn-primary rounded text-[10px] flex items-center gap-1">
                               <CheckCircle className="w-3 h-3" /> 완료
                             </button>
-                            <button onClick={() => markNoShow(a)} className="px-2 py-1 bg-red-600 text-white rounded text-[10px] font-medium flex items-center gap-1">
+                            <button onClick={() => markNoShow(a)} className="ur-btn ur-btn-sm ur-btn-danger gap-1">
                               <XCircle className="w-3 h-3" /> 노쇼
                             </button>
                           </div>

@@ -29,7 +29,7 @@ export default function PcHomeRail({
   onCategory: (c: DealCategory) => void
 }) {
   return (
-    <nav aria-label="동네딜 카테고리" className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+    <nav aria-label="동네딜 카테고리" className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
       {DEAL_CATS.map(({ key, label, icon: Icon }) => {
         const active = category === key
         return (

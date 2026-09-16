@@ -385,6 +385,25 @@ export const COLUMN_REPAIRS: ColumnRepair[] = [
     )` },
     { desc: 'idx_seller_operators_pair', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_seller_operators_pair ON seller_operators(seller_id, user_id)" },
     { desc: 'idx_seller_operators_user', sql: "CREATE INDEX IF NOT EXISTS idx_seller_operators_user ON seller_operators(user_id, revoked_at)" },
+    // 🙋 2026-09-09 소유권 신청(내 가게 찾기) — 설계 §5(a) 3단계. 런타임 ensureStoreOwnershipClaims 의 짝.
+    //   ⚠️ pending 부분 UNIQUE 가 멱등의 근거다(머니 룰 #3: SELECT 후 INSERT 금지).
+    { desc: 'store_ownership_claims', sql: `CREATE TABLE IF NOT EXISTS store_ownership_claims (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      seller_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      business_number TEXT,
+      cert_url TEXT NOT NULL,
+      contact_phone TEXT,
+      note TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      bno_match INTEGER,
+      decided_by INTEGER,
+      decided_at DATETIME,
+      decision_reason TEXT,
+      created_at DATETIME DEFAULT (datetime('now'))
+    )` },
+    { desc: 'idx_store_claims_open', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_store_claims_open ON store_ownership_claims(seller_id, user_id) WHERE status = 'pending'" },
+    { desc: 'idx_store_claims_status', sql: "CREATE INDEX IF NOT EXISTS idx_store_claims_status ON store_ownership_claims(status, created_at)" },
     // 🔒 2026-08-27 유어애즈 DB 열람량 — 대행사 차단(ads-db-access.ts)의 짝. 등록 유형은 자기신고라
     //   우회되지만 "하루에 몇 행 가져갔나"는 우회할 수 없다. 상한의 근거이자 감사 기록.
     { desc: 'seller_ads_db_usage', sql: `CREATE TABLE IF NOT EXISTS seller_ads_db_usage (
@@ -546,6 +565,19 @@ export const COLUMN_REPAIRS: ColumnRepair[] = [
       updated_at TEXT
     )` },
     { desc: 'idx_wholesale_board_type', sql: "CREATE INDEX IF NOT EXISTS idx_wholesale_board_type ON wholesale_board_posts(board_type, is_pinned DESC, id DESC)" },
+    // 💗 2026-09-03: 소비자 찜 baseline — `base_price`(찜한 그 순간의 가격, 갱신 안 함).
+    //   위시리스트가 "찜한 뒤 N원 내렸어요" 를 말하려면 이 열이 있어야 한다(`wishlist-notify.ts` SSOT).
+    //   열이 없으면 목록 API 가 조용히 그 배지를 빼고 돌아간다 — 깨지진 않지만 기능이 사라진다.
+    { desc: 'wishlist_price_notifications', sql: `CREATE TABLE IF NOT EXISTS wishlist_price_notifications (
+      user_id TEXT NOT NULL,
+      product_id INTEGER NOT NULL,
+      last_price INTEGER,
+      base_price INTEGER,
+      notified_at DATETIME,
+      PRIMARY KEY (user_id, product_id)
+    )` },
+    { desc: 'wishlist_price_notifications.base_price', sql: "ALTER TABLE wishlist_price_notifications ADD COLUMN base_price INTEGER" },
+    { desc: 'backfill: wishlist base_price', sql: "UPDATE wishlist_price_notifications SET base_price = last_price WHERE base_price IS NULL" },
     { desc: 'wholesale_wishlists', sql: `CREATE TABLE IF NOT EXISTS wholesale_wishlists (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       seller_id INTEGER NOT NULL,
@@ -912,13 +944,9 @@ export const COLUMN_REPAIRS: ColumnRepair[] = [
     // 🛡️ 2026-05-28: 영입 커미션 무기한(NULL) 일몰제 강제 — 레거시 영입 매장에 +12개월 캡 (LTV 보호).
     //   introduced_at 기준 (없으면 created_at). 이미 referral_bonus_until 설정된 매장은 불변.
     { desc: 'backfill: sellers.referral_bonus_until cap (introduced, NULL→+12mo)', sql: `UPDATE sellers SET referral_bonus_until = datetime(COALESCE(introduced_at, created_at, datetime('now')), '+12 months'), updated_at = datetime('now') WHERE referral_bonus_until IS NULL AND (introduced_by_agency_id IS NOT NULL OR introduced_by_influencer_id IS NOT NULL)` },
-    // 🛡️ 2026-06-25 (대표 승인 — B4 기존 데이터 복구): 카카오 로그인 에이전시가 영입한 매장의 귀속을
-    //   user.id(users.id) → canonical agencies.id 로 정정. 기존 prospect/registration 이 user.id 를 저장해
-    //   대시보드(agencies.id 조회)에서 영입 매장·커미션이 안 보였음(forward fix 는 seller-prospects.routes).
-    //   가드: '이미 유효한 agencies.id 가 아니면서(NOT IN agencies.id) 유효한 linked_user_id 인(IN …) 값만'
-    //   매핑 → 정상 행 불변·멱등(재실행 시 값이 이미 agency id 라 제외)·collision 회피.
-    { desc: 'backfill: seller_prospects.introducer_id (agency user.id→agencies.id)', sql: `UPDATE seller_prospects SET introducer_id = (SELECT a.id FROM agencies a WHERE a.linked_user_id = CAST(seller_prospects.introducer_id AS INTEGER) LIMIT 1) WHERE introducer_type = 'agency' AND CAST(introducer_id AS INTEGER) IN (SELECT linked_user_id FROM agencies WHERE linked_user_id IS NOT NULL) AND CAST(introducer_id AS INTEGER) NOT IN (SELECT id FROM agencies)` },
-    { desc: 'backfill: sellers.introduced_by_agency_id (user.id→agencies.id)', sql: `UPDATE sellers SET introduced_by_agency_id = (SELECT a.id FROM agencies a WHERE a.linked_user_id = sellers.introduced_by_agency_id LIMIT 1), updated_at = datetime('now') WHERE introduced_by_agency_id IS NOT NULL AND introduced_by_agency_id IN (SELECT linked_user_id FROM agencies WHERE linked_user_id IS NOT NULL) AND introduced_by_agency_id NOT IN (SELECT id FROM agencies)` },
+    // 🌇 2026-09-04 에이전시 완전 일몰 — 여기 있던 backfill 2건(`seller_prospects.introducer_id` ·
+    //    `sellers.introduced_by_agency_id` 를 user.id → agencies.id 로 정정)을 삭제했다.
+    //    두 컬럼 모두 라이브에서 대상 0행이고, `agencies` 를 읽는 코드가 더 이상 없다.
     // 🏭 2026-06-29 (대표 신고 — "업로드 제품 카테고리 배치 안됨") 근본수정 backfill: 도매 상품 카테고리를
     //   표준 3종(food/living/health)으로 정규화. 스토어 임포트('lifestyle' 하드코드)·레거시 자유입력값이
     //   카탈로그 칩 필터(p.category='food'…)에 안 잡혀 미배치되던 것 일괄 치유. is_supply_product=1 만
@@ -1045,6 +1073,7 @@ export const COLUMN_REPAIRS: ColumnRepair[] = [
     { desc: 'wholesale_malls.ga_id', sql: "ALTER TABLE wholesale_malls ADD COLUMN ga_id TEXT" },
     { desc: 'wholesale_malls.naver_verification', sql: "ALTER TABLE wholesale_malls ADD COLUMN naver_verification TEXT" },
     { desc: 'wholesale_malls.privacy_md', sql: "ALTER TABLE wholesale_malls ADD COLUMN privacy_md TEXT" },
+    { desc: 'wholesale_malls.operator_user_id', sql: "ALTER TABLE wholesale_malls ADD COLUMN operator_user_id INTEGER" },
     { desc: 'wholesale_banners.mall_id', sql: "ALTER TABLE wholesale_banners ADD COLUMN mall_id INTEGER DEFAULT 1" },
     { desc: 'wholesale_proposal_tickets.mall_id', sql: "ALTER TABLE wholesale_proposal_tickets ADD COLUMN mall_id INTEGER DEFAULT 1" },
     // 🏬 2026-06-15 (sellpie형 게시판): 세부 카테고리(supply/codev/live/sns/report/inquiry). my-tickets/board SELECT 가 참조.

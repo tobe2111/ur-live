@@ -17,27 +17,15 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import { requireAdmin } from '@/worker/middleware/auth'
 import { adminIpWhitelist, adminAuditMiddleware } from '@/worker/middleware/admin-security'
 import { ensureMallSchema, invalidateMallCache, DEFAULT_MALL_ID } from './wholesale-malls'
-import { normalizeAdminRole } from '@/shared/admin-roles'
-import { RESERVED_SLUGS, validateMallSlug, auditMallSlugs } from '@/shared/mall/slug'
+import { RESERVED_SLUGS, auditMallSlugs } from '@/shared/mall/slug'
+import { requireSuperAdmin, rejectReservedSlug } from '@/worker/utils/mall-admin-shared'
 import { validateMallColor } from '@/shared/mall/branding'
+import { mallApplicationRoutes } from '@/worker/routes/mall-applications-admin.routes'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', adminIpWhitelist())
 app.use('*', requireAdmin())
 app.use('*', adminAuditMiddleware())
-
-// 🔒 2026-06-29 (대표 — "도매몰 관리는 슈퍼어드민만"): 몰 생성/수정(관리)은 슈퍼 전용.
-//   GET(몰 목록)은 여러 도매 어드민 화면의 몰 선택기(AdminMallSelect)가 읽으므로 유지 — 관리(쓰기)만 잠금.
-//   requireAdmin 이 c.set('user',{role}) 로 넣은 역할을 정규화해 super 만 통과.
-function requireSuperAdmin() {
-  return async (c: import('hono').Context, next: import('hono').Next) => {
-    const role = normalizeAdminRole((c.get('user') as { role?: string } | undefined)?.role)
-    if (role !== 'super') {
-      return c.json({ success: false, error: '도매몰 관리는 슈퍼관리자만 가능합니다', code: 'SUPER_ONLY' }, 403)
-    }
-    return next()
-  }
-}
 
 // slug: 소문자/숫자/하이픈만 (host 라우팅·URL 안전). 길이 cap. 미충족 시 null.
 function cleanSlug(raw: unknown): string | null {
@@ -46,23 +34,6 @@ function cleanSlug(raw: unknown): string | null {
   return s
 }
 
-/**
- * 🔴 세션 ③-a 〔대표 경계조건 ② — "가드는 양방향이어야 합니다"〕
- *
- * 슬러그는 `urdeal.kr/{슬러그}` 자리에 앉는다 ⇒ **예약어와 겹치면 그 라우트가 죽는다.**
- * CI 는 `라우트 ⊆ 예약어`(mall-branding.test)를 보지만 **라이브 DB 는 못 읽는다**.
- * 여기가 그 반쪽 — **쓰기 시점 차단**이다.
- *
- * ⚠️ 왜 `cleanSlug` 로 안 끝나는가: `cleanSlug` 는 문자 집합만 본다(1~40자, 예약어 무검사).
- *   그래서 지금까지 `admin`·`products` 같은 슬러그를 **만들 수 있었다.**
- * ⚠️ 3~30자 하한/상한은 취향이 아니라 **리졸버와의 정합**이다 — `firstPathSegment` 가
- *   `/^[a-z0-9-]{3,30}$/` 로 후보를 거르므로, 그 밖의 슬러그는 **경로로 영영 도달할 수 없다**.
- *   만들 수는 있는데 열리지는 않는 몰을 허용하지 않는다.
- */
-function rejectReservedSlug(s: string): string | null {
-  const v = validateMallSlug(s)
-  return v.ok ? null : v.reason
-}
 // host: 다중 호스트 'a.com,b.com' 허용. 소문자·공백제거. 길이 cap. 빈 값 → null.
 function cleanHost(raw: unknown): string | null {
   const s = String(raw ?? '').trim().toLowerCase().slice(0, 300)
@@ -119,7 +90,7 @@ app.get('/', async (c) => {
   try {
     await ensureMallSchema(DB)
     const { results } = await DB.prepare(
-      `SELECT id, slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, requires_license, license_label, features_json, company_json, COALESCE(consumer_path,0) AS consumer_path, ga_id, naver_verification, privacy_md, active, created_at
+      `SELECT id, slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, requires_license, license_label, features_json, company_json, COALESCE(consumer_path,0) AS consumer_path, ga_id, naver_verification, privacy_md, operator_user_id, active, created_at
        FROM wholesale_malls ORDER BY id ASC LIMIT 200`
     ).all()
     return c.json({ success: true, malls: results ?? [] })
@@ -156,6 +127,15 @@ app.get('/slug-conflicts', async (c) => {
   }
 })
 
+// ── 🏪 가게 개설 신청 — 목록/승인/반려 (2026-08-12 운영자 셀프 온보딩 최소안) ──────
+//   ⚠️ 정적 경로 `/applications*` 는 아래 `/:id` **앞에** 마운트해야 한다 — Hono 는 등록 순서대로
+//     매칭한다(같은 날 `seller-gb` 에서 `/support-contact` 가 `/:id` 에 삼켜진 것을 실측했다).
+//   본문은 `worker/routes/mall-applications-admin.routes.ts` 로 분리(파일크기 래칫 — 625줄이었다).
+//   🔴 `features/supply/` 밖에 둔다 — `mall-admin-api-bundle.test.ts` 가 이 파일의 supply 이웃 import 를
+//     `./wholesale-malls` 하나로 잠가 뒀고(2026-08-03 소비자 빌드 404 사고의 수습), 이 모듈은 실제로
+//     도매가 아니라 소비자 경로 몰을 다룬다.
+app.route('/applications', mallApplicationRoutes)
+
 // ── POST / — 몰 생성 ──────────────────────────────────────────────────────────
 app.post('/', requireSuperAdmin(), rateLimit({ action: 'admin-wholesale-mall-create', max: 20, windowSec: 60 }), async (c) => {
   const { DB } = c.env
@@ -189,22 +169,38 @@ app.post('/', requireSuperAdmin(), rateLimit({ action: 'admin-wholesale-mall-cre
     const active = Number(body.active) === 0 ? 0 : 1
     // 🏬 세션 ③-a: `urdeal.kr/{슬러그}` 경로로 열 몰인가. **기본 0(fail-closed)** — 명시할 때만 열린다.
     const consumer_path = Number(body.consumer_path) === 1 ? 1 : 0
-    // 📣 2026-08-09 과업① — 몰별 GA4/네이버 확인/고지문(PATCH 와 동일 게이트 — 한쪽만 막으면 생성으로 우회된다).
+    // 📣 2026-08-09 몰별 GA4/네이버 확인/고지문(PATCH 와 동일 게이트 — 한쪽만 막으면 생성으로 우회된다).
     const gaRaw = cleanText(body.ga_id, 30)
     if (gaRaw && !/^G-[A-Z0-9]{4,20}$/i.test(gaRaw)) return c.json({ success: false, error: 'GA4 측정 ID 형식(G-XXXXXXX)을 확인해주세요' }, 400)
     const ga_id = gaRaw ? gaRaw.toUpperCase() : null
     const naver_verification = cleanText(body.naver_verification, 80)
     if (naver_verification && !/^[a-zA-Z0-9]{8,80}$/.test(naver_verification)) return c.json({ success: false, error: '네이버 소유확인 값은 영숫자만 가능합니다' }, 400)
     const privacy_md = cleanText(body.privacy_md, 10000)
+    /**
+     * 🏬 2026-08-10 몰 운영자 — **생성 경로도 받는다.** INSERT 컬럼 목록에서 빼면 어드민이 만들면서
+     * 입력한 값이 **에러 없이 사라진다**(저장된 줄 알고 콘솔을 열면 403 — 원인이 화면에 안 나타난다).
+     * 검증은 PATCH 와 동일(실재하는 users.id 만).
+     */
+    let operator_user_id: number | null = null
+    {
+      const raw = String(body.operator_user_id ?? '').trim()
+      if (raw) {
+        const uid = Number(raw)
+        if (!Number.isInteger(uid) || uid <= 0) return c.json({ success: false, error: '운영자 회원번호는 양의 정수여야 합니다' }, 400)
+        const exists = await DB.prepare('SELECT 1 x FROM users WHERE id = ? LIMIT 1').bind(uid).first<{ x: number }>().catch(() => null)
+        if (!exists) return c.json({ success: false, error: `회원번호 ${uid} 를 찾을 수 없습니다` }, 400)
+        operator_user_id = uid
+      }
+    }
 
     // slug 중복 차단 (UNIQUE 와 정합 — 친절한 메시지).
     const dupe = await DB.prepare('SELECT id FROM wholesale_malls WHERE slug = ?').bind(slug).first<{ id: number }>().catch(() => null)
     if (dupe) return c.json({ success: false, error: '이미 사용 중인 slug 입니다' }, 409)
 
     const ins = await DB.prepare(
-      `INSERT INTO wholesale_malls (slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, requires_license, license_label, features_json, company_json, consumer_path, ga_id, naver_verification, privacy_md, active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, requires_license, license_label, features_json, company_json, consumer_path, ga_id, naver_verification, privacy_md, active).run()
+      `INSERT INTO wholesale_malls (slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, requires_license, license_label, features_json, company_json, consumer_path, ga_id, naver_verification, privacy_md, operator_user_id, active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(slug, name, host, brand_name, brand_color, logo_url, deposit_account, commission_rate, categories_json, requires_license, license_label, features_json, company_json, consumer_path, ga_id, naver_verification, privacy_md, operator_user_id, active).run()
     const id = Number(ins.meta?.last_row_id)
     if (!id) return c.json({ success: false, error: '몰 생성 중 오류가 발생했습니다' }, 500)
     invalidateMallCache(DB)
@@ -251,7 +247,7 @@ app.patch('/:id', requireSuperAdmin(), rateLimit({ action: 'admin-wholesale-mall
     if ('license_label' in body) { sets.push('license_label = ?'); binds.push(cleanText(body.license_label, 80)) }
     if ('features_json' in body) { sets.push('features_json = ?'); binds.push(validFeaturesJson(body.features_json)) }
     if ('company_json' in body) { sets.push('company_json = ?'); binds.push(validCompanyJson(body.company_json)) }
-    // 📣 2026-08-09 과업①(상인회 SaaS) — 몰별 GA4 측정 ID / 네이버 소유확인 / 방문자 고지문.
+    // 📣 2026-08-09 몰별 GA4 측정 ID / 네이버 소유확인 / 방문자 고지문.
     if ('ga_id' in body) {
       const v = cleanText(body.ga_id, 30)
       if (v && !/^G-[A-Z0-9]{4,20}$/i.test(v)) return c.json({ success: false, error: 'GA4 측정 ID 형식(G-XXXXXXX)을 확인해주세요' }, 400)
@@ -264,6 +260,23 @@ app.patch('/:id', requireSuperAdmin(), rateLimit({ action: 'admin-wholesale-mall
       sets.push('naver_verification = ?'); binds.push(v)
     }
     if ('privacy_md' in body) { sets.push('privacy_md = ?'); binds.push(cleanText(body.privacy_md, 10000)) }
+    /**
+     * 🏬 2026-08-10 몰 운영자 지정 — `/mall-admin` 콘솔의 **유일한 열쇠**.
+     * 이 값이 NULL 이면 그 몰은 종전과 같이 어드민 전용이다(운영자 콘솔에 아무것도 안 보인다).
+     * 🔴 **실재 확인 필수** — 오타 난 id 를 그대로 저장하면 "지정했는데 안 들어가진다"가 되고,
+     *   그때 원인이 화면에 안 나타난다(콘솔은 그냥 403 을 준다). 여기서 400 으로 되돌려 준다.
+     */
+    if ('operator_user_id' in body) {
+      const raw = String(body.operator_user_id ?? '').trim()
+      if (!raw) { sets.push('operator_user_id = ?'); binds.push(null) } // 빈값 = 해제
+      else {
+        const uid = Number(raw)
+        if (!Number.isInteger(uid) || uid <= 0) return c.json({ success: false, error: '운영자 회원번호는 양의 정수여야 합니다' }, 400)
+        const exists = await DB.prepare('SELECT 1 x FROM users WHERE id = ? LIMIT 1').bind(uid).first<{ x: number }>().catch(() => null)
+        if (!exists) return c.json({ success: false, error: `회원번호 ${uid} 를 찾을 수 없습니다` }, 400)
+        sets.push('operator_user_id = ?'); binds.push(uid)
+      }
+    }
     if ('consumer_path' in body) { sets.push('consumer_path = ?'); binds.push(Number(body.consumer_path) === 1 ? 1 : 0) }
     if ('active' in body) {
       const act = Number(body.active) === 0 ? 0 : 1

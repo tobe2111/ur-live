@@ -52,7 +52,7 @@ function intRange(min: number, max: number): Validator {
 
 /** 캡 우선 보전 축 — order-commissions.ts 의 요청 축 키(CSV). ''=우선 없음(전 축 비례). */
 // 🛑 2026-08-31: 'agency_intro'(에이전시 매장영입 1%) 폐지 — 설정으로도 되살릴 수 없다.
-const COMMISSION_AXES = ['affiliate', 'multi_tier', 'influencer_intro']
+const COMMISSION_AXES = ['affiliate', 'multi_tier']
 function priorityAxes(value: string): string | null {
   if (value === '') return null
   const bad = value.split(',').map((s) => s.trim()).filter(Boolean).filter((k) => !COMMISSION_AXES.includes(k))
@@ -95,6 +95,10 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   pickup_unclaimed_cold_pct: optionalPct,
   pickup_unclaimed_room_pct: optionalPct,
   pickup_unclaimed_room_grace_days: optionalIntRange(0, 365),
+  // ── 🗺️ 지도 마커 할인 강조 기준(안 D4) — read-site: shared/map-marker.ts ──
+  //   1~99 밖은 화면이 무시하고 기본값 30 을 쓴다. 저장 단계에서 막아 주지 않으면
+  //   대표가 "0 으로 낮췄는데 전부 강조가 안 되네" 를 원인 없이 겪는다(조용한 무시).
+  map_highlight_discount_pct: optionalIntRange(1, 99),
   // ── 운영자 문의 연락처 — read-site: features/seller/api/seller-gb.routes.ts ──
   operator_support_contact: optionalText(200),
   // ── boolean 스위치 (read-site === 'true') ──
@@ -106,9 +110,19 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   //   read-site: cron/influencer-payout.ts (성숙 시점). 기본 OFF = 종전 현금 경로.
   gb_pricing_enabled: boolStr,                 // 🔌 공구가 청구 킬스위치(기본 ON — 'false' 만 끔). gb-order-pricing
   gb_engine_enabled: boolStr,                // gb-marketplace:26 / gb-proposals:27 / seller-orders:1285
+  voucher_deal_payment_enabled: boolStr,     // 💰 이용권 딜 결제 (group-buy.routes join). ⚠️ 켜기 전 influencer_deal_bonus_pct=0 — 보너스 20% > 이용권 마진 5~10% 라 팔릴수록 적자
+  // 🪙 2026-09-07: 담기 적립(어필리에이트) 프로그램 스위치. read-site 는 **행 부재 = 꺼짐**으로 읽는다
+  //   (affiliate-credit.ts:139 지급 · affiliate-program.ts:33 표시 — 둘이 같은 키를 본다).
+  //   그래서 'True'/'1' 이 저장되면 켠 줄 알지만 실제로는 꺼진 채로 돈다.
+  affiliate_program_enabled: boolStr,
   seller_promo_field_enabled: boolStr,         // seller-orders.routes.ts:814
   settlement_skip_ledgered: boolStr,           // auto-settlement.ts:54 / restaurant-settlement.routes.ts:87
   agency_auto_settle_legacy_enabled: boolStr,  // cron/agency-auto-settle.ts:59
+  // 🎛️ 2026-09-07: strict-true 로 읽히는데 미등재였던 것들(check-gate-registry 가 찾았다).
+  outreach_auto_send: boolStr,                 // seller-influencers.routes.ts:251
+  promo_bar_enabled: boolStr,                  // public-utility.routes.ts:518
+  invite_reward_enabled: boolStr,              // invite-reward.ts:50 (종료된 축)
+  multi_tier_enabled: boolStr,                 // referral-tree.routes.ts:349 (종료된 축)
 
   // ── enum ──
   promo_funding_source: enumOf(['platform', 'owner']),           // ledger.ts:482 등 === 'owner'
@@ -130,7 +144,7 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   affiliate_commission_rate: pct,      // affiliate-credit.ts:38
   tier1_commission_rate: pct,
   tier2_commission_rate: pct,
-  max_influencer_commission_pct: pct,  // marketing.routes.ts:325/375
+  max_influencer_commission_pct: pct,  // 🛑 2026-09-07 결재 Q2-1 — 더 이상 읽히지 않는 설정(상한 없음). 검증만 남김
   influencer_store_intro_pct: pct,     // influencer-store-intro-commission.ts:24
   // 🏪 2026-08-27: 유효기간(개월). 미등록이면 무검증 통과라 '열두달' 같은 값도 저장됐다.
   influencer_store_intro_months: intRange(1, 120), // influencer-store-intro-commission.ts isStoreIntroExpired
@@ -145,7 +159,6 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   seller_referral_bonus_pct: pct,      // seller-registration.routes.ts
   platform_fee_pct: pct,               // ledger.ts:132 (v/100)
   seller_commission_pct: pct,          // ledger.ts:132 (v/100)
-  agency_share_pct: pct,               // ledger.ts:255 (0<v<1 분수 또는 1~100 % — 둘 다 0~100 안)
   influencer_intro_share_pct: pct,     // ledger.ts:402 (동일)
 
   // ── 금액/딜/개수 (0 이상) ──

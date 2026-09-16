@@ -58,7 +58,7 @@ export default function InfoTab({ seller, isOwner, T }: Props) {
           )}
           {seller.phone && (
             <a href={`tel:${seller.phone}`}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-white dark:bg-[#0D0F12] border border-gray-200 dark:border-[#2C2F35] text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold active:scale-[0.97]">
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold active:scale-[0.97]">
               <Phone className="w-3.5 h-3.5" /> {t('seller.publicPage.phoneInquiry', { defaultValue: '전화 문의' })}
             </a>
           )}

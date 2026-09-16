@@ -17,7 +17,7 @@ import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
-import { ArrowLeft, BedDouble, BedSingle, Building2, Clock, Home, MapPin, Palmtree, Shield, Sparkles, Tent } from 'lucide-react'
+import { ArrowLeft, Award, Ban, BedDouble, BedSingle, Building2, Clock, Coins, Home, MapPin, Palmtree, Shield, Sparkles, Tent, Ticket } from 'lucide-react'
 import ImageUpload from '@/components/upload/ImageUpload'
 
 interface Amenity { code: string; label_ko: string; icon_emoji: string; category: string }
@@ -145,7 +145,7 @@ export default function SellerStayNewPage() {
 
   return (
     <SellerLayout title="숙소 등록">
-      <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-6">
         <DashboardPageHeader
           title="숙소 등록"
           subtitle="기본 정보 입력 후 다음 단계에서 객실/가격/캘린더를 추가합니다"
@@ -164,26 +164,26 @@ export default function SellerStayNewPage() {
         {/* 🛡️ 2026-05-18: 셀러 quota 안내 (등급 기반 voucher 한도). */}
         {quota && (
           <div className={`rounded-xl border p-3 flex items-start gap-3 ${
-            !quota.can_create_more ? 'bg-red-50 border-red-200' :
-            quota.monthly_limit !== -1 && (quota.current_count / quota.monthly_limit) > 0.8 ? 'bg-amber-50 border-amber-200' :
-            'bg-blue-50 border-blue-200'
+            !quota.can_create_more ? 'bg-white border-rule' :
+            quota.monthly_limit !== -1 && (quota.current_count / quota.monthly_limit) > 0.8 ? 'bg-white border-rule' :
+            'bg-white border-rule'
           }`}>
-            <span className="text-xl shrink-0">
-              {!quota.can_create_more ? '🚫' : quota.tier === '다이아' ? '💎' : quota.tier === '플래티넘' ? '⭐' : quota.tier === '골드' ? '🥇' : quota.tier === '실버' ? '🥈' : '🥉'}
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-500">
+              {!quota.can_create_more ? <Ban className="h-[18px] w-[18px]" /> : <Award className="h-[18px] w-[18px]" />}
             </span>
             <div className="flex-1 min-w-0">
-              <p className={`text-xs font-bold ${!quota.can_create_more ? 'text-red-900' : 'text-gray-900'}`}>
+              <p className={`text-xs font-bold ${!quota.can_create_more ? 'text-tone-bad' : 'text-gray-900'}`}>
                 {quota.tier} 등급 — 이번 달 voucher 발행 {quota.current_count}
                 {quota.monthly_limit === -1 ? ' / 무제한' : ` / ${quota.monthly_limit}개`}
               </p>
               {!quota.can_create_more && (
-                <p className="text-[11px] text-red-700 mt-0.5 font-semibold">
-                  ⚠️ 이번 달 한도 초과 — 등급 상향 후 가능
+                <p className="text-[11px] text-tone-bad mt-0.5 font-semibold">
+                  이번 달 한도 초과. 등급 상향 후 가능
                 </p>
               )}
               {!quota.referral_allowed && (
                 <p className="text-[10px] text-gray-600 mt-1">
-                  📌 인플 referral 활성화는 실버 이상 등급에서 가능합니다
+                  소개 링크 활성화는 실버 이상 등급에서 가능합니다
                 </p>
               )}
             </div>
@@ -192,7 +192,7 @@ export default function SellerStayNewPage() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* 1. 기본 정보 */}
-          <Section icon={<Building2 className="w-5 h-5 text-blue-600" />} title="기본 정보">
+          <Section icon={<Building2 className="w-5 h-5 text-gray-700" />} title="기본 정보">
             <Field label="숙소명" required>
               <input
                 type="text"
@@ -228,12 +228,12 @@ export default function SellerStayNewPage() {
                     onClick={() => setForm({ ...form, property_type: p.value })}
                     className={`p-2.5 rounded-lg border-2 text-center transition-all ${
                       form.property_type === p.value
-                        ? 'border-blue-500 bg-blue-50'
+                        ? 'border-brand bg-brand-tint'
                         : 'border-gray-200 bg-white hover:border-gray-300'
                     }`}
                   >
                     <p.Icon className="w-5 h-5 mx-auto text-gray-500" aria-hidden="true" />
-                    <div className={`text-xs font-bold mt-1 ${form.property_type === p.value ? 'text-blue-700' : 'text-gray-900'}`}>
+                    <div className={`text-xs font-bold mt-1 ${form.property_type === p.value ? 'text-gray-700' : 'text-gray-900'}`}>
                       {p.label}
                     </div>
                   </button>
@@ -265,7 +265,7 @@ export default function SellerStayNewPage() {
           </Section>
 
           {/* 2. 위치 */}
-          <Section icon={<MapPin className="w-5 h-5 text-rose-600" />} title="위치">
+          <Section icon={<MapPin className="w-5 h-5 text-tone-bad" />} title="위치">
             <div className="grid grid-cols-2 gap-3">
               <Field label="시/도">
                 <input
@@ -307,7 +307,7 @@ export default function SellerStayNewPage() {
           </Section>
 
           {/* 3. 체크인 정책 */}
-          <Section icon={<Clock className="w-5 h-5 text-amber-600" />} title="체크인 / 정책">
+          <Section icon={<Clock className="w-5 h-5 text-tone-warn" />} title="체크인 / 정책">
             <div className="grid grid-cols-2 gap-3">
               <Field label="체크인 시간">
                 <input
@@ -354,7 +354,7 @@ export default function SellerStayNewPage() {
                     key={p.value}
                     className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
                       form.cancellation_policy === p.value
-                        ? 'border-amber-500 bg-amber-50'
+                        ? 'border-brand bg-brand-tint'
                         : 'border-gray-200 bg-white hover:border-gray-300'
                     }`}
                   >
@@ -364,7 +364,7 @@ export default function SellerStayNewPage() {
                       value={p.value}
                       checked={form.cancellation_policy === p.value}
                       onChange={() => setForm({ ...form, cancellation_policy: p.value })}
-                      className="mt-0.5 text-amber-500"
+                      className="mt-0.5 text-tone-warn"
                     />
                     <div className="flex-1">
                       <p className="text-xs font-bold text-gray-900">{p.label}</p>
@@ -404,16 +404,16 @@ export default function SellerStayNewPage() {
           </Section>
 
           {/* 🛡️ 2026-05-18: 판매 모드 선택 (voucher / date / both) */}
-          <Section icon={<span className="text-base">🎫</span>} title="판매 모드">
+          <Section icon={<Ticket className="h-4 w-4" />} title="판매 모드">
             <Field label="판매 방식" required>
               <div className="space-y-2">
                 {([
-                  { v: 'date', label: '📅 날짜 지정 예약 (야놀자 스타일)', desc: '캘린더 + 객실 가용일자 + 즉시 확정' },
-                  { v: 'voucher', label: '🎫 기간 무관 숙소 이용권 (날짜 협의)', desc: '평일/주말 가격만 — 사용 시 매장 협의' },
-                  { v: 'both', label: '🔀 두 모드 동시 운영', desc: '평시 voucher + 성수기 캘린더' },
+                  { v: 'date', label: '날짜 지정 예약', desc: '캘린더 + 객실 가용일자 + 즉시 확정' },
+                  { v: 'voucher', label: '기간 무관 숙소 이용권 (날짜 협의)', desc: '평일/주말 가격만 — 사용 시 매장 협의' },
+                  { v: 'both', label: '두 모드 동시 운영', desc: '평시 voucher + 성수기 캘린더' },
                 ] as const).map((m) => (
                   <label key={m.v} className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer ${
-                    form.sale_mode === m.v ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'
+                    form.sale_mode === m.v ? 'border-brand bg-brand-tint' : 'border-gray-200 bg-white hover:border-gray-300'
                   }`}>
                     <input
                       type="radio"
@@ -461,7 +461,7 @@ export default function SellerStayNewPage() {
           </Section>
 
           {/* 🛡️ 2026-05-18: 인플루언서 referral — 시중에 없는 신규 모델 */}
-          <Section icon={<span className="text-base">💸</span>} title="인플루언서 referral (옵션)">
+          <Section icon={<Coins className="h-4 w-4" />} title="소개 링크 (옵션)">
             <Field label="referral 활성화">
               <label className={`flex items-center gap-2 text-xs ${quota && !quota.referral_allowed ? 'opacity-50 cursor-not-allowed' : ''}`}>
                 <input type="checkbox" checked={form.referral_enabled}
@@ -470,8 +470,8 @@ export default function SellerStayNewPage() {
                 인플루언서가 본인 URL 로 추천 → 소비자 할인 + 인플 커미션 지급
               </label>
               {quota && !quota.referral_allowed && (
-                <p className="text-[10px] text-amber-700 mt-1">
-                  🔒 실버 이상 등급에서 활성화 가능 (현재 {quota.tier})
+                <p className="text-[10px] text-tone-warn mt-1">
+                  실버 이상 등급에서 활성화 가능 (현재 {quota.tier})
                 </p>
               )}
             </Field>
@@ -495,15 +495,15 @@ export default function SellerStayNewPage() {
                   />
                   <p className="text-[10px] text-gray-400 mt-1">결제 금액의 N% — 인플 settle 시 지급. 최대 20%.</p>
                 </Field>
-                <div className="bg-amber-50 border border-amber-200 rounded p-2 text-[10px] text-amber-800">
-                  ⚠️ 셀러 수익 = 결제금 - 할인 - 커미션 - 플랫폼 수수료. 마진 계산 후 활성화 권장.
+                <div className="bg-white border border-rule rounded p-2 text-[10px] text-tone-warn">
+                  매장 수익 = 결제금 - 할인 - 커미션 - 플랫폼 수수료. 마진 계산 후 활성화 권장.
                 </div>
               </>
             )}
           </Section>
 
           {/* 4. 시설 (어메니티) */}
-          <Section icon={<Sparkles className="w-5 h-5 text-violet-600" />} title="시설 / 어메니티">
+          <Section icon={<Sparkles className="w-5 h-5 text-gray-700" />} title="시설 / 어메니티">
             <Field label="숙소 공통 시설">
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                 {propertyAmenities.map((a) => {
@@ -514,7 +514,7 @@ export default function SellerStayNewPage() {
                       type="button"
                       onClick={() => toggleAmenity('amenities', a.code)}
                       className={`p-2 rounded-lg border-2 text-center text-xs transition-all ${
-                        on ? 'border-violet-500 bg-violet-50 text-violet-900' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                        on ? 'border-brand bg-brand-tint text-brand-text' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
                       }`}
                     >
                       <div className="text-lg">{a.icon_emoji}</div>
@@ -534,7 +534,7 @@ export default function SellerStayNewPage() {
                       type="button"
                       onClick={() => toggleAmenity('room_amenities', a.code)}
                       className={`p-2 rounded-lg border-2 text-center text-xs transition-all ${
-                        on ? 'border-violet-500 bg-violet-50 text-violet-900' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                        on ? 'border-brand bg-brand-tint text-brand-text' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
                       }`}
                     >
                       <div className="text-lg">{a.icon_emoji}</div>
@@ -550,10 +550,10 @@ export default function SellerStayNewPage() {
           </Section>
 
           {/* Submit */}
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+          <div className="bg-white border border-rule rounded-xl p-4">
             <div className="flex items-start gap-3 mb-3">
-              <Shield className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-              <div className="text-xs text-blue-900">
+              <Shield className="w-5 h-5 text-gray-700 shrink-0 mt-0.5" />
+              <div className="text-xs text-gray-700">
                 <p className="font-bold">다음 단계</p>
                 <p className="mt-1">등록 완료 후 (1) 객실 타입 추가 (스탠다드/디럭스/스위트 등) (2) 평일/주말/공휴일 가격 설정 (3) 가용 캘린더 등록을 진행합니다.</p>
               </div>
@@ -588,7 +588,7 @@ function Field({ label, required, children }: { label: string; required?: boolea
   return (
     <div>
       <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-        {label} {required && <span className="text-red-500">*</span>}
+        {label} {required && <span className="text-tone-bad">*</span>}
       </label>
       {children}
     </div>

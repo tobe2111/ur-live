@@ -36,7 +36,7 @@ export function SortMenu<T extends string>({
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="inline-flex items-center gap-1 rounded-full border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] px-3 py-1.5 text-[12px] font-bold text-gray-900 dark:text-white active:scale-[0.98] transition-transform"
+        className="inline-flex items-center gap-1 rounded-full border border-line bg-surface px-3 py-1.5 text-[12px] font-bold text-gray-900 dark:text-white active:scale-[0.98] transition-transform"
       >
         {current?.Icon && <current.Icon className="w-3.5 h-3.5 text-gray-400" aria-hidden="true" />}
         {current?.label}
@@ -47,7 +47,7 @@ export function SortMenu<T extends string>({
           <div className="fixed inset-0 z-[10500]" onClick={() => setOpen(false)} />
           <div
             role="listbox"
-            className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} mt-1.5 z-[10501] min-w-[150px] rounded-xl bg-white dark:bg-[#1A1C21] border border-gray-100 dark:border-[#2C2F35] shadow-xl py-1 overflow-hidden`}
+            className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} mt-1.5 z-[10501] min-w-[150px] rounded-xl bg-white dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35] shadow-xl py-1 overflow-hidden`}
           >
             {options.map((o) => {
               const selected = o.key === value
@@ -58,7 +58,7 @@ export function SortMenu<T extends string>({
                   onClick={() => { onChange(o.key); setOpen(false) }}
                   className={`w-full text-left px-3.5 py-2.5 text-[13px] inline-flex items-center gap-2 transition-colors ${
                     selected
-                      ? 'font-extrabold text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-500/10'
+                      ? 'font-extrabold text-brand-text  bg-brand-tint bg-brand/10'
                       : 'font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/[0.06]'
                   }`}
                 >

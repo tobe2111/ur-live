@@ -74,11 +74,11 @@ export default function MyDealHistoryPage() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0D0F12] pb-20">
+    <div className="min-h-screen bg-white dark:bg-[#11141C] pb-20">
       <SEO title="딜 사용 내역 - 유어딜" description="딜 충전, 사용, 적립, 환불 내역" url="/my-deal-history" noindex />
 
       {/* Header */}
-      <div className="sticky top-0 md:top-14 z-30 bg-white/95 dark:bg-[#0D0F12]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
+      <div className="sticky top-0 md:top-14 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-medium flex items-center px-4 lg:px-8 py-3">
           <button onClick={() => navigate(-1)} aria-label="뒤로"
             className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/[0.06]">
@@ -195,12 +195,12 @@ export default function MyDealHistoryPage() {
             <button
               onClick={() => setPage(p => Math.max(0, p - 1))}
               disabled={page === 0}
-              className="px-3 py-1.5 text-xs border border-gray-200 dark:border-[#2C2F35] text-gray-700 dark:text-gray-300 rounded disabled:opacity-40"
+              className="px-3 py-1.5 text-xs border border-line text-gray-700 dark:text-gray-300 rounded disabled:opacity-40"
             >이전</button>
             <button
               onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
               disabled={page >= totalPages - 1}
-              className="px-3 py-1.5 text-xs border border-gray-200 dark:border-[#2C2F35] text-gray-700 dark:text-gray-300 rounded disabled:opacity-40"
+              className="px-3 py-1.5 text-xs border border-line text-gray-700 dark:text-gray-300 rounded disabled:opacity-40"
             >다음</button>
           </div>
         </div>

@@ -59,7 +59,7 @@ export default function SellerStaysPage() {
         </Link>
       }
     >
-      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-6">
         <DashboardPageHeader
           title={t('seller.stays.title', { defaultValue: '숙소 공구' })}
           subtitle={t('seller.stays.subtitle', { defaultValue: '펜션·호텔·모텔·게스트하우스 — 객실 + 날짜 기반 예약' })}
@@ -88,7 +88,7 @@ export default function SellerStaysPage() {
               <Link
                 key={s.id}
                 to={`/seller/stays/${s.id}`}
-                className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:border-blue-300 hover:shadow-md transition-all group"
+                className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:border-rule hover:shadow-md transition-all group"
               >
                 <div className="relative aspect-[16/10] bg-gray-100">
                   {s.image_url ? (
@@ -110,11 +110,11 @@ export default function SellerStaysPage() {
                   )}
                 </div>
                 <div className="p-4">
-                  <h3 className="text-sm font-bold text-gray-900 line-clamp-1 group-hover:text-blue-600">{s.name}</h3>
+                  <h3 className="text-sm font-bold text-gray-900 line-clamp-1 group-hover:text-gray-700">{s.name}</h3>
                   <div className="flex items-center gap-1 mt-1 text-xs text-gray-500">
                     {s.star_rating ? (
                       <>
-                        <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+                        <Star className="w-3 h-3 text-tone-warn fill-amber-500" />
                         <span>{s.star_rating}성</span>
                         <span className="text-gray-300">·</span>
                       </>
@@ -133,7 +133,7 @@ export default function SellerStaysPage() {
                         예약 {formatNumber(s.active_bookings || 0)}
                       </span>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-blue-600" />
+                    <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-700" />
                   </div>
                 </div>
               </Link>

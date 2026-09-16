@@ -17,8 +17,8 @@ import { Loader2, Unlink, AlertCircle } from 'lucide-react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface Props {
-  /** 'seller' | 'agency' — 어떤 role 의 연동인지 */
-  role: 'seller' | 'agency'
+  /** 🌇 2026-09-04 에이전시 일몰 — 'agency' 제거. 셀러 전용이다. */
+  role: 'seller'
 }
 
 interface LinkStatus {
@@ -31,7 +31,7 @@ export function KakaoLinkButton({ role }: Props) {
   const [status, setStatus] = useState<LinkStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [working, setWorking] = useState(false)
-  const basePath = role === 'seller' ? '/api/seller' : '/api/agency'
+  const basePath = '/api/seller'
 
   const refresh = useCallback(async () => {
     try {
@@ -125,7 +125,7 @@ export function KakaoLinkButton({ role }: Props) {
 
   if (loading) {
     return (
-      <div className="bg-gray-50 dark:bg-[#1A1C21] rounded-xl p-4 flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+      <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-4 flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
         <Loader2 className="w-4 h-4 animate-spin" /> {t('kakaoLink.checkingStatus', { defaultValue: '연동 상태 확인 중...' })}
       </div>
     )
@@ -155,7 +155,7 @@ export function KakaoLinkButton({ role }: Props) {
 
   // 미연동 상태
   return (
-    <div className="bg-gray-50 dark:bg-[#1A1C21] border border-yellow-200 dark:border-yellow-800/40 rounded-xl p-4 space-y-3">
+    <div className="bg-gray-50 dark:bg-[#1D1F29] border border-yellow-200 dark:border-yellow-800/40 rounded-xl p-4 space-y-3">
       <div className="flex items-start gap-2">
         <div className="w-10 h-10 rounded-full bg-yellow-400 flex items-center justify-center text-lg shrink-0">💬</div>
         <div className="flex-1 min-w-0">

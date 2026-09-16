@@ -12,17 +12,17 @@ import { useTranslation } from 'react-i18next'
 function GoodExampleSvg() {
   return (
     <svg viewBox="0 0 96 72" className="w-full h-auto" aria-hidden="true">
-      <rect width="96" height="72" rx="6" fill="#FBEDF0" />
+      <rect width="96" height="72" rx="6" fill="#EAF1FE" />
       {/* 김 — 갓 나온 요리 */}
       <path d="M38 12c-2 3 2 5 0 8M48 10c-2 3 2 5 0 8M58 12c-2 3 2 5 0 8" stroke="#C9A5AD" strokeWidth="2" strokeLinecap="round" fill="none" />
       {/* 그릇(클로즈업 — 프레임 하단을 가득) */}
-      <ellipse cx="48" cy="40" rx="34" ry="11" fill="#E0526B" opacity="0.9" />
-      <path d="M14 40h68c0 14-14 24-34 24S14 54 14 40Z" fill="#FFFFFF" stroke="#E0526B" strokeWidth="2.5" />
+      <ellipse cx="48" cy="40" rx="34" ry="11" fill="#1C69EF" opacity="0.9" />
+      <path d="M14 40h68c0 14-14 24-34 24S14 54 14 40Z" fill="#FFFFFF" stroke="#1C69EF" strokeWidth="2.5" />
       {/* 음식 봉긋 */}
-      <path d="M22 39c4-8 12-12 26-12s22 4 26 12" fill="#F3C1CA" stroke="#E0526B" strokeWidth="2" strokeLinejoin="round" />
-      <circle cx="38" cy="34" r="2.2" fill="#E0526B" />
-      <circle cx="52" cy="31" r="2.2" fill="#E0526B" />
-      <circle cx="62" cy="35" r="2.2" fill="#E0526B" />
+      <path d="M22 39c4-8 12-12 26-12s22 4 26 12" fill="#F3C1CA" stroke="#1C69EF" strokeWidth="2" strokeLinejoin="round" />
+      <circle cx="38" cy="34" r="2.2" fill="#1C69EF" />
+      <circle cx="52" cy="31" r="2.2" fill="#1C69EF" />
+      <circle cx="62" cy="35" r="2.2" fill="#1C69EF" />
     </svg>
   )
 }
@@ -48,21 +48,21 @@ function BadExampleSvg() {
 export default function SellerVoucherPhotoGuide() {
   const { t } = useTranslation()
   return (
-    <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-3.5 py-3">
-      <p className="text-[12px] font-semibold text-amber-800">
+    <div className="mb-4 rounded-lg bg-white border border-rule px-3.5 py-3">
+      <p className="text-[12px] font-semibold text-tone-warn">
         {t('seller.mealVoucher.photoGuideTitle', { defaultValue: '음식·시술 결과 사진이 간판·메뉴판 사진보다 판매가 잘 돼요' })}
       </p>
       {/* 예시 일러스트 — 추천(음식 클로즈업) vs 비추천(간판/외관) */}
       <div className="grid grid-cols-2 gap-2 mt-2 max-w-[360px]">
         <figure className="m-0">
           <div className="rounded-md overflow-hidden ring-1 ring-amber-200"><GoodExampleSvg /></div>
-          <figcaption className="text-[11px] text-amber-700 mt-1">
+          <figcaption className="text-[11px] text-tone-warn mt-1">
             {t('seller.mealVoucher.photoGuideGood', { defaultValue: '추천 예시: 대표 메뉴 클로즈업 · 시술 결과(전/후) · 실제 제공되는 모습' })}
           </figcaption>
         </figure>
         <figure className="m-0">
           <div className="rounded-md overflow-hidden ring-1 ring-amber-200 opacity-70"><BadExampleSvg /></div>
-          <figcaption className="text-[11px] text-amber-700 mt-1">
+          <figcaption className="text-[11px] text-tone-warn mt-1">
             {t('seller.mealVoucher.photoGuideBad', { defaultValue: '피해주세요: 간판 · 메뉴판 · 건물 외관 사진' })}
           </figcaption>
         </figure>

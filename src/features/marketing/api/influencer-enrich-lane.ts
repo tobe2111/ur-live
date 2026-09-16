@@ -494,10 +494,10 @@ export async function runInfluencerEnrich(
      */
     const tisRoom = tistoryRoom(env)
     if (tisRoom > 0) {
-      try { tistory = await enrichTistoryActivity(DB, budget, tisRoom, slice) } catch (err) { note(err) }
+      try { tistory = await enrichTistoryActivity(DB, budget, tisRoom, slice, env) } catch (err) { note(err) }
     }
     // 📝 블로거 — 백로그가 가장 큰 레인(풀의 74%). 이 시점의 **실제 잔여**로 몫을 다시 계산한다.
-    try { naver = await enrichNaverActivity(DB, budget, naverRoomWithYtReserve(budget.left, naverMax, ytReserve), slice) } catch (err) { note(err) }
+    try { naver = await enrichNaverActivity(DB, budget, naverRoomWithYtReserve(budget.left, naverMax, ytReserve), slice, env) } catch (err) { note(err) }
   }
   const runFront = async (): Promise<void> => {
     // 🔗 링크인바이오(건당 1 fetch) → 📈 유튜브 성과(남은 일일 units 안에서만).

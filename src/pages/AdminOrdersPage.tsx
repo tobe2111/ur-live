@@ -20,9 +20,9 @@ import {
 function orderKind(category?: string | null): { label: string; sub: string; color: string; bg: string; icon: 'voucher' | 'product' } {
   if (isVoucherCategory(category)) {
     const m = category ? VOUCHER_CATEGORY_LABEL[category] : undefined
-    return { label: '교환권', sub: m?.short || '', color: 'text-amber-700', bg: 'bg-amber-50', icon: 'voucher' }
+    return { label: '교환권', sub: m?.short || '', color: 'text-tone-warn', bg: 'bg-tone-warn-bg', icon: 'voucher' }
   }
-  return { label: '상품', sub: '', color: 'text-sky-700', bg: 'bg-sky-50', icon: 'product' }
+  return { label: '상품', sub: '', color: 'text-tone-info', bg: 'bg-tone-info-bg', icon: 'product' }
 }
 
 // Module-scope t — uses i18next instance directly (for module-level constants below)
@@ -87,15 +87,15 @@ function paymentMethodLabel(m?: string | null): string {
 }
 
 const STATUS_STYLES: Record<string, { label: string; color: string; bg: string }> = {
-  PENDING:    { label: t('admin.orders.k001', { defaultValue: '주문 접수' }),  color: 'text-amber-700',   bg: 'bg-amber-50' },
-  PAID:       { label: t('admin.orders.k002', { defaultValue: '결제 완료' }),  color: 'text-blue-700',    bg: 'bg-blue-50' },
-  DONE:       { label: t('admin.orders.k002', { defaultValue: '결제 완료' }),  color: 'text-blue-700',    bg: 'bg-blue-50' },
-  PREPARING:  { label: t('admin.orders.k003', { defaultValue: '상품 준비' }),  color: 'text-indigo-700',  bg: 'bg-indigo-50' },
-  SHIPPING:   { label: t('admin.orders.k004', { defaultValue: '배송 중' }),    color: 'text-purple-700',  bg: 'bg-purple-50' },
-  DELIVERED:  { label: t('admin.orders.k005', { defaultValue: '배송 완료' }),  color: 'text-emerald-700', bg: 'bg-emerald-50' },
-  CANCELLED:  { label: t('admin.orders.k006', { defaultValue: '취소' }),       color: 'text-red-700',     bg: 'bg-red-50' },
+  PENDING:    { label: t('admin.orders.k001', { defaultValue: '주문 접수' }),  color: 'text-tone-warn',   bg: 'bg-tone-warn-bg' },
+  PAID:       { label: t('admin.orders.k002', { defaultValue: '결제 완료' }),  color: 'text-tone-info',    bg: 'bg-tone-info-bg' },
+  DONE:       { label: t('admin.orders.k002', { defaultValue: '결제 완료' }),  color: 'text-tone-info',    bg: 'bg-tone-info-bg' },
+  PREPARING:  { label: t('admin.orders.k003', { defaultValue: '상품 준비' }),  color: 'text-tone-info',  bg: 'bg-tone-info-bg' },
+  SHIPPING:   { label: t('admin.orders.k004', { defaultValue: '배송 중' }),    color: 'text-tone-info',  bg: 'bg-tone-info-bg' },
+  DELIVERED:  { label: t('admin.orders.k005', { defaultValue: '배송 완료' }),  color: 'text-tone-ok', bg: 'bg-tone-ok-bg' },
+  CANCELLED:  { label: t('admin.orders.k006', { defaultValue: '취소' }),       color: 'text-tone-bad',     bg: 'bg-tone-bad-bg' },
   REFUNDED:   { label: t('admin.orders.k007', { defaultValue: '환불' }),       color: 'text-gray-600',    bg: 'bg-gray-100' },
-  FAILED:     { label: t('admin.orders.k008', { defaultValue: '결제 실패' }),  color: 'text-red-700',     bg: 'bg-red-50' },
+  FAILED:     { label: t('admin.orders.k008', { defaultValue: '결제 실패' }),  color: 'text-tone-bad',     bg: 'bg-tone-bad-bg' },
 }
 
 const NEXT_STATUS: Record<string, string> = {
@@ -129,9 +129,9 @@ const COURIER_OPTIONS = [
 ]
 
 const PAYMENT_STYLES: Record<string, { label: string; color: string; bg: string }> = {
-  paid:    { label: t('admin.orders.k002', { defaultValue: '결제 완료' }), color: 'text-emerald-700', bg: 'bg-emerald-50' },
-  pending: { label: t('admin.orders.k026', { defaultValue: '결제 대기' }), color: 'text-amber-700',   bg: 'bg-amber-50' },
-  failed:  { label: t('admin.orders.k008', { defaultValue: '결제 실패' }), color: 'text-red-700',     bg: 'bg-red-50' },
+  paid:    { label: t('admin.orders.k002', { defaultValue: '결제 완료' }), color: 'text-tone-ok', bg: 'bg-tone-ok-bg' },
+  pending: { label: t('admin.orders.k026', { defaultValue: '결제 대기' }), color: 'text-tone-warn',   bg: 'bg-tone-warn-bg' },
+  failed:  { label: t('admin.orders.k008', { defaultValue: '결제 실패' }), color: 'text-tone-bad',     bg: 'bg-tone-bad-bg' },
 }
 
 function parseShippingAddress(address: string, zipcode?: string, detail?: string): { postal_code: string; address1: string; address2: string } {
@@ -325,7 +325,7 @@ export default function AdminOrdersPage() {
     return (
       <div className="flex h-screen items-center justify-center bg-[#F4F5F7]">
         <div className="text-center">
-          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <div className="w-10 h-10 border-4 border-brand border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-sm text-gray-500">{t('admin.orders.k034', { defaultValue: '주문 목록을 불러오는 중...' })}</p>
         </div>
       </div>
@@ -344,16 +344,16 @@ export default function AdminOrdersPage() {
             <Download className="w-3.5 h-3.5" /> 엑셀
           </button>
           {/* 🛡️ 2026-05-25 (migration 0279): CSV 일괄 송장 */}
-          <a href="/admin/shipping/bulk-tracking" className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-pink-500 rounded-lg hover:bg-pink-600">
-            📦 CSV 일괄 송장
+          <a href="/admin/shipping/bulk-tracking" className="ur-btn ur-btn-sm ur-btn-primary flex items-center gap-1.5">
+            CSV 일괄 송장
           </a>
         </>
       }
     >
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+        <div className="p-4 bg-white border border-rule rounded-xl text-sm text-tone-bad">
           {error}
-          <button onClick={() => window.location.reload()} className="mt-3 block px-4 py-2 bg-gray-900 text-white text-sm rounded-lg">{t('admin.orders.k036', { defaultValue: '다시 시도' })}</button>
+          <button onClick={() => window.location.reload()} className="ur-btn ur-btn-md ur-btn-primary mt-3 block">{t('admin.orders.k036', { defaultValue: '다시 시도' })}</button>
         </div>
       )}
 
@@ -361,13 +361,13 @@ export default function AdminOrdersPage() {
       <div className="grid grid-cols-3 lg:grid-cols-6 gap-3">
         {[
           { label: t('admin.orders.k037', { defaultValue: '전체' }), value: orderStats.total, color: 'text-gray-900' },
-          { label: t('admin.orders.k001', { defaultValue: '주문 접수' }), value: orderStats.pending, color: 'text-amber-600' },
-          { label: t('admin.orders.k004', { defaultValue: '배송 중' }), value: orderStats.shipped, color: 'text-purple-600' },
-          { label: t('admin.orders.k005', { defaultValue: '배송 완료' }), value: orderStats.delivered, color: 'text-emerald-600' },
-          { label: t('admin.orders.k006', { defaultValue: '취소' }), value: orderStats.cancelled, color: 'text-red-600' },
-          { label: t('admin.orders.k038', { defaultValue: '총 매출' }), value: `₩${formatNumber(orderStats.totalAmount)}`, color: 'text-blue-600' },
+          { label: t('admin.orders.k001', { defaultValue: '주문 접수' }), value: orderStats.pending, color: 'text-tone-warn' },
+          { label: t('admin.orders.k004', { defaultValue: '배송 중' }), value: orderStats.shipped, color: 'text-gray-700' },
+          { label: t('admin.orders.k005', { defaultValue: '배송 완료' }), value: orderStats.delivered, color: 'text-tone-ok' },
+          { label: t('admin.orders.k006', { defaultValue: '취소' }), value: orderStats.cancelled, color: 'text-tone-bad' },
+          { label: t('admin.orders.k038', { defaultValue: '총 매출' }), value: `₩${formatNumber(orderStats.totalAmount)}`, color: 'text-gray-700' },
         ].map(s => (
-          <div key={s.label} className="bg-white rounded-xl p-4 shadow-sm">
+          <div key={s.label} className="bg-white rounded-xl p-4 border border-rule">
             <p className="text-xs text-gray-500 mb-1">{s.label}</p>
             <p className={`text-lg font-bold ${s.color}`}>{s.value}</p>
           </div>
@@ -375,7 +375,7 @@ export default function AdminOrdersPage() {
       </div>
 
       {/* 필터 */}
-      <div className="bg-white rounded-xl shadow-sm p-5">
+      <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white p-5">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5"><Filter className="w-3.5 h-3.5 inline mr-1" />{t('admin.orders.k039', { defaultValue: '주문 상태' })}</label>
@@ -414,10 +414,10 @@ export default function AdminOrdersPage() {
       {/* 🛡️ 2026-06-14: 검색/필터 적용 시 결과 건수 안내 */}
       {(debouncedSearch || statusFilter !== 'ALL' || sellerFilter !== 'ALL' || dateFilter.start || dateFilter.end) && (
         <div className="flex items-center gap-2 px-1">
-          <Search className="w-3.5 h-3.5 text-blue-500" />
+          <Search className="w-3.5 h-3.5 text-gray-700" />
           <p className="text-xs text-gray-600">
             {debouncedSearch && <>‘<span className="font-semibold text-gray-900">{debouncedSearch}</span>’ </>}
-            검색/필터 결과 <span className="font-semibold text-blue-600">{formatNumber(totalCount)}</span>건
+            검색/필터 결과 <span className="font-semibold text-gray-700">{formatNumber(totalCount)}</span>건
           </p>
         </div>
       )}
@@ -434,7 +434,7 @@ export default function AdminOrdersPage() {
             <span className="text-xs text-gray-400">일괄 변경:</span>
             {['PREPARING', 'SHIPPING', 'DELIVERED'].map((st) => (
               <button key={st} type="button" onClick={() => bulkUpdateStatus(st)} disabled={bulkBusy}
-                className="px-3 py-1.5 bg-gray-900 text-white text-xs font-semibold rounded-md hover:bg-gray-800 disabled:opacity-50">
+                className="ur-btn ur-btn-sm ur-btn-primary disabled:opacity-50">
                 {STATUS_STYLES[st]?.label || st}
               </button>
             ))}
@@ -445,7 +445,7 @@ export default function AdminOrdersPage() {
       {/* 주문 테이블 */}
       {/* 🛡️ 2026-06-14: 컬럼 상세화 — 주문번호/일시 / 고객(명·이메일·연락처마스킹) / 상품요약(수량) /
           판매자 / 결제수단 / 주문상태 / 결제상태 / 금액 / 배송(송장). 한눈에 "누가 무엇을 얼마에" 파악. */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1180px]">
             <thead>
@@ -453,7 +453,7 @@ export default function AdminOrdersPage() {
                 <th className="px-3 py-3 w-10">
                   <input type="checkbox" checked={allSelected} ref={(el) => { if (el) el.indeterminate = someSelected }}
                     onChange={toggleSelectAll} disabled={currentOrders.length === 0} aria-label="전체 선택"
-                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer disabled:opacity-40" />
+                    className="h-4 w-4 rounded border-gray-300 text-gray-700 focus:ring-blue-500 cursor-pointer disabled:opacity-40" />
                 </th>
                 {['주문 / 일시', '종류', '고객 정보', '주문 상품', '판매자', '결제수단', '주문 상태', '결제 상태', '배송', '금액', ''].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 whitespace-nowrap">{h}</th>
@@ -473,11 +473,11 @@ export default function AdminOrdersPage() {
                 const kind = orderKind(order.first_item_category)
                 const checked = selectedNumbers.has(order.order_number)
                 return (
-                  <tr key={order.order_number} className={`hover:bg-gray-50 align-top ${checked ? 'bg-blue-50/40' : ''}`}>
+                  <tr key={order.order_number} className={`hover:bg-gray-50 align-top ${checked ? 'border border-rule bg-white' : ''}`}>
                     <td className="px-3 py-3 w-10">
                       <input type="checkbox" checked={checked} onChange={() => toggleSelect(order.order_number)}
                         aria-label={`${order.order_number} 선택`}
-                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer" />
+                        className="h-4 w-4 rounded border-gray-300 text-gray-700 focus:ring-blue-500 cursor-pointer" />
                     </td>
                     <td className="px-4 py-3">
                       <p className="text-xs font-mono text-gray-700">{order.order_number}</p>
@@ -546,7 +546,7 @@ export default function AdminOrdersPage() {
                 if (p < 1) p = 1
                 if (p > totalPages) return null
                 return (
-                  <button key={i} onClick={() => setCurrentPage(p)} className={`w-8 h-8 text-xs rounded-lg font-medium ${currentPage === p ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-100'}`}>{p}</button>
+                  <button key={i} onClick={() => setCurrentPage(p)} className={`w-8 h-8 text-xs rounded-lg font-medium ${currentPage === p ? 'bg-brand text-white' : 'text-gray-500 hover:bg-gray-100'}`}>{p}</button>
                 )
               })}
               <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40">
@@ -617,9 +617,9 @@ export default function AdminOrdersPage() {
                   </div>
                 </div>
               )}
-              <div className="flex items-center justify-between p-4 bg-blue-50 rounded-xl">
+              <div className="flex items-center justify-between p-4 border border-rule bg-white rounded-xl">
                 <span className="text-sm font-medium text-gray-700">{t('admin.orders.k064', { defaultValue: '총 결제 금액' })}</span>
-                <span className="text-lg font-bold text-blue-600">₩{formatNumber(selectedOrder.total_amount)}</span>
+                <span className="text-lg font-bold text-gray-900">₩{formatNumber(selectedOrder.total_amount)}</span>
               </div>
 
               {/* 주문 상태 변경 */}
@@ -629,7 +629,7 @@ export default function AdminOrdersPage() {
                   {NEXT_STATUS[selectedOrder.status] && (
                     <button
                       onClick={() => updateOrderStatus(selectedOrder.order_number, NEXT_STATUS[selectedOrder.status])}
-                      className="px-4 py-2 text-xs font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-900"
+                      className="ur-btn ur-btn-md ur-btn-primary"
                     >
                       {STATUS_STYLES[NEXT_STATUS[selectedOrder.status]]?.label || NEXT_STATUS[selectedOrder.status]}(으)로 변경
                     </button>
@@ -640,7 +640,7 @@ export default function AdminOrdersPage() {
                         const reason = prompt(t('admin.orders.k066', { defaultValue: '취소 사유를 입력해주세요:' }))
                         if (reason) updateOrderStatus(selectedOrder.order_number, 'CANCELLED', reason)
                       }}
-                      className="px-4 py-2 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100"
+                      className="px-4 py-2 text-xs font-medium text-tone-bad border border-rule bg-white rounded-lg hover:bg-gray-100"
                     >
                       주문 취소
                     </button>
@@ -664,7 +664,7 @@ export default function AdminOrdersPage() {
                       {COURIER_OPTIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                     </select>
                     <input name="tracking" type="text" defaultValue={selectedOrder.tracking_number || ''} placeholder="운송장 번호" className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 flex-1" />
-                    <button type="submit" className="px-4 py-2 text-xs font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-900 flex-shrink-0">
+                    <button type="submit" className="ur-btn ur-btn-md ur-btn-primary flex-shrink-0">
                       <Truck className="w-3.5 h-3.5 inline mr-1" />등록
                     </button>
                   </form>

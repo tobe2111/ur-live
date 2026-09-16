@@ -61,6 +61,28 @@ export async function ensureLedgerTable(DB: D1Database): Promise<void> {
   } catch { /* exists */ }
 }
 
+/**
+ * 🏷️ 매장 계정 이름 SSOT — `seller:N`, 단 **판매자가 없으면 `platform:revenue`**.
+ *
+ * 🩸 2026-09-07 라이브 실측: 원장에 `credit_account = 'seller:null'` 행이 실재했다(1,800원).
+ *   `products.seller_id` 는 nullable 인데(KT 기프티콘 같은 **플랫폼 상품**은 판매자가 없다)
+ *   호출부가 `` `seller:${product.seller_id}` `` 를 가드 없이 썼기 때문이다. TS 타입은
+ *   `seller_id: number` 라고 적혀 있어 컴파일러도 안 잡았다 — **타입 선언이 DB 현실과 달랐다.**
+ *
+ * ⚠️ 왜 그냥 "기록 안 함" 이 아닌가: 그러면 **판 사실 자체가 원장에서 사라진다.**
+ *   플랫폼 상품이면 그 돈은 플랫폼 것이므로 `platform:revenue` 가 옳은 목적지다.
+ *
+ * 🔐 그리고 이건 **지급 대상에서 구조적으로 빠진다** — `payouts-generate` 는
+ *   `credit_account LIKE 'merchant:%'|'seller:%'|'agency:%'|'user:%'` 만 집계한다.
+ *   반면 `'seller:null'` 은 그 LIKE 에 **걸린다**: split(':') 이 `id='null'`(truthy 문자열)을 내고
+ *   화이트리스트도 통과해, 잔액이 최소출금액(10,000원)을 넘는 순간 **계좌 없는 유령 payout** 이
+ *   만들어진다(실측: 현재 잔액 1,710원이라 아직 안 생겼다 — payouts 0건).
+ */
+export function sellerLedgerAccount(sellerId: number | null | undefined): string {
+  const id = Number(sellerId)
+  return Number.isFinite(id) && id > 0 ? `seller:${id}` : 'platform:revenue'
+}
+
 export async function recordLedger(DB: D1Database, entry: LedgerEntry): Promise<void> {
   await ensureLedgerTable(DB)
   if (!Number.isFinite(entry.amount) || entry.amount < 0 || entry.amount > 100_000_000_000) {
@@ -208,105 +230,17 @@ export async function recordVoucherUsedLedger(
 }
 
 /**
- * 🛡️ 2026-05-21 Phase D: voucher 사용 시점에 에이전시 commission 자동 분배.
+ * 🌇 2026-09-04 에이전시 완전 일몰(대표 확정) — 여기 있던 `recordAgencyCommissionShare` 를 삭제했다.
  *
- * 구조: 플랫폼 fee 의 일부(default 30%)를 에이전시에게 자동 분배.
- *   - sellers.introduced_by_agency_id 가 있는 가게의 voucher 사용 시 발생.
- *   - 분배 비율은 platform_settings.agency_share_pct (default 30) 에서 조정 (어드민 페이지).
- *   - ledger: platform:revenue → agency:N (debit/credit) 자동 entry.
+ * 무엇이었나: 이용권 *사용* 시점에 플랫폼 수수료의 30%(`agency_share_pct`)를 영입 에이전시
+ * (`sellers.introduced_by_agency_id`)에게 원장 분개(`platform:revenue` → `agency:N`)로 넘기던 레거시.
  *
- * 멱등: voucher_id + agency 조합 1회만.
- */
-export async function recordAgencyCommissionShare(
-  DB: D1Database,
-  params: {
-    voucher_id: number | string
-    merchant_id: number | string  // sellers.id (introduced_by_agency_id 조회용)
-    platform_fee: number          // recordVoucherUsedLedger 가 반환한 platform 분
-  },
-): Promise<{ agency_id: number | null; amount: number }> {
-  await ensureLedgerTable(DB)
-  const ref = `voucher:${params.voucher_id}:agency`
-  const existing = await DB.prepare(
-    `SELECT id FROM ledger_entries WHERE reference_id = ? LIMIT 1`,
-  ).bind(ref).first().catch(() => null)
-  if (existing) return { agency_id: null, amount: 0 }
-
-  // 가게의 추천 에이전시 조회
-  // 🛡️ 2026-05-27 (사용자 결정): 매장별 commission 기간 체크 추가.
-  //   referral_bonus_until NULL = 무기한, 날짜 있으면 만료 검사 (admin 이 매장별 설정).
-  const seller = await DB.prepare(
-    'SELECT introduced_by_agency_id, referral_bonus_until FROM sellers WHERE id = ?',
-  ).bind(params.merchant_id).first<{ introduced_by_agency_id: number | null; referral_bonus_until: string | null }>().catch(() => null)
-  if (!seller?.introduced_by_agency_id) return { agency_id: null, amount: 0 }
-  // 기간 만료 시 commission 0 (referral_bonus_until 설정된 경우만)
-  if (seller.referral_bonus_until && new Date(seller.referral_bonus_until) < new Date()) {
-    return { agency_id: null, amount: 0 }
-  }
-
-  // 💸 2026-07-04 [INV-CB-DEDUP] (F2 이중 커미션 수정 — commission-funding-restructure.md):
-  //   같은 구매에 결제확정 시 GMV 커미션(agency_store_intro_commissions sales_commission, 아비터 캡 대상)이
-  //   이미 적립됐으면 이 사용시점 셰어(platform_fee 30%)는 **skip** — 두 시스템이 같은 에이전시에
-  //   같은 주문으로 이중 적립(최대 GMV 3.5% > 플랫폼 수수료)하던 구조적 누수 차단.
-  //   확정 커미션이 없을 때(영입 시점이 구매 후 등)만 이 레거시 셰어가 단독 지급(단일-지급 보장).
-  try {
-    const v = await DB.prepare('SELECT order_id FROM vouchers WHERE id = ?')
-      .bind(params.voucher_id).first<{ order_id: number | null }>().catch(() => null)
-    if (v?.order_id) {
-      const dup = await DB.prepare(
-        `SELECT id FROM agency_store_intro_commissions
-          WHERE order_id = ? AND agency_id = ? AND type = 'sales_commission'
-            AND COALESCE(status, 'pending') != 'cancelled' LIMIT 1`,
-      ).bind(v.order_id, seller.introduced_by_agency_id).first().catch(() => null)
-      if (dup) return { agency_id: seller.introduced_by_agency_id, amount: 0 }
-    }
-  } catch { /* dedup 조회 실패 → 기존 동작(지급) — 멱등 ref 가 재실행 이중은 막음 */ }
-
-  // 분배 비율 (platform_settings)
-  let sharePct = 0.30  // default 30%
-  try {
-    const row = await DB.prepare(
-      "SELECT value FROM platform_settings WHERE key = 'agency_share_pct'",
-    ).first<{ value: string }>()
-    const v = parseFloat(row?.value || '0.30')
-    if (v > 0 && v < 1) sharePct = v
-    else if (v >= 1 && v <= 100) sharePct = v / 100
-  } catch { /* settings 없으면 default */ }
-
-  const agencyAmount = Math.floor(params.platform_fee * sharePct)
-  if (agencyAmount <= 0) return { agency_id: seller.introduced_by_agency_id, amount: 0 }
-
-  // 💸 [INV-#44] promo flip — 에이전시는 **매장-인플 조율 독립 사업자**이므로 그 몫도
-  //   매장 promo(5% 밖)에서 나온다(대표 확정 2026-07-08 §확정 원칙 3). flip 이 켜지면
-  //   debit 을 `merchant:{id}` 로 돌려 **platform:revenue 를 한 푼도 건드리지 않는다**.
-  //   OFF(기본)면 종전과 byte-동일. 산식(platform_fee×share_pct)은 **크기 기준일 뿐**이라 불변.
-  const ownerFunded = await ownerFundedFor(DB, `merchant:${params.merchant_id}`)
-  await recordLedger(DB, {
-    event_type: 'agency_commission',
-    reference_id: ref,
-    amount: agencyAmount,
-    debit_account: ownerFunded ? `merchant:${params.merchant_id}` : 'platform:revenue',
-    credit_account: `agency:${seller.introduced_by_agency_id}`,
-    metadata: {
-      kind: 'agency_share', voucher_id: params.voucher_id, share_pct: sharePct,
-      ...(ownerFunded ? { funding: 'owner' } : {}),
-    },
-  })
-
-  return { agency_id: seller.introduced_by_agency_id, amount: agencyAmount }
-}
-
-/**
- * 🛡️ 2026-05-28: 유저 commission 통합 적립 SSOT (docs/SERVICE_MODEL.md §9).
+ * 왜 지웠나: 대표 확정 원칙과 **정반대**다 — "5%는 중개사 일 때 유어딜의 수수료인거고,
+ * 중개사는 나머지 95%에서 매장이랑 거래를 하는거지." 유어딜 몫에서 커미션이 나가면 안 된다.
+ * 라이브 실측상 `introduced_by_agency_id` 는 전원 NULL 이라 실제로 지급된 적은 없다.
  *
- * 모든 유저(크리에이터/큐레이터) commission 의 "현금 vs 딜" 결정을 단 한 곳으로 통합:
- *   - 사업자 (users.business_status='verified') → user:N ledger credit → payouts-generate 현금 정산
- *   - 비사업자                                  → userdeal:N audit + 딜 즉시 적립
- *
- * 영입 commission 이 현재 유일한 호출자. 추천(affiliate) 통합은 payment.routes.ts(Toss 잠금)
- * 해제 후 같은 helper 로 forward-only 수렴 예정.
- *
- * idempotency 는 호출자가 reference_id 중복 체크로 보장 (여기선 재확인 안 함).
+ * ⚠️ 짝인 `recordIntroductionCommissionShare`(사람 영입)는 **그대로 산다** — 그건 별개 축이고
+ *    2026-08-31 대표 확정으로 직접 입점 매장 전용이다.
  */
 export async function creditUserCommission(
   DB: D1Database,
@@ -400,14 +334,55 @@ export async function recordIntroductionCommissionShare(
   ).bind(ref).first().catch(() => null)
   if (existing) return { influencer_id: null, amount: 0 }
 
-  // 매장의 입점 유치 인플루언서 조회
+  /**
+   * 🤝 2026-09-09: **판 시점의 도장을 먼저 읽는다**(대표 *"귀속되는 시점부터 계산"*).
+   *
+   * 아래 매장 조회는 이제 **옛 이용권 전용 폴백**이다. 도장(`intro_stamped_at`)이 찍혀 있으면
+   * 그 이용권은 팔릴 때 이미 판정된 것이므로 매장의 *현재* 영입자를 보지 않는다 — 그래야
+   * 영입자가 바뀌어도 과거 판매분이 소급되지 않는다.
+   *
+   * ⚠️ 도장이 NULL 인 것과 도장이 **없는** 것은 다르다: 전자는 "팔 때 받을 사람이 없었다"(0원),
+   *   후자는 "이 변경 이전에 팔렸다"(폴백). `intro_stamped_at` 이 그 둘을 가른다.
+   */
+  const stamp = await DB.prepare(
+    'SELECT introduced_by_influencer_id AS iid, intro_stamped_at FROM vouchers WHERE id = ? LIMIT 1',
+  ).bind(params.voucher_id).first<{ iid: number | null; intro_stamped_at: string | null }>().catch(() => null)
+  const stamped = !!stamp?.intro_stamped_at
+  if (stamped && !stamp?.iid) return { influencer_id: null, amount: 0 }
+
+  // 매장의 입점 유치 인플루언서 조회 (도장이 없는 옛 이용권 폴백)
   // 🛡️ 2026-05-27 (사용자 결정): 매장별 commission 기간 체크 (referral_bonus_until).
   const seller = await DB.prepare(
-    'SELECT introduced_by_influencer_id, referral_bonus_until FROM sellers WHERE id = ?',
-  ).bind(params.merchant_id).first<{ introduced_by_influencer_id: number | null; referral_bonus_until: string | null }>().catch(() => null)
-  if (!seller?.introduced_by_influencer_id) return { influencer_id: null, amount: 0 }
-  // 기간 만료 시 commission 0 (referral_bonus_until 설정된 경우만, NULL = 무기한)
-  if (seller.referral_bonus_until && new Date(seller.referral_bonus_until) < new Date()) {
+    'SELECT introduced_by_influencer_id, introduced_at, referral_bonus_until FROM sellers WHERE id = ?',
+  ).bind(params.merchant_id).first<{ introduced_by_influencer_id: number | null; introduced_at: string | null; referral_bonus_until: string | null }>().catch(() => null)
+  // 도장이 있으면 그 사람이 받는다 — 매장의 현재 영입자가 누구든 상관없다.
+  const payeeId = stamped ? Number(stamp!.iid) : (seller?.introduced_by_influencer_id ?? null)
+  if (!payeeId) return { influencer_id: null, amount: 0 }
+  /**
+   * ⏳ 2026-09-07: 만료 판정을 **결제 레일과 같은 SSOT**(`isStoreIntroExpired`)로 통일.
+   *
+   * 🕳️ 종전엔 `referral_bonus_until` 하나만 봤고 **NULL 이면 무기한**이었다. 그런데 결제 레일
+   *   (`influencer-store-intro-commission.ts`)은 NULL 이면 `introduced_at + N개월`(기본 1년)로
+   *   끊는다. 같은 영입 관계인데 **레일마다 기간이 달랐고**, 이쪽은 사실상 영구였다.
+   *   `referral_bonus_until` 은 백필로만 채워지는 컬럼이라 대부분의 매장에서 NULL 이다.
+   *
+   * ⚠️ 이 레일은 **이용권 사용 시점**에 매장의 *현재* 영입자를 읽는다 — 즉 과거에 팔린 이용권의
+   *   커미션이 오늘의 영입자에게 간다(소급). 그 자체를 없애려면 구매 시점의 영입자를 이용권에
+   *   스탬프해야 하는데 그건 스키마 변경 + 백필이라 별건이다
+   *   (`docs/decisions/2026-09-07-store-handover-money-cut.md`). 여기서 하는 것은 그 소급을
+   *   **기간으로 가두는 것**이다 — 영입 후 N개월이 지나면 어느 쪽이든 0 이 된다.
+   */
+  const { isStoreIntroExpired } = await import('./influencer-store-intro-commission')
+  const monthsRow = await DB.prepare(
+    "SELECT value FROM platform_settings WHERE key = 'influencer_store_intro_months'",
+  ).first<{ value: string }>().catch(() => null)
+  const { COMMISSION_DEFAULTS: CD } = await import('../../shared/constants/policy')
+  const introMonths = Number(monthsRow?.value) > 0
+    ? Number(monthsRow?.value)
+    : CD.INFLUENCER_STORE_INTRO_MONTHS
+  // 도장이 찍힌 이용권은 **판 시점에 이미 판정**했다 — 여기서 오늘 기준으로 다시 자르면
+  // 그때 정당하게 얻은 보상이 나중에 사라진다(그게 소급의 반대 방향 사고다).
+  if (!stamped && isStoreIntroExpired(seller, introMonths)) {
     return { influencer_id: null, amount: 0 }
   }
 
@@ -420,16 +395,16 @@ export async function recordIntroductionCommissionShare(
   try {
     const v = await DB.prepare('SELECT order_id, user_id FROM vouchers WHERE id = ?')
       .bind(params.voucher_id).first<{ order_id: number | null; user_id: string | number | null }>().catch(() => null)
-    if (v?.user_id != null && String(v.user_id) === String(seller.introduced_by_influencer_id)) {
-      return { influencer_id: seller.introduced_by_influencer_id, amount: 0 }
+    if (v?.user_id != null && String(v.user_id) === String(payeeId)) {
+      return { influencer_id: payeeId, amount: 0 }
     }
     if (v?.order_id) {
       const dup = await DB.prepare(
         `SELECT id FROM influencer_attributions
           WHERE order_id = ? AND influencer_id = ? AND source = 'store_intro'
             AND COALESCE(status, 'pending') NOT IN ('clawed_back', 'cancelled') LIMIT 1`,
-      ).bind(v.order_id, String(seller.introduced_by_influencer_id)).first().catch(() => null)
-      if (dup) return { influencer_id: seller.introduced_by_influencer_id, amount: 0 }
+      ).bind(v.order_id, String(payeeId)).first().catch(() => null)
+      if (dup) return { influencer_id: payeeId, amount: 0 }
     }
   } catch { /* dedup 조회 실패 → 기존 동작(지급) — 멱등 ref 가 재실행 이중은 막음 */ }
 
@@ -445,9 +420,10 @@ export async function recordIntroductionCommissionShare(
   } catch { /* default */ }
 
   const amount = Math.floor(params.platform_fee * sharePct)
-  if (amount <= 0) return { influencer_id: seller.introduced_by_influencer_id, amount: 0 }
+  if (amount <= 0) return { influencer_id: payeeId, amount: 0 }
 
-  const influencerUserId = seller.introduced_by_influencer_id
+  // 🤝 받는 사람은 **도장 우선**이다 — 여기가 seller 를 다시 읽으면 도장이 무의미해진다.
+  const influencerUserId = payeeId
 
   // 🛡️ 2026-05-28: introduced_by_influencer_id 는 users.id (sellers.id 아님!).
   //   현금/딜 분기는 통합 SSOT creditUserCommission 으로 위임. event_type 은
@@ -526,6 +502,36 @@ export async function getLedgerReceivable(
 }
 
 /** 정산 가능 잔액 = 순 receivable − 이미 payout(approved/sent) 처리분 */
+/**
+ * 💸 **아직 아무에게도 배정되지 않은 잔액** — 손바뀜 판단의 정식 수치 (2026-09-08).
+ *
+ * `getLedgerReceivable` 은 순수 원장이라 **정산 마감을 해도 안 줄어든다.** 그 값으로 손바뀜을
+ * 막으면 마감을 해도 계속 막혀 **막다른 길**이 된다(2026-09-07 자물쇠의 실제 결함).
+ *
+ * 여기서는 `payouts-generate` 와 **똑같은 공식**을 쓴다 — 원장에서 이미 payout 행으로
+ * 배정된 몫(`pending`/`approved`/`sent`)을 뺀다. 그 행들은 **생성 시점의 계좌를 자기 안에
+ * 스냅샷**하고 있으므로(payouts-generate 가 `sellers.bank_account` 를 행에 박는다),
+ * 주인이 바뀌어도 **이전 주인에게 간다.** 그래서 이 값이 0 이면 "새 주인에게 흘러갈 돈은 없다".
+ *
+ * ⚠️ `getPayablePending` 과 다르다 — 그쪽은 `pending` 을 **안** 뺀다("앞으로 지급 가능한 액수"라는
+ *   다른 질문에 답한다). 손바뀜에는 이 함수를 쓸 것.
+ *
+ * ⚠️ **못 막는 것**: 손바뀜 *뒤에* 그 payout 을 `cancelled`/`failed` 로 되돌리면 잔액이
+ *   원장으로 되살아나 새 주인에게 간다(집계가 그 두 상태를 안 뺀다). 마감 payout 의 취소를
+ *   막는 것은 아직 없다 — 승계 기능을 지을 때 함께 다뤄야 한다.
+ */
+export async function getUnsettledBalance(
+  DB: D1Database,
+  payeeAccount: string,
+): Promise<number> {
+  const receivable = await getLedgerReceivable(DB, payeeAccount)
+  const earmarked = await DB.prepare(
+    `SELECT COALESCE(SUM(amount), 0) as total FROM payouts
+      WHERE (payee_type || ':' || payee_id) = ? AND status IN ('pending','approved','sent')`,
+  ).bind(payeeAccount).first<{ total: number }>().catch(() => ({ total: 0 }))
+  return receivable - Number(earmarked?.total ?? 0)
+}
+
 export async function getPayablePending(
   DB: D1Database,
   payeeAccount: string,

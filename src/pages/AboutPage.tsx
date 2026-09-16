@@ -52,18 +52,18 @@ export default function AboutPage() {
       {/* 🔎 2026-07-29: 문구 SSOT = shared/seo/consumer-surfaces (워커 메타와 같은 값). */}
       <SEO title={CONSUMER_SURFACE_SEO['/about'].title} description={CONSUMER_SURFACE_SEO['/about'].description} url="/about" />
 
-      <div className="bg-white dark:bg-[#0D0F12] text-gray-900 dark:text-white min-h-screen">
+      <div className="bg-white dark:bg-[#11141C] text-gray-900 dark:text-white min-h-screen">
         {/* ========== Hero ========== */}
-        <section className="relative overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-[#1A0A14] dark:via-[#0D0F12] dark:to-[#0F0A1A] border-b border-gray-100 dark:border-[#2C2F35]">
+        <section className="relative overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:from-[#1A0A14] dark:via-[#11141C] dark:to-[#0F0A1A] border-b border-gray-100 dark:border-[#2C2F35]">
           <div className="ur-content-wide px-4 lg:px-8 py-16 lg:py-24">
             <div className="text-center max-w-4xl mx-auto">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-300 text-xs font-semibold mb-6">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-tint text-brand-text text-xs font-semibold mb-6">
                 <Sparkles className="w-3.5 h-3.5" />
                 우리 동네 공동구매
               </div>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold tracking-tight leading-tight mb-6">
                 유어딜
-                <span className="block text-pink-500 mt-2">함께라서 더 좋은 가격</span>
+                <span className="block text-brand-text mt-2">함께라서 더 좋은 가격</span>
               </h1>
               <p className="text-base sm:text-lg lg:text-xl text-gray-600 dark:text-gray-300 leading-relaxed mb-4">
                 우리 동네 맛집·뷰티·숙소를 그룹 특가로.
@@ -75,7 +75,7 @@ export default function AboutPage() {
               <div className="flex flex-wrap gap-3 justify-center">
                 <Link
                   to="/group-buy"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-pink-500 hover:bg-pink-600 text-white font-bold text-sm lg:text-base transition-colors shadow-lg shadow-pink-500/20"
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-brand hover:bg-brand-dark text-white font-bold text-sm lg:text-base transition-colors shadow-lg /20"
                 >
                   동네 공구 둘러보기
                   <ArrowRight className="w-4 h-4" />
@@ -86,15 +86,9 @@ export default function AboutPage() {
                 >
                   셀러 입점
                 </Link>
-                <Link
-                  to="/agency/login"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-[#1A1C21] font-bold text-sm lg:text-base transition-colors"
-                >
-                  에이전시 가입
-                </Link>
                 <button
                   onClick={handleDownloadPdf}
-                  className="no-print inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white dark:bg-[#1A1C21] border border-gray-200 dark:border-[#2C2F35] text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-[#1A1C21] font-bold text-sm lg:text-base transition-colors"
+                  className="no-print inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-surface border border-line text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-[#1D1F29] font-bold text-sm lg:text-base transition-colors"
                 >
                   <Download className="w-4 h-4" />
                   PDF 다운로드
@@ -174,7 +168,7 @@ export default function AboutPage() {
                 <li>· 브라우저만 있으면 시작합니다 (앱 설치 없음). 공구 등록과 주문, 정산이 한 곳에서</li>
                 <li>· 자체 쇼핑몰 구축 비용 0원 (Shopify 월 $29 + 도메인 + PG 부담 X)</li>
               </ul>
-              <p className="mt-3 p-3 rounded-lg bg-pink-50 dark:bg-pink-900/20 text-pink-700 dark:text-pink-300 text-xs lg:text-sm">
+              <p className="mt-3 p-3 rounded-lg bg-brand-tint text-brand-text text-xs lg:text-sm">
                 비교: 자체 쇼핑몰 구축 시 평균 2~3개월 + 200만원. 유어딜은 <strong>0원 / 5분</strong>.
               </p>
             </SubBlock>
@@ -183,12 +177,12 @@ export default function AboutPage() {
               <SimpleTable
                 headers={['수익원', '플랫폼 수수료', '셀러 수령']}
                 rows={[
-                  ['동네 공구 (공동구매)', '5%', '95%'],
+                  ['이용권 (직접 입점 10% / 대행사 경유 5%)', '10% / 5%', '90% / 95%'],
                   ['상품 판매', '10%', '90%'],
                 ]}
               />
               <p className="mt-3 text-xs lg:text-sm text-gray-600 dark:text-gray-400">
-                공동구매 수수료는 5%입니다. 판매되는 만큼만 부담해요. 가입비·월 고정비 없습니다.
+                수수료는 팔린 이용권에만 붙습니다. 카드 결제 수수료는 유어딜이 그 안에서 내고, 가입비·월 고정비는 없습니다.
               </p>
             </SubBlock>
 
@@ -196,7 +190,7 @@ export default function AboutPage() {
               <div className="flex flex-wrap items-center gap-2 mb-3">
                 {['신규', '브론즈', '실버', '골드', '플래티넘'].map((tier, i) => (
                   <div key={tier} className="flex items-center gap-2">
-                    <span className="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-[#1A1C21] text-gray-900 dark:text-white text-xs lg:text-sm font-semibold">
+                    <span className="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-[#1D1F29] text-gray-900 dark:text-white text-xs lg:text-sm font-semibold">
                       {tier}
                     </span>
                     {i < 4 && <ArrowRight className="w-3.5 h-3.5 text-gray-400" />}
@@ -334,9 +328,9 @@ export default function AboutPage() {
             ].map((f, i) => (
               <div
                 key={i}
-                className="p-4 rounded-2xl bg-white dark:bg-[#1A1C21] border border-gray-100 dark:border-[#2C2F35] hover:border-pink-200 dark:hover:border-pink-900 transition-colors"
+                className="p-4 rounded-2xl bg-surface border border-gray-100 dark:border-[#2C2F35] hover:border-rule transition-colors"
               >
-                <div className="w-10 h-10 rounded-xl bg-pink-50 dark:bg-pink-900/20 text-pink-500 flex items-center justify-center mb-3">
+                <div className="w-10 h-10 rounded-xl bg-brand-tint text-brand-text flex items-center justify-center mb-3">
                   {f.icon}
                 </div>
                 <h3 className="font-bold text-gray-900 dark:text-white text-sm lg:text-base mb-1">{f.title}</h3>
@@ -443,16 +437,15 @@ export default function AboutPage() {
               5분 만에 시작할 자유, 함께라서 더 좋은 가격.
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 max-w-4xl mx-auto mb-10">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 max-w-3xl mx-auto mb-10">
               <CTACard to="/seller/login" title="셀러 / 매장" subtitle="카카오 로그인 → 5분 후 공구 등록" />
-              <CTACard to="/agency/login" title="에이전시" subtitle="사업자 인증 → 멤버 초대" />
               <CTACard to="/login" title="소비자" subtitle="카카오/이메일 → 동네 공구" />
               <CTACard to="/admin/login" title="어드민" subtitle="운영팀 전용" />
             </div>
 
             <button
               onClick={handleDownloadPdf}
-              className="no-print inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-white dark:bg-[#0D0F12] text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#1A1C21] font-bold text-base transition-colors shadow-xl"
+              className="no-print inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-surface text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#1D1F29] font-bold text-base transition-colors shadow-xl"
             >
               <Printer className="w-5 h-5" />
               PDF 로 다운로드 (인쇄 → PDF 저장)
@@ -485,8 +478,8 @@ function Section({
   tone?: 'gray' | 'pink' | 'purple' | 'amber' | 'emerald'
 }) {
   const toneBg: Record<string, string> = {
-    gray: 'bg-white dark:bg-[#0D0F12]',
-    pink: 'bg-pink-50/40 dark:bg-[#150A10]',
+    gray: 'bg-white dark:bg-[#11141C]',
+    pink: 'bg-brand-tint/40 dark:bg-[#150A10]',
     purple: 'bg-purple-50/40 dark:bg-[#100A18]',
     amber: 'bg-amber-50/40 dark:bg-[#181208]',
     emerald: 'bg-emerald-50/30 dark:bg-[#0A1410]',
@@ -518,13 +511,13 @@ function ValueCard({
   color: 'pink' | 'purple' | 'amber' | 'emerald'
 }) {
   const map: Record<string, string> = {
-    pink: 'bg-pink-50 dark:bg-pink-900/20 text-pink-600 dark:text-pink-300',
+    pink: 'bg-brand-tint  text-brand-text ',
     purple: 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-300',
     amber: 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-300',
     emerald: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-300',
   }
   return (
-    <div className="p-5 lg:p-6 rounded-2xl bg-white dark:bg-[#1A1C21] border border-gray-100 dark:border-[#2C2F35]">
+    <div className="p-5 lg:p-6 rounded-2xl bg-surface border border-gray-100 dark:border-[#2C2F35]">
       <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${map[color]}`}>{icon}</div>
       <div className="text-xs font-bold text-gray-500 dark:text-gray-400 mb-2">{tag}</div>
       <h3 className="text-lg lg:text-xl font-bold text-gray-900 dark:text-white mb-2">{title}</h3>
@@ -547,15 +540,15 @@ function ComparisonTable({
   return (
     <div>
       <h3 className="text-lg lg:text-xl font-bold text-gray-900 dark:text-white mb-4">{title}</h3>
-      <div className="overflow-x-auto rounded-2xl border border-gray-200 dark:border-[#2C2F35]">
+      <div className="overflow-x-auto rounded-2xl border border-line">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-gray-50 dark:bg-[#1A1C21]">
+            <tr className="bg-gray-50 dark:bg-[#1D1F29]">
               {headers.map((h, i) => (
                 <th
                   key={i}
                   className={`px-4 py-3 text-left font-bold text-gray-900 dark:text-white ${
-                    i === headers.length - 1 ? 'text-pink-600 dark:text-pink-400' : ''
+                    i === headers.length - 1 ? 'text-brand-text ' : ''
                   }`}
                 >
                   {h}
@@ -573,7 +566,7 @@ function ComparisonTable({
                       ci === 0
                         ? 'font-semibold text-gray-900 dark:text-white whitespace-nowrap'
                         : ci === row.length - 1
-                        ? 'text-pink-700 dark:text-pink-300 font-medium'
+                        ? 'text-brand-text  font-medium'
                         : 'text-gray-700 dark:text-gray-300'
                     }`}
                   >
@@ -594,10 +587,10 @@ function ComparisonTable({
 
 function SimpleTable({ headers, rows }: { headers: string[]; rows: string[][] }) {
   return (
-    <div className="overflow-x-auto rounded-2xl border border-gray-200 dark:border-[#2C2F35]">
+    <div className="overflow-x-auto rounded-2xl border border-line">
       <table className="w-full text-sm">
         <thead>
-          <tr className="bg-gray-50 dark:bg-[#1A1C21]">
+          <tr className="bg-gray-50 dark:bg-[#1D1F29]">
             {headers.map((h, i) => (
               <th key={i} className="px-4 py-3 text-left font-bold text-gray-900 dark:text-white">
                 {h}
@@ -638,9 +631,9 @@ function SubBlock({
   children: React.ReactNode
 }) {
   return (
-    <div className="p-5 lg:p-6 rounded-2xl bg-white dark:bg-[#1A1C21] border border-gray-100 dark:border-[#2C2F35]">
+    <div className="p-5 lg:p-6 rounded-2xl bg-surface border border-gray-100 dark:border-[#2C2F35]">
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-9 h-9 rounded-lg bg-pink-50 dark:bg-pink-900/20 text-pink-500 flex items-center justify-center">
+        <div className="w-9 h-9 rounded-lg bg-brand-tint text-brand-text flex items-center justify-center">
           {icon}
         </div>
         <h3 className="text-lg lg:text-xl font-bold text-gray-900 dark:text-white">{title}</h3>
@@ -660,7 +653,7 @@ function FeatureCard({
   desc: string
 }) {
   return (
-    <div className="p-5 lg:p-6 rounded-2xl bg-white dark:bg-[#1A1C21] border border-gray-100 dark:border-[#2C2F35]">
+    <div className="p-5 lg:p-6 rounded-2xl bg-surface border border-gray-100 dark:border-[#2C2F35]">
       <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-300 flex items-center justify-center mb-3">
         {icon}
       </div>
@@ -684,7 +677,7 @@ function WowMoment({
   tagline?: string
 }) {
   return (
-    <div className="p-5 lg:p-8 rounded-2xl bg-white dark:bg-[#1A1C21] border border-gray-100 dark:border-[#2C2F35]">
+    <div className="p-5 lg:p-8 rounded-2xl bg-surface border border-gray-100 dark:border-[#2C2F35]">
       <div className="flex items-center gap-3 mb-4">
         <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-300 flex items-center justify-center">
           {icon}
@@ -721,7 +714,7 @@ function RoadmapCard({
   items: string[]
 }) {
   return (
-    <div className="p-5 lg:p-6 rounded-2xl bg-white dark:bg-[#1A1C21] border border-gray-100 dark:border-[#2C2F35]">
+    <div className="p-5 lg:p-6 rounded-2xl bg-surface border border-gray-100 dark:border-[#2C2F35]">
       <div className="flex items-center gap-3 mb-4">
         <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-300 flex items-center justify-center">
           {icon}
@@ -750,9 +743,9 @@ function FitCard({
   items: string[]
 }) {
   return (
-    <div className="p-5 lg:p-6 rounded-2xl bg-white dark:bg-[#1A1C21] border border-gray-100 dark:border-[#2C2F35]">
+    <div className="p-5 lg:p-6 rounded-2xl bg-surface border border-gray-100 dark:border-[#2C2F35]">
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 rounded-xl bg-pink-50 dark:bg-pink-900/20 text-pink-500 flex items-center justify-center">
+        <div className="w-10 h-10 rounded-xl bg-brand-tint text-brand-text flex items-center justify-center">
           {icon}
         </div>
         <h3 className="text-lg lg:text-xl font-bold text-gray-900 dark:text-white">{title}</h3>
@@ -760,7 +753,7 @@ function FitCard({
       <ul className="space-y-2">
         {items.map((item, i) => (
           <li key={i} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
-            <CheckCircle2 className="w-4 h-4 text-pink-500 mt-0.5 shrink-0" />
+            <CheckCircle2 className="w-4 h-4 text-brand-text mt-0.5 shrink-0" />
             <span>{item}</span>
           </li>
         ))}

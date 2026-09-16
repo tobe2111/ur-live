@@ -12,11 +12,11 @@ const authHeader = () => {
   const t = typeof window !== 'undefined' ? localStorage.getItem('ads_token') : null
   return t ? { Authorization: `Bearer ${t}` } : undefined
 }
-const card = 'rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] p-4'
-const input = 'w-full h-9 rounded-lg border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#0D0F12] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400'
-const ta = 'w-full rounded-lg border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#0D0F12] p-2.5 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400'
-const btnPrimary = 'shrink-0 rounded-lg bg-gray-900 dark:bg-white px-4 h-9 text-[12.5px] font-bold text-white dark:text-[#0D0F12] disabled:opacity-40'
-const chip = (on: boolean) => `rounded-full px-3 py-1 text-[12px] font-semibold ${on ? 'bg-gray-900 dark:bg-white text-white dark:text-[#0D0F12]' : 'border border-gray-200 dark:border-[#2C2F35] text-gray-600 dark:text-gray-300'}`
+const card = 'rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] p-4'
+const input = 'w-full h-9 rounded-lg border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#11141C] px-3 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400'
+const ta = 'w-full rounded-lg border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#11141C] p-2.5 text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400'
+const btnPrimary = 'shrink-0 rounded-lg bg-gray-900 dark:bg-white px-4 h-9 text-[12.5px] font-bold text-white dark:text-[#11141C] disabled:opacity-40'
+const chip = (on: boolean) => `rounded-full px-3 py-1 text-[12px] font-semibold ${on ? 'bg-gray-900 dark:bg-white text-white dark:text-[#11141C]' : 'border border-gray-200 dark:border-[#2C2F35] text-gray-600 dark:text-gray-300'}`
 
 type Mode = 'repurpose' | 'generate' | 'reply' | 'analyze' | 'media' | 'library'
 const MODES: Array<{ k: Mode; l: string }> = [

@@ -18,7 +18,7 @@ import {
   VISIBLE_NAV_GROUPS, NAV_SECTIONS, navSectionOf, withoutWholesaleOnConsumer,
   ALWAYS_ALLOWED_ADMIN_PATHS, WHOLESALE_EXTRA_ALLOWED_PATHS,
 } from '@/components/admin/admin-nav-config'
-import AdminCommandPalette, { type CommandItem } from '@/components/admin/AdminCommandPalette'
+import CommandPalette, { type CommandItem } from '@/components/dashboard/CommandPalette'
 
 
 interface AdminLayoutProps {
@@ -268,26 +268,26 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
     return (
       <div
         key={path}
-        className={`group/nav flex items-center border-l-[2.5px] ${
-          active ? 'border-amber-300 ur-admin-nav-active' : 'border-transparent'
+        className={`group/nav mx-2 flex items-center rounded-lg ${
+          active ? 'ur-admin-nav-active' : 'hover:bg-gray-50'
         }`}
       >
         <Link
           to={path}
           onClick={() => setSidebarOpen(false)}
           // 🛡️ 2026-05-20: inline style + onMouseEnter/Leave 제거 (CSP unsafe-inline). amber 강조는 .ur-admin-nav-active.
-          className={`flex-1 min-w-0 flex items-center gap-2.5 pl-4 pr-1 py-[7px] text-[12px] font-semibold transition-colors ${
-            active ? 'text-white' : 'text-white/55 group-hover/nav:text-white'
+          className={`flex min-w-0 flex-1 items-center gap-2.5 rounded-lg py-[7px] pl-2.5 pr-1 text-[12.5px] transition-colors ${
+            active ? 'font-bold text-gray-900' : 'font-medium text-gray-500 group-hover/nav:text-gray-900'
           }`}
         >
-          <Icon size={14} strokeWidth={2} className="flex-shrink-0" />
+          <Icon size={16} strokeWidth={2} className={`flex-shrink-0 ${active ? 'text-brand-text' : 'text-gray-400'}`} />
           <span className="flex-1 truncate">{label}</span>
           {label === '주문 관리' && pendingCount > 0 && (
-            <span className="text-[9px] font-extrabold px-1.5 rounded-full bg-white/10 text-white">{pendingCount}</span>
+            <span className="rounded-full bg-brand px-1.5 text-[10px] font-extrabold text-white">{pendingCount}</span>
           )}
           {/* 🏁 2026-06-14: 신규 이슈(미읽음 알림) 배지 */}
           {(navBadges[path] || 0) > 0 && (
-            <span className="text-[9px] font-extrabold px-1.5 rounded-full bg-amber-400 text-[#0A0A0B] flex-shrink-0">{navBadges[path]}</span>
+            <span className="flex-shrink-0 rounded-full bg-tone-warn px-1.5 text-[10px] font-extrabold text-white">{navBadges[path]}</span>
           )}
         </Link>
         <button
@@ -300,7 +300,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
             pinned ? 'opacity-100' : 'opacity-0 group-hover/nav:opacity-100 focus:opacity-100'
           }`}
         >
-          <Star size={12} strokeWidth={2} className={pinned ? 'fill-amber-300 text-amber-300' : 'text-white/30 hover:text-white/60'} />
+          <Star size={12} strokeWidth={2} className={pinned ? 'fill-amber-400 text-gray-400' : 'text-gray-300 hover:text-gray-500'} />
         </button>
       </div>
     )
@@ -309,21 +309,16 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
   // 🛡️ 사이드바를 함수 컴포넌트가 아닌 JSX 변수로 — re-render 시 새 함수 참조 방지
   // (이전엔 navigation 마다 unmount/remount → <nav> 스크롤 reset 버그 발생).
   const sidebar = (
-    <aside className="w-[232px] flex-shrink-0 flex flex-col h-full" style={{ background: '#0A0A0B' }}>
+    // 🧭 2026-09-14 (대표 Rinda 시안 — 셀러와 **같은 껍데기**. 두 대시보드가 서로 다르게 생길 이유가 없다)
+    <aside className="flex h-full w-[224px] flex-shrink-0 flex-col border-r border-rule bg-white">
       {/* Branding */}
-      <div className="px-4 pt-5 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      <div className="px-4 pb-3 pt-5">
         <div className="flex items-center gap-2.5">
-          <UrDealLogo size={14} forceDark />
-          <span
-            className="font-bold uppercase text-white"
-            style={{ fontSize: '9px', letterSpacing: '0.08em', color: '#e5e7eb' }}
-          >
+          <UrDealLogo size={15} />
+          <span className="text-[9px] font-bold uppercase tracking-[0.08em] text-gray-400">
             ADMIN CONSOLE
           </span>
-          <span
-            className="ml-auto font-extrabold rounded px-1.5 py-0.5"
-            style={{ fontSize: '9px', background: '#e5e7eb', color: '#0A0A0B' }}
-          >
+          <span className="ml-auto rounded bg-gray-900 px-1.5 py-0.5 text-[9px] font-extrabold text-white">
             PROD
           </span>
         </div>
@@ -336,23 +331,22 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
       {adminRole !== 'wholesale' && (
       <form onSubmit={handleSearch} className="px-4 py-3">
         <div
-          className="flex items-center gap-2 px-3 py-2 rounded-lg focus-within:ring-1 focus-within:ring-white/20"
-          style={{ background: 'rgba(255,255,255,0.05)' }}
+          className="flex items-center gap-2 rounded-lg border border-rule bg-gray-50 px-3 py-2 focus-within:ring-1 focus-within:ring-brand"
         >
-          <Search size={13} strokeWidth={2} className="text-white/40 flex-shrink-0" />
+          <Search size={14} strokeWidth={2} className="flex-shrink-0 text-gray-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="주문번호 / 이메일 / 이름…"
             aria-label="전역 검색 (주문번호 / 이메일 / 이름)"
-            className="flex-1 bg-transparent text-white text-[11px] placeholder:text-white/40 focus:outline-none min-w-0"
+            className="min-w-0 flex-1 bg-transparent text-[12px] text-gray-900 placeholder:text-gray-400 focus:outline-none"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="text-white/40 hover:text-white/70 text-xs flex-shrink-0"
+              className="flex-shrink-0 text-xs text-gray-400 hover:text-gray-600"
               aria-label="검색어 지우기"
             >×</button>
           )}
@@ -365,20 +359,19 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
         type="button"
         onClick={() => setPaletteOpen(true)}
         className={`mx-4 mb-1 flex items-center gap-2 px-3 py-2 rounded-lg text-left ${adminRole === 'wholesale' ? 'mt-3' : ''}`}
-        style={{ background: 'rgba(255,255,255,0.03)' }}
       >
-        <Search size={12} className="text-white/35 flex-shrink-0" />
-        <span className="flex-1 text-[11px] text-white/40">메뉴 빠른 이동</span>
-        <kbd className="text-[9px] font-bold text-white/40 bg-white/10 rounded px-1 py-0.5">⌘K</kbd>
+        <Search size={13} className="flex-shrink-0 text-gray-400" />
+        <span className="flex-1 text-[12px] text-gray-400">메뉴 빠른 이동</span>
+        <kbd className="rounded border border-rule bg-white px-1 py-0.5 text-[9px] font-bold text-gray-400">⌘K</kbd>
       </button>
 
       {/* Grouped navigation — 그룹 헤더 클릭으로 접기/펼치기 (활성 그룹은 강제 펼침) */}
       <nav ref={navScrollRef} className="flex-1 overflow-y-auto scrollbar-hide pb-2">
         {/* ⭐ 즐겨찾기(고정) — 대표 "자주 쓰는 페이지를 좌측 상단에". 각 메뉴 ★ 토글로 큐레이션. */}
         {pinnedItems.length > 0 && (
-          <div className="mt-1 mb-1 pb-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-            <div className="px-4 py-1.5 flex items-center gap-1.5 font-extrabold uppercase text-amber-300/80" style={{ fontSize: '9px', letterSpacing: '0.12em' }}>
-              <Star size={10} strokeWidth={2.5} className="fill-amber-300/80" />
+          <div className="mt-1 mb-1 border-b border-rule pb-2">
+            <div className="px-4 py-1.5 flex items-center gap-1.5 font-extrabold uppercase text-gray-400" style={{ fontSize: '9px', letterSpacing: '0.12em' }}>
+              <Star size={10} strokeWidth={2.5} className="fill-gray-300 text-gray-300" />
               <span>즐겨찾기</span>
             </div>
             {pinnedItems.map((item) => renderNavItem(item))}
@@ -392,7 +385,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
             {sec.label && (
               <div className="mt-5 mb-0.5 px-4 flex items-center gap-2">
                 <span className="text-[10px] font-black tracking-wider whitespace-nowrap" style={{ color: sec.accent }}>{sec.label}</span>
-                <span className="flex-1 h-px" style={{ background: `linear-gradient(90deg, ${sec.accent}55, transparent)` }} />
+                <span className="h-px flex-1 bg-rule" />
               </div>
             )}
             {secGroups.map((group) => {
@@ -404,15 +397,15 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
               type="button"
               onClick={() => toggleGroup(group.title)}
               aria-expanded={!collapsed}
-              className="w-full flex items-center justify-between px-4 py-1.5 font-extrabold uppercase text-white/30 hover:text-white/60 transition-colors"
+              className="flex w-full items-center justify-between px-4 py-1.5 font-extrabold uppercase text-gray-400 transition-colors hover:text-gray-600"
               style={{ fontSize: '9px', letterSpacing: '0.12em' }}
             >
               <span>{group.title}</span>
               <span className="flex items-center gap-1">
                 {collapsed && groupBadgeTotal(group.items) > 0 && (
-                  <span className="font-extrabold normal-case tracking-normal px-1.5 rounded-full bg-amber-400 text-[#0A0A0B] text-[9px]">{groupBadgeTotal(group.items)}</span>
+                  <span className="rounded-full bg-tone-warn px-1.5 text-[9px] font-extrabold normal-case tracking-normal text-white">{groupBadgeTotal(group.items)}</span>
                 )}
-                {collapsed && <span className="font-bold normal-case tracking-normal text-white/25">{group.items.length}</span>}
+                {collapsed && <span className="font-bold normal-case tracking-normal text-gray-300">{group.items.length}</span>}
                 <ChevronDown size={11} className={`transition-transform ${collapsed ? '-rotate-90' : ''}`} />
               </span>
             </button>
@@ -426,28 +419,22 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
       </nav>
 
       {/* Bottom user profile */}
-      <div className="px-4 py-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+      <div className="border-t border-rule px-4 py-3">
         <div className="flex items-center gap-2.5">
-          <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-extrabold flex-shrink-0"
-            style={{
-              background: 'linear-gradient(135deg, #e5e7eb, #9ca3af)',
-              color: '#0A0A0B',
-            }}
-          >
+          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 text-[11px] font-extrabold text-gray-900">
             {adminName.charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-extrabold text-white truncate">{adminName}</p>
-            <p className="text-[9px] text-white/50">
-              플랫폼 운영팀 · <span className={adminRole === 'viewer' ? 'text-amber-300' : adminRole === 'super' ? 'text-red-300' : 'text-white/70'}>{ADMIN_ROLE_LABEL[adminRole]}</span>
+            <p className="truncate text-[12px] font-extrabold text-gray-900">{adminName}</p>
+            <p className="text-[10px] text-gray-400">
+              플랫폼 운영팀 · <span className={adminRole === 'viewer' ? 'text-tone-warn' : adminRole === 'super' ? 'text-brand-text' : 'text-gray-600'}>{ADMIN_ROLE_LABEL[adminRole]}</span>
               {adminRole === 'viewer' && ' (읽기전용)'}
             </p>
           </div>
         </div>
         <button
           onClick={logout}
-          className="mt-2.5 flex items-center gap-2 px-1 py-1 text-[11px] font-medium text-red-400 hover:text-red-300 transition-colors"
+          className="mt-2.5 flex items-center gap-2 rounded-lg px-2.5 py-2 text-[12px] font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
         >
           <LogOut size={12} strokeWidth={2} />
           로그아웃
@@ -460,16 +447,16 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
   //   바운스 직전에 다른 어드민 화면이 한 번 그려지던 플래시 제거. effect 가 즉시 navigate (조건 동일 — 위 주석).
   if (willBounceWholesale || willBouncePin) {
     return (
-      <div className="admin-light-theme [color-scheme:light]" style={{ background: '#F4F5F7' }}>
+      <div className="admin-light-theme bg-warm [color-scheme:light]">
         <BrandLoader fullScreen forceLight />
       </div>
     )
   }
 
   return (
-    <div className="admin-light-theme flex h-screen overflow-hidden bg-[#F4F5F7] text-gray-900 [color-scheme:light]">
+    <div className="admin-light-theme flex h-screen overflow-hidden bg-warm text-gray-900 [color-scheme:light]">
       {/* ⌘K 커맨드 팔레트 — 전 어드민 페이지 공통(레이아웃 마운트). */}
-      <AdminCommandPalette items={commandItems} open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <CommandPalette items={commandItems} open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
@@ -485,7 +472,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
       </div>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="bg-white border-b border-gray-200 px-4 lg:px-6 h-14 flex items-center justify-between flex-shrink-0">
+        <header className="flex h-14 flex-shrink-0 items-center justify-between border-b border-rule bg-white px-3 md:h-12 md:px-6">
           <div className="flex items-center gap-3">
             <button
               aria-label={sidebarOpen ? t('common.closeSidebar', { defaultValue: '사이드바 닫기' }) : t('common.openSidebar', { defaultValue: '사이드바 열기' })}
@@ -495,7 +482,8 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
             >
               {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
-            <h1 className="text-base font-semibold text-gray-900">{title}</h1>
+            {/* 🧮 2026-09-15 D3(어드민 합류): 제목은 셀러와 같은 13px 굵게 — 상단바가 본문보다 무거워지지 않게. */}
+            <h1 className="dash-phone-title truncate text-[13px] font-bold text-gray-900">{title}</h1>
           </div>
           <div className="flex items-center gap-2">
             <DashboardNotificationBell tokenKey="admin_token" />
@@ -503,7 +491,7 @@ export default function AdminLayout({ title, children, headerRight, pendingCount
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-3 sm:space-y-5">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
           {children}
         </main>
       </div>

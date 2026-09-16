@@ -10,6 +10,7 @@
  *   이 로더는 *라우트 전환/청크 다운로드* 순간 전용. (도매몰은 별도 WholesaleLoader — 서비스 분리)
  */
 import UrDealLogo from './UrDealLogo'
+import { takeBootFirstScreen } from '@/lib/boot-first-screen'
 
 interface BrandLoaderProps {
   /** 전체화면 중앙(라우트 Suspense fallback). false 면 섹션 인라인 로더. */
@@ -22,7 +23,7 @@ interface BrandLoaderProps {
    *  토글과 무관하게 항상 라이트 색(잉크 로고/바). 대시보드는 라이트 고정 규칙이라 다크 로고가 끼면
    *  [라이트 placeholder → 다크 로더 → 라이트 대시보드] 색 점프가 났음. */
   forceLight?: boolean
-  /** 다크 고정 표면(bg-[#0D0F12] 페이지 등)용 — 항상 흰 로고/바 (라이트 토글 사용자도 보이게). */
+  /** 다크 고정 표면(bg-[#11141C] 페이지 등)용 — 항상 흰 로고/바 (라이트 토글 사용자도 보이게). */
   forceDark?: boolean
 }
 
@@ -50,7 +51,7 @@ export default function BrandLoader({ fullScreen = false, size = 34, label, forc
   //   박스(min-h-[100dvh])라, 뒤/주변의 이전 페이지(예: /map 분할)·body 배경이 비쳐 보였음(로더가
   //   화면을 '덮지' 못함). → 불투명 fixed inset-0 오버레이(z-[10000], 네비 9999 위·모달 10500 아래)로
   //   승격해 로딩 순간엔 오직 유어딜 로더만 보이게. 인라인(fullScreen=false) 로더는 기존 in-flow 유지.
-  const fsBg = forceLight ? 'bg-[#F4F5F7]' : forceDark ? 'bg-[#0D0F12]' : 'bg-white dark:bg-[#0D0F12]'
+  const fsBg = forceLight ? 'bg-[#F4F5F7]' : forceDark ? 'bg-[#11141C]' : 'bg-white dark:bg-[#11141C]'
   return (
     <div
       className={`flex flex-col items-center justify-center gap-5 ${fullScreen ? `fixed inset-0 z-[10000] ${fsBg}` : 'py-16'}`}
@@ -81,5 +82,36 @@ export default function BrandLoader({ fullScreen = false, size = 34, label, forc
       ) : null}
       <span className="sr-only">{label || '페이지 로딩 중…'}</span>
     </div>
+  )
+}
+
+/**
+ * 🖼️ 청크 로딩 폴백 — 서버가 이미 첫 화면을 그려 놨으면 **그 사진을 덮지 않는다** (2026-09-16).
+ *
+ * 2026-09-15 에 워커가 `/group-buy/:id` 의 `#root` 에 [빵부스러기 + 히어로]를 그리게 했는데,
+ * 라이브 판정에서 그 사진이 **중간에 한 번 사라졌다**:
+ *
+ *     4,070ms  사진 보임(서버)  →  4,926ms  풀스크린 로더가 덮음  →  5,463ms  사진 다시(React)
+ *
+ * 범인은 히어로가 아니라 이 폴백이다. React 가 `#root` 를 비우는 순간 상세 청크는 아직 오는
+ * 중이라 `fullScreen` 로더(=`fixed inset-0` **불투명** 오버레이, 2026-07-18 에 일부러 그렇게
+ * 만든 것)가 먼저 그려져 사진을 덮었다. 대표가 2026-07-01 에 금지한 "로딩 화면 2~3개".
+ *
+ * ⇒ 서버 노드가 있으면 **같은 노드를 도로 붙이고**(재파싱·재다운로드 0, 픽셀 차이 0) 그 아래에만
+ * 인라인 로더를 둔다 — 서버가 그린 34dvh 로더 자리와 같은 높이·같은 위상(FCP 기준 음수 delay).
+ * 없으면(교환권 상세·목록·SPA 내부 이동) 종전 `fullScreen` 로더 그대로 — **무회귀**.
+ *
+ * ⚠️ `ref` 콜백으로 붙인다(커밋 중 = 페인트 전). `useEffect` 면 한 프레임 빈 채로 그려질 수 있다.
+ */
+export function BootFirstScreenLoader() {
+  const node = typeof window !== 'undefined' ? takeBootFirstScreen(window.location.pathname) : null
+  if (!node) return <BrandLoader fullScreen />
+  return (
+    <>
+      <div ref={(el) => { if (el && node.parentNode !== el) el.appendChild(node) }} />
+      <div style={{ minHeight: '34dvh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <BrandLoader />
+      </div>
+    </>
   )
 }

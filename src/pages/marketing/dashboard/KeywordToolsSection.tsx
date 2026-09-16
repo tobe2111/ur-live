@@ -76,7 +76,7 @@ export default function KeywordToolsSection({ onGo }: { onGo?: (anchor: string) 
         <p className="mt-1 text-[11.5px] text-gray-400 dark:text-gray-500">연관키워드 + 월 검색량 · 검색어 트렌드 · 쇼핑 경쟁(상품수·가격대) · 브랜드 평판</p>
         <div className="mt-2 flex gap-2">
           <input className={INPUT_CLS} placeholder="키워드 (예: 무선이어폰)" value={kw} onChange={(e) => setKw(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') analyzeKeyword() }} />
-          <button onClick={() => analyzeKeyword()} disabled={kwBusy} className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#0D0F12] disabled:opacity-50">{kwBusy ? '분석 중…' : '분석'}</button>
+          <button onClick={() => analyzeKeyword()} disabled={kwBusy} className="shrink-0 rounded-lg bg-gray-900 dark:bg-white px-4 py-2 text-[12px] font-bold text-white dark:text-[#11141C] disabled:opacity-50">{kwBusy ? '분석 중…' : '분석'}</button>
         </div>
         {kwErr && <PanelError onRetry={() => analyzeKeyword()} busy={kwBusy} label="키워드 분석 실패" />}
         {kwShop && (
@@ -105,7 +105,7 @@ export default function KeywordToolsSection({ onGo }: { onGo?: (anchor: string) 
             <div className="flex flex-wrap gap-1.5">
               {kwAuto.slice(0, 16).map((s) => (
                 <button key={s} onClick={() => analyzeKeyword(s)}
-                  className="rounded-full border border-gray-200 dark:border-[#2C2F35] px-2.5 py-1 text-[11.5px] text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1A1C21]">
+                  className="rounded-full border border-gray-200 dark:border-[#2C2F35] px-2.5 py-1 text-[11.5px] text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1D1F29]">
                   {s}
                 </button>
               ))}

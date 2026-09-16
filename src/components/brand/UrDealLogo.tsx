@@ -4,7 +4,7 @@
  * 🎨 2026-07-19 대표 확정 로고(Ur Deal 로고 Final 핸드오프) 반영:
  *   - 소문자 "urdeal" + 로즈 원 마침표(베이스라인 위, 지름 = 획 굵기) — 이전 "UR·DEAL"(이탤릭+▶) 폐기
  *   - Poppins 800 · 자간 −3.5% · 플랫(이탤릭/장식 없음)
- *   - 색: 라이트=네이비 #16181C / 다크=웜화이트 #FAF7F5, 점은 항상 로즈 #E0526B
+ *   - 색: 라이트=네이비 #16181C / 다크=웜화이트 #F8F7FC, 점은 항상 로즈 #1C69EF
  *   - 원본 규정: docs/design/brand-assets/ (핸드오프 납품본 아카이브)
  *
  * Poppins 는 index.html 에서 urdeal 6글자 서브셋(&text=)만 로드 — 미로딩/폴백 시 Pretendard 800.
@@ -20,10 +20,10 @@ interface UrDealLogoProps {
 
 export default function UrDealLogo({ size = 20, forceDark = false, forceLight = false, className = '' }: UrDealLogoProps) {
   const textClass = forceDark
-    ? 'text-[#FAF7F5]'
+    ? 'text-[#F8F7FC]'
     : forceLight
     ? 'text-[#16181C]'
-    : 'text-[#16181C] dark:text-[#FAF7F5]'
+    : 'text-[#16181C] dark:text-[#F8F7FC]'
 
   return (
     <span

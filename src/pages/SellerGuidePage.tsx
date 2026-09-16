@@ -23,15 +23,15 @@ export default function SellerGuidePage() {
 
   return (
     <SellerLayout title={t('seller.nav.guide', '운영 가이드')}>
-      <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-6">
         <DashboardPageHeader
           title={t('seller.guide.title', '셀러 운영 가이드')}
           subtitle={t('seller.guide.subtitle', '유어딜에서 매장과 이용권을 운영하는 방법')}
           icon={<BookOpen className="h-5 w-5" />}
         />
 
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-800">
-          💡 이 가이드는 유어딜 운영팀이 직접 작성하고 업데이트합니다. 궁금한 점이 있으면 각 섹션을 펼쳐서 확인하세요.
+        <div className="bg-white border border-rule rounded-xl p-3 text-xs text-gray-700">
+          이 가이드는 유어딜 운영팀이 직접 작성하고 업데이트합니다. 궁금한 점이 있으면 각 섹션을 펼쳐서 확인하세요.
         </div>
 
         <GuideViewer guideType="seller" token={token} editable={false} />

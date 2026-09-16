@@ -99,6 +99,7 @@ export default function SellerReviewVerificationsPage() {
 
   return (
     <SellerLayout title={t('seller.reviewVerify.title', { defaultValue: '카카오맵 리뷰 확인' })}>
+      {/* 🎟️ 2026-09-03 대표 — 이용권 일을 한 페이지처럼: nav 는 하나, 여기서 탭 이동. */}
       <DashboardPageHeader
         icon={<Star className="w-5 h-5" />}
         title={t('seller.reviewVerify.title', { defaultValue: '카카오맵 리뷰 확인' })}
@@ -108,7 +109,7 @@ export default function SellerReviewVerificationsPage() {
       <div className="flex gap-1.5 mb-4">
         {TABS.map((s) => (
           <button key={s} onClick={() => setTab(s)}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-bold border ${tab === s ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'}`}>
+            className={`px-3.5 py-1.5 rounded-full text-xs font-bold border ${tab === s ? 'bg-brand-tint text-brand-text border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'}`}>
             {tabLabel(s)}
           </button>
         ))}
@@ -117,7 +118,7 @@ export default function SellerReviewVerificationsPage() {
       {loading ? (
         <div className="flex items-center justify-center py-16 text-gray-400"><Loader2 className="w-6 h-6 animate-spin" /></div>
       ) : rows.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-200 p-10 text-center">
+        <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-10 text-center">
           <p className="text-sm text-gray-500">
             {tab === 'submitted'
               ? t('seller.reviewVerify.emptyPending', { defaultValue: '확인 대기 중인 리뷰 인증이 없어요' })
@@ -127,13 +128,13 @@ export default function SellerReviewVerificationsPage() {
       ) : (
         <div className="space-y-3">
           {rows.map((r) => (
-            <div key={r.id} className="bg-white rounded-2xl border border-gray-200 p-4">
+            <div key={r.id} className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-gray-900 truncate">{r.restaurant_name || r.product_name || `#${r.voucher_id}`}</p>
                   <p className="text-[11px] text-gray-500 mt-0.5">{r.product_name} · {formatKST(r.created_at)}</p>
                   {ocrPassed(r) && (
-                    <span className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold">
+                    <span className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full bg-tone-ok-bg text-tone-ok text-[10px] font-bold">
                       <Sparkles className="w-3 h-3" />{t('seller.reviewVerify.ocrPassed', { defaultValue: '자동검증 통과 (참고)' })}
                     </span>
                   )}
@@ -155,7 +156,7 @@ export default function SellerReviewVerificationsPage() {
                       placeholder={t('seller.reviewVerify.reasonPlaceholder', { defaultValue: '거절 사유 (손님에게 전달됩니다)' })}
                       className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 outline-none focus:border-gray-500" />
                     <button onClick={() => reject(r.id)} disabled={busyId === r.id}
-                      className="px-3 py-2 rounded-lg bg-red-600 text-white text-xs font-bold disabled:opacity-50">
+                      className="ur-btn ur-btn-sm ur-btn-danger">
                       {t('seller.reviewVerify.rejectConfirm', { defaultValue: '거절 확정' })}
                     </button>
                     <button onClick={() => { setRejectingId(null); setRejectReason('') }}

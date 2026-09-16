@@ -1,6 +1,10 @@
 # 🏪 매장 운영 주체 모델 — 소유(owner) ↔ 운영(operator) 분리
 
-> **상태**: 1·2단계 구현 완료(2026-08-19) · **3단계는 설계 박제(미구현)**
+> **상태**: 1·2단계 구현 완료(2026-08-19) · **에이전시 완전 일몰 완료(2026-09-04)** · **3단계 승계 구현 완료(2026-09-09 — §8)**
+>
+> 🔴 **2026-09-04 갱신 — 아래 §7 을 먼저 읽으세요.** 이 문서의 §1~§6 은 *에이전시가 아직 존재하던 시점*의
+> 기록입니다. 그 뒤 대표 확정으로 에이전시는 **코드에서 통째로 삭제**됐고(라우트·페이지·API·크론·커미션),
+> "API 파일을 지우지 않은 이유" 같은 절은 **더 이상 유효하지 않습니다.**
 > **결정자**: 대표 (2026-08-19 — "에이전시 대시보드를 없애고 셀러 대시보드가 여러 매장을 운영하게" → "모두 하자")
 > **선행 설계**: `vendor-commission-passthrough.md` §4.3(3단 위임) · `urdeal-platform-model.md` §2
 > **서비스 축**: 유어딜(소비자) 레일. 도매몰·공구 서비스(운영자 몰)·유어애즈와 무관.
@@ -175,7 +179,12 @@ UI 는 **셀러 대시보드 상단 매장 전환 셀렉터** 하나가 전부�
 
 ---
 
-## 6. 3단계를 아직 짓지 않는 이유
+> 🔴 **2026-09-09 — 아래 §6("아직 짓지 않는 이유")은 폐기됐다.** 착수 조건 ②가 충족됐고
+> (라이브 매장 14 홍대돈까스 = 중개 등록 · `linked_user_id` NULL · 주인 없음) 대표가 착수를 확정했다:
+> *"지금은 유저가 없어서 지금 하면 좋은 게 아닐까 싶긴 한데"* → *"모두 다 완벽하게 진행해줘"*.
+> 구현은 **§8**. 이 절은 당시 판단의 기록으로만 남긴다.
+
+## 6. 3단계를 아직 짓지 않는 이유 (2026-09-09 폐기 — 기록용)
 
 2단계는 **관계 뼈대**라 지금 넣어도 행이 0이면 동작이 0이다(자연스럽게 무해). 반면 3단계는
 **사업자등록증 검증 파이프라인 + 소유권 승계 + 보상 분리**라 훨씬 크고, 아직 대리 등록 매장이 0건이다.
@@ -231,3 +240,213 @@ SELECT COUNT(*) FROM seller_operators WHERE revoked_at IS NULL;
 `AGENCY_DASHBOARD_SUNSET = false` → 가입 즉시 복원.
 라우트/nav/마운트는 각각 독립: `src/routes/agency.routes.tsx` 복원 · `worker/index.ts` 의 주석 해제 ·
 `scheduled.ts` 의 cron 한 줄 해제. **삭제한 23개 페이지만 git 복원이 필요하다.**
+
+
+---
+
+## 7. 🌇 2026-09-04 — 에이전시 **완전 일몰** (대표 확정)
+
+> "그 에이전시는 없애자. 에이전시 대시보드도 안쓸거야. **더 이상 헷갈리지 말자 다른 세션에서도 그렇고.**"
+>
+> "에이전시 남은 잔재 다 삭제하고, **중개사가 5% 내에서 가져가는게 아니라 나머지 95%에서 매장이랑
+>  거래를 하는거지. 5%는 중개사 일 때 유어딜의 수수료인거고.**"
+
+### 7.1 무엇이 바뀌었나 — 한 문장
+**중개사는 별도 실체가 아니다.** 셀러 대시보드 계정이고, 매장과의 관계는 `seller_operators` 한 줄이다.
+
+| | 무엇 | 관계 | 유어딜 수수료 |
+|---|---|---|---|
+| **직접 입점** | 매장이 스스로 가입 | owner 본인 | **10%** (`store_channel='direct'`) |
+| **중개(대행)** | 중개사가 데려와 대신 운영 | `seller_operators` operator | **5%** (`store_channel='brokered'`) |
+
+### 7.2 🔑 중개사 보상의 위치 (여기서 계속 틀렸다)
+낮은 요율(5%)은 **중개사에게 주는 돈이 아니다.** 5% 는 온전히 유어딜 몫이고, 낮춘 이유는
+**매장에게 여유를 주기 위해서**다. 중개사는 그 여유가 생긴 **95%(매장 몫) 안에서 매장과 직접 거래**해
+공수 비용을 받는다.
+
+⇒ **유어딜 장부·정산 화면에 중개사 지급은 한 줄도 등장하지 않는다.**
+⇒ 그래서 커미션이 겹쳐 유어딜이 적자가 나는 구조가 **존재할 수 없다.**
+
+> 🩸 2026-09-04 이전의 셀러 가이드에는 *"수수료 차액(10%−5%)이 대행사 몫"* 이라고 적혀 있었다.
+> **틀린 문장이었고 이번에 고쳤다.** 차액은 유어딜이 덜 받는 것이지 중개사에게 주는 것이 아니다.
+
+### 7.3 삭제 근거 (라이브 실측 2026-09-04)
+```
+agencies                        4행 (껍데기만 — 유어딜 본사·인디아즈·제아스컴퍼니·KONEX)
+sellers.introduced_by_agency_id 0명     agency_sellers          0행
+store_agency_delegation         0행     agency_creator_approvals 0행
+agency_store_intro_commissions  0행  ← 이 경로로 돈이 나간 적이 한 번도 없다
+agency_invite_usage             0행     promote_boost_coupons   0행
+```
+
+### 7.4 삭제 목록
+| 층 | 지운 것 |
+|---|---|
+| 크론 | 에이전시 작업 11종. 배치 2개 개명: `agency-cron-batch`→`growth-daily-batch` · `agency-weekly-batch`→`weekly-tier-batch` |
+| 머니 | `agency-store-intro-commission.ts`(적립·역전) · `recordAgencyCommissionShare`(원장 30% 분배) · fee-resolver 로의 agency 컨텍스트 공급 · `agency_share_pct` 설정 |
+| API | `/api/agency/**` · `/api/agency-public` · `/api/agency/transfers` + `/api/seller/transfers` · `/api/agency/delegation` · `/api/seller/delegation` · `/api/invite/:code`(에이전시 초대코드) · 어드민 `/agencies`·`/agency-creator-approvals` |
+| 화면 | `/agency/**` 16라우트 · `/a/:slug` · `/agency-partner` · `/terms/agency` · 어드민 2화면 · `/seller/agency-delegation` · `/seller/promote-boosts` |
+| 파일 | `src/features/agency/**` · `src/lib/agency-shared.ts` · `AgencyLayout` · 페이지 21개 · 가이드 시드 `guide-seed-agency.ts` · `docs/AGENCY_POLICY.md` |
+| 플래그 | `AGENCY_DASHBOARD_SUNSET`(게이트로 되살릴 게 없다) · `enable_agency_*` 6개 |
+
+**살린 것 (일몰이 삼키면 안 되는 것)**
+- `/api/invite` **referral**(소비자 친구초대) — 에이전시 초대코드가 *같은 경로*에 얹혀 있었다.
+  이름만 보고 지우면 마이페이지 '내 추천 링크'가 통째로 죽는데 화면엔 빈 카드로 보인다.
+- 로그아웃의 `ur_agency_session` 삭제 — 남은 세션을 실제로 죽이는 코드다.
+- `fee-resolver.ts` 의 agency 필드·불변식·`order_fee_breakdown.agency` 컬럼 — 머니 SSOT 의 합계 검증을
+  고치는 것보다 **공급을 끊어 0** 으로 만드는 쪽이 되돌리기 쉽다.
+- 사람 영입 2%(`influencer_intro`) — 별개 축이고 직접 입점 매장 전용이다.
+
+### 7.5 가드
+`src/tests/unit/agency-sunset-final.test.ts` 12건 + `check-guard-mutations` 주입 4건(되돌려-검증 빨간불 확인).
+**못 막는 것**: 이름만 바꿔 같은 개념을 다시 만드는 것 · DB 에 남은 `agencies` 4행(읽는 코드는 없다).
+
+### 7.6 남은 데이터
+`agencies` 4행 · `agency_*` 테이블들은 **DB 에 그대로 남겼다.** 읽는 코드가 없어 무해하고,
+프로덕션 raw DELETE 는 이 레포의 룰이 금지한다(수리는 코드 경로로). 정리가 필요하면 어드민 기능으로.
+
+### 7.7 ✅ 3단계 — 대표 결정(2026-09-04)과 구현
+
+대표가 세 가지를 확정했다. **설계 후 구현** 순서를 지켰다(대표 지시 *"정하고 나서 작업하자"*).
+
+| # | 질문 | 확정 |
+|---|---|---|
+| 1 | 매장 정리 범위 | **홍대돈까스만 남기고 전부 삭제** (위험 고지 후 재확인) |
+| 2 | operator 가 정산계좌·사업자정보를 보나 | **주인만. 단 마스킹해서 보여줌** |
+| 3 | 중개사 실적 화면 | **운영 매장 요약 대시보드** |
+
+#### ② 권한 범위 — 무엇을 어떻게 막았나
+**문제**: 셀러 토큰은 `seller_id` 하나로 그 매장의 전부를 열었다. 그래서 중개사가 사장님의
+**정산계좌를 갈아끼울 수** 있었다 — 그 매장 돈이 통째로 딴 데로 간다. PIN 을 요구해도 그 PIN 은
+*운영자 자신의* 것이라 못 막는다.
+
+**판별 SSOT**: `src/worker/utils/store-actor.ts` — 토큰의 **`operator_user_id`** 로만 판정한다
+(`/stores/:id/token` 이 위임으로 들어갈 때만 심는 claim).
+🔴 **`resolveActorUserId` + `isStoreOwner` 로 판정하면 안 된다** — 그 헬퍼는 소비자 세션이 없으면
+`sellers.linked_user_id`(= *매장 주인*의 id)로 폴백해서, 세션 없는 요청에서 **운영자를 주인으로 오판**한다.
+
+| 대상 | 운영자 |
+|---|---|
+| 정산계좌 읽기 | 기존대로 마스킹(`****1234` — 전부터 전원 마스킹) |
+| **정산계좌 변경** | **403** (`seller-profile.routes` PATCH /profile) |
+| 사업자정보 읽기 | 등록번호 끝 4자리(`***-**-*1234`) · 대표자명 첫 글자 · 주소/연락처 **null** |
+| **사업자정보 쓰기** | **403** (POST/PUT/PATCH /business-info) |
+| **셀러 탈퇴** | **403** (`seller-withdraw.routes`) |
+| 매장 채널(direct/brokered) | 이미 owner 전용(`seller-stores.routes:537`) |
+
+⚠️ 사업자정보 **시드 폴백**(행이 아직 없을 때 매장 등록값으로 채워 주는 경로)도 같은 마스킹을 탄다 —
+빠뜨리면 "신규 매장에서만" 원본이 샌다.
+
+#### ③ 운영 매장 요약 — `/seller/operating`
+`GET /api/seller/operating-summary`. 스코프는 `listOperableStores`(그 유저가 운영 가능한 매장만).
+매장별로 활성 상품 수 · 누적 매출/주문 · **운영 시작 이후** 매출/주문(위임 매장만).
+
+🔴 **정직함이 이 화면의 설계 제약이다.** 운영자별 매출 귀속은 추적하지 않는다. 그래서 숫자는
+**매장의 총액**이고, 화면이 그 사실을 문장으로 밝힌다. "내가 만든 매출"이라고 쓰면 거짓말이다.
+방어 가능한 청구 근거는 `revenue_since_grant`(운영 시작 이후 구간)뿐이다.
+확정 주문(`PAID/DONE/PREPARING/SHIPPING/DELIVERED`)만 센다 — `PENDING` 을 섞으면 청구가 부풀려진다.
+
+#### 가드
+`store-operator-scope.test.ts` 14건 + 주입 5건(정산계좌 게이트 무력화 · `linked_user_id` 폴백 복귀 ·
+시드 폴백 마스킹 누락 · 요약 스코프 소실 · 미결제 주문 합산) — 전부 되돌려-검증 빨간불 확인.
+
+**못 막는 것**: 소유자가 계정을 남에게 빌려주는 것(권한 모델 밖) · 이미 발급된 운영자 토큰의 즉시 무효화
+(회수는 다음 토큰 발급부터) · 런타임에 실제로 403 이 나는지(소스에 게이트가 있는지만 본다 — staging 확인 몫).
+
+---
+
+## 8. ✅ 3단계 승계 — 구현 (2026-09-09)
+
+대표 확정: *"지금은 유저가 없어서 지금 하면 좋은 게 아닐까 싶긴 한데"* → *"모두 다 완벽하게 진행해줘"*.
+
+### 8.1 🩸 왜 지금이었나 — 매장이 실제로 잠겨 있었다
+`/store/new` 로 만든 매장은 설계상 `sellers.linked_user_id` 를 **비워 두고** 주인을
+`seller_operators.role='owner'` 로만 표현한다. 그런데 **그 행을 만들 수 있는 사람이 아무도 없었다** —
+`POST /stores/:id/operators` 는 `requireOwnerOfCurrentStore` 를 요구하고 역할도 `'operator'` 로 못 박혀
+있다. 즉 **주인이 없는 매장은 영원히 주인이 없다.**
+
+라이브 실측(2026-09-09): 매장 **14 홍대돈까스** — approved · brokered · `linked_user_id` NULL ·
+`bank_account` NULL · operator 는 유저 3(role='operator'). **정산 계좌를 넣을 사람이 존재하지 않는다.**
+
+> 🩸 그리고 앞선 세션이 대표에게 *"어드민이 수동으로 승격하면 되니 급하지 않다"* 고 보고했는데
+> **거짓이었다**(grep 결과 그런 경로가 0건). 그 오판을 정정하고 착수한 것이 이 작업이다.
+
+### 8.2 두 입구, 한 개의 SSOT
+
+| 입구 | 경로 | 누가 |
+|---|---|---|
+| ① 어드민 직접 지정 | `POST /api/admin/stores/:sellerId/owner` | 어드민(finance + 2FA + 감사로그) |
+| ② 사장님 신청 → 승인 | `POST /api/seller/store-claims` → `POST /api/admin/store-claims/:id/decide` | 사장님 + 어드민 |
+
+둘 다 **`src/worker/utils/store-ownership-transfer.ts` 하나만** 부른다. 자물쇠·강등·영입 보상 보존이
+전부 거기 있다 — 입구마다 규칙을 다시 쓰면 언젠가 갈린다.
+
+### 8.3 승계가 하는 일과 **절대 안 하는 일**
+```
+새 주인          → seller_operators.role = 'owner'
+새 주인 외 owner → 전부 'operator' 로 강등 (회수 아님 — §5(a))
+sellers.linked_user_id → 비움 (두 신호가 다른 사람을 가리키지 않게)
+
+절대 안 건드림 → introduced_by_influencer_id · introduced_by_agency_id
+                 introduced_at · referral_bonus_until          ← §5(c) 핵심
+```
+🔑 **영입 보상 보존이 이 설계의 존재 이유다.** 관계가 끊기면 수입도 끊긴다고 하면 중개자는
+사장님이 직접 계정 만드는 걸 막는다 — 그러면 매장이 플랫폼에 영영 안 올라온다.
+
+### 8.4 🔒 돈이 먼저다
+이전 주인 몫(`getUnsettledBalance`)이 남아 있으면 **막는다**(`checkStoreHandover`). 대표 확정
+2026-09-08: *"중개사가 한 매장으로 번 돈이 있으면 그 돈은 승계가 되더라도 일단 중개사에게 정산되어야지."*
+마감은 `POST /api/admin/payouts/handover-closeout` 이 하고, **승계 함수는 송금하지 않는다.**
+막힌 화면은 마감 창구를 문장으로 가리킨다 — 다음 행동을 안 알려 주는 막다른 길을 만들지 않는다.
+
+### 8.5 🔴 승인 순서가 결과를 바꾼다
+`decideStoreClaim` 은 **이전이 성공한 뒤에만** 신청서를 `approved` 로 찍는다. 반대로 하면 자물쇠에
+막혔는데 신청서만 '승인됨'이 되어 **아무도 주인이 안 된 채 심사 큐에서 사라진다.** 막히면 신청서는
+`pending` 그대로 남고, 마감 후 같은 신청서로 다시 승인할 수 있다.
+
+### 8.6 사업자번호는 **찾는 방법**이지 증명이 아니다
+설계 §5(a) 가 "사업자번호로 매장을 찾아"라고 한 것은 검색 수단이다. 번호는 인터넷에 공개돼 있고,
+2026-08-26 에 **번호만으로 자동 승인되던 매장 등록 경로를 이미 한 번 막았다**(그때 통과한 매장이
+라이브에 남아 있다). 그래서 신청은 **항상 pending → 사람이 등록증 사본을 확인**한다.
+번호 일치는 `bno_match` 로 **3상태**(일치 / 불일치 / **대조 불가**)로만 기록해 어드민에게 신호로 준다 —
+번호를 안 낸 신청을 '불일치'로 뭉개면 어드민이 진짜 사장님을 거절한다.
+
+### 8.7 🪑 같은 병의 여섯째·일곱째 자리 (함께 수리)
+이 세션이 하루 종일 쫓은 결함 클래스 — *`WHERE linked_user_id = ?` 를 소유권 신호로 쓰는 코드*:
+
+| # | 자리 | 증상 |
+|---|---|---|
+| ⑥ | `admin-payouts/handover-closeout.ts` `payee_user_id` | 이 창구가 **가장 필요한 중개 매장에서** 수취인이 NULL → 취소 가드가 판단 근거를 잃음 |
+| ⑦ | `admin-payouts.routes.ts` 취소 게이트 | `Number(null) !== N` 이 늘 참 → **주인이 그대로인데도** 확인 요구(경고의 마모) |
+
+둘 다 `resolveStoreOwnerUserId`(SSOT)로 교체했다. ⑦은 **모름(undefined)을 "바뀌었다"로** 다룬다 —
+근거 없이 통과시키면 그 돈이 새 주인에게 간다.
+
+### 8.8 파일
+| 층 | 파일 |
+|---|---|
+| 승계 SSOT | `src/worker/utils/store-ownership-transfer.ts` |
+| 신청서 | `src/worker/utils/store-ownership-claims.ts` (+ repair-schema 등록) |
+| 어드민 API | `src/features/admin/api/admin-store-owner.routes.ts` |
+| 소비자 API | `src/features/seller/api/seller-store-claims.routes.ts` |
+| 어드민 화면 | `src/pages/AdminStoreOwnerPage.tsx` (`/admin/store-owner`) |
+| 소비자 화면 | `src/pages/StoreOwnerClaimPage.tsx` (`/store/find`) |
+
+### 8.9 가드
+`store-ownership-transfer-2026-09-09.test.ts` **23건**(실제 SQLite 에 매장 셋을 놓고 실제 함수를 태운다)
+\+ 주입 **11건** — 전부 되돌려-검증 빨간불 확인.
+
+🩸 **시험이 내 코드의 결함을 잡았다.** 처음엔 (a) `LEGACY_ACCOUNT_STORE` 분기를 뒀는데
+`resolveStoreOwnerUserId` 가 linked 를 먼저 보므로 그 조건은 **영원히 거짓인 죽은 가지**였고,
+(b) 이전 주인 **한 명만** 강등해서, 두 신호가 어긋난 매장에서는 옛 owner 행이 남아
+**이전이 끝난 뒤에도 새 주인이 주인이 아니게** 됐다(에러 없이). 죽은 가지를 지우고
+"새 주인 외의 모든 owner 행 강등"으로 바꿨다.
+
+**못 막는 것**: D1 과 node:sqlite 의 차이(부분 UNIQUE·플래너·동시성) · HTTP 층에서 2FA·권한이 실제로
+작동하는지(소스에 있는지만 본다) · **어드민이 등록증 사본을 실제로 열어 보는지**(사람의 일이다).
+
+### 8.10 ⚠️ 배포 후에만 판정 가능
+- `/admin/store-owner` 에서 매장 14 조회 → "소유자 없음" 이 뜨는가
+- 그 매장에 소유자 지정 → `seller_operators` 에 `role='owner'` 행이 생기는가
+- 지정 뒤 그 계정으로 정산 계좌 등록이 열리는가(잠금이 실제로 풀리는가)
+- 잔액이 있는 매장에서 이전 시도 → 409 `STORE_HANDOVER_BLOCKED` + 마감 안내

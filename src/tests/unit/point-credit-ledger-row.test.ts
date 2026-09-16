@@ -16,13 +16,14 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync, existsSync } from 'node:fs'
+import { readRepairLane } from '../helpers/source-text'
 
 const SRC = readFileSync('src/worker/utils/point-buckets.ts', 'utf8')
-// repair-schema 는 2026-08-01 에 *데이터*(컬럼 ALTER 목록)와 *로직*(라우트)으로 갈렸다.
-// 검사는 둘을 합쳐서 본다 — 한쪽만 읽으면 파일이 갈리는 순간 조용히 통과해 버린다.
-const REPAIR =
-  readFileSync('src/worker/routes/repair-schema.routes.ts', 'utf8') +
-  readFileSync('src/worker/routes/repair-schema/column-repairs.ts', 'utf8')
+// repair-schema 는 2026-08-01 에 *데이터*(컬럼 ALTER 목록)와 *로직*(라우트)으로 갈렸고,
+// 2026-09-07 에 표 정의까지 `aux-tables.ts` 로 또 갈렸다. 그때 이 상수가 두 파일만 이어 붙이고
+// 있어서 `point_transactions` CREATE 를 못 찾아 빨간불이 났다 — 불변식은 하나도 안 깨졌는데.
+// ⇒ 파일을 열거하지 말고 **레인 전체**를 읽는다(다음에 또 쪼개도 안 깨진다).
+const REPAIR = readRepairLane()
 
 describe('creditFreePoints — 잔액만 늘고 원장 행이 없는 사태 방지', () => {
   it('원장 INSERT 실패를 그냥 삼키지 않는다 (빈 catch 금지)', () => {
@@ -143,10 +144,10 @@ describe('신규 가입 보너스 — 지급 경로 제거 (2026-08-31 대표 "3
     expect(routes, "`?bonus=` 부착이 되살아났다").not.toMatch(/searchParams\.set\(\s*'bonus'/)
   })
 
-  it('에이전시 매장영입의 signup_bonus(₩30,000)는 **다른 제도**라 그대로 남아 있다', () => {
-    // 이름만 같다. 소비자 딜이 아니라 에이전시 커미션 행이다 — 같이 지우면 안 된다.
-    const agency = readFileSync('src/worker/utils/agency-store-intro-commission.ts', 'utf8')
-    expect(agency).toContain("'signup_bonus'")
+  it('🌇 에이전시 매장영입 signup_bonus(₩30,000)도 함께 사라졌다', () => {
+    // 2026-08-31 에는 "이름만 같은 다른 제도라 남긴다"가 맞았다. 2026-09-04 대표 확정으로
+    // 에이전시 자체가 일몰이라 그 모듈을 통째로 지웠다(지급 이력 0행).
+    expect(existsSync('src/worker/utils/agency-store-intro-commission.ts')).toBe(false)
   })
 
   it('모달의 보너스 카드는 조건부라 지급이 없으면 안 뜬다', () => {

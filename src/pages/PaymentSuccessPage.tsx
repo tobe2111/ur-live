@@ -11,6 +11,8 @@ import { addBreadcrumb, captureError } from '@/lib/sentry'
 import { formatNumber } from '@/utils/format'
 // 🔗 2026-07-03 구매 직후 셀러 전환 넛지 (자기완결 — 결제 로직과 분리)
 import SellerConversionNudge from './payment-success/SellerConversionNudge'
+import MallOriginBanner from '@/components/mall/MallOriginBanner'
+import ContinueShoppingLink from '@/components/mall/ContinueShoppingLink'
 
 export default function PaymentSuccessPage() {
   const { t } = useTranslation()
@@ -287,7 +289,7 @@ export default function PaymentSuccessPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0D0F12] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#11141C] flex items-center justify-center p-4">
         <div className="max-w-md w-full text-center">
           <AlertCircle className="h-20 w-20 text-red-500 mx-auto mb-6" />
           <h1 className="text-2xl font-bold text-[#1d1d1f] dark:text-white mb-4">{t('paymentSuccess.approveFailed')}</h1>
@@ -295,7 +297,7 @@ export default function PaymentSuccessPage() {
           <div className="flex gap-3">
             <Button
               onClick={() => navigate('/checkout')}
-              className="flex-1 bg-[#f5f5f7] dark:bg-[#1A1C21] hover:bg-[#e8e8ed] dark:hover:bg-[#2C2F35] text-[#1d1d1f] dark:text-white"
+              className="flex-1 bg-[#f5f5f7] dark:bg-[#1D1F29] hover:bg-[#e8e8ed] dark:hover:bg-[#2C2F35] text-[#1d1d1f] dark:text-white"
             >
               다시 시도
             </Button>
@@ -312,10 +314,10 @@ export default function PaymentSuccessPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#0D0F12] flex items-center justify-center px-4 py-6">
+    <div className="min-h-screen bg-[#fbfbfd] dark:bg-[#11141C] flex items-center justify-center px-4 py-6">
       <SEO title={t('payment.successSeoTitle', { defaultValue: '결제 완료 - 유어딜' })} description={t('payment.successSeoDesc', { defaultValue: '주문이 성공적으로 완료되었습니다' })} url="/payment/success" noindex />
       <div className="max-w-2xl w-full">
-        <div className="bg-white dark:bg-[#1C1C1E] rounded-xl sm:rounded-2xl p-5 sm:p-6 lg:p-8 shadow-lg border border-[#e5e5e7] dark:border-[#2C2F35]">
+        <div className="bg-white dark:bg-[#1D1F29] rounded-xl sm:rounded-2xl p-5 sm:p-6 lg:p-8 shadow-lg border border-[#e5e5e7] dark:border-[#2C2F35]">
           {/* 성공 아이콘 */}
           <div className="text-center mb-5 sm:mb-6 lg:mb-8">
             <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 lg:w-20 lg:h-20 rounded-full bg-green-100 dark:bg-green-900/30 mb-3 sm:mb-4">
@@ -360,7 +362,7 @@ export default function PaymentSuccessPage() {
           {/* 주문 정보 */}
           {orderInfo && (
             <div className="space-y-3 sm:space-y-4 lg:space-y-6">
-              <div className="bg-[#f5f5f7] dark:bg-[#1A1C21] rounded-lg sm:rounded-xl p-4 sm:p-5 lg:p-6">
+              <div className="bg-[#f5f5f7] dark:bg-[#1D1F29] rounded-lg sm:rounded-xl p-4 sm:p-5 lg:p-6">
                 <h2 className="text-sm sm:text-base lg:text-lg font-semibold text-[#1d1d1f] dark:text-white mb-3 sm:mb-4 flex items-center gap-2">
                   <Package className="h-4 w-4 sm:h-5 sm:w-5 text-gray-900 dark:text-white" />
                   주문 정보
@@ -433,7 +435,7 @@ export default function PaymentSuccessPage() {
                   href={orderInfo.payment.receipt.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block bg-[#f5f5f7] dark:bg-[#1A1C21] hover:bg-[#e8e8ed] dark:hover:bg-[#2C2F35] rounded-lg sm:rounded-xl p-3 sm:p-4 transition-colors"
+                  className="block bg-[#f5f5f7] dark:bg-[#1D1F29] hover:bg-[#e8e8ed] dark:hover:bg-[#2C2F35] rounded-lg sm:rounded-xl p-3 sm:p-4 transition-colors"
                 >
                   <div className="flex items-center justify-between">
                     <div>
@@ -451,7 +453,7 @@ export default function PaymentSuccessPage() {
                   href={orderInfo.payment.cashReceipt.receiptUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block bg-[#f5f5f7] dark:bg-[#1A1C21] hover:bg-[#e8e8ed] dark:hover:bg-[#2C2F35] rounded-lg sm:rounded-xl p-3 sm:p-4 transition-colors"
+                  className="block bg-[#f5f5f7] dark:bg-[#1D1F29] hover:bg-[#e8e8ed] dark:hover:bg-[#2C2F35] rounded-lg sm:rounded-xl p-3 sm:p-4 transition-colors"
                 >
                   <div className="flex items-center justify-between">
                     <div>
@@ -489,6 +491,11 @@ export default function PaymentSuccessPage() {
                 로직 전부 byte-불변(additive only). 셀러(seller_token 보유)·데모·닫음 사용자에겐 미노출. */}
           {orderInfo && orderInfo.status !== 'demo' && <SellerConversionNudge />}
 
+          {/* 🏪 2026-09-16 [UNLOCK] (대표 "허가 — 배너 + 버튼 둘 다"): 몰 손님에게 **가게로 돌아갈 문**.
+                결제가 끝나면 유어딜 화면에 남겨져 운영자가 데려온 손님이 본진에 흡수된다. 흔적 없으면
+                아무것도 안 그린다(본진 화면 byte-불변). 결제 확정/금액검증/TossPaymentObject 표시 무접촉. */}
+          <MallOriginBanner className="mt-4 sm:mt-5" />
+
           {/* 액션 버튼 */}
           <div className="mt-5 sm:mt-6 lg:mt-8 flex flex-col sm:flex-row gap-2.5 sm:gap-3">
             {orderInfo?.status === 'demo' ? (
@@ -514,13 +521,14 @@ export default function PaymentSuccessPage() {
                 >
                   주문 내역 보기
                 </Button>
-                {/* 🗑️ 2026-07-07 라이브커머스 제거: 라이브 자동복귀 삭제 → 홈으로 쇼핑 계속. */}
-                <Button
-                  onClick={() => navigate('/')}
-                  className="w-full sm:flex-1 bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900 text-white h-11 sm:h-12 lg:h-14 text-sm sm:text-base font-medium transition-colors"
-                >
-                  쇼핑 계속하기
-                </Button>
+                {/* 🗑️ 2026-07-07 라이브커머스 제거: 라이브 자동복귀 삭제 → 홈으로 쇼핑 계속.
+                    🏪 2026-09-16 [UNLOCK]: **가장 큰 버튼**이 몰 손님도 유어딜 홈으로 보내고 있었다.
+                    간판(배너)만으론 부족하다 — 손님은 큰 버튼을 누른다. 컴포넌트가 스스로 판정하고
+                    흔적이 없으면 종전 그대로(`쇼핑 계속하기` → `/`). 결제 로직 무접촉. */}
+                <ContinueShoppingLink
+                  onFallback={() => navigate('/')}
+                  className="w-full sm:flex-1 rounded-md bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900 text-white h-11 sm:h-12 lg:h-14 text-sm sm:text-base font-medium transition-colors"
+                />
               </>
             )}
           </div>

@@ -164,7 +164,7 @@ export default function SellerProductNewPage() {
 
   return (
     <SellerLayout title={t('seller.productCreate')}>
-      <div className="mx-auto max-w-6xl space-y-5 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-5">
         <DashboardPageHeader
           title={t('seller.productCreate')}
           subtitle={t('seller.newProductDesc')}
@@ -183,14 +183,14 @@ export default function SellerProductNewPage() {
         <BulkUploadTools />
 
         {error && (
-          <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
-            <Package className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
-            <p className="flex-1 text-sm text-red-700">{error}</p>
+          <div className="flex items-start gap-3 rounded-xl border border-rule bg-white p-4">
+            <Package className="mt-0.5 h-5 w-5 shrink-0 text-tone-bad" />
+            <p className="flex-1 text-sm text-tone-bad">{error}</p>
             <button
               type="button"
               onClick={() => setError('')}
               aria-label={t('common.close', { defaultValue: '닫기' })}
-              className="rounded-lg p-1 text-red-500 hover:bg-red-100"
+              className="rounded-lg p-1 text-tone-bad hover:bg-gray-100"
             >
               <X className="h-4 w-4" />
             </button>
@@ -209,7 +209,7 @@ export default function SellerProductNewPage() {
               >
                 <div>
                   <label className="mb-2 block text-sm font-medium text-gray-700">
-                    {t('seller.productName')} <span className="text-red-500">*</span>
+                    {t('seller.productName')} <span className="text-tone-bad">*</span>
                   </label>
                   <input
                     type="text"
@@ -218,7 +218,7 @@ export default function SellerProductNewPage() {
                     onChange={handleChange}
                     placeholder={t('seller.productNamePlaceholderForm')}
                     required
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-brand focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
@@ -231,7 +231,7 @@ export default function SellerProductNewPage() {
                     onChange={handleChange}
                     placeholder={t('seller.descriptionPlaceholder')}
                     rows={3}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-brand focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
@@ -244,7 +244,7 @@ export default function SellerProductNewPage() {
                     onChange={handleChange}
                     placeholder={t('seller.products.longDescPlaceholder')}
                     rows={5}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-brand focus:ring-2 focus:ring-blue-500"
                   />
                   <p className="mt-1 text-xs text-gray-400">{t('seller.products.longDescHint')}</p>
                 </div>
@@ -258,7 +258,7 @@ export default function SellerProductNewPage() {
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
                     <label className="mb-2 block text-sm font-medium text-gray-700">
-                      {t('seller.originalPrice')} <span className="text-red-500">*</span>
+                      {t('seller.originalPrice')} <span className="text-tone-bad">*</span>
                     </label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-400">₩</span>
@@ -271,7 +271,7 @@ export default function SellerProductNewPage() {
                         placeholder="30000"
                         required
                         min="0"
-                        className="w-full rounded-lg border border-gray-300 py-2.5 pl-8 pr-4 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                        className="w-full rounded-lg border border-gray-300 py-2.5 pl-8 pr-4 text-gray-900 focus:border-brand focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
                     <p className="mt-1 text-xs text-gray-500">{t('common.enterInWon')}</p>
@@ -280,7 +280,7 @@ export default function SellerProductNewPage() {
                   {formData.product_kind === 'physical' ? (
                     <div>
                       <label className="mb-2 block text-sm font-medium text-gray-700">
-                        {t('seller.stockQuantity')} <span className="text-red-500">*</span>
+                        {t('seller.stockQuantity')} <span className="text-tone-bad">*</span>
                       </label>
                       <div className="relative">
                         <Box className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
@@ -293,14 +293,14 @@ export default function SellerProductNewPage() {
                           placeholder="100"
                           required
                           min="0"
-                          className="w-full rounded-lg border border-gray-300 py-2.5 pl-10 pr-4 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                          className="w-full rounded-lg border border-gray-300 py-2.5 pl-10 pr-4 text-gray-900 focus:border-brand focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
                       <p className="mt-1 text-xs text-gray-500">{t('common.enterInUnits')}</p>
                     </div>
                   ) : (
-                    <div className="flex items-center rounded-lg border border-blue-100 bg-blue-50 px-4 py-3">
-                      <span className="text-xs text-blue-700">{t('seller.products.digitalUnlimitedStock', { defaultValue: '디지털 상품 — 무한 재고 (자동 999,999)' })}</span>
+                    <div className="flex items-center rounded-lg border border-rule bg-white px-4 py-3">
+                      <span className="text-xs text-gray-700">{t('seller.products.digitalUnlimitedStock', { defaultValue: '디지털 상품 — 무한 재고 (자동 999,999)' })}</span>
                     </div>
                   )}
                 </div>
@@ -352,14 +352,14 @@ export default function SellerProductNewPage() {
               >
                 <div>
                   <label className="mb-2 block text-sm font-medium text-gray-700">
-                    {t('common.category')} <span className="text-red-500">*</span>
+                    {t('common.category')} <span className="text-tone-bad">*</span>
                   </label>
                   <select
                     name="category"
                     value={formData.category}
                     onChange={handleChange}
                     required
-                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 focus:border-brand focus:ring-2 focus:ring-blue-500"
                   >
                     {categoryOptions.map(c => (
                       <option key={c.value} value={c.value}>{c.label}</option>
@@ -373,9 +373,9 @@ export default function SellerProductNewPage() {
                 )}
 
                 {/* 노출 방식 안내 */}
-                <div className="rounded-lg border-2 border-blue-500 bg-blue-50 p-4">
+                <div className="rounded-lg border-2 border-brand bg-brand-tint p-4">
                   <div className="flex items-start gap-3">
-                    <Play className="mt-1 h-5 w-5 text-red-600" />
+                    <Play className="mt-1 h-5 w-5 text-tone-bad" />
                     <div className="flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-semibold text-gray-900">{t('seller.liveOnlyProduct')}</span>
@@ -399,7 +399,7 @@ export default function SellerProductNewPage() {
                         name="live_stream_id"
                         value={formData.live_stream_id}
                         onChange={handleChange}
-                        className="w-full appearance-none rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-4 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                        className="w-full appearance-none rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-4 text-gray-900 focus:border-brand focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="">{t('seller.selectLiveStream')}</option>
                         {liveStreams.map((stream) => (

@@ -15,10 +15,12 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
-import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
-import { ChevronLeft, MapPin, Store, Sparkles } from 'lucide-react'
+import { ChevronLeft, MapPin, Store, Sparkles, Target } from 'lucide-react'
 import FcfsBadge from '@/features/group-buy/FcfsBadge'
+import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
+import DealRow from '@/components/deal/DealRow'
+import { DEAL_GRID_GAP } from '@/shared/deal-card-grid'
 
 interface TownProduct {
   id: number
@@ -35,43 +37,6 @@ interface TownProduct {
 
 interface TownFcfs extends TownProduct {
   fcfs?: { spots: number; appliedDisplay: number; deadline: string | null }
-}
-
-function DealCard({ p, onClick }: { p: TownProduct; onClick: () => void }) {
-  const price = Number(p.current_price ?? p.price) || 0
-  const orig = Number(p.original_price) || 0
-  const discount = orig > price && orig > 0 ? Math.round((1 - price / orig) * 100) : 0
-  return (
-    <button type="button" onClick={onClick} className="text-left group">
-      <div className="aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A1C21]">
-        {p.image_url ? (
-          <img
-            src={cfImage(p.image_url, { width: 480, quality: 82, format: 'auto' }) || p.image_url}
-            alt={p.name}
-            loading="lazy"
-            className="w-full h-full object-cover group-active:scale-[0.99] transition-transform"
-            onError={(e) => cfImageOnError(e.currentTarget, p.image_url)}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-3xl">🍽️</div>
-        )}
-      </div>
-      <p className="mt-2 text-[13px] font-semibold text-gray-900 dark:text-white line-clamp-2 leading-snug">{p.name}</p>
-      {p.restaurant_name && (
-        <p className="text-[11px] text-gray-400 dark:text-gray-500 truncate">
-          {p.restaurant_name}
-          {/* 🏪 온누리 가맹 뱃지 (B2G — "온누리 사용 가능 표시" 약속) */}
-          {p.onnuri_merchant && (
-            <span className="ml-1 px-1 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[9px] font-bold align-middle">온누리</span>
-          )}
-        </p>
-      )}
-      <p className="mt-0.5 flex items-baseline gap-1">
-        {discount > 0 && <span className="text-[14px] font-extrabold text-red-500 dark:text-red-400">{discount}%</span>}
-        <span className="text-[14px] font-extrabold text-gray-900 dark:text-white">{formatNumber(price)}원</span>
-      </p>
-    </button>
-  )
 }
 
 export default function LocalTownPage() {
@@ -115,7 +80,7 @@ export default function LocalTownPage() {
 
   if (!code) {
     return (
-      <div className="min-h-[100dvh] bg-white dark:bg-[#0D0F12] flex flex-col items-center justify-center gap-3 px-6">
+      <div className="min-h-[100dvh] bg-white dark:bg-[#11141C] flex flex-col items-center justify-center gap-3 px-6">
         <MapPin className="w-12 h-12 text-gray-200 dark:text-gray-700" />
         <p className="text-gray-900 dark:text-white font-bold">{t('local.badCode', { defaultValue: '올바르지 않은 상권 주소예요' })}</p>
         <button type="button" onClick={() => navigate('/')} className="text-sm font-bold text-gray-500 dark:text-gray-400 underline">
@@ -130,7 +95,7 @@ export default function LocalTownPage() {
   const fcfsCount = fcfs?.length ?? 0
 
   return (
-    <div className="min-h-[100dvh] bg-white dark:bg-[#0D0F12]">
+    <div className="min-h-[100dvh] bg-white dark:bg-[#11141C]">
       <SEO
         title={`${townName} 상권관 - 유어딜`}
         description={`${townName}의 동네딜 이용권과 체험단 모음 — 우리 동네 매장을 할인가로 만나보세요`}
@@ -138,7 +103,7 @@ export default function LocalTownPage() {
       />
 
       {/* 헤더 */}
-      <div className="sticky top-0 z-30 bg-white/90 dark:bg-[#0D0F12]/90 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
+      <div className="sticky top-0 z-30 bg-white/90 dark:bg-[#11141C]/90 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="flex items-center gap-2 px-3 h-12">
           <button type="button" onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))} aria-label={t('common.back', { defaultValue: '뒤로' })} className="p-1.5 -ml-1 text-gray-700 dark:text-gray-200">
             <ChevronLeft className="w-5 h-5" />
@@ -167,31 +132,20 @@ export default function LocalTownPage() {
         {fcfsCount > 0 && (
           <section>
             <h2 className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-3 flex items-center gap-1.5">
-              🎯 {t('local.fcfsTitle', { defaultValue: '체험단 모집' })}
+              <Target className="w-4 h-4 text-gray-400" aria-hidden="true" /> {t('local.fcfsTitle', { defaultValue: '체험단 모집' })}
             </h2>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {(fcfs || []).map(p => (
-                <button
+                <DealRow
                   key={p.id}
-                  type="button"
-                  onClick={() => navigate(`/group-buy/${p.id}`)}
-                  className="w-full flex gap-3 p-3 rounded-2xl border border-gray-100 dark:border-[#2C2F35] bg-gray-50/60 dark:bg-[#0E0E0E] text-left active:scale-[0.995] transition-transform"
-                >
-                  <div className="w-[72px] h-[72px] rounded-xl overflow-hidden bg-gray-100 dark:bg-[#1A1C21] shrink-0">
-                    {p.image_url ? (
-                      <img src={cfImage(p.image_url, { width: 144, quality: 82, format: 'auto' }) || p.image_url} alt="" loading="lazy" className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, p.image_url)} />
-                    ) : <div className="w-full h-full flex items-center justify-center text-2xl">🎁</div>}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[14px] font-bold text-gray-900 dark:text-white line-clamp-1">{p.name}</p>
-                    {p.restaurant_name && <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">{p.restaurant_name}</p>}
-                    {p.fcfs && (
-                      <div className="mt-1.5">
-                        <FcfsBadge info={{ spots: p.fcfs.spots, appliedDisplay: p.fcfs.appliedDisplay }} />
-                      </div>
-                    )}
-                  </div>
-                </button>
+                  to={`/group-buy/${p.id}`}
+                  imageUrl={p.image_url}
+                  eyebrow={p.restaurant_name || undefined}
+                  title={p.name}
+                  meta={p.fcfs
+                    ? <FcfsBadge info={{ spots: p.fcfs.spots, appliedDisplay: p.fcfs.appliedDisplay }} />
+                    : undefined}
+                />
               ))}
             </div>
           </section>
@@ -200,15 +154,15 @@ export default function LocalTownPage() {
         {/* 동네딜 그리드 */}
         <section>
           <h2 className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-3">
-            🏪 {t('local.dealsTitle', { defaultValue: '동네딜' })} {dealCount > 0 ? dealCount : ''}
+            <span className="inline-flex items-center gap-1.5"><Store className="w-4 h-4 text-gray-400" aria-hidden="true" />{t('local.dealsTitle', { defaultValue: '동네딜' })} {dealCount > 0 ? dealCount : ''}</span>
           </h2>
           {loading ? (
             <div className="grid grid-cols-2 gap-3" aria-hidden="true">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i}>
-                  <div className="aspect-square rounded-xl bg-gray-100 dark:bg-[#1A1C21] animate-pulse" />
-                  <div className="mt-2 h-3.5 w-3/4 rounded bg-gray-100 dark:bg-[#1A1C21] animate-pulse" />
-                  <div className="mt-1.5 h-4 w-1/2 rounded bg-gray-100 dark:bg-[#1A1C21] animate-pulse" />
+                  <div className="aspect-square rounded-xl bg-gray-100 dark:bg-[#1D1F29] animate-pulse" />
+                  <div className="mt-2 h-3.5 w-3/4 rounded bg-gray-100 dark:bg-[#1D1F29] animate-pulse" />
+                  <div className="mt-1.5 h-4 w-1/2 rounded bg-gray-100 dark:bg-[#1D1F29] animate-pulse" />
                 </div>
               ))}
             </div>
@@ -222,9 +176,9 @@ export default function LocalTownPage() {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-x-3 gap-y-5">
+            <div className={`grid grid-cols-2 lg:grid-cols-4 ${DEAL_GRID_GAP}`}>
               {(deals || []).map(p => (
-                <DealCard key={p.id} p={p} onClick={() => navigate(`/group-buy/${p.id}`)} />
+                <GroupBuyFeedCard key={p.id} p={p as never} />
               ))}
             </div>
           )}
@@ -235,7 +189,7 @@ export default function LocalTownPage() {
           <button
             type="button"
             onClick={() => navigate('/')}
-            className="w-full py-3.5 rounded-2xl border border-gray-200 dark:border-[#2C2F35] text-[13.5px] font-bold text-gray-700 dark:text-gray-200 flex items-center justify-center gap-1.5"
+            className="w-full py-3.5 rounded-2xl border border-line text-[13.5px] font-bold text-gray-700 dark:text-gray-200 flex items-center justify-center gap-1.5"
           >
             <MapPin className="w-4 h-4" /> {t('local.viewOnMap', { defaultValue: '지도에서 보기' })}
           </button>

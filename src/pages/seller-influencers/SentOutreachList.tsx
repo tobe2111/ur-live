@@ -12,9 +12,9 @@ interface OutreachRow {
 }
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
-  submitted: { label: '유어딜 검토 중', cls: 'bg-amber-100 text-amber-800' },
-  approved: { label: '검토 완료', cls: 'bg-blue-100 text-blue-700' },
-  sent: { label: '발송됨', cls: 'bg-emerald-100 text-emerald-700' },
+  submitted: { label: '유어딜 검토 중', cls: 'bg-tone-warn-bg text-tone-warn' },
+  approved: { label: '검토 완료', cls: 'bg-tone-info-bg text-tone-info' },
+  sent: { label: '발송됨', cls: 'bg-tone-ok-bg text-tone-ok' },
   rejected: { label: '반려', cls: 'bg-gray-200 text-gray-500' },
 }
 
@@ -41,7 +41,7 @@ export default function SentOutreachList({ refreshKey }: { refreshKey?: number }
               </div>
               <div className="flex items-center gap-1.5 flex-shrink-0">
                 {r.accepted_count > 0 && (
-                  <span className="px-2 py-0.5 rounded-full bg-brand/10 text-brand font-bold">✓ {r.accepted_count}명 수락</span>
+                  <span className="px-2 py-0.5 rounded-full bg-brand/10 text-brand font-bold">{r.accepted_count}명 수락</span>
                 )}
                 <span className={`px-2 py-0.5 rounded-full ${st.cls}`}>{st.label}</span>
               </div>

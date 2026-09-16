@@ -8,8 +8,8 @@ import {
   Bell, Image, Monitor, Store, ClipboardList, Gift, Ticket, Play, BookOpen, Building2, UserCheck, Settings, Send,
   BarChart3, Shield, UserCog, Radio, Users, MessageSquare, Megaphone, Sparkles, AlertTriangle, TrendingUp, AlertOctagon, Wallet, Layers, Mail, Crown,
   Wrench, RotateCcw, Upload, History, MapPin, Scale, FileText, Rocket, Share2, LayoutList,
-  type LucideIcon
-} from 'lucide-react'
+  Video,
+  type LucideIcon, Inbox } from 'lucide-react'
 import { LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import { isUtongstart } from '@/utils/domain'
 
@@ -44,6 +44,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/business-metrics', label: '비즈니스 지표', icon: BarChart3 },
       { path: '/admin/revenue',          label: '매출 분석',     icon: BarChart3 },
       { path: '/admin/operations-guide', label: '운영 가이드',   icon: BookOpen },
+      { path: '/admin/decisions',        label: '결재함',        icon: Inbox },
       { path: '/admin/platform-model',   label: '플랫폼 모델',   icon: FileText },
       { path: '/admin/proposals',        label: '대외 제안서',   icon: FileText },
       { path: '/admin/region-density',   label: '동네별 딜 밀도', icon: MapPin },
@@ -60,11 +61,11 @@ export const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/ads-accounts',     label: '유어애즈 가입자', icon: Megaphone },
       { path: '/admin/ads-services',     label: '서비스몰 주문', icon: Megaphone },
       { path: '/admin/influencer-pool',  label: '인플루언서 풀', icon: Megaphone },
-      { path: '/admin/campaign-applications', label: '📣 캠페인 신청자', icon: Megaphone }, // 캠페인 모집(/campaign/:code) 접수분 — 코드 필터+CSV
-      { path: '/admin/buyer-pool',       label: '🌐 해외 바이어 풀', icon: Megaphone }, // 도매 RBAC 스코프 밖 → 여기(전-어드민)
-      { path: '/admin/partner-pool',     label: '🤝 파트너 풀', icon: Megaphone }, // B2B 파트너(업체) 수집 — 매장 입점 영업
-      { path: '/admin/store-prospects',  label: '🏪 매장 후보', icon: Megaphone }, // 인허가 발굴 — 유어딜 입점 대상 매장(store_prospects)
-      { path: '/admin/gov-notices',      label: '📢 공고 스캐너', icon: Megaphone }, // 나라장터+기업마당 공고(gov_notices)
+      { path: '/admin/campaign-applications', label: '캠페인 신청자', icon: Megaphone }, // 캠페인 모집(/campaign/:code) 접수분 — 코드 필터+CSV
+      { path: '/admin/buyer-pool',       label: '해외 바이어 풀', icon: Megaphone }, // 도매 RBAC 스코프 밖 → 여기(전-어드민)
+      { path: '/admin/partner-pool',     label: '파트너 풀', icon: Megaphone }, // B2B 파트너(업체) 수집 — 매장 입점 영업
+      { path: '/admin/store-prospects',  label: '매장 후보', icon: Megaphone }, // 인허가 발굴 — 유어딜 입점 대상 매장(store_prospects)
+      { path: '/admin/gov-notices',      label: '공고 스캐너', icon: Megaphone }, // 나라장터+기업마당 공고(gov_notices)
     ],
   },
   {
@@ -147,6 +148,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/voucher-transactions', label: '교환권 거래', icon: Ticket },
       { path: '/admin/banners',          label: '배너 관리',     icon: Image },
       { path: '/admin/home-sections',    label: '홈 섹션',       icon: LayoutList },
+      { path: '/admin/urshorts',         label: '유어쇼츠',     icon: Video },
     ],
   },
   {
@@ -154,9 +156,10 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { path: '/admin/users',           label: '유저 관리',     icon: Users },
       { path: '/admin/seller-approval', label: '셀러 관리',     icon: UserCheck },
-      { path: '/admin/agency-creator-approval', label: '에이전시 셀러 심사', icon: UserCheck },
+      // 🪑 2026-09-09 3단계: 중개자가 대신 올린 매장의 주인 자리를 사장님에게 넘기는 유일한 창구.
+      //   이 화면이 없으면 `/store/new` 매장은 주인이 영원히 없다(정산 계좌를 넣을 사람도 없다).
+      { path: '/admin/store-owner',     label: '매장 소유자',   icon: Store },
       { path: '/admin/prospects',       label: '영업 추적',     icon: UserCheck },
-      { path: '/admin/agencies',        label: '에이전시',      icon: Building2 },
     ],
   },
   {
@@ -289,9 +292,13 @@ export const navSectionOf = (g: NavGroup): NavSectionKey =>
         : 'common'
 export const NAV_SECTIONS: Array<{ key: NavSectionKey; label?: string; accent?: string }> = [
   { key: 'home' },
-  { key: 'urdeal', label: '🎟️ 유어딜 · 소비자', accent: '#a5b4fc' },
-  { key: 'wholesale', label: '🏭 유통스타트 · 도매몰 (B2B)', accent: '#fbbf24' },
-  { key: 'common', label: '⚙️ 공통 · 회원·재무·검증·시스템', accent: '#94a3b8' },
+  /* 🎨 2026-09-14 (대표 Rinda 시안 — 사이드바가 검정 → 흰 면으로 바뀌었다):
+     이 세 값은 **어두운 배경 위에서 읽히도록** 고른 밝은 색이었다(#a5b4fc·#fbbf24·#94a3b8).
+     흰 배경에 그대로 두면 대비가 각각 약 1.9 : 1.8 : 2.8 로 무너져 **섹션 이름이 거의 안 보인다.**
+     같은 계열의 진한 값으로 내린다(4.5:1 이상). 유어딜은 마침 브랜드 블루가 제 색이다. */
+  { key: 'urdeal', label: '유어딜 · 소비자', accent: '#1C69EF' },
+  { key: 'wholesale', label: '유통스타트 · 도매몰 (B2B)', accent: '#B45309' },
+  { key: 'common', label: '공통 · 회원·재무·검증·시스템', accent: '#475569' },
 ]
 
 // 🛡️ 2026-06-17 (대표 신고 — 로그인 시 화면이 미친듯이 깜빡): 강제 보안 설정/계정 보안 페이지는

@@ -2,11 +2,9 @@
  * Admin Sellers Routes — 판매자 관리
  *
  * 🛡️ 2026-04-22 배치 146 (TD-006 부분): admin-management.routes.ts 에서 분리.
- *
  * 엔드포인트:
  * - GET    /sellers                          — 판매자 목록
- * - GET    /sellers/pending                  — 승인 대기 목록
- * - GET    /sellers/:id                      — 판매자 상세
+ * - GET    /sellers/pending · /sellers/:id   — 승인 대기 목록 · 판매자 상세
  * - PATCH  /sellers/:id/business-info/approve — 사업자 정보 승인
  * - PATCH  /sellers/:id/business-info/reject  — 사업자 정보 반려
  * - POST   /sellers/:id/verify-account        — 계좌 재검증 승인 (sellers.is_verified=1 복원 → 출금 재개)
@@ -27,6 +25,7 @@ import { swallow } from '@/worker/utils/swallow';
 import { rateLimit } from '@/worker/middleware/rate-limit';
 import { intParam } from '@/shared/pagination'
 import { reassignIntroducer } from './admin-sellers/reassign-introducer'
+import { registerSellerPurgeRoute } from './admin-sellers/purge-seller'  // 🗑️ 매장 완전 삭제
 
 export const adminSellersRoutes = new Hono<{ Bindings: Env }>();
 
@@ -440,7 +439,7 @@ adminSellersRoutes.get('/sellers/business-registration/pending', cors(), async (
       business_registration_reject_reason: string | null;
       created_at: string; updated_at: string;
     }> }));
-    return c.json({ success: true, data: rows.results || [] });
+    return c.json({ success: true, data: await (await import('./seller-permit-flag')).attachFoodPermitFlag(DB, rows.results || []) }); // 🍽️ 영업신고증 플래그 additive
   } catch (err) {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
@@ -536,6 +535,10 @@ adminSellersRoutes.patch('/sellers/:id/link-user', cors(), async (c) => {
       `SELECT id FROM sellers WHERE linked_user_id = ? AND id != ? LIMIT 1`, [userId, sellerId]);
     if (conflict.length > 0) return c.json({ success: false, error: `이 유저는 이미 다른 셀러(#${conflict[0].id})에 연결돼 있습니다` }, 409);
 
+    // 🔐 2026-09-07: 미지급 잔액이 남은 매장은 주인을 못 바꾼다 — 그 돈이 새 계좌로 나간다(store-handover-guard.ts).
+    const { checkStoreHandover, STORE_HANDOVER_BLOCKED } = await import('../../../worker/utils/store-handover-guard');
+    const handover = await checkStoreHandover(DB, Number(sellerId), userId);
+    if (handover.blocked) return c.json({ success: false, error: handover.reason, code: STORE_HANDOVER_BLOCKED, receivable: handover.receivable }, 409);
     await executeRun(DB, `UPDATE sellers SET linked_user_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [userId, sellerId]);
     await writeAuditLog(c, { action: 'link_seller_user', targetType: 'seller', targetId: sellerId, after: { linked_user_id: userId, handle } });
     return c.json({ success: true, data: { seller_id: Number(sellerId), linked_user_id: userId, handle } });
@@ -663,6 +666,7 @@ adminSellersRoutes.delete('/sellers/:id', cors(), async (c) => {
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
   }
 });
+registerSellerPurgeRoute(adminSellersRoutes, safeAdminError);
 
 adminSellersRoutes.patch('/sellers/:id/commission', cors(), async (c) => {
   try {
@@ -739,11 +743,7 @@ adminSellersRoutes.post('/sellers/:id/notify-magic-link', cors(), async (c) => {
   }
 });
 
-// 🛡️ 2026-05-21: 에이전시 lock-in 재배정 — docs/AGENCY_POLICY.md 룰.
-//   sellers.introduced_by_agency_id 는 가입 시 1회 lock-in. 변경은 이 endpoint 만 허용.
-//   감사 로그 + 강력 경고 (admin_audit_log 자동 기록).
-//   사유: 가게 사장님 분쟁 (영업권 충돌) / 에이전시 무활동 6개월 unlock 등.
-adminSellersRoutes.patch('/sellers/:id/reassign-agency', cors(), (c) => reassignIntroducer(c, 'agency', safeAdminError));
+// 🌇 2026-09-05 에이전시 일몰 — `PATCH /sellers/:id/reassign-agency` 삭제(부르는 화면이 없었다).
 
 // 🛡️ 2026-05-21 Phase D-6: 사람(영입자) 매장영입 2% lock-in 재배정 — 한 가게 = 1 lock-in 영구.
 //   🩸 2026-08-31: 존재 확인이 `sellers` 를 보던 것을 `users` 로 고쳤다(엉뚱한 사람에게 2% 가던 버그).

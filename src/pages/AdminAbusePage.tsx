@@ -45,9 +45,9 @@ const PATTERN_LABEL: Record<string, string> = {
 }
 
 const SEVERITY_STYLE: Record<string, { label: string; cls: string; icon: React.ReactNode }> = {
-  high:   { label: '높음',  cls: 'bg-red-100 text-red-700',    icon: <AlertOctagon className="w-3 h-3" /> },
-  medium: { label: '중간',  cls: 'bg-amber-100 text-amber-700', icon: <AlertTriangle className="w-3 h-3" /> },
-  low:    { label: '낮음',  cls: 'bg-blue-100 text-blue-700',   icon: <Info className="w-3 h-3" /> },
+  high:   { label: '높음',  cls: 'bg-tone-bad-bg text-tone-bad',    icon: <AlertOctagon className="w-3 h-3" /> },
+  medium: { label: '중간',  cls: 'bg-tone-warn-bg text-tone-warn', icon: <AlertTriangle className="w-3 h-3" /> },
+  low:    { label: '낮음',  cls: 'bg-tone-info-bg text-tone-info',   icon: <Info className="w-3 h-3" /> },
 }
 
 function SeverityBadge({ severity }: { severity: string }) {
@@ -65,7 +65,7 @@ function EvidenceRow({ detection }: { detection: AbuseDetection }) {
   try { evidence = JSON.parse(detection.evidence) } catch { /* ignore */ }
 
   return (
-    <tr className={`border-t border-gray-100 ${detection.severity === 'high' ? 'bg-red-50/40' : ''}`}>
+    <tr className={`border-t border-gray-100 ${detection.severity === 'high' ? 'border border-rule bg-white' : ''}`}>
       <td className="px-4 py-3 whitespace-nowrap">
         <SeverityBadge severity={detection.severity} />
       </td>
@@ -84,7 +84,7 @@ function EvidenceRow({ detection }: { detection: AbuseDetection }) {
         <button
           type="button"
           onClick={() => setExpanded(v => !v)}
-          className="flex items-center gap-1 text-[11px] text-blue-600 hover:underline"
+          className="flex items-center gap-1 text-[11px] text-brand-text hover:underline"
         >
           {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
           {expanded ? '접기' : '상세'}
@@ -100,7 +100,7 @@ function EvidenceRow({ detection }: { detection: AbuseDetection }) {
       </td>
       <td className="px-4 py-3">
         {detection.reviewed ? (
-          <span className="text-[11px] text-green-600 font-medium">검토 완료</span>
+          <span className="text-[11px] text-tone-ok font-medium">검토 완료</span>
         ) : (
           <span className="text-[11px] text-gray-400">미검토</span>
         )}
@@ -153,10 +153,10 @@ export default function AdminAbusePage() {
       <div className="grid grid-cols-3 gap-3 mt-4 mb-5">
         {[
           { label: '전체', value: detections.length, cls: 'text-gray-900' },
-          { label: 'HIGH 위험', value: highCount, cls: 'text-red-600' },
-          { label: '미검토', value: unreviewedCount, cls: 'text-amber-600' },
+          { label: 'HIGH 위험', value: highCount, cls: 'text-tone-bad' },
+          { label: '미검토', value: unreviewedCount, cls: 'text-tone-warn' },
         ].map(c => (
-          <div key={c.label} className="bg-white rounded-2xl border border-gray-200 p-4 text-center">
+          <div key={c.label} className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-4 text-center">
             <p className={`text-[22px] font-black ${c.cls}`}>{c.value}</p>
             <p className="text-[11px] text-gray-500">{c.label}</p>
           </div>
@@ -188,7 +188,7 @@ export default function AdminAbusePage() {
       </div>
 
       {/* 테이블 */}
-      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 overflow-hidden">
         {loading ? (
           <div className="p-8 text-center text-gray-400 text-[13px]">로딩 중...</div>
         ) : detections.length === 0 ? (

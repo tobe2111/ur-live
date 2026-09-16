@@ -9,10 +9,12 @@ import { DEAL_CATS, type DealCategory } from './PcHomeRail'
 import { useHomeQuerySync } from '@/pages/main-home/useHomeQuerySync'
 import PcHomeAppBand from './PcHomeAppBand'
 import { readHomeRegion, type HomeRegion } from './PcHomeLocationBar'
+import { readCachedLoc } from '@/shared/utils/cached-loc'
 import RegionLinkGrid from '@/components/region/RegionLinkGrid'
 import HomeHeroBanner from '@/components/home/HomeHeroBanner'
 import HomeBannerStrip from '@/components/home/HomeBannerStrip'
 import HomeSections from '@/components/home/HomeSections'
+import UrShortsRail from '@/components/home/UrShortsRail'
 import { HOME_SHOWCASE_ENABLED, REGION_PAGES_ENABLED } from '@/shared/feature-flags'
 
 /**
@@ -27,13 +29,13 @@ import { HOME_SHOWCASE_ENABLED, REGION_PAGES_ENABLED } from '@/shared/feature-fl
 const SORT_CHIPS = [
   { key: 'popular',  label: '인기순' },
   { key: 'newest',   label: '최신순' },
-  { key: 'deadline', label: '마감임박' },
   { key: 'discount', label: '할인율순' },
 ] as const
 type SortKey = typeof SORT_CHIPS[number]['key'] | 'near'
 
 const DEAL_CATEGORY_KEYS: DealCategory[] = ['all', 'meal_voucher', 'beauty_voucher', 'stay_voucher', 'etc_voucher']
-const SORT_KEYS: SortKey[] = ['popular', 'newest', 'deadline', 'discount']
+// 🗓️ 2026-09-04 (대표 "마감 개념은 없어"): 'deadline' 제거 — 옛 `?sort=deadline` 링크는 'popular' 로 폴백된다.
+const SORT_KEYS: SortKey[] = ['popular', 'newest', 'discount']
 
 export default function PcHomePage() {
   // 🧭 2026-07-20 (카테고리 이동 전수조사): `/?category=` 딥링크로 초기 카테고리 지정 지원 —
@@ -46,11 +48,18 @@ export default function PcHomePage() {
   })
   // 🏷️ 선택된 카테고리의 한글 라벨 — 'all' 이면 빈 문자열(= 홈 기본 문구 유지). 라벨 SSOT 는 PcHomeRail.
   const catLabel = category === 'all' ? '' : (DEAL_CATS.find(c => c.key === category)?.label || '')
+  /**
+   * 🧭 2026-09-05 (대표 "기본 디폴트가 현재 위치에서 가까운 순대로"): 모바일 홈과 **같은 규칙**.
+   *   위치는 새로 묻지 않고 마지막 측위 캐시만 읽는다. 지역을 직접 고른 사람은 제외한다.
+   */
   const [sort, setSort] = useState<SortKey>(() => {
     try {
       const q = new URLSearchParams(window.location.search).get('sort') as SortKey | null
-      return q && SORT_KEYS.includes(q) ? q : 'popular'
-    } catch { return 'popular' }
+      if (q && SORT_KEYS.includes(q)) return q
+    } catch { /* 쿼리 파싱 실패는 기본값으로 */ }
+    // 🧭 2026-09-08 (대표 "가장 가까운 순이 먼저"): 좌표가 있으면 **저장된 지역을 이긴다**.
+    //    근거·함정은 `MobileHomePage` 의 같은 자리에 길게 적어 뒀다(두 홈이 같은 규칙을 공유한다).
+    return readCachedLoc() ? 'near' : 'popular'
   })
 
   // 🔗 섹션 '더보기'는 `/?sort=popular` 같은 **쿼리 전용 이동**이다. 그 반영 로직은
@@ -59,9 +68,9 @@ export default function PcHomePage() {
   const gridHeaderRef = useRef<HTMLElement | null>(null)
   useHomeQuerySync({ setCategory, setSort, gridHeaderRef })
   // 🗺️ 2026-07-16 (대표 — PC 홈 위치 필터): 선택 지역(초기값 = 지난 방문 저장분). GroupBuyFeed 로 주입.
-  const [region, setRegion] = useState<HomeRegion>(() => readHomeRegion())
+  const [region, setRegion] = useState<HomeRegion>(() => (readCachedLoc() ? {} : readHomeRegion()))
   // 🗺️ 2026-07-16 (대표 — 현위치로 가까운 순): GPS 좌표. 세팅되면 sort='near'(거리순, 숨기지 않고 재배열).
-  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null)
+  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(() => readCachedLoc())
   // 🧭 2026-08-30 (대표 "홈에선 현재 위치가 어딘지도 나와야지") — 모바일 홈과 같은 훅.
   const dong = useCurrentDong(userLoc)
   // '현 위치로 설정' → 거리순 정렬 + 지역필터 해제(가까운 딜을 전부 보여줌).
@@ -91,7 +100,11 @@ export default function PcHomePage() {
       {/* 🖥️ 2026-07-19 (대표 — "왼쪽 카테고리보단 위에"): 좌측 레일 제거 → 풀너비. 카테고리는 상단 가로 바(PcHomeRail).
           📐 2026-08-17 (대표 — "컴팩트하게, 여백이 많은 느낌" · 여기어때/그루폰 참고): 컨테이너 1600→1440
           + 상하 여백 축소. 카드 밀도는 GroupBuyFeed pc 그리드(xl 5열·2xl 6열)와 짝. */}
-      <div className="max-w-[1440px] mx-auto px-6 lg:px-8 pt-4">
+      {/* 🎫 2026-09-03 (대표 — "히어로 사진과 아래 흰색 공간 사이 공백을 없애줘"): `pt-4`(16px) 삭제.
+          히어로 사진은 `absolute inset-0` 이라 섹션 바닥이 곧 사진 바닥인데, 그 아래 16px 만큼
+          색면이 띠처럼 드러나 사진이 패널에 안 닿고 떠 보였다. 흰 패널이 사진 밑단에 그대로 물린다
+          (패널의 둥근 윗모서리가 그 이음매를 만든다 — 그루폰식 "색면 위 매대"). */}
+      <div className="max-w-[1440px] mx-auto px-6 lg:px-8">
         <main className="min-w-0">
           {/* 🗺️ 2026-08-19 (대표 확정 — 통합형 히어로): 여기 있던 **위치바 흰 패널(145px)**을 없앴다.
               위치 선택·현 위치·지도 진입은 전부 히어로 안 칩으로 옮겼다 — 헤더 114 + 히어로 190 =
@@ -107,7 +120,14 @@ export default function PcHomePage() {
               ⇒ 카테고리를 고른 순간엔 숨긴다. 'all'(홈 기본)에서만 편성이 보인다. */}
           {HOME_SHOWCASE_ENABLED && category === 'all' && (
             <>
-              <HomeSections midBanner={<HomeBannerStrip variant="inline" />} />
+              {/* 🎫 2026-09-05 (대표 "인기 이용권 섹션 위에 배너가 작게" — 시안 안 2): 첫 섹션 위 가로 카드.
+                  ⚠️ 모바일에만 두지 않는다 — 두 홈이 같은 섹션·같은 배너 자리를 쓰는데 한쪽만 반영하면
+                  이 레포가 이미 여러 번 겪은 "한쪽만 개선되는" 상태가 된다(더보기 링크가 그랬다). */}
+              <HomeBannerStrip variant="strip" />
+              <HomeSections
+                midBanner={<HomeBannerStrip variant="inline" />}
+                shortsRail={<UrShortsRail />}
+              />
               <HomeBannerStrip variant="wide" />
             </>
           )}
@@ -115,7 +135,7 @@ export default function PcHomePage() {
           {/* 🏷️ 2026-08-08: 카테고리를 고르면 제목·설명이 **그 카테고리를 말한다.** 이전엔 숙소를 눌러도
               제목이 "내 주변 가까운 딜"이라, 화면이 걸러졌다는 신호가 어디에도 없었다. */}
           {/* 🎨 그루폰 구조 — 제목·정렬칩·그리드를 하나의 흰 패널에 담는다(색면 위에 뜬 매대). */}
-          <div className="ur-home-panel">
+          <div className="ur-home-panel light-island">
           <header ref={gridHeaderRef} className="mb-3 scroll-mt-24">
             <h1 className="text-[20px] font-black tracking-tight text-gray-900 dark:text-white">
               {catLabel
@@ -130,7 +150,12 @@ export default function PcHomePage() {
             )}
           </header>
 
-          {/* 정렬 칩 — 현위치 설정 시 '가까운 순' 칩 노출(거리순). */}
+          {/* 정렬 칩 — 현위치 설정 시 '가까운 순' 칩 노출(거리순).
+              🎨 2026-09-07 (대표 승인 — 홈 개선 안 B): 선택 = **브랜드 블루 면**.
+              종전엔 잉크 검정이었는데 지도 칩·유어샵 카테고리·교환권 카테고리는 전부 블루로 통일돼
+              있었다. 같은 서비스에서 "선택됨"이 두 색이면 사용자가 규칙을 못 배운다.
+              ⚠️ 바로 위 카테고리 칩(`GroupBuyFeed`)도 **같이** 바꿨다 — 한쪽만 바꾸면 같은 줄에
+                 선택 색이 둘이 되어 오히려 더 어긋난다. */}
           <div className="flex items-center gap-2 mb-4 flex-wrap">
             {userLoc && (
               <button
@@ -138,7 +163,7 @@ export default function PcHomePage() {
                 aria-pressed={sort === 'near'}
                 className={`px-3.5 py-1.5 rounded-full text-[12.5px] font-bold border transition-colors inline-flex items-center gap-1 ${
                   sort === 'near'
-                    ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white'
+                    ? 'bg-brand text-white border-brand'
                     : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
                 }`}
               >
@@ -154,7 +179,7 @@ export default function PcHomePage() {
                   aria-pressed={active}
                   className={`px-3.5 py-1.5 rounded-full text-[12.5px] font-bold border transition-colors ${
                     active
-                      ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white'
+                      ? 'bg-brand text-white border-brand'
                       : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
                   }`}
                 >
@@ -169,7 +194,7 @@ export default function PcHomePage() {
           {category === 'stay_voucher' && (
             <Link
               to="/stays"
-              className="flex items-center justify-between mb-4 px-4 py-3 rounded-xl bg-gray-50 dark:bg-white/[0.04] border border-gray-200 dark:border-[#2C2F35] hover:bg-gray-100 dark:hover:bg-white/[0.08] transition-colors"
+              className="flex items-center justify-between mb-4 px-4 py-3 rounded-xl bg-gray-50 dark:bg-white/[0.04] border border-line hover:bg-gray-100 dark:hover:bg-white/[0.08] transition-colors"
             >
               <span className="text-[13px] font-bold text-gray-900 dark:text-white"><BedDouble className="w-4 h-4 inline-block align-[-3px] mr-1 text-gray-400" aria-hidden="true" />날짜·인원으로 숙소 검색하기</span>
               <span className="text-[13px] text-gray-500 dark:text-gray-400">체크인/체크아웃 지정 →</span>
@@ -199,7 +224,7 @@ export default function PcHomePage() {
           플래그 OFF 면 아무것도 안 그린다(홈은 2026-07-19 확정 구조로 즉시 복귀). */}
       {/* 🎨 2026-08-19: 색면 위에서는 자체 배경이 없으면 글자가 묻힌다(gray-900 on 잉크).
           지역 링크는 흰 밴드로 깔아 하단을 마무리한다 — 그루폰 하단 링크 영역과 같은 처리. */}
-      {REGION_PAGES_ENABLED && <RegionLinkGrid className="bg-white dark:bg-[#0D0F12]" />}
+      {REGION_PAGES_ENABLED && <RegionLinkGrid className="bg-white dark:bg-[#11141C]" />}
 
       <PcHomeAppBand />
       <SiteFooter />

@@ -94,7 +94,7 @@ export default function TrendPanel() {
     } finally { setBusy(false) }
   }
 
-  const card = 'mt-3 rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1A1C21] p-4'
+  const card = 'mt-3 rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] p-4'
   const hasData = useMemo(() => (series || []).some(d => d.cost > 0 || d.imp > 0 || d.conv_amt > 0), [series])
   const cur = METRICS.find(m => m.key === metric)!
 
@@ -127,7 +127,7 @@ export default function TrendPanel() {
       {err ? (
         <PanelError onRetry={load} busy={loading} label="추세 조회 실패" />
       ) : loading ? (
-        <div className="mt-4 h-[160px] animate-pulse rounded-xl bg-gray-100 dark:bg-[#1A1C21]" />
+        <div className="mt-4 h-[160px] animate-pulse rounded-xl bg-gray-100 dark:bg-[#1D1F29]" />
       ) : !hasData ? (
         <div className="mt-3 rounded-xl border border-dashed border-gray-200 dark:border-[#2C2F35] p-5 text-center">
           <p className="text-[12.5px] text-gray-500 dark:text-gray-400">{notConnected
@@ -162,7 +162,7 @@ export default function TrendPanel() {
             {METRICS.map((m) => (
               <button key={m.key} onClick={() => setMetric(m.key)}
                 className={`rounded-full px-2.5 py-1 text-[11.5px] font-semibold ${metric === m.key
-                  ? 'bg-gray-900 dark:bg-white text-white dark:text-[#0D0F12]'
+                  ? 'bg-gray-900 dark:bg-white text-white dark:text-[#11141C]'
                   : 'border border-gray-200 dark:border-[#2C2F35] text-gray-600 dark:text-gray-300'}`}>{m.label}</button>
             ))}
           </div>

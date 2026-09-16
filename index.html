@@ -92,7 +92,7 @@
             var hard = reason === 'chunk' || chunkSeen || shownBefore; // 확증된 청크 or 재발 → 완전복구
             var dark = false;
             try { dark = matchMedia && matchMedia('(prefers-color-scheme: dark)').matches; } catch (e) {}
-            var bg = dark ? '#0D0F12' : '#ffffff', fg = dark ? '#f5f5f5' : '#111827', sub = dark ? '#9ca3af' : '#6b7280';
+            var bg = dark ? '#11141C' : '#ffffff', fg = dark ? '#f5f5f5' : '#111827', sub = dark ? '#9ca3af' : '#6b7280';
             var title = hard ? '화면을 새로 불러올게요' : '불러오는 데 시간이 걸리고 있어요';
             var desc = hard
               ? '앱이 업데이트되는 중이에요. 잠시 뒤 자동으로 다시 시도합니다 — 바로 시도하려면 아래 버튼을 눌러주세요.'
@@ -117,7 +117,9 @@
             //   클래스는 시간이 지나면 저절로 낫는다(대표 실측 "시간 지나니까 정상"). 사용자가 버튼을 안 눌러도
             //   30초 뒤 __cb reload 로 스스로 복구 시도(전파 완료 시점에 자동 정상화). 실패해도 다음 문서의
             //   오버레이가 다시 30초 타이머를 재장전 → 주기적 자동 치유(무한 고속 루프 아님 — 30s 간격).
-            setTimeout(bustReload, 30000);
+            //   🛡️ 2026-09-13: **예산을 지나서** 재시도한다(종전엔 bustReload 직행 → 카운터 우회 → 폭주).
+            //     소진되면 자동 재시도는 멈추고 오버레이와 버튼이 남는다(사용자는 갇히지 않는다).
+            setTimeout(function () { if (takeReloadBudget()) bustReload(); }, 30000);
           } catch (e) { /* DOM 미준비 — 무시(리소스 error 는 body 이후) */ }
         }
         // 캐시버스트 reload — bfcache/heuristic/edge 의 옛 index.html 재서빙 우회(plain reload 는 stale 재서빙 시 또 404).
@@ -141,15 +143,30 @@
           Promise.all(jobs).then(bustReload, bustReload);
           setTimeout(bustReload, 1500); // SW/caches API 가 걸려도 최대 1.5s 뒤 강제 진행
         }
-        function reloadOnce() {
-          if (reloadPending) return; // 이미 재시도 예약됨 — 같은 버스트의 추가 청크에러는 무시(카운트 1회만).
+        // 🛡️ 2026-09-13 (대표 "결제의 다른 문제는?" — 라이브 실측): **재시도 예산 SSOT.**
+        //   `/group-buy/confirm-payment` 가 51초에 **31번** 다시 로드된 기록이 있다(서로 다른 문서 31개,
+        //   frontend_errors 의 boot-stuck 비콘). 설계는 '5분 내 8회 + 지수 백오프'인데 그 상한이 안 먹혔다 —
+        //   카운터가 `reloadOnce` **안에** 있어서, 오버레이의 30초 자동 재시도가 `bustReload()` 를 **직접**
+        //   부르며 예산을 통째로 우회했기 때문이다(아래 showStuckUI 참조).
+        //   ⇒ 세는 자리를 함수로 빼서 **두 경로가 같은 카운터**를 쓰게 한다. 상한에 걸리면 자동 재시도는
+        //     멈추고 오버레이(+버튼)만 남는다 — 그게 애초에 8회 캡을 둔 이유다.
+        //   ⚠️ sessionStorage 가 막힌 환경에선 1 을 돌려준다(= 막지 않음, 종전과 동일 동작).
+        function takeReloadBudget() {
           try {
             var KEY = '__ur_chunk_reload__', now = Date.now(), st = { n: 0, t: 0 };
             try { var raw = sessionStorage.getItem(KEY); if (raw) { var p = JSON.parse(raw); if (p && typeof p === 'object') st = p; } } catch (e) { /* 옛 '1' 포맷 — 리셋 */ }
             var within = now - st.t < 300000;
-            if (within && st.n >= 8) { showStuckUI('chunk'); return; } // 5분 내 8회 — stale 고착 → 무한 reload 대신 복구 UI
+            if (within && st.n >= 8) return 0; // 5분 내 8회 소진
             var attempt = within ? st.n + 1 : 1;
             sessionStorage.setItem(KEY, JSON.stringify({ n: attempt, t: now }));
+            return attempt;
+          } catch (e) { return 1; }
+        }
+        function reloadOnce() {
+          if (reloadPending) return; // 이미 재시도 예약됨 — 같은 버스트의 추가 청크에러는 무시(카운트 1회만).
+          try {
+            var attempt = takeReloadBudget();
+            if (!attempt) { showStuckUI('chunk'); return; } // 예산 소진 — 무한 reload 대신 복구 UI
             // 🛡️ 2026-07-21 (대표 "배포해도 유저 불편"): 재시도 전 유예(배포 전파 대기).
             // 🛡️ 2026-07-27 (대표 "복구 화면이 고객에게 드러나면 안돼"): 전파 창이 '수초' 가정(0.7~2.5s×3회/90s)
             //   보다 실제(수십 초~수분)로 길어, 창 안에서 재시도 소진 → 오버레이 + 버튼도 창 안이라 무효 →
@@ -245,11 +262,11 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="유어딜" />
-    <!-- 🛡️ 2026-05-01: 상태바 색상 — 앱이 주로 다크 테마라 기본 #0D0F12.
+    <!-- 🛡️ 2026-05-01: 상태바 색상 — 앱이 주로 다크 테마라 기본 #11141C.
          시스템 라이트 모드 사용자는 #FFFFFF (흰 테마 쇼핑 페이지와 매칭).
          App.tsx 의 useStatusBarTheme() 가 페이지 테마에 따라 동적으로 override. -->
-    <meta name="theme-color" content="#0D0F12" media="(prefers-color-scheme: dark)" />
-    <meta name="theme-color" content="#FAF7F5" media="(prefers-color-scheme: light)" /><!-- 🎨 2026-07-19 지시서 §6 라이트 웜화이트 -->
+    <meta name="theme-color" content="#11141C" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#F8F7FC" media="(prefers-color-scheme: light)" /><!-- 🎨 2026-07-19 지시서 §6 라이트 웜화이트 -->
     <link rel="manifest" href="/manifest.webmanifest" />
     <!-- 🎯 파비콘 (브라우저 탭 + 검색결과) — 유어딜 확정 아이콘(로즈+ur, 2026-07 Final 납품본).
          🔴 2026-08-01 (대표: "우리 저 아이콘 디자인이 적용이 안됐네? 지구본모양으로 남아있는 상태야"):
@@ -391,11 +408,11 @@
       /* Critical reset + layout (Tailwind preflight subset) */
       *,::before,::after{box-sizing:border-box;border-width:0;border-style:solid}
       html{line-height:1.5;-webkit-text-size-adjust:100%;tab-size:4;font-family:'Pretendard Variable',-apple-system,BlinkMacSystemFont,system-ui,sans-serif}
-      body{margin:0;line-height:inherit;background:#fff;color:#0D0F12}
+      body{margin:0;line-height:inherit;background:#fff;color:#11141C}
       img,svg,video,canvas,iframe{display:block;max-width:100%;height:auto}
       button{background:transparent;background-image:none;padding:0;font-family:inherit;font-feature-settings:inherit;cursor:pointer}
       /* 다크 모드 진입 직전 깜빡임 방지 */
-      html.dark body{background:#0D0F12;color:#fff}
+      html.dark body{background:#11141C;color:#fff}
 
       /* 🛡️ 2026-04-28: 인앱 브라우저 안내 (default 표시).
          JS 차단·CSP 차단·document.write 차단 환경에서도 정상 표시. */
@@ -497,7 +514,7 @@
            - localStorage 'light' → 라이트
            - localStorage 'system' or null (신규 사용자) → OS prefers-color-scheme 추적
          적용 범위: 화이트 테마 페이지 (쇼핑/결제) — dark: variants 활성/비활성.
-         다크 페이지 (홈/마이/라이브) 는 bg-[#0D0F12] 명시 강제라 토글 무영향. -->
+         다크 페이지 (홈/마이/라이브) 는 bg-[#11141C] 명시 강제라 토글 무영향. -->
     <script>
       (function () {
         var v = null;
@@ -505,16 +522,16 @@
         if (!v) { try { v = sessionStorage.getItem('ur_theme_mode_v1'); } catch (e) { /* sandbox */ } }
         var sysDark = false;
         try { sysDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches; } catch (e) {}
-        // 🛡️ 2026-05-16: 신규 사용자 (v === null) default = light.
-        //   기존 'system' 사용자만 OS 따라감. 'dark' 명시는 그대로.
-        var dark = v === 'dark' || (v === 'system' && sysDark);
+        // 🌓 2026-09-02 대표 지시 "시스템 테마에 따라가도록": 저장값 없음(v === null) = system 으로 OS 추적.
+        //   (05-16 "신규 = light" 대체.) 직접 고른 'light'/'dark' 는 그대로. useTheme.ts readMode 와 같은 규칙.
+        var dark = v === 'dark' || ((v === 'system' || v === null) && sysDark);
         try {
           if (dark) document.documentElement.classList.add('dark');
           else document.documentElement.classList.remove('dark');
           document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
         } catch (e) {}
         // 🛡️ 2026-05-04: body / pre-react 배경도 테마에 맞춰 즉시 설정 (FOUC 방지).
-        window.__urInitialBg = dark ? '#0D0F12' : '#ffffff';
+        window.__urInitialBg = dark ? '#11141C' : '#ffffff';
         window.__urInitialFg = dark ? '#ffffff' : '#1d1d1f';
       })();
     </script>

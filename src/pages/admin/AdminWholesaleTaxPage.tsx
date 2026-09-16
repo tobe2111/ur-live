@@ -53,17 +53,17 @@ interface AutoInvoiceRow {
   mall_id?: number
 }
 const AUTO_STATUS_BADGE: Record<string, string> = {
-  issued: 'bg-emerald-50 text-emerald-700',
-  draft: 'bg-amber-50 text-amber-700',
-  failed: 'bg-rose-50 text-rose-700',
+  issued: 'bg-tone-ok-bg text-tone-ok',
+  draft: 'bg-tone-warn-bg text-tone-warn',
+  failed: 'bg-tone-bad-bg text-tone-bad',
 }
 const AUTO_STATUS_LABEL: Record<string, string> = { issued: '발행완료', draft: '발행대기', failed: '발행실패' }
 
 const BUCKET_STYLE = [
-  'text-emerald-700',  // 0-7d
-  'text-amber-700',    // 8-30d
-  'text-orange-700',   // 31-60d
-  'text-rose-700',     // 60d+
+  'text-tone-ok',  // 0-7d
+  'text-tone-warn',    // 8-30d
+  'text-tone-warn',   // 31-60d
+  'text-tone-bad',     // 60d+
 ]
 const BUCKET_LABELS = ['0-7일', '8-30일', '31-60일', '60일+']
 
@@ -169,13 +169,13 @@ export default function AdminWholesaleTaxPage() {
         />
 
         <div className="flex items-center gap-2 my-4">
-          <button onClick={() => setTab('aging')} className={`px-3.5 py-1.5 rounded-lg text-sm font-medium ${tab === 'aging' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-700'}`}>
+          <button onClick={() => setTab('aging')} className={`px-3.5 py-1.5 rounded-lg text-sm font-medium ${tab === 'aging' ? 'bg-brand text-white' : 'bg-white border border-gray-200 text-gray-700'}`}>
             {t('admin.wsTax.tabAging', { defaultValue: '미수/미지급 Aging' })}
           </button>
-          <button onClick={() => setTab('invoices')} className={`px-3.5 py-1.5 rounded-lg text-sm font-medium ${tab === 'invoices' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-700'}`}>
+          <button onClick={() => setTab('invoices')} className={`px-3.5 py-1.5 rounded-lg text-sm font-medium ${tab === 'invoices' ? 'bg-brand text-white' : 'bg-white border border-gray-200 text-gray-700'}`}>
             {t('admin.wsTax.tabInvoices', { defaultValue: '매입 세금계산서(역발행)' })}
           </button>
-          <button onClick={() => setTab('auto')} className={`px-3.5 py-1.5 rounded-lg text-sm font-medium ${tab === 'auto' ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-700'}`}>
+          <button onClick={() => setTab('auto')} className={`px-3.5 py-1.5 rounded-lg text-sm font-medium ${tab === 'auto' ? 'bg-brand text-white' : 'bg-white border border-gray-200 text-gray-700'}`}>
             {t('admin.wsTax.tabAuto', { defaultValue: '거래별 세금계산서(자동)' })}
           </button>
         </div>
@@ -192,12 +192,12 @@ export default function AdminWholesaleTaxPage() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="bg-white rounded-xl border border-gray-200 p-5">
                   <div className="text-sm font-semibold text-gray-500 mb-1">{t('admin.wsTax.payableTotal', { defaultValue: '미지급 합계 (제조사)' })}</div>
-                  <div className="text-2xl font-bold text-gray-900">{formatWon(payableSum?.total || 0)}</div>
+                  <div className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">{formatWon(payableSum?.total || 0)}</div>
                   <div className="text-xs text-gray-400 mt-1">{payableSum?.count || 0}건 미정산</div>
                 </div>
                 <div className="bg-white rounded-xl border border-gray-200 p-5">
                   <div className="text-sm font-semibold text-gray-500 mb-1">{t('admin.wsTax.receivableTotal', { defaultValue: '미수 합계 (판매사 외상)' })}</div>
-                  <div className="text-2xl font-bold text-gray-900">{formatWon(receivableSum?.total || 0)}</div>
+                  <div className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">{formatWon(receivableSum?.total || 0)}</div>
                   <div className="text-xs text-gray-400 mt-1">{receivableSum?.count || 0}개 판매사</div>
                 </div>
               </div>
@@ -289,7 +289,7 @@ export default function AdminWholesaleTaxPage() {
               {!invLoading && <span className="text-sm text-gray-500">{t('admin.wsTax.issuable', { defaultValue: '발행가능' })} {issuableCount}건</span>}
             </div>
 
-            <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-sm text-amber-800">
+            <div className="flex items-start gap-2 bg-white border border-rule rounded-lg p-3 mb-4 text-sm text-tone-warn">
               <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
               <span>{t('admin.wsTax.manualNote', { defaultValue: '역발행은 수동 1회 기록입니다. 실제 전자세금계산서(바로빌) 발행은 staging 검증 + 최종 승인 후 별도 처리됩니다 — 자동 발행되지 않습니다.' })}</span>
             </div>
@@ -324,9 +324,9 @@ export default function AdminWholesaleTaxPage() {
                         <td className="py-2.5 px-4 text-right tabular-nums font-bold text-gray-900">{formatWon(c.total_amount)}</td>
                         <td className="py-2.5 px-4">
                           {c.invoice_status === 'issued' ? (
-                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">발행완료</span>
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-tone-ok-bg text-tone-ok">발행완료</span>
                           ) : c.invoice_status === 'pending' ? (
-                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">기록됨(대기)</span>
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-tone-warn-bg text-tone-warn">기록됨(대기)</span>
                           ) : (
                             <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">미기록</span>
                           )}
@@ -336,7 +336,7 @@ export default function AdminWholesaleTaxPage() {
                             <button
                               onClick={() => issue(c)}
                               disabled={issuing === c.supplier_id}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 text-white rounded-lg text-xs font-medium disabled:opacity-50"
+                              className="ur-btn ur-btn-sm ur-btn-primary inline-flex items-center gap-1.5 disabled:opacity-50"
                             >
                               {issuing === c.supplier_id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
                               {t('admin.wsTax.issue', { defaultValue: '역발행 기록' })}
@@ -373,7 +373,7 @@ export default function AdminWholesaleTaxPage() {
               <AdminMallSelect value={autoMallId} onChange={setAutoMallId} allLabel={t('admin.wsTax.allMalls', { defaultValue: '전체 몰' })} />
             </div>
 
-            <div className="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-sm text-blue-800">
+            <div className="flex items-start gap-2 bg-white border border-rule rounded-lg p-3 mb-4 text-sm text-gray-700">
               <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
               <span>{t('admin.wsTax.autoNote', { defaultValue: '주문 결제완료/정산 시 거래별로 자동 기록됩니다. 실제 국세청 발행은 발행 연동(TAX_INVOICE_API_KEY) 설정 시에만 이뤄지며, 미설정 시 발행대기(draft)로 남습니다. 재발행 버튼으로 연동 후 일괄 발행할 수 있습니다.' })}</span>
             </div>
@@ -404,7 +404,7 @@ export default function AdminWholesaleTaxPage() {
                         <td className="py-2.5 px-4 text-gray-900">
                           #{inv.order_id}
                           {inv.mall_id != null && mallNameById[inv.mall_id] && malls.length > 1 && (
-                            <span className="ml-2 text-[10px] font-medium px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600">{mallNameById[inv.mall_id]}</span>
+                            <span className="ml-2 text-[10px] font-medium px-1.5 py-0.5 rounded bg-tone-info-bg text-tone-info">{mallNameById[inv.mall_id]}</span>
                           )}
                         </td>
                         <td className="py-2.5 px-4 text-gray-600">{inv.type === 'purchase' ? t('admin.wsTax.typePurchaseShort', { defaultValue: '매입(역발행)' }) : t('admin.wsTax.typeSalesShort', { defaultValue: '매출' })}</td>
@@ -420,7 +420,7 @@ export default function AdminWholesaleTaxPage() {
                             <button
                               onClick={() => reissue(inv)}
                               disabled={reissuing === inv.id}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 text-white rounded-lg text-xs font-medium disabled:opacity-50"
+                              className="ur-btn ur-btn-sm ur-btn-primary inline-flex items-center gap-1.5 disabled:opacity-50"
                             >
                               {reissuing === inv.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
                               {t('admin.wsTax.reissue', { defaultValue: '발행' })}

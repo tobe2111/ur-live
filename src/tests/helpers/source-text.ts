@@ -35,6 +35,19 @@ import { resolve } from 'path'
  *   현재 `readCode` 대상 17개 중 실제로 망가지는 건 0개다(worker 를 읽는 테스트가 없다).
  *   아무도 안 밟는 지뢰를 제거하려다 잘 도는 것을 깨는 거래라 **경고만 남긴다.**
  */
+/**
+ * 여는 기호가 **같은 줄에서** 닫히는가. 문자열·정규식 오판을 한 줄로 가둬 두는 안전판이다 —
+ * 오판해도 "덜 지우는" 게 아니라 **파일 뒤쪽을 통째로 살려 두는** 사고가 나기 때문에 필요하다.
+ */
+function hasCloserOnLine(text: string, from: number, closer: string): boolean {
+  for (let j = from + 1; j < text.length; j++) {
+    if (text[j] === '\n') return false
+    if (text[j] === '\\') { j++; continue }
+    if (text[j] === closer) return true
+  }
+  return false
+}
+
 export function stripComments(text: string): string {
   // 🩸 2026-08-27: 정규식 판을 **스캐너로 교체**했다. 위 경고가 말한 지뢰를 그날 실제로 밟았다 —
   //   `ProductRepository.ts` 의 라인 주석 한 줄에 `(/api/wholesale/*)` 가 있어 그 `/*` 가 블록주석
@@ -64,6 +77,10 @@ export function stripComments(text: string): string {
       continue
     }
     if (c === '"' || c === "'" || c === '`') {           // 문자열 · 템플릿
+      // 🩸 2026-09-13: 따옴표가 **그 줄에서 안 닫히면 문자열이 아니다.** JSX 본문의 아포스트로피
+      //   (`don't`·`대표's`)가 그 경우인데, 종전 판은 그걸 문자열로 보고 다음 따옴표까지 통째로
+      //   삼켜 그 사이의 주석을 전부 살려 뒀다. 백틱만 여러 줄이 정상이다.
+      if (c !== '`' && !hasCloserOnLine(text, i, c)) { out += c; prev = c; i++; continue }
       const q = c
       out += c; i++
       while (i < n) {
@@ -75,7 +92,13 @@ export function stripComments(text: string): string {
       prev = q
       continue
     }
-    if (c === '/' && /[(,=:[!&|?{};+\-*%^~<>]/.test(prev)) {   // 정규식 리터럴
+    // 정규식 리터럴 — 🔴 `prev === '<'` 은 **JSX 닫는 태그(`</div>`)** 다. 종전 판은 그걸 정규식
+    //   시작으로 읽어 다음 `/` 까지(=파일 대부분) 통째로 삼켰고, 그 안의 주석이 전부 살아남았다.
+    //   실측: `RegisterPage.tsx` 15,428자 중 141자만 지워졌다(= 사실상 주석 제거를 안 한 것).
+    //   그 상태로도 테스트는 초록이라 아무도 몰랐다. `a < /re/` 같은 코드는 이 레포에 없다.
+    if (c === '/' && prev !== '<' && /[(,=:[!&|?{};+\-*%^~<>]/.test(prev)) {
+      // 정규식은 이 레포에서 **한 줄**이다. 그 줄에서 안 닫히면 나눗셈·JSX 로 보고 넘긴다.
+      if (!hasCloserOnLine(text, i, '/')) { out += c; prev = c; i++; continue }
       out += c; i++
       let inClass = false
       while (i < n) {
@@ -143,4 +166,39 @@ export function sliceFrom(code: string, anchor: string, end?: string, maxLen = 2
     return j < 0 ? code.slice(i, i + maxLen) : code.slice(i, j)
   }
   return code.slice(i, i + maxLen)
+}
+
+/**
+ * 🩹 **정비 레인(repair-schema) 전체 소스** — 파일이 아니라 *레인*을 읽는다.
+ *
+ * ## 왜 파일 경로로 읽으면 안 되나 (2026-09-07 실측 — 이 헬퍼가 생긴 이유)
+ *
+ * 정비 레인의 불변식은 늘 **"이 테이블/컬럼이 정비 레인에 등재돼 있다"** 이지
+ * *"repair-schema.routes.ts 라는 파일 안에 있다"* 가 아니다. 그런데 일곱 개 테스트가
+ * 후자로 적혀 있었고, `repair-schema.routes.ts` 가 1,455줄로 커져 파일크기 래칫에 걸려
+ * 표 정의를 `repair-schema/aux-tables.ts` 로 **옮기자 네 개가 통째로 빨간불**이 됐다.
+ * 불변식은 하나도 안 깨졌는데 테스트만 깨진 것 — 검사가 *사실*이 아니라 *주소*를 보고 있었다.
+ *
+ * ⚠️ 그리고 반대 방향이 더 위험하다: 표가 딴 파일로 가 버린 뒤에도
+ * `toContain('...')` 류가 **우연히 통과**하면(다른 이유로 그 문자열이 남아 있으면)
+ * 정비 등재가 실제로 사라졌는데 초록불이 뜬다. 레인 전체를 읽으면 그 창이 닫힌다.
+ *
+ * 그래서 `repair-schema.routes.ts` + `repair-schema/*.ts` 를 **디렉터리에서 찾아** 잇는다.
+ * 다음에 또 쪼개도 이 헬퍼를 쓰는 검사는 안 깨지고, 등재가 진짜로 빠지면 그때만 깨진다.
+ *
+ * 🔒 파일을 하나도 못 찾으면 **통과가 아니라 예외**다 — 이 레포가 반복해 당한
+ * "측정 대상 0건인데 초록불"(= 헛도는 가드)을 이 헬퍼 자신이 하지 않게.
+ */
+export function readRepairLane(): string {
+  const dir = 'src/worker/routes/repair-schema'
+  const parts: string[] = [readRaw('src/worker/routes/repair-schema.routes.ts')]
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { readdirSync } = require('fs') as typeof import('fs')
+  for (const f of readdirSync(resolve(process.cwd(), dir)).sort()) {
+    if (f.endsWith('.ts')) parts.push(readRaw(`${dir}/${f}`))
+  }
+  if (parts.length < 2) {
+    throw new Error(`정비 레인 소스를 ${dir} 에서 못 찾았다 — 경로가 바뀌었는지 확인할 것`)
+  }
+  return parts.join('\n')
 }

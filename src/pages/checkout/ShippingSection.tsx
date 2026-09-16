@@ -15,7 +15,7 @@ interface Props {
 export default function ShippingSection({ selectedAddress, onOpenAddressModal }: Props) {
   const { t } = useTranslation()
   return (
-    <section className="bg-white dark:bg-[#0D0F12] px-5 py-5">
+    <section className="bg-white dark:bg-[#11141C] px-5 py-5">
       <div className="flex items-center justify-between">
         <h2 className="text-[15px] font-bold text-gray-900 dark:text-white">{t('checkout.shipping.title', { defaultValue: '배송지' })}</h2>
         <button

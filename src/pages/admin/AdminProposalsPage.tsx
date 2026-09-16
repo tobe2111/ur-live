@@ -32,7 +32,7 @@ const PROPOSALS = [
     key: 'influencer',
     label: '인플루언서 제휴',
     url: '/static/proposals/influencer-proposal.html',
-    summary: '매장이 제안하는 딜 커미션과 영입 커미션 2%(직접 입점 매장, 1년), 이용 흐름과 정산 조건.',
+    summary: '매장이 제안하는 딜 커미션의 이용 흐름과 정산 조건. (영입 커미션 2% 는 2026-09-16 폐지)',
     audience: '인플루언서 · 크리에이터',
     slides: 9,
   },
@@ -106,7 +106,7 @@ export default function AdminProposalsPage() {
         </div>
       )}
 
-      <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <div className="rounded-[var(--dash-radius,16px)] border border-gray-200 bg-white border border-rule overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-gray-100">
           <div className="min-w-0">
             <p className="text-[14px] font-bold text-gray-900">{active.label} 제안서</p>
@@ -125,7 +125,7 @@ export default function AdminProposalsPage() {
             </button>
             <button
               onClick={print}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-gray-900 text-white text-[13px] font-bold hover:bg-gray-800"
+              className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-1.5 text-[13px]"
             >
               <Printer className="w-4 h-4" />
               PDF로 저장

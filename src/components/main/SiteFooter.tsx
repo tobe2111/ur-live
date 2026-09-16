@@ -15,7 +15,7 @@ const colLink = 'block text-[13px] text-gray-600 dark:text-gray-300 hover:text-g
 
 export default function SiteFooter() {
   return (
-    <footer className="bg-white dark:bg-[#0D0F12] border-t border-gray-100 dark:border-[#2C2F35]">
+    <footer className="bg-white dark:bg-[#11141C] border-t border-gray-100 dark:border-[#2C2F35]">
       <div className="max-w-[1200px] mx-auto px-5 lg:px-8 pt-8 pb-6">
         {/* ── 상단: 브랜드 + 링크 컬럼 ── */}
         <div className="grid grid-cols-2 gap-x-6 gap-y-7 sm:grid-cols-3 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
@@ -25,7 +25,7 @@ export default function SiteFooter() {
             <p className="mt-2.5 text-[13px] leading-relaxed text-gray-500 dark:text-gray-400">
               우리 동네 이용권·공동구매·교환권을<br />할인가로, 매장에서 QR로 바로.
             </p>
-            <a href="/partnership" className="inline-block mt-3 text-[12px] font-bold text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-[#2C2F35] rounded-full px-3.5 py-1.5 hover:border-brand hover:text-brand transition-colors">
+            <a href="/partnership" className="inline-block mt-3 text-[12px] font-bold text-gray-700 dark:text-gray-200 border border-line rounded-full px-3.5 py-1.5 hover:border-brand hover:text-brand transition-colors">
               광고·제휴 문의 →
             </a>
           </div>
@@ -57,7 +57,6 @@ export default function SiteFooter() {
             <a href="/store/new" className={colLink}>내 가게 등록하기</a>
             <a href="/area-report" className={colLink}>우리 동네 상권 리포트</a>
             <a href="/creators" className={colLink}>크리에이터 모집</a>
-            <a href="/agency/register/business" className={colLink}>에이전시 시작</a>
             {!REFERRAL_GROUP_DISCOUNT_DISABLED && (
               <a href="/referral" className={colLink}>공구 개최하기</a>
             )}
@@ -68,7 +67,6 @@ export default function SiteFooter() {
             <h3 className={colTitle}>약관·정책</h3>
             <a href="/terms" className={colLink}>서비스 이용약관</a>
             <a href="/terms/seller" className={colLink}>판매자 약관</a>
-            <a href="/terms/agency" className={colLink}>에이전시 파트너 약관</a>
             {/* 개인정보처리방침 — 정통망법 관례상 굵게 강조 */}
             <a href="/privacy" className={`${colLink} font-bold`}>개인정보처리방침</a>
             <a href="/refund" className={colLink}>배송 및 환불 정책</a>
@@ -86,7 +84,7 @@ export default function SiteFooter() {
             사업장주소: 서울특별시 강남구 남부순환로359길 14, 3층(도곡동) · 대표이메일: jiwon@ur-team.com
           </p>
           <p className="text-[11px] leading-[1.8]">서비스 제공 기간: 상품 구매 후 평균 7일 이내 배송 완료</p>
-          <p className="text-[11px] leading-[1.8] mt-2 text-gray-400 dark:text-gray-600">© 2026 리스터코퍼레이션. All rights reserved.</p>
+          <p className="text-[11px] leading-[1.8] mt-2 text-gray-400 dark:text-gray-500">© 2026 리스터코퍼레이션. All rights reserved.</p>
         </div>
       </div>
     </footer>

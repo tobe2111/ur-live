@@ -772,7 +772,7 @@
 |---|---|---|
 | 플랫폼 fee (default) | 5% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.PLATFORM_FEE_PCT` |
 | 위탁 판매 셀러 commission | 10% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.SELLER_COMMISSION_PCT` |
-| 제휴 마케팅 추천 보상 (default) | 5% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.AFFILIATE_COMMISSION_PCT` |
+| 제휴 마케팅 추천 보상 (default) | 2% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.AFFILIATE_COMMISSION_PCT` |
 | 외부 카테고리(숙박 등) 수수료 상한 | 20% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.STAYS_COMMISSION_CAP_PCT` |
 | 최소 출금 금액 | 10,000원 | `src/shared/constants/policy.ts:WITHDRAWAL_DEFAULTS.MIN_AMOUNT` |
 | 최소 commission 출금 | 10,000원 | `src/shared/constants/policy.ts:REFUND_POLICY.COMMISSION_MIN_WITHDRAWAL` |
@@ -780,7 +780,7 @@
 | 원천징수 — 기타소득 (단발성 협업) | 8.8% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.other_income` |
 | 기타소득 분리과세 연 한도 | 3,000,000원 | `src/worker/utils/tax-withholding.ts:ANNUAL_THRESHOLD` |
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (70개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (72개)
 
 - `/browse`
 - `/cart`
@@ -794,7 +794,6 @@
 - `/seller`
 - `/seller/2fa`
 - `/seller/ad-slots`
-- `/seller/agency-delegation`
 - `/seller/alimtalk`
 - `/seller/analytics`
 - `/seller/bundles`
@@ -813,7 +812,9 @@
 - `/seller/ledger`
 - `/seller/login`
 - `/seller/marketing`
+- `/seller/more`
 - `/seller/notify-followers`
+- `/seller/operating`
 - `/seller/operators`
 - `/seller/orders`
 - `/seller/plus-friend-guide`
@@ -824,7 +825,6 @@
 - `/seller/profile`
 - `/seller/promo-codes`
 - `/seller/promo-spend`
-- `/seller/promote-boosts`
 - `/seller/proxy-products`
 - `/seller/realtime`
 - `/seller/register`
@@ -837,6 +837,7 @@
 - `/seller/scan`
 - `/seller/settlements`
 - `/seller/signup`
+- `/seller/store`
 - `/seller/stores`
 - `/seller/tier`
 - `/seller/tiktok-callback`
@@ -845,6 +846,7 @@
 - `/seller/youtube-growth`
 - `/seller/youtube-growth/success`
 - `/seller/youtube/callback`
+- `/store/find`
 - `/store/new`
 - `/store/scan`
 - `/store/stats/:productId`
@@ -853,7 +855,7 @@
 - `/vouchers/:id`
 - `/wishlist`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (280개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (272개)
 
 
 **/api/admin-review-bonus/:id**
@@ -1055,9 +1057,6 @@
 - `GET /api/seller/analytics/store-dashboard/stats`
 - `GET /api/seller/analytics/voucher-usage`
 
-**/api/seller/business-info**
-- `GET /api/seller/business-info`
-
 **/api/seller/business-registration**
 - `POST /api/seller/business-registration/ocr-verify`
 - `POST /api/seller/business-registration/submit`
@@ -1081,11 +1080,6 @@
 **/api/seller/deal-withdraw**
 - `POST /api/seller/deal-withdraw`
 
-**/api/seller/delegation**
-- `GET /api/seller/delegation/`
-- `POST /api/seller/delegation/:agencyId/grant`
-- `POST /api/seller/delegation/:agencyId/revoke`
-
 **/api/seller/fee-context**
 - `GET /api/seller/fee-context`
 
@@ -1095,6 +1089,8 @@
 **/api/seller/gb**
 - `GET /api/seller/gb/:id`
 - `PUT /api/seller/gb/:id`
+- `GET /api/seller/gb/mall`
+- `POST /api/seller/gb/mall/apply`
 - `GET /api/seller/gb/support-contact`
 
 **/api/seller/influencers**
@@ -1112,15 +1108,16 @@
 **/api/seller/login**
 - `POST /api/seller/login`
 
-**/api/seller/my-seller-status**
-- `GET /api/seller/my-seller-status`
-
 **/api/seller/my-stores**
 - `GET /api/seller/my-stores`
+- `GET /api/seller/my-stores/summary`
 
 **/api/seller/onboarding**
 - `GET /api/seller/onboarding/`
 - `POST /api/seller/onboarding/complete/:step_key`
+
+**/api/seller/operating-summary**
+- `GET /api/seller/operating-summary`
 
 **/api/seller/operators**
 - `GET /api/seller/operators`
@@ -1257,12 +1254,6 @@
 **/api/seller/surface**
 - `GET /api/seller/surface`
 
-**/api/seller/switch-to-seller**
-- `POST /api/seller/switch-to-seller`
-
-**/api/seller/switch-to-user**
-- `POST /api/seller/switch-to-user`
-
 **/api/seller/tax-summary**
 - `GET /api/seller/tax-summary`
 
@@ -1278,10 +1269,6 @@
 - `POST /api/seller/tiktok/sync-videos`
 - `DELETE /api/seller/tiktok/unlink`
 
-**/api/seller/transfers**
-- `GET /api/seller/transfers/`
-- `POST /api/seller/transfers/:id/respond`
-
 **/api/seller/unlink-kakao**
 - `POST /api/seller/unlink-kakao`
 
@@ -1294,11 +1281,6 @@
 
 **/api/seller/voucher-catalog**
 - `GET /api/seller/voucher-catalog`
-
-**/api/seller/voucher-draft**
-- `DELETE /api/seller/voucher-draft`
-- `GET /api/seller/voucher-draft`
-- `PUT /api/seller/voucher-draft`
 
 **/api/seller/voucher-orders**
 - `GET /api/seller/voucher-orders`
@@ -1411,7 +1393,7 @@
 - `GET /api/youtube/shorts/sync`
 
 
-> 마지막 생성: 2026-08-31T07:29:32.848Z
+> 마지막 생성: 2026-09-16T10:39:03.541Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

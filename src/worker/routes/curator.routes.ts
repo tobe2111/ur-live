@@ -28,7 +28,10 @@ import {
 import { CURATOR_DEFAULTS, WITHDRAWAL_DEFAULTS, TAX_POLICY, COMMISSION_DEFAULTS } from '../../shared/constants/policy'
 import { isVoucherCategory } from '../../shared/constants/voucher-categories'
 import { getPolicy } from '../utils/dynamic-policy'
-import { intParam } from '@/shared/pagination'
+import { intParam } from '@/shared/pagination'; import { loadLinkedSellerProducts } from '../utils/linkshop-seller-products' // 한 줄: 래칫 1397
+import { consumerVisibleProductSql } from '../../shared/db/consumer-visible-product'
+import { isAffiliateProgramEnabled, gateAffiliateRows } from '../utils/affiliate-program'
+import { findOwnedApprovedSeller } from '../utils/seller-operators'
 
 const curatorRoutes = new Hono<{ Bindings: Env }>()
 
@@ -126,10 +129,44 @@ async function ensureCuratorTables(DB: D1Database): Promise<void> {
   } catch { /* graceful */ }
 }
 
-// ============================================================
-// GET /api/curator/:handle  (public)
-// 큐레이터 공개 페이지 데이터: user + pins (with product 메타)
-// ============================================================
+// GET /api/curator/:handle (public) — 큐레이터 공개 페이지: user + pins (product 메타)
+// ⚠️ 정적 경로(/recommendations)는 아래 /:handle 보다 **먼저** — Hono 는 등록 순서로 매칭한다.
+//   뒤에 두면 handle="recommendations" 로 잡혀 404. 지키는 가드: check-route-shadowing.
+curatorRoutes.get('/recommendations', requireAuth(), async (c) => {
+  try {
+    const userId = getAuthUserId(c)
+    const DB = c.env.DB
+
+    // 본인이 이미 핀한 상품은 제외
+    const { results: pinned } = userId
+      ? await DB.prepare('SELECT product_id FROM product_pins WHERE user_id = ?')
+          .bind(userId)
+          .all<{ product_id: number }>()
+      : { results: [] as { product_id: number }[] }
+    const excludeIds = (pinned ?? []).map(p => p.product_id)
+
+    const limit = Math.max(5, Math.min(50, intParam(c.req.query('limit'), 20)))
+    const exclusion = excludeIds.length
+      ? ` AND p.id NOT IN (${excludeIds.map(() => '?').join(',')})`
+      : ''
+    const { results } = await DB.prepare(
+      `SELECT p.id, p.name, p.price, p.original_price, p.category, p.image_url, p.thumbnail,
+              p.referral_commission_rate AS commission_rate, COALESCE(p.referral_enabled, 0) AS referral_enabled,
+              COALESCE(p.sold_count, 0) AS sold_count
+       FROM products p
+       WHERE p.is_active = 1
+         AND COALESCE(p.referral_enabled, 0) = 1 AND ${consumerVisibleProductSql('p')}
+         ${exclusion}
+       ORDER BY p.sold_count DESC, p.id DESC
+       LIMIT ?`,
+    ).bind(...excludeIds, limit).all()
+
+    return c.json({ success: true, recommendations: gateAffiliateRows(results ?? [], await isAffiliateProgramEnabled(DB)) })
+  } catch (err) {
+    return safeError(c, err, '추천 핀 조회 중 오류가 발생했습니다', '[curator:recommend]')
+  }
+})
+
 curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
   try {
     const handle = c.req.param('handle')?.toLowerCase().trim()
@@ -192,10 +229,10 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
                 p.category, p.is_active, p.dominant_color, p.avg_rating, p.review_count, p.sold_count,
                 p.restaurant_name, p.restaurant_address,
                 p.seller_id,
-                COALESCE(p.referral_commission_rate, 0) AS commission_rate
+                p.referral_commission_rate AS commission_rate, COALESCE(p.referral_enabled, 0) AS referral_enabled
          FROM product_pins pp
          JOIN products p ON p.id = pp.product_id
-         WHERE pp.user_id = ? AND p.is_active = 1
+         WHERE pp.user_id = ? AND p.is_active = 1 AND ${consumerVisibleProductSql('p')}
          ORDER BY pp.position ASC, pp.created_at DESC
          LIMIT ?`,
       ).bind(userId, CURATOR_DEFAULTS.PIN_MAX_PER_USER).all().catch(() => ({ results: [] as Record<string, unknown>[] })),
@@ -208,11 +245,11 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
     //     실려도 정확하다 — 누가 보든 같은 값이다.
     //   💸 왕복 1회. 핀마다 부르면 핀 수만큼 왕복한다.
     const dealBySeller = await findActiveDealPctsBySeller(DB, String(userId))
-    const pins = (pinsResult.results as Record<string, unknown>[]).map((r) => ({
+    const pins = gateAffiliateRows((pinsResult.results as Record<string, unknown>[]).map((r) => ({
       ...r,
       // null = 이 매장과 딜이 없음 → 팔려도 소개비 0. 화면이 두 덩어리로 가르는 근거.
       deal_pct: dealBySeller.get(Number(r.seller_id)) ?? null,
-    }))
+    })), await isAffiliateProgramEnabled(DB))
 
     // 🎨 2026-06-17 (유어샵 랜딩 리디자인): 마퀴 헤드라인 — 별도 best-effort 조회(컬럼 없는 env 에서
     //   메인 SELECT 의 banner/sns 가 폴백으로 사라지지 않도록 분리). 컬럼 없으면 null.
@@ -295,7 +332,7 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
         name: linkedSeller.name,
       } : null,
       // 🚀 2026-07-11: 셀러 공개 페이로드 동봉(1-RTT) — 없으면(비사업자/조회실패) null, 클라 폴백 fetch.
-      linked_seller_public: linkedSellerPublic,
+      linked_seller_public: linkedSellerPublic, linked_seller_products: linkedSeller?.id ? await loadLinkedSellerProducts(c.env.DB, Number(linkedSeller.id)) : null, // 🚀 2026-09-02 셀러 상품 100개 동봉(없으면 null → 클라 폴백) · 한 줄: 래칫 1397
     })
   } catch (err) {
     return safeError(c, err, '큐레이터 정보 조회 중 오류가 발생했습니다', '[curator:get]')
@@ -924,42 +961,6 @@ curatorRoutes.get('/me/pins/stats', requireAuth(), async (c) => {
 // GET /api/curator/recommendations  (requireAuth optional)
 // 핀 후보 추천 — 인기 + 카테고리 + 최근본 (단순)
 // ============================================================
-curatorRoutes.get('/recommendations', requireAuth(), async (c) => {
-  try {
-    const userId = getAuthUserId(c)
-    const DB = c.env.DB
-
-    // 본인이 이미 핀한 상품은 제외
-    const { results: pinned } = userId
-      ? await DB.prepare('SELECT product_id FROM product_pins WHERE user_id = ?')
-          .bind(userId)
-          .all<{ product_id: number }>()
-      : { results: [] as { product_id: number }[] }
-    const excludeIds = (pinned ?? []).map(p => p.product_id)
-
-    const limit = Math.max(5, Math.min(50, intParam(c.req.query('limit'), 20)))
-    const exclusion = excludeIds.length
-      ? ` AND p.id NOT IN (${excludeIds.map(() => '?').join(',')})`
-      : ''
-
-    const { results } = await DB.prepare(
-      `SELECT p.id, p.name, p.price, p.original_price, p.category, p.image_url, p.thumbnail,
-              COALESCE(p.referral_commission_rate, 0) AS commission_rate,
-              COALESCE(p.sold_count, 0) AS sold_count
-       FROM products p
-       WHERE p.is_active = 1
-         AND COALESCE(p.referral_enabled, 0) = 1
-         AND NOT (COALESCE(p.is_supply_product,0) = 1 AND COALESCE(p.supply_source_id,0) = 0)
-         ${exclusion}
-       ORDER BY p.sold_count DESC, p.id DESC
-       LIMIT ?`,
-    ).bind(...excludeIds, limit).all()
-
-    return c.json({ success: true, recommendations: results ?? [] })
-  } catch (err) {
-    return safeError(c, err, '추천 핀 조회 중 오류가 발생했습니다', '[curator:recommend]')
-  }
-})
 
 // ============================================================
 // POST /api/curator/me/withdrawal (requireUser) — Phase 4 출금
@@ -991,9 +992,10 @@ curatorRoutes.post('/me/withdrawal', rateLimit({ action: 'curator_withdrawal', m
     // 🛡️ 2026-05-25 신모델 정산 분기:
     //   사업자 셀러 (sellers.linked_user_id = userId) — 실제 돈 출금 (user_withdrawals)
     //   일반 user — 딜로만 적립 (user_points). 출금 거부.
-    const sellerRow = await c.env.DB.prepare(
-      `SELECT id FROM sellers WHERE linked_user_id = ? AND status = 'approved' LIMIT 1`,
-    ).bind(userId).first<{ id: number }>().catch(() => null)
+    // 🪑 2026-09-09: `linked_user_id` 만 보면 `/store/new` 로 직접 등록한 사장님이 전부 빠진다
+    //   (그 칸은 설계상 비어 있고 소유권은 `seller_operators.role='owner'` 에 있다).
+    //   ⇒ 자기 매장 매출인데 "사업자 셀러만 가능합니다" 로 막히던 것. 중개(operator)는 여전히 불가.
+    const sellerRow = await findOwnedApprovedSeller(c.env.DB, userId)
     if (!sellerRow) {
       return c.json({
         success: false,
@@ -1138,9 +1140,7 @@ curatorRoutes.get('/me/withdrawal', requireAuth(), async (c) => {
     } catch { /* ignore */ }
 
     // 🛡️ 2026-05-25 신모델: 사업자 셀러 여부 — 출금 UI 분기
-    const sellerRow = await DB.prepare(
-      `SELECT id FROM sellers WHERE linked_user_id = ? AND status = 'approved' LIMIT 1`,
-    ).bind(userId).first<{ id: number }>().catch(() => null)
+    const sellerRow = await findOwnedApprovedSeller(DB, userId)   // 🪑 2026-09-09 — 게이트와 같은 판정
     const isBusinessSeller = !!sellerRow
 
     // user_points 의 현재 딜 잔액 (일반 user 용 표시)
@@ -1208,9 +1208,7 @@ curatorRoutes.get('/me/business', requireAuth(), async (c) => {
     //   = 검증된 사업자 → 현금정산 자격. 출금 게이트(line 861-870)·payout_mode(line 1015)가 이미
     //   'linked approved seller' 기준이라, 본 조회만 정합 맞춰 콘솔이 "매장 등록 = 현금정산 활성"을
     //   인식(중복 '사업자 등록' 프롬프트 제거). **read-only — 머니 쓰기 0**, 출금 게이트 무변경.
-    const storeSeller = await c.env.DB.prepare(
-      `SELECT business_name, business_number FROM sellers WHERE linked_user_id = ? AND status = 'approved' LIMIT 1`,
-    ).bind(userId).first<{ business_name: string | null; business_number: string | null }>().catch(() => null)
+    const storeSeller = await findOwnedApprovedSeller(c.env.DB, userId)   // 🪑 2026-09-09 — 게이트와 같은 판정
     if (storeSeller) {
       const r = (row || {}) as Record<string, unknown>
       return c.json({

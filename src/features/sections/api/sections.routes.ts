@@ -119,16 +119,6 @@ sectionsRoutes.get('/', edgeCache(120), async (c) => {
         `).all();
 
         const sectionList = (sections ?? []) as Array<Record<string, unknown>>;
-        // 🏠 규칙 섹션은 질의로 채운다. manual 만 아래 section_products 조회 대상.
-        const ruleSections = sectionList.filter(s => normalizeSectionSource(s.source) !== 'manual');
-        const ruleProducts = new Map<number, unknown[]>();
-        for (const s of ruleSections) {
-          ruleProducts.set(s.id as number, await resolveSectionProducts(c.env as Env, {
-            source: normalizeSectionSource(s.source),
-            sourceValue: (s.source_value as string) ?? null,
-            limit: (s.limit_count as number) ?? null,
-          }));
-        }
 
         const sectionIds = sectionList
           .filter(s => normalizeSectionSource(s.source) === 'manual')
@@ -157,6 +147,53 @@ sectionsRoutes.get('/', edgeCache(120), async (c) => {
               productsBySection.set(sid, arr);
             }
           }
+        }
+
+        /**
+         * 🖼️ 2026-09-06 (대표 *"메인에서 보면 이용권의 똑같은 사진이 두번 나오는 경우가 있는데"*):
+         *   **한 상품은 한 화면에 한 번.** 섹션은 그동안 각자 독립으로 채워졌고 서로 겹치는지
+         *   아무도 안 봤다 — 라이브 실측에서 '지금 인기 이용권' 4개 중 **3개**가 바로 아래
+         *   '주말에 떠나는 숙소'에 그대로 다시 나왔다(인기 상위가 대부분 숙소라 두 규칙이
+         *   거의 같은 목록을 냈다). 사용자에겐 같은 사진이 위아래로 두 번이다.
+         *
+         * ## 누가 먼저 가져가는가
+         * **수동 큐레이션이 규칙을 이긴다.** 어드민이 그 줄에 그 상품을 직접 골라 넣었는데
+         * 위 규칙 섹션이 먼저 집어갔다고 사라지면, 사람이 내린 결정이 질의에 밀리는 것이다.
+         * ⇒ manual 이 자기 몫을 **먼저 확정**하고, 규칙 섹션이 그 바깥에서 렌더 순서대로 채운다.
+         * 규칙 섹션은 `LIMIT` 이 그대로라 **줄 길이가 줄지 않는다** — 다음 후보가 자리를 메운다
+         * (라이브 실측: 숙소 후보 51개라 4자리 채우는 데 여유가 충분하다).
+         *
+         * ⚠️ 아래 딜 피드(`/api/group-buy/products`)와는 겹쳐도 **빼지 않는다.** 그건 "전체 목록"이라
+         *   거기서 상품을 빼면 목록이 거짓말이 된다(큐레이션한 것이 전체에도 있는 건 정상이다).
+         */
+        const claimed = new Set<number>();
+        for (const s of sectionList) {
+          if (normalizeSectionSource(s.source) !== 'manual') continue;
+          const kept: unknown[] = [];
+          for (const p of productsBySection.get(s.id as number) ?? []) {
+            const id = (p as { id?: number }).id;
+            if (typeof id === 'number' && claimed.has(id)) continue;
+            if (typeof id === 'number') claimed.add(id);
+            kept.push(p);
+          }
+          productsBySection.set(s.id as number, kept);
+        }
+
+        // 규칙 섹션은 **렌더 순서대로** — 위에 나온 것을 빼고 다음 후보로 채운다.
+        const ruleProducts = new Map<number, unknown[]>();
+        for (const s of sectionList) {
+          if (normalizeSectionSource(s.source) === 'manual') continue;
+          const rows = await resolveSectionProducts(c.env as Env, {
+            source: normalizeSectionSource(s.source),
+            sourceValue: (s.source_value as string) ?? null,
+            limit: (s.limit_count as number) ?? null,
+            excludeIds: [...claimed],
+          });
+          for (const p of rows) {
+            const id = (p as { id?: number }).id;
+            if (typeof id === 'number') claimed.add(id);
+          }
+          ruleProducts.set(s.id as number, rows);
         }
 
         return sectionList

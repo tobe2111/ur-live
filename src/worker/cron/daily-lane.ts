@@ -44,14 +44,9 @@ import { handleDisputesEscalation } from './disputes-escalation'
 import { handleAutoSeedReviews } from './auto-seed-reviews'
 import { handleSellerChurnDetect } from './seller-churn-detect'
 import { handleLedgerReconcile } from './ledger-reconcile'
-import { handleAgencyCreatorEval } from './agency-creator-eval'
-import { handleAgencyMonthlyTasks } from './agency-monthly-tasks'
 import { handleTikTokVideosSync } from './tiktok-videos-sync'
-import { handleAgencyInactiveSellers } from './agency-inactive-sellers'
-import { handleAgencySelfEventsTick } from './agency-self-events-tick'
 import { handleSellerDailyReport } from './seller-daily-report'
 import { handleAdSlotsAward } from './ad-slots-award'
-import { recomputeAllActiveCampaigns } from '../../features/agency/api/agency-campaigns.routes'
 import { getFeatureFlags } from '../utils/feature-flags'
 import { logError, logInfo } from '../utils/logger'
 
@@ -158,42 +153,25 @@ export function runDailyLane(group: DailyGroup, d: DailyLaneDeps): void {
   // growth
   // 🛡️ 2026-05-24: 신규 활성 상품 (공구/쇼핑/교환권) 자동 리뷰 시드 — 1일당 최대 200개. idempotent.
   ctx.waitUntil(run('auto-seed-reviews', () => handleAutoSeedReviews(env)))
-  // 🛡️ 2026-05-15: 셀러 churn 탐지 — 14일+ 등록 X + 평균 진행률 < 50% → 에이전시 alert
+  // 🛡️ 2026-05-15: 셀러 churn 탐지 — 14일+ 등록 X + 평균 진행률 < 50% → 셀러 본인 재참여 알림
   ctx.waitUntil(run('seller-churn-detect', () => handleSellerChurnDetect(env)))
-  ctx.waitUntil(run('agency-cron-batch', async () => {
+  // 🌇 2026-09-04 에이전시 일몰(대표 확정 "에이전시 남은 잔재 다 삭제") — 이 배치에서 에이전시 작업
+  //    6종을 **삭제**했다: campaigns 집계 · creator-eval · monthly-tasks · inactive-sellers ·
+  //    self-events(딜 지급) · store-intro 월 보너스(현금 보상). 라이브 실측 근거: `agencies` 4행이
+  //    남아 있으나 **관계 0**(`sellers.introduced_by_agency_id` 0명 · `store_agency_delegation` 0행)
+  //    이고 **지급 이력 0**(`agency_store_intro_commissions` 0행) — 즉 이 코드는 한 번도 돈을 낸 적이
+  //    없다. 중개는 이제 에이전시가 아니라 **셀러 대시보드 계정 + `seller_operators`** 가 맡는다.
+  //    설계 SSOT: docs/design/store-operator-model.md
+  //    ⚠️ 남은 3개는 에이전시와 무관해서 유지한다(틱톡 동기화 · 셀러 일일 리포트 · 광고 슬롯 낙찰).
+  ctx.waitUntil(run('growth-daily-batch', async () => {
     const flags = await getFeatureFlags((env as unknown as { RATE_LIMIT_KV?: KVNamespace }).RATE_LIMIT_KV, env.DB)
-    if (flags.enable_agency_campaigns_aggregate) {
-      await recomputeAllActiveCampaigns(env.DB).catch(e => onFailure('agency-cron-batch/campaigns', e))
-    }
-    if (flags.enable_agency_creator_eval) {
-      await handleAgencyCreatorEval(env).catch(e => onFailure('agency-cron-batch/creator-eval', e))
-    }
-    if (flags.enable_agency_monthly_tasks) {
-      await handleAgencyMonthlyTasks(env).catch(e => onFailure('agency-cron-batch/monthly-tasks', e))
-    }
     if (flags.enable_tiktok_videos_sync) {
-      await handleTikTokVideosSync(env).catch(e => onFailure('agency-cron-batch/tiktok', e))
+      await handleTikTokVideosSync(env).catch(e => onFailure('growth-daily-batch/tiktok', e))
     }
-    // Phase 1-2: 부진 셀러 알림 (매일)
-    await handleAgencyInactiveSellers(env).catch(e => onFailure('agency-cron-batch/inactive-sellers', e))
-    // 🔐 2026-06-11 (정합성 감사 🔴): 매월 1일에만 실행 — 매일 실행 + note-LIKE 멱등(약함)이라
-    //   같은 날 cron 중복/재시도 시 growth_bonus 이중 적립 위험. 1일 게이트로 실행 빈도 자체를 월1회로.
-    if (new Date().getUTCDate() === 1) try {
-      const { runAgencyStoreIntroMonthlyBonus } = await import('./agency-store-intro-monthly-bonus')
-      const r = await runAgencyStoreIntroMonthlyBonus(env)
-      if (r.awarded > 0) {
-        logInfo(`[cron] agency-store-intro monthly bonus: awarded ${r.awarded} stores, total ₩${r.totalAmount.toLocaleString()}`)
-      }
-    } catch (e) { await onFailure('agency-cron-batch/agency-intro-monthly-bonus', e) }
-    // 2026-04-27: 자사 이벤트 진행값 자동 갱신 + 보상 지급 (매일)
-    await handleAgencySelfEventsTick(env).catch(e => onFailure('agency-cron-batch/self-events', e))
     // 2026-04-27: 셀러 일일 리포트 메일 (RESEND_API_KEY 있을 때만)
-    await handleSellerDailyReport(env).catch(e => onFailure('agency-cron-batch/seller-daily-report', e))
-    // 🌇 2026-08-19 일몰 정지 — 목적지 화면(/agency/match-suggestions)이 제거됐다(알림만 남는 게 최악).
-    //    같은 배치의 self-events·campaigns 는 채무/집계 경로라 유지. 롤백: 아래 한 줄 주석 해제.
-    // await handleAgencySellerMatch(env).catch(e => onFailure('agency-cron-batch/agency-seller-match', e));
+    await handleSellerDailyReport(env).catch(e => onFailure('growth-daily-batch/seller-daily-report', e))
     // 2026-05-05: 광고 슬롯 낙찰 처리
-    await handleAdSlotsAward(env).catch(e => onFailure('agency-cron-batch/ad-slots-award', e))
+    await handleAdSlotsAward(env).catch(e => onFailure('growth-daily-batch/ad-slots-award', e))
   }))
 }
 

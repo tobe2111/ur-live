@@ -14,7 +14,6 @@
  *  - location  : 위치기반서비스 (내 동네/지도) — 유저 선택
  *  - marketing : 마케팅 정보 수신 — 유저 선택
  *  - seller    : 사업자 유저(셀러) 약관 (/terms/seller) — 셀러 가입 필수
- *  - agency    : 에이전시 약관 (커미션 1%·24개월·회수 조건 포함) — 에이전시 가입 필수
  */
 
 export const TERMS_EFFECTIVE_DATE = '2026-07-05'
@@ -25,7 +24,6 @@ export const TERMS_DOC_VERSIONS = {
   location: '1.0',
   marketing: '1.0',
   seller: '1.0',
-  agency: '1.0',
 } as const
 
 export type TermsDocType = keyof typeof TERMS_DOC_VERSIONS

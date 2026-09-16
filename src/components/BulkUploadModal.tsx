@@ -261,7 +261,7 @@ export default function BulkUploadModal({ open, onClose, tokenKey, onSuccess }: 
                   {t('bulkUpload.preview', { total: parsedProducts.length, defaultValue: `미리보기 (총 ${parsedProducts.length}개 상품 중 최대 5개)` })}
                 </label>
               </div>
-              <div className="border border-gray-200 dark:border-[#2C2F35] rounded-lg overflow-x-auto">
+              <div className="border border-line rounded-lg overflow-x-auto">
                 <table className="w-full min-w-[500px]">
                   <thead>
                     <tr className="bg-gray-50">

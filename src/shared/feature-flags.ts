@@ -73,6 +73,32 @@ export const SELLER_PROMO_FIELD_ENABLED = false
 export const GB_ENGINE_ENABLED = false
 
 /**
+ * VOUCHER_DEAL_PAYMENT_ENABLED — **이용권을 딜로도 살 수 있게** (2026-08-31 대표 방향).
+ *
+ *   지금까지 딜로 살 수 있는 건 교환권(`deal_only=1`)뿐이고 이용권은 카드 전용이었다.
+ *   ⚠️ 그런데 **서버는 원래 이용권에도 `payment_method:'deal'` 을 받고 있었다**
+ *   (`group-buy.routes` join 의 상품 조회가 voucher 카테고리 OR deal_only 를 함께 매칭).
+ *   화면이 안 내놨을 뿐이라, 직접 POST 하면 통했다. 그래서 이 플래그와 **짝을 이루는 서버 게이트**
+ *   (`platform_settings.voucher_deal_payment_enabled==='true'`)는 기능을 여는 동시에
+ *   **그 열린 문을 닫는다** — 기본 OFF 면 이용권 딜 결제가 서버에서 거절된다.
+ *
+ * 🔴 **켜기 전 반드시 선행**: `influencer_deal_bonus_pct` 를 **0** 으로.
+ *   보너스 20% 가 살아 있는 채로 열면 이용권 마진(5~10%)보다 보너스가 커서
+ *   **팔릴수록 유어딜이 건당 8~14원 적자**다(2026-08-31 실측). 교환권은 마크업 20% 가
+ *   보너스를 상쇄해서 괜찮았던 것이고, 이용권엔 그 상쇄가 없다.
+ *
+ *   활성 순서: ① 교환권 마진 0 + 재계산 ② 딜 보너스 0 + 현금 정산 수수료 ③ 이 플래그 + 서버 키.
+ *   ①②는 어드민에서, ③은 이 상수(배포)와 어드민 키를 함께 — 이중 안전.
+ *
+ * ✅ **2026-09-04 대표 지시로 켠다** (*"머지하고, 너가 직접 켜줘"*). 선행 조건은 라이브 실측으로
+ *   확인했다 — `influencer_deal_bonus_pct = 0`(적자 조건 해소). ⇒ 이제 **유일한 스위치는
+ *   서버 키** `platform_settings.voucher_deal_payment_enabled` 다. 그 키가 꺼져 있으면 버튼은
+ *   보이되 누를 때 서버가 `DEAL_PAYMENT_NOT_ALLOWED` 로 막고 화면이 안내한다(`deal-join-error.ts`).
+ *   되돌리려면 그 키를 `false` 로 — 배포 없이 즉시.
+ */
+export const VOUCHER_DEAL_PAYMENT_ENABLED = true
+
+/**
  * TOPUP_DISABLED — '딜 충전'(현금→딜 유상 충전) **서비스 전체 종료** (2026-07-18 대표 확정
  *   "딜 포인트 충전 자체를 빼자 우리 서비스에서" — 앱 전환 시 Apple IAP 30% 이슈 원천 제거).
  *   딜 = **적립 전용 리워드 통화**로 전환: 친구초대·추천(핀)·커미션 등 무상 적립과 딜 *사용*
@@ -83,6 +109,23 @@ export const GB_ENGINE_ENABLED = false
  *         어드민 충전 모니터링(과거 데이터). false 로 바꾸면 즉시 복원(가역).
  */
 export const TOPUP_DISABLED = true
+
+/**
+ * VOUCHER_CART_UI_ENABLED — 이용권 '장바구니에 담기' **진입점** (2026-09-15 신설).
+ *   false: 공구/이용권 상세의 담기 버튼을 숨긴다. 단일 구매는 무영향.
+ *
+ * 🩸 **왜 생겼나**: 담기 버튼을 서버 게이트(`platform_settings.voucher_cart_enabled`)와 묶지 않고
+ *   내보냈더니, 게이트가 꺼진 라이브에서 **담기는 되는데 결제가 안 되는 막다른 길**이 생겼다
+ *   (담으면 `cart_items` 에 남고, 결제하면 "장바구니 결제는 아직 준비 중입니다" 403).
+ *   초대해 놓고 못 사게 하는 화면이라, 아예 안 보이는 편이 낫다.
+ *
+ * 🔑 **스위치가 둘이다 — 켤 때 반드시 같이 켠다**:
+ *   ① 서버 `platform_settings.voucher_cart_enabled = 'true'`  (보안 경계 — 이쪽이 진짜 게이트)
+ *   ② 이 상수 `true` + 배포                                    (화면 진입점)
+ *   ①만 켜면 아무도 담을 수 없고, ②만 켜면 다시 막다른 길이 된다.
+ *   절차: `docs/STAGING_CHECKLIST.md` S-CART.
+ */
+export const VOUCHER_CART_UI_ENABLED = false
 
 /**
  * IOS_HIDE_DIGITAL_TOPUP — iOS 네이티브 앱에서 '딜 충전'(순수 디지털 포인트)을 숨기고
@@ -230,31 +273,8 @@ export const CONSUMER_LANGUAGE_SWITCH_HIDDEN = true
 
 
 /**
- * AGENCY_DASHBOARD_SUNSET — 에이전시 대시보드 **일몰**(신규 가입 차단 + 표면 축소)
- *   (2026-08-19 대표 확정 "모두 하자" — 에이전시 대시보드 가치 재검토 후).
- *
- * ## 왜 (라이브 실측이 근거다)
- * 에이전시 대시보드는 페이지 9,349줄 + API 7,025줄 · 라우트 39개인데 **관계가 0건**이었다:
- *   `agencies` 4개(1개는 '유어딜 본사') · `agency_sellers` **0행** · `store_agency_delegation` **0행**
- *   · `introduced_by_agency_id` 매장 **0명**.
- * 게다가 `agency_invites`/`coupons`/`incentives`/`messages`/`notices`/`targets` 는 **테이블조차 없다** —
- * 이 레포는 지연 생성(`CREATE TABLE IF NOT EXISTS`) 패턴이라 **그 코드가 프로덕션에서 한 번도 실행된
- * 적 없다**는 뜻이다. 남은 상당수(`pk`·`schedule`·`calendar`·`ranking`)는 `LIVE_COMMERCE_SUSPENDED`
- * (영구 중단) 의존이라 이미 죽은 기능의 대시보드다.
- *
- * ## 방향 (없애는 건 껍데기, 남기는 건 뼈대)
- * "누가 이 매장을 운영하는가"는 **계정 소유권이 아니라 관계**로 둔다 — 그래야 중개자가 올린 매장을
- * 사장님이 직접 이어받을 때 데이터 수술이 아니라 권한 한 줄 변경이 된다.
- * 설계 SSOT: `docs/design/store-operator-model.md`. 축은 그대로 유지되는 것:
- *   `store_agency_delegation`(위임) · `introduced_by_agency_id`(영입 보상) · seller transfer(승계 동의).
- *
- * ## 무엇을 하나
- * true: ① 에이전시 **신규 가입 차단**(`/agency/register`·`register/business` 안내 화면 + 서버
- *   `POST /api/agency/register`·`/register-from-user` 403 — 클라만 막으면 우회된다)
- *   ② `/agency-partner` 랜딩의 가입 CTA 를 안내로 전환.
- * false: 즉시 복원(가역) — 가입 페이지·API 코드는 **전부 보존**했다.
- *
- * ⚠️ **기존 4개 계정의 로그인·정산·위임은 막지 않는다.** 일몰은 "새로 안 받는다"이지
- *   "쓰던 사람을 끊는다"가 아니다. 정산 채무가 남아 있는 상대의 접근을 끊는 건 별개 판단이다.
+ * 🌇 2026-09-04 — `AGENCY_DASHBOARD_SUNSET` 플래그를 **제거**했다. 일몰 게이트가 아니라
+ * 에이전시 자체가 사라졌기 때문이다(라우트·페이지·API·크론 전부 삭제). 플래그로 되살릴 수 있는
+ * 것이 없으므로 플래그가 남아 있으면 "끄면 돌아온다"는 잘못된 신호가 된다.
+ * 중개는 이제 셀러 대시보드 계정 + `seller_operators` 가 맡는다 — docs/design/store-operator-model.md
  */
-export const AGENCY_DASHBOARD_SUNSET = true

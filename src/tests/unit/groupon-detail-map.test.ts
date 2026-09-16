@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { derivePricing } from '@/pages/group-buy/pricing'
+import { stripComments } from '../helpers/source-text'
 
 const read = (p: string) => readFileSync(p, 'utf8')
 /** 주석을 걷어낸 코드만 본다 — "주석에만 남아도 통과"하는 헛도는 가드를 막는다. */
-const code = (p: string) =>
-  read(p).replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
+const code = (p: string) => stripComments(read(p))
 
 const DETAIL = 'src/pages/GroupBuyDetailPage.tsx'
 const MAP = 'src/pages/RestaurantMapPage.tsx'
@@ -35,9 +35,11 @@ describe('이용권 상세 — 제목이 사진 위로 (대표 확정 1안)', ()
     //    ⇒ 제목(h1)과 가격(unitPrice)을 감싼 블록이 각각 lg:hidden 을 달고 있는지.
     const anchors = [
       { name: '제목', at: s.indexOf('>{detail.name}</h1>') },
-      // ⚠️ `</span>` 까지 붙여야 유일하다 — 없이 쓰면 위쪽 **SEO 설명 문자열**의 같은 표현에 먼저 걸려
+      // ⚠️ 닫는 태그까지 붙여야 유일하다 — 없이 쓰면 위쪽 **SEO 설명 문자열**의 같은 표현에 먼저 걸려
       //    엉뚱한 자리를 검사하게 된다(이 레포에서 반복해 밟은 "첫 일치" 함정).
-      { name: '가격', at: s.indexOf('{formatNumber(unitPrice)}원</span>') },
+      // 🔄 2026-09-15 (대표 확정 "안 B"): 가격이 세로 위계가 되며 `<span>` → `<div>` 로 바뀌었다.
+      //    앵커가 낡아 `-1` 이 됐고 전체 유닛에서 이 한 건만 빨간불이 났다 — 태그를 따라간다.
+      { name: '가격', at: s.indexOf('{formatNumber(unitPrice)}원</div>') },
     ]
     for (const a of anchors) {
       expect(a.at, `${a.name} 블록을 못 찾았다 — 앵커가 낡았다`).toBeGreaterThan(0)
@@ -174,9 +176,12 @@ describe('이용권 상세 — 죽은 사진이 빈 칸으로 남지 않는다',
   it('감시 URL 이 실제 렌더 URL 과 같은 폭을 쓴다 (추가 트래픽 0)', () => {
     // 폭이 다르면 리사이저 URL 이 달라져 요청이 재사용되지 않는다 = 진짜 추가 다운로드.
     const s = code(GAL)
-    expect(s).toMatch(/\{ src: main, w: 1200 \}/)   // 대형 bg 도 1200
-    expect(s).toMatch(/list\.push\(\{ src: t, w: 600 \}\)/) // 썸네일 bg 도 600
-    expect(s).toMatch(/bg\(src, 600\)/)
+    // 🎯 2026-09-06: PC 도 스마트 크롭으로 바뀌면서 URL 생성이 `pcHeroUrl`/`pcThumbUrl` 로 모였다.
+    //   요점은 그대로다 — 감시 <img> 와 배경이 **같은 함수**를 부를 것(갈리면 요청이 두 배).
+    expect(s).toMatch(/\{ src: main, url: pcHeroUrl\(main\) \}/)
+    expect(s).toMatch(/list\.push\(\{ src: t, url: pcThumbUrl\(t\) \}\)/)
+    expect(s).toMatch(/style=\{bg\(src, pcThumbUrl\(src\)\)\}/)   // 배경도 같은 함수 — 여기가 갈리면 요청 두 배
+    expect(s).toMatch(/\.\.\.bg\(main, pcHeroUrl\(main\)\)/)     // 대형도 마찬가지
   })
 
   it('실패한 사진은 목록에서 빠진다 (다음 사진이 그 자리로)', () => {

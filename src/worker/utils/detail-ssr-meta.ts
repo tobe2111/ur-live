@@ -98,7 +98,6 @@ export function buildDetailMeta(ssrPayload: string, origin: string, pathname: st
       offers: {
         '@type': 'Offer', url: canonical, priceCurrency: 'KRW', price,
         availability: available ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-        ...(d.group_buy_deadline ? { priceValidUntil: String(d.group_buy_deadline) } : {}),
         ...(d.seller_name ? { seller: { '@type': 'Organization', name: String(d.seller_name) } } : {}),
       },
       ...(d.restaurant_lat && d.restaurant_lng ? {

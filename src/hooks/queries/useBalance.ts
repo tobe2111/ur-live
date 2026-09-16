@@ -10,7 +10,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys } from './queryKeys'
-import { readCache, writeCache } from './localCache'
+import { readCache, writeCache, cachedInitialData } from './localCache'
 import { isLoggedInSync } from '@/utils/auth'
 
 const CACHE_KEY = 'balance'
@@ -42,7 +42,7 @@ export function useBalance(opts?: { fresh?: boolean }) {
         }
         return 0
       }),
-    initialData: () => readCache<number>(CACHE_KEY, 0),
+    initialData: () => cachedInitialData<number>(CACHE_KEY),
     // 🛠️ 캐시 seed 를 즉시 stale 로 — refetchOnMount 가 반드시 1회 서버 확인하게(false 0 표시 방지).
     initialDataUpdatedAt: 0,
     enabled: isLoggedInSync(),

@@ -1,4 +1,6 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
+import { saveListView } from '@/lib/list-view-cache'
+import { browseViewKey, useBrowseRestore, type BrowseViewState } from './browse/list-restore'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -51,8 +53,10 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
   useEffect(() => { captureTrackingFromUrl() }, [])
   // 🚑 2026-07-10: SSR 시드 동기 소비 — 시드 있으면 로더 프레임 0 (위 readBrowseSeed 주석 참조).
   const [initialSeed] = useState<Product[] | null>(() => readBrowseSeed(defaultCategory))
-  const [products, setProducts] = useState<Product[]>(initialSeed ?? [])
-  const [loading, setLoading] = useState(initialSeed == null)
+  // 🔙 2026-09-14: 뒤로(POP) 면 직전 목록을 돌려준다. 근거·한계: `./browse/list-restore`
+  const restored = useBrowseRestore(defaultCategory)
+  const [products, setProducts] = useState<Product[]>(restored?.products ?? initialSeed ?? [])
+  const [loading, setLoading] = useState(restored == null && initialSeed == null)
   // ✅ UX M17 FIX: 에러 상태 + 재시도 버튼
   const [error, setError] = useState<string | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
@@ -98,11 +102,11 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
   // 🛡️ 2026-05-24 (loading P0): PAGE_SIZE 50 → 20.
   //   첫 화면 이미지 다운로드 -60% (50개 카드 평균 200~500KB 이미지 = 10-25MB → 4-10MB).
   //   IntersectionObserver 가 sentinel 도달 시 자동으로 다음 페이지 fetch — UX 동일.
-  const [page, setPage] = useState(1)
-  const [hasMore, setHasMore] = useState(false)
+  const [page, setPage] = useState(() => restored?.page ?? 1)
+  const [hasMore, setHasMore] = useState(() => restored?.hasMore ?? false)
   const [loadingMore, setLoadingMore] = useState(false)
   const PAGE_SIZE = 20
-  const [showCount, setShowCount] = useState(ITEMS_PER_PAGE)
+  const [showCount, setShowCount] = useState(() => restored?.showCount ?? ITEMS_PER_PAGE)
   const [priceRange, setPriceRange] = useState<'all' | 'under10' | 'under30' | 'under50' | 'over50'>('all')
   const [freeShipOnly, setFreeShipOnly] = useState(false)
   const [showFilter, setShowFilter] = useState(false)
@@ -280,7 +284,12 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
       })
   }, [category, sortBy, priceRange, t])
 
+  // 🔙 2026-09-14: 되살린 경우 **첫 실행만** 건너뛴다. 이 effect 는 마운트에서도 도는데 그대로 두면
+  //   setProducts([]) 로 복원본을 지우고 1페이지만 다시 받아 목록이 도로 짧아진다(= 고치려던 증상).
+  //   이후 카테고리·정렬·가격 변경은 정상적으로 리셋된다.
+  const browseSkipFirstRef = useRef(restored != null)
   useEffect(() => {
+    if (browseSkipFirstRef.current) { browseSkipFirstRef.current = false; return }
     setProducts([])
     // 🛡️ 2026-05-27 (loading P0): SSR inject first-paint — category=all 초기 진입 즉시 표시.
     // 🏭 2026-06-05: SSR(__SSR_INITIAL_BROWSE__)은 기본(popular/전체가격)일 때만 소비 — 정렬/가격 변경 시 서버 refetch.
@@ -316,6 +325,13 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
     observer.observe(loadMoreRef.current)
     return () => observer.disconnect()
   }, [hasMore, loadingMore, page, loadProducts])
+
+  // 🔙 2026-09-14: 현재 목록을 보관 — 뒤로 오면 첫 렌더에 되살아난다. 근거: `./browse/list-restore`
+  //   ⚠️ 이 effect 는 showCount·page·hasMore **선언 뒤**여야 한다(위로 올리면 TDZ 로 빈 화면).
+  useEffect(() => {
+    if (loading || products.length === 0 || priceRange !== 'all') return
+    saveListView<BrowseViewState>(browseViewKey(category, sortBy), { products, page, hasMore, showCount })
+  }, [category, sortBy, priceRange, products, page, hasMore, showCount, loading])
 
   useEffect(() => {
     const handler = () => setShowSortDropdown(false)
@@ -354,7 +370,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
   //   → 청크 로더와 끊김 없이 이어져 '한 번'으로 보임(헤더가 중간에 안 뜸).
   if (loading) return <BrandLoader fullScreen />
   return (
-    <div className="bg-white dark:bg-[#0D0F12] min-h-screen">
+    <div className="bg-white dark:bg-[#11141C] min-h-screen">
       <SEO
         title={t('browse.title')}
         description={t('browse.seoDesc')}
@@ -369,13 +385,13 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
         ) : undefined}
       />
       {/* 상단 헤더: 검색바 + 아이콘 — 모바일 전용. md+ 는 DesktopTopNav 가 동일 기능 제공. */}
-      <div className="md:hidden sticky top-0 z-50 bg-white dark:bg-[#0D0F12] border-b border-gray-100 dark:border-[#2C2F35]">
+      <div className="md:hidden sticky top-0 z-50 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-wide px-4 py-2.5 lg:px-8">
           <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => navigate('/search')}
-            className="flex-1 flex items-center gap-2 bg-gray-100 dark:bg-[#1A1C21] rounded-full px-4 py-2.5 cursor-pointer"
+            className="flex-1 flex items-center gap-2 bg-gray-100 dark:bg-[#1D1F29] rounded-full px-4 py-2.5 cursor-pointer"
             aria-label={t('browse.searchAria')}
           >
             <Search className="w-4 h-4 text-gray-400 dark:text-gray-500" />
@@ -394,7 +410,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
       {/* 🏭 2026-06-05 (사용자 요청): 카테고리 scroll-up reveal — 위로 조금 올리면 재노출 (동네딜/교환권 패턴).
             sticky top-[60px](모바일 헤더 아래)/md:top-14(데스크톱 탑네비 아래) + revealTop 따라 translateY. */}
       <div
-        className="sticky top-[60px] md:top-14 z-30 bg-white dark:bg-[#0D0F12]"
+        className="sticky top-[60px] md:top-14 z-30 bg-white dark:bg-[#11141C]"
         style={{ transform: revealTop ? 'translateY(0)' : 'translateY(-110%)', transition: 'transform 0.25s ease', willChange: 'transform' }}
       >
       <div className="border-b border-gray-100 dark:border-[#2C2F35] overflow-x-auto scrollbar-hide">
@@ -419,7 +435,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
                 <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl transition-colors ${
                   active
                     ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-md'
-                    : 'bg-gray-100 dark:bg-[#1A1C21]'
+                    : 'bg-gray-100 dark:bg-[#1D1F29]'
                 }`}>
                   {c.Icon && <c.Icon className="w-3.5 h-3.5" aria-hidden="true" />}
                 </div>
@@ -449,13 +465,13 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <button onClick={() => setShowFilter(v => !v)}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold ${showFilter ? 'bg-gray-900 text-white' : 'bg-white dark:bg-[#0D0F12] text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-[#2C2F35]'}`}>
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold ${showFilter ? 'bg-gray-900 text-white' : 'bg-white dark:bg-[#11141C] text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-[#2C2F35]'}`}>
               <SlidersHorizontal className="w-3 h-3" /> 필터
             </button>
             <span className="text-xs text-gray-500 dark:text-gray-400">{sorted.length}개</span>
             {isMealVoucher && (
               <button onClick={() => setMapView(!mapView)}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border ${mapView ? 'bg-gray-900 text-white border-gray-900' : 'bg-white dark:bg-[#0D0F12] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2C2F35]'}`}>
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border ${mapView ? 'bg-gray-900 text-white border-gray-900' : 'bg-white dark:bg-[#11141C] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2C2F35]'}`}>
                 {mapView ? <><List className="w-3 h-3" /> {t('browse.viewList')}</> : <><Map className="w-3 h-3" /> {t('browse.viewMap')}</>}
               </button>
             )}
@@ -469,13 +485,13 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
               <ChevronDown className={`w-4 h-4 transition-transform ${showSortDropdown ? 'rotate-180' : ''}`} />
             </button>
             {showSortDropdown && (
-              <div className="absolute top-full right-0 mt-1 w-32 bg-white dark:bg-[#0D0F12] border border-gray-200 dark:border-[#2C2F35] rounded-xl shadow-lg z-30 overflow-hidden">
+              <div className="absolute top-full right-0 mt-1 w-32 bg-surface border border-line rounded-xl shadow-lg z-30 overflow-hidden">
                 {(Object.keys(SORT_LABELS) as SortOption[]).map(opt => (
                   <button
                     key={opt}
                     onClick={() => { setSortBy(opt); setShowSortDropdown(false) }}
                     className={`w-full text-left px-3 py-2.5 text-sm ${
-                      sortBy === opt ? 'bg-red-50 text-red-500 font-semibold' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1A1C21]'
+                      sortBy === opt ? 'bg-red-50 text-red-500 font-semibold' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1D1F29]'
                     }`}
                   >
                     {SORT_LABELS[opt]}
@@ -488,19 +504,19 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
 
         {/* 필터 패널 */}
         {showFilter && (
-          <div className="bg-gray-50 dark:bg-[#1A1C21] rounded-xl p-3 mb-4 space-y-3">
+          <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-3 mb-4 space-y-3">
             <div>
               <p className="text-xs font-medium text-gray-700 dark:text-gray-200 mb-1.5">가격대</p>
               <div className="flex flex-wrap gap-1.5">
                 {([['all', t('browse.priceAll')],['under10', t('browse.priceUnder10')],['under30', t('browse.priceUnder30')],['under50', t('browse.priceUnder50')],['over50', t('browse.priceOver50')]] as const).map(([v, l]) => (
                   <button key={v} onClick={() => { setPriceRange(v); setShowCount(ITEMS_PER_PAGE) }}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium ${priceRange === v ? 'bg-gray-900 text-white' : 'bg-white dark:bg-[#0D0F12] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2C2F35]'}`}>{l}</button>
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium ${priceRange === v ? 'bg-gray-900 text-white' : 'bg-white dark:bg-[#11141C] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2C2F35]'}`}>{l}</button>
                 ))}
               </div>
             </div>
             <div className="flex items-center gap-2">
               <button onClick={() => { setFreeShipOnly(!freeShipOnly); setShowCount(ITEMS_PER_PAGE) }}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium ${freeShipOnly ? 'bg-gray-900 text-white' : 'bg-white dark:bg-[#0D0F12] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2C2F35]'}`}>
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium ${freeShipOnly ? 'bg-gray-900 text-white' : 'bg-white dark:bg-[#11141C] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2C2F35]'}`}>
                 <Truck className="w-3 h-3" /> 무료배송만
               </button>
               {(priceRange !== 'all' || freeShipOnly) && (
@@ -514,8 +530,8 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
 
         {/* 지도 뷰 (이용권 카테고리일 때) */}
         {isMealVoucher && mapView && (
-          <div className="mb-4 rounded-xl overflow-hidden border border-gray-200 dark:border-[#2C2F35]">
-            <div ref={mapContainerRef} className="w-full h-[400px] bg-gray-100 dark:bg-[#1A1C21]" />
+          <div className="mb-4 rounded-xl overflow-hidden border border-line">
+            <div ref={mapContainerRef} className="w-full h-[400px] bg-gray-100 dark:bg-[#1D1F29]" />
           </div>
         )}
 
@@ -566,7 +582,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
                   if (showCount < sorted.length) setShowCount(c => c + ITEMS_PER_PAGE)
                   else if (hasMore && !loadingMore) { const n = page + 1; setPage(n); loadProducts(n, false) }
                 }}
-                  className="px-8 py-3 border border-gray-200 dark:border-[#2C2F35] rounded-full text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1A1C21]">
+                  className="px-8 py-3 border border-line rounded-full text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1D1F29]">
                   더보기 ({sorted.length - showCount}개 남음)
                 </button>
               </div>

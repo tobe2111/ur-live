@@ -1,8 +1,14 @@
 # 유어딜 / 유통스타트 — 전체 서비스 지도 & 소개서 커버리지 검증 (MECE)
 
-> **이 문서의 목적**: **5개 대표 소개서**(`wholesale-mall-brief` 도매몰 / `offline-groupbuy-brief` 오프라인 공구 / `online-listing-proposal-brief` 온라인 입점 / `linkshop-brief` 링크샵 / `agency-brief` 에이전시)가 **유어딜/유통스타트 서비스 전체를 빠짐없이(MECE) 커버하는지** 검증하기 위한 마스터 인벤토리 + 커버리지 매트릭스.
+> **이 문서의 목적**: **4개 대표 소개서**(`wholesale-mall-brief` 도매몰 / `offline-groupbuy-brief` 오프라인 공구 / `online-listing-proposal-brief` 온라인 입점 / `linkshop-brief` 유어샵)가 **유어딜/유통스타트 서비스 전체를 빠짐없이(MECE) 커버하는지** 검증하기 위한 마스터 인벤토리 + 커버리지 매트릭스.
 >
-> ✅ **최종 구조 = 5개 소개서** (2026-06-07 사용자 확정 — 아래 §5 최종 결정 참조). 라이브커머스는 온라인입점·링크샵에 1급 흡수, 에이전시는 전용 덱 신설.
+> 🌇 **2026-09-05 정정 — 소개서는 4개다.** 대표 지시로 **에이전시가 통째로 일몰**되면서
+> (`docs/design/store-operator-model.md §7`) `agency-brief.md` 를 **삭제**했다. 그 덱이 자랑하던
+> 코드(에이전시 대시보드·정산·캐스팅·PK·부스트)가 하나도 남아 있지 않아, 두면 **없는 서비스를 파는
+> 대외 자료**가 된다. 살아남은 영입(소개)·크리에이터 정산 경로는 **유어샵 덱**이 승계했다.
+>
+> ⚠️ **아래 §E 와 §5 의 "5개 소개서" 서술은 2026-06-07 당시의 기록**이다(소급 수정하지 않는다).
+> 현재 구조를 알고 싶으면 이 머리말과 자동 생성 인벤토리를 볼 것.
 > **작성일**: 2026-06-07 · **근거**: 코드 audit (`src/App.tsx`, `src/routes/*.tsx`, `src/features/*/api/*.routes.ts`, `src/shared/seller-roles.ts`, `src/shared/constants/policy.ts`, `CLAUDE.md`, `docs/design/*`).
 > **원칙**: 코드/설정에서 추출. 운영 정책으로만 정해지는 값은 `[확인 필요]`.
 > ⚠️ 이 파일은 신규 생성. 다른 4개 소개서 파일은 동시 편집 중이므로 본 문서에서는 수정하지 않음.
@@ -285,10 +291,9 @@
 |---|---|---|---|
 | 도매몰 (유통스타트) | `wholesale-mall-brief.md` | 43 | 4 |
 | 오프라인 공구 / 동네딜 | `offline-groupbuy-brief.md` | 29 | 95 |
-| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 70 | 280 |
-| 링크샵 / 큐레이터 | `linkshop-brief.md` | 13 | 59 |
-| 에이전시 | `agency-brief.md` | 29 | 167 |
-| **합계** | — | **184** | **605** |
+| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 72 | 272 |
+| 유어샵 / 담기·소개 | `linkshop-brief.md` | 23 | 88 |
+| **합계** | — | **167** | **459** |
 
 ### 전체 커버리지 검증 (자동 — 빠진 기능 보증)
 
@@ -297,12 +302,12 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 382 | 1247 |
-| 도메인 버킷 (5개 소개서) | 184 | 605 |
-| 공통/인프라 (의도적 제외) | 164 | 470 |
-| **미커버 (점검 필요)** | **34** | **172** |
+| 전체 | 369 | 1123 |
+| 도메인 버킷 (5개 소개서) | 167 | 459 |
+| 공통/인프라 (의도적 제외) | 166 | 478 |
+| **미커버 (점검 필요)** | **36** | **186** |
 
-⚠️ **미커버 206건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 222건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -325,11 +330,12 @@
 - `/creators`
 - `/creators/apply`
 - `/creators/start`
+- `/design/variants`
 - `/district/:slug`
 - `/experience`
 - `/gb-market`
-- `/i/offer/:token`
 - `/local/:code`
+- `/mall-admin`
 - `/map`
 - `/my-gifticons`
 - `/my-store`
@@ -339,13 +345,17 @@
 - `/region`
 - `/region/:sido`
 - `/region/:sido/:sigungu`
+- `/videos`
 
 **미커버 API 엔드포인트**
 - `DELETE /:id` (`src/features/supply/api/wholesale-board.routes.ts`)
 - `PATCH /:id` (`src/features/supply/api/wholesale-board.routes.ts`)
+- `POST /:id{[0-9]+}/view` (`src/features/products/api/product-view.routes.ts`)
 - `PATCH /:id/amount` (`src/features/returns/api/return-amount.routes.ts`)
+- `POST /:id/approve` (`src/worker/routes/mall-applications-admin.routes.ts`)
 - `POST /:id/confirm` (`src/features/supply/api/wholesale-deposit.routes.ts`)
 - `POST /:id/reject` (`src/features/supply/api/wholesale-deposit.routes.ts`)
+- `POST /:id/respond` (`src/features/seller/api/seller-transfer-respond.routes.ts`)
 - `POST /:productId/toggle` (`src/features/supply/api/wholesale-board.routes.ts`)
 - `POST /adjust` (`src/features/supply/api/wholesale-deposit.routes.ts`)
 - `GET /admin-diag` (`src/worker/routes/killer-sw.routes.ts`)
@@ -358,6 +368,7 @@
 - `POST /api/acquisition/landing` (`src/worker/routes/acquisition.routes.ts`)
 - `POST /api/buyer-ingest/` (`src/features/supply/api/buyer-ingest.routes.ts`)
 - `POST /api/buyer-ingest/known` (`src/features/supply/api/buyer-ingest.routes.ts`)
+- `GET /api/consumer-settings` (`src/worker/routes/public-utility.routes.ts`)
 - `POST /api/cs/kakao-skill` (`src/worker/routes/kakao-skill-webhook.routes.ts`)
 - `GET /api/experience-campaigns/` (`src/features/group-buy/api/experience-campaign.routes.ts`)
 - `GET /api/experience-campaigns/:id` (`src/features/group-buy/api/experience-campaign.routes.ts`)
@@ -394,6 +405,8 @@
 - `POST /api/voucher-dispute/report` (`src/features/group-buy/api/voucher-dispute.routes.ts`)
 - `POST /become` (`src/features/supply/api/supplier-auth.routes.ts`)
 - `POST /become-distributor` (`src/features/supply/api/wholesale.routes.ts`)
+- `POST /cart/confirm-toss` (`src/features/group-buy/api/cart-checkout.routes.ts`)
+- `POST /cart/init` (`src/features/group-buy/api/cart-checkout.routes.ts`)
 - `GET /catalog` (`src/features/supply/api/wholesale.routes.ts`)
 - `GET /catalog-export` (`src/features/supply/api/wholesale-documents.routes.ts`)
 - `GET /catalog/:id{[0-9]+}` (`src/features/supply/api/wholesale.routes.ts`)
@@ -404,10 +417,12 @@
 - `POST /claims` (`src/features/supply/api/wholesale-claims.routes.ts`)
 - `DELETE /connect` (`src/features/supply/api/coupang-commerce.routes.ts`)
 - `POST /connect` (`src/features/supply/api/coupang-commerce.routes.ts`)
+- `GET /deal-plan/:productId` (`src/features/group-buy/api/deal-plan.routes.ts`)
 - `GET /demand-signal` (`src/features/supply/api/supplier-dashboard.routes.ts`)
 - `GET /documents` (`src/features/supply/api/wholesale-documents.routes.ts`)
 - `GET /documents/:id/html` (`src/features/supply/api/wholesale-documents.routes.ts`)
 - `POST /export` (`src/features/supply/api/coupang-commerce.routes.ts`)
+- `POST /fee-context/channel` (`src/features/seller/api/seller-store-channel.routes.ts`)
 - `GET /home` (`src/features/supply/api/wholesale.routes.ts`)
 - `GET /info` (`src/features/supply/api/wholesale-plus.routes.ts`)
 - `POST /items/:id/ship` (`src/features/supply/api/wholesale-supplier.routes.ts`)
@@ -479,11 +494,14 @@
 - `PATCH /signup-meta` (`src/features/supply/api/supplier-dashboard.routes.ts`)
 - `GET /statement` (`src/features/supply/api/wholesale-documents.routes.ts`)
 - `GET /status` (`src/features/supply/api/coupang-commerce.routes.ts`)
+- `POST /store-claims` (`src/features/seller/api/seller-store-claims.routes.ts`)
+- `GET /store-claims/mine` (`src/features/seller/api/seller-store-claims.routes.ts`)
 - `POST /store/coupang/connect` (`src/features/supply/api/supplier-dashboard.routes.ts`)
 - `POST /store/import` (`src/features/supply/api/supplier-dashboard.routes.ts`)
 - `POST /store/naver/connect` (`src/features/supply/api/supplier-dashboard.routes.ts`)
 - `GET /store/products` (`src/features/supply/api/supplier-dashboard.routes.ts`)
 - `GET /store/status` (`src/features/supply/api/supplier-dashboard.routes.ts`)
+- `GET /stores/lookup-by-business` (`src/features/seller/api/seller-store-claims.routes.ts`)
 - `GET /sub-accounts` (`src/features/supply/api/wholesale.routes.ts`)
 - `POST /sub-accounts` (`src/features/supply/api/wholesale.routes.ts`)
 - `DELETE /sub-accounts/:id` (`src/features/supply/api/wholesale.routes.ts`)
@@ -506,6 +524,9 @@
 - `POST /threads/by-product` (`src/features/supply/api/wholesale-chat.routes.ts`)
 - `POST /tracking/bulk` (`src/features/supply/api/wholesale-supplier.routes.ts`)
 - `GET /unread` (`src/features/supply/api/wholesale-chat.routes.ts`)
+- `DELETE /voucher-draft` (`src/features/seller/api/seller-voucher-draft.routes.ts`)
+- `GET /voucher-draft` (`src/features/seller/api/seller-voucher-draft.routes.ts`)
+- `PUT /voucher-draft` (`src/features/seller/api/seller-voucher-draft.routes.ts`)
 - `GET /wholesale-tax-invoices` (`src/features/supply/api/wholesale-tax.routes.ts`)
 - `POST /wholesale-tax-invoices/:id/reissue` (`src/features/supply/api/wholesale-tax.routes.ts`)
 - `GET /wholesale-withdrawals` (`src/features/supply/api/supplier-withdrawal.routes.ts`)
@@ -563,7 +584,7 @@
 |---|---|---|
 | 플랫폼 fee (default) | 5% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.PLATFORM_FEE_PCT` |
 | 위탁 판매 셀러 commission | 10% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.SELLER_COMMISSION_PCT` |
-| 제휴 마케팅 추천 보상 (default) | 5% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.AFFILIATE_COMMISSION_PCT` |
+| 제휴 마케팅 추천 보상 (default) | 2% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.AFFILIATE_COMMISSION_PCT` |
 | 외부 카테고리(숙박 등) 수수료 상한 | 20% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.STAYS_COMMISSION_CAP_PCT` |
 | 최소 출금 금액 | 10,000원 | `src/shared/constants/policy.ts:WITHDRAWAL_DEFAULTS.MIN_AMOUNT` |
 | 최소 commission 출금 | 10,000원 | `src/shared/constants/policy.ts:REFUND_POLICY.COMMISSION_MIN_WITHDRAWAL` |
@@ -571,13 +592,13 @@
 | 원천징수 — 기타소득 (단발성 협업) | 8.8% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.other_income` |
 | 기타소득 분리과세 연 한도 | 3,000,000원 | `src/worker/utils/tax-withholding.ts:ANNUAL_THRESHOLD` |
 
-#### 링크샵 / 큐레이터
+#### 유어샵 / 담기·소개
 
 ### 핵심 수치 (자동 추출)
 
 | 항목 | 값 | 출처 (파일:심볼) |
 |---|---|---|
-| 제휴 마케팅 추천 보상 (default) | 5% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.AFFILIATE_COMMISSION_PCT` |
+| 제휴 마케팅 추천 보상 (default) | 2% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.AFFILIATE_COMMISSION_PCT` |
 | 공구 양쪽 추천 보너스 (각각) | 0.5% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.REFERRAL_BONUS_BOTHSIDES_PCT` |
 | 큐레이터 핀 어필리에이트 | 1% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.CURATOR_AFFILIATE_PCT` |
 | 후원 수수료 (default) | 15% | `src/features/donations/api/donations.routes.ts:donation_commission_rate fallback` |
@@ -587,20 +608,6 @@
 | 큐레이터→셀러 승급 권유 임계 (누적 정산) | 500,000원 | `src/shared/constants/policy.ts:WITHDRAWAL_DEFAULTS.SELLER_UPGRADE_THRESHOLD` |
 | 최소 출금 금액 | 10,000원 | `src/shared/constants/policy.ts:WITHDRAWAL_DEFAULTS.MIN_AMOUNT` |
 | 최소 commission 출금 | 10,000원 | `src/shared/constants/policy.ts:REFUND_POLICY.COMMISSION_MIN_WITHDRAWAL` |
-| 원천징수 — 사업소득 (반복 활동, default) | 3.3% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.business_income` |
-| 원천징수 — 기타소득 (단발성 협업) | 8.8% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.other_income` |
-| 기타소득 분리과세 연 한도 | 3,000,000원 | `src/worker/utils/tax-withholding.ts:ANNUAL_THRESHOLD` |
-
-#### 에이전시
-
-### 핵심 수치 (자동 추출)
-
-| 항목 | 값 | 출처 (파일:심볼) |
-|---|---|---|
-| 에이전시 입점 분배 (platform_fee 중) | 30% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.AGENCY_SHARE_PCT` |
-| 에이전시 본인 commission (매출 기준) | 2% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.AGENCY_OWN_RATE` |
-| 인플루언서 입점 분배 (platform_fee 중) | 20% | `src/shared/constants/policy.ts:COMMISSION_DEFAULTS.INFLUENCER_INTRO_SHARE_PCT` |
-| 크리에이터 매장 영입 commission (default) | [추출실패—수동확인] | `src/worker/utils/influencer-store-intro-commission.ts:DEFAULT_STORE_INTRO_PCT` |
 | 원천징수 — 사업소득 (반복 활동, default) | 3.3% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.business_income` |
 | 원천징수 — 기타소득 (단발성 협업) | 8.8% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.other_income` |
 | 기타소득 분리과세 연 한도 | 3,000,000원 | `src/worker/utils/tax-withholding.ts:ANNUAL_THRESHOLD` |
@@ -882,7 +889,7 @@
 
 #### 온라인 입점 / 라이브커머스
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (70개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (72개)
 
 - `/browse`
 - `/cart`
@@ -896,7 +903,6 @@
 - `/seller`
 - `/seller/2fa`
 - `/seller/ad-slots`
-- `/seller/agency-delegation`
 - `/seller/alimtalk`
 - `/seller/analytics`
 - `/seller/bundles`
@@ -915,7 +921,9 @@
 - `/seller/ledger`
 - `/seller/login`
 - `/seller/marketing`
+- `/seller/more`
 - `/seller/notify-followers`
+- `/seller/operating`
 - `/seller/operators`
 - `/seller/orders`
 - `/seller/plus-friend-guide`
@@ -926,7 +934,6 @@
 - `/seller/profile`
 - `/seller/promo-codes`
 - `/seller/promo-spend`
-- `/seller/promote-boosts`
 - `/seller/proxy-products`
 - `/seller/realtime`
 - `/seller/register`
@@ -939,6 +946,7 @@
 - `/seller/scan`
 - `/seller/settlements`
 - `/seller/signup`
+- `/seller/store`
 - `/seller/stores`
 - `/seller/tier`
 - `/seller/tiktok-callback`
@@ -947,6 +955,7 @@
 - `/seller/youtube-growth`
 - `/seller/youtube-growth/success`
 - `/seller/youtube/callback`
+- `/store/find`
 - `/store/new`
 - `/store/scan`
 - `/store/stats/:productId`
@@ -955,7 +964,7 @@
 - `/vouchers/:id`
 - `/wishlist`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (280개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (272개)
 
 
 **/api/admin-review-bonus/:id**
@@ -1157,9 +1166,6 @@
 - `GET /api/seller/analytics/store-dashboard/stats`
 - `GET /api/seller/analytics/voucher-usage`
 
-**/api/seller/business-info**
-- `GET /api/seller/business-info`
-
 **/api/seller/business-registration**
 - `POST /api/seller/business-registration/ocr-verify`
 - `POST /api/seller/business-registration/submit`
@@ -1183,11 +1189,6 @@
 **/api/seller/deal-withdraw**
 - `POST /api/seller/deal-withdraw`
 
-**/api/seller/delegation**
-- `GET /api/seller/delegation/`
-- `POST /api/seller/delegation/:agencyId/grant`
-- `POST /api/seller/delegation/:agencyId/revoke`
-
 **/api/seller/fee-context**
 - `GET /api/seller/fee-context`
 
@@ -1197,6 +1198,8 @@
 **/api/seller/gb**
 - `GET /api/seller/gb/:id`
 - `PUT /api/seller/gb/:id`
+- `GET /api/seller/gb/mall`
+- `POST /api/seller/gb/mall/apply`
 - `GET /api/seller/gb/support-contact`
 
 **/api/seller/influencers**
@@ -1214,15 +1217,16 @@
 **/api/seller/login**
 - `POST /api/seller/login`
 
-**/api/seller/my-seller-status**
-- `GET /api/seller/my-seller-status`
-
 **/api/seller/my-stores**
 - `GET /api/seller/my-stores`
+- `GET /api/seller/my-stores/summary`
 
 **/api/seller/onboarding**
 - `GET /api/seller/onboarding/`
 - `POST /api/seller/onboarding/complete/:step_key`
+
+**/api/seller/operating-summary**
+- `GET /api/seller/operating-summary`
 
 **/api/seller/operators**
 - `GET /api/seller/operators`
@@ -1359,12 +1363,6 @@
 **/api/seller/surface**
 - `GET /api/seller/surface`
 
-**/api/seller/switch-to-seller**
-- `POST /api/seller/switch-to-seller`
-
-**/api/seller/switch-to-user**
-- `POST /api/seller/switch-to-user`
-
 **/api/seller/tax-summary**
 - `GET /api/seller/tax-summary`
 
@@ -1380,10 +1378,6 @@
 - `POST /api/seller/tiktok/sync-videos`
 - `DELETE /api/seller/tiktok/unlink`
 
-**/api/seller/transfers**
-- `GET /api/seller/transfers/`
-- `POST /api/seller/transfers/:id/respond`
-
 **/api/seller/unlink-kakao**
 - `POST /api/seller/unlink-kakao`
 
@@ -1396,11 +1390,6 @@
 
 **/api/seller/voucher-catalog**
 - `GET /api/seller/voucher-catalog`
-
-**/api/seller/voucher-draft**
-- `DELETE /api/seller/voucher-draft`
-- `GET /api/seller/voucher-draft`
-- `PUT /api/seller/voucher-draft`
 
 **/api/seller/voucher-orders**
 - `GET /api/seller/voucher-orders`
@@ -1513,17 +1502,27 @@
 - `GET /api/youtube/shorts/sync`
 
 
-#### 링크샵 / 큐레이터
+#### 유어샵 / 담기·소개
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (13개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (23개)
 
+- `/admin/influencer-disputes`
+- `/admin/influencer-payouts`
 - `/host`
 - `/host/new`
+- `/i/offer/:token`
+- `/influencer`
+- `/influencer/analytics`
+- `/influencer/dashboard`
+- `/influencer/discover`
+- `/influencer/rankings`
+- `/influencer/settlement`
 - `/profile/:sellerId`
 - `/referral`
 - `/referral/:code`
 - `/s/:sellerId`
 - `/seller/mini-shop`
+- `/seller/prospects`
 - `/u/:handle`
 - `/u/:handle/p/:productId`
 - `/u/me`
@@ -1531,8 +1530,21 @@
 - `/u/me/earnings`
 - `/user/affiliate`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (59개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (88개)
 
+
+**/api/admin-payouts/disputes**
+- `GET /api/admin-payouts/disputes`
+- `POST /api/admin-payouts/disputes/:id/resolve`
+
+**/api/admin-payouts/payouts**
+- `GET /api/admin-payouts/payouts`
+- `POST /api/admin-payouts/payouts/process`
+
+**/api/admin/castings**
+- `GET /api/admin/castings/`
+- `POST /api/admin/castings/`
+- `PATCH /api/admin/castings/:id/complete`
 
 **/api/affiliate/funnel**
 - `GET /api/affiliate/funnel`
@@ -1594,6 +1606,33 @@
 **/api/donations/stream**
 - `GET /api/donations/stream/:streamId`
 
+**/api/influencer-rankings**
+- `GET /api/influencer-rankings/`
+
+**/api/influencer-settlement/analytics**
+- `GET /api/influencer-settlement/analytics`
+
+**/api/influencer-settlement/deal-for-seller**
+- `GET /api/influencer-settlement/deal-for-seller/:sellerId`
+
+**/api/influencer-settlement/deals**
+- `GET /api/influencer-settlement/deals`
+- `POST /api/influencer-settlement/deals/:id/submit-proof`
+- `POST /api/influencer-settlement/deals/propose`
+
+**/api/influencer-settlement/disputes**
+- `POST /api/influencer-settlement/disputes`
+
+**/api/influencer-settlement/me**
+- `GET /api/influencer-settlement/me`
+- `PUT /api/influencer-settlement/me`
+
+**/api/influencer-settlement/my-rank**
+- `GET /api/influencer-settlement/my-rank`
+
+**/api/influencer-settlement/my-stores**
+- `GET /api/influencer-settlement/my-stores`
+
 **/api/referral-tree/admin**
 - `GET /api/referral-tree/admin/withdrawals`
 - `PATCH /api/referral-tree/admin/withdrawals/:id/approve`
@@ -1636,347 +1675,6 @@
 **/api/referral/product**
 - `GET /api/referral/product/:productId`
 
-**/api/seller-public/:sellerId**
-- `DELETE /api/seller-public/:sellerId/follow`
-- `POST /api/seller-public/:sellerId/follow`
-- `GET /api/seller-public/:sellerId/follow/preferences`
-- `PATCH /api/seller-public/:sellerId/follow/preferences`
-- `GET /api/seller-public/:sellerId/is-following`
-- `GET /api/seller-public/:sellerId/upcoming`
-
-**/api/seller-public/my**
-- `GET /api/seller-public/my/follows`
-
-**/api/seller-public/notify-followers**
-- `POST /api/seller-public/notify-followers`
-
-**/api/seller-public/seller**
-- `GET /api/seller-public/seller/analytics`
-
-**/api/seller/donations**
-- `GET /api/seller/donations`
-- `GET /api/seller/donations/settlements`
-- `POST /api/seller/donations/settlements`
-- `GET /api/seller/donations/summary`
-
-
-#### 에이전시
-
-### 도메인 코드 인벤토리 (자동) — 페이지 (29개)
-
-- `/a/:slug`
-- `/admin/agencies`
-- `/admin/agency-creator-approval`
-- `/admin/influencer-disputes`
-- `/admin/influencer-payouts`
-- `/agency`
-- `/agency-partner`
-- `/agency/delegations`
-- `/agency/forgot-password`
-- `/agency/guide`
-- `/agency/introduced-stores`
-- `/agency/ledger`
-- `/agency/login`
-- `/agency/profile`
-- `/agency/prospects`
-- `/agency/register`
-- `/agency/register/business`
-- `/agency/reset-password`
-- `/agency/sellers`
-- `/agency/settlements`
-- `/agency/transfers`
-- `/agency/waiting`
-- `/influencer`
-- `/influencer/analytics`
-- `/influencer/dashboard`
-- `/influencer/discover`
-- `/influencer/rankings`
-- `/influencer/settlement`
-- `/seller/prospects`
-
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (167개)
-
-
-**/api/admin-payouts/disputes**
-- `GET /api/admin-payouts/disputes`
-- `POST /api/admin-payouts/disputes/:id/resolve`
-
-**/api/admin-payouts/payouts**
-- `GET /api/admin-payouts/payouts`
-- `POST /api/admin-payouts/payouts/process`
-
-**/api/admin/agencies**
-- `GET /api/admin/agencies/`
-- `POST /api/admin/agencies/`
-- `DELETE /api/admin/agencies/:id`
-- `PATCH /api/admin/agencies/:id`
-- `POST /api/admin/agencies/:id/reset-password`
-- `GET /api/admin/agencies/:id/sellers`
-- `POST /api/admin/agencies/:id/sellers`
-- `DELETE /api/admin/agencies/:id/sellers/:sellerId`
-- `GET /api/admin/agencies/unassigned-sellers`
-
-**/api/admin/agency-creator-approvals**
-- `GET /api/admin/agency-creator-approvals/`
-- `GET /api/admin/agency-creator-approvals/:id`
-- `POST /api/admin/agency-creator-approvals/:id/approve`
-- `POST /api/admin/agency-creator-approvals/:id/reject`
-
-**/api/admin/castings**
-- `GET /api/admin/castings/`
-- `POST /api/admin/castings/`
-- `PATCH /api/admin/castings/:id/complete`
-
-**/api/agency-public/:slug**
-- `GET /api/agency-public/:slug`
-
-**/api/agency/calendar**
-- `GET /api/agency/calendar/`
-- `DELETE /api/agency/calendar/notes/:id`
-- `PATCH /api/agency/calendar/notes/:id`
-- `POST /api/agency/calendar/notes/:id/mark-read`
-- `GET /api/agency/calendar/streams/:id`
-- `POST /api/agency/calendar/streams/:id/notes`
-
-**/api/agency/campaigns**
-- `GET /api/agency/campaigns/`
-- `POST /api/agency/campaigns/`
-- `GET /api/agency/campaigns/:id`
-- `PATCH /api/agency/campaigns/:id`
-- `POST /api/agency/campaigns/:id/cancel`
-- `POST /api/agency/campaigns/:id/participants`
-- `DELETE /api/agency/campaigns/:id/participants/:sid`
-- `PATCH /api/agency/campaigns/:id/participants/:sid`
-- `POST /api/agency/campaigns/:id/refresh`
-
-**/api/agency/contracts**
-- `GET /api/agency/contracts`
-- `POST /api/agency/contracts`
-- `PUT /api/agency/contracts/:id`
-
-**/api/agency/coupons**
-- `POST /api/agency/coupons/distribute`
-- `GET /api/agency/coupons/distributions`
-- `GET /api/agency/coupons/distributions/:parentId/stats`
-
-**/api/agency/dashboard**
-- `GET /api/agency/dashboard/bundle`
-
-**/api/agency/delegation**
-- `GET /api/agency/delegation/`
-- `GET /api/agency/delegation/stores/:sellerId/promo-summary`
-- `POST /api/agency/delegation/stores/:sellerId/request-mode`
-
-**/api/agency/forgot-password**
-- `POST /api/agency/forgot-password`
-
-**/api/agency/incentives**
-- `GET /api/agency/incentives/payouts`
-- `GET /api/agency/incentives/preview`
-- `GET /api/agency/incentives/rules`
-- `POST /api/agency/incentives/rules`
-- `DELETE /api/agency/incentives/rules/:id`
-- `PATCH /api/agency/incentives/rules/:id`
-
-**/api/agency/intro-code**
-- `GET /api/agency/intro-code`
-
-**/api/agency/introduced-stores**
-- `GET /api/agency/introduced-stores`
-- `GET /api/agency/introduced-stores/commissions`
-- `GET /api/agency/introduced-stores/summary`
-
-**/api/agency/invite-seller**
-- `POST /api/agency/invite-seller`
-
-**/api/agency/invites**
-- `GET /api/agency/invites/`
-- `POST /api/agency/invites/`
-- `DELETE /api/agency/invites/:code`
-
-**/api/agency/kakao-link-status**
-- `GET /api/agency/kakao-link-status`
-
-**/api/agency/kpi**
-- `GET /api/agency/kpi/`
-
-**/api/agency/link-kakao**
-- `POST /api/agency/link-kakao`
-
-**/api/agency/login**
-- `POST /api/agency/login`
-
-**/api/agency/match-suggestions**
-- `GET /api/agency/match-suggestions`
-- `POST /api/agency/match-suggestions/:id/accept`
-- `POST /api/agency/match-suggestions/:id/decline`
-
-**/api/agency/members**
-- `GET /api/agency/members/`
-- `DELETE /api/agency/members/:id`
-- `PATCH /api/agency/members/:id`
-- `POST /api/agency/members/:id/reactivate`
-- `POST /api/agency/members/:id/suspend`
-- `POST /api/agency/members/accept`
-- `POST /api/agency/members/invite`
-
-**/api/agency/messages**
-- `POST /api/agency/messages/preview`
-- `POST /api/agency/messages/send`
-- `GET /api/agency/messages/sends`
-- `GET /api/agency/messages/templates`
-- `POST /api/agency/messages/templates`
-- `DELETE /api/agency/messages/templates/:id`
-- `PATCH /api/agency/messages/templates/:id`
-- `GET /api/agency/messages/variables`
-
-**/api/agency/monthly-tasks**
-- `GET /api/agency/monthly-tasks`
-
-**/api/agency/my-agency-status**
-- `GET /api/agency/my-agency-status`
-
-**/api/agency/notices**
-- `GET /api/agency/notices`
-- `POST /api/agency/notices`
-
-**/api/agency/notifications**
-- `GET /api/agency/notifications`
-- `PUT /api/agency/notifications/read-all`
-
-**/api/agency/orders**
-- `GET /api/agency/orders`
-
-**/api/agency/pin-status**
-- `GET /api/agency/pin-status`
-
-**/api/agency/profile**
-- `GET /api/agency/profile`
-- `PUT /api/agency/profile`
-
-**/api/agency/promote-boosts**
-- `GET /api/agency/promote-boosts/`
-- `POST /api/agency/promote-boosts/`
-
-**/api/agency/public-profile**
-- `GET /api/agency/public-profile/me/public`
-- `PATCH /api/agency/public-profile/me/public`
-
-**/api/agency/ranking**
-- `GET /api/agency/ranking`
-
-**/api/agency/refresh**
-- `POST /api/agency/refresh`
-
-**/api/agency/register**
-- `POST /api/agency/register`
-
-**/api/agency/register-from-user**
-- `POST /api/agency/register-from-user`
-
-**/api/agency/report**
-- `GET /api/agency/report/csv`
-
-**/api/agency/request-kakao-stepup**
-- `POST /api/agency/request-kakao-stepup`
-
-**/api/agency/reset-password**
-- `POST /api/agency/reset-password`
-
-**/api/agency/returns**
-- `GET /api/agency/returns`
-
-**/api/agency/schedule**
-- `GET /api/agency/schedule`
-
-**/api/agency/self-events**
-- `GET /api/agency/self-events/`
-- `POST /api/agency/self-events/`
-- `POST /api/agency/self-events/:id/cancel`
-- `POST /api/agency/self-events/:id/join`
-- `GET /api/agency/self-events/:id/leaderboard`
-
-**/api/agency/sellers**
-- `GET /api/agency/sellers`
-- `GET /api/agency/sellers/:id/inventory`
-- `GET /api/agency/sellers/:id/products`
-- `POST /api/agency/sellers/:id/products`
-- `PUT /api/agency/sellers/:id/products/:productId`
-- `GET /api/agency/sellers/:id/stats`
-- `GET /api/agency/sellers/compare`
-
-**/api/agency/set-pin**
-- `POST /api/agency/set-pin`
-
-**/api/agency/settlement-invoices**
-- `GET /api/agency/settlement-invoices`
-- `GET /api/agency/settlement-invoices/:id`
-
-**/api/agency/settlements**
-- `GET /api/agency/settlements`
-- `GET /api/agency/settlements/csv`
-- `POST /api/agency/settlements/request`
-
-**/api/agency/stats**
-- `GET /api/agency/stats`
-- `GET /api/agency/stats/batch`
-- `GET /api/agency/stats/daily`
-- `GET /api/agency/stats/kpi`
-- `GET /api/agency/stats/kt-alpha`
-- `GET /api/agency/stats/realtime`
-
-**/api/agency/stays**
-- `GET /api/agency/stays`
-- `GET /api/agency/stays/bookings`
-- `GET /api/agency/stays/kpi`
-
-**/api/agency/streams**
-- `GET /api/agency/streams`
-
-**/api/agency/targets**
-- `GET /api/agency/targets`
-- `PUT /api/agency/targets`
-
-**/api/agency/transfers**
-- `GET /api/agency/transfers/`
-- `POST /api/agency/transfers/`
-- `POST /api/agency/transfers/:id/cancel`
-- `POST /api/agency/transfers/:id/respond`
-- `POST /api/agency/transfers/:id/seller-approve`
-
-**/api/agency/unlink-kakao**
-- `POST /api/agency/unlink-kakao`
-
-**/api/agency/verify-pin**
-- `POST /api/agency/verify-pin`
-
-**/api/influencer-rankings**
-- `GET /api/influencer-rankings/`
-
-**/api/influencer-settlement/analytics**
-- `GET /api/influencer-settlement/analytics`
-
-**/api/influencer-settlement/deal-for-seller**
-- `GET /api/influencer-settlement/deal-for-seller/:sellerId`
-
-**/api/influencer-settlement/deals**
-- `GET /api/influencer-settlement/deals`
-- `POST /api/influencer-settlement/deals/:id/submit-proof`
-- `POST /api/influencer-settlement/deals/propose`
-
-**/api/influencer-settlement/disputes**
-- `POST /api/influencer-settlement/disputes`
-
-**/api/influencer-settlement/me**
-- `GET /api/influencer-settlement/me`
-- `PUT /api/influencer-settlement/me`
-
-**/api/influencer-settlement/my-rank**
-- `GET /api/influencer-settlement/my-rank`
-
-**/api/influencer-settlement/my-stores**
-- `GET /api/influencer-settlement/my-stores`
-
 **/api/seller-marketing/block**
 - `POST /api/seller-marketing/block`
 
@@ -1998,17 +1696,36 @@
 **/api/seller-marketing/unblock**
 - `POST /api/seller-marketing/unblock`
 
+**/api/seller-public/:sellerId**
+- `DELETE /api/seller-public/:sellerId/follow`
+- `POST /api/seller-public/:sellerId/follow`
+- `GET /api/seller-public/:sellerId/follow/preferences`
+- `PATCH /api/seller-public/:sellerId/follow/preferences`
+- `GET /api/seller-public/:sellerId/is-following`
+- `GET /api/seller-public/:sellerId/upcoming`
+
+**/api/seller-public/my**
+- `GET /api/seller-public/my/follows`
+
+**/api/seller-public/notify-followers**
+- `POST /api/seller-public/notify-followers`
+
+**/api/seller-public/seller**
+- `GET /api/seller-public/seller/analytics`
+
 **/api/seller/castings**
 - `GET /api/seller/castings/`
 - `POST /api/seller/castings/:id/respond`
 
-**/api/seller/promote-boosts**
-- `GET /api/seller/promote-boosts/`
-- `POST /api/seller/promote-boosts/:id/activate`
+**/api/seller/donations**
+- `GET /api/seller/donations`
+- `GET /api/seller/donations/settlements`
+- `POST /api/seller/donations/settlements`
+- `GET /api/seller/donations/summary`
 
 
 
-> 마지막 생성: 2026-08-31T07:31:06.636Z
+> 마지막 생성: 2026-09-16T10:39:03.546Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

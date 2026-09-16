@@ -109,7 +109,7 @@ function PhoneDetail() {
         <div className="aspect-[4/3] w-full grid place-items-center text-white text-[22px] font-black" style={{ background: 'linear-gradient(140deg,#e67e22,#a04000)' }}>NA</div>
         <div className="p-3.5">
           <div className="flex items-center gap-2">
-            <span className="w-7 h-7 rounded-full bg-gradient-to-br from-pink-400 to-rose-500" />
+            <span className="w-7 h-7 rounded-full bg-gradient-to-br from-brand to-rose-500" />
             <span className="flex flex-col leading-none">
               <span className="text-[11px] font-bold text-gray-900">감성네일 강남점</span>
               <span className="text-[9px] text-gray-400 mt-0.5">역삼동</span>

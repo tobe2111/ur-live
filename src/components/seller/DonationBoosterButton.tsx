@@ -58,7 +58,7 @@ export default function DonationBoosterButton({ liveStreamId }: Props) {
         duration_seconds: durationSec,
       }, { headers: { Authorization: `Bearer ${token}` } })
       if (r.data.success) {
-        toast.success(t('seller.boosterActivated', { multiplier, defaultValue: `🚀 ${multiplier}x 부스터 발동!` }))
+        toast.success(t('seller.boosterActivated', { multiplier, defaultValue: `${multiplier}x 부스터 발동!` }))
         setShowOptions(false)
         fetchActive()
       }
@@ -90,7 +90,7 @@ export default function DonationBoosterButton({ liveStreamId }: Props) {
     const mm = Math.floor(remainingSec / 60)
     const ss = remainingSec % 60
     return (
-      <div className="bg-gray-800 text-white rounded-xl p-3 shadow-lg">
+      <div className="bg-brand-tint text-brand-text rounded-xl p-3 shadow-lg">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5 text-sm font-bold">
             <Zap className="w-4 h-4 fill-white" />
@@ -100,7 +100,7 @@ export default function DonationBoosterButton({ liveStreamId }: Props) {
             <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="text-2xl font-bold tabular-nums text-center mb-2">
+        <div className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight tabular-nums text-center mb-2">
           {String(mm).padStart(2, '0')}:{String(ss).padStart(2, '0')}
         </div>
         <div className="grid grid-cols-2 gap-2 text-xs">
@@ -120,7 +120,7 @@ export default function DonationBoosterButton({ liveStreamId }: Props) {
   // 발동 버튼 + 옵션
   if (showOptions) {
     return (
-      <div className="bg-white border border-purple-200 rounded-xl p-3 shadow">
+      <div className="bg-white border border-rule rounded-xl p-3">
         <div className="flex items-center justify-between mb-3">
           <h4 className="text-sm font-bold text-gray-900">{t('seller.boosterOptions', { defaultValue: '후원 부스터 옵션' })}</h4>
           <button onClick={() => setShowOptions(false)} className="text-gray-400 hover:text-gray-600">
@@ -136,7 +136,7 @@ export default function DonationBoosterButton({ liveStreamId }: Props) {
             <button
               key={opt.mul}
               onClick={() => startBooster(opt.mul, opt.dur)}
-              className="p-3 bg-gray-800 hover:from-gray-900 hover:to-gray-900 text-white rounded-lg text-center"
+              className="ur-btn ur-btn-md ur-btn-primary p-3 hover:from-gray-900 hover:to-gray-900 text-center"
             >
               <div className="text-lg font-bold">{opt.label}</div>
               <div className="text-[10px] opacity-90">{opt.sub}</div>
@@ -153,7 +153,7 @@ export default function DonationBoosterButton({ liveStreamId }: Props) {
   return (
     <button
       onClick={() => setShowOptions(true)}
-      className="flex items-center gap-1.5 px-3 py-2 bg-gray-800 hover:from-gray-900 hover:to-gray-900 text-white text-xs font-bold rounded-lg shadow"
+      className="ur-btn ur-btn-md ur-btn-primary flex items-center gap-1.5 hover:from-gray-900 hover:to-gray-900 shadow"
     >
       <Zap className="w-4 h-4" />
       {t('seller.boosterActivate', { defaultValue: '후원 부스터 발동' })}

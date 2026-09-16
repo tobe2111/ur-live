@@ -5,13 +5,31 @@
  *  - 'scan_only'  : 직원 확인만 — 손님 셀프 사용 비활성(QR 스캔/코드 직접입력만). 가장 엄격.
  *  - 'store_code' : 셀프 사용 시 매장 확인코드(숫자, 카운터 스티커 — 신규 발급 6자리, 기존 4자리 유효) 입력 필수 — 매장에 실제
  *                   있어야만 사용 가능(원격 오사용·60초 취소 악용 구조적 차단). 유저 셀프취소 불가.
- *  - 'self_free'  : 자유 셀프 사용(현행 기본 — 카운터 느슨한 매장). 60초 셀프취소 허용.
- * 미설정 매장 = 'self_free' (기존 동작 보존).
+ *  - 'self_free'  : ⛔ **폐기(2026-09-03 대표 확정)** — "우리는 QR 아니면 매장 확인코드야".
+ *                   코드 없이 아무 데서나 소각되던 모드. 아래 SELECTABLE_MODES 에서 빠져
+ *                   더는 저장될 수 없고, 예전에 저장된 값도 읽는 순간 'store_code' 로 읽힌다.
+ *
+ * 🔑 **두 방식은 양자택일이 아니다.** 직원 QR 스캔(`/:code/use-by-seller`)은 **모드와 무관하게
+ *   항상 열려 있다**(그 경로엔 모드 검사가 없다). 모드는 **손님 셀프 사용**만 가른다:
+ *     scan_only  = 셀프 차단(직원 QR 만)
+ *     store_code = 셀프 시 매장 확인코드 필수  **+ 직원 QR 도 그대로**  ← 기본값
+ *
+ * 미설정 매장 = 'store_code'. 확인코드는 조회 시 자동 발급되므로 사장님이 아무것도 안 해도
+ * 코드가 존재한다(대시보드에서 확인). 손님은 매장에 실제로 있어야만 셀프 사용할 수 있다.
  */
 import { swallow } from './swallow'
 
 export type RedemptionMode = 'scan_only' | 'store_code' | 'self_free'
-export const REDEMPTION_MODES: readonly RedemptionMode[] = ['scan_only', 'store_code', 'self_free'] as const
+/**
+ * 저장·검증에 쓰는 목록 — **`self_free` 는 없다**(2026-09-03 폐기).
+ *
+ * ⚠️ 이 목록에서 빠진 값은 `getRedemptionSettings` 의 검증도 통과 못 하므로, DB 에 남아 있는
+ *   옛 `self_free` 행은 **읽는 순간 기본값(store_code)** 이 된다 — 별도 데이터 이관이 필요 없다.
+ */
+export const REDEMPTION_MODES: readonly RedemptionMode[] = ['scan_only', 'store_code'] as const
+
+/** 미설정·폐기값·조회실패의 귀착점. fail-**closed**: 모르면 느슨한 쪽이 아니라 코드를 요구한다. */
+export const DEFAULT_REDEMPTION_MODE: RedemptionMode = 'store_code'
 
 const _ensured = new WeakSet<object>()
 export async function ensureRedemptionSettingsTable(DB: D1Database): Promise<void> {
@@ -20,7 +38,7 @@ export async function ensureRedemptionSettingsTable(DB: D1Database): Promise<voi
   try {
     await DB.prepare(`CREATE TABLE IF NOT EXISTS seller_redemption_settings (
       seller_id INTEGER PRIMARY KEY,
-      mode TEXT NOT NULL DEFAULT 'self_free',
+      mode TEXT NOT NULL DEFAULT 'store_code',
       store_code TEXT,
       updated_at DATETIME DEFAULT (datetime('now'))
     )`).run()
@@ -51,10 +69,12 @@ export async function getRedemptionSettings(
       'SELECT mode, store_code FROM seller_redemption_settings WHERE seller_id = ?'
     ).bind(sellerId).first<{ mode: string; store_code: string | null }>()
     const mode = (REDEMPTION_MODES as readonly string[]).includes(row?.mode || '')
-      ? (row!.mode as RedemptionMode) : 'self_free'
+      ? (row!.mode as RedemptionMode) : DEFAULT_REDEMPTION_MODE
     return { mode, store_code: row?.store_code ?? null }
   } catch {
-    return { mode: 'self_free', store_code: null } // fail-open: 기존 동작
+    // 🔒 2026-09-03: 예전엔 fail-open(self_free)이라 **DB 가 한 번 삐끗하면 아무나 소각**할 수 있었다.
+    //   모르면 막는 쪽으로 — 직원 QR 은 어차피 이 설정과 무관하게 살아 있다.
+    return { mode: DEFAULT_REDEMPTION_MODE, store_code: null }
   }
 }
 

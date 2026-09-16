@@ -150,7 +150,7 @@ export default function AdminInfluencerPayoutsPage() {
               <button
                 onClick={bulkProcess}
                 disabled={selectedIds.size === 0 || bulkProcessing}
-                className="px-3 py-1.5 text-xs bg-gray-900 text-white rounded-lg font-bold disabled:opacity-40"
+                className="ur-btn ur-btn-sm ur-btn-primary disabled:opacity-40"
               >
                 선택 일괄 처리 ({selectedIds.size})
               </button>
@@ -213,7 +213,7 @@ export default function AdminInfluencerPayoutsPage() {
                       <td className="px-4 py-3 text-gray-900 font-mono text-xs">{r.influencer_id}</td>
                       <td className="px-4 py-3 text-right font-bold text-gray-900">{r.available_amount.toLocaleString()}원</td>
                       <td className="px-4 py-3 text-center">
-                        <span className={`text-[10px] px-2 py-1 rounded font-bold ${r.payout_method === 'deal' ? 'bg-pink-100 text-pink-700' : 'bg-blue-100 text-blue-700'}`}>
+                        <span className={`text-[10px] px-2 py-1 rounded font-bold ${r.payout_method === 'deal' ? 'bg-brand-tint text-brand-text' : 'bg-tone-info-bg text-tone-info'}`}>
                           {r.payout_method === 'deal' ? '딜 (+보너스)' : '현금'}
                         </span>
                       </td>
@@ -229,14 +229,14 @@ export default function AdminInfluencerPayoutsPage() {
                         {r.payout_method === 'deal' ? <span className="text-gray-400">-</span> : accountOk ? (
                           <span className="text-gray-700">{r.bank_name}<br />{r.bank_account}</span>
                         ) : (
-                          <span className="text-red-600 font-bold">⚠️ 계좌 미등록</span>
+                          <span className="text-tone-bad font-bold">계좌 미등록</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <button
                           onClick={() => process(r)}
                           disabled={!accountOk || processingId === r.influencer_id}
-                          className="px-3 py-1.5 text-[11px] font-bold bg-gray-900 text-white rounded-lg disabled:opacity-40"
+                          className="ur-btn ur-btn-sm ur-btn-primary text-[11px] disabled:opacity-40"
                         >
                           <CheckCircle className="w-3 h-3 inline mr-1" /> {processingId === r.influencer_id ? '처리중' : '완료 처리'}
                         </button>

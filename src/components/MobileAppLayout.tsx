@@ -2,11 +2,11 @@ import { ReactNode, lazy, Suspense, CSSProperties, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import DesktopLiveSidebar from './DesktopLiveSidebar'
 import { useTheme } from '@/shared/stores/useTheme'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { isFullBleedPcPath } from '@/shared/pc-fullbleed'
 import { isMallSurfacePath } from '@/shared/mall/resolve'
 
 // 🗑️ 2026-07-07 라이브커머스 제거: DesktopLiveLeft/RightPanel 제거.
-const LinkshopVisitorRails = lazy(() => import('./LinkshopVisitorRails'))
 const ConsumerFrameRails = lazy(() => import('./ConsumerFrameRails'))
 
 interface MobileAppLayoutProps {
@@ -33,13 +33,28 @@ const MOBILE_ONLY_PREFIXES: string[] = []
 // 🏭 2026-06-04 도매몰(/wholesale)·제조사(/supplier) = B2B 서피스 — 자체 카테고리 UI 사용.
 // 📐 2026-06-16 (사용자 확인): 도매몰 관련은 풀 PC 프레임이어야 함 → 여기 등재되어 app-framed 에서 자동 제외됨.
 const HIDE_SIDEBAR_PREFIXES = [
-  '/seller', '/admin', '/agency', '/supplier', '/wholesale', '/embed', '/checkout/return', '/introduce',
+  '/seller', '/admin', '/supplier', '/wholesale', '/embed', '/checkout/return', '/introduce',
   '/ads', // 🆕 유어애즈(UR Ads) — 도매몰처럼 PC 풀너비(액자/사이드바/거터 제외)
+  '/mall-admin', // 🏬 2026-08-10 몰 운영자 콘솔 — 대시보드 성격(소비자 액자 부적합)
   // 📝 2026-07-01 [UNLOCK_LOADING] (대표 요청 — "블로그는 PC 전체 폭을 써야 함, 액자에 갇힘"):
   //   블로그(/blog·/blog/:slug)를 430 액자에서 제외 → PC 풀너비. App.tsx 가 이미 /blog 를
   //   fullScreen 으로 처리(상/하단 네비·사이드배너 숨김)라, 프레임만 풀면 깔끔한 풀폭 읽기 화면.
   //   콘텐츠는 각 페이지의 max-w-6xl/4xl 로 중앙 정렬(가독성 유지). 모바일(<lg) 영향 0.
   '/blog',
+  // 🎨 2026-09-15 (대표 "시안 라우트 만들어줘"): 시안 갤러리(/design/variants)는 **여러 안을 나란히**
+  //   놓는 화면이라 430 액자 안에서는 목적 자체가 성립하지 않는다(실측: 액자에 갇혀 세로로 쌓였다).
+  //   App.tsx 가 이미 /design 을 fullScreen 으로 처리하므로 프레임만 풀면 된다. 모바일(<lg) 영향 0.
+  '/design',
+  // 🏪 2026-09-16 (대표 — 라이브 화면 신고 *"PC 버전은 따로 없어. 프레임에 갇혀있고"*):
+  //   `/partners` 는 **매장 사장님이 유어딜에 들어오는 첫 화면**인데(`utils/seller-entry.ts` 가
+  //   PC 상단 네비 "판매하세요" 를 여기로 보낸다) 이 목록에 없어 430px 소비자 액자에 갇혔다.
+  //   그리고 액자가 만든 빈 거터를 `ConsumerFrameRails` 가 채운다 — 홈·교환권·이용권·유어샵 바로가기와
+  //   앱 설치 QR. ⇒ **입점을 검토하러 온 사장님 화면의 좌우가 전부 소비자 앱 광고였다.**
+  //   `App.tsx` 가 이미 `/partners` 를 fullScreen 으로 처리하므로(상·하단 네비 없음) 프레임만 풀면 된다.
+  //   페이지 자체가 `ur-content-wide` 로 중앙 정렬하므로 풀너비에서 퍼지지 않는다(블로그 선례와 동일).
+  //   ⚠️ `/partnership`(입점 문의 폼)은 다른 페이지다. 이 목록의 판정은 정확일치 또는 `'/partners/'`
+  //      접두사라 `/partnership` 은 걸리지 않는다 — 접두사를 `'/partner'` 로 줄이지 말 것.
+  '/partners',
 ]
 
 // 🎨 2026-06-18 (사용자 시안): 유어샵 진입 시 PC 좌측 카테고리 사이드바 숨김 → 깔끔한 액자.
@@ -121,6 +136,9 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
   //   🏬 `!mallSurface` — 위 주석의 함정. 액자만 벗기면 그 자리를 유어딜 사이드바가 차지한다.
   const showSidebar = !hideSidebar && !linkshopVisitor && !framed && !isFullBleedHome && !mallSurface
   const showFrameRails = framed && !linkshopVisitor
+  // 📱 2026-09-02 (유어샵 워터폴 실측): 두 레일은 안에서 `hidden xl:flex` 라 모바일에선 안 보이는데, 마운트는
+  //   되므로 lazy 청크 + 그 안의 QR 라이브러리(codes 82KB)를 **폰에서도** 내려받고 있었다. 뷰포트가 xl 일 때만 마운트.
+  const isXl = useMediaQuery('(min-width: 1280px)')
   // 📐 2026-06-17: 단일 폰 폭(430) — 페이지별 폭 분기 제거(액자가 페이지마다 안 튐).
   const frameWidth = '430px'
 
@@ -147,11 +165,11 @@ export default function MobileAppLayout({ children }: MobileAppLayoutProps) {
       {/* PC (xl+) 좌측 사이드바 — 일반 페이지 + 라이브/쇼츠 (fixed). */}
       {showSidebar && <DesktopLiveSidebar />}
       {/* 🗑️ 2026-07-07 라이브커머스 제거: DesktopLiveLeft/RightPanel 렌더 제거 */}
-      {/* 🎨 2026-07-07 (대표 승인) 유어샵 방문자 PC 거터: 좌=창작자 카드 / 우=모바일 QR + "나도 만들기" 성장 훅.
-          유어딜 네비는 안 넣음(독립 쇼핑몰 느낌 유지). xl+ 내부 게이트. (기존 우하단 단독 QR 을 흡수·대체.) */}
-      {linkshopVisitor && <Suspense fallback={null}><LinkshopVisitorRails /></Suspense>}
+      {/* 🗑️ 2026-09-02 (대표 확정 — 유어샵 안P1): 방문자 PC 거터 레일(`LinkshopVisitorRails`) 삭제.
+          유어샵은 이제 lg+ 에서 액자를 벗어 진짜 PC 페이지(좌 프로필 열 + 우 3열 진열대)라 거터가 없다.
+          QR 은 프로필 열(`UShopQrCard`)로 이동. */}
       {/* 🖥️ 2026-06-20 컨슈머 PC 액자 거터 레일 (브랜드/QR/바로가기) — xl+ 에서만 보임(컴포넌트 내부 게이트). */}
-      {showFrameRails && <Suspense fallback={null}><ConsumerFrameRails /></Suspense>}
+      {showFrameRails && isXl && <Suspense fallback={null}><ConsumerFrameRails /></Suspense>}
       <div
         className={`mobile-app-container ${framed ? 'app-framed' : (showSidebar && !mobileOnly ? 'md:pl-[60px] xl:pl-56' : '')}`}
         data-mobile-only={mobileOnly ? 'true' : 'false'}

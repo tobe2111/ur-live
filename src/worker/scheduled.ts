@@ -7,10 +7,10 @@
  *
  * Triggers:
  *   '*\/5 * * * *' — short cleanup (every 5 min)
- *   '0 18 * * *'   — daily heavy tasks (settlement, voucher refund, agency batch)
+ *   '0 18 * * *'   — daily heavy tasks (settlement, voucher refund, growth batch)
  *   '0 19 * * *'   — reconciliation
  *   '0 20 * * 0'   — weekly D1 backup
- *   '0 0 * * 1'    — weekly agency batch (auto-settle, incentives, tier-eval, invoices)
+ *   '0 0 * * 1'    — weekly tier batch (seller tier eval, wholesale grade eval)
  *
  * Extracted from worker/index.ts (TD-006 부분, 2026-04-27).
  *
@@ -28,15 +28,10 @@ import { beginCatchup, catchupOpens, claimCatchupJob, summarizeCatchup, type Cat
 
 // 🛡️ 2026-05-18: handleScheduled (49KB) dynamic import — cron 발생 시만 로드.
 import { runReconciliation } from './cron/reconciliation';
-import { handleAgencyAutoSettle } from './cron/agency-auto-settle';
-import { handleAgencyTierEval } from './cron/agency-tier-eval';
-import { handleAgencyMonthlyInvoices } from './cron/agency-monthly-invoices';
-import { handleAgencyMonthlyReport } from './cron/agency-monthly-report';
 import { handleSellerTierEval } from './cron/seller-tier-eval';
 import { handleWholesaleGradeEval } from './cron/wholesale-grade-eval';
 import { handleWholesaleRestockNotify } from './cron/wholesale-restock-notify';
 import { handleAnomalyDetection } from './cron/anomaly-detect';
-// 🌇 일몰 정지(롤백 시 아래 호출과 함께 해제): import { handleAgencySellerMatch } from './cron/agency-seller-match';
 import { handleRetryAlimtalk } from './cron/retry-alimtalk';
 import { retryEmailFailures, retryPushFailures } from './cron/retry-notifications';
 import { handleAppointmentReminder } from './cron/appointment-reminder';
@@ -44,15 +39,12 @@ import { handleAppointmentNoshowAlert } from './cron/appointment-noshow-alert';
 import { handlePayoutsGenerate } from './cron/payouts-generate';
 import { handleTossRefundRetry } from './cron/toss-refund-retry';
 import { handleInfluencerPayout } from './cron/influencer-payout';
-import { handleGroupBuyDeadlinePush } from './cron/group-buy-deadline-push';
 import { handleGroupBuyFeedCache } from './cron/group-buy-feed-cache';
 import { handleCachePrewarm } from './cron/cache-prewarm';
 // 🛡️ 2026-06-09: 어드민 단체메일 큐 drainer (요청 안에서 발송 X → CPU/멱등 hardening).
 import { handleBulkEmailDrain } from './cron/bulk-email-drain'; import { drainOutreachEmails } from '../features/marketing/api/outreach-email';
 // 🛡️ 2026-05-24: 모든 신규 활성 상품 (공구/쇼핑/교환권) 에 자동 허위리뷰 시드.
 import { handleAutoSeedReviews } from './cron/auto-seed-reviews';
-import { calculateAllAgencyIncentives } from '../features/agency/api/agency-incentives.routes';
-import { getFeatureFlags } from './utils/feature-flags';
 // 🏭 2026-06-05 (사용자 요청 — 라이브 중단 중 cron 낭비 제거): 라이브 전용 cron 게이팅.
 //   LIVE_COMMERCE_SUSPENDED=true 동안 라이브 방송 관련 cron(5분마다 헛도는 DB 조회)을 건너뜀.
 //   플래그만 false 로 되돌리면 즉시 복원 — 코드 보존.
@@ -60,6 +52,9 @@ import { LIVE_COMMERCE_SUSPENDED } from '../shared/feature-flags';
 import { logError } from './utils/logger';
 import { reportCronFailure } from './utils/cron-reporter';
 import { recordCronBeat, expectedMaxAgeMinutes } from './utils/cron-heartbeat';
+// 📏 2026-09-02: 작업별 D1 읽기 행 수 — 9/1 무료 한도(500만/일) 사고. 근거는 utils/d1-read-meter.ts 헤더.
+import { installTaskMeteredEnv, runInMeter, initTaskMeter } from './utils/d1-read-meter-als';
+import { newMeter } from './utils/d1-read-meter';
 import { ACCEPTED_CRON_EXPRESSIONS } from './utils/cron-expected';
 import { envBeatFor } from './utils/cron-required-env';
 import { runDailyLane } from './cron/daily-lane';
@@ -67,7 +62,7 @@ import { runDailyLane } from './cron/daily-lane';
 /**
  * 🔔 2026-06-12 (4차 감사 D3): cron 내부 실패 공용 통지 — logError + Discord (fail-soft).
  *
- * 배경: agency-cron-batch / agency-weekly-batch 의 내부 task 들이 `.catch(logError)` 만 해서
+ * 배경: growth-daily-batch / weekly-tier-batch 의 내부 task 들이 `.catch(logError)` 만 해서
  * batch 자체는 성공으로 끝남 → safeCron 의 Discord 경로에 절대 안 닿았음 (silent 실패).
  * safeCron 의 Discord 패턴을 그대로 재사용해 내부 task 실패도 운영자에게 도달시킨다.
  *
@@ -134,6 +129,10 @@ export async function handleCronScheduled(
   ctx: ExecutionContext,
 ): Promise<void> {
   const cron = event.cron;
+  // 📏 env 의 D1 을 계량 래퍼로 바꾼다 — 아래 모든 작업 클로저가 이 `env` 바인딩을 잡으므로 여기 한 줄이
+  //   곧 전체 커버리지다(하트비트와 같은 이유로 같은 자리). 작업 밖의 쿼리(`__tick` 등)는 세지 않는다.
+  await initTaskMeter(); // ALS 를 런타임에 불러온다(정적 node: import 금지 — 그 파일 헤더). 실패해도 안 던진다.
+  env = installTaskMeteredEnv(env);
 
   // 🔬 2026-08-22 진단 프로브(`__tick`) — 왜 맨 앞인지·무엇을 가르는지는 `utils/cron-heartbeat.ts` 상단 주석.
   // 🔬 2026-08-25: 키를 **트리거별**로 쪼갠다(`__tick:<cron식>`). 전역 키 하나였을 땐 같은 분에
@@ -150,16 +149,18 @@ export async function handleCronScheduled(
     const t0 = Date.now();
     let ok = true;
     let out: unknown;
+    // 📏 이 작업이 읽은 D1 행 수 — 던져도 그때까지 읽은 양은 남긴다(실패한 작업이 제일 많이 읽는다).
+    const meter = newMeter();
     try {
       // 반환값이 있으면 '무엇을 했나'까지 기록한다 — 0건으로 끝난 게 '할 일이 없어서'인지
       // '조용히 실패해서'인지 구분하려면 실행 사실만으로는 부족하다.
-      out = await task();
+      out = await runInMeter(meter, task);
     } catch (err) {
       ok = false;
       await notifyCronFailure(env, name, err);
     } finally {
       // 기록 자체는 절대 throw 하지 않는다(관측이 기능을 막으면 안 된다).
-      await recordCronBeat(env, name, ok, Date.now() - t0, cron, out, gapMin);
+      await recordCronBeat(env, name, ok, Date.now() - t0, cron, out, gapMin, meter);
     }
   };
   // ⏰ 슬롯 작업은 5분 캐리어가 아니라 **자기 주기**를 신고한다(근거: `expectedMaxAgeMinutes` docblock).
@@ -215,15 +216,16 @@ export async function handleCronScheduled(
     }));
     ctx.waitUntil(safeCron('scheduled-cleanup', async () => {
       const { handleScheduled } = await import('./cron/scheduled-cleanup')
-      return handleScheduled(env)
+      // ⏱️ 2026-09-02 읽기 다이어트 — 청소는 티어로 돈다(매 틱 / 매시 :10 / 매일 04:20 KST). 근거는 그 파일 헤더.
+      return handleScheduled(env, { hourly: slotOpen({ minute: 10 }), daily: slotOpen({ minute: 20, hour: 19 }) })
     }));
     // 🛡️ 2026-05-07: 알림톡 발송 실패 자동 재시도 (max 3회, exponential backoff)
     ctx.waitUntil(safeCron('retry-alimtalk', () => handleRetryAlimtalk(env)));
     // 🛡️ 2026-05-12: 이메일 / 푸시 dead-letter 재시도 drainer
     ctx.waitUntil(safeCron('retry-email-failures', () => retryEmailFailures(env)));
     ctx.waitUntil(safeCron('retry-push-failures', () => retryPushFailures(env)));
-    // 🛡️ 2026-05-16: 공구 마감 3시간/1시간 전 push 알림 (5분마다 체크)
-    ctx.waitUntil(safeCron('group-buy-deadline-push', () => handleGroupBuyDeadlinePush(env)));
+    // 🪦 2026-09-05: '공구 마감 3시간/1시간 전 push' cron 제거 — 마감 개념이 없어져 영구히 0건이었다.
+    //   5분마다 products 를 창 3개로 훑고(하루 ~150만 행) 매번 ALTER 를 두 번 시도하던 자리다.
     // 🛡️ 2026-05-21 Phase E-3: 예약 시작 +30분 지난 confirmed 노쇼 자동 알림.
     ctx.waitUntil(safeCron('appointment-noshow-alert', () => handleAppointmentNoshowAlert(env)));
     // 🛡️ 2026-05-22: group-buy 피드 materialized cache 갱신 (5분).
@@ -232,10 +234,14 @@ export async function handleCronScheduled(
     ctx.waitUntil(safeCron('group-buy-feed-cache', () => handleGroupBuyFeedCache(env)));
     // 🛡️ 2026-05-23 (Task 3): 5분마다 hot endpoint pre-warm — 배포 후 / cache expire 후
     //   첫 사용자 cold-start 제거. publicCache 가 edge + KV 양쪽 자동으로 채움.
-    ctx.waitUntil(safeCron('cache-prewarm', () => handleCachePrewarm(env)));
+    // ⏱️ 2026-09-02 읽기 다이어트 — 동적 워밍(셀러/상품/큐레이터 12개)은 30분마다, products 정규화 UPDATE 는 하루 1회.
+    //   HOT_PATHS(SSR 키) 자체는 5분 그대로(잠금표 — 제거·약화 금지).
+    ctx.waitUntil(safeCron('cache-prewarm', () => handleCachePrewarm(env, { dynamic: slotOpen({ minute: 0 }) || slotOpen({ minute: 30 }), normalize: slotOpen({ minute: 35, hour: 19 }) })));
     // 🛡️ 2026-05-27 (영업 검증 Layer 4): prospects 첫 매출 발생 시 commission 활성.
     //   단순 가입 X — 매장이 실제 매출 내야 영업 commission lock-in. 부정 방지.
-    ctx.waitUntil(safeCron('prospects-commission-activate', async () => {
+    // ⏱️ 2026-09-02 읽기 다이어트 — 루프당 최대 200쿼리 + status 무인덱스 스캔 2개를 5분마다 돌렸다. "첫 매출" 은
+    //   시간 단위면 충분하다(커미션 활성화 지연 ≤1h). 매시 :40.
+    if (slotOpen({ minute: 40 })) ctx.waitUntil(slotCron('40 * * * *')('prospects-commission-activate', async () => {
       const { handleProspectsCommissionActivate } = await import('./cron/prospects-commission-activate')
       return handleProspectsCommissionActivate(env)
     }));
@@ -244,14 +250,10 @@ export async function handleCronScheduled(
 
   // ⏰ 2026-08-11: `0 * * * *` 미등록으로 이 블록 7개가 침묵했다(하트비트 0). 트리거 한도(5)를 다 써
   //   `*/5` 틱 위 :25 게이트로 시간당 1회. 왜 이 방식인지는 `cron-slot.ts` 참조.
-  // 🗄️ 2026-08-22: 재개 가능한 분할 백업(커서로 시간당 조금씩). 기존 주간 백업은 DB 가 263 MB 로
-  //   자라 워커 메모리를 넘겨 08-02 이후 조용히 멈춰 있었다 — 근거는 `cron/d1-backup-chunked.ts` 헤더.
-  if (cron === '*/5 * * * *' && [5, 20, 35, 50].some((m) => slotDue(event.scheduledTime, { minute: m }))) {
-    ctx.waitUntil(slotCron('5,20,35,50 * * * *')('d1-backup-chunked', async () => {
-      const { handleChunkedBackup } = await import('./cron/d1-backup-chunked')
-      return handleChunkedBackup(env as never)
-    }));
-  }
+  // 🗄️ 2026-08-22 분할 백업의 `*/5` 슬롯(:05/:20/:35/:50)은 **2026-09-02 에 제거** — 08-25 에 백업 전용
+  //   트리거(:02/:17/:32/:47, 아래)가 생긴 뒤에도 남아 있어 같은 작업이 시간당 8회 돌았다. 백업은 DB 를
+  //   통째로 읽는 작업이라(회차당 ≤1.2만 행) 그 중복만으로 하루 ~110만 행 = 무료 한도(500만)의 22% 였다.
+  //   근거: docs/handoff/2026-09-02-d1-read-diet.md §2-1 #11. 전용 트리거가 예산을 통째로 써서 더 잘 돈다.
 
   if (cron === '*/5 * * * *' && slotDue(event.scheduledTime, { minute: 25 })) {
     // 🥗 2026-07-15 워커 다이어트(대표 승인): social-maintenance 배선 제거 — CF 1MB 압축한도 회복.
@@ -481,34 +483,20 @@ export async function handleCronScheduled(
     //   const { handleSocialDraft } = await import('./cron/social-draft');
     //   return handleSocialDraft(env);
     // }));
-    ctx.waitUntil(slotCron('45 0 * * 1')('agency-weekly-batch', async () => {
-      const flags = await getFeatureFlags((env as any).RATE_LIMIT_KV, env.DB);
-      const now = new Date();
-      const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const monthStr = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}`;
-      const dayOfMonth = now.getUTCDate();
-
-      if (flags.enable_agency_auto_settle) {
-        await handleAgencyAutoSettle(env).catch(e => notifyCronFailure(env, 'agency-weekly-batch/auto-settle', e));
-      }
-      await calculateAllAgencyIncentives(env.DB, monthStr).catch(e => notifyCronFailure(env, 'agency-weekly-batch/incentives', e));
-      if (flags.enable_agency_tier_eval && dayOfMonth <= 7) {
-        await handleAgencyTierEval(env).catch(e => notifyCronFailure(env, 'agency-weekly-batch/tier-eval', e));
-      }
+    // 🌇 2026-09-04 에이전시 일몰(대표 확정) — 이 주간 배치에서 에이전시 작업 5종을 **삭제**했다:
+    //    auto-settle(정산 송금) · incentives · tier-eval · monthly-invoices · monthly-report.
+    //    라이브 실측: 관계 0 · 지급 이력 0(한 번도 실행 결과가 없다). 중개는 셀러 대시보드 계정이 맡는다.
+    //    설계 SSOT: docs/design/store-operator-model.md
+    //    ⚠️ 남은 2개는 에이전시와 무관해서 유지한다(셀러 등급 평가 · 판매사 도매 등급 평가).
+    ctx.waitUntil(slotCron('45 0 * * 1')('weekly-tier-batch', async () => {
+      const dayOfMonth = new Date().getUTCDate();
       // 2026-04-27: 셀러 등급 자동 평가 (월 1주차)
       if (dayOfMonth <= 7) {
-        await handleSellerTierEval(env).catch(e => notifyCronFailure(env, 'agency-weekly-batch/seller-tier-eval', e));
+        await handleSellerTierEval(env).catch(e => notifyCronFailure(env, 'weekly-tier-batch/seller-tier-eval', e));
       }
       // 🏭 BIZ-7 (2026-06-08): 판매사 도매 등급 자동 평가 (GMV 기반 승급 전용).
       //   매주 월요일 — platform_settings.wholesale_auto_grade_enabled='1' 일 때만 동작(off=no-op).
-      await handleWholesaleGradeEval(env).catch(e => notifyCronFailure(env, 'agency-weekly-batch/wholesale-grade-eval', e));
-      if (flags.enable_agency_monthly_invoices && dayOfMonth <= 7) {
-        await handleAgencyMonthlyInvoices(env as any).catch(e => notifyCronFailure(env, 'agency-weekly-batch/invoices', e));
-      }
-      // Phase 2-6: 월간 리포트 (1주차에만 실행, 내부 멱등)
-      if (dayOfMonth <= 7) {
-        await handleAgencyMonthlyReport(env).catch(e => notifyCronFailure(env, 'agency-weekly-batch/monthly-report', e));
-      }
+      await handleWholesaleGradeEval(env).catch(e => notifyCronFailure(env, 'weekly-tier-batch/wholesale-grade-eval', e));
       // 🎯 [urads-split Phase E 2026-07-18] 유어애즈 AI 주간 리포트 → ur-ads worker cron("0 0 * * 1")으로
       //   이관(src/worker-ads/index.ts, 주당 1회 멱등 유지) — 메인의 마지막 marketing cron 참조 제거. 재도입=원복.
     }));

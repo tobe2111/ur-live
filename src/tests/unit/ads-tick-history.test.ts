@@ -28,6 +28,7 @@ import {
   appendTick, summarizeTick, readTickHistory, TICK_HISTORY_CAP, TICK_HISTORY_MAX_CHARS, TICK_HISTORY_KEY,
 } from '../../worker-ads/tick-history'
 import { createBeatBatch } from '../../worker-ads/beat-batch'
+import { stripComments } from '../helpers/source-text'
 
 const beat = (name: string, ok: boolean, ms: number) => ({ name, ok, ms })
 
@@ -150,8 +151,7 @@ describe('누적기 — flush 해도 요약이 안 줄어든다', () => {
 
 describe('배선 — 부모가 실제로 남기는가', () => {
   /** 주석을 걷어내고 본다(설명 문장 속 코드가 판정을 뒤집는 사고를 오늘 겪었다). */
-  const code = (p: string) => fs.readFileSync(p, 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '').split('\n').map(l => l.replace(/\/\/.*$/, '')).join('\n')
+  const code = (p: string) => stripComments(fs.readFileSync(p, 'utf8'))
 
   /**
    * 🧭 **2026-08-03: 앵커를 위치가 아니라 의미로 옮겼다.**

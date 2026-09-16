@@ -51,7 +51,7 @@ export default function DetailBreadcrumb({
   return (
     <nav
       aria-label="현재 위치"
-      className={`flex items-center gap-1.5 overflow-x-auto whitespace-nowrap text-[13px] leading-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-4 pb-2.5 lg:px-8 lg:pt-4 lg:pb-1 lg:max-w-[1200px] lg:mx-auto ${overlayHeader ? 'pt-[64px]' : 'pt-3'}`}
+      className={`flex items-center gap-1.5 overflow-x-auto whitespace-nowrap text-[13px] leading-none scrollbar-hide px-4 pb-2.5 lg:px-8 lg:pt-4 lg:pb-1 lg:max-w-[1200px] lg:mx-auto ${overlayHeader ? 'pt-[64px]' : 'pt-3'}`}
     >
       {shown.map((c, i) => (
         <span key={`${c.label}-${i}`} className="flex items-center gap-1.5 shrink-0">

@@ -90,7 +90,7 @@ export default function Seller2FASetupPage() {
 
   return (
     <SellerLayout title="2단계 인증 (2FA)">
-      <div className="mx-auto max-w-2xl space-y-5 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-5">
         <DashboardPageHeader
           title="2단계 인증"
           subtitle="비밀번호 외 OTP 코드로 로그인 보호"
@@ -98,14 +98,14 @@ export default function Seller2FASetupPage() {
         />
 
         {/* 현재 상태 */}
-        <div className={`rounded-2xl p-5 border-2 flex items-center gap-4 ${enabled ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
+        <div className={`rounded-[var(--dash-radius,16px)] p-5 border-2 flex items-center gap-4 ${enabled ? 'bg-white border-rule' : 'bg-white border-rule'}`}>
           {enabled ? (
-            <ShieldCheck className="w-10 h-10 text-green-600 shrink-0" />
+            <ShieldCheck className="w-10 h-10 text-tone-ok shrink-0" />
           ) : (
-            <ShieldAlert className="w-10 h-10 text-amber-600 shrink-0" />
+            <ShieldAlert className="w-10 h-10 text-tone-warn shrink-0" />
           )}
           <div className="flex-1">
-            <p className={`text-sm font-bold ${enabled ? 'text-green-700' : 'text-amber-700'}`}>
+            <p className={`text-sm font-bold ${enabled ? 'text-tone-ok' : 'text-tone-warn'}`}>
               {enabled ? '2FA 활성화됨' : '2FA 비활성화 상태'}
             </p>
             <p className="text-xs text-gray-600 mt-0.5">
@@ -118,8 +118,8 @@ export default function Seller2FASetupPage() {
 
         {/* setup flow (비활성화 상태) */}
         {!enabled && !setupData && (
-          <div className="bg-white rounded-2xl p-6 border border-gray-200 text-center">
-            <KeyRound className="w-12 h-12 text-pink-500 mx-auto mb-3" />
+          <div className="bg-white rounded-[var(--dash-radius,16px)] p-6 border border-gray-200 text-center">
+            <KeyRound className="w-12 h-12 text-brand-text mx-auto mb-3" />
             <h3 className="text-base font-bold text-gray-900 mb-2">2FA 설정 시작</h3>
             <p className="text-sm text-gray-600 mb-4">
               Google Authenticator, 1Password, Authy 등<br />
@@ -128,7 +128,7 @@ export default function Seller2FASetupPage() {
             <button
               onClick={startSetup}
               disabled={submitting}
-              className="px-6 py-3 bg-pink-500 hover:bg-pink-600 disabled:opacity-50 text-white rounded-xl text-sm font-bold inline-flex items-center gap-2"
+              className="ur-btn ur-btn-lg ur-btn-primary"
             >
               {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
               설정 시작
@@ -138,7 +138,7 @@ export default function Seller2FASetupPage() {
 
         {/* QR 코드 + 검증 (setup 진행 중) */}
         {!enabled && setupData && (
-          <div className="bg-white rounded-2xl p-6 border border-gray-200 space-y-5">
+          <div className="bg-white rounded-[var(--dash-radius,16px)] p-6 border border-gray-200 space-y-5">
             <div>
               <h3 className="text-base font-bold text-gray-900 mb-2">1. QR 코드 스캔</h3>
               <p className="text-xs text-gray-500 mb-4">인증 앱에서 QR 코드를 스캔하세요.</p>
@@ -171,13 +171,13 @@ export default function Seller2FASetupPage() {
                 value={code}
                 onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 placeholder="000000"
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-2xl font-mono text-center text-gray-900 focus:border-pink-500 focus:outline-none tracking-widest"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-2xl font-mono text-center text-gray-900 focus:border-brand focus:outline-none tracking-widest"
                 autoComplete="one-time-code"
               />
               <button
                 onClick={verifyCode}
                 disabled={submitting || code.length !== 6}
-                className="w-full mt-3 px-6 py-3 bg-pink-500 hover:bg-pink-600 disabled:opacity-50 text-white rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2"
+                className="ur-btn ur-btn-lg ur-btn-primary w-full mt-3"
               >
                 {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
                 활성화
@@ -188,7 +188,7 @@ export default function Seller2FASetupPage() {
 
         {/* 활성화 상태 — 비활성화 옵션 */}
         {enabled && (
-          <div className="bg-white rounded-2xl p-6 border border-gray-200 space-y-3">
+          <div className="bg-white rounded-[var(--dash-radius,16px)] p-6 border border-gray-200 space-y-3">
             <h3 className="text-base font-bold text-gray-900">2FA 비활성화</h3>
             <p className="text-xs text-gray-500">
               현재 활성화된 인증 앱의 6자리 코드를 입력하세요.
@@ -200,13 +200,13 @@ export default function Seller2FASetupPage() {
               value={code}
               onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
               placeholder="000000"
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-xl font-mono text-center text-gray-900 focus:border-red-500 focus:outline-none tracking-widest"
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-xl font-mono text-center text-gray-900 focus:border-brand focus:outline-none tracking-widest"
               autoComplete="one-time-code"
             />
             <button
               onClick={disable2fa}
               disabled={submitting || code.length !== 6}
-              className="w-full px-6 py-3 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white rounded-xl text-sm font-bold"
+              className="ur-btn ur-btn-lg ur-btn-danger w-full"
             >
               {submitting ? '처리 중…' : '비활성화'}
             </button>

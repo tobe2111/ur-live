@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { isFromMallSession } from '@/shared/mall/origin'
 
 /**
  * 🔗 2026-07-03 구매 직후 셀러 전환 넛지 (웨지 전환 깔때기 P0 — 대표 승인 "1~4번 전부, 가장 이상적으로").
@@ -10,6 +11,10 @@ import { useNavigate } from 'react-router-dom'
  *
  * 규칙:
  *   - 이미 셀러(seller_token)면 미노출 — 전환 대상만.
+ *   - 🏪 **운영자 몰을 거쳐 온 손님이면 미노출** (2026-08-12, 대표 "완전 별개, 분리").
+ *     운영자가 데려온 손님에게 유어딜이 "당신도 셀러 되세요"라고 하는 건 브랜딩이 아니라
+ *     **고객 가로채기**다. 판정·비대칭 근거는 `shared/mall/origin.ts isFromMallSession` 주석 참조.
+ *     ⚠️ 이 컴포넌트가 스스로 끈다 — 호출부(`PaymentSuccessPage`)는 **Toss 감사 잠금**이라 무접촉.
  *   - user_handle 이 있으면 "이미 내 유어샵이 있어요" 자산을 개인화(가입 시 즉시 핸들 발급과 짝).
  *   - CTA → /store/new?from=payment (매장 등록 선행 — 사업자 인증은 대시보드가 안내).
  *   - '다음에' 닫으면 localStorage 로 재노출 안 함(반복 구매자 피로 방지).
@@ -27,7 +32,8 @@ export default function SellerConversionNudge() {
       const hasSellerToken = !!localStorage.getItem('seller_token')
       const dismissed = localStorage.getItem(DISMISS_KEY) === '1'
       const loggedIn = !!(localStorage.getItem('user_id') || localStorage.getItem('user_type'))
-      if (hasSellerToken || dismissed || !loggedIn) return
+      // 🏪 몰 손님에게는 유어딜 영업을 하지 않는다(위 규칙). 모르면 끄는 쪽이 안전하다.
+      if (hasSellerToken || dismissed || !loggedIn || isFromMallSession()) return
       const h = localStorage.getItem('user_handle')
       if (h) setHandle(h)
       setVisible(true)
@@ -37,7 +43,7 @@ export default function SellerConversionNudge() {
   if (!visible) return null
 
   return (
-    <div className="mt-4 sm:mt-5 rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gradient-to-br from-gray-50 to-white dark:from-[#161616] dark:to-[#1C1C1E] p-4 sm:p-5">
+    <div className="mt-4 sm:mt-5 rounded-xl border border-gray-200 dark:border-[#2A2A2A] bg-gradient-to-br from-gray-50 to-white dark:from-[#161616] dark:to-[#1D1F29] p-4 sm:p-5">
       <div className="flex items-start gap-3">
         <span className="text-2xl leading-none">🏪</span>
         <div className="flex-1 min-w-0">

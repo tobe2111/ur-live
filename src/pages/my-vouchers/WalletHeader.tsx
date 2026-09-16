@@ -15,8 +15,12 @@ export interface WalletStat {
   mono?: boolean
 }
 
-export default function WalletHeader({ title, amount, unit, stats = [], onBack, backLabel }: {
+export default function WalletHeader({ title, hideTitle = false, amount, unit, stats = [], onBack, backLabel }: {
   title: string
+  /** 🎫 2026-09-03 (대표 "내 이용권 문장 삭제"): 제목을 화면에서 지운다. 페이지가 제목 없는 문서가
+   *  되지 않도록 `sr-only` h1 로만 남긴다(보조기술·SEO 구조 유지). 제목이 빠지면 금액이 그 줄의
+   *  유일한 요소라 왼쪽으로 붙는다 — 오른쪽에 홀로 떠 있지 않게. */
+  hideTitle?: boolean
   /** 보유 금액. null 이면 금액 자리를 비운다(빈 지갑). */
   amount: number | null
   /** '원'(이용권) 또는 '딜'(교환권) */
@@ -29,16 +33,21 @@ export default function WalletHeader({ title, amount, unit, stats = [], onBack, 
 }) {
   return (
     <div className="ur-content-narrow px-4 lg:px-8 pt-2">
+      {hideTitle && <h1 className="sr-only">{title}</h1>}
       <div className="flex items-end justify-between gap-3">
-        <div className="flex items-center gap-1 min-w-0">
-          {onBack && (
-            <button type="button" onClick={onBack} aria-label={backLabel || '뒤로가기'}
-              className="-ml-2 w-9 h-9 shrink-0 flex items-center justify-center rounded-full text-gray-900 dark:text-white active:bg-gray-100 dark:active:bg-white/10">
-              <ArrowLeft className="w-[18px] h-[18px]" strokeWidth={2} />
-            </button>
-          )}
-          <h1 className="text-[20px] font-extrabold tracking-[-0.02em] text-gray-900 dark:text-white leading-none truncate">{title}</h1>
-        </div>
+        {(!hideTitle || onBack) && (
+          <div className="flex items-center gap-1 min-w-0">
+            {onBack && (
+              <button type="button" onClick={onBack} aria-label={backLabel || '뒤로가기'}
+                className="-ml-2 w-9 h-9 shrink-0 flex items-center justify-center rounded-full text-gray-900 dark:text-white active:bg-gray-100 dark:active:bg-white/10">
+                <ArrowLeft className="w-[18px] h-[18px]" strokeWidth={2} />
+              </button>
+            )}
+            {!hideTitle && (
+              <h1 className="text-[20px] font-extrabold tracking-[-0.02em] text-gray-900 dark:text-white leading-none truncate">{title}</h1>
+            )}
+          </div>
+        )}
         {amount !== null && (
           <span className="shrink-0 text-[21px] font-extrabold font-mono tracking-tight text-gray-900 dark:text-white leading-none">
             {formatNumber(amount)}<span className="font-sans text-[12px] font-bold text-gray-400 dark:text-gray-500 ml-0.5">{unit}</span>
@@ -47,12 +56,14 @@ export default function WalletHeader({ title, amount, unit, stats = [], onBack, 
       </div>
 
       {stats.length > 0 && (
-        <div className="mt-2.5 pt-2.5 border-t border-gray-200 dark:border-[#2C2F35] flex items-center gap-4 text-[12px]">
+        <div className="mt-2.5 pt-2.5 border-t border-rule flex items-center gap-4 text-[12px]">
           {stats.map((s) => (
             <span key={s.label} className="text-gray-500 dark:text-gray-400">
               {s.label}{' '}
               <b className={`font-extrabold ${s.mono ? 'font-mono' : ''} ${
-                s.tone === 'danger' ? 'text-[#DC2626]' : s.tone === 'success' ? 'text-[#16A34A]' : 'text-gray-900 dark:text-white'
+                /* 🎨 2026-09-15: 툴킷 기본 빨강·초록을 hex 로 직접 적고 있었다 — 체계 토큰
+                   (`--tone-bad`/`--tone-ok`)과 값이 달라 같은 '위험'이 화면마다 다른 빨강이었다. */
+                s.tone === 'danger' ? 'text-tone-bad' : s.tone === 'success' ? 'text-tone-ok' : 'text-gray-900 dark:text-white'
               }`}>{s.value}</b>
             </span>
           ))}

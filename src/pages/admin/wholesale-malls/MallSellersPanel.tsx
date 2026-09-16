@@ -89,7 +89,7 @@ export default function MallSellersPanel({ mallId, mallName }: { mallId: number;
           className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400"
         />
         <button onClick={attach} disabled={busy || !input.trim()}
-          className="px-3 py-2 bg-gray-900 text-white rounded-lg text-xs font-semibold disabled:opacity-40 shrink-0">
+          className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-40 shrink-0">
           연결
         </button>
       </div>
@@ -99,7 +99,7 @@ export default function MallSellersPanel({ mallId, mallName }: { mallId: number;
       ) : isError ? (
         // 🛡️ fetch 실패를 '매장 0개'로 위장하지 않는다(도매 감사 룰과 동일).
         <div className="py-3 text-center">
-          <p className="text-xs text-red-600">매장 목록을 불러오지 못했어요</p>
+          <p className="text-xs text-tone-bad">매장 목록을 불러오지 못했어요</p>
           <button onClick={() => refetch()} className="mt-1 text-[11px] text-gray-600 underline">다시 시도</button>
         </div>
       ) : rows.length === 0 ? (

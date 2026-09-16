@@ -23,11 +23,11 @@ export function showKakaoLoadingOverlay(opts: { forceLight?: boolean; label?: st
     const isDark = !opts.forceLight && document.documentElement.classList.contains('dark')
     const reduce = typeof window !== 'undefined' && window.matchMedia
       && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    // 🎨 2026-07-19 확정 로고: 워드마크 잉크 = UrDealLogo 와 동일(라이트 네이비 #16181C ↔ 다크 웜화이트 #FAF7F5).
-    const bg = isDark ? '#0D0F12' : '#ffffff'
-    const ink = isDark ? '#FAF7F5' : '#16181C'
+    // 🎨 2026-07-19 확정 로고: 워드마크 잉크 = UrDealLogo 와 동일(라이트 네이비 #16181C ↔ 다크 웜화이트 #F8F7FC).
+    const bg = isDark ? '#11141C' : '#ffffff'
+    const ink = isDark ? '#F8F7FC' : '#16181C'
     const track = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(229,231,235,0.7)' // = dark:bg-white/10 · bg-gray-200/70
-    const barInk = opts.forceLight ? '#111827' : '#E0526B'                     // = BrandLoader: forceLight 중립 · 기본/다크 bg-brand
+    const barInk = opts.forceLight ? '#111827' : '#1C69EF'                     // = BrandLoader: forceLight 중립 · 기본/다크 bg-brand
     const sub = isDark ? 'rgba(255,255,255,0.42)' : 'rgba(17,24,39,0.40)'
     // 🎯 위상 전역동기 — BrandLoader.tsx 와 동일 계산(FCP 기준 음수 delay).
     let phaseBase = 0
@@ -51,7 +51,7 @@ export function showKakaoLoadingOverlay(opts: { forceLight?: boolean; label?: st
     logo.style.cssText = `animation-delay:${breatheDelay};display:inline-flex;align-items:baseline;font-family:'Poppins','Pretendard Variable',system-ui,sans-serif;font-weight:800;font-size:34px;line-height:1;letter-spacing:-0.035em;color:${ink}`
     logo.appendChild(document.createTextNode('urdeal'))
     const dot = document.createElement('span')
-    dot.style.cssText = 'display:inline-block;width:6.12px;height:6.12px;background:#E0526B;border-radius:50%;margin-left:2.72px'
+    dot.style.cssText = 'display:inline-block;width:6.12px;height:6.12px;background:#1C69EF;border-radius:50%;margin-left:2.72px'
     logo.appendChild(dot)
     // 진행 바 — BrandLoader 와 동일(96×3, 38% 세그먼트, 번들 sweep 클래스 + 위상 delay).
     const bar = document.createElement('div')

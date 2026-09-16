@@ -169,7 +169,7 @@ export default function SellerAlimtalkPage() {
   const headerRight = (
     <div className="flex items-center gap-2">
       <span className="text-xs text-gray-400">{t('seller.remainingCredits')}</span>
-      <span className={`text-sm font-bold ${balance > 0 ? 'text-blue-600' : 'text-red-500'}`}>
+      <span className={`text-sm font-bold ${balance > 0 ? 'text-gray-700' : 'text-tone-bad'}`}>
         {formatNumber(balance)}{t('seller.creditsUnit')}
       </span>
       <button
@@ -183,19 +183,18 @@ export default function SellerAlimtalkPage() {
 
   return (
     <SellerLayout title={t('seller.brandMessage')} headerRight={headerRight}>
-      <div className="mx-auto max-w-3xl space-y-5 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-5">
         {/* 🛡️ 2026-04-22 배치 129: 리디자인 */}
-        {/* Balance Card — 모던 그라데이션 */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-6 text-white shadow-lg">
-          <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10" />
-          <div className="absolute -bottom-8 -right-2 h-16 w-16 rounded-full bg-white/10" />
-          <div className="relative">
-            <p className="text-xs font-medium text-blue-100">{t('seller.brandMessageCredits')}</p>
-            <p className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">
+        {/* 🎫 2026-09-14 (모바일 우선 재설계 ④ — 검은 면·그라디언트 0): 검정 그라디언트 잔액 카드 → 티켓(파란 밴드 + 흰 본문).
+            숫자가 주인공이고 장식 원 두 개는 뜻이 없어 뺐다. */}
+        <div className="overflow-hidden rounded-[var(--dash-radius,16px)] border border-rule bg-white">
+          <div className="flex h-11 items-center px-4 text-[13px] font-bold text-white bg-brand">{t('seller.brandMessageCredits')}</div>
+          <div className="p-5">
+            <p className="text-[30px] font-extrabold leading-tight tracking-tight text-gray-900 sm:text-[34px]">
               {formatNumber(balance)}
-              <span className="ml-1 text-lg font-normal">{t('seller.creditsUnit')}</span>
+              <span className="ml-1 text-[15px] font-semibold text-gray-500">{t('seller.creditsUnit')}</span>
             </p>
-            <p className="mt-2 text-xs text-blue-100/90">{t('seller.brandMessageDesc')}</p>
+            <p className="mt-2 text-[12.5px] text-gray-500">{t('seller.brandMessageDesc')}</p>
           </div>
         </div>
 
@@ -209,7 +208,7 @@ export default function SellerAlimtalkPage() {
             <button
               key={id}
               onClick={() => setActiveTab(id)}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${activeTab === id ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${activeTab === id ? 'border-brand text-brand-text' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
             >
               <Icon className="w-4 h-4" /> {label}
             </button>
@@ -218,7 +217,7 @@ export default function SellerAlimtalkPage() {
 
         {/* Auto Send List Tab */}
         {activeTab === 'overview' && (
-          <div className="bg-white rounded-xl shadow-sm divide-y divide-gray-50">
+          <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white divide-y divide-gray-50">
             {[
               { trigger: t('seller.orderReceivedTrigger'),   desc: t('seller.orderReceivedDesc'),     active: true },
               { trigger: t('seller.deliveryStartedTrigger'),  desc: t('seller.deliveryStartedDesc'),   active: true },
@@ -231,13 +230,13 @@ export default function SellerAlimtalkPage() {
                   <p className="text-sm font-medium text-gray-900">{item.trigger}</p>
                   <p className="text-xs text-gray-400 mt-0.5">{item.desc}</p>
                 </div>
-                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${item.active ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-400'}`}>
+                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${item.active ? 'bg-tone-ok-bg text-tone-ok' : 'bg-gray-100 text-gray-400'}`}>
                   {item.active ? t('seller.activeStatus') : t('seller.preparingStatus')}
                 </span>
               </div>
             ))}
-            <div className="p-4 bg-yellow-50">
-              <p className="text-xs text-yellow-700">
+            <div className="p-4 border border-rule bg-white">
+              <p className="text-xs text-tone-warn">
                 {t('seller.kakaoTemplateNote')}
               </p>
             </div>
@@ -246,7 +245,7 @@ export default function SellerAlimtalkPage() {
 
         {/* Charge History Tab */}
         {activeTab === 'history' && (
-          <div className="bg-white rounded-xl shadow-sm">
+          <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white">
             {creditHistory.length === 0 ? (
               <div className="py-16 text-center">
                 <CreditCard className="w-10 h-10 text-gray-200 mx-auto mb-3" />
@@ -264,7 +263,7 @@ export default function SellerAlimtalkPage() {
                       <p className="text-xs text-gray-400">{formatKST(tx.created_at)}</p>
                     </div>
                     <div className="text-right">
-                      <p className={`text-sm font-semibold ${tx.amount > 0 ? 'text-blue-600' : 'text-gray-500'}`}>
+                      <p className={`text-sm font-semibold ${tx.amount > 0 ? 'text-gray-700' : 'text-gray-500'}`}>
                         {tx.amount > 0 ? '+' : ''}{formatNumber(tx.amount)}{t('seller.creditsUnit')}
                       </p>
                       {tx.price_paid && (
@@ -280,9 +279,9 @@ export default function SellerAlimtalkPage() {
 
         {/* Send History Tab */}
         {activeTab === 'logs' && (
-          <div className="bg-white rounded-xl shadow-sm">
+          <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white">
             {logsLoading ? (
-              <div className="py-12 text-center"><Loader2 className="w-6 h-6 animate-spin text-blue-500 mx-auto" /></div>
+              <div className="py-12 text-center"><Loader2 className="w-6 h-6 animate-spin text-brand-text mx-auto" /></div>
             ) : logs.length === 0 ? (
               <div className="py-16 text-center">
                 <History className="w-10 h-10 text-gray-200 mx-auto mb-3" />
@@ -293,15 +292,15 @@ export default function SellerAlimtalkPage() {
                 {logs.map(log => (
                   <div key={log.id} className="flex items-start gap-3 px-4 py-3">
                     {log.success
-                      ? <CheckCircle2 className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-                      : <XCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+                      ? <CheckCircle2 className="w-4 h-4 text-tone-ok mt-0.5 flex-shrink-0" />
+                      : <XCircle className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
                     }
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-gray-800">
                         {log.receiver.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3')}
                         {log.order_id && <span className="text-xs text-gray-400 ml-2">{t('seller.orderLabelPrefix')} {log.order_id}</span>}
                       </p>
-                      {log.error_msg && <p className="text-xs text-red-400">{log.error_msg}</p>}
+                      {log.error_msg && <p className="text-xs text-gray-400">{log.error_msg}</p>}
                       <p className="text-xs text-gray-400">{formatKST(log.created_at)}</p>
                     </div>
                   </div>
@@ -316,7 +315,7 @@ export default function SellerAlimtalkPage() {
       {chargeModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 pb-4">
           <div className="fixed inset-0 bg-black/50" onClick={() => setChargeModal(false)} />
-          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm max-h-[85dvh] overflow-y-auto p-5">
+          <div className="relative rounded-[var(--dash-radius,16px)] border border-rule bg-white-xl w-full max-w-sm max-h-[85dvh] overflow-y-auto p-5">
             <h3 className="text-sm font-semibold text-gray-900 mb-1">{t('seller.creditChargeTitle')}</h3>
             <p className="text-xs text-gray-400 mb-4">{t('seller.creditChargeDesc')}</p>
 
@@ -330,16 +329,16 @@ export default function SellerAlimtalkPage() {
                   <button
                     key={pkg.id}
                     onClick={() => setSelectedPkgId(pkg.id)}
-                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-colors ${isSelected ? 'border-blue-600 bg-blue-50' : 'border-gray-100 hover:border-gray-200'}`}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-colors ${isSelected ? 'border-brand bg-brand-tint' : 'border-gray-100 hover:border-gray-200'}`}
                   >
                     <div className="flex items-center gap-3">
-                      <Package className={`w-4 h-4 ${isSelected ? 'text-blue-600' : 'text-gray-400'}`} />
+                      <Package className={`w-4 h-4 ${isSelected ? 'text-gray-700' : 'text-gray-400'}`} />
                       <div className="text-left">
-                        <p className={`text-sm font-semibold ${isSelected ? 'text-blue-700' : 'text-gray-800'}`}>{pkg.label}</p>
+                        <p className={`text-sm font-semibold ${isSelected ? 'text-gray-700' : 'text-gray-800'}`}>{pkg.label}</p>
                         <p className="text-xs text-gray-400">{t('seller.perUnit', { price: unitPrice })}</p>
                       </div>
                     </div>
-                    <p className={`text-sm font-bold ${isSelected ? 'text-blue-700' : 'text-gray-700'}`}>
+                    <p className={`text-sm font-bold ${isSelected ? 'text-gray-700' : 'text-gray-700'}`}>
                       {formatNumber(pkg.price)}{t('common.won')}
                     </p>
                   </button>

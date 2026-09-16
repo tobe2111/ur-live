@@ -130,7 +130,7 @@ export default function AdminWholesaleBannersPage() {
           <DashboardPageHeader icon={<ImageIcon className="w-5 h-5" />} title="도매 메인 배너" subtitle="도매몰(/wholesale) 메인 히어로 캐러셀 배너를 관리합니다." />
           <div className="flex items-center gap-2 shrink-0">
             <AdminMallSelect value={mallId} onChange={setMallId} allLabel="기본 몰" />
-            <button onClick={openNew} className="inline-flex items-center gap-1.5 px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-semibold">
+            <button onClick={openNew} className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-1.5">
               <Plus className="w-4 h-4" /> 배너 추가
             </button>
           </div>
@@ -150,7 +150,7 @@ export default function AdminWholesaleBannersPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-gray-900 truncate">{b.title || '(제목 없음)'}</span>
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${b.active ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>{b.active ? '노출중' : '숨김'}</span>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${b.active ? 'bg-tone-ok-bg text-tone-ok' : 'bg-gray-100 text-gray-500'}`}>{b.active ? '노출중' : '숨김'}</span>
                   </div>
                   <div className="text-xs text-gray-500 mt-1 truncate">{b.link || '링크 없음'}</div>
                   <div className="text-xs text-gray-400 mt-0.5">순서 {b.sort}</div>
@@ -160,7 +160,7 @@ export default function AdminWholesaleBannersPage() {
                   <button onClick={() => move(b, 1)} title="아래로" className="p-2 text-gray-500 hover:bg-gray-50 rounded-lg"><ArrowDown className="w-4 h-4" /></button>
                   <button onClick={() => toggleActive(b)} title={b.active ? '숨기기' : '노출'} className="p-2 text-gray-500 hover:bg-gray-50 rounded-lg">{b.active ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}</button>
                   <button onClick={() => openEdit(b)} title="수정" className="p-2 text-gray-500 hover:bg-gray-50 rounded-lg"><Edit className="w-4 h-4" /></button>
-                  <button onClick={() => remove(b)} title="삭제" className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                  <button onClick={() => remove(b)} title="삭제" className="p-2 text-tone-bad hover:bg-gray-100 rounded-lg"><Trash2 className="w-4 h-4" /></button>
                 </div>
               </div>
             ))}
@@ -170,7 +170,7 @@ export default function AdminWholesaleBannersPage() {
 
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowForm(false)}>
-          <div className="w-full max-w-lg bg-white rounded-2xl p-5 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-lg bg-white rounded-[var(--dash-radius,16px)] p-5 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-gray-900">{editing ? '배너 수정' : '배너 추가'}</h3>
               <button onClick={() => setShowForm(false)} aria-label="닫기"><X className="w-5 h-5 text-gray-400" /></button>
@@ -196,7 +196,7 @@ export default function AdminWholesaleBannersPage() {
                   노출
                 </label>
               </div>
-              <button type="submit" disabled={saving} className="w-full h-11 bg-gray-900 text-white rounded-lg text-sm font-bold disabled:opacity-60 inline-flex items-center justify-center gap-1.5">
+              <button type="submit" disabled={saving} className="ur-btn ur-btn-md ur-btn-primary w-full disabled:opacity-60 inline-flex items-center justify-center gap-1.5">
                 {saving && <Loader2 className="w-4 h-4 animate-spin" />} {editing ? '수정 저장' : '배너 등록'}
               </button>
             </form>

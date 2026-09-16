@@ -35,16 +35,16 @@ interface DetailItem {
 
 // 2026-06-27: 상태머신 12종 전부 라벨 — ACCEPTED/REJECTED/CANCELLED/DONE/ON_CREDIT/EXPIRED 누락 시 raw 코드 노출됐음.
 const STATUS: Record<string, { t: string; c: string }> = {
-  PENDING: { t: '결제대기', c: 'bg-amber-50 text-amber-700' },
-  PAID: { t: '결제완료', c: 'bg-emerald-50 text-emerald-700' },
-  ACCEPTED: { t: '수락됨', c: 'bg-cyan-50 text-cyan-700' },
-  ON_CREDIT: { t: '여신(외상)', c: 'bg-teal-50 text-teal-700' },
-  SHIPPED: { t: '발송완료', c: 'bg-blue-50 text-blue-700' },
-  PARTIAL_REFUNDED: { t: '부분환불', c: 'bg-orange-50 text-orange-700' },
-  REFUNDED: { t: '환불완료', c: 'bg-rose-50 text-rose-700' },
-  REJECTED: { t: '제조사 거절', c: 'bg-rose-50 text-rose-700' },
+  PENDING: { t: '결제대기', c: 'bg-tone-warn-bg text-tone-warn' },
+  PAID: { t: '결제완료', c: 'bg-tone-ok-bg text-tone-ok' },
+  ACCEPTED: { t: '수락됨', c: 'bg-tone-info-bg text-tone-info' },
+  ON_CREDIT: { t: '여신(외상)', c: 'bg-tone-ok-bg text-tone-ok' },
+  SHIPPED: { t: '발송완료', c: 'bg-tone-info-bg text-tone-info' },
+  PARTIAL_REFUNDED: { t: '부분환불', c: 'bg-tone-warn-bg text-tone-warn' },
+  REFUNDED: { t: '환불완료', c: 'bg-tone-bad-bg text-tone-bad' },
+  REJECTED: { t: '제조사 거절', c: 'bg-tone-bad-bg text-tone-bad' },
   CANCELLED: { t: '취소', c: 'bg-gray-100 text-gray-500' },
-  DONE: { t: '구매확정', c: 'bg-emerald-50 text-emerald-700' },
+  DONE: { t: '구매확정', c: 'bg-tone-ok-bg text-tone-ok' },
   FAILED: { t: '실패', c: 'bg-gray-100 text-gray-500' },
   EXPIRED: { t: '만료', c: 'bg-gray-100 text-gray-500' },
 }
@@ -102,7 +102,7 @@ export default function AdminWholesaleOrdersPage() {
 
         <div className="flex flex-wrap items-center gap-2 my-4">
           {FILTERS.map(f => (
-            <button key={f || 'all'} onClick={() => setStatus(f)} className={`px-3 py-1.5 rounded-lg text-sm font-medium ${status === f ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-700'}`}>
+            <button key={f || 'all'} onClick={() => setStatus(f)} className={`px-3 py-1.5 rounded-lg text-sm font-medium ${status === f ? 'bg-brand text-white' : 'bg-white border border-gray-200 text-gray-700'}`}>
               {f ? (STATUS[f]?.t || f) : '전체'}
             </button>
           ))}
@@ -129,7 +129,7 @@ export default function AdminWholesaleOrdersPage() {
       {/* 상세 모달 */}
       {detail && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setDetail(null)}>
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-[var(--dash-radius,16px)] max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-gray-900">주문 #{detail.order.id} 상세</h3>
               <button onClick={() => setDetail(null)}><X className="w-5 h-5 text-gray-400" /></button>
@@ -163,7 +163,7 @@ export default function AdminWholesaleOrdersPage() {
             </table>
             </div>
             {['PAID', 'ACCEPTED', 'SHIPPED', 'PARTIAL_REFUNDED', 'DONE'].includes(detail.order.status as string) && (
-              <button onClick={() => forceRefund(detail.order.id)} disabled={refunding} className="inline-flex items-center gap-1.5 px-4 py-2 bg-rose-600 text-white rounded-lg text-sm font-medium disabled:opacity-50">
+              <button onClick={() => forceRefund(detail.order.id)} disabled={refunding} className="ur-btn ur-btn-md ur-btn-danger inline-flex items-center gap-1.5 disabled:opacity-50">
                 {refunding ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />} 관리자 강제 전액환불
               </button>
             )}

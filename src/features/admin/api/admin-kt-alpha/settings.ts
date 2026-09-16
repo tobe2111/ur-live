@@ -1,4 +1,5 @@
 import type { Hono } from 'hono'
+import { resolveKtConsumerMarkupPct } from './markup'
 import { cors } from 'hono/cors'
 import type { Env } from '@/worker/types/env'
 import { safeError } from '../../../../worker/utils/safe-error'
@@ -109,7 +110,7 @@ export function registerSettings(r: Hono<{ Bindings: Env }>) {
       const settingsRow = await DB.prepare(
         `SELECT value FROM platform_settings WHERE key = 'kt_alpha_consumer_markup_pct'`
       ).first<{ value: string }>().catch(() => null)
-      const markupPct = Math.min(100, Math.max(0, Number(settingsRow?.value) || 20))
+      const markupPct = resolveKtConsumerMarkupPct(settingsRow?.value) // 0 은 0 (옛 `|| 20` 은 0 을 삼켰다 — markup.ts)
       const multiplier = 1 + markupPct / 100
 
       // products.kt_alpha_gift_code = gift_catalog.gift_code 매칭 → real_price × multiplier

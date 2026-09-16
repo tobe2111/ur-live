@@ -84,7 +84,7 @@ export default function AdminWholesaleIntegrityPage() {
           <div className="text-gray-900 font-medium">{ch.label}</div>
           <div className="text-xs text-gray-400 mt-0.5 font-mono">{ch.key}</div>
           {ch.error && (
-            <div className="text-xs text-amber-600 mt-1">
+            <div className="text-xs text-tone-warn mt-1">
               {t('admin.integrity.checkError', { defaultValue: '점검 실패' })}: {ch.error}
             </div>
           )}
@@ -96,9 +96,9 @@ export default function AdminWholesaleIntegrityPage() {
       label: t('admin.integrity.count', { defaultValue: '고아행 수' }),
       className: 'text-right',
       render: ch => ch.error ? (
-        <span className="text-amber-500 text-xs">—</span>
+        <span className="text-tone-warn text-xs">—</span>
       ) : (
-        <span className={`font-semibold ${ch.count > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+        <span className={`font-semibold ${ch.count > 0 ? 'text-tone-bad' : 'text-tone-ok'}`}>
           {formatNumber(ch.count)}
         </span>
       ),
@@ -133,9 +133,9 @@ export default function AdminWholesaleIntegrityPage() {
         />
 
         {/* flag-only 안내 배너 */}
-        <div className="mt-4 mb-5 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-          <p className="text-sm text-amber-800 leading-relaxed">
+        <div className="mt-4 mb-5 flex items-start gap-3 rounded-xl border border-rule bg-white px-4 py-3">
+          <AlertTriangle className="w-5 h-5 text-tone-warn shrink-0 mt-0.5" />
+          <p className="text-sm text-tone-warn leading-relaxed">
             {t('admin.integrity.flagOnly', { defaultValue: '이 점검은 참조가 끊긴 행을 표시만 합니다. 어떤 행도 자동으로 삭제하지 않습니다 — 정리 여부는 관리자가 직접 판단하세요.' })}
           </p>
         </div>
@@ -149,11 +149,11 @@ export default function AdminWholesaleIntegrityPage() {
                 {safeDate(report?.run_at)?.toLocaleString('ko-KR') ?? t('admin.integrity.never', { defaultValue: '없음' })}
               </span>
             </span>
-            <span className={`font-semibold ${totalOrphans > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+            <span className={`font-semibold ${totalOrphans > 0 ? 'text-tone-bad' : 'text-tone-ok'}`}>
               {t('admin.integrity.totalOrphans', { defaultValue: '고아행 합계' })}: {formatNumber(totalOrphans)}
             </span>
             {failedChecks > 0 && (
-              <span className="text-amber-600 font-medium">
+              <span className="text-tone-warn font-medium">
                 {t('admin.integrity.failedChecks', { defaultValue: '실행 실패 점검' })}: {formatNumber(failedChecks)}
               </span>
             )}
@@ -161,7 +161,7 @@ export default function AdminWholesaleIntegrityPage() {
           <button
             onClick={runNow}
             disabled={running}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50"
+            className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-2 disabled:opacity-50"
           >
             {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
             {t('admin.integrity.runNow', { defaultValue: '지금 점검 실행' })}
@@ -174,7 +174,7 @@ export default function AdminWholesaleIntegrityPage() {
           loading={loading && !report}
           empty={
             <>
-              <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
+              <CheckCircle2 className="w-10 h-10 text-tone-ok mx-auto mb-3" />
               <p className="text-gray-500 text-sm">{t('admin.integrity.noReport', { defaultValue: '아직 점검 기록이 없습니다. "지금 점검 실행"을 눌러 시작하세요.' })}</p>
             </>
           }

@@ -10,7 +10,6 @@
  * - POST /api/seller/products                 - 셀러 상품 등록
  */
 
-import { productDetailColsHealed, withColumnPruning } from '@/shared/db/product-columns';
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { cors } from 'hono/cors';
@@ -23,13 +22,16 @@ import { rateLimit } from '../../../worker/middleware/rate-limit';
 import { buildShippingMessage, buildCancellationMessage } from '../../alimtalk/aligo';
 import { swallow } from '@/worker/utils/swallow';
 import { VOUCHER_CATEGORY_SET, canonicalCategory, isVoucherCategory } from '@/shared/constants/voucher-categories';
-import { writeDigitalProductFields, writeVoucherProductFields } from './product-field-writers';
+import { writeDigitalProductFields, writeVoucherProductFields, writeProductText } from './product-field-writers';
 
 import { invalidateGroupBuyProductsCache } from '../../group-buy/api/cache-keys';
 import { ensureSupplyVisibilitySchema } from '../../supply/api/supply-visibility';
+import { ensureTables as ensureGroupBuyColumns } from '../../group-buy/api/helpers';
+import { buildSellerProductsQuery } from './seller-products-query';
 import { intParam } from '@/shared/pagination'
 import { normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url'
 import { mallIdForSeller } from '../../../shared/mall/resolve';
+import { applySellerPromoRate } from '../../../worker/utils/seller-promo-rate';
 type Bindings = {
   DB: D1Database;
   JWT_SECRET: string;
@@ -489,60 +491,27 @@ sellerOrdersRoutes.get('/products', async (c) => {
     // isolate / fresh D1 the column may be missing → "no such column" 500.
     // Memoized (WeakMap-promise) — runs the ALTERs at most once per isolate.
     await ensureSupplyVisibilitySchema(db);
+    // 🎟️ 2026-09-15: 목록이 이용권 메타(restaurant_phone·group_buy_current·store_owner_token …)를 읽는다.
+    //   그 컬럼들은 마이그레이션이 아니라 `ensureTables` 의 ALTER 로 생기므로, 콜드 D1 에서 부르지 않으면
+    //   셀러가 가장 먼저 보는 화면이 "no such column" 500 이 된다. WeakSet 메모이즈라 두 번째부터 공짜.
+    await ensureGroupBuyColumns(db);
     const limit = Math.min(intParam(c.req.query('limit'), 100), 500);
     const offset = intParam(c.req.query('offset'), 0);
-    const sort = c.req.query('sort') === 'asc' ? 'ASC' : 'DESC';
+    const sort: 'ASC' | 'DESC' = c.req.query('sort') === 'asc' ? 'ASC' : 'DESC';
     const search = c.req.query('search') || '';
+    // 🗑️ 2026-09-15 (대표가 삭제를 눌러 보고 드러난 구멍): 삭제분은 기본적으로 계속 숨긴다.
+    //   `?include_deleted=1` 을 **명시한 호출만** 삭제분까지 받는다(이용권 관리의 '삭제됨' 세그먼트).
+    //   플래그가 없으면 나오는 SQL·결과는 종전과 한 글자도 안 다르다.
+    const includeDeleted = c.req.query('include_deleted') === '1';
 
-    // COALESCE로 신/구 컬럼 모두 대응 (image_url, thumbnail_url, image 순으로 fallback)
-    let query = `
-      SELECT
-        p.id,
-        p.name,
-        p.description,
-        p.price,
-        COALESCE(p.stock, p.stock_quantity, 0)                    AS stock,
-        COALESCE(p.thumbnail_url, p.image_url)                    AS image_url,
-        COALESCE(p.status, 'ACTIVE')                              AS status,
-        COALESCE(p.is_active, 1)                                  AS is_active,
-        p.category,
-        p.created_at,
-        p.updated_at,
-        COUNT(DISTINCT oi.id)                                      AS order_count,
-        COALESCE(SUM(
-          CASE WHEN o.status NOT IN ('CANCELLED', 'FAILED', 'REFUNDED')
-               THEN oi.quantity ELSE 0 END
-        ), 0)                                                      AS total_sold
-      FROM products p
-      LEFT JOIN order_items oi ON p.id = oi.product_id
-      LEFT JOIN orders o ON oi.order_id = o.id
-      WHERE p.seller_id = ?
-        AND COALESCE(p.status, 'ACTIVE') != 'DELETED'
-        AND COALESCE(p.is_supply_product, 0) = 0
-    `;
-    // 🛡️ 2026-07-02 (쇼핑 전수조사): 재고 COALESCE 순서 stock 우선(canonical) + is_active 반환(배지/토글 정상화)
-    //   + 필터를 is_active=1 → status != DELETED 로 변경(비활성/일시중지 상품도 목록에 보여 재활성화 가능,
-    //   삭제만 숨김). 이전엔 비활성화 즉시 목록에서 사라져 재활성화 경로가 0이었음.
-    const params: unknown[] = [sellerId];
-
-    if (search) {
-      query += ` AND (p.name LIKE ? OR p.description LIKE ?)`;
-      params.push(`%${search}%`, `%${search}%`);
-    }
-
-    query += ` GROUP BY p.id ORDER BY p.created_at ${sort} LIMIT ? OFFSET ?`;
-    params.push(limit, offset);
+    // 🧾 목록 SQL 은 순수 빌더로 나가 있다(`seller-products-query.ts`) — 목록과 count 가 같은 필터를
+    //   쓰도록 한 곳에서 정하고, 가드가 소스 grep 대신 그 함수를 불러 SQL 을 직접 본다.
+    const { query, params, countQuery, countParams } = buildSellerProductsQuery({
+      sellerId, limit, offset, sort, search, includeDeleted,
+    });
 
     const products = await db.prepare(query).bind(...params).all();
 
-    // 🛡️ 2026-07-02 (쇼핑 전수조사): count 도 목록과 동일 필터(DELETED 제외 + 도매 원본 제외) — 이전엔
-    //   is_active=1 만이라 목록 쿼리와 불일치(도매상품 보유 셀러 total 과대, 비활성 상품 카운트 누락).
-    let countQuery = `SELECT COUNT(*) as total FROM products WHERE seller_id = ? AND COALESCE(status, 'ACTIVE') != 'DELETED' AND COALESCE(is_supply_product, 0) = 0`;
-    const countParams: unknown[] = [sellerId];
-    if (search) {
-      countQuery += ` AND (name LIKE ? OR description LIKE ?)`;
-      countParams.push(`%${search}%`, `%${search}%`);
-    }
     const countResult = await db.prepare(countQuery).bind(...countParams).first<{ total: number }>();
 
     return c.json({
@@ -585,6 +554,7 @@ sellerOrdersRoutes.get('/products/:id', async (c) => {
          p.voucher_terms, p.voucher_expiry,
          p.group_buy_target, p.group_buy_deadline,
          p.store_verify_pin,
+         p.referral_commission_rate, COALESCE(p.referral_enabled, 0) AS referral_enabled,
          p.created_at, p.updated_at
        FROM products p
        WHERE p.id = ? AND p.seller_id = ?`
@@ -744,22 +714,9 @@ sellerOrdersRoutes.patch('/orders/bulk-status', async (c) => {
 // ─── POST /api/seller/products ─────────────────────────────────────────────
 // 🧭 2026-06-10 (재발행 복사): 본인 소유 상품 1건 전체 필드 — SellerMealVoucherNewPage 프리필용.
 //   공개 상세(/api/group-buy/products/:id)는 active 만 매칭이라 종료/만료 공구 복사가 안 됨 → 소유자 전용.
-sellerOrdersRoutes.get('/products/:id', async (c) => {
-  try {
-    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET);
-    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
-    const id = Number(c.req.param('id'));
-    if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 상품 ID' }, 400);
-    const db = (c.env as Bindings).DB;
-    const row = await db.prepare(
-      `SELECT ${productDetailColsHealed('products')} FROM products WHERE id = ? AND seller_id = ? LIMIT 1`
-    ).bind(id, sellerId).first<Record<string, unknown>>();
-    if (!row) return c.json({ success: false, error: '상품을 찾을 수 없습니다' }, 404);
-    return c.json({ success: true, data: row });
-  } catch (err) {
-    return safeError(c, err, '상품 조회 중 오류가 발생했습니다', '[seller-products]');
-  }
-});
+// 🪦 2026-09-05: 여기 `GET /products/:id` 사본이 하나 더 있었다(위 566줄과 동일 메서드·경로). Hono 는
+//   먼저 등록된 쪽이 이겨서 **한 번도 실행된 적이 없다** — 고쳐도 아무 일이 안 일어나는 코드라 지웠다.
+//   ⚠️ App.tsx 중복은 check-duplicate-routes 가 잡지만 **Hono 라우트 중복은 아직 아무도 안 본다.**
 
 sellerOrdersRoutes.post('/products', async (c) => {
   try {
@@ -772,6 +729,7 @@ sellerOrdersRoutes.post('/products', async (c) => {
       // 🛡️ 2026-07-02 (쇼핑 전수조사): 상세 설명/이미지 — 이전엔 POST 에서 저장 안 돼 셀러가 쓴 상세가 소실.
       long_description?: string;
       detail_images?: string;
+      images?: string | null;  // 🖼️ 2026-09-03 사진 목록 JSON(첫 장=대표) — 카드 캐러셀이 읽는 컬럼
       price: number;
       original_price?: number;
       stock?: number;
@@ -883,26 +841,11 @@ sellerOrdersRoutes.post('/products', async (c) => {
     if (typeof body.long_description === 'string' && body.long_description.length <= 50000) {
       try { await db.prepare(`UPDATE products SET long_description = ? WHERE id = ?`).bind(body.long_description, productId).run() } catch { /* column may not exist */ }
     }
-    if (typeof body.detail_images === 'string' && body.detail_images.length <= 100000) {
-      try { await db.prepare(`UPDATE products SET detail_images = ? WHERE id = ?`).bind(body.detail_images, productId).run() } catch { /* column may not exist */ }
-    }
+    await writeProductText(db, productId, 'detail_images', body.detail_images)
+    await writeProductText(db, productId, 'images', body.images)  // 🖼️ 2026-09-03 사진 여러 장
 
-    // 💰 2026-07-05 (§1 인플루언서 엔진): 셀러 소개비(promo%) → referral_commission_rate override.
-    //   ⚠️ 이중 안전 게이트 — platform_settings.seller_promo_field_enabled==='true' 일 때만 저장.
-    //   어필리에이트 재원이 아직 플랫폼 부담이면 매장이 건 소개비를 유어딜이 무는 누수(설계 −14%)가
-    //   되므로, owner-funding(promo_funding_source='owner')이 스테이징 검증돼 켜진 뒤에만 이 게이트 ON.
-    //   범위 0~0.5(=0~50%) clamp. fail-soft(컬럼 부재 대비). 클라 플래그 우회해도 서버가 최종 차단.
-    if (body.referral_commission_rate !== undefined && body.referral_commission_rate !== null) {
-      try {
-        const gate = await db.prepare("SELECT value FROM platform_settings WHERE key = 'seller_promo_field_enabled'")
-          .first<{ value: string }>().catch(() => null)
-        const rate = Number(body.referral_commission_rate)
-        if (gate?.value === 'true' && Number.isFinite(rate) && rate >= 0 && rate <= 0.5) {
-          await db.prepare(`UPDATE products SET referral_enabled = ?, referral_commission_rate = ? WHERE id = ?`)
-            .bind(body.referral_enabled === false || rate === 0 ? 0 : 1, rate, productId).run()
-        }
-      } catch { /* 게이트 OFF / 컬럼 부재 — 저장 생략(현행과 동일) */ }
-    }
+    // 💰 소개비(promo%) → referral_commission_rate override. 게이트·clamp 는 SSOT 헬퍼가 갖는다.
+    await applySellerPromoRate(db, productId, null, body)
 
     // 🍽️ 2026-06-17 (#5 대표 메뉴): 메뉴(OCR/수동)를 product_supply_meta 사이드테이블에 저장 → 공구 상세가 표시.
     if (Array.isArray(body.menu) && body.menu.length > 0) {
@@ -940,6 +883,23 @@ sellerOrdersRoutes.post('/products', async (c) => {
 
     // 🛡️ 디지털 상품 필드 저장 — 컬럼별 개별 UPDATE(마이그레이션 미실행 환경 대비). SSOT: product-field-writers.
     await writeDigitalProductFields(db, Number(productId), body);
+
+    // 🔒 2026-09-15 (대표 "매장을 등록해야 그 매장에 맞는 이용권만 만들지") — **매장 확정**.
+    //   이용권↔매장 결합의 유일한 키는 이 좌석(seller_id)인데 상호·주소·좌표는 폼에서 온 텍스트라
+    //   서로 갈릴 수 있었다(좌석 A + 매장 B 상호 → 소비자는 B, 정산은 A). 좌석에 매장 프로필이 있으면
+    //   그것으로 **정정**한다(막지 않는다 — 표기 차이로 등록이 잠기면 안 된다). SSOT: utils/store-profile.
+    //   ⚠️ 빠른 등록(/seller/products/quick)은 매장을 아예 안 묻는다 → 여기서 채워야 지도에 뜬다.
+    try {
+      const { resolveStoreFieldsForProduct } = await import('../../../worker/utils/store-profile');
+      const { fields, corrected } = await resolveStoreFieldsForProduct(db, Number(sellerId), body);
+      if (Object.keys(fields).length > 0) {
+        // 조용히 바꾸지 않는다 — 무엇이 정정됐는지 남긴다(셀러 문의 시 유일한 근거).
+        if (corrected.length > 0) console.warn('[seller:store-canonical]', JSON.stringify({ productId, sellerId, corrected }));
+        Object.assign(body, fields);
+        // 이용권 카테고리면 바로 아래 writer 가 쓴다. 아니면(빠른 등록·공구) 여기서 직접.
+        if (!isVoucherCategory(category)) await writeVoucherProductFields(db, Number(productId), fields);
+      }
+    } catch { /* fail-soft — 매장 확정 실패가 상품 등록을 막으면 안 된다 */ }
 
     if (isVoucherCategory(category)) { // 손으로 적던 6-way 목록 → SSOT 판정(정규화 후라 충분)
       await writeVoucherProductFields(db, Number(productId), body as Record<string, unknown>);
@@ -1049,6 +1009,7 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
       // 🛡️ 2026-07-02 (쇼핑 전수조사): 상세 설명/상세 이미지 — 이전 PUT 화이트리스트 누락으로 저장 무음 폐기.
       long_description?: string;
       detail_images?: string;
+      images?: string | null;  // 🖼️ 2026-09-03 사진 목록 JSON(첫 장=대표)
       live_only_price?: number | null;
       live_price_enabled?: boolean;
       status?: string;
@@ -1067,6 +1028,9 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
       max_per_person?: number;
       // 🎯 2026-07-01 (대표 "카카오맵 매장 페이지 연결"): place_url.
       kakao_place_url?: string;
+      // 💰 2026-09-05: 소개비(promo%) — 등록 화면에만 있어 한번 정하면 못 바꿨다. POST 와 동일 게이트.
+      referral_enabled?: boolean;
+      referral_commission_rate?: number;
     }>();
 
     const db = c.env.DB;
@@ -1120,12 +1084,11 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
       values.push(body.image_url, body.image_url);
     }
     if (body.category !== undefined) { fields.push('category = ?'); values.push(canonicalCategory(body.category)); }
-    // 🛡️ 2026-07-02 (쇼핑 전수조사): 상세 설명/이미지 저장(길이·형식 방어). detail_images 는 JSON 문자열.
-    if (body.long_description !== undefined && (typeof body.long_description === 'string') && body.long_description.length <= 50000) {
-      fields.push('long_description = ?'); values.push(body.long_description);
-    }
-    if (body.detail_images !== undefined && (typeof body.detail_images === 'string') && body.detail_images.length <= 100000) {
-      fields.push('detail_images = ?'); values.push(body.detail_images);
+    // 🛡️ 2026-07-02 상세 설명/이미지 · 🖼️ 2026-09-03 사진 목록 — 길이·형식 방어(값은 JSON 문자열).
+    //   `images` 를 여기 안 넣으면 수정 한 번에 추가 사진이 조용히 사라진다.
+    for (const [f, cap] of [['long_description', 50000], ['detail_images', 100000], ['images', 100000]] as const) {
+      const v = (body as Record<string, unknown>)[f];
+      if (v !== undefined && typeof v === 'string' && v.length <= cap) { fields.push(`${f} = ?`); values.push(v); }
     }
     if (body.live_only_price !== undefined) { fields.push('live_only_price = ?'); values.push(body.live_only_price); }
     if (body.live_price_enabled !== undefined) { fields.push('live_price_enabled = ?'); values.push(body.live_price_enabled ? 1 : 0); }
@@ -1186,6 +1149,9 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
         } catch { /* fail-soft */ }
       }
     }
+
+    // 💰 2026-09-05 (대표 확정 플로우 — 소개비는 매장이 정한다): 수정 화면에서도 변경 가능하게.
+    await applySellerPromoRate(db, productId, sellerId, body)
 
     const updated = await db.prepare(
       `SELECT id, name, description, price, original_price,

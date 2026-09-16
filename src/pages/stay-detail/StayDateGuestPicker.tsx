@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { Calendar, User, ChevronRight, ChevronLeft } from 'lucide-react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { ChevronRight, ChevronLeft } from 'lucide-react'
+import { FieldCard, FieldSplit, FieldRow, FieldNote } from '@/components/ticket/FieldCard'
 
 /**
  * 🏨 숙소 날짜·인원 선택 (2026-08-19 대표 시안 — 야놀자/NOL).
@@ -18,7 +19,50 @@ import { Calendar, User, ChevronRight, ChevronLeft } from 'lucide-react'
  * 📱 모바일은 한 달씩 세로로 이어 붙인다(두 달을 옆으로 두면 한 달이 화면 밖으로 나간다).
  * 📐 PC 에서 이 바는 **우측 360px 아사이드** 안에 있다 — 넓은 패널을 왼쪽 기준으로 펼치면 화면
  *    오른쪽 밖으로 넘어간다. 그래서 패널은 `lg:left-auto lg:right-0` 로 오른쪽 끝을 맞춘다.
+ *
+ * 🩸 2026-09-15 (대표 *"PC로 봤을 때 날짜 선택 창? 이 잘려보여"* — 스크린샷에서 '적용하기' 가 화면
+ *    아래로 잘려 있었다): 세로 제한이 `max-h-[52vh] lg:max-h-none` 이라 **PC 에서만 풀려 있었다.**
+ *    보통은 페이지를 스크롤해 볼 수 있으니 넘쳐도 되는데, 이 패널의 부모 아사이드는
+ *    `lg:sticky lg:top-[116px]` 다 — sticky 는 뷰포트에 고정되므로 **패널이 스크롤을 따라와서
+ *    잘린 부분에 영영 도달할 수 없다.** 즉 "넘치면 스크롤" 이라는 평소의 안전판이 여기서만 없다.
+ *    ⇒ 트리거 아래에 **실제로 남은 공간을 재서**(`getBoundingClientRect`) 그만큼만 쓴다. 달력만
+ *    안에서 스크롤하고 헤더(달 이동)와 푸터(적용하기)는 늘 보인다 — 잘려서 못 누르던 그 버튼이다.
+ *    ⚠️ 고정 vh 로 때우지 않는 이유: 카드 높이(각주 유무·인원 줄)와 뷰포트가 둘 다 변한다.
+ *
+ * 🩸 2026-09-02 (대표 *"연박도 할 수 있는데 구현이 안되어있는 것 같아"* → 맞았다):
+ *    `pickDay` 가 "이미 범위가 잡혔으면 새 체크인" 규칙을 썼는데, 초기값이 늘 체크인+1박이라 **범위는
+ *    언제나 잡혀 있었다** → 어떤 날을 눌러도 새 체크인+1박, 체크아웃을 찍을 길이 없었다. 서버(가용 조회·
+ *    결제의 야간별 재고 차감)는 연박을 받는다. ⇒ 단계(`phase`)를 둔다: 체크인 고르는 중 → 체크아웃 고르는 중.
+ *    판정은 순수함수 `pickRange` — 테스트가 실제 클릭 순서로 검증한다(`stay-detail-pc-booking-panel.test.ts`).
+ * 📏 트리거 두 개를 한 줄에 두면 360px 안에서 날짜가 "2026.09.02(수)~0…" 로 잘렸다(대표 *"문장이 2줄로
+ *    되고 보기 안좋아"*). 날짜 한 줄, 인원 한 줄.
  */
+
+/**
+ * 팝오버가 절대 이보다 짧아지지 않는 높이.
+ *
+ * ⚠️ **PC 와 모바일에서 바닥값이 다른 이유** — 부모가 다르다.
+ *   PC(lg+)는 부모 아사이드가 `sticky` 라 넘친 부분에 **도달할 방법이 없다** ⇒ 화면에 맞춰 줄이고
+ *   달력만 안에서 스크롤한다. 260px 는 "달력 한 줄도 안 보이면 고를 수 없다" 의 하한이다.
+ *   모바일은 이 패널이 **페이지 흐름 안**에 있어서 넘쳐도 페이지를 스크롤해 볼 수 있다 ⇒ 종전 52vh
+ *   를 바닥으로 둔다. 여기에 PC 규칙을 그대로 적용하면 카드가 화면 아래쪽에 있을 때 팝오버가
+ *   **종전보다 짧아진다** — 잘림을 고치려다 반대쪽을 망가뜨리는 것이다.
+ */
+const MIN_POPOVER_H = 260
+const isDesktop = () => typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
+
+export type PickPhase = 'in' | 'out'
+/**
+ * 달력 클릭 한 번의 결과. 체크인 단계면 그 날을 체크인(+1박)으로 잡고 체크아웃 단계로,
+ * 체크아웃 단계면 그 날이 체크인보다 뒤일 때 체크아웃으로 닫는다(같거나 앞이면 새 체크인).
+ */
+export function pickRange(
+  draftIn: string, draftOut: string, phase: PickPhase, day: string, today: string,
+): { draftIn: string; draftOut: string; phase: PickPhase } {
+  if (day < today) return { draftIn, draftOut, phase }
+  if (phase === 'out' && day > draftIn) return { draftIn, draftOut: day, phase: 'in' }
+  return { draftIn: day, draftOut: addDays(day, 1), phase: 'out' }
+}
 
 export interface DayPrice { date: string; price?: number; available?: boolean }
 
@@ -28,6 +72,10 @@ const parseIso = (s: string) => { const [y, m, d] = s.split('-').map(Number); re
 const addDays = (s: string, n: number) => { const d = parseIso(s); d.setDate(d.getDate() + n); return iso(d) }
 const nightsBetween = (a: string, b: string) => Math.max(1, Math.round((parseIso(b).getTime() - parseIso(a).getTime()) / 86400000))
 const fmtTrigger = (s: string) => { const d = parseIso(s); return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}(${WEEK[d.getDay()]})` }
+/** 카드용 짧은 날짜 `09.14` — 연도는 카드에 안 쓴다(패널 하단 요약이 연도까지 말한다). */
+const fmtMd = (s: string) => { const d = parseIso(s); return `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}` }
+/** 요일 한 글자 — 값 뒤에 작게 붙는다. */
+const dow = (s: string) => WEEK[parseIso(s).getDay()]
 /** 25.7만 — 야놀자 표기. 만 단위 아래는 버린다(칸이 좁아 원 단위는 못 읽는다). */
 const fmtMan = (won: number) => (won >= 10000 ? `${Math.round(won / 1000) / 10}만` : `${Math.round(won / 1000)}천`)
 
@@ -41,10 +89,14 @@ function monthMatrix(year: number, month: number): Array<string | null> {
 
 export default function StayDateGuestPicker({
   checkIn, checkOut, guests, onApply, dayPrices = [], maxGuests = 20, baseGuests,
+  checkInTime, checkOutTime,
 }: {
   checkIn: string
   checkOut: string
   guests: number
+  /** 카드 맨 아래 각주로 들어간다. 둘 다 있을 때만 그린다(모르는 값을 지어내지 않는다). */
+  checkInTime?: string
+  checkOutTime?: string
   onApply: (v: { checkIn: string; checkOut: string; guests: number }) => void
   /** 서버가 주는 날짜별 1박 요금(있으면 달력에 표시, 없으면 숨김). */
   dayPrices?: DayPrice[]
@@ -57,11 +109,14 @@ export default function StayDateGuestPicker({
   // 패널 안에서 고르는 임시값 — '적용하기' 를 눌러야 바깥으로 나간다(야놀자와 동일).
   const [draftIn, setDraftIn] = useState(checkIn)
   const [draftOut, setDraftOut] = useState(checkOut)
+  const [phase, setPhase] = useState<PickPhase>('in')
   const [adults, setAdults] = useState(Math.max(1, guests))
   const [kids, setKids] = useState(0)
   const boxRef = useRef<HTMLDivElement | null>(null)
+  /** 트리거 아래에 실제로 남은 세로 공간(px). 패널이 뷰포트를 넘지 않게 하는 상한. */
+  const [popMax, setPopMax] = useState<number | null>(null)
 
-  useEffect(() => { setDraftIn(checkIn); setDraftOut(checkOut) }, [checkIn, checkOut])
+  useEffect(() => { setDraftIn(checkIn); setDraftOut(checkOut); setPhase('in') }, [checkIn, checkOut])
   useEffect(() => { setAdults(Math.max(1, guests)) }, [guests])
 
   useEffect(() => {
@@ -70,6 +125,31 @@ export default function StayDateGuestPicker({
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen('none') }
     document.addEventListener('mousedown', onDoc); window.addEventListener('keydown', onKey)
     return () => { document.removeEventListener('mousedown', onDoc); window.removeEventListener('keydown', onKey) }
+  }, [open])
+
+  // 📏 열려 있는 동안만 잰다. 스크롤·리사이즈마다 레이아웃을 강제로 읽으면 그 자체가 렉이 되므로
+  //    rAF 로 한 프레임에 한 번만 재고, 닫히면 리스너를 모두 뗀다.
+  useLayoutEffect(() => {
+    if (open === 'none') { setPopMax(null); return }
+    let frame = 0
+    const measure = () => {
+      frame = 0
+      const el = boxRef.current
+      if (!el) return
+      const vh = window.visualViewport?.height ?? window.innerHeight
+      // 트리거 아래 8px 띄우고, 화면 바닥에서 16px 은 남긴다.
+      const room = Math.round(vh - el.getBoundingClientRect().bottom - 24)
+      setPopMax(Math.max(isDesktop() ? MIN_POPOVER_H : Math.round(vh * 0.52), room))
+    }
+    const schedule = () => { if (!frame) frame = requestAnimationFrame(measure) }
+    measure()
+    window.addEventListener('resize', schedule)
+    window.addEventListener('scroll', schedule, true)
+    return () => {
+      if (frame) cancelAnimationFrame(frame)
+      window.removeEventListener('resize', schedule)
+      window.removeEventListener('scroll', schedule, true)
+    }
   }, [open])
 
   const priceOf = useMemo(() => {
@@ -83,50 +163,59 @@ export default function StayDateGuestPicker({
   const base = new Date(); base.setDate(1)
   const months = [0, 1].map(i => { const d = new Date(base); d.setMonth(d.getMonth() + monthOffset + i); return d })
 
-  /** 체크인이 정해진 상태에서 다음 클릭은 체크아웃 — 이미 범위가 잡혔으면 새 체크인으로 다시 시작. */
   const pickDay = (day: string) => {
-    if (day < today) return
-    const rangeDone = draftIn && draftOut && draftIn !== draftOut
-    if (!draftIn || rangeDone || day <= draftIn) { setDraftIn(day); setDraftOut(addDays(day, 1)); return }
-    setDraftOut(day)
+    const next = pickRange(draftIn, draftOut, phase, day, today)
+    setDraftIn(next.draftIn); setDraftOut(next.draftOut); setPhase(next.phase)
   }
 
   const nights = nightsBetween(draftIn, draftOut)
   const totalGuests = adults + kids
   const overBase = !!baseGuests && totalGuests > baseGuests
 
-  const trigger = 'flex-1 min-w-0 flex items-center justify-center gap-2 h-12 rounded-xl border text-[14px] font-bold transition-colors'
-  const on = 'border-brand text-brand bg-brand/[0.06]'
-  const off = 'border-gray-200 dark:border-[#2C2F35] text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-white/[0.04]'
-
   return (
     <div ref={boxRef} className="relative">
-      <div className="flex items-stretch gap-2">
-        <button type="button" onClick={() => setOpen(o => (o === 'date' ? 'none' : 'date'))} className={`${trigger} ${open === 'date' ? on : off}`}>
-          <Calendar className="w-4 h-4 shrink-0" aria-hidden="true" />
-          <span className="truncate">{fmtTrigger(checkIn)}~{fmtTrigger(checkOut).slice(5)} · {nightsBetween(checkIn, checkOut)}박</span>
-        </button>
-        <button type="button" onClick={() => setOpen(o => (o === 'guest' ? 'none' : 'guest'))} className={`${trigger} ${open === 'guest' ? on : off}`}>
-          <User className="w-4 h-4 shrink-0" aria-hidden="true" />
-          <span className="truncate">성인 {Math.max(1, guests)}{kids > 0 ? `, 아동 ${kids}` : ''}</span>
-        </button>
-      </div>
+      {/* 🎫 2026-09-14 대표 확정 **안 B(분할 카드형)** — 시안 승인 후 구현.
+          종전: 48px 트리거 두 개가 각자 테두리를 두르고, 바깥 카드가 또 테두리를 둘러 **세 겹**이었다.
+          값(고른 날짜·인원)인데 라벨 없이 가운데 정렬이라 '누를 버튼'으로 읽혔고, 날짜·박수가
+          14px 한 줄에 다 들어가 좁으면 통째로 잘렸다.
+          ⇒ 테두리 0 카드 한 장 안에서 [체크인 → 1박 → 체크아웃] / [인원] / [시각 각주].
+          가운데 배지가 두 날짜의 관계를 말하므로 박수를 **다른 줄에서 또 말하지 않는다**.
+          부품은 공구 상세와 공유한다(`components/ticket/FieldCard`). */}
+      <FieldCard>
+        <FieldSplit
+          leftLabel="체크인" leftValue={fmtMd(checkIn)} leftSub={dow(checkIn)}
+          badge={`${nightsBetween(checkIn, checkOut)}박`}
+          rightLabel="체크아웃" rightValue={fmtMd(checkOut)} rightSub={dow(checkOut)}
+          onClick={() => { setPhase('in'); setOpen(o => (o === 'date' ? 'none' : 'date')) }}
+        />
+        <FieldRow
+          divider label="인원"
+          value={`성인 ${Math.max(1, guests)}${kids > 0 ? `, 아동 ${kids}` : ''}`}
+          onClick={() => setOpen(o => (o === 'guest' ? 'none' : 'guest'))}
+        />
+        {checkInTime && checkOutTime ? (
+          <FieldNote>체크인 {checkInTime} · 체크아웃 {checkOutTime}</FieldNote>
+        ) : null}
+      </FieldCard>
 
       {open === 'date' && (
-        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-[10500] rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#141C27] shadow-[0_12px_40px_rgba(0,0,0,0.18)] p-4 lg:w-[680px] lg:left-auto lg:right-0">
-          <div className="flex items-center justify-between mb-2">
+        <div
+          style={popMax ? { maxHeight: popMax } : undefined}
+          className="absolute left-0 right-0 top-[calc(100%+8px)] z-[10500] flex flex-col rounded-2xl border border-line bg-white dark:bg-[#141C27] shadow-[0_12px_40px_rgba(0,0,0,0.18)] p-4 lg:w-[680px] lg:left-auto lg:right-0"
+        >
+          <div className="shrink-0 flex items-center justify-between mb-2">
             <button type="button" onClick={() => setMonthOffset(m => Math.max(0, m - 1))} disabled={monthOffset === 0}
               aria-label="이전 달" className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-white/[0.06]">
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <span className="text-[13px] font-bold text-gray-500 dark:text-gray-400">체크인 날짜를 먼저 고르세요</span>
+            <span className="text-[13px] font-bold text-gray-500 dark:text-gray-400" aria-live="polite">{phase === 'out' ? '체크아웃 날짜를 고르세요' : '체크인 날짜를 먼저 고르세요'}</span>
             <button type="button" onClick={() => setMonthOffset(m => m + 1)} aria-label="다음 달"
               className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 dark:hover:bg-white/[0.06]">
               <ChevronRight className="w-5 h-5" />
             </button>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 max-h-[52vh] lg:max-h-none overflow-y-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 flex-1 min-h-0 overflow-y-auto">
             {months.map((mDate, mi) => (
               <div key={mi} className={mi === 1 ? 'hidden lg:block' : ''}>
                 <div className="text-center text-[15px] font-extrabold text-gray-900 dark:text-white mb-2">
@@ -171,7 +260,7 @@ export default function StayDateGuestPicker({
             ))}
           </div>
 
-          <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-gray-100 dark:border-[#2C2F35]">
+          <div className="shrink-0 flex items-center justify-between gap-3 mt-3 pt-3 border-t border-gray-100 dark:border-[#2C2F35]">
             <span className="text-[12.5px] text-gray-500 dark:text-gray-400">
               {fmtTrigger(draftIn)} ~ {fmtTrigger(draftOut)} · <b className="text-gray-900 dark:text-white">{nights}박</b>
             </span>
@@ -184,7 +273,9 @@ export default function StayDateGuestPicker({
       )}
 
       {open === 'guest' && (
-        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-[10500] rounded-2xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#141C27] shadow-[0_12px_40px_rgba(0,0,0,0.18)] p-4 lg:w-[360px] lg:left-auto lg:right-0">
+        <div
+          style={popMax ? { maxHeight: popMax } : undefined}
+          className="absolute left-0 right-0 top-[calc(100%+8px)] z-[10500] overflow-y-auto rounded-2xl border border-line bg-white dark:bg-[#141C27] shadow-[0_12px_40px_rgba(0,0,0,0.18)] p-4 lg:w-[360px] lg:left-auto lg:right-0">
           {overBase && (
             <div className="rounded-xl bg-gray-50 dark:bg-white/[0.05] p-3 mb-3">
               <p className="text-[13px] font-bold text-gray-900 dark:text-white">기준인원 초과 시 추가요금이 발생할 수 있어요.</p>

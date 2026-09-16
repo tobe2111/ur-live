@@ -78,7 +78,7 @@ export default function AreaReportPage() {
             <div className="mt-5 grid grid-cols-3 gap-3">
               {[
                 { label: '영업 중', v: data.totals?.active_n || 0, cls: 'text-gray-900 dark:text-white' },
-                { label: '90일 개업', v: data.totals?.opened_90d || 0, cls: 'text-rose-600 dark:text-rose-400' },
+                { label: '90일 개업', v: data.totals?.opened_90d || 0, cls: 'text-tone-bad' },
                 { label: '90일 폐업', v: data.totals?.closed_90d || 0, cls: 'text-gray-400 dark:text-gray-500' },
               ].map(s => (
                 <div key={s.label} className="rounded-xl border border-gray-100 dark:border-[#1A1A1A] bg-white dark:bg-[#121212] p-4 text-center">

@@ -11,6 +11,7 @@
  */
 
 import { Hono } from 'hono'
+import { publicCache } from '../middleware/edge-cache'
 import type { Env } from '../types/env'
 
 export const publicUtilityRoutes = new Hono<{ Bindings: Env }>()
@@ -81,8 +82,8 @@ publicUtilityRoutes.get('/manifest.webmanifest', async (c) => {
     short_name: '유어딜',
     start_url: '/',
     display: 'standalone',
-    background_color: '#0D0F12',
-    theme_color: '#0D0F12',
+    background_color: '#11141C',
+    theme_color: '#11141C',
     orientation: 'portrait',
     icons: [
       { src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml' },
@@ -141,20 +142,30 @@ publicUtilityRoutes.get('/api/version', async (c) => {
 
 // ── GET /api/flash-deals ────────────────────────
 // 타임딜(플래시 딜) 상품 조회 — flash_deal_start/end 또는 sale_ends_at fallback
+// 📉 2026-09-02: 이 라우트는 공개 라우트 중 유일하게 **요청마다** `PRAGMA table_info(products)` 를 돌리고 캐시도 없었다.
+//   컬럼 존재는 D1 인스턴스당 한 번만 물으면 된다(WeakMap — `consumer-scope.ts` 와 같은 패턴). 응답은 5분 엣지.
+const _flashCols = new WeakMap<object, Promise<Set<string>>>()
+function productColumns(DB: { prepare: (sql: string) => { all: <T>() => Promise<{ results?: T[] }> } }): Promise<Set<string>> {
+  let p = _flashCols.get(DB)
+  if (!p) {
+    p = DB.prepare('PRAGMA table_info(products)').all<{ name: string }>()
+      .then((r) => new Set((r?.results ?? []).map((x) => x.name)))
+      .catch(() => { _flashCols.delete(DB); return new Set<string>() }) // 실패는 기억하지 않는다(다음 요청이 다시 묻는다)
+    _flashCols.set(DB, p)
+  }
+  return p
+}
+
+publicUtilityRoutes.use('/api/flash-deals', publicCache(300))
 publicUtilityRoutes.get('/api/flash-deals', async (c) => {
   try {
     const DB = c.env.DB
     if (!DB) return c.json({ success: true, data: { deals: [], avg_discount_rate: 0, count: 0 } })
 
-    // 컬럼 존재 여부 확인 (PRAGMA)
-    let hasFlashDeal = false
-    let hasSaleEndsAt = false
-    try {
-      const pragmaResult = await DB.prepare(`PRAGMA table_info(products)`).all<{ name: string }>()
-      const cols = (pragmaResult?.results ?? []).map((r: { name: string }) => r.name)
-      hasFlashDeal = cols.includes('flash_deal_start')
-      hasSaleEndsAt = cols.includes('sale_ends_at')
-    } catch { /* PRAGMA 실패 시 fallback */ }
+    // 컬럼 존재 여부 확인 (PRAGMA — D1 당 1회 메모)
+    const cols = await productColumns(DB)
+    const hasFlashDeal = cols.has('flash_deal_start')
+    const hasSaleEndsAt = cols.has('sale_ends_at')
 
     let deals: Record<string, unknown>[] = []
     let avgDiscountRate = 0
@@ -495,6 +506,44 @@ publicUtilityRoutes.get('/api/home/categories', async (c) => {
  * 🔒 **비활성이면 `enabled:false` 만 내려보낸다** — 꺼둔 문구가 응답에 남으면 그것도 노출이다.
  * ⚡ 60초 브라우저 / 5분 엣지 캐시. 문구를 바꾸면 최대 5분 뒤 반영된다(즉시성이 필요한 값이 아니다).
  */
+/**
+ * 🎛️ 소비자 화면의 **어드민 조정값** (2026-09-09 대표 *"모두 다 해줘"*).
+ *
+ * ## 왜 별도 엔드포인트인가
+ * 지도 마커의 할인 강조 임계값(안 D4)은 라인업이 바뀌면 같이 바뀌어야 하는데 상수로 박혀 있었다.
+ * 그렇다고 `/api/promo-bar` 같은 남의 응답에 얹으면 다음 세션이 "프로모 바가 왜 지도 값을
+ * 들고 있지" 하고 헤맨다 — 이 레포가 반복해 겪은 "낡은 지도" 를 스스로 만드는 짓이다.
+ *
+ * ## 🔴 이 응답은 **첫 화면을 막지 않는다**
+ * 값이 늦게 와도 화면은 코드 상수(`MAP_HIGHLIGHT_DISCOUNT_PCT`)로 이미 그려져 있고, 도착하면
+ * 마커 색만 다시 칠한다. 실패하면 상수 그대로 — **오늘과 완전히 같은 동작**이다.
+ * 그래서 지도 로딩 예산에 새 블로킹 왕복이 안 생긴다(로딩 규칙 준수).
+ *
+ * ⚡ 60초 브라우저 / 10분 엣지. 즉시성이 필요한 값이 아니다.
+ * 🔒 값 검증은 여기서 한다 — 어드민이 실수로 빈 값·문자·음수를 넣어도 화면이 안 깨져야 한다.
+ */
+publicUtilityRoutes.get('/api/consumer-settings', async (c) => {
+  // 기본값은 코드 SSOT 와 같은 숫자여야 한다 — 다르면 설정 미저장 상태에서 화면이 값을 바꾼다.
+  const fallback = { success: true, data: {} as Record<string, unknown> }
+  try {
+    const { results } = await c.env.DB.prepare(
+      `SELECT key, value FROM platform_settings WHERE key IN ('map_highlight_discount_pct')`
+    ).all<{ key: string; value: string }>()
+    const s: Record<string, string> = {}
+    for (const r of results || []) s[r.key] = r.value
+    const out: Record<string, unknown> = {}
+    const pct = Number(s.map_highlight_discount_pct)
+    // 1~99 밖은 무시한다 — 0 이면 전 마커가 강조되어 D4 가 무의미해지고, 100 이면 아무것도 안 뜬다.
+    if (Number.isFinite(pct) && pct >= 1 && pct <= 99) out.map_highlight_discount_pct = Math.round(pct)
+    c.header('Cache-Control', 'public, max-age=60')
+    c.header('CDN-Cache-Control', 'public, max-age=600')
+    return c.json({ success: true, data: out })
+  } catch {
+    // 테이블 미존재/조회 실패 = 조정값 없음 → 화면은 코드 상수를 쓴다(현행과 동일).
+    return c.json(fallback)
+  }
+})
+
 publicUtilityRoutes.get('/api/promo-bar', async (c) => {
   const empty = { success: true, data: { enabled: false } as Record<string, unknown> }
   try {

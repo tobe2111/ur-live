@@ -18,24 +18,31 @@ import { expectedMaxAgeMinutes } from '../../worker/utils/cron-heartbeat'
 const SCHEDULED = readFileSync('src/worker/scheduled.ts', 'utf8')
 
 describe('백업 주기', () => {
+  // 📉 2026-09-02: `*/5` 슬롯 배열(:05/:20/:35/:50)은 제거됐다 — 08-25 전용 트리거와 중복돼 시간당 8회 돌며
+  //   하루 ~110만 행을 읽었다(무료 한도의 22%). 이제 유일한 배선은 전용 트리거 `2,17,32,47` 이다.
+  const dedicated = /cron === '([\d,]+) \* \* \* \*'[^\n]*\n\s*ctx\.waitUntil\(slotCron\('([^']+)'\)\('d1-backup-chunked'/.exec(SCHEDULED)
   it('🔑 시간당 4회 이상 시도한다 (1회면 전체 스냅샷에 60시간)', () => {
-    const m = /\[([\d,\s]+)\]\.some\(\(m\) => slotDue\(event\.scheduledTime, \{ minute: m \}\)\)/.exec(SCHEDULED)
-    expect(m, '백업 슬롯이 배열 형태가 아니다 — 단일 minute 로 되돌아갔는지 확인').toBeTruthy()
-    const slots = (m![1].split(',').map((s) => Number(s.trim())))
+    expect(dedicated, '백업 전용 트리거 블록(cron === \'m,m,m,m * * * *\' → d1-backup-chunked)을 못 찾았다').toBeTruthy()
+    const slots = dedicated![1].split(',').map((x) => Number(x.trim()))
     expect(slots.length, `시간당 ${slots.length}회 — 4회 미만이면 하루 안에 한 벌을 못 만든다`).toBeGreaterThanOrEqual(4)
-    for (const s of slots) expect(s).toBeGreaterThanOrEqual(0), expect(s).toBeLessThan(60)
-    // 5분 캐리어 위에 올라타므로 **5의 배수**가 아니면 그 슬롯은 영원히 안 걸린다(조용한 무동작).
-    for (const s of slots) expect(s % 5, `분 ${s} 는 5의 배수가 아니라 5분 틱에 절대 안 걸린다`).toBe(0)
+    for (const m of slots) expect(m).toBeGreaterThanOrEqual(0), expect(m).toBeLessThan(60)
+    // 전용 트리거의 분이 `*/5` 의 분과 겹치면 CF 가 한 인보케이션으로 합쳐 백업이 5분 틱 예산(40개가 나눠 씀)을 받는다.
+    for (const m of slots) expect(m % 5, `분 ${m} 는 */5 와 겹친다 — 전용 인보케이션이 아니게 된다`).not.toBe(0)
+    // 등록도 돼 있어야 한다 — 등록 안 된 식은 조용히 안 울린다(08-25 에 `*/15` 가 그랬다).
+    const toml = readFileSync('wrangler.toml', 'utf8')
+    expect(toml).toContain(`"${dedicated![1]} * * * *"`)
   })
 
   it('🔑 신고하는 주기가 실제 슬롯 수와 일치한다 (침묵 판정이 느슨해지지 않게)', () => {
-    const slotsM = /\[([\d,\s]+)\]\.some\(\(m\) => slotDue/.exec(SCHEDULED)
-    const exprM = /slotCron\('([^']+)'\)\('d1-backup-chunked'/.exec(SCHEDULED)
-    expect(exprM, "d1-backup-chunked 의 slotCron 식을 못 찾았다").toBeTruthy()
-    const slotCount = slotsM![1].split(',').length
-    const exprMinuteCount = exprM![1].trim().split(/\s+/)[0].split(',').length
+    expect(dedicated).toBeTruthy()
+    const slotCount = dedicated![1].split(',').length
+    const exprMinuteCount = dedicated![2].trim().split(/\s+/)[0].split(',').length
     expect(exprMinuteCount, '실행 슬롯 수와 신고한 cron 식의 분 개수가 다르다 — 하나만 고치면 경보가 어긋난다')
       .toBe(slotCount)
+  })
+
+  it('🔑 `*/5` 슬롯 배열 배선이 되살아나지 않는다 (시간당 8회 = 하루 110만 행)', () => {
+    expect(SCHEDULED).not.toMatch(/\]\.some\(\(m\) => slotDue\(event\.scheduledTime, \{ minute: m \}\)\)\)\s*\{\s*ctx\.waitUntil\(slotCron\('[^']+'\)\('d1-backup-chunked'/)
   })
 
   it('🩸 분 목록을 "매시 1회"로 오해석하지 않는다 (멈춰도 조용해진다)', () => {

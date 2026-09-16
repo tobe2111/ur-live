@@ -112,12 +112,40 @@ describe('④ 다크 모드 — 지갑 배경을 인라인으로 칠하지 않�
    * 인라인 스타일이라 클래스 기반인 `check-theme-consistency` 의 사각지대였다.
    */
   const atoms = read('src/components/wallet/WalletAtoms.tsx')
-  const light = atoms.slice(atoms.indexOf('WalletPageWrapper'))
+  /**
+   * 🔀 2026-09-15 재조준 (색 정리 — 표면 토큰 채택).
+   *
+   * 종전엔 `bg-[#F8F7FC] dark:bg-[#11141C]` 라는 **그 hex 짝 그대로**를 찾았는데, 같은 값을 담은
+   * 토큰 `bg-warm`(= `var(--bg)`)으로 접히면서 정상인데 빨간불이 됐다.
+   *
+   * 🔑 그래서 **판정 기준을 hex 에서 불변식 자체로 옮긴다.** 이 시험이 지키려던 것은
+   * "저 두 hex 가 적혀 있다" 가 아니라 **"라이트 지갑의 배경을 인라인으로 칠하지 않는다"** 이고,
+   * 토큰 쪽이 그 불변식을 더 강하게 만족한다(클래스 하나가 두 테마를 다 안다).
+   * ⇒ 아래 ②가 진짜 불변식이고 ①은 그 짝의 보조다. hex 를 되돌려도 ①은 통과하므로 ②가 본체다.
+   */
+  const lightStart = atoms.indexOf("if (theme === 'light')")
+  const light = atoms.slice(lightStart, atoms.indexOf('return (', atoms.indexOf('}', atoms.indexOf('</div>', lightStart))))
 
-  it('라이트 지갑 래퍼가 다크 배경 클래스를 갖는다', () => {
-    expect(light).toMatch(/bg-white dark:bg-\[#0D0F12\]/)
+  it('앵커가 살아 있다 — 라이트 분기를 실제로 잘랐는가', () => {
+    // 0건을 통과로 착각하지 않기 위한 자기검증(이 레포가 반복해 당한 "헛도는 가드").
+    expect(lightStart, 'WalletPageWrapper 의 라이트 분기를 못 찾았다').toBeGreaterThan(-1)
+    expect(light).toContain('className=')
+    expect(light.length).toBeLessThan(600)
   })
-  it('라이트 지갑 래퍼가 다크 글자색 클래스를 갖는다', () => {
+
+  it('① 라이트 지갑 래퍼의 배경이 테마를 아는 클래스다', () => {
+    // `bg-warm`(토큰) 또는 종전의 hex 짝 — 둘 다 라이트 #F8F7FC / 다크 #11141C 로 같은 값이다.
+    expect(light).toMatch(/\bbg-warm\b|bg-\[#F8F7FC\] dark:bg-\[#11141C\]/)
+  })
+
+  it('② 라이트 지갑 래퍼가 배경을 인라인으로 칠하지 않는다 (진짜 불변식)', () => {
+    expect(light, [
+      '인라인 배경은 다크 토글을 안 따라간다 — 2026-08-31 에 흰 배경 + 흰 글자가 된 원인이 정확히 이것이다.',
+      '(클래스 기반인 check-theme-consistency 의 사각지대라 가드도 못 잡는다.)',
+    ].join('\n')).not.toMatch(/style=\{\{[^}]*\bbackground/)
+  })
+
+  it('③ 라이트 지갑 래퍼가 다크 글자색 클래스를 갖는다', () => {
     expect(light).toMatch(/text-gray-900 dark:text-white/)
   })
 })

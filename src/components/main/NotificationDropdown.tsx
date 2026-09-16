@@ -34,7 +34,7 @@ interface Props {
 export default function NotificationDropdown({ onClose }: Props) {
   const navigate = useNavigate()
   const panelRef = useRef<HTMLDivElement>(null)
-  const { data: items = [], isLoading } = useNotifications()
+  const { data: items = [], isLoading, isError } = useNotifications()
   const markRead = useMarkNotificationRead()
   const markAll = useMarkAllNotificationsRead()
 
@@ -61,7 +61,7 @@ export default function NotificationDropdown({ onClose }: Props) {
   return (
     <div
       ref={panelRef}
-      className="absolute right-0 top-full mt-2 w-[360px] max-w-[92vw] rounded-2xl bg-white dark:bg-[#1A1C21] border border-gray-100 dark:border-[#2C2F35] shadow-[0_12px_40px_rgba(0,0,0,0.16)] overflow-hidden z-[10001]"
+      className="absolute right-0 top-full mt-2 w-[360px] max-w-[92vw] rounded-2xl bg-surface border border-gray-100 dark:border-[#2C2F35] shadow-[0_12px_40px_rgba(0,0,0,0.16)] overflow-hidden z-[10001]"
       role="dialog"
       aria-label="알림"
     >
@@ -83,6 +83,13 @@ export default function NotificationDropdown({ onClose }: Props) {
       <div className="max-h-[420px] overflow-y-auto">
         {isLoading && items.length === 0 ? (
           <div className="py-12 text-center text-[13px] text-gray-400 dark:text-gray-500">불러오는 중…</div>
+        ) : isError ? (
+          /* 🩸 2026-09-15: 못 불러온 것을 "새 알림이 없어요"로 말하지 않는다 — 놓친 알림이
+             있는데 없다고 하면 사용자는 다시 안 열어 본다. */
+          <div className="py-12 flex flex-col items-center gap-2 text-gray-500 dark:text-gray-400">
+            <Bell className="w-8 h-8 opacity-40" />
+            <p className="text-[13px]">알림을 불러오지 못했어요</p>
+          </div>
         ) : items.length === 0 ? (
           <div className="py-12 flex flex-col items-center gap-2 text-gray-400 dark:text-gray-500">
             <Bell className="w-8 h-8 opacity-40" />
@@ -100,7 +107,7 @@ export default function NotificationDropdown({ onClose }: Props) {
               }}
               className={`w-full flex items-start gap-3 px-4 py-3 text-left border-b border-gray-50 dark:border-[#22304A] hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors ${n.is_read ? 'opacity-60' : ''}`}
             >
-              <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${n.is_read ? 'bg-transparent' : 'bg-pink-500'}`} />
+              <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${n.is_read ? 'bg-transparent' : 'bg-brand'}`} />
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">{n.title}</p>
                 {n.message && (

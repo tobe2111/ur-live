@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { canonicalDetailPath } from '@/shared/product-flow'
+import { canonicalDetailPath, getNoShippingKind, isNoShippingProduct } from '@/shared/product-flow'
 
 /**
  * 🧭 2026-06-22: /products/:id 종류별 정규 페이지 라우팅 SSOT 단위 테스트.
@@ -56,5 +56,36 @@ describe('canonicalDetailPath', () => {
 
   it('문자열 id 도 그대로 경로에 반영', () => {
     expect(canonicalDetailPath({ id: 'abc', category: 'meal_voucher' })).toBe('/group-buy/abc')
+  })
+})
+
+/**
+ * 📦 2026-09-01 — 대표 *"이용권은 배송비도 없는데?"*
+ *
+ * 프리뷰 하네스로 재현했더니 같은 장바구니가 `/cart` 64,900+**6,000** ↔ `/checkout` 64,900 이었다.
+ * 판정이 두 파일에 따로 적혀 갈라진 결과. 이제 이 함수 하나가 그 답을 준다.
+ */
+describe('isNoShippingProduct / getNoShippingKind', () => {
+  it('교환권(deal_only=1) → 배송 없음, 종류는 deal (휴대폰으로 온다)', () => {
+    expect(isNoShippingProduct({ deal_only: 1, category: 'etc' })).toBe(true)
+    expect(getNoShippingKind({ deal_only: 1, category: 'etc' })).toBe('deal')
+  })
+
+  it('이용권(매장 사용 카테고리) → 배송 없음, 종류는 voucher (아무것도 안 온다)', () => {
+    for (const c of ['meal_voucher', 'beauty_voucher', 'stay_voucher']) {
+      expect(isNoShippingProduct({ deal_only: 0, category: c })).toBe(true)
+      expect(getNoShippingKind({ deal_only: 0, category: c })).toBe('voucher')
+    }
+  })
+
+  it('일반 쇼핑 상품 → 배송 있음', () => {
+    expect(isNoShippingProduct({ deal_only: 0, category: 'fashion' })).toBe(false)
+    expect(getNoShippingKind({ category: null })).toBeNull()
+    expect(isNoShippingProduct({})).toBe(false)
+  })
+
+  it('category 가 없어도(서버가 안 보내도) 교환권은 여전히 비배송', () => {
+    // cart.routes 가 p.category 를 안 보내던 시절의 회귀 방지 — deal_only 만으로도 판정된다.
+    expect(isNoShippingProduct({ deal_only: 1 })).toBe(true)
   })
 })

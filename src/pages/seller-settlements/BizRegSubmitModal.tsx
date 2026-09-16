@@ -18,7 +18,7 @@ export default function BizRegSubmitModal({ submitting, imageUrl, businessNumber
       role="presentation"
     >
       <div
-        className="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl"
+        className="bg-white rounded-[var(--dash-radius,16px)] w-full max-w-md p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -63,7 +63,7 @@ export default function BizRegSubmitModal({ submitting, imageUrl, businessNumber
             type="button"
             onClick={onSubmit}
             disabled={submitting || !imageUrl.trim()}
-            className="flex-1 px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 px-4 py-2 bg-brand-tint text-brand-text text-sm font-semibold rounded-lg hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? '제출 중...' : '제출하기'}
           </button>

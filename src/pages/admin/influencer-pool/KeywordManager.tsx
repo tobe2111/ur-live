@@ -40,9 +40,9 @@ function Chip({ k, onToggle }: { k: Keyword; onToggle: (k: Keyword) => void | Pr
   const ly = lowYield(k)
   return (
     <button onClick={() => onToggle(k)} title={`${k.category || '일반'} · ${k.source}${k.saved_total ? ` · 누적 ${k.saved_total}명(직전 ${k.last_saved || 0})` : ''}${k.last_run_at ? ` · ${k.last_run_at.slice(5, 16)}` : ''}${k.hits ? ` · ${k.hits}회 등장` : ''}`}
-      className={`px-2.5 py-1 rounded-full text-xs border ${k.active ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-400 border-gray-300 line-through'}`}>
-      {PRIORITY_CATS.includes(k.category || '') ? '⭐' : ''}{k.keyword}{k.source === 'auto' ? ' 🌱' : ''}{k.saved_total ? <span className={k.active ? 'text-emerald-300' : 'text-gray-400'}> · {formatNumber(k.saved_total)}</span> : (k.last_run_at ? <span className="text-red-400" title="이 키워드로 여러 번 수집했지만 신규 0명 — 비활성 검토">{' · 💤0'}</span> : '')}
-      {ly && <span className="text-amber-400" title={`${formatNumber(ly.found)}건 찾아 ${formatNumber(k.saved_total || 0)}명 저장 (수확률 ${ly.pct}%) — 검색 슬롯을 쓰지만 리드가 거의 안 남습니다. 이미 다 모았거나(고갈) 키워드가 안 맞는 경우입니다. 점수에서 자동 감점되지만, 확실하면 눌러서 비활성.`}> 🪫{ly.pct}%</span>}
+      className={`px-2.5 py-1 rounded-full text-xs border ${k.active ? 'bg-brand text-white border-gray-900' : 'bg-white text-gray-400 border-gray-300 line-through'}`}>
+      {PRIORITY_CATS.includes(k.category || '') ? '★ ' : ''}{k.keyword}{k.source === 'auto' ? ' (자동)' : ''}{k.saved_total ? <span className={k.active ? 'text-gray-400' : 'text-gray-400'}> · {formatNumber(k.saved_total)}</span> : (k.last_run_at ? <span className="text-gray-400" title="이 키워드로 여러 번 수집했지만 신규 0명 — 비활성 검토">{' · 0'}</span> : '')}
+      {ly && <span className="text-gray-400" title={`${formatNumber(ly.found)}건 찾아 ${formatNumber(k.saved_total || 0)}명 저장 (수확률 ${ly.pct}%) — 검색 슬롯을 쓰지만 리드가 거의 안 남습니다. 이미 다 모았거나(고갈) 키워드가 안 맞는 경우입니다. 점수에서 자동 감점되지만, 확실하면 눌러서 비활성.`}>{ly.pct}%</span>}
     </button>
   )
 }
@@ -90,7 +90,7 @@ export default function KeywordManager({ keywords, onChanged, onFirstOpen }: { k
     } catch { toast.error('추가 실패') }
   }
   async function toggleKeyword(k: Keyword) {
-    try { await api.patch(`/api/admin/ads/influencer-pool/keywords/${k.id}`, { active: k.active ? 0 : 1 }); await onChanged(); toast.success(k.active ? `⏸ '${k.keyword}' 수집 중지` : `▶️ '${k.keyword}' 수집 재개`) }
+    try { await api.patch(`/api/admin/ads/influencer-pool/keywords/${k.id}`, { active: k.active ? 0 : 1 }); await onChanged(); toast.success(k.active ? `⏸ '${k.keyword}' 수집 중지` : `▶'${k.keyword}' 수집 재개`) }
     catch { toast.error('변경 실패') }
   }
 
@@ -103,12 +103,12 @@ export default function KeywordManager({ keywords, onChanged, onFirstOpen }: { k
         <div className="px-4 pb-4">
           <div className="flex flex-wrap gap-2 mb-3">
             <select value={newKwCat} onChange={e => setNewKwCat(e.target.value)} className="px-2 py-2 rounded-lg border border-gray-300 text-sm text-gray-900" title="우선 카테고리로 태깅하면 우선 커서(배치 3/4)를 탑니다">
-              {PRIORITY_CATS.map(cat => <option key={cat} value={cat}>⭐{cat}</option>)}
+              {PRIORITY_CATS.map(cat => <option key={cat} value={cat}>{cat}</option>)}
               <option value="일반">일반</option>
             </select>
             <input value={newKw} onChange={e => setNewKw(e.target.value)} onKeyDown={e => e.key === 'Enter' && addKeyword()} placeholder="키워드 추가 (예: 방배 맛집)" className="flex-1 min-w-[160px] px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900" />
-            <button onClick={addKeyword} className="px-3 py-2 rounded-lg bg-gray-900 text-white text-sm">추가</button>
-            <input value={q} onChange={e => setQ(e.target.value)} placeholder="🔍 칩 검색 (키워드·카테고리)" className="w-[180px] px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900" />
+            <button onClick={addKeyword} className="ur-btn ur-btn-md ur-btn-primary">추가</button>
+            <input value={q} onChange={e => setQ(e.target.value)} placeholder="칩 검색 (키워드·카테고리)" className="w-[180px] px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900" />
           </div>
           <div className="flex flex-wrap gap-2">
             {activeKw.map(k => <Chip key={k.id} k={k} onToggle={toggleKeyword} />)}
@@ -126,7 +126,7 @@ export default function KeywordManager({ keywords, onChanged, onFirstOpen }: { k
               후보 {formatNumber(candHidden)}개 더 보기 (많으면 느려질 수 있어요)
             </button>
           )}
-          <p className="mt-2 text-xs text-gray-400">칩을 눌러 활성/비활성. ⭐ = 우선 카테고리(우선 커서 3/4). 🌱 = 해시태그 자동확장. 숫자 = 이 키워드로 모은 누적 인원(성과순 정렬 — 잘 무는 키워드가 위로). 💤0 = 수집했지만 0명(죽은 키워드 — 눌러서 비활성 권장). 🪫N% = 충분히 찾았는데 거의 안 남는 키워드(수확률) — 점수에서 자동 감점되며, 확실하면 비활성.</p>
+          <p className="mt-2 text-xs text-gray-400">칩을 눌러 활성/비활성. ★ = 우선 카테고리(우선 커서 3/4). (자동) = 해시태그 자동확장. 숫자 = 이 키워드로 모은 누적 인원(성과순 정렬 — 잘 무는 키워드가 위로). 0 = 수집했지만 0명(죽은 키워드 — 눌러서 비활성 권장). N% = 충분히 찾았는데 거의 안 남는 키워드(수확률) — 점수에서 자동 감점되며, 확실하면 비활성.</p>
         </div>
       )}
     </details>

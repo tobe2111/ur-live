@@ -46,6 +46,11 @@ if domain auth; then
   run "라이트 입력 가시성"               env STRICT_LIGHT_INPUT=1      node scripts/check-light-input-guard.mjs
   run "내부 링크 dead-link"             env STRICT_LINKS=1            node scripts/check-internal-links.mjs
   run "라우트 경로 중복(조용히 죽는 페이지)" env STRICT_DUP_ROUTES=1       node scripts/check-duplicate-routes.mjs
+  run "결제 복귀 주소 실재(승인 뒤 갈 곳)"                                   node scripts/check-payment-redirect-routes.mjs
+  run "서버 라우트 중복(한 번도 안 도는 핸들러)" env STRICT_DUP_ROUTES=1 node scripts/check-duplicate-hono-routes.mjs
+  run "게이트 미등재(켤 화면을 못 만드는 원인)" env STRICT_GATE_REGISTRY=1 node scripts/check-gate-registry.mjs
+  run "꺼진 적립을 약속하는 새 경로"        env STRICT_AFFILIATE_GATE=1 node scripts/check-affiliate-display-gate.mjs
+  run "라우트 그림자(정적 경로가 /:param 에 가림)"                             node scripts/check-route-shadowing.mjs
   run "도달 불가 라우트(누를 데 없는 페이지)" env STRICT_ORPHAN_ROUTES=1   node scripts/check-orphan-routes.mjs
   run "API 인증 누락"                   bash scripts/check-api-auth.sh
   run "가격기반 로그인 유도 금지"         env STRICT_LOGIN_GATE=1       node scripts/check-login-gate-by-price.mjs
@@ -100,6 +105,7 @@ fi
 if domain ui; then
   echo "🎨 UI · 테마 · 첫페인트"
   run "테마 일관성(dark variant)"        node scripts/check-theme-consistency.mjs
+  run "소비자 hex 래칫(색 정리)"        node scripts/check-consumer-hex-ratchet.mjs
   run "RQ initialData 신선도"           node scripts/check-query-initialdata.mjs
   run "모바일 뷰포트(하단 잘림)"          node scripts/check-mobile-viewport.mjs
   run "링크샵 소유권 단일화"              node scripts/check-linkshop-ownership.mjs -s
@@ -108,13 +114,21 @@ if domain ui; then
   run "할인율이 사진 위에 없다(전 카드 구현)" node scripts/check-discount-not-on-photo.mjs
   run "대시보드 버튼 체계(원시 주 버튼 래칫)" node scripts/check-dashboard-button-system.mjs
   run "이미지 폴백(깨진 이미지 아이콘 노출)" node scripts/check-image-fallback.mjs
+  run "딜 카드 통일(자체 카드 신설 차단)" node scripts/check-deal-card-unify.mjs
+  run "상태 색(중화되는 색조로 상태 구분 차단)" node scripts/check-status-tone.mjs
+  run "다크 대비(밝은 표면 위 밝은 글자 — 실제 렌더)" node scripts/check-dark-contrast.mjs
   run "결제수단 판정 SSOT"                node scripts/check-payment-flow-ssot.mjs -s
+  run "배송비 판정 SSOT(장바구니↔결제)"    node scripts/check-no-shipping-ssot.mjs
+  run "띄어 쓴 가운뎃점 사슬(래칫)"         node scripts/check-middle-dot-chain.mjs
+  run "모양 잠금(체계 밖 모서리 래칫)"      node scripts/check-shape-lock.mjs
   run "기능 현황판 동기(꺼진 기능)"        node scripts/generate-feature-status.mjs --check
   run "소비자 이미지 cfImage 경유"        env STRICT_RAW_IMG=1 node scripts/check-consumer-img-cfimage.mjs
   run "KST 타임스탬프 파싱(9시간 어긋남)"  env STRICT_UTC_DATE=1 node scripts/check-utc-date-parse.mjs
   run "커서 저장이 무한 루프 뒤(전진 0)"    node scripts/check-cursor-after-loop.mjs --strict
   # 2026-07-29 신규 등록 — 셋 다 파일은 예전부터 있었는데 어디에서도 실행되지 않고 있었다.
   run "input 라이트 가시성(흰글자)"       env STRICT_INPUT_TEXT=1       node scripts/check-input-text-color.mjs
+  run "자체 주석 제거기 래칫"            env STRICT_COMMENT_STRIPPER=1 node scripts/check-comment-stripper.mjs
+  run "로컬↔CI 차단 동등성"             node scripts/check-local-ci-parity.mjs
   run "i18n 6개 언어 동기화"             node scripts/check-i18n-sync.mjs
 fi
 

@@ -21,8 +21,6 @@ const KEYS = {
   sellers: (filter?: string) => ['admin', 'sellers', filter ?? 'all'] as const,
   pendingSellers: () => ['admin', 'sellers', 'pending'] as const,
   users: (filter?: Record<string, unknown>) => ['admin', 'users', filter ?? {}] as const,
-  agencies: () => ['admin', 'agencies'] as const,
-  agencyApprovals: (status?: string) => ['admin', 'agency-approvals', status ?? 'pending'] as const,
   influencers: () => ['admin', 'influencers'] as const,
   payouts: (filter?: string) => ['admin', 'payouts', filter ?? 'all'] as const,
   commissionRates: () => ['admin', 'commission-rates'] as const,
@@ -59,24 +57,6 @@ export function useAdminPendingSellers() {
   return useQuery({
     queryKey: KEYS.pendingSellers(),
     queryFn: () => api.get('/api/admin/sellers/pending').then(r => (Array.isArray(r.data?.data) ? r.data.data : [])),
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
-  })
-}
-
-export function useAdminAgencies() {
-  return useQuery({
-    queryKey: KEYS.agencies(),
-    queryFn: () => api.get('/api/admin/agencies').then(r => (Array.isArray(r.data?.data) ? r.data.data : [])),
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-  })
-}
-
-export function useAdminAgencyApprovals(status: string = 'pending') {
-  return useQuery({
-    queryKey: KEYS.agencyApprovals(status),
-    queryFn: () => api.get(`/api/admin/agency-creator-approvals?status=${encodeURIComponent(status)}`).then(r => (Array.isArray(r.data?.data) ? r.data.data : [])),
     staleTime: 60_000,
     refetchOnWindowFocus: false,
   })
@@ -125,14 +105,6 @@ export function useAdminDisputes(status: string = 'pending') {
 export function useInvalidateAdminSellers() {
   const qc = useQueryClient()
   return () => qc.invalidateQueries({ queryKey: ['admin', 'sellers'] })
-}
-export function useInvalidateAdminAgencies() {
-  const qc = useQueryClient()
-  return () => qc.invalidateQueries({ queryKey: ['admin', 'agencies'] })
-}
-export function useInvalidateAdminAgencyApprovals() {
-  const qc = useQueryClient()
-  return () => qc.invalidateQueries({ queryKey: ['admin', 'agency-approvals'] })
 }
 export function useInvalidateAdminDisputes() {
   const qc = useQueryClient()

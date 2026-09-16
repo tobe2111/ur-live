@@ -40,8 +40,8 @@ interface Partnership {
 // STATUS_LABEL is built dynamically using t() in the component
 
 const STATUS_COLOR: Record<Partnership['status'], string> = {
-  pending: 'bg-yellow-50 text-yellow-700 border-yellow-200',
-  active: 'bg-green-50 text-green-700 border-green-200',
+  pending: 'bg-white text-tone-warn border-rule',
+  active: 'bg-white text-tone-ok border-rule',
   paused: 'bg-gray-50 text-gray-700 border-gray-200',
   ended: 'bg-gray-50 text-gray-500 border-gray-200',
 }
@@ -108,7 +108,7 @@ export default function SellerConsignmentPage() {
       <DashboardPageHeader
         title={t('seller.consignment.title', { defaultValue: 'MD 위탁 판매' })}
         subtitle={t('seller.consignment.subtitle', { defaultValue: '다른 셀러의 상품을 내 라이브에서 판매하거나, 내 상품을 다른 셀러에게 위탁할 수 있어요' })}
-        icon={<Handshake className="w-5 h-5 text-pink-500" />}
+        icon={<Handshake className="w-5 h-5 text-brand-text" />}
       />
 
       {/* 필터 칩 */}
@@ -125,7 +125,7 @@ export default function SellerConsignmentPage() {
               onClick={() => setRoleFilter(f.key)}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
                 roleFilter === f.key
-                  ? 'bg-gray-900 text-white border-gray-900'
+                  ? 'bg-brand-tint text-brand-text border-gray-900'
                   : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
               }`}
             >{f.label}</button>
@@ -139,7 +139,7 @@ export default function SellerConsignmentPage() {
               onClick={() => setStatusFilter(s)}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
                 statusFilter === s
-                  ? 'bg-gray-900 text-white border-gray-900'
+                  ? 'bg-brand-tint text-brand-text border-gray-900'
                   : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
               }`}
             >{s === 'all' ? t('seller.consignment.all', { defaultValue: '전체' }) : STATUS_LABEL[s as Partnership['status']]}</button>
@@ -207,7 +207,7 @@ export default function SellerConsignmentPage() {
                       </div>
                       <div>
                         <span className="text-gray-400">{t('seller.consignment.commissionRate', { defaultValue: 'host 수수료율' })}:</span>{' '}
-                        <span className="font-bold text-pink-600">{p.host_commission_rate}%</span>
+                        <span className="font-bold text-brand-text">{p.host_commission_rate}%</span>
                       </div>
                       {p.message && (
                         <div className="text-gray-600 italic mt-1 line-clamp-2">"{p.message}"</div>
@@ -232,7 +232,7 @@ export default function SellerConsignmentPage() {
                       <button
                         onClick={() => handleTerminate(p.id)}
                         disabled={actingId === p.id}
-                        className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-white border border-red-300 text-red-600 rounded-lg text-xs font-bold hover:bg-red-50 disabled:opacity-50"
+                        className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-white border border-rule text-tone-bad rounded-lg text-xs font-bold hover:bg-gray-100 disabled:opacity-50"
                       >
                         <XCircle className="w-3 h-3" /> {t('seller.consignment.terminateBtn', { defaultValue: '종료' })}
                       </button>

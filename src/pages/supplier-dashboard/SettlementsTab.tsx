@@ -4,9 +4,9 @@ import type { SettlementItem } from './types'
 import { downloadSupplierCsv } from './download-csv'
 
 const SETTLE_STATUS: Record<string, { label: string; cls: string }> = {
-  pending: { label: '정산 대기', cls: 'bg-amber-50 text-amber-700' },
-  available: { label: '출금 가능', cls: 'bg-blue-50 text-blue-700' },
-  paid: { label: '지급 완료', cls: 'bg-green-50 text-green-700' },
+  pending: { label: '정산 대기', cls: 'bg-tone-warn-bg text-tone-warn' },
+  available: { label: '출금 가능', cls: 'bg-tone-info-bg text-tone-info' },
+  paid: { label: '지급 완료', cls: 'bg-tone-ok-bg text-tone-ok' },
   cancelled: { label: '취소(환불)', cls: 'bg-gray-100 text-gray-500' },
 }
 
@@ -46,7 +46,7 @@ export default function SettlementsTab({ items, t }: { items: SettlementItem[]; 
                 <td className={`px-4 py-3 text-right font-semibold ${isClawback ? 'text-red-600' : 'text-gray-900'}`}>{formatWon(s.supply_amount)}</td>
                 <td className="px-4 py-3 text-center">
                   {isClawback ? (
-                    <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-50 text-red-600">{t('supplier.settleClawback', { defaultValue: '환불 차감' })}</span>
+                    <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-medium bg-tone-bad-bg text-tone-bad">{t('supplier.settleClawback', { defaultValue: '환불 차감' })}</span>
                   ) : (
                     <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-medium ${st.cls}`}>{t(`supplier.settle_${s.status}`, { defaultValue: st.label })}</span>
                   )}

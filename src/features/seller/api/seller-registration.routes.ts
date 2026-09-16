@@ -23,6 +23,10 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import { swallow } from '@/worker/utils/swallow'
 import { startDashboardSession } from '@/worker/utils/dashboard-session'
 import { getSellerIdFromToken, type SellerJWTPayload } from '@/lib/seller-shared'
+import { copyCuratorProfileToSeller, stampSignupStoreChannel } from './seller-signup-meta'
+import { BIZ_CERT_PATH } from '../../../worker/utils/store-ownership-claims'
+// 🔁 2026-09-16 (파일 분해): 상태 조회·세션 전환 3개는 별 파일로. 경로·순서 불변.
+import { mountSellerSessionRoutes } from './seller-registration/session-routes'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string }
 
@@ -67,6 +71,12 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
     const { username, email, password, name, business_name, business_number, phone, address, description, youtube_email, seller_type } = body;
     const representative_name = body.representative_name?.trim()
     const business_start_date = body.business_start_date?.trim()
+    // 🪪 2026-09-16 앞문 등록증 사본 — 뒷문(`/store/find`)은 필수인데 새 가게를 만드는 여기는
+    //   증거를 한 장도 안 받았다. 국세청 API 는 상호·주소를 주지 않으므로(b_no·start_dt·p_nm 만)
+    //   **기계 대조가 불가능**하고 어드민이 사진과 눈으로 대조해야 한다. 배경: 2026-09-16 handoff.
+    //   경로가 우리 업로드 자리일 때만 저장한다 — 임의 URL 이면 어드민 화면이 남의 서버를 띄운다.
+    const certUrl = String((body as { business_cert_url?: unknown }).business_cert_url || '').trim()
+    const certStored = BIZ_CERT_PATH.test(certUrl) ? certUrl : null
 
     // 필수 필드 검증 (youtube_email 은 라이브커머스 중단으로 선택 필드)
     if (!username || !email || !password || !name || !business_name || !business_number || !phone) {
@@ -155,8 +165,9 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
         username, email, password_hash, name, business_name, business_number,
         phone, address, description, youtube_email, seller_type,
         representative_name, business_start_date, nts_verified_at, nts_verify_result,
+        business_registration_image_url, business_registration_status,
         status, commission_rate, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${DEFAULT_COMMISSION_RATE}, datetime('now'), datetime('now'))
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${DEFAULT_COMMISSION_RATE}, datetime('now'), datetime('now'))
     `).bind(
       username,
       email,
@@ -173,6 +184,8 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
       business_start_date || null,
       ntsVerifiedAt,
       ntsResultJson,
+      certStored,
+      certStored ? 'pending' : null,   // 사본이 있어야 어드민 화면에 승인/반려가 뜬다
       autoStatus
     ).run();
 
@@ -187,16 +200,18 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
       try {
         const { matchProspectOnSignup } = await import('../../seller-prospects/api/seller-prospects.routes')
         const matched = await matchProspectOnSignup(db, Number(result.meta.last_row_id), phone, email)
-        if (matched) {
-          const col = matched.introducerType === 'agency' ? 'introduced_by_agency_id' : 'introduced_by_influencer_id'
-          // 🛡️ 2026-05-28: 영입 commission 기본 기간 차등 (docs/SERVICE_MODEL.md §3).
-          //   에이전시 = 장기(12개월), 크리에이터(유저) = 6개월 → 과도한 영입 경쟁 완화.
+        // 🌇 2026-09-05 에이전시 일몰 — 귀속 대상은 **영입자(users.id)** 하나뿐이다.
+        //   옛 코드는 prospect 의 introducer_type 이 'agency' 면 `introduced_by_agency_id` 에 썼는데,
+        //   그 값을 읽어 돈을 주던 코드(agency-store-intro-commission)가 통째로 삭제됐다.
+        //   지금 쓰면 **아무도 안 읽는 칸에 적고 영입자 귀속은 놓치는** 최악이 된다 → 건너뛴다.
+        //   (라이브 실측: introduced_by_agency_id 0명 · agency 타입 prospect 는 발급 경로 자체가 없다.)
+        if (matched && matched.introducerType !== 'agency') {
+          // 🛡️ 2026-05-28: 영입 commission 기본 기간 (docs/SERVICE_MODEL.md §3) — 크리에이터 6개월.
           //   어드민이 매장별로 referral_bonus_until 재설정 가능 (commission-settings).
-          const months = matched.introducerType === 'agency' ? 12 : 6
           await db.prepare(
-            `UPDATE sellers SET ${col} = ?, introduced_at = datetime('now'),
-                    referral_bonus_until = datetime('now', '+' || ? || ' months') WHERE id = ?`
-          ).bind(matched.introducerId, months, Number(result.meta.last_row_id)).run().catch(() => null)
+            `UPDATE sellers SET introduced_by_influencer_id = ?, introduced_at = datetime('now'),
+                    referral_bonus_until = datetime('now', '+6 months') WHERE id = ?`
+          ).bind(matched.introducerId, Number(result.meta.last_row_id)).run().catch(() => null)
         }
       } catch { /* graceful */ }
     }
@@ -258,17 +273,10 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
       }
     }
 
-    // 🛡️ 2026-04-27 Phase 1-3: 영입 코드 자동 매핑
-    const inviteCode = body.invite_code;
-    if (inviteCode && result.meta.last_row_id) {
-      try {
-        const { consumeInviteCode } = await import('../../agency/api/agency-invites.routes');
-        const sellerId = Number(result.meta.last_row_id);
-        await consumeInviteCode(db, inviteCode, sellerId);
-      } catch (e) {
-        console.warn('[seller-register] invite_code mapping failed (non-fatal):', e);
-      }
-    }
+    // 🌇 2026-09-04 에이전시 일몰 — `invite_code` 자동 매핑(=에이전시 초대코드) 삭제.
+    //    코드는 `agencies` 를 JOIN 하고 `agency_sellers` 에 썼는데, 라이브 사용 이력이 0행이다
+    //    (agency_invite_usage 0 · agency_sellers 0). 셀러 가입은 이 값 없이 그대로 동작한다.
+    //    docs/design/store-operator-model.md
 
     // 🛡️ 2026-05-16: 인플루언서 매장 영입 referral (body.referred_by_influencer)
     //   인플 ID 가 있으면 sellers.referred_by_influencer + referral_bonus_until 자동 설정.
@@ -367,15 +375,14 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
       seller_type: 'influencer' | 'store_owner' | 'both';
       youtube_email?: string;
       description?: string;
-      // 🛡️ 2026-05-20: 에이전시 입점 영업 — 가게 사장님이 추천코드 입력 시 자동 매칭.
-      agency_intro_code?: string;
       // 🛡️ 2026-05-21 Phase D-6: 인플루언서 입점 유치 — 사장님 가입 시 인플루언서 추천코드 입력.
+      //   🌇 2026-09-05 에이전시 일몰 — `agency_intro_code` 삭제(발급 주체·대시보드가 없어졌다).
       influencer_intro_code?: string;
       // 📜 2026-07-05: 판매자 이용약관 v1.0 동의 (가입 화면 필수 체크)
       terms_agreed_version?: string;
     }>();
 
-    const { business_name, business_number, phone, seller_type, youtube_email, description, agency_intro_code, influencer_intro_code } = body;
+    const { business_name, business_number, phone, seller_type, youtube_email, description, influencer_intro_code } = body;
 
     if (!business_name || !business_number || !phone) {
       return c.json({ success: false, error: '사업자명, 사업자번호, 연락처는 필수입니다' }, 400);
@@ -428,31 +435,11 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
     const tempPasswordStr = Array.from(tempPassword).map(b => b.toString(16).padStart(2, '0')).join('');
     const passwordHash = await hashPassword(tempPasswordStr);
 
-    // 🛡️ 2026-05-20: 에이전시 추천 코드 → agency_id 매칭.
-    //   가게 사장님 (store_owner) 만 적용 — 인플루언서는 에이전시 매니지먼트 기존 흐름 유지.
-    //   잘못된 코드면 silent (가입은 진행, introduced_by_agency_id 만 null).
-    // 🛡️ 2026-05-21 Phase D-6 영구 정책 (docs/AGENCY_POLICY.md):
-    //   "한 가게 = 1개 lock-in only" — agency_intro_code 와 influencer_intro_code 동시 사용 금지.
-    //   둘 다 입력 시 400 에러 (사장님에게 선택 요구).
-    //   영구성: 양쪽 commission 분배 충돌 / 플랫폼 수익 잠식 방지.
-    const hasAgencyCode = !!(agency_intro_code && agency_intro_code.trim())
+    // 🌇 2026-09-05 에이전시 일몰 — 이 문의 추천코드는 **영입자 코드 하나뿐**이다.
+    //   옛 코드는 `agency_intro_code` 로 `agencies` 를 조회해 `introduced_by_agency_id` 를 채우고
+    //   "한 가게 = 1개 lock-in" 이라며 둘 중 하나만 고르게 했는데, 에이전시 쪽 발급 주체(대시보드·
+    //   초대 링크)가 전부 삭제돼 **고를 수 있는 코드가 하나로 줄었다** → 상호배제 자체가 사라진다.
     const hasInfluencerCode = !!(influencer_intro_code && influencer_intro_code.trim())
-    if (hasAgencyCode && hasInfluencerCode) {
-      return c.json({
-        success: false,
-        error: '에이전시 코드와 인플루언서 코드는 동시에 입력할 수 없습니다. 둘 중 하나만 선택하세요.',
-        code: 'CONFLICTING_INTRO_CODES',
-      }, 400)
-    }
-
-    let introducedAgencyId: number | null = null;
-    if (resolvedSellerType === 'store_owner' && hasAgencyCode) {
-      const code = agency_intro_code!.trim().toUpperCase().slice(0, 12);
-      const agencyRow = await db.prepare(
-        `SELECT id FROM agencies WHERE UPPER(intro_code) = ? AND status = 'active' LIMIT 1`
-      ).bind(code).first<{ id: number }>().catch(() => null);
-      if (agencyRow?.id) introducedAgencyId = agencyRow.id;
-    }
 
     // 🛡️ Phase D-6: 인플루언서 입점 유치 코드 매칭 (영구 commission lock-in).
     let introducedInfluencerId: number | null = null;
@@ -478,16 +465,15 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
         INSERT INTO sellers (
           username, email, password_hash, name, business_name, business_number,
           phone, description, youtube_email, seller_type, linked_user_id,
-          introduced_by_agency_id, introduced_by_influencer_id, introduced_at,
-          agency_intro_code, influencer_intro_code, intro_code,
+          introduced_by_influencer_id, introduced_at,
+          influencer_intro_code, intro_code,
           status, commission_rate, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ${DEFAULT_COMMISSION_RATE}, datetime('now'), datetime('now'))
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ${DEFAULT_COMMISSION_RATE}, datetime('now'), datetime('now'))
       `).bind(
         username, sellerEmail, passwordHash, userName, business_name, business_number,
         phone, description || null, youtube_email || null, resolvedSellerType, userId,
-        introducedAgencyId, introducedInfluencerId,
-        (introducedAgencyId || introducedInfluencerId) ? new Date().toISOString() : null,
-        introducedAgencyId ? (agency_intro_code || '').trim().toUpperCase().slice(0, 12) : null,
+        introducedInfluencerId,
+        introducedInfluencerId ? new Date().toISOString() : null,
         introducedInfluencerId ? (influencer_intro_code || '').trim().toUpperCase().slice(0, 12) : null,
         ownIntroCode
       ).run();
@@ -498,13 +484,7 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
       throw insertErr;
     }
 
-    // 에이전시 dashboard 알림 — 입점 통보
-    if (introducedAgencyId) {
-      const { createDashboardNotification: notify2 } = await import('../../notifications/api/dashboard-notifications.routes');
-      notify2(db, 'agency', String(introducedAgencyId), 'store_introduced',
-        '새 입점 가게', `${business_name} (${userName}) 이 추천코드로 가입`,
-        '/agency/introduced-stores').catch(swallow('seller:api:agency-intro-notify'));
-    }
+    // 🌇 2026-09-05 에이전시 일몰 — 입점 통보를 받던 `/agency/introduced-stores` 대시보드가 없어졌다.
 
     if (!result.success) {
       throw new Error('Failed to create seller account');
@@ -523,21 +503,14 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
       version: body.terms_agreed_version as string,
       ip: c.req.header('CF-Connecting-IP') || null,
     }).catch(() => null);
-    if (newSellerId && curatorProfile) {
-      const sets: string[] = [];
-      const vals: any[] = [];
-      for (const [col, srcKey] of [
-        ['profile_image', 'profile_image'], ['bio', 'bio'], ['banner_url', 'banner_url'],
-        ['sns_instagram', 'instagram_url'], ['sns_youtube', 'youtube_url'],
-      ] as const) {
-        const v = curatorProfile[srcKey];
-        if (v != null && String(v).trim() !== '') { sets.push(`${col} = ?`); vals.push(v); }
-      }
-      if (sets.length) {
-        await db.prepare(`UPDATE sellers SET ${sets.join(', ')} WHERE id = ?`)
-          .bind(...vals, newSellerId).run().catch(() => { /* 컬럼 없는 env — skip */ });
-      }
-    }
+    await copyCuratorProfileToSeller(db, newSellerId, curatorProfile);
+
+    // 🏪 2026-09-04 (대표 "가입할 때 선택을 하잖아 — 그때 정해지면 되는거 아니야?"):
+    //   매장 채널을 **가입 시점에 확정**한다. 이 폼엔 `/store/new` 의 "누가 운영하나요?" 질문이
+    //   없어 그동안 미지정으로 남았고, 미지정은 중개(5%)로 떨어져 **직접 입점 사장님이 영원히 5%**
+    //   였다. 🌇 2026-09-05 에이전시 일몰 후 이 문은 **언제나 직접**이다 — 카카오 user 세션 전용이라
+    //   로그인한 본인이 자기 가게를 올리는 자리다(중개 매장은 `/store/new` 에서 채널을 골라 만든다).
+    await stampSignupStoreChannel(db, newSellerId);
 
     const { createDashboardNotification: notify } = await import('../../notifications/api/dashboard-notifications.routes');
     // 🛡️ 2026-06-12 (감사 1단계): deep-link 교정 — /admin/sellers 는 클라 라우트에 없음 → 승인 페이지로.
@@ -553,235 +526,9 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
   }
 });
 
-/**
- * GET /api/seller/my-seller-status
- * 현재 유저의 셀러 전환 상태 확인
- */
-sellerRegistrationRoutes.get('/my-seller-status', async (c) => {
-  try {
-    const db = c.env.DB;
-    const jwtSecret = c.env.JWT_SECRET;
 
-    // 🛡️ 카카오 user 세션에서만 조회 (seller/agency 세션으로 잘못 조회 방지).
-    const { parseSessionCookie } = await import('../../../worker/utils/session');
-    const cookieHeader = c.req.header('Cookie');
-    const sessionUser = await parseSessionCookie(cookieHeader, jwtSecret, ['user']);
-    if (!sessionUser) {
-      return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
-    }
-
-    await ensureSellerColumns(db);
-
-    let seller = await db.prepare(
-      'SELECT id, status, seller_type, business_name, reject_reason FROM sellers WHERE linked_user_id = ?'
-    ).bind(sessionUser.userId).first<Record<string, any>>();
-
-    // 🛡️ 2026-05-07 (영구 fix): linked_user_id 없을 때 이메일 매칭으로 기존 셀러 발견 시 자동 연결.
-    //   원인: 이전에 이메일/비번으로 셀러 등록한 사용자가 카카오 로그인 시 linked_user_id 가 null
-    //   → "셀러 없음" 으로 잘못 표시 → 사용자에게 \"새로 등록하세요\" 라는 잘못된 안내.
-    //   해결: 카카오 검증된 user.email 과 sellers.email 매칭 시 자동 link (보안: 카카오는 email 검증 의무).
-    if (!seller) {
-      try {
-        const userRow = await db.prepare('SELECT email FROM users WHERE id = ?')
-          .bind(sessionUser.userId).first<{ email: string | null }>();
-        const userEmail = userRow?.email?.trim().toLowerCase();
-        if (userEmail) {
-          // 같은 이메일을 가진 셀러 — 단, 다른 user 에 이미 연결된 경우는 제외
-          const matched = await db.prepare(
-            `SELECT id, status, seller_type, business_name, reject_reason, linked_user_id
-             FROM sellers
-             WHERE LOWER(email) = ? AND (linked_user_id IS NULL OR linked_user_id = ?)`
-          ).bind(userEmail, sessionUser.userId).first<Record<string, any>>();
-          if (matched) {
-            // 자동 연결 — 다음 호출부터는 linked_user_id 매칭으로 빠르게 조회됨
-            if (!matched.linked_user_id) {
-              try {
-                await db.prepare(
-                  "UPDATE sellers SET linked_user_id = ?, updated_at = datetime('now') WHERE id = ?"
-                ).bind(sessionUser.userId, matched.id).run();
-              } catch { /* 동시성 race — 다음 호출에서 정상화 */ }
-            }
-            seller = matched;
-          }
-        }
-      } catch { /* 이메일 매칭 실패 — 정상 has_seller:false 흐름 */ }
-    }
-
-    // 🛡️ 2026-05-19: is_kakao_user flag — Kakao 로그인 유저의 경우 "셀러로 활동하기" 버튼 숨김 용도.
-    let isKakaoUser = false
-    try {
-      const userRow = await db.prepare('SELECT kakao_id FROM users WHERE id = ?')
-        .bind(sessionUser.userId).first<{ kakao_id: string | null }>()
-      isKakaoUser = Boolean(userRow?.kakao_id)
-    } catch { /* noop */ }
-
-    if (!seller) {
-      // 백워드 호환: `has_seller`(구) + `linked`(신) 둘 다 제공
-      return c.json({ success: true, data: { has_seller: false, linked: false, is_kakao_user: isKakaoUser } });
-    }
-
-    return c.json({
-      success: true,
-      data: {
-        // 구 스키마 (UserProfilePage)
-        has_seller: true,
-        seller_id: seller.id,
-        status: seller.status,
-        seller_type: seller.seller_type,
-        business_name: seller.business_name,
-        // 신 스키마 (SellerWaitingPage, SellerRegisterBusinessPage) — 에이전시 /my-agency-status 와 동일
-        linked: true,
-        seller: {
-          id: seller.id,
-          status: seller.status,
-          seller_type: seller.seller_type,
-          business_name: seller.business_name,
-          // 🛡️ 2026-06-12: 거절 사유 — SellerWaitingPage rejected 분기 표시.
-          reject_reason: seller.reject_reason ?? null,
-        },
-      },
-    });
-  } catch (error) {
-    if (import.meta.env.DEV) console.error('my-seller-status error:', error);
-    return c.json({ success: false, error: '상태 확인 실패' }, 500);
-  }
-});
-
-/**
- * POST /api/seller/switch-to-seller
- * 유저 → 셀러 세션 전환 (승인된 셀러만)
- * 세션 쿠키 유저가 linked_user_id로 연결된 셀러 JWT를 발급받음
- */
-sellerRegistrationRoutes.post('/switch-to-seller', async (c) => {
-  try {
-    const db = c.env.DB;
-    const jwtSecret = c.env.JWT_SECRET;
-
-    const { parseSessionCookie } = await import('../../../worker/utils/session');
-    const cookieHeader = c.req.header('Cookie');
-    const sessionUser = await parseSessionCookie(cookieHeader, jwtSecret);
-    if (!sessionUser) {
-      return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
-    }
-
-    await ensureSellerColumns(db);
-
-    const seller = await db.prepare(`
-      SELECT id, username, email, name, business_name, status, commission_rate, seller_type
-      FROM sellers WHERE linked_user_id = ?
-    `).bind(sessionUser.userId).first<Record<string, any>>();
-
-    if (!seller) {
-      return c.json({ success: false, error: '연결된 셀러 계정이 없습니다' }, 404);
-    }
-
-    if (seller.status === 'pending') {
-      return c.json({ success: false, error: '아직 관리자 승인 대기 중입니다', code: 'PENDING' }, 403);
-    }
-    if (seller.status === 'suspended') {
-      return c.json({ success: false, error: '정지된 셀러 계정입니다', code: 'SUSPENDED' }, 403);
-    }
-    if (seller.status !== 'approved' && seller.status !== 'active') {
-      return c.json({ success: false, error: '활성화되지 않은 셀러 계정입니다' }, 403);
-    }
-
-    const now = Math.floor(Date.now() / 1000);
-    const payload = {
-      sub: seller.id.toString(),
-      seller_id: seller.id as number,
-      email: seller.email,
-      name: seller.name,
-      username: seller.username,
-      type: 'seller',
-      status: seller.status,
-      seller_type: (seller.seller_type as string) || 'influencer',
-      iat: now,
-      exp: now + (7 * 24 * 60 * 60),
-    };
-    const accessToken = await sign(payload, jwtSecret);
-    const refreshPayload = { ...payload, exp: now + (30 * 24 * 60 * 60) };
-    const refreshToken = await sign(refreshPayload, jwtSecret);
-
-    // 🔐 단일 세션 강제 — 가입 직후 자동 로그인도 세션 시작.
-    await startDashboardSession(c.env.DB, 'seller', seller.id, payload.iat, { userAgent: c.req.header('User-Agent'), ip: c.req.header('CF-Connecting-IP') });
-
-    return c.json({
-      success: true,
-      data: {
-        accessToken,
-        refreshToken,
-        seller: {
-          id: seller.id,
-          username: seller.username,
-          email: seller.email,
-          name: seller.name,
-          business_name: seller.business_name,
-          status: seller.status,
-          commission_rate: seller.commission_rate,
-          seller_type: (seller.seller_type as string) || 'influencer',
-        },
-      },
-    });
-  } catch (error) {
-    console.error('switch-to-seller error:', error);
-    return c.json({ success: false, error: '셀러 전환 실패' }, 500);
-  }
-});
-
-/**
- * POST /api/seller/switch-to-user
- * 셀러 → 유저 세션 복귀
- * 셀러 JWT로 인증된 요청에서 linked_user_id로 유저 정보 조회 후 세션 쿠키 발급
- */
-sellerRegistrationRoutes.post('/switch-to-user', async (c) => {
-  try {
-    const db = c.env.DB;
-    const jwtSecret = c.env.JWT_SECRET;
-
-    const sellerId = await getSellerIdFromToken(c.req.header('Authorization'), jwtSecret);
-    if (!sellerId) {
-      return c.json({ success: false, error: '셀러 로그인이 필요합니다' }, 401);
-    }
-
-    await ensureSellerColumns(db);
-
-    const seller = await db.prepare(
-      'SELECT linked_user_id FROM sellers WHERE id = ?'
-    ).bind(sellerId).first<Record<string, any>>();
-
-    if (!seller?.linked_user_id) {
-      return c.json({ success: false, error: '연결된 유저 계정이 없습니다' }, 404);
-    }
-
-    const user = await db.prepare(
-      'SELECT id, name, email, profile_image FROM users WHERE id = ?'
-    ).bind(seller.linked_user_id).first<Record<string, any>>();
-
-    if (!user) {
-      return c.json({ success: false, error: '유저 계정을 찾을 수 없습니다' }, 404);
-    }
-
-    const { createSessionCookie } = await import('../../../worker/utils/session');
-    const sessionCookie = await createSessionCookie(
-      user.id, user.name || '', user.email || '', user.profile_image || undefined, jwtSecret,
-    );
-    c.header('Set-Cookie', sessionCookie);
-
-    return c.json({
-      success: true,
-      data: {
-        user_id: user.id,
-        user_name: user.name,
-        user_email: user.email,
-        profile_image: user.profile_image,
-      },
-    });
-  } catch (error) {
-    console.error('switch-to-user error:', error);
-    return c.json({ success: false, error: '유저 전환 실패' }, 500);
-  }
-});
-
+// 🔁 GET /my-seller-status · POST /switch-to-seller · POST /switch-to-user — 같은 인스턴스에 등록한다.
+mountSellerSessionRoutes(sellerRegistrationRoutes, ensureSellerColumns)
 
 // 🛡️ 2026-05-19: ensure* per-worker 메모이제이션 (파일 끝).
 const _done_ensureSellerColumns = new WeakSet<object>()

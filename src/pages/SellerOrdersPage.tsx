@@ -327,19 +327,16 @@ export default function SellerOrdersPage() {
 
   return (
     <SellerLayout title={t('seller.orders')}>
-      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
-        {/* 🛡️ 2026-04-22 배치 129: 디자인 시스템 적용 */}
+      <div className="mx-auto max-w-5xl space-y-5">
+        {/* 📱 2026-09-14 M3: 폰에선 제목·CSV·필터를 접는다 — 타임라인 세그먼트가 그 일을 한다. */}
+        <div className="hidden md:block space-y-5">
         <DashboardPageHeader
           title={t('seller.orders')}
           subtitle={t('seller.totalFiltered', { total: orders.length, filtered: filteredOrders.length })}
           icon={<Package className="h-5 w-5" />}
           actions={
-            <Button
-              onClick={exportToCSV}
-              className="ur-btn ur-btn-md ur-btn-primary"
-            >
-              <Download className="mr-1.5 h-3.5 w-3.5" />
-              {t('seller.csvDownload')}
+            <Button onClick={exportToCSV} className="ur-btn ur-btn-md ur-btn-primary">
+              <Download className="mr-1.5 h-3.5 w-3.5" />{t('seller.csvDownload')}
             </Button>
           }
         />
@@ -355,7 +352,7 @@ export default function SellerOrdersPage() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand"
               >
                 <option value="ALL">{t('common.all')}</option>
                 <option value="PAY_COMPLETE">{t('seller.statusDone')}</option>
@@ -378,7 +375,7 @@ export default function SellerOrdersPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder={t('seller.searchPlaceholder')}
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand"
                 />
               </div>
             </div>
@@ -392,7 +389,7 @@ export default function SellerOrdersPage() {
                 type="date"
                 value={dateFilter.start}
                 onChange={(e) => setDateFilter({ ...dateFilter, start: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand"
               />
             </div>
 
@@ -404,7 +401,7 @@ export default function SellerOrdersPage() {
                 type="date"
                 value={dateFilter.end}
                 onChange={(e) => setDateFilter({ ...dateFilter, end: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand"
               />
             </div>
           </div>
@@ -429,13 +426,15 @@ export default function SellerOrdersPage() {
 
         {/* Error Message */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <div className="flex items-center gap-2 text-red-700">
+          <div className="mb-6 p-4 bg-white border border-rule rounded-lg">
+            <div className="flex items-center gap-2 text-tone-bad">
               <XCircle className="w-5 h-5" />
               <p>{error}</p>
             </div>
           </div>
         )}
+
+        </div>
 
         {/* Loading */}
         {loading ? (
@@ -443,10 +442,10 @@ export default function SellerOrdersPage() {
         ) : (
           <>
             {/* 📱 모바일 — 카드 뷰(시안 화면 C). PC 표는 아래 그대로 유지한다. */}
-            <MobileOrderList orders={filteredOrders} onSelect={viewOrderDetail} />
+            <MobileOrderList orders={filteredOrders} onSelect={viewOrderDetail} onConfirm={(o) => handleStatusChange(o.order_number, 'PREPARING')} confirming={updating} />
 
             {/* Orders List — 🖥️ PC 표(의뢰서 §5.3 "사장님 대시보드는 PC 에서 넓게") */}
-            <div className="hidden md:block bg-white rounded-lg shadow-sm border">
+            <div className="hidden md:block rounded-[var(--dash-radius,16px)] border border-rule bg-white border">
               {currentOrders.length === 0 ? (
                 <div className="text-center py-20">
                   <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
@@ -478,7 +477,7 @@ export default function SellerOrdersPage() {
                             type="checkbox"
                             checked={selectedIds.size === currentOrders.length && currentOrders.length > 0}
                             onChange={toggleSelectAll}
-                            className="rounded border-gray-300 text-blue-600"
+                            className="rounded border-gray-300 text-gray-700"
                           />
                         </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">{t('seller.orderNumberHeader')}</th>
@@ -494,14 +493,14 @@ export default function SellerOrdersPage() {
                       {currentOrders.map((order) => (
                         <tr
                           key={order.order_number}
-                          className={`hover:bg-gray-50 ${selectedIds.has(order.id.toString()) ? 'bg-blue-50/50' : ''}`}
+                          className={`hover:bg-gray-50 ${selectedIds.has(order.id.toString()) ? 'border border-rule bg-white' : ''}`}
                         >
                           <td className="px-4 py-4 text-center">
                             <input
                               type="checkbox"
                               checked={selectedIds.has(order.id.toString())}
                               onChange={() => toggleSelect(order.id.toString())}
-                              className="rounded border-gray-300 text-blue-600"
+                              className="rounded border-gray-300 text-gray-700"
                             />
                           </td>
                           <td className="px-6 py-4 text-sm font-mono text-gray-900">{order.order_number}</td>
@@ -512,7 +511,7 @@ export default function SellerOrdersPage() {
                           <td className="px-6 py-4 text-sm text-right text-gray-900">{formatNumber(order.total_amount)}{t('common.won')}</td>
                           <td className="px-6 py-4 text-center"><StatusBadge status={order.status} /></td>
                           <td className="px-6 py-4 text-center">
-                            <Badge className={(order.payment_status === 'approved' || order.payment_status === 'completed') ? 'bg-green-100 text-green-800 border-green-200' : 'bg-gray-100 text-gray-800'}>
+                            <Badge className={(order.payment_status === 'approved' || order.payment_status === 'completed') ? 'bg-white text-tone-ok border-rule' : 'bg-gray-100 text-gray-800'}>
                               {(order.payment_status === 'approved' || order.payment_status === 'completed') ? t('seller.statusDone') : order.payment_status}
                             </Badge>
                           </td>
@@ -522,7 +521,7 @@ export default function SellerOrdersPage() {
                           <td className="px-6 py-4 text-center">
                             <button
                               onClick={() => viewOrderDetail(order)}
-                              className="text-blue-600 hover:text-blue-800 transition-colors"
+                              className="text-gray-700 hover:text-gray-700 transition-colors"
                             >
                               <Eye className="w-5 h-5" />
                             </button>

@@ -81,7 +81,7 @@ export default function AdminKakaoReviewsPage() {
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold ${tab === t ? 'bg-gray-900 text-white' : 'bg-white text-gray-700 border border-gray-200'}`}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold ${tab === t ? 'bg-brand text-white' : 'bg-white text-gray-700 border border-gray-200'}`}
             >
               {t === 'submitted' ? '검증 대기' : t === 'paid' ? '지급됨' : '거절됨'}
             </button>
@@ -104,7 +104,7 @@ export default function AdminKakaoReviewsPage() {
                   </div>
                 </div>
                 <a href={s.review_url} target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-pink-600 underline break-all mb-3">
+                  className="inline-flex items-center gap-1 text-xs text-brand-text underline break-all mb-3">
                   <ExternalLink className="w-3 h-3" /> {s.review_url.slice(0, 60)}{s.review_url.length > 60 ? '...' : ''}
                 </a>
                 {s.admin_notes && (
@@ -115,21 +115,21 @@ export default function AdminKakaoReviewsPage() {
                     <button
                       onClick={() => approve(s.id)}
                       disabled={processing === s.id}
-                      className="px-3 py-1.5 text-xs font-bold bg-gray-900 text-white rounded-lg flex items-center gap-1 disabled:opacity-40"
+                      className="ur-btn ur-btn-sm ur-btn-primary flex items-center gap-1 disabled:opacity-40"
                     >
                       <CheckCircle className="w-3 h-3" /> 승인 + 지급
                     </button>
                     <button
                       onClick={() => reject(s.id)}
                       disabled={processing === s.id}
-                      className="px-3 py-1.5 text-xs font-bold bg-red-500 text-white rounded-lg flex items-center gap-1 disabled:opacity-40"
+                      className="ur-btn ur-btn-sm ur-btn-danger flex items-center gap-1 disabled:opacity-40"
                     >
                       <XCircle className="w-3 h-3" /> 거절
                     </button>
                   </div>
                 )}
                 {s.status === 'paid' && (
-                  <p className="text-xs text-emerald-600 font-bold text-right">✓ {s.bonus_amount.toLocaleString()}딜 지급</p>
+                  <p className="text-xs text-tone-ok font-bold text-right">{s.bonus_amount.toLocaleString()}딜 지급</p>
                 )}
               </li>
             ))}

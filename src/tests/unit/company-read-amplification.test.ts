@@ -67,6 +67,12 @@ const ENRICH_Q = `SELECT id FROM ad_company_leads
     AND (enrich_checked_at IS NULL OR enrich_checked_at < datetime('now', '-7 days') OR COALESCE(enrich_v, 0) < 9)
   ORDER BY (CASE WHEN website IS NOT NULL AND website != '' THEN 0 ELSE 1 END), (CASE WHEN tier = 1 THEN 0 ELSE 1 END), active ASC, id DESC LIMIT 400`
 
+/**
+ * store-info-collect 가 회차 앞에서 도는 재보강 큐 — 라이브에서 20건 뽑으려고 387,003행을 읽었다.
+ * ⚠️ 소스와 **글자까지 같아야** 부분 인덱스가 쓰인다(아래 짝-검사가 그것을 고정한다).
+ */
+const STOREINFO_Q = `SELECT id, company_name, region, website, address FROM ad_company_leads WHERE source = 'storeinfo' AND active = 0 AND merged_into IS NULL ORDER BY id DESC LIMIT 20`
+
 const RECLASSIFY_PROBE = 'SELECT 1 AS x FROM ad_company_leads WHERE merged_into IS NULL AND COALESCE(classified_v, -1) < 9 LIMIT 1'
 
 describe('① 인덱스가 DDL 에 등재돼 있다', () => {
@@ -75,6 +81,7 @@ describe('① 인덱스가 DDL 에 등재돼 있다', () => {
     expect(all).toContain('idx_company_leads_classify_todo')
     expect(all).toContain('idx_company_leads_enrich_order')
     expect(all).toContain('idx_company_leads_crawl_queue')
+    expect(all).toContain('idx_company_leads_storeinfo_queue')
     // 기존 인덱스도 함께 살아 있어야 한다(모듈로 옮기며 잃어버리지 않았는지)
     for (const n of ['idx_company_leads_tier', 'idx_company_leads_region', 'idx_company_leads_cat', 'idx_company_leads_active', 'idx_company_leads_name_norm'])
       expect(all).toContain(n)
@@ -96,6 +103,26 @@ describe('② 플래너가 실제로 그 인덱스를 쓴다 (node:sqlite 실증
     expect(after).toContain('idx_company_leads_enrich_order')
     expect(after).not.toContain('TEMP B-TREE FOR ORDER BY') // ← 이게 사라지는 것이 수리의 전부다
     expect(db.prepare(ENRICH_Q).all()).toEqual(rowsBefore) // 순서·내용 모두 동일
+  })
+
+  /**
+   * 🩸 2026-09-07 라이브: 이 큐가 하루 460만 행을 읽고(2시간마다 × 38.7만) 신규는 6일 연속 0 이었다.
+   *   원인은 수집이 마른 것과 별개다 — `idx_company_leads_active(active, tier, id)` 가 비활성 전량을
+   *   통과시키고, 정렬 키가 `id` 로 안 끝나 그 전부를 임시 B-트리로 세웠다.
+   */
+  it('매장정보 재보강 큐: 전수 정렬 → 인덱스 순회 + 결과 동일', () => {
+    const db = seed(4000)
+    db.exec('UPDATE ad_company_leads SET source = \'storeinfo\' WHERE id % 12 = 0')
+    db.exec("CREATE INDEX idx_company_leads_active ON ad_company_leads(active, tier, id)")
+    const before = plan(db, STOREINFO_Q)
+    expect(before, '이 시험이 재현하려는 것은 정렬 비용이다').toContain('TEMP B-TREE FOR ORDER BY')
+    const rowsBefore = db.prepare(STOREINFO_Q).all()
+    for (const s2 of COMPANY_INDEX_DDL.filter(x => /storeinfo_queue/.test(x))) db.exec(s2)
+    db.exec('ANALYZE')
+    const after = plan(db, STOREINFO_Q)
+    expect(after).toContain('idx_company_leads_storeinfo_queue')
+    expect(after, '정렬이 사라지는 것이 수리의 전부다').not.toContain('TEMP B-TREE FOR ORDER BY')
+    expect(db.prepare(STOREINFO_Q).all()).toEqual(rowsBefore)
   })
 
   it('재분류 선검사: 인덱스를 짚어 1행으로 끝난다(전수 스캔이 아니다)', () => {
@@ -121,6 +148,20 @@ describe('③ 인덱스와 쿼리의 짝 — 한쪽만 바뀌면 인덱스가 �
     expect(norm(idxSql)).toContain('(CASE WHEN tier = 1 THEN 0 ELSE 1 END)')
     expect(norm(idxSql)).toContain('active, id DESC')
     expect(norm(idxSql)).toContain('WHERE merged_into IS NULL') // 부분 인덱스 조건 = 쿼리의 WHERE 항
+  })
+})
+
+describe('③-b 매장정보 큐 — 쿼리와 부분조건이 글자까지 같다', () => {
+  const storeSrc = readFileSync('src/features/marketing/api/store-info-collect.ts', 'utf8')
+
+  it('소스의 쿼리가 시험이 고정한 문장과 같다 (달라지면 인덱스가 조용히 무시된다)', () => {
+    expect(storeSrc, '쿼리가 바뀌었다 — STOREINFO_Q 와 인덱스 부분조건을 같이 고칠 것').toContain(STOREINFO_Q)
+  })
+
+  it('인덱스 부분조건이 쿼리의 리터럴 조건과 같다', () => {
+    const ddl = COMPANY_INDEX_DDL.find(x => /storeinfo_queue/.test(x)) || ''
+    expect(ddl).toContain('WHERE active = 0 AND merged_into IS NULL')
+    expect(ddl, 'source 가 선두 키여야 정렬이 사라진다').toMatch(/ad_company_leads\(source, id\)/)
   })
 })
 

@@ -88,7 +88,7 @@ export default function AccountMenu({
         <button
           onClick={onClose}
           aria-label={t('common.close', { defaultValue: '닫기' })}
-          className="shrink-0 w-7 h-7 -mt-0.5 rounded-full border border-gray-200 dark:border-[#2C2F35] flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/[0.05]"
+          className="shrink-0 w-7 h-7 -mt-0.5 rounded-full border border-line flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/[0.05]"
         >
           <X className="w-3.5 h-3.5" strokeWidth={2.4} />
         </button>

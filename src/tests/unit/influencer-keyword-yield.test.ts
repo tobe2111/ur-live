@@ -74,7 +74,7 @@ describe('🔌 배선 — 재계산이 안 돌면 감점이 영원히 0 이다(�
     const m = SRC('src/features/marketing/api/influencer-maintenance.ts')
     expect(m).toContain('recomputeKeywordContactYield')
     // 예산 래퍼(bdb)가 아니라 **원본 DB** 로 불러야 앞 작업이 예산을 다 써도 살아남는다
-    expect(m).toMatch(/recomputeKeywordContactYield\(DB\)/)
+    expect(m).toMatch(/recomputeKeywordContactYield(?:Bucketed)?\(DB\)/ /* 📉 2026-09-02 6h 버킷 게이트 — 호출은 그대로, 게이트만 앞에 */)
   })
 
   it('키워드 SELECT 가 성과 컬럼을 실어 온다 — 안 실으면 점수식이 항상 undefined 를 본다', () => {

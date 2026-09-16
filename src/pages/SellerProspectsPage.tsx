@@ -1,5 +1,5 @@
 /**
- * 🛡️ 2026-05-27 (영업 검증 Layer 2 UI): 영업자 (agency / influencer) 가 매장 영입 사전 등록.
+ * 🛡️ 2026-05-27 (영업 검증 Layer 2 UI): 영업자(영입자)가 매장 영입 사전 등록.
  *
  * - POST /api/prospects — 매장 정보 사전 등록 (사장님 가입 전)
  * - 사장님 가입 시 phone/email 자동 매칭 → introduced_by_X_id 자동
@@ -9,7 +9,8 @@
  *   영업자 → 매장 방문 → 이 페이지에서 사전 등록 → 사장님이 가입 → 매출 발생 → commission 활성
  */
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { Handshake } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
@@ -34,8 +35,8 @@ interface Prospect {
 }
 
 const STATUS_META: Record<string, { label: string; color: string }> = {
-  visiting: { label: '영입 중', color: 'bg-amber-100 text-amber-700' },
-  converted: { label: '가입 완료', color: 'bg-green-100 text-green-700' },
+  visiting: { label: '영입 중', color: 'bg-tone-warn-bg text-tone-warn' },
+  converted: { label: '가입 완료', color: 'bg-tone-ok-bg text-tone-ok' },
   expired: { label: '만료', color: 'bg-gray-100 text-gray-500' },
 }
 
@@ -47,7 +48,7 @@ export default function SellerProspectsPage() {
   )
   const load = () => refetch()
   const [showAdd, setShowAdd] = useState(false)
-  const [introducerType, setIntroducerType] = useState<'agency' | 'influencer'>('influencer')
+
   const [form, setForm] = useState({
     store_name: '',
     contact_name: '',
@@ -79,11 +80,6 @@ export default function SellerProspectsPage() {
     }
   }
 
-  useEffect(() => {
-    // 토큰 유형 추정 — agency_token 있으면 agency, 아니면 influencer
-    if (localStorage.getItem('agency_token')) setIntroducerType('agency')
-  }, [])
-
   async function submit() {
     if (!form.contact_phone && !form.contact_email) {
       toast.error('연락처 (전화 또는 이메일) 중 하나는 필수')
@@ -92,7 +88,6 @@ export default function SellerProspectsPage() {
     try {
       const r = await api.post('/api/prospects', {
         ...form,
-        introducer_type: introducerType,
       })
       if (r.data?.success) {
         toast.success('매장 사전 등록 완료')
@@ -110,7 +105,7 @@ export default function SellerProspectsPage() {
     }
   }
 
-  // 🏁 2026-07-02 (대리 등록): 사장님 가입 링크 발급+복사 — 매장 정보·에이전시 코드가 자동 채워진
+  // 🏁 2026-07-02 (대리 등록): 사장님 가입 링크 발급+복사 — 매장 정보가 자동 채워진
   //   단일 관문(/seller/register/supplier) 링크. 사장님은 카카오 로그인 + 확인·제출만.
   async function copyInviteLink(id: number) {
     try {
@@ -144,14 +139,14 @@ export default function SellerProspectsPage() {
 
   return (
     <>
-      <SEO title="매장 영입 관리 - 유어딜" description="사장님 영입 사전 등록 + commission 추적" url="/agency/prospects" />
+      <SEO title="매장 영입 관리 - 유어딜" description="사장님 영입 사전 등록 + commission 추적" url="/seller/prospects" />
       <div className="min-h-screen bg-gray-50 pb-24">
         <header className="sticky top-0 z-20 bg-white border-b border-gray-200">
           <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-            <h1 className="text-lg font-bold text-gray-900">🤝 매장 영입 관리</h1>
+            <h1 className="text-lg font-bold text-gray-900">매장 영입 관리</h1>
             <button
               onClick={() => setShowAdd(true)}
-              className="px-3 py-1.5 bg-pink-500 hover:bg-pink-600 text-white text-sm font-bold rounded-lg"
+              className="ur-btn ur-btn-sm ur-btn-primary"
             >
               + 매장 사전 등록
             </button>
@@ -160,7 +155,7 @@ export default function SellerProspectsPage() {
 
         {/* 가이드 */}
         <div className="max-w-3xl mx-auto px-4 py-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-900 leading-relaxed">
+          <div className="bg-white border border-rule rounded-xl p-3 text-xs text-gray-700 leading-relaxed">
             <strong>영업 가이드</strong>
             <ol className="list-decimal ml-4 mt-1 space-y-0.5">
               <li>매장 방문 / 미팅 후 "+ 매장 사전 등록" 클릭</li>
@@ -177,7 +172,7 @@ export default function SellerProspectsPage() {
             <div className="text-center py-12 text-gray-400 text-sm">로딩 중...</div>
           ) : prospects.length === 0 ? (
             <div className="text-center py-16">
-              <p className="text-4xl mb-3">🤝</p>
+              <Handshake className="mx-auto mb-3 h-10 w-10 text-gray-300" />
               <p className="text-sm text-gray-500">아직 등록한 prospect 가 없습니다</p>
             </div>
           ) : (
@@ -203,9 +198,9 @@ export default function SellerProspectsPage() {
                   {p.status === 'converted' && (
                     <div className="mt-2 pt-2 border-t border-gray-100 text-[11px] text-gray-600">
                       {p.first_sale_at ? (
-                        <span className="text-green-600 font-bold">✅ 첫 매출 발생 — commission 활성</span>
+                        <span className="text-tone-ok font-bold">첫 매출 발생. 커미션 활성</span>
                       ) : (
-                        <span>⏳ 첫 매출 대기 중</span>
+                        <span>첫 매출 대기 중</span>
                       )}
                     </div>
                   )}
@@ -218,13 +213,13 @@ export default function SellerProspectsPage() {
                         {/* 🏁 2026-07-02 대리 등록: 사장님은 이 링크로 카카오 로그인+확인만 — 정보 재입력 0 */}
                         <button
                           onClick={() => copyInviteLink(p.id)}
-                          className="text-[10px] font-bold text-emerald-700 hover:underline"
+                          className="text-[10px] font-bold text-brand-text hover:underline"
                         >
                           가입 링크 복사
                         </button>
                         <button
                           onClick={() => remove(p.id)}
-                          className="text-[10px] text-red-500 hover:underline"
+                          className="text-[10px] text-brand-text hover:underline"
                         >
                           회수
                         </button>
@@ -240,7 +235,7 @@ export default function SellerProspectsPage() {
         {/* 등록 모달 */}
         {showAdd && (
           <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-4">
-            <div className="bg-white w-full max-w-md rounded-2xl p-5 space-y-3">
+            <div className="bg-white w-full max-w-md rounded-[var(--dash-radius,16px)] p-5 space-y-3">
               <h2 className="text-lg font-bold text-gray-900">매장 사전 등록</h2>
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">매장명 (선택)</label>
@@ -301,12 +296,12 @@ export default function SellerProspectsPage() {
                   type="file"
                   accept="image/*"
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadProof(f) }}
-                  className="w-full text-xs text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-pink-100 file:text-pink-700 hover:file:bg-pink-200"
+                  className="w-full text-xs text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-brand-tint file:text-brand-text hover:file:bg-brand/20"
                 />
                 {form.proof_image_url && (
                   <img src={form.proof_image_url} alt="증빙" className="mt-2 w-full h-32 object-cover rounded-lg" />
                 )}
-                {uploadingProof && <p className="text-[11px] text-gray-400 mt-1">⏳ 업로드 중...</p>}
+                {uploadingProof && <p className="text-[11px] text-gray-400 mt-1">업로드 중...</p>}
                 <p className="text-[11px] text-gray-500 mt-1">매장 간판 또는 명함 사진 — admin 검증 시 commission lock-in 가속</p>
               </div>
               <div className="flex gap-2 pt-2">
@@ -318,7 +313,7 @@ export default function SellerProspectsPage() {
                 </button>
                 <button
                   onClick={submit}
-                  className="flex-1 py-2.5 bg-pink-500 hover:bg-pink-600 text-white text-sm font-bold rounded-lg"
+                  className="ur-btn ur-btn-md ur-btn-primary flex-1"
                 >
                   등록
                 </button>

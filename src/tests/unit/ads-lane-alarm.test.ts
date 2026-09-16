@@ -146,13 +146,20 @@ describe('배선 — 알람이 실제로 이 레인을 몬다', () => {
   })
 
   /**
-   * 📉 **수집은 시간당 1회로 못 박는다** — 기본값(12)을 그대로 받으면 cron 설계 의도(`0 * * * *`)를
-   *   넘는 증설이고, 그건 네이버로 나가는 요청을 늘리는 일이라 **대표 판단 사항**이다.
-   *   ⚠️ 이 값을 올릴 땐 그 판단을 다시 받을 것. 테스트가 조용히 바뀌는 걸 막는다.
+   * 📉 **수집 회차 수는 대표가 정한 값에 못 박는다** — 이 숫자가 네이버로 나가는 요청량을 그대로
+   *   정하므로 **매번 대표 판단 사항**이다. 테스트가 조용히 바뀌는 걸 막는다(올리는 쪽도, 내리는 쪽도).
+   *
+   *   · 1 (2026-08) — 기본값 12 를 받으면 cron 설계 의도(`0 * * * *`)를 넘는 증설이라 의도 복원.
+   *   · **3 (2026-09-02 대표 승인 "응 다 해줘")** — 그날 #1321 이 올린 두 값(체인 회차·폭)이
+   *     라이브에서 **거의 안 먹는 것으로 실측**돼(알람이 몰면 체인을 안 타고, 폭 cap 은 서브리퀘스트
+   *     예산에 막힌다) 실제로 총량을 미는 유일한 축인 여기로 옮겼다.
+   *   ⚠️ **12 가 아니라 3 인 이유**: 대표에게 보여 드리고 예산 검증한 숫자가 "3배"다. 12 배면
+   *     하루 쓴 행이 ~190만으로 예산 150만을 넘겨 차단기가 자정 전에 멈춘다. 승인 문구가
+   *     "다 해줘"라도 **보여 드린 것보다 큰 값을 넣지 않는다.**
    */
-  it('🔒 수집 레인은 runsPerHour 1 — cron 의도 복원이지 증설이 아니다', () => {
+  it('🔒 수집 레인 runsPerHour = 대표 승인값(2026-09-02 부터 3)', () => {
     const runners = readFileSync(join(process.cwd(), 'src/worker-ads/lane-alarm-runners.ts'), 'utf8')
-    expect(runners).toMatch(/collect: \{\s*\n\s*runsPerHour: 1,/)
+    expect(runners).toMatch(/collect: \{\s*\n\s*runsPerHour: 3,/)
     expect(runners).toMatch(/runInfluencerAutoCollect/)
   })
 
@@ -337,13 +344,32 @@ describe('배선 — 알람이 실제로 이 레인을 몬다', () => {
     const runners = readFileSync(join(process.cwd(), 'src/worker-ads/lane-alarm-runners.ts'), 'utf8')
     for (const [lane, hour] of WAVE4) {
       expect(runners, `${lane} 등록 누락`).toContain(`${lane}: {`)
-      const seg = runners.slice(runners.indexOf(`${lane}: {`), runners.indexOf(`${lane}: {`) + 700)
+      /**
+       * 🕳️ 2026-09-05: 여기가 **고정 700자 창**이었다. 그 창이 다음 레인까지 넘어가서, 이웃 레인의
+       *   선언이 대신 매치돼 **결함을 심어도 초록불**이었다(되돌려-검증이 잡았다). 레인 경계로 자른다.
+       */
+      const start = runners.indexOf(`${lane}: {`)
+      const next = runners.indexOf("\n  '", start + 5)
+      const seg = runners.slice(start, next === -1 ? runners.length : next)
       expect(seg, `${lane} runsPerHour 1 아님`).toMatch(/runsPerHour: 1,/)
-      // 시각 체크가 빠지면 일 1회 레인이 매시간 돌게 된다(외부 API 호출량 증설 — 대표 판단 사항)
-      const want = hour === 'RESCAN_HOUR_UTC' ? /!== RESCAN_HOUR_UTC/
-        : hour === '%4' ? /getUTCHours\(\) % 4 !== 1/
+      /**
+       * 🗺️ 2026-09-05 재조준: 시각 리터럴을 박아 뒀는데, 시각 고정을 걷어내자(하루 1회는 유지)
+       *   깨졌다. 바로 윗줄이 지키려는 것을 적어 뒀다 — **"매시간 돌게 되는 것"** 즉 호출량이지
+       *   몇 시인지가 아니다. 그래서 호출량으로 다시 고정한다: 시각 고정이든 경과 시간 선언이든
+       *   **하루 1회면 통과**, 둘 다 없으면(=매시간) 빨간불.
+       *
+       *   🩸 왜 걷어냈나: 시각을 고정하면 그 시각에 알람이 안 깨어날 때 레인이 **영영** 안 돈다.
+       *      2026-09-05 실사고 — 읽기 예산 차단기가 창을 00~02시 UTC 로 줄이자 15~23시에 박힌
+       *      레인 9개가 통째로 죽었고(하트비트 `skipped: off_hour`), B2B 신규 수집이 하루
+       *      4,800~7,200건에서 78건으로 무너졌다. 에러도 경보도 없었다.
+       *   ⚠️ `scan-notices` 는 하루 6회(`% 4 !== 1`)라 이 완화 대상이 아니다 — 값 그대로 못박는다.
+       */
+      const daily = /minIntervalHours:\s*(DAILY_INTERVAL_HOURS|24)\b/
+      const want = hour === '%4' ? /getUTCHours\(\) % 4 !== 1/
+        : hour === 'RESCAN_HOUR_UTC' ? /!== RESCAN_HOUR_UTC/
           : new RegExp(`getUTCHours\\(\\) !== ${hour}`)
-      expect(seg, `${lane} 시각 보존 누락`).toMatch(want)
+      expect(want.test(seg) || (hour !== '%4' && daily.test(seg)),
+        `${lane}: 하루 1회가 안 지켜진다 — 시각 고정도 경과 시간 선언도 없으면 매시간 돈다`).toBe(true)
     }
   })
 

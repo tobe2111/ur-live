@@ -18,6 +18,7 @@ import { logInfo, logError } from '../utils/logger'
 import { swallow } from '../utils/swallow'
 // 🛡️ 2026-06-26 원천징수율 SSOT — 3.3/8.8 literal 하드코딩 금지(CLAUDE.md). 마스터 상수만 사용.
 import { WITHHOLDING_RATES } from '../utils/tax-withholding'
+import { resolvePayoutUseGate } from '../utils/payout-use-gate'
 
 interface InfluencerToPayout {
   influencer_id: string
@@ -39,12 +40,21 @@ export async function handleInfluencerPayout(env: Env): Promise<void> {
 
   try {
     // 1) Pending → Available 전환 (T+7 이상)
+    //
+    // 🔒 2026-09-16 대표 확정 — **사용 확인 뒤에 익는다**(`utils/payout-use-gate.ts`).
+    //   종전엔 시간(T+7)만 봤다: 가짜 매장을 등록해 이용권을 팔고 **아무도 그 가게에 안 가도**
+    //   소개 커미션이 송금 대기에 올랐다. 매장 몫은 이미 사용 시점에만 붙는데(ledger.ts)
+    //   소개 몫만 시간으로 익던 비대칭을 없앤다.
+    //   기본 OFF(`platform_settings.payout_requires_voucher_use`) = 아래 SQL 이 빈 문자열이라
+    //   **종전과 byte-동일**. 켜는 것은 등급 C(대표 판단 · staging 뒤).
+    const useGate = await resolvePayoutUseGate(DB)
     const pendingToAvail = await DB.prepare(`
       UPDATE influencer_attributions
          SET status = 'available'
        WHERE status = 'pending'
          AND available_at IS NOT NULL
          AND available_at <= datetime('now')
+         ${useGate.sql}
     `).run().catch(() => ({ meta: { changes: 0 } }))
 
     let transitioned = pendingToAvail.meta?.changes ?? 0

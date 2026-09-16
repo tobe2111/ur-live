@@ -2,7 +2,7 @@
  * 🧭 현재 위치 → 동네 이름 (2026-08-30 — 대표 "홈에선 현재 위치가 어딘지도 나와야지")
  *
  * ■ 왜 이제야 만드나
- *   서버 엔드포인트(`/api/proxy/kakao/coord2region`)는 **2026-07-07 에 이미 있었다.**
+ *   서버 엔드포인트(`/api/kakao/coord2region`)는 **2026-07-07 에 이미 있었다.**
  *   주석까지 *"대표 — 홈 '내 주변' 기준: GPS 좌표를 동네 이름으로"* 라고 적혀 있다.
  *   그런데 **클라이언트에서 한 번도 호출한 적이 없다**(소비처 0). 그래서 위치를 잡아도
  *   화면은 일반명사 "내 주변" 만 말했다 — 대표가 본 것이 그것이다.
@@ -45,7 +45,13 @@ export function useCurrentDong(loc: { lat: number; lng: number } | null): DongIn
     const cached = readCache(k)
     if (cached) { setInfo(cached); return }
     let alive = true
-    api.get(`/api/proxy/kakao/coord2region?lat=${loc.lat}&lng=${loc.lng}`)
+    // 🩸 2026-09-07: 여기 `/api/proxy/kakao/...` 로 적혀 있어 **줄곧 404** 였다.
+    //   라우터는 `app.route('/api', proxyRoutes)` 로 붙고 라우트는 `/kakao/coord2region` 이라
+    //   실제 경로엔 `proxy` 세그먼트가 없다(파일 이름이 proxy.routes.ts 라 헷갈린다).
+    //   아래 `.catch` 가 조용히 삼켜 화면은 '내 주변' 으로 폴백했고 콘솔에만 404 가 찍혔다 —
+    //   **이 훅 자체가 "만들었는데 아무도 안 부르는" 배선 누락을 고치려고 만든 것인데,
+    //   그 고치는 코드가 주소를 틀렸다.** 형제 훅 `useNearMeAuto` 는 처음부터 맞게 부르고 있었다.
+    api.get(`/api/kakao/coord2region?lat=${loc.lat}&lng=${loc.lng}`)
       .then((res) => {
         const d = res.data?.data as DongInfo | undefined
         if (!alive || !d?.dong) return

@@ -1,37 +1,7 @@
 /**
  * 🛡️ 2026-05-02: TD-018 분할 — SellerPage 공유 타입.
+ * 📱 2026-09-14: 홈이 M2 로 다시 그려지며 라이브·KPI·인사이트용 타입은 지웠다(소비처 0).
  */
-
-export interface DashboardStats {
-  totalRevenue: number
-  totalOrders: number
-  activeStreams: number
-  totalViewers: number
-  pendingOrders: number
-  cancelledOrders: number
-  completedOrders: number
-  avgOrderValue: number
-  totalProducts?: number
-  totalStreams?: number
-  lowStockCount?: number
-  pendingSettlement?: number
-  // 🛡️ 2026-05-18: 공구 (store) 모드 KPI — SellerGroupBuyOverview API 와 동일 source.
-  activeGroupBuys?: number
-  atRiskGroupBuys?: number
-}
-
-export interface DailyStats {
-  date: string
-  orders: number
-  sales: number
-}
-
-export interface TopProduct {
-  product_id: number
-  product_name: string
-  order_count: number
-  total_revenue: number
-}
 
 export interface Order {
   id: number
@@ -44,13 +14,4 @@ export interface Order {
   shipping_phone: string
   payment_method: string
   created_at: string
-}
-
-export interface LiveStream {
-  id: number
-  title: string
-  status: 'scheduled' | 'live' | 'ended'
-  viewer_count: number
-  created_at: string
-  youtube_video_id: string
 }

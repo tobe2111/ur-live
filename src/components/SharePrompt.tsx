@@ -25,7 +25,7 @@ export default function SharePrompt({ title, message, shareTitle, shareDescripti
   useEscapeKey(onClose)
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40" onClick={onClose} role="presentation">
-      <div className="w-full max-w-sm bg-white dark:bg-[#1C1C1E] rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={title}>
+      <div className="w-full max-w-sm bg-surface rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={title}>
         <div className="flex items-start justify-between mb-4">
           <div>
             <h3 className="text-lg font-bold text-gray-900 dark:text-white">{title}</h3>
@@ -37,8 +37,8 @@ export default function SharePrompt({ title, message, shareTitle, shareDescripti
         </div>
 
         {reward && (
-          <div className="bg-pink-50 dark:bg-pink-900/20 border border-pink-200 dark:border-pink-800/40 rounded-xl p-3 mb-4 text-center">
-            <p className="text-sm font-bold text-pink-600 dark:text-pink-400">{reward}</p>
+          <div className="bg-brand-tint border border-rule rounded-xl p-3 mb-4 text-center">
+            <p className="text-sm font-bold text-brand-text ">{reward}</p>
           </div>
         )}
 

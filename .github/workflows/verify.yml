@@ -9,8 +9,15 @@ name: PR Verification
 # 🛡️ 2026-07-28: 같은 커밋에 pull_request + push 두 이벤트가 각각 run 을 만들어 **Verify 가 매번 2번**
 #   돌고 있었다(실측: 커밋 f5c2093f7 에 run 30351104564 / 30351136667 두 개, 각 ~7분). 아래 concurrency 가
 #   두 이벤트를 **같은 group** 으로 묶어 나중 것이 앞 것을 취소 → 커밋당 1회로 수렴(연속 푸시도 최신만).
-#   ⚠️ group 키는 반드시 양쪽 이벤트에서 같은 값이어야 한다: push=ref_name, pull_request=head_ref
-#   (둘 다 브랜치명). `github.event.pull_request.number || github.ref` 로 쓰면 이벤트별로 갈려 dedup 안 됨.
+#
+# 🔴 2026-09-15: **push 트리거 제거.** 위 concurrency 가 취소한 push-run 도 이름이 `Verify` 인 **check run 으로
+#   남는다**(conclusion=cancelled). 이날 main 에 "Verify 필수" 룰셋(rulesets 23392011)이 켜지자 GitHub 가 그
+#   취소본을 **실패한 필수 검사**로 세어, pull_request-run 이 58분 걸려 초록이 돼도 머지가 `blocked` 였다.
+#   PR #1429·#1239 모두 대표가 취소본을 손으로 Re-run 해야 auto-merge 가 발동했다(각 +50분).
+#   ⇒ PR 브랜치 푸시는 pull_request 이벤트 하나만 run 을 만든다. 잃는 것: PR 을 안 연 브랜치의 CI 피드백
+#   (그 브랜치는 어차피 main 에 못 들어가고, 로컬은 pre-push 게이트 94개가 막는다). 얻는 것: 취소본 0 ·
+#   Verify 부하 절반 · auto-merge 가 첫 초록에 발동. main push 는 종전대로 main.yml 이 처리.
+#   ⚠️ group 키의 `|| github.ref_name` 은 workflow_dispatch(브랜치 수동 실행) 때 head_ref 가 비어 있어 남긴다.
 on:
   # 🔴 **pull_request 에는 paths-ignore 를 두지 않는다** (2026-08-03 실사고).
   #
@@ -18,17 +25,15 @@ on:
   #   **문서 전용 커밋(5de7b35)을 뒤에 밀자** concurrency 가 앞 run 을 **취소**했고,
   #   뒤 커밋은 paths-ignore 라 **자기 run 을 만들지 않았다.**
   #   결과: PR 에 **실패한 체크가 하나도 없는데 그 코드는 한 번도 검증되지 않은 상태.**
-  #   (위 주석이 약속한 *"코드가 한 파일이라도 섞이면 정상 실행된다"* 는 **push 이벤트에선 거짓**이다 —
-  #    push 는 그 푸시의 파일만 보므로 문서 커밋 하나는 문서 커밋일 뿐이다.)
+  #   (당시 push 이벤트는 그 푸시의 파일만 봐서 문서 커밋 하나는 문서 커밋일 뿐이었다. 2026-09-15 에
+  #    push 트리거 자체를 뺐지만 pull_request 에 paths-ignore 를 두면 안 되는 이유는 그대로다.)
   #
   #   ⇒ PR 은 **항상** 검증한다. 비용은 문서 PR 도 ~10분 도는 것이고(이 레포는 public 이라 Actions 무료),
   #     얻는 건 "머지되는 코드는 반드시 한 번은 검증됐다"는 보장이다. 그 비대칭이 명백하다.
   pull_request:
     branches: [main]
-  push:
-    branches-ignore: [main]   # main push 는 main.yml 이 처리
-    # push 쪽 skip 은 유지한다 — PR 이 열려 있으면 위 pull_request 가 어차피 전수 검증한다.
-    paths-ignore: ['docs/**', '**/*.md']
+  # 🔴 `push:` 를 여기 다시 두지 말 것 — 취소된 push-run 이 필수 검사 `Verify` 의 실패본으로 남아 머지를 막는다
+  #   (상단 2026-09-15 주석). 가드: src/tests/unit/ci-verify-coverage.test.ts
   workflow_dispatch:
 
 concurrency:
@@ -45,7 +50,7 @@ jobs:
     steps:
       # fetch-depth: 0 — file-size ratchet 의 --changed-only 가 origin/main 과의 merge-base 를
       # 계산해야 함 (기본 shallow(depth 1) clone 엔 main 이력이 없어 merge-base 불가 → 전수 폴백돼
-      # main 드리프트로 무관한 PR 이 실패하는 원래 문제가 재발). PR/push 양쪽 이벤트 모두 커버.
+      # main 드리프트로 무관한 PR 이 실패하는 원래 문제가 재발). pull_request·workflow_dispatch 모두 커버.
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -213,8 +218,12 @@ jobs:
       #   하루에 세 번 났다(reverse 픽스처 · phase 이름 가설 · 일1회 레인 누락 픽스처).
       #   셋 다 손으로 주입해 보고서야 알았다 — 손으로 하면 다음 세션은 안 한다.
       #   ⚠️ 소스를 잠깐 고쳤다 되돌리므로 **다른 스텝과 병렬로 돌리지 말 것**.
-      - name: 가드 주입 검증 (strict)
-        run: node scripts/check-guard-mutations.mjs -s
+      # ⏱️ 2026-09-08: PR 에서는 **이 브랜치가 건드린 주입만** 돈다(48분 → 수 분).
+      #   실측으로 이 스텝이 Verify 의 77%(37분 24초)였고, 그 길이가 머지 충돌을 만들고 있었다.
+      #   🔴 전수는 `guard-mutations-full.yml`(main push + 야간)이 돈다 — **그걸 지우면 검사가 꺼진다.**
+      #   애매하면 전수로 폴백한다(base 못 구함 · scripts/** · package.json · verify.yml 변경 시).
+      - name: 가드 주입 검증 (변경분, strict)
+        run: node scripts/check-guard-mutations.mjs --changed -s
         continue-on-error: false
 
       # 🧾 2026-07-30: 예산 루프가 **자기 기록을 쓸 몫**을 남기는가. 루프 뒤에는 반드시 D1 쓰기가 있다
@@ -269,6 +278,35 @@ jobs:
       #   2026-05-15 에 만든 랜딩이 두 달 넘게 한 번도 렌더된 적이 없었다. 예외 `duplicate-route-ok`.
       - name: 라우트 경로 중복 차단 (strict)
         run: node scripts/check-duplicate-routes.mjs -s
+      - name: 서버 라우트 중복 검사 (한 번도 안 도는 핸들러)
+        run: node scripts/check-duplicate-hono-routes.mjs -s
+        continue-on-error: false
+
+      # 🧾 2026-09-13 (대표 "결제의 다른 부분은?"): 토스가 승인 뒤 돌려보내는 주소가 실재하는
+      #   라우트인지. 문자열이라 빌드·타입체크·테스트가 전부 못 본다 — 결제가 끝나고 아무 데도
+      #   아닌 곳으로 돌아와도 초록불이다. 예외 `payment-redirect-ok`.
+      - name: 결제 복귀 주소가 실재 라우트인지 (strict)
+        run: node scripts/check-payment-redirect-routes.mjs
+
+      # 🎛️ 2026-09-07: **게이트를 만들고 표에 안 넣으면 `ops-gate-reachable` 의 검사 밖으로 나간다.**
+      #   그래서 담기 적립의 주 스위치가 한 달 넘게 손잡이 없이 남았다(읽는 곳 둘 · 쓰는 화면 0).
+      #   등재가 곧 검사 범위다 — 이 가드가 등재 자체를 강제한다. 첫 실행에서 미등재 5개를 찾았다.
+      - name: 게이트 미등재 차단 (strict)
+        run: node scripts/check-gate-registry.mjs -s
+        continue-on-error: false
+      # 🪙 2026-09-07: 꺼진 적립을 화면이 약속하던 사고(#1372)의 **클래스**를 닫는다.
+      #   새 목록 API 가 referral_enabled 를 실으면 같은 사고가 그대로 재현된다 — 에러가 없다.
+      - name: 적립 표시 게이트 래칫 (strict)
+        run: node scripts/check-affiliate-display-gate.mjs -s
+        continue-on-error: false
+
+      # 🕳️ 2026-09-02: 위 가드는 **같은 경로 문자열**만 본다. Hono 는 등록 순서로 매칭하므로
+      #   `/:id` 가 먼저면 그 뒤의 `/support-contact` 는 id="support-contact" 로 잡혀 **영원히 400**.
+      #   문자열이 달라 중복 가드가 못 잡는다. 라이브 실측으로 3곳이 죽어 있었다 —
+      #   `/api/group-buy/stays/my-bookings`(내 숙소 예약 화면이 통째로 실패) ·
+      #   `/api/curator/recommendations` · `/api/seller/gb/support-contact`. 예외 `route-shadow-ok`.
+      - name: 라우트 그림자 차단 (strict)
+        run: node scripts/check-route-shadowing.mjs
         continue-on-error: false
 
       # 🛡️ 2026-08-01: 라우트를 달아도 **누를 데가 없으면 없는 것과 같다.** 같은 클래스로
@@ -409,11 +447,29 @@ jobs:
 
       - name: 할인율이 사진 위에 없다 (전 카드 구현 · 인라인 스타일 포함)
         run: node scripts/check-discount-not-on-photo.mjs
+
+      # 📦 2026-09-01: 같은 장바구니가 `/cart` 에선 배송비 6,000원, `/checkout` 에선 0원이었다.
+      #   판정이 두 파일에 따로 적혀 갈라진 결과 — 이제 한 SSOT 만 쓴다.
+      - name: 배송비 판정 SSOT (장바구니 ↔ 결제)
+        run: node scripts/check-no-shipping-ssot.mjs
+
+      # 🔴 2026-09-01 디자인 방향 PR A — 흔적 두 가지를 래칫으로 동결.
+      #   붙여 쓴 가운뎃점(맛집·카페)은 한국어 표준이라 놔두고, **띄어 쓴 사슬**(a · b · c)만 잡는다.
+      - name: 띄어 쓴 가운뎃점 사슬 (래칫)
+        run: node scripts/check-middle-dot-chain.mjs
+      - name: 모양 잠금 — 체계 밖 모서리 (래칫)
+        run: node scripts/check-shape-lock.mjs
       - name: Dashboard button system ratchet (strict)
         env:
           STRICT_DASHBOARD_BUTTON: '1'
         run: node scripts/check-dashboard-button-system.mjs
         continue-on-error: false
+
+      # 🎨 2026-09-15 (대표 "색 정리도 진행해줘"): 소비자 화면 806파일에서 hex 색이 2,875회 나왔다
+      #   (선언된 토큰은 65개). 그중 1,927회는 토큰과 **값이 같은데** hex 로 다시 적은 것이었다.
+      #   화면마다 색이 조금씩 갈리던 정체가 이것이라, 줄이는 건 자유·늘리는 건 차단으로 동결한다.
+      - name: 소비자 화면 hex 색 래칫 (색 정리 — 늘어나지 못하게)
+        run: node scripts/check-consumer-hex-ratchet.mjs
 
       # 🖼️ 2026-08-31: cfImage <img> 에 onError 가 없으면 리사이저/원본이 죽는 순간 **깨진 이미지
       #   아이콘**이 그대로 보인다. SSOT `cfImageOnError` 는 [원본 1회 재시도 → 숨김] 으로 처리한다.
@@ -422,6 +478,25 @@ jobs:
         env:
           STRICT_IMAGE_FALLBACK: '1'
         run: node scripts/check-image-fallback.mjs
+        continue-on-error: false
+
+      # 🃏 2026-09-03 (대표 "이런 이용권들 디자인이 왜 통합적으로 관리가 안되는거지?"): 딜 카드는 한 벌.
+      #   그간 통일을 **화면 단위**로 했고, 그걸 지키는 검사가 "이미 고친 화면 목록"이라 아무도 안 본
+      #   화면은 영원히 안 걸렸다 — 네 번 다 대표가 눈으로 찾았다. 이제 소비자 표면 전체를 훑는다.
+      - name: Deal card unification ratchet (strict)
+        env:
+          STRICT_DEAL_CARD: '1'
+        run: node scripts/check-deal-card-unify.mjs
+        continue-on-error: false
+
+      # 🚦 2026-09-03: 대시보드 상태 배지가 **전부 같은 회색**이었다. tailwind.config 가 장식 색조를
+      #   MONO 로 중화하는데(2026-06-19 대표 "아예 흑백, 기능 빨강만 유지") 상태 배지가 하필 그 색조로
+      #   상태를 구분하고 있었다 — 라이브 실측: `bg-rose-50` == `bg-emerald-50` == rgb(248 247 252).
+      #   반려와 승인이 픽셀 단위로 같았고, 에러가 안 나서 몇 달간 안 드러났다.
+      - name: Status tone ratchet (strict)
+        env:
+          STRICT_STATUS_TONE: '1'
+        run: node scripts/check-status-tone.mjs
         continue-on-error: false
 
       # 🍎 2026-06-20: 카카오 OAuth iOS 쿠키 미영속 안티패턴 (strict). iOS Safari/WebKit 은
@@ -613,6 +688,20 @@ jobs:
       #   variant-aware 로 고쳐 위반 0 확인 → strict 등록.
       - name: Input text color guard (strict)
         run: STRICT_INPUT_TEXT=1 node scripts/check-input-text-color.mjs
+        continue-on-error: false
+
+      # 🔬 2026-09-13: 텍스트 가드가 **자기 주석 제거기를 새로 쓰는 것**을 동결한다.
+      #   `.replace(/\/\*[\s\S]*?\*\//g,'')` 는 문자열 안의 `/*` 에 물려 소스를 통째로 먹는다
+      #   (실측: worker/index.ts 코드의 76% 증발 → not.toContain 류가 무조건 통과).
+      #   SSOT 는 helpers/source-text 의 stripComments. 남은 98개는 동결만(줄이는 건 자유).
+      - name: Comment stripper ratchet (strict)
+        run: STRICT_COMMENT_STRIPPER=1 node scripts/check-comment-stripper.mjs
+
+      # 🛡️ 2026-09-14: "CI 가 막는 것은 로컬도 막는다" — 실측 91개 가드가 CI strict 인데
+      #   로컬은 무방비였다(합쳐 20초인데도). 위반 하나가 CI 57분을 태우던 원인.
+      #   새 strict 가드는 pre-push 게이트가 돌리거나 EXCLUDE 에 사유를 적어야 한다.
+      - name: 로컬↔CI 차단 동등성 (pre-push 게이트 누수)
+        run: node scripts/check-local-ci-parity.mjs
         continue-on-error: false
 
       # 🛡️ 2026-06-30: 배포-청크 자가복구(흰화면/무한로딩) 시스템 회귀 방지 — 현재 위반 0 → strict.
