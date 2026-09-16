@@ -16,6 +16,13 @@
  *   ④ 운영자 위임 — `seller_operators`. 캡처가 화면에서 직접 말한다: *"사업자 정보와 정산 계좌는
  *      사장님께 그대로 남고, 권한은 언제든 회수할 수 있습니다."*
  *
+ * ■ 2026-09-16 3차 (대표 *"AI 가 만든 디자인, 말투가 아니면"*)
+ *   ① 제목 오른쪽 구석에 떠 있던 작은 설명 문단을 지웠다. 스킬이 "floating top-right sub-text
+ *      in section headings" 로 이름 붙여 금지한 그림이고, 그 문단이 하던 말("전부 지금 라이브에서
+ *      동작합니다")은 페이지가 이미 여러 번 한다.
+ *   ② 아래 설명 넉 줄을 **4열 → 2열**로. 캡처가 이미 4열이라 그 밑에 또 4열이 오면 격자 두 겹이다.
+ *   ③ 제목을 짧게: "사장님 화면은 이렇습니다" → "사장님 폰에 뜨는 화면".
+ *
  * ■ 여기 **없는** 것: 공구 엔진(기간한정 공구 · 링크 전용가 · 인플루언서 딜 제안).
  *   `GB_ENGINE_ENABLED = false` 로 꺼져 있어 사장님이 오늘 쓸 수 없다(대표 2026-09-16 "공구 내용은 빼줘").
  * ■ "자동 승인" 도 없다 — `seller-registration.routes.ts:239` 주석이 *"자동승인 말고 수동 승인"* 이다.
@@ -32,20 +39,20 @@ const SCREENS = [
 
 const NOTES = [
   {
-    t: '단말기도, 포스 연동도 없습니다',
-    d: '손님이 내미는 QR을 매장 폰으로 찍으면 그 자리에서 사용 처리됩니다. 폰이 안 잡히면 매장 확인코드 여섯 자리를 넣으셔도 됩니다.',
+    t: '단말기도 포스 연동도 없습니다',
+    d: '손님이 내미는 QR을 매장 폰으로 찍으면 끝입니다. 폰이 안 잡히면 확인코드 여섯 자리를 넣으셔도 됩니다.',
   },
   {
-    t: '판매와 소개비 분배가 자동으로 계산됩니다',
-    d: '얼마 팔렸고 누구에게 얼마가 가는지를 주 단위로 시스템이 계산합니다. 엑셀로 맞춰 볼 일이 없습니다. 보내기 전에는 유어딜 담당자가 내역을 눈으로 확인합니다.',
+    t: '엑셀로 맞춰 볼 일이 없습니다',
+    d: '얼마 팔렸고 누구에게 얼마가 가는지를 주 단위로 자동으로 계산합니다. 보내기 전에는 담당자가 내역을 눈으로 확인합니다.',
   },
   {
-    t: '누가 손님을 데려왔는지 사람 단위로 보입니다',
+    t: '누가 손님을 데려왔는지 보입니다',
     d: '소개해 준 사람별로 몇 건이 팔렸고 소개비가 얼마 나갔는지가 쌓입니다. 그 손님이 실제로 와서 QR을 찍었는지까지 남으니, 성과가 나오는 사람에게만 다시 맡기시면 됩니다.',
   },
   {
-    t: '운영은 맡기고 돈은 사장님께 남습니다',
-    d: '상품 등록과 주문 관리를 다른 사람에게 맡기실 수 있습니다. 사업자 정보와 정산 계좌는 사장님 것으로 남고, 권한은 언제든 회수하실 수 있습니다.',
+    t: '운영은 맡기고 돈은 사장님께',
+    d: '상품 등록과 주문 관리를 남에게 맡기실 수 있습니다. 정산 계좌는 사장님 것으로 남고, 권한은 언제든 회수합니다.',
   },
 ]
 
@@ -53,14 +60,9 @@ export default function PartnerTools() {
   return (
     <section className="bg-surface">
       <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-32">
-        <div className="lg:flex lg:items-end lg:justify-between lg:gap-16">
-          <h2 className="text-[25px] lg:text-[42px] xl:text-[48px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2] max-w-[13em]">
-            사장님 화면은 이렇습니다
-          </h2>
-          <p className="mt-4 lg:mt-0 lg:shrink-0 lg:max-w-[26em] text-[14px] lg:text-[16.5px] leading-[1.75] text-gray-500 dark:text-gray-400">
-            등록하고 나면 쓰시게 되는 것들입니다. 전부 지금 라이브에서 동작합니다.
-          </p>
-        </div>
+        <h2 className="text-[26px] lg:text-[40px] xl:text-[46px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
+          사장님 폰에 뜨는 화면
+        </h2>
 
         {/* 화면 넉 장 — 가로로 나란히. PC 에서 폰 한 대가 340px 쯤 되어 실제로 읽힌다 */}
         <div className="mt-10 lg:mt-16 grid grid-cols-2 gap-x-4 gap-y-8 lg:grid-cols-4 lg:gap-8">
@@ -72,11 +74,11 @@ export default function PartnerTools() {
           ))}
         </div>
 
-        <div className="mt-12 lg:mt-20 grid gap-8 sm:grid-cols-2 lg:gap-x-8 lg:gap-y-12 xl:grid-cols-4">
+        <div className="mt-12 lg:mt-20 grid gap-9 sm:grid-cols-2 lg:gap-x-20 lg:gap-y-14 max-w-[64rem]">
           {NOTES.map(({ t, d }) => (
             <div key={t}>
-              <p className="text-[16.5px] lg:text-[19px] font-extrabold text-ink leading-snug tracking-[-0.01em]">{t}</p>
-              <p className="mt-2.5 text-[13.5px] lg:text-[14.5px] leading-[1.8] text-gray-500 dark:text-gray-400">{d}</p>
+              <p className="text-[17px] lg:text-[22px] font-extrabold text-ink leading-snug tracking-[-0.02em]">{t}</p>
+              <p className="mt-3 text-[13.5px] lg:text-[15.5px] leading-[1.8] text-gray-500 dark:text-gray-400">{d}</p>
             </div>
           ))}
         </div>

@@ -32,6 +32,12 @@ const files = execSync(
   `grep -rl "\\.\\(get\\|post\\|put\\|patch\\|delete\\)(" src --include=*.ts`,
   { encoding: 'utf8' },
 ).trim().split('\n').filter(Boolean)
+  // 🩸 2026-09-16: **테스트는 제외한다.** 이 가드의 정규식은 `app.get('/:id'` 를 찾는데,
+  //   순서 불변식을 *검사하는* 테스트는 바로 그 문자열을 **따옴표 안에** 담고 있다
+  //   (`expect(r.indexOf("app.get('/mall'")).toBeLessThan(param)`). 그래서 가드가
+  //   자기를 돕는 테스트를 위반으로 신고했다 — 정상 코드에 빨간불이 뜨면 결국 가드를 끄게 된다
+  //   (CLAUDE.md 가 `check-input-text-color` 로 기록한 그 경로). 테스트는 라우트를 등록하지 않는다.
+  .filter((f) => !f.includes('/tests/') && !/\.test\.[cm]?tsx?$/.test(f))
 
 const RE = /\b([A-Za-z_$][\w$]*)\.(get|post|put|patch|delete|all)\(\s*'([^']+)'/g
 

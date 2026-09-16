@@ -17,27 +17,15 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import { requireAdmin } from '@/worker/middleware/auth'
 import { adminIpWhitelist, adminAuditMiddleware } from '@/worker/middleware/admin-security'
 import { ensureMallSchema, invalidateMallCache, DEFAULT_MALL_ID } from './wholesale-malls'
-import { normalizeAdminRole } from '@/shared/admin-roles'
-import { RESERVED_SLUGS, validateMallSlug, auditMallSlugs } from '@/shared/mall/slug'
+import { RESERVED_SLUGS, auditMallSlugs } from '@/shared/mall/slug'
+import { requireSuperAdmin, rejectReservedSlug } from '@/worker/utils/mall-admin-shared'
 import { validateMallColor } from '@/shared/mall/branding'
+import { mallApplicationRoutes } from '@/worker/routes/mall-applications-admin.routes'
 
 const app = new Hono<{ Bindings: Env }>()
 app.use('*', adminIpWhitelist())
 app.use('*', requireAdmin())
 app.use('*', adminAuditMiddleware())
-
-// 🔒 2026-06-29 (대표 — "도매몰 관리는 슈퍼어드민만"): 몰 생성/수정(관리)은 슈퍼 전용.
-//   GET(몰 목록)은 여러 도매 어드민 화면의 몰 선택기(AdminMallSelect)가 읽으므로 유지 — 관리(쓰기)만 잠금.
-//   requireAdmin 이 c.set('user',{role}) 로 넣은 역할을 정규화해 super 만 통과.
-function requireSuperAdmin() {
-  return async (c: import('hono').Context, next: import('hono').Next) => {
-    const role = normalizeAdminRole((c.get('user') as { role?: string } | undefined)?.role)
-    if (role !== 'super') {
-      return c.json({ success: false, error: '도매몰 관리는 슈퍼관리자만 가능합니다', code: 'SUPER_ONLY' }, 403)
-    }
-    return next()
-  }
-}
 
 // slug: 소문자/숫자/하이픈만 (host 라우팅·URL 안전). 길이 cap. 미충족 시 null.
 function cleanSlug(raw: unknown): string | null {
@@ -46,23 +34,6 @@ function cleanSlug(raw: unknown): string | null {
   return s
 }
 
-/**
- * 🔴 세션 ③-a 〔대표 경계조건 ② — "가드는 양방향이어야 합니다"〕
- *
- * 슬러그는 `urdeal.kr/{슬러그}` 자리에 앉는다 ⇒ **예약어와 겹치면 그 라우트가 죽는다.**
- * CI 는 `라우트 ⊆ 예약어`(mall-branding.test)를 보지만 **라이브 DB 는 못 읽는다**.
- * 여기가 그 반쪽 — **쓰기 시점 차단**이다.
- *
- * ⚠️ 왜 `cleanSlug` 로 안 끝나는가: `cleanSlug` 는 문자 집합만 본다(1~40자, 예약어 무검사).
- *   그래서 지금까지 `admin`·`products` 같은 슬러그를 **만들 수 있었다.**
- * ⚠️ 3~30자 하한/상한은 취향이 아니라 **리졸버와의 정합**이다 — `firstPathSegment` 가
- *   `/^[a-z0-9-]{3,30}$/` 로 후보를 거르므로, 그 밖의 슬러그는 **경로로 영영 도달할 수 없다**.
- *   만들 수는 있는데 열리지는 않는 몰을 허용하지 않는다.
- */
-function rejectReservedSlug(s: string): string | null {
-  const v = validateMallSlug(s)
-  return v.ok ? null : v.reason
-}
 // host: 다중 호스트 'a.com,b.com' 허용. 소문자·공백제거. 길이 cap. 빈 값 → null.
 function cleanHost(raw: unknown): string | null {
   const s = String(raw ?? '').trim().toLowerCase().slice(0, 300)
@@ -155,6 +126,15 @@ app.get('/slug-conflicts', async (c) => {
     return safeError(c, err, '몰 슬러그 점검 중 오류가 발생했습니다', '[admin-wholesale-malls]')
   }
 })
+
+// ── 🏪 가게 개설 신청 — 목록/승인/반려 (2026-08-12 운영자 셀프 온보딩 최소안) ──────
+//   ⚠️ 정적 경로 `/applications*` 는 아래 `/:id` **앞에** 마운트해야 한다 — Hono 는 등록 순서대로
+//     매칭한다(같은 날 `seller-gb` 에서 `/support-contact` 가 `/:id` 에 삼켜진 것을 실측했다).
+//   본문은 `worker/routes/mall-applications-admin.routes.ts` 로 분리(파일크기 래칫 — 625줄이었다).
+//   🔴 `features/supply/` 밖에 둔다 — `mall-admin-api-bundle.test.ts` 가 이 파일의 supply 이웃 import 를
+//     `./wholesale-malls` 하나로 잠가 뒀고(2026-08-03 소비자 빌드 404 사고의 수습), 이 모듈은 실제로
+//     도매가 아니라 소비자 경로 몰을 다룬다.
+app.route('/applications', mallApplicationRoutes)
 
 // ── POST / — 몰 생성 ──────────────────────────────────────────────────────────
 app.post('/', requireSuperAdmin(), rateLimit({ action: 'admin-wholesale-mall-create', max: 20, windowSec: 60 }), async (c) => {

@@ -51,7 +51,7 @@ export default function PartnerFaq() {
         <div className="grid gap-10 lg:grid-cols-[0.62fr_1.38fr] lg:gap-16">
           <div>
             <h2 className="text-[25px] lg:text-[42px] xl:text-[48px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
-              사장님들이<br className="hidden lg:block" /> 자주 물으시는 것
+              자주 묻는 것
             </h2>
             <p className="mt-5 lg:mt-7 text-[13.5px] lg:text-[16.5px] leading-[1.8] text-gray-500 dark:text-gray-400">
               여기에 없는 것은 카카오톡 채널로 물어보세요. 사람이 답합니다.

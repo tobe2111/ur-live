@@ -88,10 +88,10 @@ export default function PartnersPage() {
         <section className="ur-panel-ink text-white">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-36 text-center">
             <h2 className="text-[26px] lg:text-[52px] xl:text-[60px] font-extrabold tracking-[-0.03em] leading-[1.22]">
-              안 팔리면 0원입니다.<br />잃을 것이 없습니다.
+              안 팔리면 0원입니다
             </h2>
             <p className="mt-6 lg:mt-8 text-[14px] lg:text-[19px] leading-relaxed text-white/70 max-w-[32em] mx-auto">
-              첫 이용권 초안은 유어딜이 만들어 드립니다. 사장님은 확인하고 승인만 하시면 됩니다.
+              첫 이용권 초안은 저희가 만들어 드립니다. 확인하고 승인만 하시면 됩니다.
             </p>
             <div className="mt-10 lg:mt-12 flex flex-col sm:flex-row gap-3 justify-center max-w-[32rem] mx-auto">
               <Link to="/store/new"
