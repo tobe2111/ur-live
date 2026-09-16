@@ -19,10 +19,11 @@ import { readCode } from '../helpers/source-text'
 import {
   laneLedgerKey, runawayRound, applyRead, laneCut, cutLaneNames, topLaneSpend,
   handleBudgetRequest, budgetBeatFields, READ_BUDGET_STORAGE_KEY,
-  RUNAWAY_ROUND_WRITES, RUNAWAY_REL_FLOOR, RUNAWAY_REL_MULTIPLE, LANE_LEDGER_MAX,
+  RUNAWAY_ROUND_WRITES, RUNAWAY_REL_FLOOR, RUNAWAY_REL_MULTIPLE, LANE_LEDGER_MAX, BEAT_TOP_LANES,
   type ReadBudgetState,
 } from '@/worker-ads/read-budget'
 import { laneEntryBlock, entryLaneKey } from '@/worker-ads/lane-pause'
+import { summarizeResult } from '@/worker/utils/cron-heartbeat'
 import { laneKey as domainLaneKey } from '@/worker-ads/lane-domains'
 
 // 🧹 주석 제거는 **SSOT 헬퍼만** 쓴다 — 자체 제거기는 문자열 안의 `/` + `*`(이 파일의 경우
@@ -302,6 +303,58 @@ describe('🚧 게이트 배선 — 세 진입로 모두', () => {
     // `reportReadUsage` 는 두 예산이 모두 0(=끔)이면 원장을 아예 안 부른다. 즉 `=0` 은 **무제한**이고
     // 귀속도 차단도 없다. 이 성질을 바꾸려면 시험부터 바꿔야 한다(모르는 채로 바뀌면 안 된다).
     expect(BUDGET).toMatch(/if \(resolveReadBudget\(env\) <= 0 && resolveWriteBudget\(env\) <= 0\) return/)
+  })
+})
+
+describe('📻 하트비트 한 줄 — 160자 안에서 **무엇이 살아남는가**', () => {
+  /**
+   * 🩸 이 describe 는 **라이브에서 터진 뒤** 생겼다(2026-09-16). 전날 배포한 `top` 이 가운데 있어서
+   *   뒤의 `cut`·`wmonth`·`mleft`·`dleft` 가 실측 하트비트에 **한 글자도 안 실렸다**:
+   *     `…wover=true top=collect-commerce:11839,collect-store-kakao:3603,collect-localdata-chain… wmo`
+   *   전날 시험은 `budgetBeatFields` 가 키를 **돌려주는지**만 봐서 전부 초록이었다 — 그 함수는
+   *   맞게 돌려주고 있었고, 죽은 것은 그 다음 단계(`summarizeResult` 의 160자 중단)였다.
+   *   ⇒ 그래서 여기서는 **실제 `summarizeResult` 를 통과시킨 문자열**로 판정한다.
+   */
+  const LIVE_SHAPE = {
+    day: '2026-09-16', used: 1300409, written: 19473, budget: 200000000, writeBudget: 30000,
+    over: false, writeOver: true, writtenMonth: 19473, monthLeft: 48480527, daysLeft: 15,
+    top: [
+      { lane: 'collect-commerce', w: 11839, r: 61312, n: 3 },
+      { lane: 'collect-store-kakao', w: 3603, r: 1102, n: 2 },
+      { lane: 'collect-localdata-chain', w: 1006, r: 606, n: 1 },
+    ],
+  }
+
+  it('평시 — 월 상태가 살아남는다 (10/2 판정이 이 값을 읽는다)', () => {
+    const line = summarizeResult(budgetBeatFields({ ...LIVE_SHAPE, cutLanes: [] }))!
+    expect(line.length, '하트비트 한 줄 상한').toBeLessThanOrEqual(160)
+    expect(line, 'wbudget 이 없으면 "오늘 예산이 얼마인가"를 못 본다').toContain('wbudget=')
+    expect(line, 'wmonth 가 없으면 월 역산 판정을 못 한다 — 실제로 이게 밀려났었다').toContain('wmonth=')
+    expect(line).toContain('mleft=')
+    expect(line).toContain('dleft=')
+  })
+
+  it('🚨 레인이 잘린 날 — `cut` 이 **반드시** 보인다', () => {
+    // 차단기를 만들어 놓고 그 발화를 못 보게 하면 만든 의미가 없다.
+    const line = summarizeResult(budgetBeatFields({ ...LIVE_SHAPE, cutLanes: ['collect-neis'] }))!
+    expect(line, '잘렸는데 하트비트에 안 보이면 운영자는 영영 모른다').toContain('cut=collect-neis')
+    expect(line).toContain('cutn=1')
+    expect(line).toContain('wmonth=')
+  })
+
+  it('레인 이름이 길어도 앞자리를 못 먹는다 — `top` 은 맨 뒤 + 개수 상한', () => {
+    const long = Array.from({ length: 6 }, (_, i) => ({ lane: `very-long-lane-name-${i}`, w: 90000 - i, r: 0, n: 1 }))
+    const line = summarizeResult(budgetBeatFields({ ...LIVE_SHAPE, top: long, cutLanes: ['x'] }))!
+    expect(line, '길이가 폭주해도 사건 신호는 남아야 한다').toContain('cut=x')
+    expect(line).toContain('wmonth=')
+    expect(BEAT_TOP_LANES, '3개면 그 자체로 70자를 먹는다(실측)').toBeLessThanOrEqual(2)
+  })
+
+  it('필드 순서 계약 — 짧고 판단에 쓰는 것이 앞, 긴 참고값이 뒤', () => {
+    const keys = Object.keys(budgetBeatFields({ ...LIVE_SHAPE, cutLanes: ['a'] }))
+    expect(keys.indexOf('cut'), 'cut 은 월 상태보다 앞').toBeLessThan(keys.indexOf('wmonth'))
+    expect(keys.indexOf('wmonth'), 'top 은 맨 뒤 — 잘려도 무해한 유일한 값이다').toBeLessThan(keys.indexOf('top'))
+    expect(keys[keys.length - 1]).toBe('top')
   })
 })
 
