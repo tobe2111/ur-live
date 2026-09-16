@@ -15,7 +15,8 @@
  * - 못 읽은 것을 "의심스럽다" 로 말하지 않는다 — `unreadable` 은 중립 톤이다.
  */
 import { useState } from 'react'
-import { ScanLine, Loader2 } from 'lucide-react'
+import { ScanLine, Loader2, ExternalLink } from 'lucide-react'
+import { safeHttpHref } from '@/utils/safe-external-url'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import type { DocKind } from '@/worker/utils/ocr-license'
@@ -57,7 +58,7 @@ function Row({ label, doc, store }: { label: string; doc: string | null; store?:
   )
 }
 
-export default function OcrComparePanel({ sellerId, hasPermit }: { sellerId: number; hasPermit?: boolean }) {
+export default function OcrComparePanel({ sellerId, permitUrl }: { sellerId: number; permitUrl?: string | null }) {
   const [busy, setBusy] = useState<DocKind | null>(null)
   const [res, setRes] = useState<OcrResponse | null>(null)
 
@@ -97,13 +98,20 @@ export default function OcrComparePanel({ sellerId, hasPermit }: { sellerId: num
             ? <span className="flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> 읽는 중…</span>
             : '사업자등록증'}
         </button>
-        {hasPermit && (
+        {permitUrl && (
           <button type="button" onClick={() => run('business_license')} disabled={!!busy}
             className="ur-btn ur-btn-sm ur-btn-secondary disabled:opacity-60">
             {busy === 'business_license'
               ? <span className="flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> 읽는 중…</span>
               : '영업신고증'}
           </button>
+        )}
+        {/* 🖼️ 등록증은 카드에 렌더되는데 영업신고증은 볼 방법이 없었다 — 확인 없이 승인하라는 셈이다 */}
+        {permitUrl && (
+          <a href={safeHttpHref(permitUrl)} target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-[11px] text-brand-text hover:underline">
+            <ExternalLink className="h-3 w-3" /> 영업신고증 사진 보기
+          </a>
         )}
       </div>
 

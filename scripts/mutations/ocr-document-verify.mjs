@@ -121,7 +121,7 @@ export default [
   {
     name: '🔍 어드민 화면이 OCR 패널을 안 부른다 (축 전체가 죽은 코드가 된다)',
     file: 'src/pages/AdminBusinessVerificationPage.tsx',
-    find: '                    <OcrComparePanel sellerId={s.id} hasPermit={s.has_food_permit} />',
+    find: '                    <OcrComparePanel sellerId={s.id} permitUrl={s.food_permit_url} />',
     replace: '                    {false && <OcrComparePanel sellerId={s.id} />}',
     test: PERMIT,
     why: '2026-09-16 실제로 이 상태였다 — 라우트·판정·대조를 다 만들고 버튼만 없었다. 에러도 안 나고 테스트도 통과하고 아무도 안 쓴다("코드에 있다 ≠ 살아 있다").',
@@ -137,8 +137,9 @@ export default [
   {
     name: '🔍 영업신고증 버튼이 서류 없어도 뜬다',
     file: 'src/pages/admin/business-verification/OcrComparePanel.tsx',
-    find: '        {hasPermit && (',
-    replace: '        {true && (',
+    // ⚠️ 같은 게이트가 둘(버튼·보기 링크)이라 버튼 쪽으로 좁힌다 — 앵커가 모호하면 러너가 멈춘다
+    find: "        {permitUrl && (\n          <button type=\"button\" onClick={() => run('business_license')} disabled={!!busy}",
+    replace: "        {true && (\n          <button type=\"button\" onClick={() => run('business_license')} disabled={!!busy}",
     test: PERMIT,
     why: '없는 서류에 버튼이 보이면 눌러 보고 400 을 받는다. 안내가 아니라 소음이고, 운영자는 "고장났나" 로 읽는다.',
   },

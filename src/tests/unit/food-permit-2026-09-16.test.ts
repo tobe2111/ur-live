@@ -144,7 +144,7 @@ describe('⑥ 🩸 라우트가 있는데 부르는 화면이 없으면 죽은 �
     expect(line).not.toContain('&&')
     expect(line).not.toContain('false')
     expect(line).toContain('sellerId={s.id}')
-    expect(line).toContain('hasPermit={s.has_food_permit}')          // 버튼 게이트가 실제로 배선됐다
+    expect(line).toContain('permitUrl={s.food_permit_url}')          // 버튼 게이트·보기 링크가 실제로 배선됐다
   })
 
   it('패널이 두 서류를 kind 로 갈라 부른다', () => {
@@ -155,12 +155,20 @@ describe('⑥ 🩸 라우트가 있는데 부르는 화면이 없으면 죽은 �
 
   it('영업신고증 버튼은 그 서류가 있을 때만 뜬다', () => {
     // 없는데 버튼이 보이면 눌러 보고 400 을 받는다 — 안내가 아니라 소음이다
-    expect(PANEL).toMatch(/\{hasPermit && \(/)
+    // 🩸 처음엔 `{permitUrl && (` 존재만 봤는데 **주입이 헛돈다고 잡았다** — 같은 게이트가 둘
+    //   (버튼·보기 링크)이라 버튼을 열어 놔도 링크 쪽이 단언을 만족시켰다.
+    //   ⇒ **버튼 블록 자체**가 그 게이트 안에 있는지 본다.
+    expect(PANEL).toMatch(/\{permitUrl && \(\s*<button[\s\S]{0,120}?run\('business_license'\)/)
     // 🩸 이 단언이 내 리팩토링을 잡았다 — 플래그를 헬퍼로 빼면서 라우트 파일엔 이름이 안 남았다.
     //   ⇒ **값을 만드는 곳**(헬퍼)과 **배선**(라우트가 그 헬퍼를 부르는가)을 따로 본다.
-    expect(PERMITFLAG).toMatch(/has_food_permit/)
     expect(PERMITFLAG).toMatch(/food_permit_url/)
     expect(ADMINLIST).toMatch(/attachFoodPermitFlag\(DB,/)
+  })
+
+  it('🖼️ 어드민이 영업신고증 사진을 직접 볼 수 있다', () => {
+    // 등록증은 카드에 렌더되는데 영업신고증은 볼 방법이 없었다 — 확인 없이 승인하라는 셈이다
+    expect(PANEL).toMatch(/영업신고증 사진 보기/)
+    expect(PANEL).toMatch(/safeHttpHref\(permitUrl\)/)   // 외부 스킴 차단을 거친다
   })
 
   it('🚧 패널은 승인·반려를 하지 않는다 (판정은 참고일 뿐)', () => {
