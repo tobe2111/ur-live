@@ -69,7 +69,20 @@ R7 은 "검사 대상이 200개 미만이면 통과가 아니라 실패" 를 스
 **못 막는 것**: 실제 배포에서의 301(워커 런타임은 유닛 밖) · 카카오 스크랩 캐시에 **이미 박힌** 옛
 공유 카드(코드로 못 고친다 — 카카오 캐시가 갱신돼야 한다).
 
-## ⚠️ 배포 후 확인 (E4)
+## ✅ E4 판정 통과 — 배포 후 라이브 실측 (2026-09-16, 머지 `377833ccc`)
+
+```
+① 옛 주소      curl -I urdeal.kr/group-buy/2888        → 301 → https://urdeal.kr/pass/2888
+② 결제 확인    curl -I urdeal.kr/group-buy/confirm-payment → 200 (301 아님 — 휩쓸리지 않았다)
+③ 추천 파라미터 .../group-buy/2888?ref=abc123          → 301 → .../pass/2888?ref=abc123  (살아남는다)
+④ 서버 첫 화면 urdeal.kr/pass/2888                     → ur-first-screen 1건 (정본에서도 그려진다)
+⑤ sitemap      /pass/ 358건 · 옛 urdeal.kr/group-buy/ 0건
+```
+
+③ 이 제일 중요하다 — 301 이 쿼리를 떨구면 **추천 적립이 조용히 0** 이 된다(에러가 안 난다).
+④ 는 R6 이 막으려던 바로 그것이고, 라이브에서 실제로 그려지는 것을 확인했다.
+
+## ⚠️ 배포 후 확인 (E4) — 위에서 이미 수행함, 재확인용 명령
 
 ```bash
 curl -sI https://urdeal.kr/group-buy/2888 | grep -i "^HTTP\|^location"   # → 301 · /pass/2888
