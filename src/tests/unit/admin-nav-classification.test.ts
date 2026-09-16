@@ -163,6 +163,8 @@ describe('R4 — 단일 서비스 화면이 공통 서랍에 눌러앉지 않는
     // `influencer_attributions` 는 전부 유어딜(매장영입 + 공구추천)인데 '인플루언서' 라는 말이
     // 📣 유어애즈의 외부 수집 DB(`/admin/influencer-pool`)와 겹쳐, 대표가 "어느 쪽이야?" 를
     // 묻게 만들던 자리다. 대표가 물은 것은 *어느 서비스냐* 이지 *옮겨 달라* 가 아니었다.
+    // ⚠️ 구분은 **낱말로** 한다 — 어드민 표면은 `admin-tones-2026-09-15` 가 이모지 0 을 잠갔다.
+    //   (⑫ 원 커밋(2026-08-16)은 `🎟️` 를 붙였고, 그 규칙이 나중에 생겨 CI 가 잡았다.)
     const labelOf = (path: string) =>
       NAV_GROUPS.flatMap((g) => g.items).find((i) => i.path === path)?.label ?? ''
     for (const path of ['/admin/influencer-payouts', '/admin/influencer-disputes']) {

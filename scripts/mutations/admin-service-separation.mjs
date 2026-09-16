@@ -53,12 +53,12 @@ export default [
   {
     name: '[어드민nav] 공통 데스크 항목에서 서비스 표시를 뗀다(어느 서비스 인플루언서인지 알 수 없다)',
     file: 'src/components/admin/admin-nav-config.ts',
-    find: "label: '\u{1F39F}\uFE0F 유어딜 추천 커미션 송금'",
+    find: "label: '유어딜 추천 커미션 송금'",
     replace: "label: '인플루언서 송금'",
     test: 'src/tests/unit/admin-nav-classification.test.ts',
     why:
-      '\u{1F39F}\uFE0F 유어딜의 추천 커미션(`influencer_attributions` = 매장영입 + 공구추천)과 ' +
-      '\u{1F4E3} 유어애즈의 외부 수집 인플루언서 DB 는 **다른 서비스**인데 메뉴 이름이 둘 다 "인플루언서 …" 였다. ' +
+      '유어딜의 추천 커미션(`influencer_attributions` = 매장영입 + 공구추천)과 ' +
+      '유어애즈의 외부 수집 인플루언서 DB 는 **다른 서비스**인데 메뉴 이름이 둘 다 "인플루언서 …" 였다. ' +
       '게다가 둘은 서로 다른 밴드에 있어(하나는 유어애즈, 둘은 공통 머니·CS 데스크) 나란히 보이지도 않는다. ' +
       '머니 데스크는 한 큐로 처리해야 해서 메뉴를 옮기는 것이 답이 아니고 — 대표가 물은 것도 ' +
       '*"어느 서비스냐"* 이지 *"옮겨 달라"* 가 아니었다 — **라벨이 유일한 구분 수단**이다. ' +

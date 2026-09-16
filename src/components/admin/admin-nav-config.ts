@@ -49,7 +49,9 @@ export interface NavItem {
  *
  * 실측으로 확인하고 **옮기지 않기로 한 것들**(다음 세션이 다시 파헤치지 않게):
  *   - `인플루언서 송금·분쟁` → 전부 유어딜(`influencer_attributions` = 매장영입 + 공구추천)이지만
- *     **머니·CS 데스크**라 정산/검증에 남기고 **라벨에 🎟️ 유어딜**을 붙였다(유어애즈 인플루언서 풀과 구분).
+ *     **머니·CS 데스크**라 정산/검증에 남기고 **라벨 앞에 '유어딜'** 을 붙였다(유어애즈 인플루언서 풀과 구분).
+ *     ⚠️ 이모지는 안 쓴다 — 어드민 표면은 `admin-tones-2026-09-15` 가 이모지 0 을 잠갔다(코레일톡
+ *     디자인 시스템). ⑫ 원 커밋(2026-08-16)은 `🎟️` 를 붙였는데 그 규칙이 나중에 생겼다.
  *   - `영업 추적`·`에이전시` → 유어딜 매장 영입이지만 **사람·조직 관리 데스크**.
  *   - `매장 커미션` → 유어딜이지만 머니 데스크.
  *   - `소비자 퍼널` → **유어딜 전용이 아니다.** `funnel_events` 는 서비스 무관 계측이라
@@ -281,7 +283,7 @@ export const NAV_GROUPS: NavGroup[] = [
       // 🏷️ 라벨에 **서비스를 밝힌다.** `influencer_attributions` 는 전부 유어딜에서 생긴다
       //   (매장 영입 `store_intro` + 공구 추천)인데, 이름이 📣 유어애즈의 '인플루언서 풀'
       //   (외부 수집 DB)과 겹쳐 대표가 "어느 쪽이야?" 를 묻게 만들던 자리다.
-      { path: '/admin/influencer-payouts', label: '🎟️ 유어딜 추천 커미션 송금', icon: Wallet },
+      { path: '/admin/influencer-payouts', label: '유어딜 추천 커미션 송금', icon: Wallet },
       { path: '/admin/withholding',      label: '원천징수/지급조서', icon: Shield },
       { path: '/admin/commission-settings', label: '정산 마진 설정', icon: Settings },
       { path: '/admin/merchant-commissions', label: '매장 커미션', icon: Store },
@@ -298,7 +300,7 @@ export const NAV_GROUPS: NavGroup[] = [
     section: 'common',
     items: [
       { path: '/admin/disputes',         label: '분쟁 큐',       icon: AlertOctagon },
-      { path: '/admin/influencer-disputes', label: '🎟️ 유어딜 추천 커미션 분쟁', icon: AlertOctagon },
+      { path: '/admin/influencer-disputes', label: '유어딜 추천 커미션 분쟁', icon: AlertOctagon },
       { path: '/admin/business-verification', label: '사업자 검증', icon: Shield },
       { path: '/admin/review-moderation', label: '리뷰 관리',     icon: MessageSquare },
       { path: '/admin/policy',           label: '정책 대시보드', icon: Shield },
