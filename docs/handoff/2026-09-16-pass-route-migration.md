@@ -53,9 +53,16 @@
 
 ## 가드
 
-`src/tests/unit/pass-route-migration.test.ts` 23건 — R1 예약어 · R2 301 생존 · R3 결제화면 비휩쓸림 ·
-R4 SSOT · R5 인프라 6종 · R6 서버 첫 화면 · **R7 옛 주소 링크 잔존 0**(src 전수 스캔, 문서화된 예외만).
-주입 `scripts/mutations/pass-route-migration.mjs` 5건.
+`src/tests/unit/pass-route-migration.test.ts` **25건** — R1 예약어(+런타임 배선) · R2 301 생존 ·
+R3 결제화면 비휩쓸림 · R4 SSOT · R5 인프라 6종 · R6 서버 첫 화면 ·
+**R7 옛 주소 링크 잔존 0**(src 전수 스캔, 문서화된 예외만).
+주입 `scripts/mutations/pass-route-migration.mjs` **6건**.
+
+🩸 **R1 이 처음엔 헛돌 수 있는 모양이었다**(머지 뒤 보강). `expect(RESERVED_SLUGS).toContain('pass')`
+는 **목록에 이름이 있는지**만 본다 — 런타임 판정(`isMallSlugCandidate`)이 그 목록을 안 보게 바뀌면
+**단언은 초록인 채로** `urdeal.kr/pass` 가 남의 가게가 된다. 실제로 주입해 확인했다: 해석기에서
+`pass` 만 빼자 목록 검사는 통과하고 **새로 넣은 런타임 호출 검사만** 빨간불이 됐다.
+⇒ 교훈은 이 레포가 여러 번 적은 그것과 같다 — **등재된 것 · 쓰이는 것 · 실제로 도는 것은 다르다.**
 
 R7 은 "검사 대상이 200개 미만이면 통과가 아니라 실패" 를 스스로 선언한다(경로가 낡아 조용히 비는 것 차단).
 
