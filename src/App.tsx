@@ -18,7 +18,7 @@ import { isMallSurfacePath } from './shared/mall/resolve' // 🏬 운영자 몰 
 import ScrollToTop from './components/ScrollToTop'
 import OfflineBanner from './components/OfflineBanner'
 import BottomNav from '@/components/main/BottomNav'
-import BrandLoader from '@/components/brand/BrandLoader'
+import BrandLoader, { BootFirstScreenLoader } from '@/components/brand/BrandLoader'
 import { trackFunnel } from '@/lib/funnel'
 import ConsumerTopChrome from '@/components/main/ConsumerTopChrome'
 import { swallow } from '@/shared/utils/swallow'
@@ -249,7 +249,7 @@ function CuratorPinClientRedirect() {
 // 로딩 컴포넌트 — 배경 투명, 최소 UI로 흰 화면 방지
 // 🎨 2026-06-29 (대표 — 공통 페이지 로딩 애니메이션): 무채색 스피너 → UrDeal 브랜드 로더.
 //   로고 호흡 + 진행 바 스윕(BrandLoader SSOT). 라우트 청크 로딩 순간 전용 — SSR/스켈레톤 첫페인트 불변.
-const PageLoader = () => <BrandLoader fullScreen />
+const PageLoader = () => <BootFirstScreenLoader />
 
 // 🚑 2026-07-10 [UNLOCK_LOADING] (로딩 전수조사): 대시보드(/seller·/admin)·유어애즈(/ads) 전용
 //   라이트 로더 — worker 가 이 표면들의 #root 를 라이트 #F4F5F7 placeholder 로 깔아주는데, Suspense
