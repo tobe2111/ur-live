@@ -159,7 +159,7 @@ function IntroducedStoresSection() {
   if (!data || data.stores.length === 0) return null
 
   return (
-    <section className="mb-6 bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-xl p-4">
+    <section className="mb-6 bg-surface border border-line rounded-xl p-4">
       <div className="flex items-center justify-between mb-3">
         <p className="text-sm font-bold text-gray-900 dark:text-white">🏪 내가 영입한 매장</p>
         <span className="text-xs text-gray-500 dark:text-gray-400">누적 커미션 {formatWon(data.total_commission)}</span>
@@ -225,7 +225,7 @@ function ProxyProductModal({ merchant, onClose }: { merchant: { id: number; name
 
   return (
     <div className="fixed inset-0 z-[10000] bg-black/60 flex items-end sm:items-center justify-center p-4" onClick={onClose}>
-      <div className="w-full max-w-md bg-white dark:bg-[#1D1F29] rounded-2xl p-5" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-md bg-surface rounded-2xl p-5" onClick={(e) => e.stopPropagation()}>
         <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">공구 대행 등록</p>
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">{merchant.name} — 등록 후 매장 승인 시 공개됩니다.</p>
         <div className="space-y-2">
@@ -241,7 +241,7 @@ function ProxyProductModal({ merchant, onClose }: { merchant: { id: number; name
               value={(form as any)[k]}
               onChange={(e) => setForm({ ...form, [k]: e.target.value })}
               placeholder={label}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-[#2C2F35] bg-surface text-gray-900 dark:text-white"
             />
           ))}
           <textarea
@@ -249,7 +249,7 @@ function ProxyProductModal({ merchant, onClose }: { merchant: { id: number; name
             onChange={(e) => setForm({ ...form, description: e.target.value })}
             placeholder="설명 (선택)"
             rows={2}
-            className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] text-gray-900 dark:text-white"
+            className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-[#2C2F35] bg-surface text-gray-900 dark:text-white"
           />
           <div className="flex gap-2 pt-1">
             <button onClick={submit} disabled={submitting} className="flex-1 py-2 bg-brand text-white text-sm font-bold rounded-lg disabled:opacity-50">
@@ -289,7 +289,7 @@ function WithdrawalCard({ info, onWithdraw, onAckUpgrade }: { info: WithdrawalIn
           <button
             onClick={onWithdraw}
             disabled={info.available < info.min_withdrawal}
-            className="w-full py-2.5 bg-white dark:bg-[#11141C] text-brand-text font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-2.5 bg-surface text-brand-text font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {info.available < info.min_withdrawal
               ? `최소 ${formatWon(info.min_withdrawal)} 부터 출금 가능`
@@ -305,7 +305,7 @@ function WithdrawalCard({ info, onWithdraw, onAckUpgrade }: { info: WithdrawalIn
           </p>
           <Link
             to="/browse"
-            className="block w-full py-2.5 bg-white dark:bg-[#11141C] text-orange-600 font-bold rounded-lg text-center"
+            className="block w-full py-2.5 bg-surface text-orange-600 font-bold rounded-lg text-center"
           >
             🛍️ 쇼핑 둘러보기
           </Link>
@@ -392,7 +392,7 @@ function WithdrawModal({ info, onClose, onSuccess }: { info: WithdrawalInfo; onC
 
   return (
     <div className="fixed inset-0 z-[10001] bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
-      <div className="w-full sm:max-w-md bg-white dark:bg-[#1D1F29] rounded-t-2xl sm:rounded-2xl p-5" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full sm:max-w-md bg-surface rounded-t-2xl sm:rounded-2xl p-5" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-base font-bold text-gray-900 dark:text-white mb-4">💰 출금 신청</h2>
 
         <div className="space-y-3">
@@ -404,7 +404,7 @@ function WithdrawModal({ info, onClose, onSuccess }: { info: WithdrawalInfo; onC
               max={info.available}
               value={amount}
               onChange={(e) => setAmount(Math.max(0, Math.min(info.available, Number(e.target.value) || 0)))}
-              className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] text-gray-900 dark:text-white rounded-lg"
+              className="w-full px-3 py-2 text-sm bg-warm border border-line text-gray-900 dark:text-white rounded-lg"
             />
           </div>
           <div>
@@ -414,7 +414,7 @@ function WithdrawModal({ info, onClose, onSuccess }: { info: WithdrawalInfo; onC
               value={bankName}
               onChange={(e) => setBankName(e.target.value)}
               placeholder="예: 카카오뱅크"
-              className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] text-gray-900 dark:text-white rounded-lg"
+              className="w-full px-3 py-2 text-sm bg-warm border border-line text-gray-900 dark:text-white rounded-lg"
             />
           </div>
           <div>
@@ -424,7 +424,7 @@ function WithdrawModal({ info, onClose, onSuccess }: { info: WithdrawalInfo; onC
               value={bankAccount}
               onChange={(e) => setBankAccount(e.target.value.replace(/[^0-9-]/g, ''))}
               placeholder="3333-01-1234567"
-              className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] text-gray-900 dark:text-white rounded-lg"
+              className="w-full px-3 py-2 text-sm bg-warm border border-line text-gray-900 dark:text-white rounded-lg"
             />
           </div>
           <div>
@@ -433,15 +433,15 @@ function WithdrawModal({ info, onClose, onSuccess }: { info: WithdrawalInfo; onC
               type="text"
               value={accountHolder}
               onChange={(e) => setAccountHolder(e.target.value)}
-              className="w-full px-3 py-2 text-sm bg-gray-50 dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] text-gray-900 dark:text-white rounded-lg"
+              className="w-full px-3 py-2 text-sm bg-warm border border-line text-gray-900 dark:text-white rounded-lg"
             />
           </div>
         </div>
 
-        <div className="mt-4 bg-gray-50 dark:bg-[#11141C] rounded-lg p-3 text-xs space-y-1">
+        <div className="mt-4 bg-warm rounded-lg p-3 text-xs space-y-1">
           <div className="flex justify-between text-gray-600 dark:text-gray-400"><span>신청 금액</span><span>{formatWon(amount)}</span></div>
           <div className="flex justify-between text-gray-600 dark:text-gray-400"><span>원천징수 ({(info.withholding_rate * 100).toFixed(1)}%)</span><span>-{formatWon(withholding)}</span></div>
-          <div className="flex justify-between font-bold text-gray-900 dark:text-white pt-1 border-t border-gray-200 dark:border-[#2C2F35]"><span>실 입금</span><span>{formatWon(netAmount)}</span></div>
+          <div className="flex justify-between font-bold text-gray-900 dark:text-white pt-1 border-t border-line"><span>실 입금</span><span>{formatWon(netAmount)}</span></div>
         </div>
 
         <div className="mt-4 flex gap-2">

@@ -5,6 +5,7 @@
 import { useNavigate } from 'react-router-dom'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useTranslation } from 'react-i18next'
+import { ListLoadError } from '@/components/ui/list-load-error'
 import { ChevronLeft, Bell, Trash2 } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
@@ -14,7 +15,7 @@ export default function InterestListPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   // 🛡️ 2026-06-01 Tier2: 수동 페칭 → React Query (목록 캐싱 + optimistic 삭제/롤백).
-  const { data: items = [], isLoading: loading } = useMyInterests()
+  const { data: items = [], isLoading: loading, isError, refetch } = useMyInterests()
   const removeMut = useRemoveInterest()
 
   const handleRemove = async (item: InterestItem) => {
@@ -44,12 +45,16 @@ export default function InterestListPage() {
         {loading ? (
           <div className="space-y-3">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-4 animate-pulse border border-gray-200 dark:border-[#2C2F35]">
+              <div key={i} className="bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-4 animate-pulse border border-line">
                 <div className="h-4 bg-gray-700 rounded w-2/3 mb-2" />
                 <div className="h-3 bg-gray-700 rounded w-1/3" />
               </div>
             ))}
           </div>
+        ) : isError ? (
+          /* 🩸 2026-09-15: 못 불러온 것과 "관심 맛집이 없음"은 다른 상태다 — 섞으면
+             등록해 둔 알림이 사라진 줄 안다. */
+          <ListLoadError onRetry={() => refetch()} className="py-20" />
         ) : items.length === 0 ? (
           <div className="text-center py-20">
             <Bell className="w-10 h-10 text-gray-600 mx-auto mb-3" />
@@ -71,7 +76,7 @@ export default function InterestListPage() {
             {items.map(item => (
               <div
                 key={item.id}
-                className="flex items-center justify-between bg-gray-50 dark:bg-[#1D1F29] rounded-xl px-4 py-3.5 border border-gray-200 dark:border-[#2C2F35]"
+                className="flex items-center justify-between bg-gray-50 dark:bg-[#1D1F29] rounded-xl px-4 py-3.5 border border-line"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-9 h-9 rounded-lg bg-brand/10 flex items-center justify-center flex-shrink-0">

@@ -194,7 +194,7 @@ import { influencerApplyRoutes } from '../features/marketing/api/influencer-appl
 import { creatorClaimRoutes } from '../features/marketing/api/lead-claim'; // 🔗 신청 → 가입 연결(초대 코드 클레임)
 // 📣 2026-08-09 캠페인 인플루언서 모집(방배 등) — 신청 = 파트너 등록(계정+동의+ref 링크)
 import { campaignApplyRoutes } from '../features/marketing/api/campaign-apply.routes';
-import { adminCampaignApplicationsRoutes } from '../features/admin/api/admin-campaign-applications.routes';
+import { adminCampaignApplicationsRoutes } from '../features/admin/api/admin-campaign-applications.routes'; import { mallAdminRoutes } from '../features/mall/api/mall-admin.routes'; // 🏬 몰 운영자 콘솔(공구 서비스) — 한 줄: 파일크기 래칫(2638) 안
 // ⏳ [TEMP-TEST] 도매 워커 배포 전 라이브 검증용 임시 마운트(아래 app.route 참조) — ur-wholesale 배포 시 제거.
 import { buyerPoolRoutes as buyerPoolTestRoutes } from '../features/supply/api/buyer-pool.routes';
 import { makerPoolRoutes as makerPoolTestRoutes } from '../features/supply/api/maker-pool.routes';
@@ -283,7 +283,7 @@ import { referralRoutes } from '../features/referral/api/referral.routes';
 //   (typeof navigator/window 가드 보유라 워커 안전). URL 이 클라 렌더값과 byte-일치해야 preload 적중.
 import { cfImage, cfSrcSet } from '../utils/cf-image';
 // 🖼️ 홈 첫 화면 카드 사진 preload — 링크 생성은 헬퍼가 한다(파일 크기 래칫 + 직접 테스트 용이).
-import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { isMobileUserAgent } from '../shared/detail-hero-image'; // 한 줄: 파일크기 래칫(2685) 안
+import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; // 한 줄: 파일크기 래칫(2685) 안
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -1024,6 +1024,13 @@ app.use('*', async (c, next) => {
       rb = rb.on('#root', {
         element(el) { el.setInnerContent(blogBody, { html: true }); },
       });
+    } else if (ssrSlot === 'DETAIL' && ssrPayload && url.pathname.startsWith('/group-buy/')) {
+      // 🖼️ 2026-09-15 [UNLOCK_LOADING] (대표 "꼭 로딩이 걸려야 해?"): 시드에 상품이 이미 있고 히어로도 preload 로
+      //   당겨 놨는데 React 가 깨어날 때까지(실측 1.2초) 사진이 캐시에 앉아 기다렸다 → 서버가 [빵부스러기 + 히어로]
+      //   까지 그리고 그 아래에만 로더를 둔다(마운트 때 사진은 제자리 — box·URL 실측 일치). `/vouchers/:id` 는 같은
+      //   슬롯이라도 다른 페이지라 pathname 으로 가른다. 사유·경계·폴백(''→로더): `utils/detail-ssr-body.ts`.
+      const firstScreen = buildDetailFirstScreen(ssrPayload, urdealLoaderHtml);
+      rb = rb.on('#root', { element(el) { el.setInnerContent(firstScreen || urdealLoaderHtml, { html: true }); } });
     } else {
       // 🖼️ 2026-07-07 [UNLOCK_LOADING] (대표 신고 "로딩 중간에 이상한 페이지들" — 전수조사 + "홈도 이상적으로"):
       //   **catch-all 디폴트 = URDEAL 정적 로더**. prerender 된 `#root` 에는 홈(=RestaurantMapPage list) shell 이
@@ -1564,7 +1571,7 @@ app.route('/api/products', featureProductsRoutes);
 // 📥 크리에이터 제휴 인바운드 신청(공개) — ad_influencer_leads 는 메인 D1 이라 메인 워커에서 처리(프록시 X).
 app.route('/api/creator-apply', influencerApplyRoutes); app.route('/api/creator-claim', creatorClaimRoutes);
 // 📣 캠페인 신청(로그인 필수) + 어드민 신청자 조회/CSV — campaign_applications 는 메인 D1.
-app.route('/api/campaign', campaignApplyRoutes); app.route('/api/admin/campaign-applications', adminCampaignApplicationsRoutes);
+app.route('/api/campaign', campaignApplyRoutes); app.route('/api/admin/campaign-applications', adminCampaignApplicationsRoutes); app.route('/api/mall-admin', mallAdminRoutes); // 🏬 몰 운영자 콘솔 — 서버가 몰을 확정(URL 에 몰 id 없음 = IDOR 파라미터 부재)
 // 💳 유어애즈 서비스몰 토스 결제 — 메인 워커 전용(/api/ads/* 위임과 별개 네임스페이스, TOSS 키가 여기 있음).
 //   게이트 ADS_TOSS_ENABLED(기본 OFF). SSOT 헬퍼 호출만(toss-gateway 무수정).
 app.route('/api/ads-pay', adsPayRoutes);

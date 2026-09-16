@@ -76,22 +76,22 @@ export default function ReferralPanel() {
     <div className="rounded-xl border border-gray-200 bg-white p-4 mb-5">
       <button onClick={() => setOpen(v => !v)} className="w-full flex items-center justify-between text-left">
         <div>
-          <span className="text-sm font-bold text-gray-900">🤝 파트너 매장 소개 접수함</span>
-          <span className="ml-2 text-xs text-gray-500">파트너가 데려온 매장 기록·추적{newCount > 0 && <span className="ml-1 text-rose-600 font-semibold">· 신규 {newCount}건</span>}</span>
+          <span className="text-sm font-bold text-gray-900">파트너 매장 소개 접수함</span>
+          <span className="ml-2 text-xs text-gray-500">파트너가 데려온 매장 기록·추적{newCount > 0 && <span className="ml-1 text-tone-bad font-semibold">· 신규 {newCount}건</span>}</span>
         </div>
         <span className="text-gray-400 text-xs">{open ? '접기 ▲' : `펼치기 ▼ (${rows.length})`}</span>
       </button>
 
       {open && (
         <div className="mt-3">
-          <button onClick={() => setShowAdd(v => !v)} className="px-3 py-1.5 rounded-lg bg-gray-900 text-white text-xs font-medium">{showAdd ? '닫기' : '＋ 소개 접수'}</button>
+          <button onClick={() => setShowAdd(v => !v)} className="ur-btn ur-btn-sm ur-btn-primary">{showAdd ? '닫기' : '＋ 소개 접수'}</button>
           {showAdd && (
             <div className="mt-2 grid grid-cols-1 md:grid-cols-5 gap-2">
               <input value={f.partner_name} onChange={e => setF({ ...f, partner_name: e.target.value })} placeholder="소개한 파트너 *" className="px-3 py-2 rounded-lg border border-gray-300 text-gray-900 text-xs" />
               <input value={f.store_name} onChange={e => setF({ ...f, store_name: e.target.value })} placeholder="소개받은 매장 *" className="px-3 py-2 rounded-lg border border-gray-300 text-gray-900 text-xs" />
               <input value={f.region} onChange={e => setF({ ...f, region: e.target.value })} placeholder="지역" className="px-3 py-2 rounded-lg border border-gray-300 text-gray-900 text-xs" />
               <input value={f.phone} onChange={e => setF({ ...f, phone: e.target.value })} placeholder="매장 전화(파트너가 전달한 것만)" className="px-3 py-2 rounded-lg border border-gray-300 text-gray-900 text-xs" />
-              <button onClick={submit} disabled={saving} className="px-3 py-2 rounded-lg bg-gray-900 text-white text-xs font-medium disabled:opacity-50">{saving ? '저장 중…' : '접수'}</button>
+              <button onClick={submit} disabled={saving} className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-50">{saving ? '저장 중…' : '접수'}</button>
             </div>
           )}
 
@@ -104,19 +104,19 @@ export default function ReferralPanel() {
                   <span className="font-semibold text-gray-900">{r.store_name}</span>
                   <span className="text-gray-400">← {r.partner_name}</span>
                   {r.region && <span className="text-gray-500">{r.region}</span>}
-                  {r.phone && <span className="text-gray-500">📞 {r.phone}</span>}
+                  {r.phone && <span className="text-gray-500">{r.phone}</span>}
                   <span className="text-gray-300">{kstShort(r.created_at)}</span>
                   <div className="grow" />
                   {/* 💰 보상 원장 — 입점 확정 시 자동 '지급대기', 이체는 수동(기록만) */}
                   {r.reward_status === 'paid' ? (
-                    <span className="text-[11px] px-2 py-1 rounded bg-green-100 text-green-700 font-medium" title={`지급 기록 ${kstShort(r.reward_paid_at || '')}`}>
-                      ✓ 지급완료{r.reward_amount ? ` ${r.reward_amount.toLocaleString()}원` : ''}
+                    <span className="text-[11px] px-2 py-1 rounded bg-tone-ok-bg text-tone-ok font-medium" title={`지급 기록 ${kstShort(r.reward_paid_at || '')}`}>
+                      지급완료{r.reward_amount ? ` ${r.reward_amount.toLocaleString()}원` : ''}
                     </span>
                   ) : r.reward_status === 'pending' ? (
                     <span className="inline-flex items-center gap-1">
                       <input defaultValue={r.reward_amount ?? ''} onBlur={e => saveReward(r.id, e.target.value)} placeholder="보상액"
-                        className="w-20 px-2 py-1 rounded border border-amber-300 bg-amber-50 text-gray-900 text-[11px] text-right" inputMode="numeric" />
-                      <button onClick={() => markPaid(r.id, r.partner_name, r.reward_amount)} className="px-2 py-1 rounded bg-amber-500 text-white text-[11px] font-medium">지급완료</button>
+                        className="w-20 px-2 py-1 rounded border border-transparent bg-tone-warn-bg text-gray-900 text-[11px] text-right" inputMode="numeric" />
+                      <button onClick={() => markPaid(r.id, r.partner_name, r.reward_amount)} className="ur-btn ur-btn-sm ur-btn-primary rounded">지급완료</button>
                     </span>
                   ) : null}
                   <select value={r.status} onChange={e => setStatus(r.id, e.target.value)} className={`rounded px-2 py-1 text-[11px] font-medium border-0 ${ST[r.status]?.cls || 'bg-gray-100 text-gray-700'}`}>
@@ -126,7 +126,7 @@ export default function ReferralPanel() {
               ))}
             </div>
           )}
-          <p className="mt-2 text-[10px] text-gray-400">💰 입점 확정 시 자동으로 '지급대기'가 됩니다. 보상액 기입 → 은행 이체 → '지급완료' 클릭(회계 기록). 플랫폼 원장과 분리된 수동 지급 원장입니다.</p>
+          <p className="mt-2 text-[10px] text-gray-400">입점 확정 시 자동으로 '지급대기'가 됩니다. 보상액 기입 → 은행 이체 → '지급완료' 클릭(회계 기록). 플랫폼 원장과 분리된 수동 지급 원장입니다.</p>
         </div>
       )}
     </div>

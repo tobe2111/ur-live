@@ -6,7 +6,7 @@
 import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys } from './queryKeys'
-import { readCache, readCacheOrNull, writeCache } from './localCache'
+import { writeCache, cachedInitialData, cacheOrRethrow } from './localCache'
 import { isLoggedInSync } from '@/utils/auth'
 
 export interface Coupon {
@@ -33,13 +33,8 @@ export function useMyCoupons() {
           writeCache(CACHE_KEY, arr)
           return arr
         })
-        .catch((err) => {
-          // 🛡️ 2026-07-02: 캐시 폴백은 존재할 때만 — 없으면 throw → isError (빈 목록 위장 방지).
-          const cached = readCacheOrNull<Coupon[]>(CACHE_KEY)
-          if (cached) return cached
-          throw err
-        }),
-    initialData: () => readCache<Coupon[]>(CACHE_KEY, []),
+        .catch((err) => cacheOrRethrow<Coupon[]>(CACHE_KEY, err)),
+    initialData: () => cachedInitialData<Coupon[]>(CACHE_KEY),
     enabled: isLoggedInSync(),
     staleTime: 2 * 60 * 1000,
     gcTime: 30 * 60 * 1000,

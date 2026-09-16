@@ -75,7 +75,7 @@ export default function AdminReviewsPage() {
 
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center gap-2 mb-5">
-            <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
+            <Star className="w-5 h-5 text-tone-warn fill-yellow-500" />
             <h2 className="text-base font-bold text-gray-900">리뷰 자동 생성</h2>
           </div>
 
@@ -88,11 +88,11 @@ export default function AdminReviewsPage() {
                   onClick={() => setMode('template')}
                   className={`flex items-center gap-2.5 p-3.5 rounded-xl border-2 transition-all text-left ${
                     mode === 'template'
-                      ? 'border-yellow-500 bg-yellow-50'
+                      ? 'border-brand bg-brand-tint'
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
-                  <FileText className={`w-5 h-5 ${mode === 'template' ? 'text-yellow-600' : 'text-gray-400'}`} />
+                  <FileText className={`w-5 h-5 ${mode === 'template' ? 'text-tone-warn' : 'text-gray-400'}`} />
                   <div>
                     <p className="text-sm font-bold text-gray-900">템플릿</p>
                     <p className="text-[11px] text-gray-500">빠르고 무료 · 36개 패턴</p>
@@ -102,11 +102,11 @@ export default function AdminReviewsPage() {
                   onClick={() => setMode('ai')}
                   className={`flex items-center gap-2.5 p-3.5 rounded-xl border-2 transition-all text-left ${
                     mode === 'ai'
-                      ? 'border-purple-500 bg-purple-50'
+                      ? 'border-brand bg-brand-tint'
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
-                  <Sparkles className={`w-5 h-5 ${mode === 'ai' ? 'text-purple-600' : 'text-gray-400'}`} />
+                  <Sparkles className={`w-5 h-5 ${mode === 'ai' ? 'text-gray-700' : 'text-gray-400'}`} />
                   <div>
                     <p className="text-sm font-bold text-gray-900">AI 생성</p>
                     <p className="text-[11px] text-gray-500">자연스러운 리뷰 · 건당 ~0.05원</p>
@@ -153,12 +153,12 @@ export default function AdminReviewsPage() {
             </div>
 
             {/* 미리보기 */}
-            <div className={`rounded-lg p-4 text-sm ${mode === 'ai' ? 'bg-purple-50 text-purple-700' : 'bg-gray-50 text-gray-600'}`}>
+            <div className={`rounded-lg p-4 text-sm ${mode === 'ai' ? 'border border-rule bg-white text-gray-700' : 'bg-gray-50 text-gray-600'}`}>
               <p><strong>미리보기:</strong></p>
               <p>• 매장: {selected ? (storeLabel(selected) || '매장명 없음') : '미선택'}</p>
               <p>• 상품: {selected?.name || '미선택'}</p>
               <p>• {count}개 리뷰, 평균 {avgRating}점</p>
-              <p>• 방식: {mode === 'ai' ? '🤖 AI (Claude Haiku)' : '📝 템플릿 (36개 패턴)'}</p>
+              <p>• 방식: {mode === 'ai' ? 'AI (Claude Haiku)' : '템플릿 (36개 패턴)'}</p>
               {mode === 'ai' && <p>• 예상 비용: ~{Math.ceil(count / 50 * 2.5)}원</p>}
               {mode === 'ai' && <p>• 상품 정보 기반 맞춤 리뷰 생성</p>}
             </div>
@@ -184,7 +184,7 @@ export default function AdminReviewsPage() {
         </div>
 
         {/* 안내 */}
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700">
+        <div className="bg-white border border-rule rounded-xl p-4 text-sm text-tone-warn">
           <p className="font-bold mb-1">사용 가이드</p>
           <p>• <strong>템플릿:</strong> 무료, 최대 20,000개, 빠름 (36개 패턴 + 별점만 리뷰)</p>
           <p>• <strong>AI:</strong> 유료(건당 ~0.05원), 최대 500개, 상품에 맞는 자연스러운 리뷰</p>

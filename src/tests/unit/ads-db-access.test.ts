@@ -29,11 +29,16 @@ interface Cfg {
   operatorGrant?: boolean
   rowsToday?: number
   cap?: number | null
+  /** 🥕 2026-09-16: 승인 게이트가 생겼다. 이 파일의 주제는 **채널 규칙**이라 기본은 승인으로 둔다. */
+  status?: string | null
 }
 function makeDB(cfg: Cfg) {
   const firstFor = (sql: string, args: unknown[]) => {
     if (sql.includes('seller_meta') && args[1] === ADS_DB_ACCESS_META_KEY) {
       return cfg.override == null ? null : { value: cfg.override }
+    }
+    if (sql.includes('FROM sellers')) {
+      return cfg.status === null ? null : { status: cfg.status ?? 'approved' }
     }
     if (sql.includes("key = 'store_channel'")) return cfg.channel == null ? null : { value: cfg.channel }
     if (sql.includes("role = 'owner'")) return cfg.ownerGrant ? { x: 1 } : null

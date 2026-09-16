@@ -319,6 +319,18 @@ const MAIN_SEED = (() => {
   return { success: true, data: DEALS.map((d, i) => (i === 0 ? { ...d, image_url: data } : d)) }
 })()
 
+/**
+ * 📊 `--analytics` — 셀러 매출 분석(안 C) 시드.
+ *   ⚠️ 플래그가 없으면 기본 폴백(`data: []`)이 떨어져 **"한 번도 판 적 없음"** 화면이 뜬다.
+ *      그게 우연이 아니라 의도다 — 안 C 의 절반은 그 빈 화면이라 기본으로 보이는 편이 낫다.
+ *   계약 출처: `/api/seller/analytics/chart/revenue`(RevenueDataPoint[]) · `/analytics/detailed`.
+ */
+const ANALYTICS_DAYS = [31, 44, 28, 52, 61, 47, 38, 55, 72, 49, 63, 58, 41, 69]
+const ANALYTICS_REVENUE = ANALYTICS_DAYS.map((v, i) => ({
+  date: `2026-08-${String(i + 18).padStart(2, '0')}`, revenue: v * 10000, orders: Math.max(1, Math.round(v / 6)),
+}))
+const ANALYTICS_DETAILED = { conversion_rate: 3.4, repeat_purchase_rate: 28, repeat_buyers: 52, total_buyers: 186 }
+
 function serve() {
   return new Promise((resolve) => {
     const s = http.createServer((req, res) => {
@@ -342,6 +354,14 @@ function serve() {
           if (p === '/api/shipping-addresses') return res.end(JSON.stringify({ success: true, data: [{ id: 1, recipient_name: '정지원', phone: '010-1234-5678', postal_code: '04039', address: '서울 마포구 연남로 21', address_detail: '3층', is_default: 1 }] }))
           if (p === '/api/coupons/my') return res.end(JSON.stringify({ success: true, data: [] }))
           if (p === '/api/payments/client-key') return res.end(JSON.stringify({ success: true, data: { clientKey: 'test_ck_preview' }, clientKey: 'test_ck_preview' }))
+        }
+        if (args.analytics) {
+          if (p === '/api/seller/analytics/detailed') return res.end(JSON.stringify({ success: true, data: ANALYTICS_DETAILED }))
+          if (p.startsWith('/api/seller/analytics/chart/revenue')) {
+            // `--analytics=empty` — 판 적은 있으나 이 기간엔 없음(안 C 의 두 번째 "없음").
+            const rows = args.analytics === 'empty' ? [] : ANALYTICS_REVENUE
+            return res.end(JSON.stringify({ success: true, data: rows }))
+          }
         }
         // 🎬 레일은 홈 어느 경로에서든 뜬다 — 플래그 없이 항상 준다.
         if (p === '/api/urshorts') return res.end(JSON.stringify({ success: true, data: SHORTS_SEED }))

@@ -23,7 +23,7 @@ import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 const STEPS = [
   { icon: Link2, title: '내 유어샵에 담기', desc: '가입하면 내 유어샵(urdeal.kr/u/내핸들)이 이미 있어요. 마음에 든 동네 이용권을 카드의 + 버튼으로 담습니다.' },
   { icon: Handshake, title: '매장과 딜 맺기', desc: '소개 몫이 걸린 이용권은 소개 마켓에서 찾을 수 있어요. 매장이 제안하거나 내가 신청하면, 수락된 순간부터 그 비율이 적용됩니다.' },
-  { icon: Wallet, title: '팔리면 쌓이기', desc: '내 링크로 팔린 건에 대해 매장이 정한 비율만큼 쌓입니다. 최소 10,000원부터 출금(원천징수 3.3% 자동).' },
+  { icon: Wallet, title: '팔리면 쌓이기', desc: '내 링크로 팔린 건에 대해 매장이 정한 비율만큼 쌓입니다. 매월 1일 정산, 현금은 10만원부터 송금(원천징수 3.3% 또는 8.8% 자동). 딜로 받으면 최소 금액이 없습니다.' },
 ] as const
 
 export default function InfluencerLandingPage() {
@@ -75,7 +75,7 @@ export default function InfluencerLandingPage() {
           <h2 className="text-2xl lg:text-3xl font-extrabold text-center mb-10">어떻게 되나요?</h2>
           <div className="space-y-4">
             {STEPS.map((s, i) => (
-              <div key={i} className="bg-white dark:bg-[#11141C] rounded-2xl p-6 border border-gray-200 dark:border-[#2C2F35] flex gap-4">
+              <div key={i} className="bg-surface rounded-2xl p-6 border border-line flex gap-4">
                 <span className="w-11 h-11 shrink-0 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
                   <s.icon className="w-5 h-5" />
                 </span>
@@ -101,14 +101,14 @@ export default function InfluencerLandingPage() {
 
       {/* 매장을 갖고 있다면 */}
       <section className="px-6 lg:px-12 py-16 max-w-4xl mx-auto">
-        <div className="rounded-3xl border border-gray-200 dark:border-[#2C2F35] p-7 lg:p-10 text-center">
+        <div className="rounded-3xl border border-line p-7 lg:p-10 text-center">
           <span className="w-12 h-12 mx-auto rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-[#11141C] flex items-center justify-center mb-4">
             <Store className="w-6 h-6" />
           </span>
           <h2 className="text-xl lg:text-2xl font-extrabold mb-2">내 가게가 있다면 직접 팔 수도 있어요</h2>
           <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed max-w-xl mx-auto mb-6">
             카카오맵에서 우리 가게를 찾아 등록하면 같은 유어샵에서 내 이용권을 직접 팝니다.
-            수수료는 팔린 만큼만 5%입니다. 광고비를 미리 낼 필요가 없어요.
+            수수료는 팔린 만큼만 10%입니다. 광고비를 미리 낼 필요가 없어요.
           </p>
           <button
             onClick={() => navigate('/store/new')}

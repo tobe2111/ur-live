@@ -235,12 +235,14 @@ function KtAlphaVoucherCard({ v, muted, t }: {
 
   return (
     <div
-      className="relative rounded-2xl bg-white dark:bg-[#141414] border border-gray-200 dark:border-[#2C2F35] p-[13px]"
-      style={{ opacity: muted ? 0.55 : 1, boxShadow: muted ? 'none' : '0 1px 3px rgba(0,0,0,0.04)' }}
+      /* 🎨 2026-09-15: 회색 테두리 네모 → 흰 면 + 들림 한 값. 이 카드만 옛 체계(테두리 + 임의 그림자 +
+         체계 밖 카드색)에 남아, 같은 지갑 안에서 티켓 카드와 **모양이 갈렸다**(대표 "AI로 만든 것 같아"). */
+      className={`relative rounded-2xl bg-surface p-[13px] ${muted ? '' : 'shadow-lift'}`}
+      style={{ opacity: muted ? 0.55 : 1 }}
     >
       <div className="flex items-stretch gap-3">
         {/* 썸네일 60px */}
-        <div className="w-[60px] h-[60px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#F7F8FA] to-[#EFF1F4] dark:from-[#1D1F29] dark:to-[#0F0F0F]">
+        <div className="w-[60px] h-[60px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-brand-tint">
           {v.product_image ? (
             <img src={cfImage(v.product_image, { width: 200, quality: 82, format: 'auto' }) || v.product_image} alt={v.product_name} loading="lazy" className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, v.product_image)} />
           ) : (
@@ -254,16 +256,16 @@ function KtAlphaVoucherCard({ v, muted, t }: {
           <div className="flex items-center gap-1.5">
             {sendFailed ? (
               <>
-                <span className="w-[6px] h-[6px] rounded-full shrink-0" style={{ background: '#DC2626' }} aria-hidden />
-                <span className="text-[12px] font-semibold text-red-600 dark:text-red-400">{t('voucher.sendFailedBadge', { defaultValue: '발송 실패' })}</span>
+                <span className="w-[6px] h-[6px] rounded-full shrink-0 bg-tone-bad" aria-hidden />
+                <span className="text-[12px] font-semibold text-tone-bad">{t('voucher.sendFailedBadge', { defaultValue: '발송 실패' })}</span>
               </>
             ) : v.status === 'unused' ? (
               <>
-                <span className="w-[6px] h-[6px] rounded-full shrink-0" style={{ background: '#16A34A' }} aria-hidden />
+                <span className="w-[6px] h-[6px] rounded-full shrink-0 bg-tone-ok" aria-hidden />
                 <span className="text-[12px] font-semibold text-gray-500 dark:text-gray-400">{t('voucher.status.unused', { defaultValue: '사용 가능' })}</span>
               </>
             ) : (
-              <span className="text-[12px] font-semibold" style={{ color: v.status === 'expired' ? '#DC2626' : '#6B7280' }}>{t(`voucher.status.${v.status}`)}</span>
+              <span className={`text-[12px] font-semibold ${v.status === 'expired' ? 'text-tone-bad' : 'text-gray-500 dark:text-gray-400'}`}>{t(`voucher.status.${v.status}`)}</span>
             )}
             <span className="ml-auto shrink-0 inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-bold tracking-wide bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-300">📱 기프티쇼</span>
           </div>
@@ -294,7 +296,7 @@ function KtAlphaVoucherCard({ v, muted, t }: {
           ) : <span />}
           {sendFailed ? (
             <a href="tel:0507-0177-0432" aria-label={t('voucher.contactSupport', { defaultValue: '고객센터 문의 (0507-0177-0432)' })}
-              className="flex items-center gap-1 rounded-xl px-3 py-[9px] border border-gray-200 dark:border-[#2C2F35] text-gray-700 dark:text-gray-200 text-[12px] font-bold active:scale-95 transition-transform whitespace-nowrap">
+              className="flex items-center gap-1 rounded-xl px-3 py-[9px] border border-rule-strong text-gray-700 dark:text-gray-200 text-[12px] font-bold active:scale-95 transition-transform whitespace-nowrap">
               {t('voucher.contactSupportShort', { defaultValue: '고객센터' })}
             </a>
           ) : (
@@ -307,7 +309,7 @@ function KtAlphaVoucherCard({ v, muted, t }: {
 
       {/* PIN 모드 인앱 바코드 — 하단 (매장 제시용) */}
       {hasBarcode && (
-        <div className="mt-3 px-3 py-3 rounded-xl bg-gray-50 dark:bg-[#11141C] border border-gray-100 dark:border-[#2C2F35] flex flex-col items-center gap-1.5">
+        <div className="mt-3 px-3 py-3 rounded-xl bg-warm border border-gray-100 dark:border-[#2C2F35] flex flex-col items-center gap-1.5">
           <Barcode value={v.kt_pin as string} />
           <span className="text-[12px] font-mono font-bold tracking-[0.15em] text-gray-900 dark:text-white">{v.kt_pin}</span>
         </div>

@@ -485,7 +485,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
               <ChevronDown className={`w-4 h-4 transition-transform ${showSortDropdown ? 'rotate-180' : ''}`} />
             </button>
             {showSortDropdown && (
-              <div className="absolute top-full right-0 mt-1 w-32 bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] rounded-xl shadow-lg z-30 overflow-hidden">
+              <div className="absolute top-full right-0 mt-1 w-32 bg-surface border border-line rounded-xl shadow-lg z-30 overflow-hidden">
                 {(Object.keys(SORT_LABELS) as SortOption[]).map(opt => (
                   <button
                     key={opt}
@@ -530,7 +530,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
 
         {/* 지도 뷰 (이용권 카테고리일 때) */}
         {isMealVoucher && mapView && (
-          <div className="mb-4 rounded-xl overflow-hidden border border-gray-200 dark:border-[#2C2F35]">
+          <div className="mb-4 rounded-xl overflow-hidden border border-line">
             <div ref={mapContainerRef} className="w-full h-[400px] bg-gray-100 dark:bg-[#1D1F29]" />
           </div>
         )}
@@ -582,7 +582,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
                   if (showCount < sorted.length) setShowCount(c => c + ITEMS_PER_PAGE)
                   else if (hasMore && !loadingMore) { const n = page + 1; setPage(n); loadProducts(n, false) }
                 }}
-                  className="px-8 py-3 border border-gray-200 dark:border-[#2C2F35] rounded-full text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1D1F29]">
+                  className="px-8 py-3 border border-line rounded-full text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1D1F29]">
                   더보기 ({sorted.length - showCount}개 남음)
                 </button>
               </div>

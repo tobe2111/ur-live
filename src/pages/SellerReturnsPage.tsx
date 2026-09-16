@@ -149,7 +149,7 @@ export default function SellerReturnsPage() {
             {rows.map((r) => {
               const st = STATUS_STYLE[r.status] ?? { label: r.status, cls: 'text-[#8A8288] bg-[#F1EDEF]' }
               return (
-                <li key={r.id} className="bg-white border border-[#EAE5E7] rounded-2xl p-4">
+                <li key={r.id} className="bg-white border border-[#EAE5E7] rounded-[var(--dash-radius,16px)] p-4">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-[11.5px] font-bold text-[#8A8288] tracking-[0.01em]">#{r.order_id}</span>
                     <span className={`shrink-0 text-[10.5px] font-extrabold px-[7px] py-1 rounded-md tracking-[-0.02em] ${st.cls}`}>

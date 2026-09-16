@@ -657,7 +657,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             requestNearMe={requestNearMe}
             voucherType={voucherType}
             setVoucherType={selectVoucherType}
-            filteredCount={!needsAll && !search ? (feedTotal ?? displayList.length) : filtered.length}
+            filteredCount={loading && displayList.length === 0 ? null : (!needsAll && !search ? (feedTotal ?? displayList.length) : filtered.length)}
             userLoc={userLoc}
             sortBy={sortBy}
             setSortBy={chooseSort}
@@ -796,7 +796,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
            도킹(top:0 + bottom-0 = 풀높이, 드래그/transform 무효). 모바일(<lg)은 기존 3-snap 드래그 시트 그대로. */
         <div
           ref={sheetRef}
-          className="absolute left-0 right-0 bottom-0 z-30 bg-white dark:bg-[#11141C] rounded-t-3xl shadow-[0_-4px_24px_rgba(0,0,0,0.08)] flex flex-col lg:top-0 lg:w-[400px] lg:right-auto lg:rounded-none lg:shadow-none lg:border-r lg:border-gray-100 dark:lg:border-[#2C2F35]"
+          className="absolute left-0 right-0 bottom-0 z-30 bg-surface rounded-t-3xl shadow-[0_-4px_24px_rgba(0,0,0,0.08)] flex flex-col lg:top-0 lg:w-[400px] lg:right-auto lg:rounded-none lg:shadow-none lg:border-r lg:border-gray-100 dark:lg:border-[#2C2F35]"
           style={isLgViewport ? { top: 0 } : {
             // H2: top 은 full 위치 고정 — snap 이동/드래그는 전부 transform(컴포지터 전용). 드래그 중엔
             //   useSheetDrag 가 rAF 로 DOM transform 을 직접 갱신(transform 문자열이 안 바뀌어 React 무간섭).
@@ -834,7 +834,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             requestNearMe={requestNearMe}
             voucherType={voucherType}
             setVoucherType={setVoucherType}
-            filteredCount={!needsAll && !search ? (feedTotal ?? displayList.length) : displayList.length}
+            filteredCount={loading && displayList.length === 0 ? null : (!needsAll && !search ? (feedTotal ?? displayList.length) : displayList.length)}
             viewportCount={viewportInCount}
             regionLabel={viewportRegion}
             userLoc={userLoc}

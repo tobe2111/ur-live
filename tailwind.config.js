@@ -100,7 +100,13 @@ export default {
           soft: '#6E6B68',     // 보조 텍스트 (중성 그레이)
           faint: '#8A8580',    // 비활성/플레이스홀더
         },
-        surface: '#FFFFFF',
+        /* 🎨 2026-09-15 (대표 "색 정리도 진행해줘") — 표면·구분선·바탕을 **테마 변수**로.
+           그전엔 고정 hex 라 다크 값을 화면마다 `dark:bg-[#1D1F29]` 처럼 손으로 적어야 했고,
+           실측 결과 소비자 화면에 그 hex 가 **1,868 짝**으로 흩어져 있었다(같은 값을 1,776번 재입력).
+           변수를 가리키면 `bg-surface` 한 클래스가 두 테마를 다 덮는다.
+           ⚠️ 라이트 고정 스코프(대시보드·light-island)는 index.css 에서 이 셋을 라이트 값으로
+              되박는다 — 그 목록에 `.seller-light-theme` 를 같은 커밋에서 추가했다. */
+        surface: 'var(--surface)',
         /* 🚦 2026-09-03 상태 색 — 아래 MONO 중화를 **통과하지 않는** 유일한 의미 색 집합.
            대시보드 상태 배지(대기/완료/반려)가 중화 뒤 같은 회색이 되던 실측 결함의 수리.
            값·이유·라이트 되박기는 `src/index.css` 의 `--tone-*` 주석 참조.
@@ -111,10 +117,10 @@ export default {
           bad: { DEFAULT: 'var(--tone-bad)', bg: 'var(--tone-bad-bg)' },
           info: { DEFAULT: 'var(--tone-info)', bg: 'var(--tone-info-bg)' },
         },
-        line: '#EAE4E0',
+        line: 'var(--line)',
         // 🎫 2026-09-02 표면 체계 — 카드 안 구분선·outline 테두리는 이 둘로만(테마별 값은 index.css).
         rule: { DEFAULT: 'var(--rule)', strong: 'var(--rule-strong)' },
-        warm: '#F8F7FC',       // 페이지 배경(웜 화이트)
+        warm: 'var(--bg)',     // 페이지 배경 — 라이트 #F8F7FC / 다크 #11141C (index.css)
         // 🎨 gray → 잉크 스케일 리매핑(위 INK 주석 참조). 클래스명 무변 — 값만 브랜드 정렬.
         gray: INK,
         // 🖤 전 장식 색조 → 잉크 스케일 중화. `red` 만 제외(기능 빨강). (2026-06-19 흑백 결정의 웜 승계)

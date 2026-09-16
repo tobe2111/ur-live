@@ -19,6 +19,7 @@ import { EmptyVouchers } from './my-vouchers/WalletEmpty'
 import BrandLoader from '@/components/brand/BrandLoader'
 import PostJoinShareModal from './my-vouchers/PostJoinShareModal'
 import VoucherTicket from './my-vouchers/VoucherTicket'
+import WalletRow from './my-vouchers/WalletRow'
 import QRModal from './my-vouchers/QRModal'
 import { isStoreVoucher } from '@/shared/voucher-wallet'
 import AddToHomeHint from '@/components/AddToHomeHint'
@@ -203,10 +204,10 @@ export default function MyVouchersPage() {
                       key={v.id}
                       type="button"
                       onClick={() => setMapSelected(v)}
-                      className={`snap-start shrink-0 w-[80%] max-w-[300px] flex items-center gap-3 rounded-2xl bg-white dark:bg-[#141414] border p-3 text-left transition-colors ${selected ? 'border-gray-900 dark:border-white' : 'border-gray-200 dark:border-[#2C2F35]'}`}
+                      className={`snap-start shrink-0 w-[80%] max-w-[300px] flex items-center gap-3 rounded-2xl bg-surface shadow-lift p-3 text-left transition-colors ${selected ? 'ring-2 ring-brand' : ''}`}
                       style={{ boxShadow: '0 8px 28px rgba(10,10,10,0.18)' }}
                     >
-                      <div className="w-[52px] h-[52px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#F7F8FA] to-[#EFF1F4] dark:from-[#1D1F29] dark:to-[#0F0F0F] ring-1 ring-gray-100 dark:ring-white/10">
+                      <div className="w-[52px] h-[52px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-brand-tint">
                         {v.product_image
                           ? <img src={cfImage(v.product_image, { width: 200, quality: 82, format: 'auto' }) || v.product_image} alt="" loading="lazy" className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, v.product_image)} />
                           : <Ticket className="w-5 h-5 text-gray-300 dark:text-gray-600" strokeWidth={1.5} />}
@@ -325,8 +326,18 @@ export default function MyVouchersPage() {
                   ? unusedItems.filter((v) => v.expires_at && (safeTime(v.expires_at) - Date.now()) <= 7 * 86400000)
                   : unusedItems
                 return shown.length > 0 ? (
+                  /* 🎫 2026-09-15 (대표 확정 "안 E"): **가장 급한 한 장만 펴고 나머지는 한 줄씩**.
+                     종전엔 가진 이용권을 전부 펼친 티켓으로 그려, 3장이면 스크롤 한 번이고 8장이면
+                     "내가 뭘 갖고 있나" 를 훑는 데만 네 번을 내려야 했다. `unusedItems` 는 이미
+                     **만료 가까운 순**으로 정렬돼 있어(윗쪽 sort) `shown[0]` 이 곧 '지금 쓸 것'이다.
+                     ⚠️ 접기이지 삭제가 아니다 — 줄을 누르면 종전과 **같은 QR 모달**이 열린다. */
                   <div className="space-y-3">
-                    {shown.map(v => <VoucherTicket key={v.id} v={v} muted={false} locale={locale} t={t} onShowQr={() => setQrVoucher(v)} />)}
+                    <VoucherTicket key={shown[0].id} v={shown[0]} muted={false} locale={locale} t={t} onShowQr={() => setQrVoucher(shown[0])} />
+                    {shown.length > 1 && (
+                      <div className="overflow-hidden rounded-2xl bg-surface shadow-lift divide-y divide-rule">
+                        {shown.slice(1).map(v => <WalletRow key={v.id} v={v} t={t} onOpen={() => setQrVoucher(v)} />)}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <p className="py-8 text-center text-[13px] text-gray-400 dark:text-gray-500">{chip === 'soon' ? t('voucher.noSoon', { defaultValue: '7일 안에 만료되는 이용권이 없어요' }) : t('voucher.noUnused', { defaultValue: '사용 가능한 이용권이 없어요' })}</p>

@@ -32,7 +32,7 @@ export default function FeaturedCard({ product, to, eyebrow }: { product: Produc
         />
       )}
       {/* 하단 어둡게 — 텍스트 가독(2단 그라데이션: 하단 짙게 + 중간 부드럽게 이어짐, 음식 중앙은 밝게 유지)
-          📐 2026-08-17 (UX 전수검사 P1): 밝은 사진(콜라주 등)에서 제목이 묻힘 — 중간 구간 농도 보강(.40→.58). */}
+          2026-08-17 (UX 전수검사 P1): 밝은 사진(콜라주 등)에서 제목이 묻힘 — 중간 구간 농도 보강(.40→.58). */}
       <div className="absolute inset-0" style={{ background: 'linear-gradient(0deg, rgba(6,6,10,.88) 0%, rgba(6,6,10,.58) 32%, rgba(6,6,10,.12) 58%, transparent 76%)' }} />
       {disc > 0 && (
         /* 🎨 2026-09-03: 하드코딩 오렌지 `#DE5F27` → 브랜드. 이 색은 어느 팔레트에도 없어서

@@ -57,21 +57,21 @@ export default function SellerVoucherOrdersPage() {
     <SellerLayout title="발송 교환권">
       <div className="mx-auto max-w-5xl space-y-5">
         <DashboardPageHeader
-          title="🎁 발송한 교환권 이력"
+          title="발송한 교환권 이력"
           subtitle="적립금으로 받은 기프티쇼 교환권 — 발송된 휴대폰으로 MMS 도착"
           icon={<Gift className="h-5 w-5" />}
         />
 
         {/* KPI */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+          <div className="bg-white rounded-xl p-4 border border-gray-100">
             <p className="text-xs text-gray-500 font-medium">발송 성공</p>
-            <p className="text-2xl font-extrabold text-gray-900 mt-1">{totalSent}건</p>
+            <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900 mt-1">{totalSent}건</p>
             <p className="text-[10px] text-gray-400">전체 {orders.length}건</p>
           </div>
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+          <div className="bg-white rounded-xl p-4 border border-gray-100">
             <p className="text-xs text-gray-500 font-medium">누적 차감액</p>
-            <p className="text-2xl font-extrabold text-brand-text mt-1">₩{totalAmount.toLocaleString()}</p>
+            <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900 mt-1">₩{totalAmount.toLocaleString()}</p>
             <p className="text-[10px] text-gray-400">발송 성공 건 기준</p>
           </div>
         </div>
@@ -92,11 +92,11 @@ export default function SellerVoucherOrdersPage() {
             <p className="text-sm text-gray-500 mb-4">아직 발송한 교환권이 없습니다</p>
             <button onClick={() => navigate('/seller/settlements')}
               className="ur-btn ur-btn-md ur-btn-primary">
-              🎁 정산 페이지에서 교환권 받기 →
+              정산 페이지에서 교환권 받기
             </button>
           </div>
         ) : (
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[800px]">
                 <thead>
@@ -137,7 +137,7 @@ export default function SellerVoucherOrdersPage() {
                             {st.icon} {st.label}
                           </span>
                           {o.status === 'failed' && o.failure_reason && (
-                            <p className="text-[10px] text-red-600 mt-1 max-w-[200px] truncate" title={o.failure_reason}>
+                            <p className="text-[10px] text-tone-bad mt-1 max-w-[200px] truncate" title={o.failure_reason}>
                               {o.failure_reason}
                             </p>
                           )}
@@ -160,7 +160,7 @@ export default function SellerVoucherOrdersPage() {
           </div>
         )}
 
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-[11px] text-blue-900">
+        <div className="bg-white border border-rule rounded-xl p-3 text-[11px] text-gray-700">
           ℹ️ 발송된 교환권은 MMS 로 받는 휴대폰에 도착합니다. 발송 후 환불 / 취소는 불가능합니다.
           매장에서 사용 시 코드 또는 바코드를 제시해주세요.
         </div>

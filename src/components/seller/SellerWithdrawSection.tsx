@@ -10,7 +10,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { logoutSeller } from '@/lib/seller-auth'
-import { AlertTriangle, Loader2 } from 'lucide-react'
+import { AlertTriangle, Loader2, X } from 'lucide-react'
 
 interface Blockers {
   pending_orders: number
@@ -67,17 +67,17 @@ export default function SellerWithdrawSection() {
     <>
       <div className="pt-4 mt-2 border-t border-gray-100 flex items-center justify-between">
         <p className="text-[11px] text-gray-400">더 이상 유어딜에서 판매하지 않으시나요?</p>
-        <button onClick={openModal} className="text-[11px] font-semibold text-gray-400 hover:text-red-600 underline underline-offset-2">
+        <button onClick={openModal} className="text-[11px] font-semibold text-gray-400 hover:text-brand-text underline underline-offset-2">
           셀러 탈퇴
         </button>
       </div>
 
       {open && (
         <div className="fixed inset-0 z-[10500] flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4" onClick={() => !submitting && setOpen(false)}>
-          <div className="w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl max-h-[92dvh] flex flex-col" onClick={e => e.stopPropagation()}>
+          <div className="w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)] max-h-[92dvh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between shrink-0">
               <h2 className="text-sm font-bold text-gray-900">셀러 탈퇴</h2>
-              <button onClick={() => !submitting && setOpen(false)} className="text-gray-400 text-sm px-2">✕</button>
+              <button onClick={() => !submitting && setOpen(false)} aria-label="닫기" className="ur-btn ur-btn-sm ur-btn-icon ur-btn-ghost"><X className="h-4 w-4" /></button>
             </div>
 
             <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
@@ -85,16 +85,16 @@ export default function SellerWithdrawSection() {
                 <div className="py-10 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-gray-400" /></div>
               ) : rows.length > 0 ? (
                 <>
-                  <div className="rounded-xl bg-amber-50 border border-amber-200 p-3">
-                    <p className="text-[13px] font-bold text-amber-900 flex items-center gap-1.5">
+                  <div className="rounded-xl bg-white border border-rule p-3">
+                    <p className="text-[13px] font-bold text-tone-warn flex items-center gap-1.5">
                       <AlertTriangle className="w-4 h-4" /> 아직 탈퇴할 수 없어요
                     </p>
-                    <p className="text-[11px] text-amber-800 mt-1">아래 항목을 먼저 정리해 주세요.</p>
+                    <p className="text-[11px] text-tone-warn mt-1">아래 항목을 먼저 정리해 주세요.</p>
                   </div>
                   {rows.map(r => (
                     <div key={r.label} className="rounded-xl border border-gray-200 p-3">
                       <p className="text-[13px] font-bold text-gray-900">
-                        {r.label} <span className="text-red-600">{r.money ? `₩${r.n.toLocaleString()}` : `${r.n}건`}</span>
+                        {r.label} <span className="text-tone-bad">{r.money ? `₩${r.n.toLocaleString()}` : `${r.n}건`}</span>
                       </p>
                       <p className="text-[11px] text-gray-500 mt-0.5 leading-relaxed">{r.hint}</p>
                     </div>
@@ -102,9 +102,9 @@ export default function SellerWithdrawSection() {
                 </>
               ) : (
                 <>
-                  <div className="rounded-xl bg-red-50 border border-red-200 p-3">
-                    <p className="text-[13px] font-bold text-red-800">탈퇴하면 이렇게 됩니다</p>
-                    <ul className="text-[11px] text-red-700 mt-1.5 space-y-1 list-disc list-inside leading-relaxed">
+                  <div className="rounded-xl bg-white border border-rule p-3">
+                    <p className="text-[13px] font-bold text-tone-bad">탈퇴하면 이렇게 됩니다</p>
+                    <ul className="text-[11px] text-tone-bad mt-1.5 space-y-1 list-disc list-inside leading-relaxed">
                       <li>등록한 상품·이용권이 <b>모두 노출 중단</b>됩니다{blockers && blockers.active_products > 0 ? ` (현재 ${blockers.active_products}개)` : ''}</li>
                       <li>매장이 정지되고 셀러 대시보드에서 <b>로그아웃</b>됩니다</li>
                       <li>운영자에게 준 <b>매장 권한이 회수</b>됩니다</li>
@@ -119,7 +119,7 @@ export default function SellerWithdrawSection() {
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1">
-                      확인을 위해 <span className="text-red-600 font-extrabold">탈퇴합니다</span> 를 입력해 주세요
+                      확인을 위해 <span className="text-tone-bad font-extrabold">탈퇴합니다</span> 를 입력해 주세요
                     </label>
                     <input value={typed} onChange={e => setTyped(e.target.value)} placeholder="탈퇴합니다"
                       className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400" />

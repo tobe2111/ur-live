@@ -134,7 +134,7 @@ export default function YouTubeCallbackPage() {
                     ) : i === loadingStep ? (
                       <Loader2 className="w-4 h-4 text-brand animate-spin" />
                     ) : (
-                      <span className="w-4 h-4 rounded-full border-2 border-gray-200 dark:border-[#2C2F35] block" />
+                      <span className="w-4 h-4 rounded-full border-2 border-line block" />
                     )}
                   </div>
                   {/* 🛡️ 2026-05-14: 진행 안 한 단계 text-[#c7c7cc] (RGB 199) 너무 흐림 → 가독성 보강 (gray-500). */}

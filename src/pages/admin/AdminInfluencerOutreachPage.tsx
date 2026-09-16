@@ -71,7 +71,7 @@ export default function AdminInfluencerOutreachPage() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+        <div className="bg-white border border-rule rounded-lg p-3 text-sm text-tone-bad">
           목록을 불러오지 못했어요. <button className="underline" onClick={load}>다시 시도</button>
         </div>
       )}
@@ -94,16 +94,16 @@ export default function AdminInfluencerOutreachPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <span className={`text-xs px-2 py-0.5 rounded-full ${r.status === 'submitted' ? 'bg-amber-100 text-amber-800' : r.status === 'sent' ? 'bg-green-100 text-green-700' : r.status === 'rejected' ? 'bg-gray-200 text-gray-500' : 'bg-blue-100 text-blue-700'}`}>
+                <span className={`text-xs px-2 py-0.5 rounded-full ${r.status === 'submitted' ? 'bg-tone-warn-bg text-tone-warn' : r.status === 'sent' ? 'bg-tone-ok-bg text-tone-ok' : r.status === 'rejected' ? 'bg-gray-200 text-gray-500' : 'bg-tone-info-bg text-tone-info'}`}>
                   {STATUS_LABEL[r.status] || r.status}
                 </span>
                 <button className="text-xs px-2 py-1 rounded border border-gray-300 text-gray-700" onClick={() => openDetail(r.id)}>타깃 보기</button>
                 {r.status === 'submitted' && (
                   <>
                     {/* 📮 시스템 발송 — 드립 큐(일일 한도·수신거부·쿨다운은 서버가 강제) */}
-                    <button className="text-xs px-2 py-1 rounded bg-gray-900 text-white disabled:opacity-50" disabled={sending === r.id} onClick={() => startSend(r.id)}>{sending === r.id ? '적재 중…' : '이메일 발송 시작'}</button>
+                    <button className="ur-btn ur-btn-sm ur-btn-primary rounded disabled:opacity-50" disabled={sending === r.id} onClick={() => startSend(r.id)}>{sending === r.id ? '적재 중…' : '이메일 발송 시작'}</button>
                     <button className="text-xs px-2 py-1 rounded border border-gray-300 text-gray-700" onClick={() => setStatus(r.id, 'sent')}>수동 발송 완료로</button>
-                    <button className="text-xs px-2 py-1 rounded border border-red-300 text-red-600" onClick={() => setStatus(r.id, 'rejected')}>반려</button>
+                    <button className="text-xs px-2 py-1 rounded border border-transparent text-tone-bad" onClick={() => setStatus(r.id, 'rejected')}>반려</button>
                   </>
                 )}
               </div>
@@ -133,10 +133,10 @@ export default function AdminInfluencerOutreachPage() {
                             <td className="py-1.5 pr-2 text-gray-700">{(t.subscriber_count || 0).toLocaleString()}</td>
                             <td className="py-1.5 pr-2">
                               {t.accept_url ? (
-                                <button className="text-blue-600 underline" onClick={() => navigator.clipboard?.writeText(t.accept_url!).catch(() => {})}>복사</button>
+                                <button className="text-brand-text underline" onClick={() => navigator.clipboard?.writeText(t.accept_url!).catch(() => {})}>복사</button>
                               ) : '—'}
                             </td>
-                            <td className="py-1.5">{t.invite_status === 'accepted' ? <span className="text-green-600 font-semibold">수락됨</span> : '대기'}</td>
+                            <td className="py-1.5">{t.invite_status === 'accepted' ? <span className="text-tone-ok font-semibold">수락됨</span> : '대기'}</td>
                           </tr>
                         ))}
                       </tbody>

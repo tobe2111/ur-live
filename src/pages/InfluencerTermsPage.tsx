@@ -27,7 +27,7 @@ export default function InfluencerTermsPage() {
       </div>
 
       <div className="ur-content-medium px-5 pt-6 prose prose-sm max-w-none dark:prose-invert">
-        <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-6">최종 수정일: 2026년 5월 16일 (초안 — 법무 검토 전)</p>
+        <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-6">최종 수정일: 2026년 9월 15일 (초안, 법무 검토 전)</p>
 
         <h2 className="text-lg font-bold mt-4 mb-2">제1조 (목적)</h2>
         <p className="text-sm">본 약관은 유어딜 (이하 "회사") 의 인플루언서 referral 프로그램 (이하 "프로그램") 에 참여하는 회원 (이하 "인플루언서") 의 권리·의무 및 정산 절차를 규정함을 목적으로 합니다.</p>
@@ -41,18 +41,17 @@ export default function InfluencerTermsPage() {
 
         <h2 className="text-lg font-bold mt-6 mb-2">제3조 (Commission 정책)</h2>
         <ul className="text-sm list-disc pl-5 space-y-1">
-          <li>기본 commission: 매출의 <strong>0.5%</strong> (회사 정책에 따라 변경 가능, 어드민 설정 페이지 참조).</li>
-          <li>매장 영입 보너스: 인플이 새 매장을 가입시킨 경우 그 매장의 <strong>가입 후 6개월간</strong> commission 에 <strong>추가 1%</strong>.</li>
-          <li>협업 deal: 매장과 별도 합의 시 우대 commission 가능. 단 모든 합산 최대 <strong>2% cap</strong>.</li>
-          <li>사용자 referral 보너스 0.5% 는 인플과 별개로 사용자에게 직접 지급됩니다.</li>
+          <li>딜 소개비: 매장이 딜마다 정한 비율(이용권 판매가 기준)을 매장이 부담합니다. 회사는 비율의 상한을 두지 않으며, 비율은 이용권 상세 화면에 표시됩니다. <strong>매장과 맺은 딜이 없는 이용권은 소개해도 적립되지 않습니다.</strong></li>
+          <li>소개비는 결제 후 환불 가능 기간(7일)이 지나야 확정되며, 확정 전 환불된 주문은 적립에서 제외됩니다.</li>
+          <li>사용자 친구 추천 보너스는 별도 프로그램이며 현재 운영하지 않습니다.</li>
         </ul>
 
         <h2 className="text-lg font-bold mt-6 mb-2">제4조 (정산 방식)</h2>
         <p className="text-sm">인플루언서는 다음 두 가지 정산 방식 중 선택할 수 있습니다.</p>
         <ul className="text-sm list-disc pl-5 space-y-1">
-          <li><strong>현금 송금</strong>: 매월 정해진 날짜에 원천징수 후 등록 계좌로 입금. 사업자번호 보유 시 사업소득 3.3%, 미보유 시 기타소득 8.8%.</li>
-          <li><strong>딜 포인트 (+20% 보너스)</strong>: 즉시 유어딜 user_points 적립. <strong>현금 환불 불가</strong>, 양도 불가, 유어딜 결제 전용.</li>
-          <li>최소 송금액 미달 시 다음 정산 주기로 누적됩니다 (default 10만원, 어드민 조정 가능).</li>
+          <li><strong>현금 송금</strong>: 매월 1일 확정 잔액을 원천징수 후 등록 계좌로 입금합니다. 사업자번호 보유 시 사업소득 3.3%, 미보유 시 기타소득 8.8%.</li>
+          <li><strong>딜 포인트</strong>: 확정 즉시 유어딜 딜로 적립(보너스 비율은 어드민 설정, 현재 0%). <strong>현금 환불 불가</strong>, 양도 불가, 유어딜 결제 전용. 딜 수령에는 최소 금액이 없습니다.</li>
+          <li>현금 송금은 확정 잔액 10만원부터이며(어드민 조정 가능), 미달 시 다음 달로 누적됩니다.</li>
         </ul>
 
         <h2 className="text-lg font-bold mt-6 mb-2">제5조 (Clawback — 부당 commission 회수)</h2>

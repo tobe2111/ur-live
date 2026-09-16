@@ -14,7 +14,7 @@ import { AlertCircle, Plus, Ticket } from 'lucide-react'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SellerLayout from '@/components/SellerLayout'
 import BrandLoader from '@/components/brand/BrandLoader'
-import { SELLER_TABBAR_H } from '@/components/seller-layout/SellerBottomTabs'
+import SellerBottomBar from '@/components/seller-layout/SellerBottomBar'
 import { GB_ENGINE_ENABLED } from '@/shared/feature-flags'
 import { formatNumber, formatWon, safeNum } from '@/utils/format'
 import { useSellerStats, useSellerVouchers, useSellerDeletedVouchers, useSellerWithdrawable, monthRevenue } from './seller-page/useSellerHome'
@@ -111,7 +111,7 @@ export default function SellerGroupBuyPage() {
         )}
 
         {/* ── 행 목록 ── */}
-        <div className="overflow-hidden rounded-2xl border border-rule bg-white">
+        <div className="overflow-hidden rounded-[var(--dash-radius,16px)] border border-rule bg-white">
           {/* 삭제분 행은 [사진 · 이름 · 복구] 한 줄이라 이 표 머리와 칸이 안 맞는다 — 그 세그먼트에선 안 그린다. */}
           <div className={`${seg === 'deleted' ? 'hidden' : 'hidden md:grid'} grid-cols-[56px_minmax(0,1.6fr)_1fr_.7fr_1fr_60px_90px] gap-4 border-b border-rule px-5 py-2.5 text-[11.5px] font-bold text-gray-400`}>
             <span /><span>{t('seller.tab.vouchers', { defaultValue: '이용권' })}</span><span>{t('seller.vouchers.price', { defaultValue: '가격' })}</span><span>{t('seller.vouchers.sold', { defaultValue: '판매' })}</span><span>{t('seller.sales')}</span><span>{t('seller.vouchers.onSaleShort', { defaultValue: '판매' })}</span><span />
@@ -134,11 +134,13 @@ export default function SellerGroupBuyPage() {
           ))}
         </div>
 
-        {/* 📱 폰: 하단 탭 바로 위에 고정 등록 버튼 — 스크롤 어디서든 한 번에. spacer 가 마지막 행을 가리지 않게 한다. */}
-        <div className="md:hidden" aria-hidden style={{ height: 64 }} />
-        <div className="fixed inset-x-0 z-[40] px-4 pb-3 pt-2 md:hidden" style={{ bottom: `calc(${SELLER_TABBAR_H}px + env(safe-area-inset-bottom))`, background: 'linear-gradient(180deg, rgba(248,247,252,0), #F8F7FC 40%)' }}>
-          {registerBtn('ur-btn ur-btn-lg ur-btn-primary w-full')}
-        </div>
+        {/* 📱 폰: 하단 탭 바로 위에 고정 등록 버튼 — 스크롤 어디서든 한 번에.
+            ⚠️ 이용권이 **한 장도 없을 때는 안 그린다**(2026-09-15 대표 신고 "버튼들이 겹치는 경우도 있고"):
+            그때는 빈 상태 카드가 이미 가운데에 같은 버튼을 세우고 있어, 한 화면에 [이용권 등록]이 둘이 된다.
+            고정 바의 쓸모는 "목록이 길어도 스크롤 없이 누른다" 인데 목록이 비면 그 쓸모 자체가 없다. */}
+        {products.length > 0 && (
+          <SellerBottomBar>{registerBtn('ur-btn ur-btn-lg ur-btn-primary w-full')}</SellerBottomBar>
+        )}
       </div>
     </SellerLayout>
   )

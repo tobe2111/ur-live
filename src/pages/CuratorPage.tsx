@@ -311,7 +311,7 @@ export default function CuratorPage() {
             기능(미리보기/순서/인라인 편집)은 전부 보존. design: docs/design/linkshop-edit-declutter.md */}
         {ownerView && pins.length > 0 && !reorderMode && (
           <div className="max-w-3xl mx-auto px-4 pt-3">
-            <div className="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-gray-50 dark:bg-[#0E0E0E] px-2.5 py-1.5">
+            <div className="flex items-center gap-2 rounded-xl border border-line bg-gray-50 dark:bg-[#0E0E0E] px-2.5 py-1.5">
               <span className="flex items-center gap-1.5 mr-auto pl-1 text-[12px] font-bold text-gray-500 dark:text-gray-400">
                 <Pencil className="w-3.5 h-3.5 text-gray-400" aria-hidden="true" />
                 {t('curator.editMode', { defaultValue: '편집 모드' })}
@@ -339,7 +339,7 @@ export default function CuratorPage() {
             **빈 유어샵일수록** 뭘 해야 하는지가 필요하고, 그때 보이는 건 "적립 ₩0" 뿐이었다. */}
         {ownerView && !reorderMode && (
           <Suspense fallback={null}>
-            <EarnLadder curatorId={curator.id} dealCount={dealPins.length} pinCount={pins.length} />
+            <EarnLadder dealCount={dealPins.length} pinCount={pins.length} />
           </Suspense>
         )}
         {/* 🏁 2026-06-18 (사용자 결정 — 사업자 진입 "상태별 직접 노출"): 오너 화면에 판매 진입 CTA
@@ -372,7 +372,7 @@ export default function CuratorPage() {
             {/* 🔍 2026-06-16 유어샵 시안: 검색창 — 상품명 + 추천 코멘트 라이브 필터(SEARCH_MIN_PINS 이상일 때만). */}
             {pins.length >= SEARCH_MIN_PINS && (
               <div className="max-w-3xl mx-auto px-4 pt-3 pb-1">
-                <div className="flex items-center gap-2 h-11 px-3.5 rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-gray-50 dark:bg-[#1D1F29]">
+                <div className="flex items-center gap-2 h-11 px-3.5 rounded-xl border border-line bg-gray-50 dark:bg-[#1D1F29]">
                   <Search className="w-4 h-4 text-gray-400 shrink-0" />
                   <input
                     value={query}
@@ -462,7 +462,7 @@ function PinGrid({ pins, handle, isOwner, onPinDeleted, kind }: { pins: CuratorP
       {isOwner && (
         <Link
           to={addTo}
-          className="col-span-2 flex items-center justify-center gap-2 h-[52px] rounded-xl border-[1.5px] border-dashed border-rule-strong bg-white dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400 text-sm font-bold active:scale-[0.99] transition-transform"
+          className="col-span-2 flex items-center justify-center gap-2 h-[52px] rounded-xl border-[1.5px] border-dashed border-rule-strong bg-surface text-gray-500 dark:text-gray-400 text-sm font-bold active:scale-[0.99] transition-transform"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
           {addLabel}
@@ -539,7 +539,9 @@ function PinCard({ pin, handle, isOwner, aboveFold, index, onDeleted }: { pin: C
              (할인은 2026-08-31 에 좌하단으로 내려가 이제 자리도 안 겹친다).
           🎫 2026-09-02 (대표 확정 안3/안P1 공통 — "순번 배지 흰 원 + 잉크 숫자"): 잉크 사각 칩 → 흰 원.
              사진 위 유일한 표식이라 흰 원 하나가 어떤 사진 위에서도 읽힌다(잉크 칩은 어두운 사진에서 묻혔다). */}
-      <span className="absolute top-2 left-2 z-10 w-6 h-6 rounded-full bg-white text-[#16181C] text-[11.5px] font-black tabular-nums flex items-center justify-center shadow-lift pointer-events-none">
+      {/* 사진 위 순번 배지(2026-09-02 대표 확정 "흰 원 + 잉크 숫자"). 뒤가 늘 사진이라 테마와 무관하게
+                  흰 원이어야 어떤 사진에서도 읽힌다 — dark: 를 달면 어두운 사진 위에서 사라진다. */}
+                <span className="absolute top-2 left-2 z-10 w-6 h-6 rounded-full bg-white text-[#16181C] text-[11.5px] font-black tabular-nums flex items-center justify-center shadow-lift pointer-events-none">  {/* light-fixed: 사진 위 */}
         {index + 1}
       </span>
       {isOwner && (

@@ -11,7 +11,7 @@ import { formatNumber } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import {
   Users, Search, ChevronDown, ChevronUp,
-  Loader2, ChevronLeft, ChevronRight
+  Loader2, ChevronLeft, ChevronRight, X
 } from 'lucide-react'
 
 // NOTE: users 테이블에는 deal_balance, status 컬럼이 존재하지 않습니다.
@@ -112,7 +112,7 @@ export default function AdminUsersPage() {
     const active = sort === k
     return (
       <button onClick={() => handleSort(k)}
-        className={`flex items-center gap-1 font-semibold ${active ? 'text-blue-700' : 'text-gray-700 hover:text-gray-900'}`}>
+        className={`flex items-center gap-1 font-semibold ${active ? 'text-gray-700' : 'text-gray-700 hover:text-gray-900'}`}>
         {children}
         {active && (order === 'desc' ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />)}
       </button>
@@ -179,7 +179,7 @@ export default function AdminUsersPage() {
           </div>
           <button
             type="submit"
-            className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-900 transition-colors"
+            className="ur-btn ur-btn-md ur-btn-primary transition-colors"
           >
             {t('admin.users.searchBtn', { defaultValue: '검색' })}
           </button>
@@ -206,7 +206,7 @@ export default function AdminUsersPage() {
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            <Loader2 className="w-8 h-8 animate-spin text-gray-700" />
           </div>
         ) : users.length === 0 ? (
           <div className="text-center py-20">
@@ -241,7 +241,7 @@ export default function AdminUsersPage() {
                         <td className="px-4 py-3 font-medium text-gray-900">{user.name || '-'}</td>
                         <td className="px-4 py-3 text-gray-700">{user.email || '-'}</td>
                         <td className="px-4 py-3 text-gray-700">
-                          {user.phone || <span className="text-red-500 text-xs">미등록</span>}
+                          {user.phone || <span className="text-tone-bad text-xs">미등록</span>}
                         </td>
                         <td className="px-4 py-3 text-right text-gray-900 font-mono">{formatNumber(user.order_count || 0)}</td>
                         <td className="px-4 py-3 text-right text-gray-900 font-mono">{formatNumber(user.total_spent || 0)}원</td>
@@ -253,7 +253,7 @@ export default function AdminUsersPage() {
                           <div className="flex items-center justify-center gap-1">
                             <button
                               onClick={() => toggleDetail(user.id)}
-                              className="px-2.5 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-1"
+                              className="px-2.5 py-1.5 text-xs font-medium text-tone-info bg-tone-info-bg rounded-lg hover:bg-gray-100 transition-colors flex items-center gap-1"
                             >
                               {t('admin.users.detailBtn', { defaultValue: '상세' })}
                               {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
@@ -261,16 +261,16 @@ export default function AdminUsersPage() {
                             {/* 🛡️ 2026-05-25: 어드민 딜 선물 */}
                             <button
                               onClick={() => setGiftTarget({ id: user.id, name: user.name || user.email || `#${user.id}` })}
-                              className="px-2.5 py-1.5 text-xs font-medium text-amber-600 bg-amber-50 rounded-lg hover:bg-amber-100 transition-colors"
+                              className="px-2.5 py-1.5 text-xs font-medium text-tone-warn bg-tone-warn-bg rounded-lg hover:bg-gray-100 transition-colors"
                               title="딜 선물"
                             >
-                              🎁 선물
+                              선물
                             </button>
                           </div>
                         </td>
                       </tr>
                       {isExpanded && (
-                        <tr className="bg-blue-50/30">
+                        <tr className="border border-rule bg-white">
                           <td colSpan={9} className="px-4 py-4">
                             {isDetailLoading ? (
                               <div className="flex items-center gap-2 text-sm text-gray-500">
@@ -281,28 +281,28 @@ export default function AdminUsersPage() {
                               <div className="space-y-3 text-sm">
                                 {/* 🛡️ 2026-05-24: 인라인 통계 6칸 grid — 한눈에 사용자 자산 보임. */}
                                 <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
-                                  <div className="bg-emerald-50 rounded p-2 text-center">
-                                    <p className="text-[10px] text-gray-500">💰 딜 잔액</p>
-                                    <p className="font-bold text-emerald-700 text-sm">{formatNumber(detail.wallet_balance || 0)}딜</p>
+                                  <div className="border border-rule bg-white rounded p-2 text-center">
+                                    <p className="text-[10px] text-gray-500">딜 잔액</p>
+                                    <p className="font-bold text-tone-ok text-sm">{formatNumber(detail.wallet_balance || 0)}딜</p>
                                   </div>
-                                  <div className="bg-blue-50 rounded p-2 text-center">
-                                    <p className="text-[10px] text-gray-500">🎫 바우처</p>
-                                    <p className="font-bold text-blue-700 text-sm">{formatNumber(detail.voucher_count || 0)}</p>
+                                  <div className="border border-rule bg-white rounded p-2 text-center">
+                                    <p className="text-[10px] text-gray-500">바우처</p>
+                                    <p className="font-bold text-gray-700 text-sm">{formatNumber(detail.voucher_count || 0)}</p>
                                   </div>
                                   <div className="bg-brand-tint rounded p-2 text-center">
-                                    <p className="text-[10px] text-gray-500">🎟 쿠폰</p>
+                                    <p className="text-[10px] text-gray-500">쿠폰</p>
                                     <p className="font-bold text-brand-text text-sm">{formatNumber(detail.coupon_count || 0)}</p>
                                   </div>
-                                  <div className="bg-rose-50 rounded p-2 text-center">
-                                    <p className="text-[10px] text-gray-500">❤️ 찜</p>
-                                    <p className="font-bold text-rose-700 text-sm">{formatNumber(detail.wishlist_count || 0)}</p>
+                                  <div className="border border-rule bg-white rounded p-2 text-center">
+                                    <p className="text-[10px] text-gray-500">찜</p>
+                                    <p className="font-bold text-tone-bad text-sm">{formatNumber(detail.wishlist_count || 0)}</p>
                                   </div>
-                                  <div className="bg-amber-50 rounded p-2 text-center">
-                                    <p className="text-[10px] text-gray-500">📦 주문</p>
-                                    <p className="font-bold text-amber-700 text-sm">{formatNumber(detail.order_count)}</p>
+                                  <div className="border border-rule bg-white rounded p-2 text-center">
+                                    <p className="text-[10px] text-gray-500">주문</p>
+                                    <p className="font-bold text-tone-warn text-sm">{formatNumber(detail.order_count)}</p>
                                   </div>
                                   <div className="bg-gray-100 rounded p-2 text-center">
-                                    <p className="text-[10px] text-gray-500">📝 리뷰</p>
+                                    <p className="text-[10px] text-gray-500">리뷰</p>
                                     <p className="font-bold text-gray-700 text-sm">{formatNumber(detail.review_count)}</p>
                                   </div>
                                 </div>
@@ -311,9 +311,9 @@ export default function AdminUsersPage() {
                                   <p className="text-xs text-gray-600">총 결제액: <span className="font-bold text-gray-900">{formatNumber(detail.total_spent)}원</span></p>
                                   <button
                                     onClick={() => setFullStateUserId(user.id)}
-                                    className="ml-auto px-3 py-1.5 bg-red-100 text-red-700 text-xs font-bold rounded hover:bg-red-200"
+                                    className="ml-auto px-3 py-1.5 bg-tone-bad-bg text-tone-bad text-xs font-bold rounded hover:bg-red-200"
                                   >
-                                    🔍 전체 상태 진단 (중복 row 확인)
+                                    전체 상태 진단 (중복 row 확인)
                                   </button>
                                 </div>
 
@@ -328,7 +328,7 @@ export default function AdminUsersPage() {
                                             <span className="text-gray-600 truncate">{tx.description || tx.type}</span>
                                           </div>
                                           <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                                            <span className={tx.amount > 0 ? 'font-bold text-emerald-600' : 'font-bold text-red-600'}>
+                                            <span className={tx.amount > 0 ? 'font-bold text-tone-ok' : 'font-bold text-tone-bad'}>
                                               {tx.amount > 0 ? '+' : ''}{formatNumber(tx.amount)}딜
                                             </span>
                                             <span className="text-gray-400 text-[10px]">{parseUTCDate(tx.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', dateStyle: 'short', timeStyle: 'short' })}</span>
@@ -344,24 +344,24 @@ export default function AdminUsersPage() {
                                   <div className="pt-2 border-t border-gray-200 space-y-2">
                                     <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">{t('admin.users.linkedAccounts', { defaultValue: '연결된 계정' })}</p>
                                     {detail.linked_seller && (
-                                      <div className="bg-red-50 border border-red-100 rounded-lg p-2.5 flex items-center justify-between">
+                                      <div className="bg-white border border-rule rounded-lg p-2.5 flex items-center justify-between">
                                         <div>
-                                          <p className="text-[11px] text-red-700 font-bold">🛍 셀러</p>
+                                          <p className="text-[11px] text-tone-bad font-bold">셀러</p>
                                           <p className="text-sm text-gray-900 font-semibold">{detail.linked_seller.business_name}</p>
                                           <p className="text-[10px] text-gray-500">
                                             {detail.linked_seller.seller_type} · {detail.linked_seller.status}
                                           </p>
                                         </div>
                                         <button onClick={() => navigate(`/admin/seller-approval?status=all&q=${encodeURIComponent(detail.linked_seller!.business_name || '')}`)}
-                                          className="text-[11px] text-red-600 font-semibold px-2 py-1 hover:bg-red-100 rounded">
+                                          className="text-[11px] text-tone-bad font-semibold px-2 py-1 hover:bg-gray-100 rounded">
                                           {t('admin.users.manageLink', { defaultValue: '관리 →' })}
                                         </button>
                                       </div>
                                     )}
                                     {detail.linked_agency && (
-                                      <div className="bg-purple-50 border border-purple-100 rounded-lg p-2.5 flex items-center justify-between">
+                                      <div className="bg-white border border-rule rounded-lg p-2.5 flex items-center justify-between">
                                         <div>
-                                          <p className="text-[11px] text-purple-700 font-bold">💼 에이전시</p>
+                                          <p className="text-[11px] text-gray-700 font-bold">에이전시</p>
                                           <p className="text-sm text-gray-900 font-semibold">{detail.linked_agency.name}</p>
                                           <p className="text-[10px] text-gray-500">
                                             담당: {detail.linked_agency.contact_name} · {detail.linked_agency.status}
@@ -459,27 +459,27 @@ function FullStateModal({ userId, onClose }: { userId: number; onClose: () => vo
     <div className="fixed inset-0 z-[10100] flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
       <div className="bg-white rounded-xl p-5 w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-gray-900">🔍 user #{userId} 전체 상태 진단</h3>
-          <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500">✕</button>
+          <h3 className="text-lg font-bold text-gray-900">user #{userId} 전체 상태 진단</h3>
+          <button onClick={onClose} className="ur-btn ur-btn-sm ur-btn-icon ur-btn-ghost"><X className="h-4 w-4" /></button>
         </div>
         {loading ? <p className="text-center py-8 text-gray-500">로딩 중...</p>
-        : error ? <p className="text-center py-8 text-red-600">{error}</p>
+        : error ? <p className="text-center py-8 text-tone-bad">{error}</p>
         : data ? (
           <div className="space-y-3 text-sm">
             <div className="bg-gray-50 rounded-lg p-3">
-              <p className="font-bold mb-2">📋 진단</p>
+              <p className="font-bold mb-2">진단</p>
               {data.diagnosis.map((d, i) => <p key={i} className="text-gray-800 mb-1 whitespace-pre">{d}</p>)}
             </div>
 
             {data.duplicates.length > 0 && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                <p className="font-bold text-red-900 mb-2">⚠️ 중복 의심 user row {data.duplicates.length}개</p>
+              <div className="bg-white border border-rule rounded-lg p-3">
+                <p className="font-bold text-tone-bad mb-2">중복 의심 user row {data.duplicates.length}개</p>
                 {data.duplicates.map(d => (
-                  <div key={d.id} className="text-xs text-red-800 mb-1">
+                  <div key={d.id} className="text-xs text-tone-bad mb-1">
                     <b>id={d.id}</b> · {d.name || '(no name)'} · {d.email || '-'} · kakao={d.kakao_id || '-'} · phone={d.phone || '-'} · {d.created_at}
                   </div>
                 ))}
-                <p className="text-[11px] text-red-600 mt-2">→ 이 ID 들이 정지원님의 다른 row 입니다. 잔액/쿠폰/바우처는 이 중 어디에 있을지 확인하세요.</p>
+                <p className="text-[11px] text-tone-bad mt-2">→ 이 ID 들이 정지원님의 다른 row 입니다. 잔액/쿠폰/바우처는 이 중 어디에 있을지 확인하세요.</p>
               </div>
             )}
 
@@ -496,7 +496,7 @@ function FullStateModal({ userId, onClose }: { userId: number; onClose: () => vo
             </div>
 
             <div className="grid grid-cols-4 gap-2">
-              <div className="bg-blue-50 rounded p-2 text-center">
+              <div className="border border-rule bg-white rounded p-2 text-center">
                 <p className="text-[10px] text-gray-600">바우처</p>
                 <p className="font-bold">{data.vouchers.count}</p>
               </div>
@@ -504,11 +504,11 @@ function FullStateModal({ userId, onClose }: { userId: number; onClose: () => vo
                 <p className="text-[10px] text-gray-600">쿠폰</p>
                 <p className="font-bold">{data.coupons.count}</p>
               </div>
-              <div className="bg-rose-50 rounded p-2 text-center">
+              <div className="border border-rule bg-white rounded p-2 text-center">
                 <p className="text-[10px] text-gray-600">찜</p>
                 <p className="font-bold">{data.wishlists.count}</p>
               </div>
-              <div className="bg-emerald-50 rounded p-2 text-center">
+              <div className="border border-rule bg-white rounded p-2 text-center">
                 <p className="text-[10px] text-gray-600">주문</p>
                 <p className="font-bold">{data.orders.count}</p>
               </div>
@@ -519,7 +519,7 @@ function FullStateModal({ userId, onClose }: { userId: number; onClose: () => vo
                 <p className="font-bold mb-1">최근 딜 거래 (10건)</p>
                 {data.point_transactions.map(p => (
                   <div key={p.id} className="text-xs text-gray-700 border-b border-gray-100 py-1">
-                    <span className={p.amount > 0 ? 'text-emerald-600' : 'text-red-600'}>
+                    <span className={p.amount > 0 ? 'text-tone-ok' : 'text-tone-bad'}>
                       {p.amount > 0 ? '+' : ''}{p.amount.toLocaleString()}
                     </span>
                     {' '}· {p.type} · {p.description} · <span className="text-gray-400">{p.created_at}</span>
@@ -580,8 +580,8 @@ function GiftDealModal({ target, onClose, onSuccess }: { target: { id: number; n
 
   return (
     <div className="fixed inset-0 z-[10001] bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="w-full max-w-sm bg-white rounded-2xl p-5" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-base font-bold text-gray-900 mb-1">🎁 딜 선물</h2>
+      <div className="w-full max-w-sm bg-white rounded-[var(--dash-radius,16px)] p-5" onClick={(e) => e.stopPropagation()}>
+        <h2 className="text-base font-bold text-gray-900 mb-1">딜 선물</h2>
         <p className="text-sm text-gray-600 mb-4">받는 사람: <strong>{target.name}</strong> (id #{target.id})</p>
 
         <div className="space-y-3">
@@ -615,14 +615,14 @@ function GiftDealModal({ target, onClose, onSuccess }: { target: { id: number; n
           </div>
         </div>
 
-        <div className="mt-4 bg-amber-50 rounded-lg p-3 text-xs text-amber-800">
-          ⚠️ 어드민 딜 선물은 audit log + point_transactions 에 기록됩니다 (type=admin_gift). 취소 불가.
+        <div className="mt-4 border border-rule bg-white rounded-lg p-3 text-xs text-tone-warn">
+          어드민 딜 선물은 audit log + point_transactions 에 기록됩니다 (type=admin_gift). 취소 불가.
         </div>
 
         <div className="mt-4 flex gap-2">
           <button onClick={onClose} className="flex-1 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-lg">취소</button>
-          <button onClick={submit} disabled={submitting} className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-bold rounded-lg">
-            {submitting ? "선물 중..." : "🎁 선물하기"}
+          <button onClick={submit} disabled={submitting} className="ur-btn ur-btn-md ur-btn-primary flex-1 disabled:opacity-50">
+            {submitting ? "선물 중..." : "선물하기"}
           </button>
         </div>
       </div>

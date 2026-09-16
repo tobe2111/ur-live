@@ -57,7 +57,7 @@ export default function SectionForm({
   const label = 'block text-xs font-medium text-gray-700 mb-1.5'
 
   return (
-    <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+    <div className="rounded-[var(--dash-radius,16px)] border border-rule bg-white overflow-hidden">
       <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-gray-900">{mode === 'edit' ? '섹션 수정' : '새 섹션'}</h2>
         <button onClick={onCancel} aria-label="닫기" className="p-1.5 rounded-lg hover:bg-gray-100">
@@ -92,7 +92,7 @@ export default function SectionForm({
           {mode === 'edit' && initial.source !== form.source && (
             // ⚠️ 규칙↔직접 전환은 보이는 상품이 통째로 바뀐다. 담아둔 목록은 지워지지 않지만
             //    규칙으로 바꾸면 안 쓰이고, 다시 직접으로 돌리면 그대로 살아난다.
-            <p className="mt-1.5 text-xs text-amber-600">
+            <p className="mt-1.5 text-xs text-tone-warn">
               {form.source === 'manual'
                 ? '직접 고르기로 바꾸면 담아둔 상품이 없을 경우 홈에서 이 줄이 사라집니다.'
                 : '규칙으로 바꾸면 담아둔 상품 대신 규칙이 뽑은 상품이 뜹니다(담긴 목록은 보존).'}
@@ -130,7 +130,7 @@ export default function SectionForm({
 
         <div className="flex gap-3 pt-2">
           <button type="button" onClick={onCancel} className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200">취소</button>
-          <button type="submit" disabled={busy} className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
+          <button type="submit" disabled={busy} className="ur-btn ur-btn-md ur-btn-primary flex-1 disabled:opacity-50">
             {busy ? '저장 중...' : mode === 'edit' ? '수정' : '생성'}
           </button>
         </div>

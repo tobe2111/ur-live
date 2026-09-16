@@ -26,10 +26,10 @@ interface RestaurantSettlement {
 }
 
 const STATUS_STYLE: Record<string, string> = {
-  pending: 'bg-amber-50 text-amber-700',
-  processing: 'bg-blue-50 text-blue-700',
-  completed: 'bg-emerald-50 text-emerald-700',
-  failed: 'bg-red-50 text-red-600',
+  pending: 'bg-tone-warn-bg text-tone-warn',
+  processing: 'bg-tone-info-bg text-tone-info',
+  completed: 'bg-tone-ok-bg text-tone-ok',
+  failed: 'bg-tone-bad-bg text-tone-bad',
 }
 
 export default function RestaurantSettlementsSection() {
@@ -48,7 +48,7 @@ export default function RestaurantSettlementsSection() {
     : t('seller.gbSettle.statusPending', { defaultValue: '대기' })
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-5">
+    <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-100 p-5">
       <div className="flex items-center justify-between mb-1">
         <h3 className="text-[15px] font-bold text-gray-900">
           {t('seller.gbSettle.title', { defaultValue: '공구 자동정산 내역' })}

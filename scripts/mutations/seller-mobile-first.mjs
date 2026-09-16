@@ -31,8 +31,8 @@ export default [
   {
     name: '📱 매장 패널이 게이트 여부로 부모를 바꾼다 (재마운트 → 게이트 깜빡임)',
     file: 'src/pages/SellerPage.tsx',
-    find: "            <MyStoresPanel onGateChange={onGateChange} gateOnly={!isPc} />\n          </div>",
-    replace: "            {storeGated === true ? <div><MyStoresPanel onGateChange={onGateChange} gateOnly={!isPc} /></div> : <MyStoresPanel onGateChange={onGateChange} gateOnly={!isPc} />}\n          </div>",
+    find: "            <MyStoresPanel onGateChange={onGateChange} />\n          </div>",
+    replace: "            {storeGated === true ? <div><MyStoresPanel onGateChange={onGateChange} /></div> : <MyStoresPanel onGateChange={onGateChange} />}\n          </div>",
     test: 'src/tests/unit/seller-mobile-first-2026-09-14.test.ts',
     why: '첫 렌더 실측에서 STEP 1 티켓이 아예 안 보였다 — 새 인스턴스가 판정 중(null)을 보고해 게이트가 풀렸다 잠겼다를 반복했다.',
   },

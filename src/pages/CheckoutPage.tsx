@@ -481,7 +481,7 @@ function CartCheckout() {
               {isAllDealOnly && (
                 <section className="bg-white dark:bg-[#11141C] px-5 py-4">
                   <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">발송 방법</h2>
-                  <div className="rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-gray-50 dark:bg-[#141414] p-3 flex items-start gap-3">
+                  <div className="rounded-xl border border-line bg-gray-50 dark:bg-[#141414] p-3 flex items-start gap-3">
                     <Smartphone className="w-6 h-6 shrink-0 text-gray-400 dark:text-gray-500" strokeWidth={1.6} aria-hidden />
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px] font-bold text-gray-900 dark:text-white">휴대폰 MMS 즉시 발송</p>
@@ -495,7 +495,7 @@ function CartCheckout() {
               {noShipping && !isAllDealOnly && (
                 <section className="bg-white dark:bg-[#11141C] px-5 py-4">
                   <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">사용 방법</h2>
-                  <div className="rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-gray-50 dark:bg-[#141414] p-3 flex items-start gap-3">
+                  <div className="rounded-xl border border-line bg-gray-50 dark:bg-[#141414] p-3 flex items-start gap-3">
                     <Ticket className="w-6 h-6 shrink-0 text-gray-400 dark:text-gray-500" strokeWidth={1.6} aria-hidden />
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px] font-bold text-gray-900 dark:text-white">매장에서 바로 사용</p>

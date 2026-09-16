@@ -80,7 +80,7 @@ export default function MobileOrderList({ orders, onSelect, onConfirm, confirmin
 
   return (
     <div className="md:hidden">
-      <div className="flex rounded-xl border border-rule bg-white p-1">
+      <div className="flex rounded-[var(--dash-radius,16px)] border border-rule bg-white p-1">
         {TABS.map((tb) => (
           <button key={tb.id} type="button" onClick={() => setTab(tb.id)} aria-pressed={tab === tb.id}
             className={`flex-1 rounded-lg py-2 text-[12.5px] font-bold transition-colors ${tab === tb.id ? 'bg-brand text-white' : 'text-gray-400'}`}>
@@ -99,7 +99,7 @@ export default function MobileOrderList({ orders, onSelect, onConfirm, confirmin
             {g.label}<span className="text-[12px] font-bold text-gray-400">{t('seller.home.soldCount', { defaultValue: '{{count}}건', count: g.rows.length })}</span>
           </h3>
           {/* 타임라인 — 왼쪽 세로 선 + 행마다 점. 점이 브랜드색이면 "지금 사람이 움직여야 하는" 주문이다. */}
-          <ol className="relative rounded-2xl border border-rule bg-white px-4 py-1 before:absolute before:bottom-4 before:left-[19px] before:top-4 before:w-px before:bg-rule">
+          <ol className="relative rounded-[var(--dash-radius,16px)] border border-rule bg-white px-4 py-1 before:absolute before:bottom-4 before:left-[19px] before:top-4 before:w-px before:bg-rule">
             {g.rows.map(({ o, k }) => {
               const hot = WAITING.has(o.status)
               const done = DONE.has(o.status)

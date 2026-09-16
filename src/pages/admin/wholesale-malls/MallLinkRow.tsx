@@ -59,9 +59,9 @@ export default function MallLinkRow({ slug, active, consumer_path }: { slug: str
   if (!state.open) {
     return (
       <div className="mt-1.5 flex items-start gap-1.5">
-        <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-[1px] text-amber-500" />
+        <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-[1px] text-tone-warn" />
         <div className="min-w-0">
-          <span className="text-[11.5px] font-semibold text-amber-700">손님 링크가 아직 안 열려요</span>
+          <span className="text-[11.5px] font-semibold text-tone-warn">손님 링크가 아직 안 열려요</span>
           <span className="text-[11.5px] text-gray-500"> — {state.reason}</span>
         </div>
       </div>
@@ -77,7 +77,7 @@ export default function MallLinkRow({ slug, active, consumer_path }: { slug: str
       </a>
       <button onClick={copy} title="링크 복사"
         className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-gray-200 text-[11px] text-gray-600 hover:bg-gray-50 shrink-0">
-        {copied ? <><Check className="w-3 h-3 text-emerald-600" /> 복사됨</> : <><Copy className="w-3 h-3" /> 복사</>}
+        {copied ? <><Check className="w-3 h-3 text-tone-ok" /> 복사됨</> : <><Copy className="w-3 h-3" /> 복사</>}
       </button>
       {/* ⚠️ 방금 만든 몰은 워커 캐시(60초)가 돌기 전까지 404 일 수 있다 — 그 사실을 여기서 미리 말해 준다. */}
       <span className="text-[10.5px] text-gray-400">만든 직후엔 1분쯤 뒤에 열려요</span>

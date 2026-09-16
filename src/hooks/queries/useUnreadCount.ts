@@ -8,7 +8,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys } from './queryKeys'
-import { readCache, writeCache } from './localCache'
+import { writeCache, cachedInitialData, cacheOrRethrow } from './localCache'
 import { isLoggedInSync } from '@/utils/auth'
 
 const CACHE_KEY = 'unread-count'
@@ -25,8 +25,8 @@ export function useUnreadCount(enabledExtra = true) {
         const safe = Number.isFinite(c) && c >= 0 ? c : 0
         writeCache(CACHE_KEY, safe)
         return safe
-      }).catch(() => readCache<number>(CACHE_KEY, 0)),
-    initialData: () => readCache<number>(CACHE_KEY, 0),
+      }).catch((err) => cacheOrRethrow<number>(CACHE_KEY, err)),
+    initialData: () => cachedInitialData<number>(CACHE_KEY),
     // 🛠️ 2026-06-17 (근본수정): 캐시 seed 즉시 stale → cold mount 즉시 보정. 없으면 첫 60초 동안
     //   refetchInterval 첫 발동 전까지 잘못된 0 안읽음 뱃지.
     initialDataUpdatedAt: 0,

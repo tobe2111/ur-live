@@ -70,7 +70,7 @@ export default function AdminCampaignApplicationsPage() {
             <option value="">전체 캠페인</option>
             {campaigns.map(cmp => <option key={cmp.campaign_code} value={cmp.campaign_code}>{cmp.campaign_code} ({cmp.cnt})</option>)}
           </select>
-          <button onClick={downloadCsv} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-semibold">CSV 내보내기</button>
+          <button onClick={downloadCsv} className="ur-btn ur-btn-md ur-btn-primary">CSV 내보내기</button>
         </div>
       </div>
 
@@ -103,13 +103,13 @@ export default function AdminCampaignApplicationsPage() {
                   <td className="px-3 py-2.5 text-gray-600">{r.phone || r.contact || r.email || '-'}{r.phone && r.contact ? <div className="text-xs text-gray-400">{r.contact}</div> : null}</td>
                   <td className="px-3 py-2.5">
                     <div className="text-gray-600">{PLATFORM_LABELS[r.platform || ''] || r.platform || '-'}</div>
-                    <a href={r.account_url} target="_blank" rel="noreferrer" className="text-xs text-blue-600 break-all">{r.account_url}</a>
+                    <a href={r.account_url} target="_blank" rel="noreferrer" className="text-xs text-gray-700 break-all">{r.account_url}</a>
                   </td>
                   <td className="px-3 py-2.5 text-gray-600">{r.category || '-'}{r.region ? <div className="text-xs text-gray-400">{r.region}</div> : null}</td>
                   <td className="px-3 py-2.5 text-gray-600 whitespace-nowrap">{r.follower_size ? Number(r.follower_size).toLocaleString() : '-'}</td>
                   <td className="px-3 py-2.5 text-gray-600 max-w-[220px]"><div className="line-clamp-3">{r.collab_terms || '-'}</div></td>
                   <td className="px-3 py-2.5 text-xs text-gray-500 whitespace-nowrap">
-                    {r.privacy_agreed_at ? '개인정보 ✓' : '개인정보 ✗'}<br />{r.marketing_agreed_at ? '마케팅 ✓' : '마케팅 ✗'}
+                    {r.privacy_agreed_at ? '개인정보 ' : '개인정보 '}<br />{r.marketing_agreed_at ? '마케팅 ' : '마케팅 '}
                   </td>
                 </tr>
               ))}

@@ -353,7 +353,7 @@ export default function UserProfilePage() {
         <button
           type="button"
           onClick={handleLogout}
-          className="ur-btn ur-btn-lg ur-btn-block bg-white dark:bg-[#1D1F29] text-gray-900 dark:text-white/75"
+          className="ur-btn ur-btn-lg ur-btn-block bg-surface text-gray-900 dark:text-white/75"
         >
           <LogOut className="w-4 h-4" aria-hidden="true" />
           {t('userProfile.logout')}

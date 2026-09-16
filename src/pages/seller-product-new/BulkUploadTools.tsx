@@ -46,17 +46,17 @@ export default function BulkUploadTools() {
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+    <div className="flex flex-col gap-3 rounded-[var(--dash-radius,16px)] border border-gray-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={downloadSellerTemplate}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm font-medium text-green-700 transition-colors hover:bg-green-100"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-rule bg-white px-3 py-2 text-sm font-medium text-tone-ok transition-colors hover:bg-gray-100"
         >
           <Download className="h-4 w-4" />
           {t('seller.bulkUploadTemplate')}
         </button>
-        <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-100">
+        <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-rule bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100">
           <FileText className="h-4 w-4" />
           {t('seller.products.csvBulkUpload')}
           <input type="file" accept=".csv" className="hidden" onChange={handleCsv} />

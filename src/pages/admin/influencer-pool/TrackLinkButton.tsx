@@ -27,8 +27,8 @@ export default function TrackLinkButton({ leadId }: { leadId: number }) {
       const short = `${window.location.origin}/l/${r.data.code}`
       await navigator.clipboard?.writeText(short).catch(() => null)
       toast.success(r.data.created
-        ? `🔗 추적링크 생성·복사됨 — ${short} (제안 메시지에 넣어 보내세요)`
-        : `🔗 기존 추적링크 복사됨 — ${short} · 현재 ${r.data.click_count}클릭`)
+        ? `추적링크 생성·복사됨 — ${short} (제안 메시지에 넣어 보내세요)`
+        : `기존 추적링크 복사됨 — ${short} · 현재 ${r.data.click_count}클릭`)
     } catch (e: unknown) {
       toast.error((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '추적링크 생성 실패')
     } finally { setBusy(false) }
@@ -36,6 +36,6 @@ export default function TrackLinkButton({ leadId }: { leadId: number }) {
 
   return (
     <button onClick={run} disabled={busy} title="이 인플루언서 전용 추적링크 생성/복사 — 제안에 넣어 보내면 유입을 분리 측정"
-      className="text-[12px] font-semibold text-indigo-600 hover:underline disabled:opacity-40">🔗</button>
+      className="text-[12px] font-semibold text-brand-text hover:underline disabled:opacity-40"></button>
   )
 }

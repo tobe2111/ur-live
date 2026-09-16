@@ -80,7 +80,7 @@ export default function AdminWholesaleActivityPage() {
 
   useEffect(() => { load(1) }, [load])
 
-  const card = 'bg-white rounded-2xl border border-gray-200'
+  const card = 'bg-white rounded-[var(--dash-radius,16px)] border border-gray-200'
 
   return (
     <AdminLayout title="도매 처리 이력">
@@ -119,13 +119,13 @@ export default function AdminWholesaleActivityPage() {
                           <span className="inline-flex items-center gap-1.5">
                             <User className="w-3.5 h-3.5 text-gray-400" />
                             <span className="font-semibold text-gray-900">{r.admin_name}</span>
-                            {isPartner && <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-orange-700">도매 파트너</span>}
+                            {isPartner && <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-tone-warn-bg text-tone-warn">도매 파트너</span>}
                           </span>
                         </td>
                         <td className="px-4 py-2.5 text-gray-700">
                           <span className="font-medium text-gray-900">{a.domain}</span>
                           {a.verb && <span className="ml-1.5 text-gray-500">· {a.verb}</span>}
-                          {a.method === 'DELETE' && <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-50 text-red-600">삭제</span>}
+                          {a.method === 'DELETE' && <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-tone-bad-bg text-tone-bad">삭제</span>}
                         </td>
                         <td className="px-4 py-2.5 text-gray-400 text-[12px] whitespace-nowrap hidden sm:table-cell">{r.ip || '-'}</td>
                       </tr>

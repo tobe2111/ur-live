@@ -18,7 +18,7 @@ import { isMallSurfacePath } from './shared/mall/resolve' // 🏬 운영자 몰 
 import ScrollToTop from './components/ScrollToTop'
 import OfflineBanner from './components/OfflineBanner'
 import BottomNav from '@/components/main/BottomNav'
-import BrandLoader from '@/components/brand/BrandLoader'
+import BrandLoader, { BootFirstScreenLoader } from '@/components/brand/BrandLoader'
 import { trackFunnel } from '@/lib/funnel'
 import ConsumerTopChrome from '@/components/main/ConsumerTopChrome'
 import { swallow } from '@/shared/utils/swallow'
@@ -32,6 +32,7 @@ const PWAInstallPrompt = lazy(() => import('./components/PWAInstallPrompt'))
 const OnboardingTrigger = lazy(() => import('./components/onboarding/OnboardingTrigger'))
 const RestoreAccountModal = lazy(() => import('./components/account/RestoreAccountModal'))
 const SideBanner = lazy(() => import('@/components/SideBanner'))
+const DesignVariantsPage = lazy(() => import('./pages/design-variants/DesignVariantsPage')) // 🎨 내부 시안 갤러리(링크 0 · robots 차단 · noindex)
 import { useAuthKR } from '@/shared/stores/useAuthKR'
 import { isKorea } from '@/shared/config/region'
 // TD-006: route group files
@@ -79,7 +80,7 @@ const WholesaleLoginPage = lazy(() => import('./pages/WholesaleLoginPage'))
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'))
 const IntroducePage = lazy(() => import('./pages/IntroducePage'))
 const CreatorApplyPage = lazy(() => import('./pages/CreatorApplyPage')); const CreatorStartPage = lazy(() => import('./pages/CreatorStartPage'))
-const CampaignApplyPage = lazy(() => import('./pages/CampaignApplyPage')) // 📣 2026-08-09 캠페인 인플루언서 모집(방배 등)
+const CampaignApplyPage = lazy(() => import('./pages/CampaignApplyPage')); const MallAdminPage = lazy(() => import('./pages/MallAdminPage')) // 📣 캠페인 모집 · 🏬 몰 운영자 콘솔(공구 서비스)
 const AboutPage = lazy(() => import('./pages/AboutPage')); const AboutServicePage = lazy(() => import('./pages/AboutServicePage')); const PartnersPage = lazy(() => import('./pages/PartnersPage')); const CreatorsPage = lazy(() => import('./pages/CreatorsPage')) // 🧭 2026-07-19 웹페이지 3종 (구 소개서 = /about/print)
 
 const LoginPage = lazy(() => import('./pages/LoginPage'))
@@ -248,7 +249,7 @@ function CuratorPinClientRedirect() {
 // 로딩 컴포넌트 — 배경 투명, 최소 UI로 흰 화면 방지
 // 🎨 2026-06-29 (대표 — 공통 페이지 로딩 애니메이션): 무채색 스피너 → UrDeal 브랜드 로더.
 //   로고 호흡 + 진행 바 스윕(BrandLoader SSOT). 라우트 청크 로딩 순간 전용 — SSR/스켈레톤 첫페인트 불변.
-const PageLoader = () => <BrandLoader fullScreen />
+const PageLoader = () => <BootFirstScreenLoader />
 
 // 🚑 2026-07-10 [UNLOCK_LOADING] (로딩 전수조사): 대시보드(/seller·/admin)·유어애즈(/ads) 전용
 //   라이트 로더 — worker 가 이 표면들의 #root 를 라이트 #F4F5F7 placeholder 로 깔아주는데, Suspense
@@ -566,7 +567,7 @@ function AppContent() {
   // 🛡️ 2026-05-24 (regression fix): /pay/widget 누락 → BottomNav 가 결제 버튼 가림.
   //   결제 위젯 마운트하는 모든 경로는 반드시 여기 등록. 신규 추가 시 tests/unit/toss-fullscreen-routes.test.ts
   //   가 자동 검증 (App.tsx 의 fullScreenPrefixes 와 TossPaymentWidget 마운트 라우트 일치 확인).
-  const fullScreenPrefixes = ['/cart', '/checkout', '/payment', '/pay', '/points', '/seller', '/admin', '/login', '/register', '/auth', '/embed', '/introduce', '/blog', '/about', '/partners', '/creators', '/my-orders', '/store/scan', '/videos']
+  const fullScreenPrefixes = ['/cart', '/checkout', '/payment', '/pay', '/points', '/seller', '/admin', '/login', '/register', '/auth', '/embed', '/introduce', '/blog', '/about', '/partners', '/creators', '/my-orders', '/store/scan', '/videos', '/design', '/mall-admin']
   const fullScreen = fullScreenPrefixes.some(p => location.pathname === p || location.pathname.startsWith(p + '/'))
   // 🏭 유통스타트 B2B(도매몰/제조사)는 소비자 BottomNav/TopNav 미표시 — 별도 도메인·업태.
   //   isWholesaleSurface = SSOT (`/wholesale*`·`/supplier*`). 같은 헬퍼를 BottomNav·DesktopTopNav
@@ -651,7 +652,7 @@ function AppContent() {
             <Route path="/introduce" element={<IntroducePage />} />
             <Route path="/creators/apply" element={<CreatorApplyPage />} /><Route path="/creators/start" element={<CreatorStartPage />} />
             {CAMPAIGN_SIGNUP_ENABLED && <Route path="/campaign/:code" element={<CampaignApplyPage />} />}{/* 📣 캠페인 신청 — 기존 가입과 게이트 분리(이 플래그는 이 라우트만 가림) */}
-            <Route path="/about" element={<AboutServicePage />} /><Route path="/about/print" element={<AboutPage />} /><Route path="/partners" element={<PartnersPage />} /><Route path="/creators" element={<CreatorsPage />} />
+            <Route path="/about" element={<AboutServicePage />} /><Route path="/about/print" element={<AboutPage />} /><Route path="/partners" element={<PartnersPage />} /><Route path="/creators" element={<CreatorsPage />} /><Route path="/mall-admin" element={<MallAdminPage />} />{/* 🏬 몰 운영자 콘솔 — 게이트 없음(서버가 operator_user_id 로 403 = fail-closed 는 서버에) */}
             <Route path="/" element={isUtongstart() ? <Navigate to="/wholesale" replace /> : <HomeRoute />} />{/* 🖥️ lg+ = 당근 PC 홈 / 그 외 = 지도(홈=지도, 대표 2026-07-15) */}
             <Route path="/wholesale/intro" element={<WholesaleIntroPage />} />
             <Route path="/wholesale/join" element={<WholesaleJoinPage />} />
@@ -1002,7 +1003,7 @@ function AppContent() {
             <Route path="/restaurant-map" element={<Navigate to="/map" replace />} />
 
             {/* 블로그 */}
-            <Route path="/blog" element={<BlogListPage />} />
+            <Route path="/design/variants" element={<DesignVariantsPage />} /><Route path="/blog" element={<BlogListPage />} />
             <Route path="/new-openings" element={<NewOpeningsPage />} />
             {/* 🗺️ 2026-08-03 지역 페이지 — 라우트는 플래그와 무관하게 유지(플래그 OFF 는 노출·색인만 끔). 색인된 URL 을 404 로 만들면 회수에 수 주. */}
             <Route path="/region" element={<RegionIndexPage />} />

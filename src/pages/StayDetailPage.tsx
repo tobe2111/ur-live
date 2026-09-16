@@ -13,6 +13,7 @@ import { toast } from '@/hooks/useToast'
 import { MapPin, Calendar, Users, Star, Sparkles, Hotel, TicketPercent } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import StayStickyBar from './stay-detail/StayStickyBar'
+import GuestIdentityFields, { type GuestIdentity } from './stay-detail/GuestIdentityFields'
 import { SectionTitle, AmenityFlow, InfoBlock, propertyTypeLabel, StayReviews, StaySoldOutCard } from './stay-detail/StayInfoSections'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import DetailGallery from './group-buy/DetailGallery'
@@ -227,7 +228,7 @@ export default function StayDetailPage() {
 
   // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일) + 2026-07-20 테마 정합: 테마-가변 BrandLoader.
   if (loading) return <BrandLoader fullScreen />
-  if (!stay) return <div className="min-h-[100dvh] bg-gray-50 dark:bg-[#11141C] text-gray-900 dark:text-white flex items-center justify-center">숙소를 찾을 수 없습니다</div>
+  if (!stay) return <div className="min-h-[100dvh] bg-warm text-gray-900 dark:text-white flex items-center justify-center">숙소를 찾을 수 없습니다</div>
 
   // 🎨 2026-07-20 (대표 — "테마 설정이 제대로 안된 것 같아" + "PC 버전으로는 보여지지가 않네"):
   //   하드코딩 다크(#11141C) 전면 → 라이트-first + dark: variants(소비자 토글 표면 정합).
@@ -327,7 +328,7 @@ export default function StayDetailPage() {
   )
 
   return (
-    <div className="min-h-[100dvh] bg-gray-50 dark:bg-[#11141C] text-gray-900 dark:text-white pb-32 lg:pb-16">
+    <div className="min-h-[100dvh] bg-warm text-gray-900 dark:text-white pb-32 lg:pb-16">
       <SEO title={`${stay.restaurant_name || stay.name} - 유어딜`} description={stay.description} url={`/stays/${stay.id}`} />
 
       <div className="lg:max-w-[1200px] lg:mx-auto lg:px-8 lg:pt-5">
@@ -445,7 +446,7 @@ export default function StayDetailPage() {
                    이전엔 카드 오른쪽 절반에 [가격 → 작은 로즈 버튼 → "묶기 − 0 +" 스테퍼]가
                    세로로 쌓여 있었다. 한 카드에 누를 것이 둘이라 무엇이 주 행동인지 안 읽히고,
                    버튼이 오른쪽에만 걸쳐 균형도 깨졌다. ⇒ 위: 정보↔가격, 아래: 전폭 CTA + 스테퍼. */
-                <div key={r.room_id} className={`bg-white dark:bg-[#11141C] border rounded-xl p-4 ${r.available ? 'border-gray-200 dark:border-[#2C2F35]' : 'border-gray-200 dark:border-[#2C2F35] opacity-55'}`}>
+                <div key={r.room_id} className={`bg-surface border rounded-xl p-4 ${r.available ?'border-gray-200 dark:border-[#2C2F35]' : 'border-gray-200 dark:border-[#2C2F35] opacity-55'}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <h3 className="text-[15px] font-bold tracking-tight">{r.name}</h3>
@@ -479,7 +480,7 @@ export default function StayDetailPage() {
                         {guests > r.max_guests ? `최대 ${r.max_guests}인까지` : '이 객실 예약'}
                       </button>
                       {/* 여러 객실을 한 번에 담는 보조 경로 — 주 CTA 와 나란히 두되 무게는 낮춘다. */}
-                      <div className="flex items-center gap-1 h-11 px-2 rounded-xl border border-gray-200 dark:border-[#2C2F35]">
+                      <div className="flex items-center gap-1 h-11 px-2 rounded-xl border border-line">
                         <button
                           type="button"
                           aria-label="객실 수 줄이기"
@@ -680,8 +681,8 @@ function BookingModal({ stay, room, checkIn, checkOut, guests, nights, saleMode,
 
   return (
     <div className="fixed inset-0 z-[10600] bg-black/60 dark:bg-black/80 backdrop-blur flex items-end sm:items-center justify-center" onClick={onClose}>
-      <div className="bg-white dark:bg-[#11141C] text-gray-900 dark:text-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-gray-200 dark:border-[#2C2F35] max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="sticky top-0 bg-white dark:bg-[#11141C] px-5 py-4 border-b border-gray-200 dark:border-[#2C2F35]">
+      <div className="bg-surface text-gray-900 dark:text-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-line max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="sticky top-0 bg-white dark:bg-[#11141C] px-5 py-4 border-b border-line">
           <h3 className="text-base font-bold">예약 정보</h3>
           <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{(stay.restaurant_name || stay.name)} · {room.name}</p>
         </div>
@@ -704,21 +705,14 @@ function BookingModal({ stay, room, checkIn, checkOut, guests, nights, saleMode,
             )}
             <p className="flex justify-between mt-2 pt-2 border-t border-gray-200 dark:border-white/10"><span className="text-gray-500 dark:text-gray-400">총 결제 금액</span><span className="font-extrabold text-brand ">₩{formatNumber(room.discounted_price || room.total_price)}</span></p>
           </div>
-          <div>
-            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">예약자 이름 *</label>
-            <input value={form.guest_name} onChange={(e) => setForm({ ...form, guest_name: e.target.value })} className="w-full px-3 py-2 bg-white dark:bg-[#1D1F29] border border-gray-300 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white" />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">전화번호 *</label>
-            <input value={form.guest_phone} onChange={(e) => setForm({ ...form, guest_phone: e.target.value })} placeholder="010-1234-5678" className="w-full px-3 py-2 bg-white dark:bg-[#1D1F29] border border-gray-300 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white" />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">이메일</label>
-            <input type="email" value={form.guest_email} onChange={(e) => setForm({ ...form, guest_email: e.target.value })} className="w-full px-3 py-2 bg-white dark:bg-[#1D1F29] border border-gray-300 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white" />
-          </div>
+          {/* 🧍 아는 것은 묻지 않는다 — 사유·규칙은 `./stay-detail/GuestIdentityFields` 머리주석. */}
+          <GuestIdentityFields
+            value={{ guest_name: form.guest_name, guest_phone: form.guest_phone, guest_email: form.guest_email }}
+            onChange={(g: GuestIdentity) => setForm({ ...form, ...g })}
+          />
           <div>
             <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">특이 요청</label>
-            <textarea value={form.special_request} onChange={(e) => setForm({ ...form, special_request: e.target.value })} rows={3} placeholder="예) 늦은 체크인 / 유아 침구 요청" className="w-full px-3 py-2 bg-white dark:bg-[#1D1F29] border border-gray-300 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white resize-none" />
+            <textarea value={form.special_request} onChange={(e) => setForm({ ...form, special_request: e.target.value })} rows={3} placeholder="예) 늦은 체크인 / 유아 침구 요청" className="w-full px-3 py-2 bg-surface border border-gray-300 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white resize-none" />
           </div>
           <div className="flex gap-2">
             <button onClick={onClose} disabled={submitting} className="flex-1 py-3 bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-white text-sm font-semibold rounded-lg hover:bg-gray-200 dark:hover:bg-white/[0.1] disabled:opacity-50">취소</button>
@@ -814,8 +808,8 @@ function MultiBookingModal({
 
   return (
     <div className="fixed inset-0 z-[10600] bg-black/60 dark:bg-black/80 backdrop-blur flex items-end sm:items-center justify-center" onClick={onClose}>
-      <div className="bg-white dark:bg-[#11141C] text-gray-900 dark:text-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-gray-200 dark:border-[#2C2F35] max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="sticky top-0 bg-white dark:bg-[#11141C] px-5 py-4 border-b border-gray-200 dark:border-[#2C2F35]">
+      <div className="bg-surface text-gray-900 dark:text-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-line max-h-[90dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="sticky top-0 bg-white dark:bg-[#11141C] px-5 py-4 border-b border-line">
           <h3 className="text-base font-bold">묶음 예약 ({totalQty}객실)</h3>
           <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{stay.restaurant_name || stay.name}</p>
         </div>
@@ -837,25 +831,20 @@ function MultiBookingModal({
               <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">숙소 이용권 {voucherType === 'weekday' ? '평일권' : '주말권'} × {voucherNights}박</p>
             )}
           </div>
-          <div>
-            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">대표 예약자 이름 *</label>
-            <input value={form.guest_name} onChange={(e) => setForm({ ...form, guest_name: e.target.value })} className="w-full px-3 py-2 bg-white dark:bg-[#1D1F29] border border-gray-300 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white" />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">전화번호 *</label>
-            <input value={form.guest_phone} onChange={(e) => setForm({ ...form, guest_phone: e.target.value })} placeholder="010-1234-5678" className="w-full px-3 py-2 bg-white dark:bg-[#1D1F29] border border-gray-300 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white" />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">이메일</label>
-            <input type="email" value={form.guest_email} onChange={(e) => setForm({ ...form, guest_email: e.target.value })} className="w-full px-3 py-2 bg-white dark:bg-[#1D1F29] border border-gray-300 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white" />
-          </div>
+          {/* 🧍 아는 것은 묻지 않는다 — 사유·규칙은 `./stay-detail/GuestIdentityFields` 머리주석. */}
+          <GuestIdentityFields nameLabel="대표 예약자 이름"
+            value={{ guest_name: form.guest_name, guest_phone: form.guest_phone, guest_email: form.guest_email }}
+            onChange={(g: GuestIdentity) => setForm({ ...form, ...g })}
+          />
           <div>
             <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">특이 요청 (전체 객실 공통)</label>
-            <textarea value={form.special_request} onChange={(e) => setForm({ ...form, special_request: e.target.value })} rows={3} placeholder="예) 인접 객실 배정 요청" className="w-full px-3 py-2 bg-white dark:bg-[#1D1F29] border border-gray-300 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white resize-none" />
+            <textarea value={form.special_request} onChange={(e) => setForm({ ...form, special_request: e.target.value })} rows={3} placeholder="예) 인접 객실 배정 요청" className="w-full px-3 py-2 bg-surface border border-gray-300 dark:border-[#2C2F35] rounded-lg text-sm text-gray-900 dark:text-white resize-none" />
           </div>
-          <p className="text-[10px] text-gray-500 dark:text-gray-400">
-            ⓘ {totalQty}객실 모두 같은 sale_mode / 기간으로 예약됩니다. 인원은 객실별 최대 인원까지 자동 분배.
-          </p>
+          {/* 🗑️ 2026-09-15 (대표 — "유저가 보면 어색하잖아"): 안내문 제거.
+              `sale_mode` 는 **코드 식별자**인데 소비자 화면에 그대로 새어 나와 있었다. 게다가 이 모달은
+              애초에 같은 상품·같은 기간으로만 담기므로(위 요약 카드가 기간을 이미 보여 준다) 그 문장은
+              **사실을 새로 알려 주지도 않았다.** 인원 자동 분배도 마찬가지 — 객실별 최대 인원은 고를 때
+              이미 정해졌다. ⚠️ 되살릴 거면 사용자 말로 쓸 것(예: "선택한 기간으로 함께 예약됩니다"). */}
           <div className="flex gap-2">
             <button onClick={onClose} disabled={submitting} className="flex-1 py-3 bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-white text-sm font-semibold rounded-lg hover:bg-gray-200 dark:hover:bg-white/[0.1] disabled:opacity-50">취소</button>
             <button onClick={submit} disabled={submitting} className="flex-1 py-3 bg-brand text-white text-sm font-bold rounded-lg hover:bg-brand-dark disabled:opacity-50">

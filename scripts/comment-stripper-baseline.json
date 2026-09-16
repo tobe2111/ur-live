@@ -93,7 +93,6 @@
     "src/tests/unit/urshorts-core.test.ts",
     "src/tests/unit/urshorts-rail-ink-panel.test.ts",
     "src/tests/unit/voucher-deal-payment.test.ts",
-    "src/tests/unit/voucher-nav-reachability-2026-09-03.test.ts",
     "src/tests/unit/voucher-photos-2026-09-03.test.ts",
     "src/tests/unit/voucher-wallet-split.test.ts",
     "src/tests/unit/webkr-unanswered-bookkeeping.test.ts"

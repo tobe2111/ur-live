@@ -34,9 +34,14 @@
  */
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { changedScope, inScope } from './guard-mutations-scope.mjs'
+import { GUARD_RUNNER, touchesGuardScripts } from './guard-mutations-scope.mjs'
+import {
+  changedInjectionNames, runnerLogicChanged, testSpawnsSubprocess,
+} from './guard-mutations-manifest-diff.mjs'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const STRICT = process.argv.includes('-s') || process.argv.includes('--strict')
@@ -93,6 +98,14 @@ const MAP_ONLY = process.argv.includes('--map-only')
  * (실제로 "주입 대상이 2곳" 으로 잡혀 이 파일에서 뽑아냈다).
  * 🔴 좁힌 만큼은 `guard-mutations-full.yml`(main push + 야간)이 전수로 되찾는다 — 둘은 짝이다.
  */
+/**
+ * 📤 `--dump-manifest` — 주입 목록만 JSON 으로 찍고 **아무것도 하지 않고** 끝낸다.
+ *
+ * 왜: `--changed` 가 "이 PR 이 실제로 바꾼 주입" 을 고르려면 **base(main) 의 목록**이 필요한데,
+ * 이 파일은 최상위 스크립트라 import 하면 그대로 실행돼 버린다. 그래서 base 소스를 임시로 풀어
+ * 이 모드로 **하위 프로세스에서** 한 번 찍게 한다(소스 접근·자물쇠 이전에 끝난다).
+ */
+const DUMP_MANIFEST = process.argv.includes('--dump-manifest')
 const CHANGED = process.argv.includes('--changed')
 const SCOPE = changedScope({
   enabled: CHANGED,
@@ -111,8 +124,11 @@ const MUTATIONS = [
   {
     name: '🧭 라이트 래퍼가 --brand-tint 를 안 되박는다 (다크 모드에서 활성 메뉴가 검어진다)',
     file: 'src/index.css',
-    find: '  --brand-tint: #EAF1FE;\n  --brand-text: #1C69EF;\n}\n.light-island',
-    replace: '}\n.light-island',
+    // ⚠️ 2026-09-15: 앵커가 `}\n.light-island` 로 **다음 블록에 붙어** 있었다. 그 사이에 주석 한 줄이
+    //    들어오자(같은 날 다른 세션의 되박기 설명) 지도가 낡아 CI 가 빨간불을 냈다.
+    //    ⇒ 블록 **자기 끝**만 가리킨다 — 옆 블록이 무엇이든 상관없게.
+    find: '  --brand-tint: #EAF1FE;\n  --brand-text: #1C69EF;\n}',
+    replace: '}',
     test: 'src/tests/unit/dashboard-rinda-shell.test.ts',
     why:
       '사이드바가 흰 면이 되면서 비로소 도달 가능해진 경로다. 사용자가 OS/앱 다크 모드를 켜 두면 ' +
@@ -193,9 +209,11 @@ const MUTATIONS = [
   },
   {
     name: '뒤로가기 복원 — POP 조회를 무력화',
-    file: 'src/pages/VouchersPage.tsx',
-    find: "navType === 'POP' ? readListView<VouchersViewState>(viewKey) : null",
-    replace: 'null',
+    // 🔀 2026-09-15: 이 판정이 `VouchersPage` → `vouchers/warm-seed.ts` 로 **옮겨졌다**(웜 시드와
+    //    한 자리에 모으면서). 불변식은 그대로라 주입을 지우지 않고 새 자리로 재조준한다.
+    file: 'src/pages/vouchers/warm-seed.ts',
+    find: "const restored = navType === 'POP' ? readListView<S>(viewKey) : null",
+    replace: 'const restored = null',
     test: 'src/tests/unit/list-view-restore-2026-09-13.test.ts',
     why: '이 한 줄이 이 사고의 귀속 지점이다(되돌려-검증: 브라우저 실측 4항목 전부 빨간불).',
   },
@@ -1047,7 +1065,8 @@ const MUTATIONS = [
   {
     name: '🚦 always-light 래퍼가 상태 색을 안 되박는다 — 흰 카드 위에 다크용 밝은 초록',
     file: 'src/index.css',
-    find: `.light-island, .force-light-theme, .admin-light-theme, .agency-light-theme {`,
+    // 🔀 2026-09-15: 목록에 `.seller-light-theme` 가 추가됐다(표면 토큰을 변수로 돌리며 그 스코프만 빠져 있었다).
+    find: `.light-island, .force-light-theme, .admin-light-theme, .agency-light-theme, .seller-light-theme {`,
     replace: `.zz-removed-always-light {`,
     test: 'src/tests/unit/status-tone-tokens.test.ts',
     why: '대시보드는 화이트 고정인데 html.dark 면 :root 의 다크 토큰이 새어 들어온다(--lift 가 09-02 에 같은 사고).',
@@ -1717,7 +1736,7 @@ const MUTATIONS = [
   {
     name: '📉 DO 알람 레인이 읽기 예산 게이트를 건너뛴다',
     file: 'src/worker-ads/lane-alarm.ts',
-    find: '    if (budgetBlocked(await readBudgetState(this.env))) {',
+    find: '    if (budgetBlocked(budgetView) || laneCut(budgetView, this.lane)) {',
     replace: '    if (false) {',
     test: 'src/tests/unit/ads-read-budget.test.ts',
     why:
@@ -1727,7 +1746,7 @@ const MUTATIONS = [
   {
     name: '📉 cron 경로 레인이 읽기량을 원장에 안 보고한다(원장이 절반만 센다)',
     file: 'src/worker-ads/self-beat.ts',
-    find: '    await reportReadUsage(env, readEnvMeter(env)?.rr, readEnvMeter(env)?.rw)\n',
+    find: '    await reportReadUsage(env, readEnvMeter(env)?.rr, readEnvMeter(env)?.rw, beat)\n',
     replace: '',
     test: 'src/tests/unit/ads-read-budget.test.ts',
     why:
@@ -1838,7 +1857,8 @@ const MUTATIONS = [
   {
     name: '지갑이 다크 모드에서 흰 배경 + 흰 글자가 된다',
     file: 'src/components/wallet/WalletAtoms.tsx',
-    find: 'bg-[#F8F7FC] dark:bg-[#11141C] text-gray-900 dark:text-white',
+    // 🔀 2026-09-15: 표면 토큰 채택으로 `bg-[#F8F7FC] dark:bg-[#11141C]` → `bg-warm`(같은 값).
+    find: 'bg-warm text-gray-900 dark:text-white',
     replace: 'bg-[#F8F7FC] text-gray-900',
     test: 'src/tests/unit/voucher-wallet-split.test.ts',
     why:
@@ -2276,8 +2296,10 @@ const MUTATIONS = [
   },
   {
     name: '상세 제목이 다시 번역투가 된다(무엇을 기대하세요?)',
-    file: 'src/pages/GroupBuyDetailPage.tsx',
-    find: ">딜 안내</div>",
+    // 🔄 2026-09-15: 제목이 옮겨졌다. '딜 안내'(하드코딩 3줄) 블록이 사라지고 그 자리에
+    //   실제 스펙표 `UsageGuide`(제목 '이용 안내')가 올라왔다 — 앵커를 그 파일로 옮긴다.
+    file: 'src/pages/group-buy/UsageGuide.tsx',
+    find: ">이용 안내</div>",
     replace: ">무엇을 기대하세요?</div>",
     test: 'src/tests/unit/detail-page-plainness.test.ts',
     why:
@@ -8567,11 +8589,117 @@ canvas {
     name: '🚧 초크포인트가 원장을 늘 묻는다(면제·정지에서도 서브리퀘스트 낭비)',
     file: 'src/worker-ads/lane-pause.ts',
     find: '  if (pauseExempt(path)) return \'\'\n  if (lanesPaused(env)) return \'paused\'',
-    replace: '  const forced = await overFn(env)\n  if (pauseExempt(path)) return \'\'\n  if (lanesPaused(env)) return \'paused\'\n  void forced',
+    replace: '  const forced = await budgetFn(env, \'x\')\n  if (pauseExempt(path)) return \'\'\n  if (lanesPaused(env)) return \'paused\'\n  void forced',
     test: 'src/tests/unit/ads-read-budget.test.ts',
     why:
       '원장 조회는 서브리퀘스트 1 이다. 면제 경로(관측)와 수동 정지에서까지 물으면 정지 중에도 ' +
       '예산을 계속 태우고, 관측 창이 원장 장애에 함께 죽는다.',
+  },
+
+  // ── 🧾 레인 귀속 + 폭주 레인만 자르기 (2026-09-15) ────────────────────────
+  {
+    name: '🚨 폭주 절대 임계가 사라진다(한 회차가 월 포함분을 먹어도 통과)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: "  if (rw >= RUNAWAY_ROUND_WRITES) return 'abs'",
+    replace: "  if (false) return 'abs'",
+    test: 'src/tests/unit/ads-lane-attribution.test.ts',
+    why:
+      '9/2 폭주는 쿼리 하나가 10만~15만 행을 썼다(시간당 350만, 하루 4,554만 = 월 포함분의 89%). ' +
+      '이 한 줄이 절대 임계다 — 빠지면 배수 규칙만 남는데, 기준선이 없는 첫 회차는 배수로 못 잡으므로 ' +
+      '"부팅 직후 폭주"가 정확히 무방비가 된다(9/2 가 바로 그 모양이었다).',
+  },
+  {
+    name: '🚨 기준선 없는 첫 회차를 폭주로 잡는다(새 레인이 태어나자마자 잘림)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: "  if (!baseline || !(baseline > 0)) return ''",
+    replace: "  if (!baseline || !(baseline > 0)) return 'rel'",
+    test: 'src/tests/unit/ads-lane-attribution.test.ts',
+    why:
+      '반대 방향의 사고 — 차단기가 정상을 자르는 경우다. 0 에서 시작한 레인의 첫 일이 폭주로 잡히면 ' +
+      '새 레인은 영영 못 돈다. 대표 지시가 "관리가 안 된다"였지 "더 막아라"가 아니었다.',
+  },
+  {
+    name: '🚨 폭주 회차가 기준선을 올린다(차단기가 스스로를 무디게 만든다)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: '      base: verdict',
+    replace: '      base: false',
+    test: 'src/tests/unit/ads-lane-attribution.test.ts',
+    why:
+      '폭주를 EMA 에 섞으면 그 레인의 평소치가 폭주 쪽으로 끌려가, 다음 폭주가 "평소와 비슷함"이 된다. ' +
+      '차단기가 자기 눈을 가리는 형태 — 처음엔 잡고 두 번째부터 못 잡는다.',
+  },
+  {
+    name: '🚨 날이 바뀌며 기준선까지 버린다(매일 아침 배수 규칙이 눈을 감는다)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: '    if (v?.base && v.base > 0) out[k] = { r: 0, w: 0, n: 0, base: v.base }',
+    replace: '    void k; void v',
+    test: 'src/tests/unit/ads-lane-attribution.test.ts',
+    why:
+      '오늘 계수(r/w/n)와 `cut` 은 날마다 버려야 하지만 `base` 는 학습값이다. 함께 버리면 매일 UTC 자정 ' +
+      '이후 모든 레인이 "기준선 없음"이 되어, 배수 규칙이 하루의 첫 회차마다 통째로 쉰다.',
+  },
+  {
+    name: '🚨 폭주 판정을 이번 회차를 **섞은 뒤** 기준선으로 한다',
+    file: 'src/worker-ads/read-budget.ts',
+    find: "  const verdict: RunawayVerdict = laneKeyed ? runawayRound(rw, prev?.lanes?.[laneKeyed]?.base) : ''",
+    replace: "  const verdict: RunawayVerdict = ''",
+    test: 'src/tests/unit/ads-lane-attribution.test.ts',
+    why:
+      '판정이 사라지면 원장은 레인별로 정확히 세면서 아무도 안 자른다 — 9/2 이전 상태로 되돌아간다. ' +
+      '(섞은 뒤 기준선으로 재는 변형도 같은 클래스다: 폭주가 자기 기준선을 올려 스스로를 정상으로 만든다.)',
+  },
+  {
+    name: '🧾 원장 기본 응답이 레인 전체 표를 싣는다(레인 인보케이션마다 96줄)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: '  const { lanes: _allLanes, ...totals } = next',
+    replace: '  const totals = next',
+    test: 'src/tests/unit/ads-lane-attribution.test.ts',
+    why:
+      '이 뷰는 **레인이 돌 때마다** 읽힌다. 전체 표를 기본으로 실으면 게이트가 매번 96줄을 받는다 — ' +
+      '작성 중 실제로 밟은 버그이고, 시험이 잡았다. 전체 표는 `?full=1` 일 때만.',
+  },
+  {
+    name: '🚧 HTTP 초크포인트가 `_beat` 를 안 넘긴다(잘린 레인이 매칭되지 않는다)',
+    file: 'src/worker-ads/lane-gate.ts',
+    find: '      readBeatParams(c.req.url)?.beat,',
+    replace: '      undefined,',
+    test: 'src/tests/unit/ads-lane-attribution.test.ts',
+    why:
+      '원장에 보고하는 이름은 `_beat` 인데 게이트가 경로에서 뽑으면 둘이 갈린다 — ' +
+      '`/__ads/enrich-company-driver` 는 beat 이름이 `enrich-company` 다. 그러면 그 레인은 잘려도 ' +
+      '게이트를 그냥 통과한다(잘린 줄 알고 있는데 계속 도는, 이 레포가 가장 자주 당한 모양).',
+  },
+  {
+    name: '📻 하트비트에서 `top` 이 다시 앞으로 와 사건 신호를 밀어낸다',
+    file: 'src/worker-ads/read-budget.ts',
+    find: '    // \ud83d\udea8 "\ub204\uac00 \uc798\ub838\ub098" \u2014 \uc0ac\uac74\uc774\ubbc0\ub85c \uc6d4 \uc0c1\ud0dc\ubcf4\ub2e4 \uc55e. \ud3c9\uc2dc\uc5d4 \ube44\uc5b4 \uc788\uc5b4 \ud55c \uae00\uc790\ub3c4 \uc548 \uba39\ub294\ub2e4.',
+    replace: '    ...(top ? { top } : {}),',
+    test: 'src/tests/unit/ads-lane-attribution.test.ts',
+    why:
+      '2026-09-16 라이브에서 실제로 터진 모양 그대로다. `summarizeResult` 는 160자에서 **자르는 게 아니라 ' +
+      '루프를 멈춘다** — `top`(레인 이름 3개 = 70자+)이 앞에 있으면 뒤의 `cut`\u00b7`wmonth`\u00b7`mleft`\u00b7`dleft` 가 ' +
+      '한 글자도 안 실린다. `cut` 이 밀려나는 것이 특히 나쁘다: 폭주 레인을 잘라 놓고 **운영자가 그 사실을 ' +
+      '못 본다**(차단기를 만들고 발화를 안 보이게 한 셈). 전날 시험은 `budgetBeatFields` 의 반환 키만 봐서 ' +
+      '전부 초록이었다 — 죽은 것은 그 다음 단계였다.',
+  },
+  {
+    name: '📻 하트비트 top 레인 수 상한이 풀린다(다시 앞자리를 먹는다)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: 'export const BEAT_TOP_LANES = 2',
+    replace: 'export const BEAT_TOP_LANES = 5',
+    test: 'src/tests/unit/ads-lane-attribution.test.ts',
+    why:
+      '맨 뒤로 옮겨도 길이를 안 묶으면 레인 이름이 길어질 때 다시 앞자리를 위협한다. 실측상 3개가 70자였다.',
+  },
+  {
+    name: '🧾 원장이 잘린 레인 목록을 안 돌려준다(게이트가 볼 게 없다)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: '    cutLanes: cutLaneNames(next, nowMs),',
+    replace: '    cutLanes: [],',
+    test: 'src/tests/unit/ads-lane-attribution.test.ts',
+    why:
+      '원장은 자르고 응답엔 안 싣는 형태 — 판정은 도는데 아무 효과가 없다. 실패가 아니라 부재라 ' +
+      '배포는 초록이고 폭주 레인만 조용히 계속 돈다.',
   },
   {
     name: '✍️ 쓰기 예산이 게이트에서 빠진다(요금을 터뜨린 축이 다시 무방비)',
@@ -8639,7 +8767,7 @@ canvas {
   {
     name: '✍️ 회차가 쓴 행을 보고하지 않는다(원장이 영원히 0 — 조용한 무방비)',
     file: 'src/worker-ads/lane-alarm.ts',
-    find: 'reportReadUsage(this.env, this.meter.rr, this.meter.rw)',
+    find: 'reportReadUsage(this.env, this.meter.rr, this.meter.rw, this.lane)',
     replace: 'reportReadUsage(this.env, this.meter.rr)',
     test: 'src/tests/unit/ads-read-budget.test.ts',
     why:
@@ -9798,7 +9926,8 @@ canvas {
   {
     name: '🎫 리뷰 textarea 다크 배경이 다시 빠진다 (흰 바탕에 흰 글자)',
     file: 'src/pages/product-detail/ProductReviews.tsx',
-    find: 'bg-[#F8F7FC] dark:bg-[#11141C] text-sm text-gray-900 dark:text-white',
+    // 🔀 2026-09-15: 〃
+    find: 'bg-warm text-sm text-gray-900 dark:text-white',
     replace: 'text-sm text-gray-900 dark:text-white',
     test: 'src/tests/unit/consumer-popups-dark.test.ts',
     why:
@@ -9808,7 +9937,8 @@ canvas {
   {
     name: '🎫 장바구니 래퍼가 다시 라이트 단독 배경 (다크에서 화면 절반 회색)',
     file: 'src/pages/CartPage.tsx',
-    find: 'min-h-[100dvh] bg-[#F8F7FC] dark:bg-[#11141C]">',
+    // 🔀 2026-09-15: 〃
+    find: 'min-h-[100dvh] bg-warm">',
     replace: 'min-h-[100dvh] bg-[#F4F4F4]">',
     test: 'src/tests/unit/consumer-popups-dark.test.ts',
     why:
@@ -10019,8 +10149,8 @@ canvas {
   {
     name: '🏝️ 매장 등록 모달이 다시 흰 판 위 흰 글자가 된다 (light-island 소실)',
     file: 'src/components/seller/StoreRegisterModal.tsx',
-    find: 'className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl max-h-[92dvh]',
-    replace: 'className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl max-h-[92dvh]',
+    find: 'className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)] max-h-[92dvh]',
+    replace: 'className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)] max-h-[92dvh]',
     test: 'src/tests/unit/store-claim-2026-09-07.test.ts',
     why:
       '이 패널은 bg-white 뿐이라 늘 흰데 소비자 라우트(/store/new)에서도 열린다. 전역 .dark input' +
@@ -10053,8 +10183,8 @@ canvas {
   {
     name: '🏝️ 409 안내 패널만 light-island 를 잃는다 (한 파일 안 두 표면 중 하나)',
     file: 'src/components/seller/StoreRegisterModal.tsx',
-    find: '        <div className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl" onClick={e => e.stopPropagation()}>',
-    replace: '        <div className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl" onClick={e => e.stopPropagation()}>',
+    find: '        <div className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)]" onClick={e => e.stopPropagation()}>',
+    replace: '        <div className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)]" onClick={e => e.stopPropagation()}>',
     test: 'src/tests/unit/store-claim-2026-09-07.test.ts',
     why:
       '이 파일엔 늘-흰 패널이 **둘**이다(등록 폼 · 409 안내). 실제로 409 화면이 light-island 없이 ' +
@@ -10397,6 +10527,90 @@ const ALL = [...MUTATIONS, ...SPLIT]
     process.exit(1)
   }
 }
+
+// 📤 목록만 찍고 끝 — base 쪽을 이 모드로 부른다. 소스도 안 읽고 자물쇠도 안 건다.
+if (DUMP_MANIFEST) {
+  // ⚠️ `process.stdout.write` + `process.exit` 는 **flush 를 기다리지 않는다** — 파이프로 보내면
+  //    큰 JSON 이 중간에서 잘린다(실측: 55,166자에서 끊겼다). 동기 write 로 끝까지 밀어 넣는다.
+  fs.writeSync(1, JSON.stringify(
+    ALL.map(({ name, file, find, replace, test }) => ({ name, file, find, replace, test })),
+  ))
+  process.exit(0)
+}
+
+/**
+ * 🔎 **이 브랜치가 실제로 바꾼 주입** — `scripts/` 를 건드려도 전수로 안 가게 하는 자리.
+ *
+ * 근거·측정은 `guard-mutations-manifest-diff.mjs` 머리주석. 요약: 머지 PR 25건 중 23건이
+ * 전수였고 그중 11건이 **이 파일에 주입을 한 줄 더한 것**뿐이었다. 규칙을 지킬수록 40분을 물었다.
+ *
+ * 🔴 **모든 실패는 전수로 떨어진다**(base 를 못 풀든, 앵커가 사라졌든, JSON 이 깨졌든).
+ *    좁히다 틀리는 것보다 넓게 도는 쪽이 싸다.
+ */
+function scopeFromManifestDiff() {
+  if (!CHANGED || SCOPE.full) return null
+  const touched = SCOPE.files
+  const runnerChanged = touched.has(GUARD_RUNNER)
+  const manifestChanged = [...touched].some((f) => f.startsWith('scripts/mutations/'))
+  const otherScripts = touchesGuardScripts(touched)
+  if (!runnerChanged && !manifestChanged && !otherScripts) return null
+
+  /** base 의 `scripts/` 만 풀어서 목록을 받아 온다(전체 체크아웃 아님 — 수백 ms). */
+  let baseList = null
+  let baseRunnerSrc = null
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gm-base-'))
+  try {
+    const baseRef = process.env.GUARD_MUTATIONS_BASE || 'origin/main'
+    const tar = execFileSync('git', ['archive', baseRef, 'scripts'], { cwd: ROOT, maxBuffer: 256 * 1024 * 1024 })
+    execFileSync('tar', ['-x', '-C', tmp], { input: tar, maxBuffer: 256 * 1024 * 1024 })
+    baseRunnerSrc = fs.readFileSync(path.join(tmp, 'scripts', 'check-guard-mutations.mjs'), 'utf8')
+    // 🔴 **부르기 전에 지원 여부를 본다.** 모르는 플래그를 받은 옛 러너는 무시하고 **전수를 돈다** —
+    //    그러면 이 하위 프로세스가 40분을 태우고 소스에 주입까지 한다(실측으로 걸렸다).
+    //    이 PR 이 머지되기 전까지는 base 에 이 모드가 없으므로, 여기서 조용히 전수로 떨어진다.
+    if (!baseRunnerSrc.includes('--dump-manifest')) {
+      return { full: true, why: 'base 러너에 --dump-manifest 가 없다(이 기능 이전 버전) — 전수로 돈다' }
+    }
+    const out = execFileSync(process.execPath, [path.join(tmp, 'scripts', 'check-guard-mutations.mjs'), '--dump-manifest'],
+      { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, timeout: 60_000 })
+    baseList = JSON.parse(out)
+  } catch (err) {
+    return { full: true, why: `base 주입 목록을 못 읽었다(${String(err?.message ?? err).slice(0, 80)}) — 전수로 돈다` }
+  } finally {
+    try { fs.rmSync(tmp, { recursive: true, force: true }) } catch { /* 최선 노력 */ }
+  }
+
+  // 러너의 **판정 로직**이 바뀌었으면 내가 안 건드린 주입도 다르게 판정될 수 있다 ⇒ 전수.
+  if (runnerChanged) {
+    const headSrc = fs.readFileSync(path.join(ROOT, GUARD_RUNNER), 'utf8')
+    if (runnerLogicChanged(baseRunnerSrc, headSrc)) {
+      return { full: true, why: `${GUARD_RUNNER} 의 판정 로직이 바뀌었다 — 전수` }
+    }
+  }
+
+  const names = changedInjectionNames(baseList, ALL)
+
+  // 🕳️ `scripts/check-*.mjs` 가 바뀌면, **하위 프로세스로 그 가드를 돌리는 테스트**(실측 14개)를
+  //    쓰는 주입은 `file`·`test` 가 diff 에 없어도 판정이 달라질 수 있다. 그 구멍만 메운다.
+  if (otherScripts) {
+    const spawns = new Map()
+    for (const m of ALL) {
+      if (!spawns.has(m.test)) {
+        let src = ''
+        try { src = fs.readFileSync(path.join(ROOT, m.test), 'utf8') } catch { src = 'execFileSync(' }
+        spawns.set(m.test, testSpawnsSubprocess(src))
+      }
+      if (spawns.get(m.test)) names.add(m.name)
+    }
+  }
+  return { names }
+}
+const MANIFEST_SCOPE = scopeFromManifestDiff()
+if (MANIFEST_SCOPE?.full) {
+  SCOPE.full = true
+  SCOPE.why = MANIFEST_SCOPE.why
+}
+/** 매니페스트 diff 로 추가로 골라야 하는 주입 이름(없으면 빈 집합). */
+const CHANGED_NAMES = MANIFEST_SCOPE?.names ?? new Set()
 /**
  * 🔒 **주입이 도는 동안 커밋을 막는 자물쇠** (2026-08-03 — 실제로 한 번 당한 뒤 추가).
  *
@@ -10669,7 +10883,7 @@ if (integrity.length) {
   process.exit(1)
 }
 
-const planned = ALL.filter((m) => (!ONLY || m.name.includes(ONLY)) && inScope(m, SCOPE)).length
+const planned = ALL.filter((m) => (!ONLY || m.name.includes(ONLY)) && (inScope(m, SCOPE) || CHANGED_NAMES.has(m.name))).length
 if (SCOPE.full) {
   console.log(`🧬 guard-mutations: ${ALL.length}개 주입 검증 (각각 소스를 잠깐 고쳤다가 되돌린다)\n`)
   if (CHANGED) console.log(`   ⚠️ 전수로 돈다 — ${SCOPE.why}\n`)
@@ -10682,7 +10896,7 @@ let onlyMatched = 0
 for (const m of ALL) {
   if (ONLY && !m.name.includes(ONLY)) continue
   if (ONLY) onlyMatched += 1
-  if (!inScope(m, SCOPE)) continue
+  if (!inScope(m, SCOPE) && !CHANGED_NAMES.has(m.name)) continue
   const abs = path.join(ROOT, m.file)
   if (!fs.existsSync(abs)) { problems.push(`${m.name}: 파일 없음 — ${m.file} (코드가 옮겨갔다)`); continue }
   const src = fs.readFileSync(abs, 'utf8')
@@ -10748,6 +10962,21 @@ if (problems.length) {
 `)
   process.exit(STRICT ? 1 : 0)
 }
+/**
+ * 🚨 `--only` 가 아무것도 못 고르면 **실패**다 — `--map-only` 에서도 마찬가지다.
+ *
+ * 🩸 2026-09-15: 이 검사가 아래 `MAP_ONLY` **조기 종료 뒤에** 있었다. 그래서
+ *    `--map-only --only <오타>` 는 `✅ 주입 지도 0건 성함` 을 찍고 **exit 0** 했다.
+ *    하필 `--map-only` 가 커밋 전에 돌리는 모드라, 가짜 초록불이 가장 필요한 순간에 떴다.
+ *    (실제로 파일명으로 불러서 그 초록불을 받았다 — 필터는 이름 부분일치다.)
+ *    이 파일의 존재 이유가 "검사가 실패할 수 없음" 을 막는 것인데 그 구멍이 자기 안에 있었다.
+ */
+if (ONLY && onlyMatched === 0 && mapOk === 0) {
+  console.error(`\n❌ guard-mutations: --only "${ONLY}" 에 걸린 주입이 0건이다.`)
+  console.error('   이 필터는 정규식이 아니라 이름 **부분일치**다 — "a|b" 같은 건 안 먹고, 파일명도 안 먹는다.')
+  console.error('   여러 건을 돌리려면 각각 따로 부르거나 인자 없이 전수로 돌려라.')
+  process.exit(1)
+}
 if (MAP_ONLY) {
   console.log(`\n✅ guard-mutations(--map-only): 주입 지도 ${mapOk}건 성함 — find 가 코드에 유일하게 존재.`)
   console.log('   ⚠️ 이 모드는 **되돌려-검증을 하지 않는다**(가드가 실제로 실패하는지는 안 봄).')
@@ -10755,7 +10984,7 @@ if (MAP_ONLY) {
   process.exit(0)
 }
 /**
- * 🚨 `--only` 가 아무것도 못 고르면 **실패**다.
+ * 🚨 되돌려-검증 모드에서도 같은 판정(위에서 이미 걸렀으면 여기 안 온다).
  *   전에는 0건을 돌고도 "전부 빨간불 확인" 을 찍었다 — 2026-08-27 에 `--only "a|b|c"` 로 부르고
  *   (이 필터는 정규식이 아니라 **단순 부분일치**다) 초록불을 받았는데 실제로 돈 주입은 0건이었다.
  *   "검사가 실패할 수 없음" 이 이 레포가 반복해 당한 자리고, 하필 그 검사기 자신이 그랬다.

@@ -43,11 +43,13 @@ import FcfsApplyBlock from '@/features/group-buy/FcfsApplyBlock'
 import { isDemoSlug } from '@/shared/constants/demo-products'
 import DealPurchaseBox from './group-buy/DealPurchaseBox'
 import DealMenuList, { type DealMenuItem } from './group-buy/DealMenuList'
+import StoreLocation from './group-buy/StoreLocation'
 import OtherDealsRow from './group-buy/OtherDealsRow'
 import ShareRewardBanner from './group-buy/ShareRewardBanner'
 import DeferUntilVisible from './group-buy/DeferUntilVisible'
 import DealPayButton, { useCanPayWithDeal } from './group-buy/DealPayButton'
 import DealUseChooser, { useDealPlan } from './group-buy/DealUseChooser'
+import DealBottomBar from './group-buy/DealBottomBar'
 import { handleDealJoinError } from './group-buy/deal-join-error'
 import { useProductViewBeacon } from '@/hooks/useProductViewBeacon'
 
@@ -583,7 +585,7 @@ export default function GroupBuyDetailPage() {
           🖼️ 2026-08-19 (대표 시안 — 그루폰 상세): 사진이 여러 장이면 PC 에서 [좌 대형 + 우 썸네일]로
           펴고, 마지막 썸네일의 `+N` 으로 전체 사진 모달을 연다. 모바일은 스와이프 그대로.
           레이아웃/상태는 `DetailGallery`(SSOT)로 추출 — 이 파일은 배지만 넘긴다. */}
-      <div ref={heroRef} className="relative lg:rounded-2xl lg:overflow-hidden lg:border lg:border-gray-100 dark:lg:border-[#2C2F35]" style={{ background: 'var(--gbd-card)' }}>
+      <div ref={heroRef} className="relative lg:rounded-2xl lg:overflow-hidden" style={{ background: 'var(--gbd-card)' }}>
         <DetailGallery
           images={galleryImages}
           alt={detail.name}
@@ -667,14 +669,13 @@ export default function GroupBuyDetailPage() {
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 8, padding: '4px 10px', borderRadius: 999, background: 'var(--gbd-ink)', color: 'var(--gbd-card)', fontSize: 11, fontWeight: 800 }}>오픈 예정 · 사전 응모 받는 중</span>
           )}
           <h1 style={{ margin: '4px 0 0', fontSize: 21, lineHeight: 1.3, fontWeight: 800, letterSpacing: '-.03em', color: 'var(--gbd-ink)' }}>{detail.name}</h1>
-          {(detail.restaurant_address || detail.restaurant_phone) && (
+          {detail.restaurant_address && (
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginTop: 8 }}>
               <MapPin style={{ width: 17, height: 17, marginTop: 2, flex: '0 0 auto', color: 'var(--gbd-sub)' }} />
               <div style={{ fontSize: 13.5, color: 'var(--gbd-sub)', lineHeight: 1.5 }}>
                 {detail.restaurant_address || ''}
                 {distKm != null && <> · <b style={{ fontWeight: 700, color: 'var(--gbd-ink2)' }}>{distKm}km</b></>}
                 {detail.group_buy_current > 0 && <> · <b style={{ fontWeight: 700, color: 'var(--gbd-ink2)' }}>{formatNumber(detail.group_buy_current)}명 구매</b></>}
-                {detail.restaurant_phone && <> · <a href={`tel:${detail.restaurant_phone}`} style={{ color: 'var(--gbd-ink2)', textDecoration: 'none', fontWeight: 600, borderBottom: '1px solid var(--gbd-line2)' }}>{detail.restaurant_phone}</a></>}
               </div>
             </div>
           )}
@@ -682,12 +683,19 @@ export default function GroupBuyDetailPage() {
 
         {/* 가격 — 📱 모바일 전용. PC 는 우측 구매 패널 헤드라인이 담당(두 곳에 두면 최종가가 흐려진다). */}
         <div className="lg:hidden" style={{ padding: '12px 18px 16px' }}>
-          {/* 💰 정가·할인율·판매가를 **한 줄**로. 예전엔 취소선이 자기 줄을 통째로 쓰고 있었다. */}
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-            {displayDiscountPct > 0 && <span style={{ fontSize: 25, fontWeight: 800, color: 'var(--gbd-danger)', letterSpacing: '-.03em' }}>{displayDiscountPct}%</span>}
-            <span style={{ fontSize: 28, fontWeight: 900, color: 'var(--gbd-ink)', letterSpacing: '-.035em' }}>{formatNumber(unitPrice)}원</span>
-            {unitSaving > 0 && <span style={{ fontSize: 14, color: 'var(--gbd-sub2)', textDecoration: 'line-through', letterSpacing: '-.01em' }}>{formatNumber(refPrice)}원</span>}
-          </div>
+          {/* 💰 2026-09-15 (대표 확정 "안 B") — 가격 위계를 **세로**로. 종전엔 한 줄에 셋을 늘어놓아
+              `34% 16,500원 25,000원` 이 같은 무게로 읽혔다. 살 금액이 가장 커야 한다:
+              [정가 취소선 · 할인율] 작은 줄 위, [판매가] 큰 줄 아래.
+              🏷️ 할인율 색은 `--sale`(2026-09-07 대표 "할인율도 빨강으로 유지" SSOT). 여기만 상세 전용
+              빨강(`--gbd-danger` — 빨간 *면* 위 흰 글자용이라 기준이 다르다)을 쓰고 있어
+              **같은 상품이 목록과 상세에서 다른 빨강**이었다. */}
+          {unitSaving > 0 && (
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 7 }}>
+              <span style={{ fontSize: 14, color: 'var(--gbd-sub2)', textDecoration: 'line-through', letterSpacing: '-.01em' }}>{formatNumber(refPrice)}원</span>
+              {displayDiscountPct > 0 && <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--sale)', letterSpacing: '-.02em' }}>{displayDiscountPct}%</span>}
+            </div>
+          )}
+          <div style={{ marginTop: 3, fontSize: 30, fontWeight: 900, color: 'var(--gbd-ink)', letterSpacing: '-.035em', lineHeight: 1.06 }}>{formatNumber(unitPrice)}원</div>
           {/* 🔀 양쪽을 합친다: main(#1251)의 여백 정리(marginTop 6) + 내 탈-로즈(`--gbd-ink`).
               한쪽만 고르면 여백이나 색 중 하나를 잃는다. */}
           <div style={{ marginTop: 6, fontSize: 13, color: 'var(--gbd-ink2)', fontWeight: 500 }}>결제 즉시 교환권 발급</div>
@@ -705,9 +713,9 @@ export default function GroupBuyDetailPage() {
                 hint={detail.max_per_person && detail.max_per_person > 0 ? `1인당 최대 ${detail.max_per_person}개` : undefined}
                 right={(
                   <span style={{ display: 'flex', alignItems: 'center', gap: 2 }} role="group" aria-label="수량 조절">
-                    <button type="button" onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={!buyable || quantity <= 1} aria-label="수량 감소" style={{ width: 34, height: 34, borderRadius: 9, border: '1px solid var(--gbd-line2)', background: 'transparent', color: 'var(--gbd-ink)', fontSize: 18, cursor: 'pointer', opacity: (!isJoinable || quantity <= 1) ? .4 : 1 }}>−</button>
+                    <button type="button" onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={!buyable || quantity <= 1} aria-label="수량 감소" style={{ width: 34, height: 34, borderRadius: 9, border: '1px solid var(--rule-strong)', background: 'transparent', color: 'var(--gbd-ink)', fontSize: 18, cursor: 'pointer', opacity: (!isJoinable || quantity <= 1) ? .4 : 1 }}>−</button>
                     <span style={{ minWidth: 32, textAlign: 'center', fontSize: 15, fontWeight: 800, color: 'var(--gbd-ink)' }} aria-live="polite" aria-label={`현재 ${quantity}장`}>{quantity}</span>
-                    <button type="button" onClick={() => setQuantity(q => Math.min(maxQty, q + 1))} disabled={!buyable || quantity >= maxQty} aria-label="수량 증가" style={{ width: 34, height: 34, borderRadius: 9, border: '1px solid var(--gbd-line2)', background: 'transparent', color: 'var(--gbd-ink)', fontSize: 18, cursor: 'pointer', opacity: (!isJoinable || quantity >= maxQty) ? .4 : 1 }}>+</button>
+                    <button type="button" onClick={() => setQuantity(q => Math.min(maxQty, q + 1))} disabled={!buyable || quantity >= maxQty} aria-label="수량 증가" style={{ width: 34, height: 34, borderRadius: 9, border: '1px solid var(--rule-strong)', background: 'transparent', color: 'var(--gbd-ink)', fontSize: 18, cursor: 'pointer', opacity: (!isJoinable || quantity >= maxQty) ? .4 : 1 }}>+</button>
                   </span>
                 )}
               />
@@ -721,7 +729,10 @@ export default function GroupBuyDetailPage() {
         {/* 🎯 추첨 응모 — 이 상품이 추첨 대상일 때만(결제 없음). 아니면 렌더 0. */}
         <div id="fcfs-apply-block"><FcfsApplyBlock productId={Number(id)} /></div>
 
-        <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
+        {/* 🩶 2026-09-15 (대표 확정 "안 B"): 섹션 사이 8px 회색 띠 4개 → **하이라인 구분선**.
+            띠는 층을 계속 끊어 화면을 조각냈다(실측 한 화면에 3개). 표면 규칙은 "표면 두 톤"이라
+            띠 자체가 세 번째 톤이었다. 구분선은 같은 일을 하면서 면을 나누지 않는다. */}
+        <div aria-hidden style={{ height: 1, margin: '0 18px', background: 'var(--gbd-line)' }} />
 
         {/* 셀러 (컴팩트) + SNS */}
         {detail.seller_name && (() => {
@@ -747,7 +758,7 @@ export default function GroupBuyDetailPage() {
                   {/* 🏷️ 2026-09-03 대표 — 자동 발급 아이디(@store_xxxx)는 손님에게 의미가 없다(SSOT: shared/seller-handle). */}
                   {publicSellerHandle(detail.seller_username) && <div style={{ fontSize: 12.5, color: 'var(--gbd-sub)', marginTop: 2 }}>@{publicSellerHandle(detail.seller_username)}</div>}
                 </div>
-                <button onClick={() => { if (detail.seller_handle) { navigate(`/u/${detail.seller_handle}`); return } const t = detail.seller_username || detail.seller_id; if (t) navigate(`/profile/${t}`) }} style={{ display: 'inline-flex', alignItems: 'center', gap: 1, padding: '8px 12px', border: '1px solid var(--gbd-line2)', borderRadius: 10, background: 'var(--gbd-card)', color: 'var(--gbd-ink2)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flex: '0 0 auto' }}>
+                <button onClick={() => { if (detail.seller_handle) { navigate(`/u/${detail.seller_handle}`); return } const t = detail.seller_username || detail.seller_id; if (t) navigate(`/profile/${t}`) }} style={{ display: 'inline-flex', alignItems: 'center', gap: 1, padding: '8px 12px', border: '1px solid var(--rule-strong)', borderRadius: 10, background: 'var(--gbd-card)', color: 'var(--gbd-ink2)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flex: '0 0 auto' }}>
                   프로필<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
                 </button>
               </div>
@@ -764,65 +775,51 @@ export default function GroupBuyDetailPage() {
           )
         })()}
 
-        <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
+        <div aria-hidden style={{ height: 1, margin: '0 18px', background: 'var(--gbd-line)' }} />
 
         {/* 🔴 2026-09-01 (디자인 방향 PR A): 3열 균등 신뢰 스트립(안전결제/정식판매/환불보장) 삭제 —
             CTA 위 한 줄("토스로 3초 안전결제 · 미사용 시 100% 자동환불")이 같은 말을 이미 한다. */}
 
-        {/* 상품 안내 — 🧾 2026-08-30 (대표 "AI 티 안나는 디자인으로"):
-            제목이 '무엇을 기대하세요?' 였다. What to expect 를 그대로 옮긴 번역투라
-            한국 커머스에선 아무도 그렇게 안 쓴다 — 아래 '이용 안내'와 짝이 되게 '딜 안내'로.
-            그 아래 칩도 로즈 점을 박은 라운드 필 3개였다. 세 낱말에 테두리 세 개를 쓰던 꼴이라,
-            점·테두리를 걷었다. 2026-09-01: 띄어 쓴 가운뎃점 사슬도 흔적이라 한 줄에 하나 + 로즈 점(테두리 없음)으로. */}
-        <div id="gb-sec-info" style={{ padding: '22px 18px', scrollMarginTop: 116 }}>
-          <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em' }}>딜 안내</div>
-          {/* 🔴 로즈 마침표: 띄어 쓴 가운뎃점 사슬(a · b · c) 대신 한 줄에 하나, 앞에 점. 테두리 pill 이 아니다. */}
-          <div style={{ marginTop: 11, fontSize: 13.5, color: 'var(--gbd-sub)', lineHeight: 1.6, display: 'flex', flexDirection: 'column', gap: 3 }}>
-            {['즉시 교환권 발급', '전 지점 사용', detail.voucher_expiry ? `${safeDate(detail.voucher_expiry)?.toLocaleDateString('ko-KR') ?? ''}까지 사용` : '결제 즉시 사용'].map((line) => (
-              <span key={line} style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span aria-hidden="true" style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--gbd-accent)', flex: '0 0 auto' }} />{line}</span>
-            ))}
-          </div>
-          {detail.description && detail.description.trim() !== (detail.name || '').trim() && <p style={{ margin: '14px 0 0', fontSize: 14.5, lineHeight: 1.72, color: 'var(--gbd-ink2)', whiteSpace: 'pre-line' }}>{detail.description}</p>}
+        {/* 🎟️ 2026-09-15 (대표 확정 "안 B") — 이 자리에 있던 **고정 3줄**을 지우고 실제 스펙표를 올린다.
+            ## 무엇이 문제였나 (라이브 /group-buy/2888 실측)
+              ① 세 줄이 `['즉시 교환권 발급', '전 지점 사용', …]` 하드코딩이라 **상품과 무관하게 항상 같다**.
+              ② 그중 **"전 지점 사용"은 거짓일 수 있다** — 2888(홍대돈까스)은 전주 단일 매장인데 그렇게 나갔다.
+                 손님이 다른 지점에 가서 못 쓰면 분쟁이다. 지어낸 문장은 디자인이 아니라 사고다.
+              ③ "즉시 교환권 발급"은 바로 위 가격 줄이, 나머지는 아래 `UsageGuide` 가 이미 말한다(3중).
+            ## 무엇으로 바꿨나
+            `UsageGuide`(사용기한·사용 방법 + 접히는 3단계 + 유의사항)를 **여기로 올린다**. 값이 실제로
+            있는 것만 말하고, 없으면 그 행이 스스로 폴백한다. 아래에 있던 같은 블록은 제거했다(중복).
+            ⚠️ 상단 탭 `gb-sec-info`(라벨 '이용권 정보')가 이 앵커로 스크롤한다 — id 는 유지해야 한다. */}
+        <div id="gb-sec-info" style={{ scrollMarginTop: 116 }}>
+          <UsageGuide voucherExpiry={detail.voucher_expiry} voucherTerms={detail.voucher_terms} />
+          {detail.description && detail.description.trim() !== (detail.name || '').trim() && <p style={{ margin: '0 18px 22px', fontSize: 14.5, lineHeight: 1.72, color: 'var(--gbd-ink2)', whiteSpace: 'pre-line' }}>{detail.description}</p>}
         </div>
 
         {/* 대표 메뉴 — 백엔드 menu 데이터 있을 때만 (data-gate; docs/design/group-buy-detail.md). 추출: DealMenuList */}
         <DealMenuList menuItems={((detail as { menu?: DealMenuItem[] }).menu) || []} />
 
-        {/* 매장 위치 — RestaurantMiniMap(잠금 lazy) + 주소 카드 + 길찾기 */}
+        {/* 매장 위치 — 추출: StoreLocation(테두리 제거 + 전화 버튼 신설). 지도는 **잠금 lazy** 라
+            여기서 감싸 넘긴다(그 lazy 경계를 옮기면 로딩 최적화 잠금 계약이 흔들린다). */}
         {(detail.restaurant_address || (detail.restaurant_lat && detail.restaurant_lng)) && (
           <>
-            <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
-            <div id="gb-sec-location" style={{ padding: '22px 18px', scrollMarginTop: 116 }}>
-              <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--gbd-ink)', letterSpacing: '-.02em', marginBottom: 13 }}>매장 위치</div>
-              <div style={{ borderRadius: '14px 14px 0 0', overflow: 'hidden', border: '1px solid var(--gbd-line2)', borderBottom: 'none' }}>
+            <div aria-hidden style={{ height: 1, margin: '0 18px', background: 'var(--gbd-line)' }} />
+            <StoreLocation
+              name={detail.restaurant_name} address={detail.restaurant_address} phone={detail.restaurant_phone}
+              lat={detail.restaurant_lat} lng={detail.restaurant_lng}
+              map={(
                 <DeferUntilVisible minHeight={172}>
                   <Suspense fallback={<div style={{ height: 172, background: 'var(--gbd-chip)' }} />}>
                     <RestaurantMiniMap name={detail.restaurant_name} address={detail.restaurant_address} lat={detail.restaurant_lat} lng={detail.restaurant_lng} placeUrl={detail.kakao_place_url} />
                   </Suspense>
                 </DeferUntilVisible>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '13px 14px', border: '1px solid var(--gbd-line2)', borderTop: 'none', borderRadius: '0 0 14px 14px' }}>
-                {/* 🧾 매장명은 제목 위(머천트 줄)와 지도 핀에 이미 두 번 나온다 — 여기까지 세 번은
-                    "채워 넣은" 티다. 주소만 남긴다(길찾기 버튼이 바로 옆이라 주소가 실제로 쓰인다). */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  {detail.restaurant_address && <div style={{ fontSize: 13, color: 'var(--gbd-sub)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{detail.restaurant_address}</div>}
-                </div>
-                <a
-                  href={`https://map.kakao.com/link/${detail.restaurant_lat && detail.restaurant_lng ? `to/${encodeURIComponent(detail.restaurant_name || '매장')},${detail.restaurant_lat},${detail.restaurant_lng}` : `search/${encodeURIComponent(detail.restaurant_address || detail.restaurant_name || '')}`}`}
-                  target="_blank" rel="noopener noreferrer"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '9px 14px', border: '1px solid var(--gbd-line2)', borderRadius: 11, background: 'var(--gbd-card)', color: 'var(--gbd-ink)', fontSize: 13, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap', flex: '0 0 auto' }}
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--gbd-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z" /></svg>
-                  길찾기
-                </a>
-              </div>
-            </div>
+              )}
+            />
           </>
         )}
 
         {/* 본인 product CTA (셀러 대시보드 진입) */}
         {isOwnProduct && (
-          <div style={{ margin: '0 18px 14px', display: 'flex', alignItems: 'center', gap: 11, padding: '13px 14px', border: '1px solid var(--gbd-line2)', borderRadius: 14 }}>
+          <div style={{ margin: '0 18px 14px', display: 'flex', alignItems: 'center', gap: 11, padding: '13px 14px', background: 'var(--gbd-chip)', borderRadius: 14 }}>
             <Sparkles style={{ width: 18, height: 18, flex: '0 0 auto', color: 'var(--gbd-ink)' }} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-ink)', margin: 0 }}>내 공구</p>
@@ -832,12 +829,8 @@ export default function GroupBuyDetailPage() {
           </div>
         )}
 
-        <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
-
-        <UsageGuide voucherExpiry={detail.voucher_expiry} voucherTerms={detail.voucher_terms} />
-
         {/* 후기·평점 — 신뢰 레버 (디자이너 후속 제안). 기존 ProductReviews 재사용(lazy, 빈 상태/작성 폼 내장). */}
-        <div style={{ height: 8, background: 'var(--gbd-bg)' }} />
+        <div aria-hidden style={{ height: 1, margin: '0 18px', background: 'var(--gbd-line)' }} />
         <div id="gb-sec-reviews" style={{ padding: '22px 18px', scrollMarginTop: 116 }}>
           <DeferUntilVisible minHeight={80}>
             <Suspense fallback={<div style={{ height: 80, background: 'var(--gbd-chip)', borderRadius: 12 }} />}>
@@ -897,43 +890,16 @@ export default function GroupBuyDetailPage() {
       </aside>
       </div>{/* /lg 그루폰식 그리드 */}
 
-      {/* 🎨 2026-06-16 리디자인 결제 푸터 — 할인중 + 수량 스테퍼 + 안심 카피 + 잉크블랙 '구매하기'.
-            fixed (BottomNav z-9999 위). gbd 자손이라 var() 상속.
-            🖥️ 2026-07-19 (그루폰식): PC(lg+)는 우측 sticky DealPurchaseBox 가 담당 → 이 바는 모바일 전용. */}
-      <footer
-        className="fixed bottom-0 inset-x-0 z-[10002] lg:hidden"
-        role="contentinfo" aria-label="결제 영역"
-      >
-      <div
-        style={{ background: 'var(--gbd-card)', borderTop: '1px solid var(--gbd-line2)', padding: '7px 16px calc(8px + env(safe-area-inset-bottom))', boxShadow: '0 -8px 30px -18px rgba(0,0,0,.3)' }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
-            <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-ink2)', whiteSpace: 'nowrap' }}>
-              {isJoinable && totalSaving > 0 ? (quantity > 1 ? `총 ${formatNumber(totalSaving)}원 할인 중` : `${formatNumber(unitSaving)}원 할인 중`) : ''}
-            </span>
-            {/* 🗺️ 2026-07-02 카카오맵 리뷰 게이미피케이션 — 레벨 전용 이용권 배지 (서버 게이트의 UX 안내) */}
-            {detail?.min_review_level && detail.min_review_level > 1 ? (
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--gbd-ink)', whiteSpace: 'nowrap' }}>동네 리뷰어 Lv.{detail.min_review_level} 전용</span>
-            ) : null}
-          </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, marginBottom: 6 }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--gbd-sub)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="11" width="16" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
-          <span style={{ fontSize: 11.5, color: 'var(--gbd-sub)', fontWeight: 500, whiteSpace: 'nowrap' }}>{isPrelaunch ? '오픈 협의 중 매장 · 응모는 무료, 오픈 시 알림을 드려요' : '토스로 3초 안전결제 · 미사용 시 100% 자동환불'}</span>
-        </div>
-        <DealUseChooser plan={!isPrelaunch && isJoinable ? dealPlan : null} value={dealUse ?? dealPlan?.max_deal_usable ?? 0} onChange={setDealUse} />
-        <button
-          onClick={isPrelaunch ? () => document.getElementById('fcfs-apply-block')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) : () => handleJoin()}
-          disabled={(!isJoinable && !isPrelaunch) || joining}
-          aria-label={isPrelaunch ? '사전 응모하기' : isJoinable ? `${formatNumber(total)}원 ${isDemoDeal ? '결제하기' : '구매하기'}` : isDemoDeal ? '결제 불가' : '구매 불가'}
-          style={{ width: '100%', height: 50, border: 'none', borderRadius: 14, background: (buyable || isPrelaunch) ? 'var(--gbd-cta-bg)' : 'var(--gbd-sub2)', color: 'var(--gbd-cta-fg)', fontSize: 16, fontWeight: 800, letterSpacing: '-.01em', cursor: (buyable || isPrelaunch) ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
-        >
-          {joining ? '처리 중…' : isPrelaunch ? '사전 응모하기' : !isJoinable ? (isDemoDeal ? '결제 불가' : '구매 불가') : <>{formatNumber(total)}원 {isDemoDeal ? '결제하기' : '구매하기'}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
-        </button>
-        <DealPayButton show={canPayWithDeal && !isPrelaunch && isJoinable} joining={joining} dealBalance={dealBalance} onPay={() => handleJoin(true)} />
-      </div>{/* /bar box */}
-      </footer>
+      {/* 🧺 2026-09-15: 하단 결제 바를 `DealBottomBar` 로 분리했다(로직 불변) — 이 파일이 동결선에
+          붙어 있어 장바구니 '담기' 한 줄을 넣을 자리가 없었다. 규칙의 처방은 깎기가 아니라 분리다. */}
+      <DealBottomBar
+        isJoinable={isJoinable} isPrelaunch={isPrelaunch} isDemoDeal={isDemoDeal} buyable={buyable} joining={joining}
+        quantity={quantity} total={total}
+        minReviewLevel={detail?.min_review_level}
+        dealPlan={!isPrelaunch && isJoinable ? dealPlan : null} dealUse={dealUse} setDealUse={setDealUse}
+        canPayWithDeal={canPayWithDeal} dealBalance={dealBalance}
+        productId={productId} onJoin={handleJoin}
+      />
     </div>
   )
 }

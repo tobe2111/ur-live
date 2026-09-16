@@ -16,6 +16,7 @@ import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useAddresses, type EntryMethod, type ShippingAddress } from '@/hooks/queries/useAddresses'
 import BrandLoader from '@/components/brand/BrandLoader'
+import { ListLoadError } from '@/components/ui/list-load-error'
 
 const EMPTY_FORM = {
   recipient_name: '',
@@ -47,7 +48,7 @@ export default function AddressManagementPage() {
   ]
   const navigate = useNavigate()
   // 🛡️ 2026-06-01 Tier2: 수동 페칭 → React Query. CRUD mutation 후 refetch.
-  const { data: addresses = [], isLoading: loading, refetch } = useAddresses()
+  const { data: addresses = [], isLoading: loading, isError, refetch } = useAddresses()
   const [showForm, setShowForm] = useState(false)
   const [showPostcodePopup, setShowPostcodePopup] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -183,8 +184,18 @@ export default function AddressManagementPage() {
   // 🚑 2026-07-10 (로딩 전수조사 — 로더 전면 통일): ad-hoc 스피너 → BrandLoader.
   if (loading) {
     return (
-      <div className="min-h-[100dvh] bg-white dark:bg-[#11141C]">
+      <div className="min-h-[100dvh] bg-warm">
         <BrandLoader fullScreen />
+      </div>
+    )
+  }
+
+  // 🩸 2026-09-15: 못 불러온 것을 "배송지가 없어요"로 말하지 않는다 — 섞으면 사장님이
+  //    멀쩡히 저장해 둔 주소를 지워진 줄 안다.
+  if (isError) {
+    return (
+      <div className="min-h-[100dvh] bg-warm flex items-center justify-center px-6">
+        <ListLoadError onRetry={() => refetch()} />
       </div>
     )
   }
@@ -406,7 +417,7 @@ export default function AddressManagementPage() {
           </div>
 
           {showPostcodePopup && (
-            <div className="rounded-2xl overflow-hidden border border-gray-200 dark:border-[#2C2F35]">
+            <div className="rounded-2xl overflow-hidden border border-line">
               <div id="daum-postcode-container" style={{ width: '100%', height: '400px' }}></div>
             </div>
           )}

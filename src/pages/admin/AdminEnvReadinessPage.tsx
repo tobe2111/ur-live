@@ -71,13 +71,13 @@ export default function AdminEnvReadinessPage() {
         ) : (
           <>
             {/* 종합 배지 */}
-            <div className={`rounded-2xl p-5 mb-5 border ${data.ready ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+            <div className={`rounded-[var(--dash-radius,16px)] p-5 mb-5 border ${data.ready ? 'bg-white border-rule' : 'bg-white border-rule'}`}>
               <div className="flex items-center gap-3">
                 {data.ready
-                  ? <CheckCircle2 className="w-8 h-8 text-green-600 shrink-0" />
-                  : <XCircle className="w-8 h-8 text-red-600 shrink-0" />}
+                  ? <CheckCircle2 className="w-8 h-8 text-tone-ok shrink-0" />
+                  : <XCircle className="w-8 h-8 text-tone-bad shrink-0" />}
                 <div>
-                  <p className={`text-lg font-bold ${data.ready ? 'text-green-800' : 'text-red-800'}`}>
+                  <p className={`text-lg font-bold ${data.ready ? 'text-tone-ok' : 'text-tone-bad'}`}>
                     {data.ready ? '환경 준비 완료 — 다른 운영자도 정상 사용 가능' : '필수 설정 누락 — 일부 운영자 로그인 불가'}
                   </p>
                   <p className="text-xs text-gray-600 mt-0.5">
@@ -86,10 +86,10 @@ export default function AdminEnvReadinessPage() {
                 </div>
               </div>
               {data.summary.blocking_missing.length > 0 && (
-                <p className="mt-3 text-sm text-red-700">⛔ 필수 누락: {data.summary.blocking_missing.join(', ')}</p>
+                <p className="mt-3 text-sm text-tone-bad">필수 누락: {data.summary.blocking_missing.join(', ')}</p>
               )}
               {data.summary.security_missing.length > 0 && (
-                <p className="mt-1.5 text-sm text-amber-700 flex items-start gap-1">
+                <p className="mt-1.5 text-sm text-tone-warn flex items-start gap-1">
                   <ShieldAlert className="w-4 h-4 mt-0.5 shrink-0" /> 보안 권장(미설정 시 fail-open): {data.summary.security_missing.join(', ')}
                 </p>
               )}
@@ -101,7 +101,7 @@ export default function AdminEnvReadinessPage() {
                 const meta = GROUP_META[g]
                 const items = data.groups[g]
                 return (
-                  <div key={g} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                  <div key={g} className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 overflow-hidden">
                     <div className="px-4 py-3 border-b border-gray-100">
                       <p className="text-sm font-bold text-gray-900">{meta.title}</p>
                       <p className="text-xs text-gray-500 mt-0.5">{meta.desc}</p>
@@ -110,13 +110,13 @@ export default function AdminEnvReadinessPage() {
                       {items.map((it) => (
                         <li key={it.key} className="flex items-start gap-3 px-4 py-2.5">
                           {it.present
-                            ? <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
-                            : <XCircle className={`w-4 h-4 mt-0.5 shrink-0 ${g === 'blocking' ? 'text-red-500' : g === 'security' ? 'text-amber-500' : 'text-gray-300'}`} />}
+                            ? <CheckCircle2 className="w-4 h-4 text-tone-ok mt-0.5 shrink-0" />
+                            : <XCircle className={`w-4 h-4 mt-0.5 shrink-0 ${g === 'blocking' ? 'text-tone-bad' : g === 'security' ? 'text-tone-warn' : 'text-gray-300'}`} />}
                           <div className="min-w-0">
                             <p className="text-[13px] font-medium text-gray-800 font-mono">{it.key}</p>
                             {it.note && <p className="text-[11px] text-gray-500 mt-0.5">{it.note}</p>}
                           </div>
-                          <span className={`ml-auto text-[11px] font-bold whitespace-nowrap ${it.present ? 'text-green-600' : g === 'blocking' ? 'text-red-600' : g === 'security' ? 'text-amber-600' : 'text-gray-400'}`}>
+                          <span className={`ml-auto text-[11px] font-bold whitespace-nowrap ${it.present ? 'text-tone-ok' : g === 'blocking' ? 'text-tone-bad' : g === 'security' ? 'text-tone-warn' : 'text-gray-400'}`}>
                             {it.present ? '설정됨' : '미설정'}
                           </span>
                         </li>

@@ -48,11 +48,11 @@ function summarize(m?: MaintenanceRecord | null): { text: string; hasError: bool
   if (m.quality) parts.push(`품질채점 ${formatNumber(m.quality.scanned || 0)}${m.quality.branded ? ` · 브랜드태깅 +${formatNumber(m.quality.branded)}` : ''}`)
   add('카테고리재보정', m.rescan?.changed); add('라이브재조회', m.refetch?.processed)
   if (m.naver?.measured) parts.push(`블로거측정 ${formatNumber(m.naver.measured)}${m.naver.contacts ? `(연락처 +${formatNumber(m.naver.contacts)})` : ''}`)
-  if (m.handle?.fixed) parts.push(`🩹 핸들복구 ${formatNumber(m.handle.fixed)}${m.handle.reopened ? `(재측정 대기로 ${formatNumber(m.handle.reopened)} 복귀)` : ''}`)
+  if (m.handle?.fixed) parts.push(`핸들복구 ${formatNumber(m.handle.fixed)}${m.handle.reopened ? `(재측정 대기로 ${formatNumber(m.handle.reopened)} 복귀)` : ''}`)
   for (const k of Object.keys(m)) if (k.endsWith('_error')) err.push(k.replace('_error', ''))
   // 🧮 예산 상태 — 매시간 한 단계씩 순환하므로 "이번 회차에 얼마나 썼고 왜 멈췄는지"가 보여야 한다.
   if (typeof m.ops === 'number' && m.cap) parts.push(`연산 ${m.ops}/${m.cap}${m.paused ? ' · 예산소진(다음 회차 이어서)' : ''}`)
-  if (m.limit_hit) parts.push('⚠️ 플랫폼 한도 도달(상한 자동 하향)')
+  if (m.limit_hit) parts.push('플랫폼 한도 도달(상한 자동 하향)')
   return { text: parts.length ? parts.join(' · ') : '변경 없음(이미 정리됨)', hasError: err.length > 0 }
 }
 
@@ -115,7 +115,7 @@ export default function CollectDiagPanel({ run, sheetsSync, sheetsCron, sheetsGa
   const soft = [yt, nv, ts].some(x => x === 'partial')
   const line = (label: string, p: PlatformDiag, st: string) => (
     <div>{label} — {p.configured ? `발굴 ${formatNumber(p.found)} · 저장 ${formatNumber(p.saved)}` : '키 미설정'}
-      {st === 'ok' ? ' · 정상' : st === 'partial' ? ' · 일부 키워드 일시 실패(다음 시간 자동 재시도)' : st === 'failed' ? ` · ⚠️ ${p.error}` : ''}</div>
+      {st === 'ok' ? ' · 정상' : st === 'partial' ? ' · 일부 키워드 일시 실패(다음 시간 자동 재시도)' : st === 'failed' ? ` · ${p.error}` : ''}</div>
   )
 
   return (
@@ -124,18 +124,18 @@ export default function CollectDiagPanel({ run, sheetsSync, sheetsCron, sheetsGa
           2026-07-28 실사고: 미러가 34시간 정지했는데 스탬프는 `ok:true` 인 옛 값이라(예외로 죽어 갱신조차 못 함)
           화면에도 경보에도 아무 신호가 없었다. 매시간 도는 잡이므로 3시간 넘게 조용하면 그 자체가 이상 신호다. */}
       {sheetsSync && !sheetsSync.ok ? (
-        <div className="mb-2 mt-1 text-[11px] text-red-600">📊 구글시트 동기화 실패({fmtKST(sheetsSync.at)}): {sheetsSync.error || '원인 미상'} — 정비 도구에서 수동 재시도 가능</div>
+        <div className="mb-2 mt-1 text-[11px] text-tone-bad">구글시트 동기화 실패({fmtKST(sheetsSync.at)}): {sheetsSync.error || '원인 미상'} — 정비 도구에서 수동 재시도 가능</div>
       ) : sheetsSync?.at && Date.now() - Date.parse(sheetsSync.at) > 3 * 3600_000 ? (
         // 🚦 '꺼짐'과 '고장'을 나눠 말한다 — 다음 행동이 정반대다(env 를 켠다 vs 원인을 캔다).
         //    2026-07-28: 게이트를 모른 채 "매시간 도는 작업입니다"라고 단정해, 꺼져 있을 때도 고장으로 읽혔다.
         sheetsGate === false ? (
           <div className="mb-2 mt-1 text-[11px] text-gray-500">
-            📊 구글시트 동기화가 <b>꺼져 있습니다</b>(ur-ads <code>ADS_SHEETS_SYNC_ENABLED</code>) — 마지막 {fmtKST(sheetsSync.at)}
+            구글시트 동기화가 <b>꺼져 있습니다</b>(ur-ads <code>ADS_SHEETS_SYNC_ENABLED</code>) — 마지막 {fmtKST(sheetsSync.at)}
             {sheetsSync.rows ? ` · ${formatNumber(sheetsSync.rows)}행` : ''}. 고장이 아니라 설정입니다. 필요하면 정비 도구에서 수동 동기화하세요.
           </div>
         ) : (
-          <div className="mb-2 mt-1 text-[11px] text-amber-600">
-            📊 구글시트 동기화가 {Math.floor((Date.now() - Date.parse(sheetsSync.at)) / 3600_000)}시간째 멈춰 있어요(마지막 {fmtKST(sheetsSync.at)}
+          <div className="mb-2 mt-1 text-[11px] text-tone-warn">
+            구글시트 동기화가 {Math.floor((Date.now() - Date.parse(sheetsSync.at)) / 3600_000)}시간째 멈춰 있어요(마지막 {fmtKST(sheetsSync.at)}
             {sheetsSync.rows ? ` · ${formatNumber(sheetsSync.rows)}행` : ''}
             {sheetsSync.trigger ? ` · ${sheetsSync.trigger === 'cron' ? '자동' : sheetsSync.trigger === 'manual' ? '수동 실행' : '출처 미상'}` : ''})
             {/* 🔎 cron 기록 유무가 '고장'과 '한 번도 안 돎'을 가른다 — 마지막 스탬프는 수동 실행이 덮어쓴다. */}
@@ -153,7 +153,7 @@ export default function CollectDiagPanel({ run, sheetsSync, sheetsCron, sheetsGa
           "왜 같은 키워드만 도나"를 코드를 뒤지지 않고 알 수 있다(2026-07-29 실측: 16개 계획 / 3개 실행). */}
       {run?.picks ? (
         <div className="mb-2 mt-1 text-[11px] text-gray-500">
-          🎯 이번 회차 키워드 {formatNumber(run.picks.processed)}개 실행 / {formatNumber(run.picks.planned)}개 계획
+          이번 회차 키워드 {formatNumber(run.picks.processed)}개 실행 / {formatNumber(run.picks.planned)}개 계획
           {` · 성과가중 ${formatNumber(run.picks.from_yt)} · 커서순환 ${formatNumber(run.picks.from_cursor)}`}
           {run.picks.from_cursor === 0 && run.picks.planned > run.picks.processed
             ? ' — 커서순환 키워드가 한 개도 도달하지 못했습니다(예산이 앞쪽에서 소진). 순환 폭이 성과가중 픽에만 의존합니다.'
@@ -165,12 +165,12 @@ export default function CollectDiagPanel({ run, sheetsSync, sheetsCron, sheetsGa
           이걸 안 보여 주면 조율기가 돌고 있는지조차 코드를 뒤져야 안다(그게 이 레포의 상습 오진). */}
       {run?.freshness ? (
         <div className="mb-2 mt-1 text-[11px] text-gray-500">
-          🌱 신선도 조율 · 키워드 정원 {formatNumber(run.freshness.cap)}
+          신선도 조율 · 키워드 정원 {formatNumber(run.freshness.cap)}
           {run.freshness.cap > run.freshness.prev_cap ? ` (↑ ${formatNumber(run.freshness.prev_cap)}에서 확대)` : ''}
           {` · 키워드당 수확 ${run.freshness.yield_before} → ${run.freshness.yield_after}`}
           {run.freshness.reason === 'yield-declining' ? ' — 수확 하락 감지, 신선한 키워드를 더 들입니다' : ''}
-          {run.freshness.reason === 'blocked-freeze' ? ' — ⚠️ 네이버 차단 감지로 확대를 멈췄습니다(안전 우선)' : ''}
-          {run.freshness.reason === 'at-ceiling' ? ' — ⚠️ 정원 상한 도달: 더 늘리려면 사람 판단이 필요합니다' : ''}
+          {run.freshness.reason === 'blocked-freeze' ? ' — 네이버 차단 감지로 확대를 멈췄습니다(안전 우선)' : ''}
+          {run.freshness.reason === 'at-ceiling' ? ' — 정원 상한 도달: 더 늘리려면 사람 판단이 필요합니다' : ''}
           {run.freshness.reason === 'room-available' ? ' — 정원에 자리가 남아 있습니다(후보 부족이 원인)' : ''}
           {run.freshness.reason === 'insufficient-evidence' ? ' — 회차 표본이 모자라 판단을 보류했습니다' : ''}
           {run.freshness.reason === 'stable' ? ' — 수확이 안정적입니다' : ''}
@@ -178,26 +178,26 @@ export default function CollectDiagPanel({ run, sheetsSync, sheetsCron, sheetsGa
       ) : null}
 
       {run?.diag?.naver_enrich && run.diag.naver_enrich.tried > 0 && run.diag.naver_enrich.measured === 0 ? (
-        <div className="mb-2 mt-1 text-[11px] text-amber-600">📝 블로거 활동성 측정 실패(시도 {run.diag.naver_enrich.tried} · 성공 0) — 네이버가 서버 요청을 차단 중일 수 있어요. 반복되면 '마지막 글' 날짜(검색 기반)만으로 활동을 판단하세요.</div>
+        <div className="mb-2 mt-1 text-[11px] text-tone-warn">블로거 활동성 측정 실패(시도 {run.diag.naver_enrich.tried} · 성공 0) — 네이버가 서버 요청을 차단 중일 수 있어요. 반복되면 '마지막 글' 날짜(검색 기반)만으로 활동을 판단하세요.</div>
       ) : null}
       {/* 💥 수집이 예외로 끝났다 / ⏸️ 매시간 도는데 오래 조용하다 — 2026-07-28 실사고: 수집이 2시간 넘게
           죽어 있었는데(다른 레인은 정상) 화면엔 옛 성공 시각만 있어 아무도 몰랐다. */}
       {run?.crash ? (
-        <div className="mb-2 mt-1 text-[11px] text-red-600">
-          💥 수집 실패({fmtKST(run.crash_at)}): {run.crash}
+        <div className="mb-2 mt-1 text-[11px] text-tone-bad">
+          수집 실패({fmtKST(run.crash_at)}): {run.crash}
           {run.crash_budget ? ` · 예산 ${formatNumber(run.crash_spent || 0)}/${formatNumber(run.crash_budget)}` : ''}
           {' '}— 한도 신호면 상한을 자동으로 낮춰 다음 시간에 재시도합니다.
         </div>
       ) : run?.last_run && Date.now() - Date.parse(run.last_run.replace(' ', 'T') + 'Z') > 3 * 3600_000 ? (
-        <div className="mb-2 mt-1 text-[11px] text-amber-600">
-          ⏸️ 자동 수집이 {Math.floor((Date.now() - Date.parse(run.last_run.replace(' ', 'T') + 'Z')) / 3600_000)}시간째 조용합니다(매시간 실행) — 게이트가 켜져 있는데도 이러면 실행이 중간에 죽고 있는 것입니다.
+        <div className="mb-2 mt-1 text-[11px] text-tone-warn">
+          ⏸자동 수집이 {Math.floor((Date.now() - Date.parse(run.last_run.replace(' ', 'T') + 'Z')) / 3600_000)}시간째 조용합니다(매시간 실행) — 게이트가 켜져 있는데도 이러면 실행이 중간에 죽고 있는 것입니다.
         </div>
       ) : null}
       {run && (
         <div className="mb-1 text-xs text-gray-500">
-          마지막 수집 {fmtKST(run.last_run)} · 신규 {formatNumber(run.last_saved)}건 · 누적 {formatNumber(run.total_saved)}건 · 실행 {formatNumber(run.total_runs)}회{run.bio_enriched ? ` · 🔗 링크 컨택보강 ${formatNumber(run.bio_enriched)}건` : ''}{run.diag?.naver_enrich?.measured ? ` · 📝 블로거 측정 ${formatNumber(run.diag.naver_enrich.measured)}${run.diag.naver_enrich.contacts ? `(연락처 +${formatNumber(run.diag.naver_enrich.contacts)})` : ''}` : ''}
-          {run.yt_budget ? <span className={run.yt_budget.used >= run.yt_budget.total ? 'text-amber-600 font-medium' : ''}>{` · 🎯 YT 검색 예산 ${formatNumber(run.yt_budget.used)}/${formatNumber(run.yt_budget.total)}`}{run.yt_budget.used >= run.yt_budget.total ? ' (오후 4~5시 리셋)' : ''}</span> : ''}
-          {run.youtube_quota_hit ? ' · ⚠️ 유튜브 일일 한도 도달(네이버만 계속)' : ''}
+          마지막 수집 {fmtKST(run.last_run)} · 신규 {formatNumber(run.last_saved)}건 · 누적 {formatNumber(run.total_saved)}건 · 실행 {formatNumber(run.total_runs)}회{run.bio_enriched ? ` · 링크 컨택보강 ${formatNumber(run.bio_enriched)}건` : ''}{run.diag?.naver_enrich?.measured ? ` · 블로거 측정 ${formatNumber(run.diag.naver_enrich.measured)}${run.diag.naver_enrich.contacts ? `(연락처 +${formatNumber(run.diag.naver_enrich.contacts)})` : ''}` : ''}
+          {run.yt_budget ? <span className={run.yt_budget.used >= run.yt_budget.total ? 'text-tone-warn font-medium' : ''}>{` · YT 검색 예산 ${formatNumber(run.yt_budget.used)}/${formatNumber(run.yt_budget.total)}`}{run.yt_budget.used >= run.yt_budget.total ? ' (오후 4~5시 리셋)' : ''}</span> : ''}
+          {run.youtube_quota_hit ? ' · 유튜브 일일 한도 도달(네이버만 계속)' : ''}
           {run.promoted?.length ? ` · 자동확장 키워드 +${run.promoted.length}` : ''}
         </div>
       )}
@@ -206,74 +206,74 @@ export default function CollectDiagPanel({ run, sheetsSync, sheetsCron, sheetsGa
           측정 시도는 했는데 성공이 0 이면 네이버 차단 신호(값이 0/0 이면 원인 판별이 안 되므로 tried 를 같이 본다). */}
       {enrichLane?.last_run ? (
         <div className="mb-1 text-xs text-gray-500">
-          📝 풀 보강 {fmtKST(enrichLane.last_run)} — 블로거 측정 {formatNumber(enrichLane.naver?.measured || 0)}/{formatNumber(enrichLane.naver?.tried || 0)}
+          풀 보강 {fmtKST(enrichLane.last_run)} — 블로거 측정 {formatNumber(enrichLane.naver?.measured || 0)}/{formatNumber(enrichLane.naver?.tried || 0)}
           {enrichLane.naver?.contacts ? ` (연락처 +${formatNumber(enrichLane.naver.contacts)})` : ''}
-          {enrichLane.yt ? ` · 📈 유튜브 성과 ${formatNumber(enrichLane.yt)}` : ''}
-          {enrichLane.bio ? ` · 🔗 링크 컨택보강 ${formatNumber(enrichLane.bio)}` : ''}
+          {enrichLane.yt ? ` · 유튜브 성과 ${formatNumber(enrichLane.yt)}` : ''}
+          {enrichLane.bio ? ` · 링크 컨택보강 ${formatNumber(enrichLane.bio)}` : ''}
           {` · 예산 ${formatNumber(enrichLane.spent || 0)}/${formatNumber(enrichLane.budget_total || 0)}`}
-          {enrichLane.deadline_hit ? ' · ⏱️ 시간상한' : ''}
-          {enrichLane.limit_hit ? ' · ⚠️ 플랫폼 한도(상한 자동 하향)' : ''}
+          {enrichLane.deadline_hit ? ' · 시간상한' : ''}
+          {enrichLane.limit_hit ? ' · 플랫폼 한도(상한 자동 하향)' : ''}
           {nbUnmeasured != null && naverBlogTotal ? ` · 남은 블로거 ${formatNumber(nbUnmeasured)}/${formatNumber(naverBlogTotal)}` : ''}
-          {enrichLane.yt_units?.total ? <span className={(enrichLane.yt_units.used || 0) >= enrichLane.yt_units.total ? 'text-amber-600' : ''}>{` · 📈 YT 성과 쿼터 ${formatNumber(enrichLane.yt_units.used || 0)}/${formatNumber(enrichLane.yt_units.total)}`}</span> : null}
+          {enrichLane.yt_units?.total ? <span className={(enrichLane.yt_units.used || 0) >= enrichLane.yt_units.total ? 'text-tone-warn' : ''}>{` · YT 성과 쿼터 ${formatNumber(enrichLane.yt_units.used || 0)}/${formatNumber(enrichLane.yt_units.total)}`}</span> : null}
           {enrichLane.total_measured ? ` · 누적 측정 ${formatNumber(enrichLane.total_measured)}` : ''}
-          {enrichLane.total_emails != null ? <span className="text-emerald-700">{` · 📧 누적 이메일 ${formatNumber(enrichLane.total_emails)}`}</span> : null}
+          {enrichLane.total_emails != null ? <span className="text-tone-ok">{` · 누적 이메일 ${formatNumber(enrichLane.total_emails)}`}</span> : null}
         </div>
       ) : null}
       {/* 🔗 이번 정각 **전체**(라운드 합) — 위 줄은 마지막 라운드 한 장이라, 앞 라운드의 성과가 안 보였다.
           `rounds < max_depth+1` 이면 중간 라운드가 죽은 것 → 합계 0 을 '못 쟀다'로 읽으면 오진이다. */}
       {enrichLane?.chain?.rounds ? (
         <div className="mb-1 text-xs text-gray-500">
-          {`🔗 이번 회차 합계 — 라운드 ${formatNumber(enrichLane.chain.rounds)}`}
+          {`이번 회차 합계 — 라운드 ${formatNumber(enrichLane.chain.rounds)}`}
           {/* 🧱 계획 대비 도달 — 격차가 곧 체인 수명 천장이다(계획 12에 도달 3이면 9라운드는 존재한 적이 없다). */}
           {enrichLane.chain.rounds_planned
-            ? <span className={(enrichLane.chain.rounds || 0) < enrichLane.chain.rounds_planned ? 'text-amber-600' : ''}>
+            ? <span className={(enrichLane.chain.rounds || 0) < enrichLane.chain.rounds_planned ? 'text-tone-warn' : ''}>
                 {`/${formatNumber(enrichLane.chain.rounds_planned)}`}
                 {(enrichLane.chain.rounds || 0) < enrichLane.chain.rounds_planned ? ' (수명으로 조기 종료)' : ''}
               </span> : ''}
           {(enrichLane.chain.rounds || 0) < (enrichLane.chain.max_depth || 0) + 1
-            ? <span className="text-amber-600">{` (⚠️ 깊이 ${enrichLane.chain.max_depth} — 중간 라운드 기록 없음)`}</span> : ''}
+            ? <span className="text-tone-warn">{` (깊이 ${enrichLane.chain.max_depth} — 중간 라운드 기록 없음)`}</span> : ''}
           {` · 블로거 ${formatNumber(enrichLane.chain.naver_measured || 0)}/${formatNumber(enrichLane.chain.naver_tried || 0)}`}
           {(enrichLane.chain.naver_selected || 0) > (enrichLane.chain.naver_tried || 0)
-            ? <span className="text-amber-600">{` (고른 ${formatNumber(enrichLane.chain.naver_selected || 0)} 중 ${formatNumber((enrichLane.chain.naver_selected || 0) - (enrichLane.chain.naver_tried || 0))}명 못 잼)`}</span> : ''}
+            ? <span className="text-tone-warn">{` (고른 ${formatNumber(enrichLane.chain.naver_selected || 0)} 중 ${formatNumber((enrichLane.chain.naver_selected || 0) - (enrichLane.chain.naver_tried || 0))}명 못 잼)`}</span> : ''}
           {enrichLane.chain.naver_contacts ? ` · 연락처 +${formatNumber(enrichLane.chain.naver_contacts)}` : ''}
-          {enrichLane.chain.yt ? ` · 📈 ${formatNumber(enrichLane.chain.yt)}` : ''}
-          {enrichLane.chain.deadline_hits ? ` · ⏱️ 시간상한 ${formatNumber(enrichLane.chain.deadline_hits)}회` : ''}
+          {enrichLane.chain.yt ? ` · ${formatNumber(enrichLane.chain.yt)}` : ''}
+          {enrichLane.chain.deadline_hits ? ` · 시간상한 ${formatNumber(enrichLane.chain.deadline_hits)}회` : ''}
         </div>
       ) : null}
       {enrichLane?.crash ? (
-        <div className="mb-2 text-[11px] text-red-600">📝 보강 레인 오류({fmtKST(enrichLane.crash_at)}): {enrichLane.crash}</div>
+        <div className="mb-2 text-[11px] text-tone-bad">보강 레인 오류({fmtKST(enrichLane.crash_at)}): {enrichLane.crash}</div>
       ) : null}
       {enrichLane && (enrichLane.naver?.tried || 0) >= 5 && !enrichLane.naver?.measured ? (
-        <div className="mb-2 text-[11px] text-amber-600">📝 블로거 활동성 측정 실패(시도 {enrichLane.naver?.tried} · 성공 0) — 네이버가 서버 요청을 차단 중일 수 있어요. 반복되면 &apos;마지막 글&apos; 날짜(검색 기반)만으로 활동을 판단하세요.</div>
+        <div className="mb-2 text-[11px] text-tone-warn">블로거 활동성 측정 실패(시도 {enrichLane.naver?.tried} · 성공 0) — 네이버가 서버 요청을 차단 중일 수 있어요. 반복되면 &apos;마지막 글&apos; 날짜(검색 기반)만으로 활동을 판단하세요.</div>
       ) : null}
       {/* 🩹 "뽑았는데 한 건도 시도 안 함" — 2026-07-28 에 실제로 이 상태로 멈춰 있었고, 스냅샷에 이 구분이
           없어서 원인을 찾는 데 라이브 행을 직접 조회해야 했다. 이제 한 줄로 보인다. */}
       {enrichLane && (enrichLane.naver?.selected || 0) > 0 && !(enrichLane.naver?.tried || 0) ? (
-        <div className="mb-2 text-[11px] text-amber-600">🩹 블로거 후보 {enrichLane.naver?.selected}건을 뽑았지만 전부 건너뜀(핸들 복구 불가 {enrichLane.naver?.skipped || 0}건) — 정비의 &apos;핸들복구&apos; 단계가 도는지 확인하세요.</div>
+        <div className="mb-2 text-[11px] text-tone-warn">블로거 후보 {enrichLane.naver?.selected}건을 뽑았지만 전부 건너뜀(핸들 복구 불가 {enrichLane.naver?.skipped || 0}건) — 정비의 &apos;핸들복구&apos; 단계가 도는지 확인하세요.</div>
       ) : null}
 
       {/* 🌙 야간 자동 정비(KST 03시 정비 / 04시 라이브 재보정) — 자동화가 실제로 돌았는지 확인. */}
       {(mSum || rSum || maintainRunning) && (
         <div className="mb-4 text-xs text-gray-500">
           {maintainRunning
-            ? <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-semibold border border-blue-200">
+            ? <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-tone-info-bg text-tone-info font-semibold border border-transparent">
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />정비 진행 중…
               </span>
-            : '🌙 자동 정비'}
-          {mSum && <span className={mSum.hasError ? 'text-amber-600' : ''}> {fmtKST(maintenance?.at)} — {mSum.text}{mSum.hasError ? ' ⚠️일부 단계 실패' : ''}</span>}
+            : '자동 정비'}
+          {mSum && <span className={mSum.hasError ? 'text-tone-warn' : ''}> {fmtKST(maintenance?.at)} — {mSum.text}{mSum.hasError ? ' 일부 단계 실패' : ''}</span>}
           {mSum && rSum ? <span className="text-gray-300"> | </span> : null}
-          {rSum && <span className={rSum.hasError ? 'text-amber-600' : ''}>재보정 {fmtKST(maintenanceRescan?.at)} — {rSum.text}{rSum.hasError ? ' ⚠️일부 단계 실패' : ''}</span>}
+          {rSum && <span className={rSum.hasError ? 'text-tone-warn' : ''}>재보정 {fmtKST(maintenanceRescan?.at)} — {rSum.text}{rSum.hasError ? ' 일부 단계 실패' : ''}</span>}
         </div>
       )}
 
       {/* 🔎 플랫폼별 진단 — 실제 문제(키없음/전건실패)면 빨강, 일시 부분실패(저장>0)면 앰버, 완전정상이면 숨김 */}
       {d && (hard || soft) && (
-        <div className={`mb-4 rounded-lg border px-4 py-3 text-xs space-y-1 ${hard ? 'border-red-200 bg-red-50 text-red-700' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>
+        <div className={`mb-4 rounded-lg border px-4 py-3 text-xs space-y-1 ${hard ? 'border-rule bg-white text-tone-bad' : 'border-rule bg-white text-tone-warn'}`}>
           <div className="font-medium">수집 진단 (마지막 실행){!hard && soft ? ' — 정상(일부 일시 실패)' : ''}</div>
           {line('유튜브', d.yt, yt)}
           {line('네이버', d.naver, nv)}
           {d.tistory ? line('티스토리', d.tistory, ts) : null}
-          {hard && <div className="text-red-500">키 미설정이면: Cloudflare → Workers &amp; Pages → <b>ur-ads</b> → Settings → Variables and Secrets 에 해당 키 추가.</div>}
+          {hard && <div className="text-tone-bad">키 미설정이면: Cloudflare → Workers &amp; Pages → <b>ur-ads</b> → Settings → Variables and Secrets 에 해당 키 추가.</div>}
         </div>
       )}
     </>

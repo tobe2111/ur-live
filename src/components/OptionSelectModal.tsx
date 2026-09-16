@@ -105,14 +105,14 @@ export default function OptionSelectModal({
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm animate-fadeIn" onClick={onClose} role="presentation">
       <div
         ref={dialogRef}
-        className="bg-white dark:bg-[#11141C] rounded-t-3xl shadow-2xl max-w-md md:max-w-lg w-full max-h-[80dvh] flex flex-col animate-slideUp"
+        className="bg-surface rounded-t-3xl shadow-2xl max-w-md md:max-w-lg w-full max-h-[80dvh] flex flex-col animate-slideUp"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label={t('product.optionSelectAria', { name: productName, defaultValue: '{{name}} 옵션 선택' })}
       >
         {/* Header */}
-        <div className="sticky top-0 bg-white dark:bg-[#11141C] border-b border-gray-200 dark:border-[#2C2F35] px-6 py-4 rounded-t-3xl">
+        <div className="sticky top-0 bg-surface border-b border-line px-6 py-4 rounded-t-3xl">
           <div className="flex items-center justify-between">
             <div className="flex-1 min-w-0">
               <h3 className="text-base font-bold text-gray-900 dark:text-white truncate">
@@ -227,7 +227,7 @@ export default function OptionSelectModal({
 
         {/* Footer */}
         {!loading && !error && (
-          <div className="sticky bottom-0 bg-white dark:bg-[#11141C] border-t border-gray-200 dark:border-[#2C2F35] px-6 py-4">
+          <div className="sticky bottom-0 bg-white dark:bg-[#11141C] border-t border-line px-6 py-4">
             <button
               onClick={handleConfirm}
               disabled={!selectedOptionId}

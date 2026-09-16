@@ -151,7 +151,7 @@ export default function AdminPendingSellersPage() {
       <div className="min-h-screen bg-gray-50 pb-24">
         <header className="sticky top-0 z-20 bg-white border-b border-gray-200">
           <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-            <h1 className="text-lg font-bold text-gray-900">🏪 매장 검수 ({sellers.length})</h1>
+            <h1 className="text-lg font-bold text-gray-900">매장 검수 ({sellers.length})</h1>
             <Link to="/admin" className="text-xs text-gray-500">← admin</Link>
           </div>
         </header>
@@ -159,7 +159,7 @@ export default function AdminPendingSellersPage() {
         <div className="max-w-5xl mx-auto px-4 py-4 space-y-3">
           {/* 🔗 셀러 ↔ 유저(유어샵) 수동 연결 도구 */}
           <div className="bg-white border border-gray-200 rounded-xl p-4">
-            <p className="text-sm font-bold text-gray-900">🔗 셀러 ↔ 유저(유어샵) 연결</p>
+            <p className="text-sm font-bold text-gray-900">셀러 ↔ 유저(유어샵) 연결</p>
             <p className="text-xs text-gray-500 mt-1 leading-relaxed">
               이메일이 달라 자동 연결이 안 된 셀러를 유저 유어샵에 직접 묶습니다. 연결하면 셀러 프로필/공구가 <b>/u/&#123;핸들&#125;</b> 로 통일돼요.
             </p>
@@ -177,7 +177,7 @@ export default function AdminPendingSellersPage() {
               />
               <button
                 onClick={linkSellerToUser} disabled={linking}
-                className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-bold disabled:opacity-40"
+                className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-40"
               >
                 {linking ? '연결 중…' : '연결'}
               </button>
@@ -188,7 +188,7 @@ export default function AdminPendingSellersPage() {
           {unlinked.length > 0 && (
             <div className="bg-white border border-gray-200 rounded-xl p-4">
               <p className="text-sm font-bold text-gray-900">
-                🔗 카카오 미연결 셀러 ({unlinked.length})
+                카카오 미연결 셀러 ({unlinked.length})
                 <span className="ml-2 text-xs font-normal text-gray-500">
                   추정 매칭 {unlinked.filter((u) => u.suggested).length}건
                 </span>
@@ -215,7 +215,7 @@ export default function AdminPendingSellersPage() {
                         <button
                           onClick={() => linkSuggested(u.seller_id, u.suggested!.handle)}
                           disabled={linkingId === u.seller_id}
-                          className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-xs font-bold disabled:opacity-40"
+                          className="ur-btn ur-btn-sm ur-btn-primary disabled:opacity-40"
                         >
                           {linkingId === u.seller_id ? '연결 중…' : '연결'}
                         </button>
@@ -232,7 +232,6 @@ export default function AdminPendingSellersPage() {
             <div className="text-center py-12 text-gray-400 text-sm">로딩 중...</div>
           ) : sellers.length === 0 ? (
             <div className="text-center py-16">
-              <p className="text-4xl mb-3">✅</p>
               <p className="text-sm text-gray-500">검수 대기 셀러 없음</p>
             </div>
           ) : (
@@ -243,16 +242,16 @@ export default function AdminPendingSellersPage() {
               const ntsValid = ntsResult?.valid === '01'
               const ntsActive = ntsResult?.status === '계속사업자'
               const ntsBadge = !ntsResult
-                ? { label: '⏳ 검증 대기', color: 'bg-gray-100 text-gray-600' }
+                ? { label: '검증 대기', color: 'bg-gray-100 text-gray-600' }
                 : ntsValid && ntsActive
-                  ? { label: '✅ NTS 진위 일치', color: 'bg-tone-ok-bg text-tone-ok' }
+                  ? { label: 'NTS 진위 일치', color: 'bg-tone-ok-bg text-tone-ok' }
                   : ntsResult.valid === '02'
-                    ? { label: '❌ NTS 불일치', color: 'bg-tone-bad-bg text-tone-bad' }
-                    : { label: `⚠️ ${ntsResult?.status || '확인 필요'}`, color: 'bg-amber-100 text-amber-700' }
+                    ? { label: 'NTS 불일치', color: 'bg-tone-bad-bg text-tone-bad' }
+                    : { label: `${ntsResult?.status || '확인 필요'}`, color: 'border border-rule bg-white text-tone-warn' }
               const introducer = s.introduced_by_agency_id
-                ? `🏢 에이전시 #${s.introduced_by_agency_id}`
+                ? `에이전시 #${s.introduced_by_agency_id}`
                 : s.introduced_by_influencer_id
-                  ? `🎤 소개 유저 #${s.introduced_by_influencer_id}`
+                  ? `소개 유저 #${s.introduced_by_influencer_id}`
                   : null
 
               return (
@@ -275,7 +274,7 @@ export default function AdminPendingSellersPage() {
                   </div>
 
                   {introducer && (
-                    <div className="mb-2 text-[11px] text-blue-700 bg-blue-50 rounded px-2 py-1 inline-block">
+                    <div className="mb-2 text-[11px] text-tone-info bg-tone-info-bg rounded px-2 py-1 inline-block">
                       영입: {introducer}
                     </div>
                   )}
@@ -290,25 +289,25 @@ export default function AdminPendingSellersPage() {
                   )}
 
                   {ntsResult?.message && (
-                    <p className="text-[11px] text-gray-600 mb-2">📋 {ntsResult.message}</p>
+                    <p className="text-[11px] text-gray-600 mb-2">{ntsResult.message}</p>
                   )}
 
                   <div className="flex gap-2 mt-3">
                     <button
                       onClick={() => approve(s.id)}
-                      className="flex-1 py-2 bg-gray-900 hover:bg-gray-900 text-white text-xs font-bold rounded-lg"
+                      className="ur-btn ur-btn-md ur-btn-primary flex-1"
                     >
-                      ✓ 승인
+                      승인
                     </button>
                     <button
                       onClick={() => recheckNts(s.id)}
-                      className="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-lg"
+                      className="px-3 py-2 border border-rule bg-white hover:bg-gray-100 text-gray-700 text-xs font-bold rounded-lg"
                     >
                       NTS 재검증
                     </button>
                     <button
                       onClick={() => reject(s.id)}
-                      className="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold rounded-lg"
+                      className="px-3 py-2 border border-rule bg-white hover:bg-gray-100 text-tone-bad text-xs font-bold rounded-lg"
                     >
                       거부
                     </button>

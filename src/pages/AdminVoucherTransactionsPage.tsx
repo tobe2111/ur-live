@@ -1,3 +1,4 @@
+import { X } from 'lucide-react'
 /**
  * 🛡️ 2026-05-24 Q1 (사용자 요청): 어드민 교환권 거래 분리 표시 페이지.
  *   누가 / 언제 / 어떤 교환권 — voucher 구매 내역 (KT Alpha 발송 추적과 별개).
@@ -113,25 +114,25 @@ function DiagnoseModal({ orderId, onClose }: { orderId: number; onClose: () => v
       <div className="bg-white rounded-xl p-5 w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-bold text-gray-900">KT Alpha 진단 — Order #{orderId}</h3>
-          <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500">✕</button>
+          <button onClick={onClose} className="ur-btn ur-btn-sm ur-btn-icon ur-btn-ghost"><X className="h-4 w-4" /></button>
         </div>
 
         {/* 🛡️ 2026-05-25: 재발송 trigger — autoSendKtAlphaVouchersForOrders 수동 호출 */}
-        <div className="mb-3 bg-amber-50 border border-amber-200 rounded-lg p-3">
-          <p className="text-xs font-bold text-amber-900 mb-2">🚀 KT Alpha 재발송 trigger</p>
-          <p className="text-[11px] text-amber-700 mb-2">
+        <div className="mb-3 bg-white border border-rule rounded-lg p-3">
+          <p className="text-xs font-bold text-tone-warn mb-2">KT Alpha 재발송 trigger</p>
+          <p className="text-[11px] text-tone-warn mb-2">
             voucher_orders 기록 없음 (autoSendKtAlphaVouchersForOrders 미실행) 케이스 → 수동 발송.
             동기 호출 (응답 ~1-3초). 이미 성공 status 인 voucher_orders 는 영향 없음.
           </p>
           <button
             onClick={triggerResend}
             disabled={triggering}
-            className="px-4 py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-xs font-bold rounded-lg"
+            className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-50"
           >
-            {triggering ? '발송 중...' : '🚀 KT Alpha 재발송 trigger'}
+            {triggering ? '발송 중...' : 'KT Alpha 재발송 trigger'}
           </button>
           {triggerResult && (
-            <pre className={`mt-2 text-xs font-bold whitespace-pre-wrap break-words ${triggerResult.startsWith('실패') || triggerResult.includes('에러:') ? 'text-red-600' : 'text-emerald-600'}`}>
+            <pre className={`mt-2 text-xs font-bold whitespace-pre-wrap break-words ${triggerResult.startsWith('실패') || triggerResult.includes('에러:') ? 'text-tone-bad' : 'text-tone-ok'}`}>
               {triggerResult}
             </pre>
           )}
@@ -140,12 +141,12 @@ function DiagnoseModal({ orderId, onClose }: { orderId: number; onClose: () => v
         {loading ? (
           <p className="text-center py-8 text-gray-500">진단 중...</p>
         ) : error ? (
-          <p className="text-center py-8 text-red-600">{error}</p>
+          <p className="text-center py-8 text-tone-bad">{error}</p>
         ) : data ? (
           <div className="space-y-4 text-sm">
             {/* 진단 결과 */}
             <div className="bg-gray-50 rounded-lg p-3">
-              <p className="font-bold text-gray-900 mb-2">📋 진단</p>
+              <p className="font-bold text-gray-900 mb-2">진단</p>
               {data.diagnosis.length === 0 ? <p className="text-gray-500">진단 항목 없음</p>
                 : data.diagnosis.map((d, i) => (
                   <p key={i} className="text-gray-800 mb-1">{d}</p>
@@ -155,10 +156,10 @@ function DiagnoseModal({ orderId, onClose }: { orderId: number; onClose: () => v
 
             {/* 권장 액션 */}
             {data.recommendations.length > 0 && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                <p className="font-bold text-amber-900 mb-2">권장 액션</p>
+              <div className="bg-white border border-rule rounded-lg p-3">
+                <p className="font-bold text-tone-warn mb-2">권장 액션</p>
                 {data.recommendations.map((r, i) => (
-                  <p key={i} className="text-amber-800 mb-1">• {r}</p>
+                  <p key={i} className="text-tone-warn mb-1">• {r}</p>
                 ))}
               </div>
             )}
@@ -169,7 +170,7 @@ function DiagnoseModal({ orderId, onClose }: { orderId: number; onClose: () => v
               <p className="text-xs text-gray-600">order_number: {data.order.order_number}</p>
               <p className="text-xs text-gray-600">총액: {formatWon(data.order.total_amount)} · 결제: {data.order.payment_method}</p>
               <p className="text-xs text-gray-600">사용자: {data.order.user_name || '-'} (id {data.order.user_id})</p>
-              <p className="text-xs text-gray-600">phone: {data.order.masked_user_phone || '없음'} {data.order.phone_ok ? '✅' : '❌'}</p>
+              <p className="text-xs text-gray-600">phone: {data.order.masked_user_phone || '없음'} {data.order.phone_ok ? 'OK' : 'FAIL'}</p>
             </div>
 
             {/* 설정 */}
@@ -177,8 +178,8 @@ function DiagnoseModal({ orderId, onClose }: { orderId: number; onClose: () => v
               <p className="font-bold text-gray-900 mb-1">KT Alpha 설정</p>
               <div className="grid grid-cols-2 gap-1 text-xs">
                 {Object.entries(data.settings_status).map(([k, v]) => (
-                  <p key={k} className={v ? 'text-emerald-600' : 'text-red-600'}>
-                    {v ? '✅' : '❌'} {k}
+                  <p key={k} className={v ? 'text-tone-ok' : 'text-tone-bad'}>
+                    {v ? 'OK' : 'FAIL'} {k}
                   </p>
                 ))}
               </div>
@@ -194,10 +195,10 @@ function DiagnoseModal({ orderId, onClose }: { orderId: number; onClose: () => v
                     수량 {it.quantity} · 단가 {formatWon(it.unit_price)}
                   </p>
                   <p className="text-gray-500">
-                    kt_alpha_gift_code: <span className={it.kt_alpha_gift_code ? 'text-emerald-600' : 'text-red-600'}>{it.kt_alpha_gift_code || '없음'}</span>
+                    kt_alpha_gift_code: <span className={it.kt_alpha_gift_code ? 'text-tone-ok' : 'text-tone-bad'}>{it.kt_alpha_gift_code || '없음'}</span>
                   </p>
                   <p className="text-gray-500">
-                    auto_voucher_send: <span className={it.auto_voucher_send === 1 ? 'text-emerald-600' : 'text-red-600'}>{it.auto_voucher_send === 1 ? '1 (ON)' : '0 (OFF)'}</span>
+                    auto_voucher_send: <span className={it.auto_voucher_send === 1 ? 'text-tone-ok' : 'text-tone-bad'}>{it.auto_voucher_send === 1 ? '1 (ON)' : '0 (OFF)'}</span>
                   </p>
                 </div>
               ))}
@@ -208,17 +209,17 @@ function DiagnoseModal({ orderId, onClose }: { orderId: number; onClose: () => v
             <div>
               <p className="font-bold text-gray-900 mb-1">KT Alpha 발송 기록 ({data.voucher_orders.length})</p>
               {data.voucher_orders.length === 0 ? (
-                <p className="text-xs text-red-600">기록 없음 — autoSendKtAlphaVouchersForOrders 미실행</p>
+                <p className="text-xs text-tone-bad">기록 없음 — autoSendKtAlphaVouchersForOrders 미실행</p>
               ) : data.voucher_orders.map(vo => (
                 <div key={vo.id} className="text-xs bg-gray-50 rounded p-2 mb-1">
                   <p className={
-                    vo.status === 'sent' ? 'text-emerald-600 font-bold'
-                    : vo.status === 'failed' ? 'text-red-600 font-bold'
+                    vo.status === 'sent' ? 'text-tone-ok font-bold'
+                    : vo.status === 'failed' ? 'text-tone-bad font-bold'
                     : 'text-gray-600 font-bold'
                   }>
-                    {vo.status === 'sent' ? '✅ sent' : vo.status === 'failed' ? '❌ failed' : '⏳ processing'} · {vo.goods_name}
+                    {vo.status === 'sent' ? 'sent' : vo.status === 'failed' ? 'failed' : 'processing'} · {vo.goods_name}
                   </p>
-                  {vo.failure_reason && <p className="text-red-600 text-[10px]">{vo.failure_reason}</p>}
+                  {vo.failure_reason && <p className="text-tone-bad text-[10px]">{vo.failure_reason}</p>}
                   <p className="text-gray-500 text-[10px]">→ {vo.recipient_phone || '(no phone)'}</p>
                 </div>
               ))}
@@ -307,8 +308,8 @@ export default function AdminVoucherTransactionsPage() {
           <p className="text-xs text-gray-500 mb-3">사용자 voucher 구매 내역. KT Alpha 자동발송 status 는 별도 추적 페이지에서 확인.</p>
 
           {/* 🛡️ 2026-05-24 사용자 명령: order_id 직접 입력해 KT Alpha 연동 진단 */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <p className="text-xs font-bold text-blue-900 mb-2">🔍 order_id 로 KT Alpha 연동 진단</p>
+          <div className="bg-white border border-rule rounded-lg p-3">
+            <p className="text-xs font-bold text-gray-700 mb-2">order_id 로 KT Alpha 연동 진단</p>
             <div className="flex gap-2">
               <input
                 type="number"
@@ -320,17 +321,17 @@ export default function AdminVoucherTransactionsPage() {
                   }
                 }}
                 placeholder="예: 12345"
-                className="flex-1 px-3 py-1.5 text-sm border border-blue-300 rounded text-gray-900"
+                className="flex-1 px-3 py-1.5 text-sm border border-rule rounded text-gray-900"
               />
               <button
                 onClick={() => { if (diagInputValue) setDiagOrderId(Number(diagInputValue)) }}
                 disabled={!diagInputValue}
-                className="px-4 py-1.5 bg-gray-900 text-white text-sm font-bold rounded disabled:opacity-40"
+                className="ur-btn ur-btn-sm ur-btn-primary rounded disabled:opacity-40"
               >
                 진단
               </button>
             </div>
-            <p className="text-[10px] text-blue-700 mt-1">아래 테이블의 "주문" 컬럼에서 order_id 확인 가능. 행의 "진단" 버튼으로도 동일.</p>
+            <p className="text-[10px] text-gray-700 mt-1">아래 테이블의 "주문" 컬럼에서 order_id 확인 가능. 행의 "진단" 버튼으로도 동일.</p>
           </div>
         </div>
 
@@ -350,11 +351,11 @@ export default function AdminVoucherTransactionsPage() {
         <div className="grid grid-cols-2 gap-3 mb-4">
           <div className="bg-white rounded-lg shadow p-4">
             <p className="text-xs text-gray-500">오늘 거래 수</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{todayStatsQ.isError ? '—' : formatNumber(todayStats.count)}</p>
+            <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900 mt-1">{todayStatsQ.isError ? '—' : formatNumber(todayStats.count)}</p>
           </div>
           <div className="bg-white rounded-lg shadow p-4">
             <p className="text-xs text-gray-500">오늘 거래 금액 (applied_price 합)</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{todayStatsQ.isError ? '—' : formatWon(todayStats.amount)}</p>
+            <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900 mt-1">{todayStatsQ.isError ? '—' : formatWon(todayStats.amount)}</p>
           </div>
         </div>
 
@@ -418,7 +419,7 @@ export default function AdminVoucherTransactionsPage() {
                 <th className="py-2 px-3 text-right">applied_price</th>
                 <th className="py-2 px-3 text-center">결제</th>
                 <th className="py-2 px-3 text-center">상태</th>
-                <th className="py-2 px-3 text-center">📱 KT 발송</th>
+                <th className="py-2 px-3 text-center">KT 발송</th>
                 <th className="py-2 px-3 text-left">코드</th>
                 <th className="py-2 px-3 text-left">주문</th>
                 <th className="py-2 px-3 text-center">진단</th>
@@ -463,7 +464,7 @@ export default function AdminVoucherTransactionsPage() {
                   <td className="py-2 px-3 text-center">
                     <button
                       onClick={() => setDiagOrderId(r.order_id)}
-                      className="px-2 py-1 bg-blue-100 text-blue-700 text-[10px] font-bold rounded hover:bg-blue-200"
+                      className="px-2 py-1 bg-tone-info-bg text-tone-info text-[10px] font-bold rounded hover:bg-blue-200"
                     >
                       진단
                     </button>
@@ -529,17 +530,17 @@ function KtAlphaStatusCell({ row, onChange }: { row: VoucherTxRow; onChange: () 
 
   const status = row.kt_alpha_status
   if (status === "sent") {
-    return <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700">✓ 발송</span>
+    return <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-tone-ok-bg text-tone-ok">발송</span>
   }
   if (status === "processing") {
-    return <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700">중...</span>
+    return <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-tone-info-bg text-tone-info">중...</span>
   }
   if (status === "failed") {
     return (
       <div className="flex flex-col items-center gap-1">
-        <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700" title={row.kt_alpha_failure_reason || ""}>✕ 실패</span>
-        <button onClick={resend} disabled={triggering} className="px-2 py-0.5 text-[10px] bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-bold rounded">
-          {triggering ? "..." : "🚀 재발송"}
+        <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-tone-bad-bg text-tone-bad" title={row.kt_alpha_failure_reason || ""}>실패</span>
+        <button onClick={resend} disabled={triggering} className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-50 rounded">
+          {triggering ? "..." : "재발송"}
         </button>
       </div>
     )
@@ -548,8 +549,8 @@ function KtAlphaStatusCell({ row, onChange }: { row: VoucherTxRow; onChange: () 
   return (
     <div className="flex flex-col items-center gap-1">
       <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-500">미발송</span>
-      <button onClick={resend} disabled={triggering} className="px-2 py-0.5 text-[10px] bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-bold rounded">
-        {triggering ? "..." : "🚀 발송"}
+      <button onClick={resend} disabled={triggering} className="ur-btn ur-btn-md ur-btn-primary disabled:opacity-50 rounded">
+        {triggering ? "..." : "발송"}
       </button>
     </div>
   )

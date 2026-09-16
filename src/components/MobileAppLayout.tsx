@@ -35,11 +35,16 @@ const MOBILE_ONLY_PREFIXES: string[] = []
 const HIDE_SIDEBAR_PREFIXES = [
   '/seller', '/admin', '/supplier', '/wholesale', '/embed', '/checkout/return', '/introduce',
   '/ads', // 🆕 유어애즈(UR Ads) — 도매몰처럼 PC 풀너비(액자/사이드바/거터 제외)
+  '/mall-admin', // 🏬 2026-08-10 몰 운영자 콘솔 — 대시보드 성격(소비자 액자 부적합)
   // 📝 2026-07-01 [UNLOCK_LOADING] (대표 요청 — "블로그는 PC 전체 폭을 써야 함, 액자에 갇힘"):
   //   블로그(/blog·/blog/:slug)를 430 액자에서 제외 → PC 풀너비. App.tsx 가 이미 /blog 를
   //   fullScreen 으로 처리(상/하단 네비·사이드배너 숨김)라, 프레임만 풀면 깔끔한 풀폭 읽기 화면.
   //   콘텐츠는 각 페이지의 max-w-6xl/4xl 로 중앙 정렬(가독성 유지). 모바일(<lg) 영향 0.
   '/blog',
+  // 🎨 2026-09-15 (대표 "시안 라우트 만들어줘"): 시안 갤러리(/design/variants)는 **여러 안을 나란히**
+  //   놓는 화면이라 430 액자 안에서는 목적 자체가 성립하지 않는다(실측: 액자에 갇혀 세로로 쌓였다).
+  //   App.tsx 가 이미 /design 을 fullScreen 으로 처리하므로 프레임만 풀면 된다. 모바일(<lg) 영향 0.
+  '/design',
 ]
 
 // 🎨 2026-06-18 (사용자 시안): 유어샵 진입 시 PC 좌측 카테고리 사이드바 숨김 → 깔끔한 액자.

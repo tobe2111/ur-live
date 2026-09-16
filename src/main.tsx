@@ -81,6 +81,7 @@ import { initNativeFeatures, isNative } from '@/lib/native'
 import { isKeyboardOpen, isEditableElementFocused } from '@/lib/keyboard-viewport'
 import { swallow } from '@/shared/utils/swallow'
 import { installImageProtection } from '@/lib/image-protect'
+import { captureBootFirstScreen } from '@/lib/boot-first-screen'
 import { processAuthCallbackParams } from '@/utils/auth-callback-bootstrap'
 
 declare global {
@@ -384,6 +385,10 @@ async function bootApp() {
       // ✅ 네이티브 기능 초기화 (스플래시, 상태바, 푸시, 딥링크)
       try { initNativeFeatures() } catch (e) { console.error('[main] native init failed:', e) }
 
+      // 🖼️ 2026-09-16: 서버가 그린 첫 화면(`#ur-first-screen`) 노드를 **createRoot 전에** 참조로 잡는다.
+      //   React 가 컨테이너를 비워도 노드는 살아 있고, Suspense 폴백이 같은 노드를 도로 붙인다
+      //   (불투명 풀스크린 로더가 방금 도착한 히어로를 덮던 것 제거 — `lib/boot-first-screen.ts`).
+      captureBootFirstScreen()
       // ✅ React StrictMode 제거 (중복 마운트 방지)
       ReactDOM.createRoot(rootElement).render(
         <ThemeProvider>

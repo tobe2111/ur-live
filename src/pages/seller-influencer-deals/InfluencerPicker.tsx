@@ -83,7 +83,7 @@ export default function InfluencerPicker({
           <button
             key={k || 'all'} type="button" onClick={() => setCat(k)}
             className={`rounded-full border px-2.5 py-1 text-xs font-medium ${
-              cat === k ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-200 bg-white text-gray-700'
+              cat === k ? 'border-gray-900 bg-brand-tint text-brand-text' : 'border-gray-200 bg-white text-gray-700'
             }`}
           >{label}</button>
         ))}
@@ -121,7 +121,7 @@ export default function InfluencerPicker({
                       <span className="truncate text-sm font-bold text-gray-900">{r.name || r.handle || '소개 파트너'}</span>
                       {r.handle && <span className="shrink-0 text-[11px] text-gray-400">@{r.handle}</span>}
                       {r.has_deal && (
-                        <span className="shrink-0 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">진행 중</span>
+                        <span className="shrink-0 rounded bg-tone-ok-bg px-1.5 py-0.5 text-[10px] font-bold text-tone-ok">진행 중</span>
                       )}
                     </div>
                     {r.intro && <p className="truncate text-[11px] text-gray-600">{r.intro}</p>}
@@ -136,7 +136,7 @@ export default function InfluencerPicker({
                           <a
                             key={i} href={c.url} target="_blank" rel="noopener noreferrer nofollow"
                             onClick={(e) => e.stopPropagation()}
-                            className="inline-flex items-center gap-0.5 text-[10px] font-medium text-blue-600 hover:underline"
+                            className="inline-flex items-center gap-0.5 text-[10px] font-medium text-brand-text hover:underline"
                           >
                             {KIND_LABEL[c.kind] || c.kind}<ExternalLink className="h-2.5 w-2.5" />
                           </a>

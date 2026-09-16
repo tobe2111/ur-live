@@ -195,7 +195,7 @@ export default function CommunityGroupBuyMessagesPage() {
           </p>
         ) : (
           messages.map((m) => (
-            <div key={m.id} className="bg-white dark:bg-[#11141C] rounded-2xl p-3 border border-gray-100 dark:border-[#2C2F35]">
+            <div key={m.id} className="bg-surface rounded-2xl p-3 border border-gray-100 dark:border-[#2C2F35]">
               <div className="flex items-center gap-2">
                 <span className="text-[12px] font-bold text-gray-900 dark:text-white">
                   {m.sender_name || t('groupbuyMessages.anonymous', { defaultValue: '익명' })}
@@ -228,7 +228,7 @@ export default function CommunityGroupBuyMessagesPage() {
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleSend() }}
               maxLength={1000}
               placeholder={t('groupbuyMessages.inputPlaceholder', { defaultValue: '메시지를 입력하세요' })}
-              className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-gray-50 dark:bg-[#1D1F29] text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus:border-gray-400 dark:focus:border-[#3A3A3A]"
+              className="flex-1 px-4 py-2.5 rounded-xl border border-line bg-gray-50 dark:bg-[#1D1F29] text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus:border-gray-400 dark:focus:border-[#3A3A3A]"
             />
             <button
               onClick={handleSend}

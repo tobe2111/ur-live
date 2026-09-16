@@ -78,19 +78,19 @@ export default function InfluencerRankingsPage() {
         {/* 기간 / 기준 */}
         <div className="flex gap-2">
           <select value={period} onChange={(e) => setPeriod(e.target.value as 'month' | 'all')}
-            className="flex-1 px-3 py-2 border border-gray-200 dark:border-[#2C2F35] rounded-lg text-xs bg-white dark:bg-[#11141C]">
+            className="flex-1 px-3 py-2 border border-line rounded-lg text-xs bg-surface">
             <option value="month">이번 달</option>
             <option value="all">누적</option>
           </select>
           <select value={metric} onChange={(e) => setMetric(e.target.value as 'commission' | 'count')}
-            className="flex-1 px-3 py-2 border border-gray-200 dark:border-[#2C2F35] rounded-lg text-xs bg-white dark:bg-[#11141C]">
+            className="flex-1 px-3 py-2 border border-line rounded-lg text-xs bg-surface">
             <option value="commission">매출 commission</option>
             <option value="count">referral 건수</option>
           </select>
         </div>
 
         {/* 랭킹 리스트 */}
-        <div className="bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] rounded-2xl overflow-hidden">
+        <div className="bg-surface border border-line rounded-2xl overflow-hidden">
           {loading ? (
             <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-10">로딩 중...</p>
           ) : list.length === 0 ? (

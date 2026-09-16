@@ -5498,9 +5498,39 @@ _총 293건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-16**
 - [등록된 동네딜 검색 (2026-09-16)](handoff/2026-09-16-dongnedeal-search.md)
+_총 320건 · 최신순 · 이 목록은 자동 생성된다._
+
+**2026-09-16**
+- [매장 영입 2% 폐지 — 화면이 하던 거짓 약속을 걷어냄 (2026-09-16)](handoff/2026-09-16-store-intro-abolished.md)
+- [소개 커미션 사용 확인 게이트 (2026-09-16)](handoff/2026-09-16-payout-use-gate.md)
+- [서버가 그린 첫 화면을 폴백이 덮지 않는다 — 09-15 판정 후속 〔2026-09-16〕](handoff/2026-09-16-first-screen-fallback.md)
+- [2026-09-16 — 다크 대비 가드가 **죽은 화면을 재고 살아 있는 결제 화면을 안 보고 있었다**](handoff/2026-09-16-dark-contrast-money-screens.md)
+- [당근 모델 — 들여보내되, 승인 전엔 열지 않는다 (2026-09-16)](handoff/2026-09-16-danggeun-approval-gates.md)
 **2026-09-15**
+- [🔥 탭을 누를 때마다 화면이 덮이던 것 + 이번 세션 전체 판정 (2026-09-15, 5차)](handoff/2026-09-15-warm-seed-and-verdict.md)
 - [삭제한 이용권을 되돌리는 길 (2026-09-15)](handoff/2026-09-15-voucher-restore.md)
 - [2026-09-15 — verify.yml push 트리거 제거 (필수 검사 룰셋과의 충돌)](handoff/2026-09-15-verify-push-trigger.md)
+- [2026-09-15 — 시안 갤러리 `/design/variants` 신설](handoff/2026-09-15-variant-gallery.md)
+- [2026-09-15 — 매장 확정: 이용권이 "어느 매장 것인지"를 서버가 정한다](handoff/2026-09-15-store-canonical.md)
+- [2026-09-15 — 셀러 2차 페이지 정리: 색 정보상자·이모지·버튼 체계·숫자 위계 (PR 1/3)](handoff/2026-09-15-seller-tones.md)
+- [2026-09-15 — 셀러 모바일 결함 4건 (대표 스크린샷 신고)](handoff/2026-09-15-seller-mobile-fixes.md)
+- [2026-09-15 — 셀러 대시보드 3차: D3 밀도·데이터 + A2 매장이 제목 + B2 전 매장 합계 + C 정산 안 소개 수익](handoff/2026-09-15-seller-d3.md)
+- [셀러 매출 분석 — 안 C 구현 (2026-09-15)](handoff/2026-09-15-seller-analytics-variant-c.md)
+- [태블릿·화면고정 재조사 — 세 결함 중 **하나만 살아 있었다** (2026-09-15)](handoff/2026-09-15-search-header-sticky-revive.md)
+- [PR 정리(triage) — 막혀 있던 **10건**을 전부 판정했다 (2026-09-15)](handoff/2026-09-15-pr-triage.md)
+- [2026-09-15 — 결재함 오기 정정 · 죽은 PR 둘 닫기 · S1 판정 패널](handoff/2026-09-15-pr-cleanup-and-s1-verdict.md)
+- [🚨 검사기 자신이 "실패할 수 없는" 구멍을 갖고 있었다 (2026-09-15, 4차)](handoff/2026-09-15-guard-self-hole.md)
+- [🖼️ 로더 대신 사진 — 서버가 이용권 상세 첫 화면을 그린다 (2026-09-15, 4차)](handoff/2026-09-15-detail-first-screen.md)
+- [이용권 상세 "안 B" · 지갑 "안 E" (2026-09-15)](handoff/2026-09-15-detail-b-wallet-e.md)
+- [날짜 창 잘림 · 테두리 시안 · 이용권 장바구니 (2026-09-15)](handoff/2026-09-15-date-popover-borders-cart.md)
+- [소비자 화면 색 정리 — 표면 토큰 채택 + 재발 차단 래칫 (2026-09-15)](handoff/2026-09-15-color-cleanup.md)
+- [2026-09-15 — 사업자등록증 업로드 413 (매장 등록이 마지막 단계에서 막혔다)](handoff/2026-09-15-cert-upload-413.md)
+- [🧺 장바구니 켜기 — 머니 버그 수리 + 딜/원 분리 + 게이트 등재 (2026-09-15)](handoff/2026-09-15-cart-turn-on.md)
+- [🛒🕐 장바구니 정보·자동분할 + 로딩이 "없어요"라고 거짓말하던 것 (2026-09-15, 2차)](handoff/2026-09-15-cart-info-and-loading.md)
+- [카드 표면 정렬 — 다크에서 카드가 페이지에 묻히던 141곳 (2026-09-15)](handoff/2026-09-15-card-surface-dark.md)
+- [🩸 캐시 폴백이 "네트워크 오류"를 "없음"으로 위장하던 것 — 나머지 반쪽 (2026-09-15, 3차)](handoff/2026-09-15-cache-error-rethrow.md)
+- [유어애즈 — 레인 귀속 + 폭주 레인만 자르기 (2026-09-15)](handoff/2026-09-15-ads-lane-attribution.md)
+- [2026-09-15 — 어드민 대시보드 D3 합류: 셸 + 163 페이지 코드모드 (PR 2/2)](handoff/2026-09-15-admin-d3.md)
 **2026-09-14**
 - [이용권 관리 — 수정·삭제·정가 (2026-09-14)](handoff/2026-09-14-voucher-manage-actions.md)
 - [2026-09-14 — 유어쇼츠: 위로 되돌아가는 스와이프 + 닫기 버튼 겹침](handoff/2026-09-14-urshorts-swipe-back-and-close-button.md)
@@ -5537,6 +5567,7 @@ _총 293건 · 최신순 · 이 목록은 자동 생성된다._
 - [다크 대비 가드 범위 확장 — 가입 폼이 안 읽히고 있었다 (2026-09-07)](handoff/2026-09-07-dark-contrast-coverage.md)
 - [마이페이지 앱 정보 — 카드에서 줄글로 (2026-09-07)](handoff/2026-09-07-app-info-plain-text.md)
 - [2026-09-07 — AI 팀 운영 모델 (역할 6 · 결재함 · 완료 판정 E1~E5) + 행위자·베네핏 한 장 지도](handoff/2026-09-07-ai-team-operating-model.md)
+- [2026-09-07 — 대행사 향 서비스 소개·제안서 (.pptx, 16장 v2 "매장 모집 실행서")](handoff/2026-09-07-agency-proposal-deck.md)
 - [어드민에 없던 머니 스위치 셋을 붙였다 (2026-09-07)](handoff/2026-09-07-admin-money-switch-ui.md)
 **2026-09-06**
 - [PC 상세 사진도 스마트 크롭 + 남아 있던 두 항목 판정 (2026-09-06)](handoff/2026-09-06-pc-hero-crop.md)

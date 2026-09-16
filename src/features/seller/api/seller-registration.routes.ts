@@ -24,6 +24,7 @@ import { swallow } from '@/worker/utils/swallow'
 import { startDashboardSession } from '@/worker/utils/dashboard-session'
 import { getSellerIdFromToken, type SellerJWTPayload } from '@/lib/seller-shared'
 import { copyCuratorProfileToSeller, stampSignupStoreChannel } from './seller-signup-meta'
+import { BIZ_CERT_PATH } from '../../../worker/utils/store-ownership-claims'
 
 type Bindings = { DB: D1Database; JWT_SECRET: string }
 
@@ -68,6 +69,12 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
     const { username, email, password, name, business_name, business_number, phone, address, description, youtube_email, seller_type } = body;
     const representative_name = body.representative_name?.trim()
     const business_start_date = body.business_start_date?.trim()
+    // 🪪 2026-09-16 앞문 등록증 사본 — 뒷문(`/store/find`)은 필수인데 새 가게를 만드는 여기는
+    //   증거를 한 장도 안 받았다. 국세청 API 는 상호·주소를 주지 않으므로(b_no·start_dt·p_nm 만)
+    //   **기계 대조가 불가능**하고 어드민이 사진과 눈으로 대조해야 한다. 배경: 2026-09-16 handoff.
+    //   경로가 우리 업로드 자리일 때만 저장한다 — 임의 URL 이면 어드민 화면이 남의 서버를 띄운다.
+    const certUrl = String((body as { business_cert_url?: unknown }).business_cert_url || '').trim()
+    const certStored = BIZ_CERT_PATH.test(certUrl) ? certUrl : null
 
     // 필수 필드 검증 (youtube_email 은 라이브커머스 중단으로 선택 필드)
     if (!username || !email || !password || !name || !business_name || !business_number || !phone) {
@@ -156,8 +163,9 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
         username, email, password_hash, name, business_name, business_number,
         phone, address, description, youtube_email, seller_type,
         representative_name, business_start_date, nts_verified_at, nts_verify_result,
+        business_registration_image_url, business_registration_status,
         status, commission_rate, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${DEFAULT_COMMISSION_RATE}, datetime('now'), datetime('now'))
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${DEFAULT_COMMISSION_RATE}, datetime('now'), datetime('now'))
     `).bind(
       username,
       email,
@@ -174,6 +182,8 @@ sellerRegistrationRoutes.post('/register', rateLimit({ action: 'seller_register'
       business_start_date || null,
       ntsVerifiedAt,
       ntsResultJson,
+      certStored,
+      certStored ? 'pending' : null,   // 사본이 있어야 어드민 화면에 승인/반려가 뜬다
       autoStatus
     ).run();
 
@@ -534,7 +544,7 @@ sellerRegistrationRoutes.get('/my-seller-status', async (c) => {
     await ensureSellerColumns(db);
 
     let seller = await db.prepare(
-      'SELECT id, status, seller_type, business_name, reject_reason FROM sellers WHERE linked_user_id = ?'
+      'SELECT id, status, seller_type, business_name, reject_reason, business_registration_image_url FROM sellers WHERE linked_user_id = ?'
     ).bind(sessionUser.userId).first<Record<string, any>>();
 
     // 🛡️ 2026-05-07 (영구 fix): linked_user_id 없을 때 이메일 매칭으로 기존 셀러 발견 시 자동 연결.
@@ -599,6 +609,9 @@ sellerRegistrationRoutes.get('/my-seller-status', async (c) => {
           business_name: seller.business_name,
           // 🛡️ 2026-06-12: 거절 사유 — SellerWaitingPage rejected 분기 표시.
           reject_reason: seller.reject_reason ?? null,
+          // 🪪 2026-09-16: 등록증 사본이 도착했는가 — 없으면 대기 화면이 계속 알린다(당근 모델).
+          //   URL 자체는 안 내려보낸다(필요 없고, 내보내면 남의 등록증 주소가 응답에 실린다).
+          has_business_cert: !!seller.business_registration_image_url,
         },
       },
     });
@@ -636,14 +649,17 @@ sellerRegistrationRoutes.post('/switch-to-seller', async (c) => {
       return c.json({ success: false, error: '연결된 셀러 계정이 없습니다' }, 404);
     }
 
-    if (seller.status === 'pending') {
-      return c.json({ success: false, error: '아직 관리자 승인 대기 중입니다', code: 'PENDING' }, 403);
-    }
+    // 🥕 2026-09-16 (대표 — *"반려는 되더라도 쓸 수는 있게"*): 대기·반려도 대시보드에 들여보낸다.
+    //   종전엔 `pending` 과 `rejected` 를 여기서 403 으로 막아, 사장님이 서류를 고쳐 내려고 해도
+    //   **그 화면에 들어갈 수가 없었다**(대기 페이지만 보였다). 당근비즈니스는 반려돼도 들여보내고
+    //   빨간 배너로 "다시 확인해주세요" 를 띄운다 — 고칠 사람이 고칠 자리에 있어야 한다.
+    //
+    //   ⚠️ **정지(`suspended`)는 계속 막는다.** 반려는 "서류가 아직"이고 정지는 "내보냈다" —
+    //      둘을 같이 취급하면 징계가 무의미해진다.
+    //   ⚠️ 승인 전 계정이 대시보드 안에서 **할 수 있는 일의 범위**는 여기가 아니라 각 기능이 정한다:
+    //      유어애즈 DB = `ads-db-access.ts`(승인 필요) · 메인 노출 = `approvedSellerProductSql`.
     if (seller.status === 'suspended') {
       return c.json({ success: false, error: '정지된 셀러 계정입니다', code: 'SUSPENDED' }, 403);
-    }
-    if (seller.status !== 'approved' && seller.status !== 'active') {
-      return c.json({ success: false, error: '활성화되지 않은 셀러 계정입니다' }, 403);
     }
 
     const now = Math.floor(Date.now() / 1000);

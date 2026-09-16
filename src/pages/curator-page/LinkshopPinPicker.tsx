@@ -250,7 +250,7 @@ export default function LinkshopPinPicker() {
 
         {/* 검색 */}
         <div className="max-w-3xl mx-auto px-4 pt-3">
-          <div className="flex items-center gap-2 h-11 px-3.5 rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-gray-50 dark:bg-[#1D1F29]">
+          <div className="flex items-center gap-2 h-11 px-3.5 rounded-xl border border-line bg-gray-50 dark:bg-[#1D1F29]">
             <Search className="w-4 h-4 text-gray-400 shrink-0" />
             <input
               value={query}
@@ -304,7 +304,7 @@ export default function LinkshopPinPicker() {
             <button
               onClick={() => { const next = shopPage + 1; setShopPage(next); loadShop(next, false) }}
               disabled={loadingMore}
-              className="w-full py-3 rounded-xl border border-gray-200 dark:border-[#2C2F35] text-[13.5px] font-bold text-gray-700 dark:text-gray-200 active:opacity-70 disabled:opacity-50"
+              className="w-full py-3 rounded-xl border border-line text-[13.5px] font-bold text-gray-700 dark:text-gray-200 active:opacity-70 disabled:opacity-50"
             >
               {loadingMore ? '불러오는 중…' : '더 보기'}
             </button>
@@ -342,7 +342,7 @@ function NoteModal({ pinId, productName, onClose }: { pinId: number; productName
   return (
     <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full sm:max-w-md bg-white dark:bg-[#1D1F29] rounded-t-3xl sm:rounded-3xl p-5 pb-7 animate-slideUp">
+      <div className="relative w-full sm:max-w-md bg-surface rounded-t-3xl sm:rounded-3xl p-5 pb-7 animate-slideUp">
         <div className="flex items-start gap-2 mb-1">
           <span className="text-[15px] font-extrabold text-gray-900 dark:text-white flex-1"><Check className="w-4 h-4 inline-block align-[-3px] mr-1" aria-hidden="true" />유어샵에 추가됨</span>
           <button onClick={onClose} aria-label="닫기" className="shrink-0 w-7 h-7 -mt-0.5 -mr-1 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
@@ -358,10 +358,10 @@ function NoteModal({ pinId, productName, onClose }: { pinId: number; productName
           rows={2}
           maxLength={CURATOR_DEFAULTS.PIN_NOTE_MAX_LEN}
           placeholder="예: 재구매만 3번째예요. 향이 진짜 좋아요!"
-          className="w-full rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-gray-50 dark:bg-[#11141C] px-3.5 py-2.5 text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 outline-none focus:border-gray-400 dark:focus:border-[#3A3A3A] resize-none"
+          className="w-full rounded-xl border border-line bg-warm px-3.5 py-2.5 text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 outline-none focus:border-gray-400 dark:focus:border-[#3A3A3A] resize-none"
         />
         <div className="flex gap-2 mt-4">
-          <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-[#2C2F35] text-[13.5px] font-bold text-gray-600 dark:text-gray-300 active:opacity-70">건너뛰기</button>
+          <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-line text-[13.5px] font-bold text-gray-600 dark:text-gray-300 active:opacity-70">건너뛰기</button>
           <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#11141C] text-[13.5px] font-bold active:opacity-80 disabled:opacity-50">
             {saving ? '저장 중…' : '저장'}
           </button>

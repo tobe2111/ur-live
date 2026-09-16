@@ -42,8 +42,15 @@ describe('T2 홈 M2 — 매장 게이트가 흔들리지 않는다', () => {
     expect(page.match(/<MyStoresPanel /g)?.length).toBe(1)
     expect(page).toContain('storeGated === true ?')
   })
-  it('🔒 폰에서는 게이트 판정만(gateOnly) — 시안에 매장 블록이 없다', () => {
-    expect(page).toMatch(/gateOnly=\{!isPc\}/)
+  /**
+   * 🔄 2026-09-15 재조준 — 대표가 이 시안 결정을 **뒤집었다**: *"모바일로 볼 때는 왜 매장 등록하는게 안보이지?"*
+   *   종전 이 자리는 `gateOnly={!isPc}` 를 잠갔다(폰 홈에 매장 블록 없음, 관리는 `더보기 › 매장`).
+   *   그런데 그러면 폰 홈에서 매장을 **추가할** 길이 한 곳도 없다 — 오늘 티켓은 이름만 말하고 누를 수 없다.
+   *   ⇒ 이제 폰에서도 그린다. `gateOnly` 옵션 자체는 남긴다(다른 자리에서 쓸 수 있는 계약).
+   *   상세: src/tests/unit/seller-mobile-fixes-2026-09-15.test.ts ②
+   */
+  it('🔒 폰 홈에도 매장 블록이 있다 (2026-09-15 대표 지시로 09-14 시안 결정 대체)', () => {
+    expect(page).not.toMatch(/<MyStoresPanel[^>]*gateOnly/)
     expect(read('src/pages/seller-page/MyStoresPanel.tsx')).toMatch(/if \(gateOnly\) return null/)
   })
   it('🔒 홈 숫자는 서버가 실제로 주는 이름만 읽는다 (옛 홈은 없는 summary.* 를 읽어 언제나 0 이었다)', () => {

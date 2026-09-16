@@ -285,7 +285,7 @@ export default function AdminDongnedealImportPage() {
     } finally { setBusy(false) }
   }
 
-  const card = 'bg-white rounded-2xl border border-gray-200 p-5'
+  const card = 'bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-5'
   const input = 'w-full px-3 py-2 border border-gray-200 rounded-lg text-gray-900 text-sm'
 
   return (
@@ -295,16 +295,16 @@ export default function AdminDongnedealImportPage() {
 
         {/* 🩺 이미지 건강 진단 — 사진 반복 깨짐의 근본원인(R2 미바인딩/외부 커버) 가시화 */}
         {imgHealth && (
-          <div className={`rounded-2xl border p-4 ${!imgHealth.bucketBound ? 'bg-red-50 border-red-200' : imgHealth.cover.external > 0 ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
+          <div className={`rounded-[var(--dash-radius,16px)] border p-4 ${!imgHealth.bucketBound ? 'bg-white border-rule' : imgHealth.cover.external > 0 ? 'bg-white border-rule' : 'bg-white border-rule'}`}>
             <div className="flex items-start gap-2">
-              <span className="text-lg">{!imgHealth.bucketBound ? '🛑' : imgHealth.cover.external > 0 ? '⚠️' : '✅'}</span>
+              <span className={`text-xs font-bold ${!imgHealth.bucketBound ? 'text-tone-bad' : imgHealth.cover.external > 0 ? 'text-tone-warn' : 'text-tone-ok'}`}>{!imgHealth.bucketBound ? '차단' : imgHealth.cover.external > 0 ? '주의' : '정상'}</span>
               <div className="min-w-0">
-                <p className={`text-sm font-bold ${!imgHealth.bucketBound ? 'text-red-700' : imgHealth.cover.external > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
+                <p className={`text-sm font-bold ${!imgHealth.bucketBound ? 'text-tone-bad' : imgHealth.cover.external > 0 ? 'text-tone-warn' : 'text-tone-ok'}`}>
                   데모 사진 상태 — 커버 {imgHealth.cover.total}개 중 안전(R2) <b>{imgHealth.cover.internal_r2}</b> · 외부 URL <b>{imgHealth.cover.external}</b>{imgHealth.cover.naver > 0 ? ` (네이버 ${imgHealth.cover.naver})` : ''}{imgHealth.cover.none > 0 ? ` · 커버없음 ${imgHealth.cover.none}` : ''}
                 </p>
                 <p className="text-[12px] text-gray-600 mt-1">{imgHealth.hint}</p>
                 {!imgHealth.bucketBound && (
-                  <p className="text-[12px] text-red-700 font-semibold mt-1">→ 이 바인딩을 하면 아래 버튼들로 사진이 우리 서버(R2)에 영구 저장돼 다시는 안 깨집니다.</p>
+                  <p className="text-[12px] text-tone-bad font-semibold mt-1">→ 이 바인딩을 하면 아래 버튼들로 사진이 우리 서버(R2)에 영구 저장돼 다시는 안 깨집니다.</p>
                 )}
               </div>
             </div>
@@ -313,19 +313,19 @@ export default function AdminDongnedealImportPage() {
 
         {/* 🔍 진단 결과 — 서버가 외부 커버를 실제로 가져올 수 있는지 실측 샘플(이관 0 원인 규명) */}
         {diag && (
-          <div className={`rounded-2xl border p-4 ${diag.okCount === 0 ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}`}>
-            <p className={`text-sm font-bold ${diag.okCount === 0 ? 'text-red-700' : 'text-slate-700'}`}>
-              🔍 사진 가져오기 실측 — 샘플 {diag.total}개 중 성공 <b>{diag.okCount}</b> / 실패 <b>{diag.total - diag.okCount}</b>
+          <div className={`rounded-[var(--dash-radius,16px)] border p-4 ${diag.okCount === 0 ? 'bg-white border-rule' : 'bg-slate-50 border-slate-200'}`}>
+            <p className={`text-sm font-bold ${diag.okCount === 0 ? 'text-tone-bad' : 'text-slate-700'}`}>
+              사진 가져오기 실측 — 샘플 {diag.total}개 중 성공 <b>{diag.okCount}</b> / 실패 <b>{diag.total - diag.okCount}</b>
             </p>
             {diag.okCount === 0 && (
-              <p className="text-[12px] text-red-700 mt-1">서버(Cloudflare)에서 이 CDN들이 사진 요청을 차단하고 있어요 → R2 이관 불가. 아래 사유 참고. (대표사진 재획득/다른 소스로 우회 필요)</p>
+              <p className="text-[12px] text-tone-bad mt-1">서버(Cloudflare)에서 이 CDN들이 사진 요청을 차단하고 있어요 → R2 이관 불가. 아래 사유 참고. (대표사진 재획득/다른 소스로 우회 필요)</p>
             )}
             <div className="mt-2 space-y-1">
               {diag.samples.map((s) => (
                 <div key={s.id} className="text-[11px] font-mono flex items-center gap-2">
-                  <span className={s.ok ? 'text-emerald-600' : 'text-red-600'}>{s.ok ? '✓' : '✗'}</span>
+                  <span className={s.ok ? 'text-tone-ok' : 'text-tone-bad'}>{s.ok ? 'O' : 'X'}</span>
                   <span className="text-gray-500 truncate max-w-[220px]">{s.host}</span>
-                  <span className={s.ok ? 'text-gray-600' : 'text-red-600 font-semibold'}>{s.reason}{s.status ? ` · HTTP ${s.status}` : ''}{s.bytes ? ` · ${Math.round(s.bytes / 1024)}KB` : ''}</span>
+                  <span className={s.ok ? 'text-gray-600' : 'text-tone-bad font-semibold'}>{s.reason}{s.status ? ` · HTTP ${s.status}` : ''}{s.bytes ? ` · ${Math.round(s.bytes / 1024)}KB` : ''}</span>
                 </div>
               ))}
             </div>
@@ -337,17 +337,17 @@ export default function AdminDongnedealImportPage() {
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-5 flex-wrap">
                 <div><p className="text-[11px] text-gray-400">전체 동네딜 상품</p><p className="text-xl font-bold text-gray-900">{stats.total.toLocaleString()}</p></div>
-                <div><p className="text-[11px] text-gray-400">노출중(활성)</p><p className="text-xl font-bold text-emerald-600">{stats.active.toLocaleString()}</p></div>
-                <div><p className="text-[11px] text-gray-400">데모</p><p className="text-xl font-bold text-amber-500">{stats.demo.toLocaleString()}</p></div>
+                <div><p className="text-[11px] text-gray-400">노출중(활성)</p><p className="text-xl font-bold text-tone-ok">{stats.active.toLocaleString()}</p></div>
+                <div><p className="text-[11px] text-gray-400">데모</p><p className="text-xl font-bold text-tone-warn">{stats.demo.toLocaleString()}</p></div>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 {stats.demo > 0 && (
-                  <button onClick={clearDemo} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50">데모 {stats.demo}개 정리</button>
+                  <button onClick={clearDemo} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold border border-rule bg-white text-tone-bad hover:bg-gray-100 disabled:opacity-50">데모 {stats.demo}개 정리</button>
                 )}
                 {/* 🖼️ 사진 정리 — 한 버튼(외부 커버 R2 영구 이관 → 남은 깨진 커버 대표사진 재획득) */}
                 {stats.demo > 0 && (
-                  <button onClick={fixImages} disabled={fixing.running || cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-sky-50 text-sky-700 hover:bg-sky-100 disabled:opacity-50" title="데모 사진을 정리합니다 — ① 외부(네이버/카카오) 커버를 우리 서버(R2)로 영구 이관해 안 깨지게 → ② 그래도 안 뜨는 커버는 매장 대표사진으로 재획득. 정상 사진 무접촉.">
-                    {fixing.running ? `사진 정리 중… ${fixing.phase} · 이관 ${fixing.rehosted}·복구 ${fixing.healed}${fixing.remaining != null ? ` · 남은 ${fixing.remaining}` : ''}` : '🖼️ 사진 정리'}
+                  <button onClick={fixImages} disabled={fixing.running || cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold border border-rule bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-50" title="데모 사진을 정리합니다 — ① 외부(네이버/카카오) 커버를 우리 서버(R2)로 영구 이관해 안 깨지게 → ② 그래도 안 뜨는 커버는 매장 대표사진으로 재획득. 정상 사진 무접촉.">
+                    {fixing.running ? `사진 정리 중… ${fixing.phase} · 이관 ${fixing.rehosted}·복구 ${fixing.healed}${fixing.remaining != null ? ` · 남은 ${fixing.remaining}` : ''}` : '사진 정리'}
                   </button>
                 )}
                 {/* 🎯 2026-07-03 (대표 "지역은 홈 필터 그대로 — 1차/2차"): 소비자 홈과 동일 SSOT(KOREA_REGIONS).
@@ -386,7 +386,7 @@ export default function AdminDongnedealImportPage() {
                   <option value="etc_voucher">기타</option>
                   {/* 🏨 2026-07-20 (대표 — "데모 채우기 카테고리에서 숙소도"): 숙소는 별도 시드(/stays 검색용
                       객실·좌표 포함 생성형)로 분기 — seedDemo() 가 카테고리 보고 라우팅. */}
-                  <option value="stay_voucher">🏨 숙소</option>
+                  <option value="stay_voucher">숙소</option>
                   <option value="general">일반 상품</option>
                 </select>
                 {/* 🏷️ 데모 유형 — 실상품형(리뷰 포함) vs 오픈 예정형(사전 응모, 리뷰 없음) */}
@@ -427,7 +427,7 @@ export default function AdminDongnedealImportPage() {
                 {/* 🧭 대표 "재시드 버튼이 어딨어?"(2026-08-31) — 이 버튼이 생성+정비를 겸하는데 이름이 "채우기"라 못 찾는다. */}
                 {seedCategory === 'stay_voucher' && <span className="text-[12px] text-gray-500">← 기존 숙소 소개 문구·사진·시설도 함께 정비돼요</span>}
                 {/* 🏨 숙소 생성은 카테고리 '🏨 숙소' 선택 후 '데모 채우기' — 정리 버튼만 별도. */}
-                <button onClick={clearStays} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50">숙소 데모 정리</button>
+                <button onClick={clearStays} disabled={cleaning} className="px-3 py-2 rounded-lg text-sm font-semibold border border-rule bg-white text-tone-bad hover:bg-gray-100 disabled:opacity-50">숙소 데모 정리</button>
               </div>
             </div>
             <div className="flex items-center gap-3 flex-wrap mt-3">
@@ -436,14 +436,14 @@ export default function AdminDongnedealImportPage() {
                 return <span key={cat} className="text-[12px] text-gray-500">{CAT_LABEL[cat]} <b className="text-gray-800">{found?.c ?? 0}</b></span>
               })}
             </div>
-            {stats.demo > 0 && <p className="text-[11px] text-amber-600 mt-2">⚠️ 데모 상품 {stats.demo}개가 동네딜에 섞여 있습니다 — 실상품 등록 전 정리를 권장합니다.</p>}
+            {stats.demo > 0 && <p className="text-[11px] text-tone-warn mt-2">데모 상품 {stats.demo}개가 동네딜에 섞여 있습니다 — 실상품 등록 전 정리를 권장합니다.</p>}
           </div>
         )}
 
         {/* 📊 응모 수요 인사이트 — 데모가 만드는 실유저 수요 데이터(입점 영업·가격 수용성 근거) */}
         <div className={card}>
           <button onClick={openInsights} className="w-full flex items-center justify-between text-left">
-            <p className="text-sm font-bold text-gray-900">📊 응모 수요 인사이트 (실유저 응모만 — 표시용 시드 제외)</p>
+            <p className="text-sm font-bold text-gray-900">응모 수요 인사이트 (실유저 응모만 — 표시용 시드 제외)</p>
             <span className="text-[12px] text-gray-400">{insightsOpen ? '접기 ▲' : '펼치기 ▼'}</span>
           </button>
           {insightsOpen && (
@@ -516,7 +516,7 @@ export default function AdminDongnedealImportPage() {
         {/* 💰 업종별 가격 밴드 보정 — 시세 스냅샷 낡음 방지(물가 변동 시 배율로 보정) */}
         <div className={card}>
           <button onClick={openBands} className="w-full flex items-center justify-between text-left">
-            <p className="text-sm font-bold text-gray-900">💰 데모 가격 밴드 보정 (업종별 배율)</p>
+            <p className="text-sm font-bold text-gray-900">데모 가격 밴드 보정 (업종별 배율)</p>
             <span className="text-[12px] text-gray-400">{bandsOpen ? '접기 ▲' : `펼치기 ▼${bandsUpdatedAt ? ` · 최종 보정 ${bandsUpdatedAt.slice(0, 10)}` : ''}`}</span>
           </button>
           {bandsOpen && (
@@ -535,13 +535,13 @@ export default function AdminDongnedealImportPage() {
                   </label>
                 ))}
               </div>
-              <button onClick={saveBands} disabled={bandsSaving} className="mt-3 px-3 py-2 rounded-lg text-sm font-bold text-white bg-gray-900 hover:bg-black disabled:opacity-50">{bandsSaving ? '저장 중…' : '배율 저장'}</button>
+              <button onClick={saveBands} disabled={bandsSaving} className="ur-btn ur-btn-md ur-btn-primary mt-3 disabled:opacity-50">{bandsSaving ? '저장 중…' : '배율 저장'}</button>
             </div>
           )}
         </div>
 
         {/* 🗺️ 2026-07-01 (대표 — 수기로 진짜 매장 등록): 카카오 검색 자동완성 직접 입력 폼 (신규 등록 전용).
-            🖊️ 2026-07-21 (대표 "수정하려면 스크롤 위로 올라가야 해 불편"): 수정은 목록 제자리 모달로 분리 —
+            2026-07-21 (대표 "수정하려면 스크롤 위로 올라가야 해 불편"): 수정은 목록 제자리 모달로 분리 —
             아래 editing 모달 참조. 상단 폼은 더 이상 수정 모드로 전환되지 않음. */}
         <ManualDealForm
           onSaved={() => { loadStats(); setListNonce((n) => n + 1) }}
@@ -581,7 +581,7 @@ export default function AdminDongnedealImportPage() {
             </button>
           </div>
           <p className="text-[11px] text-gray-400 mt-2">헤더(필수): <b>상품명, 카테고리, 판매가</b>. 선택: 정가(취소선 표시), 매장명, 주소, 이미지URL, 설명.</p>
-          <p className="text-[11px] text-gray-400 mt-1">카테고리는 <b>이용권 / 미용 / 기타 / 일반</b> 중 하나로 입력. <b className="text-amber-600">숙소는 객실·날짜 등록이 필요해 이 도구로 등록 불가</b>(숙소 전용 등록 사용).</p>
+          <p className="text-[11px] text-gray-400 mt-1">카테고리는 <b>이용권 / 미용 / 기타 / 일반</b> 중 하나로 입력. <b className="text-tone-warn">숙소는 객실·날짜 등록이 필요해 이 도구로 등록 불가</b>(숙소 전용 등록 사용).</p>
         </div>
 
         <div className={card}>
@@ -602,7 +602,7 @@ export default function AdminDongnedealImportPage() {
               className={`${input} font-mono text-[12px] leading-relaxed`} />
           </div>
           <div className="mt-4 flex items-center gap-3">
-            <button onClick={submit} disabled={busy} className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-bold text-white bg-gray-900 hover:bg-black disabled:opacity-50">
+            <button onClick={submit} disabled={busy} className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-1.5 disabled:opacity-50">
               <PackagePlus className="w-4 h-4" /> {busy ? '등록 중…' : '동네딜에 일괄 등록'}
             </button>
             <span className="text-[11px] text-gray-400">등록 즉시 동네딜 노출(활성 공구 상태).</span>
@@ -612,10 +612,10 @@ export default function AdminDongnedealImportPage() {
         {result && (
           <div className={card}>
             <div className="flex items-center gap-2 mb-3">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+              <CheckCircle2 className="w-5 h-5 text-tone-ok" />
               <p className="text-sm font-bold text-gray-900">
-                등록 완료 — 총 {result.summary.total}행 중 <span className="text-emerald-600">{result.summary.created}개 성공</span>
-                {result.summary.failed > 0 && <span className="text-red-600"> · {result.summary.failed}개 실패</span>}
+                등록 완료 — 총 {result.summary.total}행 중 <span className="text-tone-ok">{result.summary.created}개 성공</span>
+                {result.summary.failed > 0 && <span className="text-tone-bad"> · {result.summary.failed}개 실패</span>}
               </p>
             </div>
             {result.results.some(r => r.status === 'error') && (
@@ -629,7 +629,7 @@ export default function AdminDongnedealImportPage() {
                       <tr key={i} className="border-t border-gray-100">
                         <td className="px-3 py-1.5 text-gray-500">{r.row}</td>
                         <td className="px-3 py-1.5 text-gray-700">{r.name || '-'}</td>
-                        <td className="px-3 py-1.5 text-red-600 flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" />{r.reason}</td>
+                        <td className="px-3 py-1.5 text-tone-bad flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" />{r.reason}</td>
                       </tr>
                     ))}
                   </tbody>

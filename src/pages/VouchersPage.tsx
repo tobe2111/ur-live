@@ -13,8 +13,8 @@
  *   3. 카테고리 탭 (편의점/카페/외식/도서 등) — KT Alpha categories
  */
 import { useEffect, useState, useRef, useCallback, useMemo, Fragment } from 'react'
-import { useNavigationType } from 'react-router-dom'
-import { saveListView, readListView } from '@/lib/list-view-cache'
+import { saveListView } from '@/lib/list-view-cache'
+import { useListSeed } from './vouchers/warm-seed'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -104,17 +104,9 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
     ssrSeedRef.current = readVouchersSsrSeed(embedded, category, brand, searchParams.get('sort') || 'price_low')
   }
 
-  // 🔙 2026-09-13 (대표 신고 — "상세 갔다 나오면 다시 새로고침됨"): 뒤로(POP) 로 돌아온 경우
-  //   직전 목록을 **첫 렌더에 동기 복원**한다. effect 로 미루면 로더가 한 프레임 뜨고, 무엇보다
-  //   그 프레임의 문서가 짧아 ScrollToTop 의 복원이 그 짧은 높이에 맞춰 잘린다(실측: 1400 → 594).
-  //   키에 필터를 담아 다른 카테고리/브랜드/정렬의 목록이 섞이지 않게 한다.
-  const navType = useNavigationType()
+  // 🔙 POP 복원(2026-09-13) · 🔥 웜 시드(2026-09-15) — 근거와 한계는 `vouchers/warm-seed.ts` 에.
   const viewKey = `vouchers:list:${embedded ? 'home' : 'page'}:${category}|${brand}|${searchParams.get('sort') || 'price_low'}`
-  const restoredRef = useRef<VouchersViewState | null | undefined>(undefined)
-  if (restoredRef.current === undefined) {
-    restoredRef.current = navType === 'POP' ? readListView<VouchersViewState>(viewKey) : null
-  }
-  const restored = restoredRef.current
+  const { restored, warm } = useListSeed<VouchersViewState, VoucherProduct>(viewKey, PAGE_SIZE)
 
   // 🎫 2026-06-23 (대표 결정 — '연속 스크롤 + 중앙 스크롤스파이 탭'): 비embedded /vouchers 는 한 페이지에
   //   교환권(상단, ~20개 + 더보기) → 쇼핑(하단 무한)이 이어짐. 상단 [교환권][쇼핑] 탭은 중앙 정렬 +
@@ -148,8 +140,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
   const [sectionsReady, setSectionsReady] = useState(false)
   // 🔙 2026-09-13: 복원본이 SSR 시드보다 우선한다 — 시드는 늘 1페이지(20개)라, 더보기로 편
   //   목록을 시드로 덮으면 목록이 도로 짧아진다(이 사고의 증상 그대로).
-  const [products, setProducts] = useState<VoucherProduct[]>(() => restored?.products ?? ssrSeedRef.current ?? [])
-  const [loading, setLoading] = useState(() => restored == null && ssrSeedRef.current == null)
+  const [products, setProducts] = useState<VoucherProduct[]>(() => restored?.products ?? warm ?? ssrSeedRef.current ?? [])
+  const [loading, setLoading] = useState(() => restored == null && warm == null && ssrSeedRef.current == null)
   const [loadingMore, setLoadingMore] = useState(false)
   const [page, setPage] = useState(() => restored?.page ?? 1)
   const [hasMore, setHasMore] = useState(() => restored ? restored.hasMore
@@ -721,7 +713,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             // 🏠 홈/PC — 2/3/4/5열 그리드 카드 스켈레톤 (main 의 PC 확장 lg:4 xl:5 반영).
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-2.5">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="animate-pulse rounded-2xl overflow-hidden border border-gray-100 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29]">
+                <div key={i} className="animate-pulse rounded-2xl overflow-hidden border border-gray-100 dark:border-[#2C2F35] bg-surface">
                   <div className="aspect-square bg-gray-100 dark:bg-[#1D1F29]" />
                   <div className="px-2.5 pt-2 pb-2.5">
                     <div className="h-3 bg-gray-100 dark:bg-[#1D1F29] rounded w-3/4" />

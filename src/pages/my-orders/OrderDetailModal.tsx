@@ -42,7 +42,7 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose} role="presentation">
-      <div className="bg-white dark:bg-[#11141C] rounded-2xl w-full max-h-[80dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('orderDetail.title', { defaultValue: '주문 상세' })}>
+      <div className="bg-surface rounded-2xl w-full max-h-[80dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('orderDetail.title', { defaultValue: '주문 상세' })}>
         <div className="sticky top-0 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35] p-4 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t('orderDetail.title', { defaultValue: '주문 상세' })}</h3>
           <button
@@ -187,7 +187,7 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
                   { label: t('orderDetail.stepDelivered', { defaultValue: '배송완료' }), done: status === 'DELIVERED' },
                 ]
                 return (
-                  <div className="pt-3 border-t border-gray-200 dark:border-[#2C2F35]">
+                  <div className="pt-3 border-t border-line">
                     <div className="flex items-center justify-between mb-3">
                       {steps.map((step, si) => (
                         <div key={si} className="flex items-center flex-1">
@@ -260,7 +260,7 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
                   </span>
                 </div>
               )}
-              <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-[#2C2F35]">
+              <div className="flex justify-between pt-2 border-t border-line">
                 <span className="text-gray-900 dark:text-white font-semibold">{t('orderDetail.totalAmount', { defaultValue: '총 결제금액' })}</span>
                 <span className="text-[19px] font-bold text-gray-900 dark:text-white">{formatNumber(totalAmount)}원</span>
               </div>

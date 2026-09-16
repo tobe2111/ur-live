@@ -80,6 +80,22 @@ export interface ReadBudgetState {
   day: string; used: number; written?: number
   /** 🗓️ 월 누적 쓴 행 — 요금이 월 단위라 일 단위만으로는 못 지킨다(아래 `monthlyDerivedWriteBudget`). */
   month?: string; writtenMonth?: number
+  /** 🧾 오늘 레인별 사용량 — "누가 썼나"가 없으면 넘쳤을 때 전 레인을 끄는 수밖에 없다(아래 헤더). */
+  lanes?: Record<string, LaneSpend>
+}
+
+/**
+ * 레인 하나의 원장 한 줄. `r`/`w`/`n`/`cut` 은 **오늘 것**(날이 바뀌면 0), `base` 만 날을 넘어 남는다 —
+ * 그게 "이 레인의 평소치"라는 학습값이기 때문이다(일일 계수가 아니다).
+ */
+export interface LaneSpend {
+  /** 오늘 읽은 행 */ r: number
+  /** 오늘 쓴 행 */ w: number
+  /** 오늘 보고한 회차 수 */ n: number
+  /** 회차당 쓴 행의 EMA — **폭주로 판정된 회차는 안 섞는다**(폭주가 자기 기준선을 올려 다음 폭주를 정상으로 만든다). */
+  base?: number
+  /** 이 레인이 폭주로 잘린 날(UTC). 오늘과 같으면 오늘은 안 돈다. */ cut?: string
+  /** 잘린 이유 — 하트비트에 그대로 싣는다(왜 멈췄는지 못 보면 끄는 것과 같다). */ cutWhy?: RunawayVerdict
 }
 export interface ReadBudgetView extends ReadBudgetState {
   budget: number; over: boolean; unknown?: boolean
@@ -87,6 +103,87 @@ export interface ReadBudgetView extends ReadBudgetState {
   written: number; writeBudget: number; writeOver: boolean
   /** 🗓️ 월 상태 — 화면에 안 보이면 "왜 오늘 예산이 이 값인지"를 아무도 못 설명한다. */
   writtenMonth?: number; monthLeft?: number; daysLeft?: number
+  /**
+   * 🧾 레인 귀속 — **기본 응답은 작게** 유지한다(이 뷰는 레인 인보케이션마다 읽힌다).
+   * `cutLanes` 는 게이트가 쓰고, `top` 은 하트비트가 쓴다. 전체 표는 `?full=1` 일 때만 실린다.
+   */
+  cutLanes?: string[]
+  top?: Array<{ lane: string; w: number; r: number; n: number }>
+  lanes?: Record<string, LaneSpend>
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * 🧾 레인 귀속 + 폭주 레인만 자르기 (2026-09-15, 대표 *"관리도 안되고"*)
+ *
+ * ## 왜
+ * 그때까지 원장은 **계정 합계 하나**였고 보고에 레인 이름이 없었다(`reportReadUsage(env, rr, rw)`).
+ * 결과가 둘이었다:
+ *   ① 넘치면 `budgetBlocked` 가 **전 레인**을 세운다 — 범인이 하나여도 34개가 같이 멈춘다.
+ *   ② 넘친 뒤에도 **누가 넘겼는지 아무도 모른다** — 원장에 이름이 안 남으니 사후에도 못 찾는다.
+ * 그래서 9/2 폭주 때 할 수 있는 처방이 "정상 수집까지 1/50 로 조이기" 뿐이었다. 정상과 폭주를
+ * 구분할 줄 모르는 차단기는 정상을 조이는 것 말고 할 줄 아는 게 없다.
+ *
+ * ## 임계값은 **실측에서 왔다** (2026-09-15 라이브 하트비트 67레인, 회차당 쓴 행)
+ * ```
+ *   collect-neis 28,814 · collect-commerce 12,078 · collect 4,937 · collect-company 3,779
+ *   collect-store-kakao 2,934 · collect-hira 1,504 · … · 나머지 1,000 미만
+ *                                     ↑ 정상 회차 최대 28,814
+ *   9/2 폭주:  쿼리 **하나**가 10만~15만 행 · 시간당 350만
+ * ```
+ * ⇒ 두 분포가 3.4배 떨어져 있다. 그 사이에 선을 긋는다.
+ * ⚠️ **예산에 비례시키지 않는다.** 처음엔 `하루예산 × 0.5` 로 잡았는데 그러면 예산이 클수록(=위험이
+ *   클수록) 임계가 **느슨해지고**, 9월 스로틀(3만) 같은 작은 예산에선 1.5만이 되어 **정상 회차
+ *   (28,814)가 폭주로 잘린다.** 이 값은 "건강한 회차가 어떻게 생겼나"의 성질이지 예산의 성질이 아니다.
+ *
+ * ## 못 막는 것 (기존 차단기와 같은 한계)
+ * · **첫 폭주 회차는 끝까지 간다** — 판정은 회차가 *보고한 뒤*에 난다. 줄이는 것은 "13시간 × 전 레인"
+ *   → "1회차 × 그 레인"이지 0 이 아니다.
+ * · 레인 **밖**의 쓰기(서비스몰 API 요청)는 여전히 안 세진다. 부팅 마이그레이션은 레인 인보케이션
+ *   안에서 돌아 그 회차의 계량기에 잡힌다 — 9/2 가 그랬다.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/** 원장이 기억하는 레인 수 상한 — DO 저장이 무한히 자라지 않게(현재 라이브 67). 넘으면 오늘 적게 쓴 순으로 버린다. */
+export const LANE_LEDGER_MAX = 96
+/** 하트비트 한 줄(160자)에 실을 상위 지출 레인 수 — 3개면 70자를 먹어 앞자리를 밀어낸다(2026-09-16 실측). */
+export const BEAT_TOP_LANES = 2
+/** 한 회차가 이만큼 쓰면 **무조건** 폭주. 실측 정상 최대 28,814 의 3.4배. */
+export const RUNAWAY_ROUND_WRITES = 100_000
+/** 배수 규칙의 하한 — 관측된 어떤 정상 회차(최대 28,814)보다 커야 오탐이 안 난다. */
+export const RUNAWAY_REL_FLOOR = 50_000
+/** 배수 규칙 — 자기 평소치의 이 배를 넘으면 폭주. */
+export const RUNAWAY_REL_MULTIPLE = 8
+/** 평소치 EMA 의 새 값 가중치. 낮을수록 천천히 배운다(= 한 번의 큰 회차로 기준선이 안 흔들린다). */
+export const RUNAWAY_BASELINE_ALPHA = 0.3
+
+/** 폭주 판정 결과 — 빈 문자열이면 정상. */
+export type RunawayVerdict = '' | 'abs' | 'rel'
+
+/**
+ * 이 회차가 폭주인가. **순수 함수** — 상태를 안 건드려야 시험이 경계를 고정할 수 있다.
+ *
+ * ⚠️ `baseline` 이 없으면(그 레인의 첫 회차) `rel` 은 **절대 발화하지 않는다**. 0 에서 시작한 레인이
+ *   처음 일하는 순간을 폭주로 잡으면, 새 레인은 태어나자마자 잘린다.
+ */
+export function runawayRound(rw: number, baseline?: number): RunawayVerdict {
+  if (!Number.isFinite(rw) || rw <= 0) return ''
+  if (rw >= RUNAWAY_ROUND_WRITES) return 'abs'
+  if (rw < RUNAWAY_REL_FLOOR) return ''
+  if (!baseline || !(baseline > 0)) return ''
+  return rw >= baseline * RUNAWAY_REL_MULTIPLE ? 'rel' : ''
+}
+
+/**
+ * 원장 키로 쓸 레인 이름. 세 형태가 들어온다 — 하트비트(`ads:collect`) · 경로(`/__ads/collect`) ·
+ * 쿼리 변종(`reclassify-company?passes=5`). **셋을 한 이름으로 모은다**, 안 그러면 같은 레인이
+ * 원장에 세 줄로 남아 귀속이 무의미해진다(`lane-cadence.baseLaneName`·`lane-domains.laneKey` 와 같은 규약).
+ */
+export function laneLedgerKey(raw: unknown): string {
+  let n = String(raw ?? '').trim()
+  if (n.startsWith('ads:')) n = n.slice(4)
+  n = n.replace(/^\/__ads\//, '').replace(/^\//, '')
+  n = (n.split('?')[0] ?? '').trim()
+  n = n.replace(/[^A-Za-z0-9._:-]/g, '')
+  return n ? n.slice(0, 40) : 'unknown'
 }
 
 /** Cloudflare 가 일일 한도를 되돌리는 경계 = UTC 자정. */
@@ -228,13 +325,68 @@ function resolveBudget(env: unknown, key: string, fallback: number): number {
   return n > 0 ? n : 0
 }
 
-/** 원장에 회차 읽기량을 더한다 — 날이 바뀌었으면 0 에서 다시. 음수·NaN 은 0 으로. */
-export function applyRead(prev: ReadBudgetState | null | undefined, rr: number, nowMs: number, rw = 0): ReadBudgetState {
+/**
+ * 날이 바뀌었을 때 레인 표를 넘긴다 — **오늘 계수(r/w/n)와 `cut` 은 버리고 `base` 만 남긴다.**
+ * `cut` 을 남기면 하루 차단이 영구 차단이 되고, `base` 를 버리면 매일 아침 모든 레인이
+ * "기준선 없음"이라 배수 규칙이 하루치씩 눈을 감는다.
+ */
+function rolloverLanes(lanes: Record<string, LaneSpend> | undefined): Record<string, LaneSpend> {
+  const out: Record<string, LaneSpend> = {}
+  for (const [k, v] of Object.entries(lanes || {})) {
+    if (v?.base && v.base > 0) out[k] = { r: 0, w: 0, n: 0, base: v.base }
+  }
+  return out
+}
+
+/** 표가 상한을 넘으면 **오늘 적게 쓴 순**으로 버린다 — 잘린 레인과 큰 손은 반드시 남는다. */
+function capLanes(lanes: Record<string, LaneSpend>, day: string): Record<string, LaneSpend> {
+  const keys = Object.keys(lanes)
+  if (keys.length <= LANE_LEDGER_MAX) return lanes
+  const keep = keys
+    .sort((a, b) => {
+      const ca = lanes[a]?.cut === day ? 1 : 0, cb = lanes[b]?.cut === day ? 1 : 0
+      if (ca !== cb) return cb - ca                                  // 잘린 레인 우선 보존
+      return (lanes[b]?.w || 0) - (lanes[a]?.w || 0)
+    })
+    .slice(0, LANE_LEDGER_MAX)
+  const out: Record<string, LaneSpend> = {}
+  for (const k of keep) out[k] = lanes[k]!
+  return out
+}
+
+/**
+ * 원장에 회차 읽기량을 더한다 — 날이 바뀌었으면 0 에서 다시. 음수·NaN 은 0 으로.
+ *
+ * @param lane 보고한 레인 이름(없으면 귀속만 건너뛴다 — 합계는 그대로 센다).
+ * @param verdict 이 회차의 폭주 판정. `''` 이 아니면 그 레인을 오늘 자르고 **기준선은 안 갱신한다.**
+ */
+export function applyRead(
+  prev: ReadBudgetState | null | undefined, rr: number, nowMs: number, rw = 0,
+  lane?: string, verdict: RunawayVerdict = '',
+): ReadBudgetState {
   const day = utcDay(nowMs)
   const pos = (n: number) => (Number.isFinite(n) && n > 0 ? Math.floor(n) : 0)
   const same = prev && prev.day === day
   const month = utcMonth(nowMs)
   const sameMonth = prev && prev.month === month
+  // 🧾 날이 같으면 이어서, 바뀌었으면 기준선만 안고 0 에서.
+  const lanes = same ? { ...(prev.lanes || {}) } : rolloverLanes(prev?.lanes)
+  const key = lane === undefined ? '' : laneLedgerKey(lane)
+  if (key) {
+    const cur = lanes[key] || { r: 0, w: 0, n: 0 }
+    const w = pos(rw)
+    lanes[key] = {
+      r: cur.r + pos(rr), w: cur.w + w, n: cur.n + 1,
+      // 📏 평소치는 **정상 회차로만** 배운다. 폭주를 섞으면 기준선이 폭주 쪽으로 끌려가
+      //    다음 폭주가 "평소와 비슷함"이 된다(차단기가 스스로를 무디게 만드는 형태).
+      base: verdict
+        ? cur.base
+        : cur.base && cur.base > 0
+          ? Math.max(1, Math.round(cur.base * (1 - RUNAWAY_BASELINE_ALPHA) + w * RUNAWAY_BASELINE_ALPHA))
+          : w || cur.base,
+      ...(verdict ? { cut: day, cutWhy: verdict } : cur.cut === day ? { cut: cur.cut, cutWhy: cur.cutWhy } : {}),
+    }
+  }
   return {
     day,
     used: (same ? prev.used : 0) + pos(rr),
@@ -242,7 +394,30 @@ export function applyRead(prev: ReadBudgetState | null | undefined, rr: number, 
     // 🗓️ 달이 바뀌면 0 에서 다시 — 포함분이 UTC 월 경계에서 리셋되기 때문이다.
     month,
     writtenMonth: (sameMonth ? prev.writtenMonth || 0 : 0) + pos(rw),
+    lanes: capLanes(lanes, day),
   }
+}
+
+/** 이 레인이 오늘 폭주로 잘렸는가 — 게이트의 단일 판정. 이름 정규화는 양쪽 모두 통과해야 한다. */
+export function laneCut(v: ReadBudgetView | null | undefined, lane: string): boolean {
+  if (!v || !lane) return false
+  return (v.cutLanes || []).includes(laneLedgerKey(lane))
+}
+
+/** 오늘 잘린 레인 이름들(원장 상태에서). */
+export function cutLaneNames(state: ReadBudgetState | null | undefined, nowMs: number): string[] {
+  const day = utcDay(nowMs)
+  if (!state || state.day !== day) return []
+  return Object.entries(state.lanes || {}).filter(([, v]) => v?.cut === day).map(([k]) => k).sort()
+}
+
+/** 오늘 많이 쓴 레인 상위 N — "누가 썼나"를 하트비트 한 줄로 보이게 하는 값. */
+export function topLaneSpend(state: ReadBudgetState | null | undefined, n = 3): Array<{ lane: string; w: number; r: number; n: number }> {
+  return Object.entries(state?.lanes || {})
+    .map(([lane, v]) => ({ lane, w: v?.w || 0, r: v?.r || 0, n: v?.n || 0 }))
+    .filter(x => x.w > 0 || x.r > 0)
+    .sort((a, b) => b.w - a.w || b.r - a.r)
+    .slice(0, Math.max(0, n))
 }
 
 export function budgetOver(state: ReadBudgetState | null | undefined, budget: number, nowMs: number): boolean {
@@ -271,15 +446,24 @@ export async function handleBudgetRequest(url: URL, storage: StorageLike, env: u
   // ⚠️ 둘 중 **하나라도** 보고되면 원장을 갱신한다. `rr>0` 만 보던 예전 조건을 그대로 두면
   //   읽기 없이 쓰기만 한 회차(전수 UPDATE 가 정확히 그렇다)가 **한 행도 안 세진다.**
   const reported = rr > 0 || rw > 0
+  // 🧾 누가 보고했나. 없으면(옛 호출부·수동 조회) 귀속만 건너뛰고 합계는 종전과 **byte-동일**하게 센다.
+  const laneRaw = url.searchParams.get('lane')
+  const laneKeyed = laneRaw ? laneLedgerKey(laneRaw) : ''
+  // 🚨 판정은 **이번 회차를 섞기 전** 기준선으로 한다 — 섞은 뒤에 재면 폭주가 자기 기준선을 올려
+  //    스스로를 정상으로 만든다(차단기가 자기 눈을 가리는 형태).
+  const verdict: RunawayVerdict = laneKeyed ? runawayRound(rw, prev?.lanes?.[laneKeyed]?.base) : ''
   const next = reported
-    ? applyRead(prev, rr, nowMs, rw)
+    ? applyRead(prev, rr, nowMs, rw, laneKeyed || undefined, verdict)
     : (prev && prev.day === utcDay(nowMs) ? prev : { day: utcDay(nowMs), used: 0, written: 0 })
   if (reported) await storage.put(READ_BUDGET_STORAGE_KEY, next)
   // 🗓️ 예산은 **갱신된 상태로** 계산한다 — 이 회차의 쓰기까지 반영해야 다음 판정이 정확하다.
   const writeBudget = effectiveWriteBudget(env, next, nowMs)
   const writtenMonth = next.writtenMonth || 0
+  // ⚠️ `lanes`(전체 표)는 **스프레드에서 뺀다** — 안 빼면 레인 인보케이션마다 96줄짜리 표가 실려 온다.
+  //    아래에서 `?full=1` 일 때만 다시 넣는다.
+  const { lanes: _allLanes, ...totals } = next
   return {
-    ...next, written: next.written || 0,
+    ...totals, written: next.written || 0,
     budget, over: budgetOver(next, budget, nowMs),
     writeBudget,
     // ⚠️ 일일 상한과 페이싱 **둘 다** 본다. 페이싱만 두면 23시엔 하루치가 통째로 열린다.
@@ -287,6 +471,10 @@ export async function handleBudgetRequest(url: URL, storage: StorageLike, env: u
     writtenMonth,
     monthLeft: Math.max(0, MONTHLY_WRITE_ALLOWANCE - URDEAL_MONTHLY_RESERVE - writtenMonth),
     daysLeft: utcDaysLeftInMonth(nowMs),
+    // 🧾 기본 응답은 작게 — 이 뷰는 레인 인보케이션마다 읽힌다. 전체 표는 물어볼 때만.
+    cutLanes: cutLaneNames(next, nowMs),
+    top: topLaneSpend(next),
+    ...(url.searchParams.get('full') === '1' ? { lanes: next.lanes || {} } : {}),
   }
 }
 
@@ -304,7 +492,8 @@ export async function readBudgetState(env: unknown): Promise<ReadBudgetView> {
   const budget = resolveReadBudget(env)
   const writeBudget = resolveWriteBudget(env)
   const day = utcDay(Date.now())
-  const idle = { day, used: 0, written: 0, budget, writeBudget }
+  // 🧾 `cutLanes: []` 를 기본에 둔다 — 없으면 게이트가 "모르는 상태"와 "안 잘림"을 못 가른다.
+  const idle = { day, used: 0, written: 0, budget, writeBudget, cutLanes: [] as string[] }
   // 둘 다 꺼져 있을 때만 원장을 안 묻는다 — 한쪽만 켜도 원장이 필요하다.
   if (budget <= 0 && writeBudget <= 0) return { ...idle, over: false, writeOver: false }
   const stub = ledger(env)
@@ -320,31 +509,64 @@ export async function readBudgetState(env: unknown): Promise<ReadBudgetView> {
       writeBudget: Number(body.writeBudget) || writeBudget, writeOver: !!body.writeOver,
       writtenMonth: Number(body.writtenMonth) || 0,
       monthLeft: Number(body.monthLeft) || 0, daysLeft: Number(body.daysLeft) || 0,
+      // 🧾 레인 귀속 — 원장이 준 것만 신뢰한다(못 읽으면 아래 catch 가 빈 배열로 준다).
+      cutLanes: Array.isArray(body.cutLanes) ? body.cutLanes.map(String) : [],
+      top: Array.isArray(body.top) ? body.top : [],
     }
   } catch {
     return { ...idle, over: true, writeOver: true, unknown: true }
   }
 }
 
-/** 회차가 끝나며 부른다 — 자기 읽기량을 원장에 더한다. 실패해도 조용히(관측이 레인을 죽이면 안 된다). */
-export async function reportReadUsage(env: unknown, rr: number | undefined, rw?: number | undefined): Promise<void> {
+/**
+ * 회차가 끝나며 부른다 — 자기 읽기량을 원장에 더한다. 실패해도 조용히(관측이 레인을 죽이면 안 된다).
+ *
+ * @param lane 보고하는 레인 이름. **반드시 넘긴다** — 이게 빠지면 그 레인의 사용량이 합계에만 섞여
+ *   "누가 썼나"에서 영영 사라지고, 폭주해도 자기만 잘리는 대신 전 레인이 멈춘다(2026-09-15 이전 상태).
+ */
+export async function reportReadUsage(env: unknown, rr: number | undefined, rw?: number | undefined, lane?: string): Promise<void> {
   const r = rr && rr > 0 ? Math.floor(rr) : 0
   const w = rw && rw > 0 ? Math.floor(rw) : 0
   if (r === 0 && w === 0) return
   if (resolveReadBudget(env) <= 0 && resolveWriteBudget(env) <= 0) return
   const stub = ledger(env)
   if (!stub) return
-  try { await stub.fetch(`https://ur-ads${READ_BUDGET_PATH}?rr=${r}&rw=${w}`, { method: 'POST' }) } catch { /* 원장 실패는 삼킨다 */ }
+  const q = lane ? `&lane=${encodeURIComponent(laneLedgerKey(lane))}` : ''
+  try { await stub.fetch(`https://ur-ads${READ_BUDGET_PATH}?rr=${r}&rw=${w}${q}`, { method: 'POST' }) } catch { /* 원장 실패는 삼킨다 */ }
 }
 
 /** 하트비트에 싣는 요약 — 숫자·불리언만(summarizeResult 가 `k=v` 로 편다). */
-export function budgetBeatFields(v: ReadBudgetView): Record<string, number | boolean> {
+/**
+ * 하트비트에 실을 요약 — **순서가 곧 생존 순위다.**
+ *
+ * 🩸 2026-09-16 라이브 실측으로 배운 것: `summarizeResult` 는 160자(`MAX_NOTE`)에서 **자르는 게 아니라
+ *   그 자리에서 루프를 멈춘다.** 전날 내가 `top`(레인 이름 3개 = 70자+)을 **가운데** 넣는 바람에
+ *   뒤에 오던 `cut`·`wmonth`·`mleft`·`dleft` 가 **한 글자도 안 실렸다**:
+ * ```
+ *   …wover=true top=collect-commerce:11839,collect-store-kakao:3603,collect-localdata-chain… wmo
+ *                                                                          ↑ 정확히 160자에서 끝
+ * ```
+ *   `cut` 이 밀려난 것이 특히 나쁘다 — **레인이 잘려도 운영자가 그 사실을 못 본다.** 차단기를 만들어
+ *   놓고 그 발화를 안 보이게 한 셈이고, 이 레포가 반복해 당한 *"실패가 아니라 조용한 부재"* 그대로다.
+ *
+ * ⇒ 규칙: **짧고 판단에 쓰는 것부터, 길고 참고용인 것은 맨 뒤.**
+ *   `cut`(사건) → 월 상태(예산 설명) → `top`(누가 많이 썼나, 잘려도 무해)  순서를 바꾸지 말 것.
+ *   `top` 은 **2개까지만** — 3개는 그 자체로 70자를 먹어 앞자리를 위협한다.
+ */
+export function budgetBeatFields(v: ReadBudgetView): Record<string, number | boolean | string> {
+  const cut = v.cutLanes || []
+  // ⚠️ 맨 뒤에 놓더라도 길이는 묶어 둔다 — 레인 이름이 길어지면 다시 앞자리를 먹는다.
+  const top = (v.top || []).slice(0, BEAT_TOP_LANES).map(t => `${t.lane}:${t.w}`).join(',')
   return {
     used: v.used, budget: v.budget, over: v.over,
     written: v.written, wbudget: v.writeBudget, wover: v.writeOver,
+    // 🚨 "누가 잘렸나" — 사건이므로 월 상태보다 앞. 평시엔 비어 있어 한 글자도 안 먹는다.
+    ...(cut.length ? { cut: cut.join(','), cutn: cut.length } : {}),
     // 🗓️ 월 상태 — 이게 없으면 "왜 오늘 예산이 이 값인가"를 아무도 설명 못 한다.
     ...(v.writtenMonth !== undefined ? { wmonth: v.writtenMonth, mleft: v.monthLeft || 0, dleft: v.daysLeft || 0 } : {}),
     ...(v.unknown ? { unknown: true } : {}),
+    // 🧾 "누가 많이 썼나" — 참고용이라 **맨 뒤**. 잘려도 판단에 지장이 없다.
+    ...(top ? { top } : {}),
   }
 }
 

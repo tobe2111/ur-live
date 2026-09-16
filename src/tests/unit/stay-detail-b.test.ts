@@ -154,9 +154,22 @@ describe('🧩 두 상세가 같은 부품 · 토큰 세트는 하나', () => {
   })
 
   it('체계에 옅은 면·중간 잉크 토큰이 라이트·다크 둘 다 있다', () => {
+    // ⚠️ 2026-09-15: 종전엔 **파일 전체에서 `--wash:` 개수를 세어 2** 를 요구했다. 그런데 이 토큰들은
+    //    `light-island` 되박기 블록에도 **정당하게** 한 번 더 선언된다(늘 밝은 표면이 다크 값을 물려받으면
+    //    흰 카드 위 글자가 안 읽힌다 — 대표 신고 "글자가 안보여"). 그래서 개수가 3 이 되고 이 시험이
+    //    **의도와 무관하게** 빨간불이 났다. 개수가 아니라 **제목 그대로** 두 블록 각각에 있는지를 본다.
     const css = read('src/index.css')
-    expect((css.match(/--wash:/g) || []).length, '--wash 가 한쪽 테마에만 있다').toBe(2)
-    expect((css.match(/--ink2:/g) || []).length, '--ink2 가 한쪽 테마에만 있다').toBe(2)
+    const dStart = css.indexOf('.dark, [data-theme="dark"] {')
+    const light = css.slice(css.lastIndexOf(':root {', dStart), dStart)
+    const dark = css.slice(dStart, css.indexOf('\n  }', dStart))
+    // 🔑 블록을 못 찾으면 통과가 아니라 실패다(빈 문자열은 toContain 이 무조건 빨강이지만, 메시지가
+    //    "토큰이 없다" 로 나와 오진을 부른다 — 여기서 먼저 잡는다).
+    expect((light.match(/--[a-z0-9-]+:/g) || []).length, '라이트 토큰 블록을 못 찾았다').toBeGreaterThan(20)
+    expect((dark.match(/--[a-z0-9-]+:/g) || []).length, '다크 토큰 블록을 못 찾았다').toBeGreaterThan(10)
+    for (const t of ['--wash', '--ink2']) {
+      expect(light, `${t} 가 라이트에 없다`).toContain(`${t}:`)
+      expect(dark, `${t} 가 다크에 없다`).toContain(`${t}:`)
+    }
   })
 })
 

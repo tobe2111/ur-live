@@ -19,6 +19,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { CARD_BG, CARD_BG_RE, PAGE_BG_RE, DARK_AWARE_BG_RE } from '../helpers/surface-class'
 
 const R = (p: string) => readFileSync(resolve(__dirname, '../../', p), 'utf-8')
 // ★(U+2605) 별점은 이모지가 아니라 글리프 — 2600 블록은 제외한다
@@ -56,7 +57,8 @@ describe('② 리뷰 작성란 (ProductReviews)', () => {
 
   it('textarea 에 다크 배경이 있다 — 없으면 흰 바탕에 흰 글자', () => {
     const ta = src.slice(src.indexOf('<textarea'), src.indexOf('/>', src.indexOf('<textarea')))
-    expect(ta).toMatch(/dark:bg-\[#/)
+    // 🔀 2026-09-15: 철자(hex 짝 ↔ 토큰)가 아니라 **다크를 아는 배경인가**를 묻는다.
+    expect(ta).toMatch(DARK_AWARE_BG_RE)
     expect(ta).toMatch(/dark:text-white/)
   })
 
@@ -68,7 +70,7 @@ describe('② 리뷰 작성란 (ProductReviews)', () => {
   })
 
   it('작성 카드는 테두리 0 + shadow-lift (규칙 ①)', () => {
-    expect(src).toMatch(/rounded-2xl bg-white dark:bg-\[#1D1F29\] shadow-lift/)
+    expect(src).toMatch(new RegExp(`rounded-2xl ${CARD_BG} shadow-lift`))
   })
 })
 
@@ -78,7 +80,7 @@ describe('③ 장바구니 (CartPage)', () => {
   it('로그인 상태 래퍼가 다크 배경을 가진다 — 없으면 화면 절반이 회색', () => {
     const wrappers = [...src.matchAll(/className="flex flex-col min-h-\[100dvh\]([^"]*)"/g)].map((m) => m[1])
     expect(wrappers.length).toBeGreaterThan(0)
-    for (const w of wrappers) expect(w, w).toMatch(/dark:bg-\[#11141C\]/)
+    for (const w of wrappers) expect(w, w).toMatch(PAGE_BG_RE)
     expect(src).not.toMatch(/bg-\[#F4F4F4\]/)
   })
 
@@ -108,7 +110,7 @@ describe('③ 장바구니 (CartPage)', () => {
 describe('④ 토스트 표면 (ToastContainer)', () => {
   const src = R('components/ToastContainer.tsx')
   it('라이트 흰 카드 + lift / 다크 surface — 잉크 상자·링·무거운 그림자 0', () => {
-    expect(src).toMatch(/bg-white dark:bg-\[#1D1F29\]/)
+    expect(src).toMatch(CARD_BG_RE)
     expect(src).toMatch(/shadow-lift/)
     expect(src).not.toMatch(/ring-1 ring-white/)
     expect(src).not.toMatch(/text-emerald-|text-sky-/)

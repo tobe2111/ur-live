@@ -47,9 +47,9 @@ export default function AnswerBox({
   return (
     <div className="mt-2">
       {pending && (
-        <div className="mb-2 rounded-xl bg-blue-50 px-3 py-2 text-[13px] text-blue-900">
+        <div className="mb-2 rounded-xl border border-rule bg-white px-3 py-2 text-[13px] text-gray-700">
           <span className="font-bold">어드민에서 답함:</span> {pending.answer}
-          <span className="ml-2 text-[11px] text-blue-700">
+          <span className="ml-2 text-[11px] text-gray-700">
             {pending.synced_at ? `· 파일 반영됨 (${pending.synced_ref ?? ''})` : '· 파일 반영 대기(다음 동기화 ≤ 4시간)'}
           </span>
         </div>
@@ -62,7 +62,7 @@ export default function AnswerBox({
               type="button"
               disabled={busy}
               onClick={() => save(String(i + 1))}
-              className="px-3 py-1.5 rounded-full text-[12px] font-bold bg-gray-900 text-white hover:bg-gray-700 disabled:opacity-50"
+              className="ur-btn ur-btn-sm ur-btn-primary text-[12px] hover:bg-gray-700 disabled:opacity-50"
             >
               {i + 1}번
             </button>
@@ -90,7 +90,7 @@ export default function AnswerBox({
           type="button"
           disabled={busy || !text.trim()}
           onClick={() => save(text)}
-          className="px-4 py-2 rounded-xl text-[13px] font-bold bg-gray-900 text-white disabled:opacity-40"
+          className="ur-btn ur-btn-md ur-btn-primary text-[13px] disabled:opacity-40"
         >
           저장
         </button>

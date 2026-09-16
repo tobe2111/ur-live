@@ -129,14 +129,14 @@ export default function VoucherMap<T extends VoucherMapItem>({
 
   if (vouchers.length === 0) {
     return (
-      <div className="bg-white dark:bg-[#11141C] rounded-xl border border-gray-200 dark:border-[#2C2F35] p-12 text-center">
+      <div className="bg-surface rounded-xl shadow-lift p-12 text-center">
         <p className="text-sm text-gray-500 dark:text-gray-400">지도에 표시할 미사용 이용권이 없어요</p>
       </div>
     )
   }
 
   return (
-    <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-[#2C2F35]" style={{ height: 400 }}>
+    <div className="relative rounded-xl overflow-hidden shadow-lift" style={{ height: 400 }}>
       <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
       {/* 🎨 현위치 재중심 버튼 (시안 우상단) */}
       {userLocation && (
@@ -144,7 +144,7 @@ export default function VoucherMap<T extends VoucherMapItem>({
           type="button"
           onClick={recenter}
           aria-label="내 위치로 이동"
-          className="absolute right-3 top-3 z-[2] w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-[#1D1F29] text-gray-900 dark:text-white shadow-md active:scale-95 transition-transform"
+          className="absolute right-3 top-3 z-[2] w-10 h-10 flex items-center justify-center rounded-xl bg-surface text-gray-900 dark:text-white shadow-md active:scale-95 transition-transform"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="4.2" /><line x1="12" y1="2" x2="12" y2="5" /><line x1="12" y1="19" x2="12" y2="22" /><line x1="2" y1="12" x2="5" y2="12" /><line x1="19" y1="12" x2="22" y2="12" />

@@ -64,15 +64,15 @@ export default function AdminRestaurantDemandPage() {
         {/* 요약 카드 */}
         <div className="grid grid-cols-3 gap-3">
           <div className="bg-white rounded-xl p-4 border border-gray-200 text-center">
-            <p className="text-2xl font-bold text-blue-600">{items.length}</p>
+            <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">{items.length}</p>
             <p className="text-xs text-gray-500 mt-1">신호 받은 매장</p>
           </div>
           <div className="bg-white rounded-xl p-4 border border-gray-200 text-center">
-            <p className="text-2xl font-bold text-purple-600">{totalInvite}</p>
+            <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">{totalInvite}</p>
             <p className="text-xs text-gray-500 mt-1">셀러 영입 신청</p>
           </div>
           <div className="bg-white rounded-xl p-4 border border-gray-200 text-center">
-            <p className="text-2xl font-bold text-brand-text">{totalNotify}</p>
+            <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-brand-text">{totalNotify}</p>
             <p className="text-xs text-gray-500 mt-1">출시 알림 등록</p>
           </div>
         </div>
@@ -88,7 +88,7 @@ export default function AdminRestaurantDemandPage() {
               onClick={() => setFilter(f.key)}
               className={`px-4 py-2 rounded-full text-xs font-semibold border transition-colors ${
                 filter === f.key
-                  ? 'bg-gray-900 text-white border-gray-900'
+                  ? 'bg-brand text-white border-gray-900'
                   : 'bg-white text-gray-600 border-gray-200'
               }`}>
               {f.label}
@@ -129,7 +129,7 @@ export default function AdminRestaurantDemandPage() {
                       <>
                         <span className="text-gray-300">·</span>
                         <Phone className="w-3 h-3" />
-                        <a href={`tel:${it.phone}`} className="text-blue-600 hover:underline">{it.phone}</a>
+                        <a href={`tel:${it.phone}`} className="text-brand-text hover:underline">{it.phone}</a>
                       </>
                     )}
                   </p>
@@ -141,7 +141,7 @@ export default function AdminRestaurantDemandPage() {
                 {/* 신호 카운트 */}
                 <div className="flex items-center gap-2 shrink-0">
                   {it.invite_count > 0 && (
-                    <span className="flex items-center gap-1 px-2 py-1 bg-purple-50 text-purple-700 rounded-md text-xs font-bold">
+                    <span className="flex items-center gap-1 px-2 py-1 bg-tone-info-bg text-tone-info rounded-md text-xs font-bold">
                       <Handshake className="w-3 h-3" /> {it.invite_count}
                     </span>
                   )}

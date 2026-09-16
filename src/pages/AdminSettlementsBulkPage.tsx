@@ -54,7 +54,7 @@ export default function AdminSettlementsBulkPage() {
           icon={<DollarSign className="h-5 w-5" />}
           actions={selected.length > 0 ? (
             <button onClick={process} disabled={processing}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white hover:bg-gray-900 disabled:opacity-50">
+              className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-1.5 disabled:opacity-50">
               <CheckCircle className="h-3.5 w-3.5" />
               선택한 {selected.length}건 일괄 처리
             </button>
@@ -63,13 +63,13 @@ export default function AdminSettlementsBulkPage() {
         <div className="hidden flex items-center justify-between mb-4">
           {selected.length > 0 && (
             <button onClick={process} disabled={processing}
-              className="px-5 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-bold flex items-center gap-2 disabled:opacity-50">
+              className="ur-btn ur-btn-md ur-btn-primary flex items-center gap-2 disabled:opacity-50">
               {processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
               {selected.length}명 정산 처리
             </button>
           )}
         </div>
-        {loading ? <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-blue-600" /></div> : pending.length === 0 ? (
+        {loading ? <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-gray-700" /></div> : pending.length === 0 ? (
           <p className="text-center py-12 text-gray-500">정산 대기 건이 없습니다</p>
         ) : (
           <div className="bg-white rounded-xl border border-gray-200">
@@ -80,12 +80,12 @@ export default function AdminSettlementsBulkPage() {
             {pending.map(p => (
               <div key={p.seller_id} className="flex items-center gap-3 px-4 py-3 border-b border-gray-50">
                 <input type="checkbox" checked={selected.includes(p.seller_id)} onChange={() => toggle(p.seller_id)} className="w-4 h-4" />
-                <DollarSign className="w-4 h-4 text-green-500" />
+                <DollarSign className="w-4 h-4 text-tone-ok" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-gray-900">{p.seller_name} ({p.business_name || '-'})</p>
                   <p className="text-xs text-gray-500">{p.order_count}건 · 총 {formatNumber(p.total_amount)}원 · 수수료 {formatNumber(Math.round(Number(p.commission)) || 0)}원</p>
                 </div>
-                <p className="text-sm font-bold text-green-600">{formatNumber((Number(p.total_amount) || 0) - (Math.round(Number(p.commission)) || 0))}원</p>
+                <p className="text-sm font-bold text-tone-ok">{formatNumber((Number(p.total_amount) || 0) - (Math.round(Number(p.commission)) || 0))}원</p>
               </div>
             ))}
           </div>

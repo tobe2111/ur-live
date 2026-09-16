@@ -55,7 +55,7 @@ export default function PromoMarginCalculator({ price, originalPrice, promoPct, 
       <span className={`text-[13px] ${muted ? 'text-gray-500' : strong ? 'font-bold text-gray-900' : 'text-gray-700'}`}>
         {sign && <span className="inline-block w-3 text-gray-400">{sign}</span>} {label}
       </span>
-      <span className={`font-mono text-[13px] ${strong ? 'font-bold text-emerald-700' : muted ? 'text-gray-500' : 'text-gray-800'}`}>
+      <span className={`font-mono text-[13px] ${strong ? 'font-bold text-tone-ok' : muted ? 'text-gray-500' : 'text-gray-800'}`}>
         {sign === '−' ? '-' : ''}{formatNumber(value)}원
       </span>
     </div>
@@ -64,7 +64,7 @@ export default function PromoMarginCalculator({ price, originalPrice, promoPct, 
   return (
     <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
       <div className="flex items-center justify-between mb-1">
-        <p className="text-sm font-bold text-gray-900">💰 매장 실수령 계산기</p>
+        <p className="text-sm font-bold text-gray-900">매장 실수령 계산기</p>
         <span className="text-[11px] text-gray-400">건당 기준</span>
       </div>
       <p className="text-[11px] text-gray-500 mb-3 leading-relaxed">
@@ -78,7 +78,7 @@ export default function PromoMarginCalculator({ price, originalPrice, promoPct, 
           <Row label={`소개비 ${promoPct || 0}% → 인플루언서`} value={b.promo} sign="−" muted />
           <Row label="매장 실수령" value={b.ownerNet} sign="=" strong />
           {promoPct > 0 && (
-            <p className="text-[11px] text-emerald-700 bg-emerald-50 rounded-lg px-2.5 py-2 mt-2.5 leading-relaxed">
+            <p className="text-[11px] text-tone-ok border border-rule bg-white rounded-lg px-2.5 py-2 mt-2.5 leading-relaxed">
               추천 판매 1건당 인플루언서에게 <strong>{formatNumber(b.promo)}원</strong>이 지급돼요. 소개비는
               추천 링크로 <strong>실제 판매가 확정된 건에만</strong> 발생하며, 소비자 결제액에 추가되지 않아요.
             </p>

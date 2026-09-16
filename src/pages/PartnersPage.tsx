@@ -14,13 +14,13 @@ import UrDealLogo from '@/components/brand/UrDealLogo'
 import { formatNumber } from '@/utils/format'
 
 const KAKAO_CHANNEL = 'http://pf.kakao.com/_AITdn/chat'
-/** 💰 계산기 기본율 — 플랫폼 수수료 5%(업계 최저, platform_settings 기본과 동일 표기). 카피 전달 시 조정. */
-const PLATFORM_FEE = 0.05
+/** 💰 계산기 기본율. 직접 입점 매장 수수료 10%(2026-09-15 정정: 라이브 채널 요율 직접 10% / 중개 5%, fee-resolver SSOT). 옛 '5% 업계 최저' 표기는 채널 요율 도입 전 값. */
+const PLATFORM_FEE = 0.10
 
 const TRUST = [
   { n: '19조', d: '글로벌 동일 모델 시장 규모' },
   { n: '서초구', d: '상권 활성화 사업 수행' },
-  { n: '5%', d: '수수료 업계 최저' },
+  { n: '0원', d: '미리 내는 돈' },
 ]
 
 const STEPS = [
@@ -32,7 +32,7 @@ const STEPS = [
 
 /** FAQ 초안 — 8월 온보딩에서 수집·갱신 예정(대표 전달분으로 교체). */
 const FAQS = [
-  { q: '광고비를 미리 내야 하나요?', a: '아니요. 선불 광고비·가입비·월 이용료가 전혀 없습니다. 손님이 실제로 결제하고 매장에 방문했을 때만 판매액의 5% 수수료가 발생합니다.' },
+  { q: '광고비를 미리 내야 하나요?', a: '아니요. 선불 광고비·가입비·월 이용료가 전혀 없습니다. 손님이 실제로 결제하고 매장에 방문했을 때만 판매액의 10% 수수료가 발생합니다. 카드 결제 수수료는 유어딜이 그 안에서 냅니다.' },
   { q: '할인을 얼마나 해야 하나요?', a: '할인율은 사장님이 정합니다. 첫 방문을 만드는 미끼 메뉴는 20~30%, 마진이 좋은 세트는 10~15%처럼 메뉴별로 다르게 설정할 수 있어요.' },
   { q: '정산은 언제 어떻게 받나요?', a: '손님이 이용권을 사용(QR 스캔)하면 정산 대상이 되고, 주 단위로 등록 계좌에 자동 입금됩니다. 정산 내역은 셀러 대시보드에서 실시간으로 확인할 수 있습니다.' },
   { q: '가게에 따로 기계나 설치가 필요한가요?', a: '아무것도 필요 없습니다. 쓰시던 스마트폰으로 QR을 스캔하면 끝이에요. 포스 연동·단말기 설치·직원 교육이 필요 없습니다.' },
@@ -64,7 +64,7 @@ export default function PartnersPage() {
   }, [price, discount])
 
   return (
-    <div className="min-h-[100dvh] bg-[#F8F7FC] dark:bg-[#11141C]">
+    <div className="min-h-[100dvh] bg-warm">
       {/* 🔎 2026-07-29: 문구 SSOT = shared/seo/consumer-surfaces (워커 메타와 같은 값). */}
       <SEO title={CONSUMER_SURFACE_SEO['/partners'].title} description={CONSUMER_SURFACE_SEO['/partners'].description} url="/partners" />
       {/* 상단 미니 바 */}
@@ -82,7 +82,7 @@ export default function PartnersPage() {
           </h1>
           <div className="grid grid-cols-3 gap-2 mt-7">
             {TRUST.map(({ n, d }) => (
-              <div key={d} className="rounded-2xl bg-white dark:bg-[#1D1F29] px-2 py-4 text-center">
+              <div key={d} className="rounded-2xl bg-surface px-2 py-4 text-center">
                 <p className="text-[19px] font-extrabold text-[#16181C] dark:text-[#F5F3F1]">{n}</p>
                 <p className="text-[10.5px] leading-tight text-gray-500 dark:text-gray-400 mt-1">{d}</p>
               </div>
@@ -98,7 +98,7 @@ export default function PartnersPage() {
           <h2 className="text-[19px] font-extrabold text-[#16181C] dark:text-[#F5F3F1] mb-4">사장님이 하실 일은 거의 없습니다</h2>
           <div className="space-y-2.5">
             {STEPS.map(({ icon: Icon, t, d }, i) => (
-              <div key={t} className="flex items-start gap-3.5 rounded-2xl bg-white dark:bg-[#1D1F29] p-4">
+              <div key={t} className="flex items-start gap-3.5 rounded-2xl bg-surface p-4">
                 <div className="w-9 h-9 rounded-xl bg-[var(--brand-tint)] dark:bg-[#16243D] flex items-center justify-center shrink-0">
                   <Icon className="w-4.5 h-4.5 w-[18px] h-[18px] text-brand" />
                 </div>
@@ -115,25 +115,25 @@ export default function PartnersPage() {
         <section className="pb-10">
           <h2 className="text-[19px] font-extrabold text-[#16181C] dark:text-[#F5F3F1] mb-1">내 몫 계산기</h2>
           <p className="text-[12.5px] text-gray-500 dark:text-gray-400 mb-4">정가와 할인율만 넣어보세요. 입금액이 바로 보입니다</p>
-          <div className="rounded-2xl bg-white dark:bg-[#1D1F29] p-5 space-y-4">
+          <div className="rounded-2xl bg-surface p-5 space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
                 <span className="text-[11.5px] font-bold text-gray-500 dark:text-gray-400">정가 (원)</span>
                 <input type="number" inputMode="numeric" value={price} min={0} step={1000}
                   onChange={e => setPrice(Number(e.target.value))}
-                  className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#11141C] text-[15px] font-bold text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand" />
+                  className="mt-1 w-full h-11 px-3 rounded-xl border border-line bg-surface text-[15px] font-bold text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand" />
               </label>
               <label className="block">
                 <span className="text-[11.5px] font-bold text-gray-500 dark:text-gray-400">할인율 (%)</span>
                 <input type="number" inputMode="numeric" value={discount} min={0} max={90}
                   onChange={e => setDiscount(Number(e.target.value))}
-                  className="mt-1 w-full h-11 px-3 rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#11141C] text-[15px] font-bold text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand" />
+                  className="mt-1 w-full h-11 px-3 rounded-xl border border-line bg-surface text-[15px] font-bold text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand" />
               </label>
             </div>
-            <div className="rounded-xl bg-[#F8F7FC] dark:bg-[#11141C] p-4 space-y-1.5">
+            <div className="rounded-xl bg-warm p-4 space-y-1.5">
               <div className="flex justify-between text-[13px] text-gray-600 dark:text-gray-300"><span>손님 결제</span><b className="text-gray-900 dark:text-white">{formatNumber(calc.paid)}원</b></div>
-              <div className="flex justify-between text-[13px] text-gray-600 dark:text-gray-300"><span>유어딜 수수료 5%</span><b>−{formatNumber(calc.fee)}원</b></div>
-              <div className="border-t border-dashed border-gray-200 dark:border-[#2C2F35] pt-2 flex justify-between items-baseline">
+              <div className="flex justify-between text-[13px] text-gray-600 dark:text-gray-300"><span>유어딜 수수료 10%</span><b>−{formatNumber(calc.fee)}원</b></div>
+              <div className="border-t border-dashed border-line pt-2 flex justify-between items-baseline">
                 <span className="text-[13.5px] font-bold text-[#16181C] dark:text-[#F5F3F1]">사장님 입금</span>
                 <b className="text-[22px] font-extrabold text-brand">{formatNumber(calc.payout)}원</b>
               </div>
@@ -161,7 +161,7 @@ export default function PartnersPage() {
       <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur-md border-t border-gray-100 dark:border-[#2C2F35] px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))]">
         <div className="max-w-xl mx-auto flex gap-2.5">
           <a href={KAKAO_CHANNEL} target="_blank" rel="noopener noreferrer"
-            className="flex-1 h-12 rounded-2xl border border-[#16181C]/15 dark:border-[#2C2F35] bg-white dark:bg-[#1D1F29] flex items-center justify-center gap-1.5 text-[14px] font-extrabold text-[#16181C] dark:text-[#F5F3F1]">
+            className="flex-1 h-12 rounded-2xl border border-[#16181C]/15 dark:border-[#2C2F35] bg-surface flex items-center justify-center gap-1.5 text-[14px] font-extrabold text-[#16181C] dark:text-[#F5F3F1]">
             <MessageCircle className="w-4 h-4" /> 카카오 문의
           </a>
           <Link to="/store/new"

@@ -290,7 +290,7 @@ interface OpsGate {
 }
 
 const OPS_GATES: OpsGate[] = [
-  { key: 'commission_budget_enabled', kind: 'setting', label: '커미션 예산 아비터 [INV-CB]', default_value: 'false', staging_ref: 'S1', turn_on_when: '영입+트리 커미션이 겹친 주문에서 Σ적립 ≤ 예산이 확인되면(S1)' },
+  { key: 'commission_budget_enabled', kind: 'setting', label: '커미션 예산 아비터 [INV-CB]', default_value: 'false', staging_ref: 'S1', turn_on_when: '영입+트리가 겹친 주문 1건을 `GET /api/admin/promo-ledger/order/:orderNumber` 로 보고 verdict.within_budget=true 면(S1 절차)' },
   { key: 'promo_funding_source', kind: 'setting', label: '프로모 owner-펀딩', default_value: 'platform', staging_ref: 'S2', turn_on_when: '이용권 구매→사용→환불에서 매장 원장 promo debit 1회가 확인되면(S2)' },
   { key: 'SHOPPING_LEDGER_ENABLED', kind: 'env', label: '쇼핑 주문 원장 크레딧', default_value: 'false', staging_ref: 'S3', turn_on_when: '쇼핑탭 재오픈이 결정되고 S3 실결제로 net 크레딧 1회가 확인되면' },
   { key: 'FEE_RESOLVER_ENABLED', kind: 'env', label: 'fee-resolver 그림자 기록', default_value: 'false', staging_ref: 'S4', turn_on_when: '그림자 기록(order_fee_breakdown) vs 현행 정산 비교가 일치하면(S4)' },
@@ -299,6 +299,9 @@ const OPS_GATES: OpsGate[] = [
   //   CLAUDE.md 는 게이트 플래그를 여기 등록하라고 규정하는데 이것만 빠져 있어, 운영 화면에서
   //   **켜져 있는지조차 볼 수 없었다** — 머니 경로에서 가장 보여야 할 값이다.
   { key: 'fee_channel_rates_enabled', kind: 'setting', label: '채널별 플랫폼 요율(직판 10% / 중개 5%)', default_value: 'false', staging_ref: 'S7', turn_on_when: '직판·중개 주문 각 1건의 원장 fee 가 의도한 요율로 찍히는 것이 staging 실결제로 확인되면' },
+  // 🔒 2026-09-16 (사기 방어 ①): 소개 커미션 성숙을 **사용 확인 뒤로**. 켜지기 전엔 서비스가
+  //   한 번도 안 일어나도 T+7 이면 송금 대기에 올랐다(가짜 매장이 돈을 가져가는 경로).
+  { key: 'payout_requires_voucher_use', kind: 'setting', label: '소개 커미션 사용 확인 게이트', default_value: 'false', staging_ref: 'S-USEGATE', turn_on_when: 'S-USEGATE 8건 통과 시 — 특히 ②(미사용은 pending 유지) ③(1장 사용 즉시 성숙) ⑦(무기한 이용권이 천장일에 풀림)이 확인되면. 라이브 attribution 0건이라 켜도 오늘 영향 0' },
   { key: 'BLOG_AI_DRAFTS_ENABLED', kind: 'env', label: '블로그 AI 초안 주간 cron', default_value: 'false', staging_ref: null, turn_on_when: '주간 AI 초안이 필요해지고 ANTHROPIC_API_KEY 가 ur-live 에 설정되면' },
   { key: 'ADS_AUTOBID_ENABLED', kind: 'env', label: '유어애즈 자동입찰', default_value: 'false', staging_ref: null, turn_on_when: '유어애즈 광고주가 실제로 입찰을 시작하면(현재 인플루언서 DB 수집 단계라 미해당)' },
   { key: 'wholesale_auto_grade_enabled', kind: 'setting', label: '도매 등급 자동평가', default_value: '0', staging_ref: null, turn_on_when: '🔴 켜지 않는다 — 도매몰은 철거 대상(2026-08-02 대표 확정 ⑦)' },
@@ -337,6 +340,11 @@ const OPS_GATES: OpsGate[] = [
   { key: 'settlement_skip_ledgered', kind: 'setting', label: '자동정산에서 원장 기록분 제외', default_value: 'false', staging_ref: null, turn_on_when: '🔴 머니 경로. 원장 적립(SHOPPING_LEDGER 계열)이 실제로 돌기 시작해 같은 매출이 두 번 정산될 위험이 생겼을 때. 그전엔 켜면 정산이 통째로 빠진다' },
   { key: 'outreach_auto_send', kind: 'setting', label: '인플루언서 제휴 제안 자동 발송', default_value: 'false', staging_ref: null, turn_on_when: '📮 콜드 발송은 법·평판 문제라 **대표가 직접 판단**한다. 세션이 켜지 않는다' },
   { key: 'promo_bar_enabled', kind: 'setting', label: '소비자 홈 프로모 바', default_value: 'false', staging_ref: null, turn_on_when: '홍보 문구가 정해지면 (문구·버튼·색은 같은 화면의 프로모 바 섹션에서)' },
+  // 🧺 2026-09-15 — 이용권 **장바구니 결제** 레일. 만들 때 이 표에 안 넣어서 어드민에 손잡이가
+  //   없었다(`check-gate-registry` 도 못 봤다 — read-site 가 `=== 'true'` 가 아니라 helper 안에 있다).
+  //   ⚠️ **두 겹이다**: 이 서버 키가 보안 경계이고, 담기 버튼은 클라 `VOUCHER_CART_UI_ENABLED` 가 가른다.
+  //   서버만 켜면 기존 장바구니에 이용권이 든 사람은 결제까지 갈 수 있다(담기 버튼은 안 보여도).
+  { key: 'voucher_cart_enabled', kind: 'setting', label: '이용권 장바구니 결제 (⚠️ 2겹 — 클라 VOUCHER_CART_UI_ENABLED 도 함께)', default_value: 'false', staging_ref: 'S-CART', turn_on_when: '🔴 머니 경로. S-CART 15항목(특히 S-CART-2 서로 다른 매장 2종 발급 · S-CART-3 셀러별 정산 · S-CART-13 교환권 거절)을 staging 실결제로 통과한 뒤. 끄면 두 엔드포인트가 즉시 403 이라 되돌리기는 1초다' },
   // 아래 둘은 **되살리지 않기로 한** 축이다(2026-08-23 종료, 다단계 성격). 화면이 없는 게 정상.
   { key: 'invite_reward_enabled', kind: 'setting', label: '초대 보상 (2026-08-23 종료)', default_value: 'false', staging_ref: null, turn_on_when: '켜지 않는다 — 심플 모델로 정리하며 종료한 축이다' },
   { key: 'multi_tier_enabled', kind: 'setting', label: '멀티티어 추천 (2026-08-23 종료)', default_value: 'false', staging_ref: null, turn_on_when: '켜지 않는다 — 다단계 성격이라 되살릴 이유가 없다' },

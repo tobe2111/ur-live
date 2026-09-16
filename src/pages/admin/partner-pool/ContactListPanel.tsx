@@ -40,39 +40,39 @@ export default function ContactListPanel() {
     <div key={`${kind}-${id}`} className="flex items-center gap-2 px-3 py-2 border-b border-gray-100 last:border-0 text-sm">
       <div className="min-w-0 flex-1">
         <div className="text-gray-900 truncate">
-          {badge && <span className="mr-1 text-[10px] px-1.5 py-0.5 rounded bg-rose-100 text-rose-600 font-semibold">{badge}</span>}
+          {badge && <span className="mr-1 text-[10px] px-1.5 py-0.5 rounded bg-tone-bad-bg text-tone-bad font-semibold">{badge}</span>}
           {name}
           <span className="ml-1.5 text-[11px] text-gray-400">{[sub, region].filter(Boolean).join(' · ')}</span>
         </div>
         <div className="text-[12px] mt-0.5">
           {email
-            ? <a href={`mailto:${email}`} className="text-indigo-600 font-medium hover:underline break-all">📧 {email}</a>
+            ? <a href={`mailto:${email}`} className="text-brand-text font-medium hover:underline break-all">{email}</a>
             : <span className="text-gray-400">이메일 없음</span>}
-          {phone && <a href={`tel:${phone}`} className="ml-3 text-gray-600 hover:underline">📞 {phone}</a>}
+          {phone && <a href={`tel:${phone}`} className="ml-3 text-gray-600 hover:underline">{phone}</a>}
         </div>
       </div>
-      <button onClick={() => markContacted(kind, id)} className="shrink-0 px-2.5 py-1 rounded-lg border border-gray-300 bg-white text-[12px] text-gray-600 hover:bg-gray-50" title="접촉 완료 처리(리스트에서 제거, 상태=컨택함)">컨택함 ✓</button>
+      <button onClick={() => markContacted(kind, id)} className="shrink-0 px-2.5 py-1 rounded-lg border border-gray-300 bg-white text-[12px] text-gray-600 hover:bg-gray-50" title="접촉 완료 처리(리스트에서 제거, 상태=컨택함)">컨택함</button>
     </div>
   )
 
   const emailCount = companies.filter(c => c.email).length + stores.filter(s => s.email).length
   return (
-    <div className="mb-4 rounded-xl border border-indigo-200 bg-indigo-50/40 overflow-hidden">
+    <div className="mb-4 rounded-xl border border-rule bg-white overflow-hidden">
       <button onClick={() => setOpen(v => !v)} className="w-full flex items-center gap-2 px-4 py-2.5 text-left">
-        <span className="text-sm font-semibold text-gray-900">📬 오늘의 컨택</span>
+        <span className="text-sm font-semibold text-gray-900">오늘의 컨택</span>
         <span className="text-[11px] text-gray-500">이메일 우선 · 미접촉만 · 이메일 {emailCount}건</span>
         <span className="ml-auto text-gray-400 text-xs">{open ? '접기 ▲' : '펼치기 ▼'}</span>
       </button>
       {open && (
         <div className="grid md:grid-cols-2 gap-0 md:gap-3 px-2 pb-2">
           <div className="rounded-lg bg-white border border-gray-200 overflow-hidden">
-            <div className="px-3 py-1.5 text-[11px] font-semibold text-gray-500 bg-gray-50">🤝 업체 (파트너)</div>
+            <div className="px-3 py-1.5 text-[11px] font-semibold text-gray-500 bg-gray-50">업체 (파트너)</div>
             {loading ? <div className="px-3 py-4 text-xs text-gray-400">불러오는 중…</div>
               : companies.length === 0 ? <div className="px-3 py-4 text-xs text-gray-400">미접촉 업체 없음 — 수집/보강이 채우는 중</div>
                 : companies.map(cRow => row('company', cRow.id, cRow.company_name, cRow.subcategory || cRow.category || '', cRow.region, cRow.email, cRow.phone, cRow.tier === 1 ? '1순위' : undefined))}
           </div>
           <div className="rounded-lg bg-white border border-gray-200 overflow-hidden">
-            <div className="px-3 py-1.5 text-[11px] font-semibold text-gray-500 bg-gray-50">🏪 매장 후보</div>
+            <div className="px-3 py-1.5 text-[11px] font-semibold text-gray-500 bg-gray-50">매장 후보</div>
             {loading ? <div className="px-3 py-4 text-xs text-gray-400">불러오는 중…</div>
               : stores.length === 0 ? <div className="px-3 py-4 text-xs text-gray-400">미접촉 매장 없음 — 수집/보강이 채우는 중</div>
                 : stores.map(sRow => row('store', sRow.id, sRow.biz_name, sRow.category || '', sRow.region, sRow.email, sRow.phone, sRow.is_new_open === 1 ? '개업' : undefined))}

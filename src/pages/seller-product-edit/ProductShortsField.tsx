@@ -119,11 +119,11 @@ export default function ProductShortsField({ productId }: { productId?: number }
           onChange={(e) => setUrl(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void add() } }}
           placeholder="https://www.youtube.com/shorts/..."
-          className="min-w-0 flex-1 rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+          className="min-w-0 flex-1 rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-brand focus:ring-2 focus:ring-blue-500"
         />
         <button
           type="button" onClick={() => void add()} disabled={busy || !url.trim()}
-          className="flex shrink-0 items-center gap-1.5 rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white disabled:opacity-40"
+          className="ur-btn ur-btn-md ur-btn-primary flex shrink-0 items-center gap-1.5 text-[13px] disabled:opacity-40"
         >
           <Plus size={15} /> 추가
         </button>
@@ -141,7 +141,7 @@ export default function ProductShortsField({ productId }: { productId?: number }
         </span>
       </label>
       {(err || hint) && (
-        <p className={`mt-1.5 text-xs ${err || hint?.bad ? 'text-red-600' : 'text-gray-500'}`}>
+        <p className={`mt-1.5 text-xs ${err || hint?.bad ? 'text-tone-bad' : 'text-gray-500'}`}>
           {err || hint?.text}
         </p>
       )}

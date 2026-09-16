@@ -86,8 +86,8 @@ export default function SellerExperienceCampaignsPage() {
 
   const statusBadge = (s: string) => {
     const m: Record<string, { t: string; c: string }> = {
-      open: { t: t('seller.expCampaigns.statusOpen', { defaultValue: '모집중' }), c: 'bg-green-100 text-green-700' },
-      drawn: { t: t('seller.expCampaigns.statusDrawn', { defaultValue: '추첨완료' }), c: 'bg-blue-100 text-blue-700' },
+      open: { t: t('seller.expCampaigns.statusOpen', { defaultValue: '모집중' }), c: 'bg-tone-ok-bg text-tone-ok' },
+      drawn: { t: t('seller.expCampaigns.statusDrawn', { defaultValue: '추첨완료' }), c: 'bg-tone-info-bg text-tone-info' },
       closed: { t: t('seller.expCampaigns.statusClosed', { defaultValue: '종료' }), c: 'bg-gray-100 text-gray-600' },
     }
     const x = m[s] || { t: s, c: 'bg-gray-100 text-gray-600' }
@@ -106,7 +106,7 @@ export default function SellerExperienceCampaignsPage() {
 
         {/* 생성 폼 — 게이트 ON 일 때만. OFF 면 안내 배너 */}
         {enabled ? (
-          <div className="bg-white rounded-2xl border border-gray-200 p-5 mt-4 mb-5">
+          <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-5 mt-4 mb-5">
             <h3 className="text-[14px] font-bold text-gray-900 mb-3">{t('seller.expCampaigns.newTitle', { defaultValue: '새 체험 캠페인' })}</h3>
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
               <label className="text-[12px] text-gray-600">{t('seller.expCampaigns.productId', { defaultValue: '제공 이용권 상품 ID' })}
@@ -133,16 +133,16 @@ export default function SellerExperienceCampaignsPage() {
             </div>
           </div>
         ) : (
-          <div className="mt-4 mb-5 flex items-start gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-            <Lock className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-            <p className="text-[12px] leading-relaxed text-amber-800">
+          <div className="mt-4 mb-5 flex items-start gap-2.5 rounded-[var(--dash-radius,16px)] border border-rule bg-white px-4 py-3">
+            <Lock className="mt-0.5 h-4 w-4 shrink-0 text-tone-warn" />
+            <p className="text-[12px] leading-relaxed text-tone-warn">
               {t('seller.expCampaigns.gateNotice', { defaultValue: '셀러 셀프 캠페인 개설은 준비 중입니다. 지금은 유어딜 담당자가 대신 개설해 드립니다 — 개설을 원하시면 관리자에게 문의해주세요. (개설된 캠페인의 응모자 조회·추첨·리포트는 아래에서 가능합니다.)' })}
             </p>
           </div>
         )}
 
         {/* 캠페인 목록 */}
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 overflow-hidden">
           {loading ? <div className="p-8 text-center text-gray-400 text-[13px]">{t('seller.expCampaigns.loading', { defaultValue: '로딩 중…' })}</div>
           : campaigns.length === 0 ? <div className="p-8 text-center text-gray-400 text-[13px]">{t('seller.expCampaigns.empty', { defaultValue: '개설된 캠페인이 없습니다.' })}</div>
           : campaigns.map(c => (
@@ -168,12 +168,12 @@ export default function SellerExperienceCampaignsPage() {
                     </div>
                   )}
                   <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                    <p className="text-[12px] font-bold text-gray-900 px-3 py-2 border-b border-gray-100 flex items-center gap-1"><ShieldCheck className="w-3.5 h-3.5 text-blue-600" />{t('seller.expCampaigns.entrants', { defaultValue: '응모자' })} ({entries.length})</p>
+                    <p className="text-[12px] font-bold text-gray-900 px-3 py-2 border-b border-gray-100 flex items-center gap-1"><ShieldCheck className="w-3.5 h-3.5 text-gray-700" />{t('seller.expCampaigns.entrants', { defaultValue: '응모자' })} ({entries.length})</p>
                     <div className="max-h-64 overflow-auto">
                       {entries.length === 0 ? <p className="p-3 text-[12px] text-gray-400">{t('seller.expCampaigns.noEntrants', { defaultValue: '응모자 없음' })}</p> : entries.map(e => (
                         <div key={e.id} className="flex items-center justify-between px-3 py-1.5 text-[11px] border-t border-gray-50">
                           <span className="text-gray-700">{e.user_name || `user ${e.user_id}`}</span>
-                          <span className={e.status === 'selected' ? 'text-blue-600 font-semibold' : 'text-gray-400'}>{e.status === 'selected' ? t('seller.expCampaigns.selectedWith', { defaultValue: '선정 (체험권 #{{id}})', id: e.voucher_id }) : e.status === 'applied' ? t('seller.expCampaigns.mApplied', { defaultValue: '응모' }) : e.status}</span>
+                          <span className={e.status === 'selected' ? 'text-gray-700 font-semibold' : 'text-gray-400'}>{e.status === 'selected' ? t('seller.expCampaigns.selectedWith', { defaultValue: '선정 (체험권 #{{id}})', id: e.voucher_id }) : e.status === 'applied' ? t('seller.expCampaigns.mApplied', { defaultValue: '응모' }) : e.status}</span>
                         </div>
                       ))}
                     </div>

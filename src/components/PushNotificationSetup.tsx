@@ -69,20 +69,26 @@ export default function PushNotificationSetup() {
       if (import.meta.env.DEV) console.info('[PushNotification] In-app webview blocked — skipping')
       return
     }
-    // VAPID 키(런타임 서버 우선)를 해석한 뒤에만 진행 — 키 없으면 배너/구독 모두 skip.
+    // 🔔 2026-07-01: 권한이 이미 granted 면 **항상** 서버 구독을 재조정(self-heal).
+    //   이전엔 localStorage.push_subscribed 플래그가 있으면 조기 return 해서, 브라우저가
+    //   endpoint 를 교체하거나 서버가 410 으로 구독행을 지우면 클라는 '구독됨'으로 착각하고
+    //   영구 두절됐음. 이제 getSubscription→재전송(ON CONFLICT 멱등)으로 매 마운트 self-heal.
+    //
+    // 🗑️ 2026-08-11: granted 가 아니면 **아무 일도 하지 않는다.** 예전엔 여기서 10초 뒤
+    //   권유 배너를 띄웠다(대표 지시로 제거). 권한 요청은 브라우저 사이트 설정에서만 시작된다.
+    //
+    // 🩸 2026-09-15: 이 검사가 **`resolveVapidKey()` 아래**에 있었다. 그래서 권한이 'default'
+    //   (=아직 안 물어본 대다수)인 사람도 첫 화면에서 `/api/push/vapid-public-key` 를 받아 놓고
+    //   바로 여기서 돌아섰다 — 결과를 **쓰지 않는 요청**이 매 진입마다 하나씩 나갔다.
+    //   8초 지연은 `subscribe()` 에만 걸려 있었지 키 조회엔 안 걸려 있었다(의도의 절반만 적용).
+    //   키는 granted 경로에서만 쓰이고 `_vapidKeyPromise` 가 메모하므로 순서만 바꾸면 된다.
+    if (Notification.permission !== 'granted') return
+
+    // VAPID 키(런타임 서버 우선)를 해석한 뒤에만 진행 — 키 없으면 구독 skip.
     let cancelled = false
     let timer: ReturnType<typeof setTimeout> | undefined
     void resolveVapidKey().then((vapidKey) => {
       if (cancelled || !vapidKey) return
-
-      // 🔔 2026-07-01: 권한이 이미 granted 면 **항상** 서버 구독을 재조정(self-heal).
-      //   이전엔 localStorage.push_subscribed 플래그가 있으면 조기 return 해서, 브라우저가
-      //   endpoint 를 교체하거나 서버가 410 으로 구독행을 지우면 클라는 '구독됨'으로 착각하고
-      //   영구 두절됐음. 이제 getSubscription→재전송(ON CONFLICT 멱등)으로 매 마운트 self-heal.
-      //
-      // 🗑️ 2026-08-11: granted 가 아니면 **아무 일도 하지 않는다.** 예전엔 여기서 10초 뒤
-      //   권유 배너를 띄웠다(대표 지시로 제거). 권한 요청은 브라우저 사이트 설정에서만 시작된다.
-      if (Notification.permission !== 'granted') return
       timer = setTimeout(() => { void subscribe() }, 8000)
     })
     return () => { cancelled = true; if (timer) clearTimeout(timer) }
@@ -162,7 +168,7 @@ export default function PushNotificationSetup() {
 
   return (
     <div className="fixed bottom-20 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-[400px] z-[9000] animate-sheet-up">
-      <div className="bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-2xl shadow-xl p-4 flex items-start gap-3">
+      <div className="bg-surface border border-line rounded-2xl shadow-xl p-4 flex items-start gap-3">
         <div className="w-10 h-10 rounded-xl bg-brand-tint flex items-center justify-center shrink-0">
           <Bell className="w-5 h-5 text-brand-text" />
         </div>

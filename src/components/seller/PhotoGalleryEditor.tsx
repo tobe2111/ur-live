@@ -115,7 +115,7 @@ export default function PhotoGalleryEditor({ photos, onChange, max = PHOTO_MAX, 
             type="button"
             onClick={() => remove(0)}
             aria-label={t('common.removeImage', { defaultValue: '이미지 제거' })}
-            className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80"
+            className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80" /* dashboard-button-ok — 사진 위 오버레이 컨트롤 */
           ><X className="w-3.5 h-3.5" /></button>
         </div>
       ) : (
@@ -136,13 +136,13 @@ export default function PhotoGalleryEditor({ photos, onChange, max = PHOTO_MAX, 
                 <button
                   type="button" onClick={() => remove(i)}
                   aria-label={t('common.removeImage', { defaultValue: '이미지 제거' })}
-                  className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center"
+                  className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center" /* dashboard-button-ok */
                 ><X className="w-3 h-3" /></button>
                 <div className="absolute bottom-1 left-1 right-1 flex justify-between">
                   <button type="button" onClick={() => move(i, -1)} aria-label={t('seller.photo.moveLeft', { defaultValue: '앞으로' })}
-                    className="w-5 h-5 rounded bg-black/55 text-white text-[10px] leading-none">←</button>
+                    className="w-5 h-5 rounded bg-black/55 text-white text-[10px] leading-none" /* dashboard-button-ok */>←</button>
                   <button type="button" onClick={() => move(i, 1)} aria-label={t('seller.photo.moveRight', { defaultValue: '뒤로' })}
-                    className="w-5 h-5 rounded bg-black/55 text-white text-[10px] leading-none"
+                    className="w-5 h-5 rounded bg-black/55 text-white text-[10px] leading-none" /* dashboard-button-ok */
                     disabled={i === photos.length - 1}>→</button>
                 </div>
               </div>
@@ -161,7 +161,7 @@ export default function PhotoGalleryEditor({ photos, onChange, max = PHOTO_MAX, 
           {busy
             ? t('seller.photo.uploading', { defaultValue: '올리는 중…' })
             : photos.length === 0
-              ? t('seller.photo.pickFile', { defaultValue: '📁 내 파일에서' })
+              ? t('seller.photo.pickFile', { defaultValue: '내 파일에서' })
               : t('seller.photo.addMore', { defaultValue: '+ 사진 추가' })}
         </button>
         <span className="text-[11px] text-gray-500">

@@ -21,7 +21,7 @@ import { useTranslation } from 'react-i18next'
 import { priceDisplay } from '@/shared/price-display'
 
 const INPUT =
-  'w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+  'w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-brand'
 
 interface Props {
   price: string
@@ -42,7 +42,7 @@ export default function PriceStockFields({ price, originalPrice, stock, onChange
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            {t('seller.originalPrice')} <span className="text-red-500">*</span>
+            {t('seller.originalPrice')} <span className="text-tone-bad">*</span>
           </label>
           <div className="relative">
             <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -62,7 +62,7 @@ export default function PriceStockFields({ price, originalPrice, stock, onChange
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            {t('seller.stockQuantity')} <span className="text-red-500">*</span>
+            {t('seller.stockQuantity')} <span className="text-tone-bad">*</span>
           </label>
           <div className="relative">
             <Box className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />

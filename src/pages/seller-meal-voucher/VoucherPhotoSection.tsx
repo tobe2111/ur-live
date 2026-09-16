@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Camera } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/hooks/useToast'
 import PhotoGalleryEditor, { PHOTO_MAX } from '@/components/seller/PhotoGalleryEditor'
@@ -61,7 +62,7 @@ export default function VoucherPhotoSection({ form, update, suggestedImages, loa
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6">
       <div className="flex items-center gap-2 mb-1">
-        <span className="text-lg">📸</span>
+        <Camera className="h-4 w-4 text-gray-500" />
         <h2 className="text-base font-bold text-gray-900">{t('seller.mealVoucher.mainImage')}</h2>
       </div>
       <p className="text-[11px] text-gray-500 mb-3">
@@ -79,7 +80,7 @@ export default function VoucherPhotoSection({ form, update, suggestedImages, loa
               mapOpen ? 'bg-brand text-white border-brand' : 'bg-white text-gray-900 border-gray-300 hover:border-gray-400'
             }`}
           >
-            🗺️ {t('seller.mealVoucher.fromMapShort', { defaultValue: '지도에서 가져오기' })}
+            {t('seller.mealVoucher.fromMapShort', { defaultValue: '지도에서 가져오기' })}
           </button>
         )}
       </div>
@@ -125,7 +126,7 @@ export default function VoucherPhotoSection({ form, update, suggestedImages, loa
                   className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-xs text-gray-900 focus:border-brand focus:outline-none"
                 />
                 <button type="button" onClick={() => { addPhoto(pasted); setPasted('') }}
-                  className="px-3 py-2 rounded-lg bg-gray-900 text-white text-xs font-bold">
+                  className="px-3 py-2 rounded-lg bg-brand-tint text-brand-text text-xs font-bold">
                   {t('common.add', { defaultValue: '담기' })}
                 </button>
               </div>

@@ -455,24 +455,72 @@
   --tone-warn: #8A5A00;    --tone-warn-bg: #FBF1DC;
   --tone-bad: #C62828;     --tone-bad-bg: #FBEAEA;
   --tone-info: #1C69EF;    --tone-info-bg: #EAF1FE;
+  /* 🧮 2026-09-15 D3 밀도·데이터 (대표 "3번째가 좋은 것 같네" — docs/design/seller-dashboard-2nd-directions-2026-09.md).
+     공용 대시보드 부품(components/dashboard)은 이 변수를 읽고, 변수가 없는 어드민·에이전시는 종전 값(16px·19px)으로 그린다.
+     ⇒ 셀러만 D3, 어드민 무접촉. 값을 바꾸려면 여기 한 곳. */
+  --dash-radius: 8px;        /* 카드 모서리 (종전 16px) */
+  --dash-h1: 17px;           /* 페이지 제목 (종전 19px, sm 22px) */
+  --dash-h1-sm: 18px;
+  --dash-stat: 22px;         /* 스탯 숫자 (종전 24px) */
+  --dash-gap: 14px;          /* 페이지 제목 아래 여백 (종전 20px) */
+  --dash-pad-x: 16px;        /* 카드 안 여백 (종전 20px) */
+  --dash-pad-y: 12px;        /*            (종전 16px) */
   /* 🧭 2026-09-14 (Rinda 시안): 브랜드 틴트도 같은 이유로 되박는다. 이게 없으면 html.dark 에서
      `:root.dark` 의 `--brand-tint: #16243D`(남색)가 새어 들어와 **활성 메뉴 알약이 검게** 뜬다.
      위 `--lift` 주석이 경고한 바로 그 사고이고, 사이드바가 흰 면으로 바뀌면서 실제로 도달 가능해졌다. */
   --brand-tint: #EAF1FE;
   --brand-text: #1C69EF;
 }
-.light-island, .force-light-theme, .admin-light-theme, .agency-light-theme {
+/* 🧮 2026-09-15 (대표 "다른 대시보드들의 페이지들도 개선 계속") — 어드민도 같은 D3 밀도. 값은 셀러 블록과 **같은 숫자**를
+   따로 선언한다(공용 블록에 두면 두 스코프가 한 몸이 되어 한쪽만 조정할 수 없다). 09-15 오전의 "셀러만 D3" 약속은
+   이 결정으로 대체됐다 — 가드 `seller-d3-2026-09-15.test.ts` 가 이 블록을 고정한다. */
+.admin-light-theme {
+  --brand-tint: #EAF1FE;   /* 셀러 블록과 같은 되박기 — 순서만 다르다(주입 앵커 "블록 자기 끝" 이 셀러 블록만 가리키게) */
+  --brand-text: #1C69EF;
+  --dash-radius: 8px;
+  --dash-h1: 17px;
+  --dash-h1-sm: 18px;
+  --dash-stat: 22px;
+  --dash-gap: 14px;
+  --dash-pad-x: 16px;
+  --dash-pad-y: 12px;
+}
+/* 🏝️ 늘 밝은 표면 — **테마가 갈리는 토큰을 전부 라이트 값으로 되박는다.**
+   ⚠️ 2026-09-15 (대표 신고 "글자가 안보여 … 다크모드일 때 저러나봐"): 종전엔 이 목록이 `--lift`·
+   `--rule*`·`--tone-*` 뿐이라 **나머지가 다크 값 그대로 샜다.** 지도 위 딜 카드의 할인율이
+   `text-sale` 인데 html.dark 에서 `--sale` 이 다크 빨강(#FF5C69)으로 남아 **흰 카드 위 3.01:1** 이었다
+   (실측). 같은 블록이 `--tone-*` 을 이미 같은 이유로 되박고 있었는데 목록이 불완전했던 것이다.
+   ⇒ 빠뜨리기 쉬운 구조라 **`:root` 에서 테마가 갈리는 토큰은 여기 전부** 적는다.
+   회귀 감시: `scripts/check-dark-contrast.mjs`(실제 렌더 대비) + `light-island-tokens` 유닛(목록 대조). */
+/* 🩸 2026-09-15: 이 목록에 **`.seller-light-theme` 만 빠져 있었다.** 그 스코프는 아래 자기 블록에서
+   `--lift`/`--rule`/`--tone-*`/`--brand-tint` 만 되박고 `--bg`/`--surface`/`--line`/`--ink*` 는 안 박는다.
+   지금까지 안 터진 이유는 `bg-warm`·`surface`·`line` 이 tailwind 에 **고정 hex** 로 박혀 있어서 변수를
+   안 읽었기 때문이다 — 그 셋을 테마 변수로 돌리는 순간(같은 커밋) `html.dark` 에서 **셀러 대시보드
+   배경이 검게** 뜬다(CLAUDE.md "🚨 절대 규칙" 위반). 목록에 넣어 미리 막는다.
+   ⚠️ 셀러 블록의 겹치는 선언은 그대로 둔다 — 값이 같고, `dashboard-rinda-shell` 가드가 그 블록을 본다. */
+.light-island, .force-light-theme, .admin-light-theme, .agency-light-theme, .seller-light-theme {
+  --brand-tint: #EAF1FE;
+  --ink: #16181C;
+  --ink2: #3D3C3A;
+  --ink-soft: #6E6B68;
+  --ink-faint: #8A8580;
+  --bg: #F8F7FC;
+  --surface: #FFFFFF;
+  --line: #EAE4E0;
+  --brand-text: #1C69EF;
+  --sale: #DC2626;
   --lift: 0 2px 10px rgb(22 24 28 / 0.06);
   --rule: rgb(22 24 28 / 0.08);
   --rule-strong: rgb(22 24 28 / 0.28);
+  --wash: rgb(22 24 28 / 0.05);
   /* 🚦 상태 색도 라이트 값으로 되박는다 — 안 그러면 html.dark 에서 흰 카드 위에 다크용 밝은 초록이 뜬다. */
   --tone-ok: #0F7B45;      --tone-ok-bg: #E7F4EC;
   --tone-warn: #8A5A00;    --tone-warn-bg: #FBF1DC;
   --tone-bad: #C62828;     --tone-bad-bg: #FBEAEA;
   --tone-info: #1C69EF;    --tone-info-bg: #EAF1FE;
-  /* 🧭 2026-09-14 (Rinda 시안): 셀러 래퍼와 같은 이유 — 위 블록 주석 참조. */
-  --brand-tint: #EAF1FE;
-  --brand-text: #1C69EF;
+  /* 🧭 2026-09-14 (Rinda 시안)이 여기에 넣었던 `--brand-tint`/`--brand-text` 두 줄은 2026-09-15 병합에서
+     **위 목록과 겹쳐** 제거했다(같은 블록·같은 값이라 동작은 byte-동일). 두 세션이 각자 같은 누수를
+     막으려다 만난 자리다 — 이제 목록 하나가 22토큰을 전부 덮으므로 따로 덧붙일 필요가 없다. */
 }
 
 /* 🛡️ 2026-06-17 (사용자 신고 — 로그인/대시보드 입력 글자 흰색으로 안 보임): 어드민/셀러/에이전시/도매는 라이트 고정.
@@ -811,6 +859,45 @@ textarea::placeholder {
 .dark textarea,
 .dark select {
   color: rgb(243 244 246); /* gray-100 — 다크 테마 기본 */
+}
+
+/* 🩸 2026-09-16 — **위 규칙은 글자만 바꾸고 배경을 안 바꿨다.** 그게 반쪽이다.
+   입력요소의 배경은 클래스가 없으면 브라우저 기본값 **흰색**이다(이 앱은 `color-scheme: dark` 를
+   어디에도 선언하지 않는다). 그래서 배경을 따로 안 준 입력은 다크에서 **흰 배경 위 gray-100 글자**
+   — 실측 대비 **1:1**, 글자가 아예 없는 것처럼 보인다.
+
+   실측(다크 렌더): `/checkout` 쿠폰·딜 입력 2개 · `/mypage/addresses` 이름·연락처·상세주소·요청사항
+   5개가 그 상태였다. 정적 스캔으로는 **소비자 화면 20곳**이 같은 모양이다(배경 선언 자체가 없음).
+   ⚠️ 한 곳씩 고치면 계속 다시 자란다 — 이 레포가 이 클래스를 반복해 만든 이유가 그것이다.
+   ⇒ **기본값을 고친다**: 배경을 안 준 입력은 뒤 표면을 그대로 비춘다(다크 표면 → 밝은 글자 가독).
+
+   🔑 **`:where()` 로 특이도를 0 으로 만든 것이 핵심이다 — 이건 "기본값"이지 "강제"가 아니다.**
+      처음엔 "`@layer base` 라서 utilities 레이어가 이긴다"고 적었는데 **틀렸다.** Tailwind v3 는
+      `@layer` 를 빌드에서 **걷어낸다**(실측: 산출 CSS 에 `@layer` 0개) — 그러면 레이어가 아니라
+      특이도가 승자를 정하고, 평범하게 쓴 `.dark input:not(…)` 은 (0,6,1) 이라 **`bg-surface`(0,1,0)
+      같은 토큰까지 이겨 버린다**(= 토큰이 조용히 무시된다. 다음 사람이 절대 못 찾을 함정).
+      `:where()` 는 인자의 특이도를 0 으로 만들므로 이 규칙은 **(0,0,0)** 이 되고, **배경을 어떤
+      형태로든 선언한 입력이 언제나 이긴다** — `bg-surface` · `dark:bg-[…]` · `bg-transparent` 전부.
+      ⚠️ 뒤쪽 제외 구문까지 `:where()` 로 감싼 것이 일부러다: 안 감싸면 (0,1,0) 이 되어
+         `bg-surface`(0,1,0)와 **동점**이 되고, 승자가 소스 순서에 달리게 된다. 지금은 우연히
+         맞지만, 순서에 기대는 규칙은 다음 빌드 도구 변경 한 번에 조용히 뒤집힌다.
+      ⚠️ 대신 `bg-white` 만 있고 `dark:` 변형이 없는 입력은 이 기본값이 **못 고친다.**
+         그건 원래 `check-theme-consistency` 가 잡는 별개 결함이다(라이트 토큰의 `dark:` 누락).
+      실측으로 확인한 것 — `/search`·결제 입력(명시) 의도대로 · `/mypage/addresses`(미명시) 수리 ·
+      `/map`(섬) 불변.
+   🏝️ `light-island`·`*-light-theme` 안에서는 뒤 표면이 흰색이고 글자는 위 블록이 `!important` 로
+      잉크색을 강제하므로 그대로 읽힌다.
+   회귀 감시: `scripts/check-dark-contrast.mjs`(실제 렌더 대비 측정). */
+@layer base {
+  /* 🏝️ **늘 밝은 표면 안쪽은 제외한다.** 그 안의 글자는 위 블록이 `!important` 로 잉크색을
+     강제하므로, 배경까지 투명하게 만들면 잉크 글자가 **어두운 페이지 배경 위**에 놓인다 —
+     2026-09-03 대표 신고("글자가 또 하얘")와 **정반대 방향의 같은 사고**다.
+     🩸 실제로 이 수리 첫 판이 그랬다: `/map` 검색창이 `rgb(22,24,28)` 글자 / `rgb(29,31,41)` 배경.
+        렌더로 재 보고서야 알았다. 제외 구문은 `tailwind.config.js` 의 dark variant 가 이미 쓰는
+        같은 형태다(`&:is(.dark *):not(.light-island *)`). */
+  :where(.dark) :where(input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']), textarea, select):where(:not(:is(.light-island, .force-light-theme, .admin-light-theme, .seller-light-theme, .agency-light-theme) *)) {
+    background-color: transparent;
+  }
 }
 .dark input::placeholder,
 .dark textarea::placeholder {
@@ -1450,6 +1537,13 @@ html.dark .gbd, [data-theme="dark"] .gbd {
 .ur-admin-nav-active,
 .ur-agency-nav-active { background: var(--brand-tint); }
 
+/* 🧮 2026-09-15 D3: 숫자는 표처럼 — 모노스페이스·고정폭 자릿수. 페이지가 아니라 숫자 요소에 붙인다(제목·본문엔 금지). */
+.dash-num { font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+/* 🧮 D3: 셀러·어드민 스코프에서 페이지 헤더의 장식 아이콘 칩은 그리지 않는다(2026-09-15 어드민 합류). 폰에서는 페이지
+   제목도 숨긴다 — 레이아웃의 폰 제목 줄(`.dash-phone-title`)이 같은 글자를 한 번만 그린다(두 번 말하지 않는다). */
+.seller-light-theme .dash-header-icon, .admin-light-theme .dash-header-icon { display: none; }
+@media (max-width: 767px) { .seller-light-theme .dash-page-title, .admin-light-theme .dash-page-title { display: none; } }
+
 /* 🛡️ 2026-05-20: 라이브/쇼츠/숏폼 카드 공통 utility (CSP unsafe-inline 제거 — style={{}} 일괄 제거) */
 .ur-live-pill {
   background: rgba(239, 68, 68, 0.92);
@@ -1658,4 +1752,15 @@ canvas {
    주문 현황·리뷰어 레벨(기존 컴포넌트)이 갖는 상단 여백·제목을 카드 안으로 맞춘다. */
 @media (min-width: 1024px) {
   .ur-account-pane .ur-content-medium.pt-3 { padding-top: 0; }
+}
+
+/* 📱 셀러 폰 상담 FAB — 페이지가 자기 하단 고정 바를 그리면 그만큼 비켜 준다 (2026-09-15).
+   대표 신고 *"버튼들이 겹치는 경우도 있고"*: 종전 FAB 은 `bottom-24`(96px 고정, safe-area 무시)였고
+   `SellerBottomBar` 는 하단 탭(60px) 위 ~64px 을 덮었다 → 60~124px 과 96~136px 이 정면 충돌.
+   ⚠️ 60px = `SELLER_TABBAR_H` · 64px = `SELLER_BOTTOM_BAR_H` 의 미러다. 한쪽만 바꾸면 다시 겹친다 —
+      `seller-fab-clearance-2026-09-15.test.ts` 가 세 값의 일치를 고정한다.
+   ⚠️ PC(min-width:768px)는 여기서 손대지 않는다 — 바가 없고 FAB 은 `md:bottom-4` 로 구석에 산다. */
+@media (max-width: 767px) {
+  .seller-chat-fab { bottom: calc(60px + env(safe-area-inset-bottom) + 12px); }
+  body.seller-has-bottom-bar .seller-chat-fab { bottom: calc(60px + env(safe-area-inset-bottom) + 64px + 12px); }
 }

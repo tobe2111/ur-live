@@ -326,7 +326,7 @@ export default function CuratorHeader({
                   onChange={(e) => setEditBio(e.target.value)}
                   rows={2}
                   maxLength={200}
-                  className="w-full text-[13.5px] text-gray-900 dark:text-white bg-white dark:bg-[#1D1F29] border border-gray-900 dark:border-white rounded-lg p-2 focus:outline-none resize-none"
+                  className="w-full text-[13.5px] text-gray-900 dark:text-white bg-surface border border-gray-900 dark:border-white rounded-lg p-2 focus:outline-none resize-none"
                 />
                 <div className="flex gap-2 mt-1">
                   <button onClick={() => saveField('bio', editBio)} disabled={saving} className="px-3 py-1 bg-gray-900 dark:bg-white text-white dark:text-[#11141C] text-xs font-bold rounded-lg">저장</button>
@@ -369,7 +369,7 @@ export default function CuratorHeader({
               </a>
             )}
             {curator.tiktok_url && (
-              <a href={snsUrl('tiktok', curator.tiktok_url)} target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="w-[34px] h-[34px] rounded-[10px] bg-[#1D1F29] flex items-center justify-center">
+              <a href={snsUrl('tiktok', curator.tiktok_url)} target="_blank" rel="noopener noreferrer" aria-label="TikTok" /* theme-dual — 틱톡 브랜드 검정. 표면이 아니라 로고 타일이라 두 테마에서 같아야 한다. */ className="w-[34px] h-[34px] rounded-[10px] bg-[#1D1F29] flex items-center justify-center">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M16.5 3c.3 2.2 1.6 3.9 3.8 4.1v2.6c-1.3.1-2.5-.3-3.8-1v5.7c0 4.4-3.4 6.9-6.9 5.8-3.2-1-4.1-5-1.7-7.2 1-.9 2.4-1.3 3.8-1.1v2.7c-.4-.1-.8-.1-1.2 0-1.2.3-1.7 1.4-1.3 2.5.4 1.1 1.8 1.5 2.7.7.5-.4.7-1 .7-1.7V3h3.9Z" /></svg>
               </a>
             )}
@@ -400,7 +400,7 @@ export default function CuratorHeader({
 
         {/* SNS 편집 패널 (편집 모드) */}
         {isOwner && editingSns && (
-          <div className="mt-3 rounded-xl bg-white dark:bg-[#1D1F29] shadow-lift p-3 space-y-2">
+          <div className="mt-3 rounded-xl bg-surface shadow-lift p-3 space-y-2">
             {([['youtube_url', '유튜브'], ['instagram_url', '인스타그램'], ['tiktok_url', '틱톡']] as const).map(([key, label]) => (
               <div key={key} className="flex items-center gap-2">
                 <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 w-14 shrink-0">{label}</span>
@@ -408,7 +408,7 @@ export default function CuratorHeader({
                   value={snsForm[key]}
                   onChange={(e) => setSnsForm(s => ({ ...s, [key]: e.target.value }))}
                   placeholder="@핸들 또는 링크"
-                  className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg border border-rule bg-white dark:bg-[#11141C] text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none"
+                  className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg border border-rule bg-surface text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none"
                 />
               </div>
             ))}
@@ -421,7 +421,7 @@ export default function CuratorHeader({
 
         {/* 편집 모드: 내 유어샵 주소 카드(주소 변경). 공유는 위 버튼으로 일원화. */}
         {isOwner && (
-          <div className="mt-3 rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift p-3.5">
+          <div className="mt-3 rounded-2xl bg-surface shadow-lift p-3.5">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[12px] font-bold text-gray-500 dark:text-gray-400">내 유어샵 주소</span>
               {!editingHandle && (
@@ -435,7 +435,7 @@ export default function CuratorHeader({
             </div>
             {editingHandle ? (
               <div>
-                <div className="flex items-center gap-1 px-3 py-2.5 rounded-xl border border-rule-strong bg-white dark:bg-[#11141C]">
+                <div className="flex items-center gap-1 px-3 py-2.5 rounded-xl border border-rule-strong bg-surface">
                   <span className="shrink-0 text-[13px] font-mono text-gray-400">{shareHost}/u/</span>
                   <input
                     value={handleVal}
@@ -454,7 +454,7 @@ export default function CuratorHeader({
                 </div>
               </div>
             ) : (
-              <div className="flex items-center px-3 py-2.5 rounded-xl bg-gray-50 dark:bg-[#11141C]">
+              <div className="flex items-center px-3 py-2.5 rounded-xl bg-warm">
                 <span className="truncate text-[13px] font-mono text-gray-700 dark:text-gray-300">{shareHost}/u/{curator.handle}</span>
               </div>
             )}

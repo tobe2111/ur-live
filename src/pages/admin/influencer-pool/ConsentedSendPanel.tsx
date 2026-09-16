@@ -1,3 +1,4 @@
+import { X } from 'lucide-react'
 import { useState } from 'react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -42,30 +43,30 @@ export default function ConsentedSendPanel() {
       }
       // 🔁 최근 7일 내 이미 받은 사람은 서버가 자동 제외한다(중복 클릭·재실행이 같은 사람에게 또 보내지 않게).
       if (!sent && recent) toast.info(`이미 최근 7일 내 발송한 리드라 ${formatNumber(recent)}명 전원 제외했어요 — 중복 발송을 막았습니다`)
-      else if (sent) toast.success(`📨 ${formatNumber(sent)}건 발송 완료${failed ? ` · 실패 ${failed}` : ''}${skipped ? ` · 제외 ${skipped}${recent ? `(최근 발송 ${recent} 포함)` : '(미동의/이메일없음)'}` : ''}`)
+      else if (sent) toast.success(`${formatNumber(sent)}건 발송 완료${failed ? ` · 실패 ${failed}` : ''}${skipped ? ` · 제외 ${skipped}${recent ? `(최근 발송 ${recent} 포함)` : '(미동의/이메일없음)'}` : ''}`)
     } finally { setBusy(false); setOpen(false) }
   }
 
   return (
     <>
-      <button onClick={openPanel} className="px-4 py-2 rounded-lg border border-sky-300 bg-sky-50 text-sky-700 text-sm font-medium" title="사전 수신동의한 인바운드 신청자에게만 자동 발송(서버가 동의를 강제)">
-        📨 동의 리드 일괄발송
+      <button onClick={openPanel} className="px-4 py-2 rounded-lg border border-rule bg-white text-gray-700 text-sm font-medium" title="사전 수신동의한 인바운드 신청자에게만 자동 발송(서버가 동의를 강제)">
+        동의 리드 일괄발송
       </button>
       {open && (
         <div className="fixed inset-0 z-[10500] flex items-center justify-center bg-black/50 p-4" onClick={() => setOpen(false)}>
           <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl" onClick={e => e.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-900">📨 동의 리드 일괄발송 (신청자 전용)</h3>
-              <button onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-700 text-sm" aria-label="닫기">✕</button>
+              <h3 className="text-sm font-semibold text-gray-900">동의 리드 일괄발송 (신청자 전용)</h3>
+              <button onClick={() => setOpen(false)} className="ur-btn ur-btn-sm ur-btn-icon ur-btn-ghost" aria-label="닫기"><X className="h-4 w-4" /></button>
             </div>
-            <div className="mb-3 rounded-lg bg-sky-50 border border-sky-200 px-3 py-2 text-xs text-sky-800">
+            <div className="mb-3 rounded-lg bg-white border border-rule px-3 py-2 text-xs text-gray-700">
               대상: <b>{targets == null ? '조회 중…' : `${formatNumber(targets.length)}명`}</b> — 스스로 신청해 수신동의한 리드만(서버 강제). 콜드 수집 리드는 발송되지 않습니다.
             </div>
             <label className="block text-xs font-medium text-gray-500 mb-1">제목</label>
             <input value={subject} onChange={e => setSubject(e.target.value)} className="w-full mb-3 px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900" />
             <label className="block text-xs font-medium text-gray-500 mb-1">본문 — <code className="text-[11px]">{'{name}'}</code> 은 이름으로 치환 · 수신거부 안내 자동 첨부</label>
             <textarea value={body} onChange={e => setBody(e.target.value)} rows={8} className="w-full mb-3 px-3 py-2 rounded-lg border border-gray-300 text-xs text-gray-900 leading-relaxed" />
-            <button onClick={send} disabled={busy || !targets?.length || body.trim().length < 20} className="w-full py-2.5 rounded-lg bg-sky-600 text-white text-sm font-semibold disabled:opacity-40">
+            <button onClick={send} disabled={busy || !targets?.length || body.trim().length < 20} className="ur-btn ur-btn-md ur-btn-primary w-full disabled:opacity-40">
               {busy ? '발송 중…' : `발송 (${targets ? formatNumber(targets.length) : 0}명)`}
             </button>
           </div>

@@ -35,9 +35,11 @@ describe('이용권 상세 — 제목이 사진 위로 (대표 확정 1안)', ()
     //    ⇒ 제목(h1)과 가격(unitPrice)을 감싼 블록이 각각 lg:hidden 을 달고 있는지.
     const anchors = [
       { name: '제목', at: s.indexOf('>{detail.name}</h1>') },
-      // ⚠️ `</span>` 까지 붙여야 유일하다 — 없이 쓰면 위쪽 **SEO 설명 문자열**의 같은 표현에 먼저 걸려
+      // ⚠️ 닫는 태그까지 붙여야 유일하다 — 없이 쓰면 위쪽 **SEO 설명 문자열**의 같은 표현에 먼저 걸려
       //    엉뚱한 자리를 검사하게 된다(이 레포에서 반복해 밟은 "첫 일치" 함정).
-      { name: '가격', at: s.indexOf('{formatNumber(unitPrice)}원</span>') },
+      // 🔄 2026-09-15 (대표 확정 "안 B"): 가격이 세로 위계가 되며 `<span>` → `<div>` 로 바뀌었다.
+      //    앵커가 낡아 `-1` 이 됐고 전체 유닛에서 이 한 건만 빨간불이 났다 — 태그를 따라간다.
+      { name: '가격', at: s.indexOf('{formatNumber(unitPrice)}원</div>') },
     ]
     for (const a of anchors) {
       expect(a.at, `${a.name} 블록을 못 찾았다 — 앵커가 낡았다`).toBeGreaterThan(0)

@@ -69,7 +69,7 @@ export default function SellerTransfersPage() {
           icon={<ArrowRightLeft className="h-5 w-5" />}
         />
 
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-800">
+        <div className="bg-white border border-rule rounded-xl p-4 text-xs text-tone-warn">
           ⓘ {t('seller.transfers.notice', { defaultValue: '보내는 에이전시 → 받는 에이전시 → 본인 동의 3단계 후 매핑이 변경됩니다. 본인 동의 없이는 어떤 에이전시도 임의로 이전할 수 없습니다 (보안). 이전 후 30일 cooldown.' })}
         </div>
 
@@ -87,7 +87,7 @@ export default function SellerTransfersPage() {
         ) : (
           <>
             {pending.length > 0 && (
-              <Section title={`✋ ${t('seller.transfers.needsApproval', { defaultValue: '동의 필요' })} (${pending.length})`} highlight>
+              <Section title={`${t('seller.transfers.needsApproval', { defaultValue: '동의 필요' })} (${pending.length})`} highlight>
                 {pending.map(t => (
                   <TransferCard
                     key={t.id} t={t} actionable
@@ -115,9 +115,9 @@ export default function SellerTransfersPage() {
 function Section({ title, children, highlight }: { title: string; children: React.ReactNode; highlight?: boolean }) {
   return (
     <div className={`rounded-xl border overflow-hidden ${
-      highlight ? 'bg-blue-50/30 border-blue-200' : 'bg-white border-gray-100'
+      highlight ? 'bg-white border-rule' : 'bg-white border-gray-100'
     }`}>
-      <div className={`px-5 py-3 border-b ${highlight ? 'border-blue-200' : 'border-gray-100'}`}>
+      <div className={`px-5 py-3 border-b ${highlight ? 'border-rule' : 'border-gray-100'}`}>
         <h3 className="text-sm font-bold text-gray-900">{title}</h3>
       </div>
       <div className="divide-y divide-gray-100">{children}</div>
@@ -136,10 +136,10 @@ function TransferCard({
 }) {
   const { t } = useTranslation()
   const statusMap: Record<string, { label: string; cls: string }> = {
-    pending: { label: t('seller.transfers.statusPending', { defaultValue: '받는 에이전시 응답 대기' }), cls: 'bg-yellow-100 text-yellow-800' },
-    accepted_by_to: { label: t('seller.transfers.statusAcceptedByTo', { defaultValue: '✋ 본인 동의 필요' }), cls: 'bg-blue-100 text-blue-700' },
-    completed: { label: t('seller.transfers.statusCompleted', { defaultValue: '이전 완료' }), cls: 'bg-green-100 text-green-700' },
-    rejected: { label: t('seller.transfers.statusRejected', { defaultValue: '거절' }), cls: 'bg-red-100 text-red-700' },
+    pending: { label: t('seller.transfers.statusPending', { defaultValue: '받는 에이전시 응답 대기' }), cls: 'bg-tone-warn-bg text-tone-warn' },
+    accepted_by_to: { label: t('seller.transfers.statusAcceptedByTo', { defaultValue: '본인 동의 필요' }), cls: 'bg-tone-info-bg text-tone-info' },
+    completed: { label: t('seller.transfers.statusCompleted', { defaultValue: '이전 완료' }), cls: 'bg-tone-ok-bg text-tone-ok' },
+    rejected: { label: t('seller.transfers.statusRejected', { defaultValue: '거절' }), cls: 'bg-tone-bad-bg text-tone-bad' },
     cancelled: { label: t('seller.transfers.statusCancelled', { defaultValue: '취소' }), cls: 'bg-gray-100 text-gray-500' },
   }
   const status = statusMap[transfer.status] || statusMap.pending
@@ -161,7 +161,7 @@ function TransferCard({
       </div>
       {transfer.reason && <div className="text-xs text-gray-500 mt-1 italic">"{transfer.reason}"</div>}
       {transfer.rejection_reason && (
-        <div className="text-xs text-red-500 mt-1">{t('seller.transfers.rejectionReason', { defaultValue: '거절 사유' })}: {transfer.rejection_reason}</div>
+        <div className="text-xs text-tone-bad mt-1">{t('seller.transfers.rejectionReason', { defaultValue: '거절 사유' })}: {transfer.rejection_reason}</div>
       )}
 
       {actionable && (

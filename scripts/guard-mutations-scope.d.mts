@@ -22,3 +22,13 @@ export declare function changedScope(o: {
   run: (args: string[]) => string
   baseRef?: string
 }): Scope
+
+/** 주입 러너 파일 경로 상수(`scripts/check-guard-mutations.mjs`). */
+export declare const GUARD_RUNNER: string
+
+/**
+ * `scripts/` 안에서 **주입 판정에 닿을 수 있는** 변경인가(러너·`scripts/mutations/` 는 제외 —
+ * 그 둘은 매니페스트 목록 diff 가 맡는다). 참이면 하위 프로세스로 가드를 돌리는 테스트를
+ * 쓰는 주입을 함께 고른다.
+ */
+export declare function touchesGuardScripts(files: Set<string> | string[] | null | undefined): boolean

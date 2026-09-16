@@ -23,7 +23,7 @@ export default function ProposalModal({ prospectId, email, phone, onClose }: { p
   }
   return (
     <div className="fixed inset-0 z-[10500] bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-xl p-5" onClick={e => e.stopPropagation()}>
+      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-[var(--dash-radius,16px)] bg-white shadow-xl p-5" onClick={e => e.stopPropagation()}>
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="text-base font-bold text-gray-900">입점 제안 문구 초안</div>
@@ -34,19 +34,19 @@ export default function ProposalModal({ prospectId, email, phone, onClose }: { p
         {loading ? <div className="py-8 text-center text-sm text-gray-400">불러오는 중…</div> : !d ? null : (
           <div className="mt-4 space-y-4 text-[13px]">
             <div>
-              <div className="flex items-center justify-between mb-1"><span className="font-semibold text-gray-700">제목</span><button onClick={() => copy(d.subject, '제목')} className="text-xs text-blue-600 underline">복사</button></div>
+              <div className="flex items-center justify-between mb-1"><span className="font-semibold text-gray-700">제목</span><button onClick={() => copy(d.subject, '제목')} className="text-xs text-brand-text underline">복사</button></div>
               <div className="rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-gray-900">{d.subject}</div>
             </div>
             <div>
-              <div className="flex items-center justify-between mb-1"><span className="font-semibold text-gray-700">본문 (이메일·카톡)</span><button onClick={() => copy(d.body, '본문')} className="text-xs text-blue-600 underline">복사</button></div>
+              <div className="flex items-center justify-between mb-1"><span className="font-semibold text-gray-700">본문 (이메일·카톡)</span><button onClick={() => copy(d.body, '본문')} className="text-xs text-brand-text underline">복사</button></div>
               <pre className="whitespace-pre-wrap rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-gray-900 font-sans leading-relaxed">{d.body}</pre>
             </div>
             <div>
-              <div className="flex items-center justify-between mb-1"><span className="font-semibold text-gray-700">문자 (SMS)</span><button onClick={() => copy(d.sms, '문자')} className="text-xs text-blue-600 underline">복사</button></div>
+              <div className="flex items-center justify-between mb-1"><span className="font-semibold text-gray-700">문자 (SMS)</span><button onClick={() => copy(d.sms, '문자')} className="text-xs text-brand-text underline">복사</button></div>
               <div className="rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-gray-900">{d.sms}</div>
             </div>
             <div className="flex flex-wrap gap-2 pt-1">
-              {email && <a href={`mailto:${email}?subject=${encodeURIComponent(d.subject)}&body=${encodeURIComponent(d.body)}`} className="px-3 py-1.5 rounded-lg bg-gray-900 text-white text-xs font-semibold">메일 앱으로 열기</a>}
+              {email && <a href={`mailto:${email}?subject=${encodeURIComponent(d.subject)}&body=${encodeURIComponent(d.body)}`} className="ur-btn ur-btn-sm ur-btn-primary">메일 앱으로 열기</a>}
               {phone && <a href={`sms:${phone}?body=${encodeURIComponent(d.sms)}`} className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-800 text-xs font-semibold">문자 앱으로 열기</a>}
               <span className="text-[11px] text-gray-400 self-center">등록 링크 {d.register_url}</span>
             </div>

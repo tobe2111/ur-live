@@ -33,6 +33,10 @@ export interface CartItem {
   bundling_key?: string | null
   // 🛡️ 2026-05-19: KT Alpha 교환권 (deal_only=1) 은 '딜' 단위로 표시 + 토스 결제 차단.
   deal_only?: number
+  // 💸 2026-09-15: 장바구니도 홈 카드와 같은 할인 표시를 한다(`shared/price-display.ts`).
+  //   표시 전용 — 청구액은 결제 경로가 서버에서 다시 정한다.
+  original_price?: number | null
+  discount_rate?: number | null
   // 🛡️ 2026-09-01: 비배송 판정용 — 이용권(매장에서 쓰는 것)은 배송이 없다.
   //   CheckoutPage 는 2026-06-22 부터 이 값을 보는데 서버가 안 보내고 있었다(cart.routes SELECT 누락).
   category?: string | null

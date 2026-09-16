@@ -49,7 +49,7 @@ function MyRankCard() {
   }, [])
   if (!rank) return null
   return (
-    <a href="/influencer/rankings" className="block bg-gray-50 border border-amber-200 rounded-xl p-4">
+    <a href="/influencer/rankings" className="block bg-warm border border-amber-200 rounded-xl p-4">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-[11px] text-amber-700 font-medium">🏆 이번 달 나의 순위</p>
@@ -84,10 +84,10 @@ function MyStoresAndDeals({ ownerFunded }: { ownerFunded: boolean }) {
   }, [])
   return (
     <>
-      <div className="bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] rounded-xl p-5">
+      <div className="bg-surface border border-line rounded-xl p-5">
         <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">🏪 내가 영입한 매장 ({referred.length}개)</h3>
         {referred.length === 0 ? (
-          <p className="text-xs text-gray-400 text-center py-4">아직 영입한 매장이 없습니다. 매장 가입 시 추천 링크 (https://urdeal.kr/seller/register?ref=내ID) 공유 → 6개월간 +1% 추가 commission</p>
+          <p className="text-xs text-gray-400 text-center py-4">아직 영입한 매장이 없습니다.</p>
         ) : (
           <ul className="space-y-2">
             {referred.map(s => {
@@ -108,7 +108,7 @@ function MyStoresAndDeals({ ownerFunded }: { ownerFunded: boolean }) {
         )}
       </div>
 
-      <div className="bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] rounded-xl p-5">
+      <div className="bg-surface border border-line rounded-xl p-5">
         <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">🤝 매장 협업 ({deals.length}건)</h3>
         {/* 💡 flip D1: owner-펀딩일 때만 재원 출처 표기 — platform 동안 미렌더(기존 화면 불변) */}
         {ownerFunded && (
@@ -142,12 +142,19 @@ function MyStoresAndDeals({ ownerFunded }: { ownerFunded: boolean }) {
   )
 }
 
-const STATUS_LABEL: Record<string, { label: string; color: string }> = {
-  pending: { label: '환불기간 (대기)', color: 'bg-tone-warn-bg text-tone-warn' },
+/**
+ * 🔒 2026-09-16 — pending 라벨이 **보류 이유를 정확히** 말하게 한다.
+ *
+ * 종전엔 무조건 "환불기간 (대기)" 였다. 사용 확인 게이트가 켜지면 그 말이 거짓이 된다 —
+ * 환불창은 진작 지났는데 **이용권이 아직 안 쓰여서** 묶여 있는 것이기 때문이다. 이유를
+ * 틀리게 적으면 소개자는 고장으로 읽는다. 게이트 상태(`requires_voucher_use`)를 받아 고른다.
+ */
+const statusLabel = (status: string, useGate: boolean): { label: string; color: string } => ({
+  pending: { label: useGate ? '사용 확인 대기' : '환불기간 (대기)', color: 'bg-tone-warn-bg text-tone-warn' },
   available: { label: '송금 대기', color: 'bg-tone-info-bg text-tone-info' },
   paid: { label: '송금 완료', color: 'bg-tone-ok-bg text-tone-ok' },
   clawed_back: { label: '회수됨 (환불)', color: 'bg-tone-bad-bg text-tone-bad' },
-}
+}[status] ?? { label: status, color: 'bg-tone-warn-bg text-tone-warn' })
 
 export default function InfluencerSettlementPage() {
   const [balance, setBalance] = useState<Balance | null>(null)
@@ -157,6 +164,8 @@ export default function InfluencerSettlementPage() {
   // 💡 2026-07-11 (flip D1 선반영): 재원 게이트 — /me 응답의 funding_source 가 'owner' 일 때만
   // "매장 promo 재원" 프레이밍. 미확인/로딩/platform(현행 기본)은 기존 문구 byte-동일.
   const [ownerFunded, setOwnerFunded] = useState(false)
+  /** 사용 확인 게이트가 켜져 있는가 — 보류 문구를 고르는 데만 쓴다. */
+  const [useGate, setUseGate] = useState(false)
   const [form, setForm] = useState({
     business_number: '',
     tax_type: 'other_income' as 'business_income' | 'other_income' | 'unreported',
@@ -180,6 +189,7 @@ export default function InfluencerSettlementPage() {
           setBalance(b)
           setRecent(r.data.data.recent || [])
           setOwnerFunded(r.data.data.funding_source === 'owner')
+          setUseGate(!!r.data.data.requires_voucher_use)
           setForm({
             business_number: b.business_number || '',
             tax_type: (b.tax_type as 'business_income' | 'other_income' | 'unreported') || 'other_income',
@@ -277,7 +287,7 @@ export default function InfluencerSettlementPage() {
         <div className="grid grid-cols-3 gap-2">
           <div className="bg-yellow-50 rounded-xl p-3 text-center">
             <Clock className="w-4 h-4 text-yellow-700 mx-auto mb-1" />
-            <p className="text-[10px] text-yellow-700 font-medium">대기 (환불기간)</p>
+            <p className="text-[10px] text-yellow-700 font-medium">{useGate ? '대기 (사용 확인)' : '대기 (환불기간)'}</p>
             <p className="text-sm font-extrabold text-yellow-800 mt-0.5">{(balance?.pending_amount ?? 0).toLocaleString()}원</p>
           </div>
           <div className="bg-blue-50 rounded-xl p-3 text-center">
@@ -293,7 +303,7 @@ export default function InfluencerSettlementPage() {
         </div>
 
         {/* 정산 정보 입력 */}
-        <div className="bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] rounded-xl p-5 space-y-4">
+        <div className="bg-surface border border-line rounded-xl p-5 space-y-4">
           <h3 className="text-sm font-bold text-gray-900 dark:text-white">정산 정보</h3>
 
           <div>
@@ -353,7 +363,7 @@ export default function InfluencerSettlementPage() {
             <select
               value={form.tax_type}
               onChange={(e) => setForm(f => ({ ...f, tax_type: e.target.value as 'business_income' | 'other_income' | 'unreported' }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 dark:text-white bg-white dark:bg-[#11141C]"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 dark:text-white bg-surface"
             >
               <option value="business_income">사업소득 (3.3% 원천징수, 사업자번호 필요)</option>
               <option value="other_income">기타소득 (8.8% 원천징수, 사업자번호 불필요)</option>
@@ -366,7 +376,7 @@ export default function InfluencerSettlementPage() {
             <select
               value={form.bank_name}
               onChange={(e) => setForm(f => ({ ...f, bank_name: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 dark:text-white bg-white dark:bg-[#11141C]"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 dark:text-white bg-surface"
             >
               <option value="">은행 선택</option>
               {['KB국민은행','신한은행','우리은행','하나은행','NH농협은행','IBK기업은행','케이뱅크','카카오뱅크','토스뱅크','새마을금고','신협','우체국'].map(b => (
@@ -408,14 +418,14 @@ export default function InfluencerSettlementPage() {
         <MyStoresAndDeals ownerFunded={ownerFunded} />
 
         {/* 최근 내역 */}
-        <div className="bg-white dark:bg-[#11141C] border border-gray-200 dark:border-[#2C2F35] rounded-xl p-5">
+        <div className="bg-surface border border-line rounded-xl p-5">
           <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">최근 commission 내역 ({recent.length}건)</h3>
           {recent.length === 0 ? (
             <p className="text-xs text-gray-400 text-center py-6">아직 referral commission 이 없습니다</p>
           ) : (
             <ul className="space-y-2">
               {recent.map(r => {
-                const status = STATUS_LABEL[r.status] || { label: r.status, color: 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200' }
+                const status = statusLabel(r.status, useGate)
                 return (
                   <li key={r.id} className="flex items-center justify-between gap-3 border-b border-gray-100 dark:border-[#2C2F35] pb-2 last:border-0 last:pb-0">
                     <div className="flex-1 min-w-0">

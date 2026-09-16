@@ -450,9 +450,9 @@ export default function ProductDetailPage() {
               onClick={() => navigate(`/browse?brand=${encodeURIComponent(brandName)}`)}
               role="button" tabIndex={0}>
               {brandIcon ? (
-                <img src={cfImage(brandIcon, { width: 96, quality: 80, format: 'auto' }) || brandIcon} alt={brandName} className="w-12 h-12 rounded-lg object-cover bg-white dark:bg-[#11141C] border border-amber-100" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, brandIcon)} />
+                <img src={cfImage(brandIcon, { width: 96, quality: 80, format: 'auto' }) || brandIcon} alt={brandName} className="w-12 h-12 rounded-lg object-cover bg-surface border border-amber-100" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, brandIcon)} />
               ) : (
-                <div className="w-12 h-12 bg-white dark:bg-[#11141C] rounded-lg flex items-center justify-center text-[10px] text-gray-400 font-bold border border-amber-100">
+                <div className="w-12 h-12 bg-surface rounded-lg flex items-center justify-center text-[10px] text-gray-400 font-bold border border-amber-100">
                   {brandName.slice(0, 4)}
                 </div>
               )}
@@ -612,7 +612,7 @@ export default function ProductDetailPage() {
             </p>
           )}
           {!detailExpanded && detail.canExpand && (
-            <button onClick={() => setDetailExpanded(true)} className="w-full mt-4 py-3 rounded-xl border border-gray-200 dark:border-[#2C2F35] bg-white dark:bg-[#11141C] text-[12px] font-semibold text-gray-700 dark:text-gray-200 active:bg-gray-50 dark:active:bg-[#1D1F29]">
+            <button onClick={() => setDetailExpanded(true)} className="w-full mt-4 py-3 rounded-xl border border-line bg-surface text-[12px] font-semibold text-gray-700 dark:text-gray-200 active:bg-gray-50 dark:active:bg-[#1D1F29]">
               {t('productDetail.expandDetails', { defaultValue: '상세정보 펼쳐보기' })}
             </button>
           )}
@@ -848,7 +848,7 @@ export default function ProductDetailPage() {
                CTA(적립액 표시 + 링크 복사 포함)가 정규 담기 진입점. floating 은 보조 액션(선물)만 유지. */}
           <button
             onClick={() => setGiftModalOpen(true)}
-            className="pointer-events-auto inline-flex items-center gap-1.5 h-10 pl-3 pr-3.5 rounded-full bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] shadow-lg active:scale-95 transition-transform"
+            className="pointer-events-auto inline-flex items-center gap-1.5 h-10 pl-3 pr-3.5 rounded-full bg-surface border border-line shadow-lg active:scale-95 transition-transform"
             aria-label={t('productDetailPage.ariaGift')}
           >
             <Gift className="w-4 h-4 text-gray-900 dark:text-white" />
@@ -873,7 +873,7 @@ export default function ProductDetailPage() {
       {/* 🏭 2026-06-05 (사용자 요청): 딜 교환 확인 — 네이티브 confirm 대체 서비스 내 모달. */}
       {dealConfirm && (
         <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => !dealBuying && setDealConfirm(null)}>
-          <div className="w-full sm:max-w-sm bg-white dark:bg-[#1D1F29] rounded-t-2xl sm:rounded-2xl p-5 m-0 sm:mx-4" onClick={e => e.stopPropagation()}>
+          <div className="w-full sm:max-w-sm bg-surface rounded-t-2xl sm:rounded-2xl p-5 m-0 sm:mx-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-3">
               {product.image_url && (
                 <img src={cfImage(product.image_url, { width: 112, quality: 80, format: 'auto' }) || product.image_url} alt="" loading="lazy" decoding="async" className="w-14 h-14 rounded-xl object-cover shrink-0" onError={(e) => cfImageOnError(e.currentTarget, product.image_url)} />

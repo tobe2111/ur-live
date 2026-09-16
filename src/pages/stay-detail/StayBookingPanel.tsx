@@ -56,7 +56,7 @@ export default function StayBookingPanel({
   })
 
   return (
-    <div className="rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift p-5 space-y-3">
+    <div className="rounded-2xl bg-surface shadow-lift p-5 space-y-3">
       {modeTabs}
       {selector}
 

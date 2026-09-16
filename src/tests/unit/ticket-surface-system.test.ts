@@ -20,17 +20,27 @@ const code = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*
 
 describe('① 토큰 — 시안 실측값이 SSOT 에 있다', () => {
   const css = code(R('src/index.css'))
+  // ⚠️ 2026-09-15: 값 단언은 **블록을 잘라서** 한다. 파일 전체를 보면 `light-island` 되박기 블록의
+  //    사본이 `:root` 의 결함을 가려 준다 — 실측으로 확인했다(`:root` 의 라이트 `--bg` 를 엉뚱한 값으로
+  //    바꿔도 섬 쪽 `#F8F7FC` 때문에 초록이었다). 이 자리엔 주입도 없어서 CI 도 못 잡았을 것이다.
+  const dStart = css.indexOf('.dark, [data-theme="dark"] {')
+  const lightBlock = css.slice(css.lastIndexOf(':root {', dStart), dStart)
+  const darkBlock = css.slice(dStart, css.indexOf('\n  }', dStart))
+  it('블록을 실제로 잘랐는지 — 못 자르면 아래 값 단언이 헛돈다', () => {
+    expect((lightBlock.match(/--[a-z0-9-]+:/g) || []).length, '라이트 토큰 블록을 못 찾았다').toBeGreaterThan(20)
+    expect((darkBlock.match(/--[a-z0-9-]+:/g) || []).length, '다크 토큰 블록을 못 찾았다').toBeGreaterThan(10)
+  })
   it('브랜드 블루 #1C69EF, 구 로즈 0', () => {
     expect(css).toMatch(/--brand:\s*#1C69EF/i)
     expect(css).not.toMatch(/#E0526B/i)
   })
   it('다크 바탕 #11141C · 카드 #1D1F29 (대표 "뒷 배경색이 가장 마음에 들어")', () => {
-    expect(css).toMatch(/--bg:\s*#11141C/i)
-    expect(css).toMatch(/--surface:\s*#1D1F29/i)
+    expect(darkBlock).toMatch(/--bg:\s*#11141C/i)
+    expect(darkBlock).toMatch(/--surface:\s*#1D1F29/i)
     expect(css).not.toMatch(/--bg:\s*#0D0F12/i)
   })
   it('화이트 바탕 #F8F7FC', () => {
-    expect(css).toMatch(/--bg:\s*#F8F7FC/i)
+    expect(lightBlock).toMatch(/--bg:\s*#F8F7FC/i)
   })
   it('rule / rule-strong / lift 가 라이트·다크 양쪽에 정의', () => {
     expect((css.match(/--rule:/g) || []).length).toBeGreaterThanOrEqual(2)

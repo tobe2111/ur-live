@@ -6,7 +6,7 @@
  */
 
 import { DEAL_GRID_GAP } from '@/shared/deal-card-grid'
-import { SearchX, Flame, Tag, Clock, Store, MapPin } from 'lucide-react'
+import { SearchX, Flame, Tag, Clock, MapPin } from 'lucide-react'
 import { DEAL_CATS } from '@/pages/pc-home/PcHomeRail'
 import { SortMenu, type SortOptionItem } from '@/components/ui/sort-menu'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
@@ -14,14 +14,12 @@ import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE, HOME_CARD_LG_QUERY } from '@/shared/home-card-image'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { deferSeeded, seededSectionProductIds } from '@/shared/home-section-ids'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys } from '@/hooks/queries'
 import { useFcfsMap } from '@/features/group-buy/useFcfs'
 import GroupBuyFeedCard from './GroupBuyFeedCard'
-import UrDealLogo from '@/components/brand/UrDealLogo'
-import { sellerEntryPath } from '@/utils/seller-entry'
 import type { Product } from './types'
 import { matchAddress, matchRegionCoords } from '@/shared/constants/korea-regions'
 import { addressInRegion, type RegionRef } from '@/shared/constants/region-slugs'
@@ -137,7 +135,6 @@ export default function GroupBuyFeed({
   // 🗺️ 2026-07-16 (대표 — 현위치로 가까운 순): sort='near' 일 때 이 좌표 기준 거리순 정렬(좌표 없는 딜은 뒤로).
   userLoc?: { lat: number; lng: number } | null
 } = {}) {
-  const navigate = useNavigate()
   const [categoryState, setCategoryState] = useState<CategoryKey>('all')
   const [sortState, setSortState] = useState<SortKey>('popular')
   const category = categoryProp ?? categoryState
@@ -467,7 +464,7 @@ export default function GroupBuyFeed({
           ) : (
             <button
               onClick={loadMore}
-              className="px-5 py-3 bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-full text-sm font-bold text-gray-900 dark:text-white"
+              className="px-5 py-3 bg-surface border border-line rounded-full text-sm font-bold text-gray-900 dark:text-white"
             >
               더 보기
             </button>
@@ -475,28 +472,17 @@ export default function GroupBuyFeed({
         </div>
       )}
 
-      {/* 하단 — 🏪 2026-08-31 (대표 — "모바일로도 '판매하세요' 가 있어야 하지 않을까? PC버전처럼").
-          ■ 왜 여기인가: PC 는 상단 네비에 이 진입점이 있는데(`DesktopTopNav` — 로고+"에서 판매하세요")
-            **모바일엔 어디에도 없었다.** 매장 사장님이 소비자 홈에서 우리를 처음 볼 때 들어올 문이
-            폰에는 없었다는 뜻이다.
-          ■ 왜 새 줄을 안 만들었나: 이 자리에 있던 "지도에서 전체 동네딜 보기"는 2026-08-30 에
-            상단 [목록|지도] 전환이 생기면서 **같은 곳으로 가는 두 번째 버튼**이 됐다. 그 중복을
-            치우고 그 자리를 쓴다 — 줄은 그대로고 없던 문이 생긴다.
-          ■ 목적지는 `sellerEntryPath()` SSOT: 셀러면 대시보드, 아니면 입점 안내(/partners).
-            2026-08-26 에 PC 에서 겪은 그 문제(아직 셀러가 아닌 사람이 로그인 벽으로 튕김)를 반복하지 않는다. */}
-      {!loading && sorted.length > 0 && (
-        <div className="px-4 pb-8 text-center">
-          <button
-            type="button"
-            onClick={() => navigate(sellerEntryPath())}
-            aria-label="유어딜에서 판매하세요"
-            className="inline-flex items-center gap-1.5 px-5 py-3 bg-white dark:bg-[#1D1F29] border border-gray-200 dark:border-[#2C2F35] rounded-full text-sm font-bold text-gray-900 dark:text-white"
-          >
-            <Store className="w-4 h-4 shrink-0" strokeWidth={1.75} aria-hidden="true" />
-            <span className="flex items-center gap-1"><UrDealLogo size={13} />에서 판매하세요</span>
-          </button>
-        </div>
-      )}
+      {/* 🏪 2026-09-15 (대표 — "피드 끝 한줄 안 1로 변경할 수 있나?"): 이 자리에 있던 알약 버튼
+          (2026-08-31 `🏪 유어딜에서 판매하세요`)을 **걷어냈다.** 없앤 게 아니라 **중복을 지웠다** —
+          2026-09-14 에 대표가 확정한 **안 1**(`SellOnUrdealRow`: 구분선 + 문장 + `시작하기 ›`)이
+          모바일 홈의 바로 아래(`MobileHomePage` 피드 다음)에 이미 있어서, 피드 끝에 **문이 둘**
+          겹쳐 있었다. 그것도 규칙이 서로 달랐다 — 알약은 `sellerEntryPath()`(셀러면 대시보드),
+          안 1 은 `seller_token` 있으면 미노출 + `/store/new`. 안 1 설계문서가 *"규칙이 둘이 되면
+          언젠가 갈린다"* 고 적어 둔 그 상태였고, 08-31 알약은 **안 1 이 생기기 2주 전** 물건이다.
+          ⇒ 남기는 쪽은 대표가 확정한 안 1. 여기(공유 피드)는 비운다.
+          ✅ 이 피드를 쓰는 다른 화면은 문이 안 사라진다 — `/region/*` 는 `SiteFooter` 를 달고
+             있고 그 안에 `/store/new`·`/partners` 가 있다(실측). 08-31 이 메우려던 구멍은
+             **푸터가 없는 모바일 홈**이었고, 그 자리는 안 1 이 맡는다. */}
     </>
   )
 }
@@ -554,7 +540,7 @@ function EmptyStateWithFallback({ category, onReset }: { category: CategoryKey; 
               </Link>
               <Link
                 to="/map"
-                className="ur-btn ur-btn-md border border-gray-200 dark:border-[#2C2F35] text-gray-700 dark:text-gray-200 px-4"
+                className="ur-btn ur-btn-md border border-line text-gray-700 dark:text-gray-200 px-4"
               >
                 지도에서 찾기
               </Link>

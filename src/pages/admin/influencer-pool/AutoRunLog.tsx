@@ -74,7 +74,7 @@ export default function AutoRunLog() {
   if (loading) return null
   if (!beats.length) {
     return (
-      <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+      <div className="mb-3 rounded-lg border border-rule bg-white px-4 py-3 text-sm text-tone-warn">
         자동 실행 기록이 없습니다 — 스케줄러가 한 번도 안 돌았거나 기록이 지워진 상태입니다.
       </div>
     )
@@ -88,10 +88,10 @@ export default function AutoRunLog() {
     <div className="mb-3 rounded-lg border border-gray-200 bg-white">
       <button type="button" onClick={() => setOpen(!open)} className="w-full flex items-center justify-between px-4 py-3 text-left">
         <span className="text-sm font-medium text-gray-900">
-          🕒 자동 실행 내역
+          자동 실행 내역
           <span className="ml-2 font-normal text-gray-500">
             자동 {sorted.length}종 · 마지막 {ago(newest?.age_minutes ?? null)}
-            {failing.length ? <span className="ml-2 text-amber-700">· 최근 실패 {failing.length}</span> : <span className="ml-2 text-emerald-700">· 전부 정상</span>}
+            {failing.length ? <span className="ml-2 text-tone-warn">· 최근 실패 {failing.length}</span> : <span className="ml-2 text-tone-ok">· 전부 정상</span>}
           </span>
         </span>
         <span className="text-xs text-gray-400">{open ? '접기' : '자세히'}</span>
@@ -119,11 +119,11 @@ export default function AutoRunLog() {
                     <tr key={b.name} className="border-b border-gray-100 last:border-0">
                       <td className="py-2 pr-3 text-gray-900">{LABEL[b.name] || b.name.replace(/^ads:/, '')}</td>
                       <td className="py-2 pr-3 text-gray-600 tabular-nums">{formatKSTShort(b.at)}</td>
-                      <td className={`py-2 pr-3 tabular-nums ${isStale ? 'text-amber-700 font-medium' : 'text-gray-500'}`}>{ago(b.age_minutes)}</td>
+                      <td className={`py-2 pr-3 tabular-nums ${isStale ? 'text-tone-warn font-medium' : 'text-gray-500'}`}>{ago(b.age_minutes)}</td>
                       <td className="py-2">
                         {b.ok
-                          ? <span className="rounded px-1.5 py-0.5 text-xs bg-emerald-50 text-emerald-700">성공</span>
-                          : <span className="rounded px-1.5 py-0.5 text-xs bg-amber-50 text-amber-700">실패</span>}
+                          ? <span className="rounded px-1.5 py-0.5 text-xs bg-tone-ok-bg text-tone-ok">성공</span>
+                          : <span className="rounded px-1.5 py-0.5 text-xs bg-tone-warn-bg text-tone-warn">실패</span>}
                       </td>
                     </tr>
                   )
@@ -132,7 +132,7 @@ export default function AutoRunLog() {
             </table>
           </div>
           {neverFired.length ? (
-            <div className="mt-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            <div className="mt-3 rounded border border-rule bg-white px-3 py-2 text-xs text-tone-warn">
               켜져 있는데 <b>한 번도 안 돈</b> 작업 {neverFired.length}종: {neverFired.map(n => n.replace(/^ads:/, '')).join(' · ')}
             </div>
           ) : null}

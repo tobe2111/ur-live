@@ -131,7 +131,7 @@ const WishlistPage: React.FC = () => {
           /* 🎫 2026-09-03: 표면 규칙 ①(카드 테두리 0 · 화이트는 들림 한 값) + ⑥(그라디언트 0).
              종전엔 테두리 카드 + 그라디언트 버튼이었고, p-12·아이콘 64px 이라 빈 화면이 세로로
              과하게 컸다. 주 행동은 브랜드 블루 면 하나. */
-          <div className="rounded-2xl px-6 py-10 text-center bg-white dark:bg-[#1D1F29] shadow-lift dark:shadow-none lg:max-w-xl lg:mx-auto lg:mt-4">
+          <div className="rounded-2xl px-6 py-10 text-center bg-surface shadow-lift dark:shadow-none lg:max-w-xl lg:mx-auto lg:mt-4">
             <Heart className="w-10 h-10 mx-auto mb-3 text-gray-300 dark:text-gray-500" strokeWidth={1.5} aria-hidden />
             <h2 className="text-[17px] font-extrabold text-[#16181C] dark:text-[#F5F3F1]">{t('wishlist.emptyTitle')}</h2>
             <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{t('wishlist.emptyHint')}</p>

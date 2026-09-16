@@ -40,7 +40,7 @@ export default function RegionPickerModal({ open, regionKey, districtKey, onClos
       role="presentation"
     >
       <div
-        className="bg-white dark:bg-[#11141C] w-full h-full sm:h-[600px] sm:max-w-2xl sm:rounded-2xl border border-gray-200 dark:border-[#2C2F35] overflow-hidden flex flex-col"
+        className="bg-surface w-full h-full sm:h-[600px] sm:max-w-2xl sm:rounded-2xl border border-line overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -63,7 +63,7 @@ export default function RegionPickerModal({ open, regionKey, districtKey, onClos
         {/* Body: 2 column */}
         <div className="flex-1 flex min-h-0">
           {/* 좌측 시/도 sidebar */}
-          <div className="w-[88px] sm:w-[100px] border-r border-gray-100 dark:border-[#2C2F35] overflow-y-auto bg-gray-50 dark:bg-[#11141C]">
+          <div className="w-[88px] sm:w-[100px] border-r border-gray-100 dark:border-[#2C2F35] overflow-y-auto bg-warm">
             {KOREA_REGIONS.map(r => {
               const active = r.key === activeRegion
               return (
