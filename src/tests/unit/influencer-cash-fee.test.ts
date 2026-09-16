@@ -16,6 +16,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
+import { stripComments } from '../helpers/source-text'
 import {
   computeCashPayout,
   resolveCashFeePct,
@@ -103,8 +104,15 @@ describe('R4 — 원천징수율 판정은 SSOT 하나', () => {
     'src/features/group-buy/api/marketing/payouts.ts',
     'src/pages/AdminInfluencerPayoutsPage.tsx',
   ]
-  /** 주석 제거 — 주석에만 남은 이름을 배선으로 오독하지 않는다(2026-08-01 교훈). */
-  const codeOnly = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+  /**
+   * 주석 제거 — 주석에만 남은 이름을 배선으로 오독하지 않는다(2026-08-01 교훈).
+   *
+   * 🩸 2026-09-16: 원래 여기서 블록주석 정규식을 **직접** 썼다. 그런 정규식은 문자열·정규식
+   *   리터럴 안의 `/*` 를 블록주석 시작으로 읽어 소스를 통째로 먹는다 — 그러면 아래
+   *   `not.toContain(...)` 가 **무조건 통과**한다(실패가 아니라 초록불이라 아무도 모른다).
+   *   `check-comment-stripper` 가 이 파일을 잡아 SSOT 로 교체했다.
+   */
+  const codeOnly = stripComments
 
   // 화면은 **두 자리**에서 금액을 보여준다(확인창 + 목록 행). 존재만 보면 한쪽이
   //   자체 계산으로 회귀해도 나머지 한 호출 때문에 통과한다(주입 검증에서 실제로 그랬다).
