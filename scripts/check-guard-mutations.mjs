@@ -8670,6 +8670,28 @@ canvas {
       '게이트를 그냥 통과한다(잘린 줄 알고 있는데 계속 도는, 이 레포가 가장 자주 당한 모양).',
   },
   {
+    name: '📻 하트비트에서 `top` 이 다시 앞으로 와 사건 신호를 밀어낸다',
+    file: 'src/worker-ads/read-budget.ts',
+    find: '    // \ud83d\udea8 "\ub204\uac00 \uc798\ub838\ub098" \u2014 \uc0ac\uac74\uc774\ubbc0\ub85c \uc6d4 \uc0c1\ud0dc\ubcf4\ub2e4 \uc55e. \ud3c9\uc2dc\uc5d4 \ube44\uc5b4 \uc788\uc5b4 \ud55c \uae00\uc790\ub3c4 \uc548 \uba39\ub294\ub2e4.',
+    replace: '    ...(top ? { top } : {}),',
+    test: 'src/tests/unit/ads-lane-attribution.test.ts',
+    why:
+      '2026-09-16 라이브에서 실제로 터진 모양 그대로다. `summarizeResult` 는 160자에서 **자르는 게 아니라 ' +
+      '루프를 멈춘다** — `top`(레인 이름 3개 = 70자+)이 앞에 있으면 뒤의 `cut`\u00b7`wmonth`\u00b7`mleft`\u00b7`dleft` 가 ' +
+      '한 글자도 안 실린다. `cut` 이 밀려나는 것이 특히 나쁘다: 폭주 레인을 잘라 놓고 **운영자가 그 사실을 ' +
+      '못 본다**(차단기를 만들고 발화를 안 보이게 한 셈). 전날 시험은 `budgetBeatFields` 의 반환 키만 봐서 ' +
+      '전부 초록이었다 — 죽은 것은 그 다음 단계였다.',
+  },
+  {
+    name: '📻 하트비트 top 레인 수 상한이 풀린다(다시 앞자리를 먹는다)',
+    file: 'src/worker-ads/read-budget.ts',
+    find: 'export const BEAT_TOP_LANES = 2',
+    replace: 'export const BEAT_TOP_LANES = 5',
+    test: 'src/tests/unit/ads-lane-attribution.test.ts',
+    why:
+      '맨 뒤로 옮겨도 길이를 안 묶으면 레인 이름이 길어질 때 다시 앞자리를 위협한다. 실측상 3개가 70자였다.',
+  },
+  {
     name: '🧾 원장이 잘린 레인 목록을 안 돌려준다(게이트가 볼 게 없다)',
     file: 'src/worker-ads/read-budget.ts',
     find: '    cutLanes: cutLaneNames(next, nowMs),',

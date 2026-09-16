@@ -144,6 +144,8 @@ export interface ReadBudgetView extends ReadBudgetState {
 
 /** 원장이 기억하는 레인 수 상한 — DO 저장이 무한히 자라지 않게(현재 라이브 67). 넘으면 오늘 적게 쓴 순으로 버린다. */
 export const LANE_LEDGER_MAX = 96
+/** 하트비트 한 줄(160자)에 실을 상위 지출 레인 수 — 3개면 70자를 먹어 앞자리를 밀어낸다(2026-09-16 실측). */
+export const BEAT_TOP_LANES = 2
 /** 한 회차가 이만큼 쓰면 **무조건** 폭주. 실측 정상 최대 28,814 의 3.4배. */
 export const RUNAWAY_ROUND_WRITES = 100_000
 /** 배수 규칙의 하한 — 관측된 어떤 정상 회차(최대 28,814)보다 커야 오탐이 안 난다. */
@@ -534,18 +536,37 @@ export async function reportReadUsage(env: unknown, rr: number | undefined, rw?:
 }
 
 /** 하트비트에 싣는 요약 — 숫자·불리언만(summarizeResult 가 `k=v` 로 편다). */
+/**
+ * 하트비트에 실을 요약 — **순서가 곧 생존 순위다.**
+ *
+ * 🩸 2026-09-16 라이브 실측으로 배운 것: `summarizeResult` 는 160자(`MAX_NOTE`)에서 **자르는 게 아니라
+ *   그 자리에서 루프를 멈춘다.** 전날 내가 `top`(레인 이름 3개 = 70자+)을 **가운데** 넣는 바람에
+ *   뒤에 오던 `cut`·`wmonth`·`mleft`·`dleft` 가 **한 글자도 안 실렸다**:
+ * ```
+ *   …wover=true top=collect-commerce:11839,collect-store-kakao:3603,collect-localdata-chain… wmo
+ *                                                                          ↑ 정확히 160자에서 끝
+ * ```
+ *   `cut` 이 밀려난 것이 특히 나쁘다 — **레인이 잘려도 운영자가 그 사실을 못 본다.** 차단기를 만들어
+ *   놓고 그 발화를 안 보이게 한 셈이고, 이 레포가 반복해 당한 *"실패가 아니라 조용한 부재"* 그대로다.
+ *
+ * ⇒ 규칙: **짧고 판단에 쓰는 것부터, 길고 참고용인 것은 맨 뒤.**
+ *   `cut`(사건) → 월 상태(예산 설명) → `top`(누가 많이 썼나, 잘려도 무해)  순서를 바꾸지 말 것.
+ *   `top` 은 **2개까지만** — 3개는 그 자체로 70자를 먹어 앞자리를 위협한다.
+ */
 export function budgetBeatFields(v: ReadBudgetView): Record<string, number | boolean | string> {
   const cut = v.cutLanes || []
-  const top = (v.top || []).map(t => `${t.lane}:${t.w}`).join(',')
+  // ⚠️ 맨 뒤에 놓더라도 길이는 묶어 둔다 — 레인 이름이 길어지면 다시 앞자리를 먹는다.
+  const top = (v.top || []).slice(0, BEAT_TOP_LANES).map(t => `${t.lane}:${t.w}`).join(',')
   return {
     used: v.used, budget: v.budget, over: v.over,
     written: v.written, wbudget: v.writeBudget, wover: v.writeOver,
-    // 🧾 "누가 썼나" · "누가 잘렸나" — 이 두 줄이 없으면 넘쳤을 때 할 수 있는 게 전 레인 정지뿐이다.
-    ...(top ? { top } : {}),
+    // 🚨 "누가 잘렸나" — 사건이므로 월 상태보다 앞. 평시엔 비어 있어 한 글자도 안 먹는다.
     ...(cut.length ? { cut: cut.join(','), cutn: cut.length } : {}),
     // 🗓️ 월 상태 — 이게 없으면 "왜 오늘 예산이 이 값인가"를 아무도 설명 못 한다.
     ...(v.writtenMonth !== undefined ? { wmonth: v.writtenMonth, mleft: v.monthLeft || 0, dleft: v.daysLeft || 0 } : {}),
     ...(v.unknown ? { unknown: true } : {}),
+    // 🧾 "누가 많이 썼나" — 참고용이라 **맨 뒤**. 잘려도 판단에 지장이 없다.
+    ...(top ? { top } : {}),
   }
 }
 
