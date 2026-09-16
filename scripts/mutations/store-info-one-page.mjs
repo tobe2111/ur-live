@@ -119,4 +119,28 @@ export default [
     test: RENDER,
     why: '폰에서 저장 버튼이 화면 밖으로 밀리면 긴 폼의 마지막에 도달할 수 없다.',
   },
+  {
+    name: 'store-info(split): 옮긴 라우트를 등록하지 않는다',
+    file: 'src/features/seller/api/seller-registration.routes.ts',
+    find: 'mountSellerSessionRoutes(sellerRegistrationRoutes, ensureSellerColumns)',
+    replace: '',
+    test: TEST,
+    why: '빌드는 통과하고 /my-seller-status·/switch-to-seller·/switch-to-user 만 조용히 404 가 된다.',
+  },
+  {
+    name: 'store-info(split): 옮긴 파일이 ALTER TABLE 을 자기가 한다',
+    file: 'src/features/seller/api/seller-registration/session-routes.ts',
+    find: '  app.get(\'/my-seller-status\', async (c) => {',
+    replace: '  app.get(\'/my-seller-status\', async (c) => {\n    await c.env.DB.prepare(`ALTER TABLE sellers ADD COLUMN x TEXT`).run().catch(() => null)',
+    test: TEST,
+    why: '메모가 두 벌이 되어 요청마다 DDL 이 돈다 — CLAUDE.md 머니 룰이 금지하는 per-request DDL.',
+  },
+  {
+    name: 'store-info(split): 워커 동적 import 를 alias 로 되돌린다',
+    file: 'src/features/seller/api/seller-registration/session-routes.ts',
+    find: "const { createSessionCookie } = await import('../../../../worker/utils/session')",
+    replace: "const { createSessionCookie } = await import('@/worker/utils/session')",
+    test: TEST,
+    why: '워커에서 alias 동적 import 는 런타임 크래시다(2026-04-22 사고 클래스).',
+  },
 ]

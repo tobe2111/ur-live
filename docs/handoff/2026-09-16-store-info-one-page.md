@@ -49,6 +49,26 @@ curl -s -o /dev/null -w '%{http_code}\n' https://urdeal.kr/seller/mini-shop   # 
 4. 스크린샷 하네스는 포기했다 — 정적 서버 위에서 **기존 페이지도 똑같이** ErrorBoundary 로 떨어진다
    (환경 문제). 대신 jsdom 렌더 시험 6건으로 바꿨는데 그게 더 값지다(영구 가드가 된다).
 
+## 함께 갚은 부채 — `seller-registration.routes.ts` 764 → 534 + 261
+
+CLAUDE.md 의 god 파일 룰(600줄)을 이 세션이 두 번 넘겼다(앞문 등록증으로 758→764).
+**가입**(`/register`, `/register-from-user`)과 **세션 전환**(`/my-seller-status`,
+`/switch-to-seller`, `/switch-to-user`)은 같은 파일에 있을 이유가 없다 — 앞은 행을 만들고
+뒤는 이미 있는 행으로 *누구로서 들어갈지* 를 정한다. 뒤 셋을
+`seller-registration/session-routes.ts` 로 옮겼다(**이동만** — 경로·본문·순서 불변).
+
+⚠️ `ensureSellerColumns` 는 **주입**한다. 옮긴 파일이 자기 메모를 새로 만들면 그 보장이
+두 벌이 되어 요청마다 `ALTER TABLE` 이 도는 날이 온다(머니 룰의 per-request DDL).
+⚠️ 동적 import 의 상대 깊이가 한 단 깊어졌다(`../../../../worker/utils/session`).
+   **alias 로 바꾸면 안 된다** — 워커에서 `await import('@/…')` 는 런타임 크래시다.
+
+### 🩸 이 분해가 드러낸 것 — `not.toContain` 은 코드가 옮겨가면 **조용히 항상 통과**한다
+
+가드 둘이 옛 파일을 가리켜 빨간불이 났는데, **셋째 하나는 초록이었다**:
+`switch-to-seller` 본문 슬라이스가 `''` 가 되자 `not.toContain("'PENDING'")` 이 무조건 통과했다.
+⇒ 슬라이스 길이를 먼저 단언하는 `switchToSellerBody()` 로 바꿨다.
+**부정 판정(`not.*`)을 쓰는 시험은 "무엇을 봤는지" 를 먼저 증명해야 한다.**
+
 ## 남은 것 / 대기
 
 - `/seller/profile` 의 죽은 핸들러 3종 정리(위 2번) — 별건.

@@ -47,25 +47,36 @@ function d1(db: Db) {
 
 const src = (p: string) => stripComments(readFileSync(p, 'utf-8'))
 const REG = 'src/features/seller/api/seller-registration.routes.ts'
+// 🔁 2026-09-16 분해: 상태 조회·세션 전환 3개는 이 파일로 옮겨졌다(경로·로직 불변).
+const SESSION = 'src/features/seller/api/seller-registration/session-routes.ts'
+
+/**
+ * ⚠️ 슬라이스가 **비어 있지 않은지 먼저 확인한다.** 아래 시험 둘은 `not.toContain` 으로 판정하는데,
+ *    코드가 다른 파일로 옮겨가 슬라이스가 `''` 가 되면 **아무 결함이든 통과**한다.
+ *    실제로 2026-09-16 파일 분해에서 그 일이 났다 — 한 시험은 빨간불을 냈고 하나는 조용히 통과했다.
+ */
+function switchToSellerBody(): string {
+  const s = src(SESSION)
+  const fn = s.slice(s.indexOf("app.post('/switch-to-seller'"))
+  const body = fn.slice(0, fn.indexOf('const now = Math.floor'))
+  expect(body.length, 'switch-to-seller 본문을 못 찾았다 — 앵커가 낡았다(빈 슬라이스는 어떤 판정도 통과시킨다)')
+    .toBeGreaterThan(200)
+  return body
+}
 const WAIT = 'src/pages/SellerWaitingPage.tsx'
 
 // ── ① 대기·반려도 대시보드에 들어간다 ────────────────────────────────────────────
 describe('① 반려여도 셀러 대시보드는 쓸 수 있다', () => {
   it('switch-to-seller 가 대기·반려를 막지 않는다', () => {
-    const s = src(REG)
-    const fn = s.slice(s.indexOf("sellerRegistrationRoutes.post('/switch-to-seller'"))
-    const body = fn.slice(0, fn.indexOf('const now = Math.floor'))
+    const body = switchToSellerBody()
     expect(body, "대기 계정을 403 으로 돌려보내면 서류를 고칠 화면에 못 들어간다").not.toContain("'PENDING'")
     expect(body, "승인만 통과시키는 조건이 남아 있으면 반려 계정이 갇힌다")
       .not.toMatch(/status\s*!==\s*'approved'/)
   })
 
   it('정지(suspended)는 계속 막는다 — 반려와 같이 취급하면 징계가 무의미하다', () => {
-    const s = src(REG)
-    const fn = s.slice(s.indexOf("sellerRegistrationRoutes.post('/switch-to-seller'"))
     // ⚠️ 문자열 존재로 재면 `if (false) {` 로 바꿔도 초록이다(주입이 잡았다) — **조건문**을 본다.
-    expect(fn.slice(0, fn.indexOf('const now = Math.floor')))
-      .toMatch(/if\s*\(seller\.status\s*===\s*'suspended'\)/)
+    expect(switchToSellerBody()).toMatch(/if\s*\(seller\.status\s*===\s*'suspended'\)/)
   })
 
   it('대기 화면이 정지가 아니면 대시보드로 보낸다 — 단 토큰을 실제로 받았을 때만', () => {

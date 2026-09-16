@@ -145,3 +145,40 @@ describe('⑤ 미리보기 부제 — 실제 값으로 계산한다', () => {
     expect(src(PAGE)).toMatch(/productCount > 0 && storeDirty/)
   })
 })
+
+/**
+ * 🔁 **파일 분해가 계약을 안 바꿨는가** (2026-09-16, `seller-registration.routes.ts` 764 → 534 + 261)
+ *
+ * 이동만 한 리팩토링의 실패 모드는 **조용하다**: 라우트가 등록에서 빠져도 빌드는 통과하고,
+ * 그 엔드포인트만 404 가 된다. 그래서 *다섯 경로가 여전히 한 인스턴스에 다 있는지* 를 잠근다.
+ */
+describe('⑥ 셀러 가입 라우터 분해 — 라우트 표가 그대로다', () => {
+  const REG = 'src/features/seller/api/seller-registration.routes.ts'
+  const SESSION = 'src/features/seller/api/seller-registration/session-routes.ts'
+
+  it('다섯 경로가 그대로 있다 (두 파일에 나뉘어)', () => {
+    const paths = [
+      ...src(REG).matchAll(/sellerRegistrationRoutes\.(?:get|post)\('([^']+)'/g),
+      ...src(SESSION).matchAll(/app\.(?:get|post)\('([^']+)'/g),
+    ].map((m) => m[1]).sort()
+    expect(paths).toEqual([
+      '/my-seller-status', '/register', '/register-from-user', '/switch-to-seller', '/switch-to-user',
+    ])
+  })
+
+  it('옮긴 라우트가 실제로 등록된다 — 안 부르면 그 세 경로가 404 다', () => {
+    expect(src(REG)).toMatch(/mountSellerSessionRoutes\(sellerRegistrationRoutes, ensureSellerColumns\)/)
+  })
+
+  it('🔴 컬럼 보장은 주입받는다 — 두 벌이면 요청마다 ALTER TABLE 이 돈다', () => {
+    const s = src(SESSION)
+    expect(s, 'per-request DDL 은 CLAUDE.md 머니 룰이 금지한다').not.toContain('ALTER TABLE')
+    expect(s).toMatch(/ensureSellerColumns: \(db: D1Database\) => Promise<void>/)
+  })
+
+  it('워커 경로의 동적 import 는 alias 가 아니라 상대경로다 (2026-04-22 크래시 클래스)', () => {
+    const s = src(SESSION)
+    expect(s, "await import('@/…') 는 워커에서 런타임 크래시를 낸다").not.toMatch(/await import\('@\//)
+    expect(s).toContain("await import('../../../../worker/utils/session')")
+  })
+})

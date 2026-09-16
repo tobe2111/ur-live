@@ -55,7 +55,7 @@ export default [
   },
   {
     name: 'danggeun: 정지 계정까지 대시보드에 들여보낸다',
-    file: 'src/features/seller/api/seller-registration.routes.ts',
+    file: 'src/features/seller/api/seller-registration/session-routes.ts',
     find: "    if (seller.status === 'suspended') {",
     replace: '    if (false) {',
     test: TEST,

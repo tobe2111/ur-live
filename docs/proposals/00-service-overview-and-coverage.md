@@ -291,9 +291,9 @@
 |---|---|---|---|
 | 도매몰 (유통스타트) | `wholesale-mall-brief.md` | 43 | 4 |
 | 오프라인 공구 / 동네딜 | `offline-groupbuy-brief.md` | 29 | 95 |
-| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 72 | 273 |
+| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 72 | 270 |
 | 유어샵 / 담기·소개 | `linkshop-brief.md` | 23 | 88 |
-| **합계** | — | **167** | **460** |
+| **합계** | — | **167** | **457** |
 
 ### 전체 커버리지 검증 (자동 — 빠진 기능 보증)
 
@@ -302,8 +302,8 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 369 | 1122 |
-| 도메인 버킷 (5개 소개서) | 167 | 460 |
+| 전체 | 369 | 1119 |
+| 도메인 버킷 (5개 소개서) | 167 | 457 |
 | 공통/인프라 (의도적 제외) | 166 | 477 |
 | **미커버 (점검 필요)** | **36** | **185** |
 
@@ -963,7 +963,7 @@
 - `/vouchers/:id`
 - `/wishlist`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (273개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (270개)
 
 
 **/api/admin-review-bonus/:id**
@@ -1214,9 +1214,6 @@
 **/api/seller/login**
 - `POST /api/seller/login`
 
-**/api/seller/my-seller-status**
-- `GET /api/seller/my-seller-status`
-
 **/api/seller/my-stores**
 - `GET /api/seller/my-stores`
 - `GET /api/seller/my-stores/summary`
@@ -1362,12 +1359,6 @@
 
 **/api/seller/surface**
 - `GET /api/seller/surface`
-
-**/api/seller/switch-to-seller**
-- `POST /api/seller/switch-to-seller`
-
-**/api/seller/switch-to-user**
-- `POST /api/seller/switch-to-user`
 
 **/api/seller/tax-summary**
 - `GET /api/seller/tax-summary`
@@ -1731,7 +1722,7 @@
 
 
 
-> 마지막 생성: 2026-09-16T07:00:50.125Z
+> 마지막 생성: 2026-09-16T07:29:41.258Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->
