@@ -43,6 +43,7 @@ import { fileURLToPath } from 'node:url'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const GATES_FILE = 'src/features/admin/api/admin-system-monitoring.routes.ts'
+const VALIDATION_FILE = 'src/worker/utils/platform-settings-validation.ts'
 
 /** 등재 면제 — 키: 사유. 사유 없이 넣지 말 것(그러면 이 가드가 무의미해진다). */
 const GATE_REGISTRY_EXEMPT = {
@@ -122,11 +123,29 @@ export function readRegisteredGates(root = ROOT) {
   return new Set([...arr[1].matchAll(/key:\s*'([^']+)'/g)].map((m) => m[1]))
 }
 
+/**
+ * 값 검증 레지스트리(`platform-settings-validation.ts`)에 등재된 키 집합.
+ *
+ * 🩸 2026-09-16: 이 가드는 **OPS_GATES(모니터링 손잡이)만** 봤다. 그래서 게이트가 어드민
+ *   화면에는 뜨는데 **저장 값은 아무도 안 보는** 상태가 가능했다 — `'True'`/`'1'` 이 저장되면
+ *   read-site 의 `=== 'true'` 가 거짓이라 **켠 줄 알지만 실제로는 꺼진 채** 돈다. 실측으로
+ *   3건이 그 상태였고 그중 `voucher_cart_enabled` 는 **라이브에서 켜져 있었다**.
+ *   손잡이가 있는 것과 값이 검증되는 것은 다른 일이다. 이제 둘 다 본다.
+ */
+export function readValidatedKeys(root = ROOT) {
+  const src = readFileSync(path.join(root, VALIDATION_FILE), 'utf8')
+  const keys = new Set([...src.matchAll(/^\s{2}([a-z][a-z0-9_]*):/gm)].map((m) => m[1]))
+  if (keys.size < 20) throw new Error(`${VALIDATION_FILE} 에서 키를 ${keys.size}개만 찾았다 — 구조가 바뀌었다`)
+  return keys
+}
+
 export function auditGateRegistry(root = ROOT) {
   const gates = findStrictTrueGates(root)
   const registered = readRegisteredGates(root)
+  const validated = readValidatedKeys(root)
   const missing = [...gates].filter(([k]) => !registered.has(k) && !(k in GATE_REGISTRY_EXEMPT))
-  return { total: gates.size, missing, gates }
+  const unvalidated = [...gates].filter(([k]) => !validated.has(k) && !(k in GATE_REGISTRY_EXEMPT))
+  return { total: gates.size, missing, unvalidated, gates }
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
@@ -139,13 +158,21 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     console.error(`❌ gate-registry: strict-true 게이트를 ${r.total}개만 찾았다 — 스캐너가 눈이 멀었다(경로/패턴 변경 의심)`)
     process.exit(1)
   }
-  if (r.missing.length === 0) {
-    console.log(`✅ gate-registry: strict-true 게이트 ${r.total}개 전부 OPS_GATES 등재됨`)
+  if (r.missing.length === 0 && r.unvalidated.length === 0) {
+    console.log(`✅ gate-registry: strict-true 게이트 ${r.total}개 전부 OPS_GATES + 값 검증 등재됨`)
     process.exit(0)
   }
-  console.log(`${strict ? '❌' : '⚠️'} gate-registry: OPS_GATES 미등재 게이트 ${r.missing.length}개`)
-  for (const [k, where] of r.missing) console.log(`   · ${k}  ←  ${where}`)
-  console.log('   → src/features/admin/api/admin-system-monitoring.routes.ts 의 OPS_GATES 에 등재할 것.')
-  console.log('     켜지 않기로 한 축이면 turn_on_when 에 "켜지 않는다" 를 적으면 화면은 면제된다.')
+  if (r.missing.length) {
+    console.log(`${strict ? '❌' : '⚠️'} gate-registry: OPS_GATES 미등재 게이트 ${r.missing.length}개`)
+    for (const [k, where] of r.missing) console.log(`   · ${k}  ←  ${where}`)
+    console.log('   → src/features/admin/api/admin-system-monitoring.routes.ts 의 OPS_GATES 에 등재할 것.')
+    console.log('     켜지 않기로 한 축이면 turn_on_when 에 "켜지 않는다" 를 적으면 화면은 면제된다.')
+  }
+  if (r.unvalidated.length) {
+    console.log(`${strict ? '❌' : '⚠️'} gate-registry: 값 검증 미등재 게이트 ${r.unvalidated.length}개`)
+    for (const [k, where] of r.unvalidated) console.log(`   · ${k}  ←  ${where}`)
+    console.log(`   → ${VALIDATION_FILE} 에 \`${'키'}: boolStr\` 로 등재할 것.`)
+    console.log("     안 하면 'True'/'1' 이 저장돼도 통과하고, read-site 의 === 'true' 가 조용히 꺼진 채 돈다.")
+  }
   process.exit(strict ? 1 : 0)
 }
