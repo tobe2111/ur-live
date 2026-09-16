@@ -5494,8 +5494,10 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 292건 · 최신순 · 이 목록은 자동 생성된다._
+_총 293건 · 최신순 · 이 목록은 자동 생성된다._
 
+**2026-09-16**
+- [등록된 동네딜 검색 (2026-09-16)](handoff/2026-09-16-dongnedeal-search.md)
 **2026-09-15**
 - [삭제한 이용권을 되돌리는 길 (2026-09-15)](handoff/2026-09-15-voucher-restore.md)
 - [2026-09-15 — verify.yml push 트리거 제거 (필수 검사 룰셋과의 충돌)](handoff/2026-09-15-verify-push-trigger.md)

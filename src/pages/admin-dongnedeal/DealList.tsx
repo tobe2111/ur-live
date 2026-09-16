@@ -8,7 +8,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { cfImage } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
-import { Eye, EyeOff, Pencil, Trash2, MapPin, RefreshCw, Target } from 'lucide-react'
+import { Eye, EyeOff, Pencil, Trash2, MapPin, RefreshCw, Target, Search, X } from 'lucide-react'
 import type { DealRow } from './types'
 import { CAT_LABEL } from './types'
 import { KOREA_REGIONS, findRegionByKey } from '@/shared/constants/korea-regions'
@@ -38,6 +38,16 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
   const [fStatus, setFStatus] = useState('')    // '' | 'active' | 'hidden'
   // 🔃 2026-07-20 (대표 — "최신순으로도"): 정렬 — 서버 sort 화이트리스트와 1:1.
   const [fSort, setFSort] = useState('newest')  // newest | oldest | name | price_high | price_low
+  // 🔎 2026-09-16 (대표 "등록된 동네딜 검색도 가능하게. 매장명이라던지. 급해"):
+  //   qInput = 타이핑 중인 값(즉시 반영) · fQuery = 서버에 보내는 값(300ms 디바운스).
+  //   둘을 나누는 이유: 한 글자마다 요청을 보내면 "강남불백" 을 치는 동안 5번 왕복하고,
+  //   느린 응답이 뒤늦게 도착해 **이미 지운 검색어의 결과**가 화면에 남는다.
+  const [qInput, setQInput] = useState('')
+  const [fQuery, setFQuery] = useState('')
+  useEffect(() => {
+    const t = setTimeout(() => setFQuery(qInput.trim()), 300)
+    return () => clearTimeout(t)
+  }, [qInput])
   const fSidoRegion = findRegionByKey(fSido)
 
   const openFcfs = async (d: DealRow) => {
@@ -80,6 +90,7 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
     if (fSource) qs.set('source', fSource)
     if (fStatus) qs.set('status', fStatus)
     if (fSort && fSort !== 'newest') qs.set('sort', fSort)
+    if (fQuery) qs.set('q', fQuery)
     api.get(`/api/admin/dongnedeal/list?${qs.toString()}`, h)
       .then((r) => {
         if (r.data?.success) {
@@ -92,9 +103,9 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
       .finally(() => { if (append) setLoadingMore(false); else setLoading(false) })
   }
   // nonce(외부 갱신) + 필터 변경 시 처음부터 재조회.
-  useEffect(() => { setSelected(new Set()); load(false) }, [nonce, fSido, fDistrict, fCategory, fMode, fSource, fStatus, fSort]) // eslint-disable-line react-hooks/exhaustive-deps
-  const anyFilter = !!(fSido || fCategory || fMode || fSource || fStatus)
-  const resetFilters = () => { setFSido(''); setFDistrict(''); setFCategory(''); setFMode(''); setFSource(''); setFStatus('') }
+  useEffect(() => { setSelected(new Set()); load(false) }, [nonce, fSido, fDistrict, fCategory, fMode, fSource, fStatus, fSort, fQuery]) // eslint-disable-line react-hooks/exhaustive-deps
+  const anyFilter = !!(fSido || fCategory || fMode || fSource || fStatus || fQuery)
+  const resetFilters = () => { setFSido(''); setFDistrict(''); setFCategory(''); setFMode(''); setFSource(''); setFStatus(''); setQInput(''); setFQuery('') }
 
   const toggleActive = async (d: DealRow) => {
     setBusyId(d.id)
@@ -171,8 +182,30 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
         </div>
       </div>
 
-      {/* 🔎 필터 바 — 지역(시/도·동네) / 카테고리 / 상품형태 / 데모여부 / 노출상태. 서버측 필터(전 목록 대상). */}
+      {/* 🔎 필터 바 — 검색 / 지역(시/도·동네) / 카테고리 / 상품형태 / 데모여부 / 노출상태. 서버측 필터(전 목록 대상). */}
       <div className="flex items-center gap-2 flex-wrap mb-3 pb-3 border-b border-gray-100">
+        {/* 검색은 맨 앞 — 이름을 아는 딜 하나를 찾는 것이 이 화면에서 가장 잦은 일이다. */}
+        <div className="relative">
+          <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            type="search"
+            value={qInput}
+            onChange={(e) => setQInput(e.target.value)}
+            placeholder="매장명 · 상품명 · 주소 · id"
+            aria-label="동네딜 검색"
+            className="w-[220px] pl-8 pr-7 py-1.5 border border-gray-200 rounded-lg text-[12px] text-gray-900 bg-white placeholder:text-gray-400"
+          />
+          {qInput && (
+            <button
+              type="button"
+              onClick={() => setQInput('')}
+              aria-label="검색어 지우기"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 text-gray-400 hover:text-gray-700"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
         <select value={fSido} onChange={(e) => { setFSido(e.target.value); setFDistrict('') }} className="px-2 py-1.5 border border-gray-200 rounded-lg text-[12px] text-gray-900 bg-white" aria-label="시/도 필터">
           <option value="">전체 지역</option>
           {KOREA_REGIONS.map((r) => <option key={r.key} value={r.key}>{r.label.replace(/\n/g, ' ')}</option>)}
@@ -219,7 +252,11 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
       {loading ? (
         <p className="text-sm text-gray-400 py-8 text-center">불러오는 중…</p>
       ) : rows.length === 0 ? (
-        <p className="text-sm text-gray-400 py-8 text-center">{anyFilter ? '이 필터에 해당하는 동네딜이 없습니다. 필터를 조정해보세요.' : '아직 등록된 동네딜이 없습니다. 위에서 추가해보세요.'}</p>
+        <p className="text-sm text-gray-400 py-8 text-center">
+          {fQuery ? `'${fQuery}' 로 찾은 동네딜이 없습니다. 매장명 · 상품명 · 주소 · id 로 찾을 수 있어요.`
+            : anyFilter ? '이 필터에 해당하는 동네딜이 없습니다. 필터를 조정해보세요.'
+            : '아직 등록된 동네딜이 없습니다. 위에서 추가해보세요.'}
+        </p>
       ) : (
         <div className="divide-y divide-gray-100">
           {rows.map((d) => (
