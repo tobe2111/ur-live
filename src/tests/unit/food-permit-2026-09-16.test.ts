@@ -26,6 +26,10 @@ const UPLOAD = read('src/components/seller/FoodPermitUpload.tsx')
 const ROUTES = read('src/features/seller/api/seller-profile/business-info.ts')
 const ADMIN = read('src/features/admin/api/admin-seller-ocr.routes.ts')
 const PAGE = read('src/pages/SellerBusinessInfoPage.tsx')
+const PANEL = read('src/pages/admin/business-verification/OcrComparePanel.tsx')
+const ADMINPAGE = read('src/pages/AdminBusinessVerificationPage.tsx')
+const ADMINLIST = read('src/features/admin/api/admin-sellers.routes.ts')
+const PERMITFLAG = read('src/features/admin/api/seller-permit-flag.ts')
 
 describe('① 저장 키가 사업자등록증과 충돌하지 않는다', () => {
   it('영업신고증은 food_permit_url 로 저장한다', () => {
@@ -124,5 +128,53 @@ describe('⑤ 어드민 OCR 이 두 서류를 갈라 읽는다', () => {
   it('🚧 여전히 승인·반려하지 않는다', () => {
     expect(ADMIN).not.toMatch(/UPDATE\s+sellers/i)
     expect(ADMIN).not.toMatch(/business_registration_status\s*=/)
+  })
+})
+
+describe('⑥ 🩸 라우트가 있는데 부르는 화면이 없으면 죽은 코드다', () => {
+  // 2026-09-16: 라우트·판정·대조를 다 만들고도 **버튼이 없어서** 아무도 못 썼다.
+  // 결재 §안전 레일 ① 이 요구한 "어드민 화면에 나란히 띄우기" 가 곧 이 배선이다.
+  it('어드민 검증 화면이 OCR 패널을 실제로 렌더한다', () => {
+    // 🩸 첫 판은 `toMatch(/<OcrComparePanel\b/)` 이었는데 **주입이 헛돈다고 잡았다** —
+    //   `{false && <OcrComparePanel .../>}` 로 꺼도 문자열이 남아 초록이었다(import 줄도 같은 함정).
+    //   ⇒ 모양이 아니라 **그 줄이 게이트 없이 렌더되는가**를 본다.
+    const line = ADMINPAGE.split('\n').find((l) => l.includes('<OcrComparePanel'))
+    expect(line).toBeTruthy()
+    expect(line!.trim().startsWith('<OcrComparePanel')).toBe(true)   // 앞에 `{cond &&` 가 없다
+    expect(line).not.toContain('&&')
+    expect(line).not.toContain('false')
+    expect(line).toContain('sellerId={s.id}')
+    expect(line).toContain('hasPermit={s.has_food_permit}')          // 버튼 게이트가 실제로 배선됐다
+  })
+
+  it('패널이 두 서류를 kind 로 갈라 부른다', () => {
+    expect(PANEL).toMatch(/run\('business_registration'\)/)
+    expect(PANEL).toMatch(/run\('business_license'\)/)
+    expect(PANEL).toMatch(/business-registration\/ocr\?kind=\$\{kind\}/)
+  })
+
+  it('영업신고증 버튼은 그 서류가 있을 때만 뜬다', () => {
+    // 없는데 버튼이 보이면 눌러 보고 400 을 받는다 — 안내가 아니라 소음이다
+    expect(PANEL).toMatch(/\{hasPermit && \(/)
+    // 🩸 이 단언이 내 리팩토링을 잡았다 — 플래그를 헬퍼로 빼면서 라우트 파일엔 이름이 안 남았다.
+    //   ⇒ **값을 만드는 곳**(헬퍼)과 **배선**(라우트가 그 헬퍼를 부르는가)을 따로 본다.
+    expect(PERMITFLAG).toMatch(/has_food_permit/)
+    expect(PERMITFLAG).toMatch(/food_permit_url/)
+    expect(ADMINLIST).toMatch(/attachFoodPermitFlag\(DB,/)
+  })
+
+  it('🚧 패널은 승인·반려를 하지 않는다 (판정은 참고일 뿐)', () => {
+    expect(PANEL).not.toMatch(/business-registration\/verify/)
+    expect(PANEL).not.toMatch(/business_registration_status/)
+  })
+
+  it('못 읽은 것을 "의심" 으로 칠하지 않는다 — unreadable 은 중립 톤', () => {
+    // mismatch 만 빨강(tone-bad)이고 unreadable 은 회색이어야 한다
+    expect(PANEL).toMatch(/unreadable:\s*\{[^}]*bg-gray-100/)
+    expect(PANEL).toMatch(/mismatch:\s*\{[^}]*tone-bad/)
+  })
+
+  it('AI 바인딩 부재는 실패가 아니라 부재로 말한다', () => {
+    expect(PANEL).toMatch(/AI_UNAVAILABLE'\)\s*toast\.info/)
   })
 })

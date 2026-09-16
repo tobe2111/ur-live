@@ -18,6 +18,7 @@ import { DashboardPageHeader, DashboardLoading } from '@/components/dashboard'
 import { Shield, CheckCircle, XCircle, ExternalLink, Phone, Mail } from 'lucide-react'
 import { confirmDialog, alertDialog } from '@/components/ui/confirm-dialog'
 import { formatKST } from '@/utils/date'
+import OcrComparePanel from './admin/business-verification/OcrComparePanel'
 
 interface PendingSeller {
   id: number
@@ -29,6 +30,8 @@ interface PendingSeller {
   business_registration_reject_reason: string | null
   created_at: string
   updated_at: string
+  /** 🍽️ 2026-09-16 영업신고증 보유(seller_meta) — 있는 서류만 OCR 버튼을 띄운다 */
+  has_food_permit?: boolean
 }
 
 export default function AdminBusinessVerificationPage() {
@@ -149,6 +152,10 @@ export default function AdminBusinessVerificationPage() {
                         이전 반려 사유: {s.business_registration_reject_reason}
                       </div>
                     )}
+
+                    {/* 🔍 2026-09-16 서류 OCR — 읽은 값을 등록 매장과 나란히. 승인·반려는 아래 버튼이 한다
+                        (결재 `2026-09-16-ocr-license-automation.md` §안전 레일 ①). */}
+                    <OcrComparePanel sellerId={s.id} hasPermit={s.has_food_permit} />
 
                     <div className="mt-4 p-3 bg-white border border-rule rounded text-[11px] text-gray-700 space-y-1">
                       <p className="font-bold">검증 체크리스트</p>

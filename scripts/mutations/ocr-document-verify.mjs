@@ -118,4 +118,28 @@ export default [
     test: PERMIT,
     why: '저장 자리가 다르다(seller_meta). 잘못 읽으면 영업신고증을 눌러도 등록증을 읽고, 화면엔 "영업신고증" 이라고 적힌다 — 가장 나쁜 종류의 조용한 오판이다.',
   },
+  {
+    name: '🔍 어드민 화면이 OCR 패널을 안 부른다 (축 전체가 죽은 코드가 된다)',
+    file: 'src/pages/AdminBusinessVerificationPage.tsx',
+    find: '                    <OcrComparePanel sellerId={s.id} hasPermit={s.has_food_permit} />',
+    replace: '                    {false && <OcrComparePanel sellerId={s.id} />}',
+    test: PERMIT,
+    why: '2026-09-16 실제로 이 상태였다 — 라우트·판정·대조를 다 만들고 버튼만 없었다. 에러도 안 나고 테스트도 통과하고 아무도 안 쓴다("코드에 있다 ≠ 살아 있다").',
+  },
+  {
+    name: '🔍 OCR 패널이 못 읽은 서류를 빨강으로 칠한다',
+    file: 'src/pages/admin/business-verification/OcrComparePanel.tsx',
+    find: "  unreadable: { label: '못 읽음', cls: 'bg-gray-100 text-gray-600' },",
+    replace: "  unreadable: { label: '못 읽음', cls: 'bg-tone-bad-bg text-tone-bad' },",
+    test: PERMIT,
+    why: '사진이 흐린 정상 사장님이 화면에서 "빨강" 으로 보이면 운영자가 반려한다 — 결재 §안전 레일 ② 가 금지한 자동 반려를 사람 손으로 하게 만드는 UI.',
+  },
+  {
+    name: '🔍 영업신고증 버튼이 서류 없어도 뜬다',
+    file: 'src/pages/admin/business-verification/OcrComparePanel.tsx',
+    find: '        {hasPermit && (',
+    replace: '        {true && (',
+    test: PERMIT,
+    why: '없는 서류에 버튼이 보이면 눌러 보고 400 을 받는다. 안내가 아니라 소음이고, 운영자는 "고장났나" 로 읽는다.',
+  },
 ]
