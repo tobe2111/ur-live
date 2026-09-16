@@ -860,6 +860,42 @@ textarea::placeholder {
 .dark select {
   color: rgb(243 244 246); /* gray-100 — 다크 테마 기본 */
 }
+
+/* 🩸 2026-09-16 — **위 규칙은 글자만 바꾸고 배경을 안 바꿨다.** 그게 반쪽이다.
+   입력요소의 배경은 클래스가 없으면 브라우저 기본값 **흰색**이다(이 앱은 `color-scheme: dark` 를
+   어디에도 선언하지 않는다). 그래서 배경을 따로 안 준 입력은 다크에서 **흰 배경 위 gray-100 글자**
+   — 실측 대비 **1:1**, 글자가 아예 없는 것처럼 보인다.
+
+   실측(다크 렌더): `/checkout` 쿠폰·딜 입력 2개 · `/mypage/addresses` 이름·연락처·상세주소·요청사항
+   5개가 그 상태였다. 정적 스캔으로는 **소비자 화면 20곳**이 같은 모양이다(배경 선언 자체가 없음).
+   ⚠️ 한 곳씩 고치면 계속 다시 자란다 — 이 레포가 이 클래스를 반복해 만든 이유가 그것이다.
+   ⇒ **기본값을 고친다**: 배경을 안 준 입력은 뒤 표면을 그대로 비춘다(다크 표면 → 밝은 글자 가독).
+
+   🔑 **왜 명시한 입력은 안 바뀌나 — 레이어가 아니라 특이도다.**
+      처음엔 "`@layer base` 라서 utilities 레이어가 이긴다"고 적었는데 **틀렸다.** Tailwind v3 는
+      `@layer` 를 빌드에서 **걷어낸다**(실측: 산출 CSS 에 `@layer` 0개) — 그러면 레이어 순서가 아니라
+      특이도가 승자를 정한다. 실제 계산: 이 규칙은 (0,6,1) 이고, `dark:bg-[#1D1F29]` 는 컴파일되며
+      `:is(.dark *):not(.light-island *)…` 사슬이 붙어 **(0,7,0)** 이 된다 ⇒ 명시한 쪽이 이긴다.
+      반대로 `bg-white` 만 있고 `dark:` 변형이 없는 입력은 (0,1,0) 이라 이 기본값이 이기는데,
+      **그게 의도다** — 그런 입력이 바로 다크에서 흰 배경으로 남는 같은 결함이기 때문.
+      (`@layer base` 는 그대로 둔다: 저자 의도이고, Tailwind v4 의 네이티브 레이어에서는 실제로 작동한다.)
+      실측으로 확인한 것 — `/search`(명시) 불변 · `/mypage/addresses`(미명시) 수리 · `/map`(섬) 불변.
+   🏝️ `light-island`·`*-light-theme` 안에서는 뒤 표면이 흰색이고 글자는 위 블록이 `!important` 로
+      잉크색을 강제하므로 그대로 읽힌다.
+   회귀 감시: `scripts/check-dark-contrast.mjs`(실제 렌더 대비 측정). */
+@layer base {
+  /* 🏝️ **늘 밝은 표면 안쪽은 제외한다.** 그 안의 글자는 위 블록이 `!important` 로 잉크색을
+     강제하므로, 배경까지 투명하게 만들면 잉크 글자가 **어두운 페이지 배경 위**에 놓인다 —
+     2026-09-03 대표 신고("글자가 또 하얘")와 **정반대 방향의 같은 사고**다.
+     🩸 실제로 이 수리 첫 판이 그랬다: `/map` 검색창이 `rgb(22,24,28)` 글자 / `rgb(29,31,41)` 배경.
+        렌더로 재 보고서야 알았다. 제외 구문은 `tailwind.config.js` 의 dark variant 가 이미 쓰는
+        같은 형태다(`&:is(.dark *):not(.light-island *)`). */
+  .dark input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not(:is(.light-island, .force-light-theme, .admin-light-theme, .seller-light-theme, .agency-light-theme) *),
+  .dark textarea:not(:is(.light-island, .force-light-theme, .admin-light-theme, .seller-light-theme, .agency-light-theme) *),
+  .dark select:not(:is(.light-island, .force-light-theme, .admin-light-theme, .seller-light-theme, .agency-light-theme) *) {
+    background-color: transparent;
+  }
+}
 .dark input::placeholder,
 .dark textarea::placeholder {
   color: rgb(107 114 128); /* gray-500 */
