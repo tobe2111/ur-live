@@ -759,16 +759,12 @@
 - `/u/me/earnings`
 - `/user/affiliate`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (88개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (86개)
 
 
 **/api/admin-payouts/disputes**
 - `GET /api/admin-payouts/disputes`
 - `POST /api/admin-payouts/disputes/:id/resolve`
-
-**/api/admin-payouts/payouts**
-- `GET /api/admin-payouts/payouts`
-- `POST /api/admin-payouts/payouts/process`
 
 **/api/admin/castings**
 - `GET /api/admin/castings/`
@@ -953,7 +949,7 @@
 - `GET /api/seller/donations/summary`
 
 
-> 마지막 생성: 2026-09-05T18:37:49.399Z
+> 마지막 생성: 2026-09-16T12:40:17.747Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->
