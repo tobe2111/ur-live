@@ -667,11 +667,9 @@ ordersRouter.get('/', async (c) => {
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const limitNum = Math.max(1, Math.min(parseInt(limit, 10) || 20, 100));
 
-    const { orders, total } = await orderRepo.findByUserId(
-      userId,
-      pageNum,
-      limitNum
-    );
+    const { orders, total } = await orderRepo.findByUserId(userId, pageNum, limitNum);
+    // 🏪 2026-08-12: "어느 가게에서 산 것인가" — 주문 내역엔 세션 흔적이 없어 **서버가** 찍는다(fail-soft).
+    await (await import('../utils/mall-consumer')).stampOrdersMall(c.env.DB, orders as unknown as Array<Record<string, unknown>>);
 
     return c.json({
       success: true,
