@@ -31,17 +31,17 @@ export default function PartnerMath() {
   }, [list, sale])
 
   return (
-    <section className="bg-surface">
-      <div className="ur-content-wide mx-auto px-5 lg:px-10 py-14 lg:py-24 grid gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 lg:items-center">
+    <section className="bg-warm">
+      <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-32 grid gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-20 xl:gap-28 lg:items-center">
         <div>
-          <h2 className="text-[23px] lg:text-[38px] font-extrabold tracking-[-0.02em] text-ink leading-[1.28]">
+          <h2 className="text-[25px] lg:text-[42px] xl:text-[48px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
             여기는 손님이 돈을 내고 옵니다
           </h2>
-          <p className="mt-3 text-[14px] lg:text-[16px] text-gray-500 dark:text-gray-400">
+          <p className="mt-4 text-[14px] lg:text-[18px] leading-relaxed text-gray-500 dark:text-gray-400 max-w-[32em]">
             지금 유어딜에서 팔리고 있는 실제 상품으로 계산해 봤습니다. 숫자를 바꿔서 내 가게로 맞춰 보세요.
           </p>
 
-          <div className="mt-8 rounded-2xl bg-warm p-5 lg:p-7">
+          <div className="mt-8 lg:mt-12 rounded-2xl bg-surface shadow-lift p-5 lg:p-8">
             <p className="text-[12px] font-bold text-gray-400 dark:text-gray-500">{F.sample.name}</p>
             <div className="mt-4 grid grid-cols-2 gap-3">
               <Field label="정가 (원)" value={list} onChange={setList} />
@@ -56,8 +56,8 @@ export default function PartnerMath() {
               <Row k={`유어딜 수수료 ${F.feeDirect}`} v={`−${formatNumber(calc.fee)}원`} />
               <Row k="카드 수수료" v="0원 (유어딜 부담)" accent />
               <div className="pt-3 border-t border-rule flex items-baseline justify-between">
-                <dt className="text-[14px] font-extrabold text-ink">사장님 계좌에</dt>
-                <dd className="text-[28px] lg:text-[34px] font-extrabold text-brand-text tabular-nums tracking-[-0.02em]">
+                <dt className="text-[14px] lg:text-[16px] font-extrabold text-ink">사장님 계좌에</dt>
+                <dd className="text-[28px] lg:text-[42px] font-extrabold text-brand-text tabular-nums tracking-[-0.03em]">
                   {formatNumber(calc.payout)}원
                 </dd>
               </div>
@@ -68,19 +68,19 @@ export default function PartnerMath() {
           </p>
         </div>
 
-        <ul className="space-y-7 lg:space-y-9 lg:pt-6">
+        <ul className="space-y-7 lg:space-y-11">
           {POINTS.map(({ icon: Icon, t, d }) => (
             <li key={t} className="flex gap-4">
               <span className="w-11 h-11 shrink-0 rounded-2xl bg-brand-tint flex items-center justify-center">
                 <Icon className="w-[19px] h-[19px] text-brand-text" strokeWidth={1.8} />
               </span>
               <div className="min-w-0">
-                <p className="text-[16px] lg:text-[19px] font-extrabold text-ink tracking-[-0.01em]">{t}</p>
-                <p className="mt-1.5 text-[13.5px] lg:text-[14.5px] leading-relaxed text-gray-500 dark:text-gray-400">{d}</p>
+                <p className="text-[16px] lg:text-[21px] font-extrabold text-ink tracking-[-0.01em] leading-snug">{t}</p>
+                <p className="mt-2 text-[13.5px] lg:text-[15.5px] leading-[1.8] text-gray-500 dark:text-gray-400">{d}</p>
               </div>
             </li>
           ))}
-          <li className="pt-1 text-[13.5px] lg:text-[15px] leading-relaxed text-gray-500 dark:text-gray-400 border-t border-rule pt-7">
+          <li className="pt-1 text-[13.5px] lg:text-[16px] leading-[1.8] text-gray-500 dark:text-gray-400 border-t border-rule pt-7">
             몇 장이 팔렸고 몇 명이 왔는지, 언제 왔는지가 매장 화면에 그대로 남습니다.{' '}
             <b className="font-bold text-ink">효과가 있었는지를 감으로 판단할 필요가 없습니다.</b>
           </li>
@@ -96,7 +96,7 @@ function Field({ label, value, onChange }: { label: string; value: number; onCha
       <span className="text-[11.5px] font-bold text-gray-500 dark:text-gray-400">{label}</span>
       <input type="number" inputMode="numeric" value={value} min={0} step={500}
         onChange={e => onChange(Number(e.target.value))}
-        className="mt-1 w-full h-11 px-3 rounded-xl bg-surface text-[15px] font-bold text-gray-900 dark:text-white tabular-nums focus:outline-none focus:ring-2 focus:ring-brand" />
+        className="mt-1 w-full h-11 px-3 rounded-xl bg-warm text-[15px] font-bold text-gray-900 dark:text-white tabular-nums focus:outline-none focus:ring-2 focus:ring-brand" />
     </label>
   )
 }
