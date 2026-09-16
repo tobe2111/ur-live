@@ -196,12 +196,22 @@ describe('R4 — 덱이 정한 설득 구조가 살아 있다', () => {
 })
 
 describe('R5 — 대표 확정 골격 (2026-09-16 장점 3 · 차별점 3 · 도구)', () => {
-  it('장점이 정확히 셋이다', () => {
+  it('장점이 정확히 셋이고, 셋이 각각 다른 말을 한다', () => {
+    // 2026-09-16 3차: 문구를 사람 말투로 고쳐 쓰면서 앵커를 **뜻**으로 옮겼다.
+    //   종전 앵커('선불 비용 0원' 같은 제목 원문)를 그대로 두면 말투 수정이 가드에 걸려,
+    //   가드가 "이 셋을 말한다" 가 아니라 "이 문장을 쓴다" 를 지키게 된다. 지켜야 하는 건 앞쪽이다.
     const src = visible('src/pages/partners/PartnerBenefits.tsx')
     expect((src.match(/^\s{2}\{$/gm) || []).length).toBe(3)
-    expect(src).toMatch(/선불 비용 0원/)
-    expect(src).toMatch(/실제 방문까지/)
-    expect(src).toMatch(/선결제라 매출이 먼저 확정/)
+    expect(src, '① 선불 0원').toMatch(/안 팔리면 0원/)
+    expect(src, '② 노출이 실제 방문으로').toMatch(/QR을 찍는 순간/)
+    expect(src, '③ 선결제').toMatch(/오기 전에 값을 치릅니다/)
+  })
+
+  it('장점 섹션에 01/02/03 번호를 다시 붙이지 않는다', () => {
+    // anti-slop 스킬이 "section-number eyebrow" 로 이름 붙여 금지한 그림이다.
+    // 순서에 뜻이 없는 셋이라 번호는 장식이고, 그 장식이 페이지에서 가장 큰 AI 티였다.
+    expect(visible('src/pages/partners/PartnerBenefits.tsx')).not.toMatch(/0\{i\s*\+\s*1\}/)
+    expect(visible('src/pages/partners/PartnerFlow.tsx')).not.toMatch(/0\{i\s*\+\s*1\}/)
   })
 
   it('비교 대상이 체험단 · 배달앱 · 예약솔루션 셋이다', () => {
@@ -316,5 +326,87 @@ describe('R6 — PC 가 "넓어진 모바일" 로 되돌아가지 않는다 (202
     expect(vs[0]).toMatch(/체험단/)
     expect(vs[1]).toMatch(/배달앱/)
     expect(vs[2]).toMatch(/예약/)
+  })
+})
+
+describe('R7 — 말투가 AI 로 되돌아가지 않는다 (2026-09-16 3차)', () => {
+  /**
+   * 대표: *"AI 가 만든 디자인, 말투가 아니면 좋겠는데"*
+   *
+   * 🩸 2차 판의 제목을 한 줄로 늘어놓으면 원인이 보인다 — **아홉 개가 전부 완결문**이고
+   *   **전부 "-습니다/-입니다"** 로 끝났다. 사람이 쓴 랜딩은 명사구로 끊고, 묻고, 숫자를 던진다.
+   *   그래서 여기서 재는 것은 문장 한 줄의 좋고 나쁨이 아니라 **리듬**이다.
+   *
+   * ⚠️ 이 가드가 **못 하는 것**: 문장이 실제로 매력적인지. 그건 렌더해서 읽어 봐야 한다.
+   *   여기서 막는 것은 "전부 같은 어미로 끝나는 상태" 하나뿐이다.
+   */
+  const found = (() => {
+    const out: { tag: string; text: string }[] = []
+    for (const f of [PAGE, ...SECTIONS]) {
+      const src = visible(f)
+      for (const m of src.matchAll(/<(h1|h2)\b[^>]*>([\s\S]*?)<\/\1>/g)) {
+        const text = m[2]
+          .replace(/\{[^}]*\}/g, '')      // {F.x} 같은 보간 제거
+          .replace(/<[^>]+>/g, ' ')        // <br /> 등
+          .replace(/\s+/g, ' ')
+          .trim()
+        if (text) out.push({ tag: m[1], text })
+      }
+    }
+    return out
+  })()
+  const headings = found.map(h => h.text)
+
+  it('제목을 여덟 개 이상 모은다 (0개면 통과가 아니라 실패)', () => {
+    // 정규식이 낡아 헤딩을 못 줍기 시작하면 아래 비율 검사가 조용히 무의미해진다.
+    expect(headings.length).toBeGreaterThanOrEqual(8)
+  })
+
+  it('h1 이 완결문으로 끝나지 않는다', () => {
+    // 한 줄만 읽고 나가는 사람이 보는 줄이다. 2차 판은 *"…부르는 방법입니다"* 였는데
+    // 뒤 네 글자가 뜻을 안 보태면서 말투만 얹었다. 명사구·질문·숫자 중 하나로 끊는다.
+    // ⚠️ `headings[0]` 을 쓰면 안 된다 — 수집 순서가 파일 순서라 PartnersPage 의 마지막 CTA h2 가
+    //    맨 앞에 온다(첫 판이 그렇게 틀려서 실제 소스에 빨간불이 났다). 태그로 찾는다.
+    const h1 = found.find(h => h.tag === 'h1')?.text ?? ''
+    expect(h1, 'h1 을 못 찾았다').not.toBe('')
+    expect(h1).not.toMatch(/(습니다|입니다|합니다|됩니다)[.!?]?$/)
+  })
+
+  it('제목이 전부 "-습니다/-입니다" 로 끝나지 않는다', () => {
+    // ⚠️ 이 검사는 **페이지 전체가 한 어미로 되돌아가는 것**을 막는다. 그래서 주입 한 줄로는
+    //    빨간불이 안 난다(제목 하나가 완결문이 되는 건 정상이다). 주입 검증은 바로 위
+    //    'h1 이 완결문으로 끝나지 않는다' 가 맡는다 — 같은 파일이라 그 주입이 이 규약 전체를 지킨다.
+    const polite = headings.filter(h => /(습니다|입니다|합니다|됩니다)[.!?]?$/.test(h))
+    expect(polite.length, `완결문 제목: ${polite.join(' / ')}`).toBeLessThanOrEqual(Math.ceil(headings.length / 3))
+  })
+
+  it('제목 모양이 한 가지가 아니다 (조각·질문·완결문이 섞인다)', () => {
+    const shapes = new Set(headings.map(h =>
+      /[?？]$/.test(h) ? 'question'
+      : /(습니다|입니다|합니다|됩니다)[.!?]?$/.test(h) ? 'sentence'
+      : 'fragment',
+    ))
+    expect(shapes.size, `제목: ${headings.join(' / ')}`).toBeGreaterThanOrEqual(2)
+  })
+})
+
+/**
+ * R8 — 글자가 읽히는가 (2026-09-16 대표 *"글자들 개선해. 색깔이 뭐야 이게"*)
+ *
+ * 대표가 보낸 다크 캡처의 **진짜** 원인은 토큰 드리프트였고 그건 `ink-token-theme-2026-09-16`
+ * 이 고정한다. 여기서 막는 것은 **같은 화면에서 함께 드러난 둘째 결함** — 캡션·표 머리·주석에
+ * 쓰던 옅은 짝 `text-gray-400 dark:text-gray-500` 이다.
+ *
+ * 실측(1440 렌더, 알파 합성 후 WCAG): **라이트 3.21~3.65 · 다크 3.10~3.48** 로 둘 다 AA(4.5) 미달이었다.
+ * 즉 다크만의 문제가 아니라 **처음부터 안 읽히는 회색**을 쓰고 있었다. 한 단계 올린
+ * `text-gray-500 dark:text-gray-400`(본문과 같은 짝)으로 라이트 미달 0건이 됐다.
+ *
+ * ⚠️ 이 시험이 **못** 보는 것: 실제 대비값. 그건 `check-dark-contrast` 가 렌더해서 잰다.
+ *    여기서는 "그 옅은 짝이 이 랜딩에 다시 들어오는 것"만 막는다.
+ */
+describe('R8 · 보조 글자가 너무 옅지 않다', () => {
+  it('캡션·주석에 `text-gray-400 dark:text-gray-500` 짝을 쓰지 않는다', () => {
+    const offenders = [PAGE, ...SECTIONS].filter(f => visible(f).includes('text-gray-400 dark:text-gray-500'))
+    expect(offenders, `AA 미달 회색이 돌아왔다: ${offenders.join(', ')}`).toEqual([])
   })
 })

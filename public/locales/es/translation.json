@@ -1845,7 +1845,6 @@
       "bundles": "Paquetes",
       "promoCodes": "Códigos promo",
       "followers": "Seguidores",
-      "miniShop": "Ajustes de UrShop",
       "streamingGuide": "Guía de streaming",
       "notifyFollowers": "Notificar seguidores",
       "stays": "Vales de alojamiento",
@@ -1881,7 +1880,8 @@
       "discounts": "Descuentos",
       "partners": "Socios",
       "notifyGuide": "Avisos y guía",
-      "operatingSummary": "Resumen de operación"
+      "operatingSummary": "Resumen de operación",
+      "storeInfo": "Info de tienda"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",

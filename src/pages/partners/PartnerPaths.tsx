@@ -5,6 +5,11 @@
  *   폰으로 가게를 등록해 본 적 없는 사장님도 포함한다. 길이 하나면 그분들은 그냥 닫는다.
  *   덱은 그래서 세 길을 나란히 둔다 — 직접 / 유어딜이 대신 / 대행사와 함께.
  *
+ * ■ 2026-09-16 3차 (대표 *"AI 가 만든 디자인, 말투가 아니면"*)
+ *   3열 균등 카드 셋이 이 페이지에서 세 번째 같은 그림이었다. 여기는 **진짜 3지 선택**이라
+ *   세 칸 자체는 맞지만, 셋을 똑같이 세우면 사장님이 무엇을 고를지 알 수 없다.
+ *   ⇒ **'직접' 을 넓게**(비대칭) 두고 나머지 둘을 좁힌다. 제목도 짧게: "시작하는 길, 세 가지".
+ *
  * ⚠️ 문구는 덱과 같은 문장을 쓴다. 수수료는 길마다 다르다(직접·대신 10%, 중개 5%).
  * 🔴 **"자동 승인" 이라고 쓰면 안 된다.** `seller-registration.routes.ts:239` 주석이
  *   *"2026-06-12 사용자 결정 — 자동승인 말고 수동 승인 · 모든 사업자 가입은 어드민 수동 승인"* 이고,
@@ -51,27 +56,26 @@ export default function PartnerPaths() {
       <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-32">
         <div className="lg:grid lg:grid-cols-[1.6fr_0.4fr] lg:gap-16 lg:items-end">
           <div>
-            <h2 className="text-[25px] lg:text-[42px] xl:text-[48px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
-              시작하는 길은 세 가지입니다
+            <h2 className="text-[26px] lg:text-[40px] xl:text-[46px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
+              시작하는 길, 세 가지
             </h2>
-            <p className="mt-4 text-[14px] lg:text-[18px] leading-relaxed text-gray-500 dark:text-gray-400 max-w-[30em]">
-              직접 하셔도 되고, 저희가 대신 해도 되고, 쓰시던 대행사에 맡기셔도 됩니다.
+            <p className="mt-4 text-[14px] lg:text-[17px] leading-relaxed text-gray-500 dark:text-gray-400 max-w-[28em]">
               어느 길이든 손님이 낸 돈은 사장님 계좌로만 갑니다.
             </p>
           </div>
           {/* 등록의 첫 관문 — 카카오맵에서 내 가게를 찾는 화면. "어렵지 않다" 는 말보다 이게 빠르다 */}
           <div className="hidden lg:block">
             <PartnerPhone src={SHOT('store-new')} alt="카카오맵에서 내 가게를 찾는 등록 화면" className="max-w-[11rem] ml-auto" />
-            <p className="mt-4 text-right text-[13px] text-gray-400 dark:text-gray-500">카카오맵에서 내 가게 찾기</p>
+            <p className="mt-4 text-right text-[13px] text-gray-500 dark:text-gray-400">카카오맵에서 내 가게 찾기</p>
           </div>
         </div>
 
-        <div className="mt-12 lg:mt-20 grid gap-5 lg:grid-cols-3 lg:gap-7">
+        <div className="mt-12 lg:mt-20 grid gap-5 lg:grid-cols-[1.25fr_1fr_1fr] lg:gap-7 lg:items-start">
           {PATHS.map(({ title, fee, hi, steps, note, cta }) => (
             <article key={title}
-              className={`rounded-2xl p-6 lg:p-9 flex flex-col ${hi ? 'bg-surface shadow-lift' : 'bg-black/[0.03] dark:bg-white/[0.04]'}`}>
+              className={`rounded-2xl flex flex-col ${hi ? 'bg-surface shadow-lift p-6 lg:p-10' : 'bg-black/[0.03] dark:bg-white/[0.04] p-6 lg:p-8'}`}>
               <div className="flex items-baseline justify-between gap-3">
-                <h3 className="text-[18px] lg:text-[26px] font-extrabold text-ink tracking-[-0.02em]">{title}</h3>
+                <h3 className={`font-extrabold text-ink tracking-[-0.02em] ${hi ? 'text-[20px] lg:text-[30px]' : 'text-[18px] lg:text-[23px]'}`}>{title}</h3>
                 <span className={`text-[12px] lg:text-[14px] font-bold shrink-0 ${hi ? 'text-brand-text' : 'text-gray-500 dark:text-gray-400'}`}>{fee}</span>
               </div>
               <ol className="mt-6 lg:mt-8 space-y-2.5 lg:space-y-3.5 flex-1">
@@ -82,7 +86,7 @@ export default function PartnerPaths() {
                   </li>
                 ))}
               </ol>
-              <p className="mt-6 pt-5 border-t border-rule text-[12px] lg:text-[13.5px] leading-relaxed text-gray-400 dark:text-gray-500">{note}</p>
+              <p className="mt-6 pt-5 border-t border-rule text-[12px] lg:text-[13.5px] leading-relaxed text-gray-500 dark:text-gray-400">{note}</p>
               {'to' in cta ? (
                 <Link to={cta.to}
                   className="mt-6 h-12 lg:h-14 rounded-2xl bg-brand text-white flex items-center justify-center gap-1.5 text-[14px] font-extrabold active:scale-[0.98] transition-transform">

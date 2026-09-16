@@ -6,6 +6,15 @@
  *   '사고가 나면' 밴드에는 손님이 실제로 보는 **사용 안내·환불 조건 화면**을 건다 —
  *   환불 약속은 글보다 화면이 믿긴다.
  *
+ * ■ 2026-09-16 3차 (대표 *"AI 가 만든 디자인, 말투가 아니면"*)
+ *   ① 단계마다 붙인 파란 `01~04` 를 지웠다. 스킬이 "generic step labels" 로 금지한 그림이고,
+ *      **단계 이름 자체가 라벨**이다("찾는다" 위에 "01" 을 붙이는 건 아무것도 안 알려 준다).
+ *      진행은 점과 선이 이미 말한다.
+ *   ② '사고가 나면' 밴드를 색면에서 **밝은 면으로** 되돌렸다. 다크 → 라이트 → 다크 → 라이트로
+ *      페이지가 줄무늬가 됐기 때문이다(스킬 §4.11 Page Theme Lock). 색면은 히어로와 마지막 CTA,
+ *      **양 끝 둘만** 쓴다.
+ *   ③ 제목을 짧게: "손님은 이렇게 옵니다" → "손님이 오는 길" · "사고가 나면 어떻게 되나요" → "안 오면요? 안 쓰면요?"
+ *
  * ⚠️ "자동 승인" 과 "자동 송금" 은 쓰지 않는다(기획 §0-2: 등록증은 사람이 확인하고,
  *   정산 승인·송금도 사람이 누른다). 코드가 그렇게 동작하지 않는 말을 랜딩에 적으면
  *   사장님이 첫 정산에서 그 차이를 발견한다.
@@ -36,53 +45,54 @@ export default function PartnerFlow() {
     <>
       <section className="bg-surface">
         <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-32">
-          <h2 className="text-[25px] lg:text-[42px] xl:text-[48px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
-            손님은 이렇게 옵니다
+          <h2 className="text-[26px] lg:text-[40px] xl:text-[46px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
+            손님이 오는 길
           </h2>
-          <p className="mt-4 text-[14px] lg:text-[18px] text-gray-500 dark:text-gray-400 max-w-[38em]">
-            택배도, 반품도, 재고도 없습니다. 사장님이 만나는 건 이미 결제를 마친 손님 한 명입니다.
+          <p className="mt-4 text-[14px] lg:text-[17px] text-gray-500 dark:text-gray-400 max-w-[34em]">
+            택배도 반품도 재고도 없습니다. 사장님이 만나는 건 결제를 마친 손님 한 명입니다.
           </p>
 
           {/* 가로 타임라인 — 선 하나가 네 칸을 관통한다(PC). 모바일은 세로 스택 */}
           <ol className="mt-12 lg:mt-20 relative grid gap-9 sm:grid-cols-2 lg:grid-cols-4 lg:gap-10">
             <span aria-hidden className="hidden lg:block absolute left-0 right-0 top-[7px] h-px bg-rule-strong opacity-40" />
-            {STEPS.map(({ t, d }, i) => (
+            {STEPS.map(({ t, d }) => (
               <li key={t} className="relative lg:pt-12">
                 <span aria-hidden className="hidden lg:block absolute left-0 top-0 w-[15px] h-[15px] rounded-full bg-brand ring-4 ring-surface" />
-                <p className="text-[12px] lg:text-[13px] font-extrabold text-brand-text tabular-nums">0{i + 1}</p>
-                <p className="mt-2 lg:mt-3 text-[19px] lg:text-[28px] xl:text-[31px] font-extrabold text-ink tracking-[-0.02em] leading-tight">{t}</p>
-                <p className="mt-2.5 lg:mt-4 text-[13px] lg:text-[15.5px] leading-[1.75] text-gray-500 dark:text-gray-400">{d}</p>
+                <p className="text-[20px] lg:text-[30px] xl:text-[34px] font-extrabold text-ink tracking-[-0.025em] leading-tight">{t}</p>
+                <p className="mt-3 lg:mt-4 text-[13px] lg:text-[15.5px] leading-[1.75] text-gray-500 dark:text-gray-400">{d}</p>
               </li>
             ))}
           </ol>
         </div>
       </section>
 
-      <section className="ur-panel-ink text-white">
-        <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-32 grid gap-12 lg:grid-cols-[0.95fr_1.35fr_0.7fr] lg:gap-16 xl:gap-20">
-          <h2 className="text-[25px] lg:text-[42px] xl:text-[46px] font-extrabold tracking-[-0.03em] leading-[1.2]">
-            사고가 나면<br className="hidden lg:block" /> 어떻게 되나요
-          </h2>
+      <section className="bg-warm">
+        <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-28 grid gap-12 lg:grid-cols-[1.4fr_0.6fr] lg:gap-20">
+          <div>
+            <h2 className="text-[26px] lg:text-[40px] xl:text-[46px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
+              안 오면요? 안 쓰면요?
+            </h2>
 
-          <div className="space-y-9 lg:space-y-12">
-            {SAFETY.map(({ t, d }) => (
-              <div key={t}>
-                <p className="text-[18px] lg:text-[26px] font-extrabold tracking-[-0.02em] leading-snug">{t}</p>
-                <p className="mt-3 text-[13.5px] lg:text-[16px] leading-[1.8] text-white/70 max-w-[38em]">{d}</p>
+            <div className="mt-10 lg:mt-16 space-y-9 lg:space-y-12">
+              {SAFETY.map(({ t, d }) => (
+                <div key={t}>
+                  <p className="text-[18px] lg:text-[26px] font-extrabold tracking-[-0.02em] text-ink leading-snug">{t}</p>
+                  <p className="mt-3 text-[13.5px] lg:text-[16px] leading-[1.8] text-gray-500 dark:text-gray-400 max-w-[36em]">{d}</p>
+                </div>
+              ))}
+              <div className="pt-9 border-t border-rule">
+                <p className="text-[18px] lg:text-[26px] font-extrabold tracking-[-0.02em] text-ink leading-snug">돈은 매주 들어옵니다</p>
+                <p className="mt-3 text-[13.5px] lg:text-[16px] leading-[1.8] text-gray-500 dark:text-gray-400 max-w-[36em]">
+                  사용된 이용권을 주 단위로 모아 등록하신 계좌로 보냅니다. 최소 지급액은 {F.minPayout}입니다.
+                  보내기 전에 담당자가 내역을 눈으로 확인합니다. 기계가 알아서 쏘는 구조가 아닙니다.
+                </p>
               </div>
-            ))}
-            <div className="pt-9 border-t border-white/10">
-              <p className="text-[18px] lg:text-[26px] font-extrabold tracking-[-0.02em] leading-snug">돈은 매주 들어옵니다</p>
-              <p className="mt-3 text-[13.5px] lg:text-[16px] leading-[1.8] text-white/70 max-w-[38em]">
-                사용된 이용권을 주 단위로 모아 등록하신 계좌로 보냅니다. 최소 지급액은 {F.minPayout}입니다.
-                보내기 전에 유어딜 담당자가 내역을 눈으로 확인합니다. 기계가 알아서 쏘는 구조가 아닙니다.
-              </p>
             </div>
           </div>
 
-          <div className="max-w-[15rem] mx-auto lg:mx-0 lg:max-w-none">
+          <div className="max-w-[15rem] mx-auto lg:mx-0 lg:max-w-none lg:pt-4">
             <PartnerPhone src={SHOT('use')} alt="손님이 보는 사용 안내와 환불 조건 화면" />
-            <p className="mt-4 text-[12px] lg:text-[13px] text-white/50">손님이 보는 사용 안내와 환불 조건</p>
+            <p className="mt-4 text-[12.5px] lg:text-[13.5px] text-gray-500 dark:text-gray-400">손님이 보는 사용 안내와 환불 조건</p>
           </div>
         </div>
       </section>

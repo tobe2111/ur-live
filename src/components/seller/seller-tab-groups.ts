@@ -96,6 +96,7 @@ export const SELLER_TAB_GROUPS: SellerTabGroup[] = [
     labelKey: 'seller.nav.stores', fallback: '매장', icon: Building2,
     tabs: [
       { path: '/seller/stores', labelKey: 'seller.nav.stores', fallback: '매장' },
+      { path: '/seller/store', labelKey: 'seller.nav.storeInfo', fallback: '업체 정보' },
       { path: '/seller/operators', labelKey: 'seller.nav.operators', fallback: '운영자' },
       { path: '/seller/operating', labelKey: 'seller.nav.operatingSummary', fallback: '운영 요약' },
     ],
@@ -104,7 +105,6 @@ export const SELLER_TAB_GROUPS: SellerTabGroup[] = [
     labelKey: 'seller.nav.notifyGuide', fallback: '알림·가이드', icon: Bell,
     tabs: [
       { path: '/seller/alimtalk', labelKey: 'seller.brandMessage', fallback: '브랜드메시지' },
-      { path: '/seller/mini-shop', labelKey: 'seller.nav.miniShop', fallback: '유어샵 설정' },
       { path: '/seller/guide', labelKey: 'seller.nav.guide', fallback: '운영 가이드' },
     ],
   },

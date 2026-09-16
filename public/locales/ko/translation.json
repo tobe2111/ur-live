@@ -2569,7 +2569,6 @@
       "guide": "운영 가이드",
       "promoCodes": "프로모 코드",
       "followers": "팔로워",
-      "miniShop": "유어샵 설정",
       "streamingGuide": "송출 가이드",
       "notifyFollowers": "팔로워 알림",
       "stays": "숙소 공구",
@@ -2602,7 +2601,8 @@
       "discounts": "할인",
       "partners": "파트너",
       "notifyGuide": "알림·가이드",
-      "operatingSummary": "운영 요약"
+      "operatingSummary": "운영 요약",
+      "storeInfo": "업체 정보"
     },
     "guide": {
       "title": "셀러 운영 가이드",

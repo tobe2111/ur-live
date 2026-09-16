@@ -2542,7 +2542,6 @@
       "bundles": "バンドル商品",
       "promoCodes": "プロモコード",
       "followers": "フォロワー",
-      "miniShop": "UrShop設定",
       "streamingGuide": "配信ガイド",
       "notifyFollowers": "フォロワー通知",
       "stays": "宿泊共同購入",
@@ -2578,7 +2577,8 @@
       "discounts": "割引",
       "partners": "パートナー",
       "notifyGuide": "通知・ガイド",
-      "operatingSummary": "運営サマリー"
+      "operatingSummary": "運営サマリー",
+      "storeInfo": "店舗情報"
     },
     "monthlyGoalTitle": "今月の売上目標",
     "changeGoal": "目標変更",

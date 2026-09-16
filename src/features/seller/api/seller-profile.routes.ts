@@ -393,6 +393,7 @@ sellerProfileRoutes.post('/business-registration/ocr-verify', async (c) => {
 
     // OCR 호출 (graceful)
     const { ocrBusinessRegistration, compareOcrWithDb } = await import('../../../worker/utils/ocr-business-registration');
+    const { isOcrAutoVerifyEnabled } = await import('../../../worker/utils/ocr-license');
     const ai = (c.env as { AI?: { run: (m: string, i: Record<string, unknown>) => Promise<unknown> } }).AI;
     const ocrResult = await ocrBusinessRegistration(ai, bytes);
 
@@ -408,8 +409,18 @@ sellerProfileRoutes.post('/business-registration/ocr-verify', async (c) => {
       businessStartDate: seller.business_start_date,
     });
 
-    // 자동 verified 시 UPDATE
-    if (cmp.autoVerified) {
+    // 🚧 2026-09-16 — 자동 승인을 **게이트 뒤로** (결재 `2026-09-16-ocr-license-automation.md` §안전 레일 ①).
+    //   이 블록은 2026-05-27 에 쓰였지만 AI 바인딩이 없어 **한 번도 돈 적이 없다**. 바인딩이 켜진
+    //   2026-09-16 그 순간부터 살아나는데, 그대로 두면 **게이트 없이 승인이 자동으로 나간다**.
+    //
+    //   그리고 이 비교는 애초에 승인 근거로 약하다: 대조 대상이 *사장님이 직접 타이핑한 값* 이라
+    //   "사진이 본인이 적은 것과 같다" 만 증명한다. 남의 가게 이름으로 낸 위조는 그대로 통과한다.
+    //   진짜 방어는 **서류 소재지 ↔ 카카오맵에서 고른 매장 주소** 대조다(`shared/korean-address.ts`).
+    //
+    //   ⚠️ 기본 OFF. 켜는 것은 대표 판단(등급 C)이고, 켜기 전 staging 검증이 붙는다.
+    const autoVerifyOn = await isOcrAutoVerifyEnabled(c.env.DB);
+    const willAutoVerify = autoVerifyOn && cmp.autoVerified;
+    if (willAutoVerify) {
       await c.env.DB.prepare(
         `UPDATE sellers SET business_registration_status = 'verified', updated_at = datetime('now') WHERE id = ?`
       ).bind(sellerId).run().catch(() => null);
@@ -419,8 +430,12 @@ sellerProfileRoutes.post('/business-registration/ocr-verify', async (c) => {
       success: true,
       ocr: ocrResult,
       mismatch: cmp.mismatch,
-      autoVerified: cmp.autoVerified,
-      message: cmp.autoVerified ? '사업자등록증 자동 검증 완료' : 'admin 수동 검토 필요',
+      // 게이트가 꺼져 있으면 "자동 승인됐다" 고 말하지 않는다 — 화면이 거짓말을 하면 아무도 안 본다
+      autoVerified: willAutoVerify,
+      gateEnabled: autoVerifyOn,
+      message: willAutoVerify
+        ? '사업자등록증 자동 검증 완료'
+        : '추출했습니다 — 관리자가 확인합니다',
     });
   } catch (err) {
     return c.json({ success: false, error: 'OCR 처리 실패' }, 500);

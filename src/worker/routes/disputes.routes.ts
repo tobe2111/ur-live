@@ -17,6 +17,7 @@
 
 import { Hono } from 'hono'
 import type { Env } from '../types/env'
+import { aiText } from '../utils/ai-text'
 import { requireAuth, getCurrentUser } from '../middleware/auth'
 import { rateLimit } from '../middleware/rate-limit'
 import { auditLog } from '../middleware/audit-log'
@@ -140,7 +141,7 @@ disputesRoutes.post(
           ],
           max_tokens: 200,
         })
-        const text = (result.response || '').trim()
+        const text = aiText(result)
         const jsonMatch = text.match(/\{[\s\S]*?\}/)
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0])

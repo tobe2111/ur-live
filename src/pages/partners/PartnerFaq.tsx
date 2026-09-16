@@ -51,7 +51,7 @@ export default function PartnerFaq() {
         <div className="grid gap-10 lg:grid-cols-[0.62fr_1.38fr] lg:gap-16">
           <div>
             <h2 className="text-[25px] lg:text-[42px] xl:text-[48px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
-              사장님들이<br className="hidden lg:block" /> 자주 물으시는 것
+              자주 묻는 것
             </h2>
             <p className="mt-5 lg:mt-7 text-[13.5px] lg:text-[16.5px] leading-[1.8] text-gray-500 dark:text-gray-400">
               여기에 없는 것은 카카오톡 채널로 물어보세요. 사람이 답합니다.
@@ -64,7 +64,7 @@ export default function PartnerFaq() {
 
         {/* 정직 고지 — 세 소개서와 같은 내용 */}
         <div className="mt-14 lg:mt-20 pt-10 lg:pt-14 border-t border-rule">
-          <p className="text-[12px] font-bold text-gray-400 dark:text-gray-500 mb-4">숨기지 않고 말씀드립니다</p>
+          <p className="text-[12px] font-bold text-gray-500 dark:text-gray-400 mb-4">숨기지 않고 말씀드립니다</p>
           <p className="text-[15px] lg:text-[22px] leading-[1.75] text-ink max-w-[40em] font-medium">
             유어딜은 초기 서비스입니다. {F.liveMeasuredAt} 기준 판매 중인 이용권 {F.activeVouchers}건 가운데
             실제 매장이 등록한 것은 {F.realStores}건이고, 나머지는 시범 운영을 위한 예시입니다.
