@@ -28,7 +28,7 @@ export default function DealEarnStrip() {
       label: t('dealEarn.recruit', { defaultValue: '매장 영입' }),
       desc: t('dealEarn.recruitDesc', { defaultValue: '매출마다 영입 커미션' }),
       to: '/seller/prospects',
-      tint: 'bg-violet-50 text-violet-500 dark:bg-violet-500/12 dark:text-violet-400',
+      tint: 'bg-violet-50 text-violet-500 dark:bg-violet-500/10 dark:text-violet-400',
     },
     {
       icon: UserPlus,
@@ -36,7 +36,7 @@ export default function DealEarnStrip() {
       desc: t('dealEarn.inviteDesc', { defaultValue: '초대하면 딜 보너스' }),
       // 🧭 2026-06-17: 그룹 referral 숨김 — 살아있는 초대보너스 카드(MyReferralCard)가 있는 /user/profile 로.
       to: REFERRAL_GROUP_DISCOUNT_DISABLED ? '/user/profile' : '/referral',
-      tint: 'bg-sky-50 text-sky-500 dark:bg-sky-500/12 dark:text-sky-400',
+      tint: 'bg-sky-50 text-sky-500 dark:bg-sky-500/10 dark:text-sky-400',
     },
     // 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 딜 충전 카드 — TOPUP_DISABLED 시 제외 (딜=적립 전용).
     ...(TOPUP_DISABLED ? [] : [{
@@ -44,7 +44,7 @@ export default function DealEarnStrip() {
       label: t('dealEarn.charge', { defaultValue: '딜 충전' }),
       desc: t('dealEarn.chargeDesc', { defaultValue: '1원 = 1딜' }),
       to: '/points/charge',
-      tint: 'bg-amber-50 text-amber-500 dark:bg-amber-500/12 dark:text-amber-400',
+      tint: 'bg-amber-50 text-amber-500 dark:bg-amber-500/10 dark:text-amber-400',
     }]),
   ]
 

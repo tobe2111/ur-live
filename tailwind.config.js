@@ -36,6 +36,10 @@ export default {
   //   둘 다 이 클래스를 못 막았다. ⇒ 라이트 고정 래퍼를 `.light-island` 와 같은 자리에 넣어
   //   **그 안의 모든 `dark:` 유틸을 끈다**. 개별 컴포넌트를 손대지 않고 클래스 전체가 닫힌다.
   //   ⚠️ 도매몰은 자체 다크 팔레트를 쓰므로 넣지 않는다(`wholesale-theme`).
+  // 🎬 2026-09-16: `animate-fade-in`·`animate-slide-up`·`animate-overlay-in` 이 소스에 쓰이는데
+  //   keyframes 도 animation 도 **어디에도 없었다** — 클래스가 안 만들어지니 그 요소들은 스르륵
+  //   나타나는 대신 툭 튀어나왔다. 에러가 안 나서 아무도 몰랐다(NotFoundPage 는 설치도 안 된
+  //   tailwindcss-animate 문법을 쓰고 있었다). 의도를 실제로 실행되게 정의한다.
   darkMode: ['variant', '&:is(.dark *):not(.light-island *):not(.seller-light-theme *):not(.admin-light-theme *):not(.agency-light-theme *):not(.force-light-theme *)'],
   content: [
     "./index.html",
@@ -126,6 +130,10 @@ export default {
           info: { DEFAULT: 'var(--tone-info)', bg: 'var(--tone-info-bg)' },
         },
         line: 'var(--line)',
+        // 🩶 2026-09-16: `--wash`(아주 옅은 잉크 면 — 스켈레톤·비활성 칸)는 index.css 에 **있었는데
+        //   이 표에 없어서** `bg-wash` 가 클래스로 만들어지지 않았다(딜 잔액 스켈레톤이 투명했다).
+        //   값에 알파가 이미 들어 있으므로 `/NN` 을 붙이면 안 된다 — 붙이면 또 사라진다.
+        wash: 'var(--wash)',
         // 🎫 2026-09-02 표면 체계 — 카드 안 구분선·outline 테두리는 이 둘로만(테마별 값은 index.css).
         rule: { DEFAULT: 'var(--rule)', strong: 'var(--rule-strong)' },
         warm: 'var(--bg)',     // 페이지 배경 — 라이트 #F8F7FC / 다크 #11141C (index.css)
@@ -153,6 +161,16 @@ export default {
       //   sm 6 · md 8 · lg 10(컨트롤) · xl 14(카드) · 2xl 18(시트/모달) · 3xl 24(히어로)
       //   버튼(.ur-btn 12/10/8)은 컨트롤과 카드 사이에 놓인다 — 카드 안에 들어가는 요소가
       //   카드보다 더 둥글면 안 되기 때문이다(중첩 규칙: 안쪽 ≤ 바깥쪽).
+      keyframes: {
+        'ur-fade-in': { from: { opacity: '0', transform: 'translateY(6px)' }, to: { opacity: '1', transform: 'none' } },
+        'ur-slide-up': { from: { transform: 'translateY(100%)' }, to: { transform: 'none' } },
+        'ur-overlay-in': { from: { opacity: '0' }, to: { opacity: '1' } },
+      },
+      animation: {
+        'fade-in': 'ur-fade-in .28s ease-out both',
+        'slide-up': 'ur-slide-up .24s cubic-bezier(.22,1,.36,1) both',
+        'overlay-in': 'ur-overlay-in .18s ease-out both',
+      },
       borderRadius: {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',

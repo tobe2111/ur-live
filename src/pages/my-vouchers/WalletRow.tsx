@@ -46,7 +46,7 @@ export default function WalletRow({ v, t, onOpen }: {
       <div className="w-[42px] h-[42px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-brand-tint">
         {v.product_image
           ? <img src={cfImage(v.product_image, { width: 140, quality: 82, format: 'auto' }) || v.product_image} alt="" loading="lazy" className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, v.product_image)} />
-          : <Ticket className="w-[18px] h-[18px] text-brand-text/45" strokeWidth={1.6} aria-hidden />}
+          : <Ticket className="w-[18px] h-[18px] text-brand-text opacity-45" strokeWidth={1.6} aria-hidden />}
       </div>
 
       <div className="flex-1 min-w-0">

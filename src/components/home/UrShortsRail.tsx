@@ -215,7 +215,7 @@ export default function UrShortsRail() {
         <div
           ref={railRef}
           onScroll={sync}
-          className="ur-shorts-rail flex snap-x snap-mandatory gap-3 overflow-x-auto"
+          className="scrollbar-hide flex snap-x snap-mandatory gap-3 overflow-x-auto"
         >
           {items.map((it) => (
             <MemoCard

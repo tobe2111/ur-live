@@ -122,6 +122,18 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   outreach_auto_send: boolStr,                 // seller-influencers.routes.ts:251
   promo_bar_enabled: boolStr,                  // public-utility.routes.ts:518
   invite_reward_enabled: boolStr,              // invite-reward.ts:50 (종료된 축)
+  // 🔒 2026-09-16: 소개 커미션 사용 확인 게이트. read-site 는 `payout-use-gate.ts:119` 인데
+  //   비교 좌변이 `String(r.value)` 라 `check-gate-registry` 의 정규식에 **안 걸린다**
+  //   (그 가드는 `키 === 'true'` 형태만 본다). 즉 이 키는 기계가 못 보는 자리에 있었다 —
+  //   'True'/'1' 이 저장되면 켠 줄 알지만 실제로는 꺼진 채 돈다. 그 형태를 가드가 보게 하는 건 별건.
+  payout_requires_voucher_use: boolStr,        // cron/influencer-payout.ts (성숙 게이트)
+  // 🩸 2026-09-16: 아래 셋은 **손잡이(OPS_GATES)는 있는데 값은 아무도 안 보고 있었다.**
+  //   그중 voucher_cart_enabled 는 그때 **라이브에서 켜져 있었다** — 어드민에서 다시 저장할 때
+  //   'True' 가 되면 read-site 의 === 'true' 가 거짓이라 **켠 줄 알지만 꺼진 채** 돈다.
+  //   이제 check-gate-registry 가 두 레지스트리를 다 본다.
+  partial_refund_enabled: boolStr,             // returns/api/return-amount.routes.ts:53 (부분환불 금액 지정)
+  voucher_cart_enabled: boolStr,               // group-buy/api/cart-checkout.routes.ts:40 (이용권 장바구니)
+  ocr_auto_verify_enabled: boolStr,            // worker/utils/ocr-license.ts:175 (서류 자동 판정)
   multi_tier_enabled: boolStr,                 // referral-tree.routes.ts:349 (종료된 축)
 
   // ── enum ──
@@ -148,7 +160,11 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   influencer_store_intro_pct: pct,     // influencer-store-intro-commission.ts:24
   // 🏪 2026-08-27: 유효기간(개월). 미등록이면 무검증 통과라 '열두달' 같은 값도 저장됐다.
   influencer_store_intro_months: intRange(1, 120), // influencer-store-intro-commission.ts isStoreIntroExpired
+  // 무기한 이용권을 정산 판정에서 만료로 볼 때까지의 대기일(미설정 = 코드 기본 180).
+  //   0·음수는 코드가 무시하지만, 저장 단계에서 막는 편이 "왜 안 먹지"를 줄인다.
+  payout_unused_max_wait_days: intRange(1, 3650), // payout-use-gate.ts
   influencer_deal_bonus_pct: pct,      // marketing.routes.ts:679
+  influencer_payout_cash_fee_pct: pct, // 💰 현금 정산 수수료 (기본 0 = 안 걷음) — influencer-payout-math.ts SSOT
   curator_affiliate_pct: pct,
   host_incentive_pct: pct,
   curator_withholding_rate: pct,

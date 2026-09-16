@@ -28,6 +28,7 @@ import SEO from '@/components/SEO'
 import { getUserIdSync } from '@/utils/auth'
 // 🖥️ 2026-07-18 (교환권 PC 2단 분리): 카드/행 + VoucherProduct 타입은 ./vouchers/shared 로 추출(파일크기 래칫).
 import { VoucherCard, VoucherRow, BrandChip, CategoryIcon, type VoucherProduct } from './vouchers/shared'
+import { ChipRowReserve, BrandStripReserve } from './vouchers/TopChromeReserve'
 import { GifticonBoxRailRow } from './vouchers/GifticonBoxEntry'
 import VouchersTopBar from './vouchers/VouchersTopBar'
 import { SortMenu } from '@/components/ui/sort-menu'
@@ -586,11 +587,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
 
       {/* 🛡️ 2026-05-19: 카테고리 바 — 사용자 요청 (전체 탭 X, KT Alpha 분류 그대로).
             2026-05-28: 자체 sticky 제거 — 위 reveal 그룹(wrapper)이 sticky 담당. */}
-      {sections.length === 0 && !sectionsReady && (
-        /* 자리 예약 — 높이는 실측값(칩 행 50px, **테두리 포함**). 시각적 스켈레톤은 두지 않는다(로더 통일 정책).
-           ⚠️ 여기에 border 를 더하면 51px 이 돼 교체 순간 1px 이 밀린다 — 높이만 맞춘다. */
-        <div className="h-[50px]" aria-hidden="true" />
-      )}
+      {/* 자리 예약 — 숫자가 아니라 같은 마크업으로(사유·실측: `./vouchers/TopChromeReserve`). */}
+      {sections.length === 0 && !sectionsReady && <ChipRowReserve />}
       {sections.length > 0 && (
         <div className="bg-warm dark:bg-[#11141C]">
           <div className="ur-content-wide px-4 lg:px-8 py-2.5">
@@ -630,10 +628,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
 
       {/* 🛡️ 2026-05-19: 카테고리별 인기 브랜드 그리드.
           🏭 2026-06-04 (사용자 요청): 브랜드를 클릭(필터)해도 그리드 그대로 유지 + 선택 브랜드 강조. */}
-      {currentBrands.length === 0 && !sectionsReady && (
-        /* 자리 예약 — 높이는 실측값(브랜드 스트립 113px). */
-        <div className="h-[113px]" aria-hidden="true" />
-      )}
+      {currentBrands.length === 0 && !sectionsReady && <BrandStripReserve open={brandsOpen} category={category} />}
       {currentBrands.length > 0 && (
         /* 🎫 2026-06-26 (대표 결정 A): 상단 레이어 정리 — 상품을 위로. py-4→pt-1.5/pb-3, 헤더/로고 컴팩트. */
         <div className="ur-content-wide px-4 lg:px-8 pt-1.5 pb-3">

@@ -31,6 +31,8 @@ export const EXCLUDE = {
     'dist/ 빌드 산출물이 있어야 판정한다. 로컬에서 빌드 없이 돌리면 항상 빨간불.',
   'check-surface-role-leak.mjs':
     'route-chunk-map 이 이번 빌드의 것이어야 한다. 빌드 없이는 스스로 판정을 거부한다.',
+  'check-ghost-classes.mjs':
+    'dist/client/assets 의 **이번 빌드** CSS 와 대조한다. 낡은 dist 로 돌면 방금 정의한 클래스가 유령으로 잡힌다.',
 }
 
 /**

@@ -157,6 +157,24 @@ describe('R4 — 단일 서비스 화면이 공통 서랍에 눌러앉지 않는
     expect(bandOf('/admin/buyer-pool')).toBe('ads')
   })
 
+  it('🔴 공통 데스크에 남긴 단일 서비스 항목은 **라벨에 서비스를 밝힌다**', () => {
+    // 머니·CS 데스크는 어드민이 한 큐로 처리하므로 `common` 에 두되(메뉴를 옮기면 오히려 일이
+    // 쪼개진다), 이름이 다른 서비스와 겹치는 항목은 **라벨**로 구분한다.
+    // `influencer_attributions` 는 전부 유어딜(매장영입 + 공구추천)인데 '인플루언서' 라는 말이
+    // 📣 유어애즈의 외부 수집 DB(`/admin/influencer-pool`)와 겹쳐, 대표가 "어느 쪽이야?" 를
+    // 묻게 만들던 자리다. 대표가 물은 것은 *어느 서비스냐* 이지 *옮겨 달라* 가 아니었다.
+    const labelOf = (path: string) =>
+      NAV_GROUPS.flatMap((g) => g.items).find((i) => i.path === path)?.label ?? ''
+    for (const path of ['/admin/influencer-payouts', '/admin/influencer-disputes']) {
+      expect(labelOf(path), `${path} 라벨에 서비스 표시가 없다`).toMatch(/유어딜/)
+    }
+    // 짝: 유어애즈 쪽은 그 표시를 달지 않는다(달면 둘 다 유어딜처럼 읽힌다).
+    expect(labelOf('/admin/influencer-pool')).not.toMatch(/유어딜/)
+    // 그리고 셋은 **서로 다른 밴드**에 있다 — 라벨 구분이 필요한 이유 자체가 이것이다.
+    expect(bandOf('/admin/influencer-pool')).toBe('ads')
+    expect(bandOf('/admin/influencer-payouts')).toBe('common')
+  })
+
   it('🔴 …그리고 **슈퍼 전용**이다 — 밴드만 옮기면 도매 파트너에게 403 빈화면이 된다', () => {
     // 짝으로 성립하는 결정이다: 도매 밴드(데이터 소속) + super-only(리드 DB 는 내부 자산 · API 가
     // 도매 RBAC 스코프 밖). 한쪽만 되돌리면 조용히 깨지므로 여기서 함께 고정한다.

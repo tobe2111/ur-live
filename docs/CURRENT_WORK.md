@@ -5494,11 +5494,11 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 329건 · 최신순 · 이 목록은 자동 생성된다._
-_총 227건 · 최신순 · 이 목록은 자동 생성된다._
-_총 327건 · 최신순 · 이 목록은 자동 생성된다._
+_총 333건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-16**
+- [셀러가 올린 이용권이 유어샵에 뜨게 — 네 종류 중 한 종류만 알아보고 있었다 (2026-09-16)](handoff/2026-09-16-ushop-voucher-kinds.md)
+- [유어쇼츠 구매 바에 흰 카드가 없었다 — 스케일 밖 불투명도 (2026-09-16)](handoff/2026-09-16-transparent-buy-bar.md)
 - [매장 영입 2% 폐지 — 화면이 하던 거짓 약속을 걷어냄 (2026-09-16)](handoff/2026-09-16-store-intro-abolished.md)
 - [업체 정보 — 세 곳에 흩어진 것을 한 페이지로 (2026-09-16)](handoff/2026-09-16-store-info-one-page.md)
 - [남은 후속 넷을 끝까지 — 서버 첫 화면 확장 · PC 판단 · JS 다이어트 · 잔액 밀림 〔2026-09-16〕](handoff/2026-09-16-remaining-followups.md)
@@ -5613,9 +5613,9 @@ _총 327건 · 최신순 · 이 목록은 자동 생성된다._
 - [이용권 지갑 · 어드민 이모지 · design-slop 가드 구멍 (2026-09-01)](handoff/2026-09-01-wallet-admin-emoji-slop-guard.md)
 - [2026-09-01 — 교환권 탭 상단 두 층 정리 (대표 "나안")](handoff/2026-09-01-vouchers-top-chrome.md)
 - [교환권 화면 — 같은 숫자를 두 번 말하던 할인율 · 앰버 · 이모지 (2026-09-01)](handoff/2026-09-01-vouchers-discount-once.md)
-- [후기 보너스 — 매장 원장 차감 배선 (게이트 OFF)](handoff/2026-09-01-review-bonus-debit.md)
 - [이용권 부분결제 — 딜 일부 + 카드 나머지 (게이트 OFF)](handoff/2026-09-01-voucher-partial-deal.md)
 - [뒤로가기 스크롤 복원 — "어떠한 페이지든 무조건" (2026-09-01)](handoff/2026-09-01-scroll-restoration.md)
+- [후기 보너스 — 매장 원장 차감 배선 (게이트 OFF)](handoff/2026-09-01-review-bonus-debit.md)
 - [인플루언서 DB 읽기 증폭 — 한 달 전 수리가 왜 안 먹었나 (2026-09-01)](handoff/2026-09-01-influencer-db-read-amplification.md)
 - [구매 흐름(상세·장바구니·결제) 디자인 정리 · 가드 두 개 확장 (2026-09-01)](handoff/2026-09-01-funnel-detail-design.md)
 - [이용권 장바구니·결제 — 배송비 판정이 두 화면에서 갈려 있었다 (2026-09-01)](handoff/2026-09-01-cart-checkout-shipping-ssot.md)
@@ -5631,6 +5631,7 @@ _총 327건 · 최신순 · 이 목록은 자동 생성된다._
 - [2026-08-31 — 운영 가이드를 읽을 수 있는 문서로](handoff/2026-08-31-ops-guide-reader.md)
 - [원장 정합 알림 — 숫자가 거짓이었다, 그리고 진짜 5건의 정체 (2026-08-31)](handoff/2026-08-31-ledger-mismatch.md)
 - [2026-08-31 — 영입자 지정 UI + **id 공간 불일치 수리**](handoff/2026-08-31-introducer-assign.md)
+- [현금 정산 수수료 — 마진을 상품이 아니라 현금 출구에서 걷는다](handoff/2026-08-31-influencer-cash-fee.md)
 - [2026-08-31 (2차) — 이미지 폴백 전 표면 배선 · 검색창 경계 실증](handoff/2026-08-31-image-fallback-all-surfaces.md)
 - [시드에서 고쳤는데 라이브가 안 고쳐졌다 — 가이드 한정 해동 (2026-08-31)](handoff/2026-08-31-guide-unfreeze.md)
 - [2차 해동 — 길이로 거르다 놓친 14개 (2026-08-31)](handoff/2026-08-31-guide-unfreeze-2.md)
