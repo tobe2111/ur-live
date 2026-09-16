@@ -23,6 +23,15 @@ on:
       - 'src/components/home/**'
       - 'src/components/main/**'
       - 'src/pages/vouchers/**'
+      # 🩸 2026-09-16: 머니 화면이 **경로 필터에도 없었다.** 목록에는 `/checkout` 이 있었는데
+      #   PR 이 `CheckoutPage` 를 고쳐도 이 검사는 안 돌았다 — 그리고 실제로 그 화면의 입력 두 개가
+      #   다크에서 흰 글자·흰 배경(1:1)이었다. 목록에 넣는 것만으로는 부족하고 **언제 도는가**도 맞아야 한다.
+      - 'src/pages/CheckoutPage.tsx'
+      - 'src/pages/checkout/**'
+      - 'src/pages/CartPage.tsx'
+      - 'src/pages/PaymentSuccessPage.tsx'
+      - 'src/pages/TossWidgetPayPage.tsx'
+      - 'src/components/payments/**'
       - 'scripts/check-dark-contrast.mjs'
       - 'scripts/dark-contrast-baseline.json'
 
