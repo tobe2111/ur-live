@@ -109,6 +109,51 @@ if (file.size > 5 * 1024 * 1024) { toast.error('5MB 이하 이미지만 가능�
 주입 러너가 잡았고, **모양이 아니라 "그 줄이 게이트 없이 렌더되는가"** 로 앵커를 바꿨다.
 ⇒ 배선 가드는 *존재*가 아니라 *도달*을 재야 한다.
 
+## ✅ 머지·배포 완료 — [E3] (2026-09-16)
+
+- 스쿼시 머지 `535de060` (PR #1474). 배포 4종 전부 성공(Pages · Worker cron · ur-wholesale · ur-ads).
+- 라이브 번들 교체 확인: `index-CjohCfCM.js` → `index-3wwlMoSZ.js`.
+- **Workers AI 바인딩이 라이브에 살아 있다**(대표가 Pages production 에 붙인 것). 무비용 프로브로 확인 —
+  서류 없는 셀러로 OCR 을 부르면 `AI_UNAVAILABLE` 이 아니라 **`제출된 사업자등록증 이미지가 없습니다`**
+  가 온다(= `if (!c.env.AI)` 를 통과해 그 다음 단계까지 갔다는 뜻).
+  ```
+  curl -sS -X POST "https://live.ur-team.com/api/admin/sellers/14/business-registration/ocr" \
+    -H "Authorization: Bearer $TOK" -H "User-Agent: $UA" -H 'Content-Type: application/json' --data '{}'
+  ```
+  ⚠️ 이 프로브는 **추론을 안 태운다** — 서류가 없어 모델 호출 전에 끊긴다. 바인딩 확인용으로 재사용할 것.
+- Notion 개발 업데이트 로그 2행 기록 완료.
+
+## ⛔ E4 는 아직 — 판정에 **실물 서류**가 필요하다
+
+`GET /api/admin/sellers/business-registration/pending` 이 **0건**이다(2026-09-16 실측).
+읽을 사진이 없어서 정확도를 못 쟀다. 막힌 게 아니라 **입력이 없는 것**이다.
+
+**다음 세션의 첫 액션**: 위 대기 목록을 다시 조회 → 1건이라도 있으면
+`POST /api/admin/sellers/:id/business-registration/ocr` (필요시 `?kind=business_license`) 를 5건 돌려
+`extracted.fill` 평균과 `verdict` 분포를 기록하고 `docs/STAGING_CHECKLIST.md` 의 S-OCR-1~10 을 채운다.
+0건이면 **대표에게 실사진 한 건을 요청**하고 그 전엔 게이트 이야기를 꺼내지 말 것.
+
+## 🩸 이번 세션에서 가드가 헛돈 것 — **세 번**, 전부 같은 클래스
+
+전부 *"문자열이 남아 있어서 통과"* 다. 주입 러너가 셋 다 잡았다.
+1. 주소 파서 — 방어가 **둘**이라 하나만 지우면 재현이 안 됐다(순진한 구현으로 통째 교체해야 빨간불).
+2. 어드민 패널 배선 — `toMatch(/<OcrComparePanel\b/)` 가 `{false && <OcrComparePanel …/>}` 로 꺼도 초록
+   (import 줄도 같은 함정). ⇒ **그 줄이 게이트 없이 렌더되는가**로 교체.
+3. 영업신고증 버튼 게이트 — 같은 게이트가 둘(버튼·보기 링크)이 되자 버튼을 열어 놔도
+   **링크 쪽이 단언을 만족**시켰다. ⇒ 버튼 블록이 그 게이트 **안에** 있는지 본다.
+
+⇒ **배선 가드는 *존재*가 아니라 *도달*을 재야 한다.**
+⚠️ 그리고 정규식 함정 하나: `<button[^>]*` 는 **화살표 함수의 `>`** 에서 멈춘다. `[\s\S]{0,N}?` 를 쓸 것.
+
+## 🧰 이번에 새로 안 운영 사실
+
+- **Verify 가 두 번 조용히 안 붙었다**(`49356bc50` · `fb8379901`). `check-runs` 만 보면 "안 붙음"과
+  "도는 중"이 **똑같아 보인다** → `GET /actions/runs?branch=<브랜치>` 로 판정하고, 없으면 main 병합 푸시로 재부착.
+- **머지는 세션이 한다**(CLAUDE.md 신규 절). MCP 쓰기가 rate limit 이어도 `curl https://api.github.com/...`
+  는 **앱 설치 토큰**이라 별도 버킷이고 멀쩡하다. 이번 머지도 curl 로 했다.
+- main 병합 충돌은 **자동 생성 3파일**에서 난다 — `route-chunk-map.ts` · `auto-reference.ts` ·
+  `docs/proposals/*.md`. 전부 **main 것을 받고** 재생성시키면 된다.
+
 ## 남은 결정 / 대기
 
 - **자동 승인 게이트 ON** — 대표 판단(등급 C). 실사진 정확도 실측이 선행.
