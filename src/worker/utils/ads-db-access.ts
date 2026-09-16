@@ -13,6 +13,11 @@
  * 대행사에게 이 목록은 **우리 상품 그 자체**다. 한 번 복사되면 되돌릴 방법이 없다(단방향 문).
  * 반대로 정상 매장을 잘못 막는 비용은 "문의 → 해제" 몇 분이다. **비대칭이므로 막는 쪽으로 기운다.**
  *
+ * ## 2026-09-16 추가 — **승인 전에는 아예 안 열린다**
+ * 대표: *"유어애즈 인플루언서 DB는 보이지 않게 하자 반려 아닌 승인까지는."*
+ * 같은 날 대기·반려 상태에서도 대시보드를 쓸 수 있게 했으므로(당근 모델), **가입만 하면
+ * 열리는 문**이 새로 생겼다. `sellers.status ∈ (approved, active)` 를 여기서 함께 본다.
+ *
  * ## 판정 신호 — 이미 등록 시점에 기록돼 있다
  * `POST /api/seller/stores` 는 등록 유형을 반드시 받는다(직접 = 내 가게 / 중개 = 관리 대행):
  *   - `seller_meta.store_channel` = `'direct'` | `'brokered'`
@@ -37,6 +42,7 @@ import type { D1Database } from '@cloudflare/workers-types'
 
 export type AdsDbDenyCode =
   | 'ADS_DB_AGENCY_BLOCKED'   // 등록 유형이 '중개(관리 대행)'
+  | 'ADS_DB_NOT_APPROVED'     // 매장 심사가 아직 — 대기 또는 반려
   | 'ADS_DB_ADMIN_DENIED'     // 대표가 개별 차단
   | 'ADS_DB_QUOTA_EXCEEDED'   // 일일 열람 상한 도달
 
@@ -70,6 +76,18 @@ export async function resolveAdsDbAccess(DB: D1Database, sellerId: number): Prom
     }
   }
 
+  // ②' 매장 심사 — **승인된 매장만** (2026-09-16 대표 지시).
+  //    같은 날 대기·반려 상태에서도 셀러 대시보드를 열어 줬다(당근 모델). 그 전까지는
+  //    `switch-to-seller` 가 비승인 계정에 토큰을 안 줬으므로 **여기 올 수조차 없었다** —
+  //    문을 열면서 이 조건을 안 넣으면, 가입만 하면 누구나 44,000행을 볼 수 있게 된다.
+  //    ⚠️ 판정은 **토큰이 아니라 DB** 를 본다. JWT 의 `status` 는 7일짜리 스냅샷이라
+  //       반려된 뒤에도 옛 토큰으로 계속 열린다.
+  const st = await DB.prepare('SELECT status FROM sellers WHERE id = ? LIMIT 1')
+    .bind(sellerId).first<{ status: string }>().catch(() => null)
+  if (!st || !['approved', 'active'].includes(String(st.status || ''))) {
+    return { allowed: false, code: 'ADS_DB_NOT_APPROVED', error: NOT_APPROVED_MSG }
+  }
+
   // ② 등록 유형 — **명시적으로 저장된 'brokered' 만** 차단(미저장은 판단 근거가 아니다).
   const ch = await DB.prepare(
     "SELECT value FROM seller_meta WHERE seller_id = ? AND key = 'store_channel' LIMIT 1",
@@ -93,6 +111,10 @@ export async function resolveAdsDbAccess(DB: D1Database, sellerId: number): Prom
 
   return { allowed: true, reason: ch?.value === 'direct' ? 'direct' : 'unclassified' }
 }
+
+const NOT_APPROVED_MSG =
+  '인플루언서 DB 는 매장 승인이 끝난 뒤에 열립니다. ' +
+  '사업자등록증 사본이 도착하면 보통 1영업일 안에 심사가 끝납니다.'
 
 const AGENCY_MSG =
   '인플루언서 DB 는 매장(직접 등록) 계정에만 열립니다. ' +

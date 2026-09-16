@@ -19,6 +19,7 @@ import { HOSTING_HIDDEN, LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
 import { isStoreOwner } from '@/shared/seller-roles'
 import { NAV_GROUPS, SELLER_SEARCH_ONLY, type SellerType } from '@/components/seller/seller-nav'
 import { SELLER_TAB_GROUPS } from '@/components/seller/seller-tab-groups'
+import { readSellerStatus, shouldHideAdsDbNav } from '@/shared/seller-approval'
 import { SELLER_PRIMARY_NAV, activePrimaryKey, isCoveredByPrimary, type SellerPrimaryKey } from '@/components/seller/seller-primary-nav'
 import type { CommandItem } from '@/components/dashboard/CommandPalette'
 
@@ -36,6 +37,7 @@ export function useSellerNavModel() {
   // 🏁 2026-06-14: 라이브 영구중단 후엔 seller_type(크리에이터/매장)으로만 분기한다. live 항목은 항상 숨김.
   //   user 세션 의존 항목(/host·/u/me/earnings)은 user_id 가 있을 때만 — 없으면 클릭 시 /login 으로 튕긴다.
   const hasUserSession = typeof window !== 'undefined' && !!localStorage.getItem('user_id')
+  const sellerStatus = readSellerStatus()
   const filteredNavGroups: NavGroup[] = NAV_GROUPS
     .filter(group => !group.hideFor?.includes(sellerType))
     .map(group => ({
@@ -48,6 +50,12 @@ export function useSellerNavModel() {
           if (itemMode === 'store' && !isStoreOwner(sellerType)) return false
         }
         if (item.path === '/host' && HOSTING_HIDDEN) return false
+        // 🔒 2026-09-16 (대표 — *"유어애즈 인플루언서 DB는 … 승인까지는 보이지 않게"*).
+        //   서버가 진짜 벽이다(`ads-db-access.ts`) — 여기는 **승인 전 사장님에게 열리지 않는 문을
+        //   안 보여 주는 것**뿐이다. 값은 `SellerApprovalBanner` 가 매 대시보드 진입마다 써 준다.
+        //   ⚠️ 값이 **없으면 보여 준다**(fail-open). 옛 로그인 세션에는 아직 이 키가 없고,
+        //      없다고 숨기면 멀쩡한 매장의 메뉴가 사라진다 — 어차피 서버가 막는다.
+        if (item.path === '/seller/influencers' && shouldHideAdsDbNav(sellerStatus)) return false
         if ((item.path === '/host' || item.path === '/u/me/earnings') && !hasUserSession) return false
         return true
       }),

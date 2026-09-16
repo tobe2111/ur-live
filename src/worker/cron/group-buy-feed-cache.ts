@@ -19,6 +19,8 @@ import type { Env } from '../types/env'
 import { swallow } from '../utils/swallow'
 import { VOUCHER_CATEGORIES } from '../../shared/constants/voucher-categories'
 import { sliceCardGallery } from '../../features/group-buy/api/card-gallery'
+// 🏪 2026-09-16: 라이브 라우트와 **같은 술어**를 쓴다 — 캐시가 갈리면 승인 전 매장이 캐시로만 샌다.
+import { approvedSellerProductSql } from '../../shared/db/consumer-visible-product'
 
 const STATUSES = ['active', 'achieved', 'expired', 'all'] as const
 
@@ -136,6 +138,7 @@ export async function handleGroupBuyFeedCache(env: Env): Promise<{
           WHERE p.category IN (${placeholders}) AND p.is_active = 1
             ${status === 'all' ? '' : 'AND p.group_buy_status = ?'}
             AND NOT (COALESCE(p.is_supply_product,0) = 1 AND COALESCE(p.supply_source_id,0) = 0)
+            AND ${approvedSellerProductSql('p')}
           ORDER BY (CASE WHEN COALESCE(p.slug,'') LIKE 'demo-%' THEN 1 ELSE 0 END), p.created_at DESC
           LIMIT 50
         `).bind(...categories, ...(status === 'all' ? [] : [status])).all()

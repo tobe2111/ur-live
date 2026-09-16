@@ -37,18 +37,35 @@ describe('🪪 가입 앞문 — 등록증 사본', () => {
     expect(p).toMatch(/id=["']f-cert["']/)
   })
 
-  it('첨부가 없으면 제출이 막힌다 (조용히 통과하지 않는다)', () => {
+  /**
+   * 🥕 2026-09-16 대표 *"복잡해서도 안되긴 하는데.."* → 앞문은 **선택**으로 바뀌었다.
+   *
+   * 막을 이유가 없다: 승인 전엔 어차피 못 팔고(`status='pending'`), 사후 업로드 경로가 이미
+   * 있으며(`/seller/business-info`), 대시보드 배너가 도착할 때까지 계속 알린다.
+   * 대신 **가장 좋은 순간에 권한다** — 사장님은 지금 등록증을 손에 들고 번호를 옮겨 적는 중이다.
+   *
+   * ⚠️ 그래서 이 시험은 "막히는가" 가 아니라 **"막지 않는가"** 를 고정한다. 제출 게이트가
+   *    슬그머니 돌아오면 가입 전환율이 떨어지는데 그건 **에러가 아니라 이탈**이라 안 보인다.
+   */
+  it('첨부가 없어도 제출을 막지 않는다 (선택 — 대표 확정)', () => {
     const p = page()
     const sub = p.slice(p.indexOf('async function submit'))
     const body = sub.slice(0, sub.indexOf('setLoading(true)'))
-    expect(body, '제출 함수가 certUrl 을 안 보면 빈 채로 가입된다').toContain('!certUrl')
-    expect(body, '막았으면 그 자리로 데려가야 한다 — 토스트만으로는 어느 칸인지 모른다').toContain("'f-cert'")
+    expect(body, '앞문 등록증은 선택이다 — 제출 게이트가 돌아오면 안 된다').not.toContain('!certUrl')
   })
 
-  it('진행 표시가 등록증을 센다 — 바가 "N/N" 인데 막히면 고장으로 읽힌다', () => {
+  it('진행 표시가 등록증을 세지 않는다 — 선택 항목을 분모에 넣으면 영영 5/6 이다', () => {
     const p = page()
-    expect(p).toMatch(/filledRequired\(form\)\s*\+\s*\(certUrl\s*\?\s*1\s*:\s*0\)/)
-    expect(p, '분모를 안 고치면 5/6 이 아니라 6/5 가 된다').not.toMatch(/필수 \{\{filled\}\} \/ 5/)
+    expect(p).not.toMatch(/filledRequired\(form\)\s*\+\s*\(certUrl\s*\?\s*1\s*:\s*0\)/)
+    expect(p, '분모는 필수 칸 수 그대로여야 한다').toMatch(/필수 \{\{filled\}\} \/ 5/)
+  })
+
+  it('사본이 아직 없다는 사실을 화면이 알 수 있다 (배너가 읽는 신호)', () => {
+    const r = route()
+    expect(r, '상태 응답에 도착 여부가 없으면 배너가 무엇을 말할지 정할 수 없다')
+      .toContain('has_business_cert')
+    expect(r, '등록증 **URL 을 내보내면** 남의 서류 주소가 응답에 실린다 — boolean 이면 충분하다')
+      .toMatch(/has_business_cert:\s*!!/)
   })
 
   it('서버로 실제로 보낸다 (칸만 있고 안 보내면 아무 일도 안 일어난다)', () => {
