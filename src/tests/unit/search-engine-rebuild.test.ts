@@ -144,7 +144,7 @@ describe('⑤ 검색 결과 UI — 이용권 행으로', () => {
   })
 
   it('행을 누르면 이용권 상세로 간다', () => {
-    expect(page).toMatch(/onSelect=\{\(r\) => navigate\(`\/group-buy\/\$\{r\.id\}`\)\}/)
+    expect(page).toMatch(/onSelect=\{\(r\) => navigate\(`\/pass\/\$\{r\.id\}`\)\}/)
   })
 
   it('홈의 행 마크업은 옮기기만 했다 — 원본 파일이 그 행을 import 해 쓴다', () => {
