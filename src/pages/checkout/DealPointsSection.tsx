@@ -37,7 +37,7 @@ export default function DealPointsSection({ dealBalance, dealToUse, setDealToUse
           }}
           placeholder={t('checkout.deal.inputPlaceholder', { defaultValue: '사용할 딜 입력' })}
           aria-label={t('checkout.deal.inputAriaLabel', { defaultValue: '사용할 딜 포인트 입력' })}
-          className="flex-1 min-w-0 px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-lg text-sm bg-white dark:bg-[#1D1F29] text-gray-900 dark:text-white text-right font-medium placeholder:text-gray-400 dark:placeholder:text-gray-500"
+          className="flex-1 min-w-0 px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-lg text-sm bg-surface text-gray-900 dark:text-white text-right font-medium placeholder:text-gray-400 dark:placeholder:text-gray-500"
         />
         <button
           onClick={() => setDealToUse(Math.min(dealBalance, totalBeforeDeal))}

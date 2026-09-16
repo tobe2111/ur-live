@@ -45,11 +45,18 @@
    `background-color: transparent`(늘 밝은 표면 `light-island`·`*-light-theme` **안쪽은 제외**).
    배경을 **명시한** 입력(`bg-gray-50 dark:bg-[#1D1F29]` 등)은 한 픽셀도 안 바뀐다.
 
-   ⚠️ **왜 안 바뀌는지 처음에 틀리게 적었다**: "`@layer base` 라서 utilities 레이어가 이긴다"고
-   썼는데, **Tailwind v3 는 `@layer` 를 빌드에서 걷어낸다**(산출 CSS 에 `@layer` **0개** — 실측).
-   승자를 정하는 건 특이도다: 이 규칙 (0,6,1) vs `dark:bg-*` 컴파일 결과 (0,7,0) ⇒ 명시한 쪽이 이긴다.
-   `bg-white` 만 있고 `dark:` 변형이 없는 입력(0,1,0)은 이 기본값이 이기는데 **그게 의도다**
-   (그것도 같은 결함이다). 결과는 맞았지만 **근거가 틀리면 다음 세션이 잘못 추론한다.**
+   ⚠️ **여기서 두 번 고쳤다.**
+   ① 처음엔 "`@layer base` 라서 utilities 레이어가 이긴다"고 적었는데 **틀렸다** —
+      Tailwind v3 는 `@layer` 를 빌드에서 걷어낸다(산출 CSS 에 `@layer` **0개**, 실측).
+      승자를 정하는 건 특이도다.
+   ② 그래서 평범하게 쓴 `.dark input:not(…)` 은 **(0,6,1)** 이었고, 그건 `bg-surface`(0,1,0)
+      **같은 디자인 토큰까지 이겨 버린다** — 토큰을 써도 조용히 무시되는 함정이다.
+      실제로 pre-push 게이트가 내 `dark:bg-[#1D1F29]` 를 "손으로 박은 색"으로 잡아 주지 않았다면
+      그대로 갔다. ⇒ 규칙 전체를 `:where()` 로 감싸 **(0,0,0)** 으로 만들었다. 이제
+      배경을 어떤 형태로든 선언한 입력이 **언제나** 이긴다.
+      뒤쪽 제외 구문까지 감싼 것도 일부러다(안 감싸면 (0,1,0) 동점 → 승자가 소스 순서에 달린다).
+   ⇒ 대신 `bg-white` 만 있고 `dark:` 변형이 없는 입력은 이 기본값이 **못 고친다.**
+      그건 `check-theme-consistency` 가 잡는 별개 결함이다(현재 GREEN).
 2. **호출부 2곳**(`checkout/CouponSection` · `checkout/DealPointsSection`) — 배경 명시 +
    `dark:text-gray-500` → `dark:placeholder:text-gray-500` 오타(placeholder 규칙이 아니라
    **글자색 규칙**이 되어 `dark:text-white` 와 다투고 있었다).
@@ -70,6 +77,9 @@
   ⇒ 전역 CSS 는 반드시 **양쪽 방향**(고쳐졌나 / 멀쩡하던 게 깨졌나)을 재고 나서 커밋할 것.
 - **`@layer` 로 이긴다고 적었는데 틀렸다**(위 참조). 산출 CSS 를 열어 보고서야 알았다.
 - **`pkill -f probe-tmp` 로 내가 방금 띄운 프로세스를 죽였다**(자기 패턴 매칭). PID 로 죽일 것.
+- **디자인 토큰이 있는데 hex 를 손으로 박았다.** `--surface` 가 정확히 `#FFFFFF`/`#1D1F29` 쌍인데
+  `bg-white dark:bg-[#1D1F29]` 로 썼다. **pre-push 게이트가 18초 만에 잡았다** — 그게 없었으면
+  CI 57분을 태웠을 것이고, 더 나쁘게는 위 ②(토큰이 무시되는 함정)를 영영 못 봤을 것이다.
 - **`audit-gate` 타임아웃(143)이 자식 `check-guard-mutations -s` 를 안 죽였다** — CLAUDE.md 가
   경고한 그대로다. `git status` 에 남의 주입분(`company-subcat-yield.ts`)이 떠 있었고,
   그대로 `git add -A` 했으면 주입된 결함을 커밋할 뻔했다. **PID 로 죽이고 트리를 확인한 뒤** 커밋했다.

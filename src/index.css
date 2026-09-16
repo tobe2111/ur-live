@@ -871,15 +871,20 @@ textarea::placeholder {
    ⚠️ 한 곳씩 고치면 계속 다시 자란다 — 이 레포가 이 클래스를 반복해 만든 이유가 그것이다.
    ⇒ **기본값을 고친다**: 배경을 안 준 입력은 뒤 표면을 그대로 비춘다(다크 표면 → 밝은 글자 가독).
 
-   🔑 **왜 명시한 입력은 안 바뀌나 — 레이어가 아니라 특이도다.**
+   🔑 **`:where()` 로 특이도를 0 으로 만든 것이 핵심이다 — 이건 "기본값"이지 "강제"가 아니다.**
       처음엔 "`@layer base` 라서 utilities 레이어가 이긴다"고 적었는데 **틀렸다.** Tailwind v3 는
-      `@layer` 를 빌드에서 **걷어낸다**(실측: 산출 CSS 에 `@layer` 0개) — 그러면 레이어 순서가 아니라
-      특이도가 승자를 정한다. 실제 계산: 이 규칙은 (0,6,1) 이고, `dark:bg-[#1D1F29]` 는 컴파일되며
-      `:is(.dark *):not(.light-island *)…` 사슬이 붙어 **(0,7,0)** 이 된다 ⇒ 명시한 쪽이 이긴다.
-      반대로 `bg-white` 만 있고 `dark:` 변형이 없는 입력은 (0,1,0) 이라 이 기본값이 이기는데,
-      **그게 의도다** — 그런 입력이 바로 다크에서 흰 배경으로 남는 같은 결함이기 때문.
-      (`@layer base` 는 그대로 둔다: 저자 의도이고, Tailwind v4 의 네이티브 레이어에서는 실제로 작동한다.)
-      실측으로 확인한 것 — `/search`(명시) 불변 · `/mypage/addresses`(미명시) 수리 · `/map`(섬) 불변.
+      `@layer` 를 빌드에서 **걷어낸다**(실측: 산출 CSS 에 `@layer` 0개) — 그러면 레이어가 아니라
+      특이도가 승자를 정하고, 평범하게 쓴 `.dark input:not(…)` 은 (0,6,1) 이라 **`bg-surface`(0,1,0)
+      같은 토큰까지 이겨 버린다**(= 토큰이 조용히 무시된다. 다음 사람이 절대 못 찾을 함정).
+      `:where()` 는 인자의 특이도를 0 으로 만들므로 이 규칙은 **(0,0,0)** 이 되고, **배경을 어떤
+      형태로든 선언한 입력이 언제나 이긴다** — `bg-surface` · `dark:bg-[…]` · `bg-transparent` 전부.
+      ⚠️ 뒤쪽 제외 구문까지 `:where()` 로 감싼 것이 일부러다: 안 감싸면 (0,1,0) 이 되어
+         `bg-surface`(0,1,0)와 **동점**이 되고, 승자가 소스 순서에 달리게 된다. 지금은 우연히
+         맞지만, 순서에 기대는 규칙은 다음 빌드 도구 변경 한 번에 조용히 뒤집힌다.
+      ⚠️ 대신 `bg-white` 만 있고 `dark:` 변형이 없는 입력은 이 기본값이 **못 고친다.**
+         그건 원래 `check-theme-consistency` 가 잡는 별개 결함이다(라이트 토큰의 `dark:` 누락).
+      실측으로 확인한 것 — `/search`·결제 입력(명시) 의도대로 · `/mypage/addresses`(미명시) 수리 ·
+      `/map`(섬) 불변.
    🏝️ `light-island`·`*-light-theme` 안에서는 뒤 표면이 흰색이고 글자는 위 블록이 `!important` 로
       잉크색을 강제하므로 그대로 읽힌다.
    회귀 감시: `scripts/check-dark-contrast.mjs`(실제 렌더 대비 측정). */
@@ -890,9 +895,7 @@ textarea::placeholder {
      🩸 실제로 이 수리 첫 판이 그랬다: `/map` 검색창이 `rgb(22,24,28)` 글자 / `rgb(29,31,41)` 배경.
         렌더로 재 보고서야 알았다. 제외 구문은 `tailwind.config.js` 의 dark variant 가 이미 쓰는
         같은 형태다(`&:is(.dark *):not(.light-island *)`). */
-  .dark input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not(:is(.light-island, .force-light-theme, .admin-light-theme, .seller-light-theme, .agency-light-theme) *),
-  .dark textarea:not(:is(.light-island, .force-light-theme, .admin-light-theme, .seller-light-theme, .agency-light-theme) *),
-  .dark select:not(:is(.light-island, .force-light-theme, .admin-light-theme, .seller-light-theme, .agency-light-theme) *) {
+  :where(.dark) :where(input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']), textarea, select):where(:not(:is(.light-island, .force-light-theme, .admin-light-theme, .seller-light-theme, .agency-light-theme) *)) {
     background-color: transparent;
   }
 }
