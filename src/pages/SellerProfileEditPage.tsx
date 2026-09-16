@@ -79,16 +79,6 @@ export default function SellerProfileEditPage() {
   
   const [uploadingImage, setUploadingImage] = useState(false)
   const [activeTab, setActiveTab] = useState<'profile' | 'business' | 'personal' | 'password'>('business')
-  const [formData, setFormData] = useState({
-    profile_image: '',
-    bio: '',
-    sns_instagram: '',
-    sns_youtube: '',
-    sns_facebook: '',
-    sns_twitter: '',
-    website_url: '',
-    kakao_chat_link: '',
-  })
 
   // 언마운트 시 setTimeout 정리 (setState on unmounted component 방지)
   useEffect(() => {
@@ -161,37 +151,6 @@ export default function SellerProfileEditPage() {
       if (import.meta.env.DEV) console.error('Failed to update shipping:', error)
       const axiosErr = error as { response?: { data?: { error?: string } } }
       setErrorMessage(axiosErr.response?.data?.error || t('seller.shippingSaveFailed', { defaultValue: '배송 설정 저장에 실패했습니다' }))
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function handleSaveProfile() {
-    setSaving(true)
-    setSuccessMessage('')
-    setErrorMessage('')
-
-    try {
-      const response = await api.patch('/api/seller/profile', {
-        profile_image: formData.profile_image,
-        bio: formData.bio,
-        sns_instagram: formData.sns_instagram,
-        sns_youtube: formData.sns_youtube,
-        sns_facebook: formData.sns_facebook,
-        sns_twitter: formData.sns_twitter,
-        website_url: formData.website_url,
-        kakao_chat_link: formData.kakao_chat_link,
-      })
-
-      if (response.data.success) {
-        setProfile(response.data.data)
-        setSuccessMessage(t('seller.profileUpdateSuccess'))
-        if (successTimerRef.current) clearTimeout(successTimerRef.current); successTimerRef.current = setTimeout(() => setSuccessMessage(''), 3000)
-      }
-    } catch (error: unknown) {
-      if (import.meta.env.DEV) console.error('Failed to update profile:', error)
-      const axiosErr = error as { response?: { data?: { error?: string } } }
-      setErrorMessage(axiosErr.response?.data?.error || t('seller.profileUpdateFailed'))
     } finally {
       setSaving(false)
     }
@@ -332,13 +291,6 @@ export default function SellerProfileEditPage() {
     }
   }
 
-  async function handleSave() {
-    // Dispatch to the appropriate save handler based on active tab
-    if (activeTab === 'profile') await handleSaveProfile()
-    else if (activeTab === 'business') await handleSaveBusiness()
-    else if (activeTab === 'personal') await handleSavePersonal()
-    else if (activeTab === 'password') await handleChangePassword()
-  }
 
   if (loading) {
     return (
@@ -356,7 +308,7 @@ export default function SellerProfileEditPage() {
         {/* 🛡️ 2026-04-22 배치 129: 디자인 시스템 적용 */}
         <DashboardPageHeader
           title={t('seller.profileEdit')}
-          subtitle={t('seller.profileEditSubtitle', { defaultValue: '셀러 프로필 · 소개 · SNS 링크 관리' })}
+          subtitle={t('seller.profileEditSubtitle', { defaultValue: '카카오 연동 · 보안 PIN · 배송 설정' })}
           icon={<User className="h-5 w-5" />}
         />
 
@@ -375,185 +327,10 @@ export default function SellerProfileEditPage() {
           </div>
         )}
 
-        {/* Public Page Preview */}
-        {profile && (
-          <div className="mb-8 apple-card p-6 bg-[var(--brand-tint)] border-2 border-brand/20">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <ExternalLink className="h-5 w-5 text-brand" />
-                  <h3 className="text-[17px] font-semibold text-[#1d1d1f]">
-                    {t('seller.publicPagePreview')}
-                  </h3>
-                </div>
-                <p className="text-[13px] text-[#6e6e73] mb-3">
-                  {t('seller.changesSaveNotice')}
-                </p>
-                <a
-                  href={`/s/${profile.id}`}
-                  target="_blank" rel="noopener noreferrer"
-                  className="ur-btn ur-btn-md ur-btn-primary inline-flex items-center gap-2 transition-colors text-[13px]"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                  {t('seller.viewPublicPage')}
-                </a>
-              </div>
-            </div>
-          </div>
-        )}
-
+        {/* 🏪 2026-09-16 (대표 — "업체 정보 입력하는 페이지는 하나로 통일"): 대표 이미지·소개글·SNS·홈페이지·
+            카톡 채널이 이 페이지에서 **업체 정보**(`/seller/store`)로 옮겨졌다. 같은 값을 두 화면에서 고칠 수
+            있으면 반드시 한쪽이 낡고, 사장님은 "분명 고쳤는데" 를 겪는다. 여기 남은 것은 계정·운영뿐이다. */}
         <div className="space-y-6">
-          {/* Profile Image Section */}
-          <div className="apple-card p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-brand/10 rounded-full flex items-center justify-center">
-                <ImageIcon className="h-5 w-5 text-brand" />
-              </div>
-              <div>
-                <h2 className="text-[17px] font-semibold text-[#1d1d1f]">{t('seller.profileImage')}</h2>
-                <p className="text-[13px] text-[#6e6e73]">{t('seller.enterImageUrl')}</p>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              {/* Image Preview */}
-              {formData.profile_image && (
-                <div className="flex justify-center">
-                  <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-[#e5e5ea]">
-                    <img
-                      src={formData.profile_image}
-                      alt="Profile preview"
-                      loading="lazy"
-                      decoding="async"
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = ''
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <label className="block text-[13px] font-medium text-[#1d1d1f] mb-2">
-                  {t('seller.imageUrl')}
-                </label>
-                <input
-                  type="text"
-                  value={formData.profile_image}
-                  onChange={(e) => setFormData({ ...formData, profile_image: e.target.value })}
-                  placeholder="https://example.com/profile.jpg"
-                  className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
-                />
-                <p className="mt-2 text-[11px] text-[#6e6e73]">
-                  {t('seller.recommendSquare')}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Bio Section */}
-          <div className="apple-card p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-[#34c759]/10 rounded-full flex items-center justify-center">
-                <MessageSquare className="h-5 w-5 text-[#34c759]" />
-              </div>
-              <div>
-                <h2 className="text-[17px] font-semibold text-[#1d1d1f]">{t('seller.bio')}</h2>
-                <p className="text-[13px] text-[#6e6e73]">{t('seller.enterBio')}</p>
-              </div>
-            </div>
-
-            <div>
-              <textarea
-                value={formData.bio}
-                onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                placeholder={t('seller.bioPlaceholder')}
-                rows={4}
-                maxLength={500}
-                className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent resize-none"
-              />
-              <p className="mt-2 text-[11px] text-[#6e6e73] text-right">
-                {formData.bio.length}/500
-              </p>
-            </div>
-          </div>
-
-          {/* SNS Links Section */}
-          <div className="apple-card p-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 bg-[#ff3b30]/10 rounded-full flex items-center justify-center">
-                <User className="h-5 w-5 text-[#ff3b30]" />
-              </div>
-              <div>
-                <h2 className="text-[17px] font-semibold text-[#1d1d1f]">{t('seller.snsLinks')}</h2>
-                <p className="text-[13px] text-[#6e6e73]">{t('seller.connectSns')}</p>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              {/* Instagram */}
-              <div>
-                <label className="flex items-center gap-2 text-[13px] font-medium text-[#1d1d1f] mb-2">
-                  <Instagram className="h-4 w-4 text-[#e4405f]" />
-                  Instagram
-                </label>
-                <input
-                  type="text"
-                  value={formData.sns_instagram}
-                  onChange={(e) => setFormData({ ...formData, sns_instagram: e.target.value })}
-                  placeholder="username"
-                  className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
-                />
-              </div>
-
-              {/* YouTube */}
-              <div>
-                <label className="flex items-center gap-2 text-[13px] font-medium text-[#1d1d1f] mb-2">
-                  <Youtube className="h-4 w-4 text-[#ff0000]" />
-                  YouTube
-                </label>
-                <input
-                  type="text"
-                  value={formData.sns_youtube}
-                  onChange={(e) => setFormData({ ...formData, sns_youtube: e.target.value })}
-                  placeholder="@username"
-                  className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
-                />
-              </div>
-
-              {/* Facebook */}
-              <div>
-                <label className="flex items-center gap-2 text-[13px] font-medium text-[#1d1d1f] mb-2">
-                  <Facebook className="h-4 w-4 text-[#1877f2]" />
-                  Facebook
-                </label>
-                <input
-                  type="text"
-                  value={formData.sns_facebook}
-                  onChange={(e) => setFormData({ ...formData, sns_facebook: e.target.value })}
-                  placeholder="username"
-                  className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
-                />
-              </div>
-
-              {/* Twitter */}
-              <div>
-                <label className="flex items-center gap-2 text-[13px] font-medium text-[#1d1d1f] mb-2">
-                  <Twitter className="h-4 w-4 text-[#1da1f2]" />
-                  Twitter (X)
-                </label>
-                <input
-                  type="text"
-                  value={formData.sns_twitter}
-                  onChange={(e) => setFormData({ ...formData, sns_twitter: e.target.value })}
-                  placeholder="@username"
-                  className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
-                />
-              </div>
-            </div>
-          </div>
-
           {/* 카카오 계정 연동 — 이메일/비번 셀러가 카카오 로그인 활성화 */}
           <div className="apple-card p-6">
             <div className="flex items-center gap-3 mb-4">
@@ -580,61 +357,6 @@ export default function SellerProfileEditPage() {
               </div>
             </div>
             <SellerPinSetup linkedToKakao={false} />
-          </div>
-
-          {/* KakaoTalk Chat Link Section */}
-          <div className="apple-card p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-[#fee500]/10 rounded-full flex items-center justify-center">
-                <MessageSquare className="h-5 w-5 text-[#fee500]" />
-              </div>
-              <div>
-                <h2 className="text-[17px] font-semibold text-[#1d1d1f]">{t('seller.kakaoInquiry')}</h2>
-                <p className="text-[13px] text-[#6e6e73]">{t('seller.kakaoInquiryDesc')}</p>
-              </div>
-            </div>
-
-            <div>
-              <input
-                type="text"
-                value={formData.kakao_chat_link}
-                onChange={(e) => setFormData({ ...formData, kakao_chat_link: e.target.value })}
-                placeholder="https://open.kakao.com/o/..."
-                className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
-              />
-              <div className="mt-3 p-3 bg-white border border-rule rounded-lg">
-                <div className="flex gap-2 text-[11px] text-tone-warn">
-                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                  <div>
-                    <p className="font-semibold mb-1">{t('seller.externalTradeWarningTitle')}</p>
-                    <p>{t('seller.externalTradeWarningDesc')}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Website Section */}
-          <div className="apple-card p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-[#5856d6]/10 rounded-full flex items-center justify-center">
-                <Globe className="h-5 w-5 text-[#5856d6]" />
-              </div>
-              <div>
-                <h2 className="text-[17px] font-semibold text-[#1d1d1f]">{t('seller.websiteLabel')}</h2>
-                <p className="text-[13px] text-[#6e6e73]">{t('seller.personalWebsite')}</p>
-              </div>
-            </div>
-
-            <div>
-              <input
-                type="text"
-                value={formData.website_url}
-                onChange={(e) => setFormData({ ...formData, website_url: e.target.value })}
-                placeholder="https://yourwebsite.com"
-                className="w-full px-4 py-3 bg-white border border-[#e5e5ea] rounded-lg text-[15px] text-[#1d1d1f] placeholder-[#6e6e73]/50 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
-              />
-            </div>
           </div>
 
           {/* 🚚 2026-06-18 배송 설정 — 내 유어샵 배송비 (주문 시 서버가 이 값으로 재계산) */}
@@ -695,32 +417,12 @@ export default function SellerProfileEditPage() {
             </button>
           </div>
 
-          {/* Save Button */}
-          <div className="flex gap-3">
-            <button
-              onClick={() => navigate('/seller')}
-              className="flex-1 py-4 px-6 bg-white border border-[#e5e5ea] text-[#1d1d1f] rounded-xl hover:bg-[#f5f5f7] transition-colors text-[15px] font-medium"
-            >
-              {t('common.cancel')}
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="ur-btn ur-btn-lg ur-btn-primary flex-1 transition-colors text-[15px] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {saving ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  {t('seller.saving')}
-                </>
-              ) : (
-                <>
-                  <Save className="h-5 w-5" />
-                  {t('common.save')}
-                </>
-              )}
-            </button>
-          </div>
+          {/* 🏪 2026-09-16: 하단 [저장] 쌍 제거. 업체 칸이 `/seller/store` 로 옮겨간 뒤 이 버튼이 부를
+              대상은 **화면에 없는 폼**(기본 탭이 'business')뿐이었다 — 보이지 않는 값을 저장하는
+              버튼은 누른 사람을 속인다. 남은 블록은 각자 자기 저장 버튼을 갖고 있다.
+              ⚠️ `handleSaveBusiness`/`Personal`/`ChangePassword` 는 **이 페이지에 입력칸이 없는 채로**
+                 예전부터 남아 있던 죽은 핸들러다(실제 폼은 `/seller/business-info`). 이번 범위 밖이라
+                 남겨 두고 인계에 적는다 — 지우려면 그 세 흐름을 따로 확인해야 한다. */}
         </div>
       </div>
     </SellerLayout>

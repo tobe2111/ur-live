@@ -62,6 +62,7 @@ import { adminSettlementsRoutes } from '../features/admin/api/admin-settlements.
 import { adminWholesaleMallRoutes } from '../features/supply/api/wholesale-malls-admin.routes';
 import { adminStatsRoutes } from '../features/admin/api/admin-stats.routes';
 import { adminSellersRoutes } from '../features/admin/api/admin-sellers.routes';
+import { adminSellerOcrRoutes } from '../features/admin/api/admin-seller-ocr.routes';
 import { adminStoreChannelRoutes } from '../features/admin/api/admin-store-channel.routes';
 import { adminStoreOwnerRoutes } from '../features/admin/api/admin-store-owner.routes'; // 🪑 매장 소유자 지정·이전 + 소유권 신청 심사 (3단계)
 import { adminProductsRoutes } from '../features/admin/api/admin-products.routes';
@@ -1757,6 +1758,7 @@ adminApp.route('/', adminSettlementsRoutes);
 adminApp.route('/', adminStatsRoutes);
 // 🛡️ 2026-04-22 배치 146 (TD-006 부분): admin-sellers 분리 (272줄)
 adminApp.route('/', adminSellersRoutes);
+adminApp.route('/', adminSellerOcrRoutes); // 🔍 2026-09-16 서류 OCR — 같은 인증·IP·audit 체인. 본체는 별 파일(크기 동결)
 // 🏪 매장 등록 채널(직접/대행사) 지정 — 요율을 정하는 값이라 어드민이 확정할 수 있어야 한다(2026-08-27).
 adminApp.route('/', adminStoreChannelRoutes);
 adminApp.route('/', adminStoreOwnerRoutes);

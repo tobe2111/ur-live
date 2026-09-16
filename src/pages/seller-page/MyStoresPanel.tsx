@@ -17,7 +17,6 @@ import { CheckCircle2, ChevronRight, Loader2, Map, MapPin, Plus, Settings2, Stor
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import StoreRegisterModal from '@/components/seller/StoreRegisterModal'
-import StoreProfileModal from '@/components/seller/StoreProfileModal'
 import { enterStoreSeat } from '@/utils/enter-store'
 
 interface OperableStore {
@@ -51,7 +50,6 @@ export default function MyStoresPanel({ onGateChange, gateOnly = false }: Props)
   /** `undefined` = 판정 중 · `null` = 판정 실패(fail-open) · boolean = 서버 답. 셋을 구분해야 게이트가 깜빡이지 않는다. */
   const [seatReady, setSeatReady] = useState<boolean | null | undefined>(undefined)
   const [adding, setAdding] = useState(false)
-  const [editing, setEditing] = useState<OperableStore | null>(null)
   const [switching, setSwitching] = useState<number | null>(null)
   const currentId = Number(localStorage.getItem('seller_id') || 0)
 
@@ -202,12 +200,14 @@ export default function MyStoresPanel({ onGateChange, gateOnly = false }: Props)
                   {switching === s.seller_id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Ticket className="h-3.5 w-3.5" />}
                   {t('seller.registerVoucher', { defaultValue: '이용권 등록' })}
                 </button>
-                <button
-                  onClick={() => setEditing(s)}
+                {/* 🏪 2026-09-16: 모달 → 업체 정보 한 페이지(`/seller/store`). 같은 모달이 여기와
+                    `/seller/stores` 두 곳에서 열리고 있었다 — 한 곳만 고치면 다른 쪽이 옛 화면으로 남는다. */}
+                <Link
+                  to={`/seller/store?id=${s.seller_id}`}
                   className="ur-btn ur-btn-sm ur-btn-secondary whitespace-nowrap"
                 >
                   <Settings2 className="h-3.5 w-3.5" /> {t('seller.stores.info', { defaultValue: '정보' })}
-                </button>
+                </Link>
               </div>
             </div>
           )
@@ -227,14 +227,6 @@ export default function MyStoresPanel({ onGateChange, gateOnly = false }: Props)
         </Link>
       </div>
       {adding && <StoreRegisterModal onClose={() => setAdding(false)} onDone={onRegistered} />}
-      {editing && (
-        <StoreProfileModal
-          sellerId={editing.seller_id}
-          storeName={storeLabel(editing)}
-          onClose={() => setEditing(null)}
-          onDone={(n) => { setEditing(null); load(); toast.success(n > 0 ? t('seller.stores.savedPropagated', { defaultValue: '매장 정보 저장 — 이용권 {{count}}개에 반영됐어요', count: n }) : t('seller.stores.saved', { defaultValue: '매장 정보가 저장됐어요' })) }}
-        />
-      )}
     </div>
   )
 }

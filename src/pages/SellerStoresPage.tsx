@@ -14,7 +14,6 @@ import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { Store, Plus, Loader2, Trash2, Users } from 'lucide-react'
 import StoreRegisterModal from '@/components/seller/StoreRegisterModal'
-import StoreProfileModal from '@/components/seller/StoreProfileModal'
 import SellerWithdrawSection from '@/components/seller/SellerWithdrawSection'
 import ReviewBonusCard from '@/components/seller/ReviewBonusCard'
 
@@ -28,7 +27,6 @@ export default function SellerStoresPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
-  const [editing, setEditing] = useState<OperableStore | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true); setError(null)
@@ -99,10 +97,12 @@ export default function SellerStoresPage() {
                       {s.status === 'approved' || s.status === 'active' ? '운영 중' : s.status === 'pending' ? '승인 대기 (사업자 확인 중)' : s.status}
                     </p>
                   </div>
-                  <button onClick={() => setEditing(s)}
+                  {/* 🏪 2026-09-16 (대표 — "업체 정보 입력하는 페이지는 하나로 통일"): 모달 → 한 페이지.
+                      모달은 좁아서 소개·사진·SNS 를 담을 수 없었고, 그래서 그것들이 다른 화면으로 흩어져 있었다. */}
+                  <Link to={`/seller/store?id=${s.seller_id}`}
                     className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-[11px] font-semibold hover:bg-gray-50">
                     정보
-                  </button>
+                  </Link>
                   {s.role === 'owner' && (
                     <Link to="/seller/operators" className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-[11px] font-semibold hover:bg-gray-50">
                       <Users className="w-3.5 h-3.5" /> 위임
@@ -133,14 +133,6 @@ export default function SellerStoresPage() {
       </div>
 
       {adding && <StoreRegisterModal onClose={() => setAdding(false)} onDone={() => { setAdding(false); load() }} />}
-      {editing && (
-        <StoreProfileModal
-          sellerId={editing.seller_id}
-          storeName={editing.business_name || editing.name || undefined}
-          onClose={() => setEditing(null)}
-          onDone={(n) => { setEditing(null); load(); alert(n > 0 ? `매장 정보가 저장됐어요 — 이용권 ${n}개에 반영됐습니다` : '매장 정보가 저장됐어요') }}
-        />
-      )}
     </SellerLayout>
   )
 }

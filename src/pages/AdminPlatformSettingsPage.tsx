@@ -90,6 +90,14 @@ export const OPS_POLICY_FIELDS: Array<{ key: string; label: string; hint: string
     text: true,
   },
   {
+    // 🔍 2026-09-16 (결재 `2026-09-16-ocr-license-automation.md`): 서류 OCR 자동 승인.
+    //   ⚠️ `text: true` — 값이 'true'/'false' 문자열이라 숫자 검증 배열에 두면 저장이 거부된다.
+    key: 'ocr_auto_verify_enabled',
+    label: '서류 OCR 자동 승인',
+    hint: "기본 꺼짐. 'true' 로 켜면 등록증 추출값이 전부 맞을 때 승인이 자동으로 난다. 켜기 전 S-OCR 절차(실사진 정확도)를 먼저 돌 것 — 자동 반려는 어떤 값으로도 켜지지 않는다",
+    text: true,
+  },
+  {
     key: 'pickup_unclaimed_cold_pct',
     label: '냉장·냉동 미수령 환불 (%)',
     hint: '대표 확정값 0(환불 없음 — 상품 폐기). 비우면 100(전액 환불)으로 동작한다',

@@ -27,6 +27,7 @@ import { BIZ_CERT_PATH } from '@/worker/utils/store-ownership-claims'
 
 const PAGE = 'src/pages/SellerRegisterSupplierPage.tsx'
 const ROUTE = 'src/features/seller/api/seller-registration.routes.ts'
+const SESSION = 'src/features/seller/api/seller-registration/session-routes.ts'
 const page = () => stripComments(readFileSync(PAGE, 'utf-8'))
 const route = () => stripComments(readFileSync(ROUTE, 'utf-8'))
 
@@ -61,7 +62,8 @@ describe('🪪 가입 앞문 — 등록증 사본', () => {
   })
 
   it('사본이 아직 없다는 사실을 화면이 알 수 있다 (배너가 읽는 신호)', () => {
-    const r = route()
+    // 🔁 2026-09-16 분해: `/my-seller-status` 는 `seller-registration/session-routes.ts` 로 옮겨졌다.
+    const r = stripComments(readFileSync(SESSION, 'utf-8'))
     expect(r, '상태 응답에 도착 여부가 없으면 배너가 무엇을 말할지 정할 수 없다')
       .toContain('has_business_cert')
     expect(r, '등록증 **URL 을 내보내면** 남의 서류 주소가 응답에 실린다 — boolean 이면 충분하다')

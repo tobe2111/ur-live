@@ -2526,7 +2526,6 @@
       "bundles": "套装商品",
       "promoCodes": "促销码",
       "followers": "粉丝",
-      "miniShop": "UrShop设置",
       "streamingGuide": "直播指南",
       "notifyFollowers": "通知粉丝",
       "stays": "住宿团购",
@@ -2562,7 +2561,8 @@
       "discounts": "折扣",
       "partners": "合作伙伴",
       "notifyGuide": "通知·指南",
-      "operatingSummary": "运营摘要"
+      "operatingSummary": "运营摘要",
+      "storeInfo": "门店信息"
     },
     "settlements": {
       "revenueCalendarTitle": "{{year}}년 {{month}}월 수익 캘린더",
