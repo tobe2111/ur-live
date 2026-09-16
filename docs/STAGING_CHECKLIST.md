@@ -243,6 +243,8 @@ GET /api/admin/promo-ledger/order/:orderNumber      (read-only, finance 권한)
 
 ## 🔒 S-USEGATE — 소개 커미션 사용 확인 게이트 (2026-09-16)
 
+**S-USEGATE** — 대표 확정 *"모든게 다 이용권을 쓰고 나서 정산 할 때 정산되는거고"* (2026-09-16).
+
 게이트: `platform_settings.payout_requires_voucher_use` (기본 OFF) · 천장: `payout_unused_max_wait_days`(기본 180).
 **OFF 인 동안은 종전과 byte-동일**이라 배포만으로는 아무것도 안 바뀐다 — 켜는 것이 등급 C 다.
 

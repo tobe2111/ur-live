@@ -60,6 +60,18 @@ export const COMMISSION_BUDGET_FIELDS: MoneySwitchField[] = [
     key: 'platform_fee_pct_brokered', label: '③-b 중개(대행사) 요율 (%)', default: '5',
     hint: '③ 이 ON 일 때만 쓰인다. 비우면 코드 기본 5%',
   },
+  // 🔒 2026-09-16 대표 *"모든게 다 이용권을 쓰고 나서 정산 할 때 정산되는거고"* — 그 규칙의 스위치.
+  //   🩸 `ops-gate-reachable` 이 즉시 잡았다: OPS_GATES 에는 등재했는데 **켤 칸을 안 만들어서**
+  //   대표가 규칙을 말해도 화면에서 켤 방법이 없었다(그 시험 docblock 의 *"안 켠 게 아니라 못 켠"*).
+  {
+    key: 'payout_requires_voucher_use', label: '⑨ 소개 정산을 이용권 사용 뒤로', default: 'false',
+    options: [{ value: 'false', label: 'OFF (현행 — 주문 + 환불창 7일이면 익음)' }, { value: 'true', label: 'ON — 사용 확인 뒤에만 익음' }],
+    hint: '🔴 머니 경로. OFF 면 아무도 그 가게에 안 가도 소개 몫이 송금 대기에 오른다(매장 몫은 이미 사용 시점). 라이브 적립 0건이라 켜도 오늘 영향 0. 절차: S-USEGATE',
+  },
+  {
+    key: 'payout_unused_max_wait_days', label: '⑨-a 무기한 이용권 정산 천장 (일)', default: '180',
+    hint: '⑨ 가 ON 일 때만. 유효기간이 없는 이용권은 발급 후 이 기간이 지나야 소개 몫이 정리된다 — 비우면 180. **소비자의 사용 권리와 무관**(소비자는 계속 무기한)',
+  },
   {
     key: 'promo_funding_source', label: '② 핀 추천(어필리에이트) 재원', default: 'platform',
     options: [{ value: 'platform', label: '플랫폼 부담 (현행)' }, { value: 'owner', label: '주인(셀러) 부담 — promo 슬라이스' }],
