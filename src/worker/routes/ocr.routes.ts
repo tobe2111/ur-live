@@ -12,6 +12,7 @@ import { Hono } from 'hono'
 import type { Env } from '../types/env'
 import { requireAuth } from '../middleware/auth'
 import { rateLimit } from '../middleware/rate-limit'
+import { aiText } from '../utils/ai-text'
 
 interface AIEnv {
   AI?: {
@@ -75,7 +76,7 @@ ocrRoutes.post(
         max_tokens: 512,
       })
 
-      const text = (result.description || result.response || '').trim()
+      const text = aiText(result)
       // JSON 추출 (모델이 가끔 prose 함께 반환)
       const jsonMatch = text.match(/\{[\s\S]*\}/)
       if (!jsonMatch) {

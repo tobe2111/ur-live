@@ -439,4 +439,15 @@ export interface Env {
   // 'true' 일 때만 /api/ads/* · /l/* 를 env.ADS(ur-ads)로 위임(프록시). 미설정/기타값 = 메인이 직접 처리(현행 동일).
   //   컷오버: staging 에서 ur-ads 위임 검증 후 이 값을 'true' 로. /api/admin/ads/* 는 항상 메인 유지(메인 admin JWT).
   ADS_WORKER_ENABLED?: string;
+
+  // ---- 🔍 Workers AI (2026-09-16 대표가 Pages `ur-live` production 에 바인딩) ----
+  //   용도: 서류(사업자등록증·영업신고증) OCR 추출 — `worker/utils/ocr-license.ts`.
+  //
+  //   ⚠️ **반드시 optional 로 둔다.** Pages 는 production / preview 바인딩이 따로인데
+  //   preview 에는 안 붙어 있다(2026-09-16 API 실측 `ai_bindings: production={"AI":{}} · preview=없음`).
+  //   필수로 만들면 PR 프리뷰에서 타입은 통과하고 **런타임에 터진다**. 호출부는 전부
+  //   `if (!ai) return { ok: false … }` 로 조용히 건너뛴다 — 없으면 사람이 눈으로 보는 현행 동작.
+  //
+  //   💰 preview 에 안 붙은 것은 결함이 아니라 이득이다: 프리뷰 배포가 추론 비용을 안 태운다.
+  AI?: { run: (model: string, input: Record<string, unknown>) => Promise<unknown> };
 }

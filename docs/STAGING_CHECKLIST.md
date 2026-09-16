@@ -258,3 +258,21 @@ GET /api/admin/promo-ledger/order/:orderNumber      (read-only, finance 권한)
 | S-USEGATE-6 | 만료일이 지났지만 `auto-settlement` 가 아직 안 돈 건 | `pending` 유지 → cron 이 돌면 고객 100% 환불 + `clawback` 으로 **회수**(성숙 후 회수가 아니라) |
 | S-USEGATE-7 | `voucher_expiry` 미설정(무기한) 이용권, 발급 후 천장일 경과 | 성숙 — 무기한 이용권의 소개비가 영구히 갇히지 않는지 |
 | S-USEGATE-8 | `/influencer/settlement` 화면 | 게이트 ON 이면 보류 라벨이 **"사용 확인 대기"** · OFF 면 "환불기간 (대기)" |
+
+## S-OCR — 서류 OCR 자동 승인 (2026-09-16)
+
+게이트 `platform_settings.ocr_auto_verify_enabled`(기본 `false`). 결재
+`docs/decisions/2026-09-16-ocr-license-automation.md`.
+
+⚠️ **게이트를 켜기 전에 S-OCR-1~3 을 먼저 통과해야 한다.** 이 축의 오판은
+정상 사장님을 쫓아내거나(반려) 위조를 통과시키는(승인) 양방향 피해를 낸다.
+⚠️ **Pages 바인딩은 배포 후에야 붙는다** — 배포 전 호출의 `AI_UNAVAILABLE` 은 정상이다.
+
+| # | 무엇 | 통과 기준 |
+|---|---|---|
+| S-OCR-1 | 실제 사업자등록증 사진 5장으로 `POST /api/admin/sellers/:id/business-registration/ocr` | `extracted.fill` 평균 0.75 이상 · 상호·주소가 사람 눈과 일치 |
+| S-OCR-2 | 서류 소재지 ≠ 등록 매장(다른 구)인 건 | `verdict='mismatch'` · 화면이 어느 지역끼리 다른지 말한다 |
+| S-OCR-3 | 흐린 사진 / 잘린 사진 | `verdict='unreadable'` — **절대 `mismatch` 아님**(자동 반려의 씨앗) |
+| S-OCR-4 | 게이트 OFF 상태에서 완전 일치 건 | `sellers.business_registration_status` **불변** · 응답 `autoVerified=false` |
+| S-OCR-5 | 게이트 ON 후 완전 일치 건 | `verified` 로 1회 전이 · 어드민 audit 에 남는다 |
+| S-OCR-6 | 인허가 원장에 없는 정상 매장 | `ledgerNote` 가 "이상 신호가 아닙니다" 라고 분명히 말한다(원장 커버리지 1% 미만) |
