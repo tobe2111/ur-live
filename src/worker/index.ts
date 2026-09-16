@@ -1758,8 +1758,7 @@ adminApp.route('/', adminSettlementsRoutes);
 adminApp.route('/', adminStatsRoutes);
 // 🛡️ 2026-04-22 배치 146 (TD-006 부분): admin-sellers 분리 (272줄)
 adminApp.route('/', adminSellersRoutes);
-// 🔍 2026-09-16 서류 OCR 나란히 보기 — 같은 adminApp 체인(인증·IP·audit) 아래. 파일 분리는 크기 동결 때문.
-adminApp.route('/', adminSellerOcrRoutes);
+adminApp.route('/', adminSellerOcrRoutes); // 🔍 2026-09-16 서류 OCR — 같은 인증·IP·audit 체인. 본체는 별 파일(크기 동결)
 // 🏪 매장 등록 채널(직접/대행사) 지정 — 요율을 정하는 값이라 어드민이 확정할 수 있어야 한다(2026-08-27).
 adminApp.route('/', adminStoreChannelRoutes);
 adminApp.route('/', adminStoreOwnerRoutes);
