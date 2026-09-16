@@ -308,11 +308,17 @@ export default function InfluencerSettlementPage() {
 
           <div>
             <label className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-2">송금 방식</label>
+            {/* 🕯️ 2026-09-16: **선택된 칸의 글자가 다크에서 안 보였다**(실측 1.07:1 — 흰 글자 위 흰 판).
+                  원인은 오타가 아니라 **되다 만 팔레트 이행**이다 — 선택 상태가 `bg-blue-50`(다크 짝 없음)로
+                  남아 있어 다크에서도 밝은 판이 되는데, 안의 `<p>` 는 `dark:text-white` 로 흰 글자가 됐다.
+                  옆 칸은 이미 `bg-brand-tint`(다크에서 #16243D 로 뒤집히는 토큰)를 쓰고 있었다 — 같은 토큰으로 통일.
+                  ⚠️ 이 결함은 `check-dark-contrast` 가 이 경로를 재기 시작한 바로 그날 나왔다. 안 재는 입력은
+                    "괜찮다"가 아니라 **모른다**다. */}
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setForm(f => ({ ...f, payout_method: 'cash' }))}
-                className={`p-3 rounded-xl border-2 text-left ${form.payout_method === 'cash' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white dark:bg-[#11141C]'}`}
+                className={`p-3 rounded-xl border-2 text-left ${form.payout_method === 'cash' ? 'border-brand bg-brand-tint' : 'border-gray-200 bg-white dark:bg-[#11141C]'}`}
               >
                 <p className="text-sm font-bold text-gray-900 dark:text-white">현금 송금</p>
                 {/* 💎 2026-08-31 대표: 최소 금액은 현금에만 적용된다. 고르는 화면에 그 차이가
