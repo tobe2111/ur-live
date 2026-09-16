@@ -25,6 +25,7 @@ import { safeError } from '@/worker/utils/safe-error'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { ensureSellerMetaTable, getSellerMeta, setSellerMeta } from '@/worker/utils/seller-meta'
 import { ntsValidateBusiness, ntsCheckStatus } from '@/worker/utils/nts-business-verify'
+import { BUSINESS_NUMBER_META_KEY, bnoColumnFree, normalizeBno } from '@/worker/utils/seller-business-number'
 import { canOperateStore, grantOperator, revokeOperator, isStoreOwner, listOperableStores } from '../../../worker/utils/seller-operators'
 import { mergeStoreProfile, loadLatestProductCopy, saveStoreProfileAndPropagate } from '@/worker/utils/store-profile'
 import { parseSessionCookie } from '@/worker/utils/session'
@@ -417,12 +418,38 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
      *   이 합성 주소와는 영원히 안 맞는다 — 매장이 남의 계정에 붙는 사고가 생기지 않는다.
      */
     const storeEmail = `${username}@store.invalid`
-    const ins = await c.env.DB.prepare(`
+
+    /**
+     * 🧾 2026-09-16 (대표 신고 — 매장 등록이 **500**, 콘솔에만 `POST /api/seller/stores 500`).
+     *
+     * `sellers` 컬럼 선언이 `business_number TEXT UNIQUE` 라 **한 사업자번호 = 셀러 행 하나**다.
+     * 한 사업자가 지점을 여럿 내는 게 정상인데 스키마가 그걸 막는다. 실측: 라이브 `sellers` 에
+     * 행이 **하나뿐**(id=14, `4790902930`)이고 **2026-08-26 이후 등록 성공 0** — 같은 번호를 쓰면
+     * 이 INSERT 가 UNIQUE 위반으로 던지고 바깥 catch 가 "매장 등록 중 오류가 발생했습니다" 로
+     * 뭉개서, 화면에는 원인이 한 글자도 안 남았다. (09-02 `email=''` 사고와 **같은 클래스**다.)
+     *
+     * ⇒ 번호의 진실은 **`seller_meta` 에 항상** 적고, 컬럼에는 **비어 있을 때만** 넣는다.
+     *   읽기는 `resolveBusinessNumber` 가 컬럼 → meta 순으로 푼다(그 파일에 전말).
+     * ⚠️ 검사와 INSERT 사이 경합은 D1 에 트랜잭션이 없어 못 막는다 → 위반이 나면 **번호를 빼고
+     *   한 번 더** 시도한다(매장은 만들어져야 한다). 그래도 실패하면 그때는 진짜로 말해 준다.
+     */
+    const bnoFree = bno ? await bnoColumnFree(c.env.DB, bno) : false
+    const insertStore = (withBno: string | null) => c.env.DB.prepare(`
       INSERT INTO sellers (
         username, email, password_hash, name, business_name, business_number,
         phone, address, seller_type, status, created_at, updated_at
       ) VALUES (?, ?, '', ?, ?, ?, ?, ?, 'store_owner', ?, datetime('now'), datetime('now'))
-    `).bind(username, storeEmail, name, name, bno || null, phone || null, address || null, status).run()
+    `).bind(username, storeEmail, name, name, withBno, phone || null, address || null, status).run()
+
+    let ins = await insertStore(bnoFree ? bno : null).catch((e: unknown) => e as Error)
+    if (ins instanceof Error) {
+      // 경합으로 번호를 뺏겼다면 번호 없이 한 번 더 — 번호는 아래 meta 에 그대로 남는다.
+      const again = bnoFree ? await insertStore(null).catch((e: unknown) => e as Error) : ins
+      if (again instanceof Error) {
+        return safeError(c, again, '매장 등록 중 오류가 발생했습니다', '[seller-stores:insert]')
+      }
+      ins = again
+    }
     const newSellerId = Number(ins.meta?.last_row_id)
 
     // 🤝 2026-08-27 (대표 "매장 영입을 어떻게 확인하나") — **초대 링크 귀속**.
@@ -475,6 +502,8 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
       ...(b.category ? { kakao_category: String(b.category).slice(0, 100) } : {}),
       ...(Number.isFinite(b.lat) && Number.isFinite(b.lng) ? { store_lat: String(b.lat), store_lng: String(b.lng) } : {}),
       nts_checked: ntsResult.valid === true ? '1' : ntsResult.valid === false ? '0' : '',
+      // 🧾 번호의 진실은 여기다 — 컬럼은 UNIQUE 라 "그 번호의 첫 매장" 만 가질 수 있다(위 주석).
+      ...(bno ? { [BUSINESS_NUMBER_META_KEY]: normalizeBno(bno) } : {}),
       business_cert_url: certUrl,
       registered_by_user_id: String(userId),
     }).catch(() => { /* 메타 실패 — 매장은 유지(프로필 수정으로 채울 수 있다) */ })

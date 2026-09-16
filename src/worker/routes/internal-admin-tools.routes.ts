@@ -14,6 +14,7 @@
 import { Hono } from 'hono';
 import type { Env } from '@/worker/types/env';
 import { requireAdmin } from '../middleware/auth';
+import { resolveBusinessNumber, resolveBusinessNumbers } from '../utils/seller-business-number'
 import { hashPassword } from '@/lib/password';
 import { rateLimit } from '../middleware/rate-limit';
 
@@ -952,7 +953,16 @@ internalAdminToolsRoutes.get('/api/admin/pending-sellers', requireAdmin(), async
         ORDER BY s.created_at DESC
         LIMIT 100`
     ).all().catch(() => ({ results: [] }))
-    return c.json({ success: true, data: results })
+    /**
+     * 🧾 2026-09-16: 이 화면이 **대표가 사업자등록증과 번호를 대조하는 자리**다.
+     * 같은 사업자의 두 번째 매장부터는 번호가 컬럼이 아니라 `seller_meta` 에 있다
+     * (`sellers.business_number` 가 UNIQUE — `seller-business-number.ts` 에 전말).
+     * 안 풀면 심사 화면에 **빈칸**이 떠서 승인 자체를 못 한다.
+     */
+    const rows = (results || []) as Array<{ id: number; business_number?: string | null }>
+    const bnos = await resolveBusinessNumbers(c.env.DB, rows).catch(() => new Map<number, string>())
+    for (const r of rows) if (!r.business_number) r.business_number = bnos.get(r.id) || null
+    return c.json({ success: true, data: rows })
   } catch (err) {
     return c.json({ success: false, error: 'pending sellers 조회 실패' }, 500)
   }
@@ -1041,9 +1051,11 @@ internalAdminToolsRoutes.post('/api/admin/sellers/:id/recheck-nts', requireAdmin
     if (!Number.isFinite(id)) return c.json({ success: false, error: 'invalid id' }, 400)
 
     const seller = await c.env.DB.prepare(
-      `SELECT business_number, representative_name, business_start_date FROM sellers WHERE id = ?`
-    ).bind(id).first<{ business_number: string; representative_name: string | null; business_start_date: string | null }>()
+      `SELECT id, business_number, representative_name, business_start_date FROM sellers WHERE id = ?`
+    ).bind(id).first<{ id: number; business_number: string; representative_name: string | null; business_start_date: string | null }>()
     if (!seller) return c.json({ success: false, error: 'seller 없음' }, 404)
+    // 🧾 2026-09-16: 컬럼이 비어도 meta 에 번호가 있다(`seller-business-number.ts`). 안 풀면 재검증이 빈 번호로 나간다.
+    seller.business_number = (await resolveBusinessNumber(c.env.DB, seller)) || seller.business_number
     if (!seller.representative_name || !seller.business_start_date) {
       return c.json({ success: false, error: '대표자명 / 개업일 누락 — 재검증 불가' }, 400)
     }
