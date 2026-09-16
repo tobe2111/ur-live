@@ -117,6 +117,10 @@ describe('③ 배선 — 만든 조건이 실제 쿼리까지 간다', () => {
     expect(LIST_UI).toContain('clearTimeout(t)')
   })
 
+  it('Enter 는 디바운스를 건너뛴다 — 급할 때 0.3초도 길다', () => {
+    expect(LIST_UI).toMatch(/if \(e\.key === 'Enter'\)[\s\S]{0,80}?setFQuery\(qInput\.trim\(\)\)/)
+  })
+
   it('검색어도 "필터 초기화" 로 지워진다', () => {
     const reset = LIST_UI.slice(LIST_UI.indexOf('const resetFilters'), LIST_UI.indexOf('const toggleActive'))
     expect(reset).toContain("setQInput('')")

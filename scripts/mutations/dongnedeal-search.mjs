@@ -13,6 +13,16 @@ const TEST = 'src/tests/unit/dongnedeal-search-2026-09-16.test.ts'
 
 export default [
   {
+    name: '🕳️ Enter 가 디바운스를 못 건너뛴다 (급할 때 매번 0.3초를 기다린다)',
+    file: UI,
+    find: "            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); setFQuery(qInput.trim()) } }}",
+    replace: '            onKeyDown={undefined}',
+    test: TEST,
+    why:
+      '대표가 "급해" 라고 한 화면이다. Enter 가 안 먹으면 한 번 찾을 때마다 손을 멈추고 기다려야 하고, ' +
+      '그 지연은 고장으로 안 보여서 아무도 신고하지 않는다.',
+  },
+  {
     name: '🕳️ 검색어를 서버로 안 보낸다 (칸은 있는데 아무 일도 안 일어난다)',
     file: UI,
     find: "    if (fQuery) qs.set('q', fQuery)",

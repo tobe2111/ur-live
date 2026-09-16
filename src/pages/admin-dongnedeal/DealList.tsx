@@ -191,7 +191,10 @@ export default function DealList({ nonce, onEdit, onChanged }: { nonce: number; 
             type="search"
             value={qInput}
             onChange={(e) => setQInput(e.target.value)}
-            placeholder="매장명 · 상품명 · 주소 · id"
+            // ⏎ 급할 때는 0.3초도 길다 — Enter 는 디바운스를 건너뛰고 바로 조회한다.
+            //   (Esc 는 브라우저가 type="search" 에서 이미 값을 비우고, 그러면 onChange 가 따라간다.)
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); setFQuery(qInput.trim()) } }}
+            placeholder="매장명 · 상품명 · 주소 · id (Enter 로 바로 검색)"
             aria-label="동네딜 검색"
             className="w-[220px] pl-8 pr-7 py-1.5 border border-gray-200 rounded-lg text-[12px] text-gray-900 bg-white placeholder:text-gray-400"
           />
