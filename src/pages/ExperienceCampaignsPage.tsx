@@ -82,7 +82,7 @@ export default function ExperienceCampaignsPage() {
                   <div className="p-4">
                     <p className="text-[14px] font-bold text-white line-clamp-1">{c.title}</p>
                     <p className="text-[12px] text-gray-400 line-clamp-1 mt-0.5">{c.restaurant_name || c.product_name}</p>
-                    {c.mission && <p className="text-[11px] text-brand-text/80 mt-1">미션: {c.mission}</p>}
+                    {c.mission && <p className="text-[11px] text-brand-text opacity-80 mt-1">미션: {c.mission}</p>}
                     <div className="flex items-center gap-3 text-[11px] text-gray-500 mt-2">
                       <span className="flex items-center gap-1"><Users className="w-3 h-3" />모집 {c.slots}명</span>
                       <span className="flex items-center gap-1"><Gift className="w-3 h-3" />응모 {c.entry_count ?? 0}</span>

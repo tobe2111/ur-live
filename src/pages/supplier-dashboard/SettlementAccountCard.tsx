@@ -64,7 +64,7 @@ export default function SettlementAccountCard({ t, onSaved }: { t: (k: string, o
         <>
           {registered === false ? (
             <div className="mb-4 px-3.5 py-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5">
-              <AlertTriangle className="w-4.5 h-4.5 text-amber-600 shrink-0 mt-0.5" />
+              <AlertTriangle className="w-[18px] h-[18px] text-amber-600 shrink-0 mt-0.5" />
               <p className="text-xs text-amber-800 font-medium">{t('supplier.acctMissing', { defaultValue: '정산 계좌가 등록되지 않았어요. 등록해야 정산금을 출금할 수 있어요.' })}</p>
             </div>
           ) : registered === true ? (

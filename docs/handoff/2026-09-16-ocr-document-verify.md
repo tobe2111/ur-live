@@ -160,3 +160,75 @@ if (file.size > 5 * 1024 * 1024) { toast.error('5MB 이하 이미지만 가능�
 - **영업신고증 OCR 정확도** — S-OCR-7~10(배포 후 실사진). 등록증과 서식이 달라 `fill` 을 따로 잰다.
 - OCR 단가(Neuron) 는 이 환경에서 확인 못 했다(Cloudflare 문서·요금 API 프록시 차단).
   대표 대시보드의 Workers AI 페이지가 현재 플랜·일일 무료량을 보여 준다.
+
+---
+
+## 🔒 같은 날 오후 — 사용 확인 게이트 ON · PR 정리 · 게이트 검증 구멍
+
+### 1) 사용 확인 게이트를 라이브에서 켰다 (대표 "사용 확인 게이트는 켜줘")
+
+`payout_requires_voucher_use = 'true'` (어드민 `PUT /api/admin/tools/settings`).
+
+**켜기 전에 넷을 확인했다 — 다음에도 이 순서로 할 것**:
+1. 코드가 **배포분에 있나**: `git merge-base --is-ancestor $(그 파일의 마지막 커밋) <배포 sha>`.
+   설정만 켜고 코드가 없으면 아무 일도 안 일어난다("코드에 있다 ≠ 살아 있다").
+2. 호출부 배선: `cron/influencer-payout.ts:50` 이 `resolvePayoutUseGate(DB)` 를 부른다.
+3. **오늘 바뀌는 돈**: `influencer_attributions` **0행** · `vouchers` 1장(expired) ⇒ 정확히 0원.
+4. 라이브 워커가 읽는 값: `GET /api/admin/ops-status` 가 `'true'` 로 보고.
+
+`payout_unused_max_wait_days` 는 **일부러 미설정**으로 뒀다 — 코드 기본 180일이 먹는다.
+DB 에 박으면 나중에 "코드 기본값과 DB 값 중 뭐가 진짜냐" 를 한 번 더 확인해야 한다.
+
+⚠️ **등급 E3 이지 E4 가 아니다.** 게이트가 켜진 것은 실측했지만 *의도한 효과*(안 쓰인 이용권의
+소개비가 안 익는다)는 **잴 대상이 0건**이라 못 봤다. 첫 소개 커미션이 생기는 날 그 건이
+pending 에 머무는지 보는 것이 E4 다.
+
+### 2) 🩸 게이트 검증 구멍 — **손잡이가 있는 것과 값이 검증되는 것은 다른 일이다**
+
+게이트를 켜다가 `payout_requires_voucher_use` 가 **값 검증 레지스트리
+(`platform-settings-validation.ts`)에 없는 것**을 봤다. 그래서 `check-gate-registry` 를 봤더니
+**그 가드는 `OPS_GATES`(모니터링 손잡이)만 본다.** 값이 검증되는지는 **아무 가드도 안 보고 있었다.**
+
+실측(측정 스크립트로 전수): strict-true 게이트 15개 중 **3개가 값 검증 미등재**였다 —
+`partial_refund_enabled` · `voucher_cart_enabled` · `ocr_auto_verify_enabled`.
+그중 **`voucher_cart_enabled` 는 라이브에서 켜져 있다**. 어드민에서 다시 저장할 때 `'True'` 가
+되면 read-site 의 `=== 'true'` 가 거짓이라 **켠 줄 알지만 꺼진 채** 돈다(에러 0).
+
+⇒ 셋을 등재하고 **가드가 두 레지스트리를 다 보게** 고쳤다(`readValidatedKeys`).
+되돌려-검증 2건(등재 제거 · 레지스트리 경로 깨뜨림) 빨간불 확인.
+
+**기각한 것**: `if (r.key === K) x = String(r.value) === 'true'` 형태를 가드가 못 보는 것도 맞지만,
+그 형태는 레포 전체에 **한 파일 두 키**뿐이고 넓히면 오탐이 난다(인접 줄의 숫자 키가 딸려온다).
+정규식을 넓히는 대신 **두 번째 레지스트리를 보게** 하는 쪽이 값이 컸다.
+
+### 3) PR 정리
+
+- **#1295**(후기 보너스 매장 부담) 머지 — main 병합 충돌 3건 전부 "양쪽이 같은 표에 항목 추가"라
+  양쪽 보존. ⚠️ `AdminPlatformSettingsPage.tsx` 는 그 사이 main 이 `COMMISSION_BUDGET_FIELDS` 를
+  `admin-platform-settings/money-switch-fields.ts` 로 **추출**해서, main 판을 취하고 항목을
+  새 파일로 옮겨 담았다(번호 ⑦ → **⑪** — main 이 ⑦~⑩ 을 이미 썼다).
+- **#1269**(현금 정산 수수료) — **수수료 0 인 채로** 머지하기로 확정(대표 "끝까지 다 해").
+  세무 확인은 **율을 0보다 올릴 때** 필요하고, 코드로 확인했다:
+  `fee = Math.floor((gross * 0) / 100) = 0` → `taxableBase = gross` ⇒ 두 해석이 같은 숫자.
+  실제 바뀌는 금액은 **기타소득 1원**(부동소수점 수리)뿐.
+  ⚠️ `#1268`(선행이라고 적혀 있던 PR)은 **머지되지 않고 닫혔다** — 그 수리는 다른 경로로 들어갔고
+  (`resolveKtConsumerMarkupPct`), 라이브 실측 `kt_alpha_consumer_markup_pct=0` ·
+  `influencer_deal_bonus_pct=0` 로 선행 조건은 이미 충족. **PR 본문의 '선행' 표기를 그대로 믿지 말 것.**
+
+### 4) 🧭 이번에 틀렸던 판단
+
+- **남의 브랜치에 손대지 않기로 해 놓고 #1485 에 main 을 합쳤다.** 그 세션이 **같은 순간 같은 일**을
+  해서 푸시가 거부됐다(피해 0, 푸시 전이라). 다른 세션이 붙어 있는 PR 은 sha 가 계속 바뀐다 —
+  **sha 변화 이력으로 활성 여부를 판정**하고, 활성이면 머지만 할 것.
+- **가드 문구에 정규식을 그대로 적어서 그 가드에 또 걸렸다**(`check-comment-stripper`).
+  텍스트를 보는 가드는 **설명 주석도 본다**.
+
+### 5) 다음 세션 첫 액션
+
+1. `curl .../pulls/1269` → `mergeable_state`·Verify 초록이면 `ccr/ready_for_review` → `PUT /merge`.
+2. #1477 · #1483 · #1485 · #1486 — 각자 세션 소유. 초록이면 머지만.
+3. **#1149 남은 조각** — #1483(세 번째 조각)이 머지된 뒤에 자를 것. 지금 자르면 같은 파일을
+   두 세션이 만진다.
+4. 라이브인데 검증 안 된 머니 게이트 4개(`fee_channel_rates_enabled` ·
+   `voucher_deal_payment_enabled` · `voucher_partial_deal_enabled` · `voucher_cart_enabled`)는
+   **staging 실결제**가 유일한 판정이다(S7 · S9 · S12 · S-CART).

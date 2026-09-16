@@ -399,7 +399,7 @@ export default function SellerSupplyPage() {
       {requestModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 pb-4">
           <div className="fixed inset-0 bg-black/50" onClick={() => setRequestModal(null)} />
-          <div className="relative rounded-[var(--dash-radius,16px)] border border-rule bg-white-xl w-full max-w-sm p-5">
+          <div className="relative rounded-[var(--dash-radius,16px)] border border-rule bg-white shadow-xl w-full max-w-sm p-5">
             <h3 className="text-sm font-semibold text-gray-900 mb-1">{t('seller.sampleRequestTitle')}</h3>
             <p className="text-xs text-gray-500 mb-4">{requestModal.name}</p>
 
@@ -444,7 +444,7 @@ export default function SellerSupplyPage() {
       {registerModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 pb-4">
           <div className="fixed inset-0 bg-black/50" onClick={() => setRegisterModal(null)} />
-          <div className="relative rounded-[var(--dash-radius,16px)] border border-rule bg-white-xl w-full max-w-sm p-5">
+          <div className="relative rounded-[var(--dash-radius,16px)] border border-rule bg-white shadow-xl w-full max-w-sm p-5">
             <h3 className="text-sm font-semibold text-gray-900 mb-1">{t('seller.storeRegisterTitle')}</h3>
             <p className="text-xs text-gray-500 mb-4">{registerModal.product_name}</p>
 

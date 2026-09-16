@@ -81,8 +81,17 @@ describe('② 딜/현금 선택 — 두 경로 모두 살아 있다', () => {
   })
 
   it('현금 경로의 원천징수는 그대로 남아 있다', () => {
-    expect(cron).toContain('WITHHOLDING_RATES.business_income')
-    expect(cron).toContain('WITHHOLDING_RATES.other_income')
+    // ⚠️ 2026-08-31: 원천징수 계산이 cron · 라우트 · 어드민 화면 **세 곳**에 중복돼 있어서
+    //   `shared/influencer-payout-math.ts` SSOT 로 모았다. 그래서 cron 안에서 상수를 직접
+    //   찾던 옛 검사는 더 이상 맞지 않는다 — **의도(현금 경로에 원천징수가 살아 있다)는 그대로**
+    //   두고, 그 의도를 SSOT 경유로 검사한다(오히려 세 곳이 갈리는 것까지 막는다).
+    const math = codeOnly(readFileSync('src/shared/influencer-payout-math.ts', 'utf-8'))
+    expect(cron, 'cron 이 현금 내역을 SSOT 로 계산해야 한다').toContain('computeCashPayout(')
+    expect(math).toContain('WITHHOLDING_RATES.business_income')
+    expect(math).toContain('WITHHOLDING_RATES.other_income')
+    // 그리고 그 결과가 실제로 알림에 실려야 한다(계산만 하고 안 쓰면 의미가 없다).
+    expect(cron).toContain('withholding')
+    expect(cron).toContain('netAmount')
   })
 
   it('cron 이 직접 딜을 적립하지 않는다 — 지급은 어드민 [처리]', () => {
@@ -93,7 +102,8 @@ describe('② 딜/현금 선택 — 두 경로 모두 살아 있다', () => {
   })
 
   it('어드민 지급 경로가 딜은 무상 버킷 + 보너스로 준다', () => {
-    const mk = codeOnly(readFileSync('src/features/group-buy/api/marketing.routes.ts', 'utf-8'))
+    // ⚠️ 2026-08-31: 지급 처리는 파일크기 래칫 때문에 `marketing/payouts.ts` 로 이동했다(로직 불변).
+    const mk = codeOnly(readFileSync('src/features/group-buy/api/marketing/payouts.ts', 'utf-8'))
     expect(mk).toContain('creditFreePoints')
     expect(mk).toContain('influencer_deal_bonus_pct')
   })

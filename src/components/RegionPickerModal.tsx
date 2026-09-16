@@ -125,7 +125,7 @@ export default function RegionPickerModal({ open, regionKey, districtKey, onClos
                         }}
                         className={`w-full text-left px-5 py-3 text-[14px] transition-colors ${
                           active
-                            ? 'text-brand-text  font-bold bg-brand-tint/50 '
+                            ? 'text-brand-text  font-bold bg-brand-tint '
                             : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#111]'
                         }`}
                       >

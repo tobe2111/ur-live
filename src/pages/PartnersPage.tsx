@@ -113,7 +113,7 @@ export default function PartnersPage() {
       </main>
 
       {/* 📱 모바일 고정 CTA. PC 는 상단 헤더 버튼과 각 섹션 CTA 가 담당한다(lg 에서 숨김) */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-surface/95 backdrop-blur-md border-t border-rule px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))]">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-[#1D1F29]/95 backdrop-blur-md border-t border-rule px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))]">
         <div className="max-w-xl mx-auto flex gap-2.5">
           <a href={F.kakaoChannel} target="_blank" rel="noopener noreferrer"
             className="flex-1 h-12 rounded-2xl border border-rule-strong flex items-center justify-center gap-1.5 text-[14px] font-extrabold text-ink">

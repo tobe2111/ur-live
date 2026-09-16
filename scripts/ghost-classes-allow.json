@@ -1,0 +1,12 @@
+{
+  "content-['•']": "Tailwind 가 실제로 생성한다 — CSS 에는 유니코드 이스케이프(\\2022)로 들어가 우리 복원과 모양이 갈린다. 오탐.",
+  "dash-phone-title": "src/index.css 에 직접 정의된 대시보드 커스텀 클래스(Tailwind 유틸 아님).",
+  "ur-pin-disc": "카카오 지도 오버레이 HTML 의 querySelector 훅. 스타일은 그 자리에서 inline style 로 준다.",
+  "ur-pin-ic": "위와 같음(map-overlays.ts).",
+  "ur-pin-label": "위와 같음(map-overlays.ts).",
+  "ur-pin-pill": "위와 같음(map-overlays.ts).",
+  "ur-pin-price": "위와 같음(map-overlays.ts).",
+  "ur-pin-tail": "위와 같음(map-overlays.ts).",
+  "h-...": "src/components/ui/scroll-area.tsx 주석 안의 설명 문자열 — 클래스가 아니다.",
+  "my-requests": "SellerSupplyPage 의 탭 key 문자열 — 클래스가 아니다."
+}

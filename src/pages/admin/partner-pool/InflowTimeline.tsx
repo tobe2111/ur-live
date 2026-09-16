@@ -57,7 +57,7 @@ export default function InflowTimeline({ byDay, label = '연락 가능', todayKs
           return (
             <div key={x.d} className="flex flex-col items-center min-w-[42px]">
               <div className="w-full h-14 flex items-end" title={`${x.d} · 유입 ${x.n} · ${label} ${x.reachable}${today ? ' (진행 중 — 하루가 끝나지 않았습니다)' : ''}`}>
-                <div className={`w-full rounded-t relative ${today ? 'bg-gray-100 ring-1 ring-dashed ring-gray-300' : 'bg-gray-200'}`} style={{ height: `${Math.max(4, (x.n / max) * 56)}px` }}>
+                <div className={`w-full rounded-t relative ${today ? 'bg-gray-100 ring-1 ring-gray-300' : 'bg-gray-200'}`} style={{ height: `${Math.max(4, (x.n / max) * 56)}px` }}>
                   {/* 채워진 부분 = 연락 가능 비율. 이 풀의 성공 지표는 총 인원이 아니라 "제안 보낼 수 있는 리드 수"다. */}
                   <div className={`absolute bottom-0 left-0 right-0 rounded-t ${today ? 'bg-indigo-300' : 'bg-indigo-500'}`} style={{ height: `${x.n > 0 ? (x.reachable / x.n) * 100 : 0}%` }} />
                 </div>
