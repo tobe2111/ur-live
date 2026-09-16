@@ -780,7 +780,7 @@
 | 원천징수 — 기타소득 (단발성 협업) | 8.8% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.other_income` |
 | 기타소득 분리과세 연 한도 | 3,000,000원 | `src/worker/utils/tax-withholding.ts:ANNUAL_THRESHOLD` |
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (71개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (72개)
 
 - `/browse`
 - `/cart`
@@ -837,6 +837,7 @@
 - `/seller/scan`
 - `/seller/settlements`
 - `/seller/signup`
+- `/seller/store`
 - `/seller/stores`
 - `/seller/tier`
 - `/seller/tiktok-callback`
@@ -854,7 +855,7 @@
 - `/vouchers/:id`
 - `/wishlist`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (275개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (272개)
 
 
 **/api/admin-review-bonus/:id**
@@ -1107,9 +1108,6 @@
 **/api/seller/login**
 - `POST /api/seller/login`
 
-**/api/seller/my-seller-status**
-- `GET /api/seller/my-seller-status`
-
 **/api/seller/my-stores**
 - `GET /api/seller/my-stores`
 - `GET /api/seller/my-stores/summary`
@@ -1256,12 +1254,6 @@
 **/api/seller/surface**
 - `GET /api/seller/surface`
 
-**/api/seller/switch-to-seller**
-- `POST /api/seller/switch-to-seller`
-
-**/api/seller/switch-to-user**
-- `POST /api/seller/switch-to-user`
-
 **/api/seller/tax-summary**
 - `GET /api/seller/tax-summary`
 
@@ -1401,7 +1393,7 @@
 - `GET /api/youtube/shorts/sync`
 
 
-> 마지막 생성: 2026-09-16T09:13:10.354Z
+> 마지막 생성: 2026-09-16T10:39:03.541Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->
