@@ -229,6 +229,12 @@ curatorRoutes.get('/:handle', optionalAuth(), async (c) => {
                 p.category, p.is_active, p.dominant_color, p.avg_rating, p.review_count, p.sold_count,
                 p.restaurant_name, p.restaurant_address,
                 p.seller_id,
+                -- 2026-09-16: 클라(CuratorPage isVoucher)가 deal_only === 1 을 보는데 이 SELECT 에
+                --   그 컬럼이 없어서 값이 늘 undefined 였다 → 그 분기는 한 번도 참이 된 적이 없다.
+                --   결과: 담은 교환권(기프티콘 — deal_only=1 인데 카테고리는 피자/치킨 처럼 voucher 가
+                --   아니다)이 교환권·동네딜 이 아니라 추천템 으로 갔다. 에러 없이 분류만 틀렸다.
+                --   (이 주석에 백틱을 쓰면 템플릿 리터럴이 그 자리에서 끝난다 — 쓰지 말 것.)
+                COALESCE(p.deal_only, 0) AS deal_only,
                 p.referral_commission_rate AS commission_rate, COALESCE(p.referral_enabled, 0) AS referral_enabled
          FROM product_pins pp
          JOIN products p ON p.id = pp.product_id

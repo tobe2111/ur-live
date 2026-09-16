@@ -5494,9 +5494,10 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 325건 · 최신순 · 이 목록은 자동 생성된다._
+_총 326건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-16**
+- [셀러가 올린 이용권이 유어샵에 뜨게 — 네 종류 중 한 종류만 알아보고 있었다 (2026-09-16)](handoff/2026-09-16-ushop-voucher-kinds.md)
 - [유어쇼츠 구매 바에 흰 카드가 없었다 — 스케일 밖 불투명도 (2026-09-16)](handoff/2026-09-16-transparent-buy-bar.md)
 - [매장 영입 2% 폐지 — 화면이 하던 거짓 약속을 걷어냄 (2026-09-16)](handoff/2026-09-16-store-intro-abolished.md)
 - [남은 후속 넷을 끝까지 — 서버 첫 화면 확장 · PC 판단 · JS 다이어트 · 잔액 밀림 〔2026-09-16〕](handoff/2026-09-16-remaining-followups.md)
