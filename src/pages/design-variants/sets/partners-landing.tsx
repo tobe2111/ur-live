@@ -23,7 +23,14 @@ import { ArrowRight } from 'lucide-react'
 import type { VariantSet, VariantCtx } from '../registry'
 import { PARTNER_FACTS as F } from '@/shared/partners-facts'
 
-const SHOT = (n: string) => `/partners/${n}.jpg`
+/**
+ * 🩸 2026-09-16 — 처음엔 `/partners/<n>.jpg` 에 뒀는데 **라이브에서 404** 였다.
+ *   `public/_routes.json` 은 `/*` 를 전부 워커로 보내고 **명시 목록만** 정적으로 뺀다.
+ *   `/partners/*.jpg` 는 그 목록에 없어 워커로 갔고, 워커는 `/assets/*` 만 서빙해서 404 가 났다.
+ *   ⚠️ `/partners/*` 를 exclude 에 새로 넣는 건 위험하다 — 그 파일 주석이 경고하는 #598 클래스로
+ *      랜딩 경로 자체를 정적 404 로 삼킬 수 있다. 이미 검증된 `/static/*` 제외를 쓴다.
+ */
+const SHOT = (n: string) => `/static/partners/${n}.jpg`
 const won = (n: number) => n.toLocaleString('ko-KR')
 
 /** 폰 프레임 — 덱(`phone-frame.mjs`)이 쓰는 그림을 웹으로 옮긴 것. 캡처가 430x930 이라 비율 고정. */
