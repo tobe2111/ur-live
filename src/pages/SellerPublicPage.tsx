@@ -5,7 +5,8 @@ import { useEffect, useState } from 'react'
 // 🏁 2026-06-26 (대표 — "상품·이용권 모두 전체 등록 페이지로"): 얄팍한 빠른등록 모달(QuickProductModal) 제거 →
 //   등록은 정식 풀페이지(/seller/products/new · /seller/meal-voucher/new)로. (lazy/Suspense 도 미사용→제거)
 import { useTranslation } from 'react-i18next'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { storeAffiliateRef } from '@/utils/affiliate-track'
 import api from '@/lib/api'
 import { useTheme } from '@/shared/stores/useTheme'
 import { Search, X } from 'lucide-react'
@@ -89,6 +90,10 @@ function matchSellerSeedProp(seed: Record<string, unknown> | null | undefined, s
 export default function SellerPublicPage({ sellerIdOverride, curator, sellerNumericId, ownerOverride, sellerSeed, productsSeed }: SellerPublicPageProps = {}) {
   const { t } = useTranslation()
   const params = useParams<{ sellerId: string }>()
+  // 🔗 2026-09-19 (대표 확정 플로우 8번): 인플루언서의 **매장 링크**(`/s/{id}?ref=`)가 여기로 온다. 상세(`/pass/:id`)와
+  //   같은 7일 귀속을 심어, 이 매장의 어느 이용권을 사든 그 사람에게 간다. 본인 ref 는 `storeAffiliateRef` 가 거른다.
+  const [publicSearch] = useSearchParams()
+  useEffect(() => { storeAffiliateRef(publicSearch.get('aff') || publicSearch.get('ref')) }, [publicSearch])
   const rawParam = sellerIdOverride ?? params.sellerId
   const navigate = useNavigate()
   // sellerId는 숫자 ID 또는 slug/username

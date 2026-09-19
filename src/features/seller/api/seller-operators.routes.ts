@@ -29,6 +29,8 @@ import { safeError } from '@/worker/utils/safe-error'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { startDashboardSession } from '@/worker/utils/dashboard-session'
 import { notifyUser } from '@/lib/notifications'
+import { getOrIssueOwnerClaimCode, formatStoreCode } from '@/worker/utils/store-codes'
+import { readBrokerTerms } from '@/worker/utils/broker-share'
 import {
   listOperableStores,
   canOperateStore,
@@ -36,6 +38,7 @@ import {
   grantOperator,
   revokeOperator,
   listStoreOperators,
+  resolveStoreOwnerUserId,
 } from '../../../worker/utils/seller-operators'
 
 const app = new Hono<{ Bindings: Env }>()
@@ -74,7 +77,19 @@ app.get('/my-stores', async (c) => {
     const userId = await resolveActorUserId(c)
     if (!userId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
     const stores = await listOperableStores(c.env.DB, userId)
-    return c.json({ success: true, data: stores })
+    /**
+     * 🔑 2026-09-19 (대표 확정 플로우 3번): 내가 **운영자**로만 앉아 있고 아직 주인이 없는 매장은
+     *   사장님 승계 코드를 함께 준다 — 목록 화면이 "이 코드를 사장님께 주세요" 를 그린다.
+     *   주인이 생기면 코드는 안 내려간다(그때부턴 줄 사람이 없다). fail-soft: 코드가 안 나와도 목록은 온다.
+     */
+    const enriched = await Promise.all(stores.map(async (s) => {
+      if (s.role !== 'operator') return { ...s, has_owner: true, owner_claim_code: null as string | null }
+      const ownerId = await resolveStoreOwnerUserId(c.env.DB, s.seller_id).catch(() => undefined)
+      if (ownerId != null) return { ...s, has_owner: true, owner_claim_code: null as string | null }
+      const code = await getOrIssueOwnerClaimCode(c.env.DB, s.seller_id, userId).catch(() => null)
+      return { ...s, has_owner: false, owner_claim_code: code ? formatStoreCode(code.code) : null }
+    }))
+    return c.json({ success: true, data: enriched })
   } catch (err) {
     return safeError(c, err, '매장 목록을 불러오지 못했습니다', '[seller-operators]')
   }
@@ -353,6 +368,39 @@ app.get('/operating-summary', async (c) => {
         revenue_total: Number(agg?.revenue) || 0,
         orders_since_grant: sinceAgg ? Number(sinceAgg.orders) || 0 : null,
         revenue_since_grant: sinceAgg ? Number(sinceAgg.revenue) || 0 : null,
+      })
+      /**
+       * 🤝 2026-09-19 (대표 확정 플로우 10번): 매장에 붙은 **인플루언서별** 성과와 **내 중개사 몫**.
+       *   - 인플루언서: 활성·대기 딜 + 그 사람 귀속 적립(`influencer_attributions`, 중개사 몫 행은 제외).
+       *     적립은 매장 부담(딜 %)이라 "매장이 인플루언서에게 낸 돈" 이 곧 이 숫자다.
+       *   - 중개사 몫: `source='broker_share'` 행 중 **내 것**만. 게이트 OFF 면 0 이고 화면이 그 사실을 말한다.
+       */
+      const deals = await c.env.DB.prepare(
+        `SELECT d.id, d.influencer_id, d.commission_pct, d.status, d.proposed_by, d.created_at,
+                u.name AS influencer_name, u.handle AS influencer_handle,
+                (SELECT COUNT(*) FROM influencer_attributions a WHERE a.seller_id = d.seller_id AND a.influencer_id = d.influencer_id AND COALESCE(a.source,'') != 'broker_share' AND a.status != 'clawed_back') AS orders_count,
+                (SELECT COALESCE(SUM(a.commission_amount),0) FROM influencer_attributions a WHERE a.seller_id = d.seller_id AND a.influencer_id = d.influencer_id AND COALESCE(a.source,'') != 'broker_share' AND a.status != 'clawed_back') AS commission_total
+           FROM seller_influencer_deals d LEFT JOIN users u ON CAST(u.id AS TEXT) = d.influencer_id
+          WHERE d.seller_id = ? AND d.status IN ('active','proposed')
+          ORDER BY commission_total DESC, d.created_at DESC LIMIT 50`
+      ).bind(st.seller_id).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }))
+      const brokerTerms = await readBrokerTerms(c.env.DB, st.seller_id).catch(() => ({ brokerUserId: null, sharePct: 0, influencerCapPct: null }))
+      const myShare = await c.env.DB.prepare(
+        `SELECT COALESCE(SUM(CASE WHEN status IN ('pending') THEN commission_amount ELSE 0 END),0) AS pending_krw,
+                COALESCE(SUM(CASE WHEN status IN ('available','paid') THEN commission_amount ELSE 0 END),0) AS confirmed_krw
+           FROM influencer_attributions WHERE seller_id = ? AND influencer_id = ? AND source = 'broker_share'`
+      ).bind(st.seller_id, String(userId)).first<{ pending_krw: number; confirmed_krw: number }>().catch(() => null)
+
+      Object.assign(out[out.length - 1], {
+        influencers: (deals.results || []).map((d) => ({
+          deal_id: Number(d.id), influencer_id: String(d.influencer_id),
+          name: (d.influencer_name as string | null) || null, handle: (d.influencer_handle as string | null) || null,
+          commission_pct: Number(d.commission_pct) || 0, status: String(d.status), proposed_by: String(d.proposed_by),
+          orders_count: Number(d.orders_count) || 0, commission_total: Number(d.commission_total) || 0,
+        })),
+        broker_share_pct: brokerTerms.brokerUserId === userId ? brokerTerms.sharePct : 0,
+        influencer_pct_cap: brokerTerms.influencerCapPct,
+        my_broker_share: { pending_krw: Number(myShare?.pending_krw) || 0, confirmed_krw: Number(myShare?.confirmed_krw) || 0 },
       })
     }
     // 위임 매장을 위로 — 이 화면을 여는 이유가 그쪽이다.

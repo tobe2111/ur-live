@@ -105,6 +105,10 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
   const [picked, setPicked] = useState<RegisterPlace | null>(initialPlace ?? null)
   const [showMap, setShowMap] = useState(!initialPlace)
   const [channel, setChannel] = useState<'direct' | 'brokered' | null>(null)
+  // 💸 2026-09-19 (결재 2026-09-16 부속 확정): 중개 매장은 등록 때 **두 요율**을 정한다 — 중개사 몫 % · 인플루언서 상한 %.
+  //   둘 다 매장 몫(95%) 안에서 나가고, 케이스별 조정은 딜에서 한다. 비우면 0 / 상한 없음.
+  const [brokerShare, setBrokerShare] = useState('')
+  const [infCap, setInfCap] = useState('')
   const [managerPhone, setManagerPhone] = useState('')
   const [bno, setBno] = useState('')
   // 📄 2026-08-26 (대표 "당근마켓 플로우 정도로 하자"): 대표자명·개업일 **타이핑을 없앴다**.
@@ -163,7 +167,17 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
       if (!managerPhone) return '휴대폰 번호를 입력해주세요'
       return managerOk ? null : '휴대폰 번호(01x)로 입력해주세요'
     }
-    if (i === 2) return channel ? null : '둘 중 하나를 골라주세요'
+    if (i === 2) {
+      if (!channel) return '둘 중 하나를 골라주세요'
+      if (channel === 'brokered') {
+        const share = brokerShare === '' ? 0 : Number(brokerShare)
+        const cap = infCap === '' ? null : Number(infCap)
+        if (!Number.isFinite(share) || share < 0 || share > 50) return '중개사 몫은 0 ~ 50% 사이로 적어주세요'
+        if (cap !== null && (!Number.isFinite(cap) || cap < 0 || cap > 50)) return '인플루언서 상한은 0 ~ 50% 사이로 적어주세요'
+        if (share + (cap ?? 0) > 90) return '중개사 몫과 인플루언서 상한의 합이 90% 를 넘을 수 없어요'
+      }
+      return null
+    }
     return certOk ? null : '사업자등록증 사진을 첨부해주세요'
   }
   const blocked = blockReason(step)
@@ -182,6 +196,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
         kakao_place_url: picked.place_url,
         lat: picked.lat, lng: picked.lng,
         channel,
+        ...(channel === 'brokered' ? { broker_share_pct: brokerShare === '' ? 0 : Number(brokerShare), influencer_pct_cap: infCap === '' ? undefined : Number(infCap) } : {}),
         manager_phone: digitsOnly(managerPhone),
         business_number: bno.replace(/-/g, '') || undefined,
         business_cert_url: certUrl,
@@ -193,6 +208,8 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
       if (!r.data?.success) throw new Error(r.data?.error)
       clearStoreReferrer()
       toast.success(r.data.data?.message || '매장이 등록되었습니다')
+      // 🔑 사장님 승계 코드 — 매장 목록에도 뜨지만, 지금 이 자리에서 한 번 보여 준다(대행사가 곧 사장님께 보낼 값).
+      if (r.data.data?.owner_claim_code) toast.success(`사장님께 드릴 코드: ${r.data.data.owner_claim_code} (매장 관리에서 다시 볼 수 있어요)`)
       onDone(Number(r.data.data?.seller_id) || undefined)
     } catch (e: any) {
       // 🕳️ 이미 등록된 매장 — 종전엔 여기서 alert 하나 띄우고 끝(막다른 길)이었다.
@@ -363,6 +380,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
 
           {/* ③ 운영 방식 */}
           {step === 2 && (
+            <div className="space-y-3">
             <div className="grid grid-cols-2 gap-2">
               <button onClick={() => setChannel('direct')}
                 className={`p-3 rounded-xl border text-left transition ${channel === 'direct' ? 'border-brand bg-[#EAF1FE]' : 'border-gray-200 hover:bg-gray-50'}`}>
@@ -374,6 +392,28 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
                 <p className="text-sm font-bold text-gray-900">중개·대행사에요</p>
                 <p className="text-[11px] text-gray-500 mt-0.5">사장님을 대신해 등록·관리해요</p>
               </button>
+            </div>
+            {/* 💸 중개 매장의 두 요율 — 매장 몫 안에서 나간다. 인플루언서 % 는 여기 상한 안에서 케이스별로 정한다. */}
+            {channel === 'brokered' && (
+              <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 space-y-2">
+                <p className="text-[12px] font-bold text-gray-900">정산 조건 <span className="font-normal text-gray-500">(나중에 매장 관리에서 바꿀 수 있어요)</span></p>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="block">
+                    <span className="block text-[11px] text-gray-600 mb-1">중개사 몫 %</span>
+                    <input type="number" inputMode="decimal" min="0" max="50" step="0.5" value={brokerShare} placeholder="예: 10"
+                      onChange={e => setBrokerShare(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400" />
+                  </label>
+                  <label className="block">
+                    <span className="block text-[11px] text-gray-600 mb-1">인플루언서 상한 %</span>
+                    <input type="number" inputMode="decimal" min="0" max="50" step="0.5" value={infCap} placeholder="비우면 상한 없음"
+                      onChange={e => setInfCap(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400" />
+                  </label>
+                </div>
+                <p className="text-[11px] text-gray-500 leading-relaxed">둘 다 매장 매출에서 나가요. 인플루언서마다 다른 % 는 협업 코드·딜에서 이 상한 안에서 정합니다. 등록이 끝나면 <b className="text-gray-900">사장님께 드릴 코드</b>가 생겨요.</p>
+              </div>
+            )}
             </div>
           )}
 

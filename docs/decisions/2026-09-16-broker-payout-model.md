@@ -72,4 +72,5 @@
 ## 반영 커밋
 
 - `692d5bb9d` — 영입 2% 폐지(화면 4곳 + 약관 조항). PR #1467.
-- 나머지(중개사 계약·계좌 입력·사용 확인 게이트)는 아래 순서대로 별건 PR.
+- 2026-09-19 (브랜치 `claude/agency-flow-review-cgfwtl`) — 안 1 구현: 매장 등록 때 두 요율(`seller_meta.broker_share_pct` · `influencer_pct_cap`), 적립 SSOT `broker-share.ts`(`influencer_attributions source='broker_share'`, 매장 debit, 인플루언서와 같은 성숙·원천징수·지급센터·환불 회수), 게이트 `broker_share_enabled` **기본 OFF**, 어드민 ⑩ 스위치, STAGING **S-BROKER** 5건. 계좌는 중개사 본인이 `/influencer/settlement` 에서 입력(같은 출금 레일). 사용 확인 게이트는 09-16 배포분(S-USEGATE) 그대로.
+- 채널 중립 부속 확정도 같은 PR: 직접 입점 매장도 **협업 코드**로 인플루언서에게 % 를 준다(`/seller/influencer-deals`).

@@ -19,7 +19,7 @@
 | **유저** | `users` + `/u/{handle}` 유어샵 자동 | 이용권 구매 · 남의 이용권 **담기**(소개) | **없음.** 담기 소개 커미션(2%)·초대 1,000딜·멀티티어 전부 **OFF** | `affiliate_program_enabled` 미설정=OFF · `invite_reward_enabled` OFF · `multi_tier_enabled` OFF · `user_referral_bonus_pct=0` |
 | **매장 업주** | `sellers.seller_type='store_owner'` | 이용권 등록·판매·QR 확인 · 인플루언서에게 딜 제안 | 판매액 − 플랫폼 수수료. **직접 입점 10% / 중개 경유 5%** (PG 비용은 유어딜이 그 안에서 흡수) | `fee-resolver.ts` · `fee_channel_rates_enabled=true` · `platform_fee_pct_direct=10` · `platform_fee_pct_brokered=5` · 채널 미지정=5% 폴백 |
 | **인플루언서** | `sellers.seller_type='influencer'` (판매승인 셀러) | ① 매장 딜을 팔로워에 **추천**(`?ref`) ② 매장을 **영입** | ① 딜 커미션 = **매장이 제안서에 적은 %** (매장 부담) ② 영입 **2%** — **직접 입점 매장만** · 1년 · T+7 · 원천징수 3.3% | ① `seller_influencer_deals` ② `influencer_store_intro_pct=2` · `store_channel='direct'` 조건 · `tax-withholding.ts` |
-| **중개사(운영자)** | 별도 실체 **없음** — 셀러 계정 + `seller_operators(role='operator')` | 매장 대신 대시보드 운영 · 매장-인플 조율 | **유어딜에서 받는 것 0.** 매장이 5%만 내므로 **매장 몫 95% 안에서 매장과 직접** 거래 | 2026-09-04 대표 확정 · `agencies` 코드 삭제 · `seller-operators.ts` |
+| **중개사(운영자)** | 별도 실체 **없음** — 셀러 계정 + `seller_operators(role='operator')` | 매장 대신 대시보드 운영 · **코드로** 사장님·인플루언서 매칭(2026-09-19 확정 플로우) | **지금 살아 있는 값: 유어딜에서 받는 것 0** — 매장 몫 95% 안에서 매장과 직접 거래. 매장 등록 때 정한 `broker_share_pct` 는 **저장만** 되고, 유어딜 직접 송금은 `broker_share_enabled` **OFF**(S-BROKER 뒤 대표가 켠다) | 2026-09-04 대표 확정 · 2026-09-16 결재 안 1 · `broker-share.ts` · `store-codes.ts` |
 | **유어딜** | `admin` | 4부류가 거래하게 · 정합·신뢰 | 3P **10% / 5%** · 1P(직판) **0%** · 후원 **15%** | `commission_rate_default=5` · `commission_rate_donation=15` |
 
 ## 2. 돈 한 건이 흐르는 그림 (이용권 10,000원, 직접 입점, 인플루언서 추천 경유)
