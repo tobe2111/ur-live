@@ -94,7 +94,13 @@ describe('① 목록 — 기본은 그대로 숨기고, 명시한 호출만 삭�
 
   it('🔒 콜드 D1 가드 — 이용권 컬럼을 보장하고 나서 읽는다', () => {
     // 이 컬럼들은 마이그레이션이 아니라 ensureTables 의 ALTER 로 생긴다. 안 부르면 셀러 메인이 500 이다.
-    expect(LIST).toMatch(/await ensureGroupBuyColumns\(db\)/)
+    // 🔀 2026-09-17 재조준 — 종전엔 `await ensureGroupBuyColumns(db)` 라는 **직렬 형태**를 앵커로 썼는데,
+    //   같은 날 두 보정을 `Promise.all` 로 동시에 시작하면서(대표 *"내 이용권이 너무 늦게 떠"*) 형태가 바뀌었다.
+    //   불변식은 그대로다 — **쿼리를 내기 전에 기다린다.** 그래서 형태가 아니라 *순서*를 본다.
+    const call = LIST.indexOf('ensureGroupBuyColumns(db)')
+    expect(call, '컬럼 보장 호출이 사라졌다 — 콜드 D1 에서 셀러 메인이 500 이 된다').toBeGreaterThan(0)
+    expect(LIST.slice(0, call), '보장이 await 안에 있어야 한다(기다리지 않으면 쿼리가 먼저 나간다)').toMatch(/await[^;]*$/)
+    expect(LIST.indexOf('db.prepare(query)'), '보장이 목록 쿼리보다 뒤에 있다').toBeGreaterThan(call)
     expect(SERVER).toMatch(/import \{ ensureTables as ensureGroupBuyColumns \}/)
   })
 
