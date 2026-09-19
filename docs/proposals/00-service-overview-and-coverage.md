@@ -302,12 +302,12 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 370 | 1120 |
+| 전체 | 371 | 1123 |
 | 도메인 버킷 (5개 소개서) | 167 | 457 |
 | 공통/인프라 (의도적 제외) | 166 | 477 |
-| **미커버 (점검 필요)** | **37** | **186** |
+| **미커버 (점검 필요)** | **38** | **189** |
 
-⚠️ **미커버 223건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 227건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -334,6 +334,7 @@
 - `/district/:slug`
 - `/experience`
 - `/gb-market`
+- `/i/join/:code`
 - `/local/:code`
 - `/mall-admin`
 - `/map`
@@ -496,12 +497,15 @@
 - `GET /statement` (`src/features/supply/api/wholesale-documents.routes.ts`)
 - `GET /status` (`src/features/supply/api/coupang-commerce.routes.ts`)
 - `POST /store-claims` (`src/features/seller/api/seller-store-claims.routes.ts`)
+- `GET /store-claims/lookup-by-code` (`src/features/seller/api/seller-store-claims.routes.ts`)
 - `GET /store-claims/mine` (`src/features/seller/api/seller-store-claims.routes.ts`)
 - `POST /store/coupang/connect` (`src/features/supply/api/supplier-dashboard.routes.ts`)
 - `POST /store/import` (`src/features/supply/api/supplier-dashboard.routes.ts`)
 - `POST /store/naver/connect` (`src/features/supply/api/supplier-dashboard.routes.ts`)
 - `GET /store/products` (`src/features/supply/api/supplier-dashboard.routes.ts`)
 - `GET /store/status` (`src/features/supply/api/supplier-dashboard.routes.ts`)
+- `GET /stores/:id/broker-terms` (`src/features/seller/api/seller-broker-terms.routes.ts`)
+- `POST /stores/:id/broker-terms` (`src/features/seller/api/seller-broker-terms.routes.ts`)
 - `GET /stores/lookup-by-business` (`src/features/seller/api/seller-store-claims.routes.ts`)
 - `GET /sub-accounts` (`src/features/supply/api/wholesale.routes.ts`)
 - `POST /sub-accounts` (`src/features/supply/api/wholesale.routes.ts`)
@@ -1722,7 +1726,7 @@
 
 
 
-> 마지막 생성: 2026-09-16T13:34:26.578Z
+> 마지막 생성: 2026-09-19T17:40:15.562Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

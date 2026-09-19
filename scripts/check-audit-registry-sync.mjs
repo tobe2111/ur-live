@@ -28,10 +28,16 @@
  *   - verify.yml 전용 검사(게이트 밖)는 대상이 아니다 — 게이트가 SSOT 인 문서라서 그렇다.
  *
  * 기본 warn-only(exit 0). 차단: STRICT_AUDIT_REGISTRY=1 또는 `-s`.
+ *
+ * `--fix` 는 **R2(개수)만** 기계적으로 맞춘다(pre-commit 이 자동 실행 + stage). R1 은 자동 수정 대상이
+ * 아니다 — 표에 들어갈 "무엇을 보장하나 · 왜 생겼나" 는 사람이 쓰는 글이고 그게 이 문서의 본체다.
  */
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 
 const STRICT = process.env.STRICT_AUDIT_REGISTRY === '1' || process.argv.includes('-s')
+// `--fix`: R2(개수)만 기계적으로 맞춘다. R1(가드가 문서에 등재됐는가)은 **절대 자동 수정하지 않는다** —
+//   그건 사람이 표에 한 줄(무엇을 보장하나 · 왜 생겼나)을 쓰는 일이고, 그 글이 이 문서의 본체다.
+const FIX = process.argv.includes('--fix')
 const GATE = 'scripts/audit-gate.sh'
 const DOC = 'docs/AUDIT_INVARIANTS.md'
 
@@ -73,7 +79,15 @@ const claimed = doc.match(/전체\s*\((\d+)개\s*불변식\)/)
 if (!claimed) {
   problems.push(`한 줄 점검 블록의 "전체 (N개 불변식)" 표기를 못 찾았다 — 형식이 바뀌었으면 이 가드도 함께 고칠 것.`)
 } else if (Number(claimed[1]) !== runCount) {
-  problems.push(`개수 불일치: 문서 ${claimed[1]}개 vs 실제 ${runCount}개 — 문서를 ${runCount} 로 고칠 것.`)
+  if (FIX) {
+    // 🔁 이 숫자는 `audit-gate.sh` 의 `run "` 줄 수에서 **기계적으로 나온다** — 손으로 적을 이유가 없다.
+    //   손으로 두면 (a) 가드를 더한 세션마다 잊고 (b) 동시에 도는 세션들이 **같은 한 줄**을 다퉈 충돌한다.
+    //   2026-09-16 하루에만 두 번(112→113, 113→114) 손으로 고쳤다. 그래서 생성으로 돌린다.
+    writeFileSync(DOC, doc.replace(claimed[0], `전체 (${runCount}개 불변식)`), 'utf8')
+    console.log(`🔁 audit-registry: 문서 개수 ${claimed[1]} → ${runCount} 로 갱신(생성값).`)
+  } else {
+    problems.push(`개수 불일치: 문서 ${claimed[1]}개 vs 실제 ${runCount}개 — 문서를 ${runCount} 로 고칠 것(\`--fix\` 로 자동).`)
+  }
 }
 
 if (problems.length === 0) {

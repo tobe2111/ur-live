@@ -307,6 +307,10 @@ const OPS_GATES: OpsGate[] = [
   // 🔒 2026-09-16 (사기 방어 ①): 소개 커미션 성숙을 **사용 확인 뒤로**. 켜지기 전엔 서비스가
   //   한 번도 안 일어나도 T+7 이면 송금 대기에 올랐다(가짜 매장이 돈을 가져가는 경로).
   { key: 'payout_requires_voucher_use', kind: 'setting', label: '소개 커미션 사용 확인 게이트', default_value: 'false', staging_ref: 'S-USEGATE', turn_on_when: 'S-USEGATE 8건 통과 시 — 특히 ②(미사용은 pending 유지) ③(1장 사용 즉시 성숙) ⑦(무기한 이용권이 천장일에 풀림)이 확인되면. 라이브 attribution 0건이라 켜도 오늘 영향 0' },
+  // 💸 2026-09-19 (결재 `2026-09-16-broker-payout-model.md` 안 1): 중개사 몫을 유어딜이 직접 송금.
+  //   OFF 면 종전(중개사는 매장과 장부 밖 거래). 켜면 중개 매장 결제마다 `broker_share_pct` 가 매장 몫에서
+  //   중개사(유저)에게 적립되고 인플루언서와 같은 성숙·원천징수·지급센터를 탄다.
+  { key: 'broker_share_enabled', kind: 'setting', label: '중개사 몫 직접 송금', default_value: 'false', staging_ref: 'S-BROKER', turn_on_when: 'S-BROKER 5건 통과 시 — 특히 ①(주문당 1행) ③(환불 시 회수) ⑤(OFF 복귀 시 종전과 동일). 라이브 중개 매장 1곳·주문 0건이라 켜도 오늘 영향 0' },
   { key: 'BLOG_AI_DRAFTS_ENABLED', kind: 'env', label: '블로그 AI 초안 주간 cron', default_value: 'false', staging_ref: null, turn_on_when: '주간 AI 초안이 필요해지고 ANTHROPIC_API_KEY 가 ur-live 에 설정되면' },
   { key: 'ADS_AUTOBID_ENABLED', kind: 'env', label: '유어애즈 자동입찰', default_value: 'false', staging_ref: null, turn_on_when: '유어애즈 광고주가 실제로 입찰을 시작하면(현재 인플루언서 DB 수집 단계라 미해당)' },
   { key: 'wholesale_auto_grade_enabled', kind: 'setting', label: '도매 등급 자동평가', default_value: '0', staging_ref: null, turn_on_when: '🔴 켜지 않는다 — 도매몰은 철거 대상(2026-08-02 대표 확정 ⑦)' },
