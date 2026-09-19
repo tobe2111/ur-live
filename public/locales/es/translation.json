@@ -2663,7 +2663,12 @@
       "laterPermit": "Licencia de actividad",
       "laterPermitNote": "Obligatoria en hostelería",
       "laterBank": "Cuenta de liquidación",
-      "laterBankNote": "Antes del primer pago"
+      "laterBankNote": "Antes del primer pago",
+      "certHint": "Con una foto rellenamos los campos de abajo. También puedes hacerlo más tarde.",
+      "fromPhoto": "Leído de tu foto: revísalo, por favor",
+      "ocrFilled": "Rellenamos {{n}} campo(s) desde tu foto: revísalos, por favor",
+      "ocrNone": "Registro mercantil subido",
+      "certHintDone": "Se usa para la revisión. Revisa los campos de abajo."
     },
     "analytics": "Análisis de ventas",
     "analyticsView": {

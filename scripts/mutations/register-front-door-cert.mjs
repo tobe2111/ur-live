@@ -8,9 +8,10 @@ export default [
   {
     name: 'register-cert: 업로드 칸을 지운다',
     file: 'src/pages/SellerRegisterSupplierPage.tsx',
-    // 🔀 2026-09-16 재조준 — 시각 C 로 `hideLabel` 이 붙었다(Field 가 라벨을 갖는다).
-    find: '<BusinessCertUpload value={certUrl} onChange={setCertUrl} hideLabel />',
-    replace: '<input id="cert-noop" />',
+    // 🔀 2026-09-16 재조준 ②— 시각 C 로 `hideLabel`, 그다음 OCR 로 `onRead` 가 붙었다.
+    //    ⚠️ 속성 전부를 앵커에 넣으면 속성 하나 늘 때마다 또 낡는다 ⇒ **여는 태그까지만** 잡는다.
+    find: '<BusinessCertUpload value={certUrl}',
+    replace: '<input id="cert-noop" data-was={certUrl}',
     test: TEST,
     why: '칸이 없으면 사진이 도착할 길이 자체가 없다 — 어드민이 대조할 근거가 사라진다.',
   },

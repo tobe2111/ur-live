@@ -2663,7 +2663,12 @@
       "laterPermit": "Licence d’exploitation",
       "laterPermitNote": "Obligatoire en restauration",
       "laterBank": "Compte de versement",
-      "laterBankNote": "Avant le premier versement"
+      "laterBankNote": "Avant le premier versement",
+      "certHint": "Une photo suffit pour remplir les champs ci-dessous. Vous pouvez aussi le faire plus tard.",
+      "fromPhoto": "Lu depuis votre photo : merci de vérifier",
+      "ocrFilled": "{{n}} champ(s) remplis depuis votre photo : merci de vérifier",
+      "ocrNone": "Registre d’entreprise envoyé",
+      "certHintDone": "Utilisé pour l’examen. Merci de vérifier les champs ci-dessous."
     },
     "analytics": "Analyse des ventes",
     "analyticsView": {

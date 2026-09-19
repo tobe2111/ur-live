@@ -50,8 +50,16 @@ describe('🪪 가입 앞문 — 등록증 사본', () => {
    */
   it('첨부가 없어도 제출을 막지 않는다 (선택 — 대표 확정)', () => {
     const p = page()
-    const sub = p.slice(p.indexOf('async function submit'))
-    const body = sub.slice(0, sub.indexOf('setLoading(true)'))
+    // 🔀 2026-09-16 재조준 — 버튼을 누른 뒤 실제로 보내기까지의 **경로 전체**를 본다.
+    //   종전엔 `async function submit` 부터 잘랐는데, 확인 시트(시안 ④)가 붙으면서 검사(필수칸·약관)가
+    //   그 앞의 `review()` 로 옮겨 갔다. 그러자 잘라 낸 구간이 **거의 비어** 게이트를 되살리는 주입에도
+    //   초록이 떴다(= 이 시험이 아무것도 안 지키고 있었다. CI 주입 러너가 잡았다).
+    //   ⇒ 시작 앵커를 `function review()` 로 올려 두 함수의 가드 구간을 함께 덮는다.
+    const start = p.indexOf('function review()')
+    expect(start, 'review() 가 사라졌다 — 이 시험의 앵커가 낡았다').toBeGreaterThan(0)
+    const path = p.slice(start)
+    const body = path.slice(0, path.indexOf('setLoading(true)'))
+    expect(body.length, '검사 구간이 비었다 — 앵커가 어긋났다는 뜻이다(통과가 아니라 고장)').toBeGreaterThan(200)
     expect(body, '앞문 등록증은 선택이다 — 제출 게이트가 돌아오면 안 된다').not.toContain('!certUrl')
   })
 

@@ -3344,7 +3344,12 @@
       "laterPermit": "Food business permit",
       "laterPermitNote": "Required for restaurants",
       "laterBank": "Payout account",
-      "laterBankNote": "Before your first payout"
+      "laterBankNote": "Before your first payout",
+      "certHint": "One photo and we will read and fill the fields below. You can also add it later.",
+      "fromPhoto": "Read from your photo — please check it",
+      "ocrFilled": "Filled {{n}} field(s) from your photo — please check them",
+      "ocrNone": "Business registration uploaded",
+      "certHintDone": "Used for review. Please check the fields below."
     },
     "analytics": "Sales Analytics",
     "analyticsView": {
