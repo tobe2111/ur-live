@@ -9,7 +9,7 @@
 ## 🚦 한 줄 점검
 
 ```bash
-bash scripts/audit-gate.sh           # 전체 (114개 불변식)
+bash scripts/audit-gate.sh           # 전체 (115개 불변식)
 bash scripts/audit-gate.sh money     # 특정 도메인만 (separation|auth|money|schema|classify|ui|structure|deploy)
 ```
 
@@ -35,6 +35,7 @@ bash scripts/audit-gate.sh money     # 특정 도메인만 (separation|auth|mone
 | **DB·스키마** | 컬럼/bind/NOT NULL/SELECT* /컬럼예산/복구가능성 정합 | `check-schema-refs` · `check-sql-*` · `check-no-select-star-products` · `check-products-column-budget` · `check-product-detail-fields-repairable` | (상시 가드) |
 | **런타임 크래시(pagination NaN)** | request page/limit/offset/days 등이 비숫자('abc')일 때 `parseInt/Number → NaN → SQL .bind(NaN) → 500` 금지(전 서비스 목록 엔드포인트) — 정수 파싱은 `intParam(raw, def)`(`@/shared/pagination`) 경유 강제(0/음수 클램프 보존). ID 해석 parseInt(isNaN 가드 보유)는 무관 | `check-pagination-nan` | 2026-07-01 (도매몰 라이브 전수조사 — `/api/wholesale/catalog?page=abc` 500 발견 → 전 서비스 100+ 라인 intParam 전환 후 가드) |
 | **상품 종류·라우팅** | group_buy_status 로 종류판별·라우팅 금지(쇼핑↔교환권 오분류) | `check-groupbuy-status-classify` | (상시 가드) |
+| **외래키 부모컬럼 실재** | `REFERENCES 부모(컬럼)` 의 부모 컬럼이 **실제로 존재하고 UNIQUE/PK** 여야 함. SQLite 는 그렇지 않은 외래키를 *malformed* 로 보고 **부모/자식 양쪽 DML 을 거부**한다(D1 은 `foreign_keys=1`). 판정은 정규식이 아니라 **진짜 SQLite 에 CREATE 해서 PRAGMA 로** 묻는다 | `check-foreign-key-sanity` (verify.yml + audit-gate) | 2026-09-19 — 대표 *"결제가 안됐대 · 정작 토스에서는 결제가 찍혀있어"*. `payments`/`tax_invoices` 가 **없는 컬럼** `orders(order_no)`(진짜 이름 `order_number`)를 참조해 두 결제 경로가 공통으로 쓰는 `INSERT INTO orders ... RETURNING id` 가 **전부 실패**했다. 🔑 **평범한 INSERT 는 통과하고 `RETURNING`·`DELETE` 만 터진다** — 그래서 2026-05-24 의 "RETURNING 으로 1 await 절약" 최적화가 들어간 뒤부터 조용히 멎었다. 두 경로 다 실패를 삼키고 자동 환불해 **로그가 0** (라이브 실측: `orders` 마지막 행 2026-06-26 · `vouchers` 전체 1행 · 딜 차감→환불 왕복만 누적). 라이브 드리프트는 정비 레인 `ensureOrdersForeignKeysSane` 이 수리 | 측정 테이블 50개·명시 외래키 10건 미만이면 통과가 아니라 실패 |
 | **동네딜↔쇼핑 완전분리** | 동네딜 표면/도구(리스트 API·데모 시드·alias·수기 폼)에 배송형(general) 유입 금지 — 동네딜=로컬 이용권 전용 | `check-dongnedeal-separation` | 2026-07-02 (대표 확정 — 유령 general 데모 사고 후 신설) |
 | **공구 인원조건 할인 약속 금지** | 공구/이용권/몰 표면이 "N명 모이면 할인" 류의 **조건부 약속**을 하지 않음 — 라이브 두 공구는 **인원과 무관**(유어딜=즉시 단일가 2026-05-30 · 공구 서비스=기간 특가, `resolveGbPricing` 이 `target` 미참조). "N명 함께 구매 중" 같은 **사실 진술은 허용** | `check-groupbuy-headcount-claim` | 2026-08-14 (대표 *"지금 공동구매 정의도 잘 된거야?"* — 2026-06-16 정직화에 가드가 없어 한 줄이면 되돌아갈 수 있었음) |
 | **도매주문 상태머신** | wholesale_orders.status 가 canonical 집합만(정의 밖 오타/고아 상태 write 0) — 전이는 transitionWholesaleOrder | `check-wholesale-order-status` | 2026-06-27 (B2B 플로우 상태머신 신설: 수락/거절/취소/구매확정 + 발송 전 정산보류) |

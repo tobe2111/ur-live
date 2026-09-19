@@ -18,6 +18,7 @@ import type { Env } from '@/worker/types/env';
 import { requireAdmin } from '../middleware/auth';
 import { swallow } from '@/shared/utils/swallow';
 import { ensureAdminsRoleUnconstrained } from '@/worker/utils/ensure-admins-role';
+import { ensureOrdersForeignKeysSane } from '@/worker/utils/ensure-orders-fk-sane';
 // 컬럼 ALTER 목록은 데이터라 분리했다 — 이 파일은 *실행 로직*만 갖는다(2026-08-01).
 import { COLUMN_REPAIRS, type ColumnRepair } from './repair-schema/column-repairs';
 import { ADMIN_REPAIRS } from './repair-schema/admin-tables';
@@ -124,6 +125,25 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     results.push({ desc: 'admins.role CHECK 재빌드', status: adminsRole === 'rebuilt' ? 'added' : adminsRole === 'error' ? 'error' : 'exists' });
   } catch (e) {
     results.push({ desc: 'admins.role CHECK 재빌드', status: 'error', error: String(e).slice(0, 200) });
+  }
+
+  // 🧨 2026-09-19: `payments`/`tax_invoices` 가 **없는 컬럼** `orders(order_no)` 를 참조해
+  //   (진짜 이름은 `order_number`) SQLite 가 malformed FK 로 보고 **`INSERT INTO orders ... RETURNING`
+  //   과 `DELETE FROM orders` 를 전부 거부**했다 → 이용권 딜/카드 결제가 통째로 실패.
+  //   두 경로 다 실패를 삼키고 자동 환불해서 아무 로그도 안 남았다(라이브: orders 마지막 행 06-26).
+  try {
+    const fk = await ensureOrdersForeignKeysSane(DB, true);
+    for (const name of fk.repaired) {
+      results.push({ desc: `${name}: orders(order_no) → orders(order_number) 외래키 재빌드`, status: 'added' });
+    }
+    for (const name of fk.failed) {
+      results.push({ desc: `${name}: 깨진 외래키 재빌드 실패 — 주문 생성이 계속 막힌다`, status: 'error' });
+    }
+    if (!fk.repaired.length && !fk.failed.length) {
+      results.push({ desc: 'orders 외래키 정합', status: 'exists' });
+    }
+  } catch (e) {
+    results.push({ desc: 'orders 외래키 정합', status: 'error', error: String(e).slice(0, 200) });
   }
 
   // 🏭 2026-06-07: operation_guides CHECK 제약 확장 — guide_type 에 'wholesale' 추가.
