@@ -63,4 +63,15 @@ export default [
       'sitemap 은 "이 URL 을 색인해 달라" 는 선언이다. 301 되는 주소를 제출하면 크롤 예산이 한 홉씩 ' +
       '낭비되고, 이 레포는 그 클래스로 이미 네 번 넘어졌다(`check-sitemap-routes` 가 그 수습).',
   },
+  {
+    name: '예약어 목록은 그대로 두고 **해석기만** pass 를 무시하게 한다(목록 검사가 헛돈다)',
+    file: 'src/shared/mall/resolve.ts',
+    find: 'const RESERVED_SLUG_SET = new Set(RESERVED_SLUGS)',
+    replace: "const RESERVED_SLUG_SET = new Set(RESERVED_SLUGS.filter(x => x !== 'pass'))",
+    test: 'src/tests/unit/pass-route-migration.test.ts',
+    why:
+      '목록에 이름이 **있는데도** 런타임 판정이 그 목록을 안 보는 경우 — `RESERVED_SLUGS` 를 세는 ' +
+      '단언은 초록인 채로 `urdeal.kr/pass` 가 남의 가게가 된다. 2026-09-16 에 실제로 주입해 보고 ' +
+      '목록 검사만으로는 안 잡힌다는 것을 확인한 뒤 런타임 호출 검사를 추가했다(R1).',
+  },
 ]
