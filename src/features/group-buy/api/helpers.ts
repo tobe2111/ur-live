@@ -7,6 +7,7 @@
 
 import type { D1Database } from '@cloudflare/workers-types'
 import { swallow } from '../../../worker/utils/swallow'
+import { existingColumns, columnNameOf } from '../../../worker/utils/ensure-columns'
 import { recordLedger } from '../../../worker/utils/ledger'
 import { calcInfluencerCommissionPct, type CommissionRates } from './commission-rates'
 // 💸 매장 수수료율(채널 > override > tier > default)은 `seller-commission-rate.ts` 로 분리했다
@@ -35,14 +36,6 @@ export { getMealVoucherCommissionRate, getSellerCommissionRate } from './seller-
  *   새 D1(컬럼이 진짜 없는 환경)에서 self-heal 이 약해지지 않는다.
  */
 let _ensuredTables = false
-
-/** 그 테이블에 이미 있는 컬럼 이름. 실패하면 빈 집합 — 호출부가 전부 시도하게 둔다(종전 동작). */
-async function existingColumns(DB: D1Database, table: string): Promise<Set<string>> {
-  const r = await DB.prepare(`SELECT name FROM pragma_table_info('${table}')`)
-    .all<{ name: string }>().catch(() => ({ results: [] as { name: string }[] }))
-  return new Set((r.results || []).map((x) => x.name))
-}
-
 export async function ensureTables(DB: D1Database): Promise<void> {
   if (_done_ensureTables.has(DB)) return
   _done_ensureTables.add(DB)
@@ -65,8 +58,7 @@ export async function ensureTables(DB: D1Database): Promise<void> {
   ]
   const haveProducts = await existingColumns(DB, 'products')
   for (const col of columns) {
-    // 정의 첫 토큰이 컬럼 이름이다(`group_buy_target INTEGER DEFAULT 0` → `group_buy_target`).
-    if (haveProducts.has(col.trim().split(/\s+/)[0])) continue
+    if (haveProducts.has(columnNameOf(col))) continue
     try { await DB.prepare(`ALTER TABLE products ADD COLUMN ${col}`).run() } catch { /* exists */ }
   }
   try {
@@ -119,7 +111,7 @@ export async function ensureTables(DB: D1Database): Promise<void> {
   // 🎁 2026-07-12 is_experience: 0원 체험권 마킹(정산 제외용, 체험 캠페인 트랙 WP-A).
   const haveVouchers = await existingColumns(DB, 'vouchers')
   for (const col of ['applied_discount_pct INTEGER DEFAULT 0', 'applied_price INTEGER', 'is_experience INTEGER DEFAULT 0']) {
-    if (haveVouchers.has(col.trim().split(/\s+/)[0])) continue
+    if (haveVouchers.has(columnNameOf(col))) continue
     try { await DB.prepare(`ALTER TABLE vouchers ADD COLUMN ${col}`).run() } catch { /* exists */ }
   }
   _ensuredTables = true
