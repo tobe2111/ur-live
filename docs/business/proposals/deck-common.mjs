@@ -9,6 +9,7 @@ import sharp from 'sharp';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import * as Fi from 'react-icons/fi';
+import * as Si from 'react-icons/si'; // 2026-09-19 SNS 로고(네이버·유튜브·인스타그램) — 인플루언서 덱 채널별 장
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -40,7 +41,7 @@ export const FACTS = {
 };
 
 export async function icon(name, color, px = 256) {
-  const Comp = Fi[name];
+  const Comp = Fi[name] || Si[name];
   if (!Comp) throw new Error('icon ' + name);
   const svg = renderToStaticMarkup(React.createElement(Comp, { color: '#' + color, size: px, strokeWidth: 1.7 }));
   return 'image/png;base64,' + (await sharp(Buffer.from(svg)).png().toBuffer()).toString('base64');
@@ -104,7 +105,8 @@ export async function createDeck({ title, footer, shotsDir, shotKeys = [], phone
   const base = ['FiPercent', 'FiLayers', 'FiUsers', 'FiCreditCard', 'FiMapPin', 'FiUserCheck', 'FiSearch', 'FiEye', 'FiBarChart2',
     'FiRefreshCcw', 'FiLock', 'FiFileText', 'FiCheckCircle', 'FiSmartphone', 'FiShield', 'FiClock', 'FiCamera', 'FiTag',
     'FiTrendingUp', 'FiXCircle', 'FiCheck', 'FiArrowRight', 'FiPhone', 'FiImage', 'FiHome', 'FiStar', 'FiVideo', 'FiMessageCircle', 'FiAlertCircle', 'FiCalendar'];
-  for (const n of new Set([...base, ...icons])) ic[n] = await icon(n, C.brand);
+  // icons 항목은 'FiName'(브랜드색) 또는 ['SiName', 'hex'](로고 고유색) — 로고는 그 브랜드 색으로 그린다.
+  for (const n of new Set([...base, ...icons])) { const [nm, col] = Array.isArray(n) ? n : [n, C.brand]; ic[nm] = await icon(nm, col); }
   ic.FiArrowGray = await icon('FiArrowRight', C.gray);
   ic.FiMailW = await icon('FiMail', C.darkText);
   ic.FiGlobeW = await icon('FiGlobe', C.darkText);
