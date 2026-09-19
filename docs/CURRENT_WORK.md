@@ -5494,8 +5494,10 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 334건 · 최신순 · 이 목록은 자동 생성된다._
+_총 335건 · 최신순 · 이 목록은 자동 생성된다._
 
+**2026-09-19**
+- [대행사(중개사) 확정 플로우 — 매장 코드 · 협업 코드 · 중개사 몫 (2026-09-19)](handoff/2026-09-19-agency-flow-final.md)
 **2026-09-16**
 - [셀러가 올린 이용권이 유어샵에 뜨게 — 네 종류 중 한 종류만 알아보고 있었다 (2026-09-16)](handoff/2026-09-16-ushop-voucher-kinds.md)
 - [2026-09-16 — 유어쇼츠: 닫기 X 제거 + 라이트 테마 로더 색 점프](handoff/2026-09-16-urshorts-close-x-and-loader.md)
