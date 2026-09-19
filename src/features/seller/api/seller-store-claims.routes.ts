@@ -29,6 +29,7 @@ import {
   submitStoreClaim, ensureStoreOwnershipClaims, BIZ_CERT_PATH,
 } from '@/worker/utils/store-ownership-claims'
 import { resolveStoreOwnerUserId } from '@/worker/utils/seller-operators'
+import { findStoreCode, judgeStoreCode, STORE_CODE_REASON_MESSAGE, consumeStoreCode } from '@/worker/utils/store-codes'
 
 type Ctx = Context<{ Bindings: Env }>
 
@@ -112,6 +113,37 @@ export function registerStoreClaimRoutes(
         })
       } catch (err) {
         return safeError(c, err, '신청 중 오류가 발생했습니다', '[store-claims]')
+      }
+    })
+
+  // ── GET /store-claims/lookup-by-code — 🔑 사장님 승계 코드로 매장 찾기 (2026-09-19) ────
+  //   대행사가 등록하며 받은 코드를 사장님이 넣는다. 응답은 사업자번호 조회와 **같은 공개 정보만**
+  //   (이름·주소·주인 있음/없음). 코드는 찾기만 대신한다 — 신청은 종전 `POST /store-claims` 그대로
+  //   (등록증 첨부 + 어드민 승인). 주인이 이미 있는 매장의 코드는 더 이상 유효하지 않다.
+  app.get('/store-claims/lookup-by-code',
+    rateLimit({ action: 'store_claim_code_lookup', max: 20, windowSec: 600 }),
+    async (c) => {
+      try {
+        const userId = await resolveActorUserId(c)
+        if (!userId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
+        const row = await findStoreCode(c.env.DB, c.req.query('code'))
+        const judged = judgeStoreCode(row, 'owner_claim')
+        if (!judged.ok) return c.json({ success: false, code: judged.reason, error: STORE_CODE_REASON_MESSAGE[judged.reason] }, 404)
+        const s = await c.env.DB.prepare(
+          'SELECT id, business_name, name, address, status FROM sellers WHERE id = ? AND status != \'suspended\' LIMIT 1',
+        ).bind(judged.row.seller_id).first<{ id: number; business_name: string | null; name: string | null; address: string | null; status: string | null }>().catch(() => null)
+        if (!s) return c.json({ success: false, code: 'NOT_FOUND', error: '매장을 찾을 수 없어요' }, 404)
+        const owner = await resolveStoreOwnerUserId(c.env.DB, s.id)
+        if (owner != null && Number(owner) !== Number(userId)) {
+          return c.json({ success: false, code: 'HAS_OWNER', error: '이 매장은 이미 사장님이 등록돼 있어요' }, 409)
+        }
+        await consumeStoreCode(c.env.DB, judged.row.code) // 관측용 카운트 — owner_claim 은 상한이 없다
+        return c.json({ success: true, data: { store: {
+          seller_id: s.id, business_name: s.business_name, name: s.name, address: s.address, status: s.status,
+          has_owner: owner != null, is_mine: owner != null && Number(owner) === Number(userId),
+        } } })
+      } catch (err) {
+        return safeError(c, err, '코드 조회 중 오류가 발생했습니다', '[store-claims]')
       }
     })
 

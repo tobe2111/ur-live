@@ -87,8 +87,29 @@
 | **일반 유저** | 회원가입 누구나 (`users`+handle, 유어샵 자동생성) | 딜 발견·구매, 친구 추천/초대 | 딜 적립·절약, 초대·추천 수익 | ~~핀 어필리에이트 2%~~ ~~초대 보상 1,000딜~~ **둘 다 종료(2026-08-22/23 대표 "심플하게")** |
 | **인플루언서** | 판매승인 셀러 `seller_type='influencer'` | 팔로워에 **추천**·매장 **영입** | 추천 클릭→구매 커미션, 영입 매장 매출 | 추천 2% · 매장영입 **2%**(2026-08-27 대표, 1.5%→2%) — **직접 입점 매장만**(2026-08-31), 유효기간 1년, 성숙 T+7, 원천징수 후 |
 | **매장 업주** | 사업자 유저 `seller_type='store_owner'` | **본인 상품/이용권** 판매 | 판매액·현금 정산 | 판매 플랫폼 수수료 **채널별**(2026-08-20 대표 최종): **직접 10% / 중개사 경유 5%**(`seller_meta.store_channel`, 미지정=5% 폴백) · **1P 0%**(유어딜 직판). 표시·정산 SSOT=`fee-resolver.ts`(authoritative 전환은 게이트) |
-| **중개사(대행)** | **셀러 대시보드 계정** + `seller_operators`(operator) — 별도 실체 없음 | 매장-인플 **조율**(= 쇼핑 벤더의 오프라인판) | **매장과 직접 거래**(유어딜 장부 밖) | 🌇 **2026-09-04 대표 확정**: 유어딜은 중개사에게 아무것도 지급하지 않는다. 중개 매장은 유어딜이 **5%만** 떼고(직접 10%), 그 낮춘 요율은 **매장의 여유**다 — 중개사는 **나머지 95%(매장 몫)에서 매장과 직접** 거래한다. 🛑 영입 1%·24개월은 2026-08-31 폐지, 🌇 `agencies` 실체는 2026-09-04 **코드에서 완전 삭제** |
+| **중개사(대행)** | **셀러 대시보드 계정** + `seller_operators`(operator) — 별도 실체 없음 | 매장 등록·이용권 등록·**코드로** 사장님·인플루언서 매칭(= 쇼핑 벤더의 오프라인판) | 운영 매장 요약(`/seller/operating` — 매장별·인플루언서별) | 🔑 **2026-09-19 대표 확정 플로우**(아래 §2-1-a): 매장 등록 때 **중개사 몫 % · 인플루언서 상한 %** 를 정하고, **사장님 승계 코드**와 **협업 코드**가 두 매칭을 맡는다. 💸 중개사 몫은 결재 `2026-09-16-broker-payout-model.md` 안 1 — **유어딜이 매장 몫에서 떼어 직접 송금**(`broker-share.ts`, 게이트 `broker_share_enabled` **기본 OFF** = 종전 09-04 규칙 "매장과 장부 밖 직접 거래"). 유어딜 수수료 5% 는 불변. 🛑 영입 1%·24개월 폐지(08-31), `agencies` 실체 삭제(09-04) |
 | **유어딜 운영** | 플랫폼(`admin`) | 4부류가 다 거래하게 + 정합·신뢰 | 총 GMV × take rate | 판매 5% + 후원 **15%** (충전 마진은 2026-07-18 충전 종료로 소멸) |
+
+> 🔑 **2026-09-19 대표 확정 — 대행사(중개사) 플로우 (직접 운영 매장도 같은 코드 레일)**
+> 대표: *"이걸 최종 플로우로 결정하고 중개사가 끼지 않는 매장 직접 운영도 유사한 형태로 하자."* ·
+> *"중개사 몫과 인플루언서들도 각각 협의를 해야하니 커미션 % 를 매번 케이스마다 조정 가능하긴 해야해."*
+>
+> | # | 단계 | 코드 실체 |
+> |---|---|---|
+> | 0 | 중개사가 셀러 대시보드 가입 | 셀러 계정 (별도 실체 없음) |
+> | 1 | 중개사가 매장 등록 + **중개사 몫 % · 인플루언서 상한 %** → **사장님 승계 코드** 자동 생성 | `POST /api/seller/stores` → `seller-broker-terms.routes` `finalizeBrokeredStore` · `store_codes(kind='owner_claim')` · `seller_meta.broker_*` |
+> | 2 | 어드민 매장 승인 (승인 전 등록은 되나 메인 미노출 — 09-16) | `sellers.status` · `approvedSellerProductSql` |
+> | 3·4 | 사장님이 가입하며 코드 입력 → 소유권 신청(등록증 확인·어드민 승인 그대로) → owner | `/store/find?code=` → `GET /store-claims/lookup-by-code` → `submitStoreClaim` → `store-ownership-transfer` |
+> | 5 | 중개사(운영자)가 이용권 등록 | 매장 전환 토큰 · 운영자 게이트(`store-actor.ts`) |
+> | 6·7 | 중개사·매장이 **협업 코드**(기본 %·승인 필요·상한 사용 수) 발급 → 인플루언서가 링크(`/i/join/:code`) 또는 마이페이지에 입력 → 딜 활성 | `store_codes(kind='influencer')` · `marketing/collab-codes.ts` · `influencer-code-redeem.ts` → `seller_influencer_deals(proposed_by='code')` |
+> | 8 | 마이페이지에 **매장 링크**(`/s/{id}?ref=`, 7일 귀속) + 대표 이용권 링크 · 복사·공유 | `/api/influencer-settlement/my-stores` · `SellerPublicPage` ref 캡처 |
+> | 9 | 판매 → 딜 % 적립(매장 부담) · 환불 역전 · [게이트 ON 시] 중개사 몫 적립 | `findActiveDealPct` · `creditBrokerShare`(`/join`·`confirm-toss` 대칭) |
+> | 10 | 중개사: `/seller/operating` 매장별·인플루언서별·내 몫 / 인플루언서: `/influencer/settlement` 딜별 성과 | `GET /api/seller/operating-summary` |
+>
+> **케이스별 조정**: 코드의 % 는 기본값. 딜마다 `PATCH /api/seller-marketing/deals/:id`(이후 판매분부터, 상대 알림). 상한 = 매장 `influencer_pct_cap` ∧ 90.
+> **메운 구멍**: 매장이 제안한 조건 없는 딜을 인플루언서가 수락할 엔드포인트가 0 이었다 → `POST /api/influencer-settlement/deals/:id/respond`.
+> **직접 운영 매장**: 같은 협업 코드·딜 조정·성과 화면을 쓴다. 승계 코드·중개사 몫만 없다.
+> 가드: `agency-flow-codes-2026-09-19.test.ts` 23건 + 주입 7건.
 
 > **능력 레이어 모델**: 유저 →(사업자등록·판매승인)→ 사업자 유저. 같은 `/u/{handle}`에 기능이 *레이어로 추가*(신분 교체 아님). `seller_type`은 `influencer | store_owner | both`.
 > **원천징수**: 사업소득 3.3% / 기타소득 8.8% (`tax-withholding.ts`) — 커미션 지급 시.
@@ -201,7 +222,8 @@
   판매 표면 = 유어샵(`/u/{handle}`) 일원화** — nav 최상단 '내 유어샵' 진입. 대시보드 핵심 동선 =
   이용권 등록/관리 · QR 스캔 · 정산 · 리뷰 · 매장 통계(심플모드 SellerSimpleNav 와 정합). 전환퍼널
   (시청자→주문, 라이브 잔재)은 홈에서 숨김. 라우트/API/데이터 보존 — 플래그 false 로 즉시 복원.
-- **매장 소유권 (2026-09-09)**: `/store/find`(내 가게 찾기 — 사업자등록증으로 소유권 신청, 소비자 라우트) · `/admin/store-owner`(어드민 지정·심사)
+- **매장 소유권 (2026-09-09)**: `/store/find`(내 가게 찾기 — 사업자등록증으로 소유권 신청, 소비자 라우트 · **2026-09-19 `?code=` 승계 코드 입구**) · `/admin/store-owner`(어드민 지정·심사)
+- **협업 코드 (2026-09-19)**: `/i/join/:code`(인플루언서 착지 — 미리보기→로그인→자동 입력) · `/influencer/settlement`(코드 입력·매장 링크·성과·제안 수락) · `/seller/influencer-deals`(협업 코드 발급·딜 % 조정) · `/seller/operating`(매장별·인플루언서별 성과·내 중개사 몫)
 - **매장·인플루언서 (2026-08-20, seller-dashboard-v2)**: `/seller/stores`(매장 관리 — 카카오맵 등록·국세청 검증·채널(직접/중개)·삭제·위임) · `/seller/influencers`(유어애즈 DB 탐색+협업 제안 — 발송은 유어딜 대행, 연락처 무반환) · `/seller/operators`(운영자)
 - **협업·캠페인 (2026-07)**: `/seller/influencer-deals`(우대 커미션 — 조건부=콘텐츠 인증 시 발효) · `/seller/experience-campaigns`(체험 캠페인 관리 — 셀프 개설은 게이트 `experience_campaign_seller_create` 뒤, 어드민 대행 `/admin/experience-campaigns` 가 1순위)
 
@@ -478,3 +500,4 @@ pre-commit + `verify.yml` + `audit-gate.sh` 가 결정론으로 강제(수동 �
 
 ## ✅ 구현 로그
 - 2026-07-02 문서 신설 (마스터 SSOT) + Part II 시스템 상세(인증·결제·정산·주문·알림·크론·어드민·캐싱·보안·가드·장애) 확장. 개별 단계 완료 시 commit hash 기록.
+- 2026-09-19 대행사 확정 플로우(§2-1 🔑) — 매장 코드·협업 코드·딜 % 조정·인플루언서 수락·중개사 몫 직접 송금(게이트 OFF). PR: `claude/agency-flow-review-cgfwtl`.
