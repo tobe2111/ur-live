@@ -242,6 +242,22 @@ GET /api/admin/promo-ledger/order/:orderNumber      (read-only, finance 권한)
 | S-CART-14 | 교환권 + 이용권을 함께 골라 `/cart` 에서 주문 시도 | 주문 버튼이 **비활성**이고 이유가 화면에 있다 · 총액이 두 줄(`N원` / `N딜`)로 갈려 있다 |
 | S-CART-15 | 교환권만 골라 주문 | 종전 `/checkout` **딜 모드** 로 간다(토스 옵션 없음) · 결제예정금액이 `N딜` |
 
+## 💸 S-BROKER — 중개사 몫 유어딜 직접 송금 (2026-09-19)
+
+**S-BROKER** — 결재 `docs/decisions/2026-09-16-broker-payout-model.md` 안 1(대표 *"일단 알겠어. 그렇게 하자."*).
+게이트 `platform_settings.broker_share_enabled`(기본 `false`) · 적립 SSOT `src/worker/utils/broker-share.ts` ·
+호출 2곳(`group-buy.routes` `/join`·`confirm-toss`) · 화면 `/admin/platform-settings` ⑩. **켜는 것은 대표 판단.**
+
+| ID | 시나리오 | 통과 기준 |
+|---|---|---|
+| S-BROKER-1 | 중개 매장(등록 시 중개사 몫 10%) 이용권 **카드** 결제 1건(10,000원) | `influencer_attributions` 에 `source='broker_share'` **1행**(1,000원, influencer_id=중개사 user id) · `influencer_balances.pending_amount` +1,000 · 원장 `broker_share` debit=`seller:{id}` credit=`influencer:{uid}` |
+| S-BROKER-2 | 같은 매장 이용권 **딜** 결제 1건 | 위와 동일하게 1행 — 결제수단에 따라 몫이 갈리지 않는다 |
+| S-BROKER-3 | S-BROKER-1 주문 환불 | 그 행 `clawed_back`, 잔액 원복(`voucher-clawback` 이 order_id 로 전 행을 되돌린다) |
+| S-BROKER-4 | 같은 매장에 인플루언서 딜(코드 5%)로 팔린 주문 1건 | 인플루언서 5% 행 + 중개사 10% 행 **둘 다**, 매장 정산액 = 총액 − 유어딜 5% − 5% − 10% |
+| S-BROKER-5 | 게이트 OFF 복귀 후 결제 1건 | `broker_share` 행 0 — 종전과 동일 |
+
+상태: ⬜ 미검증 (2026-09-19 배선). 통과 전 프로덕션 ON 금지.
+
 ## 🔒 S-USEGATE — 소개 커미션 사용 확인 게이트 (2026-09-16)
 
 **S-USEGATE** — 대표 확정 *"모든게 다 이용권을 쓰고 나서 정산 할 때 정산되는거고"* (2026-09-16).

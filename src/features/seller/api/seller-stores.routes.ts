@@ -34,6 +34,7 @@ import { getEffectivePlatformFee } from '@/worker/utils/effective-platform-fee'
 import { registerVoucherDraftRoutes } from './seller-voucher-draft.routes'
 import { pickStoreChannel, registerStoreChannelRoutes } from './seller-store-channel.routes'
 import { registerStoreClaimRoutes } from './seller-store-claims.routes'
+import { registerBrokerTermsRoutes, prepareBrokerTerms, finalizeBrokeredStore } from './seller-broker-terms.routes' // 💸🔑 2026-09-19 요율·승계 코드
 
 const app = new Hono<{ Bindings: Env }>()
 type Ctx = Context<{ Bindings: Env }>
@@ -157,7 +158,7 @@ registerVoucherDraftRoutes(app)
 registerStoreChannelRoutes(app)
 // 🙋 내 가게 찾기(소유권 신청) — 2026-09-09 3단계. 경로 `/stores/lookup-by-business` · `/store-claims`.
 //    판정 주체를 넘겨 준다 — 같은 `resolveActorUserId` 를 두 벌로 만들면 언젠가 갈린다.
-registerStoreClaimRoutes(app, resolveActorUserId)
+registerStoreClaimRoutes(app, resolveActorUserId); registerBrokerTermsRoutes(app, resolveActorUserId) // 🔑💸 2026-09-19
 
 // ── 매장 프로필 병합(공유) — SSOT: worker/utils/store-profile.ts (2026-08-23 단일화) ────────
 async function loadMergedProfile(DB: D1Database, sellerId: number) {
@@ -342,6 +343,7 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
       business_cert_url?: string
       /** 🤝 2026-08-27: 소개자 초대 링크(`/store/new?ref=`)로 들어온 경우의 소개자 user id. */
       referrer_user_id?: string
+      broker_share_pct?: unknown; influencer_pct_cap?: unknown // 💸 2026-09-19 중개 매장 두 요율(결재 2026-09-16)
     }>().catch(() => ({} as any))
 
     const name = String(b.name || '').trim()
@@ -349,6 +351,8 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
     if (!isChannel(b.channel)) {
       return c.json({ success: false, error: '등록 유형을 선택해주세요 — 직접(내 가게) 또는 중개(관리 대행)' }, 400)
     }
+    const brokerTerms = prepareBrokerTerms(b) // 💸 중개 매장 두 요율 — 행이 생기기 **전에** 검증(반쪽 등록 방지)
+    if (brokerTerms && !brokerTerms.ok) return c.json({ success: false, error: brokerTerms.error }, 400)
     // 담당자 전화번호는 **필수** — 매장 뒤의 사람에게 닿는 유일한 경로다(승인 검토·사용 문의·정산 확인).
     // 선택으로 두면 아무도 안 넣고, 정작 필요한 순간엔 카카오맵에서 긁어 온 대표번호밖에 안 남는다.
     const managerPhone = normalizeManagerPhone(b.manager_phone)
@@ -531,10 +535,11 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
       }, 500)
     }
 
+    const ownerClaimCode = brokerTerms?.ok ? await finalizeBrokeredStore(c.env.DB, newSellerId, userId, brokerTerms) : null // 🔑 요율 저장 + 사장님 승계 코드(`/store/find?code=`)
     return c.json({
       success: true,
       data: {
-        seller_id: newSellerId, status, channel: b.channel,
+        seller_id: newSellerId, status, channel: b.channel, owner_claim_code: ownerClaimCode,
         nts: { checked: ntsResult.ok, valid: ntsResult.valid },
         message: '매장이 등록 접수되었습니다. 사업자등록증 확인 후 활성화됩니다.',
       },
