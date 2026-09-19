@@ -32,6 +32,7 @@
  * 그 보너스를 상쇄해 왔지만 이용권엔 그 상쇄가 없다. 절차: `docs/STAGING_CHECKLIST.md` §S12 선행.
  */
 import type { D1Database } from '@cloudflare/workers-types'
+import { MIN_CARD_AMOUNT } from '../../../shared/pay-summary'
 
 /** 부분결제 스위치 (platform_settings, 기본 OFF). */
 export const PARTIAL_DEAL_SETTING = 'voucher_partial_deal_enabled'
@@ -40,8 +41,11 @@ export const PARTIAL_DEAL_SETTING = 'voucher_partial_deal_enabled'
  * 카드로 최소한 얼마는 나가야 하는가.
  * 0원 결제는 PG 가 거절한다 — 딜이 총액을 다 덮으면 그건 부분결제가 아니라 **전부-딜**이고,
  * 그 흐름은 이미 `/join` payment_method='deal' 이 처리한다.
+ *
+ * 🔗 2026-09-19: 결제 화면이 딜 조절 상한을 이 값으로 잡으므로 **SSOT 를 shared 로 옮기고**
+ *   여기서 재수출한다(값 불변). 두 벌로 두면 화면이 허용한 금액을 서버가 거절하는 날이 온다.
  */
-export const MIN_CARD_AMOUNT = 100
+export { MIN_CARD_AMOUNT } from '../../../shared/pay-summary'
 
 export interface PartialDealPlan {
   /** 상품 총액 (정산·커미션의 기준 — 딜을 써도 안 줄어든다) */
