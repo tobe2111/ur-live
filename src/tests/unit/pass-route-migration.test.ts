@@ -4,6 +4,7 @@ import { resolve } from 'node:path'
 import { stripComments } from '../helpers/source-text'
 import { resolveConsumerAlias } from '@/shared/seo/consumer-redirects'
 import { RESERVED_SLUGS } from '@/shared/mall/slug'
+import { isMallSlugCandidate } from '@/shared/mall/resolve'
 import { getProductFlow, FLOW_CONFIG, canonicalDetailPath } from '@/shared/product-flow'
 
 /**
@@ -15,7 +16,7 @@ import { getProductFlow, FLOW_CONFIG, canonicalDetailPath } from '@/shared/produ
  *
  * ## 이 파일이 막는 것
  *   - R1 `pass` 가 **몰 슬러그로 선점되지 않는다** — 선점되면 `urdeal.kr/pass` 가 남의 가게가 되고
- *        이용권 상세가 통째로 사라진다
+ *        이용권 상세가 통째로 사라진다. 목록 등재만이 아니라 **런타임 판정 함수를 직접 불러** 확인한다
  *   - R2 옛 주소가 **301 로 살아 있다** — 지우면 밖에서 오는 트래픽이 그냥 죽는다
  *   - R3 `/group-buy/confirm-payment`(다른 화면)이 **301 에 휩쓸리지 않는다** — 결제 흐름이 끊긴다
  *   - R4 상세 경로 SSOT(`product-flow`)가 새 주소를 준다
@@ -37,6 +38,17 @@ const src = (p: string) => stripComments(read(p))
 describe('R1 — `pass` 는 예약어다', () => {
   it('🔴 몰 슬러그로 선점될 수 없다', () => {
     expect(RESERVED_SLUGS).toContain('pass')
+  })
+
+  // 🩸 목록에 이름이 있는 것과 **그 목록이 실제로 쓰이는 것**은 다르다. 워커의 몰 후보 판정은
+  //   `isMallSlugCandidate` 를 거치는데, 그 함수가 다른 목록을 보도록 바뀌어도 위 단언은 초록이다
+  //   (= 이 레포가 반복해 당한 "헛도는 가드"). 그래서 **함수를 실제로 불러** 판정을 확인한다.
+  it('🔴 런타임 몰 해석기까지 닿는다 — 목록에 있는 것만으로는 부족하다', () => {
+    expect(isMallSlugCandidate('pass')).toBe(false)
+  })
+
+  it('대조군 — 평범한 슬러그는 몰 후보다(판정이 늘 false 면 위 검사가 무의미하다)', () => {
+    expect(isMallSlugCandidate('mystore')).toBe(true)
   })
   it('옛 주소 `group-buy` 예약도 유지된다 — 301 이 걸린 주소라 더더욱 남의 가게가 되면 안 된다', () => {
     expect(RESERVED_SLUGS).toContain('group-buy')

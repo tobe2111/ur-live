@@ -449,10 +449,37 @@ dark-contrast 53경로 1,957텍스트 0건 · 주입 8건 빨간불
 1440 렌더: about 액자 false / main img 2 · creators 액자 false / main img 4
 ```
 
-### 8-6. 다음 세션 첫 액션
+### 8-6. ✅ E4 라이브 판정 통과 (배포 후 `urdeal.kr` 실측)
 
-1. **라이브 판정(E4)** — 배포 뒤 `urdeal.kr/about`·`urdeal.kr/creators` 를 **1440px 로** 열어
-   ⓐ 좌우에 소비자 앱 거터가 없는지 ⓑ 제목이 한 낱말만 남기고 끊기지 않는지
-   ⓒ `/creators` 폰 석 장이 섹션 안에 들어오는지.
-2. `curl -sI https://urdeal.kr/business` → **301, Location `/partners`**.
-3. Notion 개발 로그 1행(서비스: 유어딜 / 유형: UI / 머니 경로 false).
+PR #1485 머지(`522c115`) → 배포(`377833c` 슬롯, 직후 머지된 #1483 과 같은 concurrency 그룹으로 갈아탐.
+`git merge-base --is-ancestor 522c115 origin/main` 으로 포함 확인) 뒤 실제 라이브를 렌더해 쟀다.
+
+```
+/business        301 → https://urdeal.kr/partners        ✅ (페이지는 지우고 URL 은 살렸다)
+/about /creators 200
+
+               액자   거터레일   본문폭    h1 줄        고아낱말   main img   섹션밖 이미지
+/about  1440    false    0      1440    3줄(504/551/375)  없음        2          0
+/creators 1440  false    0      1440    3줄(260/371/409)  없음        4          0
+/about   390    false    0       390    3줄(291/318/216)  없음        2          0
+/creators 390   false    0       390    3줄(130/186/205)  없음        4          0
+
+CTA 높이   모바일 52 / PC 58·60      (헤더 알약 36·40 · 3자 섹션 알약 44 · 모바일 고정바 48 = 설계값)
+h1 크기    /about lg 46 → xl 52   ·  /creators lg 52 → xl 60
+```
+
+🩸 **첫 측정이 헛돌았다 — 기록해 둔다.** h1 의 줄 수를 `h1.getClientRects().length` 로 쟀는데,
+**블록 요소의 그 값은 줄이 아니라 박스 하나**라 언제나 `1` 이 나온다(그래서 "마지막 줄 비율 1.0,
+고아 없음" 이 통과처럼 보였다 — 사실은 아무것도 안 잰 것이다). **글자마다 `Range` 를 만들어
+`top` 으로 묶어야** 진짜 줄 상자가 나온다. 위 표의 줄별 폭이 그렇게 다시 잰 값이다.
+같은 함정: 거터 판정도 처음엔 본문에서 `/QR/` 를 찾았는데 `/about` 카피에 *"매장에서 QR 로"* 가
+있어 늘 "레일 있음" 이 떴다 → **부품 선택자**(`.app-frame-host`·`.app-framed`)로 교체.
+⇒ **판정은 "무엇을 재고 있는지" 부터 의심할 것.**
+
+### 8-7. 남은 것
+
+- Notion 개발 로그 1행(서비스: 유어딜 / 유형: UI / 머니 경로 false) — 이 세션에서 기록.
+- ⚠️ **main 이 빨간불이었다(내 것 아님)**: #1483 이 114번째 가드
+  (`check-groupbuy-headcount-claim`)를 `audit-gate.sh` 에 넣으면서 `AUDIT_INVARIANTS.md` 의
+  `전체 (N개)` 줄을 113 그대로 뒀다 → `check-audit-registry-sync` 가 **모든 푸시를 막는다**
+  (pre-push 게이트에서 실제로 막혔다). 한 글자 수정이라 같이 고쳤다.
