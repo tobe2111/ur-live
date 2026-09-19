@@ -5495,6 +5495,7 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
 _총 335건 · 최신순 · 이 목록은 자동 생성된다._
+_총 334건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-16**
 - [셀러가 올린 이용권이 유어샵에 뜨게 — 네 종류 중 한 종류만 알아보고 있었다 (2026-09-16)](handoff/2026-09-16-ushop-voucher-kinds.md)

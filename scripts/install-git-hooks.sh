@@ -26,6 +26,50 @@ if [ -f .git/guard-mutations.lock ]; then
   exit 1
 fi
 
+# ─────────────────────────────────────────────────────────────────────────
+# 📄 문서 생성물 동기화 — **조기 종료보다 앞에 둔다.**
+#
+# 🩸 2026-09-16 발견: 아래 `staged_ts` 조기 종료는 **.ts/.tsx 가 하나도 staged 아니면 훅을
+#   통째로 끝낸다.** 그래서 이 생성기들이 "매 커밋 실행" 이라고 적혀 있는데도 **문서만 고친
+#   커밋에서는 한 번도 안 돌고 있었다** — 에러도 경고도 없이 그냥 건너뛴다.
+#   하필 가장 흔한 경우가 그것이다: 인계 문서만 추가하는 커밋 → 목차가 안 갱신된다
+#   (= 목차를 손으로 안 고치게 만들려고 만든 생성기가, 정작 그 상황에서 안 돈다).
+#   실측 비용은 셋 합쳐 ~0.5초라 앞으로 옮겨도 잃는 것이 없다.
+# ─────────────────────────────────────────────────────────────────────────
+# 🗂️ 인계 목차 자동 생성(2026-07-29) — docs/handoff/ 가 staged 면 목차를 다시 만들어 함께 stage.
+#   사람이 목차를 손으로 고치지 않게 만드는 것이 요점이다(그래야 두 세션이 같은 줄을 다투지 않는다).
+if git diff --cached --name-only --diff-filter=ACMR | grep -q '^docs/handoff/'; then
+  echo "==> Pre-commit: 인계 목차 재생성..."
+  node scripts/generate-handoff-index.mjs > /dev/null 2>&1 || true
+  # 🚦 기능 현황판 — feature-flags.ts 에서 재생성 + stage (손 관리하면 반드시 낡는다)
+  node scripts/generate-feature-status.mjs > /dev/null 2>&1 || true
+  git add docs/FEATURE_STATUS.md > /dev/null 2>&1 || true
+  if ! git diff --quiet docs/CURRENT_WORK.md 2>/dev/null; then
+    git add docs/CURRENT_WORK.md
+    echo "   ✓ CURRENT_WORK.md 목차 재생성 + staged"
+  fi
+fi
+
+# 📑 소개서(docs/proposals/) 자동 동기화 블록 재생성 — 사용자 "무조건" 요구로 매 커밋 실행.
+#   (anti-churn 으로 실질 변경 있을 때만 파일을 다시 쓰고 stage 함.) 절대 차단 X (|| true).
+echo "==> Pre-commit: 소개서 자동 참조 재생성 (매 커밋)..."
+node scripts/generate-proposal-refs.mjs > /dev/null 2>&1 || true
+if ! git diff --quiet docs/proposals 2>/dev/null; then
+  git add docs/proposals/*.md 2>/dev/null || true
+  echo "   ✓ docs/proposals/*.md 재생성 + staged"
+fi
+
+# 📋 감사 레지스트리 개수 자동 갱신 — `docs/AUDIT_INVARIANTS.md` 의 "전체 (N개 불변식)" 한 줄.
+#   그 숫자는 `audit-gate.sh` 의 `run "` 줄 수에서 **기계적으로 나온다**. 손으로 두면 (a) 가드를 더한
+#   세션이 잊어서 CI 가 빨간불이 되고 (b) 동시에 도는 세션들이 **같은 한 줄**을 다퉈 충돌한다
+#   (2026-09-16 하루에 두 번 손으로 고쳤다: 112→113, 113→114).
+#   ⚠️ 개수만 고친다 — 표에서 **빠진 가드**는 자동 수정 대상이 아니고 여전히 CI 가 막는다.
+node scripts/check-audit-registry-sync.mjs --fix > /dev/null 2>&1 || true
+if ! git diff --quiet docs/AUDIT_INVARIANTS.md 2>/dev/null; then
+  git add docs/AUDIT_INVARIANTS.md 2>/dev/null || true
+  echo "   ✓ docs/AUDIT_INVARIANTS.md 개수 갱신 + staged"
+fi
+
 staged_ts=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|tsx)$' | grep -v 'node_modules/\|dist/' || true)
 
 if [ -z "$staged_ts" ]; then
@@ -318,20 +362,6 @@ fi
 echo "==> Pre-commit: 운영 가이드 동기화 (warn-only)..."
 bash scripts/check-guide-sync.sh || true
 
-# 🗂️ 인계 목차 자동 생성(2026-07-29) — docs/handoff/ 가 staged 면 목차를 다시 만들어 함께 stage.
-#   사람이 목차를 손으로 고치지 않게 만드는 것이 요점이다(그래야 두 세션이 같은 줄을 다투지 않는다).
-if git diff --cached --name-only --diff-filter=ACMR | grep -q '^docs/handoff/'; then
-  echo "==> Pre-commit: 인계 목차 재생성..."
-  node scripts/generate-handoff-index.mjs > /dev/null 2>&1 || true
-  # 🚦 기능 현황판 — feature-flags.ts 에서 재생성 + stage (손 관리하면 반드시 낡는다)
-  node scripts/generate-feature-status.mjs > /dev/null 2>&1 || true
-  git add docs/FEATURE_STATUS.md > /dev/null 2>&1 || true
-  if ! git diff --quiet docs/CURRENT_WORK.md 2>/dev/null; then
-    git add docs/CURRENT_WORK.md
-    echo "   ✓ CURRENT_WORK.md 목차 재생성 + staged"
-  fi
-fi
-
 # 🔀 동시 세션 겹침 조기경보(2026-07-29 신설) — main 이 *이 브랜치가 고친 파일*을 그 사이에 바꿨으면 경고.
 #   단순 '뒤처짐'이 아니라 **실제 겹침**만 본다(매번 울면 우회가 습관이 된다).
 node scripts/check-branch-overlap.mjs || true
@@ -388,15 +418,6 @@ if [ -f scripts/generate-ops-handbook.mjs ]; then
     git add src/features/guides/api/auto-reference.ts
     echo "   ✓ auto-reference.ts 재생성 + staged"
   fi
-fi
-
-# 📑 소개서(docs/proposals/) 자동 동기화 블록 재생성 — 사용자 "무조건" 요구로 매 커밋 실행.
-#   (anti-churn 으로 실질 변경 있을 때만 파일을 다시 쓰고 stage 함.) 절대 차단 X (|| true).
-echo "==> Pre-commit: 소개서 자동 참조 재생성 (매 커밋)..."
-node scripts/generate-proposal-refs.mjs > /dev/null 2>&1 || true
-if ! git diff --quiet docs/proposals 2>/dev/null; then
-  git add docs/proposals/*.md 2>/dev/null || true
-  echo "   ✓ docs/proposals/*.md 재생성 + staged"
 fi
 
 echo "==> Pre-commit: TypeScript check..."
