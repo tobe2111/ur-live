@@ -12,7 +12,8 @@ import { Link } from 'react-router-dom'
 import SellerLayout from '@/components/SellerLayout'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
-import { Store, Plus, Loader2, Trash2, Users } from 'lucide-react'
+import { Store, Plus, Loader2, Trash2, Users, KeyRound, Copy } from 'lucide-react'
+import { toast } from '@/hooks/useToast'
 import StoreRegisterModal from '@/components/seller/StoreRegisterModal'
 import SellerWithdrawSection from '@/components/seller/SellerWithdrawSection'
 import ReviewBonusCard from '@/components/seller/ReviewBonusCard'
@@ -20,6 +21,12 @@ import ReviewBonusCard from '@/components/seller/ReviewBonusCard'
 interface OperableStore {
   seller_id: number; role: 'owner' | 'operator'; source: 'link' | 'grant'
   business_name: string | null; name: string | null; status: string | null; username: string | null
+  /** 🔑 2026-09-19 — 내가 운영자이고 아직 주인이 없는 매장의 사장님 승계 코드(서버가 `/my-stores` 에 실어 준다). */
+  has_owner?: boolean; owner_claim_code?: string | null
+}
+
+async function copyText(text: string, what: string) {
+  try { await navigator.clipboard.writeText(text); toast.success(`${what}를 복사했어요`) } catch { toast.error('복사에 실패했어요') }
 }
 
 export default function SellerStoresPage() {
@@ -82,7 +89,8 @@ export default function SellerStoresPage() {
           ) : (
             <ul className="divide-y divide-gray-100">
               {stores.map(s => (
-                <li key={s.seller_id} className="px-4 py-3 flex items-center gap-3">
+                <li key={s.seller_id} className="px-4 py-3">
+                <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
                     <Store className="w-[18px] h-[18px] text-gray-500" />
                   </div>
@@ -112,6 +120,19 @@ export default function SellerStoresPage() {
                     className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-500 text-[11px] font-semibold hover:bg-gray-50">
                     <Trash2 className="w-3.5 h-3.5" /> {s.role === 'owner' ? '삭제' : '목록에서 빼기'}
                   </button>
+                </div>
+                {/* 🔑 2026-09-19 (대표 확정 플로우 3번): 사장님 승계 코드 — 대행사가 사장님께 주고, 사장님이 `/store/find` 에서 넣는다.
+                    주인이 생기면 서버가 코드를 더 안 내려주므로 이 줄은 저절로 사라진다. */}
+                {s.role === 'operator' && s.has_owner === false && s.owner_claim_code && (
+                  <div className="mt-2 ml-12 flex flex-wrap items-center gap-2 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2">
+                    <KeyRound className="w-3.5 h-3.5 text-gray-500" />
+                    <span className="text-[11px] text-gray-600">사장님께 드릴 코드</span>
+                    <span className="font-mono text-[13px] font-bold tracking-wider text-gray-900">{s.owner_claim_code}</span>
+                    <button onClick={() => copyText(s.owner_claim_code!, '코드')} className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-gray-200 bg-white text-[11px] font-semibold text-gray-700 hover:bg-gray-50"><Copy className="w-3 h-3" /> 코드</button>
+                    <button onClick={() => copyText(`https://urdeal.kr/store/find?code=${s.owner_claim_code!.replace('-', '')}`, '링크')} className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-gray-200 bg-white text-[11px] font-semibold text-gray-700 hover:bg-gray-50"><Copy className="w-3 h-3" /> 링크</button>
+                    <span className="basis-full text-[11px] text-gray-500">사장님이 가입하며 이 코드를 넣으면 소유권 신청이 됩니다(사업자등록증 확인 뒤 승인). 그 전엔 정산 계좌를 넣을 사람이 없어 정산이 보류돼요.</span>
+                  </div>
+                )}
                 </li>
               ))}
             </ul>

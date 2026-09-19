@@ -11,6 +11,7 @@
  */
 import { useState } from 'react'
 import InfluencerPicker from './seller-influencer-deals/InfluencerPicker'
+import CollabCodesSection from './seller-influencer-deals/CollabCodesSection'
 import { useTranslation } from 'react-i18next'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
@@ -46,6 +47,8 @@ export default function SellerInfluencerDealsPage() {
   const [showForm, setShowForm] = useState(false)
   const [proposing, setProposing] = useState(false)
   const [responding, setResponding] = useState<number | null>(null)
+  // 🔧 2026-09-19 케이스별 % 조정(대표 "매번 케이스마다 조정 가능하긴 해야해") — 활성·대기 딜의 % 를 바꾼다.
+  const [editing, setEditing] = useState<{ id: number; pct: string } | null>(null)
   const [form, setForm] = useState({ influencer_id: '', commission_pct: '1.5', ends_at: '', message: '', requires_content_proof: false })
 
   // /api/seller-marketing prefix 는 api 인터셉터 자동 토큰 미주입 → 수동 헤더 (SellerMarketingPage 동일).
@@ -132,6 +135,24 @@ export default function SellerInfluencerDealsPage() {
     }
   }
 
+  async function saveAdjust(deal: Deal) {
+    if (!editing || editing.id !== deal.id || responding != null) return
+    const pct = Number(editing.pct)
+    if (!Number.isFinite(pct) || pct <= 0) { toast.error('커미션 % 값이 올바르지 않습니다'); return }
+    if (pct === Number(deal.commission_pct)) { setEditing(null); return }
+    setResponding(deal.id)
+    try {
+      const r = await api.patch(`/api/seller-marketing/deals/${deal.id}`, { commission_pct: pct }, { headers })
+      if (r.data?.success) {
+        toast.success(`${deal.commission_pct}% → ${pct}% 로 조정했습니다 — 이후 판매분부터 적용되고 상대에게 알림이 갑니다`)
+        setEditing(null)
+        dealsQ.refetch()
+      } else toast.error(r.data?.error || '조정에 실패했습니다')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || '조정에 실패했습니다')
+    } finally { setResponding(null) }
+  }
+
   // 🎬 WP-B: 인플이 제출한 콘텐츠 인증 검토 → 승인(발효) / 반려. 승인이 우대율 발효 트리거.
   async function reviewProof(deal: Deal, action: 'approve' | 'reject') {
     if (responding != null) return
@@ -177,6 +198,9 @@ export default function SellerInfluencerDealsPage() {
             {t('seller.influencerDeals.pinNote', { defaultValue: '우대 커미션은 소개(핀)로 팔린 건에만 적용됩니다.' })}
           </p>
         </div>
+
+        {/* 🔑 2026-09-19 협업 코드 — 인플루언서가 넣으면 딜이 시작된다(대표 확정 플로우). 검색 제안은 그 아래 그대로. */}
+        <CollabCodesSection headers={headers} />
 
         {/* 제안 폼 (인라인 토글) */}
         <div className="rounded-[var(--dash-radius,16px)] border border-gray-200 bg-white p-4">
@@ -342,7 +366,11 @@ export default function SellerInfluencerDealsPage() {
                           {' · '}
                           {d.proposed_by === 'seller'
                             ? t('seller.influencerDeals.proposedByMe', { defaultValue: '내가 제안' })
-                            : t('seller.influencerDeals.proposedByInfluencer', { defaultValue: '인플이 신청' })}
+                            : d.proposed_by === 'code'
+                              ? t('seller.influencerDeals.proposedByCode', { defaultValue: '협업 코드' })
+                              : d.proposed_by === 'outreach'
+                                ? t('seller.influencerDeals.proposedByOutreach', { defaultValue: '제안 수락' })
+                                : t('seller.influencerDeals.proposedByInfluencer', { defaultValue: '인플이 신청' })}
                           {' · '}
                           {t('seller.influencerDeals.createdAt', { defaultValue: '제안일' })}{' '}
                           {formatKSTDate(d.created_at)}
@@ -377,6 +405,24 @@ export default function SellerInfluencerDealsPage() {
                       <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${badge.cls}`}>
                         {badge.label}
                       </span>
+                      {(d.status === 'active' || d.status === 'proposed') && !canRespond && (
+                        editing?.id === d.id ? (
+                          <div className="flex shrink-0 items-center gap-1.5">
+                            <input type="number" step="0.5" min="0.5" value={editing.pct} autoFocus
+                              onChange={(e) => setEditing({ id: d.id, pct: e.target.value })}
+                              onKeyDown={(e) => { if (e.key === 'Enter') void saveAdjust(d); if (e.key === 'Escape') setEditing(null) }}
+                              className="w-20 rounded-lg border border-gray-300 px-2 py-1 text-sm text-gray-900" />
+                            <span className="text-[11px] text-gray-500">%</span>
+                            <button type="button" disabled={responding != null} onClick={() => saveAdjust(d)} className="ur-btn ur-btn-sm ur-btn-primary disabled:opacity-40">저장</button>
+                            <button type="button" onClick={() => setEditing(null)} className="rounded-full px-2 py-1.5 text-[11px] font-bold text-gray-500">취소</button>
+                          </div>
+                        ) : (
+                          <button type="button" onClick={() => setEditing({ id: d.id, pct: String(d.commission_pct) })}
+                            className="inline-flex shrink-0 items-center rounded-full border border-gray-200 px-2.5 py-1 text-[11px] font-bold text-gray-700 hover:bg-gray-50">
+                            {t('seller.influencerDeals.adjustPct', { defaultValue: '% 조정' })}
+                          </button>
+                        )
+                      )}
                       {canReviewProof && (
                         <div className="flex shrink-0 gap-1.5">
                           <button

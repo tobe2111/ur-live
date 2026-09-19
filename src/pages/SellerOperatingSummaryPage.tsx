@@ -21,7 +21,7 @@ import api from '@/lib/api'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
 import { formatWon, formatNumber } from '@/utils/format'
 import { formatKSTDate } from '@/utils/date'
-import { Store, Handshake, ArrowRight, RefreshCw } from 'lucide-react'
+import { Store, Handshake, ArrowRight, RefreshCw, Users } from 'lucide-react'
 
 interface Row {
   seller_id: number
@@ -36,6 +36,11 @@ interface Row {
   revenue_total: number
   orders_since_grant: number | null
   revenue_since_grant: number | null
+  /** 🤝 2026-09-19 — 매장에 붙은 인플루언서별 성과 + 내 중개사 몫(게이트 OFF 면 0). */
+  influencers?: Array<{ deal_id: number; influencer_id: string; name: string | null; handle: string | null; commission_pct: number; status: string; proposed_by: string; orders_count: number; commission_total: number }>
+  broker_share_pct?: number
+  influencer_pct_cap?: number | null
+  my_broker_share?: { pending_krw: number; confirmed_krw: number }
 }
 
 export default function SellerOperatingSummaryPage() {
@@ -136,6 +141,40 @@ export default function SellerOperatingSummaryPage() {
                         </p>
                       </div>
                     </div>
+
+                    {/* 💸 내 중개사 몫 — 요율이 있고 게이트가 켜졌을 때만 숫자가 쌓인다. 요율만 있고 0 이면 그 사실을 말한다. */}
+                    {r.source === 'grant' && (r.broker_share_pct ?? 0) > 0 && (
+                      <div className="mt-3 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2">
+                        <p className="text-[11px] text-gray-500">내 중개사 몫 {r.broker_share_pct}%{r.influencer_pct_cap != null ? ` · 인플루언서 상한 ${r.influencer_pct_cap}%` : ''}</p>
+                        <p className="text-[13px] font-bold text-gray-900 mt-0.5">
+                          대기 {formatWon(r.my_broker_share?.pending_krw ?? 0)} · 확정 {formatWon(r.my_broker_share?.confirmed_krw ?? 0)}
+                        </p>
+                        {(r.my_broker_share?.pending_krw ?? 0) + (r.my_broker_share?.confirmed_krw ?? 0) === 0 && (
+                          <p className="text-[11px] text-gray-500 mt-0.5">아직 적립된 몫이 없어요. 유어딜 직접 송금이 켜진 뒤의 결제분부터 쌓입니다. 그 전엔 매장과 직접 정산하세요.</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* 🤝 인플루언서별 성과 — 이 매장에 코드·제안으로 붙은 사람들 */}
+                    {(r.influencers?.length ?? 0) > 0 && (
+                      <div className="mt-3">
+                        <p className="text-[11px] font-bold text-gray-700 flex items-center gap-1 mb-1.5"><Users className="w-3.5 h-3.5" /> 인플루언서 {r.influencers!.length}명</p>
+                        <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200">
+                          {r.influencers!.map((i) => (
+                            <li key={i.deal_id} className="flex items-center gap-2 px-3 py-2">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[12.5px] font-bold text-gray-900 truncate">{i.name || (i.handle ? `@${i.handle}` : `유저 ${i.influencer_id}`)}{i.handle && i.name ? <span className="ml-1 font-normal text-gray-400">@{i.handle}</span> : null}</p>
+                                <p className="text-[11px] text-gray-500">{i.commission_pct}% · {i.status === 'active' ? '활성' : '대기'} · {i.proposed_by === 'code' ? '코드' : i.proposed_by === 'seller' ? '제안' : i.proposed_by === 'outreach' ? '수락' : '신청'}</p>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <p className="text-[12.5px] font-bold text-gray-900">{formatWon(i.commission_total)}</p>
+                                <p className="text-[11px] text-gray-500">판매 {formatNumber(i.orders_count)}건</p>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

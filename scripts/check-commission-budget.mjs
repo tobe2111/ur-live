@@ -107,6 +107,9 @@ const R2_TABLES = {
     'src/worker/utils/influencer-store-intro-commission.ts', // SSOT
     'src/features/group-buy/api/helpers.ts',                 // 이용권 인플 attribution(별개 source)
     'src/features/group-buy/api/group-buy.routes.ts',        // 동일
+    // 💸 2026-09-19 중개사 몫(결재 2026-09-16 안 1) — **매장 부담**(debit seller:N)이라 플랫폼 예산 캡 대상이
+    //    아니다(위 helpers.ts 의 이용권 인플 attribution 과 같은 성질). 게이트 broker_share_enabled 기본 OFF.
+    'src/worker/utils/broker-share.ts',
   ],
   // 🌇 2026-09-04 에이전시 완전 일몰 — `agency_store_intro_commissions` 축을 표에서 뺐다.
   //    적립 모듈·월간 보너스 크론 둘 다 삭제됐다(라이브 0행). 되살아나면 R1/R3 가 새 파일을 잡는다.

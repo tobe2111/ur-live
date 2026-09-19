@@ -12,7 +12,7 @@ import { Hono } from 'hono'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { auditLog } from '@/worker/middleware/audit-log'
-import { recordLedger, sellerLedgerAccount } from '@/worker/utils/ledger'
+import { recordLedger, sellerLedgerAccount } from '@/worker/utils/ledger'; import { creditBrokerShare } from '@/worker/utils/broker-share' // 💸 2026-09-19 중개사 몫(게이트 OFF=no-op)
 import { formatKSTDate } from '@/utils/date' // 워커 TZ=UTC — 만료일 안내가 하루 이르던 것 교정
 import { swallow } from '@/worker/utils/swallow'
 import { resolveUserIdString } from '@/worker/utils/resolve-user-id'
@@ -575,6 +575,8 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
         } catch (e) { if (import.meta.env?.DEV) console.warn('[gb influencer attribution]', e) }
       }
     }
+    // 💸 2026-09-19 중개사 몫(결재 2026-09-16 안 1, 매장 부담) — confirm-toss 와 대칭. 게이트 OFF = no-op.
+    if (newOrderId) await creditBrokerShare(DB, { sellerId: Number(product.seller_id), orderId: newOrderId, orderNumber, productId, totalAmount, refundWindowDays: rates.refund_window_days })
 
     // 정산 기록 (셀러 수령액 = 총액 - 10% 수수료)
     try {
@@ -1336,6 +1338,7 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
       productReferralDisabled: Number(product.referral_disabled) === 1,
     })
     const sellerAmount = expectedAmount - commissionAmount - influencerAmount - userBonusAmount
+    if (newOrderId) await creditBrokerShare(DB, { sellerId: Number(product.seller_id), orderId: newOrderId, orderNumber, productId, totalAmount: expectedAmount, refundWindowDays: rates.refund_window_days }) // 💸 중개사 몫 — /join 과 대칭
     // 🧹 2026-06-18: orders.commission_rate/amount/seller_amount 실제값 채움(컬럼 청소 — stale 10%/0 방지).
     //   퍼센트 단위라 fraction×100. 정산 미사용(표시 정합용). best-effort.
     if (newOrderId) {
