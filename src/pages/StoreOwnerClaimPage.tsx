@@ -42,6 +42,8 @@ export default function StoreOwnerClaimPage() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const [bno, setBno] = useState('')
+  // 🔑 2026-09-19 (대표 확정 플로우 3번): 대행사가 준 **사장님 승계 코드**로 매장을 찾는다 — 사업자번호 조회의 대안 입구.
+  const [claimCode, setClaimCode] = useState('')
   const [stores, setStores] = useState<FoundStore[] | null>(null)
   const [picked, setPicked] = useState<number | null>(null)
   const [certUrl, setCertUrl] = useState('')
@@ -51,7 +53,8 @@ export default function StoreOwnerClaimPage() {
   const [mine, setMine] = useState<MyClaim[]>([])
 
   useEffect(() => {
-    if (!isLoggedInSync()) navigate(`/login?returnUrl=${encodeURIComponent('/store/find')}`, { replace: true })
+    // 🔑 `?code=` 를 잃지 않는다 — 로그인 왕복 뒤에도 코드가 남아 있어야 자동으로 찾는다.
+    if (!isLoggedInSync()) navigate(`/login?returnUrl=${encodeURIComponent(`/store/find${window.location.search || ''}`)}`, { replace: true })
   }, [navigate])
 
   // 중복 등록 화면(`STORE_EXISTS`)에서 넘어오면 매장이 이미 정해져 있다 — 찾기를 건너뛴다.
@@ -59,6 +62,28 @@ export default function StoreOwnerClaimPage() {
     const pre = Number(params.get('seller_id'))
     if (Number.isFinite(pre) && pre > 0) setPicked(pre)
   }, [params])
+  // 링크(`/store/find?code=`)로 왔으면 코드를 채우고 바로 찾는다 — 로그인 왕복 뒤에도 쿼리가 남아 있다(returnUrl 보존).
+  useEffect(() => {
+    const c = String(params.get('code') || '').trim()
+    if (c && isLoggedInSync()) { setClaimCode(c); void lookupByCode(c) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params])
+
+  async function lookupByCode(raw?: string) {
+    const c = String(raw ?? claimCode).replace(/[^A-Za-z0-9]/g, '').toUpperCase()
+    if (c.length < 6) { toast.error('코드를 확인해주세요'); return }
+    setBusy(true)
+    try {
+      const res = await api.get(`/api/seller/store-claims/lookup-by-code?code=${encodeURIComponent(c)}`)
+      const st = res.data?.data?.store as FoundStore | undefined
+      if (!st) throw new Error(res.data?.error || '매장을 찾지 못했어요')
+      setStores([st]); setPicked(st.seller_id)
+      setNote((n) => n || `승계 코드 ${c} 로 신청`)
+    } catch (e: unknown) {
+      const ax = e as { response?: { data?: { error?: string } }; message?: string }
+      toast.error(ax.response?.data?.error || ax.message || '코드 조회에 실패했어요')
+    } finally { setBusy(false) }
+  }
 
   const loadMine = useCallback(async () => {
     try {
@@ -133,6 +158,21 @@ export default function StoreOwnerClaimPage() {
         {/* ── ① 찾기 ─────────────────────────────────────── */}
         {!picked && (
           <section className="bg-white rounded-2xl p-4">
+            {/* 🔑 코드 입구 — 대행사가 매장을 대신 등록했다면 사장님은 코드를 받았다. 번호 조회는 그 아래 그대로. */}
+            <label className="block text-[13px] font-semibold mb-1.5 text-gray-900">받은 코드가 있나요?</label>
+            <div className="flex gap-2 mb-4">
+              <input
+                value={claimCode} onChange={(e) => setClaimCode(e.target.value.toUpperCase())}
+                onKeyDown={(e) => { if (e.key === 'Enter') void lookupByCode() }}
+                placeholder="예: AB3K-9QXP" maxLength={12}
+                className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-mono tracking-wider text-gray-900"
+              />
+              <button onClick={() => void lookupByCode()} disabled={busy}
+                className="px-4 rounded-xl bg-brand text-white text-sm font-bold disabled:opacity-40">
+                코드로 찾기
+              </button>
+            </div>
+            <p className="text-[11.5px] text-gray-500 mb-4 -mt-2">대행사가 매장을 대신 등록했다면 이 코드를 받으셨을 거예요. 없으면 아래에서 사업자번호로 찾아주세요.</p>
             <label className="block text-[13px] font-semibold mb-1.5 text-gray-900">사업자등록번호</label>
             <div className="flex gap-2">
               <input

@@ -15,6 +15,7 @@ import { intParam } from '@/shared/pagination'
 import { registerDiscoveryRoutes } from './marketing/discovery'
 import { DEAL_PCT_MAX } from './commission-rates'
 import { registerAdminPayoutRoutes } from './marketing/payouts'
+import { registerCollabCodeRoutes } from './marketing/collab-codes'
 
 // 🛡️ 2026-05-20: Hono `c.get('user'/'seller')` 가 ContextVariableMap 미선언으로 'never' 가 됨.
 //   각 미들웨어 (requireAuth/requireSeller) 가 ctx 에 박는 형태를 Variables 로 명시.
@@ -551,15 +552,43 @@ influencerApp.get('/my-stores', async (c) => {
      WHERE s.referred_by_influencer = ?
      ORDER BY s.id DESC LIMIT 100`
   ).bind(userId, userId).all().catch(() => ({ results: [] as any[] }))
-  // 협업 deals
+  // 협업 deals — 🔗 2026-09-19 (대표 확정 플로우 8·10번): 딜마다 **매장 링크**와 **성과**를 함께 준다.
+  //   링크는 매장 단위(`/s/{id}?ref=`) — 매장 공개 페이지가 ref 를 7일 귀속으로 심어, 그 뒤 어느 이용권을
+  //   사든 이 사람에게 귀속된다. 이용권이 바뀌어도 링크가 안 깨진다. 대표 이용권이 있으면 그 상세 링크도
+  //   같이 준다(카톡에 붙일 땐 상품이 보이는 쪽이 낫다). 성과는 `influencer_attributions` 의 내 행
+  //   (중개사 몫 행 제외 — 그건 아래 `broker` 에 따로).
   const deals = await c.env.DB.prepare(
-    `SELECT d.id, d.seller_id, s.name AS seller_name, d.commission_pct, d.starts_at, d.ends_at, d.status, d.proposed_by, d.message, d.created_at
+    `SELECT d.id, d.seller_id, COALESCE(s.business_name, s.name) AS seller_name, d.commission_pct, d.starts_at, d.ends_at, d.status, d.proposed_by, d.message, d.created_at,
+            d.requires_content_proof, d.proof_status,
+            (SELECT p.id FROM products p WHERE p.seller_id = d.seller_id AND p.is_active = 1 AND p.group_buy_status = 'active' ORDER BY p.created_at DESC LIMIT 1) AS featured_product_id,
+            (SELECT COUNT(*) FROM influencer_attributions a WHERE a.influencer_id = d.influencer_id AND a.seller_id = d.seller_id AND COALESCE(a.source,'') != 'broker_share' AND a.status != 'clawed_back') AS orders_count,
+            (SELECT COALESCE(SUM(a.commission_amount),0) FROM influencer_attributions a WHERE a.influencer_id = d.influencer_id AND a.seller_id = d.seller_id AND COALESCE(a.source,'') != 'broker_share' AND a.status = 'pending') AS pending_krw,
+            (SELECT COALESCE(SUM(a.commission_amount),0) FROM influencer_attributions a WHERE a.influencer_id = d.influencer_id AND a.seller_id = d.seller_id AND COALESCE(a.source,'') != 'broker_share' AND a.status IN ('available','paid')) AS confirmed_krw
      FROM seller_influencer_deals d
      LEFT JOIN sellers s ON s.id = d.seller_id
      WHERE d.influencer_id = ?
      ORDER BY d.created_at DESC LIMIT 100`
-  ).bind(userId).all().catch(() => ({ results: [] as any[] }))
-  return c.json({ success: true, data: { referred: referred.results || [], deals: deals.results || [] } })
+  ).bind(userId).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }))
+  const ref = encodeURIComponent(userId)
+  const dealRows = (deals.results || []).map((d) => ({
+    ...d,
+    store_link: `https://urdeal.kr/s/${d.seller_id}?ref=${ref}`,
+    product_link: d.featured_product_id ? `https://urdeal.kr/pass/${d.featured_product_id}?ref=${ref}` : null,
+    orders_count: Number(d.orders_count) || 0,
+    pending_krw: Number(d.pending_krw) || 0,
+    confirmed_krw: Number(d.confirmed_krw) || 0,
+  }))
+  // 💸 중개사 몫(내가 중개사인 매장) — 게이트 OFF 면 행이 없어 빈 배열. 있으면 그대로 보여 준다.
+  const broker = await c.env.DB.prepare(
+    `SELECT a.seller_id, COALESCE(s.business_name, s.name) AS seller_name,
+            COUNT(*) AS orders_count,
+            COALESCE(SUM(CASE WHEN a.status = 'pending' THEN a.commission_amount ELSE 0 END),0) AS pending_krw,
+            COALESCE(SUM(CASE WHEN a.status IN ('available','paid') THEN a.commission_amount ELSE 0 END),0) AS confirmed_krw
+       FROM influencer_attributions a LEFT JOIN sellers s ON s.id = a.seller_id
+      WHERE a.influencer_id = ? AND a.source = 'broker_share' AND a.status != 'clawed_back'
+      GROUP BY a.seller_id ORDER BY confirmed_krw DESC LIMIT 50`
+  ).bind(userId).all<Record<string, unknown>>().catch(() => ({ results: [] as Record<string, unknown>[] }))
+  return c.json({ success: true, data: { referred: referred.results || [], deals: dealRows, broker: broker.results || [] } })
 })
 
 // ───────── 인플 지역 ranking (공개) ─────────
@@ -732,5 +761,8 @@ registerAdminPayoutRoutes(adminApp)
 // ───────── 소개자 찾기 + 카탈로그 — `marketing/discovery.ts` 로 분리 (2026-08-27 파일크기 래칫) ─────────
 //   ⚠️ 라우트를 **이 인스턴스에** 얹는다 — 저쪽에서 새 Hono 를 만들면 requireSeller 가 안 붙는다.
 registerDiscoveryRoutes(sellerApp, discoverApp)
+// ───────── 🔑 협업 코드 · 딜 조정 · 인플루언서 수락 — `marketing/collab-codes.ts` (2026-09-19 대표 확정 플로우) ─────────
+//   ⚠️ 같은 인스턴스에 얹는다 — sellerApp=requireSeller · influencerApp=requireAuth · discoverApp=optionalAuth.
+registerCollabCodeRoutes(sellerApp, influencerApp, discoverApp)
 
 export { sellerApp as sellerMarketingRoutes, influencerApp as influencerSettlementRoutes, adminApp as adminPayoutRoutes, discoverApp as influencerDiscoverRoutes, rankingApp as influencerRankingsRoutes }
