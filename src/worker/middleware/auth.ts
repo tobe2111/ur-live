@@ -59,6 +59,8 @@ export interface AuthUser {
   type: UserType;
   role?: string;
   isDbId?: boolean;  // true면 id가 DB users.id (세션 쿠키)
+  /** 🪑 위임 좌석(운영자)으로 들어온 경우 그 사람의 users.id — 좌석 토큰이 싣는다(seller-operators.routes). 감사·발급자 기록용. */
+  operator_user_id?: number;
 }
 
 /**
@@ -148,6 +150,8 @@ export function requireAuth() {
           name: jwtPayload.name,
           type: (jwtPayload.type || 'user') as UserType,
           role: jwtPayload.role,
+          ...(Number.isFinite(Number(jwtPayload.operator_user_id)) && Number(jwtPayload.operator_user_id) > 0
+            ? { operator_user_id: Number(jwtPayload.operator_user_id) } : {}),
         };
 
         // 🔐 단일 세션 강제 (대시보드) — 시트별 키로 더 늦은 로그인이 무효화한 토큰 거부.

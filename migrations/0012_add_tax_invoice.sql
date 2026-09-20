@@ -78,7 +78,10 @@ CREATE TABLE IF NOT EXISTS tax_invoices (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   
   FOREIGN KEY (seller_id) REFERENCES sellers(id),
-  FOREIGN KEY (order_no) REFERENCES orders(order_no),
+  -- 🧨 2026-09-19: 부모 컬럼 이름이 틀려 있었다(`orders.order_no` 는 없다 — 진짜 이름은 `order_number`).
+  --   SQLite 는 이런 외래키를 malformed 로 보고 **부모/자식 어느 쪽 DML 이든** 거부한다 →
+  --   라이브에서 `INSERT INTO orders ... RETURNING` 이 전부 실패해 결제가 통째로 막혀 있었다.
+  FOREIGN KEY (order_no) REFERENCES orders(order_number),
   FOREIGN KEY (settlement_id) REFERENCES settlements(id)
 );
 

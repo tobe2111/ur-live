@@ -7,6 +7,7 @@ import { getUserIdSync } from '@/utils/auth'
 import { safePaymentReturnPath } from '@/utils/safe-internal-path'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { readPaySummary, displayDiscountPct } from '@/shared/pay-summary'
+import DealUseCard, { dealUseCap, clampDealUse } from './pay/DealUseCard'
 
 type TossWidgets = ReturnType<Awaited<ReturnType<typeof getTossPayments>>['widgets']>
 
@@ -38,6 +39,8 @@ export default function TossWidgetPayPage() {
   const [errorMsg, setErrorMsg] = useState('')
   const initializedRef = useRef(false)
   const widgetsRef = useRef<TossWidgets | null>(null)
+  /** 위젯이 **지금 아는** 청구액. 화면과 위젯이 갈리지 않게 한 곳에서만 기록한다. */
+  const lastSetAmountRef = useRef<number>(0)
 
   const orderId = searchParams.get('orderId') || ''
   const amountStr = searchParams.get('amount') || ''
@@ -50,11 +53,19 @@ export default function TossWidgetPayPage() {
   const summary = readPaySummary((k) => searchParams.get(k))
   const discountPct = displayDiscountPct(amount, summary.origAmount)
   /**
-   * 표시 전용 — 딜이 섞였을 때의 **상품 금액**(카드 청구액 + 딜 사용액).
-   * ⚠️ 이름이 `display` 로 시작하는 건 규약이다: 요약에서 파생된 숫자는 화면용이고
-   *   청구액은 끝까지 `amount` 하나다(테스트가 그 이름 규약을 강제한다).
+   * 🪙 2026-09-19 [UNLOCK] (대표 확정 "C안" · 승인 "허가 — 최소 범위"): 이 화면에서 딜을 조절한다.
+   *
+   * **상품 총액은 고정**이다 — URL 이 준 `amount`(초기 카드 청구액) + `summary.dealUsed`(초기 딜).
+   * 사용자가 딜을 움직이면 그 총액 안에서 카드 몫만 바뀐다: `청구액 = 총액 − 딜`.
+   * 이 항등식이 서버와 맞물린다 — 승인 뒤 서버는 거꾸로 `딜 = 총액 − 청구액` 으로 역산해
+   * 게이트·최소카드액·잔액을 다시 보고(`derivePartialDeal`) 원자 CAS 로 뺀다.
+   *
+   * ⚠️ 초기값은 URL 그대로라 **아무것도 안 만지면 종전과 byte-동일**하다(`chargeAmount === amount`).
    */
-  const displayGoodsAmount = summary.dealUsed ? amount + summary.dealUsed : 0
+  const goodsAmount = amount + (summary.dealUsed ?? 0)
+  const [dealUsed, setDealUsed] = useState(summary.dealUsed ?? 0)
+  const dealCap = dealUseCap(goodsAmount, summary.dealMax ?? summary.dealUsed ?? 0)
+  const chargeAmount = Math.max(0, goodsAmount - clampDealUse(dealUsed, dealCap))
 
   /**
    * 🩸 2026-09-13 [UNLOCK] (대표 승인 — *"결제가 안되네"* 신고, 재현 확인): `safeInternalPath` →
@@ -113,6 +124,7 @@ export default function TossWidgetPayPage() {
         if (!widgets) throw new Error('widgets() returned null')
 
         await withTimeout(widgets.setAmount({ currency: 'KRW', value: Math.round(amount) }), 'SET_AMOUNT')
+        lastSetAmountRef.current = Math.round(amount)  // 🪙 2026-09-19: 위젯이 아는 값 기록(호출 자체는 불변)
 
         // 🛡️ 2026-05-24: server-side variantKey 우선 (TOSS_VARIANT_PAYMENT/AGREEMENT env) — 위에서 병렬 시작한
         //   variantPromise 를 여기서 소비 (SDK 로드/setAmount 와 이미 겹쳐 실행됨). 지연/실패 시 빈값 → build-time fallback.
@@ -164,6 +176,35 @@ export default function TossWidgetPayPage() {
 
     return () => { cancelled = true }
   }, [orderId, amount, orderName, clientKey, navigate])
+
+  /**
+   * 🪙 2026-09-19 [UNLOCK] 딜을 바꾸면 위젯에 **새 청구액**을 알린다.
+   *
+   * ⚠️ 위 초기화 effect 의 `setAmount` 는 **한 글자도 안 바뀐다** — 이건 그 뒤에만 도는 별도 effect 다
+   *   (`state === 'ready'` 가 그것을 보장한다). 그래서 최초 렌더 경로는 종전과 동일하고,
+   *   사용자가 손잡이를 움직였을 때만 한 번 더 부른다.
+   * ⚠️ 실패하면 **되돌린다** — 위젯이 모르는 금액으로 결제창을 열면 토스가 거절하거나(더 나쁘게)
+   *   화면이 말한 값과 다른 금액이 청구된다. 화면과 위젯이 갈리는 것이 이 블록의 유일한 실패 모드다.
+   */
+  useEffect(() => {
+    if (state !== 'ready' || !widgetsRef.current) return
+    if (chargeAmount === lastSetAmountRef.current) return
+    let cancelled = false
+    const next = Math.round(chargeAmount)
+    const prev = lastSetAmountRef.current
+    lastSetAmountRef.current = next
+    ;(async () => {
+      try {
+        await widgetsRef.current!.setAmount({ currency: 'KRW', value: next })
+      } catch (err) {
+        if (cancelled) return
+        console.error('[TossWidgetPay] setAmount(딜 조절) 실패:', err)
+        lastSetAmountRef.current = prev
+        setDealUsed(goodsAmount - prev)   // 화면을 위젯이 아는 값으로 되돌린다
+      }
+    })()
+    return () => { cancelled = true }
+  }, [chargeAmount, state, goodsAmount])
 
   async function handlePay() {
     if (!widgetsRef.current || state !== 'ready') return
@@ -253,22 +294,22 @@ export default function TossWidgetPayPage() {
           {/* 🪙 부분결제 — 왜 청구액이 상품값보다 적은지 화면이 말한다.
               값은 서버 `/join` 이 계산해 준 것이고(화면 추정 아님), 없으면 이 블록 자체가 안 뜬다.
               합이 딱 맞는 게 이 화면의 계약이다: 딜 + 카드 = 상품 금액. */}
-          {summary.dealUsed ? (
+          {goodsAmount > chargeAmount ? (
             <div className="mt-3 pt-3 border-t border-rule space-y-1">
               <div className="flex items-baseline justify-between text-[12.5px]">
                 <span className="text-gray-400 dark:text-gray-500">상품 금액</span>
-                <span className="tabular-nums text-gray-600 dark:text-gray-300">{displayGoodsAmount.toLocaleString('ko-KR')}원</span>
+                <span className="tabular-nums text-gray-600 dark:text-gray-300">{goodsAmount.toLocaleString('ko-KR')}원</span>
               </div>
               <div className="flex items-baseline justify-between text-[12.5px]">
                 <span className="text-gray-400 dark:text-gray-500">딜 사용</span>
-                <span className="tabular-nums font-semibold text-brand-text">−{summary.dealUsed.toLocaleString('ko-KR')}딜</span>
+                <span className="tabular-nums font-semibold text-brand-text">−{(goodsAmount - chargeAmount).toLocaleString('ko-KR')}딜</span>
               </div>
             </div>
           ) : null}
           <div className="mt-3 pt-3 border-t border-rule flex items-baseline justify-between">
-            <span className="text-[12.5px] text-gray-400 dark:text-gray-500">{summary.dealUsed ? '카드 결제' : '결제 금액'}</span>
+            <span className="text-[12.5px] text-gray-400 dark:text-gray-500">{goodsAmount > chargeAmount ? '카드 결제' : '결제 금액'}</span>
             <span className="text-[27px] font-extrabold tracking-tight tabular-nums text-gray-900 dark:text-white">
-              {Number.isFinite(amount) ? amount.toLocaleString('ko-KR') : '0'}
+              {Number.isFinite(chargeAmount) ? chargeAmount.toLocaleString('ko-KR') : '0'}
               <span className="text-[17px] font-bold ml-0.5">원</span>
             </span>
           </div>
@@ -276,6 +317,16 @@ export default function TossWidgetPayPage() {
             토스로 안전결제 · 미사용 시 100% 자동환불
           </p>
         </section>
+
+        {/* 🪙 2026-09-19 대표 확정 "C안" — 딜 사용은 자기 카드로. 서버가 쓸 딜이 0 이라고 하면 안 뜬다.
+            상세 페이지에서 미리 고른 값이 초기값이고, 여기서 최종 조절한다. 근거: pay/DealUseCard.tsx */}
+        <DealUseCard
+          goodsAmount={goodsAmount}
+          dealMax={summary.dealMax ?? summary.dealUsed ?? 0}
+          value={dealUsed}
+          onChange={setDealUsed}
+          disabled={state !== 'ready'}
+        />
 
         {/* 결제 위젯 mount points
             🧾 2026-09-01 [UNLOCK] (대표 승인 "허가 — 상자만 숨김"): SDK 가 못 뜨면 이 두 자리가 **빈 테두리
@@ -326,7 +377,7 @@ export default function TossWidgetPayPage() {
                 결제 진행 중...
               </span>
             )}
-            {state === 'ready' && `${Number.isFinite(amount) ? amount.toLocaleString('ko-KR') : '0'}원 결제하기`}
+            {state === 'ready' && `${Number.isFinite(chargeAmount) ? chargeAmount.toLocaleString('ko-KR') : '0'}원 결제하기`}
             {state === 'error' && '지금은 결제할 수 없어요'}
           </button>
         </div>

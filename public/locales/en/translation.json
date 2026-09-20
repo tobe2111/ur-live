@@ -2439,6 +2439,7 @@
       "registerStoreFirst": "Step one is store registration — find your store on the map above and register it",
       "storeRegisteredSwitched": "Store registered — this voucher will belong to it",
       "storePendingNotice": "Store submitted — vouchers open after business verification",
+      "storeSuspendedNotice": "This store is suspended",
       "fromMap": "Get store photos from maps",
       "mapPhotoPlace": "Store",
       "mapPhotoFood": "Food & menu",

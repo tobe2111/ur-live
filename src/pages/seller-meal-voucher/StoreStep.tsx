@@ -7,6 +7,7 @@
  * - 없으면: 카카오맵 검색이 1단계의 주역. 선택 즉시 이름/주소/전화/좌표/플레이스 링크 자동입력.
  * - 아래 수동 필드는 항상 수정 가능(자동입력은 출발점이지 감옥이 아니다).
  */
+import { isSeatableStoreStatus } from '@/shared/seller-status'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MapPin, CheckCircle, Store, Loader2, Search } from 'lucide-react'
@@ -22,12 +23,12 @@ interface OperableStore {
   business_name: string | null
   name: string | null
   username: string | null
-  /** 서버 상태 — 승인 전(pending)은 좌석 전환이 거부된다(`/stores/:id/token`). */
+  /** 서버 상태 — 정지(suspended)만 좌석 전환이 거부된다(`/stores/:id/token`). 대기·반려는 앉아서 준비할 수 있다(2026-09-20). */
   status: string | null
 }
 
-/** 좌석에 앉을 수 있는가 — 서버의 토큰 발급 조건과 같은 판정. */
-const seatable = (s: OperableStore) => s.status === 'active' || s.status === 'approved'
+/** 좌석에 앉을 수 있는가 — 서버의 토큰 발급 조건과 같은 판정(`shared/seller-status.ts` SSOT). 2026-09-20: 대기·반려도 앉는다. */
+const seatable = (s: OperableStore) => isSeatableStoreStatus(s.status)
 
 const storeLabel = (s: OperableStore) => s.business_name || s.name || `매장 #${s.seller_id}`
 
@@ -65,7 +66,7 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
   const [currentId, setCurrentId] = useState(() => Number(localStorage.getItem('seller_id') || 0))
   const hasStoreInfo = !!form.restaurant_name
   /** 지금 앉아 있지 않은 **앉을 수 있는** 매장이 있는가 — 안내를 '등록' 대신 '선택'으로 바꾸는 신호.
-      승인 대기 매장은 아직 고를 수 없으므로 이 신호에서 뺀다(고르라고 해 놓고 거부하면 안 된다). */
+      정지 매장은 고를 수 없으므로 이 신호에서 뺀다(고르라고 해 놓고 거부하면 안 된다). */
   const hasOtherStore = stores.some(s => s.seller_id !== currentId && seatable(s))
   // 매장 정보가 이미 있으면 지도는 접어 둔다 — "다시 검색"으로 언제든 편다.
   const [showMap, setShowMap] = useState(!hasStoreInfo)
@@ -89,7 +90,7 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
   async function pickStore(s: OperableStore) {
     if (s.seller_id === currentId || switching != null) return
     if (!seatable(s)) {
-      toast.info(t('seller.mealVoucher.storePendingNotice', { defaultValue: '매장이 등록 접수됐어요 — 사업자 확인(승인) 후 이용권을 등록할 수 있어요' }))
+      toast.info(t('seller.mealVoucher.storeSuspendedNotice', { defaultValue: '이용이 정지된 매장이에요' }))
       return
     }
     setSwitching(s.seller_id)
@@ -166,14 +167,17 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
                   className={`px-3 py-2 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-60 ${
                     active ? 'border-brand bg-brand-tint text-brand-text'
                       : seatable(s) ? 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                      /* 승인 대기 — 눌러도 서버가 거부한다. 숨기지 않고 '왜 못 고르는지'를 보여준다. */
+                      /* 정지 — 눌러도 서버가 거부한다. 숨기지 않고 '왜 못 고르는지'를 보여준다. */
                       : 'border-gray-200 bg-gray-50 text-gray-400'
                   }`}
                 >
                   {switching === s.seller_id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : active && <CheckCircle className="w-3.5 h-3.5" />}
                   <span className="max-w-[160px] truncate">{storeLabel(s)}</span>
                   {!seatable(s) && (
-                    <span className="text-[10px] font-bold text-gray-600 bg-gray-200 px-1 py-0.5 rounded">승인 대기</span>
+                    <span className="text-[10px] font-bold text-gray-600 bg-gray-200 px-1 py-0.5 rounded">정지</span>
+                  )}
+                  {seatable(s) && s.status === 'pending' && (
+                    <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-1 py-0.5 rounded">심사 중</span>
                   )}
                   {seatable(s) && s.role === 'operator' && (
                     <span className="text-[10px] font-bold text-tone-warn bg-tone-warn-bg px-1 py-0.5 rounded">위임</span>
@@ -344,7 +348,7 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
             setRegistering(false)
             loadStores()
             // 🚪 2026-08-24: 등록 즉시 그 매장 좌석으로 전환 — 이 이용권이 그 매장으로 귀속되고,
-            //   매장 선행 게이트가 열린다. 승인 대기(pending)면 서버가 전환을 거부한다(의도된 잠금).
+            //   매장 선행 게이트가 열린다. 2026-09-20: 대기·반려 매장도 바로 앉는다(정지만 거부).
             if (newSellerId) {
               try {
                 const r = await api.post(`/api/seller/stores/${newSellerId}/token`)
@@ -360,8 +364,8 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
                   toast.success(t('seller.mealVoucher.storeRegisteredSwitched', { defaultValue: '매장이 등록됐어요 — 이 매장으로 이용권을 만들어요' }))
                   return
                 }
-              } catch { /* 승인 대기 등 — 아래 안내로 */ }
-              toast.info(t('seller.mealVoucher.storePendingNotice', { defaultValue: '매장이 등록 접수됐어요 — 사업자 확인(승인) 후 이용권을 등록할 수 있어요' }))
+              } catch { /* 정지·네트워크 등 — 아래 안내로 */ }
+              toast.info(t('seller.mealVoucher.storeRegistered', { defaultValue: '매장이 등록됐어요 — 매장 목록에서 선택할 수 있어요' }))
               return
             }
             toast.success(t('seller.mealVoucher.storeRegistered', { defaultValue: '매장이 등록됐어요 — 매장 목록에서 선택할 수 있어요' }))
