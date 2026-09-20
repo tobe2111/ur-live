@@ -67,4 +67,7 @@ describe('③ 읽는 쪽 셋이 폴백을 탄다', () => {
     expect(SESSION).toMatch(/has_business_cert: !!\(await import\('\.\.\/\.\.\/\.\.\/\.\.\/worker\/utils\/seller-cert-url'\)/)
     expect(SESSION).not.toMatch(/has_business_cert: !!seller\.business_registration_image_url/)
   })
+  it('OCR 라우트가 모델의 message·raw 를 어드민에게 돌려준다 (S-OCR 실측에서 fill 0 의 이유를 볼 수 없었다)', () => {
+    expect(OCR).toMatch(/ocr: \{ ok: ocr\.ok, message: ocr\.message, raw: ocr\.raw \?\? null \}/)
+  })
 })
