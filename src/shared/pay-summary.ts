@@ -17,6 +17,15 @@
  *   ⚠️ 그래서 `origAmount`(정가)는 **취소선 표시 전용**이다 — 할인율 계산도 화면 안에서만 쓴다.
  */
 
+/**
+ * 🪙 카드로 최소한 나가야 하는 금액. **0원 결제는 PG 가 거절한다** — 딜이 총액을 다 덮으면
+ * 그건 부분결제가 아니라 *전부-딜* 이고, 그 흐름은 `/join` payment_method='deal' 이 따로 처리한다.
+ *
+ * ⚠️ 여기가 **SSOT** 다. 서버(`partial-deal.ts`)가 이 값을 그대로 재수출해 쓴다 —
+ *   두 벌로 두면 화면이 허용한 금액을 서버가 거절하는 날이 온다(에러는 결제 직전에 난다).
+ */
+export const MIN_CARD_AMOUNT = 100
+
 export interface PaySummary {
   /** 상품 사진(절대 URL). 렌더는 반드시 `cfImage` 경유 — 호스트 화이트리스트 + onError 폴백. */
   image?: string
@@ -34,6 +43,15 @@ export interface PaySummary {
    *   화면이 잔액만 보고 "8,000원 될 거예요" 를 지어내면 게이트 상태와 갈려 **거짓말**이 된다.
    */
   dealUsed?: number
+  /**
+   * 이 결제에서 딜로 **낼 수 있는 최대 금액**(원) — 결제 화면의 조절 상한.
+   *
+   * ⚠️ `dealUsed` 와 같은 성질이다: **서버가 계산해 준 값**만 싣는다(`deal-plan` 의
+   *   `max_deal_usable`). 화면이 잔액으로 추정하지 않는 이유는 위 `dealUsed` 주석과 같다.
+   * 🔒 위조돼도 **손해가 없다** — 승인 뒤 서버가 청구액에서 딜을 역산해 게이트·최소카드액·잔액을
+   *   다시 보고(`derivePartialDeal`), 실제 차감은 원자 CAS 다. 여기 값은 손잡이의 눈금일 뿐이다.
+   */
+  dealMax?: number
 }
 
 /** 사진 URL 로 받아들일 수 있는 형태인지 — 스킴만 본다(호스트 판정은 `cfImage` SSOT 가 한다). */
@@ -49,12 +67,14 @@ export function readPaySummary(get: (k: string) => string | null): PaySummary {
   const orig = Number(get('origAmount'))
   const qty = Number(get('qty'))
   const dealUsed = Number(get('dealUsed'))
+  const dealMax = Number(get('dealMax'))
   return {
     image: isDisplayableImageUrl(image) ? image : undefined,
     merchant: merchant ? merchant.slice(0, 60) : undefined,
     origAmount: Number.isFinite(orig) && orig > 0 ? orig : undefined,
     qty: Number.isFinite(qty) && qty > 1 ? Math.floor(qty) : undefined,
     dealUsed: Number.isFinite(dealUsed) && dealUsed > 0 ? Math.floor(dealUsed) : undefined,
+    dealMax: Number.isFinite(dealMax) && dealMax > 0 ? Math.floor(dealMax) : undefined,
   }
 }
 
@@ -65,6 +85,7 @@ export function appendPaySummary(params: URLSearchParams, s: PaySummary): URLSea
   if (s.origAmount && s.origAmount > 0) params.set('origAmount', String(Math.round(s.origAmount)))
   if (s.qty && s.qty > 1) params.set('qty', String(Math.floor(s.qty)))
   if (s.dealUsed && s.dealUsed > 0) params.set('dealUsed', String(Math.floor(s.dealUsed)))
+  if (s.dealMax && s.dealMax > 0) params.set('dealMax', String(Math.floor(s.dealMax)))
   return params
 }
 

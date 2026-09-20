@@ -1004,7 +1004,9 @@ const MUTATIONS = [
   {
     name: '🪙 결제 화면이 딜 사용을 안 보여준다 (10,000원을 눌렀는데 8,000원이 뜬 이유가 사라진다)',
     file: 'src/pages/TossWidgetPayPage.tsx',
-    find: '{summary.dealUsed ? (',
+    // 🔀 2026-09-19 재조준(불변식 그대로): C안으로 조건이 `summary.dealUsed`(URL 초기값) →
+    //    `goodsAmount > chargeAmount`(이 화면에서 고른 딜까지 본다)로 바뀌었다. 낡은 앵커는 안 잡힌다.
+    find: '{goodsAmount > chargeAmount ? (',
     replace: '{false ? (',
     test: 'src/tests/unit/pay-screen-summary.test.ts',
     why:
