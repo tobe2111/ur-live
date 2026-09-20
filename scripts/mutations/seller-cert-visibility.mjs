@@ -37,4 +37,12 @@ export default [
     test: TEST,
     why: 'E5 브라우저 실측: 등록증을 첨부해 등록한 매장인데 대시보드 상단이 "서류 올리기" 를 요구했다.',
   },
+  {
+    name: '🧾등록증가시성 라이선스 동의가 요청 본문의 임의 모델로 간다',
+    file: 'src/features/admin/api/admin-seller-ocr.routes.ts',
+    find: "    const res = await c.env.AI.run(OCR_MODEL, { prompt: 'agree' })",
+    replace: "    const res = await c.env.AI.run(String((await c.req.json<{ model?: string }>().catch(() => ({}))).model || OCR_MODEL), { prompt: 'agree' })",
+    test: TEST,
+    why: '동의는 계정 단위 라이선스 수락이다 — 어드민 화면 한 번에 아무 모델이나 수락되면 안 된다.',
+  },
 ]

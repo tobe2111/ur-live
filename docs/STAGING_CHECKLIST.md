@@ -285,6 +285,10 @@ GET /api/admin/promo-ledger/order/:orderNumber      (read-only, finance 권한)
 ⚠️ **게이트를 켜기 전에 S-OCR-1~3 을 먼저 통과해야 한다.** 이 축의 오판은
 정상 사장님을 쫓아내거나(반려) 위조를 통과시키는(승인) 양방향 피해를 낸다.
 ⚠️ **Pages 바인딩은 배포 후에야 붙는다** — 배포 전 호출의 `AI_UNAVAILABLE` 은 정상이다.
+🩸 **2026-09-20 실측 — 첫 라이브 호출이 Workers AI `5016` 으로 죽었다**: *"Prior to using this model, you must submit
+the prompt 'agree'"*. Llama 3.2 비전은 계정 단위 **1회 라이선스 동의**가 선행이다. 09-16 부터 아무도 실제로 부르지 않아
+`AI_UNAVAILABLE` 이 아닌 이 실패를 아무도 못 봤다(응답에 message 가 없어 `unreadable` 로만 보였다 — #1506 이 동봉).
+동의는 대표가 `POST /api/admin/ai/agree-ocr-model` 로 1회. 그 전까지 S-OCR-1~3 은 전부 `unreadable`(모델 미가동)이다.
 
 | # | 무엇 | 통과 기준 |
 |---|---|---|

@@ -70,4 +70,9 @@ describe('③ 읽는 쪽 셋이 폴백을 탄다', () => {
   it('OCR 라우트가 모델의 message·raw 를 어드민에게 돌려준다 (S-OCR 실측에서 fill 0 의 이유를 볼 수 없었다)', () => {
     expect(OCR).toMatch(/ocr: \{ ok: ocr\.ok, message: ocr\.message, raw: ocr\.raw \?\? null \}/)
   })
+  it('OCR 모델 라이선스 동의 엔드포인트 — 모델은 OCR_MODEL 로 고정, 프롬프트는 agree (5016 실측)', () => {
+    expect(OCR).toMatch(/adminSellerOcrRoutes\.post\('\/ai\/agree-ocr-model'/)
+    expect(OCR).toMatch(/c\.env\.AI\.run\(OCR_MODEL, \{ prompt: 'agree' \}\)/)
+    expect(OCR).not.toMatch(/agree-ocr-model[\s\S]*c\.req\.(json|query)\(/) // 요청 본문으로 모델을 못 고른다
+  })
 })
