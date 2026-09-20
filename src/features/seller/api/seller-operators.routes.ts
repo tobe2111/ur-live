@@ -31,6 +31,7 @@ import { startDashboardSession } from '@/worker/utils/dashboard-session'
 import { notifyUser } from '@/lib/notifications'
 import { getOrIssueOwnerClaimCode, formatStoreCode } from '@/worker/utils/store-codes'
 import { readBrokerTerms } from '@/worker/utils/broker-share'
+import { isSeatableStoreStatus } from '@/shared/seller-status'
 import {
   listOperableStores,
   canOperateStore,
@@ -105,7 +106,7 @@ app.get('/my-stores/summary', async (c) => {
     const userId = await resolveActorUserId(c)
     if (!userId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401)
     const stores = (await listOperableStores(c.env.DB, userId))
-      .filter(s => s.status === 'active' || s.status === 'approved')
+      .filter(s => isSeatableStoreStatus(s.status))
       .slice(0, 20)
     const currentSellerId = await getSellerIdFromToken(c.req.header('Authorization'), c.env.JWT_SECRET)
     if (stores.length === 0) {
@@ -171,9 +172,15 @@ app.post('/stores/:sellerId/token', rateLimit({ action: 'seller_store_switch', m
       seller_type: string; is_distributor: number; business_name: string | null; username: string | null
     }>().catch(() => null)
     if (!seller) return c.json({ success: false, error: '매장을 찾을 수 없습니다' }, 404)
-    // 승인 안 된 매장은 대시보드를 열지 않는다(기존 로그인 규칙과 동일 — 'approved' 는 레거시 활성).
-    if (seller.status !== 'active' && seller.status !== 'approved') {
-      return c.json({ success: false, error: '승인 대기 중이거나 이용이 정지된 매장입니다' }, 403)
+    // 🥕 2026-09-20 (대표 — 승인 대기가 두 번이라 느리다 → "준비는 지금, 노출·정산은 승인 뒤"):
+    //   종전엔 `active|approved` 만 좌석을 열어 중개사가 등록한 매장은 **승인 전엔 아무것도 못 했다**
+    //   (이용권 등록·협업 코드 발급 전부 대기). 09-16 이 셀러 계정에 적용한 당근 규칙을 매장 좌석에도
+    //   같게 — 대기·반려는 들여보내고 배너가 알린다. ⚠️ 정지(`suspended`)는 계속 막는다.
+    //   승인 전 매장이 못 하는 것은 각 기능이 정한다: 메인 노출 = `approvedSellerProductSql`,
+    //   **정산 = `payouts-generate` 의 `isPayoutEligibleSellerStatus`** — 돈은 사람이 등록증을 본 뒤에만
+    //   나간다. 그래서 좌석을 열어도 09-16 사기 방어는 그대로다. 판정 SSOT: `shared/seller-status.ts`.
+    if (!isSeatableStoreStatus(seller.status)) {
+      return c.json({ success: false, error: '이용이 정지된 매장입니다' }, 403)
     }
 
     const iat = Math.floor(Date.now() / 1000)

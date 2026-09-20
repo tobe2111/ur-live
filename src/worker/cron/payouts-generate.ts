@@ -14,6 +14,7 @@
  */
 import type { Env } from '../types/env'
 import { logInfo, logError } from '../utils/logger'
+import { isPayoutEligibleSellerStatus } from '../../shared/seller-status'
 
 // 🔎 2026-07-28: 반환값 추가 — safeCron 이 하트비트에 '무엇을 했나'로 기록한다(#826).
 //   0건이 '이번 주 정산할 게 없었다' 인지 '조용히 실패했다' 인지 구분하려면 실행 사실만으론 부족하다.
@@ -88,7 +89,13 @@ export async function handlePayoutsGenerate(env: Env): Promise<{ created: number
       let accountNumber: string | null = null, accountHolder: string | null = null
       try {
         if (payeeType === 'store_owner' || payeeType === 'seller') {
-          const row = await DB.prepare('SELECT bank_account, business_name FROM sellers WHERE id = ?').bind(id).first<{ bank_account: string | null; business_name: string | null }>()
+          const row = await DB.prepare('SELECT bank_account, business_name, status FROM sellers WHERE id = ?').bind(id).first<{ bank_account: string | null; business_name: string | null; status: string | null }>()
+          // 🔒 2026-09-20 (승인 게이트 — 좌석을 대기·반려 매장에도 열면서 그 짝): 돈은 **사람이 등록증을
+          //   보고 승인한 매장**에만 나간다(`isPayoutEligibleSellerStatus`). 원장 credit 은 그대로 쌓이고
+          //   승인되는 순간 다음 run 이 전기간 외상을 잡는다(이 cron 이 전기간 누적을 보므로 잃는 돈 0).
+          //   ⚠️ 이 줄이 없으면 승인 전 매장이 직링크로 팔고 스스로 사용 처리해 payout 이 생긴다 — 09-16
+          //   사기 방어(등록증 확인)를 좌석 개방이 우회하게 된다.
+          if (!isPayoutEligibleSellerStatus(row?.status)) { logInfo(`[payouts-cron] skip unapproved seller ${id} (${row?.status ?? 'null'})`); continue }
           accountNumber = row?.bank_account || null
           accountHolder = row?.business_name || null
         } else if (payeeType === 'user') {
