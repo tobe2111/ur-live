@@ -67,7 +67,9 @@ adminSellerOcrRoutes.post('/sellers/:id/business-registration/ocr', async (c) =>
     const meta = await getSellerMeta(c.env.DB, [sellerId]).catch(() => new Map<number, Record<string, string>>())
     url = (meta.get(sellerId)?.food_permit_url || '').trim()
   } else {
-    url = (row.business_registration_image_url || '').trim()
+    // 🧾 컬럼 → seller_meta 폴백(대시보드 매장 등록은 meta 에만 적던 시절의 행) — `seller-cert-url.ts`
+    const { resolveSellerCertUrl } = await import('../../../worker/utils/seller-cert-url')
+    url = (await resolveSellerCertUrl(c.env.DB, sellerId, row.business_registration_image_url)) || ''
   }
   if (!url) return c.json({ success: false, error: `제출된 ${DOC_LABEL[kind]} 이미지가 없습니다` }, 400)
 

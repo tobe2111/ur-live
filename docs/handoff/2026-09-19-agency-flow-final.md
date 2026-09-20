@@ -63,6 +63,13 @@
 - 수정: id 컬럼을 INSERT 에서 빼고 `meta.last_row_id` 로 읽는다(카카오 upsert 와 같은 모양). 🩸 **첫 수정(PR #1503, users 만)을 배포하고도 500** — 라이브 `refresh_tokens.id` 도 INTEGER AUTOINCREMENT 였다(repair-schema 는 TEXT 로 선언 — 라이브와 다르다). users 행은 들어가고 refresh_tokens 에서 죽어 **고아 유저**가 남는다. 두 번째 수정으로 그 INSERT 도 id 를 뺐다. 가드 4건 + 주입 3건 빨간불 확인. tsc 0. 교훈: 500 의 원인을 스키마 한 곳만 보고 단정했다 — 같은 핸들러의 INSERT 전부를 라이브 pragma 로 대조했어야 했다.
 - ⚠️ 이 API 로 만든 계정은 `ur_session` 쿠키로 로그인된다 — 브라우저 판정은 쿠키를 심어 한다. 대표가 손으로 만들려면 카카오 계정이 필요하다(화면이 그것뿐).
 
+## 🧾 [E2] 등록증이 어드민·OCR·셀러 배너에 안 보이던 것 — E5 실사용에서 발견 (2026-09-20)
+
+- 대시보드 매장 등록(`POST /api/seller/stores`, 직접·중개 모두)은 등록증을 `seller_meta.business_cert_url` 에만 적었고,
+  어드민 승인 목록·상세·OCR·셀러 배너(`has_business_cert`)는 `sellers.business_registration_image_url` 컬럼만 읽었다.
+  ⇒ 09-16 "사진을 받아 사람이 심사" 가 이 경로에서 **비어 있었다**. 실측: 테스트 매장 15·16·17 에서 OCR "제출된 이미지가 없습니다" · 대시보드 상단 "사본이 아직 없어요 — 서류 올리기".
+- 수정: ① 등록이 컬럼에도 적는다(best-effort) ② SSOT `worker/utils/seller-cert-url.ts`(컬럼 → meta) ③ OCR·어드민 목록/상세(`admin-sellers/cert-fallback.ts`)·셀러 surface·세션 상태 넷이 폴백. 가드 5건 + 주입 4건 빨간불 확인. tsc 0.
+
 ## 🥕 [E2] 승인 대기 병목 — "준비는 지금, 노출·정산은 승인 뒤" (2026-09-20, 대표 *"2번은 더 이상적인 방법이 있어? 나머지 다 이상적으로"*)
 
 **레일**: 유어딜 셀러 대시보드 + 정산 cron. **머니 경로 접촉**: 있음 — `payouts-generate` 에 **셀러 status 게이트**(제한만 추가, 승인 매장은 종전과 동일).
