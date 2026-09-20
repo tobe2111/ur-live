@@ -481,6 +481,8 @@ adminSellersRoutes.patch('/sellers/:id/approve', cors(), async (c) => {
           isReactivation ? '판매를 이어가실 수 있어요' : '판매가 활성화됐어요! 내 유어샵에 이용권을 올려보세요',
           '/seller/waiting').catch(swallow('admin-sellers:approve-user-notify'));
       }
+      // 🤝 2026-09-20: 승계 전 매장은 linked_user_id 가 비어 위 알림이 아무에게도 안 갔다 → 위임 운영자(중개사)에게도(모듈 참조).
+      await import('./admin-sellers/notify-store-operators').then(m => m.notifyStoreOperatorsApproved(DB, sellerId, linkedUserId, isReactivation)).catch(swallow('admin-sellers:approve-operator-notify'));
     } catch { /* best-effort */ }
 
     // 🛡️ 2026-04-28: 셀러에게 카카오 알림톡

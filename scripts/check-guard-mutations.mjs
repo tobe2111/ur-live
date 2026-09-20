@@ -1187,12 +1187,12 @@ const MUTATIONS = [
     why: '전량을 안 받으므로 개수는 서버만 안다. 응답에서 빠지면 화면이 로드된 수로 폴백해 거짓말을 한다.',
   },
   {
-    name: '🎟️ 승인 대기 매장까지 세어 게이트만 열린다 — 이용권이 개인 좌석으로 등록된다',
+    name: '🎟️ 앉을 수 없는(정지) 매장까지 세어 게이트만 열린다 — 이용권이 개인 좌석으로 등록된다',
     file: 'src/features/seller/api/seller-stores.routes.ts',
-    find: "operableCount = mine.filter(x => x.status === 'active' || x.status === 'approved').length",
+    find: 'operableCount = mine.filter(x => isSeatableStoreStatus(x.status)).length',
     replace: 'operableCount = mine.length',
     test: 'src/tests/unit/voucher-flow-audit-2026-09-02.test.ts',
-    why: '좌석 토큰은 active|approved 에만 나온다 — pending 을 세면 게이트는 열리고 좌석은 안 바뀐다(잘못된 매장으로 팔린다).',
+    why: '좌석 토큰과 같은 판정(isSeatableStoreStatus — 2026-09-20 부터 대기·반려 포함, 정지 제외)으로 세야 한다. 그 밖을 세면 게이트는 열리고 좌석은 안 바뀐다(잘못된 매장으로 팔린다).',
   },
   {
     name: '🎟️ 화면이 승인 대기 매장을 고를 수 있는 것처럼 보여준다',

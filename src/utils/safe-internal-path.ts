@@ -56,8 +56,18 @@ export function isSafeInternalPath(raw: unknown): raw is string {
  *   나머지 query/hash(에러 누적 ?error=... 등)와 open-redirect 방어는 기존 그대로.
  * ⚠️ worker 측 safeRedirect(kakao.routes.ts)와 동일 화이트리스트 — 양쪽 같이 갱신할 것.
  */
-const PRESERVED_QUERY_PARAMS = ['ref', 'aff', 'invite'] as const
+const PRESERVED_QUERY_PARAMS = ['ref', 'aff', 'invite', 'code', 'auto'] as const
 const PRESERVED_VALUE_RE = /^[A-Za-z0-9_-]{1,64}$/
+/**
+ * 🔑 2026-09-20: 매장 코드 입구(`/store/find?code=` · `/i/join/:code?auto=1`)가 로그인 왕복에서
+ *   코드를 잃어 사장님이 코드를 손으로 다시 넣어야 했다(E4 판정에서 발견). `code` 는 **매장 코드
+ *   모양(8자, 선택적 하이픈)만** 보존한다 — OAuth 인가 코드(수십 자)는 이 모양이 아니라 통과 못 한다.
+ *   `auto` 는 `1` 만. 나머지 키는 종전 규칙 그대로.
+ */
+const PRESERVED_VALUE_RE_BY_KEY: Partial<Record<(typeof PRESERVED_QUERY_PARAMS)[number], RegExp>> = {
+  code: /^(?:[A-Za-z0-9]{8}|[A-Za-z0-9]{4}-[A-Za-z0-9]{4})$/,
+  auto: /^1$/,
+}
 
 /** query(+hash) 부분에서 화이트리스트 파라미터만 추출 — 안전값만, 없으면 '' */
 function extractPreservedQuery(rawQueryAndHash: string): string {
@@ -69,7 +79,7 @@ function extractPreservedQuery(rawQueryAndHash: string): string {
     const kept = new URLSearchParams()
     for (const key of PRESERVED_QUERY_PARAMS) {
       const v = params.get(key)
-      if (v && PRESERVED_VALUE_RE.test(v)) kept.set(key, v)
+      if (v && (PRESERVED_VALUE_RE_BY_KEY[key] ?? PRESERVED_VALUE_RE).test(v)) kept.set(key, v)
     }
     const s = kept.toString()
     return s ? `?${s}` : ''

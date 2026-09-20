@@ -95,6 +95,17 @@ describe('safe-internal-path', () => {
       expect(safeInternalPath('/x?ref=<script>')).toBe('/x')
       expect(safeInternalPath('/x?ref=https://evil.com')).toBe('/x')
     })
+    // 🔑 2026-09-20: 매장 코드 입구 — 로그인 왕복에서 코드가 살아남아야 사장님이 다시 안 친다
+    it('?code= 는 매장 코드 모양(8자·하이픈 선택)만 보존', () => {
+      expect(safeInternalPath('/store/find?code=AB3K9QXP')).toBe('/store/find?code=AB3K9QXP')
+      expect(safeInternalPath('/store/find?code=ab3k-9qxp')).toBe('/store/find?code=ab3k-9qxp')
+      expect(safeInternalPath('/i/join/AB3K9QXP?auto=1')).toBe('/i/join/AB3K9QXP?auto=1')
+    })
+    it('OAuth 인가 코드 모양(긴 값)·auto≠1 은 보존 안 함', () => {
+      expect(safeInternalPath('/x?code=' + 'a'.repeat(40))).toBe('/x')
+      expect(safeInternalPath('/x?code=abc')).toBe('/x')
+      expect(safeInternalPath('/i/join/AB3K9QXP?auto=2')).toBe('/i/join/AB3K9QXP')
+    })
     it('금지 path 는 ref 있어도 여전히 차단', () => {
       expect(safeInternalPath('/login?ref=123')).toBe('/')
       expect(safeInternalPath('/auth/kakao/start?ref=123')).toBe('/')

@@ -51,10 +51,12 @@ describe('🔐 매장 전환 — 토큰 발급이 유일한 방어선', () => {
     expect(body).toMatch(/linked_user_id/)
   })
 
-  it('승인되지 않은 매장은 토큰을 받지 못한다', () => {
+  it('정지된 매장은 토큰을 받지 못한다 — 판정은 SSOT(isSeatableStoreStatus) 하나다', () => {
+    // 🥕 2026-09-20: 대기·반려도 앉는다(당근 규칙 — 준비는 지금, 노출·정산은 승인 뒤). 정지만 막는다.
     const at = routes.indexOf("app.post('/stores/:sellerId/token'")
     const body = routes.slice(at, routes.indexOf('app.', at + 10))
-    expect(body).toMatch(/status !== 'active' && [^\n]*status !== 'approved'/)
+    expect(body).toMatch(/if \(!isSeatableStoreStatus\(seller\.status\)\)/)
+    expect(body).not.toMatch(/status !== 'active' && [^\n]*status !== 'approved'/)
   })
 
   it('전환 엔드포인트에 rate limit 이 걸려 있다', () => {
