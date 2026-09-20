@@ -68,16 +68,21 @@ authRouter.post('/register', rateLimit({ action: 'register', max: 5, windowSec: 
     }
 
     const passwordHash = await hashPassword(password);
-    const userId = generateId();
 
-    // 🛡️ 2026-05-01: production users 테이블에 toss_user_id 컬럼 없음 (Kakao 로그인 에러로 확인).
-    //   Google/Kakao INSERT 와 동일한 패턴. id 도 INTEGER AUTOINCREMENT 가 아닌 TEXT 사용 시
-    //   userId 명시.
-    await qb.execute(
-      `INSERT INTO users (id, email, password_hash, name, phone)
-       VALUES (?, ?, ?, ?, ?)`,
-      [userId, email, passwordHash, name, phone ?? null]
+    // 🩸 2026-09-20 (라이브 실측 — 이메일 가입이 **항상 500**): 라이브 `users.id` 는
+    //   `INTEGER PRIMARY KEY AUTOINCREMENT` 인데 여기서 `generateId()`(TEXT) 를 id 에 넣고 있었다
+    //   → SQLite "datatype mismatch" → 바깥 catch 가 'Registration failed' 로 뭉갰다. 마지막 성공
+    //   가입이 2026-03-15 인 것이 그 방증(카카오 전용이라 아무도 신고하지 않았다).
+    //   ⇒ id 는 DB 가 준다. 카카오 INSERT(`KakaoAuthService.upsertUser`)와 같은 모양.
+    const ins = await qb.execute(
+      `INSERT INTO users (email, password_hash, name, phone)
+       VALUES (?, ?, ?, ?)`,
+      [email, passwordHash, name, phone ?? null]
     );
+    const userId = String(ins.meta?.last_row_id ?? '');
+    if (!userId) {
+      return c.json({ success: false, error: 'Registration failed' }, 500);
+    }
 
     // 🔗 2026-07-03 (대표 승인 "모두 이상적으로" — 웨지 깔때기): 가입 즉시 유어샵 핸들 발급(카카오 경로와 대칭).
     //   신규 유저라 handle 확정 NULL → 조회 왕복 없이 UPDATE 1회. best-effort(실패 시 lazy backfill 커버).
