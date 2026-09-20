@@ -297,3 +297,27 @@ GET /api/admin/promo-ledger/order/:orderNumber      (read-only, finance 권한)
 | S-OCR-8 | 🍽️ `?kind=business_license` 로 OCR 호출 | 응답 `kind='business_license'` · **영업신고증** 이미지를 읽는다(등록증이 아니라) |
 | S-OCR-9 | 📄 **8MB 폰 사진**을 등록증·영업신고증 양쪽에 업로드 | 둘 다 성공(압축 후 ≤2MB) — 거절 문구가 뜨지 않는다 |
 | S-OCR-10 | 🔒 운영자(중개사) 토큰으로 `GET /api/seller/business-info` | `food_permit_url` 이 `null` · `POST /api/seller/food-permit` 는 403 |
+
+---
+
+## S13 — 결제 화면에서 딜 사용액 조절 (2026-09-19, 대표 확정 "C안")
+
+`TossWidgetPayPage.tsx` 는 **Toss V2 감사 잠금 파일**이고, 이 변경으로 `setAmount` 호출이
+1 → 2 가 됐다(초기화 + 딜 조절). **SDK 의 실제 재호출 동작은 유닛으로 못 잰다** — 여기서만 판정된다.
+
+전제: `platform_settings.voucher_partial_deal_enabled = true`, 딜 잔액이 있는 계정.
+⚠️ 그 게이트를 켜기 전에 **S12**(`influencer_deal_bonus_pct = 0`)가 선행이다.
+
+| # | 무엇 | 통과 기준 |
+|---|---|---|
+| S13-1 | 이용권 결제 진입 → 딜 카드에서 **전액 사용** | 카드 청구액이 즉시 줄고, 큰 숫자·CTA·토스 위젯이 **같은 금액**을 말한다 |
+| S13-2 | 딜을 **0 으로** 되돌리기 | 청구액이 상품 총액으로 복귀 · '딜 사용' 줄이 사라진다 |
+| S13-3 | 딜을 조절한 채 **실제 카드 승인**까지 | 승인 금액 = 화면의 카드 결제액 · 주문 생성 · 이용권 발급 |
+| S13-4 | 승인 후 원장 | `orders.total_amount` = **상품 총액**(딜 차감 전) · `orders.deal_used` = 쓴 딜 · 잔액이 그만큼 줄었다 |
+| S13-5 | 딜을 **상한까지** 올리기 | 카드 청구액이 **100원 밑으로 안 내려간다**(전부-딜은 상세의 딜 결제 버튼이 담당) |
+| S13-6 | 🔒 URL `dealMax` 를 크게 위조한 뒤 승인 시도 | 잔액을 넘으면 **서버가 거절**(`INSUFFICIENT_DEAL`) — 카드만 긁히고 이용권이 나가는 일이 없다 |
+| S13-7 | 게이트 **OFF** 상태로 진입 | 딜 카드가 **아예 안 뜬다** · 결제가 종전과 동일하게 진행된다 |
+| S13-8 | 환불 | `orders.deal_used` 만큼 딜이 **되돌아온다**(`refundOrderFully` 대칭) |
+
+⚠️ **S13-3 이 이 변경의 핵심 판정이다** — 화면이 말한 금액과 토스가 승인한 금액이 갈리면
+사용자는 결제가 끝난 뒤에야 안다. 유닛은 "호출이 두 곳이고 가드가 있다"까지만 본다.

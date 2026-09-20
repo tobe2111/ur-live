@@ -31,9 +31,25 @@
 4. `consumer-hex` 래칫 — 새 소비자 화면 둘에 `dark:bg-[#…]` 를 손으로 박았다. 토큰(`bg-warm`·`bg-surface`·`border-line`)으로 교체.
 5. `ops-gate-reachable` — OPS_GATES 에 등재만 하고 **켤 칸**을 안 만들었다(09-16 과 같은 실수) → `money-switch-fields` ⑩.
 
+## ✅ [E3→E4] 머지·배포·라이브 판정 (2026-09-20 KST)
+
+- 머지: PR #1499 squash → main `e3e182c`. 배포 감지 03:18 KST(번들 `index-DWihfLCS.js`).
+- **API 판정** (어드민 읽기 토큰 + curl): `/api/seller-marketing/codes`(GET/POST) · `/codes/:code/revoke` · `/deals/:id`(PATCH) ·
+  `/api/influencer-settlement/codes/redeem` · `/deals/:id/respond` · `/api/seller/stores/:id/broker-terms` → 비인증 **401**(라우트가 살아 있고 인증 벽이 선다).
+  `GET /api/influencer-discover/code/ZZZZZZZZ` → `{"success":false,"code":"NOT_FOUND","error":"코드를 찾을 수 없어요…"}`.
+  `/api/admin/system-monitoring/ops-status` 에 `broker_share_enabled` 가 `value:null · is_default:true`(= OFF). 가이드 시드 33 반영(첫 접근 뒤).
+  라이브 D1(`store_codes`) 테이블 존재, 행 0 — 아직 아무도 코드를 만들지 않았다(정상).
+- **브라우저 판정** (Playwright · iPhone 13 뷰포트, `e4-front.mjs`):
+  `/i/join/ZZZZZZZZ` → 오류 문구 렌더(빈 화면 아님) · `/store/find?code=AB3K9QXP` → 비로그인이면 `/login?returnUrl=%2Fstore%2Ffind%3Fcode%3D…`(**코드 보존**) ·
+  `/s/14?ref=777` → localStorage `affiliate_ref=777` + 만료 7일 + 쿠키(**매장 링크 추천 캡처**) · `/influencer/settlement` → 로그인 유도 · 어드민 플랫폼 설정에 ⑩ 스위치 표시.
+- ⚠️ **E4 가 못 본 것**: 코드 발급→입력→수락 생애주기와 딜 % 조정은 **셀러·인플루언서·사장님 카카오 계정 3개**가 필요하다.
+  어드민 계정은 읽기 전용이고 대리 로그인 엔드포인트가 없다. 이 부분은 단위 테스트 23건(실제 sqlite) 까지가 증거이고, 라이브 판정은 대표 실사용(아래 첫 액션 1)이 E5 다.
+- 🩸 하네스가 헛돈 것: Chromium 을 프록시 없이 띄우면 청크 404 → 자가복구 루프(`ERR_TOO_MANY_RETRIES`)로 모든 경로가 흰 화면이었다.
+  `proxy:{server:HTTPS_PROXY}` + `--ignore-certificate-errors` + `domcontentloaded`(networkidle 은 차단된 비콘 때문에 영원히 안 온다) 이 답.
+
 ## ⏭️ 다음 세션의 첫 액션
 
-1. **배포 후 라이브 판정(E4)**: 대표 계정으로 `/seller/stores` 에서 중개 매장 하나 등록(요율 10/5) → 목록에 `XXXX-XXXX` 코드가 뜨는지 →
+1. **대표 실사용 판정(E5 — 위 E4 가 못 본 생애주기)**: 대표 계정으로 `/seller/stores` 에서 중개 매장 하나 등록(요율 10/5) → 목록에 `XXXX-XXXX` 코드가 뜨는지 →
    다른 계정으로 `/store/find?code=…` → 매장이 자동 선택되는지. `/seller/influencer-deals` 에서 협업 코드 발급 → 세 번째 계정으로
    `/i/join/CODE` → "협업이 시작됐어요" + `/influencer/settlement` 에 매장 링크·수락 대기 딜이 보이는지.
 2. **S-BROKER 실결제**(대표가 켜기로 하면): `docs/STAGING_CHECKLIST.md` 5건. 판정 쿼리:
