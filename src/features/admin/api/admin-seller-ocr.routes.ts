@@ -19,7 +19,7 @@
 import { Hono } from 'hono'
 import type { Env } from '../../../worker/types/env'
 import { adsLeadsDb } from '../../../shared/ads/leads-db'
-import { DOC_LABEL, type DocKind } from '../../../worker/utils/ocr-license'
+import { DOC_LABEL, OCR_MODEL, type DocKind } from '../../../worker/utils/ocr-license'
 
 export const adminSellerOcrRoutes = new Hono<{ Bindings: Env }>()
 
@@ -121,6 +121,25 @@ adminSellerOcrRoutes.post('/sellers/:id/business-registration/ocr', async (c) =>
     // 🚧 판정은 참고일 뿐 — 승인 버튼은 사람이 누른다(결재 §안전 레일 ②)
     note: '자동 승인·반려는 하지 않습니다. 확인 후 직접 눌러 주세요.',
   })
+})
+
+/**
+ * `POST /ai/agree-ocr-model` — 🪪 OCR 모델 라이선스 1회 동의 (2026-09-20, S-OCR 실측에서 발견).
+ *
+ * 라이브 첫 호출이 **Workers AI 5016** 으로 죽었다: *"Prior to using this model, you must submit the prompt 'agree'"*.
+ * Llama 3.2 비전 모델은 계정 단위로 **한 번** `prompt:'agree'` 를 보내야 그 뒤 추론이 된다. 09-16 부터 지금까지
+ * 아무도 실제로 부르지 않아 아무도 몰랐다(바인딩만 확인했다). 이 동의는 **Meta 라이선스 수락**이라 세션이
+ * 대신 누르지 않는다 — 어드민(대표)이 부른다. 모델은 `OCR_MODEL` 하나로 고정(임의 모델 동의 금지). 멱등.
+ */
+adminSellerOcrRoutes.post('/ai/agree-ocr-model', async (c) => {
+  if (!c.env.AI) return c.json({ success: false, code: 'AI_UNAVAILABLE', error: 'AI 바인딩이 없습니다' }, 200)
+  try {
+    const { aiText } = await import('../../../worker/utils/ai-text')
+    const res = await c.env.AI.run(OCR_MODEL, { prompt: 'agree' })
+    return c.json({ success: true, model: OCR_MODEL, response: aiText(res).slice(0, 400) })
+  } catch (err) {
+    return c.json({ success: false, model: OCR_MODEL, error: String((err as Error)?.message || '').slice(0, 200) }, 200)
+  }
 })
 
 export default adminSellerOcrRoutes
