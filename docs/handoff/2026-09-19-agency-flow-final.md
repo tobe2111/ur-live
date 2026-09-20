@@ -47,6 +47,15 @@
 - 🩸 하네스가 헛돈 것: Chromium 을 프록시 없이 띄우면 청크 404 → 자가복구 루프(`ERR_TOO_MANY_RETRIES`)로 모든 경로가 흰 화면이었다.
   `proxy:{server:HTTPS_PROXY}` + `--ignore-certificate-errors` + `domcontentloaded`(networkidle 은 차단된 비콘 때문에 영원히 안 온다) 이 답.
 
+## ✅ [E3] PR #1501 머지·배포 (2026-09-20 KST)
+
+- 머지: squash → main `a54e3e6` (대표 "머지해"). 원격 브랜치 삭제는 프록시 403 으로 못 했다(무해 — 다음 세션이 main 에서 다시 딴다).
+- 배포: `Deploy to Cloudflare Pages` 성공. 라이브 `/api/version` = `index-DDu8xFR5.js`, `app-utils-*.js` 에 매장코드 보존 정규식 존재 확인.
+- Notion 개발 로그 1행 기록(서비스 유어딜 · 기능 추가 · 머니 경로 ✓).
+- ✅ **[E4] `?code=` 왕복 판정 통과(대표 "하고 판정까지")** — OAuth 를 끝까지 안 가도 잴 수 있었다: `/api/auth/kakao/start?redirect=…` 의 302 `Location` 에 실린 **서명 state(JWT) 의 `r` 가 `safeRedirect` 통과 후 값**이고 콜백은 그 값으로 돌아간다(쿠키 유실 시 그 경로). 결과 5건:
+  `code=AB3K9QXP&auto=1` 보존 · `code=AB3K-9QXP` 보존 · `&evil=1` 제거 · `code=<script>&auto=2` → `/store/find` (둘 다 제거) · `ref=777` 종전대로 보존. 방법: 스크래치 `probe()` — Location 의 `state` 를 base64url 디코딩(서명 검증 불필요, 페이로드만 읽는다).
+- ⚠️ **E4 못 잰 것**: 좌석 개방(대기 매장 토큰)·정산 skip — 라이브 D1 실측 `sellers` = approved 1곳 · `seller_operators` 활성 1(그 매장). 대기 매장이 없다. 만들려면 라이브에 가짜 셀러를 넣어야 하는데 그건 쓰기라 안 했다(어드민 토큰은 읽기 전용 규율). 대표 3계정 실사용에서 **사장님 B 가 등록하면 곧 대기 매장**이고, 그때 중개사 A 가 스위처에 '심사 중' 배지와 함께 들어가지는지가 판정이다. 정산 skip 은 STAGING P15.
+
 ## 🥕 [E2] 승인 대기 병목 — "준비는 지금, 노출·정산은 승인 뒤" (2026-09-20, 대표 *"2번은 더 이상적인 방법이 있어? 나머지 다 이상적으로"*)
 
 **레일**: 유어딜 셀러 대시보드 + 정산 cron. **머니 경로 접촉**: 있음 — `payouts-generate` 에 **셀러 status 게이트**(제한만 추가, 승인 매장은 종전과 동일).
