@@ -41,7 +41,7 @@ import { resolvePartialDealPlan, derivePartialDeal, spendPartialDeal, recordOrde
 import { findActiveDealPct } from '@/worker/utils/influencer-deal'
 // 🧺 2026-09-15 이용권 장바구니 결제(`/cart/init`·`/cart/confirm-toss`, 게이트 `voucher_cart_enabled` 기본 OFF)
 import { cartCheckoutRoutes } from './cart-checkout.routes'
-
+import { ensureOrdersForeignKeysSane } from '../../../worker/utils/ensure-orders-fk-sane'
 const groupBuyRoutes = new Hono<{ Bindings: Env }>()
 
 // 🛡️ 2026-05-13: redundant cors() 제거 — 전역 cors 가 처리.
@@ -67,6 +67,8 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
   let _ddlDeferred = false
   try { if (c.executionCtx?.waitUntil) { c.executionCtx.waitUntil(ensureTables(DB).catch(() => {})); _ddlDeferred = true } } catch { /* no ctx */ }
   if (!_ddlDeferred) await ensureTables(DB).catch(() => {})
+
+  await ensureOrdersForeignKeysSane(DB).catch(() => {})  // 🧨 2026-09-19 깨진 FK 수리(멱등). 근거: ensure-orders-fk-sane.ts
   const productIdRaw = c.req.param('id')
   const productIdNum = Number(productIdRaw)
   if (!Number.isFinite(productIdNum) || productIdNum <= 0 || !Number.isInteger(productIdNum)) {
@@ -1092,6 +1094,7 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
   if (!Number.isFinite(qty)) return c.json({ success: false, error: '잘못된 수량' }, 400)
 
   const { DB } = c.env
+  await ensureOrdersForeignKeysSane(DB).catch(() => {})  // 🧨 깨진 FK 수리 — 반드시 **과금 전**(승인 뒤면 청구된 돈을 되돌리게 된다)
   // 1. 상품 재검증 (Toss 결제 도중 마감/품절 등 상태 변경 가능).
   // 🧱 2026-06-26 서비스 분리: confirm-toss 재검증도 /join(category 격리)과 대칭으로 도매 원본 제외.
   const product = await DB.prepare(
