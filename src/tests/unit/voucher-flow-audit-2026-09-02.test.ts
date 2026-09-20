@@ -226,20 +226,21 @@ describe('③-c 승인 대기 매장을 세면 게이트만 열리고 좌석은 
    * 에만 나온다. 승인 대기까지 세면 **게이트는 열리는데 좌석 전환은 거부** → 이용권이 개인 좌석으로
    * 등록된다. 그건 막히는 것보다 나쁘다 — 잘못된 매장 이름으로 팔린다.
    */
-  it('서버 게이트가 앉을 수 있는 매장만 센다', () => {
-    expect(SRV).toMatch(/status === 'active' \|\| \w+\.status === 'approved'/)
+  // 🥕 2026-09-20: 판정이 `shared/seller-status.ts` SSOT 로 옮겨졌다(대기·반려도 앉는다, 정지만 제외).
+  //   불변식은 그대로다 — **세 곳(게이트·토큰·화면)이 같은 함수를 쓴다.** 갈리면 이 사고가 재발한다.
+  it('서버 게이트가 앉을 수 있는 매장만 센다 (SSOT 함수)', () => {
+    expect(SRV).toMatch(/mine\.filter\(x => isSeatableStoreStatus\(x\.status\)\)/)
   })
 
   it('토큰 발급 조건과 같은 판정을 쓴다 (두 곳이 갈리면 이 사고가 재발한다)', () => {
     const OPS = read('src/features/seller/api/seller-operators.routes.ts')
-    expect(OPS).toContain("seller.status !== 'active' && seller.status !== 'approved'")
+    expect(OPS).toMatch(/if \(!isSeatableStoreStatus\(seller\.status\)\)/)
   })
 
-  it('화면도 승인 대기 매장을 고를 수 있는 것처럼 보여주지 않는다', () => {
-    expect(STEP).toMatch(/const seatable = \(s: OperableStore\) =>/)
+  it('화면도 같은 판정으로 고를 수 있는 매장만 보여준다', () => {
+    expect(STEP).toMatch(/const seatable = \(s: OperableStore\) => isSeatableStoreStatus\(s\.status\)/)
     expect(STEP, '고르라고 해 놓고 서버가 거부하면 안 된다')
       .toMatch(/if \(!seatable\(s\)\) \{/)
-    expect(STEP).toContain('승인 대기')
   })
 })
 

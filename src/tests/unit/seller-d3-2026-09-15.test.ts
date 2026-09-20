@@ -66,7 +66,7 @@ describe('B2 — 전 매장 합계 + 매장별', () => {
     const i = src.indexOf("app.get('/my-stores/summary'")
     expect(i).toBeGreaterThan(0)
     const body = src.slice(i, i + 3000)
-    expect(body).toMatch(/\.filter\(s => s\.status === 'active' \|\| s\.status === 'approved'\)/)
+    expect(body).toMatch(/\.filter\(s => isSeatableStoreStatus\(s\.status\)\)/)   // 2026-09-20: 판정 SSOT(대기·반려 포함, 정지 제외)
     expect(body).toMatch(/status IN \('PAID','DONE'\) AND DATE\(created_at, '\+9 hours'\) = \?/)
     expect(body).toMatch(/current_seller_id/)
     // 사람 기준 — 좌석 토큰이 아니라 resolveActorUserId 로 판정한다.

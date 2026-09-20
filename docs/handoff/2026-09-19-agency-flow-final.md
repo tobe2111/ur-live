@@ -47,6 +47,18 @@
 - 🩸 하네스가 헛돈 것: Chromium 을 프록시 없이 띄우면 청크 404 → 자가복구 루프(`ERR_TOO_MANY_RETRIES`)로 모든 경로가 흰 화면이었다.
   `proxy:{server:HTTPS_PROXY}` + `--ignore-certificate-errors` + `domcontentloaded`(networkidle 은 차단된 비콘 때문에 영원히 안 온다) 이 답.
 
+## 🥕 [E2] 승인 대기 병목 — "준비는 지금, 노출·정산은 승인 뒤" (2026-09-20, 대표 *"2번은 더 이상적인 방법이 있어? 나머지 다 이상적으로"*)
+
+**레일**: 유어딜 셀러 대시보드 + 정산 cron. **머니 경로 접촉**: 있음 — `payouts-generate` 에 **셀러 status 게이트**(제한만 추가, 승인 매장은 종전과 동일).
+**롤백**: `isSeatableStoreStatus` → `active|approved` 직접 비교 환원 + payouts 의 `continue` 1줄 제거(둘은 짝이라 **반드시 함께**).
+
+- 병목의 실체: 좌석 토큰(`/stores/:id/token`)이 `active|approved` 만 열어 **중개사가 등록한 매장은 승인 전엔 아무것도 못 했다**(이용권·협업 코드 전부 대기). 09-16 이 셀러 *계정*에 적용한 당근 규칙이 매장 *좌석*엔 안 미쳤다.
+- 수정(SSOT `src/shared/seller-status.ts`): 좌석 = 대기·반려도 앉는다(정지·미지·null 제외) / 정산 = 승인·활성만. **두 집합이 다른 것이 설계의 전부** — 좌석을 열면서 정산 게이트를 빼면 09-16 사기 방어(등록증 + 어드민 승인)가 통째로 우회된다. 노출은 `approvedSellerProductSql` 이 이미 승인 매장만 내보낸다.
+- 배선: 좌석 토큰·앉을 수 있는 매장 수(`store_ready`)·요약 API·이용권 매장 선택 화면(`StoreStep`) 네 곳이 같은 함수. `StoreSwitcher`·`StoreStep` 에 `심사 중`/`반려` 배지. 어드민 승인이 **위임 운영자(중개사)** 에게도 `store_approved` 알림(승계 전 매장은 `linked_user_id` 가 비어 종전 알림이 아무에게도 안 갔다). 협업 코드 `created_by` = 행위자 유저 id(좌석 토큰의 `operator_user_id` 를 `AuthUser` 로 통과).
+- 더 이상적인 다음 단계(코드 있음·게이트 OFF): **S-OCR** `ocr_auto_verify_enabled` — 등록증 OCR 자동 승인. S-OCR-1~3 통과 뒤 켜면 사람 승인이 예외 처리로 줄어든다. 켜는 것은 대표 판단.
+- 가드: `approval-gate-2026-09-20.test.ts` 10건 + 주입 4건(정산 게이트 소실 · 두 집합 동일화 · 좌석 환원 · 정지 개방) **되돌려-검증 빨간불 확인**. 낡은 지도 2건(d3 요약 필터·seller-stores 가산) 재조준. STAGING **P15**.
+- 🩸 틀렸던 것: 주입 러너를 vitest 전수와 **동시에** 돌려 "복원 실패 의심"이 떴다 — 러너는 소스를 잠깐 고쳐 쓰므로 다른 검사와 병렬로 돌리면 안 된다. 순차로 돌리자 진짜 원인(낡은 지도 2건)이 남았다.
+
 ## ⏭️ 다음 세션의 첫 액션
 
 1. **대표 실사용 판정(E5 — 위 E4 가 못 본 생애주기)**: 대표 계정으로 `/seller/stores` 에서 중개 매장 하나 등록(요율 10/5) → 목록에 `XXXX-XXXX` 코드가 뜨는지 →

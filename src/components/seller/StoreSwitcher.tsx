@@ -140,6 +140,13 @@ export default function StoreSwitcher({ variant = 'menu' }: { variant?: 'menu' |
                   {s.role === 'operator' && (
                     <span className="text-[10px] font-bold text-tone-warn bg-tone-warn-bg px-1.5 py-0.5 rounded shrink-0">위임</span>
                   )}
+                  {/* 🥕 2026-09-20: 대기·반려 매장도 앉을 수 있다 — 대신 어느 상태인지 목록에서 바로 보인다. */}
+                  {s.status === 'pending' && (
+                    <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded shrink-0">심사 중</span>
+                  )}
+                  {s.status === 'rejected' && (
+                    <span className="text-[10px] font-bold text-tone-bad bg-tone-bad-bg px-1.5 py-0.5 rounded shrink-0">반려</span>
+                  )}
                   {switching === s.seller_id
                     ? <Loader2 className="w-4 h-4 animate-spin text-gray-400 shrink-0" />
                     : active && <Check className="w-4 h-4 text-gray-900 shrink-0" />}

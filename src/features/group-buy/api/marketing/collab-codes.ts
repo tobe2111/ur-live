@@ -44,6 +44,18 @@ function getSellerId(c: { get: (k: string) => unknown }): number {
 function getUserId(c: { get: (k: string) => unknown }): string {
   return String((c.get('user') as AuthUser).id)
 }
+/**
+ * 코드를 **만든 사람**(users.id) — 좌석 토큰의 셀러 id 가 아니라. 위임 좌석이면 토큰이 실은 `operator_user_id`,
+ * 주인 좌석이면 그 매장의 `linked_user_id`. 둘 다 없으면(중개 매장·승계 전) 셀러 id 로 남긴다(종전 값).
+ */
+async function resolveIssuerUserId(c: { get: (k: string) => unknown; env: Env }, sellerId: number): Promise<number> {
+  const u = c.get('user') as AuthUser
+  if (u.operator_user_id) return u.operator_user_id
+  const row = await c.env.DB.prepare('SELECT linked_user_id FROM sellers WHERE id = ? LIMIT 1')
+    .bind(sellerId).first<{ linked_user_id: number | null }>().catch(() => null)
+  const linked = Number(row?.linked_user_id)
+  return Number.isFinite(linked) && linked > 0 ? linked : sellerId
+}
 
 /** 코드·딜의 % 를 매장 상한 안으로 검증한다. 순수 판정은 `resolveCodeCommissionPct` 와 같은 규칙. */
 function checkPct(raw: unknown, capPct: number | null): { ok: true; pct: number } | { ok: false; error: string } {
@@ -83,7 +95,7 @@ export function registerCollabCodeRoutes(sellerApp: MarketingApp, influencerApp:
       expiresAt = t.toISOString()
     }
     const row = await issueStoreCode(c.env.DB, {
-      sellerId, kind: 'influencer', createdBy: sellerId, commissionPct: v.pct,
+      sellerId, kind: 'influencer', createdBy: await resolveIssuerUserId(c, sellerId), commissionPct: v.pct,
       requiresApproval: b.requires_approval === true || b.requires_approval === 1 || b.requires_approval === '1' || b.requires_approval === 'true',
       label, maxUses: maxUsesRaw, expiresAt,
     })
