@@ -65,4 +65,28 @@ export default [
     test: TEST,
     why: '이 PR 이 메운 구멍 그 자체 — 매장이 제안한 조건 없는 딜을 수락할 엔드포인트가 0 이었다.',
   },
+  {
+    name: '🔑매장코드 로그인 왕복에서 ?code= 가 다시 사라진다 (사장님이 코드를 손으로 다시 친다)',
+    file: 'src/utils/safe-internal-path.ts',
+    find: "const PRESERVED_QUERY_PARAMS = ['ref', 'aff', 'invite', 'code', 'auto'] as const",
+    replace: "const PRESERVED_QUERY_PARAMS = ['ref', 'aff', 'invite'] as const",
+    test: 'src/tests/unit/safe-internal-path.test.ts',
+    why: '2026-09-20 E4 판정에서 발견 — 링크로 온 사장님이 로그인 뒤 빈 입력칸을 만났다. 에러가 없어 아무도 신고하지 않는 종류.',
+  },
+  {
+    name: '🔑매장코드 code 값 검증이 풀려 긴 OAuth 인가 코드까지 보존한다',
+    file: 'src/utils/safe-internal-path.ts',
+    find: '      if (v && (PRESERVED_VALUE_RE_BY_KEY[key] ?? PRESERVED_VALUE_RE).test(v)) kept.set(key, v)',
+    replace: '      if (v && PRESERVED_VALUE_RE.test(v)) kept.set(key, v)',
+    test: 'src/tests/unit/safe-internal-path.test.ts',
+    why: '키별 모양 검사가 없으면 콜백 URL 의 인가 코드가 returnUrl 에 실려 되돌아온다 — 보존은 매장 코드 8자에만.',
+  },
+  {
+    name: '🔑매장코드 워커 safeRedirect 가 프론트와 갈린다 (카카오 왕복만 코드 소실)',
+    file: 'src/features/auth/api/kakao.routes.ts',
+    find: "const PRESERVED_QUERY_PARAMS = ['ref', 'aff', 'invite', 'code', 'auto'] as const;",
+    replace: "const PRESERVED_QUERY_PARAMS = ['ref', 'aff', 'invite'] as const;",
+    test: 'src/tests/unit/kakao-safe-redirect.test.ts',
+    why: '두 파일이 "양쪽 같이 갱신할 것" 주석으로만 묶여 있다 — 한쪽만 고치면 이메일 로그인은 되고 카카오 로그인만 코드를 잃는다.',
+  },
 ]
