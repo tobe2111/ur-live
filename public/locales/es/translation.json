@@ -1757,6 +1757,7 @@
       "registerStoreFirst": "El primer paso es registrar la tienda — encuéntrala en el mapa y regístrala",
       "storeRegisteredSwitched": "Tienda registrada — este cupón pertenecerá a ella",
       "storePendingNotice": "Tienda enviada — los cupones se abren tras la verificación",
+      "storeSuspendedNotice": "Esta tienda está suspendida",
       "fromMap": "Obtener fotos desde mapas",
       "mapPhotoPlace": "Tienda",
       "mapPhotoFood": "Comida y menú",

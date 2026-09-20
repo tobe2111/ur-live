@@ -1757,6 +1757,7 @@
       "registerStoreFirst": "La première étape est l'enregistrement — trouvez votre boutique sur la carte ci-dessus",
       "storeRegisteredSwitched": "Boutique enregistrée — ce coupon lui appartiendra",
       "storePendingNotice": "Boutique soumise — les coupons s'ouvrent après vérification",
+      "storeSuspendedNotice": "Ce commerce est suspendu",
       "fromMap": "Récupérer des photos depuis les cartes",
       "mapPhotoPlace": "Boutique",
       "mapPhotoFood": "Plats et menu",

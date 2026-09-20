@@ -29,6 +29,7 @@ import { BUSINESS_NUMBER_META_KEY, bnoColumnFree, normalizeBno } from '@/worker/
 import { canOperateStore, grantOperator, revokeOperator, isStoreOwner, listOperableStores } from '../../../worker/utils/seller-operators'
 import { mergeStoreProfile, loadLatestProductCopy, saveStoreProfileAndPropagate } from '@/worker/utils/store-profile'
 import { parseSessionCookie } from '@/worker/utils/session'
+import { isSeatableStoreStatus } from '@/shared/seller-status'
 import { DEFAULT_FEE_RATES } from '@/worker/utils/fee-resolver'
 import { getEffectivePlatformFee } from '@/worker/utils/effective-platform-fee'
 import { registerVoucherDraftRoutes } from './seller-voucher-draft.routes'
@@ -223,14 +224,10 @@ app.get('/stores/context', async (c) => {
       const userId = await resolveActorUserId(c)
       if (userId) {
         const mine = await listOperableStores(c.env.DB, userId)
-        /**
-         * ⚠️ **앉을 수 있는 매장만 센다.** 신규 등록은 `status='pending'`(사람이 등록증을 보고 승인)
-         *   이고, 좌석 토큰(`/stores/:id/token`)은 `active|approved` 만 내준다. 승인 대기 매장까지 세면
-         *   게이트가 열리는데 좌석 전환은 거부되어 — **이용권이 개인 좌석으로 등록된다.** 막히는 것보다
-         *   나쁘다(잘못된 매장으로 팔린다). 그 상태의 올바른 안내는 "승인 후 가능" 이고, 그건 지금도
-         *   등록 직후 토스트가 말한다.
-         */
-        operableCount = mine.filter(x => x.status === 'active' || x.status === 'approved').length
+        // ⚠️ 앉을 수 있는 매장만 센다 — 좌석 토큰(`/stores/:id/token`)과 **같은 판정**(`isSeatableStoreStatus`).
+        //   두 곳이 갈리면 게이트는 열리는데 좌석 전환은 거부돼 이용권이 개인 좌석으로 등록된다(막히는 것보다 나쁘다).
+        //   2026-09-20: 대기·반려도 앉을 수 있다(정지만 제외) — 노출·정산은 각자의 승인 게이트가 맡는다.
+        operableCount = mine.filter(x => isSeatableStoreStatus(x.status)).length
       }
     } catch { /* 판정 실패는 조용히 — 아래에서 좌석 판정만 쓴다(fail-open 아님, 종전 동작) */ }
 

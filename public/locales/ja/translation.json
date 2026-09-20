@@ -2438,6 +2438,7 @@
       "registerStoreFirst": "最初のステップは店舗登録です — 上の地図で店舗を見つけて登録してください",
       "storeRegisteredSwitched": "店舗を登録しました — この店舗で利用券を作成します",
       "storePendingNotice": "店舗を受付けました — 事業者確認後に利用券を登録できます",
+      "storeSuspendedNotice": "この店舗は利用停止中です",
       "fromMap": "地図から店舗写真を取得",
       "mapPhotoPlace": "店舗写真",
       "mapPhotoFood": "料理・メニュー",

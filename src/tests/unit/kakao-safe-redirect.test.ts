@@ -90,6 +90,11 @@ describe('Worker safeRedirect (kakao.routes.ts)', () => {
     it('안전하지 않은 값은 보존 안 함', () => {
       expect(safeRedirect('/x?ref=<script>')).toBe('/x')
     })
+    it('?code= 매장 코드 모양만 보존 · 긴 OAuth 코드는 제거 (프론트와 동일)', () => {
+      expect(safeRedirect('/store/find?code=AB3K9QXP')).toBe('/store/find?code=AB3K9QXP')
+      expect(safeRedirect('/i/join/AB3K9QXP?auto=1')).toBe('/i/join/AB3K9QXP?auto=1')
+      expect(safeRedirect('/x?code=' + 'a'.repeat(40))).toBe('/x')
+    })
     it('금지 path 는 ref 있어도 여전히 / fallback', () => {
       expect(safeRedirect('/login?ref=123')).toBe('/')
       expect(safeRedirect('/auth/kakao/start?ref=123')).toBe('/')

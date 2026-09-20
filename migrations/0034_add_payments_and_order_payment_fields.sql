@@ -42,7 +42,9 @@ CREATE TABLE IF NOT EXISTS payments (
   -- Additional info (JSON format for flexibility)
   pg_raw_data TEXT,                  -- PG사 원본 응답 데이터 (JSON)
   
-  FOREIGN KEY (order_id) REFERENCES orders(order_no) ON DELETE CASCADE
+  -- 🧨 2026-09-19: `orders.order_no` 는 존재하지 않는 컬럼이다(진짜 이름 `order_number`).
+  --   malformed FK 는 `orders` 에 대한 INSERT…RETURNING / DELETE 를 전부 막는다. 상세: 0012 주석.
+  FOREIGN KEY (order_id) REFERENCES orders(order_number) ON DELETE CASCADE
 );
 
 -- Index for faster lookups

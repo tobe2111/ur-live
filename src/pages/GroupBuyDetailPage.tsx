@@ -467,6 +467,7 @@ export default function GroupBuyDetailPage() {
         qty: quantity,
         // 🪙 부분결제: **서버가 계산한** 딜 사용액만 싣는다(게이트 OFF 면 서버가 0 → 화면도 무언).
         dealUsed: Number(serverDealUsed) || undefined,
+        dealMax: Number(dealPlan?.max_deal_usable) || undefined,  // 🪙 2026-09-19 "C안": 결제 화면 조절 상한(서버 값 — 화면이 잔액으로 추정 X)
       })
       navigate(`/pay/widget?${params.toString()}`)
     } catch (err: unknown) {
