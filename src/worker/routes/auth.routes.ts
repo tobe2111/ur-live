@@ -105,10 +105,12 @@ authRouter.post('/register', rateLimit({ action: 'register', max: 5, windowSec: 
 
     // Store refresh token hash (PBKDF2)
     const tokenHash = await hashPassword(refreshToken);
+    // 🩸 2026-09-20 (두 번째 자리 — 첫 수정 배포 후에도 500): 라이브 `refresh_tokens.id` 도
+    //   `INTEGER PRIMARY KEY AUTOINCREMENT` 다(repair-schema 의 TEXT 선언과 다르다). 같은 클래스.
     await qb.execute(
-      `INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at)
-       VALUES (?, ?, ?, datetime('now', '+30 days'))`,
-      [generateId(), userId, tokenHash]
+      `INSERT INTO refresh_tokens (user_id, token_hash, expires_at)
+       VALUES (?, ?, datetime('now', '+30 days'))`,
+      [userId, tokenHash]
     );
 
     // 🔐 2026-06-29 (V-2): 가입 직후 자동 로그인도 카카오와 동일하게 ur_session httpOnly 발급(로그인 핸들러와 대칭).

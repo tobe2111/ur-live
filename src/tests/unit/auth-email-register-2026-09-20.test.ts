@@ -28,9 +28,10 @@ describe('이메일 가입 INSERT — id 는 DB 가 준다', () => {
     expect(handler).toMatch(/const userId = String\(ins\.meta\?\.last_row_id \?\? ''\)/)
     expect(handler).toMatch(/if \(!userId\) \{\s*return c\.json\(\{ success: false, error: 'Registration failed' \}, 500\)/)
   })
-  it('generateId 는 refresh_tokens(id TEXT) 에만 쓴다', () => {
-    const uses = handler.match(/generateId\(\)/g) || []
-    expect(uses.length).toBe(1)
-    expect(handler).toMatch(/INSERT INTO refresh_tokens[\s\S]*?\[generateId\(\), userId, tokenHash\]/)
+  it('refresh_tokens INSERT 도 id 를 안 넣는다 (라이브 refresh_tokens.id 역시 INTEGER AUTOINCREMENT — 첫 수정 배포 후에도 500 이던 두 번째 자리)', () => {
+    const m = handler.match(/INSERT INTO refresh_tokens \(([^)]*)\)/)
+    expect(m, 'refresh_tokens INSERT 가 있어야 한다').toBeTruthy()
+    expect(m![1].split(',').map((c) => c.trim())).toEqual(['user_id', 'token_hash', 'expires_at'])
+    expect(handler).not.toMatch(/generateId\(\)/)
   })
 })

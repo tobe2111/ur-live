@@ -60,7 +60,7 @@
 
 - 소비자 로그인 화면은 **카카오 전용**이라 이메일 가입 UI 는 없다. API(`POST /api/auth/register`)는 살아 있는데 라이브에서 **항상 500** 이었다.
   원인: 라이브 `users.id` 가 `INTEGER PRIMARY KEY AUTOINCREMENT` 인데 핸들러가 `generateId()`(TEXT) 를 id 에 넣어 datatype mismatch → catch → 'Registration failed'. 마지막 성공 가입 2026-03-15.
-- 수정: id 컬럼을 INSERT 에서 빼고 `meta.last_row_id` 로 읽는다(카카오 upsert 와 같은 모양). 가드 `auth-email-register-2026-09-20.test.ts` 4건 + 주입 2건 빨간불 확인. tsc 0.
+- 수정: id 컬럼을 INSERT 에서 빼고 `meta.last_row_id` 로 읽는다(카카오 upsert 와 같은 모양). 🩸 **첫 수정(PR #1503, users 만)을 배포하고도 500** — 라이브 `refresh_tokens.id` 도 INTEGER AUTOINCREMENT 였다(repair-schema 는 TEXT 로 선언 — 라이브와 다르다). users 행은 들어가고 refresh_tokens 에서 죽어 **고아 유저**가 남는다. 두 번째 수정으로 그 INSERT 도 id 를 뺐다. 가드 4건 + 주입 3건 빨간불 확인. tsc 0. 교훈: 500 의 원인을 스키마 한 곳만 보고 단정했다 — 같은 핸들러의 INSERT 전부를 라이브 pragma 로 대조했어야 했다.
 - ⚠️ 이 API 로 만든 계정은 `ur_session` 쿠키로 로그인된다 — 브라우저 판정은 쿠키를 심어 한다. 대표가 손으로 만들려면 카카오 계정이 필요하다(화면이 그것뿐).
 
 ## 🥕 [E2] 승인 대기 병목 — "준비는 지금, 노출·정산은 승인 뒤" (2026-09-20, 대표 *"2번은 더 이상적인 방법이 있어? 나머지 다 이상적으로"*)
