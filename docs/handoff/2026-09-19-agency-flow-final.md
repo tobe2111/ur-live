@@ -56,6 +56,25 @@
   `code=AB3K9QXP&auto=1` 보존 · `code=AB3K-9QXP` 보존 · `&evil=1` 제거 · `code=<script>&auto=2` → `/store/find` (둘 다 제거) · `ref=777` 종전대로 보존. 방법: 스크래치 `probe()` — Location 의 `state` 를 base64url 디코딩(서명 검증 불필요, 페이로드만 읽는다).
 - ⚠️ **E4 못 잰 것**: 좌석 개방(대기 매장 토큰)·정산 skip — 라이브 D1 실측 `sellers` = approved 1곳 · `seller_operators` 활성 1(그 매장). 대기 매장이 없다. 만들려면 라이브에 가짜 셀러를 넣어야 하는데 그건 쓰기라 안 했다(어드민 토큰은 읽기 전용 규율). 대표 3계정 실사용에서 **사장님 B 가 등록하면 곧 대기 매장**이고, 그때 중개사 A 가 스위처에 '심사 중' 배지와 함께 들어가지는지가 판정이다. 정산 skip 은 STAGING P15.
 
+## ✅ [E4/E5] 3계정 실사용 — 라이브 urdeal.kr 에서 흐름 전체 통과 (2026-09-20, 대표 "3번은 이메일 계정들로 지금 만들 수 있나?")
+
+**계정**(이메일 API 로 생성, 비밀번호는 세션 스크래치에만): users 35 A `테스트중개사A` · 36 B `테스트사장님B` · 37 C `테스트인플C` (+38·39 가입 프로브).
+**테스트 매장**: sellers 15 `[테스트] 클로드분식`(→ 승인, B 가 주인) · 16 `[테스트] 클로드카페` · 17 `[테스트] 클로드미용실`(둘은 pending 유지 — OCR·P15 용). 사업자번호 `999-99-9999{1,2,3}`(가짜, 형식만). 전부 이름에 `[테스트]`.
+
+| 단계 | 결과 |
+|---|---|
+| A: `POST /api/seller/stores` ×3 (brokered, 10/5, 등록증 첨부) | 200 · pending · 승계 코드 `LMHS-YTBP`/`GGG4-VMYU`/`PBRN-YTGK` |
+| A: 대기 매장 좌석 `POST /api/seller/stores/15/token` (#1501) | **200** (종전엔 403) · `operable_store_count: 3` |
+| A: 협업 코드 `POST /api/seller-marketing/codes` | `EDF5-97WV` · `created_by: 35`(유저 id — #1501 발급자 수정 확인) |
+| B: `GET /store-claims/lookup-by-code` → `POST /store-claims` | 매장 자동 선택 · claim 1 `bno_match: true` |
+| C: `POST /api/influencer-settlement/codes/redeem` | deal 1 `active`(즉시 활성) · 코드 `use_count: 1` |
+| 어드민: claim 1 approve → `PATCH /sellers/15/approve` | B `role: owner` · A 알림 `store_approved` 1건(#1501 운영자 통보 확인) |
+| 브라우저(iPhone 13, 쿠키 주입): `/seller/stores` · `/seller/influencer-deals` · `/store/find?code=` · `/i/join/CODE` · `/influencer/settlement` | 전부 렌더 — "승인 대기" 배지 · 코드 표시 · 매장 자동 선택 · "협업 시작하기" · 정산 화면 매장 링크 |
+
+**E5 에서 발견해 같은 날 고친 것**: ① 이메일 가입 500(아래 절, PR #1503·#1504) ② 등록증 가시성(아래 절, PR #1505) ③ 승계 주인에게 "위임받은 매장" 문구(PR #1505).
+**못 잰 것**: 정산 skip(P15 ③ — 매출이 없어 payouts 행 자체가 0) · S-BROKER 실결제(테스트 매장에 이용권이 없다 — 대표가 올리거나 세션에 허락하면 진행) · 카카오 콜백 왕복(이메일 세션이라 OAuth 는 안 탔다 — state JWT 판정으로 대체).
+**정리**: 테스트 유저 35~39 · 매장 15~17 · 코드·딜·claim 각 1 은 라이브에 남아 있다. 지우려면 어드민에서(세션은 D1 쓰기를 안 한다).
+
 ## 🩸 [E2] 이메일 가입 500 — E5 계정을 만들다 발견 (2026-09-20, 대표 "3번은 이메일 계정들로 지금 만들 수 있나?")
 
 - 소비자 로그인 화면은 **카카오 전용**이라 이메일 가입 UI 는 없다. API(`POST /api/auth/register`)는 살아 있는데 라이브에서 **항상 500** 이었다.
