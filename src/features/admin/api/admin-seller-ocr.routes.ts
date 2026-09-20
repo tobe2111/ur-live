@@ -114,6 +114,10 @@ adminSellerOcrRoutes.post('/sellers/:id/business-registration/ocr', async (c) =>
     addressCheck: { verdict: result.address.verdict, reason: result.address.reason },
     ledger: result.ledger,
     ledgerNote: result.ledgerNote,
+    // 🔍 2026-09-20 (S-OCR 실측 — 셋 다 fill 0 인데 **왜**인지 화면이 말하지 않았다): 모델이 던졌는지, 빈 응답인지,
+    //   JSON 이 아닌 산문을 냈는지가 다음 조치(모델 교체 · 프롬프트 · 이미지 크기)를 가른다. 결재 §"모델 원문 —
+    //   어드민이 '왜 이렇게 읽었나' 를 볼 수 있어야 한다". 어드민 전용 응답이라 소비자에겐 안 나간다(1200자 상한은 ocr-license 가 이미 건다).
+    ocr: { ok: ocr.ok, message: ocr.message, raw: ocr.raw ?? null },
     // 🚧 판정은 참고일 뿐 — 승인 버튼은 사람이 누른다(결재 §안전 레일 ②)
     note: '자동 승인·반려는 하지 않습니다. 확인 후 직접 눌러 주세요.',
   })
