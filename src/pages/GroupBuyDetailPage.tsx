@@ -806,7 +806,7 @@ export default function GroupBuyDetailPage() {
             <div aria-hidden style={{ height: 1, margin: '0 18px', background: 'var(--gbd-line)' }} />
             <StoreLocation
               name={detail.restaurant_name} address={detail.restaurant_address} phone={detail.restaurant_phone}
-              lat={detail.restaurant_lat} lng={detail.restaurant_lng}
+              lat={detail.restaurant_lat} lng={detail.restaurant_lng} sellerId={detail.seller_id} productId={detail.id}
               map={(
                 <DeferUntilVisible minHeight={172}>
                   <Suspense fallback={<div style={{ height: 172, background: 'var(--gbd-chip)' }} />}>

@@ -19,9 +19,10 @@
  * `map` 으로 넘긴다. 여기서 import 하면 그 lazy 경계가 이 파일로 옮겨져 잠긴 계약이 흔들린다.
  */
 import type { ReactNode } from 'react'
+import StoreReportLink from './StoreReportLink'
 
 export default function StoreLocation({
-  name, address, phone, lat, lng, map,
+  name, address, phone, lat, lng, map, sellerId, productId,
 }: {
   name?: string | null
   address?: string | null
@@ -30,6 +31,14 @@ export default function StoreLocation({
   lng?: number | null
   /** 잠금 lazy `RestaurantMiniMap` 을 감싼 노드(호출부 소유). */
   map: ReactNode
+  /**
+   * 🚨 2026-09-21 제보 입구용. 이 부품은 여전히 **상태를 안 갖는다** — 시트 열림은
+   * `StoreReportLink` 가 갖고, 여기는 값을 그대로 흘려보내기만 한다.
+   * 상세 페이지(`GroupBuyDetailPage`)는 파일크기 래칫이 동결이라 줄을 못 늘린다 ⇒
+   * 입구를 여기에 둔다(그 제약이 이 파일이 존재하는 이유이기도 하다 — 위 머리말 참조).
+   */
+  sellerId?: number | null
+  productId?: number | null
 }) {
   const directionsHref = `https://map.kakao.com/link/${
     lat && lng
@@ -71,6 +80,10 @@ export default function StoreLocation({
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--gbd-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l19-9-9 19-2-8-8-2z" /></svg>
           길찾기
         </a>
+      </div>
+      {/* 🚨 제보 입구 — 회색 작은 글씨 한 줄. 크게 그리면 멀쩡한 매장을 의심하게 만든다. */}
+      <div style={{ paddingTop: 12 }}>
+        <StoreReportLink sellerId={sellerId} productId={productId} storeName={name} />
       </div>
     </div>
   )
