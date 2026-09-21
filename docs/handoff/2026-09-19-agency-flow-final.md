@@ -135,7 +135,7 @@
   딜 결제 대체 검증은 **어드민 딜 지급 엔드포인트가 없어** 세션이 못 한다(D1 쓰기 금지) — 카드 결제는 대표.
 - 테스트 엔티티 목록(정리용): users 35(A 중개사)·36(B 사장님)·37(C 인플루언서) `claude-e5-*@claude-e5.invalid` · sellers 15·16·17 `[테스트] 클로드*` ·
   products 2916 · store_codes LMHS-YTBP/GGG4-VMYU/PBRN-YTGK · collab code EDF597WV · deal 1 · claim 1 · biz-cert 업로드 5장(`/api/media/uploads/biz-cert/2026-09/`).
-  ⚠️ **어드민에 유저 삭제 엔드포인트가 없다** — sellers·products 는 `DELETE /api/admin/...` 로 되지만 users 3명은 남는다(로그인 불가 도메인이라 해는 없음). 정리는 S-BROKER 뒤.
+  ⚠️ **어드민에 유저 삭제 엔드포인트가 없고, `DELETE /api/admin/sellers/:id` 는 삭제가 아니라 `status='suspended'` 정지다**(행은 남는다). products 만 `DELETE /api/admin/products/:id`. 정지된 테스트 매장은 `approvedSellerProductSql` 이 피드에서 걸러낸다. users 3명은 남는다(로그인 불가 도메인이라 해는 없음). 정리는 S-BROKER 뒤.
 
 ## ⏭️ 다음 세션의 첫 액션
 
