@@ -1,0 +1,65 @@
+/**
+ * 🔁 OCR 빈 응답 1회 재시도 — `worker/utils/ocr-license.ts` (2026-09-21).
+ *
+ * S-OCR 라이브 실측(합성 등록증, 세 번째 사진): 같은 이미지에 5회 호출해 **2회가 완전한 빈 응답**이었다.
+ * 예외도 산문도 아닌 빈 문자열이라 `unreadable` 로 끝났고, 어드민은 같은 버튼을 다시 눌러야 했다.
+ *
+ * 이 시험이 **못 막는** 것: 두 번 다 비는 경우(그때는 정직하게 unreadable), 모델이 글자를 틀리게 읽는 것.
+ */
+import { describe, it, expect } from 'vitest'
+import { ocrDocument, OCR_EMPTY_RETRIES } from '@/worker/utils/ocr-license'
+
+const JSON_OK = '{"biz_name":"[테스트] 클로드분식","address":"전북특별자치도 전주시 덕진구 가리내10길 10","owner_name":"김테스트","biz_number":"999-99-99991","permit_date":"2024-03-02"}'
+
+function fakeAi(responses: Array<string | Error>) {
+  const calls: number[] = []
+  return {
+    calls,
+    ai: {
+      run: async () => {
+        calls.push(1)
+        const next = responses.shift()
+        if (next instanceof Error) throw next
+        return { response: next ?? '' }
+      },
+    } as unknown as Parameters<typeof ocrDocument>[0],
+  }
+}
+
+describe('ocrDocument — 빈 응답 재시도', () => {
+  it('첫 응답이 비면 한 번 더 묻고, 두 번째 답으로 읽는다', async () => {
+    const f = fakeAi(['', JSON_OK])
+    const r = await ocrDocument(f.ai, new Uint8Array([1, 2, 3]), 'business_registration')
+    expect(f.calls.length).toBe(2)
+    expect(r.ok).toBe(true)
+    expect(r.bizName).toBe('[테스트] 클로드분식')
+    expect(r.fill).toBe(1)
+  })
+
+  it('정상 응답이면 한 번만 부른다 (재시도가 비용을 두 배로 만들지 않는다)', async () => {
+    const f = fakeAi([JSON_OK, JSON_OK])
+    await ocrDocument(f.ai, new Uint8Array([1]), 'business_registration')
+    expect(f.calls.length).toBe(1)
+  })
+
+  it('두 번 다 비면 정직하게 unreadable — 시도 횟수를 말한다', async () => {
+    const f = fakeAi(['', ''])
+    const r = await ocrDocument(f.ai, new Uint8Array([1]), 'business_registration')
+    expect(f.calls.length).toBe(OCR_EMPTY_RETRIES + 1)
+    expect(r.ok).toBe(false)
+    expect(r.message).toContain('빈 응답')
+    expect(r.message).toContain(`${OCR_EMPTY_RETRIES + 1}회`)
+  })
+
+  it('예외(쿼터·5016 라이선스)는 재시도하지 않는다 — 같은 답이 돌아오고 비용만 든다', async () => {
+    const f = fakeAi([new Error('5016: agree first'), JSON_OK])
+    const r = await ocrDocument(f.ai, new Uint8Array([1]), 'business_registration')
+    expect(f.calls.length).toBe(1)
+    expect(r.ok).toBe(false)
+    expect(r.message).toContain('읽기 실패')
+  })
+
+  it('재시도 횟수는 1 — 더 올리면 뉴런 예산이 조용히 배로 나간다', () => {
+    expect(OCR_EMPTY_RETRIES).toBe(1)
+  })
+})

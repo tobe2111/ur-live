@@ -19,13 +19,16 @@ export async function notifyStoreOperatorsApproved(
   skipUserId: string | number | null | undefined,
   isReactivation: boolean,
 ): Promise<void> {
-  const ops = await executeQuery<{ user_id: number }>(DB,
-    'SELECT user_id FROM seller_operators WHERE seller_id = ? AND revoked_at IS NULL', [sellerId]).catch(() => [] as { user_id: number }[])
+  const ops = await executeQuery<{ user_id: number; role: string | null }>(DB,
+    'SELECT user_id, role FROM seller_operators WHERE seller_id = ? AND revoked_at IS NULL', [sellerId]).catch(() => [] as { user_id: number; role: string | null }[])
   for (const o of ops) {
     if (!o.user_id || String(o.user_id) === String(skipUserId ?? '')) continue
+    // 🧾 2026-09-20 E5 실측: 승계로 주인이 된 사장님(좌석 role='owner', linked_user_id 는 비어 있다)도 이 길로 받는다 — "위임받은" 은 그 사람에게 틀린 말이다.
+    const owner = o.role === 'owner'
     notifyUser(DB, String(o.user_id), 'store_approved',
-      isReactivation ? '🏪 운영 매장 재활성화' : '🏪 운영 매장 승인 완료',
-      isReactivation ? '위임받은 매장이 다시 활성화됐어요' : '위임받은 매장이 승인됐어요. 이용권이 메인에 노출되고 정산이 시작돼요',
+      isReactivation ? (owner ? '🏪 내 매장 재활성화' : '🏪 운영 매장 재활성화') : (owner ? '🏪 내 매장 승인 완료' : '🏪 운영 매장 승인 완료'),
+      isReactivation ? (owner ? '매장이 다시 활성화됐어요' : '위임받은 매장이 다시 활성화됐어요')
+        : (owner ? '매장이 승인됐어요. 이용권이 메인에 노출되고 정산이 시작돼요' : '위임받은 매장이 승인됐어요. 이용권이 메인에 노출되고 정산이 시작돼요'),
       '/seller/stores').catch(swallow('admin-sellers:approve-operator-notify'))
   }
 }

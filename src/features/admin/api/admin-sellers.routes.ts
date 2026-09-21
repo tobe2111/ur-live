@@ -120,6 +120,7 @@ adminSellersRoutes.get('/sellers', cors(), async (c) => {
       }
     }
     const totalRow = await DB.prepare(`SELECT COUNT(*) as cnt FROM sellers ${distWhere}`).first<{ cnt: number }>().catch(() => DB.prepare('SELECT COUNT(*) as cnt FROM sellers').first<{ cnt: number }>());
+    await import('./admin-sellers/cert-fallback').then(m => m.attachCertUrls(DB, sellers)); // 🧾 2026-09-20 등록증 meta 폴백
     return c.json({
       success: true,
       data: sellers,
@@ -181,6 +182,7 @@ adminSellersRoutes.get('/sellers/:id{[0-9]+}', cors(), async (c) => {
       // 🛡️ 2026-05-02: 기본 수수료율 5% (platform_settings.commission_rate_default 와 일치)
       return c.json({ success: true, data: { ...row2, commission_rate: 5, can_manipulate_stats: 0 } });
     }
+    await import('./admin-sellers/cert-fallback').then(m => m.attachCertUrl(DB, sellerId, seller as Record<string, unknown>)); // 🧾 2026-09-20 등록증 meta 폴백
 
     let biz = null;
     try {

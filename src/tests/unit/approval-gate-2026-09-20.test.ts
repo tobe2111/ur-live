@@ -85,8 +85,9 @@ describe('④ 운영자 통보 · 발급자 기록', () => {
     const body = ADMIN.slice(at, at + 4000)
     expect(body).toMatch(/notifyStoreOperatorsApproved\(DB, sellerId, linkedUserId, isReactivation\)/)
     const MOD = read('src/features/admin/api/admin-sellers/notify-store-operators.ts')
-    expect(MOD).toMatch(/FROM seller_operators WHERE seller_id = \? AND revoked_at IS NULL/)
+    expect(MOD).toMatch(/SELECT user_id, role FROM seller_operators WHERE seller_id = \? AND revoked_at IS NULL/)
     expect(MOD).toContain("'store_approved'")
+    expect(MOD).toMatch(/const owner = o\.role === 'owner'/) // 승계 사장님에게 "위임받은" 이라 하지 않는다 (E5 실측)
   })
   it('협업 코드의 발급자는 좌석의 셀러 id 가 아니라 행위자 유저 id', () => {
     expect(CODES).toMatch(/createdBy: await resolveIssuerUserId\(c, sellerId\)/)

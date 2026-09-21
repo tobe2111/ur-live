@@ -62,6 +62,8 @@ export interface OcrDocResult {
 
 /** Workers AI 비전 모델. 바꿀 때는 `fill` 실측을 다시 낼 것. */
 export const OCR_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct'
+/** 빈 응답에 한해 몇 번 더 물어보나 — 2026-09-21 실측(5회 중 2회 빈 응답)으로 1. 예외에는 적용하지 않는다. */
+export const OCR_EMPTY_RETRIES = 1
 
 const PROMPTS: Record<DocKind, string> = {
   business_registration: `이 이미지는 대한민국 사업자등록증입니다. 아래 JSON 만 출력하세요. 설명 금지.
@@ -103,19 +105,25 @@ export async function ocrDocument(
   if (!imageBytes || imageBytes.length === 0) return emptyResult(kind, '이미지가 비어 있습니다')
 
   let text = ''
-  try {
-    const res = await ai.run(OCR_MODEL, {
-      image: Array.from(imageBytes),
-      prompt: PROMPTS[kind],
-      max_tokens: 384,
-    })
-    text = aiText(res)
-  } catch (err) {
-    // ⚠️ 원문 메시지를 소비자에게 돌려주지 않는다(CLAUDE.md safeError 룰) — 여기선 길이만 자른다
-    return emptyResult(kind, `읽기 실패: ${String((err as Error)?.message || '').slice(0, 80)}`)
+  // 🔁 2026-09-21 (S-OCR 라이브 실측): 같은 이미지에 대한 5회 호출 중 **2회가 빈 응답**이었다(예외도 아니고 산문도 아닌
+  //   완전한 빈 문자열). 한 번에 못 읽었다고 `unreadable` 로 끝내면 어드민이 같은 버튼을 다시 눌러야 하고, 게이트가
+  //   켜진 뒤엔 정상 서류가 자동 승인 후보에서 조용히 빠진다. **빈 응답에만 1회 재시도** — 예외(쿼터·5016)는
+  //   재시도하지 않는다(같은 답이 돌아오고 비용만 든다).
+  for (let attempt = 0; attempt < OCR_EMPTY_RETRIES + 1 && !text; attempt += 1) {
+    try {
+      const res = await ai.run(OCR_MODEL, {
+        image: Array.from(imageBytes),
+        prompt: PROMPTS[kind],
+        max_tokens: 384,
+      })
+      text = aiText(res)
+    } catch (err) {
+      // ⚠️ 원문 메시지를 소비자에게 돌려주지 않는다(CLAUDE.md safeError 룰) — 여기선 길이만 자른다
+      return emptyResult(kind, `읽기 실패: ${String((err as Error)?.message || '').slice(0, 80)}`)
+    }
   }
 
-  if (!text) return emptyResult(kind, '모델이 빈 응답을 돌려줬습니다')
+  if (!text) return emptyResult(kind, `모델이 빈 응답을 돌려줬습니다 (${OCR_EMPTY_RETRIES + 1}회 시도)`)
 
   const m = text.match(/\{[\s\S]*?\}/)
   if (!m) return emptyResult(kind, '응답에서 JSON 을 찾지 못했습니다', text)
