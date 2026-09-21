@@ -271,3 +271,63 @@ EXPRESS 당일/SCHEDULED 예약) · 웹훅 `payout.changed`·`seller.changed`.
 
 ## 롤백
 약관 문구는 revert. `taxFreeAmount`·역발행은 아직 배선 전이라 되돌릴 것이 없다.
+
+---
+
+# Q4 — 부가세 별도를 어떻게 반영할 것인가 (그리고 그 전에 레일을 합칠 것인가)
+
+> 대표 지시: *"5% + vat로 해야해. 부가세 별도."*
+> 코드로 넣으려고 파 보니 **그 앞에 더 큰 게 있었다.** 실측 2026-09-21.
+
+## 🔴 발견 — 이용권 정산 레일이 둘인데 **요율 소스가 서로 다르다**
+
+| | Rail A `restaurant_settlements` | Rail B `ledger_entries` → `payouts` |
+|---|---|---|
+| 코드 | `cron/auto-settlement.ts:118` | `utils/ledger.ts recordVoucherUsedLedger` |
+| 요율 출처 | `platform_settings.commission_rate_meal_voucher` (=5) | `channelPlatformRate()` → `platform_fee_pct_direct`(10) / `_brokered`(5) |
+| **채널(직접/중개) 인식** | ❌ **모른다 — 항상 5%** | ✅ 안다 |
+| 지급 경로 | `PATCH /restaurant-settlements/:id/complete` (수동) | 주간 cron → 어드민 승인 |
+
+⇒ **직접 입점(10%) 매장이 생기는 순간 같은 이용권 사용에 Rail A 는 5%, Rail B 는 10% 를 뗀다.**
+지금 실매장 2곳이 전부 `brokered` 라 **우연히 일치**하고 있을 뿐이다.
+
+## ✅ 지금이 정리 최적기 — 두 레일 다 **아직 한 번도 안 돌았다**
+```
+vouchers: unused 1 · expired 1 · used 0     ← 이용권이 사용된 적이 없다
+restaurant_settlements: 0건 · payouts: 0건  ← 그래서 양쪽 다 0
+```
+첫 이용권 사용이 일어나는 순간 **둘 다** 기록된다(2026-07-08 감사가 경고한 이중적재).
+
+## 그리고 VAT 는 **코드를 안 고쳐도 된다**
+수수료는 전부 `platform_settings` 의 % 값에서 나온다. 값을 올리면 두 레일이 **자동으로 같이** 움직인다:
+
+| 키 | 지금 | 부가세 별도 |
+|---|---|---|
+| `platform_fee_pct_brokered` | 5 | **5.5** |
+| `platform_fee_pct_direct` | 10 | **11** |
+| `commission_rate_meal_voucher` (Rail A) | 5 | **5.5** |
+
+결과는 약관의 "5% + 부가세"와 **정확히 같다**(10,000원 → 550원). 코드 변경 0 = 머니 코드 리스크 0,
+롤백은 값 되돌리기.
+⚠️ 대신 어드민 화면에 "5.5%"로 보인다 — 의미가 흐려지므로 **설정 설명에 "부가세 포함 차감률"을 적는다.**
+
+## 선택지
+1. **설정값만 올린다(5.5 / 11 / 5.5)** — 코드 무수정. 단 Rail A/B 채널 불일치는 그대로 남는다.
+2. **레일을 먼저 합치고(`settlement_skip_ledgered = true`) 설정값을 올린다** — Rail A 가 원장 기록분을
+   건너뛰어 **Rail B 단일 지급**이 된다. 채널 요율이 살아 있는 Rail B 만 남으므로 불일치가 구조적으로 사라진다.
+   ⚠️ 2026-07-08 audit 가 flip 전 조건으로 *"운영자가 실제로 어느 레일에서 지급 중인지 확인"* 을 달아 뒀는데,
+   **지금은 양쪽 다 0건이라 그 확인이 무의미하다** — 즉 지금이 가장 싸게 flip 할 수 있는 때다.
+3. **코드에 VAT 승수를 넣는다** — 의미는 가장 명확하나 `ledger.ts`·`auto-settlement.ts` 양쪽의
+   머니 계산식을 건드린다. 얻는 것 대비 위험이 크다.
+
+## 기본안 (답이 없을 때 권하는 것 — 자동 실행되지 않는다)
+안 2. 순서는 **레일 합치기 → 설정값 올리기**. 둘 다 코드 무수정이고, 거래가 0인 지금이 유일하게 싼 창이다.
+⚠️ 도매몰(`supply/api/supply-settlement.ts`)은 **건드리지 않는다** — 서비스 분리(CLAUDE.md 룰 1),
+   도매 수수료는 별개 정책이다.
+
+## 롤백
+설정값 되돌리기 · `settlement_skip_ledgered = false`. 둘 다 재배포 불필요.
+
+## 결정 (대표가 한 말 그대로)
+
+## 반영 커밋
