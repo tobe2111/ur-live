@@ -15,6 +15,41 @@ const RETRY = 'src/tests/unit/ocr-empty-retry-2026-09-21.test.ts'
 
 export default [
   {
+    name: '🎲 OCR 을 순차로 되돌린다 (지연이 호출 수만큼 늘어난다)',
+    file: 'src/worker/utils/ocr-license.ts',
+    find: `    const answers = await Promise.all(
+      Array.from({ length: OCR_PARALLEL_ATTEMPTS }, () => askOnce()),
+    )`,
+    replace: `    const answers = []
+    for (let k = 0; k < OCR_PARALLEL_ATTEMPTS; k += 1) answers.push(await askOnce())`,
+    test: RETRY,
+    why: '병렬이라 지연이 1회분인 것이 이 처방의 전부다. 순차로 돌리면 사장님이 네 배를 기다린다.',
+  },
+  {
+    name: '🗳️ 다수결이 그냥 첫 답을 고른다 (오독 하나가 전부를 정한다)',
+    file: 'src/worker/utils/ocr-license.ts',
+    find: '      const key = v.replace(/\\s+/g, \'\')',
+    replace: '      const key = String(Math.random())',
+    test: RETRY,
+    why: '띄어쓰기만 다른 답을 못 묶으면 표가 갈려 오독이 이긴다 — 실측에서 주소가 정확히 그 모양이었다.',
+  },
+  {
+    name: '🪞 모델이 영문 필드 이름을 값으로 적은 것이 통과한다',
+    file: 'src/worker/utils/ocr-license.ts',
+    find: '  if (looksLikeFieldName(s)) return null',
+    replace: '  void looksLikeFieldName',
+    test: RETRY,
+    why: '`business_location` 이 주소로, `representative_name` 이 대표자로 저장된다(20회 중 1회 실측). 사람 큐에 그 문자열이 뜬다.',
+  },
+  {
+    name: '🪞 영문 필드 이름 필터가 진짜 영문 상호까지 먹는다',
+    file: 'src/worker/utils/ocr-license.ts',
+    find: '  return /^[a-z][a-z0-9]*(_[a-z0-9]+)+$/.test(s)',
+    replace: '  return /^[A-Za-z0-9 ]+$/.test(s)',
+    test: RETRY,
+    why: '`GS25 전주덕진점` 같은 정상 상호가 null 이 된다 — 필터가 과하면 고치려던 것보다 크게 망가뜨린다.',
+  },
+  {
     name: '🪞 프롬프트 자리표시자 베낀 값이 상호로 통과한다',
     file: 'src/worker/utils/ocr-license.ts',
     find: '  if (PROMPT_PLACEHOLDERS.has(s)) return null',
@@ -63,20 +98,23 @@ export default [
     why: '모델이 JSON 을 문자열로 감싸 돌려준 응답은 내용이 다 있다. 버리면 사람이 다시 누른다.',
   },
   {
-    name: '🔁 OCR 빈 응답 재시도가 사라진다 (2026-09-21 이전 상태 — 5회 중 2회 unreadable)',
+    // 🔀 2026-09-21 재조준 — 순차 재시도가 **병렬 라운드**로 바뀌었다(라이브 20회 중 10회 빈손).
+    //   지키는 것은 같다: 한 번 물어보고 포기하지 않는다.
+    name: '🔁 OCR 이 한 번만 묻고 포기한다 (2026-09-21 이전 상태 — 20회 중 10회 unreadable)',
     file: 'src/worker/utils/ocr-license.ts',
-    find: '  for (let attempt = 0; attempt < OCR_EMPTY_RETRIES + 1 && isBlank(text); attempt += 1) {',
-    replace: '  for (let attempt = 0; attempt < 1 && isBlank(text); attempt += 1) {',
+    find: '      Array.from({ length: OCR_PARALLEL_ATTEMPTS }, () => askOnce()),',
+    replace: '      Array.from({ length: 1 }, () => askOnce()),',
     test: RETRY,
     why: '빈 응답은 예외가 아니라 조용한 실패다. 한 번에 끝내면 게이트가 켜진 뒤 정상 서류가 자동 승인 후보에서 소리 없이 빠진다.',
   },
   {
-    name: '🔁 OCR 이 예외에도 재시도한다 (5016·쿼터를 두 번 두드린다)',
+    // 🔀 2026-09-21 재조준 — 예외 처리가 `askOnce` 안으로 들어갔다. 지키는 것은 같다.
+    name: '🔁 OCR 이 예외에도 라운드를 더 돈다 (5016·쿼터를 여덟 번 두드린다)',
     file: 'src/worker/utils/ocr-license.ts',
-    find: "      return emptyResult(kind, `읽기 실패: ${String((err as Error)?.message || '').slice(0, 80)}`)",
-    replace: "      if (attempt >= OCR_EMPTY_RETRIES) return emptyResult(kind, `읽기 실패: ${String((err as Error)?.message || '').slice(0, 80)}`)\n      continue",
+    find: '    if (firstErr && answers.every((a) => a.err)) break',
+    replace: '    void firstErr',
     test: RETRY,
-    why: '라이선스 미동의·쿼터 초과는 다시 물어도 같은 답이다 — 재시도는 빈 응답에만 허용된다.',
+    why: '라이선스 미동의·쿼터 초과는 다시 물어도 같은 답이다 — 라운드를 더 도는 것은 비용만 든다.',
   },
   {
     name: '🇰🇷 도로명 숫자 띄어쓰기 흡수가 사라진다 (`가리내 10길` → 도로명 `10길`)',
