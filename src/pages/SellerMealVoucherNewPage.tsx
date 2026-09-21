@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Utensils, CheckCircle, ChevronLeft, ChevronRight, Save } from 'lucide-react'
 import api from '@/lib/api'
+import { applyPinMove, type PinLocation } from '@/shared/pin-move'
 import { toast } from '@/hooks/useToast'
 import { kstInputToUTC } from '@/utils/date'
 import { getSellerToken, isSellerAuthenticated, redirectToLogin } from '@/lib/seller-auth'
@@ -173,6 +174,21 @@ export default function SellerMealVoucherNewPage() {
       })
       .catch(() => { /* 추천 실패는 치명적이지 않다 — 직접 업로드/검색이 남는다 */ })
       .finally(() => setLoadingImages(false))
+  }
+
+  /**
+   * 📍 2026-09-21 시안 ② — 지도 핀을 끌어 **위치만** 고친다.
+   *
+   * `selectPlace` 와 갈라 둔 이유: 저쪽은 "다른 매장을 골랐다" 라서 이름·전화·place id 까지 갈아엎는다.
+   * 핀 이동은 "같은 매장의 위치를 더 정확히" 이므로 주소·좌표 둘만 건드린다 —
+   * 합쳐 놨다면 핀을 조금 끌었다고 방금 채운 전화번호가 지워졌을 것이다.
+   *
+   * 주소를 못 되찾은 경우(역지오코딩 실패)에는 **좌표만** 반영하고 주소는 손대지 않는다.
+   * 빈 문자열로 덮으면 이미 맞게 들어가 있던 주소가 사라진다.
+   */
+  function movePin(loc: PinLocation) {
+    setForm(f => ({ ...f, ...applyPinMove(f, loc) }))
+    setPlaceSelected(true)
   }
 
   function selectPlace(place: KakaoPlace) {
@@ -404,6 +420,7 @@ export default function SellerMealVoucherNewPage() {
               update={update}
               onApplyContext={(ctx) => setForm(f => applyStoreContext({ ...f, restaurant_name: '', restaurant_address: '', restaurant_phone: '', restaurant_lat: '', restaurant_lng: '', kakao_place_url: '', store_verify_pin: '' }, ctx))}
               onPlaceSelect={selectPlace}
+              onPinMove={movePin}
               placeSelected={placeSelected}
               kakaoJsKey={KAKAO_JS_KEY}
               storeRequired={storeReady === false}
