@@ -57,9 +57,38 @@ export function consumerVisibleProductSql(alias: string): string {
  * `alias` 는 products 테이블의 별칭(예: `'p'`). 별칭 없이 쓰려면 `'products'`.
  */
 export function approvedSellerProductSql(alias: string): string {
+  return `(${approvedStatusSql(alias)} AND ${exposureReadySql(alias)})`
+}
+
+/** 승인 상태만 묻는 조각 — `approvedSellerProductSql` 의 절반. 테스트가 따로 잰다. */
+export function approvedStatusSql(alias: string): string {
   return `NOT EXISTS (
     SELECT 1 FROM sellers s_appr
      WHERE s_appr.id = ${alias}.seller_id
        AND COALESCE(s_appr.status, '') NOT IN ('approved', 'active')
+  )`
+}
+
+/**
+ * ⏳ **신규 매장 노출 유예** (2026-09-21 — 사기 방어 ②).
+ *
+ * 승인은 났지만 **아직 노출 시작 시각이 오지 않은** 매장의 상품을 가린다. 목적은 하나다 —
+ * 승인 직후 몇 시간을 벌어, 그 사이에 확인 통화(`store_verify_calls`)나 제보(`store_reports`)가
+ * 들어올 수 있게 하는 것. 확인이 끝나면 마커가 지워져 **즉시** 보인다.
+ *
+ * ## 🔒 기본은 아무것도 안 가린다
+ * 마커(`seller_meta.store_exposure_from`)는 **유예 설정이 켜져 있을 때만** 쓰인다
+ * (`markExposureGrace`). 설정이 0/미설정이면 행 자체가 안 생기므로 이 술어는 **항상 참** —
+ * 즉 오늘 라이브와 byte-동일하게 동작한다.
+ *
+ * ## ⚠️ 관대한 쪽으로 기운 자리 (의도적 — 위 `approvedSellerProductSql` 과 같은 이유)
+ * 마커가 없으면 보인다. 기존 매장 전부가 여기 해당한다 — 소급 적용하면 라이브가 통째로 빈다.
+ */
+export function exposureReadySql(alias: string): string {
+  return `NOT EXISTS (
+    SELECT 1 FROM seller_meta sm_exp
+     WHERE sm_exp.seller_id = ${alias}.seller_id
+       AND sm_exp.key = 'store_exposure_from'
+       AND sm_exp.value > datetime('now')
   )`
 }
