@@ -140,6 +140,28 @@
   products 2916 · store_codes LMHS-YTBP/GGG4-VMYU/PBRN-YTGK · collab code EDF597WV · deal 1 · claim 1 · biz-cert 업로드 5장(`/api/media/uploads/biz-cert/2026-09/`).
   ⚠️ **어드민에 유저 삭제 엔드포인트가 없고, `DELETE /api/admin/sellers/:id` 는 삭제가 아니라 `status='suspended'` 정지다**(행은 남는다). products 만 `DELETE /api/admin/products/:id`. 정지된 테스트 매장은 `approvedSellerProductSql` 이 피드에서 걸러낸다. users 3명은 남는다(로그인 불가 도메인이라 해는 없음). 정리는 S-BROKER 뒤.
 
+## 🔔 [E3] 서버 5xx 자동 알림 — 대표 "자동 알림 켜줘" (2026-09-21)
+
+**계기**: 대표가 매장 등록에서 **500** 을 만났는데 흔적이 **어디에도 없었다.** 대표가 브라우저 콘솔을 복사해 와야 했다.
+- 실측: `safeError` 는 5xx 를 **Sentry 로만** 보내는데(2026-06-12 배선) 그 Sentry 가 라이브에서 **429 Too Many Requests**
+  (할당량 초과)라 보고가 통째로 버려지고 있었다. D1 엔 자리가 없었다 — `cron_failures` 는 cron 전용, `frontend_errors` 는 브라우저 JS.
+  ⇒ **API 5xx 는 관측 밖이었다.**
+- 수정: `worker/utils/server-error-alert.ts` — 5xx 를 `cron_failures` 에 `api:{태그}` 로 적는다(어드민 모니터링
+  `GET /api/admin/cron-failures` → `/admin/system-monitoring` 이 **이미 읽는 표**라 새 화면 0). 같은 종류의 첫 건은 **어드민 벨**.
+  폭주 방지가 코드의 절반이다 — isolate 메모로 태그별 창(기록 10분·벨 60분), 창 안이면 **D1 을 조회조차 안 한다**.
+  DDL 0 · 4xx 제외 · 모든 실패 삼킴(알림이 요청을 깨뜨리면 주객전도).
+- 가드 9건 + 주입 3건(폭주 방지 소실 · 4xx 포함 · 기록 실패 누출) **되돌려-검증 빨간불**.
+
+**🩸 정작 그 500 은 재현하지 못했다 — 다음 세션이 헛짚지 않도록 확인한 것을 남긴다**:
+- 라이브 D1: 그 시각 `sellers` 새 행 **0** ⇒ INSERT 전(또는 INSERT 에서) 실패다. 행이 생긴 뒤의 실패(메타·권한)는 아니다.
+- 코드 재독: `POST /stores` 의 INSERT 전 경로는 전부 `.catch` 로 감싸여 있다(`resolveActorUserId`·`bnoColumnFree`·NTS 조회).
+- 라이브 재현 2종 **둘 다 200**: ① 홍대돈까스와 **같은 사업자번호**(→ `bnoColumnFree=false` → 번호 없이 INSERT) ② **번호 없음**.
+  `sellers.business_number` 는 `UNIQUE` 지만 SQLite 는 **NULL 중복을 허용**하므로 이 경로는 막히지 않는다(스키마 실측).
+- 남은 가설(순위): D1 일시 오류(이 세션에서도 `code 971` rate limit 을 겪었다) · 배포 창(그 한 시간에 3번 배포) ·
+  대표 브라우저의 **낡은 번들**(콘솔에 `index-BLWiVQiY.js`, 당시 라이브는 다른 해시) + 네트워크 단절(`ERR_NAME_NOT_RESOLVED` 연속).
+- ⇒ **다음에 또 나면 이제는 `/admin/system-monitoring` 에 `api:[seller-stores]` 로 남는다.** 그게 이 작업의 요점이다.
+- 정리: 재현용 매장 **18·19 는 닫았다**(`POST /stores/:id/close`).
+
 ## ⏭️ 다음 세션의 첫 액션
 
 1. **대표 실사용 판정(E5 — 위 E4 가 못 본 생애주기)**: 대표 계정으로 `/seller/stores` 에서 중개 매장 하나 등록(요율 10/5) → 목록에 `XXXX-XXXX` 코드가 뜨는지 →
