@@ -86,4 +86,15 @@ export default [
     test: TEST,
     why: '결제 전 취소와 결제 후 취소가 섞인 57건을 한 값으로 덮어 환불 건수 집계를 되레 망친다.',
   },
+  {
+    name: '🪙 부분결제 주문이 PENDING 으로 들어간다 (웹훅 이중차감)',
+    file: GB,
+    find: "'KRW', 'PAID', 'approved', 'toss', ?, ?)",
+    replace: "'KRW', 'PENDING', 'approved', 'toss', ?, ?)",
+    test: 'src/tests/unit/voucher-partial-deal.test.ts',
+    why:
+      '내 변경이 그 시험의 앵커를 깨뜨려 재조준했으므로(붙어 있던 두 리터럴 → status 자리의 값), ' +
+      '재조준한 판정이 **여전히 PENDING 을 잡는지**를 여기서 고정한다. PENDING 이면 웹훅이 ' +
+      'orders.deal_used 를 읽어 같은 딜을 한 번 더 뺀다.',
+  },
 ]
