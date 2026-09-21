@@ -48,6 +48,16 @@ describe('judgeDocument — 사기 시나리오', () => {
     expect(r.verdict).toBe('match')
   })
 
+  it('🔍 2026-09-21 같은 건물 + 상호 한 글자 오독(near) → review — match 로 올리지 않는다', () => {
+    const r = judgeDocument(
+      ocr({ bizName: '[테스트] 글로드분식', address: '전북특별자치도 전주시 덕진구 가리내10길 10' }),
+      { name: '[테스트] 클로드분식', address: '전북특별자치도 전주시 덕진구 가리내10길 10' },
+      null,
+    )
+    expect(r.verdict).toBe('review')
+    expect(r.name.verdict).toBe('near')
+  })
+
   it('같은 구인데 건물이 다르면 review — mismatch 로 올리지 않는다', () => {
     const r = judgeDocument(
       ocr({ bizName: '대가방', address: '서울 강남구 봉은사로 555' }),

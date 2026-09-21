@@ -146,8 +146,15 @@ export async function ocrDocument(
   }
 
   const bizNumberRaw = clean(parsed.biz_number)
-  const bizNumber = bizNumberRaw ? bizNumberRaw.replace(/\D/g, '') : null
-  const dateRaw = clean(parsed.permit_date)
+  let bizNumber = bizNumberRaw ? bizNumberRaw.replace(/\D/g, '') : null
+  let dateRaw = clean(parsed.permit_date)
+  // 🔀 2026-09-21 (S-OCR 실측 5회 중 2회): 모델이 **등록번호 칸에 개업연월일**을 넣고 permit_date 는 비웠다
+  //   (`"biz_number":"2024년 03월 02일","permit_date":null`). 숫자만 남기면 8자리라 등록번호 검사(10자리)에서 떨어져
+  //   fill 이 0.75 로 깎이고, 어드민 화면엔 등록번호 빈칸 + 개업일 빈칸이 뜬다. 값이 날짜 모양이면 제자리로 옮긴다.
+  if (bizNumberRaw && !dateRaw && bizNumber && bizNumber.length === 8 && /년|[-./]/.test(bizNumberRaw)) {
+    dateRaw = bizNumberRaw
+    bizNumber = null
+  }
   const permitDate = dateRaw ? dateRaw.replace(/\D/g, '') : null
 
   const result: OcrDocResult = {
