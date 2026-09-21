@@ -23,13 +23,14 @@ export default [
       '빈 칸인 채로 저장이 날아가고, 서버가 거절하면 셀러는 왜인지 모른다.',
   },
   {
-    name: '🔤 로고 폰트가 다시 swap 으로 (로딩 중 워드마크가 사라진다)',
+    name: '🔤 로고 폰트가 다시 optional 로 (첫 로드에서 Poppins 를 통째로 건너뛴다)',
     file: 'index.html',
-    find: 'text=urdeal&display=optional"',
-    replace: 'text=urdeal&display=swap"',
+    find: 'text=urdeal&display=swap"',
+    replace: 'text=urdeal&display=optional"',
     test: 'src/tests/unit/seller-product-edit-save-top-2026-09-21.test.ts',
     why:
-      'swap 은 폰트를 기다리는 동안 글자를 투명하게 둔다 — 로더가 떠 있는 바로 그 순간과 겹쳐 ' +
-      '워드마크가 사라지고 브랜드 점만 남는다(대표가 본 그 화면).',
+      '2026-09-21 에 실제로 한 번 이 방향으로 갔다가 되돌렸다 — 근거였던 "swap 은 글자를 투명하게 둔다"가 ' +
+      '측정으로 뒤집혔기 때문이다(swap·optional 둘 다 20ms 부터 칠해진 픽셀 1,626 로 동일). ' +
+      'optional 은 폰트가 늦으면 그 로드에서 아예 안 써서 첫 방문자가 로더에서 로고 폰트를 못 본다.',
   },
 ]
