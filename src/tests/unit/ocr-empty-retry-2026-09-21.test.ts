@@ -89,6 +89,15 @@ describe('ocrDocument — 빈 응답 재시도', () => {
     expect(q.permitDate).toBe('20240302')
   })
 
+  it('🪞 프롬프트 자리표시자를 베낀 값("상호(법인명)")은 읽은 것이 아니다 — 2026-09-21 실측', async () => {
+    const f = fakeAi(['{"biz_name":"상호(법인명)","address":"전북특별자치도 전주시 덕진구 가리내10길 10","owner_name":"대표자 성명","biz_number":"999-99-99991","permit_date":"2024-03-02"}'])
+    const r = await ocrDocument(f.ai, new Uint8Array([1]), 'business_registration')
+    expect(r.bizName).toBeNull()
+    expect(r.ownerName).toBeNull()
+    expect(r.address).toBe('전북특별자치도 전주시 덕진구 가리내10길 10')
+    expect(r.fill).toBe(0.5)
+  })
+
   it('재시도 횟수는 1 — 더 올리면 뉴런 예산이 조용히 배로 나간다', () => {
     expect(OCR_EMPTY_RETRIES).toBe(1)
   })

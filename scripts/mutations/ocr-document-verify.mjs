@@ -15,6 +15,14 @@ const RETRY = 'src/tests/unit/ocr-empty-retry-2026-09-21.test.ts'
 
 export default [
   {
+    name: '🪞 프롬프트 자리표시자 베낀 값이 상호로 통과한다',
+    file: 'src/worker/utils/ocr-license.ts',
+    find: '  if (PROMPT_PLACEHOLDERS.has(s)) return null',
+    replace: '  void PROMPT_PLACEHOLDERS',
+    test: RETRY,
+    why: '"상호(법인명)" 은 사진에서 읽은 값이 아니다. 값으로 두면 대조가 differ 로 떨어지고 어드민 화면에 그 문구가 상호처럼 뜬다.',
+  },
+  {
     name: '🇰🇷 한 글자 오독(near)이 same 으로 올라간다 (자동 승인 문턱이 조용히 낮아진다)',
     file: 'src/shared/korean-address.ts',
     find: "    return { verdict: 'near', reason: `한 글자만 다릅니다 — OCR 오독일 수 있으니 사진과 대조하세요 (${a} ↔ ${b})`, a, b }",
