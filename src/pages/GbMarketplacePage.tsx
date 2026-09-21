@@ -47,7 +47,7 @@ export default function GbMarketplacePage() {
     <div className="min-h-[100dvh] bg-white dark:bg-[#11141C] pb-24">
       <SEO title={CONSUMER_SURFACE_SEO['/gb-market'].title} description={CONSUMER_SURFACE_SEO['/gb-market'].description} url="/gb-market" noindex />
       <div className="sticky top-0 z-30 bg-white/90 dark:bg-[#11141C]/90 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
-        <div className="flex items-center gap-3 px-4 py-3">
+        <div className="ur-content-wide flex items-center gap-3 px-4 py-3">
           <button onClick={() => navigate(-1)} aria-label="뒤로" className="text-gray-900 dark:text-white"><ChevronLeft className="w-5 h-5" /></button>
           <h1 className="text-[16px] font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
             <Megaphone className="w-4 h-4 text-emerald-500" /> 공구 마켓
@@ -55,7 +55,7 @@ export default function GbMarketplacePage() {
         </div>
       </div>
 
-      <div className="px-4 pt-4">
+      <div className="ur-content-wide px-4 pt-4">
         <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4 leading-relaxed">
           지금 <strong className="text-gray-700 dark:text-gray-200">소개비가 걸린 공구</strong>를 소개비 높은 순으로 모았어요.
           담으면 내 유어샵에 추가되고, 내 추천 링크로 팔린 만큼 소개비를 받아요.

@@ -302,12 +302,12 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 372 | 1124 |
+| 전체 | 372 | 1128 |
 | 도메인 버킷 (5개 소개서) | 167 | 457 |
-| 공통/인프라 (의도적 제외) | 166 | 478 |
-| **미커버 (점검 필요)** | **39** | **189** |
+| 공통/인프라 (의도적 제외) | 166 | 480 |
+| **미커버 (점검 필요)** | **39** | **191** |
 
-⚠️ **미커버 228건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 230건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -500,6 +500,8 @@
 - `POST /store-claims` (`src/features/seller/api/seller-store-claims.routes.ts`)
 - `GET /store-claims/lookup-by-code` (`src/features/seller/api/seller-store-claims.routes.ts`)
 - `GET /store-claims/mine` (`src/features/seller/api/seller-store-claims.routes.ts`)
+- `POST /store-reports` (`src/features/seller/api/seller-store-reports.routes.ts`)
+- `GET /store-reports/reasons` (`src/features/seller/api/seller-store-reports.routes.ts`)
 - `POST /store/coupang/connect` (`src/features/supply/api/supplier-dashboard.routes.ts`)
 - `POST /store/import` (`src/features/supply/api/supplier-dashboard.routes.ts`)
 - `POST /store/naver/connect` (`src/features/supply/api/supplier-dashboard.routes.ts`)
@@ -1727,7 +1729,7 @@
 
 
 
-> 마지막 생성: 2026-09-21T03:55:33.854Z
+> 마지막 생성: 2026-09-21T04:38:21.464Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->
