@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { derivePricing } from '@/pages/group-buy/pricing'
+import { isFullBleedPcPath } from '@/shared/pc-fullbleed'
 import { stripComments } from '../helpers/source-text'
 
 const read = (p: string) => readFileSync(p, 'utf8')
@@ -255,9 +256,18 @@ describe('PC 풀너비 등재 (모바일 액자에 갇히지 않게)', () => {
   })
 
   it('하단 고정바가 PC 에서도 뜨는 페이지는 등재하지 않는다', () => {
-    // pc-fullbleed 는 `app-frame-bar` 를 숨긴다 — `lg:hidden` 없이 그 바를 쓰는 페이지를 넣으면
-    // PC 에서 CTA 가 통째로 사라진다. /referral 이 그런 페이지라 일부러 제외했다.
-    expect(fb).not.toMatch(/'\/referral'/)
+    // pc-fullbleed 는 `app-frame-bar` 를 숨긴다(`body.pc-fullbleed .app-frame-bar{display:none}`,
+    // index.css) — `lg:hidden` 없이 그 바를 쓰는 페이지를 등재하면 PC 에서 CTA 가 통째로 사라진다.
+    //
+    // 🩸 2026-09-21 재조준 — 이 줄은 원래 `'/referral'` 문자열을 금지했는데 **경로를 잘못 짚고**
+    //    **있었다.** 그 바를 가진 것은 `ReferralPage`(App.tsx:998 `/referral/:code`)이고,
+    //    `/referral` 은 바가 없는 `ReferralIndexPage`(App.tsx:950) 다. 대표가 C 묶음으로
+    //    `/referral` 해제를 확정하자 이 줄이 빨간불을 냈고, 실제로 막아야 할 것은 **`/referral/`**
+    //    **접두사**였다. 그래서 문자열 대신 **판정 함수**로 본다 — 목록 문법이 바뀌어도 살아남고,
+    //    "무엇을 막고 있는지"가 경로 하나로 분명해진다.
+    expect(isFullBleedPcPath('/referral/ABC123')).toBe(false)
+    expect(code('src/pages/ReferralPage.tsx')).toContain('app-frame-bar')       // 전제: 바가 있다
+    expect(code('src/pages/ReferralIndexPage.tsx')).not.toContain('app-frame-bar')
     const cart = code('src/pages/CartPage.tsx')
     expect(cart).toMatch(/app-frame-bar[\s\S]{0,160}lg:hidden/)  // 카트 하단바는 PC 에서 숨는다
   })
