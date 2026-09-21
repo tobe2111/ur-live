@@ -404,6 +404,27 @@ export const COLUMN_REPAIRS: ColumnRepair[] = [
     )` },
     { desc: 'idx_store_claims_open', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_store_claims_open ON store_ownership_claims(seller_id, user_id) WHERE status = 'pending'" },
     { desc: 'idx_store_claims_status', sql: "CREATE INDEX IF NOT EXISTS idx_store_claims_status ON store_ownership_claims(status, created_at)" },
+    // 🚨 2026-09-21 매장 제보(신고) — 런타임 ensureStoreReports 의 짝. 되찾기 신청과 **다른 물건**이다
+    //   (저쪽은 주인 이전 요청, 이쪽은 조치 요청이고 제보자는 로그인조차 안 했을 수 있다).
+    //   ⚠️ open 부분 UNIQUE 가 멱등의 근거다 — 전체 UNIQUE 로 만들면 한 번 기각된 사람이
+    //   그 매장을 영원히 다시 제보할 수 없다(주입이 그 방향도 잠갔다).
+    { desc: 'store_reports', sql: `CREATE TABLE IF NOT EXISTS store_reports (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      seller_id INTEGER NOT NULL,
+      product_id INTEGER,
+      reporter_user_id INTEGER,
+      reporter_key TEXT NOT NULL,
+      reporter_contact TEXT NOT NULL,
+      reason TEXT NOT NULL,
+      detail TEXT,
+      status TEXT NOT NULL DEFAULT 'open',
+      decided_by INTEGER,
+      decided_at DATETIME,
+      decision_note TEXT,
+      created_at DATETIME DEFAULT (datetime('now'))
+    )` },
+    { desc: 'idx_store_reports_open', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_store_reports_open ON store_reports(seller_id, reporter_key) WHERE status = 'open'" },
+    { desc: 'idx_store_reports_status', sql: "CREATE INDEX IF NOT EXISTS idx_store_reports_status ON store_reports(status, created_at)" },
     // 🔒 2026-08-27 유어애즈 DB 열람량 — 대행사 차단(ads-db-access.ts)의 짝. 등록 유형은 자기신고라
     //   우회되지만 "하루에 몇 행 가져갔나"는 우회할 수 없다. 상한의 근거이자 감사 기록.
     { desc: 'seller_ads_db_usage', sql: `CREATE TABLE IF NOT EXISTS seller_ads_db_usage (

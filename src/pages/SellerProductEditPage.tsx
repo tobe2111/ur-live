@@ -40,6 +40,9 @@ const LEGACY_VOUCHER_OPTIONS = [
   { value: 'activity_voucher', label: '액티비티 이용권 (구)' },
 ] as const
 
+/** 저장 버튼이 폼 **밖**(페이지 헤더)에 있어서 `form` 속성으로 묶는다. */
+const EDIT_FORM_ID = 'seller-product-edit-form'
+
 export default function SellerProductEditPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -256,13 +259,32 @@ export default function SellerProductEditPage() {
           subtitle={t('seller.editProductDesc')}
           icon={<Package className="h-5 w-5" />}
           actions={
-            <button
-              onClick={() => navigate('/seller/products')}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              <span>{t('seller.backToProductList')}</span>
-            </button>
+            <>
+              <button
+                onClick={() => navigate('/seller/products')}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                <span>{t('seller.backToProductList')}</span>
+              </button>
+              {/* 💾 2026-09-21 (대표: "변경사항 저장 버튼은 하단이 아닌 위에다가"): 폼 밖에 있지만
+                  `form` 속성으로 같은 폼을 제출한다 — 검증·핸들러가 하단 버튼과 **완전히 동일**하다. */}
+              <Button
+                type="submit"
+                form={EDIT_FORM_ID}
+                disabled={submitting}
+                className="ur-btn ur-btn-primary"
+              >
+                {submitting ? (
+                  <span className="flex items-center gap-1.5">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    {t('common.saving')}
+                  </span>
+                ) : (
+                  t('seller.saveChanges')
+                )}
+              </Button>
+            </>
           }
         />
 
@@ -277,7 +299,7 @@ export default function SellerProductEditPage() {
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="rounded-[var(--dash-radius,16px)] border border-rule bg-white border p-6 space-y-6">
+        <form id={EDIT_FORM_ID} onSubmit={handleSubmit} className="rounded-[var(--dash-radius,16px)] border border-rule bg-white border p-6 space-y-6">
           {/* Product Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -545,33 +567,6 @@ export default function SellerProductEditPage() {
               onChange={setProductOptions}
               disabled={submitting}
             />
-          </div>
-
-          {/* Submit Button */}
-          <div className="pt-4 border-t">
-            <div className="flex gap-3">
-              <Button
-                type="button"
-                onClick={() => navigate('/seller/products')}
-                className="flex-1 py-3 bg-gray-600 hover:bg-gray-700 text-white"
-              >
-                {t('common.cancel')}
-              </Button>
-              <Button
-                type="submit"
-                disabled={submitting}
-                className="ur-btn ur-btn-lg ur-btn-primary flex-1"
-              >
-                {submitting ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    {t('common.saving')}
-                  </span>
-                ) : (
-                  t('seller.saveChanges')
-                )}
-              </Button>
-            </div>
           </div>
 
           {/* Help Text */}
