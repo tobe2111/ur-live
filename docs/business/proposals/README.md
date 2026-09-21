@@ -5,9 +5,9 @@
 | 문서 | 파일 | 어드민 |
 |---|---|---|
 | 인플루언서 제휴 제안 (16:9, 9장) | `public/static/proposals/influencer-proposal.html` | `/admin/proposals` |
-| 대행사 제휴 제안 (16:9, 30장 v7 — PART 구분 장 4·직접 vs 경유 표·플라이휠·페르소나·목표별 설계·인출선·절차 3열, PowerPoint, 매장 모집 실행서) | `docs/business/proposals/urdeal-agency-proposal.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-agency-proposal.build.mjs`) | 없음. 파일로 전달 |
+| 대행사 제휴 제안 (16:9, 30장 v8 — **09-19 확정 플로우**: 매장 코드·두 요율·코드 링크 매칭·귀사 몫 유어딜 직접 송금. PART 구분 장 4·직접 vs 경유 표·플라이휠·페르소나·목표별 설계·인출선·절차 3열, PowerPoint, 매장 모집 실행서) | `docs/business/proposals/urdeal-agency-proposal.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-agency-proposal.build.mjs`) | 없음. 파일로 전달 |
 | 매장 사장님 소개 (16:9, 15장 v7 — 대표 최종 구성안 9장 + 손님 흐름 + 페르소나·목표별 설계·쌓이는 자산·절차 3열, PowerPoint. 상세판 17장은 `urdeal-store-owner-deck-detail.*`) | `docs/business/proposals/urdeal-store-owner-deck.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-store-owner-deck.build.mjs`, 공통 모듈 `deck-common.mjs`) | 없음. 파일로 전달 |
-| 인플루언서 제휴 소개 (16:9, 20장 v2 — PART 구분 장 3·플라이휠·페르소나·유어샵 인출선·절차 3열, PowerPoint) | `docs/business/proposals/urdeal-influencer-deck.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-influencer-deck.build.mjs`, 공통 모듈 `deck-common.mjs`). 기존 9장 HTML(`public/static/proposals/influencer-proposal.html`)을 대체한다 | 없음. 파일로 전달 (어드민 `/admin/proposals` 의 HTML 은 구판) |
+| 인플루언서 제휴 소개 (16:9, 20장 v4 — **중개사 계정 · 유어딜 5% 흐름 + 09-19 확정 플로우**(코드 링크 한 탭 매칭·매장 단위 링크·매장 코드), 영입 2% 제거, 정산은 "이용권 사용 후", 유어쇼츠·이용권 지갑·QR 화면, SNS 로고, https 하이퍼링크. PART 구분 장 3·플라이휠·페르소나·인출선·절차 3열, PowerPoint) | `docs/business/proposals/urdeal-influencer-deck.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-influencer-deck.build.mjs`, 공통 모듈 `deck-common.mjs`). 기존 9장 HTML(`public/static/proposals/influencer-proposal.html`)을 대체한다 | 없음. 파일로 전달 (어드민 `/admin/proposals` 의 HTML 은 구판) |
 | 소개서 3종 기획서 | `docs/business/proposals/three-decks-plan-2026-09.md` | 없음 |
 
 ## 왜 docs/ 가 아니라 public/static/ 인가
@@ -44,6 +44,28 @@ NODE_USE_ENV_PROXY=1 node scripts/capture-proposal-shots.mjs /tmp/shots
 `flywheel`(링 + 노드 + 화살표) · `table({ hiCol, leftAlign })`(강조 열). **안 가져온 것**: 규모 지표 타일·ROAS·만족도 도넛(대응 숫자가 없고
 "매출 O%" 금지) · 로고 월 · 3D 광택 아이콘(아이콘 규칙 위반) · 경쟁 채널 시장가 표(출처 없는 남의 가격).
 🩸 LibreOffice PDF 변환에서 `transparency` 가 걸린 텍스트 런의 **숫자가 사라진다**(`PART 1` → `PART`). 투명도 대신 옅은 색(`CFE0FD`)을 쓴다.
+
+## 인플루언서 덱 v3 — 중개사 흐름 (2026-09-19)
+
+대표 20장 전수 지시. **인플루언서는 셀러 대시보드에 중개사 계정으로 가입**하므로 덱은 직접 10% 가 아니라 **중개 5%** 흐름으로 말한다.
+**영입 2%(직접 입점 1년) 규정은 폐지** — 이 덱에서 전부 뺐다(⚠️ 사장님 덱은 원래 0건, **대행사 덱 비교표 1행**(`urdeal-agency-proposal.build.mjs:170`)과
+코드 `influencer_store_intro_pct=2` · `actor-benefit-map.md` 는 아직 2% 를 말한다 — 대표 확인 뒤 정리). 카드 수수료 2.75% 는 이 덱에서 말하지 않는다.
+정산 시점은 대표 지시대로 **"팔로워가 이용권을 사용한 뒤"** 로 적었다(⚠️ 코드는 결제+7일 `available_at` — 문구와 다르다, 대표 확인 필요).
+화면: 유어샵 재캡처 · 유어쇼츠 `/videos?v=jHPacJoCEt8`(이용권이 붙은 라이브 영상 — 재생 자리는 이 환경에서 유튜브가 막혀 어둡게 나온다) ·
+이용권 지갑·QR(`/my-vouchers`, 예시 데이터). 캡처 하네스는 `capture-seller-shots.mjs` 를 복제해 `vouchers/my` mock + "사용하기" 클릭 + 바텀시트를 위로 올리는 style 을 더한 것.
+SNS 로고는 `react-icons/si`(`icon()` 이 Fi → Si 순으로 찾고, `icons` 항목을 `['SiNaver','03C75A']` 처럼 색과 함께 넘긴다). 연락처는 `https://` 전체 주소 + `hyperlink`(PDF 에서 눌린다).
+⚠️ **07 경로 A(13페이지)는 대표가 "실제 플로우를 다시 봐야 한다 · 마지막에 재작업"** — 자격(인플루언서/대행사/중개사) 선택 가입은 라이브에 없다(`/seller/register/supplier` 는 사업자 정보 폼). 지금은 URL 만 빼고 문구만 바꿔 둔 상태.
+
+## 인플루언서 덱 v4 · 대행사 덱 v8 — 대표 확정 플로우 (2026-09-19)
+
+SSOT 는 `docs/decisions/2026-09-19-broker-matching-flow.md`(대표 말 그대로 11단계 + 불변식 9개 + 구현 순서). 두 덱이 같은 플로우를 각자 시점에서 말한다:
+- **매칭은 "제안·수락" 이 아니라 매장 코드다.** 대행사가 매장을 등록하면 코드가 자동 생성되고 **중개사 몫 % · 인플루언서 소개비 %** 를 그때 정한다.
+  인플루언서에게는 **코드가 담긴 링크 한 탭**(가입 + 즉시 매칭). 직접 온 사람은 마이페이지에서 코드 입력. 마이페이지에 **매장 단위 고유 링크**(복사·카톡 공유, 이용권이 바뀌어도 그대로).
+- **사장님이 가입하며 코드를 입력해 주인이 된다**(원안의 "대행사가 코드 입력"을 대표가 뒤집음 — 권한을 내주는 쪽이 입력해야 동의). 등록증 확인 그대로, 첫 정산 전까지만, 판매는 안 막는다.
+- **대행사 몫은 유어딜이 직접 송금**(09-16 결재) — 대행사 덱의 "보수·청구·매장과 직접" 문구를 전부 걷어냈다(PDF 텍스트에서 `보수` 0 · `청구` 0). 영입 2% 행 삭제.
+- ✅ **코드는 같은 날 PR #1499(`e3e182c2`) 로 main 에 있다** — 승계 코드(`/store/find?code=`) · 협업 코드(`/i/join/:code`, 마이페이지 입력) · 매장 링크(`/s/{id}?ref=`) · 딜 % 조정 · `/seller/operating` 인플루언서별 성과. **귀사 몫 직접 송금(`broker-share.ts`)만 게이트 `broker_share_enabled` OFF**(S-BROKER 뒤 대표가 켠다) — 대행사 덱 §14 가 그 사실을 문장으로 밝힌다. 인플루언서 경로 A 는 아직 카드(배포 후 `/i/join` 과 마이페이지를 캡처해 교체).
+- 소개비 %의 정확한 모델: 매장 등록 때 **중개사 몫 % · 인플루언서 상한 %** → 개별 소개비는 **협업 코드의 기본 %** + 딜별 조정(이후 판매분부터), 상한을 못 넘는다. 두 덱의 "소개비" 문구는 이 모델로 맞췄다("등록 때 정한 소개비" 라고 쓰면 틀린다).
+- 인플루언서 덱 `shotKeys` 에서 `influencer-offer` 제거(제안 화면은 더 이상 안 쓴다 — 파일은 남겨 둠).
 
 ## 공통 모듈 `deck-common.mjs` (2026-09-13)
 
