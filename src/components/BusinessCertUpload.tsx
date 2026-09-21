@@ -4,10 +4,22 @@
  *   업로드 성공 시 URL 을 onChange 로 반환 → 가입 payload 의 business_license_url 로 전송.
  */
 import { useRef, useState, type ChangeEvent } from 'react'
+import { ImagePlus } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { compressForDocument } from '@/lib/image-compress'
+import type { OcrPrefill } from '@/shared/ocr-prefill'
 
-export default function BusinessCertUpload({ value, onChange, required, hideLabel }: { value: string; onChange: (url: string) => void; required?: boolean; hideLabel?: boolean }) {
+export default function BusinessCertUpload({ value, onChange, required, hideLabel, onRead }: {
+  value: string
+  onChange: (url: string) => void
+  required?: boolean
+  hideLabel?: boolean
+  /**
+   * 🔍 2026-09-16: `onRead` 를 주면 서버에 **읽어 달라고 함께 부탁한다**(`ocr=1`).
+   * 안 주면 요청 본문이 종전과 byte-동일이라 기존 호출부(도매·제조 가입)는 추론 비용 0.
+   */
+  onRead?: (ocr: OcrPrefill) => void
+}) {
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -23,9 +35,16 @@ export default function BusinessCertUpload({ value, onChange, required, hideLabe
       if (prepared.size > 10 * 1024 * 1024) { toast.error('이미지가 너무 커요 — 다시 찍거나 다른 사진을 골라주세요'); return }
       const fd = new FormData()
       fd.append('file', prepared)
+      if (onRead) fd.append('ocr', '1')
       const res = await fetch('/api/upload/business-cert', { method: 'POST', body: fd })
-      const data = await res.json().catch(() => ({})) as { success?: boolean; error?: string; data?: { url: string } }
-      if (data?.success && data.data?.url) { onChange(data.data.url); toast.success('사업자등록증이 업로드됐어요') }
+      const data = await res.json().catch(() => ({})) as { success?: boolean; error?: string; data?: { url: string; ocr?: OcrPrefill | null } }
+      if (data?.success && data.data?.url) {
+        onChange(data.data.url)
+        // ⚠️ 못 읽어도 업로드는 성공이다 — 그때는 아무 말도 하지 않는다(손으로 치면 되고,
+        //   "읽기 실패" 라고 하면 사장님이 사진을 다시 찍으려 든다).
+        if (onRead && data.data.ocr) onRead(data.data.ocr)
+        else toast.success('사업자등록증이 업로드됐어요')
+      }
       else toast.error(data?.error || '업로드에 실패했어요')
     } catch { toast.error('업로드 중 오류가 발생했어요') } finally { setBusy(false) }
   }
@@ -51,8 +70,9 @@ export default function BusinessCertUpload({ value, onChange, required, hideLabe
         </div>
       ) : (
         <button type="button" onClick={() => inputRef.current?.click()} disabled={busy}
-          className="w-full h-12 rounded-xl border border-dashed border-[#CBD2DA] text-[14px] font-semibold text-[#4E5560] disabled:opacity-60">
-          {busy ? '업로드 중…' : '📄 사업자등록증 이미지 첨부'}
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[#CBD2DA] text-[14px] font-semibold text-[#4E5560] disabled:opacity-60">
+          <ImagePlus className="h-4 w-4" aria-hidden />
+          {busy ? (onRead ? '읽는 중…' : '업로드 중…') : '사업자등록증 사진 올리기'}
         </button>
       )}
     </div>

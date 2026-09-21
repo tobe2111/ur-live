@@ -116,10 +116,26 @@
   도로명 숫자 붙이기(행정구역 뒤엔 안 붙인다). 가드 `ocr-empty-retry-2026-09-21.test.ts` 5건 + 주소 1건, 주입 3건 빨간불 확인.
 - 고치지 않은 것(대표 판단): 상호 1글자 오독(`클로드`→`글로드`)은 `compareBizName` 이 **의도적으로** 오타를 안 봐줘 `review`.
   편집거리 허용은 자동 승인 문턱을 낮추는 일이라 결재 사항. 지금은 그 서류가 사람 큐에 남을 뿐이라 해가 없다.
+- **E4(#1508 배포 뒤, 64KB 사진 4회)**: `match`·산문 거절·`match`·빈응답(2회 시도) — `match` 2/4(수리 전 0/5). #1509 가 ① 산문 거절도 재시도
+  ② 문자열로 감싼 JSON 되살리기 ③ **셀러 상품 수정 매번 500**(응답 SELECT 의 없는 `image` 컬럼 — E5 에서 테스트 이용권 2916 을 숨기다 발견,
+  UPDATE 는 반영되고 응답만 500 · 재고 응답이 legacy 컬럼 먼저라 등록 직후 0 으로 보임) 을 고친다.
+- S-BROKER 준비: 매장 15 에 테스트 이용권 **2916**(1,000원, `is_active=0`·`HIDDEN`) 생성. 대표가 결제 전 어드민/대시보드에서 활성화(#1509 배포 뒤 대시보드 수정이 500 없이 된다).
 - S-OCR-1 은 **대표 실사진**이 있어야 잰다(합성 문서는 폰트·해상도가 실물과 다르다 — 위 5회가 그 한계다).
 - 게이트 `ocr_auto_verify_enabled` 는 **OFF 유지**. S-OCR-1 통과 + 수리 배포 뒤 매장 15 재호출에서 `match` 가 나오면 켤 후보.
 - 🩸 틀렸던 것: 첫 판 등록증 상호를 `클로드분식 (테스트)` 로 만들어 매장 `[테스트] 클로드분식` 과 달랐다 — 판정이 `differ` 로 뜬 것을
   결함으로 읽을 뻔했다. 실측 픽스처는 **등록값을 그대로 복사**해 만들 것.
+
+## 🧾 [E2] 대표 "각각 가장 이상적으로" 후속 (2026-09-21, 두 번째 PR)
+
+- OCR 판정: 상호 **한 글자 오독 → `near`**(판정은 `review` 그대로, 어드민에게 "OCR 오독일 수 있다" 힌트만). `same` 으로 올리면 남의 가게 이름에서
+  한 글자 바꾼 서류가 통과하므로 그건 결재(`docs/decisions/2026-09-21-ocr-auto-verify-gate.md` — 게이트 ON 여부·문턱 안 1~3, 기본안 2).
+- OCR 파서: 등록번호 칸에 온 개업일을 제자리로(실측 5회 중 2회). 어드민 패널이 **못 읽은 이유**(빈 응답·산문·해석 실패) + 접힌 모델 원문을 그린다.
+- S-BROKER 전제 라이브 확인(D1 읽기): 매장 15 `store_channel=brokered` · `broker_share_pct=10` · `broker_user_id=35(A)` · `influencer_pct_cap=5` ·
+  operators = A(operator)·B(owner). 상품 **2916**(1,000원) 은 `HIDDEN`/`is_active=0` — 결제 직전 활성화가 필요하다(#1509 뒤 대시보드 수정 200).
+  딜 결제 대체 검증은 **어드민 딜 지급 엔드포인트가 없어** 세션이 못 한다(D1 쓰기 금지) — 카드 결제는 대표.
+- 테스트 엔티티 목록(정리용): users 35(A 중개사)·36(B 사장님)·37(C 인플루언서) `claude-e5-*@claude-e5.invalid` · sellers 15·16·17 `[테스트] 클로드*` ·
+  products 2916 · store_codes LMHS-YTBP/GGG4-VMYU/PBRN-YTGK · collab code EDF597WV · deal 1 · claim 1 · biz-cert 업로드 5장(`/api/media/uploads/biz-cert/2026-09/`).
+  ⚠️ **어드민에 유저 삭제 엔드포인트가 없고, `DELETE /api/admin/sellers/:id` 는 삭제가 아니라 `status='suspended'` 정지다**(행은 남는다). products 만 `DELETE /api/admin/products/:id`. 정지된 테스트 매장은 `approvedSellerProductSql` 이 피드에서 걸러낸다. users 3명은 남는다(로그인 불가 도메인이라 해는 없음). 정리는 S-BROKER 뒤.
 
 ## ⏭️ 다음 세션의 첫 액션
 

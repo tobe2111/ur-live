@@ -297,14 +297,17 @@ the prompt 'agree'"*. Llama 3.2 비전은 계정 단위 **1회 라이선스 동�
 틀리게 읽음(1/5) → `compareBizName` 은 의도적으로 오타를 안 봐주므로 `review`(사람 확인). ③은 결함이 아니라 설계이고,
 편집거리 1 허용은 **자동 승인 문턱을 낮추는 결정**이라 대표 판단(안 하면 그 서류는 사람 큐에 남을 뿐 — 해는 없다).
 ④ 모델이 등록번호 칸에 개업일을 넣은 적 2/5(fill 0.75 로만 떨어짐, 판정 무영향).
+✅ **①② 배포(#1508) 뒤 재호출 4회(64KB 사진)**: `match`·JSON없음(산문 "정보 없음")·`match`·빈응답(2회 시도) — **`match` 2/4**
+(수리 전 0/5). 남은 실패 둘은 모델 쪽(산문 거절·빈 응답)이고 #1509 가 산문도 재시도 대상에 넣는다. 사진 크기 신호:
+114KB(2.5×) 7회 중 읽음 3 · 64KB 7회 중 읽음 5 — **큰 사진이 더 자주 빈다**(표본 작음, 실사진에서 재확인).
 
 
 | # | 무엇 | 통과 기준 |
 |---|---|---|
-| S-OCR-1 | 실제 사업자등록증 사진 5장으로 `POST /api/admin/sellers/:id/business-registration/ocr` | `extracted.fill` 평균 0.75 이상 · 상호·주소가 사람 눈과 일치 — ⏳ **대표 실사진 필요**(합성 문서 5회는 fill 1·1·0.75·0.75·0 → 평균 0.7, 위 ①② 수리 전 값) |
+| S-OCR-1 | 실제 사업자등록증 사진 5장으로 `POST /api/admin/sellers/:id/business-registration/ocr` | `extracted.fill` 평균 0.75 이상 · 상호·주소가 사람 눈과 일치 — ⏳ **대표 실사진 필요**. 절차: 사장님 계정으로 `/seller/business-info` 서류 탭에 등록증 사진 업로드(폰 사진 그대로 — 2400px·2MB 로 자동 압축) → `/admin/business-verification` 에서 그 매장의 **[사업자등록증] 버튼** → 배지(일치/확인 필요/불일치/못 읽음)·읽힘 %·상호/소재지 줄·**모델 이유**(못 읽었을 때)·`모델 원문 보기`. 한 장당 2회까지 눌러 본다(빈 응답은 서버가 이미 1회 재시도). 5장 중 `읽힘 75%+` 가 4장 이상이고 상호·소재지가 눈과 같으면 통과 |
 | S-OCR-2 | 서류 소재지 ≠ 등록 매장(다른 구)인 건 | `verdict='mismatch'` · 화면이 어느 지역끼리 다른지 말한다 — ✅ 2026-09-21 매장 16(부산 해운대구 서류 ↔ 전주 덕진구 매장): `mismatch` · "다른 지역입니다 (해운대구 ↔ 덕진구)" |
 | S-OCR-3 | 흐린 사진 / 잘린 사진 | `verdict='unreadable'` — **절대 `mismatch` 아님**(자동 반려의 씨앗) — ✅ 2026-09-21 매장 17(blur 5px): `unreadable` · nameCheck/addressCheck `unknown` |
-| S-OCR-4 | 게이트 OFF 상태에서 완전 일치 건 | `sellers.business_registration_status` **불변** · 응답 `autoVerified=false` — ✅ 2026-09-21 매장 15 OCR 5회 뒤 `business_registration_status='pending'` 그대로(어드민 라우트는 상태를 쓰지 않는다 — `note: 자동 승인·반려는 하지 않습니다`). ⚠️ `match` 자체는 위 ①② 수리 배포 뒤 재호출로 확인할 것 |
+| S-OCR-4 | 게이트 OFF 상태에서 완전 일치 건 | `sellers.business_registration_status` **불변** · 응답 `autoVerified=false` — ✅ 2026-09-21 매장 15 OCR 5회 뒤 `business_registration_status='pending'` 그대로(어드민 라우트는 상태를 쓰지 않는다 — `note: 자동 승인·반려는 하지 않습니다`). ✅ 배포 뒤 `match` 2/4 확인(상태는 계속 `pending`) |
 | S-OCR-5 | 게이트 ON 후 완전 일치 건 | `verified` 로 1회 전이 · 어드민 audit 에 남는다 |
 | S-OCR-6 | 인허가 원장에 없는 정상 매장 | `ledgerNote` 가 "이상 신호가 아닙니다" 라고 분명히 말한다(원장 커버리지 1% 미만) |
 | S-OCR-7 | 🍽️ 셀러 대시보드 → 서류 탭에서 **영업신고증** 사진 업로드 | `seller_meta.food_permit_url` 에 `/api/media/...` 저장 · 새로고침해도 남아 있다 |

@@ -29,7 +29,9 @@ import { toast } from '@/hooks/useToast'
 import { ChevronLeft, Loader2, CheckCircle2, Handshake, UserRound } from 'lucide-react'
 import TermsConsentBox from '@/components/terms/TermsConsentBox'
 import BusinessCertUpload from '@/components/BusinessCertUpload'
+import type { OcrPrefill } from '@/shared/ocr-prefill'
 import AddressPickerField from './seller-register/AddressPickerField'
+import ReviewSheet, { type ReviewRow } from './seller-register/ReviewSheet'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { TicketCard } from '@/components/ticket/TicketCard'
 import { TERMS_CURRENT_VERSION } from './terms/terms-types'
@@ -55,6 +57,12 @@ export default function SellerRegisterSupplierPage() {
   //   경로가 이미 있다(`POST /api/seller/settlements/business-registration/submit`).
   //   ⇒ 막는 대신 **가장 좋은 순간에 권한다** — 지금 사장님은 등록증을 손에 들고 번호를 옮겨 적는 중이다.
   const [certUrl, setCertUrl] = useState('')
+  // 🔍 2026-09-16 (대표 참고 시안 ⑤) — 등록증 사진에서 **읽어서 채운 칸**의 이름.
+  //   한 곳에 모아 두는 이유: ① 그 칸에 "사진에서" 라고 표시해 사장님이 꼭 확인하게 하고
+  //   ② 제출 전 확인 시트가 무엇이 자동인지 말할 수 있다. 값 자체는 평범한 `form` 이라
+  //   사장님이 고치는 순간 그냥 사장님 값이 된다(아래 `set` 이 이 집합에서 빼 준다).
+  const [autoFilled, setAutoFilled] = useState<Set<keyof SignupForm>>(new Set())
+  const [reviewOpen, setReviewOpen] = useState(false)
   const [statusChecked, setStatusChecked] = useState(false)
   const [existingStatus, setExistingStatus] = useState<'none' | 'pending' | 'active' | 'suspended'>('none')
   const [errors, setErrors] = useState<SignupErrors>({})
@@ -71,6 +79,11 @@ export default function SellerRegisterSupplierPage() {
   const set = <K extends keyof SignupForm>(k: K) => (v: SignupForm[K]) => {
     setForm(f => ({ ...f, [k]: v }))
     if (errors[k]) setErrors(e => ({ ...e, [k]: undefined }))
+    // 사장님이 손을 댄 칸은 더 이상 '사진에서' 가 아니다
+    setAutoFilled(prev => {
+      if (!prev.has(k)) return prev
+      const next = new Set(prev); next.delete(k); return next
+    })
   }
   const termsRef = useRef<HTMLDivElement>(null)
 
@@ -143,7 +156,45 @@ export default function SellerRegisterSupplierPage() {
     return () => { cancelled = true }
   }, [fromCurator])
 
-  async function submit() {
+  /**
+   * 🔍 2026-09-16 (대표 참고 시안 ⑤ *"정보를 확인해 주세요"*) — 등록증 사진에서 읽은 값으로 폼을 채운다.
+   *
+   * ⚠️ **빈 칸에만 채운다.** 사장님이 이미 친 값을 덮으면, 모델이 잘못 읽은 순간
+   * 사장님이 고쳐 놓은 걸 되돌리는 셈이다(그리고 아무도 그 사실을 모른다).
+   * 같은 이유로 `?prospect=` 대리 등록 prefill 도 빈 칸만 채운다 — 규칙이 하나다.
+   *
+   * ⚠️ 읽었다고 **맞는 게 아니다**(`fill` 은 정확도가 아니라 충실도다). 그래서 채운 칸에
+   * '사진에서' 딱지를 남기고, 제출 직전 확인 시트가 글자로 한 번 더 보여 준다.
+   */
+  function applyOcr(ocr: OcrPrefill) {
+    const touched: (keyof SignupForm)[] = []
+    setForm(f => {
+      const next = { ...f }
+      const put = <K extends keyof SignupForm>(k: K, v: string) => {
+        if (!v || String(next[k]).trim()) return
+        next[k] = v as SignupForm[K]
+        touched.push(k)
+      }
+      put('business_number', ocr.bizNumber ? formatBusinessNumber(ocr.bizNumber) : '')
+      put('representative_name', ocr.ownerName || '')
+      // YYYYMMDD → YYYY-MM-DD (`<input type="date">` 가 받는 유일한 모양)
+      put('business_start_date', ocr.permitDate && /^\d{8}$/.test(ocr.permitDate)
+        ? `${ocr.permitDate.slice(0, 4)}-${ocr.permitDate.slice(4, 6)}-${ocr.permitDate.slice(6, 8)}` : '')
+      put('business_name', ocr.bizName || '')
+      put('address', ocr.address || '')
+      return next
+    })
+    if (touched.length === 0) {
+      toast.success(t('seller.signup.ocrNone', { defaultValue: '사업자등록증이 업로드됐어요' }))
+      return
+    }
+    setAutoFilled(prev => { const n = new Set(prev); touched.forEach(k => n.add(k)); return n })
+    setErrors(e => { const n = { ...e }; touched.forEach(k => { n[k] = undefined }); return n })
+    toast.success(t('seller.signup.ocrFilled', { defaultValue: '{{n}}칸을 사진에서 채웠어요 — 맞는지 확인해 주세요', n: touched.length }))
+  }
+
+  /** 제출 버튼 — 보내기 전에 검사하고, 통과하면 **확인 시트**를 연다(시안 ④). */
+  function review() {
     // 📱 오류는 칸 밑에 적고 첫 오류 칸으로 간다 — 토스트 한 줄로는 어느 칸인지 모른다.
     const errs = validateSignup(form)
     setErrors(errs)
@@ -159,7 +210,10 @@ export default function SellerRegisterSupplierPage() {
       termsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       return
     }
+    setReviewOpen(true)
+  }
 
+  async function submit() {
     setLoading(true)
     try {
       // store_category/address 는 description 에 메타로 첨부 (DB 추가 컬럼 없이 운영 가능).
@@ -250,6 +304,25 @@ export default function SellerRegisterSupplierPage() {
   //   `filledRequired` 와 같은 5칸을 쪼갠 것이라 합이 항상 `filled` 와 맞는다(따로 세지 않는다).
   const bizDone = [form.business_number, form.representative_name, form.business_start_date].filter(v => v.trim()).length
   const storeDone = [form.business_name, form.phone].filter(v => v.trim()).length
+  // 🔍 사진에서 채운 칸은 **원래 힌트 대신** 확인을 요청한다. 딱지를 따로 그리지 않는 이유는
+  //   힌트 자리가 이미 그 칸 밑이고, 배지를 하나 더 얹으면 칸마다 요소가 늘어난다(시각 C 는 밀도를 지킨다).
+  const hint = (k: keyof SignupForm, base?: string) =>
+    autoFilled.has(k) ? t('seller.signup.fromPhoto', { defaultValue: '사진에서 읽었어요 — 맞는지 확인해 주세요' }) : base
+  const reviewRows: ReviewRow[] = [
+    { label: '사업자번호', value: form.business_number },
+    { label: '대표자명', value: form.representative_name },
+    { label: '개업일', value: form.business_start_date },
+    { label: '가게명', value: form.business_name },
+    { label: '연락처', value: form.phone },
+    { label: '매장 종류', value: STORE_CATEGORIES.find(c => c.value === form.store_category)?.label || '', muted: !form.store_category },
+    { label: '매장 주소', value: form.address, muted: !form.address },
+    ...(certUrl ? [{ label: '사업자등록증', value: '첨부됨' }] : []),
+  ]
+  const laterItems = [
+    ...(certUrl ? [] : ['사업자등록증']),
+    '영업신고증(음식점)',
+    '정산 계좌',
+  ]
 
   return (
     <div className="force-light-theme min-h-[100dvh] bg-warm" style={{ paddingBottom: 'calc(88px + env(safe-area-inset-bottom))' }}>
@@ -317,7 +390,20 @@ export default function SellerRegisterSupplierPage() {
           </div>
           <p className="mt-0.5 text-[12.5px] text-gray-500">{t('seller.signup.bizSectionSub', { defaultValue: '사업자등록증에 적힌 그대로. 국세청 정보와 일치하면 심사 없이 바로 승인돼요.' })}</p>
           <div className="mt-3">
-            <Field id="f-business_number" label="사업자번호" required error={errors.business_number}>
+            {/* 🔍 2026-09-16 — **맨 위가 맞는 자리다.** 렌더해 보고 옮겼다: 종전엔 이 칸이 세 칸
+                *밑*에 있어서, 사장님이 세 칸을 손으로 다 친 뒤에야 *"사진을 올리면 채워 드려요"* 를
+                읽었다. 채워 줄 칸보다 뒤에 있는 자동 채움은 아무도 안 쓴다.
+                대표 참고 시안도 같은 순서다 — ③ 서류를 먼저 내고 ⑤ 채워진 값을 확인한다.
+
+                못 읽으면 아무 일도 안 일어난다(= 손으로 치는 현행 동작). 실패를 알리지 않는 이유는
+                "읽기 실패" 라고 하면 사장님이 사진을 다시 찍으려 들기 때문이다. */}
+            <Field id="f-cert" label={t('seller.signup.cert', { defaultValue: '사업자등록증 사본' })}
+              hint={certUrl
+                ? t('seller.signup.certHintDone', { defaultValue: '심사에 쓰입니다. 아래 값이 맞는지 확인해 주세요.' })
+                : t('seller.signup.certHint', { defaultValue: '사진 한 장이면 아래 칸을 읽어서 채워 드려요. 나중에 올려도 괜찮아요.' })}>
+              <BusinessCertUpload value={certUrl} onChange={setCertUrl} hideLabel onRead={applyOcr} />
+            </Field>
+            <Field id="f-business_number" label="사업자번호" required hint={hint('business_number')} error={errors.business_number}>
               <input id="f-business_number" value={form.business_number}
                 onChange={e => set('business_number')(formatBusinessNumber(e.target.value))}
                 inputMode="numeric" autoComplete="off" maxLength={12} placeholder="000-00-00000"
@@ -325,14 +411,14 @@ export default function SellerRegisterSupplierPage() {
                 className={`${cls('business_number')} dash-num`} />
             </Field>
             {/* 🛡️ 2026-05-27 (사용자 결정): 국세청 진위확인 — 대표자 + 개업일 함께 입력 시 자동 승인 */}
-            <Field id="f-representative_name" label="대표자명" required hint="사업자등록증 기재 명의자" error={errors.representative_name}>
+            <Field id="f-representative_name" label="대표자명" required hint={hint('representative_name', '사업자등록증 기재 명의자')} error={errors.representative_name}>
               <input id="f-representative_name" value={form.representative_name}
                 onChange={e => set('representative_name')(e.target.value)}
                 maxLength={20} placeholder="예: 홍길동" autoComplete="name"
                 aria-invalid={!!errors.representative_name}
                 className={cls('representative_name')} />
             </Field>
-            <Field id="f-business_start_date" label="개업일" required hint="사업자등록증의 개업연월일" error={errors.business_start_date}>
+            <Field id="f-business_start_date" label="개업일" required hint={hint('business_start_date', '사업자등록증의 개업연월일')} error={errors.business_start_date}>
               <input id="f-business_start_date" type="date" value={form.business_start_date}
                 onChange={e => set('business_start_date')(e.target.value)}
                 max={new Date().toISOString().split('T')[0]}
@@ -344,10 +430,6 @@ export default function SellerRegisterSupplierPage() {
             {/* 🔴 2026-09-16 대표 확정: 라벨에서 **`(선택)` 을 뺀다.** 승인에 실제로 필요한 서류를
                 선택이라고 쓰면 대부분 건너뛰고, 그다음 왜 승인이 안 나는지 아무도 모른다.
                 지금 안 내도 진행은 되지만(당근 모델) 그건 문구가 말하지 '선택' 이라는 라벨이 아니다. */}
-            <Field id="f-cert" label={t('seller.signup.cert', { defaultValue: '사업자등록증 사본' })}
-              hint={t('seller.signup.certHint', { defaultValue: '지금 등록증을 보고 계시면 한 장 찍어 올려 주세요 — 심사가 빨라집니다. 나중에 올려도 괜찮아요.' })}>
-              <BusinessCertUpload value={certUrl} onChange={setCertUrl} hideLabel />
-            </Field>
           </div>
         </section>
 
@@ -359,7 +441,7 @@ export default function SellerRegisterSupplierPage() {
           </div>
           <p className="mt-0.5 text-[12.5px] text-gray-500">{t('seller.signup.storeSectionSub', { defaultValue: '유어샵과 이용권에 그대로 보여요. 나중에 대시보드에서 바꿀 수 있어요.' })}</p>
           <div className="mt-3">
-            <Field id="f-business_name" label="가게명" required error={errors.business_name}>
+            <Field id="f-business_name" label="가게명" required hint={hint('business_name')} error={errors.business_name}>
               <input id="f-business_name" value={form.business_name}
                 onChange={e => set('business_name')(e.target.value)}
                 placeholder="예: 홍대 매운돈까스" autoComplete="organization"
@@ -376,7 +458,7 @@ export default function SellerRegisterSupplierPage() {
             <Field id="f-store_category" label="매장 종류">
               <ChipGroup name="매장 종류" value={form.store_category} onChange={set('store_category')} options={STORE_CATEGORIES} />
             </Field>
-            <Field id="f-address" label="매장 주소" hint="가게 이름으로 찾으면 주소가 자동으로 들어가요">
+            <Field id="f-address" label="매장 주소" hint={hint('address', '가게 이름으로 찾으면 주소가 자동으로 들어가요')}>
               <AddressPickerField id="f-address" value={form.address} onChange={set('address')} />
             </Field>
             <Field id="f-description" label="매장 소개 (선택)">
@@ -446,7 +528,7 @@ export default function SellerRegisterSupplierPage() {
           <p className="hidden shrink-0 text-[12px] text-gray-500 sm:block">
             {t('seller.signup.progress', { defaultValue: '필수 {{filled}} / 5', filled })}
           </p>
-          <button onClick={submit} disabled={loading}
+          <button onClick={review} disabled={loading}
             className="ur-btn ur-btn-lg ur-btn-primary w-full disabled:opacity-50">
             {loading && <Loader2 className="h-5 w-5 animate-spin" />}
             {loading
@@ -457,6 +539,18 @@ export default function SellerRegisterSupplierPage() {
           </button>
         </div>
       </div>
+
+      {/* 🧾 시안 ④ — 보내기 직전에 무엇이 나가는지 글자로 한 번. 사진에서 채운 칸은
+          사장님이 한 번도 안 읽었을 수 있고, 그걸 잡을 자리가 여기뿐이다. */}
+      <ReviewSheet
+        open={reviewOpen}
+        rows={reviewRows}
+        later={laterItems}
+        loading={loading}
+        fromPhoto={autoFilled.size}
+        onClose={() => setReviewOpen(false)}
+        onConfirm={submit}
+      />
     </div>
   )
 }

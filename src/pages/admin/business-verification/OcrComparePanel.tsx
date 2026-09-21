@@ -36,6 +36,8 @@ interface OcrResponse {
   store?: { name: string | null; address: string | null }
   nameCheck?: { verdict: string; reason: string }
   addressCheck?: { verdict: string; reason: string }
+  /** 🔍 2026-09-20 서버가 동봉하는 모델 원문·이유 — "왜 이렇게 읽었나" (어드민 전용) */
+  ocr?: { ok: boolean; message: string; raw: string | null }
   ledger?: { mgtNo: string; bizName: string | null; address: string | null; tradeState: string | null } | null
   ledgerNote?: string
 }
@@ -139,6 +141,14 @@ export default function OcrComparePanel({ sellerId, permitUrl }: { sellerId: num
             {res.nameCheck?.reason && <p>· 상호 — {res.nameCheck.reason}</p>}
             {/* 원장은 커버리지가 1% 미만이라 **없는 것이 정상**이다 — 그 말을 서버 문구 그대로 싣는다 */}
             {res.ledgerNote && <p className="text-gray-500">· 인허가 원장 — {res.ledgerNote}</p>}
+            {/* 🔍 2026-09-21: 못 읽었으면 **왜**인지(빈 응답 · 산문 · JSON 해석 실패)를 그대로 — 다음 조치(다시 누르기 / 사진 다시 받기)가 갈린다 */}
+            {res.ocr && !res.ocr.ok && <p className="text-gray-500">· 모델 — {res.ocr.message}</p>}
+            {res.ocr?.raw && (
+              <details className="text-gray-400">
+                <summary className="cursor-pointer">모델 원문 보기</summary>
+                <pre className="mt-1 whitespace-pre-wrap break-all text-[10px] text-gray-500">{res.ocr.raw}</pre>
+              </details>
+            )}
           </div>
 
           <p className="mt-2 text-[11px] text-gray-400">

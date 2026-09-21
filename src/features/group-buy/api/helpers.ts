@@ -7,6 +7,7 @@
 
 import type { D1Database } from '@cloudflare/workers-types'
 import { swallow } from '../../../worker/utils/swallow'
+import { existingColumns, columnNameOf } from '../../../worker/utils/ensure-columns'
 import { recordLedger } from '../../../worker/utils/ledger'
 import { calcInfluencerCommissionPct, type CommissionRates } from './commission-rates'
 // 💸 매장 수수료율(채널 > override > tier > default)은 `seller-commission-rate.ts` 로 분리했다
@@ -20,6 +21,19 @@ export { getMealVoucherCommissionRate, getSellerCommissionRate } from './seller-
 /**
  * 🛡️ 2026-05-19: per-worker 메모이제이션 — 매 요청마다 15+ ALTER TABLE 실행하던 패턴 제거.
  *   효과: group-buy 모든 페이지 응답시간 0.5-1초 단축.
+ *
+ * 🐌 2026-09-17 (대표 *"내 이용권이 너무 늦게 떠. 로딩이 느려"*) — 그 메모이제이션은 **isolate 안에서만**
+ *   통한다. Cloudflare 는 isolate 를 자주 새로 띄우므로 저트래픽 대시보드에서는 사실상 매번 콜드고,
+ *   그때마다 아래 ALTER 20개가 **직렬로** 돈다. 그리고 라이브 실측(2026-09-17, `PRAGMA table_info`):
+ *   **20개 전부가 이미 존재해 100% 실패한다.** 셀러 홈의 이용권 목록은 그 20 왕복을 다 기다린 뒤에야
+ *   자기 쿼리를 시작했다 — 에러가 없어 아무도 못 봤다.
+ *
+ *   ⇒ 같은 레포가 이미 쓰는 처방을 가져온다(`supply/api/supply-visibility.ts`): **컬럼 목록을 한 번 읽고
+ *   없는 것만 ALTER.** 라이브에서는 ALTER 0회 · 왕복 20 → 2(PRAGMA 두 번).
+ *   동작은 종전과 같다 — 없으면 추가하고 있으면 건너뛴다(종전엔 '추가 시도 후 실패로 건너뜀'이었다).
+ *
+ *   ⚠️ PRAGMA 가 실패하거나 테이블이 없으면 **빈 집합**으로 떨어져 전부 시도한다 = 종전 동작 그대로.
+ *   새 D1(컬럼이 진짜 없는 환경)에서 self-heal 이 약해지지 않는다.
  */
 let _ensuredTables = false
 export async function ensureTables(DB: D1Database): Promise<void> {
@@ -42,7 +56,9 @@ export async function ensureTables(DB: D1Database): Promise<void> {
     'milestone_notified_80 INTEGER DEFAULT 0',
     'milestone_notified_lastone INTEGER DEFAULT 0',
   ]
+  const haveProducts = await existingColumns(DB, 'products')
   for (const col of columns) {
+    if (haveProducts.has(columnNameOf(col))) continue
     try { await DB.prepare(`ALTER TABLE products ADD COLUMN ${col}`).run() } catch { /* exists */ }
   }
   try {
@@ -93,7 +109,9 @@ export async function ensureTables(DB: D1Database): Promise<void> {
   } catch { /* exists */ }
   // applied_* 컬럼 자동 추가 (기존 테이블 마이그레이션)
   // 🎁 2026-07-12 is_experience: 0원 체험권 마킹(정산 제외용, 체험 캠페인 트랙 WP-A).
+  const haveVouchers = await existingColumns(DB, 'vouchers')
   for (const col of ['applied_discount_pct INTEGER DEFAULT 0', 'applied_price INTEGER', 'is_experience INTEGER DEFAULT 0']) {
+    if (haveVouchers.has(columnNameOf(col))) continue
     try { await DB.prepare(`ALTER TABLE vouchers ADD COLUMN ${col}`).run() } catch { /* exists */ }
   }
   _ensuredTables = true

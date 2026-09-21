@@ -23,12 +23,16 @@ import { cors } from 'hono/cors'
 import { rateLimit } from '../../../worker/middleware/rate-limit'
 import { requireAdmin } from '../../../worker/middleware/auth'
 import { safeError } from '../../../worker/utils/safe-error'
+import type { OcrPrefill } from '../../../shared/ocr-prefill'
 
 type Bindings = {
   DB: D1Database
   JWT_SECRET: string
   MEDIA_BUCKET?: R2Bucket
   PUBLIC_R2_URL?: string  // 'https://media.ur-team.com' 또는 r2.dev URL
+  // 🔍 2026-09-16: 가입 앞문 등록증 자동 읽기(`ocr=1`). **optional 이어야 한다** —
+  //   Pages preview 에는 AI 바인딩이 없다(env.ts 주석의 실측). 없으면 `ocr: null` 로 조용히 지나간다.
+  AI?: { run: (model: string, input: Record<string, unknown>) => Promise<unknown> }
 }
 
 export const uploadRoutes = new Hono<{ Bindings: Bindings }>()
@@ -304,7 +308,36 @@ uploadRoutes.post('/upload/business-cert', cors(), rateLimit({ action: 'biz-cert
     //   항상 same-origin 워커 서빙(/api/media/*)로 고정. 워커가 R2 를 직접 읽어 응답하므로 객체가 있으면 절대 404 안 남.
     //   (CDN 미구성/오설정 시 가입 미리보기·어드민 '사업자등록증 보기' 404 사고 방지 — 사용자 신고)
     const url = `/api/media/${key}`
-    return c.json({ success: true, data: { key, url, size: file.size, mime: detected } })
+
+    // 🔍 2026-09-16 (대표 참고 시안 ⑤ *"정보를 확인해 주세요"*) — **지금 손에 든 바이트**를 읽어
+    //   가입 폼을 채운다. 사장님은 등록증을 든 채로 9칸을 손으로 옮겨 적고 있었다.
+    //
+    //   왜 별도 라우트를 안 만들었나 — 여기엔 바이트가 **이미 있다**:
+    //   ① URL 을 받아 fetch 하는 라우트였다면 SSRF 표면이 생긴다(임의 주소를 우리가 대신 부른다)
+    //   ② 남의 등록증 키를 넘겨 내용을 읽어 가는 길도 같이 생긴다(키는 32자 랜덤이지만 굳이 문을 열 이유가 없다)
+    //   ③ 추론 비용 남용 한도가 여기 이미 있다(`biz-cert-upload` 10회/10분 per-IP)
+    //   ⇒ 문을 하나도 새로 안 열고 같은 요청 안에서 끝낸다.
+    //
+    //   🚧 결재 §안전 레일(`2026-09-16-ocr-license-automation.md`) 그대로 — **추출만 한다.**
+    //   판정도, 승인도, DB 쓰기도 없다. 돌려준 값은 화면이 *빈 칸에만* 채우고 사장님이 고칠 수 있다.
+    //
+    //   ⚠️ 읽기 실패가 업로드 실패가 되면 안 된다 — 사진은 이미 R2 에 들어갔고, 못 읽는 건
+    //   손으로 치면 그만인 현행 동작이다. 그래서 통째로 try 안이고 실패는 `ocr: null` 이다.
+    let ocr: OcrPrefill | null = null
+    if (String(formData.get('ocr') || '') === '1' && c.env.AI) {
+      try {
+        const { ocrDocument } = await import('../../../worker/utils/ocr-license')
+        const r = await ocrDocument(c.env.AI, new Uint8Array(buffer), 'business_registration')
+        if (r.ok) {
+          ocr = {
+            bizName: r.bizName, address: r.address, ownerName: r.ownerName,
+            bizNumber: r.bizNumber, permitDate: r.permitDate, fill: r.fill,
+          }
+        }
+      } catch { /* 못 읽었을 뿐이다 — 업로드는 성공이다 */ }
+    }
+
+    return c.json({ success: true, data: { key, url, size: file.size, mime: detected, ocr } })
   } catch (err) {
     return safeError(c, err, '사업자등록증 업로드 중 오류가 발생했습니다', '[upload]')
   }

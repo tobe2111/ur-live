@@ -109,7 +109,10 @@ export async function ocrDocument(
   //   완전한 빈 문자열). 한 번에 못 읽었다고 `unreadable` 로 끝내면 어드민이 같은 버튼을 다시 눌러야 하고, 게이트가
   //   켜진 뒤엔 정상 서류가 자동 승인 후보에서 조용히 빠진다. **빈 응답에만 1회 재시도** — 예외(쿼터·5016)는
   //   재시도하지 않는다(같은 답이 돌아오고 비용만 든다).
-  for (let attempt = 0; attempt < OCR_EMPTY_RETRIES + 1 && !text; attempt += 1) {
+  // 🙅 빈 응답과 같은 부류: JSON 이 한 글자도 없는 산문("현재 제공할 수 있는 정보는 없습니다." — 2026-09-21 실측). 같은 사진에
+  //   다시 물으면 읽는다. 재시도 예산은 빈 응답과 공유(합쳐서 OCR_EMPTY_RETRIES 회).
+  const isBlank = (t: string) => !t || !/\{/.test(t)
+  for (let attempt = 0; attempt < OCR_EMPTY_RETRIES + 1 && isBlank(text); attempt += 1) {
     try {
       const res = await ai.run(OCR_MODEL, {
         image: Array.from(imageBytes),
@@ -132,12 +135,26 @@ export async function ocrDocument(
   try {
     parsed = JSON.parse(m[0]) as Record<string, unknown>
   } catch {
-    return emptyResult(kind, 'JSON 을 해석하지 못했습니다', text)
+    // 🧵 2026-09-21 (S-OCR 실측 8회 중 1회): 모델이 JSON 을 **문자열로 한 번 더 감싸** 돌려줬다 —
+    //   `"{\n \"biz_name\": ...}"` 처럼 따옴표가 역슬래시로 이스케이프돼 있어 그대로는 해석이 안 된다.
+    //   다 읽어 놓고 `unreadable` 로 버리는 것이 아까우니 이스케이프를 한 겹 벗겨 한 번 더 시도한다.
+    try {
+      parsed = JSON.parse(m[0].replace(/\\"/g, '"').replace(/\\n/g, '\n')) as Record<string, unknown>
+    } catch {
+      return emptyResult(kind, 'JSON 을 해석하지 못했습니다', text)
+    }
   }
 
   const bizNumberRaw = clean(parsed.biz_number)
-  const bizNumber = bizNumberRaw ? bizNumberRaw.replace(/\D/g, '') : null
-  const dateRaw = clean(parsed.permit_date)
+  let bizNumber = bizNumberRaw ? bizNumberRaw.replace(/\D/g, '') : null
+  let dateRaw = clean(parsed.permit_date)
+  // 🔀 2026-09-21 (S-OCR 실측 5회 중 2회): 모델이 **등록번호 칸에 개업연월일**을 넣고 permit_date 는 비웠다
+  //   (`"biz_number":"2024년 03월 02일","permit_date":null`). 숫자만 남기면 8자리라 등록번호 검사(10자리)에서 떨어져
+  //   fill 이 0.75 로 깎이고, 어드민 화면엔 등록번호 빈칸 + 개업일 빈칸이 뜬다. 값이 날짜 모양이면 제자리로 옮긴다.
+  if (bizNumberRaw && !dateRaw && bizNumber && bizNumber.length === 8 && /년|[-./]/.test(bizNumberRaw)) {
+    dateRaw = bizNumberRaw
+    bizNumber = null
+  }
   const permitDate = dateRaw ? dateRaw.replace(/\D/g, '') : null
 
   const result: OcrDocResult = {

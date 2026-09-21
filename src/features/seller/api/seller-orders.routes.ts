@@ -11,6 +11,7 @@
  */
 
 import { Hono } from 'hono';
+import { readSellerProductAfterUpdate } from './seller-product-response';
 import type { Context } from 'hono';
 import { cors } from 'hono/cors';
 import { verify } from 'hono/jwt';
@@ -490,11 +491,11 @@ sellerOrdersRoutes.get('/products', async (c) => {
     // which only exists after the supply schema ALTERs have run. On a fresh
     // isolate / fresh D1 the column may be missing → "no such column" 500.
     // Memoized (WeakMap-promise) — runs the ALTERs at most once per isolate.
-    await ensureSupplyVisibilitySchema(db);
-    // 🎟️ 2026-09-15: 목록이 이용권 메타(restaurant_phone·group_buy_current·store_owner_token …)를 읽는다.
-    //   그 컬럼들은 마이그레이션이 아니라 `ensureTables` 의 ALTER 로 생기므로, 콜드 D1 에서 부르지 않으면
-    //   셀러가 가장 먼저 보는 화면이 "no such column" 500 이 된다. WeakSet 메모이즈라 두 번째부터 공짜.
-    await ensureGroupBuyColumns(db);
+    // 🎟️ 2026-09-15: 목록이 이용권 메타(restaurant_phone·group_buy_current·store_owner_token …)를 읽는데
+    //   그 컬럼들은 `ensureTables` 의 ALTER 로 생긴다 — 콜드 D1 에서 안 부르면 "no such column" 500.
+    // 🐌 2026-09-17 (대표 *"내 이용권이 너무 늦게 떠"*): 둘을 **나란히** 기다린다. 만지는 컬럼이 안 겹쳐
+    //   직렬일 이유가 없었다 — 콜드에서 왕복이 더해지던 것이 최댓값이 된다(순서가 아니라 시작 시점만 바뀐다).
+    await Promise.all([ensureSupplyVisibilitySchema(db), ensureGroupBuyColumns(db)]);
     const limit = Math.min(intParam(c.req.query('limit'), 100), 500);
     const offset = intParam(c.req.query('offset'), 0);
     const sort: 'ASC' | 'DESC' = c.req.query('sort') === 'asc' ? 'ASC' : 'DESC';
@@ -543,7 +544,7 @@ sellerOrdersRoutes.get('/products/:id', async (c) => {
     const product = await db.prepare(
       `SELECT
          p.id, p.name, p.description, p.price, p.original_price,
-         COALESCE(p.stock_quantity, p.stock, 0)                AS stock,
+         COALESCE(p.stock, p.stock_quantity, 0)                AS stock,
          COALESCE(p.thumbnail_url, p.image_url)       AS image_url,
          p.detail_images,
          p.category, p.product_type,
@@ -957,7 +958,7 @@ sellerOrdersRoutes.post('/products', async (c) => {
 
     const newProduct = await db.prepare(
       `SELECT id, seller_id, name, description, price,
-              COALESCE(stock_quantity, stock, 0) AS stock,
+              COALESCE(stock, stock_quantity, 0) AS stock,
               COALESCE(thumbnail_url, image_url) AS image_url,
               category, created_at, updated_at
        FROM products WHERE id = ?`
@@ -1153,14 +1154,8 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
     // 💰 2026-09-05 (대표 확정 플로우 — 소개비는 매장이 정한다): 수정 화면에서도 변경 가능하게.
     await applySellerPromoRate(db, productId, sellerId, body)
 
-    const updated = await db.prepare(
-      `SELECT id, name, description, price, original_price,
-              COALESCE(stock_quantity, stock, 0) AS stock,
-              COALESCE(thumbnail_url, image_url, image) AS image_url,
-              category, live_only_price, live_price_enabled,
-              COALESCE(status, 'ACTIVE') AS status, updated_at
-       FROM products WHERE id = ?`
-    ).bind(productId).first<Record<string, unknown>>();
+    // 🛠️ 2026-09-21: 응답 SELECT 가 라이브에 없는 `image` 컬럼을 읽어 UPDATE 뒤 매번 500 — `seller-product-response.ts`
+    const updated = await readSellerProductAfterUpdate(db, productId);
 
     // 🛡️ 2026-05-16: voucher 카테고리 상품 수정 시 공구 목록 캐시 무효화
     if (updated?.category && VOUCHER_CATEGORY_SET.has(String(updated.category))) {

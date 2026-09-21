@@ -59,6 +59,36 @@ describe('ocrDocument — 빈 응답 재시도', () => {
     expect(r.message).toContain('읽기 실패')
   })
 
+  it('🧵 JSON 을 문자열로 한 번 더 감싼 응답(이스케이프된 따옴표)도 읽는다 — 2026-09-21 실측 8회 중 1회', async () => {
+    const wrapped = JSON.stringify('{\n    "biz_name": "[테스트] 클로드분식",\n    "address": "전북특별자치도 전주시 덕진구 가리내 10길 10",\n    "owner_name": "김테스트",\n    "biz_number": "999-99-99991",\n    "permit_date": "2024년 03월 02일"\n}')  // 라이브 raw 와 같은 모양(JSON.stringify 한 겹)
+    const f = fakeAi([wrapped])
+    const r = await ocrDocument(f.ai, new Uint8Array([1]), 'business_registration')
+    expect(r.ok).toBe(true)
+    expect(r.bizName).toBe('[테스트] 클로드분식')
+    expect(r.bizNumber).toBe('9999999991')
+    expect(r.fill).toBe(1)
+  })
+
+  it('🙅 JSON 없는 산문("정보가 없습니다") 도 빈 응답처럼 한 번 더 묻는다 — 2026-09-21 실측', async () => {
+    const f = fakeAi(['현재 제공할 수 있는 정보는 없습니다.', JSON_OK])
+    const r = await ocrDocument(f.ai, new Uint8Array([1]), 'business_registration')
+    expect(f.calls.length).toBe(2)
+    expect(r.ok).toBe(true)
+    expect(r.bizName).toBe('[테스트] 클로드분식')
+  })
+
+  it('🔀 등록번호 칸에 개업일이 들어오면 제자리로 옮긴다 — 2026-09-21 실측 5회 중 2회', async () => {
+    const f = fakeAi(['{"biz_name":"[테스트] 클로드분식","address":"전북특별자치도 전주시 덕진구 가리내10길 10","owner_name":"김테스트","biz_number":"2024년 03월 02일","permit_date":null}'])
+    const r = await ocrDocument(f.ai, new Uint8Array([1]), 'business_registration')
+    expect(r.bizNumber).toBeNull()
+    expect(r.permitDate).toBe('20240302')
+    // 진짜 등록번호는 그대로 — 휴리스틱이 정상 값을 건드리지 않는다
+    const g = fakeAi([JSON_OK])
+    const q = await ocrDocument(g.ai, new Uint8Array([1]), 'business_registration')
+    expect(q.bizNumber).toBe('9999999991')
+    expect(q.permitDate).toBe('20240302')
+  })
+
   it('재시도 횟수는 1 — 더 올리면 뉴런 예산이 조용히 배로 나간다', () => {
     expect(OCR_EMPTY_RETRIES).toBe(1)
   })

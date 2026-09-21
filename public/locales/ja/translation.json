@@ -3348,7 +3348,12 @@
       "laterPermit": "営業届出証",
       "laterPermitNote": "飲食店は必須",
       "laterBank": "精算口座",
-      "laterBankNote": "精算前まで"
+      "laterBankNote": "精算前まで",
+      "certHint": "写真一枚で下の項目を読み取って入力します。後からでも大丈夫です。",
+      "fromPhoto": "写真から読み取りました — ご確認ください",
+      "ocrFilled": "写真から{{n}}項目を入力しました — ご確認ください",
+      "ocrNone": "事業者登録証がアップロードされました",
+      "certHintDone": "審査に使われます。下の項目が正しいかご確認ください。"
     },
     "analytics": "売上分析",
     "analyticsView": {
