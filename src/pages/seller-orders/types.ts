@@ -8,7 +8,9 @@ export interface OrderItem {
   product_name: string
   image_url: string | null
   quantity: number
-  price: number
+  /** 라인 단가. 서버가 `price` 를 안 싣던 시절(2026-08-02~09-21)엔 화면이 0원을 찍었다 — `unit_price` 폴백. */
+  price?: number | null
+  unit_price?: number | null
 }
 
 export interface Order {
@@ -32,6 +34,13 @@ export interface Order {
    * 서버: `seller-orders.routes` GET /orders 의 `product_supply_meta.pickup_date` enrich.
    */
   pickup_date?: string | null
+  /**
+   * 🧾 주문 종류 — `'voucher'`(이용권) · `'deal'`(교환권) · `'shipping'`(배송).
+   * 서버 `order-list-enrich` 가 `orderKindOfItems`(SSOT)로 붙인다. **없으면 배송으로 읽는다**
+   * (구 응답·enrich 실패 시 운송장 칸을 지우지 않기 위해 — `orderKindOf` 가 그 폴백을 한다).
+   */
+  order_kind?: string | null
+  user_email?: string | null
 }
 
 export interface TrackingForm {
