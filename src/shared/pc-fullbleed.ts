@@ -32,7 +32,9 @@ const FULLBLEED_PC_PATHS = new Set<string>([
    *   `/notifications`·`/browse` 는 고정바 자체가 없다.
    *   (`/account/settings` 는 `/user/profile` 로 가는 리다이렉트 스텁이라 등재 대상이 아니다 —
    *    도착지가 이미 등재돼 있다. 넣어 봐야 아무 효과가 없고 목록만 헷갈린다.)
-   *   `/referral` 은 `lg:hidden` 없는 `app-frame-bar` 를 써서 **일부러 제외**했다(CTA 가 사라진다).
+   *   `/referral/:code`(`ReferralPage`)는 `lg:hidden` 없는 `app-frame-bar` 를 써서 **일부러 제외**
+   *   했다(CTA 가 사라진다). ⚠️ 2026-09-21 정정 — 이 줄은 원래 `/referral` 이라고 적고 있었는데
+   *   **경로를 잘못 짚은 것**이었다(그쪽은 바가 없는 `ReferralIndexPage`). 아래 C 묶음 참조.
    */
   '/cart', '/notifications', '/browse',
   /**
@@ -77,11 +79,14 @@ const FULLBLEED_PC_PATHS = new Set<string>([
   '/influencer', '/influencer/rankings',
   /**
    * C. 소비자 탐색 — 대표가 "앱 같은 화면이라 액자가 맞을 수 있다"는 설명을 듣고도 포함을 택했다.
-   *    ⚠️ `/referral` 에 대해 이 파일이 오래 적어 둔 *"`lg:hidden` 없는 `app-frame-bar` 를 써서
-   *       일부러 제외"* 는 **더 이상 사실이 아니다**(2026-09-21 실측: `ReferralIndexPage` 와 그
-   *       하위에 `app-frame-bar` 0건, 하단 고정 요소 0건). 그 사이 페이지가 바뀌었고 주석만 남아
-   *       있었다 — 낡은 지도를 그대로 두면 다음 세션이 반대로 판단한다.
-   *    ⚠️ `/referral/:code`(추천인 착지 페이지)는 다른 컴포넌트라 등재하지 않는다(정확일치만).
+   *    🩸 `/referral` — 이 파일이 오래 적어 둔 *"`app-frame-bar` 를 써서 일부러 제외"* 는
+   *       **경로를 잘못 짚고 있었다.** 그 바를 가진 것은 `ReferralPage`(App.tsx:998 `/referral/:code`,
+   *       그 파일 206줄)이고, `/referral` 은 바가 **없는** `ReferralIndexPage`(App.tsx:950) 다.
+   *       둘은 이름만 닮은 **다른 페이지**다. 그래서 `/referral` 은 풀어도 안전하고,
+   *       **`/referral/` 는 접두사로 넣으면 안 된다**(넣는 순간 착지 페이지의 CTA 가 사라진다).
+   *       ⚠️ 이 착각을 두 번 했다 — 선재 가드가 문자열 `'/referral'` 을 금지하고 있어서 CI 가 잡았고,
+   *       그 가드도 같은 착각 위에 있었다. 지금은 `isFullBleedPcPath('/referral/ABC123')` 로 본다
+   *       (`groupon-detail-map.test.ts`). **여기 아래 접두사 목록에 `/referral/` 을 넣지 말 것.**
    */
   '/experience', '/new-openings', '/gb-market', '/area-report',
   '/interest-list', '/following', '/community-group-buy/new', '/referral',

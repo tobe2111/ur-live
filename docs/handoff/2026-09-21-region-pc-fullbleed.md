@@ -119,5 +119,21 @@ BASE=https://urdeal.kr node <하네스>   # /region · /region/부산 · /region
 - `공구 마켓 폭 토큰` 단언이 **헛돌았다** — `ur-content-wide` 를 헤더에도 넣은 탓에 본문에서 지워도 초록.
   → 본문 컨테이너(`ur-content-wide px-4 pt-4`)로 앵커 교체.
 
+- 🔴 **세 번째 낡은 지도 — 이번엔 내가 사실을 틀리게 쟀다(가장 값진 부분).** 푸시 후 CI 가
+  **선재 테스트** `groupon-detail-map.test.ts:260` 으로 빨간불을 냈다: `expect(fb).not.toMatch(/'\/referral'/)`
+  — *"`/referral` 은 `app-frame-bar` 를 써서 일부러 제외했다"*. 나는 §7 작업 중 *"`/referral` 의
+  `app-frame-bar` 는 0건"* 이라고 적었는데 **그게 틀렸다.** `ReferralPage.tsx:206` 에 그 바가 있다.
+  🔑 **그런데 옛 주석도 틀렸다** — 바를 가진 것은 `ReferralPage`(`/referral/:code`, App.tsx:998)이고
+  `/referral` 은 바가 없는 **`ReferralIndexPage`**(App.tsx:950) 다. 즉 **둘 다 경로를 잘못 짚었고**,
+  실제로 막아야 할 것은 접두사 `/referral/` 였다(우리는 그걸 등재하지 않았으므로 라이브 동작은 처음부터
+  옳았다 — 틀린 건 *근거*였다). 문자열 금지 → **판정 함수**(`isFullBleedPcPath('/referral/ABC123')`)
+  + 두 페이지의 바 유무 전제로 재조준. 주입 1건 추가(`/referral/` 접두사) **빨간불 확인**.
+- 🩸 **왜 로컬에서 못 잡았나**: 내 테스트 두 개만 돌렸고, **같은 SSOT 를 읽는 선재 테스트**는 안 돌렸다.
+  pre-push 게이트는 가드 99개를 돌리지만 **vitest 전체는 안 돈다**(그건 CI 몫).
+  ⇒ **SSOT 파일을 고쳤으면 그 파일을 읽는 테스트를 전부 찾아서 함께 돌릴 것**:
+  `grep -rln 'pc-fullbleed\|isFullBleedPcPath' src/tests/` → 이번 경우 **5개**(groupon-detail-map ·
+  pass-route-migration · ushop-a3-p1 + 신규 2개). 이 한 줄이면 CI 한 바퀴(실측 **약 7분**)를 안 태운다.
+
 가드: `src/tests/unit/pc-frame-unlock-2026-09-21.test.ts` 43건 +
-`scripts/mutations/pc-frame-unlock.mjs` 7건(전부 빨간불) + 지역 5건 재조준 후 재확인.
+`scripts/mutations/pc-frame-unlock.mjs` **8건**(전부 빨간불) + 지역 5건 재조준 후 재확인 +
+선재 `groupon-detail-map.test.ts` 재조준.

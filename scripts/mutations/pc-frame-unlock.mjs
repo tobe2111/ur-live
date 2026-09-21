@@ -38,6 +38,17 @@ export default [
       '`/analytics`·`/discover` 넷이 함께 벗겨진다 — 전부 폰 폭으로 만든 도구 화면이다.',
   },
   {
+    name: '🖥️ `/referral/` 를 접두사로 넣어 추천인 착지 CTA 를 지운다',
+    file: 'src/shared/pc-fullbleed.ts',
+    find: `  '/area-report/',`,
+    replace: `  '/area-report/',\n  '/referral/',`,
+    test: 'src/tests/unit/groupon-detail-map.test.ts',
+    why:
+      '대표가 푼 것은 목록 페이지 `/referral`(ReferralIndexPage) 하나인데 접두사로 만들면 ' +
+      '`/referral/:code`(ReferralPage)까지 벗겨진다 — 그 페이지 하단 CTA 는 `app-frame-bar` 라 ' +
+      '`body.pc-fullbleed` 에서 **버튼이 통째로 사라진다**(에러 0).',
+  },
+  {
     name: '🖥️ 약관 하위 3종이 접두사 소실로 액자에 남는다',
     file: 'src/shared/pc-fullbleed.ts',
     find: `  '/terms/',`,
