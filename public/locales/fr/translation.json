@@ -2672,7 +2672,9 @@
       "fromPhoto": "Lu depuis votre photo : merci de vérifier",
       "ocrFilled": "{{n}} champ(s) remplis depuis votre photo : merci de vérifier",
       "ocrNone": "Registre d’entreprise envoyé",
-      "certHintDone": "Utilisé pour l’examen. Merci de vérifier les champs ci-dessous."
+      "certHintDone": "Utilisé pour l’examen. Merci de vérifier les champs ci-dessous.",
+      "pickHint": "Choisissez votre établissement : nom, adresse, téléphone et type se remplissent d'un coup. Absent de la carte ? Saisissez-le ci-dessous.",
+      "pickPlaceholder": "Rechercher par nom d'établissement"
     },
     "analytics": "Analyse des ventes",
     "analyticsView": {

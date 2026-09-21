@@ -15,15 +15,22 @@
  *
  * ⚠️ 키가 없으면(`VITE_KAKAO_JAVASCRIPT_KEY` 미설정) **직접 입력으로 조용히 떨어진다** —
  *   주소 한 칸 때문에 가입이 막히면 안 된다.
+ *
+ * 🔴 2026-09-21 (대표 확정 "안 B") — **고른 것을 통째로 올려보낸다.**
+ *   종전 `onChange(p.road_address_name)` 한 줄이 상호·전화·업종·좌표·place_id **일곱을 버렸고**,
+ *   그래서 사장님이 방금 고른 가게를 바로 위 칸에 손으로 다시 쳤다. 이제 두 번째 인자로
+ *   `PickedStore` 를 함께 준다 — 직접 입력(키 없음/지도에 없는 가게)은 주소만 주므로 **선택 인자**다.
  */
 import { lazy, Suspense, useState } from 'react'
 import { MapPin, Search } from 'lucide-react'
 import { INPUT } from './RegisterFields'
+import type { PickedStore } from '@/shared/store-place'
 
 const KakaoMapPicker = lazy(() => import('@/components/KakaoMapPicker'))
 
-export default function AddressPickerField({ value, onChange, id }: {
-  value: string; onChange: (v: string) => void; id: string
+export default function AddressPickerField({ value, onChange, id, placeholder }: {
+  /** 지도에서 고르면 두 번째 인자가 온다. 손으로 치면 주소만 온다(그게 아는 전부다). */
+  value: string; onChange: (v: string, place?: PickedStore) => void; id: string; placeholder?: string
 }) {
   const [open, setOpen] = useState(false)
   const kakaoJsKey = (import.meta.env?.VITE_KAKAO_JAVASCRIPT_KEY as string) || ''
@@ -31,7 +38,7 @@ export default function AddressPickerField({ value, onChange, id }: {
   if (!kakaoJsKey) {
     return (
       <input id={id} value={value} onChange={e => onChange(e.target.value)}
-        placeholder="예: 서울 마포구 양화로 162" autoComplete="street-address" className={INPUT} />
+        placeholder={placeholder || '예: 서울 마포구 양화로 162'} autoComplete="street-address" className={INPUT} />
     )
   }
 
@@ -40,7 +47,7 @@ export default function AddressPickerField({ value, onChange, id }: {
       <button type="button" id={id} onClick={() => setOpen(true)}
         className="flex w-full items-center gap-2 text-left">
         <span className={`min-w-0 flex-1 truncate ${value ? 'text-[17px] font-bold tracking-[-.02em] text-gray-900' : 'text-[17px] text-gray-300'}`}>
-          {value || '가게 이름으로 찾기'}
+          {value || placeholder || '가게 이름으로 찾기'}
         </span>
         <Search className="h-4 w-4 shrink-0 text-gray-400" aria-hidden />
       </button>
@@ -58,7 +65,18 @@ export default function AddressPickerField({ value, onChange, id }: {
                 kakaoJsKey={kakaoJsKey}
                 onSelect={(p) => {
                   // 도로명이 있으면 도로명 — 손님이 찾아올 때 쓰는 주소다.
-                  onChange(p.road_address_name || p.address_name || '')
+                  const address = p.road_address_name || p.address_name || ''
+                  onChange(address, {
+                    name: p.place_name || '',
+                    address,
+                    phone: p.phone || '',
+                    category: p.category_name || '',
+                    lat: p.y || '',
+                    lng: p.x || '',
+                    placeId: p.id || '',
+                    // 카카오 place 상세 URL — 매장 등록 문이 저장하는 것과 같은 모양.
+                    placeUrl: p.id ? `https://place.map.kakao.com/${p.id}` : '',
+                  })
                   setOpen(false)
                 }}
               />
