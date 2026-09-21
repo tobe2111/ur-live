@@ -34,7 +34,7 @@ import { DEFAULT_FEE_RATES } from '@/worker/utils/fee-resolver'
 import { getEffectivePlatformFee } from '@/worker/utils/effective-platform-fee'
 import { registerVoucherDraftRoutes } from './seller-voucher-draft.routes'
 import { pickStoreChannel, registerStoreChannelRoutes } from './seller-store-channel.routes'
-import { registerStoreClaimRoutes } from './seller-store-claims.routes'
+import { registerStoreClaimRoutes } from './seller-store-claims.routes'; import { registerStoreReportRoutes } from './seller-store-reports.routes'
 import { registerBrokerTermsRoutes, prepareBrokerTerms, finalizeBrokeredStore } from './seller-broker-terms.routes' // 💸🔑 2026-09-19 요율·승계 코드
 
 const app = new Hono<{ Bindings: Env }>()
@@ -159,7 +159,7 @@ registerVoucherDraftRoutes(app)
 registerStoreChannelRoutes(app)
 // 🙋 내 가게 찾기(소유권 신청) — 2026-09-09 3단계. 경로 `/stores/lookup-by-business` · `/store-claims`.
 //    판정 주체를 넘겨 준다 — 같은 `resolveActorUserId` 를 두 벌로 만들면 언젠가 갈린다.
-registerStoreClaimRoutes(app, resolveActorUserId); registerBrokerTermsRoutes(app, resolveActorUserId) // 🔑💸 2026-09-19
+registerStoreClaimRoutes(app, resolveActorUserId); registerBrokerTermsRoutes(app, resolveActorUserId); registerStoreReportRoutes(app, resolveActorUserId) // 🔑💸 2026-09-19 · 🚨 2026-09-21 제보(로그인 불필요 — 사장님은 대개 계정이 없다)
 
 // ── 매장 프로필 병합(공유) — SSOT: worker/utils/store-profile.ts (2026-08-23 단일화) ────────
 async function loadMergedProfile(DB: D1Database, sellerId: number) {
