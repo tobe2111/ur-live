@@ -50,7 +50,7 @@
   "src/pages/WholesaleCatalogPage.tsx": 813,
   "src/pages/admin/AdminBuyerPoolPage.tsx": 753,
   "src/routes/admin.routes.tsx": 756,
-  "src/shared/db/production-schema.ts": 682,
+  "src/shared/db/production-schema.ts": 683,
   "src/worker/cron/scheduled-cleanup.ts": 937,
   "src/worker/index.ts": 2647,
   "src/worker/openapi.ts": 1544,

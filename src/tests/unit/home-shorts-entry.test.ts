@@ -30,10 +30,15 @@ const ICONS = 'src/components/icons/urdeal-icons.tsx'
 describe('① 진입점이 카테고리 줄에 있다', () => {
   const s = code(read(HOME))
   it('유어쇼츠로 가는 링크가 있다', () => {
-    expect(s).toMatch(/to=\{URSHORTS_VIEWER_PATH\}/)
+    // 🔁 2026-09-21: 앵커를 **목적지에 무관**하게 넓혔다(`URSHORTS_*`). 이 가드가 지키는 것은
+    //    "진입점이 카테고리 줄 **밖에** 있나"이지 어디로 가나가 아닌데, 상수 이름을 박아 둔 탓에
+    //    목적지를 목록(`/urshorts`)으로 바꾸자 세 건이 빨간불이 됐다(주입 러너가 잡았다).
+    //    ⚠️ 넓히되 **SSOT 는 계속 요구한다** — 아래 '경로를 손으로 적지 않는다' 가 그 짝이다.
+    expect(s).toMatch(/to=\{URSHORTS_[A-Z_]+\}/)
   })
   it('경로를 손으로 적지 않는다(SSOT 사용)', () => {
     expect(s, "'/videos' 를 직접 적으면 SSOT 와 갈린다").not.toMatch(/to="\/videos"/)
+    expect(s, "'/urshorts' 를 직접 적으면 SSOT 와 갈린다").not.toMatch(/to="\/urshorts"/)
   })
 })
 
@@ -44,10 +49,10 @@ describe('② 🔴 스크롤 밖에 고정된다', () => {
     const navOpen = s.indexOf('<nav')
     const navClose = s.indexOf('</nav>')
     expect(navClose, 'nav 가 사라졌다').toBeGreaterThan(-1)
-    expect(s.indexOf('URSHORTS_VIEWER_PATH', navClose), '진입점이 nav 뒤에 없다').toBeGreaterThan(navClose)
+    expect(s.indexOf('URSHORTS_', navClose), '진입점이 nav 뒤에 없다').toBeGreaterThan(navClose)
     // 🩸 2026-09-09: PC 주입이 드러낸 구멍 — "뒤에 있나"만 물으면 nav 안에 하나를 더 심어도 통과한다.
     expect(s.slice(navOpen, navClose), 'nav 안에 진입점이 있다 = 스크롤되어 사라진다')
-      .not.toContain('URSHORTS_VIEWER_PATH')
+      .not.toContain('URSHORTS_')
   })
   it('nav 는 스크롤하고 진입점은 shrink-0 이다', () => {
     expect(s).toMatch(/<nav[^>]*overflow-x-auto/)
@@ -66,7 +71,7 @@ describe('③ 생김새 계약', () => {
     expect(s, '음수 마진이 빠지면 점이 떨어져 뱃지로 읽힌다').toMatch(/-ml-\[3px\]/)
   })
   it('면(알약)을 쓰지 않는다 — 이 줄의 유일한 면이 되면 필터보다 무거워진다', () => {
-    const link = s.slice(s.indexOf('URSHORTS_VIEWER_PATH'), s.indexOf('URSHORTS_VIEWER_PATH') + 400)
+    const link = s.slice(s.indexOf('URSHORTS_'), s.indexOf('URSHORTS_') + 400)
     expect(link).not.toMatch(/rounded-full|bg-brand\b|bg-gray-100/)
   })
   it('반짝임(펄스)을 안 쓴다 — live-pulse 는 지도에서 "방송 중"을 뜻한다', () => {
@@ -99,11 +104,11 @@ describe('PC 홈 — 같은 자리, 같은 함정 (2026-09-09)', () => {
     const navOpen = s.lastIndexOf('<nav', anchor)
     const navClose = s.indexOf('</nav>', anchor)
     expect(navClose, 'nav 가 사라졌다').toBeGreaterThan(-1)
-    expect(s.indexOf('URSHORTS_VIEWER_PATH', navClose), '진입점이 nav 뒤에 없다').toBeGreaterThan(navClose)
+    expect(s.indexOf('URSHORTS_', navClose), '진입점이 nav 뒤에 없다').toBeGreaterThan(navClose)
     // 🩸 2026-09-09: "뒤에 있나"만 물으면 nav **안에** 하나를 더 심어도 통과한다(주입이 그걸 잡았다).
     //    스크롤러 안에 하나라도 있으면 그것이 밀려 사라지는 진입점이다.
     expect(s.slice(navOpen, navClose), 'nav 안에 진입점이 있다 = 스크롤되어 사라진다')
-      .not.toContain('URSHORTS_VIEWER_PATH')
+      .not.toContain('URSHORTS_')
   })
   it('스크롤 컨테이너가 진입점을 감싸지 않는다', () => {
     // 진입점을 감싼 줄에는 overflow-x-auto 가 없어야 한다(있으면 같이 밀린다).

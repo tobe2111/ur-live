@@ -14,7 +14,7 @@ import PcHomeLocationBar, { readHomeRegion, type HomeRegion } from '@/pages/pc-h
 import { readCachedLoc } from '@/shared/utils/cached-loc'
 import { DEAL_CATS, type DealCategory } from '@/pages/pc-home/PcHomeRail'
 import { ShortsIcon } from '@/components/icons/urdeal-icons'
-import { URSHORTS_VIEWER_PATH } from '@/shared/urshorts'
+import { URSHORTS_BROWSE_PATH } from '@/shared/urshorts'
 import { HOME_SHOWCASE_ENABLED } from '@/shared/feature-flags'
 
 /**
@@ -169,7 +169,7 @@ export default function MobileHomePage() {
                "지금 방송 중"을 뜻하고 있어 같은 손짓이 두 가지를 뜻하게 된다. 새 영상이 쌓이면
                "마지막 방문 이후 새 영상이 있을 때만" 조건으로 얹는다. */}
         <Link
-          to={URSHORTS_VIEWER_PATH}
+          to={URSHORTS_BROWSE_PATH}
           className="flex shrink-0 items-center gap-1.5 whitespace-nowrap pb-2 text-[12.5px] font-bold text-gray-600 dark:text-gray-300"
         >
           <ShortsIcon size={16} />

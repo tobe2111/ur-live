@@ -19,7 +19,37 @@ import { orderKindOfItems } from '../../shared/order-kind'
 
 type Row = Record<string, unknown>
 
-/** 주문 행들에 `items` · `pickup_date` · `order_kind` 를 **제자리에서** 붙인다. */
+/**
+ * 🎟️ **이용권 코드** — 이용권 주문에서 셀러가 할 일은 "사용처리" 하나다. 그런데 주문 상세가
+ * *어떤* 이용권이 발급됐는지 한 글자도 안 보여 줬다(대표 신고 2026-09-21 — "어떤 이용권인지도 나와야지").
+ * 손님은 `UR-LUBA-RCP5` 같은 코드를 들고 오는데 셀러 화면엔 그 코드가 없었다.
+ *
+ * ⚠️ `vouchers` 는 **이용권**(매장 사용) 전용이다. 교환권(KT·기프티콘)은 `voucher_orders` 라는
+ * 다른 테이블이고 발송 경로도 다르다 — 여기서 섞지 않는다.
+ */
+async function attachVouchers(DB: D1Database, orderRows: Row[], oIds: number[]): Promise<void> {
+  try {
+    const ph = oIds.map(() => '?').join(',')
+    const { results = [] } = await DB.prepare(
+      `SELECT order_id, code, status, used_at, expires_at
+         FROM vouchers WHERE order_id IN (${ph}) ORDER BY id ASC`,
+    ).bind(...oIds).all<Row>()
+    if (results.length === 0) return
+    const byOrder = new Map<number, Row[]>()
+    for (const v of results) {
+      const oid = Number(v.order_id)
+      if (!byOrder.has(oid)) byOrder.set(oid, [])
+      byOrder.get(oid)!.push(v)
+    }
+    // 없는 주문엔 **필드를 안 붙인다** — 빈 배열을 주면 화면이 "발급 0장"이라고 단언하게 된다.
+    for (const o of orderRows) {
+      const vs = byOrder.get(Number(o.id))
+      if (vs) o.vouchers = vs
+    }
+  } catch { /* 이용권 조회 실패 시 생략 — 주문 목록은 그대로 나간다 */ }
+}
+
+/** 주문 행들에 `items` · `pickup_date` · `order_kind` · `vouchers` 를 **제자리에서** 붙인다. */
 export async function enrichSellerOrderRows(
   DB: D1Database,
   orderRows: Row[],
@@ -27,6 +57,8 @@ export async function enrichSellerOrderRows(
   if (orderRows.length === 0) return
   const oIds = orderRows.map((o) => Number(o.id)).filter(Number.isFinite)
   if (oIds.length === 0) return
+
+  await attachVouchers(DB, orderRows, oIds)
 
   let itemRows: Row[] = []
   try {
@@ -46,6 +78,11 @@ export async function enrichSellerOrderRows(
       if (!byOrder.has(oid)) byOrder.set(oid, [])
       byOrder.get(oid)!.push(it)
     }
+    // 🖼️ 2026-09-21 (대표 — "이미지도 안나오고"): 화면(`OrderDetailModal`)은 `item.image_url` 을 읽는데
+    //    여기서 `product_image` 라는 **다른 이름**으로 보내고 있었다 → 모든 주문이 "No Image".
+    //    같은 파일이 같은 날 `price`/`unit_price` 로 이미 한 번 당한 이름-어긋남이다(위 주석).
+    //    주문 시점 스냅샷이 먼저고, 비어 있으면 아래에서 현재 상품 사진으로 채운다.
+    for (const it of itemRows) it.image_url = it.product_image ?? null
     for (const o of orderRows) o.items = byOrder.get(Number(o.id)) || []
   } catch {
     return // 라인을 못 읽으면 픽업일도 못 구한다(제품 id 가 거기서 나온다)
@@ -60,9 +97,15 @@ export async function enrichSellerOrderRows(
   //   실패해도 필드를 안 붙인다 → 화면이 `'shipping'` 으로 떨어져 종전과 동일(무회귀).
   try {
     const { results: prodRows = [] } = await DB.prepare(
-      `SELECT id, category, deal_only FROM products WHERE id IN (${pph})`,
-    ).bind(...pIds).all<{ id: number; category: string | null; deal_only: number | null }>()
+      `SELECT id, category, deal_only, image_url FROM products WHERE id IN (${pph})`,
+    ).bind(...pIds).all<{ id: number; category: string | null; deal_only: number | null; image_url: string | null }>()
     const byProduct = new Map(prodRows.map((p) => [Number(p.id), p]))
+    // 🖼️ 스냅샷(`order_items.product_image`)이 비어 있으면 **현재 상품 사진**으로 채운다.
+    //    라이브 실측: 이용권 주문의 스냅샷은 전부 NULL 인데 상품에는 사진이 있었다 —
+    //    이름만 고치면 여전히 "No Image" 다. 스냅샷을 **덮지는 않는다**(그때 팔린 사진이 진실).
+    for (const it of itemRows) {
+      if (!it.image_url) it.image_url = byProduct.get(Number(it.product_id))?.image_url ?? null
+    }
     for (const o of orderRows) {
       const flows = ((o.items as Row[]) || [])
         .map((it) => byProduct.get(Number(it.product_id)))

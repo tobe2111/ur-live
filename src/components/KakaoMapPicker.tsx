@@ -23,18 +23,46 @@ interface Props {
   selectedPlace?: { name: string; address: string; lat: string; lng: string } | null
   kakaoJsKey: string
   kakaoRestKey?: string
+  /**
+   * 📍 2026-09-21 시안 ② — 핀을 끌어 정확한 위치를 잡는다.
+   *
+   * 넘기면 선택된 핀이 **드래그 가능**해지고 지도를 눌러도 핀이 옮겨간다.
+   * 옮긴 좌표는 카카오 SDK 의 `services.Geocoder.coord2Address` 로 **주소를 되찾아** 함께 돌려준다
+   * (SDK 를 `libraries=services` 로 이미 싣고 있어 서버 왕복이 없다).
+   *
+   * ⚠️ `onSelect` 와 **일부러 갈라 놓았다** — `onSelect` 는 "다른 매장을 골랐다" 라서 이름·전화·place id 까지
+   * 바꾸지만, 핀 이동은 "같은 매장의 위치를 더 정확히" 이므로 **주소와 좌표만** 바꿔야 한다.
+   * 한 콜백으로 합치면 핀을 조금 끌었다고 매장 전화번호가 지워진다.
+   */
+  onPinMove?: (loc: { address: string; lat: string; lng: string }) => void
+  /**
+   * 🖱️ 2026-09-21 (대표 *"여기 스크롤하는게 어려워 … 어디에 손가락을 대느냐에 따라 달라"*).
+   *
+   * 기본(false)은 **문서 흐름** — 검색창·지도·목록이 위에서 아래로 쌓이고, 스크롤은 바깥이 한다.
+   * 페이지 안(`/seller/store-info` 등)에서는 그게 맞다.
+   *
+   * `true` 면 **부모 높이를 채우는 한 칸짜리 레이아웃**이 된다: 검색창·지도는 고정이고
+   * **스크롤되는 곳은 결과 목록 하나뿐**이다. 모달처럼 높이가 잘린 자리에서 필요하다 —
+   * 거기선 [모달 바디 / 지도 / 목록] 셋이 제스처를 나눠 먹어서, 커서 위치에 따라 다른 게 움직였다.
+   * ⚠️ 부모가 `flex flex-col` + 높이 제약을 줘야 한다(안 주면 그냥 안 늘어난다).
+   */
+  fill?: boolean
 }
 
 /**
  * 카카오맵 매장 검색 + 시각화 컴포넌트
  * 검색 결과를 지도 위에 마커로 표시, 마커 클릭 시 선택
  */
-export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey }: Props) {
+export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey, onPinMove, fill = false }: Props) {
   const { t } = useTranslation()
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<any>(null)
   const markersRef = useRef<any[]>([])
   const infoWindowRef = useRef<any>(null)
+  const pinRef = useRef<any>(null)          // 📍 드래그 가능한 선택 핀 (onPinMove 가 있을 때만)
+  const geocoderRef = useRef<any>(null)
+  const onPinMoveRef = useRef(onPinMove)
+  onPinMoveRef.current = onPinMove          // 리스너는 한 번만 달고 최신 콜백을 본다
 
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
@@ -75,18 +103,78 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey }: 
       center: defaultCenter, level: 5
     })
     infoWindowRef.current = new window.kakao.maps.InfoWindow({ zIndex: 1 })
+
+    // 📍 시안 ② — 핀 이동을 쓰는 화면에서만 지오코더를 준비하고 지도 클릭을 받는다.
+    //    onPinMove 를 안 넘기는 화면은 리스너조차 안 달려 종전과 동작이 같다.
+    if (onPinMoveRef.current) {
+      try { geocoderRef.current = new window.kakao.maps.services.Geocoder() } catch { geocoderRef.current = null }
+      window.kakao.maps.event.addListener(mapRef.current, 'click', (e: any) => {
+        if (!onPinMoveRef.current) return
+        movePinTo(e.latLng)
+      })
+    }
+
     setMapReady(true)
 
     // 선택된 장소가 있으면 지도 중심 이동
     if (selectedPlace?.lat && selectedPlace?.lng) {
       const pos = new window.kakao.maps.LatLng(Number(selectedPlace.lat), Number(selectedPlace.lng))
       mapRef.current.setCenter(pos)
-      addMarker({
+      if (onPinMoveRef.current) placePin(pos)
+      else addMarker({
         place_name: selectedPlace.name,
         address_name: selectedPlace.address,
         x: selectedPlace.lng,
         y: selectedPlace.lat,
       }, true)
+    }
+  }
+
+  /**
+   * 📍 드래그 핀을 그 자리에 세운다(없으면 만들고, 있으면 옮긴다).
+   * 핀은 검색 결과 마커와 **따로 산다** — `clearMarkers()` 가 지우는 것은 검색 결과뿐이라
+   * 새로 검색해도 사용자가 잡아 둔 위치가 사라지지 않는다.
+   */
+  function placePin(pos: any) {
+    if (!mapRef.current) return
+    if (!pinRef.current) {
+      pinRef.current = new window.kakao.maps.Marker({
+        position: pos, map: mapRef.current, draggable: true, zIndex: 10,
+      })
+      window.kakao.maps.event.addListener(pinRef.current, 'dragend', () => {
+        reportPin(pinRef.current.getPosition())
+      })
+    } else {
+      pinRef.current.setPosition(pos)
+      pinRef.current.setMap(mapRef.current)
+    }
+  }
+
+  function movePinTo(pos: any) {
+    placePin(pos)
+    reportPin(pos)
+  }
+
+  /**
+   * 좌표 → 주소(역지오코딩) → 호출부로.
+   * ⚠️ 주소를 못 찾아도 **좌표는 반드시 보고한다** — 지도에서 옮긴 핀과 저장된 좌표가 어긋나면
+   *    사용자가 고친 줄 알고 넘어가는데 실제론 안 고쳐진, 에러 없는 어긋남이 생긴다.
+   */
+  function reportPin(pos: any) {
+    const lat = String(pos.getLat())
+    const lng = String(pos.getLng())
+    const cb = onPinMoveRef.current
+    if (!cb) return
+    const g = geocoderRef.current
+    if (!g) { cb({ address: '', lat, lng }); return }
+    try {
+      g.coord2Address(pos.getLng(), pos.getLat(), (result: any[], status: any) => {
+        const ok = status === window.kakao.maps.services.Status.OK && result?.[0]
+        const addr = ok ? (result[0].road_address?.address_name || result[0].address?.address_name || '') : ''
+        cb({ address: addr, lat, lng })
+      })
+    } catch {
+      cb({ address: '', lat, lng })
     }
   }
 
@@ -157,6 +245,24 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey }: 
     }
   }
 
+  /**
+   * 📐 `fill` 에서는 결과가 도착하면 지도가 낮아진다(목록에 자리를 준다). 카카오 지도는 컨테이너가
+   * 바뀐 걸 스스로 모르므로 `relayout()` 을 불러 줘야 한다 — 안 부르면 줄어든 자리에 **회색 띠**가
+   * 남거나 중심이 어긋난다(높이만 바꾸고 끝내면 반드시 밟는 함정이다).
+   */
+  const shrunk = fill && results.length > 0
+  useEffect(() => {
+    if (!fill || !mapRef.current) return
+    const id = setTimeout(() => {
+      try {
+        const center = mapRef.current.getCenter()
+        mapRef.current.relayout()
+        mapRef.current.setCenter(center)
+      } catch { /* SDK 미로드 — 다음 렌더에 다시 온다 */ }
+    }, 0)
+    return () => clearTimeout(id)
+  }, [shrunk, fill])
+
   function handleSelect(place: KakaoPlace) {
     onSelect(place)
     // 지도 중심 이동
@@ -164,13 +270,15 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey }: 
       const pos = new window.kakao.maps.LatLng(Number(place.y), Number(place.x))
       mapRef.current.setCenter(pos)
       mapRef.current.setLevel(3)
+      // 검색으로 고른 직후부터 바로 끌 수 있게 핀을 그 자리에 세운다(주소는 방금 고른 것이라 되찾지 않는다).
+      if (onPinMoveRef.current) placePin(pos)
     }
   }
 
   return (
-    <div className="space-y-3">
-      {/* 검색창 */}
-      <div className="flex gap-2">
+    <div className={fill ? 'flex flex-col h-full min-h-0 gap-3' : 'space-y-3'}>
+      {/* 검색창 — fill 에서는 맨 위에 고정(스크롤 대상 아님) */}
+      <div className={`flex gap-2${fill ? ' shrink-0' : ''}`}>
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
           <input
@@ -192,8 +300,11 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey }: 
       </div>
 
       {/* 카카오맵 — 🛡️ 2026-05-19: SDK 실패 시 graceful fallback (페이지 크래시 방지). */}
-      <div className="relative rounded-xl overflow-hidden border border-line">
-        <div ref={mapContainerRef} className="w-full h-[320px] bg-gray-100 dark:bg-[#1D1F29]" />
+      <div className={`relative rounded-xl overflow-hidden border border-line${fill ? ' shrink-0' : ''}`}>
+        <div
+          ref={mapContainerRef}
+          className={`w-full bg-gray-100 dark:bg-[#1D1F29] ${fill ? (shrunk ? 'h-[160px]' : 'h-[260px]') : 'h-[320px]'}`}
+        />
         {sdkError ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 dark:bg-[#1D1F29] p-4 text-center">
             <MapPin className="w-8 h-8 text-gray-300 dark:text-gray-600 mb-2" />
@@ -206,11 +317,20 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey }: 
             <Loader2 className="w-5 h-5 animate-spin text-gray-400 dark:text-gray-500" />
           </div>
         )}
+
+        {/* 📍 시안 ② 안내 — 지도 위에 얹는 흰 띠. light-island: 지도 타일은 다크에서도 밝다. */}
+        {onPinMove && mapReady && !sdkError && (
+          <div className="light-island absolute left-2 right-2 bottom-2 rounded-lg bg-white/95 px-3 py-2 shadow-lift"> {/* light-fixed: 지도 위 — 타일이 다크에서도 밝다 */}
+            <p className="text-[11px] text-gray-700 leading-snug"> {/* light-fixed: 지도 위 */}
+              {t('map.picker.dragHint', { defaultValue: '핀을 끌어 정확한 위치로 옮겨 주세요 — 지도를 눌러도 옮겨집니다' })}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* 검색 결과 리스트 (지도 + 리스트 병행) */}
       {results.length > 0 && (
-        <div className="max-h-64 overflow-y-auto border border-gray-100 dark:border-[#2C2F35] rounded-lg divide-y divide-gray-100">
+        <div className={`${fill ? 'flex-1 min-h-0' : 'max-h-64'} overflow-y-auto overscroll-contain border border-gray-100 dark:border-[#2C2F35] rounded-lg divide-y divide-gray-100`}>
           {results.map((p, i) => (
             <button
               key={p.id || i}

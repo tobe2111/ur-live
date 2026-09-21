@@ -3374,7 +3374,19 @@
       "rowFunnel": "유입 경로",
       "more": "더 보기 (추천 수익, 입점 추이, 유입 경로)",
       "back": "매출 요약으로"
-    }
+    },
+    "paymentMethod": "결제수단",
+    "payCard": "카드",
+    "payDeal": "딜",
+    "payVirtualAccount": "가상계좌",
+    "voucherUsed": "사용완료",
+    "voucherUnused": "미사용",
+    "voucherNone": "아직 발급된 이용권이 없습니다.",
+    "voucherUsedAt": "{{d}} 사용",
+    "voucherUntil": "{{d}}까지",
+    "voucherCodeHeader": "이용권 코드",
+    "copyOrderNumber": "전체 주문번호 복사",
+    "goRedeemScreen": "사용처리 화면으로"
   },
   "admin": {
     "login": {
@@ -6211,7 +6223,8 @@
       "etc": "기타"
     },
     "picker": {
-      "placeholder": "매장 이름 또는 주소 (예: 광화문 김밥천국)"
+      "placeholder": "매장 이름 또는 주소 (예: 광화문 김밥천국)",
+      "dragHint": "핀을 끌어 정확한 위치로 옮겨 주세요 — 지도를 눌러도 옮겨집니다"
     }
   },
   "sellerSwitch": {

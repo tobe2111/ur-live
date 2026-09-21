@@ -21,7 +21,7 @@ import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN } from '@/shared/feature-f
 import { useLinkshopPath } from '@/hooks/useLinkshopPath'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { ShortsIcon } from '@/components/icons/urdeal-icons'
-import { URSHORTS_VIEWER_PATH } from '@/shared/urshorts'
+import { URSHORTS_BROWSE_PATH } from '@/shared/urshorts'
 import NotificationDropdown from './NotificationDropdown'
 
 export default function DesktopTopNav() {
@@ -480,7 +480,7 @@ export default function DesktopTopNav() {
             </div>
 
             <Link
-              to={URSHORTS_VIEWER_PATH}
+              to={URSHORTS_BROWSE_PATH}
               className="shrink-0 flex items-center gap-1.5 whitespace-nowrap px-2 text-[13px] font-bold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
             >
               <ShortsIcon size={16} />

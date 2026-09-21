@@ -13,6 +13,17 @@ export interface OrderItem {
   unit_price?: number | null
 }
 
+/**
+ * 🎟️ 이 주문으로 발급된 **이용권**(매장에서 쓰는 권). 서버 `order-list-enrich` 가 붙인다.
+ * 필드가 **없으면 "모른다"**(구 응답·조회 실패)이고, 빈 배열은 "정말 0장"이다 — 둘을 구분한다.
+ */
+export interface OrderVoucher {
+  code: string
+  status: string
+  used_at?: string | null
+  expires_at?: string | null
+}
+
 export interface Order {
   id: string
   order_number: string
@@ -41,6 +52,10 @@ export interface Order {
    */
   order_kind?: string | null
   user_email?: string | null
+  /** 🎟️ 발급된 이용권 코드들. 셀러가 이 주문에서 할 일(사용처리)의 대상. */
+  vouchers?: OrderVoucher[]
+  /** 💳 결제 수단 — `'toss'`(카드) · `'deal_points'`(딜) 등. 서버 GET /orders 가 싣는다. */
+  payment_method?: string | null
 }
 
 export interface TrackingForm {
