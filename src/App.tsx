@@ -131,13 +131,13 @@ const MyDigitalLibraryPage = lazy(() => import('./pages/MyDigitalLibraryPage'))
 const VoucherVerifyPage = lazy(() => import('./pages/VoucherVerifyPage'))
 const StoreStatsPage = lazy(() => import('./pages/StoreStatsPage'))
 const BrowsePage = lazy(() => import('./pages/BrowsePage'))
-// 🎬 2026-09-07 유어쇼츠 뷰어 — **반드시 lazy**. 홈 첫 화면이 유튜브 재생 코드를 받으면 안 된다.
+// 🎬 2026-09-07 유어쇼츠 뷰어(세로 한 편씩) + 2026-09-21 전체 보기(도시·종류 그리드) — **둘 다 lazy**(홈이 재생 코드를 받으면 안 된다)
 const VideosPage = lazy(() => import('./pages/VideosPage'))
+const UrShortsBrowsePage = lazy(() => import('./pages/UrShortsBrowsePage'))
 // 🛡️ 2026-05-19: 교환권 전용 페이지 — /browse 와 분리 (카카오 선물하기 스타일).
 const VouchersPage = lazy(() => import('./pages/VouchersPage'))
 const ExperienceCampaignsPage = lazy(() => import('./pages/ExperienceCampaignsPage'))
-// 🆕 2026-06-26 통합 마케팅 서비스(가칭) — 3번째 서비스 /ads (유어딜/도매몰과 분리된 surface)
-// 🆕 2026-06-27 /ads = 공개 랜딩(소개), /ads/dashboard = 로그인 후 입점 대시보드
+// 🆕 2026-06-26 통합 마케팅 서비스(가칭) — 3번째 서비스 /ads(유어딜/도매몰과 분리된 surface). 2026-06-27: /ads = 공개 랜딩, /ads/dashboard = 입점 대시보드
 const MarketingLandingPage = lazy(() => import('./pages/marketing/MarketingLandingPage'))
 const MarketingLoginPage = lazy(() => import('./pages/marketing/MarketingLoginPage'))
 const MarketingSignupPage = lazy(() => import('./pages/marketing/MarketingSignupPage'))
@@ -703,9 +703,9 @@ function AppContent() {
             <Route path="/browse" element={<BrowsePage />} />
             <Route path="/vouchers" element={<VouchersPage />} />
             <Route path="/videos" element={<VideosPage />} />
+            <Route path="/urshorts" element={<UrShortsBrowsePage />} />
             <Route path="/experience" element={<ExperienceCampaignsPage />} />
-            {/* 🆕 통합 마케팅 서비스(가칭) — 3번째 서비스. 도매몰처럼 자체 surface 로 분리 */}
-            {/* 🆕 2026-06-27 /ads = 공개 랜딩(소개), /ads/dashboard = 로그인 후 입점 대시보드 */}
+            {/* 🆕 통합 마케팅 서비스(가칭) — 3번째 서비스(도매몰처럼 자체 surface). /ads = 공개 랜딩, /ads/dashboard = 입점 대시보드 */}
             <Route path="/ads" element={<ErrorBoundary><MarketingLandingPage /></ErrorBoundary>} />
             <Route path="/ads/login" element={<ErrorBoundary><MarketingLoginPage /></ErrorBoundary>} />
             <Route path="/ads/signup" element={<ErrorBoundary><MarketingSignupPage /></ErrorBoundary>} />

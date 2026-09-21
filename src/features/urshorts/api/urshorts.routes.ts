@@ -7,14 +7,18 @@
  * 어드민:
  *   GET    /api/admin/urshorts        전체 목록(미연결·꺼진 것 포함) + 채널 주소
  *   POST   /api/admin/urshorts        주소로 추가
- *   PATCH  /api/admin/urshorts/:id    이용권 연결 · 켜기/끄기 · 순서
+ *   POST   /api/admin/urshorts/classify-all  아직 분류 안 된 것 8편씩 도시·카테고리 채우기
+ *   PATCH  /api/admin/urshorts/:id    이용권 연결 · 켜기/끄기 · 순서 · 도시 · 카테고리
  *   DELETE /api/admin/urshorts/:id    삭제
  *   PUT    /api/admin/urshorts/channel 채널 주소 저장
  *
- * 🔴 **이 파일의 불변식**: 공개 GET 은 `products` 와 **INNER JOIN** 이라
- *    이용권이 안 붙은 영상은 홈에도 뷰어에도 안 나간다. LEFT JOIN 으로 바꾸면
- *    홈이 "살 수 없는 영상"을 보여 주고, 그건 매출 장치가 아니라 이탈 장치가 된다.
- *    상품이 내려가면(`is_active=0`) 그 영상도 같이 사라진다 — 없는 딜을 파는 영상이 남지 않는다.
+ * ⚠️ **머리말이 낡아 있었다(2026-09-21 정정)**: 여기 오래 *"공개 GET 은 INNER JOIN 이라
+ *    이용권이 안 붙은 영상은 안 나간다"* 고 적혀 있었는데, **2026-09-08 대표 지시로 LEFT JOIN 이
+ *    됐다**(아래 `PUBLIC_SQL` 주석이 그 경위를 갖고 있다). 그 문장을 믿으면 "영상이 왜 이용권 없이
+ *    떠 있지?" 를 결함으로 오진하게 된다 — 이 레포가 반복해 만난 **낡은 지도** 클래스.
+ *
+ * 🏷️ **도시·카테고리**(2026-09-21 — 전체 보기 화면 `/urshorts` 의 두 축)는
+ *    `@/shared/urshorts-tags` 가 저장 시점에 한 번 뽑아 컬럼에 넣는다. 화면은 컬럼만 읽는다.
  */
 import { Hono } from 'hono'
 import { edgeCache } from '@/worker/middleware/edge-cache'
@@ -25,6 +29,8 @@ import {
   parseYouTubeUrl, youTubeThumbUrl, parseIsoDurationSec,
   URSHORTS_RAIL_LIMIT, URSHORTS_MAX_DURATION_SEC,
 } from '@/shared/urshorts'
+import { classifyShort, REGION_SI } from '@/shared/urshorts-tags'
+import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories'
 import type { Env } from '@/worker/types/env'
 
 const urshortsRoutes = new Hono<{ Bindings: Env }>()
@@ -49,12 +55,19 @@ async function ensureTable(DB: D1Database) {
       source TEXT NOT NULL DEFAULT 'manual',
       duration_sec INTEGER,
       consent INTEGER NOT NULL DEFAULT 0,
+      region_si TEXT,
+      region_area TEXT,
+      category TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `).run().catch(() => {})
   // 기존 테이블에도 붙인다(이미 있으면 무해).
   await DB.prepare(`ALTER TABLE home_shorts ADD COLUMN duration_sec INTEGER`).run().catch(() => {})
   await DB.prepare(`ALTER TABLE home_shorts ADD COLUMN consent INTEGER NOT NULL DEFAULT 0`).run().catch(() => {})
+  // 🏷️ 2026-09-21 — 전체 보기 화면(`/urshorts`)의 도시·카테고리 축(`urshorts-tags.ts`).
+  await DB.prepare(`ALTER TABLE home_shorts ADD COLUMN region_si TEXT`).run().catch(() => {})
+  await DB.prepare(`ALTER TABLE home_shorts ADD COLUMN region_area TEXT`).run().catch(() => {})
+  await DB.prepare(`ALTER TABLE home_shorts ADD COLUMN category TEXT`).run().catch(() => {})
   await DB.prepare(
     `CREATE INDEX IF NOT EXISTS idx_home_shorts_live ON home_shorts(is_active, sort_order, id)`
   ).run().catch(() => {})
@@ -84,11 +97,20 @@ async function ensureTable(DB: D1Database) {
  *    🔒 켜고 끄는 것은 이제 `s.is_active` 하나다. `consent` 는 **기록**으로 남는다 —
  *    어떤 영상에 허락을 받아 뒀는지 어드민이 알아야 제휴 제안을 보낼 수 있다.
  *    셀러 투고 경로는 여전히 등록 시 consent 를 요구한다(자기 영상임을 스스로 확인하는 자리).
+ *
+ * 🏷️ **카테고리는 `COALESCE(p.category, s.category)`** — 이용권이 붙어 있으면 **그게 진실이다**
+ *    (우리가 실제로 파는 것). 글자에서 뽑은 `s.category` 는 이용권이 없을 때의 폴백이다.
+ *    이 순서 덕에 나중에 어드민이 이용권을 연결하면 **다시 분류하지 않아도** 카테고리가 맞아진다.
+ *    ⚠️ 뒤집어서 `COALESCE(s.category, p.category)` 로 쓰면, 한 번 잘못 뽑힌 글자 분류가
+ *    실제로 파는 상품을 계속 이긴다 — 에러 없이 칩만 틀린다.
  */
 const PUBLIC_SQL = `
   SELECT s.id, s.video_id, s.title, s.channel, s.thumb_url,
          s.duration_sec AS duration_sec,
          s.product_id AS product_id,
+         s.region_si AS region_si,
+         s.region_area AS region_area,
+         COALESCE(p.category, s.category) AS category,
          p.name  AS product_name,
          p.restaurant_name AS store_name,
          p.image_url AS product_image,
@@ -161,9 +183,17 @@ adminUrshortsRoutes.get('/', requireAdmin(), async (c) => {
  * 💰 `videos.list` 는 **파트를 몇 개 붙이든 1 unit** 이다. 그래서 `snippet` 을 얹어도
  *    쿼터가 안 늘고 제목·채널이 공짜로 따라온다(`search` 는 100 unit — 그건 안 쓴다).
  */
+interface VideoMeta {
+  duration: number | null
+  title: string | null
+  channel: string | null
+  /** 🏷️ 분류용 — 저장하지 않고 도시·카테고리를 뽑는 데만 쓴다. */
+  description: string | null
+  tags: string[]
+}
+
 async function fetchVideoMeta(env: Env, videoId: string): Promise<
-  { ok: true; duration: number | null; title: string | null; channel: string | null }
-  | { ok: false; reason: string }
+  ({ ok: true } & VideoMeta) | { ok: false; reason: string }
 > {
   const key = env.YOUTUBE_API_KEY
   if (!key) return { ok: false, reason: 'no-key' }
@@ -175,7 +205,7 @@ async function fetchVideoMeta(env: Env, videoId: string): Promise<
     const j = await r.json() as {
       items?: Array<{
         contentDetails?: { duration?: string }
-        snippet?: { title?: string; channelTitle?: string }
+        snippet?: { title?: string; channelTitle?: string; description?: string; tags?: string[] }
       }>
     }
     const item = j?.items?.[0]
@@ -185,10 +215,64 @@ async function fetchVideoMeta(env: Env, videoId: string): Promise<
       duration: parseIsoDurationSec(item.contentDetails?.duration),
       title: item.snippet?.title?.slice(0, 200) || null,
       channel: item.snippet?.channelTitle?.slice(0, 100) || null,
+      // 🏷️ 2026-09-21 — 도시 신호는 제목보다 설명글에 더 자주 있다(한국 맛집 쇼츠는 주소를
+      //    설명글에 적는다). 앞부분만 본다 — 아래쪽은 보통 해시태그 무더기와 협찬 고지다.
+      //    💰 `videos.list` 는 파트를 몇 개 붙이든 **1 unit** 이라 쿼터 증가가 0 이다.
+      description: item.snippet?.description?.slice(0, 1200) || null,
+      tags: Array.isArray(item.snippet?.tags) ? item.snippet.tags.slice(0, 40) : [],
     }
   } catch {
     return { ok: false, reason: 'fetch-failed' }
   }
+}
+
+/** 이 영상에 붙은 이용권의 매장·카테고리. 없으면 전부 null(분류가 알아서 건너뛴다). */
+async function linkedProduct(DB: D1Database, productId: number | null | undefined) {
+  if (!productId) return null
+  return DB.prepare(
+    'SELECT category, restaurant_name, restaurant_address FROM products WHERE id = ?',
+  ).bind(productId).first<{ category: string | null; restaurant_name: string | null; restaurant_address: string | null }>()
+    .catch(() => null)
+}
+
+/**
+ * 🏷️ 한 편을 분류해 **빈 칸만** 채운다.
+ *
+ * 🔴 이미 값이 있는 칸은 건드리지 않는다 — 같은 파일의 제목·채널 규칙("사람이 적어 넣은 값이
+ *    이긴다")과 같은 약속이다. 어드민이 손으로 고른 도시를 자동 분류가 덮으면, 고쳐 놓은 것이
+ *    다음 새로고침에 조용히 사라진다. 다시 돌리고 싶으면 그 칸을 비우면 된다.
+ */
+async function classifyAndFill(DB: D1Database, env: Env, id: number, opts?: { meta?: VideoMeta }) {
+  const row = await DB.prepare(
+    'SELECT video_id, title, channel, product_id, region_si, region_area, category FROM home_shorts WHERE id = ?',
+  ).bind(id).first<{
+    video_id: string; title: string | null; channel: string | null; product_id: number | null
+    region_si: string | null; region_area: string | null; category: string | null
+  }>()
+  if (!row) return null
+  let meta = opts?.meta
+  if (!meta) {
+    const m = await fetchVideoMeta(env, row.video_id)
+    if (m.ok) meta = m
+  }
+  const p = await linkedProduct(DB, row.product_id)
+  const c = classifyShort({
+    title: row.title ?? meta?.title,
+    channel: row.channel ?? meta?.channel,
+    description: meta?.description,
+    tags: meta?.tags,
+    storeName: p?.restaurant_name,
+    storeAddress: p?.restaurant_address,
+    productCategory: p?.category,
+  })
+  const next = {
+    region_si: row.region_si || c.region_si,
+    region_area: row.region_area || c.region_area,
+    category: row.category || c.category,
+  }
+  await DB.prepare('UPDATE home_shorts SET region_si = ?, region_area = ?, category = ? WHERE id = ?')
+    .bind(next.region_si, next.region_area, next.category, id).run()
+  return next
 }
 
 /**
@@ -258,6 +342,8 @@ adminUrshortsRoutes.post('/', requireAdmin(), async (c) => {
             verdict.duration, body?.consent ? 1 : 0)
       .run()
     if (!r.meta.changes) return c.json({ success: false, error: '이미 등록된 영상입니다' }, 409)
+    // 🏷️ 도시·카테고리. 실패해도 저장은 그대로다 — 분류는 화면의 축이지 등록 조건이 아니다.
+    await classifyAndFill(DB, c.env, Number(r.meta.last_row_id)).catch(() => null)
     return c.json({ success: true, video_id: parsed.id })
   } catch (err) {
     return safeError(c, err, '유어쇼츠를 추가하지 못했습니다', '[urshorts:admin]')
@@ -294,9 +380,41 @@ adminUrshortsRoutes.post('/:id/refresh-meta', requireAdmin(), async (c) => {
     const channel = row.channel || meta.channel
     await DB.prepare('UPDATE home_shorts SET title = ?, channel = ?, duration_sec = COALESCE(duration_sec, ?) WHERE id = ?')
       .bind(title, channel, meta.duration, id).run()
-    return c.json({ success: true, title, channel })
+    // 🏷️ 방금 받아 온 설명글·태그를 그대로 넘긴다 — 분류하려고 유튜브를 또 부르지 않는다.
+    const tagged = await classifyAndFill(DB, c.env, id, { meta }).catch(() => null)
+    return c.json({ success: true, title, channel, ...tagged })
   } catch (err) {
     return safeError(c, err, '영상 정보를 가져오지 못했습니다', '[urshorts:admin]')
+  }
+})
+
+/**
+ * 🏷️ **아직 분류 안 된 것만** 한 묶음 채운다 (2026-09-21).
+ *
+ * ⚠️ 한 번에 8편까지다. 무료 요금제는 인보케이션당 **서브리퀘스트 50개**이고, 한 편이
+ *    [행 조회 + 유튜브 1회 + 상품 조회 + 저장] 으로 최대 4개를 쓴다. 30편을 한 번에 돌리면
+ *    한도에 걸려 **에러 없이 뒤쪽이 통째로 빠진다** — 그래서 남은 수를 돌려주고 또 누르게 한다.
+ *
+ * 💰 유튜브 `videos.list` 는 편당 1 unit(일 10,000). 8편이면 8 unit 이라 무시해도 된다.
+ */
+adminUrshortsRoutes.post('/classify-all', requireAdmin(), async (c) => {
+  try {
+    const DB = c.env.DB
+    await ensureTable(DB)
+    const { results } = await DB.prepare(`
+      SELECT id FROM home_shorts
+       WHERE region_si IS NULL OR category IS NULL
+       ORDER BY id DESC`).all<{ id: number }>()
+    const todo = results ?? []
+    const batch = todo.slice(0, 8)
+    let done = 0
+    for (const row of batch) {
+      const got = await classifyAndFill(DB, c.env, row.id).catch(() => null)
+      if (got?.region_si || got?.category) done++
+    }
+    return c.json({ success: true, tried: batch.length, filled: done, remaining: Math.max(0, todo.length - batch.length) })
+  } catch (err) {
+    return safeError(c, err, '분류하지 못했습니다', '[urshorts:admin]')
   }
 })
 
@@ -306,7 +424,10 @@ adminUrshortsRoutes.patch('/:id', requireAdmin(), async (c) => {
     await ensureTable(DB)
     const id = Number(c.req.param('id'))
     if (!Number.isFinite(id) || id <= 0) return c.json({ success: false, error: '잘못된 요청' }, 400)
-    const b = await c.req.json<{ product_id?: number | null; is_active?: boolean; sort_order?: number; consent?: boolean }>()
+    const b = await c.req.json<{
+      product_id?: number | null; is_active?: boolean; sort_order?: number; consent?: boolean
+      region_si?: string | null; region_area?: string | null; category?: string | null
+    }>()
     const sets: string[] = []
     const binds: unknown[] = []
     if ('product_id' in b) {
@@ -316,9 +437,28 @@ adminUrshortsRoutes.patch('/:id', requireAdmin(), async (c) => {
     if ('is_active' in b) { sets.push('is_active = ?'); binds.push(b.is_active ? 1 : 0) }
     if ('consent' in b) { sets.push('consent = ?'); binds.push(b.consent ? 1 : 0) }
     if ('sort_order' in b) { sets.push('sort_order = ?'); binds.push(intParam(b.sort_order, 0)) }
+    // 🏷️ 손으로 고르는 자리. 빈 문자열은 **지우기**다 — 비워 두면 다음 '다시 분류'가 채운다.
+    //    허용 목록 밖 값은 받지 않는다(자유 입력을 허용하면 칩이 오타로 갈라진다).
+    if ('region_si' in b) {
+      const v = (b.region_si ?? '').trim()
+      if (v && !REGION_SI.includes(v)) {
+        return c.json({ success: false, error: '모르는 지역입니다' }, 400)
+      }
+      sets.push('region_si = ?'); binds.push(v || null)
+    }
+    if ('region_area' in b) { sets.push('region_area = ?'); binds.push((b.region_area ?? '').trim().slice(0, 30) || null) }
+    if ('category' in b) {
+      const v = (b.category ?? '').trim()
+      if (v && !(VOUCHER_CATEGORIES as readonly string[]).includes(v)) {
+        return c.json({ success: false, error: '모르는 카테고리입니다' }, 400)
+      }
+      sets.push('category = ?'); binds.push(v || null)
+    }
     if (!sets.length) return c.json({ success: false, error: '바꿀 것이 없습니다' }, 400)
     binds.push(id)
     await DB.prepare(`UPDATE home_shorts SET ${sets.join(', ')} WHERE id = ?`).bind(...binds).run()
+    // 🔗 이용권을 새로 연결하면 그 매장이 도시·카테고리의 가장 정확한 신호다. 빈 칸만 채운다.
+    if ('product_id' in b) await classifyAndFill(DB, c.env, id).catch(() => null)
     return c.json({ success: true })
   } catch (err) {
     return safeError(c, err, '유어쇼츠를 수정하지 못했습니다', '[urshorts:admin]')
@@ -419,6 +559,7 @@ sellerUrshortsRoutes.post('/', requireSeller(), async (c) => {
             productId, verdict.duration, body?.consent ? 1 : 0)
       .run()
     if (!r.meta.changes) return c.json({ success: false, error: '이미 등록된 영상입니다' }, 409)
+    await classifyAndFill(DB, c.env, Number(r.meta.last_row_id)).catch(() => null)
     return c.json({ success: true, video_id: parsed.id })
   } catch (err) {
     return safeError(c, err, '쇼츠를 추가하지 못했습니다', '[urshorts:seller]')

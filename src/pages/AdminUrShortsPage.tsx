@@ -4,6 +4,7 @@ import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { Plus, Trash2, Eye, EyeOff, AlertCircle, RefreshCw } from 'lucide-react'
 import ProductPicker from './admin-urshorts/ProductPicker'
+import TagPickers from './admin-urshorts/TagPickers'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
@@ -36,6 +37,9 @@ interface Row {
   sort_order: number
   duration_sec: number | null
   consent: number
+  region_si: string | null
+  region_area: string | null
+  category: string | null
 }
 
 export default function AdminUrShortsPage() {
@@ -140,6 +144,28 @@ export default function AdminUrShortsPage() {
     }
   }
 
+  /**
+   * 🏷️ 아직 도시·종류가 비어 있는 영상을 **8편씩** 채운다 (서버가 유튜브 설명글·태그까지 읽는다).
+   *
+   * ⚠️ 8편씩인 이유는 무료 요금제의 서브리퀘스트 한도(인보케이션당 50)다 — 한 번에 다 돌리면
+   *    에러 없이 뒤쪽이 빠진다. 남은 수를 돌려주므로 남아 있으면 한 번 더 누르면 된다.
+   */
+  const classifyAll = async () => {
+    setBusy(true)
+    try {
+      const r = await api.post('/api/admin/urshorts/classify-all', {})
+      const d = r.data as { filled?: number; tried?: number; remaining?: number }
+      await load()
+      setMsg({
+        kind: d?.remaining ? 'warn' : 'ok',
+        text: `${d?.filled ?? 0}편 분류했습니다${d?.remaining ? ` · ${d.remaining}편 남음(한 번 더 누르세요)` : ''}`,
+      })
+    } catch {
+      setMsg({ kind: 'bad', text: '분류하지 못했습니다' })
+    }
+    setBusy(false)
+  }
+
   const remove = async (r: Row) => {
     const ok = await confirmDialog({
       title: '이 영상을 지울까요?',
@@ -163,6 +189,8 @@ export default function AdminUrShortsPage() {
   const live = rows.filter((r) => r.is_active).length
   const noConsent = rows.filter((r) => !r.consent).length
   const orphan = rows.filter((r) => !r.product_id).length
+  /** 🏷️ 도시·종류 중 하나라도 비어 있는 영상 — 전체 보기 칩이 이 값으로 만들어진다. */
+  const untagged = rows.filter((r) => !r.region_si || !r.category).length
 
   return (
     <AdminLayout title="유어쇼츠">
@@ -260,6 +288,17 @@ export default function AdminUrShortsPage() {
                   <AlertCircle size={14} /> 허락 미확인 {noConsent}편
                 </span>
               )}
+              {/* 🏷️ 전체 보기 화면(`/urshorts`)의 도시·종류 칩은 이 값으로 만들어진다.
+                  안 채워진 영상은 '전체' 에만 뜨므로, 남은 수를 여기서 보여 주고 채울 수 있게 한다. */}
+              {untagged > 0 && (
+                <button
+                  onClick={() => void classifyAll()}
+                  disabled={busy}
+                  className="flex items-center gap-1 rounded-lg border border-rule bg-white px-2.5 py-1.5 text-[12px] font-bold text-tone-info disabled:opacity-50"
+                >
+                  <RefreshCw size={13} /> 도시·종류 채우기 ({untagged}편)
+                </button>
+              )}
             </span>
           </div>
 
@@ -312,6 +351,13 @@ export default function AdminUrShortsPage() {
                       {formatNumber(r.price)}원
                     </span>
                   )}
+
+                  {/* 🏷️ 전체 보기(`/urshorts`) 화면의 두 축. 자동 분류가 못 맞힌 것을 여기서 고친다. */}
+                  <TagPickers
+                    regionSi={r.region_si}
+                    category={r.category}
+                    onChange={(next) => void patch(r.id, next)}
+                  />
 
                   <button
                     onClick={() => void patch(r.id, { consent: !r.consent })}

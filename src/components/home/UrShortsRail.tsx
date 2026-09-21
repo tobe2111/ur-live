@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, Play } from 'lucide-react'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
 import {
-  URSHORTS_CARD_W, URSHORTS_CARD_H, URSHORTS_VIEWER_PATH, type UrShortItem,
+  URSHORTS_CARD_W, URSHORTS_CARD_H, URSHORTS_VIEWER_PATH, URSHORTS_BROWSE_PATH, type UrShortItem,
 } from '@/shared/urshorts'
 import { priceDisplay } from '@/shared/price-display'
 
@@ -53,7 +53,7 @@ function ShortCard({ item, load, onOpen }: { item: UrShortItem; load: boolean; o
       aria-label={`${item.store_name || ''} ${item.title || '유어쇼츠 영상'}`}
     >
       <span
-        className="relative block overflow-hidden rounded-[10px] bg-[#2A2D38]"
+        className="relative block overflow-hidden rounded-[10px] bg-media-slot"
         style={{ height: URSHORTS_CARD_H }}
       >
         {load && thumb ? (
@@ -106,7 +106,7 @@ function ShortCard({ item, load, onOpen }: { item: UrShortItem; load: boolean; o
                 하나로 통일해 놓고 같은 날 넷째 값을 만들 뻔했다. 사진 위 스크림은 **테마와 무관하게
                 늘 어둡다**(light-island 와 같은 성질)이라 라이트 값 #DC2626 은 안 읽힌다 →
                 시스템이 이미 쓰는 **다크 표면용 --sale 값**을 그대로 쓴다. */}
-            {pd.discount > 0 && <b className="text-[#FF5C69]">{pd.discount}% </b>}
+            {pd.discount > 0 && <b className="text-sale-on-media">{pd.discount}% </b>}
             {formatNumber(pd.price)}원
           </span>
           )}
@@ -188,8 +188,11 @@ export default function UrShortsRail() {
             눌러서 보고 바로 구매
           </span>
         </h3>
+        {/* 🔗 2026-09-21 — 「전체 보기」의 목적지가 뷰어(`/videos`)에서 **목록**(`/urshorts`)으로
+            바뀌었다. 종전엔 전체 보기를 눌러도 세로 뷰어가 열려 "무엇이 있는지" 를 볼 방법이
+            아예 없었다(대표 신고). 카드를 누르는 것은 그대로 뷰어다 — 그건 보러 가는 동작이다. */}
         <Link
-          to={URSHORTS_VIEWER_PATH}
+          to={URSHORTS_BROWSE_PATH}
           className="shrink-0 whitespace-nowrap text-[12.5px] font-bold text-white/75 underline-offset-4 hover:underline"
         >
           전체 보기
@@ -227,7 +230,7 @@ export default function UrShortsRail() {
           ))}
           {/* 끝까지 민 사람은 이미 관심이 있다. 그 자리에 문을 둔다. */}
           <Link
-            to={URSHORTS_VIEWER_PATH}
+            to={URSHORTS_BROWSE_PATH}
             className="grid shrink-0 snap-start place-items-center gap-1.5 rounded-[10px] border border-dashed border-white/20 text-center text-brand-text"
             style={{ width: URSHORTS_CARD_W, height: URSHORTS_CARD_H }}
           >
