@@ -337,12 +337,7 @@ export class OrderRepository {
       paid_at?: string;
       cancelled_at?: string;
       cancel_reason?: string;
-      /**
-       * 💸 2026-09-21: 환불·취소 시 `payment_status` 를 같이 되돌리기 위한 통로(머니 룰 #2 대칭).
-       * 결제 시점에 `'approved'` 로 찍히게 바뀌었으므로, 되돌리지 않으면 환불된 주문이
-       * **매출로 계속 집계**된다(`ops-daily-digest` 가 이 컬럼으로 센다).
-       * 허용값은 라이브 CHECK 제약과 같다: pending · approved · failed · cancelled · refunded.
-       */
+      /** 💸 2026-09-21 환불 시 되돌리기용(머니 룰 #2). 값은 라이브 CHECK 제약과 동일. 사유: order-refund.ts */
       payment_status?: 'pending' | 'approved' | 'failed' | 'cancelled' | 'refunded';
       /** @deprecated — column doesn't exist in production schema. Tracked in webhook_events table. */
       webhook_processed_at?: string;
@@ -426,10 +421,7 @@ export class OrderRepository {
       setFields.push('paid_at = ?');
       params.push(extra.paid_at);
     }
-    if (extra?.payment_status) {
-      setFields.push('payment_status = ?');
-      params.push(extra.payment_status);
-    }
+    if (extra?.payment_status) { setFields.push('payment_status = ?'); params.push(extra.payment_status); }
     if (extra?.cancelled_at) {
       setFields.push('cancelled_at = ?');
       params.push(extra.cancelled_at);

@@ -57,7 +57,7 @@ export default [
   {
     name: '💸 소비자 환불 요청 경로만 되돌리기를 빠뜨린다',
     file: 'src/worker/routes/order.routes.ts',
-    find: "        payment_status: 'refunded',\n",
+    find: "        payment_status: 'refunded', // 💸 안 되돌리면 환불된 주문이 계속 매출로 집계된다(머니 룰 #2)\n",
     replace: '',
     test: TEST,
     why: '환불 경로가 둘인데 한쪽만 되돌리면 어느 경로로 환불했느냐에 따라 장부가 갈린다.',
@@ -65,8 +65,8 @@ export default [
   {
     name: '💸 저장소가 payment_status 를 받기만 하고 SET 하지 않는다',
     file: 'src/worker/repositories/order.repository.ts',
-    find: "      setFields.push('payment_status = ?');\n      params.push(extra.payment_status);",
-    replace: '      void extra.payment_status;',
+    find: "{ setFields.push('payment_status = ?'); params.push(extra.payment_status); }",
+    replace: '{ void extra.payment_status; }',
     test: TEST,
     why: '타입만 받고 버리면 호출부는 고쳤는데 DB 는 안 바뀐다 — 가장 조용한 실패다.',
   },
