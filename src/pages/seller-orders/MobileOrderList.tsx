@@ -14,6 +14,7 @@
  *   9시간 어긋난다(`check-utc-date-parse`). 픽업일(`pickup_date`)이 있으면 "사용 예정" 한 줄로 보여 준다.
  */
 import { useMemo, useState } from 'react'
+import { shortOrderNo } from '@/shared/order-number-display'
 import { useTranslation } from 'react-i18next'
 import { parseUTCDate } from '@/utils/date'
 import { formatWon } from '@/utils/format'
@@ -108,7 +109,7 @@ export default function MobileOrderList({ orders, onSelect, onConfirm, confirmin
                 <li key={o.order_number} className="relative py-3 pl-6 [&+&]:border-t [&+&]:border-rule">
                   <span aria-hidden className={`absolute left-[-1px] top-[18px] h-[9px] w-[9px] rounded-full border-2 border-white ${hot ? 'bg-brand' : 'bg-gray-300'}`} />
                   <button type="button" onClick={() => onSelect(o)} className="block w-full text-left">
-                    <p className="text-[11.5px] font-semibold text-gray-400">{k ? `${k.hh}:${k.mm}` : '-'}{o.order_number ? ` · ${o.order_number}` : ''}</p>
+                    <p className="text-[11.5px] font-semibold text-gray-400">{k ? `${k.hh}:${k.mm}` : '-'}{o.order_number ? ` · ${shortOrderNo(o.order_number)}` : ''}</p>
                     <p className={`mt-0.5 text-[15px] font-extrabold ${done ? 'text-gray-500' : 'text-gray-900'}`}>
                       {o.items && o.items.length > 0
                         ? o.items.map((it) => `${it.product_name}${it.quantity > 1 ? ` ×${it.quantity}` : ''}`).join(', ')

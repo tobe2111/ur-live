@@ -4,14 +4,17 @@
  */
 import { useTranslation } from 'react-i18next'
 import { XCircle, Loader2 } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { formatKST } from '@/utils/date'
 import { formatNumber } from '@/utils/format'
-import { StatusBadge, useStatusText, nextStatusOf, parseShippingAddress } from './statusHelpers'
+import { cfImage, cfImageOnError } from '@/utils/cf-image'
+import { StatusBadge, useStatusText, usePaymentMethodText, nextStatusOf, parseShippingAddress } from './statusHelpers'
 import { OrderKindBadge } from './OrderKindBadge'
+import { OrderNumber } from './OrderNumber'
+import { VoucherCodes } from './VoucherCodes'
 import { ORDER_KIND_META, orderKindOf, isNoShippingOrder } from '@/shared/order-kind'
 import type { Order, TrackingForm } from './types'
+
 
 interface Props {
   order: Order
@@ -34,6 +37,7 @@ const COURIERS = [
 export default function OrderDetailModal({ order, updating, trackingForm, onTrackingFormChange, onClose, onStatusChange, onRefund, onTrackingSubmit }: Props) {
   const { t } = useTranslation()
   const statusText = useStatusText()
+  const payMethodText = usePaymentMethodText()
   // 🧾 2026-09-21 (대표 — "제품 배송이 아니라 이용권 구매잖아"): 이용권·교환권은 배송이 없다.
   //   배송 정보·운송장·배송 상태 전이를 **감춘다**. 판정은 서버가 붙인 `order_kind`(SSOT)만 읽는다.
   const kind = orderKindOf(order.order_kind)
@@ -63,9 +67,9 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
             <div className="border-b pb-4">
               <h3 className="text-lg font-semibold text-gray-900 mb-3">{t('seller.orderInfoSection')}</h3>
               <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
+                <div className="min-w-0">
                   <p className="text-gray-500 mb-1">{t('seller.orderNumberHeader')}</p>
-                  <p className="font-mono font-medium">{order.order_number}</p>
+                  <OrderNumber value={order.order_number} copyable />
                 </div>
                 <div>
                   <p className="text-gray-500 mb-1">{t('seller.orderDateHeader')}</p>
@@ -77,13 +81,11 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
                   <p className="text-gray-500 mb-1">{t('seller.orderStatusHeader')}</p>
                   <div><StatusBadge status={order.status} /></div>
                 </div>
+                {/* 💳 2026-09-21: 여기 있던 결제상태(`payment_status`)를 결제수단으로 — 사유는
+                    `statusHelpers.usePaymentMethodText` 머리말. 컬럼 자체의 수리는 별건(머니 경로). */}
                 <div>
-                  <p className="text-gray-500 mb-1">{t('seller.paymentStatusHeader')}</p>
-                  <div>
-                    <Badge className={(order.payment_status === 'approved' || order.payment_status === 'completed') ? 'border border-rule bg-white text-tone-ok' : 'bg-gray-100 text-gray-800'}>
-                      {(order.payment_status === 'approved' || order.payment_status === 'completed') ? t('seller.statusDone') : order.payment_status}
-                    </Badge>
-                  </div>
+                  <p className="text-gray-500 mb-1">{t('seller.paymentMethod', { defaultValue: '결제수단' })}</p>
+                  <p className="font-medium text-gray-900">{payMethodText(order.payment_method)}</p>
                 </div>
               </div>
             </div>
@@ -97,9 +99,15 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
                 <h3 className="text-lg font-semibold text-gray-900">{ORDER_KIND_META[kind].label} 주문</h3>
               </div>
               <p className="text-sm text-gray-600">{ORDER_KIND_META[kind].hint}</p>
+              {/* 🎟️ 셀러가 이 화면에서 실제로 다루는 대상 — 손님이 불러 주는 코드. 없으면 안 그린다. */}
+              {kind === 'voucher' && order.vouchers && (
+                <div className="mt-3">
+                  <VoucherCodes vouchers={order.vouchers} />
+                </div>
+              )}
               {kind === 'voucher' && (
                 <a href="/seller/scan" className="mt-3 inline-flex items-center justify-center w-full py-2.5 rounded-lg border border-rule text-sm font-medium text-gray-900 hover:bg-gray-50">
-                  사용처리 화면으로
+                  {t('seller.goRedeemScreen', { defaultValue: '사용처리 화면으로' })}
                 </a>
               )}
             </div>
@@ -150,14 +158,18 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
                     <div key={item.id} className="flex gap-3 p-3 bg-gray-50 rounded-lg">
                       {/* Product Image */}
                       <div className="w-16 h-16 bg-gray-200 rounded-lg flex-shrink-0 overflow-hidden">
+                        {/* 🖼️ 2026-09-21: 종전엔 죽은 외부 자리표시자(`via.placeholder.com`)로 갈아탔다 —
+                            그 서비스가 응답을 안 하면 결국 깨진 아이콘이 남는다. 레포 SSOT
+                            `cfImageOnError`(원본 1회 재시도 → 그래도 죽으면 숨김)로 교체. */}
                         {item.image_url ? (
                           <img
-                            src={item.image_url}
+                            src={cfImage(item.image_url, { width: 128 })}
                             alt={item.product_name}
+                            width={64}
+                            height={64}
+                            loading="lazy"
                             className="w-full h-full object-cover"
-                            onError={(e) => {
-                              e.currentTarget.src = 'https://via.placeholder.com/64?text=No+Image'
-                            }}
+                            onError={(e) => cfImageOnError(e.currentTarget, item.image_url)}
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
