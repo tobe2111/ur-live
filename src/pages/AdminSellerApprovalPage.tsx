@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { sellerCertView, SELLER_CERT_LABEL } from '@/shared/seller-cert-badge'
 import { safeHttpHref } from '@/utils/safe-external-url'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
@@ -334,17 +335,17 @@ export default function AdminSellerApprovalPage() {
           <div className="space-y-2">
             {filtered.map(s => {
               const isExpanded = expandedId === s.id
-              const bizStatus = (s.business_registration_status || 'none') as 'none' | 'pending' | 'verified' | 'rejected' | string
+              // 아래 상세 패널의 승인·반려 버튼은 **원래 상태**를 그대로 봐야 한다(파일 유무로 갈리면 안 된다).
+              const bizStatus = (s.business_registration_status || 'none') as string
+              // 🧾 2026-09-21: 등록증이 **선택**이 되면서 "아예 없음" 이 흔한 상태가 됐다.
+              //   판정은 `shared/seller-cert-badge.ts`(순수 함수 — 시험이 동작을 잰다).
+              const bizView = sellerCertView(s.business_registration_status, s.business_registration_image_url)
               const bizBadge =
-                bizStatus === 'verified' ? 'bg-white text-tone-ok border-rule' :
-                bizStatus === 'pending' ? 'bg-white text-tone-warn border-rule' :
-                bizStatus === 'rejected' ? 'bg-white text-tone-bad border-rule' :
+                bizView === 'verified' ? 'bg-white text-tone-ok border-rule' :
+                bizView === 'pending' || bizView === 'submitted' ? 'bg-white text-tone-warn border-rule' :
+                bizView === 'rejected' ? 'bg-white text-tone-bad border-rule' :
                 'bg-gray-100 text-gray-500 border-gray-200'
-              const bizLabel =
-                bizStatus === 'verified' ? '사업자 검증 완료' :
-                bizStatus === 'pending' ? '사업자 검증 대기' :
-                bizStatus === 'rejected' ? '사업자 반려' :
-                '사업자 미제출'
+              const bizLabel = SELLER_CERT_LABEL[bizView]
               return (
               <div key={s.id} className="bg-white rounded-xl border border-gray-200 p-4">
               <div className="flex items-start justify-between gap-3">
