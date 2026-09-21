@@ -31,6 +31,16 @@ export const URSHORTS_CARD_H = Math.round((URSHORTS_CARD_W * 16) / 9) // 222
 /** 뷰어 주소. 옛 `/shorts` 는 라이브커머스와 함께 내려간 자리라 재사용하지 않는다. */
 export const URSHORTS_VIEWER_PATH = '/videos'
 
+/**
+ * 「전체 보기」 목적지 — 도시·카테고리로 고르는 그리드 (2026-09-21 대표 확정 "시안 A + 카테고리").
+ *
+ * 🔴 **뷰어(`/videos`)와 다른 경로다.** 뷰어는 세로 한 편씩 넘기는 몰입 화면이고 여기는 목록이다.
+ *    종전엔 「전체 보기」가 뷰어로 갔는데, 그러면 "무엇이 있는지" 를 볼 방법이 아예 없었다.
+ * ⚠️ 옛 `/shorts` 는 2026-07-07 라이브커머스 제거 때 없앤 경로라 **되살리지 않는다**
+ *    (되살리면 그 시절 링크가 다시 살아나 폐기된 기능으로 오해된다).
+ */
+export const URSHORTS_BROWSE_PATH = '/urshorts'
+
 /** 유튜브 영상 id 모양 — 11자 고정. 이보다 느슨하면 쿼리스트링 조각을 id 로 오인한다. */
 const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/
 
@@ -192,6 +202,12 @@ export interface UrShortItem {
   product_id: number | null
   /** 초. 쇼츠 판정에 쓴 값이라 남겨 둔다(모르면 null). */
   duration_sec?: number | null
+  /** 🏷️ 도시(시·도 키). 못 알아낸 영상은 `null` — 칩에서 '전체' 에만 뜬다. */
+  region_si?: string | null
+  /** 🏷️ 생활권 라벨(기장·서면·용산). 카드의 작은 글씨. */
+  region_area?: string | null
+  /** 🏷️ 이용권 4종 중 하나. 상품이 붙어 있으면 서버가 그 카테고리를 우선한다. */
+  category?: string | null
   product_name: string | null
   store_name: string | null
   product_image: string | null
