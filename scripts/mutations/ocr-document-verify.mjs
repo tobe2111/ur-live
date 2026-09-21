@@ -11,8 +11,33 @@
 const DOC = 'src/tests/unit/document-verify-2026-09-16.test.ts'
 const ADDR = 'src/tests/unit/korean-address-2026-09-16.test.ts'
 const PERMIT = 'src/tests/unit/food-permit-2026-09-16.test.ts'
+const RETRY = 'src/tests/unit/ocr-empty-retry-2026-09-21.test.ts'
 
 export default [
+  {
+    name: '🔁 OCR 빈 응답 재시도가 사라진다 (2026-09-21 이전 상태 — 5회 중 2회 unreadable)',
+    file: 'src/worker/utils/ocr-license.ts',
+    find: '  for (let attempt = 0; attempt < OCR_EMPTY_RETRIES + 1 && !text; attempt += 1) {',
+    replace: '  for (let attempt = 0; attempt < 1 && !text; attempt += 1) {',
+    test: RETRY,
+    why: '빈 응답은 예외가 아니라 조용한 실패다. 한 번에 끝내면 게이트가 켜진 뒤 정상 서류가 자동 승인 후보에서 소리 없이 빠진다.',
+  },
+  {
+    name: '🔁 OCR 이 예외에도 재시도한다 (5016·쿼터를 두 번 두드린다)',
+    file: 'src/worker/utils/ocr-license.ts',
+    find: "      return emptyResult(kind, `읽기 실패: ${String((err as Error)?.message || '').slice(0, 80)}`)",
+    replace: "      if (attempt >= OCR_EMPTY_RETRIES) return emptyResult(kind, `읽기 실패: ${String((err as Error)?.message || '').slice(0, 80)}`)\n      continue",
+    test: RETRY,
+    why: '라이선스 미동의·쿼터 초과는 다시 물어도 같은 답이다 — 재시도는 빈 응답에만 허용된다.',
+  },
+  {
+    name: '🇰🇷 도로명 숫자 띄어쓰기 흡수가 사라진다 (`가리내 10길` → 도로명 `10길`)',
+    file: 'src/shared/korean-address.ts',
+    find: "  s = s.replace(/([가-힣]+)(?<!구|군|시|읍|면|동|리)\\s+(\\d+(?:번)?(?:길|로))(?=\\s|$)/g, '$1$2')",
+    replace: '  s = s',
+    test: ADDR,
+    why: 'S-OCR 라이브 실측에서 모델이 도로명 숫자를 띄어 썼다. 이 한 줄이 없으면 같은 건물이 near 로 떨어져 정상 사장님이 사람 확인 큐에 남는다.',
+  },
   {
     name: '🔍 셀러 OCR 라우트의 자동 승인이 게이트 밖으로 나온다 (2026-09-16 이전 상태)',
     file: 'src/features/seller/api/seller-profile.routes.ts',

@@ -84,6 +84,15 @@ describe('compareAddress — 등급', () => {
     expect(r.verdict).toBe('near')
   })
 
+  it('🔍 2026-09-21 모델이 도로명 숫자를 띄어 써도 같은 건물 (`가리내 10길 10` ↔ `가리내10길 10`)', () => {
+    // S-OCR 라이브 실측 — OCR 이 `가리내10길` 을 `가리내 10길` 로 냈고 파서가 도로명을 `10길` 로 잘라 near 가 됐다.
+    const r = compareAddress('전북특별자치도 전주시 덕진구 가리내 10길 10', '전북특별자치도 전주시 덕진구 가리내10길 10')
+    expect(r.verdict).toBe('same')
+    expect(addressTokens('서울 강남구 논현로 94길 15').road).toBe('논현로94길')
+    // 행정구역 뒤의 숫자 조각은 붙이지 않는다 — `강남구10길` 같은 가짜 도로명을 만들지 않는다
+    expect(addressTokens('서울 강남구 10길 15').road).toBe('10길')
+  })
+
   it('같은 도로 다른 건물번호도 near', () => {
     const r = compareAddress('서울 강남구 봉은사로 333', '서울 강남구 봉은사로 555')
     expect(r.verdict).toBe('near')
