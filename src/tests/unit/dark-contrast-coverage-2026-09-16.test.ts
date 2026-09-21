@@ -45,6 +45,10 @@ const LIGHT_ISLAND_COVERAGE: Record<string, { by: string; why: string }> = {
  */
 const OUT_OF_SCOPE: Record<string, string> = {
   'src/components/seller/StoreRegisterModal.tsx': '셀러 대시보드(/seller/*) 전용 — 라이트 고정이라 다크 대비 개념 없음',
+  // 📍 2026-09-21 시안 ② 핀 드래그 안내 띠. 이 부품을 그리는 곳은 `/seller/meal-voucher/new`(StoreStep)와
+  //    `/seller/store-info` 둘뿐이고 **소비자 화면엔 안 뜬다** — 대시보드라 다크 자체가 없다.
+  //    ⚠️ 소비자 화면이 이 부품을 쓰게 되면 이 줄을 지우고 LIGHT_ISLAND_COVERAGE 로 옮길 것.
+  'src/components/KakaoMapPicker.tsx': '셀러 대시보드(/seller/meal-voucher/new · /seller/store-info) 전용 — 라이트 고정',
 }
 
 describe('dark-contrast 가드 커버리지 (2026-09-16)', () => {

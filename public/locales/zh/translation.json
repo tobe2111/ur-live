@@ -3376,7 +3376,19 @@
       "rowFunnel": "流量来源",
       "more": "查看更多（推荐收益、上架趋势、流量来源）",
       "back": "返回销售摘要"
-    }
+    },
+    "paymentMethod": "결제수단",
+    "payCard": "카드",
+    "payDeal": "딜",
+    "payVirtualAccount": "가상계좌",
+    "voucherUsed": "사용완료",
+    "voucherUnused": "미사용",
+    "voucherNone": "아직 발급된 이용권이 없습니다.",
+    "voucherUsedAt": "{{d}} 사용",
+    "voucherUntil": "{{d}}까지",
+    "voucherCodeHeader": "이용권 코드",
+    "copyOrderNumber": "전체 주문번호 복사",
+    "goRedeemScreen": "사용처리 화면으로"
   },
   "admin": {
     "login": {
@@ -5964,7 +5976,8 @@
       "etc": "其他"
     },
     "picker": {
-      "placeholder": "输入店名或地址"
+      "placeholder": "输入店名或地址",
+      "dragHint": "拖动图钉到准确位置，点击地图也可移动"
     }
   },
   "sellerSwitch": {

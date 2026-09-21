@@ -51,6 +51,8 @@ interface Props {
   update: (key: string, value: string | number) => void
   onApplyContext: (ctx: StoreContext) => void
   onPlaceSelect: (p: KakaoPlace) => void
+  /** 📍 시안 ② — 핀을 끌어 위치만 고칠 때(이름·전화는 그대로). */
+  onPinMove: (loc: { address: string; lat: string; lng: string }) => void
   placeSelected: boolean
   kakaoJsKey: string
   /** 🚪 2026-08-24 대표: 등록 매장이 없는 계정 — 매장 등록을 완료해야 다음 단계로 갈 수 있다. */
@@ -59,7 +61,7 @@ interface Props {
   onStoreReady?: () => void
 }
 
-export default function StoreStep({ form, update, onApplyContext, onPlaceSelect, placeSelected, kakaoJsKey, storeRequired, onStoreReady }: Props) {
+export default function StoreStep({ form, update, onApplyContext, onPlaceSelect, onPinMove, placeSelected, kakaoJsKey, storeRequired, onStoreReady }: Props) {
   const { t } = useTranslation()
   const [stores, setStores] = useState<OperableStore[]>([])
   const [switching, setSwitching] = useState<number | null>(null)
@@ -243,6 +245,7 @@ export default function StoreStep({ form, update, onApplyContext, onPlaceSelect,
                   lng: form.restaurant_lng,
                 } : null}
                 onSelect={onPlaceSelect}
+                onPinMove={onPinMove}
               />
             </div>
           )}

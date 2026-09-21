@@ -99,6 +99,9 @@ export default {
            규칙이 흐려지지 않는다. 값은 index.css 의 `--sale` 이 정한다(라이트/다크 자동 전환).
            ⚠️ 경고·오류(destructive)와는 다른 토큰이다. 할인율 외에 쓰지 말 것. */
         sale: 'var(--sale)',
+        /* 📷 2026-09-21 사진 위 전용(테마 불변) — 값·이유는 index.css 의 `--media-slot` 주석. */
+        'media-slot': 'var(--media-slot)',
+        'sale-on-media': 'var(--sale-on-media)',
         /* 🩸 2026-09-16 (대표 신고 "글자들 개선해. 색깔이 뭐야 이게" — 다크 `/partners` 캡처):
            이 셋만 **고정 hex 로 남아 있었다.** 9-15 '색 정리' 가 `surface`·`line`·`warm`·`rule` 을
            테마 변수로 돌리면서 잉크는 빠뜨렸고, 그래서 `bg-warm`(= var(--bg), 다크 #11141C)은 어두워지는데
