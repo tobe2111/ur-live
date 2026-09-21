@@ -33,8 +33,8 @@ export default [
   {
     name: '🔁 OCR 빈 응답 재시도가 사라진다 (2026-09-21 이전 상태 — 5회 중 2회 unreadable)',
     file: 'src/worker/utils/ocr-license.ts',
-    find: '  for (let attempt = 0; attempt < OCR_EMPTY_RETRIES + 1 && !text; attempt += 1) {',
-    replace: '  for (let attempt = 0; attempt < 1 && !text; attempt += 1) {',
+    find: '  for (let attempt = 0; attempt < OCR_EMPTY_RETRIES + 1 && isBlank(text); attempt += 1) {',
+    replace: '  for (let attempt = 0; attempt < 1 && isBlank(text); attempt += 1) {',
     test: RETRY,
     why: '빈 응답은 예외가 아니라 조용한 실패다. 한 번에 끝내면 게이트가 켜진 뒤 정상 서류가 자동 승인 후보에서 소리 없이 빠진다.',
   },
