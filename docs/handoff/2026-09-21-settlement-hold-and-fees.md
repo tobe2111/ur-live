@@ -1,0 +1,75 @@
+# 2026-09-21 — 정산 유보 10일 구현 + 수수료·세금 정리
+
+대표가 토스 정산 설정 화면을 보내며 *"우리 정산은 어떻게 해??"* 로 시작해,
+정산 구조 전반(지급 경로·유보·수수료·세금)을 실측하고 유보를 구현한 세션.
+
+## 다음 세션의 첫 액션
+
+1. **부가세 별도(5% + VAT)를 코드에 반영한다** — 대표가 확정했고 **아직 코드가 안 따라갔다.**
+   - 지금: `ledger.ts recordVoucherUsedLedger` 의 `platformAmount = floor(order_amount * platformRate)`
+     → 10,000원의 5%인 **500원**만 뗀다(= 부가세 포함 해석).
+   - 되어야 할 것: **550원**(공급가 500 + VAT 50) / 직접 입점은 **1,100원**.
+   - ⚠️ 약관은 이번에 **일부러 안 고쳤다** — 약관에만 "부가세 별도"를 쓰면 코드가 500을 떼므로
+     문서가 거짓말이 된다. **약관 문구와 코드 변경을 같은 커밋으로 묶을 것.**
+   - 범위 확인 필요: `ledger.ts` 외에 `fee-resolver.ts` · `order-ledger-credit.ts` 도 같은 요율을 쓴다.
+   - 머니 핵심 → 단독 세션 + 주입 매니페스트 + staging.
+
+2. **매장 정산계좌를 받는다**(현재 **0곳** — 실매장 홍대돈까스 포함).
+   이게 없으면 유보 10일을 구현해도 `GET /admin/payouts/transfer-csv` 가 **계속 빈 파일**이다
+   (계좌 3종이 다 있는 건만 싣는다). 토스 셀러 등록 필드에 맞춰 받으면 나중에 두 번 안 받는다.
+
+3. PR [#1521](https://github.com/tobe2111/ur-live/pull/1521) CI 확인(draft).
+
+## 완료분
+
+| | 커밋 |
+|---|---|
+| 결재: 토스 정산 설정 3건(한도·에스크로·계좌명의) | `ccebe30` |
+| 결재: 정산 구조 최종안(지급대행) | `d7f0bf1` |
+| 결재: 유보 기간 Q2 | `981b37c` |
+| 결재: Q1·Q2 대표 결정 기록 + Q3 수수료·세금 | `861c8e9` |
+| **유보 10일 구현** + 약관·가이드 정합 | 이 커밋 |
+
+**유보 구현**: 신규 SSOT `src/worker/utils/payout-hold.ts` + 배선 2곳
+(`cron/payouts-generate.ts` · 어드민 `/admin/payouts/pending`).
+`platform_settings.payout_hold_days`(기본 10)로 재배포 없이 조정.
+가드 `src/tests/unit/payout-hold-2026-09-21.test.ts` 10건 + 주입 `scripts/mutations/payout-hold.mjs` 5건
+(**전부 되돌려-검증 빨간불 확인**).
+
+## 이번에 틀렸던 판단 — 이게 제일 값지다
+
+1. 🩸 **마진 계산에 영입 커미션 2%를 넣었다.** 대표: *"영입 커미션 2%는 없는건데. 아예 없기로 했는데."*
+   그런데 **실측하니 스위치는 켜져 있었다** — `platform_settings.influencer_store_intro_pct = '2'`.
+   실지급이 0인 이유는 정책이 아니라 `sellers.introduced_by_influencer_id` 가 있는 매장이 **0곳**이라
+   트리거가 안 걸려서다. ⇒ **"효과가 0"과 "꺼져 있다"는 다르다.** 매장에 영입자를 연결하는 순간 2%가 나간다.
+   끄려면 `influencer_store_intro_pct = 0`(등급 C, 대표 확인 대기).
+
+2. 🩸 **"10일"을 제안하며 역일이라고 썼는데 대표는 영업일로 읽었다**
+   (*"이용권 실제 이용 기준 영업일 10일 이후인거지?"*). 기준일(적립일=사용일)은 맞고 **단위가 다르다**.
+   역일 10일 ≈ 영업일 7일 / 영업일 10일 ≈ 역일 14일. 코드·약관·가이드에 **역일임을 명시**했고,
+   영업일 10일을 원하면 `payout_hold_days = 14` 로 바꾸면 된다(재배포 불필요).
+   ⇒ 기간을 제안할 때 **단위를 한 번 더 못 박을 것.**
+
+3. 🩸 **구현 중 OR 우선순위 함정을 밟을 뻔했다.** credit WHERE 가 `A OR B OR C OR D` 라
+   유보를 그냥 `AND` 로 이으면 `A OR B OR C OR (D AND 유보)` 로 묶여 **유보가 마지막 계정 종류에만**
+   걸린다. SQL 은 멀쩡히 돌고 금액만 틀린다. 괄호로 감쌌고 주입이 그 괄호를 지워 확인한다.
+
+## 남은 결정 / 대기 (전부 `docs/decisions/2026-09-21-settlement-structure-payouts.md`)
+
+- **Q1 지급대행** — 대표: *"비용적으로 부담"* → **보류**, 수동 이체 + 대량이체 CSV 로 간다.
+  ⚠️ **토스 문의 ②(하위가맹점 우대수수료)는 살아 있다** — 지급대행과 무관한 별개 축이고
+  우리 실질 마진을 3배로 만든다. ①(지급대행 요율)만 보류.
+- **영입 커미션 OFF** (`influencer_store_intro_pct = 0`) — 등급 C.
+- **세무사 질의 3건** — ①이용권이 상품권(과세 제외)인가 ②매출 순액/총액 ③세금계산서 방향.
+  답이 와야 `taxFreeAmount` 배선과 역발행(`REVERSE_INVOICE_PROVIDER`)을 켤 수 있다.
+- **토스 콘솔 3건** — 월 한도 1,000만원 상향 · 가상계좌/계좌이체 차단(에스크로 구멍) · 정산계좌 명의.
+
+## 라이브 실측 스냅샷 (2026-09-21)
+
+```
+payouts 0건 · 매장 7곳 전부 bank_account NULL · 실매장 2곳(홍대돈까스 approved / 청룡갈비 pending)
+원장: seller:14 1,000(fee 50) · seller:null 1,800(오염) · supplier:3 10,000  ← 전부 최소출금액 미만
+게이트: fee_channel_rates_enabled=true(직접 10/중개 5) · payout_requires_voucher_use=true
+        settlement_skip_ledgered OFF(Rail A 0건이라 아직 무해)
+채널: 실매장 2곳 모두 brokered(5%) · direct 는 테스트 매장 2곳(suspended)
+```

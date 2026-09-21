@@ -15,6 +15,7 @@
 import type { Env } from '../types/env'
 import { logInfo, logError } from '../utils/logger'
 import { isPayoutEligibleSellerStatus } from '../../shared/seller-status'
+import { resolvePayoutHold } from '../utils/payout-hold'
 
 // 🔎 2026-07-28: 반환값 추가 — safeCron 이 하트비트에 '무엇을 했나'로 기록한다(#826).
 //   0건이 '이번 주 정산할 게 없었다' 인지 '조용히 실패했다' 인지 구분하려면 실행 사실만으론 부족하다.
@@ -42,11 +43,18 @@ export async function handlePayoutsGenerate(env: Env): Promise<{ created: number
     //   에서 수수료 미차감 + (B) seller:N 의 기존 debit(환불 역전·인플루언서/추천 커미션)을 무시 → 과다지급.
     //   정식 net 잔액 = (credit − fee_amount) − debit. getLedgerReceivable(ledger.ts) 와 동일 공식.
     //   (fee_amount 는 공구 seller credit 에만 존재 → 다른 payee/이용권 무영향. debit 는 payee receivable 차감.)
+    // 🕙 2026-09-21 (대표 확정 — 유보 10일): 토스가 우리에게 주기 전에 우리가 먼저 주지 않는다.
+    //   ⚠️ credit 에만 건다. debit(환불 역전)은 **즉시** 빼야 한다 — 빼는 걸 미루면 과다지급이다.
+    //   ⚠️ 기존 WHERE 를 **괄호로 감쌌다**: `A OR B OR C AND D` 는 `A OR B OR (C AND D)` 로 묶여
+    //     유보가 마지막 LIKE 에만 걸리고 나머지 계정은 통째로 샌다. OR 만 있을 땐 괄호가 무해하므로
+    //     유보 0(빈 문자열)이어도 종전과 결과가 같다.
+    const hold = await resolvePayoutHold(DB)
     const credits = await DB.prepare(`
       SELECT account, SUM(net) as total FROM (
         SELECT credit_account AS account, amount - COALESCE(fee_amount, 0) AS net
           FROM ledger_entries
-         WHERE credit_account LIKE 'merchant:%' OR credit_account LIKE 'seller:%' OR credit_account LIKE 'agency:%' OR credit_account LIKE 'user:%'
+         WHERE (credit_account LIKE 'merchant:%' OR credit_account LIKE 'seller:%' OR credit_account LIKE 'agency:%' OR credit_account LIKE 'user:%')
+           ${hold.sql}
         UNION ALL
         SELECT debit_account AS account, -amount AS net
           FROM ledger_entries
@@ -126,7 +134,7 @@ export async function handlePayoutsGenerate(env: Env): Promise<{ created: number
         logError('[payouts-cron] insert failed', { account: c.credit_account, error: (e as Error).message })
       }
     }
-    if (created > 0) logInfo(`[payouts-cron] created ${created} pending payouts for ${periodStart} ~ ${periodEnd}`)
+    if (created > 0) logInfo(`[payouts-cron] created ${created} pending payouts for ${periodStart} ~ ${periodEnd} (hold ${hold.days}d)`)
 
     // 🔔 2026-07-08 (무인운영 감사): 성공 하트비트 — 주간 정산 생성이 조용히 멈추면(무소식)
     //   운영자가 알아채도록 매 run 요약을 어드민 벨 + Discord 로 push. 리포트가 "안 오는 것"이

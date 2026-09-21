@@ -5494,9 +5494,10 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 341건 · 최신순 · 이 목록은 자동 생성된다._
+_총 342건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-21**
+- [2026-09-21 — 정산 유보 10일 구현 + 수수료·세금 정리](handoff/2026-09-21-settlement-hold-and-fees.md)
 - [2026-09-21 — 주문관리가 이용권을 택배로 그리던 것 (+ 결제 복구 E4 통과)](handoff/2026-09-21-order-kind-shipping-ui.md)
 **2026-09-19**
 - [🧪 "staging 실결제" 게이트가 실재하지 않는다 (2026-09-19)](handoff/2026-09-19-staging-gate-reality.md)
