@@ -39,6 +39,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import KakaoMapPicker, { type KakaoPlace } from '@/components/KakaoMapPicker'
+import { formatBusinessNumber } from '@/pages/seller-register/RegisterFields'
 import { formatPhone, isValidMobilePhone, digitsOnly } from '@/utils/format-phone'
 import { compressForDocument } from '@/lib/image-compress'
 import { readStoreReferrer, clearStoreReferrer } from '@/utils/store-referrer'
@@ -180,6 +181,8 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
     }
     return certOk ? null : '사업자등록증 사진을 첨부해주세요'
   }
+  // 🗺️ 지도가 보이는 단계인가 — 바디 스크롤을 끌지 정한다(위 주석)
+  const mapStep = step === 0 && (!picked || showMap)
   const blocked = blockReason(step)
   const last = step === STEPS.length - 1
 
@@ -333,7 +336,18 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
           <p className="mt-1 text-[12px] text-gray-500 leading-relaxed">{STEPS[step].hint}</p>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-4 pt-1">
+        {/**
+          * 🖱️ 2026-09-21 (대표 *"여기 스크롤하는게 어려워 … 어디에 손가락을 대느냐에 따라 달라"*).
+          *
+          * 지도 단계에서는 스크롤 표면이 **셋**이었다 — 이 바디 · 카카오 지도(제스처를 통째로 먹는다) ·
+          * 결과 목록(`max-h-64` 자체 스크롤). 손가락이 어디 있느냐로 움직이는 게 달라졌고, 지도 위에
+          * 올리면 아무것도 안 내려갔다(지도가 확대·이동만 한다). 목록에 닿으려면 그 지도를 **지나쳐야** 했다.
+          *
+          * ⇒ 그 단계에서는 바디를 **안 스크롤되게** 하고(`overflow-hidden`), 안쪽을 한 칸짜리로 만든다.
+          *   검색창·지도는 고정, **스크롤되는 곳은 결과 목록 하나**. 지나칠 것이 없으니 지도가 제스처를
+          *   먹어도 상관없다. 나머지 단계는 종전 그대로(폼이라 바디 스크롤이 맞다).
+          */}
+        <div className={`flex-1 min-h-0 px-4 pb-4 pt-1 ${mapStep ? 'flex flex-col overflow-hidden' : 'overflow-y-auto'}`}>
           {/* ① 카카오맵 지도 검색 — 선택하면 이름/주소/전화/좌표/플레이스 링크 자동입력 */}
           {step === 0 && (
             picked && !showMap ? (
@@ -347,8 +361,9 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
                 <button onClick={() => setShowMap(true)} className="text-[11px] text-gray-400 underline shrink-0 ml-2">다시 선택</button>
               </div>
             ) : (
-              <div className="rounded-lg border border-gray-200 p-2">
+              <div className="flex-1 min-h-0 flex flex-col rounded-lg border border-gray-200 p-2">
                 <KakaoMapPicker
+                  fill
                   kakaoJsKey={KAKAO_JS_KEY}
                   selectedPlace={picked && picked.lat && picked.lng ? {
                     name: picked.name, address: picked.address, lat: String(picked.lat), lng: String(picked.lng),
@@ -466,7 +481,9 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
                 <p className="text-[12px] font-bold text-gray-700 mb-1.5">
                   사업자번호 <span className="font-normal text-gray-400">(선택 — 지금 안 적어도 등록돼요)</span>
                 </p>
-                <input value={bno} onChange={e => setBno(e.target.value)} placeholder="숫자 10자리" inputMode="numeric" maxLength={12}
+                {/* 🔢 2026-09-21 (대표 "000-00-00000 형태로 자동 입력되게"): 타이핑하는 대로 하이픈이 붙는다.
+                    포매터는 가입 폼과 **같은 함수**(SSOT) — 두 벌이면 언젠가 갈린다. 전송은 그대로 숫자만(`replace(/-/g,'')`). */}
+                <input value={bno} onChange={e => setBno(formatBusinessNumber(e.target.value))} placeholder="000-00-00000" inputMode="numeric" maxLength={12}
                   className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400" />
                 <button onClick={verify} disabled={verifying || !bno}
                   className="mt-2 flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50">

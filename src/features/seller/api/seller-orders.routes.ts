@@ -541,25 +541,29 @@ sellerOrdersRoutes.get('/products/:id', async (c) => {
     const productId = c.req.param('id');
     const db = c.env.DB;
 
-    const product = await db.prepare(
-      `SELECT
+    // 🛠️ 2026-09-21 (대표 "이용권 편집 및 삭제하려니까 안돼"): `p.live_only_price`/`p.live_price_enabled` 는
+    //   **라이브에 없다**(0112 마이그레이션만, repair-schema 가 안 만든다 — D1 실측 `no such column`).
+    //   SQLite 는 파싱 단계에서 던져 **쿼리 전체가 죽고** 편집 화면이 안 열렸다(삭제 버튼에도 못 닿았다).
+    //   처방은 오늘 `PUT` 에서 같은 사고를 만난 `seller-product-response.ts` 와 같다 — 있으면 읽고 없으면 뺀다.
+    const detailSql = (withLive: boolean) => `SELECT
          p.id, p.name, p.description, p.price, p.original_price,
-         COALESCE(p.stock, p.stock_quantity, 0)                AS stock,
-         COALESCE(p.thumbnail_url, p.image_url)       AS image_url,
-         p.detail_images,
-         p.category, p.product_type,
-         p.live_stream_id, p.live_only_price, p.live_price_enabled,
-         COALESCE(p.status, 'ACTIVE')                          AS status,
-         COALESCE(p.is_active, 1)                              AS is_active,
+         COALESCE(p.stock, p.stock_quantity, 0) AS stock,
+         COALESCE(p.thumbnail_url, p.image_url) AS image_url,
+         p.detail_images, p.category, p.product_type,
+         p.live_stream_id,${withLive ? ' p.live_only_price, p.live_price_enabled,' : ''}
+         COALESCE(p.status, 'ACTIVE') AS status, COALESCE(p.is_active, 1) AS is_active,
          p.restaurant_name, p.restaurant_address, p.restaurant_phone,
-         p.voucher_terms, p.voucher_expiry,
-         p.group_buy_target, p.group_buy_deadline,
-         p.store_verify_pin,
+         p.voucher_terms, p.voucher_expiry, p.group_buy_target, p.group_buy_deadline, p.store_verify_pin,
          p.referral_commission_rate, COALESCE(p.referral_enabled, 0) AS referral_enabled,
          p.created_at, p.updated_at
-       FROM products p
-       WHERE p.id = ? AND p.seller_id = ?`
-    ).bind(productId, sellerId).first<Record<string, unknown>>();
+       FROM products p WHERE p.id = ? AND p.seller_id = ?`;
+    const product = await db.prepare(detailSql(true)).bind(productId, sellerId)
+      .first<Record<string, unknown>>()
+      .catch((e: unknown) => {
+        // 라이브 스키마 편차만 흡수한다 — 그 외 에러는 그대로 올린다(삼키면 다음 결함이 조용해진다).
+        if (!/no such column/i.test(String((e as Error)?.message || ''))) throw e
+        return db.prepare(detailSql(false)).bind(productId, sellerId).first<Record<string, unknown>>()
+      });
 
     if (!product) return c.json({ success: false, error: 'Product not found or forbidden' }, 404);
 
@@ -1091,8 +1095,9 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
       const v = (body as Record<string, unknown>)[f];
       if (v !== undefined && typeof v === 'string' && v.length <= cap) { fields.push(`${f} = ?`); values.push(v); }
     }
-    if (body.live_only_price !== undefined) { fields.push('live_only_price = ?'); values.push(body.live_only_price); }
-    if (body.live_price_enabled !== undefined) { fields.push('live_price_enabled = ?'); values.push(body.live_price_enabled ? 1 : 0); }
+    // 🛠️ 2026-09-21: 라이브 전용가 두 컬럼은 라이브 DB 에 없다. 편집 페이지는 `LivePriceSection` 을 렌더하지도
+    //   않으면서 폼 기본값으로 이 필드를 **항상** 보내(`null`) UPDATE 에 섞여 들어가 저장이 매번 500 이었다.
+    //   라이브커머스는 영구중단이라 되살릴 값이 아니다 — 서버가 쓰지 않는다(읽기는 위 GET 이 흡수).
     if (body.status !== undefined) { fields.push('status = ?'); values.push(body.status); }
     if (body.is_active !== undefined) { fields.push('is_active = ?'); values.push(body.is_active ? 1 : 0); }
 
