@@ -54,6 +54,7 @@ interface OrderRow {
   total_quantity?: number | null;
   first_item_name?: string | null;
   first_item_category?: string | null;
+  first_item_deal_only?: number | null;
   items?: OrderItemRow[];
 }
 
@@ -132,8 +133,12 @@ adminOrdersRoutes.get('/orders', cors(), async (c) => {
                (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.id) as item_count,
                (SELECT COALESCE(SUM(oi.quantity), 0) FROM order_items oi WHERE oi.order_id = o.id) as total_quantity,
                (SELECT oi.product_name FROM order_items oi WHERE oi.order_id = o.id ORDER BY oi.id LIMIT 1) as first_item_name,
-               -- 🗂️ 2026-06-17: 주문 종류 구별(교환권/상품) — 첫 상품의 category. voucher 카테고리면 교환권.
-               (SELECT p.category FROM order_items oi JOIN products p ON p.id = oi.product_id WHERE oi.order_id = o.id ORDER BY oi.id LIMIT 1) as first_item_category
+               -- 🗂️ 2026-06-17: 주문 종류 구별 — 첫 상품의 분류 필드.
+               -- 🧾 2026-09-21: deal_only 추가. 카테고리만으론 이용권과 교환권이 안 갈린다
+               --   (meal_voucher 는 둘 다 될 수 있다). 화면이 getNoShippingKind(SSOT)로 판정한다.
+               -- ⚠️ 이 문장은 템플릿 리터럴 안이다 — 주석에 백틱을 쓰면 문자열이 끊긴다(2026-09-21 실제로 밟음).
+               (SELECT p.category FROM order_items oi JOIN products p ON p.id = oi.product_id WHERE oi.order_id = o.id ORDER BY oi.id LIMIT 1) as first_item_category,
+               (SELECT p.deal_only FROM order_items oi JOIN products p ON p.id = oi.product_id WHERE oi.order_id = o.id ORDER BY oi.id LIMIT 1) as first_item_deal_only
         FROM orders o
         LEFT JOIN users u ON o.user_id = u.id
         LEFT JOIN sellers s ON o.seller_id = s.id

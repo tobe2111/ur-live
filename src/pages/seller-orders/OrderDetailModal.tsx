@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button'
 import { formatKST } from '@/utils/date'
 import { formatNumber } from '@/utils/format'
 import { StatusBadge, useStatusText, nextStatusOf, parseShippingAddress } from './statusHelpers'
+import { OrderKindBadge } from './OrderKindBadge'
+import { ORDER_KIND_META, orderKindOf, isNoShippingOrder } from '@/shared/order-kind'
 import type { Order, TrackingForm } from './types'
 
 interface Props {
@@ -32,7 +34,11 @@ const COURIERS = [
 export default function OrderDetailModal({ order, updating, trackingForm, onTrackingFormChange, onClose, onStatusChange, onRefund, onTrackingSubmit }: Props) {
   const { t } = useTranslation()
   const statusText = useStatusText()
-  const next = nextStatusOf(order.status)
+  // 🧾 2026-09-21 (대표 — "제품 배송이 아니라 이용권 구매잖아"): 이용권·교환권은 배송이 없다.
+  //   배송 정보·운송장·배송 상태 전이를 **감춘다**. 판정은 서버가 붙인 `order_kind`(SSOT)만 읽는다.
+  const kind = orderKindOf(order.order_kind)
+  const noShipping = isNoShippingOrder(kind)
+  const next = noShipping ? null : nextStatusOf(order.status)
   const addr = parseShippingAddress(order.shipping_address)
   const formatPrice = (price: number) => formatNumber(price)
 
@@ -82,7 +88,22 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
               </div>
             </div>
 
-            {/* Shipping Info */}
+            {/* 🧾 배송이 없는 주문(이용권·교환권)은 배송 정보 대신 "이제 무엇을 하면 되나"를 말한다.
+                빈 칸 셋(받는 사람·연락처·주소)을 띄우는 것이 대표가 본 그 화면이었다. */}
+            {noShipping ? (
+            <div className="border-b pb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <OrderKindBadge kind={kind} />
+                <h3 className="text-lg font-semibold text-gray-900">{ORDER_KIND_META[kind].label} 주문</h3>
+              </div>
+              <p className="text-sm text-gray-600">{ORDER_KIND_META[kind].hint}</p>
+              {kind === 'voucher' && (
+                <a href="/seller/scan" className="mt-3 inline-flex items-center justify-center w-full py-2.5 rounded-lg border border-rule text-sm font-medium text-gray-900 hover:bg-gray-50">
+                  사용처리 화면으로
+                </a>
+              )}
+            </div>
+            ) : (
             <div className="border-b pb-4">
               <h3 className="text-lg font-semibold text-gray-900 mb-3">{t('seller.shippingInfoSection')}</h3>
               <div className="space-y-2 text-sm">
@@ -118,6 +139,7 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
                 )}
               </div>
             </div>
+            )}
 
             {/* Order Items */}
             {order.items && order.items.length > 0 && (
@@ -149,7 +171,7 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
                         <p className="font-medium text-gray-900 truncate">{item.product_name}</p>
                         <p className="text-sm text-gray-500 mt-1">{t('seller.quantityLabel')}: {item.quantity}{t('common.count')}</p>
                         <p className="text-sm font-medium text-gray-900 mt-1">
-                          {formatPrice(item.price * item.quantity)}{t('common.won')}
+                          {formatPrice((item.price ?? item.unit_price ?? 0) * item.quantity)}{t('common.won')}
                         </p>
                       </div>
                     </div>
@@ -203,8 +225,8 @@ export default function OrderDetailModal({ order, updating, trackingForm, onTrac
               </div>
             )}
 
-            {/* Tracking Number Form */}
-            {order.status !== 'DELIVERED' && order.status !== 'CANCELLED' && (
+            {/* Tracking Number Form — 🧾 배송이 없는 주문엔 운송장 자체가 없다 */}
+            {!noShipping && order.status !== 'DELIVERED' && order.status !== 'CANCELLED' && (
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">{t('seller.shippingInfoInput')}</h3>
                 <form onSubmit={(e) => onTrackingSubmit(e, order.order_number)} className="space-y-4">
