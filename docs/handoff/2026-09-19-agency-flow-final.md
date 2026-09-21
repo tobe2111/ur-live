@@ -47,6 +47,48 @@
 - 🩸 하네스가 헛돈 것: Chromium 을 프록시 없이 띄우면 청크 404 → 자가복구 루프(`ERR_TOO_MANY_RETRIES`)로 모든 경로가 흰 화면이었다.
   `proxy:{server:HTTPS_PROXY}` + `--ignore-certificate-errors` + `domcontentloaded`(networkidle 은 차단된 비콘 때문에 영원히 안 온다) 이 답.
 
+## ✅ [E3] PR #1501 머지·배포 (2026-09-20 KST)
+
+- 머지: squash → main `a54e3e6` (대표 "머지해"). 원격 브랜치 삭제는 프록시 403 으로 못 했다(무해 — 다음 세션이 main 에서 다시 딴다).
+- 배포: `Deploy to Cloudflare Pages` 성공. 라이브 `/api/version` = `index-DDu8xFR5.js`, `app-utils-*.js` 에 매장코드 보존 정규식 존재 확인.
+- Notion 개발 로그 1행 기록(서비스 유어딜 · 기능 추가 · 머니 경로 ✓).
+- ✅ **[E4] `?code=` 왕복 판정 통과(대표 "하고 판정까지")** — OAuth 를 끝까지 안 가도 잴 수 있었다: `/api/auth/kakao/start?redirect=…` 의 302 `Location` 에 실린 **서명 state(JWT) 의 `r` 가 `safeRedirect` 통과 후 값**이고 콜백은 그 값으로 돌아간다(쿠키 유실 시 그 경로). 결과 5건:
+  `code=AB3K9QXP&auto=1` 보존 · `code=AB3K-9QXP` 보존 · `&evil=1` 제거 · `code=<script>&auto=2` → `/store/find` (둘 다 제거) · `ref=777` 종전대로 보존. 방법: 스크래치 `probe()` — Location 의 `state` 를 base64url 디코딩(서명 검증 불필요, 페이로드만 읽는다).
+- ⚠️ **E4 못 잰 것**: 좌석 개방(대기 매장 토큰)·정산 skip — 라이브 D1 실측 `sellers` = approved 1곳 · `seller_operators` 활성 1(그 매장). 대기 매장이 없다. 만들려면 라이브에 가짜 셀러를 넣어야 하는데 그건 쓰기라 안 했다(어드민 토큰은 읽기 전용 규율). 대표 3계정 실사용에서 **사장님 B 가 등록하면 곧 대기 매장**이고, 그때 중개사 A 가 스위처에 '심사 중' 배지와 함께 들어가지는지가 판정이다. 정산 skip 은 STAGING P15.
+
+## ✅ [E4/E5] 3계정 실사용 — 라이브 urdeal.kr 에서 흐름 전체 통과 (2026-09-20, 대표 "3번은 이메일 계정들로 지금 만들 수 있나?")
+
+**계정**(이메일 API 로 생성, 비밀번호는 세션 스크래치에만): users 35 A `테스트중개사A` · 36 B `테스트사장님B` · 37 C `테스트인플C` (+38·39 가입 프로브).
+**테스트 매장**: sellers 15 `[테스트] 클로드분식`(→ 승인, B 가 주인) · 16 `[테스트] 클로드카페` · 17 `[테스트] 클로드미용실`(둘은 pending 유지 — OCR·P15 용). 사업자번호 `999-99-9999{1,2,3}`(가짜, 형식만). 전부 이름에 `[테스트]`.
+
+| 단계 | 결과 |
+|---|---|
+| A: `POST /api/seller/stores` ×3 (brokered, 10/5, 등록증 첨부) | 200 · pending · 승계 코드 `LMHS-YTBP`/`GGG4-VMYU`/`PBRN-YTGK` |
+| A: 대기 매장 좌석 `POST /api/seller/stores/15/token` (#1501) | **200** (종전엔 403) · `operable_store_count: 3` |
+| A: 협업 코드 `POST /api/seller-marketing/codes` | `EDF5-97WV` · `created_by: 35`(유저 id — #1501 발급자 수정 확인) |
+| B: `GET /store-claims/lookup-by-code` → `POST /store-claims` | 매장 자동 선택 · claim 1 `bno_match: true` |
+| C: `POST /api/influencer-settlement/codes/redeem` | deal 1 `active`(즉시 활성) · 코드 `use_count: 1` |
+| 어드민: claim 1 approve → `PATCH /sellers/15/approve` | B `role: owner` · A 알림 `store_approved` 1건(#1501 운영자 통보 확인) |
+| 브라우저(iPhone 13, 쿠키 주입): `/seller/stores` · `/seller/influencer-deals` · `/store/find?code=` · `/i/join/CODE` · `/influencer/settlement` | 전부 렌더 — "승인 대기" 배지 · 코드 표시 · 매장 자동 선택 · "협업 시작하기" · 정산 화면 매장 링크 |
+
+**E5 에서 발견해 같은 날 고친 것**: ① 이메일 가입 500(아래 절, PR #1503·#1504) ② 등록증 가시성(아래 절, PR #1505) ③ 승계 주인에게 "위임받은 매장" 문구(PR #1505).
+**못 잰 것**: 정산 skip(P15 ③ — 매출이 없어 payouts 행 자체가 0) · S-BROKER 실결제(테스트 매장에 이용권이 없다 — 대표가 올리거나 세션에 허락하면 진행) · 카카오 콜백 왕복(이메일 세션이라 OAuth 는 안 탔다 — state JWT 판정으로 대체).
+**정리**: 테스트 유저 35~39 · 매장 15~17 · 코드·딜·claim 각 1 은 라이브에 남아 있다. 지우려면 어드민에서(세션은 D1 쓰기를 안 한다).
+
+## 🩸 [E2] 이메일 가입 500 — E5 계정을 만들다 발견 (2026-09-20, 대표 "3번은 이메일 계정들로 지금 만들 수 있나?")
+
+- 소비자 로그인 화면은 **카카오 전용**이라 이메일 가입 UI 는 없다. API(`POST /api/auth/register`)는 살아 있는데 라이브에서 **항상 500** 이었다.
+  원인: 라이브 `users.id` 가 `INTEGER PRIMARY KEY AUTOINCREMENT` 인데 핸들러가 `generateId()`(TEXT) 를 id 에 넣어 datatype mismatch → catch → 'Registration failed'. 마지막 성공 가입 2026-03-15.
+- 수정: id 컬럼을 INSERT 에서 빼고 `meta.last_row_id` 로 읽는다(카카오 upsert 와 같은 모양). 🩸 **첫 수정(PR #1503, users 만)을 배포하고도 500** — 라이브 `refresh_tokens.id` 도 INTEGER AUTOINCREMENT 였다(repair-schema 는 TEXT 로 선언 — 라이브와 다르다). users 행은 들어가고 refresh_tokens 에서 죽어 **고아 유저**가 남는다. 두 번째 수정으로 그 INSERT 도 id 를 뺐다. 가드 4건 + 주입 3건 빨간불 확인. tsc 0. 교훈: 500 의 원인을 스키마 한 곳만 보고 단정했다 — 같은 핸들러의 INSERT 전부를 라이브 pragma 로 대조했어야 했다.
+- ⚠️ 이 API 로 만든 계정은 `ur_session` 쿠키로 로그인된다 — 브라우저 판정은 쿠키를 심어 한다. 대표가 손으로 만들려면 카카오 계정이 필요하다(화면이 그것뿐).
+
+## 🧾 [E2] 등록증이 어드민·OCR·셀러 배너에 안 보이던 것 — E5 실사용에서 발견 (2026-09-20)
+
+- 대시보드 매장 등록(`POST /api/seller/stores`, 직접·중개 모두)은 등록증을 `seller_meta.business_cert_url` 에만 적었고,
+  어드민 승인 목록·상세·OCR·셀러 배너(`has_business_cert`)는 `sellers.business_registration_image_url` 컬럼만 읽었다.
+  ⇒ 09-16 "사진을 받아 사람이 심사" 가 이 경로에서 **비어 있었다**. 실측: 테스트 매장 15·16·17 에서 OCR "제출된 이미지가 없습니다" · 대시보드 상단 "사본이 아직 없어요 — 서류 올리기".
+- 수정: ① 등록이 컬럼에도 적는다(best-effort) ② SSOT `worker/utils/seller-cert-url.ts`(컬럼 → meta) ③ OCR·어드민 목록/상세(`admin-sellers/cert-fallback.ts`)·셀러 surface·세션 상태 넷이 폴백. 가드 5건 + 주입 4건 빨간불 확인. tsc 0.
+
 ## 🥕 [E2] 승인 대기 병목 — "준비는 지금, 노출·정산은 승인 뒤" (2026-09-20, 대표 *"2번은 더 이상적인 방법이 있어? 나머지 다 이상적으로"*)
 
 **레일**: 유어딜 셀러 대시보드 + 정산 cron. **머니 경로 접촉**: 있음 — `payouts-generate` 에 **셀러 status 게이트**(제한만 추가, 승인 매장은 종전과 동일).
@@ -59,14 +101,35 @@
 - 가드: `approval-gate-2026-09-20.test.ts` 10건 + 주입 4건(정산 게이트 소실 · 두 집합 동일화 · 좌석 환원 · 정지 개방) **되돌려-검증 빨간불 확인**. 낡은 지도 2건(d3 요약 필터·seller-stores 가산) 재조준. STAGING **P15**.
 - 🩸 틀렸던 것: 주입 러너를 vitest 전수와 **동시에** 돌려 "복원 실패 의심"이 떴다 — 러너는 소스를 잠깐 고쳐 쓰므로 다른 검사와 병렬로 돌리면 안 된다. 순차로 돌리자 진짜 원인(낡은 지도 2건)이 남았다.
 
+## 🪪 [E4] S-OCR 라이브 실측 — 라이선스 동의 뒤 (2026-09-21)
+
+대표 *"동의해 너가 최대한 다 해주고"* → `POST /api/admin/ai/agree-ocr-model` 1회(응답은 `5016: Thank you for agreeing…` —
+에러 모양이지만 성공이다). 그 뒤 합성 등록증 3종 OCR:
+
+| 매장 | 서류 | 결과 |
+|---|---|---|
+| 16 | 부산 해운대구(매장은 전주 덕진구) | `mismatch` · "다른 지역입니다 (해운대구 ↔ 덕진구)" — **S-OCR-2 통과** |
+| 17 | blur 5px | `unreadable` · 양쪽 `unknown` — **S-OCR-3 통과**(mismatch 아님) |
+| 15 | 완전 일치(이름을 매장과 똑같이 다시 만들어 재업로드) | 5회 중 `match` **0회**: review(상호 1글자 오독) · unreadable(빈 응답) · review(주소 near) · review(주소 near) · unreadable(빈 응답). `business_registration_status` 는 5회 내내 `pending` — **S-OCR-4 통과** |
+
+- 우리 결함 둘을 고쳤다(이 PR): ① 빈 응답 1회 재시도(`OCR_EMPTY_RETRIES=1`, 예외엔 미적용) ② `가리내 10길` → `가리내10길`
+  도로명 숫자 붙이기(행정구역 뒤엔 안 붙인다). 가드 `ocr-empty-retry-2026-09-21.test.ts` 5건 + 주소 1건, 주입 3건 빨간불 확인.
+- 고치지 않은 것(대표 판단): 상호 1글자 오독(`클로드`→`글로드`)은 `compareBizName` 이 **의도적으로** 오타를 안 봐줘 `review`.
+  편집거리 허용은 자동 승인 문턱을 낮추는 일이라 결재 사항. 지금은 그 서류가 사람 큐에 남을 뿐이라 해가 없다.
+- S-OCR-1 은 **대표 실사진**이 있어야 잰다(합성 문서는 폰트·해상도가 실물과 다르다 — 위 5회가 그 한계다).
+- 게이트 `ocr_auto_verify_enabled` 는 **OFF 유지**. S-OCR-1 통과 + 수리 배포 뒤 매장 15 재호출에서 `match` 가 나오면 켤 후보.
+- 🩸 틀렸던 것: 첫 판 등록증 상호를 `클로드분식 (테스트)` 로 만들어 매장 `[테스트] 클로드분식` 과 달랐다 — 판정이 `differ` 로 뜬 것을
+  결함으로 읽을 뻔했다. 실측 픽스처는 **등록값을 그대로 복사**해 만들 것.
+
 ## ⏭️ 다음 세션의 첫 액션
 
 1. **대표 실사용 판정(E5 — 위 E4 가 못 본 생애주기)**: 대표 계정으로 `/seller/stores` 에서 중개 매장 하나 등록(요율 10/5) → 목록에 `XXXX-XXXX` 코드가 뜨는지 →
    다른 계정으로 `/store/find?code=…` → 매장이 자동 선택되는지. `/seller/influencer-deals` 에서 협업 코드 발급 → 세 번째 계정으로
    `/i/join/CODE` → "협업이 시작됐어요" + `/influencer/settlement` 에 매장 링크·수락 대기 딜이 보이는지.
-2. **S-BROKER 실결제**(대표가 켜기로 하면): `docs/STAGING_CHECKLIST.md` 5건. 판정 쿼리:
+2. **S-OCR 수리 판정**: 배포 뒤 `POST /api/admin/sellers/15/business-registration/ocr` 3회 → `match` 가 한 번이라도 나오는지 · `unreadable` 이 줄었는지(재시도 메시지 `(2회 시도)`).
+3. **S-BROKER 실결제**(게이트는 09-20 에 이미 ON — 대표 지시): `docs/STAGING_CHECKLIST.md` 5건. 판정 쿼리:
    `SELECT influencer_id, commission_amount, status, source FROM influencer_attributions WHERE source='broker_share'`.
-3. 남은 미흡(이번 범위 밖): 코드 발급자 `store_codes.created_by` 는 셀러 라우트에선 seller id 다(유저 id 아님) — 표시용이라 무해하나
+4. 남은 미흡(이번 범위 밖): 코드 발급자 `store_codes.created_by` 는 셀러 라우트에선 seller id 다(유저 id 아님) — 표시용이라 무해하나
    감사 로그로 쓰려면 정리. 인플루언서 정산 페이지의 `MyRankCard` 등 옛 이모지 잔재는 design-slop 래칫 대상 아님(소비자 마이).
 
 ## 남은 결정

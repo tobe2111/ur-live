@@ -509,6 +509,9 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
       registered_by_user_id: String(userId),
     }).catch(() => { /* 메타 실패 — 매장은 유지(프로필 수정으로 채울 수 있다) */ })
 
+    // 🩸 2026-09-20 (E5 실사용에서 발견): 등록증이 meta 에만 남아 어드민 승인 목록·상세·OCR(컬럼만 읽음)이 서류를 못 봤다 → 컬럼에도(best-effort). 읽기 폴백 `seller-cert-url.ts`
+    await c.env.DB.prepare("UPDATE sellers SET business_registration_image_url = ? WHERE id = ? AND COALESCE(business_registration_image_url, '') = ''").bind(certUrl, newSellerId).run().catch(() => null)
+
     // 등록자 권한 — 직접=owner / 중개=operator(사장님 자리는 비워 둔다: owner 승계 3단계)
     const role = b.channel === 'direct' ? 'owner' : 'operator'
     /**

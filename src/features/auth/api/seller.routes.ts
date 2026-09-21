@@ -422,7 +422,7 @@ sellerRoutes.get('/surface', requireSeller(), async (c) => {
       wholesale_only: wholesaleOnly,
       status: row?.status ?? null,
       reject_reason: row?.reject_reason ?? null,
-      has_business_cert: !!row?.business_registration_image_url,
+      has_business_cert: !!(await import('../../../worker/utils/seller-cert-url').then(m => m.resolveSellerCertUrl(c.env.DB, sellerId, row?.business_registration_image_url)).catch(() => row?.business_registration_image_url || null)),
     })
   } catch {
     // fail-open: 판정 실패해도 셀러 대시보드 유지(lock-out 금지).

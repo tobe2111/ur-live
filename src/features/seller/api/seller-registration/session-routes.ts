@@ -111,7 +111,7 @@ export function mountSellerSessionRoutes(
             reject_reason: seller.reject_reason ?? null,
             // 🪪 2026-09-16: 등록증 사본이 도착했는가 — 없으면 대기 화면이 계속 알린다(당근 모델).
             //   URL 자체는 안 내려보낸다(필요 없고, 내보내면 남의 등록증 주소가 응답에 실린다).
-            has_business_cert: !!seller.business_registration_image_url,
+            has_business_cert: !!(await import('../../../../worker/utils/seller-cert-url').then(m => m.resolveSellerCertUrl(db, Number(seller.id), seller.business_registration_image_url)).catch(() => seller.business_registration_image_url || null)), // 🧾 2026-09-20 meta 폴백
           },
         },
       });

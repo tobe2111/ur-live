@@ -19,7 +19,7 @@
 import { Hono } from 'hono'
 import type { Env } from '../../../worker/types/env'
 import { adsLeadsDb } from '../../../shared/ads/leads-db'
-import { DOC_LABEL, type DocKind } from '../../../worker/utils/ocr-license'
+import { DOC_LABEL, OCR_MODEL, type DocKind } from '../../../worker/utils/ocr-license'
 
 export const adminSellerOcrRoutes = new Hono<{ Bindings: Env }>()
 
@@ -67,7 +67,9 @@ adminSellerOcrRoutes.post('/sellers/:id/business-registration/ocr', async (c) =>
     const meta = await getSellerMeta(c.env.DB, [sellerId]).catch(() => new Map<number, Record<string, string>>())
     url = (meta.get(sellerId)?.food_permit_url || '').trim()
   } else {
-    url = (row.business_registration_image_url || '').trim()
+    // 🧾 컬럼 → seller_meta 폴백(대시보드 매장 등록은 meta 에만 적던 시절의 행) — `seller-cert-url.ts`
+    const { resolveSellerCertUrl } = await import('../../../worker/utils/seller-cert-url')
+    url = (await resolveSellerCertUrl(c.env.DB, sellerId, row.business_registration_image_url)) || ''
   }
   if (!url) return c.json({ success: false, error: `제출된 ${DOC_LABEL[kind]} 이미지가 없습니다` }, 400)
 
@@ -112,9 +114,32 @@ adminSellerOcrRoutes.post('/sellers/:id/business-registration/ocr', async (c) =>
     addressCheck: { verdict: result.address.verdict, reason: result.address.reason },
     ledger: result.ledger,
     ledgerNote: result.ledgerNote,
+    // 🔍 2026-09-20 (S-OCR 실측 — 셋 다 fill 0 인데 **왜**인지 화면이 말하지 않았다): 모델이 던졌는지, 빈 응답인지,
+    //   JSON 이 아닌 산문을 냈는지가 다음 조치(모델 교체 · 프롬프트 · 이미지 크기)를 가른다. 결재 §"모델 원문 —
+    //   어드민이 '왜 이렇게 읽었나' 를 볼 수 있어야 한다". 어드민 전용 응답이라 소비자에겐 안 나간다(1200자 상한은 ocr-license 가 이미 건다).
+    ocr: { ok: ocr.ok, message: ocr.message, raw: ocr.raw ?? null },
     // 🚧 판정은 참고일 뿐 — 승인 버튼은 사람이 누른다(결재 §안전 레일 ②)
     note: '자동 승인·반려는 하지 않습니다. 확인 후 직접 눌러 주세요.',
   })
+})
+
+/**
+ * `POST /ai/agree-ocr-model` — 🪪 OCR 모델 라이선스 1회 동의 (2026-09-20, S-OCR 실측에서 발견).
+ *
+ * 라이브 첫 호출이 **Workers AI 5016** 으로 죽었다: *"Prior to using this model, you must submit the prompt 'agree'"*.
+ * Llama 3.2 비전 모델은 계정 단위로 **한 번** `prompt:'agree'` 를 보내야 그 뒤 추론이 된다. 09-16 부터 지금까지
+ * 아무도 실제로 부르지 않아 아무도 몰랐다(바인딩만 확인했다). 이 동의는 **Meta 라이선스 수락**이라 세션이
+ * 대신 누르지 않는다 — 어드민(대표)이 부른다. 모델은 `OCR_MODEL` 하나로 고정(임의 모델 동의 금지). 멱등.
+ */
+adminSellerOcrRoutes.post('/ai/agree-ocr-model', async (c) => {
+  if (!c.env.AI) return c.json({ success: false, code: 'AI_UNAVAILABLE', error: 'AI 바인딩이 없습니다' }, 200)
+  try {
+    const { aiText } = await import('../../../worker/utils/ai-text')
+    const res = await c.env.AI.run(OCR_MODEL, { prompt: 'agree' })
+    return c.json({ success: true, model: OCR_MODEL, response: aiText(res).slice(0, 400) })
+  } catch (err) {
+    return c.json({ success: false, model: OCR_MODEL, error: String((err as Error)?.message || '').slice(0, 200) }, 200)
+  }
 })
 
 export default adminSellerOcrRoutes

@@ -107,6 +107,11 @@ export function addressTokens(raw: string | null | undefined): AddressTokens {
   let s = stripUnitSuffix(baseClean(raw))
   s = baseClean(s)
   if (!s) return empty
+  // 🔍 2026-09-21 (S-OCR 라이브 실측 — 합성 등록증 5회 호출 중 `match` 0회의 한 원인): 모델이 `가리내10길` 을
+  //   `가리내 10길` 로 띄어 써서 도로명이 `10길` 로 잘리고 등록 매장(`가리내10길`)과 "도로명이 다르다"(near) 가 됐다.
+  //   공식 도로명은 숫자를 붙여 쓰므로(`논현로94길`) 한글 조각 뒤에 떨어진 `N길|N로|N번길` 은 앞 조각에 붙인다.
+  //   ⚠️ 행정구역(`…구 10길`)엔 붙이지 않는다 — 그건 도로명이 아니라 파싱 오류를 감추는 일이 된다.
+  s = s.replace(/([가-힣]+)(?<!구|군|시|읍|면|동|리)\s+(\d+(?:번)?(?:길|로))(?=\s|$)/g, '$1$2')
 
   let sido: string | null = null
   for (const [re, canon] of SIDO_CANON) {
