@@ -37,6 +37,8 @@ const ROUTES = {
   linkshop: ['src/pages/CuratorPage.tsx', 'src/pages/SellerPublicPage.tsx'],
   vouchers: ['src/pages/VouchersPage.tsx'],
   browse: ['src/pages/BrowsePage.tsx'],
+  // 🎬 2026-09-21 유어쇼츠 전체 보기 — 홈 레일의 「전체 보기」·상단 네비가 여기로 온다(하드로드 진입점).
+  urshorts: ['src/pages/UrShortsBrowsePage.tsx'],
 }
 const MAX_LINKS = 10 // head 링크 스팸 방지 캡(핵심 큰 청크 우선 — closure 순서 = 페이지 청크 → 공유 청크)
 

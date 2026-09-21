@@ -713,6 +713,7 @@ app.use('*', async (c, next) => {
       : /^\/(u|profile|s)(\/|$)/.test(url.pathname) ? 'linkshop'
       : url.pathname === '/vouchers' ? 'vouchers'
       : url.pathname === '/browse' ? 'browse'
+      : url.pathname === '/urshorts' ? 'urshorts'
       : null;
     const routeChunks = chunkSurface ? ROUTE_CHUNK_MAP[chunkSurface] : undefined;
     let rb = new HTMLRewriter()
@@ -724,8 +725,7 @@ app.use('*', async (c, next) => {
       })
       .on('head', {
         element(el) {
-          // 🚀 2026-07-12 [UNLOCK_LOADING]: 라우트 청크 modulepreload 주입(엔트리와 병렬 다운로드) —
-          //   Vite 가 index.html 에 넣는 modulepreload 와 동일 속성(crossorigin). css 는 preload(as=style).
+          // 🚀 2026-07-12 [UNLOCK_LOADING]: 라우트 청크 modulepreload 주입(엔트리와 병렬) — Vite 가 index.html 에 넣는 것과 동일 속성(crossorigin). css 는 preload(as=style).
           //   SSR payload 유무와 무관(청크는 항상 필요). 상세 주석은 위 chunkSurface 선언부.
           if (routeChunks) {
             for (const f of routeChunks.js) {

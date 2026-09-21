@@ -32,7 +32,9 @@ export const RESERVED_SLUGS: readonly string[] = [
   'privacy-policy', 'product', 'products', 'profile', 'referral', 'refund',
   'refund-policy', 'region', 'register', 'restaurant-map', 's', 'search', 'seller',
   'shipping-policy', 'stays', 'store', 'success', 'supplier', 'terms',
-  'terms-of-service', 'toss-debug', 'u', 'user', 'v', 'videos', 'vouchers',
+  // 🎬 2026-09-21: `urshorts` 는 유어쇼츠 전체 보기 목록. 예약 안 하면 그 슬러그로 몰을 만드는
+  //   순간 `urdeal.kr/urshorts` 가 그 가게를 가리키고 목록이 통째로 사라진다(`pass` 와 같은 사고).
+  'terms-of-service', 'toss-debug', 'u', 'urshorts', 'user', 'v', 'videos', 'vouchers',
   'wholesale', 'wishlist',
 ]
 
