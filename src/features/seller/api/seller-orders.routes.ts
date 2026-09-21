@@ -11,6 +11,7 @@
  */
 
 import { Hono } from 'hono';
+import { readSellerProductAfterUpdate } from './seller-product-response';
 import type { Context } from 'hono';
 import { cors } from 'hono/cors';
 import { verify } from 'hono/jwt';
@@ -543,7 +544,7 @@ sellerOrdersRoutes.get('/products/:id', async (c) => {
     const product = await db.prepare(
       `SELECT
          p.id, p.name, p.description, p.price, p.original_price,
-         COALESCE(p.stock_quantity, p.stock, 0)                AS stock,
+         COALESCE(p.stock, p.stock_quantity, 0)                AS stock,
          COALESCE(p.thumbnail_url, p.image_url)       AS image_url,
          p.detail_images,
          p.category, p.product_type,
@@ -957,7 +958,7 @@ sellerOrdersRoutes.post('/products', async (c) => {
 
     const newProduct = await db.prepare(
       `SELECT id, seller_id, name, description, price,
-              COALESCE(stock_quantity, stock, 0) AS stock,
+              COALESCE(stock, stock_quantity, 0) AS stock,
               COALESCE(thumbnail_url, image_url) AS image_url,
               category, created_at, updated_at
        FROM products WHERE id = ?`
@@ -1153,14 +1154,8 @@ sellerOrdersRoutes.put('/products/:id', async (c) => {
     // 💰 2026-09-05 (대표 확정 플로우 — 소개비는 매장이 정한다): 수정 화면에서도 변경 가능하게.
     await applySellerPromoRate(db, productId, sellerId, body)
 
-    const updated = await db.prepare(
-      `SELECT id, name, description, price, original_price,
-              COALESCE(stock_quantity, stock, 0) AS stock,
-              COALESCE(thumbnail_url, image_url, image) AS image_url,
-              category, live_only_price, live_price_enabled,
-              COALESCE(status, 'ACTIVE') AS status, updated_at
-       FROM products WHERE id = ?`
-    ).bind(productId).first<Record<string, unknown>>();
+    // 🛠️ 2026-09-21: 응답 SELECT 가 라이브에 없는 `image` 컬럼을 읽어 UPDATE 뒤 매번 500 — `seller-product-response.ts`
+    const updated = await readSellerProductAfterUpdate(db, productId);
 
     // 🛡️ 2026-05-16: voucher 카테고리 상품 수정 시 공구 목록 캐시 무효화
     if (updated?.category && VOUCHER_CATEGORY_SET.has(String(updated.category))) {
