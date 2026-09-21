@@ -35,6 +35,7 @@ import {
 // 🛡️ 2026-05-27 (loading P1): 모달 ~10-15KB lazy — 사용자가 상세 클릭 시만 fetch.
 const OrderDetailModal = lazy(() => import('./seller-orders/OrderDetailModal'))
 import { StatusBadge, useStatusText, nextStatusOf } from './seller-orders/statusHelpers'
+import { OrdererCell } from './seller-orders/OrderKindBadge'
 import BulkActionBar from './seller-orders/BulkActionBar'
 import MobileOrderList from './seller-orders/MobileOrderList'
 import type { Order } from './seller-orders/types'
@@ -504,10 +505,7 @@ export default function SellerOrdersPage() {
                             />
                           </td>
                           <td className="px-6 py-4 text-sm font-mono text-gray-900">{order.order_number}</td>
-                          <td className="px-6 py-4 text-sm text-gray-600">
-                            <div>{order.shipping_name}</div>
-                            <div className="text-xs text-gray-400">{order.shipping_phone}</div>
-                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600"><OrdererCell order={order} /></td>
                           <td className="px-6 py-4 text-sm text-right text-gray-900">{formatNumber(order.total_amount)}{t('common.won')}</td>
                           <td className="px-6 py-4 text-center"><StatusBadge status={order.status} /></td>
                           <td className="px-6 py-4 text-center">

@@ -450,3 +450,26 @@ sellers.linked_user_id → 비움 (두 신호가 다른 사람을 가리키지 �
 - 그 매장에 소유자 지정 → `seller_operators` 에 `role='owner'` 행이 생기는가
 - 지정 뒤 그 계정으로 정산 계좌 등록이 열리는가(잠금이 실제로 풀리는가)
 - 잔액이 있는 매장에서 이전 시도 → 409 `STORE_HANDOVER_BLOCKED` + 마감 안내
+
+---
+
+## 9. ✅ 확정 플로우 — 대행사(중개사) → 매장 → 인플루언서 (2026-09-19 대표 확정 · PR #1499 구현)
+
+결재 정본 `docs/decisions/2026-09-19-agency-flow-final.md` · 대표 문장 원문 `2026-09-19-broker-matching-flow.md` · 구조 표 `urdeal-platform-model.md` §2-1 🔑.
+여기엔 **이 모델(§4·§7·§8)에서 무엇이 달라졌는가**만 적는다.
+
+| 자리 | §8 까지 | 09-19 (#1499) |
+|---|---|---|
+| 주인이 되는 입구 | ① 어드민 지정 · ② `/store/find` 신청(사업자번호로 찾기) | **③ 대행사가 준 승계 코드**(`store_codes kind='owner_claim'`, 매장 등록 때 자동) — `/store/find?code=` 가 매장을 찾아 주고, 신청·등록증 확인·어드민 승인·`transferStoreOwnership` 은 §8 그대로 |
+| 코드의 방향 | (원안) 대행사가 사장님 매장 코드를 입력 | **거꾸로.** 권한을 내주는 쪽(사장님)이 입력해야 동의가 되고, 코드가 새도 남의 매장을 못 가져간다 |
+| 사장님 가입 시점 | (미정) | 첫 정산 전까지만. 이용권 판매를 막지 않는다(주인 없는 매장은 계좌가 없어 정산만 막힌다) |
+| 요율 | 유어딜 5% 만(§7.2 — 중개사 몫은 장부 밖) | 매장 등록 때 **중개사 몫 % · 인플루언서 상한 %**(`seller_meta.broker_share_pct` / `influencer_pct_cap`, 합 ≤ 90). 중개사 몫은 `broker-share.ts` 가 매장 몫에서 떼어 적립 — **게이트 `broker_share_enabled` 기본 OFF**(OFF 면 §7.2 그대로). 켜는 것은 S-BROKER 뒤 대표 판단 |
+| 인플루언서 매칭 | 매장 제안 → 수락(수락 엔드포인트가 **없었다**) | **협업 코드**(`kind='influencer'`, 기본 % · 승인 필요 옵션 · 상한 사용 수) → 링크 `/i/join/:code` 한 탭 또는 마이페이지 입력 → `seller_influencer_deals` 활성. 수락 엔드포인트 `POST /deals/:id/respond` 신설. 딜별 % 조정 `PATCH /deals/:id`(이후 판매분부터) |
+| 인플루언서 링크 | 딜(이용권)마다 발급 | **매장 단위 링크** `/s/{id}?ref=`(7일 귀속) + 대표 이용권 링크. 복사·공유. 이용권이 바뀌어도 그대로 |
+| 성과 | 운영 매장 요약(매장 총액) | 대행사: `/seller/operating` 매장별·**인플루언서별** + 내 중개사 몫 · 인플루언서: `/influencer/settlement` |
+| 직접 운영 매장 | — | 같은 협업 코드·딜 조정·성과 화면. 승계 코드·중개사 몫만 없다 |
+
+⚠️ §7.2 *"유어딜 장부·정산 화면에 중개사 지급은 한 줄도 등장하지 않는다"* 는 **게이트가 켜지는 순간** 거짓이 된다(09-16 결재 안 1).
+그 문단은 작성 당시 기록으로 두고 소급 수정하지 않는다. 지금 살아 있는 값은 `actor-benefit-map.md` §1(게이트 OFF = 0).
+
+가드: `agency-flow-codes-2026-09-19.test.ts` 23건 + `scripts/mutations/agency-flow-codes.mjs` 7건. E4 판정 절차: `docs/handoff/2026-09-19-agency-flow-final.md`.
