@@ -8,21 +8,20 @@ import { toast } from '@/hooks/useToast'
 import AdminLayout from '@/components/AdminLayout'
 import { formatKST } from '@/utils/date'
 import { formatNumber } from '@/utils/format'
-import { isVoucherCategory, VOUCHER_CATEGORY_LABEL } from '@/shared/constants/voucher-categories'
+import { VOUCHER_CATEGORY_LABEL } from '@/shared/constants/voucher-categories'
+import { getNoShippingKind } from '@/shared/product-flow'; import { ORDER_KIND_META, orderKindOf } from '@/shared/order-kind'
 import {
   Package, Truck, CheckCircle2, XCircle, Loader2, Eye,
   Calendar, User, Search, Filter, Download, ChevronLeft,
   ChevronRight, RefreshCw, Clock, DollarSign, Ticket, Store, ExternalLink
 } from 'lucide-react'
 
-// 🗂️ 2026-06-17: 주문 종류 구별 — 첫 상품 category 로 교환권/상품 분류.
-//   ⚠️ 도매몰(B2B) 주문은 별도 wholesale_orders 테이블 → /admin/wholesale-orders (이 페이지엔 안 나옴).
-function orderKind(category?: string | null): { label: string; sub: string; color: string; bg: string; icon: 'voucher' | 'product' } {
-  if (isVoucherCategory(category)) {
-    const m = category ? VOUCHER_CATEGORY_LABEL[category] : undefined
-    return { label: '교환권', sub: m?.short || '', color: 'text-tone-warn', bg: 'bg-tone-warn-bg', icon: 'voucher' }
-  }
-  return { label: '상품', sub: '', color: 'text-tone-info', bg: 'bg-tone-info-bg', icon: 'product' }
+// 🗂️ 주문 종류. ⚠️ B2B 는 wholesale_orders. 🧾 2026-09-21: 이 함수가 **이용권을 "교환권"이라 불렀다**. 판정 SSOT: `order-kind.ts`.
+const KIND_TONE = { deal: ['text-tone-warn', 'bg-tone-warn-bg'], voucher: ['text-tone-info', 'bg-tone-info-bg'], shipping: ['text-gray-600', 'bg-gray-100'] } as const
+function orderKind(category?: string | null, dealOnly?: number | null) {
+  const kind = orderKindOf(getNoShippingKind({ category, deal_only: dealOnly }) ?? 'shipping')
+  const [color, bg] = KIND_TONE[kind]
+  return { label: ORDER_KIND_META[kind].label, sub: kind === 'shipping' ? '' : (category ? VOUCHER_CATEGORY_LABEL[category]?.short || '' : ''), color, bg, icon: kind === 'shipping' ? 'product' as const : 'voucher' as const }
 }
 
 // Module-scope t — uses i18next instance directly (for module-level constants below)
@@ -62,6 +61,7 @@ interface Order {
   total_quantity?: number | null
   first_item_name?: string | null
   first_item_category?: string | null
+  first_item_deal_only?: number | null
   items?: OrderItem[]
 }
 
@@ -470,7 +470,7 @@ export default function AdminOrdersPage() {
                 const productSummary = order.first_item_name
                   ? (extraCount > 0 ? `${order.first_item_name} 외 ${extraCount}건` : order.first_item_name)
                   : '-'
-                const kind = orderKind(order.first_item_category)
+                const kind = orderKind(order.first_item_category, order.first_item_deal_only)
                 const checked = selectedNumbers.has(order.order_number)
                 return (
                   <tr key={order.order_number} className={`hover:bg-gray-50 align-top ${checked ? 'border border-rule bg-white' : ''}`}>
