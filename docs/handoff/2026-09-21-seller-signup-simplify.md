@@ -212,16 +212,33 @@ OCR 을 병렬로 바꾼 커밋에서 Verify 가 빨간불이었다. 실패한 �
 ⇒ **새 주입만 검증하고 기존 것을 안 돌린 게 실수였다.** 코드 구조를 바꿨으면
 `--only` 로 **그 파일을 겨눈 주입 전부**를 다시 돌릴 것(이번엔 9건).
 
-### ⚠️ GitHub 이 run 을 안 만드는 일이 있다 (2026-09-21 실측)
+### 🩸 CI 가 두 번 안 돈 진짜 이유 — **GitHub 탓이 아니라 충돌 탓이었다**
 
-수정 커밋 `6c33179` 을 푸시했는데 **`PR Verification` run 이 27분 동안 생기지 않았다.**
-큐 지연이 아니다 — 그 커밋의 check-suites 에 **GitHub Actions 스위트 자체가 없었다**
-(Render·Cloudflare·Claude 셋뿐). 같은 시각 다른 PR 들의 Verify 는 정상 생성됐다.
+> ⚠️ **이 항목은 한 번 틀리게 적었다가 고쳤다.** 처음엔 *"GitHub 이 run 을 안 만드는 일이 있다"*
+> 라고 썼는데 **오진이었다.** 그대로 뒀으면 다음 세션이 GitHub 을 의심하며 시간을 태웠을 것이다.
 
-- `workflow_dispatch` 로 띄우려 했으나 **MCP·앱 토큰 둘 다 403**(이 세션은 워크플로를 못 띄운다).
-- ⇒ 빈 커밋으로 흔들지 않는다(CLAUDE.md 금지). **실제로 필요한 커밋**(이 기록)으로 재발화시킨다.
-- 다음 세션이 같은 걸 만나면: 먼저 `commits/<sha>/check-suites` 로 **Actions 스위트가 있는지**
-  확인할 것. 없으면 큐 지연이 아니라 이벤트 누락이다.
+`6c33179`·`7173242` 두 커밋에서 `PR Verification` run 이 **아예 생기지 않았다**(check-suites 에
+GitHub Actions 스위트 자체가 없음). 같은 시각 다른 PR 들은 정상이라 GitHub 문제로 보였다.
+
+**진짜 원인: PR 이 `mergeable: false` 였다.** GitHub 은 머지 커밋을 못 만들면 `pull_request`
+워크플로 run 을 **생성조차 하지 않는다**(큐에 안 들어간다 = 이벤트가 아예 없다).
+
+충돌 파일은 **`src/worker/generated/route-chunk-map.ts`** — CLAUDE.md 가 *"빌드 산출물, 커밋 금지"*
+라고 못 박은 그 파일이다. `f3d9932`(안 B 커밋)에서 되돌리기를 **한 번 놓쳤고**, main 의 CI
+생성본과 해시가 달라 충돌했다. 해결은 `git checkout --theirs`(main 값을 취한다 — 내 로컬 청크
+해시는 의미가 없다).
+
+**🔑 다음 세션이 "CI 가 안 돈다" 를 만나면 순서는 이것이다:**
+1. `pulls/<n>` 의 **`mergeable`** 을 먼저 본다. `false` 면 여기서 끝 — 충돌을 풀면 run 이 생긴다.
+   (`unknown` 이면 GitHub 이 계산 중이니 몇 초 뒤 재조회.)
+2. 그다음에 `commits/<sha>/check-suites` 로 Actions 스위트 유무.
+3. 워크플로 트리거·concurrency 는 **마지막에** 의심한다. 나는 순서를 거꾸로 밟아 30분을 썼다.
+
+⚠️ 곁들여 배운 것: **이 세션은 `workflow_dispatch` 를 못 띄운다**(MCP·앱 토큰 둘 다 403).
+   그러니 CI 를 다시 돌리는 유일한 길은 **실제 내용이 있는 커밋**이다(빈 커밋은 CLAUDE.md 금지).
+
+⚠️ **그리고 이 사고는 `route-chunk-map.ts` 되돌리기를 한 번만 놓쳐도 난다.**
+   커밋 **전**에 `git status --porcelain` 으로 그 파일이 끼어 있는지 볼 것.
 
 ### 🩸 오늘 세 번 같은 실수를 했다 — 시험이 **키 이름만** 셌다
 `payload 에 store_phone 이 있나` · `다수결이 정답을 고르나` · `needs_food_permit 을 얹나` —
