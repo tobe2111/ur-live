@@ -137,6 +137,7 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   partial_refund_enabled: boolStr,             // returns/api/return-amount.routes.ts:53 (부분환불 금액 지정)
   voucher_cart_enabled: boolStr,               // group-buy/api/cart-checkout.routes.ts:40 (이용권 장바구니)
   ocr_auto_verify_enabled: boolStr,            // worker/utils/ocr-license.ts:175 (서류 자동 판정)
+  store_owner_notice_enabled: boolStr,         // worker/utils/store-owner-notice.ts (사장님 "매장이 등록되었습니다" 발송)
   multi_tier_enabled: boolStr,                 // referral-tree.routes.ts:349 (종료된 축)
 
   // ── enum ──
