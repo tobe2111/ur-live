@@ -133,6 +133,9 @@
 - S-BROKER 전제 라이브 확인(D1 읽기): 매장 15 `store_channel=brokered` · `broker_share_pct=10` · `broker_user_id=35(A)` · `influencer_pct_cap=5` ·
   operators = A(operator)·B(owner). 상품 **2916**(1,000원) 은 `HIDDEN`/`is_active=0` — 결제 직전 활성화가 필요하다(#1509 뒤 대시보드 수정 200).
   딜 결제 대체 검증은 **어드민 딜 지급 엔드포인트가 없어** 세션이 못 한다(D1 쓰기 금지) — 카드 결제는 대표.
+- 모델 실패 모드 목록(2026-09-21 라이브 15회+ 누적): 빈 응답 · 산문 거절("정보가 없습니다") · JSON 을 문자열로 한 겹 감쌈 · 등록번호 칸에 개업일 ·
+  **프롬프트 자리표시자 베낌**(`"biz_name":"상호(법인명)"` → 세 번째 PR 에서 null 처리) · 한 글자 오독(`글로드`) · 상호 대신 대표자 이름(`김테스트`) ·
+  상호에서 `[테스트]` 접두 탈락(→ `contains`, 정상). 전부 파서 쪽에서 흡수 가능한 것은 흡수했고, 나머지는 `review`(사람 큐)로 떨어지며 해가 없다.
 - 테스트 엔티티 목록(정리용): users 35(A 중개사)·36(B 사장님)·37(C 인플루언서) `claude-e5-*@claude-e5.invalid` · sellers 15·16·17 `[테스트] 클로드*` ·
   products 2916 · store_codes LMHS-YTBP/GGG4-VMYU/PBRN-YTGK · collab code EDF597WV · deal 1 · claim 1 · biz-cert 업로드 5장(`/api/media/uploads/biz-cert/2026-09/`).
   ⚠️ **어드민에 유저 삭제 엔드포인트가 없고, `DELETE /api/admin/sellers/:id` 는 삭제가 아니라 `status='suspended'` 정지다**(행은 남는다). products 만 `DELETE /api/admin/products/:id`. 정지된 테스트 매장은 `approvedSellerProductSql` 이 피드에서 걸러낸다. users 3명은 남는다(로그인 불가 도메인이라 해는 없음). 정리는 S-BROKER 뒤.

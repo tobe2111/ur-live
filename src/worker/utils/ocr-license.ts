@@ -81,11 +81,21 @@ function emptyResult(kind: DocKind, message: string, raw?: string): OcrDocResult
   }
 }
 
+/**
+ * 🪞 프롬프트의 자리표시자를 모델이 **그대로 되돌려 준** 값 (2026-09-21 라이브 실측: `"biz_name":"상호(법인명)"` — 사진을 안 읽고
+ * 예시 JSON 을 베꼈다). 값으로 두면 상호 대조가 `differ` 로 떨어져 사람 큐에 "상호(법인명)" 이 뜬다. 읽은 게 아니므로 null.
+ */
+const PROMPT_PLACEHOLDERS = new Set([
+  '상호(법인명)', '사업장 소재지 전체 주소', '대표자 성명', '등록번호 XXX-XX-XXXXX', '개업연월일 YYYY-MM-DD',
+  '업소명(상호)', '영업소 소재지 전체 주소', '성명(대표자)', '관리번호', '신고일(허가일) YYYY-MM-DD',
+])
+
 /** `null` 문자열·빈 문자열·`-` 같은 빈 표기를 전부 null 로. */
 function clean(v: unknown): string | null {
   if (typeof v !== 'string') return null
   const s = v.trim()
   if (!s || s === 'null' || s === '-' || s === 'N/A' || s === '없음') return null
+  if (PROMPT_PLACEHOLDERS.has(s)) return null
   return s
 }
 
