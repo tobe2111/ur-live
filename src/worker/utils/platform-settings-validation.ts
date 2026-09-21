@@ -138,6 +138,10 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   voucher_cart_enabled: boolStr,               // group-buy/api/cart-checkout.routes.ts:40 (이용권 장바구니)
   ocr_auto_verify_enabled: boolStr,            // worker/utils/ocr-license.ts:175 (서류 자동 판정)
   store_owner_notice_enabled: boolStr,         // worker/utils/store-owner-notice.ts (사장님 "매장이 등록되었습니다" 발송)
+  // 🕐 2026-09-21: 노출 유예(시간). 읽는 쪽(`getExposureGraceHours`)이 0 이하를 '유예 없음' 으로,
+  //   168 초과를 168 로 클램프하므로 검증도 같은 범위로 맞춘다 — 화면이 받은 값과 코드가 쓰는 값이 갈리면
+  //   "넣었는데 안 걸린다" 가 된다.
+  store_exposure_grace_hours: intRange(0, 168),  // worker/utils/store-verify.ts:84
   multi_tier_enabled: boolStr,                 // referral-tree.routes.ts:349 (종료된 축)
 
   // ── enum ──
