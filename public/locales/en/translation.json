@@ -6015,7 +6015,8 @@
       "etc": "Other"
     },
     "picker": {
-      "placeholder": "Store name or address"
+      "placeholder": "Store name or address",
+      "dragHint": "Drag the pin to the exact spot, or tap the map to move it"
     }
   },
   "sellerSwitch": {

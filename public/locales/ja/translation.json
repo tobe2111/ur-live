@@ -5962,7 +5962,8 @@
       "etc": "その他"
     },
     "picker": {
-      "placeholder": "店名または住所を入力"
+      "placeholder": "店名または住所を入力",
+      "dragHint": "ピンをドラッグして正確な位置に移動してください（地図をタップしても移動します）"
     }
   },
   "sellerSwitch": {
