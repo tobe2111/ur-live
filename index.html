@@ -300,10 +300,16 @@
     <link rel="preconnect" href="https://t1.kakaocdn.net" crossorigin />
     <link rel="preconnect" href="https://img1.kakaocdn.net" crossorigin />
     <!-- 🎨 2026-07-19 확정 워드마크(urdeal.) — Poppins 800 을 urdeal 6글자 서브셋(&text=, ~2KB)만 로드.
-         첫 페인트 로더 워드마크가 즉시 사용 → preconnect 정당. CSP style-src(fonts.googleapis)/font-src(fonts.gstatic) 기허용. -->
+         첫 페인트 로더 워드마크가 즉시 사용 → preconnect 정당. CSP style-src(fonts.googleapis)/font-src(fonts.gstatic) 기허용.
+         💡 2026-09-21 [UNLOCK_LOADING] `display=swap` → `optional` (대표 신고 "로딩 중에 urdeal 로고도 안보이고" · 승인 "단어 하나 교체").
+            swap 은 폰트를 기다리는 동안 글자를 **투명하게** 둔다 — 로더가 떠 있는 바로 그 순간과 겹쳐
+            셀러 대시보드에서 워드마크가 사라지고 브랜드 점만 남았다(대표 스크린샷: 점이 정중앙이 아니라
+            +69px — 글자가 자리는 차지하는데 안 칠해졌다는 뜻). optional 은 제때 안 오면 기다리지 않고
+            폴백으로 **바로 그린다** → 안 보이는 구간이 구조적으로 사라진다.
+            같은 이유로 이 레포는 본문 폰트(Pretendard)에도 이미 optional 을 쓰고 있다(아래 @font-face). -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@800&text=urdeal&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@800&text=urdeal&display=optional" rel="stylesheet" />
     <link rel="dns-prefetch" href="https://js.tosspayments.com" />
     <link rel="dns-prefetch" href="https://firebasestorage.googleapis.com" />
     <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
