@@ -5,7 +5,6 @@ import api from '@/lib/api'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { formatKST, parseUTCDate, kstDayStartMs, kstDayEndMs } from '@/utils/date'
 import SellerLayout from '@/components/SellerLayout'
 import BrandLoader from '@/components/brand/BrandLoader'
@@ -34,8 +33,9 @@ import {
 } from 'lucide-react'
 // 🛡️ 2026-05-27 (loading P1): 모달 ~10-15KB lazy — 사용자가 상세 클릭 시만 fetch.
 const OrderDetailModal = lazy(() => import('./seller-orders/OrderDetailModal'))
-import { StatusBadge, useStatusText, nextStatusOf } from './seller-orders/statusHelpers'
+import { StatusBadge, useStatusText, usePaymentMethodText, nextStatusOf } from './seller-orders/statusHelpers'
 import { OrdererCell } from './seller-orders/OrderKindBadge'
+import { OrderNumber } from './seller-orders/OrderNumber'
 import BulkActionBar from './seller-orders/BulkActionBar'
 import MobileOrderList from './seller-orders/MobileOrderList'
 import type { Order } from './seller-orders/types'
@@ -160,7 +160,7 @@ export default function SellerOrdersPage() {
       return
     }
 
-    const headers = [t('seller.orderNumber'), t('seller.buyer'), t('seller.phone'), t('seller.address'), t('seller.orderAmount'), t('seller.orderStatus'), t('seller.paymentStatus'), t('seller.courier'), t('seller.trackingNumber'), t('seller.orderDate')]
+    const headers = [t('seller.orderNumber'), t('seller.buyer'), t('seller.phone'), t('seller.address'), t('seller.orderAmount'), t('seller.orderStatus'), t('seller.paymentMethod', { defaultValue: '결제수단' }), t('seller.voucherCodeHeader', { defaultValue: '이용권 코드' }), t('seller.courier'), t('seller.trackingNumber'), t('seller.orderDate')]
     const rows = filteredOrders.map(order => [
       order.order_number,
       order.shipping_name,
@@ -168,7 +168,8 @@ export default function SellerOrdersPage() {
       order.shipping_address,
       order.total_amount,
       getStatusText(order.status),
-      (order.payment_status === 'approved' || order.payment_status === 'completed') ? 'Paid' : order.payment_status,
+      payMethodText(order.payment_method),
+      (order.vouchers || []).map(v => v.code).join(' '),
       order.courier || '',
       order.tracking_number || '',
       formatKST(order.created_at)
@@ -312,6 +313,7 @@ export default function SellerOrdersPage() {
 
   // 🛡️ status 헬퍼 / formatPrice 는 ./seller-orders/statusHelpers 로 이동.
   const getStatusText = useStatusText()
+  const payMethodText = usePaymentMethodText()
 
   function viewOrderDetail(order: Order) {
     setSelectedOrder(order)
@@ -485,7 +487,7 @@ export default function SellerOrdersPage() {
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">{t('seller.ordererHeader')}</th>
             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500">{t('seller.orderAmountHeader')}</th>
             <th className="px-6 py-3 text-center text-xs font-medium text-gray-500">{t('seller.orderStatusHeader')}</th>
-            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500">{t('seller.paymentStatusHeader')}</th>
+            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500">{t('seller.paymentMethod', { defaultValue: '결제수단' })}</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">{t('seller.orderDateHeader')}</th>
             <th className="px-6 py-3 text-center text-xs font-medium text-gray-500">{t('seller.detailHeader')}</th>
                       </tr>
@@ -504,15 +506,12 @@ export default function SellerOrdersPage() {
                               className="rounded border-gray-300 text-gray-700"
                             />
                           </td>
-                          <td className="px-6 py-4 text-sm font-mono text-gray-900">{order.order_number}</td>
+                          <td className="px-6 py-4"><OrderNumber value={order.order_number} /></td>
                           <td className="px-6 py-4 text-sm text-gray-600"><OrdererCell order={order} /></td>
                           <td className="px-6 py-4 text-sm text-right text-gray-900">{formatNumber(order.total_amount)}{t('common.won')}</td>
                           <td className="px-6 py-4 text-center"><StatusBadge status={order.status} /></td>
-                          <td className="px-6 py-4 text-center">
-                            <Badge className={(order.payment_status === 'approved' || order.payment_status === 'completed') ? 'bg-white text-tone-ok border-rule' : 'bg-gray-100 text-gray-800'}>
-                              {(order.payment_status === 'approved' || order.payment_status === 'completed') ? t('seller.statusDone') : order.payment_status}
-                            </Badge>
-                          </td>
+                          {/* 💳 결제상태(`payment_status`)에서 결제수단으로 — 사유는 OrderDetailModal 주석. */}
+                          <td className="px-6 py-4 text-center text-sm text-gray-600">{payMethodText(order.payment_method)}</td>
                           <td className="px-6 py-4 text-sm text-gray-600">
                             {formatKST(order.created_at)}
                           </td>

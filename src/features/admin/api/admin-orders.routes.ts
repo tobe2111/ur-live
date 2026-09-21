@@ -112,6 +112,8 @@ adminOrdersRoutes.get('/orders', cors(), async (c) => {
 
     let orders: OrderRow[];
     let total = 0;
+    // 폴백이 돌면 화면이 "데이터가 원래 비어 있다" 와 구분할 수 없다 → 응답에 표시한다.
+    let degraded: string | null = null;
     try {
       const { q, params } = buildWhere(`
         SELECT o.id, o.order_number, o.user_id, o.seller_id,
@@ -123,7 +125,7 @@ adminOrdersRoutes.get('/orders', cors(), async (c) => {
                COALESCE(o.shipping_phone,'') as shipping_phone,
                COALESCE(o.shipping_address,'') as shipping_address,
                COALESCE(o.shipping_address_detail,'') as shipping_address_detail,
-               COALESCE(o.shipping_zipcode, o.shipping_postal_code, '') as shipping_zipcode,
+               COALESCE(o.shipping_postal_code, '') as shipping_zipcode,   -- 2026-09-21: 옛 우편번호 컬럼은 라이브에 없다(쿼리 전체가 던져 폴백이 돌았다)
                COALESCE(o.courier, o.shipping_company, '') as courier,   -- 2026-08-02: tracking_company 는 실컬럼 아님(쿼리 전체가 던졌다)
                COALESCE(o.tracking_number,'') as tracking_number,
                o.created_at, o.updated_at,
@@ -151,7 +153,12 @@ adminOrdersRoutes.get('/orders', cors(), async (c) => {
       orders = ordersRes;
       total = Number(countRes[0]?.cnt ?? 0);
     } catch (primaryErr) {
-      if (import.meta.env.DEV) console.warn('[Admin] orders primary query failed, trying fallback:', (primaryErr as Error).message);
+      // 🔴 2026-09-21: 이 폴백은 **조용히** 돌았다. 라이브에 없는 우편번호 컬럼 하나 때문에
+      //   주 쿼리가 던지고, 폴백이 고객명·셀러명·상품명·주문종류를 전부 빈 값으로 서빙했는데
+      //   응답이 `success: true` 라 아무도 몰랐다 — 이 레포가 반복해 당한 "조용한 부재" 다.
+      //   DEV 게이트를 벗긴다: 프로덕션 로그에 남아야 다음에 알아챈다.
+      console.error('[Admin] orders primary query failed — 폴백(빈 값) 서빙 중:', (primaryErr as Error).message);
+      degraded = (primaryErr as Error).message || 'primary query failed';
       try {
         const { q, params } = buildWhere(`
           SELECT o.id, o.order_number, o.user_id, o.seller_id,
@@ -174,7 +181,7 @@ adminOrdersRoutes.get('/orders', cors(), async (c) => {
     }
 
     const totalPages = Math.max(1, Math.ceil(total / limit));
-    return c.json({ success: true, data: orders, pagination: { page, limit, total, totalPages } });
+    return c.json({ success: true, data: orders, pagination: { page, limit, total, totalPages }, ...(degraded ? { degraded } : {}) });
   } catch (err) {
     if (import.meta.env.DEV) console.error('[Admin] orders error:', err);
     return c.json({ success: false, error: safeAdminError(err, c.env) }, 500);
@@ -246,7 +253,7 @@ adminOrdersRoutes.get('/orders/:orderNumber', cors(), async (c) => {
                COALESCE(o.shipping_phone, '') as shipping_phone,
                COALESCE(o.shipping_address, '') as shipping_address,
                COALESCE(o.shipping_address_detail, '') as shipping_address_detail,
-               COALESCE(o.shipping_zipcode, o.shipping_postal_code, '') as shipping_zipcode,
+               COALESCE(o.shipping_postal_code, '') as shipping_zipcode,   -- 2026-09-21: 옛 우편번호 컬럼은 라이브에 없다(쿼리 전체가 던져 폴백이 돌았다)
                COALESCE(o.courier, o.shipping_company, '') as courier,   -- 2026-08-02: tracking_company 는 실컬럼 아님(쿼리 전체가 던졌다)
                COALESCE(o.tracking_number, '') as tracking_number,
                o.created_at, o.updated_at,
