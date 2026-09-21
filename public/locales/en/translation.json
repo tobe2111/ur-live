@@ -3374,7 +3374,19 @@
       "rowFunnel": "Traffic sources",
       "more": "Show more (referral earnings, monthly listings, traffic sources)",
       "back": "Back to summary"
-    }
+    },
+    "paymentMethod": "Payment method",
+    "payCard": "Card",
+    "payDeal": "Deal",
+    "payVirtualAccount": "Virtual account",
+    "voucherUsed": "Used",
+    "voucherUnused": "Unused",
+    "voucherNone": "No vouchers issued yet.",
+    "voucherUsedAt": "Used {{d}}",
+    "voucherUntil": "Until {{d}}",
+    "voucherCodeHeader": "Voucher code",
+    "copyOrderNumber": "Copy full order number",
+    "goRedeemScreen": "Go to redemption screen"
   },
   "admin": {
     "login": {

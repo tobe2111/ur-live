@@ -2693,7 +2693,19 @@
       "rowFunnel": "Origen del tráfico",
       "more": "Ver más (ingresos por recomendación, altas por mes, origen del tráfico)",
       "back": "Volver al resumen"
-    }
+    },
+    "paymentMethod": "결제수단",
+    "payCard": "카드",
+    "payDeal": "딜",
+    "payVirtualAccount": "가상계좌",
+    "voucherUsed": "사용완료",
+    "voucherUnused": "미사용",
+    "voucherNone": "아직 발급된 이용권이 없습니다.",
+    "voucherUsedAt": "{{d}} 사용",
+    "voucherUntil": "{{d}}까지",
+    "voucherCodeHeader": "이용권 코드",
+    "copyOrderNumber": "전체 주문번호 복사",
+    "goRedeemScreen": "사용처리 화면으로"
   },
   "admin": {
     "login": {
