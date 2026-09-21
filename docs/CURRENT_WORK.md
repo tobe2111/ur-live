@@ -5494,10 +5494,12 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 343건 · 최신순 · 이 목록은 자동 생성된다._
+_총 346건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-21**
+- [🎬 유어쇼츠 전체 보기 — 도시·종류로 고르는 목록 (`/urshorts`)](handoff/2026-09-21-urshorts-browse.md)
 - [셀러 주문 상세 — 사진·주문번호·이용권 (2026-09-21)](handoff/2026-09-21-seller-order-detail.md)
+- [2026-09-21 — 셀러 상품편집 저장 버튼 위치 + 로더 워드마크가 안 보이던 것](handoff/2026-09-21-seller-edit-save-top-and-loader-font.md)
 - [2026-09-21 — 지역 페이지가 PC 에서 430px 액자에 갇혀 있던 것](handoff/2026-09-21-region-pc-fullbleed.md)
 - [2026-09-21 — 주문관리가 이용권을 택배로 그리던 것 (+ 결제 복구 E4 통과)](handoff/2026-09-21-order-kind-shipping-ui.md)
 - [2026-09-21 — 지도 핀 끌어서 위치 잡기 (시안 ②)](handoff/2026-09-21-map-pin-drag.md)
