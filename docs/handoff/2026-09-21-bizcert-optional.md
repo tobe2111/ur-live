@@ -68,3 +68,28 @@ https://urdeal.kr/store/find
    그 매장이 `등록증 없음` 으로, 올린 매장은 `등록증 제출됨 · 미검증` 으로 뜨는지.
 3. ⚠️ **며칠 지켜볼 것(E5)**: 서류 없는 신청 비율. 너무 높으면 "선택" 을 유지하되 승인 화면에서
    서류 요청을 한 번 보내는 흐름이 필요하다(지금은 없다).
+
+## 🩸 이번에 틀렸던 판단 — "체크가 빨갛지 않다"를 "검증됐다"로 읽었다
+
+이 세 PR 은 스택이다(main → #1517 → #1523 → #1530). 그런데 `verify.yml` 은
+**`pull_request: branches: [main]`** 이라 base 가 main 이 아닌 #1523·#1530 에는 **한 번도 안 돌았다.**
+체크는 `Cloudflare Pages ✅` 하나뿐이었고 `mergeable_state` 는 `clean` 이었다 —
+나는 그 상태를 그대로 "초록" 으로 대표에게 보고했다. **검증된 적이 없었다.**
+
+⚠️ `workflow_dispatch` 로 대신 돌리려 했으나 이 세션의 토큰에 `actions:write` 가 없다(403, 두 경로 모두).
+⇒ **스택된 PR 은 로컬에서 Verify 와 같은 것을 돌려야 한다**: `npx tsc --noEmit -p tsconfig.json` ·
+`node scripts/pre-push-gate.mjs`(가드 99) · `node scripts/check-guard-mutations.mjs --changed -s` ·
+`npm test -- --run` · `npm run build`(끝나고 `git checkout -- src/worker/generated/route-chunk-map.ts`).
+
+그렇게 돌리자 **실제 결함 넷**이 나왔다(전부 이 스택 안에서 묻혀 있던 것):
+1. `store_owner_notice_enabled` — `OPS_GATES` 에만 있고 **켤 화면이 없었다.** 게이트를 만들어 놓고
+   대표가 켤 수 없는 상태였다. `/admin/platform-settings` 에 추가.
+2. `S-OWNERNOTICE` — 게이트가 가리키는 체크리스트 항목이 **없었다.** 8건 신설.
+3. `store_exposure_grace_hours`(#1517 분) — 같은 클래스인데 **숫자라 게이트 명부엔 안 잡힌다.**
+   함께 노출 + `intRange(0,168)` 검증.
+4. 낡은 주입 앵커 둘 + `if (false)` 로 꺼도 초록이던 가드 하나.
+
+🧭 **교훈**: 스택된 PR 에서 `clean` 은 "머지 가능" 이지 "검증됨" 이 아니다. **어떤 체크가 실제로
+돌았는지 이름으로 확인할 것** — 이 레포가 반복해 당한 *조용한 부재*가 CI 트리거 필터에도 있다.
+(`verify.yml` 의 base 필터는 건드리지 않았다 — 그 파일의 트리거 이력은 2026-09-15 실사고의 결과다.
+#1517 이 main 에 머지되면 #1523 의 base 가 main 으로 바뀌며 Verify 가 정상적으로 돈다.)
