@@ -15,10 +15,26 @@ const RETRY = 'src/tests/unit/ocr-empty-retry-2026-09-21.test.ts'
 
 export default [
   {
+    name: '🙅 JSON 없는 산문 응답이 재시도 없이 unreadable 로 끝난다',
+    file: 'src/worker/utils/ocr-license.ts',
+    find: "  const isBlank = (t: string) => !t || !/\\{/.test(t)",
+    replace: '  const isBlank = (t: string) => !t',
+    test: RETRY,
+    why: '"정보가 없습니다" 한 줄은 빈 응답과 같은 실패다. 다시 물으면 읽는 사진을 사람 큐에 남긴다.',
+  },
+  {
+    name: '🧵 이스케이프된 JSON 응답 되살리기가 사라진다 (읽어 놓고 unreadable)',
+    file: 'src/worker/utils/ocr-license.ts',
+    find: "      parsed = JSON.parse(m[0].replace(/\\\\\"/g, '\"').replace(/\\\\n/g, '\\n')) as Record<string, unknown>",
+    replace: "      throw new Error('x')",
+    test: RETRY,
+    why: '모델이 JSON 을 문자열로 감싸 돌려준 응답은 내용이 다 있다. 버리면 사람이 다시 누른다.',
+  },
+  {
     name: '🔁 OCR 빈 응답 재시도가 사라진다 (2026-09-21 이전 상태 — 5회 중 2회 unreadable)',
     file: 'src/worker/utils/ocr-license.ts',
-    find: '  for (let attempt = 0; attempt < OCR_EMPTY_RETRIES + 1 && !text; attempt += 1) {',
-    replace: '  for (let attempt = 0; attempt < 1 && !text; attempt += 1) {',
+    find: '  for (let attempt = 0; attempt < OCR_EMPTY_RETRIES + 1 && isBlank(text); attempt += 1) {',
+    replace: '  for (let attempt = 0; attempt < 1 && isBlank(text); attempt += 1) {',
     test: RETRY,
     why: '빈 응답은 예외가 아니라 조용한 실패다. 한 번에 끝내면 게이트가 켜진 뒤 정상 서류가 자동 승인 후보에서 소리 없이 빠진다.',
   },

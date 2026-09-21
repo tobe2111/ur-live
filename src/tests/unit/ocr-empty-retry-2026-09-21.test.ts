@@ -59,6 +59,24 @@ describe('ocrDocument — 빈 응답 재시도', () => {
     expect(r.message).toContain('읽기 실패')
   })
 
+  it('🧵 JSON 을 문자열로 한 번 더 감싼 응답(이스케이프된 따옴표)도 읽는다 — 2026-09-21 실측 8회 중 1회', async () => {
+    const wrapped = JSON.stringify('{\n    "biz_name": "[테스트] 클로드분식",\n    "address": "전북특별자치도 전주시 덕진구 가리내 10길 10",\n    "owner_name": "김테스트",\n    "biz_number": "999-99-99991",\n    "permit_date": "2024년 03월 02일"\n}')  // 라이브 raw 와 같은 모양(JSON.stringify 한 겹)
+    const f = fakeAi([wrapped])
+    const r = await ocrDocument(f.ai, new Uint8Array([1]), 'business_registration')
+    expect(r.ok).toBe(true)
+    expect(r.bizName).toBe('[테스트] 클로드분식')
+    expect(r.bizNumber).toBe('9999999991')
+    expect(r.fill).toBe(1)
+  })
+
+  it('🙅 JSON 없는 산문("정보가 없습니다") 도 빈 응답처럼 한 번 더 묻는다 — 2026-09-21 실측', async () => {
+    const f = fakeAi(['현재 제공할 수 있는 정보는 없습니다.', JSON_OK])
+    const r = await ocrDocument(f.ai, new Uint8Array([1]), 'business_registration')
+    expect(f.calls.length).toBe(2)
+    expect(r.ok).toBe(true)
+    expect(r.bizName).toBe('[테스트] 클로드분식')
+  })
+
   it('재시도 횟수는 1 — 더 올리면 뉴런 예산이 조용히 배로 나간다', () => {
     expect(OCR_EMPTY_RETRIES).toBe(1)
   })
