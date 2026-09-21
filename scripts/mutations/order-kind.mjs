@@ -66,4 +66,41 @@ export default [
       '판정이 화면마다 갈리기 시작하는 자리다. 배송지가 아직 안 붙은 배송 주문이 이용권으로 보이고, ' +
       '그 순간 셀러가 송장을 넣을 방법이 사라진다.',
   },
+  {
+    name: '🔴 어드민 주문 SQL 이 라이브에 없는 컬럼을 다시 SELECT 한다 (폴백이 조용히 돈다)',
+    file: 'src/features/admin/api/admin-orders.routes.ts',
+    // 두 쿼리에 같은 줄이 있어 `tracking_number,''`(공백 없음)까지 넣어야 목록 쿼리 쪽으로 유일해진다.
+    find: "COALESCE(o.shipping_postal_code, '') as shipping_zipcode,   -- 2026-09-21: 옛 우편번호 컬럼은 라이브에 없다(쿼리 전체가 던져 폴백이 돌았다)\n               COALESCE(o.courier, o.shipping_company, '') as courier,   -- 2026-08-02: tracking_company 는 실컬럼 아님(쿼리 전체가 던졌다)\n               COALESCE(o.tracking_number,'') as tracking_number,",
+    replace: "COALESCE(o.shipping_zipcode, o.shipping_postal_code, '') as shipping_zipcode,\n               COALESCE(o.courier, o.shipping_company, '') as courier,\n               COALESCE(o.tracking_number,'') as tracking_number,",
+    test: 'src/tests/unit/order-kind-2026-09-21.test.ts',
+    why:
+      '실사고 원본. SQLite 는 없는 컬럼에 파싱 단계에서 던지므로 **쿼리 전체가 죽고**, ' +
+      '폴백이 고객명·셀러명·상품명·주문종류를 빈 값으로 서빙하면서 success:true 로 돌려준다 — ' +
+      '어드민 주문관리가 몇 달간 반쪽이었는데 아무도 몰랐다.',
+  },
+  {
+    name: '🔴 폴백 경고를 다시 DEV 게이트 뒤로 숨긴다 (프로덕션에서 안 보인다)',
+    file: 'src/features/admin/api/admin-orders.routes.ts',
+    find: "      console.error('[Admin] orders primary query failed",
+    replace: "      if (import.meta.env.DEV) console.error('[Admin] orders primary query failed",
+    test: 'src/tests/unit/order-kind-2026-09-21.test.ts',
+    why: '이 게이트가 바로 그 사고를 몇 달간 안 보이게 만든 것이다 — 폴백은 소리를 내야 한다.',
+  },
+  {
+    name: '🛠️ 셀러 상품 상세가 라이브에 없는 컬럼을 다시 무조건 SELECT 한다 (편집 화면 500)',
+    file: 'src/features/seller/api/seller-orders.routes.ts',
+    find: "         p.live_stream_id,${withLive ? ' p.live_only_price, p.live_price_enabled,' : ''}",
+    replace: '         p.live_stream_id, p.live_only_price, p.live_price_enabled,',
+    test: 'src/tests/unit/order-kind-2026-09-21.test.ts',
+    why:
+      '실사고 원본. 편집 화면이 아예 안 열려 삭제 버튼에도 못 닿았다(대표 신고 "이용권 편집 및 삭제하려니까 안돼").',
+  },
+  {
+    name: '🛠️ 컬럼 부재 폴백이 모든 에러를 삼킨다 (다음 결함이 조용해진다)',
+    file: 'src/features/seller/api/seller-orders.routes.ts',
+    find: "        if (!/no such column/i.test(String((e as Error)?.message || ''))) throw e",
+    replace: '        // (아무 에러나 폴백)',
+    test: 'src/tests/unit/order-kind-2026-09-21.test.ts',
+    why: '권한·바인딩 오류까지 조용히 2차 쿼리로 넘어가면 진짜 원인이 영영 안 보인다.',
+  },
 ]
