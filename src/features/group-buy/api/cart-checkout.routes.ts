@@ -220,8 +220,8 @@ cartCheckoutRoutes.post('/cart/confirm-toss', rateLimit({ action: 'gb_cart_confi
   try {
     // ── 주문 한 행 ─────────────────────────────────────────────────────────────
     const orderInsert = await DB.prepare(`
-      INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_method, payment_key, idempotency_key)
-      VALUES (?, ?, ?, ?, 0, 0, ?, 'KRW', 'PAID', 'toss', ?, ?)
+      INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_status, payment_method, payment_key, idempotency_key)
+      VALUES (?, ?, ?, ?, 0, 0, ?, 'KRW', 'PAID', 'approved', 'toss', ?, ?)
       RETURNING id
     `).bind(orderNumber, userId, singleSeller, expectedAmount, expectedAmount, paymentKey, paymentKey).first<{ id: number }>()
     const newOrderId = orderInsert?.id ?? null

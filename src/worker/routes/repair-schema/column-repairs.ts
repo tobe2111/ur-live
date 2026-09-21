@@ -1101,4 +1101,30 @@ export const COLUMN_REPAIRS: ColumnRepair[] = [
     //   guide.routes.ts maybeSyncGuideSeed 가 manually_edited=0 섹션만 시드 최신화(관리자 편집 보존).
     //   guide.routes.ts 인라인 ensure(ensureGuideEditColumn) 병행 — 여기 등록은 repair 경로용.
     { desc: 'operation_guides.manually_edited', sql: "ALTER TABLE operation_guides ADD COLUMN manually_edited INTEGER DEFAULT 0", requiresTable: 'operation_guides' },
+    /**
+     * 💸 2026-09-21 — **결제된 주문인데 `payment_status` 가 기본값 `'pending'` 에 남은 것** 정정.
+     *
+     * 공구·장바구니 결제 경로가 `status='PAID'` 만 쓰고 이 컬럼을 안 써서 기본값에 머물렀다
+     * (오늘 그 INSERT 들을 고쳤고, 이건 그 이전에 쌓인 행들이다). 라이브 실측 4건.
+     * 그 주문들은 `payment_status='approved'` 를 읽는 곳에서 **통째로 빠져 있었다** —
+     * 소비자 환불 요청 게이트(`order.routes` 400) · 일일 매출 다이제스트 · 셀러 일일 리포트 ·
+     * 등급 산정 · 이상 탐지 · 온보딩 `first_payment`.
+     *
+     * ## 왜 이 조건인가
+     * - `status` 가 **결제가 실제로 일어난 상태**일 때만(`PAID`/`DONE`/`DELIVERED`).
+     *   `CANCELLED` 는 건드리지 않는다 — 결제 없이 취소된 건과 결제 후 취소된 건이 섞여 있고,
+     *   섞인 채로 approved 를 찍으면 환불 건수 집계가 되레 틀어진다(라이브 57건).
+     * - **결제 흔적이 있어야 한다**(payment_key / toss_payment_key / 딜 결제 중 하나).
+     *   흔적이 없으면 어떤 경로로 만들어진 행인지 모른다 — 모르면 안 바꾼다.
+     * - `payment_status='pending'` 인 행만. 이미 값이 있는 건 그 값이 진실이다.
+     * 멱등 — 매번 돌려도 같은 결과(일일 schema-repair cron 안전).
+     */
+    { desc: "backfill: orders.payment_status approved (paid rows stuck at default)", sql: `
+      UPDATE orders SET payment_status = 'approved'
+       WHERE COALESCE(payment_status, 'pending') = 'pending'
+         AND UPPER(status) IN ('PAID', 'DONE', 'DELIVERED')
+         AND ( payment_key IS NOT NULL
+            OR toss_payment_key IS NOT NULL
+            OR payment_method = 'deal_points' )
+    ` },
 ]
