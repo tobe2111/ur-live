@@ -35,13 +35,30 @@ const FULLBLEED_PC_PATHS = new Set<string>([
    *   `/referral` 은 `lg:hidden` 없는 `app-frame-bar` 를 써서 **일부러 제외**했다(CTA 가 사라진다).
    */
   '/cart', '/notifications', '/browse',
+  /**
+   * 🗺️ 2026-09-21 (대표 — 라이브 신고 *"하단에 지역으로 누르니까 … PC 버전 원래쓰던 것처럼 떠야지"*).
+   *
+   * 푸터 '지역별 동네딜' 은 **풀너비 PC 홈**에 떠 있는데, 거기서 시/도를 누르면 도착하는 지역
+   * 페이지가 430px 액자였다. 같은 흐름 안에서 폭이 1440 → 430 으로 접힌다.
+   *
+   * 그리고 이건 디자인 취향이 아니라 **죽은 코드** 문제다 — `RegionPage`·`RegionIndexPage` 는
+   * 이미 `max-w-[1600px] px-4 lg:px-10` 와 `lg:grid-cols-3`·`GroupBuyFeed pc` 로 **PC 를 전제로**
+   * 짜여 있는데, 액자 폭이 430px 이라 그 `lg:` 가 발현될 자리가 없었다(위 `/cart` 와 같은 클래스).
+   * 실측 1440px: `/region`·`/region/부산`·`/region/서울/중구` 셋 다 `framed` · 본문 430 · 거터 레일 1.
+   *
+   * 등재 조건 확인: 지역 페이지와 그 부품(`GroupBuyFeed`·`SiteFooter`·`RegionLinkGrid`)에
+   * `app-frame-bar` 가 **0건**이라 pc-fullbleed 가 숨길 하단 고정바가 없다.
+   * `App.tsx` 의 `fullScreenPrefixes` 에는 **일부러 넣지 않는다** — 지역 페이지는 랜딩이 아니라
+   * 소비자 탐색 화면이라 전역 상단 네비를 `/browse`·`/search` 처럼 그대로 써야 한다.
+   */
+  '/region',
 ])
 
 // 🖥️ 2026-07-16 (대표 — 상세 PC 2단): 상세 라우트(동적 :id)는 prefix 로 풀너비화 → 좌 이미지 + 우 정보 2단.
 //   ⚠️ 여기 등재하려면 그 페이지의 하단 구매바가 `.app-frame-bar` 를 쓰지 않아야 함(pc-fullbleed 가 숨김).
 //   교환권 상세(VoucherDetailPage)는 구매바가 app-frame-bar 미사용(ur-content-narrow lg:max-w) → 안전.
 //   숙소 상세(StayDetailPage)는 2026-07-20 하단 묶음바에서 app-frame-bar 제거 + lg:hidden(아사이드 대체) → 안전.
-const FULLBLEED_PC_PREFIXES = ['/vouchers/', '/pass/', '/stays/']
+const FULLBLEED_PC_PREFIXES = ['/vouchers/', '/pass/', '/stays/', '/region/']
 
 // 🛍️ 2026-09-02 (대표 확정 — 유어샵 안P1 "왼쪽 프로필 고정 + 오른쪽 3열 진열대"): 유어샵 진열대만
 //   액자를 벗는다. **정확히 한 세그먼트**(`/u/{handle}` · `/profile/{x}` · `/s/{x}`)만 — `/u/me/add`(핀 고르기)·

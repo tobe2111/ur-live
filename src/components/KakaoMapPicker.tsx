@@ -23,13 +23,25 @@ interface Props {
   selectedPlace?: { name: string; address: string; lat: string; lng: string } | null
   kakaoJsKey: string
   kakaoRestKey?: string
+  /**
+   * 🖱️ 2026-09-21 (대표 *"여기 스크롤하는게 어려워 … 어디에 손가락을 대느냐에 따라 달라"*).
+   *
+   * 기본(false)은 **문서 흐름** — 검색창·지도·목록이 위에서 아래로 쌓이고, 스크롤은 바깥이 한다.
+   * 페이지 안(`/seller/store-info` 등)에서는 그게 맞다.
+   *
+   * `true` 면 **부모 높이를 채우는 한 칸짜리 레이아웃**이 된다: 검색창·지도는 고정이고
+   * **스크롤되는 곳은 결과 목록 하나뿐**이다. 모달처럼 높이가 잘린 자리에서 필요하다 —
+   * 거기선 [모달 바디 / 지도 / 목록] 셋이 제스처를 나눠 먹어서, 커서 위치에 따라 다른 게 움직였다.
+   * ⚠️ 부모가 `flex flex-col` + 높이 제약을 줘야 한다(안 주면 그냥 안 늘어난다).
+   */
+  fill?: boolean
 }
 
 /**
  * 카카오맵 매장 검색 + 시각화 컴포넌트
  * 검색 결과를 지도 위에 마커로 표시, 마커 클릭 시 선택
  */
-export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey }: Props) {
+export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey, fill = false }: Props) {
   const { t } = useTranslation()
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<any>(null)
@@ -157,6 +169,24 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey }: 
     }
   }
 
+  /**
+   * 📐 `fill` 에서는 결과가 도착하면 지도가 낮아진다(목록에 자리를 준다). 카카오 지도는 컨테이너가
+   * 바뀐 걸 스스로 모르므로 `relayout()` 을 불러 줘야 한다 — 안 부르면 줄어든 자리에 **회색 띠**가
+   * 남거나 중심이 어긋난다(높이만 바꾸고 끝내면 반드시 밟는 함정이다).
+   */
+  const shrunk = fill && results.length > 0
+  useEffect(() => {
+    if (!fill || !mapRef.current) return
+    const id = setTimeout(() => {
+      try {
+        const center = mapRef.current.getCenter()
+        mapRef.current.relayout()
+        mapRef.current.setCenter(center)
+      } catch { /* SDK 미로드 — 다음 렌더에 다시 온다 */ }
+    }, 0)
+    return () => clearTimeout(id)
+  }, [shrunk, fill])
+
   function handleSelect(place: KakaoPlace) {
     onSelect(place)
     // 지도 중심 이동
@@ -168,9 +198,9 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey }: 
   }
 
   return (
-    <div className="space-y-3">
-      {/* 검색창 */}
-      <div className="flex gap-2">
+    <div className={fill ? 'flex flex-col h-full min-h-0 gap-3' : 'space-y-3'}>
+      {/* 검색창 — fill 에서는 맨 위에 고정(스크롤 대상 아님) */}
+      <div className={`flex gap-2${fill ? ' shrink-0' : ''}`}>
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
           <input
@@ -192,8 +222,11 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey }: 
       </div>
 
       {/* 카카오맵 — 🛡️ 2026-05-19: SDK 실패 시 graceful fallback (페이지 크래시 방지). */}
-      <div className="relative rounded-xl overflow-hidden border border-line">
-        <div ref={mapContainerRef} className="w-full h-[320px] bg-gray-100 dark:bg-[#1D1F29]" />
+      <div className={`relative rounded-xl overflow-hidden border border-line${fill ? ' shrink-0' : ''}`}>
+        <div
+          ref={mapContainerRef}
+          className={`w-full bg-gray-100 dark:bg-[#1D1F29] ${fill ? (shrunk ? 'h-[160px]' : 'h-[260px]') : 'h-[320px]'}`}
+        />
         {sdkError ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 dark:bg-[#1D1F29] p-4 text-center">
             <MapPin className="w-8 h-8 text-gray-300 dark:text-gray-600 mb-2" />
@@ -210,7 +243,7 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey }: 
 
       {/* 검색 결과 리스트 (지도 + 리스트 병행) */}
       {results.length > 0 && (
-        <div className="max-h-64 overflow-y-auto border border-gray-100 dark:border-[#2C2F35] rounded-lg divide-y divide-gray-100">
+        <div className={`${fill ? 'flex-1 min-h-0' : 'max-h-64'} overflow-y-auto overscroll-contain border border-gray-100 dark:border-[#2C2F35] rounded-lg divide-y divide-gray-100`}>
           {results.map((p, i) => (
             <button
               key={p.id || i}
