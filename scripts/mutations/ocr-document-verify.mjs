@@ -82,12 +82,16 @@ export default [
     why: '읽힘 0% 만 보이면 어드민은 사진 탓인지 모델 탓인지 모른다 — 09-20 실측이 정확히 그 상태였다.',
   },
   {
-    name: '🙅 JSON 없는 산문 응답이 재시도 없이 unreadable 로 끝난다',
+    // 🔀 2026-09-21 교체 — 옛 주입(`isBlank` 를 `!t` 로 약화)은 **더 이상 결함이 아니다.**
+    //   병렬로 바꾸면서 `if (r.ok)` 게이트가 산문을 어차피 걸러내게 됐다(CI 가 그걸 잡았다).
+    //   ⇒ 같은 것을 지키되 **진짜 방어선**을 겨눈다: 못 읽은 답이 `parsed` 에 들어가면
+    //     첫 라운드에서 `parsed.length === 0` 이 깨져 **두 번째 라운드를 못 돈다**.
+    name: '🙅 못 읽은 답이 라운드를 삼킨다 (재시도 기회를 조용히 잃는다)',
     file: 'src/worker/utils/ocr-license.ts',
-    find: "  const isBlank = (t: string) => !t || !/\\{/.test(t)",
-    replace: '  const isBlank = (t: string) => !t',
+    find: '      if (r.ok) parsed.push(r)',
+    replace: '      parsed.push(r)',
     test: RETRY,
-    why: '"정보가 없습니다" 한 줄은 빈 응답과 같은 실패다. 다시 물으면 읽는 사진을 사람 큐에 남긴다.',
+    why: '빈손 라운드면 한 번 더 물어야 한다. 못 읽은 답을 세면 "읽었다" 고 착각해 재시도를 건너뛴다 — 빈 응답이 절반인 모델에서 그 한 라운드가 전부다.',
   },
   {
     name: '🧵 이스케이프된 JSON 응답 되살리기가 사라진다 (읽어 놓고 unreadable)',

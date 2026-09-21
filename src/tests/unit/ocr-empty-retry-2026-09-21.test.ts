@@ -92,6 +92,23 @@ describe('ocrDocument — 병렬로 여러 번 묻는다', () => {
     expect(r.bizNumber).toBe('9999999991')
   })
 
+  it('④-2 🙅 **못 읽은 답은 라운드를 삼키지 않는다** — 그 한 라운드가 전부다', async () => {
+    // 🩸 CI 가 잡은 것: 병렬로 바꾸면서 옛 주입(`isBlank` 약화)이 무의미해졌다 —
+    //   `if (r.ok)` 게이트가 산문을 어차피 걸러내기 때문이다. 진짜 방어선은 그 게이트이고,
+    //   그게 풀리면 **못 읽은 답이 `parsed` 에 들어가 두 번째 라운드를 건너뛴다**(조용히).
+    //   빈 응답이 절반인 모델에서 그 한 라운드가 성패를 가른다.
+    const nothing = '{"biz_name":null,"address":null,"owner_name":null,"biz_number":null,"permit_date":null}'
+    const prose = '현재 제공할 수 있는 정보는 없습니다.'
+    const round1 = [nothing, prose, nothing, prose].slice(0, OCR_PARALLEL_ATTEMPTS)
+    const round2 = Array.from({ length: OCR_PARALLEL_ATTEMPTS }, () => JSON_OK)
+    const f = fakeAi([...round1, ...round2])
+    const r = await ocrDocument(f.ai, new Uint8Array([1]), 'business_registration')
+    expect(f.calls.length, '못 읽은 답을 "읽었다" 로 세어 두 번째 라운드를 건너뛰었다')
+      .toBe(OCR_PARALLEL_ATTEMPTS * 2)
+    expect(r.ok, '두 번째 라운드가 읽었는데 결과가 실패다').toBe(true)
+    expect(r.bizNumber).toBe('9999999991')
+  })
+
   it('⑤ 예외(쿼터·5016 라이선스)면 라운드를 더 돌지 않는다 — 같은 답이 오고 비용만 든다', async () => {
     const errs = Array.from({ length: OCR_PARALLEL_ATTEMPTS }, () => new Error('5016: agree first'))
     const f = fakeAi([...errs, JSON_OK])

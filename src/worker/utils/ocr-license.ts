@@ -174,6 +174,11 @@ export async function ocrDocument(
   }
 
   // 🙅 빈 응답과 같은 부류: JSON 이 한 글자도 없는 산문("현재 제공할 수 있는 정보는 없습니다." — 실측).
+  //
+  // ⚠️ 2026-09-21 정직하게: **이제 이건 정합성 장치가 아니라 절약이다.** 병렬로 바꾸면서
+  //   아래 `if (r.ok)` 게이트가 산문을 어차피 걸러내게 됐다(파싱은 JSON 을 못 찾으면 ok:false).
+  //   즉 이 줄을 지워도 **동작은 같고** 정규식·JSON.parse 한 번씩만 더 돈다.
+  //   ⇒ 이걸 "산문 방어" 라고 믿지 말 것. 진짜 방어선은 `r.ok` 다(주입이 그쪽을 지킨다).
   const isBlank = (t: string) => !t || !/\{/.test(t)
   const parsed: OcrDocResult[] = []
   let attempts = 0
