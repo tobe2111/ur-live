@@ -53,7 +53,7 @@ function ShortCard({ item, load, onOpen }: { item: UrShortItem; load: boolean; o
       aria-label={`${item.store_name || ''} ${item.title || '유어쇼츠 영상'}`}
     >
       <span
-        className="relative block overflow-hidden rounded-[10px] bg-[#2A2D38]"
+        className="relative block overflow-hidden rounded-[10px] bg-media-slot"
         style={{ height: URSHORTS_CARD_H }}
       >
         {load && thumb ? (
@@ -106,7 +106,7 @@ function ShortCard({ item, load, onOpen }: { item: UrShortItem; load: boolean; o
                 하나로 통일해 놓고 같은 날 넷째 값을 만들 뻔했다. 사진 위 스크림은 **테마와 무관하게
                 늘 어둡다**(light-island 와 같은 성질)이라 라이트 값 #DC2626 은 안 읽힌다 →
                 시스템이 이미 쓰는 **다크 표면용 --sale 값**을 그대로 쓴다. */}
-            {pd.discount > 0 && <b className="text-[#FF5C69]">{pd.discount}% </b>}
+            {pd.discount > 0 && <b className="text-sale-on-media">{pd.discount}% </b>}
             {formatNumber(pd.price)}원
           </span>
           )}

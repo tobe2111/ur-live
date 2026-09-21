@@ -31,7 +31,7 @@ function Card({ item, eager }: { item: UrShortItem; eager: boolean }) {
       className="group block text-left"
       aria-label={`${item.store_name || ''} ${item.title || '유어쇼츠 영상'}`}
     >
-      <span className="relative block aspect-[9/16] overflow-hidden rounded-[10px] bg-[#2A2D38]">
+      <span className="relative block aspect-[9/16] overflow-hidden rounded-[10px] bg-media-slot">
         {thumb ? (
           <img
             src={cfImage(thumb, { width: 360 })}
@@ -68,7 +68,7 @@ function Card({ item, eager }: { item: UrShortItem; eager: boolean }) {
             {pd.price > 0 && (
               <span className="mt-px block text-[12.5px] font-bold tabular-nums">
                 {/* 사진 위 스크림은 테마와 무관하게 늘 어둡다 — 레일과 같은 다크용 세일 값. */}
-                {pd.discount > 0 && <b className="text-[#FF5C69]">{pd.discount}% </b>}
+                {pd.discount > 0 && <b className="text-sale-on-media">{pd.discount}% </b>}
                 {formatNumber(pd.price)}원
               </span>
             )}

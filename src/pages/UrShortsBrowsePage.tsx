@@ -152,7 +152,7 @@ function ChipRow({
 }) {
   if (facets.length < MIN_FACETS_TO_SHOW) return null
   const on = 'bg-brand text-white'
-  const off = 'bg-white dark:bg-[#1D1F29] text-gray-800 dark:text-gray-100 shadow-lift'
+  const off = 'bg-surface text-gray-800 dark:text-gray-100 shadow-lift'
   return (
     <div className="-mx-3 mb-2.5 flex gap-1.5 overflow-x-auto px-3 py-1 scrollbar-hide" aria-label={label}>
       <Chip active={!value} className={!value ? on : off} onClick={() => onPick(null)}>
