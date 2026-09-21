@@ -5974,7 +5974,8 @@
       "etc": "Autres"
     },
     "picker": {
-      "placeholder": "Nom de magasin ou adresse"
+      "placeholder": "Nom de magasin ou adresse",
+      "dragHint": "Faites glisser le repère à l’endroit exact, ou touchez la carte pour le déplacer"
     }
   },
   "sellerSwitch": {

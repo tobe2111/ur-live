@@ -436,8 +436,8 @@ const MUTATIONS = [
   {
     name: '🎬 /videos 가 몰 슬러그 예약어에서 빠진다',
     file: 'src/shared/mall/slug.ts',
-    find: "'u', 'user', 'v', 'videos', 'vouchers',",
-    replace: "'u', 'user', 'v', 'vouchers',",
+    find: "'u', 'urshorts', 'user', 'v', 'videos', 'vouchers',",
+    replace: "'u', 'urshorts', 'user', 'v', 'vouchers',",
     test: 'src/tests/unit/mall-branding.test.ts',
     why:
       '`urdeal.kr/{몰슬러그}` 는 한 세그먼트라, 어떤 몰이 videos 를 슬러그로 잡으면 유어쇼츠 뷰어가 ' +

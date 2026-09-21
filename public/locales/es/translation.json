@@ -5974,7 +5974,8 @@
       "etc": "Otros"
     },
     "picker": {
-      "placeholder": "Nombre de tienda o dirección"
+      "placeholder": "Nombre de tienda o dirección",
+      "dragHint": "Arrastra el marcador al punto exacto, o toca el mapa para moverlo"
     }
   },
   "sellerSwitch": {

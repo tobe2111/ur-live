@@ -5495,12 +5495,14 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
 _총 344건 · 최신순 · 이 목록은 자동 생성된다._
+_총 343건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-21**
 - [셀러 주문 상세 — 사진·주문번호·이용권 (2026-09-21)](handoff/2026-09-21-seller-order-detail.md)
 - [2026-09-21 — 지역 페이지가 PC 에서 430px 액자에 갇혀 있던 것](handoff/2026-09-21-region-pc-fullbleed.md)
 - [💸 결제된 주문의 `payment_status` — 환불이 막히고 매출이 빠지던 것 (2026-09-21)](handoff/2026-09-21-order-payment-status.md)
 - [2026-09-21 — 주문관리가 이용권을 택배로 그리던 것 (+ 결제 복구 E4 통과)](handoff/2026-09-21-order-kind-shipping-ui.md)
+- [2026-09-21 — 지도 핀 끌어서 위치 잡기 (시안 ②)](handoff/2026-09-21-map-pin-drag.md)
 **2026-09-19**
 - [🧪 "staging 실결제" 게이트가 실재하지 않는다 (2026-09-19)](handoff/2026-09-19-staging-gate-reality.md)
 - [🪙 결제 화면에서 딜 사용액 조절 — 대표 확정 "C안" (2026-09-19)](handoff/2026-09-19-pay-screen-deal-control.md)

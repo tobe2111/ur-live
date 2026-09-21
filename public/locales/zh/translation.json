@@ -5974,7 +5974,8 @@
       "etc": "其他"
     },
     "picker": {
-      "placeholder": "输入店名或地址"
+      "placeholder": "输入店名或地址",
+      "dragHint": "拖动图钉到准确位置，点击地图也可移动"
     }
   },
   "sellerSwitch": {
