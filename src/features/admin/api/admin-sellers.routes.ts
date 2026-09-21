@@ -120,7 +120,7 @@ adminSellersRoutes.get('/sellers', cors(), async (c) => {
       }
     }
     const totalRow = await DB.prepare(`SELECT COUNT(*) as cnt FROM sellers ${distWhere}`).first<{ cnt: number }>().catch(() => DB.prepare('SELECT COUNT(*) as cnt FROM sellers').first<{ cnt: number }>());
-    await import('./admin-sellers/cert-fallback').then(m => m.attachCertUrls(DB, sellers)); // 🧾 2026-09-20 등록증 meta 폴백
+    await import('./admin-sellers/enrich-rows').then(m => m.enrichSellerRows(DB, sellers)); // 🧾 등록증 폴백 + 🍽️ 영업신고증·업종(표시만) — 이 파일 961줄 동결이라 목록 enrich 는 저기서 자란다
     return c.json({
       success: true,
       data: sellers,

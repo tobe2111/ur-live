@@ -56,7 +56,11 @@ describe('③ 읽는 쪽 셋이 폴백을 탄다', () => {
     expect(OCR).not.toMatch(/url = \(row\.business_registration_image_url \|\| ''\)\.trim\(\)/)
   })
   it('어드민 목록·상세가 cert-fallback 을 부른다', () => {
-    expect(ADMIN).toMatch(/m => m\.attachCertUrls\(DB, sellers\)/)
+    // 🔀 2026-09-21 재조준 — 목록 enrich 가 `admin-sellers/enrich-rows.ts` 로 모였다
+    //   (라우트가 961줄 동결이라 한 줄만 둔다). 지키는 것은 같다: **목록이 폴백을 탄다.**
+    const ENRICH = stripComments(readFileSync('src/features/admin/api/admin-sellers/enrich-rows.ts', 'utf-8'))
+    expect(ADMIN, '라우트가 목록 enrich 를 안 부른다').toMatch(/m => m\.enrichSellerRows\(DB, sellers\)/)
+    expect(ENRICH, 'enrich 가 등록증 폴백을 안 탄다').toMatch(/m\.attachCertUrls\(DB, rows\)/)
     expect(ADMIN).toMatch(/m => m\.attachCertUrl\(DB, sellerId, seller as Record<string, unknown>\)/)
     expect(FALLBACK).toMatch(/resolveSellerCertUrls\(DB, rows\)/)
     expect(FALLBACK).toMatch(/resolveSellerCertUrl\(DB, Number\(sellerId\)/)

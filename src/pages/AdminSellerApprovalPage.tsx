@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { safeHttpHref } from '@/utils/safe-external-url'
+import FoodPermitBlock from './admin-seller-approval/FoodPermitBlock'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
@@ -33,6 +34,9 @@ type Seller = {
   bank_account?: string | null
   account_holder?: string | null
   business_registration_image_url?: string | null
+  // 🍽️ 2026-09-21 — 서버가 seller_meta 에서 얹어 준다(`seller-permit-flag.ts`). 표시용이고 승인을 막지 않는다.
+  food_permit_url?: string | null
+  needs_food_permit?: boolean
   business_registration_status?: BizRegStatus | string | null
   business_registration_reject_reason?: string | null
   // 🧱 2026-06-30 (서비스 분리 — 도매 판매사 구분): is_distributor=1 이면 도매(유통스타트) 판매사.
@@ -559,6 +563,9 @@ export default function AdminSellerApprovalPage() {
                       </p>
                     )}
                   </div>
+
+                  {/* 🍽️ 영업신고증 — **판매 전에 본다**(2026-09-21 대표). 보여 주기만 하고 승인을 막지 않는다. */}
+                  <FoodPermitBlock url={s.food_permit_url} needed={s.needs_food_permit} />
                 </div>
               )}
               </div>
