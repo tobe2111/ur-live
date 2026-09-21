@@ -77,6 +77,18 @@ describe('ocrDocument — 빈 응답 재시도', () => {
     expect(r.bizName).toBe('[테스트] 클로드분식')
   })
 
+  it('🔀 등록번호 칸에 개업일이 들어오면 제자리로 옮긴다 — 2026-09-21 실측 5회 중 2회', async () => {
+    const f = fakeAi(['{"biz_name":"[테스트] 클로드분식","address":"전북특별자치도 전주시 덕진구 가리내10길 10","owner_name":"김테스트","biz_number":"2024년 03월 02일","permit_date":null}'])
+    const r = await ocrDocument(f.ai, new Uint8Array([1]), 'business_registration')
+    expect(r.bizNumber).toBeNull()
+    expect(r.permitDate).toBe('20240302')
+    // 진짜 등록번호는 그대로 — 휴리스틱이 정상 값을 건드리지 않는다
+    const g = fakeAi([JSON_OK])
+    const q = await ocrDocument(g.ai, new Uint8Array([1]), 'business_registration')
+    expect(q.bizNumber).toBe('9999999991')
+    expect(q.permitDate).toBe('20240302')
+  })
+
   it('재시도 횟수는 1 — 더 올리면 뉴런 예산이 조용히 배로 나간다', () => {
     expect(OCR_EMPTY_RETRIES).toBe(1)
   })
