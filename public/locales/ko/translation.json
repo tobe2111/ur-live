@@ -3348,7 +3348,12 @@
       "laterPermit": "영업신고증",
       "laterPermitNote": "음식점 필수",
       "laterBank": "정산 계좌",
-      "laterBankNote": "정산 전까지"
+      "laterBankNote": "정산 전까지",
+      "certHint": "사진 한 장이면 아래 칸을 읽어서 채워 드려요. 나중에 올려도 괜찮아요.",
+      "fromPhoto": "사진에서 읽었어요 — 맞는지 확인해 주세요",
+      "ocrFilled": "{{n}}칸을 사진에서 채웠어요 — 맞는지 확인해 주세요",
+      "ocrNone": "사업자등록증이 업로드됐어요",
+      "certHintDone": "심사에 쓰입니다. 아래 값이 맞는지 확인해 주세요."
     },
     "analytics": "매출 분석",
     "analyticsView": {

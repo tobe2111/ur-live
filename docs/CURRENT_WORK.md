@@ -5494,10 +5494,7 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 335건 · 최신순 · 이 목록은 자동 생성된다._
-_총 334건 · 최신순 · 이 목록은 자동 생성된다._
-_총 337건 · 최신순 · 이 목록은 자동 생성된다._
-_총 339건 · 최신순 · 이 목록은 자동 생성된다._
+_총 340건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-19**
 - [🧪 "staging 실결제" 게이트가 실재하지 않는다 (2026-09-19)](handoff/2026-09-19-staging-gate-reality.md)
@@ -5511,7 +5508,7 @@ _총 339건 · 최신순 · 이 목록은 자동 생성된다._
 - [유어쇼츠 구매 바에 흰 카드가 없었다 — 스케일 밖 불투명도 (2026-09-16)](handoff/2026-09-16-transparent-buy-bar.md)
 - [매장 영입 2% 폐지 — 화면이 하던 거짓 약속을 걷어냄 (2026-09-16)](handoff/2026-09-16-store-intro-abolished.md)
 - [업체 정보 — 세 곳에 흩어진 것을 한 페이지로 (2026-09-16)](handoff/2026-09-16-store-info-one-page.md)
-- [🐌 2026-09-17 후속 — 셀러 홈 "내 이용권" 이 늦게 뜨던 것 (PR 별건)](handoff/2026-09-16-signup-ocr-prefill.md)
+- [2026-09-16 — 가입 앞문 등록증 자동 채움 + 제출 전 확인 (PR #1491)](handoff/2026-09-16-signup-ocr-prefill.md)
 - [남은 후속 넷을 끝까지 — 서버 첫 화면 확장 · PC 판단 · JS 다이어트 · 잔액 밀림 〔2026-09-16〕](handoff/2026-09-16-remaining-followups.md)
 - [소개 커미션 사용 확인 게이트 (2026-09-16)](handoff/2026-09-16-payout-use-gate.md)
 - [🎟️ 이용권 상세 주소 이전 `/group-buy/:id` → `/pass/:id` (#1149 조각 ④ = 항목 ⑫)](handoff/2026-09-16-pass-route-migration.md)

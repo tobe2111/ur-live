@@ -34,7 +34,14 @@ describe('가입 화면 — 안 2(다 보이되 지금 낼 것만)', () => {
   it('그 셋의 첨부를 강제하지 않는다 — 제출 조건은 필수 5칸 그대로 (당근 모델)', () => {
     // 제출 버튼의 게이트는 `filled`(필수 5) 하나여야 한다. 남은-것 목록이 끼어들면
     // 들여보내고 안에서 채우게 한다는 같은 날 결정과 정면으로 어긋난다.
-    const submit = PAGE.slice(PAGE.indexOf('onClick={submit}'))
+    // 🕳️ 2026-09-16 재조준 — 종전 앵커는 `onClick={submit}` 이었는데 확인 시트(시안 ④)가 붙으며
+    //   버튼이 `onClick={review}` 로 바뀌었다. 그러자 `indexOf` 가 **-1** 을 돌려주고
+    //   `slice(-1)` 이 **마지막 한 글자**를 잘라 내, 게이트를 심는 주입에도 초록이 떴다
+    //   (CI 주입 러너가 잡았다. "못 찾으면 통과" 는 이 레포가 반복해 당한 클래스다).
+    //   ⇒ 앵커를 먼저 **찾았는지 확인**하고, 못 찾으면 통과가 아니라 실패다.
+    const at = PAGE.indexOf('onClick={review}')
+    expect(at, '제출 버튼 앵커가 낡았다 — 통과가 아니라 고장이다').toBeGreaterThan(0)
+    const submit = PAGE.slice(at)
     expect(submit).not.toContain('laterPermit')
     expect(submit).not.toContain('certUrl')
   })

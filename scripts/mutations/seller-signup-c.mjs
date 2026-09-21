@@ -16,8 +16,9 @@ export default [
   {
     name: '가입C — 남은-것이 첨부를 강제한다(당근 모델 회귀)',
     file: 'src/pages/SellerRegisterSupplierPage.tsx',
-    find: '<button onClick={submit} disabled={loading}',
-    replace: '<button onClick={submit} disabled={loading || !certUrl}',
+    // 🔀 2026-09-16 재조준 — 제출 버튼이 `submit` 대신 확인 시트(`review`)를 연다.
+    find: '<button onClick={review} disabled={loading}',
+    replace: '<button onClick={review} disabled={loading || !certUrl}',
     test: TEST,
     why: '같은 날 확정한 당근 모델(대기·반려도 들여보낸다)과 정면으로 어긋난다 — 이름만 보여 주고 첨부는 안에서 받는 것이 이 안의 핵심이다.',
   },
@@ -40,8 +41,9 @@ export default [
   {
     name: '가입C — 컴포넌트 라벨이 다시 겹친다("(선택)" 이 다른 문으로 되살아난다)',
     file: 'src/pages/SellerRegisterSupplierPage.tsx',
-    find: '<BusinessCertUpload value={certUrl} onChange={setCertUrl} hideLabel />',
-    replace: '<BusinessCertUpload value={certUrl} onChange={setCertUrl} />',
+    // 🔀 2026-09-16 재조준 — OCR 로 `onRead` 가 붙었다. `hideLabel` 만 떼는 형태로 좁힌다.
+    find: 'hideLabel onRead={applyOcr} />',
+    replace: 'onRead={applyOcr} />',
     test: TEST,
     why: '렌더 실측으로 잡은 결함이다 — Field 라벨 아래 컴포넌트 라벨이 또 떠서 대표가 빼라고 한 "(선택)" 이 다른 문으로 되살아난다.',
   },
