@@ -33,6 +33,8 @@ import { transferStoreOwnership } from '@/worker/utils/store-ownership-transfer'
 import { resolveStoreOwnerUserId, ensureSellerOperators } from '@/worker/utils/seller-operators'
 import { checkStoreHandover } from '@/worker/utils/store-handover-guard'
 import { ensureStoreOwnershipClaims, decideStoreClaim } from '@/worker/utils/store-ownership-claims'
+import { listStoreReports, decideStoreReport } from '@/worker/utils/store-reports'
+import { intParam } from '@/shared/pagination'
 
 const adminStoreOwnerRoutes = new Hono<{ Bindings: Env; Variables: { user: AuthUser } }>()
 
@@ -234,3 +236,44 @@ adminStoreOwnerRoutes.post('/store-claims/:id/decide',
   })
 
 export { adminStoreOwnerRoutes }
+
+
+// ── 🚨 매장 제보(신고) 큐 ─────────────────────────────────────────────────────
+//
+// 되찾기 신청(`/store-claims`)과 **다른 물건**이다. 저쪽은 "이 매장을 나에게 넘겨 달라"(주인 이전),
+// 이쪽은 "이 매장 이상합니다"(조치 요청)다. 제보자는 로그인조차 안 했을 수 있다.
+//
+// ⚠️ 여기서 **판매 중지도 환불도 하지 않는다.** 환불은 머니 경로(등급 C)이고, 자동 판매중지는
+//    악의적 제보 한 건에 멀쩡한 매장이 마비된다. 어드민이 기존 경로로 판단한다.
+
+adminStoreOwnerRoutes.get('/store-reports', cors(), requireAdminRole('finance'), async (c) => {
+  try {
+    const { rows, total } = await listStoreReports(c.env.DB, {
+      status: String(c.req.query('status') || 'open'),
+      limit: intParam(c.req.query('limit'), 50),
+      offset: intParam(c.req.query('offset'), 0),
+    })
+    return c.json({ success: true, data: { reports: rows, total } })
+  } catch (err) {
+    return safeError(c, err, '제보 목록을 불러오지 못했습니다', '[store-reports]')
+  }
+})
+
+adminStoreOwnerRoutes.post('/store-reports/:id/decide',
+  cors(), requireAdminRole('finance'), auditLog('stores.decide_report'),
+  async (c) => {
+    try {
+      const body = await c.req.json().catch(() => ({})) as { status?: string; note?: string }
+      const admin = c.get('user')  // 같은 파일의 store-claims 심사와 동일한 읽기
+      const r = await decideStoreReport(c.env.DB, {
+        reportId: Number(c.req.param('id')),
+        adminId: Number(admin?.id) || 0,
+        status: body.status === 'dismissed' ? 'dismissed' : 'resolved',
+        note: String(body.note || ''),
+      })
+      if (!r.ok) return c.json({ success: false, error: r.error }, 400)
+      return c.json({ success: true })
+    } catch (err) {
+      return safeError(c, err, '제보 처리에 실패했습니다', '[store-reports]')
+    }
+  })

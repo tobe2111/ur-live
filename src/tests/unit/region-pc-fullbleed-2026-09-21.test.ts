@@ -16,9 +16,12 @@ import { stripComments } from '../helpers/source-text'
  * 여기서 고정하는 것 넷:
  *   ① 지역 세 라우트가 전부 풀너비 판정을 받는다(깊이 0·1·2).
  *   ② 액자에 남아야 하는 이웃 경로를 접두사가 삼키지 않는다.
+ *      ⚠️ 같은 날 오후 정정 — 여기 처음 적었던 `/area-report/*`·`/referral` 은 **대표가 C 묶음으로**
+ *      **풀라고 확정**해 기대값이 뒤집혔다(`pc-frame-unlock-2026-09-21.test.ts`). 남은 이웃만 본다.
  *   ③ 지역 페이지가 PC 전제 마크업을 실제로 갖고 있다 — 풀너비로 풀어도 폰 레이아웃이면 의미가 없다.
  *   ④ 등재 조건: 지역 표면에 `app-frame-bar` 가 없다(pc-fullbleed 가 하단 고정바를 숨기므로,
- *      그런 바를 쓰는 페이지를 등재하면 CTA 가 사라진다 — `/referral` 이 그 이유로 제외돼 있다).
+ *      그런 바를 쓰는 페이지를 등재하면 CTA 가 사라진다 — 같은 날 `/community-group-buy/new` 가
+ *      정확히 그 경우였고, 그 페이지는 바에서 클래스를 빼서 해결했다).
  *
  * ⚠️ 이 테스트가 **못 보는 것**: 실제 픽셀. jsdom 엔 레이아웃이 없어 "1440px 로 펼쳐졌는가"는
  *    브라우저 실측이 판정한다(위 수치가 그것). 여기서는 판정 함수와 마크업 전제만 잠근다.
@@ -42,11 +45,12 @@ describe('① 지역 라우트 세 깊이가 모두 PC 풀너비', () => {
 
 describe('② 액자에 남아야 하는 이웃을 삼키지 않는다', () => {
   it.each([
-    // 상권 리포트는 지역과 이름이 비슷하지만 다른 라우트다(`/area-report/:region`).
-    ['/area-report/서울'],
     // 접두사를 `/regi` 처럼 줄이면 가입이 함께 풀린다.
     ['/register'],
-    ['/referral'],
+    // 추천인 착지 페이지 — `/referral`(C 묶음) 과 다른 컴포넌트(ReferralPage)다.
+    ['/referral/ABC123'],
+    // 마이 계열 — 이번 범위 밖.
+    ['/my-coupons'],
   ])('%s 는 풀너비가 아니다', (route) => {
     expect(isFullBleedPcPath(route)).toBe(false)
   })
