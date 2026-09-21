@@ -67,6 +67,20 @@ describe('addressTokens — 라이브 원장 실제 주소', () => {
   })
 })
 
+describe('compareBizName — near (2026-09-21 S-OCR 실측: 한 글자 오독)', () => {
+  it('공백 제거 후 한 글자만 다르면 near — same 이 아니다', () => {
+    const r = compareBizName('[테스트] 글로드분식', '[테스트] 클로드분식')
+    expect(r.verdict).toBe('near')
+    expect(r.verdict).not.toBe('same')
+    expect(r.reason).toContain('오독')
+  })
+  it('두 글자 이상 다르거나 3글자 이하면 near 로 넘어가지 않는다', () => {
+    expect(compareBizName('글로드분식점', '클로드분식').verdict).toBe('differ')
+    expect(compareBizName('가나다', '가나라').verdict).toBe('differ')
+    expect(compareBizName('클로드분식', '클로드분식').verdict).toBe('same')
+  })
+})
+
 describe('compareAddress — 등급', () => {
   it('같은 건물이면 same (표기가 달라도)', () => {
     const r = compareAddress('서울특별시 강남구 봉은사로 333, 2층', '서울 강남구 봉은사로 333')

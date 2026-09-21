@@ -15,6 +15,30 @@ const RETRY = 'src/tests/unit/ocr-empty-retry-2026-09-21.test.ts'
 
 export default [
   {
+    name: '🇰🇷 한 글자 오독(near)이 same 으로 올라간다 (자동 승인 문턱이 조용히 낮아진다)',
+    file: 'src/shared/korean-address.ts',
+    find: "    return { verdict: 'near', reason: `한 글자만 다릅니다 — OCR 오독일 수 있으니 사진과 대조하세요 (${a} ↔ ${b})`, a, b }",
+    replace: "    return { verdict: 'same', reason: '상호가 같습니다', a, b }",
+    test: ADDR,
+    why: 'near 는 사람에게 힌트를 주는 등급이지 "같다" 가 아니다. same 으로 바꾸면 남의 가게 이름에서 한 글자만 바꾼 서류가 match 로 간다.',
+  },
+  {
+    name: '🔀 등록번호 칸의 개업일 되돌리기가 사라진다 (fill 0.75 · 빈칸 둘)',
+    file: 'src/worker/utils/ocr-license.ts',
+    find: "  if (bizNumberRaw && !dateRaw && bizNumber && bizNumber.length === 8 && /년|[-./]/.test(bizNumberRaw)) {",
+    replace: '  if (false) {',
+    test: RETRY,
+    why: '모델이 칸을 바꿔 넣는 것은 실측된 빈도(5회 중 2회)다. 안 옮기면 어드민이 등록번호·개업일 둘 다 빈 칸으로 본다.',
+  },
+  {
+    name: '🔍 OCR 패널이 못 읽은 이유를 안 보여 준다',
+    file: 'src/pages/admin/business-verification/OcrComparePanel.tsx',
+    find: "            {res.ocr && !res.ocr.ok && <p className=\"text-gray-500\">· 모델 — {res.ocr.message}</p>}",
+    replace: '',
+    test: 'src/tests/unit/ocr-panel-reason-2026-09-21.test.ts',
+    why: '읽힘 0% 만 보이면 어드민은 사진 탓인지 모델 탓인지 모른다 — 09-20 실측이 정확히 그 상태였다.',
+  },
+  {
     name: '🙅 JSON 없는 산문 응답이 재시도 없이 unreadable 로 끝난다',
     file: 'src/worker/utils/ocr-license.ts',
     find: "  const isBlank = (t: string) => !t || !/\\{/.test(t)",

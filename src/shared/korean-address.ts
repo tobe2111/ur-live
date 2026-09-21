@@ -204,7 +204,7 @@ export function normalizeBizName(raw: string | null | undefined): string {
     .trim()
 }
 
-export type NameVerdict = 'same' | 'contains' | 'differ' | 'unknown'
+export type NameVerdict = 'same' | 'contains' | 'near' | 'differ' | 'unknown'
 
 export interface NameComparison {
   verdict: NameVerdict
@@ -218,6 +218,9 @@ export interface NameComparison {
  *
  * - `same`     — 정규화 후 완전 일치.
  * - `contains` — 한쪽이 다른 쪽을 통째로 품는다(`대가방` ⊂ `대가방 본점`). 흔한 정상 케이스다.
+ * - `near`     — 공백 제거 후 **한 글자만** 다르다(4글자 이상). 2026-09-21 S-OCR 실측에서 모델이 `클로드`→`글로드` 로
+ *                한 글자를 오독했다. **`same` 이 아니다** — 판정은 여전히 사람 확인(`review`)이고, 자동 승인으로 가지 않는다.
+ *                이 등급이 하는 일은 어드민에게 "OCR 오독일 수 있다" 고 말해 주는 것뿐이다(파일 머리말의 원칙 그대로).
  * - `differ`   — 그 외. **틀렸다는 뜻이 아니라 사람이 봐야 한다는 뜻이다.**
  * - `unknown`  — 한쪽이 비었다.
  */
@@ -232,5 +235,19 @@ export function compareBizName(aRaw: string | null | undefined, bRaw: string | n
   if (short.length >= 2 && long.replace(/\s/g, '').includes(short.replace(/\s/g, ''))) {
     return { verdict: 'contains', reason: `한쪽이 다른 쪽을 포함합니다 (${short} ⊂ ${long})`, a, b }
   }
+  const ca = a.replace(/\s/g, '')
+  const cb = b.replace(/\s/g, '')
+  if (ca.length >= 4 && ca.length === cb.length && hammingOne(ca, cb)) {
+    return { verdict: 'near', reason: `한 글자만 다릅니다 — OCR 오독일 수 있으니 사진과 대조하세요 (${a} ↔ ${b})`, a, b }
+  }
   return { verdict: 'differ', reason: `상호가 다릅니다 (${a} ↔ ${b})`, a, b }
+}
+
+/** 같은 길이에서 정확히 한 자리만 다른가. */
+function hammingOne(x: string, y: string): boolean {
+  let diff = 0
+  for (let i = 0; i < x.length; i += 1) {
+    if (x[i] !== y[i]) { diff += 1; if (diff > 1) return false }
+  }
+  return diff === 1
 }

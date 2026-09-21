@@ -47,8 +47,10 @@ export default [
   {
     name: '🕳️ 콜드 D1 컬럼 보장을 뺀다 (셀러 메인 목록이 "no such column" 500)',
     file: SERVER,
-    find: '    await ensureGroupBuyColumns(db);',
-    replace: '    void ensureGroupBuyColumns;',
+    // 🔀 2026-09-17 재조준 — 두 보정이 `Promise.all` 로 동시에 시작하도록 바뀌었다(대표 "이용권이 늦게 떠").
+    //   불변식은 그대로 — 보장 없이 쿼리가 나가면 빨간불이어야 한다.
+    find: 'await Promise.all([ensureSupplyVisibilitySchema(db), ensureGroupBuyColumns(db)]);',
+    replace: 'await ensureSupplyVisibilitySchema(db); void ensureGroupBuyColumns;',
     test: TEST,
     why:
       'restaurant_phone·group_buy_current·store_owner_token 은 마이그레이션이 아니라 ensureTables 의 ' +
