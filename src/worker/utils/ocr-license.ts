@@ -109,7 +109,10 @@ export async function ocrDocument(
   //   완전한 빈 문자열). 한 번에 못 읽었다고 `unreadable` 로 끝내면 어드민이 같은 버튼을 다시 눌러야 하고, 게이트가
   //   켜진 뒤엔 정상 서류가 자동 승인 후보에서 조용히 빠진다. **빈 응답에만 1회 재시도** — 예외(쿼터·5016)는
   //   재시도하지 않는다(같은 답이 돌아오고 비용만 든다).
-  for (let attempt = 0; attempt < OCR_EMPTY_RETRIES + 1 && !text; attempt += 1) {
+  // 🙅 빈 응답과 같은 부류: JSON 이 한 글자도 없는 산문("현재 제공할 수 있는 정보는 없습니다." — 2026-09-21 실측). 같은 사진에
+  //   다시 물으면 읽는다. 재시도 예산은 빈 응답과 공유(합쳐서 OCR_EMPTY_RETRIES 회).
+  const isBlank = (t: string) => !t || !/\{/.test(t)
+  for (let attempt = 0; attempt < OCR_EMPTY_RETRIES + 1 && isBlank(text); attempt += 1) {
     try {
       const res = await ai.run(OCR_MODEL, {
         image: Array.from(imageBytes),

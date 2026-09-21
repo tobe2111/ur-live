@@ -69,6 +69,14 @@ describe('ocrDocument — 빈 응답 재시도', () => {
     expect(r.fill).toBe(1)
   })
 
+  it('🙅 JSON 없는 산문("정보가 없습니다") 도 빈 응답처럼 한 번 더 묻는다 — 2026-09-21 실측', async () => {
+    const f = fakeAi(['현재 제공할 수 있는 정보는 없습니다.', JSON_OK])
+    const r = await ocrDocument(f.ai, new Uint8Array([1]), 'business_registration')
+    expect(f.calls.length).toBe(2)
+    expect(r.ok).toBe(true)
+    expect(r.bizName).toBe('[테스트] 클로드분식')
+  })
+
   it('재시도 횟수는 1 — 더 올리면 뉴런 예산이 조용히 배로 나간다', () => {
     expect(OCR_EMPTY_RETRIES).toBe(1)
   })

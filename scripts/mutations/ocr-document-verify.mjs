@@ -15,6 +15,14 @@ const RETRY = 'src/tests/unit/ocr-empty-retry-2026-09-21.test.ts'
 
 export default [
   {
+    name: '🙅 JSON 없는 산문 응답이 재시도 없이 unreadable 로 끝난다',
+    file: 'src/worker/utils/ocr-license.ts',
+    find: "  const isBlank = (t: string) => !t || !/\\{/.test(t)",
+    replace: '  const isBlank = (t: string) => !t',
+    test: RETRY,
+    why: '"정보가 없습니다" 한 줄은 빈 응답과 같은 실패다. 다시 물으면 읽는 사진을 사람 큐에 남긴다.',
+  },
+  {
     name: '🧵 이스케이프된 JSON 응답 되살리기가 사라진다 (읽어 놓고 unreadable)',
     file: 'src/worker/utils/ocr-license.ts',
     find: "      parsed = JSON.parse(m[0].replace(/\\\\\"/g, '\"').replace(/\\\\n/g, '\\n')) as Record<string, unknown>",
