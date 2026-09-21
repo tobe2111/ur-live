@@ -55,6 +55,7 @@ export interface OrdersTable {
   recipient_name: string | null
   recipient_phone: string | null
   shipping_postal_code: string | null
+  shipping_address_detail: string | null  // 2026-09-21: 라이브에 실재하나 이 SSOT 에 없었다(pragma_table_info 실측)
   // Migration 0203: partial refund tracking
   refunded_amount: number        // INTEGER DEFAULT 0
 }
