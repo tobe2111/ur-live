@@ -52,13 +52,51 @@ const FULLBLEED_PC_PATHS = new Set<string>([
    * 소비자 탐색 화면이라 전역 상단 네비를 `/browse`·`/search` 처럼 그대로 써야 한다.
    */
   '/region',
+  /**
+   * 🖥️ 2026-09-21 (대표 확정 — 액자 전수조사 후 "A·B·C 전부"): 1440px 실측에서 430px 액자에
+   * 갇혀 있던 소비자 표면 24곳. 셋으로 갈라 대표에게 올렸고 셋 다 승인됐다.
+   *
+   * ⚠️ **액자 자체는 폐기가 아니다** — 2026-06-20 확정한 "PC 소비자 = 중앙 액자"는 그대로이고,
+   *   여기 등재하는 것은 *그 정체성이 맞지 않는* 화면들이다. 판단 기준은 셋:
+   *   ① 풀너비 표면(푸터·PC 홈)에서 바로 링크되는가 — 같은 흐름에서 1440 → 430 으로 접힌다
+   *   ② 긴 글/폼이라 액자가 읽기를 방해하는가
+   *   ③ 소비자가 아닌 사람(사장님·파트너)이 보는 화면인가 — 빈 거터를 소비자 앱 설치 QR 이 채운다
+   *
+   * A. 정책·약관 — 푸터가 링크하는 긴 문서. `TermsDocument`·각 페이지가 `ur-content-medium`(1024px)
+   *    으로 이미 중앙 정렬하므로 풀너비에서 퍼지지 않는다(블로그 선례와 같다).
+   */
+  '/terms', '/privacy', '/refund', '/faq', '/gdpr',
+  /**
+   * B. 사장님·파트너 유입 — `/partners`·`/about`·`/creators`(2026-09-16)와 **같은 클래스**다.
+   *    입점을 검토하러 온 사장님 화면의 좌우가 전부 소비자 앱 광고였다.
+   *    ⚠️ `/influencer` 는 **접두사로 넣지 않는다** — `/influencer/dashboard`·`/settlement`·
+   *       `/discover`·`/analytics` 는 폰 폭으로 만든 도구 화면이라 액자에 남아야 한다.
+   *       대표가 고른 것은 랜딩(`/influencer`)과 랭킹(`/influencer/rankings`) 둘뿐이다.
+   */
+  '/partnership', '/store/new', '/store/find', '/host', '/host/new', '/my-store',
+  '/influencer', '/influencer/rankings',
+  /**
+   * C. 소비자 탐색 — 대표가 "앱 같은 화면이라 액자가 맞을 수 있다"는 설명을 듣고도 포함을 택했다.
+   *    ⚠️ `/referral` 에 대해 이 파일이 오래 적어 둔 *"`lg:hidden` 없는 `app-frame-bar` 를 써서
+   *       일부러 제외"* 는 **더 이상 사실이 아니다**(2026-09-21 실측: `ReferralIndexPage` 와 그
+   *       하위에 `app-frame-bar` 0건, 하단 고정 요소 0건). 그 사이 페이지가 바뀌었고 주석만 남아
+   *       있었다 — 낡은 지도를 그대로 두면 다음 세션이 반대로 판단한다.
+   *    ⚠️ `/referral/:code`(추천인 착지 페이지)는 다른 컴포넌트라 등재하지 않는다(정확일치만).
+   */
+  '/experience', '/new-openings', '/gb-market', '/area-report',
+  '/interest-list', '/following', '/community-group-buy/new', '/referral',
 ])
 
 // 🖥️ 2026-07-16 (대표 — 상세 PC 2단): 상세 라우트(동적 :id)는 prefix 로 풀너비화 → 좌 이미지 + 우 정보 2단.
 //   ⚠️ 여기 등재하려면 그 페이지의 하단 구매바가 `.app-frame-bar` 를 쓰지 않아야 함(pc-fullbleed 가 숨김).
 //   교환권 상세(VoucherDetailPage)는 구매바가 app-frame-bar 미사용(ur-content-narrow lg:max-w) → 안전.
 //   숙소 상세(StayDetailPage)는 2026-07-20 하단 묶음바에서 app-frame-bar 제거 + lg:hidden(아사이드 대체) → 안전.
-const FULLBLEED_PC_PREFIXES = ['/vouchers/', '/pass/', '/stays/', '/region/']
+const FULLBLEED_PC_PREFIXES = ['/vouchers/', '/pass/', '/stays/', '/region/',
+  // 약관 하위 3종(`/terms/seller`·`/terms/group-buy`·`/terms/influencer`)은 같은 `TermsDocument` 다.
+  '/terms/',
+  // `/area-report/:region` 도 같은 `AreaReportPage` 다.
+  '/area-report/',
+]
 
 // 🛍️ 2026-09-02 (대표 확정 — 유어샵 안P1 "왼쪽 프로필 고정 + 오른쪽 3열 진열대"): 유어샵 진열대만
 //   액자를 벗는다. **정확히 한 세그먼트**(`/u/{handle}` · `/profile/{x}` · `/s/{x}`)만 — `/u/me/add`(핀 고르기)·

@@ -443,20 +443,27 @@ export default function UserGroupBuyCreatePage() {
         )}
       </div>
 
-      {/* Bottom CTA */}
+      {/* Bottom CTA
+          🖥️ 2026-09-21: `app-frame-bar` 제거 — 이 페이지가 pc-fullbleed 로 가면서
+          `body.pc-fullbleed .app-frame-bar { display: none }`(index.css)에 걸려 **제출 버튼이
+          통째로 사라진다**. 그 클래스의 규칙은 lg+ 전용이라 모바일 영향은 0이고, 액자를 벗으면
+          좌측 사이드바도 없으므로 `xl:left-56` 도 함께 뺀다(224px 만큼 어긋난다).
+          대신 안쪽을 `ur-content-narrow` 로 묶어 1440px 에 버튼이 퍼지지 않게 한다. */}
       {restaurant && step2Valid && (
-        <div className="fixed bottom-0 left-0 right-0 xl:left-56 app-frame-bar bg-white dark:bg-[#11141C] border-t border-gray-100 dark:border-[#2C2F35] px-4 py-3 z-50">
-          <button
-            onClick={handleSubmit}
-            disabled={!canSubmit}
-            className="w-full py-3.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[15px] font-bold rounded-xl disabled:opacity-40 active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
-          >
-            {submitting ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              t('groupbuy.startBtn', { defaultValue: '공구 시작하기' })
-            )}
-          </button>
+        <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-[#11141C] border-t border-gray-100 dark:border-[#2C2F35] px-4 py-3 z-50">
+          <div className="ur-content-narrow">
+            <button
+              onClick={handleSubmit}
+              disabled={!canSubmit}
+              className="w-full py-3.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[15px] font-bold rounded-xl disabled:opacity-40 active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
+            >
+              {submitting ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                t('groupbuy.startBtn', { defaultValue: '공구 시작하기' })
+              )}
+            </button>
+          </div>
         </div>
       )}
     </div>
