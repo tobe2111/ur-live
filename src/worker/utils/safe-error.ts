@@ -39,6 +39,24 @@ export function safeError(
         ))
         .catch(() => { /* fail-soft */ })
     } catch { /* fail-soft */ }
+
+    // 🔔 2026-09-21 (대표 "자동 알림 켜줘"): Sentry 는 라이브에서 **429(할당량 초과)** 라 5xx 보고가
+    //   통째로 버려지고 있었다 — 대표가 매장 등록 500 을 만났을 때 흔적이 어디에도 없어 콘솔 로그를
+    //   복사해 와야 했다. ⇒ 어드민이 이미 보는 표(`cron_failures`)에도 남기고 첫 건은 벨로 알린다.
+    //   폭주 방지·실패 삼킴은 전부 `server-error-alert.ts` 안에 있다(여기선 부르기만 한다).
+    try {
+      const DB = (c.env as { DB?: D1Database } | undefined)?.DB
+      if (DB) {
+        const alert = import('./server-error-alert')
+          .then((m) => m.recordServerError(DB, logTag, msg, {
+            method: c.req.method,
+            path: (() => { try { return new URL(c.req.url).pathname } catch { return undefined } })(),
+          }))
+          .catch(() => { /* fail-soft */ })
+        // 응답을 막지 않는다 — ctx 가 없으면 그냥 떠 있는 프라미스로 둔다
+        try { c.executionCtx.waitUntil(alert) } catch { void alert }
+      }
+    } catch { /* fail-soft */ }
   }
 
   // 🏭 2026-06-07 (보안 audit, 사용자 승인): production 에서 _debug(원본 에러 메시지) 미노출.
