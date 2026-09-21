@@ -8,7 +8,7 @@
  * ⚠️ 가짜 화면이다. API 호출 0 · 상태 0 · 입력은 전부 읽기 전용(값은 갤러리의 데이터 스위치가 정한다).
  */
 import type { ReactNode } from 'react'
-import { ChevronLeft, ChevronRight, Check } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Check, MapPin } from 'lucide-react'
 
 export const CARD = 'rounded-[18px] bg-white shadow-lift'
 
@@ -146,4 +146,72 @@ export function Escape() {
 /** 화면과 화면 사이 — 한 안에 여러 화면을 세로로 쌓을 때. */
 export function Gap() {
   return <div className="h-2 bg-gray-200" />
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * 🗺️ 2026-09-21 2차 — 지도가 채우는 자리 (대표 *"카카오맵 혹은 네이버지도로 간편하게"*)
+ *
+ * 실측으로 드러난 것: `KakaoMapPicker` 는 가게 하나를 고르면 **여덟 가지**를 준다
+ * (상호·도로명·지번·전화·카테고리·위도·경도·place_id). 매장 등록 위저드는 그걸 전부 저장하는데,
+ * 가입 화면의 `AddressPickerField:61` 은 **주소 문자열 하나만 꺼내고 나머지 일곱을 버린다.**
+ * 그래서 사장님이 상호·전화를 손으로 다시 친다. 아래 부품은 "버리지 않으면" 화면이 어떻게 되는지다.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** 가게를 아직 안 고른 상태 — 큰 검색 버튼 하나. */
+export function MapSearchTile({ label = '가게 이름으로 찾기', sub = '카카오맵에서 찾아요' }: { label?: string; sub?: string }) {
+  return (
+    <button className="flex h-[116px] w-full flex-col items-center justify-center gap-2 rounded-[18px] bg-white shadow-lift">
+      <MapPin className="h-7 w-7 text-brand" strokeWidth={1.7} />
+      <span className="text-[16px] font-bold text-gray-900">{label}</span>
+      <span className="text-[12.5px] text-gray-500">{sub}</span>
+    </button>
+  )
+}
+
+/**
+ * 고른 가게 카드 — **지도가 채운 것**을 그대로 보여 준다.
+ * 🔑 값마다 `자동` 표시를 달지 않는다(네 줄이 전부 자동이라 표시가 소음이 된다).
+ *    대신 카드 머리에 한 번만 말하고, 사장님은 "맞다/다른 가게" 둘 중 하나만 고르면 된다.
+ */
+export function PickedStoreCard({ name, address, phone, category }: {
+  name: string; address: string; phone: string; category: string
+}) {
+  return (
+    <section className={`${CARD} overflow-hidden`}>
+      <div className="flex items-center gap-1.5 bg-brand px-4 py-2 text-[12.5px] font-bold text-white">
+        <Check className="h-3.5 w-3.5" strokeWidth={3} />카카오맵에서 가져왔어요
+      </div>
+      <div className="px-5 py-4">
+        <p className="text-[19px] font-black leading-tight tracking-[-.03em] text-gray-900">{name}</p>
+        <dl className="mt-3">
+          {[['주소', address], ['전화', phone], ['업종', category]].map(([k, v]) => (
+            <div key={k} className="flex gap-3 border-t border-rule py-2 first:border-t-0 first:pt-0">
+              <dt className="w-[38px] shrink-0 text-[12.5px] font-semibold text-gray-400">{k}</dt>
+              <dd className="flex-1 text-[13.5px] font-semibold leading-snug text-gray-800">{v}</dd>
+            </div>
+          ))}
+        </dl>
+        <button className="mt-3 text-[13px] font-bold text-brand-text">다른 가게 고르기</button>
+      </div>
+    </section>
+  )
+}
+
+/** 지도에 없는 가게를 위한 탈출구 — 없으면 신규 개업·무점포 사장님이 막힌다. */
+export function NotOnMap() {
+  return (
+    <p className="px-5 pt-4 text-center text-[13px] text-gray-500">
+      지도에 없는 가게인가요? <span className="font-bold text-brand-text">직접 입력할게요</span>
+    </p>
+  )
+}
+
+/** 지금은 못 하는 것을 정직하게 적는 자리 — 시안 안에서만 쓴다(실제 화면 문구 아님). */
+export function NotYet({ children }: { children: ReactNode }) {
+  return (
+    <div className="mx-4 mt-4 rounded-[14px] bg-gray-100 px-4 py-3">
+      <p className="text-[12px] font-bold text-gray-500">지금은 이렇게 안 됩니다</p>
+      <p className="mt-1 text-[12.5px] leading-relaxed text-gray-600">{children}</p>
+    </div>
+  )
 }

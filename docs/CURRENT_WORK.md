@@ -5497,7 +5497,7 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 _총 340건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-21**
-- [사업자 유저 가입 화면 — "너무 복잡함" 시안 5안 (2026-09-21)](handoff/2026-09-21-seller-signup-simplify.md)
+- [사업자 유저 가입 화면 — 2차 시안 (2026-09-21, 라이브 실측 재작성)](handoff/2026-09-21-seller-signup-simplify.md)
 **2026-09-19**
 - [🧪 "staging 실결제" 게이트가 실재하지 않는다 (2026-09-19)](handoff/2026-09-19-staging-gate-reality.md)
 - [🪙 결제 화면에서 딜 사용액 조절 — 대표 확정 "C안" (2026-09-19)](handoff/2026-09-19-pay-screen-deal-control.md)

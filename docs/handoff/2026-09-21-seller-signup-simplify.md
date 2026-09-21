@@ -1,96 +1,92 @@
-# 사업자 유저 가입 화면 — "너무 복잡함" 시안 5안 (2026-09-21)
+# 사업자 유저 가입 화면 — 2차 시안 (2026-09-21, 라이브 실측 재작성)
 
-대표: *"`urdeal.kr/seller/register/supplier?from=kakao&userName=정지원` 여기 UI 디자인 수정 필요.
-너무 복잡함. 심플하게 진행 필요. 시안 필요"* → *"시안 더 대기업스럽게 완성도있게 시안 여러개 만들어서 줘."*
+대표: *"너무 복잡함, 심플하게. 시안 필요"* → *"더 대기업스럽게 완성도있게"* →
+*"구현된 형태는 어떻지? 사업자한테 OCR로 받고 있나? 그런 것들을 전반적으로 모두 확인한 뒤에
+시안 다시 만들어볼래? OCR이랑 그리고 카카오맵 혹은 네이버지도로 간편하게도 할 수 있잖아."*
 
-어느 서비스인가: **유어딜**(소비자 → 사업자 유저 전환 관문). 도매·공구 서비스·유어애즈 무접촉.
-머니 경로: **없음**(시안만 — 가입 화면 코드 0).
+어느 서비스인가: **유어딜**. 도매·공구 서비스·유어애즈 무접촉. 머니 경로 **없음**(가입 화면 코드 0).
 
 ## 다음 세션의 첫 액션
 
-1. **대표 선택 대기** — A/B/C/D/E/F 중. 시안 덱 https://claude.ai/artifact/4YcRBe48GZiTYEPQSS34He
-   배포 뒤에는 `urdeal.kr/design/variants?set=seller-signup`(데이터 스위치·폭 전환).
-   **섞어 고를 수 있다** — 축이 셋이다(화면 수 · 입력 옷 · OCR). 예: "B 구조 + C 옷".
-2. 고르면 그 안을 `src/pages/SellerRegisterSupplierPage.tsx` 에 구현.
-   착수 지점·함정은 `docs/design/seller-signup-simplify-2026-09-21.md` §4.
-3. 안 F 를 고르면 **먼저 둘**: 가입 전 호출 가능한 공개 OCR 통로(지금은 셀러 토큰 필수)
-   + OCR 정확도 실측(09-16 인계가 "유일한 미검증 축" 이라 남긴 그것).
+1. **대표 선택 대기** — A~F 중. 덱 https://claude.ai/artifact/4YcRBe48GZiTYEPQSS34He
+   배포 뒤 `urdeal.kr/design/variants?set=seller-signup`.
+2. 고르면 `docs/design/seller-signup-simplify-2026-09-21.md` §5 의 표대로 구현.
+   **뿌리는 `AddressPickerField.tsx:61` 한 줄**(주소 문자열 → place 객체 전체).
+3. 안 E·F 는 선행 작업이 있다(§아래 "남은 결정").
+
+## 🔴 이번 실측이 뒤집은 것 — 1차 시안의 전제
+
+1차는 *"다섯 칸은 국세청 자동 승인에 필요하니 유지"* 였다. **사실이 아니었다.**
+
+```
+sellers 4행:  representative_name 비어 있음 4/4 · business_start_date 비어 있음 4/4
+              nts_verified_at NULL 4/4 · nts_verify_result NULL 4/4
+```
+재검증 라우트(`internal-admin-tools.routes.ts:1049`)는 그 두 칸이 비면
+`대표자명 / 개업일 누락 — 재검증 불가` 로 되돌아온다 ⇒ **국세청 자동 승인은 0회.**
+
+⚠️ `NTS_API_KEY` 설정 여부는 **확정 못 했다** — `/api/version` 의 시크릿 목록은 큐레이션된 고정 목록이고
+`Env` 타입에도 선언이 없다(`c.env as {NTS_API_KEY?}` 캐스팅). 다만 전제 필드가 비어 호출 조건 자체가
+성립하지 않으므로 결론은 같다. **다음 세션이 "키가 없다"로 단정하지 말 것.**
+
+## 실측 요약
+
+| 축 | 코드 | 라이브 |
+|---|---|---|
+| 카카오맵 | `KakaoMapPicker` 선택 1회 = **8필드** | 매장 등록 문은 8개 전부 저장. **가입 문은 주소 1개만**(`AddressPickerField:61`) |
+| 가입 폼의 주소 | `sellers.description` 안 `[주소: …]` 텍스트 | **읽는 코드 0건**(쓰기 전용). 셀러 4/4 `description` 비어 있음 |
+| 네이버 지도 | 지역검색 API 는 서버에 있음 | **호출부 0건.** 지도는 100% 카카오. 네이버는 이미지 검색만 |
+| OCR | `ocr-license.ts`(`@cf/meta/llama-3.2-11b-vision-instruct`) | **3건 실행 / 0건 성공** |
+| OCR 게이트 | `ocr_auto_verify_enabled` | `platform_settings` 에 **키 자체 없음** = OFF(fail-closed) |
+
+### OCR 3건 원문 (`seller_meta.ocr_business_registration`)
+- 15 `unreadable` fill 0
+- 16 `mismatch` fill 0.75 — bizName=**이테스트**(대표자 이름) · ownerName=**신규**(발급 사유) · bizNumber **null** · permitDate **null**
+- 17 `unreadable` fill 0
+
+🔑 **입력은 완벽하게 깨끗한 합성 등록증이었다**(이미지를 직접 열어 확인 — `docs/design/assets/…/ocr-input.png`).
+사진이 아니라 글자가 또렷한 렌더 문서인데도 **사업자번호·개업일을 3회 다 못 읽었다.**
+⇒ 실사진은 더 나쁘다. **안 F 를 "곧 됩니다"로 말하지 말 것.**
+
+⚠️ 09-19 handoff 가 이미 같은 실측을 부분적으로 했고(합성 5회 → `match` 0회, fill 평균 0.70),
+수리 2건(빈응답 재시도·도로명 띄어쓰기)이 `a014de2` 로 배포됐으나 **수리 후 재측정은 아직 안 됐다.**
+위 3건 중 2건(16·17)은 00:01, 1건(15)은 00:45 — 수리 배포 시점과의 선후는 확인하지 않았다.
 
 ## 완료분 (이번 세션)
 
 | 무엇 | 파일 |
 |---|---|
-| 시안 세트 6안(실제 부품 렌더) | `src/pages/design-variants/sets/seller-signup.tsx` (신규) |
-| 시안 공용 부품(대형 앱 치수) | `src/pages/design-variants/sets/seller-signup-parts.tsx` (신규) |
-| 갤러리 등록 2줄 | `src/pages/design-variants/registry.ts` |
-| 시안 문서 + 실측 표 | `docs/design/seller-signup-simplify-2026-09-21.md` (신규) |
-| 폰 430px 렌더 12장 | `docs/design/assets/seller-signup-simplify-2026-09-21/` |
-| 아카이브 표·갤러리 목록 | `docs/design/README.md` · `docs/design/variant-gallery.md` |
+| 시안 세트 6안 **재작성**(지도 중심) | `src/pages/design-variants/sets/seller-signup.tsx` |
+| 지도 부품 추가 | `src/pages/design-variants/sets/seller-signup-parts.tsx`(`MapSearchTile`·`PickedStoreCard`·`NotOnMap`·`NotYet`) |
+| 시안 문서 재작성 | `docs/design/seller-signup-simplify-2026-09-21.md` |
+| 폰 렌더 12장 + OCR 입력 1장 | `docs/design/assets/seller-signup-simplify-2026-09-21/` |
+| 아카이브·갤러리 목록 | `docs/design/README.md` · `variant-gallery.md` |
 
-## 실측 (코드만 봐서는 안 보였던 것)
-
-`node scripts/visual-preview.mjs --route=/seller/register/supplier --auth=user`:
-**블록 10개 · 진행 숫자 5종(`1/3` `0/3` `0/2` `3 남음` `필수 0/5`) · 1,893px.**
-폰 한 화면은 약 830px 이라 **지금 화면만 스크롤해야 다음 칸이 보인다.**
-
-🔑 **렌더로만 드러난 것 둘**:
-1. **헤더 `1 / 3` 은 고아다.** 09-16 이 3단계 사다리를 지웠는데 헤더의 숫자는 남았다.
-   지금 화면 어디에도 "3단계" 가 없다.
-2. **매장 종류·주소를 두 번 친다.** 여기 값은 `sellers.description` 에
-   `[카테고리: …][주소: …]` **문자열**로만 들어가고 매장 행을 안 만든다.
-   가입 뒤 `StoreRegisterModal`(4스텝)이 카카오맵에서 **다시** 받는다.
-
-서버 필수는 **셋**(가게명·사업자번호·연락처, `seller-registration.routes.ts:387`).
-대표자명·개업일은 국세청 자동 승인용이라 다섯을 받는다
-⇒ **칸을 줄이면 자동 승인이 죽는다. 줄일 것은 칸이 아니라 블록이다.**
+시안의 가게 값은 **라이브 seller 14 의 실제 값**을 썼다(홍대돈까스 · 전주 덕진구 · 음식점 > 일식 > 돈까스,우동).
 
 ## 이번에 틀렸던 판단
 
-- **처음에 "이 화면을 바로 고치자" 로 갔다가 멈췄다.** `docs/design/README.md` 표가 이 화면을
-  **5일 전(09-16) 대표 확정 "안 2 + 시각 C"** 로 기록하고 있다. 대표 지시는 "시안 필요" 였고,
-  확정 시안 밖 방향 전환은 등급 C(결재) 다 ⇒ **코드 0, 시안만.**
-- **`docs/design/assets/` 에 목업을 손으로 그리려다 관뒀다.** 레포에 더 나은 길이 이미 있다 —
-  `/design/variants` 갤러리(09-15 신설)는 **실제 부품으로** 그리므로 손그림과 실물이 갈리지 않는다.
-- 🩸 **첫 판 렌더에 갤러리 크롬이 섞여 들어왔다.** `visual-preview.mjs` 는 페이지 전체를 찍는데,
-  갤러리 상단 바가 `sticky` 라 긴 시안을 찍을 때 스크롤되며 **그림 위에 겹쳤다**(C 안 상단 200px 가
-  picker 바로 덮였다). 요소 단위 스크린샷 + sticky 무력화로 해결.
-  ⇒ 시안을 다시 찍을 일이 있으면 스크래치의 `shoot-variants.mjs` 방식을 쓸 것(요소 screenshot).
-- 🩸 **시안 덱의 기준선이 73px 어긋나 있었다.** "폰 한 화면(830px)" 점선을 `left: 43.7%` 로 뒀는데
-  그건 **라벨 칸(116px)을 포함한 전체 폭** 기준이라 막대 좌표계와 안 맞았다. 그림이 실제보다
-  짧아 보이는 거짓말을 한다 → `calc(var(--gut) + (100% - var(--gut)) * 0.437)` 로 고치고
-  브라우저에서 **실제로 재서** 확인(mark 638 = 기대 638).
-  ⇒ **차트는 눈으로만 보면 안 되고 좌표를 재야 한다.**
-
-- 🩸 **pre-push 게이트가 가짜 빨간불을 냈다.** `BLOG_SEED_VERSION = 13` 이 "main 이 이미 쓴 번호"
-  라고 막았는데, 내 브랜치는 그 파일을 건드린 적이 없다. 원인은 **`origin/main` 을 아직 안 받은 상태**
-  였던 것 — `check-seed-version-monotonic` 은 merge-base 를 못 구하면 *"모를 땐 검사한다"* 로
-  폴백한다(그 자체는 옳은 설계다). `git fetch origin main` 뒤 다시 돌리니 **가드 99개 통과.**
-  ⇒ **원격 세션에서 게이트를 돌리기 전에 `git fetch origin main` 을 먼저 할 것.**
-  안 그러면 남의 상수 때문에 빨간불이 떠서 엉뚱한 곳을 고치게 된다.
-
-- 🩸 **CI 가 내 시안 파일을 잡았다 — 그리고 그게 옳았다.** `urshop-naming.test.ts` N5 는
-  *"소비자 화면은 사업자 가입 폼(`/seller/register/supplier`)으로 직접 보내지 않는다"* 를
-  **파일 전체 문자열**로 검사한다(문구가 변수·i18n 키로 흩어져도 잡으려고 일부러 넓게 짰다).
-  내 갤러리 세트는 그 경로를 `route:` **메타데이터**로 적는다 — 어느 화면의 시안인지를 밝히는
-  라벨이고 목적지가 아니다(그 파일들에 navigate·href·to= 가 **0개**).
-  **가드를 푸는 대신 재조준했다**: `src/pages/design-variants/` 안에서 그 경로가 **`route:` 줄에만**
-  등장하면 통과, 한 줄이라도 이동 코드에 쓰이면 빨간불.
-  ⚠️ 파일 단위 면제(allow 에 두 줄 추가)를 **일부러 피했다** — 세트가 늘 때마다 예외가 하나씩
-  쌓이고 그게 곧 구멍이 된다. **되돌려-검증 2건으로 확인**: 시안 파일에 `href` 주입 → 빨강 ·
-  일반 소비자 화면(`CartPage`)에 경로 주입 → 빨강 · 복원 → 초록.
+- **1차 시안 전체가 검증 안 된 전제 위에 있었다.** "국세청 자동 승인 때문에 다섯 칸" 이라고 문서와
+  코드 주석이 말하길래 그대로 믿고 다섯 안을 그렸다. **라이브를 한 번도 안 봤다.**
+  대표가 *"구현된 형태는 어떻지?"* 라고 물어서야 쟀고, 재 보니 0회였다.
+  ⇒ **화면을 고치기 전에 그 화면이 만든 데이터를 먼저 볼 것.** 4행짜리 테이블이었고 5분이면 됐다.
+- **"OCR 정확도 미실측" 이라고 문서에 적혀 있었지만 실제로는 결과가 남아 있었다.**
+  `seller_meta` 에 3건이 저장돼 있다. 문서만 읽고 "미실측"으로 넘겼으면 안 F 를 낙관적으로 그렸을 것이다.
+- **테스트 데이터로 결론을 낼 뻔했다.** 사업자번호가 `9999999991` 계열이라 합성인 건 금방 알았는데,
+  거기서 멈췄으면 "합성이라 실패한 것"으로 오판했을 것이다. **이미지를 직접 열어 보니 반대였다** —
+  실물보다 훨씬 쉬운 조건이었다. ⇒ 데이터가 가짜인지 판단하려면 **그 가짜가 쉬운지 어려운지**까지 봐야 한다.
 
 ## 검증 (E2)
 
-- tsc **0** · `design-variants-2026-09-15.test.ts` **15건 pass**(세트 규칙 4종을 새 세트에도 강제)
-- `npm run build:client` **0**
-- **브라우저 렌더 12장**(6안 × 비어 있음/채움) — 눈으로 확인
-- 시안 덱 자체도 렌더해서 확인(넓은 화면·폰·다크 3종, 가로 넘침 0) + **기준선 좌표 실측**(638 = 기대 638)
-- pre-push 게이트 **가드 99개 통과**(`git fetch origin main` 뒤)
-- `urshop-naming.test.ts` **15건 pass** + 주입 2건 되돌려-검증 빨간불 확인
-- ⚠️ **E4 아님**: 시안은 라이브에 영향이 없다. 갤러리 세트는 배포돼야 `urdeal.kr/design/variants` 에서 열린다.
+- tsc **0** · `design-variants-2026-09-15.test.ts` 15건 + `urshop-naming.test.ts` 15건 pass
+- `npm run build:client` **0** · pre-push 게이트
+- 폰 렌더 **12장** 눈 확인 · 덱 렌더 확인
+- ⚠️ **E4 아님** — 시안은 라이브 무영향. 갤러리 세트는 배포돼야 열린다.
 
 ## 남은 결정 (대표)
 
-1. **A~F 중 무엇** — 세션 추천은 **B 지금 + F 다음**. 입력 옷(밑줄 B / 박스 C)은 따로 골라도 된다.
-2. B 를 고르면 따라오는 작은 결정: 등록증 첨부 칸을 가입 화면에서 **뺄지**
-   (09-16 이 "등록증을 손에 들고 있는 순간" 을 노려 넣은 칸이다 — 빼면 그 순간을 잃고, 두면 블록이 하나 는다).
+1. **A~F 중 무엇** — 세션 추천 **안 B**(치는 칸 2, 935px, 지도 8중 6).
+2. **국세청 확인을 살릴 것인가** — 살리면 안 E(두 칸 더). 안 B 로 가고 나중에 붙여도 된다.
+   살리려면 `NTS_API_KEY` 설정 여부 확인이 선행.
+3. **등록증 읽기를 개선할 것인가** — 지금 모델로는 어렵다. 네이버 클로바 OCR 은 사업자등록증
+   **전용 템플릿**이 있다(결재 `2026-09-16-ocr-license-automation.md` 선택지 2). 계약·비용이라 등급 C.
