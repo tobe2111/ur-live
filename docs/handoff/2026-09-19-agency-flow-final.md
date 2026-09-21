@@ -101,14 +101,35 @@
 - 가드: `approval-gate-2026-09-20.test.ts` 10건 + 주입 4건(정산 게이트 소실 · 두 집합 동일화 · 좌석 환원 · 정지 개방) **되돌려-검증 빨간불 확인**. 낡은 지도 2건(d3 요약 필터·seller-stores 가산) 재조준. STAGING **P15**.
 - 🩸 틀렸던 것: 주입 러너를 vitest 전수와 **동시에** 돌려 "복원 실패 의심"이 떴다 — 러너는 소스를 잠깐 고쳐 쓰므로 다른 검사와 병렬로 돌리면 안 된다. 순차로 돌리자 진짜 원인(낡은 지도 2건)이 남았다.
 
+## 🪪 [E4] S-OCR 라이브 실측 — 라이선스 동의 뒤 (2026-09-21)
+
+대표 *"동의해 너가 최대한 다 해주고"* → `POST /api/admin/ai/agree-ocr-model` 1회(응답은 `5016: Thank you for agreeing…` —
+에러 모양이지만 성공이다). 그 뒤 합성 등록증 3종 OCR:
+
+| 매장 | 서류 | 결과 |
+|---|---|---|
+| 16 | 부산 해운대구(매장은 전주 덕진구) | `mismatch` · "다른 지역입니다 (해운대구 ↔ 덕진구)" — **S-OCR-2 통과** |
+| 17 | blur 5px | `unreadable` · 양쪽 `unknown` — **S-OCR-3 통과**(mismatch 아님) |
+| 15 | 완전 일치(이름을 매장과 똑같이 다시 만들어 재업로드) | 5회 중 `match` **0회**: review(상호 1글자 오독) · unreadable(빈 응답) · review(주소 near) · review(주소 near) · unreadable(빈 응답). `business_registration_status` 는 5회 내내 `pending` — **S-OCR-4 통과** |
+
+- 우리 결함 둘을 고쳤다(이 PR): ① 빈 응답 1회 재시도(`OCR_EMPTY_RETRIES=1`, 예외엔 미적용) ② `가리내 10길` → `가리내10길`
+  도로명 숫자 붙이기(행정구역 뒤엔 안 붙인다). 가드 `ocr-empty-retry-2026-09-21.test.ts` 5건 + 주소 1건, 주입 3건 빨간불 확인.
+- 고치지 않은 것(대표 판단): 상호 1글자 오독(`클로드`→`글로드`)은 `compareBizName` 이 **의도적으로** 오타를 안 봐줘 `review`.
+  편집거리 허용은 자동 승인 문턱을 낮추는 일이라 결재 사항. 지금은 그 서류가 사람 큐에 남을 뿐이라 해가 없다.
+- S-OCR-1 은 **대표 실사진**이 있어야 잰다(합성 문서는 폰트·해상도가 실물과 다르다 — 위 5회가 그 한계다).
+- 게이트 `ocr_auto_verify_enabled` 는 **OFF 유지**. S-OCR-1 통과 + 수리 배포 뒤 매장 15 재호출에서 `match` 가 나오면 켤 후보.
+- 🩸 틀렸던 것: 첫 판 등록증 상호를 `클로드분식 (테스트)` 로 만들어 매장 `[테스트] 클로드분식` 과 달랐다 — 판정이 `differ` 로 뜬 것을
+  결함으로 읽을 뻔했다. 실측 픽스처는 **등록값을 그대로 복사**해 만들 것.
+
 ## ⏭️ 다음 세션의 첫 액션
 
 1. **대표 실사용 판정(E5 — 위 E4 가 못 본 생애주기)**: 대표 계정으로 `/seller/stores` 에서 중개 매장 하나 등록(요율 10/5) → 목록에 `XXXX-XXXX` 코드가 뜨는지 →
    다른 계정으로 `/store/find?code=…` → 매장이 자동 선택되는지. `/seller/influencer-deals` 에서 협업 코드 발급 → 세 번째 계정으로
    `/i/join/CODE` → "협업이 시작됐어요" + `/influencer/settlement` 에 매장 링크·수락 대기 딜이 보이는지.
-2. **S-BROKER 실결제**(대표가 켜기로 하면): `docs/STAGING_CHECKLIST.md` 5건. 판정 쿼리:
+2. **S-OCR 수리 판정**: 배포 뒤 `POST /api/admin/sellers/15/business-registration/ocr` 3회 → `match` 가 한 번이라도 나오는지 · `unreadable` 이 줄었는지(재시도 메시지 `(2회 시도)`).
+3. **S-BROKER 실결제**(게이트는 09-20 에 이미 ON — 대표 지시): `docs/STAGING_CHECKLIST.md` 5건. 판정 쿼리:
    `SELECT influencer_id, commission_amount, status, source FROM influencer_attributions WHERE source='broker_share'`.
-3. 남은 미흡(이번 범위 밖): 코드 발급자 `store_codes.created_by` 는 셀러 라우트에선 seller id 다(유저 id 아님) — 표시용이라 무해하나
+4. 남은 미흡(이번 범위 밖): 코드 발급자 `store_codes.created_by` 는 셀러 라우트에선 seller id 다(유저 id 아님) — 표시용이라 무해하나
    감사 로그로 쓰려면 정리. 인플루언서 정산 페이지의 `MyRankCard` 등 옛 이모지 잔재는 design-slop 래칫 대상 아님(소비자 마이).
 
 ## 남은 결정
