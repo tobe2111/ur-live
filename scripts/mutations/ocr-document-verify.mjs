@@ -15,6 +15,14 @@ const RETRY = 'src/tests/unit/ocr-empty-retry-2026-09-21.test.ts'
 
 export default [
   {
+    name: '🧵 이스케이프된 JSON 응답 되살리기가 사라진다 (읽어 놓고 unreadable)',
+    file: 'src/worker/utils/ocr-license.ts',
+    find: "      parsed = JSON.parse(m[0].replace(/\\\\\"/g, '\"').replace(/\\\\n/g, '\\n')) as Record<string, unknown>",
+    replace: "      throw new Error('x')",
+    test: RETRY,
+    why: '모델이 JSON 을 문자열로 감싸 돌려준 응답은 내용이 다 있다. 버리면 사람이 다시 누른다.',
+  },
+  {
     name: '🔁 OCR 빈 응답 재시도가 사라진다 (2026-09-21 이전 상태 — 5회 중 2회 unreadable)',
     file: 'src/worker/utils/ocr-license.ts',
     find: '  for (let attempt = 0; attempt < OCR_EMPTY_RETRIES + 1 && !text; attempt += 1) {',

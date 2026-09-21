@@ -132,7 +132,14 @@ export async function ocrDocument(
   try {
     parsed = JSON.parse(m[0]) as Record<string, unknown>
   } catch {
-    return emptyResult(kind, 'JSON 을 해석하지 못했습니다', text)
+    // 🧵 2026-09-21 (S-OCR 실측 8회 중 1회): 모델이 JSON 을 **문자열로 한 번 더 감싸** 돌려줬다 —
+    //   `"{\n \"biz_name\": ...}"` 처럼 따옴표가 역슬래시로 이스케이프돼 있어 그대로는 해석이 안 된다.
+    //   다 읽어 놓고 `unreadable` 로 버리는 것이 아까우니 이스케이프를 한 겹 벗겨 한 번 더 시도한다.
+    try {
+      parsed = JSON.parse(m[0].replace(/\\"/g, '"').replace(/\\n/g, '\n')) as Record<string, unknown>
+    } catch {
+      return emptyResult(kind, 'JSON 을 해석하지 못했습니다', text)
+    }
   }
 
   const bizNumberRaw = clean(parsed.biz_number)
