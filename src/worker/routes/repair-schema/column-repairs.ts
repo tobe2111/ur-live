@@ -425,6 +425,27 @@ export const COLUMN_REPAIRS: ColumnRepair[] = [
     )` },
     { desc: 'idx_store_reports_open', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_store_reports_open ON store_reports(seller_id, reporter_key) WHERE status = 'open'" },
     { desc: 'idx_store_reports_status', sql: "CREATE INDEX IF NOT EXISTS idx_store_reports_status ON store_reports(status, created_at)" },
+    // ☎️ 2026-09-21 매장 확인 통화 — 런타임 ensureStoreVerify 의 짝. 이력이라 한 매장에 여러 행이다
+    //   (부재 → 재시도 → 확인됨). 마지막 결과만 남기면 "몇 번 걸었는가" 를 잃는다.
+    { desc: 'store_verify_calls', sql: `CREATE TABLE IF NOT EXISTS store_verify_calls (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      seller_id INTEGER NOT NULL,
+      admin_id INTEGER,
+      result TEXT NOT NULL,
+      note TEXT,
+      created_at DATETIME DEFAULT (datetime('now'))
+    )` },
+    { desc: 'idx_store_verify_calls_seller', sql: 'CREATE INDEX IF NOT EXISTS idx_store_verify_calls_seller ON store_verify_calls(seller_id, created_at DESC)' },
+    // ⏳ 2026-09-21 노출 유예 마커가 사는 곳. 이 테이블이 없으면 소비자 피드의
+    //   `exposureReadySql` 술어가 통째로 깨진다 — 런타임 ensure 만 믿지 않고 여기서도 보장한다.
+    { desc: 'seller_meta', sql: `CREATE TABLE IF NOT EXISTS seller_meta (
+      seller_id INTEGER NOT NULL,
+      key TEXT NOT NULL,
+      value TEXT,
+      updated_at DATETIME DEFAULT (datetime('now')),
+      PRIMARY KEY (seller_id, key)
+    )` },
+    { desc: 'idx_seller_meta_key', sql: 'CREATE INDEX IF NOT EXISTS idx_seller_meta_key ON seller_meta(key, seller_id)' },
     // 🔒 2026-08-27 유어애즈 DB 열람량 — 대행사 차단(ads-db-access.ts)의 짝. 등록 유형은 자기신고라
     //   우회되지만 "하루에 몇 행 가져갔나"는 우회할 수 없다. 상한의 근거이자 감사 기록.
     { desc: 'seller_ads_db_usage', sql: `CREATE TABLE IF NOT EXISTS seller_ads_db_usage (
