@@ -235,6 +235,61 @@ adminStoreOwnerRoutes.post('/store-claims/:id/decide',
     }
   })
 
+
+// ── ☎️ 매장 확인 통화 (2026-09-21 — 사기 방어 ①) ────────────────
+//   승인 도장만으로는 "전화를 걸었는지" 가 어디에도 안 남는다. 분쟁이 나면 말만 남는다.
+//   여기는 **적기만** 한다 — 매장 정지·환불은 기존 경로가 판단한다(util 이 그 경계를 잠그다).
+adminStoreOwnerRoutes.get('/store-verify/queue', cors(), requireAdminRole('finance'), async (c) => {
+  try {
+    const { listVerifyQueue } = await import('../../../worker/utils/store-verify')
+    const items = await listVerifyQueue(c.env.DB, {
+      limit: intParam(c.req.query('limit'), 30),
+      offset: intParam(c.req.query('offset'), 0),
+      includeDone: c.req.query('include_done') === '1',
+    })
+    return c.json({ success: true, data: items })
+  } catch (err) {
+    return safeError(c, err, '확인 대기 목록을 불러오지 못했습니다', '[store-verify]')
+  }
+})
+
+adminStoreOwnerRoutes.get('/stores/:sellerId/verify-calls', cors(), requireAdminRole('finance'), async (c) => {
+  try {
+    const sellerId = Number(c.req.param('sellerId'))
+    if (!Number.isInteger(sellerId) || sellerId <= 0) return c.json({ success: false, error: '매장이 올바르지 않습니다' }, 400)
+    const { listVerifyCalls } = await import('../../../worker/utils/store-verify')
+    return c.json({ success: true, data: await listVerifyCalls(c.env.DB, sellerId) })
+  } catch (err) {
+    return safeError(c, err, '통화 기록을 불러오지 못했습니다', '[store-verify]')
+  }
+})
+
+adminStoreOwnerRoutes.post('/stores/:sellerId/verify-call',
+  cors(), requireAdminRole('finance'), auditLog('stores.verify_call'),
+  async (c) => {
+    try {
+      const sellerId = Number(c.req.param('sellerId'))
+      if (!Number.isInteger(sellerId) || sellerId <= 0) return c.json({ success: false, error: '매장이 올바르지 않습니다' }, 400)
+      const b = await c.req.json<{ result?: unknown; note?: unknown }>().catch(() => ({} as Record<string, unknown>))
+      const { recordVerifyCall } = await import('../../../worker/utils/store-verify')
+      const admin = c.get('user')
+      const adminId = Number(admin?.id)
+      const r = await recordVerifyCall(c.env.DB, {
+        sellerId,
+        adminId: Number.isFinite(adminId) ? adminId : null,
+        result: String(b.result || ''),
+        note: typeof b.note === 'string' ? b.note : null,
+      })
+      if (!r.ok) {
+        return c.json({ success: false, code: r.reason, error: r.reason === 'NO_SELLER' ? '매장을 찾을 수 없습니다' : '통화 결과가 올바르지 않습니다' },
+          r.reason === 'NO_SELLER' ? 404 : 400)
+      }
+      return c.json({ success: true, data: { seller_id: sellerId } })
+    } catch (err) {
+      return safeError(c, err, '통화 기록 저장 중 오류가 발생했습니다', '[store-verify]')
+    }
+  })
+
 export { adminStoreOwnerRoutes }
 
 

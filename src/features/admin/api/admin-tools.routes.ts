@@ -77,7 +77,10 @@ adminToolsRoutes.get('/sellers/pending', async (c) => {
 
 adminToolsRoutes.put('/sellers/:id/approve', async (c) => {
   const id = c.req.param('id')
+  const prev = await c.env.DB.prepare('SELECT status FROM sellers WHERE id = ?').bind(id).first<{ status: string | null }>().catch(() => null)
   await c.env.DB.prepare("UPDATE sellers SET status = 'approved', updated_at = datetime('now') WHERE id = ?").bind(id).run()
+  // ⏳ 2026-09-21 (사기 방어 ②): 승인 경로가 둘이라 마커도 양쪽에 — 한쪽만 찍으면 그 문으로 들어온 매장은 유예 0.
+  await (await import('../../../worker/utils/store-verify')).markExposureGrace(c.env.DB, Number(id), prev?.status).catch(() => 0)
   // v30 FIX: admin-tools audit log 누락 보완
   await writeAuditLog(c, { action: 'seller.approve', targetType: 'seller', targetId: id })
   return c.json({ success: true })

@@ -74,6 +74,7 @@
 | **P15** | 🥕 승인 전 매장 좌석 개방 + 정산 승인 게이트 (2026-09-20) | ① 중개사가 새 매장 등록(pending) → 그 매장 좌석으로 전환 → 이용권 등록·협업 코드 발급 ② 그 매장 이용권을 직링크로 1건 결제·사용 처리 ③ `payouts-generate` 수동 실행 ④ 어드민 승인 뒤 다시 실행 | ①: 전환 200 + 등록·발급 성공 + 메인 피드에 **미노출** · ②: 원장 `seller:{id}` credit 1행 · ③: 그 매장 `payouts` **0행**(로그 `skip unapproved seller`) · ④: `payouts` 1행(전기간 외상 회수) — 승인 전에 돈이 나가면 실패 | ⬜ |
 | **P9~P11** | 🔴 **통합 실결제 절차 (결제 방문 1회)** — 공구 특가 · 미수령 환불 · 부분환불 | [gb-price-production-verification.md](./design/gb-price-production-verification.md) §통합 | 아래 §통합 실결제 표 참조 | ⬜ |
 | **P12** | 자기 링크 자기 구매 보상 0 (2026-09-02 대표) | 사업자 유저가 `?ref={자기 sellers.id}` 로 이용권 카드 결제 | `affiliate/influencer` 적립 0 · 사용자 보너스 0 · 구매 자체는 정상 발급 (`gb-purchase-guards.isSelfReferral`) | ⬜ |
+| **P16** | 💸 결제된 주문의 `payment_status` (2026-09-21) | 🔴 **머니 경로 · 환불 게이트를 연다.** ① 이용권 카드 결제 1건 → `orders` 행 확인 ② 그 주문을 **소비자 앱에서** 환불 요청 ③ 셀러 대시보드에서 환불 1건 ④ `repair-schema` 1회 실행 후 재실행 | ①: `payment_status='approved'`(종전 `pending`) · ②: 400 *"결제가 완료되지 않은 주문입니다"* 가 **안 뜬다**(⚠️ 공구 카드 주문은 `toss_payment_key` 가 NULL 이라 여기서 422 `PAYMENT_KEY_MISSING` 에 막힌다 — 그건 이 항목 범위 밖이고 아래 후속에 적었다) · ③: 환불 뒤 `payment_status='refunded'`(머지 전엔 `approved` 로 남아 **매출로 계속 집계**됐다) · ④: backfill 이 결제 흔적 있는 `PAID/DONE/DELIVERED` 행만 바꾸고 `CANCELLED` 57건은 **그대로**, 2회 실행해도 결과 동일(멱등) | ⬜ 미검증 |
 
 ### 🔴 통합 실결제 (대표 결제 방문 **1회**) — 2026-08-02 대표 확정 ⑥
 
