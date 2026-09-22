@@ -98,6 +98,23 @@ export const OPS_POLICY_FIELDS: Array<{ key: string; label: string; hint: string
     text: true,
   },
   {
+    // 📮 2026-09-21: 이 게이트는 `OPS_GATES` 에만 있고 **켤 화면이 없었다** — 코드에만 존재하고
+    //   영영 OFF 로 남는 모양이다(`ops-gate-reachable` 이 잡았다). CI 가 스택된 PR 에는 안 돌아
+    //   묻혀 있던 결함이다.
+    //   ⚠️ `text: true` — 값이 'true'/'false' 문자열이라 숫자 검증 배열에 두면 저장이 거부된다.
+    key: 'store_owner_notice_enabled',
+    label: '사장님 매장 등록 통보(알림톡)',
+    hint: "기본 꺼짐. 'true' 로 켜도 `ALIGO_TPL_STORE_NOTICE`(카카오 검수 통과 템플릿)가 없으면 안 나간다. 자동 발송은 없고 /admin/store-owner 에서 눌러야 나간다 — 켜기 전 S-OWNERNOTICE 절차",
+    text: true,
+  },
+  {
+    // 🕐 2026-09-21: 같은 이유로 노출 유예도 켤 자리가 없었다(숫자라 게이트 명부엔 안 잡힌다).
+    //   0·빈값이면 마커를 **아예 안 쓴다** ⇒ 오늘과 byte-동일. 상한 168(=7일)은 코드가 클램프한다.
+    key: 'store_exposure_grace_hours',
+    label: '신규 매장 메인 노출 유예 (시간)',
+    hint: '비우거나 0 이면 유예 없음(현재 상태 — 승인 즉시 노출). 24 를 넣으면 승인 후 24시간 동안 메인 피드에 안 뜬다. 매장 확인 통화가 끝나면 즉시 풀린다. 최대 168(7일)',
+  },
+  {
     key: 'pickup_unclaimed_cold_pct',
     label: '냉장·냉동 미수령 환불 (%)',
     hint: '대표 확정값 0(환불 없음 — 상품 폐기). 비우면 100(전액 환불)으로 동작한다',

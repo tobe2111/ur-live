@@ -290,6 +290,58 @@ adminStoreOwnerRoutes.post('/stores/:sellerId/verify-call',
     }
   })
 
+
+// ── 📩 사장님 통보 큐 (2026-09-21 — 대표 승인 "010 으로, 되면 보내주는걸로") ────
+//   줄은 승인 순간 자동으로 선다. **보내는 것은 사람이 누른다** — 발송은 등급 C다.
+adminStoreOwnerRoutes.get('/store-owner-notices', cors(), requireAdminRole('finance'), async (c) => {
+  try {
+    const m = await import('../../../worker/utils/store-owner-notice')
+    const status = String(c.req.query('status') || 'queued')
+    const rows = await m.listOwnerNotices(c.env.DB, { status, limit: intParam(c.req.query('limit'), 50) })
+    return c.json({
+      success: true,
+      data: {
+        notices: rows,
+        // 화면이 "왜 버튼이 안 먹는지" 를 알 수 있게 게이트 상태를 같이 준다.
+        send_enabled: await m.ownerNoticeSendEnabled(c.env.DB, c.env.ALIGO_TPL_STORE_NOTICE),
+        template_ready: !!c.env.ALIGO_TPL_STORE_NOTICE && c.env.ALIGO_TPL_STORE_NOTICE !== 'TBD',
+        sample_message: m.ownerNoticeMessage('예시 매장'),
+      },
+    })
+  } catch (err) {
+    return safeError(c, err, '통보 목록을 불러오지 못했습니다', '[owner-notice]')
+  }
+})
+
+adminStoreOwnerRoutes.post('/store-owner-notices/send',
+  cors(), requireAdminRole('finance'), require2FA(), auditLog('stores.send_owner_notice'),
+  async (c) => {
+    try {
+      const env = c.env
+      const m = await import('../../../worker/utils/store-owner-notice')
+      const tpl = env.ALIGO_TPL_STORE_NOTICE || ''
+      if (!(await m.ownerNoticeSendEnabled(env.DB, tpl))) {
+        return c.json({
+          success: false, code: 'SEND_DISABLED',
+          error: !tpl || tpl === 'TBD'
+            ? '카카오 템플릿 검수가 끝나면 ALIGO_TPL_STORE_NOTICE 를 넣어 주세요.'
+            : 'platform_settings.store_owner_notice_enabled 가 true 가 아닙니다.',
+        }, 409)
+      }
+      if (!env.ALIGO_API_KEY || !env.ALIGO_USER_ID || !env.ALIGO_SENDER_KEY || !env.ALIGO_SENDER_PHONE) {
+        return c.json({ success: false, code: 'ALIGO_NOT_CONFIGURED', error: '알림톡 발송 설정이 비어 있습니다' }, 409)
+      }
+      const { sendAlimtalk } = await import('../../alimtalk/aligo')
+      const r = await m.sendQueuedOwnerNotices(env.DB, {
+        apikey: env.ALIGO_API_KEY, userid: env.ALIGO_USER_ID, senderkey: env.ALIGO_SENDER_KEY,
+        sender: env.ALIGO_SENDER_PHONE, tplCode: tpl, send: sendAlimtalk,
+      }, { limit: intParam(c.req.query('limit'), 20) })
+      return c.json({ success: true, data: r })
+    } catch (err) {
+      return safeError(c, err, '통보 발송 중 오류가 발생했습니다', '[owner-notice]')
+    }
+  })
+
 export { adminStoreOwnerRoutes }
 
 

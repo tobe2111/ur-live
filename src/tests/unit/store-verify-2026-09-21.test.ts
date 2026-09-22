@@ -258,11 +258,14 @@ describe('🔒 돈·상태 경계 — 이 레일은 매장을 끄지도 환불�
 })
 
 describe('🔌 배선 — 한쪽만 붙으면 조용히 안 돈다', () => {
-  it('승인 경로 **둘 다** 유예 마커를 찍는다', () => {
+  it('승인 경로 **둘 다** 부수효과 훅을 부른다', () => {
+    // 승인 경로가 둘이라 손으로 붙이면 한쪽만 붙는 날이 온다 ⇒ `seller-approved-hooks` 한 함수로 모았다.
     const a = stripComments(readFileSync('src/features/admin/api/admin-sellers.routes.ts', 'utf-8'))
     const b = stripComments(readFileSync('src/features/admin/api/admin-tools.routes.ts', 'utf-8'))
-    expect(a).toMatch(/markExposureGrace\(/)
-    expect(b).toMatch(/markExposureGrace\(/)
+    expect(a).toMatch(/runSellerApprovedHooks\(/)
+    expect(b).toMatch(/runSellerApprovedHooks\(/)
+    const hook = stripComments(readFileSync('src/worker/utils/seller-approved-hooks.ts', 'utf-8'))
+    expect(hook, '훅이 유예 마커를 안 부른다').toMatch(/markExposureGrace\(/)
   })
 
   it('소비자 노출 술어가 유예를 포함한다 (합성을 지우면 유예가 아무 데도 안 걸린다)', () => {
