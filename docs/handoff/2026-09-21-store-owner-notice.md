@@ -58,3 +58,18 @@ https://urdeal.kr/store/find
 
 ## 📌 운영 게이트 등재
 `store_owner_notice_enabled` 을 `OPS_GATES`(S-OWNERNOTICE) + `platform-settings-validation`(boolStr) 에 등재했다 — 어드민 "게이트·하트비트" 탭에서 켜졌는지 눈으로 볼 수 있다. (pre-push 가드가 미등재를 잡아 줬다.)
+
+## 🔀 스택 해체 — base 를 main 으로 바꾸고 커밋을 다시 얹었다 (2026-09-22)
+
+#1517(매장 확인 통화 + 노출 유예)이 main 에 **squash** 로 머지되면서 이 PR 의 base 가 사라졌다.
+squash 는 새 커밋을 만들기 때문에 기존 브랜치와 **공통 조상이 옛 main** 으로 남는다 — 그대로 두면
+이 PR 의 diff 에 #1517 의 변경이 다시 섞여 보인다. 그래서 새 main 위에 이 PR 의 커밋 둘만
+cherry-pick 해 다시 올렸다(`5f48cec53`·`e04758bdb` → 새 해시). 내용은 그대로다.
+
+⚠️ **확인한 것**: `git diff --diff-filter=D origin/main..HEAD` 가 비어 있다(남의 세션 파일을
+지우지 않았다 — 09-21 에 실제로 한 번 그 사고를 냈다) · 변경 파일 20개가 전부 이 PR 범위 ·
+`tsc` 0 · pre-push 가드 99 통과.
+
+⚠️ **base 를 바꾸는 것만으로는 Verify 가 안 돈다** — `verify.yml` 은 `pull_request` 의 기본 타입
+(opened/synchronize/reopened)만 받고 base 변경은 `edited` 라 트리거가 아니다. 이 문단을 쓴 커밋이
+그 `synchronize` 를 만든다(빈 커밋으로 CI 를 태우는 것은 금지라, 남겨야 할 기록을 실제로 남긴다).
