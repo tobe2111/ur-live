@@ -446,6 +446,19 @@ export const COLUMN_REPAIRS: ColumnRepair[] = [
       PRIMARY KEY (seller_id, key)
     )` },
     { desc: 'idx_seller_meta_key', sql: 'CREATE INDEX IF NOT EXISTS idx_seller_meta_key ON seller_meta(key, seller_id)' },
+    // 📩 2026-09-21 사장님 통보 줄 — (seller_id, kind) UNIQUE 가 "한 번만" 의 근거다.
+    //   전체 UNIQUE 로 만들면 안 된다 — 나중에 다른 종류의 안내를 못 보낸다.
+    { desc: 'store_owner_notices', sql: `CREATE TABLE IF NOT EXISTS store_owner_notices (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      seller_id INTEGER NOT NULL,
+      phone TEXT NOT NULL,
+      kind TEXT NOT NULL DEFAULT 'store_listed',
+      status TEXT NOT NULL DEFAULT 'queued',
+      error_msg TEXT,
+      created_at DATETIME DEFAULT (datetime('now')),
+      sent_at DATETIME
+    )` },
+    { desc: 'idx_store_owner_notices_once', sql: 'CREATE UNIQUE INDEX IF NOT EXISTS idx_store_owner_notices_once ON store_owner_notices(seller_id, kind)' },
     // 🔒 2026-08-27 유어애즈 DB 열람량 — 대행사 차단(ads-db-access.ts)의 짝. 등록 유형은 자기신고라
     //   우회되지만 "하루에 몇 행 가져갔나"는 우회할 수 없다. 상한의 근거이자 감사 기록.
     { desc: 'seller_ads_db_usage', sql: `CREATE TABLE IF NOT EXISTS seller_ads_db_usage (

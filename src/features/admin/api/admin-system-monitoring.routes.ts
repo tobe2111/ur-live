@@ -299,6 +299,11 @@ const OPS_GATES: OpsGate[] = [
   //   ⚠️ 이 게이트가 없던 동안(2026-05-27~09-16) 코드는 게이트 없이 승인을 냈다 — AI 바인딩이
   //   없어 안 돌았을 뿐이고, 대표가 바인딩을 켠 2026-09-16 그날부터 살아날 상태였다.
   { key: 'ocr_auto_verify_enabled', kind: 'setting', label: '서류 OCR 자동 승인', default_value: 'false', staging_ref: 'S-OCR', turn_on_when: '실사진으로 추출 정확도를 재고(어드민 OCR 버튼의 fill·addressCheck), 오탐 0 을 확인한 뒤 대표 판단으로' },
+  // 📩 2026-09-21 (대표 승인 "010 으로, 되면 보내주는걸로"): 사장님에게 "당신 가게가 유어딜에
+  //   올라갔습니다" 를 보낸다. 줄은 승인 순간 자동으로 서지만 **발송은 사람이 누른다**(등급 C).
+  //   ⚠️ 이 게이트만으로는 안 나간다 — `ALIGO_TPL_STORE_NOTICE`(카카오 검수 통과한 템플릿 코드)가
+  //   함께 있어야 한다. 둘 중 하나라도 없으면 어드민 버튼이 비활성이고 이유가 화면에 뜬다.
+  { key: 'store_owner_notice_enabled', kind: 'setting', label: '사장님 매장 등록 통보(알림톡)', default_value: 'false', staging_ref: 'S-OWNERNOTICE', turn_on_when: '카카오 템플릿 검수가 끝나 ALIGO_TPL_STORE_NOTICE 가 등록되고, 어드민에서 1건만 먼저 보내 실제 수신이 확인되면' },
   // 💸 2026-08-25 (누락 발견): **플랫폼 take 율 자체를 정하는 게이트인데 이 명부에 없었다.**
   //   `channelPlatformRate` 가 이 값으로 직판 10% / 중개 5% 를 가른다(OFF 면 종전 `commission_rate`).
   //   CLAUDE.md 는 게이트 플래그를 여기 등록하라고 규정하는데 이것만 빠져 있어, 운영 화면에서

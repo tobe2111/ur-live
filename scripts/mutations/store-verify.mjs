@@ -146,12 +146,20 @@ export default [
     why: '라우트는 살아 있는데 보는 화면이 없다 — 통화 큐가 있는 줄도 모른다.',
   },
   {
-    name: '🔌배선 승인 경로 한쪽만 마커를 찍는다',
+    name: '🔌배선 승인 경로 한쪽만 훅을 부른다',
     file: 'src/features/admin/api/admin-tools.routes.ts',
-    find: "  await (await import('../../../worker/utils/store-verify')).markExposureGrace(c.env.DB, Number(id), prev?.status).catch(() => 0)",
+    find: "  await (await import('../../../worker/utils/seller-approved-hooks')).runSellerApprovedHooks(c.env.DB, Number(id), prev?.status).catch(() => null)",
     replace: '  void prev',
     test: TEST,
     why: '그 문으로 승인된 매장만 유예 0 이 된다 — 규칙이 반쪽만 도는데 에러는 안 난다.',
+  },
+  {
+    name: '🔌배선 훅이 유예 마커를 안 부른다',
+    file: 'src/worker/utils/seller-approved-hooks.ts',
+    find: '  const graceHours = await markExposureGrace(DB, sellerId, prevStatus).catch(() => 0)',
+    replace: '  const graceHours = 0; void prevStatus',
+    test: TEST,
+    why: '훅은 불리는데 유예가 안 찍힌다 — 배선은 멀쩡해 보이고 규칙만 죽는다.',
   },
   {
     name: '🔌배선 repair-schema 에서 마커 테이블이 빠진다',
