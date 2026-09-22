@@ -59,8 +59,10 @@ export default [
   {
     name: '📩사장님통보 문구에서 신고 링크가 빠진다',
     file: UTIL,
-    find: "    'https://urdeal.kr/store/find',",
-    replace: "    '',",
+    // 🔁 2026-09-21: 주소가 상수(`OWNER_NOTICE_CLAIM_URL`)로 빠지면서 앵커를 옮겼다.
+    //   앵커가 낡으면 주입이 **조용히 안 걸린다** — 러너가 그걸 "낡은 지도" 로 잡아 줬다.
+    find: "    OWNER_NOTICE_CLAIM_URL,\n    '',\n    '문의: 유어딜 고객센터',",
+    replace: "    '문의: 유어딜 고객센터',",
     test: TEST,
     why: '"등록됐습니다" 만 알리고 **어떻게 신고하는지는 안 알려 준다** — 통보의 목적이 사라진다.',
   },

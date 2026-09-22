@@ -26,6 +26,10 @@ describe('① 매장 등록이 등록증 URL 을 컬럼에도 적는다', () => 
     const at = STORES.indexOf("app.post('/stores'")
     const body = STORES.slice(at, STORES.indexOf("app.post('/stores/:id/close'", at))
     expect(body).toMatch(/UPDATE sellers SET business_registration_image_url = \? WHERE id = \? AND COALESCE\(business_registration_image_url, ''\) = ''/)
+    // 🩸 2026-09-21: 위 한 줄만으로는 **문장이 거기 적혀 있다**까지만 잰다 — `if (false)` 로 꺼도 초록이었다
+    //   (주입 러너가 잡았다). 이 문장이 *실제로 실행되는 조건*까지 앵커한다: 등록증이 **선택**이 된 뒤
+    //   유일한 정당한 가드는 `certUrl` 유무다(없으면 안 적는 게 맞다).
+    expect(body).toMatch(/if \(certUrl\) await c\.env\.DB\.prepare\("UPDATE sellers SET business_registration_image_url/)
     expect(body).toMatch(/\.bind\(certUrl, newSellerId\)\.run\(\)\.catch\(/)
     expect(body).toMatch(/business_cert_url: certUrl/) // meta 는 그대로 진실
   })
