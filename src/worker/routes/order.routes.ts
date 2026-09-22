@@ -877,6 +877,7 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
       await orderRepo.updateStatusById(body.order_id, 'REFUNDED', {
         cancel_reason: `[환불요청] ${body.reason}`,
         cancelled_at: new Date().toISOString(),
+        payment_status: 'refunded', // 💸 안 되돌리면 환불된 주문이 계속 매출로 집계된다(머니 룰 #2)
       });
       await orderRepo.restoreStock(body.order_id);
     }
