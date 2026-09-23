@@ -5503,6 +5503,7 @@ _총 354건 · 최신순 · 이 목록은 자동 생성된다._
 - [2026-09-21 — 매장 확인 통화 기록 + 신규 매장 노출 유예 (사기 방어 ①②)](handoff/2026-09-21-store-verify.md)
 - [2026-09-21 — 사장님 신고 경로 (사기 방어 ③)](handoff/2026-09-21-store-report.md)
 - [2026-09-21 — 사장님 통보(알림톡) 탐지·큐·게이트드 발송](handoff/2026-09-21-store-owner-notice.md)
+- [2026-09-21 — 정산 유보 10일 구현 + 수수료·세금 정리](handoff/2026-09-21-settlement-hold-and-fees.md)
 - [사업자 유저 가입 화면 — 2차 시안 (2026-09-21, 라이브 실측 재작성)](handoff/2026-09-21-seller-signup-simplify.md)
 - [셀러 주문 상세 — 사진·주문번호·이용권 (2026-09-21)](handoff/2026-09-21-seller-order-detail.md)
 - [2026-09-21 — 셀러 상품편집 저장 버튼 위치 + 로더 워드마크가 안 보이던 것](handoff/2026-09-21-seller-edit-save-top-and-loader-font.md)
