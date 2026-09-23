@@ -20,6 +20,7 @@ import { require2FA } from '../../../worker/middleware/require-2fa'
 import { auditLog } from '../../../worker/middleware/audit-log'
 import type { Env } from '../../../worker/types/env'
 import { markPayoutSent, isTransferable, type PayoutRow } from '../../../worker/utils/payout-sent'
+import { resolvePayoutHold } from '../../../worker/utils/payout-hold'
 import { csvEscape } from '../../../worker/utils/csv-safe'
 import { handoverCloseout } from './admin-payouts/handover-closeout'
 
@@ -39,12 +40,18 @@ adminPayoutsRoutes.get('/admin/payouts/pending', requireAdmin(), async (c) => {
     // 💸 2026-07-01 (정산 정합): 순 외상 = Σ(credit − fee_amount) − Σ(debit) − 이미 payout(pending/approved/sent).
     //   이전엔 credit-only(gross, debit 무시)라 부풀려진 pending 을 표시했음. getLedgerReceivable/payouts-generate
     //   와 동일 net 공식. paid 는 pending 포함(이미 payout row 생성분 제외 → 미생성 순액만 표시, generate 와 정합).
+    // 🕙 2026-09-21 (유보 10일): **cron 과 같은 함수**를 쓴다 — 화면이 보여 주는 '정산 대기'와
+    //   실제로 생성되는 payout 이 갈리면 운영자가 없는 돈을 승인하게 된다.
+    //   ⚠️ credit 에만 걸고 debit 은 즉시(아래 deb CTE 무접촉) · WHERE 를 괄호로 감싼 이유는
+    //     `payout-hold.ts` 와 `payouts-generate.ts` 주석 참조(OR 우선순위).
+    const hold = await resolvePayoutHold(DB)
     const rows = await DB.prepare(`
       WITH cred AS (
         SELECT credit_account AS account, SUM(amount - COALESCE(fee_amount, 0)) AS c
           FROM ledger_entries
-         WHERE credit_account LIKE 'merchant:%' OR credit_account LIKE 'seller:%'
-            OR credit_account LIKE 'agency:%' OR credit_account LIKE 'user:%'
+         WHERE (credit_account LIKE 'merchant:%' OR credit_account LIKE 'seller:%'
+            OR credit_account LIKE 'agency:%' OR credit_account LIKE 'user:%')
+           ${hold.sql}
          GROUP BY credit_account
       ),
       deb AS (
@@ -74,7 +81,7 @@ adminPayoutsRoutes.get('/admin/payouts/pending', requireAdmin(), async (c) => {
       ORDER BY pending_amount DESC
       LIMIT 200
     `).all<{ account: string; pending_amount: number; total_credited: number; total_paid: number }>().catch(() => ({ results: [] as Array<{ account: string; pending_amount: number; total_credited: number; total_paid: number }> }))
-    return c.json({ success: true, data: rows.results || [] })
+    return c.json({ success: true, data: rows.results || [], hold_days: hold.days })
   } catch (err) {
     return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
   }
