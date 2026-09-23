@@ -53,6 +53,9 @@ function makeD1(): D1Database {
   //   상관 서브쿼리가 던져서 리졸버의 catch 가 빈 배열을 돌려준다 — 결과가 0 이 되어
   //   "겹침을 못 만들었다" 로 보인다(실제로 그렇게 빨간불이 났다).
   db.prepare(`CREATE TABLE sellers (id INTEGER PRIMARY KEY, status TEXT)`).run()
+  // ⏳ 2026-09-21: 소비자 노출 술어에 신규 매장 유예(②)가 합쳐지면서 이 테이블을 읽는다.
+  //   ⚠️ 지우면 'no such table' 로 이 시험이 죽는다 — 라이브에서 홈 섹션이 깨지는 것과 같은 고장이다.
+  db.prepare(`CREATE TABLE seller_meta (seller_id INTEGER, key TEXT, value TEXT)`).run()
   const ins = db.prepare(`INSERT INTO products
     (id,name,price,original_price,image_url,category,discount_rate,sold_count,dominant_color,
      avg_rating,review_count,view_count,deal_only,restaurant_name,restaurant_address,slug,images,

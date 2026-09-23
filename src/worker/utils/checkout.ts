@@ -228,9 +228,9 @@ export async function processCheckout(
     const orderNumber = orderId
     const orderInsert = await db
       .prepare(
-        'INSERT INTO orders (order_number, user_id, total_amount, status, payment_key, toss_payment_key, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime("now"))'
+        'INSERT INTO orders (order_number, user_id, total_amount, status, payment_status, payment_key, toss_payment_key, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, datetime("now"))'
       )
-      .bind(orderNumber, userId, amount, 'PAID', paymentKey, paymentKey)
+      .bind(orderNumber, userId, amount, 'PAID', 'approved', paymentKey, paymentKey)
       .run()
 
     const newOrderId = orderInsert.meta.last_row_id as number

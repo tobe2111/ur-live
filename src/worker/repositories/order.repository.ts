@@ -337,6 +337,8 @@ export class OrderRepository {
       paid_at?: string;
       cancelled_at?: string;
       cancel_reason?: string;
+      /** 💸 2026-09-21 환불 시 되돌리기용(머니 룰 #2). 값은 라이브 CHECK 제약과 동일. 사유: order-refund.ts */
+      payment_status?: 'pending' | 'approved' | 'failed' | 'cancelled' | 'refunded';
       /** @deprecated — column doesn't exist in production schema. Tracked in webhook_events table. */
       webhook_processed_at?: string;
       /** @deprecated — column doesn't exist in production schema. Tracked in webhook_events table. */
@@ -419,6 +421,7 @@ export class OrderRepository {
       setFields.push('paid_at = ?');
       params.push(extra.paid_at);
     }
+    if (extra?.payment_status) { setFields.push('payment_status = ?'); params.push(extra.payment_status); }
     if (extra?.cancelled_at) {
       setFields.push('cancelled_at = ?');
       params.push(extra.cancelled_at);
