@@ -10252,8 +10252,8 @@ canvas {
     name: '🏝️ 409 안내 패널만 light-island 를 잃는다 (한 파일 안 두 표면 중 하나)',
     file: 'src/components/seller/StoreRegisterModal.tsx',
     // ⚠️ 2026-09-23 재조준 — 같은 이유(변수화). 409 패널도 overlay ↔ page 두 벌이 됐다.
-    find: "          ? 'light-island w-full bg-white rounded-2xl shadow-lift'",
-    replace: "          ? 'w-full bg-white rounded-2xl shadow-lift'",
+    find: "          ? 'light-island w-full bg-white rounded-[var(--dash-radius,16px)] shadow-lift'",
+    replace: "          ? 'w-full bg-white rounded-[var(--dash-radius,16px)] shadow-lift'",
     test: 'src/tests/unit/store-claim-2026-09-07.test.ts',
     why:
       '이 파일엔 늘-흰 패널이 **둘**이다(등록 폼 · 409 안내). 실제로 409 화면이 light-island 없이 ' +

@@ -40,7 +40,7 @@ describe('/store/new 매장 등록 — 2026-09-07 대표 신고 회귀 가드', 
     //   아니라 자리를 옮긴 것**이었다 — 리터럴 속성은 이 불변식의 *한 가지 구현*이지 불변식 자체가 아니다.
     //   ⇒ 판정을 "리터럴 속성인가" → **"그 문자열이 실제로 className 에 닿는가"** 로 바꾼다.
     //   (패널이 넷으로 늘었다: 등록 폼 × {overlay, page} · 409 안내 × {overlay, page}.)
-    const panels = s.split('\n').filter(l => l.includes('bg-white') && (l.includes('sm:max-w-lg') || l.includes('rounded-2xl shadow-lift')))
+    const panels = s.split('\n').filter(l => l.includes('bg-white') && (l.includes('sm:max-w-lg') || l.includes('shadow-lift')))
     expect(panels.length, `${MODAL} 의 흰 패널을 못 찾았다 — 앵커가 낡았다`).toBeGreaterThanOrEqual(4)
     for (const panel of panels) {
       expect(panel, '흰 패널에 light-island 가 없다 — 다크에서 흰 글자가 된다').toContain('light-island')

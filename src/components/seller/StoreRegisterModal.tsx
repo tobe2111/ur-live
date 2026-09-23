@@ -288,15 +288,22 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
     ? 'w-full'
     : 'fixed inset-0 z-[10500] flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4'
   const shellClick = asPage ? undefined : (dismissOnBackdrop ? onClose : undefined)
+  /**
+   * 🩸 2026-09-23 CI 가 잡은 것 — page 패널을 처음엔 `rounded-2xl` 로 썼는데, 이 파일은
+   *   `src/components/seller/**` 라 **셀러 D3 래칫**(`seller-d3-2026-09-15.test.ts` "옛 패턴 0")의
+   *   대상이다. 그 래칫은 `rounded-2xl` 과 `bg-white rounded-xl shadow` 를 금지한다.
+   *   ⇒ overlay 가지가 이미 쓰던 **같은 토큰**(`--dash-radius`, 셀러/어드민 8px · 그 밖 16px)으로 통일.
+   *   같은 부품이 두 반경을 갖고 있던 것 자체가 드리프트였다.
+   */
   const panelCls = asPage
-    ? 'light-island w-full bg-white rounded-2xl shadow-lift flex flex-col min-h-0 max-h-[78dvh] lg:max-h-[82dvh]'
+    ? 'light-island w-full bg-white rounded-[var(--dash-radius,16px)] shadow-lift flex flex-col min-h-0 max-h-[78dvh] lg:max-h-[82dvh]'
     : 'light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)] max-h-[92dvh] flex flex-col'
 
   if (taken) {
     return (
       <div className={shellCls} onClick={shellClick}>
         <div className={asPage
-          ? 'light-island w-full bg-white rounded-2xl shadow-lift'
+          ? 'light-island w-full bg-white rounded-[var(--dash-radius,16px)] shadow-lift'
           : 'light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)]'} onClick={e => e.stopPropagation()}>
           <div className="p-5">
             <h2 className="text-base font-bold text-gray-900">이미 유어딜에 등록된 매장이에요</h2>

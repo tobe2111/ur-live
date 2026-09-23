@@ -121,6 +121,18 @@ B 묶음의 근거(*"사장님 화면의 좌우가 전부 소비자 앱 설치 Q
   재조준하면서 하나는 **부분일치로 2곳**에 걸려(409 패널의 같은 문자열, 들여쓰기만 다름) 줄바꿈까지 앵커에 넣었다.
 - 내 새 테스트도 한 번 헛돌 뻔했다 — `/\bh-\[100dvh\]/` 가 **`min-h-[100dvh]` 까지 잡아**
   정답에 빨간불을 냈다(`-h` 앞에서도 단어 경계가 성립한다).
+- 🩸 **CI 가 잡은 것 하나 — 내가 로컬에서 못 잡았다.** page 패널을 `rounded-2xl shadow-lift` 로 썼는데
+  `StoreRegisterModal` 은 `src/components/seller/**` 라 **셀러 D3 래칫**
+  (`seller-d3-2026-09-15.test.ts` "옛 패턴 0")의 대상이다 — 그 래칫이 `rounded-2xl` 과
+  `bg-white rounded-xl shadow` 를 금지한다. ⇒ overlay 가지가 이미 쓰던 **같은 토큰**
+  `rounded-[var(--dash-radius,16px)]` 으로 통일했다(셀러/어드민 8px · 그 밖 16px).
+  **같은 부품이 두 반경을 갖고 있던 것 자체가 드리프트**였으니 결과적으로 더 맞다.
+
+  🧭 **왜 못 찾았나 — 오늘 세 번째로 같은 클래스다.** 바꾼 파일을 읽는 테스트를
+  `grep -rln 'StoreRegisterModal' src/tests/` 로 찾았는데, 이 래칫은 **파일 이름을 안 쓴다** —
+  `git ls-files ':(glob)src/components/seller/**/*.tsx'` 로 **경로 글롭**을 훑는다.
+  이름으로 grep 하면 구조적으로 안 걸린다.
+  ⇒ **바꾼 파일이 어느 글롭 밑에 있는지도 보라**: `grep -rln 'git ls-files' src/tests/` (현재 7개).
 
 ### 가드
 
