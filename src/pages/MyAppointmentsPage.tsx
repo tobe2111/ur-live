@@ -196,7 +196,7 @@ export default function MyAppointmentsPage() {
                         <p className="text-sm font-bold text-gray-900 dark:text-white line-clamp-1">{a.product_name}</p>
                         <span className={`shrink-0 inline-block px-2 py-0.5 rounded-full text-[10px] font-medium ${meta.cls}`}>{meta.label}</span>
                       </div>
-                      <p className="text-[12px] text-gray-700 dark:text-gray-300 mt-1 font-mono">
+                      <p className="text-[12px] text-gray-700 dark:text-gray-300 mt-1 tabular-nums">
                         📅 {a.booking_date} {a.start_time} ~ {a.end_time}
                       </p>
                       {a.restaurant_name && (

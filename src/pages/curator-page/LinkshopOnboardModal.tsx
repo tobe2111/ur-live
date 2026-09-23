@@ -174,7 +174,7 @@ export default function LinkshopOnboardModal({ curatorId, currentHandle, current
         ) : (
         <>
         <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-4 leading-snug">
-          지금 주소가 <span className="font-mono text-gray-700 dark:text-gray-300">@{currentHandle}</span> 예요.
+          지금 주소가 <span className="font-semibold text-gray-700 dark:text-gray-300">@{currentHandle}</span> 예요.
           나만의 이름과 주소로 바꿔보세요.
         </p>
 

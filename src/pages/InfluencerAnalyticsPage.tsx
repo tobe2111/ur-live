@@ -84,7 +84,7 @@ export default function InfluencerAnalyticsPage() {
             <div className="space-y-1">
               {data.daily.slice(0, 14).map(d => (
                 <div key={d.d} className="flex items-center gap-2">
-                  <span className="text-[10px] text-gray-500 dark:text-gray-400 w-16 font-mono">{d.d.slice(5)}</span>
+                  <span className="text-[10px] text-gray-500 dark:text-gray-400 w-16 tabular-nums">{d.d.slice(5)}</span>
                   <div className="flex-1 bg-gray-100 dark:bg-[#1D1F29] rounded h-4 relative overflow-hidden">
                     <div className="bg-brand h-full" style={{ width: `${(d.amt / maxDaily) * 100}%` }} />
                   </div>
@@ -108,7 +108,7 @@ export default function InfluencerAnalyticsPage() {
                 <li key={s.seller_id} className="flex items-center gap-2 text-xs">
                   <span className="w-5 text-center font-bold text-gray-500 dark:text-gray-400">{i + 1}</span>
                   <span className="flex-1 truncate text-gray-900 dark:text-white">{s.seller_name || `매장 ${s.seller_id}`}</span>
-                  <span className="text-gray-500 dark:text-gray-400 font-mono text-[10px]">{s.attribution_count}건</span>
+                  <span className="text-gray-500 dark:text-gray-400 tabular-nums text-[10px]">{s.attribution_count}건</span>
                   <span className="font-bold text-brand-text w-20 text-right">{s.total_commission.toLocaleString()}원</span>
                 </li>
               ))}
@@ -130,7 +130,7 @@ export default function InfluencerAnalyticsPage() {
                     <p className="truncate text-gray-900 dark:text-white">{p.product_name || '-'}</p>
                     {p.restaurant_name && <p className="truncate text-gray-400 text-[10px]">{p.restaurant_name}</p>}
                   </div>
-                  <span className="text-gray-500 dark:text-gray-400 font-mono text-[10px]">{p.attribution_count}건</span>
+                  <span className="text-gray-500 dark:text-gray-400 tabular-nums text-[10px]">{p.attribution_count}건</span>
                   <span className="font-bold text-brand-text w-20 text-right">{p.total_commission.toLocaleString()}원</span>
                 </li>
               ))}

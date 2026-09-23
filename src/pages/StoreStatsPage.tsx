@@ -302,7 +302,7 @@ export default function StoreStatsPage() {
               onChange={e => setVoucherCode(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') handleUseVoucher() }}
               placeholder="예: UR-AB12-XY34"
-              className="flex-1 border border-gray-300 dark:border-[#2C2F35] rounded-xl px-3 py-3 text-sm font-mono text-center tracking-wider bg-surface text-gray-900 dark:text-white"
+              className="flex-1 border border-gray-300 dark:border-[#2C2F35] rounded-xl px-3 py-3 text-sm tabular-nums text-center tracking-wider bg-surface text-gray-900 dark:text-white"
               autoCapitalize="characters"
               autoCorrect="off"
             />
@@ -322,7 +322,7 @@ export default function StoreStatsPage() {
                   <div key={i} className={`flex items-center justify-between text-xs px-2.5 py-1.5 rounded-lg ${
                     u.success ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
                   }`}>
-                    <span className="font-mono">{u.success ? '✓' : '✗'} {u.code}</span>
+                    <span className="tabular-nums">{u.success ? '✓' : '✗'} {u.code}</span>
                     <span className="text-[10px] opacity-80">{u.success ? '완료' : (u.reason || '실패')}</span>
                   </div>
                 ))}

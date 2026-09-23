@@ -322,7 +322,7 @@ export default function InfluencerSettlementPage() {
               value={form.bank_account}
               onChange={(e) => setForm(f => ({ ...f, bank_account: e.target.value.replace(/[^\d-]/g, '') }))}
               placeholder="000-000-000000"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm tabular-nums text-gray-900 dark:text-white"
             />
           </div>
 

@@ -165,7 +165,7 @@ export default function StoreOwnerClaimPage() {
                 value={claimCode} onChange={(e) => setClaimCode(e.target.value.toUpperCase())}
                 onKeyDown={(e) => { if (e.key === 'Enter') void lookupByCode() }}
                 placeholder="예: AB3K-9QXP" maxLength={12}
-                className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm font-mono tracking-wider text-gray-900"
+                className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm tabular-nums tracking-wider text-gray-900"
               />
               <button onClick={() => void lookupByCode()} disabled={busy}
                 className="px-4 rounded-xl bg-brand text-white text-sm font-bold disabled:opacity-40">

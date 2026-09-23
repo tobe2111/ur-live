@@ -295,9 +295,9 @@ export default function AddressManagementPage() {
                             </span>
                           )}
                         </div>
-                        <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-1.5 font-mono">{address.phone}</p>
+                        <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-1.5 tabular-nums">{address.phone}</p>
                         <p className="text-[14px] text-gray-800 dark:text-gray-100 leading-relaxed">
-                          <span className="text-gray-400 dark:text-gray-500 text-[12px] font-mono mr-1">[{address.postal_code}]</span>
+                          <span className="text-gray-400 dark:text-gray-500 text-[12px] tabular-nums mr-1">[{address.postal_code}]</span>
                           {address.address}
                         </p>
                         {address.address_detail && (

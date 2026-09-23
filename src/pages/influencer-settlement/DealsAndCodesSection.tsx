@@ -99,7 +99,7 @@ export default function DealsAndCodesSection({ ownerFunded }: { ownerFunded: boo
         <div className="flex gap-2">
           <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="예: AB3K-9QXP" maxLength={12}
             onKeyDown={(e) => { if (e.key === 'Enter') void redeem() }}
-            className="flex-1 px-3 py-2.5 border border-line rounded-lg text-sm font-mono tracking-wider text-gray-900 dark:text-white bg-surface placeholder:text-gray-400" />
+            className="flex-1 px-3 py-2.5 border border-line rounded-lg text-sm tabular-nums tracking-wider text-gray-900 dark:text-white bg-surface placeholder:text-gray-400" />
           <button onClick={() => void redeem()} disabled={busy} className="px-4 rounded-lg bg-brand text-white text-sm font-bold disabled:opacity-50">{busy ? '…' : '입력'}</button>
         </div>
       </div>
@@ -147,7 +147,7 @@ export default function DealsAndCodesSection({ ownerFunded }: { ownerFunded: boo
                       <div className="rounded-lg bg-warm py-1.5"><p className="text-[10px] text-gray-500 dark:text-gray-400">확정</p><p className="text-sm font-bold text-gray-900 dark:text-white">{won(d.confirmed_krw)}</p></div>
                     </div>
                     <div className="mt-2 flex items-center gap-2">
-                      <p className="flex-1 min-w-0 truncate text-[11px] font-mono text-gray-600 dark:text-gray-300">{d.store_link.replace('https://', '')}</p>
+                      <p className="flex-1 min-w-0 truncate text-[11px] tabular-nums text-gray-600 dark:text-gray-300">{d.store_link.replace('https://', '')}</p>
                       <button onClick={() => copy(d.product_link || d.store_link)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-line text-[11px] font-bold text-gray-700 dark:text-gray-200"><Copy className="w-3 h-3" /> 복사</button>
                       <button onClick={() => share(d)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-brand text-white text-[11px] font-bold"><Share2 className="w-3 h-3" /> 공유</button>
                     </div>

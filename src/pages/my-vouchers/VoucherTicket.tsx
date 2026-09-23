@@ -147,7 +147,7 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
             >
               <MiniQrHint />
               <div className="min-w-0">
-                <span className="flex items-center gap-1.5 font-mono text-[12px] font-bold tracking-wide text-gray-700 dark:text-gray-200">
+                <span className="flex items-center gap-1.5 tabular-nums text-[12px] font-bold tracking-wide text-gray-700 dark:text-gray-200">
                   <span className="truncate">{v.code}</span>
                   <Copy className="w-3 h-3 shrink-0 text-gray-400 dark:text-gray-500" strokeWidth={1.6} aria-hidden />
                 </span>
@@ -290,7 +290,7 @@ function KtAlphaVoucherCard({ v, muted, t }: {
         {/* 우측: 가격 + 액션 */}
         <div className="shrink-0 flex flex-col items-end justify-between">
           {price !== null ? (
-            <div className="text-[15px] font-bold font-mono text-gray-900 dark:text-white whitespace-nowrap">
+            <div className="text-[15px] font-bold tabular-nums text-gray-900 dark:text-white whitespace-nowrap">
               {formatNumber(price)}<span className="font-sans text-[11px] font-semibold text-gray-400 dark:text-gray-500">{t('voucher.deal', { defaultValue: '딜' })}</span>
             </div>
           ) : <span />}
@@ -311,7 +311,7 @@ function KtAlphaVoucherCard({ v, muted, t }: {
       {hasBarcode && (
         <div className="mt-3 px-3 py-3 rounded-xl bg-warm border border-gray-100 dark:border-[#2C2F35] flex flex-col items-center gap-1.5">
           <Barcode value={v.kt_pin as string} />
-          <span className="text-[12px] font-mono font-bold tracking-[0.15em] text-gray-900 dark:text-white">{v.kt_pin}</span>
+          <span className="text-[12px] tabular-nums font-bold tracking-[0.15em] text-gray-900 dark:text-white">{v.kt_pin}</span>
         </div>
       )}
     </div>

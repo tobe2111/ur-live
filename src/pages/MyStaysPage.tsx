@@ -129,7 +129,7 @@ export default function MyStaysPage() {
                       {b.check_in_code && b.status === 'confirmed' && (
                         <div className="mt-2 inline-flex items-center gap-2 px-2 py-1 bg-blue-50 dark:bg-blue-500/20 rounded">
                           <span className="text-[10px] text-blue-700 dark:text-blue-300">{b.sale_mode === 'voucher' ? '이용권 코드' : '체크인 코드'}</span>
-                          <span className="text-xs font-mono font-bold text-blue-800 dark:text-blue-200">{b.check_in_code}</span>
+                          <span className="text-xs tabular-nums font-bold text-blue-800 dark:text-blue-200">{b.check_in_code}</span>
                         </div>
                       )}
                       <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 dark:border-[#2C2F35]">

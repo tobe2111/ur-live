@@ -83,7 +83,7 @@ function ReceiptForm({ campaign, stores, onDone }: { campaign: Campaign; stores:
       <div>
         <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-200">카드 승인번호</label>
         <input value={approvalNo} onChange={(e) => setApprovalNo(e.target.value)} placeholder="영수증에 표기된 승인번호"
-          className="w-full rounded-lg border border-gray-300 dark:border-[#2C2F35] bg-surface px-3 py-2.5 font-mono text-sm text-gray-900 dark:text-white" />
+          className="w-full rounded-lg border border-gray-300 dark:border-[#2C2F35] bg-surface px-3 py-2.5 tabular-nums text-sm text-gray-900 dark:text-white" />
         <p className="mt-1 text-[10px] text-gray-400 dark:text-gray-500">같은 영수증은 한 번만 등록할 수 있어요</p>
       </div>
       <div>
@@ -148,7 +148,7 @@ function RedeemModal({ coupon, stores, onClose, onRedeemed }: { coupon: MyCoupon
     <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center bg-black/60" onClick={onClose} role="presentation">
       <div className="w-full sm:max-w-xs sm:mx-4 rounded-t-3xl sm:rounded-3xl bg-surface p-6" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         <p className="text-center text-[17px] font-extrabold text-gray-900 dark:text-white">{formatWon(coupon.face_value)} 상권 쿠폰</p>
-        <p className="mt-1 text-center font-mono text-sm font-bold tracking-widest text-gray-500 dark:text-gray-400">{coupon.code}</p>
+        <p className="mt-1 text-center tabular-nums text-sm font-bold tracking-widest text-gray-500 dark:text-gray-400">{coupon.code}</p>
         <div className="mt-4 space-y-3">
           <select value={storeId} onChange={(e) => setStoreId(e.target.value)}
             className="w-full rounded-lg border border-gray-300 dark:border-[#2C2F35] bg-surface px-3 py-2.5 text-sm text-gray-900 dark:text-white">
@@ -157,7 +157,7 @@ function RedeemModal({ coupon, stores, onClose, onRedeemed }: { coupon: MyCoupon
           </select>
           <input inputMode="numeric" value={pin} onChange={(e) => setPin(e.target.value.replace(/[^0-9]/g, '').slice(0, 8))}
             placeholder="매장 확인코드 (직원에게 문의)"
-            className="w-full rounded-lg border border-gray-300 dark:border-[#2C2F35] bg-surface px-3 py-2.5 text-center font-mono text-lg tracking-[0.3em] text-gray-900 dark:text-white" />
+            className="w-full rounded-lg border border-gray-300 dark:border-[#2C2F35] bg-surface px-3 py-2.5 text-center tabular-nums text-lg tracking-[0.3em] text-gray-900 dark:text-white" />
           <p className="text-[10.5px] leading-relaxed text-gray-400 dark:text-gray-500">
             직원 앞에서 눌러주세요 — 사용 즉시 이 매장으로 정산돼요. 결제 금액에서 쿠폰 금액을 빼고 결제하세요.
           </p>
