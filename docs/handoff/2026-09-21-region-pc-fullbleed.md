@@ -133,6 +133,13 @@ BASE=https://urdeal.kr node <하네스>   # /region · /region/부산 · /region
   ⇒ **SSOT 파일을 고쳤으면 그 파일을 읽는 테스트를 전부 찾아서 함께 돌릴 것**:
   `grep -rln 'pc-fullbleed\|isFullBleedPcPath' src/tests/` → 이번 경우 **5개**(groupon-detail-map ·
   pass-route-migration · ushop-a3-p1 + 신규 2개). 이 한 줄이면 CI 한 바퀴(실측 **약 7분**)를 안 태운다.
+- 🩸 **그리고 그 한 줄로도 부족했다**(2026-09-23, `/store/new` PR #1535 에서 같은 날 재발).
+  `StoreRegisterModal.tsx` 를 고치고 이름으로 grep 해 테스트 9개를 돌렸는데 CI 가 **열 번째**에서
+  빨간불을 냈다 — `seller-d3-2026-09-15.test.ts` 의 "옛 패턴 0" 래칫은 **파일 이름을 안 쓴다**.
+  `git ls-files ':(glob)src/components/seller/**/*.tsx'` 로 **경로 글롭**을 훑으므로 이름 grep 에
+  구조적으로 안 걸린다(내가 넣은 `rounded-2xl` 이 그 금지 목록에 있었다).
+  ⇒ **이름 grep 에 한 줄을 더한다**: `grep -rln 'git ls-files' src/tests/` (현재 **7개**) 를 열어
+  바꾼 파일이 그 글롭 밑에 있는지 본다. 둘 다 몇 초면 끝난다.
 
 가드: `src/tests/unit/pc-frame-unlock-2026-09-21.test.ts` 43건 +
 `scripts/mutations/pc-frame-unlock.mjs` **8건**(전부 빨간불) + 지역 5건 재조준 후 재확인 +
