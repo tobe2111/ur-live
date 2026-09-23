@@ -484,8 +484,8 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     // 주문 생성 (idempotency_key 저장 — 중복 발급 영구 차단)
     // 🛡️ 2026-05-24 Q4 perf: INSERT ... RETURNING id 로 즉시 id 획득 (이전: INSERT 후 SELECT 별도 — 1 await 절약 ~20-50ms).
     const orderInsert = await DB.prepare(`
-      INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_method, idempotency_key)
-      VALUES (?, ?, ?, ?, 0, 0, ?, 'KRW', 'PAID', ?, ?)
+      INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_status, payment_method, idempotency_key)
+      VALUES (?, ?, ?, ?, 0, 0, ?, 'KRW', 'PAID', 'approved', ?, ?)
       RETURNING id
     `).bind(orderNumber, userId, product.seller_id, totalAmount, totalAmount, payment_method === 'deal' ? 'deal_points' : 'toss', idempotency_key || null).first<{ id: number }>()
     const newOrderId = orderInsert?.id ?? null
@@ -1227,8 +1227,8 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
   const expiresAt = product.voucher_expiry || null // 2026-08-22 대표: 미설정 = 무기한(90일 강제 기본값 폐지)
   try {
     const orderInsert = await DB.prepare(`
-      INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_method, payment_key, idempotency_key)
-      VALUES (?, ?, ?, ?, 0, 0, ?, 'KRW', 'PAID', 'toss', ?, ?)
+      INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_status, payment_method, payment_key, idempotency_key)
+      VALUES (?, ?, ?, ?, 0, 0, ?, 'KRW', 'PAID', 'approved', 'toss', ?, ?)
       RETURNING id
     `).bind(orderNumber, userId, product.seller_id, expectedAmount, expectedAmount, paymentKey, paymentKey).first<{ id: number }>()
     const newOrderId = orderInsert?.id ?? null

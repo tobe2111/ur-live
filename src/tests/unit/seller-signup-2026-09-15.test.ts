@@ -11,6 +11,10 @@ import { validateSignup, filledRequired, formatBusinessNumber, formatPhone, type
 
 const PAGE = stripComments(readFileSync('src/pages/SellerRegisterSupplierPage.tsx', 'utf8'))
 const FIELDS = stripComments(readFileSync('src/pages/seller-register/RegisterFields.tsx', 'utf8'))
+// 🔀 2026-09-21 재조준 — 안 B 가 '가게 정보' 카드를 `StoreSection` 으로 떼어냈다(파일크기 래칫).
+//   같은 마크업이 옮겨 간 것이라 **면제가 아니라 대상 확장**이다. 두 파일을 합쳐서 본다.
+const SECTION = stripComments(readFileSync('src/pages/seller-register/StoreSection.tsx', 'utf8'))
+const FORM_UI = PAGE + '\n' + SECTION
 const ok: SignupForm = { business_name: '홍대돈까스', business_number: '123-45-67890', representative_name: '홍길동', business_start_date: '2020-01-02', phone: '010-1234-5678', store_category: '', address: '', description: '' }
 
 describe('검증 — 칸별 메시지', () => {
@@ -57,7 +61,7 @@ describe('화면 — 모바일 특화 계약', () => {
     expect(FIELDS).toMatch(/border-brand bg-brand-tint text-brand-text/)
   })
   it('이모지 0 · 색깔 정보상자 0 · 초록 0 (🎫 규칙 ⑥)', () => {
-    for (const [n, s] of [['page', PAGE], ['fields', FIELDS]] as const) {
+    for (const [n, s] of [['page', PAGE], ['fields', FIELDS], ['store-section', SECTION]] as const) {
       expect(s, `${n}: 이모지`).not.toMatch(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u)
       expect(s, `${n}: 색깔 상자`).not.toMatch(/\bbg-(?:blue|amber|emerald|green|red)-(?:50|100)\b/)
       expect(s, `${n}: emerald`).not.toMatch(/emerald/)
@@ -69,16 +73,22 @@ describe('화면 — 모바일 특화 계약', () => {
     //   첫 화면의 절반을 먹었다. 진행은 이제 묶음별 `n / m` 과 '승인까지 남은 것' 이 말한다 —
     //   둘 다 실제로 사장님이 채울 수 있는 것이라 종전보다 정확하다.
     expect(PAGE).toMatch(/\{bizDone\} \/ 3/)
-    expect(PAGE).toMatch(/\{storeDone\} \/ 2/)
+    expect(FORM_UI).toMatch(/\{storeDone\} \/ 2/)
     expect(PAGE).toContain('laterSection')
   })
 })
 
 describe('불변 — 서버 계약·게이트', () => {
   it('제출 payload 7필드 + terms_agreed_version 그대로', () => {
-    const m = PAGE.match(/api\.post\('\/api\/seller\/register-from-user', \{([\s\S]*?)\}\)/)
-    expect(m).not.toBeNull()
-    for (const k of ['business_name', 'business_number', 'representative_name', 'business_start_date', 'phone', "seller_type: 'store_owner'", 'description: descWithMeta', 'terms_agreed_version: TERMS_CURRENT_VERSION']) expect(m![1]).toContain(k)
+    // 🩸 2026-09-21: 종전 앵커는 `\{([\s\S]*?)\}\)` 였는데, payload 안에 중첩 객체
+    //   (`...(place ? { … } : {})`)가 생기자 **첫 `}` 에서 잘려** 뒷필드를 못 봤다.
+    //   정규식으로 균형 괄호를 세지 말고, 호출 시작부터 닫는 줄까지 잘라서 본다.
+    const at = PAGE.indexOf("api.post('/api/seller/register-from-user'")
+    expect(at, '제출 호출이 사라졌다 — 앵커가 낡았다').toBeGreaterThan(0)
+    const end = PAGE.indexOf('terms_agreed_version: TERMS_CURRENT_VERSION', at)
+    expect(end, 'payload 에 약관 버전이 없다').toBeGreaterThan(at)
+    const m = [PAGE.slice(at, end + 120), PAGE.slice(at, end + 120)]
+    for (const k of ['business_name', 'business_number', 'representative_name', 'business_start_date', 'phone', "seller_type: 'store_owner'", 'description: form.description', 'terms_agreed_version: TERMS_CURRENT_VERSION']) expect(m![1]).toContain(k)
   })
   it('로그인 게이트는 마운트에서(!user_id → /login?returnUrl) · 신청 후 /seller/waiting', () => {
     expect(PAGE).toMatch(/!localStorage\.getItem\('user_id'\)/)

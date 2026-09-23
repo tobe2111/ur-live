@@ -3353,7 +3353,9 @@
       "fromPhoto": "从照片读取 — 请确认是否正确",
       "ocrFilled": "已从照片填写 {{n}} 项 — 请确认是否正确",
       "ocrNone": "营业执照已上传",
-      "certHintDone": "用于审核。请确认下方栏位是否正确。"
+      "certHintDone": "用于审核。请确认下方栏位是否正确。",
+      "pickHint": "选择店铺后，店名、地址、电话和类别会一次性填好。地图上没有的话，请在下方直接填写。",
+      "pickPlaceholder": "按店名搜索"
     },
     "analytics": "销售分析",
     "analyticsView": {

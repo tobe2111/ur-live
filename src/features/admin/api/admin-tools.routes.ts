@@ -77,7 +77,10 @@ adminToolsRoutes.get('/sellers/pending', async (c) => {
 
 adminToolsRoutes.put('/sellers/:id/approve', async (c) => {
   const id = c.req.param('id')
+  const prev = await c.env.DB.prepare('SELECT status FROM sellers WHERE id = ?').bind(id).first<{ status: string | null }>().catch(() => null)
   await c.env.DB.prepare("UPDATE sellers SET status = 'approved', updated_at = datetime('now') WHERE id = ?").bind(id).run()
+  // ⏳📩 2026-09-21: 승인 부수효과는 한 함수로 — 경로가 둘이라 손으로 붙이면 한쪽만 붙는 날이 온다.
+  await (await import('../../../worker/utils/seller-approved-hooks')).runSellerApprovedHooks(c.env.DB, Number(id), prev?.status).catch(() => null)
   // v30 FIX: admin-tools audit log 누락 보완
   await writeAuditLog(c, { action: 'seller.approve', targetType: 'seller', targetId: id })
   return c.json({ success: true })

@@ -120,7 +120,7 @@ adminSellersRoutes.get('/sellers', cors(), async (c) => {
       }
     }
     const totalRow = await DB.prepare(`SELECT COUNT(*) as cnt FROM sellers ${distWhere}`).first<{ cnt: number }>().catch(() => DB.prepare('SELECT COUNT(*) as cnt FROM sellers').first<{ cnt: number }>());
-    await import('./admin-sellers/cert-fallback').then(m => m.attachCertUrls(DB, sellers)); // 🧾 2026-09-20 등록증 meta 폴백
+    await import('./admin-sellers/enrich-rows').then(m => m.enrichSellerRows(DB, sellers)); // 🧾 등록증 폴백 + 🍽️ 영업신고증·업종(표시만) — 이 파일 961줄 동결이라 목록 enrich 는 저기서 자란다
     return c.json({
       success: true,
       data: sellers,
@@ -458,9 +458,9 @@ adminSellersRoutes.patch('/sellers/:id/approve', cors(), async (c) => {
     const prevStatus = rows[0].status;
     await executeQuery(DB, `UPDATE sellers SET status = 'approved', updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [sellerId]);
     // 🛡️ 2026-05-07: seller_status_history INSERT — 영구 변경 이력. 잘못된 거절 복구 / 분쟁 대응.
-    DB.prepare(`INSERT INTO seller_status_history (seller_id, prev_status, new_status, reason) VALUES (?, ?, 'approved', NULL)`)
-      .bind(sellerId, prevStatus).run().catch(() => { /* 테이블 없을 시 silent */ });
+    DB.prepare(`INSERT INTO seller_status_history (seller_id, prev_status, new_status, reason) VALUES (?, ?, 'approved', NULL)`).bind(sellerId, prevStatus).run().catch(() => { /* 테이블 없을 시 silent */ });
     await writeAuditLog(c, { action: 'approve_seller', targetType: 'seller', targetId: sellerId, before: { status: prevStatus }, after: { status: 'approved' } });
+    await (await import('../../../worker/utils/seller-approved-hooks')).runSellerApprovedHooks(DB, Number(sellerId), prevStatus).catch(() => null); // ⏳📩 2026-09-21 승인 직후 부수효과(노출 유예 마커 · 사장님 통보 줄) — 둘 다 기본 OFF/게이트 뒤
     // 🏁 2026-06-12 (전수조사 🟢): 정지→재활성도 이 endpoint 재사용이라 '가입 승인' 메시지가
     //   재발송되던 갭 — prevStatus 기반 분기.
     const isReactivation = prevStatus === 'suspended';
