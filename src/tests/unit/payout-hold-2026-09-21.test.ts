@@ -1,5 +1,7 @@
 /**
- * 🕙 정산 유보 10일 — 가드 (2026-09-21 대표 확정 "Q2는 10일로 하자")
+ * 🕙 정산 유보 — 가드 (2026-09-21 대표 "Q2는 10일로 하자" · 2026-09-23 단위 확정 "영업일 10일이야")
+ *
+ * 영업일 10일을 **역일 14일**로 근사한다(공휴일 테이블이 없다 — `payout-hold.ts` 머리말 참조).
  *
  * ## 이 시험이 지키는 것
  * 1. 적립 후 N일이 안 지난 credit 은 정산에 안 잡힌다(= 토스 입금 전에 우리 돈이 안 나간다).
@@ -115,9 +117,12 @@ describe('정산 유보 — 집계 동작 (실제 SQLite)', () => {
 })
 
 describe('정산 유보 — 설정 해석', () => {
-  it('⑤ 기본값은 10일이고, 0 은 "유보 없음"으로 살아남는다(|| 함정)', () => {
-    expect(DEFAULT_PAYOUT_HOLD_DAYS).toBe(10)
-    expect(buildPayoutHoldSql(10).days).toBe(10)
+  it('⑤ 기본값은 영업일 10일 = 역일 14일이고, 0 은 "유보 없음"으로 살아남는다(|| 함정)', () => {
+    // 🔴 이 숫자가 곧 대표 확정값이다. 바뀌면 매장이 돈을 받는 날이 바뀐다.
+    //    꼬박 2주여야 주말 4일이 빠져 그 안의 평일이 정확히 10일이 된다 — 13 도 15 도 아니다.
+    expect(DEFAULT_PAYOUT_HOLD_DAYS).toBe(14)
+    expect(DEFAULT_PAYOUT_HOLD_DAYS % 7).toBe(0)
+    expect(buildPayoutHoldSql(14).days).toBe(14)
     const zero = buildPayoutHoldSql(0)
     expect(zero.days).toBe(0)
     expect(zero.enabled).toBe(false)
@@ -140,11 +145,11 @@ describe('정산 유보 — 설정 해석', () => {
 
   it('⑧ platform_settings 를 읽고, 없으면 기본값을 유지한다(fail-closed)', async () => {
     const empty = fresh()
-    expect((await resolvePayoutHold(d1(empty))).days).toBe(10)     // 미설정 → 기본 유지
+    expect((await resolvePayoutHold(d1(empty))).days).toBe(14)     // 미설정 → 기본(영업일 10일) 유지
 
-    const set14 = fresh()
-    set14.prepare(`INSERT INTO platform_settings VALUES ('payout_hold_days','14')`).run()
-    expect((await resolvePayoutHold(d1(set14))).days).toBe(14)     // 영업일 10일 근사
+    const set7 = fresh()
+    set7.prepare(`INSERT INTO platform_settings VALUES ('payout_hold_days','7')`).run()
+    expect((await resolvePayoutHold(d1(set7))).days).toBe(7)       // 설정이 있으면 그 값
 
     const off = fresh()
     off.prepare(`INSERT INTO platform_settings VALUES ('payout_hold_days','0')`).run()
@@ -154,7 +159,7 @@ describe('정산 유보 — 설정 해석', () => {
 
     // 테이블 자체가 없어 쿼리가 터져도 유보를 풀지 않는다.
     const broken = new DatabaseSync(':memory:')
-    expect((await resolvePayoutHold(d1(broken))).days).toBe(10)
+    expect((await resolvePayoutHold(d1(broken))).days).toBe(14)
   })
 })
 

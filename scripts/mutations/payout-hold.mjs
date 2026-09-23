@@ -1,5 +1,5 @@
 /**
- * 🕙 정산 유보 10일 (2026-09-21 대표 확정 "Q2는 10일로 하자") — 주입 매니페스트.
+ * 🕙 정산 유보 (2026-09-21 "Q2는 10일로 하자" · 2026-09-23 단위 확정 "영업일 10일") — 주입 매니페스트.
  * 가드: src/tests/unit/payout-hold-2026-09-21.test.ts
  */
 const TEST = 'src/tests/unit/payout-hold-2026-09-21.test.ts'
@@ -38,11 +38,11 @@ export default [
     why: 'D1 이 한 번 흔들린 날 유보가 통째로 풀린다 — 늦게 주는 실패는 회복되지만 먼저 준 돈은 못 돌려받는다.',
   },
   {
-    name: '🕙 유보일 0 이 falsy 로 취급돼 "유보 없음" 이 조용히 기본값 10 으로 바뀐다',
+    name: '🕙 유보일 0 이 falsy 로 취급돼 "유보 없음" 이 조용히 기본값으로 바뀐다',
     file: 'src/worker/utils/payout-hold.ts',
     find: '      if (Number.isFinite(v) && v >= 0) days = v',
     replace: '      if (Number.isFinite(v) && v > 0) days = v',
     test: TEST,
-    why: '어드민이 0(유보 해제)을 넣어도 10 으로 되돌아간다. 끄는 스위치가 안 듣는 것이 곧 롤백 불가다.',
+    why: '어드민이 0(유보 해제)을 넣어도 기본값으로 되돌아간다. 끄는 스위치가 안 듣는 것이 곧 롤백 불가다.',
   },
 ]
