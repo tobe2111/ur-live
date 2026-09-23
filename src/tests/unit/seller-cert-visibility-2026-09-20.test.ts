@@ -26,6 +26,10 @@ describe('① 매장 등록이 등록증 URL 을 컬럼에도 적는다', () => 
     const at = STORES.indexOf("app.post('/stores'")
     const body = STORES.slice(at, STORES.indexOf("app.post('/stores/:id/close'", at))
     expect(body).toMatch(/UPDATE sellers SET business_registration_image_url = \? WHERE id = \? AND COALESCE\(business_registration_image_url, ''\) = ''/)
+    // 🩸 2026-09-21: 위 한 줄만으로는 **문장이 거기 적혀 있다**까지만 잰다 — `if (false)` 로 꺼도 초록이었다
+    //   (주입 러너가 잡았다). 이 문장이 *실제로 실행되는 조건*까지 앵커한다: 등록증이 **선택**이 된 뒤
+    //   유일한 정당한 가드는 `certUrl` 유무다(없으면 안 적는 게 맞다).
+    expect(body).toMatch(/if \(certUrl\) await c\.env\.DB\.prepare\("UPDATE sellers SET business_registration_image_url/)
     expect(body).toMatch(/\.bind\(certUrl, newSellerId\)\.run\(\)\.catch\(/)
     expect(body).toMatch(/business_cert_url: certUrl/) // meta 는 그대로 진실
   })
@@ -56,7 +60,11 @@ describe('③ 읽는 쪽 셋이 폴백을 탄다', () => {
     expect(OCR).not.toMatch(/url = \(row\.business_registration_image_url \|\| ''\)\.trim\(\)/)
   })
   it('어드민 목록·상세가 cert-fallback 을 부른다', () => {
-    expect(ADMIN).toMatch(/m => m\.attachCertUrls\(DB, sellers\)/)
+    // 🔀 2026-09-21 재조준 — 목록 enrich 가 `admin-sellers/enrich-rows.ts` 로 모였다
+    //   (라우트가 961줄 동결이라 한 줄만 둔다). 지키는 것은 같다: **목록이 폴백을 탄다.**
+    const ENRICH = stripComments(readFileSync('src/features/admin/api/admin-sellers/enrich-rows.ts', 'utf-8'))
+    expect(ADMIN, '라우트가 목록 enrich 를 안 부른다').toMatch(/m => m\.enrichSellerRows\(DB, sellers\)/)
+    expect(ENRICH, 'enrich 가 등록증 폴백을 안 탄다').toMatch(/m\.attachCertUrls\(DB, rows\)/)
     expect(ADMIN).toMatch(/m => m\.attachCertUrl\(DB, sellerId, seller as Record<string, unknown>\)/)
     expect(FALLBACK).toMatch(/resolveSellerCertUrls\(DB, rows\)/)
     expect(FALLBACK).toMatch(/resolveSellerCertUrl\(DB, Number\(sellerId\)/)

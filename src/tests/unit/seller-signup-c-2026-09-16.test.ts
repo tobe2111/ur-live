@@ -21,6 +21,9 @@ const PAGE = read('src/pages/SellerRegisterSupplierPage.tsx')
 const FIELDS = read('src/pages/seller-register/RegisterFields.tsx')
 const PICKER = read('src/pages/seller-register/AddressPickerField.tsx')
 const CERT = read('src/components/BusinessCertUpload.tsx')
+// 🔀 2026-09-21 재조준 — 안 B 가 '가게 정보' 카드를 `StoreSection` 으로 떼어냈다(파일크기 래칫).
+//   마크업이 옮겨 간 것이라 **면제가 아니라 대상 확장**이다.
+const SECTION = read('src/pages/seller-register/StoreSection.tsx')
 
 describe('가입 화면 — 안 2(다 보이되 지금 낼 것만)', () => {
   it('영업신고증·정산 계좌가 이 화면에 이름으로 뜬다', () => {
@@ -90,7 +93,7 @@ describe('라벨에서 (선택) 을 뺀다 — 두 곳 다', () => {
 
 describe('매장 주소 — 손으로 치지 않는다', () => {
   it('가입 화면이 주소 검색 부품을 쓴다', () => {
-    expect(PAGE).toMatch(/<AddressPickerField\b/)
+    expect(SECTION).toMatch(/<AddressPickerField\b/)
   })
 
   it('주소는 카카오 장소 검색에서 온다 — 국세청 API 는 주소를 안 준다', () => {

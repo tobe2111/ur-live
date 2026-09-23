@@ -65,17 +65,55 @@ export async function ensureOwnerNotices(DB: D1Database): Promise<void> {
   }
 }
 
+/**
+ * 📍 링크 둘 — **주 행동은 대시보드**, 되찾기는 그 다음 (2026-09-21 대표 *"셀러대시보드 링크를
+ * 주는게 맞지 않을까?"*).
+ *
+ * 처음엔 되찾기(`/store/find`) 하나만 걸었는데, **누가 이 문자를 받는지**를 다시 세어 보니
+ * 대표 말이 맞았다. 수신자는 `sellers.phone` 의 010 이고, 그 번호는 거의 항상 **등록을 한 사람이
+ * 자기 번호로 적은 것**이다 — 그 사람에게 이 문자는 "당신 가게가 등록됐습니다" 가 아니라
+ * **"승인됐습니다, 이제 관리하세요"** 다. 되찾기 링크만 주면 정작 할 일이 없다.
+ *
+ * 그렇다고 되찾기를 빼면 이 통보의 **존재 이유**가 사라진다. 중개사·대행이 사장님 번호를 적어
+ * 등록한 경우(우리 모델에 실제로 있는 레일)엔 수신자가 등록을 안 한 사람이고, 그때 필요한 건
+ * 되찾기다. ⇒ **둘 다, 순서를 정해서.**
+ *
+ * ⚠️ 대시보드 주소는 `/seller` 가 아니라 `/seller/waiting` 이다. 그 페이지가 같은 세션에서
+ * 셀러 토큰을 발급해 대시보드로 들여보낸다(재로그인 0). `/seller` 로 바로 보내면
+ * `requireSeller` 가 이메일·비번 로그인으로 튕긴다 — 카카오로 가입한 사장님에겐 낯선 화면이다.
+ * **못 덮는 경우**: 세션이 아예 없으면 그 페이지가 `/seller/login` 으로 보낸다(그 역시 낯설다).
+ * 그 흐름을 고치는 건 이 PR 범위 밖이라 그대로 두고 여기 적어 둔다.
+ */
+export const OWNER_NOTICE_DASHBOARD_URL = 'https://urdeal.kr/seller/waiting'
+export const OWNER_NOTICE_CLAIM_URL = 'https://urdeal.kr/store/find'
+
 /** 소비자에게 보일 문구. 템플릿 검수에도 이 문안을 그대로 낸다(두 벌이면 반드시 갈린다). */
 export function ownerNoticeMessage(storeName: string): string {
   const name = String(storeName || '').trim() || '고객님의 매장'
   return [
     `[유어딜] ${name} 매장이 유어딜에 등록되었습니다.`,
     '',
-    '이 등록을 직접 하지 않으셨다면 아래에서 바로 알려 주세요.',
-    'https://urdeal.kr/store/find',
+    '이제 이용권을 만들고 주문을 받으실 수 있어요.',
+    `내 매장 관리: ${OWNER_NOTICE_DASHBOARD_URL}`,
+    '',
+    '직접 등록하지 않으셨다면 알려 주세요.',
+    OWNER_NOTICE_CLAIM_URL,
     '',
     '문의: 유어딜 고객센터',
   ].join('\n')
+}
+
+/**
+ * 알림톡 버튼 — 카카오 템플릿에도 **같은 두 개를** 등록해야 한다(본문처럼 버튼도 템플릿의 일부다).
+ * 순서가 의미다: 대부분의 수신자에게 필요한 것이 먼저다.
+ */
+export function ownerNoticeButtonsJson(): string {
+  return JSON.stringify({
+    button: [
+      { name: '내 매장 관리하기', type: 'WL', url_mobile: OWNER_NOTICE_DASHBOARD_URL, url_pc: OWNER_NOTICE_DASHBOARD_URL },
+      { name: '내가 등록한 게 아니에요', type: 'WL', url_mobile: OWNER_NOTICE_CLAIM_URL, url_pc: OWNER_NOTICE_CLAIM_URL },
+    ],
+  })
 }
 
 /**
@@ -135,7 +173,7 @@ export interface OwnerNoticeSendDeps {
   tplCode: string
   send: (p: {
     apikey: string; userid: string; senderkey: string; tpl_code: string; sender: string
-    receiver_1: string; recvname_1: string; subject_1: string; message_1: string
+    receiver_1: string; recvname_1: string; subject_1: string; message_1: string; button_1: string
   }) => Promise<{ success: boolean; message: string }>
 }
 
@@ -176,6 +214,7 @@ export async function sendQueuedOwnerNotices(
         tpl_code: deps.tplCode, sender: deps.sender,
         receiver_1: row.phone, recvname_1: store?.business_name || '사장님',
         subject_1: '매장 등록 안내', message_1: message,
+        button_1: ownerNoticeButtonsJson(),
       })
       ok = r.success
       err = r.success ? '' : String(r.message || '발송 실패')

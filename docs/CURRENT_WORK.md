@@ -5494,12 +5494,14 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
+_총 348건 · 최신순 · 이 목록은 자동 생성된다._
 _총 352건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-21**
 - [🎬 유어쇼츠 전체 보기 — 도시·종류로 고르는 목록 (`/urshorts`)](handoff/2026-09-21-urshorts-browse.md)
 - [2026-09-21 — 매장 확인 통화 기록 + 신규 매장 노출 유예 (사기 방어 ①②)](handoff/2026-09-21-store-verify.md)
 - [2026-09-21 — 사장님 신고 경로 (사기 방어 ③)](handoff/2026-09-21-store-report.md)
+- [사업자 유저 가입 화면 — 2차 시안 (2026-09-21, 라이브 실측 재작성)](handoff/2026-09-21-seller-signup-simplify.md)
 - [2026-09-21 — 사장님 통보(알림톡) 탐지·큐·게이트드 발송](handoff/2026-09-21-store-owner-notice.md)
 - [2026-09-21 — 정산 유보 10일 구현 + 수수료·세금 정리](handoff/2026-09-21-settlement-hold-and-fees.md)
 - [셀러 주문 상세 — 사진·주문번호·이용권 (2026-09-21)](handoff/2026-09-21-seller-order-detail.md)
@@ -5509,6 +5511,7 @@ _총 352건 · 최신순 · 이 목록은 자동 생성된다._
 - [2026-09-21 — 주문관리가 이용권을 택배로 그리던 것 (+ 결제 복구 E4 통과)](handoff/2026-09-21-order-kind-shipping-ui.md)
 - [2026-09-21 — 지도 핀 끌어서 위치 잡기 (시안 ②)](handoff/2026-09-21-map-pin-drag.md)
 - [2026-09-21 — 로더 워드마크: 내 진단이 틀렸고, 고쳤다던 것을 되돌렸다](handoff/2026-09-21-font-diagnosis-reverted.md)
+- [2026-09-21 — 사업자등록증 **선택** 전환 + 사장님 통보 링크 둘](handoff/2026-09-21-bizcert-optional.md)
 **2026-09-19**
 - [🧪 "staging 실결제" 게이트가 실재하지 않는다 (2026-09-19)](handoff/2026-09-19-staging-gate-reality.md)
 - [🪙 결제 화면에서 딜 사용액 조절 — 대표 확정 "C안" (2026-09-19)](handoff/2026-09-19-pay-screen-deal-control.md)
