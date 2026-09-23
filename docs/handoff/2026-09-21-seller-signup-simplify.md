@@ -295,3 +295,86 @@ for i in $(seq 1 20); do curl -sS -X POST \
    (= 자동 승인 게이트에 못 올린다). 네이버 클로바 OCR 은 사업자등록증 **전용 템플릿**이 있다
    (결재 `2026-09-16-ocr-license-automation.md` 선택지 2). 계약·비용이라 등급 C.
 3. **OCR 자동 승인 게이트** — 결재 `docs/decisions/2026-09-21-ocr-auto-verify-gate.md`(다른 세션).
+
+---
+
+## ✅ 2026-09-23 — 머지 · 배포 · **E4 라이브 판정 완료** (대표 *"머지해주고 나서 판정까지 해줘"*)
+
+`bcfae29` (squash, PR #1510) → main → Pages 배포 성공(번들 `index-CyLKGQSa.js` → **`index-B4jlL9Py.js`**).
+
+### 🎁 "고치기 전"이 실물로 남았다 — 배포 3분 전의 가입 1건
+대표가 **16:13 KST**(배포 16:16)에 가입 문으로 실제 가입했고, 그 행이 옛 코드의 증거다:
+
+| 셀러 | 문 | `sellers.address` | 좌표·place_id |
+|---|---|---|---|
+| **24** `구서 우성아파트` (`linked_user_id=40`) | 가입 문 | **비어 있음** | **없음**(`store_channel` 만) |
+| 20·22·23 | `/store/new` 매장 등록 문 | 채워짐 | 있음 |
+
+⇒ PR 본문의 주장("가입 문으로 들어온 매장은 지도에 뜨지 않았다")이 **라이브 행으로 확증**됐다.
+다음 세션이 이 표를 before/after 대조군으로 쓸 수 있다.
+
+### ① 안 B — 라이브 실측 **통과**
+배포본 `index-B4jlL9Py.js` 에서 실제로 '청룡갈비'를 골라 측정(하네스는 아래 ⚠️):
+
+| | 고르기 전 | 고른 뒤 |
+|---|---|---|
+| `#f-address` · `#f-business_name` | 1 · 1 | **0 · 0** |
+| 카드(`카카오맵에서 가져왔어요`) | 0 | **1** |
+
+- 카드: `청룡갈비 / 부산 금정구 청룡로 28 / 051-508-5081`
+- 제출 payload(실측): `lat=35.2758909288768` · `lng=129.089469952877` ·
+  `kakao_place_id=1931450083` · `kakao_category=음식점 > 한식 > 육류,고기 > 갈비` ·
+  `store_category=restaurant`(자동 매핑) · `store_phone=051-508-5081` · `address` 채워짐
+- **`phone=010-1234-5678` 그대로** — 담당자 휴대폰을 가게 대표번호로 덮지 않는다(설계 의도 확인).
+- 🔑 그 좌표는 같은 가게를 **매장 등록 문**으로 넣은 셀러 20 의 `store_lat/lng` 와 **소수점까지 동일**.
+  두 문이 같은 것을 저장한다는 교차 확인.
+
+⚠️ **아직 안 채워진 한 칸**: 서버가 실제로 `seller_meta` 에 썼는지는 **못 쟀다** —
+하네스가 `POST /api/seller/register-from-user` 를 **가로채 막았다**(프로덕션에 가짜 셀러 금지).
+대표가 배포 후 한 번 가입하면 아래로 판정:
+```sql
+-- D1 DB_MAIN d9530ba6-7a26-4c02-9295-3ce5aef112a3
+SELECT key, value FROM seller_meta WHERE seller_id = (SELECT MAX(id) FROM sellers)
+  AND key IN ('store_lat','store_lng','kakao_place_id','kakao_category','store_phone');
+SELECT id, business_name, address, phone, linked_user_id FROM sellers ORDER BY id DESC LIMIT 1;
+```
+**좌표 두 줄 + `address` 채워짐 + `phone` 이 010- 이면 통과.** (셀러 24 와 나란히 놓고 보면 명확하다.)
+
+### 🛠️ 라이브 가입 화면을 브라우저로 여는 법 (다음 세션이 다시 헤매지 말 것)
+이 컨테이너에서 `urdeal.kr` 을 Playwright 로 열 때 **세 번 막혔다**. 순서대로:
+1. `ERR_CERT_AUTHORITY_INVALID` → `ctx.route('**/*')` 로 **모든 요청을 Node 측 `ctx.request.fetch` 로 릴레이**
+   (레포 관행 `PROXY_RELAY` — `scripts/probe-loading.mjs:34`). chromium 직결은 egress 정책에 막힌다.
+2. `/seller/login` 으로 튕김 → `**/api/seller/my-seller-status*` 를 `{linked:false}` 200 으로 스텁.
+3. `/login` 으로 튕김 → **`localStorage.user_id` 를 심어도 앱이 지운다.**
+   범인은 `auth-callback-bootstrap.ts:196` — `/api/auth/session/health` 가 `session:false` 면 청소한다
+   (CLAUDE.md 가 "가짜 신원을 앱이 정리" 라고 적어 둔 그것). 그 엔드포인트를 `{session:true}` 로 스텁하면 열린다.
+   ⚠️ 이건 **하네스 편의**지 방어를 끈 게 아니다(진짜 사용자는 진짜 세션을 갖는다).
+- 라우트 우선순위: Playwright 는 **나중에 등록한 route 가 이긴다** → 릴레이를 먼저, 개별 스텁을 나중에.
+
+### ② OCR 재측정 — **통과** (대표 약속분)
+같은 서류 **10회 연속**(20회 아님 — 뉴런 절약):
+
+| | 배포 전 | 지금 |
+|---|---|---|
+| 못 읽음(`unreadable`) | **10 / 20 (50%)** | **0 / 10 (0%)** |
+
+10회 전부 `bizNumber=9999999991` · `permitDate=20240302` · `ownerName=김테스트` — **값이 한 번도 안 흔들렸다.**
+재시도 로그: `읽었습니다 (2~4/4회 읽음)` — 4회 중 2~4회가 읽히고 다수결이 나머지를 거른다.
+**레이트리밋 징후 없음**(`읽기 실패:` 0회) ⇒ `OCR_PARALLEL_ATTEMPTS=4` 유지해도 된다.
+
+🔴 **상호는 아직 흔들린다** — 8회 `[테스트] 글로드분식`, 2회 `[테스트] 글로드로드분식`(정답 `클로드분식`).
+ㅋ/ㄱ 오독이라 **10회 모두 `verdict='review'`** ⇒ **게이트를 켜도 이 서류는 자동 승인되지 않는다.**
+안전한 쪽으로 실패하므로 켜도 위험하진 않지만 "자동 승인이 실제로 걸리는" 그림은 아니다.
+⚠️ 지금 쓴 것은 **합성 테스트 이미지**다 — 실사진 실측은 여전히 **0회**. 게이트 ON 전에 진짜 등록증 1장 권장.
+
+게이트 `platform_settings.ocr_auto_verify_enabled` 는 프로덕션에 **행 자체가 없다 = OFF**(실측).
+
+### ③ 덤 — 영업신고증 판정 라이브 확인
+`청룡갈비`·`박달집흑염소` → `needs_food_permit=true` / `구서우성아파트`·`해운대해수욕장` → `false`.
+어드민 목록 enrich(`admin-sellers/enrich-rows.ts`) 도 라이브에서 세 키 모두 실림
+(`food_permit_url`·`has_food_permit`·`needs_food_permit`).
+
+### 남은 것 (대표 판단)
+1. **자동 승인 게이트 ON** — 재측정은 끝났다. 다만 위 🔴 때문에 **실사진 1장 재측정을 먼저** 권함.
+2. 클로바 OCR 전환(등급 C) · 국세청 확인 복구 — 종전과 동일.
+3. 가입 후 `seller_meta` 실측 한 칸(위 SQL) — 대표가 한 번 가입하면 즉시 판정 가능.
