@@ -3353,7 +3353,9 @@
       "fromPhoto": "Read from your photo — please check it",
       "ocrFilled": "Filled {{n}} field(s) from your photo — please check them",
       "ocrNone": "Business registration uploaded",
-      "certHintDone": "Used for review. Please check the fields below."
+      "certHintDone": "Used for review. Please check the fields below.",
+      "pickHint": "Pick your store and the name, address, phone and type fill in at once. Not on the map? Just type it below.",
+      "pickPlaceholder": "Search by store name"
     },
     "analytics": "Sales Analytics",
     "analyticsView": {

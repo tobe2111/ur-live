@@ -147,8 +147,18 @@ describe('결제 경로 배선 — 어느 금액이 어디로 가나', () => {
   it('주문은 PAID 로 넣는다 — 웹훅 이중차감을 막는 관문이라 바꾸면 안 된다', () => {
     // handlePaymentConfirmed 는 isAlreadyProcessed(orderNumber,'PAID') 로 즉시 return 한다.
     // PENDING 으로 넣으면 웹훅이 orders.deal_used 를 읽어 같은 금액을 또 뺀다.
-    const insert = ROUTES.slice(CONFIRM_ORDER_INSERT)
-    expect(insert.slice(0, 400)).toContain("'PAID', 'toss'")
+    //
+    // 🩸 2026-09-21 재조준(약화 아님): 판정이 `"'PAID', 'toss'"` 라는 **붙어 있는 두 리터럴**이었는데,
+    //   그 사이에 `payment_status` 컬럼이 들어오자 빨간불이 났다(불변식 자체는 안 깨졌다 — status 는
+    //   여전히 PAID 다). 인접성은 이 시험이 지키려는 것이 아니다. 그래서 컬럼↔값을 짝지어
+    //   **`status` 자리의 값**을 직접 본다 — 컬럼이 더 늘어도 안 헛돌고, PENDING 이면 여전히 잡는다.
+    const insert = ROUTES.slice(CONFIRM_ORDER_INSERT).slice(0, 600)
+    const m = insert.match(/INSERT INTO orders\s*\(([^)]*)\)\s*(?:\r?\n\s*)?VALUES\s*\(([^)]*)\)/)
+    expect(m).toBeTruthy()
+    const cols = m![1].split(',').map((c) => c.trim())
+    const vals = m![2].split(',').map((v) => v.trim())
+    expect(cols.length).toBe(vals.length) // 컬럼↔값 개수가 어긋나면 런타임에 죽는다
+    expect(vals[cols.indexOf('status')]).toBe("'PAID'")
   })
 
   it('결제 시작 응답의 amount 는 카드 청구액이다 (화면이 딜 표시를 못 해도 금액은 맞는다)', () => {

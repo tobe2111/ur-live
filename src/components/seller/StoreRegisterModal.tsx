@@ -98,7 +98,7 @@ const STEPS = [
   { key: 'place', title: '내 매장을 찾아주세요', hint: '카카오맵에서 검색하면 주소·전화번호가 자동으로 채워져요' },
   { key: 'manager', title: '담당자 전화번호를 알려주세요', hint: '승인·사용 문의·정산 확인 때 연락드릴 번호예요' },
   { key: 'channel', title: '이 매장, 누가 운영하나요?', hint: '사장님인지 대행사인지에 따라 정산 방식이 달라져요' },
-  { key: 'business', title: '사업자등록증을 올려주세요', hint: '사람이 직접 확인해요 — 내용이 잘 보이는 사진이면 돼요' },
+  { key: 'business', title: '사업자등록증을 올려주세요 (선택)', hint: '지금 없으면 건너뛰어도 등록돼요. 다만 승인 전에는 메인에 노출되지 않아요' },
 ] as const
 
 export default function StoreRegisterModal({ initialPlace, onClose, onDone, dismissOnBackdrop = true }: Props) {
@@ -179,7 +179,11 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
       }
       return null
     }
-    return certOk ? null : '사업자등록증 사진을 첨부해주세요'
+    // 📄 2026-09-21 (대표 "너 말대로 하자"): 등록증은 **선택**이다 — 여기서 막지 않는다.
+    //   막을 이유가 사라진 게 아니라 **막을 자리가 뒤로 옮겨졌다**: 승인 전에는 어차피 메인에
+    //   노출되지 않고(`approvedSellerProductSql`), 서류는 어드민이 승인할 때 본다.
+    //   마지막 단계에서 사진이 없다고 되돌려 보내면, 다 적은 사람을 그 자리에서 잃는다.
+    return null
   }
   // 🗺️ 지도가 보이는 단계인가 — 바디 스크롤을 끌지 정한다(위 주석)
   const mapStep = step === 0 && (!picked || showMap)
@@ -187,7 +191,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
   const last = step === STEPS.length - 1
 
   async function submit() {
-    if (!picked || !channel || !managerOk || !certOk || submitting) return
+    if (!picked || !channel || !managerOk || submitting) return
     setSubmitting(true)
     try {
       const r = await api.post('/api/seller/stores', {
@@ -432,7 +436,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
             </div>
           )}
 
-          {/* ④ 사업자 확인 — 사진이 필수, 번호는 선택 */}
+          {/* ④ 사업자 확인 — 사진·번호 **둘 다 선택**(2026-09-21 대표 확정). 심사는 어드민이 한다. */}
           {step === 3 && (
             <div className="space-y-3">
               {/* 🪞 당근 원칙 ⑤ "매 단계 결과 미리보기" — 마지막 문턱에서 **무엇이 등록되는지** 보여 준다.
@@ -475,6 +479,17 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
                   </span>
                 </span>
               </label>
+
+              {/* 🕰️ 선택으로 바꾼 대가를 **숨기지 않는다**. "선택" 이라고만 적으면 사장님은 안 올려도
+                  아무 차이가 없는 줄 안다 — 그러면 승인이 며칠 늦어졌을 때 우리가 말 안 해 준 게 된다.
+                  ⚠️ 여기 적는 말은 실제 동작과 같아야 한다: 승인 전에는 `approvedSellerProductSql` 이
+                  메인 노출을 막고, 등록증은 어드민 승인 화면이 본다. */}
+              {!certOk && !uploading && (
+                <p className="text-[11px] text-gray-500 leading-relaxed">
+                  지금 건너뛰어도 매장은 등록돼요. 다만 <span className="font-bold text-gray-700">승인 전까지는 메인에 노출되지 않고</span>,
+                  등록증이 없으면 확인에 더 오래 걸려요. 나중에 <span className="font-bold text-gray-700">업체 정보</span>에서 올릴 수 있어요.
+                </p>
+              )}
 
               {/* 🏷️ 당근 원칙 ②: 선택인 것은 제목에 적는다 — 안 쓰면 못 넘어가나 고민하지 않게. */}
               <div className="pt-1">

@@ -2672,7 +2672,9 @@
       "fromPhoto": "Leído de tu foto: revísalo, por favor",
       "ocrFilled": "Rellenamos {{n}} campo(s) desde tu foto: revísalos, por favor",
       "ocrNone": "Registro mercantil subido",
-      "certHintDone": "Se usa para la revisión. Revisa los campos de abajo."
+      "certHintDone": "Se usa para la revisión. Revisa los campos de abajo.",
+      "pickHint": "Elige tu local y el nombre, la dirección, el teléfono y el tipo se rellenan de una vez. ¿No está en el mapa? Escríbelo abajo.",
+      "pickPlaceholder": "Buscar por nombre del local"
     },
     "analytics": "Análisis de ventas",
     "analyticsView": {

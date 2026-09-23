@@ -812,8 +812,10 @@ const MUTATIONS = [
   {
     name: '🏪 매장 등록 모달이 "누가 운영하나요?" 없이 제출된다',
     file: 'src/components/seller/StoreRegisterModal.tsx',
-    find: '    if (!picked || !channel || !managerOk || !certOk || submitting) return',
-    replace: '    if (!picked || !managerOk || !certOk || submitting) return',
+    // 🩸 2026-09-21: 등록증이 **선택**이 되면서 제출 가드에서 `!certOk` 가 빠졌다.
+    //   앵커가 낡으면 주입이 조용히 적용되지 않는다 — 이 불변식(채널 없이 제출 금지)은 그대로다.
+    find: '    if (!picked || !channel || !managerOk || submitting) return',
+    replace: '    if (!picked || !managerOk || submitting) return',
     test: 'src/tests/unit/signup-store-channel-2026-09-04.test.ts',
     why:
       '에이전시 일몰 후 brokered 를 만들 수 있는 문은 여기 하나다. 이 강제가 풀리면 채널 미지정 ' +

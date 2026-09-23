@@ -235,6 +235,113 @@ adminStoreOwnerRoutes.post('/store-claims/:id/decide',
     }
   })
 
+
+// ── ☎️ 매장 확인 통화 (2026-09-21 — 사기 방어 ①) ────────────────
+//   승인 도장만으로는 "전화를 걸었는지" 가 어디에도 안 남는다. 분쟁이 나면 말만 남는다.
+//   여기는 **적기만** 한다 — 매장 정지·환불은 기존 경로가 판단한다(util 이 그 경계를 잠그다).
+adminStoreOwnerRoutes.get('/store-verify/queue', cors(), requireAdminRole('finance'), async (c) => {
+  try {
+    const { listVerifyQueue } = await import('../../../worker/utils/store-verify')
+    const items = await listVerifyQueue(c.env.DB, {
+      limit: intParam(c.req.query('limit'), 30),
+      offset: intParam(c.req.query('offset'), 0),
+      includeDone: c.req.query('include_done') === '1',
+    })
+    return c.json({ success: true, data: items })
+  } catch (err) {
+    return safeError(c, err, '확인 대기 목록을 불러오지 못했습니다', '[store-verify]')
+  }
+})
+
+adminStoreOwnerRoutes.get('/stores/:sellerId/verify-calls', cors(), requireAdminRole('finance'), async (c) => {
+  try {
+    const sellerId = Number(c.req.param('sellerId'))
+    if (!Number.isInteger(sellerId) || sellerId <= 0) return c.json({ success: false, error: '매장이 올바르지 않습니다' }, 400)
+    const { listVerifyCalls } = await import('../../../worker/utils/store-verify')
+    return c.json({ success: true, data: await listVerifyCalls(c.env.DB, sellerId) })
+  } catch (err) {
+    return safeError(c, err, '통화 기록을 불러오지 못했습니다', '[store-verify]')
+  }
+})
+
+adminStoreOwnerRoutes.post('/stores/:sellerId/verify-call',
+  cors(), requireAdminRole('finance'), auditLog('stores.verify_call'),
+  async (c) => {
+    try {
+      const sellerId = Number(c.req.param('sellerId'))
+      if (!Number.isInteger(sellerId) || sellerId <= 0) return c.json({ success: false, error: '매장이 올바르지 않습니다' }, 400)
+      const b = await c.req.json<{ result?: unknown; note?: unknown }>().catch(() => ({} as Record<string, unknown>))
+      const { recordVerifyCall } = await import('../../../worker/utils/store-verify')
+      const admin = c.get('user')
+      const adminId = Number(admin?.id)
+      const r = await recordVerifyCall(c.env.DB, {
+        sellerId,
+        adminId: Number.isFinite(adminId) ? adminId : null,
+        result: String(b.result || ''),
+        note: typeof b.note === 'string' ? b.note : null,
+      })
+      if (!r.ok) {
+        return c.json({ success: false, code: r.reason, error: r.reason === 'NO_SELLER' ? '매장을 찾을 수 없습니다' : '통화 결과가 올바르지 않습니다' },
+          r.reason === 'NO_SELLER' ? 404 : 400)
+      }
+      return c.json({ success: true, data: { seller_id: sellerId } })
+    } catch (err) {
+      return safeError(c, err, '통화 기록 저장 중 오류가 발생했습니다', '[store-verify]')
+    }
+  })
+
+
+// ── 📩 사장님 통보 큐 (2026-09-21 — 대표 승인 "010 으로, 되면 보내주는걸로") ────
+//   줄은 승인 순간 자동으로 선다. **보내는 것은 사람이 누른다** — 발송은 등급 C다.
+adminStoreOwnerRoutes.get('/store-owner-notices', cors(), requireAdminRole('finance'), async (c) => {
+  try {
+    const m = await import('../../../worker/utils/store-owner-notice')
+    const status = String(c.req.query('status') || 'queued')
+    const rows = await m.listOwnerNotices(c.env.DB, { status, limit: intParam(c.req.query('limit'), 50) })
+    return c.json({
+      success: true,
+      data: {
+        notices: rows,
+        // 화면이 "왜 버튼이 안 먹는지" 를 알 수 있게 게이트 상태를 같이 준다.
+        send_enabled: await m.ownerNoticeSendEnabled(c.env.DB, c.env.ALIGO_TPL_STORE_NOTICE),
+        template_ready: !!c.env.ALIGO_TPL_STORE_NOTICE && c.env.ALIGO_TPL_STORE_NOTICE !== 'TBD',
+        sample_message: m.ownerNoticeMessage('예시 매장'),
+      },
+    })
+  } catch (err) {
+    return safeError(c, err, '통보 목록을 불러오지 못했습니다', '[owner-notice]')
+  }
+})
+
+adminStoreOwnerRoutes.post('/store-owner-notices/send',
+  cors(), requireAdminRole('finance'), require2FA(), auditLog('stores.send_owner_notice'),
+  async (c) => {
+    try {
+      const env = c.env
+      const m = await import('../../../worker/utils/store-owner-notice')
+      const tpl = env.ALIGO_TPL_STORE_NOTICE || ''
+      if (!(await m.ownerNoticeSendEnabled(env.DB, tpl))) {
+        return c.json({
+          success: false, code: 'SEND_DISABLED',
+          error: !tpl || tpl === 'TBD'
+            ? '카카오 템플릿 검수가 끝나면 ALIGO_TPL_STORE_NOTICE 를 넣어 주세요.'
+            : 'platform_settings.store_owner_notice_enabled 가 true 가 아닙니다.',
+        }, 409)
+      }
+      if (!env.ALIGO_API_KEY || !env.ALIGO_USER_ID || !env.ALIGO_SENDER_KEY || !env.ALIGO_SENDER_PHONE) {
+        return c.json({ success: false, code: 'ALIGO_NOT_CONFIGURED', error: '알림톡 발송 설정이 비어 있습니다' }, 409)
+      }
+      const { sendAlimtalk } = await import('../../alimtalk/aligo')
+      const r = await m.sendQueuedOwnerNotices(env.DB, {
+        apikey: env.ALIGO_API_KEY, userid: env.ALIGO_USER_ID, senderkey: env.ALIGO_SENDER_KEY,
+        sender: env.ALIGO_SENDER_PHONE, tplCode: tpl, send: sendAlimtalk,
+      }, { limit: intParam(c.req.query('limit'), 20) })
+      return c.json({ success: true, data: r })
+    } catch (err) {
+      return safeError(c, err, '통보 발송 중 오류가 발생했습니다', '[owner-notice]')
+    }
+  })
+
 export { adminStoreOwnerRoutes }
 
 
