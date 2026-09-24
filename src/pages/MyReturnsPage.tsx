@@ -95,7 +95,7 @@ export default function MyReturnsPage() {
                       <div className="mt-3 bg-surface rounded-lg p-3 border border-gray-100 dark:border-[#2C2F35]">
                         <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">회수 송장</p>
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-mono">
+                          <span className="text-sm tabular-nums">
                             {r.return_shipping_company} · {r.return_tracking_number}
                           </span>
                           {canTrack && (
@@ -187,7 +187,7 @@ function ShippingForm({ returnId, onSubmitted }: { returnId: number; onSubmitted
           value={number}
           onChange={(e) => setNumber(e.target.value.replace(/[^0-9-]/g, ''))}
           placeholder="송장번호"
-          className="px-2 py-1.5 text-xs bg-surface border border-line text-gray-900 dark:text-white rounded-lg font-mono"
+          className="px-2 py-1.5 text-xs bg-surface border border-line text-gray-900 dark:text-white rounded-lg tabular-nums"
         />
       </div>
       <button

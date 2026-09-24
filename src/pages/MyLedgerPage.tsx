@@ -147,7 +147,7 @@ export default function MyLedgerPage() {
                           <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium ${meta.cls}`}>{meta.label}</span>
                           {p.sent_at && <div className="text-[10px] text-gray-400 mt-0.5">{formatKSTDate(p.sent_at)}</div>}
                         </td>
-                        <td className="px-4 py-2 text-gray-700 font-mono">{p.transaction_id || '-'}</td>
+                        <td className="px-4 py-2 text-gray-700 tabular-nums">{p.transaction_id || '-'}</td>
                       </tr>
                     )
                   })}
@@ -173,7 +173,7 @@ export default function MyLedgerPage() {
                         <ev.Icon className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
                         <div className="min-w-0">
                           <p className="font-medium text-gray-900 truncate">{ev.label}</p>
-                          <p className="text-[10px] text-gray-400 font-mono truncate">{e.reference_id}</p>
+                          <p className="text-[10px] text-gray-400 tabular-nums truncate">{e.reference_id}</p>
                         </div>
                       </div>
                       <div className="text-right shrink-0 ml-2">

@@ -10213,8 +10213,11 @@ canvas {
   {
     name: '🏝️ 매장 등록 모달이 다시 흰 판 위 흰 글자가 된다 (light-island 소실)',
     file: 'src/components/seller/StoreRegisterModal.tsx',
-    find: 'className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)] max-h-[92dvh]',
-    replace: 'className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)] max-h-[92dvh]',
+    // ⚠️ 2026-09-23 재조준 — 안 B(PC 2단)가 패널 클래스를 `panelCls` 변수(overlay ↔ page 두 벌)로
+    //    옮기면서 옛 앵커(`className="light-island …`)가 사라졌다. **낡은 앵커는 조용히 아무것도 주입하지 않는다.**
+    //    ⚠️ 줄바꿈까지 앵커에 넣는다 — 409 패널 쪽 같은 문자열이 들여쓰기만 깊어 **부분일치로 2곳**이 잡혔다.
+    find: "\n    : 'light-island w-full sm:max-w-lg bg-white rounded-t-2xl",
+    replace: "\n    : 'w-full sm:max-w-lg bg-white rounded-t-2xl",
     test: 'src/tests/unit/store-claim-2026-09-07.test.ts',
     why:
       '이 패널은 bg-white 뿐이라 늘 흰데 소비자 라우트(/store/new)에서도 열린다. 전역 .dark input' +
@@ -10236,7 +10239,8 @@ canvas {
   {
     name: '🚪 매장 등록 페이지가 다시 배경 클릭으로 꺼진다 (폼 통째로 날아감)',
     file: 'src/pages/StoreClaimPage.tsx',
-    find: '        dismissOnBackdrop={false}',
+    // ⚠️ 2026-09-23 재조준 — 안 B 에서 이 prop 이 2단 레이아웃 안쪽으로 들어가 들여쓰기가 바뀌었다.
+    find: '              dismissOnBackdrop={false}',
     replace: '',
     test: 'src/tests/unit/store-claim-2026-09-07.test.ts',
     why:
@@ -10247,8 +10251,9 @@ canvas {
   {
     name: '🏝️ 409 안내 패널만 light-island 를 잃는다 (한 파일 안 두 표면 중 하나)',
     file: 'src/components/seller/StoreRegisterModal.tsx',
-    find: '        <div className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)]" onClick={e => e.stopPropagation()}>',
-    replace: '        <div className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)]" onClick={e => e.stopPropagation()}>',
+    // ⚠️ 2026-09-23 재조준 — 같은 이유(변수화). 409 패널도 overlay ↔ page 두 벌이 됐다.
+    find: "          ? 'light-island w-full bg-white rounded-[var(--dash-radius,16px)] shadow-lift'",
+    replace: "          ? 'w-full bg-white rounded-[var(--dash-radius,16px)] shadow-lift'",
     test: 'src/tests/unit/store-claim-2026-09-07.test.ts',
     why:
       '이 파일엔 늘-흰 패널이 **둘**이다(등록 폼 · 409 안내). 실제로 409 화면이 light-island 없이 ' +

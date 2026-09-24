@@ -444,12 +444,12 @@ export default function CuratorHeader({
             {editingHandle ? (
               <div>
                 <div className="flex items-center gap-1 px-3 py-2.5 rounded-xl border border-rule-strong bg-surface">
-                  <span className="shrink-0 text-[13px] font-mono text-gray-400">{shareHost}/u/</span>
+                  <span className="shrink-0 text-[13px] text-gray-400">{shareHost}/u/</span>
                   <input
                     value={handleVal}
                     onChange={(e) => setHandleVal(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20))}
                     autoFocus
-                    className="flex-1 min-w-0 bg-transparent font-mono text-[13px] text-gray-900 dark:text-white outline-none"
+                    className="flex-1 min-w-0 bg-transparent text-[13px] text-gray-900 dark:text-white outline-none"
                   />
                   {handleStatus === 'checking' && <span className="shrink-0 text-[11px] text-gray-400">확인중…</span>}
                 </div>
@@ -463,7 +463,7 @@ export default function CuratorHeader({
               </div>
             ) : (
               <div className="flex items-center px-3 py-2.5 rounded-xl bg-warm">
-                <span className="truncate text-[13px] font-mono text-gray-700 dark:text-gray-300">{shareHost}/u/{curator.handle}</span>
+                <span className="truncate text-[13px] text-gray-700 dark:text-gray-300">{shareHost}/u/{curator.handle}</span>
               </div>
             )}
           </div>

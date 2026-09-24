@@ -140,7 +140,7 @@ export default function VoucherVerifyPage() {
                 setCode(parseVoucherCode(pasted))
               }}
               placeholder={t('voucher.verify.codePlaceholder')}
-              className="w-full px-4 py-3.5 border border-gray-300 dark:border-[#3A3A3A] rounded-xl text-center text-lg text-gray-900 dark:text-white font-mono font-bold tracking-widest focus:border-gray-900 dark:focus:border-white focus:outline-none focus:ring-2 focus:ring-gray-200 dark:focus:ring-white/20"
+              className="w-full px-4 py-3.5 border border-gray-300 dark:border-[#3A3A3A] rounded-xl text-center text-lg text-gray-900 dark:text-white tabular-nums font-bold tracking-widest focus:border-gray-900 dark:focus:border-white focus:outline-none focus:ring-2 focus:ring-gray-200 dark:focus:ring-white/20"
               maxLength={60}
             />
             <div className="flex items-center gap-1.5 mt-2 justify-center">
@@ -176,7 +176,7 @@ export default function VoucherVerifyPage() {
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{voucher.restaurant_name}</p>
               )}
               <div className="mt-2 bg-surface rounded-lg px-3 py-2 text-center">
-                <code className="text-lg font-mono font-bold text-gray-900 dark:text-white tracking-[0.08em]">{voucher.code}</code>
+                <code className="text-lg tabular-nums font-bold text-gray-900 dark:text-white tracking-[0.08em]">{voucher.code}</code>
               </div>
               {voucher.expires_at && (
                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 text-center">{t('voucher.expiresAt')}: {parseUTCDate(voucher.expires_at).toLocaleDateString(locale, { timeZone: 'Asia/Seoul' })}{t('voucher.until')}</p>

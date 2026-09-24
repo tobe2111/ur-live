@@ -131,7 +131,7 @@ export default function PaymentFailPage() {
               <div className="bg-[#f5f5f7] dark:bg-[#1D1F29] rounded-xl p-4">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-[#6e6e73] dark:text-gray-400">{t('paymentFail.orderNumberLabel')}</span>
-                  <span className="text-sm font-semibold text-[#1d1d1f] dark:text-white font-mono">
+                  <span className="text-sm font-semibold text-[#1d1d1f] dark:text-white tabular-nums">
                     {orderId}
                   </span>
                 </div>
@@ -174,11 +174,11 @@ export default function PaymentFailPage() {
           {import.meta.env.DEV && code && (
             <div className="mt-6 p-4 bg-gray-100 dark:bg-[#1D1F29] rounded-lg">
               <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">디버그 정보 (개발 환경)</p>
-              <p className="text-xs font-mono text-gray-800 dark:text-gray-300">
+              <p className="text-xs tabular-nums text-gray-800 dark:text-gray-300">
                 Code: {code}
               </p>
               {message && (
-                <p className="text-xs font-mono text-gray-800 dark:text-gray-300">
+                <p className="text-xs tabular-nums text-gray-800 dark:text-gray-300">
                   Message: {message}
                 </p>
               )}

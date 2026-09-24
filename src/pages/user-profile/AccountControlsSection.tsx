@@ -179,7 +179,7 @@ export function AppVersionSection() {
     <div className="ur-content-medium px-4 lg:px-8 pt-5">
       <p className="text-[11px] text-gray-400 dark:text-white/30 text-center tabular-nums">
         {t('accountSettings.appName', { defaultValue: '유어딜' })} v{APP_VERSION}
-        {BUILD_HASH && <span className="font-mono"> ({BUILD_HASH})</span>}
+        {BUILD_HASH && <span className="tabular-nums"> ({BUILD_HASH})</span>}
       </p>
 
       {loading ? (
