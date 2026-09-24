@@ -211,7 +211,10 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   refund_window_days: intRange(0, 365),
   auto_confirm_days: intRange(0, 365),
   return_period_days: intRange(0, 365),
-  settlement_hold_days: intRange(0, 365),
+  payout_hold_days: intRange(0, 365),                  // payout-hold.ts — 정산 유보(역일). 0이면 유보 없음
+  settlement_hold_days: intRange(0, 365),             // ⚠️ 읽는 코드 0 — 죽은 키(2026-09-24 실측).
+                                                      //   화면에서 뺐다. 되살리지 말 것(위 payout_hold_days 가 진짜다).
+
   influencer_payout_day_of_month: intRange(1, 31),
 }
 

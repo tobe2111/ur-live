@@ -67,9 +67,13 @@ export const COMMISSION_DEFAULTS = {
    *  💰 2026-07-05 대표 확정 (자문 (b)안): 2.0 → 1.0 — 약관3 제4조·파트너 안내·회사소개서 전부 "기본 1%"
    *  라 문서-시스템 정합. 개별 상향은 어드민 에이전시 관리의 store_intro_commission_pct(성과 보상 레버). */
   /** 매장 영입(소개) — platform_settings.influencer_store_intro_pct 미설정 시 fallback.
-   *  💰 2026-08-27 대표 확정: 1.5 → 2.0 ("인플루언서가 영업해와서 가게가 입점하면 2%").
-   *  ⚠️ 라이브는 platform_settings 행이 우선이므로 이 상수만 바꿔선 안 바뀐다 — 어드민에서 값 갱신 필요. */
-  INFLUENCER_STORE_INTRO_PCT: 2.0,
+   *  🛑 2026-09-24 대표 확정 **중단**: *"영입 커미션 2%는 없는건데. 아예 없기로 했는데."* → 2.0 → **0**.
+   *     0 은 "적립 없음"이고, `getStoreIntroPct` 가 `>= 0` 으로 읽어 살아남는다(`> 0` 이면 이 값이
+   *     조용히 무시된다 — 2026-09-24 에 실제로 그 함정이 있었다).
+   *  🔁 되살리려면: `platform_settings.influencer_store_intro_pct` 에 원하는 %(예: '2')를 넣으면
+   *     행 값이 이 상수를 이긴다. 코드 재배포 불필요.
+   *  📜 이력: 2026-06-27 SSOT 통일(2.0) → 2026-07-05 1.0 → 2026-08-27 2.0 → 2026-09-24 중단(0). */
+  INFLUENCER_STORE_INTRO_PCT: 0,
   /** 그 2% 를 **언제까지** 받는가 — 개월 수(platform_settings.influencer_store_intro_months 미설정 시 fallback).
    *  ⏳ 2026-08-27 대표 확정: **1년**("2%의 유효기간 1년으로 하자"). 그 전까지는 만료 검사 자체가 없어
    *  무기한이었다 — 에이전시 1% 만 `referral_bonus_until` 을 검사했다(ledger.ts:243).
