@@ -24,10 +24,11 @@ export default [
   },
   {
     name: '[상세0914] 🎟️ 설명이 제목과 같아도 그대로 그린다 (상품명 중복 부활)',
-    file: GB,
-    // 🔄 2026-09-15: 블록이 '딜 안내' 밑에서 스펙표 밑으로 옮겨지며 margin 이 바뀌었다.
-    find: "{detail.description && detail.description.trim() !== (detail.name || '').trim() && <p style={{ margin: '0 18px 22px'",
-    replace: "{detail.description && <p style={{ margin: '0 18px 22px'",
+    // 🔄 2026-09-24: 판정의 자리가 상세 본문 → '가게 소개' 부품으로 옮겨졌다(대표 문서 ①).
+    //   불변식은 그대로라 주입을 지우지 않고 새 자리로 옮긴다.
+    file: 'src/pages/group-buy/StoreIntro.tsx',
+    find: "  const spec = raw && raw !== (productName || '').trim() ? raw : ''",
+    replace: '  const spec = raw',
     test: TEST,
     why: '라이브 상품(2888)은 description 이 name 과 같은 문자열이라 제목이 화면에 세 번 찍힌다.',
   },
