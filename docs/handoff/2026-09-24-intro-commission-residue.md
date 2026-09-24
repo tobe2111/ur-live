@@ -118,3 +118,25 @@ const RAW = import.meta.glob('../../../docs/decisions/*.md', { query: '?raw', ea
 `npm run build` 를 해야 나온다. ⇒ **시드·문서·상수를 건드린 PR 은 푸시 전에**
 `npm run build && node scripts/check-bundle-size.mjs` **까지** 돌릴 것.
 (빌드가 재생성하는 `src/worker/generated/route-chunk-map.ts` 는 커밋하지 말고 되돌린다.)
+
+## 🔴 GitHub Actions 가 푸시 하나를 통째로 놓쳤다 (2026-09-24)
+
+커밋 `506ea9e` 를 푸시했는데 **Verify run 이 만들어지지 않았다.** 24분을 기다려도 없었고,
+`list_workflow_runs` 로 확인하니 그 head_sha 에 대한 run 자체가 존재하지 않았다(직전 `2f68575`
+까지만 있었다). Cloudflare Pages 는 정상으로 돌았으므로 푸시는 도착했다.
+
+### 다시 돌리는 법 — 그리고 **세션 권한으로는 못 한다**
+
+`verify.yml` 은 `workflow_dispatch` 를 받지만 둘 다 **403** 이었다:
+- `mcp__github__actions_run_trigger` (run_workflow) → `Resource not accessible by integration`
+- `curl POST /actions/workflows/verify.yml/dispatches` (앱 설치 토큰) → 403
+
+`ready_for_review` 도 안 된다 — 이 워크플로의 `pull_request:` 는 기본 types
+(opened·synchronize·reopened)만 받고 `ready_for_review` 는 거기 없다.
+
+⇒ **남은 길은 내용 있는 커밋을 하나 더 미는 것**(`synchronize` 발생)뿐이다.
+⚠️ 빈 커밋은 금지다(babysit 규칙). 이 기록처럼 **실제로 남길 것이 있을 때** 같이 민다.
+정말 아무것도 없으면 대표에게 Actions 화면에서 Re-run 을 요청한다.
+
+🧭 **교훈: "CI 가 아직 안 끝났다" 와 "CI 가 시작조차 안 했다" 를 구분할 것.** check_runs 가
+비어 있으면 기다릴 게 아니라 `list_workflow_runs` 로 **그 커밋의 run 이 존재하는지** 봐야 한다.
