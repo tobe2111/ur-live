@@ -248,13 +248,13 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
             </div>
           </div>
           <div className="bg-gray-100 dark:bg-[#1D1F29] rounded-xl px-3 py-2.5 text-center">
-            <code className={`text-[15px] font-mono font-bold tracking-[0.08em] ${isUsed || isExpired ? 'text-gray-400 line-through' : 'text-gray-900 dark:text-white'}`}>{voucher.code}</code>
+            <code className={`text-[15px] tabular-nums font-bold tracking-[0.08em] ${isUsed || isExpired ? 'text-gray-400 line-through' : 'text-gray-900 dark:text-white'}`}>{voucher.code}</code>
           </div>
           {/* 🛡️ 캡쳐 도용 방지 — 실시간 시간 + 🟢 pulse (흑백 리디자인 화면3) */}
           {!isUsed && !isExpired && (
             <div className="flex items-center justify-center gap-1.5 mt-2.5">
               <span className="w-[7px] h-[7px] rounded-full bg-tone-ok animate-pulse" aria-hidden />
-              <span className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 font-mono">
+              <span className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 tabular-nums">
                 {t('voucher.realtime', { defaultValue: '실시간' })} · {new Date(now).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
               </span>
             </div>

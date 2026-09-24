@@ -49,7 +49,7 @@ export default function WalletHeader({ title, hideTitle = false, amount, unit, s
           </div>
         )}
         {amount !== null && (
-          <span className="shrink-0 text-[21px] font-extrabold font-mono tracking-tight text-gray-900 dark:text-white leading-none">
+          <span className="shrink-0 text-[21px] font-extrabold tabular-nums tracking-tight text-gray-900 dark:text-white leading-none">
             {formatNumber(amount)}<span className="font-sans text-[12px] font-bold text-gray-400 dark:text-gray-500 ml-0.5">{unit}</span>
           </span>
         )}
@@ -60,7 +60,7 @@ export default function WalletHeader({ title, hideTitle = false, amount, unit, s
           {stats.map((s) => (
             <span key={s.label} className="text-gray-500 dark:text-gray-400">
               {s.label}{' '}
-              <b className={`font-extrabold ${s.mono ? 'font-mono' : ''} ${
+              <b className={`font-extrabold ${s.mono ? 'tabular-nums' : ''} ${
                 /* 🎨 2026-09-15: 툴킷 기본 빨강·초록을 hex 로 직접 적고 있었다 — 체계 토큰
                    (`--tone-bad`/`--tone-ok`)과 값이 달라 같은 '위험'이 화면마다 다른 빨강이었다. */
                 s.tone === 'danger' ? 'text-tone-bad' : s.tone === 'success' ? 'text-tone-ok' : 'text-gray-900 dark:text-white'

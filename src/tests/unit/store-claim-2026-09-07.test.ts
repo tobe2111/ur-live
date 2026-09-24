@@ -20,6 +20,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
+import { stripComments } from '../helpers/source-text'
 
 const MODAL = 'src/components/seller/StoreRegisterModal.tsx'
 const PAGE = 'src/pages/StoreClaimPage.tsx'
@@ -27,18 +28,28 @@ const read = (p: string) => readFileSync(p, 'utf-8')
 
 describe('/store/new 매장 등록 — 2026-09-07 대표 신고 회귀 가드', () => {
   it('① 늘-흰 패널에 light-island 가 실제 className 으로 붙어 있다 (주석 아님)', () => {
-    const s = read(MODAL)
-    // 패널 = `bg-white` 를 가진 그 div. 같은 요소에 light-island 가 있어야 안쪽 `dark:` 가 꺼진다.
+    // 🩸 **주석을 먼저 걷는다.** 지키려는 것은 *"주석에만 남아도 통과"* 를 막는 것이었는데, 그건
+    //   리터럴 속성을 요구하는 것이 아니라 **주석을 제거하는 것**으로 지켜진다(아래 재조준 참조).
+    const s = stripComments(read(MODAL))
+    // 패널 = `bg-white` 를 가진 그 div 의 클래스 문자열. 같은 요소에 light-island 가 있어야 안쪽 `dark:` 가 꺼진다.
     // 🩸 2026-09-07 (병합): 이 파일에 늘-흰 패널이 **둘**이 됐다(등록 폼 + 409 안내 화면).
     //   원래 `.find()` 로 **첫 하나만** 봤는데, 그러면 나중에 추가된 패널은 보호 없이 지나간다 —
     //   실제로 409 화면이 light-island 없이 들어왔다. ⇒ 전부 검사한다.
-    const panels = s.split('\n').filter(l => l.includes('sm:max-w-lg') && l.includes('bg-white'))
-    expect(panels.length, `${MODAL} 의 흰 패널(div)을 못 찾았다 — 앵커가 낡았다`).toBeGreaterThan(0)
+    // 🩸 2026-09-23 재조준: 여기 원래 `className="…"` **리터럴 속성**을 요구했는데, 그날 안 B(PC 2단)가
+    //   패널 클래스를 `panelCls` 변수로 옮기자(overlay ↔ page 두 벌) 빨간불이 났다. **방어가 사라진 게
+    //   아니라 자리를 옮긴 것**이었다 — 리터럴 속성은 이 불변식의 *한 가지 구현*이지 불변식 자체가 아니다.
+    //   ⇒ 판정을 "리터럴 속성인가" → **"그 문자열이 실제로 className 에 닿는가"** 로 바꾼다.
+    //   (패널이 넷으로 늘었다: 등록 폼 × {overlay, page} · 409 안내 × {overlay, page}.)
+    const panels = s.split('\n').filter(l => l.includes('bg-white') && (l.includes('sm:max-w-lg') || l.includes('shadow-lift')))
+    expect(panels.length, `${MODAL} 의 흰 패널을 못 찾았다 — 앵커가 낡았다`).toBeGreaterThanOrEqual(4)
     for (const panel of panels) {
       expect(panel, '흰 패널에 light-island 가 없다 — 다크에서 흰 글자가 된다').toContain('light-island')
-      // 🩸 className 안에 있어야 한다. 주석/문자열에만 있으면 런타임엔 아무 일도 안 한다.
-      expect(panel).toMatch(/className="[^"]*\blight-island\b/)
+      // 클래스 문자열(따옴표 안)이어야 한다 — 맨 코드에 떠 있는 토큰은 런타임에 아무 일도 안 한다.
+      expect(panel).toMatch(/['"`][^'"`]*\blight-island\b/)
     }
+    // 🔌 그리고 그 문자열이 **실제로 className 에 배선**돼 있어야 한다. 변수만 두고 안 쓰면 조용히 무효다.
+    expect(s, 'panelCls 가 className 에 안 닿는다').toMatch(/className=\{panelCls\}/)
+    expect(s, '409 안내 패널이 className 에 안 닿는다').toMatch(/className=\{asPage[\s\S]{0,200}light-island/)
   })
 
   it('② 배경 클릭 닫기가 dismissOnBackdrop 로 통제된다', () => {
@@ -58,7 +69,11 @@ describe('/store/new 매장 등록 — 2026-09-07 대표 신고 회귀 가드', 
   })
 
   it('③ /store/new 는 배경 클릭으로 안 닫힌다 (모달이 곧 페이지)', () => {
-    const s = read(PAGE)
+    // 🩸 2026-09-23: 여기 원래 `read(PAGE)`(주석 포함)였다. 같은 날 안 B 작업이 이 페이지 주석에
+    //   *"`dismissOnBackdrop={false}` 를 남겨 둔다"* 라고 **설명을 적자**, prop 을 통째로 지워도
+    //   그 주석 때문에 초록이 떴다 — 주입 러너가 잡았다. 설명을 잘 적을수록 가드가 헐거워지는
+    //   구조였던 것이다. ⇒ 주석을 걷고 본다(이 레포가 반복해 온 "주석에만 남아도 통과" 클래스).
+    const s = stripComments(read(PAGE))
     expect(s, '페이지가 dismissOnBackdrop={false} 를 안 넘긴다').toContain('dismissOnBackdrop={false}')
   })
 
