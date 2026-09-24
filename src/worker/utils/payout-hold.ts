@@ -47,6 +47,14 @@ export const DEFAULT_PAYOUT_HOLD_DAYS = 14
 export interface PayoutHold {
   /** credit 집계의 WHERE 에 이어 붙일 SQL 조각. 유보 0이면 빈 문자열. */
   sql: string
+  /**
+   * `sql` 의 **여집합** — 아직 안 익은 credit 만 고른다(사장님 화면의 '유보 중' 표시용).
+   *
+   * 🔴 두 조각을 **같은 함수가 같은 cutoff 로** 만드는 것이 요점이다. 화면 쪽에서 부등호를 손으로
+   *   뒤집으면, 유보일을 바꾼 날 한쪽만 따라가서 **사장님이 보는 '유보 중'과 실제로 집계되는 금액이
+   *   갈린다** — 숫자가 틀린 게 아니라 설명이 틀리는 클래스라 에러가 안 난다.
+   */
+  heldSql: string
   /** 실제 적용된 유보일(역일). */
   days: number
   /** 유보가 걸려 있는가 — 로그·진단용. */
@@ -69,8 +77,19 @@ export function buildPayoutHoldSql(days: number = DEFAULT_PAYOUT_HOLD_DAYS): Pay
   const d = Number.isFinite(raw)
     ? Math.max(0, Math.min(365, Math.floor(raw)))
     : DEFAULT_PAYOUT_HOLD_DAYS
-  if (d === 0) return { sql: '', days: 0, enabled: false }
-  return { sql: `AND created_at <= datetime('now', '-${d} days')`, days: d, enabled: true }
+  if (d === 0) return { sql: '', heldSql: 'AND 1 = 0', days: 0, enabled: false }
+  const cutoff = `datetime('now', '-${d} days')`
+  // ⚠️ `created_at IS NULL` 을 **held 쪽에** 넣는 이유: SQL 3값 논리에서 NULL 은 `<=` 도 `>` 도
+  //   거짓이라, 그냥 부등호만 뒤집으면 그런 행이 **양쪽 어디에도 안 잡힌다**. cron 은 그 행을
+  //   집계에서 빼므로(= 유보) 화면도 '유보 중'이라고 말해야 둘이 같은 소리를 한다.
+  //   (INSERT 가 created_at 을 안 넘겨 DEFAULT CURRENT_TIMESTAMP 가 늘 박히므로 실제로는 안 생기는
+  //    경우지만, 둘이 갈리는 길을 애초에 안 만든다.)
+  return {
+    sql: `AND created_at <= ${cutoff}`,
+    heldSql: `AND (created_at > ${cutoff} OR created_at IS NULL)`,
+    days: d,
+    enabled: true,
+  }
 }
 
 /**

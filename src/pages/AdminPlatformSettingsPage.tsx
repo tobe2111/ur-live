@@ -33,7 +33,12 @@ const SETTINGS_FIELDS = [
   { key: 'default_shipping_fee', label: '기본 배송비 (원)', default: '3000' },
   { key: 'auto_confirm_days', label: '자동 구매확정 (일)', default: '14' },
   { key: 'return_period_days', label: '반품 가능 기간 (일)', default: '7' },
-  { key: 'settlement_hold_days', label: '정산 대기 기간 (일)', default: '7' },
+  // 🕙 2026-09-24: 여기 오래 `settlement_hold_days`(기본 7)가 있었는데 **아무도 안 읽는 키였다**
+  //   (전수 grep: 검증표 한 줄 외에 참조 0). 그런데 라벨이 '정산 대기 기간'이라, 유보를 줄이거나
+  //   끄려고 그 값을 고치면 **아무 일도 안 일어난다** — 돈이 안 나가는데 화면은 고쳤다고 말한다.
+  //   진짜 키는 `payout_hold_days`(payout-hold.ts)이고 그게 #1521 이 적어 둔 **롤백 수단**인데
+  //   이 화면에 없어서 대표가 닿을 수 없었다("머니 경로의 롤백 시간이 곧 손실 크기다" — 그 PR 본문).
+  { key: 'payout_hold_days', label: '정산 유보 기간 (역일 · 기본 14 = 영업일 10일, 0이면 유보 없음)', default: '14' },
   { key: 'invite_reward_amount', label: '초대 보상 딜', default: '1000' },
   { key: 'review_reward_text', label: '텍스트 리뷰 보상 (딜)', default: '100' },
   { key: 'review_reward_image', label: '이미지 리뷰 보상 (딜)', default: '300' },
