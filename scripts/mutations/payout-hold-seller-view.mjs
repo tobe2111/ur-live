@@ -59,4 +59,20 @@ export default [
     test: TEST,
     why: '카드에 "다음 집계 대상" 만 남아, 2주 동안 안 움직일 돈을 다음 주에 들어온다고 말한다.',
   },
+  {
+    name: '🕙 어드민 설정 화면이 아무도 안 읽는 죽은 키로 되돌아간다',
+    file: 'src/pages/AdminPlatformSettingsPage.tsx',
+    find: "{ key: 'payout_hold_days', label: '정산 유보 기간",
+    replace: "{ key: 'settlement_hold_days', label: '정산 유보 기간",
+    test: TEST,
+    why: 'settlement_hold_days 는 읽는 코드가 0이다(2026-09-24 전수 실측). 유보를 줄이거나 끄려고 그 값을 고치면 아무 일도 안 일어나는데 화면은 저장됐다고 말한다 — 이 기능의 롤백 수단이 통째로 죽는다.',
+  },
+  {
+    name: '🕙 유보일 저장에 범위 검증이 빠져 오타가 조용히 기본값이 된다',
+    file: 'src/worker/utils/platform-settings-validation.ts',
+    find: '  payout_hold_days: intRange(0, 365),',
+    replace: '',
+    test: TEST,
+    why: '미등록 키는 pass-through 라 "abc" 가 저장된다. resolvePayoutHold 는 fail-closed 로 14 를 쓰므로, 대표는 0 을 넣었다고 믿는데 돈은 계속 2주 묶인다.',
+  },
 ]

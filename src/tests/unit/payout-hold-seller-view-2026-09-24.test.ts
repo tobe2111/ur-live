@@ -153,3 +153,28 @@ describe('배선 — 사장님 화면', () => {
     expect(src).toMatch(/held > 0/)
   })
 })
+
+describe('롤백 손잡이 — 어드민이 유보를 실제로 조정할 수 있는가', () => {
+  const page = readFileSync('src/pages/AdminPlatformSettingsPage.tsx', 'utf-8')
+  const validators = readFileSync('src/worker/utils/platform-settings-validation.ts', 'utf-8')
+  const holdSrc = readFileSync('src/worker/utils/payout-hold.ts', 'utf-8')
+
+  it('설정 화면이 코드가 실제로 읽는 키를 쓴다', () => {
+    // #1521 본문: "머니 경로의 롤백 시간이 곧 손실 크기다" — 그 롤백 수단이 payout_hold_days 인데
+    // 화면에 없어서 대표가 닿을 수 없었다(2026-09-24 실측).
+    const read = holdSrc.match(/key = '([a-z_]*hold_days)'/)
+    expect(read?.[1]).toBe('payout_hold_days')
+    expect(page).toContain(`key: '${read![1]}'`)
+  })
+
+  it('🔴 아무도 안 읽는 죽은 손잡이를 화면에 두지 않는다', () => {
+    // 라벨이 '정산 대기 기간'이라 유보를 줄이려고 그 값을 고치면 아무 일도 안 일어난다.
+    // 돈은 그대로 묶여 있는데 화면은 고쳤다고 말한다 — 머니 경로에서 가장 나쁜 종류의 침묵.
+    expect(page).not.toMatch(/key: 'settlement_hold_days'/)
+  })
+
+  it('저장 시점에 범위를 검증한다 — 오타가 조용히 기본값이 되지 않게', () => {
+    // 미등록 키는 pass-through 라, 검증이 없으면 'abc' 가 저장되고 fail-closed 가 조용히 14로 되돌린다.
+    expect(validators).toMatch(/payout_hold_days:\s*intRange\(0, 365\)/)
+  })
+})
