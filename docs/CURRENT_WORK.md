@@ -5494,8 +5494,10 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 355건 · 최신순 · 이 목록은 자동 생성된다._
+_총 356건 · 최신순 · 이 목록은 자동 생성된다._
 
+**2026-09-24**
+- [영입 커미션 잔재 정리 + 정산 레일 (2026-09-24)](handoff/2026-09-24-intro-commission-residue.md)
 **2026-09-23**
 - [2026-09-23 — 이용권 QR 시트 E4 판정 + 소비자 화면 글꼴 정리](handoff/2026-09-23-qr-sheet-e4-and-consumer-type.md)
 **2026-09-21**
