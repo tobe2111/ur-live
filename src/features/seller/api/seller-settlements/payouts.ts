@@ -33,6 +33,23 @@ export async function getSellerPayouts(c: Context<{ Bindings: Bindings }>): Prom
     const { getLedgerReceivable } = await import('../../../../worker/utils/ledger');
     const receivable = await getLedgerReceivable(c.env.DB, `seller:${sellerId}`).catch(() => 0);
 
+    // 🕙 2026-09-24 (유보 10일의 짝): 이 화면은 '미지급' 옆에 **"다음 집계 대상"** 이라고 적고
+    //   맨 위 카드는 **"매주 자동으로 처리됩니다"** 라고 말한다. 유보가 생긴 뒤로 그건 오늘 적립된
+    //   돈에 대해 **거짓**이다 — 다음 집계가 아니라 2주 뒤 집계 대상이다. 숫자가 틀린 게 아니라
+    //   **화면이 못 지킬 약속을 하는 것**이고, 첫 실매장이 뭔가 팔면 바로 겪는다.
+    //   ⚠️ 부등호를 여기서 뒤집지 않는다 — `payout-hold.ts` 가 cron 과 **같은 cutoff** 로 만든
+    //     여집합(`heldSql`)을 쓴다(유보일을 바꾼 날 한쪽만 따라가는 것을 구조적으로 막는다).
+    const { resolvePayoutHold } = await import('../../../../worker/utils/payout-hold');
+    const hold = await resolvePayoutHold(c.env.DB);
+    const heldRow = hold.enabled
+      ? await c.env.DB.prepare(
+          `SELECT COALESCE(SUM(amount - COALESCE(fee_amount, 0)), 0) AS held
+             FROM ledger_entries
+            WHERE credit_account = ?
+              ${hold.heldSql}`
+        ).bind(`seller:${sellerId}`).first<{ held: number }>().catch(() => null)
+      : null;
+
     // 👥 2026-09-07 (대표 *"귀속되는 시점부터 계산"*): 운영자는 합류(`granted_at`) 이후만 본다.
     //   소유자는 종전 그대로 전 기간. 사유·한계는 settlement-scope.ts 헤더에 있다.
     const { resolveSettlementScope } = await import('../../../../worker/utils/settlement-scope');
@@ -58,11 +75,16 @@ export async function getSellerPayouts(c: Context<{ Bindings: Bindings }>): Prom
     const sentTotal = sum(['sent']);
     // 미지급 = 순 receivable − (지급예정 + 지급완료). 세 버킷이 겹치지 않게 분할.
     const payable = Math.max(0, Number(receivable) - scheduledTotal - sentTotal);
+    // 미지급 중 **아직 안 익은 몫**. payable 을 넘지 않게 자른다 — 유보가 생기기 전에 지급된 건이
+    // 있으면 원장 기준 held 가 미지급보다 클 수 있고, 그러면 "그중 N" 이 말이 안 된다.
+    const held = Math.min(payable, Math.max(0, Math.round(Number(heldRow?.held) || 0)));
 
     return c.json({
       success: true,
       data: {
         payable,                          // 아직 payout 에 안 잡힌 순수 외상
+        held,                             // 그중 유보 기간이 안 지나 이번 집계에 안 잡히는 몫
+        hold_days: hold.days,             // 유보 역일(0 이면 유보 없음) — 화면 문구가 이 값을 쓴다
         scheduled_total: scheduledTotal,  // 집계됐고 송금 대기중
         sent_total: sentTotal,            // 송금 완료
         payouts: list,
