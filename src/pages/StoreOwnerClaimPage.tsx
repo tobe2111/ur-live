@@ -38,6 +38,28 @@ const STATUS_LABEL: Record<string, string> = {
   pending: '심사 중', approved: '승인됨', rejected: '거절됨', cancelled: '종료됨',
 }
 
+/**
+ * 🖥️ PC 왼쪽 칸 — **이 화면이 무엇을 하는 곳인가.** 형제 `/store/new`(안 B, 2026-09-23)와 같은 모양이다.
+ *
+ * ⚠️ 폰에서는 안 그린다(`hidden lg:*`). 09-23 에 `/store/new` 를 고치며 배운 것 —
+ *   폰은 세로가 귀해서 설명을 다 펴면 **정작 입력 칸이 첫 화면에서 사라진다.**
+ *   폰의 안내는 이미 헤더 제목 + 그 아래 한 문단이 하고 있으므로 거기에 더 얹지 않는다.
+ *
+ * 🔒 문구는 전부 이 화면이 이미 말하던 사실이다(아래 본문·주의 문구와 같은 말) — 새로 약속하지 않는다.
+ *   특히 **"바로 됩니다" 라고 쓰지 않는다**: 이 파일 머리말이 적어 둔 그대로, 번호 일치는 증명이 아니고
+ *   등록증은 사람이 본다. 화면이 그걸 숨기면 기다리는 사장님이 화를 낸다.
+ */
+const STEPS = [
+  { n: '1', title: '가게를 찾습니다', desc: '받은 코드 또는 사업자등록번호로' },
+  { n: '2', title: '사업자등록증을 확인합니다', desc: '자동이 아니라 사람이 직접 봅니다' },
+  { n: '3', title: '소유자로 등록해 드립니다', desc: '그때부터 그 매장의 주인이 됩니다' },
+] as const
+const FACTS = [
+  { value: '등록증 1장', label: '준비물' },
+  { value: '사람이 확인', label: '심사 방식' },
+  { value: '이력 그대로', label: '넘겨받는 것' },
+] as const
+
 export default function StoreOwnerClaimPage() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
@@ -139,7 +161,8 @@ export default function StoreOwnerClaimPage() {
     <div className="force-light-theme min-h-[100dvh] bg-gray-50">
       <SEO title="내 가게 찾기 - 유어딜" description="이미 등록된 내 가게의 소유권을 신청하세요" noindex />
 
-      <header className="sticky top-0 z-10 bg-white border-b border-gray-100">
+      {/* 📱 폰 전용 헤더 — PC 는 아래 왼쪽 칸의 h1 이 제목을 맡으므로 같은 말이 두 층에 겹치지 않는다. */}
+      <header className="lg:hidden sticky top-0 z-10 bg-white border-b border-gray-100">
         <div className="max-w-lg mx-auto px-4 h-14 flex items-center gap-2">
           <button onClick={() => navigate(-1)} className="p-1 -ml-1 text-gray-600" aria-label="뒤로">
             <ChevronLeft className="w-5 h-5" />
@@ -148,12 +171,52 @@ export default function StoreOwnerClaimPage() {
         </div>
       </header>
 
-      <main className="max-w-lg mx-auto px-4 py-5 space-y-5">
-        <p className="text-[13px] text-gray-600 leading-relaxed">
-          이미 유어딜에 등록된 가게의 <b className="text-gray-900">진짜 사장님</b>이시면, 사업자등록증을 올려
-          소유권을 신청해주세요. 확인되면 그 매장의 주인으로 등록해 드립니다 —
-          <b className="text-gray-900"> 지금까지 쌓인 상품·주문·리뷰·정산 이력은 그대로 남습니다.</b>
-        </p>
+      {/* 📏 높이는 페이지가 정하지 않는다(`min-h` 만) — `main` 이 이미 하단 네비 자리를
+          `padding-bottom:56px` 로 예약한다. 09-23 에 `/store/new` 를 `h-[100dvh]` 로 잡았다가
+          카드 아래가 네비 밑으로 잘렸다(CLAUDE.md 모바일 뷰포트 룰). */}
+      <main className="mx-auto w-full max-w-[1180px] px-4 pt-5 pb-6 lg:px-10 lg:pt-8 lg:pb-16">
+        {/* PC 전용 뒤로 — 폰은 위 sticky 헤더가 같은 일을 한다. */}
+        <button onClick={() => navigate(-1)} aria-label="뒤로"
+          className="hidden lg:flex -ml-1 mb-2 w-9 h-9 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100">
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-16">
+          {/* 왼쪽(PC) · 위(폰) — 무엇을 하는 곳인가 */}
+          <div className="lg:pt-4">
+            <h1 className="hidden lg:block text-[40px] font-black tracking-[-0.03em] leading-[1.22] text-gray-900">
+              내 가게<br /> 찾기
+            </h1>
+            <p className="text-[13px] lg:text-[16px] lg:mt-4 text-gray-600 leading-relaxed lg:max-w-[460px]">
+              이미 유어딜에 등록된 가게의 <b className="text-gray-900">진짜 사장님</b>이시면, 사업자등록증을 올려
+              소유권을 신청해주세요. 확인되면 그 매장의 주인으로 등록해 드립니다 —
+              <b className="text-gray-900"> 지금까지 쌓인 상품·주문·리뷰·정산 이력은 그대로 남습니다.</b>
+            </p>
+
+            <ol className="hidden lg:flex mt-8 flex-col gap-3.5 lg:max-w-[460px]">
+              {STEPS.map(({ n, title, desc }) => (
+                <li key={n} className="flex gap-3.5 items-start">
+                  <span className="mt-0.5 shrink-0 w-6 h-6 rounded-full bg-brand text-white text-[12px] font-bold flex items-center justify-center">{n}</span>
+                  <div className="min-w-0">
+                    <p className="text-[15px] font-bold text-gray-900">{title}</p>
+                    <p className="mt-0.5 text-[13.5px] leading-relaxed text-gray-500">{desc}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+
+            <div className="hidden lg:flex mt-9 pt-5 border-t border-rule gap-9 lg:max-w-[460px]">
+              {FACTS.map(({ value, label }) => (
+                <div key={label}>
+                  <div className="text-[19px] font-black text-gray-900">{value}</div>
+                  <div className="mt-1 text-[12.5px] text-gray-500">{label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 오른쪽(PC) · 아래(폰) — 찾기·신청·내역 그대로 */}
+          <div className="mt-5 lg:mt-0 lg:self-start space-y-5">
 
         {/* ── ① 찾기 ─────────────────────────────────────── */}
         {!picked && (
@@ -281,6 +344,8 @@ export default function StoreOwnerClaimPage() {
             </ul>
           </section>
         )}
+          </div>
+        </div>
       </main>
     </div>
   )
