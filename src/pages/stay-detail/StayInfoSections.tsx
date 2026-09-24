@@ -18,6 +18,7 @@
  */
 import React, { lazy, Suspense } from 'react'
 import DeferUntilVisible from '../group-buy/DeferUntilVisible'
+import { cancellationLabel } from './StayBookingPanel'
 
 const ProductReviews = lazy(() => import('../product-detail/ProductReviews'))
 
@@ -113,6 +114,41 @@ export function StaySoldOutCard({ onPickDates }: { onPickDates: () => void }) {
       <button type="button" onClick={onPickDates} className="mt-4 w-full py-3 bg-brand text-white text-sm font-bold rounded-xl hover:bg-brand-dark">
         다른 날짜 고르기
       </button>
+    </div>
+  )
+}
+
+/**
+ * 🏨 이용 안내 — 취소 정책 · 하우스 룰 · 체크인 안내.
+ *
+ * 2026-09-24 `StayDetailPage` 에서 **옮기기만 했다**(마크업 불변). 같은 커밋에서 '이곳과 비슷한
+ * 스테이'를 붙이는데 그 파일이 파일크기 래칫 **858/858** 로 여유가 0이었다 — `UsageGuide`·
+ * `SellerCard` 와 같은 이유·같은 방식이다. 값이 없는 행은 종전처럼 스스로 빠진다.
+ */
+export function StayPolicyInfo({
+  policy, customText, houseRules, checkInInstructions,
+}: { policy?: string | null; customText?: string | null; houseRules?: string | null; checkInInstructions?: string | null }) {
+  return (
+    <div className="mb-6">
+      <SectionTitle>이용 안내</SectionTitle>
+      <div className="mt-4">
+        <InfoBlock label="취소 정책">
+          {cancellationLabel(policy)}
+          {customText && (
+            <span className="block mt-1 text-[13px] text-gray-500 dark:text-gray-400">{customText}</span>
+          )}
+        </InfoBlock>
+        {houseRules && (
+          <InfoBlock label="하우스 룰">
+            <span className="whitespace-pre-line">{houseRules}</span>
+          </InfoBlock>
+        )}
+        {checkInInstructions && (
+          <InfoBlock label="체크인 안내">
+            <span className="whitespace-pre-line">{checkInInstructions}</span>
+          </InfoBlock>
+        )}
+      </div>
     </div>
   )
 }

@@ -6,6 +6,7 @@
  *   + PC(lg+) 풀너비(pc-fullbleed) · 카드 그리드 확장(2→4열).
  */
 import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
+import StayCurations from './stays/StayCurations'
 import { stayRegionLabel } from '@/shared/stay-address'
 import { DEAL_GRID_GAP } from '@/shared/deal-card-grid'
 import { CalendarDays } from 'lucide-react'
@@ -54,6 +55,11 @@ export default function StaysSearchPage() {
   //   자동검색은 4개 필터(체크인/아웃/인원/정렬), 나머지는 '적용' 버튼에서 commit (기존 동작 유지).
   const [queryQs, setQueryQs] = useState(() => buildQs(filters))
   const { data: items = [], isLoading: loading, isError, refetch } = useStaysSearch(queryQs)
+
+  /* 🏨 2026-09-24 (대표 문서 ④): 큐레이션 줄은 **아무 조건도 안 건 기본 진입**에서만 보인다.
+     지역·타입·가격·판매모드를 건 사람은 "고른 결과"를 보러 온 것이라 그 위에 다른 제안을
+     끼워 넣으면 방해가 된다(날짜·인원·정렬은 기본값이 늘 있으므로 판정에서 뺀다). */
+  const curated = !filters.region && !filters.property_type && !filters.sale_mode && !filters.min_price && !filters.max_price
 
   useEffect(() => {
     setQueryQs(buildQs(filters))
@@ -172,6 +178,8 @@ export default function StaysSearchPage() {
                · 편의시설 pill 3개 → **뺐다**. 카드에서 고르는 기준이 아니고(세 개가 다 '무료 주차·
                  와이파이·조식' 이라 변별력이 없다) 상세에 전부 있다.
              `/1박~` 표기는 카드가 `stay_voucher` 카테고리로 이미 처리한다(단위가 빠지면 뜻이 달라진다). */
+          <>
+          {curated && <StayCurations items={items} checkIn={filters.check_in} checkOut={filters.check_out} guests={filters.guests} />}
           <div className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 ${DEAL_GRID_GAP}`}>
             {items.map((s) => {
               const typeLabel = s.property_type ? (PROPERTY_TYPE_LABELS[s.property_type] || s.property_type) : ''
@@ -205,6 +213,7 @@ export default function StaysSearchPage() {
               )
             })}
           </div>
+          </>
         )}
       </div>
 
