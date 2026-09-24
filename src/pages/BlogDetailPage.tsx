@@ -208,7 +208,11 @@ export default function BlogDetailPage() {
           )}
 
           {/* 본문 — 공유 안전 렌더러(BlogMarkdown): 링크·이미지·인용구 지원, dangerouslySetInnerHTML 미사용 */}
-          <BlogMarkdown content={post.content} />
+          {/* 📏 2026-09-24: 본문 폭을 묶는다 — 3열 레이아웃에서 가운데 칸이 760px 라 한 줄이 너무 길었다.
+              글자 크기는 `BlogMarkdown` 에서 함께 키웠다(둘은 짝). */}
+          <div className="max-w-[46rem]">
+            <BlogMarkdown content={post.content} />
+          </div>
 
           {/* 모바일 추천글 */}
           {related.length > 0 && (

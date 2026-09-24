@@ -290,10 +290,10 @@
 | 도메인 | 소개서 파일 | 페이지 | API 엔드포인트 |
 |---|---|---|---|
 | 도매몰 (유통스타트) | `wholesale-mall-brief.md` | 43 | 4 |
-| 오프라인 공구 / 동네딜 | `offline-groupbuy-brief.md` | 29 | 95 |
+| 오프라인 공구 / 동네딜 | `offline-groupbuy-brief.md` | 29 | 96 |
 | 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 72 | 272 |
 | 유어샵 / 담기·소개 | `linkshop-brief.md` | 23 | 86 |
-| **합계** | — | **167** | **457** |
+| **합계** | — | **167** | **458** |
 
 ### 전체 커버리지 검증 (자동 — 빠진 기능 보증)
 
@@ -302,12 +302,12 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 372 | 1133 |
-| 도메인 버킷 (5개 소개서) | 167 | 457 |
+| 전체 | 373 | 1134 |
+| 도메인 버킷 (5개 소개서) | 167 | 458 |
 | 공통/인프라 (의도적 제외) | 166 | 485 |
-| **미커버 (점검 필요)** | **39** | **191** |
+| **미커버 (점검 필요)** | **40** | **191** |
 
-⚠️ **미커버 230건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 231건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -347,6 +347,7 @@
 - `/region`
 - `/region/:sido`
 - `/region/:sido/:sigungu`
+- `/soon`
 - `/urshorts`
 - `/videos`
 
@@ -714,7 +715,7 @@
 - `/stays/:id`
 - `/stays/checkout-return`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (95개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (96개)
 
 
 **/api/admin/stays**
@@ -799,6 +800,9 @@
 
 **/api/group-buy/my**
 - `GET /api/group-buy/my`
+
+**/api/group-buy/prelaunch**
+- `GET /api/group-buy/prelaunch`
 
 **/api/group-buy/products**
 - `GET /api/group-buy/products`
@@ -1729,7 +1733,7 @@
 
 
 
-> 마지막 생성: 2026-09-21T07:50:30.781Z
+> 마지막 생성: 2026-09-24T16:42:22.676Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->
