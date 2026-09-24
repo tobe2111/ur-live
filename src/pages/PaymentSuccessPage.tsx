@@ -372,7 +372,7 @@ export default function PaymentSuccessPage() {
                   {/* 주문번호 */}
                   <div className="flex justify-between items-start gap-3">
                     <span className="text-xs sm:text-sm text-[#6e6e73] dark:text-gray-400 font-medium shrink-0">{t('paymentSuccess.orderNumber')}</span>
-                    <span className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white font-mono break-all text-right max-w-[65%]">
+                    <span className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-white tabular-nums break-all text-right max-w-[65%]">
                       {orderInfo.orderId || orderId}
                     </span>
                   </div>
@@ -392,7 +392,7 @@ export default function PaymentSuccessPage() {
                   {orderInfo.payment?.card?.number && (
                     <div className="flex justify-between items-center gap-3">
                       <span className="text-xs sm:text-sm text-[#6e6e73] dark:text-gray-400 font-medium shrink-0">카드 번호</span>
-                      <span className="text-xs sm:text-sm font-mono text-[#1d1d1f] dark:text-white">
+                      <span className="text-xs sm:text-sm tabular-nums text-[#1d1d1f] dark:text-white">
                         {orderInfo.payment.card.number}
                         {orderInfo.payment.card.installmentPlanMonths && orderInfo.payment.card.installmentPlanMonths > 0
                           ? ` · ${orderInfo.payment.card.installmentPlanMonths}개월 할부`

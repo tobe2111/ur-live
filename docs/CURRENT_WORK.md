@@ -5494,8 +5494,10 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 354건 · 최신순 · 이 목록은 자동 생성된다._
+_총 355건 · 최신순 · 이 목록은 자동 생성된다._
 
+**2026-09-23**
+- [2026-09-23 — 이용권 QR 시트 E4 판정 + 소비자 화면 글꼴 정리](handoff/2026-09-23-qr-sheet-e4-and-consumer-type.md)
 **2026-09-21**
 - [🎬 유어쇼츠 전체 보기 — 도시·종류로 고르는 목록 (`/urshorts`)](handoff/2026-09-21-urshorts-browse.md)
 - [2026-09-21 — 매장 확인 통화 기록 + 신규 매장 노출 유예 (사기 방어 ①②)](handoff/2026-09-21-store-verify.md)

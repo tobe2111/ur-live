@@ -130,7 +130,7 @@ export default function RefundPolicyPage() {
                     16일 이후 30일 이내 사용자는 환불이 불가능합니다.
                   </p>
                   <div className="bg-white dark:bg-[#11141C] rounded p-3 mt-2">
-                    <p className="text-[12px] font-mono text-gray-600 dark:text-gray-300">
+                    <p className="text-[12px] tabular-nums text-gray-600 dark:text-gray-300">
                       <span className="font-semibold text-gray-900 dark:text-white">계산 공식:</span> [(전체금액) x 0.8 / 30] x 남은 일수
                     </p>
                   </div>

@@ -131,7 +131,7 @@ export default function MyCouponsPage() {
                         </p>
                       </div>
                       <div className="mt-2 inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#1D1F29]">
-                        <span className="text-[10px] font-mono font-semibold text-gray-700 dark:text-gray-200">{c.code}</span>
+                        <span className="text-[10px] tabular-nums font-semibold text-gray-700 dark:text-gray-200">{c.code}</span>
                       </div>
                     </div>
                   </div>
