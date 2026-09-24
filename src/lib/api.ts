@@ -9,6 +9,10 @@
  */
 
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { type DashboardRole, isDashboardRefreshUrl, dashboardTokenKeys } from './dashboard-token';
+// 🔑 2026-09-23: 토큰 갱신은 `dashboard-refresh.ts` 한 곳 — 401 인터셉터·요청 인터셉터·
+//   `useTokenAutoRefresh` 가 **같은 inflight 락**을 공유해야 회전 토큰 경합이 안 난다.
+import { refreshDashboardToken, ensureFreshDashboardToken } from './dashboard-refresh';
 // 🛡️ 2026-05-17: Sentry 동적 import — 에러 시점에만 fetch.
 //   이전: `import * as Sentry from '@sentry/react'` 가 api.ts 를 통해 전 페이지 초기 번들에 포함
 //   (sentry 청크 252 KB preload). 일반 사용자 첫 페인트 -300ms 추가됨.
@@ -46,40 +50,18 @@ const URL_401_DEBOUNCE_MS = 5 * 1000;
 // 5xx 디바운스 캐시 — 같은 URL+status 30s 내 중복 토스트 차단
 const _recent5xx: Map<string, number> = new Map();
 
-// 🛡️ 2026-04-29: 셀러/어드민/에이전시 refresh inflight 락.
-//   같은 페이지에서 여러 API 가 동시 401 → 각각 인터셉터 진입 → 동시 refresh 호출 →
-//   refresh token rotation 환경에서 첫 번째만 성공, 두 번째부터 stale token 으로 401 → 강제 로그아웃.
-//   inflight Promise 캐시로 동시 요청은 같은 결과 공유.
-type RefreshResult = { accessToken: string; refreshToken?: string } | null;
-const _inflightRefresh: Record<string, Promise<RefreshResult> | undefined> = {};
-
-async function refreshDashboardToken(
-  refreshUrl: string,
-  refreshToken: string,
-  cacheKey: 'seller' | 'admin' | 'agency',
-): Promise<RefreshResult> {
-  if (_inflightRefresh[cacheKey]) {
-    return _inflightRefresh[cacheKey]!;
-  }
-  const p = (async () => {
-    try {
-      const res = await axios.post(refreshUrl, { refreshToken });
-      if (res.data?.success) {
-        return {
-          accessToken: res.data.data.accessToken as string,
-          refreshToken: res.data.data.refreshToken as string | undefined,
-        };
-      }
-      return null;
-    } catch {
-      return null;
-    } finally {
-      // 다음 401 사이클이 새 refresh 시도할 수 있도록 즉시 해제
-      delete _inflightRefresh[cacheKey];
+/**
+ * 여러 역할 토큰이 섞여 있을 수 있는 엔드포인트(알림·가이드·영입)에서 **붙일 역할**을 고른다.
+ * 저장된 값이 만료됐는지는 보지 않는다 — 그건 `ensureFreshDashboardToken` 이 판단한다.
+ * 여기서 만료를 걸러 내면 "갱신하면 되는 세션"을 없는 것으로 취급해 비로그인 경로로 떨어진다.
+ */
+function pickDashboardRole(order: DashboardRole[]): DashboardRole | null {
+  try {
+    for (const role of order) {
+      if (localStorage.getItem(dashboardTokenKeys(role).token)) return role;
     }
-  })();
-  _inflightRefresh[cacheKey] = p;
-  return p;
+  } catch { /* storage 접근 불가 */ }
+  return null;
 }
 
 /**
@@ -223,6 +205,9 @@ api.interceptors.request.use(
     // 공개 API: 토큰 불필요
     if (isPublicAPI(url)) return config;
 
+    // 🔑 refresh 엔드포인트 자신에는 사전 갱신을 걸지 않는다(자기를 기다리는 모양이 된다).
+    if (isDashboardRefreshUrl(url)) return config;
+
     // 수동 Authorization 헤더가 있으면 그대로 사용
     if (config.headers['Authorization'] || config.headers['authorization']) return config;
 
@@ -230,7 +215,7 @@ api.interceptors.request.use(
     //   🛡️ 2026-06-04: /api/supply/* (셀러 공급상품 소싱) 누락 → 토큰 미부착 → 401 →
     //   응답 인터셉터가 /seller/login 으로 강제 redirect 하던 버그. seller_token 부착.
     if (url.startsWith('/api/seller/') || url.startsWith('/api/youtube/') || url.startsWith('/api/supply/')) {
-      const token = localStorage.getItem('seller_token');
+      const token = await ensureFreshDashboardToken('seller');
       if (token) {
         config.headers['Authorization'] = `Bearer ${token}`;
         return config;
@@ -240,7 +225,7 @@ api.interceptors.request.use(
 
     // ── Agency API (/api/agency/*) ─────────────────────────────────────────
     if (url.startsWith('/api/agency/')) {
-      const token = localStorage.getItem('agency_token');
+      const token = await ensureFreshDashboardToken('agency');
       if (token) {
         config.headers['Authorization'] = `Bearer ${token}`;
         return config;
@@ -252,12 +237,13 @@ api.interceptors.request.use(
     //   토큰이 안 붙어 이메일 로그인 에이전시가 401 → '매장 영입 현황' 목록 영구 빈값 + 제안 제출 실패였음.
     //   영업자 토큰(agency > admin > seller=influencer) 우선순위로 부착. requireAuth 가 셋 다 수용.
     if (url.startsWith('/api/prospects')) {
-      const agencyToken = localStorage.getItem('agency_token');
-      const adminToken = localStorage.getItem('admin_token');
-      const sellerToken = localStorage.getItem('seller_token');
-      if (agencyToken) { config.headers['Authorization'] = `Bearer ${agencyToken}`; return config; }
-      if (adminToken) { config.headers['Authorization'] = `Bearer ${adminToken}`; return config; }
-      if (sellerToken) { config.headers['Authorization'] = `Bearer ${sellerToken}`; return config; }
+      // 🔑 2026-09-23: 우선순위로 역할을 **먼저 고르고**, 그 역할의 토큰을 살려서 붙인다.
+      //   (종전엔 저장된 값을 그대로 붙여 만료 시 401 왕복. 아래 알림·가이드 분기도 같은 처방.)
+      const role = pickDashboardRole(['agency', 'admin', 'seller']);
+      if (role) {
+        const token = await ensureFreshDashboardToken(role);
+        if (token) { config.headers['Authorization'] = `Bearer ${token}`; return config; }
+      }
       // fallthrough → user token / cookie
     }
 
@@ -267,7 +253,7 @@ api.interceptors.request.use(
     //   AdminKakaoLoginDiagPage 는 수동 헤더로 개별 우회했던 같은 클래스 — 여기서 구조적으로 부착.
     //   (/api/_errors/log 는 공개 telemetry 라 제외 — recent 만 매칭.)
     if (url.startsWith('/api/_errors/recent') || url.startsWith('/api/_internal/')) {
-      const token = localStorage.getItem('admin_token');
+      const token = await ensureFreshDashboardToken('admin');
       if (token) config.headers['Authorization'] = `Bearer ${token}`;
       return config;
     }
@@ -279,7 +265,7 @@ api.interceptors.request.use(
     //   admin_token 미부착 → 소비자 user 토큰이 붙어 requireUserType('admin')=403 (인플루언서 송금/분쟁).
     //   `admin[-/]` 로 확장해 하이픈 어드민 마운트도 admin_token 부착(둘 다 requireAdmin 전용이라 안전).
     if (/^\/api\/admin[-/]/.test(url)) {
-      const token = localStorage.getItem('admin_token');
+      const token = await ensureFreshDashboardToken('admin');
       if (token) config.headers['Authorization'] = `Bearer ${token}`;
       return config;
     }
@@ -288,7 +274,7 @@ api.interceptors.request.use(
     //   예: /api/referral-tree/admin/withdrawals (commission 출금 승인) — admin 만 접근.
     //   /api/admin/* prefix 미사용 (라우트 구조상). 명시 분기로 admin_token 부착.
     if (/^\/api\/[a-z0-9-]+\/admin(\/|$)/.test(url)) {
-      const token = localStorage.getItem('admin_token');
+      const token = await ensureFreshDashboardToken('admin');
       if (token) config.headers['Authorization'] = `Bearer ${token}`;
       return config;
     }
@@ -299,29 +285,26 @@ api.interceptors.request.use(
     if (url.startsWith('/api/guides/')) {
       const m = url.match(/\/api\/guides\/(admin|seller|agency)/);
       const type = m?.[1] as 'admin' | 'seller' | 'agency' | undefined;
-      const tokenKey = type === 'admin' ? 'admin_token'
-        : type === 'agency' ? 'agency_token'
-        : type === 'seller' ? 'seller_token'
-        : 'admin_token';
-      let token = localStorage.getItem(tokenKey);
-      // admin 은 모든 type 접근 가능 — fallback
-      if (!token) token = localStorage.getItem('admin_token');
-      if (token) {
-        config.headers['Authorization'] = `Bearer ${token}`;
-        return config;
+      // admin 은 모든 type 접근 가능 — 해당 역할이 없으면 admin 으로 폴백(종전과 같은 우선순위).
+      const role = pickDashboardRole(type ? [type, 'admin'] : ['admin']);
+      if (role) {
+        const token = await ensureFreshDashboardToken(role);
+        if (token) {
+          config.headers['Authorization'] = `Bearer ${token}`;
+          return config;
+        }
       }
     }
 
     // ── Notifications: 토큰 존재 여부로 분기 ─────────────────────────────
     // 🛡️ 2026-04-28: /api/dashboard-notifications 도 같은 분기 (이전엔 누락 → 알림 401)
     if (url.startsWith('/api/notifications') || url.startsWith('/api/dashboard-notifications')) {
-      const sellerToken = localStorage.getItem('seller_token');
-      const adminToken = localStorage.getItem('admin_token');
-      const agencyToken = localStorage.getItem('agency_token');
       // 우선순위: agency > admin > seller (대시보드 컨텍스트 따라)
-      if (agencyToken) { config.headers['Authorization'] = `Bearer ${agencyToken}`; return config; }
-      if (adminToken) { config.headers['Authorization'] = `Bearer ${adminToken}`; return config; }
-      if (sellerToken) { config.headers['Authorization'] = `Bearer ${sellerToken}`; return config; }
+      const role = pickDashboardRole(['agency', 'admin', 'seller']);
+      if (role) {
+        const token = await ensureFreshDashboardToken(role);
+        if (token) { config.headers['Authorization'] = `Bearer ${token}`; return config; }
+      }
       // fallthrough to Firebase
     }
 
