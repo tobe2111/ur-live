@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Check, ChevronRight, Gift, MapPin, Search, ShoppingBag, ShoppingCart, Star, Ticket, Users, Utensils, Zap } from 'lucide-react'
+import { Check, ChevronRight, Gift, MapPin, Search, ShieldCheck, ShoppingBag, ShoppingCart, Ticket, Utensils, Zap } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import UrDealLogo from '@/components/brand/UrDealLogo'
@@ -171,15 +171,20 @@ export default function IntroducePage() {
               </button>
             </div>
 
+            {/* 🔴 2026-09-24 (대표 지적 "숫자로 박아놓는게 직관적이다" 후속 실측): 여기 있던
+                `240만+ 누적 사용자` · `4.8 App Store 평점` 을 **삭제**했다. 같은 날 어드민 실측은
+                **유저 23명 · 셀러 11곳 · 주문 최근 id 89** 였다 — 지어낸 수치였고, 대외 랜딩의
+                거짓 실적은 표시광고법 문제다. ⚠️ **실적 수치를 다시 하드코딩하지 말 것.**
+                숫자를 쓰려면 서버가 세어 준 값이거나, 아래처럼 **코드로 보증되는 약속**이어야 한다. */}
             <div className="flex flex-wrap items-center gap-5 mt-8 text-[12px] text-gray-500">
               <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-gray-600" />
-                <span><b className="text-white">240만+</b> 누적 사용자</span>
+                <ShieldCheck className="w-4 h-4 text-gray-600" />
+                <span><b className="text-white">미사용 시 100%</b> 자동환불</span>
               </div>
               <span className="text-gray-800">|</span>
               <div className="flex items-center gap-1">
-                <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
-                <span><b className="text-white">4.8</b> App Store 평점</span>
+                <Ticket className="w-3.5 h-3.5 text-gray-600" />
+                <span><b className="text-white">가입·이용료 0원</b></span>
               </div>
             </div>
           </div>
@@ -222,12 +227,17 @@ export default function IntroducePage() {
 
       {/* ─── STATS ─── */}
       <section className="border-y border-[#2C2F35] bg-[#11141C]">
-        <div className="max-w-[1280px] mx-auto px-6 py-10 grid grid-cols-2 md:grid-cols-4 gap-8">
+        <div className="max-w-[1280px] mx-auto px-6 py-10 grid grid-cols-3 gap-8">
+          {/* 🔒 **여기 들어갈 수 있는 숫자는 두 가지뿐이다** — ⓐ 서버가 실제로 세어 준 값
+              ⓑ 코드가 보증하는 약속. 아래 셋은 ⓑ다: 만료 미사용분 자동환불은
+              `daily-lane.ts` 의 `handleExpiredVoucherRefunds` 가 매일 돌리고, 가입·이용료는
+              실제로 0원이며(판매 시 수수료만), 결제는 토스 간편결제다.
+              ⚠️ 누적 사용자·거래·입점 수는 **지금 규모로는 쓸 값이 없다**(2026-09-24 실측
+              유저 23 · 셀러 11). 커지면 그때 서버 집계를 붙일 것 — 손으로 적지 말 것. */}
           {[
-            { n: '240만+', l: '누적 사용자' },
-            { n: '38만+', l: '누적 거래 건수' },
-            { n: '4,200+', l: '입점 셀러' },
-            { n: '4.8★', l: 'App Store 평점' },
+            { n: '100%', l: '미사용 시 자동환불' },
+            { n: '0원', l: '가입·이용료' },
+            { n: '3초', l: '토스 간편결제' },
           ].map(s => (
             <div key={s.l} className="text-center">
               <p className="text-[32px] md:text-[40px] font-black text-white leading-none">{s.n}</p>
