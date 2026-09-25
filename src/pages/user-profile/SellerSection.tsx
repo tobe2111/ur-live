@@ -18,11 +18,12 @@
  * `isSeatableStoreStatus` 가 대기·반려도 좌석을 열어 준다(당근 모델). 그래서 이 카드는
  * 상태를 **직접 말한다** — 노출·정산이 왜 아직인지 화면이 설명하지 않으면 사장님은 고장으로 읽는다.
  */
-import { useMemo, useState, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { BarChart3, ChevronDown, ChevronRight, Loader2, Plus, RotateCcw, ScanLine, Store, Wallet } from 'lucide-react'
 import { TicketCard } from '@/components/ticket/TicketCard'
 import { formatNumber } from '@/utils/format'
 import { currentSeatId, onSeatChange, switchSeat } from '@/lib/seller-seat'
+import { clearMyReturn, withMyReturn } from '@/lib/seller-return'
 import { toast } from '@/hooks/useToast'
 import type { MyStoresState } from './useMyStores'
 import StoreSwitchSheet from './StoreSwitchSheet'
@@ -32,6 +33,7 @@ import SellingList from './seller-section/SellingList'
 import RefundSheet from './seller-section/RefundSheet'
 import AnalyticsSheet from './seller-section/AnalyticsSheet'
 import WithdrawSheet from './seller-section/WithdrawSheet'
+import AllToolsSheet from './seller-section/AllToolsSheet'
 
 const STATUS_NOTE: Record<string, string> = {
   pending: '승인 대기 중이에요. 준비는 지금 하고, 메인 노출과 정산은 승인 뒤에 시작됩니다.',
@@ -72,7 +74,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [entering, setEntering] = useState(false)
   /** 열려 있는 판매 시트. 좌석이 바뀌면 시트는 스스로 닫는다(§15-3). */
-  const [tool, setTool] = useState<'refund' | 'analytics' | 'withdraw' | null>(null)
+  const [tool, setTool] = useState<'refund' | 'analytics' | 'withdraw' | 'tools' | null>(null)
   /**
    * 🪑 지금 토큰이 앉아 있는 좌석. **서버 응답이 아니라 토큰에서 읽는다** — 전환 직후에도 즉시 맞는다
    *   (`useMyStores` 의 `current_seller_id` 는 재조회 뒤에야 따라온다).
@@ -106,15 +108,20 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
     const ok = currentSeatId() === store.seller_id || await switchSeat(store.seller_id, store.name).catch(() => false)
     setEntering(false)
     if (!ok) { toast.error('가게로 들어가지 못했습니다'); return }
-    if (to) window.location.assign(to)
+    // ↩️ 2026-09-26: 표시를 달고 보낸다 — 그 화면 맨 위에 "마이로 돌아가기" 띠가 뜬다.
+    //   안 달면 일이 끝나는 화면(등록 폼은 저장 후 `/seller/group-buy` 로 간다)에서 길을 잃는다.
+    if (to) window.location.assign(withMyReturn(to))
   }
+  // ↩️ 마이에 도착했다 = 여정이 끝났다. 흔적을 지워야 다음 대시보드 방문에 띠가 안 남는다.
+  useEffect(() => { clearMyReturn() }, [])
+
   const onWorkDone = () => { state.refetch() }
 
   /**
    * 🪑 판매 시트는 **좌석이 맞을 때만** 열린다 — 시트가 부르는 API 는 전부 좌석 토큰으로 스코프된다.
    *   안 맞으면 먼저 앉히고(사람이 누른 행동이다), 실패하면 열지 않는다.
    */
-  async function openTool(which: 'refund' | 'analytics' | 'withdraw') {
+  async function openTool(which: 'refund' | 'analytics' | 'withdraw' | 'tools') {
     if (!store || entering) return
     if (currentSeatId() !== store.seller_id) {
       setEntering(true)
@@ -255,11 +262,13 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
         />
       </div>
 
-      {/* 전체 도구 — 쿠폰·파트너·알림톡·원장처럼 여기 없는 것들 */}
+      {/* 🧰 2026-09-26 (대표 *"모두 마이에서 하도록"*): 나머지 도구 전부를 **마이 안 목록**으로 연다.
+          종전엔 여기서 곧장 `/seller` 로 나갔다 — 그 순간 사장님은 "대시보드라는 게 따로 있다" 를
+          배우게 되고, 마이는 출발점이 아니라 경유지가 된다. */}
       <button
         type="button"
         disabled={entering}
-        onClick={() => enterSeat('/seller')}
+        onClick={() => openTool('tools')}
         className="w-full flex items-center gap-2 mt-2 px-1 py-3 text-left active:opacity-70 disabled:opacity-50"
       >
         <span className="flex-1 min-w-0 text-[13px] font-semibold text-gray-500 dark:text-gray-400 truncate">
@@ -273,6 +282,13 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
       {tool === 'refund' && <RefundSheet sellerId={store.seller_id} onClose={() => setTool(null)} onDone={() => { state.refetch(); work.refetch() }} />}
       {tool === 'analytics' && <AnalyticsSheet sellerId={store.seller_id} storeName={store.name} onClose={() => setTool(null)} />}
       {tool === 'withdraw' && <WithdrawSheet sellerId={store.seller_id} onClose={() => setTool(null)} onDone={() => state.refetch()} />}
+      {tool === 'tools' && (
+        <AllToolsSheet
+          storeName={store.name}
+          onClose={() => setTool(null)}
+          onPick={(path) => { setTool(null); enterSeat(path) }}
+        />
+      )}
 
       {sheetOpen && (
         <StoreSwitchSheet currentSellerId={store.seller_id} onClose={() => setSheetOpen(false)} />

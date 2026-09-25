@@ -156,12 +156,15 @@ describe('권한 근거는 토큰뿐 (§15-3 규칙 ③)', () => {
     }
   })
 
-  it('전체 도구 진입은 좌석이 맞을 때 발급조차 안 한다', () => {
+  // 🩸 이 시험의 앵커는 두 번 재조준됐다(09-25 단계 2, 09-26 §20). 두 번 다 **지키려던 것은 그대로**이고
+  //   앵커로 쓴 문자열(`enterSeat('/seller')` · `assign(to)`)이 *우연한* 것이었다 — 전자는 전체 도구가
+  //   마이 안 시트가 되며 사라졌고, 후자는 귀환 표시를 감싸며 모양이 바뀌었다.
+  //   ⇒ 이제 **불변식 자체**에 앵커한다: 좌석이 이미 맞으면 토큰을 다시 발급하지 않는다.
+  it('셀러 화면 진입은 좌석이 맞을 때 발급조차 안 한다', () => {
     const code = stripComments(SECTION)
-    expect(code).toContain('currentSeatId() === store.seller_id')
-    // 2026-09-25 단계 2: 발급+이동이 `enterSeat(to)` 한 곳으로 합쳐졌다 — 앵커만 재조준(지키는 것은 동일).
-    expect(code).toContain("enterSeat('/seller')")
-    expect(code).toContain('window.location.assign(to)')
+    // 단락 평가 — 왼쪽이 참이면 `switchSeat` 을 아예 안 부른다.
+    expect(code).toMatch(/currentSeatId\(\) === store\.seller_id \|\| await switchSeat\(/)
+    expect(code).toMatch(/window\.location\.assign\(/)
   })
 })
 

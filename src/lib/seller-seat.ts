@@ -35,23 +35,60 @@
 
 export const SEAT_TOKEN_KEY = 'seller_token'
 
-/** 토큰이 가리키는 좌석. 토큰이 없거나 못 읽으면 null(= 아직 어느 가게로도 일하고 있지 않다). */
-export function currentSeatId(): number | null {
+/** 좌석 토큰(JWT)이 싣고 있는 것 중 **화면이 읽어도 되는** 것들. 권한 판정에는 쓰지 않는다. */
+export interface SeatClaims {
+  seller_id: number | null
+  /** 매장 종류. 도구 목록이 이 값으로 갈린다(`seller-nav` 의 `hideFor`). */
+  seller_type: string | null
+  name: string | null
+}
+
+/**
+ * 좌석 토큰을 **한 곳에서만** 푼다.
+ *
+ * 🩸 종전엔 `currentSeatId` 와 `currentSeatLabel` 이 **같은 디코드를 두 벌** 갖고 있었다.
+ *   claim 을 하나 더 읽어야 할 때마다 세 벌, 네 벌이 된다 — 이 레포가 반복해 당한 클래스라 지금 묶는다.
+ *
+ * @param token 안 주면 지금 저장된 좌석 토큰.
+ */
+export function readSeatClaims(token?: string | null): SeatClaims {
+  const empty: SeatClaims = { seller_id: null, seller_type: null, name: null }
   try {
-    const token = localStorage.getItem(SEAT_TOKEN_KEY)
-    if (!token) return null
-    const seg = token.split('.')[1]
-    if (!seg) return null
+    const raw = token ?? localStorage.getItem(SEAT_TOKEN_KEY)
+    if (!raw) return empty
+    const seg = raw.split('.')[1]
+    if (!seg) return empty
     // base64url → base64. 패딩이 없을 수 있어 직접 채운다(atob 는 길이가 안 맞으면 던진다).
     const b64 = seg.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(seg.length / 4) * 4, '=')
     const bin = atob(b64)
     // ⚠️ atob 은 latin1 바이트를 준다. 매장 이름이 한글이라 그대로 JSON.parse 하면 깨진다.
     const json = new TextDecoder().decode(Uint8Array.from(bin, (ch) => ch.charCodeAt(0)))
-    const id = Number((JSON.parse(json) as { seller_id?: unknown }).seller_id)
-    return Number.isFinite(id) && id > 0 ? id : null
+    const p = JSON.parse(json) as { seller_id?: unknown; seller_type?: unknown; name?: unknown }
+    const id = Number(p.seller_id)
+    return {
+      seller_id: Number.isFinite(id) && id > 0 ? id : null,
+      seller_type: typeof p.seller_type === 'string' && p.seller_type.trim() ? p.seller_type.trim() : null,
+      name: typeof p.name === 'string' && p.name.trim() ? p.name.trim() : null,
+    }
   } catch {
-    return null
+    return empty
   }
+}
+
+/** 토큰이 가리키는 좌석. 토큰이 없거나 못 읽으면 null(= 아직 어느 가게로도 일하고 있지 않다). */
+export function currentSeatId(): number | null {
+  return readSeatClaims().seller_id
+}
+
+/**
+ * 지금 좌석의 **매장 종류**(`store_owner` · `influencer` …).
+ *
+ * 🔴 `localStorage.seller_type` 이 아니라 **토큰**에서 읽는다. 그 localStorage 키는 *로그인할 때만*
+ *   쓰이고 **좌석 전환을 안 따라간다** — 가게를 옮기면 직전 가게의 종류가 남는다(실측). 도구 목록이
+ *   그 값으로 갈리므로, 따라가지 않으면 **A 의 메뉴를 B 에서 보게 된다.**
+ */
+export function currentSeatType(): string | null {
+  return readSeatClaims().seller_type
 }
 
 /**
@@ -64,19 +101,7 @@ export function currentSeatLabel(): string | null {
     const saved = localStorage.getItem('seller_name')
     if (saved && saved.trim()) return saved.trim()
   } catch { /* storage 접근 불가 */ }
-  try {
-    const token = localStorage.getItem(SEAT_TOKEN_KEY)
-    if (!token) return null
-    const seg = token.split('.')[1]
-    if (!seg) return null
-    const b64 = seg.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(seg.length / 4) * 4, '=')
-    const bin = atob(b64)
-    const json = new TextDecoder().decode(Uint8Array.from(bin, (ch) => ch.charCodeAt(0)))
-    const name = (JSON.parse(json) as { name?: unknown }).name
-    return typeof name === 'string' && name.trim() ? name.trim() : null
-  } catch {
-    return null
-  }
+  return readSeatClaims().name
 }
 
 /** 화면이 들고 있던 좌석과 지금 토큰의 좌석이 다르면 던진다 — 호출부는 **보내지 말고** 다시 불러야 한다. */
