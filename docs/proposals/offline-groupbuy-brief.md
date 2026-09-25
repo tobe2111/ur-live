@@ -850,7 +850,7 @@
 - `/stays/:id`
 - `/stays/checkout-return`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (95개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (96개)
 
 
 **/api/admin/stays**
@@ -935,6 +935,9 @@
 
 **/api/group-buy/my**
 - `GET /api/group-buy/my`
+
+**/api/group-buy/prelaunch**
+- `GET /api/group-buy/prelaunch`
 
 **/api/group-buy/products**
 - `GET /api/group-buy/products`
@@ -1031,7 +1034,7 @@
 - `PATCH /api/seller/stays/bookings/:bookingId/use-voucher`
 
 
-> 마지막 생성: 2026-08-30T10:13:41.203Z
+> 마지막 생성: 2026-09-24T16:42:22.668Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

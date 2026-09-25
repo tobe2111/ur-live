@@ -14,7 +14,8 @@ import { MapPin, Calendar, Users, Star, Sparkles, Hotel, TicketPercent } from 'l
 import { formatNumber } from '@/utils/format'
 import StayStickyBar from './stay-detail/StayStickyBar'
 import GuestIdentityFields, { type GuestIdentity } from './stay-detail/GuestIdentityFields'
-import { SectionTitle, AmenityFlow, InfoBlock, propertyTypeLabel, StayReviews, StaySoldOutCard } from './stay-detail/StayInfoSections'
+import { SectionTitle, AmenityFlow, InfoBlock, propertyTypeLabel, StayReviews, StaySoldOutCard, StayPolicyInfo } from './stay-detail/StayInfoSections'
+import SimilarStays from './stay-detail/SimilarStays'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import DetailGallery from './group-buy/DetailGallery'
 import DetailTitleHeader from './group-buy/DetailTitleHeader'
@@ -529,29 +530,15 @@ export default function StayDetailPage() {
         {/* 이용 안내 — 🧾 2026-08-30: 카드 3장(취소/하우스룰/체크인, 이모지 📋🔑 머리)이 각각
             테두리를 갖고 있었다. 공구 상세 '이용 안내'와 같은 헤어라인 표 하나로 합친다 —
             상세끼리 문법이 갈리는 것 자체가 티가 난다. */}
-        <div className="mb-6">
-          <SectionTitle>이용 안내</SectionTitle>
-          <div className="mt-4">
-            <InfoBlock label="취소 정책">
-              {cancellationLabel(stay.cancellation_policy)}
-              {stay.custom_cancellation_text && (
-                <span className="block mt-1 text-[13px] text-gray-500 dark:text-gray-400">{stay.custom_cancellation_text}</span>
-              )}
-            </InfoBlock>
-            {stay.house_rules && (
-              <InfoBlock label="하우스 룰">
-                <span className="whitespace-pre-line">{stay.house_rules}</span>
-              </InfoBlock>
-            )}
-            {stay.check_in_instructions && (
-              <InfoBlock label="체크인 안내">
-                <span className="whitespace-pre-line">{stay.check_in_instructions}</span>
-              </InfoBlock>
-            )}
-          </div>
-        </div>
+        {/* 🏨 2026-09-24: '이용 안내' 표를 `StayPolicyInfo` 로 추출(마크업 불변) — 같은 커밋에서
+            아래 `SimilarStays` 를 붙이는데 이 파일이 래칫 858/858 이라 여유가 0이었다. */}
+        <StayPolicyInfo policy={stay.cancellation_policy} customText={stay.custom_cancellation_text}
+          houseRules={stay.house_rules} checkInInstructions={stay.check_in_instructions} />
 
         <StayReviews productId={productId} />
+
+        {/* 🏨 대표 문서 ⑥ "숙소소개 아래에 이곳과 비슷한 스테이" — 자리 판단은 부품 머리말 참조. */}
+        <SimilarStays stayId={stay.id} regionSido={stay.region_sido} checkIn={checkIn} checkOut={checkOut} guests={guests} />
 
         </div>{/* /좌측 콘텐츠 */}
 

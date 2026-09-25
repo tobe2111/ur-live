@@ -153,7 +153,7 @@ const VoucherDetailPage = lazy(() => import('./pages/VoucherDetailPage'))
 const GroupBuyDetailPage = lazy(() => import('./pages/GroupBuyDetailPage'))
 const GroupBuyConfirmPaymentPage = lazy(() => import('./pages/GroupBuyConfirmPaymentPage'))
 // 🛡️ 2026-05-18: 숙소 공구 사용자 페이지 — PR 3/6, PR 6/6.
-const StaysSearchPage = lazy(() => import('./pages/StaysSearchPage'))
+const StaysSearchPage = lazy(() => import('./pages/StaysSearchPage')); const SoonPage = lazy(() => import('./pages/SoonPage')) /* 🌱 오픈 예정 모아보기 */
 const StayDetailPage = lazy(() => import('./pages/StayDetailPage'))
 const MyStaysPage = lazy(() => import('./pages/MyStaysPage'))
 // 🛡️ 2026-06-12 (전수조사 4차 B-1): 숙소 Toss 결제 returnUrl 경량 confirm 페이지.
@@ -730,7 +730,7 @@ function AppContent() {
             <Route path="/local/:code" element={<LocalTownPage />} />
             <Route path="/district/:slug" element={<ErrorBoundary><DistrictCouponPage /></ErrorBoundary>} />
             {/* 🛡️ 2026-05-18: 숙소 공구 사용자 페이지 — PR 3/6 */}
-            <Route path="/stays" element={<StaysSearchPage />} />
+            <Route path="/stays" element={<StaysSearchPage />} /><Route path="/soon" element={<SoonPage />} />
             {/* 🛡️ 2026-06-12 (B-1): Toss returnUrl confirm 페이지 — :id 보다 구체적 path (정적 세그먼트 우선 매칭) */}
             <Route path="/stays/checkout-return" element={<ProtectedRoute requireUser><StayCheckoutReturnPage /></ProtectedRoute>} />
             <Route path="/stays/:id" element={<StayDetailPage />} />
