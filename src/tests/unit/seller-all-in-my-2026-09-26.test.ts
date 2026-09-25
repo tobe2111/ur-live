@@ -116,3 +116,76 @@ describe('시트는 뒤로가기로 닫힌다', () => {
     expect(code, '안 빼면 그 뒤 뒤로가기를 한 번 먹는다').toMatch(/if \(!popped\)[\s\S]{0,80}history\.back\(\)/)
   })
 })
+
+// ── §20-5 온보딩 셋 ───────────────────────────────────────────────────────
+const PIN = readCode('src/pages/user-profile/seller-section/PinSheet.tsx')
+const BANK = readCode('src/pages/user-profile/seller-section/BankSheet.tsx')
+const WITHDRAW = readCode('src/pages/user-profile/seller-section/WithdrawSheet.tsx')
+
+describe('🔑🏦 출금이 막히면 그 자리에서 푼다 (§20-5)', () => {
+  // ⚠️ "전체 도구 ›" 자체는 이제 **마이 안 시트**를 가리킨다(§20-1) — 그 문구가 있다고 나가는 게 아니다.
+  //   막아야 하는 것은 **PIN·계좌**가 여전히 딴 데로 보내는 것뿐이다. 사업자등록증은 의도적으로
+  //   진입으로 남겼다(사진 업로드 + OCR — §19-1 등록 폼과 같은 무게).
+  it('PIN·계좌는 시트 밖으로 보내지 않는다', () => {
+    const code = stripComments(WITHDRAW)
+    expect(code, 'PIN 안내가 아직 다른 화면을 가리킨다').not.toMatch(/PIN[^\n]*전체 도구/)
+    expect(code, '계좌 안내가 아직 다른 화면을 가리킨다').not.toMatch(/계좌[^\n]*전체 도구/)
+    expect(code).toMatch(/onFixPin\?\.\(\)|onFixPin\(\)/)
+    expect(code).toMatch(/onFixBank/)
+  })
+
+  it('사업자등록증만 진입으로 남는다 (의도적 — 업로드+OCR)', () => {
+    const code = stripComments(WITHDRAW)
+    expect(code).toMatch(/BUSINESS_REGISTRATION_REQUIRED:[^\n]*전체 도구/)
+  })
+
+  it('PIN 412 는 문구만 띄우지 않고 시트를 연다', () => {
+    expect(stripComments(WITHDRAW)).toMatch(/PIN_REQUIRED' && onFixPin/)
+    expect(stripComments(SECTION)).toContain("onFixPin={() => setTool('pin')}")
+  })
+
+  // 🩸 이 시험은 처음에 헛돌았다. `<PinSheet[\s\S]{0,160}onDone=…` 로 썼더니 그 160자가 **다음 줄의
+  //   `<BankSheet>` 까지 건너가** 거기 있는 onDone 에 매치됐다 — PinSheet 에서 onDone 을 통째로
+  //   지워도 초록이었다(주입 러너가 잡았다). ⇒ 태그가 쓰인 **그 줄 안에서만** 본다.
+  it('풀고 나면 출금으로 되돌아온다', () => {
+    const lines = stripComments(SECTION).split('\n')
+    for (const tag of ['<PinSheet', '<BankSheet']) {
+      const line = lines.find((l) => l.includes(tag))
+      expect(line, `${tag} 렌더 줄을 못 찾았다`).toBeTruthy()
+      // onDone 이 없으면 사장님이 다시 출금을 찾아 눌러야 한다 — 그 사이에 왜 눌렀는지 잊는다.
+      expect(line, `${tag} 가 출금으로 안 돌아온다`).toContain("onDone={() => setTool('withdraw')}")
+    }
+  })
+
+  it('PIN 은 거는 것과 확인하는 것이 둘 다 있다', () => {
+    const code = stripComments(PIN)
+    expect(code).toContain("api.post('/api/seller/set-pin'")
+    // 확인까지 해야 쿠키가 나오고 출금이 통과한다.
+    expect(code, 'set 만 하면 쿠키가 없어 출금이 또 412 를 받는다').toContain("api.post('/api/seller/verify-pin'")
+  })
+
+  it('비밀번호 필요 여부를 한국어 문장으로 판정하지 않는다', () => {
+    const code = stripComments(PIN)
+    expect(code).toContain("=== 'PASSWORD_REQUIRED'")
+    expect(code, '문구를 다듬는 순간 깨진다').not.toContain('현재 비밀번호를 입력해주세요')
+    // 서버가 그 코드를 실제로 준다.
+    expect(stripComments(readCode('src/features/seller/api/seller-pin.routes.ts')))
+      .toContain("code: 'PASSWORD_REQUIRED'")
+  })
+
+  it('계좌 시트는 좌석을 안 따라가는 localStorage 를 쓰지 않는다', () => {
+    const code = stripComments(BANK)
+    // 대시보드 폼은 저장 후 seller_bank_name 등을 적는다 — 그 키는 좌석 전환을 안 따라간다(§19-3).
+    for (const k of ['seller_bank_name', 'seller_account_number', 'seller_account_holder']) {
+      expect(code, `${k} 를 적으면 가게를 옮긴 뒤 남의 계좌가 남는다`).not.toContain(k)
+    }
+    expect(code).toContain("api.put('/api/seller/profile'")
+  })
+
+  it('두 시트 모두 보내기 직전 좌석을 확인한다', () => {
+    for (const [name, code] of [['pin', PIN], ['bank', BANK]] as const) {
+      expect(stripComments(code), name).toMatch(/assertSeat\(sellerId\)/)
+      expect(stripComments(code), name).toMatch(/SeatMismatchError/)
+    }
+  })
+})

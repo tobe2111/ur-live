@@ -36,7 +36,7 @@ export const MIN_WITHDRAW = 10_000
 /** 서버가 주는 막힘 코드 → 사장님이 할 수 있는 행동. */
 const BLOCKED: Record<string, string> = {
   BUSINESS_REGISTRATION_REQUIRED: '사업자등록증이 아직 확인되지 않았어요. 전체 도구 › 사업자 정보에서 올리면 확인 후 출금할 수 있어요.',
-  PIN_REQUIRED: '돈이 나가는 일이라 PIN 확인이 필요해요. 전체 도구 › 정산에서 PIN 을 입력한 뒤 다시 시도해 주세요.',
+  PIN_REQUIRED: '돈이 나가는 일이라 PIN 확인이 필요해요.',
   ACCOUNT_REVERIFICATION_REQUIRED: '정산 계좌가 최근 바뀌어 관리자 확인을 기다리는 중이에요. 확인되면 출금할 수 있어요.',
 }
 
@@ -50,10 +50,14 @@ export function maskAccount(v: string): string {
   return `${'*'.repeat(Math.min(4, digits.length - 4))}${digits.slice(-4)}`
 }
 
-export default function WithdrawSheet({ sellerId, onClose, onDone }: {
+export default function WithdrawSheet({ sellerId, onClose, onDone, onFixPin, onFixBank }: {
   sellerId: number
   onClose: () => void
   onDone?: () => void
+  /** PIN 이 없거나 확인이 필요할 때 — 대시보드로 보내지 않고 **그 자리에서** 연다(§20-5). */
+  onFixPin?: () => void
+  /** 정산 계좌가 없을 때 — 같은 이유로 그 자리에서 연다. */
+  onFixBank?: () => void
 }) {
   const [available, setAvailable] = useState<number | null>(null)
   const [notice, setNotice] = useState<string>('')
@@ -126,6 +130,8 @@ export default function WithdrawSheet({ sellerId, onClose, onDone }: {
       onClose()
     } catch (err) {
       const res = (err as { response?: { data?: { error?: string; code?: string } } })?.response?.data
+      // 🔑 PIN 은 **그 자리에서** 푼다 — 돈이 나가는 흐름 한복판에서 화면을 바꾸지 않는다.
+      if (res?.code === 'PIN_REQUIRED' && onFixPin) { toast.error(BLOCKED.PIN_REQUIRED); onFixPin(); return }
       const help = res?.code ? BLOCKED[res.code] : undefined
       toast.error(help || res?.error || '출금 신청을 하지 못했습니다')
     } finally {
@@ -212,13 +218,24 @@ export default function WithdrawSheet({ sellerId, onClose, onDone }: {
                     {payout.bank_name} {maskAccount(payout.account_number)}
                     {payout.account_holder ? ` · ${payout.account_holder}` : ''}
                   </span>
-                  {' '}으로 보내요. 계좌를 바꾸려면 전체 도구 › 내 정보에서 변경하세요.
+                  {' '}으로 보내요.
                   돈이 나가는 일이라 PIN 확인을 한 번 더 요청할 수 있어요.
                 </p>
               ) : (
-                <p className="text-[13px] leading-[1.6] text-gray-900 dark:text-white mt-4">
-                  정산 계좌가 아직 등록되지 않았어요. 전체 도구 › 내 정보에서 계좌를 등록하면 출금할 수 있어요.
-                </p>
+                <div className="mt-4">
+                  <p className="text-[13px] leading-[1.6] text-gray-900 dark:text-white">
+                    정산 계좌가 아직 등록되지 않았어요. 받을 계좌를 넣어야 보낼 수 있어요.
+                  </p>
+                  {onFixBank && (
+                    <button
+                      type="button"
+                      onClick={onFixBank}
+                      className="mt-2 h-11 px-4 rounded-xl border border-rule-strong text-[14px] font-bold text-gray-900 dark:text-white active:opacity-70"
+                    >
+                      계좌 등록하기
+                    </button>
+                  )}
+                </div>
               )}
             </>
           )}

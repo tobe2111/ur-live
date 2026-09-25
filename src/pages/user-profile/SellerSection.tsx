@@ -34,6 +34,8 @@ import RefundSheet from './seller-section/RefundSheet'
 import AnalyticsSheet from './seller-section/AnalyticsSheet'
 import WithdrawSheet from './seller-section/WithdrawSheet'
 import AllToolsSheet from './seller-section/AllToolsSheet'
+import PinSheet from './seller-section/PinSheet'
+import BankSheet from './seller-section/BankSheet'
 
 const STATUS_NOTE: Record<string, string> = {
   pending: '승인 대기 중이에요. 준비는 지금 하고, 메인 노출과 정산은 승인 뒤에 시작됩니다.',
@@ -74,7 +76,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [entering, setEntering] = useState(false)
   /** 열려 있는 판매 시트. 좌석이 바뀌면 시트는 스스로 닫는다(§15-3). */
-  const [tool, setTool] = useState<'refund' | 'analytics' | 'withdraw' | 'tools' | null>(null)
+  const [tool, setTool] = useState<'refund' | 'analytics' | 'withdraw' | 'tools' | 'pin' | 'bank' | null>(null)
   /**
    * 🪑 지금 토큰이 앉아 있는 좌석. **서버 응답이 아니라 토큰에서 읽는다** — 전환 직후에도 즉시 맞는다
    *   (`useMyStores` 의 `current_seller_id` 는 재조회 뒤에야 따라온다).
@@ -121,7 +123,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
    * 🪑 판매 시트는 **좌석이 맞을 때만** 열린다 — 시트가 부르는 API 는 전부 좌석 토큰으로 스코프된다.
    *   안 맞으면 먼저 앉히고(사람이 누른 행동이다), 실패하면 열지 않는다.
    */
-  async function openTool(which: 'refund' | 'analytics' | 'withdraw' | 'tools') {
+  async function openTool(which: 'refund' | 'analytics' | 'withdraw' | 'tools' | 'pin' | 'bank') {
     if (!store || entering) return
     if (currentSeatId() !== store.seller_id) {
       setEntering(true)
@@ -281,7 +283,19 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
 
       {tool === 'refund' && <RefundSheet sellerId={store.seller_id} onClose={() => setTool(null)} onDone={() => { state.refetch(); work.refetch() }} />}
       {tool === 'analytics' && <AnalyticsSheet sellerId={store.seller_id} storeName={store.name} onClose={() => setTool(null)} />}
-      {tool === 'withdraw' && <WithdrawSheet sellerId={store.seller_id} onClose={() => setTool(null)} onDone={() => state.refetch()} />}
+      {/* 🔑🏦 2026-09-26 (§20-5): 출금이 막히면 **그 자리에서** 푼다 — 돈이 나가는 흐름 한복판에서
+          대시보드로 보내지 않는다. 풀고 나면 출금 시트로 되돌아온다. */}
+      {tool === 'withdraw' && (
+        <WithdrawSheet
+          sellerId={store.seller_id}
+          onClose={() => setTool(null)}
+          onDone={() => state.refetch()}
+          onFixPin={() => setTool('pin')}
+          onFixBank={() => setTool('bank')}
+        />
+      )}
+      {tool === 'pin' && <PinSheet sellerId={store.seller_id} onClose={() => setTool(null)} onDone={() => setTool('withdraw')} />}
+      {tool === 'bank' && <BankSheet sellerId={store.seller_id} onClose={() => setTool(null)} onDone={() => setTool('withdraw')} />}
       {tool === 'tools' && (
         <AllToolsSheet
           storeName={store.name}
