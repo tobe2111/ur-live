@@ -128,4 +128,28 @@ export default [
     test: TEST,
     why: 'PIN 을 걸고 나면 사장님이 출금을 다시 찾아 눌러야 한다 — 그 사이에 왜 눌렀는지 잊는다.',
   },
+  {
+    name: '🏠 알림톡 첫 접촉이 다시 대시보드로 착륙한다',
+    file: 'src/pages/SellerWaitingPage.tsx',
+    find: '            navigate(MY_PATH, { replace: true })',
+    replace: "            navigate('/seller', { replace: true })",
+    test: TEST,
+    why: '사장님의 첫 화면이 곧 그의 기본값이 된다 — 여기서 대시보드를 배우면 그 뒤로 계속 거기로 간다.',
+  },
+  {
+    name: '🏠 매장을 막 얻은 사람이 대시보드로 떨어진다',
+    file: 'src/pages/StoreClaimPage.tsx',
+    find: '                navigate(MY_PATH, { replace: true })',
+    replace: "                navigate('/seller', { replace: true })",
+    test: TEST,
+    why: '가게를 얻은 그 순간이 가장 인상에 남는다 — 거기가 대시보드면 마이는 영영 부차적인 화면이 된다.',
+  },
+  {
+    name: '🏠 소비자 화면이 표시 없이 대시보드로 나간다 (돌아올 길 없음)',
+    file: 'src/pages/GroupBuyDetailPage.tsx',
+    find: "navigate(withMyReturn('/seller/group-buy'))",
+    replace: "navigate('/seller/group-buy')",
+    test: TEST,
+    why: '귀환 띠는 표시를 보고 뜬다 — 없으면 사장님이 대시보드 안에 남는다.',
+  },
 ]

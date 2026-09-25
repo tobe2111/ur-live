@@ -189,3 +189,36 @@ describe('🔑🏦 출금이 막히면 그 자리에서 푼다 (§20-5)', () => 
     }
   })
 })
+
+// ── §20-6 대시보드로 보내는 문 ────────────────────────────────────────────
+describe('🏠 대시보드를 쓸 필요 없게 — 보내는 문을 막는다 (§20-6)', () => {
+  it('알림톡 첫 접촉이 대시보드가 아니라 마이로 착륙한다', () => {
+    const code = stripComments(readCode('src/pages/SellerWaitingPage.tsx'))
+    // 이 화면은 사장님의 첫 접촉이다(알림톡 "내 매장 관리하기"). 여기서 배우는 것이 그의 기본값이 된다.
+    expect(code, "여기서 /seller 로 보내면 '내 가게는 대시보드에 있다' 를 가르친다")
+      .toMatch(/navigate\(MY_PATH, \{ replace: true \}\)/)
+    // ⚠️ 조건이 안전장치다 — switch-to-seller 성공 = 소비자 세션 있음 = 마이가 열린다.
+    expect(code).toMatch(/if \(entered\) \{/)
+  })
+
+  it('매장을 막 얻은 사람도 마이로 간다', () => {
+    expect(stripComments(readCode('src/pages/StoreClaimPage.tsx')))
+      .toMatch(/navigate\(MY_PATH, \{ replace: true \}\)/)
+  })
+
+  it('소비자 화면에서 대시보드로 나갈 때는 귀환 표시를 단다', () => {
+    for (const f of ['src/pages/GroupBuyDetailPage.tsx', 'src/pages/MyStorePage.tsx']) {
+      const code = stripComments(readCode(f))
+      const bare = code.match(/navigate\('\/seller[^']*'\)/g) || []
+      expect(bare, `${f} 에 표시 없는 대시보드 이동: ${bare.join(', ')}`).toHaveLength(0)
+      expect(code, f).toContain('withMyReturn(')
+    }
+  })
+
+  it('MY_PATH 를 손으로 적지 않는다', () => {
+    // 마이 주소가 바뀌면 한 곳만 고쳐야 한다.
+    for (const f of ['src/pages/SellerWaitingPage.tsx', 'src/pages/StoreClaimPage.tsx']) {
+      expect(stripComments(readCode(f)), f).not.toContain("'/user/profile'")
+    }
+  })
+})

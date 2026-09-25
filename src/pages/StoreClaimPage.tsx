@@ -36,6 +36,7 @@
  */
 import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { MY_PATH } from '@/lib/seller-return'
 import { X } from 'lucide-react'
 import SEO from '@/components/SEO'
 import StoreRegisterModal from '@/components/seller/StoreRegisterModal'
@@ -173,7 +174,8 @@ export default function StoreClaimPage() {
                   await enterStoreSeat(sellerId)
                   toast.success('매장이 등록됐어요 — 이제 이용권을 올릴 수 있어요')
                 }
-                navigate('/seller', { replace: true })
+                // 🏠 2026-09-26: 방금 얻은 가게를 **마이의 내 가게**에서 본다(대시보드 학습 없이).
+                navigate(MY_PATH, { replace: true })
               }}
             />
             {/* 폰에서는 위 FACTS 줄 대신 이 한 줄이 같은 말을 한다(세 숫자를 다 펴면 카드가 밀린다). */}
