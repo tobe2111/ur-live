@@ -4,7 +4,7 @@ import DetailGallery from './group-buy/DetailGallery'
 import { detailGalleryImages } from '@/shared/detail-hero-image'
 import UsageGuide from './group-buy/UsageGuide'
 import SellerCard from './group-buy/SellerCard'
-import StoreIntro from './group-buy/StoreIntro'
+import StoreIntro, { hasStoreIntro } from './group-buy/StoreIntro'
 import { FieldCard, FieldRow } from '@/components/ticket/FieldCard'
 import { DEFAULT_QTY_CAP } from '@/shared/purchase-cap-default'
 import DetailTitleHeader from './group-buy/DetailTitleHeader'
@@ -613,7 +613,13 @@ export default function GroupBuyDetailPage() {
         {/* 🖥️ 2026-07-19 그루폰식 섹션 탭 — PC 전용(클릭 → 해당 섹션 스크롤). 모바일은 세로 스택이라 불필요. */}
         <nav className="hidden lg:flex items-center gap-1 border-b mt-4" style={{ borderColor: 'var(--gbd-line2)' }} aria-label="상세 섹션">
           {[
-            { id: 'gb-sec-store', label: '가게 소개' },
+            // 🩸 2026-09-25: 이 탭이 **무조건** 떠서, 설명·소개가 빈 상품에선 눌러도 안 가는 탭이 됐다
+            //   (섹션은 내용이 없으면 스스로 사라진다). 이웃 탭들과 같은 모양으로 조건을 붙이고,
+            //   판정은 섹션과 **같은 함수**(`hasStoreIntro`)를 쓴다 — 두 벌이면 언젠가 갈린다.
+            ...(hasStoreIntro({ description: detail.description, productName: detail.name,
+              longDescription: (detail as { long_description?: string | null }).long_description,
+              sellerBio: (detail as { seller_bio?: string | null }).seller_bio })
+              ? [{ id: 'gb-sec-store', label: '가게 소개' }] : []),
             { id: 'gb-sec-info', label: '이용권 정보' },
             ...((detail.restaurant_address || (detail.restaurant_lat && detail.restaurant_lng)) ? [{ id: 'gb-sec-location', label: '매장 위치' }] : []),
             ...(Number(detail.review_count || 0) > 0 ? [{ id: 'gb-sec-reviews', label: '리뷰' }] : []),
