@@ -5494,8 +5494,10 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 358건 · 최신순 · 이 목록은 자동 생성된다._
+_총 359건 · 최신순 · 이 목록은 자동 생성된다._
 
+**2026-09-25**
+- [2026-09-25 — 셀러 핵심 업무를 소비자 앱 안으로 (설계 + 시안)](handoff/2026-09-25-seller-in-consumer-app-design.md)
 **2026-09-24**
 - [영입 커미션 잔재 정리 + 정산 레일 (2026-09-24)](handoff/2026-09-24-intro-commission-residue.md)
 - [2026-09-24 — 대표 문서 「유어딜_추가제안」 6항목 이행](handoff/2026-09-24-doc-followthrough.md)
