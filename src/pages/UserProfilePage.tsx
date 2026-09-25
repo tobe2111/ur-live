@@ -231,8 +231,12 @@ export default function UserProfilePage() {
           바로 위(페이지 최하단)에 있어 매번 끝까지 스크롤해야 했다. 셀러 계정에서만 뜬다. */}
       <div className="ur-content-medium px-4 lg:px-8 pt-4">
         {/* 🎟️ 2026-07-06 (대표 — 계산대 스캔을 셀러 대시보드 말고 메인에서): 사업자 유저 '매장 계산대'
-            강조 카드. 손님 이용권 QR 스캔 = 매일 수십 번 쓰는 계산대 동선 → 최상단·큰 카드로 노출. */}
-        {!!localStorage.getItem('seller_token') && (
+            강조 카드. 손님 이용권 QR 스캔 = 매일 수십 번 쓰는 계산대 동선 → 최상단·큰 카드로 노출.
+            🎟️ 2026-09-25 (설계 §18 단계 3): 평소엔 "내 가게" 섹션의 브랜드 줄이 이 자리를 대신한다
+            (그쪽은 **먼저 그 가게 좌석에 앉히고** 보낸다 — 소각은 되돌릴 수 없다).
+            여기 남긴 건 **폴백**이다: 좌석 목록을 못 받았거나(요약 실패) 정지 매장이라 섹션이
+            안 뜨는 경우. 그때도 계산대로 가는 길이 사라지면 안 된다. 둘은 상호배타다. */}
+        {!!localStorage.getItem('seller_token') && sellerSeats.stores.length === 0 && (
           <button
             type="button"
             onClick={() => navigate('/store/scan')}

@@ -8,6 +8,7 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, Store } from 'lucide-react'
 import VoucherScanner from '@/components/voucher/VoucherScanner'
+import { currentSeatLabel } from '@/lib/seller-seat'
 
 // 📟 2026-07-20 (대표 — 직원 폰/공기계): 스캔 전용 기기 링크(?dk=)로 진입하면 로그인 없이 스캔.
 //   키는 localStorage 보관(1회 수신 후 주소창에서 제거 — 링크 공유/히스토리 노출 방지).
@@ -31,6 +32,8 @@ export default function StoreScanPage() {
   const hasSeller = typeof window !== 'undefined' && !!localStorage.getItem('seller_token')
   const hasDeviceKey = typeof window !== 'undefined' && !!localStorage.getItem('scan_device_key')
   const allowed = hasSeller || hasDeviceKey
+  // 표시 전용 — 스캔 대상은 서버가 좌석 토큰으로 정한다. 스캔 전용 기기(dk)엔 이름이 없을 수 있다.
+  const seatLabel = typeof window !== 'undefined' ? currentSeatLabel() : null
   useEffect(() => {
     if (!allowed) navigate('/user/profile', { replace: true })
   }, [allowed, navigate])
@@ -48,8 +51,15 @@ export default function StoreScanPage() {
         </div>
       </header>
       <div className="mx-auto max-w-xl p-4">
+        {/* 🔴 2026-09-25 (설계 §18 단계 3): **소각은 되돌릴 수 없다.** 그런데 이 화면은 그 말을 한 번도
+            안 했고, 가게가 여럿인 사람에게 "어느 가게로 처리되는지" 도 안 알려 줬다 — 좌석 토큰이
+            정하는데 화면엔 그 사실이 없었다. 값은 표시 전용이고, 대상은 서버가 토큰으로 정한다. */}
+        <p className="text-[12.5px] leading-relaxed text-gray-500 dark:text-gray-400 mb-1">
+          손님 이용권 QR을 비추면 <span className="font-bold text-gray-900 dark:text-white">바로 사용 완료</span>로 처리돼요. 되돌릴 수 없습니다.
+        </p>
         <p className="text-[12.5px] leading-relaxed text-gray-500 dark:text-gray-400 mb-3">
-          손님 이용권 QR을 비추면 자동으로 사용 처리돼요. 인식이 안 되면 아래에 코드를 직접 입력하세요. (연속 스캔)
+          {seatLabel ? <>지금은 <span className="font-bold text-brand-text">{seatLabel}</span> 이용권만 처리됩니다. </> : null}
+          인식이 안 되면 아래에 코드를 직접 입력하세요. (연속 스캔)
         </p>
         <VoucherScanner />
       </div>

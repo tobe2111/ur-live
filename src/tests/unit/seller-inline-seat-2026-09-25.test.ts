@@ -25,6 +25,10 @@ const SECTION = readCode('src/pages/user-profile/SellerSection.tsx')
 const SHEET = readCode('src/pages/user-profile/StoreSwitchSheet.tsx')
 const CHIP = readCode('src/pages/user-profile/SellerSwitchInline.tsx')
 const PAGE = readCode('src/pages/UserProfilePage.tsx')
+const WORK = readCode('src/pages/user-profile/seller-section/useSellerWork.ts')
+const ORDERS_UI = readCode('src/pages/user-profile/seller-section/PendingOrders.tsx')
+const SELLING_UI = readCode('src/pages/user-profile/seller-section/SellingList.tsx')
+const SCAN = readCode('src/pages/StoreScanPage.tsx')
 
 /** base64url 로 JWT 흉내 — 한글 매장 이름 포함(그게 순진한 atob 을 깨뜨린다). */
 function fakeSeatToken(payload: Record<string, unknown>): string {
@@ -155,11 +159,94 @@ describe('권한 근거는 토큰뿐 (§15-3 규칙 ③)', () => {
   it('전체 도구 진입은 좌석이 맞을 때 발급조차 안 한다', () => {
     const code = stripComments(SECTION)
     expect(code).toContain('currentSeatId() === store.seller_id')
-    expect(code).toContain("window.location.assign('/seller')")
+    // 2026-09-25 단계 2: 발급+이동이 `enterSeat(to)` 한 곳으로 합쳐졌다 — 앵커만 재조준(지키는 것은 동일).
+    expect(code).toContain("enterSeat('/seller')")
+    expect(code).toContain('window.location.assign(to)')
   })
 })
 
-describe('단계 1 은 보기만 — 돈이 움직이지 않는다', () => {
+describe('단계 2 — 일감은 좌석에 앉아야 그리고, 보내기 전에 다시 확인한다', () => {
+  it('좌석은 **토큰**에서 읽는다 — 서버 current_seller_id 는 재조회 뒤에야 따라온다', () => {
+    const code = stripComments(SECTION)
+    expect(code).toContain('useSyncExternalStore(onSeatChange, currentSeatId')
+    expect(code).toMatch(/const seated = store != null && seatId === store\.seller_id/)
+  })
+
+  it('일감 블록은 seated 일 때만 그린다', () => {
+    const code = stripComments(SECTION)
+    const at = code.indexOf('{seated ? (')
+    expect(at, 'seated 분기가 없으면 좌석 없는 사람에게 빈 목록을 그린다').toBeGreaterThan(0)
+    const branch = code.slice(at, at + 600)
+    expect(branch).toContain('<PendingOrders')
+    expect(branch).toContain('<SellingList')
+  })
+
+  it('목록도 좌석이 맞을 때만 부른다', () => {
+    const code = stripComments(WORK)
+    expect(code).toMatch(/if \(!enabled \|\| currentSeatId\(\) !== sellerId\)/)
+  })
+
+  it('🔴 모든 쓰기가 guarded(assertSeat) 를 지난다', () => {
+    const code = stripComments(WORK)
+    expect(code).toContain('assertSeat(sellerId)')
+    for (const fn of ['confirmOrder', 'toggleProduct']) {
+      const at = code.indexOf(`const ${fn} = useCallback(`)
+      expect(at, `${fn} 이 없다 — 앵커가 낡았다`).toBeGreaterThan(0)
+      expect(code.slice(at, at + 80), `${fn} 이 guarded 를 안 지나면 옛 가게로 나간다`).toContain('guarded(')
+    }
+  })
+
+  it('낙관적 갱신을 하지 않는다 — 서버가 거절하면 화면도 안 바뀐다', () => {
+    const code = stripComments(WORK)
+    expect(code).toMatch(/if \(!r\.data\?\.success\) return false[\s\S]{0,200}setOrders\(/)
+    expect(code).toMatch(/if \(!r\.data\?\.success\) return false[\s\S]{0,240}setProducts\(/)
+  })
+
+  it('환불·삭제·출금은 여기 없다 — 한 손으로 할 일이 아니다(§14 선별 표)', () => {
+    for (const [name, code] of [['work', WORK], ['orders', ORDERS_UI], ['selling', SELLING_UI]] as const) {
+      const stripped = stripComments(code)
+      expect(stripped, `${name}: 환불은 사유를 적어야 한다`).not.toMatch(/\/refund|DELETED'\s*\}|api\.delete\(/)
+      expect(stripped, `${name}: 출금은 단계 4(머니 경로)다`).not.toMatch(/withdraw/)
+    }
+  })
+
+  it('끄는 것은 숨김이지 삭제가 아니다 — 되돌릴 수 있어야 한 손으로 준다', () => {
+    const code = stripComments(WORK)
+    expect(code).toContain("status: next ? 'ACTIVE' : 'HIDDEN'")
+    expect(code).toContain('is_active: next')
+  })
+
+  it('주문 확인은 PREPARING 전이 — 대시보드 칩과 같은 동작', () => {
+    expect(stripComments(WORK)).toContain("{ status: 'PREPARING' }")
+  })
+})
+
+describe('단계 3 — 소각은 되돌릴 수 없다', () => {
+  it('사용처리는 **먼저 그 가게 좌석에 앉힌 뒤** 보낸다', () => {
+    const code = stripComments(SECTION)
+    expect(code, '좌석을 안 맞추고 보내면 화면엔 A 가 떠 있는데 B 의 이용권이 소각된다')
+      .toContain("enterSeat('/store/scan')")
+  })
+
+  it('계산대가 되돌릴 수 없음을 **먼저** 말한다', () => {
+    const code = stripComments(SCAN)
+    expect(code).toContain('바로 사용 완료')
+    expect(code).toContain('되돌릴 수 없습니다')
+  })
+
+  it('계산대가 어느 가게로 처리되는지 말한다 — 값은 표시 전용', () => {
+    const code = stripComments(SCAN)
+    expect(code).toContain('currentSeatLabel()')
+    expect(code).toContain('이용권만 처리됩니다')
+  })
+
+  it('검은 계산대 카드는 좌석 섹션이 못 뜰 때만 남는다(진입점 둘 금지)', () => {
+    const code = stripComments(PAGE)
+    expect(code).toMatch(/localStorage\.getItem\('seller_token'\) && sellerSeats\.stores\.length === 0/)
+  })
+})
+
+describe('오늘 카드 경로는 보기만 — 돈이 움직이지 않는다', () => {
   it('판매 섹션·시트에 쓰기 요청이 없다(전환 토큰 발급 제외)', () => {
     for (const [name, code] of [['section', SECTION], ['sheet', SHEET], ['hook', HOOK]] as const) {
       const stripped = stripComments(code)

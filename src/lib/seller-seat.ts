@@ -54,6 +54,31 @@ export function currentSeatId(): number | null {
   }
 }
 
+/**
+ * 지금 좌석의 **표시 이름**. 소각처럼 되돌릴 수 없는 화면이 "어느 가게로 처리되는가" 를 말할 때 쓴다.
+ * 마이가 보여 준 이름(`seller_name`)을 먼저 쓰고, 없으면 토큰 안의 이름으로 떨어진다.
+ * ⚠️ 표시 전용이다 — 권한도 대상도 이 값으로 정하지 않는다(서버가 토큰으로 정한다).
+ */
+export function currentSeatLabel(): string | null {
+  try {
+    const saved = localStorage.getItem('seller_name')
+    if (saved && saved.trim()) return saved.trim()
+  } catch { /* storage 접근 불가 */ }
+  try {
+    const token = localStorage.getItem(SEAT_TOKEN_KEY)
+    if (!token) return null
+    const seg = token.split('.')[1]
+    if (!seg) return null
+    const b64 = seg.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(seg.length / 4) * 4, '=')
+    const bin = atob(b64)
+    const json = new TextDecoder().decode(Uint8Array.from(bin, (ch) => ch.charCodeAt(0)))
+    const name = (JSON.parse(json) as { name?: unknown }).name
+    return typeof name === 'string' && name.trim() ? name.trim() : null
+  } catch {
+    return null
+  }
+}
+
 /** 화면이 들고 있던 좌석과 지금 토큰의 좌석이 다르면 던진다 — 호출부는 **보내지 말고** 다시 불러야 한다. */
 export class SeatMismatchError extends Error {
   readonly expected: number
