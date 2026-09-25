@@ -26,6 +26,28 @@
  */
 import { cfImage } from '@/utils/cf-image'
 
+/** 이 상품에 '가게 소개' 로 보여 줄 것이 하나라도 있는가. */
+export interface StoreIntroSource {
+  description?: string | null
+  productName?: string | null
+  longDescription?: string | null
+  sellerBio?: string | null
+}
+
+/**
+ * 🔗 **탭과 섹션이 같은 판정을 쓰게 하는 SSOT.**
+ *
+ * 🩸 2026-09-25 라이브 판정에서 잡은 결함: 상세 탭 목록은 '가게 소개' 를 **무조건** 그렸는데
+ * 이 부품은 내용이 없으면 `null` 을 돌려준다. 그래서 설명·소개·사장님 말이 전부 빈 상품에서는
+ * **눌러도 아무 데도 안 가는 탭**이 남았다(실측: 활성 2,620건 중 최대 23건).
+ * 조건을 두 벌로 두면 반드시 갈리므로 판정을 여기 하나로 모은다.
+ */
+export function hasStoreIntro(src: StoreIntroSource): boolean {
+  const raw = (src.description || '').trim()
+  const spec = raw && raw !== (src.productName || '').trim() ? raw : ''
+  return !!((src.longDescription || '').trim() || (src.sellerBio || '').trim() || spec)
+}
+
 export default function StoreIntro({
   description, productName, longDescription, sellerBio, sellerAvatar, sellerName, storeName,
 }: {
@@ -42,7 +64,8 @@ export default function StoreIntro({
   // 종전 조건 그대로 — 설명이 제목과 같은 말이면 두 번 쓰지 않는다(이사 전 `GroupBuyDetailPage` 의 가드).
   const raw = (description || '').trim()
   const spec = raw && raw !== (productName || '').trim() ? raw : ''
-  if (!body && !bio && !spec) return null
+  // 판정은 `hasStoreIntro` 하나만 쓴다 — 탭이 같은 함수를 보고 뜰지 말지 정한다.
+  if (!hasStoreIntro({ description, productName, longDescription, sellerBio })) return null
 
   const who = (storeName || sellerName || '').trim()
   const avatar = sellerAvatar ? (cfImage(sellerAvatar, { width: 120, format: 'auto' }) || sellerAvatar) : null
