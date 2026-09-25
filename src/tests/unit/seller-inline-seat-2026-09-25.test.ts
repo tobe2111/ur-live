@@ -247,11 +247,16 @@ describe('단계 3 — 소각은 되돌릴 수 없다', () => {
 })
 
 describe('오늘 카드 경로는 보기만 — 돈이 움직이지 않는다', () => {
-  it('판매 섹션·시트에 쓰기 요청이 없다(전환 토큰 발급 제외)', () => {
-    for (const [name, code] of [['section', SECTION], ['sheet', SHEET], ['hook', HOOK]] as const) {
+  /**
+   * 🔁 2026-09-25 재조준(§19): 대표가 *"등록·환불·분석·출금도 마이에서"* 로 확정하며 섹션에
+   *   판매 시트 넷이 붙었다. 지키려던 것은 **"섹션·좌석 경로가 직접 돈을 움직이지 않는다"** 이지
+   *   "마이에 쓰기가 없다" 가 아니었다 — 쓰기는 **각 시트가 자기 API 하나만** 부른다.
+   */
+  it('섹션·좌석 경로는 스스로 쓰기 API 를 부르지 않는다 — 부르는 건 시트다', () => {
+    for (const [name, code] of [['section', SECTION], ['switch-sheet', SHEET], ['hook', HOOK]] as const) {
       const stripped = stripComments(code)
-      expect(stripped, `${name}: 단계 1 에 PUT/PATCH/DELETE 가 있으면 범위를 넘었다`).not.toMatch(/api\.(put|patch|delete)\(/)
-      expect(stripped, `${name}: 출금·사용처리는 단계 3~4 다`).not.toMatch(/withdraw|vouchers\/.*\/use/)
+      expect(stripped, `${name}: 여기서 직접 쓰면 시트와 두 벌이 된다`).not.toMatch(/api\.(put|patch|delete)\(/)
+      expect(stripped, `${name}: POST 는 좌석 발급(enterStoreSeat)만이다`).not.toMatch(/api\.post\(/)
     }
   })
 

@@ -19,7 +19,7 @@
  * 상태를 **직접 말한다** — 노출·정산이 왜 아직인지 화면이 설명하지 않으면 사장님은 고장으로 읽는다.
  */
 import { useMemo, useState, useSyncExternalStore } from 'react'
-import { ChevronDown, ChevronRight, Loader2, ScanLine, Store } from 'lucide-react'
+import { BarChart3, ChevronDown, ChevronRight, Loader2, Plus, RotateCcw, ScanLine, Store, Wallet } from 'lucide-react'
 import { TicketCard } from '@/components/ticket/TicketCard'
 import { formatNumber } from '@/utils/format'
 import { currentSeatId, onSeatChange, switchSeat } from '@/lib/seller-seat'
@@ -29,6 +29,9 @@ import StoreSwitchSheet from './StoreSwitchSheet'
 import { useSellerWork } from './seller-section/useSellerWork'
 import PendingOrders from './seller-section/PendingOrders'
 import SellingList from './seller-section/SellingList'
+import RefundSheet from './seller-section/RefundSheet'
+import AnalyticsSheet from './seller-section/AnalyticsSheet'
+import WithdrawSheet from './seller-section/WithdrawSheet'
 
 const STATUS_NOTE: Record<string, string> = {
   pending: '승인 대기 중이에요. 준비는 지금 하고, 메인 노출과 정산은 승인 뒤에 시작됩니다.',
@@ -42,11 +45,34 @@ function todayLabelKST(): string {
   })
 }
 
+/** 판매 작업 한 줄 — 네 개가 같은 모양이어야 무엇이 있는지 한눈에 읽힌다. */
+function ToolRow({ icon, label, hint, busy, onClick }: {
+  icon: React.ReactNode; label: string; hint: string; busy: boolean; onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      onClick={onClick}
+      className="w-full flex items-center gap-3 px-4 py-3.5 text-left border-b border-rule last:border-b-0 active:opacity-70 disabled:opacity-50"
+    >
+      <span className="shrink-0 text-gray-500 dark:text-gray-400">{icon}</span>
+      <span className="flex-1 min-w-0">
+        <span className="block text-[14px] font-bold text-gray-900 dark:text-white">{label}</span>
+        <span className="block text-[12px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">{hint}</span>
+      </span>
+      <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
+    </button>
+  )
+}
+
 /** ⚠️ 좌석은 **페이지가 한 번만** 묻고 내려 준다 — 여기서 또 부르면 같은 화면에 두 개의 진실이 생긴다. */
 export default function SellerSection({ state }: { state: MyStoresState }) {
   const { stores, currentSellerId, loading, failed } = state
   const [sheetOpen, setSheetOpen] = useState(false)
   const [entering, setEntering] = useState(false)
+  /** 열려 있는 판매 시트. 좌석이 바뀌면 시트는 스스로 닫는다(§15-3). */
+  const [tool, setTool] = useState<'refund' | 'analytics' | 'withdraw' | null>(null)
   /**
    * 🪑 지금 토큰이 앉아 있는 좌석. **서버 응답이 아니라 토큰에서 읽는다** — 전환 직후에도 즉시 맞는다
    *   (`useMyStores` 의 `current_seller_id` 는 재조회 뒤에야 따라온다).
@@ -83,6 +109,21 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
     if (to) window.location.assign(to)
   }
   const onWorkDone = () => { state.refetch() }
+
+  /**
+   * 🪑 판매 시트는 **좌석이 맞을 때만** 열린다 — 시트가 부르는 API 는 전부 좌석 토큰으로 스코프된다.
+   *   안 맞으면 먼저 앉히고(사람이 누른 행동이다), 실패하면 열지 않는다.
+   */
+  async function openTool(which: 'refund' | 'analytics' | 'withdraw') {
+    if (!store || entering) return
+    if (currentSeatId() !== store.seller_id) {
+      setEntering(true)
+      const ok = await switchSeat(store.seller_id, store.name).catch(() => false)
+      setEntering(false)
+      if (!ok) { toast.error('가게로 들어가지 못했습니다'); return }
+    }
+    setTool(which)
+  }
 
   // 좌석 0곳(= 셀러가 아님) · 첫 로드 중 · 실패 → 아무것도 그리지 않는다.
   //   실패를 0 으로 그리면 "오늘 매출 0원" 이라는 거짓말이 된다(머니 표면 룰).
@@ -180,9 +221,41 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
         </button>
       )}
 
-      {/* 🧰 전체 도구 — 깊은 작업은 셀러 대시보드가 계속 맡는다(설계 §14 "하지 않는 것").
-          ⚠️ 이 줄이 **종전 '사업자 모드' 칩을 대신한다** — 없으면 마이에서 대시보드로 가는 길이 사라진다.
-          좌석 토큰은 여기서 처음 발급될 수 있다(사람이 누른 순간에만 — 마이를 여는 것만으로는 안 준다). */}
+      {/* 🧰 나머지 판매 작업 — 대표 재확정(§19): **등록·환불·분석·출금도 마이에서.**
+          그릇은 무게가 정한다 — 환불·분석·출금은 시트, **등록은 기존 전체화면 폼 그대로**(복제 금지).
+          좌석 토큰은 사람이 누른 순간에만 발급된다(마이를 여는 것만으로는 안 준다). */}
+      <div className="mt-3 rounded-2xl bg-surface shadow-lift overflow-hidden">
+        <ToolRow
+          icon={<Plus className="w-[18px] h-[18px]" aria-hidden="true" />}
+          label="이용권 등록"
+          hint="사진과 가격을 정해 새로 올려요"
+          busy={entering}
+          onClick={() => enterSeat('/seller/meal-voucher/new')}
+        />
+        <ToolRow
+          icon={<RotateCcw className="w-[18px] h-[18px]" aria-hidden="true" />}
+          label="환불"
+          hint="결제를 취소하고 손님에게 돌려줘요"
+          busy={entering}
+          onClick={() => openTool('refund')}
+        />
+        <ToolRow
+          icon={<BarChart3 className="w-[18px] h-[18px]" aria-hidden="true" />}
+          label="매출 분석"
+          hint="최근 2주 추이와 이번 달 합계"
+          busy={entering}
+          onClick={() => openTool('analytics')}
+        />
+        <ToolRow
+          icon={<Wallet className="w-[18px] h-[18px]" aria-hidden="true" />}
+          label="출금"
+          hint="쌓인 돈을 정산 계좌로 받아요"
+          busy={entering}
+          onClick={() => openTool('withdraw')}
+        />
+      </div>
+
+      {/* 전체 도구 — 쿠폰·파트너·알림톡·원장처럼 여기 없는 것들 */}
       <button
         type="button"
         disabled={entering}
@@ -190,12 +263,16 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
         className="w-full flex items-center gap-2 mt-2 px-1 py-3 text-left active:opacity-70 disabled:opacity-50"
       >
         <span className="flex-1 min-w-0 text-[13px] font-semibold text-gray-500 dark:text-gray-400 truncate">
-          이용권 등록 · 주문 · 정산 · 매출 분석
+          전체 도구 · 쿠폰 · 정산 명세 · 매장 정보
         </span>
         {entering
           ? <Loader2 className="w-4 h-4 shrink-0 animate-spin text-gray-400" aria-hidden="true" />
           : <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />}
       </button>
+
+      {tool === 'refund' && <RefundSheet sellerId={store.seller_id} onClose={() => setTool(null)} onDone={() => { state.refetch(); work.refetch() }} />}
+      {tool === 'analytics' && <AnalyticsSheet sellerId={store.seller_id} storeName={store.name} onClose={() => setTool(null)} />}
+      {tool === 'withdraw' && <WithdrawSheet sellerId={store.seller_id} onClose={() => setTool(null)} onDone={() => state.refetch()} />}
 
       {sheetOpen && (
         <StoreSwitchSheet currentSellerId={store.seller_id} onClose={() => setSheetOpen(false)} />
