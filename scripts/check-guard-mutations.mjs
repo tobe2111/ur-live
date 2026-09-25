@@ -9526,8 +9526,8 @@ canvas {
   {
     name: 'PC 마이 — 우측 칸이 다시 모바일 메뉴 목록으로(isPc 분기 제거)',
     file: 'src/pages/UserProfilePage.tsx',
-    find: "      {isPc ? (\n        <AccountPcPane",
-    replace: "      {false ? (\n        <AccountPcPane",
+    find: "      {isPc ? (\n      <>\n        <AccountPcPane",
+    replace: "      {false ? (\n      <>\n        <AccountPcPane",
     test: 'src/tests/unit/account-pc-pane.test.ts',
     why: '2026-09-02 대표 "PC 모드 답지 않은 페이지야". 좌우가 같은 메뉴를 두 번 보여 주던 화면으로 돌아간다.',
   },

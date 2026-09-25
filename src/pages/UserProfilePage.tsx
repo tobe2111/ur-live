@@ -19,8 +19,10 @@ import ShoppingGroup from './user-profile/ShoppingGroup'
 import OrderStatusBar from './user-profile/OrderStatusBar'
 import ReviewLevelCard from './user-profile/ReviewLevelCard'
 import SellerSwitchInline from './user-profile/SellerSwitchInline'
+import SellerSection from './user-profile/SellerSection'
 import SettingsGroup from './user-profile/SettingsGroup'
 import { useMyCounts } from './user-profile/useMyCounts'
+import { useMyStores } from './user-profile/useMyStores'
 import ThemeToggleSection from '@/components/settings/ThemeToggleSection'
 import LanguageSection from '@/components/settings/LanguageSection'
 import { CONSUMER_LANGUAGE_SWITCH_HIDDEN } from '@/shared/feature-flags'
@@ -48,6 +50,9 @@ export default function UserProfilePage() {
   // 🛡️ 2026-04-30: 카운트 통합 fetch — 자식 컴포넌트 (CouponVoucherStats / ShoppingGroup) 가
   //   각자 호출하던 wishlist / coupon / voucher endpoint 를 1회만 호출.
   const counts = useMyCounts()
+  // 🪑 2026-09-25 (설계 §14 단계 1): 좌석(내 가게)은 **이 페이지가 한 번만** 묻고 둘에게 나눠 준다 —
+  //   이름 옆 칩과 "내 가게" 섹션이 각자 물으면 같은 화면이 서로 다른 답을 말하는 날이 온다.
+  const sellerSeats = useMyStores()
   // 🖥️ 2026-09-02 (대표 — "PC 모드 답지 않은 페이지"): lg+ 는 우측 칸 상단을 `AccountPcPane`(내용)으로,
   //   모바일은 종전 세로 흐름 그대로. 동기 초기화 훅이라 첫 렌더부터 정확(모바일↔PC 플래시 없음).
   const isPc = useMediaQuery('(min-width: 1024px)')
@@ -167,7 +172,7 @@ export default function UserProfilePage() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <p className="text-[17px] font-extrabold text-gray-900 dark:text-white truncate" style={{ letterSpacing: '-0.01em' }}>{userName}</p>
-              <SellerSwitchInline />
+              <SellerSwitchInline seats={sellerSeats} />
             </div>
             <p className="text-[11px] text-gray-900 dark:text-white/50 mt-0.5 truncate">{localStorage.getItem('user_email') || ''}</p>
             <button onClick={() => setEditOpen(true)} className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 mt-1.5 bg-gray-100 dark:bg-white/[0.08] text-[10px] text-gray-900 dark:text-white/75 font-semibold">
@@ -200,9 +205,17 @@ export default function UserProfilePage() {
       {/* 🖥️ 2026-09-02 PC: 우측 칸 상단 = 내용(프로필 카드 · 숫자 넷 · 주문/리뷰어 · 곧 쓸 이용권 · 타일).
           모바일: 종전 흐름(딜 잔액 카드 → 주문 현황 → 리뷰어 → 이용 내역 목록) 그대로. */}
       {isPc ? (
-        <AccountPcPane counts={counts} userName={userName} profileImage={profileImage} onEditProfile={() => setEditOpen(true)} />
+      <>
+        <AccountPcPane counts={counts} userName={userName} profileImage={profileImage} onEditProfile={() => setEditOpen(true)} sellerSeats={sellerSeats} />
+        {/* 🏪 PC 는 프로필 카드가 이 칸의 머리다 — 그 아래에 둔다(모바일은 헤더가 따로 있어 맨 위). */}
+        <SellerSection state={sellerSeats} />
+      </>
       ) : (
       <>
+      {/* 🏪 2026-09-25 (대표 확정 §14 — "하는 것도 마이에서"): 판매가 **맨 위**.
+          사장님은 하루에 이 화면을 가장 많이 열고, 그때 보려는 건 오늘 숫자다. 셀러가 아니면 렌더 0. */}
+      <SellerSection state={sellerSeats} />
+
       {/* v4 딜 잔액 + 충전 (큰 박스) */}
       <TeamPointsCard />
 
