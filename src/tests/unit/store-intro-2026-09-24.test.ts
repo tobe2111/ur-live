@@ -48,16 +48,26 @@ describe('가게 소개가 실제로 그려진다', () => {
   it('서버가 이미 보내던 필드를 소비한다', () => {
     for (const f of ['longDescription', 'sellerBio', 'sellerAvatar']) expect(intro).toContain(f)
     const page = readCode(PAGE)
-    expect(page).toContain('long_description')
-    expect(page).toContain('seller_bio')
+    /* 🩸 2026-09-25: 이 단언이 **헛돌게 됐다**(주입 러너가 잡았다). 같은 날 탭 조건에도
+       `seller_bio` 가 들어가면서 문자열이 두 곳이 됐고, 그래서 **프롭 배선을 끊어도**
+       `toContain('seller_bio')` 가 통과했다. ⇒ 이름이 아니라 **부품에 실제로 넘기는 자리**를 앵커한다. */
+    expect(page, '가게 소개에 long_description 이 안 내려간다').toMatch(/longDescription=\{[^}]*long_description\b/)
+    expect(page, '가게 소개에 seller_bio 가 안 내려간다').toMatch(/sellerBio=\{[^}]*seller_bio\b/)
   })
 
   it('값이 없으면 스스로 사라진다 — 빈 제목만 남기지 않는다', () => {
-    expect(intro).toMatch(/if \(!body && !bio && !spec\) return null/)
+    /* 🔄 2026-09-25: 판정이 `hasStoreIntro()` 로 올라갔다 — 탭도 같은 함수를 봐야 해서다
+       (조건이 두 벌이면 갈린다. 실제로 탭만 무조건 떠서 '눌러도 안 가는 탭' 이 생겼었다).
+       불변식("내용이 없으면 사라진다")은 그대로이므로 가드를 풀지 않고 새 자리로 재조준한다.
+       진리표 자체는 `store-intro-tab-parity-2026-09-25.test.ts` 가 **실제 함수를 호출해** 검사한다. */
+    expect(intro).toMatch(/if \(!hasStoreIntro\(/)
+    expect(intro).toContain('export function hasStoreIntro')
   })
 
   it('설명이 상품명과 같은 말이면 두 번 쓰지 않는다 (이사 전 가드 승계)', () => {
+    // 렌더 쪽(`spec`)과 판정 쪽(`hasStoreIntro`) 둘 다 같은 규칙을 쓴다.
     expect(intro).toMatch(/raw !== \(productName \|\| ''\)\.trim\(\)/)
+    expect(intro).toMatch(/raw !== \(src\.productName \|\| ''\)\.trim\(\)/)
   })
 
   it('상단 탭과 앵커 id 가 맞물린다', () => {
