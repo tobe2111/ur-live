@@ -44,8 +44,11 @@ export const SELLER_PRIMARY_NAV: SellerPrimaryTab[] = [
   },
   {
     key: 'vouchers', path: '/seller/group-buy', labelKey: 'seller.tab.vouchers', fallback: '이용권', icon: TicketStubIcon,
-    // 이용권 묶음(사용처리·후기 인증·대행 승인) + 등록 위저드 + 수정 화면 + 숙소(같은 '파는 것').
-    also: [...tabGroupSiblings('/seller/group-buy'), '/seller/meal-voucher/new', '/seller/products/', '/seller/stays', '/seller/scan'],
+    // 이용권 묶음(사용처리·대행 승인) + 등록 위저드 + 수정 화면 + 숙소·후기 인증(같은 '파는 것').
+    // 🔒 2026-09-26: `/seller/stays`·`/seller/review-verifications` 는 **메뉴에서 내려갔어도**
+    //   여기 남아야 한다 — 접은 것이지 지운 게 아니라 직링크·검색으로는 여전히 닿고, 그때
+    //   하단 탭이 안 켜지면 사용자가 자기 위치를 잃는다(숙소가 원래 이 방식이었다).
+    also: [...tabGroupSiblings('/seller/group-buy'), '/seller/meal-voucher/new', '/seller/products/', '/seller/stays', '/seller/scan', '/seller/review-verifications'],
   },
   {
     key: 'settlements', path: '/seller/settlements', labelKey: 'seller.tab.settlements', fallback: '정산', icon: WonCoinIcon,

@@ -28,6 +28,7 @@ import { formatNumber } from '@/utils/format'
 import Sheet from './Sheet'
 import VoucherEditSheet from './VoucherEditSheet'
 import VoucherNewSheet from './VoucherNewSheet'
+import { SELLER_DORMANT_HIDDEN } from '@/shared/feature-flags'
 import StaysSheet from './StaysSheet'
 import type { SellerWorkState, WorkProduct } from './useSellerWork'
 
@@ -124,16 +125,20 @@ export default function VoucherSheet({ sellerId, work, onClose, onOpenPath }: {
             ))}
           </div>
 
-          {/* 🏨 숙소 — 이용권의 한 종류지만 객실·날짜 모델이라 따로 연다. */}
-          <button
-            type="button"
-            onClick={() => setStaysOpen(true)}
-            className="w-full flex items-center gap-2.5 mt-3 px-3.5 h-12 rounded-xl bg-surface shadow-lift text-left active:opacity-70"
-          >
-            <Building2 className="w-[18px] h-[18px] shrink-0 text-gray-400" aria-hidden="true" />
-            <span className="flex-1 text-[14px] font-semibold text-gray-900 dark:text-white">숙소</span>
-            <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
-          </button>
+          {/* 🏨 숙소 — 이용권의 한 종류지만 객실·날짜 모델이라 따로 연다.
+              🛏️ 2026-09-26 (대표 *"뺄 것들 빼자"*): 셀러 소유 숙소 상품 0 · 예약 0 이라 접었다.
+                 대시보드 묶음과 **같은 플래그**를 본다 — 한쪽만 내리면 두 표면이 갈린다. */}
+          {!SELLER_DORMANT_HIDDEN && (
+            <button
+              type="button"
+              onClick={() => setStaysOpen(true)}
+              className="w-full flex items-center gap-2.5 mt-3 px-3.5 h-12 rounded-xl bg-surface shadow-lift text-left active:opacity-70"
+            >
+              <Building2 className="w-[18px] h-[18px] shrink-0 text-gray-400" aria-hidden="true" />
+              <span className="flex-1 text-[14px] font-semibold text-gray-900 dark:text-white">숙소</span>
+              <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
+            </button>
+          )}
 
           <p className="mt-3 px-1 text-[12px] leading-[1.6] text-gray-500 dark:text-gray-400">
             사진·옵션·매장 정보를 바꾸려면 목록에서 고른 뒤 전체 화면에서 열어요.
@@ -158,7 +163,7 @@ export default function VoucherSheet({ sellerId, work, onClose, onOpenPath }: {
         />
       )}
 
-      {staysOpen && (
+      {staysOpen && !SELLER_DORMANT_HIDDEN && (
         <StaysSheet
           sellerId={sellerId}
           onClose={() => setStaysOpen(false)}

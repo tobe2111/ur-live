@@ -297,3 +297,31 @@ export const CONSUMER_LANGUAGE_SWITCH_HIDDEN = true
  * 것이 없으므로 플래그가 남아 있으면 "끄면 돌아온다"는 잘못된 신호가 된다.
  * 중개는 이제 셀러 대시보드 계정 + `seller_operators` 가 맡는다 — docs/design/store-operator-model.md
  */
+
+/**
+ * SELLER_DORMANT_HIDDEN — **한 번도 쓰인 적 없는 셀러 메뉴 셋** 숨김
+ *   (2026-09-26 대표 *"나머지도 다 해줘. 그리고 뺄 것들 빼자"*).
+ *
+ * 📏 실측(2026-09-26, 라이브 D1 — 셀러 approved 9곳 · suspended 2곳):
+ *   | 메뉴 | 행 수 | |
+ *   |---|---|---|
+ *   | 숙소 — **셀러 소유** 상품 | **0** (`stay_voucher` 77건 전부 `seller_id IS NULL` = 플랫폼 데모) |
+ *   | 숙소 예약 (`stay_bookings`) | **0** |
+ *   | 체험 캠페인 (`experience_campaigns` / `_entries`) | **0 / 0** |
+ *   | 후기 인증 (`kakao_review_submissions`) | **0** |
+ *
+ * 🧭 쿠폰(`SELLER_COUPONS_HIDDEN`)과 **같은 판정**이다 — 화면은 있는데 아무도 쓴 적이 없다.
+ *   메뉴가 길수록 진짜 일감(주문·이용권·정산)이 묻히므로 내린다.
+ *
+ * ⚠️ **숙소는 2026-09-26 같은 날 마이 안에 만든 것**이다(대표 *"이용권 등록, 숙소까지 해줘"*).
+ *   지운 게 아니라 **접은 것** — `StaysSheet`·라우트·API·데이터 전부 그대로다. 숙소업 매장이
+ *   들어오면 이 값을 false 로 바꾸는 순간 되돌아온다.
+ *
+ * ❌ **리뷰(`/seller/reviews`)는 여기 넣지 않았다.** `product_reviews` 11.9만 행 중 셀러 소유
+ *   상품에 달린 것이 0인 건 사실이지만, 원인이 "아무도 안 써서" 가 아니라 **셀러 소유 활성 상품이
+ *   아직 1개뿐**이라서다. 상품이 늘면 리뷰는 저절로 붙는다 — 같은 0이라도 뜻이 다르다.
+ *
+ * true: 셀러 nav·탭에서 숙소 묶음 / 체험 캠페인 / 후기 인증을 내리고, 마이 이용권 시트의
+ *       숙소 줄도 함께 감춘다(두 표면이 갈리지 않게 **같은 플래그 하나**를 본다).
+ */
+export const SELLER_DORMANT_HIDDEN = true

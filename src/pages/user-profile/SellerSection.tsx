@@ -26,7 +26,7 @@
  * 상태를 **직접 말한다** — 노출·정산이 왜 아직인지 화면이 설명하지 않으면 사장님은 고장으로 읽는다.
  */
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
-import { BarChart3, ChevronDown, ChevronRight, ClipboardList, Loader2, ScanLine, Store, Ticket, Wallet } from 'lucide-react'
+import { BarChart3, ChevronDown, ChevronRight, ClipboardList, Handshake, Loader2, MessageSquare, ScanLine, Store, Ticket, Wallet } from 'lucide-react'
 import { TicketCard } from '@/components/ticket/TicketCard'
 import { formatNumber } from '@/utils/format'
 import { currentSeatId, onSeatChange, switchSeat } from '@/lib/seller-seat'
@@ -45,6 +45,9 @@ import BankSheet from './seller-section/BankSheet'
 import OrdersSheet from './seller-section/OrdersSheet'
 import VoucherSheet from './seller-section/VoucherSheet'
 import StoreSheet from './seller-section/StoreSheet'
+import PartnersSheet from './seller-section/PartnersSheet'
+import MessagesSheet from './seller-section/MessagesSheet'
+import SettlementsSheet from './seller-section/SettlementsSheet'
 
 const STATUS_NOTE: Record<string, string> = {
   pending: '승인 대기 중이에요. 준비는 지금 하고, 메인 노출과 정산은 승인 뒤에 시작됩니다.',
@@ -60,6 +63,7 @@ function todayLabelKST(): string {
 
 /** 마이 안에서 열리는 묶음·도구. 하나가 늘면 여기와 `openTool` 두 곳이 같이 바뀐다. */
 type Tool = 'orders' | 'vouchers' | 'withdraw' | 'analytics' | 'store' | 'refund' | 'tools' | 'pin' | 'bank'
+  | 'partners' | 'messages' | 'settlements'
 
 /** 묶음 한 줄 — 전부 같은 모양이어야 무엇이 있는지 한눈에 읽힌다. */
 function ToolRow({ icon, label, hint, busy, onClick }: {
@@ -290,10 +294,29 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           busy={entering}
           onClick={() => openTool('store')}
         />
+        {/* 🤝 소개 파트너 — 라이브 실측으로 **살아 있는** 기능이라 묶음으로 올렸다
+            (제안 1건 active · 팔로워 3). 쿠폰·숙소와 판정이 다르다. */}
+        <ToolRow
+          icon={<Handshake className="w-[18px] h-[18px]" aria-hidden="true" />}
+          label="소개 파트너"
+          hint="내 이용권을 담아 파는 사람 · 받은 제안"
+          busy={entering}
+          onClick={() => openTool('partners')}
+        />
+        {/* 💬 브랜드메시지 — 여기서는 **보내지 않는다**(발송은 등급 C). 잔액·최근 발송만 읽고,
+            충전·발송은 전용 화면으로 보낸다. 아직 안 쓴 가게에는 시트가 스스로 안내 한 장이 된다. */}
+        <ToolRow
+          icon={<MessageSquare className="w-[18px] h-[18px]" aria-hidden="true" />}
+          label="브랜드메시지"
+          hint="단골에게 카카오톡 안내 · 남은 건수"
+          busy={entering}
+          onClick={() => openTool('messages')}
+        />
       </div>
 
-      {/* 🧰 나머지 전부 — 쿠폰·알림톡·소개 파트너·숙소·사업자등록증은 아직 묶음 밖이다.
-          여기서 **찾아서** 들어가고, 그 화면 맨 위 띠로 마이에 돌아온다(§20). */}
+      {/* 🧰 나머지 전부 — 사업자등록증·운영자 위임·세금계산서처럼 **드물게 한 번** 하는 일.
+          2026-09-26 에 알림톡·소개 파트너가 묶음으로 올라오고 쿠폰·숙소가 내려가서 이 줄의
+          예시도 함께 바꿨다(문구가 실제 목록과 어긋나면 사장님이 없는 메뉴를 찾는다). */}
       <button
         type="button"
         disabled={entering}
@@ -301,7 +324,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
         className="w-full flex items-center gap-2 mt-2 px-1 py-3 text-left active:opacity-70 disabled:opacity-50"
       >
         <span className="flex-1 min-w-0 text-[13px] font-semibold text-gray-500 dark:text-gray-400 truncate">
-          전체 도구 · 쿠폰 · 알림톡 · 소개 파트너 · 숙소
+          전체 도구 · 사업자등록증 · 운영자 위임 · 운영 가이드
         </span>
         {entering
           ? <Loader2 className="w-4 h-4 shrink-0 animate-spin text-gray-400" aria-hidden="true" />
@@ -349,6 +372,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           onDone={() => state.refetch()}
           onFixPin={() => { setPinReturn('withdraw'); setTool('pin') }}
           onFixBank={() => setTool('bank')}
+          onHistory={() => setTool('settlements')}
         />
       )}
       {tool === 'pin' && <PinSheet sellerId={store.seller_id} onClose={() => setTool(null)} onDone={() => setTool(pinReturn)} />}
@@ -361,6 +385,22 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           onFixPin={() => { setPinReturn('bank'); setTool('pin') }}
         />
       )}
+      {tool === 'partners' && (
+        <PartnersSheet
+          sellerId={store.seller_id}
+          onClose={() => setTool(null)}
+          onOpenPath={(path) => { setTool(null); enterSeat(path) }}
+        />
+      )}
+      {tool === 'messages' && (
+        <MessagesSheet
+          sellerId={store.seller_id}
+          onClose={() => setTool(null)}
+          onOpenPath={(path) => { setTool(null); enterSeat(path) }}
+        />
+      )}
+      {/* ↩️ 지난 정산은 **출금에서만** 열린다 — 닫으면 출금으로 돌아온다(주문 → 환불과 같은 배치). */}
+      {tool === 'settlements' && <SettlementsSheet sellerId={store.seller_id} onClose={() => setTool('withdraw')} />}
       {tool === 'tools' && (
         <AllToolsSheet
           storeName={store.name}

@@ -204,10 +204,15 @@ describe('⑥ 통폐합 — 접은 화면이 사라지면 안 된다 (2026-09-03
     expect(LAYOUT_SRC).toContain('SELLER_TAB_GROUPS.flatMap')
   })
 
-  it('사이드바 줄 수가 실제로 줄었다 — 묶음 수 + 낱개 항목', () => {
-    // 36줄이 문제였다. 묶음이 8개고 각 묶음이 사이드바에서 한 줄이므로, 접힌 형제만큼 줄어든다.
-    const folded = SELLER_TAB_GROUPS.reduce((n, g) => n + g.tabs.length - 1, 0)
-    expect(folded).toBeGreaterThanOrEqual(15)
+  // 🔁 2026-09-26 재조준: 원래 `folded >= 15` 하나였는데, 그 수는 **접힌 형제 수**라서
+  //   메뉴를 *내리면*(쿠폰·숙소·체험 캠페인·후기 인증) 같이 줄어든다 — 사이드바는 더 짧아졌는데
+  //   검사는 빨간불이 났다. 지키려던 것은 "36줄로 돌아가지 않는다" 이지 형제 수가 아니다.
+  //   ⇒ **사이드바 줄 수 자체**(묶음 수)와 **접힘이 실제로 일어나는가**를 따로 잰다.
+  it('사이드바가 다시 길어지지 않는다 — 묶음 한 줄이 여러 화면을 덮는다', () => {
+    const lines = SELLER_TAB_GROUPS.length                                   // 사이드바에 나오는 줄
+    const screens = SELLER_TAB_GROUPS.reduce((n, g) => n + g.tabs.length, 0) // 그 줄들이 덮는 화면
+    expect(lines, '묶음이 늘어나면 36줄로 돌아가는 길이 열린다').toBeLessThanOrEqual(8)
+    expect(screens - lines, '접힌 화면이 0 이면 통폐합이 풀린 것이다').toBeGreaterThanOrEqual(8)
   })
 
   it('🔒 착지점은 반드시 첫 탭이다 — 사이드바가 가리키는 곳과 탭의 첫 칸이 달라지면 혼란', () => {

@@ -6,7 +6,7 @@
  * 레이아웃 셸과 분리해 두는 것이 맞다. **여기는 데이터만** — 렌더링/필터링은 SellerLayout 이 한다.
  */
 import { LayoutDashboard, PlusCircle, ShoppingBag, Package, DollarSign, Megaphone, Bell, Building2, BarChart3, Ticket, Star, BarChart2, BookOpen, Tag, Sparkles, Boxes, ScanLine, Handshake, Receipt, Gift, Rocket, Undo2, Users } from 'lucide-react'
-import { LIVE_COMMERCE_SUSPENDED, SELLER_COUPONS_HIDDEN, SELLER_STORE_ONLY_MODE } from '@/shared/feature-flags'
+import { LIVE_COMMERCE_SUSPENDED, SELLER_COUPONS_HIDDEN, SELLER_DORMANT_HIDDEN, SELLER_STORE_ONLY_MODE } from '@/shared/feature-flags'
 import { SELLER_TAB_GROUPS, tabGroupSiblings } from './seller-tab-groups'
 
 export type SellerType = 'influencer' | 'store_owner' | 'both'
@@ -98,7 +98,9 @@ export const NAV_GROUPS: {
       { path: '/seller/meal-voucher/new', labelKey: 'seller.registerVoucher', icon: PlusCircle, mode: 'common' as SellerMode },
       // `/seller/products/` 는 이용권 **수정** 화면이라 이 줄을 함께 켠다(탭 이동 중 길 잃음 방지).
       navFromGroup('/seller/group-buy', ['/seller/products/']),
-      navFromGroup('/seller/stays'),
+      // 🛏️ 숙소: 셀러 소유 상품 0 · 예약 0(2026-09-26 실측) — 묶음이 내려갔으므로 사이드바 줄도 함께.
+      //   한쪽만 내리면 `navFromGroup` 이 없는 묶음을 찾아 빈 줄이 되거나 착지점을 잃는다.
+      ...(SELLER_DORMANT_HIDDEN ? [] : [navFromGroup('/seller/stays')]),
     ],
   },
   {
