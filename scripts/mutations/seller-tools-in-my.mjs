@@ -57,12 +57,15 @@ export default [
     why: '두 곳에서 매출을 계산하면 마이와 대시보드가 다른 숫자를 말하는 날이 온다(이 레포가 반복해 당한 클래스).',
   },
   {
+    // 🔁 2026-09-26 재조준: 대표 *"이용권 등록, 숙소까지 해줘"* 로 등록이 **마이 안으로** 들어왔다.
+    //   옛 앵커(`enterSeat('/seller/meal-voucher/new')`)가 사라져 낡은 지도가 됐다.
+    //   지키는 것은 그대로다 — 마이가 등록 폼 부품을 **직접 들이지 않는다**(들이면 두 벌로 갈린다).
     name: '🧰 등록 폼을 마이가 복제한다',
     file: 'src/pages/user-profile/SellerSection.tsx',
-    find: "enterSeat('/seller/meal-voucher/new')",
-    replace: "enterSeat('/seller/products/new')",
+    find: "import StoreSwitchSheet from './StoreSwitchSheet'",
+    replace: "import StoreSwitchSheet from './StoreSwitchSheet'\nimport VoucherInfoStep from '@/pages/seller-meal-voucher/VoucherInfoStep'",
     test: TEST,
-    why: '이용권 등록은 전용 단계 폼이다 — 일반 상품 폼으로 보내면 매장·픽업 설정이 통째로 빠진다.',
+    why: '이용권 등록은 3단계 전용 폼이다 — 그 부품을 마이가 직접 들이는 순간 두 벌로 갈리기 시작한다(전용 시트가 같은 페이지를 통째로 연다).',
   },
   {
     name: '🪑 도구 시트가 좌석을 안 맞추고 열린다',
