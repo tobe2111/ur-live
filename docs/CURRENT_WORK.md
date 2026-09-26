@@ -5497,6 +5497,7 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 _총 361건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-26**
+- [2026-09-26 — 비슷한 스테이 자리 확정(숙소 소개 바로 아래)](handoff/2026-09-26-similar-stays-position.md)
 - [마이에 남은 셋 + 안 쓰는 메뉴 정리 (2026-09-26)](handoff/2026-09-26-seller-rest-and-cleanup.md)
 **2026-09-25**
 - [2026-09-25 — 셀러 핵심 업무를 소비자 앱 안으로 (설계 + 시안)](handoff/2026-09-25-seller-in-consumer-app-design.md)
