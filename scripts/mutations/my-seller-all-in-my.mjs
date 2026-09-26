@@ -159,4 +159,32 @@ export default [
     test: TEST,
     why: '게이트를 건너뛰면 다이어트가 통째로 사라진다 — 화면은 똑같이 보여서 눈으로는 못 잡는다.',
   },
+  {
+    name: '🚪 같은 일에 문이 다시 둘이 된다 (전체 도구가 대시보드 화면을 연다)',
+    file: SECTION,
+    find: '            const covered = COVERED_BY_SHEET[path]\n            if (covered) { setTool(covered); return }',
+    replace: '            void COVERED_BY_SHEET',
+    test: TEST,
+    why:
+      '묶음 줄은 손수 만든 폰 시트를, 전체 도구는 같은 일의 대시보드 화면을 열게 된다 — 일곱 개 전부. ' +
+      '어느 문으로 들어왔느냐에 따라 "주문" 이 다른 화면으로 뜨고, 버그가 오면 한쪽만 고친다.',
+  },
+  {
+    name: '🚪 덮는 표에서 한 줄이 빠진다 (그 일만 조용히 두 화면)',
+    file: SECTION,
+    find: "  '/seller/analytics': 'analytics',\n",
+    replace: '',
+    test: TEST,
+    why: '표가 통째로 사라지면 눈에 띄지만, 한 줄만 빠지면 그 화면에서만 갈린다 — 아무도 못 찾는다.',
+  },
+  {
+    name: '📋 일곱 줄이 다시 한 덩어리가 된다 (무엇이 매일인지 안 보인다)',
+    file: SECTION,
+    find: '      <GroupLabel>가끔</GroupLabel>\n',
+    replace: '',
+    test: TEST,
+    why:
+      '대표 확정 구조 시안 A 의 요점이다 — 똑같은 줄 일곱은 무엇이 중요한지 한 마디도 안 하고, ' +
+      '도구가 늘 때마다 그 덩어리가 길어진다.',
+  },
 ]

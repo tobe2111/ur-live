@@ -26,7 +26,7 @@
  * 상태를 **직접 말한다** — 노출·정산이 왜 아직인지 화면이 설명하지 않으면 사장님은 고장으로 읽는다.
  */
 import { Suspense, lazy, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
-import { BarChart3, ChevronDown, ChevronRight, ClipboardList, Handshake, Loader2, MessageSquare, ScanLine, Store, Ticket, Wallet } from 'lucide-react'
+import { BarChart3, ChevronDown, ChevronRight, ClipboardList, Handshake, Loader2, MessageSquare, ScanLine, Search, Store, Ticket, Wallet } from 'lucide-react'
 import { TicketCard } from '@/components/ticket/TicketCard'
 import { formatNumber } from '@/utils/format'
 import { currentSeatId, onSeatChange, switchSeat } from '@/lib/seller-seat'
@@ -77,6 +77,45 @@ function todayLabelKST(): string {
 /** 마이 안에서 열리는 묶음·도구. 하나가 늘면 여기와 `openTool` 두 곳이 같이 바뀐다. */
 type Tool = 'orders' | 'vouchers' | 'withdraw' | 'analytics' | 'store' | 'refund' | 'tools' | 'pin' | 'bank'
   | 'partners' | 'messages' | 'settlements' | 'page'
+
+/**
+ * 🏷️ 묶음 위 조용한 구분 라벨 (2026-09-26 · 대표 확정 "구조 시안 A").
+ *
+ * 종전엔 **똑같은 줄 일곱**이 한 덩어리였다 — 무엇이 매일 쓰는 것이고 무엇이 가끔인지
+ * 화면이 한 마디도 안 했고, 도구가 늘 때마다 그 덩어리가 길어졌다.
+ * 라벨은 12px 회색 한 줄이다(코레일톡 규칙 ⑥ *"나머지는 회색"*) — 줄을 더 그리지 않는다.
+ */
+function GroupLabel({ children }: { children: React.ReactNode }) {
+  return <div className="mt-3 mb-1.5 px-1 text-[12px] font-bold text-gray-400">{children}</div>
+}
+
+/**
+ * 🔀 **같은 일에 화면이 둘이 되지 않게** (2026-09-26 — 대표 *"전체적으로 이상적이지 않은 것 같은데?"*)
+ *
+ * ## 무엇이 잘못됐었나
+ * 마이에 문이 둘 생겼다. 묶음 줄은 **손수 만든 폰 시트**를 열고, 전체 도구는 같은 일의
+ * **대시보드 화면**을 열었다 — 일곱 개 전부. 사장님이 어느 문으로 들어왔느냐에 따라 "주문" 이
+ * 다른 화면으로 뜬다. 그리고 버그가 오면 한쪽만 고친다.
+ * **이 레포가 반복해 당한 클래스이고, 이번엔 내가 만들었다**(범용 도구 시트를 손수 시트 위에 얹었다).
+ *
+ * ## 처방: 문은 둘이어도 **도착지는 하나**
+ * 전체 도구에서 이 주소들을 고르면 대시보드 화면이 아니라 **그 손수 시트로** 보낸다.
+ * 색인에서 빼지 않는 이유 — 빼면 "전체 도구" 가 전체가 아니게 되고, 찾던 사람이 못 찾는다.
+ *
+ * ## ⚠️ 이건 종착지가 아니라 다리다
+ * 손수 시트가 존재하는 이유는 **대시보드 화면이 폰에서 나쁘기 때문**이다. UI 정리로 그 화면들이
+ * 폰에서 좋아지면 이 표와 시트 일곱은 **내려와야 한다** — 그때까지만 두 벌을 유지한다.
+ * 그 판단이 필요해지면 이 주석이 근거다.
+ */
+const COVERED_BY_SHEET: Record<string, Tool> = {
+  '/seller/orders': 'orders',
+  '/seller/group-buy': 'vouchers',
+  '/seller/settlements': 'withdraw',
+  '/seller/store': 'store',
+  '/seller/analytics': 'analytics',
+  '/seller/influencer-deals': 'partners',
+  '/seller/alimtalk': 'messages',
+}
 
 /** 묶음 한 줄 — 전부 같은 모양이어야 무엇이 있는지 한눈에 읽힌다. */
 function ToolRow({ icon, label, hint, busy, onClick }: {
@@ -269,11 +308,12 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
         </button>
       )}
 
-      {/* 🧰 묶음 다섯 — 대표 §21: *"일단 마이에서 대부분 끝내야 해"*.
-          한 줄이 한 묶음이고, 그 안에서 일이 끝난다. 도구가 늘어도 줄은 안 늘어난다.
+      {/* 🧰 묶음 — 대표 확정 **구조 시안 A**(2026-09-26): 일곱 줄 한 덩어리 → **매일 셋 / 가끔 넷**.
+          나누는 기준은 *하루에 몇 번 여는가* 다. 주문·이용권·정산은 매일이고 나머지는 아니다.
           ⚠️ 줄은 **좌석 없이도 보인다** — 좌석 토큰은 사람이 누른 순간에만 발급된다
              (마이를 여는 것만으로 발급하면 다른 기기의 대시보드 세션을 끊는다). */}
-      <div className="mt-3 rounded-2xl bg-surface shadow-lift overflow-hidden">
+      <GroupLabel>매일</GroupLabel>
+      <div className="rounded-2xl bg-surface shadow-lift overflow-hidden">
         <ToolRow
           icon={<ClipboardList className="w-[18px] h-[18px]" aria-hidden="true" />}
           label="주문"
@@ -299,6 +339,10 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           busy={entering}
           onClick={() => openTool('withdraw')}
         />
+      </div>
+
+      <GroupLabel>가끔</GroupLabel>
+      <div className="rounded-2xl bg-surface shadow-lift overflow-hidden">
         <ToolRow
           icon={<BarChart3 className="w-[18px] h-[18px]" aria-hidden="true" />}
           label="매출 분석"
@@ -333,24 +377,20 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
         />
       </div>
 
-      {/* 🧰 나머지 전부 — 사업자등록증·운영자 위임처럼 **드물게 한 번** 하는 일.
-          🩸 2026-09-26: 여기 예시를 **문자열로 적어 두는 것을 그만둔다.** 메뉴가 바뀔 때마다
-             어긋났고(쿠폰·숙소를 내렸을 때 두 번), 두 번 다 사람이 손으로 고쳤다. 그리고 여기서
-             목록을 세려면 나브 색인을 정적으로 읽어야 하는데 **그 순간 청크가 딸려 온다** —
-             즉 "정확한 예시"와 "가벼운 마이" 는 같이 가질 수 없다. 예시를 버리는 쪽이 맞다. */}
-      <button
-        type="button"
-        disabled={entering}
-        onClick={() => openTool('tools')}
-        className="w-full flex items-center gap-2 mt-2 px-1 py-3 text-left active:opacity-70 disabled:opacity-50"
-      >
-        <span className="flex-1 min-w-0 text-[13px] font-semibold text-gray-500 dark:text-gray-400 truncate">
-          전체 도구 — 찾아서 바로 열기
-        </span>
-        {entering
-          ? <Loader2 className="w-4 h-4 shrink-0 animate-spin text-gray-400" aria-hidden="true" />
-          : <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />}
-      </button>
+      {/* 🧰 나머지 전부 — 대표 확정 **구조 시안 A**: 회색 글씨 한 줄이 아니라 **제대로 된 줄 하나**로.
+          🩸 여기 예시를 **문자열로 적어 두는 것을 그만뒀다.** 메뉴가 바뀔 때마다 어긋났고
+             (쿠폰·숙소를 내렸을 때 두 번), 두 번 다 사람이 손으로 고쳤다. 그리고 여기서 개수를
+             세려면 나브 색인을 정적으로 읽어야 하는데 **그 순간 청크가 딸려 온다** —
+             "정확한 예시"와 "가벼운 마이" 는 같이 가질 수 없다. 예시를 버리는 쪽이 맞다. */}
+      <div className="mt-3 rounded-2xl bg-surface shadow-lift overflow-hidden">
+        <ToolRow
+          icon={<Search className="w-[18px] h-[18px]" aria-hidden="true" />}
+          label="전체 도구"
+          hint="찾아서 바로 열기"
+          busy={entering}
+          onClick={() => openTool('tools')}
+        />
+      </div>
 
       {/* ⏳ 시트는 전부 lazy 다 — 폴백이 `null` 인 이유는 머리말에 적었다(누른 직후 깜빡임 방지).
           시트 자신이 각자 로딩 표시를 갖고 있으므로 여기서 또 그리면 표시가 두 겹이 된다. */}
@@ -430,7 +470,10 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           storeName={store.name}
           onClose={() => setTool(null)}
           onPick={(path, label, inSheet) => {
-            // 🪟 대부분은 **여기서** 열린다 — 나가는 다섯만 종전처럼 전체화면으로 보낸다
+            // 🔀 손수 시트가 덮는 일이면 **그리로** 보낸다 — 같은 일에 화면이 둘이 되지 않게(위 표).
+            const covered = COVERED_BY_SHEET[path]
+            if (covered) { setTool(covered); return }
+            // 🪟 나머지는 시트 안에서 열린다 — 나가는 둘만 종전처럼 전체화면으로
             //   (이유는 `tool-pages.ts` 의 FULL_SCREEN_ONLY 에 값으로 적혀 있다).
             //   ⚠️ 판정은 시트가 해서 넘겨준다 — 여기서 `tool-pages` 를 읽으면 그 지도가
             //      **정적 의존**이 되어 시트 청크 전체가 마이에 붙는다(lazy 가 무의미해진다).

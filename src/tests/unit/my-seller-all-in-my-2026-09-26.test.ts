@@ -205,3 +205,64 @@ describe('⑤ 시트 안에서 깨지던 껍데기', () => {
     }
   })
 })
+
+describe('⑥ 구조 시안 A — 매일 / 가끔 (2026-09-26 대표 확정)', () => {
+  const code = readCode(SECTION)
+
+  it('일곱 줄이 한 덩어리로 돌아가지 않는다', () => {
+    expect(code, '무엇이 매일이고 무엇이 가끔인지 화면이 말해야 한다')
+      .toContain('<GroupLabel>매일</GroupLabel>')
+    expect(code).toContain('<GroupLabel>가끔</GroupLabel>')
+    // 라벨만 있고 덩어리가 안 나뉘면 아무 일도 안 한 것이다 — 카드가 둘이어야 한다.
+    const cards = code.split('rounded-2xl bg-surface shadow-lift overflow-hidden').length - 1
+    expect(cards, '묶음 카드가 매일·가끔·전체도구 셋이어야 한다').toBeGreaterThanOrEqual(3)
+  })
+
+  it('매일에는 셋만 — 정산까지', () => {
+    const daily = code.slice(code.indexOf('<GroupLabel>매일'), code.indexOf('<GroupLabel>가끔'))
+    const labels = [...daily.matchAll(/label="([^"]+)"/g)].map((m) => m[1])
+    expect(labels).toEqual(['주문', '이용권', '정산'])
+  })
+
+  it('전체 도구가 예시를 나열하지 않는다 (적으면 반드시 낡는다)', () => {
+    const line = code.split('\n').find((l) => l.includes('label="전체 도구"'))
+    expect(line, '"전체 도구" 줄을 못 찾았다 — 검사가 헛돌고 있다').toBeTruthy()
+    for (const gone of ['쿠폰', '알림톡', '숙소', '사업자등록증', '운영자']) {
+      expect(code, `"전체 도구" 힌트에 메뉴 이름(${gone})이 박혔다`)
+        .not.toMatch(new RegExp(`hint="[^"]*${gone}`))
+    }
+  })
+})
+
+describe('⑦ 같은 일에 화면이 둘이 되지 않는다', () => {
+  const code = readCode(SECTION)
+
+  it('손수 시트가 덮는 주소는 대시보드 화면 대신 그 시트로 간다', () => {
+    // 🩸 2026-09-26: 범용 도구 시트를 손수 시트 **위에** 얹어, 일곱 개가 문 두 개로 열렸다.
+    //   어느 문으로 들어왔느냐에 따라 "주문" 이 다른 화면으로 떴다 — 이 레포가 반복해 당한 클래스다.
+    const table = code.slice(code.indexOf('const COVERED_BY_SHEET'), code.indexOf('/** 묶음 한 줄'))
+    const paths = [...table.matchAll(/'(\/seller\/[^']+)':/g)].map((m) => m[1])
+    expect(paths.length, '측정 0건 — 표가 사라졌거나 형태가 바뀌었다').toBeGreaterThanOrEqual(7)
+    for (const need of ['/seller/orders', '/seller/group-buy', '/seller/settlements', '/seller/analytics']) {
+      expect(paths, `${need} 가 표에 없다 — 그 일에 화면이 둘이 된다`).toContain(need)
+    }
+  })
+
+  it('표를 실제로 소비한다 (선언만 하면 죽은 코드다)', () => {
+    expect(code).toMatch(/const covered = COVERED_BY_SHEET\[path\]/)
+    expect(code, '표에 걸리면 **먼저** 돌려보내야 한다 — 뒤에 두면 시트가 먼저 열린다')
+      .toMatch(/if \(covered\) \{ setTool\(covered\); return \}[\s\S]{0,600}?if \(inSheet\)/)
+  })
+
+  it('묶음 줄이 여는 도구가 전부 표에 덮여 있다', () => {
+    // 묶음 줄에 있는데 표에 없으면, 전체 도구에서 같은 일이 다른 화면으로 열린다.
+    const table = code.slice(code.indexOf('const COVERED_BY_SHEET'), code.indexOf('/** 묶음 한 줄'))
+    const covered = new Set([...table.matchAll(/:\s*'([a-z]+)',/g)].map((m) => m[1]))
+    const rows = [...code.matchAll(/openTool\('([a-z]+)'\)/g)].map((m) => m[1])
+      .filter((t) => t !== 'tools')
+    expect(rows.length).toBeGreaterThanOrEqual(7)
+    for (const t of new Set(rows)) {
+      expect(covered, `묶음 줄 '${t}' 이 표에 없다 — 전체 도구에서 다른 화면이 열린다`).toContain(t)
+    }
+  })
+})

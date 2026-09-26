@@ -201,11 +201,15 @@ describe('🔌 배선 — 마이가 세 시트를 실제로 연다', () => {
     // 🔁 2026-09-26 재조준: 종전엔 "낡은 예시 두 개가 없는가" 만 봤다. 그 판정은 **다음 예시가
     //   낡는 것**을 못 막는다 — 실제로 두 번 낡았고 두 번 다 사람이 손으로 고쳤다.
     //   이제 불변식은 더 강하다: 그 줄에 예시를 **아예 적지 않는다**.
-    const line = code.split('\n').find(l => l.includes('전체 도구'))
-    expect(line, '"전체 도구" 줄을 못 찾았다 — 검사가 헛돌고 있다').toBeTruthy()
-    expect(line!, '예시를 나열하면 메뉴가 바뀔 때마다 어긋난다').not.toContain('·')
-    for (const gone of ['쿠폰', '알림톡', '숙소', '사업자등록증']) {
-      expect(line!, `"전체 도구" 줄에 메뉴 이름(${gone})이 박혀 있다`).not.toContain(gone)
+    // 🩸 2026-09-26 3차: 종전엔 **'전체 도구' 가 들어간 한 줄**만 봤다. 구조 시안 A 로 그 줄이
+    //   `label="전체 도구"` 가 되고 문구는 **다음 줄(`hint=`)** 로 옮겨가자, 예시를 다시 넣어도
+    //   검사가 통과했다(되돌려-검증이 잡았다). ⇒ 줄이 아니라 **그 블록**을 본다.
+    const at = code.indexOf('label="전체 도구"')
+    expect(at, '"전체 도구" 줄을 못 찾았다 — 검사가 헛돌고 있다').toBeGreaterThan(0)
+    const block = code.slice(at, at + 260)
+    expect(block, '예시를 나열하면 메뉴가 바뀔 때마다 어긋난다').not.toContain('·')
+    for (const gone of ['쿠폰', '알림톡', '숙소', '사업자등록증', '운영자']) {
+      expect(block, `"전체 도구" 블록에 메뉴 이름(${gone})이 박혀 있다`).not.toContain(gone)
     }
   })
 })
