@@ -82,6 +82,14 @@ export default [
     why: '라이브 실측으로 셀러 생성 0건을 확인하고 내린 것이다 — 되살리려면 플래그를 false 로 하고 이유를 남겨야 한다.',
   },
   {
+    name: '🎫 쿠폰 탭 묶음만 남는다 (착지점이 사이드바에 없어 위치를 잃는다)',
+    file: 'src/components/seller/seller-tab-groups.ts',
+    find: '  ...(SELLER_COUPONS_HIDDEN ? [] : [{',
+    replace: '  ...([{',
+    test: 'src/tests/unit/voucher-nav-reachability-2026-09-03.test.ts',
+    why: '이 커밋에서 실제로 난 회귀다 — 쿠폰을 사이드바에서만 내렸더니 그 묶음의 착지점이 사라져, 탭으로 이동한 순간 사이드바 줄이 꺼진다(pre-push 게이트가 잡았다).',
+  },
+  {
     name: '🎟️ 이용권 묶음이 등록 시트 대신 경로로 나간다',
     file: 'src/pages/user-profile/seller-section/VoucherSheet.tsx',
     find: '            onClick={() => setAdding(true)}',

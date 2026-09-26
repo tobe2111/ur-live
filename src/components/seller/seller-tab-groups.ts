@@ -1,5 +1,6 @@
 import { Ticket, ShoppingBag, DollarSign, Tag, Handshake, Building2, Bell, BedDouble } from 'lucide-react'
 import type { SellerMode, SellerType } from './seller-nav'
+import { SELLER_COUPONS_HIDDEN } from '@/shared/feature-flags'
 
 /**
  * 🧭 **한 가지 일 = 사이드바 한 줄, 나머지는 그 안의 탭** (2026-09-03 대표 승인 "전부").
@@ -76,13 +77,19 @@ export const SELLER_TAB_GROUPS: SellerTabGroup[] = [
       { path: '/seller/promo-spend', labelKey: 'seller.nav.promoSpend', fallback: 'promo 지출' },
     ],
   },
-  {
+  // 🎫 2026-09-26 (대표 *"쿠폰은 앞으로 필요없을 것 같은데? 확인해줘"* → 실측 확인):
+  //   이 묶음의 **착지점이 쿠폰**이라, 쿠폰을 사이드바에서 내리면 묶음도 같이 내려야 한다 —
+  //   착지점이 사이드바에 없으면 탭으로 이동한 순간 사이드바 줄이 꺼져 사용자가 위치를 잃는다
+  //   (`voucher-nav-reachability` 가 지키는 불변식이고, 실제로 이 커밋에서 그 가드가 잡았다).
+  //   ⚠️ 함께 내려가는 `프로모 코드` 도 라이브 `promo_codes` **0행**이라 잃는 것이 없다.
+  //   라우트·페이지는 둘 다 보존 — 플래그를 false 로 하면 묶음째 돌아온다.
+  ...(SELLER_COUPONS_HIDDEN ? [] : [{
     labelKey: 'seller.nav.discounts', fallback: '할인', icon: Tag,
     tabs: [
       { path: '/seller/coupons', labelKey: 'seller.nav.coupons', fallback: '쿠폰' },
       { path: '/seller/promo-codes', labelKey: 'seller.nav.promoCodes', fallback: '프로모 코드' },
     ],
-  },
+  }]),
   {
     labelKey: 'seller.nav.partners', fallback: '파트너', icon: Handshake,
     tabs: [
