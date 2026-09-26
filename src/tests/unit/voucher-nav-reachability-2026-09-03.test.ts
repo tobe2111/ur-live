@@ -183,9 +183,14 @@ describe('⑤ 자동 발급 셀러 아이디는 손님에게 안 보인다', () 
   })
 
   it('🔒 상세 화면이 raw seller_username 을 직접 그리지 않는다', () => {
+    /* 🔀 2026-09-24: 셀러 카드가 `SellerCard.tsx` 로 옮겨졌다(대표 문서 ① — 가게 소개란 신설로
+       상세가 파일크기 래칫에 걸려 추출). 불변식("손님 화면이 raw 아이디를 안 그린다")은 그대로라
+       가드를 풀지 않고 두 파일 모두를 본다 — 어느 쪽에서든 raw 로 되돌아가면 빨간불이다. */
     const detail = readFileSync('src/pages/GroupBuyDetailPage.tsx', 'utf8')
+    const card = readFileSync('src/pages/group-buy/SellerCard.tsx', 'utf8')
     expect(detail).not.toMatch(/>@\{detail\.seller_username\}/)
-    expect(detail).toContain('publicSellerHandle(detail.seller_username)')
+    expect(card).not.toMatch(/>@\{d\.seller_username\}/)
+    expect(detail + card).toContain('publicSellerHandle(d.seller_username)')
   })
 })
 

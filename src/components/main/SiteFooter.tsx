@@ -42,6 +42,7 @@ export default function SiteFooter() {
                 지역 페이지 56개로 가는 유일하게 안정적인 진입로다. */}
             <a href="/region" className={colLink}>지역별 동네딜</a>
             <a href="/new-openings" className={colLink}>우리 동네 새 가게</a>
+            <a href="/soon" className={colLink}>오픈 예정</a>{/* 🌱 2026-09-24 대표 문서 ⑤ */}
             <a href="/stays" className={colLink}>숙소</a>
             <a href="/experience" className={colLink}>체험단 모집</a>
             <a href="/blog" className={colLink}>블로그</a>

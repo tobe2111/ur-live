@@ -16,6 +16,7 @@
 import { useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { HOSTING_HIDDEN, LIVE_COMMERCE_SUSPENDED } from '@/shared/feature-flags'
+import { currentSeatType } from '@/lib/seller-seat'
 import { isStoreOwner } from '@/shared/seller-roles'
 import { NAV_GROUPS, SELLER_SEARCH_ONLY, type SellerType } from '@/components/seller/seller-nav'
 import { SELLER_TAB_GROUPS } from '@/components/seller/seller-tab-groups'
@@ -33,7 +34,10 @@ export function useSellerNavModel() {
   const { t } = useTranslation()
   const location = useLocation()
 
-  const sellerType = ((typeof window !== 'undefined' && localStorage.getItem('seller_type')) || 'influencer') as SellerType
+  // 🪑 2026-09-26: 종류는 **좌석 토큰**에서 읽는다. `localStorage.seller_type` 은 로그인할 때만 쓰이고
+  //   **좌석 전환을 안 따라간다** — 가게를 옮기면 직전 가게의 종류가 남아 **A 의 메뉴를 B 에서 보게 된다.**
+  //   (대시보드의 하드 리로드도 이 값을 다시 안 쓴다. 마이만의 문제가 아니라 원래 있던 결함이다.)
+  const sellerType = ((typeof window !== 'undefined' && (currentSeatType() || localStorage.getItem('seller_type'))) || 'influencer') as SellerType
   // 🏁 2026-06-14: 라이브 영구중단 후엔 seller_type(크리에이터/매장)으로만 분기한다. live 항목은 항상 숨김.
   //   user 세션 의존 항목(/host·/u/me/earnings)은 user_id 가 있을 때만 — 없으면 클릭 시 /login 으로 튕긴다.
   const hasUserSession = typeof window !== 'undefined' && !!localStorage.getItem('user_id')

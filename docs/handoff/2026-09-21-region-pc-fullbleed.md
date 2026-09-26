@@ -140,6 +140,19 @@ BASE=https://urdeal.kr node <하네스>   # /region · /region/부산 · /region
   구조적으로 안 걸린다(내가 넣은 `rounded-2xl` 이 그 금지 목록에 있었다).
   ⇒ **이름 grep 에 한 줄을 더한다**: `grep -rln 'git ls-files' src/tests/` (현재 **7개**) 를 열어
   바꾼 파일이 그 글롭 밑에 있는지 본다. 둘 다 몇 초면 끝난다.
+- 🩸 **세 번째 변주 (2026-09-24, PR #1540)** — 이번엔 **코드가 아닌 파일**에서 났다.
+  `docs/decisions/*.md` 두 개를 고쳤는데 스윕은 코드 파일(`StoreOwnerClaimPage`)만 했고,
+  `ai-team-operating-model.test.ts` 가 **결재함 폴더를 통째로 훑어** `상태:` 줄 형식을 검사한다
+  (`/^상태: (open|approved|rejected|expired)$/m` — **정확히 한 단어**). 내가 그 줄 뒤에 요약을 붙여
+  빨간불이 났다. `pre-push` 게이트는 **가드 스크립트만** 돌고 vitest 는 안 돌아서 로컬은 초록이었다.
+  ⇒ **바꾼 파일이 `src/` 밖이어도 스윕한다.** 다만 디렉터리 grep 은 너무 거칠다(`src/pages` 는 220개가
+  걸린다) — **`docs/`·`scripts/` 같은 비코드 경로만 디렉터리로**, 코드는 파일명 + 글롭 래칫으로.
+  세 줄이면 끝난다:
+  ```bash
+  git diff --name-only origin/main...HEAD            # 바꾼 것 전부 — src/ 밖도 본다
+  grep -rln "<바꾼 코드 파일명>" src/tests/           # 이름
+  grep -rln 'git ls-files\|docs/decisions\|docs/design' src/tests/   # 폴더째 훑는 가드
+  ```
 
 가드: `src/tests/unit/pc-frame-unlock-2026-09-21.test.ts` 43건 +
 `scripts/mutations/pc-frame-unlock.mjs` **8건**(전부 빨간불) + 지역 5건 재조준 후 재확인 +

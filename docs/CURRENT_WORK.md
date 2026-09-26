@@ -5494,10 +5494,17 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 355건 · 최신순 · 이 목록은 자동 생성된다._
+_총 360건 · 최신순 · 이 목록은 자동 생성된다._
 
+**2026-09-25**
+- [2026-09-25 — 셀러 핵심 업무를 소비자 앱 안으로 (설계 + 시안)](handoff/2026-09-25-seller-in-consumer-app-design.md)
+- [2026-09-25 — #1543 라이브 판정(E4)과 거기서 나온 결함 하나](handoff/2026-09-25-e4-store-intro-tab.md)
+**2026-09-24**
+- [영입 커미션 잔재 정리 + 정산 레일 (2026-09-24)](handoff/2026-09-24-intro-commission-residue.md)
+- [2026-09-24 — 대표 문서 「유어딜_추가제안」 6항목 이행](handoff/2026-09-24-doc-followthrough.md)
 **2026-09-23**
 - [2026-09-23 — 이용권 QR 시트 E4 판정 + 소비자 화면 글꼴 정리](handoff/2026-09-23-qr-sheet-e4-and-consumer-type.md)
+- [어드민 재방문 401 일곱 개 · 승인 400 — 영구 수리 (2026-09-23)](handoff/2026-09-23-admin-401-storm-and-approve-400.md)
 **2026-09-21**
 - [🎬 유어쇼츠 전체 보기 — 도시·종류로 고르는 목록 (`/urshorts`)](handoff/2026-09-21-urshorts-browse.md)
 - [2026-09-21 — 매장 확인 통화 기록 + 신규 매장 노출 유예 (사기 방어 ①②)](handoff/2026-09-21-store-verify.md)

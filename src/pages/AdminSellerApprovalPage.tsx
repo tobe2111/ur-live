@@ -13,6 +13,7 @@ import { makePurgeSeller } from './admin-seller-approval/purge-seller-action'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog, alertDialog } from '@/components/ui/confirm-dialog'
 import { formatKSTDate } from '@/utils/date'
+import { errorCode } from '@/utils/api-error-code'
 
 /**
  * 🛡️ 2026-04-28: 셀러 관리 통합 페이지
@@ -121,14 +122,27 @@ export default function AdminSellerApprovalPage() {
     })
   }, [sellers, filter, search, hideDistributor])
 
+  /**
+   * 🔁 2026-09-23 (대표 콘솔 실측 — `PATCH /sellers/24/approve` 400): 실패했을 때 **목록을 다시 불러온다**.
+   *
+   * 종전엔 성공에서만 `load()` 를 했다. 그래서 이미 승인된 매장(다른 탭·다른 관리자·방금 내가 누른 것)을
+   * 누르면 400 만 뜨고 **그 줄이 화면에 그대로 남아** 또 누르게 된다 — 돌아오는 건 같은 400 뿐이다.
+   * 화면이 서버와 어긋난 것이 원인이므로, 실패야말로 다시 맞출 신호다.
+   *
+   * 그리고 '이미 승인됨'은 **실패가 아니라 결과가 같은 일**이라 빨간 토스트로 겁줄 이유가 없다 →
+   * 서버가 주는 안정적인 `code` 로만 판정한다(문구는 바뀌므로 문자열 매칭 금지).
+   */
   const approve = async (id: number) => {
     setActingId(id)
     try {
       // 🛡️ 2026-06-12 (감사 1단계): 알림 없는 admin-tools approve → 알림톡+벨+이력 있는
       //   PATCH /api/admin/sellers/:id/approve (admin-sellers.routes.ts) 로 교체.
       await api.patch(`/api/admin/sellers/${id}/approve`, {}, h)
-      toast.success('승인 완료'); load()
-    } catch { toast.error('승인 실패') } finally { setActingId(null) }
+      toast.success('승인 완료')
+    } catch (err) {
+      if (errorCode(err) === 'ALREADY_APPROVED') toast.info('이미 승인된 매장이에요 — 목록을 새로 불러옵니다')
+      else toast.error('승인 실패')
+    } finally { setActingId(null); load() }
   }
 
   const reject = async (id: number) => {
@@ -136,8 +150,8 @@ export default function AdminSellerApprovalPage() {
     setActingId(id)
     try {
       await api.put(`/api/admin/tools/sellers/${id}/reject`, { reason }, h)
-      toast.info('거절됨'); load()
-    } catch { toast.error('거절 실패') } finally { setActingId(null) }
+      toast.info('거절됨')
+    } catch { toast.error('거절 실패') } finally { setActingId(null); load() }
   }
 
   // 🛡️ 2026-05-19: 공급자 (가게 사장님) 빠른 등록 — D 공동구매 3자 분배 위함.

@@ -15,7 +15,9 @@ const NAV = codeOnly(read('src/pages/user-profile/AccountSideNav.tsx'))
 describe('PC 마이 — 우측 칸은 메뉴가 아니라 내용', () => {
   it('lg+ 는 AccountPcPane, 모바일은 종전 흐름(딜 카드 → 이용 내역 목록) — 동기 미디어쿼리 분기', () => {
     expect(PAGE).toMatch(/const isPc = useMediaQuery\('\(min-width: 1024px\)'\)/)
-    expect(PAGE).toMatch(/\{isPc \? \(\s*<AccountPcPane counts=\{counts\}/)
+    // 🪑 2026-09-25: PC 분기에 "내 가게" 섹션이 형제로 붙어 조각(fragment)이 생겼다 —
+    //   지키려던 것은 **PC 가 AccountPcPane 을 그린다**이지 그 줄의 모양이 아니다. 앵커만 재조준.
+    expect(PAGE).toMatch(/\{isPc \? \([\s\S]{0,200}?<AccountPcPane counts=\{counts\}/)
     expect(PAGE).toMatch(/<TeamPointsCard \/>/)
     expect(PAGE).toMatch(/<ShoppingGroup counts=\{counts\} \/>/)
   })

@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>마이 안에서 다 — 필수 작업 선별</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --brand:#1C69EF; --brand-tint:#EAF1FE; --brand-text:#1C69EF;
+  --bg:#F8F7FC; --surface:#FFFFFF;
+  --ink:#16181C; --ink-soft:#6E6B68; --ink-faint:#8A8580;
+  --rule:rgb(22 24 28 / .08); --rule-strong:rgb(22 24 28 / .28);
+  --lift:0 2px 10px rgb(22 24 28 / .06);
+  --page:#EFEEF4; --pagefg:#16181C; --pagemute:#6E6B68; --paneled:#E4E2EC;
+}
+:root[data-theme="dark"]{
+  --bg:#11141C; --surface:#1D1F29; --ink:#F5F3F1; --ink-soft:#A5A29E; --ink-faint:#757370;
+  --brand-text:#4D8DF5; --brand-tint:#16243D;
+  --rule:rgb(255 255 255 / .08); --rule-strong:rgb(255 255 255 / .32); --lift:none;
+  --page:#0A0C12; --pagefg:#F5F3F1; --pagemute:#A5A29E; --paneled:#171A23;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--page);color:var(--pagefg);font-family:'Noto Sans KR',system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;padding:34px 18px 70px}
+.wrap{max-width:1400px;margin:0 auto}
+h1{font-size:27px;font-weight:800;letter-spacing:-.025em}
+.lead{font-size:17px;font-weight:700;color:var(--brand-text);margin-top:10px}
+.sub{color:var(--pagemute);font-size:14px;margin-top:8px;line-height:1.75;max-width:74ch}
+.sub b{color:var(--pagefg);font-weight:700}
+.bar{display:flex;gap:8px;margin-top:18px}
+.tgl{border:1px solid var(--rule-strong);background:transparent;color:var(--pagefg);
+  border-radius:999px;padding:7px 16px;font:600 13px 'Noto Sans KR';cursor:pointer}
+.tgl[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:#fff}
+
+table.sel{border-collapse:collapse;margin-top:22px;font-size:13px;max-width:96ch;width:100%}
+table.sel th,table.sel td{padding:9px 11px;text-align:left;border-bottom:1px solid var(--rule)}
+table.sel th{font-size:11.5px;font-weight:800;color:var(--pagemute);border-bottom:1px solid var(--rule-strong)}
+table.sel td{color:var(--pagemute)}
+table.sel td:first-child{color:var(--pagefg);font-weight:700}
+table.sel td.c{text-align:center;width:72px}
+table.sel tr.yes td:last-child{color:var(--brand-text);font-weight:800}
+table.sel tr.no{opacity:.55}
+.mark{font-weight:800}
+
+.row{display:flex;gap:24px;flex-wrap:wrap;margin-top:34px;align-items:flex-start}
+.slot{width:376px}
+.cap{font-size:11.5px;font-weight:800;color:var(--pagemute);margin-bottom:8px}
+.cap i{font-style:normal;color:var(--brand-text)}
+
+.phone{width:376px;background:var(--bg);border-radius:30px;overflow:hidden;
+  box-shadow:0 12px 40px rgb(0 0 0 / .18);display:flex;flex-direction:column;position:relative}
+.h800{height:800px}
+.st{height:25px;flex:none;display:flex;align-items:center;justify-content:space-between;
+  padding:0 19px;font-size:10.5px;font-weight:700;color:var(--ink-faint)}
+.hd{flex:none;padding:5px 15px 8px;display:flex;align-items:center;gap:9px}
+.hd .t{font-size:19px;font-weight:800;color:var(--ink);letter-spacing:-.02em}
+.hd .sp{flex:1}
+.body{flex:1;overflow:hidden;padding:0 15px 10px;display:flex;flex-direction:column;gap:9px}
+.tabs{flex:none;height:59px;background:var(--surface);border-top:1px solid var(--rule);display:flex}
+.tabs a{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  font-size:10px;font-weight:700;color:var(--ink-faint);position:relative}
+.tabs a.on{color:var(--ink);font-weight:800}
+.tabs a .pt{position:absolute;bottom:6px;width:4px;height:4px;border-radius:50%;background:var(--brand)}
+svg{display:block}
+
+.sect{display:flex;align-items:center;gap:7px;padding:8px 3px 1px;flex:none}
+.sect .l{font-size:12px;font-weight:800;color:var(--ink)}
+.sect .r{margin-left:auto;font-size:11.5px;font-weight:700;color:var(--ink-soft);display:flex;align-items:center;gap:4px}
+.sect .dot{width:6px;height:6px;border-radius:50%;background:var(--brand)}
+
+.prof{display:flex;align-items:center;gap:11px;flex:none;padding:2px 2px 4px}
+.prof .av{width:50px;height:50px;border-radius:50%;flex:none;background:linear-gradient(160deg,#7BA7D9,#C9D9EA)}
+.prof .nm{font-size:16px;font-weight:800;color:var(--ink)}
+.prof .chip{font-size:10.5px;font-weight:700;color:var(--ink);background:var(--paneled);
+  border-radius:999px;padding:3px 9px;display:inline-flex;align-items:center;gap:4px}
+.sm{font-size:11.5px;color:var(--ink-soft);line-height:1.55}
+.edit{font-size:9.5px;font-weight:700;color:var(--ink-soft);background:var(--paneled);
+  border-radius:999px;padding:3px 8px;margin-top:4px;display:inline-block}
+
+.tk{border-radius:15px;overflow:hidden;box-shadow:var(--lift);flex:none}
+.tk .band{background:var(--brand);color:#fff;padding:9px 15px;display:flex;align-items:center}
+.tk .band .l{font-size:11.5px;font-weight:800}
+.tk .band .r{margin-left:auto;font-size:11px;font-weight:700;opacity:.92}
+.tk .in{background:var(--surface);padding:15px}
+.num{font-size:31px;font-weight:900;color:var(--ink);letter-spacing:-.045em;line-height:1}
+.num s{font-size:15px;font-weight:700;margin-left:3px;text-decoration:none}
+.meta{margin-top:7px;font-size:11.5px;color:var(--ink-soft)}
+.divline{margin-top:12px;padding-top:11px;border-top:1px solid var(--rule);display:flex;align-items:center;gap:9px}
+.divline .k{font-size:12.5px;font-weight:600;color:var(--ink)}
+.divline .v{margin-left:auto;font-size:15px;font-weight:800;color:var(--ink)}
+
+.card{background:var(--surface);box-shadow:var(--lift);border-radius:15px;padding:14px;flex:none;
+  display:flex;flex-direction:column;gap:10px}
+.card .ch{display:flex;align-items:center}
+.card .ch .t{font-size:14.5px;font-weight:800;color:var(--ink)}
+.card .ch .c{margin-left:auto;font-size:11.5px;font-weight:800;color:var(--brand-text)}
+.it{display:flex;align-items:center;gap:10px}
+.it .m{flex:1;min-width:0}
+.it .m .a{font-size:13px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.it .m .b{font-size:11px;color:var(--ink-soft);margin-top:1px}
+.go{font:800 12px 'Noto Sans KR';border:0;border-radius:9px;padding:8px 14px;background:var(--brand);color:#fff;cursor:pointer;flex:none}
+.go.gh{background:transparent;color:var(--ink-soft);border:1px solid var(--rule-strong);font-weight:700}
+
+.scanbtn{display:flex;align-items:center;gap:11px;background:var(--brand);color:#fff;
+  border-radius:12px;padding:14px 15px;flex:none;cursor:pointer}
+.scanbtn .t{font-size:14.5px;font-weight:800}
+.scanbtn .s{font-size:11px;font-weight:600;opacity:.88;margin-top:1px}
+
+.sw{position:relative;width:38px;height:22px;border-radius:999px;background:var(--brand);flex:none}
+.sw::after{content:'';position:absolute;top:3px;right:3px;width:16px;height:16px;border-radius:50%;background:#fff}
+.sw.off{background:var(--rule-strong)}
+.sw.off::after{right:auto;left:3px}
+
+.link{display:flex;align-items:center;gap:8px;padding:12px 3px;flex:none;font-size:13px;font-weight:700;color:var(--ink-soft)}
+.grp{background:var(--surface);box-shadow:var(--lift);border-radius:14px;flex:none;overflow:hidden}
+.grp .gh{font-size:11.5px;font-weight:800;color:var(--ink-soft);padding:12px 14px 7px}
+.grp .gr{display:flex;align-items:center;gap:9px;padding:11px 14px;font-size:13px;color:var(--ink);font-weight:600}
+.grp .gr + .gr{border-top:1px solid var(--rule)}
+.grp .gr .v{margin-left:auto;font-size:12px;color:var(--ink-faint);font-weight:700}
+.deal{background:var(--surface);box-shadow:var(--lift);border-radius:14px;padding:14px;flex:none}
+.deal .k{font-size:11.5px;font-weight:700;color:var(--ink-soft)}
+.deal .v{font-size:24px;font-weight:900;color:var(--ink);letter-spacing:-.035em;margin-top:2px}
+.deal .btn{margin-top:10px;border-radius:10px;background:var(--paneled);padding:9px;text-align:center;font-size:12px;font-weight:700;color:var(--ink)}
+.g4{display:flex;background:var(--surface);box-shadow:var(--lift);border-radius:14px;padding:12px 0;flex:none}
+.g4 > div{flex:1;text-align:center}
+.g4 .n{font-size:19px;font-weight:800;color:var(--ink)}
+.g4 .n.off{color:var(--ink-faint)}
+.g4 .k{font-size:10px;color:var(--ink-soft);font-weight:600;margin-top:3px}
+
+/* 시트 */
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-radius:22px 22px 0 0;padding:9px 16px 24px}
+.grab{width:38px;height:4px;border-radius:999px;background:var(--rule-strong);margin:0 auto 15px;opacity:.5}
+.sh-t{font-size:16.5px;font-weight:800;color:var(--ink)}
+.dim{position:absolute;inset:0;background:rgb(0 0 0 / .5)}
+.frame{width:186px;height:186px;margin:4px auto 14px;border-radius:16px;position:relative;background:var(--brand-tint)}
+.frame i{position:absolute;width:30px;height:30px;border:3px solid var(--brand)}
+.frame i:nth-child(1){top:12px;left:12px;border-right:0;border-bottom:0;border-radius:8px 0 0 0}
+.frame i:nth-child(2){top:12px;right:12px;border-left:0;border-bottom:0;border-radius:0 8px 0 0}
+.frame i:nth-child(3){bottom:12px;left:12px;border-right:0;border-top:0;border-radius:0 0 0 8px}
+.frame i:nth-child(4){bottom:12px;right:12px;border-left:0;border-top:0;border-radius:0 0 8px 0}
+.frame u{position:absolute;left:18px;right:18px;top:50%;height:2px;background:var(--brand);opacity:.55}
+.cta{border:0;border-radius:12px;padding:14px;font:800 14.5px 'Noto Sans KR';background:var(--brand);color:#fff;width:100%;cursor:pointer;flex:none}
+.cta.gh{background:transparent;color:var(--ink-soft);border:1px solid var(--rule-strong);font-weight:700;font-size:12.5px;padding:11px}
+.warn{background:var(--paneled);border-radius:11px;padding:11px 13px;font-size:12px;color:var(--ink);line-height:1.6;font-weight:600}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;font-size:13px;font-weight:800;color:var(--ink)}
+.kv{display:flex;align-items:center;padding:10px 0;font-size:13px}
+.kv + .kv{border-top:1px solid var(--rule)}
+.kv .k{color:var(--ink-soft);font-weight:600}
+.kv .v{margin-left:auto;font-weight:800;color:var(--ink)}
+.legend{margin-top:32px;font-size:13px;color:var(--pagemute);line-height:1.9;max-width:84ch}
+.legend b{color:var(--pagefg)}
+.legend code{background:var(--surface);color:var(--ink);padding:1px 6px;border-radius:5px;font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>마이 안에서 다 — 필수 작업만 선별</h1>
+  <p class="lead">페이지 이동 0. 버튼은 마이에 있고, 손대는 순간만 시트가 올라옵니다.</p>
+  <p class="sub">보는 것도 하는 것도 <b>마이에서 끝냅니다.</b> 대신 아무거나 넣지 않고
+  <b>네 가지 기준</b>으로 걸렀습니다 — 다 넣으면 마이가 22블록이 되고, 알림 설정 하나 바꾸러 온 날에도 그 길을 다 지나야 합니다.</p>
+
+  <div class="bar">
+    <button class="tgl" id="tL" aria-pressed="false">라이트</button>
+    <button class="tgl" id="tD" aria-pressed="true">다크</button>
+  </div>
+
+  <table class="sel">
+    <tr><th>작업</th><th class="c">손님 앞</th><th class="c">놓치면 손해</th><th class="c">빈도</th><th class="c">한 손</th><th>판정</th></tr>
+    <tr class="yes"><td>이용권 QR 사용처리</td><td class="c mark">●</td><td class="c mark">●</td><td class="c">매일 여러 번</td><td class="c mark">●</td><td>마이 안에서</td></tr>
+    <tr class="yes"><td>주문 확인</td><td class="c">–</td><td class="c mark">●</td><td class="c">매일</td><td class="c mark">●</td><td>마이 안에서</td></tr>
+    <tr class="yes"><td>판매 중지 · 재개</td><td class="c mark">●</td><td class="c mark">●</td><td class="c">가끔</td><td class="c mark">●</td><td>마이 안에서</td></tr>
+    <tr class="yes"><td>출금 신청</td><td class="c">–</td><td class="c mark">●</td><td class="c">주 1회</td><td class="c mark">●</td><td>마이 안에서</td></tr>
+    <tr class="no"><td>후기 인증 검토</td><td class="c">–</td><td class="c">약함</td><td class="c">가끔</td><td class="c">●</td><td>알림만 → 전체 도구</td></tr>
+    <tr class="no"><td>환불 처리</td><td class="c">–</td><td class="c">●</td><td class="c">드묾</td><td class="c">✕ 사유·신중</td><td>전체 도구</td></tr>
+    <tr class="no"><td>이용권 등록 · 수정</td><td class="c">–</td><td class="c">–</td><td class="c">드묾</td><td class="c">✕ 사진·옵션</td><td>전체 도구</td></tr>
+    <tr class="no"><td>매출 분석 · 원장 · 명세</td><td class="c">–</td><td class="c">–</td><td class="c">드묾</td><td class="c">✕ 표</td><td>전체 도구</td></tr>
+    <tr class="no"><td>쿠폰 · 파트너 · 알림톡 · 숙소</td><td class="c">–</td><td class="c">–</td><td class="c">드묾</td><td class="c">–</td><td>전체 도구</td></tr>
+  </table>
+
+  <div class="row">
+
+    <!-- ① 마이 상단 -->
+    <div class="slot">
+      <div class="cap"><i>1</i> · 마이 — 판매가 위로 온다 (셀러일 때만)</div>
+      <div class="phone h800">
+        <div class="st"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="hd"><span class="t">마이</span><span class="sp"></span>
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="var(--ink-soft)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></div>
+        <div class="body">
+          <div class="prof">
+            <div class="av"></div>
+            <div style="min-width:0">
+              <div style="display:flex;align-items:center;gap:7px"><span class="nm">정지원</span>
+                <span class="chip">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V9l8-5 8 5v12"/></svg>돈까스연구소</span></div>
+              <div class="sm" style="margin-top:2px">urteam.corp@gmail.com</div>
+              <span class="edit">프로필 편집 ›</span>
+            </div>
+          </div>
+
+          <div class="sect"><span class="dot"></span><span class="l">내 가게</span>
+            <span class="r">돈까스연구소 · 2곳
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></div>
+
+          <div class="tk">
+            <div class="band"><span class="l">오늘</span><span class="r">9월 25일 목</span></div>
+            <div class="in">
+              <div class="num">312,000<s>원</s></div>
+              <div class="meta">주문 8건 · 이용권 5장 사용</div>
+              <div class="divline"><span class="k">10월 2일 받을 돈</span><span class="v">1,178,000</span></div>
+              <button class="cta" style="margin-top:12px">출금 신청</button>
+            </div>
+          </div>
+
+          <div class="scanbtn">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M3 12h18"/></svg>
+            <div><div class="t">이용권 사용처리</div><div class="s">손님 QR 을 찍으세요</div></div>
+            <svg style="margin-left:auto" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </div>
+
+          <div class="card">
+            <div class="ch"><span class="t">주문 확인</span><span class="c">3건</span></div>
+            <div class="it"><div class="m"><div class="a">치즈돈까스 2인 세트</div><div class="b">김○○ · 09:12 · 22,000원</div></div><button class="go">확인</button></div>
+            <div class="it"><div class="m"><div class="a">등심돈까스</div><div class="b">이○○ · 09:03 · 11,000원</div></div><button class="go">확인</button></div>
+            <div class="it"><div class="m"><div class="a">수제 에이드 2잔</div><div class="b">박○○ · 08:47 · 9,000원</div></div><button class="go">확인</button></div>
+          </div>
+
+          <div class="card">
+            <div class="ch"><span class="t">판매 중</span><span class="c">2개</span></div>
+            <div class="it"><div class="m"><div class="a">치즈돈까스 2인 세트</div><div class="b">22,000원 · 18장 남음</div></div><span class="sw"></span></div>
+            <div class="it"><div class="m"><div class="a">등심돈까스 1인</div><div class="b">11,000원 · 13장 남음</div></div><span class="sw"></span></div>
+            <div class="it" style="opacity:.55"><div class="m"><div class="a">가족 세트 4인</div><div class="b">38,000원 · 중지됨</div></div><span class="sw off"></span></div>
+          </div>
+
+          <div class="link">후기 인증 2건 · 환불 · 이용권 등록 · 매출 분석
+            <svg style="margin-left:auto" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+        </div>
+        <div class="tabs">
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/></svg>홈</a>
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M12 7v12M3 11h18"/></svg>교환권</a>
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 1 0 4 2 2 0 0 1-2 2H6a2 2 0 0 1-2-2 2 2 0 0 0 0-4 2 2 0 0 1 0-4z"/></svg>이용권</a>
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16v11H4z"/><path d="M4 9l2-4h12l2 4"/></svg>유어샵</a>
+          <a class="on"><svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0z"/></svg>마이<span class="pt"></span></a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ② 마이 하단 -->
+    <div class="slot">
+      <div class="cap"><i>2</i> · 같은 화면을 더 내리면 — 손님으로서의 나</div>
+      <div class="phone h800">
+        <div class="st"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="hd"><span class="t">마이</span></div>
+        <div class="body">
+          <div class="card" style="opacity:.32;padding:11px 14px;gap:7px">
+            <div class="ch"><span class="t" style="font-size:13px">판매 중</span></div>
+            <div class="it"><div class="m"><div class="a">등심돈까스 1인</div></div><span class="sw"></span></div>
+          </div>
+          <div class="link" style="opacity:.32">후기 인증 2건 · 환불 · 이용권 등록 · 매출 분석</div>
+
+          <div class="sect"><span class="l" style="color:var(--ink-soft)">내 이용권 · 딜</span></div>
+
+          <div class="deal">
+            <div class="k">내 딜 잔액</div>
+            <div class="v">10,300<span style="font-size:14px;font-weight:700"> 딜</span></div>
+            <div class="btn">사용 내역</div>
+          </div>
+
+          <div>
+            <div style="font-size:12px;font-weight:800;color:var(--ink);padding:2px 3px 7px">이용권 현황</div>
+            <div class="g4">
+              <div><div class="n">1</div><div class="k">구매완료</div></div>
+              <div><div class="n">1</div><div class="k">사용가능</div></div>
+              <div><div class="n off">0</div><div class="k">사용완료</div></div>
+              <div><div class="n off">0</div><div class="k">만료·환불</div></div>
+            </div>
+          </div>
+
+          <div class="grp">
+            <div class="gr">동네 리뷰어 Lv.1 · 새싹<span class="v">›</span></div>
+          </div>
+
+          <div class="grp"><div class="gh">나의 이용 내역</div>
+            <div class="gr">내 이용권<span class="v">1 ›</span></div>
+            <div class="gr">관심<span class="v">›</span></div>
+            <div class="gr">주문·배송<span class="v">›</span></div></div>
+
+          <div class="grp"><div class="gh">설정</div>
+            <div class="gr">알림<span class="v">›</span></div>
+            <div class="gr">언어<span class="v">›</span></div></div>
+        </div>
+        <div class="tabs">
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/></svg>홈</a>
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M12 7v12M3 11h18"/></svg>교환권</a>
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 1 0 4 2 2 0 0 1-2 2H6a2 2 0 0 1-2-2 2 2 0 0 0 0-4 2 2 0 0 1 0-4z"/></svg>이용권</a>
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16v11H4z"/><path d="M4 9l2-4h12l2 4"/></svg>유어샵</a>
+          <a class="on"><svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0z"/></svg>마이<span class="pt"></span></a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ③ QR 시트 -->
+    <div class="slot">
+      <div class="cap"><i>3</i> · QR 사용처리 — 마이 위로 시트가 올라온다 <span style="color:var(--pagemute)">(⚠️ 되돌릴 수 없음)</span></div>
+      <div class="phone h800">
+        <div class="st"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="hd"><span class="t">마이</span></div>
+        <div class="body" style="opacity:.3;pointer-events:none">
+          <div class="prof"><div class="av"></div><div><div class="nm">정지원</div></div></div>
+          <div class="sect"><span class="dot"></span><span class="l">내 가게</span></div>
+          <div class="tk"><div class="band"><span class="l">오늘</span></div>
+            <div class="in"><div class="num">312,000<s>원</s></div></div></div>
+        </div>
+        <div class="dim"></div>
+        <div class="sheet">
+          <div class="grab"></div>
+          <div class="sh-t">이용권 사용처리</div>
+          <div class="sm" style="margin:3px 0 10px">돈까스연구소 · 손님 QR 을 비춰 주세요</div>
+          <div class="frame"><i></i><i></i><i></i><i></i><u></u></div>
+          <div class="warn">찍으면 그 이용권은 <b>바로 사용 완료</b>가 됩니다. 되돌릴 수 없어요.</div>
+          <button class="cta gh" style="margin-top:11px">코드 직접 입력</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ④ 출금 시트 -->
+    <div class="slot">
+      <div class="cap"><i>4</i> · 출금 신청 시트 <span style="color:var(--pagemute)">(🔴 머니 경로 — 가게 이름을 다시 적는다)</span></div>
+      <div class="phone h800">
+        <div class="st"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="hd"><span class="t">마이</span></div>
+        <div class="body" style="opacity:.3;pointer-events:none">
+          <div class="prof"><div class="av"></div><div><div class="nm">정지원</div></div></div>
+          <div class="sect"><span class="dot"></span><span class="l">내 가게</span></div>
+          <div class="tk"><div class="band"><span class="l">오늘</span></div>
+            <div class="in"><div class="num">312,000<s>원</s></div></div></div>
+        </div>
+        <div class="dim"></div>
+        <div class="sheet">
+          <div class="grab"></div>
+          <div class="sh-t">출금 신청</div>
+          <div class="sm" style="margin:3px 0 12px">돈까스연구소 · 부산 해운대</div>
+          <div style="background:var(--paneled);border-radius:13px;padding:14px 15px">
+            <div class="sm" style="font-weight:700">받을 금액</div>
+            <div class="num" style="font-size:28px;margin-top:3px">1,178,000<s>원</s></div>
+          </div>
+          <div style="padding:4px 2px 2px">
+            <div class="kv"><span class="k">매출</span><span class="v">1,240,000</span></div>
+            <div class="kv"><span class="k">유어딜 수수료 5%</span><span class="v">− 62,000</span></div>
+            <div class="kv"><span class="k">입금 계좌</span><span class="v mono" style="font-size:12px">국민 ****3921</span></div>
+          </div>
+          <div class="warn" style="margin-top:8px">신청하면 <b>10월 2일 목요일</b>에 입금됩니다. 사용 확인이 끝난 금액만 나갑니다.</div>
+          <button class="cta" style="margin-top:12px">1,178,000원 출금 신청</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ⑤ 가게 전환 -->
+    <div class="slot">
+      <div class="cap"><i>5</i> · 가게 전환 <span style="color:var(--pagemute)">(2곳 이상일 때만 · 주인 연결이 여기서 보인다)</span></div>
+      <div class="phone h800">
+        <div class="st"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="hd"><span class="t">마이</span></div>
+        <div class="body" style="opacity:.3;pointer-events:none">
+          <div class="prof"><div class="av"></div><div><div class="nm">정지원</div></div></div>
+          <div class="sect"><span class="dot"></span><span class="l">내 가게</span><span class="r">돈까스연구소 · 2곳</span></div>
+          <div class="tk"><div class="band"><span class="l">오늘</span></div>
+            <div class="in"><div class="num">312,000<s>원</s></div></div></div>
+        </div>
+        <div class="dim"></div>
+        <div class="sheet">
+          <div class="grab"></div>
+          <div class="sh-t">어느 가게로 할까요?</div>
+          <div class="sm" style="margin:3px 0 12px">고른 가게로 오늘 숫자·주문·이용권·정산이 모두 바뀝니다</div>
+          <div style="display:flex;align-items:center;gap:11px;padding:13px 14px;border-radius:12px;background:var(--brand-tint)">
+            <div style="flex:1"><div style="font-size:14px;font-weight:800;color:var(--ink)">돈까스연구소</div>
+              <div class="sm">주인 · 부산 해운대</div></div>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:11px;padding:13px 14px">
+            <div style="flex:1"><div style="font-size:14px;font-weight:800;color:var(--ink)">해운대 브런치</div>
+              <div class="sm">운영 중 · <b style="color:var(--ink)">사장님 미연결</b></div>
+              <div style="margin-top:7px;display:inline-flex;align-items:center;gap:7px;background:var(--paneled);border-radius:9px;padding:6px 10px">
+                <span class="sm" style="font-weight:700">사장님께 줄 코드</span><span class="mono">URD-8K2M-41</span></div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:11px;padding:13px 14px;border-top:1px solid var(--rule);opacity:.55">
+            <div style="flex:1"><div style="font-size:14px;font-weight:800;color:var(--ink)">서면 카페</div>
+              <div class="sm">승인 대기</div></div>
+            <span class="sm" style="font-weight:700">전환</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ⑥ 셀러 아님 -->
+    <div class="slot">
+      <div class="cap"><i>6</i> · 셀러가 아니면 — 지금과 똑같다 <span style="color:var(--pagemute)">(판매 블록 0)</span></div>
+      <div class="phone h800">
+        <div class="st"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="hd"><span class="t">마이</span><span class="sp"></span>
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="var(--ink-soft)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></div>
+        <div class="body">
+          <div class="prof">
+            <div class="av"></div>
+            <div style="min-width:0">
+              <div style="display:flex;align-items:center;gap:7px"><span class="nm">정지원</span>
+                <span class="chip">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V9l8-5 8 5v12"/></svg>내 가게 등록</span></div>
+              <div class="sm" style="margin-top:2px">urteam.corp@gmail.com</div>
+              <span class="edit">프로필 편집 ›</span>
+            </div>
+          </div>
+          <div class="deal">
+            <div class="k">내 딜 잔액</div>
+            <div class="v">10,300<span style="font-size:14px;font-weight:700"> 딜</span></div>
+            <div class="btn">사용 내역</div>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:800;color:var(--ink);padding:2px 3px 7px">이용권 현황</div>
+            <div class="g4">
+              <div><div class="n">1</div><div class="k">구매완료</div></div>
+              <div><div class="n">1</div><div class="k">사용가능</div></div>
+              <div><div class="n off">0</div><div class="k">사용완료</div></div>
+              <div><div class="n off">0</div><div class="k">만료·환불</div></div>
+            </div>
+          </div>
+          <div class="grp"><div class="gr">동네 리뷰어 Lv.1 · 새싹<span class="v">›</span></div></div>
+          <div class="grp"><div class="gh">나의 이용 내역</div>
+            <div class="gr">내 이용권<span class="v">1 ›</span></div>
+            <div class="gr">관심<span class="v">›</span></div></div>
+        </div>
+        <div class="tabs">
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/></svg>홈</a>
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M12 7v12M3 11h18"/></svg>교환권</a>
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 1 0 4 2 2 0 0 1-2 2H6a2 2 0 0 1-2-2 2 2 0 0 0 0-4 2 2 0 0 1 0-4z"/></svg>이용권</a>
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16v11H4z"/><path d="M4 9l2-4h12l2 4"/></svg>유어샵</a>
+          <a class="on"><svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0z"/></svg>마이<span class="pt"></span></a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <p><b>마이가 14 → 18블록이 된다</b>(판매 4블록: 오늘 카드 · 사용처리 버튼 · 주문 확인 · 판매 중). 전부 넣었을 때의 22블록보다 짧고, 판매가 <b>맨 위</b>라 사장님은 스크롤을 거의 안 내린다.</p>
+    <p><b>페이지 이동은 0이다.</b> 주문 확인과 판매 중지는 <b>인라인</b>, QR·출금·가게 전환은 <b>시트</b>로 마이 위에 올라온다. 하단 탭은 내내 <b>마이</b>에 켜져 있다.</p>
+    <p><b>되돌릴 수 없는 것은 말해 준다</b> — QR 사용처리 시트가 “찍으면 바로 사용 완료, 되돌릴 수 없어요” 를 먼저 적는다. 출금 시트는 <b>가게 이름을 다시 적는다</b>(마이 헤더만 믿고 남의 가게 돈을 보내면 안 된다).</p>
+    <p><b>새로 짓는 기능은 없다</b> — 주문 확인 <code>PUT /api/seller/orders/:id/status</code> · 사용처리 <code>POST /api/group-buy/vouchers/:code/use</code> · 판매 on/off <code>PUT /api/seller/products/:id</code> · 출금 <code>POST /api/seller/account/withdraw</code> · 좌석 <code>GET /my-stores</code>.</p>
+  </div>
+</div>
+<script>
+const r=document.documentElement,L=document.getElementById('tL'),D=document.getElementById('tD');
+function set(m){r.setAttribute('data-theme',m);L.setAttribute('aria-pressed',m==='light');D.setAttribute('aria-pressed',m==='dark')}
+L.onclick=()=>set('light');D.onclick=()=>set('dark');set('dark');
+</script>
+</body>
+</html>

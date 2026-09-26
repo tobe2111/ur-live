@@ -137,6 +137,9 @@ app.get('/my-stores/summary', async (c) => {
         seller_id: s.seller_id,
         name: s.business_name || s.name || `매장 #${s.seller_id}`,
         role: s.role,
+        // 🥕 2026-09-25: 당근 모델 배너를 마이 판매 섹션이 직접 그린다 — 승인 대기·반려도 좌석이
+        //   열리므로(isSeatableStoreStatus) 화면이 그 사실을 말해야 한다. 추가 쿼리 0(이미 읽은 행).
+        status: s.status || null,
         today_revenue: Number(t?.rev) || 0,
         today_orders: Number(t?.n) || 0,
         pending: pMap.get(s.seller_id) || 0,

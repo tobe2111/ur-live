@@ -230,6 +230,7 @@ import { pointsRoutes } from '../features/points/api/points.routes';
 import { groupBuyRoutes } from '../features/group-buy/api/group-buy.routes';
 // 🛡️ 2026-05-18: 숙소 공구 (stay_voucher) 사용자 측 public — PR 1 Foundation.
 import { staysPublicRoutes } from '../features/group-buy/api/stays-public.routes';
+import prelaunchRoutes from '../features/group-buy/api/prelaunch.routes';
 // 🗺️ 2026-08-03 (대표 — 도시별 페이지 + 구글 색인): 지역별 딜 집계(페이지·인덱스·sitemap 공용 SSOT).
 import { regionsRoutes } from '../features/group-buy/api/regions.routes';
 // 🛡️ 2026-05-18: R2 이미지 업로드 (seller/admin/agency/user 공용).
@@ -1901,14 +1902,13 @@ app.route('/api/points', pointsRoutes);
 // ── 공동구매 & 바우처 ──
 app.route('/api/group-buy', groupBuyRoutes);
 app.route('/api/vouchers', groupBuyRoutes);
-// 🛡️ 2026-05-18: 숙소 공구 사용자 측 (PR 1 Foundation).
-app.route('/api/group-buy', staysPublicRoutes);
+app.route('/api/group-buy', staysPublicRoutes); // 🛡️ 2026-05-18: 숙소 공구 사용자 측 (PR 1 Foundation).
+app.route('/api/group-buy', prelaunchRoutes); // 🌱 2026-09-24 (대표 문서 ⑤ "공개예정 페이지"): 오픈 예정 모아보기 — **잠긴 피드 라우트 무접촉**.
 // 🗺️ 2026-08-03: 지역별 딜 집계 — `/region/*` 페이지·지역 인덱스·sitemap 이 같은 숫자를 보게 하는 SSOT.
 app.route('/api/regions', regionsRoutes);
 // 🛡️ 2026-05-18: R2 이미지 업로드 (multi-role).
 app.route('/api', uploadRoutes);
-// 🛡️ 2026-05-21: 자체 예약 캘린더 (뷰티/액티비티/건강/펫 등 sub-1day 예약).
-//   숙소는 별도 stay_bookings 유지. routes 내부 prefix 가 /seller/, /products/, /appointments/ 등 다양.
+// 🛡️ 2026-05-21: 자체 예약 캘린더 (뷰티/액티비티/건강/펫 등 sub-1day 예약) — 숙소는 별도 stay_bookings 유지. routes 내부 prefix 가 /seller/, /products/, /appointments/ 등 다양.
 app.route('/api', appointmentsRoutes);
 // 🛡️ 2026-05-21 Phase C: 통합 정산 (payouts 어드민).
 app.route('/api', adminPayoutsRoutes);

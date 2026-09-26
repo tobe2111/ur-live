@@ -25,6 +25,10 @@ type PayoutData = {
   scheduled_total: number
   sent_total: number
   payouts: Payout[]
+  /** 🕙 미지급 중 아직 유보 기간이 안 지난 몫. 서버가 안 주면(구버전 응답) 0 → 종전 화면과 동일. */
+  held?: number
+  /** 유보 역일. 0 이거나 없으면 유보 없음 → 문구도 종전 그대로. */
+  hold_days?: number
 }
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
@@ -53,6 +57,14 @@ export default function AutoPayoutSection() {
   const scheduled = data?.scheduled_total ?? 0
   const sent = data?.sent_total ?? 0
   const payouts = data?.payouts ?? []
+  // 🕙 2026-09-24 (유보 10일의 짝): 이 화면은 '미지급' 힌트로 **"다음 집계 대상"** 이라고 적고
+  //   맨 위 카드는 **"매주 자동으로 처리됩니다"** 라고 말해 왔다. 유보가 생긴 뒤 그건 방금 적립된
+  //   돈에 대해 거짓이다 — 사장님은 숫자가 떠 있는데 2주간 안 움직이는 것을 본다.
+  //   ⚠️ **서버가 준 값만 쓴다.** 화면이 유보일을 지어내면 `payout_hold_days` 를 바꾼 날 안내가
+  //     거짓말이 된다(2026-09-04 결제 화면에서 값을 치르고 배운 규칙과 같은 클래스).
+  const holdDays = data?.hold_days ?? 0
+  const held = Math.min(payable, Math.max(0, data?.held ?? 0))
+  const readyNow = Math.max(0, payable - held)
 
   return (
     <div className="space-y-4">
@@ -71,6 +83,15 @@ export default function AutoPayoutSection() {
                 defaultValue: '동네딜 공구·이용권 매출이 매주 자동 집계되어 등록하신 계좌로 순차 지급됩니다. 별도의 정산 신청은 필요 없습니다.',
               })}
             </p>
+            {holdDays > 0 && (
+              <p className="text-xs text-gray-600">
+                {t('seller.autoPayout.holdNotice', {
+                  days: holdDays,
+                  defaultValue:
+                    '카드 대금이 결제대행사에서 들어오는 데 시간이 걸려, 정산 원장에 적립된 날(= 이용권이 실제로 사용된 날)로부터 {{days}}일이 지난 금액부터 집계됩니다. 환불·취소는 유보와 무관하게 즉시 반영됩니다.',
+                })}
+              </p>
+            )}
           </div>
         </div>
       </DashboardCard>
@@ -93,7 +114,13 @@ export default function AutoPayoutSection() {
         <DashboardStatCard
           label={t('seller.autoPayout.payable', { defaultValue: '미지급 (정산 예정 잔액)' })}
           value={`₩${formatNumber(payable)}`}
-          hint={t('seller.autoPayout.payableHint', { defaultValue: '다음 집계 대상' })}
+          hint={held > 0
+            ? t('seller.autoPayout.payableHintHold', {
+                ready: formatNumber(readyNow),
+                held: formatNumber(held),
+                defaultValue: '₩{{ready}} 다음 집계 · ₩{{held}} 유보 중',
+              })
+            : t('seller.autoPayout.payableHint', { defaultValue: '다음 집계 대상' })}
           icon={<Clock className="h-4 w-4" />}
           accent="amber"
         />
