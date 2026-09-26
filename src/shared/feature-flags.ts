@@ -150,6 +150,25 @@ export const IOS_HIDE_DIGITAL_TOPUP = false
 export const SELLER_STORE_ONLY_MODE = true
 
 /**
+ * SELLER_COUPONS_HIDDEN — 셀러 쿠폰 메뉴 숨김 (2026-09-26 대표 *"쿠폰은 앞으로 필요없을 것
+ *   같은데? 확인해줘"* → **라이브 실측으로 확인됨**).
+ *
+ * 📏 실측(2026-09-26, 라이브 D1):
+ *   - `coupons` 테이블 **1행** — `WELCOME2026`("카카오 채널 추가 감사 쿠폰"), 2026-04-17 생성.
+ *     그 행의 `seller_id` 는 **NULL** = 어드민이 만든 플랫폼 쿠폰이지 셀러 쿠폰이 아니다.
+ *   - ⇒ **셀러가 만든 쿠폰은 0건.** 셀러 11곳 중 아무도 이 화면을 쓴 적이 없다.
+ *   - `promo_codes` 0행 · `district_coupons` 0행 · `user_coupons` 2행(위 플랫폼 쿠폰을 받은 것).
+ *
+ * 🧭 그리고 할인 수단이 이미 셋 더 있다 — 이용권 자체의 정가↔판매가 · 딜 포인트 · 소개비(promo).
+ *   쿠폰은 넷째 수단이라 겹치고, 겹치는 수단은 정산 계산을 복잡하게만 만든다.
+ *
+ * true: 셀러 nav 에서 `/seller/coupons` 숨김. **라우트·페이지·API 는 그대로 둔다**(가역) —
+ *       어드민 쿠폰(`/admin/coupons`)과 상권 페이백은 별개 기능이라 무관하다.
+ * 되돌리려면 이 값을 false 로. 숨김 상태에서도 검색·직링크로는 여전히 닿는다.
+ */
+export const SELLER_COUPONS_HIDDEN = true
+
+/**
  * MATCHING_ENABLED — 인플루언서↔업체 성과기반 매칭 **어드민 전용 내부 도구** 노출 (2026-07-14).
  *   배경: 팔로워가 아니라 **실제 전환**(유입→방문→재방문, inflow_clicks·voucher_visits)으로 매칭.
  *         유어애즈 인플루언서 발굴 패널 옆 `sec-matching` 섹션 — 직영 에이전시(운영자)가 매칭 판단.
@@ -278,3 +297,31 @@ export const CONSUMER_LANGUAGE_SWITCH_HIDDEN = true
  * 것이 없으므로 플래그가 남아 있으면 "끄면 돌아온다"는 잘못된 신호가 된다.
  * 중개는 이제 셀러 대시보드 계정 + `seller_operators` 가 맡는다 — docs/design/store-operator-model.md
  */
+
+/**
+ * SELLER_DORMANT_HIDDEN — **한 번도 쓰인 적 없는 셀러 메뉴 셋** 숨김
+ *   (2026-09-26 대표 *"나머지도 다 해줘. 그리고 뺄 것들 빼자"*).
+ *
+ * 📏 실측(2026-09-26, 라이브 D1 — 셀러 approved 9곳 · suspended 2곳):
+ *   | 메뉴 | 행 수 | |
+ *   |---|---|---|
+ *   | 숙소 — **셀러 소유** 상품 | **0** (`stay_voucher` 77건 전부 `seller_id IS NULL` = 플랫폼 데모) |
+ *   | 숙소 예약 (`stay_bookings`) | **0** |
+ *   | 체험 캠페인 (`experience_campaigns` / `_entries`) | **0 / 0** |
+ *   | 후기 인증 (`kakao_review_submissions`) | **0** |
+ *
+ * 🧭 쿠폰(`SELLER_COUPONS_HIDDEN`)과 **같은 판정**이다 — 화면은 있는데 아무도 쓴 적이 없다.
+ *   메뉴가 길수록 진짜 일감(주문·이용권·정산)이 묻히므로 내린다.
+ *
+ * ⚠️ **숙소는 2026-09-26 같은 날 마이 안에 만든 것**이다(대표 *"이용권 등록, 숙소까지 해줘"*).
+ *   지운 게 아니라 **접은 것** — `StaysSheet`·라우트·API·데이터 전부 그대로다. 숙소업 매장이
+ *   들어오면 이 값을 false 로 바꾸는 순간 되돌아온다.
+ *
+ * ❌ **리뷰(`/seller/reviews`)는 여기 넣지 않았다.** `product_reviews` 11.9만 행 중 셀러 소유
+ *   상품에 달린 것이 0인 건 사실이지만, 원인이 "아무도 안 써서" 가 아니라 **셀러 소유 활성 상품이
+ *   아직 1개뿐**이라서다. 상품이 늘면 리뷰는 저절로 붙는다 — 같은 0이라도 뜻이 다르다.
+ *
+ * true: 셀러 nav·탭에서 숙소 묶음 / 체험 캠페인 / 후기 인증을 내리고, 마이 이용권 시트의
+ *       숙소 줄도 함께 감춘다(두 표면이 갈리지 않게 **같은 플래그 하나**를 본다).
+ */
+export const SELLER_DORMANT_HIDDEN = true

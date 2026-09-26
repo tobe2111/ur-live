@@ -2,9 +2,16 @@
  * 🏪 마이 판매 섹션 — "내 가게" (2026-09-25, 설계 §14 단계 1~2)
  *   대표 확정: *"하는 것도 마이에서 하는걸로. 근데 필수적인 것들 선별해서"*
  *
- * ## 무엇이 여기 있나
- * 오늘 카드(매출·주문·확인 대기) + 가게 전환 + **주문 확인 · 판매 중지/재개**.
- * 환불·등록·분석은 여기 없다 — 사유를 적어야 하거나 사진·표가 필요해 한 손으로 못 한다(§14 선별 표).
+ * ## 무엇이 여기 있나 (2026-09-26 §21 — 낱개 목록 → **묶음**)
+ * 오늘 카드 + 사용처리 + 할 일(주문 확인) + **묶음 다섯**(주문 · 이용권 · 정산 · 매출 분석 · 가게).
+ *
+ * 종전엔 낱개 버튼 목록이었다(등록·환불·분석·출금 + 전체 도구). 도구가 늘 때마다 그 목록이
+ * 길어지고, 끝은 **마이 안의 두 번째 사이드바**다 — 화면만 옮겼을 뿐 대시보드를 없앤 게 아니다.
+ * 그래서 사장님이 실제로 생각하는 단위로 묶고 **화면 수를 고정**한다. 도구는 묶음 *안*에서 자란다.
+ *
+ * ## 할 일은 카드에, 현황은 묶음에
+ * `PendingOrders`(확인 대기)만 카드에 남는다 — 그건 **눌러야 할 것**이다. 판매 중 목록은 현황이라
+ * 이용권 묶음 안으로 들어갔다(그래서 `SellingList` 를 지웠다 — 같은 목록이 두 곳에 있으면 갈린다).
  *
  * ## 🔴 좌석과 화면이 어긋나지 않게
  * 좌석 토큰은 JWT 안에 `seller_id` 가 박혀 있어 가게를 바꾸면 통째로 바뀐다. 그래서 일감은
@@ -19,7 +26,7 @@
  * 상태를 **직접 말한다** — 노출·정산이 왜 아직인지 화면이 설명하지 않으면 사장님은 고장으로 읽는다.
  */
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
-import { BarChart3, ChevronDown, ChevronRight, Loader2, Plus, RotateCcw, ScanLine, Store, Wallet } from 'lucide-react'
+import { BarChart3, ChevronDown, ChevronRight, ClipboardList, Handshake, Loader2, MessageSquare, ScanLine, Store, Ticket, Wallet } from 'lucide-react'
 import { TicketCard } from '@/components/ticket/TicketCard'
 import { formatNumber } from '@/utils/format'
 import { currentSeatId, onSeatChange, switchSeat } from '@/lib/seller-seat'
@@ -29,13 +36,18 @@ import type { MyStoresState } from './useMyStores'
 import StoreSwitchSheet from './StoreSwitchSheet'
 import { useSellerWork } from './seller-section/useSellerWork'
 import PendingOrders from './seller-section/PendingOrders'
-import SellingList from './seller-section/SellingList'
 import RefundSheet from './seller-section/RefundSheet'
 import AnalyticsSheet from './seller-section/AnalyticsSheet'
 import WithdrawSheet from './seller-section/WithdrawSheet'
 import AllToolsSheet from './seller-section/AllToolsSheet'
 import PinSheet from './seller-section/PinSheet'
 import BankSheet from './seller-section/BankSheet'
+import OrdersSheet from './seller-section/OrdersSheet'
+import VoucherSheet from './seller-section/VoucherSheet'
+import StoreSheet from './seller-section/StoreSheet'
+import PartnersSheet from './seller-section/PartnersSheet'
+import MessagesSheet from './seller-section/MessagesSheet'
+import SettlementsSheet from './seller-section/SettlementsSheet'
 
 const STATUS_NOTE: Record<string, string> = {
   pending: '승인 대기 중이에요. 준비는 지금 하고, 메인 노출과 정산은 승인 뒤에 시작됩니다.',
@@ -49,7 +61,11 @@ function todayLabelKST(): string {
   })
 }
 
-/** 판매 작업 한 줄 — 네 개가 같은 모양이어야 무엇이 있는지 한눈에 읽힌다. */
+/** 마이 안에서 열리는 묶음·도구. 하나가 늘면 여기와 `openTool` 두 곳이 같이 바뀐다. */
+type Tool = 'orders' | 'vouchers' | 'withdraw' | 'analytics' | 'store' | 'refund' | 'tools' | 'pin' | 'bank'
+  | 'partners' | 'messages' | 'settlements'
+
+/** 묶음 한 줄 — 전부 같은 모양이어야 무엇이 있는지 한눈에 읽힌다. */
 function ToolRow({ icon, label, hint, busy, onClick }: {
   icon: React.ReactNode; label: string; hint: string; busy: boolean; onClick: () => void
 }) {
@@ -76,7 +92,12 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [entering, setEntering] = useState(false)
   /** 열려 있는 판매 시트. 좌석이 바뀌면 시트는 스스로 닫는다(§15-3). */
-  const [tool, setTool] = useState<'refund' | 'analytics' | 'withdraw' | 'tools' | 'pin' | 'bank' | null>(null)
+  const [tool, setTool] = useState<Tool | null>(null)
+  /**
+   * 🔑 PIN 을 **누가 요구했나**. 출금도 계좌 변경도 412 를 준다 — 한 곳으로만 돌아가면
+   *   계좌를 넣다 PIN 을 푼 사람이 엉뚱하게 출금 화면에 떨어진다.
+   */
+  const [pinReturn, setPinReturn] = useState<'withdraw' | 'bank'>('withdraw')
   /**
    * 🪑 지금 토큰이 앉아 있는 좌석. **서버 응답이 아니라 토큰에서 읽는다** — 전환 직후에도 즉시 맞는다
    *   (`useMyStores` 의 `current_seller_id` 는 재조회 뒤에야 따라온다).
@@ -123,7 +144,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
    * 🪑 판매 시트는 **좌석이 맞을 때만** 열린다 — 시트가 부르는 API 는 전부 좌석 토큰으로 스코프된다.
    *   안 맞으면 먼저 앉히고(사람이 누른 행동이다), 실패하면 열지 않는다.
    */
-  async function openTool(which: 'refund' | 'analytics' | 'withdraw' | 'tools' | 'pin' | 'bank') {
+  async function openTool(which: Tool) {
     if (!store || entering) return
     if (currentSeatId() !== store.seller_id) {
       setEntering(true)
@@ -207,7 +228,6 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
       {seated ? (
         <>
           <PendingOrders work={work} onDone={onWorkDone} />
-          <SellingList work={work} />
           {work.failed && (
             <p className="mt-2 px-1 text-[12px] text-gray-500 dark:text-gray-400">
               목록을 불러오지 못했습니다. 잠시 후 다시 열어 주세요.
@@ -230,23 +250,35 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
         </button>
       )}
 
-      {/* 🧰 나머지 판매 작업 — 대표 재확정(§19): **등록·환불·분석·출금도 마이에서.**
-          그릇은 무게가 정한다 — 환불·분석·출금은 시트, **등록은 기존 전체화면 폼 그대로**(복제 금지).
-          좌석 토큰은 사람이 누른 순간에만 발급된다(마이를 여는 것만으로는 안 준다). */}
+      {/* 🧰 묶음 다섯 — 대표 §21: *"일단 마이에서 대부분 끝내야 해"*.
+          한 줄이 한 묶음이고, 그 안에서 일이 끝난다. 도구가 늘어도 줄은 안 늘어난다.
+          ⚠️ 줄은 **좌석 없이도 보인다** — 좌석 토큰은 사람이 누른 순간에만 발급된다
+             (마이를 여는 것만으로 발급하면 다른 기기의 대시보드 세션을 끊는다). */}
       <div className="mt-3 rounded-2xl bg-surface shadow-lift overflow-hidden">
         <ToolRow
-          icon={<Plus className="w-[18px] h-[18px]" aria-hidden="true" />}
-          label="이용권 등록"
-          hint="사진과 가격을 정해 새로 올려요"
+          icon={<ClipboardList className="w-[18px] h-[18px]" aria-hidden="true" />}
+          label="주문"
+          hint={work.orders.length > 0
+            ? `확인 대기 ${formatNumber(work.orders.length)}건 · 지난 주문까지`
+            : '지난 주문 · 손님 연락처 · 환불'}
           busy={entering}
-          onClick={() => enterSeat('/seller/meal-voucher/new')}
+          onClick={() => openTool('orders')}
         />
         <ToolRow
-          icon={<RotateCcw className="w-[18px] h-[18px]" aria-hidden="true" />}
-          label="환불"
-          hint="결제를 취소하고 손님에게 돌려줘요"
+          icon={<Ticket className="w-[18px] h-[18px]" aria-hidden="true" />}
+          label="이용권"
+          hint={work.products.length > 0
+            ? `판매 중 ${formatNumber(work.products.filter((p) => p.isActive).length)}개 · 가격·수량 고치기`
+            : '등록 · 가격 · 수량 · 판매 중지'}
           busy={entering}
-          onClick={() => openTool('refund')}
+          onClick={() => openTool('vouchers')}
+        />
+        <ToolRow
+          icon={<Wallet className="w-[18px] h-[18px]" aria-hidden="true" />}
+          label="정산"
+          hint="쌓인 돈 받기 · 계좌 · PIN"
+          busy={entering}
+          onClick={() => openTool('withdraw')}
         />
         <ToolRow
           icon={<BarChart3 className="w-[18px] h-[18px]" aria-hidden="true" />}
@@ -256,17 +288,35 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           onClick={() => openTool('analytics')}
         />
         <ToolRow
-          icon={<Wallet className="w-[18px] h-[18px]" aria-hidden="true" />}
-          label="출금"
-          hint="쌓인 돈을 정산 계좌로 받아요"
+          icon={<Store className="w-[18px] h-[18px]" aria-hidden="true" />}
+          label="가게"
+          hint={stores.length >= 2 ? '이름 · 연락처 · 주소 · 가게 전환' : '이름 · 연락처 · 주소 · 소개'}
           busy={entering}
-          onClick={() => openTool('withdraw')}
+          onClick={() => openTool('store')}
+        />
+        {/* 🤝 소개 파트너 — 라이브 실측으로 **살아 있는** 기능이라 묶음으로 올렸다
+            (제안 1건 active · 팔로워 3). 쿠폰·숙소와 판정이 다르다. */}
+        <ToolRow
+          icon={<Handshake className="w-[18px] h-[18px]" aria-hidden="true" />}
+          label="소개 파트너"
+          hint="내 이용권을 담아 파는 사람 · 받은 제안"
+          busy={entering}
+          onClick={() => openTool('partners')}
+        />
+        {/* 💬 브랜드메시지 — 여기서는 **보내지 않는다**(발송은 등급 C). 잔액·최근 발송만 읽고,
+            충전·발송은 전용 화면으로 보낸다. 아직 안 쓴 가게에는 시트가 스스로 안내 한 장이 된다. */}
+        <ToolRow
+          icon={<MessageSquare className="w-[18px] h-[18px]" aria-hidden="true" />}
+          label="브랜드메시지"
+          hint="단골에게 카카오톡 안내 · 남은 건수"
+          busy={entering}
+          onClick={() => openTool('messages')}
         />
       </div>
 
-      {/* 🧰 2026-09-26 (대표 *"모두 마이에서 하도록"*): 나머지 도구 전부를 **마이 안 목록**으로 연다.
-          종전엔 여기서 곧장 `/seller` 로 나갔다 — 그 순간 사장님은 "대시보드라는 게 따로 있다" 를
-          배우게 되고, 마이는 출발점이 아니라 경유지가 된다. */}
+      {/* 🧰 나머지 전부 — 사업자등록증·운영자 위임·세금계산서처럼 **드물게 한 번** 하는 일.
+          2026-09-26 에 알림톡·소개 파트너가 묶음으로 올라오고 쿠폰·숙소가 내려가서 이 줄의
+          예시도 함께 바꿨다(문구가 실제 목록과 어긋나면 사장님이 없는 메뉴를 찾는다). */}
       <button
         type="button"
         disabled={entering}
@@ -274,28 +324,83 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
         className="w-full flex items-center gap-2 mt-2 px-1 py-3 text-left active:opacity-70 disabled:opacity-50"
       >
         <span className="flex-1 min-w-0 text-[13px] font-semibold text-gray-500 dark:text-gray-400 truncate">
-          전체 도구 · 쿠폰 · 정산 명세 · 매장 정보
+          전체 도구 · 사업자등록증 · 운영자 위임 · 운영 가이드
         </span>
         {entering
           ? <Loader2 className="w-4 h-4 shrink-0 animate-spin text-gray-400" aria-hidden="true" />
           : <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />}
       </button>
 
-      {tool === 'refund' && <RefundSheet sellerId={store.seller_id} onClose={() => setTool(null)} onDone={() => { state.refetch(); work.refetch() }} />}
+      {/* 🧾 주문 — 확인 전이는 `useSellerWork` 것을 쓴다(전이 규칙이 두 벌이 되지 않게).
+          환불은 시트 안에서 부르되 **별도 시트**로 연다(사유를 적어야 하는 일이라 섞지 않는다). */}
+      {tool === 'orders' && (
+        <OrdersSheet
+          sellerId={store.seller_id}
+          work={work}
+          onClose={() => setTool(null)}
+          onDone={onWorkDone}
+          onRefund={() => setTool('refund')}
+        />
+      )}
+      {tool === 'vouchers' && (
+        <VoucherSheet
+          sellerId={store.seller_id}
+          work={work}
+          onClose={() => setTool(null)}
+          onOpenPath={(path) => { setTool(null); enterSeat(path) }}
+        />
+      )}
+      {tool === 'store' && (
+        <StoreSheet
+          sellerId={store.seller_id}
+          statusNote={note}
+          canSwitch={stores.length >= 2}
+          onSwitch={() => { setTool(null); setSheetOpen(true) }}
+          onClose={() => setTool(null)}
+          onSaved={() => state.refetch()}
+        />
+      )}
+      {/* ↩️ 환불은 **주문에서만** 열린다 — 닫으면 그 목록으로 돌아온다(어디서 왔는지 잊지 않게). */}
+      {tool === 'refund' && <RefundSheet sellerId={store.seller_id} onClose={() => setTool('orders')} onDone={() => { state.refetch(); work.refetch(); setTool('orders') }} />}
       {tool === 'analytics' && <AnalyticsSheet sellerId={store.seller_id} storeName={store.name} onClose={() => setTool(null)} />}
       {/* 🔑🏦 2026-09-26 (§20-5): 출금이 막히면 **그 자리에서** 푼다 — 돈이 나가는 흐름 한복판에서
-          대시보드로 보내지 않는다. 풀고 나면 출금 시트로 되돌아온다. */}
+          대시보드로 보내지 않는다. 풀고 나면 요구한 시트로 되돌아온다(`pinReturn`). */}
       {tool === 'withdraw' && (
         <WithdrawSheet
           sellerId={store.seller_id}
           onClose={() => setTool(null)}
           onDone={() => state.refetch()}
-          onFixPin={() => setTool('pin')}
+          onFixPin={() => { setPinReturn('withdraw'); setTool('pin') }}
           onFixBank={() => setTool('bank')}
+          onHistory={() => setTool('settlements')}
         />
       )}
-      {tool === 'pin' && <PinSheet sellerId={store.seller_id} onClose={() => setTool(null)} onDone={() => setTool('withdraw')} />}
-      {tool === 'bank' && <BankSheet sellerId={store.seller_id} onClose={() => setTool(null)} onDone={() => setTool('withdraw')} />}
+      {tool === 'pin' && <PinSheet sellerId={store.seller_id} onClose={() => setTool(null)} onDone={() => setTool(pinReturn)} />}
+      {/* 🔑 계좌 변경도 412 를 준다(서버가 계좌 탈취를 막는다) — 그때는 **계좌로** 돌아와야 한다. */}
+      {tool === 'bank' && (
+        <BankSheet
+          sellerId={store.seller_id}
+          onClose={() => setTool(null)}
+          onDone={() => setTool('withdraw')}
+          onFixPin={() => { setPinReturn('bank'); setTool('pin') }}
+        />
+      )}
+      {tool === 'partners' && (
+        <PartnersSheet
+          sellerId={store.seller_id}
+          onClose={() => setTool(null)}
+          onOpenPath={(path) => { setTool(null); enterSeat(path) }}
+        />
+      )}
+      {tool === 'messages' && (
+        <MessagesSheet
+          sellerId={store.seller_id}
+          onClose={() => setTool(null)}
+          onOpenPath={(path) => { setTool(null); enterSeat(path) }}
+        />
+      )}
+      {/* ↩️ 지난 정산은 **출금에서만** 열린다 — 닫으면 출금으로 돌아온다(주문 → 환불과 같은 배치). */}
+      {tool === 'settlements' && <SettlementsSheet sellerId={store.seller_id} onClose={() => setTool('withdraw')} />}
       {tool === 'tools' && (
         <AllToolsSheet
           storeName={store.name}

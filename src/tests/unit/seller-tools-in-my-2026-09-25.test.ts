@@ -123,11 +123,17 @@ describe('분석 — 서버가 준 값만 그린다', () => {
 })
 
 describe('등록 — 폼을 복제하지 않는다', () => {
-  it('마이는 기존 전체화면 폼으로 보내기만 한다', () => {
-    const code = stripComments(SECTION)
-    expect(code).toContain("enterSeat('/seller/meal-voucher/new')")
-    expect(code, '등록 폼 부품을 여기서 import 하면 두 벌이 갈린다')
-      .not.toMatch(/seller-meal-voucher\//)
+  /**
+   * 🔁 2026-09-26 **전제가 뒤집혔다.** 원래 이 시험은 *"마이는 전체화면 폼으로 보내기만 한다"* 였다.
+   * 대표 *"이용권 등록, 숙소까지 해줘"* 로 등록도 마이 안에서 끝나게 됐다 — 다만 **지키려던 것은
+   * 그대로다**: 폼을 복제하지 않는다. 방법이 "내보낸다" 에서 "같은 페이지를 시트로 연다" 로 바뀐 것뿐.
+   * ⇒ 판정을 **목적지**가 아니라 **복제 금지**에 다시 건다(세부는 `seller-register-stays-in-my`).
+   */
+  it('마이 어디에도 등록 폼 부품을 직접 들이지 않는다', () => {
+    for (const [name, code] of [['section', SECTION]] as const) {
+      expect(stripComments(code), `${name}: 등록 폼 부품을 여기서 import 하면 두 벌이 갈린다`)
+        .not.toMatch(/seller-meal-voucher\//)
+    }
   })
 })
 
