@@ -25,7 +25,7 @@
  * `isSeatableStoreStatus` 가 대기·반려도 좌석을 열어 준다(당근 모델). 그래서 이 카드는
  * 상태를 **직접 말한다** — 노출·정산이 왜 아직인지 화면이 설명하지 않으면 사장님은 고장으로 읽는다.
  */
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { BarChart3, ChevronDown, ChevronRight, ClipboardList, Handshake, Loader2, MessageSquare, ScanLine, Store, Ticket, Wallet } from 'lucide-react'
 import { TicketCard } from '@/components/ticket/TicketCard'
 import { formatNumber } from '@/utils/format'
@@ -33,21 +33,34 @@ import { currentSeatId, onSeatChange, switchSeat } from '@/lib/seller-seat'
 import { clearMyReturn, withMyReturn } from '@/lib/seller-return'
 import { toast } from '@/hooks/useToast'
 import type { MyStoresState } from './useMyStores'
-import StoreSwitchSheet from './StoreSwitchSheet'
 import { useSellerWork } from './seller-section/useSellerWork'
 import PendingOrders from './seller-section/PendingOrders'
-import RefundSheet from './seller-section/RefundSheet'
-import AnalyticsSheet from './seller-section/AnalyticsSheet'
-import WithdrawSheet from './seller-section/WithdrawSheet'
-import AllToolsSheet from './seller-section/AllToolsSheet'
-import PinSheet from './seller-section/PinSheet'
-import BankSheet from './seller-section/BankSheet'
-import OrdersSheet from './seller-section/OrdersSheet'
-import VoucherSheet from './seller-section/VoucherSheet'
-import StoreSheet from './seller-section/StoreSheet'
-import PartnersSheet from './seller-section/PartnersSheet'
-import MessagesSheet from './seller-section/MessagesSheet'
-import SettlementsSheet from './seller-section/SettlementsSheet'
+
+/**
+ * ⏳ **시트는 전부 열 때 받는다** (2026-09-26 — 대표 *"로딩 속도를 줄이고"*).
+ *
+ * 종전엔 열세 시트를 전부 정적으로 import 했다. 그래서 마이를 여는 것만으로 **판매 화면 전부의
+ * 코드를 받았다** — 실측 `UserProfilePage` 청크 221KB 중 **129KB(58%)가 셀러 전용**이었고,
+ * 마이를 쓰는 사람 대다수는 판매를 안 한다(라이브 승인 셀러 9곳). 그 값을 그들이 치르고 있었다.
+ *
+ * `lazy` 로 가르면 각 시트가 **눌린 순간** 별도 청크로 내려온다. 시트는 이미 로딩 표시를 갖고
+ * 있고(각자 `loading` 상태), 아래 `Suspense` 폴백은 `null` 이다 — 시트가 열리기 전엔
+ * 배경 스피너를 띄우지 않는다(누른 직후 화면이 깜빡이는 것보다 낫다).
+ */
+const StoreSwitchSheet = lazy(() => import('./StoreSwitchSheet'))
+const RefundSheet = lazy(() => import('./seller-section/RefundSheet'))
+const AnalyticsSheet = lazy(() => import('./seller-section/AnalyticsSheet'))
+const WithdrawSheet = lazy(() => import('./seller-section/WithdrawSheet'))
+const AllToolsSheet = lazy(() => import('./seller-section/AllToolsSheet'))
+const PinSheet = lazy(() => import('./seller-section/PinSheet'))
+const BankSheet = lazy(() => import('./seller-section/BankSheet'))
+const OrdersSheet = lazy(() => import('./seller-section/OrdersSheet'))
+const VoucherSheet = lazy(() => import('./seller-section/VoucherSheet'))
+const StoreSheet = lazy(() => import('./seller-section/StoreSheet'))
+const PartnersSheet = lazy(() => import('./seller-section/PartnersSheet'))
+const MessagesSheet = lazy(() => import('./seller-section/MessagesSheet'))
+const SettlementsSheet = lazy(() => import('./seller-section/SettlementsSheet'))
+const ToolPageSheet = lazy(() => import('./seller-section/ToolPageSheet'))
 
 const STATUS_NOTE: Record<string, string> = {
   pending: '승인 대기 중이에요. 준비는 지금 하고, 메인 노출과 정산은 승인 뒤에 시작됩니다.',
@@ -63,7 +76,7 @@ function todayLabelKST(): string {
 
 /** 마이 안에서 열리는 묶음·도구. 하나가 늘면 여기와 `openTool` 두 곳이 같이 바뀐다. */
 type Tool = 'orders' | 'vouchers' | 'withdraw' | 'analytics' | 'store' | 'refund' | 'tools' | 'pin' | 'bank'
-  | 'partners' | 'messages' | 'settlements'
+  | 'partners' | 'messages' | 'settlements' | 'page'
 
 /** 묶음 한 줄 — 전부 같은 모양이어야 무엇이 있는지 한눈에 읽힌다. */
 function ToolRow({ icon, label, hint, busy, onClick }: {
@@ -98,6 +111,12 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
    *   계좌를 넣다 PIN 을 푼 사람이 엉뚱하게 출금 화면에 떨어진다.
    */
   const [pinReturn, setPinReturn] = useState<'withdraw' | 'bank'>('withdraw')
+  /**
+   * 🪟 전체 도구에서 고른 화면. **대시보드 페이지를 그대로** 시트 안에 연다(`ToolPageSheet`).
+   *   `title` 을 같이 들고 다니는 이유: 시트 머리 이름을 여기서 다시 짓지 않기 위해서다 —
+   *   나브 색인이 정본이고, 두 벌이 되면 메뉴 이름과 시트 이름이 갈린다.
+   */
+  const [page, setPage] = useState<{ path: string; title: string } | null>(null)
   /**
    * 🪑 지금 토큰이 앉아 있는 좌석. **서버 응답이 아니라 토큰에서 읽는다** — 전환 직후에도 즉시 맞는다
    *   (`useMyStores` 의 `current_seller_id` 는 재조회 뒤에야 따라온다).
@@ -314,9 +333,11 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
         />
       </div>
 
-      {/* 🧰 나머지 전부 — 사업자등록증·운영자 위임·세금계산서처럼 **드물게 한 번** 하는 일.
-          2026-09-26 에 알림톡·소개 파트너가 묶음으로 올라오고 쿠폰·숙소가 내려가서 이 줄의
-          예시도 함께 바꿨다(문구가 실제 목록과 어긋나면 사장님이 없는 메뉴를 찾는다). */}
+      {/* 🧰 나머지 전부 — 사업자등록증·운영자 위임처럼 **드물게 한 번** 하는 일.
+          🩸 2026-09-26: 여기 예시를 **문자열로 적어 두는 것을 그만둔다.** 메뉴가 바뀔 때마다
+             어긋났고(쿠폰·숙소를 내렸을 때 두 번), 두 번 다 사람이 손으로 고쳤다. 그리고 여기서
+             목록을 세려면 나브 색인을 정적으로 읽어야 하는데 **그 순간 청크가 딸려 온다** —
+             즉 "정확한 예시"와 "가벼운 마이" 는 같이 가질 수 없다. 예시를 버리는 쪽이 맞다. */}
       <button
         type="button"
         disabled={entering}
@@ -324,13 +345,16 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
         className="w-full flex items-center gap-2 mt-2 px-1 py-3 text-left active:opacity-70 disabled:opacity-50"
       >
         <span className="flex-1 min-w-0 text-[13px] font-semibold text-gray-500 dark:text-gray-400 truncate">
-          전체 도구 · 사업자등록증 · 운영자 위임 · 운영 가이드
+          전체 도구 — 찾아서 바로 열기
         </span>
         {entering
           ? <Loader2 className="w-4 h-4 shrink-0 animate-spin text-gray-400" aria-hidden="true" />
           : <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />}
       </button>
 
+      {/* ⏳ 시트는 전부 lazy 다 — 폴백이 `null` 인 이유는 머리말에 적었다(누른 직후 깜빡임 방지).
+          시트 자신이 각자 로딩 표시를 갖고 있으므로 여기서 또 그리면 표시가 두 겹이 된다. */}
+      <Suspense fallback={null}>
       {/* 🧾 주문 — 확인 전이는 `useSellerWork` 것을 쓴다(전이 규칙이 두 벌이 되지 않게).
           환불은 시트 안에서 부르되 **별도 시트**로 연다(사유를 적어야 하는 일이라 섞지 않는다). */}
       {tool === 'orders' && (
@@ -405,13 +429,25 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
         <AllToolsSheet
           storeName={store.name}
           onClose={() => setTool(null)}
-          onPick={(path) => { setTool(null); enterSeat(path) }}
+          onPick={(path, label, inSheet) => {
+            // 🪟 대부분은 **여기서** 열린다 — 나가는 다섯만 종전처럼 전체화면으로 보낸다
+            //   (이유는 `tool-pages.ts` 의 FULL_SCREEN_ONLY 에 값으로 적혀 있다).
+            //   ⚠️ 판정은 시트가 해서 넘겨준다 — 여기서 `tool-pages` 를 읽으면 그 지도가
+            //      **정적 의존**이 되어 시트 청크 전체가 마이에 붙는다(lazy 가 무의미해진다).
+            if (inSheet) { setPage({ path, title: label }); setTool('page'); return }
+            setTool(null); enterSeat(path)
+          }}
         />
+      )}
+      {/* ↩️ 닫으면 **전체 도구로** 돌아온다 — 도구를 하나 보고 다음 도구를 보는 흐름이 끊기지 않게. */}
+      {tool === 'page' && page && (
+        <ToolPageSheet path={page.path} title={page.title} onClose={() => { setPage(null); setTool('tools') }} />
       )}
 
       {sheetOpen && (
         <StoreSwitchSheet currentSellerId={store.seller_id} onClose={() => setSheetOpen(false)} />
       )}
+      </Suspense>
     </div>
   )
 }

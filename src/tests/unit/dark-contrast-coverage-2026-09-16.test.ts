@@ -52,6 +52,16 @@ const LIGHT_ISLAND_COVERAGE: Record<string, { by: string; why: string }> = {
    * ⚠️ 위와 같은 한계(가드가 시트를 못 연다)가 그대로 적용된다.
    */
   'src/components/KakaoMapPicker.tsx': { by: '/user/profile', why: '마이 등록 시트 1단계(매장 검색) — 그 섬 안에서 함께 뜬다' },
+  /**
+   * 🪟 2026-09-26 — **범용 도구 시트.** 대시보드 화면 36개를 `SellerLayout` 껍데기만 벗겨
+   * (`SellerEmbedProvider`) 마이 시트 안에 그대로 띄운다. 그 화면들은 규칙상 `dark:` 가
+   * 금지돼 있어(라이트 고정) 마이 다크에서는 전역 `.dark input`(0,5,1)이 이긴다 — 섬이 필요하다.
+   * ⚠️ 위 두 줄과 **같은 한계**: 이 가드는 시트를 열지 못한다(셀러 좌석 + 탭이 필요하다).
+   *   여기 등재는 "무엇을 그리는가" 의 기록이고, 실제 판정은 staging **S-MYSELL-63** 이다.
+   * ⚠️ 그리고 이 한 줄이 **36개 화면을 덮는다** — 시트가 하나라 섬도 하나다. 화면마다
+   *   따로 등재할 일이 생기면 그건 누군가 시트를 복제했다는 뜻이다.
+   */
+  'src/pages/user-profile/seller-section/ToolPageSheet.tsx': { by: '/user/profile', why: '마이 안 범용 도구 시트 — 라이트 고정 대시보드 화면 36개를 담는 섬' },
 }
 
 /**

@@ -36,8 +36,10 @@ export default [
   {
     name: '🪟 껍데기 반환이 도매 리다이렉트 뒤로 밀린다 (겸업 사장님의 마이가 사라진다)',
     file: 'src/components/SellerLayout.tsx',
-    find: '  if (bare) return <>{children}</>\n\n  // 🏭 도매 전용(순수 판매사) → /wholesale 리다이렉트 중에는 렌더 X. is_distributor 직접 비교 금지(겸업 lock-out).\n  if (wholesaleOnly) return null',
-    replace: '  if (wholesaleOnly) return null\n  if (bare) return <>{children}</>',
+    // 🔁 2026-09-26 재조준: `bare` → `bare || embedded`(마이 시트 컨텍스트 추가)로 줄이 바뀌었다.
+    //   지키는 불변식은 그대로다 — **껍데기 반환이 도매 리다이렉트보다 먼저**여야 한다.
+    find: '  if (bare || embedded) return <>{children}</>\n\n  // 🏭 도매 전용(순수 판매사) → /wholesale 리다이렉트 중에는 렌더 X. is_distributor 직접 비교 금지(겸업 lock-out).\n  if (wholesaleOnly) return null',
+    replace: '  if (wholesaleOnly) return null\n  if (bare || embedded) return <>{children}</>',
     test: TEST,
     why: '시트 안에서 `/wholesale` 로 튕기면 마이가 통째로 사라진다 — 좌석은 마이가 이미 확인하고 열었다.',
   },

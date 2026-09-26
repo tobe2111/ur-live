@@ -5494,10 +5494,11 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 361건 · 최신순 · 이 목록은 자동 생성된다._
+_총 362건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-26**
 - [마이에 남은 셋 + 안 쓰는 메뉴 정리 (2026-09-26)](handoff/2026-09-26-seller-rest-and-cleanup.md)
+- [마이에서 전부 + 마이 청크 다이어트 (2026-09-26)](handoff/2026-09-26-my-all-in-my-and-chunk-diet.md)
 **2026-09-25**
 - [2026-09-25 — 셀러 핵심 업무를 소비자 앱 안으로 (설계 + 시안)](handoff/2026-09-25-seller-in-consumer-app-design.md)
 - [2026-09-25 — #1543 라이브 판정(E4)과 거기서 나온 결함 하나](handoff/2026-09-25-e4-store-intro-tab.md)

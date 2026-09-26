@@ -18,6 +18,7 @@ import SellerGroupTabs from './seller/SellerGroupTabs'
 import SellerBottomTabs, { SELLER_TABBAR_H } from './seller-layout/SellerBottomTabs'
 import { useSellerNavModel } from './seller-layout/useSellerNavModel'
 import CommandPalette from '@/components/dashboard/CommandPalette'
+import { useSellerEmbedded } from '@/shared/seller-embed'
 
 interface SellerLayoutProps {
   title: string
@@ -55,6 +56,9 @@ const ROW_OFF = 'font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-900'
  *   목록 계산은 전부 `useSellerNavModel`(SSOT) — 여기서는 그리기만 한다.
  */
 export default function SellerLayout({ title, children, headerRight, pendingOrders = 0, bare = false }: SellerLayoutProps) {
+  // 🪟 마이 시트 안인가. **페이지가 아니라 여기가 읽는다** — 41개 화면에 prop 을 뚫으면
+  //   반드시 몇 개를 빠뜨리고, 빠진 화면은 시트 안에 사이드바를 통째로 그린다.
+  const embedded = useSellerEmbedded()
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
@@ -248,7 +252,7 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
 
   // 🪟 마이 안 시트 — 본문만 돌려준다. **모든 훅 뒤**라 토큰 자동 갱신 등은 그대로 돈다.
   //   ⚠️ 도매 전용 리다이렉트보다 **먼저** 반환한다: 시트 안에서 튕기면 마이가 통째로 사라진다.
-  if (bare) return <>{children}</>
+  if (bare || embedded) return <>{children}</>
 
   // 🏭 도매 전용(순수 판매사) → /wholesale 리다이렉트 중에는 렌더 X. is_distributor 직접 비교 금지(겸업 lock-out).
   if (wholesaleOnly) return null
