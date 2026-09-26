@@ -4,18 +4,50 @@
 > 앞선 지시: *"이용권 등록, 숙소까지 해줘 쿠폰은 앞으로 필요없을 것 같은데? 확인해줘"*
 > PR: #1547 (브랜치 `claude/influencer-proposal-03yqmh`)
 
+## 0. ✅ 머지·배포·판정 완료 (2026-09-26)
+
+**머지 `39a465f`**(squash, PR #1547) · Verify ✅ · Pages 배포 ✅ · cron worker 배포 ✅.
+
+### E4 판정 통과 — 라이브 번들·API 실측
+
+| 축 | 판정 | 근거(라이브) |
+|---|---|---|
+| 🧹 숙소 메뉴 | **E4** | `app-seller-components` 에 `fallback:"숙소"` **0** · `seller.nav.stays` **0** · `BedDouble` **0** |
+| 🧹 체험 캠페인 · 후기 인증 | **E4** | 라벨 **0** · `/seller/experience-campaigns` **0** |
+| 🧹 쿠폰 · 프로모 코드 | **E4** | `/seller/coupons` **0** · `/seller/promo-codes` **0** |
+| 🔒 직링크 탭 매핑 살아 있음 | **E4** | `/seller/stays`·`/seller/review-verifications` 가 **`also` 배열 안에만** 존재 |
+| ✅ 리뷰는 안 내림 | **E4** | `/seller/orders` 묶음에 그대로 |
+| 📖 운영백서 재시드 v37 | **E4** | `GET /api/guides/admin` → 꺼진 기능 **14** · `SELLER_DORMANT_HIDDEN` 포함 |
+| 🧩 새 시트 셋 배포 | **E3** | `UserProfilePage` 청크에 문구·API 계약 전부 1 — **화면 동작은 미확인** |
+| 🔴 알림톡 발송 경로 부재 | **E4** | 마이 청크에 `alimtalk/send`·`credits/charge`·`credits/confirm`·`templates` **전부 0** |
+
+### 🩸 판정 중 내 측정이 한 번 헛돌았다 — 다음 세션이 같은 함정에 빠지지 않게
+
+처음에 **`UserProfilePage` 청크에서** 메뉴 경로를 세고 "전부 0 → 내려감 ✅" 이라고 읽었다.
+**틀렸다.** 0 인 이유는 메뉴가 빠져서가 아니라 **`seller-tab-groups` 모듈이 그 청크에 아예 없어서**였다.
+드러난 계기는 대조군이다 — 내가 **안 건드린** `/seller/stores`·`/seller/influencer-deals`·`대행 승인` 도
+같이 0 이었다. 그리고 "사용처리"·"파트너 찾기" 가 1 로 나온 건 메뉴가 아니라 **내가 이번에 쓴 버튼 문구**였다.
+
+⇒ 올바른 청크는 **`app-seller-components-*.js`**(마이의 전체 도구 시트가 동적 import 한다).
+⇒ **번들 문자열로 판정하기 전에 "내가 안 건드린 것이 거기 있는가"(대조군)를 먼저 확인할 것.**
+   대조군 없이 0 을 성공으로 읽으면, 이 레포가 반복해 당한 *헛도는 가드* 를 판정에서 그대로 반복한다.
+
+### 못 한 판정 (정직하게)
+
+**셀러 계정 로그인이 필요한 화면 조작은 못 했다** — 이 세션엔 어드민 자격만 있다. 그래서
+제안 수락 버튼이 실제로 눌리는지, 잔액 카드가 실제로 그려지는지는 **검증 안 됐다**(E3).
+그 축은 `STAGING_CHECKLIST.md` **S-MYSELL-47~59** 로 남는다.
+
+---
+
 ## 1. 다음 세션의 첫 액션
 
-**PR #1547 의 Verify 결과를 본다.** 이 브랜치는 이력에 `scripts/**` 가 있어 **푸시마다 전수 주입
-검증(45~77분)** 을 태운다 — 90분 걸리는 게 정상이다(기제는 브랜치 단위 diff, 커밋 단위 아님).
+**머지·배포·라이브 판정은 끝났다(§0).** 남은 것은 **셀러 로그인이 필요한 화면 조작**이다 —
+staging 에서 `STAGING_CHECKLIST.md` **S-MYSELL-47~59**. 그중 셋이 이번 변경의 핵심이다:
 
-```bash
-curl -sS "https://api.github.com/repos/tobe2111/ur-live/pulls/1547" \
-  | python3 -c "import sys,json;d=json.load(sys.stdin);print(d['state'],d['draft'],d['mergeable_state'],d['head']['sha'][:7])"
-```
-
-초록이면 **대표 머지 지시를 기다린다**(draft). 머지 뒤에는 E4 라이브 판정 —
-`STAGING_CHECKLIST.md` 의 **S-MYSELL-47~59**.
+- **S-MYSELL-53** 잔액 조회를 실패시켰을 때 "0건" 으로 안 뜨는가(모르는 것과 0은 다르다)
+- **S-MYSELL-57** 내린 메뉴 직링크(`/seller/review-verifications`)에서 하단 탭이 켜지는가
+- **S-MYSELL-49** 수락 못 하는 제안에 **이유 문장**이 뜨는가(빈 카드 금지)
 
 ## 2. 이번에 한 것
 
