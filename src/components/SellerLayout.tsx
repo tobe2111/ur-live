@@ -252,7 +252,20 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
 
   // 🪟 마이 안 시트 — 본문만 돌려준다. **모든 훅 뒤**라 토큰 자동 갱신 등은 그대로 돈다.
   //   ⚠️ 도매 전용 리다이렉트보다 **먼저** 반환한다: 시트 안에서 튕기면 마이가 통째로 사라진다.
-  if (bare || embedded) return <>{children}</>
+  //
+  //   🩸 2026-09-26: 종전엔 `<>{children}</>` 였는데, 그러면 **스코프가 통째로 사라진다** —
+  //     `.seller-light-theme` 에 걸린 규칙들(장식 아이콘 칩 숨김 · 폰에서 페이지 제목 한 번만)이
+  //     시트 안에서만 죽었고, 평소 `<main>` 이 주던 여백(`p-3 sm:p-5`)도 없어 화면이 **가장자리에
+  //     딱 붙어** 그려졌다. 껍데기를 벗기는 것과 스코프를 잃는 것은 다른 일이다.
+  //   ⚠️ `ur-embed-page` 는 "시트 안" 표시다 — 시트 머리가 이미 이름을 말하므로 페이지 h1 을
+  //     한 번 더 그리지 않는다(CSS 한 줄, `index.css`). 부제는 남긴다(정보다).
+  if (bare || embedded) {
+    return (
+      <div className="seller-light-theme ur-embed-page p-3 sm:p-5 space-y-3 sm:space-y-5">
+        {children}
+      </div>
+    )
+  }
 
   // 🏭 도매 전용(순수 판매사) → /wholesale 리다이렉트 중에는 렌더 X. is_distributor 직접 비교 금지(겸업 lock-out).
   if (wholesaleOnly) return null

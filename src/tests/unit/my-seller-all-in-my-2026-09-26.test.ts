@@ -88,8 +88,13 @@ describe('③ 41개 화면이 복제 없이 시트에서 열린다', () => {
     const code = readCode(LAYOUT)
     expect(code).toContain("from '@/shared/seller-embed'")
     expect(code).toMatch(/const embedded = useSellerEmbedded\(\)/)
+    // 🔁 2026-09-26: 조기 반환이 fragment → 스코프 있는 `<div>` 로 바뀌었다(여백·seller 스코프 복원).
+    //   지키는 불변식은 그대로다 — **컨텍스트를 읽어 껍데기를 건너뛴다**.
     expect(code, 'bare 만 보면 페이지마다 prop 을 뚫어야 하고 41개 중 몇은 반드시 빠진다')
-      .toMatch(/if \(bare \|\| embedded\) return <>\{children\}<\/>/)
+      .toMatch(/if \(bare \|\| embedded\) \{/)
+    // 그리고 그 반환이 **도매 리다이렉트보다 먼저**여야 한다(시트 안에서 튕기면 마이가 사라진다).
+    expect(code.indexOf('if (bare || embedded) {'))
+      .toBeLessThan(code.indexOf('if (wholesaleOnly) return null'))
   })
 
   it('컨텍스트가 권한을 만들지 않는다 — 토큰·좌석·API 를 모른다', () => {
@@ -264,5 +269,50 @@ describe('⑦ 같은 일에 화면이 둘이 되지 않는다', () => {
     for (const t of new Set(rows)) {
       expect(covered, `묶음 줄 '${t}' 이 표에 없다 — 전체 도구에서 다른 화면이 열린다`).toContain(t)
     }
+  })
+})
+
+describe('⑧ 시트 UI 정리 — PC 폭 · 여백 · 제목 두 겹 (2026-09-26)', () => {
+  const sheet = readCode('src/pages/user-profile/seller-section/Sheet.tsx')
+  const layout = readCode(LAYOUT)
+  const css = readRaw('src/index.css')
+
+  it('PC 에서 바텀 시트가 브라우저 폭을 가로지르지 않는다', () => {
+    // 마이는 PC 에서 액자를 벗는다(`pc-fullbleed`) — `inset-x-0` 이면 2560px 모니터에서 그만큼 벌어진다.
+    expect(sheet, '폭 상한이 없으면 모니터가 넓을수록 더 이상해진다').toContain('lg:w-[min(900px,92vw)]')
+    expect(sheet, '가운데로 모아야 한다').toContain('lg:left-1/2')
+    expect(sheet).toContain('lg:-translate-x-1/2')
+    // 폰은 한 글자도 안 바뀐다 — 바텀 시트가 맞다.
+    expect(sheet, '폰 바텀 시트 앵커가 사라졌다').toContain('fixed inset-x-0 bottom-0')
+  })
+
+  it('PC 에서 세로도 가운데다 (폰 값이 lg 로 새지 않는다)', () => {
+    for (const need of ['lg:top-1/2', 'lg:bottom-auto', 'lg:-translate-y-1/2', 'lg:max-h-[86dvh]']) {
+      expect(sheet, `${need} 가 없으면 tall/보통 중 한쪽이 화면 밖으로 나간다`).toContain(need)
+    }
+  })
+
+  it('시트 안 화면이 가장자리에 붙지 않는다 (bare 가 여백을 준다)', () => {
+    // 🩸 종전 bare 는 `<>{children}</>` 이라 `<main>` 이 주던 `p-3 sm:p-5` 가 통째로 없었다.
+    expect(layout, 'bare 가 fragment 로 돌아가면 여백이 0 이 된다')
+      .toMatch(/if \(bare \|\| embedded\) \{[\s\S]{0,400}?p-3 sm:p-5/)
+  })
+
+  it('시트 안에서도 seller 스코프를 잃지 않는다', () => {
+    // `.seller-light-theme` 에 걸린 규칙(장식 아이콘 칩 숨김 · 폰 제목 한 번만)이 시트에서만 죽었었다.
+    expect(layout).toMatch(/if \(bare \|\| embedded\) \{[\s\S]{0,400}?seller-light-theme/)
+    expect(layout).toMatch(/if \(bare \|\| embedded\) \{[\s\S]{0,400}?ur-embed-page/)
+  })
+
+  it('시트 머리와 페이지 제목이 같은 이름을 두 번 말하지 않는다', () => {
+    expect(css, 'CSS 규칙이 없으면 PC 시트에서 제목이 두 번 뜬다')
+      .toMatch(/\.ur-embed-page \.dash-page-title h1 \{ display: none; \}/)
+    // 부제는 남긴다 — 이름이 아니라 설명이고 시트 머리가 담지 못한다.
+    expect(css).not.toMatch(/\.ur-embed-page \.dash-page-title \{ display: none/)
+  })
+
+  it('등록 시트가 여백을 두 겹으로 주지 않는다', () => {
+    const v = readCode('src/pages/user-profile/seller-section/VoucherNewSheet.tsx')
+    expect(v, 'bare 가 이미 여백을 준다 — 여기서 또 주면 두 겹이다').not.toMatch(/light-island[^"]*px-3 py-3/)
   })
 })

@@ -7,6 +7,14 @@
  * ⚠️ 시트는 하단 네비(z 9999) **위**여야 한다 — 표준 스케일(`constants/z-index`)을 쓰는 이유.
  * ⚠️ 스크롤 영역은 `flex-1 min-h-0` 이어야 한다(그게 없으면 폰에서 아래가 잘린다 — CLAUDE.md 모바일 룰).
  *
+ * ## 🖥️ PC 에서는 바텀 시트가 아니라 **가운데 다이얼로그** (2026-09-26)
+ * 마이는 PC 에서 액자를 벗는다(`/user/profile` 은 `pc-fullbleed` 목록에 있다). 그래서 `inset-x-0`
+ * 인 바텀 시트가 **브라우저 폭을 통째로** 가로질렀다 — 2560px 모니터에서 특히 그렇다.
+ * lg+ 에서만 가운데로 모으고 폭에 상한을 준다. **폰(<lg)은 한 글자도 안 바뀐다** — 바텀 시트가
+ * 맞고, 엄지가 닿는 자리에 머리와 바닥이 있어야 한다.
+ * ⚠️ `tall` 과 보통 시트가 lg+ 에서 **같은 상자**가 된다(가운데 정렬 + `max-h`). 세로 위치를
+ *   `top-1/2 -translate-y-1/2` 로 잡으므로 `bottom`/`top-6` 을 `lg:` 로 되돌려 줘야 한다.
+ *
  * ## 📱 뒤로가기로 닫힌다 (2026-09-26)
  * 안드로이드에는 **시스템 뒤로가기**가 있고, 사람은 열린 것을 그걸로 닫는다. 히스토리에 한 칸을
  * 쌓아 두지 않으면 뒤로가기가 시트가 아니라 **마이를 통째로 닫는다** — 열어 본 사람 입장에선
@@ -65,7 +73,14 @@ export default function Sheet({ title, onClose, onBack, children, footer, tall =
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={`fixed inset-x-0 bottom-0 ${tall ? 'top-6 h-auto' : 'max-h-[85dvh]'} flex flex-col rounded-t-2xl bg-surface`}
+        className={
+          'fixed inset-x-0 bottom-0 flex flex-col rounded-t-2xl bg-surface'
+          + (tall ? ' top-6 h-auto' : ' max-h-[85dvh]')
+          // 🖥️ lg+ : 가운데 다이얼로그(위 머리말). 폰 값들을 여기서 되돌린다.
+          + ' lg:inset-x-auto lg:left-1/2 lg:top-1/2 lg:bottom-auto lg:h-auto'
+          + ' lg:-translate-x-1/2 lg:-translate-y-1/2 lg:w-[min(900px,92vw)]'
+          + ' lg:max-h-[86dvh] lg:rounded-2xl lg:shadow-2xl'
+        }
         style={{ zIndex: Z.SHEET_BODY }}
       >
         <div className="flex items-center gap-1 px-4 h-14 border-b border-rule shrink-0">

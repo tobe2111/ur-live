@@ -67,7 +67,7 @@ describe('2. 🪟 껍데기만 벗는다 — 폼 계약은 불변', () => {
     // 🔁 2026-09-26 재조준: 마이 시트 컨텍스트가 붙어 `bare || embedded` 가 됐다.
     //   지키는 불변식은 그대로다 — 조기 반환이 **모든 훅 뒤**여야 조건부 훅이 안 된다.
     const code = stripComments(LAYOUT)
-    const at = code.indexOf('if (bare || embedded) return')
+    const at = code.indexOf('if (bare || embedded) {')
     expect(at, 'bare 분기가 없다').toBeGreaterThan(0)
     // 훅이 그 뒤에 있으면 조건부 훅이 되어 React 가 깨진다.
     const after = code.slice(at)
@@ -78,7 +78,7 @@ describe('2. 🪟 껍데기만 벗는다 — 폼 계약은 불변', () => {
 
   it('도매 전용 리다이렉트보다 **먼저** 반환한다', () => {
     const code = stripComments(LAYOUT)
-    expect(code.indexOf('if (bare || embedded) return')).toBeLessThan(code.indexOf('if (wholesaleOnly) return null'))
+    expect(code.indexOf('if (bare || embedded) {')).toBeLessThan(code.indexOf('if (wholesaleOnly) return null'))
   })
 
   it('🔴 제출 계약이 `embedded` 에 안 닿는다', () => {

@@ -34,8 +34,10 @@ export default [
   {
     name: '🪟 시트 안에 대시보드 껍데기가 통째로 들어간다',
     file: LAYOUT,
-    find: '  if (bare || embedded) return <>{children}</>',
-    replace: '  if (bare) return <>{children}</>',
+    // 🔁 2026-09-26: 조기 반환이 fragment → 스코프 있는 div 로 바뀌었다. 불변식은 그대로다 —
+    //   **컨텍스트를 읽어 껍데기를 건너뛴다**.
+    find: '  if (bare || embedded) {',
+    replace: '  if (bare) {',
     test: TEST,
     why:
       '컨텍스트를 안 읽으면 페이지마다 prop 을 뚫어야 하고, 41개 중 몇은 반드시 빠진다. ' +

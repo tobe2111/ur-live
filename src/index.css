@@ -1554,6 +1554,11 @@ html.dark .gbd, [data-theme="dark"] .gbd {
 .seller-light-theme .dash-header-icon, .admin-light-theme .dash-header-icon { display: none; }
 @media (max-width: 767px) { .seller-light-theme .dash-page-title, .admin-light-theme .dash-page-title { display: none; } }
 
+/* 🪟 2026-09-26: 마이 시트 안에서는 페이지 h1 을 그리지 않는다 — **시트 머리가 이미 그 이름을
+   말한다**(두 번 말하지 않는다. 위 폰 규칙과 같은 판단이고, 시트는 폭과 무관하게 늘 머리가 있다).
+   ⚠️ 부제(`p`)는 남긴다 — 그건 이름이 아니라 설명이고, 시트 머리가 담지 못한다. */
+.ur-embed-page .dash-page-title h1 { display: none; }
+
 /* 🛡️ 2026-05-20: 라이브/쇼츠/숏폼 카드 공통 utility (CSP unsafe-inline 제거 — style={{}} 일괄 제거) */
 .ur-live-pill {
   background: rgba(239, 68, 68, 0.92);
