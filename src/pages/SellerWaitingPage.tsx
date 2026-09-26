@@ -10,6 +10,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { MY_PATH } from '@/lib/seller-return'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
@@ -65,7 +66,20 @@ export default function SellerWaitingPage() {
           //    계정만 여기 왔으므로 실패가 곧 사고였다. 이제 대기·반려도 지나가므로 실패 시
           //    `/seller` 로 보내면 로그인 화면으로 튕긴다 — 대기 안내가 그것보다 낫다.
           if (entered) {
-            navigate('/seller', { replace: true })
+            /**
+             * 🏠 2026-09-26 (대표 *"셀러대시보드를 쓸 필요없게끔"*): 착륙지를 **마이**로.
+             *
+             * 이 화면은 사장님의 **첫 접촉**이다 — 알림톡 "내 매장 관리하기" 가 여기로 온다
+             * (`store-owner-notice.ts`). 종전엔 곧장 대시보드로 보냈고, 그러면 사장님이 처음
+             * 배우는 것이 "내 가게는 저 대시보드에 있다" 가 된다. 마이로 보내면 첫 화면이
+             * **내 가게**(오늘 매출 · 주문 확인 · 도구)다.
+             *
+             * ⚠️ `entered` 일 때만이라는 조건이 이걸 안전하게 만든다 — `switch-to-seller` 가
+             *   성공했다는 건 **소비자 세션이 있다**는 증거고(그 API 가 그걸 요구한다),
+             *   그 판정 기준(`sellers.linked_user_id`)은 마이의 좌석 목록(`listOperableStores`)이
+             *   읽는 것과 **같다**. 즉 마이에 도착하면 내 가게가 반드시 보인다.
+             */
+            navigate(MY_PATH, { replace: true })
             return
           }
         }

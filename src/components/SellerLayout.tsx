@@ -13,6 +13,7 @@ import DashboardNotificationBell from './DashboardNotificationBell'
 import StoreSwitcher from '@/components/seller/StoreSwitcher'
 import SellerKakaoLinkBanner from './SellerKakaoLinkBanner'
 import SellerApprovalBanner from '@/components/seller/SellerApprovalBanner'
+import BackToMyBar from '@/components/seller/BackToMyBar'
 import SellerGroupTabs from './seller/SellerGroupTabs'
 import SellerBottomTabs, { SELLER_TABBAR_H } from './seller-layout/SellerBottomTabs'
 import { useSellerNavModel } from './seller-layout/useSellerNavModel'
@@ -312,6 +313,9 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
           <div className="dash-phone-title flex items-center justify-between gap-2 px-1 md:hidden">
             <h2 className="truncate text-[17px] font-extrabold tracking-tight text-gray-900">{title}</h2>
           </div>
+          {/* ↩️ 2026-09-26 (대표 *"모두 마이에서 하도록"*): 마이에서 들어온 동안만 뜨는 귀환 띠.
+              페이지마다 붙이면 안 붙인 페이지가 생기고, 하필 거기서 일이 끝나면 길을 잃는다. */}
+          <BackToMyBar />
           {/* 🥕 2026-09-16: 대기·반려도 대시보드를 쓰므로 화면이 상태를 말한다(승인이면 아무것도 안 그린다). */}
           <SellerApprovalBanner />
           {/* 🔗 카카오 미연동 이메일 셀러 → 연동 권유 (dismissible, 1회 status 조회) */}

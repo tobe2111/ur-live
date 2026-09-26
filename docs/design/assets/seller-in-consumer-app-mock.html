@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>판매 모드 시안</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --brand:#1C69EF; --brand-dark:#1557CC; --brand-tint:#EAF1FE; --brand-text:#1C69EF;
+  --bg:#F8F7FC; --surface:#FFFFFF;
+  --ink:#16181C; --ink2:#3D3C3A; --ink-soft:#6E6B68; --ink-faint:#8A8580;
+  --rule:rgb(22 24 28 / .08); --rule-strong:rgb(22 24 28 / .28);
+  --lift:0 2px 10px rgb(22 24 28 / .06);
+  --page:#EFEEF4; --pagefg:#16181C; --pagemute:#6E6B68;
+}
+:root:not([data-theme="light"]){ @media (prefers-color-scheme:dark){
+  --bg:#11141C; --surface:#1D1F29; --ink:#F5F3F1; --ink2:#C5C9D0;
+  --ink-soft:#A5A29E; --ink-faint:#757370; --brand-text:#4D8DF5; --brand-tint:#16243D;
+  --rule:rgb(255 255 255 / .08); --rule-strong:rgb(255 255 255 / .32); --lift:none;
+  --page:#0A0C12; --pagefg:#F5F3F1; --pagemute:#A5A29E;
+}}
+:root[data-theme="dark"]{
+  --bg:#11141C; --surface:#1D1F29; --ink:#F5F3F1; --ink2:#C5C9D0;
+  --ink-soft:#A5A29E; --ink-faint:#757370; --brand-text:#4D8DF5; --brand-tint:#16243D;
+  --rule:rgb(255 255 255 / .08); --rule-strong:rgb(255 255 255 / .32); --lift:none;
+  --page:#0A0C12; --pagefg:#F5F3F1; --pagemute:#A5A29E;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--page);color:var(--pagefg);font-family:'Noto Sans KR',system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;padding:32px 16px 72px}
+.wrap{max-width:1360px;margin:0 auto}
+h1{font-size:26px;font-weight:800;letter-spacing:-.02em}
+.sub{color:var(--pagemute);font-size:14px;margin-top:8px;line-height:1.65;max-width:62ch}
+.sub b{color:var(--pagefg);font-weight:700}
+.bar{display:flex;gap:8px;align-items:center;margin-top:20px;flex-wrap:wrap}
+.tgl{border:1px solid var(--rule-strong);background:transparent;color:var(--pagefg);
+  border-radius:999px;padding:7px 15px;font:600 13px 'Noto Sans KR';cursor:pointer}
+.tgl[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:#fff}
+.note{margin-top:14px;padding:12px 14px;border-left:3px solid var(--brand);
+  color:var(--pagemute);font-size:13px;line-height:1.7;max-width:74ch}
+.note b{color:var(--pagefg)}
+
+.row{display:flex;gap:26px;flex-wrap:wrap;margin-top:34px;align-items:flex-start}
+.slot{width:392px}
+.cap{font-size:12px;font-weight:700;color:var(--pagemute);margin-bottom:9px;letter-spacing:.01em}
+.cap i{font-style:normal;color:var(--brand-text)}
+.phone{width:392px;height:788px;background:var(--bg);border-radius:30px;overflow:hidden;
+  box-shadow:0 12px 40px rgb(0 0 0 / .18);display:flex;flex-direction:column;position:relative}
+
+/* ── 앱 크롬 ── */
+.st{height:26px;flex:none;display:flex;align-items:center;justify-content:space-between;
+  padding:0 20px;font-size:11px;font-weight:700;color:var(--ink-faint)}
+.hd{flex:none;padding:6px 16px 10px;display:flex;align-items:center;gap:10px}
+.hd .t{font-size:19px;font-weight:800;color:var(--ink);letter-spacing:-.02em}
+.hd .sp{margin-left:auto}
+.body{flex:1;overflow:hidden;padding:0 16px 12px;display:flex;flex-direction:column;gap:11px}
+
+/* ── 좌석 칩 ── */
+.seat{display:flex;align-items:center;gap:7px;background:var(--surface);box-shadow:var(--lift);
+  border-radius:12px;padding:9px 12px;flex:none}
+.seat .dot{width:7px;height:7px;border-radius:50%;background:var(--brand);flex:none}
+.seat .nm{font-size:13.5px;font-weight:700;color:var(--ink)}
+.seat .rl{font-size:11px;font-weight:700;color:var(--brand-text);background:var(--brand-tint);
+  border-radius:999px;padding:2px 7px}
+.seat .sw{margin-left:auto;font-size:12px;font-weight:700;color:var(--ink-soft);display:flex;align-items:center;gap:3px}
+
+/* ── 카드 ── */
+.card{background:var(--surface);box-shadow:var(--lift);border-radius:14px;padding:14px;flex:none}
+.card.p0{padding:0;overflow:hidden}
+.ch{display:flex;align-items:baseline;gap:8px;margin-bottom:11px}
+.ch h3{font-size:13px;font-weight:800;color:var(--ink);letter-spacing:-.01em}
+.ch .more{margin-left:auto;font-size:12px;font-weight:700;color:var(--brand-text)}
+
+/* 티켓 카드(브랜드 밴드 + 본문) */
+.tk{border-radius:14px;overflow:hidden;box-shadow:var(--lift);flex:none}
+.tk .band{background:var(--brand);color:#fff;padding:10px 14px;display:flex;align-items:center;gap:8px}
+.tk .band .l{font-size:12px;font-weight:700;opacity:.92}
+.tk .band .r{margin-left:auto;font-size:12px;font-weight:700;opacity:.92}
+.tk .in{background:var(--surface);padding:15px 14px}
+
+.big{font-size:32px;font-weight:800;color:var(--ink);letter-spacing:-.035em;line-height:1.05}
+.big .w{font-size:17px;font-weight:700;margin-left:2px;letter-spacing:0}
+.lbl{font-size:11.5px;font-weight:700;color:var(--ink-soft);margin-bottom:5px}
+.sm{font-size:12px;color:var(--ink-soft);line-height:1.6}
+
+.g3{display:flex}
+.g3 > div{flex:1;text-align:center;padding:2px 0}
+.g3 > div + div{border-left:1px solid var(--rule)}
+.g3 .n{font-size:23px;font-weight:800;color:var(--ink);letter-spacing:-.03em}
+.g3 .n.hl{color:var(--brand-text)}
+.g3 .k{font-size:11px;font-weight:600;color:var(--ink-soft);margin-top:3px}
+
+/* 할 일 */
+.todo{display:flex;align-items:center;gap:10px;padding:11px 0}
+.todo + .todo{border-top:1px solid var(--rule)}
+.todo .ic{width:30px;height:30px;border-radius:9px;background:var(--brand-tint);flex:none;
+  display:flex;align-items:center;justify-content:center}
+.todo .tx{font-size:13.5px;font-weight:600;color:var(--ink);line-height:1.35}
+.todo .tx s{display:block;font-size:11.5px;font-weight:500;color:var(--ink-soft);text-decoration:none;margin-top:1px}
+.todo .n{margin-left:auto;font-size:12px;font-weight:800;color:#fff;background:var(--brand);
+  border-radius:999px;min-width:21px;height:21px;padding:0 6px;display:flex;align-items:center;justify-content:center}
+
+/* 리스트 행 */
+.li{display:flex;align-items:center;gap:11px;padding:12px 14px}
+.li + .li{border-top:1px solid var(--rule)}
+.li .th{width:42px;height:42px;border-radius:10px;background:var(--brand-tint);flex:none;
+  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--brand-text)}
+.li .m{min-width:0;flex:1}
+.li .m .a{font-size:13.5px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.li .m .b{font-size:11.5px;color:var(--ink-soft);margin-top:2px}
+.li .act{font:700 12px 'Noto Sans KR';border:0;border-radius:9px;padding:7px 12px;
+  background:var(--brand);color:#fff;flex:none;cursor:pointer}
+.li .act.gh{background:transparent;color:var(--ink-soft);border:1px solid var(--rule-strong)}
+.li .st2{font-size:11.5px;font-weight:700;color:var(--ink-soft);flex:none}
+
+/* 세그먼트 */
+.seg{display:flex;gap:6px;flex:none}
+.seg button{flex:1;border:0;border-radius:10px;padding:9px 0;font:700 12.5px 'Noto Sans KR';
+  background:var(--surface);box-shadow:var(--lift);color:var(--ink-soft);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--brand);color:#fff;box-shadow:none}
+
+/* 스캐너 */
+.scan{background:var(--surface);box-shadow:var(--lift);border-radius:14px;padding:18px 14px;text-align:center;flex:none}
+.frame{width:172px;height:172px;margin:2px auto 12px;border-radius:16px;position:relative;background:var(--brand-tint)}
+.frame i{position:absolute;width:30px;height:30px;border:3px solid var(--brand)}
+.frame i:nth-child(1){top:12px;left:12px;border-right:0;border-bottom:0;border-radius:8px 0 0 0}
+.frame i:nth-child(2){top:12px;right:12px;border-left:0;border-bottom:0;border-radius:0 8px 0 0}
+.frame i:nth-child(3){bottom:12px;left:12px;border-right:0;border-top:0;border-radius:0 0 0 8px}
+.frame i:nth-child(4){bottom:12px;right:12px;border-left:0;border-top:0;border-radius:0 0 8px 0}
+.frame u{position:absolute;left:18px;right:18px;top:50%;height:2px;background:var(--brand);opacity:.55}
+
+/* CTA */
+.cta{border:0;border-radius:12px;padding:14px;font:800 14.5px 'Noto Sans KR';
+  background:var(--brand);color:#fff;width:100%;cursor:pointer;flex:none}
+.cta.gh{background:transparent;color:var(--ink-soft);border:1px solid var(--rule-strong);font-weight:700;font-size:13px;padding:12px}
+
+/* 하단 탭 */
+.tabs{flex:none;height:62px;background:var(--surface);border-top:1px solid var(--rule);display:flex}
+.tabs a{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  text-decoration:none;font-size:10.5px;font-weight:700;color:var(--ink-faint);position:relative}
+.tabs a.on{color:var(--ink);font-weight:800}
+.tabs a .bd{position:absolute;top:8px;right:50%;margin-right:-20px;background:var(--brand);color:#fff;
+  font-size:9.5px;font-weight:800;border-radius:999px;min-width:16px;height:16px;padding:0 4px;
+  display:flex;align-items:center;justify-content:center}
+.tabs a .pt{position:absolute;bottom:7px;width:4px;height:4px;border-radius:50%;background:var(--brand)}
+svg{display:block}
+.legend{margin-top:30px;font-size:13px;color:var(--pagemute);line-height:1.85;max-width:78ch}
+.legend b{color:var(--pagefg)}
+.legend code{background:var(--surface);color:var(--ink);padding:1px 6px;border-radius:5px;font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>판매 모드 — 소비자 앱 안</h1>
+  <p class="sub">셀러 대시보드를 옮기는 게 아니라, <b>폰에서 한 손으로 하는 일</b>만 소비자 앱 안에 새로 짓는다.
+  표·대량 처리·차트는 기존 대시보드에 남는다. 좌석(매장)은 <code>GET /my-stores</code> 가 주는 것만 그린다.</p>
+
+  <div class="bar">
+    <button class="tgl" id="tL" aria-pressed="true">라이트</button>
+    <button class="tgl" id="tD" aria-pressed="false">다크</button>
+  </div>
+
+  <div class="note"><b>왜 마이인가</b> — 유어샵(<code>/u/{handle}</code>)은 손님이 보는 진열대다. 주문·정산을 거기 두면
+  손님 화면과 섞이고, 소유권 단일화 불변식(§5.5)이 흐려진다. 판매 관리는 <b>나만 보는 곳</b>에 둔다.</div>
+
+  <div class="row">
+
+    <!-- ① 마이 — 판매 카드 -->
+    <div class="slot">
+      <div class="cap"><i>단계 1</i> · 마이 — 판매 카드가 생긴다 (신규 화면 0)</div>
+      <div class="phone">
+        <div class="st"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="hd"><span class="t">마이</span></div>
+        <div class="body">
+          <div class="card" style="display:flex;align-items:center;gap:12px">
+            <div style="width:46px;height:46px;border-radius:50%;background:var(--brand-tint);flex:none;
+              display:flex;align-items:center;justify-content:center;font:800 15px 'Noto Sans KR';color:var(--brand-text)">정</div>
+            <div><div style="font-size:15px;font-weight:800;color:var(--ink)">정지원</div>
+              <div class="sm">urdeal.kr/u/jiwon</div></div>
+          </div>
+
+          <div class="tk">
+            <div class="band"><span class="l">내 가게</span><span class="r">돈까스연구소 · 외 1곳</span></div>
+            <div class="in">
+              <div class="g3">
+                <div><div class="n hl">3</div><div class="k">오늘 주문</div></div>
+                <div><div class="n">84,000</div><div class="k">정산 예정</div></div>
+                <div><div class="n hl">2</div><div class="k">할 일</div></div>
+              </div>
+              <button class="cta" style="margin-top:13px">판매 관리 열기</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="ch"><h3>쇼핑</h3></div>
+            <div class="sm">주문 내역 · 이용권 지갑 · 찜</div>
+          </div>
+          <div class="card">
+            <div class="ch"><h3>수익</h3></div>
+            <div class="sm">소개 수익 · 추천 적립 · 딜</div>
+          </div>
+        </div>
+        <div class="tabs">
+          <a><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/></svg>홈</a>
+          <a><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 11h18"/></svg>교환권</a>
+          <a><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16v13H4z"/><path d="M8 7V5a4 4 0 0 1 8 0v2"/></svg>유어샵</a>
+          <a class="on"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0z"/></svg>마이<span class="pt"></span></a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ② 판매 홈 -->
+    <div class="slot">
+      <div class="cap"><i>단계 2</i> · <code style="font-size:11px">/sell</code> 판매 홈 + 좌석 전환</div>
+      <div class="phone">
+        <div class="st"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="hd">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          <span class="t">판매</span>
+        </div>
+        <div class="body">
+          <div class="seat">
+            <span class="dot"></span><span class="nm">돈까스연구소</span><span class="rl">주인</span>
+            <span class="sw">매장 2곳
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </span>
+          </div>
+
+          <div class="tk">
+            <div class="band"><span class="l">오늘</span><span class="r">9월 25일 목</span></div>
+            <div class="in">
+              <div class="lbl">오늘 매출</div>
+              <div class="big">312,000<span class="w">원</span></div>
+              <div class="sm" style="margin-top:7px">주문 8건 · 이용권 사용 5장</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="ch"><h3>할 일</h3><span class="more">2건</span></div>
+            <div class="todo">
+              <div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+              <div class="tx">새 주문 확인<s>3건이 확인을 기다립니다</s></div><div class="n">3</div>
+            </div>
+            <div class="todo">
+              <div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.6 6.6L22 9.3l-5 4.7 1.3 7L12 17.8 5.7 21l1.3-7-5-4.7 7.4-.7z"/></svg></div>
+              <div class="tx">후기 인증<s>2건 검토 대기</s></div><div class="n">2</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="ch"><h3>이번 주 받을 돈</h3><span class="more">정산 →</span></div>
+            <div style="font-size:26px;font-weight:800;color:var(--ink);letter-spacing:-.03em;line-height:1.05">
+              1,178,000<span style="font-size:15px;font-weight:700;margin-left:2px;letter-spacing:0">원</span>
+            </div>
+            <div class="sm" style="margin-top:6px">매출 1,240,000 − 수수료 62,000 (5%)</div>
+          </div>
+
+          <button class="cta gh">전체 관리 도구 열기</button>
+        </div>
+        <div class="tabs">
+          <a class="on"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M3 10.6 12 3.2l9 7.4V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>판매홈<span class="pt"></span></a>
+          <a><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l1 18H5z"/><path d="M9 8h6"/><path d="M9 12h6"/></svg>주문<span class="bd">3</span></a>
+          <a><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 1 0 4 2 2 0 0 1-2 2H6a2 2 0 0 1-2-2 2 2 0 0 0 0-4 2 2 0 0 1 0-4z"/></svg>이용권</a>
+          <a><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 9h7M8.5 12h7M12 16V9"/></svg>정산</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ③ 주문 -->
+    <div class="slot">
+      <div class="cap"><i>단계 3</i> · <code style="font-size:11px">/sell/orders</code> 주문 — 보고 바꾼다</div>
+      <div class="phone">
+        <div class="st"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="hd">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          <span class="t">주문</span>
+          <span class="sp"></span>
+          <span class="rl" style="font-size:11px;font-weight:700;color:var(--brand-text);background:var(--brand-tint);border-radius:999px;padding:3px 9px">돈까스연구소</span>
+        </div>
+        <div class="body">
+          <div class="seg">
+            <button aria-pressed="true">확인 대기 3</button>
+            <button>준비 중 2</button>
+            <button>완료</button>
+          </div>
+
+          <div class="card p0">
+            <div class="li">
+              <div class="th">돈까스</div>
+              <div class="m"><div class="a">치즈돈까스 2인 세트</div><div class="b">김○○ · 09:12 · 22,000원</div></div>
+              <button class="act">확인</button>
+            </div>
+            <div class="li">
+              <div class="th">돈까스</div>
+              <div class="m"><div class="a">등심돈까스</div><div class="b">이○○ · 09:03 · 11,000원</div></div>
+              <button class="act">확인</button>
+            </div>
+            <div class="li">
+              <div class="th">음료</div>
+              <div class="m"><div class="a">수제 에이드 2잔</div><div class="b">박○○ · 08:47 · 9,000원</div></div>
+              <button class="act">확인</button>
+            </div>
+          </div>
+
+          <div class="card p0" style="opacity:.62">
+            <div class="li">
+              <div class="th">돈까스</div>
+              <div class="m"><div class="a">치즈돈까스</div><div class="b">최○○ · 어제 · 11,000원</div></div>
+              <span class="st2">완료</span>
+            </div>
+            <div class="li">
+              <div class="th">세트</div>
+              <div class="m"><div class="a">가족 세트</div><div class="b">한○○ · 어제 · 38,000원</div></div>
+              <span class="st2">완료</span>
+            </div>
+          </div>
+
+          <button class="cta gh">기간·필터로 자세히 보기</button>
+        </div>
+        <div class="tabs">
+          <a><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/></svg>판매홈</a>
+          <a class="on"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M6 2h12l1.2 20H4.8z" opacity=".95"/></svg>주문<span class="bd">3</span><span class="pt"></span></a>
+          <a><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 1 0 4 2 2 0 0 1-2 2H6a2 2 0 0 1-2-2 2 2 0 0 0 0-4 2 2 0 0 1 0-4z"/></svg>이용권</a>
+          <a><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 9h7M8.5 12h7M12 16V9"/></svg>정산</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ④ 이용권 -->
+    <div class="slot">
+      <div class="cap"><i>단계 4</i> · <code style="font-size:11px">/sell/vouchers</code> 이용권 — 사용처리가 주인공</div>
+      <div class="phone">
+        <div class="st"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="hd">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          <span class="t">이용권</span>
+          <span class="sp"></span>
+          <span style="font-size:11px;font-weight:700;color:var(--brand-text);background:var(--brand-tint);border-radius:999px;padding:3px 9px">돈까스연구소</span>
+        </div>
+        <div class="body">
+          <div class="scan">
+            <div class="frame"><i></i><i></i><i></i><i></i><u></u></div>
+            <div style="font-size:14.5px;font-weight:800;color:var(--ink)">손님 QR 을 비춰 주세요</div>
+            <div class="sm" style="margin-top:5px">코드를 직접 입력할 수도 있어요</div>
+          </div>
+
+          <div class="card">
+            <div class="ch"><h3>오늘 사용</h3><span class="more">5장</span></div>
+            <div class="g3">
+              <div><div class="n">5</div><div class="k">사용됨</div></div>
+              <div><div class="n">31</div><div class="k">남은 장수</div></div>
+              <div><div class="n hl">2</div><div class="k">판매 중</div></div>
+            </div>
+          </div>
+
+          <div class="card p0">
+            <div class="li">
+              <div class="th">판매중</div>
+              <div class="m"><div class="a">치즈돈까스 2인 세트</div><div class="b">22,000원 · 재고 18</div></div>
+              <button class="act gh">끄기</button>
+            </div>
+            <div class="li">
+              <div class="th">판매중</div>
+              <div class="m"><div class="a">등심돈까스 1인</div><div class="b">11,000원 · 재고 13</div></div>
+              <button class="act gh">끄기</button>
+            </div>
+          </div>
+
+          <button class="cta">이용권 등록하기</button>
+        </div>
+        <div class="tabs">
+          <a><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/></svg>판매홈</a>
+          <a><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l1 18H5z"/><path d="M9 8h6"/><path d="M9 12h6"/></svg>주문<span class="bd">3</span></a>
+          <a class="on"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 1 0 4 2 2 0 0 1-2 2H6a2 2 0 0 1-2-2 2 2 0 0 0 0-4 2 2 0 0 1 0-4z"/></svg>이용권<span class="pt"></span></a>
+          <a><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 9h7M8.5 12h7M12 16V9"/></svg>정산</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ⑤ 정산 -->
+    <div class="slot">
+      <div class="cap"><i>단계 5</i> · <code style="font-size:11px">/sell/money</code> 정산 — 🔴 머니 경로</div>
+      <div class="phone">
+        <div class="st"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="hd">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          <span class="t">정산</span>
+        </div>
+        <div class="body">
+          <div class="tk">
+            <div class="band"><span class="l">받을 돈</span><span class="r">돈까스연구소</span></div>
+            <div class="in">
+              <div class="big">1,178,000<span class="w">원</span></div>
+              <div class="sm" style="margin-top:8px">매출 1,240,000 − 수수료 62,000 (5%)</div>
+              <button class="cta" style="margin-top:14px">출금 신청</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="ch"><h3>정산 예정</h3></div>
+            <div class="todo" style="padding-top:2px">
+              <div class="tx">10월 2일 목<s>이번 주 확정분 · 사용 확인 뒤 지급</s></div>
+              <div style="margin-left:auto;font-size:15px;font-weight:800;color:var(--ink)">1,178,000</div>
+            </div>
+          </div>
+
+          <div class="card p0">
+            <div class="li">
+              <div class="m"><div class="a">9월 18일 지급</div><div class="b">계좌 입금 완료</div></div>
+              <div style="font-size:14px;font-weight:800;color:var(--ink)">980,400</div>
+            </div>
+            <div class="li">
+              <div class="m"><div class="a">9월 11일 지급</div><div class="b">계좌 입금 완료</div></div>
+              <div style="font-size:14px;font-weight:800;color:var(--ink)">1,102,300</div>
+            </div>
+          </div>
+
+          <button class="cta gh">원장·명세 자세히 보기</button>
+        </div>
+        <div class="tabs">
+          <a><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/></svg>판매홈</a>
+          <a><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l1 18H5z"/><path d="M9 8h6"/><path d="M9 12h6"/></svg>주문<span class="bd">3</span></a>
+          <a><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 1 0 4 2 2 0 0 1-2 2H6a2 2 0 0 1-2-2 2 2 0 0 0 0-4 2 2 0 0 1 0-4z"/></svg>이용권</a>
+          <a class="on"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="9"/><path d="M8.5 9h7M8.5 12h7M12 16V9" stroke="var(--surface)" stroke-width="1.8" stroke-linecap="round"/></svg>정산<span class="pt"></span></a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ⑥ 좌석 전환 -->
+    <div class="slot">
+      <div class="cap">좌석 전환 — 매장 2곳 이상일 때만 뜬다</div>
+      <div class="phone">
+        <div class="st"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="hd"><span class="t">판매</span></div>
+        <div class="body" style="opacity:.34;pointer-events:none">
+          <div class="seat"><span class="dot"></span><span class="nm">돈까스연구소</span><span class="rl">주인</span></div>
+          <div class="tk"><div class="band"><span class="l">오늘</span></div>
+            <div class="in"><div class="lbl">오늘 매출</div><div class="big">312,000<span class="w">원</span></div></div></div>
+          <div class="card"><div class="ch"><h3>할 일</h3></div><div class="sm">…</div></div>
+        </div>
+        <div style="position:absolute;inset:0;background:rgb(0 0 0 / .42)"></div>
+        <div style="position:absolute;left:0;right:0;bottom:0;background:var(--surface);
+          border-radius:20px 20px 0 0;padding:8px 16px 26px">
+          <div style="width:38px;height:4px;border-radius:999px;background:var(--rule-strong);margin:0 auto 16px;opacity:.5"></div>
+          <div style="font-size:16px;font-weight:800;color:var(--ink);margin-bottom:3px">어느 매장으로 할까요?</div>
+          <div class="sm" style="margin-bottom:12px">고른 매장으로 주문·이용권·정산이 모두 바뀝니다</div>
+
+          <div class="li" style="background:var(--brand-tint);border-radius:12px;padding:13px 14px">
+            <div class="m"><div class="a">돈까스연구소</div><div class="b">주인 · 부산 해운대</div></div>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          </div>
+          <div class="li" style="padding:13px 14px;border-top:0">
+            <div class="m"><div class="a">해운대 브런치</div><div class="b">운영자 · 주인 없음</div></div>
+            <span class="st2">전환</span>
+          </div>
+          <div class="li" style="padding:13px 14px;border-top:1px solid var(--rule);opacity:.55">
+            <div class="m"><div class="a">서면 카페</div><div class="b">운영자 · <span style="color:var(--brand-text);font-weight:700">승인 대기</span></div></div>
+            <span class="st2">전환</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="legend">
+    <p><b>읽는 법</b></p>
+    <p>· <b>브랜드 밴드 + 본문</b> = <code>TicketCard</code>. 카드에 테두리는 없고 라이트에서만 <code>shadow-lift</code> 가 들어 올린다.</p>
+    <p>· <b>강조색은 하나</b>(<code>#1C69EF</code>)이고 자리는 셋 — 밴드 · 주 행동 버튼 · 강조 숫자. 나머지는 전부 회색.</p>
+    <p>· <b>숫자가 주인공이다.</b> 금액 32px, 라벨 11.5px. 사장님이 화면을 켜는 이유는 숫자 하나를 보려는 것이다.</p>
+    <p>· <b>"전체 관리 도구" 가 매 화면 바닥에 있다.</b> 막다른 골목을 만들지 않는다 — 깊은 작업은 기존 대시보드로 넘긴다.</p>
+    <p>· <b>좌석 이름이 헤더에 항상 보인다.</b> 어느 매장으로 행동 중인지 모르는 순간이 없어야 한다. 정산 화면은 카드 안에 한 번 더 적는다.</p>
+    <p>· <b>매장이 1곳이면 좌석 칩도 전환 시트도 안 그린다.</b> 오늘 라이브 셀러 11곳 중 다중 좌석은 4명이다.</p>
+  </div>
+</div>
+<script>
+const r=document.documentElement,L=document.getElementById('tL'),D=document.getElementById('tD');
+function set(m){r.setAttribute('data-theme',m);L.setAttribute('aria-pressed',m==='light');D.setAttribute('aria-pressed',m==='dark')}
+L.onclick=()=>set('light');D.onclick=()=>set('dark');
+set(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
+</script>
+</body>
+</html>

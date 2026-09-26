@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>판매 모드 — 추천안</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --brand:#1C69EF; --brand-tint:#EAF1FE; --brand-text:#1C69EF;
+  --bg:#F8F7FC; --surface:#FFFFFF;
+  --ink:#16181C; --ink-soft:#6E6B68; --ink-faint:#8A8580;
+  --rule:rgb(22 24 28 / .08); --rule-strong:rgb(22 24 28 / .28);
+  --lift:0 2px 10px rgb(22 24 28 / .06);
+  --page:#EFEEF4; --pagefg:#16181C; --pagemute:#6E6B68; --paneled:#E4E2EC;
+}
+:root[data-theme="dark"]{
+  --bg:#11141C; --surface:#1D1F29; --ink:#F5F3F1; --ink-soft:#A5A29E; --ink-faint:#757370;
+  --brand-text:#4D8DF5; --brand-tint:#16243D;
+  --rule:rgb(255 255 255 / .08); --rule-strong:rgb(255 255 255 / .32); --lift:none;
+  --page:#0A0C12; --pagefg:#F5F3F1; --pagemute:#A5A29E; --paneled:#171A23;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--page);color:var(--pagefg);font-family:'Noto Sans KR',system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;padding:34px 18px 70px}
+.wrap{max-width:1380px;margin:0 auto}
+h1{font-size:27px;font-weight:800;letter-spacing:-.025em}
+.lead{font-size:17px;font-weight:700;color:var(--brand-text);margin-top:10px}
+.sub{color:var(--pagemute);font-size:14px;margin-top:8px;line-height:1.75;max-width:72ch}
+.sub b{color:var(--pagefg);font-weight:700}
+.bar{display:flex;gap:8px;margin-top:18px}
+.tgl{border:1px solid var(--rule-strong);background:transparent;color:var(--pagefg);
+  border-radius:999px;padding:7px 16px;font:600 13px 'Noto Sans KR';cursor:pointer}
+.tgl[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:#fff}
+.why{margin-top:22px;background:var(--paneled);border-radius:14px;padding:18px 20px;max-width:92ch}
+.why h2{font-size:14px;font-weight:800;margin-bottom:11px}
+.why ul{list-style:none;font-size:13.5px;line-height:1.95;color:var(--pagemute)}
+.why li{margin-bottom:3px}
+.why li::before{content:'·';margin-right:8px;color:var(--brand-text);font-weight:800}
+.why b{color:var(--pagefg)}
+.row{display:flex;gap:24px;flex-wrap:wrap;margin-top:34px;align-items:flex-start}
+.slot{width:376px}
+.cap{font-size:11.5px;font-weight:800;color:var(--pagemute);margin-bottom:8px}
+.cap i{font-style:normal;color:var(--brand-text)}
+
+.phone{width:376px;height:790px;background:var(--bg);border-radius:30px;overflow:hidden;
+  box-shadow:0 12px 40px rgb(0 0 0 / .18);display:flex;flex-direction:column;position:relative}
+.st{height:25px;flex:none;display:flex;align-items:center;justify-content:space-between;
+  padding:0 19px;font-size:10.5px;font-weight:700;color:var(--ink-faint)}
+.hd{flex:none;padding:5px 15px 8px;display:flex;align-items:center;gap:9px}
+.hd .t{font-size:19px;font-weight:800;color:var(--ink);letter-spacing:-.02em}
+.hd .sp{flex:1}
+.body{flex:1;overflow:hidden;padding:0 15px 10px;display:flex;flex-direction:column;gap:9px}
+.tabs{flex:none;height:59px;background:var(--surface);border-top:1px solid var(--rule);display:flex}
+.tabs a{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  font-size:10px;font-weight:700;color:var(--ink-faint);position:relative}
+.tabs a.on{color:var(--ink);font-weight:800}
+.tabs a .pt{position:absolute;bottom:6px;width:4px;height:4px;border-radius:50%;background:var(--brand)}
+.tabs a .bd{position:absolute;top:7px;right:50%;margin-right:-18px;background:var(--brand);color:#fff;
+  font-size:9px;font-weight:800;border-radius:999px;min-width:15px;height:15px;padding:0 4px;
+  display:flex;align-items:center;justify-content:center}
+svg{display:block}
+
+.card{background:var(--surface);box-shadow:var(--lift);border-radius:14px;padding:14px;flex:none}
+.p0{padding:0;overflow:hidden}
+.sm{font-size:11.5px;color:var(--ink-soft);line-height:1.55}
+.lbl{font-size:11.5px;font-weight:700;color:var(--ink-soft)}
+
+/* 마이 — 실제 구조 */
+.prof{display:flex;align-items:center;gap:11px;flex:none;padding:2px 2px 6px}
+.prof .av{width:52px;height:52px;border-radius:50%;flex:none;background:linear-gradient(160deg,#7BA7D9,#C9D9EA)}
+.prof .nm{font-size:16.5px;font-weight:800;color:var(--ink)}
+.prof .chip{font-size:10.5px;font-weight:700;color:var(--ink);background:var(--paneled);
+  border-radius:999px;padding:3px 9px;display:inline-flex;align-items:center;gap:4px}
+.prof .edit{font-size:9.5px;font-weight:700;color:var(--ink-soft);background:var(--paneled);
+  border-radius:999px;padding:3px 8px;margin-top:5px;display:inline-block}
+
+.deal{background:var(--surface);box-shadow:var(--lift);border-radius:14px;padding:15px;flex:none}
+.deal .k{font-size:11.5px;font-weight:700;color:var(--ink-soft)}
+.deal .v{font-size:26px;font-weight:900;color:var(--ink);letter-spacing:-.035em;margin-top:2px}
+.deal .btn{margin-top:11px;border-radius:10px;background:var(--paneled);padding:10px;text-align:center;
+  font-size:12.5px;font-weight:700;color:var(--ink)}
+
+/* 판매 카드 — 티켓 밴드 + 큰 숫자 (딜 잔액과 같은 A 문법) */
+.sell{border-radius:15px;overflow:hidden;box-shadow:var(--lift);flex:none}
+.sell .band{background:var(--brand);color:#fff;padding:10px 15px;display:flex;align-items:center}
+.sell .band .l{font-size:12px;font-weight:800}
+.sell .band .r{margin-left:auto;font-size:11.5px;font-weight:700;opacity:.92;display:flex;align-items:center;gap:4px}
+.sell .in{background:var(--surface);padding:16px 15px 14px}
+.sell .num{font-size:33px;font-weight:900;color:var(--ink);letter-spacing:-.045em;line-height:1}
+.sell .num s{font-size:15px;font-weight:700;margin-left:3px;text-decoration:none}
+.sell .meta{margin-top:8px;font-size:12px;color:var(--ink-soft)}
+.srow{display:flex;align-items:center;gap:9px;padding:11px 0}
+.srow + .srow{border-top:1px solid var(--rule)}
+.srow .tx{font-size:13.5px;font-weight:600;color:var(--ink)}
+.srow .vl{margin-left:auto;font-size:13.5px;font-weight:800;color:var(--ink)}
+.srow .vl.hl{color:var(--brand-text)}
+
+.grp{background:var(--surface);box-shadow:var(--lift);border-radius:14px;flex:none;overflow:hidden}
+.grp .gh{font-size:11.5px;font-weight:800;color:var(--ink-soft);padding:12px 14px 7px}
+.grp .gr{display:flex;align-items:center;gap:9px;padding:11px 14px;font-size:13px;color:var(--ink);font-weight:600}
+.grp .gr + .gr{border-top:1px solid var(--rule)}
+.grp .gr .v{margin-left:auto;font-size:12px;color:var(--ink-faint);font-weight:700}
+.g4{display:flex;background:var(--surface);box-shadow:var(--lift);border-radius:14px;padding:13px 0;flex:none}
+.g4 > div{flex:1;text-align:center}
+.g4 .n{font-size:20px;font-weight:800;color:var(--ink)}
+.g4 .n.off{color:var(--ink-faint)}
+.g4 .k{font-size:10.5px;color:var(--ink-soft);font-weight:600;margin-top:3px}
+
+/* 판매 모드 — 상단 세그먼트 */
+.seg{display:flex;gap:5px;flex:none;overflow:hidden}
+.seg button{border:0;border-radius:999px;padding:8px 14px;font:800 12.5px 'Noto Sans KR';
+  background:var(--surface);box-shadow:var(--lift);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--brand);color:#fff;box-shadow:none}
+.seat{display:flex;align-items:center;gap:7px;flex:none;padding:1px 3px 2px}
+.seat .dot{width:6px;height:6px;border-radius:50%;background:var(--brand)}
+.seat .nm{font-size:13px;font-weight:700;color:var(--ink)}
+.seat .rl{font-size:10px;font-weight:700;color:var(--brand-text);background:var(--brand-tint);border-radius:999px;padding:2px 7px}
+.seat .sw{margin-left:auto;font-size:11.5px;font-weight:700;color:var(--ink-soft);display:flex;align-items:center;gap:3px}
+
+/* C 문법 — 할 일 */
+.top1{display:flex;align-items:baseline;gap:7px;padding:1px 3px 2px;flex:none}
+.top1 .v{font-size:15px;font-weight:800;color:var(--ink)}
+.top1 .k{font-size:11.5px;color:var(--ink-soft);font-weight:600}
+.top1 .r{margin-left:auto;font-size:11px;color:var(--ink-soft);font-weight:600}
+.job{background:var(--surface);box-shadow:var(--lift);border-radius:15px;padding:14px;flex:none;
+  display:flex;flex-direction:column;gap:10px}
+.job .hd2{display:flex;align-items:center}
+.job .hd2 .t{font-size:15px;font-weight:800;color:var(--ink)}
+.job .hd2 .c{margin-left:auto;font-size:11.5px;font-weight:800;color:var(--brand-text)}
+.job .it{display:flex;align-items:center;gap:10px}
+.job .it .m{flex:1;min-width:0}
+.job .it .m .a{font-size:13px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.job .it .m .b{font-size:11px;color:var(--ink-soft);margin-top:1px}
+.go{font:800 12px 'Noto Sans KR';border:0;border-radius:9px;padding:8px 14px;background:var(--brand);color:#fff;cursor:pointer;flex:none}
+.go.gh{background:transparent;color:var(--ink-soft);border:1px solid var(--rule-strong);font-weight:700}
+.done{background:var(--surface);box-shadow:var(--lift);border-radius:15px;padding:15px;flex:none;display:flex;align-items:center;gap:11px}
+
+/* B 문법 — 티켓 */
+.tkt{display:flex;background:var(--surface);box-shadow:var(--lift);border-radius:14px;overflow:hidden;flex:none;position:relative}
+.tkt .stub{width:58px;flex:none;background:var(--brand);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.tkt .stub .n{font-size:21px;font-weight:900;letter-spacing:-.03em}
+.tkt .stub .k{font-size:9px;font-weight:700;opacity:.9}
+.tkt .stub.off{background:var(--paneled);color:var(--ink-soft)}
+.tkt .cut{position:absolute;left:58px;top:0;bottom:0;width:1px;
+  background:repeating-linear-gradient(to bottom,var(--rule) 0 5px,transparent 5px 10px)}
+.tkt .in{flex:1;padding:11px 13px;min-width:0}
+.tkt .in .nm{font-size:13.5px;font-weight:800;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tkt .in .mt{font-size:11px;color:var(--ink-soft);margin-top:2px}
+.tkt .in .bt{margin-top:8px;display:flex;gap:6px}
+.pill{font:700 11px 'Noto Sans KR';border:1px solid var(--rule-strong);background:transparent;
+  color:var(--ink-soft);border-radius:999px;padding:5px 10px;cursor:pointer}
+
+.scan{background:var(--surface);box-shadow:var(--lift);border-radius:15px;padding:16px 14px;text-align:center;flex:none}
+.frame{width:150px;height:150px;margin:0 auto 11px;border-radius:15px;position:relative;background:var(--brand-tint)}
+.frame i{position:absolute;width:27px;height:27px;border:3px solid var(--brand)}
+.frame i:nth-child(1){top:11px;left:11px;border-right:0;border-bottom:0;border-radius:8px 0 0 0}
+.frame i:nth-child(2){top:11px;right:11px;border-left:0;border-bottom:0;border-radius:0 8px 0 0}
+.frame i:nth-child(3){bottom:11px;left:11px;border-right:0;border-top:0;border-radius:0 0 0 8px}
+.frame i:nth-child(4){bottom:11px;right:11px;border-left:0;border-top:0;border-radius:0 0 8px 0}
+.frame u{position:absolute;left:16px;right:16px;top:50%;height:2px;background:var(--brand);opacity:.55}
+
+.cta{border:0;border-radius:12px;padding:13px;font:800 14px 'Noto Sans KR';background:var(--brand);color:#fff;width:100%;cursor:pointer;flex:none}
+.cta.gh{background:transparent;color:var(--ink-soft);border:1px solid var(--rule-strong);font-weight:700;font-size:12.5px;padding:11px}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;font-size:22px;font-weight:800;color:var(--ink)}
+.legend{margin-top:32px;font-size:13px;color:var(--pagemute);line-height:1.9;max-width:82ch}
+.legend b{color:var(--pagefg)}
+.legend code{background:var(--surface);color:var(--ink);padding:1px 6px;border-radius:5px;font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>판매 모드 — 추천안</h1>
+  <p class="lead">“보는 건 마이에서 다, 하는 건 들어가서.”</p>
+  <p class="sub">마이에서 <b>오늘 얼마 벌었는지·뭘 처리해야 하는지·언제 얼마 받는지</b>를 전부 본다.
+  들어가는 건 <b>실제로 손을 댈 때</b>뿐이다. 그리고 들어가도 <b>하단 탭이 그대로 마이에 켜져 있다</b> —
+  다른 앱에 간 게 아니라 마이 안쪽에 있는 것이다.</p>
+
+  <div class="bar">
+    <button class="tgl" id="tL" aria-pressed="false">라이트</button>
+    <button class="tgl" id="tD" aria-pressed="true">다크</button>
+  </div>
+
+  <div class="why">
+    <h2>왜 이 형태인가 — 전부 대표님 화면에서 나온 근거입니다</h2>
+    <ul>
+      <li><b>마이는 원래 “보여주고 보내는” 페이지다.</b> 보내주신 화면의 <b>사용 내역 · 내 이용권 › · 동네 리뷰어 ›</b>가 전부 그 구조다. 판매만 다르게 만들 이유가 없다.</li>
+      <li><b>진입점을 새로 만들지 않는다.</b> 이름 옆 <b>내 가게 등록</b> 칩(`SellerSwitchInline`)이 이미 그 자리다 — 셀러가 되면 <b>그 칩이 카드로 자란다.</b></li>
+      <li><b>판매 카드는 바로 위 “내 딜 잔액 10,300딜”과 같은 문법</b>(큰 숫자 하나 + 아래 줄)이다. 이웃한 두 카드가 다른 문법이면 그 자리가 어긋나 보인다.</li>
+      <li><b>탭바를 바꾸지 않는다.</b> 판매 화면에서도 하단은 <b>홈·교환권·이용권·유어샵·마이</b> 그대로고 <b>마이가 켜져 있다.</b> 판매 안 이동은 상단 알약으로 — 이게 “별도 대시보드” 느낌을 없애는 핵심이다.</li>
+      <li><b>문법은 화면마다 그 화면의 주인공을 따른다.</b> 하나를 세 화면에 강제하는 게 애초에 무리였다 — 마이·정산은 <b>숫자</b>(A), 판매 홈·주문은 <b>할 일</b>(C), 이용권은 <b>티켓</b>(B).</li>
+    </ul>
+  </div>
+
+  <div class="row">
+
+    <!-- ① 마이 -->
+    <div class="slot">
+      <div class="cap"><i>1</i> · 마이 — 여기서 다 본다 <span style="color:var(--pagemute)">(A 문법)</span></div>
+      <div class="phone">
+        <div class="st"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="hd"><span class="t">마이</span><span class="sp"></span>
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="var(--ink-soft)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></div>
+        <div class="body">
+          <div class="prof">
+            <div class="av"></div>
+            <div style="min-width:0">
+              <div style="display:flex;align-items:center;gap:7px"><span class="nm">정지원</span>
+                <span class="chip">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V9l8-5 8 5v12"/></svg>
+                  돈까스연구소</span></div>
+              <div class="sm" style="margin-top:2px">urteam.corp@gmail.com</div>
+              <span class="edit">프로필 편집 ›</span>
+            </div>
+          </div>
+
+          <div class="sell">
+            <div class="band"><span class="l">내 가게 · 오늘</span>
+              <span class="r">돈까스연구소
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></div>
+            <div class="in">
+              <div class="num">312,000<s>원</s></div>
+              <div class="meta">주문 8건 · 이용권 5장 사용</div>
+              <div style="margin-top:10px">
+                <div class="srow" style="padding-top:9px;border-top:1px solid var(--rule)">
+                  <span class="tx">확인할 주문</span><span class="vl hl">3</span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink-faint)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+                <div class="srow"><span class="tx">후기 인증</span><span class="vl hl">2</span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink-faint)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+                <div class="srow"><span class="tx">10월 2일 받을 돈</span><span class="vl">1,178,000</span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink-faint)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="deal">
+            <div class="k">내 딜 잔액</div>
+            <div class="v">10,300<span style="font-size:15px;font-weight:700"> 딜</span></div>
+            <div class="btn">사용 내역</div>
+          </div>
+
+          <div>
+            <div style="font-size:12.5px;font-weight:800;color:var(--ink);padding:2px 3px 7px">이용권 현황</div>
+            <div class="g4">
+              <div><div class="n">1</div><div class="k">구매완료</div></div>
+              <div><div class="n">1</div><div class="k">사용가능</div></div>
+              <div><div class="n off">0</div><div class="k">사용완료</div></div>
+              <div><div class="n off">0</div><div class="k">만료·환불</div></div>
+            </div>
+          </div>
+
+          <div class="grp"><div class="gh">나의 이용 내역</div>
+            <div class="gr">내 이용권<span class="v">1 ›</span></div></div>
+        </div>
+        <div class="tabs">
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/></svg>홈</a>
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M12 7v12M3 11h18"/></svg>교환권</a>
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 1 0 4 2 2 0 0 1-2 2H6a2 2 0 0 1-2-2 2 2 0 0 0 0-4 2 2 0 0 1 0-4z"/></svg>이용권</a>
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16v11H4z"/><path d="M4 9l2-4h12l2 4"/></svg>유어샵</a>
+          <a class="on"><svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0z"/></svg>마이<span class="pt"></span></a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ② 판매 홈 -->
+    <div class="slot">
+      <div class="cap"><i>2</i> · 눌러서 들어간 판매 <span style="color:var(--pagemute)">(C 문법 · 하단 탭은 마이 그대로)</span></div>
+      <div class="phone">
+        <div class="st"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="hd">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          <span class="t">내 가게</span></div>
+        <div class="body">
+          <div class="seat"><span class="dot"></span><span class="nm">돈까스연구소</span><span class="rl">주인</span>
+            <span class="sw">매장 2곳
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></div>
+          <div class="seg">
+            <button aria-pressed="true">오늘</button><button>주문 3</button><button>이용권</button><button>정산</button>
+          </div>
+          <div class="top1"><span class="v">312,000원</span><span class="k">오늘 매출</span>
+            <span class="r">주문 8 · 사용 5</span></div>
+
+          <div class="job">
+            <div class="hd2"><span class="t">주문 확인</span><span class="c">3건</span></div>
+            <div class="it"><div class="m"><div class="a">치즈돈까스 2인 세트</div><div class="b">김○○ · 09:12 · 22,000원</div></div><button class="go">확인</button></div>
+            <div class="it"><div class="m"><div class="a">등심돈까스</div><div class="b">이○○ · 09:03 · 11,000원</div></div><button class="go">확인</button></div>
+            <div class="it"><div class="m"><div class="a">수제 에이드 2잔</div><div class="b">박○○ · 08:47 · 9,000원</div></div><button class="go">확인</button></div>
+          </div>
+
+          <div class="job">
+            <div class="hd2"><span class="t">후기 인증</span><span class="c">2건</span></div>
+            <div class="it"><div class="m"><div class="a">최○○ 님 후기</div><div class="b">블로그 · 어제</div></div><button class="go gh">검토</button></div>
+            <div class="it"><div class="m"><div class="a">한○○ 님 후기</div><div class="b">인스타 · 어제</div></div><button class="go gh">검토</button></div>
+          </div>
+
+          <div style="flex:1"></div>
+          <button class="cta gh">전체 관리 도구</button>
+        </div>
+        <div class="tabs">
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/></svg>홈</a>
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M12 7v12M3 11h18"/></svg>교환권</a>
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 1 0 4 2 2 0 0 1-2 2H6a2 2 0 0 1-2-2 2 2 0 0 0 0-4 2 2 0 0 1 0-4z"/></svg>이용권</a>
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16v11H4z"/><path d="M4 9l2-4h12l2 4"/></svg>유어샵</a>
+          <a class="on"><svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0z"/></svg>마이<span class="pt"></span></a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ③ 이용권 -->
+    <div class="slot">
+      <div class="cap"><i>3</i> · 이용권 <span style="color:var(--pagemute)">(B 문법 — 손님 지갑과 같은 티켓)</span></div>
+      <div class="phone">
+        <div class="st"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="hd">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          <span class="t">내 가게</span></div>
+        <div class="body">
+          <div class="seat"><span class="dot"></span><span class="nm">돈까스연구소</span><span class="rl">주인</span>
+            <span class="sw">매장 2곳
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></div>
+          <div class="seg">
+            <button>오늘</button><button>주문 3</button><button aria-pressed="true">이용권</button><button>정산</button>
+          </div>
+
+          <div class="scan">
+            <div class="frame"><i></i><i></i><i></i><i></i><u></u></div>
+            <div style="font-size:14px;font-weight:800;color:var(--ink)">손님 QR 을 비춰 주세요</div>
+            <div class="sm" style="margin-top:4px">코드를 직접 입력할 수도 있어요</div>
+          </div>
+
+          <div class="tkt">
+            <div class="stub"><div class="n">3</div><div class="k">오늘</div></div><div class="cut"></div>
+            <div class="in"><div class="nm">치즈돈까스 2인 세트</div>
+              <div class="mt">22,000원 · 18장 남음</div>
+              <div class="bt"><button class="pill">판매 중지</button><button class="pill">수정</button></div></div>
+          </div>
+          <div class="tkt">
+            <div class="stub"><div class="n">2</div><div class="k">오늘</div></div><div class="cut"></div>
+            <div class="in"><div class="nm">등심돈까스 1인</div>
+              <div class="mt">11,000원 · 13장 남음</div>
+              <div class="bt"><button class="pill">판매 중지</button><button class="pill">수정</button></div></div>
+          </div>
+          <div class="tkt">
+            <div class="stub off"><div class="n">0</div><div class="k">중지</div></div><div class="cut"></div>
+            <div class="in" style="opacity:.6"><div class="nm">가족 세트 4인</div>
+              <div class="mt">38,000원 · 판매 중지됨</div>
+              <div class="bt"><button class="pill">다시 판매</button></div></div>
+          </div>
+
+          <div style="flex:1"></div>
+          <button class="cta">이용권 등록하기</button>
+        </div>
+        <div class="tabs">
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/></svg>홈</a>
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M12 7v12M3 11h18"/></svg>교환권</a>
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 1 0 4 2 2 0 0 1-2 2H6a2 2 0 0 1-2-2 2 2 0 0 0 0-4 2 2 0 0 1 0-4z"/></svg>이용권</a>
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16v11H4z"/><path d="M4 9l2-4h12l2 4"/></svg>유어샵</a>
+          <a class="on"><svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0z"/></svg>마이<span class="pt"></span></a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ④ 정산 -->
+    <div class="slot">
+      <div class="cap"><i>4</i> · 정산 <span style="color:var(--pagemute)">(A 문법 · 🔴 머니 경로)</span></div>
+      <div class="phone">
+        <div class="st"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="hd">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          <span class="t">내 가게</span></div>
+        <div class="body">
+          <div class="seat"><span class="dot"></span><span class="nm">돈까스연구소</span><span class="rl">주인</span>
+            <span class="sw">매장 2곳
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></div>
+          <div class="seg">
+            <button>오늘</button><button>주문 3</button><button>이용권</button><button aria-pressed="true">정산</button>
+          </div>
+
+          <div class="sell">
+            <div class="band"><span class="l">받을 돈 · 돈까스연구소</span><span class="r">10월 2일</span></div>
+            <div class="in">
+              <div class="num">1,178,000<s>원</s></div>
+              <div class="meta">매출 1,240,000 − 수수료 62,000 (5%)</div>
+              <button class="cta" style="margin-top:14px">출금 신청</button>
+            </div>
+          </div>
+
+          <div style="padding:0 3px">
+            <div class="srow"><span class="tx">9월 18일 지급</span><span class="vl">980,400</span></div>
+            <div class="srow"><span class="tx">9월 11일 지급</span><span class="vl">1,102,300</span></div>
+            <div class="srow"><span class="tx">9월 4일 지급</span><span class="vl">874,900</span></div>
+          </div>
+
+          <div style="flex:1"></div>
+          <button class="cta gh">원장·명세 자세히</button>
+        </div>
+        <div class="tabs">
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/></svg>홈</a>
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M12 7v12M3 11h18"/></svg>교환권</a>
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 1 0 4 2 2 0 0 1-2 2H6a2 2 0 0 1-2-2 2 2 0 0 0 0-4 2 2 0 0 1 0-4z"/></svg>이용권</a>
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16v11H4z"/><path d="M4 9l2-4h12l2 4"/></svg>유어샵</a>
+          <a class="on"><svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0z"/></svg>마이<span class="pt"></span></a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ⑤ 좌석 -->
+    <div class="slot">
+      <div class="cap"><i>5</i> · 매장 전환 <span style="color:var(--pagemute)">(2곳 이상일 때만 · 주인 없음이 여기서 보인다)</span></div>
+      <div class="phone">
+        <div class="st"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="hd"><span class="t">내 가게</span></div>
+        <div class="body" style="opacity:.28;pointer-events:none">
+          <div class="seat"><span class="dot"></span><span class="nm">돈까스연구소</span><span class="rl">주인</span></div>
+          <div class="seg"><button aria-pressed="true">오늘</button><button>주문 3</button><button>이용권</button><button>정산</button></div>
+          <div class="top1"><span class="v">312,000원</span><span class="k">오늘 매출</span></div>
+          <div class="job"><div class="hd2"><span class="t">주문 확인</span></div></div>
+        </div>
+        <div style="position:absolute;inset:0;background:rgb(0 0 0 / .46)"></div>
+        <div style="position:absolute;left:0;right:0;bottom:0;background:var(--surface);
+          border-radius:22px 22px 0 0;padding:9px 16px 26px">
+          <div style="width:38px;height:4px;border-radius:999px;background:var(--rule-strong);margin:0 auto 16px;opacity:.5"></div>
+          <div style="font-size:16.5px;font-weight:800;color:var(--ink)">어느 가게로 할까요?</div>
+          <div class="sm" style="margin:3px 0 13px">고른 가게로 주문·이용권·정산이 모두 바뀝니다</div>
+
+          <div style="display:flex;align-items:center;gap:11px;padding:13px 14px;border-radius:12px;background:var(--brand-tint)">
+            <div style="flex:1"><div style="font-size:14px;font-weight:800;color:var(--ink)">돈까스연구소</div>
+              <div class="sm">주인 · 부산 해운대</div></div>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          </div>
+          <div style="display:flex;align-items:center;gap:11px;padding:13px 14px">
+            <div style="flex:1"><div style="font-size:14px;font-weight:800;color:var(--ink)">해운대 브런치</div>
+              <div class="sm">운영 중 · <b style="color:var(--ink)">사장님 미연결</b></div>
+              <div style="margin-top:6px;display:inline-flex;align-items:center;gap:6px;background:var(--paneled);border-radius:9px;padding:6px 10px">
+                <span class="sm" style="font-weight:700">사장님께 줄 코드</span>
+                <span class="mono" style="font-size:13px">URD-8K2M-41</span></div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:11px;padding:13px 14px;border-top:1px solid var(--rule);opacity:.55">
+            <div style="flex:1"><div style="font-size:14px;font-weight:800;color:var(--ink)">서면 카페</div>
+              <div class="sm">승인 대기</div></div>
+            <span class="sm" style="font-weight:700">전환</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ⑥ 주인 연결 -->
+    <div class="slot">
+      <div class="cap"><i>6</i> · 내 가게 찾기 <span style="color:var(--pagemute)">(사장님이 코드를 받았을 때)</span></div>
+      <div class="phone">
+        <div class="st"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="hd">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          <span class="t">내 가게 찾기</span></div>
+        <div class="body">
+          <div class="card">
+            <div class="lbl" style="margin-bottom:9px">받으신 코드</div>
+            <div class="mono">URD-8K2M-41</div>
+            <div class="sm" style="margin-top:11px">등록해 드린 분께 받은 코드예요.<br>코드가 없으면 사업자번호로도 찾을 수 있어요.</div>
+          </div>
+
+          <div class="card" style="display:flex;gap:12px;align-items:center">
+            <div style="width:44px;height:44px;border-radius:11px;background:var(--paneled);flex:none;
+              display:flex;align-items:center;justify-content:center">
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="var(--ink-soft)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6"/></svg>
+            </div>
+            <div style="min-width:0"><div style="font-size:14.5px;font-weight:800;color:var(--ink)">해운대 브런치</div>
+              <div class="sm">부산 해운대구 · 사장님 미연결</div></div>
+          </div>
+
+          <div class="card">
+            <div class="lbl" style="margin-bottom:6px">사업자등록증</div>
+            <div class="sm">내 가게라는 걸 확인하려고 한 번만 받아요. <b style="color:var(--ink)">사람이 직접 봅니다.</b></div>
+            <button class="cta gh" style="margin-top:11px">사진 올리기</button>
+          </div>
+
+          <div style="flex:1"></div>
+          <div class="sm" style="padding:0 4px 9px">신청하면 심사 뒤 알림으로 알려드려요.</div>
+          <button class="cta">내 가게로 신청하기</button>
+        </div>
+        <div class="tabs">
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/></svg>홈</a>
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M12 7v12M3 11h18"/></svg>교환권</a>
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 1 0 4 2 2 0 0 1-2 2H6a2 2 0 0 1-2-2 2 2 0 0 0 0-4 2 2 0 0 1 0-4z"/></svg>이용권</a>
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16v11H4z"/><path d="M4 9l2-4h12l2 4"/></svg>유어샵</a>
+          <a class="on"><svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0z"/></svg>마이<span class="pt"></span></a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <p><b>강조색은 하나, 자리는 셋</b> — ① 티켓 밴드 ② 지금 눌러야 하는 버튼 ③ 처리 대기 숫자. 그 외는 전부 회색이다.</p>
+    <p><b>새로 짓는 기능은 없다</b> — 좌석은 <code>GET /my-stores</code>·<code>POST /stores/:id/token</code>,
+    출금은 <code>POST /account/withdraw</code>, 주인 연결은 <code>/store-claims</code> + 어드민 심사를 그대로 쓴다.</p>
+    <p><b>정산 화면은 가게 이름을 밴드에 한 번 더 적는다</b> — 헤더만 믿고 남의 가게 돈을 보면 안 된다.</p>
+    <p><b>가게가 1곳이면</b> 좌석 줄도 전환 시트도 안 그린다. <b>셀러가 아니면</b> 마이에 판매 카드가 아예 없다(지금의 <b>내 가게 등록</b> 칩 그대로).</p>
+  </div>
+</div>
+<script>
+const r=document.documentElement,L=document.getElementById('tL'),D=document.getElementById('tD');
+function set(m){r.setAttribute('data-theme',m);L.setAttribute('aria-pressed',m==='light');D.setAttribute('aria-pressed',m==='dark')}
+L.onclick=()=>set('light');D.onclick=()=>set('dark');set('dark');
+</script>
+</body>
+</html>

@@ -25,6 +25,7 @@ import { TicketCard } from '@/components/ticket/TicketCard'
 import OrderStatusBar from './OrderStatusBar'
 import ReviewLevelCard from './ReviewLevelCard'
 import SellerSwitchInline from './SellerSwitchInline'
+import type { MyStoresState } from './useMyStores'
 
 type MyVoucher = NonNullable<ReturnType<typeof useMyVouchers>['data']>[number]
 type Counts = { voucher: number | null; gifticon: number | null; coupon?: number | null; wish?: number | null }
@@ -38,11 +39,13 @@ function dday(expiresAt?: string): number | null {
   return Math.max(0, Math.ceil(ms / 86_400_000))
 }
 
-export default function AccountPcPane({ counts, userName, profileImage, onEditProfile }: {
+export default function AccountPcPane({ counts, userName, profileImage, onEditProfile, sellerSeats }: {
   counts: Counts
   userName: string
   profileImage?: string
   onEditProfile: () => void
+  /** 🪑 좌석은 페이지가 한 번만 묻는다 — 여기서 또 부르면 같은 화면이 두 답을 말한다(§15-2). */
+  sellerSeats: MyStoresState
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -90,7 +93,7 @@ export default function AccountPcPane({ counts, userName, profileImage, onEditPr
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-[16px] font-extrabold text-gray-900 dark:text-white truncate tracking-[-0.01em]">{userName}</p>
-            <SellerSwitchInline />
+            <SellerSwitchInline seats={sellerSeats} />
           </div>
           <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">{localStorage.getItem('user_email') || ''}</p>
         </div>

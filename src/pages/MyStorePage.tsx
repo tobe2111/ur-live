@@ -6,6 +6,7 @@
  */
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { withMyReturn } from '@/lib/seller-return'
 import { AlertCircle, CheckCircle2, LayoutDashboard, Package, Plus, Store, Tag, Ticket, Zap } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
@@ -188,7 +189,7 @@ export default function MyStorePage() {
               <div className="mt-6">
                 <div className="flex items-center justify-between mb-2 px-1">
                   <p className="text-[13px] font-bold text-gray-900 dark:text-white">내 상품 · 재고·노출 관리</p>
-                  <button onClick={() => navigate('/seller/products')} className="text-[11px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">전체 관리 →</button>
+                  <button onClick={() => navigate(withMyReturn('/seller/products'))} className="text-[11px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">전체 관리 →</button>
                 </div>
                 <div className="space-y-2">
                   {products.map(p => {

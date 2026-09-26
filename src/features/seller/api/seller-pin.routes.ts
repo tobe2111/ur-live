@@ -89,7 +89,9 @@ sellerPinRoutes.post('/set-pin', rateLimit({ action: 'seller_set_pin', max: 5, w
   // 비밀번호 있는 셀러는 current_password 필수
   if (!seller.linked_user_id) {
     if (!current_password) {
-      return c.json({ success: false, error: '현재 비밀번호를 입력해주세요' }, 400)
+      // 🔑 2026-09-26: `code` 를 함께 준다 — 화면이 한국어 문장으로 분기하면 문구를 다듬는 순간 깨진다.
+      //   마이의 PIN 시트가 이걸 보고 비밀번호 칸을 연다(어느 계정이 필요한지 미리 알 수 없다).
+      return c.json({ success: false, error: '현재 비밀번호를 입력해주세요', code: 'PASSWORD_REQUIRED' }, 400)
     }
     const ok = await verifyPassword(current_password, seller.password_hash)
     if (!ok) return c.json({ success: false, error: '현재 비밀번호가 틀렸습니다' }, 401)
