@@ -150,6 +150,25 @@ export const IOS_HIDE_DIGITAL_TOPUP = false
 export const SELLER_STORE_ONLY_MODE = true
 
 /**
+ * SELLER_COUPONS_HIDDEN — 셀러 쿠폰 메뉴 숨김 (2026-09-26 대표 *"쿠폰은 앞으로 필요없을 것
+ *   같은데? 확인해줘"* → **라이브 실측으로 확인됨**).
+ *
+ * 📏 실측(2026-09-26, 라이브 D1):
+ *   - `coupons` 테이블 **1행** — `WELCOME2026`("카카오 채널 추가 감사 쿠폰"), 2026-04-17 생성.
+ *     그 행의 `seller_id` 는 **NULL** = 어드민이 만든 플랫폼 쿠폰이지 셀러 쿠폰이 아니다.
+ *   - ⇒ **셀러가 만든 쿠폰은 0건.** 셀러 11곳 중 아무도 이 화면을 쓴 적이 없다.
+ *   - `promo_codes` 0행 · `district_coupons` 0행 · `user_coupons` 2행(위 플랫폼 쿠폰을 받은 것).
+ *
+ * 🧭 그리고 할인 수단이 이미 셋 더 있다 — 이용권 자체의 정가↔판매가 · 딜 포인트 · 소개비(promo).
+ *   쿠폰은 넷째 수단이라 겹치고, 겹치는 수단은 정산 계산을 복잡하게만 만든다.
+ *
+ * true: 셀러 nav 에서 `/seller/coupons` 숨김. **라우트·페이지·API 는 그대로 둔다**(가역) —
+ *       어드민 쿠폰(`/admin/coupons`)과 상권 페이백은 별개 기능이라 무관하다.
+ * 되돌리려면 이 값을 false 로. 숨김 상태에서도 검색·직링크로는 여전히 닿는다.
+ */
+export const SELLER_COUPONS_HIDDEN = true
+
+/**
  * MATCHING_ENABLED — 인플루언서↔업체 성과기반 매칭 **어드민 전용 내부 도구** 노출 (2026-07-14).
  *   배경: 팔로워가 아니라 **실제 전환**(유입→방문→재방문, inflow_clicks·voucher_visits)으로 매칭.
  *         유어애즈 인플루언서 발굴 패널 옆 `sec-matching` 섹션 — 직영 에이전시(운영자)가 매칭 판단.

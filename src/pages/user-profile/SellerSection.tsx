@@ -324,7 +324,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           sellerId={store.seller_id}
           work={work}
           onClose={() => setTool(null)}
-          onRegister={() => { setTool(null); enterSeat('/seller/meal-voucher/new') }}
+          onOpenPath={(path) => { setTool(null); enterSeat(path) }}
         />
       )}
       {tool === 'store' && (

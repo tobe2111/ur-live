@@ -11,17 +11,24 @@
  * `useSellerWork` 가 이미 들고 있는 것을 쓴다(마이 카드와 같은 목록). 여기서 또 부르면
  * 같은 화면에 **두 개의 진실**이 생기고, 하나만 새로고침되는 날이 온다.
  *
- * ## ❌ 여기서 등록하지 않는다
- * 새로 만들기·사진 바꾸기는 전체화면 폼 그대로다(사진 여러 장·옵션·매장 선택 — 시트 높이에
- * 넣으면 스크롤이 두 겹이 되고, 사진을 고르는 동안 시트가 닫힌다). 같은 폼을 두 벌 만들면
- * 반드시 한쪽만 고쳐진다.
+ * ## 🎟️ 등록도 여기서 한다 (2026-09-26 — 대표 *"이용권 등록, 숙소까지 해줘"*)
+ * 어제는 전체화면으로 내보냈다. 지금은 **같은 페이지를 시트 안에서 연다**(`VoucherNewSheet`) —
+ * 폼을 복제하는 게 아니라 `SellerMealVoucherNewPage` 를 `embedded` 로 그대로 띄운다.
+ * ⚠️ 그래서 이 파일에도, 그 시트에도 **직접 만든 등록 폼이 없다.** 복제하는 순간 두 화면이
+ *   서로 다른 상품을 만들기 시작한다.
+ *
+ * ## 🏨 숙소는 옆에 둔다
+ * 숙소도 이용권의 한 종류지만 객실·날짜별 재고라 모델이 다르다 — 목록은 여기서 열고
+ * 달력·객실 편집은 전체화면이다(달력은 가로 폭을 요구한다).
  */
 import { useState } from 'react'
-import { ChevronRight, Loader2, Plus } from 'lucide-react'
+import { Building2, ChevronRight, Loader2, Plus } from 'lucide-react'
 // ⏳ 좌석에 막 앉았으면 목록이 아직 비어 있다 — 그 순간을 "없음" 으로 그리면 거짓말이 된다.
 import { formatNumber } from '@/utils/format'
 import Sheet from './Sheet'
 import VoucherEditSheet from './VoucherEditSheet'
+import VoucherNewSheet from './VoucherNewSheet'
+import StaysSheet from './StaysSheet'
 import type { SellerWorkState, WorkProduct } from './useSellerWork'
 
 function Switch({ on }: { on: boolean }) {
@@ -35,15 +42,17 @@ function Switch({ on }: { on: boolean }) {
   )
 }
 
-export default function VoucherSheet({ sellerId, work, onClose, onRegister }: {
+export default function VoucherSheet({ sellerId, work, onClose, onOpenPath }: {
   sellerId: number
   work: SellerWorkState
   onClose: () => void
-  /** 새로 등록 — 전체화면 폼으로 나간다(귀환 표시는 호출부가 붙인다). */
-  onRegister: () => void
+  /** 전체화면이 필요한 것(숙소 달력·객실)만 밖으로 — 호출부가 좌석과 귀환 표시를 붙인다. */
+  onOpenPath: (path: string) => void
 }) {
   const { products, busyProduct, toggleProduct } = work
   const [editing, setEditing] = useState<WorkProduct | null>(null)
+  const [adding, setAdding] = useState(false)
+  const [staysOpen, setStaysOpen] = useState(false)
   const onCount = products.filter((p) => p.isActive).length
 
   return (
@@ -54,7 +63,7 @@ export default function VoucherSheet({ sellerId, work, onClose, onRegister }: {
         footer={
           <button
             type="button"
-            onClick={onRegister}
+            onClick={() => setAdding(true)}
             className="w-full h-12 rounded-xl bg-brand text-white text-[15px] font-bold active:opacity-80 inline-flex items-center justify-center gap-1.5"
           >
             <Plus className="w-4 h-4" aria-hidden="true" />
@@ -115,8 +124,19 @@ export default function VoucherSheet({ sellerId, work, onClose, onRegister }: {
             ))}
           </div>
 
+          {/* 🏨 숙소 — 이용권의 한 종류지만 객실·날짜 모델이라 따로 연다. */}
+          <button
+            type="button"
+            onClick={() => setStaysOpen(true)}
+            className="w-full flex items-center gap-2.5 mt-3 px-3.5 h-12 rounded-xl bg-surface shadow-lift text-left active:opacity-70"
+          >
+            <Building2 className="w-[18px] h-[18px] shrink-0 text-gray-400" aria-hidden="true" />
+            <span className="flex-1 text-[14px] font-semibold text-gray-900 dark:text-white">숙소</span>
+            <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
+          </button>
+
           <p className="mt-3 px-1 text-[12px] leading-[1.6] text-gray-500 dark:text-gray-400">
-            사진·옵션·매장 정보를 바꾸려면 전체 화면에서 열어야 해요. 목록에서 고른 뒤 안내가 나와요.
+            사진·옵션·매장 정보를 바꾸려면 목록에서 고른 뒤 전체 화면에서 열어요.
           </p>
         </div>
       </Sheet>
@@ -127,6 +147,22 @@ export default function VoucherSheet({ sellerId, work, onClose, onRegister }: {
           product={editing}
           onClose={() => setEditing(null)}
           onSaved={() => { setEditing(null); work.refetch() }}
+        />
+      )}
+
+      {/* 🎟️ 등록 — 대시보드 위저드를 **그대로** 띄운다(복제 0). 끝나면 목록을 새로 고친다. */}
+      {adding && (
+        <VoucherNewSheet
+          onClose={() => setAdding(false)}
+          onCreated={() => { setAdding(false); work.refetch() }}
+        />
+      )}
+
+      {staysOpen && (
+        <StaysSheet
+          sellerId={sellerId}
+          onClose={() => setStaysOpen(false)}
+          onOpen={(path) => { setStaysOpen(false); onOpenPath(path) }}
         />
       )}
     </>

@@ -81,10 +81,16 @@ describe('2. 🎟️ 이용권 묶음 — 목록·중지/재개·고치기', () 
     expect(code).toMatch(/toggleProduct\(p\)/)
   })
 
-  it('등록은 시트 안에서 만들지 않는다 — 전체화면으로 나간다', () => {
+  /**
+   * 🔁 2026-09-26 **전제가 뒤집혔다**(대표 *"이용권 등록, 숙소까지 해줘"*). 등록은 이제 마이 안에서
+   * 끝난다. 지키려던 것은 그대로다 — **이 시트가 자기 등록 폼을 갖지 않는다**. 전용 시트가
+   * 대시보드 위저드를 `embedded` 로 그대로 연다(세부: `seller-register-stays-in-my`).
+   */
+  it('등록 폼을 이 시트가 직접 만들지 않는다 — 전용 시트가 같은 페이지를 연다', () => {
     const code = stripComments(VOUCHERS)
-    expect(code, '같은 폼이 두 벌이 되면 반드시 한쪽만 고쳐진다').toContain('onRegister')
-    expect(code).not.toMatch(/meal-voucher\/new/)
+    expect(code, '같은 폼이 두 벌이 되면 반드시 한쪽만 고쳐진다').toContain('<VoucherNewSheet')
+    expect(code, '등록 폼 부품을 여기서 들이면 두 벌이 갈린다').not.toMatch(/seller-meal-voucher\/|<input|<textarea/)
+    expect(code, '경로를 직접 열면 위저드가 아니라 라우팅이 된다').not.toMatch(/meal-voucher\/new/)
   })
 
   it('좌석에 막 앉은 순간의 빈 목록을 "없음" 으로 단정하지 않는다', () => {

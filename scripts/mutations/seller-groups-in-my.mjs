@@ -42,12 +42,14 @@ export default [
     why: '마이 카드와 시트가 각자 부르면 한쪽만 새로고침되는 날이 온다 — 끈 이용권이 카드에선 켜져 보인다.',
   },
   {
-    name: '🎟️ 이용권 시트가 등록 폼을 직접 연다 (귀환 표시가 사라진다)',
+    // 🔁 2026-09-26 재조준: 대표 *"이용권 등록, 숙소까지 해줘"* 로 **등록이 마이 안으로 들어왔다.**
+    //   앵커(`onClick={onRegister}`)가 사라졌지만 지키려던 것은 그대로다 — 이 시트가 자기 폼을 갖지 않는다.
+    name: '🎟️ 이용권 시트가 등록 폼을 직접 갖는다 (두 벌로 갈린다)',
     file: 'src/pages/user-profile/seller-section/VoucherSheet.tsx',
-    find: '            onClick={onRegister}',
-    replace: "            onClick={() => { window.location.assign('/seller/meal-voucher/new') }}",
+    find: '        <VoucherNewSheet',
+    replace: '        <input placeholder="이용권 이름" /><VoucherNewSheet',
     test: TEST,
-    why: '호출부가 `withMyReturn` 을 붙여 보낸다 — 시트가 직접 나가면 그 표시가 빠져 사장님이 대시보드에 남는다.',
+    why: '전용 시트가 대시보드 위저드를 그대로 연다 — 여기에 입력 칸이 생기는 순간 두 화면이 서로 다른 상품을 만들기 시작한다.',
   },
   {
     name: '💵 가격을 묻지 않고 바꾼다 (한 손 실수가 손님이 보는 값을 바꾼다)',

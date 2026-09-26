@@ -24,6 +24,16 @@ interface SellerLayoutProps {
   children: React.ReactNode
   headerRight?: React.ReactNode
   pendingOrders?: number
+  /**
+   * 🪟 **껍데기 없이 본문만** (2026-09-26, 설계 §21) — 마이 안 시트가 대시보드 페이지를
+   * *그대로* 열 때 쓴다. 같은 폼을 두 벌 만들지 않기 위한 유일한 길이다.
+   *
+   * ⚠️ 이때 사이드바·상단바·하단 탭·⌘K 는 물론 **도매 전용 리다이렉트도 건너뛴다** — 좌석은
+   * 마이가 이미 확인하고 열었고, 시트 안에서 `/wholesale` 로 튕기면 마이가 통째로 사라진다.
+   * ⚠️ 훅은 그대로 다 돈다(토큰 자동 갱신 포함) — 조기 반환은 **모든 훅 뒤**에 둔다.
+   * ⚠️ 라이트 고정은 호출부가 `light-island` 로 준다(이 페이지들은 `dark:` 가 금지돼 있다).
+   */
+  bare?: boolean
 }
 
 /** 사이드바 한 줄 — 다섯 대분류와 더보기 항목이 **같은 그림**이어야 한다(활성 = 연파랑 알약). */
@@ -41,7 +51,7 @@ const ROW_OFF = 'font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-900'
  *     헤어라인 아래에 더보기 항목을 펼친다. 폰과 PC 가 같은 순서·같은 부품.
  *   목록 계산은 전부 `useSellerNavModel`(SSOT) — 여기서는 그리기만 한다.
  */
-export default function SellerLayout({ title, children, headerRight, pendingOrders = 0 }: SellerLayoutProps) {
+export default function SellerLayout({ title, children, headerRight, pendingOrders = 0, bare = false }: SellerLayoutProps) {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
@@ -232,6 +242,10 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
       </div>
     </aside>
   )
+
+  // 🪟 마이 안 시트 — 본문만 돌려준다. **모든 훅 뒤**라 토큰 자동 갱신 등은 그대로 돈다.
+  //   ⚠️ 도매 전용 리다이렉트보다 **먼저** 반환한다: 시트 안에서 튕기면 마이가 통째로 사라진다.
+  if (bare) return <>{children}</>
 
   // 🏭 도매 전용(순수 판매사) → /wholesale 리다이렉트 중에는 렌더 X. is_distributor 직접 비교 금지(겸업 lock-out).
   if (wholesaleOnly) return null
