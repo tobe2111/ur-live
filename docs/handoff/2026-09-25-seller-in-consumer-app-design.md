@@ -319,3 +319,52 @@ GET /api/seller/my-stores                      ← 소비자 세션만으로 좌
 3. **결재 15건 아카이브** — `AdminDecisionsPage` 가 `docs/decisions/*.md` 19개를 `eager: true` 로 인라인(140.4 KB).
    그중 15개가 처리 끝난 결재. 승인 시 번들 예산을 **7.50 → 7.47 로 되돌린다**(이번이 6번째 상향이었다).
 4. **셀러 대시보드 `DealBalanceCard` 의 계좌 localStorage 경로** — 위 §19-3 과 같은 사고가 그쪽에 남아 있다.
+
+---
+
+## 2026-09-26 이어서 — PR #1546 머지 + **여섯 묶음 시안**
+
+**머지됨**: PR #1546 → `55dccae`(squash). 인계 목차 자동 재생성.
+
+### 🔴 다음 세션이 제일 먼저 알아야 할 정정 — "~55개" 는 틀린 규모다
+
+내가 대표께 *"셀러 화면이 ~55개라 전부 마이에 넣을 수 없다"* 고 보고했다. **라우트 수는 맞지만
+결론을 왜곡한다.** `seller-nav.ts` 를 실제로 세면 매장 사장님(`store_owner` +
+`SELLER_STORE_ONLY_MODE`)이 **사이드바에서 보는 항목은 12개**다:
+
+```
+홈     /seller · /u/me
+이용권 /seller/meal-voucher/new · /seller/group-buy · /seller/stays
+매출   /seller/orders · /seller/settlements
+성장   /seller/coupons · /seller/influencer-deals        (earnings·prospects 는 store_owner 숨김)
+설정   /seller/business-info · /seller/stores · /seller/alimtalk   (notify-followers 는 live 모드)
+```
+나머지 53개는 **탭 형제 라우트 · 검색 전용 11개(`SELLER_SEARCH_ONLY`) · 로그인/콜백 통과 화면**이다.
+⇒ *"대부분 마이에서"* 는 55개를 옮기는 일이 아니라 **12개를 옮기는 일**이다. 규모 판단이 바뀐다.
+
+### 두 번째 실측 — 12개 중 **완전히 끝나는 것은 2개**뿐이다
+
+어제 넣은 것들로 *손이 닿는 범위*는 넓어졌는데, **메뉴 단위로는 대부분 반쪽**이다:
+`/seller/orders` 는 확인 대기만 · `/seller/settlements` 는 출금만 · `/seller/group-buy` 는
+중지·재개만 · `/seller/business-info` 는 계좌만 · `/seller/stores` 는 전환만.
+**완전 2 · 반쪽 5 · 나감 5.** "시작은 마이, 마무리는 대시보드" 가 지금의 정확한 상태다.
+
+### 시안 (코드 0 · 대표 판단 대기)
+
+`docs/design/my-seller-six-groups-2026-09-26.md` · https://claude.ai/artifact/Lq8d3pnYM9xWZALsa1YFDE
+
+낱개 `ToolRow` 목록을 계속 늘리면 끝은 **마이 안 두 번째 사이드바**다(화면만 옮기고 대시보드를
+없앤 게 아니다). ⇒ **오늘 · 주문 · 이용권 · 손님 · 정산 · 가게** 여섯 묶음 시트로 **화면 수를 고정**하고,
+도구가 늘면 묶음 *안에서* 자라게 한다. 완전 9 · 나감 2 가 목표.
+
+**나가는 셋은 복제하지 않는다** — 같은 폼이 두 벌이 되면 반드시 한쪽만 고쳐진다:
+이용권 등록(사진 여러 장·옵션) · 숙소(달력은 가로 폭) · 사업자등록증(촬영+OCR, 연 1회).
+
+**순서**: 주문 → 이용권 → 정산 → 가게 → 손님. 각 단계 독립, 중간 상태가 어색하지 않다.
+
+### 남은 결정에 3건 추가 (대표)
+
+5. **정산 묶음 시점** — 출금은 마이에 있으나 **라이브에서 돈이 나가 본 적이 없다**(E3).
+   명세·지난 내역을 붙이기 전에 S-MYSELL-9·10 이 먼저다.
+6. **쿠폰 발행 · 알림톡 발송을 마이에서 허용할지** — 되돌릴 수 없는 일 = 등급 C. 기본안은 "확인 한 번 더".
+7. **가격 수정에 확인 단계를 둘지** — 손님이 보는 값이 한 손으로 바뀐다(실수도 한 손으로 난다).
