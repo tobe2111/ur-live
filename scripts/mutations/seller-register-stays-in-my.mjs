@@ -66,6 +66,14 @@ export default [
     why: '이 시트는 읽기 전용이라 `assertSeat` 이 없다 — 쓰기가 생기면 그 가드 없이 나간다.',
   },
   {
+    name: '🏝️ 새 라이트 섬을 커버리지 표에 안 올린다 (다크 검사 밖으로 조용히 나간다)',
+    file: 'src/tests/unit/dark-contrast-coverage-2026-09-16.test.ts',
+    find: "  'src/pages/user-profile/seller-section/VoucherNewSheet.tsx': { by: '/user/profile',",
+    replace: "  'src/pages/user-profile/seller-section/__none__.tsx': { by: '/user/profile',",
+    test: 'src/tests/unit/dark-contrast-coverage-2026-09-16.test.ts',
+    why: '2026-09-26 에 실제로 CI 를 넘어뜨린 자리다 — 라이트 섬은 다크에서도 흰 표면이라, 표에서 빠지면 그 화면만 대비 검사 밖으로 조용히 나간다.',
+  },
+  {
     name: '🎫 쿠폰 라우트를 지운다 (플래그를 false 로 해도 안 돌아온다)',
     file: 'src/routes/seller.routes.tsx',
     find: '      <Route path="/seller/coupons" element={',
