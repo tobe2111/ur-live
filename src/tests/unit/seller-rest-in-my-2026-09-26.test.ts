@@ -181,7 +181,9 @@ describe('🔌 배선 — 마이가 세 시트를 실제로 연다', () => {
   it('세 시트가 import 되고 렌더된다', () => {
     const code = stripComments(SECTION)
     for (const [name, tool] of [['PartnersSheet', 'partners'], ['MessagesSheet', 'messages'], ['SettlementsSheet', 'settlements']] as const) {
-      expect(code, `${name} import 누락`).toContain(`import ${name} from './seller-section/${name}'`)
+      // 🔁 2026-09-26 재조준: 시트가 전부 `lazy` 로 바뀌어 정적 import 줄이 사라졌다.
+      //   지키는 것은 그대로다 — **이 파일이 그 시트를 실제로 가져온다**(형태만 dynamic).
+      expect(code, `${name} 로딩 누락`).toContain(`lazy(() => import('./seller-section/${name}'))`)
       // 🩸 import 만 보면 렌더를 지워도 초록이 된다(이 레포가 반복해 당한 클래스) → JSX 로 앵커.
       expect(code, `${name} 렌더 누락 — import 만 있으면 죽은 코드다`).toContain(`<${name}`)
       expect(code, `tool === '${tool}' 분기 누락`).toContain(`tool === '${tool}'`)
@@ -194,11 +196,20 @@ describe('🔌 배선 — 마이가 세 시트를 실제로 연다', () => {
     expect(code).toMatch(/label="브랜드메시지"[\s\S]{0,200}openTool\('messages'\)/)
   })
 
-  it('전체 도구 줄 문구가 실제 목록과 맞다', () => {
+  it('전체 도구 줄이 메뉴 이름을 나열하지 않는다 (나열하면 반드시 낡는다)', () => {
     const code = stripComments(SECTION)
-    // 알림톡·소개 파트너는 이제 묶음이고, 쿠폰·숙소는 내려갔다 — 없는 메뉴를 예시로 들면 찾으러 간다.
-    for (const gone of ['쿠폰 · 알림톡', '소개 파트너 · 숙소']) {
-      expect(code, `"전체 도구" 힌트에 낡은 예시가 남았다: ${gone}`).not.toContain(gone)
+    // 🔁 2026-09-26 재조준: 종전엔 "낡은 예시 두 개가 없는가" 만 봤다. 그 판정은 **다음 예시가
+    //   낡는 것**을 못 막는다 — 실제로 두 번 낡았고 두 번 다 사람이 손으로 고쳤다.
+    //   이제 불변식은 더 강하다: 그 줄에 예시를 **아예 적지 않는다**.
+    // 🩸 2026-09-26 3차: 종전엔 **'전체 도구' 가 들어간 한 줄**만 봤다. 구조 시안 A 로 그 줄이
+    //   `label="전체 도구"` 가 되고 문구는 **다음 줄(`hint=`)** 로 옮겨가자, 예시를 다시 넣어도
+    //   검사가 통과했다(되돌려-검증이 잡았다). ⇒ 줄이 아니라 **그 블록**을 본다.
+    const at = code.indexOf('label="전체 도구"')
+    expect(at, '"전체 도구" 줄을 못 찾았다 — 검사가 헛돌고 있다').toBeGreaterThan(0)
+    const block = code.slice(at, at + 260)
+    expect(block, '예시를 나열하면 메뉴가 바뀔 때마다 어긋난다').not.toContain('·')
+    for (const gone of ['쿠폰', '알림톡', '숙소', '사업자등록증', '운영자']) {
+      expect(block, `"전체 도구" 블록에 메뉴 이름(${gone})이 박혀 있다`).not.toContain(gone)
     }
   })
 })

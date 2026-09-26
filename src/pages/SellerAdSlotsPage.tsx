@@ -11,10 +11,10 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Gavel, Clock, TrendingUp, Trophy, Info } from 'lucide-react';
+import { Gavel, Clock, TrendingUp, Trophy, Info } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import SEO from '@/components/SEO';
+import SEO from '@/components/SEO'
+import SellerLayout from '@/components/SellerLayout';
 
 interface AdSlot {
   slot_id: string;
@@ -301,7 +301,6 @@ function BidModal({
 
 export default function SellerAdSlotsPage() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const { slots, loading, reload } = useAdSlots();
   const [selectedSlot, setSelectedSlot] = useState<AdSlot | null>(null);
 
@@ -353,16 +352,8 @@ export default function SellerAdSlotsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <SellerLayout title={t('seller.adSlots.headerTitle', { defaultValue: '광고 슬롯 입찰' })}>
       <SEO title={t('seller.adSlots.headerTitle', { defaultValue: '광고 슬롯 입찰' }) + ' - 유어딜 셀러'} description="광고 슬롯 입찰로 메인·라이브 화면 상단 노출 우선권을 확보하세요." url="/seller/ad-slots" />
-
-      {/* 헤더 */}
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 h-14 flex items-center gap-3">
-        <button type="button" onClick={() => navigate(-1)} aria-label="뒤로 가기" className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-          <ChevronLeft className="w-4 h-4 text-gray-700" />
-        </button>
-        <h1 className="text-[15px] font-bold text-gray-900">{t('seller.adSlots.headerTitle', { defaultValue: '광고 슬롯 입찰' })}</h1>
-      </div>
 
       <div className="max-w-xl mx-auto px-4 py-5">
         {/* 안내 */}
@@ -407,6 +398,6 @@ export default function SellerAdSlotsPage() {
           onSuccess={handleBidSuccess}
         />
       )}
-    </div>
+    </SellerLayout>
   );
 }
