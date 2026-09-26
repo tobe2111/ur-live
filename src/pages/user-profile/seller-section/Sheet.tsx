@@ -18,12 +18,17 @@ import { useEffect } from 'react'
 import { X } from 'lucide-react'
 import { Z } from '@/constants/z-index'
 
-export default function Sheet({ title, onClose, children, footer }: {
+export default function Sheet({ title, onClose, children, footer, tall = false }: {
   title: string
   onClose: () => void
   children: ReactNode
   /** 주 행동 — 시트 바닥에 고정된다(스크롤해도 늘 보인다) */
   footer?: ReactNode
+  /**
+   * 📐 여러 단계짜리 폼(이용권 등록 위저드)처럼 **화면이 필요한** 시트. 85dvh 에 넣으면
+   * 사진·지도 단계에서 스크롤이 두 겹이 된다. 배경을 조금 남겨 두는 건 "덮인 것" 을 알리기 위해서다.
+   */
+  tall?: boolean
 }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -52,7 +57,7 @@ export default function Sheet({ title, onClose, children, footer }: {
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="fixed inset-x-0 bottom-0 max-h-[85dvh] flex flex-col rounded-t-2xl bg-surface"
+        className={`fixed inset-x-0 bottom-0 ${tall ? 'top-6 h-auto' : 'max-h-[85dvh]'} flex flex-col rounded-t-2xl bg-surface`}
         style={{ zIndex: Z.SHEET_BODY }}
       >
         <div className="flex items-center justify-between px-4 h-14 border-b border-rule shrink-0">

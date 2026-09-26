@@ -141,20 +141,38 @@ describe('🔑🏦 출금이 막히면 그 자리에서 푼다 (§20-5)', () => 
 
   it('PIN 412 는 문구만 띄우지 않고 시트를 연다', () => {
     expect(stripComments(WITHDRAW)).toMatch(/PIN_REQUIRED' && onFixPin/)
-    expect(stripComments(SECTION)).toContain("onFixPin={() => setTool('pin')}")
+    // 🔑 2026-09-26: PIN 을 요구하는 쪽이 둘이 됐다(출금·계좌). 돌아갈 곳이 갈리므로
+    //   `pinReturn` 을 함께 세운다 — 세우지 않으면 계좌를 넣다 푼 사람이 출금에 떨어진다.
+    expect(stripComments(SECTION), '출금이 PIN 시트를 안 연다')
+      .toMatch(/onFixPin=\{\(\) => \{ setPinReturn\('withdraw'\); setTool\('pin'\) \}\}/)
+  })
+
+  /**
+   * 🔴 2026-09-26 수리 — **계좌 변경도 412 를 준다.** `PUT /api/seller/profile` 은 계좌 필드가
+   * 섞이면 PIN 을 요구하는데(`seller-profile.routes`), 처음 만든 `BankSheet` 에 그 분기가 없어
+   * *"계좌 변경은 PIN 인증이 필요합니다"* 문장만 뜨고 **풀 방법이 없었다** — 출금이 막혀 계좌를
+   * 넣으러 온 사장님이 거기서 다시 막혔다(대시보드로 나가야 했다). 돌아갈 곳도 출금이 아니라
+   * **계좌**여야 한다 — 아니면 계좌를 저장도 못 한 채 출금 화면에 떨어진다.
+   */
+  it('🔑 계좌 412 도 그 자리에서 풀고, 계좌로 되돌아온다', () => {
+    expect(stripComments(BANK), '계좌 시트가 412 를 안 받으면 막다른 길이다').toMatch(/PIN_REQUIRED' && onFixPin/)
+    expect(stripComments(SECTION)).toMatch(/onFixPin=\{\(\) => \{ setPinReturn\('bank'\); setTool\('pin'\) \}\}/)
   })
 
   // 🩸 이 시험은 처음에 헛돌았다. `<PinSheet[\s\S]{0,160}onDone=…` 로 썼더니 그 160자가 **다음 줄의
   //   `<BankSheet>` 까지 건너가** 거기 있는 onDone 에 매치됐다 — PinSheet 에서 onDone 을 통째로
   //   지워도 초록이었다(주입 러너가 잡았다). ⇒ 태그가 쓰인 **그 줄 안에서만** 본다.
-  it('풀고 나면 출금으로 되돌아온다', () => {
-    const lines = stripComments(SECTION).split('\n')
-    for (const tag of ['<PinSheet', '<BankSheet']) {
-      const line = lines.find((l) => l.includes(tag))
-      expect(line, `${tag} 렌더 줄을 못 찾았다`).toBeTruthy()
-      // onDone 이 없으면 사장님이 다시 출금을 찾아 눌러야 한다 — 그 사이에 왜 눌렀는지 잊는다.
-      expect(line, `${tag} 가 출금으로 안 돌아온다`).toContain("onDone={() => setTool('withdraw')}")
-    }
+  it('풀고 나면 요구한 시트로 되돌아온다', () => {
+    const code = stripComments(SECTION)
+    const lines = code.split('\n')
+    // 🔑 PIN 은 **요구한 쪽**으로 돌아간다 — 한 곳으로 고정하면 계좌를 넣다 푼 사람이 출금에 떨어진다.
+    const pin = lines.find((l) => l.includes('<PinSheet'))
+    expect(pin, '<PinSheet 렌더 줄을 못 찾았다').toBeTruthy()
+    expect(pin, 'PIN 이 요구한 시트로 안 돌아온다').toContain("onDone={() => setTool(pinReturn)}")
+    // 계좌를 저장하면 원래 하려던 출금으로 이어진다(그 흐름 때문에 계좌를 넣은 것이다).
+    const bankAt = code.indexOf('<BankSheet')
+    expect(bankAt, '<BankSheet 를 못 찾았다').toBeGreaterThan(0)
+    expect(code.slice(bankAt, bankAt + 240), '계좌 저장 뒤 출금으로 안 이어진다').toContain("onDone={() => setTool('withdraw')}")
   })
 
   it('PIN 은 거는 것과 확인하는 것이 둘 다 있다', () => {

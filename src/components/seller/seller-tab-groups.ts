@@ -1,5 +1,6 @@
 import { Ticket, ShoppingBag, DollarSign, Tag, Handshake, Building2, Bell, BedDouble } from 'lucide-react'
 import type { SellerMode, SellerType } from './seller-nav'
+import { SELLER_COUPONS_HIDDEN, SELLER_DORMANT_HIDDEN } from '@/shared/feature-flags'
 
 /**
  * 🧭 **한 가지 일 = 사이드바 한 줄, 나머지는 그 안의 탭** (2026-09-03 대표 승인 "전부").
@@ -48,18 +49,22 @@ export const SELLER_TAB_GROUPS: SellerTabGroup[] = [
     tabs: [
       { path: '/seller/group-buy', labelKey: 'seller.voucherTabs.list', fallback: '이용권' },
       { path: '/seller/scan', labelKey: 'seller.voucherTabs.scan', fallback: '사용처리' },
-      { path: '/seller/review-verifications', labelKey: 'seller.voucherTabs.reviews', fallback: '후기 인증' },
+      // 후기 인증: `kakao_review_submissions` **0행**(2026-09-26 실측) — 탭만 내린다.
+      ...(SELLER_DORMANT_HIDDEN ? [] : [{ path: '/seller/review-verifications', labelKey: 'seller.voucherTabs.reviews', fallback: '후기 인증' }]),
       // 크리에이터 대행 등록 검토/승인 — 매장이 하는 일이라 매장에게만 보인다.
       { path: '/seller/proxy-products', labelKey: 'seller.nav.proxyProducts', fallback: '대행 승인', mode: 'store' },
     ],
   },
-  {
-    labelKey: 'seller.nav.stays', fallback: '숙소', icon: BedDouble, mode: 'store', hideFor: ['influencer'],
+  // 🛏️ 2026-09-26 (대표 *"뺄 것들 빼자"* → 실측): 셀러 소유 숙소 상품 **0** · 예약 **0**.
+  //   쿠폰과 같은 판정이라 같은 방식으로 내린다 — 착지점(`/seller/stays`)이 사라지므로 묶음째.
+  //   ⚠️ 지운 게 아니라 접은 것이다. 라우트·페이지·API·`StaysSheet` 전부 보존 — 플래그 false 면 복귀.
+  ...(SELLER_DORMANT_HIDDEN ? [] : [{
+    labelKey: 'seller.nav.stays', fallback: '숙소', icon: BedDouble, mode: 'store' as const, hideFor: ['influencer' as const],
     tabs: [
       { path: '/seller/stays', labelKey: 'seller.nav.stays', fallback: '숙소' },
       { path: '/seller/stays/bookings', labelKey: 'seller.nav.staysBookings', fallback: '예약' },
     ],
-  },
+  }]),
   {
     labelKey: 'seller.orders', fallback: '주문', icon: ShoppingBag,
     tabs: [
@@ -76,19 +81,26 @@ export const SELLER_TAB_GROUPS: SellerTabGroup[] = [
       { path: '/seller/promo-spend', labelKey: 'seller.nav.promoSpend', fallback: 'promo 지출' },
     ],
   },
-  {
+  // 🎫 2026-09-26 (대표 *"쿠폰은 앞으로 필요없을 것 같은데? 확인해줘"* → 실측 확인):
+  //   이 묶음의 **착지점이 쿠폰**이라, 쿠폰을 사이드바에서 내리면 묶음도 같이 내려야 한다 —
+  //   착지점이 사이드바에 없으면 탭으로 이동한 순간 사이드바 줄이 꺼져 사용자가 위치를 잃는다
+  //   (`voucher-nav-reachability` 가 지키는 불변식이고, 실제로 이 커밋에서 그 가드가 잡았다).
+  //   ⚠️ 함께 내려가는 `프로모 코드` 도 라이브 `promo_codes` **0행**이라 잃는 것이 없다.
+  //   라우트·페이지는 둘 다 보존 — 플래그를 false 로 하면 묶음째 돌아온다.
+  ...(SELLER_COUPONS_HIDDEN ? [] : [{
     labelKey: 'seller.nav.discounts', fallback: '할인', icon: Tag,
     tabs: [
       { path: '/seller/coupons', labelKey: 'seller.nav.coupons', fallback: '쿠폰' },
       { path: '/seller/promo-codes', labelKey: 'seller.nav.promoCodes', fallback: '프로모 코드' },
     ],
-  },
+  }]),
   {
     labelKey: 'seller.nav.partners', fallback: '파트너', icon: Handshake,
     tabs: [
       { path: '/seller/influencer-deals', labelKey: 'seller.nav.influencerDeals', fallback: '협업 제안' },
       { path: '/seller/influencers', labelKey: 'seller.nav.findInfluencers', fallback: '파트너 찾기' },
-      { path: '/seller/experience-campaigns', labelKey: 'seller.nav.experienceCampaigns', fallback: '체험 캠페인' },
+      // 체험 캠페인: 캠페인 **0** · 응모 **0**(2026-09-26 실측) — 탭만 내린다.
+      ...(SELLER_DORMANT_HIDDEN ? [] : [{ path: '/seller/experience-campaigns', labelKey: 'seller.nav.experienceCampaigns', fallback: '체험 캠페인' }]),
       { path: '/seller/followers', labelKey: 'seller.nav.followers', fallback: '팔로워' },
     ],
   },
