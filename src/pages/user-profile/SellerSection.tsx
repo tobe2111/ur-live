@@ -441,7 +441,14 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
       )}
       {/* ↩️ 닫으면 **전체 도구로** 돌아온다 — 도구를 하나 보고 다음 도구를 보는 흐름이 끊기지 않게. */}
       {tool === 'page' && page && (
-        <ToolPageSheet path={page.path} title={page.title} onClose={() => { setPage(null); setTool('tools') }} />
+        <ToolPageSheet
+          path={page.path}
+          title={page.title}
+          onClose={() => { setPage(null); setTool('tools') }}
+          /* 🚪 안쪽이 셀러 밖(`/`·`/u/me` …)을 가리켰다 — 시트를 닫고 진짜로 보낸다.
+             그대로 두면 메모리 라우터엔 그 주소가 없어 **빈 화면**이 된다. */
+          onLeave={(to) => { setPage(null); setTool(null); window.location.assign(to) }}
+        />
       )}
 
       {sheetOpen && (

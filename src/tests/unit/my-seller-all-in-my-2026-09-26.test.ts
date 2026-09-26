@@ -19,7 +19,7 @@ import { describe, it, expect } from 'vitest'
 import { readCode, readRaw } from '../helpers/source-text'
 import { SELLER_TAB_GROUPS } from '@/components/seller/seller-tab-groups'
 import { NAV_GROUPS, SELLER_SEARCH_ONLY } from '@/components/seller/seller-nav'
-import { TOOL_PAGES, FULL_SCREEN_ONLY, canOpenInSheet } from '@/pages/user-profile/seller-section/tool-pages'
+import { FULL_SCREEN_ONLY, canOpenInSheet } from '@/pages/user-profile/seller-section/tool-pages'
 
 const LAZY_GATE = 'src/pages/user-profile/SellerSectionLazy.tsx'
 const SECTION = 'src/pages/user-profile/SellerSection.tsx'
@@ -113,55 +113,66 @@ describe('③ 41개 화면이 복제 없이 시트에서 열린다', () => {
     expect(readCode(TOOL_SHEET)).toContain('<SellerEmbedProvider>')
   })
 
-  it('lazy 를 렌더 중에 만들지 않는다 (매 렌더 새 타입 = 트리 리마운트)', () => {
+  it('안쪽 위치 보고가 렌더마다 부모를 흔들지 않는다', () => {
+    // 🔁 2026-09-26 재조준: 종전 이 자리는 `lazy()` 를 렌더 중에 만드는지 봤는데, 이제 로딩은
+    //   라우트 표가 맡아 그 함정이 사라졌다. **같은 클래스의 새 함정**이 그 자리에 생겼다 —
+    //   `InnerBridge` 가 렌더마다 `onDepth()` 를 부르면 부모 setState → 재렌더 → 또 호출로
+    //   무한 루프가 된다. 그래서 **바뀔 때만** 올려야 한다.
     const code = readCode(TOOL_SHEET)
-    expect(code, 'useMemo 없이 lazy() 를 부르면 입력하던 글자가 사라진다')
-      .toMatch(/useMemo\(\(\)\s*=>\s*\{[\s\S]*?lazy\(load\)/)
+    expect(code, '변화 감지 없이 onDepth 를 부르면 무한 렌더가 된다')
+      .toMatch(/if \(last\.current !== deeper\)[\s\S]{0,120}onDepth\(deeper\)/)
   })
 })
 
-describe('④ 지도가 낡지 않는다', () => {
-  /** 사이드바·탭·검색 전용을 합친 색인의 모든 셀러 경로. */
-  const navPaths = [
-    ...NAV_GROUPS.flatMap(g => g.items.map(i => i.path)),
-    ...SELLER_TAB_GROUPS.flatMap(g => g.tabs.map(t => t.path)),
-    ...SELLER_SEARCH_ONLY.map(s => s.path),
-  ].filter(p => p.startsWith('/seller/'))
+describe('④ 지도를 손으로 적지 않는다 — 라우트 표가 지도다', () => {
+  const sheet = readCode(TOOL_SHEET)
 
-  it('색인이 비어 있지 않다 (0건이면 아래 검사가 전부 헛돈다)', () => {
-    expect(new Set(navPaths).size).toBeGreaterThanOrEqual(30)
+  it('시트가 **실제 라우트 표**를 렌더한다', () => {
+    // 🔴 이게 이 판의 핵심이다. 손으로 적은 `주소 → 모듈` 목록은 ① 파라미터 화면(`/:id/edit`)을
+    //   못 담고 ② 목록이 navigate() 하면 마이가 통째로 떠났다. 라우트 표를 그대로 렌더하면 둘 다 풀린다.
+    expect(sheet).toContain("from '@/routes/seller.routes'")
+    expect(sheet, '라우트 표를 실제로 펼쳐야 한다(import 만 있으면 죽은 코드다)').toContain('{SellerRoutes()}')
   })
 
-  it('모든 셀러 경로가 지도 ∪ 제외목록 안에 있다', () => {
-    const missing = [...new Set(navPaths)].filter(
-      p => !Object.prototype.hasOwnProperty.call(TOOL_PAGES, p)
-        && !Object.prototype.hasOwnProperty.call(FULL_SCREEN_ONLY, p),
-    )
-    expect(missing, '전체 도구에서 눌렀는데 시트가 안 열리는 화면이 조용히 생긴다').toEqual([])
+  it('안쪽 이동이 브라우저 히스토리를 안 건드린다 (MemoryRouter)', () => {
+    expect(sheet, 'BrowserRouter 면 주소창이 바뀌고 마이가 통째로 이동한다').toContain('<MemoryRouter')
+    expect(sheet).not.toContain('<BrowserRouter')
+    expect(sheet, '처음 열 주소를 넘겨야 그 화면이 뜬다').toMatch(/initialEntries=\{\[path\]\}/)
   })
 
-  it('지도와 제외목록이 겹치지 않는다', () => {
-    const both = Object.keys(TOOL_PAGES).filter(p => p in FULL_SCREEN_ONLY)
-    expect(both, '같은 화면을 여는 길이 둘이면 반드시 갈린다').toEqual([])
+  it('셀러 밖 주소는 빈 화면이 되지 않고 진짜로 나간다', () => {
+    // 메모리 라우터엔 `/` 나 `/u/me` 가 없다 — catch-all 이 없으면 아무것도 안 그려진다.
+    expect(sheet).toMatch(/<Route path="\*" element=\{<Escape/)
+    expect(readCode(SECTION), '호출부가 실제로 내보내야 한다').toContain('onLeave={(to)')
+  })
+
+  it('손으로 적은 주소→모듈 지도가 되살아나지 않는다', () => {
+    const map = readCode('src/pages/user-profile/seller-section/tool-pages.ts')
+    const entries = [...map.matchAll(/'\/seller\/[^']*':\s*\(\)\s*=>\s*import\(/g)]
+    expect(entries.length, '지도가 돌아왔다 — 라우트 표와 두 벌이 되어 반드시 갈린다').toBe(0)
+  })
+
+  it('일부러 뺀 것만 못 연다 — 기본은 "열 수 있다"', () => {
+    expect(canOpenInSheet('/seller/orders')).toBe(true)
+    expect(canOpenInSheet('/seller/products/9/edit'), '파라미터 화면도 열린다').toBe(true)
+    expect(canOpenInSheet('/seller/scan'), '카메라 + 마이에 전용 버튼이 따로 있다').toBe(false)
+    expect(canOpenInSheet('/seller/meal-voucher/new'), '전용 시트가 이미 있다').toBe(false)
+    // 목록이 늘어나면 "아직 안 예쁘다" 를 "못 한다" 로 적기 시작한 것이다.
+    expect(Object.keys(FULL_SCREEN_ONLY).length, '제외가 늘었다 — UI 정리의 일을 여기 적지 말 것').toBeLessThanOrEqual(3)
   })
 
   it('제외에는 **이유가 값으로** 적혀 있다', () => {
+    expect(Object.keys(FULL_SCREEN_ONLY).length).toBeGreaterThan(0)
     for (const [p, why] of Object.entries(FULL_SCREEN_ONLY)) {
       expect(why.length, `${p} 의 제외 사유가 비어 있다 — 이유 없는 제외는 다음 세션이 판단할 수 없다`)
         .toBeGreaterThan(20)
     }
   })
 
-  it('지도가 실제 화면 파일을 가리킨다', () => {
-    const raw = readRaw('src/pages/user-profile/seller-section/tool-pages.ts')
-    const mods = [...raw.matchAll(/import\('(@\/pages\/[A-Za-z0-9]+)'\)/g)].map(m => m[1])
-    expect(mods.length, '측정 0건 — import 형태가 바뀌었다').toBeGreaterThanOrEqual(30)
-    expect(new Set(mods).size, '같은 화면을 두 경로가 가리킨다').toBe(mods.length)
-  })
-
-  it('카메라 화면은 시트로 열지 않는다', () => {
-    expect(canOpenInSheet('/seller/scan')).toBe(false)
-    expect(canOpenInSheet('/seller/meal-voucher/new'), '전용 시트가 이미 있다').toBe(false)
+  it('시트 안에서 한 단계 들어가면 되돌아올 수 있다', () => {
+    expect(sheet, 'onBack 이 없으면 목록→수정 뒤 되돌아올 길이 X 뿐이다(시트가 통째로 닫힌다)')
+      .toMatch(/onBack=\{deeper \? back : undefined\}/)
+    expect(readCode('src/pages/user-profile/seller-section/Sheet.tsx')).toContain('onBack')
   })
 
   it('전체 도구가 나가는 것을 표시한다', () => {
@@ -169,5 +180,28 @@ describe('④ 지도가 낡지 않는다', () => {
     expect(code).toContain('canOpenInSheet')
     expect(code, '무엇이 화면을 바꾸는지 누르기 전에 알려 주지 않으면 튕겼다고 느낀다')
       .toMatch(/leaves\s*\n?\s*\?\s*<ExternalLink/)
+  })
+})
+
+describe('⑤ 시트 안에서 깨지던 껍데기', () => {
+  // 이 셋은 `SellerLayout` 을 안 써서 임베드 컨텍스트가 껍데기를 못 벗겼다 —
+  // 시트 안에서 헤더가 두 겹이 되고 `min-h-screen` 이 100vh 로 늘어났다(모바일 룰 위반이기도 하다).
+  const FIXED = [
+    'src/pages/SellerProxyProductsPage.tsx',
+    'src/pages/SellerProspectsPage.tsx',
+    'src/pages/SellerAdSlotsPage.tsx',
+  ]
+
+  it('셋 다 SellerLayout 을 쓴다 (그래야 컨텍스트가 껍데기를 벗긴다)', () => {
+    for (const f of FIXED) {
+      expect(readCode(f), `${f} 가 SellerLayout 밖이면 시트 안에 자체 헤더가 그대로 남는다`)
+        .toMatch(/<SellerLayout[\s>]/)
+    }
+  })
+
+  it('셋 다 min-h-screen 이 없다 (100vh 는 폰에서 주소창만큼 크다)', () => {
+    for (const f of FIXED) {
+      expect(readCode(f), `${f} 에 min-h-screen 이 돌아왔다`).not.toContain('min-h-screen')
+    }
   })
 })

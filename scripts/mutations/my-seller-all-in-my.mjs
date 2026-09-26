@@ -62,30 +62,64 @@ export default [
       '이기므로 마이 다크에서 입력 글자가 안 보인다 — 2026-09-03 지도 검색창과 같은 사고다.',
   },
   {
-    name: '🔁 lazy 를 렌더마다 새로 만든다 (입력하던 글자가 사라진다)',
+    // 🔁 2026-09-26 재조준: 로딩을 라우트 표가 맡아 `lazy` 함정이 사라졌고, **같은 클래스의**
+    //   새 함정이 그 자리에 생겼다(렌더 중 부모 setState).
+    name: '🔁 안쪽 위치 보고가 렌더마다 부모를 흔든다 (무한 렌더)',
     file: SHEET,
-    find: '  const Page = useMemo(() => {\n    const load = TOOL_PAGES[path]\n    return load ? lazy(load) : null\n  }, [path])',
-    replace: '  const load = TOOL_PAGES[path]\n  const Page = load ? lazy(load) : null',
+    find: '  if (last.current !== deeper) { last.current = deeper; onDepth(deeper) }',
+    replace: '  onDepth(deeper)',
     test: TEST,
-    why: '매 렌더 새 컴포넌트 타입이 나오면 React 가 트리를 통째로 다시 마운트한다.',
+    why: '렌더마다 부모 setState → 재렌더 → 또 호출. 화면이 멈추고 배터리를 태운다.',
   },
   {
-    name: '🗺️ 지도에서 화면 하나가 빠진다 (눌러도 안 열림 · 조용히)',
-    file: MAP,
-    find: "  '/seller/reviews': () => import('@/pages/SellerReviewsPage'),\n",
+    // 🔁 2026-09-26 재조준: 손으로 적은 지도를 버렸다. 지키는 것은 **더 커졌다** —
+    //   라우트 표를 안 펼치면 화면 하나가 아니라 **전부** 안 열린다.
+    name: '🗺️ 시트가 라우트 표를 안 펼친다 (모든 도구가 빈 화면)',
+    file: SHEET,
+    find: '                {SellerRoutes()}',
+    replace: '                {null}',
+    test: TEST,
+    why:
+      'import 만 보는 검사는 렌더를 지워도 초록이다 — 이 레포가 반복해 당한 클래스라 호출 형태로 앵커한다. ' +
+      '전체 도구에서 무엇을 눌러도 빈 시트가 뜬다.',
+  },
+  {
+    name: '🌐 안쪽 이동이 주소창을 바꾼다 (마이가 통째로 떠난다)',
+    file: SHEET,
+    find: '          <MemoryRouter initialEntries={[path]}>',
+    replace: '          <BrowserRouter>',
+    test: TEST,
+    why:
+      '시트 안 목록에서 수정 화면으로 갈 때 바깥 라우터가 움직이면 마이가 언마운트된다 — ' +
+      '고치려고 연 시트가 사라진다. 그걸 막으려고 메모리 라우터를 쓴다.',
+  },
+  {
+    name: '🚪 셀러 밖 주소가 빈 화면이 된다 (탈출구 제거)',
+    file: SHEET,
+    find: '                <Route path="*" element={<Escape onLeave={onLeave} />} />',
     replace: '',
     test: TEST,
     why:
-      '나브 색인엔 있는데 지도엔 없으면 "전체 도구에서 눌렀는데 시트가 안 열리는 화면" 이 된다. ' +
-      '에러도 안 나므로 아무도 신고하지 않는다.',
+      "메모리 라우터엔 `/` 나 `/u/me` 가 없다. 안쪽 화면이 거길 가리키면 아무것도 안 그려지고, " +
+      '사장님은 시트가 고장 난 줄 안다(에러도 안 난다).',
+  },
+  {
+    name: '↩️ 한 단계 들어가면 되돌아올 길이 없어진다',
+    file: SHEET,
+    find: '    <Sheet title={title} onClose={onClose} onBack={deeper ? back : undefined} tall>',
+    replace: '    <Sheet title={title} onClose={onClose} tall>',
+    test: TEST,
+    why:
+      '목록 → 수정 으로 들어간 뒤 되돌아올 길이 X(시트 통째로 닫기)뿐이면, 고치다 만 사람이 ' +
+      '목록으로 못 돌아온다. 브라우저 뒤로가기는 일부러 시트를 닫게 해 뒀다(칸을 하나만 쌓는다).',
   },
   {
     name: '🤫 제외 사유를 비운다 (다음 세션이 판단할 수 없다)',
     file: MAP,
     // 🩸 2026-09-26: 첫 판은 첫 문장만 잘라서 **뒤 문장이 남아** 20자를 넘겼다(주입이 헛돌았다).
     //   값 전체를 비워야 "이유 없는 제외" 를 재현한다.
-    find: "  '/seller/scan':\n    '카메라를 쓴다. QR 을 손님 앞에서 찍는 화면이라 85dvh 시트 안에서 뷰파인더가 잘린다 — ' +\n    '마이는 이미 전용 전체화면(/store/scan)으로 보낸다.',",
-    replace: "  '/seller/scan': '',",
+    find: "  '/seller/scan':\n    '카메라다.",
+    replace: "  '/seller/scan':\n    '',//",
     test: TEST,
     why: '이유 없는 제외 목록은 곧 "왜 없지?" 가 되고, 그다음엔 근거 없이 늘어난다.',
   },
@@ -96,8 +130,8 @@ export default [
     replace: "import PendingOrders from './seller-section/PendingOrders'\nimport { canOpenInSheet } from './seller-section/tool-pages'",
     test: TEST,
     why:
-      '지도를 정적으로 읽으면 그 지도가 참조하는 시트들이 **정적 의존**이 되어 lazy 가 무의미해진다. ' +
-      '그리고 같은 판정이 두 곳에 있으면 반드시 갈린다.',
+      '같은 판정이 두 곳에 있으면 반드시 갈린다 — 시트는 "열 수 있다" 고 보고 호출부는 "없다" 고 보는 날이 온다. ' +
+      '판정은 목록을 그리는 쪽(AllToolsSheet)이 해서 넘긴다.',
   },
   {
     name: '📦 나브 색인이 다시 셀러 껍데기 봉투로 (목록 한 장에 83.8KB)',

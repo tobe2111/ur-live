@@ -15,12 +15,20 @@
  */
 import type { ReactNode } from 'react'
 import { useEffect } from 'react'
-import { X } from 'lucide-react'
+import { ChevronLeft, X } from 'lucide-react'
 import { Z } from '@/constants/z-index'
 
-export default function Sheet({ title, onClose, children, footer, tall = false }: {
+export default function Sheet({ title, onClose, onBack, children, footer, tall = false }: {
   title: string
   onClose: () => void
+  /**
+   * ↩️ 시트 **안에서** 한 단계 들어갔을 때의 뒤로(2026-09-26). 없으면 버튼이 안 뜬다.
+   *   ⚠️ X 와 다른 일이다 — X 는 시트를 닫고, 이건 시트 안에서 되돌아온다.
+   *   ⚠️ 뒤로가기(`popstate`)는 **시트를 닫는다**(아래 참조). 히스토리 칸을 한 개만 쌓기 때문이다 —
+   *      시트 안 이동까지 브라우저 히스토리에 쌓으면 뒤로가기를 몇 번 눌러야 마이로 나오는지
+   *      아무도 예측할 수 없다. 안쪽 되돌아오기는 이 버튼이 맡는다.
+   */
+  onBack?: () => void
   children: ReactNode
   /** 주 행동 — 시트 바닥에 고정된다(스크롤해도 늘 보인다) */
   footer?: ReactNode
@@ -60,8 +68,13 @@ export default function Sheet({ title, onClose, children, footer, tall = false }
         className={`fixed inset-x-0 bottom-0 ${tall ? 'top-6 h-auto' : 'max-h-[85dvh]'} flex flex-col rounded-t-2xl bg-surface`}
         style={{ zIndex: Z.SHEET_BODY }}
       >
-        <div className="flex items-center justify-between px-4 h-14 border-b border-rule shrink-0">
-          <span className="text-[16px] font-extrabold text-gray-900 dark:text-white">{title}</span>
+        <div className="flex items-center gap-1 px-4 h-14 border-b border-rule shrink-0">
+          {onBack && (
+            <button type="button" onClick={onBack} aria-label="뒤로" className="w-8 h-8 -ml-2 flex items-center justify-center shrink-0">
+              <ChevronLeft className="w-5 h-5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+            </button>
+          )}
+          <span className="flex-1 min-w-0 truncate text-[16px] font-extrabold text-gray-900 dark:text-white">{title}</span>
           <button type="button" onClick={onClose} aria-label="닫기" className="w-9 h-9 -mr-2 flex items-center justify-center">
             <X className="w-5 h-5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
           </button>
