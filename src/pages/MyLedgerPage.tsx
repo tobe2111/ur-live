@@ -126,7 +126,27 @@ export default function MyLedgerPage() {
             {data.recent_payouts.length === 0 ? (
               <p className="text-center text-xs text-gray-400 py-8">아직 송금 이력이 없습니다.</p>
             ) : (
-              <table className="w-full text-xs">
+              <>
+              {/* 📱 2026-09-27 폰: 표 대신 한 건 한 줄. 실측(366px)에서 4열 표는 잘리지는 않지만
+                  행이 81px 로 부풀고 '정산 기간'·'TX ID' 가 여러 줄로 감긴다. `SellerProductsPage` 가
+                  쓰는 방식(표=PC / 카드=폰)을 따른다. 데이터·동작 동일. */}
+              <div className="lg:hidden divide-y divide-gray-100">
+                {data.recent_payouts.map(p => {
+                  const meta = PAYOUT_STATUS[p.status] ?? { label: p.status || '처리 중', cls: 'bg-gray-100 text-gray-600' }
+                  return (
+                    <div key={p.id} className="px-4 py-3">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-sm font-bold text-gray-900 tabular-nums">{formatWon(p.amount)}</span>
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium ${meta.cls}`}>{meta.label}</span>
+                        {p.sent_at && <span className="ml-auto text-[10px] text-gray-400">{formatKSTDate(p.sent_at)}</span>}
+                      </div>
+                      <p className="mt-1 text-[11px] text-gray-600">{p.period_start} ~ {p.period_end}</p>
+                      {p.transaction_id && <p className="text-[11px] text-gray-400 tabular-nums truncate">{p.transaction_id}</p>}
+                    </div>
+                  )
+                })}
+              </div>
+              <table className="hidden lg:table w-full text-xs">
                 <thead className="bg-gray-50">
                   <tr className="text-gray-500">
                     <th className="px-4 py-2 text-left">정산 기간</th>
@@ -153,6 +173,7 @@ export default function MyLedgerPage() {
                   })}
                 </tbody>
               </table>
+              </>
             )}
           </div>
 

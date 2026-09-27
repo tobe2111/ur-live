@@ -60,6 +60,9 @@ export default function SellerCouponsPage() {
           }
         />
 
+        {/* 📱 2026-09-27: 폼 입력은 폰에서 **1열**이다. 3열이면 시트 폭(366px)에서 필드가 114px 이고
+            placeholder("최소 주문 금액"·"최대 할인 금액")가 잘린다(넘치지는 않아 조용히 못 읽게 된다).
+            PC(sm+)는 종전 3열 그대로. */}
         {showForm && (
           <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4 space-y-3">
             <div className="grid grid-cols-2 gap-3">
@@ -68,7 +71,7 @@ export default function SellerCouponsPage() {
               <input placeholder={t('seller.coupons.namePlaceholder')} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900">
                 <option value="fixed">{t('seller.coupons.fixedDiscount')}</option>
@@ -79,7 +82,7 @@ export default function SellerCouponsPage() {
               <input placeholder={t('seller.coupons.minOrderAmount')} type="number" value={form.min_order}
                 onChange={e => setForm(f => ({ ...f, min_order: e.target.value }))} className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <input placeholder={t('seller.coupons.maxDiscountPlaceholder')} type="number" value={form.max_discount}
                 onChange={e => setForm(f => ({ ...f, max_discount: e.target.value }))} className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900" />
               <input placeholder={t('seller.coupons.totalCountPlaceholder')} type="number" value={form.total_count}

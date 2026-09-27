@@ -402,3 +402,48 @@ describe('⑩ 시트 안에서 화면높이는 시트 높이다', () => {
       '시트 높이가 바뀌면 위 값을 다시 계산해야 한다').toContain('lg:max-h-[86dvh]')
   })
 })
+
+/**
+ * ⑪ 시트에서 열리는 화면이 폰 폭을 견딘다 (2026-09-27, 대표 "3번은 순서대로 해줘" — 1단계)
+ *
+ * 시트 안 화면은 **366px**(390 − bare 여백 12×2)에서 읽혀야 한다. 실측으로 고친 네 곳을 고정한다.
+ * 🩸 이 값들은 추측이 아니라 브라우저 실측이다(설계문서 §8-e·§9). 세 번 예측이 뒤집혔다:
+ *   · "5열 표가 잘린다" → 안 잘린다. 대신 행이 91px 로 부풀고 폭의 44%가 칸 패딩이었다.
+ *   · "날짜 입력이 114px 에 안 들어간다" → 들어간다. 대신 placeholder 가 잘려 조용히 못 읽는다.
+ *   · "3열 통계는 경계" → 가장 나빴다. 금액이 80px 폭에서 4줄로 감겨 타일이 161px 이 됐다.
+ *
+ * ## 이 검사가 **못** 하는 것
+ * jsdom 은 레이아웃이 없어 "실제로 안 넘치는가" 를 못 잰다 — 여기서는 **처방이 남아 있는지**만 본다.
+ * 실제 치수는 빌드된 CSS + 브라우저 프레임 측정이 판정한다(그 수치를 위에 적어 둔 이유다).
+ */
+describe('⑪ 시트에서 열리는 화면이 폰 폭을 견딘다', () => {
+  it('예약 화면이 폰에서는 표가 아니라 카드다', () => {
+    const c = readCode('src/pages/SellerAppointmentsPage.tsx')
+    expect(c, '표가 폰에 그대로 뜨면 행이 91px 로 부푼다').toContain('<table className="hidden lg:table')
+    expect(c, '폰 카드 목록이 사라지면 폰에 아무것도 안 뜬다').toMatch(/lg:hidden[^"]*divide-y/)
+    // 카드에도 같은 일이 되어야 한다 — 표에만 있으면 폰에서 처리를 못 한다.
+    const phone = c.slice(c.indexOf('lg:hidden'), c.indexOf('<table className="hidden lg:table'))
+    for (const need of ['markComplete', 'markNoShow']) {
+      expect(phone, `폰 카드에서 ${need} 를 못 하면 표시만 되고 일을 못 한다`).toContain(need)
+    }
+  })
+
+  it('원장 송금 이력도 폰에서는 카드다', () => {
+    const c = readCode('src/pages/MyLedgerPage.tsx')
+    expect(c).toContain('<table className="hidden lg:table')
+    expect(c).toMatch(/lg:hidden[^"]*divide-y/)
+  })
+
+  it('통계 타일이 폰에서 1열이다 (금액은 폭이 필요하다)', () => {
+    const c = readCode('src/pages/SellerRealtimeDashboardPage.tsx')
+    expect(c, '3열이면 금액이 80px 폭에서 감긴다 — 실측 타일 161px').toContain('grid-cols-1 sm:grid-cols-3')
+    expect(c, '조건 없는 3열이 돌아왔다').not.toMatch(/className="grid grid-cols-3 gap-3"/)
+  })
+
+  it('쿠폰 폼 입력이 폰에서 1열이다 (placeholder 가 잘리지 않게)', () => {
+    const c = readCode('src/pages/SellerCouponsPage.tsx')
+    expect(c.match(/grid-cols-1 sm:grid-cols-3/g)?.length ?? 0,
+      '두 줄 모두 접혀야 한다 — 한 줄만 고치면 나머지가 조용히 잘린다').toBeGreaterThanOrEqual(2)
+    expect(c, '조건 없는 3열이 돌아왔다').not.toMatch(/className="grid grid-cols-3 gap-3"/)
+  })
+})
