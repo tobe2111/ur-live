@@ -14,6 +14,10 @@ const VITE = 'vite.config.ts'
 const ROUTES = 'src/routes/seller.routes.tsx'
 const APP = 'src/App.tsx'
 const CSS = 'src/index.css'
+const APPT = 'src/pages/SellerAppointmentsPage.tsx'
+const LEDGER = 'src/pages/MyLedgerPage.tsx'
+const RT = 'src/pages/SellerRealtimeDashboardPage.tsx'
+const COUP = 'src/pages/SellerCouponsPage.tsx'
 
 export default [
   {
@@ -256,5 +260,51 @@ export default [
     replace: 'min-height: 95dvh; height: auto; }',
     test: TEST,
     why: '규칙은 있는데 값이 시트(86dvh − 머리 56px)보다 커서 아무것도 안 고친다 — 가장 찾기 어려운 모양이다.',
+  },
+  {
+    name: '📱 예약 표가 폰에 그대로 돌아온다 (행 91px)',
+    file: APPT,
+    find: '<table className="hidden lg:table w-full text-sm">',
+    replace: '<table className="w-full text-sm">',
+    test: TEST,
+    why:
+      '실측(366px 시트 폭): 5열 표는 **잘리지는 않지만** 폭의 44%가 칸 패딩(5열×px-4=160px)이라 ' +
+      '칸이 55~68px 로 눌리고 한 행이 91px 로 부푼다. 잘리지 않으니 아무도 신고하지 않는 종류다.',
+  },
+  {
+    name: '📱 예약 폰 카드에서 처리 버튼이 사라진다 (표시만 되고 일을 못 한다)',
+    file: APPT,
+    find: '                        <button onClick={() => markComplete(a)} className="ur-btn ur-btn-sm ur-btn-primary flex-1 gap-1">',
+    replace: '                        <button className="ur-btn ur-btn-sm ur-btn-primary flex-1 gap-1">',
+    test: TEST,
+    why: '카드가 표를 대신하는데 처리가 표에만 남으면, 폰 사용자는 예약을 보기만 하고 완료/노쇼를 못 한다.',
+  },
+  {
+    name: '📱 원장 표가 폰에 그대로 돌아온다',
+    file: LEDGER,
+    find: '<table className="hidden lg:table w-full text-xs">',
+    replace: '<table className="w-full text-xs">',
+    test: TEST,
+    why: "실측 행 81px + '정산 기간'·'TX ID' 가 여러 줄로 감긴다. 표=PC / 카드=폰 은 이 레포가 이미 쓰는 방식이다.",
+  },
+  {
+    name: '📱 통계 타일이 폰에서도 3열로 돌아간다 (금액이 4줄로 감긴다)',
+    file: RT,
+    find: '<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">',
+    replace: '<div className="grid grid-cols-3 gap-3">',
+    test: TEST,
+    why:
+      '실측: 3열이면 타일 114px · 내용 폭 82px 인데 `--dash-stat`(22px) 의 "1,284,000원" 은 약 145px 다 ' +
+      '→ 숫자가 4줄로 감겨 타일 높이가 161px. 글자를 줄여도 안 된다(12px 이하여야 들어간다).',
+  },
+  {
+    name: '📱 쿠폰 폼 한 줄만 3열로 돌아간다 (나머지가 조용히 잘린다)',
+    file: COUP,
+    find: '<div className="grid grid-cols-1 sm:grid-cols-3 gap-3">\n              <select value={form.type}',
+    replace: '<div className="grid grid-cols-3 gap-3">\n              <select value={form.type}',
+    test: TEST,
+    why:
+      '두 줄 중 한 줄만 되돌리는 모양 — 실측 114px 필드에서 placeholder("최소 주문 금액")가 잘린다. ' +
+      '넘치지 않으므로 화면은 멀쩡해 보이고 사용자는 무슨 칸인지 모른다.',
   },
 ]
