@@ -34,7 +34,8 @@ export default function VoucherNewSheet({ onClose, onCreated }: {
   return (
     <Sheet title="이용권 등록" onClose={onClose} tall>
       {/* 🏝️ 안쪽은 라이트 고정 — 대시보드 폼을 그대로 쓰기 때문이다(위 머리말). */}
-      <div className="light-island bg-white min-h-full px-3 py-3">
+      {/* 여백은 `SellerLayout` 의 bare 분기가 준다(2026-09-26) — 여기서 또 주면 두 겹이 된다. */}
+      <div className="light-island bg-white min-h-full">
         <Suspense
           fallback={
             <div className="flex items-center justify-center py-16">

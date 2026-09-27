@@ -18,6 +18,7 @@ import SellerGroupTabs from './seller/SellerGroupTabs'
 import SellerBottomTabs, { SELLER_TABBAR_H } from './seller-layout/SellerBottomTabs'
 import { useSellerNavModel } from './seller-layout/useSellerNavModel'
 import CommandPalette from '@/components/dashboard/CommandPalette'
+import { useSellerEmbedded } from '@/shared/seller-embed'
 
 interface SellerLayoutProps {
   title: string
@@ -55,6 +56,9 @@ const ROW_OFF = 'font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-900'
  *   목록 계산은 전부 `useSellerNavModel`(SSOT) — 여기서는 그리기만 한다.
  */
 export default function SellerLayout({ title, children, headerRight, pendingOrders = 0, bare = false }: SellerLayoutProps) {
+  // 🪟 마이 시트 안인가. **페이지가 아니라 여기가 읽는다** — 41개 화면에 prop 을 뚫으면
+  //   반드시 몇 개를 빠뜨리고, 빠진 화면은 시트 안에 사이드바를 통째로 그린다.
+  const embedded = useSellerEmbedded()
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
@@ -248,7 +252,20 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
 
   // 🪟 마이 안 시트 — 본문만 돌려준다. **모든 훅 뒤**라 토큰 자동 갱신 등은 그대로 돈다.
   //   ⚠️ 도매 전용 리다이렉트보다 **먼저** 반환한다: 시트 안에서 튕기면 마이가 통째로 사라진다.
-  if (bare) return <>{children}</>
+  //
+  //   🩸 2026-09-26: 종전엔 `<>{children}</>` 였는데, 그러면 **스코프가 통째로 사라진다** —
+  //     `.seller-light-theme` 에 걸린 규칙들(장식 아이콘 칩 숨김 · 폰에서 페이지 제목 한 번만)이
+  //     시트 안에서만 죽었고, 평소 `<main>` 이 주던 여백(`p-3 sm:p-5`)도 없어 화면이 **가장자리에
+  //     딱 붙어** 그려졌다. 껍데기를 벗기는 것과 스코프를 잃는 것은 다른 일이다.
+  //   ⚠️ `ur-embed-page` 는 "시트 안" 표시다 — 시트 머리가 이미 이름을 말하므로 페이지 h1 을
+  //     한 번 더 그리지 않는다(CSS 한 줄, `index.css`). 부제는 남긴다(정보다).
+  if (bare || embedded) {
+    return (
+      <div className="seller-light-theme ur-embed-page p-3 sm:p-5 space-y-3 sm:space-y-5">
+        {children}
+      </div>
+    )
+  }
 
   // 🏭 도매 전용(순수 판매사) → /wholesale 리다이렉트 중에는 렌더 X. is_distributor 직접 비교 금지(겸업 lock-out).
   if (wholesaleOnly) return null

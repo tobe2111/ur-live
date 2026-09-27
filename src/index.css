@@ -1554,6 +1554,29 @@ html.dark .gbd, [data-theme="dark"] .gbd {
 .seller-light-theme .dash-header-icon, .admin-light-theme .dash-header-icon { display: none; }
 @media (max-width: 767px) { .seller-light-theme .dash-page-title, .admin-light-theme .dash-page-title { display: none; } }
 
+/* 🪟 2026-09-26: 마이 시트 안에서는 페이지 h1 을 그리지 않는다 — **시트 머리가 이미 그 이름을
+   말한다**(두 번 말하지 않는다. 위 폰 규칙과 같은 판단이고, 시트는 폭과 무관하게 늘 머리가 있다).
+   ⚠️ 부제(`p`)는 남긴다 — 그건 이름이 아니라 설명이고, 시트 머리가 담지 못한다. */
+.ur-embed-page .dash-page-title h1 { display: none; }
+
+/* 🪟 2026-09-27 — 시트 안에서 "화면 높이" 는 화면이 아니라 **시트** 높이여야 한다.
+   대시보드 화면 상당수가 로딩·에러를 `if (loading) return <div className="min-h-screen …">` 로
+   **SellerLayout 밖에서** 조기 반환한다(설계상 그게 맞다 — 전체 화면을 대신하는 상태다).
+   그래서 껍데기 벗기기(`ur-embed-page`)가 그 상태엔 닿지 않고, 86dvh 시트 안에 100vh 상자가
+   들어가 스크롤이 생기고 스피너가 가운데를 벗어난다.
+   ⇒ 페이지를 하나씩 고치지 않고 **시트 안에서만** 화면높이 유틸을 시트높이로 되돌린다.
+   ⚠️ 이 셋은 시트 안에서 언제나 틀린 값이다("화면만큼 큰 것"을 원하는 자리가 아니다) —
+      그래서 예외 없이 덮어도 안전하다. 시트 밖(대시보드)은 한 글자도 안 바뀐다.
+   🔢 **왜 100% 가 아니라 60dvh 인가** (실측): `100%` 는 부모가 `min-h-full`(min-height 만) 이라
+      퍼센트가 확정 높이에 기대지 못해 상자가 **24px 로 찌그러졌다** — 스크롤은 없어지지만 스피너가
+      가운데를 잃는다. 60dvh 는 시트의 스크롤 영역(`max-h-[86dvh]` − 머리 56px ≈ 63dvh)보다 작아
+      **스크롤을 만들지 않으면서** 가운데 정렬을 살린다.
+      ⚠️ 시트 높이(`Sheet.tsx` 의 `top-6`/`lg:max-h-[86dvh]`)를 바꾸면 이 값을 다시 계산할 것. */
+.ur-embed-sheet .min-h-screen,
+.ur-embed-sheet .h-screen,
+.ur-embed-sheet .min-h-\[100dvh\],
+.ur-embed-sheet .h-\[100dvh\] { min-height: 60dvh; height: auto; }
+
 /* 🛡️ 2026-05-20: 라이브/쇼츠/숏폼 카드 공통 utility (CSP unsafe-inline 제거 — style={{}} 일괄 제거) */
 .ur-live-pill {
   background: rgba(239, 68, 68, 0.92);

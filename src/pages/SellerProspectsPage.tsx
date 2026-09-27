@@ -11,10 +11,10 @@
 
 import { useState } from 'react'
 import { Handshake } from 'lucide-react'
-import { Link } from 'react-router-dom'
 import api from '@/lib/api'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SEO from '@/components/SEO'
+import SellerLayout from '@/components/SellerLayout'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { formatKSTDate } from '@/utils/date'
@@ -138,20 +138,15 @@ export default function SellerProspectsPage() {
   }
 
   return (
-    <>
+    <SellerLayout
+      title="매장 영입 관리"
+      headerRight={
+        <button onClick={() => setShowAdd(true)} className="ur-btn ur-btn-sm ur-btn-primary">
+          + 매장 사전 등록
+        </button>
+      }
+    >
       <SEO title="매장 영입 관리 - 유어딜" description="사장님 영입 사전 등록 + commission 추적" url="/seller/prospects" />
-      <div className="min-h-screen bg-gray-50 pb-24">
-        <header className="sticky top-0 z-20 bg-white border-b border-gray-200">
-          <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-            <h1 className="text-lg font-bold text-gray-900">매장 영입 관리</h1>
-            <button
-              onClick={() => setShowAdd(true)}
-              className="ur-btn ur-btn-sm ur-btn-primary"
-            >
-              + 매장 사전 등록
-            </button>
-          </div>
-        </header>
 
         {/* 가이드 */}
         <div className="max-w-3xl mx-auto px-4 py-4">
@@ -322,10 +317,6 @@ export default function SellerProspectsPage() {
           </div>
         )}
 
-        <div className="max-w-3xl mx-auto px-4 mt-4 text-center">
-          <Link to="/seller" className="text-xs text-gray-500 hover:underline">← 셀러 대시보드</Link>
-        </div>
-      </div>
-    </>
+    </SellerLayout>
   )
 }

@@ -62,8 +62,10 @@ export default [
     //   지키는 것은 그대로다 — 마이가 등록 폼 부품을 **직접 들이지 않는다**(들이면 두 벌로 갈린다).
     name: '🧰 등록 폼을 마이가 복제한다',
     file: 'src/pages/user-profile/SellerSection.tsx',
-    find: "import StoreSwitchSheet from './StoreSwitchSheet'",
-    replace: "import StoreSwitchSheet from './StoreSwitchSheet'\nimport VoucherInfoStep from '@/pages/seller-meal-voucher/VoucherInfoStep'",
+    // 🔁 2026-09-26 재조준: 시트 import 가 전부 `lazy` 로 바뀌어 그 정적 줄이 사라졌다.
+    //   지키는 것은 그대로다 — 마이가 등록 폼 **부품**을 직접 들이지 않는다.
+    find: "import PendingOrders from './seller-section/PendingOrders'",
+    replace: "import PendingOrders from './seller-section/PendingOrders'\nimport VoucherInfoStep from '@/pages/seller-meal-voucher/VoucherInfoStep'",
     test: TEST,
     why: '이용권 등록은 3단계 전용 폼이다 — 그 부품을 마이가 직접 들이는 순간 두 벌로 갈리기 시작한다(전용 시트가 같은 페이지를 통째로 연다).',
   },
