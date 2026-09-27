@@ -316,3 +316,89 @@ describe('⑧ 시트 UI 정리 — PC 폭 · 여백 · 제목 두 겹 (2026-09-2
     expect(v, 'bare 가 이미 여백을 준다 — 여기서 또 주면 두 겹이다').not.toMatch(/light-island[^"]*px-3 py-3/)
   })
 })
+
+/**
+ * ⑨ 라우트 표에 구멍이 없다 (2026-09-27)
+ *
+ * 🩸 **이걸 왜 뒤늦게 넣나**: 시트의 설계 원칙은 *"손으로 적은 지도를 버리고 라우트 표를 렌더한다"*
+ * 였는데, **셀러 라우트 셋이 그 표 밖(`App.tsx`)에 홀로 있었다.** 표를 렌더하는 시트에선 그 주소가
+ * `*`(Escape)로 떨어져 **시트가 닫히고 마이가 통째로 그 주소로 떠났다.** 그중 `/seller/prospects` 는
+ * '전체 도구' 색인이 실제로 내주는 주소였다 — 즉 "열린다" 고 적어 두고 **쫓아내고 있었다.**
+ * 에러도 경고도 없다. 라우트가 실재하므로 대시보드에선 멀쩡했고, 그래서 아무도 몰랐다.
+ *
+ * ⚠️ 이 검사는 문자열이 아니라 **두 파일을 파싱해 계산**한다. 손으로 적은 목록을 또 만들면
+ *   그 목록이 낡는 것이 이 구멍의 원인이었다.
+ */
+describe('⑨ 라우트 표에 구멍이 없다', () => {
+  /** `seller.routes.tsx` 가 실제로 선언하는 경로 집합 — 시트가 열 수 있는 것의 전부다. */
+  function pathsInSellerTable(): Set<string> {
+    const src = readCode('src/routes/seller.routes.tsx')
+    return new Set([...src.matchAll(/<Route\s+path="([^"]+)"/g)].map(m => m[1]))
+  }
+
+  it('App.tsx 에 /seller/* 라우트가 하나도 없다', () => {
+    const app = readCode('src/App.tsx')
+    const stray = [...app.matchAll(/<Route\s+path="(\/seller\/[^"]*)"/g)].map(m => m[1])
+    expect(stray, `App.tsx 의 셀러 라우트는 시트가 못 여는 사각지대다: ${stray.join(', ')}`)
+      .toEqual([])
+  })
+
+  it('색인·탭이 내주는 모든 셀러 경로가 그 표 안에 있다', () => {
+    const table = pathsInSellerTable()
+    // 색인(전체 도구) + 그룹 탭 + 검색 전용 — 사람이 실제로 누를 수 있는 전부.
+    const offered = new Set<string>()
+    for (const g of NAV_GROUPS) for (const it of g.items) offered.add(it.path)
+    for (const g of SELLER_TAB_GROUPS) for (const it of g.tabs) offered.add(it.path)
+    for (const it of SELLER_SEARCH_ONLY) offered.add(it.path)
+
+    // 파라미터 경로(`/seller/products/:id/edit`)는 색인이 내주지 않는다 — 정적 경로만 본다.
+    const missing = [...offered].filter(p => p.startsWith('/seller/') && !p.includes(':') && !table.has(p))
+    expect(missing, `표 밖이면 시트가 마이를 튕겨낸다: ${missing.join(', ')}`).toEqual([])
+    // 🛡️ 0개를 세고 통과하면 아무것도 보장하지 않는다.
+    expect(offered.size, '색인이 비었다 — 검사가 고장난 것이다').toBeGreaterThan(20)
+  })
+
+  it('시트 안 화면이 throw 해도 마이가 하얘지지 않는다', () => {
+    const sheet = readCode(TOOL_SHEET)
+    expect(sheet, '바운더리가 없으면 한 화면의 크래시가 마이를 통째로 지운다')
+      .toMatch(/<ErrorBoundary>[\s\S]{0,300}?\{SellerRoutes\(\)\}/)
+  })
+})
+
+/**
+ * ⑩ 시트 안에서 "화면 높이" 는 시트 높이다 (2026-09-27)
+ *
+ * 대시보드 화면 다수가 로딩·에러를 `if (loading) return <div className="min-h-screen …">` 로
+ * **SellerLayout 밖에서** 조기 반환한다. 그래서 껍데기 벗기기가 그 상태엔 닿지 않고,
+ * 86dvh 시트 안에 100vh 상자가 들어가 **헛스크롤**이 생기고 스피너가 가운데를 벗어난다.
+ * 실측(빌드된 CSS + 실제 시트 기하): 규칙 없으면 폰 800px·PC 900px 상자에 스크롤 발생,
+ * 규칙 있으면 480/540px 에 스크롤 없음.
+ */
+describe('⑩ 시트 안에서 화면높이는 시트 높이다', () => {
+  it('시트가 스코프 클래스를 달고 있다', () => {
+    expect(readCode(TOOL_SHEET), 'ur-embed-sheet 가 빠지면 CSS 규칙이 아무 데도 안 걸린다')
+      .toMatch(/light-island[^"]*\bur-embed-sheet\b/)
+  })
+
+  it('CSS 가 네 가지 화면높이 유틸을 전부 되돌린다', () => {
+    const css = readRaw('src/index.css')
+    const block = css.slice(css.indexOf('.ur-embed-sheet .min-h-screen'))
+      .slice(0, 400)
+    expect(block, '규칙이 없다').toContain('.ur-embed-sheet')
+    for (const util of ['.min-h-screen', '.h-screen', '.min-h-\\[100dvh\\]', '.h-\\[100dvh\\]']) {
+      expect(block, `${util} 를 빠뜨리면 그 유틸을 쓰는 화면만 조용히 헛스크롤한다`).toContain(util)
+    }
+  })
+
+  it('되돌린 값이 시트 스크롤 영역보다 작다 (헛스크롤 0)', () => {
+    const css = readRaw('src/index.css')
+    const m = /\.ur-embed-sheet \.h-\\\[100dvh\\\]\s*\{[^}]*min-height:\s*(\d+)dvh/.exec(css)
+    expect(m, 'dvh 값으로 적혀 있어야 시트 높이와 비교할 수 있다 (100% 는 부모가 min-height 뿐이라 찌그러진다)').toBeTruthy()
+    const val = Number(m![1])
+    // 시트는 `lg:max-h-[86dvh]` 이고 머리(56px)가 그 안에서 자리를 먹는다 → 여유를 두고 작아야 한다.
+    expect(val, '시트보다 크면 헛스크롤이 그대로다').toBeLessThan(80)
+    expect(val, '너무 작으면 스피너가 위로 쏠린다').toBeGreaterThanOrEqual(40)
+    expect(readCode('src/pages/user-profile/seller-section/Sheet.tsx'),
+      '시트 높이가 바뀌면 위 값을 다시 계산해야 한다').toContain('lg:max-h-[86dvh]')
+  })
+})

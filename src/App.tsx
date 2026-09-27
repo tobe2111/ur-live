@@ -161,9 +161,6 @@ const StayCheckoutReturnPage = lazy(() => import('./pages/StayCheckoutReturnPage
 // 🛡️ 2026-05-18: 인플루언서 referral 대시보드.
 const InfluencerDashboardPage = lazy(() => import('./pages/InfluencerDashboardPage'))
 // 🛡️ 2026-05-15: PC 랜딩 (자영업자/인플루언서/에이전시 영업)
-const SellerProspectsPage = lazy(() => import('./pages/SellerProspectsPage'))
-const SellerProxyProductsPage = lazy(() => import('./pages/SellerProxyProductsPage'))
-const SellerPlusFriendGuidePage = lazy(() => import('./pages/SellerPlusFriendGuidePage'))
 const InfluencerLandingPage = lazy(() => import('./pages/InfluencerLandingPage')); const InfluencerOfferAcceptPage = lazy(() => import('./pages/InfluencerOfferAcceptPage')); const InfluencerJoinPage = lazy(() => import('./pages/InfluencerJoinPage')) // 🔑 2026-09-19 협업 코드 착지
 const InterestListPage = lazy(() => import('./pages/InterestListPage'))
 const CouponClaimPage = lazy(() => import('./pages/CouponClaimPage'))
@@ -740,9 +737,10 @@ function AppContent() {
             {/* 🗑️ 2026-09-16 (대표 "지워줘") — 랜딩은 `/partners` 하나다. 앱 안 이동용 폴백(서버는 301). */}
             <Route path="/business" element={<Navigate to="/partners" replace />} />
             <Route path="/influencer" element={<InfluencerLandingPage />} /><Route path="/i/offer/:token" element={<InfluencerOfferAcceptPage />} /><Route path="/i/join/:code" element={<InfluencerJoinPage />} />
-            <Route path="/seller/prospects" element={<SellerProspectsPage />} />
-            <Route path="/seller/proxy-products" element={<SellerProxyProductsPage />} />
-            <Route path="/seller/plus-friend-guide" element={<SellerPlusFriendGuidePage />} />
+            {/* 🕳️ 2026-09-27: 셀러 라우트 셋(prospects · proxy-products · plus-friend-guide)을 아래
+                SellerRoutes 표로 이사했다 — 여기 홀로 있던 탓에 마이 시트가 열 수 없었다(시트가 그 표를
+                렌더한다). 같은 Routes 안이고 경로·element 가 그대로라 대시보드 동작은 불변.
+                되돌리려면 seller.routes.tsx 의 세 줄을 도로 이 자리로 옮긴다. */}
             {/* 🗑️ 2026-07-07 라이브커머스 제거: /live·/live/recap·/live/:streamId 라우트 제거 */}
             <Route path="/products/:id" element={<ErrorBoundary><ProductDetailPage /></ErrorBoundary>} />
             {/* Redirect old single product URL to plural */}

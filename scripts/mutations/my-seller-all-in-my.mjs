@@ -11,6 +11,9 @@ const SHEET = 'src/pages/user-profile/seller-section/ToolPageSheet.tsx'
 const MAP = 'src/pages/user-profile/seller-section/tool-pages.ts'
 const ALL = 'src/pages/user-profile/seller-section/AllToolsSheet.tsx'
 const VITE = 'vite.config.ts'
+const ROUTES = 'src/routes/seller.routes.tsx'
+const APP = 'src/App.tsx'
+const CSS = 'src/index.css'
 
 export default [
   {
@@ -56,8 +59,8 @@ export default [
   {
     name: '🌓 다크에서 흰 폼 위에 흰 글자 (라이트 섬 제거)',
     file: SHEET,
-    find: '<div className="light-island bg-white min-h-full">',
-    replace: '<div className="bg-white min-h-full">',
+    find: '<div className="light-island ur-embed-sheet bg-white min-h-full">',
+    replace: '<div className="ur-embed-sheet bg-white min-h-full">',
     test: TEST,
     why:
       '대시보드 화면은 규칙상 `dark:` 가 금지돼 있다. 전역 `.dark input`(특이도 0,5,1)이 ' +
@@ -188,5 +191,70 @@ export default [
     why:
       '대표 확정 구조 시안 A 의 요점이다 — 똑같은 줄 일곱은 무엇이 중요한지 한 마디도 안 하고, ' +
       '도구가 늘 때마다 그 덩어리가 길어진다.',
+  },
+  {
+    name: '🕳️ 셀러 라우트가 App.tsx 로 돌아간다 (시트가 못 열고 마이를 튕겨낸다)',
+    file: APP,
+    find: '            {/* 🕳️ 2026-09-27: 셀러 라우트 셋(prospects · proxy-products · plus-friend-guide)을 아래',
+    replace: '            <Route path="/seller/prospects" element={<div />} />\n            {/* x',
+    test: TEST,
+    why:
+      '시트는 `SellerRoutes()` 를 렌더한다 — 그 표 밖 주소는 `*`(Escape)로 떨어져 **시트가 닫히고 ' +
+      '마이가 통째로 그 주소로 떠난다.** 실제로 `/seller/prospects` 가 두 달 넘게 그 상태였고, ' +
+      "라우트가 실재하니 대시보드에선 멀쩡해서 아무도 몰랐다.",
+  },
+  {
+    name: '🕳️ 색인이 내주는 주소 하나가 라우트 표에서 사라진다',
+    file: ROUTES,
+    find: '      <Route path="/seller/prospects" element={<SellerProspectsPage />} />\n',
+    replace: '',
+    test: TEST,
+    why:
+      '표가 통째로 비면 눈에 띄지만 한 줄이 빠지면 그 도구를 누른 사람만 마이에서 쫓겨난다. ' +
+      '이 검사는 목록을 손으로 적지 않고 색인과 표를 **파싱해 비교**한다 — 그게 이 구멍의 처방이다.',
+  },
+  {
+    name: '💥 시트 안 크래시가 마이를 통째로 지운다 (바운더리 제거)',
+    file: SHEET,
+    find: '              <ErrorBoundary>',
+    replace: '              <>',
+    test: TEST,
+    why: '바운더리가 마이 위에만 있으면 한 화면의 throw 가 마이 전체를 하얗게 만든다. 41개 화면이 걸려 있다.',
+  },
+  {
+    name: '📐 시트가 높이 스코프 클래스를 잃는다 (헛스크롤 복귀)',
+    file: SHEET,
+    find: 'className="light-island ur-embed-sheet bg-white min-h-full"',
+    replace: 'className="light-island bg-white min-h-full"',
+    test: TEST,
+    why:
+      '대시보드 화면 다수가 로딩·에러를 `min-h-screen` 으로 **SellerLayout 밖에서** 조기 반환한다. ' +
+      '클래스가 없으면 86dvh 시트 안에 100vh 상자가 들어간다 — 실측 폰 800px·PC 900px 에 헛스크롤.',
+  },
+  {
+    name: '📐 화면높이 유틸 하나만 빠진다 (그 유틸을 쓰는 화면만 조용히 깨진다)',
+    file: CSS,
+    find: '.ur-embed-sheet .h-screen,\n',
+    replace: '',
+    test: TEST,
+    why: '네 유틸이 같은 일을 한다 — 하나만 빠뜨리면 그걸 쓰는 화면에서만 헛스크롤이 남고 나머지는 멀쩡하다.',
+  },
+  {
+    name: '📐 되돌린 값이 100% 가 된다 (스크롤은 없어지지만 상자가 찌그러진다)',
+    file: CSS,
+    find: '.ur-embed-sheet .h-\\[100dvh\\] { min-height: 60dvh; height: auto; }',
+    replace: '.ur-embed-sheet .h-\\[100dvh\\] { min-height: 100%; height: auto; }',
+    test: TEST,
+    why:
+      '실측: 부모가 `min-h-full`(min-height 뿐)이라 퍼센트가 확정 높이에 기대지 못해 상자가 **24px 로 ' +
+      '찌그러진다** — 헛스크롤은 사라지는데 스피너가 가운데를 잃는다. "스크롤 없음" 만 보면 통과처럼 보인다.',
+  },
+  {
+    name: '📐 되돌린 값이 시트보다 커진다 (헛스크롤 그대로)',
+    file: CSS,
+    find: 'min-height: 60dvh; height: auto; }',
+    replace: 'min-height: 95dvh; height: auto; }',
+    test: TEST,
+    why: '규칙은 있는데 값이 시트(86dvh − 머리 56px)보다 커서 아무것도 안 고친다 — 가장 찾기 어려운 모양이다.',
   },
 ]

@@ -37,6 +37,7 @@
 import { Suspense, useCallback, useRef, useState } from 'react'
 import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
+import ErrorBoundary from '@/components/ErrorBoundary'
 import { SellerEmbedProvider } from '@/shared/seller-embed'
 import { SellerRoutes } from '@/routes/seller.routes'
 import Sheet from './Sheet'
@@ -87,7 +88,7 @@ export default function ToolPageSheet({ path, title, onClose, onLeave }: {
   return (
     <Sheet title={title} onClose={onClose} onBack={deeper ? back : undefined} tall>
       {/* 🏝️ 안쪽은 라이트 고정 — 대시보드 화면을 그대로 쓰기 때문이다(위 머리말). */}
-      <div className="light-island bg-white min-h-full">
+      <div className="light-island ur-embed-sheet bg-white min-h-full">
         {/* 🪟 껍데기(사이드바·상단바·하단 탭)를 벗기는 신호. 페이지는 이걸 몰라도 된다. */}
         <SellerEmbedProvider>
           <MemoryRouter initialEntries={[path]}>
@@ -99,10 +100,14 @@ export default function ToolPageSheet({ path, title, onClose, onLeave }: {
                 </div>
               }
             >
-              <Routes>
-                {SellerRoutes()}
-                <Route path="*" element={<Escape onLeave={onLeave} />} />
-              </Routes>
+              {/* 🛡️ 안쪽 화면이 throw 하면 **마이가 통째로** 하얘진다(바운더리가 마이 위에 있다).
+                  시트 안에 하나 두면 사고가 시트 안에 머문다 — 41개 화면을 한 자리로 막는다. */}
+              <ErrorBoundary>
+                <Routes>
+                  {SellerRoutes()}
+                  <Route path="*" element={<Escape onLeave={onLeave} />} />
+                </Routes>
+              </ErrorBoundary>
             </Suspense>
           </MemoryRouter>
         </SellerEmbedProvider>

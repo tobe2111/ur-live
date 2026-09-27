@@ -139,3 +139,38 @@ for (const forbidden of ['token', 'localStorage', ...])
 - `src/tests/unit/my-seller-all-in-my-2026-09-26.test.ts` **17건**
 - `scripts/mutations/my-seller-all-in-my.mjs` **12건 — 되돌려-검증 전부 빨간불 확인**
 - 재조준: `seller-register-stays-in-my.mjs` · `seller-tools-in-my.mjs` · `seller-rest-in-my.mjs` 각 1건
+
+---
+
+## §1-d. 4차 — 라우트 표의 구멍 (2026-09-27, 커밋 예정)
+
+**다음 세션의 첫 액션**: `node /tmp/.../sheetfit.mjs` 같은 임시 스크립트를 다시 쓸 필요 없다 —
+그 판정이 이제 **테스트 ⑨** 에 들어갔다(`my-seller-all-in-my-2026-09-26.test.ts`).
+`npx vitest run src/tests/unit/my-seller-all-in-my-2026-09-26.test.ts` 로 55건 초록이면 구멍 0.
+
+### 고친 것
+1. **셀러 라우트 셋이 `SellerRoutes()` 밖에 있었다** — `/seller/prospects`(전체 도구 색인이 실제로
+   내주던 주소) · `/seller/proxy-products`(시트 안 탭) · `/seller/plus-friend-guide`(온보딩 CTA).
+   시트는 그 표를 렌더하므로 표 밖 주소는 `*`(Escape) → **시트가 닫히고 마이가 통째로 떠났다.**
+   `App.tsx` → `seller.routes.tsx` 로 이사(경로·element·가드 불변). **이제 `App.tsx` 의 `/seller/*` 0개.**
+2. **시트 안에서 화면높이 → 시트높이** — `.ur-embed-sheet` 스코프 + CSS 1규칙(`min-height:60dvh`).
+   로딩·에러가 `SellerLayout` **밖에서** 조기 반환하므로 페이지를 하나씩 못 고친다. 실측: 헛스크롤 제거.
+3. **시트 안 ErrorBoundary** — 없으면 한 화면의 throw 가 **마이를 통째로** 지운다.
+
+### 🩸 이번에 내가 틀린 것 (제일 값진 부분)
+- **측정 스크립트가 28개를 "깨끗" 이라고 보고했는데 전부 파일을 못 찾은 것이었다.**
+  `comp.get()` 이 `@/pages/X`(확장자 없음)를 돌려주는데 `existsSync` 로 걸러 놓고, 그 "못 찾음" 을
+  `filter` 가 버리는 열에 넣었다 → **0건이 초록으로 보였다.** 이 레포가 반복해 당한 그 모양이다.
+  ⇒ 측정 스크립트도 **"대상 0건이면 실패"** 를 자기 안에 선언해야 한다.
+- **"z-50 모달이 시트 뒤로 간다"** → 틀렸다. 시트가 쌓임 문맥을 만들어 모달을 함께 올린다(브라우저 실측).
+  **모달 10건은 손댈 필요가 없었다.** 설계문서 §8-d 에 실측표.
+- **"z-50 오버레이 51건이 살아 있는 결함"** → 틀렸다. 전부 하단 네비가 숨는 화면이다. **결함 0건.**
+- **`min-height:100%`** 로 먼저 고쳤는데 상자가 **24px 로 찌그러졌다**(부모가 min-height 뿐이라 퍼센트가
+  기댈 확정 높이가 없다). "스크롤 없음" 만 보고 통과시킬 뻔했다 → 60dvh + 가드가 관계를 고정.
+
+### 남은 결정 (대표)
+- 🕳️ **`check-modal-zindex` 정규식 사각지대** — `z-\[(\d+)\]` 대괄호만 본다. `z-50`·`z-40` 51곳이
+  strict 가드에 **통째로 안 보인다.** 지금 살아 있는 결함은 0이라 급하지 않지만, 고치려면
+  "대시보드 오버레이도 나브 위여야 하나" 정책부터 정해야 한다(51건 래칫이 따라온다).
+- 📐 `/seller/appointments`(6열) · `/seller/ledger`(5열) 표를 **찌그러뜨릴지 가로 스크롤로 바꿀지** —
+  눈으로 봐야 정한다(셀러 로그인 필요, 이 세션 불가).
