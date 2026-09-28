@@ -90,8 +90,14 @@ export default function CuratorHeader({ curator, canEdit, counts, accountType, o
       <HeaderMarquee curator={curator} isOwner={false} accentColor={accentColor} accentText={accentText} />
 
       <div className="max-w-3xl mx-auto">
-        {/* ① 브랜드 바 — 로고 = 홈. 표시로 꾸미지 않는다(로고=홈은 웹 관례라 밑줄·화살표가 군더더기다). */}
-        <div className="flex items-center px-4 pt-3">
+        {/* ① 브랜드 바 — 로고 = 홈. 표시로 꾸미지 않는다(로고=홈은 웹 관례라 밑줄·화살표가 군더더기다).
+            🖥️ 2026-09-28 (대표 *"둘 다 고치고"*): **PC 에서는 안 그린다.** lg+ 에서는 화면 맨 위에
+            전역 네비(`DesktopTopNav` — `urdeal.` + 검색·찜·장바구니·알림)가 이미 있는데 이 줄이
+            좌측 프로필 카드 **안에서** 같은 말을 또 해서, 1440px 실측에서 소비자 상단 바가
+            화면에 **두 번** 있었다. 이 줄은 a3 의 **모바일용** 브랜드 바다.
+            ⚠️ `?embed=1`(깨끗한 매장 링크)은 PC 에서도 전역 네비가 없지만, 그 모드의 목적 자체가
+               "유어딜 chrome 을 안 보여 준다" 라 여기서도 안 그리는 쪽이 맞다. */}
+        <div className="lg:hidden flex items-center px-4 pt-3">
           <Link to="/" aria-label={t('nav.homeAria', { defaultValue: '유어딜 홈' })} className="text-[14.5px] font-bold tracking-[-0.03em] text-gray-900 dark:text-white active:opacity-70">
             urdeal
           </Link>

@@ -64,4 +64,34 @@ export default [
     test: 'src/tests/unit/ushop-top-chrome-2026-09-28.test.ts',
     why: '칩도 정렬도 없는 날(미래에 정렬이 조건부가 되면) 빈 줄의 여백만 남는다.',
   },
+  {
+    name: '상단1안 — PC 에도 모바일 브랜드 바를 그린다 (상단 바 두 번)',
+    file: 'src/pages/curator-page/CuratorHeader.tsx',
+    find: '<div className="lg:hidden flex items-center px-4 pt-3">',
+    replace: '<div className="flex items-center px-4 pt-3">',
+    test: 'src/tests/unit/ushop-top-chrome-2026-09-28.test.ts',
+    why:
+      '1440px 실측: 화면 맨 위 전역 네비(`urdeal.` + 검색·찜·장바구니)가 있는데 좌측 프로필 카드 ' +
+      '**안에서** 같은 말을 또 한다. 모바일용으로 만든 줄이 PC 에 새는 전형이다.',
+  },
+  {
+    name: '상단1안 — PC 에서도 문구를 흐르게 한다 (300px 칸에서 양끝 잘림)',
+    file: 'src/pages/curator-page/HeaderMarquee.tsx',
+    find: '<div className="lg:hidden animate-marquee py-1.5">',
+    replace: '<div className="animate-marquee py-1.5">',
+    test: 'src/tests/unit/ushop-top-chrome-2026-09-28.test.ts',
+    why:
+      'PC 유어샵 헤더는 좌측 **300px** 칸에 들어간다(a3/P1). 거기서 흐르면 `지? … 배고프다 뭐` 로 ' +
+      '시작·끝난다 — 흐르는 이유는 폰의 좁은 폭인데 이 칸은 더 좁아서 흐름이 문제를 키운다.',
+  },
+  {
+    name: '상단1안 — PC 에서 문구를 통째로 숨긴다 (주인이 쓴 글이 사라진다)',
+    file: 'src/pages/curator-page/HeaderMarquee.tsx',
+    find: '<p className="hidden lg:block px-3 py-1.5 text-[12px] font-bold tracking-wide leading-snug">',
+    replace: '<p className="hidden px-3 py-1.5 text-[12px] font-bold tracking-wide leading-snug">',
+    test: 'src/tests/unit/ushop-top-chrome-2026-09-28.test.ts',
+    why:
+      '잘리는 걸 고치겠다고 `lg:hidden` 만 걸면 PC 방문자에게 주인의 공지가 **통째로 사라진다.** ' +
+      '고치는 것과 없애는 것은 다르다.',
+  },
 ]

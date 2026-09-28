@@ -65,7 +65,16 @@ export default function HeaderMarquee({
             </div>
           ) : curator.headline ? (
             <div className="relative overflow-hidden" style={{ background: accentColor, color: accentText }}>
-              <div className="animate-marquee py-1.5">
+              {/* 🖥️ 2026-09-28 (대표 *"PC로는 어떻게 보이는거지??"* → *"둘 다 고치고"*):
+                  PC 에서 유어샵 헤더는 **좌측 300px 프로필 칸** 안에 들어간다(a3/P1). 그 폭에서
+                  마퀴가 흐르면 문구가 **양쪽 끝에서 잘려** `지? … 배고프다 뭐` 로 시작하고 끝난다
+                  (1440px 실측). 흐르는 이유는 폰의 좁은 폭인데, PC 의 이 칸은 더 좁아서
+                  흐름이 문제를 **키운다**. ⇒ lg+ 에서는 안 흐르고 접어서 다 보여 준다.
+                  ⚠️ 숨기지 않는다 — 주인이 쓴 문구다. 색 띠도 그대로 유지한다. */}
+              <p className="hidden lg:block px-3 py-1.5 text-[12px] font-bold tracking-wide leading-snug">
+                {curator.headline}
+              </p>
+              <div className="lg:hidden animate-marquee py-1.5">
                 {[0, 1].map((copy) => (
                   <div key={copy} className="flex shrink-0" aria-hidden={copy === 1}>
                     {Array.from({ length: 4 }).map((_, i) => (

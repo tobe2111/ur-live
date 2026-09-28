@@ -33,6 +33,7 @@ import { readFileSync } from 'node:fs'
 import { stripComments } from '../helpers/source-text'
 
 const HEADER = 'src/pages/curator-page/CuratorHeader.tsx'
+const MARQUEE = 'src/pages/curator-page/HeaderMarquee.tsx'
 const CHIPS = 'src/pages/curator-page/PinCategoryChips.tsx'
 const PAGE = 'src/pages/CuratorPage.tsx'
 
@@ -40,6 +41,7 @@ const read = (p: string) => stripComments(readFileSync(p, 'utf-8'))
 const header = read(HEADER)
 const chips = read(CHIPS)
 const page = read(PAGE)
+const marquee = read(MARQUEE)
 
 describe('① SNS 가 전용 줄을 쓰지 않는다', () => {
   it('측정이 비어 있지 않다', () => {
@@ -120,5 +122,32 @@ describe('④ 빈 진열대 판정은 칩 부품이 혼자 한다', () => {
     // 칩 null + (정렬은 항상 있음) 이라 실제로는 거의 안 걸리지만,
     // 이 클래스가 사라지면 미래에 정렬이 조건부가 되는 순간 빈 줄이 남는다.
     expect(page).toMatch(/flex items-center gap-2 empty:hidden/)
+  })
+})
+
+describe('⑤ PC(lg+) — 같은 말을 두 번 하지 않는다', () => {
+  // 🖥️ 2026-09-28 (대표 *"PC로는 어떻게 보이는거지??"* → *"둘 다 고치고 머지해줘"*).
+  //   1440px 실측에서 나온 **PC 전용** 결함 둘. 둘 다 모바일 전용으로 만든 것이 PC 에도
+  //   그대로 렌더돼 생겼다 — 유어샵 PC 는 좌측 300px 프로필 칸(a3/P1)이라 폭이 다르다.
+  it('브랜드 바를 PC 에서 그리지 않는다 (전역 네비와 중복)', () => {
+    // 화면 맨 위 DesktopTopNav 가 이미 `urdeal.` + 검색·찜·장바구니를 그린다.
+    expect(header).toMatch(/className="lg:hidden flex items-center px-4 pt-3"/)
+  })
+
+  it('브랜드 바를 없애지는 않았다 — 모바일에는 그대로 있다', () => {
+    // 이게 없으면 폰에서 유어샵이 유어딜 밖 페이지처럼 보인다(a3 확정안의 ①).
+    expect(header).toContain("t('nav.myVouchers'")
+    expect(header).toMatch(/<Link to="\/" aria-label=/)
+  })
+
+  it('흐르는 문구가 PC 에서는 안 흐른다 (300px 칸에서 양끝이 잘렸다)', () => {
+    expect(marquee, 'PC 는 고정 한 줄').toMatch(/hidden lg:block[^"]*"[\s\S]{0,120}curator\.headline/)
+    expect(marquee, '마퀴는 모바일 전용').toMatch(/lg:hidden animate-marquee/)
+  })
+
+  it('PC 에서 문구를 숨기지 않는다 — 주인이 쓴 글이다', () => {
+    // `lg:hidden` 만 걸고 대체 표시를 안 두면 PC 방문자에게 그 줄이 통째로 사라진다.
+    const pc = marquee.slice(marquee.indexOf('hidden lg:block'), marquee.indexOf('lg:hidden animate-marquee'))
+    expect(pc, 'PC 자리에 headline 이 실제로 그려진다').toContain('curator.headline')
   })
 })
