@@ -110,4 +110,38 @@ export default [
       '어드민이 돈 들여 올린 히어로 배너가 조용히 안 보이게 된다. 배너는 마운트 후 fetch 라 ' +
       '**잠깐 떴다가 띠로 바뀌는** 모양이 되어, 올린 사람은 "가끔 보인다"고만 느낀다.',
   },
+  {
+    name: '🎞️ 캡션 그라디언트를 두 스톱으로 되돌린다 (밝은 타일에서 할인율 2:1)',
+    file: 'src/components/home/HeroDealStrip.tsx',
+    find: "linear-gradient(0deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.75) 60%, rgba(0,0,0,0) 100%)",
+    replace: 'linear-gradient(0deg, rgba(0,0,0,0.8), transparent)',
+    test: 'src/tests/unit/hero-deal-strip-2026-09-28.test.tsx',
+    why:
+      '두 스톱은 0.8 을 **밴드 맨 아래 한 줄에서만** 낸다 — 글자가 앉는 줄은 0.5 다. 타일 바탕이 ' +
+      '딜의 대표색이라 밝은 사진이면 `rgb(243,243,243)` 이 오고, 그 위에서 할인율이 **2.04:1** ' +
+      '이 된다(라이브 실측). 되돌리면 그때의 결함이 그대로 돌아온다.',
+  },
+  {
+    name: '🎞️ 캡션을 평면 판으로 만든다 (위쪽에 경계선이 보인다)',
+    file: 'src/components/home/HeroDealStrip.tsx',
+    find: "rgba(0,0,0,0.75) 60%, rgba(0,0,0,0) 100%)",
+    replace: 'rgba(0,0,0,0.75) 60%, rgba(0,0,0,0.75) 100%)',
+    test: 'src/tests/unit/hero-deal-strip-2026-09-28.test.tsx',
+    why:
+      '대비만 보면 평면이 더 높다 — 그래서 **대비만 지키는 가드는 이 방향으로 샌다.** 맨 위가 ' +
+      '불투명해지면 사진이 칼같이 잘린 판으로 보인다(타일 끝을 마스크로 녹이는 이유와 같은 것).',
+  },
+  {
+    name: '🎞️ 할인율 색을 브랜드 블루로 바꾼다 (어두운 밴드에서 2.1:1)',
+    file: 'src/index.css',
+    find: '  --hero-tile-accent: #7FB0FF;',
+    replace: '  --hero-tile-accent: #1C69EF;',
+    test: 'src/tests/unit/hero-deal-strip-2026-09-28.test.tsx',
+    why:
+      '⑤ 는 색을 **CSS 에서 읽어** 계산한다 — 테스트에 색을 박아 두면 이 방향이 통째로 샌다. ' +
+      '`#1C69EF` 는 바로 그 CSS 주석이 경고하는 값이다(어두운 밴드에서 **2.14:1**). ' +
+      '🩸 첫 판에서 이 자리에 *더 밝은* 파랑(`#BFD8FF`)을 넣었는데 **통과했다 — 내 전제가 거꾸로였다**: ' +
+      '밴드를 어둡게 고친 뒤이므로 밝을수록 대비는 **올라간다**(7.18:1). 밝은 색의 문제는 대비가 ' +
+      '아니라 브랜드 정체성이고, 그건 이 시험의 일이 아니다.',
+  },
 ]
