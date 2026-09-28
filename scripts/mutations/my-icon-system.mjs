@@ -56,4 +56,20 @@ export default [
     test: TEST,
     why: '이름만 맞고 실물이 없으면 런타임에 빈 자리가 된다(번들러가 조용히 undefined 를 준다).',
   },
+  {
+    name: '👤 PC 헤더만 회색 프로필 편집 알약으로 되돌아간다',
+    file: 'src/pages/user-profile/AccountPcPane.tsx',
+    find: "          aria-label={t('userProfile.editProfile', { defaultValue: '프로필 편집' })}\n",
+    replace: "",
+    test: TEST,
+    why: '모바일만 고치고 PC 를 빠뜨리면 같은 뜻의 줄이 기기마다 다르게 생긴다 — 09-28 에 실제로 그랬다.',
+  },
+  {
+    name: '👤 PC 이메일만 다른 크기로 새어 나간다',
+    file: 'src/pages/user-profile/AccountPcPane.tsx',
+    find: '<span className="block text-[13px] text-gray-500 dark:text-gray-400 truncate mt-1">{localStorage.getItem(\'user_email\')',
+    replace: '<span className="block text-[12px] text-gray-500 dark:text-gray-400 truncate mt-1">{localStorage.getItem(\'user_email\')',
+    test: TEST,
+    why: '같은 줄이 모바일 13 / PC 12 면 두 벌이 갈린 것이고, 눈으로는 거의 안 보여서 영영 안 고쳐진다.',
+  },
 ]

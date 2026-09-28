@@ -94,18 +94,25 @@ export default function AccountPcPane({ counts, userName, profileImage, onEditPr
           className="w-12 h-12 rounded-full object-cover shrink-0"
           onError={(e) => cfImageOnError(e.currentTarget, profileImage)}
         />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-[17px] font-extrabold text-gray-900 dark:text-white truncate tracking-[-0.01em]">{userName}</p>
-            <SellerSwitchInline seats={sellerSeats} />
-          </div>
-          <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">{localStorage.getItem('user_email') || ''}</p>
-        </div>
+        {/* 👤 2026-09-28: **모바일과 같은 문법**으로 맞춘다 — 줄 전체가 눌리고 오른쪽에 화살표 하나.
+            같은 날 모바일만 고치고 여기를 빠뜨려 헤더가 두 벌로 갈려 있었다(PC 는 별도 마크업이다).
+            그게 이 화면이 계속 '허술해' 보이던 클래스 그 자체다 — 같은 뜻의 줄이 기기마다 다르게 생겼다.
+            ⚠️ 알림 벨과 좌석 전환은 **버튼 밖**에 둔다(안에 넣으면 그 둘이 편집을 여는 셈이 된다). */}
+        <button
+          type="button"
+          onClick={onEditProfile}
+          aria-label={t('userProfile.editProfile', { defaultValue: '프로필 편집' })}
+          className="min-w-0 flex-1 flex items-center gap-2 text-left active:opacity-70 transition-opacity"
+        >
+          <span className="flex-1 min-w-0">
+            <span className="block text-[17px] font-extrabold text-gray-900 dark:text-white truncate tracking-[-0.01em]">{userName}</span>
+            <span className="block text-[13px] text-gray-500 dark:text-gray-400 truncate mt-1">{localStorage.getItem('user_email') || ''}</span>
+          </span>
+          <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
+        </button>
+        <SellerSwitchInline seats={sellerSeats} />
         <button type="button" onClick={() => navigate('/notifications')} aria-label={t('userProfile.ariaNotifications')} className="w-9 h-9 rounded-full bg-gray-100 dark:bg-white/[0.06] flex items-center justify-center text-gray-700 dark:text-white shrink-0">
           <BellIcon className="w-4 h-4" aria-hidden="true" />
-        </button>
-        <button type="button" onClick={onEditProfile} className="inline-flex items-center gap-1 text-[13px] font-bold text-brand-text shrink-0">
-          {t('userProfile.editProfile', { defaultValue: '프로필 편집' })} <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
         </button>
       </div>
 

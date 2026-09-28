@@ -105,3 +105,39 @@ describe('마이 — 아이콘 체계', () => {
     expect(missing, `세트에 없는 아이콘을 import 한다: ${missing.join(' · ')}`).toEqual([])
   })
 })
+
+/**
+ * 👤 헤더는 **모바일과 PC 가 같은 문법**이다 (2026-09-28 — 대표 *"시안들을 모바일, pc 각각"* 로 받아
+ *   나란히 놓고 보다가 드러났다).
+ *
+ * 같은 날 모바일 헤더만 [줄 전체가 눌림 + 화살표] 로 고치고 **PC 를 빠뜨렸다** — PC 는 별도 마크업이라
+ * 회색 `프로필 편집` 알약이 그대로 남아 있었다. 같은 뜻의 줄이 기기마다 다르게 생긴 것, 그게
+ * 이 화면이 계속 "허술해" 보이던 클래스 그 자체다.
+ *
+ * ⚠️ 이 시험이 못 막는 것: 생김새가 *같은지*는 못 본다(마크업 두 벌이 각자 존재하는 한 언제든 갈린다).
+ *    보는 것은 **둘 다 알약이 아니라 눌리는 줄인가** 하나뿐이다.
+ */
+describe('마이 — 헤더 문법은 모바일·PC 가 같다', () => {
+  const MOBILE = 'src/pages/UserProfilePage.tsx'
+  const PC = 'src/pages/user-profile/AccountPcPane.tsx'
+
+  it('👤 어느 쪽도 `프로필 편집` 을 **글자 버튼**으로 두지 않는다 (줄 전체가 눌린다)', () => {
+    for (const f of [MOBILE, PC]) {
+      const src = read(f)
+      // 편집 진입은 `aria-label` 로만 이름을 갖는다 — 화면에 라벨을 그리면 알약/링크가 된 것이다.
+      expect(
+        src.match(/>\s*\{t\('userProfile\.editProfile'/g) ?? [],
+        `${f.split('/').pop()}: '프로필 편집' 이 눈에 보이는 라벨로 돌아왔다`,
+      ).toEqual([])
+      expect(src, `${f.split('/').pop()}: 편집 진입의 aria-label 이 없다`).toMatch(/aria-label=\{t\('userProfile\.editProfile'/)
+    }
+  })
+
+  it('👤 둘 다 이메일을 13px 로 쓴다 — 같은 줄이 기기마다 다른 크기면 두 벌이 갈린 것이다', () => {
+    for (const f of [MOBILE, PC]) {
+      const src = read(f)
+      const m = src.match(/text-\[(\d+)px\][^>]*>\{localStorage\.getItem\('user_email'\)/)
+      expect(m?.[1], `${f.split('/').pop()}: 이메일 크기를 못 찾았다`).toBe('13')
+    }
+  })
+})
