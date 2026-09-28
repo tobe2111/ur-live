@@ -35,7 +35,6 @@ import {
 } from './user-profile/AccountControlsSection'
 import api from '@/lib/api'
 import BrandLoader from '@/components/brand/BrandLoader'
-import AccountSideNav from './user-profile/AccountSideNav'
 import AccountPcPane from './user-profile/AccountPcPane'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 
@@ -189,7 +188,15 @@ export default function UserProfilePage() {
       </div>
       </div>{/* /모바일 헤더 */}
 
-      {/* 🧭 2026-08-19 (대표 시안 — 그루폰 `My Account`): PC 는 [좌 내비 | 우 내용] 2단.
+      {/* 🧭 2026-09-28 (대표 *"PC 버전이나 모바일이나 너무 별로 · 허술해"*): **좌측 내비를 걷어냈다.**
+          🩸 그 내비(`AccountSideNav`, 08-19 그루폰 시안)는 두 가지가 동시에 틀려 있었다 —
+            ① **자기가 사는 페이지에만 있었다.** `/user/profile` 에서만 렌더되므로 '주문 내역' 을 누르면
+               `/my-orders` 로 가고 **거기엔 그 내비가 없다.** 누르는 순간 사라지는 내비였다.
+            ② 일곱 항목 중 **넷이 오른쪽 열과 중복**(이용권·교환권·찜·설정)이었다. 그건 09-02 에
+               대표가 *"PC 모드 답지 않다 · 같은 항목을 두 번"* 이라고 지적해 `AccountPcPane` 을
+               만들게 한 바로 그 증상이고, 내비가 남아 있어서 되살아나 있었다.
+          걷어내니 본문이 888 → 1200px 을 쓴다(216 내비 + 32 gap 회수). 목적지는 하나도 안 잃었다 —
+          넷은 오른쪽 열이 **숫자와 함께** 갖고 있고, 배송지·주문 내역은 `내가 산 것` 목록에 있다.
           모바일(<lg)에서는 `ur-account-pc` 가 아무 일도 하지 않아 **지금 흐름 그대로**다. */}
       <div className="hidden lg:block max-w-[1200px] mx-auto px-8 pt-1 pb-3">
         <p className="text-[12px] text-gray-400 dark:text-gray-500">
@@ -199,7 +206,6 @@ export default function UserProfilePage() {
         </p>
       </div>
       <div className="ur-account-pc">
-        <AccountSideNav />
         <div className="ur-account-pane min-w-0">
 
       {/* 🖥️ 2026-09-02 PC: 우측 칸 상단 = 내용(프로필 카드 · 숫자 넷 · 주문/리뷰어 · 곧 쓸 이용권 · 타일).
@@ -373,6 +379,14 @@ export default function UserProfilePage() {
             잊는다). 게다가 이 버튼은 **로그아웃 바로 위**에 있어서, 하루에 가장 많이 쓰는 도구가
             페이지 맨 끝까지 스크롤해야 나왔다.
             ⚠️ 라우트 `/my-store` 는 **남긴다** — 이미 나간 링크·북마크가 있다. 페이지 삭제는 별건. */}
+        {/* 🎨 2026-09-28 (대표 *"디자인 및 UI 퀄리티가 너무 허술해"*) — **검정 면을 내렸다.**
+            이 버튼은 화면에서 **가장 무거운 요소**였다(유일한 검정 면). 그런데 하는 일은 *다른 화면으로
+            나가기*이고, 09-25 §14 "하는 것도 마이에서" 이후 판매 도구는 이미 이 페이지 맨 위에 있다 —
+            즉 화면이 "여기서 나가라" 고 가장 크게 말하고 있었다.
+            표면 규칙 ②(*"강조색 하나, 자리 셋 — 밴드 · 주 행동 **글자** · 강조 단어"*)에도 어긋났다:
+            파란 면(사용처리)과 검정 면이 같은 화면에서 주 행동을 다퉜다.
+            ⇒ 흰 판 + **브랜드 글자**로. 무게 순서가 서고(사용처리 면 › 전환 글자 › 로그아웃 회색 ›
+              탈퇴 링크), 찾기는 그대로 쉽다. 2026-08-30 에 회원 탈퇴를 격하한 것과 같은 판단이다. */}
         {!!localStorage.getItem('seller_token') && (
           <button
             type="button"
@@ -380,7 +394,7 @@ export default function UserProfilePage() {
               localStorage.setItem('active_role', 'seller')
               window.location.href = '/seller'
             }}
-            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gray-900 dark:bg-white text-[13px] font-semibold text-white dark:text-gray-900 active:bg-gray-800 dark:active:bg-gray-100 transition-colors"
+            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-surface shadow-lift text-[13px] font-bold text-brand-text active:opacity-70 transition-opacity"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h18v4H3zM3 9h18v12H3zM9 13h6" />

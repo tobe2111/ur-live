@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { stripComments as codeOnly } from '../helpers/source-text'
 
 /**
@@ -10,7 +10,6 @@ import { stripComments as codeOnly } from '../helpers/source-text'
 const read = (f: string) => readFileSync(f, 'utf-8')
 const PAGE = codeOnly(read('src/pages/UserProfilePage.tsx'))
 const PANE = codeOnly(read('src/pages/user-profile/AccountPcPane.tsx'))
-const NAV = codeOnly(read('src/pages/user-profile/AccountSideNav.tsx'))
 
 describe('PC 마이 — 우측 칸은 메뉴가 아니라 내용', () => {
   it('lg+ 는 AccountPcPane, 모바일은 종전 흐름(딜 카드 → 이용 내역 목록) — 동기 미디어쿼리 분기', () => {
@@ -53,8 +52,27 @@ describe('PC 마이 — 우측 칸은 메뉴가 아니라 내용', () => {
       expect(SHOP, `PC 타일 ${p} 이 모바일 목록에 없다 — 두 화면이 갈렸다`).toContain(`path: '${p}'`)
     }
   })
-  it('왼쪽 메뉴 — 선택은 블루 면, 내 교환권 항목이 있다', () => {
-    expect(NAV).toContain("? 'bg-brand text-white'")
-    expect(NAV).toContain("path: '/my-gifticons'")
+  /**
+   * 🔁 2026-09-28 재조준 (대표 *"PC 버전이나 모바일이나 너무 별로 · 허술해"*).
+   *   종전 이 자리는 **왼쪽 메뉴의 생김새**(선택 블루 면 · 교환권 항목)를 잠갔다. 그 메뉴는
+   *   걷어냈다 — `/user/profile` 에만 렌더돼 **누르면 사라지는 내비**였고, 일곱 항목 중 넷이
+   *   오른쪽 열과 중복이라 09-02 에 고쳤던 *"같은 항목을 두 번"* 이 되살아나 있었다.
+   *   ⇒ 앵커를 지우지 않고, **그 메뉴가 지키려던 것**(교환권이 PC 에서 닿는다)과
+   *     **이번에 드러난 것**(같은 목적지가 두 번 나오지 않는다)으로 다시 겨눈다.
+   */
+  it('🔴 PC 우측 칸의 목적지는 서로 겹치지 않는다 — 좌측 내비가 넷을 중복했다', () => {
+    const paths = [...PANE.matchAll(/path: '([^']+)'/g)].map(m => m[1])
+    expect(paths.length, '목적지를 하나도 못 찾았다 — 이 검사가 헛돌고 있다').toBeGreaterThanOrEqual(6)
+    expect(new Set(paths).size, `PC 칸에 같은 목적지가 두 번: ${paths.join(', ')}`).toBe(paths.length)
+    // 08-31 지갑 분리(이용권 ↔ 교환권)가 PC 에서 닿는지 — 옛 검사가 지키던 바로 그 항목.
+    expect(paths).toContain('/my-gifticons')
+    expect(paths).toContain('/my-vouchers')
+  })
+
+  it('🔴 좌측 내비는 돌아오지 않는다 — 가는 곳마다 함께 있지 않으면 내비가 아니다', () => {
+    expect(existsSync('src/pages/user-profile/AccountSideNav.tsx'), 'AccountSideNav 가 살아났다').toBe(false)
+    expect(PAGE).not.toContain('AccountSideNav')
+    // ⚠️ 이 검사가 못 막는 것: **다른 이름의** 같은 내비. 되살릴 거라면 조건은 하나다 —
+    //   그 내비의 목적지 페이지들(`/my-orders` 등)에서도 함께 렌더될 것. 그게 없어서 걷어냈다.
   })
 })

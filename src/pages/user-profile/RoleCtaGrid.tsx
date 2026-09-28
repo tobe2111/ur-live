@@ -12,10 +12,10 @@
  *   - 로그인 상태로 자동 필터.
  */
 
-import { Link } from 'react-router-dom'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight, Store, Handshake, ShoppingBag, type LucideIcon } from 'lucide-react'
+import { Store, Handshake, ShoppingBag, type LucideIcon } from 'lucide-react'
+import { GroupLabel, ListPlate, ListRow, rowIcon } from './list-grammar'
 import { COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
 
 interface Cta {
@@ -63,47 +63,28 @@ export default function RoleCtaGrid() {
 
   if (dashboardItems.length === 0 && signupItems.length === 0) return null
 
-  const Row = (c: Cta, i: number) => (
-    <Link
-      key={c.to}
-      to={c.to}
-      className={`flex items-center gap-3 px-4 py-3.5 active:bg-gray-50 dark:active:bg-[#1D1F29] transition-colors min-w-0 ${
-        i > 0 ? 'border-t border-gray-50 dark:border-[#2C2F35]' : ''
-      }`}
-    >
-      <c.Icon className="w-[18px] h-[18px] shrink-0 text-gray-500 dark:text-gray-400" aria-hidden="true" />
-      <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-bold truncate text-gray-900 dark:text-white">
-          {c.title}
-        </p>
-        <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate mt-0.5">
-          {c.desc}
-        </p>
-      </div>
-      <ChevronRight className="w-4 h-4 text-gray-300 dark:text-gray-600 shrink-0" />
-    </Link>
+  /**
+   * 🧾 2026-09-28: 이 목록은 **자기 문법을 갖고 있었다** — 테두리(`border border-line`) · 13px 행 ·
+   *   11px 설명 · 흐린 화살표(`text-gray-300`). 같은 화면의 판매 묶음·`내가 산 것` 과 셋이 갈려 있었고,
+   *   테두리는 표면 규칙 ①(*"카드 테두리 0"*) 위반이었다. ⇒ `list-grammar` 한 벌로.
+   *   경로가 실재하는 줄이라 `to` 로 준다(우클릭·새 탭이 그대로 된다).
+   */
+  const Row = (c: Cta) => (
+    <ListRow key={c.to} to={c.to} icon={rowIcon(c.Icon)} label={c.title} hint={c.desc} />
   )
 
   return (
     <section className="w-full min-w-0 space-y-4">
       {dashboardItems.length > 0 && (
         <div>
-          <p className="text-[12px] font-bold text-gray-600 dark:text-gray-400 mb-2 px-1">
-            {t('roleCta.myShortcuts', { defaultValue: '내 바로가기' })}
-          </p>
-          <div className="rounded-2xl bg-surface border border-line overflow-hidden">
-            {dashboardItems.map((c, i) => Row(c, i))}
-          </div>
+          <GroupLabel>{t('roleCta.myShortcuts', { defaultValue: '내 바로가기' })}</GroupLabel>
+          <ListPlate>{dashboardItems.map(Row)}</ListPlate>
         </div>
       )}
       {signupItems.length > 0 && (
         <div>
-          <p className="text-[12px] font-bold text-gray-600 dark:text-gray-400 mb-2 px-1">
-            {t('roleCta.startNewRole', { defaultValue: '추가 역할로 시작하기' })}
-          </p>
-          <div className="rounded-2xl bg-surface border border-gray-100 dark:border-[#2C2F35] overflow-hidden">
-            {signupItems.map((c, i) => Row(c, i))}
-          </div>
+          <GroupLabel>{t('roleCta.startNewRole', { defaultValue: '추가 역할로 시작하기' })}</GroupLabel>
+          <ListPlate>{signupItems.map(Row)}</ListPlate>
         </div>
       )}
     </section>

@@ -9,7 +9,8 @@
  */
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight, Ticket, TicketPercent, Gift, BedDouble, BookOpen, Heart, Star, Bell, Package, MapPin, PenLine, type LucideIcon } from 'lucide-react'
+import { Ticket, TicketPercent, Gift, BedDouble, Heart, Star, Bell, Package, MapPin, PenLine, type LucideIcon } from 'lucide-react'
+import { GroupLabel, ListPlate, ListRow, rowIcon } from './list-grammar'
 import type { MyCounts } from './types'
 
 /** 🖊️ 2026-08-30: `icon` 이모지 문자열 → lucide 컴포넌트.
@@ -58,37 +59,30 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
 
   return (
     <div className="ur-content-medium px-4 lg:px-8 pt-5">
-      <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-2">{t('shopping.sectionTitle', { defaultValue: '내가 산 것' })}</p>
-      <div className="rounded-2xl overflow-hidden bg-surface">
-        {groups.map((g, gi) => (
-          <div key={g.key}>
-            {/* 🛡️ 2026-07-02: 인라인 검정 고정 borderTop → 테마 대응 클래스(다크에서 구분선 소실 수정) */}
-            <p
-              className={`px-3.5 pt-3 pb-1.5 text-[10px] font-bold tracking-wide text-gray-400 dark:text-white/35 ${gi ? 'border-t border-black/[0.06] dark:border-white/[0.06]' : ''}`}
-            >
-              {g.label}
-            </p>
-            {g.items.map((item, i) => (
-              <button
+      {/* 🏷️ 블록 라벨 — 대표 확정 **이름 E**(2026-09-28): 손님 쪽엔 25px 구역 제목을 두지 않는다
+          (제목이 붙은 구역이 파는 쪽이라는 규칙이 그것 하나로 선다). 잉크색이라 아래 그룹 라벨(회색)과
+          층이 갈린다. */}
+      <p className="text-[12px] font-bold text-gray-900 dark:text-white">{t('shopping.sectionTitle', { defaultValue: '내가 산 것' })}</p>
+      {/* 🧾 2026-09-28: 세 그룹을 **한 판**에 담고 라벨을 판 *안*에 넣던 것을, 판매 쪽(`매일`·`가끔`)과
+          같은 문법으로 되돌렸다 — 판 밖 라벨 + 그룹마다 따로 판(CLAUDE.md 표면 규칙 ⑦).
+          종전엔 13행이 한 덩어리라 훑을 단위가 없었고, 같은 화면의 판매 목록과 글자 크기까지 갈렸다. */}
+      {groups.map((g) => (
+        <div key={g.key}>
+          <GroupLabel>{g.label}</GroupLabel>
+          <ListPlate>
+            {g.items.map((item) => (
+              <ListRow
                 key={item.path}
-                type="button"
+                icon={rowIcon(item.Icon)}
+                label={item.label}
+                hint={item.sub}
+                count={item.count}
                 onClick={() => navigate(item.path)}
-                className={`w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-gray-50 dark:active:bg-white/[0.06] ${i ? 'border-t border-black/[0.04] dark:border-white/[0.05]' : ''}`}
-              >
-                <item.Icon className="w-[18px] h-[18px] text-gray-500 dark:text-gray-400" aria-hidden="true" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] text-gray-900 dark:text-white font-medium">{item.label}</p>
-                  {item.sub && <p className="text-[10px] text-gray-900 dark:text-white/45 mt-0.5">{item.sub}</p>}
-                </div>
-                {item.count !== undefined && item.count !== null && (
-                  <span className="text-[12px] text-gray-900 dark:text-white/55 font-semibold">{item.count}</span>
-                )}
-                <ChevronRight className="w-3.5 h-3.5 text-gray-900 dark:text-white/30" aria-hidden="true" />
-              </button>
+              />
             ))}
-          </div>
-        ))}
-      </div>
+          </ListPlate>
+        </div>
+      ))}
     </div>
   )
 }
