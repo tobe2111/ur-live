@@ -1,5 +1,5 @@
 /**
- * 💸 **중개사 몫 직접 송금** — 결재 `docs/decisions/2026-09-16-broker-payout-model.md` 안 1 의 구현
+ * 💸 **중개사 몫 직접 송금** — 결재 `docs/decisions/archive/2026-09-16-broker-payout-model.md` 안 1 의 구현
  * (2026-09-19, 게이트 `broker_share_enabled` **기본 OFF**)
  *
  * ## 무엇이 바뀌나 (켜졌을 때만)

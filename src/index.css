@@ -1670,6 +1670,34 @@ html.dark .gbd, [data-theme="dark"] .gbd {
 }
 
 /* ──────────────────────────────────────────────────────────────
+   🎞️ 홈 히어로 이용권 띠 (2026-09-28 대표 확정 — 시안 ② + "좌우로 자연스럽게 계속 이동").
+   같은 벌 2개를 이어 붙이고 **한 벌 폭만큼** 민다 → 이음매가 안 보이는 무한 루프.
+   ⚠️ 거리(--ur-hero-loop)·지속시간(--ur-hero-dur)은 **장수에 따라 달라지므로** 컴포넌트가
+      인라인 변수로 준다. 여기 숫자를 박으면 딜이 적은 지역에서 이음매가 벌어지거나 속도가 널뛴다.
+   ────────────────────────────────────────────────────────────── */
+@keyframes ur-hero-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(calc(-1 * var(--ur-hero-loop, 0px))); }
+}
+.ur-hero-marquee { animation: ur-hero-marquee var(--ur-hero-dur, 40s) linear infinite; }
+/* 양끝을 색면에 녹인다 — 타일이 칼같이 잘리면 고장 난 것처럼 보인다.
+   (`#000` 은 색이 아니라 **알파 스텐실**이다 — 마스크에서 불투명 = 남긴다는 뜻.) */
+.ur-hero-band {
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 9%, #000 96%, transparent 100%);
+          mask-image: linear-gradient(90deg, transparent 0%, #000 9%, #000 96%, transparent 100%);
+  /* 타일 캡션의 할인율 색. 캡션은 사진 위 80% 검정 그라디언트에 얹히므로 **테마와 무관하게 늘
+     어두운 바탕**이다 — `--brand-text`(라이트에서 #1C69EF)를 쓰면 대비가 3:1 로 떨어진다. */
+  --hero-tile-accent: #7FB0FF;
+}
+.ur-hero-tile-off { color: var(--hero-tile-accent); }
+/* 읽으려는데 지나가 버리면 화난다 — 올리면 멈춘다(키보드 포커스도 같이). */
+.ur-hero-band:hover .ur-hero-marquee,
+.ur-hero-band:focus-within .ur-hero-marquee { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  .ur-hero-marquee { animation: none; }
+}
+
+/* ──────────────────────────────────────────────────────────────
    🏭 2026-07-01 도매 카테고리 타일 — CSS 3D + 마이크로 애니메이션 (대표 요청).
    의존성 0. 잉크/모노톤 브랜드에 맞춰 컬러 대신 입체 음영(gradient+shadow+depth) +
    상시 float + hover 3D 틸트. prefers-reduced-motion 존중.

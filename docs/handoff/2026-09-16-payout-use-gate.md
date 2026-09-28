@@ -6,7 +6,7 @@
    돌린 뒤 **대표가** `platform_settings.payout_requires_voucher_use = 'true'` 로 켠다.
    판정: 어드민 `/admin/platform-settings` 또는
    `SELECT * FROM platform_settings WHERE key LIKE 'payout_%'` (D1 읽기).
-3. 남은 사기 방어 ②③④⑤ 는 `docs/decisions/2026-09-16-store-fraud-defense-order.md`.
+3. 남은 사기 방어 ②③④⑤ 는 `docs/decisions/archive/2026-09-16-store-fraud-defense-order.md`.
 
 ## 완료분
 - `692d5bb9d` (PR #1467) — 매장 영입 2% 폐지(화면 4곳 + **약관 조항**).

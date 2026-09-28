@@ -272,7 +272,7 @@ GET /api/admin/promo-ledger/order/:orderNumber      (read-only, finance 권한)
 
 ## 💸 S-BROKER — 중개사 몫 유어딜 직접 송금 (2026-09-19)
 
-**S-BROKER** — 결재 `docs/decisions/2026-09-16-broker-payout-model.md` 안 1(대표 *"일단 알겠어. 그렇게 하자."*).
+**S-BROKER** — 결재 `docs/decisions/archive/2026-09-16-broker-payout-model.md` 안 1(대표 *"일단 알겠어. 그렇게 하자."*).
 게이트 `platform_settings.broker_share_enabled`(기본 `false`) · 적립 SSOT `src/worker/utils/broker-share.ts` ·
 호출 2곳(`group-buy.routes` `/join`·`confirm-toss`) · 화면 `/admin/platform-settings` ⑩. **켜는 것은 대표 판단.**
 
