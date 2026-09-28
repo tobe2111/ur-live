@@ -84,7 +84,9 @@ SELECT COUNT(*) n, COALESCE(SUM(price),0) won FROM youtube_growth_requests;   --
 4. `consignment` 을 **살린다** — `repair-schema` 에 테이블 + 진입점. ⚠️ 위탁 정산은 **머니 경로** → 단독 세션 + staging 실결제
 5. `consignment` 을 **통째로 없앤다** — API·checkout 훅·cron·가이드 두 절까지. ⚠️ 분배율 약속을 지우는 일
 
-## 권고 (기본안 철회 후)
+## 기본안 (답이 없을 때 권하는 것 — 자동 실행되지 않는다)
+
+> ⚠️ **옛 기본안(선택지 1 — `youtube-growth` 에 문을 내자)은 철회했다.** 아래가 새 기본안이다.
 
 - **`consignment`**: 문만 닫아 둔 지금 상태가 현상 유지보다 안전하다(깨진 화면 대신 리다이렉트).
   살릴지 없앨지는 서두를 일이 아니다 — 아무도 못 들어가고 결제도 안전하다.
