@@ -1740,6 +1740,10 @@ html.dark .gbd, [data-theme="dark"] .gbd {
      ⚠️ **균등이 아니다** — 왼쪽 1.25 : 오른쪽 1. 균등으로 쪼개면 한 칸이 폰(430)보다 좁아진다.
         09-28 에 그 계산만 보고 "2열 안 함" 으로 결론 냈던 것이 오판이었다(시안은 처음부터 비대칭).
      ⚠️ `align-items: start` 가 없으면 짧은 열이 긴 열 높이로 늘어나 카드가 붕 뜬다. */
+  /* 두 열의 자식. 그리드 칸은 기본 `min-width:auto` 라 안쪽 내용이 칸보다 넓으면 칸을 밀어낸다 —
+     긴 매장 이름 한 줄이 열 비율을 통째로 무너뜨린다. (모바일에선 이 규칙이 없어도 무해하다.) */
+  .ur-account-col { min-width: 0; }
+
   .ur-account-cols--split {
     display: grid;
     grid-template-columns: 1.25fr 1fr;
