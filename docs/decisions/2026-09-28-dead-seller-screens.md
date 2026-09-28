@@ -1,6 +1,6 @@
 # 죽은 셀러 화면 둘(consignment·youtube-growth)을 어떻게 할까
 
-상태: open
+상태: approved
 등급: C
 역할: dev
 올린 날: 2026-09-28
@@ -53,7 +53,11 @@ SELECT COUNT(*) n, COALESCE(SUM(price),0) won FROM youtube_growth_requests;   --
 
 ## 결정 (대표가 한 말 그대로)
 
-<비워 둔다>
+2026-09-28 대표: **"3번은 모두 없애줘."** (선택지 2 — 둘 다 은퇴)
+
+⇒ `consignment`·`youtube-growth` 둘 다 화면 제거, 라우트는 리다이렉트로 남긴다(`/my-store` 방식).
+   ⚠️ `youtube-growth` 는 **결제가 붙은 유료 기능**이라 은퇴 = 파는 문을 닫는 것이다. 매출 0원이라
+      잃는 돈은 없지만, 되살리려면 커밋 revert 로 돌아온다는 것을 기록해 둔다.
 
 ## 반영 커밋
 

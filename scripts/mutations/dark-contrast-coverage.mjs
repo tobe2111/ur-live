@@ -61,10 +61,15 @@ export default [
   {
     name: '[다크대비] 인터셉터가 스텁 표를 안 읽는다 (선언만 남고 배선 소멸)',
     file: 'scripts/check-dark-contrast.mjs',
-    find: '    const body = R.api && R.api[p]',
-    replace: '    const body = null',
+    // 🔧 2026-09-28 재조준(결재 `dark-contrast-guard-coverage` — *"4번은 모두 고쳐줘"*):
+    //   스텁 조회가 한 줄에서 **세 단계**(경로 전용 → 라이브 픽스처 정확 일치 → pathname 폴백)로
+    //   늘면서 앵커가 낡았다. 지키려던 것(표는 있는데 배선이 죽음)은 그대로라 새 모양으로 옮긴다.
+    find: '      || API_FIXTURES[p + url.search] || API_BY_PATH[p]',
+    replace: '      || null',
     test: TEST,
-    why: '가장 조용한 무력화 — 표는 그대로 있어 사람이 읽으면 "스텁 있음"으로 보이는데 화면은 도로 빈 상태다.',
+    why:
+      '가장 조용한 무력화 — 픽스처 파일은 그대로 있어 사람이 읽으면 "스텁 있음"으로 보이는데 ' +
+      '목록은 도로 빈 상태가 된다. 이 가드가 빈 껍데기를 재고 초록불을 내던 바로 그 상태로 돌아간다.',
   },
   {
     name: '[다크대비] 입력 화면 커버리지에서 정산 경로를 뺌',

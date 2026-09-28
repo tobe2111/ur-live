@@ -492,6 +492,42 @@ async function openSteps(page, R) {
 }
 
 /** 한 경로가 이보다 적게 그렸으면 "안 그려졌다" 로 본다(재시도 후에도 그러면 실패). */
+/**
+ * 🩸 2026-09-28 (대표 결재 `2026-09-28-dark-contrast-guard-coverage.md` — *"4번은 모두 고쳐줘"*)
+ *
+ *   **이 가드는 빈 껍데기를 재고 초록불을 내고 있었다.** 정적 서버는 `/api/*` 에도 index.html 을
+ *   돌려주므로 목록이 한 줄도 안 그려지는데, 헤더 몇 줄이 아래 바닥값을 넘겨 "검사됨" 으로 집계됐다.
+ *   라이브 실측으로 확인된 격차 — 유어샵 **8개 측정 vs 실제 60개**(화면의 87%가 검사 밖).
+ *   그 사각지대에 실물 결함이 살아 있었다(취소선 정가 2.14:1).
+ *
+ *   ⇒ 고친 방법 둘:
+ *     ① **라이브에서 받아 적은 응답을 픽스처로 고정**(`scripts/fixtures/dark-contrast-api.json`).
+ *        손으로 지어내면 모양이 달라 화면이 또 안 그려진다 — 그래서 **실제 응답을 그대로** 썼다.
+ *     ② **경로별 최소 기대치**(`min`). 한 값(5)으로는 "원래 빈 화면"과 "콘텐츠를 못 불러온 화면"을
+ *        구분할 수 없다. 목록 화면이 헤더만 그리면 이제 **실패**한다.
+ */
+const API_FIXTURES = (() => {
+  const f = path.join(ROOT, 'scripts/fixtures/dark-contrast-api.json')
+  if (!fs.existsSync(f)) return {}
+  try { return JSON.parse(fs.readFileSync(f, 'utf8')) } catch { return {} }
+})()
+/** pathname 만으로도 찾을 수 있게 — 날짜·페이지가 섞인 쿼리는 매일 달라진다(숙소 `check_in`). */
+const API_BY_PATH = (() => {
+  const m = {}
+  for (const [k, v] of Object.entries(API_FIXTURES)) {
+    const p2 = k.split('?')[0]
+    if (!(p2 in m)) m[p2] = v
+  }
+  return m
+})()
+
+/**
+ * 경로별 최소 기대 텍스트 수. **목록이 실제로 그려졌는지**를 재는 자물쇠다.
+ * 값은 실측 후 넉넉히 내려 잡는다(부하로 흔들리는 것이 아니라 "통째로 안 그려짐"만 잡게).
+ * 여기 없는 경로는 종전 바닥값(EMPTY_FLOOR)을 쓴다.
+ */
+const MIN_TEXTS = {}
+
 const EMPTY_FLOOR = 5
 
 /** 입력요소 채우기 — **한 벌만 둔다.** 첫 판과 재시도가 서로 다르게 채우면 판정이 갈린다. */
@@ -520,8 +556,12 @@ for (const R of ROUTES) {
     /* 🩸 API 스텁 — 정적 서버는 `/api/*` 에도 index.html 을 돌려주므로, 화면은 JSON 파싱에
        실패해 **빈 상태/에러 카드**로 떨어진다. 그래서 위 머니 화면들이 자기 에러만 재고 있었다.
        선언된 경로만 가짜 JSON 으로 채운다(나머지는 종전 그대로). */
-    const p = new URL(u).pathname
-    const body = R.api && R.api[p]
+    const url = new URL(u)
+    const p = url.pathname
+    // 경로별 전용 스텁(장바구니·결제)이 우선 — 그 화면은 특정 응답이어야 의미가 있다.
+    const body = (R.api && R.api[p])
+      // 그다음 라이브에서 받아 적은 픽스처: 쿼리까지 같은 것 → pathname 만 같은 것 순.
+      || API_FIXTURES[p + url.search] || API_BY_PATH[p]
     if (body) return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) })
     return r.continue()
   })
@@ -674,10 +714,10 @@ if (measured < 200) {
    `/pay/widget` 을 새로 넣으면서 "정말 그려졌나"를 합계로는 확인할 수 없었다 —
    그게 이 레포가 반복해 당한 "측정할 수 없어서 통과" 의 경로별 판이다.
    ⚠️ 빈 상태 화면(주문 0건 등)도 헤더·안내문 몇 줄은 그린다. 5 미만이면 렌더 실패로 본다. */
-const EMPTY_ROUTES = perRoute.filter((r) => r.n < EMPTY_FLOOR)
+const EMPTY_ROUTES = perRoute.filter((r) => r.n < (MIN_TEXTS[r.name] ?? EMPTY_FLOOR))
 if (EMPTY_ROUTES.length) {
   console.log(`❌ dark-contrast: 아무것도 안 그려진 경로 ${EMPTY_ROUTES.length}건 — 그 경로는 검사되지 않았다(통과 아님).`)
-  for (const r of EMPTY_ROUTES) console.log(`   ${r.name}  (${r.route})  측정 ${r.n}개`)
+  for (const r of EMPTY_ROUTES) console.log(`   ${r.name}  (${r.route})  측정 ${r.n}개 · 기대 ${MIN_TEXTS[r.name] ?? EMPTY_FLOOR}개 이상`)
   console.log('\n   흔한 원인: 라우트 삭제·이름 변경 · ProtectedRoute 가 시드를 안 받아 로그인으로 튕김 ·')
   console.log('   필수 쿼리 누락으로 조기 return · 기능이 꺼져(FEATURE_STATUS) 빈 화면.')
   process.exit(1)

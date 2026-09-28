@@ -28,7 +28,6 @@ const SellerResetPasswordPage = lazy(() => import('@/pages/SellerResetPasswordPa
 const SellerBusinessInfoPage = lazy(() => import('@/pages/SellerBusinessInfoPage'))
 const SellerTierPage = lazy(() => import('@/pages/SellerTierPage'))
 const SellerOrdersPage = lazy(() => import('@/pages/SellerOrdersPage'))
-const SellerConsignmentPage = lazy(() => import('@/pages/SellerConsignmentPage'))
 const SellerProductsPage = lazy(() => import('@/pages/SellerProductsPage'))
 const SellerInventoryPage = lazy(() => import('@/pages/SellerInventoryPage'))
 const SellerProductNewPage = lazy(() => import('@/pages/SellerProductNewPage'))
@@ -54,8 +53,6 @@ const SellerStoreInfoPage = lazy(() => import('@/pages/SellerStoreInfoPage'))
 const SellerOperatingSummaryPage = lazy(() => import('@/pages/SellerOperatingSummaryPage'))
 const SellerInfluencersPage = lazy(() => import('@/pages/SellerInfluencersPage'))
 const SellerAlimtalkPage = lazy(() => import('@/pages/SellerAlimtalkPage'))
-const SellerYoutubeGrowthPage = lazy(() => import('@/pages/SellerYoutubeGrowthPage'))
-const SellerYoutubeGrowthSuccessPage = lazy(() => import('@/pages/SellerYoutubeGrowthSuccessPage'))
 const SellerTransfersPage = lazy(() => import('@/pages/SellerTransfersPage'))
 const SellerAnalyticsPage = lazy(() => import('@/pages/SellerAnalyticsPage'))
 const SellerReviewsPage = lazy(() => import('@/pages/SellerReviewsPage'))
@@ -148,12 +145,15 @@ export function SellerRoutes() {
           <SellerOrdersPage />
         </ProtectedRoute>
       } />
-      {/* 🛡️ 2026-04-28: MD 위탁 판매 (셀러간 협업) */}
-      <Route path="/seller/consignment" element={
-        <ProtectedRoute requireSeller>
-          <SellerConsignmentPage />
-        </ProtectedRoute>
-      } />
+      {/* 🪦 2026-09-28 (대표 결재 `2026-09-28-dead-seller-screens.md` — *"3번은 모두 없애줘"*):
+          **MD 위탁 판매(`/seller/consignment`) 은퇴.** 라이브 D1 에 테이블
+          `consignment_partnerships` 이 **없어서**(마이그레이션 0236 은 레포에 있는데 D1 마이그레이션이
+          CI 에서 안 돈다 — `TECHNICAL_DEBT.md`) 페이지를 열면 API 일곱 개가 전부 `no such table` 로
+          죽었다. 진입점이 0 이라 아무도 신고하지 않았을 뿐이다.
+          ⚠️ **라우트는 남긴다** — 나간 링크·북마크가 404 가 되면 안 된다(`/my-store` 와 같은 방식).
+          🔒 **API(`/api/seller/consignment`)는 안 건드린다** — 위탁 정산은 머니 경로라 제거는
+             단독 세션 + staging 이 붙는다. 화면이 없으면 들어갈 문이 없다. */}
+      <Route path="/seller/consignment" element={<Navigate to="/seller/more" replace />} />
       <Route path="/seller/products" element={
         <ProtectedRoute requireSeller>
           <SellerProductsPage />
@@ -255,16 +255,13 @@ export function SellerRoutes() {
           <SellerInfluencersPage />
         </ProtectedRoute>
       } />
-      <Route path="/seller/youtube-growth" element={
-        <ProtectedRoute requireSeller>
-          <SellerYoutubeGrowthPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/seller/youtube-growth/success" element={
-        <ProtectedRoute requireSeller>
-          <SellerYoutubeGrowthSuccessPage />
-        </ProtectedRoute>
-      } />
+      {/* 🪦 2026-09-28 (같은 결재): **유튜브 성장 지원 은퇴.** 코드는 멀쩡했지만 라이브 주문 **0건 ·
+          매출 0원**이고, 들어갈 문이 **자기 성공 페이지뿐**이었다(전체 도구 목록에 없었다).
+          ⚠️ 이건 **결제가 붙은 유료 기능**이라(100명 20,000원 ~ 10,000명 850,000원, Toss) 은퇴 =
+             파는 문을 닫는 것이다. 매출 0원이라 잃는 돈은 없다. 되살리려면 이 커밋을 revert.
+          🔒 API(`/api/youtube-growth`)는 안 건드린다 — 결제 경로다. */}
+      <Route path="/seller/youtube-growth" element={<Navigate to="/seller/more" replace />} />
+      <Route path="/seller/youtube-growth/success" element={<Navigate to="/seller/more" replace />} />
       <Route path="/seller/alimtalk" element={
         <ProtectedRoute requireSeller>
           <SellerAlimtalkPage />
