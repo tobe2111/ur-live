@@ -56,11 +56,41 @@ export interface DealBalanceCardProps {
    * 로그인이면 숫자만 비운 카드, 아니면 한 줄 바. 생략하면 종전대로 전부 한 줄 바다.
    */
   loggedIn?: boolean
+  /**
+   * 🔁 2026-09-28 — 마이가 이 카드를 같이 쓰게 되면서 생긴 자리.
+   *   금액 **아래** 한 줄(예: *"무상 리워드 N딜 포함 · 환급 가능 M딜"*). 없으면 안 그린다.
+   *   ⚠️ 글자다, 버튼이 아니다 — 위층에 버튼을 두지 않는 것이 안 A3 의 전부다(가드가 고정).
+   */
+  note?: string
+  /**
+   * 🛡️ 조회 실패. **0 으로 위장하지 않는다**(2026-07-02 규칙).
+   *   큰 카드에 `—` 를 크게 띄우는 대신 **한 줄 바**로 접고 다시 시도를 준다 —
+   *   모르는 값을 42px 로 보여 줄 이유가 없고, 0 바와 높이가 같아 화면이 안 밀린다.
+   */
+  error?: boolean
+  onRetry?: () => void
 }
 
-export default function DealBalanceCard({ balance, variant = 'full', loggedIn = false }: DealBalanceCardProps) {
+export default function DealBalanceCard({
+  balance, variant = 'full', loggedIn = false, note, error = false, onRetry,
+}: DealBalanceCardProps) {
   const navigate = useNavigate()
   const compact = variant === 'compact'
+
+  // 🛡️ 조회 실패가 먼저다 — 여기서 갈라 내야 아래 0/기다림 분기를 한 글자도 안 건드린다.
+  if (error) {
+    return (
+      <button
+        type="button"
+        onClick={onRetry}
+        disabled={!onRetry}
+        className={`w-full flex items-center justify-between gap-2 rounded-xl bg-surface shadow-lift active:scale-[0.99] transition-transform disabled:active:scale-100 ${compact ? 'px-3 py-2.5' : 'h-11 px-3.5'}`}
+      >
+        <span className="text-[12.5px] text-gray-600 dark:text-gray-300 truncate text-left">잔액을 불러오지 못했어요</span>
+        {onRetry && <span className="shrink-0 text-[11.5px] font-bold text-brand-text">다시 시도</span>}
+      </button>
+    )
+  }
 
   // 0(또는 미조회)은 한 줄 바 — 위 주석의 "당신은 0" 문제.
   // 로그인했는데 숫자가 아직 안 왔다 → 같은 카드를 숫자만 비워 그린다(높이 동일 → 밀림 0).
@@ -92,6 +122,10 @@ export default function DealBalanceCard({ balance, variant = 'full', loggedIn = 
           </span>
           <span className={`font-bold text-gray-400 dark:text-gray-500 ${compact ? 'text-[15px]' : 'text-[18px]'}`}>딜</span>
         </div>
+        {/* 글자 한 줄. 버튼이 아니다 — 위층은 금액 하나가 주인공이다. */}
+        {!awaiting && note && (
+          <p className={`text-gray-500 dark:text-gray-400 ${compact ? 'text-[10.5px] mt-1.5' : 'text-[11.5px] mt-2'}`}>{note}</p>
+        )}
       </div>
 
       {/* 아래층 — 두 행동이 같은 무게로. 브랜드 블루는 '딜 모으기' 글자 한 곳에만. */}
