@@ -40,13 +40,15 @@ export default [
     why: '타일을 없애면서 터치 영역까지 없애면 안 된다 — 셋이 한 글자까지 같아야 한 줄로 읽힌다.',
   },
   {
-    name: '🎨 왼쪽 당김이 사라진다 (글리프 줄만 ~8px 들어가 보인다)',
+    name: '🎨 SNS 전용 줄이 되살아난다 (48px)',
     file: SRC,
-    // 🔧 2026-09-28 재조준(e3): 헤더 재작성으로 `empty:hidden` 이 사라지고 줄 전체가 `{hasSns && …}`
-    //   로 갇혔다(더 강한 처리). 앵커가 낡아 **주입이 적용조차 안 되고 있었다** — 가드가 지키는 척만 함.
-    find: '<div className="flex items-center -ml-2 px-4 pb-3">',
-    replace: '<div className="flex items-center px-4 pb-3">',
+    // 🔧 2026-09-28 2차 재조준(대표 확정 **상단 1안**): 그 전용 줄 자체가 없어졌다(SNS 는 이름 줄의
+    //   버튼 묶음으로). 그래서 `-ml-2` 도 사라져 앵커가 또 낡았다 — 이제는 **줄의 부활**을 막는다.
+    find: '      <div className="max-w-3xl mx-auto">',
+    replace: '      <div className="max-w-3xl mx-auto"><div className="flex items-center -ml-2 px-4 pb-3">{snsLinks}</div>',
     test: TEST,
-    why: '타일이 없으면 글리프가 원 안에서 가운데라, 안 당기면 이름·소개 줄과 선이 안 맞는다.',
+    why:
+      '아이콘 두세 개를 위해 줄 하나(36px + pb-3 12px = 48px)를 쓰는 것이 대표가 짚은 낭비다 ' +
+      '(*"SNS 로고도 말이야"*). 라이브 실측으로 첫 상품 y 가 185 → 233 으로 되돌아가는 자리다.',
   },
 ]

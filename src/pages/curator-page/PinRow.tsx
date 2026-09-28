@@ -13,6 +13,12 @@
  *            할인율순으로 본 손님에게 3번이 다른 것을 가리킨다 — 돈이 새는 쪽으로 깨진다.
  *      ② (끝.)
  *
+ * ⭐ **별점·구매수는 없다**(2026-09-28 대표 결재 `2026-09-28-ushop-star-rating.md` 3번:
+ *    *"유어샵 목록에 별점은 보이지 않게 해줘도 돼"* → 선택지 3 "가격·할인·거리로만 판단하게 하고,
+ *    진짜 리뷰가 쌓이면 그때 켠다"). 라이브 유어샵 핀은 전부 데모·플랫폼 상품이라 별점(4.6~4.7)도
+ *    구매수(54~140)도 **시드값**이다. 없는 신뢰를 지어내지 않는 쪽이 안전하고, 나중에 켜는 것이
+ *    끄는 것보다 쉽다. ⇒ `meta` 를 넘기지 않는다(`DealRow` 는 없으면 그 줄을 아예 안 그린다).
+ *
  * 🩸 **찜 하트는 일부러 뺐다**(2026-09-28 렌더 실측). 격자 카드(`GroupBuyFeedCard`)엔 있었지만
  *    `WishlistHeart` 는 `.ur-appear`(기본 `opacity:0`, `.group:hover` 에서만 나타남)라 **사진 위**에
  *    떠 있을 것을 전제로 만들어졌다. `DealRow` 루트엔 `group` 이 없어 **PC 에선 영영 안 보이고**
@@ -24,11 +30,8 @@
  *    상세로 직행시키면 화면은 같은데 귀속이 조용히 사라진다.
  */
 import { memo } from 'react'
-import { useTranslation } from 'react-i18next'
 import DealRow from '@/components/deal/DealRow'
-import StarRating from '@/components/deal/StarRating'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
-import { formatNumber } from '@/utils/format'
 import type { CuratorPin } from '@/features/curator/api/curator-api'
 
 export default memo(function PinRow({ pin, handle, order, prefetch }: {
@@ -38,23 +41,7 @@ export default memo(function PinRow({ pin, handle, order, prefetch }: {
   order: number
   prefetch?: () => void
 }) {
-  const { t } = useTranslation()
   const img = pin.thumbnail || pin.image_url || ''
-  const reviews = Number(pin.review_count) || 0
-  const rating = Number(pin.avg_rating) || 0
-  const sold = Number(pin.sold_count) || 0
-
-  // ⭐ 리뷰가 0 이면 이 줄을 **통째로 뺀다**(자리도 안 남긴다).
-  //   라이브 실측(2026-09-27): 유어샵 핀 8개는 전부 데모·플랫폼 상품이라 별점이 미리 채워져 있고,
-  //   **실제 사업자 상품 2개만 리뷰 0** 이다. 빈 별 다섯을 그리면 진짜 매장만 "0점"처럼 보인다.
-  const meta = reviews > 0 ? (
-    <span className="flex items-center gap-1.5">
-      <StarRating value={rating} />
-      <span className="tabular-nums font-semibold text-gray-700 dark:text-gray-200">{rating.toFixed(1)}</span>
-      <span className="tabular-nums">({formatNumber(reviews)})</span>
-      {sold > 0 && <span className="tabular-nums">· {t('curator.soldN', { defaultValue: '구매' })} {formatNumber(sold)}</span>}
-    </span>
-  ) : undefined
 
   return (
     <DealRow
@@ -87,7 +74,6 @@ export default memo(function PinRow({ pin, handle, order, prefetch }: {
       originalPrice={pin.original_price ?? undefined}
       discountPct={Number(pin.discount_rate) || 0}
       unit={pin.deal_only === 1 ? '딜' : '원'}
-      meta={meta}
     />
   )
 })

@@ -35,14 +35,17 @@ export default [
       '자리마다 다른 그림이었다. 유어샵만 자기 줄을 그리기 시작하면 그 분열이 재발한다.',
   },
   {
-    name: 's3 — 리뷰 0 에도 별 다섯을 그린다',
+    // 🔧 2026-09-28 재조준(대표 결재 `2026-09-28-ushop-star-rating.md` 3번 확정): 종전엔 *"리뷰 0 이면
+    //   별을 안 그린다"* 를 지켰다(조건부 별점). 대표가 **아예 끄는 쪽**을 골라 `meta` 자체가 사라졌고
+    //   앵커도 함께 사라졌다 — 지키려던 것(없는 신뢰를 지어내지 않는다)을 새 구조의 말로 옮긴다.
+    name: 's3 — 시드 별점이 되살아난다',
     file: 'src/pages/curator-page/PinRow.tsx',
-    find: 'const meta = reviews > 0 ? (',
-    replace: 'const meta = reviews >= 0 ? (',
+    find: "      unit={pin.deal_only === 1 ? '딜' : '원'}",
+    replace: "      unit={pin.deal_only === 1 ? '딜' : '원'}\n      meta={<span>{pin.avg_rating}</span>}",
     test: 'src/tests/unit/ushop-s3-list-2026-09-28.test.ts',
     why:
-      '라이브 실측(2026-09-27): 유어샵 핀 8개는 전부 데모·플랫폼 상품이라 별점이 미리 채워져 있고 ' +
-      '**실제 사업자 상품 2개만 리뷰 0**. 빈 별을 그리면 데모는 화려하고 진짜 매장만 "0점" 으로 보인다.',
+      '라이브 실측(2026-09-27): 유어샵 핀은 전부 데모·플랫폼 상품이라 별점(4.6~4.7)도 구매수(54~140)도 ' +
+      '**시드값**이다. 되살리면 데모는 화려하고 진짜 매장만 초라해 보인다 — 없는 신뢰를 지어내는 쪽이다.',
   },
   {
     name: 's3 — 정렬이 주인 순서 배열을 제자리에서 뒤집는다',
@@ -95,8 +98,9 @@ export default [
   {
     name: 's3 — 줄에 안 보이는 찜 하트가 되돌아온다',
     file: 'src/pages/curator-page/PinRow.tsx',
-    find: '      meta={meta}\n    />',
-    replace: "      meta={meta}\n      trailing={<WishlistHeart productId={pin.product_id} />}\n    />",
+    // 🔧 2026-09-28 재조준: 별점 제거로 `meta={meta}` 가 사라져 앵커가 낡았다(주입이 적용조차 안 됐다).
+    find: "      unit={pin.deal_only === 1 ? '딜' : '원'}\n    />",
+    replace: "      unit={pin.deal_only === 1 ? '딜' : '원'}\n      trailing={<WishlistHeart productId={pin.product_id} />}\n    />",
     test: 'src/tests/unit/ushop-s3-list-2026-09-28.test.ts',
     why:
       '`WishlistHeart` 는 `.ur-appear`(기본 opacity:0)라 사진 위 `group` 안을 전제로 만들어졌다. ' +
