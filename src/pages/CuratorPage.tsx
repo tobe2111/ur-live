@@ -35,6 +35,7 @@ import EmptyUrShop from './curator-page/EmptyUrShop'
 // 🎫 2026-09-02 (대표 확정 — 유어샵 안3 + PC 안P1): 카테고리 칩(지도 B안과 같은 그림) + PC 좌측 열 QR.
 import PinCategoryChips, { pinCategory, type PinCategory } from './curator-page/PinCategoryChips'
 import UShopQrCard from './curator-page/UShopQrCard'
+import ShopInquiryLinks from './curator-page/ShopInquiryLinks'
 
 // 🛡️ 2026-05-25 (C 옵션 URL 통합): linked seller 있으면 같은 페이지에서 SellerPublicPage 직접 render.
 //   redirect 없음 — URL 그대로 (/u/:handle 유지). lazy chunk — 일반 user 진입 시 chunk fetch 안 함.
@@ -404,6 +405,15 @@ export default function CuratorPage() {
 
         {/* 🎨 2026-06-19 (대표 — "나도 내 유어샵 만들기 버튼 별로"): 하단 고정 방문자 전환 CTA 제거.
             (조잡함 정리 + 주인 기본 뷰=방문자 미리보기라 주인에게도 떴을 것 → 제거가 맞음.) */}
+
+        {/* 🧾 2026-09-28 (대표 확정 **B안** — *"B가 낫겠는데?"*): 맨 아래 유입 링크 세 줄.
+            ⚠️ 위 2026-06-19 결정과 **모순이 아니다.** 그때 문제였던 둘을 피한다 —
+              ① 따라다니는 고정 CTA 가 아니라 **목록이 끝난 뒤**의 조용한 링크(상품을 안 민다)
+              ② **주인에겐 안 그린다**(그때는 주인에게도 떴다 — 대표가 `AskUserQuestion` 에서
+                 "손님에게만 (주인은 숨김)" 을 골랐다).
+            🔴 판정은 **호출부에서** 한다 — 부품이 소유권을 스스로 캐면
+               `check-linkshop-ownership` ③(순수 뷰 자식은 prop 구동)을 어긴다. */}
+        {!isOwner && <ShopInquiryLinks />}
       </div>
     </>
   )
