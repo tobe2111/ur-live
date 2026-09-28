@@ -92,6 +92,7 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   //   게이트가 여기 없으면 'True'·'1' 같은 오타가 저장되고 `=== 'true'` 가 조용히 OFF 로 읽는다.
   //   대표가 "켰다"고 믿는 정책이 안 도는 것 — 이 파일이 존재하는 바로 그 이유다.
   pickup_unclaimed_policy_enabled: boolStr,
+  voucher_partial_refund_enabled: boolStr,     // 🎟️ 이용권 장 단위 일부 환불. voucher-partial-refund.ts
   pickup_unclaimed_cold_pct: optionalPct,
   pickup_unclaimed_room_pct: optionalPct,
   pickup_unclaimed_room_grace_days: optionalIntRange(0, 365),

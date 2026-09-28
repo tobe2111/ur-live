@@ -10,6 +10,7 @@ import { OrdersTab } from '@/components/mypage/OrdersTab'
 import { ArrowLeft, AlertCircle } from 'lucide-react'
 import { getUserIdSync, isLoggedInSync, requireLogin } from '@/utils/auth'
 import type { Order } from '@/types/order'
+import { isVoucherCategory } from '@/shared/constants/voucher-categories'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { useMyOrders } from '@/hooks/queries/useMyData'
 import { useMyReturns } from '@/hooks/queries/useMyReturns'
@@ -116,6 +117,7 @@ export default function MyOrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   useEscapeKey(() => { if (selectedOrder) setSelectedOrder(null) })
   const [cancelModal, setCancelModal] = useState<{
+    isVoucher?: boolean
     isOpen: boolean
     orderId: number | string | null
     orderNumber: string
@@ -189,7 +191,10 @@ export default function MyOrdersPage() {
   }
 
   async function handleCancelOrder(orderId: number | string, orderNumber: string) {
-    setCancelModal({ isOpen: true, orderId, orderNumber })
+    // 🎟️ 이용권 주문이면 부분 환불이 **장 단위**다(금액 입력이 아니라). 판별은 종류 SSOT.
+    const o = orders.find(x => String(x.id) === String(orderId))
+    const isVoucher = (o?.items ?? []).some(it => Number(it.deal_only) !== 1 && isVoucherCategory(it.category))
+    setCancelModal({ isOpen: true, orderId, orderNumber, isVoucher })
     setCancelReason('')
     setIsPartialCancel(false)
     setCancelAmount('')
@@ -203,17 +208,23 @@ export default function MyOrdersPage() {
       return
     }
     if (isPartialCancel && (!cancelAmount || Number(cancelAmount) <= 0)) {
-      toast.error(t('myOrders.cancelAmountRequired'))
+      toast.error(cancelModal.isVoucher
+        ? t('myOrders.cancelQtyRequired', { defaultValue: '환불할 이용권 장수를 입력해 주세요' })
+        : t('myOrders.cancelAmountRequired'))
       return
     }
     setProcessing(true)
     try {
       const response = await api.post(`/api/orders/${orderId}/cancel`, {
         reason: cancelReason,
-        ...(isPartialCancel && cancelAmount ? { cancel_amount: Number(cancelAmount) } : {}),
+        // 🎟️ 이용권은 장수(cancel_qty)를 보낸다 — 금액은 서버가 계산한다(임의 금액 환불 차단).
+        ...(isPartialCancel && cancelAmount
+          ? (cancelModal.isVoucher ? { cancel_qty: Number(cancelAmount) } : { cancel_amount: Number(cancelAmount) })
+          : {}),
       })
       if (response.data.success) {
-        toast.success(t('myOrders.cancelSuccess'))
+        const n = response.data?.data?.refunded_qty
+        toast.success(n ? t('myOrders.cancelVoucherSuccess', { count: n, defaultValue: `이용권 ${n}장이 환불되었습니다` }) : t('myOrders.cancelSuccess'))
         setCancelModal({ isOpen: false, orderId: null, orderNumber: '' })
         setCancelReason('')
         setIsPartialCancel(false)
@@ -332,6 +343,7 @@ export default function MyOrdersPage() {
           orderNumber={cancelModal.orderNumber}
           reason={cancelReason}
           onReasonChange={setCancelReason}
+          isVoucher={!!cancelModal.isVoucher}
           isPartialCancel={isPartialCancel}
           onPartialCancelChange={setIsPartialCancel}
           cancelAmount={cancelAmount}

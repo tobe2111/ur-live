@@ -65,13 +65,23 @@ export async function clawbackVoucherSettlementOnRefund(
   DB: D1Database,
   orderId: number,
   reason: string,
+  /**
+   * 🎟️ 2026-09-28 (이용권 일부 환불): 주면 **그 이용권들만** 회수한다. 안 주면 종전대로 주문 전체.
+   *   장 단위 부분 환불은 "무른 장만" 회수해야 한다 — 주문 전체를 회수하면 손님이 그대로 들고
+   *   있는 이용권까지 무효가 되고, 그건 환불이 아니라 몰수다.
+   *   빈 배열을 주면 **아무것도 안 한다**(전체로 넓히지 않는다 — 그 실수가 제일 비싸다).
+   */
+  onlyVoucherIds?: number[],
 ): Promise<ClawbackResult> {
   const out: ClawbackResult = { voided: 0, reclaimedPending: 0, clawbackOwed: 0 }
+  if (onlyVoucherIds && onlyVoucherIds.length === 0) return out
+  const ids = onlyVoucherIds?.map(n => Math.floor(Number(n))).filter(Number.isFinite) ?? null
+  const scope = ids ? ` AND v.id IN (${ids.map(() => '?').join(',')})` : ''
   const res = await DB.prepare(`
     SELECT v.id, v.status, v.settlement_id, v.applied_price, v.product_id, p.seller_id, p.price
     FROM vouchers v JOIN products p ON p.id = v.product_id
-    WHERE v.order_id = ?
-  `).bind(orderId).all<VoucherRow>().catch(() => ({ results: [] as VoucherRow[] }))
+    WHERE v.order_id = ?${scope}
+  `).bind(orderId, ...(ids ?? [])).all<VoucherRow>().catch(() => ({ results: [] as VoucherRow[] }))
 
   for (const v of (res.results || [])) {
     if (v.status === 'refunded' || v.status === 'expired') continue // 멱등
