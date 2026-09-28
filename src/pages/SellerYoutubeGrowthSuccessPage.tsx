@@ -1,0 +1,105 @@
+import { useEffect, useState, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { CheckCircle, Youtube, Loader2 } from 'lucide-react'
+import api from '@/lib/api'
+import { formatNumber } from '@/utils/format'
+
+export default function SellerYoutubeGrowthSuccessPage() {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [result, setResult] = useState<{ subscribers: number; amount: number } | null>(null)
+  const isProcessingRef = useRef(false)
+
+  const paymentKey = searchParams.get('paymentKey')
+  const orderId = searchParams.get('orderId')
+  const amount = searchParams.get('amount')
+  const token = localStorage.getItem('seller_token')
+
+  useEffect(() => {
+    if (!paymentKey || !orderId || !amount) {
+      setError(t('seller.paymentInfoInvalid'))
+      setLoading(false)
+      return
+    }
+    if (isProcessingRef.current) return
+    isProcessingRef.current = true
+
+    async function confirm() {
+      try {
+        const res = await api.post('/api/youtube-growth/confirm', {
+          paymentKey,
+          orderId,
+          amount: Number(amount),
+        }, { headers: { Authorization: `Bearer ${token}` } })
+
+        if (res.data.success) {
+          setResult(res.data.data)
+        } else {
+          setError(res.data.error || t('seller.paymentConfirmFailed'))
+        }
+      } catch (err: unknown) {
+        const err_ = err as { response?: { data?: { error?: string }; status?: number } }
+        setError(err_.response?.data?.error || t('seller.paymentProcessingError'))
+      } finally {
+        setLoading(false)
+        isProcessingRef.current = false
+      }
+    }
+
+    confirm()
+  }, [paymentKey, orderId, amount])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-tone-bad mx-auto mb-4" />
+          <p className="text-gray-500">{t('seller.processingPayment')}</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center p-4">
+        <div className="max-w-md w-full text-center bg-white rounded-[var(--dash-radius,16px)] p-8 shadow-lg">
+          <p className="text-tone-bad mb-4">{error}</p>
+          <button onClick={() => navigate('/seller/youtube-growth')} className="ur-btn ur-btn-lg ur-btn-primary">
+            {t('seller.goBackButton')}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-[#fbfbfd] flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-white rounded-[var(--dash-radius,16px)] p-8 shadow-lg text-center">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-tone-ok-bg mb-4">
+          <CheckCircle className="w-10 h-10 text-tone-ok" />
+        </div>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('seller.paymentCompleted')}</h1>
+        <p className="text-sm text-gray-500 mb-6">{t('seller.subscriberGrowthAfterReview')}</p>
+        <div className="bg-gray-50 rounded-xl p-5 my-6">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <Youtube className="w-5 h-5 text-tone-bad" />
+            <span className="text-sm text-gray-600">{t('seller.youtubeGrowth')}</span>
+          </div>
+          <p className="text-3xl font-bold text-tone-bad">{String(t('seller.subscriberPlus', { count: formatNumber(result?.subscribers) } as Record<string, string>))}</p>
+          <p className="text-sm text-gray-500 mt-2">{t('seller.paymentAmountLabel')}: {formatNumber(result?.amount)}{t('common.won')}</p>
+        </div>
+        <button
+          onClick={() => navigate('/seller/youtube-growth')}
+          className="ur-btn ur-btn-lg ur-btn-primary w-full"
+        >
+          {t('seller.checkRequestHistory')}
+        </button>
+      </div>
+    </div>
+  )
+}

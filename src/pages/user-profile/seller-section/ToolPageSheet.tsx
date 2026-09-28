@@ -35,12 +35,55 @@
  * - 안쪽에서 `window.location.assign()` 을 쓰는 화면은 여전히 통째로 이동한다(라우터 밖이다).
  */
 import { Suspense, useCallback, useRef, useState } from 'react'
-import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import {
+  MemoryRouter, Route, Routes, useLocation, useNavigate,
+  UNSAFE_LocationContext, UNSAFE_RouteContext,
+} from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import { SellerEmbedProvider } from '@/shared/seller-embed'
 import { SellerRoutes } from '@/routes/seller.routes'
 import Sheet from './Sheet'
+
+/**
+ * 🔌 **바깥 라우터와의 줄을 끊는다** — 이게 없으면 시트는 열리는 순간 터진다 (2026-09-28).
+ *
+ * ## 무슨 일이 있었나
+ * ```
+ * Error: You cannot render a <Router> inside another <Router>.
+ * ```
+ * 앱은 `BrowserRouter` 로 감싸여 있는데(`App.tsx`) 이 시트가 그 **안에** `MemoryRouter` 를 또 넣는다.
+ * react-router v6 은 중첩 라우터를 금지한다 — 그래서 `ToolPageSheet` 는 **한 번도 동작한 적이 없었다.**
+ * 아무도 몰랐던 이유: 이 경로를 지키던 시험이 전부 텍스트 가드라 "배선이 있는가" 만 봤고,
+ * 프로덕션 빌드는 `drop_console: true` + react-router 의 메시지 제거로 화면에 `Error` 만 남았다.
+ *
+ * ## 왜 컨텍스트를 끊는가 (다른 길을 안 고른 이유)
+ * - `<Routes location={…}>` 로 중첩을 피할 수는 있다. 그런데 그러면 안쪽 `navigate()`·`<Link>` 가
+ *   **바깥 라우터를 움직인다** — 마이가 통째로 그 주소로 떠난다. 2026-09-26 이 `MemoryRouter` 를
+ *   고른 이유가 정확히 그 문제였다. 고치려다 그 문제를 도로 불러오는 셈이다.
+ * - 별도 React 루트로 띄우면 격리는 완전하지만 QueryClient·테마·i18n 을 다시 얹어야 하고,
+ *   그 이음매가 새 사고 자리가 된다.
+ * ⇒ **줄만 끊으면** 안쪽은 자기 라우터를 가진 최상위가 되고, 바깥은 아무것도 모른다.
+ *
+ * ## 무엇을 끊나 (둘 다 필요하다)
+ * - `LocationContext` → `null`: react-router 의 `useInRouterContext()` 가 이 값을 보고
+ *   "이미 라우터 안" 을 판정한다. 끊어야 위 invariant 를 지난다.
+ * - `RouteContext` → 빈 matches: 안 끊으면 안쪽 절대경로(`/seller/tier`)가 바깥이 매치한
+ *   `/user/profile` **아래로 중첩된 것**으로 계산돼 또 터진다.
+ *
+ * ⚠️ `UNSAFE_` 접두사는 react-router 가 **내부 구조가 바뀔 수 있다**고 경고하는 뜻이다(사설 API 는 아니다).
+ *   버전을 올릴 때 깨질 수 있는 자리이므로 **렌더 시험이 이 파일을 지킨다**
+ *   (`src/tests/unit/tool-page-sheet-renders-2026-09-28.test.tsx` — 터지면 거기서 빨간불).
+ */
+function RouterReset({ children }: { children: React.ReactNode }) {
+  return (
+    <UNSAFE_LocationContext.Provider value={null as never}>
+      <UNSAFE_RouteContext.Provider value={{ outlet: null, matches: [], isDataRoute: false }}>
+        {children}
+      </UNSAFE_RouteContext.Provider>
+    </UNSAFE_LocationContext.Provider>
+  )
+}
 
 /**
  * 안쪽 라우터의 현재 위치를 바깥(시트 머리)에 알려 주고, 되돌아오기 손잡이를 넘긴다.
@@ -91,6 +134,7 @@ export default function ToolPageSheet({ path, title, onClose, onLeave }: {
       <div className="light-island ur-embed-sheet bg-white min-h-full">
         {/* 🪟 껍데기(사이드바·상단바·하단 탭)를 벗기는 신호. 페이지는 이걸 몰라도 된다. */}
         <SellerEmbedProvider>
+          <RouterReset>
           <MemoryRouter initialEntries={[path]}>
             <InnerBridge onDepth={setDeeper} backRef={backRef} />
             <Suspense
@@ -110,6 +154,7 @@ export default function ToolPageSheet({ path, title, onClose, onLeave }: {
               </ErrorBoundary>
             </Suspense>
           </MemoryRouter>
+          </RouterReset>
         </SellerEmbedProvider>
       </div>
     </Sheet>

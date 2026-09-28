@@ -55,19 +55,29 @@ describe('① 은퇴한 주소가 404 가 되지 않는다', () => {
   })
 })
 
-describe('② 화면은 실제로 없앴다', () => {
-  it.each([
-    'src/pages/SellerConsignmentPage.tsx',
-    'src/pages/SellerYoutubeGrowthPage.tsx',
-    'src/pages/SellerYoutubeGrowthSuccessPage.tsx',
-  ])('%s 파일이 없다', (f) => {
-    expect(existsSync(f), `${f} 가 되살아났다`).toBe(false)
+describe('② 문은 닫혔다 — 파일은 남기되 아무도 못 들어간다', () => {
+  /**
+   * 🔧 2026-09-28 재조준: 처음엔 **파일 삭제**를 단언했는데, 같은 날 다른 세션이 main 에서
+   *   `consignment` 를 먼저 은퇴시키며 **파일을 남겼다**(주석에 *"되살리려면 이 줄을
+   *   `<SellerConsignmentPage />` 로 되돌리면 된다"* 고 적었다). 그 판단을 뒤집지 않고 맞췄다 —
+   *   `youtube-growth` 도 같은 방식이다.
+   *   ⇒ 지켜야 할 것은 "파일이 없다" 가 아니라 **"번들에 안 실리고 들어갈 수 없다"** 이다.
+   *      import 가 없으면 lazy 청크가 만들어지지 않아 죽은 코드가 사용자에게 안 내려간다.
+   */
+  it('라우트에서 화면 컴포넌트를 더는 부르지 않는다', () => {
+    expect(routes, 'consignment 화면 참조').not.toContain('<SellerConsignmentPage')
+    expect(routes, 'youtube-growth 화면 참조').not.toContain('<SellerYoutubeGrowth')
   })
 
-  it('lazy import 도 남지 않았다', () => {
-    // 참조가 남으면 빌드는 되는데 청크만 커진다(죽은 코드가 번들에 실린다).
-    expect(routes).not.toContain('SellerConsignmentPage')
-    expect(routes).not.toContain('SellerYoutubeGrowth')
+  it('lazy import 도 남지 않았다 — 남으면 죽은 청크가 계속 실린다', () => {
+    expect(routes).not.toMatch(/const SellerConsignmentPage = lazy/)
+    expect(routes).not.toMatch(/const SellerYoutubeGrowth\w* = lazy/)
+  })
+
+  it('파일 자체는 남아 있다 (되살리기 한 줄)', () => {
+    // 지우면 위 주석이 약속한 복구 경로가 거짓이 된다.
+    expect(existsSync('src/pages/SellerConsignmentPage.tsx')).toBe(true)
+    expect(existsSync('src/pages/SellerYoutubeGrowthPage.tsx')).toBe(true)
   })
 })
 

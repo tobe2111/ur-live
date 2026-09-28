@@ -12,7 +12,8 @@ export default [
   {
     name: '은퇴화면 — 라우트를 통째로 지운다 (북마크가 404)',
     file: ROUTES,
-    find: '      <Route path="/seller/consignment" element={<Navigate to="/seller/more" replace />} />',
+    // 🔧 2026-09-28 재조준: main 의 다른 세션이 먼저 은퇴시키며 목적지를 `/seller` 로 썼다 — 그쪽을 따랐다.
+    find: '      <Route path="/seller/consignment" element={<Navigate to="/seller" replace />} />',
     replace: '',
     test: TEST,
     why:
