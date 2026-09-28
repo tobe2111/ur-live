@@ -127,8 +127,14 @@ describe('dark-contrast 가드 커버리지 (2026-09-16)', () => {
     expect(guard).toMatch(/perRoute\.push\(/)
     // 🩸 되돌려-검증이 잡았다: 처음엔 `filter(` 존재만 봤는데, 임계를 `r.n < 0` 으로 바꾸면
     //    (= 영원히 빈 배열) 검사가 통째로 죽는데도 통과했다. **모양이 아니라 값**을 본다.
-    expect(guard).toMatch(/const EMPTY_ROUTES = perRoute\.filter\(\(r\) => r\.n < EMPTY_FLOOR\)/)
+    // 🔧 2026-09-28 재조준(결재 `dark-contrast-guard-coverage` — *"4번은 모두 고쳐줘"*):
+    //   바닥값이 **한 개**여서 "원래 빈 화면"과 "콘텐츠를 못 불러온 화면"을 구분하지 못했다
+    //   (유어샵 8개 측정 vs 실제 60개 = 87%가 검사 밖). 이제 **경로별 기대치**(`MIN_TEXTS`)가
+    //   앞서고 없는 경로만 종전 바닥값으로 떨어진다. 지키려던 것은 그대로다 —
+    //   **임계가 값으로 살아 있을 것**(`r.n < 0` 처럼 죽이면 빨간불).
+    expect(guard).toMatch(/const EMPTY_ROUTES = perRoute\.filter\(\(r\) => r\.n < \(MIN_TEXTS\[r\.name\] \?\? EMPTY_FLOOR\)\)/)
     expect(guard).toMatch(/const EMPTY_FLOOR = [1-9]\d*/)
+    expect(guard, '경로별 기대치 표가 있어야 한다').toMatch(/const MIN_TEXTS = \{/)
 
     /**
      * 🩸 그리고 그 엄격함이 **flake 를 만들었다**(같은 날 실측): `npm run build` 직후에 돌리면
@@ -164,6 +170,33 @@ describe('dark-contrast 가드 커버리지 (2026-09-16)', () => {
     // 인터셉터가 그 표를 읽는가 — 표만 있고 fulfill 이 없으면 정적 서버의 index.html 이 간다.
     expect(guard).toMatch(/R\.api && R\.api\[/)
     expect(guard).toMatch(/r\.fulfill\(\{ status: 200, contentType: 'application\/json'/)
+  })
+
+  it('⑦-2 라이브에서 받아 적은 픽스처가 실제로 배선돼 있다', () => {
+    /**
+     * 🩸 2026-09-28 — 위 ⑦ 은 **경로 전용 스텁**(`R.api`)만 봤다. 그래서 목록 화면을 채우는
+     *   라이브 픽스처 배선을 통째로 지워도 **초록이었다**(주입 검증이 잡았다).
+     *   그 배선이 죽으면 홈·교환권·동네딜이 도로 빈 껍데기가 되고, 가드는 다시
+     *   "헤더 몇 줄"을 재며 0건을 보고한다 — 이 가드가 고치려던 바로 그 상태다.
+     */
+    expect(guard, '픽스처 파일을 읽어야 한다').toMatch(/scripts\/fixtures\/dark-contrast-api\.json/)
+    // 쿼리까지 같은 것 → pathname 만 같은 것, **두 단계 모두** 살아 있어야 한다.
+    // (숙소 `check_in` 처럼 날짜가 매일 바뀌는 쿼리는 pathname 폴백이 없으면 못 찾는다.)
+    expect(guard, '정확 일치 조회').toMatch(/API_FIXTURES\[p \+ url\.search\]/)
+    expect(guard, 'pathname 폴백').toMatch(/API_BY_PATH\[p\]/)
+    expect(guard, '폴백 표를 만든다').toMatch(/const API_BY_PATH = /)
+  })
+
+  it('⑦-3 픽스처 파일이 실물이고 목록 화면을 채울 만큼 있다', () => {
+    // 파일이 비면 배선이 살아 있어도 화면은 안 그려진다 — "있음"이 아니라 "쓸모 있음"을 본다.
+    const raw = readFileSync('scripts/fixtures/dark-contrast-api.json', 'utf-8')
+    const fx = JSON.parse(raw) as Record<string, unknown>
+    const keys = Object.keys(fx)
+    expect(keys.length, '엔드포인트가 너무 적다').toBeGreaterThanOrEqual(20)
+    // 목록이 그려지려면 이 셋은 반드시 있어야 한다(홈·교환권·유어샵).
+    expect(keys.some((k) => k.startsWith('/api/sections')), '홈 섹션').toBe(true)
+    expect(keys.some((k) => k.startsWith('/api/products?')), '교환권 목록').toBe(true)
+    expect(keys.some((k) => k.startsWith('/api/curator/')), '유어샵').toBe(true)
   })
 
   it('⑥ 전체 측정 하한(헛도는 측정기 차단)이 살아 있다', () => {

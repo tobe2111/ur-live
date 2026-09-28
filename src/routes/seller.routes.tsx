@@ -53,8 +53,6 @@ const SellerStoreInfoPage = lazy(() => import('@/pages/SellerStoreInfoPage'))
 const SellerOperatingSummaryPage = lazy(() => import('@/pages/SellerOperatingSummaryPage'))
 const SellerInfluencersPage = lazy(() => import('@/pages/SellerInfluencersPage'))
 const SellerAlimtalkPage = lazy(() => import('@/pages/SellerAlimtalkPage'))
-const SellerYoutubeGrowthPage = lazy(() => import('@/pages/SellerYoutubeGrowthPage'))
-const SellerYoutubeGrowthSuccessPage = lazy(() => import('@/pages/SellerYoutubeGrowthSuccessPage'))
 const SellerTransfersPage = lazy(() => import('@/pages/SellerTransfersPage'))
 const SellerAnalyticsPage = lazy(() => import('@/pages/SellerAnalyticsPage'))
 const SellerReviewsPage = lazy(() => import('@/pages/SellerReviewsPage'))
@@ -264,16 +262,13 @@ export function SellerRoutes() {
           <SellerInfluencersPage />
         </ProtectedRoute>
       } />
-      <Route path="/seller/youtube-growth" element={
-        <ProtectedRoute requireSeller>
-          <SellerYoutubeGrowthPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/seller/youtube-growth/success" element={
-        <ProtectedRoute requireSeller>
-          <SellerYoutubeGrowthSuccessPage />
-        </ProtectedRoute>
-      } />
+      {/* 🪦 2026-09-28 (같은 결재): **유튜브 성장 지원 은퇴.** 코드는 멀쩡했지만 라이브 주문 **0건 ·
+          매출 0원**이고, 들어갈 문이 **자기 성공 페이지뿐**이었다(전체 도구 목록에 없었다).
+          ⚠️ 이건 **결제가 붙은 유료 기능**이라(100명 20,000원 ~ 10,000명 850,000원, Toss) 은퇴 =
+             파는 문을 닫는 것이다. 매출 0원이라 잃는 돈은 없다. 되살리려면 이 커밋을 revert.
+          🔒 API(`/api/youtube-growth`)는 안 건드린다 — 결제 경로다. */}
+      <Route path="/seller/youtube-growth" element={<Navigate to="/seller/more" replace />} />
+      <Route path="/seller/youtube-growth/success" element={<Navigate to="/seller/more" replace />} />
       <Route path="/seller/alimtalk" element={
         <ProtectedRoute requireSeller>
           <SellerAlimtalkPage />
