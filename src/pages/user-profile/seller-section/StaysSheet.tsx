@@ -79,7 +79,7 @@ export default function StaysSheet({ sellerId, onClose, onOpen }: {
         <button
           type="button"
           onClick={() => onOpen('/seller/stays/new')}
-          className="w-full h-12 rounded-xl bg-brand text-white text-[15px] font-bold active:opacity-80 inline-flex items-center justify-center gap-1.5"
+          className="w-full h-12 rounded-xl bg-brand text-white text-[15px] font-bold active:opacity-80 inline-flex items-center justify-center gap-2"
         >
           <Plus className="w-4 h-4" aria-hidden="true" />
           숙소 등록
@@ -94,7 +94,7 @@ export default function StaysSheet({ sellerId, onClose, onOpen }: {
         )}
 
         {!loading && failed && (
-          <p className="py-10 text-center text-[13.5px] text-gray-500 dark:text-gray-400">
+          <p className="py-10 text-center text-[13px] text-gray-500 dark:text-gray-400">
             지금은 불러올 수 없어요. 잠시 후 다시 열어 주세요.
           </p>
         )}
@@ -102,8 +102,8 @@ export default function StaysSheet({ sellerId, onClose, onOpen }: {
         {!loading && !failed && stays.length === 0 && (
           <div className="py-8 text-center">
             <Building2 className="w-7 h-7 mx-auto text-gray-300 dark:text-gray-600" aria-hidden="true" />
-            <p className="mt-2.5 text-[14px] font-bold text-gray-900 dark:text-white">아직 등록한 숙소가 없어요</p>
-            <p className="mt-1 text-[12.5px] leading-[1.6] text-gray-500 dark:text-gray-400">
+            <p className="mt-3 text-[15px] font-bold text-gray-900 dark:text-white">아직 등록한 숙소가 없어요</p>
+            <p className="mt-1 text-[13px] leading-[1.6] text-gray-500 dark:text-gray-400">
               숙소는 객실과 날짜별 재고가 있어서 이용권과 따로 관리해요.<br />
               아래에서 등록하면 여기 목록에 나타나요.
             </p>
@@ -121,11 +121,11 @@ export default function StaysSheet({ sellerId, onClose, onOpen }: {
                   key={s.id}
                   type="button"
                   onClick={() => onOpen(`/seller/stays/${s.id}`)}
-                  className={`w-full flex items-center gap-3 px-3.5 py-3 text-left border-b border-rule last:border-b-0 active:opacity-70 ${s.isActive ? '' : 'opacity-55'}`}
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-left border-b border-rule last:border-b-0 active:opacity-70 ${s.isActive ? '' : 'opacity-55'}`}
                 >
                   <span className="flex-1 min-w-0">
-                    <span className="block text-[14px] font-semibold text-gray-900 dark:text-white truncate">{s.name}</span>
-                    <span className="block text-[12px] text-gray-500 dark:text-gray-400 mt-0.5 truncate tabular-nums">
+                    <span className="block text-[15px] font-semibold text-gray-900 dark:text-white truncate">{s.name}</span>
+                    <span className="block text-[12px] text-gray-500 dark:text-gray-400 mt-1 truncate tabular-nums">
                       {[s.type, s.region].filter(Boolean).join(' · ')}
                       {s.rooms > 0 ? ` · 객실 ${formatNumber(s.rooms)}` : ''}
                       {s.bookings > 0 ? ` · 예약 ${formatNumber(s.bookings)}` : ''}

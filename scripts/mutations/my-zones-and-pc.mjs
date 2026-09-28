@@ -12,7 +12,7 @@ export default [
   {
     name: '🧭 구역 제목이 본문 라벨 크기로 되돌아간다 (제목이 파는 쪽 신호를 못 한다)',
     file: 'src/pages/user-profile/SellerSection.tsx',
-    find: 'className="text-[25px] leading-tight font-extrabold tracking-[-0.03em] text-gray-900 dark:text-white">내 가게</h2>',
+    find: 'className="text-[24px] leading-tight font-extrabold tracking-[-0.03em] text-gray-900 dark:text-white">내 가게</h2>',
     replace: 'className="text-[13px] font-extrabold text-gray-900 dark:text-white">내 가게</h2>',
     test: TEST,
     why: '이름 E 의 읽는 규칙은 "제목이 붙은 구역이 파는 쪽" 하나다 — 제목이 본문과 같은 크기면 규칙 자체가 안 보인다.',

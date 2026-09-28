@@ -117,7 +117,7 @@ export default function RefundSheet({ sellerId, onClose, onDone }: {
       >
         <div className="px-4 py-4">
           <p className="text-[15px] font-bold text-gray-900 dark:text-white">{picked.title}</p>
-          <p className="text-[12.5px] text-gray-500 dark:text-gray-400 mt-1">{picked.buyer} · 주문번호 {picked.orderNumber}</p>
+          <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">{picked.buyer} · 주문번호 {picked.orderNumber}</p>
 
           <p className="text-[13px] leading-[1.6] text-gray-500 dark:text-gray-400 mt-4 pt-4 border-t border-rule">
             결제는 <span className="font-bold text-gray-900 dark:text-white">바로 취소</span>되고 손님에게 돌아갑니다.
@@ -125,15 +125,15 @@ export default function RefundSheet({ sellerId, onClose, onDone }: {
           </p>
 
           <label className="block mt-4">
-            <span className="block text-[13px] font-bold text-gray-900 dark:text-white mb-1.5">환불 사유</span>
+            <span className="block text-[13px] font-bold text-gray-900 dark:text-white mb-2">환불 사유</span>
             <textarea
               value={reason}
               onChange={(e) => setReason(e.target.value.slice(0, 200))}
               rows={3}
               placeholder="예: 재료 소진으로 준비가 어려워 취소합니다"
-              className="w-full rounded-xl border border-rule-strong bg-transparent px-3 py-2.5 text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
+              className="w-full rounded-xl border border-rule-strong bg-transparent px-3 py-2 text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
             />
-            <span className="block text-[11.5px] text-gray-500 dark:text-gray-400 mt-1">
+            <span className="block text-[12px] text-gray-500 dark:text-gray-400 mt-1">
               손님에게 전달되고 기록에 남습니다. 비우면 &lsquo;판매자 주문 취소&rsquo;로 기록됩니다.
             </span>
           </label>
@@ -151,12 +151,12 @@ export default function RefundSheet({ sellerId, onClose, onDone }: {
         </div>
       )}
       {failed && (
-        <p className="px-4 py-8 text-center text-[13.5px] text-gray-500 dark:text-gray-400">
+        <p className="px-4 py-8 text-center text-[13px] text-gray-500 dark:text-gray-400">
           주문을 불러오지 못했습니다. 잠시 후 다시 열어 주세요.
         </p>
       )}
       {rows?.length === 0 && (
-        <p className="px-4 py-8 text-center text-[13.5px] text-gray-500 dark:text-gray-400">
+        <p className="px-4 py-8 text-center text-[13px] text-gray-500 dark:text-gray-400">
           환불할 수 있는 결제 완료 주문이 없습니다.
         </p>
       )}
@@ -165,11 +165,11 @@ export default function RefundSheet({ sellerId, onClose, onDone }: {
           key={o.orderNumber}
           type="button"
           onClick={() => setPicked(o)}
-          className="w-full flex items-start gap-3 px-4 py-3.5 text-left border-b border-rule active:opacity-70"
+          className="w-full flex items-start gap-3 px-4 py-3 text-left border-b border-rule active:opacity-70"
         >
           <span className="flex-1 min-w-0">
-            <span className="block text-[14px] font-semibold text-gray-900 dark:text-white truncate">{o.title}</span>
-            <span className="block text-[12px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+            <span className="block text-[15px] font-semibold text-gray-900 dark:text-white truncate">{o.title}</span>
+            <span className="block text-[12px] text-gray-500 dark:text-gray-400 mt-1 truncate">
               {o.buyer}{o.when ? ` · ${o.when}` : ''}
             </span>
           </span>

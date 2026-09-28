@@ -25,7 +25,9 @@ const ko = JSON.parse(readFileSync('public/locales/ko/translation.json', 'utf8')
 
 describe('이름 E — 제목이 붙은 구역이 파는 쪽', () => {
   it('판매 구역에 25px 구역 제목이 있다 (본문 라벨과 구별돼야 규칙이 선다)', () => {
-    expect(SELLER).toMatch(/text-\[25px\][^"]*">내 가게<\/h2>/)
+    // 🔁 2026-09-28 재조준: 25 → 24px(여섯 단계 스케일 · 4의 배수). 불변식은 *본문 라벨(12·13·15)과
+    //   확실히 구별되는 큰 제목* 이고 25 라는 값이 아니다 — 24 는 그 아래 단계(17)와도 한참 벌어진다.
+    expect(SELLER).toMatch(/text-\[24px\][^"]*">내 가게<\/h2>/)
   })
 
   it('판매 구역에만 브랜드 띠가 있다 (구역 전체 길이)', () => {

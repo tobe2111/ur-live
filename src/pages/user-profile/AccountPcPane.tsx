@@ -31,7 +31,7 @@ type MyVoucher = NonNullable<ReturnType<typeof useMyVouchers>['data']>[number]
 type Counts = { voucher: number | null; gifticon: number | null; coupon?: number | null; wish?: number | null }
 
 const KPI_CLS = 'rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift p-5 text-left active:opacity-90'
-const TILE_CLS = 'flex items-center gap-3 rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift px-4 py-3.5 text-left text-[13.5px] font-semibold text-gray-900 dark:text-white active:opacity-90'
+const TILE_CLS = 'flex items-center gap-3 rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift px-4 py-3 text-left text-[13px] font-semibold text-gray-900 dark:text-white active:opacity-90'
 
 function dday(expiresAt?: string): number | null {
   if (!expiresAt) return null
@@ -79,7 +79,7 @@ export default function AccountPcPane({ counts, userName, profileImage, onEditPr
   return (
     <div className="space-y-5 pb-2">
       {/* ① 프로필 한 줄 카드 — 보라 그라디언트 띠 대신 */}
-      <div className="flex items-center gap-3.5 rounded-2xl bg-surface shadow-lift px-5 py-4">
+      <div className="flex items-center gap-3 rounded-2xl bg-surface shadow-lift px-5 py-4">
         <img
           src={profileImage ? cfImage(profileImage, { width: 96 }) : `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=1C69EF&color=ffffff&size=96`}
           alt=""
@@ -92,7 +92,7 @@ export default function AccountPcPane({ counts, userName, profileImage, onEditPr
         />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-[16px] font-extrabold text-gray-900 dark:text-white truncate tracking-[-0.01em]">{userName}</p>
+            <p className="text-[17px] font-extrabold text-gray-900 dark:text-white truncate tracking-[-0.01em]">{userName}</p>
             <SellerSwitchInline seats={sellerSeats} />
           </div>
           <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">{localStorage.getItem('user_email') || ''}</p>
@@ -100,7 +100,7 @@ export default function AccountPcPane({ counts, userName, profileImage, onEditPr
         <button type="button" onClick={() => navigate('/notifications')} aria-label={t('userProfile.ariaNotifications')} className="w-9 h-9 rounded-full bg-gray-100 dark:bg-white/[0.06] flex items-center justify-center text-gray-700 dark:text-white shrink-0">
           <Bell className="w-4 h-4" aria-hidden="true" />
         </button>
-        <button type="button" onClick={onEditProfile} className="inline-flex items-center gap-0.5 text-[13px] font-bold text-brand-text shrink-0">
+        <button type="button" onClick={onEditProfile} className="inline-flex items-center gap-1 text-[13px] font-bold text-brand-text shrink-0">
           {t('userProfile.editProfile', { defaultValue: '프로필 편집' })} <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />
         </button>
       </div>
@@ -110,10 +110,10 @@ export default function AccountPcPane({ counts, userName, profileImage, onEditPr
         {kpis.map(k => (
           <button key={k.path} type="button" onClick={() => navigate(k.path)} className={KPI_CLS}>
             <p className="text-[12px] text-gray-500 dark:text-gray-400">{k.label}</p>
-            <p className="mt-1.5 text-[28px] font-extrabold leading-none tracking-[-0.02em] text-gray-900 dark:text-white tabular-nums">
-              {k.value}<span className="ml-1 text-[14px] font-bold text-gray-400 dark:text-gray-500">{k.unit}</span>
+            <p className="mt-2 text-[28px] font-extrabold leading-none tracking-[-0.02em] text-gray-900 dark:text-white tabular-nums">
+              {k.value}<span className="ml-1 text-[15px] font-bold text-gray-400 dark:text-gray-500">{k.unit}</span>
             </p>
-            <p className="mt-3 text-[12.5px] font-bold text-brand-text">{k.link} ›</p>
+            <p className="mt-3 text-[13px] font-bold text-brand-text">{k.link} ›</p>
           </button>
         ))}
       </div>
@@ -127,7 +127,7 @@ export default function AccountPcPane({ counts, userName, profileImage, onEditPr
       {/* ④ 곧 쓸 이용권 — 티켓 카드 (지갑·결제 완료와 같은 부품). 없으면 이 절 자체를 그리지 않는다. */}
       {soon.length > 0 && (
         <div>
-          <h5 className="text-[14px] font-extrabold text-gray-900 dark:text-white mb-3">{t('my.soonVouchers', { defaultValue: '곧 쓸 이용권' })}</h5>
+          <h5 className="text-[15px] font-extrabold text-gray-900 dark:text-white mb-3">{t('my.soonVouchers', { defaultValue: '곧 쓸 이용권' })}</h5>
           <div className="grid grid-cols-3 gap-4">
             {soon.map(v => {
               const d = dday(v.expires_at)
@@ -141,10 +141,10 @@ export default function AccountPcPane({ counts, userName, profileImage, onEditPr
                   muted={d != null && d > 30}
                   onClick={() => navigate('/my-vouchers')}
                 >
-                  <div className="px-4 pt-3 pb-3.5">
-                    {store && <p className="text-[11.5px] text-gray-500 dark:text-gray-400 truncate">{store}</p>}
-                    <p className="text-[14px] font-bold text-gray-900 dark:text-white truncate">{name}</p>
-                    <p className="mt-2 text-[12.5px] font-bold text-brand-text">{t('my.useVoucher', { defaultValue: '사용하기' })} ›</p>
+                  <div className="px-4 pt-3 pb-4">
+                    {store && <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">{store}</p>}
+                    <p className="text-[15px] font-bold text-gray-900 dark:text-white truncate">{name}</p>
+                    <p className="mt-2 text-[13px] font-bold text-brand-text">{t('my.useVoucher', { defaultValue: '사용하기' })} ›</p>
                   </div>
                 </TicketCard>
               )

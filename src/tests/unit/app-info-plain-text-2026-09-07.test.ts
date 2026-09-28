@@ -59,7 +59,10 @@ describe('마이페이지 앱 정보 — 줄글 (안 2)', () => {
     const open = body.lastIndexOf('<p ', at)
     expect(open, '버전을 감싼 <p> 를 못 찾았다').toBeGreaterThan(0)
     const tag = body.slice(open, body.indexOf('>', open))
-    expect(tag, '버전 줄이 11px 잔글씨가 아니다').toContain('text-[11px]')
+    // 🔁 2026-09-28 재조준: 마이가 **여섯 단계 스케일**(28/24/17/15/13/12)로 정리되면서 11px 이
+    //   사라졌다(스케일 바닥은 12). 지키려던 것은 *잔글씨 한 줄*이지 `11` 이라는 숫자가 아니다 —
+    //   앵커만 스케일 바닥으로 옮긴다. 가드: `my-type-scale-2026-09-28`.
+    expect(tag, '버전 줄이 스케일 바닥(12px) 잔글씨가 아니다').toContain('text-[12px]')
     expect(tag, '버전 줄이 가운데 정렬이 아니다 — 위의 링크 줄과 어긋난다').toContain('text-center')
   })
 

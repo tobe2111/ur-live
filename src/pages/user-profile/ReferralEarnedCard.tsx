@@ -36,14 +36,14 @@ export default function ReferralEarnedCard() {
   return (
     <Link
       to="/influencer/dashboard"
-      className="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-gray-200 dark:active:bg-white/[0.06]"
+      className="w-full flex items-center gap-3 px-4 py-3 text-left active:bg-gray-200 dark:active:bg-white/[0.06]"
     >
       <Users className="w-[18px] h-[18px] text-gray-500 dark:text-gray-400" aria-hidden="true" />
       <span className="flex-1 min-w-0">
         <span className="block text-[13px] font-medium text-gray-900 dark:text-white">
           {hasEarned ? t('my.referralEarnedTitle', { defaultValue: '추천 적립 현황' }) : t('my.referralStartTitle', { defaultValue: '상품 추천하고 적립받기' })}
         </span>
-        <span className="block text-[10px] text-gray-500 dark:text-white/45 mt-0.5">
+        <span className="block text-[12px] text-gray-500 dark:text-white/45 mt-1">
           {hasEarned
             ? t('my.referralCountN', { n: stats?.total_referrals ?? 0, defaultValue: `추천 ${stats?.total_referrals ?? 0}건` })
             : t('my.referralStartSub', { defaultValue: '내 SNS 공유 → 친구 결제 시 자동 적립' })}

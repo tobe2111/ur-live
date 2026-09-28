@@ -23,6 +23,7 @@ import { useEffect, useState } from 'react'
 import { formatNumber } from '@/utils/format'
 import { getUserIdSync } from '@/utils/auth'
 import DealBalanceCard from '@/pages/vouchers/DealBalanceCard'
+import { GroupLabel } from './list-grammar'
 
 export default function TeamPointsCard() {
   const [balance, setBalance] = useState<number | null>(null)
@@ -56,8 +57,15 @@ export default function TeamPointsCard() {
     ? `무상 리워드 ${formatNumber(freeBalance)}딜 포함 · 환급 가능 ${formatNumber(Math.max(0, balance - freeBalance))}딜`
     : undefined
 
+  /**
+   * 🏷️ 2026-09-28 (대표 지시) — **그룹 라벨을 붙였다.**
+   *   잔액이 0 이면 이 부품은 44px 한 줄 바가 되는데, 위아래가 전부 라벨 달린 그룹(`매일`·`가끔`·
+   *   `이용권·자산`…)이라 **이 줄만 어디에도 안 속한 채 떠 있었다**(대표가 지적한 그 고아 바).
+   *   숨기지 않는 이유: 딜을 모으는 동선이 마이에서 사라진다. 라벨 하나면 같은 문법 안으로 들어온다.
+   */
   return (
-    <div className="ur-content-medium px-4 lg:px-8 py-3">
+    <div className="ur-content-medium px-4 lg:px-8">
+      <GroupLabel>{'내 딜'}</GroupLabel>
       <DealBalanceCard
         balance={balance}
         loggedIn={!!getUserIdSync()}

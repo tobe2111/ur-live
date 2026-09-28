@@ -34,7 +34,7 @@ export const LIST_PLATE_CLS = 'rounded-2xl bg-surface shadow-lift overflow-hidde
 
 /** 그룹 라벨 — 판 **밖** 위. 작고 회색이라 블록 라벨(잉크)과 층이 갈린다. */
 export function GroupLabel({ children }: { children: React.ReactNode }) {
-  return <div className="mt-3 mb-1.5 px-1 text-[12px] font-bold text-gray-400">{children}</div>
+  return <div className="mt-6 mb-2 px-1 text-[12px] font-bold text-gray-400">{children}</div>
 }
 
 /** 판 — 그룹 하나당 하나. 한 판에 여러 그룹을 담지 않는다(그 순간 그룹 라벨이 판 안으로 들어간다). */
@@ -42,8 +42,14 @@ export function ListPlate({ className, children }: { className?: string; childre
   return <div className={className ? `${className} ${LIST_PLATE_CLS}` : LIST_PLATE_CLS}>{children}</div>
 }
 
+/**
+ * 📐 행 — 4px 격자 위에 선다. `min-h-[56px]` 은 **설명 없는 줄이 쪼그라들지 않게** 하는 바닥이다
+ *   (설명 있는 줄은 자연히 66px). 높이를 아예 고정하지 않는 이유: 긴 매장 이름이 두 줄이 되는 날
+ *   글자가 잘려 나간다 — 바닥만 두고 위로는 내용이 정한다.
+ * 🎯 44px 은 터치 최소치이고 56px 은 **읽을 수 있는** 최소치다 — 대기업 앱 목록 행이 대개 56~64 다.
+ */
 const ROW_CLS =
-  'w-full flex items-center gap-3 px-4 py-3.5 text-left border-b border-rule last:border-b-0 active:opacity-70 disabled:opacity-50'
+  'w-full flex items-center gap-3 px-4 py-3 min-h-[56px] text-left border-b border-rule last:border-b-0 active:opacity-70 disabled:opacity-50'
 
 export function ListRow({ icon, label, hint, count, busy, onClick, to }: {
   icon: React.ReactNode
@@ -69,12 +75,12 @@ export function ListRow({ icon, label, hint, count, busy, onClick, to }: {
     <>
       <span className="shrink-0 text-gray-500 dark:text-gray-400">{icon}</span>
       <span className="flex-1 min-w-0">
-        <span className="block text-[14px] font-bold text-gray-900 dark:text-white">{label}</span>
-        {hint && <span className="block text-[12px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">{hint}</span>}
+        <span className="block text-[15px] font-bold text-gray-900 dark:text-white">{label}</span>
+        {hint && <span className="block text-[13px] text-gray-500 dark:text-gray-400 mt-1 truncate">{hint}</span>}
       </span>
       {count != null && (
         <span
-          className={`shrink-0 text-[13px] font-bold tabular-nums ${
+          className={`shrink-0 text-[15px] font-bold tabular-nums ${
             count > 0 ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'
           }`}
         >

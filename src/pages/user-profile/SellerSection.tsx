@@ -27,7 +27,6 @@
  */
 import { Suspense, lazy, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { BarChart3, ChevronDown, ChevronRight, ClipboardList, Handshake, Loader2, MessageSquare, ScanLine, Search, Store, Ticket, Wallet } from 'lucide-react'
-import { TicketCard } from '@/components/ticket/TicketCard'
 import { formatNumber } from '@/utils/format'
 import { currentSeatId, onSeatChange, switchSeat } from '@/lib/seller-seat'
 import { clearMyReturn, withMyReturn } from '@/lib/seller-return'
@@ -38,7 +37,7 @@ import PendingOrders from './seller-section/PendingOrders'
 // 🧾 2026-09-28: 묶음 라벨·줄은 손님 쪽 목록과 **같은 부품**이다(`list-grammar`).
 //   종전엔 이 파일 안에 `GroupLabel`/`ToolRow` 가 따로 있었고, 손님 쪽은 또 다른 문법이라
 //   같은 화면에 목록 문법이 두 벌이었다 — 대표 *"허술해"*(09-28)의 실체 중 하나.
-import { GroupLabel, ListRow as ToolRow } from './list-grammar'
+import { GroupLabel, LIST_PLATE_CLS, ListRow as ToolRow } from './list-grammar'
 
 /**
  * ⏳ **시트는 전부 열 때 받는다** (2026-09-26 — 대표 *"로딩 속도를 줄이고"*).
@@ -214,7 +213,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
       <span aria-hidden="true" className="absolute left-1.5 lg:-left-3 top-4 bottom-0 w-[3px] rounded-full bg-brand" />
       {/* 섹션 머리 — 오른쪽이 곧 가게 전환(2곳 이상일 때만 누를 수 있다) */}
       <div className="flex items-center gap-2 mb-2">
-        <h2 className="text-[25px] leading-tight font-extrabold tracking-[-0.03em] text-gray-900 dark:text-white">내 가게</h2>
+        <h2 className="text-[24px] leading-tight font-extrabold tracking-[-0.03em] text-gray-900 dark:text-white">내 가게</h2>
         <div className="flex-1" />
         {stores.length >= 2 ? (
           <button
@@ -244,25 +243,37 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           ⚠️ 폰(<lg)은 `flex` 가 안 걸려 **종전과 byte-동일한 세로 배치**다. */}
       <div className="lg:flex lg:items-stretch lg:gap-3">
       <div className="lg:flex-1 lg:min-w-0">
-      <TicketCard bandLeft="오늘" bandRight={todayLabelKST()}>
+      {/* 🎨 2026-09-28 (대표 *"디자인 UI 모두 별로야. 대기업수준이 필요해"*) — **파란 밴드를 뺐다.**
+          이 카드는 `TicketCard`(파란 머리 밴드)였는데, **바로 옆·아래에 파란 사용처리 면**이 붙어
+          강조색 면이 둘 나란히 섰다. 표면 규칙 ②는 *"강조색 하나, 자리 셋 — 밴드 · 주 행동 **글자** ·
+          강조 단어"* 이고, 면이 둘이면 어느 쪽도 강조가 아니다.
+          🎫 그리고 **티켓 은유(규칙 ④)는 '산 권'의 것**이다 — 매출 숫자에 티켓 밴드를 씌운 건 부품
+             오용이었다. 여기서 주인공은 규칙 ③ 그대로 **숫자**다.
+          ⇒ 흰 판 + 회색 머리줄. 파란 면은 화면에 **하나**(사용처리 = 하루에 가장 많이 누르는 버튼)만
+            남고, 날짜·라벨은 한 글자도 안 잃었다. */}
+      <div className={LIST_PLATE_CLS}>
         <div className="px-4 pt-4 pb-4">
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="text-[12px] font-bold text-gray-400">오늘</span>
+            <span className="text-[12px] text-gray-400 tabular-nums">{todayLabelKST()}</span>
+          </div>
           {/* 🖥️ 2026-09-28 `whitespace-nowrap`: PC 가 2열이 되면서 이 카드가 ≈340px 로 좁아졌고
               `412,000` 과 `원` 이 **두 줄로 갈라졌다**(금액은 한 덩어리로 읽혀야 한다). */}
-          <p className="text-[30px] font-extrabold tabular-nums leading-none whitespace-nowrap text-gray-900 dark:text-white">
+          <p className="mt-2 text-[28px] font-extrabold tabular-nums leading-none whitespace-nowrap text-gray-900 dark:text-white">
             {formatNumber(store.today_revenue)}
-            <span className="text-[16px] font-bold text-gray-500 dark:text-gray-400 ml-1">원</span>
+            <span className="text-[15px] font-bold text-gray-500 dark:text-gray-400 ml-1">원</span>
           </p>
           <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-2">
             주문 {formatNumber(store.today_orders)}건
             {store.pending > 0 && <> · 확인 대기 {formatNumber(store.pending)}건</>}
           </p>
           {note && (
-            <p className="text-[12.5px] leading-[1.55] text-gray-500 dark:text-gray-400 mt-3 pt-3 border-t border-rule">
+            <p className="text-[13px] leading-[1.55] text-gray-500 dark:text-gray-400 mt-3 pt-3 border-t border-rule">
               {note}
             </p>
           )}
         </div>
-      </TicketCard>
+      </div>
       </div>
 
       {/* 🎟️ 사용처리 — 손님 앞에서 하루에 가장 많이 누르는 버튼이라 일감보다 위다.
@@ -277,7 +288,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
         <ScanLine className="w-6 h-6 shrink-0" aria-hidden="true" />
         <span className="flex-1 min-w-0">
           <span className="block text-[15px] font-extrabold">이용권 사용처리</span>
-          <span className="block text-[11.5px] text-white/80 mt-0.5">손님 QR을 찍으세요</span>
+          <span className="block text-[12px] text-white/80 mt-1">손님 QR을 찍으세요</span>
         </span>
         {entering
           ? <Loader2 className="w-5 h-5 shrink-0 animate-spin" aria-hidden="true" />
@@ -305,7 +316,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           onClick={() => enterSeat()}
           className="w-full flex items-center gap-2 mt-3 px-4 h-14 rounded-2xl bg-surface shadow-lift text-left active:opacity-70 disabled:opacity-50"
         >
-          <span className="flex-1 min-w-0 text-[14px] font-bold text-gray-900 dark:text-white truncate">
+          <span className="flex-1 min-w-0 text-[15px] font-bold text-gray-900 dark:text-white truncate">
             주문 확인{store.pending > 0 ? ` ${formatNumber(store.pending)}건` : ''}
           </span>
           {entering

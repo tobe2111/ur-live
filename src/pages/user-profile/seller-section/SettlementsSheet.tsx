@@ -91,15 +91,15 @@ export default function SettlementsSheet({ sellerId, onClose }: {
 
       {/* 실패를 빈 목록으로 그리면 "정산 내역 없음" 이라는 거짓말이 된다(머니 표면 룰). */}
       {failed && (
-        <p className="px-4 py-10 text-center text-[13.5px] text-gray-500 dark:text-gray-400">
+        <p className="px-4 py-10 text-center text-[13px] text-gray-500 dark:text-gray-400">
           정산 내역을 불러오지 못했어요. 잠시 후 다시 열어 주세요.
         </p>
       )}
 
       {!loading && !failed && rows.length === 0 && (
         <div className="px-4 py-10 text-center">
-          <p className="text-[14px] font-bold text-gray-900 dark:text-white">아직 정산 내역이 없어요</p>
-          <p className="mt-1.5 text-[13px] leading-[1.6] text-gray-500 dark:text-gray-400">
+          <p className="text-[15px] font-bold text-gray-900 dark:text-white">아직 정산 내역이 없어요</p>
+          <p className="mt-2 text-[13px] leading-[1.6] text-gray-500 dark:text-gray-400">
             출금을 신청하면 여기에 쌓입니다.<br />신청 → 확인 → 지급 순서로 상태가 바뀌어요.
           </p>
         </div>
@@ -110,11 +110,11 @@ export default function SettlementsSheet({ sellerId, onClose }: {
           {rows.map((r) => {
             const status = String(r.status ?? '')
             return (
-              <div key={r.id} className="rounded-xl bg-wash px-3.5 py-3">
+              <div key={r.id} className="rounded-xl bg-wash px-4 py-3">
                 <div className="flex items-baseline gap-2">
                   <span className="text-[17px] font-extrabold tabular-nums text-gray-900 dark:text-white">
                     {formatNumber(r.settlement_amount)}
-                    <span className="text-[12.5px] font-bold text-gray-500 dark:text-gray-400 ml-0.5">원</span>
+                    <span className="text-[13px] font-bold text-gray-500 dark:text-gray-400 ml-0.5">원</span>
                   </span>
                   <span className="flex-1" />
                   <span className="text-[12px] font-bold text-gray-500 dark:text-gray-400">
@@ -129,7 +129,7 @@ export default function SettlementsSheet({ sellerId, onClose }: {
                 </p>
                 {/* 매출·수수료는 **서버가 계산한 값** 그대로. 화면에서 다시 빼지 않는다. */}
                 {(r.total_sales ?? 0) > 0 && (
-                  <p className="mt-0.5 text-[12px] text-gray-500 dark:text-gray-400">
+                  <p className="mt-1 text-[12px] text-gray-500 dark:text-gray-400">
                     매출 {formatNumber(r.total_sales)}원 · 수수료 {formatNumber(r.commission_amount)}원
                   </p>
                 )}
@@ -142,7 +142,7 @@ export default function SettlementsSheet({ sellerId, onClose }: {
               type="button"
               disabled={loading}
               onClick={() => load(rows.length)}
-              className="w-full h-11 rounded-xl bg-wash text-[13.5px] font-bold text-gray-900 dark:text-white active:opacity-70 disabled:opacity-50"
+              className="w-full h-11 rounded-xl bg-wash text-[13px] font-bold text-gray-900 dark:text-white active:opacity-70 disabled:opacity-50"
             >
               {loading ? '불러오는 중…' : `더 보기 (${formatNumber(total - rows.length)}건)`}
             </button>

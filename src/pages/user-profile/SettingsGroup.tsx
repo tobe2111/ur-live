@@ -26,15 +26,15 @@ export default function SettingsGroup({ children }: { children: ReactNode }) {
         type="button"
         onClick={toggle}
         aria-expanded={open}
-        className="w-full flex items-center justify-between rounded-2xl px-4 py-3.5 bg-surface active:scale-[0.99] transition-transform"
+        className="w-full flex items-center justify-between rounded-2xl px-4 py-3 bg-surface active:scale-[0.99] transition-transform"
       >
         <span className="flex items-center gap-2 min-w-0">
           <Settings className="w-[18px] h-[18px] text-gray-500 dark:text-white/55" aria-hidden="true" />
           <span className="text-left">
-            <span className="block text-[13px] font-bold text-gray-900 dark:text-white">
+            <span className="block text-[15px] font-bold text-gray-900 dark:text-white">
               {t('my.settingsGroupTitle', { defaultValue: '설정 · 계정' })}
             </span>
-            <span className="block text-[10px] text-gray-500 dark:text-white/45 mt-0.5">
+            <span className="block text-[12px] text-gray-500 dark:text-white/45 mt-1">
               {t('my.settingsGroupSub', { defaultValue: '알림 · 화면 테마 · 언어 · 앱 정보' })}
             </span>
           </span>

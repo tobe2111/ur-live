@@ -68,7 +68,7 @@ export function NotificationToggleSection() {
   }
 
   const Toggle = ({ icon, label, value, onChange }: { icon: React.ReactNode; label: string; value: boolean; onChange: () => void }) => (
-    <div className="flex items-center gap-3 px-3.5 py-3" style={{ borderTop: 'var(--toggle-border, none)' }}>
+    <div className="flex items-center gap-3 px-4 py-3" style={{ borderTop: 'var(--toggle-border, none)' }}>
       <span className="text-gray-900 dark:text-white/55">{icon}</span>
       <span className="flex-1 text-[13px] text-gray-900 dark:text-white">{label}</span>
       <button
@@ -177,30 +177,30 @@ export function AppVersionSection() {
    */
   return (
     <div className="ur-content-medium px-4 lg:px-8 pt-5">
-      <p className="text-[11px] text-gray-400 dark:text-white/30 text-center tabular-nums">
+      <p className="text-[12px] text-gray-400 dark:text-white/30 text-center tabular-nums">
         {t('accountSettings.appName', { defaultValue: '유어딜' })} v{APP_VERSION}
         {BUILD_HASH && <span className="tabular-nums"> ({BUILD_HASH})</span>}
       </p>
 
       {loading ? (
-        <p className="mt-1 text-[11px] text-gray-500 dark:text-white/40 text-center">
+        <p className="mt-1 text-[12px] text-gray-500 dark:text-white/40 text-center">
           {t('accountSettings.checking', { defaultValue: '확인 중…' })}
         </p>
       ) : hasUpdate ? (
         <>
-          <p className="mt-1 text-[11px] font-semibold text-brand-text text-center">
+          <p className="mt-1 text-[12px] font-semibold text-brand-text text-center">
             {t('accountSettings.updateAvailable', { defaultValue: '새 버전이 나왔어요' })}
           </p>
           <button
             type="button"
             onClick={handleUpdate}
-            className="mt-3 w-full py-3 rounded-xl bg-brand hover:bg-brand-dark text-white text-sm font-bold transition-colors"
+            className="mt-3 w-full py-3 rounded-xl bg-brand hover:bg-brand-dark text-white text-[15px] font-bold transition-colors"
           >
             {t('accountSettings.updateNow', { defaultValue: '지금 업데이트' })}
           </button>
         </>
       ) : isLatest ? (
-        <p className="mt-1 text-[11px] text-gray-500 dark:text-white/40 text-center">
+        <p className="mt-1 text-[12px] text-gray-500 dark:text-white/40 text-center">
           {t('accountSettings.isLatest', { defaultValue: '최신 버전이에요' })}
         </p>
       ) : (
@@ -209,7 +209,7 @@ export function AppVersionSection() {
           <button
             type="button"
             onClick={handleCheck}
-            className="text-[11px] text-gray-500 dark:text-white/40 underline underline-offset-4 decoration-gray-300 dark:decoration-white/20 active:text-gray-800 dark:active:text-white/75"
+            className="text-[12px] text-gray-500 dark:text-white/40 underline underline-offset-4 decoration-gray-300 dark:decoration-white/20 active:text-gray-800 dark:active:text-white/75"
           >
             {checking
               ? t('accountSettings.checking', { defaultValue: '확인 중…' })
@@ -295,12 +295,12 @@ export function ProfileEditModal({ isOpen, onClose, initial, onSaved }: {
     <div className="fixed inset-0 z-[10100] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose} role="presentation">
       <div className="bg-surface rounded-2xl w-full max-w-md p-6 shadow-2xl mb-16 sm:mb-0" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white">{t('accountSettings.editProfile', { defaultValue: '프로필 수정' })}</h3>
+          <h3 className="text-[17px] font-bold text-gray-900 dark:text-white">{t('accountSettings.editProfile', { defaultValue: '프로필 수정' })}</h3>
           <button onClick={onClose} aria-label="닫기"><X className="w-5 h-5 text-gray-500 dark:text-gray-400" /></button>
         </div>
         <div className="space-y-4">
           <div>
-            <label htmlFor="account-name" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1.5">
+            <label htmlFor="account-name" className="block text-[15px] font-medium text-gray-700 dark:text-gray-200 mb-2">
               {t('accountSettings.editName', { defaultValue: '이름' })} <span className="text-red-500" aria-hidden="true">*</span>
             </label>
             <input
@@ -311,7 +311,7 @@ export function ProfileEditModal({ isOpen, onClose, initial, onSaved }: {
             />
           </div>
           <div>
-            <label htmlFor="account-phone" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1.5">
+            <label htmlFor="account-phone" className="block text-[15px] font-medium text-gray-700 dark:text-gray-200 mb-2">
               {t('accountSettings.editPhone', { defaultValue: '전화번호' })} <span className="text-red-500" aria-hidden="true">*</span>
             </label>
             <input
@@ -321,7 +321,7 @@ export function ProfileEditModal({ isOpen, onClose, initial, onSaved }: {
               className="w-full px-4 py-3 bg-surface border border-gray-300 dark:border-[#2C2F35] rounded-xl text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-gray-900 dark:focus:ring-white focus:border-transparent outline-none"
               placeholder="010-0000-0000"
             />
-            <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+            <p className="mt-1 text-[12px] text-gray-500 dark:text-gray-400">
               기프티쇼 교환권 MMS 발송 / 알림톡 발송 용도. 회원 탈퇴 시까지 보유.
             </p>
           </div>

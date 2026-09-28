@@ -62,7 +62,7 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
       {/* 🏷️ 블록 라벨 — 대표 확정 **이름 E**(2026-09-28): 손님 쪽엔 25px 구역 제목을 두지 않는다
           (제목이 붙은 구역이 파는 쪽이라는 규칙이 그것 하나로 선다). 잉크색이라 아래 그룹 라벨(회색)과
           층이 갈린다. */}
-      <p className="text-[12px] font-bold text-gray-900 dark:text-white">{t('shopping.sectionTitle', { defaultValue: '내가 산 것' })}</p>
+      <p className="text-[15px] font-extrabold text-gray-900 dark:text-white">{t('shopping.sectionTitle', { defaultValue: '내가 산 것' })}</p>
       {/* 🧾 2026-09-28: 세 그룹을 **한 판**에 담고 라벨을 판 *안*에 넣던 것을, 판매 쪽(`매일`·`가끔`)과
           같은 문법으로 되돌렸다 — 판 밖 라벨 + 그룹마다 따로 판(CLAUDE.md 표면 규칙 ⑦).
           종전엔 13행이 한 덩어리라 훑을 단위가 없었고, 같은 화면의 판매 목록과 글자 크기까지 갈렸다. */}
