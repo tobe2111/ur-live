@@ -17,32 +17,28 @@
  * 시험 파일만 골라 vitest 로 돌린다(이 레포의 가드는 대부분 `readFileSync('src/…')` 로
  * 소스를 읽는 텍스트 가드라 경로가 그대로 박혀 있다 — 그래서 이 단순한 매칭이 실제로 먹는다).
  *
- * ## 🩸 2026-09-28 — `src/` 만 보고 있었다 (같은 날 두 번 값을 치렀다)
- * 이 그물은 `git diff -- src` 로 바뀐 파일을 뽑았다. 그런데 이 레포의 가드는 **`docs/` 도 읽는다** —
- * 결재함(`docs/decisions/`)·인계·`CLAUDE.md`·로케일·마이그레이션. 문서만 바꾼 푸시는
- * 선택된 시험이 **0개**라 늘 초록이었고, 깨진 건 7분 뒤 CI 가 알려 줬다. 하루에 두 번 그랬다:
- *   ① 결재 파일의 `## 선택지` 를 `###` 로 써서 어드민 파서가 0개로 읽었다
- *   ② 결재 파일에 `등급: B` 를 달았다(결재함은 C 전용)
- * 둘 다 로컬에서 **1.2초**면 알 수 있었다.
+ * ## 🩸 2026-09-28 확장 — `src/` 밖 변경도 본다 (또 값을 치렀다)
+ * 결재 파일 `docs/decisions/2026-09-28-*.md` 세 개를 올렸는데 **여기서 0건으로 건너뛰었다** —
+ * 바뀐 것이 `src/` 밖이라 애초에 후보에 없었다. 7분 뒤 CI 가 알려 줬다:
+ * `admin-decisions-parse.test.ts` 가 **그 폴더를 통째로 읽어** 모든 결재 파일의 파싱을 검사하는데,
+ * 내 파일이 한 파일에 질문 셋을 넣느라 `## 선택지`(h2) 대신 `### 선택지`(h3)를 써서 옵션이 0개였다.
  *
- * ⚠️ 그런데 단순히 "경로 매칭" 을 문서로 넓히면 안 걸린다 — 그 가드들이 본문에 들고 있는 것은
- * *파일*이 아니라 **폴더**(`docs/decisions`)다. 그래서 non-src 는 **폴더로** 매칭한다.
- * 🩸 그 폴더 검색어에 **끝 슬래시를 붙이면 안 된다.** 첫 판이 `docs/decisions/` 로 찾아
- *   `join(process.cwd(), 'docs/decisions')` 를 쓰는 `admin-decisions-parse.test.ts` 를 통째로
- *   놓쳤다 — 그리고 그게 하필 위 사고 ①을 잡는 시험이었다. 되돌려-검증이 아니었으면
- *   "이제 잡힌다" 고 믿은 채 넘어갔을 것이다(고친 그물이 반쪽이면 안 고친 것과 같다).
- * 🔴 **src 는 종전 그대로 파일 경로로만** 매칭한다. `src/pages/Foo.tsx` 의 폴더는 `src/pages/` 이고
- *   그걸로 매칭하면 시험 **225개**가 딸려 와(실측) 푸시가 터진다. non-src 폴더는 전부 저렴하다
- *   (실측: decisions 3 · handoff 1 · design 24 · locales 5 · CLAUDE.md 42 · migrations 3 · mutations 13).
+ * ⇒ 두 가지를 고쳤다:
+ *   ① 후보를 `src/` → **레포 전체**로(시험 자신은 계속 제외).
+ *   ② `src/` **밖** 경로는 파일명뿐 아니라 **그 디렉터리 문자열**로도 매칭한다 —
+ *      `docs/decisions/...md` 를 바꾸면 `'docs/decisions'` 를 읽는 시험이 걸린다.
+ *      ⚠️ `src/` 안에서는 디렉터리 매칭을 **하지 않는다**: `src/pages` 한 줄만 바꿔도 수백 개가
+ *         딸려 와 pre-push 가 느려지고, 느려지면 사람들이 끈다(이 레포가 반복해 당한 길).
  *
  * ## ⚠️ 못 잡는 것 (과신 금지)
  *  - 경로를 문자열로 안 들고 import 로만 쓰는 시험(`import X from '@/...'`) — 별칭이라 안 걸린다.
  *  - 런타임 회귀(이 레포 시험 상당수가 텍스트 검사다).
  *  - 바뀐 파일이 0개이거나 base 를 못 구하면 **아무것도 안 돌린다**(그때는 CI 가 유일한 판정).
- *  - `src/` 안에서 **폴더를 스캔하는** 가드(파일 경로가 아니라 폴더만 들고 있는 것) — 위 이유로 뺐다.
- * ⇒ 전수는 여전히 CI 담당이다. 이건 "가장 흔한 사고"를 싸게 막는 그물이다.
+ *  - `src/` 안에서 디렉터리를 통째로 읽는 시험(위 ② 가 src 를 제외하므로) — 그건 CI 담당.
+ * ⇒ 전수는 여전히 CI 담당이다. 이건 "가장 흔한 사고 하나"를 싸게 막는 그물이다.
  */
 import { execFileSync } from 'node:child_process'
+// 🔎 판정은 순수 모듈에 있다 — 그래야 시험이 문자열이 아니라 **동작**을 잰다(2026-09-28 분리, 판정 불변).
 import { searchTermsFor } from './pre-push-search-terms.mjs'
 
 const sh = (cmd, args) => execFileSync(cmd, args, { encoding: 'utf8', maxBuffer: 64 << 20 }).trim()
@@ -53,9 +49,8 @@ function changedSources() {
     try { base = sh('git', ['merge-base', ref, 'HEAD']); break } catch { /* 다음 후보 */ }
   }
   if (!base) return null   // base 를 못 구하면 판정 불가 — 조용히 건너뛴다(거짓 초록 금지).
-  // 🩸 2026-09-28: 종전엔 `-- src` 였다. 문서만 바꾼 푸시가 **아무 시험도 안 돌리고** 초록이었다.
-  const paths = ['src', 'docs', 'migrations', 'public/locales', 'scripts/mutations', 'CLAUDE.md']
-  const out = sh('git', ['diff', '--name-only', base, 'HEAD', '--', ...paths])
+  // 레포 전체를 본다 — `src/` 로 좁히면 docs/·scripts/ 를 읽는 시험이 통째로 빠진다(2026-09-28 사고).
+  const out = sh('git', ['diff', '--name-only', base, 'HEAD'])
   return out ? out.split('\n').filter((f) => f && !f.startsWith('src/tests/')) : []
 }
 
@@ -79,7 +74,7 @@ try {
 const files = hits ? hits.split('\n').filter(Boolean) : []
 
 if (files.length === 0) {
-  console.log(`⏭️  pre-push 시험: 바뀐 ${changed.length}개 파일을 참조하는 시험 없음.`)
+  console.log(`⏭️  pre-push 시험: 바뀐 ${changed.length}개 파일을 경로로 참조하는 시험 없음.`)
   process.exit(0)
 }
 

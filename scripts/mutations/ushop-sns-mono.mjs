@@ -42,8 +42,10 @@ export default [
   {
     name: '🎨 왼쪽 당김이 사라진다 (글리프 줄만 ~8px 들어가 보인다)',
     file: SRC,
-    find: '<div className="flex items-center -ml-2 empty:hidden">',
-    replace: '<div className="flex items-center empty:hidden">',
+    // 🔧 2026-09-28 재조준(e3): 헤더 재작성으로 `empty:hidden` 이 사라지고 줄 전체가 `{hasSns && …}`
+    //   로 갇혔다(더 강한 처리). 앵커가 낡아 **주입이 적용조차 안 되고 있었다** — 가드가 지키는 척만 함.
+    find: '<div className="flex items-center -ml-2 px-4 pb-3">',
+    replace: '<div className="flex items-center px-4 pb-3">',
     test: TEST,
     why: '타일이 없으면 글리프가 원 안에서 가운데라, 안 당기면 이름·소개 줄과 선이 안 맞는다.',
   },

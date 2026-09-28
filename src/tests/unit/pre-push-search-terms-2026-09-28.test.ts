@@ -18,18 +18,25 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { execFileSync } from 'node:child_process'
-import { searchTermsFor, DIR_MATCHED } from '../../../scripts/pre-push-search-terms.mjs'
+import { searchTermsFor } from '../../../scripts/pre-push-search-terms.mjs'
 
 describe('pre-push 검색어', () => {
-  it('🔴 non-src 폴더 검색어에 끝 슬래시를 붙이지 않는다 (붙이면 그날 사고를 잡던 시험을 놓쳤다)', () => {
+  it('🔴 non-src 는 파일 + 담긴 폴더, 폴더에 끝 슬래시를 붙이지 않는다', () => {
+    // 🩸 끝 슬래시를 붙이면 `join(process.cwd(), 'docs/decisions')` 를 쓰는 시험을 통째로 놓친다 —
+    //   하필 그게 그날 사고 하나를 잡던 시험이었다.
     const terms = searchTermsFor(['docs/decisions/2026-09-28-foo.md'])
-    expect(terms).toEqual(['docs/decisions'])
+    expect(terms).toEqual(['docs/decisions/2026-09-28-foo.md', 'docs/decisions'])
     for (const t of terms) expect(t.endsWith('/'), `"${t}" 에 끝 슬래시`).toBe(false)
+  })
+
+  it('🔴 최상위 한 칸(`docs`·`scripts`)은 검색어가 아니다 (너무 넓어 사실상 전수가 된다)', () => {
+    expect(searchTermsFor(['docs/CURRENT_WORK.md'])).toEqual(['docs/CURRENT_WORK.md'])
   })
 
   it('🔴 그 검색어가 실제로 결재함 가드 둘을 **전부** 고른다', () => {
     // 문자열이 아니라 **실제 시험 파일 본문**에서 찾는다 — 규약이 아니라 사실을 잰다.
-    const [term] = searchTermsFor(['docs/decisions/2026-09-28-foo.md'])
+    const term = 'docs/decisions'
+    expect(searchTermsFor(['docs/decisions/2026-09-28-foo.md'])).toContain(term)
     const dir = join(process.cwd(), 'src/tests/unit')
     const hit = readdirSync(dir)
       .filter(f => f.endsWith('.ts') || f.endsWith('.tsx'))
@@ -49,15 +56,15 @@ describe('pre-push 검색어', () => {
     expect(searchTermsFor(['CLAUDE.md'])).toEqual(['CLAUDE.md'])
   })
 
-  it('같은 폴더의 여러 파일은 검색어 하나로 합쳐진다', () => {
-    expect(searchTermsFor([
-      'docs/decisions/a.md', 'docs/decisions/b.md', 'docs/handoff/c.md',
-    ])).toEqual(['docs/decisions', 'docs/handoff'])
+  it('같은 폴더의 여러 파일이 있어도 폴더 검색어는 하나로 합쳐진다', () => {
+    const terms = searchTermsFor(['docs/decisions/a.md', 'docs/decisions/b.md', 'docs/handoff/c.md'])
+    expect(terms.filter(t => t === 'docs/decisions')).toHaveLength(1)
+    expect(terms).toContain('docs/handoff')
   })
 
-  it('🔴 이 시험이 헛돌지 않는다 — 폴더 매칭 영역이 비어 있지 않다', () => {
-    expect(DIR_MATCHED.length).toBeGreaterThan(2)
-    expect(DIR_MATCHED).toContain('docs/')
+  it('🔴 이 시험이 헛돌지 않는다 — 빈 입력에 빈 결과, 아무거나 통과시키지 않는다', () => {
+    expect(searchTermsFor([])).toEqual([])
+    expect(searchTermsFor(['src/a.ts'])).not.toContain('src')
   })
 
   it('🔴 실행 스크립트가 **문법상 돌아간다** (텍스트 가드가 못 보는 총체적 실패)', () => {
@@ -74,7 +81,8 @@ describe('pre-push 검색어', () => {
     expect(src).toContain("from './pre-push-search-terms.mjs'")
     expect(src).toContain('searchTermsFor(changed)')
     // 🔴 `-- src` 로 좁히던 종전 호출이 돌아오면 문서 변경이 다시 통째로 눈이 먼다.
-    expect(src).toContain("'docs'")
-    expect(src).not.toMatch(/'--name-only',\s*base,\s*'HEAD',\s*'--',\s*'src'\s*\]/)
+    //    지금은 **경로 필터 없이** 레포 전체를 본다(main 이 채택한 더 넓은 판정).
+    expect(src).toContain("['diff', '--name-only', base, 'HEAD']")
+    expect(src).not.toMatch(/'--name-only',\s*base,\s*'HEAD',\s*'--'/)
   })
 })

@@ -7,12 +7,9 @@
  * 여기서 계약을 명시한다 — `guard-mutations-scope.d.mts` 와 같은 처방.
  */
 
-/** 가드가 본문에 *폴더*를 들고 있는 영역 — 여기만 폴더로 매칭한다. */
-export declare const DIR_MATCHED: string[]
-
 /**
  * 바뀐 파일 경로들 → pre-push 그물이 시험 본문에서 찾을 **검색어**(중복 제거).
  *
- * `src/` 는 파일 경로 그대로, non-src 는 담긴 폴더(**끝 슬래시 없이**), 루트 파일은 그대로.
+ * 파일 경로는 언제나 포함. `src/` 밖이면 담긴 폴더도(**끝 슬래시 없이**, 최상위 한 칸은 제외).
  */
 export declare function searchTermsFor(files: string[]): string[]

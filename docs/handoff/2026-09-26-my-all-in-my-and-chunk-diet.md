@@ -440,24 +440,40 @@ node scripts/visual-preview.mjs --route=/user/profile --auth=user --stores=2    
 `docs/` 도 읽는데(결재함·인계·`CLAUDE.md`·로케일·마이그레이션) **문서만 바꾼 푸시는 선택된 시험이
 0개**라 늘 초록이었다. 빨간불이 아니라 **부재**다 — 이 레포가 반복해 당한 그 클래스.
 
-### 수리
+### 🔀 그런데 **다른 세션이 같은 날 같은 버그를 먼저 고쳐 머지했다** (#1539 경유)
 
-- `changedSources()` 를 `src` + `docs` + `migrations` + `public/locales` + `scripts/mutations`
-  + `CLAUDE.md` 로 확장
-- **non-src 는 담긴 폴더로 매칭** — 그쪽 가드는 본문에 파일이 아니라 폴더를 들고 있다
-- **`src` 는 종전 그대로 파일 경로로만** — `src/pages/Foo.tsx` 의 폴더는 `src/pages/` 이고
-  그걸로 매칭하면 시험 **225개**가 딸려 와(실측) 푸시가 터진다
-- 순수 함수를 `scripts/pre-push-search-terms.mjs` 로 분리(실행 스크립트는 import 하면 바로 돌아
-  시험을 못 붙인다 — `guard-mutations-scope.mjs` 와 같은 처방)
+내 브랜치를 rebase 하려고 main 을 머지하니 `scripts/pre-push-tests.mjs` 에서 충돌이 났다.
+열어 보니 **같은 진단, 같은 처방**이었다(그쪽은 `patternsFor`). 그리고 **그쪽이 더 넓다**:
 
-실측: 이 브랜치에서 선택 시험 **0개 → 4개**, **3.1초**.
+| | 내 판(폐기) | main (채택) |
+|---|---|---|
+| 후보 diff | `src`+`docs`+`migrations`+`locales`+`mutations`+`CLAUDE.md` 열거 | **경로 필터 없음 = 레포 전체** |
+| 폴더 매칭 | 지정 접두사만 | `src/` 밖 전부 |
+| 최상위 한 칸 | 포함(`migrations`) | 제외(`dir.includes('/')`) |
 
-### 🩸 그 수리의 첫 판도 반쪽이었다
+⇒ **내 것을 고집하지 않고 main 을 정본으로 삼았다**(`git checkout --theirs`). 열거식은 새 폴더가
+생길 때마다 손으로 늘려야 하고, 그걸 잊으면 또 조용히 눈이 먼다 — 같은 사고를 부르는 모양이다.
 
-폴더 검색어에 **끝 슬래시**를 붙여(`docs/decisions/`) `join(process.cwd(), 'docs/decisions')` 를
-쓰는 `admin-decisions-parse.test.ts` 를 통째로 놓쳤다 — **하필 그게 사고 ①을 잡는 시험**이었다.
-되돌려-검증이 아니었으면 "이제 잡힌다" 고 믿은 채 넘어갔을 것이다.
-⇒ 가드: `pre-push-search-terms-2026-09-28.test.ts` 7건 + 주입 4건(전부 빨간불 확인).
+### 남긴 것 — 내가 더한 값은 **시험**이다
+
+main 판정은 **한 글자도 안 바꾸고** 자리만 옮겼다:
+- 순수 모듈 `scripts/pre-push-search-terms.mjs`(+`.d.mts` — `.mjs` 는 선언이 없으면 TS7016)
+  로 분리. 실행 스크립트는 import 하면 바로 돌아 시험을 못 붙인다(`guard-mutations-scope` 와 같은 처방)
+- 시험 9건 + 주입 5건 — main 판에는 시험이 **하나도 없었다**
+
+실측: 이 브랜치에서 선택 시험 **0개 → 19개**.
+
+### 🩸 내 판이 두 번 반쪽이었다 (둘 다 검증이 잡았다 — 그래서 시험이 남을 값어치가 있다)
+
+1. **끝 슬래시** — 폴더 검색어를 `docs/decisions/` 로 만들어
+   `join(process.cwd(), 'docs/decisions')` 를 쓰는 `admin-decisions-parse.test.ts` 를 통째로 놓쳤다.
+   **하필 그게 사고 ①을 잡는 시험**이었다. 되돌려-검증이 아니었으면 "이제 잡힌다" 고 믿었을 것이다.
+2. **문법 오류** — 모듈을 뽑는 편집이 `function changedSourcesfunction changedSources() {` 를 남겼다.
+   주입 검증은 그 파일을 **텍스트로만** 읽고 tsc 는 `.mjs` 를 안 봐서 아무도 못 잡았다 —
+   pre-push 에서 터지고서야 알았다. ⇒ 시험이 `node --check` 로 **파싱해 본다**.
+
+⇒ 가드: `pre-push-search-terms-2026-09-28.test.ts` **9건** + 주입 **5건**(전부 빨간불 확인).
+그 두 불변식(끝 슬래시 금지 · 파싱 가능)은 **main 판에도 시험이 없던 자리**다.
 
 ### ⚠️ 여전히 못 잡는 것
 - 경로를 문자열로 안 들고 `import` 로만 쓰는 시험(별칭이라 안 걸린다)
@@ -468,3 +484,7 @@ node scripts/visual-preview.mjs --route=/user/profile --auth=user --stores=2    
 - **"규칙을 지킨다" 와 "기계가 읽는 형식으로 지킨다" 는 다른 일이다.** 레포 규칙을 처음 따를 때는
   그 규칙을 강제하는 가드부터 찾아 형식을 맞출 것(`ai-team-operating-model.test.ts` · `parse-decision.ts`).
 - **고친 그물이 반쪽이면 안 고친 것과 같다.** 주입으로 깨뜨려 보기 전엔 고쳤다고 말하지 말 것.
+- **실행 파일을 편집했으면 실행해 볼 것.** 텍스트 가드는 파싱 불가를 원리상 못 본다.
+- 🔀 **같은 날 다른 세션이 같은 자리를 고칠 수 있다.** 충돌이 나면 내 판을 방어하지 말고
+  **어느 쪽이 더 넓은지**로 고를 것 — 여기서는 main 이 더 넓었고, 내가 남길 값은 판정이 아니라 시험이었다.
+  (그리고 도구 파일을 고칠 땐 푸시 전에 `git fetch origin main` 으로 남이 만지고 있는지 먼저 볼 것.)
