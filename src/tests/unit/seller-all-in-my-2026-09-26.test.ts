@@ -112,9 +112,17 @@ describe('시트는 뒤로가기로 닫힌다', () => {
     expect(code).toContain("'popstate'")
   })
 
+  /**
+   * 🔁 2026-09-28 **재조준**(지운 것이 아니다). 종전엔 `if (!popped) … history.back()` 이라는
+   *   **모양**을 앵커했는데, 그 즉시 빼는 방식이 바로 그날의 사고였다 — 시트를 갈아 끼울 때
+   *   A 가 빼려던 칸을 방금 열린 B 가 뒤집어써서 B 가 스스로 닫혔다(전체 도구로 튕김).
+   *   ⇒ 지키려는 것은 그대로다: **X·배경으로 닫으면 칸이 남지 않는다.** 판정만 `sheet-history.ts`
+   *     로 옮겼고, 여기서는 그 판정을 따르는지 본다(규약 자체는 `sheet-history-swap` 가 잰다).
+   */
   it('X·배경으로 닫으면 쌓아 둔 칸을 도로 뺀다', () => {
     const code = stripComments(SHEET)
-    expect(code, '안 빼면 그 뒤 뒤로가기를 한 번 먹는다').toMatch(/if \(!popped\)[\s\S]{0,80}history\.back\(\)/)
+    expect(code, '안 빼면 그 뒤 뒤로가기를 한 번 먹는다').toMatch(/settleClose\([\s\S]{0,160}history\.back\(\)/)
+    expect(code, '판정을 안 거치고 그 자리에서 빼면 갈아 끼우기에서 새 시트가 닫힌다').not.toMatch(/if \(!popped\)\s*\{\s*try\s*\{\s*window\.history\.back\(\)/)
   })
 })
 

@@ -35,6 +35,7 @@ import EmptyUrShop from './curator-page/EmptyUrShop'
 // 🎫 2026-09-02 (대표 확정 — 유어샵 안3 + PC 안P1): 카테고리 칩(지도 B안과 같은 그림) + PC 좌측 열 QR.
 import PinCategoryChips, { pinCategory, type PinCategory } from './curator-page/PinCategoryChips'
 import UShopQrCard from './curator-page/UShopQrCard'
+import ShopInquiryLinks from './curator-page/ShopInquiryLinks'
 
 // 🛡️ 2026-05-25 (C 옵션 URL 통합): linked seller 있으면 같은 페이지에서 SellerPublicPage 직접 render.
 //   redirect 없음 — URL 그대로 (/u/:handle 유지). lazy chunk — 일반 user 진입 시 chunk fetch 안 함.
@@ -328,8 +329,6 @@ export default function CuratorPage() {
         {/* 🔧 2026-09-28 (대표 확정 **e3**): 여기 있던 주인 전용 다섯 덩어리가 전부 `/u/me/manage` 로 나갔다
             (편집 툴바, 적립 한 줄, 돈 버는 길 3단계, 판매 진입 CTA, 순서 바꾸기).
             남은 것은 **손님이 보는 화면 하나**뿐이다. 되돌리려면 그 페이지에서 이리로 옮기면 된다. */}
-            {/* 칩 — 빈 진열대 판정은 부품이 스스로 한다(게이트를 두 곳에 두면 언젠가 갈린다). */}
-            <PinCategoryChips pins={pins} value={cat} onChange={setCat} />
             {/* 🔍 2026-06-16 유어샵 시안: 검색창 — 상품명 + 추천 코멘트 라이브 필터(SEARCH_MIN_PINS 이상일 때만). */}
             {pins.length >= SEARCH_MIN_PINS && (
               <div className="max-w-3xl mx-auto px-4 pt-3 pb-1">
@@ -362,13 +361,20 @@ export default function CuratorPage() {
                     (헤더 `담은 이용권 6`, 칩 `전체 6`, 그리고 이 줄의 `6개`). 칩이 분류별 개수를 이미 들고 있어
                     이 줄의 숫자는 **검색으로 더 걸러졌을 때만** 새 정보다 — 그때만 적는다.
                     (2026-09-01 지갑에서 "같은 숫자를 두 번 말하던 것" 을 고친 것과 같은 자리다.) */}
-                <div className="max-w-3xl mx-auto px-4 pt-3 pb-2 flex items-center gap-2">
+                {/* 🔧 2026-09-28 (대표 확정 **상단 1안**) — 칩과 정렬이 **줄 하나를 나눠 쓴다.**
+                    종전엔 칩 줄(48px) 아래에 정렬만 든 줄(32px)이 따로 있어서, 버튼 하나를 위해
+                    줄 하나를 쓰고 있었다(라이브 실측: 상품 전 chrome 287px = 첫 화면의 34%).
+                    ⚠️ 칩은 **스스로 null 을 반환할 수 있다**(핀 0 · 카테고리 1종). 그때 이 줄엔
+                       정렬만 남아 오른쪽에 붙는다 — 그래서 개수 게이트를 여기 두지 않는다.
+                       둘 다 없으면 `empty:hidden` 이 빈 줄의 여백까지 접는다. */}
+                <div className="max-w-3xl mx-auto px-4 pt-3 pb-2 flex items-center gap-2 empty:hidden">
+                  <PinCategoryChips pins={pins} value={cat} onChange={setCat} />
                   {query.trim() && (
-                    <span className="text-[11.5px] text-gray-500 dark:text-gray-400">
+                    <span className="shrink-0 text-[11.5px] text-gray-500 dark:text-gray-400">
                       <b className="text-gray-900 dark:text-white tabular-nums">{visiblePins.length}{t('curator.countUnit', { defaultValue: '개' })}</b>
                     </span>
                   )}
-                  <div className="ml-auto">
+                  <div className="ml-auto shrink-0">
                     <SortMenu value={sort} options={SORT_OPTIONS} onChange={setSort} />
                   </div>
                 </div>
@@ -399,6 +405,15 @@ export default function CuratorPage() {
 
         {/* 🎨 2026-06-19 (대표 — "나도 내 유어샵 만들기 버튼 별로"): 하단 고정 방문자 전환 CTA 제거.
             (조잡함 정리 + 주인 기본 뷰=방문자 미리보기라 주인에게도 떴을 것 → 제거가 맞음.) */}
+
+        {/* 🧾 2026-09-28 (대표 확정 **B안** — *"B가 낫겠는데?"*): 맨 아래 유입 링크 세 줄.
+            ⚠️ 위 2026-06-19 결정과 **모순이 아니다.** 그때 문제였던 둘을 피한다 —
+              ① 따라다니는 고정 CTA 가 아니라 **목록이 끝난 뒤**의 조용한 링크(상품을 안 민다)
+              ② **주인에겐 안 그린다**(그때는 주인에게도 떴다 — 대표가 `AskUserQuestion` 에서
+                 "손님에게만 (주인은 숨김)" 을 골랐다).
+            🔴 판정은 **호출부에서** 한다 — 부품이 소유권을 스스로 캐면
+               `check-linkshop-ownership` ③(순수 뷰 자식은 prop 구동)을 어긴다. */}
+        {!isOwner && <ShopInquiryLinks />}
       </div>
     </>
   )

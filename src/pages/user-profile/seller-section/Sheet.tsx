@@ -20,11 +20,24 @@
  * 쌓아 두지 않으면 뒤로가기가 시트가 아니라 **마이를 통째로 닫는다** — 열어 본 사람 입장에선
  * 앱이 튕긴 것과 구분이 안 된다. 그래서 열릴 때 `pushState` 로 한 칸 쌓고 `popstate` 에서 닫는다.
  * ⚠️ X·배경·Escape 로 닫을 때는 **그 칸을 도로 빼야** 한다(안 빼면 뒤로가기를 한 번 먹는다).
+ *
+ * ## 🔙 칸은 시트마다가 아니라 **열려 있는 동안 하나** (2026-09-28 — 실제 사고)
+ * 위 규약을 시트마다 적용했더니 **갈아 끼우기에서 깨졌다**: 전체 도구(A)에서 도구를 고르면
+ * 같은 렌더에서 A 가 내려가고 B 가 올라오는데, A 의 정리가 부른 `back()` 의 `popstate` 가
+ * **방금 열린 B** 에 도착해 B 가 스스로 닫혔다 ⇒ 눌러도 전체 도구로 되돌아온다(에러는 0).
+ * 규약과 그 근거는 `sheet-history.ts` 에 있다 — 여기서는 그 판정을 **따르기만** 한다.
  */
 import type { ReactNode } from 'react'
 import { useEffect } from 'react'
 import { ChevronLeft, X } from 'lucide-react'
 import { Z } from '@/constants/z-index'
+import {
+  browserPopped, closeSheet, initialSheetHistory, openSheet, settleClose,
+  type SheetHistoryState,
+} from './sheet-history'
+
+/** 🔙 열려 있는 시트 전체가 공유하는 히스토리 칸 하나. 판정은 `sheet-history.ts` 가 한다. */
+let history_: SheetHistoryState = initialSheetHistory()
 
 export default function Sheet({ title, onClose, onBack, children, footer, tall = false }: {
   title: string
@@ -52,17 +65,28 @@ export default function Sheet({ title, onClose, onBack, children, footer, tall =
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  // 📱 뒤로가기 = 닫기. 열릴 때 한 칸 쌓고, 뒤로가기가 오면 닫는다.
-  //   `popped` 는 "그 칸이 이미 소비됐는가" — 정리 단계에서 중복으로 빼지 않기 위해서다.
+  // 📱 뒤로가기 = 닫기. 칸은 **열려 있는 동안 하나**다(머리말 · `sheet-history.ts`).
   useEffect(() => {
     let popped = false
-    try { window.history.pushState({ urSheet: true }, '') } catch { return }
-    const onPop = () => { popped = true; onClose() }
+    const opened = openSheet(history_)
+    history_ = opened.next
+    if (opened.push) {
+      try { window.history.pushState({ urSheet: true }, '') } catch { history_ = { ...history_, pushed: false } }
+    }
+    const onPop = () => { popped = true; history_ = browserPopped(history_); onClose() }
     window.addEventListener('popstate', onPop)
     return () => {
       window.removeEventListener('popstate', onPop)
-      // X·배경·Escape 로 닫힌 경우 — 쌓아 둔 칸을 도로 뺀다(안 그러면 뒤로가기를 한 번 먹는다).
-      if (!popped) { try { window.history.back() } catch { /* 히스토리 접근 불가 */ } }
+      const closed = closeSheet(history_, popped)
+      history_ = closed.next
+      if (!closed.schedule) return
+      // ⏭️ **한 틱 미룬다** — 지금은 '닫기' 인지 '갈아 끼우기' 인지 알 수 없다(새 시트의 설치가
+      //    아직 안 돌았다). 이 마이크로태스크가 올 때쯤엔 돌았고, 그때도 0 이면 진짜 닫힘이다.
+      queueMicrotask(() => {
+        const settled = settleClose(history_)
+        history_ = settled.next
+        if (settled.back) { try { window.history.back() } catch { /* 히스토리 접근 불가 */ } }
+      })
     }
   }, [onClose])
 

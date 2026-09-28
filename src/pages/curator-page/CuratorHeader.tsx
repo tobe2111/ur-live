@@ -63,14 +63,41 @@ export default function CuratorHeader({ curator, canEdit, counts, accountType, o
   const hasSns = !!(curator.youtube_url || curator.instagram_url || curator.tiktok_url)
   const showCounts = (counts?.pins ?? 0) > 0 || (counts?.products ?? 0) > 0
 
+  /** SNS 링크 — 이름 줄의 버튼 그룹에 들어간다(전용 줄을 쓰지 않는다. 위 🔧 참조). */
+  const snsLinks = hasSns ? (
+    <>
+      {curator.youtube_url && (
+              <a href={snsUrl('youtube', curator.youtube_url)} target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="w-9 h-9 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-wash active:opacity-70 transition-colors">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.6V8.4l6.2 3.6-6.2 3.6Z" /></svg>
+          </a>
+      )}
+      {curator.instagram_url && (
+              <a href={snsUrl('instagram', curator.instagram_url)} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="w-9 h-9 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-wash active:opacity-70 transition-colors">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="5" /><circle cx="12" cy="12" r="3.7" /><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none" /></svg>
+          </a>
+      )}
+      {curator.tiktok_url && (
+              <a href={snsUrl('tiktok', curator.tiktok_url)} target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="w-9 h-9 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-wash active:opacity-70 transition-colors">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 3c.3 2.2 1.6 3.9 3.8 4.1v2.6c-1.3.1-2.5-.3-3.8-1v5.7c0 4.4-3.4 6.9-6.9 5.8-3.2-1-4.1-5-1.7-7.2 1-.9 2.4-1.3 3.8-1.1v2.7c-.4-.1-.8-.1-1.2 0-1.2.3-1.7 1.4-1.3 2.5.4 1.1 1.8 1.5 2.7.7.5-.4.7-1 .7-1.7V3h3.9Z" /></svg>
+          </a>
+      )}
+    </>
+  ) : null
+
   return (
     <header className="bg-surface">
       {/* 흐르는 문구 — 값이 있을 때만. 편집은 /u/me/manage. */}
       <HeaderMarquee curator={curator} isOwner={false} accentColor={accentColor} accentText={accentText} />
 
       <div className="max-w-3xl mx-auto">
-        {/* ① 브랜드 바 — 로고 = 홈. 표시로 꾸미지 않는다(로고=홈은 웹 관례라 밑줄·화살표가 군더더기다). */}
-        <div className="flex items-center px-4 pt-3">
+        {/* ① 브랜드 바 — 로고 = 홈. 표시로 꾸미지 않는다(로고=홈은 웹 관례라 밑줄·화살표가 군더더기다).
+            🖥️ 2026-09-28 (대표 *"둘 다 고치고"*): **PC 에서는 안 그린다.** lg+ 에서는 화면 맨 위에
+            전역 네비(`DesktopTopNav` — `urdeal.` + 검색·찜·장바구니·알림)가 이미 있는데 이 줄이
+            좌측 프로필 카드 **안에서** 같은 말을 또 해서, 1440px 실측에서 소비자 상단 바가
+            화면에 **두 번** 있었다. 이 줄은 a3 의 **모바일용** 브랜드 바다.
+            ⚠️ `?embed=1`(깨끗한 매장 링크)은 PC 에서도 전역 네비가 없지만, 그 모드의 목적 자체가
+               "유어딜 chrome 을 안 보여 준다" 라 여기서도 안 그리는 쪽이 맞다. */}
+        <div className="lg:hidden flex items-center px-4 pt-3">
           <Link to="/" aria-label={t('nav.homeAria', { defaultValue: '유어딜 홈' })} className="text-[14.5px] font-bold tracking-[-0.03em] text-gray-900 dark:text-white active:opacity-70">
             urdeal
           </Link>
@@ -99,7 +126,13 @@ export default function CuratorHeader({ curator, canEdit, counts, accountType, o
               </p>
             )}
           </div>
+          {/* 🔧 2026-09-28 (대표 확정 **상단 1안**): SNS 아이콘이 **자기 줄을 통째로** 쓰고 있었다
+              (라이브 실측 36px + 여백 = 48px). 아이콘 두세 개를 위해 줄 하나를 쓰는 건 비싸서
+              이름 줄의 버튼 자리로 올린다. 공유·관리 버튼은 **그대로 있다**(대표 확인 요청 사항).
+              주인 화면 최악(이름 10자 + SNS 3 + 공유 + 관리)에서 오른쪽 끝 374/390px 로 안 잘린다
+              (실측: 이름 칸이 `flex-1 truncate` 라 넘치는 대신 이름이 줄어든다 — 112px 남음). */}
           <div className="ml-3 flex items-center gap-1.5 shrink-0">
+            {snsLinks}
             <button type="button" onClick={onCopyLink} className={btnCls}>
               <Share2 className="w-3.5 h-3.5" aria-hidden="true" />{t('curator.share', { defaultValue: '공유' })}
             </button>
@@ -109,26 +142,6 @@ export default function CuratorHeader({ curator, canEdit, counts, accountType, o
           </div>
         </div>
 
-        {/* SNS — 있을 때만. 없는 사람에게 빈 줄을 남기지 않는다(+ 링크 추가는 관리 화면에서). */}
-        {hasSns && (
-          <div className="flex items-center -ml-2 px-4 pb-3">
-            {curator.youtube_url && (
-              <a href={snsUrl('youtube', curator.youtube_url)} target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="w-9 h-9 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-wash active:opacity-70 transition-colors">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.6V8.4l6.2 3.6-6.2 3.6Z" /></svg>
-              </a>
-            )}
-            {curator.instagram_url && (
-              <a href={snsUrl('instagram', curator.instagram_url)} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="w-9 h-9 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-wash active:opacity-70 transition-colors">
-                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="5" /><circle cx="12" cy="12" r="3.7" /><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none" /></svg>
-              </a>
-            )}
-            {curator.tiktok_url && (
-              <a href={snsUrl('tiktok', curator.tiktok_url)} target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="w-9 h-9 rounded-full flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-wash active:opacity-70 transition-colors">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 3c.3 2.2 1.6 3.9 3.8 4.1v2.6c-1.3.1-2.5-.3-3.8-1v5.7c0 4.4-3.4 6.9-6.9 5.8-3.2-1-4.1-5-1.7-7.2 1-.9 2.4-1.3 3.8-1.1v2.7c-.4-.1-.8-.1-1.2 0-1.2.3-1.7 1.4-1.3 2.5.4 1.1 1.8 1.5 2.7.7.5-.4.7-1 .7-1.7V3h3.9Z" /></svg>
-              </a>
-            )}
-          </div>
-        )}
       </div>
     </header>
   )

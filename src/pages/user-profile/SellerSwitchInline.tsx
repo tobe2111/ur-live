@@ -84,20 +84,22 @@ export default function SellerSwitchInline({ seats }: { seats: MyStoresState }) 
     )
   }
 
-  // 비셀러 (카카오 포함 전원) → **매장 등록**(카카오맵에서 내 가게 찾기).
-  // 🏷️ 2026-08-26 (대표 "내 쇼핑몰 열기는 하면 안될 것 같아"): 문구를 '내 가게 등록'으로.
-  //   유어샵은 **가입하면 이미 있다**(모든 유저에게 `/u/{handle}` 자동 생성) — "쇼핑몰을 연다"는
-  //   말은 사실과 다르고, 이미 가진 걸 또 만들라는 소리로 들린다. 여기서 새로 만드는 건 **매장**이다.
-  // 🔁 2026-08-26: 종전 목적지는 셀러 가입 폼(`/seller/register/supplier`)이었다. 그런데 대표 확정
-  //   순서는 "대시보드 첫 단계는 매장 등록, 무조건 선행"이고, `POST /api/seller/stores` 가 매장 행 +
-  //   운영 권한을 함께 만든다 — 사장님에게 사업자 폼부터 들이밀 이유가 없다. 내 가게부터 찾게 한다.
-  return (
-    <button
-      onClick={() => navigate('/store/new')}
-      aria-label={t('sellerSwitch.applyAria', { defaultValue: '내 가게 등록하기' })}
-      className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 bg-gray-100 dark:bg-white/[0.08] border border-white/[0.12] text-[10px] text-gray-900 dark:text-white/85 font-semibold active:scale-95 transition-all"
-    >
-      <Store className="w-2.5 h-2.5" aria-hidden="true" /> {t('sellerSwitch.openMyShop', { defaultValue: '내 가게 등록' })}
-    </button>
-  )
+  /**
+   * 🔇 2026-09-28 — **등록 문은 여기서 사라진다.** 같은 화면에 이미 하나 더 있었다.
+   *
+   * | 자리 | 문구 | 목적지 |
+   * |---|---|---|
+   * | 이름 옆 알약 (여기) | 내 가게 등록 | `/store/new` |
+   * | `RoleCtaGrid` 타일 | 내 가게 등록 | `/store/new` |
+   *
+   * **같은 글자 · 같은 목적지 · 같은 화면 · 약 850px 간격.** 둘 중 남길 것은 타일이다 —
+   * 타일은 *"카카오맵에서 내 가게를 찾아 이용권을 팔아요"* 라고 **무엇인지 말해 주고**,
+   * 이 알약은 이름 옆 10px 글자라 무엇을 등록하는지 알 수 없다.
+   *
+   * ⚠️ **상태 배지(심사 중·반려·정지)는 위에 그대로 남는다** — 그건 중복이 아니라
+   *   이 사람에게만 해당하는 상태이고, 타일은 그 말을 하지 않는다.
+   * ⚠️ 되살리려면 이 `return null` 을 종전 버튼으로 되돌리면 된다(한 블록).
+   *   다만 그때 `RoleCtaGrid` 의 타일과 **둘 다 뜨는지** 먼저 볼 것.
+   */
+  return null
 }

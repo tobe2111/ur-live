@@ -525,8 +525,45 @@ if (AUTH || STORES_N > 0) {
 }
 
 const page = await ctx.newPage()
+/**
+ * 🖨️ 2026-09-28 — **콘솔을 버리지 않는다.** 그전까지 이 하네스는 브라우저 콘솔을 통째로 버려서,
+ *   페이지가 ErrorBoundary 로 떨어져도 그림만 "문제가 발생했습니다" 일 뿐 **왜인지는 못 봤다**
+ *   (`/seller/settlements` 가 정확히 그랬다). 그림은 증상이고 원인은 콘솔에 있다.
+ */
+const consoleErrors = []
+page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(m.text().slice(0, 300)) })
+page.on('pageerror', (e) => consoleErrors.push(`[pageerror] ${String(e && e.message).slice(0, 300)}`))
+
 await page.goto(`http://127.0.0.1:${PORT}${ROUTE}`, { waitUntil: 'domcontentloaded', timeout: 40000 }).catch(() => {})
 await page.waitForTimeout(4000)
+/**
+ * 🖱️ `--click="글자"` — 버튼을 눌러 **연 뒤**를 찍는다(여러 개면 `>>` 로 이어서).
+ *   왜 필요한가: 마이의 판매 도구는 전부 **시트**라, 닫힌 화면만 찍으면 그 화면들은
+ *   영원히 검증 범위 밖이다. 2026-09-28 에 "시트 일곱을 철거할까" 를 판단하려는데
+ *   시트 안을 볼 방법이 없어 단독 페이지로 대신 볼 뻔했다 — 그건 다른 화면이다.
+ *   ⚠️ 글자로 찾는다 — 클래스는 자주 바뀌고 글자는 사람이 보는 것이다.
+ *   🩸 2026-09-28 정정: 처음엔 `getByText(label).first()` 였는데 **엉뚱한 것을 눌렀다.**
+ *      `getByText` 는 그 글자를 *품은* 조상까지 맞히고 `.first()` 는 DOM 순서상 **가장 바깥**이다 —
+ *      시트 몸통 전체가 잡혀 그 한가운데(= 다른 줄)를 눌렀다. 그래서 `전체 도구 >> 셀러 등급` 이
+ *      **실패 메시지도 없이** 아무 일도 안 하는 것처럼 보였다(클릭은 성공했으니 경고도 안 뜬다).
+ *      ⇒ **누를 수 있는 것**(button·a·[role=button])부터 찾고, 없을 때만 글자로 떨어진다.
+ */
+if (typeof args.click === 'string' && args.click) {
+  for (const label of args.click.split('>>').map((x) => x.trim()).filter(Boolean)) {
+    try {
+      const clickable = page.locator('button, a, [role="button"]').filter({ hasText: label })
+      const target = (await clickable.count()) > 0 ? clickable.last() : page.getByText(label, { exact: false }).last()
+      // 🔎 **무엇을 눌렀는지 말한다.** 엉뚱한 것을 눌러도 클릭은 성공하므로 경고가 안 뜬다 —
+      //    그 침묵이 2026-09-28 에 한 시간을 먹었다. 누른 것을 찍으면 그 자리에서 보인다.
+      const shape = await target.evaluate((el) => `${el.tagName.toLowerCase()} "${(el.innerText || '').replace(/\s+/g, ' ').slice(0, 30)}"`).catch(() => '?')
+      await target.click({ timeout: 8000 })
+      await page.waitForTimeout(1800)
+      console.log(`   🖱️ "${label}" → ${shape}`)
+    } catch (e) {
+      console.error(`   ⚠️ --click "${label}" 실패: ${String(e).split('\n')[0].slice(0, 120)}`)
+    }
+  }
+}
 if (EXTRA_CSS) { await page.addStyleTag({ content: EXTRA_CSS }); await page.waitForTimeout(400) }
 
 const out = path.join(OUTDIR, `${NAME}${DARK ? '-dark' : ''}.png`)
@@ -569,8 +606,23 @@ if (args.dom) {
 }
 
 await page.screenshot({ path: out })
-const text = (await page.innerText('body').catch(() => '')).slice(0, 60).replace(/\s+/g, ' ')
+/**
+ * 📄 `--text=N` — 본문을 N 자까지 찍는다(기본 60).
+ *   왜: 프로덕션 빌드는 `drop_console: true`(vite.config)라 **콘솔이 통째로 제거된다** —
+ *   화면이 에러로 떨어져도 콘솔엔 아무것도 안 남는다. 그때 남는 유일한 증거가 **화면의 글자**다.
+ */
+const TEXT_N = Number(args.text) || 60
+const text = (await page.innerText('body').catch(() => '')).slice(0, TEXT_N).replace(/\s+/g, ' ')
 console.log(`✅ ${out}`)
+if (consoleErrors.length) {
+  // 🔇 외부 호스트를 일부러 막았으므로 `ERR_FAILED` 는 **이 하네스가 만든 잡음**이다.
+  //   그게 앞에 쌓이면 진짜 원인(ErrorBoundary 를 띄운 예외)이 안 보인다 — 실제로 한 번 가렸다.
+  const noise = (e) => /ERR_FAILED|ERR_BLOCKED|net::ERR|Failed to load resource/.test(e)
+  const real = consoleErrors.filter((e) => !noise(e))
+  console.log(`   🖨️ 콘솔 에러 ${consoleErrors.length}건 (차단 잡음 ${consoleErrors.length - real.length} 제외 ${real.length}건):`)
+  for (const e of real.slice(0, 5)) console.log(`      ${e}`)
+  if (!real.length) console.log('      (전부 외부 차단 잡음 — 진짜 예외는 없었다)')
+}
 console.log(`   본문 앞부분: ${text}`)
 if (/문제가 발생|오류가 발생/.test(text)) {
   console.log('   ⚠️  오류 화면이다 — 시드가 라우트와 안 맞거나 목 응답 모양이 틀렸다.')
