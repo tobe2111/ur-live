@@ -595,7 +595,13 @@ if (args.dom) {
 }
 
 await page.screenshot({ path: out })
-const text = (await page.innerText('body').catch(() => '')).slice(0, 60).replace(/\s+/g, ' ')
+/**
+ * 📄 `--text=N` — 본문을 N 자까지 찍는다(기본 60).
+ *   왜: 프로덕션 빌드는 `drop_console: true`(vite.config)라 **콘솔이 통째로 제거된다** —
+ *   화면이 에러로 떨어져도 콘솔엔 아무것도 안 남는다. 그때 남는 유일한 증거가 **화면의 글자**다.
+ */
+const TEXT_N = Number(args.text) || 60
+const text = (await page.innerText('body').catch(() => '')).slice(0, TEXT_N).replace(/\s+/g, ' ')
 console.log(`✅ ${out}`)
 if (consoleErrors.length) {
   // 🔇 외부 호스트를 일부러 막았으므로 `ERR_FAILED` 는 **이 하네스가 만든 잡음**이다.
