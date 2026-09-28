@@ -38,6 +38,8 @@
  * ⇒ 전수는 여전히 CI 담당이다. 이건 "가장 흔한 사고 하나"를 싸게 막는 그물이다.
  */
 import { execFileSync } from 'node:child_process'
+// 🔎 판정은 순수 모듈에 있다 — 그래야 시험이 문자열이 아니라 **동작**을 잰다(2026-09-28 분리, 판정 불변).
+import { searchTermsFor } from './pre-push-search-terms.mjs'
 
 const sh = (cmd, args) => execFileSync(cmd, args, { encoding: 'utf8', maxBuffer: 64 << 20 }).trim()
 
@@ -50,18 +52,6 @@ function changedSources() {
   // 레포 전체를 본다 — `src/` 로 좁히면 docs/·scripts/ 를 읽는 시험이 통째로 빠진다(2026-09-28 사고).
   const out = sh('git', ['diff', '--name-only', base, 'HEAD'])
   return out ? out.split('\n').filter((f) => f && !f.startsWith('src/tests/')) : []
-}
-
-/** 매칭 후보 문자열: 파일 경로 + (src 밖이면) 그 디렉터리. 위 머리말 ② 참조. */
-function patternsFor(files) {
-  const set = new Set()
-  for (const f of files) {
-    set.add(f)
-    if (f.startsWith('src/')) continue          // src 안은 디렉터리 매칭 금지(폭발 방지)
-    const dir = f.slice(0, f.lastIndexOf('/'))
-    if (dir && dir.includes('/')) set.add(dir)  // 최상위 한 칸(docs, scripts)은 너무 넓어 제외
-  }
-  return [...set]
 }
 
 const changed = changedSources()
@@ -79,7 +69,7 @@ let hits = ''
 try {
   // ⚠️ `-e` 는 패턴마다 붙여야 한다 — 한 번만 쓰면 나머지가 **검색 경로**로 먹혀 조용히 적게 본다
   //   (첫 판이 정확히 그랬다: 77개여야 할 것이 30개였고, 에러 없이 초록이었다).
-  hits = sh('grep', ['-rlF', '--include=*.ts', '--include=*.tsx', ...patternsFor(changed).flatMap((f) => ['-e', f]), 'src/tests'])
+  hits = sh('grep', ['-rlF', '--include=*.ts', '--include=*.tsx', ...searchTermsFor(changed).flatMap((t) => ['-e', t]), 'src/tests'])
 } catch { hits = '' }   // grep 은 매치 0 이면 exit 1 — 실패가 아니다.
 const files = hits ? hits.split('\n').filter(Boolean) : []
 
