@@ -65,17 +65,21 @@ describe('② 유어샵 핀이 딜 정보를 싣고 온다', () => {
 
 describe('③ 딜 있는 핀이 맨 위 · 주인 순서는 안 덮는다', () => {
   const page = read(PAGE)
-  it('dealPins 그룹이 있고 섹션으로 렌더된다', () => {
+  // 🔧 2026-09-28 재조준 (대표 확정 **s3 밀도형**): 섹션 3개(`<PinGrid pins={applyQ(dealPins)}/>` …)가
+  //   **목록 하나**로 합쳐졌다. 그래서 "딜이 맨 위" 를 정하던 자리가 섹션 배치 → `homePins` 의
+  //   이어붙이는 순서로 옮겨 갔다. **불변식은 그대로**(딜 → 교환권 → 상품)이므로 검사 대상만 옮긴다.
+  it('dealPins 그룹이 있고 목록에 실린다', () => {
     expect(page).toContain('dealPins')
-    expect(page).toMatch(/<PinGrid pins=\{applyQ\(dealPins\)\}/)
+    expect(page).toMatch(/const homePins = useMemo\(\(\) => \[\.\.\.dealPins,/)
   })
-  it('딜 섹션이 다른 섹션보다 먼저 나온다', () => {
-    const d = page.indexOf('applyQ(dealPins)}')
-    const s2 = page.indexOf('applyQ(shopPins)}')
-    const v = page.indexOf('applyQ(voucherPins)}')
-    expect(d).toBeGreaterThan(-1)
-    expect(d, '딜 섹션이 추천템보다 뒤에 있다').toBeLessThan(s2)
-    expect(d, '딜 섹션이 교환권보다 뒤에 있다').toBeLessThan(v)
+  it('딜이 다른 그룹보다 앞에 붙는다', () => {
+    const m = page.match(/const homePins = useMemo\(\(\) => \[([^\]]+)\]/)
+    expect(m, '핀 이어붙이기를 못 찾았다 — 검사가 무의미해진다').toBeTruthy()
+    const order = m![1].split(',').map(x => x.trim().replace('...', ''))
+    expect(order[0], '딜이 맨 앞이 아니다').toBe('dealPins')
+    expect(order, '세 그룹이 전부 실린다').toEqual(['dealPins', 'voucherPins', 'shopPins'])
+    // 목록이 그 순서를 그대로 쓴다(딴 배열을 그리면 위 순서가 무의미해진다).
+    expect(page).toMatch(/cat === 'all' \? homePins :/)
   })
   it('정렬이 아니라 filter 로 가른다 — position 을 덮지 않는다', () => {
     // 🔑 주인이 드래그로 맞춘 순서(position)가 사라지면 재정렬 기능이 무의미해진다.
@@ -89,14 +93,18 @@ describe('③ 딜 있는 핀이 맨 위 · 주인 순서는 안 덮는다', () =
 })
 
 describe('④ 사다리는 빈 유어샵에서도 보인다', () => {
+  // 🔧 2026-09-28 재조준(e3): 사다리가 유어샵 → `/u/me/manage` 로 이사했다.
+  //   지키는 것은 그대로다 — **빈 유어샵일수록 뭘 해야 하는지가 필요**하므로 pins 로 막지 않는다.
   it('pins.length 로 막지 않는다', () => {
-    const page = read(PAGE)
+    const page = read('src/pages/UShopManagePage.tsx')
     const i = page.indexOf('<EarnLadder')
     expect(i, '사다리가 배치되지 않았다').toBeGreaterThan(-1)
-    // 사다리를 감싸는 조건절을 앞쪽에서 잘라 본다 — 거기에 pins.length 게이트가 있으면 안 된다.
-    const guard = page.slice(page.lastIndexOf('{ownerView', 0 + i), i)
+    // 사다리 **앞 200자**를 본다 — 거기에 pins 게이트가 있으면 빈 샵에서 숨는다.
+    //   (종전엔 `{ownerView` 를 앵커로 잘랐는데 e3 로 그 상태가 사라졌다. 앵커가 없으면
+    //    `lastIndexOf` 가 -1 → slice(-1, i) 가 **엉뚱한 구간**을 집어 늘 통과했을 것이다.)
+    const guard = page.slice(Math.max(0, i - 200), i)
     expect(guard, '빈 유어샵에서 사다리가 숨으면, 그때 보이는 건 "적립 ₩0" 뿐이다')
-      .not.toContain('pins.length > 0')
+      .not.toMatch(/pins\.length\s*[><=]/)
   })
   /**
    * 🛑 2026-09-16 — 이 검사는 **재조준**됐다(삭제가 아니다).
