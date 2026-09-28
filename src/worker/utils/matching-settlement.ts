@@ -42,7 +42,7 @@ export interface MatchingSettlement {
  * @param commissionPct  매칭 협상 수수료율(seller_influencer_deals.commission_pct)
  * @param platformFeePct 플랫폼 인프라 수수료율(기본 5) — 순수취의 기준
  *
- * 🛑 2026-09-07 대표 결재 Q2-1(`docs/decisions/2026-09-07-actor-benefit-conflicts.md` — *"기본안대로 모두 승인"*):
+ * 🛑 2026-09-07 대표 결재 Q2-1(`docs/decisions/archive/2026-09-07-actor-benefit-conflicts.md` — *"기본안대로 모두 승인"*):
  *   **인플루언서 딜 % 에 플랫폼 상한은 없다.** 매장이 제안서에 적은 % 그대로다(매장 부담이라 유어딜 리스크 0).
  *   여기 있던 선택 인자 `maxCommissionPct`(= `max_influencer_commission_pct` clamp)를 **제거**했다 —
  *   호출부는 한 곳도 안 넘기고 있었지만, 인자가 남아 있으면 언젠가 누가 넘겨서 2% 로 잘리는 날이 온다.

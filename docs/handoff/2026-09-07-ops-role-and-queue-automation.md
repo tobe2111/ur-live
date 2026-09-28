@@ -14,7 +14,7 @@
 
 ## 완료분
 - `.claude/agents/ops.md` (읽을 SSOT·결정권·큐 목록·SLA 48h·금지·완료 판정)
-- 결재 3건(open · 기본안 포함 · 기한 09-14): `docs/decisions/2026-09-07-store-acquisition-pipeline.md` · `-seller-auto-approval.md` · `-payout-auto-approve-threshold.md`
+- 결재 3건(open · 기본안 포함 · 기한 09-14): `docs/decisions/archive/2026-09-07-store-acquisition-pipeline.md` · `-seller-auto-approval.md` · `-payout-auto-approve-threshold.md`
 - 운영 SSOT §3 역할 7 · §6 운영 일일 큐 루틴 행 · "1인 운영의 원칙" 문단 · CLAUDE.md 역할 목록 · 테스트 ROLES 7 · design README
 - Routine `[ops] 운영 일일 큐 08:15 KST`(ID 는 아래)
 

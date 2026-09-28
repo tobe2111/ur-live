@@ -4,9 +4,8 @@ import {
   HOME_CARD_IMG_WIDTH_LG, HOME_CARD_IMG_WIDTH_BASE,
   HOME_CARD_LG_QUERY, HOME_CARD_BASE_QUERY, HOME_CARD_ABOVE_FOLD,
 } from '../../shared/home-card-image'
-import { pickHeroPhotoFromSeedJson } from '../../shared/home-hero-photo'
-import { BANNER_SLOT_SPECS } from '../../shared/constants/home-showcase'
-import { HOME_HERO_MEDIA_QUERY, HOME_HERO_REQUEST_WIDTH, HOME_HERO_QUALITY } from '../../shared/home-hero-image'
+import { HERO_STRIP_PRELOAD, heroTileUrl, pickHeroStripFromSeedJson } from '../../shared/home-hero-strip'
+import { HOME_HERO_MEDIA_QUERY } from '../../shared/home-hero-image'
 
 /**
  * 🖼️ 홈 첫 화면 카드 사진 preload 링크 생성 (2026-08-27 대표 "메인페이지 로딩 자체도 느려").
@@ -125,26 +124,31 @@ export function buildDetailHeroPreloadLink(ssrPayload: string, isVoucherSurface:
  *   히어로는 이미 `loading="eager" fetchPriority="high"` 다 — 그건 **발견된 뒤**의 우선순위이고,
  *   발견 자체가 React 렌더 뒤라서 늦었다. preload 만이 그 앞을 당긴다.
  *
+ * ## 🎞️ 2026-09-28 — 당기는 대상이 **큰 사진 한 장 → 띠의 첫 타일 둘**로 바뀌었다
+ * 대표 확정(시안 ②)으로 히어로 기본 미디어가 흐르는 이용권 띠가 됐다. 예전처럼 1280px 사진을
+ * 당기면 **아무도 안 쓰는 55KB** 를 매 하드로드마다 받는다(에러도 없고 화면도 멀쩡한, 이 파일이
+ * 경고하는 바로 그 클래스). ⇒ `HeroDealStrip` 이 실제로 그리는 앞 두 장을 당긴다(각 ~13KB).
+ *
  * ## ⚠️ byte-일치
- * 클라이언트(`HomeHeroDefault`)가 만드는 `src`/`srcSet` 과 **같은 함수·같은 인자**로 만든다.
- * 한 글자만 달라도 preload 가 버려지고 96KB 를 두 번 받는다(에러 없이 더 느려진다).
- * 사진 고르기도 같은 SSOT(`shared/home-hero-photo`)를 쓴다.
+ * 클라이언트(`HeroDealStrip`)와 **같은 함수**(`heroTileUrl`)·**같은 고르기**(`pickHeroStripFromSeedJson`)를
+ * 쓴다. 한 글자만 달라도 preload 가 버려지고 같은 사진을 두 번 받는다(에러 없이 더 느려진다).
  *
  * ## ⚠️ 중단점
- * 히어로 사진은 `hidden md:block` 이라 **768px 미만에서는 보이지 않는다.** `media=` 로 막지 않으면
- * 폰이 96KB 를 헛되이 받는다 — 고치려던 것보다 더 나쁜 회귀다.
+ * 띠는 `hidden md:block` 이라 **768px 미만에서는 보이지 않는다.** `media=` 로 막지 않으면
+ * 폰이 안 쓰는 바이트를 받는다 — 고치려던 것보다 더 나쁜 회귀다.
  *
  * ## 어드민 배너가 있으면?
- * 그때는 클라이언트가 배너 사진을 쓴다. 다만 배너는 마운트 후 fetch 라, **첫 화면에 먼저 뜨는 건
- * 어느 경우에나 이 시드 사진**이다 — 그래서 이 preload 는 배너 유무와 무관하게 유효하다.
+ * 그때는 클라이언트가 배너 사진을 쓰고 이 preload 는 버려진다(워커는 배너 유무를 모른다).
+ * 라이브 히어로 배너는 0건이고, 버려져도 26KB 라 예전(55KB)보다 손해가 작다.
  *
- * @returns `<link …>` 문자열, 없으면 null(fail-soft).
+ * @returns `<link …>` 문자열(여러 줄이면 이어 붙인 하나), 없으면 null(fail-soft).
  */
 export function buildHomeHeroPreloadLink(mainSeedPayload: string): string | null {
-  const pick = pickHeroPhotoFromSeedJson(mainSeedPayload)
-  if (!pick?.src) return null
-  const href = cfImage(pick.src, { width: HOME_HERO_REQUEST_WIDTH, quality: HOME_HERO_QUALITY })
-  if (!href || href.startsWith('data:')) return null
-  const set = cfSrcSet(pick.src, BANNER_SLOT_SPECS.hero.srcSetBase!)
-  return `<link rel="preload" as="image" fetchpriority="high" media="${HOME_HERO_MEDIA_QUERY}" href="${escAttr(href)}"${set ? ` imagesrcset="${escAttr(set)}"` : ''}>`
+  const links: string[] = []
+  for (const tile of pickHeroStripFromSeedJson(mainSeedPayload).slice(0, HERO_STRIP_PRELOAD)) {
+    const href = heroTileUrl(tile.src)
+    if (!href || href.startsWith('data:')) continue
+    links.push(`<link rel="preload" as="image" fetchpriority="high" media="${HOME_HERO_MEDIA_QUERY}" href="${escAttr(href)}">`)
+  }
+  return links.length ? links.join('') : null
 }

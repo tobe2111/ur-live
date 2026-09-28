@@ -1,7 +1,7 @@
 /**
  * 🛑 인플루언서 딜 % **플랫폼 상한 없음** (2026-09-07 대표 결재 Q2-1)
  *
- * 결재: `docs/decisions/2026-09-07-actor-benefit-conflicts.md` — *"기본안대로 모두 승인"* ⇒ Q2-1
+ * 결재: `docs/decisions/archive/2026-09-07-actor-benefit-conflicts.md` — *"기본안대로 모두 승인"* ⇒ Q2-1
  *   "매장이 제안한 % 그대로, 상한 없음(매장 부담이므로 유어딜 리스크 0)". 유일한 선은 입력 검증 90.
  *
  * 2026-08-30 "자동분은 빼줘" 가 이미 제안 문(`marketing.routes`)과 정산 계산(`calcInfluencerCommissionPct`)에서

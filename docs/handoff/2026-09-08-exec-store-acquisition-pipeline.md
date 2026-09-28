@@ -1,7 +1,7 @@
 # [E2] 실행기 5회차 — 결재 store-acquisition-pipeline 선택지 1 (2026-09-08 13:18~14:1x KST)
 
 ## 무엇
-`docs/decisions/2026-09-07-store-acquisition-pipeline.md` 대표 답 *"모두 기본안대로 해줘"* ⇒ 선택지 1(준비까지 자동 · 발송은 대표 · N=20). PR #1406 (draft, 머지 대기).
+`docs/decisions/archive/2026-09-07-store-acquisition-pipeline.md` 대표 답 *"모두 기본안대로 해줘"* ⇒ 선택지 1(준비까지 자동 · 발송은 대표 · N=20). PR #1406 (draft, 머지 대기).
 
 ## 코드를 먼저 열어 본 결과 (이 회차에서 제일 값진 것)
 결재의 "파이프라인" 넷 중 셋은 **이미 있었다**: 후보 풀 `store_prospects`(79k, 인허가+카카오 수집) · 상태 추적(status/contact_channel/follow_up_at/memo) · 매장별 문구(`opening-briefing` 축하+상권 수치). 없던 것만 만들었다 —

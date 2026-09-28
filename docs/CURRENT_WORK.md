@@ -5495,9 +5495,11 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
 _총 365건 · 최신순 · 이 목록은 자동 생성된다._
+_총 366건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-28**
 - [2026-09-28 유어샵 e3/s3 — 관리 화면 분리(1단계) + 본문 밀도형(2단계)](handoff/2026-09-28-ushop-e3-manage.md)
+- [PC 홈 히어로 — 흐르는 이용권 띠 (2026-09-28)](handoff/2026-09-28-pc-home-hero-strip.md)
 - [마이 판매 구역 — 눈으로 보기 시작했더니 시트가 한 번도 안 열렸다 (2026-09-28)](handoff/2026-09-28-my-sell-zone-and-tool-sheet.md)
 **2026-09-26**
 - [2026-09-26 — 비슷한 스테이 자리 확정(숙소 소개 바로 아래)](handoff/2026-09-26-similar-stays-position.md)

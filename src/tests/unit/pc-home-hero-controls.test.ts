@@ -81,8 +81,10 @@ describe('PC 홈 히어로 컨트롤 위계 (2026-09-03 대표 확정)', () => {
           담고 있어 빨간불이 났다. 이 레포가 이미 두 번 기록한 함정인데 세 번째로 밟았다. */
     const HERO_CODE = HERO.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
     expect(HERO_CODE).not.toContain('사진 속 딜 보기')
-    // 사진이 없거나 사진 목적지가 지도와 같으면(주 버튼과 중복) 렌더하지 않는다.
-    expect(HERO).toMatch(/hasMedia && photoHref !== '\/map'/)
+    /* 사진이 없거나 사진 목적지가 지도와 같으면(주 버튼과 중복) 렌더하지 않는다.
+       🎞️ 2026-09-28: 기본 미디어가 **흐르는 띠**가 되면서 조건에 `!showStrip` 이 붙었다 —
+          띠가 뜨는데 이 오버레이까지 깔리면 타일 클릭을 통째로 가로챈다(두 겹이 되면 엇갈린다). */
+    expect(HERO).toMatch(/hasMedia && !showStrip && photoHref !== '\/map'/)
   })
 
   it('⑥ panel / title tone 은 이번 변경에 안 딸려갔다 (모바일 홈·흰 패널 회귀 방지)', () => {
