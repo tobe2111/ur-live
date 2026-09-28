@@ -87,7 +87,7 @@ export const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: Vouc
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-gray-300 dark:text-gray-600">
+          <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-gray-400 dark:text-gray-400">
             <Gift className="w-10 h-10" />
             {p.brand_name && <span className="text-[11px] font-bold">{p.brand_name}</span>}
           </div>
@@ -175,7 +175,7 @@ export const VoucherRow = memo(function VoucherRow({ p, aboveFold }: { p: Vouche
           className="w-full h-full object-cover"
         />
       ) : (
-        <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-gray-300 dark:text-gray-600">
+        <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-gray-400 dark:text-gray-400">
           <Gift className="w-8 h-8" />
           {p.brand_name && <span className="text-[10px] font-bold px-1 text-center line-clamp-1">{p.brand_name}</span>}
         </div>

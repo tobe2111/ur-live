@@ -314,17 +314,36 @@ const MEASURE = () => {
      만들고 그 자리를 스크린샷으로 찍어 진짜 픽셀을 잰다. 2026-09-03 1차판은 여기서 continue 해서
      **사진 위 흰 글자를 통째로 못 봤다**(우리 히어로가 정확히 그 형태다 — 가장 위험한 자리를
      검사에서 빼 놓고 "0건" 을 보고하고 있었던 셈). */
+  /**
+   * 🩸 2026-09-28 — **반투명 배경을 건너뛰면 흰 글자가 "흰 배경 위" 로 보고된다.**
+   *
+   *   종전엔 `c.a >= 0.85` 인 층만 배경으로 인정하고 나머지는 **그냥 지나쳤다.** 그래서
+   *   `bg-black/55 backdrop-blur` 칩 위의 흰 글자가, 칩을 건너뛰고 그 위 밝은 조상을 배경으로
+   *   잡아 **1.15:1(흰 글자/흰 배경)** 로 신고됐다. 실제로는 검정 55% 가 깔려 있어 잘 보인다.
+   *   ⇒ 건너뛰지 말고 **합성**한다(source-over). 위층부터 쌓아 내려가다 불투명 층을 만나면 끝.
+   */
+  const over = (top, bot) => {
+    const a = top.a + bot.a * (1 - top.a)
+    if (a <= 0) return { r: 0, g: 0, b: 0, a: 0 }
+    const ch = (t, b) => (t * top.a + b * bot.a * (1 - top.a)) / a
+    return { r: ch(top.r, bot.r), g: ch(top.g, bot.g), b: ch(top.b, bot.b), a }
+  }
   const bgOf = (el) => {
     let n = el
+    let acc = null // 지금까지 만난 **위쪽** 층들의 합성
     while (n && n !== document.documentElement) {
       const s = getComputedStyle(n)
       if (s.backgroundImage && s.backgroundImage !== 'none') return 'PIXEL'
       const c = parse(s.backgroundColor)
-      if (c && c.a >= 0.85) return c
+      if (c && c.a > 0.004) {
+        acc = acc ? over(acc, c) : c
+        if (acc.a >= 0.85) return acc
+      }
       n = n.parentElement
     }
     const c = parse(getComputedStyle(document.body).backgroundColor)
-    return c && c.a >= 0.85 ? c : 'PIXEL'
+    if (c && c.a > 0.004) { acc = acc ? over(acc, c) : c }
+    return acc && acc.a >= 0.85 ? acc : 'PIXEL'
   }
   const out = []
   const seen = new Set()
@@ -415,15 +434,25 @@ const MEASURE_ONE = (sel) => {
   const s = getComputedStyle(el)
   const fg = parse(s.webkitTextFillColor && s.webkitTextFillColor !== 'currentcolor' ? s.webkitTextFillColor : s.color)
   if (!fg || fg.a < 0.35) return null
+  // 위 `bgOf` 와 같은 이유로 **합성**한다 — 반투명을 건너뛰면 같은 오탐이 난다.
+  const over = (top, bot) => {
+    const a = top.a + bot.a * (1 - top.a)
+    if (a <= 0) return { r: 0, g: 0, b: 0, a: 0 }
+    const ch = (t, b) => (t * top.a + b * bot.a * (1 - top.a)) / a
+    return { r: ch(top.r, bot.r), g: ch(top.g, bot.g), b: ch(top.b, bot.b), a }
+  }
   let n = el, bg = null
   while (n && n !== document.documentElement) {
     const cs = getComputedStyle(n)
     if (cs.backgroundImage && cs.backgroundImage !== 'none') return null // 사진 위는 픽셀 패스가 맡는다
     const c = parse(cs.backgroundColor)
-    if (c && c.a >= 0.85) { bg = c; break }
+    if (c && c.a > 0.004) { bg = bg ? over(bg, c) : c; if (bg.a >= 0.85) break }
     n = n.parentElement
   }
-  if (!bg) bg = parse(getComputedStyle(document.body).backgroundColor)
+  if (!bg || bg.a < 0.85) {
+    const b2 = parse(getComputedStyle(document.body).backgroundColor)
+    if (b2 && b2.a > 0.004) bg = bg ? over(bg, b2) : b2
+  }
   if (!bg || bg.a < 0.85) return null
   const cr = ratio(fg, bg)
   const own = Array.from(el.childNodes).filter((x) => x.nodeType === 3).map((x) => x.textContent.trim()).join(' ')
@@ -526,7 +555,27 @@ const API_BY_PATH = (() => {
  * 값은 실측 후 넉넉히 내려 잡는다(부하로 흔들리는 것이 아니라 "통째로 안 그려짐"만 잡게).
  * 여기 없는 경로는 종전 바닥값(EMPTY_FLOOR)을 쓴다.
  */
-const MIN_TEXTS = {}
+const MIN_TEXTS = {
+  // 2026-09-28 실측(픽스처 적용 후)의 **약 30%** — 부하로 흔들리는 것이 아니라
+  // "목록이 통째로 안 그려졌다" 만 잡는 값이다. 괄호 안은 그날 측정값.
+  '홈(모바일)': 200, // 675
+  '홈(PC)': 200, // 655
+  동네딜: 200, // 675
+  숙소: 90, // 285
+  '입점 랜딩': 55, // 169
+  '입점 랜딩(PC)': 55, // 160
+  '지도(필터 시트)': 45, // 154
+  '지도(PC 패널)': 38, // 124
+  지도: 35, // 117
+  '교환권(PC)': 32, // 106
+  교환권: 30, // 103
+  쇼핑: 25, // 82
+  '이용권 상세(PC)': 23, // 77
+  '이용권 상세': 15, // 47
+  '유어샵(PC)': 16, // 51
+  유어샵: 13, // 41
+  블로그: 15, // 48
+}
 
 const EMPTY_FLOOR = 5
 
@@ -731,6 +780,12 @@ const fresh = findings.filter((f) => !known.allow.includes(sig(f)))
 if (process.argv.includes('--json')) {
   console.log(JSON.stringify(findings, null, 1))
   process.exit(0)
+}
+
+/* 🩸 경로별 측정 개수를 **초록일 때도** 찍는다 — 합계만 보면 한 경로가 반쯤 비어도 안 보인다.
+   MIN_TEXTS 를 정할 때도 이 값이 근거다. */
+if (process.env.DC_PER_ROUTE === '1') {
+  for (const r of perRoute) console.log(`   ${String(r.n).padStart(5)}  ${r.name}  (${r.route})`)
 }
 
 if (fresh.length === 0) {
