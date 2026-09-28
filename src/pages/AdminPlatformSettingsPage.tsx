@@ -13,6 +13,7 @@ import MapMarkerSection from './admin-platform-settings/MapMarkerSection'
 import CloudflareCredsSection from './admin-platform-settings/CloudflareCredsSection'
 import { CREDENTIAL_KEYS, buildSettingsPayload } from './admin-platform-settings/settings-payload'
 import { COMMISSION_BUDGET_FIELDS } from './admin-platform-settings/money-switch-fields'
+import SettingRow, { settingControlCls } from './admin-platform-settings/SettingRow'
 
 /**
  * 🔁 재수출 — 이 페이지가 이 두 심볼의 **공개 표면**이다(시험·다른 화면이 여기서 가져간다).
@@ -298,17 +299,17 @@ export default function AdminPlatformSettingsPage() {
           <>
           <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
             {SETTINGS_FIELDS.map(f => (
-              <div key={f.key} className="flex items-center justify-between px-5 py-4">
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{f.label}</p>
-                  <p className="text-xs text-gray-400">{t('admin.platformSettings.defaultLabel', { defaultValue: '기본값' })}: {f.default}</p>
-                </div>
+              <SettingRow
+                key={f.key}
+                label={f.label}
+                hint={`${t('admin.platformSettings.defaultLabel', { defaultValue: '기본값' })}: ${f.default}`}
+              >
                 <input
                   value={settings[f.key] ?? f.default}
                   onChange={e => setSettings(prev => ({ ...prev, [f.key]: e.target.value }))}
-                  className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 text-right font-medium"
+                  className={settingControlCls('sm:w-24', 'text-right')}
                 />
-              </div>
+              </SettingRow>
             ))}
           </div>
 
@@ -323,16 +324,12 @@ export default function AdminPlatformSettingsPage() {
             </div>
             <div className="divide-y divide-gray-100">
               {COMMISSION_BUDGET_FIELDS.map(f => (
-                <div key={f.key} className="flex items-center justify-between gap-4 px-5 py-4">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-900">{f.label}</p>
-                    {f.hint && <p className="text-xs text-gray-400 mt-0.5">{f.hint}</p>}
-                  </div>
+                <SettingRow key={f.key} label={f.label} hint={f.hint}>
                   {f.options ? (
                     <select
                       value={settings[f.key] ?? f.default}
                       onChange={e => setSettings(prev => ({ ...prev, [f.key]: e.target.value }))}
-                      className="shrink-0 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 font-medium bg-white"
+                      className={settingControlCls(undefined, 'sm:w-auto bg-white')}
                     >
                       {f.options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
@@ -340,10 +337,10 @@ export default function AdminPlatformSettingsPage() {
                     <input
                       value={settings[f.key] ?? f.default}
                       onChange={e => setSettings(prev => ({ ...prev, [f.key]: e.target.value }))}
-                      className="w-28 shrink-0 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 text-right font-medium"
+                      className={settingControlCls('sm:w-28', 'text-right')}
                     />
                   )}
-                </div>
+                </SettingRow>
               ))}
             </div>
           </div>
@@ -359,18 +356,14 @@ export default function AdminPlatformSettingsPage() {
             </div>
             <div className="divide-y divide-gray-100">
               {OPS_POLICY_FIELDS.map(f => (
-                <div key={f.key} className="flex items-center justify-between gap-4 px-5 py-4">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-900">{f.label}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{f.hint}</p>
-                  </div>
+                <SettingRow key={f.key} label={f.label} hint={f.hint}>
                   <input
                     value={settings[f.key] ?? ''}
                     placeholder="미설정"
                     onChange={e => setSettings(prev => ({ ...prev, [f.key]: e.target.value }))}
-                    className={`${f.text ? 'w-56' : 'w-28 text-right'} shrink-0 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 font-medium`}
+                    className={settingControlCls(f.text ? 'sm:w-56' : 'sm:w-28', f.text ? '' : 'text-right')}
                   />
-                </div>
+                </SettingRow>
               ))}
             </div>
           </div>

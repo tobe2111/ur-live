@@ -36,13 +36,13 @@ export default function CloudflareCredsSection({ settings, setSettings, savedTic
       <div className="divide-y divide-gray-100">
         {FIELDS.map(f => (
           <div key={f.key} className="px-5 py-4">
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <div className="min-w-0">
                 <p className="text-sm font-medium text-gray-900">{f.label}</p>
                 <p className="text-xs text-gray-400 mt-0.5">{f.hint}</p>
               </div>
               {has(f.key) && !edit[f.key] ? (
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 sm:shrink-0">
                   {/* 🔎 끝 4자리 — 값이 **바뀌었는지**를 눈으로 구분할 유일한 수단이다. "설정됨" 만으로는
                       옛 토큰과 새 토큰을 못 가린다(둘 다 길이가 같으면 화면이 완전히 동일하다 —
                       2026-08-02 에 실제로 이래서 죽은 토큰이 남아 있는 줄 몰랐다). */}
@@ -57,7 +57,7 @@ export default function CloudflareCredsSection({ settings, setSettings, savedTic
                   type="password" autoComplete="off" placeholder="붙여넣기"
                   value={settings[f.key] ?? ''}
                   onChange={e => setSettings(prev => ({ ...prev, [f.key]: e.target.value }))}
-                  className="w-64 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900"
+                  className="w-full sm:w-64 sm:shrink-0 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900"
                 />
               )}
             </div>
