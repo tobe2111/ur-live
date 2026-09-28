@@ -293,7 +293,7 @@ export default function DesktopTopNav() {
             className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-white/[0.04] transition-colors"
           >
             <Smartphone className="w-4 h-4" strokeWidth={1.75} />
-            {t('nav.app', { defaultValue: '앱' })}
+            {t('nav.app', { defaultValue: '모바일' })}
           </button>
 
           {/* 판매하세요 — 🖥️ 2026-07-19 (대표 요청): '판매자센터' → '유어딜(로고)에서 판매하세요'(그루폰식).

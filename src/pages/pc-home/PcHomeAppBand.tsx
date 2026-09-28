@@ -1,8 +1,19 @@
 /**
- * 🖥️ 2026-07-16 (대표 시안 — 당근급 앱 다운로드 배너): 리치 다크 배너 + 스토어 배지 +
- *   유어딜 앱 화면이 떠 있는 폰 목업 2개(딜 피드 + 딜 상세). PC 홈 하단.
- *   딥다크 확정(당근처럼) — 라이트/다크 앱 양쪽에서 동일하게 어두운 배너.
+ * 🖥️ 2026-07-16 (대표 시안 — 당근급 배너): 리치 다크 배너 + 폰 목업 2개(딜 피드 + 딜 상세). PC 홈 하단.
+ *   딥다크 확정(당근처럼) — 라이트/다크 양쪽에서 동일하게 어두운 배너.
+ *
+ * 📱 2026-09-28 (대표 확정 *"아직 앱은 하나도 없어"*): App Store·Google Play 배지를 **삭제**했다.
+ *   그 배지는 `href="#"` 라 **눌러도 아무 일이 안 일어났고**, 문구는 "지금 바로 다운로드하기" 였다 —
+ *   받을 게 없는데 받으라고 한 셈이다(에러가 안 나서 아무도 신고하지 않는 종류).
+ *   배너 자체는 남긴다: 폰 목업은 **실제 모바일 웹 화면**이라 거짓이 아니고, PC 에서 폰으로 넘어가는
+ *   손잡이는 여전히 필요하다 ⇒ 스토어 배지 자리를 **QR**(같은 사이트로 이어보기)로 바꿨다.
+ *   ⚠️ QR 은 `ConsumerFrameRails`·`AppDownloadModal` 과 **같은 lazy 패턴**이어야 한다 — 정적 import 로
+ *   바꾸면 `codes` 청크가 PC 홈 첫 페인트 폐쇄로 딸려온다(2026-07-13 에 그걸 고쳤다).
  */
+import { lazy, Suspense } from 'react'
+
+// 🟢 qrcode.react lazy — 위 머리말의 청크 규칙. 정적 import 금지.
+const QRCodeSVG = lazy(() => import('qrcode.react').then(m => ({ default: m.QRCodeSVG })))
 
 const dealFeed = [
   { m: 'SB', c: '#0b6b3a', t: '스타벅스 아메리카노 2잔', loc: '역삼동 · 방금', price: '6,200원', like: 214 },
@@ -10,39 +21,6 @@ const dealFeed = [
   { m: 'HA', c: '#5567d6', t: '프리미엄 헤어컷 + 클리닉', loc: '서초동 · 28분', price: '19,500원', like: 41 },
 ]
 
-function AppleLogo() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M16.4 12.9c0-2.2 1.8-3.3 1.9-3.3-1-1.5-2.6-1.7-3.2-1.7-1.4-.1-2.6.8-3.3.8s-1.7-.8-2.9-.8c-1.5 0-2.9.9-3.6 2.2-1.6 2.7-.4 6.8 1.1 9 .7 1.1 1.6 2.3 2.7 2.2 1.1 0 1.5-.7 2.8-.7s1.6.7 2.8.7 1.9-1.1 2.6-2.1c.8-1.2 1.2-2.3 1.2-2.4-.1 0-2.3-.9-2.4-3.9zM14.3 6.4c.6-.7 1-1.7.9-2.7-.9 0-1.9.6-2.5 1.3-.5.6-1 1.6-.9 2.6 1 .1 1.9-.5 2.5-1.2z"/>
-    </svg>
-  )
-}
-function PlayLogo() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M4 3.5v17c0 .6.6 1 1.1.7L20 12.6c.5-.3.5-1 0-1.3L5.1 2.8C4.6 2.5 4 2.9 4 3.5z" fill="#fff"/>
-      <path d="M4 3.5v17c0 .3.1.5.4.6l9-9-9-9c-.3.1-.4.4-.4.6z" fill="#34d399"/>
-      <path d="M15.4 8 4.4 2.9 13.5 12l1.9-4z" fill="#fbbf24" opacity="0"/>
-    </svg>
-  )
-}
-
-function StoreBadge({ logo, top, big }: { logo: 'apple' | 'play'; top: string; big: string }) {
-  return (
-    <a
-      href="#"
-      className="flex items-center gap-2.5 pl-3.5 pr-5 h-[52px] rounded-2xl bg-black text-white border border-white/15 hover:border-white/30 transition-colors"
-    >
-      <span className="shrink-0">{logo === 'apple' ? <AppleLogo /> : <PlayLogo />}</span>
-      <span className="flex flex-col leading-none text-left">
-        <span className="text-[10px] text-white/70 mb-0.5">{top}</span>
-        <span className="text-[16px] font-bold tracking-tight">{big}</span>
-      </span>
-    </a>
-  )
-}
-
-/* ── 폰 목업 ── */
 function StatusBar() {
   return (
     <div className="flex items-center justify-between px-4 pt-2 pb-1">
@@ -148,10 +126,16 @@ export default function PcHomeAppBand() {
           <h2 className="text-[30px] lg:text-[34px] font-black leading-[1.25] tracking-tight text-white">
             유어딜에서 <span className="text-[#ff8a5c]">우리 동네 딜</span>과<br />함께해요
           </h2>
-          <p className="mt-3 text-[16px] font-bold text-white/70">지금 바로 다운로드하기</p>
-          <div className="mt-7 flex gap-3">
-            <StoreBadge logo="apple" top="Download on the" big="App Store" />
-            <StoreBadge logo="play" top="GET IT ON" big="Google Play" />
+          <p className="mt-3 text-[16px] font-bold text-white/70">설치 없이 폰에서 바로 열려요</p>
+          <div className="mt-7 flex items-center gap-4">
+            <div className="rounded-2xl bg-white p-2.5 shrink-0">{/* QR 은 스캔을 위해 항상 흰 배경 — light-fixed */}
+              <Suspense fallback={<div className="w-[92px] h-[92px]" />}>
+                <QRCodeSVG value="https://urdeal.kr" size={92} fgColor="#11141C" bgColor="#ffffff" level="M" />
+              </Suspense>
+            </div>
+            <p className="text-[14px] text-white/70 leading-relaxed max-w-[200px]">
+              카메라로 스캔하면<br />폰에서 이어서 볼 수 있어요
+            </p>
           </div>
         </div>
 
