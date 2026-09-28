@@ -3431,23 +3431,27 @@ canvas {
   {
     name: '히어로 preload 가 보이지 않는 폭에서도 받는다',
     file: 'src/worker/utils/home-card-preload.ts',
-    find: 'return `<link rel="preload" as="image" fetchpriority="high" media="${HOME_HERO_MEDIA_QUERY}"',
-    replace: 'return `<link rel="preload" as="image" fetchpriority="high"',
+    // 🎞️ 2026-09-28: 히어로 기본 미디어가 [사진 한 장] → [흐르는 띠]가 되면서 preload 도 타일을
+    //   당긴다. 불변식(안 보이는 폭에서 받지 않는다)은 그대로라 앵커만 새 자리로 재조준했다.
+    find: 'links.push(`<link rel="preload" as="image" fetchpriority="high" media="${HOME_HERO_MEDIA_QUERY}"',
+    replace: 'links.push(`<link rel="preload" as="image" fetchpriority="high"',
     test: 'src/tests/unit/home-hero-preload.test.ts',
     why:
-      '히어로 사진은 `hidden md:block` 이라 768px 미만에서 **보이지 않는다**. media 게이트를 빼면 ' +
+      '히어로 띠는 `hidden md:block` 이라 768px 미만에서 **보이지 않는다**. media 게이트를 빼면 ' +
       '폰이 96KB 를 헛되이 받는다 — 고치려던 것(늦게 뜬다)보다 나쁜 회귀인데 **PC 에서는 아무 차이가 ' +
       '없어 눈으로 못 잡는다.** ⚠️ 이 파일엔 카드 preload 도 있어 문자열이 겹친다 — 앵커는 히어로 쪽으로.',
   },
   {
     name: '히어로 preload URL 이 클라이언트 렌더와 어긋난다',
     file: 'src/worker/utils/home-card-preload.ts',
-    find: 'const href = cfImage(pick.src, { width: HOME_HERO_REQUEST_WIDTH, quality: HOME_HERO_QUALITY })',
-    replace: 'const href = cfImage(pick.src, { width: 900, quality: HOME_HERO_QUALITY })',
+    // 🎞️ 2026-09-28: 당기는 대상이 타일로 바뀌었다. 같은 불변식(양쪽이 **같은 SSOT 함수**로 URL 을
+    //   만든다)을 새 자리에 다시 건다 — 여기서 손으로 조립하면 그 순간 갈린다.
+    find: 'const href = heroTileUrl(tile.src)',
+    replace: "const href = cfImage(tile.src, { width: 400 })",
     test: 'src/tests/unit/home-hero-preload.test.ts',
     why:
-      'preload 는 URL 이 **byte-일치할 때만** 쓰인다. 폭이 한쪽에서만 바뀌면 브라우저가 preload 를 ' +
-      '버리고 96KB 를 **두 번** 받는다 — 에러도 없고 화면도 멀쩡한데 더 느려지고 트래픽만 두 배다. ' +
+      'preload 는 URL 이 **byte-일치할 때만** 쓰인다. 한쪽만 바뀌면 브라우저가 preload 를 ' +
+      '버리고 같은 사진을 **두 번** 받는다 — 에러도 없고 화면도 멀쩡한데 더 느려지고 트래픽만 두 배다. ' +
       '눈으로는 절대 안 보이는 종류라 가드가 유일한 방어다(2026-08-22 에 실제로 900→1280 으로 바뀐 값이다).',
   },
   {

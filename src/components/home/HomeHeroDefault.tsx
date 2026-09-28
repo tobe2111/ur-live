@@ -3,7 +3,8 @@ import { cfImage, cfSrcSet, cfImageOnError } from '@/utils/cf-image'
 import { BANNER_SLOT_SPECS } from '@/shared/constants/home-showcase'
 import { HOME_HERO_REQUEST_WIDTH, HOME_HERO_QUALITY } from '@/shared/home-hero-image'
 import PcHomeLocationBar, { type HomeRegion } from '@/pages/pc-home/PcHomeLocationBar'
-import { useHeroPhoto } from './useHeroPhoto'
+import { useHeroPhoto, useHeroStrip } from './useHeroPhoto'
+import HeroDealStrip from './HeroDealStrip'
 
 /**
  * 🏠 히어로 (2026-08-19 대표 확정 — **통합형 190px**, 시안 4개 중 ②안).
@@ -20,10 +21,18 @@ import { useHeroPhoto } from './useHeroPhoto'
  * 그 뒤 헤더 2행 개편에서 **헤더 검색바가 46px 대형으로 커졌다** — 그래서 히어로 검색은
  * 중복이 됐다. 대표 지시: *"그 부분엔 검색창이 없어야 할 것 같어."*
  *
- * ## 📸 사진 — 어드민이 지정한다 (대표 확정)
- * `banner_type='hero'` 배너를 올리면 그 사진·카피가 여기에 들어온다(`HomeHeroBanner` 가 넘긴다).
- * **안 올리면** 홈 SSR 시드(`__SSR_INITIAL_MAIN__`, 0-RTT)에서 우리가 실제로 파는 딜 사진을
- * 하나 골라 쓴다 — 네트워크 왕복 0, 출처 안전(우리 상품), 데모(`demo-deal-*`)는 제외.
+ * ## 🎞️ 우측 미디어 — 기본은 **흐르는 이용권 띠** (2026-09-28 대표 확정, 시안 ②)
+ * 대표: *"여기 지금 들어있는 사진 비율이나 너무 마음에 안드는데? 이거 그냥 확대해서 올라가버리는거잖아"*
+ * → *"2번으로 하고 저 이용권들이 좌우로 자연스럽게 계속 이동하는건?"*
+ *
+ * 실측한 원인은 크롭 설정이 아니라 **틀과 내용의 불일치**였다 — 틀은 1037×190(5.46:1)인데
+ * 라이브 사진은 540×720(세로 3:4)이라 **세로의 14%** 만 보였다. 우리 사진 70장의 비율 중앙값이
+ * 정확히 1:1 이라 "더 좋은 한 장"을 고르는 문제가 아니다. ⇒ 4:3 타일 여러 장을 흘린다.
+ * 고르기·치수·트래픽 근거는 `shared/home-hero-strip`, 그리기는 `HeroDealStrip` 이 맡는다.
+ *
+ * ## 📸 사진 — 어드민 배너가 있으면 그게 이긴다 (종전 경로 유지)
+ * `banner_type='hero'` 배너를 올리면 그 사진·영상·카피가 띠 대신 들어온다(`HomeHeroBanner` 가 넘긴다).
+ * 띠가 한 장도 못 만들어질 때(피드가 비었을 때)도 종전처럼 시드 사진 한 장으로 떨어진다.
  * 사진 좌·우는 색면(`--home-field`)으로 페이드시켜 '잘라 붙인 배너'가 아니라 색면에 녹아들게 한다.
  * ⚠️ 색면 hex 를 여기 적지 말 것 — 페이지 색면(`PcHomePage`)과 **같은 값이어야** 이음매가 안 생긴다.
  */
@@ -80,6 +89,14 @@ export default function HomeHeroDefault({
   const photoHref = content?.photoHref || seed?.href || '/map'
   const hasMedia = !!photoSrc || !!content?.videoUrl
 
+  /**
+   * 🎞️ 기본은 띠다. 어드민 배너(사진·영상)가 있으면 그게 이기고, 띠를 한 장도 못 만들면
+   *   종전 한 장 경로로 떨어진다(피드가 빈 순간에도 색면만 남지 않게).
+   */
+  const adminMedia = !!content?.photo || !!content?.videoUrl
+  const tiles = useHeroStrip(!adminMedia)
+  const showStrip = !adminMedia && tiles.length > 0
+
   return (
     /* 📐 통합형 190px — 고정 높이가 아니라 최소 높이다. 카피가 길어지면 잘리는 대신 늘어난다
        (시안 작업 중 고정 높이로 카피가 잘리는 걸 실제로 겪었다). */
@@ -98,7 +115,7 @@ export default function HomeHeroDefault({
           덧대는 방식은 사진이 뿌옇게 죽는다.
           🎫 2026-09-02 (대표 "위아래부분까지 그라데이션은 안해도 될 것 같은데"): 세로(180deg) 마스크와
           하단 h-12 페이드를 뺐다. 사진은 히어로 위아래 끝까지 꽉 차고, 페이드는 **좌우만**. */}
-      {hasMedia && (
+      {hasMedia && !showStrip && (
         <div
           className="hidden md:block absolute inset-y-0 w-[46%] lg:w-[54%] right-[calc(max(0px,(100vw-1440px)/2)+1.5rem)] lg:right-[calc(max(0px,(100vw-1440px)/2)+2rem)]"
           aria-hidden="true"
@@ -190,6 +207,10 @@ export default function HomeHeroDefault({
         </div>
       </div>
 
+      {/* 🎞️ 흐르는 이용권 띠 — 배경 래퍼(`pointer-events-none`) **밖**에 둔다. 안에 두면 눌리지 않고,
+          위 스크림에 덮여 사진이 뿌예진다. z-20 인 이유는 아래 사진 링크와 같다(콘텐츠 층이 w-full 이다). */}
+      {showStrip && <HeroDealStrip tiles={tiles} />}
+
       {/* 🖼️ 2026-09-06 (대표 — "히어로 속 이미지 부분은 클릭이 되게 · 사진 속 딜 보기 문구는 없애줘"):
           사진 자체가 링크다. 종전엔 사진이 `pointer-events-none` 배경 래퍼 안에 있어 **클릭이 구조적으로
           불가능**했고, 그래서 오른쪽 아래에 "사진 속 딜 보기 →" 라는 안내를 따로 달아야 했다.
@@ -200,7 +221,7 @@ export default function HomeHeroDefault({
           🔝 z-20 인 이유: 콘텐츠 층(z-10)이 `w-full` 이라 사진 위까지 덮는다. 그 아래에 두면 투명한
              콘텐츠 div 가 클릭을 먼저 가로챈다. 왼쪽 글자·컨트롤은 실제 요소가 있는 곳에서만 위에 있다.
           👆 사진은 눌러진다는 표시가 없으므로 hover 에 아주 옅은 막 하나만 — 사진을 탁하게 만들지 않는 선. */}
-      {hasMedia && photoHref !== '/map' && (
+      {hasMedia && !showStrip && photoHref !== '/map' && (
         <Link
           to={photoHref}
           aria-label="이 사진의 딜 보기"
