@@ -18,6 +18,7 @@ const PAGE = 'src/pages/CuratorPage.tsx'
 const HEADER = 'src/pages/curator-page/CuratorHeader.tsx'
 const SELLER = 'src/pages/SellerPublicPage.tsx'
 const CHIPS = 'src/pages/curator-page/PinCategoryChips.tsx'
+const ROW = 'src/pages/curator-page/PinRow.tsx'
 const LAYOUT = 'src/components/MobileAppLayout.tsx'
 const CSS = 'src/index.css'
 
@@ -78,18 +79,27 @@ describe('유어샵 안3 — 카테고리 칩(지도 B안과 같은 그림)', ()
     expect(src).toContain("from '@/pages/restaurant-map/voucher-types'")
     expect(src).toMatch(/on \? 'bg-brand text-white' : 'bg-white dark:bg-\[#1D1F29\][^']*shadow-lift'/)
   })
-  it('핀 7개 미만이면 칩을 그리지 않는다(시안: "6개 이하면 칩을 숨깁니다")', () => {
-    const src = read(CHIPS)
-    expect(src).toContain('export const CHIPS_MIN_PINS = 7')
-    expect(codeOnly(src)).toMatch(/if \(pins\.length < CHIPS_MIN_PINS\) return null/)
+  // 🔧 2026-09-28 재조준(대표 확정 s3): 종전엔 `CHIPS_MIN_PINS = 7` 미만이면 안 그렸다.
+  //   그 게이트는 **한 번도 열린 적이 없다** — 라이브 유어샵은 3곳·최다 5개다. 칩이 존재하지 않는
+  //   기능이었으므로 게이트를 없앴고, 시험도 새 계약("비었을 때만 안 그린다")으로 옮긴다.
+  //   ⚠️ 느슨해진 게 아니라 **판정 대상이 바뀐 것**이다 — 죽은 상수를 살려 두는 단언은 지웠다.
+  it('칩은 핀이 하나라도 있으면 그리고, 0 이면 안 그린다', () => {
+    const src = codeOnly(read(CHIPS))
+    expect(src, '죽은 최소개수 상수가 되살아나지 않았다').not.toContain('CHIPS_MIN_PINS')
+    expect(src).toMatch(/if \(pins\.length === 0\) return null/)
   })
-  it('CuratorPage 가 칩을 배선하고 필터가 검색과 함께 applyQ 에 들어간다', () => {
+  it('CuratorPage 가 칩을 조건 없이 배선한다(게이트는 부품이 한 곳에서만 판정)', () => {
     const src = codeOnly(read(PAGE))
     expect(src).toMatch(/<PinCategoryChips pins=\{pins\} value=\{cat\} onChange=\{setCat\} \/>/)
-    expect(src).toMatch(/cat === 'all' \? arr : arr\.filter\(p => pinCategory\(p\) === cat\)/)
+    // 호출부가 개수를 또 판정하면 두 게이트가 언젠가 갈린다.
+    expect(src).not.toMatch(/pins\.length[^\n]*&&\s*<PinCategoryChips/)
+    // 칩 선택이 실제로 목록을 거른다(배선만 있고 안 걸러지는 것을 막는다).
+    expect(src).toMatch(/cat === 'all' \? homePins : homePins\.filter\(p => pinCategory\(p\) === cat\)/)
   })
+  // 🔧 2026-09-28 재조준(s3): 배지가 `CuratorPage` 인라인 카드 → `PinRow` 로 **이사했다**.
+  //   검사 대상만 옮긴다(계약은 그대로 — 사진 위 유일한 표식이라 테마와 무관하게 흰 원이어야 읽힌다).
   it('순번 배지는 흰 원 + 잉크 숫자', () => {
-    expect(codeOnly(read(PAGE))).toMatch(/rounded-full bg-white text-\[#16181C\][^"]*tabular-nums/)
+    expect(codeOnly(read(ROW))).toMatch(/rounded-full bg-white text-\[#16181C\][^"]*tabular-nums/)
   })
 })
 

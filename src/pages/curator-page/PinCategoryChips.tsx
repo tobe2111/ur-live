@@ -4,9 +4,12 @@
  *   지도 위 칩(`MapTopBar`, B안)과 **같은 그림** — 흰 알약 + 유어딜 선 아이콘, 선택은 브랜드 블루 면.
  *   칩 정의도 같은 SSOT(`MAP_VOUCHER_DEFS`)를 쓴다 — 유어샵만 다른 이름·다른 아이콘을 갖지 않게.
  *
- *   ⚠️ 핀이 `CHIPS_MIN_PINS` 미만이면 **그리지 않는다**(시안 문구: "핀 12개 이상일 때만 의미가 있으니
- *   6개 이하면 칩을 숨깁니다"). 라이브 실측(2026-08-31)상 진열대 최다 4개라 지금은 거의 안 뜬다 —
- *   그래도 넣는 이유는 늘었을 때 자동으로 뜨게 하려는 것이지 지금 보이려는 게 아니다.
+ *   🔧 2026-09-28 (대표 확정 s3): **최소 개수 게이트를 없앴다.** 종전엔 `CHIPS_MIN_PINS = 7` 미만이면
+ *   안 그렸는데(시안 문구 "6개 이하면 칩을 숨깁니다"), 라이브 유어샵은 3곳·핀 8개·**최다 5개**라
+ *   그 게이트가 **한 번도 열린 적이 없었다** — 칩은 존재하지 않는 기능이었다. 2026-08-31 주석이
+ *   "늘었을 때 자동으로 뜨게 하려는 것" 이라고 적어 둔 그 '늘었을 때' 가 오지 않았다.
+ *   s3 는 칩을 정렬 줄과 한 쌍으로 쓰므로 적을 때도 "무엇이 몇 개인지" 를 먼저 말해 주는 편이 낫다.
+ *   ⇒ 이제 핀이 **하나라도 있으면** 그린다(0 이면 진열대 자체가 비어 EmptyUrShop 이 대신 뜬다).
  *
  *   쇼핑 상품 핀(이용권 아님)이 있으면 '상품' 칩을 하나 더 낸다(SSOT 4종 밖 — 유어샵만의 것).
  */
@@ -15,7 +18,6 @@ import { MAP_VOUCHER_DEFS, type MapVoucherType } from '@/pages/restaurant-map/vo
 import { GiftBoxIcon } from '@/components/icons/urdeal-icons'
 import type { CuratorPin } from '@/features/curator/api/curator-api'
 
-export const CHIPS_MIN_PINS = 7
 export type PinCategory = MapVoucherType | 'shop'
 
 /** 핀 → 칩 키. 교환권(deal_only)·voucher 카테고리는 4종 중 하나, 나머지는 '상품'. */
@@ -28,7 +30,8 @@ export function pinCategory(p: CuratorPin): Exclude<PinCategory, 'all'> {
 
 export default function PinCategoryChips({ pins, value, onChange }: { pins: CuratorPin[]; value: PinCategory; onChange: (v: PinCategory) => void }) {
   const { t } = useTranslation()
-  if (pins.length < CHIPS_MIN_PINS) return null
+  // 개수 게이트 없음(위 머리말 참조) — 비었을 때만 안 그린다.
+  if (pins.length === 0) return null
   const counts = new Map<string, number>()
   for (const p of pins) { const k = pinCategory(p); counts.set(k, (counts.get(k) || 0) + 1) }
   const defs = [
