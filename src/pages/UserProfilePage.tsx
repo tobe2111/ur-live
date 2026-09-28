@@ -204,14 +204,36 @@ export default function UserProfilePage() {
 
       {/* 🖥️ 2026-09-02 PC: 우측 칸 상단 = 내용(프로필 카드 · 숫자 넷 · 주문/리뷰어 · 곧 쓸 이용권 · 타일).
           모바일: 종전 흐름(딜 잔액 카드 → 주문 현황 → 리뷰어 → 이용 내역 목록) 그대로. */}
+      {/* 🖥️ 2026-09-28 (대표 확정 **PC 1안 — "오늘이 머리"** · 시안 `PcFull1`): 판매 구역은 **전폭**이고
+          그 아래부터 **두 열**이다. 안 나누면 888px 한 줄에 블록 열한 개가 세로로 1,900px 쌓이고,
+          좌측 내비는 440px 에서 끝나 그 아래 1,500px 가 빈다 — 대표 *"PC 가 너무 별로, 허술하다"*(09-28)의
+          실체가 그것이었다.
+          ⚠️ **모바일에서는 이 래퍼가 아무 일도 안 한다**(`display:block`) — 자식이 종전 순서 그대로 흐른다.
+          ⚠️ 균등 2열이 아니다. 왼쪽이 1.25, 오른쪽이 1 — 균등으로 쪼개면 한 칸이 폰보다 좁아진다
+             (09-28 에 그 계산만 보고 "2열 안 함" 으로 결론 냈던 것이 오판이었다. 시안은 비대칭이고
+              내비를 216 → 178 로 좁혀 본문을 996px 로 쓴다). */}
+      {/* ⚠️ **가게가 없으면 두 열로 나누지 않는다.** 왼쪽 열은 판매 전용이라, 좌석이 0 이면
+          그 칸이 통째로 비고 손님 블록이 전부 좁은 오른쪽으로 몰린다(첫 판에서 실제로 그랬다).
+          판매가 있을 때만 쪼갠다 — 없으면 종전 한 열 그대로다. */}
+      <div className={sellerSeats.stores.length > 0 ? 'ur-account-cols ur-account-cols--split' : 'ur-account-cols'}>
+      <div className="ur-account-col min-w-0">
+
+      {/* 🖥️ 판매는 **넓은 쪽**(1.25)에 산다 — 시안 `PcFull1` 과 같은 자리다.
+          목록 행이 [이름 + 설명 + ›] 이라 좁히면 설명이 먼저 잘린다. */}
+      {isPc ? <SellerSection state={sellerSeats} /> : null}
+
+      </div>{/* /왼쪽 열 — 판매 */}
+      <div className="ur-account-col ur-account-col--narrow min-w-0">
+
       {isPc ? (
       <>
-        {/* 🖥️ 2026-09-28 (대표 확정 **PC 1안 — "오늘이 머리"**): 판매가 **맨 위**로 올라왔다.
+        {/* 🖥️ 2026-09-28: 프로필·숫자 넷·티켓·타일은 **좁은 오른쪽 열**에 그대로 있다(하나도 안 지웠다).
+            ⚠️ 그 안의 4열·3열 격자는 좁은 칸에서 글자가 잘린다 — `--narrow` 가 CSS 로 접어 준다
+               (첫 판에서 실제로 `내...` `찜.` 으로 잘렸다).
             종전엔 프로필 카드가 이 칸의 머리였는데, PC 를 여는 사장님이 보려는 건 *오늘 얼마고 무엇이
             대기인가* 하나다. 프로필·숫자 넷·티켓·타일은 그대로 그 아래에 있다(하나도 안 지웠다 —
             시안이 그것들을 빠뜨렸던 게 09-28 에 "PC가 심플하다" 로 드러난 실수다).
             ⚠️ 모바일은 이 분기를 안 타고 아래 `<>` 쪽이 그대로다(종전과 동일 순서). */}
-        <SellerSection state={sellerSeats} />
         <AccountPcPane counts={counts} userName={userName} profileImage={profileImage} onEditProfile={() => setEditOpen(true)} sellerSeats={sellerSeats} />
       </>
       ) : (
@@ -382,6 +404,9 @@ export default function UserProfilePage() {
             ⇒ 조용한 텍스트 링크로 격하. 라우트·경고 화면(/account/delete-warning)은 그대로다. */}
         <DeleteAccountLink />
       </div>
+
+      </div>{/* /오른쪽 열 — 손님 */}
+      </div>{/* /ur-account-cols */}
 
       {/* 🧹 2026-06-22 (대표 — 도움말 비중 축소): 도움말/약관을 최하단 footer 로.
             볼드 헤더+카드 InsetGroup → 점 구분 muted 텍스트 링크(항목/경로 불변). */}

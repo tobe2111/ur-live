@@ -44,8 +44,12 @@ export default [
   {
     name: '🖥️ PC 에서 프로필 카드가 다시 판매 위로 간다',
     file: 'src/pages/UserProfilePage.tsx',
-    find: '        <SellerSection state={sellerSeats} />\n        <AccountPcPane',
-    replace: '        <AccountPcPane',
+    // 🔁 2026-09-28 재조준: PC 가 2열이 되면서 둘이 **다른 열**로 갈라졌다(판매=넓은 왼쪽,
+    //   프로필=좁은 오른쪽). 지키려는 것은 그대로 — **PC 첫 줄은 판매다.** 그 줄을 지우면 빨간불.
+    //   ⚠️ 줄을 통째로 걷어내야 빨간불이 된다 — `{false ? …}` 로 바꾸면 그 **문자열이 남아**
+    //     순서 검사(`indexOf`)가 그대로 통과한다(첫 판에서 실제로 헛돌았다).
+    find: '      {isPc ? <SellerSection state={sellerSeats} /> : null}',
+    replace: '      {/* PC 판매 없음 */}',
     test: TEST,
     why: 'PC 를 여는 사장님이 보려는 건 오늘 숫자 하나다 — 그게 첫 줄이 아니면 PC 를 여는 이유가 사라진다.',
   },
@@ -68,8 +72,9 @@ export default [
   {
     name: '🔵 띠 오프셋의 근거인 CSS 패딩 무력화가 사라진다',
     file: 'src/index.css',
-    find: '    padding-left: 0;\n    padding-right: 0;\n  }\n}',
-    replace: '  }\n}',
+    // 🔁 2026-09-28 재조준: 같은 미디어쿼리 안에 2열 규칙이 뒤에 붙으면서 `}\n}` 로 끝나지 않는다.
+    find: '    padding-left: 0;\n    padding-right: 0;\n  }',
+    replace: '  }',
     test: TEST,
     why: '음수 오프셋의 근거가 이 규칙이다 — 한쪽만 바뀌면 조용히 어긋나는 짝이라 함께 잠갔다.',
   },

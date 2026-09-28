@@ -1733,6 +1733,25 @@ html.dark .gbd, [data-theme="dark"] .gbd {
     padding-left: 0;
     padding-right: 0;
   }
+
+  /* 🖥️ 2026-09-28 (대표 *"PC 가 너무 별로, 허술하다"* · 시안 `PcFull1` — "오늘이 머리").
+     판매 구역 아래를 **두 열**로 편다. 안 나누면 블록 열한 개가 888px 한 줄에 세로 1,900px 쌓이고,
+     좌측 내비는 440px 에서 끝나 그 아래 1,500px 가 빈 채로 남는다.
+     ⚠️ **균등이 아니다** — 왼쪽 1.25 : 오른쪽 1. 균등으로 쪼개면 한 칸이 폰(430)보다 좁아진다.
+        09-28 에 그 계산만 보고 "2열 안 함" 으로 결론 냈던 것이 오판이었다(시안은 처음부터 비대칭).
+     ⚠️ `align-items: start` 가 없으면 짧은 열이 긴 열 높이로 늘어나 카드가 붕 뜬다. */
+  .ur-account-cols--split {
+    display: grid;
+    grid-template-columns: 1.25fr 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+
+  /* 좁은 오른쪽 칸(≈400px): 안쪽 격자를 접는다. 접지 않으면 글자가 잘린다 —
+     첫 판에서 알약 셋이 `내...` `내...` `찜.` 이 됐고 숫자 라벨이 두 줄로 깨졌다. */
+  .ur-account-cols--split .ur-account-col--narrow .grid-cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ur-account-cols--split .ur-account-col--narrow .grid-cols-3 { grid-template-columns: minmax(0, 1fr); }
+  .ur-account-cols--split .ur-account-col--narrow .grid-cols-2 { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* 🖼️ 사진 저장 억제 — iOS 짝 (2026-08-22 대표 지시)
