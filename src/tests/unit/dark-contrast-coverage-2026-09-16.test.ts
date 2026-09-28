@@ -127,8 +127,14 @@ describe('dark-contrast 가드 커버리지 (2026-09-16)', () => {
     expect(guard).toMatch(/perRoute\.push\(/)
     // 🩸 되돌려-검증이 잡았다: 처음엔 `filter(` 존재만 봤는데, 임계를 `r.n < 0` 으로 바꾸면
     //    (= 영원히 빈 배열) 검사가 통째로 죽는데도 통과했다. **모양이 아니라 값**을 본다.
-    expect(guard).toMatch(/const EMPTY_ROUTES = perRoute\.filter\(\(r\) => r\.n < EMPTY_FLOOR\)/)
+    // 🔧 2026-09-28 재조준(결재 `dark-contrast-guard-coverage` — *"4번은 모두 고쳐줘"*):
+    //   바닥값이 **한 개**여서 "원래 빈 화면"과 "콘텐츠를 못 불러온 화면"을 구분하지 못했다
+    //   (유어샵 8개 측정 vs 실제 60개 = 87%가 검사 밖). 이제 **경로별 기대치**(`MIN_TEXTS`)가
+    //   앞서고 없는 경로만 종전 바닥값으로 떨어진다. 지키려던 것은 그대로다 —
+    //   **임계가 값으로 살아 있을 것**(`r.n < 0` 처럼 죽이면 빨간불).
+    expect(guard).toMatch(/const EMPTY_ROUTES = perRoute\.filter\(\(r\) => r\.n < \(MIN_TEXTS\[r\.name\] \?\? EMPTY_FLOOR\)\)/)
     expect(guard).toMatch(/const EMPTY_FLOOR = [1-9]\d*/)
+    expect(guard, '경로별 기대치 표가 있어야 한다').toMatch(/const MIN_TEXTS = \{/)
 
     /**
      * 🩸 그리고 그 엄격함이 **flake 를 만들었다**(같은 날 실측): `npm run build` 직후에 돌리면
