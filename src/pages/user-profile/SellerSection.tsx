@@ -26,7 +26,13 @@
  * 상태를 **직접 말한다** — 노출·정산이 왜 아직인지 화면이 설명하지 않으면 사장님은 고장으로 읽는다.
  */
 import { Suspense, lazy, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
-import { BarChart3, ChevronDown, ChevronRight, ClipboardList, Handshake, Loader2, MessageSquare, ScanLine, Search, Store, Ticket, Wallet } from 'lucide-react'
+import { ChevronDown, ChevronRight, Loader2, Search } from 'lucide-react'
+// 🎨 2026-09-28: 판매 도구 여덟 칸의 뜻 아이콘. lucide 로 남긴 넷은 전부 **조작**이다
+//    (펼치기·이동·로딩·검색) — 어느 앱에서나 같은 모양이라 직접 그릴 값이 없다.
+import {
+  OrdersIcon, TicketStubIcon, WonCoinIcon, ChartIcon, UrShopIcon, PeopleIcon,
+  MessageIcon, ScanIcon,
+} from '@/components/icons/urdeal-icons'
 import { formatNumber } from '@/utils/format'
 import { currentSeatId, onSeatChange, switchSeat } from '@/lib/seller-seat'
 import { clearMyReturn, withMyReturn } from '@/lib/seller-return'
@@ -231,7 +237,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           </button>
         ) : (
           <span className="inline-flex items-center gap-1 max-w-[60%] text-[12px] font-semibold text-gray-500 dark:text-gray-400">
-            <Store className="w-3 h-3 shrink-0" aria-hidden="true" />
+            <UrShopIcon className="w-3 h-3 shrink-0" aria-hidden="true" />
             <span className="truncate">{store.name}</span>
           </span>
         )}
@@ -285,7 +291,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
         onClick={() => enterSeat('/store/scan')}
         className="w-full flex items-center gap-3 mt-3 px-4 h-[60px] rounded-2xl bg-brand text-white text-left active:opacity-90 disabled:opacity-60 lg:mt-0 lg:w-[290px] lg:shrink-0 lg:h-auto"
       >
-        <ScanLine className="w-6 h-6 shrink-0" aria-hidden="true" />
+        <ScanIcon className="w-6 h-6 shrink-0" aria-hidden="true" />
         <span className="flex-1 min-w-0">
           <span className="block text-[15px] font-extrabold">이용권 사용처리</span>
           <span className="block text-[12px] text-white/80 mt-1">손님 QR을 찍으세요</span>
@@ -332,7 +338,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
       <GroupLabel>매일</GroupLabel>
       <div className="rounded-2xl bg-surface shadow-lift overflow-hidden">
         <ToolRow
-          icon={<ClipboardList className="w-[18px] h-[18px]" aria-hidden="true" />}
+          icon={<OrdersIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
           label="주문"
           hint={work.orders.length > 0
             ? `확인 대기 ${formatNumber(work.orders.length)}건 · 지난 주문까지`
@@ -341,7 +347,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           onClick={() => openTool('orders')}
         />
         <ToolRow
-          icon={<Ticket className="w-[18px] h-[18px]" aria-hidden="true" />}
+          icon={<TicketStubIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
           label="이용권"
           hint={work.products.length > 0
             ? `판매 중 ${formatNumber(work.products.filter((p) => p.isActive).length)}개 · 가격·수량 고치기`
@@ -350,7 +356,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           onClick={() => openTool('vouchers')}
         />
         <ToolRow
-          icon={<Wallet className="w-[18px] h-[18px]" aria-hidden="true" />}
+          icon={<WonCoinIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
           label="정산"
           hint="쌓인 돈 받기 · 계좌 · PIN"
           busy={entering}
@@ -361,14 +367,14 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
       <GroupLabel>가끔</GroupLabel>
       <div className="rounded-2xl bg-surface shadow-lift overflow-hidden">
         <ToolRow
-          icon={<BarChart3 className="w-[18px] h-[18px]" aria-hidden="true" />}
+          icon={<ChartIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
           label="매출 분석"
           hint="최근 2주 추이와 이번 달 합계"
           busy={entering}
           onClick={() => openTool('analytics')}
         />
         <ToolRow
-          icon={<Store className="w-[18px] h-[18px]" aria-hidden="true" />}
+          icon={<UrShopIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
           label="가게"
           hint={stores.length >= 2 ? '이름 · 연락처 · 주소 · 가게 전환' : '이름 · 연락처 · 주소 · 소개'}
           busy={entering}
@@ -377,7 +383,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
         {/* 🤝 소개 파트너 — 라이브 실측으로 **살아 있는** 기능이라 묶음으로 올렸다
             (제안 1건 active · 팔로워 3). 쿠폰·숙소와 판정이 다르다. */}
         <ToolRow
-          icon={<Handshake className="w-[18px] h-[18px]" aria-hidden="true" />}
+          icon={<PeopleIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
           label="소개 파트너"
           hint="내 이용권을 담아 파는 사람 · 받은 제안"
           busy={entering}
@@ -386,7 +392,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
         {/* 💬 브랜드메시지 — 여기서는 **보내지 않는다**(발송은 등급 C). 잔액·최근 발송만 읽고,
             충전·발송은 전용 화면으로 보낸다. 아직 안 쓴 가게에는 시트가 스스로 안내 한 장이 된다. */}
         <ToolRow
-          icon={<MessageSquare className="w-[18px] h-[18px]" aria-hidden="true" />}
+          icon={<MessageIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
           label="브랜드메시지"
           hint="단골에게 카카오톡 안내 · 남은 건수"
           busy={entering}

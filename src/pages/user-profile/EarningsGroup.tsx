@@ -6,7 +6,8 @@
  */
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronDown, Wallet } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
+import { WonCoinIcon } from '@/components/icons/urdeal-icons'
 
 const LS_KEY = 'ur_my_earnings_open_v1'
 
@@ -30,7 +31,7 @@ export default function EarningsGroup({ children }: { children: ReactNode }) {
         className="w-full flex items-center justify-between rounded-2xl px-4 py-3 bg-surface active:scale-[0.99] transition-transform"
       >
         <span className="flex items-center gap-2 min-w-0">
-          <Wallet className="w-[18px] h-[18px] text-gray-500 dark:text-gray-400" aria-hidden="true" />
+          <WonCoinIcon className="w-[18px] h-[18px] text-gray-500 dark:text-gray-400" aria-hidden="true" />
           <span className="text-left">
             <span className="block text-[15px] font-bold text-gray-900 dark:text-white">
               {t('my.earningsGroupTitle', { defaultValue: '내가 소개한 것' })}

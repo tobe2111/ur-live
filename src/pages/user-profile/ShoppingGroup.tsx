@@ -9,7 +9,13 @@
  */
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Ticket, TicketPercent, Gift, BedDouble, Heart, Star, Bell, Package, MapPin, PenLine, type LucideIcon } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+// 🎨 2026-09-28 (대표 *"앞으로 아이콘은 모두 저 컨셉"*): 뜻을 가진 아이콘은 전부 유어딜 것으로.
+//    lucide 로 남는 건 화살표·닫기 같은 **조작** 뿐이고, 이 목록엔 그런 게 없어 0개가 됐다.
+import {
+  TicketStubIcon, CouponIcon, GiftBoxIcon, StayLineIcon, HeartIcon, StarIcon,
+  BellIcon, BoxIcon, PinIcon, ReviewIcon,
+} from '@/components/icons/urdeal-icons'
 import { GroupLabel, ListPlate, ListRow, rowIcon } from './list-grammar'
 import type { MyCounts } from './types'
 
@@ -28,10 +34,10 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
       label: t('shopping.groupAssets', { defaultValue: '이용권·자산' }),
       items: [
         // 🎟️ 2026-08-31 (대표 — 지갑 분리): 이용권/교환권은 서로 다른 보관함이라 행도 둘.
-        { Icon: Ticket, label: t('shopping.voucher', { defaultValue: '내 이용권' }), sub: t('shopping.voucherSub', { defaultValue: '매장에서 QR·코드로 사용' }), count: counts.voucher, path: '/my-vouchers' },
-        { Icon: Gift, label: t('shopping.gifticon', { defaultValue: '내 교환권' }), sub: t('shopping.gifticonSub', { defaultValue: '문자로 받은 기프티콘' }), count: counts.gifticon, path: '/my-gifticons' },
-        { Icon: TicketPercent, label: t('shopping.coupons', { defaultValue: '쿠폰함' }), count: counts.coupon, path: '/my-coupons' },
-        { Icon: BedDouble, label: t('shopping.myStays', { defaultValue: '내 숙소 예약' }), sub: t('shopping.myStaysSub', { defaultValue: '체크인 코드 / 유효기간' }), path: '/my-stays' },
+        { Icon: TicketStubIcon, label: t('shopping.voucher', { defaultValue: '내 이용권' }), sub: t('shopping.voucherSub', { defaultValue: '매장에서 QR·코드로 사용' }), count: counts.voucher, path: '/my-vouchers' },
+        { Icon: GiftBoxIcon, label: t('shopping.gifticon', { defaultValue: '내 교환권' }), sub: t('shopping.gifticonSub', { defaultValue: '문자로 받은 기프티콘' }), count: counts.gifticon, path: '/my-gifticons' },
+        { Icon: CouponIcon, label: t('shopping.coupons', { defaultValue: '쿠폰함' }), count: counts.coupon, path: '/my-coupons' },
+        { Icon: StayLineIcon, label: t('shopping.myStays', { defaultValue: '내 숙소 예약' }), sub: t('shopping.myStaysSub', { defaultValue: '체크인 코드 / 유효기간' }), path: '/my-stays' },
         // 🧹 2026-09-02 (대표 "디지털 보관함도 필요없고"): 전자책·강의는 지금 파는 물건이 아니다.
         //   라우트(/my/digital)와 페이지는 남긴다 — 과거 구매자가 있으면 링크로는 여전히 닿아야 하고,
         //   되살릴 때 이 줄만 되돌리면 된다(기능 삭제가 아니라 진입로 정리).
@@ -41,18 +47,18 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
       key: 'interest',
       label: t('shopping.groupInterest', { defaultValue: '관심' }),
       items: [
-        { Icon: Heart, label: t('shopping.wishlist', { defaultValue: '찜한 상품' }), count: counts.wish, path: '/wishlist' },
-        { Icon: Star, label: t('shopping.myFollows', { defaultValue: '내 단골 가게' }), sub: t('shopping.myFollowsSub', { defaultValue: '가게별 알림 설정' }), path: '/my/follows' },
-        { Icon: Bell, label: t('shopping.interestList', { defaultValue: '관심 맛집' }), sub: t('shopping.interestListSub', { defaultValue: '공구 오픈 알림 신청 목록' }), path: '/interest-list' },
+        { Icon: HeartIcon, label: t('shopping.wishlist', { defaultValue: '찜한 상품' }), count: counts.wish, path: '/wishlist' },
+        { Icon: StarIcon, label: t('shopping.myFollows', { defaultValue: '내 단골 가게' }), sub: t('shopping.myFollowsSub', { defaultValue: '가게별 알림 설정' }), path: '/my/follows' },
+        { Icon: BellIcon, label: t('shopping.interestList', { defaultValue: '관심 맛집' }), sub: t('shopping.interestListSub', { defaultValue: '공구 오픈 알림 신청 목록' }), path: '/interest-list' },
       ],
     },
     {
       key: 'orders',
       label: t('shopping.groupOrders', { defaultValue: '주문·배송' }),
       items: [
-        { Icon: Package, label: t('shopping.orders', { defaultValue: '주문 내역' }), sub: t('shopping.ordersSub', { defaultValue: '최근 3개월' }), path: '/my-orders' },
-        { Icon: MapPin, label: t('userProfile.addressManage', { defaultValue: '배송지 관리' }), path: '/mypage/addresses' },
-        { Icon: PenLine, label: t('userProfile.myReviews', { defaultValue: '내 리뷰' }), path: '/my-reviews' },
+        { Icon: BoxIcon, label: t('shopping.orders', { defaultValue: '주문 내역' }), sub: t('shopping.ordersSub', { defaultValue: '최근 3개월' }), path: '/my-orders' },
+        { Icon: PinIcon, label: t('userProfile.addressManage', { defaultValue: '배송지 관리' }), path: '/mypage/addresses' },
+        { Icon: ReviewIcon, label: t('userProfile.myReviews', { defaultValue: '내 리뷰' }), path: '/my-reviews' },
       ],
     },
   ]

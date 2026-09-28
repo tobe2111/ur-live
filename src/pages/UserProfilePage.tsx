@@ -8,7 +8,9 @@ import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { logoutAll } from '@/features/auth/login-flow.service'
 import { getUserProfileImage } from '@/utils/auth'
 import { RewardAdCard } from '@/components/my-page/reward-ad-card'
-import { ChevronRight, LogOut, Receipt, ScanLine, Store } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
+// 🎨 2026-09-28: 남은 lucide 는 `ChevronRight`(이동) 하나뿐 — 조작이라 그대로 둔다.
+import { LogOutIcon, ReceiptIcon, ScanIcon, UrShopIcon } from '@/components/icons/urdeal-icons'
 import TeamPointsCard from './user-profile/TeamPointsCard'
 import EarningsGroup from './user-profile/EarningsGroup'
 import ReferralEarnedCard from './user-profile/ReferralEarnedCard'
@@ -286,7 +288,7 @@ export default function UserProfilePage() {
             className="w-full flex items-center gap-3 p-4 rounded-2xl bg-gray-900 dark:bg-white active:scale-[0.99] transition-transform"
           >
             <span className="w-11 h-11 rounded-xl bg-white/15 dark:bg-gray-900/10 flex items-center justify-center shrink-0">
-              <ScanLine className="w-6 h-6 text-white dark:text-gray-900" aria-hidden="true" />
+              <ScanIcon className="w-6 h-6 text-white dark:text-gray-900" aria-hidden="true" />
             </span>
             <span className="text-left min-w-0">
               <span className="block text-[15px] font-extrabold text-white dark:text-gray-900">{t('userProfile.storeCheckout', { defaultValue: '매장 계산대' })}</span>
@@ -322,7 +324,7 @@ export default function UserProfilePage() {
           onClick={() => navigate('/user/affiliate')}
           className="w-full flex items-center gap-3 px-4 py-3 active:bg-gray-200 dark:active:bg-white/[0.06] text-left"
         >
-          <Store className="w-[18px] h-[18px] text-gray-500 dark:text-gray-400" aria-hidden="true" />
+          <UrShopIcon className="w-[18px] h-[18px] text-gray-500 dark:text-gray-400" aria-hidden="true" />
           <span className="flex-1 min-w-0">
             <span className="block text-[13px] font-medium text-gray-900 dark:text-white">
               {t('my.affiliateLinkTitle', { defaultValue: '상품 추천 링크' })}
@@ -339,7 +341,7 @@ export default function UserProfilePage() {
           onClick={() => navigate('/influencer/settlement')}
           className="w-full flex items-center gap-3 px-4 py-3 active:bg-gray-200 dark:active:bg-white/[0.06] text-left"
         >
-          <Receipt className="w-[18px] h-[18px] text-gray-500 dark:text-gray-400" aria-hidden="true" />
+          <ReceiptIcon className="w-[18px] h-[18px] text-gray-500 dark:text-gray-400" aria-hidden="true" />
           <span className="flex-1 min-w-0">
             <span className="block text-[13px] font-medium text-gray-900 dark:text-white">
               {t('my.settlementTitle', { defaultValue: '추천 수익 정산' })}
@@ -419,7 +421,7 @@ export default function UserProfilePage() {
           onClick={handleLogout}
           className="ur-btn ur-btn-lg ur-btn-block bg-surface text-gray-900 dark:text-white/75"
         >
-          <LogOut className="w-4 h-4" aria-hidden="true" />
+          <LogOutIcon className="w-4 h-4" aria-hidden="true" />
           {t('userProfile.logout')}
         </button>
         {/* 🛡️ 회원 탈퇴 — 파괴적 동작이다.

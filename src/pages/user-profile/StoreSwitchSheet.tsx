@@ -13,7 +13,8 @@
  * 그래서 여기서는 시트를 닫기만 한다 — 리로드하지 않는다(그러면 인라인이 아니다).
  */
 import { useEffect, useState } from 'react'
-import { Check, Loader2, Store, X } from 'lucide-react'
+import { Check, Loader2, X } from 'lucide-react'
+import { UrShopIcon } from '@/components/icons/urdeal-icons'
 import { Z } from '@/constants/z-index'
 import { switchSeat } from '@/lib/seller-seat'
 import { toast } from '@/hooks/useToast'
@@ -110,7 +111,7 @@ export default function StoreSwitchSheet({ currentSellerId, onClose }: {
                 disabled={busy !== null}
                 className="w-full flex items-start gap-3 px-4 py-3 text-left border-b border-rule active:opacity-70 disabled:opacity-50"
               >
-                <Store className="w-[18px] h-[18px] mt-1 shrink-0 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+                <UrShopIcon className="w-[18px] h-[18px] mt-1 shrink-0 text-gray-500 dark:text-gray-400" aria-hidden="true" />
                 <span className="flex-1 min-w-0">
                   <span className="block text-[15px] font-bold text-gray-900 dark:text-white truncate">{label(s)}</span>
                   <span className="block text-[12px] text-gray-500 dark:text-gray-400 mt-1">

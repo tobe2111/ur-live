@@ -14,7 +14,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { BedDouble, BookOpen, Heart, Star, ChevronRight, Bell } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
+// 🎨 2026-09-28: PC 칸도 모바일과 **같은 아이콘**을 써야 한 서비스로 읽힌다
+//    (같은 줄이 기기마다 다른 그림이면 그게 곧 '덜 만든' 인상이다).
+//    ⚠️ 이 import 에 있던 `BookOpen` 은 **참조 0인 죽은 이름**이라 함께 걷었다.
+import { StayLineIcon, StarIcon, HeartIcon, BellIcon } from '@/components/icons/urdeal-icons'
 import api from '@/lib/api'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
@@ -71,9 +75,9 @@ export default function AccountPcPane({ counts, userName, profileImage, onEditPr
     { label: t('shopping.coupons', { defaultValue: '쿠폰' }), value: counts.coupon == null ? '–' : String(counts.coupon), unit: '장', link: t('my.kpiCouponBox', { defaultValue: '쿠폰함' }), path: '/my-coupons' },
   ]
   const tiles = [
-    { Icon: BedDouble, label: t('shopping.myStays', { defaultValue: '내 숙소 예약' }), path: '/my-stays' },
-    { Icon: Star, label: t('shopping.myFollows', { defaultValue: '내 단골 가게' }), path: '/my/follows' },
-    { Icon: Heart, label: t('shopping.wishlist', { defaultValue: '찜한 상품' }), path: '/wishlist', count: counts.wish ?? undefined },
+    { Icon: StayLineIcon, label: t('shopping.myStays', { defaultValue: '내 숙소 예약' }), path: '/my-stays' },
+    { Icon: StarIcon, label: t('shopping.myFollows', { defaultValue: '내 단골 가게' }), path: '/my/follows' },
+    { Icon: HeartIcon, label: t('shopping.wishlist', { defaultValue: '찜한 상품' }), path: '/wishlist', count: counts.wish ?? undefined },
   ]
 
   return (
@@ -98,7 +102,7 @@ export default function AccountPcPane({ counts, userName, profileImage, onEditPr
           <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">{localStorage.getItem('user_email') || ''}</p>
         </div>
         <button type="button" onClick={() => navigate('/notifications')} aria-label={t('userProfile.ariaNotifications')} className="w-9 h-9 rounded-full bg-gray-100 dark:bg-white/[0.06] flex items-center justify-center text-gray-700 dark:text-white shrink-0">
-          <Bell className="w-4 h-4" aria-hidden="true" />
+          <BellIcon className="w-4 h-4" aria-hidden="true" />
         </button>
         <button type="button" onClick={onEditProfile} className="inline-flex items-center gap-1 text-[13px] font-bold text-brand-text shrink-0">
           {t('userProfile.editProfile', { defaultValue: '프로필 편집' })} <ChevronRight className="w-3.5 h-3.5" aria-hidden="true" />

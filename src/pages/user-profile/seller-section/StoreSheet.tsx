@@ -17,7 +17,8 @@
  * 고장으로 읽는다 — 마이 카드와 **같은 문장**을 쓴다(두 곳이 다르게 설명하면 더 헷갈린다).
  */
 import { useEffect, useRef, useState } from 'react'
-import { Loader2, Store } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
+import { UrShopIcon } from '@/components/icons/urdeal-icons'
 import { assertSeat, currentSeatId, SeatMismatchError } from '@/lib/seller-seat'
 import { toast } from '@/hooks/useToast'
 import Sheet from './Sheet'
@@ -153,7 +154,7 @@ export default function StoreSheet({ sellerId, statusNote, canSwitch, onSwitch, 
               onClick={onSwitch}
               className="w-full flex items-center gap-3 mt-1 px-4 h-12 rounded-xl bg-surface shadow-lift text-left active:opacity-70"
             >
-              <Store className="w-[18px] h-[18px] shrink-0 text-gray-400" aria-hidden="true" />
+              <UrShopIcon className="w-[18px] h-[18px] shrink-0 text-gray-400" aria-hidden="true" />
               <span className="flex-1 text-[15px] font-semibold text-gray-900 dark:text-white">다른 가게로 바꾸기</span>
             </button>
           )}

@@ -11,9 +11,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import {
-  Bell, Mail, X,
-} from 'lucide-react'
+import { X } from 'lucide-react'
+import { BellIcon, MailIcon } from '@/components/icons/urdeal-icons'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
@@ -88,13 +87,13 @@ export function NotificationToggleSection() {
       <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-2">{t('accountSettings.sectionNotification', { defaultValue: '알림 설정' })}</p>
       <div className="rounded-2xl overflow-hidden bg-surface">
         <Toggle
-          icon={<Bell className="w-4 h-4" aria-hidden="true" />}
+          icon={<BellIcon className="w-4 h-4" aria-hidden="true" />}
           label={t('accountSettings.togglePush', { defaultValue: '푸시 알림' })}
           value={notif.push}
           onChange={() => toggle('push')}
         />
         <Toggle
-          icon={<Mail className="w-4 h-4" aria-hidden="true" />}
+          icon={<MailIcon className="w-4 h-4" aria-hidden="true" />}
           label={t('accountSettings.toggleEmail', { defaultValue: '이메일 알림' })}
           value={notif.email}
           onChange={() => toggle('email')}

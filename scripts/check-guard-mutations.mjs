@@ -1287,8 +1287,10 @@ const MUTATIONS = [
   {
     name: '🧹 마이페이지에 에이전시 모집 CTA 가 다시 들어온다',
     file: 'src/pages/user-profile/RoleCtaGrid.tsx',
-    find: "      { Icon: ShoppingBag, title: t('roleCta.openShop'",
-    replace: "      { Icon: ShoppingBag, title: t('roleCta.agencyBiz', { defaultValue: '\uc5d0\uc774\uc804\uc2dc \uc0ac\uc5c5' }), desc: '', to: '/agency/register/business', show: () => true },\n      { Icon: ShoppingBag, title: t('roleCta.openShop'",
+    // 🔁 2026-09-28 재조준: `ShoppingBag` → `ShopPlusIcon`(장바구니는 '사는 행위'로 읽혔다).
+    //    불변식("에이전시 모집 CTA 가 소비자 마이에 들어오지 않는다")은 그대로다.
+    find: "      { Icon: ShopPlusIcon, title: t('roleCta.openShop'",
+    replace: "      { Icon: ShopPlusIcon, title: t('roleCta.agencyBiz', { defaultValue: '\uc5d0\uc774\uc804\uc2dc \uc0ac\uc5c5' }), desc: '', to: '/agency/register/business', show: () => true },\n      { Icon: ShopPlusIcon, title: t('roleCta.openShop'",
     test: 'src/tests/unit/mypage-cleanup-2026-09-02.test.ts',
     why: '\uc5d0\uc774\uc804\uc2dc\ub294 B2B \uc870\uc9c1 \ubaa8\uc9d1\uc774\ub77c \uc18c\ube44\uc790 \ub9c8\uc774\ud398\uc774\uc9c0 \ub3d9\uc120\uc5d0 \uc11e\uc744 \uc790\ub9ac\uac00 \uc544\ub2c8\ub2e4(\ub300\ud45c \uc9c0\uc2dc).',
   },

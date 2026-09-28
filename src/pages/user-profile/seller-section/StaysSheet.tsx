@@ -18,7 +18,8 @@
  * 이 시트는 **읽기만 한다**(쓰기 0) — 그래서 `assertSeat` 이 없다.
  */
 import { useEffect, useRef, useState } from 'react'
-import { Building2, ChevronRight, Loader2, Plus } from 'lucide-react'
+import { ChevronRight, Loader2, Plus } from 'lucide-react'
+import { StayLineIcon } from '@/components/icons/urdeal-icons'
 import { formatNumber } from '@/utils/format'
 import { currentSeatId } from '@/lib/seller-seat'
 import Sheet from './Sheet'
@@ -101,7 +102,7 @@ export default function StaysSheet({ sellerId, onClose, onOpen }: {
 
         {!loading && !failed && stays.length === 0 && (
           <div className="py-8 text-center">
-            <Building2 className="w-7 h-7 mx-auto text-gray-300 dark:text-gray-600" aria-hidden="true" />
+            <StayLineIcon className="w-7 h-7 mx-auto text-gray-300 dark:text-gray-600" aria-hidden="true" />
             <p className="mt-3 text-[15px] font-bold text-gray-900 dark:text-white">아직 등록한 숙소가 없어요</p>
             <p className="mt-1 text-[13px] leading-[1.6] text-gray-500 dark:text-gray-400">
               숙소는 객실과 날짜별 재고가 있어서 이용권과 따로 관리해요.<br />

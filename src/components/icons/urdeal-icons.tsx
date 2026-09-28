@@ -44,6 +44,14 @@ type IconProps = Omit<SVGProps<SVGSVGElement>, 'size'> & {
   filled?: boolean
 }
 
+/**
+ * 면(`filled`) 버전에서 **도려낸 획**의 색 — 아이콘이 놓이는 카드 바탕이다.
+ * ⚠️ 리터럴을 자리마다 적지 말 것: 20군데에 흩어져 있으면 카드 바탕을 바꾸는 날 몇 개는 반드시 놓친다
+ *    (`check-consumer-hex-ratchet` 이 그 흩어짐을 잡아 여기로 모으게 했다).
+ *    hex 는 토큰이 없을 때만 쓰이는 **폴백**이고, 색의 정본은 `src/index.css` 의 `--surface` 다.
+ */
+const KNOCKOUT = 'var(--surface, #fff)'
+
 const base = {
   viewBox: '0 0 24 24',
   fill: 'none',
@@ -66,7 +74,7 @@ export const UrShopIcon = forwardRef<SVGSVGElement, IconProps>(function UrShopIc
         <path d="M4 9.5 5.6 5h12.8L20 9.5z" fill="currentColor" />
         <path d="M4 9.5c0 1.4 1 2.3 2.3 2.3s2.3-.9 2.3-2.3c0 1.4 1 2.3 2.3 2.3s2.4-.9 2.4-2.3c0 1.4 1 2.3 2.3 2.3s2.4-.9 2.4-2.3z" fill="currentColor" />
         <path d="M5.6 12v7.5h12.8V12z" fill="currentColor" />
-        <path d="M10.2 19.5v-4.6h3.6v4.6" stroke="var(--surface, #fff)" fill="var(--surface, #fff)" />
+        <path d="M10.2 19.5v-4.6h3.6v4.6" stroke={KNOCKOUT} fill={KNOCKOUT} />
       </svg>
     )
   }
@@ -103,7 +111,7 @@ export const GiftBoxIcon = forwardRef<SVGSVGElement, IconProps>(function GiftBox
       <rect x="3.5" y="10.5" width="17" height="9.5" rx="2" fill={filled ? 'currentColor' : 'none'} />
       <rect x="2.5" y="7" width="19" height="3.5" rx="1.2" fill={filled ? 'currentColor' : 'none'} />
       <path d="M12 7c-2.6 0-4-1.6-3.3-3 .7-1.3 3.3.4 3.3 3zm0 0c2.6 0 4-1.6 3.3-3-.7-1.3-3.3.4-3.3 3z" />
-      <path d="M12 7.5V20" stroke={filled ? 'var(--surface, #fff)' : 'currentColor'} />
+      <path d="M12 7.5V20" stroke={filled ? KNOCKOUT : 'currentColor'} />
     </svg>
   )
 })
@@ -114,7 +122,7 @@ export const TicketStubIcon = forwardRef<SVGSVGElement, IconProps>(function Tick
   return (
     <svg ref={ref} {...base} width={size} height={size} {...props}>
       <path d={d} fill={filled ? 'currentColor' : 'none'} />
-      <path d="M9.5 8.6v6.8" strokeDasharray="1.6 1.8" stroke={filled ? 'var(--surface, #fff)' : 'currentColor'} />
+      <path d="M9.5 8.6v6.8" strokeDasharray="1.6 1.8" stroke={filled ? KNOCKOUT : 'currentColor'} />
     </svg>
   )
 })
@@ -226,7 +234,7 @@ export const ReceiptIcon = forwardRef<SVGSVGElement, IconProps>(function Receipt
   return (
     <svg ref={ref} {...base} width={size} height={size} {...props}>
       <path d={d} fill={filled ? 'currentColor' : 'none'} />
-      <path d="M9 8.5h6M9 12h6" stroke={filled ? 'var(--surface, #fff)' : 'currentColor'} />
+      <path d="M9 8.5h6M9 12h6" stroke={filled ? KNOCKOUT : 'currentColor'} />
     </svg>
   )
 })
@@ -236,7 +244,7 @@ export const WonCoinIcon = forwardRef<SVGSVGElement, IconProps>(function WonCoin
   return (
     <svg ref={ref} {...base} width={size} height={size} {...props}>
       <circle cx="12" cy="12" r="8.5" fill={filled ? 'currentColor' : 'none'} />
-      <path d="M8 8.5 9.8 15l2.2-6 2.2 6L16 8.5M7.5 12h9" stroke={filled ? 'var(--surface, #fff)' : 'currentColor'} />
+      <path d="M8 8.5 9.8 15l2.2-6 2.2 6L16 8.5M7.5 12h9" stroke={filled ? KNOCKOUT : 'currentColor'} />
     </svg>
   )
 })
@@ -250,6 +258,212 @@ export const MoreDotsIcon = forwardRef<SVGSVGElement, IconProps>(function MoreDo
       <circle cx="16.5" cy="7.5" r={r} fill={filled ? 'currentColor' : 'none'} />
       <circle cx="7.5" cy="16.5" r={r} fill={filled ? 'currentColor' : 'none'} />
       <circle cx="16.5" cy="16.5" r={r} fill={filled ? 'currentColor' : 'none'} />
+    </svg>
+  )
+})
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * 📋 목록 행 아이콘 18종 (2026-09-28 — 대표 *"앞으로 아이콘은 모두 저 컨셉"*)
+ *
+ * ■ 왜 늘렸나 (실측)
+ *   마이 한 화면에 lucide 가 **36종**, 유어딜 아이콘이 **0종**이었다. 위 탭 다섯은 우리 것으로
+ *   바꿔 놓고 **그 바로 아래 본문은 통째로 남의 세트**였다 — 한 화면에서 획 두께도 모서리도
+ *   갈린다. 대표 규칙은 *"앞으로 아이콘은 모두 저 컨셉"* 이다.
+ *
+ * ■ 무엇을 안 바꿨나 — 유틸리티는 lucide 로 남긴다
+ *   화살표·닫기·검색·복사·로딩(`ChevronRight`·`X`·`Search`·`Check`·`Plus`·`Loader2`)은
+ *   **글자가 아니라 조작**이고, 어느 앱에서나 같은 모양이라 직접 그릴 값이 없다.
+ *   바꾸는 것은 **뜻을 가진 아이콘**(내 이용권·찜·정산·설정 …)뿐이다.
+ *
+ * ■ 계약은 위와 동일 — 24 그리드 · `currentColor` · stroke 1.6 · round.
+ *   목록 행은 18px 로 그려진다: **작다.** 그래서 획 셋을 넘기지 않고, 안에 글자를 넣지 않고,
+ *   덩어리 하나가 실루엣을 잡게 했다. 탭과 달리 `filled` 가 필요 없지만(행은 선택 상태가 없다)
+ *   계약을 깨지 않으려고 prop 은 그대로 받는다.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/** 쿠폰함 — 이용권과 같은 티켓 틀에 **%**. 틀이 같아서 "같은 종이" 로 읽히고 내용이 할인임을 말한다. */
+export const CouponIcon = forwardRef<SVGSVGElement, IconProps>(function CouponIcon({ size = 24, filled, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4z" fill={filled ? 'currentColor' : 'none'} />
+      <path d="m9.4 14.6 5.2-5.2" stroke={filled ? KNOCKOUT : 'currentColor'} />
+      <circle cx="9.6" cy="9.8" r="1.05" stroke={filled ? KNOCKOUT : 'currentColor'} />
+      <circle cx="14.4" cy="14.2" r="1.05" stroke={filled ? KNOCKOUT : 'currentColor'} />
+    </svg>
+  )
+})
+
+/** 찜 — 하트. 담아 둔 것이지 산 것이 아니라 속을 비운다(면 버전은 목록에서 안 쓴다). */
+export const HeartIcon = forwardRef<SVGSVGElement, IconProps>(function HeartIcon({ size = 24, filled, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <path d="M12 19.9 5.1 13a4.4 4.4 0 0 1 6.2-6.2l.7.7.7-.7A4.4 4.4 0 0 1 18.9 13z" fill={filled ? 'currentColor' : 'none'} />
+    </svg>
+  )
+})
+
+/** 단골 가게 — 별. 가게 그림에 별을 얹으면 18px 에서 둘 다 뭉개진다 ⇒ 별 하나로 '자주 가는 곳'. */
+export const StarIcon = forwardRef<SVGSVGElement, IconProps>(function StarIcon({ size = 24, filled, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <path d="m12 4.3 2.45 4.96 5.47.8-3.96 3.86.94 5.45L12 16.8l-4.9 2.57.94-5.45L4.08 10.06l5.47-.8z" fill={filled ? 'currentColor' : 'none'} />
+    </svg>
+  )
+})
+
+/** 관심 맛집(오픈 알림) — 종. 아래 추까지 그려야 '알림' 이지 그냥 모자처럼 안 보인다. */
+export const BellIcon = forwardRef<SVGSVGElement, IconProps>(function BellIcon({ size = 24, filled, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <path d="M18 9.4a6 6 0 1 0-12 0c0 4-1.6 5.6-1.6 5.6h15.2S18 13.4 18 9.4z" fill={filled ? 'currentColor' : 'none'} />
+      <path d="M10.2 18.2a2 2 0 0 0 3.6 0" />
+    </svg>
+  )
+})
+
+/** 주문 내역 — 택배 상자. 입체로 그려야 '배송된 물건' 이고 평면 네모면 그냥 상자다. */
+export const BoxIcon = forwardRef<SVGSVGElement, IconProps>(function BoxIcon({ size = 24, filled, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <path d="M3.8 7.9 12 3.7l8.2 4.2v8.2L12 20.3l-8.2-4.2z" fill={filled ? 'currentColor' : 'none'} />
+      <path d="M3.8 7.9 12 12.1l8.2-4.2M12 12.1v8.2" stroke={filled ? KNOCKOUT : 'currentColor'} />
+    </svg>
+  )
+})
+
+/** 배송지 — 핀 하나. 동네(DongneDealIcon)와 달리 **한 지점**이라 이 자리엔 이게 맞다. */
+export const PinIcon = forwardRef<SVGSVGElement, IconProps>(function PinIcon({ size = 24, filled, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <path d="M12 20.8s6.6-5.9 6.6-10.4a6.6 6.6 0 1 0-13.2 0C5.4 14.9 12 20.8 12 20.8z" fill={filled ? 'currentColor' : 'none'} />
+      <circle cx="12" cy="10.2" r="2.5" stroke={filled ? KNOCKOUT : 'currentColor'} />
+    </svg>
+  )
+})
+
+/** 내 리뷰 — 말풍선 + 별. 브랜드메시지(줄 두 개)와 **내용물로** 갈린다: 리뷰는 평가고 메시지는 글이다. */
+export const ReviewIcon = forwardRef<SVGSVGElement, IconProps>(function ReviewIcon({ size = 24, filled, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <path d="M4.2 6.6a2 2 0 0 1 2-2h11.6a2 2 0 0 1 2 2v7.2a2 2 0 0 1-2 2h-6.3L7.2 19.6v-3.8H6.2a2 2 0 0 1-2-2z" fill={filled ? 'currentColor' : 'none'} />
+      <path d="m12 7.4 1.28 2.6 2.87.42-2.08 2.02.5 2.86L12 14l-2.57 1.3.5-2.86-2.08-2.02 2.87-.42z" stroke={filled ? KNOCKOUT : 'currentColor'} />
+    </svg>
+  )
+})
+
+/** 동네 공구 제안 — 말풍선 + 더하기. '내가 올린다' 는 뜻은 덧셈 기호가 가장 짧게 말한다. */
+export const ProposeIcon = forwardRef<SVGSVGElement, IconProps>(function ProposeIcon({ size = 24, filled, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <path d="M4.2 6.6a2 2 0 0 1 2-2h11.6a2 2 0 0 1 2 2v7.2a2 2 0 0 1-2 2h-6.3L7.2 19.6v-3.8H6.2a2 2 0 0 1-2-2z" fill={filled ? 'currentColor' : 'none'} />
+      <path d="M12 7.6v5.2M9.4 10.2h5.2" stroke={filled ? KNOCKOUT : 'currentColor'} />
+    </svg>
+  )
+})
+
+/** 소개 파트너 — 두 사람. 한 사람(PersonIcon)이 '나' 라서, 둘이면 '나 말고 누군가와' 가 된다. */
+export const PeopleIcon = forwardRef<SVGSVGElement, IconProps>(function PeopleIcon({ size = 24, filled, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <circle cx="9.2" cy="8.6" r="3.4" fill={filled ? 'currentColor' : 'none'} />
+      <path d="M3 19.6a6.2 6.2 0 0 1 12.4 0" fill={filled ? 'currentColor' : 'none'} />
+      <path d="M16.2 6.1a3.4 3.4 0 0 1 0 6.6M17.4 14.2a5.6 5.6 0 0 1 3.6 5.2" />
+    </svg>
+  )
+})
+
+/** 내 가게 등록 — 유어샵 차양 + 더하기. 같은 실루엣이라 '가게' 로 읽히고 `+` 가 '새로 낸다' 를 더한다. */
+export const ShopPlusIcon = forwardRef<SVGSVGElement, IconProps>(function ShopPlusIcon({ size = 24, filled, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <path d="M3.4 9.3 4.9 5.2h11.4l1.1 3" fill={filled ? 'currentColor' : 'none'} />
+      <path d="M3.4 9.3c0 1.3.9 2.1 2.1 2.1s2.1-.8 2.1-2.1c0 1.3.9 2.1 2.1 2.1s2.2-.8 2.2-2.1c0 1.3.9 2.1 2.1 2.1" />
+      <path d="M4.9 11.6v7.7h7.3" />
+      <circle cx="17.6" cy="16.2" r="4" />
+      <path d="M17.6 14.3v3.8M15.7 16.2h3.8" />
+    </svg>
+  )
+})
+
+/** 주문(판매) — 클립보드. 손님 쪽 '주문 내역'(상자)과 갈린다: 이쪽은 **처리할 목록**이다. */
+export const OrdersIcon = forwardRef<SVGSVGElement, IconProps>(function OrdersIcon({ size = 24, filled, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <path d="M8.6 5.4H6.9a1.9 1.9 0 0 0-1.9 1.9v11a1.9 1.9 0 0 0 1.9 1.9h10.2a1.9 1.9 0 0 0 1.9-1.9v-11a1.9 1.9 0 0 0-1.9-1.9h-1.7" fill={filled ? 'currentColor' : 'none'} />
+      <rect x="8.6" y="3.4" width="6.8" height="4" rx="1.2" stroke={filled ? KNOCKOUT : 'currentColor'} fill={filled ? KNOCKOUT : 'none'} />
+      <path d="M8.6 11.8h6.8M8.6 15.4h4.4" stroke={filled ? KNOCKOUT : 'currentColor'} />
+    </svg>
+  )
+})
+
+/** 매출 분석 — 축 + 올라가는 선. 막대는 1.6 획에서 선인지 막대인지 안 보인다(그려 보고 버렸다). */
+export const ChartIcon = forwardRef<SVGSVGElement, IconProps>(function ChartIcon({ size = 24, filled, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <path d="M4.4 4.4v15.2h15.2" />
+      <path d="m7.2 15.6 3.4-4.2 3 2.6 5-6" />
+      <path d="M18.6 8h-3.2m3.2 0v3.2" />
+    </svg>
+  )
+})
+
+/** 브랜드메시지 — 말풍선 + 글 두 줄. 리뷰(별)와 제안(+)이 같은 풍선을 쓰므로 **내용물이 이름표**다. */
+export const MessageIcon = forwardRef<SVGSVGElement, IconProps>(function MessageIcon({ size = 24, filled, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <path d="M4.2 6.6a2 2 0 0 1 2-2h11.6a2 2 0 0 1 2 2v7.2a2 2 0 0 1-2 2h-6.3L7.2 19.6v-3.8H6.2a2 2 0 0 1-2-2z" fill={filled ? 'currentColor' : 'none'} />
+      <path d="M8 8.6h8M8 11.8h5" stroke={filled ? KNOCKOUT : 'currentColor'} />
+    </svg>
+  )
+})
+
+/** 설정 — 톱니. 이가 열둘이면 18px 에서 테두리가 톱니바퀴가 아니라 원으로 뭉친다 ⇒ **여섯**. */
+export const SettingsIcon = forwardRef<SVGSVGElement, IconProps>(function SettingsIcon({ size = 24, filled, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <path d="M10.6 3.6h2.8l.35 2.2a6.4 6.4 0 0 1 1.7.98l2.07-.86 1.4 2.42-1.72 1.4a6.5 6.5 0 0 1 0 1.96l1.72 1.4-1.4 2.42-2.07-.86a6.4 6.4 0 0 1-1.7.98l-.35 2.2h-2.8l-.35-2.2a6.4 6.4 0 0 1-1.7-.98l-2.07.86-1.4-2.42 1.72-1.4a6.5 6.5 0 0 1 0-1.96l-1.72-1.4 1.4-2.42 2.07.86a6.4 6.4 0 0 1 1.7-.98z" fill={filled ? 'currentColor' : 'none'} />
+      <circle cx="12" cy="11.7" r="2.6" stroke={filled ? KNOCKOUT : 'currentColor'} />
+    </svg>
+  )
+})
+
+/** 이용권 사용처리 — QR 을 찍는 **틀**. 코드 자체를 그리면 '내 티켓' 으로 읽히므로 모서리 넷 + 스캔선. */
+export const ScanIcon = forwardRef<SVGSVGElement, IconProps>(function ScanIcon({ size = 24, filled, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <path d="M4 9V6.4A2.4 2.4 0 0 1 6.4 4H9M15 4h2.6A2.4 2.4 0 0 1 20 6.4V9M20 15v2.6a2.4 2.4 0 0 1-2.4 2.4H15M9 20H6.4A2.4 2.4 0 0 1 4 17.6V15" />
+      <path d="M4.6 12h14.8" />
+    </svg>
+  )
+})
+
+/** 로그아웃 — 문 + 나가는 화살표. 화살표만 그리면 '공유' 로 읽힌다(그게 lucide 의 오래된 혼동이다). */
+export const LogOutIcon = forwardRef<SVGSVGElement, IconProps>(function LogOutIcon({ size = 24, filled, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <path d="M14.4 4.6h3.2a2 2 0 0 1 2 2v10.8a2 2 0 0 1-2 2h-3.2" fill={filled ? 'currentColor' : 'none'} />
+      <path d="m9.6 8.4 3.6 3.6-3.6 3.6M13.2 12H4.2" />
+    </svg>
+  )
+})
+
+/** 이메일 — 봉투. 뚜껑이 겹쳐야 봉투고, 없으면 그냥 카드다. */
+export const MailIcon = forwardRef<SVGSVGElement, IconProps>(function MailIcon({ size = 24, filled, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <rect x="3.4" y="5.6" width="17.2" height="12.8" rx="2" fill={filled ? 'currentColor' : 'none'} />
+      <path d="m3.8 7.4 7.1 5a2 2 0 0 0 2.2 0l7.1-5" stroke={filled ? KNOCKOUT : 'currentColor'} />
+    </svg>
+  )
+})
+
+/** 리뷰어 등급 — 메달. 별(단골)과 겹치지 않게 **리본 달린 원**으로, 등급은 '받은 것' 이다. */
+export const MedalIcon = forwardRef<SVGSVGElement, IconProps>(function MedalIcon({ size = 24, filled, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <path d="M8.4 3.6 10.9 9M15.6 3.6 13.1 9" />
+      <circle cx="12" cy="14.6" r="5.6" fill={filled ? 'currentColor' : 'none'} />
+      <path d="m12 11.6 1.03 2.09 2.31.34-1.67 1.63.39 2.3L12 16.87l-2.06 1.09.39-2.3-1.67-1.63 2.31-.34z" stroke={filled ? KNOCKOUT : 'currentColor'} />
     </svg>
   )
 })

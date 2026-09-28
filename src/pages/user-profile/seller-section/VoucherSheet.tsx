@@ -22,7 +22,8 @@
  * 달력·객실 편집은 전체화면이다(달력은 가로 폭을 요구한다).
  */
 import { useState } from 'react'
-import { Building2, ChevronRight, Loader2, Plus } from 'lucide-react'
+import { ChevronRight, Loader2, Plus } from 'lucide-react'
+import { UrShopIcon } from '@/components/icons/urdeal-icons'
 // ⏳ 좌석에 막 앉았으면 목록이 아직 비어 있다 — 그 순간을 "없음" 으로 그리면 거짓말이 된다.
 import { formatNumber } from '@/utils/format'
 import Sheet from './Sheet'
@@ -134,7 +135,7 @@ export default function VoucherSheet({ sellerId, work, onClose, onOpenPath }: {
               onClick={() => setStaysOpen(true)}
               className="w-full flex items-center gap-3 mt-3 px-4 h-12 rounded-xl bg-surface shadow-lift text-left active:opacity-70"
             >
-              <Building2 className="w-[18px] h-[18px] shrink-0 text-gray-400" aria-hidden="true" />
+              <UrShopIcon className="w-[18px] h-[18px] shrink-0 text-gray-400" aria-hidden="true" />
               <span className="flex-1 text-[15px] font-semibold text-gray-900 dark:text-white">숙소</span>
               <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
             </button>

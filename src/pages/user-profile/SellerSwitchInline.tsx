@@ -20,7 +20,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Store } from 'lucide-react'
+import { UrShopIcon } from '@/components/icons/urdeal-icons'
 import type { MyStoresState } from './useMyStores'
 
 interface SellerStatus {
@@ -66,7 +66,7 @@ export default function SellerSwitchInline({ seats }: { seats: MyStoresState }) 
         aria-label={t('sellerSwitch.pendingAria', { defaultValue: '셀러 심사 상태 보기' })}
         className="inline-flex items-center gap-1 rounded-full px-2 py-1 bg-yellow-500/15 text-[12px] text-yellow-300 font-semibold border border-yellow-500/30 active:scale-95 transition-all"
       >
-        <Store className="w-2.5 h-2.5" aria-hidden="true" /> {t('sellerSwitch.pending', { defaultValue: '심사 중' })}
+        <UrShopIcon className="w-2.5 h-2.5" aria-hidden="true" /> {t('sellerSwitch.pending', { defaultValue: '심사 중' })}
       </button>
     )
   }
@@ -78,7 +78,7 @@ export default function SellerSwitchInline({ seats }: { seats: MyStoresState }) 
         aria-label={t('sellerSwitch.statusAria', { defaultValue: '셀러 상태 보기' })}
         className="inline-flex items-center gap-1 rounded-full px-2 py-1 bg-red-500/15 text-[12px] text-red-300 font-semibold border border-red-500/30 active:scale-95 transition-all"
       >
-        <Store className="w-2.5 h-2.5" aria-hidden="true" />
+        <UrShopIcon className="w-2.5 h-2.5" aria-hidden="true" />
         {status.status === 'rejected' ? t('sellerSwitch.rejected', { defaultValue: '반려' }) : t('sellerSwitch.suspended', { defaultValue: '정지' })}
       </button>
     )

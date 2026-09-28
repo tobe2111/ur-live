@@ -4,7 +4,8 @@
 import { useState, useEffect } from 'react'
 import { formatNumber, safeNum } from '@/utils/format'
 import { useNavigate } from 'react-router-dom'
-import { Award, ChevronRight } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
+import { MedalIcon } from '@/components/icons/urdeal-icons'
 import api from '@/lib/api'
 
 type MyLevel = {
@@ -57,7 +58,7 @@ export default function ReviewLevelCard() {
       className="w-full mt-3 rounded-2xl bg-surface px-4 py-3 text-left active:bg-gray-50 dark:active:bg-white/[0.06] transition-colors"
     >
       <div className="flex items-center gap-3">
-        <Award className="w-6 h-6 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+        <MedalIcon className="w-6 h-6 text-gray-500 dark:text-gray-400" aria-hidden="true" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="text-[13px] font-bold text-gray-900 dark:text-white">동네 리뷰어 Lv.{formatNumber(data.level)}</span>

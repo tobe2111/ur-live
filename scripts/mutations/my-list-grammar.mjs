@@ -74,8 +74,10 @@ export default [
   {
     name: '🧭 PC 우측 칸에 같은 목적지가 두 번 생긴다',
     file: 'src/pages/user-profile/AccountPcPane.tsx',
-    find: "    { Icon: Heart, label: t('shopping.wishlist', { defaultValue: '찜한 상품' }), path: '/wishlist', count: counts.wish ?? undefined },",
-    replace: "    { Icon: Heart, label: t('shopping.wishlist', { defaultValue: '찜한 상품' }), path: '/wishlist', count: counts.wish ?? undefined },\n    { Icon: Heart, label: '이용권 또', path: '/my-vouchers' },",
+    // 🔁 2026-09-28 재조준: 아이콘이 lucide `Heart` → 유어딜 `HeartIcon` 으로 바뀌어 앵커만 옮겼다.
+    //    불변식("같은 목적지가 두 번 나오지 않는다")은 그대로다.
+    find: "    { Icon: HeartIcon, label: t('shopping.wishlist', { defaultValue: '찜한 상품' }), path: '/wishlist', count: counts.wish ?? undefined },",
+    replace: "    { Icon: HeartIcon, label: t('shopping.wishlist', { defaultValue: '찜한 상품' }), path: '/wishlist', count: counts.wish ?? undefined },\n    { Icon: HeartIcon, label: '이용권 또', path: '/my-vouchers' },",
     test: PC,
     why: '한 화면에 같은 곳으로 가는 문이 둘이면 사람이 "둘이 다른 것" 이라고 읽는다 — 좌측 내비를 걷어낸 이유가 그것이다.',
   },

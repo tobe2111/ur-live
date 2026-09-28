@@ -5,7 +5,8 @@
  */
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronDown, Settings } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
+import { SettingsIcon } from '@/components/icons/urdeal-icons'
 
 const LS_KEY = 'ur_my_settings_open_v1'
 
@@ -29,7 +30,7 @@ export default function SettingsGroup({ children }: { children: ReactNode }) {
         className="w-full flex items-center justify-between rounded-2xl px-4 py-3 bg-surface active:scale-[0.99] transition-transform"
       >
         <span className="flex items-center gap-2 min-w-0">
-          <Settings className="w-[18px] h-[18px] text-gray-500 dark:text-white/55" aria-hidden="true" />
+          <SettingsIcon className="w-[18px] h-[18px] text-gray-500 dark:text-white/55" aria-hidden="true" />
           <span className="text-left">
             <span className="block text-[15px] font-bold text-gray-900 dark:text-white">
               {t('my.settingsGroupTitle', { defaultValue: '설정 · 계정' })}
