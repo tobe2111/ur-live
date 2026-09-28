@@ -5874,7 +5874,7 @@
     "loadFailed": "보관함을 불러오지 못했어요"
   },
   "shopping": {
-    "sectionTitle": "나의 이용 내역",
+    "sectionTitle": "내가 산 것",
     "wishlist": "찜한 상품",
     "voucher": "내 이용권",
     "voucherSub": "매장에서 QR·코드로 사용",
@@ -6918,9 +6918,9 @@
     "clearRegion": "지역 해제"
   },
   "my": {
-    "earningsGroupTitle": "내 수익·추천",
+    "earningsGroupTitle": "내가 소개한 것",
     "earningsGroupSub": "추천 적립, 유어샵 수익, 친구 초대",
-    "settingsGroupTitle": "설정",
+    "settingsGroupTitle": "설정 · 계정",
     "settingsGroupSub": "알림, 화면 테마, 언어, 앱 정보",
     "affiliateLinkTitle": "상품 추천 링크",
     "affiliateLinkSub": "내 링크로 구매하면 딜 적립 — 실적 보기",

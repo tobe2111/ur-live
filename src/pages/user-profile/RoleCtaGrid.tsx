@@ -15,7 +15,7 @@
 import { Link } from 'react-router-dom'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight, Store, LayoutDashboard, Handshake, ShoppingBag, type LucideIcon } from 'lucide-react'
+import { ChevronRight, Store, Handshake, ShoppingBag, type LucideIcon } from 'lucide-react'
 import { COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
 
 interface Cta {
@@ -37,7 +37,12 @@ export default function RoleCtaGrid() {
     // 내 바로가기 (모든 유저가 가진 유어샵 + 보유 role 의 대시보드 단축)
     const dash: Cta[] = [
       { Icon: Store, title: t('roleCta.linkshop', { defaultValue: '내 유어샵' }), desc: t('roleCta.linkshopDesc', { defaultValue: '이용권을 담아 진열하고 소개해요' }), to: '/u/me', show: () => true, accent: true },
-      { Icon: LayoutDashboard, title: t('roleCta.sellerDash', { defaultValue: '셀러 대시보드' }), desc: t('roleCta.sellerDashDesc', { defaultValue: '내 상품·공구·정산 관리' }), to: '/seller', show: () => hasSellerToken, accent: true },
+      // 🚪 2026-09-28 (대표 확정 — 판매로 가는 문이 넷이고 셋이 복제였다): '셀러 대시보드' 타일 제거.
+      //   이 타일과 페이지 최하단 '판매자 모드로 전환' 버튼은 **목적지가 같다**(`/seller`). 같은 일을
+      //   하는 문이 둘이면 한쪽만 고쳐지는 날이 오고, 실제로 그렇게 됐다(타일은 `<Link>` 인데
+      //   전환 버튼은 `active_role` 을 심고 하드 내비게이션한다 — 같은 곳에 가면서 하는 일이 달랐다).
+      //   ⇒ 넓은 화면 대시보드로 가는 문은 **최하단 전환 버튼 하나**로. 매일 쓰는 판매 도구는
+      //   페이지 맨 위 '내 가게' 섹션이 맡는다(2026-09-25 §18 — 앉아서 하는 일만 대시보드).
     ]
     // 신규 가입 CTA (보유 안 한 role 만)
     const signup: Cta[] = [

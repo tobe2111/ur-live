@@ -9526,8 +9526,11 @@ canvas {
   {
     name: 'PC 마이 — 우측 칸이 다시 모바일 메뉴 목록으로(isPc 분기 제거)',
     file: 'src/pages/UserProfilePage.tsx',
-    find: "      {isPc ? (\n      <>\n        <AccountPcPane",
-    replace: "      {false ? (\n      <>\n        <AccountPcPane",
+    // 🎯 2026-09-28 재조준 — PC 1안("오늘이 머리")으로 `<SellerSection>` 이 `<AccountPcPane>` 위로
+    //   올라가며 앵커 사이 줄이 바뀌었다. **불변식은 그대로다**(isPc 분기가 죽으면 PC 우측 칸이
+    //   다시 모바일 메뉴 목록이 된다) → 삼항 자체를 앵커로 좁힌다(사이 줄에 안 묶인다).
+    find: "      {isPc ? (\n      <>\n",
+    replace: "      {false ? (\n      <>\n",
     test: 'src/tests/unit/account-pc-pane.test.ts',
     why: '2026-09-02 대표 "PC 모드 답지 않은 페이지야". 좌우가 같은 메뉴를 두 번 보여 주던 화면으로 돌아간다.',
   },

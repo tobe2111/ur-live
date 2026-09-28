@@ -6319,7 +6319,7 @@
     "loadFailed": "Could not load your library"
   },
   "shopping": {
-    "sectionTitle": "My activity",
+    "sectionTitle": "What I bought",
     "wishlist": "[TODO:en] 찜한 상품",
     "voucher": "My vouchers",
     "voucherSub": "Use in store with QR or code",
@@ -6922,9 +6922,9 @@
     "gifticonEntrySub": "Buy convenience store & café gifticons with deals"
   },
   "my": {
-    "earningsGroupTitle": "My earnings & referrals",
+    "earningsGroupTitle": "What I recommended",
     "earningsGroupSub": "Referral rewards, UrShop income, Invites",
-    "settingsGroupTitle": "Settings",
+    "settingsGroupTitle": "Settings · Account",
     "settingsGroupSub": "Notifications, Theme, Language, App info",
     "affiliateLinkTitle": "Product Referral Links",
     "affiliateLinkSub": "Earn deals when friends buy via your link",

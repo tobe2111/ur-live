@@ -6266,7 +6266,7 @@
     "loadFailed": "Impossible de charger votre bibliothèque"
   },
   "shopping": {
-    "sectionTitle": "Mon activité",
+    "sectionTitle": "Mes achats",
     "wishlist": "[TODO:fr] 찜한 상품",
     "voucher": "Mes bons",
     "voucherSub": "À utiliser en magasin (QR ou code)",
@@ -6922,9 +6922,9 @@
     "gifticonEntrySub": "Achetez des gifticons (épicerie/café) avec des deals"
   },
   "my": {
-    "earningsGroupTitle": "Mes gains",
+    "earningsGroupTitle": "Mes recommandations",
     "earningsGroupSub": "Parrainage, UrShop, Invitations",
-    "settingsGroupTitle": "Paramètres",
+    "settingsGroupTitle": "Réglages · Compte",
     "settingsGroupSub": "Notifications, Thème, Langue, Infos appli",
     "affiliateLinkTitle": "Liens de recommandation",
     "affiliateLinkSub": "Gagnez des deals via vos liens — voir les résultats",

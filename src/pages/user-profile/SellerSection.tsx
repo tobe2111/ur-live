@@ -220,10 +220,17 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
   const note = store.status ? STATUS_NOTE[store.status] : undefined
 
   return (
-    <div className="ur-content-medium px-4 lg:px-8 pt-4">
+    <div className="ur-content-medium px-4 lg:px-8 pt-4 relative">
+      {/* 🔵 2026-09-28 (대표 확정 **이름 E**) — 구역 띠.
+          이름 후보 다섯 중 E 는 *"2구역(손님)의 큰 제목을 없앤다"* 다. 그러면 읽는 규칙이 하나로 줄어든다:
+          **제목이 붙은 구역이 파는 쪽.** 그 규칙이 서려면 제목이 본문 라벨과 구별돼야 해서 13px → 25px.
+          띠는 그 제목을 구역 전체로 늘린 것이고, 거터 안(6px)에 떠 있어 **본문 여백을 한 픽셀도 안 건드린다**.
+          ⚠️ 일반 유저에게는 이 구역 자체가 안 뜬다(좌석 0 → `null`) — 가를 상대가 없으면 띠는 장식이라
+          §11-d 의 권고대로 **안 그린다**. E 를 고른 덕에 그 판정이 저절로 맞는다. */}
+      <span aria-hidden="true" className="absolute left-1.5 lg:left-3 top-4 bottom-0 w-[3px] rounded-full bg-brand" />
       {/* 섹션 머리 — 오른쪽이 곧 가게 전환(2곳 이상일 때만 누를 수 있다) */}
       <div className="flex items-center gap-2 mb-2">
-        <h2 className="text-[13px] font-extrabold text-gray-900 dark:text-white">내 가게</h2>
+        <h2 className="text-[25px] leading-tight font-extrabold tracking-[-0.03em] text-gray-900 dark:text-white">내 가게</h2>
         <div className="flex-1" />
         {stores.length >= 2 ? (
           <button
@@ -242,6 +249,12 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
         )}
       </div>
 
+      {/* 🖥️ 2026-09-28 (대표 확정 **PC 1안 — "오늘이 머리"**): lg+ 에서 [오늘 카드 | 사용처리] 한 줄.
+          PC 를 여는 이유는 *오늘 얼마고 무엇이 대기인가* 하나라 그게 첫 줄이어야 하는데, 폰 배치를
+          그대로 늘리면 1200px 폭에 30px 숫자 하나가 덩그러니 남고 사용처리는 한참 아래로 밀린다.
+          ⚠️ 폰(<lg)은 `flex` 가 안 걸려 **종전과 byte-동일한 세로 배치**다. */}
+      <div className="lg:flex lg:items-stretch lg:gap-3">
+      <div className="lg:flex-1 lg:min-w-0">
       <TicketCard bandLeft="오늘" bandRight={todayLabelKST()}>
         <div className="px-4 pt-4 pb-4">
           <p className="text-[30px] font-extrabold tabular-nums leading-none text-gray-900 dark:text-white">
@@ -259,6 +272,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           )}
         </div>
       </TicketCard>
+      </div>
 
       {/* 🎟️ 사용처리 — 손님 앞에서 하루에 가장 많이 누르는 버튼이라 일감보다 위다.
           ⚠️ **어느 가게로 소각되는지는 좌석이 정한다.** 그래서 먼저 이 가게 좌석에 앉히고 보낸다 —
@@ -267,7 +281,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
         type="button"
         disabled={entering}
         onClick={() => enterSeat('/store/scan')}
-        className="w-full flex items-center gap-3 mt-3 px-4 h-[60px] rounded-2xl bg-brand text-white text-left active:opacity-90 disabled:opacity-60"
+        className="w-full flex items-center gap-3 mt-3 px-4 h-[60px] rounded-2xl bg-brand text-white text-left active:opacity-90 disabled:opacity-60 lg:mt-0 lg:w-[290px] lg:shrink-0 lg:h-auto"
       >
         <ScanLine className="w-6 h-6 shrink-0" aria-hidden="true" />
         <span className="flex-1 min-w-0">
@@ -278,6 +292,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           ? <Loader2 className="w-5 h-5 shrink-0 animate-spin" aria-hidden="true" />
           : <ChevronRight className="w-5 h-5 shrink-0 text-white/70" aria-hidden="true" />}
       </button>
+      </div>
 
       {/* 🧰 일감 — 좌석에 앉아 있을 때만 그린다.
           ⚠️ **마이를 여는 것만으로 좌석을 발급하지 않는다**(`startDashboardSession` 이 단일 세션을
@@ -498,6 +513,12 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
         <StoreSwitchSheet currentSellerId={store.seller_id} onClose={() => setSheetOpen(false)} />
       )}
       </Suspense>
+
+      {/* ─ 구역 경계 (2026-09-28 이름 E) — 여기까지가 **파는 쪽**이고 아래는 손님 쪽이다.
+          선을 이 컴포넌트 안에 두는 이유: 이 섹션은 좌석이 없거나 조회가 실패하면 `null` 을 돌려주는데,
+          페이지가 `stores.length` 로 따로 판정해 선을 그리면 **위에 아무것도 없는 선**이 뜨는 날이 온다
+          (판정이 두 곳이면 갈린다 — 이 레포가 반복해 당한 클래스). 같은 렌더에 붙여 두면 갈릴 수가 없다. */}
+      <div className="mt-5 h-px bg-black/[0.08] dark:bg-white/[0.08]" />
     </div>
   )
 }

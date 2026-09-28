@@ -58,7 +58,7 @@ export default function ShoppingGroup({ counts }: { counts: MyCounts }) {
 
   return (
     <div className="ur-content-medium px-4 lg:px-8 pt-5">
-      <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-2">{t('shopping.sectionTitle', { defaultValue: '나의 이용 내역' })}</p>
+      <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-2">{t('shopping.sectionTitle', { defaultValue: '내가 산 것' })}</p>
       <div className="rounded-2xl overflow-hidden bg-surface">
         {groups.map((g, gi) => (
           <div key={g.key}>

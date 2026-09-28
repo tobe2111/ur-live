@@ -32,7 +32,7 @@ export default function SettingsGroup({ children }: { children: ReactNode }) {
           <Settings className="w-[18px] h-[18px] text-gray-500 dark:text-white/55" aria-hidden="true" />
           <span className="text-left">
             <span className="block text-[13px] font-bold text-gray-900 dark:text-white">
-              {t('my.settingsGroupTitle', { defaultValue: '설정' })}
+              {t('my.settingsGroupTitle', { defaultValue: '설정 · 계정' })}
             </span>
             <span className="block text-[10px] text-gray-500 dark:text-white/45 mt-0.5">
               {t('my.settingsGroupSub', { defaultValue: '알림 · 화면 테마 · 언어 · 앱 정보' })}
