@@ -26,6 +26,14 @@ export default [
     why: '최하단 전환 버튼과 **목적지가 같다** — 같은 일을 하는 문이 둘이면 한쪽만 고쳐지는 날이 온다.',
   },
   {
+    name: '🚪 `/my-store` 가 다시 별도 페이지를 렌더한다 (마이와 타일 여섯이 중복)',
+    file: 'src/App.tsx',
+    find: '<Route path="/my-store" element={<Navigate to="/user/profile" replace />} />',
+    replace: '<Route path="/my-store" element={<MyStorePage />} />',
+    test: 'src/tests/unit/seller-all-in-my-2026-09-26.test.ts',
+    why: '그 페이지가 있던 이유는 마이 `내 가게` 섹션이 대신한다 — 되살리면 도구가 늘 때 두 곳을 고쳐야 하고 반드시 한쪽을 잊는다.',
+  },
+  {
     name: '🚪 넓은 화면으로 가는 **유일한** 문(최하단 전환)이 사라진다',
     file: 'src/pages/UserProfilePage.tsx',
     find: "              localStorage.setItem('active_role', 'seller')",
