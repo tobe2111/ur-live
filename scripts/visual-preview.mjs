@@ -61,6 +61,13 @@ const EXTRA_CSS = typeof args.css === 'string' ? args.css : ''
 const DARK = !!args.dark
 const HEIGHT = Number(args.height) || 1200
 /**
+ * 📐 `--width=N` — 임의 폭. `--pc` 는 1440 의 줄임말로 남는다.
+ *   ⚠️ 폭 하나만 보고 "PC 는 괜찮다" 로 넘기지 말 것: 마이의 PC 우측 칸은
+ *   `.ur-account-pc`(max 1200 · 좌 216 · gap 32 · 좌우 패딩 64)라 **1200px 창이 가장 좁다**.
+ *   1440 에서 한 줄에 들어가는 것이 1200 에서 깨진다 — 경계는 넓은 쪽이 아니라 좁은 쪽이다.
+ */
+const VIEWPORT_W = Number(args.width) || (args.pc ? 1440 : 430)
+/**
  * 🔐 `--auth=seller|user` — 로그인 뒤 화면을 보기 위한 시딩.
  *   대시보드 가드(`RouteGuards.isDashboardTokenUsable`)는 **점 3개짜리 JWT 가 아니면
  *   관대 통과**시킨다(비표준 토큰 허용). 그래서 평범한 문자열이면 충분하다 —
@@ -331,6 +338,67 @@ const ANALYTICS_REVENUE = ANALYTICS_DAYS.map((v, i) => ({
 }))
 const ANALYTICS_DETAILED = { conversion_rate: 3.4, repeat_purchase_rate: 28, repeat_buyers: 52, total_buyers: 186 }
 
+/**
+ * 🪑 `--stores=N` — 마이의 **'내 가게' 구역**(§14 `SellerSection`)을 눈으로 본다.
+ *
+ * ■ 왜 필요했나 — 실제로 막혔던 일
+ *   이 구역은 `/api/seller/my-stores/summary` **한 곳**에서만 나오는데, 이 하네스의 기본 스텁이
+ *   모든 `/api/*` 에 빈 배열을 준다. 좌석 0곳이면 `SellerSection` 은 `null` 을 그린다(설계대로다 —
+ *   실패를 0원으로 위장하지 않는다). 그래서 **이 하네스로는 판매 구역이 한 번도 렌더된 적이 없었다.**
+ *   2026-09-28 에 25px 제목·PC 히어로를 넣고도 "폰에서 제목이 줄바꿈되나 / 1200px 에서 히어로가
+ *   한 줄에 들어가나" 를 확인할 길이 없어 E4 를 미룬 자리가 정확히 여기다.
+ *
+ * ■ 모양은 서버 그대로
+ *   `seller-operators.routes.ts` 의 `GET /my-stores/summary` 가 실제로 주는 필드만 담는다
+ *   (`stores[] {seller_id,name,role,status,today_revenue,today_orders,pending}` · `totals` ·
+ *   `current_seller_id`). 얇은 픽스처는 "없는 결함" 을 만든다 — 이 파일이 이미 한 번 값을 치른 교훈.
+ *
+ * ■ 첫 이름이 **일부러 길다**
+ *   머리줄이 보여 주는 이름은 언제나 `stores[0]` 이고, `truncate`·줄바꿈은 **긴 이름에서만** 드러난다.
+ *   짧은 이름을 첫 칸에 두면 어떤 조합으로 돌려도 늘 통과하는 그림이 나온다 — 하네스가 경계를
+ *   안 보여 주면 없는 것과 같다. 말줄임(…)이 뜨는 게 정상이고, 오른쪽으로 삐져나가면 결함이다.
+ */
+const STORE_NAMES = [
+  '합정 살롱드합정 헤어&메이크업 본점',   // ← 긴 이름을 첫 칸에 (truncate 경계)
+  '연남 토리이자카야',
+  '망원제빵소 연남점',
+  '코어필라테스 성산',
+]
+const STORE_STATUS = typeof args.stores === 'string' && /^[a-z]+$/.test(args.stores) ? args.stores : 'approved'
+const STORES_N = (() => {
+  const a = process.argv.find((x) => x.startsWith('--stores'))
+  if (!a) return 0
+  const v = a.includes('=') ? a.slice(a.indexOf('=') + 1) : '1'
+  const n = parseInt(v, 10)
+  return Number.isFinite(n) && n > 0 ? n : 1   // `--stores` 나 `--stores=approved` → 1곳
+})()
+function storesSeed(n) {
+  const stores = Array.from({ length: n }, (_, i) => ({
+    seller_id: i + 1,
+    name: STORE_NAMES[i % STORE_NAMES.length],
+    role: i === 0 ? 'owner' : 'operator',
+    status: STORE_STATUS,
+    today_revenue: [412000, 86000, 0, 1240000][i % 4],
+    today_orders: [7, 2, 0, 19][i % 4],
+    pending: [2, 0, 0, 5][i % 4],
+  }))
+  const totals = stores.reduce(
+    (a, r) => ({ today_revenue: a.today_revenue + r.today_revenue, today_orders: a.today_orders + r.today_orders, pending: a.pending + r.pending }),
+    { today_revenue: 0, today_orders: 0, pending: 0 },
+  )
+  return { success: true, data: { stores, totals, current_seller_id: stores[0]?.seller_id ?? null } }
+}
+/**
+ * 🔐 좌석 토큰은 **JWT 모양**이어야 한다 — `readSeatClaims`(`lib/seller-seat.ts`)가 `token.split('.')[1]`
+ *   을 base64url 디코드해 `seller_id` 를 읽고, 그 값이 `store.seller_id` 와 같을 때만 '일감' 격자가 뜬다.
+ *   평문 `'preview'` 로는 claim 이 null 이라 오늘 카드만 나오고 아래 절반이 통째로 빈다.
+ *   ⚠️ 서명은 없다(가짜 서버가 어차피 전부 200 이다). **권한 검증용으로 쓰지 말 것.**
+ */
+function seatToken(sellerId, name) {
+  const b64u = (o) => Buffer.from(JSON.stringify(o), 'utf8').toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+  return `${b64u({ alg: 'none', typ: 'JWT' })}.${b64u({ seller_id: sellerId, seller_type: 'store_owner', name })}.preview`
+}
+
 function serve() {
   return new Promise((resolve) => {
     const s = http.createServer((req, res) => {
@@ -363,6 +431,7 @@ function serve() {
             return res.end(JSON.stringify({ success: true, data: rows }))
           }
         }
+        if (STORES_N > 0 && p === '/api/seller/my-stores/summary') return res.end(JSON.stringify(storesSeed(STORES_N)))
         // 🎬 레일은 홈 어느 경로에서든 뜬다 — 플래그 없이 항상 준다.
         if (p === '/api/urshorts') return res.end(JSON.stringify({ success: true, data: SHORTS_SEED }))
         if (args.wallet && p === '/api/vouchers/my')
@@ -420,7 +489,7 @@ const ctx = await browser.newContext({
   // 🖥️ 2026-08-31 `--pc` — PC 홈은 레이아웃이 아예 다르다(히어로 + 가로 레일 + 흰 패널).
   //   모바일 폭으로만 보면 PC 회귀를 못 본다 — 실제로 PC 홈이 모바일과 다른 규칙을 쓰는 것을
   //   라이브 판정에서야 발견했다.
-  viewport: { width: args.pc ? 1440 : 430, height: HEIGHT },
+  viewport: { width: VIEWPORT_W, height: HEIGHT },
   deviceScaleFactor: 2,
   colorScheme: DARK ? 'dark' : 'light',
 })
@@ -434,10 +503,22 @@ await ctx.route('**/*', (r) => (r.request().url().startsWith(`http://127.0.0.1:$
 if (DARK) {
   await ctx.addInitScript(() => { try { localStorage.setItem('ur_theme_mode_v1', 'dark') } catch { /* private mode */ } })
 }
-if (AUTH) {
+if (AUTH || STORES_N > 0) {
   const seed = AUTH === 'seller'
     ? { seller_token: 'preview', seller_id: '1', seller_username: 'preview', user_type: 'seller' }
     : { user_id: '1', user_type: 'user', user_handle: 'preview', user_name: '정지원' }
+  /**
+   * 🪑 `--stores` 일 때만 좌석 토큰을 **JWT 모양**으로 덮어쓴다.
+   *   `--auth=seller` 단독의 평문 `'preview'` 는 **일부러 그대로 둔다** — 그걸 바꾸면 `currentSeatId()`
+   *   가 null → 1 이 되어 좌석으로 갈리는 다른 프리뷰(셀러 대시보드 화면들)의 그림이 같이 변한다.
+   *   요청하지도 않은 diff 를 공용 도구에 심지 않는다.
+   *   ⚠️ 3조각 토큰이라도 `exp` 가 없으면 `isDashboardTokenUsable` 은 관대 통과다(RouteGuards:48) —
+   *      즉 로그인 가드는 전과 같이 열린다.
+   */
+  if (STORES_N > 0) {
+    seed.seller_token = seatToken(1, STORE_NAMES[0])
+    seed.seller_id = '1'
+  }
   await ctx.addInitScript((kv) => {
     try { for (const [k, v] of Object.entries(kv)) localStorage.setItem(k, v) } catch { /* private mode */ }
   }, seed)

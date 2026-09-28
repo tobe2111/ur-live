@@ -20,7 +20,7 @@ export default [
   {
     name: '🧭 구역 띠가 사라진다',
     file: 'src/pages/user-profile/SellerSection.tsx',
-    find: '<span aria-hidden="true" className="absolute left-1.5 lg:left-3 top-4 bottom-0 w-[3px] rounded-full bg-brand" />',
+    find: 'top-4 bottom-0 w-[3px] rounded-full bg-brand" />',
     replace: '',
     test: TEST,
     why: '제목을 구역 전체로 늘린 장치다 — 없으면 어디까지가 파는 쪽인지 첫 줄에서만 알 수 있다.',
@@ -56,5 +56,29 @@ export default [
     replace: '      <div>',
     test: TEST,
     why: '폰 배치를 그대로 늘리면 오늘 숫자 옆이 통째로 비고 사용처리가 한참 아래로 밀린다 — 09-28 "PC가 심플하다" 의 원인.',
+  },
+  {
+    name: '🔵 구역 띠가 PC 에서 다시 카드를 관통한다 (lg:-left-3 → lg:left-3)',
+    file: 'src/pages/user-profile/SellerSection.tsx',
+    find: 'left-1.5 lg:-left-3',
+    replace: 'left-1.5 lg:left-3',
+    test: TEST,
+    why: 'PC 우측 칸은 좌우 패딩이 0 이라 양수 오프셋은 거터가 아니라 카드 안쪽이다 — 띠가 일감 카드를 세로로 갈랐다(하네스 실측).',
+  },
+  {
+    name: '🔵 띠 오프셋의 근거인 CSS 패딩 무력화가 사라진다',
+    file: 'src/index.css',
+    find: '    padding-left: 0;\n    padding-right: 0;\n  }\n}',
+    replace: '  }\n}',
+    test: TEST,
+    why: '음수 오프셋의 근거가 이 규칙이다 — 한쪽만 바뀌면 조용히 어긋나는 짝이라 함께 잠갔다.',
+  },
+  {
+    name: '🏪 가게 개수를 이름과 한 span 에 도로 붙인다 (긴 이름에서 개수가 먼저 잘린다)',
+    file: 'src/pages/user-profile/SellerSection.tsx',
+    find: '<span className="truncate">{store.name}</span>\n            <span className="shrink-0">· {stores.length}곳</span>',
+    replace: '<span className="truncate">{store.name} · {stores.length}곳</span>',
+    test: TEST,
+    why: '이 줄이 눌리는 이유가 개수다(2곳 이상일 때만 전환 버튼) — 잘려야 하는 건 이름이지 개수가 아니다.',
   },
 ]

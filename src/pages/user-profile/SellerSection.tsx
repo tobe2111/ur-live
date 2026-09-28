@@ -226,8 +226,16 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           **제목이 붙은 구역이 파는 쪽.** 그 규칙이 서려면 제목이 본문 라벨과 구별돼야 해서 13px → 25px.
           띠는 그 제목을 구역 전체로 늘린 것이고, 거터 안(6px)에 떠 있어 **본문 여백을 한 픽셀도 안 건드린다**.
           ⚠️ 일반 유저에게는 이 구역 자체가 안 뜬다(좌석 0 → `null`) — 가를 상대가 없으면 띠는 장식이라
-          §11-d 의 권고대로 **안 그린다**. E 를 고른 덕에 그 판정이 저절로 맞는다. */}
-      <span aria-hidden="true" className="absolute left-1.5 lg:left-3 top-4 bottom-0 w-[3px] rounded-full bg-brand" />
+          §11-d 의 권고대로 **안 그린다**. E 를 고른 덕에 그 판정이 저절로 맞는다.
+          🩸 2026-09-28 (하네스 실측으로 수리) — PC 는 **음수**여야 한다(`lg:-left-3`). 처음엔 폰과 같은
+          발상으로 `lg:left-3` 을 줬는데, 마이의 PC 우측 칸은 `.ur-account-pane .ur-content-medium`
+          이 **좌우 패딩을 0 으로 지운다**(index.css §마이페이지 PC 2단). 거터가 없으니 +12px 는
+          카드 **안쪽**이고, 띠가 일감 카드들의 왼쪽을 세로로 관통했다. 음수면 `.ur-account-pc` 의
+          `gap: 32px` 안(내비와 칸 사이)에 떠서 무엇도 가리지 않는다.
+          ⚠️ 이 결함은 코드를 읽어선 안 보인다 — 조판이 CSS 두 파일에 나뉘어 있다. 띠 위치를 바꾸면
+          `node scripts/visual-preview.mjs --route=/user/profile --auth=user --stores=2 --width=1200`
+          으로 **눈으로** 확인할 것(1200 이 가장 좁은 PC 다). */}
+      <span aria-hidden="true" className="absolute left-1.5 lg:-left-3 top-4 bottom-0 w-[3px] rounded-full bg-brand" />
       {/* 섹션 머리 — 오른쪽이 곧 가게 전환(2곳 이상일 때만 누를 수 있다) */}
       <div className="flex items-center gap-2 mb-2">
         <h2 className="text-[25px] leading-tight font-extrabold tracking-[-0.03em] text-gray-900 dark:text-white">내 가게</h2>
@@ -238,7 +246,12 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
             onClick={() => setSheetOpen(true)}
             className="inline-flex items-center gap-1 max-w-[60%] text-[12px] font-semibold text-gray-500 dark:text-gray-400 active:opacity-70"
           >
-            <span className="truncate">{store.name} · {stores.length}곳</span>
+            {/* 🩸 2026-09-28 (하네스 실측) — 이름과 개수를 **다른 span** 으로 나눈다.
+                한 span 에 `{이름} · N곳` 으로 붙여 놓으면 긴 가게 이름에서 말줄임이 **개수부터** 먹는다
+                (`합정 살롱드합정 헤어&메이크업 본점 · …`). 그런데 이 줄이 눌리는 이유가 바로 그 개수다 —
+                2곳 이상일 때만 전환 버튼이 되니까. 잘려야 하는 건 이름이지 개수가 아니다. */}
+            <span className="truncate">{store.name}</span>
+            <span className="shrink-0">· {stores.length}곳</span>
             <ChevronDown className="w-3 h-3 shrink-0" aria-hidden="true" />
           </button>
         ) : (
@@ -286,7 +299,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
         <ScanLine className="w-6 h-6 shrink-0" aria-hidden="true" />
         <span className="flex-1 min-w-0">
           <span className="block text-[15px] font-extrabold">이용권 사용처리</span>
-          <span className="block text-[11.5px] text-white/80 mt-0.5">손님 QR 을 찍으세요</span>
+          <span className="block text-[11.5px] text-white/80 mt-0.5">손님 QR을 찍으세요</span>
         </span>
         {entering
           ? <Loader2 className="w-5 h-5 shrink-0 animate-spin" aria-hidden="true" />
