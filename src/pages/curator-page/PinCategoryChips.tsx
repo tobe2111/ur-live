@@ -12,6 +12,12 @@
  *   ⇒ 이제 핀이 **하나라도 있으면** 그린다(0 이면 진열대 자체가 비어 EmptyUrShop 이 대신 뜬다).
  *
  *   쇼핑 상품 핀(이용권 아님)이 있으면 '상품' 칩을 하나 더 낸다(SSOT 4종 밖 — 유어샵만의 것).
+ *
+ *   🔧 2026-09-28 (대표 확정 **상단 1안**): 이 부품은 이제 **자기 줄을 소유하지 않는다.**
+ *   정렬 드롭다운이 바로 아래에서 **버튼 하나를 위해 줄 하나를 더** 쓰고 있었고(라이브 실측 32px),
+ *   둘을 한 줄에 놓으면 상단이 102px 줄어든다. 그래서 바깥 여백(`max-w-3xl mx-auto px-4 pt-3`)은
+ *   호출부의 줄이 갖고, 여기는 `flex-1 min-w-0` 로 그 줄을 나눠 쓴다.
+ *   ⚠️ **빈 진열대 판정은 여전히 이 부품이 혼자 한다** — 호출부에 개수 게이트를 두면 언젠가 갈린다.
  */
 import { useTranslation } from 'react-i18next'
 import { MAP_VOUCHER_DEFS, type MapVoucherType } from '@/pages/restaurant-map/voucher-types'
@@ -41,7 +47,7 @@ export default function PinCategoryChips({ pins, value, onChange }: { pins: Cura
   // 카테고리가 하나뿐이면 칩은 정보가 0 — 전체 + 그 하나 = 늘 같은 목록.
   if (defs.length <= 2) return null
   return (
-    <div className="max-w-3xl mx-auto px-4 pt-3 flex gap-2 overflow-x-auto scrollbar-hide" role="tablist" aria-label={t('curator.chipsLabel', { defaultValue: '카테고리' })}>
+    <div className="flex-1 min-w-0 flex gap-2 overflow-x-auto scrollbar-hide" role="tablist" aria-label={t('curator.chipsLabel', { defaultValue: '카테고리' })}>
       {defs.map((d) => {
         const on = value === d.key
         const n = d.key === 'all' ? pins.length : counts.get(d.key) || 0

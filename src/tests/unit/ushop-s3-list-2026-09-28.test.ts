@@ -72,19 +72,29 @@ describe('② 🔴 순번 배지 = 주인 순서(정렬과 무관)', () => {
   })
 })
 
-describe('③ 리뷰 0 이면 별점 줄이 없다', () => {
-  it('review_count 가 0 이면 meta 를 만들지 않는다', () => {
-    expect(row).toMatch(/const reviews = Number\(pin\.review_count\) \|\| 0/)
-    // 삼항의 거짓 가지가 `undefined` 여야 DealRow 가 그 줄 자체를 안 그린다.
-    expect(row).toMatch(/const meta = reviews > 0 \?[\s\S]*?:\s*undefined/)
+/**
+ * ③ **재조준 2026-09-28** — 종전 계약은 *"리뷰 0 이면 별점 줄을 뺀다"*(조건부)였다.
+ *    대표 결재(`docs/decisions/2026-09-28-ushop-star-rating.md` **3번**)로 그 전제가 바뀌었다:
+ *    *"유어샵 목록에 별점은 보이지 않게 해줘도 돼"* → 선택지 3 "가격·할인·거리로만 판단하게 하고,
+ *    진짜 리뷰가 쌓이면 그때 켠다". 라이브 핀은 전부 데모·플랫폼 상품이라 별점(4.6~4.7)도
+ *    구매수(54~140)도 시드값이고, 조건부로 두면 **시드가 있는 상품만** 신뢰 표식을 갖는다.
+ *    ⇒ 계약을 지우지 않고 **"아예 안 그린다"** 로 옮긴다. 되살릴 땐 이 블록이 먼저 빨간불이 된다.
+ */
+describe('③ 별점·구매수를 그리지 않는다', () => {
+  it('PinRow 에 별점이 없다', () => {
+    expect(row, '별점 부품을 쓰지 않는다').not.toContain('StarRating')
+    expect(row, '평점 값을 읽지도 않는다').not.toContain('avg_rating')
+    expect(row, '리뷰 수를 읽지도 않는다').not.toContain('review_count')
   })
 
-  it('StarRating 은 그 조건 안에서만 쓰인다', () => {
-    const cond = row.slice(row.indexOf('const meta = reviews > 0'), row.indexOf(': undefined'))
-    expect(cond, '조건부 블록 안에 별점이 있다').toContain('<StarRating')
-    // 조건 밖에 또 그리면 0 리뷰 상품에 빈 별이 되돌아온다.
-    const outside = row.replace(cond, '')
-    expect(outside).not.toContain('<StarRating')
+  it('구매수도 없다 — 같은 시드값이다', () => {
+    expect(row).not.toContain('sold_count')
+    expect(row).not.toContain('curator.soldN')
+  })
+
+  it('meta 를 아예 넘기지 않는다 — DealRow 가 그 줄 자체를 안 그린다', () => {
+    // `meta={undefined}` 로 남기면 다음 세션이 "값만 채우면 되겠네" 로 되살린다.
+    expect(row).not.toMatch(/meta=\{/)
   })
 })
 
