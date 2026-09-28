@@ -28,7 +28,6 @@ const SellerResetPasswordPage = lazy(() => import('@/pages/SellerResetPasswordPa
 const SellerBusinessInfoPage = lazy(() => import('@/pages/SellerBusinessInfoPage'))
 const SellerTierPage = lazy(() => import('@/pages/SellerTierPage'))
 const SellerOrdersPage = lazy(() => import('@/pages/SellerOrdersPage'))
-const SellerConsignmentPage = lazy(() => import('@/pages/SellerConsignmentPage'))
 const SellerProductsPage = lazy(() => import('@/pages/SellerProductsPage'))
 const SellerInventoryPage = lazy(() => import('@/pages/SellerInventoryPage'))
 const SellerProductNewPage = lazy(() => import('@/pages/SellerProductNewPage'))
@@ -148,12 +147,22 @@ export function SellerRoutes() {
           <SellerOrdersPage />
         </ProtectedRoute>
       } />
-      {/* 🛡️ 2026-04-28: MD 위탁 판매 (셀러간 협업) */}
-      <Route path="/seller/consignment" element={
-        <ProtectedRoute requireSeller>
-          <SellerConsignmentPage />
-        </ProtectedRoute>
-      } />
+      {/**
+        * 🪦 2026-09-28 — **깨진 화면을 안 보여 준다.** (2026-04-28 MD 위탁 판매, 셀러간 협업)
+        *
+        * 라이브 D1 에 `consignment_partnerships` **테이블이 없다**(마이그레이션 `0236` 은 레포에
+        * 있으나 D1 마이그레이션이 CI 에서 안 돈다 — `TECHNICAL_DEBT.md` 의 알려진 부채이고
+        * `repair-schema` 에도 없다). ⇒ 페이지를 열면 API 일곱 개가 전부 `no such table` 로 죽는다.
+        * 진입점이 0이라 아무도 신고하지 않았을 뿐이다(사이드바·전체 도구 색인 어디에도 없다).
+        *
+        * ⚠️ **기능을 없앤 게 아니라 문만 닫았다.** API 5개·`checkout.ts` 의 자동 매핑·정비 cron·
+        *   어드민 모니터링·운영 가이드 두 절은 **그대로 둔다** — 살릴지 없앨지는 대표 판단이고
+        *   (`docs/decisions/2026-09-28-dead-seller-screens.md`) 위탁 정산은 머니 경로다.
+        *   `checkout.ts` 는 이미 테이블 부재를 `catch` 로 허용하므로 **오늘 결제엔 영향이 없다**(실측).
+        * ⚠️ 되살리려면 이 줄을 `<SellerConsignmentPage />` 로 되돌리면 된다. 다만 그때
+        *   **테이블부터 만들어야 한다** — 안 만들면 지금과 똑같이 일곱 개가 죽는다.
+        */}
+      <Route path="/seller/consignment" element={<Navigate to="/seller" replace />} />
       <Route path="/seller/products" element={
         <ProtectedRoute requireSeller>
           <SellerProductsPage />
