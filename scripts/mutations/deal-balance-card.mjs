@@ -33,15 +33,11 @@ export default [
   {
     name: '🪙잔액 "1딜 = 1원" 이 되살아난다',
     file: 'src/pages/vouchers/DealBalanceCard.tsx',
-    find: `        </div>
-      </div>
-
-      {/* 아래층`,
-    replace: `        </div>
-        <p className="text-[11px] text-gray-400 mt-1.5">1딜 = 1원 · 현금처럼 사용</p>
-      </div>
-
-      {/* 아래층`,
+    // 🔁 2026-09-28 재조준: 위층 끝에 `note` 한 줄(마이가 쓰는 무상 리워드 안내)이 생기면서
+    //   `</div></div>` 두 줄 앵커가 깨졌다. 불변식은 그대로 — **위층에 값어치 문구를 다시 넣지 않는다.**
+    find: `        <p className={\`text-gray-500 dark:text-gray-400 tracking-wide \${compact ? 'text-[11px] mb-1.5' : 'text-[12px] mb-2'}\`}>내 딜 잔액</p>`,
+    replace: `        <p className={\`text-gray-500 dark:text-gray-400 tracking-wide \${compact ? 'text-[11px] mb-1.5' : 'text-[12px] mb-2'}\`}>내 딜 잔액</p>
+        <p className="text-[11px] text-gray-400 mt-1.5">1딜 = 1원 · 현금처럼 사용</p>`,
     test: 'src/tests/unit/deal-balance-card-2026-09-14.test.ts',
     why:
       '대표 확정: "딜의 값어치를 말할 필요는 없어. 어차피 교환권을 통해서 어느 정도는 알거니까." ' +

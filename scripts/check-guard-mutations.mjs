@@ -2131,8 +2131,11 @@ const MUTATIONS = [
   {
     name: '평면 그라디언트가 다시 들어온다(단색인데 그라디언트인 척)',
     file: 'src/pages/user-profile/TeamPointsCard.tsx',
-    find: '      <div className="bg-ink dark:bg-[#1D1F29] rounded-2xl px-5 py-4">',
-    replace: '      <div className="bg-gradient-to-r from-gray-800 to-gray-800 dark:bg-[#1D1F29] rounded-2xl px-5 py-4">',
+    // 🔁 2026-09-28 재조준: 앵커였던 검정 슬래브(`bg-ink …`)가 사라졌다 — 마이 잔액이 교환권 탭과
+    //   **같은 흰 카드 부품**을 쓰게 됐기 때문이다. 지키려는 불변식(평면 그라디언트 탐지)은 그대로라
+    //   같은 파일에 남아 있는 줄로 옮긴다.
+    find: '    <div className="ur-content-medium px-4 lg:px-8 py-3">',
+    replace: '    <div className="ur-content-medium px-4 lg:px-8 py-3 bg-gradient-to-r from-gray-800 to-gray-800">',
     test: 'src/tests/unit/button-system.test.ts',
     why:
       'from/to 가 같은 색이면 브라우저는 그라디언트를 계산하는데 화면엔 단색이 나온다. ' +
