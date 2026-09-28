@@ -419,6 +419,10 @@ export default function StayDetailPage() {
           </div>
         )}
 
+        {/* 🏨 2026-09-26 대표 확정("2번은 진행해"): 대표 문서 ⑥ 을 글자 그대로 — **숙소 소개 바로 아래**.
+            ⚠️ 소개가 없는 숙소에도 떠야 하므로 위 조건 블록 **밖**에 둔다(안에 넣으면 같이 사라진다). */}
+        <SimilarStays stayId={stay.id} regionSido={stay.region_sido} checkIn={checkIn} checkOut={checkOut} guests={guests} />
+
         {/* Amenities */}
         {amenitiesArr.length > 0 && (
           <div className="mb-6">
@@ -536,9 +540,6 @@ export default function StayDetailPage() {
           houseRules={stay.house_rules} checkInInstructions={stay.check_in_instructions} />
 
         <StayReviews productId={productId} />
-
-        {/* 🏨 대표 문서 ⑥ "숙소소개 아래에 이곳과 비슷한 스테이" — 자리 판단은 부품 머리말 참조. */}
-        <SimilarStays stayId={stay.id} regionSido={stay.region_sido} checkIn={checkIn} checkOut={checkOut} guests={guests} />
 
         </div>{/* /좌측 콘텐츠 */}
 

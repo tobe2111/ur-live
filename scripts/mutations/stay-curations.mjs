@@ -77,4 +77,25 @@ export default [
       '추출본과 인라인이 동시에 존재하면 제목이 두 번 나오고, 다음 수정이 한쪽에만 들어간다 ' +
       '(`SellerCard`·`UsageGuide` 와 같은 클래스).',
   },
+  {
+    name: '비슷한 스테이를 옛 자리(후기 뒤)로 되돌린다',
+    file: 'src/pages/StayDetailPage.tsx',
+    find: '        <SimilarStays stayId={stay.id} regionSido={stay.region_sido} checkIn={checkIn} checkOut={checkOut} guests={guests} />\n',
+    replace: '',
+    test: 'src/tests/unit/stay-curations-2026-09-24.test.ts',
+    why:
+      '자리는 **대표 확정 사항**이다(2026-09-26 "2번은 진행해" — 문서 그대로 숙소 소개 바로 아래). ' +
+      '처음 내가 고른 자리는 페이지 맨 아래였고, 그 판단이 뒤집힌 기록이 없으면 다음 세션이 ' +
+      '"구매 행동이 밀린다"는 이유로 조용히 되돌린다.',
+  },
+  {
+    name: '비슷한 스테이를 소개 조건 블록 안에 넣는다(소개 없는 숙소에서 사라진다)',
+    file: 'src/pages/StayDetailPage.tsx',
+    find: '        <SimilarStays stayId={stay.id}',
+    replace: '            <SimilarStays stayId={stay.id}',
+    test: 'src/tests/unit/stay-curations-2026-09-24.test.ts',
+    why:
+      '`{stay.description_full && (…)}` 안으로 들여쓰면 **소개문이 없는 숙소에서 추천 줄이 통째로 ' +
+      '사라진다** — 에러는 안 난다. 실측(2026-09-25): 활성 상품 중 설명이 빈 것이 23건 있었다.',
+  },
 ]
