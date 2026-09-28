@@ -68,7 +68,25 @@ function Tile({ tile, eager, priority, clone }: { tile: HeroTile; eager: boolean
       />
       <div
         className="absolute inset-x-0 bottom-0 px-2.5 pt-5 pb-2 text-white text-[13px] font-extrabold"
-        style={{ background: 'linear-gradient(0deg, rgba(0,0,0,0.8), transparent)' }}
+        /**
+         * 🩸 2026-09-28 — **글자가 앉는 줄에서 이 그라디언트가 약했다.**
+         *
+         * 종전 `rgba(0,0,0,0.8) → transparent` 두 스톱은 0.8 을 **밴드 맨 아래 한 줄에서만** 낸다.
+         * 글자는 그보다 위(밴드 높이 48 중 아래 24 근처)에 앉으므로 그 자리의 실효 알파는 **0.5** 였다.
+         * 타일 바탕은 딜의 **대표색**(`tile.color`)이고 사진이 밝으면 그 색도 밝다 — 라이브 실측에
+         * `rgb(243,243,243)`·`rgb(221,221,221)` 타일이 있었고, 그 위에서 할인율(`#7FB0FF`)이
+         * **2.04:1** 이 됐다(가격 흰 글자도 4.35:1 로 간신히).
+         *
+         * ⇒ 고칠 자리는 **글자색이 아니라 바탕**이다. `--hero-tile-accent` 가 파랑인 근거가
+         *   *"캡션은 늘 어두운 바탕"* 이었고, 그 전제를 실제로 지키게 만든 것이다(스톱 하나 추가).
+         *   실측(대표색 243 타일): 할인율 2.07 → **5.83:1** · 가격 4.35 → **12.45:1**.
+         *   순백(255) 사진이어도 5.58:1 이라 여유가 있다.
+         *
+         * ⚠️ **평면 판으로 바꾸지 않았다** — 램프를 유지해야 위쪽에 경계선이 안 생긴다(0.88 평면안은
+         *    7.67:1 로 더 높았지만 사진을 더 많이 덮고 판 끝이 보인다).
+         * 🛡️ `hero-deal-strip-2026-09-28.test.tsx` ⑤ 가 스톱 수와 최소 알파를 고정한다.
+         */
+        style={{ background: 'linear-gradient(0deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.75) 60%, rgba(0,0,0,0) 100%)' }}
       >
         {tile.discount > 0 && <span className="ur-hero-tile-off mr-1.5">{tile.discount}%</span>}
         {formatNumber(tile.price)}원

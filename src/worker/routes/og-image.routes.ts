@@ -12,6 +12,8 @@
 
 import { Hono } from 'hono'
 import type { Env } from '../types/env'
+import { inlineImage } from '../utils/og-inline-image'
+import { generateCuratorSVG, tileWidth, TILE_H, type CuratorForOG } from '../utils/og-curator-card'
 
 const ogRoutes = new Hono<{ Bindings: Env }>()
 
@@ -131,55 +133,6 @@ function generateSVG(p: ProductForOG, imageAbs: string): string {
 // 큐레이터 OG image (migration 0278, 2026-05-25)
 // 1200×630 SVG — 큐레이터 핸들 + 닉네임 + bio + 핀 thumbnail grid (top 4)
 // ============================================================
-interface CuratorForOG {
-  id: number
-  handle: string
-  name: string
-  bio: string | null
-  profile_image: string | null
-}
-
-function generateCuratorSVG(curator: CuratorForOG, pinThumbs: string[]): string {
-  const safeName = escapeXml(curator.name || curator.handle)
-  const safeHandle = escapeXml(curator.handle)
-  const safeBio = escapeXml((curator.bio || `${curator.name}의 큐레이션 유어샵`).slice(0, 80))
-  const profile = curator.profile_image
-    ? `<image href="${escapeXml(curator.profile_image)}" x="80" y="80" width="160" height="160" clip-path="url(#cprofile)" preserveAspectRatio="xMidYMid slice"/>`
-    : `<circle cx="160" cy="160" r="80" fill="#1D1F29"/>
-       <text x="160" y="180" font-size="60" font-family="sans-serif" font-weight="800" fill="#6b7280" text-anchor="middle">${escapeXml((curator.name || '?').slice(0, 1))}</text>`
-
-  // 핀 thumbnail grid — 우측 4칸 (2x2)
-  const tiles = [0, 1, 2, 3].map(i => {
-    const url = pinThumbs[i]
-    const col = i % 2
-    const row = Math.floor(i / 2)
-    const x = 720 + col * 240
-    const y = 80 + row * 240
-    return url
-      ? `<image href="${escapeXml(url)}" x="${x}" y="${y}" width="220" height="220" preserveAspectRatio="xMidYMid slice"/>`
-      : `<rect x="${x}" y="${y}" width="220" height="220" fill="#1D1F29" rx="12"/>`
-  }).join('\n  ')
-
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
-  <defs>
-    <clipPath id="cprofile"><circle cx="160" cy="160" r="80"/></clipPath>
-  </defs>
-  <rect width="1200" height="630" fill="#11141C"/>
-  <rect x="40" y="40" width="1120" height="550" fill="#11141C" rx="24" stroke="#1D1F29" stroke-width="2"/>
-
-  ${profile}
-
-  <text x="280" y="140" font-size="44" font-family="-apple-system,system-ui,sans-serif" font-weight="800" fill="#FFFFFF">${safeName}</text>
-  <text x="280" y="180" font-size="24" font-family="-apple-system,system-ui,sans-serif" fill="#9CA3AF">@${safeHandle}</text>
-  <text x="280" y="240" font-size="20" font-family="-apple-system,system-ui,sans-serif" fill="#D1D5DB">${safeBio}</text>
-
-  ${tiles}
-
-  <text x="80" y="540" font-size="20" font-family="-apple-system,system-ui,sans-serif" font-weight="700" fill="#6b7280">유어딜 유어샵</text>
-  <text x="1120" y="540" font-size="18" font-family="-apple-system,system-ui,sans-serif" fill="#9CA3AF" text-anchor="end">urdeal.kr/u/${safeHandle}</text>
-</svg>`
-}
-
 ogRoutes.get('/curator/:handle', async (c) => {
   const { DB } = c.env
   const handleRaw = c.req.param('handle').replace(/\.(png|jpg|svg)$/, '').toLowerCase()
@@ -204,7 +157,19 @@ ogRoutes.get('/curator/:handle', async (c) => {
     ).bind(curator.id).all<{ thumb: string | null }>()
     const thumbs = (pins ?? []).map(r => r.thumb || '').filter(Boolean)
 
-    const svg = generateCuratorSVG(curator, thumbs)
+    // 🖼️ 2026-09-28: 사진을 **카드 안에 박아** 넣는다. 외부 `<image href>` 는 카톡이 안 그린다
+    //   (그래서 라이브 카드가 새까맸다 — `og-inline-image.ts` 머리말에 실측을 적어 뒀다).
+    //   전부 fail-soft: 못 받으면 null → 카드는 사진 없이 그려진다(빈 칸을 보여주지 않는다).
+    const origin = new URL(c.req.url).origin
+    //   받을 크기는 카드가 그릴 크기와 **같은 식**(`tileWidth`)으로 정한다 — 정사각으로 받아
+    //   가로로 늘린 타일이 생기지 않게.
+    const tw = Math.round(tileWidth(thumbs.length))
+    const [profileUri, ...tileUris] = await Promise.all([
+      inlineImage(curator.profile_image, origin, 232, 232),
+      ...thumbs.map(t => inlineImage(t, origin, tw, TILE_H)),
+    ])
+
+    const svg = generateCuratorSVG(curator, profileUri, tileUris.filter((u): u is string => !!u))
     return new Response(svg, {
       headers: {
         'Content-Type': 'image/svg+xml; charset=utf-8',

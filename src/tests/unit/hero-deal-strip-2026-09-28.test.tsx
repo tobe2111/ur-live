@@ -191,3 +191,92 @@ describe('④ 배선 — 눈으로는 안 보이는 것들', () => {
     expect(s.match(/hasMedia && !showStrip/g)?.length).toBe(2)
   })
 })
+
+/**
+ * ⑤ 🩸 2026-09-28 — **캡션 글자가 밝은 타일에서 안 보였다**(다크 대비 가드가 잡았다).
+ *
+ * 타일 바탕은 딜의 **대표색**(`tile.color`)이라 사진이 밝으면 그 색도 밝다. 라이브 실측에
+ * `rgb(243,243,243)`·`rgb(221,221,221)` 타일이 있었고, 종전 두 스톱 그라디언트
+ * (`rgba(0,0,0,0.8) → transparent`)는 0.8 을 **밴드 맨 아래 한 줄에서만** 내므로
+ * 글자가 앉는 줄의 실효 알파가 0.5 였다 → 할인율 `#7FB0FF` 가 **2.04:1**.
+ *
+ * ⚠️ 이 시험은 **문자열을 안 본다** — 그라디언트 스톱을 파싱해 *글자가 닿는 가장 밝은 지점*의
+ *    알파를 구하고, **순백(255) 사진**이라는 최악의 바탕에 합성해 WCAG 대비를 실제로 계산한다.
+ *    그래야 스톱을 어떻게 다시 쓰든 *결과*가 지켜진다(색 이름 매칭은 재작성에 뚫린다).
+ *
+ * 📐 기하(브라우저 실측): 밴드 `pt-5 pb-2` + `text-[13px]` → 높이 48, 글자 박스는 바닥에서
+ *    8..28px = **아래에서 16.7%..58.3%**. 즉 글자가 닿는 가장 밝은 지점이 60% 근처다.
+ *    ⇒ 아래 `TEXT_TOP_PCT` 는 그 실측값이고, 패딩·글자 크기가 바뀌면 전제가 깨지므로
+ *      그 토큰들이 그대로인지 **함께** 단언한다.
+ *
+ * 이 시험이 **못** 하는 것: 실제 픽셀은 `check-dark-contrast`(브라우저)가 잰다. 여기는 *수학*만 본다.
+ */
+describe('⑤ 캡션 바탕 — 밝은 대표색 타일에서도 글자가 보인다', () => {
+  const TEXT_TOP_PCT = 60
+
+  /** `linear-gradient(0deg, rgba(0,0,0,a) p%, …)` 의 스톱을 [비율, 알파] 로. 0% = 밴드 맨 아래. */
+  const stops = () => {
+    const s = src(STRIP_TSX)
+    const m = s.match(/background:\s*'linear-gradient\(0deg,([^']+)\)'/)
+    if (!m) return null
+    const parts = m[1].split(/,(?![^()]*\))/).map((x) => x.trim())
+    const out: Array<{ pct: number; a: number }> = []
+    parts.forEach((p, i) => {
+      const col = p.match(/rgba?\(\s*0\s*,\s*0\s*,\s*0\s*(?:,\s*([\d.]+))?\s*\)/)
+      if (!col) return
+      const a = col[1] === undefined ? 1 : Number(col[1])
+      const pm = p.match(/\)\s*([\d.]+)%/)
+      const pct = pm ? Number(pm[1]) : (i === 0 ? 0 : 100)
+      out.push({ pct, a })
+    })
+    return out.length >= 2 ? out : null
+  }
+
+  const alphaAt = (pct: number, list: Array<{ pct: number; a: number }>) => {
+    if (pct <= list[0].pct) return list[0].a
+    for (let i = 1; i < list.length; i++) {
+      if (pct <= list[i].pct) {
+        const lo = list[i - 1], hi = list[i]
+        const t = hi.pct === lo.pct ? 1 : (pct - lo.pct) / (hi.pct - lo.pct)
+        return lo.a + (hi.a - lo.a) * t
+      }
+    }
+    return list[list.length - 1].a
+  }
+
+  const lum = (r: number, g: number, b: number) => {
+    const f = (v: number) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4) }
+    return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b)
+  }
+  const ratio = (a: number, b: number) => { const [x, y] = [a, b].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05) }
+
+  it('기하 전제가 그대로다 (패딩·글자 크기가 바뀌면 위 실측을 다시 해야 한다)', () => {
+    expect(src(STRIP_TSX)).toContain('px-2.5 pt-5 pb-2 text-white text-[13px] font-extrabold')
+  })
+
+  it('그라디언트를 실제로 읽어 낸다 — 못 읽으면 통과가 아니라 실패다', () => {
+    const list = stops()
+    // 파싱이 깨진 채 초록을 내면 이 시험은 아무것도 안 지킨다(이 레포가 반복해 당한 헛도는 가드).
+    expect(list, '캡션 그라디언트 스톱 파싱').not.toBeNull()
+    expect(list!.length).toBeGreaterThanOrEqual(3)
+    expect(list![0].pct).toBe(0)
+  })
+
+  it('🔴 글자가 닿는 가장 밝은 지점에서도 **순백 사진** 위 할인율이 3:1 이상이다', () => {
+    const list = stops()!
+    const a = alphaAt(TEXT_TOP_PCT, list)
+    // 대표색은 라이브에서 243 까지 봤다. 최악은 255(순백)이므로 그것으로 잰다.
+    const bg = 255 * (1 - a)
+    const hex = src(CSS).match(/--hero-tile-accent:\s*#([0-9A-Fa-f]{6})/)
+    expect(hex, '--hero-tile-accent 를 CSS 에서 읽었다').not.toBeNull()
+    const [r, g, b] = [0, 2, 4].map((i) => parseInt(hex![1].slice(i, i + 2), 16))
+    const cr = ratio(lum(r, g, b), lum(bg, bg, bg))
+    expect(a, `글자 줄 알파 (${TEXT_TOP_PCT}%)`).toBeGreaterThanOrEqual(0.7)
+    expect(cr, `순백 위 할인율 대비 (알파 ${a.toFixed(2)} → 배경 ${Math.round(bg)})`).toBeGreaterThanOrEqual(3.0)
+  })
+
+  it('🔴 맨 위는 여전히 투명하다 — 평면 판이 되면 위쪽에 경계선이 보인다', () => {
+    const list = stops()!
+    expect(alphaAt(100, list), '밴드 맨 위').toBeLessThanOrEqual(0.02)
+  })
+})

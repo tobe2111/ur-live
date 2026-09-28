@@ -314,17 +314,36 @@ const MEASURE = () => {
      만들고 그 자리를 스크린샷으로 찍어 진짜 픽셀을 잰다. 2026-09-03 1차판은 여기서 continue 해서
      **사진 위 흰 글자를 통째로 못 봤다**(우리 히어로가 정확히 그 형태다 — 가장 위험한 자리를
      검사에서 빼 놓고 "0건" 을 보고하고 있었던 셈). */
+  /**
+   * 🩸 2026-09-28 — **반투명 배경을 건너뛰면 흰 글자가 "흰 배경 위" 로 보고된다.**
+   *
+   *   종전엔 `c.a >= 0.85` 인 층만 배경으로 인정하고 나머지는 **그냥 지나쳤다.** 그래서
+   *   `bg-black/55 backdrop-blur` 칩 위의 흰 글자가, 칩을 건너뛰고 그 위 밝은 조상을 배경으로
+   *   잡아 **1.15:1(흰 글자/흰 배경)** 로 신고됐다. 실제로는 검정 55% 가 깔려 있어 잘 보인다.
+   *   ⇒ 건너뛰지 말고 **합성**한다(source-over). 위층부터 쌓아 내려가다 불투명 층을 만나면 끝.
+   */
+  const over = (top, bot) => {
+    const a = top.a + bot.a * (1 - top.a)
+    if (a <= 0) return { r: 0, g: 0, b: 0, a: 0 }
+    const ch = (t, b) => (t * top.a + b * bot.a * (1 - top.a)) / a
+    return { r: ch(top.r, bot.r), g: ch(top.g, bot.g), b: ch(top.b, bot.b), a }
+  }
   const bgOf = (el) => {
     let n = el
+    let acc = null // 지금까지 만난 **위쪽** 층들의 합성
     while (n && n !== document.documentElement) {
       const s = getComputedStyle(n)
       if (s.backgroundImage && s.backgroundImage !== 'none') return 'PIXEL'
       const c = parse(s.backgroundColor)
-      if (c && c.a >= 0.85) return c
+      if (c && c.a > 0.004) {
+        acc = acc ? over(acc, c) : c
+        if (acc.a >= 0.85) return acc
+      }
       n = n.parentElement
     }
     const c = parse(getComputedStyle(document.body).backgroundColor)
-    return c && c.a >= 0.85 ? c : 'PIXEL'
+    if (c && c.a > 0.004) { acc = acc ? over(acc, c) : c }
+    return acc && acc.a >= 0.85 ? acc : 'PIXEL'
   }
   const out = []
   const seen = new Set()
@@ -415,15 +434,25 @@ const MEASURE_ONE = (sel) => {
   const s = getComputedStyle(el)
   const fg = parse(s.webkitTextFillColor && s.webkitTextFillColor !== 'currentcolor' ? s.webkitTextFillColor : s.color)
   if (!fg || fg.a < 0.35) return null
+  // 위 `bgOf` 와 같은 이유로 **합성**한다 — 반투명을 건너뛰면 같은 오탐이 난다.
+  const over = (top, bot) => {
+    const a = top.a + bot.a * (1 - top.a)
+    if (a <= 0) return { r: 0, g: 0, b: 0, a: 0 }
+    const ch = (t, b) => (t * top.a + b * bot.a * (1 - top.a)) / a
+    return { r: ch(top.r, bot.r), g: ch(top.g, bot.g), b: ch(top.b, bot.b), a }
+  }
   let n = el, bg = null
   while (n && n !== document.documentElement) {
     const cs = getComputedStyle(n)
     if (cs.backgroundImage && cs.backgroundImage !== 'none') return null // 사진 위는 픽셀 패스가 맡는다
     const c = parse(cs.backgroundColor)
-    if (c && c.a >= 0.85) { bg = c; break }
+    if (c && c.a > 0.004) { bg = bg ? over(bg, c) : c; if (bg.a >= 0.85) break }
     n = n.parentElement
   }
-  if (!bg) bg = parse(getComputedStyle(document.body).backgroundColor)
+  if (!bg || bg.a < 0.85) {
+    const b2 = parse(getComputedStyle(document.body).backgroundColor)
+    if (b2 && b2.a > 0.004) bg = bg ? over(bg, b2) : b2
+  }
   if (!bg || bg.a < 0.85) return null
   const cr = ratio(fg, bg)
   const own = Array.from(el.childNodes).filter((x) => x.nodeType === 3).map((x) => x.textContent.trim()).join(' ')
@@ -492,6 +521,62 @@ async function openSteps(page, R) {
 }
 
 /** 한 경로가 이보다 적게 그렸으면 "안 그려졌다" 로 본다(재시도 후에도 그러면 실패). */
+/**
+ * 🩸 2026-09-28 (대표 결재 `2026-09-28-dark-contrast-guard-coverage.md` — *"4번은 모두 고쳐줘"*)
+ *
+ *   **이 가드는 빈 껍데기를 재고 초록불을 내고 있었다.** 정적 서버는 `/api/*` 에도 index.html 을
+ *   돌려주므로 목록이 한 줄도 안 그려지는데, 헤더 몇 줄이 아래 바닥값을 넘겨 "검사됨" 으로 집계됐다.
+ *   라이브 실측으로 확인된 격차 — 유어샵 **8개 측정 vs 실제 60개**(화면의 87%가 검사 밖).
+ *   그 사각지대에 실물 결함이 살아 있었다(취소선 정가 2.14:1).
+ *
+ *   ⇒ 고친 방법 둘:
+ *     ① **라이브에서 받아 적은 응답을 픽스처로 고정**(`scripts/fixtures/dark-contrast-api.json`).
+ *        손으로 지어내면 모양이 달라 화면이 또 안 그려진다 — 그래서 **실제 응답을 그대로** 썼다.
+ *     ② **경로별 최소 기대치**(`min`). 한 값(5)으로는 "원래 빈 화면"과 "콘텐츠를 못 불러온 화면"을
+ *        구분할 수 없다. 목록 화면이 헤더만 그리면 이제 **실패**한다.
+ */
+const API_FIXTURES = (() => {
+  const f = path.join(ROOT, 'scripts/fixtures/dark-contrast-api.json')
+  if (!fs.existsSync(f)) return {}
+  try { return JSON.parse(fs.readFileSync(f, 'utf8')) } catch { return {} }
+})()
+/** pathname 만으로도 찾을 수 있게 — 날짜·페이지가 섞인 쿼리는 매일 달라진다(숙소 `check_in`). */
+const API_BY_PATH = (() => {
+  const m = {}
+  for (const [k, v] of Object.entries(API_FIXTURES)) {
+    const p2 = k.split('?')[0]
+    if (!(p2 in m)) m[p2] = v
+  }
+  return m
+})()
+
+/**
+ * 경로별 최소 기대 텍스트 수. **목록이 실제로 그려졌는지**를 재는 자물쇠다.
+ * 값은 실측 후 넉넉히 내려 잡는다(부하로 흔들리는 것이 아니라 "통째로 안 그려짐"만 잡게).
+ * 여기 없는 경로는 종전 바닥값(EMPTY_FLOOR)을 쓴다.
+ */
+const MIN_TEXTS = {
+  // 2026-09-28 실측(픽스처 적용 후)의 **약 30%** — 부하로 흔들리는 것이 아니라
+  // "목록이 통째로 안 그려졌다" 만 잡는 값이다. 괄호 안은 그날 측정값.
+  '홈(모바일)': 200, // 675
+  '홈(PC)': 200, // 655
+  동네딜: 200, // 675
+  숙소: 90, // 285
+  '입점 랜딩': 55, // 169
+  '입점 랜딩(PC)': 55, // 160
+  '지도(필터 시트)': 45, // 154
+  '지도(PC 패널)': 38, // 124
+  지도: 35, // 117
+  '교환권(PC)': 32, // 106
+  교환권: 30, // 103
+  쇼핑: 25, // 82
+  '이용권 상세(PC)': 23, // 77
+  '이용권 상세': 15, // 47
+  '유어샵(PC)': 16, // 51
+  유어샵: 13, // 41
+  블로그: 15, // 48
+}
+
 const EMPTY_FLOOR = 5
 
 /** 입력요소 채우기 — **한 벌만 둔다.** 첫 판과 재시도가 서로 다르게 채우면 판정이 갈린다. */
@@ -520,8 +605,12 @@ for (const R of ROUTES) {
     /* 🩸 API 스텁 — 정적 서버는 `/api/*` 에도 index.html 을 돌려주므로, 화면은 JSON 파싱에
        실패해 **빈 상태/에러 카드**로 떨어진다. 그래서 위 머니 화면들이 자기 에러만 재고 있었다.
        선언된 경로만 가짜 JSON 으로 채운다(나머지는 종전 그대로). */
-    const p = new URL(u).pathname
-    const body = R.api && R.api[p]
+    const url = new URL(u)
+    const p = url.pathname
+    // 경로별 전용 스텁(장바구니·결제)이 우선 — 그 화면은 특정 응답이어야 의미가 있다.
+    const body = (R.api && R.api[p])
+      // 그다음 라이브에서 받아 적은 픽스처: 쿼리까지 같은 것 → pathname 만 같은 것 순.
+      || API_FIXTURES[p + url.search] || API_BY_PATH[p]
     if (body) return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) })
     return r.continue()
   })
@@ -674,10 +763,10 @@ if (measured < 200) {
    `/pay/widget` 을 새로 넣으면서 "정말 그려졌나"를 합계로는 확인할 수 없었다 —
    그게 이 레포가 반복해 당한 "측정할 수 없어서 통과" 의 경로별 판이다.
    ⚠️ 빈 상태 화면(주문 0건 등)도 헤더·안내문 몇 줄은 그린다. 5 미만이면 렌더 실패로 본다. */
-const EMPTY_ROUTES = perRoute.filter((r) => r.n < EMPTY_FLOOR)
+const EMPTY_ROUTES = perRoute.filter((r) => r.n < (MIN_TEXTS[r.name] ?? EMPTY_FLOOR))
 if (EMPTY_ROUTES.length) {
   console.log(`❌ dark-contrast: 아무것도 안 그려진 경로 ${EMPTY_ROUTES.length}건 — 그 경로는 검사되지 않았다(통과 아님).`)
-  for (const r of EMPTY_ROUTES) console.log(`   ${r.name}  (${r.route})  측정 ${r.n}개`)
+  for (const r of EMPTY_ROUTES) console.log(`   ${r.name}  (${r.route})  측정 ${r.n}개 · 기대 ${MIN_TEXTS[r.name] ?? EMPTY_FLOOR}개 이상`)
   console.log('\n   흔한 원인: 라우트 삭제·이름 변경 · ProtectedRoute 가 시드를 안 받아 로그인으로 튕김 ·')
   console.log('   필수 쿼리 누락으로 조기 return · 기능이 꺼져(FEATURE_STATUS) 빈 화면.')
   process.exit(1)
@@ -691,6 +780,12 @@ const fresh = findings.filter((f) => !known.allow.includes(sig(f)))
 if (process.argv.includes('--json')) {
   console.log(JSON.stringify(findings, null, 1))
   process.exit(0)
+}
+
+/* 🩸 경로별 측정 개수를 **초록일 때도** 찍는다 — 합계만 보면 한 경로가 반쯤 비어도 안 보인다.
+   MIN_TEXTS 를 정할 때도 이 값이 근거다. */
+if (process.env.DC_PER_ROUTE === '1') {
+  for (const r of perRoute) console.log(`   ${String(r.n).padStart(5)}  ${r.name}  (${r.route})`)
 }
 
 if (fresh.length === 0) {
