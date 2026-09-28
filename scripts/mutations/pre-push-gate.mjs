@@ -45,4 +45,12 @@ export default [
     test: TEST,
     why: '모듈은 남아 있고 시험도 통과하는데 그물만 종전으로 돌아간다 — 가장 조용한 회귀다.',
   },
+  {
+    name: '🔎 실행 스크립트에 문법 오류가 생긴다 (텍스트 가드가 못 보는 총체적 실패)',
+    file: 'scripts/pre-push-tests.mjs',
+    find: 'function changedSources() {',
+    replace: 'function changedSourcesfunction changedSources() {',
+    test: TEST,
+    why: '2026-09-28 에 이 모듈을 뽑는 편집이 실제로 이 토큰을 남겼다. 주입은 텍스트만 읽고 tsc 는 .mjs 를 안 봐서 아무도 못 잡았다 — 푸시가 터지고서야 알았다.',
+  },
 ]

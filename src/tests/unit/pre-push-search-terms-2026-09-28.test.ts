@@ -17,6 +17,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { execFileSync } from 'node:child_process'
 import { searchTermsFor, DIR_MATCHED } from '../../../scripts/pre-push-search-terms.mjs'
 
 describe('pre-push 검색어', () => {
@@ -57,6 +58,15 @@ describe('pre-push 검색어', () => {
   it('🔴 이 시험이 헛돌지 않는다 — 폴더 매칭 영역이 비어 있지 않다', () => {
     expect(DIR_MATCHED.length).toBeGreaterThan(2)
     expect(DIR_MATCHED).toContain('docs/')
+  })
+
+  it('🔴 실행 스크립트가 **문법상 돌아간다** (텍스트 가드가 못 보는 총체적 실패)', () => {
+    // 🩸 2026-09-28: 이 모듈을 뽑아내는 편집이 `function changedSourcesfunction changedSources() {`
+    //   를 남겼다. 주입 검증은 그 파일을 **텍스트로만** 읽고, tsc 는 `.mjs` 를 안 본다 —
+    //   그래서 아무도 못 잡았고 푸시가 터지고 나서야 알았다. 파싱은 한 번 돌리면 끝이다.
+    for (const f of ['scripts/pre-push-tests.mjs', 'scripts/pre-push-search-terms.mjs']) {
+      expect(() => execFileSync('node', ['--check', join(process.cwd(), f)], { stdio: 'pipe' }), f).not.toThrow()
+    }
   })
 
   it('🔴 실행 스크립트가 이 모듈을 실제로 쓴다 (배선이 끊기면 그물이 종전으로 돌아간다)', () => {

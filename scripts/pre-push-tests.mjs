@@ -47,7 +47,7 @@ import { searchTermsFor } from './pre-push-search-terms.mjs'
 
 const sh = (cmd, args) => execFileSync(cmd, args, { encoding: 'utf8', maxBuffer: 64 << 20 }).trim()
 
-function changedSourcesfunction changedSources() {
+function changedSources() {
   let base = ''
   for (const ref of ['origin/main', 'main']) {
     try { base = sh('git', ['merge-base', ref, 'HEAD']); break } catch { /* 다음 후보 */ }
