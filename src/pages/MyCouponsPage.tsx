@@ -69,7 +69,7 @@ export default function MyCouponsPage() {
             <p className="text-[14px] text-gray-900 dark:text-white mb-4">{error}</p>
             <button
               onClick={() => refetch()}
-              className="px-5 py-2 bg-gray-900 text-white text-[13px] font-semibold rounded-full"
+              className="px-5 py-2 bg-brand text-white text-[13px] font-semibold rounded-full"
             >
               {t('myCoupons.retry')}
             </button>

@@ -173,6 +173,7 @@ if domain deploy; then
   run "비공개 라우트 크롤 노출"          env STRICT_ROBOTS=1           node scripts/check-robots-private-routes.mjs
   run "tsconfig 타입체크 무력화 설정"    env STRICT_TSCONFIG=1         node scripts/check-tsconfig-resolution.mjs
   run "구 도메인 사용자 노출"            env STRICT_LEGACY_DOMAIN=1    node scripts/check-legacy-domain.mjs
+  run "주 버튼 손색(검정)"              env STRICT_PRIMARY_BUTTON=1   node scripts/check-primary-button-color.mjs
   # 빌드 산출물이 있을 때만 실측(없으면 스크립트가 명시적 SKIP 출력 후 exit 0).
   #   상주 실행 지점은 verify.yml 의 build 직후 — 거기선 항상 실측된다.
   run "크리티컬 청크 구성 동결"          node scripts/check-critical-chunks.mjs

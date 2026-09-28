@@ -94,7 +94,7 @@ export default function HomeProductsRail() {
               onClick={() => onSelectCat(c.key)}
               className={`shrink-0 px-4 py-1.5 rounded-full text-[13px] font-bold transition-colors ${
                 active
-                  ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
+                  ? 'bg-brand text-white'
                   : 'bg-white text-gray-700 border border-gray-200 dark:bg-[#1D1F29] dark:text-gray-300 dark:border-[#2C2F35]'
               }`}
             >

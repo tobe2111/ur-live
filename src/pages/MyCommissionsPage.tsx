@@ -85,7 +85,7 @@ export default function MyCommissionsPage() {
           <div className="text-center py-20">
             <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">수익 정보를 불러오지 못했어요</p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">네트워크 상태를 확인한 뒤 다시 시도해주세요</p>
-            <button onClick={() => refetch()} className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full text-sm font-bold">
+            <button onClick={() => refetch()} className="px-5 py-2.5 bg-brand text-white rounded-full text-sm font-bold">
               다시 시도
             </button>
           </div>
@@ -139,7 +139,7 @@ export default function MyCommissionsPage() {
             </div>
             <div className="flex gap-2 mt-3">
               <button onClick={() => setShowForm(false)} className="flex-1 py-2.5 bg-gray-100 dark:bg-[#1D1F29] rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300">취소</button>
-              <button onClick={submit} disabled={submitting} className="flex-[2] py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold disabled:opacity-50">
+              <button onClick={submit} disabled={submitting} className="flex-[2] py-2.5 bg-brand text-white rounded-lg text-sm font-bold disabled:opacity-50">
                 {submitting ? '신청 중...' : `${formatWon(summary.total_granted)} 출금 신청`}
               </button>
             </div>

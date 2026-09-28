@@ -127,7 +127,7 @@ export default function ReturnRequestModal({ orderId, orderNumber, onClose, onSu
           <button
             onClick={submit}
             disabled={processing || !reason.trim()}
-            className="flex-1 py-3 px-4 bg-gray-900 text-white font-medium rounded-full hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 py-3 px-4 bg-brand text-white font-medium rounded-full hover:bg-brand-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {processing ? t('common.processing', { defaultValue: '처리중...' }) : t('returnRequest.submit', { defaultValue: '반품 신청' })}
           </button>

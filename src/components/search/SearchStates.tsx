@@ -78,7 +78,7 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
         <div className="flex gap-3">
           <button
             onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-gray-900 text-white text-sm rounded-lg"
+            className="px-4 py-2 bg-brand text-white text-sm rounded-lg"
           >
             다시 시도
           </button>

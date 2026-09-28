@@ -57,7 +57,7 @@ export default function MyReturnsPage() {
           ) : error ? (
             <div className="text-center py-12">
               <p className="text-sm text-red-500 mb-4">{error}</p>
-              <button onClick={() => refetch()} className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full text-sm font-bold">
+              <button onClick={() => refetch()} className="px-5 py-2.5 bg-brand text-white rounded-full text-sm font-bold">
                 {t('common.retry', { defaultValue: '다시 시도' })}
               </button>
             </div>
@@ -193,7 +193,7 @@ function ShippingForm({ returnId, onSubmitted }: { returnId: number; onSubmitted
       <button
         onClick={submit}
         disabled={submitting}
-        className="w-full py-1.5 bg-gray-900 hover:bg-gray-900 disabled:opacity-50 text-white text-xs font-bold rounded-lg"
+        className="w-full py-1.5 bg-brand hover:bg-brand disabled:opacity-50 text-white text-xs font-bold rounded-lg"
       >
         {submitting ? '등록 중...' : t('returns.submitShipping', { defaultValue: '회수 송장 등록' })}
       </button>

@@ -286,7 +286,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
                   <ol className="space-y-1">
                     {usageSteps.map((s, i) => (
                       <li key={i} className="flex gap-2 text-[11.5px] text-gray-600 dark:text-gray-300 leading-snug">
-                        <span className="shrink-0 w-4 h-4 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[9px] font-bold flex items-center justify-center mt-px">{i + 1}</span>
+                        <span className="shrink-0 w-4 h-4 rounded-full bg-brand text-white text-[9px] font-bold flex items-center justify-center mt-px">{i + 1}</span>
                         <span>{s}</span>
                       </li>
                     ))}
@@ -370,7 +370,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
               {/* 🎟️ 2026-06-20 현장 사용 — 가장 강조(잉크 풀폭). 매장에서 이걸 눌러 사용처리. */}
               <button
                 onClick={() => setShowRedeem(true)}
-                className="mt-4 w-full py-3.5 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[15px] font-extrabold active:scale-[0.98] transition-transform"
+                className="mt-4 w-full py-3.5 rounded-2xl bg-brand text-white text-[15px] font-extrabold active:scale-[0.98] transition-transform"
               >
                 {t('voucher.useNow', { defaultValue: '현장에서 사용하기' })}
               </button>

@@ -92,7 +92,7 @@ export default function CampaignApplyPage() {
               <div className="mt-5 rounded-lg bg-gray-50 border border-gray-200 p-4 text-left">
                 <div className="text-xs font-semibold text-gray-500 mb-1.5">내 추천 링크 (지금 바로 사용 가능)</div>
                 <div className="text-sm text-gray-900 break-all">{refLink}</div>
-                <button onClick={copyRefLink} className="mt-3 w-full py-2.5 rounded-lg bg-gray-900 text-white text-sm font-semibold">
+                <button onClick={copyRefLink} className="mt-3 w-full py-2.5 rounded-lg bg-brand text-white text-sm font-semibold">
                   {copied ? '복사됐어요 ✓' : '링크 복사'}
                 </button>
                 <p className="mt-2 text-xs text-gray-500">이 링크로 들어온 방문·구매가 내 성과로 집계됩니다. 콘텐츠·프로필에 붙여 활용해보세요.</p>
@@ -153,7 +153,7 @@ export default function CampaignApplyPage() {
               </label>
             </div>
             {err && <div className="rounded-lg bg-rose-50 border border-rose-200 px-3 py-2 text-sm text-rose-700">{err}</div>}
-            <button onClick={submit} disabled={busy} className="w-full py-3 rounded-lg bg-gray-900 text-white text-sm font-semibold disabled:opacity-50">
+            <button onClick={submit} disabled={busy} className="w-full py-3 rounded-lg bg-brand text-white text-sm font-semibold disabled:opacity-50">
               {busy ? '접수 중…' : '신청하기'}
             </button>
             <p className="text-xs text-gray-400 text-center">선정 여부와 관계없이 파트너로 등록되며, 다음 캠페인을 우선 안내드립니다.</p>

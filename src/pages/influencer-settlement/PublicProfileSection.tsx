@@ -86,7 +86,7 @@ export default function PublicProfileSection() {
           disabled={saving}
           onClick={() => save({ ...p, is_open: p.is_open ? 0 : 1 })}
           className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold ${
-            p.is_open ? 'bg-gray-900 text-white' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300'
+            p.is_open ? 'bg-brand text-white' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300'
           } disabled:opacity-50`}
         >
           {p.is_open ? '공개 중' : '비공개'}
@@ -148,7 +148,7 @@ export default function PublicProfileSection() {
           <button key={k} type="button" onClick={() => patch({ categories: toggle(p.categories, k) })}
             className={`px-2.5 py-1 rounded-full text-xs font-medium border ${
               p.categories.includes(k)
-                ? 'bg-gray-900 text-white border-gray-900'
+                ? 'bg-brand text-white border-brand'
                 : 'bg-white dark:bg-[#131A24] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2C2F35]'
             }`}>{CAT_LABEL[k] || k}</button>
         ))}
@@ -160,7 +160,7 @@ export default function PublicProfileSection() {
           <button key={r} type="button" onClick={() => patch({ regions: toggle(p.regions, r) })}
             className={`px-2.5 py-1 rounded-full text-xs font-medium border ${
               p.regions.includes(r)
-                ? 'bg-gray-900 text-white border-gray-900'
+                ? 'bg-brand text-white border-brand'
                 : 'bg-white dark:bg-[#131A24] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2C2F35]'
             }`}>{r}</button>
         ))}

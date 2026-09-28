@@ -136,7 +136,7 @@ export default function InfluencerDiscoverPage() {
             <button
               key={k}
               onClick={() => setCat(k)}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border ${cat === k ? 'bg-gray-900 text-white border-gray-900' : 'bg-white dark:bg-[#11141C] text-gray-700 dark:text-gray-200 border-gray-200'}`}
+              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border ${cat === k ? 'bg-brand text-white border-brand' : 'bg-white dark:bg-[#11141C] text-gray-700 dark:text-gray-200 border-gray-200'}`}
             >
               {v}
             </button>

@@ -117,7 +117,7 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
               <button
                 type="button"
                 onClick={() => setImages(prev => prev.filter((_, i) => i !== idx))}
-                className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-900 text-white rounded-full text-[10px] font-bold flex items-center justify-center"
+                className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-brand text-white rounded-full text-[10px] font-bold flex items-center justify-center"
                 aria-label="삭제"
               >×</button>
             </div>

@@ -100,7 +100,7 @@ export default function SuggestionModal({ place, onClose }: Props) {
             <button
               onClick={() => submit('invite')}
               disabled={submitting}
-              className="w-full py-3 bg-gray-900 text-white text-sm font-bold rounded-xl disabled:opacity-50"
+              className="w-full py-3 bg-brand text-white text-sm font-bold rounded-xl disabled:opacity-50"
             >
               🤝 이 매장 셀러 영입 신청
             </button>

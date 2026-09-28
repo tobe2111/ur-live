@@ -57,7 +57,7 @@ export default function CreatorApplyPage() {
             <p className="mt-2 text-sm text-gray-600">검토 후 제휴 담당자가 입력해주신 연락처로 연락드립니다. 감사합니다.</p>
             {/* 🔗 기다릴 필요 없이 바로 시작 — 이 링크의 코드가 신청↔가입을 이어 붙인다(lead-claim). */}
             <a href={claimCode ? `/creators/start?ic=${claimCode}` : '/login'}
-              className="mt-5 inline-block rounded-lg bg-gray-900 px-5 py-3 text-sm font-semibold text-white">
+              className="mt-5 inline-block rounded-lg bg-brand px-5 py-3 text-sm font-semibold text-white">
               지금 바로 시작하기 (카카오 1분)
             </a>
             <p className="mt-2 text-xs text-gray-500">가입하면 내 유어샵이 자동으로 생기고, 마음에 든 이용권을 담아 진열하고 소개하면 됩니다.</p>
@@ -115,7 +115,7 @@ export default function CreatorApplyPage() {
               <span>유어딜의 제휴 제안 및 관련 안내 수신에 동의합니다. (동의 철회는 언제든 가능)</span>
             </label>
             {err && <div className="rounded-lg bg-rose-50 border border-rose-200 px-3 py-2 text-sm text-rose-700">{err}</div>}
-            <button onClick={submit} disabled={busy} className="w-full py-3 rounded-lg bg-gray-900 text-white text-sm font-semibold disabled:opacity-50">
+            <button onClick={submit} disabled={busy} className="w-full py-3 rounded-lg bg-brand text-white text-sm font-semibold disabled:opacity-50">
               {busy ? '접수 중…' : '제휴 신청하기'}
             </button>
           </div>

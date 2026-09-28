@@ -5494,8 +5494,7 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 368건 · 최신순 · 이 목록은 자동 생성된다._
-_총 369건 · 최신순 · 이 목록은 자동 생성된다._
+_총 370건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-28**
 - [유어샵 카톡 공유 카드 — 새까맣던 것 (2026-09-28)](handoff/2026-09-28-ushop-kakao-card.md)

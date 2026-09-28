@@ -226,7 +226,7 @@ export default function LinkshopPinPicker() {
             </div>
             <button
               onClick={() => navigate('/u/me')}
-              className="shrink-0 px-3.5 h-9 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#11141C] text-[13px] font-bold active:opacity-80"
+              className="shrink-0 px-3.5 h-9 rounded-lg bg-brand text-white text-[13px] font-bold active:opacity-80"
             >
               완료
             </button>
@@ -362,7 +362,7 @@ function NoteModal({ pinId, productName, onClose }: { pinId: number; productName
         />
         <div className="flex gap-2 mt-4">
           <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-line text-[13.5px] font-bold text-gray-600 dark:text-gray-300 active:opacity-70">건너뛰기</button>
-          <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#11141C] text-[13.5px] font-bold active:opacity-80 disabled:opacity-50">
+          <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl bg-brand text-white text-[13.5px] font-bold active:opacity-80 disabled:opacity-50">
             {saving ? '저장 중…' : '저장'}
           </button>
         </div>
@@ -419,7 +419,7 @@ function PickCard({ item, pinned, busy, onToggle }: { item: PickItem; pinned: bo
         aria-label={pinned ? '유어샵에서 제거' : '유어샵에 추가'}
         className={`absolute top-2 right-2 z-10 inline-flex items-center gap-1 h-8 pl-2 pr-2.5 rounded-full text-[12px] font-bold shadow-sm backdrop-blur-md ring-1 transition-colors active:scale-95 disabled:opacity-50 ${
           pinned
-            ? 'bg-gray-900 dark:bg-white text-white dark:text-[#11141C] ring-white/30'
+            ? 'bg-brand text-white ring-white/30'
             : 'bg-white/90 dark:bg-black/55 text-gray-900 dark:text-white ring-black/10 dark:ring-white/25'
         }`}
       >

@@ -150,7 +150,7 @@ export default function ReferralSection({
       <button
         onClick={handleCreate}
         disabled={creating}
-        className="w-full py-3 bg-gray-900 text-white text-sm font-bold rounded-xl active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1.5"
+        className="w-full py-3 bg-brand text-white text-sm font-bold rounded-xl active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1.5"
       >
         <Users className="w-4 h-4" />
         {creating ? '생성 중...' : '공동구매 시작하기'}

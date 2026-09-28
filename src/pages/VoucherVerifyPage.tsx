@@ -150,7 +150,7 @@ export default function VoucherVerifyPage() {
             <button
               onClick={lookupVoucher}
               disabled={!code.trim() || loading}
-              className="w-full mt-4 py-3.5 bg-gray-900 text-white dark:bg-white dark:text-gray-900 font-extrabold rounded-xl disabled:opacity-40 active:scale-[0.98] transition-transform"
+              className="w-full mt-4 py-3.5 bg-brand text-white font-extrabold rounded-xl disabled:opacity-40 active:scale-[0.98] transition-transform"
             >
               {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : t('voucher.verify.lookup')}
             </button>
@@ -190,7 +190,7 @@ export default function VoucherVerifyPage() {
                 <button
                   onClick={useVoucherAsSeller}
                   disabled={verifying}
-                  className="w-full py-4 bg-gray-900 text-white dark:bg-white dark:text-gray-900 font-extrabold rounded-xl text-base disabled:opacity-40 active:scale-[0.98] transition-transform"
+                  className="w-full py-4 bg-brand text-white font-extrabold rounded-xl text-base disabled:opacity-40 active:scale-[0.98] transition-transform"
                 >
                   {verifying ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : `✅ "${voucher.product_name}" 제공 (사용 처리)`}
                 </button>
@@ -213,7 +213,7 @@ export default function VoucherVerifyPage() {
             <button
               onClick={useVoucher}
               disabled={!pin.trim() || verifying}
-              className="w-full mt-4 py-3.5 bg-gray-900 text-white dark:bg-white dark:text-gray-900 font-extrabold rounded-xl disabled:opacity-40 active:scale-[0.98] transition-transform"
+              className="w-full mt-4 py-3.5 bg-brand text-white font-extrabold rounded-xl disabled:opacity-40 active:scale-[0.98] transition-transform"
             >
               {verifying ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : t('voucher.verify.confirm')}
             </button>

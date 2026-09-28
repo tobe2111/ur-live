@@ -171,7 +171,7 @@ export default function LocalTownPage() {
               <MapPin className="w-12 h-12 text-gray-200 dark:text-gray-700 mx-auto mb-3" />
               <p className="text-gray-900 dark:text-white font-bold">{t('local.empty', { defaultValue: '이 상권의 딜을 준비 중이에요' })}</p>
               <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">{t('local.emptySub', { defaultValue: '곧 우리 동네 매장들이 입점합니다' })}</p>
-              <button type="button" onClick={() => navigate('/')} className="mt-4 px-4 py-2 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[13px] font-bold">
+              <button type="button" onClick={() => navigate('/')} className="mt-4 px-4 py-2 rounded-xl bg-brand text-white text-[13px] font-bold">
                 {t('local.browseAll', { defaultValue: '전체 동네딜 보기' })}
               </button>
             </div>

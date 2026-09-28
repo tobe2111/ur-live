@@ -245,7 +245,7 @@ export default function StoreOwnerClaimPage() {
                 className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900"
               />
               <button onClick={() => void lookup()} disabled={busy}
-                className="px-4 rounded-xl bg-gray-900 text-white text-sm font-bold disabled:opacity-40">
+                className="px-4 rounded-xl bg-brand text-white text-sm font-bold disabled:opacity-40">
                 <Search className="w-4 h-4" />
               </button>
             </div>

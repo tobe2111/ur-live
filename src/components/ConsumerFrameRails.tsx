@@ -132,7 +132,7 @@ export default function ConsumerFrameRails() {
           {/* CTA: 홈이 곧 동네딜이라 '전체 동네딜'(은퇴)은 중복 → '지도로 동네딜 보기'로 (홈 목록과 상호보완). */}
           <button
             onClick={() => navigate('/map')}
-            className="pointer-events-auto w-full flex items-center justify-center gap-1.5 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-4 py-3.5 text-[13px] font-bold hover:opacity-90 transition-opacity shadow-sm"
+            className="pointer-events-auto w-full flex items-center justify-center gap-1.5 rounded-2xl bg-brand text-white px-4 py-3.5 text-[13px] font-bold hover:opacity-90 transition-opacity shadow-sm"
           >
             <MapPin className="w-4 h-4" aria-hidden="true" />
             {t('frameRails.exploreMap', { defaultValue: '지도로 동네딜 보기 →' })}

@@ -21,7 +21,7 @@ export default function RegionBar({ category, regionKey, gpsRegion, regionButton
           onClick={() => setRegionPickerOpen(true)}
           className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px] font-semibold border transition-colors ${
             (regionKey || gpsRegion)
-              ? 'bg-gray-900 dark:bg-white border-gray-900 dark:border-white text-white dark:text-gray-900'
+              ? 'bg-brand border-brand dark:border-white text-white'
               : 'bg-white dark:bg-[#1D1F29] border-gray-200 dark:border-[#2C2F35] text-gray-700 dark:text-gray-300'
           }`}
           aria-label="지역 선택"

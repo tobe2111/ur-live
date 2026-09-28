@@ -107,7 +107,7 @@ export default function AffiliatePage() {
                 {data.share_url}
               </div>
               <button onClick={() => copyLink(data.share_url)}
-                className="px-5 py-2.5 bg-gray-900 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 active:scale-95">
+                className="px-5 py-2.5 bg-brand text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 active:scale-95">
                 <Copy className="w-3.5 h-3.5" /> {t('affiliate.copy')}
               </button>
             </div>
@@ -188,7 +188,7 @@ export default function AffiliatePage() {
 
           {/* 쇼핑하러 가기 */}
           <button onClick={() => navigate('/browse')}
-            className="w-full py-3.5 bg-gray-900 text-white rounded-2xl text-sm font-bold flex items-center justify-center gap-1.5 active:scale-[0.98]">
+            className="w-full py-3.5 bg-brand text-white rounded-2xl text-sm font-bold flex items-center justify-center gap-1.5 active:scale-[0.98]">
             {t('affiliate.browseProducts')} <ChevronRight className="w-4 h-4" />
           </button>
         </div>

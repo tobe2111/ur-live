@@ -95,7 +95,7 @@ export default function DesignVariantsPage() {
             <div className="mx-auto flex max-w-[1600px] flex-wrap gap-2 px-4 pt-4">
               {set.variants.map(v => (
                 <button key={v.id} onClick={() => put('v', v.id)}
-                  className={`rounded-lg px-3 py-1.5 text-[12.5px] font-bold ${v.id === activeId ? 'bg-gray-900 text-white' : 'bg-white text-gray-600'}`}>
+                  className={`rounded-lg px-3 py-1.5 text-[12.5px] font-bold ${v.id === activeId ? 'bg-brand text-white' : 'bg-white text-gray-600'}`}>
                   {v.label}
                 </button>
               ))}

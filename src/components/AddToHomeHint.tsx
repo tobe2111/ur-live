@@ -76,7 +76,7 @@ export default function AddToHomeHint({ context = 'wallet' }: { context?: 'walle
           <button
             type="button"
             onClick={install}
-            className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-gray-900 dark:bg-white px-3.5 py-1.5 text-[12px] font-bold text-white dark:text-gray-900 active:scale-95 transition-transform"
+            className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-brand px-3.5 py-1.5 text-[12px] font-bold text-white active:scale-95 transition-transform"
           >
             <Home className="h-3.5 w-3.5" /> 홈 화면에 추가하기
           </button>

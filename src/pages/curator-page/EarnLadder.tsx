@@ -74,7 +74,7 @@ export default function EarnLadder({ dealCount, pinCount }: Props) {
         {/* 2단 — 이미 하고 있는 것. 위를 하면 여기가 돈이 된다는 연결을 적는다. */}
         <div className="mx-3 mb-3 rounded-xl border border-line p-3">
           <div className="flex items-start gap-2.5">
-            <span className="mt-0.5 shrink-0 w-5 h-5 rounded-full bg-gray-900 dark:bg-white text-white dark:text-[#11141C] text-[11px] font-extrabold flex items-center justify-center">2</span>
+            <span className="mt-0.5 shrink-0 w-5 h-5 rounded-full bg-brand text-white text-[11px] font-extrabold flex items-center justify-center">2</span>
             <div className="min-w-0 flex-1">
               <p className="text-[13.5px] font-extrabold text-gray-900 dark:text-white">
                 담아서 파세요

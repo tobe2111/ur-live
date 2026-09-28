@@ -124,7 +124,7 @@ export default function MyDealHistoryPage() {
               onClick={() => { setPage(0); setFilter(opt.value) }}
               className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
                 filter === opt.value
-                  ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
+                  ? 'bg-brand text-white'
                   : 'bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/[0.12]'
               }`}
             >

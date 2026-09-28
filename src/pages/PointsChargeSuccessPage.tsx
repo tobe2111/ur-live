@@ -83,12 +83,12 @@ export default function PointsChargeSuccessPage() {
               **어느 경우든 나갈 문(메인)은 항상 둔다.** */}
           <div className="flex flex-col gap-2">
             {!TOPUP_DISABLED && (
-              <button onClick={() => navigate('/points/charge')} className="px-6 py-3 bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900 text-white rounded-xl font-bold">
+              <button onClick={() => navigate('/points/charge')} className="px-6 py-3 bg-brand hover:bg-black text-white rounded-xl font-bold">
                 {t('common.retry', { defaultValue: '다시 시도' })}
               </button>
             )}
             <button onClick={() => navigate('/')} className={TOPUP_DISABLED
-              ? 'px-6 py-3 bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900 text-white rounded-xl font-bold'
+              ? 'px-6 py-3 bg-brand hover:bg-black text-white rounded-xl font-bold'
               : 'px-6 py-3 text-gray-600 dark:text-gray-300 font-semibold'}>
               {t('common.goHome', { defaultValue: '메인으로' })}
             </button>
@@ -125,7 +125,7 @@ export default function PointsChargeSuccessPage() {
         {(() => { try { return !localStorage.getItem('loginReturnUrl') } catch { return true } })() && (
           <button
             onClick={() => navigate('/vouchers')}
-            className="w-full py-3.5 mb-3 bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900 text-white rounded-xl font-bold"
+            className="w-full py-3.5 mb-3 bg-brand hover:bg-black text-white rounded-xl font-bold"
           >
             {t('pointsCharge.spendNow', { defaultValue: '지금 이용권 사러 가기 →' })}
           </button>

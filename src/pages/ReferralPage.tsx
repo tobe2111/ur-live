@@ -177,7 +177,7 @@ export default function ReferralPage() {
           {community.description && (
             <section className="bg-surface rounded-2xl p-4 border border-line">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-7 h-7 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 flex items-center justify-center text-[11px] font-bold">
+                <div className="w-7 h-7 rounded-full bg-brand text-white flex items-center justify-center text-[11px] font-bold">
                   {community.creator_name?.slice(0, 1) || '제'}
                 </div>
                 <p className="text-[13px] font-bold text-gray-900 dark:text-white">
@@ -208,7 +208,7 @@ export default function ReferralPage() {
             <button
               onClick={handleJoinCommunity}
               disabled={!cgJoinable || joiningCommunity}
-              className="w-full py-3.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[15px] font-bold rounded-xl disabled:opacity-40 active:scale-[0.98] transition-transform"
+              className="w-full py-3.5 bg-brand text-white text-[15px] font-bold rounded-xl disabled:opacity-40 active:scale-[0.98] transition-transform"
             >
               {joiningCommunity
                 ? t('groupbuy.joining', { defaultValue: '참여 중...' })
@@ -446,7 +446,7 @@ export default function ReferralPage() {
           {isAchieved ? (
             <button
               onClick={handleCheckout}
-              className="w-full flex items-center justify-center gap-2 py-3.5 bg-gray-900 text-white rounded-xl font-bold text-sm active:scale-[0.98]"
+              className="w-full flex items-center justify-center gap-2 py-3.5 bg-brand text-white rounded-xl font-bold text-sm active:scale-[0.98]"
             >
               <ShoppingBag className="w-4 h-4" />
               {product
@@ -473,7 +473,7 @@ export default function ReferralPage() {
           ) : !userId ? (
             <button
               onClick={handleJoin}
-              className="w-full py-3.5 bg-gray-900 text-white rounded-xl font-bold text-sm active:scale-[0.98]"
+              className="w-full py-3.5 bg-brand text-white rounded-xl font-bold text-sm active:scale-[0.98]"
             >
               로그인 후 참여하기
             </button>
@@ -482,7 +482,7 @@ export default function ReferralPage() {
               <button
                 onClick={handleJoin}
                 disabled={joining}
-                className="flex-1 py-3.5 bg-gray-900 text-white rounded-xl font-bold text-sm active:scale-[0.98] disabled:opacity-50"
+                className="flex-1 py-3.5 bg-brand text-white rounded-xl font-bold text-sm active:scale-[0.98] disabled:opacity-50"
               >
                 {joining ? t('referralPage.joining') : t('referralPage.join')}
               </button>

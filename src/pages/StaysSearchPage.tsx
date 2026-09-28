@@ -155,7 +155,7 @@ export default function StaysSearchPage() {
             <Search className="w-10 h-10 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
             <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">검색을 불러오지 못했어요</p>
             <p className="text-xs text-gray-500 dark:text-gray-500 mb-4">네트워크 상태를 확인해주세요.</p>
-            <button onClick={() => refetch()} className="px-5 h-10 rounded-lg text-sm font-bold bg-gray-900 text-white dark:bg-white dark:text-gray-900">다시 시도</button>
+            <button onClick={() => refetch()} className="px-5 h-10 rounded-lg text-sm font-bold bg-brand text-white">다시 시도</button>
           </div>
         ) : items.length === 0 ? (
           // 🧭 2026-07-20 (대표 — 빈 화면이 막다른 골목): 차가운 '검색 결과 없음' → 안내 + 다른 딜 CTA.
@@ -163,7 +163,7 @@ export default function StaysSearchPage() {
             <Search className="w-10 h-10 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
             <p className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-1">조건에 맞는 숙소가 아직 없어요</p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-5">날짜·인원을 바꿔 보거나, 주변 다른 딜을 둘러보세요.</p>
-            <Link to="/map" className="inline-block px-5 py-2.5 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-bold">지도에서 동네딜 보기 →</Link>
+            <Link to="/map" className="inline-block px-5 py-2.5 rounded-full bg-brand text-white text-sm font-bold">지도에서 동네딜 보기 →</Link>
           </div>
         ) : (
           // 🖥️ 2026-07-16 (풀너비): 모바일 1열 → PC 최대 4열(교환권 그리드와 정합).
@@ -259,7 +259,7 @@ export default function StaysSearchPage() {
                 <div className="grid grid-cols-4 gap-1.5">
                   {Object.entries(PROPERTY_TYPE_LABELS).map(([v, l]) => (
                     <button key={v} onClick={() => setFilters({ ...filters, property_type: filters.property_type === v ? '' : v })}
-                      className={`p-2 rounded-lg text-[11px] font-semibold ${filters.property_type === v ? 'bg-gray-900 text-white' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300'}`}>
+                      className={`p-2 rounded-lg text-[11px] font-semibold ${filters.property_type === v ? 'bg-brand text-white' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300'}`}>
                       {l}
                     </button>
                   ))}
@@ -293,7 +293,7 @@ export default function StaysSearchPage() {
                   <option value="rating">평점 높은순</option>
                 </select>
               </div>
-              <button onClick={apply} className="w-full py-3 bg-gray-900 text-white text-sm font-bold rounded-lg hover:bg-gray-900">검색</button>
+              <button onClick={apply} className="w-full py-3 bg-brand text-white text-sm font-bold rounded-lg hover:bg-brand">검색</button>
             </div>
           </div>
         </div>

@@ -56,7 +56,7 @@ export default function ReviewBonusButton(
   return (
     <>
       <button onClick={() => setOpen(true)}
-        className="mt-4 w-full py-2.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-bold flex items-center justify-center gap-1">
+        className="mt-4 w-full py-2.5 rounded-xl bg-brand text-white text-xs font-bold flex items-center justify-center gap-1">
         ⭐ 카카오맵 후기 작성하고 보너스 받기
       </button>
       {open && (
@@ -84,8 +84,8 @@ export default function ReviewBonusButton(
               </div>
             )}
             <div className="grid grid-cols-2 gap-1 mb-3">
-              <button onClick={() => setMode('url')} className={`py-2 text-xs font-bold rounded ${mode === 'url' ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200'}`}>URL 제출</button>
-              <button onClick={() => setMode('screenshot')} className={`py-2 text-xs font-bold rounded ${mode === 'screenshot' ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200'}`}>스크린샷 (AI 자동 검증)</button>
+              <button onClick={() => setMode('url')} className={`py-2 text-xs font-bold rounded ${mode === 'url' ? 'bg-brand text-white' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200'}`}>URL 제출</button>
+              <button onClick={() => setMode('screenshot')} className={`py-2 text-xs font-bold rounded ${mode === 'screenshot' ? 'bg-brand text-white' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200'}`}>스크린샷 (AI 자동 검증)</button>
             </div>
             {mode === 'url' ? (
               <div>
@@ -110,7 +110,7 @@ export default function ReviewBonusButton(
             <div className="grid grid-cols-2 gap-2 mt-5">
               <button onClick={() => setOpen(false)} className="py-2 border border-rule-strong rounded-lg text-sm font-bold text-gray-700 dark:text-gray-200">취소</button>
               <button onClick={submit} disabled={submitting || uploading}
-                className="py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold disabled:opacity-50">
+                className="py-2 bg-brand text-white rounded-lg text-sm font-bold disabled:opacity-50">
                 {submitting ? '제출 중...' : '제출'}
               </button>
             </div>

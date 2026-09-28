@@ -303,7 +303,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
           {step === 1 && (
             <button
               onClick={() => setStep(2)}
-              className="w-full py-3.5 bg-gray-900 text-white rounded-2xl font-bold text-[14px] flex items-center justify-center gap-1 active:scale-[0.98]"
+              className="w-full py-3.5 bg-brand text-white rounded-2xl font-bold text-[14px] flex items-center justify-center gap-1 active:scale-[0.98]"
             >
               {t('welcomeOnboarding.next', { defaultValue: '다음' })}
               <ChevronRight className="w-4 h-4" />
@@ -320,7 +320,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
               <button
                 onClick={() => setStep(3)}
                 disabled={selectedCats.length === 0}
-                className="flex-1 py-3.5 bg-gray-900 text-white rounded-2xl font-bold text-[14px] flex items-center justify-center gap-1 active:scale-[0.98] disabled:opacity-50"
+                className="flex-1 py-3.5 bg-brand text-white rounded-2xl font-bold text-[14px] flex items-center justify-center gap-1 active:scale-[0.98] disabled:opacity-50"
               >
                 {t('welcomeOnboarding.next', { defaultValue: '다음' })}
                 <ChevronRight className="w-4 h-4" />

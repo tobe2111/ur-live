@@ -67,7 +67,7 @@ export default function InfluencerRankingsPage() {
               key={r.key}
               onClick={() => setRegion(r.key)}
               className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap ${
-                region === r.key ? 'bg-gray-900 text-white' : 'bg-white dark:bg-[#11141C] text-gray-700 dark:text-gray-200 border border-gray-200'
+                region === r.key ? 'bg-brand text-white' : 'bg-white dark:bg-[#11141C] text-gray-700 dark:text-gray-200 border border-gray-200'
               }`}
             >
               {r.label}

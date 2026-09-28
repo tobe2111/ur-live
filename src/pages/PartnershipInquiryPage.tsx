@@ -56,7 +56,7 @@ export default function PartnershipInquiryPage() {
             담당자가 확인 후 남겨주신 연락처/이메일로<br />영업일 기준 2일 내 회신드릴게요.
           </p>
           <button onClick={() => navigate('/')}
-            className="mt-6 px-6 h-12 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#11141C] text-sm font-bold">
+            className="mt-6 px-6 h-12 rounded-xl bg-brand text-white text-sm font-bold">
             홈으로
           </button>
         </div>
@@ -95,7 +95,7 @@ export default function PartnershipInquiryPage() {
               <button key={tp.v} type="button" onClick={() => setForm(f => ({ ...f, type: tp.v }))}
                 className={`px-3.5 h-10 rounded-full text-[13px] font-bold transition-colors ${
                   form.type === tp.v
-                    ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
+                    ? 'bg-brand text-white'
                     : 'bg-gray-100 text-gray-600 dark:bg-[#1D1F29] dark:text-gray-300'
                 }`}>
                 {tp.l}
@@ -113,7 +113,7 @@ export default function PartnershipInquiryPage() {
             placeholder="문의 내용 * — 제안 배경, 원하시는 협업 형태, 일정 등을 자유롭게 적어주세요"
             className="w-full rounded-xl border border-line bg-surface px-3.5 py-3 text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 resize-none focus:outline-none focus:border-gray-900 dark:focus:border-white" />
           <button type="submit" disabled={submitting}
-            className="w-full h-[52px] py-3.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#11141C] text-[15px] font-bold disabled:opacity-50">
+            className="w-full h-[52px] py-3.5 rounded-xl bg-brand text-white text-[15px] font-bold disabled:opacity-50">
             {submitting ? '접수 중…' : '문의 접수하기'}
           </button>
         </form>

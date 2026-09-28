@@ -158,7 +158,7 @@ export default function BlogDetailPage() {
             <Link to="/" className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1D1F29]">
               <Home className="w-4 h-4" />유어딜 홈
             </Link>
-            <Link to="/store/new" className="px-3.5 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold hover:opacity-90">내 가게 등록</Link>
+            <Link to="/store/new" className="px-3.5 py-2 bg-brand text-white rounded-lg text-sm font-bold hover:opacity-90">내 가게 등록</Link>
           </div>
         </div>
       </header>
@@ -227,7 +227,7 @@ export default function BlogDetailPage() {
             <p className="text-lg font-bold text-gray-900 dark:text-white mb-2">유어딜에서 시작하세요</p>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">이용권·교환권·동네딜을 한곳에, 나만의 유어샵까지</p>
             <div className="flex gap-3 justify-center">
-              <Link to="/" className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl text-sm font-bold hover:opacity-90">둘러보기</Link>
+              <Link to="/" className="px-5 py-2.5 bg-brand text-white rounded-xl text-sm font-bold hover:opacity-90">둘러보기</Link>
               <Link to="/u/me" className="px-5 py-2.5 bg-brand text-white rounded-xl text-sm font-bold hover:bg-brand-dark">내 유어샵 보기</Link>
             </div>
             <div className="mt-3">

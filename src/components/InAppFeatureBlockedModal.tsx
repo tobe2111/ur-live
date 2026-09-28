@@ -122,7 +122,7 @@ export default function InAppFeatureBlockedModal({ feature, onClose, onAlternati
         <div className="space-y-2">
           <button
             onClick={handleOpen}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-gray-900 text-white rounded-2xl font-bold text-[14px] active:scale-[0.98] transition-transform"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-brand text-white rounded-2xl font-bold text-[14px] active:scale-[0.98] transition-transform"
           >
             <ExternalLink className="w-4 h-4" />
             외부 브라우저로 열기

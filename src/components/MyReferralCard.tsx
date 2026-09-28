@@ -98,7 +98,7 @@ export default function MyReferralCard() {
         </div>
         <button
           onClick={copyLink}
-          className="px-4 py-2.5 bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 rounded-xl text-sm font-bold flex items-center gap-1.5 active:scale-95"
+          className="px-4 py-2.5 bg-brand hover:bg-brand-dark text-white rounded-xl text-sm font-bold flex items-center gap-1.5 active:scale-95"
         >
           <Copy className="w-4 h-4" /> {t('inviteCard.copy', { defaultValue: '복사' })}
         </button>

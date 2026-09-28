@@ -232,7 +232,7 @@ export default function VoucherScanner() {
           />
         </div>
         <button type="submit" disabled={busy || !extractCode(manualCode)}
-          className="px-4 py-2.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-bold disabled:opacity-40">
+          className="px-4 py-2.5 rounded-xl bg-brand text-white text-sm font-bold disabled:opacity-40">
           {t('seller.scan.useBtn', { defaultValue: '사용 처리' })}
         </button>
       </form>

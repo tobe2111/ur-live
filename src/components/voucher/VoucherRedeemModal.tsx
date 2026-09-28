@@ -131,7 +131,7 @@ export default function VoucherRedeemModal({
             <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1.5">
               <b className="text-gray-900 dark:text-white">{store}</b> 은(는) 직원이 QR 을 스캔해 사용 처리하는 매장이에요.
             </p>
-            <button onClick={onClose} className="ur-btn ur-btn-lg ur-btn-block mt-5 bg-gray-900 dark:bg-white text-white dark:text-gray-900">QR 화면으로 돌아가기</button>
+            <button onClick={onClose} className="ur-btn ur-btn-lg ur-btn-block mt-5 ur-btn-primary">QR 화면으로 돌아가기</button>
           </>
         )}
 
@@ -157,7 +157,7 @@ export default function VoucherRedeemModal({
             )}
             <div className="flex gap-2 mt-5">
               <button onClick={onClose} className="ur-btn ur-btn-lg flex-1 border border-line text-gray-700 dark:text-gray-200">닫기</button>
-              <button onClick={redeem} className="ur-btn ur-btn-lg flex-[2] bg-gray-900 dark:bg-white text-white dark:text-gray-900">사용하기</button>
+              <button onClick={redeem} className="ur-btn ur-btn-lg ur-btn-primary flex-[2]">사용하기</button>
             </div>
           </>
         )}
@@ -185,7 +185,7 @@ export default function VoucherRedeemModal({
                 잘못 눌렀어요 · 취소 ({cancelLeft}초)
               </button>
             ) : (
-              <button onClick={onClose} className="ur-btn ur-btn-lg ur-btn-block mt-5 bg-gray-900 dark:bg-white text-white dark:text-gray-900">완료</button>
+              <button onClick={onClose} className="ur-btn ur-btn-lg ur-btn-block mt-5 ur-btn-primary">완료</button>
             )}
 
             {/* 🗺️ 2026-06-23 카카오맵 후기 유도(아웃링크) — 리뷰는 가져올 수 없으니 작성을 유도(가게 평판↑). */}

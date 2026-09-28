@@ -39,7 +39,7 @@ export default function LanguageSection({ className = '' }: { className?: string
               onClick={() => change(l.code)}
               className={`py-2 rounded-xl text-[12px] font-semibold border transition-colors ${
                 current === l.code
-                  ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white'
+                  ? 'bg-brand text-white border-brand dark:border-white'
                   : 'bg-gray-50 text-gray-600 border-gray-200 dark:bg-[#1D1F29] dark:text-gray-300 dark:border-[#2C2F35]'
               }`}
             >

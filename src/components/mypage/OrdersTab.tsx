@@ -470,7 +470,7 @@ function EmptyState({ kindFilter, searching, t }: { kindFilter: KindFilter; sear
       {!searching && (
         <Link
           to="/"
-          className="inline-flex items-center justify-center px-6 py-3 bg-gray-900 text-white text-[14px] font-semibold rounded-full hover:bg-gray-800 active:bg-gray-700 transition-colors"
+          className="inline-flex items-center justify-center px-6 py-3 bg-brand text-white text-[14px] font-semibold rounded-full hover:bg-brand-dark active:bg-gray-700 transition-colors"
         >
           {t('ordersTab.goToLive', { defaultValue: '둘러보기' })}
         </Link>

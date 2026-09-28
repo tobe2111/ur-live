@@ -96,7 +96,7 @@ function ReceiptForm({ campaign, stores, onDone }: { campaign: Campaign; stores:
         </label>
       </div>
       <button type="button" disabled={busy} onClick={submit}
-        className="w-full rounded-2xl bg-gray-900 dark:bg-white py-3.5 text-[15px] font-extrabold text-white dark:text-gray-900 disabled:opacity-50 active:scale-[0.98] transition-transform">
+        className="w-full rounded-2xl bg-brand py-3.5 text-[15px] font-extrabold text-white disabled:opacity-50 active:scale-[0.98] transition-transform">
         {busy ? '접수 중…' : '영수증 등록하고 쿠폰 받기'}
       </button>
     </div>
@@ -162,7 +162,7 @@ function RedeemModal({ coupon, stores, onClose, onRedeemed }: { coupon: MyCoupon
             직원 앞에서 눌러주세요 — 사용 즉시 이 매장으로 정산돼요. 결제 금액에서 쿠폰 금액을 빼고 결제하세요.
           </p>
           <button type="button" disabled={busy} onClick={redeem}
-            className="w-full rounded-2xl bg-gray-900 dark:bg-white py-3.5 text-[15px] font-extrabold text-white dark:text-gray-900 disabled:opacity-50">
+            className="w-full rounded-2xl bg-brand py-3.5 text-[15px] font-extrabold text-white disabled:opacity-50">
             {busy ? '처리 중…' : '이 매장에서 사용하기'}
           </button>
           <button type="button" onClick={onClose} className="w-full py-2 text-sm font-bold text-gray-500 dark:text-gray-400">닫기</button>
@@ -322,7 +322,7 @@ export default function DistrictCouponPage() {
           <div className="py-10 text-center">
             <p className="mb-3 text-sm font-bold text-gray-900 dark:text-white">로그인하고 내 쿠폰을 확인하세요</p>
             <button type="button" onClick={() => { window.location.href = '/login?returnUrl=%2Fdistrict%2Fmy' }}
-              className="rounded-full bg-gray-900 dark:bg-white px-5 py-2.5 text-sm font-bold text-white dark:text-gray-900">로그인</button>
+              className="rounded-full bg-brand px-5 py-2.5 text-sm font-bold text-white">로그인</button>
           </div>
         )}
       </div>

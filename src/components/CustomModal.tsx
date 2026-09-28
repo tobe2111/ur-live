@@ -156,7 +156,7 @@ export function CustomModal({
               ) : (
                 <button
                   onClick={onClose}
-                  className="w-full py-3 px-4 bg-gray-900 text-white font-medium rounded-full hover:bg-gray-800 transition-colors text-sm"
+                  className="w-full py-3 px-4 bg-brand text-white font-medium rounded-full hover:bg-brand-dark transition-colors text-sm"
                 >
                   확인
                 </button>

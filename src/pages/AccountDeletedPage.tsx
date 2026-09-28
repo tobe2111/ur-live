@@ -62,7 +62,7 @@ export default function AccountDeletedPage() {
           {/* 홈으로 버튼 */}
           <button
             onClick={() => navigate('/', { replace: true })}
-            className="w-full py-4 bg-gray-900 text-white rounded-xl font-semibold hover:bg-gray-800 active:scale-95 transition-all flex items-center justify-center"
+            className="w-full py-4 bg-brand text-white rounded-xl font-semibold hover:bg-brand-dark active:scale-95 transition-all flex items-center justify-center"
           >
             <Home className="w-5 h-5 mr-2" />
             {t('accountDeleted.goHome')}

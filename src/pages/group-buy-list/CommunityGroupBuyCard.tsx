@@ -116,7 +116,7 @@ export default function CommunityGroupBuyCard({
       </div>
 
       {/* 참여하기 CTA — 부모가 이미 <button> 이라 중첩 불가, 표시용 div 유지 */}
-      <div className="mt-3 bg-gray-900 text-white text-center py-2 rounded-xl text-[13px] font-bold">
+      <div className="mt-3 bg-brand text-white text-center py-2 rounded-xl text-[13px] font-bold">
         {t('groupBuy.joinCta', { defaultValue: '참여하기' })}
       </div>
     </button>

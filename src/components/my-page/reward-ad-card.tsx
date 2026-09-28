@@ -130,7 +130,7 @@ export function RewardAdCard() {
                 ? 'bg-gray-200 dark:bg-white/[0.12] text-gray-500 dark:text-gray-400 cursor-not-allowed'
                 : loading
                 ? 'bg-gray-400 dark:bg-white/50 text-white dark:text-gray-900 cursor-wait'
-                : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-md'
+                : 'bg-brand text-white shadow-md'
             }`}
           >
             {loading ? t('rewardAd.watching', { defaultValue: '시청 중...' }) : isMaxed ? t('rewardAd.maxed', { defaultValue: '완료' }) : t('rewardAd.watch', { defaultValue: '시청하기' })}

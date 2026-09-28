@@ -1,0 +1,15 @@
+{
+  "_why": "🔒 잠금표(Toss V2 / 로딩 최적화) 파일에 남은 검정 주버튼. 색만 바꾸는 일이지만 CLAUDE.md 의 '사용자 명시 허가 없이 변경 금지' 절대 룰이 걸려 있어 대표 승인 + [UNLOCK] audit log 없이는 못 건드린다(2026-07-19 에 TossPaymentWidget 버튼 '색만' 바꿀 때도 명시 승인을 받았다). 승인되면 0 으로 내리고 이 파일을 지운다.",
+  "_rule": "래칫 — 늘면 빨간불, 줄이는 건 자유. 줄인 뒤 `node scripts/check-primary-button-color.mjs --rebaseline`.",
+  "_asked": "2026-09-28 대표 승인 대기",
+  "files": {
+    "src/pages/BrowsePage.tsx": 5,
+    "src/pages/GroupBuyDetailPage.tsx": 2,
+    "src/pages/MyOrdersPage.tsx": 2,
+    "src/pages/MyVouchersPage.tsx": 2,
+    "src/pages/PaymentSuccessPage.tsx": 3,
+    "src/pages/ProductDetailPage.tsx": 3,
+    "src/pages/VoucherDetailPage.tsx": 2,
+    "src/pages/VouchersPage.tsx": 1
+  }
+}

@@ -184,7 +184,7 @@ export default function CommunityGroupBuyMessagesPage() {
             </p>
             <Link
               to={`/community-group-buy/${code}`}
-              className="mt-4 px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[13px] font-bold rounded-xl"
+              className="mt-4 px-5 py-2.5 bg-brand text-white text-[13px] font-bold rounded-xl"
             >
               {t('groupbuyMessages.goJoin', { defaultValue: '공구 보러 가기' })}
             </Link>
@@ -234,7 +234,7 @@ export default function CommunityGroupBuyMessagesPage() {
               onClick={handleSend}
               disabled={sending || !input.trim()}
               aria-label={t('groupbuyMessages.sendAria', { defaultValue: '전송' })}
-              className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 disabled:opacity-40 active:scale-95 transition-transform"
+              className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl bg-brand text-white disabled:opacity-40 active:scale-95 transition-transform"
             >
               <Send className="w-4 h-4" />
             </button>

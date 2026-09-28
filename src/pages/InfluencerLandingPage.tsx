@@ -102,7 +102,7 @@ export default function InfluencerLandingPage() {
       {/* 매장을 갖고 있다면 */}
       <section className="px-6 lg:px-12 py-16 max-w-4xl mx-auto">
         <div className="rounded-3xl border border-line p-7 lg:p-10 text-center">
-          <span className="w-12 h-12 mx-auto rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-[#11141C] flex items-center justify-center mb-4">
+          <span className="w-12 h-12 mx-auto rounded-2xl bg-brand text-white flex items-center justify-center mb-4">
             <Store className="w-6 h-6" />
           </span>
           <h2 className="text-xl lg:text-2xl font-extrabold mb-2">내 가게가 있다면 직접 팔 수도 있어요</h2>
@@ -112,7 +112,7 @@ export default function InfluencerLandingPage() {
           </p>
           <button
             onClick={() => navigate('/store/new')}
-            className="px-6 py-3 rounded-full bg-gray-900 dark:bg-white text-white dark:text-[#11141C] font-extrabold text-[15px] inline-flex items-center gap-2"
+            className="px-6 py-3 rounded-full bg-brand text-white font-extrabold text-[15px] inline-flex items-center gap-2"
           >
             내 가게 등록하기 <ArrowRight className="w-4 h-4" />
           </button>

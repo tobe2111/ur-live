@@ -63,7 +63,7 @@ export default function GbProposeModal({ productId, listPrice, productName, onCl
         </div>
 
         <button onClick={submit} disabled={saving}
-          className="w-full py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl text-[14px] font-bold flex items-center justify-center gap-2 disabled:opacity-50">
+          className="w-full py-3 bg-brand text-white rounded-xl text-[14px] font-bold flex items-center justify-center gap-2 disabled:opacity-50">
           {saving && <Loader2 className="w-4 h-4 animate-spin" />} 매장에 제안 보내기
         </button>
       </div>

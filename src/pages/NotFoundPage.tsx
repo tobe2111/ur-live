@@ -78,7 +78,7 @@ export default function NotFoundPage() {
           <div className="mt-10 grid grid-cols-2 gap-3">
             <Link
               to="/"
-              className="inline-flex items-center justify-center gap-2 h-12 rounded-2xl bg-black dark:bg-white text-white dark:text-gray-900 font-bold text-[15px] shadow-sm hover:bg-gray-900 dark:hover:bg-gray-100 hover:shadow-md transition-all duration-200 active:scale-[0.98]"
+              className="inline-flex items-center justify-center gap-2 h-12 rounded-2xl bg-black text-white font-bold text-[15px] shadow-sm hover:bg-brand hover:shadow-md transition-all duration-200 active:scale-[0.98]"
             >
               <Home className="h-4 w-4" />
               {t('notFound.goHome')}

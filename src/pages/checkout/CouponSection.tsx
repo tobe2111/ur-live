@@ -47,7 +47,7 @@ export default function CouponSection({ couponCode, setCouponCode, couponDiscoun
         />
         <button
           onClick={handleApply}
-          className="px-4 py-2.5 bg-gray-900 text-white text-sm font-bold rounded-lg shrink-0"
+          className="px-4 py-2.5 bg-brand text-white text-sm font-bold rounded-lg shrink-0"
         >
           {t('checkout.coupon.apply', { defaultValue: '적용' })}
         </button>

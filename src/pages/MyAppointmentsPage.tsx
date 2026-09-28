@@ -154,7 +154,7 @@ export default function MyAppointmentsPage() {
                   </div>
                   <button
                     onClick={() => setBookingTarget(b)}
-                    className="shrink-0 px-3 py-2 bg-gray-900 hover:bg-gray-900 text-white text-xs font-bold rounded-lg"
+                    className="shrink-0 px-3 py-2 bg-brand hover:bg-brand text-white text-xs font-bold rounded-lg"
                   >
                     {t('myAppointments.bookCta', { defaultValue: '예약 잡기' })}
                   </button>
@@ -170,7 +170,7 @@ export default function MyAppointmentsPage() {
           <div className="text-center py-20">
             <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">예약 내역을 불러오지 못했어요</p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">네트워크 상태를 확인한 뒤 다시 시도해주세요</p>
-            <button onClick={() => refetch()} className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full text-sm font-bold">
+            <button onClick={() => refetch()} className="px-5 py-2.5 bg-brand text-white rounded-full text-sm font-bold">
               다시 시도
             </button>
           </div>
@@ -354,7 +354,7 @@ function AppointmentBookingModal({ item, onClose, onBooked }: {
                     onClick={() => setSelectedSlot(s)}
                     className={`py-2 rounded-lg text-xs font-bold border transition-colors ${
                       selectedSlot?.start_time === s.start_time
-                        ? 'bg-gray-900 text-white border-purple-600'
+                        ? 'bg-brand text-white border-purple-600'
                         : 'bg-white dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2C2F35] hover:border-purple-400'
                     }`}
                   >
@@ -410,7 +410,7 @@ function AppointmentBookingModal({ item, onClose, onBooked }: {
             <button
               onClick={submit}
               disabled={submitting || !selectedSlot}
-              className="flex-1 py-3 bg-gray-900 hover:bg-gray-900 text-white text-sm font-bold rounded-lg disabled:opacity-50"
+              className="flex-1 py-3 bg-brand hover:bg-brand text-white text-sm font-bold rounded-lg disabled:opacity-50"
             >
               {submitting
                 ? t('myAppointments.submitting', { defaultValue: '예약 중...' })

@@ -91,7 +91,7 @@ class ErrorBoundary extends Component<Props, State> {
               </p>
               <button
                 onClick={this.handleManualReload}
-                className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full text-sm font-bold hover:opacity-90"
+                className="px-5 py-2.5 bg-brand text-white rounded-full text-sm font-bold hover:opacity-90"
               >
                 지금 새로고침
               </button>
@@ -151,7 +151,7 @@ class ErrorBoundary extends Component<Props, State> {
               {/* 소프트 재시도 — 전체 새로고침 없이 상태 리셋 후 재렌더(일시적 에러 회복). 지속되면 다시 이 화면. */}
               <button
                 onClick={this.handleSoftRetry}
-                className="flex-1 bg-gray-900 dark:bg-white text-white dark:text-gray-900 py-3 px-4 rounded-full font-medium hover:opacity-90 transition-opacity"
+                className="flex-1 bg-brand text-white py-3 px-4 rounded-full font-medium hover:opacity-90 transition-opacity"
               >
                 다시 시도
               </button>

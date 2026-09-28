@@ -38,7 +38,7 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
           </p>
           <Link
             to="/"
-            className="inline-flex items-center justify-center px-6 py-3 bg-gray-900 text-white text-[14px] font-semibold rounded-full hover:bg-gray-800 active:bg-gray-700 transition-colors"
+            className="inline-flex items-center justify-center px-6 py-3 bg-brand text-white text-[14px] font-semibold rounded-full hover:bg-brand-dark active:bg-gray-700 transition-colors"
           >
             {t('cart.goLive', { defaultValue: '둘러보러 가기' })}
           </Link>
@@ -131,7 +131,7 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
       >
         <button
           onClick={onCheckout}
-          className="w-full py-3.5 bg-gray-900 text-white text-[15px] font-bold rounded-full hover:bg-gray-800 active:bg-gray-700 transition-colors shadow-sm"
+          className="w-full py-3.5 bg-brand text-white text-[15px] font-bold rounded-full hover:bg-brand-dark active:bg-gray-700 transition-colors shadow-sm"
         >
           {t('cart.orderBtn', { count: cartItems.length, amount: formatNumber(totalAmount), defaultValue: '{{count}}개 주문하기 · {{amount}}원' })}
         </button>

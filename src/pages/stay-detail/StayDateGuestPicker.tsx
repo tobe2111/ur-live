@@ -242,7 +242,7 @@ export default function StayDateGuestPicker({
                         aria-label={`${day}${isIn ? ' 체크인' : isOut ? ' 체크아웃' : ''}`}
                         className={`h-11 flex flex-col items-center justify-center text-[13px] transition-colors ${
                           past ? 'text-gray-300 dark:text-gray-600 cursor-default'
-                            : isIn || isOut ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-extrabold rounded-xl'
+                            : isIn || isOut ? 'bg-brand text-white font-extrabold rounded-xl'
                             : inRange ? 'bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white'
                             : 'text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-white/[0.05] rounded-xl'
                         }`}

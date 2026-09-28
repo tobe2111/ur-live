@@ -293,7 +293,7 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey, on
           type="button"
           onClick={search}
           disabled={loading || !query.trim()}
-          className="px-4 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-bold shrink-0 disabled:opacity-40"
+          className="px-4 py-2.5 bg-brand text-white rounded-lg text-sm font-bold shrink-0 disabled:opacity-40"
         >
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : '검색'}
         </button>

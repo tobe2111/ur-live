@@ -95,7 +95,7 @@ export default function ReferralIndexPage() {
         <section className="space-y-2">
           <button
             onClick={() => navigate('/browse?filter=group-buy')}
-            className="w-full py-3.5 bg-gray-900 text-white text-[14px] font-bold rounded-full hover:bg-gray-800 active:bg-gray-700 transition-colors"
+            className="w-full py-3.5 bg-brand text-white text-[14px] font-bold rounded-full hover:bg-brand-dark active:bg-gray-700 transition-colors"
           >
             {t('referral.ctaBrowse', { defaultValue: '공동구매 상품 둘러보기' })}
           </button>

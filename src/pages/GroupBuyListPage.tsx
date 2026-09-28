@@ -732,7 +732,7 @@ export default function GroupBuyListPage() {
                   <div className="mt-4 flex gap-2 justify-center flex-wrap">
                     <button
                       onClick={() => { setCategory('all'); setSearchQuery(''); applyRegion(null, null); const n = new URLSearchParams(searchParams); n.delete('category'); setSearchParams(n, { replace: true }) }}
-                      className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[13px] font-bold rounded-full"
+                      className="px-5 py-2.5 bg-brand text-white text-[13px] font-bold rounded-full"
                     >
                       {t('groupBuy.resetToAll', { defaultValue: '전체 공구 보기' })}
                     </button>
@@ -794,7 +794,7 @@ export default function GroupBuyListPage() {
                 </p>
                 <button
                   onClick={() => navigate(createPath)}
-                  className="mt-5 px-5 py-2.5 bg-gray-900 text-white text-[13px] font-semibold rounded-full"
+                  className="mt-5 px-5 py-2.5 bg-brand text-white text-[13px] font-semibold rounded-full"
                 >
                   {t('groupBuy.ctaStart', { defaultValue: '공구 시작하기' })}
                 </button>

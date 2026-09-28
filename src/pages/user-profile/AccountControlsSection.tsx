@@ -329,7 +329,7 @@ export function ProfileEditModal({ isOpen, onClose, initial, onSaved }: {
           <button onClick={onClose} className="flex-1 py-3 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200 font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-[#2C2F35] transition-colors">
             {t('accountSettings.editCancel', { defaultValue: '취소' })}
           </button>
-          <button onClick={save} disabled={loading} className="flex-1 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-medium rounded-xl hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors disabled:opacity-50">
+          <button onClick={save} disabled={loading} className="flex-1 py-3 bg-brand text-white font-medium rounded-xl hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors disabled:opacity-50">
             {loading ? t('accountSettings.saving', { defaultValue: '저장 중...' }) : t('accountSettings.save', { defaultValue: '저장' })}
           </button>
         </div>

@@ -83,7 +83,7 @@ export default function EmptyUrShop({ handle, isOwner, emptyType, curatorName, c
           </div>
           <h2 className="text-[17px] font-extrabold text-gray-900 dark:text-white mt-3">{sellerFirst ? t('curator.emptyOwnerSellerTitle', { defaultValue: '매장을 등록하면 시작돼요' }) : t('curator.emptyOwnerTitle', { defaultValue: '첫 상품을 추가해 보세요' })}</h2>
           <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1.5 max-w-[270px] leading-snug">{sellerFirst ? t('curator.emptyOwnerSellerDesc', { defaultValue: '매장을 등록하면 이용권을 올릴 수 있어요. 올린 이용권이 여기 진열됩니다.' }) : t('curator.emptyOwnerDesc', { defaultValue: '마음에 든 상품·동네딜을 추가하면 이렇게 나만의 스토어가 채워져요.' })}</p>
-          <Link to={browseLink} className="mt-4 w-full max-w-xs py-3 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#11141C] text-[14px] font-bold">{browseLabel}</Link>
+          <Link to={browseLink} className="mt-4 w-full max-w-xs py-3 rounded-xl bg-brand text-white text-[14px] font-bold">{browseLabel}</Link>
         </div>
       </div>
     </div>

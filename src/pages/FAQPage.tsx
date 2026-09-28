@@ -100,7 +100,7 @@ export default function FAQPage() {
               onClick={() => setSelectedCategory(category)}
               className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium whitespace-nowrap transition-all ${
                 selectedCategory === category
-                  ? 'bg-gray-900 text-white'
+                  ? 'bg-brand text-white'
                   : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2C2F35]'
               }`}
             >
@@ -125,7 +125,7 @@ export default function FAQPage() {
                     onClick={() => setExpandedId(isOpen ? null : faq.id)}
                     className="w-full py-4 flex items-start gap-3 text-left hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors -mx-4 px-4"
                   >
-                    <span className="shrink-0 w-6 h-6 rounded-full bg-gray-900 text-white text-[11px] font-bold flex items-center justify-center mt-0.5">
+                    <span className="shrink-0 w-6 h-6 rounded-full bg-brand text-white text-[11px] font-bold flex items-center justify-center mt-0.5">
                       Q
                     </span>
                     <div className="flex-1 min-w-0">

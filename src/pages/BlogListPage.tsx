@@ -112,7 +112,7 @@ export default function BlogListPage() {
             <Link to="/" className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1D1F29]">
               <Home className="w-4 h-4" /><span className="hidden sm:inline">유어딜 홈</span>
             </Link>
-            <Link to="/store/new" className="px-3.5 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold hover:opacity-90">
+            <Link to="/store/new" className="px-3.5 py-2 bg-brand text-white rounded-lg text-sm font-bold hover:opacity-90">
               내 가게 등록
             </Link>
           </div>
@@ -170,12 +170,12 @@ export default function BlogListPage() {
         {/* ── 태그 필터 ── */}
         <div className="flex gap-2 overflow-x-auto scrollbar-hide py-4">
           <button onClick={() => pickTag('')}
-            className={`px-3.5 py-1.5 rounded-full text-sm font-medium shrink-0 ${!selectedTag ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-50 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2C2F35]'}`}>
+            className={`px-3.5 py-1.5 rounded-full text-sm font-medium shrink-0 ${!selectedTag ? 'bg-brand text-white' : 'bg-gray-50 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2C2F35]'}`}>
             전체
           </button>
           {allTags.map((tag: string) => (
             <button key={tag} onClick={() => pickTag(tag)}
-              className={`px-3.5 py-1.5 rounded-full text-sm font-medium shrink-0 ${selectedTag === tag ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-50 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2C2F35]'}`}>
+              className={`px-3.5 py-1.5 rounded-full text-sm font-medium shrink-0 ${selectedTag === tag ? 'bg-brand text-white' : 'bg-gray-50 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2C2F35]'}`}>
               {tag}
             </button>
           ))}
@@ -234,7 +234,7 @@ export default function BlogListPage() {
               </button>
               {pageNums.map(n => (
                 <button key={n} onClick={() => setPage(n)}
-                  className={`min-w-9 h-9 px-2 rounded-lg text-sm font-semibold tabular-nums ${n === curPage ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1D1F29]'}`}>
+                  className={`min-w-9 h-9 px-2 rounded-lg text-sm font-semibold tabular-nums ${n === curPage ? 'bg-brand text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1D1F29]'}`}>
                   {n}
                 </button>
               ))}

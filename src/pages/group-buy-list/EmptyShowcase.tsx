@@ -40,7 +40,7 @@ export default function EmptyShowcase({ catEmpty, showcaseCards, createPath, sta
                 <div className="mt-5 flex gap-2 justify-center flex-wrap">
                   <button
                     onClick={() => navigate(createPath)}
-                    className="flex items-center gap-1 px-5 py-2.5 bg-gray-900 text-white text-[13px] font-semibold rounded-full"
+                    className="flex items-center gap-1 px-5 py-2.5 bg-brand text-white text-[13px] font-semibold rounded-full"
                   >
                     <Plus className="w-3.5 h-3.5" /> {startCtaLabel}
                   </button>

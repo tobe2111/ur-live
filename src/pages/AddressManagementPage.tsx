@@ -284,7 +284,7 @@ export default function AddressManagementPage() {
                         {/* 라벨 + 이름 + 기본 뱃지 */}
                         <div className="flex items-center gap-2 mb-2 flex-wrap">
                           {address.label && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-2.5 py-0.5 text-[11px] font-bold">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-brand text-white px-2.5 py-0.5 text-[11px] font-bold">
                               {labelEmoji} {address.label}
                             </span>
                           )}
@@ -542,7 +542,7 @@ export default function AddressManagementPage() {
                   onClick={() => setFormData({ ...formData, delivery_note: preset })}
                   className={`px-2.5 py-1.5 rounded-full text-[11px] font-semibold border transition-colors ${
                     formData.delivery_note === preset
-                      ? 'bg-gray-900 text-white border-gray-900'
+                      ? 'bg-brand text-white border-brand'
                       : 'bg-white dark:bg-[#11141C] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-[#1D1F29]'
                   }`}
                 >

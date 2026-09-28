@@ -42,7 +42,7 @@ function Pill({ active, onClick, children }: { active: boolean; onClick: () => v
       onClick={onClick}
       className={`px-3 py-2 rounded-full text-[13px] font-semibold whitespace-nowrap transition-all ${
         active
-          ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
+          ? 'bg-brand text-white'
           : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#242424]'
       }`}
     >
@@ -171,7 +171,7 @@ export default function FilterSheet({ region: ir, district: id, sortBy: isort, r
           <button
             data-testid="filter-apply"
             onClick={() => onApply(region, district, sort, radius, price)}
-            className="w-full py-3.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[15px] font-extrabold rounded-2xl active:scale-[0.98] transition-transform"
+            className="w-full py-3.5 bg-brand text-white text-[15px] font-extrabold rounded-2xl active:scale-[0.98] transition-transform"
           >
             {count > 0
               ? t('map.filter.applyCount', { defaultValue: `${count}곳 보기`, count })

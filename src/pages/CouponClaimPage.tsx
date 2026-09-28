@@ -178,7 +178,7 @@ export default function CouponClaimPage() {
             </div>
 
             <button onClick={() => navigate('/')}
-              className="w-full mt-6 py-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold rounded-2xl active:scale-[0.97] transition-transform flex items-center justify-center gap-2 shadow-lg">
+              className="w-full mt-6 py-4 bg-brand text-white font-bold rounded-2xl active:scale-[0.97] transition-transform flex items-center justify-center gap-2 shadow-lg">
               <ShoppingBag className="w-5 h-5" />
               {t('couponClaim.goShop')}
             </button>
@@ -198,7 +198,7 @@ export default function CouponClaimPage() {
             <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{t('couponClaim.alreadyTitle')}</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">{t('couponClaim.alreadyHint')}</p>
             <button onClick={() => navigate('/')}
-              className="w-full mt-6 py-3.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold rounded-xl active:scale-[0.98]">
+              className="w-full mt-6 py-3.5 bg-brand text-white font-bold rounded-xl active:scale-[0.98]">
               {t('couponClaim.goHome')}
             </button>
           </div>
@@ -212,7 +212,7 @@ export default function CouponClaimPage() {
             <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{t('couponClaim.errorTitle')}</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">{errorMsg}</p>
             <button onClick={() => navigate('/')}
-              className="w-full mt-6 py-3.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold rounded-xl active:scale-[0.98]">
+              className="w-full mt-6 py-3.5 bg-brand text-white font-bold rounded-xl active:scale-[0.98]">
               {t('couponClaim.goHome')}
             </button>
           </div>

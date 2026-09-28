@@ -59,7 +59,7 @@ export default function AreaReportPage() {
           <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
             {data!.regions.map(r => (
               <button key={r.k} onClick={() => navigate(`/area-report/${encodeURIComponent(r.k)}`)}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border ${region === r.k ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white' : 'bg-white text-gray-600 border-gray-200 dark:bg-[#121212] dark:text-gray-300 dark:border-[#2A2A2A]'}`}>
+                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border ${region === r.k ? 'bg-brand text-white border-brand dark:border-white' : 'bg-white text-gray-600 border-gray-200 dark:bg-[#121212] dark:text-gray-300 dark:border-[#2A2A2A]'}`}>
                 {r.k}
               </button>
             ))}
@@ -134,7 +134,7 @@ export default function AreaReportPage() {
               {/* 🚪 2026-08-31: 상권 리포트를 다 본 직후는 전환이 제일 강한 순간이다. 그런데 `/partners`
                   직행이라 **이미 입점한 사장님**도 처음 오는 사람용 소개 페이지로 보내졌다.
                   ⇒ `sellerEntryPath()` — 셀러면 자기 대시보드로 곧장. */}
-              <a href={sellerEntryPath()} className="inline-block mt-3 px-5 py-2.5 rounded-xl bg-gray-900 text-white dark:bg-white dark:text-gray-900 text-sm font-bold">사장님 가게 입점 알아보기 →</a>
+              <a href={sellerEntryPath()} className="inline-block mt-3 px-5 py-2.5 rounded-xl bg-brand text-white text-sm font-bold">사장님 가게 입점 알아보기 →</a>
             </div>
           </>
         )}

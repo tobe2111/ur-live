@@ -41,7 +41,7 @@ export default function DealPointsSection({ dealBalance, dealToUse, setDealToUse
         />
         <button
           onClick={() => setDealToUse(Math.min(dealBalance, totalBeforeDeal))}
-          className="px-3 py-3 bg-gray-900 text-white rounded-lg text-[11px] font-bold shrink-0 whitespace-nowrap"
+          className="px-3 py-3 bg-brand text-white rounded-lg text-[11px] font-bold shrink-0 whitespace-nowrap"
         >{t('checkout.deal.useAll', { defaultValue: '전액' })}</button>
       </div>
       {dealToUse > 0 && (

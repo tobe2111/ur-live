@@ -78,7 +78,7 @@ export default function MyFollowsPage() {
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">네트워크 상태를 확인한 뒤 다시 시도해주세요</p>
             <button
               onClick={() => refetch()}
-              className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full text-sm font-bold"
+              className="px-5 py-2.5 bg-brand text-white rounded-full text-sm font-bold"
             >
               다시 시도
             </button>
@@ -90,7 +90,7 @@ export default function MyFollowsPage() {
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">관심 있는 가게 페이지에서 단골 등록하세요</p>
             <button
               onClick={() => navigate('/group-buy')}
-              className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full text-sm font-bold"
+              className="px-5 py-2.5 bg-brand text-white rounded-full text-sm font-bold"
             >
               동네딜 둘러보기
             </button>

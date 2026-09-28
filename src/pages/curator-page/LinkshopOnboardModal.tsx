@@ -146,7 +146,7 @@ export default function LinkshopOnboardModal({ curatorId, currentHandle, current
                 onClick={() => { setIntent('seller'); setUrShopIntent(curatorId, 'seller'); setStep(2) }}
                 className="w-full flex items-start gap-3 p-4 rounded-2xl border border-line hover:bg-gray-50 dark:hover:bg-white/[0.04] text-left transition"
               >
-                <span className="w-9 h-9 shrink-0 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#11141C] flex items-center justify-center"><Store className="w-[18px] h-[18px]" /></span>
+                <span className="w-9 h-9 shrink-0 rounded-xl bg-brand text-white flex items-center justify-center"><Store className="w-[18px] h-[18px]" /></span>
                 <span className="min-w-0">
                   <span className="block text-[14px] font-bold text-gray-900 dark:text-white">내 가게를 팔아요</span>
                   <span className="block text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">매장을 등록하고 이용권을 팔아요</span>
@@ -212,7 +212,7 @@ export default function LinkshopOnboardModal({ curatorId, currentHandle, current
           <button
             onClick={save}
             disabled={saving || !handleValid || (!name.trim() && !handle.trim())}
-            className="flex-1 px-4 py-2.5 rounded-xl text-[13px] font-bold bg-gray-900 dark:bg-white text-white dark:text-gray-900 disabled:opacity-40"
+            className="flex-1 px-4 py-2.5 rounded-xl text-[13px] font-bold bg-brand text-white disabled:opacity-40"
           >
             {saving ? '저장 중…' : intent === 'seller' ? '저장하고 매장 등록하기' : '저장하기'}
           </button>

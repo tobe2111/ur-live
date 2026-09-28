@@ -53,10 +53,10 @@ export default function NewOpeningsPage() {
         {/* 지역 칩 */}
         {regions.length > 0 && (
           <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
-            <button onClick={() => setRegion('')} className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border ${!region ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white' : 'bg-white text-gray-600 border-gray-200 dark:bg-[#121212] dark:text-gray-300 dark:border-[#2A2A2A]'}`}>전체</button>
+            <button onClick={() => setRegion('')} className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border ${!region ? 'bg-brand text-white border-brand dark:border-white' : 'bg-white text-gray-600 border-gray-200 dark:bg-[#121212] dark:text-gray-300 dark:border-[#2A2A2A]'}`}>전체</button>
             {regions.map(r => (
               <button key={r.k} onClick={() => setRegion(prev => prev === r.k ? '' : r.k)}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border ${region === r.k ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white' : 'bg-white text-gray-600 border-gray-200 dark:bg-[#121212] dark:text-gray-300 dark:border-[#2A2A2A]'}`}>
+                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border ${region === r.k ? 'bg-brand text-white border-brand dark:border-white' : 'bg-white text-gray-600 border-gray-200 dark:bg-[#121212] dark:text-gray-300 dark:border-[#2A2A2A]'}`}>
                 {r.k} {r.n}
               </button>
             ))}

@@ -66,7 +66,7 @@ export default function VoucherDisputeBanner() {
               <button
                 onClick={() => respond(d, 'contest')}
                 disabled={busy === d.id}
-                className="flex-1 py-2.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[13px] font-bold disabled:opacity-50 active:scale-[0.98] transition-transform"
+                className="flex-1 py-2.5 rounded-xl bg-brand text-white text-[13px] font-bold disabled:opacity-50 active:scale-[0.98] transition-transform"
               >
                 네, 이용했어요
               </button>

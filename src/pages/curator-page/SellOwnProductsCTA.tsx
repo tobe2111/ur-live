@@ -74,7 +74,7 @@ export default function SellOwnProductsCTA() {
           <button
             onClick={() => goSeller('/seller/products/new')}
             disabled={switching}
-            className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-[#11141C] text-xs font-bold rounded-lg disabled:opacity-50"
+            className="px-4 py-2 bg-brand text-white text-xs font-bold rounded-lg disabled:opacity-50"
           >
             {switching ? '이동 중…' : '+ 상품 등록'}
           </button>
@@ -124,7 +124,7 @@ export default function SellOwnProductsCTA() {
     <>
       <button
         onClick={() => setShowBenefits(true)}
-        className="w-full mb-6 flex items-center gap-3 rounded-2xl bg-gray-900 dark:bg-[#161616] text-white p-4 text-left active:scale-[0.99] transition-transform shadow-lg shadow-gray-900/10 dark:ring-1 dark:ring-[#2C2F35]"
+        className="w-full mb-6 flex items-center gap-3 rounded-2xl bg-brand dark:bg-[#161616] text-white p-4 text-left active:scale-[0.99] transition-transform shadow-lg shadow-gray-900/10 dark:ring-1 dark:ring-[#2C2F35]"
       >
         <span className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0"><VerifiedSeal size={22} /></span>
         <span className="flex-1 min-w-0">
@@ -174,7 +174,7 @@ function BenefitsSheet({ onClose, onStart }: { onClose: () => void; onStart: () 
             </div>
           ))}
         </div>
-        <button onClick={onStart} className="mt-6 w-full h-[52px] rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-[#11141C] text-[15.5px] font-extrabold active:opacity-80">
+        <button onClick={onStart} className="mt-6 w-full h-[52px] rounded-2xl bg-brand text-white text-[15.5px] font-extrabold active:opacity-80">
           ✓ 사업자 인증 시작하기
         </button>
         <p className="text-center text-[11.5px] text-gray-400 dark:text-gray-500 mt-2.5">사업자등록 → 관리자 승인 후 활성화 · 무료</p>

@@ -81,7 +81,7 @@ export default function CreatorStartPage() {
             <h1 className="text-lg font-bold text-gray-900">시작 준비가 끝났습니다</h1>
             <p className="mt-2 text-sm text-gray-600">내 유어샵이 준비됐어요. 소개하고 싶은 딜을 담고 링크만 공유하면 됩니다.</p>
             <div className="mt-5 flex flex-col gap-2">
-              <a href="/group-buy" className={`${btn} bg-gray-900 text-white`}>딜 둘러보고 담기</a>
+              <a href="/group-buy" className={`${btn} bg-brand text-white`}>딜 둘러보고 담기</a>
               <a href="/u/me" className={`${btn} border border-gray-300 text-gray-900`}>내 유어샵 보기</a>
             </div>
             <p className="mt-3 text-xs text-gray-500">소개비는 딜마다 표시되며, 내 링크로 판매될 때 적립됩니다.</p>
@@ -94,7 +94,7 @@ export default function CreatorStartPage() {
             <h1 className="text-lg font-bold text-gray-900">연결하지 못했습니다</h1>
             <p className="mt-2 text-sm text-gray-600">{msg}</p>
             <div className="mt-5 flex flex-col gap-2">
-              <a href="/creators" className={`${btn} bg-gray-900 text-white`}>제휴 안내 보기</a>
+              <a href="/creators" className={`${btn} bg-brand text-white`}>제휴 안내 보기</a>
               <a href="/creators/apply" className={`${btn} border border-gray-300 text-gray-900`}>제휴 신청하기</a>
             </div>
           </>

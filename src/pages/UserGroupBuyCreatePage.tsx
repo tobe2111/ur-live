@@ -107,7 +107,7 @@ export default function UserGroupBuyCreatePage() {
           </button>
           <button
             onClick={() => navigate('/influencer/discover')}
-            className="w-full py-3 bg-gray-900 text-white rounded-xl font-bold text-sm"
+            className="w-full py-3 bg-brand text-white rounded-xl font-bold text-sm"
           >
             🎤 인플루언서 활동 시작 (카탈로그)
           </button>
@@ -210,7 +210,7 @@ export default function UserGroupBuyCreatePage() {
         {/* ── Step 1: 맛집 선택 ── */}
         <section>
           <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">
-            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[12px] font-bold mr-2">
+            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-brand text-white text-[12px] font-bold mr-2">
               1
             </span>
             {catMeta
@@ -268,7 +268,7 @@ export default function UserGroupBuyCreatePage() {
         {/* ── Step 2: 공구 설정 ── */}
         <section>
           <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">
-            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[12px] font-bold mr-2">
+            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-brand text-white text-[12px] font-bold mr-2">
               2
             </span>
             {t('groupbuy.step2Title', { defaultValue: '공구 설정' })}
@@ -382,7 +382,7 @@ export default function UserGroupBuyCreatePage() {
         {restaurant && step2Valid && (
           <section>
             <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">
-              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[12px] font-bold mr-2">
+              <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-brand text-white text-[12px] font-bold mr-2">
                 3
               </span>
               {t('groupbuy.step3Title', { defaultValue: '확인 & 시작' })}
@@ -455,7 +455,7 @@ export default function UserGroupBuyCreatePage() {
             <button
               onClick={handleSubmit}
               disabled={!canSubmit}
-              className="w-full py-3.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[15px] font-bold rounded-xl disabled:opacity-40 active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
+              className="w-full py-3.5 bg-brand text-white text-[15px] font-bold rounded-xl disabled:opacity-40 active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
             >
               {submitting ? (
                 <Loader2 className="w-5 h-5 animate-spin" />

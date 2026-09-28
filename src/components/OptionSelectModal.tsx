@@ -231,7 +231,7 @@ export default function OptionSelectModal({
             <button
               onClick={handleConfirm}
               disabled={!selectedOptionId}
-              className="ur-btn ur-btn-lg ur-btn-block bg-gray-900 text-white hover:opacity-90"
+              className="ur-btn ur-btn-lg ur-btn-block bg-brand text-white hover:opacity-90"
             >
               {selectedOptionId === currentOptionId ? t('common.confirm', { defaultValue: '확인' }) : t('product.optionChange', { defaultValue: '옵션 변경' })}
             </button>

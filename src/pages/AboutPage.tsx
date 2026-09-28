@@ -82,7 +82,7 @@ export default function AboutPage() {
                 </Link>
                 <Link
                   to="/seller/login"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 font-bold text-sm lg:text-base transition-colors"
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-brand text-white hover:bg-gray-800 dark:hover:bg-gray-100 font-bold text-sm lg:text-base transition-colors"
                 >
                   셀러 입점
                 </Link>

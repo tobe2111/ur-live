@@ -56,7 +56,7 @@ export default function SoonPage() {
           <div className="text-center py-20">
             <p className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-1">지금은 응모 중인 딜이 없어요</p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-5">새로 열 매장이 준비되면 이 자리에 올라와요.</p>
-            <Link to="/" className="inline-block px-5 py-2.5 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-bold">지금 살 수 있는 딜 보기 →</Link>
+            <Link to="/" className="inline-block px-5 py-2.5 rounded-full bg-brand text-white text-sm font-bold">지금 살 수 있는 딜 보기 →</Link>
           </div>
         ) : (
           <div className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 ${DEAL_GRID_GAP}`}>

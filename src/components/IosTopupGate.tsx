@@ -31,7 +31,7 @@ function TopupClosedNotice() {
       <div className="mt-6 flex gap-2">
         <button
           onClick={() => navigate('/user/profile')}
-          className="rounded-xl bg-gray-900 dark:bg-white px-5 py-3 text-[14px] font-bold text-white dark:text-[#11141C]"
+          className="rounded-xl bg-brand px-5 py-3 text-[14px] font-bold text-white"
         >
           딜 모으러 가기
         </button>
@@ -63,7 +63,7 @@ export default function IosTopupGate({ children }: { children: ReactNode }) {
       </p>
       <button
         onClick={() => openExternalUrl(CHARGE_WEB_URL)}
-        className="mt-6 rounded-xl bg-gray-900 dark:bg-white px-6 py-3 text-[14px] font-bold text-white dark:text-[#11141C]"
+        className="mt-6 rounded-xl bg-brand px-6 py-3 text-[14px] font-bold text-white"
       >
         웹에서 충전하기
       </button>
