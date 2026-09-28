@@ -120,7 +120,6 @@ const WishlistPage = lazy(() => import('./pages/WishlistPage'))
 const FollowingPage = lazy(() => import('./pages/FollowingPage'))
 const MyVouchersPage = lazy(() => import('./pages/MyVouchersPage'))
 const MyGifticonsPage = lazy(() => import('./pages/MyGifticonsPage'))  // 🎟️ 2026-08-31 지갑 분리 — 교환권 보관함
-const MyStorePage = lazy(() => import('./pages/MyStorePage'))
 const StoreScanPage = lazy(() => import('./pages/StoreScanPage'))
 const InfluencerSettlementPage = lazy(() => import('./pages/InfluencerSettlementPage'))
 const InfluencerDiscoverPage = lazy(() => import('./pages/InfluencerDiscoverPage'))
@@ -887,12 +886,14 @@ function AppContent() {
               </ProtectedRoute>
             } />
             <Route path="/my-gifticons" element={<ProtectedRoute requireUser><MyGifticonsPage /></ProtectedRoute>} />
-            {/* 🏪 2026-06-22 사업자 유저 경량 '내 매장'(원장+분쟁) — 풀 셀러 대시보드 대신 앱 내. */}
-            <Route path="/my-store" element={
-              <ProtectedRoute requireUser>
-                <MyStorePage />
-              </ProtectedRoute>
-            } />
+            {/* 🏪 2026-09-28 (대표 "끝까지 해줘") — **`/my-store` 는 마이로 보낸다.**
+                2026-06-22 에 "풀 대시보드 대신 앱 내" 로 만든 297줄 페이지인데, 2026-09-25 에 마이 맨 위에
+                '내 가게' 섹션이 생기면서 **타일 여섯이 그대로 중복**됐다(주문 확인·상품 관리·상품 등록·
+                이용권 등록·내 유어샵·셀러 대시보드 — 전부 마이에 있다). 같은 날 그 버튼은 지웠지만
+                **페이지가 남아 있으면 도구가 하나 늘 때 두 곳을 고쳐야 하고 반드시 한쪽을 잊는다.**
+                ⚠️ **라우트는 남긴다** — 이미 나간 링크·북마크가 404 가 되면 안 된다. `replace` 라 뒤로가기가
+                이 주소로 되돌아오지 않는다(무한 왕복 방지). */}
+            <Route path="/my-store" element={<Navigate to="/user/profile" replace />} />
             {/* 🎟️ 계산대 스캔 POS(2026-07-06, seller_token 자체가드) · 🏪 매장 등록 단일 목적지(2026-08-26).
                 한 줄 표기는 file-size 래칫 때문 — 동작은 블록 표기와 동일하다. */}
             <Route path="/store/scan" element={<ProtectedRoute requireUser><StoreScanPage /></ProtectedRoute>} />

@@ -14,6 +14,7 @@
  * - 뒤로가기가 진짜 시트를 닫는지(히스토리는 실제 브라우저에서만 판정된다). 배선만 본다.
  */
 import { describe, it, expect } from 'vitest'
+import { existsSync } from 'fs'
 import { readCode, stripComments } from '../helpers/source-text'
 
 const TOOLS = readCode('src/pages/user-profile/seller-section/AllToolsSheet.tsx')
@@ -224,13 +225,26 @@ describe('🏠 대시보드를 쓸 필요 없게 — 보내는 문을 막는다 
       .toMatch(/navigate\(MY_PATH, \{ replace: true \}\)/)
   })
 
+  /**
+   * 🎯 2026-09-28 재조준 — 목록에서 `MyStorePage.tsx` 를 뺐다. **불변식이 약해진 게 아니라 그 화면이
+   * 사라졌다**: 마이 맨 위 '내 가게' 섹션과 타일 여섯이 통째로 중복돼 `/my-store` 를 마이로 보내는
+   * 리다이렉트로 바꿨다(라우트는 유지 — 옛 링크). 아래 `it` 이 그 부재를 따로 고정한다.
+   */
   it('소비자 화면에서 대시보드로 나갈 때는 귀환 표시를 단다', () => {
-    for (const f of ['src/pages/GroupBuyDetailPage.tsx', 'src/pages/MyStorePage.tsx']) {
+    for (const f of ['src/pages/GroupBuyDetailPage.tsx']) {
       const code = stripComments(readCode(f))
       const bare = code.match(/navigate\('\/seller[^']*'\)/g) || []
       expect(bare, `${f} 에 표시 없는 대시보드 이동: ${bare.join(', ')}`).toHaveLength(0)
       expect(code, f).toContain('withMyReturn(')
     }
+  })
+
+  it('🔴 `/my-store` 는 마이로 보내고 별도 페이지를 다시 만들지 않는다', () => {
+    // 그 페이지가 있던 이유(2026-06-22 "풀 대시보드 대신 앱 내")는 마이 '내 가게' 섹션이 대신한다.
+    // 되살리면 도구가 하나 늘 때 두 곳을 고쳐야 하고, 반드시 한쪽을 잊는다.
+    expect(existsSync('src/pages/MyStorePage.tsx'), 'MyStorePage 가 되살아났다').toBe(false)
+    const app = stripComments(readCode('src/App.tsx'))
+    expect(app).toMatch(/path="\/my-store" element=\{<Navigate to="\/user\/profile" replace \/>\}/)
   })
 
   it('MY_PATH 를 손으로 적지 않는다', () => {
