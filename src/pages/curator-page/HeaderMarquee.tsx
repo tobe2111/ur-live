@@ -11,19 +11,21 @@ import { ACCENT_PRESETS } from './accent-presets'
 
 export default function HeaderMarquee({
   curator, isOwner, accentColor, accentText,
-  editingHeadline, setEditingHeadline, headlineVal, setHeadlineVal,
-  saveHeadline, saveAccent,
+  editingHeadline = false, setEditingHeadline = () => {}, headlineVal = '', setHeadlineVal = () => {},
+  saveHeadline = () => {}, saveAccent = () => {},
 }: {
   curator: { headline?: string | null }
   isOwner: boolean
   accentColor: string
   accentText: string
-  editingHeadline: boolean
-  setEditingHeadline: (v: boolean) => void
-  headlineVal: string
-  setHeadlineVal: (v: string) => void
-  saveHeadline: () => void
-  saveAccent: (hex: string) => void
+  // 🔧 2026-09-28 (e3 — 편집은 /u/me/manage 로): 편집 props 는 **선택**이 됐다.
+  //   `isOwner={false}` 로 부르는 표시 전용 호출(유어샵 헤더)이 빈 함수를 손으로 넘기지 않게.
+  editingHeadline?: boolean
+  setEditingHeadline?: (v: boolean) => void
+  headlineVal?: string
+  setHeadlineVal?: (v: string) => void
+  saveHeadline?: () => void
+  saveAccent?: (hex: string) => void
 }) {
   // ① 흐르는 마퀴(헤드라인) — 최상단, 풀블리드
   return (

@@ -49,10 +49,13 @@ describe('② 세 링크가 같은 모양을 공유한다', () => {
 })
 
 describe('③ 왼쪽 선이 위 줄과 맞는다', () => {
-  it('글리프 줄만 당기고 편집 버튼은 안 당긴다', () => {
-    // 타일이 없으면 글리프가 원 안에서 가운데라 ~8px 들어가 보인다.
-    expect(SRC).toMatch(/flex items-center -ml-2 empty:hidden/)
-    // 당김은 글리프 묶음에만 — 편집 버튼까지 당기면 SNS 가 없는 사람 화면에서 버튼만 튀어나간다.
-    expect(SRC).not.toMatch(/flex items-center gap-2 mt-3 -ml-2/)
+  // 🔧 2026-09-28 재조준(e3): 종전엔 `empty:hidden` 으로 "SNS 가 하나도 없으면 줄이 안 보이게" 했다.
+  //   지금은 줄 전체가 `{hasSns && …}` 로 **아예 렌더되지 않는다**(더 강하다). 당김(-ml-2)은 그대로
+  //   글리프 묶음에만 — 버튼은 다른 줄(상호명 줄)로 나가서 구조적으로 안 당겨진다.
+  it('글리프 줄만 당기고, SNS 가 없으면 줄 자체를 안 그린다', () => {
+    expect(SRC).toMatch(/flex items-center -ml-2/)
+    expect(SRC).toMatch(/\{hasSns && \(/)
+    // 당김이 버튼 자리로 번지지 않는다(버튼은 상호명 줄의 `ml-3` 묶음).
+    expect(SRC).not.toMatch(/ml-3 flex items-center gap-1\.5 shrink-0[^"]*-ml-2/)
   })
 })

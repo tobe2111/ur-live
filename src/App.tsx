@@ -115,6 +115,8 @@ const HostInvitePage = lazy(() => import('./pages/HostInvitePage'))
 const MyReturnsPage = lazy(() => import('./pages/MyReturnsPage'))
 // 🛡️ 2026-05-25: /u/me → 본인 공개페이지 redirect
 const UMeRedirectPage = lazy(() => import('./pages/UMeRedirectPage'))
+// 🔧 2026-09-28 (대표 확정 e3): 유어샵 관리 화면 — 유어샵은 손님 화면 하나뿐, 고치는 일은 전부 여기.
+const UShopManagePage = lazy(() => import('./pages/UShopManagePage'))
 const UserProfilePage = lazy(() => import('./pages/UserProfilePage'))
 const WishlistPage = lazy(() => import('./pages/WishlistPage'))
 const FollowingPage = lazy(() => import('./pages/FollowingPage'))
@@ -749,30 +751,13 @@ function AppContent() {
             <Route path="/product/:id" element={<PathRedirect base="/products" />} />
             <Route path="/search" element={<SearchPage />} />
 
-            {/* 🛡️ 2026-05-25 큐레이터 유어샵 (migration 0278) */}
-            {/* 🏁 2026-06-15 (옵션 1): /creator = 소개 콘솔 정식 URL (메인 앱 내, 별도 로그인 X). /u/me/earnings 는 하위호환 alias. */}
-            <Route path="/creator" element={
-              <ProtectedRoute requireUser>
-                <ErrorBoundary><CuratorEarningsPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/u/me/earnings" element={
-              <ProtectedRoute requireUser>
-                <ErrorBoundary><CuratorEarningsPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            {/* 🏁 2026-06-22 (대표 — 상품/이용권 전용 추가 페이지): 유어샵에 상품·이용권 핀 picker. */}
-            <Route path="/u/me/add" element={
-              <ProtectedRoute requireUser>
-                <ErrorBoundary><LinkshopPinPicker /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
+            {/* 🛡️ 큐레이터 유어샵(0278). /creator = 소개 콘솔 정식 URL, /u/me/earnings 는 하위호환 alias. */}
+            <Route path="/creator" element={<ProtectedRoute requireUser><ErrorBoundary><CuratorEarningsPage /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/u/me/earnings" element={<ProtectedRoute requireUser><ErrorBoundary><CuratorEarningsPage /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/u/me/manage" element={<ProtectedRoute requireUser><ErrorBoundary><UShopManagePage /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/u/me/add" element={<ProtectedRoute requireUser><ErrorBoundary><LinkshopPinPicker /></ErrorBoundary></ProtectedRoute>} />
             {/* 🛡️ 2026-05-25: /u/me → 본인 공개페이지 자동 redirect */}
-            <Route path="/u/me" element={
-              <ProtectedRoute requireUser>
-                <ErrorBoundary><UMeRedirectPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
+            <Route path="/u/me" element={<ProtectedRoute requireUser><ErrorBoundary><UMeRedirectPage /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/u/:handle" element={<ErrorBoundary><CuratorPage /></ErrorBoundary>} />
             {/* SPA fallback: /u/:handle/p/:productId 클릭 시 서버 302 가 작동 안 할 때 ref 부여 후 navigate. */}
             <Route path="/u/:handle/p/:productId" element={<CuratorPinClientRedirect />} />

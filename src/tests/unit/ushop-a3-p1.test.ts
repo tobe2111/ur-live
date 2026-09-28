@@ -25,32 +25,50 @@ describe('유어샵 안3 — 주인 띠 삭제 · 버튼 한 자리', () => {
   it('CuratorPage 에 주인 상단 안내 띠("ownerViewBar")가 없다', () => {
     expect(codeOnly(read(PAGE))).not.toContain('curator.ownerViewBar')
   })
-  it('SellerPublicPage 도 잉크 안내 띠·미리보기 띠가 없고 주인은 방문자 화면으로 시작한다', () => {
-    const src = codeOnly(read(SELLER))
-    expect(src).not.toContain('ownerModeNotice')
-    expect(src).not.toContain('previewBanner')
-    expect(src).toMatch(/useState\(true\)\s*\n\s*const ownerView = isOwner && !previewAsVisitor/)
+  // 🔧 2026-09-28 재조준(e3): 종전엔 "주인도 **방문자 화면으로 시작**한다"를 `useState(true)` + `ownerView`
+  //   조합으로 고정했다. e3 는 그 토글 자체를 없앴다 — 주인 화면이라는 것이 **존재하지 않는다**.
+  //   ⇒ 같은 의도를 더 강하게: 두 페이지 어디에도 편집 모드 상태가 없어야 한다.
+  it('두 유어샵 모두 "주인 화면"이라는 상태가 없다(손님 화면 하나뿐)', () => {
+    for (const f of [PAGE, SELLER]) {
+      const src = codeOnly(read(f))
+      expect(src, f).not.toContain('ownerModeNotice')
+      expect(src, f).not.toContain('previewBanner')
+      expect(src, f).not.toMatch(/\bownerView\b/)
+      expect(src, f).not.toMatch(/\bpreviewAsVisitor\b/)
+    }
   })
-  it('헤더가 편집 진입을 canEdit && !isOwner 한 자리로만 낸다(블루 면 하나)', () => {
+  // 🔧 2026-09-28 재조준(대표 확정 **c2 + e3**): 편집 진입이 [유어샵 편집] 블루 버튼 → **[관리] 아웃라인
+  //   알약 + `/u/me/manage` 이동**으로 바뀌었다. 지키려던 것은 그대로다 —
+  //   "주인/방문자 차이는 버튼 **한 자리**". 그 한 자리가 이제 `관리` 다.
+  //   그리고 c2 는 헤더에 **블루 면을 두지 않는다**(파랑은 할인율과 주 버튼 몫).
+  it('헤더의 주인 전용 자리는 [관리] 하나뿐이고 헤더에 블루 면이 없다', () => {
     const src = codeOnly(read(HEADER))
-    expect(src).toMatch(/\{canEdit && !isOwner && \(/)
-    expect(src).toMatch(/onClick=\{onEnterEdit\} className=\{editBtnCls\}/)
-    expect(src).toContain("bg-brand text-white")
+    expect(src.match(/\{canEdit && \(/g) || []).toHaveLength(1)
+    expect(src).toMatch(/<Link to="\/u\/me\/manage"/)
+    expect(src).not.toContain('bg-brand')
+    // 공유는 방문자에게도 보인다 — 손님이 친구에게 넘기는 것이 유어샵의 확산 경로다.
+    expect(src).toMatch(/onClick=\{onCopyLink\}/)
   })
   it('방문자에게 팔로우 버튼을 주지 않는다(대표: "그냥 방문자는 안보이면 되잖아")', () => {
     expect(codeOnly(read(HEADER))).not.toMatch(/팔로우|follow/i)
   })
-  it('두 페이지 모두 헤더에 canEdit/onEnterEdit 을 넘긴다(소유권 신호는 그대로 prop)', () => {
+  it('두 페이지 모두 헤더에 canEdit 을 넘긴다(소유권 신호는 그대로 prop)', () => {
     for (const f of [PAGE, SELLER]) {
       const src = read(f)
-      expect(src, f).toMatch(/<CuratorHeader[\s\S]*?canEdit=\{isOwner\}[\s\S]*?onEnterEdit=\{/)
+      expect(src, f).toMatch(/<CuratorHeader[\s\S]*?canEdit=\{isOwner\}/)
     }
+    // 🔴 헤더가 스스로 소유권을 판정하면 안 된다(check-linkshop-ownership ③ 과 같은 불변식).
+    expect(codeOnly(read(HEADER))).not.toContain('seller_token')
   })
-  it('헤더는 배너 히어로를 그리지 않는다(시안표 "사업자 배너: 없음") — 아바타 왼정렬', () => {
+  // 🔧 2026-09-28 재조준(9차 대표 확정 — "정 이라고 적혀있는 프로필 이미지 부분 없애는게 좋을 것 같아"):
+  //   배너 히어로 금지는 그대로. **아바타 요구는 뒤집혔다** — 라이브 대부분이 프로필 사진이 없어
+  //   그 자리는 사실상 항상 이니셜 원이었다(사람이 *없다*는 걸 보여주는 자리). ⇒ 금지로 전환.
+  it('헤더는 배너 히어로도 아바타도 그리지 않는다', () => {
     const src = codeOnly(read(HEADER))
     expect(src).not.toMatch(/aspect-\[16\/9\]/)
     expect(src).not.toContain('uploadBanner')
-    expect(src).toMatch(/w-14 h-14 rounded-full/)
+    expect(src).not.toMatch(/w-14 h-14 rounded-full/)
+    expect(src).not.toContain('profile_image.startsWith')
   })
 })
 

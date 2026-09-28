@@ -12,18 +12,17 @@
 
 import { DEAL_GRID_GAP } from '@/shared/deal-card-grid'
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
-import { curatorApi, type CuratorPageResponse, type CuratorPin } from '@/features/curator/api/curator-api'
+import type { CuratorPageResponse, CuratorPin } from '@/features/curator/api/curator-api'
 import { fetchCuratorPage, getCuratorCache } from '@/features/curator/curator-page-cache'
 import { useAuthStore } from '@/client/stores/auth.store'
 // 🏁 2026-08-27 (대표 신고 — 유어샵 이용권 UI 가 예전 디자인): 홈과 한 벌인 카드로.
 import GroupBuyFeedCard from './main-home/GroupBuyFeedCard'
 import { seededColor } from '@/utils/card-gradient'
 import type { Product as BrowseProduct } from './browse/types'
-import { Search, X, Trash2, Pencil, ArrowUpDown, LayoutDashboard } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import CuratorHeader from './curator-page/CuratorHeader'
 import LinkshopOnboardModal from './curator-page/LinkshopOnboardModal'
@@ -33,9 +32,7 @@ import { storeAffiliateRef } from '@/utils/affiliate-track'
 //   (SellerPublicPage lazy 청크 다운로드와 병렬). 독립 모듈이라 lazy 청크 분리 불변.
 import { warmSellerPublic } from './seller-public/seller-public-fetch'
 import EmptyUrShop from './curator-page/EmptyUrShop'
-// 🧱 2026-09-02 (file-size 래칫): 자기완결 블록 2개를 그대로 추출 — 아래 안3/안P1 을 얹을 자리.
-import OwnerEarningsStrip from './curator-page/OwnerEarningsStrip'
-import PinManageList from './curator-page/PinManageList'
+// 🔧 2026-09-28 (e3): OwnerEarningsStrip · PinManageList 는 `/u/me/manage`(UShopManagePage) 로 옮겨 갔다.
 // 🎫 2026-09-02 (대표 확정 — 유어샵 안3 + PC 안P1): 카테고리 칩(지도 B안과 같은 그림) + PC 좌측 열 QR.
 import PinCategoryChips, { pinCategory, type PinCategory } from './curator-page/PinCategoryChips'
 import UShopQrCard from './curator-page/UShopQrCard'
@@ -43,11 +40,7 @@ import UShopQrCard from './curator-page/UShopQrCard'
 // 🛡️ 2026-05-25 (C 옵션 URL 통합): linked seller 있으면 같은 페이지에서 SellerPublicPage 직접 render.
 //   redirect 없음 — URL 그대로 (/u/:handle 유지). lazy chunk — 일반 user 진입 시 chunk fetch 안 함.
 const SellerPublicPage = lazy(() => import('./SellerPublicPage'))
-// 🏁 2026-06-18 (사용자 결정 — 사업자 진입 "상태별 직접 노출"): 유어샵 오너뷰에 판매 진입 CTA.
-//   owner-only 렌더라 lazy — 방문자/익명 첫 paint 청크 불변.
-const SellOwnProductsCTA = lazy(() => import('./curator-page/SellOwnProductsCTA'))
-// 🪜 2026-08-27: 유어샵 수익 사다리(오너 전용) — 방문자 번들에 안 실리게 lazy.
-const EarnLadder = lazy(() => import('./curator-page/EarnLadder'))
+// 🔧 2026-09-28 (e3): 판매 진입 CTA · 수익 사다리도 `/u/me/manage` 로 옮겨 갔다(여기 lazy import 0).
 
 // 🔍 2026-08-31 (대표 "유어샵 나머지"): 검색창은 **눈으로 못 훑을 때만** 낸다.
 //   라이브 실측(2026-08-31 product_pins): 진열대 3곳 · 최다 4개 · 8개 이상 0곳.
@@ -87,12 +80,10 @@ export default function CuratorPage() {
   const [query, setQuery] = useState('')
   // 🎫 2026-09-02 안3: 카테고리 칩(핀 7개 이상일 때만 그려진다 — PinCategoryChips).
   const [cat, setCat] = useState<PinCategory>('all')
-  // 🎨 2026-06-16 유어샵 시안: '방문자 미리보기' — 본인이 남이 보는 화면 그대로 확인.
-  // 🎨 2026-06-19 (대표 "주인도 처음엔 방문자 화면 + 편집하기 버튼"): 기본 true(깔끔한 방문자뷰),
-  //   '편집하기' 누르면 false → 편집 모드(툴바·삭제·적립·판매 CTA). 매 진입 깔끔 뷰로 시작.
-  const [previewAsVisitor, setPreviewAsVisitor] = useState(true)
-  // 🎨 2026-06-17 (사용자 요청): 오너 기본 화면 = 방문자와 같은 카드 그리드. 순서 바꾸기는 드래그 모드 토글로.
-  const [reorderMode, setReorderMode] = useState(false)
+  // 🔧 2026-09-28 (대표 확정 **e3**): '방문자 미리보기' 토글과 '순서 바꾸기' 모드가 **여기서 사라졌다**.
+  //   유어샵은 이제 **손님 화면 하나뿐**이고(주인이 봐도 똑같다), 고치는 일은 전부 `/u/me/manage` 다.
+  //   종전 구조(ownerView = isOwner && !previewAsVisitor)는 손님 화면 위에 관리 chrome 을 덧칠해
+  //   주인/손님 화면이 갈리는 원인이었다.
   const currentUser = useAuthStore((s: any) => s.user)
   // 🛡️ 2026-05-27 (편집 UI 영구 fix): useAuthStore.user 가 sync 안 된 카카오 user 도 isOwner 인정.
   //   localStorage user_id fallback — RouteGuards / lib/api 의 토큰 검사 패턴과 일관.
@@ -196,8 +187,16 @@ export default function CuratorPage() {
     return () => clearTimeout(tmo)
   }, [isOwner, data?.curator])
 
-  async function copyLink() {
+  // 🔗 2026-09-28 (대표 확정 c2 — "링크를 적지 말고 그냥 공유하기 버튼 하나로"): 헤더에서 주소 텍스트를
+  //   뺐으므로 이 버튼이 주소를 **보내는** 유일한 자리다. 네이티브 공유 시트가 있으면 그걸(카톡이 거기 뜬다),
+  //   없으면 종전대로 클립보드 복사 + 토스트.
+  async function shareShop() {
     const fullUrl = `${window.location.origin}/u/${handle}`
+    const nav = navigator as Navigator & { share?: (d: ShareData) => Promise<void> }
+    if (typeof nav.share === 'function') {
+      try { await nav.share({ title: data?.curator?.name || '유어샵', url: fullUrl }); return }
+      catch { /* 사용자가 취소했거나 미지원 — 복사로 폴백 */ }
+    }
     try {
       await navigator.clipboard.writeText(fullUrl)
       toast.success(t('curator.linkCopied', { defaultValue: '링크가 복사되었어요' }))
@@ -251,9 +250,6 @@ export default function CuratorPage() {
     const byCat = cat === 'all' ? arr : arr.filter(p => pinCategory(p) === cat)
     return q ? byCat.filter(p => (`${p.product_name} ${p.note || ''}`).toLowerCase().includes(q)) : byCat
   }
-  const onPinDeleted = (pinId: number) => setData(prev => prev ? { ...prev, pins: prev.pins.filter(p => p.id !== pinId) } : prev)
-  // 🎨 2026-06-16 시안: 본인이 '전체 미리보기' 누르면 방문자 화면 그대로(편집/관리 숨김) 렌더. 실제 소유권(isOwner)은 보존.
-  const ownerView = isOwner && !previewAsVisitor
   return (
     <>
       <SEO
@@ -294,79 +290,16 @@ export default function CuratorPage() {
         <div className="ur-ushop-side">
         <CuratorHeader
           curator={curator}
-          isOwner={ownerView}
           canEdit={isOwner}
-          onEnterEdit={() => { setPreviewAsVisitor(false); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
-          onExitEdit={() => { setPreviewAsVisitor(true); setReorderMode(false); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
           counts={{ pins: pins.length }}
-          accountType="user"
-          onCopyLink={copyLink}
-          onCuratorUpdate={(next) => setData(prev => prev ? { ...prev, curator: { ...prev.curator, ...next } } : prev)}
+          onCopyLink={shareShop}
         />
         <UShopQrCard />
         </div>
         <div className="ur-ushop-main">
-        {/* 🎨 2026-06-17 (C — 편집 모드 정리): 네이비 편집배너 + 미리보기 카드 + 순서바꾸기 버튼(3블록)을
-            한 줄 슬림 툴바로 통합. 오너 기본 화면을 방문자 공개뷰(헤더+핀)에 가깝게 — 관리 chrome 최소화.
-            기능(미리보기/순서/인라인 편집)은 전부 보존. design: docs/design/linkshop-edit-declutter.md */}
-        {ownerView && pins.length > 0 && !reorderMode && (
-          <div className="max-w-3xl mx-auto px-4 pt-3">
-            <div className="flex items-center gap-2 rounded-xl border border-line bg-gray-50 dark:bg-[#0E0E0E] px-2.5 py-1.5">
-              <span className="flex items-center gap-1.5 mr-auto pl-1 text-[12px] font-bold text-gray-500 dark:text-gray-400">
-                <Pencil className="w-3.5 h-3.5 text-gray-400" aria-hidden="true" />
-                {t('curator.editMode', { defaultValue: '편집 모드' })}
-                <span className="hidden sm:inline font-medium text-gray-400 dark:text-gray-500">· {t('curator.tapToEdit', { defaultValue: '눌러서 바로 수정' })}</span>
-              </span>
-              {pins.length > 1 && (
-                <button
-                  onClick={() => setReorderMode(true)}
-                  className="inline-flex items-center gap-1 rounded-lg border border-gray-200 dark:border-transparent bg-white dark:bg-white/[0.06] px-2.5 py-1.5 text-[12px] font-bold text-gray-700 dark:text-gray-200 active:opacity-70"
-                ><ArrowUpDown className="w-3.5 h-3.5" aria-hidden="true" />{t('curator.reorder', { defaultValue: '순서' })}</button>
-              )}
-              {/* 🎨 2026-06-17 (사용자 — 버튼 통합): 헤더의 '수익 대시보드' 버튼을 이 툴바로 합침 (헤더 2버튼 그리드 제거) */}
-              <button
-                onClick={() => navigate('/u/me/earnings')}
-                className="inline-flex items-center gap-1 rounded-lg border border-gray-200 dark:border-transparent bg-white dark:bg-white/[0.06] px-2.5 py-1.5 text-[12px] font-bold text-gray-700 dark:text-gray-200 active:opacity-70"
-              ><LayoutDashboard className="w-3.5 h-3.5" aria-hidden="true" />{t('curator.dashboardBtn', { defaultValue: '대시보드' })}</button>
-              {/* 🎫 2026-09-02: '완료' 는 헤더의 [편집 완료] 블루 버튼 하나로 — 여기 중복 버튼 삭제. */}
-            </div>
-          </div>
-        )}
-        {/* 🛠️ 2026-06-16: 핀이 있을 때만 적립 — 갓 가입(온보딩)·빈 유어샵엔 0/0/0 노이즈 숨김.
-            2026-06-17 (C): 큰 네이비 카드 → 한 줄 compact (상세는 콘솔). */}
-        {ownerView && pins.length > 0 && !reorderMode && <OwnerEarningsStrip />}
-        {/* 🪜 2026-08-27 (대표 확정): 돈 버는 길 3개를 순서대로. `pins.length` 로 막지 않는다 —
-            **빈 유어샵일수록** 뭘 해야 하는지가 필요하고, 그때 보이는 건 "적립 ₩0" 뿐이었다. */}
-        {ownerView && !reorderMode && (
-          <Suspense fallback={null}>
-            <EarnLadder dealCount={dealPins.length} pinCount={pins.length} />
-          </Suspense>
-        )}
-        {/* 🏁 2026-06-18 (사용자 결정 — 사업자 진입 "상태별 직접 노출"): 오너 화면에 판매 진입 CTA
-            (미등록=사업자 등록 / 승인=빠른 상품등록+셀러 대시보드 / 심사·반려=상태). reorder 중엔 숨김. */}
-        {ownerView && !reorderMode && (
-          <div className="max-w-3xl mx-auto px-4 pt-3">
-            <Suspense fallback={null}><SellOwnProductsCTA /></Suspense>
-          </div>
-        )}
-        {/* 🎨 2026-06-17 (사용자 요청 — 오너 화면 불일치 해소): 오너도 방문자와 동일한 그라데이션 카드 그리드를
-            기본으로 보고, 카드마다 삭제(✕) + '순서 바꾸기'(드래그 모드)만 추가. 빈 유어샵은 온보딩 빈 상태. */}
-        {ownerView && pins.length === 0 ? (
-          <EmptyUrShop handle={curator.handle} isOwner curatorName={curator.name} curatorId={curator.id} />
-        ) : ownerView && reorderMode ? (
-          <div className="max-w-3xl mx-auto px-4 pt-3">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[14px] font-extrabold text-gray-900 dark:text-white">{t('curator.reorderTitle', { defaultValue: '핀 순서 바꾸기' })}</span>
-              <button onClick={() => setReorderMode(false)} className="px-3.5 py-1.5 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-[#11141C] text-[12.5px] font-bold active:opacity-80">{t('curator.done', { defaultValue: '완료' })}</button>
-            </div>
-            <PinManageList
-              pins={pins}
-              onReorder={(next) => setData(prev => prev ? { ...prev, pins: next } : prev)}
-              onDeleted={onPinDeleted}
-            />
-          </div>
-        ) : (
-          <>
+        {/* 🔧 2026-09-28 (대표 확정 **e3**): 여기 있던 주인 전용 다섯 덩어리가 전부 `/u/me/manage` 로 나갔다
+            (편집 툴바, 적립 한 줄, 돈 버는 길 3단계, 판매 진입 CTA, 순서 바꾸기).
+            남은 것은 **손님이 보는 화면 하나**뿐이다. 되돌리려면 그 페이지에서 이리로 옮기면 된다. */}
             {/* 🎨 2026-06-17 (C): '순서 바꾸기' 진입 버튼은 상단 슬림 툴바로 이동(중복 행 제거). */}
             {pins.length > 0 && <PinCategoryChips pins={pins} value={cat} onChange={setCat} />}
             {/* 🔍 2026-06-16 유어샵 시안: 검색창 — 상품명 + 추천 코멘트 라이브 필터(SEARCH_MIN_PINS 이상일 때만). */}
@@ -410,25 +343,23 @@ export default function CuratorPage() {
                         {t('curator.dealPinsSub', { defaultValue: '팔리면 소개비가 붙는 곳이에요.' })}
                       </p>
                     </div>
-                    <PinGrid pins={applyQ(dealPins)} handle={curator.handle} isOwner={ownerView} onPinDeleted={onPinDeleted} kind="voucher" />
+                    <PinGrid pins={applyQ(dealPins)} handle={curator.handle} kind="voucher" />
                   </>
                 )}
                 {applyQ(shopPins).length > 0 && (
                   <>
                     <div className="max-w-3xl mx-auto px-4 pt-4 pb-1"><h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white">{t('curator.shopPinsTitle', { defaultValue: '추천템' })} {shopPins.length}</h3></div>
-                    <PinGrid pins={applyQ(shopPins)} handle={curator.handle} isOwner={ownerView} onPinDeleted={onPinDeleted} kind="shop" />
+                    <PinGrid pins={applyQ(shopPins)} handle={curator.handle} kind="shop" />
                   </>
                 )}
                 {applyQ(voucherPins).length > 0 && (
                   <>
                     <div className="max-w-3xl mx-auto px-4 pt-7 pb-1"><h3 className="text-[16px] font-extrabold text-gray-900 dark:text-white">{t('curator.voucherPinsTitle', { defaultValue: '교환권 · 동네딜' })} {voucherPins.length}</h3></div>
-                    <PinGrid pins={applyQ(voucherPins)} handle={curator.handle} isOwner={ownerView} onPinDeleted={onPinDeleted} kind="voucher" />
+                    <PinGrid pins={applyQ(voucherPins)} handle={curator.handle} kind="voucher" />
                   </>
                 )}
               </>
             )}
-          </>
-        )}
         </div>
         </div>
         {/* 🔗 2026-06-17 (사용자 요청): 유어샵 주소 변경 + 공유는 헤더의 '내 유어샵 주소' 카드로 통합 이동
@@ -441,7 +372,7 @@ export default function CuratorPage() {
   )
 }
 
-function PinGrid({ pins, handle, isOwner, onPinDeleted, kind }: { pins: CuratorPin[]; handle: string; isOwner: boolean; onPinDeleted: (id: number) => void; kind?: 'shop' | 'voucher' }) {
+function PinGrid({ pins, handle, kind }: { pins: CuratorPin[]; handle: string; kind?: 'shop' | 'voucher' }) {
   const { t } = useTranslation()
   // 🏷️ 2026-06-19 (대표 — "핀" 내부용어 대신 상품/동네딜): 탭에 맞춘 추가 라벨.
   // 🏁 2026-06-22 (대표 — "상품/이용권 모두 선택하는 전용 페이지"): /browse·/group-buy 로 흩어지던 동선을
@@ -456,18 +387,9 @@ function PinGrid({ pins, handle, isOwner, onPinDeleted, kind }: { pins: CuratorP
     //   모바일·PC 프레임 모두 2열 유지(타 페이지 1열 전역 결정엔 영향 없음).
     <div className={`max-w-3xl mx-auto p-4 grid grid-cols-2 ${DEAL_GRID_GAP}`}>
       {pins.map((pin, idx) => (
-        <PinCard key={pin.id} pin={pin} handle={handle} isOwner={isOwner} aboveFold={idx < 4} index={idx} onDeleted={onPinDeleted} />
+        <PinCard key={pin.id} pin={pin} handle={handle} aboveFold={idx < 4} index={idx} />
       ))}
-      {/* 🏁 2026-06-16 유어샵 개선안: 본인이 핀 채워진 화면에서도 항상 추가 동선 — 그리드 끝 점선 카드. */}
-      {isOwner && (
-        <Link
-          to={addTo}
-          className="col-span-2 flex items-center justify-center gap-2 h-[52px] rounded-xl border-[1.5px] border-dashed border-rule-strong bg-surface text-gray-500 dark:text-gray-400 text-sm font-bold active:scale-[0.99] transition-transform"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-          {addLabel}
-        </Link>
-      )}
+      {/* 🔧 2026-09-28 (e3): '+ 추가' 점선 카드는 `/u/me/manage` 로 나갔다(손님 화면엔 없다). */}
     </div>
   )
 }
@@ -476,27 +398,9 @@ function PinGrid({ pins, handle, isOwner, onPinDeleted, kind }: { pins: CuratorP
 //   커스텀 카드(EditorialProductCard) 그만 만들고 영구 고정"): 표준 카드 BrowseProductCard 를 그대로 재사용
 //   → 쇼핑 카드 디자인과 영구 동기화(2개씩/그라데이션). 클릭만 핀 redirect(/u/:handle/p/:id, to override)로
 //   보내 클릭집계+추천적립 루프 유지(잠금 불변).
-function PinCard({ pin, handle, isOwner, aboveFold, index, onDeleted }: { pin: CuratorPin; handle: string; isOwner: boolean; aboveFold: boolean; index: number; onDeleted: (id: number) => void }) {
+function PinCard({ pin, handle, aboveFold, index }: { pin: CuratorPin; handle: string; aboveFold: boolean; index: number }) {
   const { t } = useTranslation()
-  const [deleting, setDeleting] = useState(false)
-
-  async function handleDelete(e: React.MouseEvent) {
-    e.preventDefault()
-    e.stopPropagation()
-    if (deleting) return
-    const ok = await confirmDialog({ message: t('curator.confirmDeletePinMine', { defaultValue: '내 유어샵에서 이 핀을 삭제할까요?' }), danger: true })
-    if (!ok) return
-    setDeleting(true)
-    try {
-      const res = await curatorApi.removePin(pin.id)
-      if (res?.success) { onDeleted(pin.id); toast.success(t('curator.pinDeleted', { defaultValue: '핀 삭제됨' })) }
-      else { toast.error(t('curator.deleteFailed', { defaultValue: '삭제 실패' })) }
-    } catch {
-      toast.error(t('curator.deleteFailed', { defaultValue: '삭제 실패' }))
-    } finally {
-      setDeleting(false)
-    }
-  }
+  // 🔧 2026-09-28 (e3): 핀 삭제는 `/u/me/manage` 의 '담은 이용권 관리' 로 나갔다.
 
   // 🏁 2026-06-26 (대표 — 유어샵 카드를 쇼핑 카드와 동일하게): 할인/평점/구매수까지 전달.
   //   2026-08-27: 카드가 `GroupBuyFeedCard`(홈과 동일)로 바뀌면서 `category` 도 넘긴다 —
@@ -544,18 +448,6 @@ function PinCard({ pin, handle, isOwner, aboveFold, index, onDeleted }: { pin: C
                 <span className="absolute top-2 left-2 z-10 w-6 h-6 rounded-full bg-white text-[#16181C] text-[11.5px] font-black tabular-nums flex items-center justify-center shadow-lift pointer-events-none">  {/* light-fixed: 사진 위 */}
         {index + 1}
       </span>
-      {isOwner && (
-        // 🎨 2026-06-19 (사용자 요청 — ✕ 대신 삭제 버튼 + 세련화): 휴지통 + '삭제' 글래스 pill, 누르면 빨강.
-        <button
-          onClick={handleDelete}
-          disabled={deleting}
-          aria-label={t('curator.deletePin', { defaultValue: '핀 삭제' })}
-          className="absolute top-2 right-2 z-10 inline-flex items-center gap-1 h-7 pl-2 pr-2.5 rounded-full bg-black/45 backdrop-blur-md ring-1 ring-white/25 text-white text-[11px] font-semibold shadow-sm hover:bg-red-500 hover:ring-red-400/40 active:bg-red-500 transition-colors disabled:opacity-50"
-        >
-          <Trash2 className="w-3 h-3" aria-hidden="true" />
-          {t('curator.delete', { defaultValue: '삭제' })}
-        </button>
-      )}
     </div>
   )
 }

@@ -89,14 +89,18 @@ describe('③ 딜 있는 핀이 맨 위 · 주인 순서는 안 덮는다', () =
 })
 
 describe('④ 사다리는 빈 유어샵에서도 보인다', () => {
+  // 🔧 2026-09-28 재조준(e3): 사다리가 유어샵 → `/u/me/manage` 로 이사했다.
+  //   지키는 것은 그대로다 — **빈 유어샵일수록 뭘 해야 하는지가 필요**하므로 pins 로 막지 않는다.
   it('pins.length 로 막지 않는다', () => {
-    const page = read(PAGE)
+    const page = read('src/pages/UShopManagePage.tsx')
     const i = page.indexOf('<EarnLadder')
     expect(i, '사다리가 배치되지 않았다').toBeGreaterThan(-1)
-    // 사다리를 감싸는 조건절을 앞쪽에서 잘라 본다 — 거기에 pins.length 게이트가 있으면 안 된다.
-    const guard = page.slice(page.lastIndexOf('{ownerView', 0 + i), i)
+    // 사다리 **앞 200자**를 본다 — 거기에 pins 게이트가 있으면 빈 샵에서 숨는다.
+    //   (종전엔 `{ownerView` 를 앵커로 잘랐는데 e3 로 그 상태가 사라졌다. 앵커가 없으면
+    //    `lastIndexOf` 가 -1 → slice(-1, i) 가 **엉뚱한 구간**을 집어 늘 통과했을 것이다.)
+    const guard = page.slice(Math.max(0, i - 200), i)
     expect(guard, '빈 유어샵에서 사다리가 숨으면, 그때 보이는 건 "적립 ₩0" 뿐이다')
-      .not.toContain('pins.length > 0')
+      .not.toMatch(/pins\.length\s*[><=]/)
   })
   /**
    * 🛑 2026-09-16 — 이 검사는 **재조준**됐다(삭제가 아니다).
