@@ -1,7 +1,7 @@
 /**
  * 🏪 매장 채널(직접/중개) **필수 선택 — 미지정 폴백 폐지** (2026-09-07 대표 결재 Q3-3)
  *
- * 결재: `docs/decisions/2026-09-07-actor-benefit-conflicts.md` — *"기본안대로 모두 승인"* ⇒ Q3-3
+ * 결재: `docs/decisions/archive/2026-09-07-actor-benefit-conflicts.md` — *"기본안대로 모두 승인"* ⇒ Q3-3
  *   "미지정 매장은 등록 시 채널을 반드시 고르게 폼을 바꾼다".
  *
  * ## 무엇을 고정하나

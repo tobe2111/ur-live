@@ -18,3 +18,11 @@
 
 ## 지금 열린 항목
 `grep -l "^상태: open" docs/decisions/*.md`
+
+## 처리 끝난 결재는 `archive/` 로
+어드민 결재함은 이 폴더의 `*.md` 를 **번들에 통째로 인라인**한다(비재귀 glob). 그래서 끝난 결재가
+쌓이면 번들 예산을 계속 밀어 올린다 — 2026-09-28 까지 그 이유로만 **아홉 번** 상향됐다.
+⇒ `상태: rejected` 이거나 `approved` + **반영 커밋에 해시**인 것은 `docs/decisions/archive/` 로 옮긴다
+(삭제 아님 · 코드 변경 0 · `git mv` 로 되돌아온다). 판정 SSOT 는 `parse-decision.ts` 의 `fullyApplied`.
+⚠️ **`approved` 인데 반영 커밋이 비었거나 "머지 대기" 면 옮기지 말 것** — 어드민이 `승인 · 구현 중` 으로
+추적하는 **살아 있는 일**이다. 자세한 규칙: `archive/README.md`.

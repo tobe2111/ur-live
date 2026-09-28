@@ -1,7 +1,7 @@
 # 공구 서비스 분리 — 결제 동선 조각(#1149 의 첫 조각을 되살림)
 
 대표 2026-09-16: *"너가 할 수 있는 거 순서대로 진행"*
-결재 근거: `docs/decisions/2026-09-15-stalled-pr-triage.md` (선택지 2 — 조각내서 순서대로)
+결재 근거: `docs/decisions/archive/2026-09-15-stalled-pr-triage.md` (선택지 2 — 조각내서 순서대로)
 잠금 승인: 대표 `AskUserQuestion` **"허가 — 배너 + 버튼 둘 다"**
 
 ## 1. 무엇을 되살렸나
@@ -96,7 +96,7 @@ byte-불변 확인(grep 카운트 main↔현재 동일): `confirmPayment` 3 · `
 
 ## 8. 다음 세션 첫 액션
 
-`docs/decisions/2026-09-15-stalled-pr-triage.md` 의 다음 조각. 순서는 그 결정문대로:
+`docs/decisions/archive/2026-09-15-stalled-pr-triage.md` 의 다음 조각. 순서는 그 결정문대로:
 **⑤⑥(운영자 온보딩) → ⑧⑩⑪(어드민 분리) → ⑫(경로 이전)**.
 ⑫ 는 표적이 101곳/60파일로 늘었으니 **마지막에 최신 링크 수로 한 번에** — 옛 표(49곳/34파일)를
 믿지 말 것.

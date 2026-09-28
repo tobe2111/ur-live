@@ -167,7 +167,7 @@
 
 | 게이트 | 뜻 | 기본 | 상태 | 출처 |
 |---|---|---|---|---|
-| 자동 승인 임계값 | `pending → approved` 를 원장 무결성 통과 + 건당 ≤ N + 계좌 검증 시 자동. `sent` 는 항상 사람 | 결재 기본안 N = 300,000원, 게이트 `payout_auto_approve_enabled` | **결재 open(보류)**. 대표 2026-09-08 "3번은 고민이네". **코드에 없음** | `docs/decisions/2026-09-07-payout-auto-approve-threshold.md` |
+| 자동 승인 임계값 | `pending → approved` 를 원장 무결성 통과 + 건당 ≤ N + 계좌 검증 시 자동. `sent` 는 항상 사람 | 결재 기본안 N = 300,000원, 게이트 `payout_auto_approve_enabled` | **결재 open(보류)**. 대표 2026-09-08 "3번은 고민이네". **코드에 없음** | `docs/decisions/archive/2026-09-07-payout-auto-approve-threshold.md` |
 | `SHOPPING_LEDGER_ENABLED` (env) | 일반 쇼핑 매출을 원장에 net 크레딧 | false | OFF. 쇼핑 탭 재오픈 전 S3 필수 | `money-gates-inventory.md`, S3 |
 | `settlement_skip_ledgered` | 원장에 잡힌 주문은 자동정산에서 제외(이중 정산 방지) | false | OFF. 원장 적립이 실제로 돌기 시작한 뒤 켠다 | `money-switch-fields.ts` |
 | 도매 정산 성숙 | 공급자 정산은 라인 `line_status='SHIPPED'` 일 때만 성숙(시간만으로 지급되던 것 차단) | 코드 | 상시 | `src/features/supply/api/supply-settlement.ts:272-279` |
@@ -196,7 +196,7 @@
 | 2026-08-31 | 대표 재검토: "10%도 받으니 07-08 전제가 바뀌었다". 확정 2건: ① 영입 2%는 직접 입점 매장만 ② 예산 아비터는 staging 뒤 켠다 | ① 코드 반영 ② S1 대기 |
 | 2026-09-07 | 결재 Q4-2 승인: 07-08 원칙 폐기. **성장 커미션은 플랫폼 수수료 안에서 유어딜이 부담하되 총합 ≤ 수수료 − PG 준비금을 아비터가 강제** | 문서 정리 머지(PR #1394). 아비터 ON 은 대표가 S1 실결제 뒤 |
 
-출처: `docs/design/commission-funding-restructure.md` §확정 원칙(폐기 표기), `urdeal-platform-model.md` §5-3, `docs/decisions/2026-09-07-actor-benefit-conflicts.md`.
+출처: `docs/design/commission-funding-restructure.md` §확정 원칙(폐기 표기), `urdeal-platform-model.md` §5-3, `docs/decisions/archive/2026-09-07-actor-benefit-conflicts.md`.
 
 현재 유효한 스위치 상태(코드 기본 기준, 라이브는 어드민 확인):
 
@@ -265,7 +265,7 @@
 | `BLOG_AI_DRAFTS_ENABLED` | env | false | `ANTHROPIC_API_KEY` 설정 + 주간 초안 필요 시 | OFF | OPS_GATES |
 | `wholesale_auto_grade_enabled` | setting | 0 | 켜지 않는다(도매몰 철거) | OFF | OPS_GATES |
 | `seller_auto_approval_enabled` | setting | (코드 없음) | 결재 승인됨, 구현 대기 | **코드에 없음** | `docs/decisions/2026-09-07-seller-auto-approval.md` |
-| `payout_auto_approve_enabled` / `_max_krw` | setting | (코드 없음) | 결재 보류 | **코드에 없음** | `docs/decisions/2026-09-07-payout-auto-approve-threshold.md` |
+| `payout_auto_approve_enabled` / `_max_krw` | setting | (코드 없음) | 결재 보류 | **코드에 없음** | `docs/decisions/archive/2026-09-07-payout-auto-approve-threshold.md` |
 
 ⚠️ `docs/design/money-gates-inventory.md`(2026-08-25) 는 위 게이트가 "전부 OFF" 라고 적는다. 그 뒤 셋이 라이브 ON 됐다(08-29, 09-04). 라이브 상태는 그 문서가 아니라 어드민에서 읽을 것.
 
@@ -304,7 +304,7 @@
 | 대리등록 상품, 상품 검수 | `/admin/products`, `/admin/group-buy`, `/admin/dongnedeal-import` | 수동 | App.tsx 라우트 |
 | 상권 쿠폰 영수증(경로 A) | `/admin/district-coupons`, `/admin/district-report` | 오프라인 영수증은 어드민 승인, 온라인 자동발급(경로 B)은 env 게이트 OFF | `CLAUDE.md` audit log 2026-07-13 |
 | 블로그 발행 | `/admin/blog` | AI 초안은 항상 비공개 초안, 발행은 사람. 주간 cron 은 `BLOG_AI_DRAFTS_ENABLED` OFF | `CLAUDE.md` §블로그 시드 |
-| 매장 영입 파이프라인 | `/admin/store-prospects` 상단 패널 | 주 20건 후보 + 제안 문구 + 추적표까지 자동, **발송은 대표**(PR #1406 머지) | `docs/decisions/2026-09-07-store-acquisition-pipeline.md` |
+| 매장 영입 파이프라인 | `/admin/store-prospects` 상단 패널 | 주 20건 후보 + 제안 문구 + 추적표까지 자동, **발송은 대표**(PR #1406 머지) | `docs/decisions/archive/2026-09-07-store-acquisition-pipeline.md` |
 | 인플루언서 제휴 제안 | `/admin/influencer-outreach` | 초안까지, 발송은 대표. `outreach_auto_send` OFF | OPS_GATES |
 | 결재함 | `/admin/decisions` | `docs/decisions/*.md` 가 정본, 화면은 거울 + 입력창 | `AdminDecisionsPage.tsx` |
 | 게이트 현황 | `/admin/system-monitoring` | 조회 전용 | `admin-system-monitoring.routes.ts` |
