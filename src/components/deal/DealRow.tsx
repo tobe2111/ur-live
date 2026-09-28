@@ -85,7 +85,16 @@ export default memo(function DealRow({
             <span className="text-[17px] font-extrabold text-gray-900 dark:text-white tracking-tight">{formatNumber(price)}</span>
             <span className="text-[12px] font-bold text-gray-900 dark:text-white">{unit}</span>
             {hasStrike && (
-              <span className="text-[11px] ml-1 leading-none line-through text-gray-300 dark:text-gray-600">{formatNumber(originalPrice!)}{unit}</span>
+              /*
+               * 🩸 2026-09-28 — 취소선 정가를 **읽을 수 있는 회색**으로 (gray-300/600 → gray-400/500).
+               *   유어샵이 이 부품으로 옮겨 온 날 라이브에서 재 보니 정가가 다크 **2.14:1**(라이트 1.50:1)
+               *   이었다. 유어샵의 종전 카드는 같은 글자를 5.04:1 로 그렸으니 그 화면엔 **후퇴**였고,
+               *   나머지 9개 화면은 원래부터 이 값이었다(= 나 혼자 만든 게 아니라 부품의 값이다).
+               *   `check-dark-contrast` 는 이걸 못 봤다 — 그 가드가 목록 화면에서 **빈 껍데기**를 재고
+               *   있기 때문이다(결재 `2026-09-28-dark-contrast-guard-coverage.md`).
+               *   지금 값: 라이트 3.65:1 · 다크 3.10:1 — 판매가(≈16:1)보다 한참 약해 위계는 그대로다.
+               */
+              <span className="text-[11px] ml-1 leading-none line-through text-gray-400 dark:text-gray-500">{formatNumber(originalPrice!)}{unit}</span>
             )}
           </div>
         )}
