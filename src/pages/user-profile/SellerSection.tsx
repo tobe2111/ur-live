@@ -270,7 +270,9 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
       <div className="lg:flex-1 lg:min-w-0">
       <TicketCard bandLeft="오늘" bandRight={todayLabelKST()}>
         <div className="px-4 pt-4 pb-4">
-          <p className="text-[30px] font-extrabold tabular-nums leading-none text-gray-900 dark:text-white">
+          {/* 🖥️ 2026-09-28 `whitespace-nowrap`: PC 가 2열이 되면서 이 카드가 ≈340px 로 좁아졌고
+              `412,000` 과 `원` 이 **두 줄로 갈라졌다**(금액은 한 덩어리로 읽혀야 한다). */}
+          <p className="text-[30px] font-extrabold tabular-nums leading-none whitespace-nowrap text-gray-900 dark:text-white">
             {formatNumber(store.today_revenue)}
             <span className="text-[16px] font-bold text-gray-500 dark:text-gray-400 ml-1">원</span>
           </p>
