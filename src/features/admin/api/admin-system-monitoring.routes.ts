@@ -340,6 +340,7 @@ const OPS_GATES: OpsGate[] = [
   // 🪙 2026-09-01 — 이용권을 "딜 일부 + 카드 나머지" 로 살 수 있게 하는 스위치(대표 "포인트 차감처럼").
   //   OFF 면 딜 사용액이 항상 0 이고 총액과 다른 청구액은 종전처럼 AMOUNT_MISMATCH 로 막힌다.
   { key: 'voucher_partial_deal_enabled', kind: 'setting', label: '이용권 부분결제(딜+카드)', default_value: 'false', staging_ref: 'S12', turn_on_when: '🔴 **먼저 influencer_deal_bonus_pct = 0** — 딜 보너스 20%가 살아 있으면 딜은 액면가보다 비싸고(1,000딜 = 유어딜 부채 1,200원), 마진 5~10%인 이용권에 쓰이면 팔릴수록 적자다(교환권은 소비자 마크업 20%가 상쇄하지만 이용권엔 그 상쇄가 없다). 그다음 S12 실결제로 카드+딜=총액·매장 정산 총액 불변·환불 복원 확인' },
+  { key: 'voucher_partial_refund_enabled', kind: 'setting', label: '이용권 일부 환불(장 단위)', default_value: 'false', staging_ref: 'P17', turn_on_when: '🔴 P17 실결제로 ① 3장 중 1장 환불 → 금액이 **장수에서 계산**되고(임의 금액 입력 불가) ② 무른 1장만 `refunded`, 남은 2장은 `unused` ③ 이미 쓴 장은 대상 제외 ④ 동시 요청에도 `refunded_amount` 이중 가산 0 ⑤ 토스 거절 시 예약 롤백 확인. ⚠️ 어필리에이트·영입 커미션은 비례 역전이 없어 무른 장의 몫이 남는다(적게 회수하는 쪽 — 감수)' },
   // 🧾 2026-09-01 — 후기 보너스를 **매장 부담**으로 돌리는 스위치(대표 "매장 사장님이 부담하게끔").
   //   OFF 면 판정이 항상 `platform` 이라 차감 경로에 아무것도 안 들어온다(= 오늘과 동일).
   { key: 'review_bonus_owner_funded', kind: 'setting', label: '후기 보너스 매장 부담(정산 차감)', default_value: 'false', staging_ref: 'S11', turn_on_when: '매장이 셀러 대시보드에서 금액을 직접 넣기 시작하고, S11 로 원장 debit 1회·재승인 이중차감 0 이 확인되면' },
