@@ -6266,7 +6266,7 @@
     "loadFailed": "ライブラリを読み込めませんでした"
   },
   "shopping": {
-    "sectionTitle": "利用履歴",
+    "sectionTitle": "購入したもの",
     "wishlist": "[TODO:ja] 찜한 상품",
     "voucher": "交換券",
     "voucherSub": "店舗でQR・コードで使用",
@@ -6922,9 +6922,9 @@
     "gifticonEntrySub": "ディールでコンビニ・カフェのギフト券を購入"
   },
   "my": {
-    "earningsGroupTitle": "収益・紹介",
+    "earningsGroupTitle": "紹介したもの",
     "earningsGroupSub": "紹介報酬, UrShop収益, 招待",
-    "settingsGroupTitle": "設定",
+    "settingsGroupTitle": "設定・アカウント",
     "settingsGroupSub": "通知, テーマ, 言語, アプリ情報",
     "affiliateLinkTitle": "商品紹介リンク",
     "affiliateLinkSub": "リンク経由の購入でディール獲得 — 実績を見る",

@@ -206,9 +206,13 @@ export default function UserProfilePage() {
           모바일: 종전 흐름(딜 잔액 카드 → 주문 현황 → 리뷰어 → 이용 내역 목록) 그대로. */}
       {isPc ? (
       <>
-        <AccountPcPane counts={counts} userName={userName} profileImage={profileImage} onEditProfile={() => setEditOpen(true)} sellerSeats={sellerSeats} />
-        {/* 🏪 PC 는 프로필 카드가 이 칸의 머리다 — 그 아래에 둔다(모바일은 헤더가 따로 있어 맨 위). */}
+        {/* 🖥️ 2026-09-28 (대표 확정 **PC 1안 — "오늘이 머리"**): 판매가 **맨 위**로 올라왔다.
+            종전엔 프로필 카드가 이 칸의 머리였는데, PC 를 여는 사장님이 보려는 건 *오늘 얼마고 무엇이
+            대기인가* 하나다. 프로필·숫자 넷·티켓·타일은 그대로 그 아래에 있다(하나도 안 지웠다 —
+            시안이 그것들을 빠뜨렸던 게 09-28 에 "PC가 심플하다" 로 드러난 실수다).
+            ⚠️ 모바일은 이 분기를 안 타고 아래 `<>` 쪽이 그대로다(종전과 동일 순서). */}
         <SellerSection state={sellerSeats} />
+        <AccountPcPane counts={counts} userName={userName} profileImage={profileImage} onEditProfile={() => setEditOpen(true)} sellerSeats={sellerSeats} />
       </>
       ) : (
       <>
@@ -258,7 +262,7 @@ export default function UserProfilePage() {
       {/* 🗺️ 2026-07-02 동네 리뷰어 레벨 (카카오맵 리뷰 게이미피케이션) — 자산 흐름 안에서 동기부여 노출 */}
       <ReviewLevelCard />
 
-      {/* v4 쇼핑 InsetGroup — 나의 이용 내역 (이용권·자산 / 관심 / 주문·배송) */}
+      {/* v4 쇼핑 InsetGroup — '내가 산 것'(이용권·자산 / 관심 / 주문·배송). 2026-09-28 이름 E. */}
       <ShoppingGroup counts={counts} />
       </>
       )}
@@ -340,17 +344,13 @@ export default function UserProfilePage() {
             이전: BottomNav 가 seller_token 만 보고 자동으로 셀러 UI 표시 → 사용자 혼란.
             이번: 명시 전환만 셀러 모드로. */}
 
-        {/* 🏪 2026-06-22 (대표 — 소상공인은 풀 대시보드 대신 앱에서 바로): 사업자 유저 경량 '내 매장'. */}
-        {!!localStorage.getItem('seller_token') && (
-          <button
-            type="button"
-            onClick={() => navigate('/my-store')}
-            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-gray-100 dark:bg-white/[0.06] text-[13px] font-bold text-gray-900 dark:text-white active:opacity-80 transition-opacity"
-          >
-            <Store className="w-4 h-4" aria-hidden="true" />
-            {t('userProfile.myStore', { defaultValue: '내 매장 · 이용권·정산' })}
-          </button>
-        )}
+        {/* 🚪 2026-09-28 (대표 확정) — **'내 매장' 버튼을 없앴다.** 2026-06-22 에 "소상공인은 풀
+            대시보드 대신 앱에서 바로" 로 만든 문인데, 2026-09-25 에 페이지 **맨 위**에 '내 가게'
+            섹션이 생기면서 **같은 일을 하는 화면이 둘**이 됐다(`/my-store` 는 297줄짜리 별도 페이지에
+            타일 여섯을 자기 손으로 다시 그린다 — 도구가 하나 늘면 두 곳을 고쳐야 하고, 반드시 한쪽을
+            잊는다). 게다가 이 버튼은 **로그아웃 바로 위**에 있어서, 하루에 가장 많이 쓰는 도구가
+            페이지 맨 끝까지 스크롤해야 나왔다.
+            ⚠️ 라우트 `/my-store` 는 **남긴다** — 이미 나간 링크·북마크가 있다. 페이지 삭제는 별건. */}
         {!!localStorage.getItem('seller_token') && (
           <button
             type="button"
