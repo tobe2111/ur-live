@@ -24,7 +24,7 @@
  * 막고, 금액이 모자라면 400 을 준다. "출금 실패" 한 마디로 묶으면 사장님은 **무엇을 해야 하는지 모른다.**
  */
 import { useEffect, useState } from 'react'
-import { Loader2 } from 'lucide-react'
+import { ChevronRight, Loader2 } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import { assertSeat, currentSeatId, SeatMismatchError } from '@/lib/seller-seat'
 import { toast } from '@/hooks/useToast'
@@ -50,7 +50,7 @@ export function maskAccount(v: string): string {
   return `${'*'.repeat(Math.min(4, digits.length - 4))}${digits.slice(-4)}`
 }
 
-export default function WithdrawSheet({ sellerId, onClose, onDone, onFixPin, onFixBank }: {
+export default function WithdrawSheet({ sellerId, onClose, onDone, onFixPin, onFixBank, onHistory }: {
   sellerId: number
   onClose: () => void
   onDone?: () => void
@@ -58,6 +58,11 @@ export default function WithdrawSheet({ sellerId, onClose, onDone, onFixPin, onF
   onFixPin?: () => void
   /** 정산 계좌가 없을 때 — 같은 이유로 그 자리에서 연다. */
   onFixBank?: () => void
+  /**
+   * 🧾 지난 정산으로. **여기서 목록을 그리지 않는다** — 보내는 화면과 받은 기록은 다른 일이고,
+   *   한 시트에 합치면 돈을 보내려던 사람이 과거 목록을 스크롤해야 한다(§20-6).
+   */
+  onHistory?: () => void
 }) {
   const [available, setAvailable] = useState<number | null>(null)
   const [notice, setNotice] = useState<string>('')
@@ -236,6 +241,18 @@ export default function WithdrawSheet({ sellerId, onClose, onDone, onFixPin, onF
                     </button>
                   )}
                 </div>
+              )}
+
+              {/* 🧾 신청한 뒤 "어디까지 왔나" 는 여기서 연다(조회 전용 별도 시트). */}
+              {onHistory && (
+                <button
+                  type="button"
+                  onClick={onHistory}
+                  className="w-full mt-4 pt-3 border-t border-rule flex items-center text-left active:opacity-70"
+                >
+                  <span className="flex-1 text-[13.5px] font-semibold text-gray-900 dark:text-white">지난 정산 보기</span>
+                  <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
+                </button>
               )}
             </>
           )}

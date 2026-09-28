@@ -11,6 +11,14 @@
  *   임시저장 = localStorage 드래프트(voucher-form.ts) — 자동저장 + 명시 버튼 + 복원 배너.
  *   제출 payload 는 종전과 동일 계약(POST /api/seller/products) — 단 group_buy_target 은
  *   항상 0(즉시판매 단일가 모델에서 목표 인원 입력 제거), voucher_expiry 미설정 = 무기한.
+ *
+ * ## 🪟 마이 안에서도 **이 파일 그대로** 열린다 (2026-09-26, 설계 §21)
+ * 대표 *"이용권 등록, 숙소까지 해줘"*. 같은 폼을 시트용으로 다시 만들면 **반드시 한쪽만 고쳐지고**,
+ * 그때부터 두 화면이 다른 상품을 만든다. 그래서 복제하지 않고 `embedded` 로 껍데기만 벗긴다:
+ *   - `SellerLayout bare` — 사이드바·상단바·하단 탭·도매 리다이렉트 없음(좌석은 마이가 이미 확인했다)
+ *   - 끝난 뒤 `navigate(...)` 대신 **콜백** — 시트 안에서 라우팅하면 마이가 통째로 사라진다
+ *   - 로그인 리다이렉트도 하지 않는다(마이는 이미 로그인 상태이고, 튕기면 작성 중인 내용이 날아간다)
+ * ⚠️ 폼·검증·제출 payload·임시저장은 **한 글자도 안 바뀐다** — 시험이 그것을 고정한다.
  */
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -37,7 +45,14 @@ import {
 } from './seller-meal-voucher/voucher-form'
 import { fetchServerDraft, pushServerDraft, deleteServerDraft } from './seller-meal-voucher/draft-sync'
 
-export default function SellerMealVoucherNewPage() {
+export default function SellerMealVoucherNewPage({ embedded = false, onClose, onCreated }: {
+  /** 🪟 마이 안 시트에서 열렸는가 — 껍데기를 벗고, 라우팅 대신 콜백으로 끝낸다. */
+  embedded?: boolean
+  /** 취소·닫기 (시트를 닫는다) */
+  onClose?: () => void
+  /** 등록이 끝났다 — 호출부가 목록을 새로 고친다 */
+  onCreated?: (id: number | null) => void
+} = {}) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -156,7 +171,8 @@ export default function SellerMealVoucherNewPage() {
     return () => clearTimeout(id)
   }, [form, pendingDraft, done])
 
-  if (!isSellerAuthenticated()) { redirectToLogin(navigate); return null }
+  // 🪟 시트 안에서는 튕기지 않는다 — 마이가 좌석을 확인하고 열었고, 튕기면 작성 중인 내용이 날아간다.
+  if (!isSellerAuthenticated()) { if (!embedded) { redirectToLogin(navigate); return null } }
 
   const token = getSellerToken()
   const headers = { Authorization: `Bearer ${token}` }
@@ -309,7 +325,7 @@ export default function SellerMealVoucherNewPage() {
   // ✅ 등록 완료 — 다음 행동으로 연결(인플루언서에게 제안).
   if (done) {
     return (
-      <SellerLayout title={t('seller.mealVoucher.title')}>
+      <SellerLayout title={t('seller.mealVoucher.title')} bare={embedded}>
         <div className="mx-auto max-w-5xl">
           <div className="bg-white rounded-[var(--dash-radius,16px)] border border-gray-200 p-8 text-center mt-8">
             <CheckCircle className="w-12 h-12 text-tone-ok mx-auto mb-3" />
@@ -342,13 +358,13 @@ export default function SellerMealVoucherNewPage() {
             )}
             <div className="flex gap-3 mt-6">
               <button
-                onClick={() => navigate('/seller/group-buy')}
+                onClick={() => { if (embedded) { onCreated?.(createdId); return } navigate('/seller/group-buy') }}
                 className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold text-sm"
               >
                 {t('seller.mealVoucher.viewMyProducts', { defaultValue: '내 이용권 보기' })}
               </button>
               <button
-                onClick={() => navigate('/seller/influencers')}
+                onClick={() => { if (embedded) { onCreated?.(createdId); return } navigate('/seller/influencers') }}
                 className="ur-btn ur-btn-lg ur-btn-primary flex-[2]"
               >
                 {t('seller.mealVoucher.findInfluencers', { defaultValue: '소개 파트너 찾기 →' })}
@@ -361,7 +377,7 @@ export default function SellerMealVoucherNewPage() {
   }
 
   return (
-    <SellerLayout title={t('seller.mealVoucher.title')}>
+    <SellerLayout title={t('seller.mealVoucher.title')} bare={embedded}>
       <div className="mx-auto max-w-5xl space-y-4">
         <DashboardPageHeader
           title={t('seller.mealVoucher.title')}
@@ -457,7 +473,7 @@ export default function SellerMealVoucherNewPage() {
             ) : (
               <button
                 type="button"
-                onClick={() => navigate('/seller/group-buy')}
+                onClick={() => { if (embedded) { onClose?.(); return } navigate('/seller/group-buy') }}
                 className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold text-sm"
               >
                 {t('common.cancel')}

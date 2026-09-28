@@ -193,6 +193,10 @@ export default defineConfig({
           //   (실측: 홈 modulepreload 에 app-seller-components 가 올라 있었다).
           //   ⚠️ 이 줄을 지우면 그 65KB 가 곧바로 돌아온다. 가드: check-critical-chunks.
           if (id.includes('/src/shared/seller-roles')) return 'app-shared'
+          // 🪟 2026-09-26: 마이 시트 임베드 신호(순수 React context, ~1KB)도 **공유**다 —
+          //   `SellerLayout`(셀러 봉투)과 마이 시트가 **같은 모듈**을 봐야 한다. 셀러 봉투에 두면
+          //   마이가 그걸 읽는 순간 83.8KB 를 통째로 끌고 온다(위 `seller-roles` 와 정확히 같은 함정).
+          if (id.includes('/src/shared/seller-embed')) return 'app-shared'
           // 📐 2026-09-03: 딜 카드 격자 간격 상수 — 홈·찜·유어샵·편성 섹션이 함께 읽는 한 줄짜리 SSOT.
           //   catch-all 로 떨어지면 홈 폐쇄가 app-shared 밖 청크를 하나 더 끌고 온다(home-chunk-diet 가 잡는다).
           if (id.includes('/src/shared/deal-card-grid')) return 'app-shared'
@@ -312,6 +316,19 @@ export default defineConfig({
           //   셀러 봉투다. 규칙이 없으면 `components/` catch-all 로 app-components 에 떨어지고, 그 파일들이
           //   `components/seller/seller-primary-nav` 를 import 하므로 **app-components → app-seller-components 순환**이 생겨
           //   상세·유어샵·교환권 표면이 셀러 봉투(+app-dashboard)를 첫 페인트에 받았다(CI surface-role-leak 8건, 빌드 경고 'Circular chunk').
+          // 🧭 2026-09-26 [UNLOCK_LOADING] **나브 색인은 껍데기가 아니다** — 따로 가른다.
+          //   배경(실측): 마이의 '전체 도구' 시트가 `useSellerNavModel`(색인 SSOT)을 읽는데,
+          //   그 파일들이 `/src/components/seller{,-layout}/` catch-all 로 `app-seller-components`
+          //   (83.8KB)에 묶여 있었다. 그래서 **목록 한 장을 그리려고** StoreRegisterModal(29.5KB)·
+          //   SellerLayout(19.3KB)·BulkUploadModal(12.8KB)·ProductOptionForm(11.2KB) 까지 받았다 —
+          //   그중 어느 것도 마이에서 렌더되지 않는다.
+          //   ⚠️ 이 네 줄은 아래 두 catch-all 보다 **먼저** 와야 한다(먼저 매칭되는 규칙이 이긴다).
+          //   ⚠️ 색인은 순수 데이터·훅이라 대시보드도 같은 청크를 재사용한다(중복 0).
+          if (id.includes('/src/components/seller/seller-nav')) return 'app-seller-nav'
+          if (id.includes('/src/components/seller/seller-tab-groups')) return 'app-seller-nav'
+          if (id.includes('/src/components/seller/seller-primary-nav')) return 'app-seller-nav'
+          if (id.includes('/src/components/seller-layout/useSellerNavModel')) return 'app-seller-nav'
+          if (id.includes('/src/shared/seller-approval')) return 'app-seller-nav'
           if (id.includes('/src/components/seller-layout/')) return 'app-seller-components'
           if (id.includes('/src/components/seller/')) return 'app-seller-components'
           if (id.includes('/src/components/SellerLayout')) return 'app-seller-components'

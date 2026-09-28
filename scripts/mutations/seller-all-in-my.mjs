@@ -121,12 +121,15 @@ export default [
     why: '그 키는 좌석 전환을 안 따라간다 — 가게를 옮긴 뒤 출금하면 직전 가게 계좌가 남는다(§19-3).',
   },
   {
-    name: '🔑 풀고 나서 출금으로 안 돌아온다 (흐름이 끊긴다)',
+    // 🔁 2026-09-26 재조준: 계좌 변경도 412 를 주게 되면서 돌아갈 곳이 둘이 됐다(`pinReturn`) —
+    //   옛 앵커(`onDone={() => setTool('withdraw')}`)가 사라져 **주입 대상을 못 찾는 낡은 지도**가 됐다.
+    //   지키는 것은 그대로다: PIN 을 풀고 나면 **요구한 시트로** 이어져야 한다.
+    name: '🔑 풀고 나서 요구한 시트로 안 돌아온다 (흐름이 끊긴다)',
     file: 'src/pages/user-profile/SellerSection.tsx',
-    find: "      {tool === 'pin' && <PinSheet sellerId={store.seller_id} onClose={() => setTool(null)} onDone={() => setTool('withdraw')} />}",
-    replace: "      {tool === 'pin' && <PinSheet sellerId={store.seller_id} onClose={() => setTool(null)} />}",
+    find: 'onDone={() => setTool(pinReturn)}',
+    replace: '',
     test: TEST,
-    why: 'PIN 을 걸고 나면 사장님이 출금을 다시 찾아 눌러야 한다 — 그 사이에 왜 눌렀는지 잊는다.',
+    why: 'PIN 을 걸고 나면 사장님이 하려던 일(출금·계좌)을 다시 찾아 눌러야 한다 — 그 사이에 왜 눌렀는지 잊는다.',
   },
   {
     name: '🏠 알림톡 첫 접촉이 다시 대시보드로 착륙한다',

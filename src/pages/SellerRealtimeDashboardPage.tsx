@@ -67,8 +67,12 @@ export default function SellerRealtimeDashboardPage() {
           </button>
         </div>
 
-        {/* 3 카드: 오늘 / 7일 / 30일 */}
-        <div className="grid grid-cols-3 gap-3">
+        {/* 3 카드: 오늘 / 7일 / 30일
+            📱 2026-09-27: 폰에서는 **1열**이다. 3열이면 타일이 114px 이고 내용 폭은 82px 인데,
+            `--dash-stat`(22px) 의 "1,284,000원" 은 약 145px 다 — 실측으로 **숫자가 4줄로 감겨**
+            타일 높이가 161px 이 됐다. 글자를 줄여도 안 된다(82px 에 들어가려면 12px 이하여야 한다).
+            ⇒ 통화는 폭이 필요하다. PC(sm+)는 종전 3열 그대로. */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="bg-brand-tint rounded-xl p-4 text-center">
             <p className="text-[10px] text-brand-text font-medium">오늘</p>
             <p className="dash-num text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900 mt-1">{formatNumber(data.today?.amt)}원</p>

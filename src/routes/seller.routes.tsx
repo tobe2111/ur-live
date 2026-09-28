@@ -67,6 +67,15 @@ const SellerVoucherScanPage = lazy(() => import('@/pages/SellerVoucherScanPage')
 const SellerBundlesPage = lazy(() => import('@/pages/SellerBundlesPage'))
 const SellerGuidePage = lazy(() => import('@/pages/SellerGuidePage'))
 const SellerAdSlotsPage = lazy(() => import('@/pages/SellerAdSlotsPage'))
+// 🕳️ 2026-09-27: 아래 셋은 **`App.tsx` 에 홀로 떨어져 있었다.** 그래서 마이 시트가 열 수 없었다 —
+//   시트는 `SellerRoutes()` 를 렌더하므로 이 표에 없는 주소는 `*`(Escape)로 떨어져 **마이를 통째로 튕겨낸다.**
+//   `/seller/prospects` 는 '전체 도구' 색인이 실제로 내주는 주소였고(`seller-nav.ts:123`),
+//   `/seller/proxy-products` 는 시트 **안의 탭**(`seller-tab-groups.ts:55`), `/seller/plus-friend-guide` 는
+//   온보딩 체크리스트의 CTA 다. 셋 다 "열리는 줄 알았는데 마이에서 쫓겨나는" 모양이었고 에러는 안 났다.
+//   ⚠️ 옮기기만 했다 — 경로·element·가드 전부 그대로다(`App.tsx` 도 같은 `<Routes>` 안이라 대시보드 동작 불변).
+const SellerProspectsPage = lazy(() => import('@/pages/SellerProspectsPage'))
+const SellerProxyProductsPage = lazy(() => import('@/pages/SellerProxyProductsPage'))
+const SellerPlusFriendGuidePage = lazy(() => import('@/pages/SellerPlusFriendGuidePage'))
 const SellerMarketingPage = lazy(() => import('@/pages/SellerMarketingPage'))
 const SellerRealtimeDashboardPage = lazy(() => import('@/pages/SellerRealtimeDashboardPage'))
 const SellerMealVoucherNewPage = lazy(() => import('@/pages/SellerMealVoucherNewPage'))
@@ -394,6 +403,10 @@ export function SellerRoutes() {
           <YouTubeCallbackPage />
         </ProtectedRoute>
       } />
+      {/* 🕳️ 2026-09-27 App.tsx 에서 이사 — 위 머리말 참조. 가드를 새로 씌우지 않는다(옮기기만). */}
+      <Route path="/seller/prospects" element={<SellerProspectsPage />} />
+      <Route path="/seller/proxy-products" element={<SellerProxyProductsPage />} />
+      <Route path="/seller/plus-friend-guide" element={<SellerPlusFriendGuidePage />} />
     </>
   )
 }

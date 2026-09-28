@@ -11,6 +11,15 @@
  * (CLAUDE.md 테마 규칙). 마이는 다크를 지원하므로 같은 컴포넌트를 두 표면에 쓸 수 없다.
  * ⚠️ 그래서 **마크업만** 새로 쓴다 — 저장 경로(`PUT /api/seller/profile`)와 은행 목록은 같다.
  *
+ * ## 🔴 계좌 변경은 PIN 을 요구한다 (2026-09-26 수리)
+ * `PUT /api/seller/profile` 은 계좌 필드가 섞여 있으면 **412 `PIN_REQUIRED`** 를 준다
+ * (`seller-profile.routes` — 계좌 탈취 방어). 처음 만들 때 이 분기를 빠뜨려서, 계좌가 없어
+ * 출금이 막힌 사장님이 여기 와서 계좌를 넣어도 *"계좌 변경은 PIN 인증이 필요합니다"* 라는
+ * 문장만 보고 **막다른 길**에 섰다 — 대시보드로 나가지 않으면 풀 방법이 없었다.
+ * 지금은 그 자리에서 `PinSheet` 를 열고, 확인이 끝나면 **이 시트로 돌아온다.**
+ * ⚠️ 위임 운영자는 **403** 이다(정산 목적지는 소유자만 바꾼다 — 2026-09-04 대표 확정).
+ *   그건 PIN 으로 못 푸는 벽이라 서버 문장을 그대로 보여 주고 멈춘다.
+ *
  * ## localStorage 동기화는 하지 않는다
  * 대시보드 폼은 저장 후 `seller_bank_name` 등을 localStorage 에 적는다. 여기서는 **안 적는다** —
  * 그 키들은 **좌석을 안 따라가고**(§19-3), 마이는 가게를 옮길 수 있다. 출금 시트는 계좌를
@@ -25,10 +34,12 @@ import Sheet from './Sheet'
 /** 대시보드 폼과 같은 목록 — 한쪽에만 은행이 늘면 사장님이 자기 은행을 못 찾는다. */
 const BANKS = ['KB국민은행', '신한은행', '우리은행', '하나은행', 'NH농협은행', 'IBK기업은행', 'SC제일은행', '한국씨티은행', '케이뱅크', '카카오뱅크', '토스뱅크', '새마을금고', '신협', '우체국', '부산은행', '경남은행', '대구은행', '광주은행', '전북은행', '제주은행', '수협은행', '산업은행']
 
-export default function BankSheet({ sellerId, onClose, onDone }: {
+export default function BankSheet({ sellerId, onClose, onDone, onFixPin }: {
   sellerId: number
   onClose: () => void
   onDone?: () => void
+  /** 412 `PIN_REQUIRED` — 그 자리에서 풀게 한다(풀면 이 시트로 돌아온다). */
+  onFixPin?: () => void
 }) {
   const [loaded, setLoaded] = useState(false)
   const [failed, setFailed] = useState(false)
@@ -78,7 +89,13 @@ export default function BankSheet({ sellerId, onClose, onDone }: {
       onDone?.()
       onClose()
     } catch (err) {
-      const res = (err as { response?: { data?: { error?: string } } })?.response?.data
+      const res = (err as { response?: { data?: { error?: string; code?: string } } })?.response?.data
+      // 🔑 PIN 이 필요하면 **여기서** 푼다 — 돈이 들어올 계좌를 넣다 말고 대시보드로 보내지 않는다.
+      if (res?.code === 'PIN_REQUIRED' && onFixPin) {
+        toast.error('계좌를 바꾸려면 PIN 확인이 필요해요')
+        onFixPin()
+        return
+      }
       toast.error(res?.error || '계좌를 저장하지 못했습니다')
     } finally {
       setBusy(false)
