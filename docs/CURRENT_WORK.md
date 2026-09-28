@@ -5494,12 +5494,10 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 361건 · 최신순 · 이 목록은 자동 생성된다._
+_총 363건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-28**
 - [2026-09-28 유어샵 e3/s3 — 관리 화면 분리(1단계) + 본문 밀도형(2단계)](handoff/2026-09-28-ushop-e3-manage.md)
-_총 362건 · 최신순 · 이 목록은 자동 생성된다._
-
 **2026-09-26**
 - [마이에 남은 셋 + 안 쓰는 메뉴 정리 (2026-09-26)](handoff/2026-09-26-seller-rest-and-cleanup.md)
 - [마이에서 전부 + 마이 청크 다이어트 (2026-09-26)](handoff/2026-09-26-my-all-in-my-and-chunk-diet.md)
