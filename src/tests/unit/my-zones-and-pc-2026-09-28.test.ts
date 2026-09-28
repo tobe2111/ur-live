@@ -92,3 +92,40 @@ describe('PC 1안 — 오늘이 머리', () => {
     expect(PAGE.length).toBeGreaterThan(5000)
   })
 })
+
+/**
+ * 🩸 2026-09-28 — **하네스로 눈으로 보고서야 드러난 것 둘.** 코드만 읽어선 안 보였다.
+ *   (`node scripts/visual-preview.mjs --route=/user/profile --auth=user --stores=2 --width=1200`)
+ *
+ * ⚠️ 이 시험들이 **못 막는 것**: 여기서 재는 건 *클래스 문자열*이지 실제 픽셀이 아니다.
+ *   jsdom 에는 레이아웃이 없어 "띠가 카드를 덮는가" 를 단위시험으로는 판정할 수 없다.
+ *   조판을 바꿀 때는 위 명령으로 **그림을 볼 것**. 이 시험은 *알려진 답으로 되돌아가는 것*만 막는다.
+ */
+describe('조판 — 하네스 실측으로 잡은 두 결함', () => {
+  it('🔴 PC 에서 구역 띠는 **음수** 오프셋이다 (양수면 카드를 관통한다)', () => {
+    // 마이의 PC 우측 칸은 `.ur-account-pane .ur-content-medium` 이 좌우 패딩을 0 으로 지운다
+    // (index.css — "마이페이지 PC 2단"). 거터가 없으니 `lg:left-3` 은 카드 **안쪽** 12px 이고,
+    // 띠가 일감 카드들의 왼쪽을 세로로 갈랐다. 음수여야 `.ur-account-pc` 의 gap(32px)에 뜬다.
+    expect(SELLER).toContain('left-1.5 lg:-left-3')
+    expect(SELLER).not.toMatch(/left-1\.5 lg:left-\d/)
+  })
+
+  it('🔴 그 짝인 CSS 가 아직 패딩을 지우고 있다 (지워졌다면 띠 오프셋도 다시 판단할 것)', () => {
+    // 위 음수 값의 **근거**는 이 규칙이다. 규칙이 사라지면 음수는 근거를 잃는다 —
+    // 한쪽만 바뀌면 조용히 어긋나는 짝이라 여기서 함께 잠근다.
+    const css = readCode('src/index.css')
+    expect(css).toMatch(/\.ur-account-pane \.ur-content-medium \{[^}]*padding-left: 0/s)
+  })
+
+  it('🔴 가게 개수는 말줄임에 안 먹힌다 — 이름과 다른 span 이다', () => {
+    // 한 span 에 붙여 두면 긴 이름에서 `… 본점 · …` 처럼 **개수부터** 잘린다.
+    // 그런데 이 줄이 눌리는 이유가 그 개수다(2곳 이상일 때만 전환 버튼).
+    expect(SELLER).toContain('<span className="truncate">{store.name}</span>')
+    expect(SELLER).toContain('<span className="shrink-0">· {stores.length}곳</span>')
+    expect(SELLER).not.toContain('{store.name} · {stores.length}곳')
+  })
+
+  it('라틴 약어 뒤 조사는 붙여 쓴다', () => {
+    expect(SELLER).toContain('손님 QR을 찍으세요')
+  })
+})
