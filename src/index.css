@@ -1745,10 +1745,13 @@ html.dark .gbd, [data-theme="dark"] .gbd {
    ⚠️ 우측 칸 안의 섹션들은 저마다 `ur-content-medium`(max-width 1024 + 가운데 정렬)을 갖고 있다.
       그걸 그대로 두면 좁은 칸 안에서 또 가운데로 몰려 좌우가 어긋난다 → 칸 안에서만 무력화한다. */
 @media (min-width: 1024px) {
+  /* 🧭 2026-09-28: 좌측 내비(216px + gap 32)를 걷어내 본문이 1200px 전폭을 쓴다.
+     그 내비는 `/user/profile` 에만 렌더돼 **누르면 사라지는 내비**였고, 일곱 항목 중 넷이
+     오른쪽 열과 중복이었다(사유는 `UserProfilePage` 의 그 자리 주석).
+     ⚠️ 한 칸짜리 그리드로 남겨 둔다 — `.ur-account-pane` 의 폭 무력화 규칙이 이 칸을 전제한다. */
   .ur-account-pc {
     display: grid;
-    grid-template-columns: 216px minmax(0, 1fr);
-    gap: 32px;
+    grid-template-columns: minmax(0, 1fr);
     align-items: start;
     max-width: 1200px;
     margin: 0 auto;

@@ -35,6 +35,10 @@ import { toast } from '@/hooks/useToast'
 import type { MyStoresState } from './useMyStores'
 import { useSellerWork } from './seller-section/useSellerWork'
 import PendingOrders from './seller-section/PendingOrders'
+// 🧾 2026-09-28: 묶음 라벨·줄은 손님 쪽 목록과 **같은 부품**이다(`list-grammar`).
+//   종전엔 이 파일 안에 `GroupLabel`/`ToolRow` 가 따로 있었고, 손님 쪽은 또 다른 문법이라
+//   같은 화면에 목록 문법이 두 벌이었다 — 대표 *"허술해"*(09-28)의 실체 중 하나.
+import { GroupLabel, ListRow as ToolRow } from './list-grammar'
 
 /**
  * ⏳ **시트는 전부 열 때 받는다** (2026-09-26 — 대표 *"로딩 속도를 줄이고"*).
@@ -79,17 +83,6 @@ type Tool = 'orders' | 'vouchers' | 'withdraw' | 'analytics' | 'store' | 'refund
   | 'partners' | 'messages' | 'settlements' | 'page'
 
 /**
- * 🏷️ 묶음 위 조용한 구분 라벨 (2026-09-26 · 대표 확정 "구조 시안 A").
- *
- * 종전엔 **똑같은 줄 일곱**이 한 덩어리였다 — 무엇이 매일 쓰는 것이고 무엇이 가끔인지
- * 화면이 한 마디도 안 했고, 도구가 늘 때마다 그 덩어리가 길어졌다.
- * 라벨은 12px 회색 한 줄이다(코레일톡 규칙 ⑥ *"나머지는 회색"*) — 줄을 더 그리지 않는다.
- */
-function GroupLabel({ children }: { children: React.ReactNode }) {
-  return <div className="mt-3 mb-1.5 px-1 text-[12px] font-bold text-gray-400">{children}</div>
-}
-
-/**
  * 🔀 **같은 일에 화면이 둘이 되지 않게** (2026-09-26 — 대표 *"전체적으로 이상적이지 않은 것 같은데?"*)
  *
  * ## 무엇이 잘못됐었나
@@ -118,25 +111,6 @@ const COVERED_BY_SHEET: Record<string, Tool> = {
 }
 
 /** 묶음 한 줄 — 전부 같은 모양이어야 무엇이 있는지 한눈에 읽힌다. */
-function ToolRow({ icon, label, hint, busy, onClick }: {
-  icon: React.ReactNode; label: string; hint: string; busy: boolean; onClick: () => void
-}) {
-  return (
-    <button
-      type="button"
-      disabled={busy}
-      onClick={onClick}
-      className="w-full flex items-center gap-3 px-4 py-3.5 text-left border-b border-rule last:border-b-0 active:opacity-70 disabled:opacity-50"
-    >
-      <span className="shrink-0 text-gray-500 dark:text-gray-400">{icon}</span>
-      <span className="flex-1 min-w-0">
-        <span className="block text-[14px] font-bold text-gray-900 dark:text-white">{label}</span>
-        <span className="block text-[12px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">{hint}</span>
-      </span>
-      <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
-    </button>
-  )
-}
 
 /** ⚠️ 좌석은 **페이지가 한 번만** 묻고 내려 준다 — 여기서 또 부르면 같은 화면에 두 개의 진실이 생긴다. */
 export default function SellerSection({ state }: { state: MyStoresState }) {
@@ -231,7 +205,9 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           발상으로 `lg:left-3` 을 줬는데, 마이의 PC 우측 칸은 `.ur-account-pane .ur-content-medium`
           이 **좌우 패딩을 0 으로 지운다**(index.css §마이페이지 PC 2단). 거터가 없으니 +12px 는
           카드 **안쪽**이고, 띠가 일감 카드들의 왼쪽을 세로로 관통했다. 음수면 `.ur-account-pc` 의
-          `gap: 32px` 안(내비와 칸 사이)에 떠서 무엇도 가리지 않는다.
+          좌우 패딩(2rem) 안에 떠서 무엇도 가리지 않는다.
+          🔁 2026-09-28: 종전 근거는 그 그리드의 `gap: 32px`(내비와 칸 사이)였는데 **내비를 걷어내
+             gap 이 사라졌다.** 값(-12px)은 그대로 맞다 — 이제 패딩 32px 안에 뜬다.
           ⚠️ 이 결함은 코드를 읽어선 안 보인다 — 조판이 CSS 두 파일에 나뉘어 있다. 띠 위치를 바꾸면
           `node scripts/visual-preview.mjs --route=/user/profile --auth=user --stores=2 --width=1200`
           으로 **눈으로** 확인할 것(1200 이 가장 좁은 PC 다). */}
@@ -532,8 +508,11 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
       {/* ─ 구역 경계 (2026-09-28 이름 E) — 여기까지가 **파는 쪽**이고 아래는 손님 쪽이다.
           선을 이 컴포넌트 안에 두는 이유: 이 섹션은 좌석이 없거나 조회가 실패하면 `null` 을 돌려주는데,
           페이지가 `stores.length` 로 따로 판정해 선을 그리면 **위에 아무것도 없는 선**이 뜨는 날이 온다
-          (판정이 두 곳이면 갈린다 — 이 레포가 반복해 당한 클래스). 같은 렌더에 붙여 두면 갈릴 수가 없다. */}
-      <div className="mt-5 h-px bg-black/[0.08] dark:bg-white/[0.08]" />
+          (판정이 두 곳이면 갈린다 — 이 레포가 반복해 당한 클래스). 같은 렌더에 붙여 두면 갈릴 수가 없다.
+          🖥️ 2026-09-28 `lg:hidden`: PC 는 09-28 부터 **두 열**이라 손님 쪽이 아래가 아니라 **옆**에 있다.
+             그 화면에서 이 선은 아무것도 가르지 않고 판매 열 끝에 뜬 유리선으로 보였다(하네스 실측).
+             선을 **지우지는 않는다** — 세로로 흐르는 폰에서는 이 선이 이름 E 의 경계 그 자체다. */}
+      <div className="mt-5 h-px bg-black/[0.08] dark:bg-white/[0.08] lg:hidden" />
     </div>
   )
 }

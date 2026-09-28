@@ -28,7 +28,10 @@ export default [
   {
     name: '🧭 구역 경계선이 페이지 쪽으로 옮겨진다 (좌석 0 이면 허공에 선이 뜬다)',
     file: 'src/pages/user-profile/SellerSection.tsx',
-    find: '      <div className="mt-5 h-px bg-black/[0.08] dark:bg-white/[0.08]" />',
+    // 🔁 2026-09-28 재조준: PC 가 두 열이 되면서 이 선에 `lg:hidden` 이 붙었다(옆에 손님 쪽이 있는
+    //   화면에서는 아무것도 가르지 않는 유리선이었다). 지키려던 것은 **선이 이 컴포넌트 안에 있다**
+    //   이지 클래스 문자열이 아니므로, 앵커만 새 줄로 옮긴다.
+    find: '      <div className="mt-5 h-px bg-black/[0.08] dark:bg-white/[0.08] lg:hidden" />',
     replace: '',
     test: TEST,
     why: '이 섹션은 좌석이 없으면 `null` 이다 — 선을 페이지가 따로 판정해 그리면 판정이 두 곳이 되고 반드시 갈린다.',

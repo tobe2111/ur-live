@@ -105,7 +105,9 @@ describe('조판 — 하네스 실측으로 잡은 두 결함', () => {
   it('🔴 PC 에서 구역 띠는 **음수** 오프셋이다 (양수면 카드를 관통한다)', () => {
     // 마이의 PC 우측 칸은 `.ur-account-pane .ur-content-medium` 이 좌우 패딩을 0 으로 지운다
     // (index.css — "마이페이지 PC 2단"). 거터가 없으니 `lg:left-3` 은 카드 **안쪽** 12px 이고,
-    // 띠가 일감 카드들의 왼쪽을 세로로 갈랐다. 음수여야 `.ur-account-pc` 의 gap(32px)에 뜬다.
+    // 띠가 일감 카드들의 왼쪽을 세로로 갈랐다. 음수여야 `.ur-account-pc` 의 **좌우 패딩(2rem)** 안에 뜬다.
+    // 🔁 2026-09-28: 근거가 gap(32px, 내비와 칸 사이) → 패딩으로 바뀌었다 — 내비를 걷어냈다.
+    //   값(-12px)은 그대로 맞고, 짝인 CSS 규칙(아래 시험)도 그대로다.
     expect(SELLER).toContain('left-1.5 lg:-left-3')
     expect(SELLER).not.toMatch(/left-1\.5 lg:left-\d/)
   })

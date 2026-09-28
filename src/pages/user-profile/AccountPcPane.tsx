@@ -153,8 +153,11 @@ export default function AccountPcPane({ counts, userName, profileImage, onEditPr
         </div>
       )}
 
-      {/* ⑤ 바로가기 타일 넷 — 모바일 목록의 나머지 행. 여기서는 목록이 아니라 타일이다. */}
-      <div className="grid grid-cols-4 gap-4">
+      {/* ⑤ 바로가기 타일 — 모바일 목록의 나머지 행. 여기서는 목록이 아니라 타일이다.
+          🔢 2026-09-28 `grid-cols-4` → `-3`: 항목은 **셋**인데 격자가 넷이었다. 09-28 2열 이후 좁은
+             칸에서 넷은 둘로 접히고(`--narrow`) 셋이 **2 + 1** 로 남아 마지막 타일만 외톨이가 됐다.
+             셋이면 넓은 칸에서 한 줄, 좁은 칸에서 한 열이라 어느 쪽에서도 자투리가 없다. */}
+      <div className="grid grid-cols-3 gap-4">
         {tiles.map(({ Icon, label, path, count }) => (
           <button key={path} type="button" onClick={() => navigate(path)} className={TILE_CLS}>
             <Icon className="w-[18px] h-[18px] text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.6} aria-hidden="true" />
