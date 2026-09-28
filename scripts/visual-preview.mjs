@@ -541,13 +541,24 @@ await page.waitForTimeout(4000)
  *   왜 필요한가: 마이의 판매 도구는 전부 **시트**라, 닫힌 화면만 찍으면 그 화면들은
  *   영원히 검증 범위 밖이다. 2026-09-28 에 "시트 일곱을 철거할까" 를 판단하려는데
  *   시트 안을 볼 방법이 없어 단독 페이지로 대신 볼 뻔했다 — 그건 다른 화면이다.
- *   ⚠️ 글자로 찾는다(`getByText`) — 클래스는 자주 바뀌고 글자는 사람이 보는 것이다.
+ *   ⚠️ 글자로 찾는다 — 클래스는 자주 바뀌고 글자는 사람이 보는 것이다.
+ *   🩸 2026-09-28 정정: 처음엔 `getByText(label).first()` 였는데 **엉뚱한 것을 눌렀다.**
+ *      `getByText` 는 그 글자를 *품은* 조상까지 맞히고 `.first()` 는 DOM 순서상 **가장 바깥**이다 —
+ *      시트 몸통 전체가 잡혀 그 한가운데(= 다른 줄)를 눌렀다. 그래서 `전체 도구 >> 셀러 등급` 이
+ *      **실패 메시지도 없이** 아무 일도 안 하는 것처럼 보였다(클릭은 성공했으니 경고도 안 뜬다).
+ *      ⇒ **누를 수 있는 것**(button·a·[role=button])부터 찾고, 없을 때만 글자로 떨어진다.
  */
 if (typeof args.click === 'string' && args.click) {
   for (const label of args.click.split('>>').map((x) => x.trim()).filter(Boolean)) {
     try {
-      await page.getByText(label, { exact: false }).first().click({ timeout: 8000 })
+      const clickable = page.locator('button, a, [role="button"]').filter({ hasText: label })
+      const target = (await clickable.count()) > 0 ? clickable.last() : page.getByText(label, { exact: false }).last()
+      // 🔎 **무엇을 눌렀는지 말한다.** 엉뚱한 것을 눌러도 클릭은 성공하므로 경고가 안 뜬다 —
+      //    그 침묵이 2026-09-28 에 한 시간을 먹었다. 누른 것을 찍으면 그 자리에서 보인다.
+      const shape = await target.evaluate((el) => `${el.tagName.toLowerCase()} "${(el.innerText || '').replace(/\s+/g, ' ').slice(0, 30)}"`).catch(() => '?')
+      await target.click({ timeout: 8000 })
       await page.waitForTimeout(1800)
+      console.log(`   🖱️ "${label}" → ${shape}`)
     } catch (e) {
       console.error(`   ⚠️ --click "${label}" 실패: ${String(e).split('\n')[0].slice(0, 120)}`)
     }

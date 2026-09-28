@@ -1,5 +1,5 @@
 /**
- * 🪟 2026-09-28 — **`ToolPageSheet` 는 한 번도 동작한 적이 없다.** 그 사실을 여기 박는다.
+ * 🪟 2026-09-28 — **`ToolPageSheet` 가 실제로 렌더되는가.** (같은 날 수리됨 — 경위는 아래)
  *
  * ## 무엇이 깨졌나
  * ```
@@ -17,23 +17,20 @@
  * 지워지고, react-router 도 프로덕션에선 invariant 메시지를 지운다 — 화면엔 `Error` 만 남는다.
  * **jsdom 은 개발 빌드라 메시지가 살아 있다.** 그게 이 시험이 진단까지 해낸 이유다.
  *
- * ## 🔴 고치는 사람에게 — 이 시험은 **뒤집으라고** 있다
- * 아래는 *깨진 현재*를 고정한다. 중첩 라우터를 걷어내면 이 시험이 **빨간불**이 된다.
- * 그때 지우지 말고 **뒤집어라**:
- * ```ts
- * render(<MemoryRouter><ToolPageSheet path="/seller/tier" … /></MemoryRouter>)
- * expect(screen.queryByText('문제가 발생했습니다')).toBeNull()
- * ```
- * 고칠 때 고려할 길(전부 장단이 있다 — 결재 `2026-09-28-my-stage2-sheet-teardown.md`):
- *  ① `<Routes location={…}>` 로 중첩 라우터 없이 — 안쪽 `navigate()` 가 바깥을 움직이는 문제가 남는다
- *  ② 시트를 **별도 React 루트**로 띄운다 — 컨텍스트(QueryClient·테마)를 다시 얹어야 한다
- *  ③ 손으로 적은 지도로 되돌아간다 — 2026-09-26 에 버린 길이다(파라미터 화면을 못 연다)
+ * ## ✅ 어떻게 고쳤나
+ * `ToolPageSheet` 의 `RouterReset` 이 `LocationContext`·`RouteContext` 를 끊어 안쪽 라우터를
+ * **그 서브트리의 최상위**로 만든다. 다른 길을 안 고른 이유는 그 컴포넌트 주석에 있다
+ * (요약: `<Routes location=…>` 은 안쪽 `navigate()` 가 **바깥을 움직여** 마이가 통째로 떠난다 —
+ * 2026-09-26 이 `MemoryRouter` 를 고른 이유가 바로 그 문제다).
+ *
+ * 🔴 **이 시험이 진짜 지키는 것**: react-router 버전을 올리면 `UNSAFE_*` 컨텍스트 모양이 바뀔 수 있다.
+ * 그때 여기서 빨간불이 난다 — 그게 이 파일이 존재하는 이유다.
  *
  * ⚠️ **이 시험이 못 하는 것**: jsdom 에는 레이아웃이 없다. "폰에서 보기 좋은가" 는 못 잰다
  *   (그건 `node scripts/visual-preview.mjs --route=/user/profile --auth=user --stores=1 --click=…`).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import ToolPageSheet from '@/pages/user-profile/seller-section/ToolPageSheet'
 
@@ -54,21 +51,34 @@ const mount = (path: string) =>
     </MemoryRouter>,
   )
 
-describe('ToolPageSheet — 중첩 라우터 (알려진 결함)', () => {
-  it('🔴 지금은 중첩 라우터 invariant 로 터진다 — 고치면 이 시험이 빨간불이 된다', () => {
-    expect(() => mount('/seller/tier')).toThrow(/<Router> inside another <Router>/)
+describe('ToolPageSheet — 터지지 않는가', () => {
+  it('🔴 바깥 라우터 안에서 열어도 안 터진다 (중첩 라우터 invariant)', () => {
+    expect(() => mount('/seller/tier')).not.toThrow()
   })
 
-  it('🔴 특정 화면 탓이 아니다 — 어느 주소로 열어도 같다', () => {
+  it('🔴 에러 화면으로 떨어지지도 않는다', () => {
+    mount('/seller/tier')
+    expect(screen.queryByText('문제가 발생했습니다')).toBeNull()
+  })
+
+  it('🔴 특정 화면 탓이 아니다 — 여러 주소에서 같다', () => {
     for (const p of ['/seller/stores', '/seller/business-info', '/seller/orders']) {
-      expect(() => mount(p), p).toThrow(/<Router> inside another <Router>/)
+      const { unmount } = mount(p)
+      expect(screen.queryByText('문제가 발생했습니다'), p).toBeNull()
+      unmount()
     }
   })
 
-  it('🔴 이 시험이 헛돌지 않는다 — 중첩 라우터가 실제로 소스에 있다', async () => {
+  it('🔴 이 시험이 헛돌지 않는다 — 시트 껍데기가 실제로 그려졌다', () => {
+    mount('/seller/tier')
+    expect(screen.getByText('테스트')).toBeTruthy()   // 시트 머리(title)
+  })
+
+  it('🔴 줄을 끊는 장치가 실제로 배선돼 있다 (지우면 종전처럼 터진다)', async () => {
     const { readCode } = await import('../helpers/source-text')
     const src = readCode('src/pages/user-profile/seller-section/ToolPageSheet.tsx')
-    expect(src).toContain('<MemoryRouter')
-    expect(readCode('src/App.tsx')).toContain('BrowserRouter')
+    expect(src).toContain('UNSAFE_LocationContext.Provider')
+    expect(src).toContain('UNSAFE_RouteContext.Provider')
+    expect(src).toContain('<RouterReset>')
   })
 })
