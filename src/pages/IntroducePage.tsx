@@ -8,8 +8,12 @@ import UrDealLogo from '@/components/brand/UrDealLogo'
 import api from '@/lib/api'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 
-const APP_STORE_URL = 'https://apps.apple.com/kr/app/%EC%9C%A0%EC%96%B4%EB%94%9C/id6745051422'
-const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.urdeal.app'
+// 📱 2026-09-28 (대표 확정 *"아직 앱은 하나도 없어"*): App Store·Google Play 배지를 **전부 삭제**했다.
+//   여기 있던 링크는 실재하지 않는 앱의 스토어 주소(`id6745051422` · `com.urdeal.app`)라, 누르면
+//   스토어의 **'앱을 찾을 수 없음'** 화면으로 떨어졌다 — 에러가 안 나니 아무도 신고하지 않는 종류다.
+//   2026-09-24 에 지운 지어낸 실적 수치(`240만+ 누적 사용자`)와 같은 클래스: **없는 것을 있다고 말하지 않는다.**
+//   유어딜은 지금 폰 브라우저에서 그대로 돌아가므로 각 자리는 웹 CTA 가 대신한다.
+//   ⚠️ 앱이 실제로 나오면 되살리되, 그때 **스토어 URL 이 200 인지 먼저 확인**할 것(그게 이번에 빠진 단계다).
 
 interface GbItem {
   id: number
@@ -18,46 +22,6 @@ interface GbItem {
   image_url?: string
   price?: number
   original_price?: number
-}
-
-function AppBadges({ className = '' }: { className?: string }) {
-  return (
-    <div className={`flex flex-wrap items-center gap-3 ${className}`}>
-      <a
-        href={APP_STORE_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-black text-white font-bold text-[14px] hover:bg-gray-900 transition-colors border border-white/10"
-      >
-        {/* Apple logo */}
-        <svg className="w-5 h-5 fill-white shrink-0" viewBox="0 0 24 24">
-          <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
-        </svg>
-        <div className="text-left">
-          <p className="text-[9px] text-white/70 leading-none">Download on the</p>
-          <p className="text-[14px] font-extrabold leading-tight">App Store</p>
-        </div>
-      </a>
-      <a
-        href={PLAY_STORE_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-black text-white font-bold text-[14px] hover:bg-gray-900 transition-colors border border-white/10"
-      >
-        {/* Play Store icon */}
-        <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
-          <path fill="#34A853" d="M1.22 0C.8 0 .5.3.5.73v22.54c0 .43.3.73.72.73l.08-.01 12.63-12.63v-.3L1.30.08 1.22 0z"/>
-          <path fill="#FBBC04" d="M17.55 16.65l-4.21-4.21v-.3l4.21-4.21.1.05 4.99 2.83c1.42.81 1.42 2.12 0 2.93l-4.99 2.83-.1.08z"/>
-          <path fill="#EA4335" d="M17.65 16.60L13.43 12.4 1.22 24.6c.47.5 1.24.56 2.12.06l14.31-8.06"/>
-          <path fill="#4285F4" d="M17.65 7.40L3.34 -0.66C2.46-1.16 1.69-1.1 1.22-.6L13.43 11.6l4.22-4.2z"/>
-        </svg>
-        <div className="text-left">
-          <p className="text-[9px] text-white/70 leading-none">GET IT ON</p>
-          <p className="text-[14px] font-extrabold leading-tight">Google Play</p>
-        </div>
-      </a>
-    </div>
-  )
 }
 
 export default function IntroducePage() {
@@ -105,14 +69,6 @@ export default function IntroducePage() {
             <a href="#faq" className="px-3 py-2 text-[13px] font-semibold text-gray-400 hover:text-white transition-colors">FAQ</a>
           </nav>
           <div className="flex items-center gap-2">
-            <a
-              href={APP_STORE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden sm:flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-extrabold text-white border border-[#2C2F35] hover:border-[#444] transition-colors"
-            >
-              앱 다운로드
-            </a>
             <button
               onClick={() => navigate('/')}
               className="px-4 py-2 rounded-full text-[13px] font-extrabold text-gray-900 bg-white hover:bg-gray-100 transition-colors"
@@ -149,12 +105,6 @@ export default function IntroducePage() {
               대량 단가를 미리 떼와 처음부터 모두에게 같은 그룹 특가.<br />
               결제하면 교환권이 바로 발급돼요.
             </p>
-
-            {/* App download buttons */}
-            <div className="mt-8">
-              <p className="text-[11px] font-bold text-gray-500 tracking-widest mb-3">앱 다운로드</p>
-              <AppBadges />
-            </div>
 
             <div className="flex flex-wrap items-center gap-4 mt-8">
               <button
@@ -366,18 +316,18 @@ export default function IntroducePage() {
           <div className="relative">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/20 mb-5">
               <Zap className="w-3.5 h-3.5 text-white" />
-              <span className="text-[12px] font-extrabold text-white">앱에서 진짜 시작돼요</span>
+              <span className="text-[12px] font-extrabold text-white">설치 없이 바로 시작</span>
             </div>
             <h2 className="text-[clamp(28px,4vw,48px)] font-black text-white leading-tight mb-3" style={{ letterSpacing: '-0.03em' }}>
               지금 시작하고<br />우리 동네<br /><span className="opacity-90">그룹 특가</span> 받기 🎁
             </h2>
             <p className="text-[15px] text-white/80 mb-8">전화번호만 있으면 3초 만에 시작할 수 있어요.</p>
-            <AppBadges />
+            {/* 📱 앱 배지가 있던 자리 — 앱이 없으므로 원래 보조였던 웹 진입을 주 CTA 로 올린다. */}
             <button
               onClick={() => navigate('/')}
-              className="mt-4 flex items-center gap-2 text-[13px] font-semibold text-white/70 hover:text-white transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl text-[15px] font-extrabold text-gray-900 bg-white hover:bg-gray-100 transition-colors"
             >
-              웹에서 바로 시작하기 <ChevronRight className="w-4 h-4" />
+              바로 시작하기 <ChevronRight className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -471,10 +421,6 @@ export default function IntroducePage() {
               <p className="text-[13px] text-gray-500 leading-relaxed max-w-[320px]">
                 우리 동네 맛집·뷰티·숙소를 그룹 특가로.<br />함께 사서 더 좋은 가격, 교환권은 결제 즉시 발급.
               </p>
-            </div>
-            <div>
-              <p className="text-[12px] font-bold text-gray-400 mb-4">앱 다운로드</p>
-              <AppBadges />
             </div>
           </div>
 
