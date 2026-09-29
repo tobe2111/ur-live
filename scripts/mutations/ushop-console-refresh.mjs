@@ -83,8 +83,9 @@ export default [
   {
     name: '소개 콘솔 — 이모지를 다시 넣는다',
     file: CONSOLE,
-    find: "<h1 className=\"text-lg font-bold\">{t('curator.console.title'",
-    replace: "<h1 className=\"text-lg font-bold\">🎤 {t('curator.console.title'",
+    /* 🔧 2026-09-29 재조준(B안): 제목 줄에 자간이 붙어 앵커가 낡았다. 계약은 그대로 — 이모지 0. */
+    find: "<h1 className=\"text-lg font-bold tracking-[-0.02em]\">{t('curator.console.title'",
+    replace: "<h1 className=\"text-lg font-bold tracking-[-0.02em]\">🎤 {t('curator.console.title'",
     test: T_NEW,
     why:
       '확정 디자인 시스템 규칙 ⑥(이모지 0). 이 화면에만 12개가 남아 있어서 다른 화면과 따로 놀았다. ' +
@@ -92,25 +93,21 @@ export default [
       '목록이 아니라 **유니코드 범위**로 센다.',
   },
   {
+    /* 🔧 2026-09-29 재조준(B안): 앵커였던 요약 카드가 `EarningsPanel` 로 이사했다.
+       지키는 것은 그대로 — **콘솔의 카드는 테두리 0 + 들림 한 값**. 콘솔에 남아 있는 카드로 옮긴다. */
     name: '소개 콘솔 — 카드에 테두리를 다시 그린다',
     file: CONSOLE,
-    find: '<div className="bg-surface shadow-lift rounded-2xl p-4 mb-5">',
-    replace: '<div className="bg-surface border border-line rounded-xl p-4 mb-5">',
+    find: '<div className="bg-surface shadow-lift rounded-2xl p-4 mb-3">',
+    replace: '<div className="bg-surface border border-line rounded-xl p-4 mb-3">',
     test: T_NEW,
     why: '표면 규칙 ①: 카드는 테두리 0 + 들림(`shadow-lift`) 한 값. 선을 그리면 면이 둘로 안 나뉜다.',
   },
-  {
-    name: '소개 콘솔 — 영입 매장 줄에 공구 대행 버튼을 되살린다',
-    file: CONSOLE,
-    find: '              onClick={() => setProxyFor({ id: s.id, name })}\n            />',
-    replace: '              onClick={() => setProxyFor({ id: s.id, name })}\n            />,\n            <button key={`b${s.id}`} className="px-2 py-0.5 rounded-full bg-brand text-white">공구 대행 등록</button>',
-    test: T_NEW,
-    why:
-      '2026-09-29 대표 확정 — 목록에 버튼을 두지 않고 **행 전체가 그 동작**이다. ' +
-      '⚠️ 다만 동작 자체가 사라지면 안 된다(모달 참조를 함께 검사한다). ' +
-      '🩸 첫 판 주입은 `hint="공구 대행 등록"` 를 넣었는데 시험이 `>공구 대행 등록<`(엘리먼트 본문)을 ' +
-      '보므로 **초록이 떴다** — 주입이 실제 결함을 안 만든 것이다. 러너가 그걸 잡아 버튼 엘리먼트로 교체했다.',
-  },
+  /*
+   * 🔧 2026-09-29 재조준(B안): *"영입 매장 줄에 공구 대행 버튼을 되살린다"* 주입이 여기 있었다.
+   *   매장 목록이 `curator-earnings/PerformancePanel.tsx` 로 이사했고, 같은 불변식을 겨누는 주입이
+   *   `mutations/curator-console-b.mjs` 의 **`콘솔B — 매장 줄에 공구 대행 버튼을 되살린다`** 로 옮겨 갔다.
+   *   같은 것을 두 번 재지 않으려고 여기서는 뺀다 — 커버리지는 줄지 않았다(그 파일이 본다).
+   */
   {
     name: '유어샵 — 마퀴를 되살린다 (순수 검정 띠가 첫인상을 먹는다)',
     file: HEADER,
