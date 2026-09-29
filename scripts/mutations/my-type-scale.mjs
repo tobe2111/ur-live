@@ -12,8 +12,10 @@ export default [
   {
     name: '🔠 스케일 밖 크기가 하나 새어 들어온다 (12.5px)',
     file: 'src/pages/user-profile/list-grammar.tsx',
-    find: "      <span className=\"flex-1 min-w-0 text-[15px] font-semibold text-gray-900 dark:text-white truncate\">{label}</span>",
-    replace: "        <span className=\"block text-[12.5px] font-bold text-gray-900 dark:text-white\">{label}</span>",
+    // ⚠️ 같은 줄이 `ListRow`·`FoldRow` 둘에 있다(2026-09-29 안 C 에서 치수를 통일했다) —
+    //    **다음 줄까지** 묶어 `ListRow` 쪽 하나만 가리킨다. `find` 가 둘이면 어디를 고쳤는지 모른다.
+    find: "      <span className=\"flex-1 min-w-0 text-[15px] font-semibold text-gray-900 dark:text-white truncate\">{label}</span>\n      {count != null ? (",
+    replace: "        <span className=\"block text-[12.5px] font-bold text-gray-900 dark:text-white\">{label}</span>\n      {count != null ? (",
     test: TEST,
     why: '반쪽 크기 하나면 그 줄만 이웃과 미세하게 다르다 — 빌드도 화면도 안 깨져서 17단계까지 이렇게 자랐다.',
   },
