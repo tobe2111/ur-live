@@ -51,6 +51,17 @@ PR #1575 는 콘솔의 **규칙 위반**(이모지 12 · 카드 테두리 · 강
 - 🩸 주입 1건이 처음엔 **결함을 안 만들었다**: `fillDays` 를 순수함수로만 재서 **호출부**를 raw map 으로
   되돌려도 초록이었다 → 배선 단언(`fillDays(stats.earnings_daily_30d`) 추가. **순수함수만 재면 배선이 샌다.**
 
+## 🩸 이번에 틀렸던 판단
+
+1. **`bg-surface/95 backdrop-blur` 는 CSS 가 아예 안 나온다.** `--surface` 같은 **var() 색에 투명도
+   접미사**를 붙이면 Tailwind 가 클래스를 만들지 못한다 ⇒ 헤더가 **통째로 투명**해진다. 화면은 뜨고
+   에러도 없다. `check-ghost-classes` 가 CI 에서 잡았다.
+   ⚠️ **pre-push 게이트는 이걸 못 잡는다** — `check-ghost-classes`·`check-built-css`·
+   `check-surface-role-leak` 셋은 *이번 빌드의* `dist/` 가 있어야 해서 게이트 EXCLUDE 에 있다
+   (이유는 `local-ci-parity.mjs` 에 적혀 있다). 🔑 **그런데 나는 그때 방금 빌드를 했었다** —
+   빌드를 돌린 세션은 그 셋을 손으로 한 번 돌릴 것. 안 그러면 CI 한 바퀴(약 6분)를 태운다.
+   반투명 표면이 정말 필요하면 이 레포의 관용구는 `bg-white/95 dark:bg-[#11141C]/95`(리터럴 색)다.
+
 ## 다음 세션의 첫 액션
 
 1. **배포 후 E4** — `/u/me/earnings` 를 390px 라이트·다크로 열어 확인:

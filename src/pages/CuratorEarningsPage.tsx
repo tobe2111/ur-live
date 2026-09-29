@@ -97,7 +97,11 @@ export default function CuratorEarningsPage() {
     <>
       <SEO title={t('curator.console.title', { defaultValue: '소개 콘솔' })} noindex />
       <div className="min-h-[100dvh] bg-warm dark:bg-[#11141C] text-gray-900 dark:text-white pb-24">
-        <header className="sticky top-0 z-20 bg-surface/95 backdrop-blur px-4 py-3">
+        {/* 🩸 `bg-surface/95 backdrop-blur` 는 **CSS 가 아예 안 나온다** — `--surface` 같은 var() 색에
+            투명도 접미사를 붙이면 Tailwind 가 클래스를 만들지 못한다(`check-ghost-classes` 가 잡았다).
+            헤더가 통째로 투명해진다. 표면 규칙 ①대로 **불투명 면**으로 간다 —
+            페이지는 `bg-warm`, 헤더는 `bg-surface` 라 두 면이 맞닿는 자리가 곧 구분선이다. */}
+        <header className="sticky top-0 z-20 bg-surface px-4 py-3">
           <div className="max-w-3xl mx-auto flex items-center justify-between">
             <h1 className="text-lg font-bold tracking-[-0.02em]">{t('curator.console.title', { defaultValue: '소개 콘솔' })}</h1>
             {handle && (
