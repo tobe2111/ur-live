@@ -87,4 +87,13 @@ export default [
     test: TONE_SCAN,
     why: '이 가드의 대조 픽스처는 시험 파일 안에 문자열로 들어 있다 — 안 거르면 가드가 자기 자신을 신고해 pre-push 가 영구히 빨갛다(2026-09-29 실제 발생).',
   },
+  {
+    // 🕳️ 2026-09-29: `src/pages/**` 만 쓰면 최상위 734개가 조용히 검사 밖이다(실측 403 → 252).
+    name: '🕳️ 상태색 검사가 최상위 페이지를 놓친다 (git `**` 글롭 회귀)',
+    file: 'src/tests/unit/status-tone-and-sale-2026-09-29.test.ts',
+    find: "  \"git ls-files 'src/pages/*.tsx' 'src/pages/**/*.tsx' 'src/components/*.tsx' 'src/components/**/*.tsx'\",",
+    replace: "  \"git ls-files 'src/pages/**/*.tsx' 'src/components/**/*.tsx'\",",
+    test: 'src/tests/unit/status-tone-and-sale-2026-09-29.test.ts',
+    why: '최상위가 빠지면 검사 대상이 403 → 252 로 줄어 파일 수 하한이 잡는다. 하한이 없으면 "지키는 척" 이 된다.',
+  },
 ]

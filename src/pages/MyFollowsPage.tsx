@@ -146,7 +146,7 @@ export default function MyFollowsPage() {
                           type="button"
                           onClick={() => toggle(f.seller_id, opt.key)}
                           disabled={savingId === f.seller_id}
-                          className={`relative w-10 h-6 rounded-full transition-colors ${f[opt.key] ? 'bg-gray-900 dark:bg-white' : 'bg-gray-300 dark:bg-gray-600'} disabled:opacity-50`}
+                          className={`relative w-10 h-6 rounded-full transition-colors ${f[opt.key] ? 'bg-brand' : 'bg-gray-300 dark:bg-gray-600'} disabled:opacity-50`}
                           aria-label={`${opt.label} 알림 ${f[opt.key] ? '끄기' : '켜기'}`}
                           aria-pressed={f[opt.key]}
                         >

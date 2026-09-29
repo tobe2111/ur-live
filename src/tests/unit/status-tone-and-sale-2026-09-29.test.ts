@@ -39,7 +39,12 @@ import { stripComments } from '../helpers/source-text'
  * - 실제 렌더 대비 — `dark-contrast` 워크플로가 잰다.
  */
 
-const files = execSync("git ls-files 'src/pages/**/*.tsx' 'src/components/**/*.tsx'", { encoding: 'utf8' })
+const files = execSync(
+  // 🕳️ git pathspec 의 `**` 는 `FNM_PATHNAME` 이라 **디렉터리를 최소 하나 요구한다** —
+  //    `src/pages/*.tsx` 만 쓰면 최상위 파일 734개가 조용히 검사 밖이다(2026-09-29 실측).
+  "git ls-files 'src/pages/*.tsx' 'src/pages/**/*.tsx' 'src/components/*.tsx' 'src/components/**/*.tsx'",
+  { encoding: 'utf8' },
+)
   .trim().split('\n').filter(Boolean)
   .filter((f) => !/(admin|seller|agency|wholesale|supplier|marketing|debug|Admin|Seller|Agency|Wholesale|Supplier)/.test(f))
 
@@ -127,7 +132,7 @@ describe('상태·할인 색이 중화에 먹히지 않는다', () => {
   })
 
   it('🔴 이 시험이 헛돌지 않는다 — 소비자 파일을 실제로 훑었다', () => {
-    expect(files.length, '소비자 파일이 너무 적다 — 경로가 낡았다').toBeGreaterThan(200)
+    expect(files.length, '소비자 파일이 너무 적다 — 경로가 낡았다(실측 403, 최상위 glob 이 빠지면 252로 떨어진다)').toBeGreaterThan(350)
     // 실제로 `text-sale` 을 쓰는 곳이 있어야 한다(전부 지워졌으면 위 검사가 공허하다).
     const used = files.filter((f) => /\btext-sale\b/.test(readFileSync(f, 'utf8'))).length
     expect(used, 'text-sale 을 쓰는 화면이 없다 — SSOT 가 죽었다').toBeGreaterThan(5)

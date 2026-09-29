@@ -59,4 +59,13 @@ export default [
     test: 'src/tests/unit/primary-button-color-2026-09-28.test.ts',
     why: '칩은 `<button` 이 6~7줄 위에 있다 — 3줄 창에서는 검정 칩 다섯 개가 실제로 새고 있었다(2026-09-29 실측).',
   },
+  {
+    // 🕳️ 2026-09-29: `src/pages/**` 만 쓰면 최상위 734개가 조용히 검사 밖이다(실측 403 → 252).
+    name: '🕳️ 칩 검사가 최상위 페이지를 놓친다 (git `**` 글롭 회귀)',
+    file: 'src/tests/unit/consumer-chip-selection-2026-09-29.test.ts',
+    find: "  \"git ls-files 'src/pages/*.tsx' 'src/pages/**/*.tsx' 'src/components/*.tsx' 'src/components/**/*.tsx'\",",
+    replace: "  \"git ls-files 'src/pages/**/*.tsx' 'src/components/**/*.tsx'\",",
+    test: 'src/tests/unit/consumer-chip-selection-2026-09-29.test.ts',
+    why: '최상위가 빠지면 검사 대상이 403 → 252 로 줄어 파일 수 하한이 잡는다. 하한이 없으면 "지키는 척" 이 된다.',
+  },
 ]

@@ -239,7 +239,7 @@ export default function MallProductPage() {
         {/* 🔴 가격 — 목록·카톡 카드와 **같은 값**이어야 한다. 서버가 준 값을 그대로 쓴다. */}
         <p className="mt-2 flex items-baseline gap-2 flex-wrap">
           {product.discount_pct > 0 && (
-            <span className="text-[24px] font-extrabold tracking-[-0.04em] text-red-600 dark:text-red-400">{product.discount_pct}%</span>
+            <span className="text-[24px] font-extrabold tracking-[-0.04em] text-sale">{product.discount_pct}%</span>
           )}
           <span className="text-[24px] font-extrabold tracking-[-0.04em] text-[#1A1719] dark:text-[#F3EFF1]">{won(product.gb_price)}</span>
           {product.list_price > product.gb_price && (

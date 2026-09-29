@@ -279,7 +279,7 @@ export default function MallHomePage() {
 
                     <p className="mt-[5px] flex items-baseline gap-[5px] flex-wrap">
                       {it.discount_pct > 0 && (
-                        <span className="text-[15px] font-extrabold tracking-[-0.03em] text-red-600 dark:text-red-400">{it.discount_pct}%</span>
+                        <span className="text-[15px] font-extrabold tracking-[-0.03em] text-sale">{it.discount_pct}%</span>
                       )}
                       <span className="text-[15px] font-extrabold tracking-[-0.03em] text-[#1A1719] dark:text-[#F3EFF1]">{won(it.gb_price)}</span>
                       {it.list_price > it.gb_price && (
