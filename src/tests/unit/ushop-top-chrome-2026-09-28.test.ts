@@ -33,7 +33,7 @@ import { readFileSync } from 'node:fs'
 import { stripComments } from '../helpers/source-text'
 
 const HEADER = 'src/pages/curator-page/CuratorHeader.tsx'
-const MARQUEE = 'src/pages/curator-page/HeaderMarquee.tsx'
+const MANAGE = 'src/pages/ushop-manage/ShopInfoCards.tsx'
 const CHIPS = 'src/pages/curator-page/PinCategoryChips.tsx'
 const PAGE = 'src/pages/CuratorPage.tsx'
 
@@ -41,7 +41,7 @@ const read = (p: string) => stripComments(readFileSync(p, 'utf-8'))
 const header = read(HEADER)
 const chips = read(CHIPS)
 const page = read(PAGE)
-const marquee = read(MARQUEE)
+const manage = read(MANAGE)
 
 describe('① SNS 가 전용 줄을 쓰지 않는다', () => {
   it('측정이 비어 있지 않다', () => {
@@ -140,14 +140,27 @@ describe('⑤ PC(lg+) — 같은 말을 두 번 하지 않는다', () => {
     expect(header).toMatch(/<Link to="\/" aria-label=/)
   })
 
-  it('흐르는 문구가 PC 에서는 안 흐른다 (300px 칸에서 양끝이 잘렸다)', () => {
-    expect(marquee, 'PC 는 고정 한 줄').toMatch(/hidden lg:block[^"]*"[\s\S]{0,120}curator\.headline/)
-    expect(marquee, '마퀴는 모바일 전용').toMatch(/lg:hidden animate-marquee/)
+  /**
+   * 🩸 2026-09-29 (대표 *"배고프다 뭐먹지?는 아예 빼기"*) — 이 자리에 있던 두 시험은
+   *   **마퀴가 PC 에서 안 흐르는가 / PC 에서 문구가 안 사라지는가** 였다. 대표가 기능을 통째로
+   *   없앴으니 그 전제가 사라졌다. 커버리지를 지우는 대신 **불변식을 뒤집어** 재조준한다 —
+   *   지켜야 할 것이 "PC 에서 잘 흐르는가" 에서 "다시 살아나지 않는가" 로 바뀌었을 뿐이다.
+   *
+   *   왜 뺐나(라이브 실측): 맨 위 30px 풀블리드 띠였고 그 색이 **순수 검정 `#000000`** 이었다.
+   *   우리 다크 바탕은 `#11141C` 라 팔레트 밖 값이고, 같은 문구가 세 번 반복해 흐르는 모양이라
+   *   첫인상을 그 띠가 전부 먹었다.
+   */
+  it('🔴 흐르는 문구(마퀴)가 헤더에 없다 — 조용히 되살아나지 않게', () => {
+    expect(header, 'HeaderMarquee 부품 미참조').not.toContain('HeaderMarquee')
+    expect(header, '마퀴 애니메이션 미사용').not.toContain('animate-marquee')
+    expect(header, '헤더가 headline 을 그리지 않는다').not.toMatch(/\{\s*curator\.headline/)
   })
 
-  it('PC 에서 문구를 숨기지 않는다 — 주인이 쓴 글이다', () => {
-    // `lg:hidden` 만 걸고 대체 표시를 안 두면 PC 방문자에게 그 줄이 통째로 사라진다.
-    const pc = marquee.slice(marquee.indexOf('hidden lg:block'), marquee.indexOf('lg:hidden animate-marquee'))
-    expect(pc, 'PC 자리에 headline 이 실제로 그려진다').toContain('curator.headline')
+  it('🔴 표시 자리가 없으면 편집 칸도 없다 — 아무도 못 보는 값을 입력시키지 않는다', () => {
+    // 이 레포가 반복해 당한 "조용한 부재": 표시를 지우고 편집만 남기면 주인이 계속 쓰는데
+    // 어디에도 안 뜬다. 에러도 안 나서 아무도 모른다.
+    expect(manage.length, '측정이 비어 있지 않다').toBeGreaterThan(1000)
+    expect(manage, "'흐르는 문구' 편집 행 0개").not.toContain('흐르는 문구')
+    expect(manage, 'headline 편집 상태 0개').not.toContain('headlineVal')
   })
 })

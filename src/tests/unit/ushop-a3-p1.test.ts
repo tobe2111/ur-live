@@ -96,10 +96,21 @@ describe('유어샵 안3 — 카테고리 칩(지도 B안과 같은 그림)', ()
     // 칩 선택이 실제로 목록을 거른다(배선만 있고 안 걸러지는 것을 막는다).
     expect(src).toMatch(/cat === 'all' \? homePins : homePins\.filter\(p => pinCategory\(p\) === cat\)/)
   })
-  // 🔧 2026-09-28 재조준(s3): 배지가 `CuratorPage` 인라인 카드 → `PinRow` 로 **이사했다**.
-  //   검사 대상만 옮긴다(계약은 그대로 — 사진 위 유일한 표식이라 테마와 무관하게 흰 원이어야 읽힌다).
-  it('순번 배지는 흰 원 + 잉크 숫자', () => {
-    expect(codeOnly(read(ROW))).toMatch(/rounded-full bg-white text-\[#16181C\][^"]*tabular-nums/)
+  /*
+   * 🔧 재조준 두 번째. ① 2026-09-28(s3): 배지가 `CuratorPage` 인라인 카드 → `PinRow` 로 **이사**.
+   *   ② 2026-09-29(대표 *"세련된 느낌이 없다"*): 순번이 **사진 밖**(`DealRow` 의 `leading` 슬롯)으로
+   *   나갔다. 그래서 "흰 원 + 잉크 숫자" 계약은 **녹았다** — 흰 원은 *어떤 사진 위에서도 읽히게*
+   *   하려던 장치였고, 사진 위가 아니면 존재 이유가 없다(2026-08-31 대표 *"할인율이 사진 안으로
+   *   들어가면 안돼"* 와 같은 판단).
+   *   ⇒ 계약을 풀지 않고 **남은 것으로** 옮긴다: 순번은 지울 수 없고(SNS 에서 "N번 사세요" 로
+   *     부르는 주소다) 숫자 폭이 고정이어야 한다(`1`·`10` 이 나란히 서면 칸이 흔들린다).
+   *   자리·크기 계약은 `ushop-console-refresh-2026-09-29.test.ts` ② 가 본다 — 여기서 또 보지 않는다.
+   */
+  it('순번은 남아 있고 숫자 폭이 고정이다 (사진 위 흰 원이 아니다)', () => {
+    const src = codeOnly(read(ROW))
+    expect(src, '순번 렌더').toContain('{order}')
+    expect(src, '숫자 폭 고정').toMatch(/tabular-nums/)
+    expect(src, '사진 위 흰 원 배지 0개').not.toMatch(/rounded-full bg-white/)
   })
 })
 
