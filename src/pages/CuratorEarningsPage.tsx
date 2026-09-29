@@ -19,8 +19,11 @@ import { toast } from '@/hooks/useToast'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SellOwnProductsCTA from './curator-page/SellOwnProductsCTA'
 import { parseUTCDate } from '@/utils/date'
+import { Store, ShoppingBag, Sparkles } from 'lucide-react'
+import { GroupLabel, ListPlate, ListRow } from './user-profile/list-grammar'
+import { ProxyProductModal, WithdrawModal } from './curator-earnings/ConsoleModals'
 
-interface WithdrawalInfo {
+export interface WithdrawalInfo {
   lifetime_earnings: number
   total_withdrawn: number
   available: number
@@ -84,7 +87,7 @@ export default function CuratorEarningsPage() {
       <div className="min-h-screen bg-white dark:bg-[#11141C] text-gray-900 dark:text-white pb-24">
         <header className="sticky top-0 z-20 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35] px-4 py-3">
           <div className="max-w-3xl mx-auto flex items-center justify-between">
-            <h1 className="text-[17px] font-bold">🎤 {t('curator.console.title', { defaultValue: '소개 콘솔' })}</h1>
+            <h1 className="text-[17px] font-bold">{t('curator.console.title', { defaultValue: '소개 콘솔' })}</h1>
             {handle && (
               <Link to={`/u/${handle}`} className="text-[15px] text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
                 @{handle}
@@ -94,21 +97,26 @@ export default function CuratorEarningsPage() {
         </header>
 
         <div className="max-w-3xl mx-auto px-4 py-6">
-          {/* 🏁 2026-06-15 (옵션 1 콘솔): 크리에이터 핵심 동선 빠른 진입 — 유어샵. 🏁 2026-06-17: 공구 호스팅 숨김(HOSTING_HIDDEN) */}
-          <div className={`grid ${HOSTING_HIDDEN ? 'grid-cols-1' : 'grid-cols-2'} gap-2 mb-5`}>
-            <Link to={handle ? `/u/${handle}` : '/u/me'}
-              className="rounded-2xl bg-gray-100 dark:bg-white/[0.04] active:bg-gray-200 dark:active:bg-white/[0.08] p-4 transition-colors">
-              <p className="text-[13px] font-bold text-gray-900 dark:text-white">🔗 내 유어샵</p>
-              <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">상품 핀 추가·정렬·공유</p>
-            </Link>
+          {/* 🏁 2026-06-15 (옵션 1 콘솔): 크리에이터 핵심 동선 빠른 진입 — 유어샵. 🏁 2026-06-17: 공구 호스팅 숨김(HOSTING_HIDDEN)
+              🎫 2026-09-29 — 회색 타일 → 마이와 같은 **목록 문법**(GroupLabel + ListPlate + ListRow).
+                 같은 뜻의 줄을 화면마다 다르게 그리면 반드시 갈린다. */}
+          <GroupLabel>내 가게</GroupLabel>
+          <ListPlate className="mb-1">
+            <ListRow
+              icon={<ShoppingBag className="w-5 h-5" aria-hidden="true" />}
+              label="내 유어샵"
+              hint="담은 상품과 순서 관리"
+              to={handle ? `/u/${handle}` : '/u/me'}
+            />
             {!HOSTING_HIDDEN && (
-              <Link to="/host"
-                className="rounded-2xl bg-gray-100 dark:bg-white/[0.04] active:bg-gray-200 dark:active:bg-white/[0.08] p-4 transition-colors">
-                <p className="text-[13px] font-bold text-gray-900 dark:text-white">✨ 공구 호스팅</p>
-                <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">동네 공구 직접 제안</p>
-              </Link>
+              <ListRow
+                icon={<Sparkles className="w-5 h-5" aria-hidden="true" />}
+                label="공구 호스팅"
+                hint="동네 공구 직접 제안"
+                to="/host"
+              />
             )}
-          </div>
+          </ListPlate>
           {loading ? (
             <p className="text-center text-gray-500 dark:text-gray-400 py-12">{t('common.loading')}</p>
           ) : error ? (
@@ -148,6 +156,20 @@ export default function CuratorEarningsPage() {
   )
 }
 
+/**
+ * 🏪 내가 영입한 매장 — **목록 문법**(2026-09-29 대표 시안).
+ *
+ * 종전엔 한 행에 [매장명 · 실적 · 초록 알약 · 파란 버튼] 넷이 들어가 폰에서 되감겼고,
+ * 초록(emerald) 알약은 표면 규칙 ⑥(색깔 정보상자 0)·②(강조색 하나) 위반이었다.
+ * ⇒ 마이에서 쓰는 `GroupLabel` + `ListPlate` + `ListRow` 한 벌로 통일한다 — 같은 문법을
+ *   두 벌 그리면 반드시 갈린다(2026-09-28 마이 목록이 셋으로 갈렸던 그 사고).
+ *
+ * 🔴 **`공구 대행 등록` 버튼은 목록에 두지 않는다**(2026-09-29 대표 확정 — 물었더니 "아니").
+ *    행 전체가 그 동작이다. 커미션 기간은 알약이 아니라 `hint` 줄의 한 조각으로 내려간다 —
+ *    만료 여부는 색이 아니라 **글자**로 말한다(색만으로 말하면 색맹·흑백에서 사라진다).
+ *    주문 건수는 목록 문법의 **값 자리**(오른쪽)로 보낸다 — 그 자리가 숫자용이고, 0 은 스스로
+ *    회색이 된다(`ListRow` 규칙: "아직 모르는 것을 0 이라고 말하지 않는다").
+ */
 function IntroducedStoresSection() {
   const [data, setData] = useState<{ total_commission: number; stores: Array<{ id: number; business_name: string | null; status: string | null; referral_bonus_until: string | null; total_orders: number; total_sales: number }> } | null>(null)
   const [proxyFor, setProxyFor] = useState<{ id: number; name: string } | null>(null)
@@ -159,119 +181,29 @@ function IntroducedStoresSection() {
   if (!data || data.stores.length === 0) return null
 
   return (
-    <section className="mb-6 bg-surface border border-line rounded-xl p-4">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-[15px] font-bold text-gray-900 dark:text-white">🏪 내가 영입한 매장</p>
-        <span className="text-[12px] text-gray-500 dark:text-gray-400">누적 커미션 {formatWon(data.total_commission)}</span>
-      </div>
-      <div className="space-y-2">
+    <section className="mb-2">
+      <GroupLabel>영입한 매장 · 누적 {formatWon(data.total_commission)}</GroupLabel>
+      <ListPlate>
         {data.stores.map((s) => {
-          const expired = s.referral_bonus_until && new Date(s.referral_bonus_until) < new Date()
+          const name = s.business_name || `매장 #${s.id}`
+          const expired = !!(s.referral_bonus_until && parseUTCDate(s.referral_bonus_until) < new Date())
+          const term = expired ? '커미션 만료' : (s.referral_bonus_until ? `~${s.referral_bonus_until.slice(0, 10)}` : '무기한')
           return (
-            <div key={s.id} className="flex items-center justify-between text-[12px] border-b border-gray-100 dark:border-[#2C2F35] pb-2 last:border-0">
-              <div>
-                <span className="font-bold text-gray-900 dark:text-white">{s.business_name || `매장 #${s.id}`}</span>
-                <span className="ml-2 text-gray-400 dark:text-gray-500">{s.total_orders}건 · {formatWon(s.total_sales)}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={`px-2 py-1 rounded-full text-[12px] font-bold ${
-                  expired ? 'bg-gray-100 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-500'
-                  : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-                }`}>
-                  {expired ? '커미션 만료' : (s.referral_bonus_until ? `~${s.referral_bonus_until.slice(0, 10)}` : '무기한')}
-                </span>
-                <button
-                  onClick={() => setProxyFor({ id: s.id, name: s.business_name || `매장 #${s.id}` })}
-                  className="px-2 py-1 rounded-full text-[12px] font-bold bg-brand text-white"
-                >
-                  공구 대행 등록
-                </button>
-              </div>
-            </div>
+            <ListRow
+              key={s.id}
+              icon={<Store className="w-5 h-5" aria-hidden="true" />}
+              label={name}
+              count={s.total_orders}
+              hint={`${formatWon(s.total_sales)} · ${term}`}
+              onClick={() => setProxyFor({ id: s.id, name })}
+            />
           )
         })}
-      </div>
+      </ListPlate>
       {proxyFor && <ProxyProductModal merchant={proxyFor} onClose={() => setProxyFor(null)} />}
     </section>
   )
 }
-
-function ProxyProductModal({ merchant, onClose }: { merchant: { id: number; name: string }; onClose: () => void }) {
-  const [form, setForm] = useState({ name: '', description: '', price: '', stock: '', category: '', image_url: '' })
-  const [submitting, setSubmitting] = useState(false)
-
-  async function submit() {
-    if (submitting) return
-    if (!form.name.trim() || !form.price) { toast.error('상품명/가격을 입력하세요'); return }
-    setSubmitting(true)
-    try {
-      const r = await curatorApi.createProxyProduct({
-        merchant_seller_id: merchant.id,
-        name: form.name.trim(),
-        description: form.description || undefined,
-        price: Number(form.price),
-        stock: form.stock ? Number(form.stock) : undefined,
-        category: form.category || undefined,
-        image_url: form.image_url || undefined,
-      })
-      if (r.success) { toast.success(r.message || '대행 등록 완료'); onClose() }
-      else toast.error(r.error || '등록 실패')
-    } catch {
-      toast.error('등록 중 오류가 발생했습니다')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 z-[10000] bg-black/60 flex items-end sm:items-center justify-center p-4" onClick={onClose}>
-      <div className="w-full max-w-md bg-surface rounded-2xl p-5" onClick={(e) => e.stopPropagation()}>
-        <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">공구 대행 등록</p>
-        <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">{merchant.name} — 등록 후 매장 승인 시 공개됩니다.</p>
-        <div className="space-y-2">
-          {([
-            ['name', '상품명'],
-            ['price', '가격 (원)'],
-            ['stock', '재고 (선택)'],
-            ['category', '카테고리 (선택)'],
-            ['image_url', '대표 이미지 URL (선택)'],
-          ] as const).map(([k, label]) => (
-            <input
-              key={k}
-              value={(form as any)[k]}
-              onChange={(e) => setForm({ ...form, [k]: e.target.value })}
-              placeholder={label}
-              className="w-full px-3 py-2 text-[15px] rounded-lg border border-gray-300 dark:border-[#2C2F35] bg-surface text-gray-900 dark:text-white"
-            />
-          ))}
-          <textarea
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-            placeholder="설명 (선택)"
-            rows={2}
-            className="w-full px-3 py-2 text-[15px] rounded-lg border border-gray-300 dark:border-[#2C2F35] bg-surface text-gray-900 dark:text-white"
-          />
-          <div className="flex gap-2 pt-1">
-            <button onClick={submit} disabled={submitting} className="flex-1 py-2 bg-brand text-white text-[15px] font-bold rounded-lg disabled:opacity-50">
-              {submitting ? '등록 중…' : '대행 등록'}
-            </button>
-            <button onClick={onClose} className="px-3 py-2 text-gray-500 dark:text-gray-400 text-[15px]">취소</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-/**
- * 🏁 2026-06-17 — "사업자 등록 → 사업자 유저" 단일 진입 (사용자 명칭 확정: 유저 / 사업자 유저).
- *   일원화: 과거 BusinessSection(현금정산용 사업자등록)과 본 카드(판매 매장등록)가 분리돼 "사업자
- *   등록"이 2군데였고, 현금 출금 게이트(curator.routes:861)가 이미 '연결 승인 매장'을 요구해
- *   BusinessSection-only 등록은 현금정산이 안 되는 오해유발 UI였음 → BusinessSection 은퇴, 본 카드로 통합.
- *   유저 → [사업자 등록 1번 = 판매 승인] → 사업자 유저 (판매 + 추천수익 현금정산 동시).
- *   기존 검증된 매장 등록(/seller/register/supplier → register-from-user store_owner) + 어드민 승인
- *   재활용. 승인되면 /u/{handle} 가 셀러 상점 + 추천 핀(CuratorPinsSection) 통합 페이지가 됨.
- */
 
 function WithdrawalCard({ info, onWithdraw, onAckUpgrade }: { info: WithdrawalInfo; onWithdraw: () => void; onAckUpgrade: () => Promise<void> }) {
   // 🛡️ 2026-05-25 신모델: 사업자 셀러는 실제 돈 출금, 일반 user 는 딜 잔액 표시.
@@ -280,7 +212,7 @@ function WithdrawalCard({ info, onWithdraw, onAckUpgrade }: { info: WithdrawalIn
     <section className="mb-6">
       {isCash ? (
         <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-5 text-white">
-          <p className="text-[12px] opacity-80 mb-1">💰 출금 가능 잔액 (현금)</p>
+          <p className="text-[12px] opacity-80 mb-1">출금 가능 잔액 (현금)</p>
           <p className="text-3xl font-bold mb-3">{formatWon(info.available)}</p>
           <div className="flex justify-between text-[12px] opacity-90 mb-4">
             <span>누적 적립 {formatWon(info.lifetime_earnings)}</span>
@@ -298,7 +230,7 @@ function WithdrawalCard({ info, onWithdraw, onAckUpgrade }: { info: WithdrawalIn
         </div>
       ) : (
         <div className="bg-gradient-to-br from-gray-700 to-gray-800 rounded-xl p-5 text-white">
-          <p className="text-[12px] opacity-80 mb-1">🟡 내 딜 잔액</p>
+          <p className="text-[12px] opacity-80 mb-1">내 딜 잔액</p>
           <p className="text-3xl font-bold mb-3">{formatNumber(info.deal_balance)}딜</p>
           <p className="text-[12px] opacity-90 mb-3">
             누적 적립 {formatNumber(info.lifetime_earnings)}딜 — 1딜 = 1원으로 쇼핑/공구에 사용
@@ -307,23 +239,23 @@ function WithdrawalCard({ info, onWithdraw, onAckUpgrade }: { info: WithdrawalIn
             to="/browse"
             className="block w-full py-2 bg-surface text-orange-600 font-bold rounded-lg text-center"
           >
-            🛍️ 쇼핑 둘러보기
+            쇼핑 둘러보기
           </Link>
         </div>
       )}
 
       {/* 셀러 승급 안내 */}
       {info.seller_upgrade.eligible && !info.seller_upgrade.offered && (
-        <div className="mt-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-4">
-          <p className="text-[15px] font-bold text-amber-900 dark:text-amber-100 mb-1">🎯 셀러 승급 안내</p>
-          <p className="text-[12px] text-amber-800 dark:text-amber-200 mb-3">
+        <div className="mt-3 bg-surface shadow-lift rounded-2xl p-4">
+          <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">셀러 승급 안내</p>
+          <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-3">
             누적 적립이 {formatWon(info.seller_upgrade.threshold)} 를 넘었어요! 셀러로 승급하시면 직접 상품 판매·라이브 송출이 가능해져요.
           </p>
           <div className="flex gap-2">
-            <Link to="/store/new" className="flex-1 py-2 bg-amber-500 hover:bg-amber-600 text-white text-[12px] font-bold rounded-lg text-center">
+            <Link to="/store/new" className="flex-1 py-2 bg-brand text-white text-[12px] font-bold rounded-lg text-center active:opacity-70">
               셀러 가입하기
             </Link>
-            <button onClick={onAckUpgrade} className="px-3 py-2 text-amber-700 dark:text-amber-300 text-[12px] font-bold">
+            <button onClick={onAckUpgrade} className="px-3 py-2 text-gray-500 dark:text-gray-400 text-[12px] font-bold active:opacity-70">
               나중에
             </button>
           </div>
@@ -342,7 +274,7 @@ function WithdrawalCard({ info, onWithdraw, onAckUpgrade }: { info: WithdrawalIn
                   <span className="text-gray-400 dark:text-gray-500 ml-2">({h.bank_name})</span>
                 </div>
                 <span className={`px-2 py-1 rounded-full text-[12px] font-bold ${
-                  h.status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
+                  h.status === 'paid' ? 'bg-wash text-gray-700 dark:text-gray-200' :
                   h.status === 'rejected' ? 'bg-red-100 text-red-700' :
                   'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300'
                 }`}>{h.status}</span>
@@ -355,141 +287,47 @@ function WithdrawalCard({ info, onWithdraw, onAckUpgrade }: { info: WithdrawalIn
   )
 }
 
-function WithdrawModal({ info, onClose, onSuccess }: { info: WithdrawalInfo; onClose: () => void; onSuccess: () => void }) {
-  const [amount, setAmount] = useState(info.available)
-  const [bankName, setBankName] = useState('')
-  const [bankAccount, setBankAccount] = useState('')
-  const [accountHolder, setAccountHolder] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-
-  const withholding = Math.floor(amount * info.withholding_rate)
-  const netAmount = amount - withholding
-
-  async function submit() {
-    if (amount < info.min_withdrawal) {
-      toast.error(`최소 ${info.min_withdrawal.toLocaleString()}원 부터 출금 가능`)
-      return
-    }
-    if (!bankName || !bankAccount || !accountHolder) {
-      toast.error('은행 / 계좌 / 예금주를 모두 입력하세요')
-      return
-    }
-    setSubmitting(true)
-    try {
-      const res = await curatorApi.requestWithdrawal({ amount, bank_name: bankName, bank_account: bankAccount, account_holder: accountHolder })
-      if (res.success) {
-        toast.success(`출금 신청 완료 — 실 입금 ${res.withdrawal?.net_amount.toLocaleString()}원`)
-        onSuccess()
-      } else {
-        toast.error(res.error || '출금 신청 실패')
-      }
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || '출금 신청 실패')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 z-[10001] bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
-      <div className="w-full sm:max-w-md bg-surface rounded-t-2xl sm:rounded-2xl p-5" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-4">💰 출금 신청</h2>
-
-        <div className="space-y-3">
-          <div>
-            <label className="text-[12px] text-gray-500 dark:text-gray-400 block mb-1">금액 (최대 {formatWon(info.available)})</label>
-            <input
-              type="number"
-              min={info.min_withdrawal}
-              max={info.available}
-              value={amount}
-              onChange={(e) => setAmount(Math.max(0, Math.min(info.available, Number(e.target.value) || 0)))}
-              className="w-full px-3 py-2 text-[15px] bg-warm border border-line text-gray-900 dark:text-white rounded-lg"
-            />
-          </div>
-          <div>
-            <label className="text-[12px] text-gray-500 dark:text-gray-400 block mb-1">은행</label>
-            <input
-              type="text"
-              value={bankName}
-              onChange={(e) => setBankName(e.target.value)}
-              placeholder="예: 카카오뱅크"
-              className="w-full px-3 py-2 text-[15px] bg-warm border border-line text-gray-900 dark:text-white rounded-lg"
-            />
-          </div>
-          <div>
-            <label className="text-[12px] text-gray-500 dark:text-gray-400 block mb-1">계좌번호</label>
-            <input
-              type="text"
-              value={bankAccount}
-              onChange={(e) => setBankAccount(e.target.value.replace(/[^0-9-]/g, ''))}
-              placeholder="3333-01-1234567"
-              className="w-full px-3 py-2 text-[15px] bg-warm border border-line text-gray-900 dark:text-white rounded-lg"
-            />
-          </div>
-          <div>
-            <label className="text-[12px] text-gray-500 dark:text-gray-400 block mb-1">예금주</label>
-            <input
-              type="text"
-              value={accountHolder}
-              onChange={(e) => setAccountHolder(e.target.value)}
-              className="w-full px-3 py-2 text-[15px] bg-warm border border-line text-gray-900 dark:text-white rounded-lg"
-            />
-          </div>
-        </div>
-
-        <div className="mt-4 bg-warm rounded-lg p-3 text-[12px] space-y-1">
-          <div className="flex justify-between text-gray-600 dark:text-gray-400"><span>신청 금액</span><span>{formatWon(amount)}</span></div>
-          <div className="flex justify-between text-gray-600 dark:text-gray-400"><span>원천징수 ({(info.withholding_rate * 100).toFixed(1)}%)</span><span>-{formatWon(withholding)}</span></div>
-          <div className="flex justify-between font-bold text-gray-900 dark:text-white pt-1 border-t border-line"><span>실 입금</span><span>{formatWon(netAmount)}</span></div>
-        </div>
-
-        <div className="mt-4 flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300 font-bold rounded-lg">취소</button>
-          <button onClick={submit} disabled={submitting} className="flex-1 py-2 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white font-bold rounded-lg">
-            {submitting ? '신청 중...' : '신청'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
+/**
+ * 📊 30일 요약 — **한 판, 강조색 하나**(2026-09-29 대표 시안).
+ *
+ * 종전엔 같은 크기 카드 셋이 나란히 있고 색이 **셋 다 달랐다**(브랜드 파랑 · blue-500 · emerald-500).
+ * 셋이 같은 무게라 무엇이 중요한지 화면이 말해 주지 않았고, 강조색 셋은 표면 규칙 ②
+ * (*강조색 하나, 자리 셋*) 위반이다. ⇒ 주인공(적립액)을 **34px 로 키워** 판 위에 올리고,
+ * 순클릭·전환율은 그 아래 **회색 보조 줄**로 내렸다. 규칙 ③ "숫자가 주인공" 의 형태다.
+ */
 function SummaryCards({ stats }: { stats: DashboardStats }) {
   const { t } = useTranslation()
   const pending = safeNum(stats.pending_earnings)
+  // 순클릭(ip+ua+일자 dedup) — raw 클릭은 새로고침/봇 부풀림을 포함한다.
   const uniqueClicks = stats.unique_clicks_30d != null ? safeNum(stats.unique_clicks_30d) : safeNum(stats.clicks_30d)
-  const conversion = safeNum(stats.conversion_rate_30d)
-  const cards: Array<{ label: string; value: string; sub?: string; accent: string }> = [
-    {
-      label: t('curator.earnings.monthEarning', { defaultValue: '30일 적립 (확정)' }),
-      value: formatWon(stats.month_earnings),
-      sub: pending > 0 ? `+ ${formatNumber(pending)}딜 적립예정` : undefined,
-      accent: 'text-brand-text ',
-    },
-    {
-      // 순클릭(ip+ua+일자 dedup) — raw 클릭은 새로고침/봇 부풀림 포함.
-      label: t('curator.earnings.uniqueClicks30d', { defaultValue: '30일 순클릭' }),
-      value: formatNumber(uniqueClicks),
-      sub: stats.unique_clicks_30d != null && stats.clicks_30d > uniqueClicks ? `전체 ${formatNumber(stats.clicks_30d)}` : undefined,
-      accent: 'text-blue-500 dark:text-blue-400',
-    },
-    {
-      label: t('curator.earnings.conversion30d', { defaultValue: '30일 전환율' }),
-      value: `${conversion}%`,
-      sub: `구매 ${formatNumber(stats.purchases_30d)}`,
-      accent: 'text-emerald-500 dark:text-emerald-400',
-    },
-  ]
+  const showRaw = stats.unique_clicks_30d != null && stats.clicks_30d > uniqueClicks
   return (
-    <div className="grid grid-cols-3 gap-3 mb-6">
-      {cards.map((card) => (
-        <div key={card.label} className="bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-3 border border-gray-100 dark:border-[#2C2F35]">
-          <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1">{card.label}</p>
-          <p className={`text-[17px] font-bold ${card.accent}`}>{card.value}</p>
-          {card.sub && <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-1">{card.sub}</p>}
-        </div>
-      ))}
+    <div className="bg-surface shadow-lift rounded-2xl p-4 mb-5">
+      <p className="text-[12px] font-bold text-gray-400 dark:text-gray-500 mb-2">
+        {t('curator.earnings.monthEarning', { defaultValue: '30일 적립 (확정)' })}
+      </p>
+      <p className="text-[34px] leading-none font-black tracking-[-0.04em] text-brand-text tabular-nums">
+        {formatWon(stats.month_earnings)}
+      </p>
+      {pending > 0 && (
+        <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-2">+ {formatNumber(pending)}딜 적립예정</p>
+      )}
+      <div className="flex gap-7 mt-4 pt-4 border-t border-rule">
+        <span>
+          <span className="block text-[12px] text-gray-400 dark:text-gray-500 mb-1">
+            {t('curator.earnings.uniqueClicks30d', { defaultValue: '30일 순클릭' })}
+          </span>
+          <b className="text-[17px] font-bold tabular-nums text-gray-900 dark:text-white">{formatNumber(uniqueClicks)}</b>
+          {showRaw && <span className="text-[12px] text-gray-400 dark:text-gray-500 ml-1.5">전체 {formatNumber(stats.clicks_30d)}</span>}
+        </span>
+        <span>
+          <span className="block text-[12px] text-gray-400 dark:text-gray-500 mb-1">
+            {t('curator.earnings.conversion30d', { defaultValue: '30일 전환율' })}
+          </span>
+          <b className="text-[17px] font-bold tabular-nums text-gray-900 dark:text-white">{safeNum(stats.conversion_rate_30d)}%</b>
+          <span className="text-[12px] text-gray-400 dark:text-gray-500 ml-1.5">구매 {formatNumber(stats.purchases_30d)}</span>
+        </span>
+      </div>
     </div>
   )
 }
@@ -499,13 +337,13 @@ function TopPinsSection({ stats }: { stats: DashboardStats }) {
   if (!stats.top_pins?.length) return null
   return (
     <section className="mb-6">
-      <h2 className="text-[15px] font-bold mb-3">🔥 {t('curator.earnings.topPins', { defaultValue: '인기 핀 TOP 3' })}</h2>
+      <h2 className="text-[15px] font-bold mb-3">{t('curator.earnings.topPins', { defaultValue: '인기 핀 TOP 3' })}</h2>
       <div className="space-y-2">
         {stats.top_pins.map((pin, idx) => (
           <Link
             key={pin.id}
             to={`/products/${pin.product_id}`}
-            className="flex items-center gap-3 bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-3 border border-gray-100 dark:border-[#2C2F35] hover:border-brand/50 transition-colors"
+            className="flex items-center gap-3 bg-surface shadow-lift rounded-xl p-3 active:opacity-70 transition-opacity"
           >
             <div className="text-[17px] font-bold text-gray-400 dark:text-gray-500 w-6">{idx + 1}</div>
             {(pin.thumbnail || pin.image_url) && (
@@ -520,7 +358,7 @@ function TopPinsSection({ stats }: { stats: DashboardStats }) {
             )}
             <div className="flex-1 min-w-0">
               <p className="text-[15px] font-medium truncate">{pin.product_name}</p>
-              <p className="text-[12px] text-gray-500 dark:text-gray-400">👆 {formatNumber(pin.click_count)} 클릭</p>
+              <p className="text-[12px] text-gray-500 dark:text-gray-400">{formatNumber(pin.click_count)} 클릭</p>
             </div>
           </Link>
         ))}
@@ -535,19 +373,19 @@ function RecentEarningsSection({ stats }: { stats: DashboardStats }) {
   if (!items.length) return null
   return (
     <section className="mb-6">
-      <h2 className="text-[15px] font-bold mb-3">🧾 {t('curator.earnings.recent', { defaultValue: '수익 내역 (원천별)' })}</h2>
+      <h2 className="text-[15px] font-bold mb-3">{t('curator.earnings.recent', { defaultValue: '수익 내역 (원천별)' })}</h2>
       <div className="space-y-2">
         {items.map((e) => (
           <Link
             key={e.id}
             to={`/products/${e.product_id}`}
-            className="flex items-center justify-between gap-3 bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-3 border border-gray-100 dark:border-[#2C2F35] hover:border-brand/50 transition-colors"
+            className="flex items-center justify-between gap-3 bg-surface shadow-lift rounded-xl p-3 active:opacity-70 transition-opacity"
           >
             <div className="flex-1 min-w-0">
               <p className="text-[15px] font-medium truncate">
                 {e.product_name || t('curator.earnings.unknownProduct', { defaultValue: '상품' })}
                 {e.status === 'holding' && (
-                  <span className="ml-1.5 align-middle inline-block px-2 py-1 rounded-full text-[12px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                  <span className="ml-1.5 align-middle inline-block px-2 py-1 rounded-full text-[12px] font-bold bg-wash text-gray-500 dark:text-gray-400">
                     적립예정
                   </span>
                 )}
@@ -557,7 +395,7 @@ function RecentEarningsSection({ stats }: { stats: DashboardStats }) {
                 {e.order_amount ? ` · 주문 ${formatWon(e.order_amount)}` : ''}
               </p>
             </div>
-            <span className={`text-[15px] font-bold shrink-0 ${e.status === 'holding' ? 'text-amber-500' : 'text-brand-text'}`}>+{formatWon(e.commission)}</span>
+            <span className={`text-[15px] font-bold shrink-0 ${e.status === 'holding' ? 'text-gray-400 dark:text-gray-500' : 'text-brand-text'}`}>+{formatWon(e.commission)}</span>
           </Link>
         ))}
       </div>
@@ -577,8 +415,8 @@ function DailyChart({ stats }: { stats: DashboardStats }) {
   const max = Math.max(...daily.map((d) => safeNum(d.amount)), 1)
   return (
     <section>
-      <h2 className="text-[15px] font-bold mb-3">📈 {t('curator.earnings.dailyChart', { defaultValue: '일별 적립 (30일)' })}</h2>
-      <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-4 border border-gray-100 dark:border-[#2C2F35]">
+      <h2 className="text-[15px] font-bold mb-3">{t('curator.earnings.dailyChart', { defaultValue: '일별 적립 (30일)' })}</h2>
+      <div className="bg-surface shadow-lift rounded-2xl p-4">
         <div className="flex items-end gap-1 h-32">
           {daily.map((d) => {
             const pct = (safeNum(d.amount) / max) * 100

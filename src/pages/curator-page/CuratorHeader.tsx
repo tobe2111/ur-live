@@ -12,6 +12,14 @@
  *      ⇒ "주인/방문자 차이는 버튼 한 자리" 의 **그 한 자리는 `관리`** 다.
  *   ⑤ **아바타 제거**(9차) — 라이브 대부분이 프로필 사진이 없어 그 자리는 사실상 항상 이니셜 원이었다.
  *      사람을 보여주는 게 아니라 **사람이 없다는 걸 보여주는** 자리였다.
+ *   ⑥ 🩸 **흐르는 문구(마퀴) 제거**(2026-09-29 대표 *"배고프다 뭐먹지?는 아예 빼기"*) —
+ *      맨 위 30px 풀블리드 띠였고, 라이브 실측에서 그 띠가 **순수 검정 `#000000`** 이었다.
+ *      우리 팔레트에 없는 값이고(다크 바탕은 `#11141C`), 화면 첫인상을 그 띠가 전부 먹었다.
+ *      같은 문구가 세 번 반복해 흐르는 모양이라 정보가 아니라 **소음**이었다.
+ *      ⚠️ 표시 자리가 0이 되므로 `/u/me/manage` 의 '흐르는 문구' 편집 칸도 **같은 커밋에서** 뺐다 —
+ *      안 그러면 주인이 아무도 못 보는 값을 계속 입력한다(이 레포가 반복해 당한 "조용한 부재").
+ *      `curator.accent`(액센트 색)는 이 띠가 **유일한 소비처**였어서 파생값도 함께 사라졌다.
+ *      서버 필드(`headline`/`accent`)는 그대로 둔다 — 되살릴 때 값이 남아 있어야 한다.
  *
  * 🔧 **인라인 편집은 여기 없다**(e3). 이름·소개·주소·SNS·흐르는 문구는 전부 `/u/me/manage` 로 나갔다 —
  *    종전엔 이 헤더가 손님 화면 위에 편집 어포던스를 덧칠해 주인/손님 화면이 갈렸다.
@@ -22,7 +30,6 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Share2 } from 'lucide-react'
 import VerifiedSeal from '@/components/VerifiedSeal'
-import HeaderMarquee from './HeaderMarquee'
 import { snsUrl } from '@/utils/sns-url'
 
 interface CuratorHeaderProps {
@@ -48,18 +55,10 @@ interface CuratorHeaderProps {
   onCopyLink: () => void
 }
 
-const ACCENT_DEFAULT = '#6b7280'
 const btnCls = 'h-[31px] px-2 rounded-lg border border-rule-strong bg-surface text-[12px] font-semibold text-gray-600 dark:text-gray-300 inline-flex items-center gap-2 shrink-0 active:opacity-70'
 
 export default function CuratorHeader({ curator, canEdit, counts, accountType, onCopyLink }: CuratorHeaderProps) {
   const { t } = useTranslation()
-  const accentColor = (curator.accent && /^#[0-9A-Fa-f]{6}$/.test(curator.accent)) ? curator.accent : ACCENT_DEFAULT
-  // 액센트 밝기로 글자색 자동 대비 (밝으면 잉크, 어두우면 흰색).
-  const accentText = (() => {
-    const h = accentColor.replace('#', '')
-    const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16)
-    return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.62 ? '#1D1F29' : '#ffffff'
-  })()
   const hasSns = !!(curator.youtube_url || curator.instagram_url || curator.tiktok_url)
   const showCounts = (counts?.pins ?? 0) > 0 || (counts?.products ?? 0) > 0
 
@@ -86,9 +85,6 @@ export default function CuratorHeader({ curator, canEdit, counts, accountType, o
 
   return (
     <header className="bg-surface">
-      {/* 흐르는 문구 — 값이 있을 때만. 편집은 /u/me/manage. */}
-      <HeaderMarquee curator={curator} isOwner={false} accentColor={accentColor} accentText={accentText} />
-
       <div className="max-w-3xl mx-auto">
         {/* ① 브랜드 바 — 로고 = 홈. 표시로 꾸미지 않는다(로고=홈은 웹 관례라 밑줄·화살표가 군더더기다).
             🖥️ 2026-09-28 (대표 *"둘 다 고치고"*): **PC 에서는 안 그린다.** lg+ 에서는 화면 맨 위에

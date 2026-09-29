@@ -13,6 +13,12 @@
  *    (`readdirSync('docs/decisions')`). 🩸 폴더 검색어에 **끝 슬래시를 붙이면 안 된다**:
  *    `docs/decisions/` 로 찾으면 `join(process.cwd(), 'docs/decisions')` 를 쓰는
  *    `admin-decisions-parse.test.ts` 를 통째로 놓친다 — 하필 그게 그날 사고를 잡던 시험이었다.
+ * 4. **`src/` 파일은 `src/` 를 뗀 형태도** 검색어다 — 시험이 경로를 늘 레포 기준으로 쓰는 게 아니다.
+ *    🩸 2026-09-29 에 값을 치렀다: `voucher-card-discount-once.test.ts` 는
+ *    `resolve(__dirname, '../../components/deal/DealRow.tsx')` 로 SSOT 를 읽는데, 그물이
+ *    `src/components/deal/DealRow.tsx` **전체 경로**만 찾아서 **못 골랐다**. 그 파일을 고친
+ *    푸시가 로컬에서 초록이었고 5분 뒤 CI 가 알려 줬다 — 이 그물이 막으려던 바로 그 사고다.
+ *    폴더가 아니라 **폴더까지 붙은 파일 경로**라 규칙 3 의 폭발(225개)과 무관하다.
  * 3. **`src/` 안에서는 폴더 매칭을 하지 않는다.** `src/pages/Foo.tsx` 의 폴더는 `src/pages` 이고
  *    그걸로 매칭하면 시험 **225개**가 딸려 와(실측) 푸시가 느려진다 — 느려지면 사람들이 끈다.
  *    같은 이유로 **최상위 한 칸**(`docs`·`scripts`)도 제외한다(`dir.includes('/')` 조건).
@@ -27,7 +33,10 @@ export function searchTermsFor(files) {
   for (const f of files) {
     if (!f) continue
     set.add(f)                                    // 규칙 1
-    if (f.startsWith('src/')) continue            // 규칙 3
+    if (f.startsWith('src/')) {
+      set.add(f.slice(4))                         // 규칙 4 — `components/deal/DealRow.tsx`
+      continue                                    // 규칙 3
+    }
     const dir = f.slice(0, f.lastIndexOf('/'))
     if (dir && dir.includes('/')) set.add(dir)    // 규칙 2 — 끝 슬래시 없이, 최상위 한 칸 제외
   }

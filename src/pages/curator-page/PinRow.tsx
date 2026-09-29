@@ -62,11 +62,20 @@ export default memo(function PinRow({ pin, handle, order, prefetch }: {
               onError={(e) => cfImageOnError(e.currentTarget, img)}
             />
           )}
-          {/* 사진 위 유일한 표식이라 테마와 무관하게 흰 원이어야 어떤 사진에서도 읽힌다. */}
-          <span className="absolute top-1 left-1 z-10 w-[18px] h-[18px] rounded-full bg-white text-[#16181C] text-[12px] font-black tabular-nums flex items-center justify-center shadow-lift pointer-events-none">  {/* light-fixed: 사진 위 */}
-            {order}
-          </span>
         </>
+      }
+      thumbSize="lg"
+      leading={
+        /*
+         * 🩸 2026-09-29 (대표 *"세련된 느낌이 없다"* 진단) — 순번을 **사진 밖**으로 옮겼다.
+         *   종전엔 흰 원이 사진 좌상단에 얹혀 있었다. 순번은 지울 수 없지만(위 ① — SNS 에서
+         *   "N번 사세요" 로 부르는 주소다) 사진의 가장 좋은 자리를 덮을 이유는 없다.
+         *   2026-08-31 대표 *"할인율이 사진 안으로 들어가면 안돼"* 와 같은 판단이다.
+         *   밖으로 나오니 흰 원(어떤 사진 위에서도 읽히게)이 필요 없어져 회색 숫자로 족하다.
+         */
+        <span className="w-5 shrink-0 text-center text-[12px] font-bold tabular-nums text-gray-400 dark:text-gray-500">
+          {order}
+        </span>
       }
       eyebrow={pin.restaurant_name || undefined}
       title={pin.product_name}

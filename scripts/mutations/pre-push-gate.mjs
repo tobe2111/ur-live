@@ -24,8 +24,11 @@ export default [
   {
     name: '🔎 src 를 폴더로 매칭한다 (시험 225개가 딸려 와 푸시가 터진다)',
     file: 'scripts/pre-push-search-terms.mjs',
-    find: "if (f.startsWith('src/')) continue            // 규칙 3",
-    replace: "if (false) continue            // 규칙 3",
+    /* 🔧 2026-09-29 재조준: 규칙 4 가 들어오며 그 줄이 `if (f.startsWith('src/')) {` 블록이 됐다.
+       지키는 것은 그대로 — **src 파일에서 폴더가 검색어가 되면 안 된다**. 블록을 건너뛰게 만들어
+       아래 폴더 추가 줄로 떨어뜨린다. */
+    find: "    if (f.startsWith('src/')) {",
+    replace: "    if (false) {",
     test: TEST,
     why: '`src/pages/Foo.tsx` 의 폴더는 `src/pages/` 다 — 그걸로 매칭하면 사실상 전수가 된다.',
   },
@@ -52,5 +55,16 @@ export default [
     replace: 'function changedSourcesfunction changedSources() {',
     test: TEST,
     why: '2026-09-28 에 이 모듈을 뽑는 편집이 실제로 이 토큰을 남겼다. 주입은 텍스트만 읽고 tsc 는 .mjs 를 안 봐서 아무도 못 잡았다 — 푸시가 터지고서야 알았다.',
+  },
+  {
+    name: '그물 — src 파일의 상대경로 검색어를 뺀다 (상대경로로 읽는 시험을 다시 놓친다)',
+    file: 'scripts/pre-push-search-terms.mjs',
+    find: "      set.add(f.slice(4))                         // 규칙 4",
+    replace: "      //  set.add(f.slice(4))                    // 규칙 4",
+    test: TEST,
+    why:
+      '🩸 2026-09-29 에 실제로 놓쳤다: `voucher-card-discount-once.test.ts` 가 SSOT 를 ' +
+      "`resolve(__dirname, '../../components/deal/DealRow.tsx')` 로 읽는데 그물은 전체 경로만 찾아 " +
+      '그 시험을 후보에서 통째로 빠뜨렸다. 로컬 초록 → 5분 뒤 CI 빨간불 — 이 그물이 막으려던 사고다.',
   },
 ]

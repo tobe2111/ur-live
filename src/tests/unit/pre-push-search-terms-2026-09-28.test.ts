@@ -47,9 +47,15 @@ describe('pre-push 검색어', () => {
 
   it('🔴 src 는 **파일 경로 그대로** — 폴더로 바꾸면 푸시가 터진다', () => {
     // `src/pages/Foo.tsx` 의 폴더는 `src/pages/` 이고, 그걸로 매칭하면 시험 225개가 딸려 온다(실측).
-    expect(searchTermsFor(['src/pages/UserProfilePage.tsx'])).toEqual(['src/pages/UserProfilePage.tsx'])
-    expect(searchTermsFor(['src/pages/user-profile/SellerSection.tsx']))
-      .toEqual(['src/pages/user-profile/SellerSection.tsx'])
+    // 🔧 2026-09-29 재조준: 규칙 4 가 `src/` 를 뗀 **파일** 경로를 하나 더 넣는다. 이 시험이 지키는
+    //   것은 "몇 개인가" 가 아니라 **"폴더가 검색어가 되지 않는가"**(= 폭발 방지)였으므로 그쪽으로 옮긴다.
+    for (const f of ['src/pages/UserProfilePage.tsx', 'src/pages/user-profile/SellerSection.tsx']) {
+      const terms = searchTermsFor([f])
+      expect(terms, '전체 경로').toContain(f)
+      expect(terms, 'src 를 뗀 파일 경로').toContain(f.slice(4))
+      // 폴더는 어떤 형태로도 검색어가 아니다 — 이게 225개 폭발을 막는 선이다.
+      for (const t of terms) expect(t, `폴더 검색어: ${t}`).toMatch(/\.tsx?$/)
+    }
   })
 
   it('루트 파일은 그대로 (CLAUDE.md)', () => {
@@ -60,6 +66,22 @@ describe('pre-push 검색어', () => {
     const terms = searchTermsFor(['docs/decisions/a.md', 'docs/decisions/b.md', 'docs/handoff/c.md'])
     expect(terms.filter(t => t === 'docs/decisions')).toHaveLength(1)
     expect(terms).toContain('docs/handoff')
+  })
+
+  /**
+   * 🩸 2026-09-29 — 그물이 **실제로 놓친 사고**를 고정한다.
+   *   `voucher-card-discount-once.test.ts` 는 SSOT 를
+   *   `resolve(__dirname, '../../components/deal/DealRow.tsx')` 로 읽는다. 그물이 전체 경로
+   *   (`src/components/...`)만 찾던 탓에 그 시험을 **후보에서 통째로 빠뜨렸고**, 로컬은 초록,
+   *   5분 뒤 CI 가 빨간불이었다 — 이 그물이 막으려던 바로 그 사고 클래스다.
+   */
+  it('🔴 src/ 파일은 src 를 뗀 경로도 검색어다 — 상대경로로 읽는 시험을 놓치지 않는다', () => {
+    const terms = searchTermsFor(['src/components/deal/DealRow.tsx'])
+    expect(terms).toContain('src/components/deal/DealRow.tsx')
+    expect(terms).toContain('components/deal/DealRow.tsx')
+    // 폴더만으로는 안 찾는다 — 규칙 3(폭발 방지)이 그대로 살아 있다.
+    expect(terms).not.toContain('components/deal')
+    expect(terms).not.toContain('src/components/deal')
   })
 
   it('🔴 이 시험이 헛돌지 않는다 — 빈 입력에 빈 결과, 아무거나 통과시키지 않는다', () => {

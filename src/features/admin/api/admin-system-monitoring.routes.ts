@@ -355,7 +355,7 @@ const OPS_GATES: OpsGate[] = [
   // 🎛️ 2026-09-07 — `check-gate-registry` 가 찾아낸 **미등재 strict-true 게이트 5개**.
   //   전부 read-site 가 `=== 'true'` 인데 이 표에 없어서 `ops-gate-reachable` 의 사각지대였다.
   //   등재가 곧 검사 범위다 — 넣는 순간 "켤 화면이 있나"를 기계가 묻기 시작한다.
-  { key: 'settlement_skip_ledgered', kind: 'setting', label: '자동정산에서 원장 기록분 제외', default_value: 'false', staging_ref: null, turn_on_when: '🔴 머니 경로. 원장 적립(SHOPPING_LEDGER 계열)이 실제로 돌기 시작해 같은 매출이 두 번 정산될 위험이 생겼을 때. 그전엔 켜면 정산이 통째로 빠진다' },
+  { key: 'settlement_skip_ledgered', kind: 'setting', label: '자동정산에서 원장 기록분 제외', default_value: 'false', staging_ref: null, turn_on_when: '🔴 머니 경로. 지금이 가장 안전하다 — 양쪽 레일의 정산행이 아직 0이라 켜도 아무 일이 안 일어나고, 이용권이 팔린 뒤엔 이미 양쪽에 적힌 것을 손으로 맞춰야 한다. ⚠️ 2026-09-29 정정: 여기 오래 "그전엔 켜면 정산이 통째로 빠진다"고 적혀 있었는데 사실이 아니다 — skip 절이 NOT EXISTS 라서 원장에 없으면 건너뛸 것도 없고(자동정산 그대로 진행), 원장 기록(recordVoucherUsedLedger)은 이용권 사용 시점에 게이트 없이 항상 돈다. 그 오기를 믿고 두 레일을 켜 둔 채로 두면 오히려 이중 지급 위험' },
   { key: 'outreach_auto_send', kind: 'setting', label: '인플루언서 제휴 제안 자동 발송', default_value: 'false', staging_ref: null, turn_on_when: '📮 콜드 발송은 법·평판 문제라 **대표가 직접 판단**한다. 세션이 켜지 않는다' },
   { key: 'promo_bar_enabled', kind: 'setting', label: '소비자 홈 프로모 바', default_value: 'false', staging_ref: null, turn_on_when: '홍보 문구가 정해지면 (문구·버튼·색은 같은 화면의 프로모 바 섹션에서)' },
   // 🧺 2026-09-15 — 이용권 **장바구니 결제** 레일. 만들 때 이 표에 안 넣어서 어드민에 손잡이가

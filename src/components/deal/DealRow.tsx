@@ -16,6 +16,7 @@ import { memo, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
+import { priceDisplay } from '@/shared/price-display'
 
 export interface DealRowProps {
   /** 링크로 만들 목적지. 없으면 `<div>` 로 렌더(부모가 버튼/폼을 감싸는 경우). */
@@ -37,7 +38,13 @@ export interface DealRowProps {
   meta?: ReactNode
   /** 오른쪽 끝(화살표·버튼). */
   trailing?: ReactNode
-  thumbSize?: 'sm' | 'md'
+  thumbSize?: 'sm' | 'md' | 'lg'
+  /**
+   * 썸네일 **왼쪽** 슬롯(순번 등). 사진 위에 얹지 않는다 —
+   * 2026-08-31 대표 *"할인율이 사진 안으로 들어가면 안돼"* 와 같은 이유로,
+   * 사진의 가장 좋은 자리를 표식이 덮으면 파는 물건이 안 보인다.
+   */
+  leading?: ReactNode
   className?: string
   onClick?: () => void
   /** hover/touch/focus 즉시 상세 prefetch — 목록→상세 워터폴 방지(잠금 로딩 계약). */
@@ -47,14 +54,28 @@ export interface DealRowProps {
 /** 표면 규칙(09-02): 흰 카드 + `shadow-lift`, 테두리 0, 숫자가 주인공. */
 export default memo(function DealRow({
   to, imageUrl, thumb, thumbStyle, thumbClassName = '', eyebrow, title, price, originalPrice,
-  unit = '원', discountPct = 0, meta, trailing, thumbSize = 'md', className = '', onClick, prefetch,
+  unit = '원', discountPct = 0, meta, trailing, thumbSize = 'md', leading, className = '', onClick, prefetch,
 }: DealRowProps) {
   const box = thumbSize === 'sm'
     ? 'w-16 h-16'
-    : 'w-16 h-16 sm:w-[72px] sm:h-[72px]'
-  const hasStrike = originalPrice != null && price != null && originalPrice > price
+    : thumbSize === 'lg'
+      ? 'w-[76px] h-[76px]'
+      : 'w-16 h-16 sm:w-[72px] sm:h-[72px]'
+  /**
+   * 💸 2026-09-29 — 할인율을 **SSOT** 로 (대표 *"왜이리 세련된 느낌이 없지?"* 진단에서 나온 실제 결함).
+   *   종전엔 `discountPct` 를 **그대로** 썼는데 서버 `discount_rate` 가 0 으로 내려오는 상품이 많아
+   *   `discountPct > 0` 이 거짓 → 배지가 아예 안 떴다. 라이브 유어샵 실측(2026-09-28):
+   *   21,700/26,000 · 35,100/41,000 · 209,000/272,000 — **셋 다 실제로 할인 중인데 화면에 0개**였다.
+   *   같은 상품이 홈 카드(`GroupBuyFeedCard`)에선 23% 로 떴다. 홈은 `priceDisplay` 를 쓰고
+   *   이 부품만 안 썼기 때문이다 — 화면마다 할인율이 다르면 버그가 아니라 **거짓말**이다.
+   *   `priceDisplay` 의 규칙은 `Math.max(선언값, 정가·판매가 계산값)`(2026-08-19 대표 신고의 수습).
+   *   ⚠️ 이 값은 **표시 전용**이다. 청구액은 서버가 정하고 결제 경로가 재검증한다.
+   */
+  const pd = priceDisplay({ price, original_price: originalPrice, discount_rate: discountPct })
+  const hasStrike = originalPrice != null && price != null && pd.showOriginal
   const body = (
     <>
+      {leading}
       <div
         className={`relative ${box} shrink-0 overflow-hidden rounded-xl bg-gray-100 dark:bg-[#222225] ${thumbClassName}`}
         style={thumbStyle}
@@ -79,8 +100,8 @@ export default memo(function DealRow({
         <p className="text-[15px] leading-snug line-clamp-2 font-bold text-gray-900 dark:text-white">{title}</p>
         {price != null && (
           <div className="flex items-baseline gap-1 mt-1">
-            {discountPct > 0 && (
-              <span className="text-[15px] font-extrabold text-sale tracking-tight">{discountPct}%</span>
+            {pd.discount > 0 && (
+              <span className="text-[15px] font-extrabold text-sale tracking-tight">{pd.discount}%</span>
             )}
             <span className="text-[17px] font-extrabold text-gray-900 dark:text-white tracking-tight">{formatNumber(price)}</span>
             <span className="text-[12px] font-bold text-gray-900 dark:text-white">{unit}</span>
