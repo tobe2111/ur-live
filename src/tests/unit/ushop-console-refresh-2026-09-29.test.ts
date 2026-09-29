@@ -109,23 +109,37 @@ describe('④ 소개 콘솔 — 확정 디자인 시스템', () => {
     expect(tinted, `남은 색: ${tinted.join(' ')}`).toHaveLength(0)
   })
 
+  /*
+   * 🔧 2026-09-29 재조준(B안): 주인공 숫자는 **살아 있고 자리가 옮겨졌다** — 요약 카드가
+   *   `curator-earnings/EarningsPanel.tsx` 의 밴드로 들어갔다. 검사 대상만 옮긴다(계약 동일:
+   *   *숫자가 주인공* · *3열 균등 카드로 되돌아가지 않는다*).
+   */
   it('요약은 한 판 — 주인공 숫자가 크다', () => {
-    expect(console_, '34px 주인공 숫자').toContain('text-[34px]')
-    expect(console_, '3열 균등 카드로 되돌아가지 않았다').not.toMatch(/grid-cols-3[^"]*"[\s\S]{0,400}card\.accent/)
+    const earn = read('src/pages/curator-earnings/EarningsPanel.tsx')
+    expect(earn.length, '측정이 비어 있지 않다').toBeGreaterThan(1500)
+    expect(earn, '30px 주인공 숫자').toMatch(/text-\[30px\]/)
+    expect(console_, '3열 균등 카드로 되돌아가지 않았다').not.toMatch(/grid-cols-3/)
   })
 })
 
-describe('⑤ 마이와 같은 목록 문법을 쓴다', () => {
-  it('🔴 GroupLabel / ListPlate / ListRow 를 import 하고 렌더한다', () => {
-    expect(console_).toContain("from './user-profile/list-grammar'")
+/**
+ * 🩸 2026-09-29 **같은 날 대표가 뒤집었다.** 이 자리에 있던 시험은 *"콘솔이 마이와 같은 목록
+ *   문법을 쓴다"* 였다. 그 판을 보고 대표: *"근데 마음에 들진 않아"* → 무엇이 걸리는지 물었더니
+ *   **"목록 문법 자체가 안 맞는다"** 를 직접 골랐고, B안으로 확정했다.
+ *   그 문법은 **마이의 메뉴**용이고(아이콘 원 + 화살표) 콘솔은 **성적표**라 필요한 것이 다르다.
+ *   ⇒ 불변식을 **뒤집어** 재조준한다: 이제 지킬 것은 *"다시 끌어오지 않는가"* 다.
+ *   자세한 계약(순위표·탭·막대 30칸)은 `curator-console-b-2026-09-29.test.ts` 가 본다.
+ */
+describe('⑤ 콘솔은 마이의 목록 문법을 쓰지 않는다 (2026-09-29 대표가 뒤집음)', () => {
+  it('🔴 list-grammar 를 import 하지도 렌더하지도 않는다', () => {
+    expect(console_).not.toContain('list-grammar')
     for (const tag of ['<GroupLabel>', '<ListPlate', '<ListRow']) {
-      expect(console_, `${tag} 렌더`).toContain(tag)
+      expect(console_, `${tag} 가 되살아났다`).not.toContain(tag)
     }
   })
 
-  it('🔴 영입 매장 줄에 공구 대행 등록 버튼이 없다 (대표 확정 — 행 안으로)', () => {
+  it('🔴 그래도 공구 대행 동작은 살아 있다 (모달을 그린다)', () => {
     expect(console_, '목록 안 버튼 0개').not.toMatch(/>\s*공구 대행 등록\s*</)
-    // 다만 그 동작 자체는 살아 있어야 한다 — 행을 누르면 모달이 열린다.
     expect(console_, '모달은 그대로').toContain('<ProxyProductModal')
   })
 })
