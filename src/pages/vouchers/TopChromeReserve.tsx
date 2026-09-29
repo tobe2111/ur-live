@@ -24,15 +24,15 @@ import { ChevronDown } from 'lucide-react'
 import { CategoryIcon } from './shared'
 
 /**
- * 카테고리 칩 줄(`py-2` + `h-9` 알약) 과 같은 높이.
+ * 카테고리 칩 줄(`py-2.5` + `h-9` 알약) 과 같은 높이.
  * 바탕색은 안 준다 — 부모 reveal 그룹이 이미 그 색을 칠한다(같은 색을 두 벌 두지 않는다).
  */
 export function ChipRowReserve() {
   return (
     <div aria-hidden="true">
-      <div className="ur-content-wide px-4 lg:px-8 py-2">
+      <div className="ur-content-wide px-4 lg:px-8 py-2.5">
         <div className="flex gap-2 overflow-x-auto scrollbar-hide invisible">
-          <span className="shrink-0 inline-flex items-center gap-2 h-9 pl-3 pr-4 rounded-full text-[13px] font-bold">&nbsp;</span>
+          <span className="shrink-0 inline-flex items-center gap-1.5 h-9 pl-3 pr-3.5 rounded-full text-[13px] font-bold">&nbsp;</span>
         </div>
       </div>
     </div>
@@ -46,17 +46,17 @@ export function ChipRowReserve() {
  */
 export function BrandStripReserve({ open, category }: { open: boolean; category: string }) {
   return (
-    <div className="ur-content-wide px-4 lg:px-8 pt-2 pb-3 invisible" aria-hidden="true">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[12px] font-bold flex items-center gap-2">
+    <div className="ur-content-wide px-4 lg:px-8 pt-1.5 pb-3 invisible" aria-hidden="true">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-[12px] font-bold flex items-center gap-1.5">
           <CategoryIcon category={category} />
           브랜드로 찾기
           <ChevronDown className="w-3.5 h-3.5" />
         </span>
       </div>
       {open && (
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide py-1 -mx-1 px-1">
-          {/* `BrandChip` 과 같은 치수: w-12 h-12 타일 + gap-1 + text-[12px] 라벨 */}
+        <div className="flex gap-2.5 overflow-x-auto scrollbar-hide py-1 -mx-1 px-1">
+          {/* `BrandChip` 과 같은 치수: w-12 h-12 타일 + gap-1 + text-[10px] 라벨 */}
           <span className="flex flex-col items-center gap-1 shrink-0">
             <span className="w-12 h-12 rounded-2xl block" />
             <span className="text-[12px] max-w-[56px]">&nbsp;</span>

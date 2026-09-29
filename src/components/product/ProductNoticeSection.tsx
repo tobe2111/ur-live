@@ -24,7 +24,7 @@ export function ProductNoticeSection() {
         <div key={index} className="flex items-start gap-3">
           <div className="mt-1 h-1.5 w-1.5 rounded-full bg-muted-foreground flex-shrink-0" />
           <div>
-            <p className="text-[12px] font-medium text-foreground">
+            <p className="text-[13px] font-medium text-foreground">
               {notice.title}
             </p>
             <p className="mt-1 text-[12px] text-muted-foreground">

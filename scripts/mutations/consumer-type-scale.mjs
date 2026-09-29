@@ -63,9 +63,29 @@ export default [
     // 🔒 잠금표 제외가 **아무 파일이나 빠져나가는 문**이 되면 안 된다.
     name: '🔒 잠금표 제외가 아무 파일이나 받아 준다 (검사 탈출구)',
     file: 'src/tests/unit/consumer-type-scale-2026-09-29.test.ts',
-    find: 'const LOCKED = files.filter((f) => LOCK_ROWS.has(f))',
-    replace: "const LOCKED = files.filter((f) => LOCK_ROWS.has(f) || f.includes('curator-page'))",
+    find: 'const LOCKED = files.filter((f) => LOCK_ROWS.has(f) || f in MIRRORS)',
+    replace: "const LOCKED = files.filter((f) => LOCK_ROWS.has(f) || f in MIRRORS || f.includes('curator-page'))",
     test: TEST,
     why: 'CLAUDE.md 잠금표에 없는 파일이 제외 목록에 들어가면 그 화면은 조용히 정본 밖으로 나간다.',
+  },
+  {
+    // 🪞 2026-09-29: 이 세션이 실제로 그렇게 깨뜨렸다 — 코드모드가 `TopChromeReserve` 를 정본으로
+    //    이행시켜 **잠긴 `VouchersPage` 와 거울이 깨졌고**, 그 파일이 막으려던 10px 밀림이 돌아왔다.
+    //    거울을 제외 목록에서 빼면 다음 세션이 같은 길로 간다.
+    name: '🪞 잠금 파일의 그림자를 정본으로 끌고 간다 (거울이 깨진다)',
+    file: 'src/tests/unit/consumer-type-scale-2026-09-29.test.ts',
+    find: "  'src/pages/vouchers/TopChromeReserve.tsx': 'src/pages/VouchersPage.tsx',",
+    replace: '',
+    test: TEST,
+    why: '거울이 제외에서 빠지면 그 파일을 4px 격자로 옮기게 되고, 잠긴 원본은 못 따라와 예약 높이가 어긋난다.',
+  },
+  {
+    // 🪞 거울이 **잠기지 않은 파일**을 가리키면 그것도 탈출구다.
+    name: '🪞 거울이 잠금표 밖 파일을 가리킨다 (또 하나의 탈출구)',
+    file: 'src/tests/unit/consumer-type-scale-2026-09-29.test.ts',
+    find: "  'src/pages/vouchers/TopChromeReserve.tsx': 'src/pages/VouchersPage.tsx',",
+    replace: "  'src/pages/vouchers/TopChromeReserve.tsx': 'src/pages/vouchers/shared.tsx',",
+    test: TEST,
+    why: '원본이 잠겨 있지 않다면 그 파일은 정본으로 이행하면 될 일이고, 거울이라고 부를 이유가 없다.',
   },
 ]
