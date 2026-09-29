@@ -7,6 +7,8 @@ import { useTranslation } from 'react-i18next'
 
 interface Props {
   orderNumber: string
+  /** 🎟️ 이용권 주문 — 부분 환불이 금액이 아니라 **장 단위**다. */
+  isVoucher?: boolean
   reason: string
   onReasonChange: (v: string) => void
   isPartialCancel: boolean
@@ -19,7 +21,7 @@ interface Props {
 }
 
 export default function CancelOrderModal({
-  orderNumber, reason, onReasonChange,
+  orderNumber, isVoucher, reason, onReasonChange,
   isPartialCancel, onPartialCancelChange,
   cancelAmount, onCancelAmountChange,
   processing, onClose, onConfirm,
@@ -100,15 +102,29 @@ export default function CancelOrderModal({
             </button>
           </div>
           {isPartialCancel && (
-            <input
-              type="number"
-              value={cancelAmount}
-              onChange={(e) => onCancelAmountChange(e.target.value)}
-              placeholder={t('cancelOrder.amountPlaceholder', { defaultValue: '취소할 금액 입력 (원)' })}
-              aria-label={t('cancelOrder.amountAriaLabel', { defaultValue: '부분 취소 금액 입력 (원)' })}
-              min="1"
-              className="w-full px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-            />
+            <>
+              {/* 🎟️ 이용권은 **장수**를 고른다. 금액을 직접 넣게 두면 "총액 −1원" 으로 거의 전액을
+                  받고 이용권은 그대로 쓸 수 있다 — 금액은 서버가 장수에서 계산한다. */}
+              <input
+                type="number"
+                value={cancelAmount}
+                onChange={(e) => onCancelAmountChange(e.target.value)}
+                placeholder={isVoucher
+                  ? t('cancelOrder.qtyPlaceholder', { defaultValue: '환불할 이용권 장수' })
+                  : t('cancelOrder.amountPlaceholder', { defaultValue: '취소할 금액 입력 (원)' })}
+                aria-label={isVoucher
+                  ? t('cancelOrder.qtyAriaLabel', { defaultValue: '환불할 이용권 장수' })
+                  : t('cancelOrder.amountAriaLabel', { defaultValue: '부분 취소 금액 입력 (원)' })}
+                min="1"
+                step="1"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              />
+              {isVoucher && (
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  {t('cancelOrder.qtyHint', { defaultValue: '아직 사용하지 않은 이용권만 환불할 수 있어요. 환불 금액은 장수에 맞춰 자동으로 계산됩니다.' })}
+                </p>
+              )}
+            </>
           )}
         </div>
 

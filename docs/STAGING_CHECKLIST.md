@@ -76,6 +76,8 @@
 | **P12** | 자기 링크 자기 구매 보상 0 (2026-09-02 대표) | 사업자 유저가 `?ref={자기 sellers.id}` 로 이용권 카드 결제 | `affiliate/influencer` 적립 0 · 사용자 보너스 0 · 구매 자체는 정상 발급 (`gb-purchase-guards.isSelfReferral`) | ⬜ |
 | **P16** | 💸 결제된 주문의 `payment_status` (2026-09-21) | 🔴 **머니 경로 · 환불 게이트를 연다.** ① 이용권 카드 결제 1건 → `orders` 행 확인 ② 그 주문을 **소비자 앱에서** 환불 요청 ③ 셀러 대시보드에서 환불 1건 ④ `repair-schema` 1회 실행 후 재실행 | ①: `payment_status='approved'`(종전 `pending`) · ②: 400 *"결제가 완료되지 않은 주문입니다"* 가 **안 뜬다**(⚠️ 공구 카드 주문은 `toss_payment_key` 가 NULL 이라 여기서 422 `PAYMENT_KEY_MISSING` 에 막힌다 — 그건 이 항목 범위 밖이고 아래 후속에 적었다) · ③: 환불 뒤 `payment_status='refunded'`(머지 전엔 `approved` 로 남아 **매출로 계속 집계**됐다) · ④: backfill 이 결제 흔적 있는 `PAID/DONE/DELIVERED` 행만 바꾸고 `CANCELLED` 57건은 **그대로**, 2회 실행해도 결과 동일(멱등) | ⬜ 미검증 |
 
+| **P17** | 🎟️ 이용권 **일부 환불**(장 단위, 2026-09-28 대표 *"일부 환불 가능하게 해줘"*) | 🔴 **머니 경로 · 게이트 `voucher_partial_refund_enabled`(기본 OFF).** ① 같은 이용권 **3장**을 한 주문으로 카드 결제 ② 그중 **1장을 매장에서 사용** ③ 게이트 OFF 상태로 마이 → 부분 취소 시도 ④ 게이트 ON 후 **1장** 환불 ⑤ 남은 1장(미사용) 환불 ⑥ 이미 쓴 1장 환불 시도 | ③: **403** `VOUCHER_PARTIAL_REFUND_DISABLED`(현행과 동일) · ④: 금액이 **장당가 그대로**(사람이 못 정한다) · `vouchers` 에서 **그 1장만** `refunded`, 나머지 2장 불변 · `orders.refunded_amount` = 장당가 · 토스 부분취소 1건 · ⑤: 남은 미사용 전부를 무르면 **전액 경로**로 넘어가 주문이 `CANCELLED`·쿠폰/커미션까지 대칭 역전 · ⑥: **400** `NO_REFUNDABLE_VOUCHER`(매장이 이미 내준 것은 셀프 환불 불가) · ⚠️ 어필리에이트·영입 커미션은 **비례 역전이 없어** 무른 장의 몫이 남는다(의도 — 적게 회수하는 쪽) | ⬜ 미검증 (2026-09-28 배선, 기본 OFF) |
+
 ### 🔴 통합 실결제 (대표 결제 방문 **1회**) — 2026-08-02 대표 확정 ⑥
 
 > 🧭 **실행할 때는 [`VERIFICATION_DAY.md`](./VERIFICATION_DAY.md) 를 열어라** — 이 절의 근거를

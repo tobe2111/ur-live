@@ -139,6 +139,12 @@ export const COMMISSION_BUDGET_FIELDS: MoneySwitchField[] = [
     options: [{ value: 'false', label: 'OFF (현행 — 전액 환불만)' }, { value: 'true', label: 'ON — 반품 화면에서 금액 지정 가능' }],
     hint: '🔴 머니 경로. OFF 면 금액 설정 API 가 403 이다(=현행 전액 환불 그대로). ON 시 결제액 초과는 서버가 클램프하고, 환불 실행 후에는 변경 불가. 검증 절차: docs/VERIFICATION_DAY.md (P11)',
   },
+  // 🎟️ 2026-09-28 대표 *"일부 환불 가능하게 해줘"* — 손님이 이용권을 **장 단위**로 무른다.
+  {
+    key: 'voucher_partial_refund_enabled', label: '⑧ 이용권 일부 환불 (장 단위)', default: 'false',
+    options: [{ value: 'false', label: 'OFF (현행 — 전액 취소만)' }, { value: 'true', label: 'ON — 손님이 장수를 골라 일부 환불' }],
+    hint: '🔴 머니 경로. 켜면 손님이 마이페이지에서 **안 쓴 이용권 몇 장**을 골라 무를 수 있다. 금액은 사람이 입력하지 않고 장수에서 서버가 계산한다(임의 금액 환불 차단). 무른 장만 무효화되고 쓴 장은 대상이 아니다. ⚠️ 어필리에이트·영입 커미션은 비례 역전이 없어 무른 장의 몫이 남는다(적게 회수하는 쪽). 끄면 즉시 현행 복귀. 검증 절차: docs/STAGING_CHECKLIST.md (P17)',
+  },
   // 🪙 2026-09-01: 이용권을 "딜 일부 + 카드 나머지" 로 살 수 있게 하는 스위치(대표 "포인트 차감처럼").
   //   ⚠️ 게이트를 만들면서 이 손잡이를 안 만들면 `ops-gate-reachable` 가 즉시 잡는다 — 이번에도 잡혔다.
   {
