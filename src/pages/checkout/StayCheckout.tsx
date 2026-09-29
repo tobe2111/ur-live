@@ -154,9 +154,9 @@ export default function StayCheckout({ orderId }: { orderId: number }) {
                     {b.image_url ? <img src={cfImage(b.image_url, { width: 200, quality: 82, format: 'auto' }) || b.image_url} alt={b.product_name || ''} className="w-full h-full object-cover" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, b.image_url)} /> : null}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-bold text-gray-900 line-clamp-1">{b.product_name || '숙소'}</p>
+                    <p className="text-[15px] font-bold text-gray-900 line-clamp-1">{b.product_name || '숙소'}</p>
                     {b.room_name && <p className="text-[12px] text-gray-600">{b.room_name}</p>}
-                    <p className="text-[12px] text-gray-500 flex items-center gap-1 mt-0.5">
+                    <p className="text-[12px] text-gray-500 flex items-center gap-1 mt-1">
                       <Calendar className="w-3 h-3 shrink-0" />
                       {b.check_in_date
                         ? `${b.check_in_date} → ${b.check_out_date} (${b.nights || 1}박)`
@@ -173,9 +173,9 @@ export default function StayCheckout({ orderId }: { orderId: number }) {
               ))}
               <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
                 <span className="text-[13px] text-gray-500">총 결제 금액</span>
-                <span className="text-[20px] font-extrabold text-gray-900">
+                <span className="text-[24px] font-extrabold text-gray-900">
                   {formatNumber(order.total_amount)}
-                  <span className="text-[14px] font-bold ml-0.5">원</span>
+                  <span className="text-[15px] font-bold ml-0.5">원</span>
                 </span>
               </div>
             </section>
@@ -214,7 +214,7 @@ export default function StayCheckout({ orderId }: { orderId: number }) {
             <button
               onClick={handlePay}
               disabled={!clientKey}
-              className="w-full py-3.5 bg-gray-800 text-white text-[15px] font-bold rounded-full shadow-sm disabled:opacity-50 active:scale-[0.98] transition-all"
+              className="w-full py-4 bg-gray-800 text-white text-[15px] font-bold rounded-full shadow-sm disabled:opacity-50 active:scale-[0.98] transition-all"
             >
               {formatNumber(order.total_amount)}원 결제하기
             </button>

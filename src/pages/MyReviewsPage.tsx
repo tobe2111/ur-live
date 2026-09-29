@@ -56,7 +56,7 @@ export default function MyReviewsPage() {
         ) : error ? (
           <div className="flex flex-col items-center justify-center py-20">
             <AlertCircle className="w-10 h-10 text-red-500 mb-3" />
-            <p className="text-[14px] text-gray-900 dark:text-white mb-4">{error}</p>
+            <p className="text-[15px] text-gray-900 dark:text-white mb-4">{error}</p>
             <button
               onClick={() => refetch()}
               className="px-5 py-2 bg-brand text-white text-[13px] font-semibold rounded-full"
@@ -69,14 +69,14 @@ export default function MyReviewsPage() {
             <div className="w-20 h-20 bg-gray-50 dark:bg-[#1D1F29] rounded-full flex items-center justify-center mx-auto mb-5">
               <MessageSquare className="h-10 w-10 text-gray-400 dark:text-gray-500" strokeWidth={1.5} />
             </div>
-            <h2 className="text-[16px] font-bold text-gray-900 dark:text-white mb-1.5">{t('myReviews.empty')}</h2>
+            <h2 className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">{t('myReviews.empty')}</h2>
             <p className="text-[13px] text-gray-500 dark:text-gray-400">{t('myReviews.emptySub')}</p>
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="flex items-center gap-1.5 mb-1">
+            <div className="flex items-center gap-2 mb-1">
               <p className="text-[12px] text-gray-500 dark:text-gray-400">{t('myReviews.deliveredCount', { count: orders.length })}</p>
-              <span className="text-[11px] text-amber-600 font-semibold">{t('myReviews.rewardHint')}</span>
+              <span className="text-[12px] text-amber-600 font-semibold">{t('myReviews.rewardHint')}</span>
             </div>
             {orders.flatMap(order => {
               // v32 audit FIX: API가 items를 array 대신 단일 object로 반환할 수도 있음 — 방어적 처리
@@ -87,10 +87,10 @@ export default function MyReviewsPage() {
                   key={`${order.id}-${idx}`}
                   className="bg-surface rounded-2xl border border-gray-100 dark:border-[#2C2F35] p-4"
                 >
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-1">
+                  <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1">
                     {t('myReviews.purchaseDate', { date: parseUTCDate(order.created_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: 'long', day: 'numeric' }) })}
                   </p>
-                  <p className="text-[14px] font-semibold text-gray-900 dark:text-white line-clamp-2 mb-2">
+                  <p className="text-[15px] font-semibold text-gray-900 dark:text-white line-clamp-2 mb-2">
                     {item.product_name}
                   </p>
                   {item.option_value && (
@@ -98,7 +98,7 @@ export default function MyReviewsPage() {
                   )}
                   <button
                     onClick={() => navigate(`/products/${item.product_id}#review`)}
-                    className="w-full mt-2 py-2.5 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-[13px] font-semibold rounded-xl border border-amber-100 dark:border-amber-800/40 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors flex items-center justify-center gap-1.5"
+                    className="w-full mt-2 py-2 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-[13px] font-semibold rounded-xl border border-amber-100 dark:border-amber-800/40 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors flex items-center justify-center gap-2"
                   >
                     <Star className="h-3.5 w-3.5" fill="currentColor" />
                     {t('myReviews.writeReview')}

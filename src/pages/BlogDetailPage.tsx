@@ -82,7 +82,7 @@ export default function BlogDetailPage() {
     return (
       <div className="min-h-[100dvh] bg-white dark:bg-[#11141C] flex flex-col items-center justify-center">
         <p className="text-gray-500 dark:text-gray-400 mb-4">{t('blogDetail.notFound', { defaultValue: '글을 찾을 수 없습니다' })}</p>
-        <Link to="/blog" className="text-blue-600 text-sm font-medium">{t('blogDetail.backToBlog', { defaultValue: '블로그로 돌아가기' })}</Link>
+        <Link to="/blog" className="text-blue-600 text-[15px] font-medium">{t('blogDetail.backToBlog', { defaultValue: '블로그로 돌아가기' })}</Link>
       </div>
     )
   }
@@ -104,11 +104,11 @@ export default function BlogDetailPage() {
   }
 
   const TocList = ({ onNav }: { onNav?: () => void }) => (
-    <nav className="space-y-0.5">
+    <nav className="space-y-1">
       {toc.map((x) => (
         <a key={x.id} href={`#${x.id}`}
           onClick={(e) => { e.preventDefault(); scrollToId(x.id); onNav?.() }}
-          className={`block py-1.5 text-[13px] leading-snug transition-colors ${x.level === 3 ? 'pl-4' : ''} ${
+          className={`block py-2 text-[13px] leading-snug transition-colors ${x.level === 3 ? 'pl-4' : ''} ${
             activeId === x.id ? 'text-gray-900 dark:text-white font-semibold' : 'text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
           }`}>
           {x.text}
@@ -144,10 +144,10 @@ export default function BlogDetailPage() {
       {/* 상단 네비 — 로고 | 검색·유어딜 홈·공유·CTA */}
       <header className="sticky top-0 z-40 bg-white/90 dark:bg-[#11141C]/90 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="max-w-7xl mx-auto flex items-center justify-between px-4 lg:px-8 h-14">
-          <Link to="/blog" className="flex items-center gap-2 text-lg font-extrabold text-gray-900 dark:text-white tracking-tight">
-            유어딜 <span className="text-gray-300 dark:text-[#333] font-light">|</span> <span className="text-gray-500 dark:text-gray-400 text-base font-bold">Blog</span>
+          <Link to="/blog" className="flex items-center gap-2 text-[17px] font-extrabold text-gray-900 dark:text-white tracking-tight">
+            유어딜 <span className="text-gray-300 dark:text-[#333] font-light">|</span> <span className="text-gray-500 dark:text-gray-400 text-[15px] font-bold">Blog</span>
           </Link>
-          <div className="flex items-center gap-1 sm:gap-1.5">
+          <div className="flex items-center gap-1 sm:gap-2">
             <Link to="/blog" aria-label="블로그 검색" className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1D1F29]">
               <Search className="w-4 h-4" />
             </Link>
@@ -155,10 +155,10 @@ export default function BlogDetailPage() {
               aria-label="공유" className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1D1F29]">
               <Share2 className="w-4 h-4" />
             </button>
-            <Link to="/" className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1D1F29]">
+            <Link to="/" className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-lg text-[15px] font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1D1F29]">
               <Home className="w-4 h-4" />유어딜 홈
             </Link>
-            <Link to="/store/new" className="px-3.5 py-2 bg-brand text-white rounded-lg text-sm font-bold hover:opacity-90">내 가게 등록</Link>
+            <Link to="/store/new" className="px-4 py-2 bg-brand text-white rounded-lg text-[15px] font-bold hover:opacity-90">내 가게 등록</Link>
           </div>
         </div>
       </header>
@@ -169,7 +169,7 @@ export default function BlogDetailPage() {
         {/* ── 좌측: 목차 ── */}
         <aside className="hidden lg:block">
           <div className="sticky top-20">
-            <p className="text-sm font-bold text-gray-900 dark:text-white mb-3">Contents</p>
+            <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">Contents</p>
             <TocList />
           </div>
         </aside>
@@ -177,15 +177,15 @@ export default function BlogDetailPage() {
         {/* ── 중앙: 본문 ── */}
         <article className="min-w-0">
           {tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mb-4">
+            <div className="flex flex-wrap gap-2 mb-4">
               {tags.map(tg => (
-                <span key={tg} className="text-xs bg-blue-50 dark:bg-blue-900/25 text-blue-600 dark:text-blue-300 px-2.5 py-1 rounded-md font-semibold">{tg}</span>
+                <span key={tg} className="text-[12px] bg-blue-50 dark:bg-blue-900/25 text-blue-600 dark:text-blue-300 px-2 py-1 rounded-md font-semibold">{tg}</span>
               ))}
             </div>
           )}
-          <h1 className="text-2xl sm:text-4xl font-extrabold text-gray-900 dark:text-white leading-tight">{stripBold(post.title)}</h1>
-          <p className="text-base sm:text-lg text-gray-500 dark:text-gray-400 mt-3 leading-relaxed">{stripBold(post.summary)}</p>
-          <div className="flex items-center gap-3 mt-4 pb-6 text-sm text-gray-400 dark:text-gray-500">
+          <h1 className="text-[24px] sm:text-4xl font-extrabold text-gray-900 dark:text-white leading-tight">{stripBold(post.title)}</h1>
+          <p className="text-[15px] sm:text-[17px] text-gray-500 dark:text-gray-400 mt-3 leading-relaxed">{stripBold(post.summary)}</p>
+          <div className="flex items-center gap-3 mt-4 pb-6 text-[15px] text-gray-400 dark:text-gray-500">
             <span>{post.author}</span>
             <span>·</span>
             <span>{parseUTCDate(post.published_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: 'long', day: 'numeric' })}</span>
@@ -200,7 +200,7 @@ export default function BlogDetailPage() {
           {toc.length > 0 && (
             <div className="lg:hidden mb-8 border border-line rounded-xl overflow-hidden">
               <button onClick={() => setTocOpen(o => !o)} className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-[#141414]">
-                <span className="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white"><List className="w-4 h-4" />목차</span>
+                <span className="flex items-center gap-2 text-[15px] font-bold text-gray-900 dark:text-white"><List className="w-4 h-4" />목차</span>
                 <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${tocOpen ? 'rotate-180' : ''}`} />
               </button>
               {tocOpen && <div className="px-4 py-3"><TocList onNav={() => setTocOpen(false)} /></div>}
@@ -217,18 +217,18 @@ export default function BlogDetailPage() {
           {/* 모바일 추천글 */}
           {related.length > 0 && (
             <section className="mt-12 lg:hidden">
-              <h2 className="text-base font-bold text-gray-900 dark:text-white mb-4">추천 글</h2>
+              <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-4">추천 글</h2>
               <RelatedList />
             </section>
           )}
 
           {/* CTA */}
           <div className="mt-12 bg-gray-50 dark:bg-[#141414] rounded-2xl p-6 text-center">
-            <p className="text-lg font-bold text-gray-900 dark:text-white mb-2">유어딜에서 시작하세요</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">이용권·교환권·동네딜을 한곳에, 나만의 유어샵까지</p>
+            <p className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">유어딜에서 시작하세요</p>
+            <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-4">이용권·교환권·동네딜을 한곳에, 나만의 유어샵까지</p>
             <div className="flex gap-3 justify-center">
-              <Link to="/" className="px-5 py-2.5 bg-brand text-white rounded-xl text-sm font-bold hover:opacity-90">둘러보기</Link>
-              <Link to="/u/me" className="px-5 py-2.5 bg-brand text-white rounded-xl text-sm font-bold hover:bg-brand-dark">내 유어샵 보기</Link>
+              <Link to="/" className="px-5 py-2 bg-brand text-white rounded-xl text-[15px] font-bold hover:opacity-90">둘러보기</Link>
+              <Link to="/u/me" className="px-5 py-2 bg-brand text-white rounded-xl text-[15px] font-bold hover:bg-brand-dark">내 유어샵 보기</Link>
             </div>
             <div className="mt-3">
               <KakaoShareButton title={stripBold(post.title)} description={stripBold(post.summary)} link={`/blog/${post.slug}`} buttonText={t('blog.readBtn', { defaultValue: '글 읽기' })} />
@@ -239,7 +239,7 @@ export default function BlogDetailPage() {
         {/* ── 우측: 추천글 (xl+) ── */}
         <aside className="hidden xl:block">
           <div className="sticky top-20">
-            <p className="text-sm font-bold text-gray-900 dark:text-white mb-4">추천 글</p>
+            <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-4">추천 글</p>
             <RelatedList />
           </div>
         </aside>

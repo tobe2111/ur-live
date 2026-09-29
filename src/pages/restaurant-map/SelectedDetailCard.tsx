@@ -34,15 +34,15 @@ export default function SelectedDetailCard({ selected, userLoc, liveSellerIds, f
           </div>
         )}
         <div className="flex-1 min-w-0">
-          <p className="font-bold text-gray-900 dark:text-white text-[15px] flex items-center gap-1.5">
+          <p className="font-bold text-gray-900 dark:text-white text-[15px] flex items-center gap-2">
             <span className="truncate">{selected.restaurant_name}</span>
             {selected.seller_id && liveSellerIds.has(selected.seller_id) && (
-              <span className="inline-flex items-center gap-1 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md shrink-0">
+              <span className="inline-flex items-center gap-1 bg-red-500 text-white text-[12px] font-bold px-2 py-1 rounded-md shrink-0">
                 <Radio className="w-2.5 h-2.5 animate-pulse" /> LIVE
               </span>
             )}
           </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1 flex items-center gap-1">
+          <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 line-clamp-1 flex items-center gap-1">
             <MapPin className="w-3 h-3 shrink-0" />
             {selected.restaurant_address}
             {userLoc && selected.restaurant_lat && selected.restaurant_lng && (() => {
@@ -51,12 +51,12 @@ export default function SelectedDetailCard({ selected, userLoc, liveSellerIds, f
             })()}
           </p>
           <div className="flex items-center gap-2 mt-2">
-            <span className="text-lg font-extrabold text-gray-900 dark:text-white">{selected.price?.toLocaleString()}원</span>
+            <span className="text-[17px] font-extrabold text-gray-900 dark:text-white">{selected.price?.toLocaleString()}원</span>
             {selected.original_price > selected.price && (
               <>
-                <span className="text-xs text-gray-400 dark:text-gray-500 line-through">{formatNumber(selected.original_price)}원</span>
+                <span className="text-[12px] text-gray-400 dark:text-gray-500 line-through">{formatNumber(selected.original_price)}원</span>
                 {/* 🎨 2026-07-19 (대표 — 브랜드 컬러 통일): 할인 뱃지 순수 빨강 → 웜 로즈 brand 토큰. */}
-                <span className="text-xs bg-brand text-white font-bold px-1.5 py-0.5 rounded-md">
+                <span className="text-[12px] bg-brand text-white font-bold px-2 py-1 rounded-md">
                   -{priceDisplay(selected).discount}%
                 </span>
               </>
@@ -84,14 +84,14 @@ export default function SelectedDetailCard({ selected, userLoc, liveSellerIds, f
             href={kakaoDirectionsUrl(selected)}
             target="_blank" rel="noopener noreferrer"
             aria-label={t('map.detail.directionsAria', { defaultValue: '카카오맵 길찾기' })}
-            className="flex items-center justify-center gap-1 px-3 h-10 bg-[#FEE500] text-[#3C1E1E] rounded-xl text-xs font-bold"
+            className="flex items-center justify-center gap-1 px-3 h-10 bg-[#FEE500] text-[#3C1E1E] rounded-xl text-[12px] font-bold"
           >
             <Navigation className="w-3.5 h-3.5" /> {t('map.detail.directions', { defaultValue: '길찾기' })}
           </a>
         )}
         <button
           onClick={() => navigate(`/products/${selected.id}`)}
-          className="flex-1 flex items-center justify-center gap-1.5 h-10 bg-brand text-white rounded-xl text-sm font-bold active:scale-[0.97] transition-transform"
+          className="flex-1 flex items-center justify-center gap-2 h-10 bg-brand text-white rounded-xl text-[15px] font-bold active:scale-[0.97] transition-transform"
         >
           <Ticket className="w-4 h-4" /> {t('map.detail.buyVoucher', { defaultValue: '바우처 구매' })}
         </button>

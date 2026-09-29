@@ -69,7 +69,7 @@ export default function PartnerTools() {
           {SCREENS.map(({ shot, cap }) => (
             <figure key={shot}>
               <PartnerPhone src={SHOT(shot)} alt={cap} />
-              <figcaption className="mt-3 lg:mt-4 text-[12px] lg:text-[14px] font-semibold text-gray-500 dark:text-gray-400">{cap}</figcaption>
+              <figcaption className="mt-3 lg:mt-4 text-[12px] lg:text-[15px] font-semibold text-gray-500 dark:text-gray-400">{cap}</figcaption>
             </figure>
           ))}
         </div>
@@ -77,8 +77,8 @@ export default function PartnerTools() {
         <div className="mt-12 lg:mt-20 grid gap-9 sm:grid-cols-2 lg:gap-x-20 lg:gap-y-14 max-w-[64rem]">
           {NOTES.map(({ t, d }) => (
             <div key={t}>
-              <p className="text-[17px] lg:text-[22px] font-extrabold text-ink leading-snug tracking-[-0.02em]">{t}</p>
-              <p className="mt-3 text-[13.5px] lg:text-[15.5px] leading-[1.8] text-gray-500 dark:text-gray-400">{d}</p>
+              <p className="text-[17px] lg:text-[24px] font-extrabold text-ink leading-snug tracking-[-0.02em]">{t}</p>
+              <p className="mt-3 text-[13px] lg:text-[15px] leading-[1.8] text-gray-500 dark:text-gray-400">{d}</p>
             </div>
           ))}
         </div>

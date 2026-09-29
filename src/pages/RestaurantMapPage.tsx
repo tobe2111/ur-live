@@ -639,14 +639,14 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
               <UrDealLogo size={18} />
             </Link>
             <div className="flex items-center gap-1 text-gray-700 dark:text-gray-200 min-w-0">
-              <button onClick={() => setFilterSheetOpen(true)} className="flex items-center gap-0.5 min-w-0 text-left mr-1">
+              <button onClick={() => setFilterSheetOpen(true)} className="flex items-center gap-1 min-w-0 text-left mr-1">
                 <MapPin className="w-4 h-4 text-gray-900 dark:text-white shrink-0" />
                 <span className="text-[15px] font-extrabold text-gray-900 dark:text-white truncate">{regionLabel}</span>
                 <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />
               </button>
-              <button onClick={() => navigate('/search')} aria-label="검색" className="p-1.5 shrink-0"><Search className="h-5 w-5" strokeWidth={1.5} /></button>
-              <button onClick={() => navigate('/notifications')} aria-label="알림" className="p-1.5 shrink-0"><Bell className="h-5 w-5" strokeWidth={1.5} /></button>
-              <button onClick={() => navigate('/cart')} aria-label="장바구니" className="p-1.5 shrink-0"><ShoppingCart className="h-5 w-5" strokeWidth={1.5} /></button>
+              <button onClick={() => navigate('/search')} aria-label="검색" className="p-2 shrink-0"><Search className="h-5 w-5" strokeWidth={1.5} /></button>
+              <button onClick={() => navigate('/notifications')} aria-label="알림" className="p-2 shrink-0"><Bell className="h-5 w-5" strokeWidth={1.5} /></button>
+              <button onClick={() => navigate('/cart')} aria-label="장바구니" className="p-2 shrink-0"><ShoppingCart className="h-5 w-5" strokeWidth={1.5} /></button>
             </div>
           </div>
           {/* 카테고리 칩 + 필터/정렬 */}
@@ -686,12 +686,12 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             전역 Map(생성자) 가림 방지 위해 `Map as MapIcon` 별칭. 아이콘 색 = 알약 글자색(currentColor). */}
         <button
           onClick={() => navigate('/map')}
-          className="fixed left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 bg-brand text-white rounded-full pl-3.5 pr-4 py-2.5 shadow-lg active:scale-95 transition-transform"
+          className="fixed left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 bg-brand text-white rounded-full pl-4 pr-4 py-2 shadow-lg active:scale-95 transition-transform"
           style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom,0px) + 16px)' }}
           aria-label={t('map.viewMap', { defaultValue: '지도로 보기' })}
         >
           <MapIcon className="w-[18px] h-[18px] shrink-0" strokeWidth={2} />
-          <span className="text-[14px] font-bold">{t('map.viewMap', { defaultValue: '지도로 보기' })}</span>
+          <span className="text-[15px] font-bold">{t('map.viewMap', { defaultValue: '지도로 보기' })}</span>
         </button>
         {filterSheetOpen && (
           <FilterSheet
@@ -730,13 +730,13 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
           <MapPin className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" />
           {sdkError ? (
             <>
-              <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">{t('restaurantMap.mapErrorTitle')}</p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{t('restaurantMap.mapErrorSub')}</p>
+              <p className="text-[15px] text-gray-500 dark:text-gray-400 font-medium">{t('restaurantMap.mapErrorTitle')}</p>
+              <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-1">{t('restaurantMap.mapErrorSub')}</p>
             </>
           ) : (
             <>
-              <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">{t('restaurantMap.mapLoading')}</p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{t('restaurantMap.sdkLoading')}</p>
+              <p className="text-[15px] text-gray-500 dark:text-gray-400 font-medium">{t('restaurantMap.mapLoading')}</p>
+              <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-1">{t('restaurantMap.sdkLoading')}</p>
             </>
           )}
         </div>
@@ -750,7 +750,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
           지도를 안 가리게 pointer-events-none. PC 분할에선 지도 영역(좌 400px 패널 오른쪽) 중앙 정렬. */}
       {locating && (
         <div className="absolute top-[62px] left-1/2 -translate-x-1/2 lg:left-[calc(50%+200px)] z-20 pointer-events-none">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-900/85 text-white text-[12px] font-semibold shadow-lg backdrop-blur">
+          <span className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-gray-900/85 text-white text-[12px] font-semibold shadow-lg backdrop-blur">
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
             내 위치 찾는 중…
           </span>

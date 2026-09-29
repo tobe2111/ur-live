@@ -123,7 +123,7 @@ export default function RestoreAccountModal() {
           <div className="w-14 h-14 mb-4 rounded-2xl bg-gray-100 dark:bg-warm flex items-center justify-center">
             <RotateCcw className="w-7 h-7 text-brand-text" />
           </div>
-          <h2 id="restore-title" className="text-[18px] font-bold text-gray-900 dark:text-white">
+          <h2 id="restore-title" className="text-[17px] font-bold text-gray-900 dark:text-white">
             {t('user.restoreTitle', { defaultValue: '이전에 가입했던 계정이 있어요' })}
           </h2>
           <p className="text-[13px] text-gray-600 dark:text-gray-300 mt-2 leading-relaxed">
@@ -138,7 +138,7 @@ export default function RestoreAccountModal() {
           <p className="text-[12px] text-gray-700 dark:text-gray-200 leading-relaxed">
             <strong className="text-brand-text">{t('user.restoreWhenRestore', { defaultValue: '복원 시' })}</strong>: {t('user.restoreWhenRestoreDesc', { defaultValue: '이전 주문 내역, 쿠폰, 딜 포인트, 위시리스트 등 모든 데이터가 다시 살아나요.' })}
           </p>
-          <p className="text-[12px] text-gray-700 dark:text-gray-200 leading-relaxed mt-1.5">
+          <p className="text-[12px] text-gray-700 dark:text-gray-200 leading-relaxed mt-2">
             <strong className="text-gray-500 dark:text-gray-400">{t('user.restoreWhenNew', { defaultValue: '신규 계정 선택 시' })}</strong>: {t('user.restoreWhenNewDesc', { defaultValue: '새로 시작합니다. 이전 데이터는 30일 후 영구 삭제돼요.' })}
           </p>
         </div>
@@ -148,7 +148,7 @@ export default function RestoreAccountModal() {
           <button
             onClick={handleRestore}
             disabled={restoring}
-            className="w-full h-12 bg-brand hover:bg-brand-dark active:scale-[0.98] disabled:opacity-50 text-white rounded-xl font-bold text-[14px] transition-all"
+            className="w-full h-12 bg-brand hover:bg-brand-dark active:scale-[0.98] disabled:opacity-50 text-white rounded-xl font-bold text-[15px] transition-all"
           >
             {restoring ? t('user.restoring', { defaultValue: '복원 중...' }) : t('user.restoreBtn', { defaultValue: '이전 계정 복원하기' })}
           </button>

@@ -60,39 +60,39 @@ export default function SuggestionModal({ place, onClose }: Props) {
     <div className="fixed inset-0 z-[10000] bg-black/50 flex items-end sm:items-center justify-center" onClick={onClose} role="presentation">
       <div className="bg-surface rounded-t-2xl sm:rounded-2xl w-full max-w-[430px] p-5 space-y-4" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={`${place.place_name} 추천 보내기`}>
         <div>
-          <p className="text-xs text-gray-500 dark:text-gray-400">{place.category_name?.split('>').slice(-1)[0]?.trim() || '맛집'}</p>
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white">{place.place_name}</h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
+          <p className="text-[12px] text-gray-500 dark:text-gray-400">{place.category_name?.split('>').slice(-1)[0]?.trim() || '맛집'}</p>
+          <h3 className="text-[17px] font-bold text-gray-900 dark:text-white">{place.place_name}</h3>
+          <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
             <MapPin className="w-3 h-3" />
             {place.road_address_name || place.address_name}
             {place.distance && <span className="ml-1 text-brand dark:text-[#4D8DF5]">· {Math.round(Number(place.distance))}m</span>}
           </p>
         </div>
 
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900">
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[12px] text-amber-900">
           ⓘ 이 매장은 <strong>아직 이용권이 출시되지 않았어요</strong>. 출시되면 알려드릴까요?
         </div>
 
         {done === 'notify' ? (
-          <div className="text-center py-2 text-sm text-green-600 font-bold">✅ 출시 시 {phone} 로 알림드릴게요!</div>
+          <div className="text-center py-2 text-[15px] text-green-600 font-bold">✅ 출시 시 {phone} 로 알림드릴게요!</div>
         ) : done === 'invite' ? (
-          <div className="text-center py-2 text-sm text-green-600 font-bold">✅ 영입 신청이 어드민에 전달됐어요!</div>
+          <div className="text-center py-2 text-[15px] text-green-600 font-bold">✅ 영입 신청이 어드민에 전달됐어요!</div>
         ) : (
           <>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-gray-700 dark:text-gray-200">📨 출시 알림 받기 (선택)</label>
+              <label className="text-[12px] font-medium text-gray-700 dark:text-gray-200">📨 출시 알림 받기 (선택)</label>
               <div className="flex gap-2">
                 <input
                   type="tel"
                   value={phone}
                   onChange={e => setPhone(e.target.value)}
                   placeholder="010-0000-0000"
-                  className="flex-1 px-3 py-2.5 border border-gray-300 dark:border-[#3A3A3A] rounded-lg text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:text-gray-500 focus:border-brand focus:outline-none"
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-[#3A3A3A] rounded-lg text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:text-gray-500 focus:border-brand focus:outline-none"
                 />
                 <button
                   onClick={() => submit('notify')}
                   disabled={submitting || !phone.trim()}
-                  className="px-4 py-2.5 bg-brand text-white text-sm font-bold rounded-lg disabled:opacity-50"
+                  className="px-4 py-2 bg-brand text-white text-[15px] font-bold rounded-lg disabled:opacity-50"
                 >알림</button>
               </div>
             </div>
@@ -100,7 +100,7 @@ export default function SuggestionModal({ place, onClose }: Props) {
             <button
               onClick={() => submit('invite')}
               disabled={submitting}
-              className="w-full py-3 bg-brand text-white text-sm font-bold rounded-xl disabled:opacity-50"
+              className="w-full py-3 bg-brand text-white text-[15px] font-bold rounded-xl disabled:opacity-50"
             >
               🤝 이 매장 셀러 영입 신청
             </button>
@@ -112,11 +112,11 @@ export default function SuggestionModal({ place, onClose }: Props) {
           <a
             href={`https://map.kakao.com/link/to/${encodeURIComponent(place.place_name)},${place.y},${place.x}`}
             target="_blank" rel="noopener noreferrer"
-            className="flex-1 flex items-center justify-center gap-1 py-2.5 bg-[#FEE500] text-[#3C1E1E] rounded-xl text-sm font-bold"
+            className="flex-1 flex items-center justify-center gap-1 py-2 bg-[#FEE500] text-[#3C1E1E] rounded-xl text-[15px] font-bold"
           >
             <Navigation className="w-4 h-4" /> 카카오맵 길찾기
           </a>
-          <button onClick={onClose} className="px-5 py-2.5 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200 rounded-xl text-sm font-medium">닫기</button>
+          <button onClick={onClose} className="px-5 py-2 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200 rounded-xl text-[15px] font-medium">닫기</button>
         </div>
       </div>
 

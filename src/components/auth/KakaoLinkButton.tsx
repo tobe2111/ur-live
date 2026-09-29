@@ -125,7 +125,7 @@ export function KakaoLinkButton({ role }: Props) {
 
   if (loading) {
     return (
-      <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-4 flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+      <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-4 flex items-center gap-2 text-[15px] text-gray-500 dark:text-gray-400">
         <Loader2 className="w-4 h-4 animate-spin" /> {t('kakaoLink.checkingStatus', { defaultValue: '연동 상태 확인 중...' })}
       </div>
     )
@@ -137,15 +137,15 @@ export function KakaoLinkButton({ role }: Props) {
         {status.user.profile_image ? (
           <img src={status.user.profile_image} alt="" className="w-10 h-10 rounded-full" loading="lazy" />
         ) : (
-          <div className="w-10 h-10 rounded-full bg-yellow-300 flex items-center justify-center text-lg">💬</div>
+          <div className="w-10 h-10 rounded-full bg-yellow-300 flex items-center justify-center text-[17px]">💬</div>
         )}
         <div className="flex-1 min-w-0">
-          <p className="text-xs text-tone-ok font-bold">{t('kakaoLink.linkedStatus', { defaultValue: '✓ 카카오 계정 연동됨' })}</p>
-          <p className="text-sm text-gray-900 dark:text-white font-semibold truncate">{status.user.name}</p>
-          {status.user.email && <p className="text-[11px] text-gray-500 truncate">{status.user.email}</p>}
+          <p className="text-[12px] text-tone-ok font-bold">{t('kakaoLink.linkedStatus', { defaultValue: '✓ 카카오 계정 연동됨' })}</p>
+          <p className="text-[15px] text-gray-900 dark:text-white font-semibold truncate">{status.user.name}</p>
+          {status.user.email && <p className="text-[12px] text-gray-500 truncate">{status.user.email}</p>}
         </div>
         <button onClick={unlink} disabled={working}
-          className="text-xs text-red-600 hover:text-red-800 flex items-center gap-1 px-2 py-1">
+          className="text-[12px] text-red-600 hover:text-red-800 flex items-center gap-1 px-2 py-1">
           {working ? <Loader2 className="w-3 h-3 animate-spin" /> : <Unlink className="w-3 h-3" />}
           {t('kakaoLink.unlinkBtn', { defaultValue: '해제' })}
         </button>
@@ -157,23 +157,23 @@ export function KakaoLinkButton({ role }: Props) {
   return (
     <div className="bg-gray-50 dark:bg-[#1D1F29] border border-line rounded-xl p-4 space-y-3">
       <div className="flex items-start gap-2">
-        <div className="w-10 h-10 rounded-full bg-yellow-400 flex items-center justify-center text-lg shrink-0">💬</div>
+        <div className="w-10 h-10 rounded-full bg-yellow-400 flex items-center justify-center text-[17px] shrink-0">💬</div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-gray-900 dark:text-white">{t('kakaoLink.title')}</p>
-          <p className="text-xs text-gray-600 mt-0.5 leading-relaxed">
+          <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t('kakaoLink.title')}</p>
+          <p className="text-[12px] text-gray-600 mt-1 leading-relaxed">
             {t('kakaoLink.benefit', { defaultValue: '연동하면 카카오 로그인만으로 접근 가능해요. 비밀번호 관리 부담 ↓ · 보안 ↑' })}
           </p>
         </div>
       </div>
 
       <button onClick={startLink} disabled={working}
-        className="w-full py-2.5 bg-[#FEE500] hover:bg-[#FDD800] disabled:opacity-50 text-[#3C1E1E] font-bold text-sm rounded-xl flex items-center justify-center gap-1.5">
+        className="w-full py-2 bg-[#FEE500] hover:bg-[#FDD800] disabled:opacity-50 text-[#3C1E1E] font-bold text-[15px] rounded-xl flex items-center justify-center gap-2">
         {working ? <Loader2 className="w-4 h-4 animate-spin" /> : <span>💬</span>}
         {working ? t('kakaoLink.processing') : t('kakaoLink.connectCta')}
       </button>
 
-      <div className="flex items-start gap-1.5 text-[10px] text-gray-500">
-        <AlertCircle className="w-3 h-3 shrink-0 mt-0.5" />
+      <div className="flex items-start gap-2 text-[12px] text-gray-500">
+        <AlertCircle className="w-3 h-3 shrink-0 mt-1" />
         <span>
           {t('kakaoLink.emailStillUsable', { defaultValue: '기존 이메일/비밀번호 로그인도 계속 사용 가능합니다.' })}
           {t('kakaoLink.unlinkHint')}

@@ -81,26 +81,26 @@ export default function ConditionalDealsSection() {
     <div className="bg-surface shadow-lift rounded-xl p-4 space-y-3">
       <div className="flex items-center gap-2">
         <Sparkles className="w-4 h-4 text-gray-400" />
-        <h3 className="text-sm font-bold text-gray-900 dark:text-white">조건부 우대 커미션 제안</h3>
+        <h3 className="text-[15px] font-bold text-gray-900 dark:text-white">조건부 우대 커미션 제안</h3>
       </div>
-      <p className="text-[11px] leading-relaxed text-gray-500 dark:text-gray-400">
+      <p className="text-[12px] leading-relaxed text-gray-500 dark:text-gray-400">
         매장이 <b>콘텐츠 게시 인증 시 발효</b> 조건으로 우대 커미션을 제안했습니다. 블로그/SNS에 콘텐츠를
         게시한 뒤 링크를 제출하면, 매장 확인 후 우대율이 발효됩니다 (발효 이후 판매분부터 적용).
       </p>
-      <div className="space-y-2.5">
+      <div className="space-y-2">
         {deals.map((d) => {
           const ps = d.proof_status
           const canSubmit = d.status === 'proposed' && (ps === 'pending' || ps === 'rejected')
           return (
             <div key={d.id} className="rounded-lg border border-line p-3">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-bold text-gray-900 dark:text-white">
+                <p className="text-[15px] font-bold text-gray-900 dark:text-white">
                   매장 #{d.seller_id} · {d.commission_pct}%
                 </p>
                 {/* 🚦 2026-09-29: 넷 중 셋(emerald·blue·amber)이 MONO 중화로 같은 회색이었다 —
                     `발효됨`·`매장 검토 중`·`링크 제출 대기` 가 구별 안 됐고 `반려됨` 만 빨강이었다.
                     커미션이 실제로 붙는지가 걸린 상태라 글자를 읽어야만 알 수 있으면 안 된다. */}
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                <span className={`rounded-full px-2 py-1 text-[12px] font-bold ${
                   d.status === 'active'
                     ? 'bg-tone-ok-bg text-tone-ok'
                     : ps === 'submitted'
@@ -118,10 +118,10 @@ export default function ConditionalDealsSection() {
                         : '링크 제출 대기'}
                 </span>
               </div>
-              {d.message && <p className="mt-1 text-[11px] italic text-gray-500 dark:text-gray-400">&ldquo;{d.message}&rdquo;</p>}
+              {d.message && <p className="mt-1 text-[12px] italic text-gray-500 dark:text-gray-400">&ldquo;{d.message}&rdquo;</p>}
               {d.proof_url && (
                 <a href={d.proof_url} target="_blank" rel="noopener noreferrer"
-                  className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-brand-text hover:underline">
+                  className="mt-2 inline-flex items-center gap-1 text-[12px] font-medium text-brand-text hover:underline">
                   <ExternalLink className="w-3 h-3" /> 제출한 콘텐츠 보기
                 </a>
               )}
@@ -131,13 +131,13 @@ export default function ConditionalDealsSection() {
                     value={urlById[d.id] || ''}
                     onChange={(e) => setUrlById((m) => ({ ...m, [d.id]: e.target.value }))}
                     placeholder="https://blog.naver.com/..."
-                    className="flex-1 rounded-lg border border-gray-300 dark:border-[#2C2F35] bg-surface px-3 py-2 text-sm text-gray-900 dark:text-white"
+                    className="flex-1 rounded-lg border border-gray-300 dark:border-[#2C2F35] bg-surface px-3 py-2 text-[15px] text-gray-900 dark:text-white"
                   />
                   <button
                     type="button"
                     disabled={submitting === d.id}
                     onClick={() => submitProof(d)}
-                    className="shrink-0 rounded-lg bg-brand px-3.5 py-2 text-sm font-bold text-white hover:bg-brand-dark disabled:opacity-50"
+                    className="shrink-0 rounded-lg bg-brand px-4 py-2 text-[15px] font-bold text-white hover:bg-brand-dark disabled:opacity-50"
                   >
                     {submitting === d.id ? '제출 중...' : ps === 'rejected' ? '재제출' : '제출'}
                   </button>

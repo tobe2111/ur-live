@@ -65,51 +65,51 @@ export default function InfluencerJoinPage() {
       <div className="w-full max-w-md">
         {error && !preview ? (
           <div className="text-center space-y-2">
-            <p className="text-lg font-semibold text-gray-900 dark:text-white">코드를 열 수 없어요</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{error}</p>
+            <p className="text-[17px] font-semibold text-gray-900 dark:text-white">코드를 열 수 없어요</p>
+            <p className="text-[15px] text-gray-500 dark:text-gray-400">{error}</p>
           </div>
         ) : done ? (
           <div className="text-center space-y-4">
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-[17px] font-bold text-gray-900 dark:text-white">
               {done.status === 'active' ? '협업이 시작됐어요' : '신청이 접수됐어요'}
             </h1>
-            <p className="text-sm text-gray-600 dark:text-gray-300">
+            <p className="text-[15px] text-gray-600 dark:text-gray-300">
               <strong>{done.seller_name || '매장'}</strong> · 커미션 <strong>{done.commission_pct}%</strong>
               {done.status === 'proposed' && <><br />매장이 승인하면 활성돼요. 승인되면 알림으로 알려드릴게요.</>}
               {done.existed && <><br />이미 이 매장과 협업 중이었어요.</>}
             </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">아래 <strong>내 매장 링크</strong>로 팔로워가 구매하면 커미션이 적립돼요.</p>
-            <div className="bg-warm rounded-xl p-3 text-sm text-gray-900 dark:text-white break-all">{done.store_link}</div>
+            <p className="text-[12px] text-gray-500 dark:text-gray-400">아래 <strong>내 매장 링크</strong>로 팔로워가 구매하면 커미션이 적립돼요.</p>
+            <div className="bg-warm rounded-xl p-3 text-[15px] text-gray-900 dark:text-white break-all">{done.store_link}</div>
             <button className="w-full py-3 rounded-xl bg-brand text-white font-semibold"
               onClick={() => { navigator.clipboard?.writeText(done.store_link).then(() => setCopied(true)).catch(() => {}) }}>
               {copied ? '복사됐어요' : '링크 복사하기'}
             </button>
-            <Link to="/influencer/settlement" className="block text-sm font-semibold text-brand-text">마이페이지에서 성과 보기</Link>
+            <Link to="/influencer/settlement" className="block text-[15px] font-semibold text-brand-text">마이페이지에서 성과 보기</Link>
           </div>
         ) : preview ? (
           <div className="space-y-4">
             <div className="text-center">
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">유어딜 협업 코드 {preview.code}</p>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">{preview.seller_name || '매장'}</h1>
-              {preview.address && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{preview.address}</p>}
+              <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1">유어딜 협업 코드 {preview.code}</p>
+              <h1 className="text-[17px] font-bold text-gray-900 dark:text-white">{preview.seller_name || '매장'}</h1>
+              {preview.address && <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{preview.address}</p>}
             </div>
             <div className="grid grid-cols-2 gap-2 text-center">
               <div className="bg-warm rounded-xl p-3">
-                <p className="text-xs text-gray-500 dark:text-gray-400">판매 커미션</p>
-                <p className="text-lg font-bold text-gray-900 dark:text-white">{preview.commission_pct}%</p>
+                <p className="text-[12px] text-gray-500 dark:text-gray-400">판매 커미션</p>
+                <p className="text-[17px] font-bold text-gray-900 dark:text-white">{preview.commission_pct}%</p>
               </div>
               <div className="bg-warm rounded-xl p-3">
-                <p className="text-xs text-gray-500 dark:text-gray-400">시작</p>
-                <p className="text-lg font-bold text-gray-900 dark:text-white">{preview.requires_approval ? '매장 승인 후' : '바로'}</p>
+                <p className="text-[12px] text-gray-500 dark:text-gray-400">시작</p>
+                <p className="text-[17px] font-bold text-gray-900 dark:text-white">{preview.requires_approval ? '매장 승인 후' : '바로'}</p>
               </div>
             </div>
-            <p className="text-xs text-center text-gray-500 dark:text-gray-400 leading-relaxed">
+            <p className="text-[12px] text-center text-gray-500 dark:text-gray-400 leading-relaxed">
               내 링크로 이 매장의 이용권이 팔리면 결제액의 {preview.commission_pct}% 가 적립돼요. 이용권이 사용된 뒤 정산됩니다.
             </p>
             <button className="w-full py-3 rounded-xl bg-brand text-white font-semibold disabled:opacity-50" disabled={busy} onClick={redeem}>
               {busy ? '처리 중…' : isLoggedInSync() ? '협업 시작하기' : '카카오 로그인하고 시작하기'}
             </button>
-            {error && <p className="text-center text-xs text-tone-bad">{error}</p>}
+            {error && <p className="text-center text-[12px] text-tone-bad">{error}</p>}
           </div>
         ) : null}
       </div>

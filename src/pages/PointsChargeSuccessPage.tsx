@@ -105,15 +105,15 @@ export default function PointsChargeSuccessPage() {
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 mb-4">
           <CheckCircle className="w-10 h-10 text-green-600 dark:text-green-400" />
         </div>
-        <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-2">{t('pointsCharge.successHeading', { defaultValue: '충전 완료!' })}</h1>
+        <h1 className="text-[24px] font-extrabold text-gray-900 dark:text-white mb-2">{t('pointsCharge.successHeading', { defaultValue: '충전 완료!' })}</h1>
         {/* 🎨 2026-06-17: 분홍 그라데이션 → 프리미엄 다크 카드(교환권/잔액 카드 톤) + 브랜드 옐로우 액센트 */}
         <div className="rounded-2xl p-5 my-6" style={{ background: 'linear-gradient(135deg,#211d3a 0%,#15131f 45%,#050505 100%)' }}>
-          <div className="flex items-center justify-center gap-1.5 mb-1.5">
+          <div className="flex items-center justify-center gap-2 mb-2">
             <Zap className="w-4 h-4 text-[#d1d5db]" />
             <span className="text-[12px] text-white/55">{t('pointsCharge.chargedDeals', { defaultValue: '충전된 딜' })}</span>
           </div>
-          <p className="text-[34px] font-extrabold text-white leading-none tracking-tight">+{formatNumber(result?.points_added)}<span className="text-[20px] font-bold ml-0.5">딜</span></p>
-          <p className="text-[12px] text-white/55 mt-2.5">{t('pointsCharge.successBalance', { balance: formatNumber(result?.balance), defaultValue: '현재 잔액: {{balance}}딜' })}</p>
+          <p className="text-[34px] font-extrabold text-white leading-none tracking-tight">+{formatNumber(result?.points_added)}<span className="text-[24px] font-bold ml-0.5">딜</span></p>
+          <p className="text-[12px] text-white/55 mt-2">{t('pointsCharge.successBalance', { balance: formatNumber(result?.balance), defaultValue: '현재 잔액: {{balance}}딜' })}</p>
         </div>
         {/* 🔗 2026-07-03 [UNLOCK_LOADING] (대표 승인 "1~4번 전부, 가장 이상적으로" — 딜포인트 락인 강화):
               충전 직후는 float→spend 전환의 최적 순간인데 기존 CTA(이전 화면/추가 충전)엔 '쓰러 가기'가
@@ -125,7 +125,7 @@ export default function PointsChargeSuccessPage() {
         {(() => { try { return !localStorage.getItem('loginReturnUrl') } catch { return true } })() && (
           <button
             onClick={() => navigate('/vouchers')}
-            className="w-full py-3.5 mb-3 bg-brand hover:bg-black text-white rounded-xl font-bold"
+            className="w-full py-4 mb-3 bg-brand hover:bg-black text-white rounded-xl font-bold"
           >
             {t('pointsCharge.spendNow', { defaultValue: '지금 이용권 사러 가기 →' })}
           </button>

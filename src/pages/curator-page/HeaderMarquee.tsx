@@ -40,14 +40,14 @@ export default function HeaderMarquee({
                   onKeyDown={(e) => e.key === 'Enter' && saveHeadline()}
                   placeholder="흐르는 한 줄 공지 (예: 신상 입고 · 무료배송 이벤트)"
                   maxLength={80}
-                  className="flex-1 min-w-0 bg-white/20 text-white placeholder:text-white/70 text-[12.5px] font-bold px-2.5 py-1.5 rounded-lg outline-none"
+                  className="flex-1 min-w-0 bg-white/20 text-white placeholder:text-white/70 text-[12px] font-bold px-2 py-2 rounded-lg outline-none"
                 />
-                <button onClick={saveHeadline} aria-label="저장" className="shrink-0 p-1.5 bg-white rounded-lg active:scale-95" style={{ color: accentColor }}><Check className="w-4 h-4" /></button>
-                <button onClick={() => { setEditingHeadline(false); setHeadlineVal(curator.headline || '') }} aria-label="취소" className="shrink-0 p-1.5 bg-white/20 rounded-lg text-white active:scale-95"><X className="w-4 h-4" /></button>
+                <button onClick={saveHeadline} aria-label="저장" className="shrink-0 p-2 bg-white rounded-lg active:scale-95" style={{ color: accentColor }}><Check className="w-4 h-4" /></button>
+                <button onClick={() => { setEditingHeadline(false); setHeadlineVal(curator.headline || '') }} aria-label="취소" className="shrink-0 p-2 bg-white/20 rounded-lg text-white active:scale-95"><X className="w-4 h-4" /></button>
               </div>
               {/* 색상 조정 — 프리셋 스와치 + 커스텀 컬러 */}
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10.5px] font-bold text-white/80 mr-0.5">색상</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[12px] font-bold text-white/80 mr-0.5">색상</span>
                 {ACCENT_PRESETS.map((c) => (
                   <button
                     key={c}
@@ -71,10 +71,10 @@ export default function HeaderMarquee({
                   (1440px 실측). 흐르는 이유는 폰의 좁은 폭인데, PC 의 이 칸은 더 좁아서
                   흐름이 문제를 **키운다**. ⇒ lg+ 에서는 안 흐르고 접어서 다 보여 준다.
                   ⚠️ 숨기지 않는다 — 주인이 쓴 문구다. 색 띠도 그대로 유지한다. */}
-              <p className="hidden lg:block px-3 py-1.5 text-[12px] font-bold tracking-wide leading-snug">
+              <p className="hidden lg:block px-3 py-2 text-[12px] font-bold tracking-wide leading-snug">
                 {curator.headline}
               </p>
-              <div className="lg:hidden animate-marquee py-1.5">
+              <div className="lg:hidden animate-marquee py-2">
                 {[0, 1].map((copy) => (
                   <div key={copy} className="flex shrink-0" aria-hidden={copy === 1}>
                     {Array.from({ length: 4 }).map((_, i) => (
@@ -98,7 +98,7 @@ export default function HeaderMarquee({
           ) : isOwner ? (
             <button
               onClick={() => { setEditingHeadline(true); setHeadlineVal('') }}
-              className="w-full text-[11px] font-bold py-1.5 active:opacity-80"
+              className="w-full text-[12px] font-bold py-2 active:opacity-80"
               style={{ background: `${accentColor}1A`, color: accentColor }}
             >
               + 흐르는 헤드라인 추가

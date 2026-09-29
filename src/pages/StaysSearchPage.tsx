@@ -84,8 +84,8 @@ export default function StaysSearchPage() {
       {/* Sticky Top Bar */}
       <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-wide px-4 lg:px-8 py-3 flex items-center gap-3">
-          <Link to="/" className="text-sm font-bold">←</Link>
-          <h1 className="text-base font-bold flex-1">🏨 숙소</h1>
+          <Link to="/" className="text-[15px] font-bold">←</Link>
+          <h1 className="text-[15px] font-bold flex-1">🏨 숙소</h1>
           <button
             onClick={() => setShowFilters(true)}
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/[0.06]"
@@ -126,19 +126,19 @@ export default function StaysSearchPage() {
 
         {/* Quick filters bar */}
         <div className="ur-content-wide px-4 lg:px-8 pb-3 flex gap-2 overflow-x-auto scrollbar-hide">
-          <button onClick={() => setShowFilters(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-white/[0.06] rounded-full text-xs whitespace-nowrap">
+          <button onClick={() => setShowFilters(true)} className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-white/[0.06] rounded-full text-[12px] whitespace-nowrap">
             <Calendar className="w-3 h-3" /> {filters.check_in.slice(5)} - {filters.check_out.slice(5)} ({nights}박)
           </button>
-          <button onClick={() => setShowFilters(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-white/[0.06] rounded-full text-xs whitespace-nowrap">
+          <button onClick={() => setShowFilters(true)} className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-white/[0.06] rounded-full text-[12px] whitespace-nowrap">
             <Users className="w-3 h-3" /> 성인 {filters.guests}명
           </button>
           {filters.region && (
-            <button onClick={() => setFilters({ ...filters, region: '' })} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-300 rounded-full text-xs whitespace-nowrap">
+            <button onClick={() => setFilters({ ...filters, region: '' })} className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-300 rounded-full text-[12px] whitespace-nowrap">
               <MapPin className="w-3 h-3" /> {filters.region} ×
             </button>
           )}
           {filters.property_type && (
-            <button onClick={() => setFilters({ ...filters, property_type: '' })} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-300 rounded-full text-xs whitespace-nowrap">
+            <button onClick={() => setFilters({ ...filters, property_type: '' })} className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-300 rounded-full text-[12px] whitespace-nowrap">
               {PROPERTY_TYPE_LABELS[filters.property_type]} ×
             </button>
           )}
@@ -148,22 +148,22 @@ export default function StaysSearchPage() {
       {/* Results */}
       <div className="ur-content-wide px-4 lg:px-8 py-4">
         {loading ? (
-          <div className="text-center py-20 text-gray-500 dark:text-gray-400 text-sm">검색 중...</div>
+          <div className="text-center py-20 text-gray-500 dark:text-gray-400 text-[15px]">검색 중...</div>
         ) : isError ? (
           // 🛡️ 2026-06-26 (소비자 감사 P0): fetch 실패를 '검색결과 없음'(재고 없음)으로 위장하지 않음 — 재시도.
           <div className="text-center py-20">
             <Search className="w-10 h-10 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
-            <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">검색을 불러오지 못했어요</p>
-            <p className="text-xs text-gray-500 dark:text-gray-500 mb-4">네트워크 상태를 확인해주세요.</p>
-            <button onClick={() => refetch()} className="px-5 h-10 rounded-lg text-sm font-bold bg-brand text-white">다시 시도</button>
+            <p className="text-[15px] text-gray-600 dark:text-gray-300 mb-1">검색을 불러오지 못했어요</p>
+            <p className="text-[12px] text-gray-500 dark:text-gray-500 mb-4">네트워크 상태를 확인해주세요.</p>
+            <button onClick={() => refetch()} className="px-5 h-10 rounded-lg text-[15px] font-bold bg-brand text-white">다시 시도</button>
           </div>
         ) : items.length === 0 ? (
           // 🧭 2026-07-20 (대표 — 빈 화면이 막다른 골목): 차가운 '검색 결과 없음' → 안내 + 다른 딜 CTA.
           <div className="text-center py-20">
             <Search className="w-10 h-10 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
-            <p className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-1">조건에 맞는 숙소가 아직 없어요</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-5">날짜·인원을 바꿔 보거나, 주변 다른 딜을 둘러보세요.</p>
-            <Link to="/map" className="inline-block px-5 py-2.5 rounded-full bg-brand text-white text-sm font-bold">지도에서 동네딜 보기 →</Link>
+            <p className="text-[15px] font-bold text-gray-700 dark:text-gray-200 mb-1">조건에 맞는 숙소가 아직 없어요</p>
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-5">날짜·인원을 바꿔 보거나, 주변 다른 딜을 둘러보세요.</p>
+            <Link to="/map" className="inline-block px-5 py-2 rounded-full bg-brand text-white text-[15px] font-bold">지도에서 동네딜 보기 →</Link>
           </div>
         ) : (
           // 🖥️ 2026-07-16 (풀너비): 모바일 1열 → PC 최대 4열(교환권 그리드와 정합).
@@ -202,7 +202,7 @@ export default function StaysSearchPage() {
                   aboveFold={false}
                   flags={
                     (typeLabel || starLabel) ? (
-                      <p className="text-[11px] font-bold leading-none mb-1 text-gray-900 dark:text-gray-100">
+                      <p className="text-[12px] font-bold leading-none mb-1 text-gray-900 dark:text-gray-100">
                         {[typeLabel, starLabel].filter(Boolean).join(' · ')}
                       </p>
                     ) : null
@@ -226,48 +226,48 @@ export default function StaysSearchPage() {
         >
           <div className="bg-surface w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-gray-100 dark:border-[#2C2F35] max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="sticky top-0 bg-white dark:bg-[#11141C] flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-[#2C2F35]">
-              <h3 className="text-base font-bold">검색 필터</h3>
-              <button onClick={() => setShowFilters(false)} aria-label="닫기" className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-white/[0.06]"><X className="w-4 h-4" /></button>
+              <h3 className="text-[15px] font-bold">검색 필터</h3>
+              <button onClick={() => setShowFilters(false)} aria-label="닫기" className="p-2 rounded hover:bg-gray-100 dark:hover:bg-white/[0.06]"><X className="w-4 h-4" /></button>
             </div>
             <div className="p-5 space-y-4">
               <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">지역</label>
+                <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-300 mb-2">지역</label>
                 <input
                   type="text"
                   value={filters.region}
                   onChange={(e) => setFilters({ ...filters, region: e.target.value })}
                   placeholder="서울 / 제주 / 부산 등"
-                  className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border border-line rounded-lg text-sm text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none"
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border border-line rounded-lg text-[15px] text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none"
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">체크인</label>
-                  <input type="date" value={filters.check_in} onChange={(e) => setFilters({ ...filters, check_in: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border border-line rounded-lg text-sm text-gray-900 dark:text-white" />
+                  <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-300 mb-2">체크인</label>
+                  <input type="date" value={filters.check_in} onChange={(e) => setFilters({ ...filters, check_in: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border border-line rounded-lg text-[15px] text-gray-900 dark:text-white" />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">체크아웃</label>
-                  <input type="date" value={filters.check_out} onChange={(e) => setFilters({ ...filters, check_out: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border border-line rounded-lg text-sm text-gray-900 dark:text-white" />
+                  <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-300 mb-2">체크아웃</label>
+                  <input type="date" value={filters.check_out} onChange={(e) => setFilters({ ...filters, check_out: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border border-line rounded-lg text-[15px] text-gray-900 dark:text-white" />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">인원</label>
-                <input type="number" min={1} max={20} value={filters.guests} onChange={(e) => setFilters({ ...filters, guests: Number(e.target.value) || 1 })} className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border border-line rounded-lg text-sm text-gray-900 dark:text-white" />
+                <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-300 mb-2">인원</label>
+                <input type="number" min={1} max={20} value={filters.guests} onChange={(e) => setFilters({ ...filters, guests: Number(e.target.value) || 1 })} className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border border-line rounded-lg text-[15px] text-gray-900 dark:text-white" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">숙소 타입</label>
-                <div className="grid grid-cols-4 gap-1.5">
+                <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-300 mb-2">숙소 타입</label>
+                <div className="grid grid-cols-4 gap-2">
                   {Object.entries(PROPERTY_TYPE_LABELS).map(([v, l]) => (
                     <button key={v} onClick={() => setFilters({ ...filters, property_type: filters.property_type === v ? '' : v })}
-                      className={`p-2 rounded-lg text-[11px] font-semibold ${filters.property_type === v ? 'bg-brand text-white' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300'}`}>
+                      className={`p-2 rounded-lg text-[12px] font-semibold ${filters.property_type === v ? 'bg-brand text-white' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300'}`}>
                       {l}
                     </button>
                   ))}
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">판매 방식</label>
-                <div className="grid grid-cols-3 gap-1.5">
+                <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-300 mb-2">판매 방식</label>
+                <div className="grid grid-cols-3 gap-2">
                   {/* 🎨 2026-09-03: 이모지 → 선 아이콘 · 선택은 **브랜드 블루**(구 로즈 `bg-brand` 잔재).
                       아이콘 컨셉은 유어딜 아이콘 세트(선/면) — 유틸리티만 lucide. */}
                   {([
@@ -277,7 +277,7 @@ export default function StaysSearchPage() {
                   ] as const).map((m) => (
                     <button key={m.v} type="button"
                       onClick={() => setFilters({ ...filters, sale_mode: m.v })}
-                      className={`inline-flex items-center justify-center gap-1 p-2 rounded-lg text-[11px] font-semibold ${filters.sale_mode === m.v ? 'bg-brand text-white' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300'}`}>
+                      className={`inline-flex items-center justify-center gap-1 p-2 rounded-lg text-[12px] font-semibold ${filters.sale_mode === m.v ? 'bg-brand text-white' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300'}`}>
                       {m.Icon && <m.Icon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />}
                       {m.l}
                     </button>
@@ -285,15 +285,15 @@ export default function StaysSearchPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">정렬</label>
-                <select value={filters.sort} onChange={(e) => setFilters({ ...filters, sort: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border border-line rounded-lg text-sm text-gray-900 dark:text-white">
+                <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-300 mb-2">정렬</label>
+                <select value={filters.sort} onChange={(e) => setFilters({ ...filters, sort: e.target.value })} className="w-full px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border border-line rounded-lg text-[15px] text-gray-900 dark:text-white">
                   <option value="recent">최신 등록</option>
                   <option value="price_asc">가격 낮은순</option>
                   <option value="price_desc">가격 높은순</option>
                   <option value="rating">평점 높은순</option>
                 </select>
               </div>
-              <button onClick={apply} className="w-full py-3 bg-brand text-white text-sm font-bold rounded-lg hover:bg-brand">검색</button>
+              <button onClick={apply} className="w-full py-3 bg-brand text-white text-[15px] font-bold rounded-lg hover:bg-brand">검색</button>
             </div>
           </div>
         </div>

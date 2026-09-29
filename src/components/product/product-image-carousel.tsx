@@ -24,7 +24,7 @@ export function ProductImageCarousel({ images }: ProductImageCarouselProps) {
   if (!images || images.length === 0) {
     return (
       <div className="relative w-full bg-gray-50 dark:bg-[#1D1F29] aspect-square flex items-center justify-center">
-        <span className="text-gray-400 dark:text-gray-500 text-sm">이미지 없음</span>
+        <span className="text-gray-400 dark:text-gray-500 text-[15px]">이미지 없음</span>
       </div>
     )
   }
@@ -72,7 +72,7 @@ export function ProductImageCarousel({ images }: ProductImageCarouselProps) {
 
       {/* v4 Image counter */}
       {images.length > 1 && (
-        <div className="absolute bottom-3 right-3 rounded-full px-2 py-0.5"
+        <div className="absolute bottom-3 right-3 rounded-full px-2 py-1"
           style={{ background: 'rgba(0,0,0,0.65)', color: '#fff', fontSize: 10, fontWeight: 600 }}>
           {selectedIndex + 1} / {images.length}
         </div>

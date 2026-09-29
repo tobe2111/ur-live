@@ -55,7 +55,7 @@ export default function ReturnRequestModal({ orderId, orderNumber, onClose, onSu
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+          <h3 className="text-[17px] font-bold text-gray-900 dark:text-white">
             {t('returnRequest.title', { defaultValue: '반품/교환 신청' })}
           </h3>
           <button
@@ -68,12 +68,12 @@ export default function ReturnRequestModal({ orderId, orderNumber, onClose, onSu
         </div>
 
         <div className="mb-4 p-4 bg-gray-50 dark:bg-[#1D1F29] rounded-xl">
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">{t('cancelOrder.orderNumber', { defaultValue: '주문번호' })}</p>
+          <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-1">{t('cancelOrder.orderNumber', { defaultValue: '주문번호' })}</p>
           <p className="font-semibold text-gray-900 dark:text-white">{orderNumber}</p>
         </div>
 
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">
+          <label className="block text-[15px] font-medium text-gray-600 dark:text-gray-300 mb-2">
             {t('returnRequest.reasonLabel', { defaultValue: '반품 사유' })} <span className="text-red-500">*</span>
           </label>
           <select
@@ -91,7 +91,7 @@ export default function ReturnRequestModal({ orderId, orderNumber, onClose, onSu
         </div>
 
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">
+          <label className="block text-[15px] font-medium text-gray-600 dark:text-gray-300 mb-2">
             {t('returnRequest.detailLabel', { defaultValue: '상세 사유 (선택)' })}
           </label>
           <textarea
@@ -100,14 +100,14 @@ export default function ReturnRequestModal({ orderId, orderNumber, onClose, onSu
             rows={3}
             maxLength={1000}
             placeholder={t('returnRequest.detailPlaceholder', { defaultValue: '상세한 사유를 입력하면 처리가 빨라져요' })}
-            className="w-full px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-xl text-sm text-gray-900 dark:text-white resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            className="w-full px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-xl text-[15px] text-gray-900 dark:text-white resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
           />
         </div>
 
         <div className="mb-6 p-4 bg-blue-50 rounded-xl">
           <div className="flex items-start gap-2">
-            <AlertCircle className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
-            <div className="text-sm text-blue-700">
+            <AlertCircle className="h-5 w-5 text-blue-500 mt-1 flex-shrink-0" />
+            <div className="text-[15px] text-blue-700">
               <p className="font-medium mb-1">{t('returnRequest.noticeTitle', { defaultValue: '반품 안내' })}</p>
               <p className="text-blue-600">• {t('returnRequest.notice1', { defaultValue: '배송완료 후 7일 이내에만 신청할 수 있습니다.' })}</p>
               <p className="text-blue-600">• {t('returnRequest.notice2', { defaultValue: '판매자 승인 후 회수 송장을 등록해주세요. 진행 상황은 내 반품에서 확인할 수 있어요.' })}</p>

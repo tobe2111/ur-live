@@ -27,36 +27,36 @@ export default function CollabPerformance() {
     <section className="mb-5">
       <div className="rounded-3xl p-5 bg-surface border border-line">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-[14px] font-bold text-gray-900 dark:text-white">🤝 협업 딜 성과</h2>
-          <span className="text-[11px] text-gray-400 dark:text-gray-500">확정분은 자동 지급돼요</span>
+          <h2 className="text-[15px] font-bold text-gray-900 dark:text-white">🤝 협업 딜 성과</h2>
+          <span className="text-[12px] text-gray-400 dark:text-gray-500">확정분은 자동 지급돼요</span>
         </div>
         <div className="grid grid-cols-3 gap-2 text-center mb-3">
-          <div className="bg-warm rounded-xl py-2.5">
-            <p className="text-[11px] text-gray-500 dark:text-gray-400">판매</p>
+          <div className="bg-warm rounded-xl py-2">
+            <p className="text-[12px] text-gray-500 dark:text-gray-400">판매</p>
             <p className="text-[15px] font-bold text-gray-900 dark:text-white">{perf.totals.orders}건</p>
           </div>
-          <div className="bg-warm rounded-xl py-2.5">
-            <p className="text-[11px] text-gray-500 dark:text-gray-400">대기 적립</p>
+          <div className="bg-warm rounded-xl py-2">
+            <p className="text-[12px] text-gray-500 dark:text-gray-400">대기 적립</p>
             <p className="text-[15px] font-bold text-gray-900 dark:text-white">{formatWon(perf.totals.pending)}</p>
           </div>
-          <div className="bg-warm rounded-xl py-2.5">
-            <p className="text-[11px] text-gray-500 dark:text-gray-400">확정</p>
+          <div className="bg-warm rounded-xl py-2">
+            <p className="text-[12px] text-gray-500 dark:text-gray-400">확정</p>
             <p className="text-[15px] font-bold text-emerald-600 dark:text-emerald-400">{formatWon(perf.totals.confirmed)}</p>
           </div>
         </div>
         <div className="divide-y divide-gray-100 dark:divide-[#2C2F35]">
           {perf.deals.map((d) => (
-            <div key={d.id} className="py-2.5 flex items-center justify-between gap-2">
+            <div key={d.id} className="py-2 flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">
                   {d.seller_name || '매장'} <span className="text-gray-400 font-normal">· 커미션 {d.commission_pct}%</span>
                 </p>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                <p className="text-[12px] text-gray-500 dark:text-gray-400">
                   판매 {d.orders_count}건 · 적립 {formatWon(d.pending_krw + d.confirmed_krw)}
                 </p>
               </div>
               <button
-                className="flex-shrink-0 text-[11px] px-2.5 py-1.5 rounded-full border border-gray-300 dark:border-[#2C2F35] text-gray-700 dark:text-gray-200"
+                className="flex-shrink-0 text-[12px] px-2 py-2 rounded-full border border-gray-300 dark:border-[#2C2F35] text-gray-700 dark:text-gray-200"
                 onClick={() => { navigator.clipboard?.writeText(d.tracking_url).then(() => toast.success('내 홍보 링크를 복사했어요')).catch(() => {}) }}
               >링크 복사</button>
             </div>

@@ -67,7 +67,7 @@ export default function NotificationDropdown({ onClose }: Props) {
     >
       {/* 헤더 */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-[#2C2F35]">
-        <h3 className="text-[14px] font-extrabold text-gray-900 dark:text-white">알림</h3>
+        <h3 className="text-[15px] font-extrabold text-gray-900 dark:text-white">알림</h3>
         {hasUnread && (
           <button
             type="button"
@@ -107,13 +107,13 @@ export default function NotificationDropdown({ onClose }: Props) {
               }}
               className={`w-full flex items-start gap-3 px-4 py-3 text-left border-b border-gray-50 dark:border-[#22304A] hover:bg-gray-50 dark:hover:bg-white/[0.03] transition-colors ${n.is_read ? 'opacity-60' : ''}`}
             >
-              <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${n.is_read ? 'bg-transparent' : 'bg-brand'}`} />
+              <span className={`w-2 h-2 rounded-full mt-2 shrink-0 ${n.is_read ? 'bg-transparent' : 'bg-brand'}`} />
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">{n.title}</p>
                 {n.message && (
-                  <p className="text-[12px] text-gray-500 dark:text-gray-400 line-clamp-2 mt-0.5">{n.message}</p>
+                  <p className="text-[12px] text-gray-500 dark:text-gray-400 line-clamp-2 mt-1">{n.message}</p>
                 )}
-                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">{timeLabel(n.created_at)}</p>
+                <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-1">{timeLabel(n.created_at)}</p>
               </div>
             </button>
           ))

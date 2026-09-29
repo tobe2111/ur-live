@@ -128,8 +128,8 @@ export default function ShoppingGrid() {
       {/* 🛒 2026-06-23 (대표 '가장 이상적으로'): 쇼핑 카테고리 = sticky 바(top-[45px], 탭 바로 아래) —
           쇼핑 섹션에 있는 동안 상단에 따라붙어 어디서든 카테고리 전환 가능. 교환권 reveal 그룹은 이때 숨김(슬롯 공유). */}
       <div className="sticky top-[45px] z-20 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
-        <div className="ur-content-wide px-4 lg:px-8 py-2.5">
-          <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
+        <div className="ur-content-wide px-4 lg:px-8 py-2">
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide">
             {visibleShopCats.map(c => {
               const active = shopCategory === c.key
               return (
@@ -137,7 +137,7 @@ export default function ShoppingGrid() {
                   key={c.key}
                   type="button"
                   onClick={() => setShopCategory(c.key)}
-                  className={`shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors ${
+                  className={`shrink-0 inline-flex items-center gap-1 px-3 py-2 rounded-full text-[12px] font-semibold transition-colors ${
                     active
                       ? 'bg-brand text-white shadow-sm'
                       : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2C2F35]'
@@ -155,17 +155,17 @@ export default function ShoppingGrid() {
       {loading ? (
         <BrandLoader />
       ) : items.length === 0 ? (
-        <div className="text-center py-16 text-gray-400 dark:text-gray-500 text-sm">쇼핑 상품이 없습니다</div>
+        <div className="text-center py-16 text-gray-400 dark:text-gray-500 text-[15px]">쇼핑 상품이 없습니다</div>
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-2.5 items-stretch">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-2 items-stretch">
             {items.map((p, idx) => (
               <BrowseProductCard key={p.id} product={p} aboveFold={idx < 4} />
             ))}
           </div>
           <div ref={sentinelRef} className="h-10 flex items-center justify-center mt-4">
-            {loadingMore && <div className="text-[11px] text-gray-400 dark:text-gray-500">로드 중...</div>}
-            {!hasMore && items.length > 0 && <div className="text-[11px] text-gray-400 dark:text-gray-500">— 마지막 —</div>}
+            {loadingMore && <div className="text-[12px] text-gray-400 dark:text-gray-500">로드 중...</div>}
+            {!hasMore && items.length > 0 && <div className="text-[12px] text-gray-400 dark:text-gray-500">— 마지막 —</div>}
           </div>
         </>
       )}

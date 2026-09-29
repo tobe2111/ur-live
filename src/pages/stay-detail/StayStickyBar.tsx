@@ -35,26 +35,26 @@ export default function StayStickyBar({
   if (!hasCart && minPrice == null) return null
 
   return (
-    <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-[#1D1F29]/95 backdrop-blur border-t border-rule px-3 pt-2.5 pb-[calc(10px+env(safe-area-inset-bottom))]">
+    <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-[#1D1F29]/95 backdrop-blur border-t border-rule px-3 pt-2 pb-[calc(10px+env(safe-area-inset-bottom))]">
       <div className="max-w-md mx-auto flex items-center gap-3">
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 truncate">
+          <p className="text-[12px] font-semibold text-gray-500 dark:text-gray-400 truncate">
             {hasCart ? `${cartCount}종 객실 / ${cartTotalQty}객실` : nightsLabel}
           </p>
-          <p className="mt-0.5 text-[19px] font-extrabold tracking-[-0.02em] tabular-nums text-gray-900 dark:text-white leading-none">
+          <p className="mt-1 text-[17px] font-extrabold tracking-[-0.02em] tabular-nums text-gray-900 dark:text-white leading-none">
             ₩{formatNumber(hasCart ? cartSubtotal : (minPrice ?? 0))}
             {!hasCart && <span className="ml-1 text-[13px] font-bold text-gray-500 dark:text-gray-400">부터</span>}
           </p>
         </div>
         {hasCart && (
-          <button type="button" onClick={onClear} className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+          <button type="button" onClick={onClear} className="px-3 py-2 text-[12px] text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
             비우기
           </button>
         )}
         <button
           type="button"
           onClick={hasCart ? onBook : onPickRoom}
-          className="shrink-0 px-5 py-3 bg-brand text-white text-sm font-bold rounded-xl hover:bg-brand-dark"
+          className="shrink-0 px-5 py-3 bg-brand text-white text-[15px] font-bold rounded-xl hover:bg-brand-dark"
         >
           {hasCart ? '묶음 예약 →' : '객실 고르기'}
         </button>

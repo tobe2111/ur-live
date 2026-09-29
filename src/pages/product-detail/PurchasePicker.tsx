@@ -63,7 +63,7 @@ export default function PurchasePicker({
   if (variant === 'pickup') {
     return (
       <section className="px-5 pt-6">
-        <p className="text-[13px] font-extrabold tracking-[-0.03em] text-[#1A1719] dark:text-[#F3EFF1] mb-2.5">옵션</p>
+        <p className="text-[13px] font-extrabold tracking-[-0.03em] text-[#1A1719] dark:text-[#F3EFF1] mb-2">옵션</p>
 
         {options.length > 0 ? (
           <div className="flex flex-col gap-2">
@@ -85,13 +85,13 @@ export default function PurchasePicker({
                         : 'bg-[#F1EDEF] text-[#3F383C] dark:bg-[#1D1F29] dark:text-[#DAD4D7]'
                   }`}
                 >
-                  <span className={`text-[14.5px] tracking-[-0.025em] truncate ${selected ? 'font-bold' : 'font-semibold'}`}>
+                  <span className={`text-[15px] tracking-[-0.025em] truncate ${selected ? 'font-bold' : 'font-semibold'}`}>
                     {opt.option_value}
                   </span>
                   {soldOut ? (
-                    <span className="shrink-0 ml-2 text-[12.5px] font-bold tracking-[-0.02em]">품절</span>
+                    <span className="shrink-0 ml-2 text-[12px] font-bold tracking-[-0.02em]">품절</span>
                   ) : (
-                    <span className="shrink-0 ml-2 text-[13.5px] font-bold tracking-[-0.02em]">
+                    <span className="shrink-0 ml-2 text-[13px] font-bold tracking-[-0.02em]">
                       {(opt.price_adjustment || 0) >= 0 ? '+' : '−'}{formatNumber(Math.abs(opt.price_adjustment || 0))}원
                     </span>
                   )}
@@ -115,12 +115,12 @@ export default function PurchasePicker({
 
         <div className="flex items-center justify-between pt-[22px]">
           <span className="text-[13px] font-extrabold tracking-[-0.03em] text-[#1A1719] dark:text-[#F3EFF1]">수량</span>
-          <div className="flex items-center gap-0.5 p-[3px] rounded-xl bg-[#F1EDEF] dark:bg-[#1D1F29]">
+          <div className="flex items-center gap-1 p-[3px] rounded-xl bg-[#F1EDEF] dark:bg-[#1D1F29]">
             <button type="button" aria-label="수량 감소" onClick={dec} disabled={quantity <= 1}
               className="w-11 h-11 rounded-[10px] flex items-center justify-center disabled:opacity-40">
               <Minus className="w-4 h-4 text-[#6B6469] dark:text-[#7C7479]" strokeWidth={2.4} />
             </button>
-            <span className="min-w-[40px] text-center text-[16px] font-extrabold tracking-[-0.03em] text-[#1A1719] dark:text-[#F3EFF1]">
+            <span className="min-w-[40px] text-center text-[17px] font-extrabold tracking-[-0.03em] text-[#1A1719] dark:text-[#F3EFF1]">
               {quantity}
             </span>
             <button type="button" aria-label="수량 증가" onClick={inc}
@@ -130,7 +130,7 @@ export default function PurchasePicker({
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-3.5">
+        <div className="flex items-center justify-between pt-4">
           {/* 🛡️ 2026-04-22 배치 113: VAT 포함 표시(한국 부가세 포함 공시) — 문구만 시안 톤. */}
           <span className="text-[12px] tracking-[-0.02em] text-[#9A9298] dark:text-[#7C7479]">부가세 포함</span>
           {/* ⚠️ 시안은 `210원 적립` 이지만 유어딜 적립 단위는 **딜**이다. 시안 문장 모양은 지키고
@@ -160,9 +160,9 @@ export default function PurchasePicker({
                 }`}>
                 <span className={`text-[12px] ${soldOut ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-gray-900 dark:text-white'}`}>{opt.option_value}</span>
                 <span className="flex items-center gap-2">
-                  {soldOut && <span className="text-[11px] text-red-500 font-medium">{t('product.optionSoldOut', { defaultValue: '품절' })}</span>}
+                  {soldOut && <span className="text-[12px] text-red-500 font-medium">{t('product.optionSoldOut', { defaultValue: '품절' })}</span>}
                   {!soldOut && opt.price_adjustment !== 0 && (
-                    <span className="text-[11px] text-red-500 font-bold">
+                    <span className="text-[12px] text-red-500 font-bold">
                       {(opt.price_adjustment || 0) > 0 ? '+' : ''}{t('productDetail.priceWon', { defaultValue: '{{value}}원', value: formatNumber(opt.price_adjustment || 0) })}
                     </span>
                   )}
@@ -185,17 +185,17 @@ export default function PurchasePicker({
         <div className="flex items-center gap-3 border border-line rounded-xl px-2 py-1">
           <button type="button" aria-label="수량 감소" onClick={dec}
             className="w-8 h-8 flex items-center justify-center text-gray-900 dark:text-white font-bold disabled:opacity-30" disabled={quantity <= 1}>−</button>
-          <span className="min-w-[2ch] text-center text-[14px] font-bold text-gray-900 dark:text-white">{quantity}</span>
+          <span className="min-w-[2ch] text-center text-[15px] font-bold text-gray-900 dark:text-white">{quantity}</span>
           <button type="button" aria-label="수량 증가" onClick={inc}
             className="w-8 h-8 flex items-center justify-center text-gray-900 dark:text-white font-bold">＋</button>
         </div>
       </div>
       <div className="flex items-center gap-2 mt-3">
-        <span className="text-[11px] text-gray-400 dark:text-gray-500">{t('productDetail.pointReward')}</span>
-        <span className="text-[11px] font-bold text-gray-900 dark:text-white">{t('productDetail.maxPointReward', { defaultValue: '최대 {{value}}딜', value: formatNumber(reward) })}</span>
+        <span className="text-[12px] text-gray-400 dark:text-gray-500">{t('productDetail.pointReward')}</span>
+        <span className="text-[12px] font-bold text-gray-900 dark:text-white">{t('productDetail.maxPointReward', { defaultValue: '최대 {{value}}딜', value: formatNumber(reward) })}</span>
       </div>
       {/* 🛡️ 2026-04-22 배치 113: VAT 포함 표시 (한국 부가세 포함 공시) */}
-      <div className="mt-1 text-[10.5px] text-gray-400 dark:text-gray-500">{t('productDetail.vatIncluded')}</div>
+      <div className="mt-1 text-[12px] text-gray-400 dark:text-gray-500">{t('productDetail.vatIncluded')}</div>
     </section>
   )
 }

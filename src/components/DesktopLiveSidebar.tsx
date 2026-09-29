@@ -54,7 +54,7 @@ function NavBtn({ item, isActive, onClick }: { item: NavItem; isActive: boolean;
       type="button"
       onClick={onClick}
       title={t(item.labelKey, { defaultValue: item.labelDefault })}
-      className={`flex items-center xl:gap-2.5 w-full xl:px-3 py-2 xl:rounded-lg text-left transition-colors text-[13px] font-medium
+      className={`flex items-center xl:gap-2 w-full xl:px-3 py-2 xl:rounded-lg text-left transition-colors text-[13px] font-medium
         md:justify-center md:h-12 md:rounded-none md:border-l-2 xl:justify-start xl:h-auto xl:border-l-0 xl:rounded-lg
         ${isActive
           ? 'md:border-l-gray-500 md:bg-gray-100 dark:md:bg-white/10 xl:border-l-transparent xl:bg-gray-100 dark:xl:bg-white/10 text-gray-900 dark:text-white'
@@ -87,14 +87,14 @@ export default function DesktopLiveSidebar() {
     >
       {/* 로고 — xl: 풀 로고, md~xl: 'U' 아이콘. sticky 로 사이드바 스크롤 시 항상 표시 */}
       <Link to="/" className="sticky top-0 z-10 bg-white dark:bg-[#11141C] flex items-center justify-center xl:justify-start xl:px-4 h-14 shrink-0">
-        <span className="xl:hidden text-[18px] font-black text-gray-900 dark:text-white select-none">U</span>
+        <span className="xl:hidden text-[17px] font-black text-gray-900 dark:text-white select-none">U</span>
         <span className="hidden xl:block"><UrDealLogo size={20} /></span>
       </Link>
 
       <div className="flex-1 xl:px-2 pb-4 flex flex-col xl:gap-5">
         {/* MENU */}
         <section>
-          <p className="hidden xl:block text-[10px] font-bold text-gray-400 dark:text-white/30 uppercase tracking-widest px-3 mb-1">
+          <p className="hidden xl:block text-[12px] font-bold text-gray-400 dark:text-white/30 uppercase tracking-widest px-3 mb-1">
             {t('nav.sectionMenu', { defaultValue: 'Menu' })}
           </p>
           {/* 🛡️ 2026-06-10 [UNLOCK_LOADING]: 쇼핑(/browse) 잠정 숨김 — SHOPPING_TAB_HIDDEN 플래그 가역 */}
@@ -114,7 +114,7 @@ export default function DesktopLiveSidebar() {
 
         {/* MY */}
         <section>
-          <p className="hidden xl:block text-[10px] font-bold text-gray-400 dark:text-white/30 uppercase tracking-widest px-3 mb-1">
+          <p className="hidden xl:block text-[12px] font-bold text-gray-400 dark:text-white/30 uppercase tracking-widest px-3 mb-1">
             {t('nav.sectionMy', { defaultValue: 'My' })}
           </p>
           {/* 순서 통일(모바일 하단바와 동일): 이용권 → 유어샵 → 마이 */}

@@ -245,18 +245,18 @@ export default function LoginPage() {
         {/* Brand + 가치 제안 (동네딜 / 교환권) */}
         <div className="flex flex-col items-center mb-12">
           <UrDealLogo size={34} />
-          <h1 className="mt-6 text-[20px] md:text-[22px] font-bold text-gray-900 dark:text-white text-center leading-snug tracking-tight">
+          <h1 className="mt-6 text-[24px] md:text-[24px] font-bold text-gray-900 dark:text-white text-center leading-snug tracking-tight">
             {t('login.heroTitle', { defaultValue: '우리 동네 맛집, 같이 사면 더 싸다' })}
           </h1>
           <p className="mt-2 text-[13px] text-gray-600 dark:text-gray-400 text-center font-light leading-relaxed">
             {t('login.heroSub', { defaultValue: '동네 공동구매 교환권부터 인기 기프티콘까지, 매일 새로운 딜' })}
           </p>
           <div className="flex flex-wrap items-center justify-center gap-2 mt-5">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 dark:bg-[#1D1F29] border border-line text-[12px] text-gray-700 dark:text-gray-300">
+            <span className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-gray-50 dark:bg-[#1D1F29] border border-line text-[12px] text-gray-700 dark:text-gray-300">
               <MapPin className="w-3.5 h-3.5 text-emerald-500" />
               {t('login.chipDongne', { defaultValue: '동네딜 공동구매' })}
             </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 dark:bg-[#1D1F29] border border-line text-[12px] text-gray-700 dark:text-gray-300">
+            <span className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-gray-50 dark:bg-[#1D1F29] border border-line text-[12px] text-gray-700 dark:text-gray-300">
               <Ticket className="w-3.5 h-3.5 text-emerald-500" />
               {t('login.chipVoucher', { defaultValue: '교환권·기프티콘' })}
             </span>
@@ -315,12 +315,12 @@ export default function LoginPage() {
                   </>
                 )}
               </button>
-              <p className="mt-3 text-center text-[11px] text-gray-500 dark:text-gray-500 font-light">
+              <p className="mt-3 text-center text-[12px] text-gray-500 dark:text-gray-500 font-light">
                 {t('login.kakaoHint', { defaultValue: '복잡한 가입 절차 없이 바로 시작할 수 있어요' })}
               </p>
               {/* 📜 2026-07-05 이용약관 v1.0 제5조: 가입(로그인)으로 약관·개인정보처리방침 동의 성립 고지 */}
               {/* 📖 2026-08-17 (UX 전수검사 P2 — AA 경계 저대비): gray-400/600 → gray-500 로 한 단계 진하게. */}
-              <p className="mt-2 text-center text-[10.5px] text-gray-500 dark:text-gray-500 font-light leading-relaxed">
+              <p className="mt-2 text-center text-[12px] text-gray-500 dark:text-gray-500 font-light leading-relaxed">
                 {t('login.termsNotice', { defaultValue: '로그인(가입) 시' })}{' '}
                 <Link to="/terms" className="underline underline-offset-2 hover:text-gray-600 dark:hover:text-gray-400">{t('login.termsLink', { defaultValue: '이용약관' })}</Link>
                 {' '}{t('login.termsAnd', { defaultValue: '및' })}{' '}
@@ -359,7 +359,7 @@ export default function LoginPage() {
         {showEmailLogin && !showForgotPassword && (
           <form onSubmit={handleEmailLogin} className="space-y-4">
             <div>
-              <label htmlFor="login-email" className="block text-[12px] font-medium text-[#555] mb-1.5">
+              <label htmlFor="login-email" className="block text-[12px] font-medium text-[#555] mb-2">
                 {t('auth.email')}
               </label>
               <input
@@ -368,7 +368,7 @@ export default function LoginPage() {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full h-[48px] px-4 border border-[#333] rounded-xl text-[14px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
+                className="w-full h-[48px] px-4 border border-[#333] rounded-xl text-[15px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
                 placeholder={t('auth.emailPlaceholder')}
                 aria-label={t('auth.email')}
                 required
@@ -376,7 +376,7 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label htmlFor="login-password" className="block text-[12px] font-medium text-[#555] mb-1.5">
+              <label htmlFor="login-password" className="block text-[12px] font-medium text-[#555] mb-2">
                 {t('auth.password')}
               </label>
               <div className="relative">
@@ -386,7 +386,7 @@ export default function LoginPage() {
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full h-[48px] px-4 pr-12 border border-[#333] rounded-xl text-[14px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
+                  className="w-full h-[48px] px-4 pr-12 border border-[#333] rounded-xl text-[15px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
                   placeholder={t('auth.passwordPlaceholder')}
                   aria-label={t('auth.password')}
                   required
@@ -420,7 +420,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full h-[48px] bg-[#111] hover:bg-black text-white rounded-xl text-[14px] font-semibold tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full h-[48px] bg-[#111] hover:bg-black text-white rounded-xl text-[15px] font-semibold tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? t('common.loading') : t('common.login')}
             </button>
@@ -428,7 +428,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => setShowEmailLogin(false)}
-              className="w-full h-[48px] border border-[#333] hover:border-[#999] text-[#555] rounded-xl text-[14px] font-medium tracking-tight transition-all"
+              className="w-full h-[48px] border border-[#333] hover:border-[#999] text-[#555] rounded-xl text-[15px] font-medium tracking-tight transition-all"
             >
               {t('common.back')}
             </button>
@@ -439,13 +439,13 @@ export default function LoginPage() {
         {showForgotPassword && (
           <div className="space-y-4">
             <div className="text-center mb-6">
-              <p className="text-[14px] text-gray-500 dark:text-gray-400 font-light leading-relaxed">
+              <p className="text-[15px] text-gray-500 dark:text-gray-400 font-light leading-relaxed">
                 {t('auth.resetPasswordDesc')}
               </p>
             </div>
 
             <div>
-              <label htmlFor="reset-email" className="block text-[12px] font-medium text-[#555] mb-1.5">
+              <label htmlFor="reset-email" className="block text-[12px] font-medium text-[#555] mb-2">
                 {t('auth.email')}
               </label>
               <input
@@ -454,7 +454,7 @@ export default function LoginPage() {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full h-[48px] px-4 border border-[#333] rounded-xl text-[14px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
+                className="w-full h-[48px] px-4 border border-[#333] rounded-xl text-[15px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
                 placeholder={t('auth.emailPlaceholder')}
                 aria-label={t('auth.email')}
                 required
@@ -464,7 +464,7 @@ export default function LoginPage() {
             <button
               onClick={handleResetPassword}
               disabled={loading}
-              className="w-full h-[48px] bg-[#111] hover:bg-black text-white rounded-xl text-[14px] font-semibold tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full h-[48px] bg-[#111] hover:bg-black text-white rounded-xl text-[15px] font-semibold tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? t('common.loading') : t('auth.resetPasswordButton')}
             </button>
@@ -475,7 +475,7 @@ export default function LoginPage() {
                 setShowForgotPassword(false)
                 setShowEmailLogin(true)
               }}
-              className="w-full h-[48px] border border-[#333] hover:border-[#999] text-[#555] rounded-xl text-[14px] font-medium tracking-tight transition-all"
+              className="w-full h-[48px] border border-[#333] hover:border-[#999] text-[#555] rounded-xl text-[15px] font-medium tracking-tight transition-all"
             >
               {t('common.back')}
             </button>

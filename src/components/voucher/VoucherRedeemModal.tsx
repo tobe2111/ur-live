@@ -127,8 +127,8 @@ export default function VoucherRedeemModal({
       >
         {phase === 'confirm' && scanOnly && (
           <>
-            <p className="text-[18px] font-extrabold text-gray-900 dark:text-white">직원에게 QR 화면을 보여주세요</p>
-            <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1.5">
+            <p className="text-[17px] font-extrabold text-gray-900 dark:text-white">직원에게 QR 화면을 보여주세요</p>
+            <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-2">
               <b className="text-gray-900 dark:text-white">{store}</b> 은(는) 직원이 QR 을 스캔해 사용 처리하는 매장이에요.
             </p>
             <button onClick={onClose} className="ur-btn ur-btn-lg ur-btn-block mt-5 ur-btn-primary">QR 화면으로 돌아가기</button>
@@ -137,8 +137,8 @@ export default function VoucherRedeemModal({
 
         {phase === 'confirm' && !scanOnly && (
           <>
-            <p className="text-[18px] font-extrabold text-gray-900 dark:text-white">이 이용권을 사용할까요?</p>
-            <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1.5">
+            <p className="text-[17px] font-extrabold text-gray-900 dark:text-white">이 이용권을 사용할까요?</p>
+            <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-2">
               <b className="text-gray-900 dark:text-white">{store}</b> 에서 지금 사용합니다.<br />
               {needCode
                 ? '카운터에 비치된 매장 확인코드를 입력해주세요.'
@@ -151,7 +151,7 @@ export default function VoucherRedeemModal({
                 inputMode="numeric"
                 maxLength={6}
                 placeholder="매장 확인코드"
-                className="mt-4 w-full text-center tracking-[0.5em] text-[22px] font-black py-3 rounded-2xl border-2 border-gray-300 dark:border-[#2C2F35] bg-surface text-gray-900 dark:text-white"
+                className="mt-4 w-full text-center tracking-[0.5em] text-[24px] font-black py-3 rounded-2xl border-2 border-gray-300 dark:border-[#2C2F35] bg-surface text-gray-900 dark:text-white"
                 autoFocus
               />
             )}
@@ -165,7 +165,7 @@ export default function VoucherRedeemModal({
         {phase === 'loading' && (
           <div className="py-12 flex flex-col items-center gap-3">
             <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />
-            <p className="text-sm text-gray-500 dark:text-gray-400">처리 중…</p>
+            <p className="text-[15px] text-gray-500 dark:text-gray-400">처리 중…</p>
           </div>
         )}
 
@@ -175,7 +175,7 @@ export default function VoucherRedeemModal({
             <div className="w-20 h-20 mx-auto rounded-full bg-gray-900 dark:bg-white flex items-center justify-center animate-bounce-in">
               <Check className="w-11 h-11 text-white dark:text-gray-900" strokeWidth={3} />
             </div>
-            <p className="text-[22px] font-black text-gray-900 dark:text-white mt-4">사용 완료</p>
+            <p className="text-[24px] font-black text-gray-900 dark:text-white mt-4">사용 완료</p>
             <p className="text-[15px] font-bold text-gray-700 dark:text-gray-200 mt-1">{store}</p>
             <p className="text-[28px] font-black text-gray-900 dark:text-white tabular-nums mt-2 tracking-tight">{clock}</p>
             <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-1">직원에게 이 화면을 보여주세요</p>
@@ -207,7 +207,7 @@ export default function VoucherRedeemModal({
         )}
 
         {phase === 'confirm' && (
-          <button onClick={onClose} aria-label="닫기" className="absolute top-3 right-3 p-1.5 rounded-full bg-gray-100 dark:bg-[#1D1F29]"><X className="w-4 h-4 text-gray-500" /></button>
+          <button onClick={onClose} aria-label="닫기" className="absolute top-3 right-3 p-2 rounded-full bg-gray-100 dark:bg-[#1D1F29]"><X className="w-4 h-4 text-gray-500" /></button>
         )}
       </div>
     </div>

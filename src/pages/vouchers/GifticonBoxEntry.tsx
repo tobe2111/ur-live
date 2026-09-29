@@ -18,11 +18,11 @@ export function VoucherHeaderActions() {
   return (
     <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center">
       <button onClick={() => navigate('/my-gifticons')}
-        className="px-2.5 min-h-[44px] flex items-center text-[13px] font-bold text-gray-900 dark:text-white active:opacity-60">
+        className="px-2 min-h-[44px] flex items-center text-[13px] font-bold text-gray-900 dark:text-white active:opacity-60">
         {t('voucher.myBox', { defaultValue: '보관함' })}
       </button>
       <button onClick={() => navigate('/search?scope=exchange')} aria-label="검색"
-        className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center">
+        className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center">
         <Search className="w-5 h-5 text-gray-900 dark:text-white" />
       </button>
     </div>
@@ -35,7 +35,7 @@ export function GifticonBoxRailRow() {
   const { t } = useTranslation()
   return (
     <button type="button" onClick={() => navigate('/my-gifticons')}
-      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-line text-left hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors">
+      className="w-full flex items-center gap-2 px-3 py-2 rounded-xl border border-line text-left hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors">
       <Wallet className="w-[18px] h-[18px] shrink-0 text-gray-500 dark:text-gray-400" strokeWidth={1.8} />
       <span className="flex-1 text-[13px] font-bold text-gray-900 dark:text-white">{t('voucher.myGifticons', { defaultValue: '내 교환권' })}</span>
       <ChevronRight className="w-4 h-4 shrink-0 text-gray-300 dark:text-gray-600" />

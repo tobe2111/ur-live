@@ -48,7 +48,7 @@ export default function OrderItemsList({ sellerGroups, totalItemCount }: Props) 
                 </div>
 
                 <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
-                  <p className="truncate text-[14px] leading-snug text-gray-900 dark:text-white">
+                  <p className="truncate text-[15px] leading-snug text-gray-900 dark:text-white">
                     {item.product_name}
                   </p>
                   {item.option_value && (
@@ -56,7 +56,7 @@ export default function OrderItemsList({ sellerGroups, totalItemCount }: Props) 
                       {t('checkout.items.optionLine', { defaultValue: '{{option}} / {{count}}개', option: item.option_value, count: item.quantity })}
                     </p>
                   )}
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-2">
                     <span className="text-[15px] font-bold text-gray-900 dark:text-white">
                       {formatNumber((item.price_snapshot ?? 0) * item.quantity)}{t('checkout.summary.wonSuffix', { defaultValue: '원' })}
                     </span>

@@ -195,7 +195,7 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t('ordersTab.searchPlaceholder', { defaultValue: '상품명 / 브랜드명으로 검색하세요.' })}
           aria-label={t('ordersTab.searchAria', { defaultValue: '주문 검색' })}
-          className="w-full h-11 pl-10 pr-4 rounded-xl bg-gray-50 dark:bg-[#1D1F29] border border-line text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/10"
+          className="w-full h-11 pl-10 pr-4 rounded-xl bg-gray-50 dark:bg-[#1D1F29] border border-line text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/10"
         />
       </div>
 
@@ -207,7 +207,7 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
             <button
               key={tab.key}
               onClick={() => setKindFilter(tab.key)}
-              className={`relative whitespace-nowrap pb-2.5 text-[15px] transition-colors ${
+              className={`relative whitespace-nowrap pb-2 text-[15px] transition-colors ${
                 active
                   ? 'font-extrabold text-gray-900 dark:text-white'
                   : 'font-medium text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
@@ -233,7 +233,7 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
           {groups.map(group => (
             <section key={group.label}>
               {/* 날짜 그룹 헤더 */}
-              <h2 className="text-[15px] font-extrabold text-gray-900 dark:text-white mb-2.5 px-0.5">
+              <h2 className="text-[15px] font-extrabold text-gray-900 dark:text-white mb-2 px-1">
                 {group.label}
               </h2>
               <div className="space-y-3">
@@ -294,7 +294,7 @@ function OrderCard({
         tabIndex={0}
         onClick={openDetail}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail() } }}
-        className="w-full text-left px-4 pt-3.5 cursor-pointer"
+        className="w-full text-left px-4 pt-4 cursor-pointer"
       >
         <div className="flex items-center justify-between mb-2">
           <span className={`text-[12px] font-bold ${status.cls}`}>{status.label}</span>
@@ -317,15 +317,15 @@ function OrderCard({
             return (
               <div key={idx} className="flex gap-3">
                 <ItemThumb item={item} />
-                <div className="flex-1 min-w-0 py-0.5">
-                  <p className="text-[14px] font-medium text-gray-900 dark:text-white line-clamp-2 leading-snug">
+                <div className="flex-1 min-w-0 py-1">
+                  <p className="text-[15px] font-medium text-gray-900 dark:text-white line-clamp-2 leading-snug">
                     {item.product_name}
                   </p>
                   <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">
                     {opt && <span>{opt} · </span>}
                     {t('ordersTab.itemQty', { qty: item.quantity, defaultValue: `${item.quantity}개` })}
                   </p>
-                  <p className="text-[14px] font-bold text-gray-900 dark:text-white mt-0.5">
+                  <p className="text-[15px] font-bold text-gray-900 dark:text-white mt-1">
                     {formatNumber(orderItemLineTotal(item))}
                     <span className="text-[12px] font-semibold text-gray-500 dark:text-gray-400 ml-0.5">{t('ordersTab.won', { defaultValue: '원' })}</span>
                   </p>
@@ -344,7 +344,7 @@ function OrderCard({
       {/* 배송 송장 (상품만) */}
       {hasTracking && (
         <div className="mx-4 mt-1 mb-3 flex items-center justify-between gap-2 px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] rounded-xl">
-          <div className="flex items-center gap-1.5 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
             <Truck className="h-3.5 w-3.5 text-blue-500 shrink-0" strokeWidth={2} aria-hidden="true" />
             <span className="text-[12px] min-w-0 truncate">
               <span className="text-gray-500 dark:text-gray-400">{order.courier} · </span>
@@ -355,7 +355,7 @@ function OrderCard({
             href={getTrackingUrl(order.courier, order.tracking_number)}
             target="_blank" rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className="shrink-0 text-[12px] font-semibold text-brand-text hover:underline transition-colors flex items-center gap-0.5"
+            className="shrink-0 text-[12px] font-semibold text-brand-text hover:underline transition-colors flex items-center gap-1"
           >
             {t('ordersTab.trackingLink', { defaultValue: '배송조회' })}
             <ChevronRight className="h-3 w-3" />
@@ -374,7 +374,7 @@ function OrderCard({
           onClick={(e) => e.stopPropagation()}
           className="mx-4 mt-1 mb-3 flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] rounded-xl"
         >
-          <span className="text-[12px] text-gray-600 dark:text-gray-300 flex items-center gap-1.5 min-w-0">
+          <span className="text-[12px] text-gray-600 dark:text-gray-300 flex items-center gap-2 min-w-0">
             {kind === 'voucher'
               ? <Ticket className="h-3.5 w-3.5 text-emerald-500 shrink-0" strokeWidth={2} aria-hidden="true" />
               : <Users className="h-3.5 w-3.5 text-emerald-500 shrink-0" strokeWidth={2} aria-hidden="true" />}
@@ -387,18 +387,18 @@ function OrderCard({
       )}
 
       {/* 푸터: 결제금액 + 액션 */}
-      <div className="px-4 pb-3.5 pt-3 flex items-center justify-between border-t border-gray-100 dark:border-[#2C2F35]">
+      <div className="px-4 pb-4 pt-3 flex items-center justify-between border-t border-gray-100 dark:border-[#2C2F35]">
         <div>
-          <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-0.5">{t('ordersTab.paymentAmount', { defaultValue: '결제금액' })}</p>
+          <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1">{t('ordersTab.paymentAmount', { defaultValue: '결제금액' })}</p>
           <p className="text-[17px] font-extrabold text-gray-900 dark:text-white">
             {formatNumber(order.total_amount ?? order.amount ?? 0)}
             <span className="text-[13px] font-semibold text-gray-600 dark:text-gray-300 ml-0.5">{t('ordersTab.won', { defaultValue: '원' })}</span>
           </p>
         </div>
-        <div className="flex items-center gap-1.5 flex-wrap justify-end">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
           <button
             onClick={() => onSellerContact(order)}
-            className="flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-[#11141C] border border-line rounded-full hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
+            className="flex items-center gap-1 px-2 py-2 text-[12px] font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-[#11141C] border border-line rounded-full hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
             aria-label={t('ordersTab.inquiry', { defaultValue: '매장 문의' })}
           >
             <MessageCircle className="h-3 w-3" strokeWidth={2} aria-hidden="true" />
@@ -406,14 +406,14 @@ function OrderCard({
           </button>
           {returnStatus && (
             /* 🚦 진행 *상태* 다(누르는 것이 아니다) — 중화되지 않는 tone 으로. */
-            <span className="px-2.5 py-1.5 text-[12px] font-semibold text-tone-warn bg-tone-warn-bg rounded-full">
+            <span className="px-2 py-2 text-[12px] font-semibold text-tone-warn bg-tone-warn-bg rounded-full">
               {t('ordersTab.returnInProgress', { defaultValue: '반품 진행중' })}
             </span>
           )}
           {canReturn && (
             <button
               onClick={() => onRequestReturn!(order.id, orderNum)}
-              className="px-2.5 py-1.5 text-[12px] font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-[#11141C] border border-line rounded-full hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
+              className="px-2 py-2 text-[12px] font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-[#11141C] border border-line rounded-full hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
             >
               {t('ordersTab.requestReturn', { defaultValue: '반품' })}
             </button>
@@ -421,7 +421,7 @@ function OrderCard({
           {canCancel && (
             <button
               onClick={() => onCancelOrder(order.id, orderNum)}
-              className="px-2.5 py-1.5 text-[12px] font-semibold text-red-600 bg-white dark:bg-[#11141C] border border-red-100 dark:border-red-900/40 rounded-full hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+              className="px-2 py-2 text-[12px] font-semibold text-red-600 bg-white dark:bg-[#11141C] border border-red-100 dark:border-red-900/40 rounded-full hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
             >
               {t('ordersTab.cancelOrder', { defaultValue: '취소' })}
             </button>
@@ -431,7 +431,7 @@ function OrderCard({
               onClick={() => onConfirmOrder(order.id, orderNum)}
               /* 🔵 이 줄의 **긍정 행동**이다. emerald 는 중화돼 회색이라, 파괴적 행동(취소=빨강)만
                  눈에 띄고 정작 눌러야 할 버튼이 안 보였다 ⇒ 브랜드. */
-              className="px-2.5 py-1.5 text-[12px] font-semibold text-white bg-brand rounded-full hover:bg-brand-dark transition-colors"
+              className="px-2 py-2 text-[12px] font-semibold text-white bg-brand rounded-full hover:bg-brand-dark transition-colors"
             >
               {t('ordersTab.confirmOrder', { defaultValue: '구매확정' })}
             </button>
@@ -475,12 +475,12 @@ function EmptyState({ kindFilter, searching, t }: { kindFilter: KindFilter; sear
       <div className="w-20 h-20 bg-gray-50 dark:bg-[#1D1F29] rounded-full flex items-center justify-center mx-auto mb-5">
         <Package className="h-10 w-10 text-gray-400 dark:text-gray-500" strokeWidth={1.5} aria-hidden="true" />
       </div>
-      <h2 className="text-[18px] font-bold text-gray-900 dark:text-white mb-2">{title}</h2>
-      <p className="text-[14px] text-gray-500 dark:text-gray-400 mb-6">{desc}</p>
+      <h2 className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">{title}</h2>
+      <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-6">{desc}</p>
       {!searching && (
         <Link
           to="/"
-          className="inline-flex items-center justify-center px-6 py-3 bg-brand text-white text-[14px] font-semibold rounded-full hover:bg-brand-dark active:bg-gray-700 transition-colors"
+          className="inline-flex items-center justify-center px-6 py-3 bg-brand text-white text-[15px] font-semibold rounded-full hover:bg-brand-dark active:bg-gray-700 transition-colors"
         >
           {t('ordersTab.goToLive', { defaultValue: '둘러보기' })}
         </Link>

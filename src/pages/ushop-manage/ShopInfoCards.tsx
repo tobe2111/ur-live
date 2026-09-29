@@ -29,10 +29,10 @@ export interface ManageCurator {
 
 type Field = 'name' | 'bio' | 'handle' | 'sns' | 'headline' | null
 
-const rowCls = 'w-full flex items-center gap-2 px-3.5 py-3 border-t border-rule first:border-t-0 text-left'
+const rowCls = 'w-full flex items-center gap-2 px-4 py-3 border-t border-rule first:border-t-0 text-left'
 const keyCls = 'text-[13px] font-semibold text-gray-900 dark:text-white shrink-0'
 const valCls = 'ml-auto min-w-0 truncate text-[12px] text-gray-400 dark:text-gray-500'
-const inputCls = 'w-full px-3 py-2.5 rounded-lg border border-rule-strong bg-surface text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none'
+const inputCls = 'w-full px-3 py-2 rounded-lg border border-rule-strong bg-surface text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none'
 const saveCls = 'flex-1 py-2 rounded-lg bg-gray-900 dark:bg-white text-warm text-[13px] font-bold disabled:opacity-40'
 const cancelCls = 'px-4 py-2 rounded-lg bg-wash text-gray-500 dark:text-gray-400 text-[13px] font-bold'
 
@@ -113,7 +113,7 @@ export default function ShopInfoCards({ curator, onCuratorUpdate }: {
     <div className="mx-4 rounded-xl bg-surface shadow-lift overflow-hidden">
       {/* 이름 · 한 줄 소개 */}
       {open === 'name' ? (
-        <div className="p-3.5 border-t border-rule first:border-t-0">
+        <div className="p-4 border-t border-rule first:border-t-0">
           <input autoFocus value={editName} onChange={(e) => setEditName(e.target.value)} maxLength={40} className={inputCls} placeholder="유어샵 이름" />
           <textarea value={editBio} onChange={(e) => setEditBio(e.target.value)} rows={2} maxLength={200} className={`${inputCls} mt-2 resize-none`} placeholder="한 줄 소개" />
           <div className="flex gap-2 mt-2">
@@ -139,8 +139,8 @@ export default function ShopInfoCards({ curator, onCuratorUpdate }: {
 
       {/* 유어샵 주소 */}
       {open === 'handle' ? (
-        <div className="p-3.5 border-t border-rule">
-          <div className="flex items-center gap-1 px-3 py-2.5 rounded-lg border border-rule-strong bg-surface">
+        <div className="p-4 border-t border-rule">
+          <div className="flex items-center gap-1 px-3 py-2 rounded-lg border border-rule-strong bg-surface">
             <span className="shrink-0 text-[13px] text-gray-400">{shareHost}/u/</span>
             <input
               autoFocus
@@ -150,9 +150,9 @@ export default function ShopInfoCards({ curator, onCuratorUpdate }: {
             />
           </div>
           {handleMsg && (
-            <p className={`text-[11.5px] mt-1.5 ${handleStatus === 'ok' ? 'text-emerald-600 dark:text-emerald-400' : handleStatus === 'checking' ? 'text-gray-400 dark:text-gray-500' : 'text-red-500'}`}>{handleMsg}</p>
+            <p className={`text-[12px] mt-2 ${handleStatus === 'ok' ? 'text-emerald-600 dark:text-emerald-400' : handleStatus === 'checking' ? 'text-gray-400 dark:text-gray-500' : 'text-red-500'}`}>{handleMsg}</p>
           )}
-          <p className="text-[11.5px] mt-1.5 text-gray-400 dark:text-gray-500">주소를 바꾸면 전에 뿌린 링크는 이 주소로 넘어와요.</p>
+          <p className="text-[12px] mt-2 text-gray-400 dark:text-gray-500">주소를 바꾸면 전에 뿌린 링크는 이 주소로 넘어와요.</p>
           <div className="flex gap-2 mt-2">
             <button onClick={saveHandle} disabled={handleStatus !== 'ok'} className={saveCls}>{handleStatus === 'saving' ? '저장 중…' : '주소 저장'}</button>
             <button onClick={() => { setOpen(null); setHandleVal(curator.handle); setHandleStatus('idle'); setHandleMsg('') }} className={cancelCls}>취소</button>
@@ -168,10 +168,10 @@ export default function ShopInfoCards({ curator, onCuratorUpdate }: {
 
       {/* SNS 링크 */}
       {open === 'sns' ? (
-        <div className="p-3.5 border-t border-rule space-y-2">
+        <div className="p-4 border-t border-rule space-y-2">
           {([['youtube_url', '유튜브'], ['instagram_url', '인스타그램'], ['tiktok_url', '틱톡']] as const).map(([key, label]) => (
             <div key={key} className="flex items-center gap-2">
-              <span className="text-[11.5px] font-bold text-gray-500 dark:text-gray-400 w-14 shrink-0">{label}</span>
+              <span className="text-[12px] font-bold text-gray-500 dark:text-gray-400 w-14 shrink-0">{label}</span>
               <input value={snsForm[key]} onChange={(e) => setSnsForm(s => ({ ...s, [key]: e.target.value }))} placeholder="@핸들 또는 링크" className={inputCls} />
             </div>
           ))}
@@ -204,9 +204,9 @@ export default function ShopInfoCards({ curator, onCuratorUpdate }: {
 
       {/* 흐르는 문구(마퀴) — 값이 있을 때만 유어샵 상단에 그려진다. 비우면 안 뜬다. */}
       {open === 'headline' ? (
-        <div className="p-3.5 border-t border-rule">
+        <div className="p-4 border-t border-rule">
           <input autoFocus value={headlineVal} onChange={(e) => setHeadlineVal(e.target.value)} maxLength={80} className={inputCls} placeholder="예) 이번 주 금정구 신상 3곳" />
-          <p className="text-[11.5px] mt-1.5 text-gray-400 dark:text-gray-500">유어샵 맨 위에 흐르는 한 줄이에요. 비우면 안 보여요.</p>
+          <p className="text-[12px] mt-2 text-gray-400 dark:text-gray-500">유어샵 맨 위에 흐르는 한 줄이에요. 비우면 안 보여요.</p>
           <div className="flex gap-2 mt-2">
             <button onClick={() => patch({ headline: headlineVal.trim().slice(0, 80) }, { headline: curator.headline || '' })} disabled={saving} className={saveCls}>{saving ? '저장 중…' : '저장'}</button>
             <button onClick={() => setOpen(null)} className={cancelCls}>취소</button>

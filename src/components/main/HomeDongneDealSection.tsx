@@ -45,10 +45,10 @@ export default function HomeDongneDealSection() {
   return (
     <section ref={ref} className="ur-content-wide px-4 lg:px-8 mt-8 mb-2">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-[16px] font-extrabold text-gray-900 dark:text-white flex items-center gap-1.5">
+        <h2 className="text-[17px] font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
           <MapPin className="w-4 h-4 text-emerald-400" /> {t('home.dongneTitle', { defaultValue: '우리 동네딜' })}
         </h2>
-        <Link to="/group-buy" className="text-[12px] font-bold text-gray-500 dark:text-gray-400 flex items-center gap-0.5">
+        <Link to="/group-buy" className="text-[12px] font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1">
           {t('home.dongneMore', { defaultValue: '더보기' })} <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       </div>
@@ -66,7 +66,7 @@ export default function HomeDongneDealSection() {
         >
           <div>
             <p className="text-[13px] font-bold text-gray-900 dark:text-white">{t('home.dongneEmptyTitle', { defaultValue: '아직 우리 동네 공구가 없어요' })}</p>
-            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{COMMUNITY_PROPOSAL_HIDDEN ? t('home.dongneEmptyBrowseDesc', { defaultValue: '내 주변 동네 공구 딜을 확인해보세요' }) : t('home.dongneEmptyDesc', { defaultValue: '원하는 가게를 제안하면 모아서 열어드려요' })}</p>
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{COMMUNITY_PROPOSAL_HIDDEN ? t('home.dongneEmptyBrowseDesc', { defaultValue: '내 주변 동네 공구 딜을 확인해보세요' }) : t('home.dongneEmptyDesc', { defaultValue: '원하는 가게를 제안하면 모아서 열어드려요' })}</p>
           </div>
           <span className="text-[12px] font-bold text-emerald-400">{COMMUNITY_PROPOSAL_HIDDEN ? t('home.dongneBrowse', { defaultValue: '둘러보기 →' }) : t('home.dongnePropose', { defaultValue: '제안하기 →' })}</span>
         </Link>

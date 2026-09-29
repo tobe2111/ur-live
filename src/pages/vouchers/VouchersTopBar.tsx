@@ -18,10 +18,10 @@ export default function VouchersTopBar({ activeTab, onVouchers, onShopping }: {
 }) {
   return (
     <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
-      <div className={`relative flex items-center px-2 py-1.5 ${SHOPPING_TAB_HIDDEN ? '' : 'justify-center'}`}>
+      <div className={`relative flex items-center px-2 py-2 ${SHOPPING_TAB_HIDDEN ? '' : 'justify-center'}`}>
         {SHOPPING_TAB_HIDDEN ? (
           /* 단일 표면 — 탭이 아니라 제목. (문서용 h1 은 페이지 상단에 sr-only 로 따로 있다.) */
-          <span className="pl-2.5 py-1.5 text-[19px] font-extrabold tracking-[-0.02em] text-gray-900 dark:text-white">교환권</span>
+          <span className="pl-2 py-2 text-[17px] font-extrabold tracking-[-0.02em] text-gray-900 dark:text-white">교환권</span>
         ) : (
           <div className="flex items-center gap-1">
             {([['vouchers', '교환권'], ['shopping', '쇼핑']] as const).map(([key, label]) => {

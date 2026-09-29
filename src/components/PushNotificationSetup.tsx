@@ -176,16 +176,16 @@ export default function PushNotificationSetup() {
           <p className="text-[13px] font-bold text-gray-900 dark:text-white">
             {t('push.promptTitle', { defaultValue: '알림을 켜시겠어요?' })}
           </p>
-          <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5 leading-snug">
+          <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 leading-snug">
             {t('push.promptDesc', { defaultValue: '교환권 만료 임박, 공구 마감, 적립 소식을 놓치지 않게 알려드려요' })}
           </p>
-          <div className="flex gap-2 mt-2.5">
+          <div className="flex gap-2 mt-2">
             <button onClick={() => void subscribe(true)} disabled={busy}
-              className="px-3.5 py-1.5 bg-brand text-white rounded-lg text-[12px] font-bold disabled:opacity-50">
+              className="px-4 py-2 bg-brand text-white rounded-lg text-[12px] font-bold disabled:opacity-50">
               {t('push.promptOn', { defaultValue: '켜기' })}
             </button>
             <button onClick={snooze}
-              className="px-3.5 py-1.5 bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 rounded-lg text-[12px] font-semibold">
+              className="px-4 py-2 bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 rounded-lg text-[12px] font-semibold">
               {t('push.promptLater', { defaultValue: '나중에' })}
             </button>
           </div>

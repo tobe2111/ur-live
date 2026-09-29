@@ -54,10 +54,10 @@ export default function VoucherDisputeBanner() {
         return (
           <div key={d.id} className="rounded-2xl border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-900/15 p-4">
             <div className="flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+              <AlertCircle className="w-4 h-4 text-red-500 mt-1 shrink-0" />
               <div className="min-w-0 flex-1">
                 <p className="text-[13px] font-bold text-gray-900 dark:text-white">{store} 방문 확인 요청</p>
-                <p className="text-[12px] text-gray-600 dark:text-gray-300 mt-0.5">
+                <p className="text-[12px] text-gray-600 dark:text-gray-300 mt-1">
                   매장이 "방문이 확인되지 않았다"고 신고했어요. 실제로 이용하셨나요?
                 </p>
               </div>
@@ -66,14 +66,14 @@ export default function VoucherDisputeBanner() {
               <button
                 onClick={() => respond(d, 'contest')}
                 disabled={busy === d.id}
-                className="flex-1 py-2.5 rounded-xl bg-brand text-white text-[13px] font-bold disabled:opacity-50 active:scale-[0.98] transition-transform"
+                className="flex-1 py-2 rounded-xl bg-brand text-white text-[13px] font-bold disabled:opacity-50 active:scale-[0.98] transition-transform"
               >
                 네, 이용했어요
               </button>
               <button
                 onClick={() => respond(d, 'concede')}
                 disabled={busy === d.id}
-                className="flex-1 py-2.5 rounded-xl bg-surface border border-line text-gray-700 dark:text-gray-300 text-[13px] font-bold disabled:opacity-50 active:scale-[0.98] transition-transform"
+                className="flex-1 py-2 rounded-xl bg-surface border border-line text-gray-700 dark:text-gray-300 text-[13px] font-bold disabled:opacity-50 active:scale-[0.98] transition-transform"
               >
                 아직 안 갔어요
               </button>

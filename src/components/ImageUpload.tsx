@@ -150,7 +150,7 @@ export default function ImageUpload({
           tabIndex={0}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click() }}
           aria-label={resolvedLabel}
-          className={`relative w-[92px] h-[92px] rounded-[14px] overflow-hidden flex-none cursor-pointer flex flex-col items-center justify-center gap-1.5 transition-colors ${
+          className={`relative w-[92px] h-[92px] rounded-[14px] overflow-hidden flex-none cursor-pointer flex flex-col items-center justify-center gap-2 transition-colors ${
             value
               ? 'bg-[#F5F2F3] border border-[#EAE5E7]'
               : invalid
@@ -186,12 +186,12 @@ export default function ImageUpload({
           ) : invalid ? (
             <>
               <ImageIcon className="w-[22px] h-[22px] text-[#D0685E]" strokeWidth={1.8} />
-              <span className="text-[11px] font-bold text-[#C0554B] tracking-[-0.02em]">사진 필요</span>
+              <span className="text-[12px] font-bold text-[#C0554B] tracking-[-0.02em]">사진 필요</span>
             </>
           ) : (
             <>
               <Upload className="w-[22px] h-[22px] text-[#A9A2A6]" strokeWidth={1.8} />
-              <span className="text-[11px] font-bold text-[#8A8288] tracking-[-0.02em]">사진 올리기</span>
+              <span className="text-[12px] font-bold text-[#8A8288] tracking-[-0.02em]">사진 올리기</span>
             </>
           )}
         </div>
@@ -203,7 +203,7 @@ export default function ImageUpload({
 
   return (
     <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700">
+      <label className="block text-[15px] font-medium text-gray-700">
         {resolvedLabel}
       </label>
 
@@ -233,16 +233,16 @@ export default function ImageUpload({
           {uploading ? (
             <div className="flex flex-col items-center gap-3">
               <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
-              <p className="text-sm text-gray-600">{t('common.imageCompressing', { defaultValue: '이미지 압축 중...' })}</p>
+              <p className="text-[15px] text-gray-600">{t('common.imageCompressing', { defaultValue: '이미지 압축 중...' })}</p>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-3">
               <Upload className="w-10 h-10 text-gray-400" />
               <div>
-                <p className="text-sm font-medium text-gray-700">
+                <p className="text-[15px] font-medium text-gray-700">
                   {t('common.imageDropHint', { defaultValue: '클릭하거나 이미지를 드래그하세요' })}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-[12px] text-gray-500 mt-1">
                   {t('common.imageFormatHint', { maxSizeKB, defaultValue: 'JPG, PNG, GIF (최대 10MB) • 자동으로 {{maxSizeKB}}KB 이하로 압축됩니다' })}
                 </p>
               </div>
@@ -268,16 +268,16 @@ export default function ImageUpload({
               type="button"
               onClick={handleRemove}
               aria-label={t('common.imageRemove', { defaultValue: '이미지 제거' })}
-              className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+              className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
-          <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+          <p className="text-[12px] text-gray-500 mt-1 flex items-center gap-1">
             <ImageIcon className="w-3 h-3" />
             {t('common.imageUploadedMsg', { defaultValue: '이미지가 업로드되었습니다' })}
             {storageType && (
-              <span className="ml-1 px-1.5 py-0.5 bg-gray-100 rounded text-xs">
+              <span className="ml-1 px-2 py-1 bg-gray-100 rounded text-[12px]">
                 {storageType === 'r2' ? '✅ R2' : '⚠️ Base64'}
               </span>
             )}
@@ -288,12 +288,12 @@ export default function ImageUpload({
       {/* 에러 메시지 */}
       {error && (
         <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-sm text-red-700">{error}</p>
+          <p className="text-[15px] text-red-700">{error}</p>
         </div>
       )}
 
       {/* URL 입력 옵션 */}
-      <details className="text-sm">
+      <details className="text-[15px]">
         <summary className="cursor-pointer text-gray-600 hover:text-gray-900">
           {t('common.imageUrlInput', { defaultValue: '또는 이미지 URL 직접 입력' })}
         </summary>
@@ -305,7 +305,7 @@ export default function ImageUpload({
             placeholder="https://example.com/image.jpg"
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-[12px] text-gray-500 mt-1">
             {t('common.imageUrlHint', { defaultValue: 'Unsplash, Pexels 등의 이미지 URL을 입력할 수 있습니다' })}
           </p>
         </div>

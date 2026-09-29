@@ -98,7 +98,7 @@ export default function DetailFloatingHeader({
           </Link>
           {/* 스크롤 시 fade-in 되는 가운데 제목 */}
           <h2
-            className={`flex-1 min-w-0 text-center text-sm font-bold text-gray-900 dark:text-white truncate transition-opacity duration-200 ${
+            className={`flex-1 min-w-0 text-center text-[15px] font-bold text-gray-900 dark:text-white truncate transition-opacity duration-200 ${
               headerSolid ? 'opacity-100' : 'opacity-0'
             }`}
             aria-hidden={!headerSolid}

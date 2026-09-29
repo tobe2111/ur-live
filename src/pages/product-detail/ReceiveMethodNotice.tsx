@@ -79,7 +79,7 @@ export function PickupNotice({ pickup }: { pickup: PickupInfo }) {
         <svg className="w-[15px] h-[15px] shrink-0 text-white dark:text-[#1A1719]" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinejoin="round" viewBox="0 0 24 24">
           <path d="M3 8.2 12 3.5l9 4.7v7.6L12 20.5 3 15.8z" /><path d="M3 8.2 12 13l9-4.8M12 13v7.5" />
         </svg>
-        <span className="text-[13.5px] font-extrabold tracking-[-0.03em] text-white dark:text-[#1A1719]">
+        <span className="text-[13px] font-extrabold tracking-[-0.03em] text-white dark:text-[#1A1719]">
           가게에 직접 찾으러 오는 상품이에요
         </span>
       </div>
@@ -93,15 +93,15 @@ export function PickupNotice({ pickup }: { pickup: PickupInfo }) {
           </div>
         )}
         {pickup.place && (
-          <div className="flex items-baseline gap-3 mt-2.5">
+          <div className="flex items-baseline gap-3 mt-2">
             <span className="w-12 shrink-0 text-[12px] font-bold tracking-[-0.02em] text-[#8A8288] dark:text-[#8B93A3]">받는 곳</span>
-            <span className="text-[13.5px] font-semibold leading-[1.5] tracking-[-0.025em] text-[#3F383C] dark:text-gray-200">{pickup.place}</span>
+            <span className="text-[13px] font-semibold leading-[1.5] tracking-[-0.025em] text-[#3F383C] dark:text-gray-200">{pickup.place}</span>
           </div>
         )}
         {/* ⚠️ 보관 고지 문구는 법무 확인 대기(X4c) 임시 표기 — 시안이 ~어요체로 그렸어도 바꾸지 않는다. */}
         {pickup.storage && (
           <div className="flex items-center gap-[7px] mt-3 pt-3 border-t border-[#EAE5E7] dark:border-[#2C2F35]">
-            <span className={`shrink-0 px-1.5 py-[3px] rounded-[5px] text-[10.5px] font-bold tracking-[-0.02em] ${STORAGE_BADGE[pickup.storage]}`}>
+            <span className={`shrink-0 px-2 py-[3px] rounded-[5px] text-[12px] font-bold tracking-[-0.02em] ${STORAGE_BADGE[pickup.storage]}`}>
               {pickup.storage === 'cold' ? '냉장·냉동' : '실온'}
             </span>
             <span className="text-[12px] font-semibold leading-[1.5] tracking-[-0.025em] text-[#6B6469] dark:text-gray-300">{STORAGE_NOTICE[pickup.storage]}</span>
@@ -121,7 +121,7 @@ export function DeliveryNotice({ pickup }: { pickup: PickupInfo }) {
       <div className="flex items-center gap-2 py-3 px-3 rounded-xl bg-gray-50 dark:bg-[#1D1F29]">
         <svg className="w-3.5 h-3.5 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
         <span className="text-[12px] font-semibold text-gray-900 dark:text-white">{t('productDetail.tomorrowDelivery')}</span>
-        <span className="text-[11px] text-gray-500 dark:text-gray-400">{t('productDetail.freeShippingNote', { defaultValue: '· 5만원 이상 무료' })}</span>
+        <span className="text-[12px] text-gray-500 dark:text-gray-400">{t('productDetail.freeShippingNote', { defaultValue: '· 5만원 이상 무료' })}</span>
       </div>
     </div>
   )

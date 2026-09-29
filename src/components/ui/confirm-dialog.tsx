@@ -106,9 +106,9 @@ export function ConfirmHost() {
         aria-modal="true"
       >
         {current.title && (
-          <p className="text-[16px] font-extrabold text-gray-900 dark:text-white mb-1.5">{current.title}</p>
+          <p className="text-[17px] font-extrabold text-gray-900 dark:text-white mb-2">{current.title}</p>
         )}
-        <p className="text-[14px] text-gray-700 dark:text-gray-200 leading-relaxed whitespace-pre-line">{current.message}</p>
+        <p className="text-[15px] text-gray-700 dark:text-gray-200 leading-relaxed whitespace-pre-line">{current.message}</p>
 
         {current.prompt && (
           current.prompt.multiline ? (
@@ -119,7 +119,7 @@ export function ConfirmHost() {
               placeholder={current.prompt.placeholder}
               autoFocus
               rows={3}
-              className="mt-3 w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-[#333] text-[14px] text-gray-900 dark:text-white bg-white dark:bg-[#0f0f0f] outline-none resize-none focus:border-gray-500"
+              className="mt-3 w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-[#333] text-[15px] text-gray-900 dark:text-white bg-white dark:bg-[#0f0f0f] outline-none resize-none focus:border-gray-500"
             />
           ) : (
             <input
@@ -129,7 +129,7 @@ export function ConfirmHost() {
               placeholder={current.prompt.placeholder}
               autoFocus
               onKeyDown={(e) => { if (e.key === 'Enter') close(true) }}
-              className="mt-3 w-full h-11 px-3 rounded-xl border border-gray-300 dark:border-[#333] text-[14px] text-gray-900 dark:text-white bg-white dark:bg-[#0f0f0f] outline-none focus:border-gray-500"
+              className="mt-3 w-full h-11 px-3 rounded-xl border border-gray-300 dark:border-[#333] text-[15px] text-gray-900 dark:text-white bg-white dark:bg-[#0f0f0f] outline-none focus:border-gray-500"
             />
           )
         )}

@@ -50,7 +50,7 @@ export default function KakaoLinkCallbackPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#11141C] flex items-center justify-center">
-      <p className="text-gray-900 dark:text-white text-sm">처리 중... 잠시 기다려주세요.</p>
+      <p className="text-gray-900 dark:text-white text-[15px]">처리 중... 잠시 기다려주세요.</p>
     </div>
   )
 }

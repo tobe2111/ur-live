@@ -137,7 +137,7 @@ const WishlistPage: React.FC = () => {
             <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{t('wishlist.emptyHint')}</p>
             <button
               onClick={() => navigate('/')}
-              className="mt-5 h-11 px-6 rounded-full bg-brand text-white text-[14px] font-bold active:scale-[0.98] transition-transform"
+              className="mt-5 h-11 px-6 rounded-full bg-brand text-white text-[15px] font-bold active:scale-[0.98] transition-transform"
             >
               {t('wishlist.continueShopping')}
             </button>

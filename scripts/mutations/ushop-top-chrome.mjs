@@ -77,7 +77,7 @@ export default [
   {
     name: '상단1안 — PC 에서도 문구를 흐르게 한다 (300px 칸에서 양끝 잘림)',
     file: 'src/pages/curator-page/HeaderMarquee.tsx',
-    find: '<div className="lg:hidden animate-marquee py-1.5">',
+    find: '<div className="lg:hidden animate-marquee py-2">',
     replace: '<div className="animate-marquee py-1.5">',
     test: 'src/tests/unit/ushop-top-chrome-2026-09-28.test.ts',
     why:
@@ -87,7 +87,7 @@ export default [
   {
     name: '상단1안 — PC 에서 문구를 통째로 숨긴다 (주인이 쓴 글이 사라진다)',
     file: 'src/pages/curator-page/HeaderMarquee.tsx',
-    find: '<p className="hidden lg:block px-3 py-1.5 text-[12px] font-bold tracking-wide leading-snug">',
+    find: '<p className="hidden lg:block px-3 py-2 text-[12px] font-bold tracking-wide leading-snug">',
     replace: '<p className="hidden px-3 py-1.5 text-[12px] font-bold tracking-wide leading-snug">',
     test: 'src/tests/unit/ushop-top-chrome-2026-09-28.test.ts',
     why:

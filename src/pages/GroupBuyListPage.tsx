@@ -585,7 +585,7 @@ export default function GroupBuyListPage() {
             <p className="text-[15px] font-extrabold text-white dark:text-gray-900">
               {t('groupBuy.mapEntryTitle', { defaultValue: '지도로 내 주변 동네딜 보기' })}
             </p>
-            <p className="text-[12px] text-white/70 dark:text-gray-900/70 mt-0.5">
+            <p className="text-[12px] text-white/70 dark:text-gray-900/70 mt-1">
               {t('groupBuy.mapEntryDesc', { defaultValue: '가까운 딜을 지도에서 한눈에' })}
             </p>
           </div>
@@ -607,7 +607,7 @@ export default function GroupBuyListPage() {
               <Sparkles className="inline w-4 h-4 mr-1 -mt-0.5" />
               {t('groupBuy.bannerHeadline', { defaultValue: '함께라서 더 좋은 가격' })}
             </p>
-            <p className="text-white/90 text-[11px] mt-1">
+            <p className="text-white/90 text-[12px] mt-1">
               {t('groupBuy.bannerSubline', { defaultValue: '지금 바로 공동구매가로 구매하세요' })}
             </p>
           </div>
@@ -732,14 +732,14 @@ export default function GroupBuyListPage() {
                   <div className="mt-4 flex gap-2 justify-center flex-wrap">
                     <button
                       onClick={() => { setCategory('all'); setSearchQuery(''); applyRegion(null, null); const n = new URLSearchParams(searchParams); n.delete('category'); setSearchParams(n, { replace: true }) }}
-                      className="px-5 py-2.5 bg-brand text-white text-[13px] font-bold rounded-full"
+                      className="px-5 py-2 bg-brand text-white text-[13px] font-bold rounded-full"
                     >
                       {t('groupBuy.resetToAll', { defaultValue: '전체 공구 보기' })}
                     </button>
                     {regionKey && (
                       <button
                         onClick={() => applyRegion(null, null)}
-                        className="px-5 py-2.5 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300 text-[13px] font-semibold rounded-full"
+                        className="px-5 py-2 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300 text-[13px] font-semibold rounded-full"
                       >
                         {t('groupBuy.clearRegion', { defaultValue: '지역 해제' })}
                       </button>
@@ -756,7 +756,7 @@ export default function GroupBuyListPage() {
               />
               )
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 gap-y-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 gap-y-2">
                 {filtered.slice(0, visibleCount).map((p, idx) => (
                   <GroupBuyGridCard
                     key={p.id}
@@ -786,7 +786,7 @@ export default function GroupBuyListPage() {
             ) : filteredCommunity.length === 0 ? (
               <div className="text-center py-20">
                 <p className="text-[36px] mb-3">🙋</p>
-                <p className="text-gray-900 dark:text-white font-semibold text-[14px]">
+                <p className="text-gray-900 dark:text-white font-semibold text-[15px]">
                   {t('groupBuy.emptyCommunity', { defaultValue: '진행 중인 유저 공구가 없습니다' })}
                 </p>
                 <p className="text-gray-500 dark:text-gray-400 text-[12px] mt-1">
@@ -794,7 +794,7 @@ export default function GroupBuyListPage() {
                 </p>
                 <button
                   onClick={() => navigate(createPath)}
-                  className="mt-5 px-5 py-2.5 bg-brand text-white text-[13px] font-semibold rounded-full"
+                  className="mt-5 px-5 py-2 bg-brand text-white text-[13px] font-semibold rounded-full"
                 >
                   {t('groupBuy.ctaStart', { defaultValue: '공구 시작하기' })}
                 </button>

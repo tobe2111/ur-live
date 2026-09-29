@@ -105,7 +105,7 @@ export default function AccountMenu({
             {(name || '유').slice(0, 1)}
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-[13.5px] font-bold text-gray-900 dark:text-white truncate">{name || t('nav.my', { defaultValue: '마이' })}</span>
+            <span className="block text-[13px] font-bold text-gray-900 dark:text-white truncate">{name || t('nav.my', { defaultValue: '마이' })}</span>
             {email && <span className="block text-[12px] text-gray-400 dark:text-gray-500 truncate">{email}</span>}
           </span>
           <ChevronRight className="shrink-0 w-4 h-4 text-gray-300 dark:text-gray-600" strokeWidth={2} />
@@ -115,13 +115,13 @@ export default function AccountMenu({
       <div className="mx-5 h-px bg-gray-100 dark:bg-[#2C2F35]" />
 
       {/* 메뉴 */}
-      <div className="py-1.5">
+      <div className="py-2">
         {rows.map(({ icon: Icon, label, path, badge }) => (
           <button
             key={path}
             role="menuitem"
             onClick={() => go(path)}
-            className="w-full flex items-center gap-3 px-5 py-2.5 text-[13.5px] font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors"
+            className="w-full flex items-center gap-3 px-5 py-2 text-[13px] font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors"
           >
             <Icon className="shrink-0 w-[18px] h-[18px] text-gray-400 dark:text-gray-500" strokeWidth={1.9} />
             <span className="flex-1 text-left">{label}</span>
@@ -139,10 +139,10 @@ export default function AccountMenu({
       >
         <Smartphone className="shrink-0 w-[18px] h-[18px] text-gray-400 dark:text-gray-500" strokeWidth={1.9} />
         <span className="min-w-0">
-          <span className="block text-[13.5px] font-bold text-gray-900 dark:text-white">
+          <span className="block text-[13px] font-bold text-gray-900 dark:text-white">
             {t('nav.getApp', { defaultValue: '앱으로 보기' })}
           </span>
-          <span className="block text-[11.5px] text-gray-400 dark:text-gray-500">
+          <span className="block text-[12px] text-gray-400 dark:text-gray-500">
             {t('nav.getAppHint', { defaultValue: 'QR 찍고 폰에서 이어서' })}
           </span>
         </span>
@@ -152,7 +152,7 @@ export default function AccountMenu({
       <button
         role="menuitem"
         onClick={() => go(sellerEntryPath())}
-        className="w-full flex items-center gap-3 px-5 py-2.5 text-[13px] font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors"
+        className="w-full flex items-center gap-3 px-5 py-2 text-[13px] font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors"
       >
         <Store className="shrink-0 w-[17px] h-[17px]" strokeWidth={1.9} />
         {t('nav.sellOnUrdeal', { defaultValue: '유어딜에서 판매하세요' })}
@@ -161,7 +161,7 @@ export default function AccountMenu({
         <button
           role="menuitem"
           onClick={() => void signOut()}
-          className="w-full flex items-center gap-3 px-5 py-2.5 mb-1.5 text-[13px] font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors"
+          className="w-full flex items-center gap-3 px-5 py-2 mb-2 text-[13px] font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors"
         >
           <LogOut className="shrink-0 w-[17px] h-[17px]" strokeWidth={1.9} />
           {t('auth.logout', { defaultValue: '로그아웃' })}

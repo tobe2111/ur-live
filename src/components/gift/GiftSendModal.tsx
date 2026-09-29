@@ -118,38 +118,38 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">{productName}</p>
-              <p className="text-brand-text font-bold text-sm mt-0.5">{formatNumber(productPrice)}원</p>
+              <p className="font-semibold text-gray-900 dark:text-white text-[15px] truncate">{productName}</p>
+              <p className="text-brand-text font-bold text-[15px] mt-1">{formatNumber(productPrice)}원</p>
             </div>
           </div>
 
           {/* 수신자 정보 */}
           <div>
-            <label className="block text-xs font-bold text-gray-700 dark:text-gray-200 mb-1.5">{t('gift.recipientPhone', { defaultValue: '받는 사람 휴대폰 *' })}</label>
+            <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-200 mb-2">{t('gift.recipientPhone', { defaultValue: '받는 사람 휴대폰 *' })}</label>
             <input
               value={recipientPhone}
               onChange={e => setRecipientPhone(e.target.value)}
               placeholder="010-1234-5678"
               type="tel"
               required
-              className="w-full px-4 py-3 bg-surface border border-line rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-rule"
+              className="w-full px-4 py-3 bg-surface border border-line rounded-xl text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-rule"
             />
-            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">{t('gift.recipientPhoneHint', { defaultValue: '카카오톡 알림으로 선물 링크가 발송됩니다' })}</p>
+            <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-1">{t('gift.recipientPhoneHint', { defaultValue: '카카오톡 알림으로 선물 링크가 발송됩니다' })}</p>
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-gray-700 dark:text-gray-200 mb-1.5">{t('gift.recipientName', { defaultValue: '받는 사람 이름 (선택)' })}</label>
+            <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-200 mb-2">{t('gift.recipientName', { defaultValue: '받는 사람 이름 (선택)' })}</label>
             <input
               value={recipientName}
               onChange={e => setRecipientName(e.target.value)}
               placeholder={t('gift.placeholders.recipientName')}
-              className="w-full px-4 py-3 bg-surface border border-line rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-rule"
+              className="w-full px-4 py-3 bg-surface border border-line rounded-xl text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-rule"
             />
           </div>
 
           {/* 메시지 */}
           <div>
-            <label className="block text-xs font-bold text-gray-700 dark:text-gray-200 mb-1.5 flex items-center gap-1">
+            <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-200 mb-2 flex items-center gap-1">
               <Sparkles className="w-3 h-3 text-brand-text" /> {t('gift.message', { defaultValue: '메시지 (선택)' })}
             </label>
             <textarea
@@ -158,17 +158,17 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
               placeholder={t('gift.placeholders.message')}
               rows={3}
               maxLength={MAX_MESSAGE}
-              className="w-full px-4 py-3 bg-surface border border-line rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-rule resize-none"
+              className="w-full px-4 py-3 bg-surface border border-line rounded-xl text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-rule resize-none"
             />
             <div className="flex justify-end mt-1">
-              <span className={`text-[10px] ${message.length > MAX_MESSAGE ? 'text-red-500' : 'text-gray-400 dark:text-gray-500'}`}>
+              <span className={`text-[12px] ${message.length > MAX_MESSAGE ? 'text-red-500' : 'text-gray-400 dark:text-gray-500'}`}>
                 {message.length}/{MAX_MESSAGE}
               </span>
             </div>
           </div>
 
           {/* 안내 */}
-          <div className="bg-brand-tint rounded-xl p-3 text-[11px] text-brand-text leading-relaxed">
+          <div className="bg-brand-tint rounded-xl p-3 text-[12px] text-brand-text leading-relaxed">
             • {t('gift.infoLine1', { defaultValue: '결제 후 받는 분께 카카오톡으로 선물 링크가 발송돼요' })}<br/>
             • {t('gift.infoLine2', { defaultValue: '30일 내 받기 안 하면 자동 환불됩니다' })}
           </div>
@@ -177,7 +177,7 @@ export default function GiftSendModal({ open, onClose, productId, productName, p
           <button
             type="submit"
             disabled={submitting || !recipientPhone}
-            className="w-full py-4 bg-brand text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-brand-dark transition-colors disabled:opacity-50"
+            className="w-full py-4 bg-brand text-white rounded-xl font-bold text-[15px] flex items-center justify-center gap-2 hover:bg-brand-dark transition-colors disabled:opacity-50"
           >
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Gift className="w-4 h-4" />}
             {t('gift.submitBtn', { amount: formatNumber(productPrice), defaultValue: '{{amount}}원 결제하고 선물하기' })}

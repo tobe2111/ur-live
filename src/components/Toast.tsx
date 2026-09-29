@@ -35,7 +35,7 @@ export default function Toast({ message, type = 'info', onClose, duration = 3000
     <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-slide-down">
       <div className={`flex items-center gap-3 px-4 py-3 rounded-lg border shadow-lg ${colors[type]} min-w-[280px] max-w-md`}>
         {icons[type]}
-        <p className="flex-1 text-sm font-medium text-gray-900">{message}</p>
+        <p className="flex-1 text-[15px] font-medium text-gray-900">{message}</p>
         <button onClick={onClose} aria-label={t('common.close')} className="text-gray-400 hover:text-gray-600">
           <X className="w-4 h-4" />
         </button>

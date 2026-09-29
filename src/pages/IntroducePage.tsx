@@ -89,7 +89,7 @@ export default function IntroducePage() {
         <div className="relative max-w-[1280px] mx-auto px-6 pt-20 pb-24 flex flex-col md:flex-row gap-16 items-center">
           {/* left: copy */}
           <div className="flex-1 min-w-0">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 mb-6">
+            <div className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-red-500/10 border border-red-500/20 mb-6">
               <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
               <span className="text-[12px] font-extrabold text-red-400">우리 동네 공동구매</span>
             </div>
@@ -101,7 +101,7 @@ export default function IntroducePage() {
               맛집·뷰티·숙소,<br />
               <span className="text-transparent bg-clip-text bg-gray-800 italic">함께 사서 특가.</span>
             </h1>
-            <p className="text-[16px] text-gray-400 mt-6 max-w-[480px] leading-relaxed">
+            <p className="text-[17px] text-gray-400 mt-6 max-w-[480px] leading-relaxed">
               대량 단가를 미리 떼와 처음부터 모두에게 같은 그룹 특가.<br />
               결제하면 교환권이 바로 발급돼요.
             </p>
@@ -109,13 +109,13 @@ export default function IntroducePage() {
             <div className="flex flex-wrap items-center gap-4 mt-8">
               <button
                 onClick={() => navigate('/group-buy')}
-                className="flex items-center gap-2 px-6 py-3.5 rounded-2xl text-gray-900 text-[14px] font-extrabold bg-white hover:bg-gray-100 transition-colors"
+                className="flex items-center gap-2 px-6 py-4 rounded-2xl text-gray-900 text-[15px] font-extrabold bg-white hover:bg-gray-100 transition-colors"
               >
                 <ShoppingBag className="w-4 h-4" /> 동네 공구 둘러보기
               </button>
               <button
                 onClick={() => navigate('/')}
-                className="flex items-center gap-1 text-[14px] font-semibold text-gray-400 hover:text-white transition-colors"
+                className="flex items-center gap-1 text-[15px] font-semibold text-gray-400 hover:text-white transition-colors"
               >
                 웹에서 바로 시작 <ChevronRight className="w-4 h-4" />
               </button>
@@ -150,22 +150,22 @@ export default function IntroducePage() {
                   {/* notch */}
                   <div className="absolute top-3 left-1/2 -translate-x-1/2 w-[80px] h-[22px] bg-black rounded-2xl z-20" />
                   {/* 공구 badge */}
-                  <div className="absolute top-12 left-4 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-500 z-10">
-                    <span className="text-[10px] font-extrabold text-white">🔥 동네 공구</span>
+                  <div className="absolute top-12 left-4 flex items-center gap-1 px-2 py-1 rounded-lg bg-red-500 z-10">
+                    <span className="text-[12px] font-extrabold text-white">🔥 동네 공구</span>
                   </div>
                   {/* fake bg */}
                   <div className="absolute inset-0 bg-gradient-to-b from-[#2A0A0A] via-[#1A0808] to-black" />
                   {/* bottom product card */}
-                  <div className="absolute bottom-4 left-3 right-3 rounded-2xl p-3.5 bg-black/80 backdrop-blur-md border border-white/10 z-10">
-                    <p className="text-[11px] font-bold text-white truncate">수제 돈카츠 3팩 세트</p>
-                    <div className="flex items-baseline gap-1.5 mt-1">
-                      <span className="text-[11px] font-extrabold text-red-400">30%</span>
+                  <div className="absolute bottom-4 left-3 right-3 rounded-2xl p-4 bg-black/80 backdrop-blur-md border border-white/10 z-10">
+                    <p className="text-[12px] font-bold text-white truncate">수제 돈카츠 3팩 세트</p>
+                    <div className="flex items-baseline gap-2 mt-1">
+                      <span className="text-[12px] font-extrabold text-red-400">30%</span>
                       <span className="text-[15px] font-extrabold text-white">18,900원</span>
-                      <span className="text-[10px] text-gray-500 line-through">26,900원</span>
+                      <span className="text-[12px] text-gray-500 line-through">26,900원</span>
                     </div>
                     <div className="mt-2 flex gap-2">
-                      <div className="flex-1 py-1.5 rounded-lg bg-gray-800 text-center text-[10px] font-extrabold text-white">바로 구매</div>
-                      <div className="flex-1 py-1.5 rounded-lg bg-white/10 text-center text-[10px] font-bold text-white">교환권 발급</div>
+                      <div className="flex-1 py-2 rounded-lg bg-gray-800 text-center text-[12px] font-extrabold text-white">바로 구매</div>
+                      <div className="flex-1 py-2 rounded-lg bg-white/10 text-center text-[12px] font-bold text-white">교환권 발급</div>
                     </div>
                   </div>
                 </div>
@@ -191,7 +191,7 @@ export default function IntroducePage() {
           ].map(s => (
             <div key={s.l} className="text-center">
               <p className="text-[32px] md:text-[40px] font-black text-white leading-none">{s.n}</p>
-              <p className="text-[12px] font-semibold text-gray-500 mt-1.5">{s.l}</p>
+              <p className="text-[12px] font-semibold text-gray-500 mt-2">{s.l}</p>
             </div>
           ))}
         </div>
@@ -200,7 +200,7 @@ export default function IntroducePage() {
       {/* ─── FEATURES ─── */}
       <section id="features" className="max-w-[1280px] mx-auto px-6 py-20">
         <div className="mb-12 text-center">
-          <p className="text-[11px] font-extrabold text-red-400 tracking-[0.15em] mb-3">WHY URDEAL</p>
+          <p className="text-[12px] font-extrabold text-red-400 tracking-[0.15em] mb-3">WHY URDEAL</p>
           <h2 className="text-[clamp(28px,4vw,48px)] font-black text-white" style={{ letterSpacing: '-0.03em' }}>
             동네 공구, 이렇게 다릅니다
           </h2>
@@ -216,7 +216,7 @@ export default function IntroducePage() {
                 >
                   <Icon className="w-5 h-5" style={{ color: f.color }} />
                 </div>
-                <h3 className="text-[16px] font-extrabold text-white mb-2">{f.title}</h3>
+                <h3 className="text-[17px] font-extrabold text-white mb-2">{f.title}</h3>
                 <p className="text-[13px] text-gray-500 leading-relaxed">{f.desc}</p>
               </div>
             )
@@ -227,7 +227,7 @@ export default function IntroducePage() {
       {/* ─── 인기 동네 공구 ─── */}
       <section id="deals" className="max-w-[1280px] mx-auto px-6 py-16">
         <div className="mb-8">
-          <p className="text-[11px] font-extrabold text-red-400 tracking-[0.15em] mb-3">● 동네 공구</p>
+          <p className="text-[12px] font-extrabold text-red-400 tracking-[0.15em] mb-3">● 동네 공구</p>
           <h2 className="text-[clamp(24px,3.5vw,44px)] font-black text-white" style={{ letterSpacing: '-0.03em' }}>
             지금 인기 동네 공구
           </h2>
@@ -258,13 +258,13 @@ export default function IntroducePage() {
                 )}
                 <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.4), transparent 35%, rgba(0,0,0,0.85))' }} />
                 {d.original_price && d.price && d.original_price > d.price && (
-                  <div className="absolute top-2.5 left-2.5 flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-500">
-                    <span className="text-[9px] font-extrabold text-white">{Math.round((1 - d.price / d.original_price) * 100)}%</span>
+                  <div className="absolute top-2.5 left-2.5 flex items-center gap-1 px-2 py-1 rounded-md bg-red-500">
+                    <span className="text-[12px] font-extrabold text-white">{Math.round((1 - d.price / d.original_price) * 100)}%</span>
                   </div>
                 )}
                 <div className="absolute bottom-2.5 left-2.5 right-2.5">
                   <p className="text-[12px] font-bold text-white line-clamp-2 leading-tight">{d.name}</p>
-                  <p className="text-[10px] text-white/60 mt-0.5">
+                  <p className="text-[12px] text-white/60 mt-1">
                     {d.restaurant_name}{d.price ? ` · ${d.price.toLocaleString('ko-KR')}원` : ''}
                   </p>
                 </div>
@@ -275,7 +275,7 @@ export default function IntroducePage() {
         <div className="mt-6 text-center">
           <button
             onClick={() => navigate('/group-buy')}
-            className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full border border-[#2C2F35] text-[13px] font-bold text-gray-300 hover:border-[#444] hover:text-white transition-colors"
+            className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-[#2C2F35] text-[13px] font-bold text-gray-300 hover:border-[#444] hover:text-white transition-colors"
           >
             전체 동네 공구 보기 <ChevronRight className="w-4 h-4" />
           </button>
@@ -286,7 +286,7 @@ export default function IntroducePage() {
       <section className="bg-[#11141C] border-y border-[#2C2F35]">
         <div className="max-w-[1280px] mx-auto px-6 py-20">
           <div className="mb-12 text-center">
-            <p className="text-[11px] font-extrabold text-red-400 tracking-[0.15em] mb-3">HOW IT WORKS</p>
+            <p className="text-[12px] font-extrabold text-red-400 tracking-[0.15em] mb-3">HOW IT WORKS</p>
             <h2 className="text-[clamp(24px,3.5vw,44px)] font-black text-white" style={{ letterSpacing: '-0.03em' }}>
               고르고, 함께 사고, 매장에서 쓰기.
             </h2>
@@ -300,8 +300,8 @@ export default function IntroducePage() {
               <div key={s.n} className="relative p-8 rounded-3xl bg-[#111] border border-[#2C2F35] overflow-hidden">
                 <div className="absolute -top-4 -right-2 text-[100px] font-black opacity-[0.04] text-white select-none">{s.n}</div>
                 <s.Icon className="w-9 h-9 mx-auto mb-5 text-gray-400" aria-hidden="true" />
-                <h3 className="text-[20px] font-extrabold text-white mb-3">{s.title}</h3>
-                <p className="text-[14px] text-gray-500 leading-relaxed">{s.desc}</p>
+                <h3 className="text-[24px] font-extrabold text-white mb-3">{s.title}</h3>
+                <p className="text-[15px] text-gray-500 leading-relaxed">{s.desc}</p>
               </div>
             ))}
           </div>
@@ -314,7 +314,7 @@ export default function IntroducePage() {
           <div className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full bg-white/5 -translate-y-1/2 translate-x-1/2" />
           <div className="absolute bottom-0 left-1/4 w-[200px] h-[200px] rounded-full bg-white/5 translate-y-1/2" />
           <div className="relative">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/20 mb-5">
+            <div className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-white/20 mb-5">
               <Zap className="w-3.5 h-3.5 text-white" />
               <span className="text-[12px] font-extrabold text-white">설치 없이 바로 시작</span>
             </div>
@@ -325,7 +325,7 @@ export default function IntroducePage() {
             {/* 📱 앱 배지가 있던 자리 — 앱이 없으므로 원래 보조였던 웹 진입을 주 CTA 로 올린다. */}
             <button
               onClick={() => navigate('/')}
-              className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl text-[15px] font-extrabold text-gray-900 bg-white hover:bg-gray-100 transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-4 rounded-2xl text-[15px] font-extrabold text-gray-900 bg-white hover:bg-gray-100 transition-colors"
             >
               바로 시작하기 <ChevronRight className="w-4 h-4" />
             </button>
@@ -337,7 +337,7 @@ export default function IntroducePage() {
       <section id="for-sellers" className="bg-[#11141C] border-t border-[#2C2F35]">
         <div className="max-w-[1280px] mx-auto px-6 py-20">
           <div className="max-w-[680px]">
-            <p className="text-[11px] font-extrabold text-red-400 tracking-[0.15em] mb-3">FOR SELLERS</p>
+            <p className="text-[12px] font-extrabold text-red-400 tracking-[0.15em] mb-3">FOR SELLERS</p>
             <h2 className="text-[clamp(28px,4vw,48px)] font-black text-white mb-8" style={{ letterSpacing: '-0.03em' }}>
               우리 가게, 오늘부터<br />동네 공구 맛집.
             </h2>
@@ -348,11 +348,11 @@ export default function IntroducePage() {
                 { title: '정산·셀러 대시보드 제공', desc: '주문 모니터링 · 정산 · 리뷰 관리까지 한 곳에서.' },
               ].map(b => (
                 <div key={b.title} className="flex items-start gap-4">
-                  <div className="w-7 h-7 rounded-full bg-red-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="w-7 h-7 rounded-full bg-red-500/20 flex items-center justify-center shrink-0 mt-1">
                     <Check className="w-4 h-4 text-red-400" strokeWidth={3} />
                   </div>
                   <div>
-                    <p className="text-[16px] font-extrabold text-white">{b.title}</p>
+                    <p className="text-[17px] font-extrabold text-white">{b.title}</p>
                     <p className="text-[13px] text-gray-500 mt-1">{b.desc}</p>
                   </div>
                 </div>
@@ -361,13 +361,13 @@ export default function IntroducePage() {
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={() => navigate('/store/new')}
-                className="px-6 py-3.5 rounded-2xl text-white text-[14px] font-extrabold bg-gray-800 hover:opacity-90 transition-opacity"
+                className="px-6 py-4 rounded-2xl text-white text-[15px] font-extrabold bg-gray-800 hover:opacity-90 transition-opacity"
               >
                 입점 신청하기 →
               </button>
               <button
                 onClick={() => navigate('/seller/login')}
-                className="px-6 py-3.5 rounded-2xl text-[14px] font-extrabold text-white bg-[#1D1F29] hover:bg-[#222] transition-colors border border-[#2C2F35]"
+                className="px-6 py-4 rounded-2xl text-[15px] font-extrabold text-white bg-[#1D1F29] hover:bg-[#222] transition-colors border border-[#2C2F35]"
               >
                 셀러 로그인
               </button>
@@ -379,7 +379,7 @@ export default function IntroducePage() {
       {/* ─── FAQ ─── */}
       <section id="faq" className="max-w-[820px] mx-auto px-6 py-20">
         <div className="mb-10 text-center">
-          <p className="text-[11px] font-extrabold text-red-400 tracking-[0.15em] mb-3">FAQ</p>
+          <p className="text-[12px] font-extrabold text-red-400 tracking-[0.15em] mb-3">FAQ</p>
           <h2 className="text-[clamp(24px,3.5vw,44px)] font-black text-white" style={{ letterSpacing: '-0.03em' }}>
             궁금한 거 다 풀어드려요.
           </h2>
@@ -394,14 +394,14 @@ export default function IntroducePage() {
               >
                 <span className="text-[15px] font-bold text-white">{f.q}</span>
                 <span
-                  className="text-[20px] text-gray-500 shrink-0 ml-4 transition-transform duration-200"
+                  className="text-[24px] text-gray-500 shrink-0 ml-4 transition-transform duration-200"
                   style={{ transform: faqOpen === i ? 'rotate(45deg)' : 'none' }}
                 >
                   ＋
                 </span>
               </button>
               {faqOpen === i && (
-                <div className="px-5 pb-5 text-[14px] text-gray-400 leading-relaxed">
+                <div className="px-5 pb-5 text-[15px] text-gray-400 leading-relaxed">
                   {f.a}
                 </div>
               )}
@@ -424,8 +424,8 @@ export default function IntroducePage() {
             </div>
           </div>
 
-          <div className="pt-8 border-t border-[#2C2F35] text-[11px] text-gray-600 leading-relaxed">
-            <p className="mb-1.5"><b className="text-gray-400">리스터코퍼레이션</b> · 대표: 정지원 · 사업자등록번호: 479-09-02930</p>
+          <div className="pt-8 border-t border-[#2C2F35] text-[12px] text-gray-600 leading-relaxed">
+            <p className="mb-2"><b className="text-gray-400">리스터코퍼레이션</b> · 대표: 정지원 · 사업자등록번호: 479-09-02930</p>
             <p className="mb-5">서울특별시 강남구 남부순환로359길 14, 3층(도곡동) · 고객센터 평일 09:00~18:00</p>
             <div className="flex flex-wrap gap-4">
               <button onClick={() => navigate('/terms')} className="text-gray-600 hover:text-gray-300 transition-colors">이용약관</button>

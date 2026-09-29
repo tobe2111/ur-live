@@ -66,7 +66,7 @@ export function ProductDetailSkeleton() {
         <Skeleton className="w-full h-full" />
         
         {/* Dots */}
-        <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5">
+        <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
           {[...Array(3)].map((_, i) => (
             <Skeleton key={i} className="w-1.5 h-1.5" variant="circular" />
           ))}

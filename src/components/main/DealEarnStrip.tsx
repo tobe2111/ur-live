@@ -51,10 +51,10 @@ export default function DealEarnStrip() {
   return (
     <section className="ur-content-wide px-4 lg:px-8 pt-3 pb-1">
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-sm font-bold text-gray-900 dark:text-white">
+        <h2 className="text-[15px] font-bold text-gray-900 dark:text-white">
           <Coins className="w-4 h-4 inline-block align-[-3px] mr-1" aria-hidden="true" />{t('dealEarn.title', { defaultValue: '딜 모으는 법' })}
         </h2>
-        <span className="text-[11px] text-gray-400 dark:text-gray-500">
+        <span className="text-[12px] text-gray-400 dark:text-gray-500">
           {t('dealEarn.subtitle', { defaultValue: '모아서 교환권으로 바꾸세요' })}
         </span>
       </div>
@@ -64,13 +64,13 @@ export default function DealEarnStrip() {
             key={label}
             type="button"
             onClick={() => navigate(to)}
-            className="group flex flex-col items-center text-center gap-1.5 py-2 active:scale-[0.97] transition-transform"
+            className="group flex flex-col items-center text-center gap-2 py-2 active:scale-[0.97] transition-transform"
           >
             <span className={`w-12 h-12 rounded-2xl ${tint} flex items-center justify-center transition-shadow group-hover:shadow-sm`}>
               <Icon className="w-[22px] h-[22px]" strokeWidth={2} />
             </span>
-            <span className="text-[11px] font-semibold text-gray-900 dark:text-white leading-tight">{label}</span>
-            <span className="text-[9px] text-gray-400 dark:text-gray-500 leading-tight hidden sm:block">{desc}</span>
+            <span className="text-[12px] font-semibold text-gray-900 dark:text-white leading-tight">{label}</span>
+            <span className="text-[12px] text-gray-400 dark:text-gray-500 leading-tight hidden sm:block">{desc}</span>
           </button>
         ))}
       </div>

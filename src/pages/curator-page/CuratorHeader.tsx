@@ -49,7 +49,7 @@ interface CuratorHeaderProps {
 }
 
 const ACCENT_DEFAULT = '#6b7280'
-const btnCls = 'h-[31px] px-2.5 rounded-lg border border-rule-strong bg-surface text-[11.5px] font-semibold text-gray-600 dark:text-gray-300 inline-flex items-center gap-1.5 shrink-0 active:opacity-70'
+const btnCls = 'h-[31px] px-2 rounded-lg border border-rule-strong bg-surface text-[12px] font-semibold text-gray-600 dark:text-gray-300 inline-flex items-center gap-2 shrink-0 active:opacity-70'
 
 export default function CuratorHeader({ curator, canEdit, counts, accountType, onCopyLink }: CuratorHeaderProps) {
   const { t } = useTranslation()
@@ -98,10 +98,10 @@ export default function CuratorHeader({ curator, canEdit, counts, accountType, o
             ⚠️ `?embed=1`(깨끗한 매장 링크)은 PC 에서도 전역 네비가 없지만, 그 모드의 목적 자체가
                "유어딜 chrome 을 안 보여 준다" 라 여기서도 안 그리는 쪽이 맞다. */}
         <div className="lg:hidden flex items-center px-4 pt-3">
-          <Link to="/" aria-label={t('nav.homeAria', { defaultValue: '유어딜 홈' })} className="text-[14.5px] font-bold tracking-[-0.03em] text-gray-900 dark:text-white active:opacity-70">
+          <Link to="/" aria-label={t('nav.homeAria', { defaultValue: '유어딜 홈' })} className="text-[15px] font-bold tracking-[-0.03em] text-gray-900 dark:text-white active:opacity-70">
             urdeal
           </Link>
-          <nav className="ml-auto flex items-center gap-3.5 text-[11.5px] font-semibold text-gray-500 dark:text-gray-400">
+          <nav className="ml-auto flex items-center gap-4 text-[12px] font-semibold text-gray-500 dark:text-gray-400">
             <Link to="/search" className="active:opacity-70">{t('nav.search', { defaultValue: '검색' })}</Link>
             <Link to="/wishlist" className="active:opacity-70">{t('nav.wishlist', { defaultValue: '찜' })}</Link>
             <Link to="/my-vouchers" className="active:opacity-70">{t('nav.myVouchers', { defaultValue: '내 이용권' })}</Link>
@@ -109,17 +109,17 @@ export default function CuratorHeader({ curator, canEdit, counts, accountType, o
         </div>
 
         {/* ③④ 상호명 줄 — 그 위 선 없음(면으로 나뉜다). 오른쪽이 버튼 자리. */}
-        <div className="flex items-start px-4 pt-3.5 pb-4">
+        <div className="flex items-start px-4 pt-4 pb-4">
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <h1 className="text-[19px] font-bold text-gray-900 dark:text-white leading-tight tracking-[-0.03em] truncate">{curator.name}</h1>
+            <div className="flex items-center gap-2 min-w-0">
+              <h1 className="text-[17px] font-bold text-gray-900 dark:text-white leading-tight tracking-[-0.03em] truncate">{curator.name}</h1>
               {accountType === 'business' && <VerifiedSeal size={17} className="shrink-0" />}
             </div>
             {curator.bio && (
-              <p className="mt-1 text-[12.5px] text-gray-600 dark:text-gray-300 leading-snug line-clamp-2">{curator.bio}</p>
+              <p className="mt-1 text-[12px] text-gray-600 dark:text-gray-300 leading-snug line-clamp-2">{curator.bio}</p>
             )}
             {showCounts && (
-              <p className="mt-1 text-[11.5px] text-gray-400 dark:text-gray-500 tabular-nums">
+              <p className="mt-1 text-[12px] text-gray-400 dark:text-gray-500 tabular-nums">
                 {(counts?.pins ?? 0) > 0 && <span>{t('curator.countPins', { defaultValue: '담은 이용권' })} {counts!.pins}</span>}
                 {(counts?.pins ?? 0) > 0 && (counts?.products ?? 0) > 0 && <span> · </span>}
                 {(counts?.products ?? 0) > 0 && <span>{t('curator.countProducts', { defaultValue: '내 상품' })} {counts!.products}</span>}
@@ -131,7 +131,7 @@ export default function CuratorHeader({ curator, canEdit, counts, accountType, o
               이름 줄의 버튼 자리로 올린다. 공유·관리 버튼은 **그대로 있다**(대표 확인 요청 사항).
               주인 화면 최악(이름 10자 + SNS 3 + 공유 + 관리)에서 오른쪽 끝 374/390px 로 안 잘린다
               (실측: 이름 칸이 `flex-1 truncate` 라 넘치는 대신 이름이 줄어든다 — 112px 남음). */}
-          <div className="ml-3 flex items-center gap-1.5 shrink-0">
+          <div className="ml-3 flex items-center gap-2 shrink-0">
             {snsLinks}
             <button type="button" onClick={onCopyLink} className={btnCls}>
               <Share2 className="w-3.5 h-3.5" aria-hidden="true" />{t('curator.share', { defaultValue: '공유' })}

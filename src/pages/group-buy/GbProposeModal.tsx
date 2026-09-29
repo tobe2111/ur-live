@@ -47,23 +47,23 @@ export default function GbProposeModal({ productId, listPrice, productName, onCl
         <div>
           <label className="block text-[12px] font-semibold text-gray-700 dark:text-gray-300 mb-1">공구 마감</label>
           <input type="datetime-local" value={deadline} onChange={e => setDeadline(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-[#2C2F35] dark:bg-[#1D1F29] rounded-lg text-sm text-gray-900 dark:text-white" />
+            className="w-full px-3 py-2 border border-gray-300 dark:border-[#2C2F35] dark:bg-[#1D1F29] rounded-lg text-[15px] text-gray-900 dark:text-white" />
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label className="block text-[12px] font-semibold text-gray-700 dark:text-gray-300 mb-1">공구 특가</label>
             <input type="number" value={price || ''} onChange={e => setPrice(Number(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-[#2C2F35] dark:bg-[#1D1F29] rounded-lg text-sm text-gray-900 dark:text-white" />
+              className="w-full px-3 py-2 border border-gray-300 dark:border-[#2C2F35] dark:bg-[#1D1F29] rounded-lg text-[15px] text-gray-900 dark:text-white" />
           </div>
           <div>
             <label className="block text-[12px] font-semibold text-gray-700 dark:text-gray-300 mb-1">내 소개비 %</label>
             <input type="number" min={0} max={50} value={promo} onChange={e => setPromo(Math.max(0, Math.min(50, Number(e.target.value))))}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-[#2C2F35] dark:bg-[#1D1F29] rounded-lg text-sm text-gray-900 dark:text-white" />
+              className="w-full px-3 py-2 border border-gray-300 dark:border-[#2C2F35] dark:bg-[#1D1F29] rounded-lg text-[15px] text-gray-900 dark:text-white" />
           </div>
         </div>
 
         <button onClick={submit} disabled={saving}
-          className="w-full py-3 bg-brand text-white rounded-xl text-[14px] font-bold flex items-center justify-center gap-2 disabled:opacity-50">
+          className="w-full py-3 bg-brand text-white rounded-xl text-[15px] font-bold flex items-center justify-center gap-2 disabled:opacity-50">
           {saving && <Loader2 className="w-4 h-4 animate-spin" />} 매장에 제안 보내기
         </button>
       </div>

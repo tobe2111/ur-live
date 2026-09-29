@@ -238,7 +238,7 @@ export default function DesktopTopNav() {
                 key={item.key}
                 onClick={() => navigate(item.path)}
                 aria-current={active ? 'page' : undefined}
-                className={`relative flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold transition-colors ${
+                className={`relative flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] font-semibold transition-colors ${
                   active
                     ? 'text-gray-900 dark:text-white'
                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/[0.04]'
@@ -270,7 +270,7 @@ export default function DesktopTopNav() {
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder={t('search.placeholder', { defaultValue: '동네딜, 교환권, 상품 검색' })}
-                className="w-full h-[46px] pl-11 pr-[52px] text-[14px] bg-white dark:bg-white/[0.06] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/30 rounded-full border-2 border-brand dark:border-brand/70 outline-none focus:ring-2 focus:ring-brand/25"
+                className="w-full h-[46px] pl-11 pr-[52px] text-[15px] bg-white dark:bg-white/[0.06] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/30 rounded-full border-2 border-brand dark:border-brand/70 outline-none focus:ring-2 focus:ring-brand/25"
               />
               <button
                 type="submit"
@@ -290,7 +290,7 @@ export default function DesktopTopNav() {
           {/* 앱 — 🖥️ 2026-07-19 (대표 요청): 클릭 시 QR 다운로드 팝업(그루폰식). */}
           <button
             onClick={() => setAppOpen(true)}
-            className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-white/[0.04] transition-colors"
+            className="hidden lg:flex items-center gap-2 px-3 py-2 text-[12px] font-semibold text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-white/[0.04] transition-colors"
           >
             <Smartphone className="w-4 h-4" strokeWidth={1.75} />
             {t('nav.app', { defaultValue: '모바일' })}
@@ -303,7 +303,7 @@ export default function DesktopTopNav() {
           <button
             onClick={() => navigate(sellerEntryPath())}
             aria-label={t('nav.sellOnUrdeal', { defaultValue: '유어딜에서 판매하세요' })}
-            className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-white/[0.04] transition-colors whitespace-nowrap"
+            className="hidden lg:flex items-center gap-2 px-3 py-2 text-[12px] font-medium text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-white/[0.04] transition-colors whitespace-nowrap"
           >
             <Store className="w-4 h-4 shrink-0" strokeWidth={1.75} />
             <span className="flex items-center gap-1"><UrDealLogo size={13} />에서 판매하세요</span>
@@ -320,7 +320,7 @@ export default function DesktopTopNav() {
           >
             <Heart className="w-5 h-5" strokeWidth={1.75} />
             {wishCount > 0 && (
-              <span className="absolute top-1 right-1 bg-brand text-white text-[9px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center">
+              <span className="absolute top-1 right-1 bg-brand text-white text-[12px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center">
                 {wishCount > 99 ? '99+' : wishCount}
               </span>
             )}
@@ -338,7 +338,7 @@ export default function DesktopTopNav() {
               >
                 <Bell className="w-5 h-5" strokeWidth={1.75} />
                 {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 bg-red-500 text-white text-[9px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center">
+                  <span className="absolute top-1 right-1 bg-red-500 text-white text-[12px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center">
                     {unreadCount > 99 ? '99+' : unreadCount}
                   </span>
                 )}
@@ -363,7 +363,7 @@ export default function DesktopTopNav() {
           >
             <ShoppingCart className="w-5 h-5" strokeWidth={1.75} />
             {cartCount > 0 && (
-              <span className="absolute top-1 right-1 bg-red-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+              <span className="absolute top-1 right-1 bg-red-500 text-white text-[12px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
                 {cartCount > 9 ? '9+' : cartCount}
               </span>
             )}
@@ -378,7 +378,7 @@ export default function DesktopTopNav() {
               aria-label={t('nav.my', { defaultValue: '마이' })}
               aria-expanded={acctOpen}
               aria-haspopup="menu"
-              className={`flex items-center gap-0.5 pl-1 pr-1.5 h-9 rounded-full border border-line text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/[0.06] transition-colors ${
+              className={`flex items-center gap-1 pl-1 pr-2 h-9 rounded-full border border-line text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/[0.06] transition-colors ${
                 acctOpen || isActivePath('/user/profile') ? 'bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white' : ''
               }`}
             >
@@ -428,7 +428,7 @@ export default function DesktopTopNav() {
                     key={item.path}
                     onClick={() => navigate(item.path)}
                     aria-current={active ? 'page' : undefined}
-                    className={`relative shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-colors ${
+                    className={`relative shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] font-semibold transition-colors ${
                       active
                         ? 'text-gray-900 dark:text-white'
                         : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/[0.04]'
@@ -452,7 +452,7 @@ export default function DesktopTopNav() {
                     key={key}
                     onClick={() => navigate(key === 'all' ? '/' : `/?category=${key}`)}
                     aria-current={active ? 'true' : undefined}
-                    className={`relative shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-colors ${
+                    className={`relative shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] font-semibold transition-colors ${
                       active
                         ? 'text-gray-900 dark:text-white'
                         : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/[0.04]'
@@ -481,7 +481,7 @@ export default function DesktopTopNav() {
 
             <Link
               to={URSHORTS_BROWSE_PATH}
-              className="shrink-0 flex items-center gap-1.5 whitespace-nowrap px-2 text-[13px] font-bold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+              className="shrink-0 flex items-center gap-2 whitespace-nowrap px-2 text-[13px] font-bold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
             >
               <ShortsIcon size={16} />
               유어쇼츠<span aria-hidden="true" className="-ml-[3px] text-brand-text">.</span>

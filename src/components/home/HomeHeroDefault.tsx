@@ -175,14 +175,14 @@ export default function HomeHeroDefault({
             <>{DEFAULT_TITLE_HEAD}<span className="text-brand">{DEFAULT_TITLE_ACCENT}</span>{DEFAULT_TITLE_TAIL}</>
           )}
         </h2>
-        <p className="mt-1.5 text-[13px] lg:text-[14px] text-white/75">
+        <p className="mt-2 text-[13px] lg:text-[15px] text-white/75">
           {content?.description || DEFAULT_DESC}
         </p>
 
         {/* 🗺️ 위치·지도 — 이전엔 히어로 **아래 흰 패널**에 있던 것을 여기로 흡수했다(대표 확정).
             잉크 배경 위라 칩은 `tone="hero"`(반투명 흰 테두리)로 그린다 — 드롭다운 패널은
             그대로 흰색이라 지역 목록의 가독성은 손해 보지 않는다. */}
-        <div className="mt-3.5 flex items-center gap-2.5 flex-wrap">
+        <div className="mt-4 flex items-center gap-2 flex-wrap">
           {controls && (
             <PcHomeLocationBar
               tone="hero"
@@ -200,7 +200,7 @@ export default function HomeHeroDefault({
               버튼은 그 자체가 "여기를 눌러라"라서 화살표가 같은 말을 두 번 한다. */}
           <Link
             to="/map"
-            className="inline-flex items-center shrink-0 h-[38px] px-5 rounded-full bg-brand text-white text-[13.5px] font-extrabold hover:bg-[#1557C8] transition-colors shadow-[0_6px_18px_-8px_rgba(28,105,239,0.9)]"
+            className="inline-flex items-center shrink-0 h-[38px] px-5 rounded-full bg-brand text-white text-[13px] font-extrabold hover:bg-[#1557C8] transition-colors shadow-[0_6px_18px_-8px_rgba(28,105,239,0.9)]"
           >
             지도에서 딜 찾기
           </Link>

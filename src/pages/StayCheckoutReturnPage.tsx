@@ -100,11 +100,11 @@ export default function StayCheckoutReturnPage() {
             <p className="text-[12px] text-gray-500 mt-2">체크인 코드 등 상세는 내 숙소 예약에서 확인하세요.</p>
             <div className="mt-5 space-y-2">
               <button onClick={() => navigate('/my-stays', { replace: true })}
-                className="w-full py-3 bg-brand text-white text-[14px] font-bold rounded-full">
+                className="w-full py-3 bg-brand text-white text-[15px] font-bold rounded-full">
                 내 숙소 예약 보기
               </button>
               <button onClick={() => navigate('/', { replace: true })}
-                className="w-full py-3 bg-gray-100 text-gray-700 text-[14px] font-semibold rounded-full">
+                className="w-full py-3 bg-gray-100 text-gray-700 text-[15px] font-semibold rounded-full">
                 홈으로
               </button>
             </div>
@@ -113,11 +113,11 @@ export default function StayCheckoutReturnPage() {
         {state === 'overbooked' && (
           <>
             <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
-            <p className="text-[16px] font-extrabold text-gray-900">객실이 매진되었습니다</p>
+            <p className="text-[17px] font-extrabold text-gray-900">객실이 매진되었습니다</p>
             <p className="text-[13px] text-gray-600 mt-2">{message}</p>
             <p className="text-[12px] text-gray-500 mt-1">결제는 자동 환불 처리됩니다 (영업일 기준 3-5일).</p>
             <button onClick={() => navigate('/stays', { replace: true })}
-              className="mt-5 w-full py-3 bg-brand text-white text-[14px] font-bold rounded-full">
+              className="mt-5 w-full py-3 bg-brand text-white text-[15px] font-bold rounded-full">
               다른 숙소 둘러보기
             </button>
           </>
@@ -125,17 +125,17 @@ export default function StayCheckoutReturnPage() {
         {state === 'fail' && (
           <>
             <XCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <p className="text-[16px] font-extrabold text-gray-900">결제가 완료되지 않았습니다</p>
+            <p className="text-[17px] font-extrabold text-gray-900">결제가 완료되지 않았습니다</p>
             {message && <p className="text-[13px] text-gray-600 mt-2 break-words">{message}</p>}
             <div className="mt-5 space-y-2">
               {Number.isFinite(orderId) && orderId > 0 && (
                 <button onClick={() => navigate(`/checkout?order_id=${orderId}&stay=1`, { replace: true })}
-                  className="w-full py-3 bg-brand text-white text-[14px] font-bold rounded-full">
+                  className="w-full py-3 bg-brand text-white text-[15px] font-bold rounded-full">
                   다시 결제하기
                 </button>
               )}
               <button onClick={() => navigate('/my-stays', { replace: true })}
-                className="w-full py-3 bg-gray-100 text-gray-700 text-[14px] font-semibold rounded-full">
+                className="w-full py-3 bg-gray-100 text-gray-700 text-[15px] font-semibold rounded-full">
                 내 숙소 예약 보기
               </button>
             </div>

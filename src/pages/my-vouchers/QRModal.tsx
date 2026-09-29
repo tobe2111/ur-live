@@ -193,11 +193,11 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
           <p className="text-center text-[17px] font-extrabold tracking-tight text-gray-900 dark:text-white mb-1">{voucher.product_name}</p>
           {voucher.restaurant_name && (
-            <p className="flex items-center justify-center gap-1 text-center text-xs text-gray-500 dark:text-gray-400 mb-4">
+            <p className="flex items-center justify-center gap-1 text-center text-[12px] text-gray-500 dark:text-gray-400 mb-4">
               <MapPin className="w-3 h-3 shrink-0" />{voucher.restaurant_name}
               {mapUrl && (
                 <a href={mapUrl} target="_blank" rel="noopener noreferrer"
-                  className="ml-1 inline-flex items-center gap-0.5 font-semibold text-gray-900 dark:text-white underline underline-offset-2 active:opacity-60">
+                  className="ml-1 inline-flex items-center gap-1 font-semibold text-gray-900 dark:text-white underline underline-offset-2 active:opacity-60">
                   {t('voucher.directions', { defaultValue: '길찾기' })}
                 </a>
               )}
@@ -223,12 +223,12 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
               {isUsed && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-white/45 dark:bg-black/45">
                   <div className="flex flex-col items-center rounded-xl border-[3px] border-tone-ok bg-white/70 dark:bg-black/50 px-4 py-2 -rotate-12 shadow-sm">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-2">
                       <CheckCircle className="w-5 h-5 text-tone-ok" strokeWidth={3} />
-                      <span className="text-[19px] font-black tracking-tight text-tone-ok">사용 완료</span>
+                      <span className="text-[17px] font-black tracking-tight text-tone-ok">사용 완료</span>
                     </div>
                     {voucher.used_at && (
-                      <span className="mt-0.5 text-[10px] font-semibold text-tone-ok">
+                      <span className="mt-1 text-[12px] font-semibold text-tone-ok">
                         {safeDate(voucher.used_at)?.toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' })}
                       </span>
                     )}
@@ -237,9 +237,9 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
               )}
               {isExpired && (
                 <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-white/45 dark:bg-black/45">
-                  <div className="flex items-center gap-1.5 rounded-xl border-[3px] border-red-500/90 bg-white/70 dark:bg-black/50 px-4 py-2 -rotate-12 shadow-sm">
+                  <div className="flex items-center gap-2 rounded-xl border-[3px] border-red-500/90 bg-white/70 dark:bg-black/50 px-4 py-2 -rotate-12 shadow-sm">
                     <XCircle className="w-5 h-5 text-red-500" strokeWidth={3} />
-                    <span className="text-[19px] font-black tracking-tight text-red-600 dark:text-red-400">
+                    <span className="text-[17px] font-black tracking-tight text-red-600 dark:text-red-400">
                       {voucher.status === 'expired' ? '만료됨' : '환불됨'}
                     </span>
                   </div>
@@ -247,28 +247,28 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
               )}
             </div>
           </div>
-          <div className="bg-gray-100 dark:bg-[#1D1F29] rounded-xl px-3 py-2.5 text-center">
+          <div className="bg-gray-100 dark:bg-[#1D1F29] rounded-xl px-3 py-2 text-center">
             <code className={`text-[15px] tabular-nums font-bold tracking-[0.08em] ${isUsed || isExpired ? 'text-gray-400 line-through' : 'text-gray-900 dark:text-white'}`}>{voucher.code}</code>
           </div>
           {/* 🛡️ 캡쳐 도용 방지 — 실시간 시간 + 🟢 pulse (흑백 리디자인 화면3) */}
           {!isUsed && !isExpired && (
-            <div className="flex items-center justify-center gap-1.5 mt-2.5">
+            <div className="flex items-center justify-center gap-2 mt-2">
               <span className="w-[7px] h-[7px] rounded-full bg-tone-ok animate-pulse" aria-hidden />
-              <span className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 tabular-nums">
+              <span className="text-[12px] font-semibold text-gray-400 dark:text-gray-500 tabular-nums">
                 {t('voucher.realtime', { defaultValue: '실시간' })} · {new Date(now).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
               </span>
             </div>
           )}
           {/* 🎨 개선 #3: 화면 꺼짐 방지 활성 안내 (스캔 중 디밍 차단) */}
           {!isUsed && !isExpired && wakeActive && (
-            <p className="text-center text-[10.5px] text-gray-400 dark:text-gray-500 mt-1.5">
+            <p className="text-center text-[12px] text-gray-400 dark:text-gray-500 mt-2">
               {t('voucher.wakeOn', { defaultValue: '화면 꺼짐 방지 중 — 스캔하기 좋게' })}
             </p>
           )}
           {/* 🌐 2026-07-12 (앱-레디): 오프라인이어도 이 QR/코드는 저장돼 있어 매장에서 그대로 사용 가능 —
               지하·신호 약한 매장에서 "안 열릴까" 불안 제거(저장된 데이터로 렌더). */}
           {!isUsed && !isExpired && !isOnline && (
-            <p className="text-center text-[10.5px] font-semibold text-tone-ok mt-1.5">
+            <p className="text-center text-[12px] font-semibold text-tone-ok mt-2">
               {t('voucher.offlineUsable', { defaultValue: '오프라인에서도 이 화면으로 사용할 수 있어요' })}
             </p>
           )}
@@ -276,17 +276,17 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
           {/* 🎟️ 2026-07-06 이용 안내 — 사용 절차(사용방식별 단계) + 유효기간 + 매장 정보 + 주의사항 통합. */}
           {voucher.status === 'unused' && (
             <div className="mt-4 rounded-xl border border-rule-strong overflow-hidden text-left">
-              <div className="px-3.5 py-2 border-b border-rule bg-gray-50 dark:bg-white/[0.04]">
+              <div className="px-4 py-2 border-b border-rule bg-gray-50 dark:bg-white/[0.04]">
                 <p className="text-[12px] font-extrabold text-gray-900 dark:text-white">{t('voucher.usageInfo', { defaultValue: '이용 안내' })}</p>
               </div>
-              <div className="px-3.5 py-3 space-y-3">
+              <div className="px-4 py-3 space-y-3">
                 {/* 사용 방법 (단계) */}
                 <div>
-                  <p className="text-[11px] font-bold text-gray-900 dark:text-white mb-1.5">사용 방법 · {modeLabel}</p>
+                  <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-2">사용 방법 · {modeLabel}</p>
                   <ol className="space-y-1">
                     {usageSteps.map((s, i) => (
-                      <li key={i} className="flex gap-2 text-[11.5px] text-gray-600 dark:text-gray-300 leading-snug">
-                        <span className="shrink-0 w-4 h-4 rounded-full bg-brand text-white text-[9px] font-bold flex items-center justify-center mt-px">{i + 1}</span>
+                      <li key={i} className="flex gap-2 text-[12px] text-gray-600 dark:text-gray-300 leading-snug">
+                        <span className="shrink-0 w-4 h-4 rounded-full bg-brand text-white text-[12px] font-bold flex items-center justify-center mt-px">{i + 1}</span>
                         <span>{s}</span>
                       </li>
                     ))}
@@ -296,42 +296,42 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
                 {/* 매장 안내 — 사장님이 선택한 사용조건(표준 문구) + 상품별 자유 안내(usage_guide) */}
                 {(storeConditions.length > 0 || voucher.usage_guide) && (
                   <div>
-                    <p className="text-[11px] font-bold text-gray-900 dark:text-white mb-1">{t('voucher.storeGuide', { defaultValue: '매장 안내' })}</p>
+                    <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-1">{t('voucher.storeGuide', { defaultValue: '매장 안내' })}</p>
                     {storeConditions.length > 0 && (
-                      <ul className="space-y-0.5 mb-1">
+                      <ul className="space-y-1 mb-1">
                         {storeConditions.map((cnd, i) => (
-                          <li key={i} className="flex gap-1.5 text-[11.5px] text-gray-500 dark:text-gray-400 leading-snug"><span aria-hidden>·</span><span>{cnd}</span></li>
+                          <li key={i} className="flex gap-2 text-[12px] text-gray-500 dark:text-gray-400 leading-snug"><span aria-hidden>·</span><span>{cnd}</span></li>
                         ))}
                       </ul>
                     )}
                     {voucher.usage_guide && (
-                      <p className="text-[11.5px] text-gray-500 dark:text-gray-400 whitespace-pre-wrap leading-snug">{voucher.usage_guide}</p>
+                      <p className="text-[12px] text-gray-500 dark:text-gray-400 whitespace-pre-wrap leading-snug">{voucher.usage_guide}</p>
                     )}
                   </div>
                 )}
 
                 {/* 유효기간 */}
                 {expiresLabel && (
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[11px] font-bold text-gray-900 dark:text-white">유효기간</span>
-                    <span className="text-[11.5px] font-semibold text-gray-600 dark:text-gray-300">{expiresLabel}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[12px] font-bold text-gray-900 dark:text-white">유효기간</span>
+                    <span className="text-[12px] font-semibold text-gray-600 dark:text-gray-300">{expiresLabel}</span>
                   </div>
                 )}
 
                 {/* 매장 정보 */}
                 {(voucher.restaurant_address || voucher.restaurant_phone) && (
                   <div>
-                    <p className="text-[11px] font-bold text-gray-900 dark:text-white mb-1">매장 정보</p>
+                    <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-1">매장 정보</p>
                     {voucher.restaurant_address && (
-                      <p className="flex items-start gap-1.5 text-[11.5px] text-gray-500 dark:text-gray-400 leading-snug">
-                        <MapPin className="w-3 h-3 mt-0.5 shrink-0" />
+                      <p className="flex items-start gap-2 text-[12px] text-gray-500 dark:text-gray-400 leading-snug">
+                        <MapPin className="w-3 h-3 mt-1 shrink-0" />
                         <span>{voucher.restaurant_address}
                           {mapUrl && <a href={mapUrl} target="_blank" rel="noopener noreferrer" className="ml-1 font-semibold text-gray-900 dark:text-white underline underline-offset-2 active:opacity-60">길찾기</a>}
                         </span>
                       </p>
                     )}
                     {voucher.restaurant_phone && (
-                      <p className="flex items-center gap-1.5 text-[11.5px] text-gray-500 dark:text-gray-400 mt-1">
+                      <p className="flex items-center gap-2 text-[12px] text-gray-500 dark:text-gray-400 mt-1">
                         <Phone className="w-3 h-3 shrink-0" />
                         <a href={`tel:${voucher.restaurant_phone}`} className="font-semibold text-gray-900 dark:text-white active:opacity-60">{voucher.restaurant_phone}</a>
                       </p>
@@ -341,10 +341,10 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
 
                 {/* 주의사항 */}
                 <div>
-                  <p className="text-[11px] font-bold text-gray-900 dark:text-white mb-1">주의사항</p>
-                  <ul className="space-y-0.5">
+                  <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-1">주의사항</p>
+                  <ul className="space-y-1">
                     {['사용 후 환불·취소가 불가해요', '1회용 이용권으로 중복 사용은 안 돼요', '현금 교환·잔액 환급은 불가해요', '유효기간이 지나면 결제 수단으로 자동 환불돼요'].map((cn, i) => (
-                      <li key={i} className="flex gap-1.5 text-[11px] text-gray-400 dark:text-gray-500 leading-snug"><span aria-hidden>·</span><span>{cn}</span></li>
+                      <li key={i} className="flex gap-2 text-[12px] text-gray-400 dark:text-gray-500 leading-snug"><span aria-hidden>·</span><span>{cn}</span></li>
                     ))}
                   </ul>
                 </div>
@@ -354,11 +354,11 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
 
           {/* 🛡️ 선결제 안내 — "이미 결제 완료" 🟢 체크 (선물 X, 추가결제 X) */}
           {voucher.status === 'unused' && (
-            <div className="mt-4 flex items-start gap-2.5 bg-gray-50 dark:bg-white/[0.04] rounded-xl px-3.5 py-3">
-              <CheckCircle className="w-4 h-4 mt-0.5 shrink-0 text-tone-ok" strokeWidth={2.2} />
+            <div className="mt-4 flex items-start gap-2 bg-gray-50 dark:bg-white/[0.04] rounded-xl px-4 py-3">
+              <CheckCircle className="w-4 h-4 mt-1 shrink-0 text-tone-ok" strokeWidth={2.2} />
               <div className="text-left">
                 <p className="text-[13px] font-bold text-gray-900 dark:text-white">{t('voucher.alreadyPaidTitle', { defaultValue: '이미 결제 완료된 이용권이에요' })}</p>
-                <p className="text-[11.5px] leading-relaxed text-gray-500 dark:text-gray-400 mt-0.5">{t('voucher.alreadyPaidDesc', { defaultValue: '매장에서 추가 결제 없이 이 화면만 보여주세요' })}</p>
+                <p className="text-[12px] leading-relaxed text-gray-500 dark:text-gray-400 mt-1">{t('voucher.alreadyPaidDesc', { defaultValue: '매장에서 추가 결제 없이 이 화면만 보여주세요' })}</p>
               </div>
             </div>
           )}
@@ -370,13 +370,13 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
               {/* 🎟️ 2026-06-20 현장 사용 — 가장 강조(잉크 풀폭). 매장에서 이걸 눌러 사용처리. */}
               <button
                 onClick={() => setShowRedeem(true)}
-                className="mt-4 w-full py-3.5 rounded-2xl bg-brand text-white text-[15px] font-extrabold active:scale-[0.98] transition-transform"
+                className="mt-4 w-full py-4 rounded-2xl bg-brand text-white text-[15px] font-extrabold active:scale-[0.98] transition-transform"
               >
                 {t('voucher.useNow', { defaultValue: '현장에서 사용하기' })}
               </button>
               <div className={`mt-2 grid gap-2 ${canSelfCancel ? 'grid-cols-2' : 'grid-cols-1'}`}>
                 <button onClick={shareVoucher}
-                  className="py-3 rounded-xl border border-rule-strong text-gray-900 dark:text-white text-[13px] font-bold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-transform">
+                  className="py-3 rounded-xl border border-rule-strong text-gray-900 dark:text-white text-[13px] font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform">
                   <Share2 className="w-4 h-4" /> {t('voucher.share')}
                 </button>
                 {canSelfCancel && (
@@ -387,7 +387,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
                 )}
               </div>
               {canSelfCancel && (
-                <p className="text-[10.5px] text-gray-400 dark:text-gray-500 text-center mt-2.5">
+                <p className="text-[12px] text-gray-400 dark:text-gray-500 text-center mt-2">
                   {t('voucher.refundWindowNote', { defaultValue: '미사용 · 결제 후 7일 이내에만 환불할 수 있어요' })}
                 </p>
               )}

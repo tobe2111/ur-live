@@ -167,7 +167,7 @@ export default function StoreOwnerClaimPage() {
           <button onClick={() => navigate(-1)} className="p-1 -ml-1 text-gray-600" aria-label="뒤로">
             <ChevronLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-base font-bold text-gray-900">내 가게 찾기</h1>
+          <h1 className="text-[15px] font-bold text-gray-900">내 가게 찾기</h1>
         </div>
       </header>
 
@@ -187,19 +187,19 @@ export default function StoreOwnerClaimPage() {
             <h1 className="hidden lg:block text-[40px] font-black tracking-[-0.03em] leading-[1.22] text-gray-900">
               내 가게<br /> 찾기
             </h1>
-            <p className="text-[13px] lg:text-[16px] lg:mt-4 text-gray-600 leading-relaxed lg:max-w-[460px]">
+            <p className="text-[13px] lg:text-[17px] lg:mt-4 text-gray-600 leading-relaxed lg:max-w-[460px]">
               이미 유어딜에 등록된 가게의 <b className="text-gray-900">진짜 사장님</b>이시면, 사업자등록증을 올려
               소유권을 신청해주세요. 확인되면 그 매장의 주인으로 등록해 드립니다 —
               <b className="text-gray-900"> 지금까지 쌓인 상품·주문·리뷰·정산 이력은 그대로 남습니다.</b>
             </p>
 
-            <ol className="hidden lg:flex mt-8 flex-col gap-3.5 lg:max-w-[460px]">
+            <ol className="hidden lg:flex mt-8 flex-col gap-4 lg:max-w-[460px]">
               {STEPS.map(({ n, title, desc }) => (
-                <li key={n} className="flex gap-3.5 items-start">
-                  <span className="mt-0.5 shrink-0 w-6 h-6 rounded-full bg-brand text-white text-[12px] font-bold flex items-center justify-center">{n}</span>
+                <li key={n} className="flex gap-4 items-start">
+                  <span className="mt-1 shrink-0 w-6 h-6 rounded-full bg-brand text-white text-[12px] font-bold flex items-center justify-center">{n}</span>
                   <div className="min-w-0">
                     <p className="text-[15px] font-bold text-gray-900">{title}</p>
-                    <p className="mt-0.5 text-[13.5px] leading-relaxed text-gray-500">{desc}</p>
+                    <p className="mt-1 text-[13px] leading-relaxed text-gray-500">{desc}</p>
                   </div>
                 </li>
               ))}
@@ -208,8 +208,8 @@ export default function StoreOwnerClaimPage() {
             <div className="hidden lg:flex mt-9 pt-5 border-t border-rule gap-9 lg:max-w-[460px]">
               {FACTS.map(({ value, label }) => (
                 <div key={label}>
-                  <div className="text-[19px] font-black text-gray-900">{value}</div>
-                  <div className="mt-1 text-[12.5px] text-gray-500">{label}</div>
+                  <div className="text-[17px] font-black text-gray-900">{value}</div>
+                  <div className="mt-1 text-[12px] text-gray-500">{label}</div>
                 </div>
               ))}
             </div>
@@ -222,30 +222,30 @@ export default function StoreOwnerClaimPage() {
         {!picked && (
           <section className="bg-white rounded-2xl p-4">
             {/* 🔑 코드 입구 — 대행사가 매장을 대신 등록했다면 사장님은 코드를 받았다. 번호 조회는 그 아래 그대로. */}
-            <label className="block text-[13px] font-semibold mb-1.5 text-gray-900">받은 코드가 있나요?</label>
+            <label className="block text-[13px] font-semibold mb-2 text-gray-900">받은 코드가 있나요?</label>
             <div className="flex gap-2 mb-4">
               <input
                 value={claimCode} onChange={(e) => setClaimCode(e.target.value.toUpperCase())}
                 onKeyDown={(e) => { if (e.key === 'Enter') void lookupByCode() }}
                 placeholder="예: AB3K-9QXP" maxLength={12}
-                className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm tabular-nums tracking-wider text-gray-900"
+                className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-[15px] tabular-nums tracking-wider text-gray-900"
               />
               <button onClick={() => void lookupByCode()} disabled={busy}
-                className="px-4 rounded-xl bg-brand text-white text-sm font-bold disabled:opacity-40">
+                className="px-4 rounded-xl bg-brand text-white text-[15px] font-bold disabled:opacity-40">
                 코드로 찾기
               </button>
             </div>
-            <p className="text-[11.5px] text-gray-500 mb-4 -mt-2">대행사가 매장을 대신 등록했다면 이 코드를 받으셨을 거예요. 없으면 아래에서 사업자번호로 찾아주세요.</p>
-            <label className="block text-[13px] font-semibold mb-1.5 text-gray-900">사업자등록번호</label>
+            <p className="text-[12px] text-gray-500 mb-4 -mt-2">대행사가 매장을 대신 등록했다면 이 코드를 받으셨을 거예요. 없으면 아래에서 사업자번호로 찾아주세요.</p>
+            <label className="block text-[13px] font-semibold mb-2 text-gray-900">사업자등록번호</label>
             <div className="flex gap-2">
               <input
                 value={bno} onChange={(e) => setBno(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') void lookup() }}
                 inputMode="numeric" placeholder="0000000000 (숫자 10자리)"
-                className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900"
+                className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-[15px] text-gray-900"
               />
               <button onClick={() => void lookup()} disabled={busy}
-                className="px-4 rounded-xl bg-brand text-white text-sm font-bold disabled:opacity-40">
+                className="px-4 rounded-xl bg-brand text-white text-[15px] font-bold disabled:opacity-40">
                 <Search className="w-4 h-4" />
               </button>
             </div>
@@ -265,11 +265,11 @@ export default function StoreOwnerClaimPage() {
                   <li key={s.seller_id}>
                     <button onClick={() => setPicked(s.seller_id)}
                       className="w-full text-left border border-gray-200 rounded-xl p-3 hover:bg-gray-50">
-                      <p className="text-sm font-semibold text-gray-900">
+                      <p className="text-[15px] font-semibold text-gray-900">
                         <Store className="w-4 h-4 inline mr-1 text-gray-400" />
                         {s.business_name || s.name || `매장 ${s.seller_id}`}
                       </p>
-                      {s.address && <p className="text-[12px] text-gray-500 mt-0.5">{s.address}</p>}
+                      {s.address && <p className="text-[12px] text-gray-500 mt-1">{s.address}</p>}
                       <p className="text-[12px] mt-1">
                         {s.is_mine
                           ? <span className="text-green-700">이미 사장님 매장입니다</span>
@@ -289,10 +289,10 @@ export default function StoreOwnerClaimPage() {
         {picked && (
           <section className="bg-white rounded-2xl p-4 space-y-4">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-semibold text-gray-900">
+              <p className="text-[15px] font-semibold text-gray-900">
                 {pickedStore?.business_name || pickedStore?.name || `매장 #${picked}`}
               </p>
-              <button onClick={() => { setPicked(null); setCertUrl('') }} className="text-[12.5px] text-gray-500">
+              <button onClick={() => { setPicked(null); setCertUrl('') }} className="text-[12px] text-gray-500">
                 다시 찾기
               </button>
             </div>
@@ -300,23 +300,23 @@ export default function StoreOwnerClaimPage() {
             <BusinessCertUpload value={certUrl} onChange={setCertUrl} required />
 
             <div>
-              <label className="block text-[13px] font-semibold mb-1.5 text-gray-900">연락처 (선택)</label>
+              <label className="block text-[13px] font-semibold mb-2 text-gray-900">연락처 (선택)</label>
               <input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel"
                 placeholder="010-0000-0000"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900" />
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-[15px] text-gray-900" />
             </div>
             <div>
-              <label className="block text-[13px] font-semibold mb-1.5 text-gray-900">남길 말 (선택)</label>
+              <label className="block text-[13px] font-semibold mb-2 text-gray-900">남길 말 (선택)</label>
               <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} maxLength={500}
                 placeholder="예: 제가 이 가게 대표입니다. 대행사와 계약이 끝났어요."
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-900" />
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-[15px] text-gray-900" />
             </div>
 
             <button onClick={() => void submit()} disabled={busy || !certUrl}
-              className="w-full py-3 rounded-xl bg-brand hover:bg-brand-dark text-white text-sm font-bold disabled:opacity-40 transition">
+              className="w-full py-3 rounded-xl bg-brand hover:bg-brand-dark text-white text-[15px] font-bold disabled:opacity-40 transition">
               {busy ? '접수 중…' : '소유권 신청하기'}
             </button>
-            <p className="text-[11.5px] text-gray-400 leading-relaxed">
+            <p className="text-[12px] text-gray-400 leading-relaxed">
               신청하면 유어딜이 등록증을 확인한 뒤 소유자로 등록해 드립니다. 사업자번호가 같다는 것만으로는
               바로 넘겨드릴 수 없어요 — 번호는 누구나 볼 수 있기 때문이에요.
             </p>
@@ -326,16 +326,16 @@ export default function StoreOwnerClaimPage() {
         {/* ── ③ 내 신청 내역 ─────────────────────────────── */}
         {mine.length > 0 && (
           <section className="bg-white rounded-2xl p-4">
-            <p className="text-sm font-semibold text-gray-900 mb-2">내 신청 내역</p>
+            <p className="text-[15px] font-semibold text-gray-900 mb-2">내 신청 내역</p>
             <ul className="divide-y divide-gray-100">
               {mine.map((m) => (
-                <li key={m.id} className="py-2.5">
+                <li key={m.id} className="py-2">
                   <p className="text-[13px] text-gray-900">
                     {m.business_name || m.store_name || `매장 ${m.seller_id}`}
                     <span className="ml-2 text-[12px] text-gray-500">{STATUS_LABEL[m.status] || m.status}</span>
                   </p>
-                  {m.decision_reason && <p className="text-[12px] text-gray-500 mt-0.5">{m.decision_reason}</p>}
-                  <p className="text-[11.5px] text-gray-400 mt-0.5">
+                  {m.decision_reason && <p className="text-[12px] text-gray-500 mt-1">{m.decision_reason}</p>}
+                  <p className="text-[12px] text-gray-400 mt-1">
                     {m.created_at ? formatKSTDate(m.created_at) : ''}
                     {m.decided_at ? ` · 처리 ${formatKSTDate(m.decided_at)}` : ''}
                   </p>

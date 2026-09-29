@@ -36,7 +36,7 @@ export default [
   {
     name: '[섬] 주소 줄이 다시 비활성 색(gray-400)으로 돌아간다',
     file: CARD,
-    find: '<p className="text-[11px] text-gray-500 mt-1 flex items-center gap-0.5 truncate">',
+    find: '<p className="text-[12px] text-gray-500 mt-1 flex items-center gap-1 truncate">',
     replace: '<p className="text-[11px] text-gray-400 mt-1 flex items-center gap-0.5 truncate">',
     test: TEST,
     why: 'gray-400 은 `--ink-faint`(비활성·플레이스홀더)다 — 흰 카드 위 3.65:1 로 AA 미달.',
@@ -44,7 +44,7 @@ export default [
   {
     name: '[섬] 쿠폰가 라벨이 다시 비활성 색으로 돌아간다',
     file: CARD,
-    find: '<span className="text-[10px] text-gray-500">쿠폰가</span>',
+    find: '<span className="text-[12px] text-gray-500">쿠폰가</span>',
     replace: '<span className="text-[10px] text-gray-400">쿠폰가</span>',
     test: TEST,
     why: '10px 라 더 나쁘다 — 3.65:1.',
@@ -52,7 +52,7 @@ export default [
   {
     name: '[섬] 정가 취소선이 다시 비활성 색으로 돌아간다',
     file: CARD,
-    find: '<span className="text-[11px] text-gray-500 line-through">',
+    find: '<span className="text-[12px] text-gray-500 line-through">',
     replace: '<span className="text-[11px] text-gray-400 line-through">',
     test: TEST,
     why: '취소선이어도 사람이 읽는 숫자다.',

@@ -84,10 +84,10 @@ export default function DealBalanceCard({
         type="button"
         onClick={onRetry}
         disabled={!onRetry}
-        className={`w-full flex items-center justify-between gap-2 rounded-xl bg-surface shadow-lift active:scale-[0.99] transition-transform disabled:active:scale-100 ${compact ? 'px-3 py-2.5' : 'h-11 px-3.5'}`}
+        className={`w-full flex items-center justify-between gap-2 rounded-xl bg-surface shadow-lift active:scale-[0.99] transition-transform disabled:active:scale-100 ${compact ? 'px-3 py-2' : 'h-11 px-4'}`}
       >
-        <span className="text-[12.5px] text-gray-600 dark:text-gray-300 truncate text-left">잔액을 불러오지 못했어요</span>
-        {onRetry && <span className="shrink-0 text-[11.5px] font-bold text-brand-text">다시 시도</span>}
+        <span className="text-[12px] text-gray-600 dark:text-gray-300 truncate text-left">잔액을 불러오지 못했어요</span>
+        {onRetry && <span className="shrink-0 text-[12px] font-bold text-brand-text">다시 시도</span>}
       </button>
     )
   }
@@ -100,10 +100,10 @@ export default function DealBalanceCard({
       <button
         type="button"
         onClick={() => navigate(EARN_PATH)}
-        className={`w-full flex items-center justify-between gap-2 rounded-xl bg-surface shadow-lift active:scale-[0.99] transition-transform ${compact ? 'px-3 py-2.5' : 'h-11 px-3.5'}`}
+        className={`w-full flex items-center justify-between gap-2 rounded-xl bg-surface shadow-lift active:scale-[0.99] transition-transform ${compact ? 'px-3 py-2' : 'h-11 px-4'}`}
       >
-        <span className="text-[12.5px] text-gray-600 dark:text-gray-300 truncate text-left">딜을 모으면 더 싸게 살 수 있어요</span>
-        <span className="shrink-0 inline-flex items-center gap-0.5 text-[11.5px] font-bold text-brand-text">
+        <span className="text-[12px] text-gray-600 dark:text-gray-300 truncate text-left">딜을 모으면 더 싸게 살 수 있어요</span>
+        <span className="shrink-0 inline-flex items-center gap-1 text-[12px] font-bold text-brand-text">
           모으는 방법 <ArrowRight className="w-3 h-3" />
         </span>
       </button>
@@ -113,18 +113,18 @@ export default function DealBalanceCard({
   return (
     <div className="w-full rounded-2xl bg-surface shadow-lift overflow-hidden" aria-busy={awaiting || undefined}>
       {/* 위층 — 라벨과 금액만. 버튼을 두지 않는다(그게 A3 의 전부다). */}
-      <div className={compact ? 'px-4 pt-4 pb-3.5' : 'px-5 pt-5 pb-4'}>
-        <p className={`text-gray-500 dark:text-gray-400 tracking-wide ${compact ? 'text-[11px] mb-1.5' : 'text-[12px] mb-2'}`}>내 딜 잔액</p>
-        <div className="flex items-baseline gap-1.5">
+      <div className={compact ? 'px-4 pt-4 pb-4' : 'px-5 pt-5 pb-4'}>
+        <p className={`text-gray-500 dark:text-gray-400 tracking-wide ${compact ? 'text-[12px] mb-2' : 'text-[12px] mb-2'}`}>내 딜 잔액</p>
+        <div className="flex items-baseline gap-2">
           <span className={`font-extrabold text-gray-900 dark:text-white leading-none tracking-tight tabular-nums ${compact ? 'text-[30px]' : 'text-[42px]'}`}>
             {/* ⏳ 숫자를 모를 땐 빈 자리를 둔다 — 0 을 적으면 거짓말이고, 비워 두면 높이만 잡힌다. */}
             {awaiting ? <span className="inline-block w-[2.2em] h-[0.72em] rounded bg-wash align-baseline" aria-hidden="true" /> : formatNumber(balance)}
           </span>
-          <span className={`font-bold text-gray-400 dark:text-gray-500 ${compact ? 'text-[15px]' : 'text-[18px]'}`}>딜</span>
+          <span className={`font-bold text-gray-400 dark:text-gray-500 ${compact ? 'text-[15px]' : 'text-[17px]'}`}>딜</span>
         </div>
         {/* 글자 한 줄. 버튼이 아니다 — 위층은 금액 하나가 주인공이다. */}
         {!awaiting && note && (
-          <p className={`text-gray-500 dark:text-gray-400 ${compact ? 'text-[10.5px] mt-1.5' : 'text-[11.5px] mt-2'}`}>{note}</p>
+          <p className={`text-gray-500 dark:text-gray-400 ${compact ? 'text-[12px] mt-2' : 'text-[12px] mt-2'}`}>{note}</p>
         )}
       </div>
 
@@ -134,7 +134,7 @@ export default function DealBalanceCard({
         <button
           type="button"
           onClick={() => navigate(EARN_PATH)}
-          className="flex-1 py-3.5 text-[12.5px] font-bold text-brand-text active:opacity-60 transition-opacity"
+          className="flex-1 py-4 text-[12px] font-bold text-brand-text active:opacity-60 transition-opacity"
         >
           딜 모으기
         </button>
@@ -142,7 +142,7 @@ export default function DealBalanceCard({
         <button
           type="button"
           onClick={() => navigate(HISTORY_PATH)}
-          className="flex-1 py-3.5 text-[12.5px] font-bold text-gray-700 dark:text-gray-200 active:opacity-60 transition-opacity"
+          className="flex-1 py-4 text-[12px] font-bold text-gray-700 dark:text-gray-200 active:opacity-60 transition-opacity"
         >
           이용내역
         </button>

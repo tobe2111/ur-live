@@ -28,7 +28,7 @@ export default function LanguageSection({ className = '' }: { className?: string
   return (
     <div className={className}>
       <div className="bg-surface rounded-2xl border border-gray-100 dark:border-[#2C2F35] p-4">
-        <p className="text-[13px] font-bold text-gray-900 dark:text-white flex items-center gap-1.5 mb-3">
+        <p className="text-[13px] font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-3">
           <Globe className="w-4 h-4 text-gray-400 dark:text-gray-500" />
           {t('accountSettings.language', { defaultValue: '언어' })}
         </p>

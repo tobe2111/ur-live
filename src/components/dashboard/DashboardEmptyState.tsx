@@ -23,7 +23,7 @@ export default function DashboardEmptyState({ icon, title, description, action }
         </div>
       )}
       <h3 className="text-[15px] font-bold text-gray-900">{title}</h3>
-      {description && <p className="mt-1.5 max-w-sm text-[13px] leading-relaxed text-gray-500">{description}</p>}
+      {description && <p className="mt-2 max-w-sm text-[13px] leading-relaxed text-gray-500">{description}</p>}
       {action && <div className="mt-5">{action}</div>}
     </div>
   )

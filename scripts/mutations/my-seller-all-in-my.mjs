@@ -284,7 +284,7 @@ export default [
   {
     name: '📱 원장 표가 폰에 그대로 돌아온다',
     file: LEDGER,
-    find: '<table className="hidden lg:table w-full text-xs">',
+    find: '<table className="hidden lg:table w-full text-[12px]">',
     replace: '<table className="w-full text-xs">',
     test: TEST,
     why: "실측 행 81px + '정산 기간'·'TX ID' 가 여러 줄로 감긴다. 표=PC / 카드=폰 은 이 레포가 이미 쓰는 방식이다.",

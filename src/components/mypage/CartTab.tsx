@@ -30,15 +30,15 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
           <div className="w-20 h-20 bg-gray-50 dark:bg-[#1D1F29] rounded-full flex items-center justify-center mx-auto mb-5">
             <ShoppingCart className="h-10 w-10 text-gray-400 dark:text-gray-500" strokeWidth={1.5} />
           </div>
-          <h2 className="text-[18px] font-bold text-gray-900 dark:text-white mb-2">
+          <h2 className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">
             {t('cart.emptyTitle', { defaultValue: '장바구니가 비어있습니다' })}
           </h2>
-          <p className="text-[14px] text-gray-500 dark:text-gray-400 mb-6">
+          <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-6">
             {t('cart.emptyMsg', { defaultValue: '마음에 드는 상품을 담아보세요' })}
           </p>
           <Link
             to="/"
-            className="inline-flex items-center justify-center px-6 py-3 bg-brand text-white text-[14px] font-semibold rounded-full hover:bg-brand-dark active:bg-gray-700 transition-colors"
+            className="inline-flex items-center justify-center px-6 py-3 bg-brand text-white text-[15px] font-semibold rounded-full hover:bg-brand-dark active:bg-gray-700 transition-colors"
           >
             {t('cart.goLive', { defaultValue: '둘러보러 가기' })}
           </Link>
@@ -61,9 +61,9 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
                   {t('cart.option', { value: item.option_value, defaultValue: '옵션 · {{value}}' })}
                 </p>
               )}
-              <p className="text-[18px] font-bold text-gray-900 dark:text-white mt-2">
+              <p className="text-[17px] font-bold text-gray-900 dark:text-white mt-2">
                 {formatNumber(item.price_snapshot * item.quantity)}
-                <span className="text-[14px] font-semibold text-gray-600 dark:text-gray-300 ml-0.5">원</span>
+                <span className="text-[15px] font-semibold text-gray-600 dark:text-gray-300 ml-0.5">원</span>
               </p>
             </div>
 
@@ -77,7 +77,7 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
                 >
                   <Minus className="h-3.5 w-3.5" />
                 </button>
-                <span className="text-[14px] font-semibold text-gray-900 dark:text-white w-10 text-center select-none">
+                <span className="text-[15px] font-semibold text-gray-900 dark:text-white w-10 text-center select-none">
                   {item.quantity}
                 </span>
                 <button
@@ -104,13 +104,13 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
         <div className="space-y-3 pb-4 border-b border-gray-100 dark:border-[#2C2F35]">
           <div className="flex justify-between">
             <span className="text-[13px] text-gray-500 dark:text-gray-400">{t('cart.itemAmount', { defaultValue: '상품 금액' })}</span>
-            <span className="text-[14px] font-semibold text-gray-900 dark:text-white">
+            <span className="text-[15px] font-semibold text-gray-900 dark:text-white">
               {formatNumber(totalAmount)}원
             </span>
           </div>
           <div className="flex justify-between">
             <span className="text-[13px] text-gray-500 dark:text-gray-400">{t('cart.shipping', { defaultValue: '배송비' })}</span>
-            <span className="text-[14px] font-semibold text-gray-900 dark:text-white">{t('cart.free', { defaultValue: '무료' })}</span>
+            <span className="text-[15px] font-semibold text-gray-900 dark:text-white">{t('cart.free', { defaultValue: '무료' })}</span>
           </div>
         </div>
 
@@ -120,7 +120,7 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
             <span className="text-[24px] font-extrabold text-brand-text">
               {formatNumber(totalAmount)}
             </span>
-            <span className="text-[14px] font-semibold text-gray-600 dark:text-gray-300 ml-1">원</span>
+            <span className="text-[15px] font-semibold text-gray-600 dark:text-gray-300 ml-1">원</span>
           </div>
         </div>
       </div>
@@ -131,7 +131,7 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
       >
         <button
           onClick={onCheckout}
-          className="w-full py-3.5 bg-brand text-white text-[15px] font-bold rounded-full hover:bg-brand-dark active:bg-gray-700 transition-colors shadow-sm"
+          className="w-full py-4 bg-brand text-white text-[15px] font-bold rounded-full hover:bg-brand-dark active:bg-gray-700 transition-colors shadow-sm"
         >
           {t('cart.orderBtn', { count: cartItems.length, amount: formatNumber(totalAmount), defaultValue: '{{count}}개 주문하기 · {{amount}}원' })}
         </button>

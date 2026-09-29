@@ -57,12 +57,12 @@ export default function MallOriginBanner({ className = '' }: { className?: strin
   //   가게가 정한 색이 있으면 인라인 style 이 이긴다.
 
   return (
-    <div className={`flex items-center gap-3 rounded-xl bg-surface shadow-lift px-3.5 py-3 ${className}`}>
+    <div className={`flex items-center gap-3 rounded-xl bg-surface shadow-lift px-4 py-3 ${className}`}>
       {brand.logoUrl ? (
         <img src={brand.logoUrl} alt="" className="h-9 w-9 rounded-lg object-cover" width={36} height={36} />
       ) : (
         <span
-          className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-800 text-sm font-bold text-white"
+          className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-800 text-[15px] font-bold text-white"
           style={brand.colorLight ? { backgroundColor: brand.colorLight } : undefined}
           aria-hidden="true"
         >
@@ -70,7 +70,7 @@ export default function MallOriginBanner({ className = '' }: { className?: strin
         </span>
       )}
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[14px] font-bold text-gray-900 dark:text-white">{brand.name}</p>
+        <p className="truncate text-[15px] font-bold text-gray-900 dark:text-white">{brand.name}</p>
         <p className="text-[12px] text-gray-500 dark:text-gray-400">이 가게의 공동구매</p>
       </div>
       <button

@@ -113,25 +113,25 @@ export default function PaymentFailPage() {
           <div className="space-y-4 mb-8">
             {!isUserCancel && (
               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-xl p-4">
-                <h3 className="text-sm font-semibold text-red-900 dark:text-red-300 mb-2">{t('paymentFail.errorLabel')}</h3>
-                <p className="text-sm text-red-800 dark:text-red-400">{getErrorMessage()}</p>
+                <h3 className="text-[15px] font-semibold text-red-900 dark:text-red-300 mb-2">{t('paymentFail.errorLabel')}</h3>
+                <p className="text-[15px] text-red-800 dark:text-red-400">{getErrorMessage()}</p>
               </div>
             )}
 
             {/* 해결 방법 — 취소도 노출 (재시도 안내) */}
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/40 rounded-xl p-4">
-              <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-2">
+              <h3 className="text-[15px] font-semibold text-blue-900 dark:text-blue-300 mb-2">
                 {isUserCancel ? '다음 단계' : t('paymentFail.solutionLabel')}
               </h3>
-              <p className="text-sm text-blue-800 dark:text-blue-400">{getSolution()}</p>
+              <p className="text-[15px] text-blue-800 dark:text-blue-400">{getSolution()}</p>
             </div>
 
             {/* 주문번호 (있는 경우) */}
             {orderId && (
               <div className="bg-[#f5f5f7] dark:bg-[#1D1F29] rounded-xl p-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-[#6e6e73] dark:text-gray-400">{t('paymentFail.orderNumberLabel')}</span>
-                  <span className="text-sm font-semibold text-[#1d1d1f] dark:text-white tabular-nums">
+                  <span className="text-[15px] text-[#6e6e73] dark:text-gray-400">{t('paymentFail.orderNumberLabel')}</span>
+                  <span className="text-[15px] font-semibold text-[#1d1d1f] dark:text-white tabular-nums">
                     {orderId}
                   </span>
                 </div>
@@ -159,13 +159,13 @@ export default function PaymentFailPage() {
 
           {/* 고객센터 정보 */}
           <div className="text-center pt-6 border-t border-[#d2d2d7] dark:border-[#2C2F35]">
-            <p className="text-xs text-[#86868b] dark:text-gray-500 mb-2">
+            <p className="text-[12px] text-[#86868b] dark:text-gray-500 mb-2">
               {t('paymentFail.helpHeader')}
             </p>
-            <p className="text-sm font-semibold text-[#1d1d1f] dark:text-white mb-1">
+            <p className="text-[15px] font-semibold text-[#1d1d1f] dark:text-white mb-1">
               {t('paymentFail.csTitle')}: {t('paymentFail.csChannel', { defaultValue: '카카오톡 채널 문의' })}
             </p>
-            <p className="text-xs text-[#86868b] dark:text-gray-500">
+            <p className="text-[12px] text-[#86868b] dark:text-gray-500">
               {t('paymentFail.csHours')}
             </p>
           </div>
@@ -173,12 +173,12 @@ export default function PaymentFailPage() {
           {/* 디버그 정보 (개발 환경에서만 표시) */}
           {import.meta.env.DEV && code && (
             <div className="mt-6 p-4 bg-gray-100 dark:bg-[#1D1F29] rounded-lg">
-              <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">디버그 정보 (개발 환경)</p>
-              <p className="text-xs tabular-nums text-gray-800 dark:text-gray-300">
+              <p className="text-[12px] text-gray-600 dark:text-gray-400 mb-1">디버그 정보 (개발 환경)</p>
+              <p className="text-[12px] tabular-nums text-gray-800 dark:text-gray-300">
                 Code: {code}
               </p>
               {message && (
-                <p className="text-xs tabular-nums text-gray-800 dark:text-gray-300">
+                <p className="text-[12px] tabular-nums text-gray-800 dark:text-gray-300">
                   Message: {message}
                 </p>
               )}

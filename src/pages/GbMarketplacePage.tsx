@@ -49,7 +49,7 @@ export default function GbMarketplacePage() {
       <div className="sticky top-0 z-30 bg-white/90 dark:bg-[#11141C]/90 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-wide flex items-center gap-3 px-4 py-3">
           <button onClick={() => navigate(-1)} aria-label="뒤로" className="text-gray-900 dark:text-white"><ChevronLeft className="w-5 h-5" /></button>
-          <h1 className="text-[16px] font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+          <h1 className="text-[17px] font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <Megaphone className="w-4 h-4 text-emerald-500" /> 공구 마켓
           </h1>
         </div>
@@ -71,7 +71,7 @@ export default function GbMarketplacePage() {
           /* 🚑 2026-07-10 로더 통일: Loader2 → BrandLoader */
           <BrandLoader />
         ) : deals.length === 0 ? (
-          <div className="text-center py-16 text-gray-400 dark:text-gray-500 text-sm">
+          <div className="text-center py-16 text-gray-400 dark:text-gray-500 text-[15px]">
             {GB_ENGINE_ENABLED ? '지금 진행 중인 공구가 없어요.' : '공구 마켓 준비 중이에요.'}
           </div>
         ) : (
@@ -89,20 +89,20 @@ export default function GbMarketplacePage() {
                   discountPct={d.discount_pct > 0 ? d.discount_pct : 0}
                   className="!shadow-none !rounded-none"
                   meta={
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className="px-1.5 py-0.5 rounded bg-brand text-white text-[10px] font-bold">소개비 {d.promo_pct}%</span>
-                      {d.link_only && <span className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300 text-[10px] font-semibold">링크전용</span>}
+                    <span className="inline-flex items-center gap-2">
+                      <span className="px-2 py-1 rounded bg-brand text-white text-[12px] font-bold">소개비 {d.promo_pct}%</span>
+                      {d.link_only && <span className="px-2 py-1 rounded bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300 text-[12px] font-semibold">링크전용</span>}
                     </span>
                   }
                 />
                 <div className="px-3 pb-3">
-                  <p className="text-[11px] text-gray-600 dark:text-gray-300 mb-2 px-0.5">
+                  <p className="text-[12px] text-gray-600 dark:text-gray-300 mb-2 px-1">
                     건당 내 소개비 <strong className="text-gray-900 dark:text-white">{formatNumber(d.per_unit_commission)}원</strong> · 100건 팔면 약 <strong className="text-gray-900 dark:text-white">{formatNumber(d.per_unit_commission * 100)}원</strong>
                   </p>
                   <button
                     onClick={() => togglePin(d.product_id, d.gb_price)}
                     disabled={isPinning}
-                    className="w-full py-2.5 rounded-xl bg-brand hover:bg-brand-dark text-white text-[13px] font-bold flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    className="w-full py-2 rounded-xl bg-brand hover:bg-brand-dark text-white text-[13px] font-bold flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     <Plus className="w-4 h-4" /> 내 유어샵에 담기
                   </button>

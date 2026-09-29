@@ -250,7 +250,7 @@ export default function StayDateGuestPicker({
                         <span className={sold && !past ? 'line-through opacity-50' : undefined}>{parseIso(day).getDate()}</span>
                         {/* 요금은 **서버가 준 날에만** 쓴다 — 없는 값을 지어내지 않는다. */}
                         {price && !past ? (
-                          <span className={`text-[10px] leading-none mt-0.5 ${isIn || isOut ? 'opacity-80' : 'text-gray-400 dark:text-gray-500'}`}>{fmtMan(price)}</span>
+                          <span className={`text-[12px] leading-none mt-1 ${isIn || isOut ? 'opacity-80' : 'text-gray-400 dark:text-gray-500'}`}>{fmtMan(price)}</span>
                         ) : null}
                       </button>
                     )
@@ -261,11 +261,11 @@ export default function StayDateGuestPicker({
           </div>
 
           <div className="shrink-0 flex items-center justify-between gap-3 mt-3 pt-3 border-t border-gray-100 dark:border-[#2C2F35]">
-            <span className="text-[12.5px] text-gray-500 dark:text-gray-400">
+            <span className="text-[12px] text-gray-500 dark:text-gray-400">
               {fmtTrigger(draftIn)} ~ {fmtTrigger(draftOut)} · <b className="text-gray-900 dark:text-white">{nights}박</b>
             </span>
             <button type="button" onClick={() => { onApply({ checkIn: draftIn, checkOut: draftOut, guests: totalGuests }); setOpen('none') }}
-              className="px-6 py-2.5 rounded-xl bg-brand hover:bg-brand-dark text-white text-[14px] font-bold transition-colors">
+              className="px-6 py-2 rounded-xl bg-brand hover:bg-brand-dark text-white text-[15px] font-bold transition-colors">
               적용하기
             </button>
           </div>
@@ -279,27 +279,27 @@ export default function StayDateGuestPicker({
           {overBase && (
             <div className="rounded-xl bg-gray-50 dark:bg-white/[0.05] p-3 mb-3">
               <p className="text-[13px] font-bold text-gray-900 dark:text-white">기준인원 초과 시 추가요금이 발생할 수 있어요.</p>
-              <p className="mt-1 text-[12.5px] text-gray-500 dark:text-gray-400">숙소마다 아동 입실가능 여부와 추가요금이 달라요. 이용 안내 및 예약 공지를 확인해 주세요.</p>
+              <p className="mt-1 text-[12px] text-gray-500 dark:text-gray-400">숙소마다 아동 입실가능 여부와 추가요금이 달라요. 이용 안내 및 예약 공지를 확인해 주세요.</p>
             </div>
           )}
           {([
             { label: '성인', v: adults, set: setAdults, min: 1 },
             { label: '아동', v: kids, set: setKids, min: 0 },
           ] as const).map(({ label, v, set, min }) => (
-            <div key={label} className="flex items-center justify-between py-2.5">
-              <span className="text-[14px] font-bold text-gray-900 dark:text-white">{label}</span>
+            <div key={label} className="flex items-center justify-between py-2">
+              <span className="text-[15px] font-bold text-gray-900 dark:text-white">{label}</span>
               <span className="flex items-center gap-3">
                 <button type="button" onClick={() => set(Math.max(min, v - 1))} disabled={v <= min} aria-label={`${label} 감소`}
-                  className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/[0.08] text-gray-700 dark:text-gray-200 text-[18px] leading-none disabled:opacity-40">−</button>
+                  className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/[0.08] text-gray-700 dark:text-gray-200 text-[17px] leading-none disabled:opacity-40">−</button>
                 <span className="w-6 text-center text-[15px] font-extrabold text-gray-900 dark:text-white" aria-live="polite">{v}</span>
                 <button type="button" onClick={() => set(Math.min(maxGuests, v + 1))} disabled={adults + kids >= maxGuests} aria-label={`${label} 증가`}
-                  className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/[0.08] text-gray-700 dark:text-gray-200 text-[18px] leading-none disabled:opacity-40">+</button>
+                  className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/[0.08] text-gray-700 dark:text-gray-200 text-[17px] leading-none disabled:opacity-40">+</button>
               </span>
             </div>
           ))}
           <div className="flex justify-end mt-2">
             <button type="button" onClick={() => { onApply({ checkIn, checkOut, guests: totalGuests }); setOpen('none') }}
-              className="px-6 py-2.5 rounded-xl bg-brand hover:bg-brand-dark text-white text-[14px] font-bold transition-colors">
+              className="px-6 py-2 rounded-xl bg-brand hover:bg-brand-dark text-white text-[15px] font-bold transition-colors">
               적용하기
             </button>
           </div>

@@ -63,7 +63,7 @@ export default memo(function PinRow({ pin, handle, order, prefetch }: {
             />
           )}
           {/* 사진 위 유일한 표식이라 테마와 무관하게 흰 원이어야 어떤 사진에서도 읽힌다. */}
-          <span className="absolute top-1 left-1 z-10 w-[18px] h-[18px] rounded-full bg-white text-[#16181C] text-[10px] font-black tabular-nums flex items-center justify-center shadow-lift pointer-events-none">  {/* light-fixed: 사진 위 */}
+          <span className="absolute top-1 left-1 z-10 w-[18px] h-[18px] rounded-full bg-white text-[#16181C] text-[12px] font-black tabular-nums flex items-center justify-center shadow-lift pointer-events-none">  {/* light-fixed: 사진 위 */}
             {order}
           </span>
         </>

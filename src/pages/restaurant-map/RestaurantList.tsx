@@ -40,7 +40,7 @@ export default function RestaurantList({ loading, filtered, selected, userLoc, o
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="flex gap-3 py-4">
             <div className="w-[88px] h-[88px] rounded-lg bg-gray-100 dark:bg-[#1D1F29] animate-pulse shrink-0" />
-            <div className="flex-1 min-w-0 flex flex-col justify-center gap-1.5">
+            <div className="flex-1 min-w-0 flex flex-col justify-center gap-2">
               <div className="h-3.5 w-2/3 rounded bg-gray-100 dark:bg-[#1D1F29] animate-pulse" />
               <div className="h-3 w-4/5 rounded bg-gray-100 dark:bg-[#1D1F29] animate-pulse" />
               <div className="h-4 w-1/3 rounded bg-gray-100 dark:bg-[#1D1F29] animate-pulse mt-1" />
@@ -56,7 +56,7 @@ export default function RestaurantList({ loading, filtered, selected, userLoc, o
       <div className="text-center py-16">
         <MapPin className="w-14 h-14 text-gray-200 dark:text-gray-700 mx-auto mb-4" />
         <p className="text-gray-900 dark:text-white font-bold">{MAP_EMPTY_MSG[voucherType] || MAP_EMPTY_MSG.all}</p>
-        <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">다른 지역이나 검색어를 시도해보세요</p>
+        <p className="text-[15px] text-gray-400 dark:text-gray-500 mt-1">다른 지역이나 검색어를 시도해보세요</p>
       </div>
     )
   }

@@ -18,7 +18,7 @@ export default function PrivacyPolicyPage() {
           <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="text-gray-900 dark:text-white">
             <ChevronLeft className="w-6 h-6" />
           </button>
-          <h1 className="text-[16px] font-bold text-gray-900 dark:text-white">
+          <h1 className="text-[17px] font-bold text-gray-900 dark:text-white">
             {isKR ? '개인정보 처리방침' : 'Privacy Policy'}
           </h1>
           <div className="w-6" />
@@ -27,7 +27,7 @@ export default function PrivacyPolicyPage() {
 
       {/* Content */}
       <div className="ur-content-medium px-5 pt-6">
-        <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-6">
+        <p className="text-[12px] text-gray-400 dark:text-gray-500 mb-6">
           {isKR ? '시행일: 2024년 1월 15일 | 유어딜 (리스터코퍼레이션)' : 'Effective: January 15, 2024 | YourDeal (Lister Corporation)'}
         </p>
 

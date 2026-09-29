@@ -177,7 +177,7 @@ export default function SelectedDealCard({
         <button
           onClick={onClose}
           aria-label="선택 해제"
-          className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-gray-100/90 dark:bg-[#1D1F29]/90 text-gray-500 dark:text-gray-400"
+          className="absolute top-2 right-2 z-10 p-2 rounded-full bg-gray-100/90 dark:bg-[#1D1F29]/90 text-gray-500 dark:text-gray-400"
         >
           <X className="w-3.5 h-3.5" />
         </button>
@@ -188,17 +188,17 @@ export default function SelectedDealCard({
           ) : (
             <div className="w-[92px] h-[92px] rounded-xl bg-gray-100 dark:bg-[#1D1F29] flex items-center justify-center shrink-0"><CatIcon cat={selected.category} className="w-7 h-7 text-gray-400" /></div>
           )}
-          <div className="flex-1 min-w-0 pr-6 py-0.5">
+          <div className="flex-1 min-w-0 pr-6 py-1">
             {/* 🎨 2026-07-02 (대표 — UI 우선순위): 이용권명(name)이 제목, 매장명은 위치 줄로 강등. */}
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
               <p className="font-bold text-gray-900 dark:text-white text-[15px] truncate">{stripStorePrefix(selected.name, selected.restaurant_name) || selected.restaurant_name}</p>
               {selected.rating > 0 && (
-                <span className="flex items-center gap-0.5 text-[11px] font-semibold text-amber-500 shrink-0">
+                <span className="flex items-center gap-1 text-[12px] font-semibold text-amber-500 shrink-0">
                   <Star className="w-3 h-3" fill="currentColor" />{selected.rating.toFixed(1)}
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-gray-500 mt-1 flex items-center gap-0.5 truncate">
+            <p className="text-[12px] text-gray-500 mt-1 flex items-center gap-1 truncate">
               <MapPin className="w-3 h-3 shrink-0" />
               {selected.name && selected.restaurant_name && (
                 <span className="shrink-0 font-semibold text-gray-500 dark:text-gray-400">{selected.restaurant_name} ·</span>
@@ -206,22 +206,22 @@ export default function SelectedDealCard({
               <span className="truncate">{selected.restaurant_address || '주소 미등록'}</span>
               {dist != null && nearKmLabel(dist) && <span className="ml-1 font-semibold text-gray-600 dark:text-gray-300 shrink-0">· {nearKmLabel(dist)}</span>}
             </p>
-            <div className="flex items-baseline gap-1.5 mt-2">
+            <div className="flex items-baseline gap-2 mt-2">
               {discount > 0 && <span className="text-[13px] font-extrabold text-sale dark:text-[#4D8DF5] shrink-0">{discount}%</span>}
               {selected.original_price > selected.price && (
-                <span className="text-[11px] text-gray-500 line-through">{formatNumber(selected.original_price)}원</span>
+                <span className="text-[12px] text-gray-500 line-through">{formatNumber(selected.original_price)}원</span>
               )}
             </div>
             <div className="flex items-baseline gap-1">
-              <span className="text-[10px] text-gray-500">쿠폰가</span>
-              <span className="text-[18px] font-extrabold text-gray-900 dark:text-white">{formatNumber(selected.price)}원~</span>
+              <span className="text-[12px] text-gray-500">쿠폰가</span>
+              <span className="text-[17px] font-extrabold text-gray-900 dark:text-white">{formatNumber(selected.price)}원~</span>
             </div>
           </div>
         </button>
 
         {/* 위치 인디케이터 (n / total) */}
         {total > 1 && (
-          <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 text-[10px] font-semibold text-gray-500 bg-white/80 px-1.5 rounded-full">
+          <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 text-[12px] font-semibold text-gray-500 bg-white/80 px-2 rounded-full">
             {position} / {total}
           </div>
         )}

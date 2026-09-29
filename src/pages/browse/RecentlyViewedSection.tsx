@@ -27,11 +27,11 @@ export default function RecentlyViewedSection() {
 
   return (
     <div className="mb-5">
-      <div className="flex items-center gap-1.5 mb-3">
+      <div className="flex items-center gap-2 mb-3">
         <Clock className="w-4 h-4 text-gray-400 dark:text-gray-500" />
         <h2 className="text-[13px] font-bold text-gray-900 dark:text-white">최근 본 상품</h2>
       </div>
-      <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 pt-0.5 px-0.5">
+      <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 pt-1 px-1">
         {items.map(p => (
           <DealMiniCard
             key={p.id}

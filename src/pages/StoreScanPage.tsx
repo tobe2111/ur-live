@@ -63,12 +63,12 @@ export default function StoreScanPage() {
             navigate(-1)
           }}
           aria-label={backToMy ? '마이로 돌아가기' : '뒤로'}
-          className="flex items-center gap-0.5 pl-1.5 pr-2.5 py-1.5 rounded-full active:bg-gray-100 dark:active:bg-[#1D1F29]"
+          className="flex items-center gap-1 pl-2 pr-2 py-2 rounded-full active:bg-gray-100 dark:active:bg-[#1D1F29]"
         >
           <ChevronLeft className="w-5 h-5 shrink-0 text-gray-700 dark:text-gray-200" />
           {backToMy && <span className="text-[13px] font-semibold text-gray-700 dark:text-gray-200">마이</span>}
         </button>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           <Store className="w-4 h-4 text-gray-900 dark:text-white" aria-hidden="true" />
           <h1 className="text-[15px] font-extrabold text-gray-900 dark:text-white">매장 계산대</h1>
         </div>
@@ -77,10 +77,10 @@ export default function StoreScanPage() {
         {/* 🔴 2026-09-25 (설계 §18 단계 3): **소각은 되돌릴 수 없다.** 그런데 이 화면은 그 말을 한 번도
             안 했고, 가게가 여럿인 사람에게 "어느 가게로 처리되는지" 도 안 알려 줬다 — 좌석 토큰이
             정하는데 화면엔 그 사실이 없었다. 값은 표시 전용이고, 대상은 서버가 토큰으로 정한다. */}
-        <p className="text-[12.5px] leading-relaxed text-gray-500 dark:text-gray-400 mb-1">
+        <p className="text-[12px] leading-relaxed text-gray-500 dark:text-gray-400 mb-1">
           손님 이용권 QR을 비추면 <span className="font-bold text-gray-900 dark:text-white">바로 사용 완료</span>로 처리돼요. 되돌릴 수 없습니다.
         </p>
-        <p className="text-[12.5px] leading-relaxed text-gray-500 dark:text-gray-400 mb-3">
+        <p className="text-[12px] leading-relaxed text-gray-500 dark:text-gray-400 mb-3">
           {seatLabel ? <>지금은 <span className="font-bold text-brand-text">{seatLabel}</span> 이용권만 처리됩니다. </> : null}
           인식이 안 되면 아래에 코드를 직접 입력하세요. (연속 스캔)
         </p>

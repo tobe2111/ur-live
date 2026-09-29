@@ -117,7 +117,7 @@ export function CustomModal({
 
             {/* Title */}
             {title && (
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white text-center mb-2">
+              <h3 className="text-[17px] font-bold text-gray-900 dark:text-white text-center mb-2">
                 {title}
               </h3>
             )}
@@ -128,7 +128,7 @@ export function CustomModal({
                 {children}
               </div>
             ) : message ? (
-              <p className="text-sm text-gray-600 dark:text-gray-300 text-center mb-6 leading-relaxed whitespace-pre-line">
+              <p className="text-[15px] text-gray-600 dark:text-gray-300 text-center mb-6 leading-relaxed whitespace-pre-line">
                 {message}
               </p>
             ) : null}
@@ -139,7 +139,7 @@ export function CustomModal({
                 <>
                   <button
                     onClick={onClose}
-                    className="flex-1 py-3 px-4 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200 font-medium rounded-full hover:bg-gray-200 transition-colors text-sm"
+                    className="flex-1 py-3 px-4 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200 font-medium rounded-full hover:bg-gray-200 transition-colors text-[15px]"
                   >
                     취소
                   </button>
@@ -148,7 +148,7 @@ export function CustomModal({
                       onConfirm?.()
                       onClose()
                     }}
-                    className="flex-1 py-3 px-4 bg-brand text-white font-medium rounded-full hover:bg-brand-dark transition-colors text-sm"
+                    className="flex-1 py-3 px-4 bg-brand text-white font-medium rounded-full hover:bg-brand-dark transition-colors text-[15px]"
                   >
                     확인
                   </button>
@@ -156,7 +156,7 @@ export function CustomModal({
               ) : (
                 <button
                   onClick={onClose}
-                  className="w-full py-3 px-4 bg-brand text-white font-medium rounded-full hover:bg-brand-dark transition-colors text-sm"
+                  className="w-full py-3 px-4 bg-brand text-white font-medium rounded-full hover:bg-brand-dark transition-colors text-[15px]"
                 >
                   확인
                 </button>

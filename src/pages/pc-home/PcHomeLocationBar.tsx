@@ -161,12 +161,12 @@ export default function PcHomeLocationBar({
           className={title
             ? 'inline-flex items-center gap-1 -ml-0.5 max-w-full'
             : hero
-              ? 'inline-flex items-center gap-1.5 pl-3.5 pr-2.5 hover:bg-gray-50 transition-colors' // light-fixed: 흰 알약 안
-              : `inline-flex items-center gap-1.5 pl-2.5 pr-2 py-2 rounded-xl border transition-colors ${chip}`}
+              ? 'inline-flex items-center gap-2 pl-4 pr-2 hover:bg-gray-50 transition-colors' // light-fixed: 흰 알약 안
+              : `inline-flex items-center gap-2 pl-2 pr-2 py-2 rounded-xl border transition-colors ${chip}`}
           aria-expanded={open}
         >
           {!title && <MapPin className={`${hero ? 'w-[14px] h-[14px]' : 'w-[18px] h-[18px]'} shrink-0 ${hero ? 'text-[#16181C]' : 'text-gray-900 dark:text-white'}`} />}
-          <span className={`${title ? 'text-[22px] font-black tracking-[-0.02em] text-gray-900 dark:text-white' : hero ? 'text-[12.5px] font-extrabold text-[#16181C]' : 'text-[15px] font-extrabold text-gray-900 dark:text-white'} max-w-[220px] truncate`}>{located ? (locatedLabel || '내 주변') : labelFor(value)}</span>
+          <span className={`${title ? 'text-[24px] font-black tracking-[-0.02em] text-gray-900 dark:text-white' : hero ? 'text-[12px] font-extrabold text-[#16181C]' : 'text-[15px] font-extrabold text-gray-900 dark:text-white'} max-w-[220px] truncate`}>{located ? (locatedLabel || '내 주변') : labelFor(value)}</span>
           <ChevronDown className={`${title ? 'w-5 h-5 text-gray-400 dark:text-gray-500' : hero ? 'w-[13px] h-[13px] text-[#4B4F58]' : 'w-4 h-4 text-gray-400'} shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>
         {/* 두 칸을 가르는 실선 — 한 알약 안에서 "지역 고르기"와 "현 위치"가 다른 일임을 말한다. */}
@@ -178,8 +178,8 @@ export default function PcHomeLocationBar({
           className={title
             ? 'inline-flex items-center justify-center w-8 h-8 rounded-full text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors disabled:opacity-60'
             : hero
-              ? 'inline-flex items-center px-2.5 text-[#4B4F58] hover:bg-gray-50 hover:text-[#16181C] transition-colors disabled:opacity-60' // light-fixed: 흰 알약 안
-              : `inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-[13px] font-bold whitespace-nowrap transition-colors disabled:opacity-60 ${chip} text-gray-700 dark:text-gray-200`}
+              ? 'inline-flex items-center px-2 text-[#4B4F58] hover:bg-gray-50 hover:text-[#16181C] transition-colors disabled:opacity-60' // light-fixed: 흰 알약 안
+              : `inline-flex items-center gap-2 px-3 py-2 rounded-xl border text-[13px] font-bold whitespace-nowrap transition-colors disabled:opacity-60 ${chip} text-gray-700 dark:text-gray-200`}
         >
           {locating ? <Loader2 className="w-[15px] h-[15px] animate-spin" /> : <LocateFixed className="w-[15px] h-[15px]" />}
           {/* 📱 2026-08-19: 좁은 폭(<640)에서는 **아이콘만**. 360px 기기에서 이 라벨이 세 줄로 터져
@@ -197,7 +197,7 @@ export default function PcHomeLocationBar({
           style={isWide ? undefined : { top: panelTop }}
         >
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-[#2C2F35]">
-            <span className="text-[14px] font-extrabold text-gray-900 dark:text-white">지역 선택</span>
+            <span className="text-[15px] font-extrabold text-gray-900 dark:text-white">지역 선택</span>
             <div className="flex items-center gap-2">
               <button onClick={() => apply({})} className="text-[12px] font-bold text-gray-500 dark:text-gray-400 hover:underline">전국</button>
               <button onClick={() => setOpen(false)} aria-label="닫기" className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"><X className="w-4 h-4" /></button>
@@ -211,7 +211,7 @@ export default function PcHomeLocationBar({
                 <button
                   key={r.key}
                   onClick={() => { if (r.districtGroups.length === 0) apply({ regionKey: r.key }); else setActiveSido(r.key) }}
-                  className={`w-full text-left px-4 py-2.5 text-[13px] transition-colors ${
+                  className={`w-full text-left px-4 py-2 text-[13px] transition-colors ${
                     activeSido === r.key
                       ? 'bg-brand text-white font-bold'
                       : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.03]'
@@ -225,7 +225,7 @@ export default function PcHomeLocationBar({
             <div className="flex-1 overflow-y-auto py-1">
               <button
                 onClick={() => apply({ regionKey: sido?.key })}
-                className="w-full text-left px-4 py-2.5 text-[13px] font-bold text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-white/[0.03]"
+                className="w-full text-left px-4 py-2 text-[13px] font-bold text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-white/[0.03]"
               >
                 {sido?.label} 전체
               </button>
@@ -233,7 +233,7 @@ export default function PcHomeLocationBar({
                 <button
                   key={dg.key}
                   onClick={() => apply({ regionKey: sido.key, districtKey: dg.key })}
-                  className={`w-full text-left px-4 py-2.5 text-[13px] whitespace-pre-line leading-tight transition-colors ${
+                  className={`w-full text-left px-4 py-2 text-[13px] whitespace-pre-line leading-tight transition-colors ${
                     value.districtKey === dg.key
                       ? 'bg-brand text-white font-bold'
                       : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.03]'

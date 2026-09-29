@@ -47,8 +47,8 @@ export function FloatingActionBar({
             그 시점에 화면에서 사라져 있는 두 값이 **틀리면 그대로 노쇼가 된다**〔시안 3.6〕. */}
         {summaryLeft && (
           <div className="flex items-baseline justify-between mb-[11px]">
-            <span className="text-[12.5px] font-bold tracking-[-0.025em] text-[#6B6469] dark:text-[#A29A9F] truncate">{summaryLeft}</span>
-            <span className="shrink-0 ml-2 text-[19px] font-extrabold tracking-[-0.04em] text-[#1A1719] dark:text-[#F3EFF1]">
+            <span className="text-[12px] font-bold tracking-[-0.025em] text-[#6B6469] dark:text-[#A29A9F] truncate">{summaryLeft}</span>
+            <span className="shrink-0 ml-2 text-[17px] font-extrabold tracking-[-0.04em] text-[#1A1719] dark:text-[#F3EFF1]">
               {(summaryTotal ?? 0).toLocaleString('ko-KR')}원
             </span>
           </div>
@@ -63,13 +63,13 @@ export function FloatingActionBar({
             </button>
           )}
           <button
-            className="h-14 flex-[1] rounded-[14px] bg-[#F1EDEF] text-[#3F383C] dark:bg-[#1D1F29] dark:text-[#DAD4D7] text-[15.5px] font-bold tracking-[-0.03em] active:scale-[0.98] transition-transform disabled:opacity-40"
+            className="h-14 flex-[1] rounded-[14px] bg-[#F1EDEF] text-[#3F383C] dark:bg-[#1D1F29] dark:text-[#DAD4D7] text-[15px] font-bold tracking-[-0.03em] active:scale-[0.98] transition-transform disabled:opacity-40"
             onClick={onAddToCart} disabled={disabled}
           >
             {disabled ? '품절' : '장바구니'}
           </button>
           <button
-            className="h-14 flex-[1.6] rounded-[14px] bg-[#1A1719] text-white dark:bg-[#F3EFF1] dark:text-[#1A1719] text-[16.5px] font-extrabold tracking-[-0.03em] active:scale-[0.98] transition-transform disabled:opacity-40"
+            className="h-14 flex-[1.6] rounded-[14px] bg-[#1A1719] text-white dark:bg-[#F3EFF1] dark:text-[#1A1719] text-[17px] font-extrabold tracking-[-0.03em] active:scale-[0.98] transition-transform disabled:opacity-40"
             onClick={onBuyNow} disabled={disabled}
           >
             {disabled ? '품절' : '바로구매'}
@@ -124,11 +124,11 @@ export function FloatingActionBar({
         >
           {dealOnly ? (
             <>
-              <span className="text-[8px] font-bold text-white/80">딜 결제 전용 · 30일 유효</span>
+              <span className="text-[12px] font-bold text-white/80">딜 결제 전용 · 30일 유효</span>
               <span className="text-[13px] font-extrabold text-white">🎁 딜로 교환</span>
             </>
           ) : (
-            <span className="text-[14px] font-extrabold text-white">{disabled ? '품절' : '바로 구매'}</span>
+            <span className="text-[15px] font-extrabold text-white">{disabled ? '품절' : '바로 구매'}</span>
           )}
         </button>
       </div>

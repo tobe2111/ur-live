@@ -67,7 +67,7 @@ function Tile({ tile, eager, priority, clone }: { tile: HeroTile; eager: boolean
         onError={(e) => cfImageOnError(e.currentTarget, tile.src)}
       />
       <div
-        className="absolute inset-x-0 bottom-0 px-2.5 pt-5 pb-2 text-white text-[13px] font-extrabold"
+        className="absolute inset-x-0 bottom-0 px-2 pt-5 pb-2 text-white text-[13px] font-extrabold"
         /**
          * 🩸 2026-09-28 — **글자가 앉는 줄에서 이 그라디언트가 약했다.**
          *

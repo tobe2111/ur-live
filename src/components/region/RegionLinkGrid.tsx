@@ -63,7 +63,7 @@ export default function RegionLinkGrid({
         </h2>
 
         {/* 시/도 탭 — 가로 스크롤(모바일에서 17개가 줄바꿈으로 쌓이지 않게) */}
-        <div className="flex gap-1.5 overflow-x-auto pb-3 -mx-1 px-1 scrollbar-hide">
+        <div className="flex gap-2 overflow-x-auto pb-3 -mx-1 px-1 scrollbar-hide">
           {available.map(r => {
             const on = r.sido === active.sido
             return (
@@ -71,7 +71,7 @@ export default function RegionLinkGrid({
                 key={r.sido}
                 onClick={() => setSelected(r.sido)}
                 aria-pressed={on}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-[13px] font-bold border transition-colors ${
+                className={`shrink-0 px-3 py-2 rounded-full text-[13px] font-bold border transition-colors ${
                   on
                     ? 'bg-brand text-white border-brand'
                     : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
@@ -84,7 +84,7 @@ export default function RegionLinkGrid({
         </div>
 
         {/* 시군구 링크 — 모바일 3열 → PC 6열. 여기어때 하단 그리드와 같은 밀도. */}
-        <ul className="mt-3 grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-x-4 gap-y-2.5">
+        <ul className="mt-3 grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-x-4 gap-y-2">
           <li>
             <Link
               to={regionPath({ sido: active.sido })}

@@ -207,15 +207,15 @@ export default function PointsChargePage() {
           <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white dark:bg-[#11141C]/10" aria-hidden="true" />
           <div className="absolute -right-10 -bottom-10 w-32 h-32 rounded-full bg-white dark:bg-[#11141C]/5" aria-hidden="true" />
           <div className="relative">
-            <div className="flex items-center gap-1.5 mb-1">
+            <div className="flex items-center gap-2 mb-1">
               <Zap className="w-4 h-4 fill-white" strokeWidth={0} />
               <span className="text-[12px] font-semibold opacity-90">{t('pointsCharge.balance', { defaultValue: '내 딜 잔액' })}</span>
             </div>
             <p className="text-[32px] font-extrabold leading-none tracking-tight">
               {formatNumber(balance)}
-              <span className="text-[16px] font-bold ml-1">딜</span>
+              <span className="text-[17px] font-bold ml-1">딜</span>
             </p>
-            <p className="text-[11px] font-medium opacity-80 mt-2">{t('pointsCharge.rate', { defaultValue: '1원 = 1딜 · 수수료 없음' })}</p>
+            <p className="text-[12px] font-medium opacity-80 mt-2">{t('pointsCharge.rate', { defaultValue: '1원 = 1딜 · 수수료 없음' })}</p>
           </div>
         </section>
 
@@ -224,8 +224,8 @@ export default function PointsChargePage() {
             {/* 충전 금액 선택 */}
             <section>
               <div className="flex items-baseline justify-between mb-3 px-1">
-                <h2 className="text-[14px] font-bold text-gray-900 dark:text-white">{t('pointsCharge.selectTitle', { defaultValue: '충전 금액' })}</h2>
-                <span className="text-[11px] text-gray-500 dark:text-gray-400">{t('pointsCharge.selectHint', { defaultValue: '원하는 금액을 선택하세요' })}</span>
+                <h2 className="text-[15px] font-bold text-gray-900 dark:text-white">{t('pointsCharge.selectTitle', { defaultValue: '충전 금액' })}</h2>
+                <span className="text-[12px] text-gray-500 dark:text-gray-400">{t('pointsCharge.selectHint', { defaultValue: '원하는 금액을 선택하세요' })}</span>
               </div>
               {/* 사용자 요청: 효과 다 제거 — 통일된 단일 스타일. */}
               <div className="grid grid-cols-2 gap-2">
@@ -247,11 +247,11 @@ export default function PointsChargePage() {
                           <Check className="w-3 h-3 text-white" strokeWidth={3} />
                         </span>
                       )}
-                      <p className={`text-[18px] font-extrabold ${isSelected ? 'text-brand-text' : 'text-gray-900 dark:text-white'}`}>
+                      <p className={`text-[17px] font-extrabold ${isSelected ? 'text-brand-text' : 'text-gray-900 dark:text-white'}`}>
                         {formatNumber(opt.amount)}
                         <span className="text-[12px] font-bold ml-0.5">원</span>
                       </p>
-                      <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 mt-1">
+                      <p className="text-[12px] font-semibold text-gray-500 dark:text-gray-400 mt-1">
                         {formatNumber(opt.points)}딜
                       </p>
                     </button>
@@ -273,7 +273,7 @@ export default function PointsChargePage() {
                 </div>
                 <div className="mt-3 pt-3 border-t border-gray-100 dark:border-[#2C2F35] flex items-center justify-between">
                   <span className="text-[13px] font-bold text-gray-900 dark:text-white">{t('pointsCharge.afterBalance', { defaultValue: '충전 후 잔액' })}</span>
-                  <span className="text-[18px] font-extrabold text-gray-900 dark:text-white">
+                  <span className="text-[17px] font-extrabold text-gray-900 dark:text-white">
                     {formatNumber(balance + pointsPreview)}
                     <span className="text-[13px] font-bold ml-0.5">딜</span>
                   </span>
@@ -282,11 +282,11 @@ export default function PointsChargePage() {
             )}
 
             {/* 안내 */}
-            <section className="flex gap-2.5 px-3 py-3 rounded-xl bg-amber-50 border border-amber-100">
-              <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" strokeWidth={2} />
+            <section className="flex gap-2 px-3 py-3 rounded-xl bg-amber-50 border border-amber-100">
+              <Info className="w-4 h-4 text-amber-600 shrink-0 mt-1" strokeWidth={2} />
               <div className="text-[12px] leading-relaxed">
                 <p className="font-semibold text-amber-800">{t('pointsCharge.noRefund', { defaultValue: '충전된 딜은 환불이 불가합니다' })}</p>
-                <p className="text-amber-700 mt-0.5">
+                <p className="text-amber-700 mt-1">
                   {t('pointsCharge.usageNote', { defaultValue: '라이브 방송 후원 및 상품 결제에만 사용 가능합니다.' })}
                 </p>
               </div>
@@ -303,7 +303,7 @@ export default function PointsChargePage() {
           <button
             onClick={handleCharge}
             disabled={!selected || processing}
-            className="w-full py-3.5 bg-gray-800 text-white text-[15px] font-bold rounded-full shadow-sm disabled:opacity-50 active:scale-[0.98] transition-all"
+            className="w-full py-4 bg-gray-800 text-white text-[15px] font-bold rounded-full shadow-sm disabled:opacity-50 active:scale-[0.98] transition-all"
           >
             {processing ? (
               <span className="flex items-center justify-center gap-2">

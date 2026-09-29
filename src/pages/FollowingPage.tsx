@@ -71,12 +71,12 @@ export default function FollowingPage() {
         ) : error ? (
           <div className="text-center py-20">
             <Users className="w-10 h-10 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
-            <p className="text-gray-900 dark:text-gray-300 font-semibold text-[14px]">{error}</p>
+            <p className="text-gray-900 dark:text-gray-300 font-semibold text-[15px]">{error}</p>
           </div>
         ) : sellers.length === 0 ? (
           <div className="text-center py-20">
             <UserCheck className="w-10 h-10 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
-            <p className="text-gray-900 dark:text-gray-300 font-semibold text-[14px]">
+            <p className="text-gray-900 dark:text-gray-300 font-semibold text-[15px]">
               {t('following.empty', { defaultValue: '팔로우한 셀러가 없습니다' })}
             </p>
             <p className="text-gray-500 dark:text-gray-500 text-[12px] mt-1">
@@ -84,7 +84,7 @@ export default function FollowingPage() {
             </p>
             <button
               onClick={() => navigate('/group-buy')}
-              className="mt-5 px-5 py-2.5 bg-brand text-white text-[13px] font-semibold rounded-full"
+              className="mt-5 px-5 py-2 bg-brand text-white text-[13px] font-semibold rounded-full"
             >
               {t('following.exploreLive', { defaultValue: '동네 공구 둘러보기' })}
             </button>
@@ -98,7 +98,7 @@ export default function FollowingPage() {
               <button
                 key={seller.id}
                 onClick={() => navigate(`/profile/${seller.id}`)}
-                className="w-full flex items-center gap-3 bg-gray-50 dark:bg-[#1D1F29] rounded-xl px-4 py-3.5 border border-line hover:bg-gray-100 dark:hover:bg-[#1D1F29] transition-colors text-left"
+                className="w-full flex items-center gap-3 bg-gray-50 dark:bg-[#1D1F29] rounded-xl px-4 py-4 border border-line hover:bg-gray-100 dark:hover:bg-[#1D1F29] transition-colors text-left"
               >
                 <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-[#1D1F29] overflow-hidden flex-shrink-0">
                   {seller.profile_image ? (
@@ -115,12 +115,12 @@ export default function FollowingPage() {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-gray-900 dark:text-white text-[14px] font-bold truncate">{seller.name}</p>
+                  <p className="text-gray-900 dark:text-white text-[15px] font-bold truncate">{seller.name}</p>
                   {seller.bio && (
-                    <p className="text-gray-500 dark:text-gray-400 text-[12px] truncate mt-0.5">{seller.bio}</p>
+                    <p className="text-gray-500 dark:text-gray-400 text-[12px] truncate mt-1">{seller.bio}</p>
                   )}
                 </div>
-                <span className="text-brand-text text-[11px] font-semibold shrink-0">
+                <span className="text-brand-text text-[12px] font-semibold shrink-0">
                   {t('following.followingBadge', { defaultValue: '팔로잉' })}
                 </span>
               </button>

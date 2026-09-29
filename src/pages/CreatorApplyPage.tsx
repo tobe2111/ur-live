@@ -38,7 +38,7 @@ export default function CreatorApplyPage() {
     } finally { setBusy(false) }
   }
 
-  const input = 'w-full px-3 py-2.5 rounded-lg border border-gray-300 text-gray-900 text-sm focus:border-gray-900 focus:outline-none'
+  const input = 'w-full px-3 py-2 rounded-lg border border-gray-300 text-gray-900 text-[15px] focus:border-gray-900 focus:outline-none'
 
   return (
     <div className="force-light-theme min-h-[100dvh] bg-gray-50 py-10 px-4">
@@ -46,76 +46,76 @@ export default function CreatorApplyPage() {
       <SEO title={CONSUMER_SURFACE_SEO['/creators/apply'].title} description={CONSUMER_SURFACE_SEO['/creators/apply'].description} url="/creators/apply" />
       <div className="mx-auto max-w-lg">
         <div className="mb-6 text-center">
-          <h1 className="text-2xl font-bold text-gray-900">유어딜 소개 파트너 신청</h1>
-          <p className="mt-2 text-sm text-gray-600">동네 맛집·카페·뷰티·네일·숙소 이용권을 소개해 주실 분을 찾습니다.<br />신청해주시면 제휴 담당자가 검토 후 연락드립니다.</p>
+          <h1 className="text-[24px] font-bold text-gray-900">유어딜 소개 파트너 신청</h1>
+          <p className="mt-2 text-[15px] text-gray-600">동네 맛집·카페·뷰티·네일·숙소 이용권을 소개해 주실 분을 찾습니다.<br />신청해주시면 제휴 담당자가 검토 후 연락드립니다.</p>
         </div>
 
         {done ? (
           <div className="rounded-xl border border-emerald-200 bg-white p-8 text-center">
             <div className="text-4xl mb-3">✅</div>
-            <div className="text-lg font-semibold text-gray-900">신청이 접수되었습니다</div>
-            <p className="mt-2 text-sm text-gray-600">검토 후 제휴 담당자가 입력해주신 연락처로 연락드립니다. 감사합니다.</p>
+            <div className="text-[17px] font-semibold text-gray-900">신청이 접수되었습니다</div>
+            <p className="mt-2 text-[15px] text-gray-600">검토 후 제휴 담당자가 입력해주신 연락처로 연락드립니다. 감사합니다.</p>
             {/* 🔗 기다릴 필요 없이 바로 시작 — 이 링크의 코드가 신청↔가입을 이어 붙인다(lead-claim). */}
             <a href={claimCode ? `/creators/start?ic=${claimCode}` : '/login'}
-              className="mt-5 inline-block rounded-lg bg-brand px-5 py-3 text-sm font-semibold text-white">
+              className="mt-5 inline-block rounded-lg bg-brand px-5 py-3 text-[15px] font-semibold text-white">
               지금 바로 시작하기 (카카오 1분)
             </a>
-            <p className="mt-2 text-xs text-gray-500">가입하면 내 유어샵이 자동으로 생기고, 마음에 든 이용권을 담아 진열하고 소개하면 됩니다.</p>
+            <p className="mt-2 text-[12px] text-gray-500">가입하면 내 유어샵이 자동으로 생기고, 마음에 든 이용권을 담아 진열하고 소개하면 됩니다.</p>
           </div>
         ) : (
           <div className="rounded-xl border border-gray-200 bg-white p-6 space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">이름 · 채널명 <span className="text-rose-500">*</span></label>
+              <label className="block text-[15px] font-medium text-gray-700 mb-1">이름 · 채널명 <span className="text-rose-500">*</span></label>
               <input value={f.name} onChange={set('name')} placeholder="예: 방배동 미식가" className={input} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">플랫폼</label>
+                <label className="block text-[15px] font-medium text-gray-700 mb-1">플랫폼</label>
                 <select value={f.platform} onChange={set('platform')} className={input}>{PLATFORMS.map(p => <option key={p.v} value={p.v}>{p.label}</option>)}</select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">주요 분야</label>
+                <label className="block text-[15px] font-medium text-gray-700 mb-1">주요 분야</label>
                 <select value={f.category} onChange={set('category')} className={input}>{CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select>
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">채널 주소(URL) <span className="text-rose-500">*</span></label>
+              <label className="block text-[15px] font-medium text-gray-700 mb-1">채널 주소(URL) <span className="text-rose-500">*</span></label>
               <input value={f.url} onChange={set('url')} placeholder="https://..." className={input} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">활동 지역</label>
+                <label className="block text-[15px] font-medium text-gray-700 mb-1">활동 지역</label>
                 <input value={f.region} onChange={set('region')} placeholder="예: 서울 서초구" className={input} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">구독자·팔로워 수</label>
+                <label className="block text-[15px] font-medium text-gray-700 mb-1">구독자·팔로워 수</label>
                 <input value={f.followers} onChange={set('followers')} inputMode="numeric" placeholder="예: 12000" className={input} />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">희망 협찬 조건 <span className="text-gray-400 font-normal">(선택)</span></label>
+              <label className="block text-[15px] font-medium text-gray-700 mb-1">희망 협찬 조건 <span className="text-gray-400 font-normal">(선택)</span></label>
               <input value={f.rate} onChange={set('rate')} placeholder="예: 30만원~ / 제품 제공 / 협의 가능" className={input} />
-              <p className="mt-1 text-xs text-gray-400">지역·규모·조건을 적어주시면 조건에 맞는 제안만 골라서 보내드립니다.</p>
+              <p className="mt-1 text-[12px] text-gray-400">지역·규모·조건을 적어주시면 조건에 맞는 제안만 골라서 보내드립니다.</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">이메일</label>
+              <label className="block text-[15px] font-medium text-gray-700 mb-1">이메일</label>
               <input value={f.email} onChange={set('email')} placeholder="business@example.com" className={input} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">기타 연락처 <span className="text-gray-400 font-normal">(인스타 DM·카톡 등)</span></label>
+              <label className="block text-[15px] font-medium text-gray-700 mb-1">기타 연락처 <span className="text-gray-400 font-normal">(인스타 DM·카톡 등)</span></label>
               <input value={f.contact} onChange={set('contact')} placeholder="@insta_id 또는 카톡ID" className={input} />
             </div>
-            <p className="text-xs text-gray-400 -mt-2">※ 이메일 또는 연락처 중 하나는 꼭 입력해주세요.</p>
+            <p className="text-[12px] text-gray-400 -mt-2">※ 이메일 또는 연락처 중 하나는 꼭 입력해주세요.</p>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">하고 싶은 말 <span className="text-gray-400 font-normal">(선택)</span></label>
+              <label className="block text-[15px] font-medium text-gray-700 mb-1">하고 싶은 말 <span className="text-gray-400 font-normal">(선택)</span></label>
               <textarea value={f.message} onChange={set('message')} rows={3} placeholder="협업 희망사항, 대표 콘텐츠 등" className={input} />
             </div>
-            <label className="flex items-start gap-2 text-sm text-gray-600 cursor-pointer">
-              <input type="checkbox" checked={agree} onChange={e => setAgree(e.target.checked)} className="mt-0.5" />
+            <label className="flex items-start gap-2 text-[15px] text-gray-600 cursor-pointer">
+              <input type="checkbox" checked={agree} onChange={e => setAgree(e.target.checked)} className="mt-1" />
               <span>유어딜의 제휴 제안 및 관련 안내 수신에 동의합니다. (동의 철회는 언제든 가능)</span>
             </label>
-            {err && <div className="rounded-lg bg-rose-50 border border-rose-200 px-3 py-2 text-sm text-rose-700">{err}</div>}
-            <button onClick={submit} disabled={busy} className="w-full py-3 rounded-lg bg-brand text-white text-sm font-semibold disabled:opacity-50">
+            {err && <div className="rounded-lg bg-rose-50 border border-rose-200 px-3 py-2 text-[15px] text-rose-700">{err}</div>}
+            <button onClick={submit} disabled={busy} className="w-full py-3 rounded-lg bg-brand text-white text-[15px] font-semibold disabled:opacity-50">
               {busy ? '접수 중…' : '제휴 신청하기'}
             </button>
           </div>

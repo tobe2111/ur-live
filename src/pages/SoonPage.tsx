@@ -41,8 +41,8 @@ export default function SoonPage() {
       <SEO title="오픈 예정 - 유어딜" description="아직 문을 열지 않은 매장의 딜. 사전 응모를 받는 곳은 지금 응모할 수 있어요." url="/soon" />
 
       <header className="ur-content-wide px-4 lg:px-8 pt-7 pb-5">
-        <h1 className="text-[22px] sm:text-[27px] font-extrabold tracking-tight">오픈 예정</h1>
-        <p className="mt-2 text-[13.5px] leading-relaxed text-gray-600 dark:text-gray-300">
+        <h1 className="text-[24px] sm:text-[27px] font-extrabold tracking-tight">오픈 예정</h1>
+        <p className="mt-2 text-[13px] leading-relaxed text-gray-600 dark:text-gray-300">
           아직 문을 열지 않은 매장이에요. 사전 응모를 받는 곳은 카드를 눌러 지금 응모할 수 있어요.
           {/* 🔕 "오픈하면 알려드려요" 라고 쓰지 않는다 — 오픈 알림을 보내는 코드가 없다.
                 응모의 결과 통지(`useFcfs`: "당첨 시 안내드려요")는 사전 응모를 **받는 상품**에만 있고,
@@ -54,9 +54,9 @@ export default function SoonPage() {
         {items.length === 0 ? (
           // 빈 화면을 꾸미지 않는다 — 지금 살 수 있는 곳으로 보낸다.
           <div className="text-center py-20">
-            <p className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-1">지금은 응모 중인 딜이 없어요</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-5">새로 열 매장이 준비되면 이 자리에 올라와요.</p>
-            <Link to="/" className="inline-block px-5 py-2.5 rounded-full bg-brand text-white text-sm font-bold">지금 살 수 있는 딜 보기 →</Link>
+            <p className="text-[15px] font-bold text-gray-700 dark:text-gray-200 mb-1">지금은 응모 중인 딜이 없어요</p>
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-5">새로 열 매장이 준비되면 이 자리에 올라와요.</p>
+            <Link to="/" className="inline-block px-5 py-2 rounded-full bg-brand text-white text-[15px] font-bold">지금 살 수 있는 딜 보기 →</Link>
           </div>
         ) : (
           <div className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 ${DEAL_GRID_GAP}`}>

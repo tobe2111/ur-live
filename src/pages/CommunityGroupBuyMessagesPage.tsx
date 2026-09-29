@@ -137,10 +137,10 @@ export default function CommunityGroupBuyMessagesPage() {
   if (notFound || !group) {
     return (
       <div className="min-h-screen bg-white dark:bg-[#11141C] flex flex-col items-center justify-center px-4">
-        <p className="text-gray-900 dark:text-white font-bold text-lg">
+        <p className="text-gray-900 dark:text-white font-bold text-[17px]">
           {t('groupbuyMessages.notFound', { defaultValue: '공동구매를 찾을 수 없습니다' })}
         </p>
-        <Link to="/group-buy" className="mt-4 text-gray-900 dark:text-white text-sm font-medium underline">
+        <Link to="/group-buy" className="mt-4 text-gray-900 dark:text-white text-[15px] font-medium underline">
           {t('groupbuyMessages.backToList', { defaultValue: '동네딜로 돌아가기' })}
         </Link>
       </div>
@@ -176,7 +176,7 @@ export default function CommunityGroupBuyMessagesPage() {
         {forbidden ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Lock className="w-10 h-10 text-gray-300 dark:text-gray-600 mb-3" />
-            <p className="text-[14px] font-bold text-gray-900 dark:text-white">
+            <p className="text-[15px] font-bold text-gray-900 dark:text-white">
               {t('groupbuyMessages.forbiddenTitle', { defaultValue: '참여자만 볼 수 있어요' })}
             </p>
             <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">
@@ -184,7 +184,7 @@ export default function CommunityGroupBuyMessagesPage() {
             </p>
             <Link
               to={`/community-group-buy/${code}`}
-              className="mt-4 px-5 py-2.5 bg-brand text-white text-[13px] font-bold rounded-xl"
+              className="mt-4 px-5 py-2 bg-brand text-white text-[13px] font-bold rounded-xl"
             >
               {t('groupbuyMessages.goJoin', { defaultValue: '공구 보러 가기' })}
             </Link>
@@ -200,13 +200,13 @@ export default function CommunityGroupBuyMessagesPage() {
                 <span className="text-[12px] font-bold text-gray-900 dark:text-white">
                   {m.sender_name || t('groupbuyMessages.anonymous', { defaultValue: '익명' })}
                 </span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400">
+                <span className="text-[12px] px-2 py-1 rounded-full bg-gray-100 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400">
                   {m.sender_type === 'admin' ? t('groupbuyMessages.roleAdmin', { defaultValue: '운영자' })
                     : m.sender_type === 'agency' ? t('groupbuyMessages.roleAgency', { defaultValue: '에이전시' })
                     : m.sender_type === 'restaurant' ? t('groupbuyMessages.roleRestaurant', { defaultValue: '식당' })
                     : t('groupbuyMessages.roleMember', { defaultValue: '참여자' })}
                 </span>
-                <span className="text-[10px] text-gray-400 dark:text-gray-500 ml-auto">
+                <span className="text-[12px] text-gray-400 dark:text-gray-500 ml-auto">
                   {m.created_at ? new Date(m.created_at.endsWith('Z') ? m.created_at : m.created_at + 'Z').toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
                 </span>
               </div>
@@ -228,7 +228,7 @@ export default function CommunityGroupBuyMessagesPage() {
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleSend() }}
               maxLength={1000}
               placeholder={t('groupbuyMessages.inputPlaceholder', { defaultValue: '메시지를 입력하세요' })}
-              className="flex-1 px-4 py-2.5 rounded-xl border border-line bg-gray-50 dark:bg-[#1D1F29] text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus:border-gray-400 dark:focus:border-[#3A3A3A]"
+              className="flex-1 px-4 py-2 rounded-xl border border-line bg-gray-50 dark:bg-[#1D1F29] text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus:border-gray-400 dark:focus:border-[#3A3A3A]"
             />
             <button
               onClick={handleSend}

@@ -65,12 +65,12 @@ export default function NotFoundPage() {
           </h1>
 
           {/* Subtitle */}
-          <h2 className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
+          <h2 className="mt-2 text-[24px] font-bold text-gray-900 dark:text-white">
             {t('notFound.title')}
           </h2>
 
           {/* Description */}
-          <p className="mt-3 text-base text-gray-500 dark:text-gray-400">
+          <p className="mt-3 text-[15px] text-gray-500 dark:text-gray-400">
             {t('notFound.description')}
           </p>
 
@@ -94,7 +94,7 @@ export default function NotFoundPage() {
 
           {/* Popular Links */}
           <div className="mt-12 pt-8 border-t border-gray-200/70 dark:border-[#2C2F35]">
-            <p className="mb-4 text-sm font-medium text-gray-500 dark:text-gray-400">
+            <p className="mb-4 text-[15px] font-medium text-gray-500 dark:text-gray-400">
               {t('notFound.popularPages')}
             </p>
             <div className="flex flex-wrap justify-center gap-2">
@@ -102,7 +102,7 @@ export default function NotFoundPage() {
                 <Link
                   key={to}
                   to={to}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-surface border border-line text-sm font-semibold text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-[#3A3A3A] hover:bg-gray-50 dark:hover:bg-[#2C2F35] hover:text-gray-900 dark:hover:text-white transition-all duration-200 active:scale-[0.98] shadow-sm"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-surface border border-line text-[15px] font-semibold text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-[#3A3A3A] hover:bg-gray-50 dark:hover:bg-[#2C2F35] hover:text-gray-900 dark:hover:text-white transition-all duration-200 active:scale-[0.98] shadow-sm"
                 >
                   <Icon className="h-3.5 w-3.5" />
                   {label}

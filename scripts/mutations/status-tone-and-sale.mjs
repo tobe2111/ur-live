@@ -66,7 +66,7 @@ export default [
   {
     name: '🔴 할인율이 다시 다크 값 없는 raw red 로 돌아간다',
     file: 'src/components/product/product-header.tsx',
-    find: '<span className="text-[22px] font-extrabold text-sale">{displayDiscount}%</span>',
+    find: '<span className="text-[24px] font-extrabold text-sale">{displayDiscount}%</span>',
     replace: '<span className="text-[22px] font-extrabold text-red-500">{displayDiscount}%</span>',
     test: TEST,
     why: '`red-500`(#EF4444)은 다크 카드 위 대비가 무너진다 — `--sale` 토큰이 생긴 이유가 그 사고다.',

@@ -41,7 +41,7 @@ export default function WalletRow({ v, t, onOpen }: {
     <button
       type="button"
       onClick={onOpen}
-      className="w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-black/[0.03] dark:active:bg-white/[0.04] transition-colors"
+      className="w-full flex items-center gap-3 px-4 py-4 text-left active:bg-black/[0.03] dark:active:bg-white/[0.04] transition-colors"
     >
       <div className="w-[42px] h-[42px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-brand-tint">
         {v.product_image
@@ -50,8 +50,8 @@ export default function WalletRow({ v, t, onOpen }: {
       </div>
 
       <div className="flex-1 min-w-0">
-        <div className="text-[14px] font-bold tracking-tight text-gray-900 dark:text-white truncate">{v.product_name}</div>
-        <div className="text-[11.5px] text-gray-500 dark:text-gray-400 truncate mt-0.5">
+        <div className="text-[15px] font-bold tracking-tight text-gray-900 dark:text-white truncate">{v.product_name}</div>
+        <div className="text-[12px] text-gray-500 dark:text-gray-400 truncate mt-1">
           {v.restaurant_name || ''}
           {d !== null && (
             <>
@@ -63,8 +63,8 @@ export default function WalletRow({ v, t, onOpen }: {
       </div>
 
       {price !== null && (
-        <div className="shrink-0 text-[14px] font-extrabold tabular-nums text-gray-700 dark:text-gray-200">
-          {formatNumber(price)}<span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 ml-0.5">{unit}</span>
+        <div className="shrink-0 text-[15px] font-extrabold tabular-nums text-gray-700 dark:text-gray-200">
+          {formatNumber(price)}<span className="text-[12px] font-bold text-gray-400 dark:text-gray-500 ml-0.5">{unit}</span>
         </div>
       )}
     </button>

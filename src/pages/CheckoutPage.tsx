@@ -431,7 +431,7 @@ function CartCheckout() {
       <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 rounded-lg p-4">
         <div className="flex items-center gap-2"><AlertCircle className="w-5 h-5 text-red-600" /><p className="text-red-800 dark:text-red-400">{error}</p></div>
         <div className="flex gap-2 mt-4">
-          <button onClick={() => window.location.reload()} className="px-4 py-2 bg-brand text-white text-sm rounded-lg">{t('common.retry', { defaultValue: '다시 시도' })}</button>
+          <button onClick={() => window.location.reload()} className="px-4 py-2 bg-brand text-white text-[15px] rounded-lg">{t('common.retry', { defaultValue: '다시 시도' })}</button>
           <Button onClick={() => navigate('/cart', { replace: true })} variant="outline">{t('checkout.backToCart', { defaultValue: '장바구니로 돌아가기' })}</Button>
         </div>
       </div>
@@ -488,7 +488,7 @@ function CartCheckout() {
                     <Smartphone className="w-6 h-6 shrink-0 text-gray-400 dark:text-gray-500" strokeWidth={1.6} aria-hidden />
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px] font-bold text-gray-900 dark:text-white">휴대폰 MMS 즉시 발송</p>
-                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+                      <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
                         결제 완료 즉시 가입하신 휴대폰 번호로 교환권이 발송됩니다. 배송지 입력은 필요 없습니다.
                       </p>
                     </div>
@@ -502,7 +502,7 @@ function CartCheckout() {
                     <Ticket className="w-6 h-6 shrink-0 text-gray-400 dark:text-gray-500" strokeWidth={1.6} aria-hidden />
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px] font-bold text-gray-900 dark:text-white">매장에서 바로 사용</p>
-                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+                      <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
                         결제 후 내 지갑에 이용권이 발급돼요. 매장에서 “현장에서 사용하기”로 쓰면 됩니다. 배송지 입력이 필요 없어요.
                       </p>
                     </div>
@@ -532,7 +532,7 @@ function CartCheckout() {
               {!isAllDealOnly && !clientKeyLoaded ? (
                 <section className="bg-white dark:bg-[#11141C] px-5 py-8 flex items-center justify-center">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
-                  <span className="ml-3 text-sm text-gray-500">결제 시스템 준비 중...</span>
+                  <span className="ml-3 text-[15px] text-gray-500">결제 시스템 준비 중...</span>
                 </section>
               ) : (
               <PaymentSection

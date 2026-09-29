@@ -64,23 +64,23 @@ export default function ShareRewardBanner({ sellerId, productId }: Props) {
   }
 
   return (
-    <div className="mt-3 rounded-2xl border border-brand/25 bg-brand/[0.06] px-4 py-3.5">
-      <div className="flex items-start gap-2.5">
+    <div className="mt-3 rounded-2xl border border-brand/25 bg-brand/[0.06] px-4 py-4">
+      <div className="flex items-start gap-2">
         <span className="w-8 h-8 shrink-0 rounded-xl bg-brand text-white flex items-center justify-center">
           <Gift className="w-[17px] h-[17px]" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[13.5px] font-extrabold text-gray-900 dark:text-white">
+          <p className="text-[13px] font-extrabold text-gray-900 dark:text-white">
             {t('share.rewardTitle', { defaultValue: '내 링크로 팔리면 {{pct}}% 적립돼요', pct })}
           </p>
-          <p className="text-[11.5px] text-gray-500 dark:text-gray-400 mt-0.5 leading-snug">
+          <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 leading-snug">
             {t('share.rewardDesc', { defaultValue: '이 매장과 맺은 딜이에요. 아래 링크로 공유하면 내 몫으로 쌓입니다.' })}
           </p>
         </div>
       </div>
       <button
         onClick={copy}
-        className="mt-3 w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-brand text-white text-[13px] font-bold active:scale-[0.98] transition"
+        className="mt-3 w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-brand text-white text-[13px] font-bold active:scale-[0.98] transition"
       >
         {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
         {copied ? t('share.copied', { defaultValue: '링크를 복사했어요' }) : t('share.copyMyLink', { defaultValue: '내 링크 복사하기' })}

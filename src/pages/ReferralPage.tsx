@@ -148,7 +148,7 @@ export default function ReferralPage() {
             <button onClick={() => navigate(-1)} aria-label={t('groupbuy.backAria', { defaultValue: '뒤로' })} className="w-9 h-9 flex items-center justify-center">
               <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
             </button>
-            <h1 className="text-[16px] font-extrabold text-gray-900 dark:text-white">{t('groupbuy.communityTitle', { defaultValue: '맛집 공구' })}</h1>
+            <h1 className="text-[17px] font-extrabold text-gray-900 dark:text-white">{t('groupbuy.communityTitle', { defaultValue: '맛집 공구' })}</h1>
             <div className="w-9" />
           </div>
         </div>
@@ -161,8 +161,8 @@ export default function ReferralPage() {
               <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{community.restaurant_address}</p>
             )}
             <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-xl font-bold text-brand-text">{formatNumber(cgPrice)}원</span>
-              <span className="text-xs text-gray-400 dark:text-gray-500">{t('groupbuy.summaryPriceLabel', { defaultValue: '희망 가격' })}</span>
+              <span className="text-[17px] font-bold text-brand-text">{formatNumber(cgPrice)}원</span>
+              <span className="text-[12px] text-gray-400 dark:text-gray-500">{t('groupbuy.summaryPriceLabel', { defaultValue: '희망 가격' })}</span>
             </div>
             <div className="mt-2 flex items-center gap-2 text-[13px] text-gray-600 dark:text-gray-300">
               <Users className="w-4 h-4 text-gray-400 dark:text-gray-500" />
@@ -177,14 +177,14 @@ export default function ReferralPage() {
           {community.description && (
             <section className="bg-surface rounded-2xl p-4 border border-line">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-7 h-7 rounded-full bg-brand text-white flex items-center justify-center text-[11px] font-bold">
+                <div className="w-7 h-7 rounded-full bg-brand text-white flex items-center justify-center text-[12px] font-bold">
                   {community.creator_name?.slice(0, 1) || '제'}
                 </div>
                 <p className="text-[13px] font-bold text-gray-900 dark:text-white">
                   {t('groupbuy.proposerIntro', { name: community.creator_name || '제안자', defaultValue: `${community.creator_name || '제안자'}님의 공구 소개` })}
                 </p>
               </div>
-              <p className="text-[14px] text-gray-700 dark:text-gray-300 whitespace-pre-line leading-relaxed">
+              <p className="text-[15px] text-gray-700 dark:text-gray-300 whitespace-pre-line leading-relaxed">
                 {community.description}
               </p>
             </section>
@@ -194,9 +194,9 @@ export default function ReferralPage() {
           <section className="bg-surface rounded-2xl p-4 border border-line">
             <div className="flex items-center justify-between">
               <span className="text-[13px] text-gray-600 dark:text-gray-300">{t('groupbuy.depositLabel', { defaultValue: '1인당 보증금' })}</span>
-              <span className="text-[14px] font-bold text-gray-900 dark:text-white">{formatNumber(community.deposit_per_person)}딜</span>
+              <span className="text-[15px] font-bold text-gray-900 dark:text-white">{formatNumber(community.deposit_per_person)}딜</span>
             </div>
-            <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-2 leading-relaxed">
+            <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-2 leading-relaxed">
               {t('groupbuy.warningDeposit', { amount: formatNumber(community.deposit_per_person), defaultValue: `참여 시 ${formatNumber(community.deposit_per_person)}딜이 예치됩니다. 미달성 시 전액 환불됩니다.` })}
             </p>
           </section>
@@ -208,7 +208,7 @@ export default function ReferralPage() {
             <button
               onClick={handleJoinCommunity}
               disabled={!cgJoinable || joiningCommunity}
-              className="w-full py-3.5 bg-brand text-white text-[15px] font-bold rounded-xl disabled:opacity-40 active:scale-[0.98] transition-transform"
+              className="w-full py-4 bg-brand text-white text-[15px] font-bold rounded-xl disabled:opacity-40 active:scale-[0.98] transition-transform"
             >
               {joiningCommunity
                 ? t('groupbuy.joining', { defaultValue: '참여 중...' })
@@ -228,8 +228,8 @@ export default function ReferralPage() {
     return (
       <div className="min-h-screen bg-white dark:bg-[#11141C] flex flex-col items-center justify-center px-4">
         <Gift className="w-16 h-16 text-gray-300 dark:text-gray-600 mb-4" />
-        <p className="text-gray-900 dark:text-white font-bold text-lg">유효하지 않은 초대입니다</p>
-        <Link to="/" className="mt-4 text-gray-900 dark:text-white text-sm font-medium underline">홈으로 돌아가기</Link>
+        <p className="text-gray-900 dark:text-white font-bold text-[17px]">유효하지 않은 초대입니다</p>
+        <Link to="/" className="mt-4 text-gray-900 dark:text-white text-[15px] font-medium underline">홈으로 돌아가기</Link>
       </div>
     )
   }
@@ -267,7 +267,7 @@ export default function ReferralPage() {
           <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="w-9 h-9 flex items-center justify-center">
             <ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" />
           </button>
-          <h1 className="text-[16px] font-extrabold text-gray-900 dark:text-white">공동구매</h1>
+          <h1 className="text-[17px] font-extrabold text-gray-900 dark:text-white">공동구매</h1>
           <div className="w-9" />
         </div>
       </div>
@@ -282,24 +282,24 @@ export default function ReferralPage() {
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-[15px] font-bold text-gray-900 dark:text-white line-clamp-2">{product.name}</p>
-                <div className="mt-1.5 flex items-baseline gap-2">
+                <div className="mt-2 flex items-baseline gap-2">
                   {currentDiscount > 0 ? (
                     <>
-                      <span className="text-lg font-bold text-brand-text">{formatNumber(discountedPrice)}원</span>
-                      <span className="text-xs text-gray-400 dark:text-gray-500 line-through">{formatNumber(product.price)}원</span>
+                      <span className="text-[17px] font-bold text-brand-text">{formatNumber(discountedPrice)}원</span>
+                      <span className="text-[12px] text-gray-400 dark:text-gray-500 line-through">{formatNumber(product.price)}원</span>
                     </>
                   ) : (
-                    <span className="text-lg font-bold text-gray-900 dark:text-white">{formatNumber(product.price)}원</span>
+                    <span className="text-[17px] font-bold text-gray-900 dark:text-white">{formatNumber(product.price)}원</span>
                   )}
                 </div>
               </div>
             </div>
           )}
           <div className="flex items-center gap-2 pb-3 border-b border-gray-100 dark:border-[#2C2F35]">
-            <div className="w-8 h-8 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-bold">
+            <div className="w-8 h-8 rounded-full bg-gray-900 text-white flex items-center justify-center text-[12px] font-bold">
               {group.creator_name.slice(0, 1)}
             </div>
-            <p className="text-sm text-gray-900 dark:text-white">
+            <p className="text-[15px] text-gray-900 dark:text-white">
               <span className="font-bold">{group.creator_name}</span>
               <span className="text-gray-600 dark:text-gray-300">님의 공동구매</span>
             </p>
@@ -308,12 +308,12 @@ export default function ReferralPage() {
           {/* 카운트다운 */}
           <div className="pt-3">
             {isExpired ? (
-              <div className="flex items-center justify-center gap-2 text-gray-500 dark:text-gray-400 text-sm">
+              <div className="flex items-center justify-center gap-2 text-gray-500 dark:text-gray-400 text-[15px]">
                 <Clock className="w-4 h-4" />
                 <span>마감된 공동구매입니다</span>
               </div>
             ) : isAchieved ? (
-              <div className="flex items-center justify-center gap-2 text-green-600 text-sm font-semibold">
+              <div className="flex items-center justify-center gap-2 text-green-600 text-[15px] font-semibold">
                 <CheckCircle className="w-4 h-4" />
                 <span>목표 달성! 결제가 가능합니다</span>
               </div>
@@ -331,24 +331,24 @@ export default function ReferralPage() {
           <div className="text-center mb-5">
             {currentDiscount > 0 ? (
               <>
-                <p className="text-xs text-gray-600 dark:text-gray-300 mb-1">현재 적용 할인</p>
+                <p className="text-[12px] text-gray-600 dark:text-gray-300 mb-1">현재 적용 할인</p>
                 <p className="text-3xl font-bold text-brand-text">{currentDiscount}% 할인 적용 중!</p>
               </>
             ) : (
               <>
-                <p className="text-xs text-gray-600 dark:text-gray-300 mb-1">현재 참여 인원</p>
+                <p className="text-[12px] text-gray-600 dark:text-gray-300 mb-1">현재 참여 인원</p>
                 <p className="text-3xl font-bold text-gray-900 dark:text-white">{group.current_count}명</p>
               </>
             )}
             {group.next_tier && (
-              <p className="text-sm text-gray-700 dark:text-gray-200 mt-2">
+              <p className="text-[15px] text-gray-700 dark:text-gray-200 mt-2">
                 <span className="font-bold text-brand-text">{group.next_tier.count - group.current_count}명</span>
                 <span> 더 모이면 </span>
                 <span className="font-bold text-brand-text">{group.next_tier.discount}% 할인!</span>
               </p>
             )}
             {!group.next_tier && isAchieved && (
-              <p className="text-sm text-green-600 mt-2 font-semibold">최대 할인 달성!</p>
+              <p className="text-[15px] text-green-600 mt-2 font-semibold">최대 할인 달성!</p>
             )}
           </div>
 
@@ -363,7 +363,7 @@ export default function ReferralPage() {
 
         {/* v4 Participants — 아바타 스택 + 최근 참여자 */}
         <section className="bg-surface rounded-2xl p-4 border border-gray-100 dark:border-[#2C2F35]">
-          <div className="flex items-center gap-1.5 mb-3">
+          <div className="flex items-center gap-2 mb-3">
             <Users className="w-3.5 h-3.5 text-gray-900 dark:text-white" />
             <p className="text-[13px] font-bold text-gray-900 dark:text-white">{group.current_count}명 참여 중</p>
           </div>
@@ -401,14 +401,14 @@ export default function ReferralPage() {
                   {(m.user_name || '?').slice(0, 1)}
                 </div>
                 <span className="text-[12px] text-gray-900 dark:text-white font-medium">{m.user_name}</span>
-                {i === 0 && <span className="rounded-full px-1.5 py-0.5 bg-gray-900 text-white text-[9px] font-bold">방장</span>}
-                <span className="text-[10px] text-gray-400 dark:text-gray-500 ml-auto">
+                {i === 0 && <span className="rounded-full px-2 py-1 bg-gray-900 text-white text-[12px] font-bold">방장</span>}
+                <span className="text-[12px] text-gray-400 dark:text-gray-500 ml-auto">
                   {m.joined_at ? parseUTCDate(m.joined_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', month: 'short', day: 'numeric' }) : ''}
                 </span>
               </div>
             ))}
             {group.members.length === 0 && (
-              <p className="text-xs text-gray-500 dark:text-gray-400">아직 참여자가 없습니다.</p>
+              <p className="text-[12px] text-gray-500 dark:text-gray-400">아직 참여자가 없습니다.</p>
             )}
           </div>
         </section>
@@ -416,11 +416,11 @@ export default function ReferralPage() {
         {/* v4 티어별 할인표 — 🧭 2026-06-17: 친구초대 동적 할인 종료 시 숨김(단일가 통일). */}
         {!REFERRAL_GROUP_DISCOUNT_DISABLED && (
         <section className="bg-surface rounded-2xl p-4 border border-gray-100 dark:border-[#2C2F35]">
-          <div className="flex items-center gap-1.5 mb-3">
-            <span className="text-sm">🎁</span>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-[15px]">🎁</span>
             <p className="text-[13px] font-bold text-gray-900 dark:text-white">티어별 할인</p>
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             {group.tiers.map((t, i) => {
               const reached = group.current_count >= t.count
               return (
@@ -446,7 +446,7 @@ export default function ReferralPage() {
           {isAchieved ? (
             <button
               onClick={handleCheckout}
-              className="w-full flex items-center justify-center gap-2 py-3.5 bg-brand text-white rounded-xl font-bold text-sm active:scale-[0.98]"
+              className="w-full flex items-center justify-center gap-2 py-4 bg-brand text-white rounded-xl font-bold text-[15px] active:scale-[0.98]"
             >
               <ShoppingBag className="w-4 h-4" />
               {product
@@ -458,7 +458,7 @@ export default function ReferralPage() {
           ) : isExpired ? (
             <button
               disabled
-              className="w-full py-3.5 bg-gray-200 dark:bg-[#2C2F35] text-gray-500 dark:text-gray-400 rounded-xl font-bold text-sm cursor-not-allowed"
+              className="w-full py-4 bg-gray-200 dark:bg-[#2C2F35] text-gray-500 dark:text-gray-400 rounded-xl font-bold text-[15px] cursor-not-allowed"
             >
               마감된 공동구매
             </button>
@@ -468,12 +468,12 @@ export default function ReferralPage() {
               description={shareDescription}
               imageUrl={product?.image_url}
               link={`/referral/${group.invite_code}`}
-              className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#FEE500] text-[#3C1E1E] rounded-xl font-bold text-sm active:scale-[0.98]"
+              className="w-full flex items-center justify-center gap-2 py-4 bg-[#FEE500] text-[#3C1E1E] rounded-xl font-bold text-[15px] active:scale-[0.98]"
             />
           ) : !userId ? (
             <button
               onClick={handleJoin}
-              className="w-full py-3.5 bg-brand text-white rounded-xl font-bold text-sm active:scale-[0.98]"
+              className="w-full py-4 bg-brand text-white rounded-xl font-bold text-[15px] active:scale-[0.98]"
             >
               로그인 후 참여하기
             </button>
@@ -482,7 +482,7 @@ export default function ReferralPage() {
               <button
                 onClick={handleJoin}
                 disabled={joining}
-                className="flex-1 py-3.5 bg-brand text-white rounded-xl font-bold text-sm active:scale-[0.98] disabled:opacity-50"
+                className="flex-1 py-4 bg-brand text-white rounded-xl font-bold text-[15px] active:scale-[0.98] disabled:opacity-50"
               >
                 {joining ? t('referralPage.joining') : t('referralPage.join')}
               </button>
@@ -493,7 +493,7 @@ export default function ReferralPage() {
                   imageUrl={product?.image_url}
                   link={`/referral/${group.invite_code}`}
                   compact
-                  className="h-full px-4 flex items-center gap-1.5 bg-[#FEE500] text-[#3C1E1E] rounded-xl text-sm font-bold active:scale-95"
+                  className="h-full px-4 flex items-center gap-2 bg-[#FEE500] text-[#3C1E1E] rounded-xl text-[15px] font-bold active:scale-95"
                 />
               </div>
             </div>
@@ -549,10 +549,10 @@ function TierProgressBar({
               </div>
               {/* 라벨 */}
               <div className="absolute top-7 left-1/2 -translate-x-1/2 whitespace-nowrap text-center">
-                <div className={`text-[10px] font-bold ${reached ? 'text-brand-text' : 'text-gray-500 dark:text-gray-400'}`}>
+                <div className={`text-[12px] font-bold ${reached ? 'text-brand-text' : 'text-gray-500 dark:text-gray-400'}`}>
                   {t.count}명
                 </div>
-                <div className={`text-[10px] font-bold ${reached ? 'text-brand-text' : 'text-gray-400 dark:text-gray-500'}`}>
+                <div className={`text-[12px] font-bold ${reached ? 'text-brand-text' : 'text-gray-400 dark:text-gray-500'}`}>
                   -{t.discount}%
                 </div>
               </div>
@@ -572,8 +572,8 @@ function CountdownTimer({ expiresAt }: { expiresAt: string }) {
 
   return (
     <div className="pt-4 text-center">
-      <p className="text-[11px] text-brand-text font-bold mb-2">⏰ {t('referralPage.timeRemaining')}</p>
-      <div className="flex items-center justify-center gap-1.5">
+      <p className="text-[12px] text-brand-text font-bold mb-2">⏰ {t('referralPage.timeRemaining')}</p>
+      <div className="flex items-center justify-center gap-2">
         {[
           { v: days, l: t('referralPage.unitDays') },
           { v: hours, l: t('referralPage.unitHours') },
@@ -581,13 +581,13 @@ function CountdownTimer({ expiresAt }: { expiresAt: string }) {
           { v: seconds, l: t('referralPage.unitSeconds') },
         ].filter((t, i) => i > 0 || t.v > 0).map((t, i, arr) => (
           <span key={t.l} className="contents">
-            <div className="rounded-lg px-2.5 py-1.5 bg-brand-tint">
-              <span className="text-[16px] font-extrabold text-brand-text" style={{ fontFamily: 'ui-monospace, monospace' }}>
+            <div className="rounded-lg px-2 py-2 bg-brand-tint">
+              <span className="text-[17px] font-extrabold text-brand-text" style={{ fontFamily: 'ui-monospace, monospace' }}>
                 {String(t.v).padStart(2, '0')}
               </span>
-              <span className="text-[9px] block leading-none mt-0.5 text-brand-text">{t.l}</span>
+              <span className="text-[12px] block leading-none mt-1 text-brand-text">{t.l}</span>
             </div>
-            {i < arr.length - 1 && <span className="text-[14px] text-gray-300 dark:text-gray-600 font-extrabold">:</span>}
+            {i < arr.length - 1 && <span className="text-[15px] text-gray-300 dark:text-gray-600 font-extrabold">:</span>}
           </span>
         ))}
       </div>

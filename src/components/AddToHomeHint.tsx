@@ -62,21 +62,21 @@ export default function AddToHomeHint({ context = 'wallet' }: { context?: 'walle
 
   return (
     <div className="mb-3 flex items-start gap-3 rounded-2xl border border-line bg-gray-50 dark:bg-[#141414] px-4 py-3">
-      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-900 dark:bg-white">
+      <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-900 dark:bg-white">
         <Home className="h-4 w-4 text-white dark:text-gray-900" />
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-[13px] font-bold text-gray-900 dark:text-white">홈 화면에 추가</p>
-        <p className="mt-0.5 text-[11.5px] leading-relaxed text-gray-500 dark:text-gray-400">{desc}</p>
+        <p className="mt-1 text-[12px] leading-relaxed text-gray-500 dark:text-gray-400">{desc}</p>
         {iosManual ? (
-          <p className="mt-1.5 text-[11px] text-gray-500 dark:text-gray-400">
+          <p className="mt-2 text-[12px] text-gray-500 dark:text-gray-400">
             <b className="text-gray-700 dark:text-gray-200">공유 버튼 ⬆️ → “홈 화면에 추가”</b> 를 눌러주세요.
           </p>
         ) : (
           <button
             type="button"
             onClick={install}
-            className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-brand px-3.5 py-1.5 text-[12px] font-bold text-white active:scale-95 transition-transform"
+            className="mt-2 inline-flex items-center gap-2 rounded-full bg-brand px-4 py-2 text-[12px] font-bold text-white active:scale-95 transition-transform"
           >
             <Home className="h-3.5 w-3.5" /> 홈 화면에 추가하기
           </button>

@@ -54,19 +54,19 @@ export default function InfluencerRankingsPage() {
       <header className="sticky top-0 z-30 bg-gradient-to-r from-gray-700 to-gray-800 text-white px-4 py-4">
         <div className="flex items-center gap-2">
           <Trophy className="w-6 h-6" />
-          <h1 className="text-lg font-extrabold">이 달의 소개 랭킹</h1>
+          <h1 className="text-[17px] font-extrabold">이 달의 소개 랭킹</h1>
         </div>
-        <p className="text-[11px] opacity-90 mt-1">지역별 매출 Top — 매월 1일 리셋</p>
+        <p className="text-[12px] opacity-90 mt-1">지역별 매출 Top — 매월 1일 리셋</p>
       </header>
 
       <main className="ur-content-narrow mx-auto px-4 py-4 space-y-4">
         {/* 지역 탭 */}
-        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide -mx-4 px-4">
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide -mx-4 px-4">
           {REGIONS.map((r) => (
             <button
               key={r.key}
               onClick={() => setRegion(r.key)}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap ${
+              className={`px-3 py-2 rounded-full text-[12px] font-bold whitespace-nowrap ${
                 region === r.key ? 'bg-brand text-white' : 'bg-white dark:bg-[#11141C] text-gray-700 dark:text-gray-200 border border-gray-200'
               }`}
             >
@@ -78,12 +78,12 @@ export default function InfluencerRankingsPage() {
         {/* 기간 / 기준 */}
         <div className="flex gap-2">
           <select value={period} onChange={(e) => setPeriod(e.target.value as 'month' | 'all')}
-            className="flex-1 px-3 py-2 border border-line rounded-lg text-xs bg-surface">
+            className="flex-1 px-3 py-2 border border-line rounded-lg text-[12px] bg-surface">
             <option value="month">이번 달</option>
             <option value="all">누적</option>
           </select>
           <select value={metric} onChange={(e) => setMetric(e.target.value as 'commission' | 'count')}
-            className="flex-1 px-3 py-2 border border-line rounded-lg text-xs bg-surface">
+            className="flex-1 px-3 py-2 border border-line rounded-lg text-[12px] bg-surface">
             <option value="commission">매출 commission</option>
             <option value="count">referral 건수</option>
           </select>
@@ -92,9 +92,9 @@ export default function InfluencerRankingsPage() {
         {/* 랭킹 리스트 */}
         <div className="bg-surface border border-line rounded-2xl overflow-hidden">
           {loading ? (
-            <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-10">로딩 중...</p>
+            <p className="text-[15px] text-gray-500 dark:text-gray-400 text-center py-10">로딩 중...</p>
           ) : list.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-10">아직 랭킹 데이터가 없습니다</p>
+            <p className="text-[15px] text-gray-400 text-center py-10">아직 랭킹 데이터가 없습니다</p>
           ) : (
             <ul>
               {list.map((r) => {
@@ -106,14 +106,14 @@ export default function InfluencerRankingsPage() {
                       {medal || r.rank}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{r.display_name}</p>
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400">{r.seller_count}개 매장 · {r.attribution_count}건</p>
+                      <p className="text-[15px] font-bold text-gray-900 dark:text-white truncate">{r.display_name}</p>
+                      <p className="text-[12px] text-gray-500 dark:text-gray-400">{r.seller_count}개 매장 · {r.attribution_count}건</p>
                     </div>
                     <div className="text-right">
                       {metric === 'commission' ? (
-                        <p className="text-sm font-extrabold text-brand-text">{r.total_commission.toLocaleString()}원</p>
+                        <p className="text-[15px] font-extrabold text-brand-text">{r.total_commission.toLocaleString()}원</p>
                       ) : (
-                        <p className="text-sm font-extrabold text-blue-600">{r.attribution_count}건</p>
+                        <p className="text-[15px] font-extrabold text-blue-600">{r.attribution_count}건</p>
                       )}
                     </div>
                   </li>
@@ -123,7 +123,7 @@ export default function InfluencerRankingsPage() {
           )}
         </div>
 
-        <p className="text-[10px] text-gray-400 text-center pt-2">
+        <p className="text-[12px] text-gray-400 text-center pt-2">
           📢 본인 ID 노출 원치 않으면 <a href="/influencer/settlement" className="underline">정산 설정</a> 에서 비공개 가능
         </p>
       </main>

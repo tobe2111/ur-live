@@ -32,21 +32,21 @@ export default function CommunityGroupBuyCard({
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <div className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-[#1D1F29] flex items-center justify-center flex-shrink-0">
-            <span className="text-[18px]">🙋</span>
+            <span className="text-[17px]">🙋</span>
           </div>
           <div className="min-w-0">
-            <p className="text-[14px] font-bold text-gray-900 dark:text-white truncate">
+            <p className="text-[15px] font-bold text-gray-900 dark:text-white truncate">
               {g.restaurant_name}
             </p>
             {g.restaurant_address && (
-              <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate flex items-center gap-0.5 mt-0.5">
+              <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate flex items-center gap-1 mt-1">
                 <MapPin className="w-3 h-3 flex-shrink-0" />
                 {g.restaurant_address}
               </p>
             )}
           </div>
         </div>
-        <div className="flex items-center gap-1.5 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <button
             onClick={(e) => onToggleInterest(e, g.id, g.restaurant_name)}
             className="w-7 h-7 flex items-center justify-center rounded-full border border-line active:scale-90 transition-transform"
@@ -57,7 +57,7 @@ export default function CommunityGroupBuyCard({
             />
           </button>
           <span
-            className={`text-[10px] font-bold px-2 py-0.5 rounded-md whitespace-nowrap ${badge.className}`}
+            className={`text-[12px] font-bold px-2 py-1 rounded-md whitespace-nowrap ${badge.className}`}
           >
             {badge.label}
           </span>
@@ -73,7 +73,7 @@ export default function CommunityGroupBuyCard({
             {formatPrice(g.proposed_price)}
           </span>
         </div>
-        <div className="text-[11px] text-gray-400 dark:text-gray-600">|</div>
+        <div className="text-[12px] text-gray-400 dark:text-gray-600">|</div>
         <div className="text-[12px] text-gray-500 dark:text-gray-400">
           {t('groupBuy.depositLabel', { defaultValue: '보증금' })} <span className="font-semibold text-gray-700 dark:text-gray-200">{formatPrice(g.deposit_per_person)}</span>
         </div>
@@ -89,8 +89,8 @@ export default function CommunityGroupBuyCard({
             style={{ width: `${progress}%` }}
           />
         </div>
-        <div className="flex items-center justify-between mt-1.5">
-          <p className="text-[11px] text-gray-600 dark:text-gray-400 flex items-center gap-1">
+        <div className="flex items-center justify-between mt-2">
+          <p className="text-[12px] text-gray-600 dark:text-gray-400 flex items-center gap-1">
             <Users className="w-3 h-3 text-gray-400" />
             {achieved ? (
               <span className="text-emerald-600 font-semibold">
@@ -107,7 +107,7 @@ export default function CommunityGroupBuyCard({
             )}
           </p>
           {timeLeft && (
-            <p className="text-[10px] text-gray-400 dark:text-gray-500 flex items-center gap-0.5">
+            <p className="text-[12px] text-gray-400 dark:text-gray-500 flex items-center gap-1">
               <Clock className="w-3 h-3" />
               {timeLeft}
             </p>

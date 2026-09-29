@@ -57,12 +57,12 @@ export default function PromoBar() {
 
   return (
     <div className="relative w-full text-white" style={{ backgroundColor: bg }} role="region" aria-label="공지">
-      <div className="max-w-[1440px] mx-auto px-12 py-2.5 flex items-center justify-center gap-3 text-center">
+      <div className="max-w-[1440px] mx-auto px-12 py-2 flex items-center justify-center gap-3 text-center">
         <p className="text-[13px] font-bold leading-snug">{data.text}</p>
         {href && data.cta && (
           <Link
             to={href}
-            className="shrink-0 px-3.5 py-1 rounded-full bg-white text-[12px] font-extrabold hover:bg-white/90 transition-colors"
+            className="shrink-0 px-4 py-1 rounded-full bg-white text-[12px] font-extrabold hover:bg-white/90 transition-colors"
             style={{ color: bg }}
           >
             {data.cta}

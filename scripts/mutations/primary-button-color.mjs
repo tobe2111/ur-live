@@ -12,8 +12,8 @@ export default [
   {
     name: '🔵 주 버튼 하나가 검정으로 돌아간다 (잠기지 않은 화면)',
     file: 'src/pages/AffiliatePage.tsx',
-    find: 'bg-brand text-white rounded-xl text-xs',
-    replace: 'bg-gray-900 text-white rounded-xl text-xs',
+    find: 'bg-brand text-white rounded-xl text-[12px]',
+    replace: 'bg-gray-900 text-white rounded-xl text-[12px]',
     test: TEST,
     why: '한 화면만 검정이면 에러가 없다 — 같은 역할의 버튼이 화면마다 다른 색이 되는 것이 정확히 이 사고다.',
   },

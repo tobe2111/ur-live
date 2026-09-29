@@ -363,14 +363,14 @@ export default function GroupBuyFeed({
           ⇒ 라벨을 맞추는 걸로는 부족했다. 중복은 **컨트롤 자체**였다. */}
       {!pc && !onCategoryChange && (
       <div className="bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35] sticky top-12 z-10">
-        <div className="flex gap-1.5 px-4 py-2.5 overflow-x-auto scrollbar-hide">
+        <div className="flex gap-2 px-4 py-2 overflow-x-auto scrollbar-hide">
           {CATEGORIES.map(c => {
             const active = c.key === category
             return (
               <button
                 key={c.key}
                 onClick={() => setCategory(c.key)}
-                className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-bold transition-colors ${
+                className={`shrink-0 inline-flex items-center gap-2 px-3 py-2 rounded-full text-[12px] font-bold transition-colors ${
                   active
                     ? 'bg-brand text-white'  /* 🎨 2026-09-07 안 B: 선택 = 브랜드 블루(서비스 공통) */
                     : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2C2F35]'
@@ -391,7 +391,7 @@ export default function GroupBuyFeed({
       {/* 🔇 정렬할 것이 없으면 정렬도 내린다. 카운트를 감추고 나니 이 알약만 오른쪽에
           홀로 떠서 **빈 줄 하나**처럼 보였다 — 컨트롤은 쓸 데가 있을 때만 자리를 갖는다. */}
       {!pc && (loading || sorted.length > 0) && (
-      <div className="flex items-center justify-between px-4 py-2.5 text-[12px] text-gray-500 dark:text-gray-400">
+      <div className="flex items-center justify-between px-4 py-2 text-[12px] text-gray-500 dark:text-gray-400">
         <span>{loading ? '불러오는 중…' : `딜 ${sorted.length}개`}</span>
         {/* ⚠️ `value` 가 `options` 안에 반드시 있어야 한다 — 없으면 알약이 남의 라벨을 조용히 그린다. */}
         <SortMenu<SortKey> value={sort} onChange={(v) => setSort(v)}
@@ -404,7 +404,7 @@ export default function GroupBuyFeed({
         <div className={gridCls}>
           {/* 🛡️ 2026-05-27 (사용자 요청): 카드 모양 shimmer skeleton — 이미지 + 텍스트 2줄 + 가격. */}
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="flex flex-col gap-1.5">
+            <div key={i} className="flex flex-col gap-2">
               <div className="aspect-square rounded-xl skeleton-shimmer" />
               <div className="h-3 w-3/4 rounded skeleton-shimmer mt-1" />
               <div className="h-4 w-1/2 rounded skeleton-shimmer" />
@@ -416,9 +416,9 @@ export default function GroupBuyFeed({
         // 🛡️ 2026-06-26 (소비자 감사 P0): fetch 실패를 '공구 없음'(죽은 마켓)으로 위장하지 않음 — 재시도 노출.
         <div className="px-4 py-16 text-center">
           <p className="text-4xl mb-3">📡</p>
-          <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">공구를 불러오지 못했어요</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">네트워크 상태를 확인해주세요.</p>
-          <button onClick={() => refetch()} className="inline-block px-5 py-3 bg-brand text-white rounded-full text-sm font-bold">다시 시도</button>
+          <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">공구를 불러오지 못했어요</p>
+          <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">네트워크 상태를 확인해주세요.</p>
+          <button onClick={() => refetch()} className="inline-block px-5 py-3 bg-brand text-white rounded-full text-[15px] font-bold">다시 시도</button>
         </div>
       ) : sorted.length === 0 ? (
         // 🛡️ 2026-05-20: 사용자 요청 — 빈 상태에서 인접 지역 공구 자동 노출.
@@ -454,7 +454,7 @@ export default function GroupBuyFeed({
           {loadingMore ? (
             <div className={`${gridCls} w-full`}>
               {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="flex flex-col gap-1.5">
+                <div key={i} className="flex flex-col gap-2">
                   <div className="aspect-square rounded-xl skeleton-shimmer" />
                   <div className="h-3 w-3/4 rounded skeleton-shimmer mt-1" />
                   <div className="h-4 w-1/2 rounded skeleton-shimmer" />
@@ -464,7 +464,7 @@ export default function GroupBuyFeed({
           ) : (
             <button
               onClick={loadMore}
-              className="px-5 py-3 bg-surface border border-line rounded-full text-sm font-bold text-gray-900 dark:text-white"
+              className="px-5 py-3 bg-surface border border-line rounded-full text-[15px] font-bold text-gray-900 dark:text-white"
             >
               더 보기
             </button>
@@ -561,7 +561,7 @@ function EmptyStateWithFallback({ category, onReset }: { category: CategoryKey; 
       {category !== 'all' && (
         <>
           <div className="flex items-center gap-2 mb-3 px-1">
-            <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 tracking-wide">
+            <span className="text-[12px] font-bold text-gray-500 dark:text-gray-400 tracking-wide">
               💡 다른 인기 공구
             </span>
           </div>

@@ -13,7 +13,7 @@ export const EmptyCart = React.memo(function EmptyCart() {
         <ShoppingBag size={36} className="text-gray-300 dark:text-gray-600" />
       </div>
 
-      <h2 className="text-[16px] font-bold text-gray-900 dark:text-white mb-1.5">
+      <h2 className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">
         {t('cart.empty', { defaultValue: '장바구니가 비어있습니다' })}
       </h2>
 
@@ -23,7 +23,7 @@ export const EmptyCart = React.memo(function EmptyCart() {
 
       <button
         onClick={() => navigate('/')}
-        className="px-8 py-3 bg-brand text-white text-[14px] font-bold rounded-xl hover:bg-brand-dark transition-colors active:scale-[0.98]"
+        className="px-8 py-3 bg-brand text-white text-[15px] font-bold rounded-xl hover:bg-brand-dark transition-colors active:scale-[0.98]"
       >
         {t('cart.continueShop', { defaultValue: '쇼핑 계속하기' })}
       </button>

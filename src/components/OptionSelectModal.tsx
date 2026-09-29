@@ -115,10 +115,10 @@ export default function OptionSelectModal({
         <div className="sticky top-0 bg-surface border-b border-line px-6 py-4 rounded-t-3xl">
           <div className="flex items-center justify-between">
             <div className="flex-1 min-w-0">
-              <h3 className="text-base font-bold text-gray-900 dark:text-white truncate">
+              <h3 className="text-[15px] font-bold text-gray-900 dark:text-white truncate">
                 {productName}
               </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">
                 {t('product.optionSelect', { defaultValue: '옵션 선택' })}
               </p>
             </div>
@@ -141,13 +141,13 @@ export default function OptionSelectModal({
           ) : error ? (
             <div className="flex flex-col items-center justify-center py-12">
               <AlertCircle className="h-12 w-12 text-gray-400 dark:text-gray-500 mb-3" strokeWidth={1.5} />
-              <p className="text-sm text-gray-600 dark:text-gray-300">{error}</p>
+              <p className="text-[15px] text-gray-600 dark:text-gray-300">{error}</p>
             </div>
           ) : (
             <div className="space-y-6">
               {Object.entries(optionsByType).map(([type, optionsForType]) => (
                 <div key={type}>
-                  <h4 className="text-xs font-bold text-gray-900 dark:text-white mb-3">
+                  <h4 className="text-[12px] font-bold text-gray-900 dark:text-white mb-3">
                     {type}
                   </h4>
                   <div className="grid grid-cols-3 gap-2">
@@ -184,25 +184,25 @@ export default function OptionSelectModal({
                           {isCurrent && !isSelected && (
                             <div className="absolute top-1.5 right-1.5">
                               <div className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-500">
-                                <span className="text-[8px] text-white font-bold">{t('product.optionCurrent', { defaultValue: '현재' })}</span>
+                                <span className="text-[12px] text-white font-bold">{t('product.optionCurrent', { defaultValue: '현재' })}</span>
                               </div>
                             </div>
                           )}
 
-                          <span className={`text-xs font-medium text-center line-clamp-2 ${
+                          <span className={`text-[12px] font-medium text-center line-clamp-2 ${
                             isOutOfStock ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-white'
                           }`}>
                             {option.option_value}
                           </span>
                           
                           {option.price_adjustment !== 0 && (
-                            <span className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+                            <span className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">
                               {(option.price_adjustment || 0) > 0 ? '+' : ''}{formatNumber(option.price_adjustment || 0)}{t('common.won', { defaultValue: '원' })}
                             </span>
                           )}
                           
                           {isOutOfStock && (
-                            <span className="text-[10px] text-red-500 font-medium mt-1">
+                            <span className="text-[12px] text-red-500 font-medium mt-1">
                               {t('product.optionSoldOut', { defaultValue: '품절' })}
                             </span>
                           )}
@@ -216,7 +216,7 @@ export default function OptionSelectModal({
               {/* Current Selection Info */}
               {currentOptionValue && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <p className="text-xs text-blue-900">
+                  <p className="text-[12px] text-blue-900">
                     <span className="font-bold">{t('product.optionCurrentLabel', { defaultValue: '현재 선택:' })}</span> {currentOptionValue}
                   </p>
                 </div>

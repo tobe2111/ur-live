@@ -286,14 +286,14 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey, on
             onChange={e => setQuery(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); search() } }}
             placeholder={t('map.picker.placeholder', { defaultValue: '매장 이름 또는 주소 (예: 광화문 김밥천국)' })}
-            className="w-full pl-9 pr-3 py-2.5 border border-line rounded-lg text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-gray-900 focus:outline-none"
+            className="w-full pl-9 pr-3 py-2 border border-line rounded-lg text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-gray-900 focus:outline-none"
           />
         </div>
         <button
           type="button"
           onClick={search}
           disabled={loading || !query.trim()}
-          className="px-4 py-2.5 bg-brand text-white rounded-lg text-sm font-bold shrink-0 disabled:opacity-40"
+          className="px-4 py-2 bg-brand text-white rounded-lg text-[15px] font-bold shrink-0 disabled:opacity-40"
         >
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : '검색'}
         </button>
@@ -309,8 +309,8 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey, on
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 dark:bg-[#1D1F29] p-4 text-center">
             <MapPin className="w-8 h-8 text-gray-300 dark:text-gray-600 mb-2" />
             <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1">지도를 불러올 수 없습니다</p>
-            <p className="text-[10px] text-gray-400 dark:text-gray-500">{sdkError}</p>
-            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2">아래 검색은 그대로 사용 가능합니다.</p>
+            <p className="text-[12px] text-gray-400 dark:text-gray-500">{sdkError}</p>
+            <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-2">아래 검색은 그대로 사용 가능합니다.</p>
           </div>
         ) : !mapReady && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-[#1D1F29]">
@@ -321,7 +321,7 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey, on
         {/* 📍 시안 ② 안내 — 지도 위에 얹는 흰 띠. light-island: 지도 타일은 다크에서도 밝다. */}
         {onPinMove && mapReady && !sdkError && (
           <div className="light-island absolute left-2 right-2 bottom-2 rounded-lg bg-white/95 px-3 py-2 shadow-lift"> {/* light-fixed: 지도 위 — 타일이 다크에서도 밝다 */}
-            <p className="text-[11px] text-gray-700 leading-snug"> {/* light-fixed: 지도 위 */}
+            <p className="text-[12px] text-gray-700 leading-snug"> {/* light-fixed: 지도 위 */}
               {t('map.picker.dragHint', { defaultValue: '핀을 끌어 정확한 위치로 옮겨 주세요 — 지도를 눌러도 옮겨집니다' })}
             </p>
           </div>
@@ -336,15 +336,15 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey, on
               key={p.id || i}
               type="button"
               onClick={() => handleSelect(p)}
-              className="w-full flex items-start gap-2 px-3 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-[#1D1F29]"
+              className="w-full flex items-start gap-2 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-[#1D1F29]"
             >
-              <MapPin className="w-4 h-4 text-gray-400 dark:text-gray-500 mt-0.5 shrink-0" />
+              <MapPin className="w-4 h-4 text-gray-400 dark:text-gray-500 mt-1 shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-medium text-gray-900 dark:text-white truncate">{p.place_name}</p>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">{p.road_address_name || p.address_name}</p>
-                {p.category_name && <p className="text-[10px] text-gray-400 dark:text-gray-500 truncate">{p.category_name}</p>}
+                <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">{p.road_address_name || p.address_name}</p>
+                {p.category_name && <p className="text-[12px] text-gray-400 dark:text-gray-500 truncate">{p.category_name}</p>}
               </div>
-              {p.phone && <span className="text-[10px] text-gray-400 dark:text-gray-500 shrink-0">{p.phone}</span>}
+              {p.phone && <span className="text-[12px] text-gray-400 dark:text-gray-500 shrink-0">{p.phone}</span>}
             </button>
           ))}
         </div>

@@ -111,10 +111,10 @@ export default function RegionPage() {
         </nav>
 
         <header className="mb-4">
-          <h1 className="text-[22px] lg:text-[26px] font-black tracking-tight text-gray-900 dark:text-white">
+          <h1 className="text-[24px] lg:text-[26px] font-black tracking-tight text-gray-900 dark:text-white">
             {label} 이용권·동네딜
           </h1>
-          <p className="mt-1.5 text-[13px] lg:text-[14px] text-gray-500 dark:text-gray-400">
+          <p className="mt-2 text-[13px] lg:text-[15px] text-gray-500 dark:text-gray-400">
             {dealCount > 0
               ? <>진행 중인 딜 <b className="text-gray-900 dark:text-white">{dealCount}개</b> · 온라인 결제 후 매장에서 바로 사용</>
               : <>아직 이 지역에 진행 중인 딜이 없어요. 다른 지역을 둘러보세요.</>}
@@ -130,7 +130,7 @@ export default function RegionPage() {
                 key={ch.key}
                 onClick={() => setCategory(ch.key)}
                 aria-pressed={on}
-                className={`shrink-0 px-3.5 py-1.5 rounded-full text-[13px] font-bold border transition-colors ${
+                className={`shrink-0 px-4 py-2 rounded-full text-[13px] font-bold border transition-colors ${
                   on
                     ? 'bg-brand text-white border-brand'
                     : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
@@ -142,7 +142,7 @@ export default function RegionPage() {
           })}
           <Link
             to={`/map?q=${encodeURIComponent(label)}`}
-            className="shrink-0 ml-auto inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full text-[13px] font-bold border border-line text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors"
+            className="shrink-0 ml-auto inline-flex items-center gap-1 px-4 py-2 rounded-full text-[13px] font-bold border border-line text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors"
           >
             <MapPin className="w-3.5 h-3.5" aria-hidden />
             지도에서 보기

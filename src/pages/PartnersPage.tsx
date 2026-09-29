@@ -61,14 +61,14 @@ export default function PartnersPage() {
 
       <header className="sticky top-0 z-20 ur-panel-ink">
         <div className="ur-content-wide mx-auto px-5 lg:px-10 h-14 lg:h-16 flex items-center justify-between">
-          <Link to="/" aria-label="유어딜 홈" className="flex items-center gap-2.5">
+          <Link to="/" aria-label="유어딜 홈" className="flex items-center gap-2">
             <UrDealLogo size={19} forceDark />
-            <span className="hidden sm:inline text-[12.5px] font-bold text-white/55">입점 안내</span>
+            <span className="hidden sm:inline text-[12px] font-bold text-white/55">입점 안내</span>
           </Link>
           <div className="flex items-center gap-2 lg:gap-3">
-            <Link to="/about" className="hidden sm:inline text-[12.5px] font-semibold text-white/70 px-2">서비스 소개</Link>
+            <Link to="/about" className="hidden sm:inline text-[12px] font-semibold text-white/70 px-2">서비스 소개</Link>
             <Link to="/store/new"
-              className="h-9 lg:h-10 px-3.5 lg:px-5 rounded-full bg-brand text-white inline-flex items-center gap-1.5 text-[12.5px] lg:text-[13.5px] font-extrabold">
+              className="h-9 lg:h-10 px-4 lg:px-5 rounded-full bg-brand text-white inline-flex items-center gap-2 text-[12px] lg:text-[13px] font-extrabold">
               내 가게 등록 <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -90,7 +90,7 @@ export default function PartnersPage() {
             <h2 className="text-[26px] lg:text-[52px] xl:text-[60px] font-extrabold tracking-[-0.03em] leading-[1.22]">
               안 팔리면 0원입니다
             </h2>
-            <p className="mt-6 lg:mt-8 text-[14px] lg:text-[19px] leading-relaxed text-white/70 max-w-[32em] mx-auto">
+            <p className="mt-6 lg:mt-8 text-[15px] lg:text-[17px] leading-relaxed text-white/70 max-w-[32em] mx-auto">
               첫 이용권 초안은 저희가 만들어 드립니다. 확인하고 승인만 하시면 됩니다.
             </p>
             <div className="mt-10 lg:mt-12 flex flex-col sm:flex-row gap-3 justify-center max-w-[32rem] mx-auto">
@@ -114,13 +114,13 @@ export default function PartnersPage() {
 
       {/* 📱 모바일 고정 CTA. PC 는 상단 헤더 버튼과 각 섹션 CTA 가 담당한다(lg 에서 숨김) */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-[#1D1F29]/95 backdrop-blur-md border-t border-rule px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))]">
-        <div className="max-w-xl mx-auto flex gap-2.5">
+        <div className="max-w-xl mx-auto flex gap-2">
           <a href={F.kakaoChannel} target="_blank" rel="noopener noreferrer"
-            className="flex-1 h-12 rounded-2xl border border-rule-strong flex items-center justify-center gap-1.5 text-[14px] font-extrabold text-ink">
+            className="flex-1 h-12 rounded-2xl border border-rule-strong flex items-center justify-center gap-2 text-[15px] font-extrabold text-ink">
             <MessageCircle className="w-4 h-4" /> 카카오 문의
           </a>
           <Link to="/store/new"
-            className="flex-[1.4] h-12 rounded-2xl bg-brand text-white flex items-center justify-center gap-1.5 text-[14px] font-extrabold active:scale-[0.98] transition-transform">
+            className="flex-[1.4] h-12 rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] font-extrabold active:scale-[0.98] transition-transform">
             내 가게 등록하기 <ArrowRight className="w-4 h-4" />
           </Link>
         </div>

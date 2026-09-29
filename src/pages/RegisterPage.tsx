@@ -123,7 +123,7 @@ export default function RegisterPage() {
           {/* 🏷️ 2026-09-03 (QA 1라운드): 폐기된 브랜드명 "UR LIVE" 가 소비자 화면에 이 한 곳만 남아 있었다.
               로그인 화면과 같은 워드마크 SSOT(UrDealLogo)로 — 문자열을 다시 박으면 또 갈린다. */}
           <div className="flex justify-center"><UrDealLogo size={34} /></div>
-          <p className="text-[14px] text-gray-500 dark:text-gray-400 mt-3 font-light">
+          <p className="text-[15px] text-gray-500 dark:text-gray-400 mt-3 font-light">
             {t('register.title', { defaultValue: '회원가입' })}
           </p>
         </div>
@@ -139,7 +139,7 @@ export default function RegisterPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Name */}
           <div>
-            <label className="block text-[12px] font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+            <label className="block text-[12px] font-medium text-gray-600 dark:text-gray-400 mb-2">
               {t('register.nameLabel', { defaultValue: '이름' })}
             </label>
             <input
@@ -148,13 +148,13 @@ export default function RegisterPage() {
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder={t('register.namePlaceholder', { defaultValue: '홍길동' })}
               required
-              className="w-full h-[48px] px-4 border border-line rounded-xl bg-surface text-[14px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-gray-400 placeholder:dark:text-gray-500"
+              className="w-full h-[48px] px-4 border border-line rounded-xl bg-surface text-[15px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-gray-400 placeholder:dark:text-gray-500"
             />
           </div>
 
           {/* Email */}
           <div>
-            <label className="block text-[12px] font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+            <label className="block text-[12px] font-medium text-gray-600 dark:text-gray-400 mb-2">
               {t('register.emailLabel', { defaultValue: '이메일' })}
             </label>
             <input
@@ -164,13 +164,13 @@ export default function RegisterPage() {
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               placeholder="example@email.com"
               required
-              className="w-full h-[48px] px-4 border border-line rounded-xl bg-surface text-[14px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-gray-400 placeholder:dark:text-gray-500"
+              className="w-full h-[48px] px-4 border border-line rounded-xl bg-surface text-[15px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-gray-400 placeholder:dark:text-gray-500"
             />
           </div>
 
           {/* Password */}
           <div>
-            <label className="block text-[12px] font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+            <label className="block text-[12px] font-medium text-gray-600 dark:text-gray-400 mb-2">
               {t('register.passwordLabel', { defaultValue: '비밀번호' })}
             </label>
             <div className="relative">
@@ -182,7 +182,7 @@ export default function RegisterPage() {
                 placeholder={t('register.passwordPlaceholder', { defaultValue: '8자 이상 입력해주세요' })}
                 required
                 minLength={8}
-                className="w-full h-[48px] px-4 pr-12 border border-line rounded-xl bg-surface text-[14px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-gray-400 placeholder:dark:text-gray-500"
+                className="w-full h-[48px] px-4 pr-12 border border-line rounded-xl bg-surface text-[15px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-gray-400 placeholder:dark:text-gray-500"
               />
               <button
                 type="button"
@@ -197,7 +197,7 @@ export default function RegisterPage() {
 
           {/* Confirm Password */}
           <div>
-            <label className="block text-[12px] font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+            <label className="block text-[12px] font-medium text-gray-600 dark:text-gray-400 mb-2">
               {t('register.confirmPasswordLabel', { defaultValue: '비밀번호 확인' })}
             </label>
             <div className="relative">
@@ -209,7 +209,7 @@ export default function RegisterPage() {
                 placeholder={t('register.confirmPasswordPlaceholder', { defaultValue: '비밀번호를 다시 입력해주세요' })}
                 required
                 minLength={8}
-                className="w-full h-[48px] px-4 pr-12 border border-line rounded-xl bg-surface text-[14px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-gray-400 placeholder:dark:text-gray-500"
+                className="w-full h-[48px] px-4 pr-12 border border-line rounded-xl bg-surface text-[15px] text-gray-900 dark:text-white focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-gray-400 placeholder:dark:text-gray-500"
               />
               <button
                 type="button"
@@ -229,7 +229,7 @@ export default function RegisterPage() {
                 type="checkbox"
                 checked={termsAgreed}
                 onChange={(e) => setTermsAgreed(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded border-[#E0E0E0] text-[#111] focus:ring-[#111] cursor-pointer accent-[#111]"
+                className="mt-1 w-4 h-4 rounded border-[#E0E0E0] text-[#111] focus:ring-[#111] cursor-pointer accent-[#111]"
               />
               <span className="text-[12px] text-gray-500 dark:text-gray-400 leading-relaxed group-hover:text-gray-600 group-hover:dark:text-gray-400 transition-colors">
                 <span className="font-medium text-gray-600 dark:text-gray-400">{t('register.requiredLabel', { defaultValue: '[필수]' })}</span>{' '}
@@ -249,7 +249,7 @@ export default function RegisterPage() {
                 type="checkbox"
                 checked={privacyAgreed}
                 onChange={(e) => setPrivacyAgreed(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded border-[#E0E0E0] text-[#111] focus:ring-[#111] cursor-pointer accent-[#111]"
+                className="mt-1 w-4 h-4 rounded border-[#E0E0E0] text-[#111] focus:ring-[#111] cursor-pointer accent-[#111]"
               />
               <span className="text-[12px] text-gray-500 dark:text-gray-400 leading-relaxed group-hover:text-gray-600 group-hover:dark:text-gray-400 transition-colors">
                 <span className="font-medium text-gray-600 dark:text-gray-400">{t('register.requiredLabel', { defaultValue: '[필수]' })}</span>{' '}
@@ -269,7 +269,7 @@ export default function RegisterPage() {
                 type="checkbox"
                 checked={ageConfirmed}
                 onChange={(e) => setAgeConfirmed(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded border-[#E0E0E0] text-[#111] focus:ring-[#111] cursor-pointer accent-[#111]"
+                className="mt-1 w-4 h-4 rounded border-[#E0E0E0] text-[#111] focus:ring-[#111] cursor-pointer accent-[#111]"
               />
               <span className="text-[12px] text-gray-500 dark:text-gray-400 leading-relaxed group-hover:text-gray-600 group-hover:dark:text-gray-400 transition-colors">
                 <span className="font-medium text-gray-600 dark:text-gray-400">{t('register.requiredLabel', { defaultValue: '[필수]' })}</span>{' '}
@@ -282,7 +282,7 @@ export default function RegisterPage() {
                 type="checkbox"
                 checked={marketingAgreed}
                 onChange={(e) => setMarketingAgreed(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded border-[#E0E0E0] text-[#111] focus:ring-[#111] cursor-pointer accent-[#111]"
+                className="mt-1 w-4 h-4 rounded border-[#E0E0E0] text-[#111] focus:ring-[#111] cursor-pointer accent-[#111]"
               />
               <span className="text-[12px] text-gray-500 dark:text-gray-400 leading-relaxed group-hover:text-gray-600 group-hover:dark:text-gray-400 transition-colors">
                 <span className="text-gray-400 dark:text-gray-500">{t('register.optionalLabel', { defaultValue: '[선택]' })}</span>{' '}
@@ -295,7 +295,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full h-[48px] bg-[#111] hover:bg-black text-white rounded-xl text-[14px] font-semibold tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+            className="w-full h-[48px] bg-[#111] hover:bg-black text-white rounded-xl text-[15px] font-semibold tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2"
           >
             {loading ? t('register.submitLoading', { defaultValue: '가입 중...' }) : t('register.submit', { defaultValue: '가입하기' })}
           </button>

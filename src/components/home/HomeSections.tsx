@@ -119,8 +119,8 @@ export default function HomeSections(
             {[0, 1, 2, 3].map((i) => (
               <div key={i}>
                 <div className="aspect-[4/3] rounded-xl bg-gray-100 dark:bg-white/[0.06]" />
-                <div className="h-[13px] w-3/4 rounded bg-gray-100 dark:bg-white/[0.06] mt-2.5" />
-                <div className="h-[13px] w-1/2 rounded bg-gray-100 dark:bg-white/[0.06] mt-1.5" />
+                <div className="h-[13px] w-3/4 rounded bg-gray-100 dark:bg-white/[0.06] mt-2" />
+                <div className="h-[13px] w-1/2 rounded bg-gray-100 dark:bg-white/[0.06] mt-2" />
               </div>
             ))}
           </div>
@@ -152,7 +152,7 @@ export default function HomeSections(
                   {sec.title}
                 </h3>
                 {sec.subtitle && (
-                  <p className="mt-0.5 text-[12.5px] text-gray-500 dark:text-gray-400">{sec.subtitle}</p>
+                  <p className="mt-1 text-[12px] text-gray-500 dark:text-gray-400">{sec.subtitle}</p>
                 )}
               </div>
               {more && !moreIsDeadEnd && (
@@ -167,7 +167,7 @@ export default function HomeSections(
                       파랑으로 물들이지 않는다. 눌러지는 신호는 hover 밑줄이 맡는다. */
                 <Link
                   to={more}
-                  className="shrink-0 text-[12.5px] font-bold text-gray-600 dark:text-gray-300 hover:underline underline-offset-4 whitespace-nowrap"
+                  className="shrink-0 text-[12px] font-bold text-gray-600 dark:text-gray-300 hover:underline underline-offset-4 whitespace-nowrap"
                 >
                   더보기
                 </Link>

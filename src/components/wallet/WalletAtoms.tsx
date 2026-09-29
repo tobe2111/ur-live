@@ -46,7 +46,7 @@ export function InsetGroup({ theme = 'dark', title, footer, children, className 
   return (
     <div className={`px-4 mb-7 ${className}`}>
       {title && (
-    <p className="px-1 mb-1.5"
+    <p className="px-1 mb-2"
           style={{ fontSize: 12, color: t.secondary, fontWeight: 500, letterSpacing: '-0.01em' }}>
           {title}
         </p>
@@ -55,7 +55,7 @@ export function InsetGroup({ theme = 'dark', title, footer, children, className 
         {children}
       </div>
       {footer && (
-        <p className="px-1 mt-1.5" style={{ fontSize: 11, color: t.secondary, lineHeight: 1.4 }}>
+        <p className="px-1 mt-2" style={{ fontSize: 11, color: t.secondary, lineHeight: 1.4 }}>
           {footer}
         </p>
       )}
@@ -103,7 +103,7 @@ export function ListRow({
   return (
     <Tag
       {...props}
-      className="w-full flex items-center gap-3 px-4 py-2.5 text-left active:bg-white/5 transition-colors"
+      className="w-full flex items-center gap-3 px-4 py-2 text-left active:bg-white/5 transition-colors"
       style={{ borderBottom: last ? 'none' : `0.5px solid ${t.separator}` }}
     >
       {icon && (
@@ -119,7 +119,7 @@ export function ListRow({
         )}
       </div>
       {badge != null && (
-        <span className="rounded-full flex items-center justify-center px-1.5"
+        <span className="rounded-full flex items-center justify-center px-2"
           style={{ minWidth: 20, height: 20, background: t.danger, color: '#FFF', fontSize: 11, fontWeight: 700 }}>
           {badge}
         </span>

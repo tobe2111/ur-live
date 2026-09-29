@@ -51,7 +51,7 @@ export default function CreatorStartPage() {
     return () => { alive = false }
   }, [sp])
 
-  const btn = 'inline-block rounded-lg px-5 py-3 text-sm font-semibold'
+  const btn = 'inline-block rounded-lg px-5 py-3 text-[15px] font-semibold'
 
   return (
     <div className="force-light-theme min-h-[100dvh] bg-gray-50 py-14 px-4">
@@ -60,39 +60,39 @@ export default function CreatorStartPage() {
         {phase === 'checking' && (
           <>
             <div className="text-3xl mb-3">⏳</div>
-            <div className="text-base font-semibold text-gray-900">확인 중입니다…</div>
+            <div className="text-[15px] font-semibold text-gray-900">확인 중입니다…</div>
           </>
         )}
 
         {phase === 'need_login' && (
           <>
             <div className="text-3xl mb-3">👋</div>
-            <h1 className="text-lg font-bold text-gray-900">딜 소개 시작하기</h1>
-            <p className="mt-2 text-sm text-gray-600">카카오 로그인 1분이면 내 유어샵이 자동으로 만들어집니다.<br />로그인하면 신청 내역과 자동으로 연결됩니다.</p>
+            <h1 className="text-[17px] font-bold text-gray-900">딜 소개 시작하기</h1>
+            <p className="mt-2 text-[15px] text-gray-600">카카오 로그인 1분이면 내 유어샵이 자동으로 만들어집니다.<br />로그인하면 신청 내역과 자동으로 연결됩니다.</p>
             {/* 코드는 이미 localStorage 에 있으므로 returnUrl 은 경로만으로 충분(돌아오면 자동 연결). */}
             <a href="/login?returnUrl=%2Fcreators%2Fstart" className={`${btn} mt-5 bg-[#FEE500] text-[#3C1E1E]`}>카카오로 로그인하고 시작하기</a>
-            <p className="mt-3 text-xs text-gray-500">이미 유어딜 계정이 있어도 같은 버튼으로 로그인하시면 됩니다.</p>
+            <p className="mt-3 text-[12px] text-gray-500">이미 유어딜 계정이 있어도 같은 버튼으로 로그인하시면 됩니다.</p>
           </>
         )}
 
         {phase === 'done' && (
           <>
             <div className="text-4xl mb-3">🎉</div>
-            <h1 className="text-lg font-bold text-gray-900">시작 준비가 끝났습니다</h1>
-            <p className="mt-2 text-sm text-gray-600">내 유어샵이 준비됐어요. 소개하고 싶은 딜을 담고 링크만 공유하면 됩니다.</p>
+            <h1 className="text-[17px] font-bold text-gray-900">시작 준비가 끝났습니다</h1>
+            <p className="mt-2 text-[15px] text-gray-600">내 유어샵이 준비됐어요. 소개하고 싶은 딜을 담고 링크만 공유하면 됩니다.</p>
             <div className="mt-5 flex flex-col gap-2">
               <a href="/group-buy" className={`${btn} bg-brand text-white`}>딜 둘러보고 담기</a>
               <a href="/u/me" className={`${btn} border border-gray-300 text-gray-900`}>내 유어샵 보기</a>
             </div>
-            <p className="mt-3 text-xs text-gray-500">소개비는 딜마다 표시되며, 내 링크로 판매될 때 적립됩니다.</p>
+            <p className="mt-3 text-[12px] text-gray-500">소개비는 딜마다 표시되며, 내 링크로 판매될 때 적립됩니다.</p>
           </>
         )}
 
         {phase === 'error' && (
           <>
             <div className="text-3xl mb-3">⚠️</div>
-            <h1 className="text-lg font-bold text-gray-900">연결하지 못했습니다</h1>
-            <p className="mt-2 text-sm text-gray-600">{msg}</p>
+            <h1 className="text-[17px] font-bold text-gray-900">연결하지 못했습니다</h1>
+            <p className="mt-2 text-[15px] text-gray-600">{msg}</p>
             <div className="mt-5 flex flex-col gap-2">
               <a href="/creators" className={`${btn} bg-brand text-white`}>제휴 안내 보기</a>
               <a href="/creators/apply" className={`${btn} border border-gray-300 text-gray-900`}>제휴 신청하기</a>

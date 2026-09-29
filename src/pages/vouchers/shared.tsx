@@ -89,14 +89,14 @@ export const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: Vouc
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-gray-400 dark:text-gray-400">
             <Gift className="w-10 h-10" />
-            {p.brand_name && <span className="text-[11px] font-bold">{p.brand_name}</span>}
+            {p.brand_name && <span className="text-[12px] font-bold">{p.brand_name}</span>}
           </div>
         )}
       </div>
       {/* 🎨 본문 — 클린 화이트(다크 토글 대응). 잉크 가격 강조 + 뉴트럴 메타. 컴팩트(별점 제거·여백 축소). */}
-      <div className="px-2.5 pt-1.5 pb-2 flex flex-col flex-1">
+      <div className="px-2 pt-2 pb-2 flex flex-col flex-1">
         {p.brand_name && (
-          <p className="text-[11px] font-semibold leading-none mb-0.5 text-gray-400 dark:text-gray-500">{p.brand_name}</p>
+          <p className="text-[12px] font-semibold leading-none mb-1 text-gray-400 dark:text-gray-500">{p.brand_name}</p>
         )}
         <p className="text-[13px] leading-tight line-clamp-2 font-medium text-gray-800 dark:text-gray-100">{p.name}</p>
         <div className="flex items-baseline gap-1 mt-1">
@@ -104,14 +104,14 @@ export const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: Vouc
           {discountRate > 0 && (
             <span className="text-[15px] font-extrabold text-sale dark:text-[#4D8DF5] tracking-tight">{discountRate}%</span>
           )}
-          <span className="text-[16px] font-extrabold text-[#171B24] dark:text-white tracking-tight">{formatNumber(p.price)}</span>
+          <span className="text-[17px] font-extrabold text-[#171B24] dark:text-white tracking-tight">{formatNumber(p.price)}</span>
           <span className="text-[12px] font-bold text-[#171B24] dark:text-white">딜</span>
           {hasStrike && (
-            <span className="text-[11px] ml-1 leading-none line-through text-gray-300 dark:text-gray-600">{formatNumber(p.original_price!)}딜</span>
+            <span className="text-[12px] ml-1 leading-none line-through text-gray-300 dark:text-gray-600">{formatNumber(p.original_price!)}딜</span>
           )}
         </div>
         {soldCount > 0 && (
-          <p className="mt-0.5 text-[11px] text-gray-400 dark:text-gray-500">구매 {soldLabel}</p>
+          <p className="mt-1 text-[12px] text-gray-400 dark:text-gray-500">구매 {soldLabel}</p>
         )}
       </div>
     </button>
@@ -177,7 +177,7 @@ export const VoucherRow = memo(function VoucherRow({ p, aboveFold }: { p: Vouche
       ) : (
         <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-gray-400 dark:text-gray-400">
           <Gift className="w-8 h-8" />
-          {p.brand_name && <span className="text-[10px] font-bold px-1 text-center line-clamp-1">{p.brand_name}</span>}
+          {p.brand_name && <span className="text-[12px] font-bold px-1 text-center line-clamp-1">{p.brand_name}</span>}
         </div>
       )}
       eyebrow={p.brand_name || undefined}
@@ -248,7 +248,7 @@ export const BrandChip = memo(function BrandChip({
         )}
       </div>
       <span
-        className={`text-[10px] line-clamp-1 ${labelWidthClass} text-center ${
+        className={`text-[12px] line-clamp-1 ${labelWidthClass} text-center ${
           selected ? 'text-brand-text font-bold' : 'text-gray-600 dark:text-gray-400'
         }`}
       >

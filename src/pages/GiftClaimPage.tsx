@@ -96,9 +96,9 @@ export default function GiftClaimPage() {
         <SEO title={t('giftClaim.notFoundSeoTitle')} description={t('giftClaim.notFoundSeoDesc')} url={`/gift/claim/${token}`} />
         <div className="text-center max-w-sm">
           <XCircle className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-          <h1 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{t('giftClaim.notFoundTitle')}</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{t('giftClaim.notFoundDesc')}</p>
-          <button onClick={() => navigate('/')} className="px-6 py-3 bg-brand text-white rounded-full text-sm font-bold">
+          <h1 className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">{t('giftClaim.notFoundTitle')}</h1>
+          <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-6">{t('giftClaim.notFoundDesc')}</p>
+          <button onClick={() => navigate('/')} className="px-6 py-3 bg-brand text-white rounded-full text-[15px] font-bold">
             {t('common.back')}
           </button>
         </div>
@@ -125,14 +125,14 @@ export default function GiftClaimPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-brand-tint mb-3">
             <Gift className="w-8 h-8 text-brand-text" />
           </div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-1">
+          <h1 className="text-[17px] font-bold text-gray-900 dark:text-white mb-1">
             <Trans
               i18nKey="giftClaim.fromSender"
               values={{ name: gift.sender_name }}
               components={[<span key="0" className="text-brand-text" />, <br key="1" />]}
             />
           </h1>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{parseUTCDate(gift.created_at).toLocaleDateString(i18n.language?.startsWith('ko') ? 'ko-KR' : i18n.language || 'en-US', { timeZone: 'Asia/Seoul' })}</p>
+          <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-2">{parseUTCDate(gift.created_at).toLocaleDateString(i18n.language?.startsWith('ko') ? 'ko-KR' : i18n.language || 'en-US', { timeZone: 'Asia/Seoul' })}</p>
         </div>
 
         {/* 상품 카드 */}
@@ -146,17 +146,17 @@ export default function GiftClaimPage() {
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <h2 className="font-bold text-gray-900 dark:text-white text-sm leading-tight mb-2">{gift.product_name}</h2>
-              <div className="text-brand-text font-bold text-base">{formatNumber(gift.amount)}원</div>
+              <h2 className="font-bold text-gray-900 dark:text-white text-[15px] leading-tight mb-2">{gift.product_name}</h2>
+              <div className="text-brand-text font-bold text-[15px]">{formatNumber(gift.amount)}원</div>
             </div>
           </div>
 
           {gift.message && (
             <div className="bg-brand-tint rounded-xl p-4 border border-rule ">
-              <div className="flex items-center gap-1 text-xs font-bold text-brand-text mb-2">
+              <div className="flex items-center gap-1 text-[12px] font-bold text-brand-text mb-2">
                 <Sparkles className="w-3 h-3" /> {t('giftClaim.messageLabel')}
               </div>
-              <p className="text-sm text-gray-800 dark:text-gray-100 leading-relaxed whitespace-pre-wrap">{gift.message}</p>
+              <p className="text-[15px] text-gray-800 dark:text-gray-100 leading-relaxed whitespace-pre-wrap">{gift.message}</p>
             </div>
           )}
         </div>
@@ -165,23 +165,23 @@ export default function GiftClaimPage() {
         {isExpired && (
           <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-2xl p-5 text-center">
             <XCircle className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
-            <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">{t('giftClaim.expiredTitle')}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('giftClaim.expiredHint')}</p>
+            <p className="text-[15px] font-semibold text-gray-700 dark:text-gray-200">{t('giftClaim.expiredTitle')}</p>
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{t('giftClaim.expiredHint')}</p>
           </div>
         )}
 
         {isPending && (
           <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-2xl p-5 text-center border border-yellow-100 dark:border-yellow-800/40">
             <Loader2 className="w-6 h-6 text-yellow-600 mx-auto mb-2 animate-spin" />
-            <p className="text-sm font-semibold text-yellow-800">{t('giftClaim.pendingTitle')}</p>
-            <p className="text-xs text-yellow-700 mt-1">{t('giftClaim.pendingHint')}</p>
+            <p className="text-[15px] font-semibold text-yellow-800">{t('giftClaim.pendingTitle')}</p>
+            <p className="text-[12px] text-yellow-700 mt-1">{t('giftClaim.pendingHint')}</p>
           </div>
         )}
 
         {isClaimed && (
           <div className="bg-green-50 dark:bg-green-900/20 rounded-2xl p-5 text-center border border-green-100 dark:border-green-800/40">
             <CheckCircle2 className="w-8 h-8 text-green-500 mx-auto mb-2" />
-            <p className="text-sm font-semibold text-green-700">
+            <p className="text-[15px] font-semibold text-green-700">
               {gift.status === 'claimed' && t('giftClaim.statusClaimed')}
               {gift.status === 'shipped' && t('giftClaim.statusShipped')}
               {gift.status === 'delivered' && t('giftClaim.statusDelivered')}
@@ -199,20 +199,20 @@ export default function GiftClaimPage() {
                 value={postalCode}
                 onChange={e => setPostalCode(e.target.value)}
                 placeholder={t('giftClaim.postalCode')}
-                className="w-full px-4 py-3 bg-gray-50 dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:bg-white dark:focus:bg-[#11141C]"
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35] rounded-xl text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:bg-white dark:focus:bg-[#11141C]"
               />
               <input
                 value={address}
                 onChange={e => setAddress(e.target.value)}
                 placeholder={t('giftClaim.addressMain')}
                 required
-                className="w-full px-4 py-3 bg-gray-50 dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:bg-white dark:focus:bg-[#11141C]"
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35] rounded-xl text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:bg-white dark:focus:bg-[#11141C]"
               />
               <input
                 value={addressDetail}
                 onChange={e => setAddressDetail(e.target.value)}
                 placeholder={t('giftClaim.addressDetail')}
-                className="w-full px-4 py-3 bg-gray-50 dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:bg-white dark:focus:bg-[#11141C]"
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35] rounded-xl text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:bg-white dark:focus:bg-[#11141C]"
               />
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
@@ -221,19 +221,19 @@ export default function GiftClaimPage() {
                   onChange={e => setPhone(e.target.value)}
                   placeholder={t('giftClaim.phone')}
                   type="tel"
-                  className="w-full pl-9 pr-4 py-3 bg-gray-50 dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35] rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:bg-white dark:focus:bg-[#11141C]"
+                  className="w-full pl-9 pr-4 py-3 bg-gray-50 dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35] rounded-xl text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand/40 focus:bg-white dark:focus:bg-[#11141C]"
                 />
               </div>
             </div>
             <button
               type="submit"
               disabled={submitting || !address.trim()}
-              className="w-full mt-5 py-4 bg-brand text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-brand-dark transition-colors disabled:opacity-50"
+              className="w-full mt-5 py-4 bg-brand text-white rounded-xl font-bold text-[15px] flex items-center justify-center gap-2 hover:bg-brand-dark transition-colors disabled:opacity-50"
             >
               {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Gift className="w-4 h-4" />}
               {t('giftClaim.submit')}
             </button>
-            <p className="text-[11px] text-gray-400 dark:text-gray-500 text-center mt-3">
+            <p className="text-[12px] text-gray-400 dark:text-gray-500 text-center mt-3">
               {t('giftClaim.expiresAt', { date: parseUTCDate(gift.expires_at).toLocaleDateString(i18n.language?.startsWith('ko') ? 'ko-KR' : i18n.language || 'en-US', { timeZone: 'Asia/Seoul' }) })}
             </p>
           </form>

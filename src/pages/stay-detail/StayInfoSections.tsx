@@ -25,7 +25,7 @@ const ProductReviews = lazy(() => import('../product-detail/ProductReviews'))
 /** 섹션 제목 — 상세 페이지 전체에서 이것 하나만 쓴다(공구 상세 16/800/-.02em 와 동일 스펙). */
 export function SectionTitle({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
-    <h2 className={`text-[16px] font-extrabold tracking-[-0.02em] text-gray-900 dark:text-white ${className}`}>
+    <h2 className={`text-[17px] font-extrabold tracking-[-0.02em] text-gray-900 dark:text-white ${className}`}>
       {children}
     </h2>
   )
@@ -38,9 +38,9 @@ export function SectionTitle({ children, className = '' }: { children: React.Rea
 export function AmenityFlow({ items }: { items: Array<{ key: string; label: string; icon: React.ReactNode }> }) {
   if (!items.length) return null
   return (
-    <div className="flex flex-wrap gap-x-5 gap-y-2.5">
+    <div className="flex flex-wrap gap-x-5 gap-y-2">
       {items.map((it) => (
-        <span key={it.key} className="inline-flex items-center gap-1.5 text-[13.5px] text-gray-700 dark:text-gray-300">
+        <span key={it.key} className="inline-flex items-center gap-2 text-[13px] text-gray-700 dark:text-gray-300">
           {it.icon}
           {it.label}
         </span>
@@ -58,9 +58,9 @@ export function AmenityFlow({ items }: { items: Array<{ key: string; label: stri
  */
 export function InfoBlock({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="border-t border-line pt-3.5 mt-3.5 first:mt-0">
+    <div className="border-t border-line pt-4 mt-4 first:mt-0">
       <div className="text-[13px] text-gray-500 dark:text-gray-400">{label}</div>
-      <div className="mt-1.5 text-[14px] leading-relaxed text-gray-900 dark:text-white">{children}</div>
+      <div className="mt-2 text-[15px] leading-relaxed text-gray-900 dark:text-white">{children}</div>
     </div>
   )
 }
@@ -110,8 +110,8 @@ export function StaySoldOutCard({ onPickDates }: { onPickDates: () => void }) {
   return (
     <div className="rounded-2xl bg-surface shadow-lift p-5 text-center">
       <p className="text-[15px] font-extrabold tracking-[-0.02em] text-gray-900 dark:text-white">고른 날짜는 모두 예약됐어요</p>
-      <p className="mt-1.5 text-[13px] text-gray-500 dark:text-gray-400">날짜를 바꾸면 남은 객실을 볼 수 있어요.</p>
-      <button type="button" onClick={onPickDates} className="mt-4 w-full py-3 bg-brand text-white text-sm font-bold rounded-xl hover:bg-brand-dark">
+      <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400">날짜를 바꾸면 남은 객실을 볼 수 있어요.</p>
+      <button type="button" onClick={onPickDates} className="mt-4 w-full py-3 bg-brand text-white text-[15px] font-bold rounded-xl hover:bg-brand-dark">
         다른 날짜 고르기
       </button>
     </div>

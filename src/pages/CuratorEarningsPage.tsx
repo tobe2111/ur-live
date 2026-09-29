@@ -84,9 +84,9 @@ export default function CuratorEarningsPage() {
       <div className="min-h-screen bg-white dark:bg-[#11141C] text-gray-900 dark:text-white pb-24">
         <header className="sticky top-0 z-20 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35] px-4 py-3">
           <div className="max-w-3xl mx-auto flex items-center justify-between">
-            <h1 className="text-lg font-bold">🎤 {t('curator.console.title', { defaultValue: '소개 콘솔' })}</h1>
+            <h1 className="text-[17px] font-bold">🎤 {t('curator.console.title', { defaultValue: '소개 콘솔' })}</h1>
             {handle && (
-              <Link to={`/u/${handle}`} className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+              <Link to={`/u/${handle}`} className="text-[15px] text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
                 @{handle}
               </Link>
             )}
@@ -99,13 +99,13 @@ export default function CuratorEarningsPage() {
             <Link to={handle ? `/u/${handle}` : '/u/me'}
               className="rounded-2xl bg-gray-100 dark:bg-white/[0.04] active:bg-gray-200 dark:active:bg-white/[0.08] p-4 transition-colors">
               <p className="text-[13px] font-bold text-gray-900 dark:text-white">🔗 내 유어샵</p>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">상품 핀 추가·정렬·공유</p>
+              <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">상품 핀 추가·정렬·공유</p>
             </Link>
             {!HOSTING_HIDDEN && (
               <Link to="/host"
                 className="rounded-2xl bg-gray-100 dark:bg-white/[0.04] active:bg-gray-200 dark:active:bg-white/[0.08] p-4 transition-colors">
                 <p className="text-[13px] font-bold text-gray-900 dark:text-white">✨ 공구 호스팅</p>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">동네 공구 직접 제안</p>
+                <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">동네 공구 직접 제안</p>
               </Link>
             )}
           </div>
@@ -161,20 +161,20 @@ function IntroducedStoresSection() {
   return (
     <section className="mb-6 bg-surface border border-line rounded-xl p-4">
       <div className="flex items-center justify-between mb-3">
-        <p className="text-sm font-bold text-gray-900 dark:text-white">🏪 내가 영입한 매장</p>
-        <span className="text-xs text-gray-500 dark:text-gray-400">누적 커미션 {formatWon(data.total_commission)}</span>
+        <p className="text-[15px] font-bold text-gray-900 dark:text-white">🏪 내가 영입한 매장</p>
+        <span className="text-[12px] text-gray-500 dark:text-gray-400">누적 커미션 {formatWon(data.total_commission)}</span>
       </div>
       <div className="space-y-2">
         {data.stores.map((s) => {
           const expired = s.referral_bonus_until && new Date(s.referral_bonus_until) < new Date()
           return (
-            <div key={s.id} className="flex items-center justify-between text-xs border-b border-gray-100 dark:border-[#2C2F35] pb-2 last:border-0">
+            <div key={s.id} className="flex items-center justify-between text-[12px] border-b border-gray-100 dark:border-[#2C2F35] pb-2 last:border-0">
               <div>
                 <span className="font-bold text-gray-900 dark:text-white">{s.business_name || `매장 #${s.id}`}</span>
                 <span className="ml-2 text-gray-400 dark:text-gray-500">{s.total_orders}건 · {formatWon(s.total_sales)}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                <span className={`px-2 py-1 rounded-full text-[12px] font-bold ${
                   expired ? 'bg-gray-100 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-500'
                   : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
                 }`}>
@@ -182,7 +182,7 @@ function IntroducedStoresSection() {
                 </span>
                 <button
                   onClick={() => setProxyFor({ id: s.id, name: s.business_name || `매장 #${s.id}` })}
-                  className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand text-white"
+                  className="px-2 py-1 rounded-full text-[12px] font-bold bg-brand text-white"
                 >
                   공구 대행 등록
                 </button>
@@ -226,8 +226,8 @@ function ProxyProductModal({ merchant, onClose }: { merchant: { id: number; name
   return (
     <div className="fixed inset-0 z-[10000] bg-black/60 flex items-end sm:items-center justify-center p-4" onClick={onClose}>
       <div className="w-full max-w-md bg-surface rounded-2xl p-5" onClick={(e) => e.stopPropagation()}>
-        <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">공구 대행 등록</p>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">{merchant.name} — 등록 후 매장 승인 시 공개됩니다.</p>
+        <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">공구 대행 등록</p>
+        <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">{merchant.name} — 등록 후 매장 승인 시 공개됩니다.</p>
         <div className="space-y-2">
           {([
             ['name', '상품명'],
@@ -241,7 +241,7 @@ function ProxyProductModal({ merchant, onClose }: { merchant: { id: number; name
               value={(form as any)[k]}
               onChange={(e) => setForm({ ...form, [k]: e.target.value })}
               placeholder={label}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-[#2C2F35] bg-surface text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 text-[15px] rounded-lg border border-gray-300 dark:border-[#2C2F35] bg-surface text-gray-900 dark:text-white"
             />
           ))}
           <textarea
@@ -249,13 +249,13 @@ function ProxyProductModal({ merchant, onClose }: { merchant: { id: number; name
             onChange={(e) => setForm({ ...form, description: e.target.value })}
             placeholder="설명 (선택)"
             rows={2}
-            className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-[#2C2F35] bg-surface text-gray-900 dark:text-white"
+            className="w-full px-3 py-2 text-[15px] rounded-lg border border-gray-300 dark:border-[#2C2F35] bg-surface text-gray-900 dark:text-white"
           />
           <div className="flex gap-2 pt-1">
-            <button onClick={submit} disabled={submitting} className="flex-1 py-2 bg-brand text-white text-sm font-bold rounded-lg disabled:opacity-50">
+            <button onClick={submit} disabled={submitting} className="flex-1 py-2 bg-brand text-white text-[15px] font-bold rounded-lg disabled:opacity-50">
               {submitting ? '등록 중…' : '대행 등록'}
             </button>
-            <button onClick={onClose} className="px-3 py-2 text-gray-500 dark:text-gray-400 text-sm">취소</button>
+            <button onClick={onClose} className="px-3 py-2 text-gray-500 dark:text-gray-400 text-[15px]">취소</button>
           </div>
         </div>
       </div>
@@ -280,16 +280,16 @@ function WithdrawalCard({ info, onWithdraw, onAckUpgrade }: { info: WithdrawalIn
     <section className="mb-6">
       {isCash ? (
         <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-5 text-white">
-          <p className="text-xs opacity-80 mb-1">💰 출금 가능 잔액 (현금)</p>
+          <p className="text-[12px] opacity-80 mb-1">💰 출금 가능 잔액 (현금)</p>
           <p className="text-3xl font-bold mb-3">{formatWon(info.available)}</p>
-          <div className="flex justify-between text-xs opacity-90 mb-4">
+          <div className="flex justify-between text-[12px] opacity-90 mb-4">
             <span>누적 적립 {formatWon(info.lifetime_earnings)}</span>
             <span>출금 {formatWon(info.total_withdrawn)}</span>
           </div>
           <button
             onClick={onWithdraw}
             disabled={info.available < info.min_withdrawal}
-            className="w-full py-2.5 bg-surface text-brand-text font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-2 bg-surface text-brand-text font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {info.available < info.min_withdrawal
               ? `최소 ${formatWon(info.min_withdrawal)} 부터 출금 가능`
@@ -298,14 +298,14 @@ function WithdrawalCard({ info, onWithdraw, onAckUpgrade }: { info: WithdrawalIn
         </div>
       ) : (
         <div className="bg-gradient-to-br from-gray-700 to-gray-800 rounded-xl p-5 text-white">
-          <p className="text-xs opacity-80 mb-1">🟡 내 딜 잔액</p>
+          <p className="text-[12px] opacity-80 mb-1">🟡 내 딜 잔액</p>
           <p className="text-3xl font-bold mb-3">{formatNumber(info.deal_balance)}딜</p>
-          <p className="text-xs opacity-90 mb-3">
+          <p className="text-[12px] opacity-90 mb-3">
             누적 적립 {formatNumber(info.lifetime_earnings)}딜 — 1딜 = 1원으로 쇼핑/공구에 사용
           </p>
           <Link
             to="/browse"
-            className="block w-full py-2.5 bg-surface text-orange-600 font-bold rounded-lg text-center"
+            className="block w-full py-2 bg-surface text-orange-600 font-bold rounded-lg text-center"
           >
             🛍️ 쇼핑 둘러보기
           </Link>
@@ -315,15 +315,15 @@ function WithdrawalCard({ info, onWithdraw, onAckUpgrade }: { info: WithdrawalIn
       {/* 셀러 승급 안내 */}
       {info.seller_upgrade.eligible && !info.seller_upgrade.offered && (
         <div className="mt-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-4">
-          <p className="text-sm font-bold text-amber-900 dark:text-amber-100 mb-1">🎯 셀러 승급 안내</p>
-          <p className="text-xs text-amber-800 dark:text-amber-200 mb-3">
+          <p className="text-[15px] font-bold text-amber-900 dark:text-amber-100 mb-1">🎯 셀러 승급 안내</p>
+          <p className="text-[12px] text-amber-800 dark:text-amber-200 mb-3">
             누적 적립이 {formatWon(info.seller_upgrade.threshold)} 를 넘었어요! 셀러로 승급하시면 직접 상품 판매·라이브 송출이 가능해져요.
           </p>
           <div className="flex gap-2">
-            <Link to="/store/new" className="flex-1 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg text-center">
+            <Link to="/store/new" className="flex-1 py-2 bg-amber-500 hover:bg-amber-600 text-white text-[12px] font-bold rounded-lg text-center">
               셀러 가입하기
             </Link>
-            <button onClick={onAckUpgrade} className="px-3 py-2 text-amber-700 dark:text-amber-300 text-xs font-bold">
+            <button onClick={onAckUpgrade} className="px-3 py-2 text-amber-700 dark:text-amber-300 text-[12px] font-bold">
               나중에
             </button>
           </div>
@@ -333,15 +333,15 @@ function WithdrawalCard({ info, onWithdraw, onAckUpgrade }: { info: WithdrawalIn
       {/* 출금 이력 */}
       {info.history.length > 0 && (
         <div className="mt-3 bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-4">
-          <p className="text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">최근 출금 이력</p>
+          <p className="text-[12px] font-bold text-gray-700 dark:text-gray-300 mb-2">최근 출금 이력</p>
           <div className="space-y-2">
             {info.history.slice(0, 5).map((h) => (
-              <div key={h.id} className="flex justify-between items-center text-xs">
+              <div key={h.id} className="flex justify-between items-center text-[12px]">
                 <div>
                   <span className="text-gray-700 dark:text-gray-300">{formatWon(h.amount)}</span>
                   <span className="text-gray-400 dark:text-gray-500 ml-2">({h.bank_name})</span>
                 </div>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                <span className={`px-2 py-1 rounded-full text-[12px] font-bold ${
                   h.status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
                   h.status === 'rejected' ? 'bg-red-100 text-red-700' :
                   'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300'
@@ -393,60 +393,60 @@ function WithdrawModal({ info, onClose, onSuccess }: { info: WithdrawalInfo; onC
   return (
     <div className="fixed inset-0 z-[10001] bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
       <div className="w-full sm:max-w-md bg-surface rounded-t-2xl sm:rounded-2xl p-5" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-base font-bold text-gray-900 dark:text-white mb-4">💰 출금 신청</h2>
+        <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-4">💰 출금 신청</h2>
 
         <div className="space-y-3">
           <div>
-            <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">금액 (최대 {formatWon(info.available)})</label>
+            <label className="text-[12px] text-gray-500 dark:text-gray-400 block mb-1">금액 (최대 {formatWon(info.available)})</label>
             <input
               type="number"
               min={info.min_withdrawal}
               max={info.available}
               value={amount}
               onChange={(e) => setAmount(Math.max(0, Math.min(info.available, Number(e.target.value) || 0)))}
-              className="w-full px-3 py-2 text-sm bg-warm border border-line text-gray-900 dark:text-white rounded-lg"
+              className="w-full px-3 py-2 text-[15px] bg-warm border border-line text-gray-900 dark:text-white rounded-lg"
             />
           </div>
           <div>
-            <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">은행</label>
+            <label className="text-[12px] text-gray-500 dark:text-gray-400 block mb-1">은행</label>
             <input
               type="text"
               value={bankName}
               onChange={(e) => setBankName(e.target.value)}
               placeholder="예: 카카오뱅크"
-              className="w-full px-3 py-2 text-sm bg-warm border border-line text-gray-900 dark:text-white rounded-lg"
+              className="w-full px-3 py-2 text-[15px] bg-warm border border-line text-gray-900 dark:text-white rounded-lg"
             />
           </div>
           <div>
-            <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">계좌번호</label>
+            <label className="text-[12px] text-gray-500 dark:text-gray-400 block mb-1">계좌번호</label>
             <input
               type="text"
               value={bankAccount}
               onChange={(e) => setBankAccount(e.target.value.replace(/[^0-9-]/g, ''))}
               placeholder="3333-01-1234567"
-              className="w-full px-3 py-2 text-sm bg-warm border border-line text-gray-900 dark:text-white rounded-lg"
+              className="w-full px-3 py-2 text-[15px] bg-warm border border-line text-gray-900 dark:text-white rounded-lg"
             />
           </div>
           <div>
-            <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">예금주</label>
+            <label className="text-[12px] text-gray-500 dark:text-gray-400 block mb-1">예금주</label>
             <input
               type="text"
               value={accountHolder}
               onChange={(e) => setAccountHolder(e.target.value)}
-              className="w-full px-3 py-2 text-sm bg-warm border border-line text-gray-900 dark:text-white rounded-lg"
+              className="w-full px-3 py-2 text-[15px] bg-warm border border-line text-gray-900 dark:text-white rounded-lg"
             />
           </div>
         </div>
 
-        <div className="mt-4 bg-warm rounded-lg p-3 text-xs space-y-1">
+        <div className="mt-4 bg-warm rounded-lg p-3 text-[12px] space-y-1">
           <div className="flex justify-between text-gray-600 dark:text-gray-400"><span>신청 금액</span><span>{formatWon(amount)}</span></div>
           <div className="flex justify-between text-gray-600 dark:text-gray-400"><span>원천징수 ({(info.withholding_rate * 100).toFixed(1)}%)</span><span>-{formatWon(withholding)}</span></div>
           <div className="flex justify-between font-bold text-gray-900 dark:text-white pt-1 border-t border-line"><span>실 입금</span><span>{formatWon(netAmount)}</span></div>
         </div>
 
         <div className="mt-4 flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2.5 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300 font-bold rounded-lg">취소</button>
-          <button onClick={submit} disabled={submitting} className="flex-1 py-2.5 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white font-bold rounded-lg">
+          <button onClick={onClose} className="flex-1 py-2 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300 font-bold rounded-lg">취소</button>
+          <button onClick={submit} disabled={submitting} className="flex-1 py-2 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white font-bold rounded-lg">
             {submitting ? '신청 중...' : '신청'}
           </button>
         </div>
@@ -485,9 +485,9 @@ function SummaryCards({ stats }: { stats: DashboardStats }) {
     <div className="grid grid-cols-3 gap-3 mb-6">
       {cards.map((card) => (
         <div key={card.label} className="bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-3 border border-gray-100 dark:border-[#2C2F35]">
-          <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-1">{card.label}</p>
-          <p className={`text-lg font-bold ${card.accent}`}>{card.value}</p>
-          {card.sub && <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{card.sub}</p>}
+          <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1">{card.label}</p>
+          <p className={`text-[17px] font-bold ${card.accent}`}>{card.value}</p>
+          {card.sub && <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-1">{card.sub}</p>}
         </div>
       ))}
     </div>
@@ -499,7 +499,7 @@ function TopPinsSection({ stats }: { stats: DashboardStats }) {
   if (!stats.top_pins?.length) return null
   return (
     <section className="mb-6">
-      <h2 className="text-sm font-bold mb-3">🔥 {t('curator.earnings.topPins', { defaultValue: '인기 핀 TOP 3' })}</h2>
+      <h2 className="text-[15px] font-bold mb-3">🔥 {t('curator.earnings.topPins', { defaultValue: '인기 핀 TOP 3' })}</h2>
       <div className="space-y-2">
         {stats.top_pins.map((pin, idx) => (
           <Link
@@ -507,7 +507,7 @@ function TopPinsSection({ stats }: { stats: DashboardStats }) {
             to={`/products/${pin.product_id}`}
             className="flex items-center gap-3 bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-3 border border-gray-100 dark:border-[#2C2F35] hover:border-brand/50 transition-colors"
           >
-            <div className="text-lg font-bold text-gray-400 dark:text-gray-500 w-6">{idx + 1}</div>
+            <div className="text-[17px] font-bold text-gray-400 dark:text-gray-500 w-6">{idx + 1}</div>
             {(pin.thumbnail || pin.image_url) && (
               <img
                 src={cfImage(pin.thumbnail || pin.image_url || '', { width: 96, format: 'auto' }) || (pin.thumbnail || pin.image_url || '')}
@@ -519,8 +519,8 @@ function TopPinsSection({ stats }: { stats: DashboardStats }) {
               />
             )}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{pin.product_name}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">👆 {formatNumber(pin.click_count)} 클릭</p>
+              <p className="text-[15px] font-medium truncate">{pin.product_name}</p>
+              <p className="text-[12px] text-gray-500 dark:text-gray-400">👆 {formatNumber(pin.click_count)} 클릭</p>
             </div>
           </Link>
         ))}
@@ -535,7 +535,7 @@ function RecentEarningsSection({ stats }: { stats: DashboardStats }) {
   if (!items.length) return null
   return (
     <section className="mb-6">
-      <h2 className="text-sm font-bold mb-3">🧾 {t('curator.earnings.recent', { defaultValue: '수익 내역 (원천별)' })}</h2>
+      <h2 className="text-[15px] font-bold mb-3">🧾 {t('curator.earnings.recent', { defaultValue: '수익 내역 (원천별)' })}</h2>
       <div className="space-y-2">
         {items.map((e) => (
           <Link
@@ -544,20 +544,20 @@ function RecentEarningsSection({ stats }: { stats: DashboardStats }) {
             className="flex items-center justify-between gap-3 bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-3 border border-gray-100 dark:border-[#2C2F35] hover:border-brand/50 transition-colors"
           >
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">
+              <p className="text-[15px] font-medium truncate">
                 {e.product_name || t('curator.earnings.unknownProduct', { defaultValue: '상품' })}
                 {e.status === 'holding' && (
-                  <span className="ml-1.5 align-middle inline-block px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                  <span className="ml-1.5 align-middle inline-block px-2 py-1 rounded-full text-[12px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
                     적립예정
                   </span>
                 )}
               </p>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400">
+              <p className="text-[12px] text-gray-500 dark:text-gray-400">
                 {parseUTCDate(e.created_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', month: 'short', day: 'numeric' })}
                 {e.order_amount ? ` · 주문 ${formatWon(e.order_amount)}` : ''}
               </p>
             </div>
-            <span className={`text-sm font-bold shrink-0 ${e.status === 'holding' ? 'text-amber-500' : 'text-brand-text'}`}>+{formatWon(e.commission)}</span>
+            <span className={`text-[15px] font-bold shrink-0 ${e.status === 'holding' ? 'text-amber-500' : 'text-brand-text'}`}>+{formatWon(e.commission)}</span>
           </Link>
         ))}
       </div>
@@ -569,7 +569,7 @@ function DailyChart({ stats }: { stats: DashboardStats }) {
   const { t } = useTranslation()
   const daily = stats.earnings_daily_30d || []
   if (!daily.length) return (
-    <section className="bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-6 text-center text-sm text-gray-500 dark:text-gray-400">
+    <section className="bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-6 text-center text-[15px] text-gray-500 dark:text-gray-400">
       {t('curator.earnings.noData', { defaultValue: '아직 데이터가 없어요. 친구에게 핀을 공유해보세요!' })}
     </section>
   )
@@ -577,7 +577,7 @@ function DailyChart({ stats }: { stats: DashboardStats }) {
   const max = Math.max(...daily.map((d) => safeNum(d.amount)), 1)
   return (
     <section>
-      <h2 className="text-sm font-bold mb-3">📈 {t('curator.earnings.dailyChart', { defaultValue: '일별 적립 (30일)' })}</h2>
+      <h2 className="text-[15px] font-bold mb-3">📈 {t('curator.earnings.dailyChart', { defaultValue: '일별 적립 (30일)' })}</h2>
       <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-4 border border-gray-100 dark:border-[#2C2F35]">
         <div className="flex items-end gap-1 h-32">
           {daily.map((d) => {
@@ -589,7 +589,7 @@ function DailyChart({ stats }: { stats: DashboardStats }) {
             )
           })}
         </div>
-        <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2 text-center">{daily[0]?.date} → {daily[daily.length - 1]?.date}</p>
+        <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-2 text-center">{daily[0]?.date} → {daily[daily.length - 1]?.date}</p>
       </div>
     </section>
   )

@@ -168,7 +168,7 @@ export default [
   {
     name: '🏪 장점 섹션에 01/02/03 번호가 돌아온다',
     file: 'src/pages/partners/PartnerBenefits.tsx',
-    find: `              <p className="text-[21px] lg:text-[32px] xl:text-[36px] font-extrabold text-ink leading-[1.3] tracking-[-0.025em]">{k}</p>`,
+    find: `              <p className="text-[24px] lg:text-[32px] xl:text-[36px] font-extrabold text-ink leading-[1.3] tracking-[-0.025em]">{k}</p>`,
     replace: `              <p className="text-[13px] font-extrabold text-brand-text tabular-nums">0{i + 1}</p>
               <p className="text-[21px] lg:text-[32px] xl:text-[36px] font-extrabold text-ink leading-[1.3] tracking-[-0.025em]">{k}</p>`,
     test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',

@@ -75,8 +75,8 @@ export default function HostingNewPage() {
       <div className="min-h-screen bg-white dark:bg-[#11141C] text-gray-900 dark:text-white pb-24">
         <header className="sticky top-0 z-20 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35] px-4 py-3">
           <div className="max-w-3xl mx-auto flex items-center justify-between">
-            <h1 className="text-lg font-bold">+ {t('hosting.newTitle', { defaultValue: '공구 열기' })}</h1>
-            <button onClick={() => navigate('/host')} className="text-sm text-gray-500 dark:text-gray-400">{t('common.back')}</button>
+            <h1 className="text-[17px] font-bold">+ {t('hosting.newTitle', { defaultValue: '공구 열기' })}</h1>
+            <button onClick={() => navigate('/host')} className="text-[15px] text-gray-500 dark:text-gray-400">{t('common.back')}</button>
           </div>
           {/* 카테고리 탭 */}
           <div className="max-w-3xl mx-auto flex gap-2 overflow-x-auto pt-3 -mx-4 px-4">
@@ -84,7 +84,7 @@ export default function HostingNewPage() {
               <button
                 key={cat.key}
                 onClick={() => setCategory(cat.key)}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
+                className={`shrink-0 px-3 py-2 rounded-full text-[12px] font-bold transition-colors ${
                   category === cat.key
                     ? 'bg-brand text-white'
                     : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300'
@@ -117,11 +117,11 @@ export default function HostingNewPage() {
                       )}
                     </div>
                     <div className="p-3">
-                      <p className="text-xs font-medium line-clamp-2 mb-1">{item.name}</p>
-                      <p className="text-sm font-bold text-brand-text ">{formatWon(item.price)}</p>
-                      {item.restaurant_name && <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">{item.restaurant_name}</p>}
+                      <p className="text-[12px] font-medium line-clamp-2 mb-1">{item.name}</p>
+                      <p className="text-[15px] font-bold text-brand-text ">{formatWon(item.price)}</p>
+                      {item.restaurant_name && <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 truncate">{item.restaurant_name}</p>}
                       {item.my_host_id && (
-                        <p className="text-[10px] text-emerald-500 mt-1">✓ 호스팅 중</p>
+                        <p className="text-[12px] text-emerald-500 mt-1">✓ 호스팅 중</p>
                       )}
                     </div>
                   </button>
@@ -130,30 +130,30 @@ export default function HostingNewPage() {
                   {selectedId === item.id && !item.my_host_id && (
                     <div className="p-3 pt-0 border-t border-gray-100 dark:border-[#2C2F35] space-y-2">
                       <div>
-                        <label className="text-[10px] text-gray-500 dark:text-gray-400 block mb-1">목표 인원 (2-100)</label>
+                        <label className="text-[12px] text-gray-500 dark:text-gray-400 block mb-1">목표 인원 (2-100)</label>
                         <input
                           type="number"
                           min={2}
                           max={100}
                           value={target}
                           onChange={(e) => setTarget(Math.max(2, Math.min(100, Number(e.target.value) || 5)))}
-                          className="w-full px-2 py-1.5 text-sm bg-surface border border-line text-gray-900 dark:text-white rounded-lg"
+                          className="w-full px-2 py-2 text-[15px] bg-surface border border-line text-gray-900 dark:text-white rounded-lg"
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] text-gray-500 dark:text-gray-400 block mb-1">한 줄 소개</label>
+                        <label className="text-[12px] text-gray-500 dark:text-gray-400 block mb-1">한 줄 소개</label>
                         <input
                           type="text"
                           value={note}
                           onChange={(e) => setNote(e.target.value.slice(0, 200))}
                           placeholder="같이 사실 분 모집!"
-                          className="w-full px-2 py-1.5 text-sm bg-surface border border-line text-gray-900 dark:text-white rounded-lg"
+                          className="w-full px-2 py-2 text-[15px] bg-surface border border-line text-gray-900 dark:text-white rounded-lg"
                         />
                       </div>
                       <button
                         onClick={() => handleStart(item.id)}
                         disabled={submitting}
-                        className="w-full py-2 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white text-xs font-bold rounded-lg"
+                        className="w-full py-2 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white text-[12px] font-bold rounded-lg"
                       >
                         {submitting ? '시작 중...' : '🎉 공구 시작'}
                       </button>

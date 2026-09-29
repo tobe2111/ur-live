@@ -106,7 +106,7 @@ export default function MobileHomePage() {
       <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="px-4 h-11 flex items-center justify-between gap-2">
           <Link to="/" aria-label="홈" className="shrink-0 flex items-center"><UrDealLogo size={17} /></Link>
-          <div className="flex items-center gap-0.5 text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
             <button onClick={() => navigate('/search')} aria-label="검색" className="p-2 shrink-0"><Search className="h-[21px] w-[21px]" strokeWidth={1.5} /></button>
             <button onClick={() => navigate('/notifications')} aria-label="알림" className="p-2 shrink-0"><Bell className="h-[21px] w-[21px]" strokeWidth={1.5} /></button>
             <button onClick={() => navigate('/cart')} aria-label="장바구니" className="p-2 shrink-0"><ShoppingCart className="h-[21px] w-[21px]" strokeWidth={1.5} /></button>
@@ -120,9 +120,9 @@ export default function MobileHomePage() {
           </div>
           {/* ⚠️ 하단 탭에 지도가 없으므로 **이 컨트롤이 유일한 통로**다 — 지우지 말 것.
               아이콘을 뺀 이유: 이 줄에서 아이콘이 하는 일이 없다(라벨이 이미 두 글자다). */}
-          <div role="tablist" aria-label="보기 방식" className="shrink-0 flex items-center gap-0.5 rounded-lg bg-gray-100 dark:bg-white/[0.06] p-0.5">
-            <span role="tab" aria-selected="true" className="rounded-[6px] bg-surface px-3 py-1.5 text-[12.5px] font-bold text-gray-900 dark:text-white shadow-sm">목록</span>
-            <Link to="/map" role="tab" aria-selected="false" className="rounded-[6px] px-3 py-1.5 text-[12.5px] font-bold text-gray-500 dark:text-gray-400">지도</Link>
+          <div role="tablist" aria-label="보기 방식" className="shrink-0 flex items-center gap-1 rounded-lg bg-gray-100 dark:bg-white/[0.06] p-1">
+            <span role="tab" aria-selected="true" className="rounded-[6px] bg-surface px-3 py-2 text-[12px] font-bold text-gray-900 dark:text-white shadow-sm">목록</span>
+            <Link to="/map" role="tab" aria-selected="false" className="rounded-[6px] px-3 py-2 text-[12px] font-bold text-gray-500 dark:text-gray-400">지도</Link>
           </div>
         </div>
 
@@ -146,7 +146,7 @@ export default function MobileHomePage() {
                 key={key}
                 onClick={() => setCategory(key)}
                 aria-pressed={on}
-                className={`shrink-0 pb-2 text-[14.5px] transition-colors border-b-2 ${
+                className={`shrink-0 pb-2 text-[15px] transition-colors border-b-2 ${
                   on
                     ? 'font-black text-gray-900 dark:text-white border-brand'
                     : 'font-semibold text-gray-400 dark:text-gray-500 border-transparent'
@@ -170,7 +170,7 @@ export default function MobileHomePage() {
                "마지막 방문 이후 새 영상이 있을 때만" 조건으로 얹는다. */}
         <Link
           to={URSHORTS_BROWSE_PATH}
-          className="flex shrink-0 items-center gap-1.5 whitespace-nowrap pb-2 text-[12.5px] font-bold text-gray-600 dark:text-gray-300"
+          className="flex shrink-0 items-center gap-2 whitespace-nowrap pb-2 text-[12px] font-bold text-gray-600 dark:text-gray-300"
         >
           <ShortsIcon size={16} />
           유어쇼츠<span className="-ml-[3px] text-brand-text">.</span>

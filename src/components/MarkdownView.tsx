@@ -17,7 +17,7 @@ function renderInline(text: string): ReactNode[] {
     if (m[2] !== undefined) {
       nodes.push(<strong key={key++} className="font-semibold text-gray-900 dark:text-white">{m[2]}</strong>)
     } else if (m[3] !== undefined) {
-      nodes.push(<code key={key++} className="px-1 py-0.5 rounded bg-gray-100 dark:bg-[#1D1F29] text-[0.85em] text-brand-text font-mono break-all">{m[3]}</code>)
+      nodes.push(<code key={key++} className="px-1 py-1 rounded bg-gray-100 dark:bg-[#1D1F29] text-[0.85em] text-brand-text font-mono break-all">{m[3]}</code>)
     } else if (m[4] !== undefined) {
       const href = m[5]
       const external = /^https?:\/\//.test(href)
@@ -56,10 +56,10 @@ export default function MarkdownView({ source, className = '' }: { source: strin
     if (h) {
       const lvl = h[1].length
       const txt = h[2]
-      const cls = lvl === 1 ? 'text-2xl font-extrabold mt-2 mb-4'
-        : lvl === 2 ? 'text-lg font-bold mt-8 mb-3 pb-1 border-b border-gray-100 dark:border-[#2C2F35]'
+      const cls = lvl === 1 ? 'text-[24px] font-extrabold mt-2 mb-4'
+        : lvl === 2 ? 'text-[17px] font-bold mt-8 mb-3 pb-1 border-b border-gray-100 dark:border-[#2C2F35]'
         : lvl === 3 ? 'text-[15px] font-bold mt-5 mb-2'
-        : 'text-[13px] font-bold mt-4 mb-1.5 text-gray-600 dark:text-gray-300'
+        : 'text-[13px] font-bold mt-4 mb-2 text-gray-600 dark:text-gray-300'
       blocks.push(<div key={key++} className={`text-gray-900 dark:text-white ${cls}`}>{renderInline(txt)}</div>)
       i++; continue
     }
@@ -72,7 +72,7 @@ export default function MarkdownView({ source, className = '' }: { source: strin
       while (i < lines.length && isTableRow(lines[i])) { rows.push(cells(lines[i])); i++ }
       blocks.push(
         <div key={key++} className="my-3 overflow-x-auto rounded-lg border border-line">
-          <table className="w-full text-[12.5px] border-collapse">
+          <table className="w-full text-[12px] border-collapse">
             <thead>
               <tr>{header.map((c, j) => <th key={j} className="text-left px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] border-b border-line font-semibold text-gray-700 dark:text-gray-200 whitespace-nowrap">{renderInline(c)}</th>)}</tr>
             </thead>
@@ -104,7 +104,7 @@ export default function MarkdownView({ source, className = '' }: { source: strin
       const items: string[] = []
       while (i < lines.length && /^[-*]\s+/.test(lines[i].trim())) { items.push(lines[i].trim().replace(/^[-*]\s+/, '')); i++ }
       blocks.push(
-        <ul key={key++} className="my-2 ml-4 list-disc space-y-1 text-[13.5px] text-gray-600 dark:text-gray-300 marker:text-gray-400">
+        <ul key={key++} className="my-2 ml-4 list-disc space-y-1 text-[13px] text-gray-600 dark:text-gray-300 marker:text-gray-400">
           {items.map((it, ii) => <li key={ii}>{renderInline(it)}</li>)}
         </ul>,
       )
@@ -116,7 +116,7 @@ export default function MarkdownView({ source, className = '' }: { source: strin
       const items: string[] = []
       while (i < lines.length && /^\d+\.\s+/.test(lines[i].trim())) { items.push(lines[i].trim().replace(/^\d+\.\s+/, '')); i++ }
       blocks.push(
-        <ol key={key++} className="my-2 ml-5 list-decimal space-y-1 text-[13.5px] text-gray-600 dark:text-gray-300 marker:text-gray-400">
+        <ol key={key++} className="my-2 ml-5 list-decimal space-y-1 text-[13px] text-gray-600 dark:text-gray-300 marker:text-gray-400">
           {items.map((it, ii) => <li key={ii}>{renderInline(it)}</li>)}
         </ol>,
       )
@@ -124,7 +124,7 @@ export default function MarkdownView({ source, className = '' }: { source: strin
     }
 
     // 문단
-    blocks.push(<p key={key++} className="my-2 text-[13.5px] leading-relaxed text-gray-600 dark:text-gray-300">{renderInline(t)}</p>)
+    blocks.push(<p key={key++} className="my-2 text-[13px] leading-relaxed text-gray-600 dark:text-gray-300">{renderInline(t)}</p>)
     i++
   }
 

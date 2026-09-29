@@ -25,7 +25,7 @@ export default function ServerErrorPage() {
 
         {/* Error Code */}
         <div className="mb-4 smooth-appear" style={{ animationDelay: '0.1s' }}>
-          <span className="inline-block px-4 py-2 rounded-full bg-[#ff3b30]/10 text-[#ff3b30] text-sm font-semibold tracking-tight">
+          <span className="inline-block px-4 py-2 rounded-full bg-[#ff3b30]/10 text-[#ff3b30] text-[15px] font-semibold tracking-tight">
             500 ERROR
           </span>
         </div>
@@ -36,7 +36,7 @@ export default function ServerErrorPage() {
         </h1>
 
         {/* Description */}
-        <p className="mb-8 text-[17px] sm:text-[19px] leading-[1.47059] font-normal text-[#6e6e73] dark:text-gray-400 smooth-appear whitespace-pre-line" style={{ animationDelay: '0.3s' }}>
+        <p className="mb-8 text-[17px] sm:text-[17px] leading-[1.47059] font-normal text-[#6e6e73] dark:text-gray-400 smooth-appear whitespace-pre-line" style={{ animationDelay: '0.3s' }}>
           {t('serverError.description')}
         </p>
 
@@ -60,7 +60,7 @@ export default function ServerErrorPage() {
 
         {/* Customer Support */}
         <div className="mt-12 pt-8 border-t border-black/5 dark:border-white/10 smooth-appear" style={{ animationDelay: '0.5s' }}>
-          <p className="mb-4 text-[14px] font-normal text-[#6e6e73] dark:text-gray-400">
+          <p className="mb-4 text-[15px] font-normal text-[#6e6e73] dark:text-gray-400">
             {t('serverError.stillIssue')}
           </p>
           <a

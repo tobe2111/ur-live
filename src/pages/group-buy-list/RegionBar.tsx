@@ -19,7 +19,7 @@ export default function RegionBar({ category, regionKey, gpsRegion, regionButton
       <div className={`ur-content-wide px-4 lg:px-8 mt-3 ${category === 'general' ? 'hidden' : 'flex items-center gap-2'}`}>
         <button
           onClick={() => setRegionPickerOpen(true)}
-          className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-[13px] font-semibold border transition-colors ${
+          className={`shrink-0 inline-flex items-center gap-2 px-3 py-2 rounded-full text-[13px] font-semibold border transition-colors ${
             (regionKey || gpsRegion)
               ? 'bg-brand border-brand dark:border-white text-white'
               : 'bg-white dark:bg-[#1D1F29] border-gray-200 dark:border-[#2C2F35] text-gray-700 dark:text-gray-300'

@@ -65,7 +65,7 @@ export default function HomeBannerStrip({ variant }: { variant: Extract<BannerSl
             {b.description && <span className="block mt-1 text-[13px] text-white/80">{b.description}</span>}
           </div>
           {href && (
-            <span className="shrink-0 px-5 py-2.5 rounded-lg bg-brand text-white text-[13px] font-bold">
+            <span className="shrink-0 px-5 py-2 rounded-lg bg-brand text-white text-[13px] font-bold">
               바로가기
             </span>
           )}
@@ -95,7 +95,7 @@ export default function HomeBannerStrip({ variant }: { variant: Extract<BannerSl
               {bg && <img src={bg} alt="" aria-hidden="true" className="absolute inset-0 -z-10 w-full h-full object-cover" />}
               <div className="absolute inset-0 -z-10 bg-gradient-to-br from-black/60 to-black/40" aria-hidden="true" />
               {b.description && (
-                <small className="block mb-1 text-[11px] font-bold tracking-wide text-white/80">{b.description}</small>
+                <small className="block mb-1 text-[12px] font-bold tracking-wide text-white/80">{b.description}</small>
               )}
               <strong className="text-[15px] font-bold leading-snug tracking-tight text-white">{b.title}</strong>
             </Wrap>
@@ -162,9 +162,9 @@ function StripRail({ banners }: { banners: HomeBanner[] }) {
               {/* 어떤 사진이 올라올지 모른다 — 글자가 안 읽히는 사고를 막으려고 항상 덮는다. */}
               <div className="absolute inset-0 -z-10 bg-gradient-to-r from-black/60 to-black/30" aria-hidden="true" />
               {b.description && (
-                <small className="block text-[10.5px] font-bold text-white/80 truncate">{b.description}</small>
+                <small className="block text-[12px] font-bold text-white/80 truncate">{b.description}</small>
               )}
-              <strong className="block mt-0.5 text-[15px] font-extrabold leading-snug tracking-tight text-white line-clamp-2">{b.title}</strong>
+              <strong className="block mt-1 text-[15px] font-extrabold leading-snug tracking-tight text-white line-clamp-2">{b.title}</strong>
             </Wrap>
           )
         })}

@@ -528,7 +528,7 @@ const MUTATIONS = [
   {
     name: '🎨 섹션 더보기가 다시 테두리 알약이 된다 (표면 규칙 ① 위반)',
     file: 'src/components/home/HomeSections.tsx',
-    find: '                  className="shrink-0 text-[12.5px] font-bold text-gray-600 dark:text-gray-300 hover:underline underline-offset-4 whitespace-nowrap"',
+    find: '                  className="shrink-0 text-[12px] font-bold text-gray-600 dark:text-gray-300 hover:underline underline-offset-4 whitespace-nowrap"',
     replace: '                  className="shrink-0 px-3.5 py-1.5 rounded-full border border-gray-200 text-[12.5px] font-bold text-gray-600 whitespace-nowrap"',
     test: 'src/tests/unit/home-selected-is-brand.test.ts',
     why:
@@ -1053,8 +1053,8 @@ const MUTATIONS = [
   {
     name: '🎨 브랜드 강조가 다시 회색으로 — 구 로즈(pink) 유틸이 되돌아온다',
     file: 'src/components/gift/GiftSendModal.tsx',
-    find: 'bg-brand text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-brand-dark',
-    replace: 'bg-pink-500 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-pink-600',
+    find: 'bg-brand text-white rounded-xl font-bold text-[15px] flex items-center justify-center gap-2 hover:bg-brand-dark',
+    replace: 'bg-pink-500 text-white rounded-xl font-bold text-[15px] flex items-center justify-center gap-2 hover:bg-pink-600',
     test: 'src/tests/unit/brand-color-migration.test.ts',
     why: 'tailwind 이 pink 를 MONO 로 중화한다 — 라이브 실측 .bg-pink-500 → rgb(110 107 104). 주 버튼이 조용히 회색이 된다.',
   },
@@ -2715,8 +2715,8 @@ canvas {
   {
     name: '/map 패널 칩이 다시 줄바꿈된다(카카오맵 한 줄이 깨진다)',
     file: 'src/pages/restaurant-map/MapTopBar.tsx',
-    find: "panel ? 'grid grid-cols-7 gap-0.5'",
-    replace: "panel ? 'flex flex-wrap gap-1.5'",
+    find: "panel ? 'grid grid-cols-7 gap-1'",
+    replace: "panel ? 'flex flex-wrap gap-2'",
     test: 'src/tests/unit/groupon-detail-map.test.ts',
     why:
       '2026-08-19 대표 시안(카카오맵) — 같은 날 한 번 뒤집힌 자리다. 알약 칩은 400px 에 7개가 안 들어가 ' +
@@ -9708,7 +9708,7 @@ canvas {
   {
     name: '지도 패널 — 테마 대응이 사라진다(패널까지 light-island)',
     file: 'src/pages/restaurant-map/MapTopBar.tsx',
-    find: "? 'hidden lg:block px-3 pt-3 pb-2.5 space-y-2 border-b border-gray-100 dark:border-[#2C2F35]'",
+    find: "? 'hidden lg:block px-3 pt-3 pb-2 space-y-2 border-b border-gray-100 dark:border-[#2C2F35]'",
     replace: "? 'light-island hidden lg:block px-3 pt-3 pb-2.5 space-y-2 border-b border-gray-100'",
     test: 'src/tests/unit/light-island-inputs.test.ts',
     why: 'PC 리스트 패널은 지도 위가 아니라 앱 안이라 테마를 따라야 한다. 섬을 남발하면 다크에서 흰 덩어리가 된다.',
@@ -9746,8 +9746,8 @@ canvas {
   {
     name: 'PC 홈 히어로 — 주 행동이 다시 테두리 고스트 알약이 된다',
     file: 'src/components/home/HomeHeroDefault.tsx',
-    find: 'rounded-full bg-brand text-white text-[13.5px] font-extrabold hover:bg-[#1557C8]',
-    replace: 'rounded-full border border-white/25 text-white text-[13.5px] font-extrabold hover:bg-white/10',
+    find: 'rounded-full bg-brand text-white text-[13px] font-extrabold hover:bg-[#1557C8]',
+    replace: 'rounded-full border border-white/25 text-white text-[13px] font-extrabold hover:bg-white/10',
     test: 'src/tests/unit/pc-home-hero-controls.test.ts',
     why: '표면 규칙 ② 강조색 하나, 자리 셋 — 히어로에서 그 자리는 주 행동이다. 블루가 빠지면 넷 다 같은 무게로 돌아간다.',
   },
@@ -10007,8 +10007,8 @@ canvas {
     name: '🎫 리뷰 textarea 다크 배경이 다시 빠진다 (흰 바탕에 흰 글자)',
     file: 'src/pages/product-detail/ProductReviews.tsx',
     // 🔀 2026-09-15: 〃
-    find: 'bg-warm text-sm text-gray-900 dark:text-white',
-    replace: 'text-sm text-gray-900 dark:text-white',
+    find: 'bg-warm text-[15px] text-gray-900 dark:text-white',
+    replace: 'text-[15px] text-gray-900 dark:text-white',
     test: 'src/tests/unit/consumer-popups-dark.test.ts',
     why:
       '전역 `.dark textarea{color:gray-100}` 가 글자를 흰색으로 만들므로 배경이 없으면 브라우저 기본 흰 바탕에 ' +

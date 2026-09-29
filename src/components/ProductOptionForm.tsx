@@ -58,10 +58,10 @@ export default function ProductOptionForm({
     <div className="space-y-4">
       <div className="flex items-start justify-between">
         <div>
-          <h3 className="text-sm font-bold text-gray-900">
+          <h3 className="text-[15px] font-bold text-gray-900">
             {t('productOption.title', { defaultValue: '상품 옵션 관리' })}
           </h3>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <p className="text-[12px] text-gray-500 mt-1">
             {t('productOption.subtitle', { defaultValue: '색상, 사이즈 등 다양한 옵션을 추가하세요' })}
           </p>
         </div>
@@ -69,7 +69,7 @@ export default function ProductOptionForm({
 
       {options.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-medium text-gray-700">
+          <p className="text-[12px] font-medium text-gray-700">
             {t('productOption.registeredCount', { count: options.length, defaultValue: '등록된 옵션 ({{count}}개)' })}
           </p>
           <div className="space-y-2">
@@ -80,7 +80,7 @@ export default function ProductOptionForm({
               >
                 <div className="flex-1 grid grid-cols-4 gap-2">
                   <div>
-                    <label className="text-[10px] text-gray-500 block mb-1">
+                    <label className="text-[12px] text-gray-500 block mb-1">
                       {t('productOption.typeLabel', { defaultValue: '타입' })}
                     </label>
                     <input
@@ -88,12 +88,12 @@ export default function ProductOptionForm({
                       value={option.option_type}
                       onChange={(e) => handleUpdateOption(index, 'option_type', e.target.value)}
                       disabled={disabled}
-                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded text-gray-900 focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
+                      className="w-full px-2 py-2 text-[12px] border border-gray-300 rounded text-gray-900 focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
                       placeholder={t('productOption.typePlaceholder', { defaultValue: '예: 색상' })}
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] text-gray-500 block mb-1">
+                    <label className="text-[12px] text-gray-500 block mb-1">
                       {t('productOption.valueLabel', { defaultValue: '값' })}
                     </label>
                     <input
@@ -101,12 +101,12 @@ export default function ProductOptionForm({
                       value={option.option_value}
                       onChange={(e) => handleUpdateOption(index, 'option_value', e.target.value)}
                       disabled={disabled}
-                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded text-gray-900 focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
+                      className="w-full px-2 py-2 text-[12px] border border-gray-300 rounded text-gray-900 focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
                       placeholder={t('productOption.valuePlaceholder', { defaultValue: '예: 블랙' })}
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] text-gray-500 block mb-1">
+                    <label className="text-[12px] text-gray-500 block mb-1">
                       {t('productOption.priceAdjLabel', { defaultValue: '가격 조정' })}
                     </label>
                     <input
@@ -114,12 +114,12 @@ export default function ProductOptionForm({
                       value={option.price_adjustment}
                       onChange={(e) => handleUpdateOption(index, 'price_adjustment', Number(e.target.value))}
                       disabled={disabled}
-                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded text-gray-900 focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
+                      className="w-full px-2 py-2 text-[12px] border border-gray-300 rounded text-gray-900 focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
                       placeholder="0"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] text-gray-500 block mb-1">
+                    <label className="text-[12px] text-gray-500 block mb-1">
                       {t('productOption.stockLabel', { defaultValue: '재고' })}
                     </label>
                     <input
@@ -127,7 +127,7 @@ export default function ProductOptionForm({
                       value={option.stock}
                       onChange={(e) => handleUpdateOption(index, 'stock', Number(e.target.value))}
                       disabled={disabled}
-                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded text-gray-900 focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
+                      className="w-full px-2 py-2 text-[12px] border border-gray-300 rounded text-gray-900 focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
                       placeholder="0"
                       min="0"
                     />
@@ -148,13 +148,13 @@ export default function ProductOptionForm({
       )}
 
       <div className="border-t border-line pt-4">
-        <p className="text-xs font-medium text-gray-700 mb-3">
+        <p className="text-[12px] font-medium text-gray-700 mb-3">
           {t('productOption.newOptionTitle', { defaultValue: '새 옵션 추가' })}
         </p>
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">
+              <label className="block text-[12px] font-medium text-gray-700 mb-2">
                 {t('productOption.optionTypeStar', { defaultValue: '옵션 타입 *' })}
               </label>
               <input
@@ -162,15 +162,15 @@ export default function ProductOptionForm({
                 value={newOption.option_type}
                 onChange={(e) => setNewOption({ ...newOption, option_type: e.target.value })}
                 disabled={disabled}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
+                className="w-full px-3 py-2 text-[15px] border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
                 placeholder={t('productOption.typeGroupPlaceholder', { defaultValue: '예: 색상, 사이즈' })}
               />
-              <p className="text-[10px] text-gray-500 mt-1">
+              <p className="text-[12px] text-gray-500 mt-1">
                 {t('productOption.typeGroupHint', { defaultValue: '같은 타입끼리 그룹화됩니다' })}
               </p>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">
+              <label className="block text-[12px] font-medium text-gray-700 mb-2">
                 {t('productOption.optionValueStar', { defaultValue: '옵션 값 *' })}
               </label>
               <input
@@ -178,7 +178,7 @@ export default function ProductOptionForm({
                 value={newOption.option_value}
                 onChange={(e) => setNewOption({ ...newOption, option_value: e.target.value })}
                 disabled={disabled}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
+                className="w-full px-3 py-2 text-[15px] border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
                 placeholder={t('productOption.valueGroupPlaceholder', { defaultValue: '예: 블랙, M' })}
               />
             </div>
@@ -186,7 +186,7 @@ export default function ProductOptionForm({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">
+              <label className="block text-[12px] font-medium text-gray-700 mb-2">
                 {t('productOption.priceAdjWon', { defaultValue: '가격 조정 (원)' })}
               </label>
               <input
@@ -194,15 +194,15 @@ export default function ProductOptionForm({
                 value={newOption.price_adjustment}
                 onChange={(e) => setNewOption({ ...newOption, price_adjustment: Number(e.target.value) })}
                 disabled={disabled}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
+                className="w-full px-3 py-2 text-[15px] border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
                 placeholder="0"
               />
-              <p className="text-[10px] text-gray-500 mt-1">
+              <p className="text-[12px] text-gray-500 mt-1">
                 {t('productOption.priceDiscountHint', { defaultValue: '음수 입력 시 할인 적용' })}
               </p>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">
+              <label className="block text-[12px] font-medium text-gray-700 mb-2">
                 {t('productOption.stockQuantityStar', { defaultValue: '재고 수량 *' })}
               </label>
               <input
@@ -210,7 +210,7 @@ export default function ProductOptionForm({
                 value={newOption.stock}
                 onChange={(e) => setNewOption({ ...newOption, stock: Number(e.target.value) })}
                 disabled={disabled}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
+                className="w-full px-3 py-2 text-[15px] border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100"
                 placeholder="0"
                 min="0"
               />
@@ -231,10 +231,10 @@ export default function ProductOptionForm({
       </div>
 
       <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-        <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" strokeWidth={1.5} />
-        <div className="text-xs text-blue-900">
+        <AlertCircle className="h-4 w-4 text-blue-600 mt-1 flex-shrink-0" strokeWidth={1.5} />
+        <div className="text-[12px] text-blue-900">
           <p className="font-medium">{t('productOption.tipTitle', { defaultValue: '옵션 설정 팁' })}</p>
-          <ul className="mt-1 space-y-0.5 list-disc list-inside">
+          <ul className="mt-1 space-y-1 list-disc list-inside">
             <li>{t('productOption.tip1', { defaultValue: '같은 타입(예: "색상")끼리 자동 그룹화됩니다' })}</li>
             <li>{t('productOption.tip2', { defaultValue: '가격 조정: 프리미엄 옵션에 추가 금액 설정' })}</li>
             <li>{t('productOption.tip3', { defaultValue: '재고: 옵션별 독립적인 재고 관리 가능' })}</li>

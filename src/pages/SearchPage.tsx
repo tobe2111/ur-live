@@ -253,7 +253,7 @@ export default function SearchPage() {
                 <button
                   onClick={() => fetchNextPage()}
                   disabled={isFetchingNextPage}
-                  className="px-6 py-2 text-sm text-gray-500 dark:text-gray-400 disabled:opacity-50"
+                  className="px-6 py-2 text-[15px] text-gray-500 dark:text-gray-400 disabled:opacity-50"
                 >
                   {isFetchingNextPage ? '로딩 중...' : '더보기'}
                 </button>

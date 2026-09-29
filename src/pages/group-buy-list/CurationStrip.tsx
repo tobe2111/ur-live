@@ -35,7 +35,7 @@ export default function CurationStrip({
     <section className="mb-6">
       <div className="flex items-baseline justify-between mb-2 px-1">
         <h3 className="text-[15px] font-extrabold text-gray-900 dark:text-white tracking-tight">{title}</h3>
-        <span className="text-[10px] text-gray-400">{subtitle}</span>
+        <span className="text-[12px] text-gray-400">{subtitle}</span>
       </div>
       <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 lg:-mx-8 px-4 lg:px-8 scrollbar-hide snap-x snap-mandatory">
         {items.map((p) => {
@@ -63,15 +63,15 @@ export default function CurationStrip({
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-[#1D1F29] dark:to-[#11141C]" />
                 )}
-                <div className={`absolute top-2 left-2 px-2 py-0.5 rounded-full ${a.bg} ${a.text} text-[9px] font-extrabold`}>
+                <div className={`absolute top-2 left-2 px-2 py-1 rounded-full ${a.bg} ${a.text} text-[12px] font-extrabold`}>
                   {badge}
                 </div>
               </div>
-              <div className="p-2.5 space-y-1">
+              <div className="p-2 space-y-1">
                 <p className="text-[12px] font-bold text-gray-900 dark:text-white truncate">{p.name}</p>
-                {p.restaurant_name && <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">{p.restaurant_name}</p>}
+                {p.restaurant_name && <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">{p.restaurant_name}</p>}
                 {/* 즉시판매 단일가 — 진행률 바 제거. 인원은 소셜 증거로만 노출(0명이면 가격만). */}
-                <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                <p className="text-[12px] text-gray-500 dark:text-gray-400">
                   {current > 0 && (
                     <span className={`${a.text} font-bold`}>
                       {t('groupBuy.curBuying', { defaultValue: '👥 {{count}}명 함께', count: current })} ·{' '}

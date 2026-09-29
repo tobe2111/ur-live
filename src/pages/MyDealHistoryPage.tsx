@@ -91,8 +91,8 @@ export default function MyDealHistoryPage() {
       {/* Hero — 현재 잔액. 🎨 2026-06-10: 핑크 → 모노크롬 차콜 (B&W 디자인 정합, 유어샵과 동일 톤) */}
       <div className="ur-content-medium px-4 lg:px-8 pt-5">
         <div className="rounded-2xl p-5 text-white" style={{ background: 'linear-gradient(135deg, #2b2b2e 0%, #161618 60%, #0a0a0b 100%)' }}>
-          <p className="text-[11px] font-medium opacity-80">현재 딜 잔액</p>
-          <p className="text-3xl font-extrabold mt-1">{formatNumber(balance)}<span className="text-base ml-1 font-bold opacity-80">딜</span></p>
+          <p className="text-[12px] font-medium opacity-80">현재 딜 잔액</p>
+          <p className="text-3xl font-extrabold mt-1">{formatNumber(balance)}<span className="text-[15px] ml-1 font-bold opacity-80">딜</span></p>
           <div className="mt-3 flex gap-2">
             {/* 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 충전 버튼 → 딜 모으기(마이 리워드 카드) 유도 */}
             {TOPUP_DISABLED ? (
@@ -117,12 +117,12 @@ export default function MyDealHistoryPage() {
 
       {/* 필터 */}
       <div className="ur-content-medium px-4 lg:px-8 pt-4">
-        <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-1">
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
           {FILTER_OPTIONS.map(opt => (
             <button
               key={opt.value}
               onClick={() => { setPage(0); setFilter(opt.value) }}
-              className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${
+              className={`shrink-0 inline-flex items-center gap-2 px-3 py-2 rounded-full text-[12px] font-bold transition-colors ${
                 filter === opt.value
                   ? 'bg-brand text-white'
                   : 'bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/[0.12]'
@@ -142,16 +142,16 @@ export default function MyDealHistoryPage() {
         ) : error ? (
           <div className="py-16 text-center">
             <AlertTriangle className="w-9 h-9 mx-auto mb-3 text-gray-300 dark:text-gray-600" strokeWidth={1.5} aria-hidden />
-            <p className="text-sm text-gray-500 dark:text-gray-400">거래 내역을 불러오지 못했어요</p>
-            <button onClick={() => refetch()} className="mt-3 text-xs font-bold text-gray-900 dark:text-white underline">다시 시도 →</button>
+            <p className="text-[15px] text-gray-500 dark:text-gray-400">거래 내역을 불러오지 못했어요</p>
+            <button onClick={() => refetch()} className="mt-3 text-[12px] font-bold text-gray-900 dark:text-white underline">다시 시도 →</button>
           </div>
         ) : items.length === 0 ? (
           <div className="py-16 text-center">
             <Inbox className="w-9 h-9 mx-auto mb-3 text-gray-300 dark:text-gray-600" strokeWidth={1.5} aria-hidden />
-            <p className="text-sm text-gray-500 dark:text-gray-400">거래 내역이 없어요</p>
+            <p className="text-[15px] text-gray-500 dark:text-gray-400">거래 내역이 없어요</p>
             {filter && (
               <button onClick={() => { setFilter(''); setPage(0) }}
-                className="mt-3 text-xs font-bold text-gray-900 dark:text-white underline">전체 보기 →</button>
+                className="mt-3 text-[12px] font-bold text-gray-900 dark:text-white underline">전체 보기 →</button>
             )}
           </div>
         ) : (
@@ -170,14 +170,14 @@ export default function MyDealHistoryPage() {
                   <TxIcon className="w-[18px] h-[18px] flex-shrink-0 text-gray-400 dark:text-gray-500" strokeWidth={1.8} aria-hidden />
                   <div className="flex-1 min-w-0">
                     <p className="text-[13px] font-medium text-gray-900 dark:text-white truncate">{tx.description || tx.type}</p>
-                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{relativeTime(tx.created_at)}</p>
+                    <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{relativeTime(tx.created_at)}</p>
                   </div>
                   <div className="flex-shrink-0 text-right">
-                    <p className={`text-[14px] font-extrabold ${amountColor}`}>
+                    <p className={`text-[15px] font-extrabold ${amountColor}`}>
                       {sign}{formatNumber(Math.abs(tx.amount))}딜
                     </p>
                     {tx.balance_after != null && (
-                      <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">잔액 {formatNumber(tx.balance_after)}</p>
+                      <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-1">잔액 {formatNumber(tx.balance_after)}</p>
                     )}
                   </div>
                 </button>
@@ -190,17 +190,17 @@ export default function MyDealHistoryPage() {
       {/* 페이지네이션 */}
       {total > PAGE_SIZE && (
         <div className="ur-content-medium px-4 lg:px-8 pt-4 flex items-center justify-between">
-          <p className="text-xs text-gray-500 dark:text-gray-400">{formatNumber(total)}건 · {page + 1}/{totalPages} 페이지</p>
+          <p className="text-[12px] text-gray-500 dark:text-gray-400">{formatNumber(total)}건 · {page + 1}/{totalPages} 페이지</p>
           <div className="flex gap-2">
             <button
               onClick={() => setPage(p => Math.max(0, p - 1))}
               disabled={page === 0}
-              className="px-3 py-1.5 text-xs border border-line text-gray-700 dark:text-gray-300 rounded disabled:opacity-40"
+              className="px-3 py-2 text-[12px] border border-line text-gray-700 dark:text-gray-300 rounded disabled:opacity-40"
             >이전</button>
             <button
               onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
               disabled={page >= totalPages - 1}
-              className="px-3 py-1.5 text-xs border border-line text-gray-700 dark:text-gray-300 rounded disabled:opacity-40"
+              className="px-3 py-2 text-[12px] border border-line text-gray-700 dark:text-gray-300 rounded disabled:opacity-40"
             >다음</button>
           </div>
         </div>
