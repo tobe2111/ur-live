@@ -3,8 +3,8 @@
  *
  * 표시만 담당. 변경/선택 클릭 시 부모의 setShowAddressModal 호출.
  */
-import { AlertCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { AlertIcon } from '@/components/icons/urdeal-icons'
 import type { ShippingAddress } from './types'
 
 interface Props {
@@ -30,7 +30,7 @@ export default function ShippingSection({ selectedAddress, onOpenAddressModal }:
       {!selectedAddress ? (
         <div className="mt-4 bg-red-50 border border-red-200 rounded-2xl p-4">
           <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-1" />
+            <AlertIcon className="w-5 h-5 text-red-600 flex-shrink-0 mt-1" />
             <div>
               <p className="text-red-800 font-semibold text-[15px]">{t('checkout.shipping.pleaseSelect', { defaultValue: '⚠️ 배송지를 선택해주세요' })}</p>
               <p className="text-red-700 text-[13px] mt-1">{t('checkout.shipping.requiredForPayment', { defaultValue: '배송지를 선택하셔야 결제가 가능합니다.' })}</p>

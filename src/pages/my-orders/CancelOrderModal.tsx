@@ -2,7 +2,8 @@
  * 🛡️ 2026-05-02: TD-018 분할 — MyOrdersPage 주문 취소 모달.
  *   상태 (cancelReason / isPartialCancel / cancelAmount / processing) 는 부모 보유.
  */
-import { X, AlertCircle } from 'lucide-react'
+import { X } from 'lucide-react'
+import { AlertIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from 'react-i18next'
 
 interface Props {
@@ -130,7 +131,7 @@ export default function CancelOrderModal({
 
         <div className="mb-6 p-4 bg-blue-50 rounded-xl">
           <div className="flex items-start gap-2">
-            <AlertCircle className="h-5 w-5 text-blue-500 mt-1 flex-shrink-0" />
+            <AlertIcon className="h-5 w-5 text-blue-500 mt-1 flex-shrink-0" />
             <div className="text-[15px] text-blue-700">
               <p className="font-medium mb-1">{t('cancelOrder.noticeTitle', { defaultValue: '취소 안내' })}</p>
               <p className="text-blue-600">• {t('cancelOrder.notice1', { defaultValue: '결제완료 상태에서만 취소가 가능합니다.' })}</p>

@@ -1,6 +1,7 @@
 import CatIcon from './CatIcon'
+import { HeartIcon, PinIcon, TicketStubIcon } from '@/components/icons/urdeal-icons'
 import { priceDisplay } from '@/shared/price-display'
-import { Heart, MapPin, Navigation, Phone, Radio, Ticket, X } from 'lucide-react'
+import { Navigation, Phone, Radio, X } from 'lucide-react'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -43,7 +44,7 @@ export default function SelectedDetailCard({ selected, userLoc, liveSellerIds, f
             )}
           </p>
           <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 line-clamp-1 flex items-center gap-1">
-            <MapPin className="w-3 h-3 shrink-0" />
+            <PinIcon className="w-3 h-3 shrink-0" />
             {selected.restaurant_address}
             {userLoc && selected.restaurant_lat && selected.restaurant_lng && (() => {
               const l = nearKmLabel(distanceKm(userLoc.lat, userLoc.lng, selected.restaurant_lat, selected.restaurant_lng))
@@ -72,7 +73,7 @@ export default function SelectedDetailCard({ selected, userLoc, liveSellerIds, f
             favorites.includes(selected.id) ? 'bg-[var(--brand-tint)] dark:bg-[#16243D] text-brand' : 'bg-white dark:bg-[#11141C] text-gray-400 dark:text-gray-500'
           }`}
         >
-          <Heart className="w-4 h-4" fill={favorites.includes(selected.id) ? 'currentColor' : 'none'} />
+          <HeartIcon className="w-4 h-4" filled={favorites.includes(selected.id)} />
         </button>
         {selected.restaurant_phone && (
           <a href={`tel:${selected.restaurant_phone}`} aria-label={t('map.detail.call', { defaultValue: '전화' })} className="flex items-center justify-center w-10 h-10 bg-surface rounded-xl text-gray-700 dark:text-gray-200">
@@ -93,7 +94,7 @@ export default function SelectedDetailCard({ selected, userLoc, liveSellerIds, f
           onClick={() => navigate(`/products/${selected.id}`)}
           className="flex-1 flex items-center justify-center gap-2 h-10 bg-brand text-white rounded-xl text-[15px] font-bold active:scale-[0.97] transition-transform"
         >
-          <Ticket className="w-4 h-4" /> {t('map.detail.buyVoucher', { defaultValue: '바우처 구매' })}
+          <TicketStubIcon className="w-4 h-4" /> {t('map.detail.buyVoucher', { defaultValue: '바우처 구매' })}
         </button>
       </div>
     </div>

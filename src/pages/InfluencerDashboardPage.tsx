@@ -7,12 +7,13 @@
  *   사용자 메인 (다크 테마) 컨텍스트.
  */
 import { useEffect, useState } from 'react'
+import { PeopleIcon } from '@/components/icons/urdeal-icons'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
-import { ChevronLeft, Share2, TrendingUp, Users, DollarSign, Copy, Building2 } from 'lucide-react'
+import { ChevronLeft, Share2, TrendingUp, DollarSign, Copy, Building2 } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { hasConsumerSession } from '@/utils/auth'
@@ -270,4 +271,4 @@ export default function InfluencerDashboardPage() {
 }
 
 // dead-import 가드 (TS strict)
-void Building2; void TrendingUp; void Users; void DollarSign; void Copy
+void Building2; void TrendingUp; void PeopleIcon; void DollarSign; void Copy

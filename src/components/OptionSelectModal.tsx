@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
+import { AlertIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from 'react-i18next'
-import { X, Check, AlertCircle } from 'lucide-react'
+import { X, Check } from 'lucide-react'
 import api from '@/lib/api'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
 import { formatNumber } from '@/utils/format'
@@ -140,7 +141,7 @@ export default function OptionSelectModal({
             </div>
           ) : error ? (
             <div className="flex flex-col items-center justify-center py-12">
-              <AlertCircle className="h-12 w-12 text-gray-400 dark:text-gray-500 mb-3" strokeWidth={1.5} />
+              <AlertIcon className="h-12 w-12 text-gray-400 dark:text-gray-500 mb-3" />
               <p className="text-[15px] text-gray-600 dark:text-gray-300">{error}</p>
             </div>
           ) : (

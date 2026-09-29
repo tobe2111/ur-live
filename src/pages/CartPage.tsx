@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { BagIcon, StoreIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
@@ -10,7 +11,7 @@ import { CartGroupShippingRow } from '@/components/cart/CartGroupShippingRow'
 import { CartSummary } from '@/components/cart/CartSummary'
 import { EmptyCart } from '@/components/cart/EmptyCart'
 import { CartCtaButton } from '@/components/cart/CartCtaButton'
-import { ShoppingCart, ChevronRight, Store, X, PackageCheck } from 'lucide-react'
+import { ChevronRight, X, PackageCheck } from 'lucide-react'
 import type { CartItem } from '@/types/cart'
 import { getCartItemPrice } from '@/types/cart'
 import { getNoShippingKind, isNoShippingProduct } from '@/shared/product-flow'
@@ -58,7 +59,7 @@ export default function CartPage() {
         </div>
         <div className="flex flex-1 flex-col items-center justify-center gap-5 p-8 text-center">
           <div className="w-20 h-20 bg-gray-50 dark:bg-[#1D1F29] rounded-full flex items-center justify-center">
-            <ShoppingCart className="h-10 w-10 text-gray-300 dark:text-gray-600" aria-hidden="true" />
+            <BagIcon className="h-10 w-10 text-gray-300 dark:text-gray-600" aria-hidden="true" />
           </div>
           <div>
             <p className="text-[17px] font-bold text-gray-900 dark:text-white">{t('common.loginRequired')}</p>
@@ -475,7 +476,7 @@ function CartPageContent() {
                       )}
                     </span>
                     <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <Store size={14} className="text-gray-400 dark:text-gray-500 shrink-0" />
+                      <StoreIcon size={14} className="text-gray-400 dark:text-gray-500 shrink-0" />
                       <span className="text-[15px] font-bold text-gray-900 dark:text-white truncate">
                         {group.seller_name}
                       </span>

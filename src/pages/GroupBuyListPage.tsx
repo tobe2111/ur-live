@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
+import { PinIcon } from '@/components/icons/urdeal-icons'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { BedDouble, ChevronDown, ChevronRight, Dumbbell, MapPin, PartyPopper, Plus, Scissors, Sparkles, Utensils } from 'lucide-react'
+import { BedDouble, ChevronDown, ChevronRight, Dumbbell, PartyPopper, Plus, Scissors, Sparkles, Utensils } from 'lucide-react'
 import api from '@/lib/api'
 import { safeTime } from '@/utils/safe-date'
 import SEO from '@/components/SEO'
@@ -579,7 +580,7 @@ export default function GroupBuyListPage() {
           className="w-full flex items-center gap-3 rounded-2xl bg-gray-900 dark:bg-white px-4 py-4 active:scale-[0.99] transition-transform shadow-sm"
         >
           <div className="w-10 h-10 rounded-xl bg-white/15 dark:bg-gray-900/10 flex items-center justify-center shrink-0">
-            <MapPin className="w-5 h-5 text-white dark:text-gray-900" aria-hidden="true" />
+            <PinIcon className="w-5 h-5 text-white dark:text-gray-900" aria-hidden="true" />
           </div>
           <div className="flex-1 min-w-0 text-left">
             <p className="text-[15px] font-extrabold text-white dark:text-gray-900">

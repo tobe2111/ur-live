@@ -5,10 +5,11 @@
  */
 
 import { Link } from 'react-router-dom'
+import { ClockIcon } from '@/components/icons/urdeal-icons'
 import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
-import { TrendingUp, Award, Clock, ChevronLeft, BarChart3 } from 'lucide-react'
+import { TrendingUp, Award, ChevronLeft, BarChart3 } from 'lucide-react'
 
 interface Analytics {
   summary: {
@@ -76,7 +77,7 @@ export default function InfluencerAnalyticsPage() {
         {/* 일별 추세 (지난 30일) — 간단 가로 막대 */}
         <div className="bg-surface border border-line rounded-xl p-5">
           <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-            <Clock className="w-4 h-4 text-blue-500" /> 일별 추세 (지난 30일)
+            <ClockIcon className="w-4 h-4 text-blue-500" /> 일별 추세 (지난 30일)
           </h3>
           {data.daily.length === 0 ? (
             <p className="text-[12px] text-gray-400 text-center py-6">데이터 없음</p>

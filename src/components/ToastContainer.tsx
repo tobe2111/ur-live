@@ -1,4 +1,5 @@
-import { X, CheckCircle2, AlertCircle, Info } from 'lucide-react'
+import { X } from 'lucide-react'
+import { OkIcon, AlertIcon, InfoIcon } from '@/components/icons/urdeal-icons'
 import { useToast } from '@/hooks/useToast'
 import { useTranslation } from 'react-i18next'
 
@@ -15,9 +16,9 @@ export default function ToastContainer() {
   if (toasts.length === 0) return null
 
   const icons = {
-    success: <CheckCircle2 className="w-[18px] h-[18px] text-brand-text shrink-0" strokeWidth={1.6} />,
-    error: <AlertCircle className="w-[18px] h-[18px] text-red-500 shrink-0" strokeWidth={1.6} />,
-    info: <Info className="w-[18px] h-[18px] text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.6} />,
+    success: <OkIcon className="w-[18px] h-[18px] text-brand-text shrink-0" />,
+    error: <AlertIcon className="w-[18px] h-[18px] text-red-500 shrink-0" />,
+    info: <InfoIcon className="w-[18px] h-[18px] text-gray-500 dark:text-gray-400 shrink-0" />,
   }
 
   return (

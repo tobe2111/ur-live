@@ -15,12 +15,13 @@
  *   🩸 그리고 이 모달은 2026-08-26 이전까지 **한 번도 뜬 적이 없었다**(CuratorPage 게이트 버그).
  */
 import { useState, useEffect, useRef } from 'react'
+import { StoreIcon, PinIcon } from '@/components/icons/urdeal-icons'
 import { createPortal } from 'react-dom'
 import { curatorApi } from '@/features/curator/api/curator-api'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { setUrShopIntent, type UrShopIntent } from '@/utils/urshop-intent'
-import { X, Store, Sparkles } from 'lucide-react'
+import {X} from 'lucide-react'
 
 interface Props {
   curatorId: number
@@ -146,7 +147,7 @@ export default function LinkshopOnboardModal({ curatorId, currentHandle, current
                 onClick={() => { setIntent('seller'); setUrShopIntent(curatorId, 'seller'); setStep(2) }}
                 className="w-full flex items-start gap-3 p-4 rounded-2xl border border-line hover:bg-gray-50 dark:hover:bg-white/[0.04] text-left transition"
               >
-                <span className="w-9 h-9 shrink-0 rounded-xl bg-brand text-white flex items-center justify-center"><Store className="w-[18px] h-[18px]" /></span>
+                <span className="w-9 h-9 shrink-0 rounded-xl bg-brand text-white flex items-center justify-center"><StoreIcon className="w-[18px] h-[18px]" /></span>
                 <span className="min-w-0">
                   <span className="block text-[15px] font-bold text-gray-900 dark:text-white">내 가게를 팔아요</span>
                   <span className="block text-[12px] text-gray-500 dark:text-gray-400 mt-1">매장을 등록하고 이용권을 팔아요</span>
@@ -156,7 +157,7 @@ export default function LinkshopOnboardModal({ curatorId, currentHandle, current
                 onClick={() => { setIntent('curator'); setUrShopIntent(curatorId, 'curator'); setStep(2) }}
                 className="w-full flex items-start gap-3 p-4 rounded-2xl border border-line hover:bg-gray-50 dark:hover:bg-white/[0.04] text-left transition"
               >
-                <span className="w-9 h-9 shrink-0 rounded-xl bg-gray-100 dark:bg-[#2C2F35] text-gray-700 dark:text-white flex items-center justify-center"><Sparkles className="w-[18px] h-[18px]" /></span>
+                <span className="w-9 h-9 shrink-0 rounded-xl bg-gray-100 dark:bg-[#2C2F35] text-gray-700 dark:text-white flex items-center justify-center"><PinIcon className="w-[18px] h-[18px]" /></span>
                 <span className="min-w-0">
                   <span className="block text-[15px] font-bold text-gray-900 dark:text-white">좋은 딜을 소개해요</span>
                   <span className="block text-[12px] text-gray-500 dark:text-gray-400 mt-1">마음에 든 이용권을 담아 친구에게 소개해요</span>

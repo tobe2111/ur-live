@@ -5,8 +5,9 @@
  *   각 카드는 실제 적립 경로(유어샵/매장영입/추천/충전)로 연결.
  */
 import { useNavigate } from 'react-router-dom'
+import { StoreIcon, WalletIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from 'react-i18next'
-import { Coins, Link2, Store, UserPlus, Wallet } from 'lucide-react'
+import { Coins, Link2, UserPlus } from 'lucide-react'
 import { REFERRAL_GROUP_DISCOUNT_DISABLED, TOPUP_DISABLED } from '@/shared/feature-flags'
 
 export default function DealEarnStrip() {
@@ -24,7 +25,7 @@ export default function DealEarnStrip() {
       tint: 'bg-gray-100 text-gray-700 dark:bg-white/[0.08] dark:text-gray-200',
     },
     {
-      icon: Store,
+      icon: StoreIcon,
       label: t('dealEarn.recruit', { defaultValue: '매장 영입' }),
       desc: t('dealEarn.recruitDesc', { defaultValue: '매출마다 영입 커미션' }),
       to: '/seller/prospects',
@@ -40,7 +41,7 @@ export default function DealEarnStrip() {
     },
     // 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 딜 충전 카드 — TOPUP_DISABLED 시 제외 (딜=적립 전용).
     ...(TOPUP_DISABLED ? [] : [{
-      icon: Wallet,
+      icon: WalletIcon,
       label: t('dealEarn.charge', { defaultValue: '딜 충전' }),
       desc: t('dealEarn.chargeDesc', { defaultValue: '1원 = 1딜' }),
       to: '/points/charge',

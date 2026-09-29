@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
-import { X, Upload, FileText, Loader2, CheckCircle, XCircle } from 'lucide-react'
+import { OkIcon, BadIcon } from '@/components/icons/urdeal-icons'
+import { X, Upload, FileText, Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 
@@ -297,13 +298,13 @@ export default function BulkUploadModal({ open, onClose, tokenKey, onSuccess }: 
               <div className="flex items-center gap-4 mb-2">
                 {result.success_count > 0 && (
                   <div className="flex items-center gap-2 text-green-700">
-                    <CheckCircle className="w-4 h-4" />
+                    <OkIcon className="w-4 h-4" />
                     <span className="text-[15px] font-medium">{t('bulkUpload.successCount', { count: result.success_count, defaultValue: `성공: ${result.success_count}개` })}</span>
                   </div>
                 )}
                 {result.fail_count > 0 && (
                   <div className="flex items-center gap-2 text-red-700">
-                    <XCircle className="w-4 h-4" />
+                    <BadIcon className="w-4 h-4" />
                     <span className="text-[15px] font-medium">{t('bulkUpload.failCount', { count: result.fail_count, defaultValue: `실패: ${result.fail_count}개` })}</span>
                   </div>
                 )}

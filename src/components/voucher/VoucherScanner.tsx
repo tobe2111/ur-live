@@ -9,8 +9,9 @@
  * 사용처리: use-by-seller(원자 CAS) — 서버가 이중사용/타매장 차단. 같은 코드 5초 dedup.
  */
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { OkIcon, BadIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from 'react-i18next'
-import { CheckCircle2, XCircle, Keyboard, Loader2 } from 'lucide-react'
+import { Keyboard, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
 
 type ScanResult = {
@@ -245,8 +246,8 @@ export default function VoucherScanner() {
         <div className={`rounded-2xl p-4 ${latest.ok ? 'bg-tone-ok-bg' : 'bg-tone-bad-bg'}`}>
           <div className="flex items-center gap-2">
             {latest.ok
-              ? <CheckCircle2 className="w-7 h-7 text-tone-ok shrink-0" />
-              : <XCircle className="w-7 h-7 text-tone-bad shrink-0" />}
+              ? <OkIcon className="w-7 h-7 text-tone-ok shrink-0" />
+              : <BadIcon className="w-7 h-7 text-tone-bad shrink-0" />}
             <div className="min-w-0">
               <p className={`text-[15px] font-extrabold ${latest.ok ? 'text-tone-ok' : 'text-tone-bad'}`}>{latest.message}</p>
               <p className="text-[12px] text-gray-600 dark:text-gray-400 mt-1 truncate">
@@ -260,7 +261,7 @@ export default function VoucherScanner() {
         <div className="rounded-2xl border border-line bg-surface divide-y divide-gray-100 dark:divide-[#2C2F35]">
           {results.slice(1).map((r, i) => (
             <div key={`${r.code}-${i}`} className="flex items-center gap-2 px-3 py-2 text-[12px]">
-              {r.ok ? <CheckCircle2 className="w-3.5 h-3.5 text-tone-ok shrink-0" /> : <XCircle className="w-3.5 h-3.5 text-tone-bad shrink-0" />}
+              {r.ok ? <OkIcon className="w-3.5 h-3.5 text-tone-ok shrink-0" /> : <BadIcon className="w-3.5 h-3.5 text-tone-bad shrink-0" />}
               <span className="flex-1 truncate text-gray-700 dark:text-gray-300">{r.productName || r.code} — {r.message}</span>
               <span className="text-gray-400 dark:text-gray-500 shrink-0">{r.at}</span>
             </div>

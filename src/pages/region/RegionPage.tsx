@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
+import { PinIcon } from '@/components/icons/urdeal-icons'
 import { Link, useParams } from 'react-router-dom'
-import { MapPin, ChevronRight } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import SEO, { breadcrumbJsonLd } from '@/components/SEO'
 import SiteFooter from '@/components/main/SiteFooter'
 import GroupBuyFeed from '@/pages/main-home/GroupBuyFeed'
@@ -144,7 +145,7 @@ export default function RegionPage() {
             to={`/map?q=${encodeURIComponent(label)}`}
             className="shrink-0 ml-auto inline-flex items-center gap-1 px-4 py-2 rounded-full text-[13px] font-bold border border-line text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors"
           >
-            <MapPin className="w-3.5 h-3.5" aria-hidden />
+            <PinIcon className="w-3.5 h-3.5" aria-hidden />
             지도에서 보기
           </Link>
         </div>

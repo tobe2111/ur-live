@@ -12,12 +12,12 @@
  *   - 인플루언서/에이전시 commission 안내
  */
 import { useEffect, useState } from 'react'
+import { StoreIcon, BagIcon, OkIcon, BadIcon, WalletIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import RoleGate from '@/components/RoleGate'
-import { Store, ShoppingBag, CheckCircle, XCircle, Wallet } from 'lucide-react'
 import { formatWon, formatNumber } from '@/utils/format'
 
 interface StoreStats {
@@ -61,7 +61,7 @@ export default function StoreOwnerDashboardPage() {
     <SellerLayout title="🏪 매장 종합">
       <div className="mx-auto max-w-5xl space-y-6">
         <DashboardPageHeader
-          icon={<Store className="h-5 w-5" />}
+          icon={<StoreIcon className="h-5 w-5" />}
           title="🏪 매장 종합 매출"
           subtitle="본인 매장 전체 매출 / voucher 사용 현황 / 정산 한 화면"
         />
@@ -80,7 +80,7 @@ export default function StoreOwnerDashboardPage() {
               {/* 4 KPI 카드 */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="bg-white rounded-xl border border-gray-200 p-4">
-                  <div className="flex items-center gap-1 text-[12px] text-gray-500"><ShoppingBag className="w-3.5 h-3.5" /> 총 매출</div>
+                  <div className="flex items-center gap-1 text-[12px] text-gray-500"><BagIcon className="w-3.5 h-3.5" /> 총 매출</div>
                   <p className="text-[17px] font-bold text-gray-900 mt-1">{formatWon(stats.revenue_total)}</p>
                   <p className="text-[12px] text-gray-400 mt-1">누적</p>
                 </div>
@@ -89,7 +89,7 @@ export default function StoreOwnerDashboardPage() {
                   <p className="text-[17px] font-bold text-blue-600 mt-1">{formatWon(stats.revenue_this_month)}</p>
                 </div>
                 <div className="bg-white rounded-xl border border-gray-200 p-4">
-                  <div className="flex items-center gap-1 text-[12px] text-gray-500"><Wallet className="w-3.5 h-3.5" /> 미정산 잔액</div>
+                  <div className="flex items-center gap-1 text-[12px] text-gray-500"><WalletIcon className="w-3.5 h-3.5" /> 미정산 잔액</div>
                   <p className="text-[17px] font-bold text-amber-600 mt-1">{formatWon(stats.pending_payout)}</p>
                   <a href="/seller/ledger" className="text-[12px] text-blue-600 underline">상세 →</a>
                 </div>
@@ -108,7 +108,7 @@ export default function StoreOwnerDashboardPage() {
                     <div className="text-[17px] font-bold text-gray-900">{formatNumber(stats.total_vouchers_sold)}</div>
                   </div>
                   <div className="text-center p-3 bg-emerald-50 rounded-lg">
-                    <div className="text-emerald-600 flex items-center justify-center gap-1"><CheckCircle className="w-3 h-3" /> 사용</div>
+                    <div className="text-emerald-600 flex items-center justify-center gap-1"><OkIcon className="w-3 h-3" /> 사용</div>
                     <div className="text-[17px] font-bold text-emerald-700">{formatNumber(stats.vouchers_used)}</div>
                   </div>
                   <div className="text-center p-3 bg-amber-50 rounded-lg">
@@ -116,7 +116,7 @@ export default function StoreOwnerDashboardPage() {
                     <div className="text-[17px] font-bold text-amber-700">{formatNumber(stats.vouchers_unused)}</div>
                   </div>
                   <div className="text-center p-3 bg-red-50 rounded-lg">
-                    <div className="text-red-600 flex items-center justify-center gap-1"><XCircle className="w-3 h-3" /> 환불</div>
+                    <div className="text-red-600 flex items-center justify-center gap-1"><BadIcon className="w-3 h-3" /> 환불</div>
                     <div className="text-[17px] font-bold text-red-700">{formatNumber(stats.vouchers_refunded)}</div>
                   </div>
                 </div>

@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { PinIcon, BellIcon, BagIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { MapPin, Map as MapIcon, ChevronDown, Search, Bell, ShoppingCart, LocateFixed, Loader2 } from 'lucide-react'
+import { Map as MapIcon, ChevronDown, Search, LocateFixed, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
 import { priceDisplay } from '@/shared/price-display'
 import { toast } from '@/hooks/useToast'
@@ -640,13 +641,13 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
             </Link>
             <div className="flex items-center gap-1 text-gray-700 dark:text-gray-200 min-w-0">
               <button onClick={() => setFilterSheetOpen(true)} className="flex items-center gap-1 min-w-0 text-left mr-1">
-                <MapPin className="w-4 h-4 text-gray-900 dark:text-white shrink-0" />
+                <PinIcon className="w-4 h-4 text-gray-900 dark:text-white shrink-0" />
                 <span className="text-[15px] font-extrabold text-gray-900 dark:text-white truncate">{regionLabel}</span>
                 <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" />
               </button>
               <button onClick={() => navigate('/search')} aria-label="검색" className="p-2 shrink-0"><Search className="h-5 w-5" strokeWidth={1.5} /></button>
-              <button onClick={() => navigate('/notifications')} aria-label="알림" className="p-2 shrink-0"><Bell className="h-5 w-5" strokeWidth={1.5} /></button>
-              <button onClick={() => navigate('/cart')} aria-label="장바구니" className="p-2 shrink-0"><ShoppingCart className="h-5 w-5" strokeWidth={1.5} /></button>
+              <button onClick={() => navigate('/notifications')} aria-label="알림" className="p-2 shrink-0"><BellIcon className="h-5 w-5" /></button>
+              <button onClick={() => navigate('/cart')} aria-label="장바구니" className="p-2 shrink-0"><BagIcon className="h-5 w-5" /></button>
             </div>
           </div>
           {/* 카테고리 칩 + 필터/정렬 */}
@@ -727,7 +728,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
       <div ref={mapRef} className="absolute inset-0 lg:left-[400px] bg-gray-100 dark:bg-[#1D1F29]" style={{ touchAction: 'none' }} />
       {!(sdkLoaded && window.kakao?.maps) && (
         <div className="absolute inset-0 lg:left-[400px] bg-gray-100 dark:bg-[#1D1F29] flex flex-col items-center justify-center pointer-events-none">
-          <MapPin className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" />
+          <PinIcon className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" />
           {sdkError ? (
             <>
               <p className="text-[15px] text-gray-500 dark:text-gray-400 font-medium">{t('restaurantMap.mapErrorTitle')}</p>

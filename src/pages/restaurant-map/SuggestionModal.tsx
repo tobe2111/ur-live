@@ -10,7 +10,8 @@
  *   (마이페이지·푸터에서 진입). 거기 카카오맵 검색이 이미 있으므로 프리필의 이득도 작다.
  */
 import { useState } from 'react'
-import { MapPin, Navigation } from 'lucide-react'
+import { PinIcon } from '@/components/icons/urdeal-icons'
+import { Navigation } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
@@ -63,7 +64,7 @@ export default function SuggestionModal({ place, onClose }: Props) {
           <p className="text-[12px] text-gray-500 dark:text-gray-400">{place.category_name?.split('>').slice(-1)[0]?.trim() || '맛집'}</p>
           <h3 className="text-[17px] font-bold text-gray-900 dark:text-white">{place.place_name}</h3>
           <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1">
-            <MapPin className="w-3 h-3" />
+            <PinIcon className="w-3 h-3" />
             {place.road_address_name || place.address_name}
             {place.distance && <span className="ml-1 text-brand dark:text-[#4D8DF5]">· {Math.round(Number(place.distance))}m</span>}
           </p>

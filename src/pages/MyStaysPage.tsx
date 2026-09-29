@@ -4,12 +4,13 @@
  *   native prompt → promptDialog, refund_rate NaN 가드, isError 분기, 핑크 액센트 → B&W.
  */
 import { useState } from 'react'
+import { StarIcon } from '@/components/icons/urdeal-icons'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from '@/hooks/useToast'
 import { promptDialog } from '@/components/ui/confirm-dialog'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
-import { Building2, Calendar, Star, X as XIcon, ChevronLeft } from 'lucide-react'
+import { Building2, Calendar, X as XIcon, ChevronLeft } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import { safeDate } from '@/utils/safe-date'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
@@ -142,7 +143,7 @@ export default function MyStaysPage() {
                           )}
                           {canReview && (
                             <button onClick={() => setReviewModalFor(b)} className="px-2 py-1 bg-brand text-white text-[12px] font-bold rounded active:opacity-80">
-                              <Star className="w-3 h-3 inline mr-0.5" />리뷰 작성
+                              <StarIcon className="w-3 h-3 inline mr-0.5" />리뷰 작성
                             </button>
                           )}
                         </div>
@@ -206,7 +207,7 @@ function ReviewModal({ booking, token, onClose, onSubmitted }: {
         <div className="flex gap-1">
           {[1, 2, 3, 4, 5].map((n) => (
             <button key={n} onClick={() => onChange(n)} type="button">
-              <Star className={`w-4 h-4 ${n <= val ? 'text-amber-400 fill-amber-400' : 'text-gray-300 dark:text-gray-600'}`} />
+              <StarIcon filled={n <= val} className={`w-4 h-4 ${n <= val ? 'text-amber-400 fill-amber-400' : 'text-gray-300 dark:text-gray-600'}`} />
             </button>
           ))}
         </div>

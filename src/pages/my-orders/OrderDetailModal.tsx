@@ -3,9 +3,10 @@
  *   배송 타임라인 + 결제 정보 + 매장 문의 + 리뷰/취소 액션 포함.
  */
 import { useState } from 'react'
+import { TruckIcon, BoxIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Truck, ChevronRight, Package } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { toast } from '@/hooks/useToast'
 import { formatKST } from '@/utils/date'
@@ -127,7 +128,7 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
                       />
                     ) : (
                       <div className="w-14 h-14 shrink-0 rounded-lg bg-gray-100 dark:bg-[#1D1F29] flex items-center justify-center">
-                        <Package className="w-5 h-5 text-gray-300 dark:text-gray-600" strokeWidth={1.5} aria-hidden="true" />
+                        <BoxIcon className="w-5 h-5 text-gray-300 dark:text-gray-600" aria-hidden="true" />
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
@@ -207,7 +208,7 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Truck className="h-4 w-4 text-blue-600" />
+                        <TruckIcon className="h-4 w-4 text-blue-600" />
                         <div className="text-[13px]">
                           {order.courier && (
                             <span className="text-gray-500 dark:text-gray-400">{order.courier} · </span>

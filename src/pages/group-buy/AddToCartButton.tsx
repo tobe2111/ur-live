@@ -13,9 +13,9 @@
  *    다시 계산한다. 담을 때 값을 붙잡아 두면 며칠 뒤 결제에서 화면과 청구가 갈린다.
  */
 import { useState } from 'react'
+import { BagIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import { toast } from '@/hooks/useToast'
-import { ShoppingCart } from 'lucide-react'
 import api from '@/lib/api'
 import { hasConsumerSession } from '@/utils/auth'
 import { useInvalidateCart } from '@/hooks/queries/useCartCount'
@@ -63,7 +63,7 @@ export default function AddToCartButton({ productId, qty, show }: { productId: n
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: busy ? 0.5 : 1,
       }}
     >
-      <ShoppingCart style={{ width: 16, height: 16 }} strokeWidth={1.8} aria-hidden="true" />
+      <BagIcon style={{ width: 16, height: 16 }} aria-hidden="true" />
       {busy ? '담는 중…' : '장바구니에 담기'}
     </button>
   )

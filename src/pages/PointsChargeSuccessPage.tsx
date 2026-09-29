@@ -1,9 +1,10 @@
 import { useEffect, useState, useRef } from 'react'
+import { OkIcon } from '@/components/icons/urdeal-icons'
 import { safeInternalPath } from '@/utils/safe-internal-path'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import BrandLoader from '@/components/brand/BrandLoader'
-import { CheckCircle, Zap, Loader2 } from 'lucide-react'
+import { Zap, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { formatNumber } from '@/utils/format'
@@ -103,7 +104,7 @@ export default function PointsChargeSuccessPage() {
       <SEO title={t('pointsCharge.successTitle', { defaultValue: '딜 충전 완료' })} description={t('pointsCharge.successDesc', { defaultValue: '딜 포인트 충전이 완료되었습니다' })} url="/points/charge/success" noindex />
       <div className="max-w-md w-full bg-surface rounded-2xl p-8 shadow-lg text-center border border-gray-100 dark:border-[#2C2F35]">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 mb-4">
-          <CheckCircle className="w-10 h-10 text-green-600 dark:text-green-400" />
+          <OkIcon className="w-10 h-10 text-green-600 dark:text-green-400" />
         </div>
         <h1 className="text-[24px] font-extrabold text-gray-900 dark:text-white mb-2">{t('pointsCharge.successHeading', { defaultValue: '충전 완료!' })}</h1>
         {/* 🎨 2026-06-17: 분홍 그라데이션 → 프리미엄 다크 카드(교환권/잔액 카드 톤) + 브랜드 옐로우 액센트 */}

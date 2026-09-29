@@ -5,8 +5,9 @@
  *   - GET /api/referral-tree/withdrawals: 내 출금 신청 이력
  */
 import { useState } from 'react'
+import { WalletIcon, OkIcon, ClockIcon, BadIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Wallet, CheckCircle, Clock, XCircle, ArrowRight } from 'lucide-react'
+import { ArrowLeft, ArrowRight } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
@@ -15,13 +16,13 @@ import { useMyCommissions } from '@/hooks/queries/useMyCommissions'
 import CollabPerformance from './my-commissions/CollabPerformance'
 import { formatKST, formatKSTDate } from '@/utils/date'
 
-const STATUS_BADGE: Record<string, { label: string; cls: string; icon: typeof CheckCircle }> = {
-  pending: { label: '심사 대기', cls: 'bg-tone-warn-bg text-tone-warn', icon: Clock },
-  approved: { label: '송금 완료', cls: 'bg-tone-ok-bg text-tone-ok', icon: CheckCircle },
-  rejected: { label: '거절', cls: 'bg-tone-bad-bg text-tone-bad', icon: XCircle },
+const STATUS_BADGE: Record<string, { label: string; cls: string; icon: typeof OkIcon }> = {
+  pending: { label: '심사 대기', cls: 'bg-tone-warn-bg text-tone-warn', icon: ClockIcon },
+  approved: { label: '송금 완료', cls: 'bg-tone-ok-bg text-tone-ok', icon: OkIcon },
+  rejected: { label: '거절', cls: 'bg-tone-bad-bg text-tone-bad', icon: BadIcon },
 }
 // 🛡️ 2026-07-02: 정의 밖 status 방어 — meta undefined 렌더 크래시 방지.
-const STATUS_FALLBACK = { label: '처리 중', cls: 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300', icon: Clock } as const
+const STATUS_FALLBACK = { label: '처리 중', cls: 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300', icon: ClockIcon } as const
 
 export default function MyCommissionsPage() {
   const navigate = useNavigate()
@@ -107,7 +108,7 @@ export default function MyCommissionsPage() {
             disabled={summary.total_granted < 10000}
             className="mt-4 w-full py-3 bg-white dark:bg-white text-gray-900 dark:text-gray-900 rounded-2xl font-bold text-[15px] disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            <Wallet className="w-4 h-4" />
+            <WalletIcon className="w-4 h-4" />
             {summary.total_granted < 10000 ? '10,000원 이상부터 출금 가능' : '출금 신청하기'}
             {summary.total_granted >= 10000 && <ArrowRight className="w-4 h-4" />}
           </button>

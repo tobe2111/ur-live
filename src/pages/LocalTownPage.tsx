@@ -11,12 +11,13 @@
  * 테마: 소비자 dual(light+dark). 하단 네비 유지(풀스크린 아님).
  */
 import { useEffect, useMemo, useState } from 'react'
+import { PinIcon, StoreIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { formatNumber } from '@/utils/format'
-import { ChevronLeft, MapPin, Store, Sparkles, Target } from 'lucide-react'
+import { ChevronLeft, Sparkles, Target } from 'lucide-react'
 import FcfsBadge from '@/features/group-buy/FcfsBadge'
 import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
 import DealRow from '@/components/deal/DealRow'
@@ -81,7 +82,7 @@ export default function LocalTownPage() {
   if (!code) {
     return (
       <div className="min-h-[100dvh] bg-white dark:bg-[#11141C] flex flex-col items-center justify-center gap-3 px-6">
-        <MapPin className="w-12 h-12 text-gray-200 dark:text-gray-700" />
+        <PinIcon className="w-12 h-12 text-gray-200 dark:text-gray-700" />
         <p className="text-gray-900 dark:text-white font-bold">{t('local.badCode', { defaultValue: '올바르지 않은 상권 주소예요' })}</p>
         <button type="button" onClick={() => navigate('/')} className="text-[15px] font-bold text-gray-500 dark:text-gray-400 underline">
           {t('local.goHome', { defaultValue: '홈으로' })}
@@ -120,7 +121,7 @@ export default function LocalTownPage() {
           {t('local.heroLine1', { defaultValue: '{{name}}의 딜을 한곳에서', name: townName })}
         </p>
         <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400 flex items-center gap-3">
-          <span className="inline-flex items-center gap-1"><Store className="w-3.5 h-3.5" />{t('local.statDeals', { defaultValue: '동네딜 {{n}}', n: formatNumber(dealCount) })}</span>
+          <span className="inline-flex items-center gap-1"><StoreIcon className="w-3.5 h-3.5" />{t('local.statDeals', { defaultValue: '동네딜 {{n}}', n: formatNumber(dealCount) })}</span>
           {fcfsCount > 0 && (
             <span className="inline-flex items-center gap-1"><Sparkles className="w-3.5 h-3.5" />{t('local.statFcfs', { defaultValue: '체험단 {{n}}', n: formatNumber(fcfsCount) })}</span>
           )}
@@ -154,7 +155,7 @@ export default function LocalTownPage() {
         {/* 동네딜 그리드 */}
         <section>
           <h2 className="text-[17px] font-extrabold text-gray-900 dark:text-white mb-3">
-            <span className="inline-flex items-center gap-2"><Store className="w-4 h-4 text-gray-400" aria-hidden="true" />{t('local.dealsTitle', { defaultValue: '동네딜' })} {dealCount > 0 ? dealCount : ''}</span>
+            <span className="inline-flex items-center gap-2"><StoreIcon className="w-4 h-4 text-gray-400" aria-hidden="true" />{t('local.dealsTitle', { defaultValue: '동네딜' })} {dealCount > 0 ? dealCount : ''}</span>
           </h2>
           {loading ? (
             <div className="grid grid-cols-2 gap-3" aria-hidden="true">
@@ -168,7 +169,7 @@ export default function LocalTownPage() {
             </div>
           ) : dealCount === 0 ? (
             <div className="text-center py-14">
-              <MapPin className="w-12 h-12 text-gray-200 dark:text-gray-700 mx-auto mb-3" />
+              <PinIcon className="w-12 h-12 text-gray-200 dark:text-gray-700 mx-auto mb-3" />
               <p className="text-gray-900 dark:text-white font-bold">{t('local.empty', { defaultValue: '이 상권의 딜을 준비 중이에요' })}</p>
               <p className="text-[15px] text-gray-400 dark:text-gray-500 mt-1">{t('local.emptySub', { defaultValue: '곧 우리 동네 매장들이 입점합니다' })}</p>
               <button type="button" onClick={() => navigate('/')} className="mt-4 px-4 py-2 rounded-xl bg-brand text-white text-[13px] font-bold">
@@ -191,7 +192,7 @@ export default function LocalTownPage() {
             onClick={() => navigate('/')}
             className="w-full py-4 rounded-2xl border border-line text-[13px] font-bold text-gray-700 dark:text-gray-200 flex items-center justify-center gap-2"
           >
-            <MapPin className="w-4 h-4" /> {t('local.viewOnMap', { defaultValue: '지도에서 보기' })}
+            <PinIcon className="w-4 h-4" /> {t('local.viewOnMap', { defaultValue: '지도에서 보기' })}
           </button>
         )}
       </div>

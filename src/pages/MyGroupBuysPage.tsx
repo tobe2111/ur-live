@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
+import { PeopleIcon, ClockIcon, BagIcon, GiftBoxIcon, TicketStubIcon, StoreIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ChevronLeft, Users, Clock, ShoppingBag, Gift, Ticket, Store } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react'
 import SEO from '@/components/SEO';
 import { toast } from '@/hooks/useToast';
 import { useMyGroupBuys, type ReferralGroup, type VoucherEntry, type CommunityGroupBuy, type ProductInfo } from '@/hooks/queries/useMyGroupBuys';
@@ -312,7 +313,7 @@ function UnifiedCard({ item }: { item: UnifiedItem }) {
             <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
               {item.target && item.target > 0 && (
                 <span className="inline-flex items-center gap-1">
-                  <Users className="w-3.5 h-3.5" />
+                  <PeopleIcon className="w-3.5 h-3.5" />
                   {item.current || 0}/{item.target}명
                 </span>
               )}
@@ -322,7 +323,7 @@ function UnifiedCard({ item }: { item: UnifiedItem }) {
             </div>
             {item.isActive && item.expires_at && (
               <span className="inline-flex items-center gap-1 text-gray-500 dark:text-gray-400">
-                <Clock className="w-3.5 h-3.5" />
+                <ClockIcon className="w-3.5 h-3.5" />
                 {formatTimeLeft(item.expires_at, t)}
               </span>
             )}
@@ -350,9 +351,9 @@ function UnifiedCard({ item }: { item: UnifiedItem }) {
 }
 
 function SourceIcon({ source }: { source: Source }) {
-  if (source === 'voucher') return <Ticket className="w-6 h-6 text-gray-400 dark:text-gray-500" />;
-  if (source === 'community') return <Store className="w-6 h-6 text-gray-400 dark:text-gray-500" />;
-  return <ShoppingBag className="w-6 h-6 text-gray-400 dark:text-gray-500" />;
+  if (source === 'voucher') return <TicketStubIcon className="w-6 h-6 text-gray-400 dark:text-gray-500" />;
+  if (source === 'community') return <StoreIcon className="w-6 h-6 text-gray-400 dark:text-gray-500" />;
+  return <BagIcon className="w-6 h-6 text-gray-400 dark:text-gray-500" />;
 }
 
 function SourceBadge({ source }: { source: Source }) {
@@ -397,7 +398,7 @@ function EmptyState({ onBrowse }: { onBrowse: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
       <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-[#1D1F29] flex items-center justify-center mb-4">
-        <Gift className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+        <GiftBoxIcon className="w-8 h-8 text-gray-400 dark:text-gray-500" />
       </div>
       <p className="text-[15px] font-medium text-gray-900 dark:text-white mb-1">{t('myGroupBuys.emptyTitle')}</p>
       <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-6">{t('myGroupBuys.emptyHint')}</p>

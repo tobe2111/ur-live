@@ -8,9 +8,10 @@
  *   세션 내 메모리 캐시(재클릭 즉시 표시).
  */
 import { useEffect, useRef, useState, useCallback } from 'react'
+import { BagIcon } from '@/components/icons/urdeal-icons'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ShoppingBag, ArrowRight } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import api from '@/lib/api'
 import BrowseProductCard from '@/pages/browse/BrowseProductCard'
 import type { Product } from '@/pages/browse/types'
@@ -74,7 +75,7 @@ export default function HomeProductsRail() {
     <section ref={ref} className="ur-content-wide px-4 lg:px-8 mt-8 mb-2">
       <div className="flex items-center justify-between mb-1">
         <h2 className="text-[17px] font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
-          <ShoppingBag className="w-4 h-4 text-gray-500 dark:text-gray-400" /> {t('home.shopRailTitle', { defaultValue: '지금 인기 상품' })}
+          <BagIcon className="w-4 h-4 text-gray-500 dark:text-gray-400" /> {t('home.shopRailTitle', { defaultValue: '지금 인기 상품' })}
         </h2>
         <Link to="/browse" className="text-[12px] font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1">
           {t('home.shopRailMore', { defaultValue: '쇼핑 전체보기' })} <ArrowRight className="w-3.5 h-3.5" />

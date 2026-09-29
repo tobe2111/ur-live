@@ -1,4 +1,5 @@
-import { AlertCircle, CheckCircle, Info, AlertTriangle, X } from 'lucide-react'
+import { X } from 'lucide-react'
+import { AlertIcon, OkIcon, InfoIcon, WarnIcon } from '@/components/icons/urdeal-icons'
 import { ReactNode, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useBackButton } from '@/hooks/useBackButton'
@@ -46,13 +47,13 @@ export function CustomModal({
   const getIcon = () => {
     switch (type) {
       case 'success':
-        return <CheckCircle className="w-12 h-12 text-green-500" strokeWidth={1.5} />
+        return <OkIcon className="w-12 h-12 text-green-500" />
       case 'error':
-        return <AlertCircle className="w-12 h-12 text-red-500" strokeWidth={1.5} />
+        return <AlertIcon className="w-12 h-12 text-red-500" />
       case 'warning':
-        return <AlertTriangle className="w-12 h-12 text-yellow-500" strokeWidth={1.5} />
+        return <WarnIcon className="w-12 h-12 text-yellow-500" />
       case 'info':
-        return <Info className="w-12 h-12 text-blue-500" strokeWidth={1.5} />
+        return <InfoIcon className="w-12 h-12 text-blue-500" />
       default:
         return null
     }

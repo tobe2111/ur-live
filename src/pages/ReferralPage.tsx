@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
+import { PeopleIcon, ClockIcon, GiftBoxIcon, OkIcon, BagIcon } from '@/components/icons/urdeal-icons'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
-import { ArrowLeft, Users, Clock, Gift, CheckCircle, ShoppingBag } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import KakaoShareButton from '@/components/KakaoShareButton'
@@ -165,7 +166,7 @@ export default function ReferralPage() {
               <span className="text-[12px] text-gray-400 dark:text-gray-500">{t('groupbuy.summaryPriceLabel', { defaultValue: '희망 가격' })}</span>
             </div>
             <div className="mt-2 flex items-center gap-2 text-[13px] text-gray-600 dark:text-gray-300">
-              <Users className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+              <PeopleIcon className="w-4 h-4 text-gray-400 dark:text-gray-500" />
               <span><span className="font-bold text-gray-900 dark:text-white">{community.current_count}</span> / {community.target_count}명 참여</span>
             </div>
             <div className="mt-2 h-2 rounded-full bg-gray-100 dark:bg-[#1D1F29] overflow-hidden">
@@ -227,7 +228,7 @@ export default function ReferralPage() {
   if (!group) {
     return (
       <div className="min-h-screen bg-white dark:bg-[#11141C] flex flex-col items-center justify-center px-4">
-        <Gift className="w-16 h-16 text-gray-300 dark:text-gray-600 mb-4" />
+        <GiftBoxIcon className="w-16 h-16 text-gray-300 dark:text-gray-600 mb-4" />
         <p className="text-gray-900 dark:text-white font-bold text-[17px]">유효하지 않은 초대입니다</p>
         <Link to="/" className="mt-4 text-gray-900 dark:text-white text-[15px] font-medium underline">홈으로 돌아가기</Link>
       </div>
@@ -309,12 +310,12 @@ export default function ReferralPage() {
           <div className="pt-3">
             {isExpired ? (
               <div className="flex items-center justify-center gap-2 text-gray-500 dark:text-gray-400 text-[15px]">
-                <Clock className="w-4 h-4" />
+                <ClockIcon className="w-4 h-4" />
                 <span>마감된 공동구매입니다</span>
               </div>
             ) : isAchieved ? (
               <div className="flex items-center justify-center gap-2 text-green-600 text-[15px] font-semibold">
-                <CheckCircle className="w-4 h-4" />
+                <OkIcon className="w-4 h-4" />
                 <span>목표 달성! 결제가 가능합니다</span>
               </div>
             ) : (
@@ -364,7 +365,7 @@ export default function ReferralPage() {
         {/* v4 Participants — 아바타 스택 + 최근 참여자 */}
         <section className="bg-surface rounded-2xl p-4 border border-gray-100 dark:border-[#2C2F35]">
           <div className="flex items-center gap-2 mb-3">
-            <Users className="w-3.5 h-3.5 text-gray-900 dark:text-white" />
+            <PeopleIcon className="w-3.5 h-3.5 text-gray-900 dark:text-white" />
             <p className="text-[13px] font-bold text-gray-900 dark:text-white">{group.current_count}명 참여 중</p>
           </div>
           {/* 아바타 스택 */}
@@ -448,7 +449,7 @@ export default function ReferralPage() {
               onClick={handleCheckout}
               className="w-full flex items-center justify-center gap-2 py-4 bg-brand text-white rounded-xl font-bold text-[15px] active:scale-[0.98]"
             >
-              <ShoppingBag className="w-4 h-4" />
+              <BagIcon className="w-4 h-4" />
               {product
                 ? (currentDiscount > 0
                     ? `${formatNumber(discountedPrice)}원에 결제하기 (${currentDiscount}% 할인)`
@@ -545,7 +546,7 @@ function TierProgressBar({
                     : 'bg-white dark:bg-[#11141C] border-gray-300 dark:border-[#3A3A3A]'
                 }`}
               >
-                {reached && <CheckCircle className="w-3 h-3 text-white" />}
+                {reached && <OkIcon className="w-3 h-3 text-white" />}
               </div>
               {/* 라벨 */}
               <div className="absolute top-7 left-1/2 -translate-x-1/2 whitespace-nowrap text-center">

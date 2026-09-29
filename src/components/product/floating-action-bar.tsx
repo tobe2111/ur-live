@@ -1,4 +1,4 @@
-import { Heart } from 'lucide-react'
+import { HeartIcon } from '@/components/icons/urdeal-icons'
 
 interface FloatingActionBarProps {
   onAddToCart: () => void;
@@ -59,7 +59,7 @@ export function FloatingActionBar({
           {onToggleWishlist && (
             <button onClick={onToggleWishlist} aria-label="찜"
               className="w-14 h-14 shrink-0 rounded-[14px] bg-[#F1EDEF] dark:bg-[#1D1F29] flex items-center justify-center active:scale-95 transition-transform">
-              <Heart className={`h-[19px] w-[19px] ${isWishlisted ? 'text-red-500 fill-red-500' : 'text-[#8A8288]'}`} />
+              <HeartIcon filled={isWishlisted} className={`h-[19px] w-[19px] ${isWishlisted ? 'text-red-500 fill-red-500' : 'text-[#8A8288]'}`} />
             </button>
           )}
           <button
@@ -96,7 +96,7 @@ export function FloatingActionBar({
             onClick={onToggleWishlist}
             className="flex flex-col items-center justify-center w-12 h-12 rounded-xl border border-line transition-all active:scale-95"
           >
-            <Heart
+            <HeartIcon filled={isWishlisted}
               className={`h-[18px] w-[18px] transition-colors ${
                 isWishlisted ? 'text-red-500 fill-red-500' : 'text-gray-400 dark:text-gray-500'
               }`}

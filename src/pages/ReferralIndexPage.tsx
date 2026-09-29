@@ -1,6 +1,7 @@
 import { useNavigate, Navigate } from 'react-router-dom'
+import { PeopleIcon, GiftBoxIcon, BagIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Users, Gift, ShoppingBag, Share2 } from 'lucide-react'
+import { ArrowLeft, Share2 } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags'
 
@@ -35,7 +36,7 @@ export default function ReferralIndexPage() {
         {/* Hero */}
         <section className="pt-6 pb-8 text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-800 mb-4">
-            <Users className="h-8 w-8 text-white" strokeWidth={2} />
+            <PeopleIcon className="h-8 w-8 text-white" />
           </div>
           <h2 className="text-[24px] font-extrabold text-gray-900 dark:text-white leading-tight">
             {t('referral.heroTitle1', { defaultValue: '친구와 함께' })}<br />
@@ -52,7 +53,7 @@ export default function ReferralIndexPage() {
           <div className="bg-surface rounded-2xl border border-gray-100 dark:border-[#2C2F35] divide-y divide-gray-100 dark:divide-[#2C2F35]">
             {[
               {
-                icon: ShoppingBag,
+                icon: BagIcon,
                 title: t('referral.step1Title', { defaultValue: '공동구매 상품 선택' }),
                 desc: t('referral.step1Desc', { defaultValue: '진행 중인 공동구매 상품을 둘러보세요' }),
                 tint: 'bg-blue-50 text-blue-500',
@@ -64,7 +65,7 @@ export default function ReferralIndexPage() {
                 tint: 'bg-brand-tint text-brand-text',
               },
               {
-                icon: Gift,
+                icon: GiftBoxIcon,
                 title: t('referral.step3Title', { defaultValue: '친구 초대 보너스' }),
                 desc: t('referral.step3Desc', { defaultValue: '친구를 초대해 함께 구매하면 보너스 딜을 받을 수 있어요' }),
                 tint: 'bg-amber-50 text-amber-500',

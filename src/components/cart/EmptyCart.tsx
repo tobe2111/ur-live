@@ -1,5 +1,5 @@
 import React from 'react'
-import { ShoppingBag } from 'lucide-react'
+import { BagIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
@@ -10,7 +10,7 @@ export const EmptyCart = React.memo(function EmptyCart() {
   return (
     <div className="flex flex-col items-center justify-center py-20 px-4">
       <div className="w-20 h-20 bg-gray-50 dark:bg-[#1D1F29] rounded-full flex items-center justify-center mb-5">
-        <ShoppingBag size={36} className="text-gray-300 dark:text-gray-600" />
+        <BagIcon size={36} className="text-gray-300 dark:text-gray-600" />
       </div>
 
       <h2 className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">

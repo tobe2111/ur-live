@@ -16,9 +16,10 @@
  *   그게 이 결함이 살던 자리다.
  */
 import CatIcon from './CatIcon'
+import { PinIcon, StarIcon } from '@/components/icons/urdeal-icons'
 import { priceDisplay } from '@/shared/price-display'
 import { useRef } from 'react'
-import { MapPin, X, Star, ChevronLeft, ChevronRight } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { formatNumber } from '@/utils/format'
 import { cfImage } from '@/utils/cf-image'
@@ -194,12 +195,12 @@ export default function SelectedDealCard({
               <p className="font-bold text-gray-900 dark:text-white text-[15px] truncate">{stripStorePrefix(selected.name, selected.restaurant_name) || selected.restaurant_name}</p>
               {selected.rating > 0 && (
                 <span className="flex items-center gap-1 text-[12px] font-semibold text-amber-500 shrink-0">
-                  <Star className="w-3 h-3" fill="currentColor" />{selected.rating.toFixed(1)}
+                  <StarIcon className="w-3 h-3" filled />{selected.rating.toFixed(1)}
                 </span>
               )}
             </div>
             <p className="text-[12px] text-gray-500 mt-1 flex items-center gap-1 truncate">
-              <MapPin className="w-3 h-3 shrink-0" />
+              <PinIcon className="w-3 h-3 shrink-0" />
               {selected.name && selected.restaurant_name && (
                 <span className="shrink-0 font-semibold text-gray-500 dark:text-gray-400">{selected.restaurant_name} ·</span>
               )}

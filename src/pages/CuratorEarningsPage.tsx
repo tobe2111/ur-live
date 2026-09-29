@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useState } from 'react'
+import { StoreIcon, BagIcon } from '@/components/icons/urdeal-icons'
 import { Link, useNavigate } from 'react-router-dom'
 import { HOSTING_HIDDEN } from '@/shared/feature-flags'
 import { useTranslation } from 'react-i18next'
@@ -19,7 +20,7 @@ import { toast } from '@/hooks/useToast'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SellOwnProductsCTA from './curator-page/SellOwnProductsCTA'
 import { parseUTCDate } from '@/utils/date'
-import { Store, ShoppingBag, Sparkles } from 'lucide-react'
+import { Sparkles } from 'lucide-react'
 import { GroupLabel, ListPlate, ListRow } from './user-profile/list-grammar'
 import { ProxyProductModal, WithdrawModal } from './curator-earnings/ConsoleModals'
 
@@ -103,7 +104,7 @@ export default function CuratorEarningsPage() {
           <GroupLabel>내 가게</GroupLabel>
           <ListPlate className="mb-1">
             <ListRow
-              icon={<ShoppingBag className="w-5 h-5" aria-hidden="true" />}
+              icon={<BagIcon className="w-5 h-5" aria-hidden="true" />}
               label="내 유어샵"
               hint="담은 상품과 순서 관리"
               to={handle ? `/u/${handle}` : '/u/me'}
@@ -191,7 +192,7 @@ function IntroducedStoresSection() {
           return (
             <ListRow
               key={s.id}
-              icon={<Store className="w-5 h-5" aria-hidden="true" />}
+              icon={<StoreIcon className="w-5 h-5" aria-hidden="true" />}
               label={name}
               count={s.total_orders}
               hint={`${formatWon(s.total_sales)} · ${term}`}

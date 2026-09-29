@@ -7,9 +7,10 @@
  *   → POST /api/appointments/book. ?from_payment=<orderId|order_number> 진입 시 해당 주문 자동 선택.
  */
 import { useEffect, useState } from 'react'
+import { PinIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Calendar, CalendarPlus, MapPin, Phone, X } from 'lucide-react'
+import { ArrowLeft, Calendar, CalendarPlus, Phone, X } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { promptDialog } from '@/components/ui/confirm-dialog'
@@ -204,7 +205,7 @@ export default function MyAppointmentsPage() {
                       )}
                       {a.restaurant_address && (
                         <p className="text-[12px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                          <MapPin className="w-3 h-3" /> {a.restaurant_address}
+                          <PinIcon className="w-3 h-3" /> {a.restaurant_address}
                         </p>
                       )}
                       {a.restaurant_phone && (

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
+import { HomeIcon, MessageIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from 'react-i18next'
-import { Home, RefreshCw, MessageCircle } from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import SEO from '@/components/SEO'
 
@@ -52,7 +53,7 @@ export default function ServerErrorPage() {
 
           <Button className="apple-button border border-brand bg-white dark:bg-transparent text-brand hover:bg-brand hover:text-white" asChild>
             <Link to="/">
-              <Home className="mr-2 h-4 w-4" />
+              <HomeIcon className="mr-2 h-4 w-4" />
               {t('serverError.goHome')}
             </Link>
           </Button>
@@ -68,7 +69,7 @@ export default function ServerErrorPage() {
             target="_blank" rel="noopener noreferrer"
             className="inline-flex items-center justify-center px-6 py-3 text-[15px] font-normal text-brand hover:text-brand-dark transition-colors rounded-lg hover:bg-brand/5"
           >
-            <MessageCircle className="mr-2 h-4 w-4" />
+            <MessageIcon className="mr-2 h-4 w-4" />
             {t('serverError.contactSupport')}
           </a>
         </div>

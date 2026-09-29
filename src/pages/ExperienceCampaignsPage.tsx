@@ -4,12 +4,12 @@
  *   선정 시 0원 체험권이 /my-vouchers(이용권 지갑)에 자동 발급됨.
  */
 import { useState, useEffect, useCallback } from 'react'
+import { GiftBoxIcon, ClockIcon, PeopleIcon, OkIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
-import { Gift, Clock, Users, CheckCircle2 } from 'lucide-react'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { formatKSTDate } from '@/utils/date'
 
@@ -62,7 +62,7 @@ export default function ExperienceCampaignsPage() {
     <div className="min-h-[100dvh] bg-[#11141C] text-white pb-24">
       <SEO title={CONSUMER_SURFACE_SEO['/experience'].title} description={CONSUMER_SURFACE_SEO['/experience'].description} url="/experience" />
       <div className="ur-content-wide px-4 lg:px-8 pt-5">
-        <h1 className="text-[24px] font-black flex items-center gap-2"><Gift className="w-5 h-5 text-brand-text" />체험단</h1>
+        <h1 className="text-[24px] font-black flex items-center gap-2"><GiftBoxIcon className="w-5 h-5 text-brand-text" />체험단</h1>
         <p className="text-[13px] text-gray-400 mt-1">무료 응모 · 공정 추첨 · 선정 시 체험권이 이용권 지갑에 발급돼요.</p>
 
         <div className="flex gap-2 mt-4 mb-4">
@@ -84,14 +84,14 @@ export default function ExperienceCampaignsPage() {
                     <p className="text-[12px] text-gray-400 line-clamp-1 mt-1">{c.restaurant_name || c.product_name}</p>
                     {c.mission && <p className="text-[12px] text-brand-text opacity-80 mt-1">미션: {c.mission}</p>}
                     <div className="flex items-center gap-3 text-[12px] text-gray-500 mt-2">
-                      <span className="flex items-center gap-1"><Users className="w-3 h-3" />모집 {c.slots}명</span>
-                      <span className="flex items-center gap-1"><Gift className="w-3 h-3" />응모 {c.entry_count ?? 0}</span>
-                      {c.apply_end && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />~{new Date(c.apply_end).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })}</span>}
+                      <span className="flex items-center gap-1"><PeopleIcon className="w-3 h-3" />모집 {c.slots}명</span>
+                      <span className="flex items-center gap-1"><GiftBoxIcon className="w-3 h-3" />응모 {c.entry_count ?? 0}</span>
+                      {c.apply_end && <span className="flex items-center gap-1"><ClockIcon className="w-3 h-3" />~{new Date(c.apply_end).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })}</span>}
                     </div>
                     {c.description && <p className="text-[12px] text-gray-400 mt-2 line-clamp-2">{c.description}</p>}
                     <button type="button" disabled={applied || applying === c.id} onClick={() => void apply(c.id)}
                       className={`mt-3 w-full py-2 rounded-xl text-[13px] font-bold ${applied ? 'bg-[#1D1F29] text-gray-500' : 'bg-brand text-white'}`}>
-                      {applied ? <span className="flex items-center justify-center gap-1"><CheckCircle2 className="w-4 h-4" />응모 완료</span> : applying === c.id ? '응모 중…' : '무료 응모하기'}
+                      {applied ? <span className="flex items-center justify-center gap-1"><OkIcon className="w-4 h-4" />응모 완료</span> : applying === c.id ? '응모 중…' : '무료 응모하기'}
                     </button>
                   </div>
                 </div>

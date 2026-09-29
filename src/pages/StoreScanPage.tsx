@@ -5,8 +5,9 @@
  *   스캔 로직은 셀러 대시보드 스캔과 동일한 `VoucherScanner` 공유(BarcodeDetector + iOS qr-scanner).
  */
 import { useEffect } from 'react'
+import { StoreIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, Store } from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
 import VoucherScanner from '@/components/voucher/VoucherScanner'
 import { currentSeatLabel } from '@/lib/seller-seat'
 import { MY_PATH, clearMyReturn, noteMyReturn, shouldOfferMyReturn } from '@/lib/seller-return'
@@ -69,7 +70,7 @@ export default function StoreScanPage() {
           {backToMy && <span className="text-[13px] font-semibold text-gray-700 dark:text-gray-200">마이</span>}
         </button>
         <div className="flex items-center gap-2">
-          <Store className="w-4 h-4 text-gray-900 dark:text-white" aria-hidden="true" />
+          <StoreIcon className="w-4 h-4 text-gray-900 dark:text-white" aria-hidden="true" />
           <h1 className="text-[15px] font-extrabold text-gray-900 dark:text-white">매장 계산대</h1>
         </div>
       </header>

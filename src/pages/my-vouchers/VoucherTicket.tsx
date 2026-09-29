@@ -1,12 +1,13 @@
 // 🧱 2026-06-29 TD: MyVouchersPage god 파일 분해 — 이용권 카드 클러스터(verbatim 추출). 동작 불변.
 //   MiniQrHint·Barcode·KtAlphaVoucherCard 는 모듈 내부 전용, VoucherTicket 만 페이지가 사용.
 import { useRef, useEffect, useState } from 'react'
+import { GiftBoxIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { safeDate } from '@/utils/safe-date'
 import { formatNumber } from '@/utils/format'
 import { toast } from '@/hooks/useToast'
-import { QrCode, Copy, Gift, Smartphone } from 'lucide-react'
+import { QrCode, Copy, Smartphone } from 'lucide-react'
 import { TicketCard, TicketRow } from '@/components/ticket/TicketCard'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import type { Voucher } from './types'
@@ -246,7 +247,7 @@ function KtAlphaVoucherCard({ v, muted, t }: {
           {v.product_image ? (
             <img src={cfImage(v.product_image, { width: 200, quality: 82, format: 'auto' }) || v.product_image} alt={v.product_name} loading="lazy" className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, v.product_image)} />
           ) : (
-            <Gift className="w-6 h-6 text-gray-300 dark:text-gray-600" strokeWidth={1.5} />
+            <GiftBoxIcon className="w-6 h-6 text-gray-300 dark:text-gray-600" />
           )}
         </div>
 

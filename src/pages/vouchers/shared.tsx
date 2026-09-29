@@ -5,8 +5,9 @@
  *   보존(잠금 로딩 최적화) — 이동만, 로직 byte-불변.
  */
 import { memo, useState } from 'react'
+import { GiftBoxIcon, HomeIcon, BagIcon, StoreIcon, TicketStubIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
-import { BookOpen, Clapperboard, Coffee, Croissant, Drumstick, Fuel, Gamepad2, Gift, HardDrive, Home, IceCreamCone, Music, Pizza, Plug, RadioTower, Sandwich, Shirt, ShoppingBag, ShoppingCart, Smartphone, Soup, Sparkle, Store, Ticket, Utensils, Wrench, type LucideIcon } from 'lucide-react'
+import { BookOpen, Clapperboard, Coffee, Croissant, Drumstick, Fuel, Gamepad2, HardDrive, IceCreamCone, Music, Pizza, Plug, RadioTower, Sandwich, Shirt, Smartphone, Soup, Sparkle, Utensils, Wrench, type LucideIcon } from 'lucide-react'
 import { usePrefetchGroupBuyProduct } from '@/hooks/queries'
 import DealRow from '@/components/deal/DealRow'
 import { cfImage, cfSrcSet, cfImageOnError } from '@/utils/cf-image'
@@ -88,7 +89,7 @@ export const VoucherCard = memo(function VoucherCard({ p, aboveFold }: { p: Vouc
           />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-gray-400 dark:text-gray-400">
-            <Gift className="w-10 h-10" />
+            <GiftBoxIcon className="w-10 h-10" />
             {p.brand_name && <span className="text-[12px] font-bold">{p.brand_name}</span>}
           </div>
         )}
@@ -176,7 +177,7 @@ export const VoucherRow = memo(function VoucherRow({ p, aboveFold }: { p: Vouche
         />
       ) : (
         <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-gray-400 dark:text-gray-400">
-          <Gift className="w-8 h-8" />
+          <GiftBoxIcon className="w-8 h-8" />
           {p.brand_name && <span className="text-[12px] font-bold px-1 text-center line-clamp-1">{p.brand_name}</span>}
         </div>
       )}
@@ -270,27 +271,27 @@ export const BrandChip = memo(function BrandChip({
  * 📦 2026-08-17 (file-size 래칫): VouchersPage 에서 이동.
  */
 const CATEGORY_ICON_MAP: Record<string, LucideIcon> = {
-  '편의점/마트': Store, '편의점': Store, '마트/슈퍼': Store,
+  '편의점/마트': StoreIcon, '편의점': StoreIcon, '마트/슈퍼': StoreIcon,
   '카페/베이커리': Coffee, '카페': Coffee, '커피/음료': Coffee,
   '베이커리': Croissant, '베이커리/도넛': Croissant,
   '외식/배달': Utensils, '외식': Utensils, '한식': Soup, '양식': Utensils,
   '패스트푸드': Sandwich, '버거': Sandwich,
   '치킨/피자': Pizza, '피자': Pizza, '치킨': Drumstick,
-  '백화점/쇼핑': ShoppingBag, '백화점': ShoppingBag, '쇼핑': ShoppingBag, '백화점상품권': ShoppingBag,
+  '백화점/쇼핑': BagIcon, '백화점': BagIcon, '쇼핑': BagIcon, '백화점상품권': BagIcon,
   '뷰티/패션': Sparkle, '뷰티': Sparkle, '화장품': Sparkle, '패션': Shirt,
-  '도서/문화': BookOpen, '도서': BookOpen, '문화': Ticket, '공연': Ticket, '영화': Clapperboard,
+  '도서/문화': BookOpen, '도서': BookOpen, '문화': TicketStubIcon, '공연': TicketStubIcon, '영화': Clapperboard,
   '모바일/디지털': Smartphone, '모바일상품권': Smartphone, '모바일': Smartphone,
   '디지털': HardDrive, '생활/가전/디지털': Plug, '게임': Gamepad2,
-  '주유/생활': Fuel, '주유': Fuel, '주유상품권': Fuel, '생활': Home,
+  '주유/생활': Fuel, '주유': Fuel, '주유상품권': Fuel, '생활': HomeIcon,
   '통신': RadioTower, '올레': RadioTower, '3사 통합데이터 상품': RadioTower,
-  '아이스크림': IceCreamCone, '기타상품권': Ticket,
-  '마트': ShoppingCart, '마트상품권': ShoppingCart,
+  '아이스크림': IceCreamCone, '기타상품권': TicketStubIcon,
+  '마트': BagIcon, '마트상품권': BagIcon,
   '용역서비스': Wrench, '음악': Music,
 }
 
 /** 카테고리 아이콘. 매핑 없으면 선물 상자(기본). */
 export function CategoryIcon({ category, className = 'w-3.5 h-3.5' }: { category: string; className?: string }) {
-  const Icon = CATEGORY_ICON_MAP[category] || Gift
+  const Icon = CATEGORY_ICON_MAP[category] || GiftBoxIcon
   return <Icon className={className} aria-hidden="true" />
 }
 

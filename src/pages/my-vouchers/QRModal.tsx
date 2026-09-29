@@ -1,6 +1,7 @@
 // 🧱 2026-06-29 TD: MyVouchersPage god 파일 분해 — 이용권 사용(QR/PIN) 모달(verbatim 추출). 동작 불변.
 //   QRCodeSVG(lazy)·VoucherQRCode 는 모듈 내부 전용, QRModal 만 페이지가 사용.
 import { lazy, Suspense, useState, useEffect } from 'react'
+import { OkIcon, PinIcon, BadIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -10,7 +11,7 @@ import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import { useInvalidateMyVouchers } from '@/hooks/queries'
 import { safeDate } from '@/utils/safe-date'
-import { CheckCircle, MapPin, Phone, Share2, X, XCircle } from 'lucide-react'
+import { Phone, Share2, X } from 'lucide-react'
 import type { Voucher } from './types'
 import ReviewBonusButton from './ReviewBonusButton'
 import SameStoreDeals from './SameStoreDeals'
@@ -194,7 +195,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
           <p className="text-center text-[17px] font-extrabold tracking-tight text-gray-900 dark:text-white mb-1">{voucher.product_name}</p>
           {voucher.restaurant_name && (
             <p className="flex items-center justify-center gap-1 text-center text-[12px] text-gray-500 dark:text-gray-400 mb-4">
-              <MapPin className="w-3 h-3 shrink-0" />{voucher.restaurant_name}
+              <PinIcon className="w-3 h-3 shrink-0" />{voucher.restaurant_name}
               {mapUrl && (
                 <a href={mapUrl} target="_blank" rel="noopener noreferrer"
                   className="ml-1 inline-flex items-center gap-1 font-semibold text-gray-900 dark:text-white underline underline-offset-2 active:opacity-60">
@@ -224,7 +225,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
                 <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-white/45 dark:bg-black/45">
                   <div className="flex flex-col items-center rounded-xl border-[3px] border-tone-ok bg-white/70 dark:bg-black/50 px-4 py-2 -rotate-12 shadow-sm">
                     <div className="flex items-center gap-2">
-                      <CheckCircle className="w-5 h-5 text-tone-ok" strokeWidth={3} />
+                      <OkIcon className="w-5 h-5 text-tone-ok" />
                       <span className="text-[17px] font-black tracking-tight text-tone-ok">사용 완료</span>
                     </div>
                     {voucher.used_at && (
@@ -238,7 +239,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
               {isExpired && (
                 <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-white/45 dark:bg-black/45">
                   <div className="flex items-center gap-2 rounded-xl border-[3px] border-red-500/90 bg-white/70 dark:bg-black/50 px-4 py-2 -rotate-12 shadow-sm">
-                    <XCircle className="w-5 h-5 text-red-500" strokeWidth={3} />
+                    <BadIcon className="w-5 h-5 text-red-500" />
                     <span className="text-[17px] font-black tracking-tight text-red-600 dark:text-red-400">
                       {voucher.status === 'expired' ? '만료됨' : '환불됨'}
                     </span>
@@ -324,7 +325,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
                     <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-1">매장 정보</p>
                     {voucher.restaurant_address && (
                       <p className="flex items-start gap-2 text-[12px] text-gray-500 dark:text-gray-400 leading-snug">
-                        <MapPin className="w-3 h-3 mt-1 shrink-0" />
+                        <PinIcon className="w-3 h-3 mt-1 shrink-0" />
                         <span>{voucher.restaurant_address}
                           {mapUrl && <a href={mapUrl} target="_blank" rel="noopener noreferrer" className="ml-1 font-semibold text-gray-900 dark:text-white underline underline-offset-2 active:opacity-60">길찾기</a>}
                         </span>
@@ -355,7 +356,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
           {/* 🛡️ 선결제 안내 — "이미 결제 완료" 🟢 체크 (선물 X, 추가결제 X) */}
           {voucher.status === 'unused' && (
             <div className="mt-4 flex items-start gap-2 bg-gray-50 dark:bg-white/[0.04] rounded-xl px-4 py-3">
-              <CheckCircle className="w-4 h-4 mt-1 shrink-0 text-tone-ok" strokeWidth={2.2} />
+              <OkIcon className="w-4 h-4 mt-1 shrink-0 text-tone-ok" />
               <div className="text-left">
                 <p className="text-[13px] font-bold text-gray-900 dark:text-white">{t('voucher.alreadyPaidTitle', { defaultValue: '이미 결제 완료된 이용권이에요' })}</p>
                 <p className="text-[12px] leading-relaxed text-gray-500 dark:text-gray-400 mt-1">{t('voucher.alreadyPaidDesc', { defaultValue: '매장에서 추가 결제 없이 이 화면만 보여주세요' })}</p>

@@ -12,8 +12,9 @@
  *   3) successUrl/failUrl → /stays/checkout-return?order_id=N (confirm 호출 경량 페이지).
  */
 import { useEffect, useState } from 'react'
+import { AlertIcon, PeopleIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Loader2, AlertCircle, Calendar, Users } from 'lucide-react'
+import { ArrowLeft, Loader2, Calendar } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { formatNumber } from '@/utils/format'
@@ -136,7 +137,7 @@ export default function StayCheckout({ orderId }: { orderId: number }) {
         ) : error || !order ? (
           <div className="p-4 bg-tone-bad-bg rounded-2xl">
             <div className="flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
+              <AlertIcon className="w-5 h-5 text-red-600 shrink-0" />
               <p className="text-[13px] font-medium text-red-800">{error || '주문을 불러오지 못했습니다'}</p>
             </div>
             <button onClick={() => navigate('/stays')} className="mt-3 text-[12px] text-brand-text underline font-medium">
@@ -164,7 +165,7 @@ export default function StayCheckout({ orderId }: { orderId: number }) {
                     </p>
                     {(b.guest_count || 0) > 0 && (
                       <p className="text-[12px] text-gray-500 flex items-center gap-1">
-                        <Users className="w-3 h-3 shrink-0" /> {b.guest_count}명
+                        <PeopleIcon className="w-3 h-3 shrink-0" /> {b.guest_count}명
                       </p>
                     )}
                   </div>

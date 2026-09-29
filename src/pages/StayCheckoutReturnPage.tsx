@@ -10,8 +10,9 @@
  * PaymentSuccessPage(일반 주문 흐름, 잠금) 와 분리된 stays 전용 페이지.
  */
 import { useEffect, useRef, useState } from 'react'
+import { OkIcon, AlertIcon, BadIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Loader2, CheckCircle2, AlertCircle, XCircle } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
@@ -92,7 +93,7 @@ export default function StayCheckoutReturnPage() {
         {state === 'confirming' && <BrandLoader label="결제 승인 중 · 페이지를 닫지 마세요" />}
         {state === 'success' && (
           <>
-            <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-4" />
+            <OkIcon className="w-12 h-12 text-emerald-500 mx-auto mb-4" />
             <p className="text-[17px] font-extrabold text-gray-900">예약이 확정되었습니다 🎉</p>
             {amountDone > 0 && (
               <p className="text-[13px] text-gray-600 mt-1">결제 금액: ₩{formatNumber(amountDone)}</p>
@@ -112,7 +113,7 @@ export default function StayCheckoutReturnPage() {
         )}
         {state === 'overbooked' && (
           <>
-            <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
+            <AlertIcon className="w-12 h-12 text-amber-500 mx-auto mb-4" />
             <p className="text-[17px] font-extrabold text-gray-900">객실이 매진되었습니다</p>
             <p className="text-[13px] text-gray-600 mt-2">{message}</p>
             <p className="text-[12px] text-gray-500 mt-1">결제는 자동 환불 처리됩니다 (영업일 기준 3-5일).</p>
@@ -124,7 +125,7 @@ export default function StayCheckoutReturnPage() {
         )}
         {state === 'fail' && (
           <>
-            <XCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <BadIcon className="w-12 h-12 text-red-500 mx-auto mb-4" />
             <p className="text-[17px] font-extrabold text-gray-900">결제가 완료되지 않았습니다</p>
             {message && <p className="text-[13px] text-gray-600 mt-2 break-words">{message}</p>}
             <div className="mt-5 space-y-2">

@@ -4,9 +4,10 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
+import { OkIcon, AlertIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
-import { Loader2, CheckCircle2, AlertCircle, Youtube, Radio, RefreshCw } from 'lucide-react'
+import { Loader2, Youtube, Radio, RefreshCw } from 'lucide-react'
 
 const LOADING_STEPS = [
   'Google 인증 확인 중',
@@ -130,7 +131,7 @@ export default function YouTubeCallbackPage() {
                 >
                   <div className="w-5 h-5 flex items-center justify-center shrink-0">
                     {i < loadingStep ? (
-                      <CheckCircle2 className="w-5 h-5 text-green-500" />
+                      <OkIcon className="w-5 h-5 text-green-500" />
                     ) : i === loadingStep ? (
                       <Loader2 className="w-4 h-4 text-brand animate-spin" />
                     ) : (
@@ -158,7 +159,7 @@ export default function YouTubeCallbackPage() {
           <div className="space-y-6">
             <div className="relative mx-auto w-20 h-20">
               <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center">
-                <CheckCircle2 className="h-10 w-10 text-green-500" />
+                <OkIcon className="h-10 w-10 text-green-500" />
               </div>
               <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-red-600 rounded-xl flex items-center justify-center shadow-sm">
                 <Youtube className="w-4 h-4 text-white" />
@@ -176,7 +177,7 @@ export default function YouTubeCallbackPage() {
         {status === 'error' && (
           <div className="space-y-6">
             <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto">
-              <AlertCircle className="h-10 w-10 text-red-500" />
+              <AlertIcon className="h-10 w-10 text-red-500" />
             </div>
             <div>
               <h2 className="text-[24px] font-bold text-[#1d1d1f] mb-2">연동 실패</h2>

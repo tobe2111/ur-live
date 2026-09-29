@@ -1,8 +1,9 @@
 import { useEffect } from 'react'
+import { PeopleIcon, GiftBoxIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation, Trans } from 'react-i18next'
 import SEO from '@/components/SEO'
-import { ArrowLeft, Copy, TrendingUp, Users, Gift, Loader2, Share2, ChevronRight } from 'lucide-react'
+import { ArrowLeft, Copy, TrendingUp, Loader2, Share2, ChevronRight } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { useAffiliateStats, useAffiliateTopGroups, useAffiliateFunnel } from '@/hooks/queries/useAffiliate'
@@ -44,7 +45,7 @@ export default function AffiliatePage() {
           {/* 히어로 카드 */}
           <div className="bg-gray-900 rounded-2xl p-5 text-white">
             <div className="flex items-center gap-2 mb-4">
-              <Gift className="w-5 h-5" />
+              <GiftBoxIcon className="w-5 h-5" />
               <span className="text-[15px] font-bold opacity-90">{t('affiliate.earnHero')}</span>
             </div>
             <p className="text-3xl font-extrabold mb-1">{formatNumber(data.total_earned)}<span className="text-[17px] ml-1">딜</span></p>

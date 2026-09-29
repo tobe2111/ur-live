@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
+import { TicketStubIcon, OkIcon, ClockIcon, BadIcon } from '@/components/icons/urdeal-icons'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Ticket, CheckCircle, Clock, XCircle, Loader2, Lock, ScanLine, Camera, X } from 'lucide-react'
+import { Loader2, Lock, ScanLine, Camera, X } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
@@ -241,10 +242,10 @@ export default function StoreStatsPage() {
         {/* 요약 카드 */}
         <div className="grid grid-cols-2 gap-3 mb-5">
           {[
-            { label: t('storeStats.labelUsed'), value: stats.used, icon: CheckCircle, color: 'text-tone-ok', bg: 'bg-tone-ok-bg' },
-            { label: t('storeStats.labelUnused'), value: stats.unused, icon: Ticket, color: 'text-tone-info', bg: 'bg-tone-info-bg' },
-            { label: t('storeStats.labelExpired'), value: stats.expired, icon: XCircle, color: 'text-gray-500 dark:text-gray-400', bg: 'bg-gray-100 dark:bg-[#1D1F29]' },
-            { label: t('storeStats.labelTotal'), value: stats.total_vouchers, icon: Clock, color: 'text-tone-warn', bg: 'bg-tone-warn-bg' },
+            { label: t('storeStats.labelUsed'), value: stats.used, icon: OkIcon, color: 'text-tone-ok', bg: 'bg-tone-ok-bg' },
+            { label: t('storeStats.labelUnused'), value: stats.unused, icon: TicketStubIcon, color: 'text-tone-info', bg: 'bg-tone-info-bg' },
+            { label: t('storeStats.labelExpired'), value: stats.expired, icon: BadIcon, color: 'text-gray-500 dark:text-gray-400', bg: 'bg-gray-100 dark:bg-[#1D1F29]' },
+            { label: t('storeStats.labelTotal'), value: stats.total_vouchers, icon: ClockIcon, color: 'text-tone-warn', bg: 'bg-tone-warn-bg' },
           ].map(s => (
             <div key={s.label} className="bg-surface rounded-xl p-4 border border-line">
               <div className="flex items-center justify-between mb-2">

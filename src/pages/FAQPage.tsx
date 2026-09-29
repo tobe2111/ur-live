@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { ChevronLeft, ChevronDown, Search, HelpCircle, Mail, Clock } from 'lucide-react'
+import { MailIcon, ClockIcon } from '@/components/icons/urdeal-icons'
+import { ChevronLeft, ChevronDown, Search, HelpCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
@@ -155,12 +156,12 @@ export default function FAQPage() {
           <div className="space-y-2">
             {/* 🧹 2026-06-21 (대표 — 고객센터 전화번호 전체 비노출): 전화 행 제거, 이메일/운영시간만 안내. */}
             <div className="flex items-center gap-2 text-[13px] text-gray-700 dark:text-gray-200">
-              <Clock className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+              <ClockIcon className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
               <span className="text-gray-500 dark:text-gray-400 w-16">{t('faq.supportHours', { defaultValue: '운영시간' })}</span>
               <span className="font-medium text-gray-900 dark:text-white">{t('faq.supportHoursValue', { defaultValue: '평일 09:00 - 18:00' })}</span>
             </div>
             <div className="flex items-center gap-2 text-[13px] text-gray-700 dark:text-gray-200">
-              <Mail className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+              <MailIcon className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
               <span className="text-gray-500 dark:text-gray-400 w-16">{t('faq.supportEmail', { defaultValue: '이메일' })}</span>
               <span className="font-medium text-gray-900 dark:text-white">{t('faq.supportEmailValue', { defaultValue: 'support@ur-team.com' })}</span>
             </div>

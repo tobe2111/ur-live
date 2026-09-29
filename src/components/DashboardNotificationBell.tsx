@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Bell } from 'lucide-react'
+import { BellIcon } from '@/components/icons/urdeal-icons'
 import api from '@/lib/api'
 import { useTranslation } from 'react-i18next'
 import { safeInternalPath } from '@/utils/safe-internal-path'
@@ -150,7 +150,7 @@ export default function DashboardNotificationBell({ tokenKey, iconClassName, but
         aria-haspopup="true"
         aria-expanded={open}
       >
-        <Bell className={`w-5 h-5 ${iconClassName || 'text-gray-600'}`} />
+        <BellIcon className={`w-5 h-5 ${iconClassName || 'text-gray-600'}`} />
         {unreadCount > 0 && (
           <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[12px] font-bold px-1">
             {unreadCount > 99 ? '99+' : unreadCount}

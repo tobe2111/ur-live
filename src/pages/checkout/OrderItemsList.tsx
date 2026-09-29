@@ -3,8 +3,8 @@
  *
  * 셀러별 그룹 + 각 상품 + 배송비 표시. read-only.
  */
-import { Package } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { BoxIcon } from '@/components/icons/urdeal-icons'
 import { formatNumber } from '@/utils/format'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import type { SellerGroup } from './types'
@@ -42,7 +42,7 @@ export default function OrderItemsList({ sellerGroups, totalItemCount }: Props) 
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center">
-                      <Package className="h-7 w-7 text-gray-400 dark:text-gray-500" />
+                      <BoxIcon className="h-7 w-7 text-gray-400 dark:text-gray-500" />
                     </div>
                   )}
                 </div>

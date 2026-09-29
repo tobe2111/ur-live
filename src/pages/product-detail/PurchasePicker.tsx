@@ -24,7 +24,8 @@
  *   같은 이유로 시안의 로즈 톤도 **쓰지 않는다**(`rose: MONO` → 화면엔 네이비로 나온다).
  */
 import { useTranslation } from 'react-i18next'
-import { Minus, Plus, Info } from 'lucide-react'
+import { InfoIcon } from '@/components/icons/urdeal-icons'
+import { Minus, Plus } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import type { ProductOption } from '@/hooks/useProduct'
 
@@ -104,7 +105,7 @@ export default function PurchasePicker({
           //   기존 화면은 여기에 '옵션을 선택해주세요' 가 적힌 **누를 수 없는 버튼**을 뒀고,
           //   그건 고를 게 없다는 뜻이 아니라 **고르라는 지시**로 읽힌다.
           <div className="flex items-center gap-2 h-12 px-[15px] rounded-xl bg-[#F5F2F3] dark:bg-[#1D1F29]">
-            <Info className="w-3.5 h-3.5 shrink-0 text-[#9A9298]" />
+            <InfoIcon className="w-3.5 h-3.5 shrink-0 text-[#9A9298]" />
             <span className="text-[13px] font-semibold tracking-[-0.025em] text-[#776F74] dark:text-[#A29A9F]">
               선택할 옵션이 없는 상품이에요
             </span>

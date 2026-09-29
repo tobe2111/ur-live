@@ -8,9 +8,10 @@
  * 다크 테마 (메인 사이드바 카테고리).
  */
 import { useEffect } from 'react'
+import { PeopleIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ChevronLeft, UserCheck, Users } from 'lucide-react'
+import { ChevronLeft, UserCheck } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { isLoggedInSync, requireLogin } from '@/utils/auth'
 import { useFollowing } from '@/hooks/queries/useFollowing'
@@ -70,7 +71,7 @@ export default function FollowingPage() {
           </div>
         ) : error ? (
           <div className="text-center py-20">
-            <Users className="w-10 h-10 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
+            <PeopleIcon className="w-10 h-10 text-gray-400 dark:text-gray-600 mx-auto mb-3" />
             <p className="text-gray-900 dark:text-gray-300 font-semibold text-[15px]">{error}</p>
           </div>
         ) : sellers.length === 0 ? (

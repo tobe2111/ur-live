@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
+import { BoxIcon, TruckIcon, MessageIcon, TicketStubIcon, PeopleIcon } from '@/components/icons/urdeal-icons'
 import { Link } from 'react-router-dom'
-import { Package, Truck, ChevronRight, MessageCircle, Search, Ticket, Users } from 'lucide-react'
+import { ChevronRight, Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { safeDate } from '@/utils/safe-date'
@@ -101,7 +102,7 @@ function ItemThumb({ item }: { item: OrderItem }) {
   if (!src) {
     return (
       <div className="w-16 h-16 shrink-0 rounded-lg bg-gray-100 dark:bg-[#1D1F29] flex items-center justify-center">
-        <Package className="w-6 h-6 text-gray-300 dark:text-gray-600" strokeWidth={1.5} aria-hidden="true" />
+        <BoxIcon className="w-6 h-6 text-gray-300 dark:text-gray-600" aria-hidden="true" />
       </div>
     )
   }
@@ -345,7 +346,7 @@ function OrderCard({
       {hasTracking && (
         <div className="mx-4 mt-1 mb-3 flex items-center justify-between gap-2 px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] rounded-xl">
           <div className="flex items-center gap-2 min-w-0">
-            <Truck className="h-3.5 w-3.5 text-blue-500 shrink-0" strokeWidth={2} aria-hidden="true" />
+            <TruckIcon className="h-3.5 w-3.5 text-blue-500 shrink-0" aria-hidden="true" />
             <span className="text-[12px] min-w-0 truncate">
               <span className="text-gray-500 dark:text-gray-400">{order.courier} · </span>
               <span className="font-semibold text-gray-900 dark:text-white">{order.tracking_number}</span>
@@ -376,8 +377,8 @@ function OrderCard({
         >
           <span className="text-[12px] text-gray-600 dark:text-gray-300 flex items-center gap-2 min-w-0">
             {kind === 'voucher'
-              ? <Ticket className="h-3.5 w-3.5 text-emerald-500 shrink-0" strokeWidth={2} aria-hidden="true" />
-              : <Users className="h-3.5 w-3.5 text-emerald-500 shrink-0" strokeWidth={2} aria-hidden="true" />}
+              ? <TicketStubIcon className="h-3.5 w-3.5 text-emerald-500 shrink-0" aria-hidden="true" />
+              : <PeopleIcon className="h-3.5 w-3.5 text-emerald-500 shrink-0" aria-hidden="true" />}
             <span className="truncate">{kind === 'voucher'
               ? t('ordersTab.useInMyGifticons', { defaultValue: "'내 교환권'에서 사용하세요" })
               : t('ordersTab.useInMyVouchers', { defaultValue: "'내 이용권'에서 사용하세요" })}</span>
@@ -401,7 +402,7 @@ function OrderCard({
             className="flex items-center gap-1 px-2 py-2 text-[12px] font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-[#11141C] border border-line rounded-full hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
             aria-label={t('ordersTab.inquiry', { defaultValue: '매장 문의' })}
           >
-            <MessageCircle className="h-3 w-3" strokeWidth={2} aria-hidden="true" />
+            <MessageIcon className="h-3 w-3" aria-hidden="true" />
             {t('ordersTab.inquiry', { defaultValue: '문의' })}
           </button>
           {returnStatus && (
@@ -473,7 +474,7 @@ function EmptyState({ kindFilter, searching, t }: { kindFilter: KindFilter; sear
   return (
     <div className="bg-surface rounded-2xl border border-gray-100 dark:border-[#2C2F35] p-12 text-center">
       <div className="w-20 h-20 bg-gray-50 dark:bg-[#1D1F29] rounded-full flex items-center justify-center mx-auto mb-5">
-        <Package className="h-10 w-10 text-gray-400 dark:text-gray-500" strokeWidth={1.5} aria-hidden="true" />
+        <BoxIcon className="h-10 w-10 text-gray-400 dark:text-gray-500" aria-hidden="true" />
       </div>
       <h2 className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">{title}</h2>
       <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-6">{desc}</p>

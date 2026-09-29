@@ -7,8 +7,9 @@
  * MobileAppLayout 에서 HIDE_SIDEBAR_PREFIXES 제외 전 페이지에 삽입.
  */
 import { useNavigate, useLocation, Link } from 'react-router-dom'
+import { HomeIcon, StoreIcon, TicketStubIcon, GiftBoxIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from 'react-i18next'
-import { Home, Radio, Compass, User, Store, Plus, Ticket, Gift } from 'lucide-react'
+import { Radio, Compass, User, Plus } from 'lucide-react'
 import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN, COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
 import { useLinkshopPath } from '@/hooks/useLinkshopPath'
 import UrDealLogo from '@/components/brand/UrDealLogo'
@@ -25,12 +26,12 @@ interface NavItem {
 //   /live·/browse 는 플래그로 숨김 상태이나 가역 위해 항목 보존(아래 filter).
 const MENU_ITEMS: NavItem[] = [
   // 🎟️ 2026-06-19 (대표 5탭 확정): 홈 = 동네딜 피드 → 홈 탭이 /group-buy·/stays·/meal-vouchers surface 도 활성(모바일 하단바와 정합).
-  { labelKey: 'nav.home',            labelDefault: '홈',             icon: Home,    path: '/',
+  { labelKey: 'nav.home',            labelDefault: '홈',             icon: HomeIcon,    path: '/',
     active: (p) => p === '/' || p.startsWith('/group-buy') || p.startsWith('/stays') || p.startsWith('/meal-vouchers') },
   { labelKey: 'nav.live',            labelDefault: '라이브',         icon: Radio,   path: '/live',      active: (p) => p.startsWith('/live') },
   { labelKey: 'nav.browse',          labelDefault: '둘러보기',       icon: Compass, path: '/browse',    active: (p, s) => p === '/browse' && !s.includes('category=') },
   // 🎟️ 2026-06-19 (대표 5탭 확정 — 홈=동네딜이라 동네딜 메뉴는 홈과 중복): 동네딜 → 교환권(기프티콘 카탈로그).
-  { labelKey: 'nav.vouchers',        labelDefault: '교환권',          icon: Gift,    path: '/vouchers',  active: (p) => p.startsWith('/vouchers') || p.startsWith('/my-gifticons') },
+  { labelKey: 'nav.vouchers',        labelDefault: '교환권',          icon: GiftBoxIcon,    path: '/vouchers',  active: (p) => p.startsWith('/vouchers') || p.startsWith('/my-gifticons') },
   // 🆕 2026-06-17 (대표 신고 — PC 진입 버튼 누락): 공구 제안/만들기 (모바일 하단바 ➕ 와 동일 목적지).
   { labelKey: 'nav.create',          labelDefault: '공구 제안',       icon: Plus,    path: '/community-group-buy/new', active: (p) => p.startsWith('/community-group-buy/new') },
 ]
@@ -42,7 +43,7 @@ const MENU_ITEMS: NavItem[] = [
 // 🎟️ 2026-06-18 (대표 결정 — 5탭 통일: 홈/동네딜/이용권/유어샵/마이): 주문/찜/이용권은 마이페이지 안 탭으로
 //   접근 → 사이드바는 핵심만. '내 이용권' → '이용권'(QR 매장사용)으로 명칭/아이콘 통일(모바일 하단바와 동일).
 const MY_ITEMS: NavItem[] = [
-  { labelKey: 'nav.myGbVouchers', labelDefault: '이용권', icon: Ticket, path: '/my-vouchers', active: (p) => p.startsWith('/my-vouchers') },
+  { labelKey: 'nav.myGbVouchers', labelDefault: '이용권', icon: TicketStubIcon, path: '/my-vouchers', active: (p) => p.startsWith('/my-vouchers') },
   { labelKey: 'my.profile',       labelDefault: '마이페이지', icon: User, path: '/user/profile', active: (p) => p.startsWith('/user/profile') || p === '/mypage' },
 ]
 
@@ -76,7 +77,7 @@ export default function DesktopLiveSidebar() {
   // 🔗 2026-06-17 (대표 신고): PC 에 유어샵 진입 버튼 없음 → MY 섹션 최상단에 추가(모바일 BottomNav 와 동일 경로).
   const linkshopPath = useLinkshopPath()
   const linkshopItem: NavItem = {
-    labelKey: 'nav.linkshop', labelDefault: '유어샵', icon: Store, path: linkshopPath,
+    labelKey: 'nav.linkshop', labelDefault: '유어샵', icon: StoreIcon, path: linkshopPath,
     active: (p) => p.startsWith('/u/') || p.startsWith('/profile/') || p.startsWith('/s/'),
   }
 

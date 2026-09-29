@@ -5,8 +5,9 @@
  *   VouchersPage 에서 분리한 이유는 파일 크기 래칫(god 파일 성장 금지) — 동작은 인라인이던 때와 동일.
  */
 import { useNavigate } from 'react-router-dom'
+import { WalletIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from 'react-i18next'
-import { Wallet, ChevronRight, Search } from 'lucide-react'
+import { ChevronRight, Search } from 'lucide-react'
 
 /**
  * 모바일 헤더 우측 액션 — [보관함] [검색].
@@ -36,7 +37,7 @@ export function GifticonBoxRailRow() {
   return (
     <button type="button" onClick={() => navigate('/my-gifticons')}
       className="w-full flex items-center gap-2 px-3 py-2 rounded-xl border border-line text-left hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors">
-      <Wallet className="w-[18px] h-[18px] shrink-0 text-gray-500 dark:text-gray-400" strokeWidth={1.8} />
+      <WalletIcon className="w-[18px] h-[18px] shrink-0 text-gray-500 dark:text-gray-400" />
       <span className="flex-1 text-[13px] font-bold text-gray-900 dark:text-white">{t('voucher.myGifticons', { defaultValue: '내 교환권' })}</span>
       <ChevronRight className="w-4 h-4 shrink-0 text-gray-300 dark:text-gray-600" />
     </button>

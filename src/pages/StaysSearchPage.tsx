@@ -10,13 +10,14 @@ import StayCurations from './stays/StayCurations'
 import { stayRegionLabel } from '@/shared/stay-address'
 import { DEAL_GRID_GAP } from '@/shared/deal-card-grid'
 import { CalendarDays } from 'lucide-react'
-import { TicketStubIcon } from '@/components/icons/urdeal-icons'
+import { TicketStubIcon, StayLineIcon, PinIcon, PeopleIcon } from '@/components/icons/urdeal-icons'
+import { MAP_VOUCHER_DEFS } from '@/pages/restaurant-map/voucher-types'
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
-import { Search, MapPin, Calendar, Users, SlidersHorizontal, X } from 'lucide-react'
+import { Search, Calendar, SlidersHorizontal, X } from 'lucide-react'
 import { useStaysSearch } from '@/hooks/queries/useStaysSearch'
 
 const PROPERTY_TYPE_LABELS: Record<string, string> = {
@@ -85,7 +86,10 @@ export default function StaysSearchPage() {
       <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-wide px-4 lg:px-8 py-3 flex items-center gap-3">
           <Link to="/" className="text-[15px] font-bold">←</Link>
-          <h1 className="text-[15px] font-bold flex-1">🏨 숙소</h1>
+          <h1 className="text-[15px] font-bold flex-1 flex items-center gap-2">
+            <StayLineIcon size={17} />
+            {t('map.voucher.stay', { defaultValue: '숙소' })}
+          </h1>
           <button
             onClick={() => setShowFilters(true)}
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/[0.06]"
@@ -100,25 +104,22 @@ export default function StaysSearchPage() {
             체감의 원인이 됨 → 홈 카테고리 필터(`/?category=`) 복귀로 정정(PC PcHomePage·모바일 지도 홈 둘 다
             ?category 초기화 지원). 라벨은 홈 카테고리와 SSOT 정합. 지도는 명시적 '지도에서 보기' 링크만. */}
         <div className="ur-content-wide px-4 lg:px-8 pb-2 flex gap-2 overflow-x-auto scrollbar-hide">
-          {[
-            { key: 'all', to: '/', label: t('groupBuy.categoryAll', { defaultValue: '전체' }) },
-            { key: 'meal_voucher', to: '/?category=meal_voucher', label: t('groupBuy.categoryMeal', { defaultValue: '🍽️ 식사' }) },
-            { key: 'beauty_voucher', to: '/?category=beauty_voucher', label: t('groupBuy.categoryBeauty', { defaultValue: '💇 미용' }) },
-            { key: 'stay_voucher', to: '/stays', label: t('groupBuy.categoryStay', { defaultValue: '🏨 숙소' }) },
-            { key: 'etc_voucher', to: '/?category=etc_voucher', label: t('groupBuy.categoryEtc', { defaultValue: '🎯 기타' }) },
-          ].map((cat) => {
-            const active = cat.key === 'stay_voucher'
+          {MAP_VOUCHER_DEFS.map((v) => {
+            const active = v.key === 'stay_voucher'
+            const Icon = v.icon
             return (
               <Link
-                key={cat.key}
-                to={cat.to}
-                className={`shrink-0 px-4 py-2 rounded-full text-[12px] font-semibold whitespace-nowrap border transition-colors ${
+                key={v.key}
+                to={v.key === 'stay_voucher' ? '/stays' : v.key === 'all' ? '/' : `/?category=${v.key}`}
+                aria-current={active ? 'page' : undefined}
+                className={`shrink-0 flex items-center gap-1 px-4 py-2 rounded-full text-[12px] font-semibold whitespace-nowrap transition-all ${
                   active
-                    ? 'bg-brand text-white border-brand'
-                    : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-white/[0.06] hover:text-gray-900 dark:hover:text-white'
+                    ? 'bg-brand text-white'
+                    : 'bg-white dark:bg-[#1D1F29] text-brand-text shadow-lift'
                 }`}
               >
-                {cat.label}
+                <Icon size={15} />
+                {t(v.labelKey, { defaultValue: v.defaultLabel })}
               </Link>
             )
           })}
@@ -130,11 +131,11 @@ export default function StaysSearchPage() {
             <Calendar className="w-3 h-3" /> {filters.check_in.slice(5)} - {filters.check_out.slice(5)} ({nights}박)
           </button>
           <button onClick={() => setShowFilters(true)} className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-white/[0.06] rounded-full text-[12px] whitespace-nowrap">
-            <Users className="w-3 h-3" /> 성인 {filters.guests}명
+            <PeopleIcon className="w-3 h-3" /> 성인 {filters.guests}명
           </button>
           {filters.region && (
             <button onClick={() => setFilters({ ...filters, region: '' })} className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-300 rounded-full text-[12px] whitespace-nowrap">
-              <MapPin className="w-3 h-3" /> {filters.region} ×
+              <PinIcon className="w-3 h-3" /> {filters.region} ×
             </button>
           )}
           {filters.property_type && (

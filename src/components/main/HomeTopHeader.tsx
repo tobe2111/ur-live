@@ -9,8 +9,9 @@
  * - 테마: 라이트/다크 모두 지원(홈은 테마 토글 대상).
  */
 import { useState } from 'react'
+import { BellIcon, ClockIcon, PinIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
-import { Search, Bell, Clock, MapPin, ChevronDown, LocateFixed } from 'lucide-react'
+import { Search, ChevronDown, LocateFixed } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { useUnreadCount } from '@/hooks/queries'
@@ -91,14 +92,14 @@ export default function HomeTopHeader() {
           </button>
 
           <button onClick={() => navigate('/browse')} aria-label="최근 본" className="shrink-0 p-2 text-gray-700 dark:text-gray-200">
-            <Clock className="w-[22px] h-[22px]" strokeWidth={1.75} />
+            <ClockIcon className="w-[22px] h-[22px]" />
           </button>
           <button
             onClick={() => navigate('/notifications')}
             aria-label={unreadCount > 0 ? `알림 ${unreadCount}개` : '알림'}
             className="shrink-0 p-2 relative text-gray-700 dark:text-gray-200"
           >
-            <Bell className="w-[22px] h-[22px]" strokeWidth={1.75} />
+            <BellIcon className="w-[22px] h-[22px]" />
             {unreadCount > 0 && (
               <span className="absolute top-0.5 right-0.5 bg-red-500 text-white text-[12px] font-bold min-w-[15px] h-[15px] px-1 rounded-full flex items-center justify-center">
                 {unreadCount > 99 ? '99+' : unreadCount}
@@ -110,7 +111,7 @@ export default function HomeTopHeader() {
         {/* 2행: 위치 선택 + 현재 위치 */}
         <div className="flex items-center justify-between gap-2">
           <button onClick={goRegion} className="flex items-center gap-1 min-w-0 text-gray-900 dark:text-white" aria-label="동네 선택">
-            <MapPin className="w-4 h-4 text-red-500 shrink-0" strokeWidth={2.25} fill="currentColor" />
+            <PinIcon className="w-4 h-4 text-red-500 shrink-0" filled />
             <span className="text-[15px] font-bold truncate">{region?.name || '동네 선택'}</span>
             <ChevronDown className="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0" strokeWidth={2.5} />
           </button>

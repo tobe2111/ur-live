@@ -6,8 +6,8 @@ import { useTranslation } from 'react-i18next'
 //   홈 modulepreload 에 딸려옴(PC 는 거터 QR 렌더, 모바일은 안 쓰는데도 preload). QR 은 장식용 모바일-앱
 //   다운로드 코드라 첫 페인트 비필수 → lazy 로 빼 홈 첫 페인트 preload 에서 18KB 제거.
 const QRCodeSVG = lazy(() => import('qrcode.react').then(m => ({ default: m.QRCodeSVG })))
-import { Home, Gift, Ticket, Sparkles, User, ChevronRight, Smartphone, MapPin, ShieldCheck, Percent, Store } from 'lucide-react'
-import { UrShopIcon } from '@/components/icons/urdeal-icons'
+import { Sparkles, User, ChevronRight, Smartphone, ShieldCheck, Percent } from 'lucide-react'
+import { UrShopIcon, HomeIcon, GiftBoxIcon, TicketStubIcon, PinIcon, StoreIcon } from '@/components/icons/urdeal-icons'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 
 /**
@@ -27,7 +27,7 @@ const rightStyle = { left: `calc(50% + ${FRAME_HALF + GAP}px)`, width: `${RAIL_W
 const cardCls =
   'rounded-2xl border border-gray-200 dark:border-white/10 bg-white/80 dark:bg-white/[0.04] backdrop-blur-sm shadow-sm'
 
-function QuickLink({ icon: Icon, label, onClick }: { icon: typeof Home; label: string; onClick: () => void }) {
+function QuickLink({ icon: Icon, label, onClick }: { icon: typeof HomeIcon; label: string; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
@@ -69,7 +69,7 @@ export default function ConsumerFrameRails() {
             {[
               { icon: ShieldCheck, title: t('frameRails.valTrust', { defaultValue: '유어딜 안전결제' }), desc: t('frameRails.valTrustDesc', { defaultValue: '결제·정산을 보증해요' }) },
               { icon: Percent, title: t('frameRails.valDeal', { defaultValue: '매일 새로운 동네 딜' }), desc: t('frameRails.valDealDesc', { defaultValue: '할인가로 발견·구매' }) },
-              { icon: Store, title: t('frameRails.valShop', { defaultValue: '내 이용권 진열대, 유어샵' }), desc: t('frameRails.valShopDesc', { defaultValue: '가입하면 이미 열려 있어요' }) },
+              { icon: StoreIcon, title: t('frameRails.valShop', { defaultValue: '내 이용권 진열대, 유어샵' }), desc: t('frameRails.valShopDesc', { defaultValue: '가입하면 이미 열려 있어요' }) },
             ].map((v) => (
               <div key={v.title} className="flex items-start gap-2">
                 <span className="mt-1 w-7 h-7 shrink-0 rounded-lg bg-gray-900 dark:bg-white/10 text-white dark:text-white flex items-center justify-center">
@@ -120,11 +120,11 @@ export default function ConsumerFrameRails() {
             <p className="px-4 pt-2 pb-1 text-[12px] font-bold tracking-wide text-gray-500 dark:text-gray-400">
               {t('frameRails.quicklinks', { defaultValue: '바로가기' })}
             </p>
-            <QuickLink icon={Home} label={t('nav.home', { defaultValue: '홈' })} onClick={() => navigate('/')} />
+            <QuickLink icon={HomeIcon} label={t('nav.home', { defaultValue: '홈' })} onClick={() => navigate('/')} />
             {/* 🏷️ 2026-08-17 (UX 전수검사 P2): 라벨 "쇼핑"은 잠정 숨김된 쇼핑탭 잔재 — 목적지(/vouchers)에
                 맞는 정본 라벨 "교환권"(하단 네비 탭2와 동일 Gift 아이콘)으로 정정. */}
-            <QuickLink icon={Gift} label={t('nav.vouchers', { defaultValue: '교환권' })} onClick={() => navigate('/vouchers')} />
-            <QuickLink icon={Ticket} label={t('nav.myGbVouchers', { defaultValue: '이용권' })} onClick={() => navigate('/my-vouchers')} />
+            <QuickLink icon={GiftBoxIcon} label={t('nav.vouchers', { defaultValue: '교환권' })} onClick={() => navigate('/vouchers')} />
+            <QuickLink icon={TicketStubIcon} label={t('nav.myGbVouchers', { defaultValue: '이용권' })} onClick={() => navigate('/my-vouchers')} />
             <QuickLink icon={UrShopIcon} label={t('nav.linkshop', { defaultValue: '유어샵' })} onClick={() => navigate('/u/me')} />
             <QuickLink icon={User} label={t('nav.my', { defaultValue: '마이' })} onClick={() => navigate('/user/profile')} />
           </div>
@@ -134,7 +134,7 @@ export default function ConsumerFrameRails() {
             onClick={() => navigate('/map')}
             className="pointer-events-auto w-full flex items-center justify-center gap-2 rounded-2xl bg-brand text-white px-4 py-4 text-[13px] font-bold hover:opacity-90 transition-opacity shadow-sm"
           >
-            <MapPin className="w-4 h-4" aria-hidden="true" />
+            <PinIcon className="w-4 h-4" aria-hidden="true" />
             {t('frameRails.exploreMap', { defaultValue: '지도로 동네딜 보기 →' })}
           </button>
         </div>

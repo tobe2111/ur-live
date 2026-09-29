@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useCurrentDong } from '@/hooks/useCurrentDong'
 import { Link, useNavigate } from 'react-router-dom'
-import { Search, Bell, ShoppingCart } from 'lucide-react'
+import { Search } from 'lucide-react'
 import SEO, { organizationJsonLd, webSiteJsonLd } from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import SellOnUrdealRow from './SellOnUrdealRow'
@@ -13,7 +13,7 @@ import HomeBannerStrip from '@/components/home/HomeBannerStrip'
 import PcHomeLocationBar, { readHomeRegion, type HomeRegion } from '@/pages/pc-home/PcHomeLocationBar'
 import { readCachedLoc } from '@/shared/utils/cached-loc'
 import { DEAL_CATS, type DealCategory } from '@/pages/pc-home/PcHomeRail'
-import { ShortsIcon } from '@/components/icons/urdeal-icons'
+import { ShortsIcon, BellIcon, BagIcon } from '@/components/icons/urdeal-icons'
 import { URSHORTS_BROWSE_PATH } from '@/shared/urshorts'
 import { HOME_SHOWCASE_ENABLED } from '@/shared/feature-flags'
 
@@ -108,8 +108,8 @@ export default function MobileHomePage() {
           <Link to="/" aria-label="홈" className="shrink-0 flex items-center"><UrDealLogo size={17} /></Link>
           <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
             <button onClick={() => navigate('/search')} aria-label="검색" className="p-2 shrink-0"><Search className="h-[21px] w-[21px]" strokeWidth={1.5} /></button>
-            <button onClick={() => navigate('/notifications')} aria-label="알림" className="p-2 shrink-0"><Bell className="h-[21px] w-[21px]" strokeWidth={1.5} /></button>
-            <button onClick={() => navigate('/cart')} aria-label="장바구니" className="p-2 shrink-0"><ShoppingCart className="h-[21px] w-[21px]" strokeWidth={1.5} /></button>
+            <button onClick={() => navigate('/notifications')} aria-label="알림" className="p-2 shrink-0"><BellIcon className="h-[21px] w-[21px]" /></button>
+            <button onClick={() => navigate('/cart')} aria-label="장바구니" className="p-2 shrink-0"><BagIcon className="h-[21px] w-[21px]" /></button>
           </div>
         </div>
 

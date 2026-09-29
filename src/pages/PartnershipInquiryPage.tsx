@@ -4,8 +4,9 @@
  *   화이트 테마 (+다크 쌍) — 소비자/외부 대면.
  */
 import { useState } from 'react'
+import { OkIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, Handshake, CheckCircle2 } from 'lucide-react'
+import { ChevronLeft, Handshake } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
@@ -50,7 +51,7 @@ export default function PartnershipInquiryPage() {
       <div className="min-h-screen bg-white dark:bg-[#11141C] flex items-center justify-center px-4">
         <SEO title="광고/제휴 문의 - 유어딜" description="광고, 제휴, 입점, 상품 공급 문의" url="/partnership" />
         <div className="text-center max-w-sm">
-          <CheckCircle2 className="w-14 h-14 mx-auto text-emerald-500" />
+          <OkIcon className="w-14 h-14 mx-auto text-emerald-500" />
           <h1 className="mt-4 text-[17px] font-extrabold text-gray-900 dark:text-white">접수됐어요!</h1>
           <p className="mt-2 text-[15px] text-gray-600 dark:text-gray-300 leading-relaxed">
             담당자가 확인 후 남겨주신 연락처/이메일로<br />영업일 기준 2일 내 회신드릴게요.

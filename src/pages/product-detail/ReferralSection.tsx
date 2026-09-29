@@ -2,8 +2,9 @@
  * 🛡️ 2026-05-02: TD-018 분할 — ProductDetailPage 친구 초대 공동구매 섹션.
  */
 import { useEffect, useState } from 'react'
+import { PeopleIcon, GiftBoxIcon, ClockIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
-import { Users, Gift, Clock, ChevronRight } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import api from '@/lib/api'
 import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags'
 
@@ -131,7 +132,7 @@ export default function ReferralSection({
     <div className="mx-4 mb-3 bg-surface rounded-xl border border-line p-4">
       {/* 헤더 */}
       <div className="flex items-center gap-2 mb-2">
-        <Gift className="w-4 h-4 text-gray-900 dark:text-white" />
+        <GiftBoxIcon className="w-4 h-4 text-gray-900 dark:text-white" />
         <h3 className="text-[15px] font-bold text-gray-900 dark:text-white">공동구매로 더 싸게</h3>
       </div>
       <p className="text-[12px] text-gray-600 dark:text-gray-300 leading-relaxed mb-3">
@@ -152,7 +153,7 @@ export default function ReferralSection({
         disabled={creating}
         className="w-full py-3 bg-brand text-white text-[15px] font-bold rounded-xl active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
       >
-        <Users className="w-4 h-4" />
+        <PeopleIcon className="w-4 h-4" />
         {creating ? '생성 중...' : '공동구매 시작하기'}
       </button>
 
@@ -187,12 +188,12 @@ export default function ReferralSection({
                       )}
                     </div>
                     <div className="flex items-center gap-2 mb-2 text-[12px] text-gray-500 dark:text-gray-400">
-                      <Users className="w-3 h-3" />
+                      <PeopleIcon className="w-3 h-3" />
                       <span>{g.current_count}/{g.target_count}명</span>
                       {timeLeft && (
                         <>
                           <span className="text-gray-300 dark:text-gray-600">·</span>
-                          <Clock className="w-3 h-3" />
+                          <ClockIcon className="w-3 h-3" />
                           <span>{timeLeft}</span>
                         </>
                       )}

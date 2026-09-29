@@ -1,6 +1,7 @@
 // 🧱 2026-06-29 TD: GroupBuyListPage god 파일 분해 — 유저 공구(커뮤니티) 카드(verbatim 추출). 동작 불변.
 import { useTranslation } from 'react-i18next'
-import { MapPin, Bell, HandCoins, Users, Clock } from 'lucide-react'
+import { PinIcon, BellIcon, PeopleIcon, ClockIcon } from '@/components/icons/urdeal-icons'
+import { HandCoins } from 'lucide-react'
 import { formatPrice } from '@/utils/currency'
 import { STATUS_BADGES } from './constants'
 import { formatTimeLeft } from './utils'
@@ -40,7 +41,7 @@ export default function CommunityGroupBuyCard({
             </p>
             {g.restaurant_address && (
               <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate flex items-center gap-1 mt-1">
-                <MapPin className="w-3 h-3 flex-shrink-0" />
+                <PinIcon className="w-3 h-3 flex-shrink-0" />
                 {g.restaurant_address}
               </p>
             )}
@@ -52,7 +53,7 @@ export default function CommunityGroupBuyCard({
             className="w-7 h-7 flex items-center justify-center rounded-full border border-line active:scale-90 transition-transform"
             aria-label={t('common.wishlist', { defaultValue: '관심 등록' })}
           >
-            <Bell
+            <BellIcon filled
               className={`w-3.5 h-3.5 ${interested ? 'text-gray-900 fill-gray-900 dark:text-white dark:fill-white' : 'text-gray-400'}`}
             />
           </button>
@@ -91,7 +92,7 @@ export default function CommunityGroupBuyCard({
         </div>
         <div className="flex items-center justify-between mt-2">
           <p className="text-[12px] text-gray-600 dark:text-gray-400 flex items-center gap-1">
-            <Users className="w-3 h-3 text-gray-400" />
+            <PeopleIcon className="w-3 h-3 text-gray-400" />
             {achieved ? (
               <span className="text-emerald-600 font-semibold">
                 {t('groupBuy.goalReached', { defaultValue: '목표 달성!' })}
@@ -108,7 +109,7 @@ export default function CommunityGroupBuyCard({
           </p>
           {timeLeft && (
             <p className="text-[12px] text-gray-400 dark:text-gray-500 flex items-center gap-1">
-              <Clock className="w-3 h-3" />
+              <ClockIcon className="w-3 h-3" />
               {timeLeft}
             </p>
           )}

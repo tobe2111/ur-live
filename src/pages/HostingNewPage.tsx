@@ -7,7 +7,8 @@
  */
 
 import { useEffect, useState } from 'react'
-import { BedDouble, Dumbbell, Gift, LayoutGrid, PartyPopper, PawPrint, Scissors, Utensils, type LucideIcon } from 'lucide-react'
+import { GiftBoxIcon } from '@/components/icons/urdeal-icons'
+import { BedDouble, Dumbbell, LayoutGrid, PartyPopper, PawPrint, Scissors, Utensils, type LucideIcon } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
@@ -24,7 +25,7 @@ const CATEGORIES: Array<{ key: string; label: string; Icon: LucideIcon }> = [
   { key: 'activity_voucher', label: '액티비티', Icon: PartyPopper },
   { key: 'health_voucher', label: '헬스', Icon: Dumbbell },
   { key: 'pet_voucher', label: '펫', Icon: PawPrint },
-  { key: 'etc_voucher', label: '기타', Icon: Gift },
+  { key: 'etc_voucher', label: '기타', Icon: GiftBoxIcon },
 ]
 
 export default function HostingNewPage() {

@@ -13,9 +13,10 @@
  * 모든 step skip 가능 (강제 X).
  */
 import { useState } from 'react'
+import { BellIcon, GiftBoxIcon, HeartIcon, HomeIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Baby, Bell, Cake, Check, ChevronRight, Dumbbell, Gift, Heart, Home, PawPrint, Scissors, Shirt, Sparkle, Sparkles, Utensils, X } from 'lucide-react'
+import { Baby, Cake, Check, ChevronRight, Dumbbell, PawPrint, Scissors, Shirt, Sparkle, Sparkles, Utensils, X } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
@@ -40,7 +41,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
     { key: 'fashion', label: t('welcomeOnboarding.catFashion', { defaultValue: '패션' }), Icon: Shirt },
     { key: 'beauty_product', label: t('welcomeOnboarding.catBeautyProduct', { defaultValue: '화장품' }), Icon: Sparkle },
     { key: 'food_product', label: t('welcomeOnboarding.catFoodProduct', { defaultValue: '식품·간식' }), Icon: Cake },
-    { key: 'home', label: t('welcomeOnboarding.catHome', { defaultValue: '리빙' }), Icon: Home },
+    { key: 'home', label: t('welcomeOnboarding.catHome', { defaultValue: '리빙' }), Icon: HomeIcon },
     { key: 'pet', label: t('welcomeOnboarding.catPet', { defaultValue: '반려동물' }), Icon: PawPrint },
     { key: 'kids', label: t('welcomeOnboarding.catKids', { defaultValue: '유아·아동' }), Icon: Baby },
   ]
@@ -193,7 +194,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
               <div className="bg-warm border border-rule rounded-2xl p-5 mt-6 text-left">
                 <div className="flex items-start gap-3">
                   <div className="w-12 h-12 rounded-2xl bg-brand flex items-center justify-center shrink-0 shadow-md">
-                    <Gift className="w-6 h-6 text-white" />
+                    <GiftBoxIcon className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
                     <p className="text-[13px] font-bold text-brand-text">{t('welcomeOnboarding.couponBadge', { defaultValue: '신규 환영 쿠폰' })}</p>
@@ -222,7 +223,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
             <div>
               <div className="text-center mb-5">
                 <div className="mx-auto w-16 h-16 rounded-full bg-brand-tint flex items-center justify-center mb-3">
-                  <Heart className="w-8 h-8 text-brand-text" />
+                  <HeartIcon className="w-8 h-8 text-brand-text" />
                 </div>
                 <h2 className="text-[24px] font-extrabold text-gray-900 dark:text-white mb-1">{t('welcomeOnboarding.step2Title', { defaultValue: '관심 분야를 알려주세요' })}</h2>
                 <p className="text-[13px] text-gray-500 dark:text-gray-400">{t('welcomeOnboarding.step2Desc', { defaultValue: '맞춤 추천에 사용돼요 (1개 이상 선택, 변경 가능)' })}</p>
@@ -259,7 +260,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
             <div>
               <div className="text-center mb-5">
                 <div className="mx-auto w-16 h-16 rounded-full bg-brand/[0.08] flex items-center justify-center mb-3">
-                  <Bell className="w-8 h-8 text-brand-text" />
+                  <BellIcon className="w-8 h-8 text-brand-text" />
                 </div>
                 <h2 className="text-[24px] font-extrabold text-gray-900 dark:text-white mb-1">{t('welcomeOnboarding.step3Title', { defaultValue: '알림 받기' })}</h2>
                 <p className="text-[13px] text-gray-500 dark:text-gray-400">{t('welcomeOnboarding.step3Desc', { defaultValue: '놓치면 아쉬운 핫딜·라이브 소식을 알려드려요' })}</p>

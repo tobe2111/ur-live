@@ -3,7 +3,8 @@
  *
  * 등록된 배송지 리스트 + 새 배송지 추가 버튼.
  */
-import { MapPin, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
+import { PinIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from 'react-i18next'
 import { CustomModal } from '@/components/CustomModal'
 import type { ShippingAddress } from './types'
@@ -32,7 +33,7 @@ export default function AddressListModal({
       <div className="space-y-2">
         {addresses.length === 0 ? (
           <div className="py-12 text-center">
-            <MapPin className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
+            <PinIcon className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
             <p className="text-[15px] text-gray-500 dark:text-gray-400">{t('checkout.address.empty', { defaultValue: '등록된 배송지가 없습니다.' })}</p>
             <p className="text-[13px] text-gray-400 dark:text-gray-500 mt-1">{t('checkout.address.pleaseAddNew', { defaultValue: '새 배송지를 추가해주세요.' })}</p>
           </div>

@@ -4,7 +4,8 @@
  *   서버 스펙: { order_id, reason(필수), detail_reason? } / 게이트: 본인 주문 + DELIVERED + 7일 이내.
  */
 import { useState } from 'react'
-import { X, AlertCircle } from 'lucide-react'
+import { AlertIcon } from '@/components/icons/urdeal-icons'
+import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -106,7 +107,7 @@ export default function ReturnRequestModal({ orderId, orderNumber, onClose, onSu
 
         <div className="mb-6 p-4 bg-blue-50 rounded-xl">
           <div className="flex items-start gap-2">
-            <AlertCircle className="h-5 w-5 text-blue-500 mt-1 flex-shrink-0" />
+            <AlertIcon className="h-5 w-5 text-blue-500 mt-1 flex-shrink-0" />
             <div className="text-[15px] text-blue-700">
               <p className="font-medium mb-1">{t('returnRequest.noticeTitle', { defaultValue: '반품 안내' })}</p>
               <p className="text-blue-600">• {t('returnRequest.notice1', { defaultValue: '배송완료 후 7일 이내에만 신청할 수 있습니다.' })}</p>

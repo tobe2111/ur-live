@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { HeartIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from 'react-i18next'
-import { Navigation, ArrowUpDown, Heart, SlidersHorizontal, ChevronDown } from 'lucide-react'
+import { Navigation, ArrowUpDown, SlidersHorizontal, ChevronDown } from 'lucide-react'
 import type { SortBy } from './types'
 import { type MapVoucherType, MAP_VOUCHER_DEFS } from './voucher-types'
 import SortSheet from './SortSheet'
@@ -144,7 +145,7 @@ export default function SheetFilterBar({
                   : 'bg-white dark:bg-[#11141C] text-brand border-[#F4C2CC]'
               }`}
             >
-              <Heart className="w-2.5 h-2.5" fill={showFavoritesOnly ? 'currentColor' : 'none'} />
+              <HeartIcon className="w-2.5 h-2.5" filled={showFavoritesOnly} />
               {favorites.length}
             </button>
           )}

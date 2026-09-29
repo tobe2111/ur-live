@@ -6,7 +6,8 @@
  */
 
 import { DEAL_GRID_GAP } from '@/shared/deal-card-grid'
-import { SearchX, Flame, Tag, Clock, MapPin } from 'lucide-react'
+import { ClockIcon, PinIcon } from '@/components/icons/urdeal-icons'
+import { SearchX, Flame, Tag } from 'lucide-react'
 import { DEAL_CATS } from '@/pages/pc-home/PcHomeRail'
 import { SortMenu, type SortOptionItem } from '@/components/ui/sort-menu'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
@@ -82,13 +83,13 @@ const CATEGORIES = DEAL_CATS
 const SORTS: Array<SortOptionItem<'popular' | 'discount' | 'newest'>> = [
   { key: 'popular',  label: '인기순',   Icon: Flame },
   { key: 'discount', label: '할인율',   Icon: Tag },
-  { key: 'newest',   label: '최신순',   Icon: Clock },
+  { key: 'newest',   label: '최신순',   Icon: ClockIcon },
 ]
 
 // 🗺️ 거리순 — 위치가 있을 때만 낀다. 2026-09-08 까지 PcHomePage 전용이라 폰에서는 실제로 거리순인데
 //    알약이 "인기순"이라고 적혀 있었다(SortMenu 는 value 가 options 에 없으면 options[0] 을 그린다).
 //    근거·함정: `home-nearest-first.test.ts`.
-const NEAR_SORT: SortOptionItem<'near'> = { key: 'near', label: '거리순', Icon: MapPin }
+const NEAR_SORT: SortOptionItem<'near'> = { key: 'near', label: '거리순', Icon: PinIcon }
 type SortKey = typeof SORTS[number]['key'] | 'near'
 type CategoryKey = typeof CATEGORIES[number]['key']
 

@@ -1,7 +1,8 @@
 import { useEffect, useState, lazy, Suspense } from 'react'
+import { GiftBoxIcon, WarnIcon } from '@/components/icons/urdeal-icons'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Gift, ChevronRight, ChevronLeft, Map, Bookmark, AlertTriangle } from 'lucide-react'
+import { ChevronRight, ChevronLeft, Map, Bookmark } from 'lucide-react'
 import api from '@/lib/api'
 import { getUserId, getUserIdSync, hasConsumerSession } from '@/utils/auth'
 import { TOPUP_DISABLED } from '@/shared/feature-flags'
@@ -851,7 +852,7 @@ export default function ProductDetailPage() {
             className="pointer-events-auto inline-flex items-center gap-2 h-10 pl-3 pr-4 rounded-full bg-surface border border-line shadow-lg active:scale-95 transition-transform"
             aria-label={t('productDetailPage.ariaGift')}
           >
-            <Gift className="w-4 h-4 text-gray-900 dark:text-white" />
+            <GiftBoxIcon className="w-4 h-4 text-gray-900 dark:text-white" />
             <span className="text-[12px] font-bold text-gray-900 dark:text-white">선물</span>
           </button>
         </div>
@@ -890,7 +891,7 @@ export default function ProductDetailPage() {
               <span className="text-[24px] font-extrabold text-gray-900 dark:text-white">{formatNumber(dealConfirm.total)}딜</span>
             </div>
             <div className="mt-3 flex items-start gap-2 rounded-xl px-3 py-2 bg-amber-50 dark:bg-amber-500/10">
-              <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-1 text-amber-500" strokeWidth={2} aria-hidden />
+              <WarnIcon className="w-3.5 h-3.5 shrink-0 mt-1 text-amber-500" aria-hidden />
               <p className="text-[12px] text-amber-700 dark:text-amber-300 leading-snug">교환 후에는 환불이 불가합니다. 딜로 즉시 결제됩니다.</p>
             </div>
             <div className="mt-5 flex gap-2">

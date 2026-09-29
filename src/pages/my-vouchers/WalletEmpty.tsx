@@ -1,7 +1,8 @@
 // 🧱 2026-06-29 TD: MyVouchersPage god 파일 분해 — 빈 상태/스켈레톤/티켓 일러스트(verbatim 추출). 동작 불변.
 //   TicketShape·WalletEmptyGlyph 는 모듈 내부 전용, WalletSkeleton·EmptyVouchers 만 페이지가 사용.
 import { Fragment } from 'react'
-import { ArrowRight, ShoppingBag, Wallet, QrCode, Gift, Smartphone, Store, type LucideIcon } from 'lucide-react'
+import { BagIcon, WalletIcon, GiftBoxIcon, StoreIcon } from '@/components/icons/urdeal-icons'
+import { ArrowRight, QrCode, Smartphone, type LucideIcon } from 'lucide-react'
 
 function TicketShape({ className, strokeWidth = 2.2, variant, faded }: {
   className?: string
@@ -132,13 +133,13 @@ export function EmptyVouchers({ mode, onExplore, t }: {
   // 🎨 2026-07-20 — 아이콘 스텝(구매 → 지갑 → 매장). 교환권은 구매 → MMS → 매장.
   const steps: { icon: LucideIcon; label: string }[] = isGift
     ? [
-        { icon: Gift, label: t('voucher.stepGift1', { defaultValue: '교환권\n구매' }) },
+        { icon: GiftBoxIcon, label: t('voucher.stepGift1', { defaultValue: '교환권\n구매' }) },
         { icon: Smartphone, label: t('voucher.stepGift2', { defaultValue: 'MMS\n발송' }) },
-        { icon: Store, label: t('voucher.stepGift3', { defaultValue: '매장에서\n제시' }) },
+        { icon: StoreIcon, label: t('voucher.stepGift3', { defaultValue: '매장에서\n제시' }) },
       ]
     : [
-        { icon: ShoppingBag, label: t('voucher.stepGb1', { defaultValue: '이용권\n구매' }) },
-        { icon: Wallet, label: t('voucher.stepGb2', { defaultValue: '지갑에\n도착' }) },
+        { icon: BagIcon, label: t('voucher.stepGb1', { defaultValue: '이용권\n구매' }) },
+        { icon: WalletIcon, label: t('voucher.stepGb2', { defaultValue: '지갑에\n도착' }) },
         { icon: QrCode, label: t('voucher.stepGb3', { defaultValue: '매장에서\nQR 사용' }) },
       ]
 

@@ -467,3 +467,117 @@ export const MedalIcon = forwardRef<SVGSVGElement, IconProps>(function MedalIcon
     </svg>
   )
 })
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * 🎨 2026-09-29 (대표 UI 네 트랙 중 ④): 마이 밖 **전 소비자 화면**으로 넓히며 추가한 10종.
+ *   고른 기준은 하나다 — **뜻을 가진 것**(우리 물건의 이름)만 그리고, 조작(화살표·닫기·검색)은
+ *   lucide 그대로 둔다. 실측으로 lucide 853건 중 482건이 뜻이었고, 그중 300건 남짓이
+ *   아래 10종 + 이미 있던 10종으로 덮인다(나머지는 한 번씩만 쓰는 긴 꼬리).
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/** 시간 — 시계. 바늘이 12시·4시를 가리켜야 '시계' 로 읽힌다(대칭이면 나침반처럼 보인다). */
+export const ClockIcon = forwardRef<SVGSVGElement, IconProps>(function ClockIcon({ size = 24, filled, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <circle cx="12" cy="12" r="8.4" fill={filled ? 'currentColor' : 'none'} />
+      <path d="M12 7.4v4.9l3.2 1.9" stroke={filled ? KNOCKOUT : 'currentColor'} />
+    </svg>
+  )
+})
+
+/** 매장(남의 가게) — 차양 없는 **건물 앞면**. 유어샵(내 진열대)과 실루엣이 겹치면 안 된다. */
+export const StoreIcon = forwardRef<SVGSVGElement, IconProps>(function StoreIcon({ size = 24, filled, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <path d="M4.6 9.6h14.8v10.2H4.6z" fill={filled ? 'currentColor' : 'none'} />
+      <path d="M3.4 9.6 5.6 4.6h12.8l2.2 5" />
+      <path d="M9.8 19.8v-5.2h4.4v5.2" stroke={filled ? KNOCKOUT : 'currentColor'} />
+    </svg>
+  )
+})
+
+/** 장바구니 — 손잡이 달린 **가방**. 바퀴 달린 카트는 우리 흐름(픽업·이용권)에 안 맞다. */
+export const BagIcon = forwardRef<SVGSVGElement, IconProps>(function BagIcon({ size = 24, filled, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <path d="M5.2 7.8h13.6l-1.1 12H6.3z" fill={filled ? 'currentColor' : 'none'} />
+      <path d="M8.9 9.8V6.9a3.1 3.1 0 0 1 6.2 0v2.9" stroke={filled ? KNOCKOUT : 'currentColor'} />
+    </svg>
+  )
+})
+
+/** 지갑(딜 잔액) — **접힌 지갑 + 잠금 단추**. 동전(WonCoin)은 '금액', 이쪽은 '담아 두는 곳'. */
+export const WalletIcon = forwardRef<SVGSVGElement, IconProps>(function WalletIcon({ size = 24, filled, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <rect x="3.4" y="6.2" width="17.2" height="12" rx="2.4" fill={filled ? 'currentColor' : 'none'} />
+      <path d="M3.4 10.2h17.2" stroke={filled ? KNOCKOUT : 'currentColor'} />
+      <circle cx="16.6" cy="14.2" r="1.3" stroke={filled ? KNOCKOUT : 'currentColor'} />
+    </svg>
+  )
+})
+
+/** 됨 — 원 안 체크. 상태 넷(OkIcon·WarnIcon·BadIcon·InfoIcon)은 **같은 원**을 공유한다. */
+export const OkIcon = forwardRef<SVGSVGElement, IconProps>(function OkIcon({ size = 24, filled, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <circle cx="12" cy="12" r="8.4" fill={filled ? 'currentColor' : 'none'} />
+      <path d="m8.4 12.2 2.5 2.5 4.7-5" stroke={filled ? KNOCKOUT : 'currentColor'} />
+    </svg>
+  )
+})
+
+/** 주의 — 원 안 느낌표. 삼각형은 '위험' 이라 더 세다 ⇒ 경고는 WarnIcon 을 쓴다. */
+export const AlertIcon = forwardRef<SVGSVGElement, IconProps>(function AlertIcon({ size = 24, filled, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <circle cx="12" cy="12" r="8.4" fill={filled ? 'currentColor' : 'none'} />
+      <path d="M12 7.9v4.6" stroke={filled ? KNOCKOUT : 'currentColor'} />
+      <circle cx="12" cy="15.9" r=".5" fill={filled ? KNOCKOUT : 'currentColor'} stroke="none" />
+    </svg>
+  )
+})
+
+/** 경고 — 세모 안 느낌표. 되돌릴 수 없는 일(삭제·만료) 앞에서만 쓴다. */
+export const WarnIcon = forwardRef<SVGSVGElement, IconProps>(function WarnIcon({ size = 24, filled, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <path d="M12 3.9 21 19.6H3z" fill={filled ? 'currentColor' : 'none'} />
+      <path d="M12 9.8v4" stroke={filled ? KNOCKOUT : 'currentColor'} />
+      <circle cx="12" cy="16.6" r=".5" fill={filled ? KNOCKOUT : 'currentColor'} stroke="none" />
+    </svg>
+  )
+})
+
+/** 안 됨 — 원 안 ✕. 실패·거절·취소. */
+export const BadIcon = forwardRef<SVGSVGElement, IconProps>(function BadIcon({ size = 24, filled, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <circle cx="12" cy="12" r="8.4" fill={filled ? 'currentColor' : 'none'} />
+      <path d="m9.3 9.3 5.4 5.4M14.7 9.3l-5.4 5.4" stroke={filled ? KNOCKOUT : 'currentColor'} />
+    </svg>
+  )
+})
+
+/** 안내 — 원 안 i. 중립이라 색은 쓰는 자리가 정한다(tone-info). */
+export const InfoIcon = forwardRef<SVGSVGElement, IconProps>(function InfoIcon({ size = 24, filled, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <circle cx="12" cy="12" r="8.4" fill={filled ? 'currentColor' : 'none'} />
+      <path d="M12 11.4v4.7" stroke={filled ? KNOCKOUT : 'currentColor'} />
+      <circle cx="12" cy="8.2" r=".5" fill={filled ? KNOCKOUT : 'currentColor'} stroke="none" />
+    </svg>
+  )
+})
+
+/** 배송 — 짐칸 + 운전칸. 상자(BoxIcon)는 '물건', 이쪽은 '오는 중' 이다. */
+export const TruckIcon = forwardRef<SVGSVGElement, IconProps>(function TruckIcon({ size = 24, filled, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <path d="M2.8 6.6h10.4v9.8H2.8z" fill={filled ? 'currentColor' : 'none'} />
+      <path d="M13.2 10h3.9l3.9 3.4v3h-7.8z" fill={filled ? 'currentColor' : 'none'} />
+      <circle cx="7" cy="18" r="1.8" stroke={filled ? KNOCKOUT : 'currentColor'} />
+      <circle cx="17.4" cy="18" r="1.8" stroke={filled ? KNOCKOUT : 'currentColor'} />
+    </svg>
+  )
+})

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { MapPin, Search, Loader2 } from 'lucide-react'
+import { PinIcon } from '@/components/icons/urdeal-icons'
+import { Search, Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { escapeHtml } from '@/shared/utils/html'
 
@@ -307,7 +308,7 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey, on
         />
         {sdkError ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 dark:bg-[#1D1F29] p-4 text-center">
-            <MapPin className="w-8 h-8 text-gray-300 dark:text-gray-600 mb-2" />
+            <PinIcon className="w-8 h-8 text-gray-300 dark:text-gray-600 mb-2" />
             <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1">지도를 불러올 수 없습니다</p>
             <p className="text-[12px] text-gray-400 dark:text-gray-500">{sdkError}</p>
             <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-2">아래 검색은 그대로 사용 가능합니다.</p>
@@ -338,7 +339,7 @@ export default function KakaoMapPicker({ onSelect, selectedPlace, kakaoJsKey, on
               onClick={() => handleSelect(p)}
               className="w-full flex items-start gap-2 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-[#1D1F29]"
             >
-              <MapPin className="w-4 h-4 text-gray-400 dark:text-gray-500 mt-1 shrink-0" />
+              <PinIcon className="w-4 h-4 text-gray-400 dark:text-gray-500 mt-1 shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-medium text-gray-900 dark:text-white truncate">{p.place_name}</p>
                 <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">{p.road_address_name || p.address_name}</p>

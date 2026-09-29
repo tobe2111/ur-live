@@ -7,7 +7,7 @@
  * - admin-registered SideBanner 와 무관하게 항상 표시
  */
 import { useLocation } from 'react-router-dom'
-import { MessageCircle } from 'lucide-react'
+import { MessageIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from 'react-i18next'
 
 const KAKAO_CHAT_URL = 'http://pf.kakao.com/_AITdn/chat'
@@ -38,7 +38,7 @@ export default function KakaoConsultButton() {
           className="pointer-events-auto flex items-center justify-center w-12 h-12 rounded-full shadow-lg active:scale-95 transition-transform"
           style={{ backgroundColor: '#FEE500' }}
         >
-          <MessageCircle className="w-6 h-6 text-[#3C1E1E]" strokeWidth={2.5} />
+          <MessageIcon className="w-6 h-6 text-[#3C1E1E]" />
         </a>
       </div>
     </div>

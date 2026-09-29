@@ -5,9 +5,10 @@
  * 데이터: 동네딜 탭과 같은 키(prewarm/엣지캐시 적중) — 상위 6개만 미니 카드로.
  */
 import { useEffect, useRef, useState } from 'react'
+import { PinIcon } from '@/components/icons/urdeal-icons'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { MapPin, ArrowRight } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import api from '@/lib/api'
 import { COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
 import DealMiniCard from '@/components/deal/DealMiniCard'
@@ -46,7 +47,7 @@ export default function HomeDongneDealSection() {
     <section ref={ref} className="ur-content-wide px-4 lg:px-8 mt-8 mb-2">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-[17px] font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
-          <MapPin className="w-4 h-4 text-emerald-400" /> {t('home.dongneTitle', { defaultValue: '우리 동네딜' })}
+          <PinIcon className="w-4 h-4 text-emerald-400" /> {t('home.dongneTitle', { defaultValue: '우리 동네딜' })}
         </h2>
         <Link to="/group-buy" className="text-[12px] font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1">
           {t('home.dongneMore', { defaultValue: '더보기' })} <ArrowRight className="w-3.5 h-3.5" />

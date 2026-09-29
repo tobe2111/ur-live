@@ -50,8 +50,9 @@
  * ⚠️ 이모지(⏰📦🔒) 대신 선 아이콘 — 안드로이드·iOS 에서 모양이 달라진다〔시안 §3.4〕.
  */
 import { useEffect, useState } from 'react'
+import { ClockIcon, BoxIcon, InfoIcon } from '@/components/icons/urdeal-icons'
 import { useParams, Link } from 'react-router-dom'
-import { Clock, Package, Lock, Info } from 'lucide-react'
+import { Lock } from 'lucide-react'
 import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
 import NotFoundPage from '@/pages/NotFoundPage'
@@ -201,7 +202,7 @@ export default function MallHomePage() {
           {banners.map((n) => {
             const inner = (
               <span className="flex items-start gap-[7px]">
-                <Info className="w-[13px] h-[13px] flex-none mt-[2px]" strokeWidth={2.2} />
+                <InfoIcon className="w-[13px] h-[13px] flex-none mt-[2px]" />
                 <span className="min-w-0">
                   <span className="font-bold">{n.title}</span>
                   {n.body && <span className="ml-1.5 font-medium opacity-80">{n.body}</span>}
@@ -237,7 +238,7 @@ export default function MallHomePage() {
         {items.length === 0 ? (
           <div className="flex flex-col items-center justify-center px-10 py-24 text-center">
             <div className="w-[62px] h-[62px] rounded-[20px] bg-[#F5F2F3] dark:bg-[#1C181B] flex items-center justify-center mb-[18px]">
-              <Package className="w-[26px] h-[26px] text-[#B7B0B4]" strokeWidth={1.8} />
+              <BoxIcon className="w-[26px] h-[26px] text-[#B7B0B4]" />
             </div>
             {/* 빈 상태는 마침표를 뺀다〔시안 §3.3〕 */}
             <p className="text-[15px] font-bold tracking-[-0.03em] text-[#3F383C] dark:text-[#DAD4D7]">진행 중인 공동구매가 없어요</p>
@@ -264,7 +265,7 @@ export default function MallHomePage() {
                           마감이 채움 배지, 잔여가 검정 반투명 — 의뢰서가 먼저 읽히라 한 게 마감이라서다. */}
                       {remain && (
                         <span className="absolute left-2 top-2 flex items-center gap-1 px-2 py-[5px] rounded-full bg-red-600 text-white text-[12px] font-bold tracking-[-0.02em] pointer-events-none">
-                          <Clock className="w-[11px] h-[11px]" strokeWidth={2.4} />
+                          <ClockIcon className="w-[11px] h-[11px]" />
                           {remain}
                         </span>
                       )}
@@ -291,7 +292,7 @@ export default function MallHomePage() {
                         옅은 판을 깔아 가격 줄과 분리한다(의뢰서가 가장 걱정한 문의). */}
                     {it.pickup && (it.pickup.date || it.pickup.storage) && (
                       <p className="mt-[9px] flex items-center gap-2 rounded-lg bg-[#F5F2F3] dark:bg-[#211C1F] px-2 py-2">
-                        <Package className="w-[13px] h-[13px] flex-none text-[#5C5459] dark:text-[#A69EA3]" strokeWidth={1.9} />
+                        <BoxIcon className="w-[13px] h-[13px] flex-none text-[#5C5459] dark:text-[#A69EA3]" />
                         {it.pickup.date && (
                           <span className="text-[12px] font-bold tracking-[-0.02em] text-[#3F383C] dark:text-[#DAD4D7]">{pickupDayLabel(it.pickup.date)} 픽업</span>
                         )}
@@ -318,7 +319,7 @@ export default function MallHomePage() {
         return (
           <aside className="px-5 pb-6 ur-content-wide mx-auto">
             <div className="flex gap-2 rounded-xl bg-[#F7F5F6] dark:bg-[#1C181B] border border-[#EDE9EB] dark:border-[#292327] px-4 py-4">
-              <Info className="w-[15px] h-[15px] flex-none mt-px text-[#8A8288]" strokeWidth={2} />
+              <InfoIcon className="w-[15px] h-[15px] flex-none mt-px text-[#8A8288]" />
               <div className="space-y-1">
                 {kinds.map((k) => (
                   <p key={k} className="text-[12px] leading-[1.6] tracking-[-0.02em] text-[#6B6469] dark:text-[#A29A9F]">{STORAGE_NOTICE[k]}</p>

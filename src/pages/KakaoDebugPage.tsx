@@ -6,9 +6,10 @@
  */
 
 import { useState, useEffect } from 'react'
+import { OkIcon, BadIcon, AlertIcon } from '@/components/icons/urdeal-icons'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { CheckCircle2, XCircle, AlertCircle, Copy, ExternalLink } from 'lucide-react'
+import { Copy, ExternalLink } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
 
@@ -97,11 +98,11 @@ export default function KakaoDebugPage() {
   function getStatusIcon(status: CheckResult['status']) {
     switch (status) {
       case 'success':
-        return <CheckCircle2 className="w-5 h-5 text-green-500" />
+        return <OkIcon className="w-5 h-5 text-green-500" />
       case 'error':
-        return <XCircle className="w-5 h-5 text-red-500" />
+        return <BadIcon className="w-5 h-5 text-red-500" />
       case 'warning':
-        return <AlertCircle className="w-5 h-5 text-yellow-500" />
+        return <AlertIcon className="w-5 h-5 text-yellow-500" />
     }
   }
 

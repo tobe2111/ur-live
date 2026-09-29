@@ -6,7 +6,7 @@
  *   소비자 테마(화이트/다크) — 분쟁=긴급이라 기능 빨강 사용.
  */
 import { useState, useEffect, useCallback } from 'react'
-import { AlertCircle } from 'lucide-react'
+import { AlertIcon } from '@/components/icons/urdeal-icons'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 
@@ -54,7 +54,7 @@ export default function VoucherDisputeBanner() {
         return (
           <div key={d.id} className="rounded-2xl border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-900/15 p-4">
             <div className="flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 text-red-500 mt-1 shrink-0" />
+              <AlertIcon className="w-4 h-4 text-red-500 mt-1 shrink-0" />
               <div className="min-w-0 flex-1">
                 <p className="text-[13px] font-bold text-gray-900 dark:text-white">{store} 방문 확인 요청</p>
                 <p className="text-[12px] text-gray-600 dark:text-gray-300 mt-1">

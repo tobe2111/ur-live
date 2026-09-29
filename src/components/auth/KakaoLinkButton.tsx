@@ -10,10 +10,11 @@
  */
 
 import { useEffect, useState, useCallback } from 'react'
+import { AlertIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
-import { Loader2, Unlink, AlertCircle } from 'lucide-react'
+import { Loader2, Unlink } from 'lucide-react'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 
 interface Props {
@@ -173,7 +174,7 @@ export function KakaoLinkButton({ role }: Props) {
       </button>
 
       <div className="flex items-start gap-2 text-[12px] text-gray-500">
-        <AlertCircle className="w-3 h-3 shrink-0 mt-1" />
+        <AlertIcon className="w-3 h-3 shrink-0 mt-1" />
         <span>
           {t('kakaoLink.emailStillUsable', { defaultValue: '기존 이메일/비밀번호 로그인도 계속 사용 가능합니다.' })}
           {t('kakaoLink.unlinkHint')}

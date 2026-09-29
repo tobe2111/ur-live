@@ -1,11 +1,12 @@
 import { useEffect, useState, useRef } from 'react'
+import { InfoIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import type { loadTossPayments } from '@tosspayments/tosspayments-sdk'
 import { getTossPayments, getTossClientKey } from '@/lib/toss-preload'
 import { resolveTossFlow } from '@/lib/toss-key-type'
-import { ArrowLeft, Zap, Loader2, Info, Check } from 'lucide-react'
+import { ArrowLeft, Zap, Loader2, Check } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { getUserIdSync } from '@/utils/auth'
@@ -283,7 +284,7 @@ export default function PointsChargePage() {
 
             {/* 안내 */}
             <section className="flex gap-2 px-3 py-3 rounded-xl bg-amber-50 border border-amber-100">
-              <Info className="w-4 h-4 text-amber-600 shrink-0 mt-1" strokeWidth={2} />
+              <InfoIcon className="w-4 h-4 text-amber-600 shrink-0 mt-1" />
               <div className="text-[12px] leading-relaxed">
                 <p className="font-semibold text-amber-800">{t('pointsCharge.noRefund', { defaultValue: '충전된 딜은 환불이 불가합니다' })}</p>
                 <p className="text-amber-700 mt-1">

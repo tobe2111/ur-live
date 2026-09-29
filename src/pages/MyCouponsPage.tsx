@@ -1,8 +1,9 @@
 import { useEffect } from 'react'
+import { TicketStubIcon, AlertIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import BrandLoader from '@/components/brand/BrandLoader'
-import { ArrowLeft, Ticket, AlertCircle } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { requireLogin, isLoggedInSync } from '@/utils/auth'
 import { formatNumber } from '@/utils/format'
@@ -65,7 +66,7 @@ export default function MyCouponsPage() {
           <BrandLoader />  /* 🎯 2026-07-18 로딩 단일화 (헤더 유지 → 인라인) */
         ) : error ? (
           <div className="flex flex-col items-center justify-center py-20">
-            <AlertCircle className="w-10 h-10 text-red-500 mb-3" />
+            <AlertIcon className="w-10 h-10 text-red-500 mb-3" />
             <p className="text-[15px] text-gray-900 dark:text-white mb-4">{error}</p>
             <button
               onClick={() => refetch()}
@@ -77,7 +78,7 @@ export default function MyCouponsPage() {
         ) : coupons.length === 0 ? (
           <div className="bg-surface rounded-2xl border border-gray-100 dark:border-[#2C2F35] py-16 text-center">
             <div className="w-20 h-20 bg-gray-50 dark:bg-[#1D1F29] rounded-full flex items-center justify-center mx-auto mb-5">
-              <Ticket className="h-10 w-10 text-gray-400 dark:text-gray-500" strokeWidth={1.5} />
+              <TicketStubIcon className="h-10 w-10 text-gray-400 dark:text-gray-500" />
             </div>
             <h2 className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">{t('myCoupons.empty')}</h2>
             <p className="text-[13px] text-gray-500 dark:text-gray-400">{t('myCoupons.emptySub')}</p>

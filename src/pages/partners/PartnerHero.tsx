@@ -16,7 +16,8 @@
  *    걸치게 했는데 `overflow-hidden` 이 아랫부분을 잘라 **고장처럼** 읽혔다(1440 렌더 실측).
  */
 import { Link } from 'react-router-dom'
-import { ArrowRight, MessageCircle } from 'lucide-react'
+import { MessageIcon } from '@/components/icons/urdeal-icons'
+import { ArrowRight } from 'lucide-react'
 import { PARTNER_FACTS as F } from '@/shared/partners-facts'
 import PartnerPhone, { SHOT } from './PartnerPhone'
 
@@ -48,7 +49,7 @@ export default function PartnerHero() {
             </Link>
             <a href={F.kakaoChannel} target="_blank" rel="noopener noreferrer"
               className="sm:flex-1 h-[52px] lg:h-[58px] rounded-2xl bg-white/[0.10] border border-white/20 flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-bold text-white">
-              <MessageCircle className="w-4 h-4 lg:w-[18px] lg:h-[18px]" /> 카카오로 물어보기
+              <MessageIcon className="w-4 h-4 lg:w-[18px] lg:h-[18px]" /> 카카오로 물어보기
             </a>
           </div>
         </div>

@@ -1,7 +1,8 @@
 import { useEffect, useMemo } from 'react'
+import { StarIcon, AlertIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Star, AlertCircle, MessageSquare } from 'lucide-react'
+import { ArrowLeft, MessageSquare } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { requireLogin, isLoggedInSync } from '@/utils/auth'
 import { useMyOrders } from '@/hooks/queries/useMyData'
@@ -55,7 +56,7 @@ export default function MyReviewsPage() {
           <BrandLoader />
         ) : error ? (
           <div className="flex flex-col items-center justify-center py-20">
-            <AlertCircle className="w-10 h-10 text-red-500 mb-3" />
+            <AlertIcon className="w-10 h-10 text-red-500 mb-3" />
             <p className="text-[15px] text-gray-900 dark:text-white mb-4">{error}</p>
             <button
               onClick={() => refetch()}
@@ -100,7 +101,7 @@ export default function MyReviewsPage() {
                     onClick={() => navigate(`/products/${item.product_id}#review`)}
                     className="w-full mt-2 py-2 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-[13px] font-semibold rounded-xl border border-amber-100 dark:border-amber-800/40 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors flex items-center justify-center gap-2"
                   >
-                    <Star className="h-3.5 w-3.5" fill="currentColor" />
+                    <StarIcon className="h-3.5 w-3.5" filled />
                     {t('myReviews.writeReview')}
                   </button>
                 </article>

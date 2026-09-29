@@ -8,20 +8,11 @@
  *   - 이모지 과다 → 아이콘 시스템 통일
  */
 import { useState, useEffect } from 'react'
+import { WarnIcon, OkIcon, WalletIcon, BoxIcon, ClockIcon, HeartIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate, Link } from 'react-router-dom'
 import { useTranslation, Trans } from 'react-i18next'
 import SEO from '@/components/SEO'
-import {
-  AlertTriangle,
-  ChevronLeft,
-  Loader2,
-  CheckCircle2,
-  ShieldOff,
-  Wallet,
-  Package,
-  Clock,
-  Heart,
-} from 'lucide-react'
+import { ChevronLeft, Loader2, ShieldOff } from 'lucide-react'
 import { getUserId, logout as authLogout } from '@/utils/auth'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
@@ -126,7 +117,7 @@ export default function AccountDeleteWarningPage() {
         <div className="rounded-2xl p-5 mb-5 bg-red-50 border border-red-100 dark:bg-white/[0.04] dark:border-transparent">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
-              <AlertTriangle className="w-5 h-5 text-red-500 dark:text-red-400" />
+              <WarnIcon className="w-5 h-5 text-red-500 dark:text-red-400" />
             </div>
             <div className="flex-1">
               <h2 className="text-[17px] font-bold text-gray-900 dark:text-white mb-1">정말 탈퇴하시겠어요?</h2>
@@ -143,7 +134,7 @@ export default function AccountDeleteWarningPage() {
         <div className="rounded-2xl bg-gray-100 dark:bg-white/[0.04] p-5 mb-3">
           <div className="flex items-start gap-3">
             <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
-              <Clock className="w-4 h-4 text-blue-400" />
+              <ClockIcon className="w-4 h-4 text-blue-400" />
             </div>
             <div className="flex-1">
               <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white mb-1">30일 복원 가능 기간</h3>
@@ -159,7 +150,7 @@ export default function AccountDeleteWarningPage() {
         <div className="rounded-2xl bg-gray-100 dark:bg-white/[0.04] p-5 mb-3">
           <div className="flex items-start gap-3 mb-4">
             <div className="w-9 h-9 rounded-xl bg-orange-500/10 flex items-center justify-center shrink-0">
-              <Package className="w-4 h-4 text-orange-400" />
+              <BoxIcon className="w-4 h-4 text-orange-400" />
             </div>
             <div className="flex-1">
               <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white">삭제되는 정보</h3>
@@ -180,7 +171,7 @@ export default function AccountDeleteWarningPage() {
         <div className="rounded-2xl bg-gray-100 dark:bg-white/[0.04] p-5 mb-3">
           <div className="flex items-start gap-3">
             <div className="w-9 h-9 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
-              <Wallet className="w-4 h-4 text-red-400" />
+              <WalletIcon className="w-4 h-4 text-red-400" />
             </div>
             <div className="flex-1">
               <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white mb-1">환불 / 취소 불가</h3>
@@ -266,13 +257,13 @@ export default function AccountDeleteWarningPage() {
           />
           {confirmText && confirmText !== t('accountDeleteWarning.confirmText') && (
             <p className="text-[12px] text-red-400 mt-2 flex items-center gap-1">
-              <AlertTriangle className="w-3.5 h-3.5" />
+              <WarnIcon className="w-3.5 h-3.5" />
               {t('accountDeleteWarning.confirmMismatch')}
             </p>
           )}
           {confirmText === t('accountDeleteWarning.confirmText') && (
             <p className="text-[12px] text-green-400 mt-2 flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5" />
+              <OkIcon className="w-3.5 h-3.5" />
               확인되었습니다.
             </p>
           )}
@@ -281,7 +272,7 @@ export default function AccountDeleteWarningPage() {
         {/* 머무름 안내 */}
         <div className="text-center mb-2">
           <p className="text-[12px] text-gray-500 dark:text-white/40 leading-relaxed flex items-center justify-center gap-2">
-            <Heart className="w-3.5 h-3.5 text-brand-text opacity-60" />
+            <HeartIcon className="w-3.5 h-3.5 text-brand-text opacity-60" />
             언제든지 돌아올 수 있어요
           </p>
         </div>

@@ -6,11 +6,12 @@
  */
 
 import { useEffect, useState } from 'react'
+import { WalletIcon, ClockIcon, OkIcon, WarnIcon } from '@/components/icons/urdeal-icons'
 import BrandLoader from '@/components/brand/BrandLoader'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
-import { Wallet, TrendingUp, Clock, CheckCircle, Save, AlertTriangle } from 'lucide-react'
+import { TrendingUp, Save } from 'lucide-react'
 import ConditionalDealsSection from './influencer-settlement/ConditionalDealsSection'
 import DealsAndCodesSection from './influencer-settlement/DealsAndCodesSection'
 import PublicProfileSection from './influencer-settlement/PublicProfileSection'
@@ -153,7 +154,7 @@ export default function InfluencerSettlementPage() {
       {/* 💡 flip D1: description 만 재원 게이트 — platform(기본) 은 기존 문구 byte-동일 */}
       <SEO title="인플루언서 정산 - 유어딜" description={ownerFunded ? '매장 promo(매장 몫) 재원 커미션 잔액 / 송금 내역 / 세금 정보 관리' : 'referral commission 잔액 / 송금 내역 / 세금 정보 관리'} url="/influencer/settlement" />
       <header className="sticky top-0 z-30 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35] px-4 py-3 flex items-center gap-2">
-        <Wallet className="w-5 h-5 text-brand-text" />
+        <WalletIcon className="w-5 h-5 text-brand-text" />
         <h1 className="text-[15px] font-bold text-gray-900 dark:text-white flex-1">인플루언서 정산</h1>
         <button
           onClick={async () => {
@@ -169,7 +170,7 @@ export default function InfluencerSettlementPage() {
           }}
           className="text-[12px] px-2 py-1 bg-red-50 text-red-600 rounded font-bold flex items-center gap-1"
         >
-          <AlertTriangle className="w-3 h-3" /> 분쟁 신고
+          <WarnIcon className="w-3 h-3" /> 분쟁 신고
         </button>
       </header>
 
@@ -211,7 +212,7 @@ export default function InfluencerSettlementPage() {
         {/* 잔액 요약 */}
         <div className="grid grid-cols-3 gap-2">
           <div className="bg-yellow-50 rounded-xl p-3 text-center">
-            <Clock className="w-4 h-4 text-yellow-700 mx-auto mb-1" />
+            <ClockIcon className="w-4 h-4 text-yellow-700 mx-auto mb-1" />
             <p className="text-[12px] text-yellow-700 font-medium">{useGate ? '대기 (사용 확인)' : '대기 (환불기간)'}</p>
             <p className="text-[15px] font-extrabold text-yellow-800 mt-1">{(balance?.pending_amount ?? 0).toLocaleString()}원</p>
           </div>
@@ -221,7 +222,7 @@ export default function InfluencerSettlementPage() {
             <p className="text-[15px] font-extrabold text-blue-800 mt-1">{(balance?.available_amount ?? 0).toLocaleString()}원</p>
           </div>
           <div className="bg-emerald-50 rounded-xl p-3 text-center">
-            <CheckCircle className="w-4 h-4 text-emerald-700 mx-auto mb-1" />
+            <OkIcon className="w-4 h-4 text-emerald-700 mx-auto mb-1" />
             <p className="text-[12px] text-emerald-700 font-medium">누적 송금</p>
             <p className="text-[15px] font-extrabold text-emerald-800 mt-1">{(balance?.total_paid_out ?? 0).toLocaleString()}원</p>
           </div>

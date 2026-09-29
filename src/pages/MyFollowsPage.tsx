@@ -12,8 +12,9 @@
  */
 
 import { useNavigate } from 'react-router-dom'
+import { BellIcon, HeartIcon } from '@/components/icons/urdeal-icons'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
-import { ArrowLeft, Bell, BellOff, Loader2, Heart, ChevronRight } from 'lucide-react'
+import { ArrowLeft, BellOff, Loader2, ChevronRight } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
@@ -85,7 +86,7 @@ export default function MyFollowsPage() {
           </div>
         ) : follows.length === 0 ? (
           <div className="text-center py-20">
-            <Heart className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+            <HeartIcon className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
             <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">단골 등록한 가게가 없어요</p>
             <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">관심 있는 가게 페이지에서 단골 등록하세요</p>
             <button
@@ -133,7 +134,7 @@ export default function MyFollowsPage() {
                       <label key={opt.key} className="flex items-center justify-between cursor-pointer py-1">
                         <div className="flex items-start gap-2">
                           {f[opt.key] ? (
-                            <Bell className="w-4 h-4 text-gray-900 dark:text-white mt-1" />
+                            <BellIcon className="w-4 h-4 text-gray-900 dark:text-white mt-1" />
                           ) : (
                             <BellOff className="w-4 h-4 text-gray-300 dark:text-gray-600 mt-1" />
                           )}

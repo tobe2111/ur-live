@@ -1,6 +1,6 @@
 // 🧱 2026-06-29 TD: MyVouchersPage god 파일 분해 — 카카오맵 후기 보너스 버튼/모달(verbatim 추출). 동작 불변.
 import { useState } from 'react'
-import { Star } from 'lucide-react'
+import { StarIcon } from '@/components/icons/urdeal-icons'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
 
@@ -62,7 +62,7 @@ export default function ReviewBonusButton(
       {open && (
         <div className="fixed inset-0 z-[10500] flex items-end sm:items-center justify-center bg-black/60" onClick={() => setOpen(false)}>
           <div className="bg-surface rounded-t-2xl sm:rounded-2xl p-5 w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-2"><Star className="w-4 h-4 inline-block align-[-3px] mr-1 text-gray-400" aria-hidden="true" />카카오맵 후기 작성 보너스</h3>
+            <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-2"><StarIcon className="w-4 h-4 inline-block align-[-3px] mr-1 text-gray-400" aria-hidden="true" />카카오맵 후기 작성 보너스</h3>
             <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">
               매장 카카오맵 후기 작성하고 인증해주시면 보너스 딜 지급 (기본 1,000딜).
               <br/>1) 카카오맵 앱에서 매장 검색 → 후기 작성

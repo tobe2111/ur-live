@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom'
+import { BellIcon, BagIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Search, X, Bell, ShoppingCart, Navigation, SlidersHorizontal } from 'lucide-react'
+import { ArrowLeft, Search, X, Navigation, SlidersHorizontal } from 'lucide-react'
 import { storage } from '@/shared/utils/storage'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { type MapVoucherType, MAP_VOUCHER_DEFS } from './voucher-types'
@@ -172,14 +173,14 @@ export default function MapTopBar({
                 aria-label={t('mainHome.ariaNotifications', { defaultValue: '알림' })}
                 className={`w-11 h-11 flex items-center justify-center rounded-2xl shrink-0 ${OVERLAY_SURF}`}
               >
-                <Bell className="w-5 h-5" strokeWidth={1.6} />
+                <BellIcon className="w-5 h-5" />
               </button>
               <button
                 onClick={() => navigate('/cart')}
                 aria-label={t('mainHome.ariaCart', { defaultValue: '장바구니' })}
                 className={`w-11 h-11 flex items-center justify-center rounded-2xl shrink-0 ${OVERLAY_SURF}`}
               >
-                <ShoppingCart className="w-5 h-5" strokeWidth={1.6} />
+                <BagIcon className="w-5 h-5" />
               </button>
             </>
           )}

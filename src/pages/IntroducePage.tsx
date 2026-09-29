@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
+import { GiftBoxIcon, PinIcon, BagIcon, TicketStubIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Check, ChevronRight, Gift, MapPin, Search, ShieldCheck, ShoppingBag, ShoppingCart, Ticket, Utensils, Zap } from 'lucide-react'
+import { Check, ChevronRight, Search, ShieldCheck, Utensils, Zap } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import UrDealLogo from '@/components/brand/UrDealLogo'
@@ -46,10 +47,10 @@ export default function IntroducePage() {
   ]
 
   const features = [
-    { icon: ShoppingBag, color: '#EF4444', title: '동네 공구 단일 특가', desc: '대량 단가를 미리 떼와 처음부터 모두에게 같은 그룹 특가. 인원에 따라 가격이 오르내리지 않아요.' },
-    { icon: Ticket, color: '#6b7280', title: '교환권 즉시 발급', desc: '결제하면 교환권이 바로 발급돼요. 목표 인원과 무관하게 즉시 확정되니 매장에서 바로 사용하세요.' },
-    { icon: MapPin, color: '#9ca3af', title: '우리 동네 기반', desc: '맛집·뷰티·숙소·헬스까지. 내 지역에서 진행 중인 공구를 카테고리·지역별로 골라보세요.' },
-    { icon: Gift, color: '#6b7280', title: '친구 초대 보너스', desc: '친구를 초대해 함께 구매하면 두 분 모두에게 보너스 딜이 적립돼요.' },
+    { icon: BagIcon, color: '#EF4444', title: '동네 공구 단일 특가', desc: '대량 단가를 미리 떼와 처음부터 모두에게 같은 그룹 특가. 인원에 따라 가격이 오르내리지 않아요.' },
+    { icon: TicketStubIcon, color: '#6b7280', title: '교환권 즉시 발급', desc: '결제하면 교환권이 바로 발급돼요. 목표 인원과 무관하게 즉시 확정되니 매장에서 바로 사용하세요.' },
+    { icon: PinIcon, color: '#9ca3af', title: '우리 동네 기반', desc: '맛집·뷰티·숙소·헬스까지. 내 지역에서 진행 중인 공구를 카테고리·지역별로 골라보세요.' },
+    { icon: GiftBoxIcon, color: '#6b7280', title: '친구 초대 보너스', desc: '친구를 초대해 함께 구매하면 두 분 모두에게 보너스 딜이 적립돼요.' },
   ]
 
   return (
@@ -111,7 +112,7 @@ export default function IntroducePage() {
                 onClick={() => navigate('/group-buy')}
                 className="flex items-center gap-2 px-6 py-4 rounded-2xl text-gray-900 text-[15px] font-extrabold bg-white hover:bg-gray-100 transition-colors"
               >
-                <ShoppingBag className="w-4 h-4" /> 동네 공구 둘러보기
+                <BagIcon className="w-4 h-4" /> 동네 공구 둘러보기
               </button>
               <button
                 onClick={() => navigate('/')}
@@ -133,7 +134,7 @@ export default function IntroducePage() {
               </div>
               <span className="text-gray-800">|</span>
               <div className="flex items-center gap-1">
-                <Ticket className="w-3.5 h-3.5 text-gray-600" />
+                <TicketStubIcon className="w-3.5 h-3.5 text-gray-600" />
                 <span><b className="text-white">가입·이용료 0원</b></span>
               </div>
             </div>
@@ -294,7 +295,7 @@ export default function IntroducePage() {
           <div className="grid md:grid-cols-3 gap-6">
             {[
               { n: '01', Icon: Search, title: '동네 공구 고르기', desc: '홈 또는 동네 공구 탭에서 지역·카테고리(맛집·뷰티·숙소 등)별로 진행 중인 공구를 골라보세요.' },
-              { n: '02', Icon: ShoppingCart, title: '그룹 특가로 구매', desc: '인원과 무관하게 처음부터 같은 그룹 특가. 결제하면 교환권이 즉시 발급돼요.' },
+              { n: '02', Icon: BagIcon, title: '그룹 특가로 구매', desc: '인원과 무관하게 처음부터 같은 그룹 특가. 결제하면 교환권이 즉시 발급돼요.' },
               { n: '03', Icon: Utensils, title: '매장 방문·사용', desc: '발급된 교환권을 매장에서 제시하고 사용하세요. 숙소·배송 상품은 안내에 따라 이용하시면 돼요.' },
             ].map(s => (
               <div key={s.n} className="relative p-8 rounded-3xl bg-[#111] border border-[#2C2F35] overflow-hidden">

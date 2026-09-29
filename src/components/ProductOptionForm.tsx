@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { AlertIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from 'react-i18next'
-import { Plus, X, AlertCircle } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { alertDialog } from '@/components/ui/confirm-dialog'
 
@@ -231,7 +232,7 @@ export default function ProductOptionForm({
       </div>
 
       <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-        <AlertCircle className="h-4 w-4 text-blue-600 mt-1 flex-shrink-0" strokeWidth={1.5} />
+        <AlertIcon className="h-4 w-4 text-blue-600 mt-1 flex-shrink-0" />
         <div className="text-[12px] text-blue-900">
           <p className="font-medium">{t('productOption.tipTitle', { defaultValue: '옵션 설정 팁' })}</p>
           <ul className="mt-1 space-y-1 list-disc list-inside">

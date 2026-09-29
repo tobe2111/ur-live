@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
+import { InfoIcon } from '@/components/icons/urdeal-icons'
 import { DEFAULT_QTY_CAP } from '@/shared/purchase-cap-default'
 import { useParams, useNavigate, Navigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Info, Link as LinkIcon } from 'lucide-react'
+import { ArrowLeft, Link as LinkIcon } from 'lucide-react'
 import api from '@/lib/api'
 import { queryKeys } from '@/hooks/queries/queryKeys'
 import { storeAffiliateRef, fireAffiliateTrack } from '@/utils/affiliate-track'
@@ -421,7 +422,7 @@ export default function VoucherDetailPage() {
 
           {/* 사용 안내 */}
           <div className="mt-[14px] flex items-center gap-2 text-gray-400 dark:text-gray-500">
-            <Info className="w-3.5 h-3.5 shrink-0" />
+            <InfoIcon className="w-3.5 h-3.5 shrink-0" />
             <span className="text-[12px]">매장에서 바코드 제시 후 사용 가능</span>
           </div>
 

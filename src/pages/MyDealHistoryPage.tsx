@@ -6,13 +6,14 @@
  *   - 항목 클릭 시 관련 페이지 (충전 → /points/charge, 주문 → /my-orders, 등)
  */
 import { useState } from 'react'
+import { BagIcon, PeopleIcon, SettingsIcon, WarnIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import SEO from '@/components/SEO'
 import { REFERRAL_GROUP_DISCOUNT_DISABLED, TOPUP_DISABLED } from '@/shared/feature-flags'
 import { useBalance } from '@/hooks/queries'
 import { useDealHistory, type Transaction } from '@/hooks/queries/useDealHistory'
 import { formatNumber } from '@/utils/format'
-import { ChevronLeft, Clapperboard, CreditCard, List, RotateCcw, ShoppingCart, Users, Settings, Link as LinkIcon, AlertTriangle, Inbox, type LucideIcon } from 'lucide-react'
+import { ChevronLeft, Clapperboard, CreditCard, List, RotateCcw, Link as LinkIcon, Inbox, type LucideIcon } from 'lucide-react'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { parseUTCDate } from '@/utils/date'
 type FilterType = '' | 'charge' | 'donate' | 'refund' | 'referral_bonus' | 'ad_reward'
@@ -20,9 +21,9 @@ type FilterType = '' | 'charge' | 'donate' | 'refund' | 'referral_bonus' | 'ad_r
 const FILTER_OPTIONS: { value: FilterType; label: string; Icon: LucideIcon }[] = [
   { value: '',                label: '전체',    Icon: List },
   { value: 'charge',          label: '충전',    Icon: CreditCard },
-  { value: 'donate',          label: '사용',    Icon: ShoppingCart },
+  { value: 'donate',          label: '사용',    Icon: BagIcon },
   { value: 'refund',          label: '환불',    Icon: RotateCcw },
-  { value: 'referral_bonus',  label: '추천',    Icon: Users },
+  { value: 'referral_bonus',  label: '추천',    Icon: PeopleIcon },
   { value: 'ad_reward',       label: '광고',    Icon: Clapperboard },
 ]
 
@@ -32,11 +33,11 @@ const FILTER_OPTIONS: { value: FilterType; label: string; Icon: LucideIcon }[] =
  *   위 필터 칩과 아래 행이 서로 다른 그림 언어를 쓰던 셈이라 종류를 맞췄다. */
 const TYPE_ICON: Record<string, LucideIcon> = {
   charge: CreditCard,
-  donate: ShoppingCart,
+  donate: BagIcon,
   refund: RotateCcw,
-  referral_bonus: Users,
+  referral_bonus: PeopleIcon,
   ad_reward: Clapperboard,
-  admin_adjust: Settings,
+  admin_adjust: SettingsIcon,
   affiliate: LinkIcon,
 }
 
@@ -141,7 +142,7 @@ export default function MyDealHistoryPage() {
           <BrandLoader />
         ) : error ? (
           <div className="py-16 text-center">
-            <AlertTriangle className="w-9 h-9 mx-auto mb-3 text-gray-300 dark:text-gray-600" strokeWidth={1.5} aria-hidden />
+            <WarnIcon className="w-9 h-9 mx-auto mb-3 text-gray-300 dark:text-gray-600" aria-hidden />
             <p className="text-[15px] text-gray-500 dark:text-gray-400">거래 내역을 불러오지 못했어요</p>
             <button onClick={() => refetch()} className="mt-3 text-[12px] font-bold text-gray-900 dark:text-white underline">다시 시도 →</button>
           </div>

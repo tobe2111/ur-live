@@ -15,6 +15,7 @@
  * 화면이 그 사실을 숨기지 않는다 — "바로 됩니다" 라고 쓰면 기다리는 사람이 화를 낸다.
  */
 import { useEffect, useState, useCallback } from 'react'
+import { StoreIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
@@ -22,7 +23,7 @@ import BusinessCertUpload from '@/components/BusinessCertUpload'
 import { toast } from '@/hooks/useToast'
 import { isLoggedInSync } from '@/utils/auth'
 import { formatKSTDate } from '@/utils/date'
-import { ChevronLeft, Search, Store } from 'lucide-react'
+import { ChevronLeft, Search } from 'lucide-react'
 
 interface FoundStore {
   seller_id: number; business_name: string | null; name: string | null
@@ -266,7 +267,7 @@ export default function StoreOwnerClaimPage() {
                     <button onClick={() => setPicked(s.seller_id)}
                       className="w-full text-left border border-gray-200 rounded-xl p-3 hover:bg-gray-50">
                       <p className="text-[15px] font-semibold text-gray-900">
-                        <Store className="w-4 h-4 inline mr-1 text-gray-400" />
+                        <StoreIcon className="w-4 h-4 inline mr-1 text-gray-400" />
                         {s.business_name || s.name || `매장 ${s.seller_id}`}
                       </p>
                       {s.address && <p className="text-[12px] text-gray-500 mt-1">{s.address}</p>}

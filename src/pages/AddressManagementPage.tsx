@@ -1,15 +1,10 @@
 import { useEffect, useState } from 'react'
+import { PinIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
-import {
-  MapPin,
-  Plus,
-  Edit2,
-  Trash2,
-  ChevronLeft,
-} from 'lucide-react'
+import { Plus, Edit2, Trash2, ChevronLeft } from 'lucide-react'
 import { getUserIdSync } from '@/utils/auth'
 import { CustomModal } from '@/components/CustomModal'
 import { toast } from '@/hooks/useToast'
@@ -246,7 +241,7 @@ export default function AddressManagementPage() {
         {addresses.length === 0 ? (
           <div className="text-center py-14 px-6 rounded-2xl bg-gray-50 dark:bg-[#1D1F29]">
             <div className="w-20 h-20 mx-auto mb-5 rounded-full bg-brand-tint flex items-center justify-center">
-              <MapPin className="w-10 h-10 text-brand-text" strokeWidth={1.5} />
+              <PinIcon className="w-10 h-10 text-brand-text" />
             </div>
             <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">{t('address.empty')}</p>
             <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-5">{t('address.emptySub')}</p>

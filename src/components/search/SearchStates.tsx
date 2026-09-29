@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
+import { BoxIcon, AlertIcon, ClockIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
-import { Search, Package, AlertCircle, Loader2, Clock, X, TrendingUp } from 'lucide-react'
+import { Search, Loader2, X, TrendingUp } from 'lucide-react'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { usePopularSearches } from '@/hooks/queries/usePopularSearches'
 
@@ -71,7 +72,7 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
     return (
       <div className="flex flex-col items-center justify-center py-20">
         <div className="w-16 h-16 rounded-full bg-[#ff3b30]/10 flex items-center justify-center mb-4">
-          <AlertCircle className="w-10 h-10 text-[#ff3b30]" />
+          <AlertIcon className="w-10 h-10 text-[#ff3b30]" />
         </div>
         <p className="text-[17px] font-semibold text-[#1d1d1f] mb-2">오류가 발생했습니다</p>
         <p className="text-[15px] text-[#6e6e73] mb-6">{error}</p>
@@ -101,7 +102,7 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
           <div className="mb-8">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                <ClockIcon className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                 <h3 className="text-[13px] font-bold text-gray-900 dark:text-white">최근 검색어</h3>
               </div>
               <button
@@ -173,7 +174,7 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
     return (
       <div className="py-10">
         <div className="flex flex-col items-center justify-center mb-6">
-          <Package className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" />
+          <BoxIcon className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" />
           <p className="text-[15px] font-semibold text-gray-900 dark:text-white mb-1">'{query}' 검색 결과가 없어요</p>
           <p className="text-[13px] text-gray-500 dark:text-gray-400">다른 검색어를 시도해보세요</p>
         </div>

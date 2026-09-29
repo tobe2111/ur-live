@@ -7,9 +7,10 @@
  * - 외부 콘텐츠 (YouTube/Vimeo) 는 새 창 열기, 파일은 직접 다운로드
  */
 import { useEffect, useState } from 'react'
+import { ClockIcon, WarnIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Download, Play, FileText, BookOpen, Music, Image as ImageIcon, Clock, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, Download, Play, FileText, BookOpen, Music, Image as ImageIcon } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
@@ -162,7 +163,7 @@ export default function MyDigitalLibraryPage() {
 
                       <div className="flex items-center gap-3 mt-2 text-[12px] text-gray-500 dark:text-gray-400">
                         <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
+                          <ClockIcon className="w-3 h-3" />
                           {formatExpiry(it.expires_at)}
                         </span>
                         <span>{t('digitalLibrary.downloadCount', { count: it.download_count, limit: it.download_limit, defaultValue: '다운로드 {{count}}/{{limit}}' })}</span>
@@ -171,7 +172,7 @@ export default function MyDigitalLibraryPage() {
 
                       {isExpired ? (
                         <div className="mt-2 flex items-center gap-1 text-[12px] text-red-600">
-                          <AlertTriangle className="w-3 h-3" /> {t('digitalLibrary.accessError', { status: it.status, defaultValue: '접근 불가 ({{status}})' })}
+                          <WarnIcon className="w-3 h-3" /> {t('digitalLibrary.accessError', { status: it.status, defaultValue: '접근 불가 ({{status}})' })}
                         </div>
                       ) : (
                         <div className="mt-3 flex gap-2">

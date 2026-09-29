@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
+import { ClockIcon, HomeIcon } from '@/components/icons/urdeal-icons'
 import { useParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Clock, Share2, Search, Home, List, ChevronDown } from 'lucide-react'
+import { Share2, Search, List, ChevronDown } from 'lucide-react'
 import SEO, { breadcrumbJsonLd } from '@/components/SEO'
 import { nativeShare } from '@/lib/native'
 import KakaoShareButton from '@/components/KakaoShareButton'
@@ -156,7 +157,7 @@ export default function BlogDetailPage() {
               <Share2 className="w-4 h-4" />
             </button>
             <Link to="/" className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-lg text-[15px] font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1D1F29]">
-              <Home className="w-4 h-4" />유어딜 홈
+              <HomeIcon className="w-4 h-4" />유어딜 홈
             </Link>
             <Link to="/store/new" className="px-4 py-2 bg-brand text-white rounded-lg text-[15px] font-bold hover:opacity-90">내 가게 등록</Link>
           </div>
@@ -190,7 +191,7 @@ export default function BlogDetailPage() {
             <span>·</span>
             <span>{parseUTCDate(post.published_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: 'long', day: 'numeric' })}</span>
             <span>·</span>
-            <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{readMin}분 읽기</span>
+            <span className="inline-flex items-center gap-1"><ClockIcon className="w-3.5 h-3.5" />{readMin}분 읽기</span>
           </div>
 
           {/* 히어로 배너 */}

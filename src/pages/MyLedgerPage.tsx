@@ -7,12 +7,13 @@
  * 두 dashboard 컨텍스트 공통 페이지 — token type 으로 자동 분기.
  */
 import { useEffect, useState } from 'react'
+import { OkIcon, ClockIcon, WalletIcon } from '@/components/icons/urdeal-icons'
 import { formatKSTDate } from '@/utils/date'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
-import { CheckCircle2, Clock, CreditCard, Handshake, List, RotateCcw, Send, TrendingUp, Wallet, type LucideIcon } from 'lucide-react'
+import { CreditCard, Handshake, List, RotateCcw, Send, TrendingUp, type LucideIcon } from 'lucide-react'
 import { formatWon } from '@/utils/format'
 
 interface LedgerEntry {
@@ -44,12 +45,12 @@ interface LedgerData {
 }
 
 const EVENT_LABEL: Record<string, { label: string; Icon: LucideIcon }> = {
-  voucher_used: { label: '바우처 사용', Icon: CheckCircle2 },
+  voucher_used: { label: '바우처 사용', Icon: OkIcon },
   voucher_refund: { label: '환불', Icon: RotateCcw },
   group_buy_join: { label: '공구 참여', Icon: Handshake },
   charge: { label: '충전', Icon: CreditCard },
   refund: { label: '환불', Icon: RotateCcw },
-  settlement: { label: '정산', Icon: Wallet },
+  settlement: { label: '정산', Icon: WalletIcon },
 }
 
 const PAYOUT_STATUS: Record<string, { label: string; cls: string }> = {
@@ -87,7 +88,7 @@ export default function MyLedgerPage() {
   const content = (
     <div className="mx-auto max-w-5xl space-y-6">
       <DashboardPageHeader
-        icon={<Wallet className="h-5 w-5" />}
+        icon={<WalletIcon className="h-5 w-5" />}
         title="내 ledger (정산 원장)"
         subtitle="모든 돈 흐름의 단일 source of truth — 발생액 / 송금완료 / 미정산 잔액"
       />
@@ -109,7 +110,7 @@ export default function MyLedgerPage() {
               <p className="text-[17px] font-bold text-emerald-600 mt-1">{formatWon(data.summary.total_paid)}</p>
             </div>
             <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <div className="flex items-center gap-1 text-[12px] text-gray-500"><Clock className="w-3.5 h-3.5" /> 미정산 잔액</div>
+              <div className="flex items-center gap-1 text-[12px] text-gray-500"><ClockIcon className="w-3.5 h-3.5" /> 미정산 잔액</div>
               <p className="text-[17px] font-bold text-amber-600 mt-1">{formatWon(data.summary.pending)}</p>
             </div>
             <div className="bg-white rounded-xl border border-gray-200 p-4">

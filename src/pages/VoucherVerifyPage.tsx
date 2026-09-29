@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
+import { TicketStubIcon, OkIcon, BadIcon } from '@/components/icons/urdeal-icons'
 import { useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Ticket, CheckCircle, XCircle, Loader2, QrCode } from 'lucide-react'
+import { Loader2, QrCode } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { getSellerToken, isSellerAuthenticated } from '@/lib/seller-auth'
@@ -113,7 +114,7 @@ export default function VoucherVerifyPage() {
         {/* 로고 */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gray-900 dark:bg-white flex items-center justify-center" style={{ boxShadow: '0 8px 22px -8px rgba(10,10,10,0.4)' }}>
-            <Ticket className="w-8 h-8 text-white dark:text-gray-900" />
+            <TicketStubIcon className="w-8 h-8 text-white dark:text-gray-900" />
           </div>
           <h1 className="text-[17px] font-extrabold text-gray-900 dark:text-white">{t('voucher.verify.title')}</h1>
           <p className="text-[15px] text-gray-500 dark:text-gray-400 mt-1">{t('voucher.verify.subtitle')}</p>
@@ -122,7 +123,7 @@ export default function VoucherVerifyPage() {
         {/* 결과 표시 */}
         {result && (
           <div className={`mb-5 p-4 rounded-xl flex items-start gap-3 ${result.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
-            {result.success ? <CheckCircle className="w-5 h-5 text-green-600 shrink-0 mt-1" /> : <XCircle className="w-5 h-5 text-red-600 shrink-0 mt-1" />}
+            {result.success ? <OkIcon className="w-5 h-5 text-green-600 shrink-0 mt-1" /> : <BadIcon className="w-5 h-5 text-red-600 shrink-0 mt-1" />}
             <p className={`text-[15px] font-medium ${result.success ? 'text-green-800' : 'text-red-800'}`}>{result.message}</p>
           </div>
         )}
@@ -158,7 +159,7 @@ export default function VoucherVerifyPage() {
         ) : voucher.status !== 'unused' ? (
           /* 이미 사용/만료된 바우처 */
           <div className="text-center py-8">
-            <XCircle className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
+            <BadIcon className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
             <p className="text-gray-900 dark:text-white font-bold">{voucher.status === 'used' ? t('voucher.verify.alreadyUsed') : t('voucher.verify.expired')}</p>
             <p className="text-[15px] text-gray-500 dark:text-gray-400 mt-1">{voucher.product_name}</p>
             <button onClick={() => { setVoucher(null); setCode(''); setResult(null) }} className="mt-4 text-[15px] text-gray-900 dark:text-white font-semibold underline underline-offset-2">{t('voucher.verify.lookupAnother')}</button>

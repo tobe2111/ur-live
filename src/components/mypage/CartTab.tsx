@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
+import { BagIcon } from '@/components/icons/urdeal-icons'
 import { Link } from 'react-router-dom'
-import { ShoppingCart, Minus, Plus, Trash2 } from 'lucide-react'
+import { Minus, Plus, Trash2 } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 
 interface CartItem {
@@ -28,7 +29,7 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
       <div className="space-y-6">
         <div className="bg-surface rounded-2xl border border-gray-100 dark:border-[#2C2F35] p-12 text-center">
           <div className="w-20 h-20 bg-gray-50 dark:bg-[#1D1F29] rounded-full flex items-center justify-center mx-auto mb-5">
-            <ShoppingCart className="h-10 w-10 text-gray-400 dark:text-gray-500" strokeWidth={1.5} />
+            <BagIcon className="h-10 w-10 text-gray-400 dark:text-gray-500" />
           </div>
           <h2 className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">
             {t('cart.emptyTitle', { defaultValue: '장바구니가 비어있습니다' })}

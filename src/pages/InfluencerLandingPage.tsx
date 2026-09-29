@@ -16,14 +16,15 @@
  * 🏷️ 명칭: 사람을 신분('인플루언서/크리에이터')으로 부르지 않고 **행위**(담기=소개)로 말한다.
  */
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowRight, Store, Handshake, Link2, Wallet } from 'lucide-react'
+import { StoreIcon, WalletIcon } from '@/components/icons/urdeal-icons'
+import { ArrowRight, Handshake, Link2 } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 
 const STEPS = [
   { icon: Link2, title: '내 유어샵에 담기', desc: '가입하면 내 유어샵(urdeal.kr/u/내핸들)이 이미 있어요. 마음에 든 동네 이용권을 카드의 + 버튼으로 담습니다.' },
   { icon: Handshake, title: '매장과 딜 맺기', desc: '소개 몫이 걸린 이용권은 소개 마켓에서 찾을 수 있어요. 매장이 제안하거나 내가 신청하면, 수락된 순간부터 그 비율이 적용됩니다.' },
-  { icon: Wallet, title: '팔리면 쌓이기', desc: '내 링크로 팔린 건에 대해 매장이 정한 비율만큼 쌓입니다. 매월 1일 정산, 현금은 10만원부터 송금(원천징수 3.3% 또는 8.8% 자동). 딜로 받으면 최소 금액이 없습니다.' },
+  { icon: WalletIcon, title: '팔리면 쌓이기', desc: '내 링크로 팔린 건에 대해 매장이 정한 비율만큼 쌓입니다. 매월 1일 정산, 현금은 10만원부터 송금(원천징수 3.3% 또는 8.8% 자동). 딜로 받으면 최소 금액이 없습니다.' },
 ] as const
 
 export default function InfluencerLandingPage() {
@@ -103,7 +104,7 @@ export default function InfluencerLandingPage() {
       <section className="px-6 lg:px-12 py-16 max-w-4xl mx-auto">
         <div className="rounded-3xl border border-line p-7 lg:p-10 text-center">
           <span className="w-12 h-12 mx-auto rounded-2xl bg-brand text-white flex items-center justify-center mb-4">
-            <Store className="w-6 h-6" />
+            <StoreIcon className="w-6 h-6" />
           </span>
           <h2 className="text-[17px] lg:text-[24px] font-extrabold mb-2">내 가게가 있다면 직접 팔 수도 있어요</h2>
           <p className="text-[15px] text-gray-600 dark:text-gray-300 leading-relaxed max-w-xl mx-auto mb-6">

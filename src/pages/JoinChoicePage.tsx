@@ -6,14 +6,15 @@
  */
 
 import { Link } from 'react-router-dom'
-import { Megaphone, Store } from 'lucide-react'
+import { StoreIcon } from '@/components/icons/urdeal-icons'
+import { Megaphone } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 
 const CHOICES = [
   {
     to: '/store/new',
-    Icon: Store,
+    Icon: StoreIcon,
     title: '내 가게 팔기',
     desc: '카카오맵에서 우리 가게를 찾아 등록하면, 이용권을 올리고 손님을 모을 수 있어요. 매출은 현금으로 정산받습니다.',
     cta: '내 가게 등록하기',

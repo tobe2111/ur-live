@@ -7,13 +7,14 @@
  * 머니: 무상 쿠폰 — 결제/딜과 무관(병렬 엔티티). 사용 = 매장 선택 + 매장 확인코드(PIN) self-redeem.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { PinIcon, ReceiptIcon, StoreIcon, WalletIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate, useParams } from 'react-router-dom'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { formatWon } from '@/utils/format'
-import { ArrowLeft, Camera, MapPin, Receipt, Store, TicketPercent, Wallet } from 'lucide-react'
+import { ArrowLeft, Camera, TicketPercent } from 'lucide-react'
 import { formatKSTDate } from '@/utils/date'
 
 interface Tier { min_amount: number; face_value: number }
@@ -65,7 +66,7 @@ function ReceiptForm({ campaign, stores, onDone }: { campaign: Campaign; stores:
 
   return (
     <div className="rounded-2xl border border-line bg-surface p-4 space-y-3">
-      <h2 className="flex items-center gap-2 text-[15px] font-bold text-gray-900 dark:text-white"><Receipt className="w-4 h-4" />영수증 등록</h2>
+      <h2 className="flex items-center gap-2 text-[15px] font-bold text-gray-900 dark:text-white"><ReceiptIcon className="w-4 h-4" />영수증 등록</h2>
       <div>
         <label className="mb-1 block text-[12px] font-medium text-gray-700 dark:text-gray-200">구매 매장</label>
         <select value={storeId} onChange={(e) => setStoreId(e.target.value)}
@@ -221,7 +222,7 @@ export default function DistrictCouponPage() {
       <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-gray-100 dark:border-[#2C2F35] bg-white dark:bg-[#11141C] px-4 py-3">
         <button type="button" onClick={() => navigate(-1)} aria-label="뒤로"><ArrowLeft className="h-5 w-5 text-gray-900 dark:text-white" /></button>
         <h1 className="flex-1 text-[15px] font-bold text-gray-900 dark:text-white">{isMy ? '내 상권 쿠폰' : campaign?.name || '상권 쿠폰'}</h1>
-        {!isMy && <button type="button" onClick={() => navigate('/district/my')} className="flex items-center gap-1 text-[12px] font-bold text-gray-500 dark:text-gray-400"><Wallet className="h-4 w-4" />내 쿠폰</button>}
+        {!isMy && <button type="button" onClick={() => navigate('/district/my')} className="flex items-center gap-1 text-[12px] font-bold text-gray-500 dark:text-gray-400"><WalletIcon className="h-4 w-4" />내 쿠폰</button>}
       </header>
 
       <div className="mx-auto ur-content-narrow space-y-4 px-4 py-4 lg:px-8">
@@ -244,12 +245,12 @@ export default function DistrictCouponPage() {
               ? <ReceiptForm campaign={campaign} stores={stores} onDone={loadMy} />
               : <div className="rounded-2xl border border-line bg-surface p-5 text-center text-[15px] font-bold text-gray-500 dark:text-gray-400">접수가 종료된 캠페인입니다</div>}
             <div className="rounded-2xl border border-line bg-surface p-4">
-              <p className="mb-2 flex items-center gap-2 text-[15px] font-bold text-gray-900 dark:text-white"><Store className="h-4 w-4" />참여 점포 ({stores.length})</p>
+              <p className="mb-2 flex items-center gap-2 text-[15px] font-bold text-gray-900 dark:text-white"><StoreIcon className="h-4 w-4" />참여 점포 ({stores.length})</p>
               <ul className="max-h-56 space-y-2 overflow-y-auto">
                 {stores.map((s) => (
                   <li key={s.id} className="text-[12px] text-gray-600 dark:text-gray-300">
                     <span className="font-medium text-gray-900 dark:text-white">{s.name}</span>
-                    {s.address && <span className="ml-1.5 inline-flex items-center gap-1 text-[12px] text-gray-400 dark:text-gray-500"><MapPin className="h-3 w-3" />{s.address}</span>}
+                    {s.address && <span className="ml-1.5 inline-flex items-center gap-1 text-[12px] text-gray-400 dark:text-gray-500"><PinIcon className="h-3 w-3" />{s.address}</span>}
                     {/* 🔗 전환 다리(게이트 ON 시에만 서버가 동봉): 이 매장의 유어딜 동네딜 병기 */}
                     {!!s.deal_product_id && (
                       <button type="button" onClick={() => navigate(`/pass/${s.deal_product_id}`)}

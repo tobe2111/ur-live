@@ -11,8 +11,8 @@
  * 넘기면 그만이라 **새 prop 이 하나도 필요 없다**.
  */
 import { memo } from 'react'
+import { PinIcon } from '@/components/icons/urdeal-icons'
 import { priceDisplay } from '@/shared/price-display'
-import { MapPin } from 'lucide-react'
 import CatIcon from './CatIcon'
 import { formatNumber } from '@/utils/format'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
@@ -64,7 +64,7 @@ export const RestaurantRow = memo(function RestaurantRow({ r, isSelected, userLo
         <p className="font-bold text-gray-900 dark:text-white text-[15px] truncate">{stripStorePrefix(r.name, r.restaurant_name)}</p>
         <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 truncate">{r.restaurant_name}</p>
         <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-1 truncate flex items-center gap-1">
-          <MapPin className="w-3 h-3 shrink-0" />
+          <PinIcon className="w-3 h-3 shrink-0" />
           {isFar
             ? (regionShort(r.restaurant_address) || r.restaurant_address || '주소 미등록')
             : (r.restaurant_address || '주소 미등록')}

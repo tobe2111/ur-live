@@ -1,5 +1,5 @@
-import { MapPin } from 'lucide-react'
 import StarRating from '@/components/deal/StarRating'
+import { PinIcon } from '@/components/icons/urdeal-icons'
 
 /**
  * 🏷️ 이용권 상세 **제목 헤더** — PC 전용 (2026-08-19 대표 확정: 상세 시안 **1안 "그루폰 정석"**).
@@ -54,7 +54,7 @@ export default function DetailTitleHeader({
         {address && (
           <span className="inline-flex items-center gap-2">
             {hasRating && <span className="text-gray-200 dark:text-[#2C2F35]">|</span>}
-            <MapPin className="w-[15px] h-[15px] shrink-0" />
+            <PinIcon className="w-[15px] h-[15px] shrink-0" />
             {address}
           </span>
         )}

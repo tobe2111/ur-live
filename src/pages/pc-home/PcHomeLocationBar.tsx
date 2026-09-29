@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
+import { PinIcon } from '@/components/icons/urdeal-icons'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
-import { MapPin, ChevronDown, LocateFixed, Loader2, X } from 'lucide-react'
+import { ChevronDown, LocateFixed, Loader2, X } from 'lucide-react'
 import { KOREA_REGIONS, findRegionByKey } from '@/shared/constants/korea-regions'
 import { toast } from '@/hooks/useToast'
 
@@ -165,7 +166,7 @@ export default function PcHomeLocationBar({
               : `inline-flex items-center gap-2 pl-2 pr-2 py-2 rounded-xl border transition-colors ${chip}`}
           aria-expanded={open}
         >
-          {!title && <MapPin className={`${hero ? 'w-[14px] h-[14px]' : 'w-[18px] h-[18px]'} shrink-0 ${hero ? 'text-[#16181C]' : 'text-gray-900 dark:text-white'}`} />}
+          {!title && <PinIcon className={`${hero ? 'w-[14px] h-[14px]' : 'w-[18px] h-[18px]'} shrink-0 ${hero ? 'text-[#16181C]' : 'text-gray-900 dark:text-white'}`} />}
           <span className={`${title ? 'text-[24px] font-black tracking-[-0.02em] text-gray-900 dark:text-white' : hero ? 'text-[12px] font-extrabold text-[#16181C]' : 'text-[15px] font-extrabold text-gray-900 dark:text-white'} max-w-[220px] truncate`}>{located ? (locatedLabel || '내 주변') : labelFor(value)}</span>
           <ChevronDown className={`${title ? 'w-5 h-5 text-gray-400 dark:text-gray-500' : hero ? 'w-[13px] h-[13px] text-[#4B4F58]' : 'w-4 h-4 text-gray-400'} shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>

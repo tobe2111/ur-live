@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
+import { PinIcon, AlertIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import BrandLoader from '@/components/brand/BrandLoader'
-import { ChevronLeft, MapPin, Phone, Loader2, AlertCircle } from 'lucide-react'
+import { ChevronLeft, Phone, Loader2 } from 'lucide-react'
 import KakaoMapPicker, { type KakaoPlace } from '@/components/KakaoMapPicker'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
@@ -240,7 +241,7 @@ export default function UserGroupBuyCreatePage() {
                 {restaurant.name}
               </p>
               <p className="text-[12px] text-gray-600 dark:text-gray-400 mt-1 flex items-center gap-1">
-                <MapPin className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" />
+                <PinIcon className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" />
                 {restaurant.address}
               </p>
               {restaurant.phone && (
@@ -434,7 +435,7 @@ export default function UserGroupBuyCreatePage() {
 
             {/* Warning */}
             <div className="mt-3 flex gap-2 bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-3">
-              <AlertCircle className="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0 mt-1" />
+              <AlertIcon className="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0 mt-1" />
               <p className="text-[12px] text-gray-500 dark:text-gray-400 leading-relaxed">
                 {t('groupbuy.warningDeposit', { amount: formatNumber(deposit), defaultValue: '참여 시 {{amount}}딜이 예치됩니다. 미달성 시 전액 환불됩니다.' })}
               </p>

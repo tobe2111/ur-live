@@ -1,23 +1,7 @@
 import { useEffect } from 'react'
+import { PeopleIcon, BagIcon, GiftBoxIcon, PinIcon, WalletIcon, StarIcon, OkIcon, UrShopIcon } from '@/components/icons/urdeal-icons'
 import { Link, useSearchParams } from 'react-router-dom'
-import {
-  Sparkles,
-  Trophy,
-  Users,
-  Zap,
-  ShoppingBag,
-  Gift,
-  Bot,
-  MapPin,
-  Wallet,
-  Download,
-  Printer,
-  ArrowRight,
-  Rocket,
-  Globe,
-  Star,
-  CheckCircle2,
-} from 'lucide-react'
+import { Sparkles, Trophy, Zap, Bot, Download, Printer, ArrowRight, Rocket, Globe } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 
@@ -102,14 +86,14 @@ export default function AboutPage() {
         <Section id="tldr" title="30초 요약" subtitle="대상별 핵심 가치">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <ValueCard
-              icon={<ShoppingBag className="w-6 h-6" />}
+              icon={<BagIcon className="w-6 h-6" />}
               tag="소비자"
               title="동네를 그룹 특가로"
               desc="맛집·뷰티·숙소를 처음부터 같은 그룹 특가로. 결제 즉시 교환권 발급, 친구 초대 보너스까지."
               color="amber"
             />
             <ValueCard
-              icon={<MapPin className="w-6 h-6" />}
+              icon={<PinIcon className="w-6 h-6" />}
               tag="사장님 / 매장"
               title="입점 수수료 0원"
               desc="카카오 로그인으로 바로 입점. 공구로 신규 손님 유치, 교환권 사용·정산까지 한 앱에서."
@@ -123,7 +107,7 @@ export default function AboutPage() {
               color="purple"
             />
             <ValueCard
-              icon={<Users className="w-6 h-6" />}
+              icon={<PeopleIcon className="w-6 h-6" />}
               tag="에이전시"
               title="소속 관리 + 정산"
               desc="담당 셀러·매장의 공구/주문/정산을 한 화면에서 통합 관리."
@@ -136,12 +120,12 @@ export default function AboutPage() {
         <Section id="diff" title="유어딜은 무엇이 다른가" subtitle="동네 공동구매를 가장 정직하게">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FeatureCard
-              icon={<ShoppingBag className="w-5 h-5" />}
+              icon={<BagIcon className="w-5 h-5" />}
               title="정직한 단일 그룹가"
               desc="인원에 따라 가격이 오르내리지 않아요. 처음부터 모두에게 같은 그룹 특가, 결제하면 바로 확정·발급됩니다."
             />
             <FeatureCard
-              icon={<MapPin className="w-5 h-5" />}
+              icon={<PinIcon className="w-5 h-5" />}
               title="우리 동네 오프라인 중심"
               desc="맛집·뷰티·숙소·헬스 등 지역 매장 공구. 종이 쿠폰 없이 앱 교환권을 매장에서 바로 사용해요."
             />
@@ -173,7 +157,7 @@ export default function AboutPage() {
               </p>
             </SubBlock>
 
-            <SubBlock title="2-2. 낮은 수수료" icon={<Wallet className="w-5 h-5" />}>
+            <SubBlock title="2-2. 낮은 수수료" icon={<WalletIcon className="w-5 h-5" />}>
               <SimpleTable
                 headers={['수익원', '플랫폼 수수료', '셀러 수령']}
                 rows={[
@@ -211,7 +195,7 @@ export default function AboutPage() {
               </ul>
             </SubBlock>
 
-            <SubBlock title="2-5. 무료 CRM 인프라" icon={<Gift className="w-5 h-5" />}>
+            <SubBlock title="2-5. 무료 CRM 인프라" icon={<GiftBoxIcon className="w-5 h-5" />}>
               <ul className="space-y-2 text-gray-700 dark:text-gray-300 text-[15px] lg:text-[15px]">
                 <li>· 알림톡 무료 크레딧 (가입 시 지급)</li>
                 <li>· 카카오 공유 → 클릭 → 구매 풀 퍼널 분석</li>
@@ -219,7 +203,7 @@ export default function AboutPage() {
               </ul>
             </SubBlock>
 
-            <SubBlock title="2-6. 업계 최단 정산" icon={<Wallet className="w-5 h-5" />}>
+            <SubBlock title="2-6. 업계 최단 정산" icon={<WalletIcon className="w-5 h-5" />}>
               <SimpleTable
                 headers={['정산 항목', '유어딜', '업계 평균']}
                 rows={[
@@ -238,7 +222,7 @@ export default function AboutPage() {
         <Section id="agency" title="에이전시 (MCN) 기대효과" subtitle="왜 유어딜에서 셀러를 키우는가" tone="purple">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FeatureCard
-              icon={<Users className="w-5 h-5" />}
+              icon={<PeopleIcon className="w-5 h-5" />}
               title="멤버 셀러 통합 대시보드"
               desc="모든 소속 셀러·매장의 매출/공구/주문/정산을 한 화면에서. KPI 비교 → 코칭 우선순위 자동 추출. 일/주/월 리포트 자동."
             />
@@ -253,7 +237,7 @@ export default function AboutPage() {
               desc="멤버 셀러 노출 강화 패키지 구매. 홈/카테고리 상단/푸시 알림. 신인 데뷔 / 시즌 캠페인 / 신상품 런칭."
             />
             <FeatureCard
-              icon={<Star className="w-5 h-5" />}
+              icon={<StarIcon className="w-5 h-5" />}
               title="그룹 인센티브"
               desc="에이전시 전체 목표 매출 달성 시 추가 수수료 환급. 멤버 동기부여 → 자연 그로스 룹."
             />
@@ -263,7 +247,7 @@ export default function AboutPage() {
               desc="유어딜에 가입한 미소속 셀러 중 에이전시 카테고리/규모 적합 셀러 추천. 영업 자동화 → MCN 인력 비용 절감."
             />
             <FeatureCard
-              icon={<Wallet className="w-5 h-5" />}
+              icon={<WalletIcon className="w-5 h-5" />}
               title="정산 자동화"
               desc="멤버 셀러 정산 일괄 관리. 셀러별 수수료 차등. 세무 처리용 CSV / 세금계산서 자동 발급."
             />
@@ -274,7 +258,7 @@ export default function AboutPage() {
         <Section id="consumer" title='소비자 "wow" 모먼트' subtitle="왜 우리 동네는 유어딜인가" tone="amber">
           <div className="space-y-8">
             <WowMoment
-              icon={<Users className="w-6 h-6" />}
+              icon={<PeopleIcon className="w-6 h-6" />}
               title="4-1. 동네 공구, 함께라서 더 좋은 가격"
               quote='"강남 한우 정가 5만원 → 공구가 3만 5천원, 지금 바로. 카카오톡으로 친구 초대하면 둘 다 보너스 딜."'
               points={[
@@ -286,7 +270,7 @@ export default function AboutPage() {
               tagline="더 모아야 싸지는 게 아니라, 처음부터 그룹 특가."
             />
             <WowMoment
-              icon={<MapPin className="w-6 h-6" />}
+              icon={<PinIcon className="w-6 h-6" />}
               title="4-2. 교환권 디지털 사용, 종이 쿠폰 시대 종료"
               quote=""
               points={[
@@ -315,15 +299,15 @@ export default function AboutPage() {
         <Section id="features" title="핵심 기능 한눈에" subtitle="10가지 핵심 기능">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
             {[
-              { icon: <Users className="w-5 h-5" />, title: '동네 공구 (공동구매)', desc: '인원 무관 단일 그룹 특가. 결제 즉시 교환권 발급. 맛집·뷰티·숙소 특화.' },
-              { icon: <MapPin className="w-5 h-5" />, title: '교환권 · 매장 사용', desc: '디지털 교환권. 매장 지도. 미사용 환불. QR 없이 앱 화면만.' },
-              { icon: <ShoppingBag className="w-5 h-5" />, title: '상품 / 주문', desc: '토스/가상계좌/카카오페이/딜 포인트. 배송 추적. 자동 D+5 정산.' },
-              { icon: <Wallet className="w-5 h-5" />, title: '딜 포인트', desc: '1원 = 1딜 (수수료 ZERO 충전). 결제·딜 모으기에 사용.' },
-              { icon: <Sparkles className="w-5 h-5" />, title: '유어샵', desc: '이용권·교환권을 담아 진열하고 소개. 매장과 맺은 딜만큼 커미션.' },
+              { icon: <PeopleIcon className="w-5 h-5" />, title: '동네 공구 (공동구매)', desc: '인원 무관 단일 그룹 특가. 결제 즉시 교환권 발급. 맛집·뷰티·숙소 특화.' },
+              { icon: <PinIcon className="w-5 h-5" />, title: '교환권 · 매장 사용', desc: '디지털 교환권. 매장 지도. 미사용 환불. QR 없이 앱 화면만.' },
+              { icon: <BagIcon className="w-5 h-5" />, title: '상품 / 주문', desc: '토스/가상계좌/카카오페이/딜 포인트. 배송 추적. 자동 D+5 정산.' },
+              { icon: <WalletIcon className="w-5 h-5" />, title: '딜 포인트', desc: '1원 = 1딜 (수수료 ZERO 충전). 결제·딜 모으기에 사용.' },
+              { icon: <UrShopIcon className="w-5 h-5" />, title: '유어샵', desc: '이용권·교환권을 담아 진열하고 소개. 매장과 맺은 딜만큼 커미션.' },
               { icon: <Trophy className="w-5 h-5" />, title: '셀러 등급 / 수수료', desc: '신규→브론즈→실버→골드→플래티넘. 진급 시 수수료 차감 + 노출 가중.' },
-              { icon: <Users className="w-5 h-5" />, title: '에이전시 통합 관리', desc: '담당 셀러·매장의 공구/주문/정산 한 화면. 정산 자동 일괄.' },
-              { icon: <ShoppingBag className="w-5 h-5" />, title: '도매몰 (B2B)', desc: '제조사·판매사 도매 거래. 상품 일괄 등록·내보내기.' },
-              { icon: <MapPin className="w-5 h-5" />, title: '지역 기반', desc: '내 동네 지역·카테고리별 공구 탐색. 당근 스타일 지역 필터.' },
+              { icon: <PeopleIcon className="w-5 h-5" />, title: '에이전시 통합 관리', desc: '담당 셀러·매장의 공구/주문/정산 한 화면. 정산 자동 일괄.' },
+              { icon: <BagIcon className="w-5 h-5" />, title: '도매몰 (B2B)', desc: '제조사·판매사 도매 거래. 상품 일괄 등록·내보내기.' },
+              { icon: <PinIcon className="w-5 h-5" />, title: '지역 기반', desc: '내 동네 지역·카테고리별 공구 탐색. 당근 스타일 지역 필터.' },
               { icon: <Bot className="w-5 h-5" />, title: 'AI 추천', desc: '셀러↔에이전시 매칭, 사용자↔공구 추천 피드.' },
             ].map((f, i) => (
               <div
@@ -396,7 +380,7 @@ export default function AboutPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <FitCard
               title="셀러 / 매장"
-              icon={<MapPin className="w-5 h-5" />}
+              icon={<PinIcon className="w-5 h-5" />}
               items={[
                 '식당/카페/뷰티샵/헬스장 등 오프라인 매장',
                 '자체 쇼핑몰 부담스러운 소상공인',
@@ -407,7 +391,7 @@ export default function AboutPage() {
             />
             <FitCard
               title="에이전시 (MCN)"
-              icon={<Users className="w-5 h-5" />}
+              icon={<PeopleIcon className="w-5 h-5" />}
               items={[
                 '소개 활동 유저 5명 이상',
                 '커머스 전환 본격 시도하는 기존 MCN',
@@ -692,7 +676,7 @@ function WowMoment({
       <ul className="space-y-2 mb-3">
         {points.map((p, i) => (
           <li key={i} className="flex items-start gap-2 text-[15px] lg:text-[15px] text-gray-700 dark:text-gray-300">
-            <CheckCircle2 className="w-4 h-4 text-amber-500 mt-1 shrink-0" />
+            <OkIcon className="w-4 h-4 text-amber-500 mt-1 shrink-0" />
             <span>{p}</span>
           </li>
         ))}
@@ -753,7 +737,7 @@ function FitCard({
       <ul className="space-y-2">
         {items.map((item, i) => (
           <li key={i} className="flex items-start gap-2 text-[15px] text-gray-700 dark:text-gray-300">
-            <CheckCircle2 className="w-4 h-4 text-brand-text mt-1 shrink-0" />
+            <OkIcon className="w-4 h-4 text-brand-text mt-1 shrink-0" />
             <span>{item}</span>
           </li>
         ))}

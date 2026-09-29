@@ -1,10 +1,11 @@
 import { useEffect, useState, useRef } from 'react'
+import { GiftBoxIcon, OkIcon, BadIcon, BagIcon } from '@/components/icons/urdeal-icons'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import BrandLoader from '@/components/brand/BrandLoader'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
-import { Gift, CheckCircle, XCircle, Loader2, ShoppingBag } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import { hasConsumerSession } from '@/utils/auth'
 
@@ -156,7 +157,7 @@ export default function CouponClaimPage() {
         {status === 'success' && coupon && (
           <div className={`transition-all duration-700 ${showContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
             <div className="w-24 h-24 mx-auto bg-gray-700 rounded-full flex items-center justify-center mb-5 shadow-lg animate-bounce">
-              <Gift className="w-12 h-12 text-white" />
+              <GiftBoxIcon className="w-12 h-12 text-white" />
             </div>
 
             <h1 className="text-[24px] font-extrabold text-gray-900 dark:text-white mb-1">{t('couponClaim.celebrate')}</h1>
@@ -179,7 +180,7 @@ export default function CouponClaimPage() {
 
             <button onClick={() => navigate('/')}
               className="w-full mt-6 py-4 bg-brand text-white font-bold rounded-2xl active:scale-[0.97] transition-transform flex items-center justify-center gap-2 shadow-lg">
-              <ShoppingBag className="w-5 h-5" />
+              <BagIcon className="w-5 h-5" />
               {t('couponClaim.goShop')}
             </button>
 
@@ -193,7 +194,7 @@ export default function CouponClaimPage() {
         {status === 'already' && (
           <div className="animate-fade-in">
             <div className="w-20 h-20 mx-auto bg-amber-100 dark:bg-amber-900/20 rounded-full flex items-center justify-center mb-4">
-              <Gift className="w-10 h-10 text-amber-500" />
+              <GiftBoxIcon className="w-10 h-10 text-amber-500" />
             </div>
             <h1 className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">{t('couponClaim.alreadyTitle')}</h1>
             <p className="text-[15px] text-gray-500 dark:text-gray-400">{t('couponClaim.alreadyHint')}</p>
@@ -207,7 +208,7 @@ export default function CouponClaimPage() {
         {status === 'error' && (
           <div className="animate-fade-in">
             <div className="w-20 h-20 mx-auto bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mb-4">
-              <XCircle className="w-10 h-10 text-red-500" />
+              <BadIcon className="w-10 h-10 text-red-500" />
             </div>
             <h1 className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">{t('couponClaim.errorTitle')}</h1>
             <p className="text-[15px] text-gray-500 dark:text-gray-400">{errorMsg}</p>

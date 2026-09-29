@@ -11,13 +11,14 @@
  * 화이트 테마 (쇼핑/결제 페이지) — text-gray-900 dark:text-white 등
  */
 import { useEffect, useState } from 'react'
+import { GiftBoxIcon, OkIcon, BadIcon, PinIcon, MessageIcon } from '@/components/icons/urdeal-icons'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation, Trans } from 'react-i18next'
 import BrandLoader from '@/components/brand/BrandLoader'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
-import { Gift, Loader2, CheckCircle2, XCircle, MapPin, Phone, Sparkles } from 'lucide-react'
+import {Loader2, Phone} from 'lucide-react'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { formatNumber } from '@/utils/format'
 import { parseUTCDate } from '@/utils/date'
@@ -95,7 +96,7 @@ export default function GiftClaimPage() {
       <div className="min-h-screen bg-white dark:bg-[#11141C] flex items-center justify-center px-6">
         <SEO title={t('giftClaim.notFoundSeoTitle')} description={t('giftClaim.notFoundSeoDesc')} url={`/gift/claim/${token}`} />
         <div className="text-center max-w-sm">
-          <XCircle className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+          <BadIcon className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
           <h1 className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">{t('giftClaim.notFoundTitle')}</h1>
           <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-6">{t('giftClaim.notFoundDesc')}</p>
           <button onClick={() => navigate('/')} className="px-6 py-3 bg-brand text-white rounded-full text-[15px] font-bold">
@@ -123,7 +124,7 @@ export default function GiftClaimPage() {
         {/* 헤더 */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-brand-tint mb-3">
-            <Gift className="w-8 h-8 text-brand-text" />
+            <GiftBoxIcon className="w-8 h-8 text-brand-text" />
           </div>
           <h1 className="text-[17px] font-bold text-gray-900 dark:text-white mb-1">
             <Trans
@@ -142,7 +143,7 @@ export default function GiftClaimPage() {
               <img src={cfImage(gift.product_thumbnail, { width: 200, quality: 82, format: 'auto' }) || gift.product_thumbnail} alt="" className="w-20 h-20 rounded-xl object-cover flex-shrink-0" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, gift.product_thumbnail)} />
             ) : (
               <div className="w-20 h-20 rounded-xl bg-gray-100 dark:bg-[#1D1F29] flex items-center justify-center flex-shrink-0">
-                <Gift className="w-8 h-8 text-gray-300 dark:text-gray-600" />
+                <GiftBoxIcon className="w-8 h-8 text-gray-300 dark:text-gray-600" />
               </div>
             )}
             <div className="flex-1 min-w-0">
@@ -154,7 +155,7 @@ export default function GiftClaimPage() {
           {gift.message && (
             <div className="bg-brand-tint rounded-xl p-4 border border-rule ">
               <div className="flex items-center gap-1 text-[12px] font-bold text-brand-text mb-2">
-                <Sparkles className="w-3 h-3" /> {t('giftClaim.messageLabel')}
+                <MessageIcon className="w-3 h-3" /> {t('giftClaim.messageLabel')}
               </div>
               <p className="text-[15px] text-gray-800 dark:text-gray-100 leading-relaxed whitespace-pre-wrap">{gift.message}</p>
             </div>
@@ -164,7 +165,7 @@ export default function GiftClaimPage() {
         {/* 상태별 액션 */}
         {isExpired && (
           <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-2xl p-5 text-center">
-            <XCircle className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+            <BadIcon className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
             <p className="text-[15px] font-semibold text-gray-700 dark:text-gray-200">{t('giftClaim.expiredTitle')}</p>
             <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{t('giftClaim.expiredHint')}</p>
           </div>
@@ -180,7 +181,7 @@ export default function GiftClaimPage() {
 
         {isClaimed && (
           <div className="bg-green-50 dark:bg-green-900/20 rounded-2xl p-5 text-center border border-green-100 dark:border-green-800/40">
-            <CheckCircle2 className="w-8 h-8 text-green-500 mx-auto mb-2" />
+            <OkIcon className="w-8 h-8 text-green-500 mx-auto mb-2" />
             <p className="text-[15px] font-semibold text-green-700">
               {gift.status === 'claimed' && t('giftClaim.statusClaimed')}
               {gift.status === 'shipped' && t('giftClaim.statusShipped')}
@@ -192,7 +193,7 @@ export default function GiftClaimPage() {
         {canClaim && (
           <form onSubmit={handleSubmit} className="bg-surface rounded-2xl border border-gray-100 dark:border-[#2C2F35] p-5 shadow-sm">
             <h3 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-brand-text" /> {t('giftClaim.addressTitle')}
+              <PinIcon className="w-4 h-4 text-brand-text" /> {t('giftClaim.addressTitle')}
             </h3>
             <div className="space-y-3">
               <input
@@ -230,7 +231,7 @@ export default function GiftClaimPage() {
               disabled={submitting || !address.trim()}
               className="w-full mt-5 py-4 bg-brand text-white rounded-xl font-bold text-[15px] flex items-center justify-center gap-2 hover:bg-brand-dark transition-colors disabled:opacity-50"
             >
-              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Gift className="w-4 h-4" />}
+              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <GiftBoxIcon className="w-4 h-4" />}
               {t('giftClaim.submit')}
             </button>
             <p className="text-[12px] text-gray-400 dark:text-gray-500 text-center mt-3">

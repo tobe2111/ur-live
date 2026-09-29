@@ -1,7 +1,8 @@
 import { useState } from 'react'
+import { HomeIcon } from '@/components/icons/urdeal-icons'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Home, ChevronLeft, ChevronRight, Search, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { CoverImg } from '@/features/blog/BlogCover'
@@ -110,7 +111,7 @@ export default function BlogListPage() {
           <Link to="/blog" className="text-[17px] font-extrabold text-gray-900 dark:text-white tracking-tight">유어딜 블로그</Link>
           <div className="flex items-center gap-2 sm:gap-2">
             <Link to="/" className="flex items-center gap-2 px-3 py-2 rounded-lg text-[15px] font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1D1F29]">
-              <Home className="w-4 h-4" /><span className="hidden sm:inline">유어딜 홈</span>
+              <HomeIcon className="w-4 h-4" /><span className="hidden sm:inline">유어딜 홈</span>
             </Link>
             <Link to="/store/new" className="px-4 py-2 bg-brand text-white rounded-lg text-[15px] font-bold hover:opacity-90">
               내 가게 등록

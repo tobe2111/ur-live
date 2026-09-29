@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { PinIcon, TicketStubIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 // Firebase Auth will be lazy loaded when needed
@@ -8,7 +9,7 @@ import { toast } from '@/hooks/useToast'
 import { trackFunnel } from '@/lib/funnel'
 // ✅ Zustand 직접 사용
 import { useAuthKR } from '@/shared/stores/useAuthKR'
-import { Eye, EyeOff, MapPin, Ticket } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
 import SEO from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { addBreadcrumb, maskEmail } from '@/lib/sentry'
@@ -253,11 +254,11 @@ export default function LoginPage() {
           </p>
           <div className="flex flex-wrap items-center justify-center gap-2 mt-5">
             <span className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-gray-50 dark:bg-[#1D1F29] border border-line text-[12px] text-gray-700 dark:text-gray-300">
-              <MapPin className="w-3.5 h-3.5 text-emerald-500" />
+              <PinIcon className="w-3.5 h-3.5 text-emerald-500" />
               {t('login.chipDongne', { defaultValue: '동네딜 공동구매' })}
             </span>
             <span className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-gray-50 dark:bg-[#1D1F29] border border-line text-[12px] text-gray-700 dark:text-gray-300">
-              <Ticket className="w-3.5 h-3.5 text-emerald-500" />
+              <TicketStubIcon className="w-3.5 h-3.5 text-emerald-500" />
               {t('login.chipVoucher', { defaultValue: '교환권·기프티콘' })}
             </span>
             {/* 2026-06-11 (사용자 요청): 소비자 로그인에서 도매몰 칩 제거 — 도매는 /wholesale/login 별도 표면 */}

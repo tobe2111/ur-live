@@ -12,8 +12,9 @@
  * fail-soft: 조회 실패·비로그인·딜 없음 → **아무것도 안 그린다**(없는 보상을 약속하지 않는다).
  */
 import { useEffect, useState } from 'react'
+import { GiftBoxIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from 'react-i18next'
-import { Gift, Copy, Check } from 'lucide-react'
+import { Copy, Check } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 
@@ -67,7 +68,7 @@ export default function ShareRewardBanner({ sellerId, productId }: Props) {
     <div className="mt-3 rounded-2xl border border-brand/25 bg-brand/[0.06] px-4 py-4">
       <div className="flex items-start gap-2">
         <span className="w-8 h-8 shrink-0 rounded-xl bg-brand text-white flex items-center justify-center">
-          <Gift className="w-[17px] h-[17px]" />
+          <GiftBoxIcon className="w-[17px] h-[17px]" />
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-[13px] font-extrabold text-gray-900 dark:text-white">

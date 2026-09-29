@@ -1,8 +1,9 @@
 import { useEffect } from 'react'
+import { BadIcon, HomeIcon, InfoIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
-import { XCircle, Home, RotateCcw, Info } from 'lucide-react'
+import { RotateCcw } from 'lucide-react'
 import SEO from '@/components/SEO'
 
 export default function PaymentFailPage() {
@@ -91,7 +92,7 @@ export default function PaymentFailPage() {
   const heroIconColor = isUserCancel
     ? 'text-blue-600 dark:text-blue-400'
     : 'text-red-600 dark:text-red-400'
-  const HeroIcon = isUserCancel ? Info : XCircle
+  const HeroIcon = isUserCancel ? InfoIcon : BadIcon
   const heroTitle = isUserCancel ? '결제를 취소하셨어요' : t('paymentFail.title')
   const heroSub = isUserCancel ? '다시 진행하시려면 아래 버튼을 눌러주세요' : t('paymentFail.subtitle')
 
@@ -145,7 +146,7 @@ export default function PaymentFailPage() {
               onClick={() => navigate('/')}
               className="flex-1 bg-[#f5f5f7] dark:bg-[#2C2F35] hover:bg-[#e8e8ed] dark:hover:bg-[#3A3A3A] text-[#1d1d1f] dark:text-white h-12 flex items-center justify-center gap-2"
             >
-              <Home className="h-4 w-4" />
+              <HomeIcon className="h-4 w-4" />
               {t('paymentFail.toHome')}
             </Button>
             <Button

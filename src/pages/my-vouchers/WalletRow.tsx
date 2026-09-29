@@ -15,8 +15,8 @@
  * 줄마다 테두리를 두르지 않는다. 줄들은 **카드 한 장 안**에 들어가고 사이만 `border-rule`.
  * 색은 토큰만 — 툴킷 기본 초록·빨강을 hex 로 직접 적지 말 것(그게 "AI 같다"의 정체였다).
  */
-import { Ticket } from 'lucide-react'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
+import { TicketStubIcon } from '@/components/icons/urdeal-icons'
 import { formatNumber } from '@/utils/format'
 import { safeDate } from '@/utils/safe-date'
 import type { Voucher } from './types'
@@ -46,7 +46,7 @@ export default function WalletRow({ v, t, onOpen }: {
       <div className="w-[42px] h-[42px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-brand-tint">
         {v.product_image
           ? <img src={cfImage(v.product_image, { width: 140, quality: 82, format: 'auto' }) || v.product_image} alt="" loading="lazy" className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, v.product_image)} />
-          : <Ticket className="w-[18px] h-[18px] text-brand-text opacity-45" strokeWidth={1.6} aria-hidden />}
+          : <TicketStubIcon className="w-[18px] h-[18px] text-brand-text opacity-45" aria-hidden />}
       </div>
 
       <div className="flex-1 min-w-0">

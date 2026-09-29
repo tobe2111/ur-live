@@ -6,11 +6,12 @@
  * - 객실 선택 → 게스트 정보 입력 → 예약 생성 → /checkout 으로 이동
  */
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { PinIcon, PeopleIcon, StarIcon } from '@/components/icons/urdeal-icons'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
-import { MapPin, Calendar, Users, Star, Sparkles, Hotel, TicketPercent } from 'lucide-react'
+import { Calendar, Sparkles, Hotel, TicketPercent } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import StayStickyBar from './stay-detail/StayStickyBar'
 import GuestIdentityFields, { type GuestIdentity } from './stay-detail/GuestIdentityFields'
@@ -379,7 +380,7 @@ export default function StayDetailPage() {
           </div>
           <h1 className="text-[17px] lg:text-[24px] font-extrabold">{stay.restaurant_name || stay.name}</h1>
           <div className="flex items-center gap-2 mt-1 text-[12px] text-gray-500 dark:text-gray-400">
-            <MapPin className="w-3 h-3" />
+            <PinIcon className="w-3 h-3" />
             {/* 📍 2026-09-14: "경북 경주시 · 경북 경주시 손곡3길 37-14" 로 찍히던 자리.
                 라이브 50건 중 12건은 지역 항목과 주소가 아예 달라, 이어 붙이면 **틀린 주소**가 됐다.
                 판정은 `shared/stay-address.ts` 하나로. */}
@@ -387,7 +388,7 @@ export default function StayDetailPage() {
           </div>
           {stay.avg_rating ? (
             <div className="flex items-center gap-2 mt-2">
-              <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+              <StarIcon filled className="w-4 h-4 text-amber-400 fill-amber-400" />
               <span className="text-[15px] font-bold">{stay.avg_rating.toFixed(1)}</span>
               <span className="text-[12px] text-gray-500 dark:text-gray-400">({stay.review_count}개 리뷰)</span>
             </div>

@@ -1,4 +1,5 @@
-import { ChevronLeft, Share2, ShoppingBag } from 'lucide-react'
+import { ChevronLeft, Share2 } from 'lucide-react'
+import { BagIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
@@ -38,7 +39,7 @@ export function MobileHeader({ onShare }: MobileHeaderProps) {
           <Share2 className="h-4 w-4 text-gray-900 dark:text-white" />
         </button>
         <button aria-label={t('productDetail.header.cart', { defaultValue: '장바구니' })} className={btnClass} onClick={() => navigate('/cart')}>
-          <ShoppingBag className="h-4 w-4 text-gray-900 dark:text-white" />
+          <BagIcon className="h-4 w-4 text-gray-900 dark:text-white" />
         </button>
       </div>
     </header>

@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react'
+import { BagIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, Search, X, ShoppingBag } from 'lucide-react'
+import { ChevronLeft, Search, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 interface SearchSuggestion {
@@ -137,7 +138,7 @@ export default function SearchHeader({
           )}
         </div>
         <button onClick={() => navigate('/cart')} className="shrink-0 p-1">
-          <ShoppingBag className="w-5 h-5 text-gray-900 dark:text-white" />
+          <BagIcon className="w-5 h-5 text-gray-900 dark:text-white" />
         </button>
       </div>
     </div>

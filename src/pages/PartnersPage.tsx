@@ -39,7 +39,8 @@
  *   성과 수치("매출 N% 증가") · 수익 사례 · "업계 최저" · 자동 승인 · 자동 송금 · 트래픽 약속.
  */
 import { Link } from 'react-router-dom'
-import { ArrowRight, MessageCircle } from 'lucide-react'
+import { MessageIcon } from '@/components/icons/urdeal-icons'
+import { ArrowRight } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
 import UrDealLogo from '@/components/brand/UrDealLogo'
@@ -100,7 +101,7 @@ export default function PartnersPage() {
               </Link>
               <a href={F.kakaoChannel} target="_blank" rel="noopener noreferrer"
                 className="sm:flex-1 h-[52px] lg:h-[60px] rounded-2xl bg-white/[0.10] border border-white/20 flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-bold text-white">
-                <MessageCircle className="w-4 h-4 lg:w-[18px] lg:h-[18px]" /> 카카오로 물어보기
+                <MessageIcon className="w-4 h-4 lg:w-[18px] lg:h-[18px]" /> 카카오로 물어보기
               </a>
             </div>
             <p className="mt-12 lg:mt-16 text-[12px] lg:text-[13px] leading-relaxed text-white/45">
@@ -117,7 +118,7 @@ export default function PartnersPage() {
         <div className="max-w-xl mx-auto flex gap-2">
           <a href={F.kakaoChannel} target="_blank" rel="noopener noreferrer"
             className="flex-1 h-12 rounded-2xl border border-rule-strong flex items-center justify-center gap-2 text-[15px] font-extrabold text-ink">
-            <MessageCircle className="w-4 h-4" /> 카카오 문의
+            <MessageIcon className="w-4 h-4" /> 카카오 문의
           </a>
           <Link to="/store/new"
             className="flex-[1.4] h-12 rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] font-extrabold active:scale-[0.98] transition-transform">

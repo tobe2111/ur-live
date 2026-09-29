@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { AlertIcon } from '@/components/icons/urdeal-icons'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -7,7 +8,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import MobileFooter from '@/components/MobileFooter'
 import { OrdersTab } from '@/components/mypage/OrdersTab'
-import { ArrowLeft, AlertCircle } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { getUserIdSync, isLoggedInSync, requireLogin } from '@/utils/auth'
 import type { Order } from '@/types/order'
 import { isVoucherCategory } from '@/shared/constants/voucher-categories'
@@ -288,7 +289,7 @@ export default function MyOrdersPage() {
           /* ✅ UX C5 FIX: 에러 상태 + 재시도 버튼 (리다이렉트 루프 방지) */
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
-              <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+              <AlertIcon className="w-12 h-12 text-red-500 mx-auto mb-4" />
               <p className="text-[15px] text-gray-900 dark:text-white mb-4">{error}</p>
               <button
                 onClick={() => loadData()}

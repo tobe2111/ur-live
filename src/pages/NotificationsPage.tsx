@@ -1,11 +1,12 @@
 import { useNavigate } from 'react-router-dom'
+import { BellIcon } from '@/components/icons/urdeal-icons'
 import { useState } from 'react'
 import { safeDate } from '@/utils/safe-date'
 import api from '@/lib/api'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
-import { ChevronLeft, Bell } from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { safeInternalPath } from '@/utils/safe-internal-path'
 import { useNotifications, useMarkAllNotificationsRead, useMarkNotificationRead } from '@/hooks/queries/useNotifications'
@@ -61,13 +62,13 @@ export default function NotificationsPage() {
           <BrandLoader />
         ) : error ? (
           <div className="text-center py-20">
-            <Bell className="w-12 h-12 text-gray-600 dark:text-gray-300 mx-auto mb-3" aria-hidden="true" />
+            <BellIcon className="w-12 h-12 text-gray-600 dark:text-gray-300 mx-auto mb-3" aria-hidden="true" />
             <p className="text-gray-900 dark:text-white font-bold">{error}</p>
             <p className="text-[15px] text-gray-600 dark:text-gray-400 mt-1">{t('notifications.retryLater')}</p>
           </div>
         ) : notifications.length === 0 ? (
           <div className="text-center py-20">
-            <Bell className="w-12 h-12 text-gray-600 dark:text-gray-300 mx-auto mb-3" aria-hidden="true" />
+            <BellIcon className="w-12 h-12 text-gray-600 dark:text-gray-300 mx-auto mb-3" aria-hidden="true" />
             <p className="text-gray-900 dark:text-white font-bold">{t('notifications.empty')}</p>
             <p className="text-[15px] text-gray-600 dark:text-gray-400 mt-1">{t('notifications.emptyDesc')}</p>
           </div>

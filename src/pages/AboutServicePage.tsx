@@ -25,7 +25,8 @@
  *   연락·사업자 정보는 `shared/partners-facts`(덱과 대조되는 SSOT) 한 곳에서만 읽는다.
  */
 import { Link } from 'react-router-dom'
-import { Store, Users, Megaphone, QrCode, BadgePercent, MapPin, ArrowRight, FileText } from 'lucide-react'
+import { StoreIcon, PeopleIcon, PinIcon } from '@/components/icons/urdeal-icons'
+import { Megaphone, QrCode, BadgePercent, ArrowRight, FileText } from 'lucide-react'
 import SEO from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { PARTNER_FACTS as F } from '@/shared/partners-facts'
@@ -34,14 +35,14 @@ import PhoneShot, { SHOT } from './landing/PhoneShot'
 const BENEFITS = [
   { icon: BadgePercent, t: '동네 할인', d: '내 주변 맛집과 뷰티, 숙소를 정가보다 싸게' },
   { icon: QrCode, t: 'QR 간편 사용', d: '결제는 미리, 매장에선 QR 한 번이면 끝' },
-  { icon: MapPin, t: '지도로 발견', d: '지금 내 위치 주변의 딜을 지도에서 바로' },
+  { icon: PinIcon, t: '지도로 발견', d: '지금 내 위치 주변의 딜을 지도에서 바로' },
 ]
 
 /** 3자 구조 — 각자가 내는 것과 받는 것. 셋이 한 문장으로 이어지도록 순서 고정. */
 const TRIANGLE = [
-  { icon: Store, t: '매장', gives: '팔린 만큼만 내는 판매 수수료', gets: '선불 광고비 없이 새 손님' },
+  { icon: StoreIcon, t: '매장', gives: '팔린 만큼만 내는 판매 수수료', gets: '선불 광고비 없이 새 손님' },
   { icon: Megaphone, t: '소개하는 사람', gives: '내 유어샵에 담아 링크 하나로 소개', gets: '팔릴 때마다 쌓이는 몫' },
-  { icon: Users, t: '소비자', gives: '앱에서 미리 결제', gets: '검증된 동네 가게를 할인가로' },
+  { icon: PeopleIcon, t: '소비자', gives: '앱에서 미리 결제', gets: '검증된 동네 가게를 할인가로' },
 ]
 
 const STEPS = [

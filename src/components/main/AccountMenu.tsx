@@ -1,9 +1,7 @@
 import { useNavigate } from 'react-router-dom'
+import { HeartIcon, TicketStubIcon, GiftBoxIcon, BoxIcon, SettingsIcon, BellIcon, StoreIcon, LogOutIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from 'react-i18next'
-import {
-  X, ChevronRight, Heart, Ticket, Gift, Package, Settings, Coins,
-  Bell, HelpCircle, Store, LogOut, Smartphone, LogIn, UserPlus,
-} from 'lucide-react'
+import { X, ChevronRight, Coins, HelpCircle, Smartphone, LogIn, UserPlus } from 'lucide-react'
 import { getUserNameSync, getUserEmail } from '@/utils/auth'
 import { sellerEntryPath } from '@/utils/seller-entry'
 
@@ -20,7 +18,7 @@ import { sellerEntryPath } from '@/utils/seller-entry'
  *    흉내내지 않고 뺀다 — 눌렀는데 아무 데도 안 가는 항목이 제일 나쁘다.
  */
 
-type Row = { icon: typeof Heart; label: string; path: string; badge?: string }
+type Row = { icon: typeof HeartIcon; label: string; path: string; badge?: string }
 
 export default function AccountMenu({
   loggedIn,
@@ -44,14 +42,14 @@ export default function AccountMenu({
 
   const rows: Row[] = loggedIn
     ? [
-        { icon: Heart,      label: t('nav.myWishlist', { defaultValue: '찜한 이용권' }), path: '/wishlist', badge: wishCount > 0 ? String(wishCount) : undefined },
-        { icon: Ticket,     label: t('nav.myVouchers', { defaultValue: '내 이용권' }), path: '/my-vouchers' },
+        { icon: HeartIcon,      label: t('nav.myWishlist', { defaultValue: '찜한 이용권' }), path: '/wishlist', badge: wishCount > 0 ? String(wishCount) : undefined },
+        { icon: TicketStubIcon,     label: t('nav.myVouchers', { defaultValue: '내 이용권' }), path: '/my-vouchers' },
         // 🎟️ 2026-08-31 (지갑 분리): 교환권(문자로 받는 기프티콘)은 별도 보관함.
-        { icon: Gift,       label: t('nav.myGifticons', { defaultValue: '내 교환권' }), path: '/my-gifticons' },
-        { icon: Package,    label: t('nav.myOrders', { defaultValue: '주문 내역' }), path: '/my-orders' },
+        { icon: GiftBoxIcon,       label: t('nav.myGifticons', { defaultValue: '내 교환권' }), path: '/my-gifticons' },
+        { icon: BoxIcon,    label: t('nav.myOrders', { defaultValue: '주문 내역' }), path: '/my-orders' },
         { icon: Coins,      label: t('nav.myDeal', { defaultValue: '딜 내역' }), path: '/my-deal-history' },
-        { icon: Bell,       label: t('nav.notifications', { defaultValue: '알림' }), path: '/notifications', badge: unreadCount > 0 ? String(unreadCount) : undefined },
-        { icon: Settings,   label: t('nav.settings', { defaultValue: '설정' }), path: '/account/settings' },
+        { icon: BellIcon,       label: t('nav.notifications', { defaultValue: '알림' }), path: '/notifications', badge: unreadCount > 0 ? String(unreadCount) : undefined },
+        { icon: SettingsIcon,   label: t('nav.settings', { defaultValue: '설정' }), path: '/account/settings' },
         { icon: HelpCircle, label: t('nav.support', { defaultValue: '고객센터' }), path: '/faq' },
       ]
     : [
@@ -154,7 +152,7 @@ export default function AccountMenu({
         onClick={() => go(sellerEntryPath())}
         className="w-full flex items-center gap-3 px-5 py-2 text-[13px] font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors"
       >
-        <Store className="shrink-0 w-[17px] h-[17px]" strokeWidth={1.9} />
+        <StoreIcon className="shrink-0 w-[17px] h-[17px]" />
         {t('nav.sellOnUrdeal', { defaultValue: '유어딜에서 판매하세요' })}
       </button>
       {loggedIn && (
@@ -163,7 +161,7 @@ export default function AccountMenu({
           onClick={() => void signOut()}
           className="w-full flex items-center gap-3 px-5 py-2 mb-2 text-[13px] font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors"
         >
-          <LogOut className="shrink-0 w-[17px] h-[17px]" strokeWidth={1.9} />
+          <LogOutIcon className="shrink-0 w-[17px] h-[17px]" />
           {t('auth.logout', { defaultValue: '로그아웃' })}
         </button>
       )}

@@ -1,6 +1,7 @@
 import { useNavigate, Link } from 'react-router-dom'
+import { HomeIcon, GiftBoxIcon, PinIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from 'react-i18next'
-import { Home, ArrowLeft, Gift, MapPin } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import SEO from '@/components/SEO'
 
 export default function NotFoundPage() {
@@ -13,9 +14,9 @@ export default function NotFoundPage() {
   //   ③ `공동구매` 칩이 **`/referral`(추천 수익)** 으로 갔다 — 라벨과 목적지가 아예 다르다.
   //   길 잃은 사람을 다시 태우는 자리라 하단바 5탭과 같은 곳을 가리키게 맞춘다.
   const popularLinks = [
-    { to: '/', label: t('notFound.linkHome', { defaultValue: '홈' }), Icon: Home },
-    { to: '/vouchers', label: t('notFound.linkVouchers', { defaultValue: '교환권' }), Icon: Gift },
-    { to: '/map', label: t('notFound.linkMap', { defaultValue: '내 주변 동네딜' }), Icon: MapPin },
+    { to: '/', label: t('notFound.linkHome', { defaultValue: '홈' }), Icon: HomeIcon },
+    { to: '/vouchers', label: t('notFound.linkVouchers', { defaultValue: '교환권' }), Icon: GiftBoxIcon },
+    { to: '/map', label: t('notFound.linkMap', { defaultValue: '내 주변 동네딜' }), Icon: PinIcon },
   ]
 
   return (
@@ -80,7 +81,7 @@ export default function NotFoundPage() {
               to="/"
               className="inline-flex items-center justify-center gap-2 h-12 rounded-2xl bg-black text-white font-bold text-[15px] shadow-sm hover:bg-brand hover:shadow-md transition-all duration-200 active:scale-[0.98]"
             >
-              <Home className="h-4 w-4" />
+              <HomeIcon className="h-4 w-4" />
               {t('notFound.goHome')}
             </Link>
             <button

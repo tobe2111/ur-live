@@ -33,8 +33,9 @@
  *   ⚠️ 다만 **실제 청구액은 staging 실결제로만 판정된다** — 테스트는 판정·배선까지만 본다.
  */
 import { useEffect, useState } from 'react'
+import { ClockIcon, BoxIcon } from '@/components/icons/urdeal-icons'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { Clock, Package, Lock, ChevronLeft } from 'lucide-react'
+import { Lock, ChevronLeft } from 'lucide-react'
 import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
 import NotFoundPage from '@/pages/NotFoundPage'
@@ -223,7 +224,7 @@ export default function MallProductPage() {
           )}
           {remain && (
             <span className="absolute left-2.5 top-2.5 flex items-center gap-1 px-2 py-[6px] rounded-full bg-red-600 text-white text-[12px] font-bold tracking-[-0.02em]">
-              <Clock className="w-[12px] h-[12px]" strokeWidth={2.4} />
+              <ClockIcon className="w-[12px] h-[12px]" />
               {remain}
             </span>
           )}
@@ -250,7 +251,7 @@ export default function MallProductPage() {
         {product.pickup && (pickupDay || product.pickup.place || product.pickup.storage) && (
           <div className="mt-4 rounded-xl bg-[#F5F2F3] dark:bg-[#211C1F] px-4 py-4">
             <p className="flex items-center gap-2">
-              <Package className="w-[15px] h-[15px] flex-none text-[#5C5459] dark:text-[#A69EA3]" strokeWidth={1.9} />
+              <BoxIcon className="w-[15px] h-[15px] flex-none text-[#5C5459] dark:text-[#A69EA3]" />
               <span className="text-[13px] font-bold tracking-[-0.025em] text-[#3F383C] dark:text-[#DAD4D7]">
                 {pickupDay ? `${pickupDay} 픽업` : '매장 픽업'}
               </span>

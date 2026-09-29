@@ -1,7 +1,8 @@
 // 🧱 2026-06-29 TD: GroupBuyListPage god 파일 분해 — 지역 필터 바(verbatim 추출). 동작 불변.
 import type { Dispatch, SetStateAction } from 'react'
+import { PinIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from 'react-i18next'
-import { MapPin, ChevronDown } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import type { CategoryFilter } from './types'
 
 export default function RegionBar({ category, regionKey, gpsRegion, regionButtonLabel, detectingRegion, setRegionPickerOpen, detectMyRegion, applyRegion }: {
@@ -26,7 +27,7 @@ export default function RegionBar({ category, regionKey, gpsRegion, regionButton
           }`}
           aria-label="지역 선택"
         >
-          <MapPin className="w-3.5 h-3.5" />
+          <PinIcon className="w-3.5 h-3.5" />
           <span className="max-w-[150px] truncate">{gpsRegion ? `📍 ${gpsRegion.name}` : regionButtonLabel}</span>
           <ChevronDown className="w-3.5 h-3.5 opacity-70" />
         </button>
