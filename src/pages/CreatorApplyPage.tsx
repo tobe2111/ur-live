@@ -51,7 +51,7 @@ export default function CreatorApplyPage() {
         </div>
 
         {done ? (
-          <div className="rounded-xl border border-emerald-200 bg-white p-8 text-center">
+          <div className="rounded-xl bg-white p-8 text-center shadow-lift">
             <div className="text-4xl mb-3">✅</div>
             <div className="text-[17px] font-semibold text-gray-900">신청이 접수되었습니다</div>
             <p className="mt-2 text-[15px] text-gray-600">검토 후 제휴 담당자가 입력해주신 연락처로 연락드립니다. 감사합니다.</p>
@@ -63,7 +63,7 @@ export default function CreatorApplyPage() {
             <p className="mt-2 text-[12px] text-gray-500">가입하면 내 유어샵이 자동으로 생기고, 마음에 든 이용권을 담아 진열하고 소개하면 됩니다.</p>
           </div>
         ) : (
-          <div className="rounded-xl border border-gray-200 bg-white p-6 space-y-4">
+          <div className="rounded-xl bg-white p-6 space-y-4 shadow-lift">
             <div>
               <label className="block text-[15px] font-medium text-gray-700 mb-1">이름 · 채널명 <span className="text-rose-500">*</span></label>
               <input value={f.name} onChange={set('name')} placeholder="예: 방배동 미식가" className={input} />

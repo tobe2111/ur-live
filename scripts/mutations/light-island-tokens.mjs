@@ -12,8 +12,10 @@ export default [
   {
     name: '[섬] 카드 자신에 dark:bg 가 다시 붙는다 (배경만 검어지고 글자는 라이트로 남는다)',
     file: CARD,
-    find: 'className="light-island ur-content-wide pointer-events-auto relative rounded-2xl border border-gray-100 bg-white',
-    replace: 'className="light-island ur-content-wide pointer-events-auto relative rounded-2xl border border-gray-100 dark:border-[#2C2F35] bg-white dark:bg-[#11141C]',
+    // 🔀 2026-09-29: 규칙 ①(카드 테두리 0)로 `border border-gray-100` 이 빠졌다 — 앵커만 재조준하고
+    //    지키는 것(카드 자신에 `dark:bg` 를 붙이지 않는다)은 그대로다.
+    find: 'className="light-island ur-content-wide pointer-events-auto relative rounded-2xl bg-white',
+    replace: 'className="light-island ur-content-wide pointer-events-auto relative rounded-2xl bg-white dark:bg-[#11141C]',
     test: TEST,
     why: '대표가 신고한 원본 상태 그대로다 — 제목(text-gray-900)이 근검정 배경 위에 남아 안 보였다.',
   },

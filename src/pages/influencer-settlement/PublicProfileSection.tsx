@@ -72,7 +72,7 @@ export default function PublicProfileSection() {
   }
 
   return (
-    <section className="rounded-xl border border-line bg-surface p-4 mb-4">
+    <section className="rounded-xl bg-surface p-4 mb-4 shadow-lift">
       <div className="flex items-start gap-2 mb-3">
         <Megaphone className="w-5 h-5 text-brand-text shrink-0 mt-1" />
         <div className="flex-1 min-w-0">

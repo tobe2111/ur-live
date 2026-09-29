@@ -104,7 +104,7 @@ export default function MyFollowsPage() {
 
             <div className="space-y-3">
               {follows.map(f => (
-                <div key={f.seller_id} className="bg-surface rounded-2xl border border-line overflow-hidden">
+                <div key={f.seller_id} className="bg-surface rounded-2xl overflow-hidden shadow-lift">
                   {/* 셀러 정보 */}
                   <button
                     onClick={() => navigate(`/profile/${f.seller_username || f.seller_id}`)}

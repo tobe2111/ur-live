@@ -79,28 +79,28 @@ export default function StoreOwnerDashboardPage() {
             <>
               {/* 4 KPI 카드 */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="bg-white rounded-xl border border-gray-200 p-4">
+                <div className="bg-white rounded-xl p-4 shadow-lift">
                   <div className="flex items-center gap-1 text-[12px] text-gray-500"><BagIcon className="w-3.5 h-3.5" /> 총 매출</div>
                   <p className="text-[17px] font-bold text-gray-900 mt-1">{formatWon(stats.revenue_total)}</p>
                   <p className="text-[12px] text-gray-400 mt-1">누적</p>
                 </div>
-                <div className="bg-white rounded-xl border border-gray-200 p-4">
+                <div className="bg-white rounded-xl p-4 shadow-lift">
                   <div className="flex items-center gap-1 text-[12px] text-gray-500">📅 이번 달 매출</div>
                   <p className="text-[17px] font-bold text-blue-600 mt-1">{formatWon(stats.revenue_this_month)}</p>
                 </div>
-                <div className="bg-white rounded-xl border border-gray-200 p-4">
+                <div className="bg-white rounded-xl p-4 shadow-lift">
                   <div className="flex items-center gap-1 text-[12px] text-gray-500"><WalletIcon className="w-3.5 h-3.5" /> 미정산 잔액</div>
                   <p className="text-[17px] font-bold text-amber-600 mt-1">{formatWon(stats.pending_payout)}</p>
                   <a href="/seller/ledger" className="text-[12px] text-blue-600 underline">상세 →</a>
                 </div>
-                <div className="bg-white rounded-xl border border-gray-200 p-4">
+                <div className="bg-white rounded-xl p-4 shadow-lift">
                   <div className="text-[12px] text-gray-500">활성 상품</div>
                   <p className="text-[17px] font-bold text-gray-900 mt-1">{stats.active_products}/{stats.total_products}</p>
                 </div>
               </div>
 
               {/* Voucher 통계 */}
-              <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <div className="bg-white rounded-xl p-5 shadow-lift">
                 <h2 className="text-[15px] font-bold text-gray-900 mb-3">📊 Voucher 사용 현황</h2>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[12px]">
                   <div className="text-center p-3 bg-gray-50 rounded-lg">

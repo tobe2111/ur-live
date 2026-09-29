@@ -93,7 +93,7 @@ export default function DealsAndCodesSection({ ownerFunded }: { ownerFunded: boo
   return (
     <>
       {/* 🔑 코드 입력 */}
-      <div className="bg-surface border border-line rounded-xl p-5">
+      <div className="bg-surface rounded-xl p-5 shadow-lift">
         <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-1 flex items-center gap-2"><KeyRound className="w-4 h-4 text-brand-text" /> 협업 코드 입력</h3>
         <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-3 leading-relaxed">매장이나 대행사에서 받은 코드를 넣으면 그 매장과 협업이 시작돼요. 내 링크로 팔리는 이용권마다 정해진 % 가 적립됩니다.</p>
         <div className="flex gap-2">
@@ -105,7 +105,7 @@ export default function DealsAndCodesSection({ ownerFunded }: { ownerFunded: boo
       </div>
 
       {/* 🤝 협업 매장 */}
-      <div className="bg-surface border border-line rounded-xl p-5">
+      <div className="bg-surface rounded-xl p-5 shadow-lift">
         <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">🤝 협업 매장 ({deals.length})</h3>
         {ownerFunded && (
           <p className="text-[12px] text-emerald-700 dark:text-emerald-400 mb-2">우대 커미션은 매장 promo(매장 몫) 재원에서 지급됩니다 — 유어딜 5%(인프라비)와 무관.</p>
@@ -161,7 +161,7 @@ export default function DealsAndCodesSection({ ownerFunded }: { ownerFunded: boo
 
       {/* 💸 중개사 몫 — 행이 있을 때만(게이트 OFF 면 안 뜬다) */}
       {broker.length > 0 && (
-        <div className="bg-surface border border-line rounded-xl p-5">
+        <div className="bg-surface rounded-xl p-5 shadow-lift">
           <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">🏪 중개 매장 몫 ({broker.length})</h3>
           <ul className="space-y-2">
             {broker.map((b) => (
@@ -177,7 +177,7 @@ export default function DealsAndCodesSection({ ownerFunded }: { ownerFunded: boo
       )}
 
       {referred.length > 0 && (
-        <div className="bg-surface border border-line rounded-xl p-5">
+        <div className="bg-surface rounded-xl p-5 shadow-lift">
           <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">🏪 내가 영입한 매장 ({referred.length}개)</h3>
           <ul className="space-y-2">
             {referred.map((s) => {

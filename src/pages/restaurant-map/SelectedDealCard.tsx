@@ -144,7 +144,7 @@ export default function SelectedDealCard({
     >
       <div
         ref={cardRef}
-        className="light-island ur-content-wide pointer-events-auto relative rounded-2xl border border-gray-100 bg-white shadow-[0_8px_28px_rgba(0,0,0,0.18)] select-none lg:cursor-grab lg:active:cursor-grabbing focus:outline-none"
+        className="light-island ur-content-wide pointer-events-auto relative rounded-2xl bg-white shadow-[0_8px_28px_rgba(0,0,0,0.18)] select-none lg:cursor-grab lg:active:cursor-grabbing focus:outline-none"
         style={{ touchAction: 'pan-y' }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}

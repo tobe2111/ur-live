@@ -29,8 +29,7 @@ import { COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
 // 🛡️ 2026-05-02: TD-018 분할 — types/constants/utils 를 ./group-buy-list/ 로 추출.
 
 // 🏭 2026-06-10 [LOADING_ADDITIVE] (사용자 신고 — "동네딜 카드 로딩 고질적"): 모듈 메모리 캐시 + 진입 전 워밍.
-//   문제: 하단바 탭 진입은 SPA 라우팅이라 SSR 주입이 없음 → 매 마운트 cold fetch + 스켈레톤 재노출(탭 왕복마다).
-//   해법: (1) 같은 세션 재진입은 메모리 캐시로 0ms 페인트(+60s 넘으면 백그라운드 갱신만, 스켈레톤 X)
+//   문제: 하단바 탭 진입은 SPA 라우팅이라 SSR 주입이 없음 → 매 마운트 cold fetch + 스켈레톤 재노출(탭 왕복마다). 해법: (1) 같은 세션 재진입은 메모리 캐시로 0ms 페인트(+60s 넘으면 백그라운드 갱신만, 스켈레톤 X)
 //        (2) 하단바 pointerdown(누르는 순간) `warmGroupBuyList()` 가 데이터를 선요청 — 클릭→마운트 사이 ~200ms 선점.
 //        in-flight 공유로 중복 요청 0. SSR 주입 경로/기존 fetch 동작 불변(additive).
 const GB_LIST_URL = '/api/group-buy/products?status=active&limit=200'

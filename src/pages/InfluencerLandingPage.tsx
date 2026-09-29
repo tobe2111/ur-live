@@ -76,7 +76,7 @@ export default function InfluencerLandingPage() {
           <h2 className="text-[24px] lg:text-3xl font-extrabold text-center mb-10">어떻게 되나요?</h2>
           <div className="space-y-4">
             {STEPS.map((s, i) => (
-              <div key={i} className="bg-surface rounded-2xl p-6 border border-line flex gap-4">
+              <div key={i} className="bg-surface rounded-2xl p-6 flex gap-4 shadow-lift">
                 <span className="w-11 h-11 shrink-0 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
                   <s.icon className="w-5 h-5" />
                 </span>

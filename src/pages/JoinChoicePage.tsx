@@ -45,7 +45,7 @@ export default function JoinChoicePage() {
                 className="block rounded-2xl bg-[#1D1F29] border border-[#2C2F35] p-5 hover:border-[#2C2F35] transition-colors"
               >
                 <div className="flex items-center gap-4">
-                  <div className="shrink-0 w-12 h-12 rounded-xl bg-white/[0.06] border border-white/10 flex items-center justify-center text-[24px]">
+                  <div className="shrink-0 w-12 h-12 rounded-xl bg-white/[0.06] flex items-center justify-center text-[24px] shadow-lift">
                     {<ch.Icon className="w-7 h-7 text-gray-500 dark:text-gray-400" aria-hidden="true" />}
                   </div>
                   <div className="flex-1 min-w-0">

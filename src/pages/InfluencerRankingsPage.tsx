@@ -90,7 +90,7 @@ export default function InfluencerRankingsPage() {
         </div>
 
         {/* 랭킹 리스트 */}
-        <div className="bg-surface border border-line rounded-2xl overflow-hidden">
+        <div className="bg-surface rounded-2xl overflow-hidden shadow-lift">
           {loading ? (
             <p className="text-[15px] text-gray-500 dark:text-gray-400 text-center py-10">로딩 중...</p>
           ) : list.length === 0 ? (

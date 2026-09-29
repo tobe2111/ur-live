@@ -139,7 +139,7 @@ export default function ShopInfoCards({ curator, onCuratorUpdate }: {
       {/* 유어샵 주소 */}
       {open === 'handle' ? (
         <div className="p-4 border-t border-rule">
-          <div className="flex items-center gap-1 px-3 py-2 rounded-lg border border-rule-strong bg-surface">
+          <div className="flex items-center gap-1 px-3 py-2 rounded-lg border-rule-strong bg-surface shadow-lift">
             <span className="shrink-0 text-[13px] text-gray-400">{shareHost}/u/</span>
             <input
               autoFocus

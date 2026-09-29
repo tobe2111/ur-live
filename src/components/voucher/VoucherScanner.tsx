@@ -258,7 +258,7 @@ export default function VoucherScanner() {
         </div>
       )}
       {results.length > 1 && (
-        <div className="rounded-2xl border border-line bg-surface divide-y divide-gray-100 dark:divide-[#2C2F35]">
+        <div className="rounded-2xl bg-surface divide-y divide-gray-100 dark:divide-[#2C2F35] shadow-lift">
           {results.slice(1).map((r, i) => (
             <div key={`${r.code}-${i}`} className="flex items-center gap-2 px-3 py-2 text-[12px]">
               {r.ok ? <OkIcon className="w-3.5 h-3.5 text-tone-ok shrink-0" /> : <BadIcon className="w-3.5 h-3.5 text-tone-bad shrink-0" />}

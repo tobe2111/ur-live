@@ -25,7 +25,7 @@ export default function CollabPerformance() {
   if (!perf || perf.deals.length === 0) return null
   return (
     <section className="mb-5">
-      <div className="rounded-3xl p-5 bg-surface border border-line">
+      <div className="rounded-3xl p-5 bg-surface shadow-lift">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-[15px] font-bold text-gray-900 dark:text-white">🤝 협업 딜 성과</h2>
           <span className="text-[12px] text-gray-400 dark:text-gray-500">확정분은 자동 지급돼요</span>

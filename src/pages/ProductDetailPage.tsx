@@ -42,8 +42,7 @@ import { useProductViewBeacon } from '@/hooks/useProductViewBeacon'
 import { effectiveAffiliateRate } from '@/shared/affiliate-rate'
 
 // 🛡️ 2026-05-02: TD-018 분할 — ReviewForm/ProductReviews/ReferralSection/AccordionSection 을
-//   ./product-detail/ 로 추출. 미사용 imports (Separator, ProgressiveImage, SharePrompt, toast,
-//   Users, Clock, Product type, lucide 일부) 제거.
+//   ./product-detail/ 로 추출. 미사용 imports (Separator, ProgressiveImage, SharePrompt, toast, Users, Clock, Product type, lucide 일부) 제거.
 //   🗓️ 2026-09-04: 함께 추출했던 GroupBuyCountdown 은 마감 개념 제거로 파일째 삭제됐다.
 
 // Lazy load heavy components
@@ -453,7 +452,7 @@ export default function ProductDetailPage() {
               {brandIcon ? (
                 <img src={cfImage(brandIcon, { width: 96, quality: 80, format: 'auto' }) || brandIcon} alt={brandName} className="w-12 h-12 rounded-lg object-cover bg-surface border border-amber-100" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, brandIcon)} />
               ) : (
-                <div className="w-12 h-12 bg-surface rounded-lg flex items-center justify-center text-[12px] text-gray-400 font-bold border border-amber-100">
+                <div className="w-12 h-12 bg-surface rounded-lg flex items-center justify-center text-[12px] text-gray-400 font-bold shadow-lift">
                   {brandName.slice(0, 4)}
                 </div>
               )}

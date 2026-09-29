@@ -24,7 +24,7 @@ export default function TermsConsentBox({
   core?: CoreTermsConsent
 }) {
   return (
-    <div className="bg-white rounded-2xl p-5 space-y-4 border border-gray-100">
+    <div className="bg-white rounded-2xl p-5 space-y-4 shadow-lift">
       <div className="flex items-start justify-between gap-2">
         <label className="flex items-start gap-2 cursor-pointer flex-1">
           <input

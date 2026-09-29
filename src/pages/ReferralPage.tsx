@@ -156,7 +156,7 @@ export default function ReferralPage() {
 
         <div className="ur-content-narrow px-4 lg:px-8 py-4 space-y-3 pb-32">
           {/* 식당 + 가격 */}
-          <section className="bg-surface rounded-2xl p-4 border border-line">
+          <section className="bg-surface rounded-2xl p-4 shadow-lift">
             <p className="text-[17px] font-extrabold text-gray-900 dark:text-white">{community.restaurant_name}</p>
             {community.restaurant_address && (
               <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{community.restaurant_address}</p>
@@ -176,7 +176,7 @@ export default function ReferralPage() {
 
           {/* 🏭 2026-06-07 (사용자 요청): 공구를 유치한 사람이 작성한 소개글 노출 */}
           {community.description && (
-            <section className="bg-surface rounded-2xl p-4 border border-line">
+            <section className="bg-surface rounded-2xl p-4 shadow-lift">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-7 h-7 rounded-full bg-brand text-white flex items-center justify-center text-[12px] font-bold">
                   {community.creator_name?.slice(0, 1) || '제'}
@@ -192,7 +192,7 @@ export default function ReferralPage() {
           )}
 
           {/* 보증금 안내 */}
-          <section className="bg-surface rounded-2xl p-4 border border-line">
+          <section className="bg-surface rounded-2xl p-4 shadow-lift">
             <div className="flex items-center justify-between">
               <span className="text-[13px] text-gray-600 dark:text-gray-300">{t('groupbuy.depositLabel', { defaultValue: '1인당 보증금' })}</span>
               <span className="text-[15px] font-bold text-gray-900 dark:text-white">{formatNumber(community.deposit_per_person)}딜</span>
@@ -275,7 +275,7 @@ export default function ReferralPage() {
 
       <div className="ur-content-narrow px-4 lg:px-8 py-4 space-y-3 pb-32" style={{ background: '#F9FAFB', minHeight: 'calc(100dvh - 48px)' }}>
         {/* 1. Hero Header — 상품 + 크리에이터 + 카운트다운 */}
-        <section className="bg-surface rounded-2xl p-4 border border-line">
+        <section className="bg-surface rounded-2xl p-4 shadow-lift">
           {product && (
             <div className="flex gap-3 mb-4">
               {product.image_url && (
@@ -327,7 +327,7 @@ export default function ReferralPage() {
         {/* 2. Tier Progress Bar — 🧭 2026-06-17: 친구초대 동적 할인 종료 시 숨김(단일가 통일).
               참여 인원은 아래 Participants 섹션에서 소셜 증거로 노출. */}
         {!REFERRAL_GROUP_DISCOUNT_DISABLED && (
-        <section className="bg-surface rounded-2xl p-5 border border-line">
+        <section className="bg-surface rounded-2xl p-5 shadow-lift">
           {/* 현재 할인 표시 */}
           <div className="text-center mb-5">
             {currentDiscount > 0 ? (

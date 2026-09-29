@@ -24,8 +24,7 @@ import CustomModal from './cart/CustomModal'
 import BrandLoader from '@/components/brand/BrandLoader'
 import ContinueShoppingLink from '@/components/mall/ContinueShoppingLink'
 
-// 🛡️ 2026-05-02: TD-018 분할 — CustomModal 을 ./cart/CustomModal 로 추출.
-//   CustomModal 내부에서 쓰던 lucide 아이콘 (AlertCircle, CheckCircle, Info) 은
+// 🛡️ 2026-05-02: TD-018 분할 — CustomModal 을 ./cart/CustomModal 로 추출. CustomModal 내부에서 쓰던 lucide 아이콘 (AlertCircle, CheckCircle, Info) 은
 //   해당 파일로 이동. 본체에서 X 아이콘은 헤더 닫기 버튼에서 계속 사용.
 
 /** 📦 2026-09-01: 배송비 판정은 SSOT 하나로 — 여기와 결제 화면이 갈려 총액이 달랐다(product-flow.ts). */

@@ -54,8 +54,7 @@ export default function RestaurantMapPage({ home = false, mode = 'map' }: { home
   const [region, setRegion] = useState('')
   // 🛍️ 2026-06-20 (대표 — 세부 지역): KOREA_REGIONS 계층 — 시/도(region) + 세부 지역그룹(district, 해운대/경성대…).
   const [district, setDistrict] = useState('')
-  // 🔎 2026-07-20 (대표 — "지도 검색은 지도에서 계속"): 검색어를 URL(?q=)에 반영 → 뒤로가기·공유·새로고침
-  //   일관 + 지역명이면 지도 재중심(panToPlaceQuery). 초기값은 ?q= 에서 시드.
+  // 🔎 2026-07-20 (대표 — "지도 검색은 지도에서 계속"): 검색어를 URL(?q=)에 반영 → 뒤로가기·공유·새로고침 일관 + 지역명이면 지도 재중심(panToPlaceQuery). 초기값은 ?q= 에서 시드.
   const [searchParams, setSearchParams] = useSearchParams()
   const [search, setSearch] = useState(() => searchParams.get('q') || '')
   const [mapView, setMapView] = useState(true)

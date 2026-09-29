@@ -101,26 +101,26 @@ export default function MyLedgerPage() {
         <>
           {/* 요약 카드 4개 */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <div className="bg-white rounded-xl p-4 shadow-lift">
               <div className="flex items-center gap-1 text-[12px] text-gray-500"><TrendingUp className="w-3.5 h-3.5" /> 누적 발생액</div>
               <p className="text-[17px] font-bold text-gray-900 mt-1">{formatWon(data.summary.total_earned)}</p>
             </div>
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <div className="bg-white rounded-xl p-4 shadow-lift">
               <div className="flex items-center gap-1 text-[12px] text-gray-500"><Send className="w-3.5 h-3.5" /> 송금 완료</div>
               <p className="text-[17px] font-bold text-emerald-600 mt-1">{formatWon(data.summary.total_paid)}</p>
             </div>
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <div className="bg-white rounded-xl p-4 shadow-lift">
               <div className="flex items-center gap-1 text-[12px] text-gray-500"><ClockIcon className="w-3.5 h-3.5" /> 미정산 잔액</div>
               <p className="text-[17px] font-bold text-amber-600 mt-1">{formatWon(data.summary.pending)}</p>
             </div>
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <div className="bg-white rounded-xl p-4 shadow-lift">
               <div className="text-[12px] text-gray-500">총 entries</div>
               <p className="text-[17px] font-bold text-gray-900 mt-1">{data.summary.entry_count}건</p>
             </div>
           </div>
 
           {/* 송금 이력 */}
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-xl overflow-hidden shadow-lift">
             <div className="px-4 py-3 border-b border-gray-100">
               <h2 className="text-[15px] font-bold text-gray-900">최근 송금 이력</h2>
             </div>
@@ -179,7 +179,7 @@ export default function MyLedgerPage() {
           </div>
 
           {/* ledger entries */}
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-xl overflow-hidden shadow-lift">
             <div className="px-4 py-3 border-b border-gray-100">
               <h2 className="text-[15px] font-bold text-gray-900">최근 ledger entries (최대 50개)</h2>
             </div>

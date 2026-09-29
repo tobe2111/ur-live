@@ -88,7 +88,7 @@ export default function StayCheckoutReturnPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <SEO title="숙소 결제 확인 - 유어딜" description="숙소 결제 확인" url="/stays/checkout-return" noindex />
-      <div className="w-full max-w-md bg-white rounded-2xl border border-gray-100 p-6 text-center">
+      <div className="w-full max-w-md bg-white rounded-2xl p-6 text-center shadow-lift">
         {/* 🎯 2026-07-18 로딩 단일화 — 결제 승인 중은 유어딜 BrandLoader(경고문은 label 로 보존). */}
         {state === 'confirming' && <BrandLoader label="결제 승인 중 · 페이지를 닫지 마세요" />}
         {state === 'success' && (

@@ -229,7 +229,7 @@ export default function InfluencerSettlementPage() {
         </div>
 
         {/* 정산 정보 입력 */}
-        <div className="bg-surface border border-line rounded-xl p-5 space-y-4">
+        <div className="bg-surface rounded-xl p-5 space-y-4 shadow-lift">
           <h3 className="text-[15px] font-bold text-gray-900 dark:text-white">정산 정보</h3>
 
           <div>
@@ -350,7 +350,7 @@ export default function InfluencerSettlementPage() {
         <DealsAndCodesSection ownerFunded={ownerFunded} />
 
         {/* 최근 내역 */}
-        <div className="bg-surface border border-line rounded-xl p-5">
+        <div className="bg-surface rounded-xl p-5 shadow-lift">
           <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">최근 commission 내역 ({recent.length}건)</h3>
           {recent.length === 0 ? (
             <p className="text-[12px] text-gray-400 text-center py-6">아직 referral commission 이 없습니다</p>

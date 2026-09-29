@@ -56,7 +56,7 @@ export default function CreatorStartPage() {
   return (
     <div className="force-light-theme min-h-[100dvh] bg-gray-50 py-14 px-4">
       <SEO title="딜 소개 시작하기 - 유어딜" description="유어딜 소개 파트너로 시작합니다. 카카오 로그인만 하면 내 유어샵이 바로 준비돼요." url="/creators/start" />
-      <div className="mx-auto max-w-md rounded-xl border border-gray-200 bg-white p-8 text-center">
+      <div className="mx-auto max-w-md rounded-xl bg-white p-8 text-center shadow-lift">
         {phase === 'checking' && (
           <>
             <div className="text-3xl mb-3">⏳</div>

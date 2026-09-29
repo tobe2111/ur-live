@@ -81,7 +81,7 @@ export default function CampaignApplyPage() {
         </div>
 
         {done ? (
-          <div className="rounded-xl border border-emerald-200 bg-white p-8 text-center">
+          <div className="rounded-xl bg-white p-8 text-center shadow-lift">
             <div className="text-4xl mb-3">🎉</div>
             <div className="text-[17px] font-semibold text-gray-900">신청이 완료되었습니다</div>
             <p className="mt-2 text-[15px] text-gray-600">
@@ -100,7 +100,7 @@ export default function CampaignApplyPage() {
             )}
           </div>
         ) : !loggedIn ? (
-          <div className="rounded-xl border border-gray-200 bg-white p-8 text-center">
+          <div className="rounded-xl bg-white p-8 text-center shadow-lift">
             <div className="text-4xl mb-3">💬</div>
             <div className="text-[15px] font-semibold text-gray-900">카카오 로그인 후 1분이면 신청 완료</div>
             <p className="mt-2 text-[15px] text-gray-600">신청하면 유어딜 계정과 내 추천 링크가 바로 만들어집니다.</p>
@@ -109,7 +109,7 @@ export default function CampaignApplyPage() {
             </a>
           </div>
         ) : (
-          <div className="rounded-xl border border-gray-200 bg-white p-6 space-y-4">
+          <div className="rounded-xl bg-white p-6 space-y-4 shadow-lift">
             <div>
               <label className="block text-[15px] font-medium text-gray-700 mb-1">활동 계정 주소(URL) <span className="text-rose-500">*</span></label>
               <input value={f.account_url} onChange={set('account_url')} placeholder="https://instagram.com/..." className={input} />

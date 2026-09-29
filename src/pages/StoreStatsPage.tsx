@@ -247,7 +247,7 @@ export default function StoreStatsPage() {
             { label: t('storeStats.labelExpired'), value: stats.expired, icon: BadIcon, color: 'text-gray-500 dark:text-gray-400', bg: 'bg-gray-100 dark:bg-[#1D1F29]' },
             { label: t('storeStats.labelTotal'), value: stats.total_vouchers, icon: ClockIcon, color: 'text-tone-warn', bg: 'bg-tone-warn-bg' },
           ].map(s => (
-            <div key={s.label} className="bg-surface rounded-xl p-4 border border-line">
+            <div key={s.label} className="bg-surface rounded-xl p-4 shadow-lift">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[12px] text-gray-500 dark:text-gray-400">{s.label}</span>
                 <div className={`w-7 h-7 ${s.bg} rounded-lg flex items-center justify-center`}>
@@ -260,7 +260,7 @@ export default function StoreStatsPage() {
         </div>
 
         {/* 사용률 바 */}
-        <div className="bg-surface rounded-xl p-5 border border-line mb-5">
+        <div className="bg-surface rounded-xl p-5 mb-5 shadow-lift">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[15px] font-bold text-gray-900 dark:text-white">바우처 사용률</span>
             <span className="text-[15px] font-bold text-green-600">{usedPercent}%</span>
@@ -333,7 +333,7 @@ export default function StoreStatsPage() {
         </div>
 
         {/* 공동구매 현황 */}
-        <div className="bg-surface rounded-xl p-5 border border-line">
+        <div className="bg-surface rounded-xl p-5 shadow-lift">
           <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">공동구매 현황</h3>
           <div className="flex items-center justify-between mb-2">
             <span className="text-[12px] text-gray-500 dark:text-gray-400">참여자</span>
