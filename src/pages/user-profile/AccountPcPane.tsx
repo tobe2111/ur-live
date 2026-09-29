@@ -4,14 +4,14 @@
  *   대표: *"PC 모드 답지 않은 페이지야. PC모드에선 이렇게 나오면 안돼."* — 종전 PC 는 모바일 '마이'의
  *   메뉴 목록(내 이용권/내 교환권/쿠폰함/…)을 가운데 600px 에 그대로 세운 것이라, 왼쪽 메뉴와 오른쪽
  *   목록이 **같은 항목을 두 번** 보여 줬다. 오른쪽은 메뉴가 아니라 **내용**이어야 한다:
- *     ① 프로필 한 줄 카드 ② 숫자 넷(딜·이용권·교환권·쿠폰 — 주인공) ③ 주문 현황 + 리뷰어 레벨 한 줄
+ *     ① 프로필 한 줄 카드 ~~② 숫자 넷~~(2026-09-29 안 C — 페이지 맨 위 `MyStats` 한 줄로) ③ 주문 현황 + 리뷰어 레벨 한 줄
  *     ④ 곧 쓸 이용권(티켓 카드, 지갑·결제 완료와 같은 부품) ⑤ 바로가기 타일 넷.
  *   그 아래(수익·역할·설정·로그아웃)는 페이지가 모바일과 **같은 컴포넌트**를 이어 그린다.
  *
  *   모바일(<lg)에서는 이 컴포넌트가 마운트되지 않는다(페이지의 `isPc` 분기) — 모바일은 손대지 않는다.
  *   데이터는 전부 기존 훅/엔드포인트(`useMyCounts` · `useMyVouchers` · `/api/points/balance`) 재사용.
  */
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ChevronRight } from 'lucide-react'
@@ -19,9 +19,7 @@ import { ChevronRight } from 'lucide-react'
 //    (같은 줄이 기기마다 다른 그림이면 그게 곧 '덜 만든' 인상이다).
 //    ⚠️ 이 import 에 있던 `BookOpen` 은 **참조 0인 죽은 이름**이라 함께 걷었다.
 import { StayLineIcon, StarIcon, HeartIcon, BellIcon } from '@/components/icons/urdeal-icons'
-import api from '@/lib/api'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
-import { formatNumber } from '@/utils/format'
 import { parseUTCDate, formatKSTDate } from '@/utils/date'
 import { useMyVouchers } from '@/hooks/queries/useMyData'
 import { isStoreVoucher } from '@/shared/voucher-wallet'
@@ -34,7 +32,6 @@ import type { MyStoresState } from './useMyStores'
 type MyVoucher = NonNullable<ReturnType<typeof useMyVouchers>['data']>[number]
 type Counts = { voucher: number | null; gifticon: number | null; coupon?: number | null; wish?: number | null }
 
-const KPI_CLS = 'rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift p-5 text-left active:opacity-90'
 const TILE_CLS = 'flex items-center gap-3 rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift px-4 py-3 text-left text-[13px] font-semibold text-gray-900 dark:text-white active:opacity-90'
 
 function dday(expiresAt?: string): number | null {
@@ -53,14 +50,9 @@ export default function AccountPcPane({ counts, userName, profileImage, onEditPr
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [balance, setBalance] = useState<number | null>(null)
-  useEffect(() => {
-    let alive = true
-    const load = () => api.get('/api/points/balance').then(r => { if (alive && r.data?.success) setBalance(Number(r.data.data?.balance ?? 0)) }).catch(() => {})
-    load()
-    window.addEventListener('pointsBalanceChanged', load)
-    return () => { alive = false; window.removeEventListener('pointsBalanceChanged', load) }
-  }, [])
+  /* 🔢 2026-09-29(안 C): 잔액 조회를 여기서 걷었다 — 같은 값을 `MyStats` 가 페이지 맨 위에서
+     읽는다. 두 컴포넌트가 각자 `/api/points/balance` 를 부르면 **한 화면이 두 번 묻고**, 하나가
+     실패하면 같은 숫자가 두 자리에서 달라진다. */
   const { data: vouchers } = useMyVouchers()
   // 곧 쓸 이용권 — 사용 가능(unused) 매장 이용권을 만료 임박순으로 3장. 기한 없는 건 뒤로.
   const soon = useMemo(() => {
@@ -68,12 +60,6 @@ export default function AccountPcPane({ counts, userName, profileImage, onEditPr
     return [...list].sort((a, b) => (dday(a.expires_at) ?? 9e9) - (dday(b.expires_at) ?? 9e9)).slice(0, 3)
   }, [vouchers])
 
-  const kpis = [
-    { label: t('my.dealBalance', { defaultValue: '내 딜 잔액' }), value: balance == null ? '–' : formatNumber(balance), unit: '딜', link: t('my.dealHistory', { defaultValue: '사용 내역' }), path: '/my-deal-history' },
-    { label: t('my.kpiVouchers', { defaultValue: '사용 가능 이용권' }), value: counts.voucher == null ? '–' : String(counts.voucher), unit: '장', link: t('my.kpiOpenWallet', { defaultValue: '지갑 열기' }), path: '/my-vouchers' },
-    { label: t('my.kpiGifticons', { defaultValue: '받은 교환권' }), value: counts.gifticon == null ? '–' : String(counts.gifticon), unit: '장', link: t('my.kpiSeeGifticons', { defaultValue: '교환권 보기' }), path: '/my-gifticons' },
-    { label: t('shopping.coupons', { defaultValue: '쿠폰' }), value: counts.coupon == null ? '–' : String(counts.coupon), unit: '장', link: t('my.kpiCouponBox', { defaultValue: '쿠폰함' }), path: '/my-coupons' },
-  ]
   const tiles = [
     { Icon: StayLineIcon, label: t('shopping.myStays', { defaultValue: '내 숙소 예약' }), path: '/my-stays' },
     { Icon: StarIcon, label: t('shopping.myFollows', { defaultValue: '내 단골 가게' }), path: '/my/follows' },
@@ -116,18 +102,10 @@ export default function AccountPcPane({ counts, userName, profileImage, onEditPr
         </button>
       </div>
 
-      {/* ② 숫자 넷 — 주인공 */}
-      <div className="grid grid-cols-4 gap-4">
-        {kpis.map(k => (
-          <button key={k.path} type="button" onClick={() => navigate(k.path)} className={KPI_CLS}>
-            <p className="text-[12px] text-gray-500 dark:text-gray-400">{k.label}</p>
-            <p className="mt-2 text-[28px] font-extrabold leading-none tracking-[-0.02em] text-gray-900 dark:text-white tabular-nums">
-              {k.value}<span className="ml-1 text-[15px] font-bold text-gray-400 dark:text-gray-500">{k.unit}</span>
-            </p>
-            <p className="mt-3 text-[13px] font-bold text-brand-text">{k.link} ›</p>
-          </button>
-        ))}
-      </div>
+      {/* 🔢 2026-09-29 (대표 확정 **안 C**) — **숫자 카드 넷을 걷었다.** 같은 넷이 이제 페이지
+          맨 위 `MyStats` 한 줄에 있다(2열 래퍼 밖, 폰과 같은 부품). 여기 있던 카드들은 한 장에
+          `p-5` + 28px 숫자 + 링크 줄이라 넷이 우측 칸의 절반을 먹었고, 실측상 **셋이 0** 이었다.
+          목적지는 하나도 안 잃었다 — 네 경로 전부 그 줄의 칸이 그대로 들고 간다. */}
 
       {/* ③ 주문 현황 + 리뷰어 레벨 — 한 줄 (기존 컴포넌트 재사용, 칸 안에서 폭 제한 무력화는 index.css) */}
       <div className="grid grid-cols-2 gap-4 items-start">

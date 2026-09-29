@@ -11,7 +11,7 @@ import { RewardAdCard } from '@/components/my-page/reward-ad-card'
 import { ChevronRight } from 'lucide-react'
 // 🎨 2026-09-28: 남은 lucide 는 `ChevronRight`(이동) 하나뿐 — 조작이라 그대로 둔다.
 import { LogOutIcon, ReceiptIcon, ScanIcon, UrShopIcon } from '@/components/icons/urdeal-icons'
-import TeamPointsCard from './user-profile/TeamPointsCard'
+import MyStats from './user-profile/MyStats'
 import EarningsGroup from './user-profile/EarningsGroup'
 import ReferralEarnedCard from './user-profile/ReferralEarnedCard'
 import CuratorEarningsCard from './user-profile/CuratorEarningsCard'
@@ -234,6 +234,14 @@ export default function UserProfilePage() {
       {/* ⚠️ **가게가 없으면 두 열로 나누지 않는다.** 왼쪽 열은 판매 전용이라, 좌석이 0 이면
           그 칸이 통째로 비고 손님 블록이 전부 좁은 오른쪽으로 몰린다(첫 판에서 실제로 그랬다).
           판매가 있을 때만 쪼갠다 — 없으면 종전 한 열 그대로다. */}
+      {/* 🔢 2026-09-29 (대표 확정 **안 C**) — 숫자 한 줄이 **맨 위**이고 폰·PC 가 같다.
+          종전엔 같은 숫자가 두 벌이었다: 폰은 딜 잔액 카드 하나(`TeamPointsCard`, 판매 구역 *아래*),
+          PC 는 우측에 **큰 카드 넷**(딜·이용권·교환권·쿠폰)인데 **그중 셋이 0** 이었다 — 0 을 네 번
+          말하려고 우측 칸의 절반을 쓰고 있었다. 코레일톡이 같은 일을 구분선 한 줄로 하는 것을
+          보고 대표가 이 형태를 골랐다.
+          ⚠️ 2열 래퍼 **밖**이다 — 숫자는 판매/손님 어느 쪽 것도 아니라 두 칸 위에 걸쳐야 한다. */}
+      <MyStats voucher={counts.voucher} gifticon={counts.gifticon} coupon={counts.coupon} />
+
       <div className={sellerSeats.stores.length > 0 ? 'ur-account-cols ur-account-cols--split' : 'ur-account-cols'}>
       <div className="ur-account-col min-w-0">
 
@@ -260,9 +268,6 @@ export default function UserProfilePage() {
       {/* 🏪 2026-09-25 (대표 확정 §14 — "하는 것도 마이에서"): 판매가 **맨 위**.
           사장님은 하루에 이 화면을 가장 많이 열고, 그때 보려는 건 오늘 숫자다. 셀러가 아니면 렌더 0. */}
       <SellerSection state={sellerSeats} />
-
-      {/* v4 딜 잔액 + 충전 (큰 박스) */}
-      <TeamPointsCard />
 
       {/* v4 광고 리워드 카드 — 딜 버는 수단이라 딜 잔액 바로 아래(웹은 null 렌더·네이티브 전용) */}
       <RewardAdCard />
@@ -361,7 +366,9 @@ export default function UserProfilePage() {
 
       {/* 🛡️ 2026-05-21: 역할 진입 CTA 2x2 grid — 공구개최 / 사장님 / 셀러 / 에이전시.
             ur-content-medium 부모 wrap — 다른 섹션과 동일 폭 정렬 (overflow 영구 fix). */}
-      <div className="ur-content-medium px-4 lg:px-8 pt-5">
+      {/* 🧱 2026-09-29(안 C): 가로 패딩 없음 — 평면 줄이 자기 `px-4` 를 갖는다.
+          여기서 또 주면 이 구역만 16px 들여쓰여 제목 줄이 옆 구역과 안 맞는다(첫 렌더에서 실제로 그랬다). */}
+      <div className="ur-content-medium lg:px-4">
         <RoleCtaGrid />
       </div>
 

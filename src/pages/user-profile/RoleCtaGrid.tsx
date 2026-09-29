@@ -18,7 +18,7 @@ import type { LucideIcon } from 'lucide-react'
 // 🎨 2026-09-28: 셋 다 '무엇을 하는 곳' 이라 유어딜 아이콘. 특히 '내 가게 등록' 은
 //    장바구니(ShoppingBag)였는데 **사는 행위**로 읽혔다 — 실제 뜻은 가게를 내는 것이다.
 import { UrShopIcon, ProposeIcon, ShopPlusIcon } from '@/components/icons/urdeal-icons'
-import { GroupLabel, ListPlate, ListRow, rowIcon } from './list-grammar'
+import { SectionTitle, ListRow, rowIcon } from './list-grammar'
 import { COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
 
 interface Cta {
@@ -72,24 +72,24 @@ export default function RoleCtaGrid() {
    *   테두리는 표면 규칙 ①(*"카드 테두리 0"*) 위반이었다. ⇒ `list-grammar` 한 벌로.
    *   경로가 실재하는 줄이라 `to` 로 준다(우클릭·새 탭이 그대로 된다).
    */
+  /**
+   * 🔵 2026-09-29 (안 C): 판·그룹 라벨을 걷고 **한 구역 · 평면 줄**로.
+   * ⚠️ `desc` 를 안 넘긴다 — 안 C 의 `hint` 는 오른쪽 **짧은 값**(여덟 자 안팎)이라 설명 문장을
+   *   넣으면 잘린다(`이용권을 담아 진열하고…`). 잘린 설명은 없느니만 못하다.
+   *   제목이 혼자 서도 읽힌다: *내 유어샵 · 동네 공구 제안 · 내 가게 등록.*
+   */
   const Row = (c: Cta) => (
-    <ListRow key={c.to} to={c.to} icon={rowIcon(c.Icon)} label={c.title} hint={c.desc} />
+    <ListRow key={c.to} to={c.to} icon={rowIcon(c.Icon)} label={c.title} />
   )
 
   return (
-    <section className="w-full min-w-0 space-y-4">
-      {dashboardItems.length > 0 && (
-        <div>
-          <GroupLabel>{t('roleCta.myShortcuts', { defaultValue: '내 바로가기' })}</GroupLabel>
-          <ListPlate>{dashboardItems.map(Row)}</ListPlate>
-        </div>
-      )}
-      {signupItems.length > 0 && (
-        <div>
-          <GroupLabel>{t('roleCta.startNewRole', { defaultValue: '추가 역할로 시작하기' })}</GroupLabel>
-          <ListPlate>{signupItems.map(Row)}</ListPlate>
-        </div>
-      )}
+    /* 🧱 가로 패딩 없음 — 줄이 자기 `px-4` 를 갖는다. */
+    <section className="w-full min-w-0">
+      <SectionTitle>{t('roleCta.myShortcuts', { defaultValue: '바로 가기' })}</SectionTitle>
+      <div>
+        {dashboardItems.map(Row)}
+        {signupItems.map(Row)}
+      </div>
     </section>
   )
 }

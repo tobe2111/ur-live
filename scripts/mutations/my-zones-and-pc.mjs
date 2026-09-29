@@ -18,23 +18,24 @@ export default [
     why: '이름 E 의 읽는 규칙은 "제목이 붙은 구역이 파는 쪽" 하나다 — 제목이 본문과 같은 크기면 규칙 자체가 안 보인다.',
   },
   {
-    name: '🧭 구역 띠가 사라진다',
+    // 🔁 2026-09-29 재조준(안 C): 브랜드 띠를 걷었다 — 모든 구역이 24px 제목을 달게 되면서
+    //   '제목이 붙은 구역이 파는 쪽' 규칙이 성립하지 않고, 표시자가 **판**으로 옮겨갔다.
+    name: '🧭 파는 쪽 표시자(판)가 사라진다',
     file: 'src/pages/user-profile/SellerSection.tsx',
-    find: 'top-4 bottom-0 w-[3px] rounded-full bg-brand" />',
-    replace: '',
+    find: '      <div className={LIST_PLATE_CLS}>',
+    replace: '      <div>',
     test: TEST,
     why: '제목을 구역 전체로 늘린 장치다 — 없으면 어디까지가 파는 쪽인지 첫 줄에서만 알 수 있다.',
   },
   {
-    name: '🧭 구역 경계선이 페이지 쪽으로 옮겨진다 (좌석 0 이면 허공에 선이 뜬다)',
-    file: 'src/pages/user-profile/SellerSection.tsx',
-    // 🔁 2026-09-28 재조준: PC 가 두 열이 되면서 이 선에 `lg:hidden` 이 붙었다(옆에 손님 쪽이 있는
-    //   화면에서는 아무것도 가르지 않는 유리선이었다). 지키려던 것은 **선이 이 컴포넌트 안에 있다**
-    //   이지 클래스 문자열이 아니므로, 앵커만 새 줄로 옮긴다.
-    find: '      <div className="mt-5 h-px bg-black/[0.08] dark:bg-white/[0.08] lg:hidden" />',
+    name: '🧭 손님 구역이 제목 없이 시작한다 (판매 목록과 한 덩어리로 읽힌다)',
+    file: 'src/pages/user-profile/ShoppingGroup.tsx',
+    // 🔁 2026-09-29 재조준(안 C): 경계선을 걷었다 — 아래 구역이 **자기 24px 제목**으로 시작하므로
+    //   선이 할 일이 없다. 그래서 이제 지킬 것은 **그 제목이 있다** 는 것이다.
+    find: '      <SectionTitle>{t(\'shopping.sectionTitle\', { defaultValue: \'내가 산 것\' })}</SectionTitle>',
     replace: '',
     test: TEST,
-    why: '이 섹션은 좌석이 없으면 `null` 이다 — 선을 페이지가 따로 판정해 그리면 판정이 두 곳이 되고 반드시 갈린다.',
+    why: '손님 구역이 제목 없이 시작하면 판매 도구 목록과 손님 목록이 한 덩어리로 읽힌다(경계가 통째로 사라진다).',
   },
   {
     name: '🧭 ko 로케일만 옛 라벨로 남는다 (코드는 맞는데 화면은 "나의 이용 내역")',
@@ -57,18 +58,22 @@ export default [
     why: 'PC 를 여는 사장님이 보려는 건 오늘 숫자 하나다 — 그게 첫 줄이 아니면 PC 를 여는 이유가 사라진다.',
   },
   {
-    name: '🖥️ PC 히어로가 세로로 되돌아간다 (1200px 에 숫자 하나만 남는다)',
-    file: 'src/pages/user-profile/SellerSection.tsx',
-    find: '      <div className="lg:flex lg:items-stretch lg:gap-3">',
-    replace: '      <div>',
+    // 🔁 2026-09-29 재조준(안 C): [오늘 | 사용처리] 가로 배치를 걷고 같은 판 안에 세로로 쌓았다.
+    //   지금 지킬 것은 **숫자 한 줄이 페이지 맨 위에 있다** 는 것이다(폰·PC 공통).
+    name: '🖥️ 상단 숫자 한 줄이 사라진다 (PC 가 다시 카드 넷으로 갈 길이 열린다)',
+    file: 'src/pages/UserProfilePage.tsx',
+    find: '      <MyStats voucher={counts.voucher} gifticon={counts.gifticon} coupon={counts.coupon} />\n',
+    replace: '',
     test: TEST,
     why: '폰 배치를 그대로 늘리면 오늘 숫자 옆이 통째로 비고 사용처리가 한참 아래로 밀린다 — 09-28 "PC가 심플하다" 의 원인.',
   },
   {
-    name: '🔵 구역 띠가 PC 에서 다시 카드를 관통한다 (lg:-left-3 → lg:left-3)',
-    file: 'src/pages/user-profile/SellerSection.tsx',
-    find: 'left-1.5 lg:-left-3',
-    replace: 'left-1.5 lg:left-3',
+    // 🔁 2026-09-29 재조준(안 C): 띠가 없어져 오프셋 결함이 성립하지 않는다. 그 자리에
+    //   **PC 숫자 카드 넷의 부활**을 막는다(우측 칸의 절반을 먹던 그것 — 실측상 셋이 0 이었다).
+    name: '🔵 PC 숫자 카드 넷이 되살아난다 (셋이 0 인데 카드 넷)',
+    file: 'src/pages/user-profile/AccountPcPane.tsx',
+    find: '  return (\n    <div className="space-y-5 pb-2">',
+    replace: '  return (\n    <div className="space-y-5 pb-2">\n      <div className="grid grid-cols-4 gap-4" />',
     test: TEST,
     why: 'PC 우측 칸은 좌우 패딩이 0 이라 양수 오프셋은 거터가 아니라 카드 안쪽이다 — 띠가 일감 카드를 세로로 갈랐다(하네스 실측).',
   },

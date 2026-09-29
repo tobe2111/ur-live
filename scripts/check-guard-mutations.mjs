@@ -2132,14 +2132,16 @@ const MUTATIONS = [
   },
   {
     name: '평면 그라디언트가 다시 들어온다(단색인데 그라디언트인 척)',
-    file: 'src/pages/user-profile/TeamPointsCard.tsx',
+    //   🔁 2026-09-29 세 번째(안 C): `TeamPointsCard` 자체가 사라졌다 — 딜 잔액이 상단 숫자 한 줄로
+    //      옮겨갔다. 불변식(평면 그라디언트 탐지)은 그대로라 그 줄의 컨테이너로 옮긴다.
+    file: 'src/pages/user-profile/MyStats.tsx',
     // 🔁 2026-09-28 재조준: 앵커였던 검정 슬래브(`bg-ink …`)가 사라졌다 — 마이 잔액이 교환권 탭과
     //   **같은 흰 카드 부품**을 쓰게 됐기 때문이다. 지키려는 불변식(평면 그라디언트 탐지)은 그대로라
     //   같은 파일에 남아 있는 줄로 옮긴다.
     //   🔁 같은 날 두 번째: 그 줄의 `py-3` 도 사라졌다(딜 잔액에 그룹 라벨이 붙으면서 바깥 여백을
     //      라벨이 가져갔다). 파일 안에서 **가장 안 흔들리는 줄**(부품 호출)로 다시 옮긴다.
-    find: '      <DealBalanceCard',
-    replace: '      <div className="bg-gradient-to-r from-gray-800 to-gray-800" />\n      <DealBalanceCard',
+    find: '      <div className="flex items-start divide-x divide-rule py-1">',
+    replace: '      <div className="bg-gradient-to-r from-gray-800 to-gray-800" />\n      <div className="flex items-start divide-x divide-rule py-1">',
     test: 'src/tests/unit/button-system.test.ts',
     why:
       'from/to 가 같은 색이면 브라우저는 그라디언트를 계산하는데 화면엔 단색이 나온다. ' +

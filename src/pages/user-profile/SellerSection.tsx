@@ -43,7 +43,7 @@ import PendingOrders from './seller-section/PendingOrders'
 // 🧾 2026-09-28: 묶음 라벨·줄은 손님 쪽 목록과 **같은 부품**이다(`list-grammar`).
 //   종전엔 이 파일 안에 `GroupLabel`/`ToolRow` 가 따로 있었고, 손님 쪽은 또 다른 문법이라
 //   같은 화면에 목록 문법이 두 벌이었다 — 대표 *"허술해"*(09-28)의 실체 중 하나.
-import { GroupLabel, LIST_PLATE_CLS, ListRow as ToolRow } from './list-grammar'
+import { LIST_PLATE_CLS, ListRow as ToolRow } from './list-grammar'
 
 /**
  * ⏳ **시트는 전부 열 때 받는다** (2026-09-26 — 대표 *"로딩 속도를 줄이고"*).
@@ -199,26 +199,18 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
   const note = store.status ? STATUS_NOTE[store.status] : undefined
 
   return (
-    <div className="ur-content-medium px-4 lg:px-8 pt-4 relative">
-      {/* 🔵 2026-09-28 (대표 확정 **이름 E**) — 구역 띠.
-          이름 후보 다섯 중 E 는 *"2구역(손님)의 큰 제목을 없앤다"* 다. 그러면 읽는 규칙이 하나로 줄어든다:
-          **제목이 붙은 구역이 파는 쪽.** 그 규칙이 서려면 제목이 본문 라벨과 구별돼야 해서 13px → 25px.
-          띠는 그 제목을 구역 전체로 늘린 것이고, 거터 안(6px)에 떠 있어 **본문 여백을 한 픽셀도 안 건드린다**.
-          ⚠️ 일반 유저에게는 이 구역 자체가 안 뜬다(좌석 0 → `null`) — 가를 상대가 없으면 띠는 장식이라
-          §11-d 의 권고대로 **안 그린다**. E 를 고른 덕에 그 판정이 저절로 맞는다.
-          🩸 2026-09-28 (하네스 실측으로 수리) — PC 는 **음수**여야 한다(`lg:-left-3`). 처음엔 폰과 같은
-          발상으로 `lg:left-3` 을 줬는데, 마이의 PC 우측 칸은 `.ur-account-pane .ur-content-medium`
-          이 **좌우 패딩을 0 으로 지운다**(index.css §마이페이지 PC 2단). 거터가 없으니 +12px 는
-          카드 **안쪽**이고, 띠가 일감 카드들의 왼쪽을 세로로 관통했다. 음수면 `.ur-account-pc` 의
-          좌우 패딩(2rem) 안에 떠서 무엇도 가리지 않는다.
-          🔁 2026-09-28: 종전 근거는 그 그리드의 `gap: 32px`(내비와 칸 사이)였는데 **내비를 걷어내
-             gap 이 사라졌다.** 값(-12px)은 그대로 맞다 — 이제 패딩 32px 안에 뜬다.
-          ⚠️ 이 결함은 코드를 읽어선 안 보인다 — 조판이 CSS 두 파일에 나뉘어 있다. 띠 위치를 바꾸면
-          `node scripts/visual-preview.mjs --route=/user/profile --auth=user --stores=2 --width=1200`
-          으로 **눈으로** 확인할 것(1200 이 가장 좁은 PC 다). */}
-      <span aria-hidden="true" className="absolute left-1.5 lg:-left-3 top-4 bottom-0 w-[3px] rounded-full bg-brand" />
+    <div className="ur-content-medium lg:px-4 pt-4">
+      {/* 🔵 2026-09-29 (대표 확정 **안 C**) — **구역 띠를 걷었다.**
+          09-28 의 띠(`w-[3px] bg-brand`)는 *"제목이 붙은 구역이 파는 쪽"* 이라는 이름 E 규칙을 구역
+          전체로 늘린 표시였다. 안 C 는 **모든 구역**에 24px 제목을 주므로 그 규칙이 성립하지 않고,
+          표시자는 **판**(흰 카드 + 파란 사용처리 줄)이 맡는다.
+          그리고 표면 규칙 ②(*"강조색 하나, 자리 셋"*)로도 띠를 남길 수 없다 — 이 구역의 파란 자리는
+          이미 셋이다(사용처리 면 · 확인 대기 숫자 · 받을 돈). 띠가 넷째가 된다.
+          ⚠️ 되살린다면 PC 는 **음수 오프셋**이어야 한다(`lg:-left-3`) — 마이 PC 칸은
+             `.ur-account-pane .ur-content-medium` 이 좌우 패딩을 0 으로 지워서, 양수면 띠가
+             카드 **안쪽**을 세로로 관통한다(2026-09-28 에 하네스로 실측해 고친 결함이다). */}
       {/* 섹션 머리 — 오른쪽이 곧 가게 전환(2곳 이상일 때만 누를 수 있다) */}
-      <div className="flex items-center gap-2 mb-2">
+      <div className="flex items-center gap-2 mb-2 px-4">
         <h2 className="text-[24px] leading-tight font-extrabold tracking-[-0.03em] text-gray-900 dark:text-white">내 가게</h2>
         <div className="flex-1" />
         {stores.length >= 2 ? (
@@ -243,28 +235,24 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
         )}
       </div>
 
-      {/* 🖥️ 2026-09-28 (대표 확정 **PC 1안 — "오늘이 머리"**): lg+ 에서 [오늘 카드 | 사용처리] 한 줄.
-          PC 를 여는 이유는 *오늘 얼마고 무엇이 대기인가* 하나라 그게 첫 줄이어야 하는데, 폰 배치를
-          그대로 늘리면 1200px 폭에 30px 숫자 하나가 덩그러니 남고 사용처리는 한참 아래로 밀린다.
-          ⚠️ 폰(<lg)은 `flex` 가 안 걸려 **종전과 byte-동일한 세로 배치**다. */}
-      <div className="lg:flex lg:items-stretch lg:gap-3">
-      <div className="lg:flex-1 lg:min-w-0">
-      {/* 🎨 2026-09-28 (대표 *"디자인 UI 모두 별로야. 대기업수준이 필요해"*) — **파란 밴드를 뺐다.**
-          이 카드는 `TicketCard`(파란 머리 밴드)였는데, **바로 옆·아래에 파란 사용처리 면**이 붙어
-          강조색 면이 둘 나란히 섰다. 표면 규칙 ②는 *"강조색 하나, 자리 셋 — 밴드 · 주 행동 **글자** ·
-          강조 단어"* 이고, 면이 둘이면 어느 쪽도 강조가 아니다.
-          🎫 그리고 **티켓 은유(규칙 ④)는 '산 권'의 것**이다 — 매출 숫자에 티켓 밴드를 씌운 건 부품
-             오용이었다. 여기서 주인공은 규칙 ③ 그대로 **숫자**다.
-          ⇒ 흰 판 + 회색 머리줄. 파란 면은 화면에 **하나**(사용처리 = 하루에 가장 많이 누르는 버튼)만
-            남고, 날짜·라벨은 한 글자도 안 잃었다. */}
+      {/* 🔵 2026-09-29 (대표 확정 **안 C**) — 판매 구역이 **판 하나**가 됐다.
+          종전엔 [오늘 카드] [파란 사용처리 버튼] [매일 판] [가끔 판] [전체 도구 판] 으로 흰 판이 넷,
+          그 사이 여백이 세 번이었다. 폰 한 화면(844px)에 판매 도구 3줄이 들어가고 손님 메뉴는
+          **0줄**이었다(실측 `out/visual/my-firstscreen.png`).
+          ⇒ 오늘 머리 + 파란 줄 + 도구 여덟 줄을 **한 판**에 담는다. 같은 화면에 판매 5줄 + 손님 3줄이
+            들어오고, 그 판이 곧 *"여기가 파는 쪽"* 이라는 표시자다(종전엔 25px 제목이 하던 일 —
+            안 C 는 모든 구역에 제목을 주므로 제목이 그 일을 못 한다).
+          ⚠️ **PC 도 같은 판이다.** 09-28 의 `lg:flex` [오늘 | 사용처리] 가로 배치를 걷었다 —
+             안 C 의 PC 시안이 세로로 쌓고, "오늘이 머리" 라는 그 결정의 내용은 그대로 지켜진다. */}
       <div className={LIST_PLATE_CLS}>
-        <div className="px-4 pt-4 pb-4">
+        {/* 🎨 파란 밴드 없음(2026-09-28 판단 승계): 바로 아래 파란 사용처리 줄과 면이 둘이 되면
+            어느 쪽도 강조가 아니다. 주인공은 규칙 ③ 그대로 **숫자**다. */}
+        <div className="px-4 pt-4 pb-4 border-b border-rule">
           <div className="flex items-baseline justify-between gap-2">
             <span className="text-[12px] font-bold text-gray-400">오늘</span>
             <span className="text-[12px] text-gray-400 tabular-nums">{todayLabelKST()}</span>
           </div>
-          {/* 🖥️ 2026-09-28 `whitespace-nowrap`: PC 가 2열이 되면서 이 카드가 ≈340px 로 좁아졌고
-              `412,000` 과 `원` 이 **두 줄로 갈라졌다**(금액은 한 덩어리로 읽혀야 한다). */}
+          {/* 🖥️ `whitespace-nowrap`: 좁은 칸에서 `412,000` 과 `원` 이 두 줄로 갈라지면 안 된다. */}
           <p className="mt-2 text-[28px] font-extrabold tabular-nums leading-none whitespace-nowrap text-gray-900 dark:text-white">
             {formatNumber(store.today_revenue)}
             <span className="text-[15px] font-bold text-gray-500 dark:text-gray-400 ml-1">원</span>
@@ -279,38 +267,102 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
             </p>
           )}
         </div>
-      </div>
+
+        {/* 🎟️ 사용처리 — 하루에 가장 많이 누르는 버튼이라 도구들보다 위다. 화면에서 **유일한 파란 면**.
+            ⚠️ **어느 가게로 소각되는지는 좌석이 정한다.** 그래서 먼저 이 가게 좌석에 앉히고 보낸다 —
+            안 그러면 화면엔 A 가 떠 있는데 B 의 이용권이 소각된다(되돌릴 수 없다). */}
+        <button
+          type="button"
+          disabled={entering}
+          onClick={() => enterSeat('/store/scan')}
+          className="w-full flex items-center gap-3 px-4 min-h-[52px] py-2 bg-brand text-white text-left active:opacity-90 disabled:opacity-60"
+        >
+          <ScanIcon className="w-[18px] h-[18px] shrink-0" aria-hidden="true" />
+          <span className="flex-1 min-w-0 text-[15px] font-extrabold truncate">이용권 사용처리</span>
+          <span className="shrink-0 text-[13px] text-white/75">손님 QR</span>
+          {entering
+            ? <Loader2 className="w-4 h-4 shrink-0 animate-spin" aria-hidden="true" />
+            : <ChevronRight className="w-4 h-4 shrink-0 text-white/70" aria-hidden="true" />}
+        </button>
+
+        {/* 🧰 도구 여덟 줄 — 2026-09-26 의 **매일 셋 / 가끔 넷** 그룹 라벨을 걷었다.
+            그 나눔의 근거는 *하루에 몇 번 여는가* 였는데, 48px 행이면 여덟 줄이 384px 에 다 들어와
+            **한눈에 보이는 목록을 다시 쪼갤 이유가 없다**(라벨 둘이 먹던 48px 도 돌려받는다).
+            순서는 그대로다 — 자주 쓰는 셋이 여전히 맨 위라 옛 근육기억이 안 깨진다. */}
+        <ToolRow
+          icon={<OrdersIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
+          label="주문"
+          hint={work.orders.length > 0 ? `확인 대기 ${formatNumber(work.orders.length)}건` : '지난 주문 · 환불'}
+          busy={entering}
+          onClick={() => openTool('orders')}
+        />
+        <ToolRow
+          icon={<TicketStubIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
+          label="이용권"
+          hint={work.products.length > 0
+            ? `판매 중 ${formatNumber(work.products.filter((p) => p.isActive).length)}개`
+            : '등록 · 가격 · 수량'}
+          busy={entering}
+          onClick={() => openTool('vouchers')}
+        />
+        <ToolRow
+          icon={<WonCoinIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
+          label="정산"
+          hint="쌓인 돈 받기"
+          busy={entering}
+          onClick={() => openTool('withdraw')}
+        />
+        <ToolRow
+          icon={<ChartIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
+          label="매출 분석"
+          hint="최근 2주 · 이번 달"
+          busy={entering}
+          onClick={() => openTool('analytics')}
+        />
+        <ToolRow
+          icon={<UrShopIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
+          label="가게"
+          hint={stores.length >= 2 ? '정보 · 가게 전환' : '이름 · 연락처 · 주소'}
+          busy={entering}
+          onClick={() => openTool('store')}
+        />
+        {/* 🤝 소개 파트너 — 라이브 실측으로 **살아 있는** 기능이라 묶음으로 올렸다(제안 1건 · 팔로워 3). */}
+        <ToolRow
+          icon={<PeopleIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
+          label="소개 파트너"
+          hint="담아 파는 사람 · 제안"
+          busy={entering}
+          onClick={() => openTool('partners')}
+        />
+        {/* 💬 브랜드메시지 — 여기서는 **보내지 않는다**(발송은 등급 C). 잔액·최근 발송만 읽는다. */}
+        <ToolRow
+          icon={<MessageIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
+          label="브랜드메시지"
+          hint="단골 안내 · 남은 건수"
+          busy={entering}
+          onClick={() => openTool('messages')}
+        />
+        {/* 🩸 예시를 **문자열로 적어 두는 것을 그만뒀다** — 메뉴가 바뀔 때마다 어긋났고(쿠폰·숙소를
+            내렸을 때 두 번), 개수를 세려면 나브 색인을 정적으로 읽어야 하는데 그 순간 청크가 딸려 온다. */}
+        <ToolRow
+          icon={<Search className="w-[18px] h-[18px]" aria-hidden="true" />}
+          label="전체 도구"
+          hint="찾아서 바로 열기"
+          busy={entering}
+          onClick={() => openTool('tools')}
+        />
       </div>
 
-      {/* 🎟️ 사용처리 — 손님 앞에서 하루에 가장 많이 누르는 버튼이라 일감보다 위다.
-          ⚠️ **어느 가게로 소각되는지는 좌석이 정한다.** 그래서 먼저 이 가게 좌석에 앉히고 보낸다 —
-          안 그러면 화면엔 A 가 떠 있는데 B 의 이용권이 소각된다(되돌릴 수 없다). */}
-      <button
-        type="button"
-        disabled={entering}
-        onClick={() => enterSeat('/store/scan')}
-        className="w-full flex items-center gap-3 mt-3 px-4 h-[60px] rounded-2xl bg-brand text-white text-left active:opacity-90 disabled:opacity-60 lg:mt-0 lg:w-[290px] lg:shrink-0 lg:h-auto"
-      >
-        <ScanIcon className="w-6 h-6 shrink-0" aria-hidden="true" />
-        <span className="flex-1 min-w-0">
-          <span className="block text-[15px] font-extrabold">이용권 사용처리</span>
-          <span className="block text-[12px] text-white/80 mt-1">손님 QR을 찍으세요</span>
-        </span>
-        {entering
-          ? <Loader2 className="w-5 h-5 shrink-0 animate-spin" aria-hidden="true" />
-          : <ChevronRight className="w-5 h-5 shrink-0 text-white/70" aria-hidden="true" />}
-      </button>
-      </div>
-
-      {/* 🧰 일감 — 좌석에 앉아 있을 때만 그린다.
+      {/* 🧰 할 일 — 좌석에 앉아 있을 때만, 그리고 **확인 대기가 있을 때만** 그린다
+          (`PendingOrders` 는 0건이면 `null` 이라 평소엔 판이 하나로 남는다).
           ⚠️ **마이를 여는 것만으로 좌석을 발급하지 않는다**(`startDashboardSession` 이 단일 세션을
           갱신해 다른 기기의 대시보드를 끊는다). 사람이 펼치는 순간에만 앉는다 —
-          오늘 숫자는 좌석 없이도 보이므로, 앉지 않은 사람도 "볼 것"은 다 본다. */}
+          오늘 숫자는 좌석 없이도 보이므로, 앉지 않은 사람도 "볼 것" 은 다 본다. */}
       {seated ? (
         <>
           <PendingOrders work={work} onDone={onWorkDone} />
           {work.failed && (
-            <p className="mt-2 px-1 text-[12px] text-gray-500 dark:text-gray-400">
+            <p className="mt-2 px-4 text-[12px] text-gray-500 dark:text-gray-400">
               목록을 불러오지 못했습니다. 잠시 후 다시 열어 주세요.
             </p>
           )}
@@ -320,9 +372,9 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           type="button"
           disabled={entering}
           onClick={() => enterSeat()}
-          className="w-full flex items-center gap-2 mt-3 px-4 h-14 rounded-2xl bg-surface shadow-lift text-left active:opacity-70 disabled:opacity-50"
+          className="w-full flex items-center gap-2 mt-3 px-4 h-12 rounded-2xl bg-surface shadow-lift text-left active:opacity-70 disabled:opacity-50"
         >
-          <span className="flex-1 min-w-0 text-[15px] font-bold text-gray-900 dark:text-white truncate">
+          <span className="flex-1 min-w-0 text-[15px] font-semibold text-gray-900 dark:text-white truncate">
             주문 확인{store.pending > 0 ? ` ${formatNumber(store.pending)}건` : ''}
           </span>
           {entering
@@ -330,90 +382,6 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
             : <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />}
         </button>
       )}
-
-      {/* 🧰 묶음 — 대표 확정 **구조 시안 A**(2026-09-26): 일곱 줄 한 덩어리 → **매일 셋 / 가끔 넷**.
-          나누는 기준은 *하루에 몇 번 여는가* 다. 주문·이용권·정산은 매일이고 나머지는 아니다.
-          ⚠️ 줄은 **좌석 없이도 보인다** — 좌석 토큰은 사람이 누른 순간에만 발급된다
-             (마이를 여는 것만으로 발급하면 다른 기기의 대시보드 세션을 끊는다). */}
-      <GroupLabel>매일</GroupLabel>
-      <div className="rounded-2xl bg-surface shadow-lift overflow-hidden">
-        <ToolRow
-          icon={<OrdersIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
-          label="주문"
-          hint={work.orders.length > 0
-            ? `확인 대기 ${formatNumber(work.orders.length)}건 · 지난 주문까지`
-            : '지난 주문 · 손님 연락처 · 환불'}
-          busy={entering}
-          onClick={() => openTool('orders')}
-        />
-        <ToolRow
-          icon={<TicketStubIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
-          label="이용권"
-          hint={work.products.length > 0
-            ? `판매 중 ${formatNumber(work.products.filter((p) => p.isActive).length)}개 · 가격·수량 고치기`
-            : '등록 · 가격 · 수량 · 판매 중지'}
-          busy={entering}
-          onClick={() => openTool('vouchers')}
-        />
-        <ToolRow
-          icon={<WonCoinIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
-          label="정산"
-          hint="쌓인 돈 받기 · 계좌 · PIN"
-          busy={entering}
-          onClick={() => openTool('withdraw')}
-        />
-      </div>
-
-      <GroupLabel>가끔</GroupLabel>
-      <div className="rounded-2xl bg-surface shadow-lift overflow-hidden">
-        <ToolRow
-          icon={<ChartIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
-          label="매출 분석"
-          hint="최근 2주 추이와 이번 달 합계"
-          busy={entering}
-          onClick={() => openTool('analytics')}
-        />
-        <ToolRow
-          icon={<UrShopIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
-          label="가게"
-          hint={stores.length >= 2 ? '이름 · 연락처 · 주소 · 가게 전환' : '이름 · 연락처 · 주소 · 소개'}
-          busy={entering}
-          onClick={() => openTool('store')}
-        />
-        {/* 🤝 소개 파트너 — 라이브 실측으로 **살아 있는** 기능이라 묶음으로 올렸다
-            (제안 1건 active · 팔로워 3). 쿠폰·숙소와 판정이 다르다. */}
-        <ToolRow
-          icon={<PeopleIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
-          label="소개 파트너"
-          hint="내 이용권을 담아 파는 사람 · 받은 제안"
-          busy={entering}
-          onClick={() => openTool('partners')}
-        />
-        {/* 💬 브랜드메시지 — 여기서는 **보내지 않는다**(발송은 등급 C). 잔액·최근 발송만 읽고,
-            충전·발송은 전용 화면으로 보낸다. 아직 안 쓴 가게에는 시트가 스스로 안내 한 장이 된다. */}
-        <ToolRow
-          icon={<MessageIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
-          label="브랜드메시지"
-          hint="단골에게 카카오톡 안내 · 남은 건수"
-          busy={entering}
-          onClick={() => openTool('messages')}
-        />
-      </div>
-
-      {/* 🧰 나머지 전부 — 대표 확정 **구조 시안 A**: 회색 글씨 한 줄이 아니라 **제대로 된 줄 하나**로.
-          🩸 여기 예시를 **문자열로 적어 두는 것을 그만뒀다.** 메뉴가 바뀔 때마다 어긋났고
-             (쿠폰·숙소를 내렸을 때 두 번), 두 번 다 사람이 손으로 고쳤다. 그리고 여기서 개수를
-             세려면 나브 색인을 정적으로 읽어야 하는데 **그 순간 청크가 딸려 온다** —
-             "정확한 예시"와 "가벼운 마이" 는 같이 가질 수 없다. 예시를 버리는 쪽이 맞다. */}
-      <div className="mt-3 rounded-2xl bg-surface shadow-lift overflow-hidden">
-        <ToolRow
-          icon={<Search className="w-[18px] h-[18px]" aria-hidden="true" />}
-          label="전체 도구"
-          hint="찾아서 바로 열기"
-          busy={entering}
-          onClick={() => openTool('tools')}
-        />
-      </div>
 
       {/* ⏳ 시트는 전부 lazy 다 — 폴백이 `null` 인 이유는 머리말에 적었다(누른 직후 깜빡임 방지).
           시트 자신이 각자 로딩 표시를 갖고 있으므로 여기서 또 그리면 표시가 두 겹이 된다. */}
@@ -529,7 +497,8 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           🖥️ 2026-09-28 `lg:hidden`: PC 는 09-28 부터 **두 열**이라 손님 쪽이 아래가 아니라 **옆**에 있다.
              그 화면에서 이 선은 아무것도 가르지 않고 판매 열 끝에 뜬 유리선으로 보였다(하네스 실측).
              선을 **지우지는 않는다** — 세로로 흐르는 폰에서는 이 선이 이름 E 의 경계 그 자체다. */}
-      <div className="mt-5 h-px bg-black/[0.08] dark:bg-white/[0.08] lg:hidden" />
+      {/* 🔵 2026-09-29 (안 C): 구역 경계선을 걷었다 — 아래 구역이 **자기 24px 제목**으로 시작하므로
+          선이 할 일이 없다(09-28 에는 손님 구역에 제목이 없어서 선이 그 경계를 대신했다). */}
     </div>
   )
 }

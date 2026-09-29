@@ -211,22 +211,33 @@ describe('⑤ 시트 안에서 깨지던 껍데기', () => {
   })
 })
 
-describe('⑥ 구조 시안 A — 매일 / 가끔 (2026-09-26 대표 확정)', () => {
+/**
+ * 🔁 2026-09-29 재조준 — 대표 확정 **안 C**(코레일톡 전체메뉴 형태)가 '매일 / 가끔' 나눔을 대체했다.
+ * 그 나눔의 근거는 *하루에 몇 번 여는가* 였는데, 안 C 의 행은 48px 이라 **여덟 줄이 384px 에 다 들어온다** —
+ * 한눈에 보이는 목록을 다시 쪼갤 이유가 없고, 라벨 둘이 먹던 48px 도 돌려받는다.
+ * ⇒ 지킬 불변식이 *"둘로 나뉘어 있다"* 에서 *"**한 판**이고 자주 쓰는 셋이 맨 위"* 로 바뀐다.
+ *   판이 하나여야 하는 이유는 미감이 아니다 — 안 C 에서 **판이 곧 "여기가 파는 쪽"** 이라는 표시자라
+ *   판이 둘이면 그 표시가 무의미해진다.
+ */
+describe('⑥ 판매 도구 — 한 판, 자주 쓰는 셋이 맨 위 (2026-09-29 안 C)', () => {
   const code = readCode(SECTION)
 
-  it('일곱 줄이 한 덩어리로 돌아가지 않는다', () => {
-    expect(code, '무엇이 매일이고 무엇이 가끔인지 화면이 말해야 한다')
-      .toContain('<GroupLabel>매일</GroupLabel>')
-    expect(code).toContain('<GroupLabel>가끔</GroupLabel>')
-    // 라벨만 있고 덩어리가 안 나뉘면 아무 일도 안 한 것이다 — 카드가 둘이어야 한다.
-    const cards = code.split('rounded-2xl bg-surface shadow-lift overflow-hidden').length - 1
-    expect(cards, '묶음 카드가 매일·가끔·전체도구 셋이어야 한다').toBeGreaterThanOrEqual(3)
+  it('🔵 판매 도구가 **한 판**이다 (판이 파는 쪽 표시자다)', () => {
+    // 판은 공유 상수로만 연다 — 손으로 적은 판이 하나라도 있으면 그 순간 문법이 갈린다.
+    expect(code, '판을 손으로 적었다 — LIST_PLATE_CLS 를 쓸 것')
+      .not.toContain('rounded-2xl bg-surface shadow-lift overflow-hidden')
+    const plates = code.split('<div className={LIST_PLATE_CLS}>').length - 1
+    expect(plates, `판매 구역의 판이 ${plates}개다 — 안 C 는 하나다`).toBe(1)
+    // 그룹 라벨은 안 C 에서 안 쓴다(구역 제목이 그 일을 한다).
+    expect(code).not.toContain('<GroupLabel>')
   })
 
-  it('매일에는 셋만 — 정산까지', () => {
-    const daily = code.slice(code.indexOf('<GroupLabel>매일'), code.indexOf('<GroupLabel>가끔'))
-    const labels = [...daily.matchAll(/label="([^"]+)"/g)].map((m) => m[1])
-    expect(labels).toEqual(['주문', '이용권', '정산'])
+  it('🔵 도구 여덟 줄이 한 판 안에 있고, 자주 쓰는 셋이 맨 위다', () => {
+    const labels = [...code.matchAll(/^\s*label="([^"]+)"$/gm)].map((m) => m[1])
+    expect(labels.length, '도구 줄을 못 셌다 — 이 검사가 헛돌고 있다').toBe(8)
+    // 순서가 바뀌면 옛 근육기억이 깨진다 — 주문·이용권·정산이 먼저다.
+    expect(labels.slice(0, 3)).toEqual(['주문', '이용권', '정산'])
+    expect(labels).toContain('전체 도구')
   })
 
   it('전체 도구가 예시를 나열하지 않는다 (적으면 반드시 낡는다)', () => {

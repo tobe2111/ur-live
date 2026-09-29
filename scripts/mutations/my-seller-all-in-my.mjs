@@ -187,10 +187,12 @@ export default [
     why: '표가 통째로 사라지면 눈에 띄지만, 한 줄만 빠지면 그 화면에서만 갈린다 — 아무도 못 찾는다.',
   },
   {
-    name: '📋 일곱 줄이 다시 한 덩어리가 된다 (무엇이 매일인지 안 보인다)',
+    // 🔁 2026-09-29 재조준(안 C): `매일`/`가끔` 그룹을 걷었다(48px 행이면 여덟 줄이 한눈에 들어온다).
+    //   이제 지킬 불변식은 **판매 도구가 판 하나**라는 것이다 — 판이 파는 쪽 표시자이므로 둘이 되면 안 된다.
+    name: '📋 판매 도구가 다시 판 둘로 쪼개진다 (표시자가 둘이 된다)',
     file: SECTION,
-    find: '      <GroupLabel>가끔</GroupLabel>\n',
-    replace: '',
+    find: '        <ToolRow\n          icon={<ChartIcon',
+    replace: '        </div>\n        <div className={LIST_PLATE_CLS}>\n        <ToolRow\n          icon={<ChartIcon',
     test: TEST,
     why:
       '대표 확정 구조 시안 A 의 요점이다 — 똑같은 줄 일곱은 무엇이 중요한지 한 마디도 안 하고, ' +

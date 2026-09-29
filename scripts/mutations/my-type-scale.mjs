@@ -12,7 +12,7 @@ export default [
   {
     name: '🔠 스케일 밖 크기가 하나 새어 들어온다 (12.5px)',
     file: 'src/pages/user-profile/list-grammar.tsx',
-    find: "        <span className=\"block text-[15px] font-bold text-gray-900 dark:text-white\">{label}</span>",
+    find: "      <span className=\"flex-1 min-w-0 text-[15px] font-semibold text-gray-900 dark:text-white truncate\">{label}</span>",
     replace: "        <span className=\"block text-[12.5px] font-bold text-gray-900 dark:text-white\">{label}</span>",
     test: TEST,
     why: '반쪽 크기 하나면 그 줄만 이웃과 미세하게 다르다 — 빌드도 화면도 안 깨져서 17단계까지 이렇게 자랐다.',
@@ -28,7 +28,7 @@ export default [
   {
     name: '📐 행 간격이 격자를 벗어난다 (py-3.5)',
     file: 'src/pages/user-profile/list-grammar.tsx',
-    find: "  'w-full flex items-center gap-3 px-4 py-3 min-h-[56px] text-left",
+    find: "  'w-full flex items-center gap-3 px-4 min-h-[48px] py-2 text-left",
     replace: "  'w-full flex items-center gap-3 px-4 py-3.5 min-h-[56px] text-left",
     test: TEST,
     why: '14px 패딩은 4의 배수가 아니라 이 행만 이웃과 2px 어긋난다 — 줄이 스무 개면 스무 번 어긋난다.',
@@ -36,7 +36,7 @@ export default [
   {
     name: '🎨 오늘 카드가 파란 밴드(TicketCard)로 되돌아간다',
     file: 'src/pages/user-profile/SellerSection.tsx',
-    find: '      <div className={LIST_PLATE_CLS}>\n        <div className="px-4 pt-4 pb-4">',
+    find: '      <div className={LIST_PLATE_CLS}>',
     replace: '      <TicketCard bandLeft="오늘">\n        <div className="px-4 pt-4 pb-4">',
     test: TEST,
     why: '바로 아래 파란 사용처리 면과 강조색 면이 둘이 된다 — 표면 규칙 ②(강조색 하나)가 깨지는 그 자리다.',
@@ -44,16 +44,18 @@ export default [
   {
     name: '🎨 유일한 브랜드 면(사용처리)이 회색으로 죽는다',
     file: 'src/pages/user-profile/SellerSection.tsx',
-    find: 'h-[60px] rounded-2xl bg-brand text-white text-left',
+    find: 'min-h-[52px] py-2 bg-brand text-white text-left',
     replace: 'h-[60px] rounded-2xl bg-wash text-gray-900 text-left',
     test: TEST,
     why: '면을 하나로 줄인 뒤라 이것까지 죽으면 화면에 강조가 **아예 없어진다** — 하루에 가장 많이 누르는 버튼이다.',
   },
   {
-    name: '🏷️ 딜 잔액이 다시 고아가 된다 (그룹 라벨 제거)',
-    file: 'src/pages/user-profile/TeamPointsCard.tsx',
-    find: "      <GroupLabel>{'내 딜'}</GroupLabel>\n",
-    replace: '',
+    // 🔁 2026-09-29 재조준(안 C): 딜 잔액이 상단 **숫자 한 줄**로 옮겨가 고아가 될 자리가 없어졌다.
+    //   지금 지킬 것은 그 줄이 **다시 별도 카드로 떨어져 나가지 않는 것**이다.
+    name: '🏷️ 딜 잔액이 다시 별도 카드로 떨어져 나간다',
+    file: 'src/pages/user-profile/MyStats.tsx',
+    find: '      <div className="flex items-start divide-x divide-rule py-1">',
+    replace: '      <div className="rounded-2xl bg-surface shadow-lift p-5">',
     test: TEST,
     why: '위아래가 전부 라벨 달린 그룹이라, 라벨이 빠지면 이 줄만 어디에도 안 속한 채 뜬다(대표가 지적한 그 바).',
   },

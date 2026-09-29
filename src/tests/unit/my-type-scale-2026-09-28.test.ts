@@ -91,9 +91,16 @@ describe('마이 — 강조색 면은 하나 (표면 규칙 ②)', () => {
     expect(seller).toMatch(/bg-brand text-white[\s\S]{0,400}이용권 사용처리/)
   })
 
-  it('🏷️ 딜 잔액이 고아로 뜨지 않는다 — 그룹 라벨을 달고 선다', () => {
-    const card = read('src/pages/user-profile/TeamPointsCard.tsx')
-    expect(card).toMatch(/<GroupLabel>/)
-    expect(card).toMatch(/from '\.\/list-grammar'/)
+  /**
+   * 🔁 2026-09-29 재조준(안 C) — 딜 잔액이 **별도 카드**(`TeamPointsCard`)에서 상단 **숫자 한 줄**로
+   * 옮겨갔다. 09-28 의 결함("어디에도 안 속한 채 떠 있는 44px 바")은 그 줄 안에 들어가면서
+   * 구조적으로 사라진다. 지금 지킬 것은 **그 줄이 다시 카드로 떨어져 나가지 않는 것**이다.
+   */
+  it('🏷️ 딜 잔액이 고아 카드로 다시 떨어져 나가지 않는다', () => {
+    const stats = read('src/pages/user-profile/MyStats.tsx')
+    // 구분선으로 나눈 한 줄 — 판(`shadow-lift`)이 되는 순간 다시 떠 있는 카드가 된다.
+    expect(stats).toMatch(/flex items-start divide-x divide-rule/)
+    expect(stats, '숫자 줄이 다시 판이 됐다').not.toContain('shadow-lift')
+    expect(stats).toContain('label="내 딜"')
   })
 })
