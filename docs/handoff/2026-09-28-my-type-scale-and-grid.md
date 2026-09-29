@@ -563,3 +563,52 @@ replace: 'py-3.5'         →  'py-4'           ← 〃
 - **거울 파일은 정본 이행의 예외다** — 원본이 잠겨 있으면 거울도 같이 잠긴다.
 - pre-push 게이트가 없었으면 이 셋을 **CI 한 바퀴(약 57분) 뒤에** 알았거나, 더 나쁘게는
   거울 깨짐처럼 **아무도 못 잡고 배포**됐을 것이다.
+
+### ⑦ 🩸 머지 중에 **주입된 결함을 커밋할 뻔했다** (이번 세션 최대 위험)
+
+main 을 머지해 충돌을 푸는 동안, 앞서 띄운 `check-guard-mutations --changed` 가 **아직 돌고 있었다.**
+그 러너는 소스에 결함을 심었다가 되돌리기를 2,211번 반복하므로, 그 사이 작업트리에는
+**항상 어딘가 하나가 주입된 상태**다.
+
+**어떻게 알아챘나**: `check-stale-mutation-anchors` 를 연달아 돌렸는데 **매번 다른 항목**을
+가리켰다(`webkr-collect` → `webkr-collect` 다른 줄 → `company-subcat-yield`). 앵커가 낡았다면
+같은 항목이 계속 나와야 한다 — **결과가 흔들린다는 것 자체가 신호**였다.
+
+프로세스를 죽이고 보니 실제로 남아 있었다:
+
+```
+src/features/marketing/api/company-subcat-yield.ts
+-  return idx.size >= rotationCount ? new Set() : idx
++  return idx
+```
+
+`git add -A` 를 먼저 했으면 그대로 커밋됐다. 유어애즈 회전 억제가 통째로 죽는 결함이고,
+내 diff 와 아무 상관이 없어서 리뷰에서도 안 보였을 것이다.
+
+**막아 준 것**: `check-no-injection-in-progress.sh`(pre-commit)가 커밋을 거부했다 —
+2026-08-25 에 정확히 이 사고를 겪고 만든 가드다. **그날은 훅이 설치돼 있지 않아 못 막았고**,
+오늘은 설치돼 있어서 막혔다. 자물쇠는 죽은 PID(`ps -p` 로 확인)일 때만 지운다.
+
+🧭 **다음 세션이 지킬 것**
+1. `pkill` 은 `timeout` 래퍼의 자식을 **안** 죽인다 — `ps -eo pid,args | grep check-guard-mutations` 로
+   **PID 를 직접** 확인하고 죽인다.
+2. `pgrep -cf 'vitest'` 는 **자기 명령줄을 세어** 0 이 아닌 값을 준다(자기 자신이 그 문자열을 담고 있다).
+   `ps -eo args | grep 'node_modules/.bin/vitest'` 처럼 **실행 파일 경로**로 봐야 한다.
+3. 머지·커밋 전에 **`bash scripts/check-no-injection-in-progress.sh`** 를 손으로 한 번 돌린다.
+
+### ⑧ 머지 충돌 해소 — 어느 쪽이 *의도*인지로 갈랐다
+main #1575 가 '흐르는 문구'(마퀴)를 걷어내고 소개 콘솔을 목록 문법으로 재작성했는데,
+이 브랜치가 같은 파일들을 타입 스케일로 옮기던 중이라 6곳이 충돌했다.
+
+| 충돌 | 해소 | 근거 |
+|---|---|---|
+| `HeaderMarquee.tsx`(main 삭제 / 내 수정) | **삭제** | 대표 지시로 지운 기능. 내 변경은 그 파일의 클래스 토큰뿐 |
+| `PinRow` 순번 배지 · `ShopInfoCards` 편집 행 | **main** | 같은 이유 |
+| `CuratorEarningsPage`(17 hunk) | **main 전체 + 코드모드 재적용** | main 은 재설계, 내 쪽은 토큰 — 둘을 합치는 유일한 방법 |
+| `CuratorHeader` 버튼 클래스 | **둘 다** | main 의 죽은 상수 제거 + 이 브랜치의 정본 스케일 |
+| `ushop-top-chrome` 주입 2건 | **main** | main 이 이미 "마퀴가 되살아나지 않는가" 로 재조준 |
+
+덤으로 main 의 새 파일 `curator-earnings/ConsoleModals.tsx` 가 이 규칙보다 먼저 쓰여
+`text-sm`·`text-base`·`py-2.5` 를 갖고 있었다 — 같은 코드모드를 적용했다.
+그리고 main 의 주입 하나(`소개 콘솔 — 이모지를 다시 넣는다`)가 `text-lg` 를 앵커해
+코드모드에 밀렸으므로 `text-[17px]` 로 **재조준**했다(결함인 이모지 부활은 그대로).
