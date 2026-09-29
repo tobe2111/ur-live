@@ -222,13 +222,13 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
                   재사용을 시각적으로 명백히 차단(실제 재사용 차단은 서버 atomic CAS). */}
               {isUsed && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-white/45 dark:bg-black/45">
-                  <div className="flex flex-col items-center rounded-xl border-[3px] border-emerald-600/90 bg-white/70 dark:bg-black/50 px-4 py-2 -rotate-12 shadow-sm">
+                  <div className="flex flex-col items-center rounded-xl border-[3px] border-tone-ok bg-white/70 dark:bg-black/50 px-4 py-2 -rotate-12 shadow-sm">
                     <div className="flex items-center gap-1.5">
-                      <CheckCircle className="w-5 h-5 text-emerald-600" strokeWidth={3} />
-                      <span className="text-[19px] font-black tracking-tight text-emerald-700 dark:text-emerald-400">사용 완료</span>
+                      <CheckCircle className="w-5 h-5 text-tone-ok" strokeWidth={3} />
+                      <span className="text-[19px] font-black tracking-tight text-tone-ok">사용 완료</span>
                     </div>
                     {voucher.used_at && (
-                      <span className="mt-0.5 text-[10px] font-semibold text-emerald-700/80 dark:text-emerald-400/80">
+                      <span className="mt-0.5 text-[10px] font-semibold text-tone-ok">
                         {safeDate(voucher.used_at)?.toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' })}
                       </span>
                     )}
@@ -268,7 +268,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
           {/* 🌐 2026-07-12 (앱-레디): 오프라인이어도 이 QR/코드는 저장돼 있어 매장에서 그대로 사용 가능 —
               지하·신호 약한 매장에서 "안 열릴까" 불안 제거(저장된 데이터로 렌더). */}
           {!isUsed && !isExpired && !isOnline && (
-            <p className="text-center text-[10.5px] font-semibold text-emerald-600 dark:text-emerald-400 mt-1.5">
+            <p className="text-center text-[10.5px] font-semibold text-tone-ok mt-1.5">
               {t('voucher.offlineUsable', { defaultValue: '오프라인에서도 이 화면으로 사용할 수 있어요' })}
             </p>
           )}

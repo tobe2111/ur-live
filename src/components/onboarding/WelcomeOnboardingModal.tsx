@@ -258,8 +258,8 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
           {step === 3 && (
             <div>
               <div className="text-center mb-5">
-                <div className="mx-auto w-16 h-16 rounded-full bg-yellow-50 flex items-center justify-center mb-3">
-                  <Bell className="w-8 h-8 text-yellow-600" />
+                <div className="mx-auto w-16 h-16 rounded-full bg-brand/[0.08] flex items-center justify-center mb-3">
+                  <Bell className="w-8 h-8 text-brand-text" />
                 </div>
                 <h2 className="text-[20px] font-extrabold text-gray-900 dark:text-white mb-1">{t('welcomeOnboarding.step3Title', { defaultValue: '알림 받기' })}</h2>
                 <p className="text-[13px] text-gray-500 dark:text-gray-400">{t('welcomeOnboarding.step3Desc', { defaultValue: '놓치면 아쉬운 핫딜·라이브 소식을 알려드려요' })}</p>
@@ -267,20 +267,23 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
 
               <button
                 onClick={() => setAlimtalkOptIn(!alimtalkOptIn)}
+                aria-pressed={alimtalkOptIn}
                 className={`w-full p-4 rounded-2xl border-2 text-left transition-all ${
-                  alimtalkOptIn ? 'bg-yellow-50 border-yellow-400' : 'bg-white dark:bg-[#11141C] border-gray-200 dark:border-[#2C2F35]'
+                  /* 🔵 선택 상태는 브랜드 하나다(2026-09-29 UI①) — yellow 는 MONO 중화로 회색이라
+                     켜 놓고도 켜진 줄 몰랐다. `aria-pressed` 가 없어 칩 가드도 못 봤던 자리. */
+                  alimtalkOptIn ? 'bg-brand/[0.06] dark:bg-brand/[0.16] border-brand' : 'bg-white dark:bg-[#11141C] border-gray-200 dark:border-[#2C2F35]'
                 }`}
               >
                 <div className="flex items-start gap-3">
                   <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
-                    alimtalkOptIn ? 'bg-yellow-400' : 'bg-gray-100 dark:bg-[#1D1F29]'
+                    alimtalkOptIn ? 'bg-brand' : 'bg-gray-100 dark:bg-[#1D1F29]'
                   }`}>
                     <span className="text-xl">💬</span>
                   </div>
                   <div className="flex-1">
                     <p className="text-[14px] font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
                       {t('welcomeOnboarding.alimtalkLabel', { defaultValue: '카카오 알림톡으로 받기' })}
-                      {alimtalkOptIn && <Check className="w-4 h-4 text-yellow-600" />}
+                      {alimtalkOptIn && <Check className="w-4 h-4 text-brand-text" />}
                     </p>
                     <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
                       {t('welcomeOnboarding.alimtalkDesc1', { defaultValue: '라이브 시작 / 핫딜 / 주문 상태 등' })}<br />

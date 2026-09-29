@@ -1,3 +1,10 @@
+/**
+ * 🪦 status-tone-ok — **이 파일은 화면에 도달하지 않는다.**
+ *   유일 소비자 `GroupBuyListPage` 가 미라우팅이다 — `/group-buy` 는 `<Navigate to="/">`
+ *   (App.tsx:723, 2026-07-10 정리). 큐레이션 스트립도 함께 죽었다.
+ *   색을 고쳐도 아무도 못 보므로 손대지 않는다. 되살릴 때는 이 주석을 지우고
+ *   `tone-*` 로 옮길 것(지금 색은 MONO 중화로 전부 같은 회색이다).
+ */
 // 🧱 2026-06-29 TD: GroupBuyListPage god 파일 분해 — 큐레이션 스트립(verbatim 추출). 동작/스타일 불변.
 import { useTranslation } from 'react-i18next'
 import { cfImage, cfSrcSet, cfImageOnError } from '@/utils/cf-image'

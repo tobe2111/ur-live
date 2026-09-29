@@ -357,19 +357,17 @@ function SourceIcon({ source }: { source: Source }) {
 
 function SourceBadge({ source }: { source: Source }) {
   const { t } = useTranslation();
+  /**
+   * 🚦 2026-09-29: 종전엔 amber·blue·purple 셋이었는데 **셋 다 같은 회색으로 렌더**됐다
+   *   (`tailwind.config.js` MONO 중화 — 50 단계 셋 다 `#F8F7FC`). 즉 코드만 색이 셋이고
+   *   화면은 하나였다. 여기는 **상태가 아니라 종류**라 `tone-*`(완료·대기·실패) 도 틀리다 —
+   *   글자가 이미 종류를 말하므로 **중립 하나**로 통일해 코드와 화면을 일치시킨다.
+   */
+  const NEUTRAL = 'bg-gray-100 text-gray-600 dark:bg-white/[0.08] dark:text-gray-300';
   const map: Record<Source, { label: string; cls: string }> = {
-    voucher: {
-      label: t('myGroupBuys.tabVoucher', { defaultValue: '이용권' }),
-      cls: 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300',
-    },
-    community: {
-      label: t('myGroupBuys.tabCommunity', { defaultValue: '공구 제안' }),
-      cls: 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300',
-    },
-    referral: {
-      label: t('myGroupBuys.tabReferral', { defaultValue: '친구초대' }),
-      cls: 'bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-300',
-    },
+    voucher: { label: t('myGroupBuys.tabVoucher', { defaultValue: '이용권' }), cls: NEUTRAL },
+    community: { label: t('myGroupBuys.tabCommunity', { defaultValue: '공구 제안' }), cls: NEUTRAL },
+    referral: { label: t('myGroupBuys.tabReferral', { defaultValue: '친구초대' }), cls: NEUTRAL },
   };
   const info = map[source];
   return (
@@ -385,7 +383,7 @@ function UnifiedStatusBadge({ item }: { item: UnifiedItem }) {
     return <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-900 text-white">{t('myGroupBuys.statusOngoing')}</span>;
   }
   if (item.isAchieved) {
-    return <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">{t('myGroupBuys.statusAchieved')}</span>;
+    return <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-tone-ok-bg text-tone-ok">{t('myGroupBuys.statusAchieved')}</span>;
   }
   // expired/refunded/cancelled
   if (item.source === 'voucher' && (item.raw as VoucherEntry).status === 'refunded') {

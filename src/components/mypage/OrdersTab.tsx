@@ -43,24 +43,31 @@ export function getTrackingUrl(courier?: string, trackingNumber?: string): strin
 
 type KindFilter = 'all' | OrderKind
 
-// 🛡️ 2026-06-18: 상태를 큰 컬러 배지 → 은은한 컬러 텍스트(무신사 스타일). 종류별 라벨 분기.
+/**
+ * 🛡️ 2026-06-18: 상태를 큰 컬러 배지 → 은은한 컬러 텍스트(무신사 스타일). 종류별 라벨 분기.
+ *
+ * 🚦 2026-09-29: 그 "은은한 컬러" 가 **색이 아니었다.** rose·emerald·amber·blue 는
+ *   `tailwind.config.js` 의 MONO 중화를 거쳐 전부 같은 잉크로 렌더된다(실측: 600 단계가 넷 다 `#55534F`).
+ *   즉 `취소/환불` · `구매완료` · `배송중` · `상품준비중` 이 **픽셀 단위로 같은 회색**이었고,
+ *   에러가 없어 아무도 신고하지 않았다. 의미 색은 중화를 통과하는 `tone-*` 뿐이다.
+ */
 function getStatusInfo(status: string, kind: OrderKind, t: TFunction): { label: string; cls: string } {
   const s = (status || '').toLowerCase()
   if (s === 'cancelled' || s === 'refunded') {
-    return { label: t('ordersTab.statusCancelled', { defaultValue: '취소/환불' }), cls: 'text-rose-600 dark:text-rose-400' }
+    return { label: t('ordersTab.statusCancelled', { defaultValue: '취소/환불' }), cls: 'text-tone-bad' }
   }
   if (kind !== 'product') {
     // 교환권/공구: 배송 단계 없음 — 구매완료 단일 상태(취소 제외)
-    return { label: t('ordersTab.statusIssued', { defaultValue: '구매완료' }), cls: 'text-emerald-600 dark:text-emerald-400' }
+    return { label: t('ordersTab.statusIssued', { defaultValue: '구매완료' }), cls: 'text-tone-ok' }
   }
   switch (s) {
     case 'shipping':
-      return { label: t('ordersTab.statusShipping', { defaultValue: '배송중' }), cls: 'text-blue-600 dark:text-blue-400' }
+      return { label: t('ordersTab.statusShipping', { defaultValue: '배송중' }), cls: 'text-tone-info' }
     case 'delivered':
     case 'done':
-      return { label: t('ordersTab.statusDelivered', { defaultValue: '배송완료' }), cls: 'text-emerald-600 dark:text-emerald-400' }
+      return { label: t('ordersTab.statusDelivered', { defaultValue: '배송완료' }), cls: 'text-tone-ok' }
     case 'preparing':
-      return { label: t('ordersTab.statusPreparing', { defaultValue: '상품준비중' }), cls: 'text-amber-600 dark:text-amber-500' }
+      return { label: t('ordersTab.statusPreparing', { defaultValue: '상품준비중' }), cls: 'text-tone-warn' }
     default:
       return { label: t('ordersTab.statusPaid', { defaultValue: '결제완료' }), cls: 'text-gray-600 dark:text-gray-300' }
   }
@@ -348,7 +355,7 @@ function OrderCard({
             href={getTrackingUrl(order.courier, order.tracking_number)}
             target="_blank" rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className="shrink-0 text-[12px] font-semibold text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-0.5"
+            className="shrink-0 text-[12px] font-semibold text-brand-text hover:underline transition-colors flex items-center gap-0.5"
           >
             {t('ordersTab.trackingLink', { defaultValue: '배송조회' })}
             <ChevronRight className="h-3 w-3" />
@@ -398,7 +405,8 @@ function OrderCard({
             {t('ordersTab.inquiry', { defaultValue: '문의' })}
           </button>
           {returnStatus && (
-            <span className="px-2.5 py-1.5 text-[12px] font-semibold text-amber-700 bg-amber-50 border border-amber-100 rounded-full">
+            /* 🚦 진행 *상태* 다(누르는 것이 아니다) — 중화되지 않는 tone 으로. */
+            <span className="px-2.5 py-1.5 text-[12px] font-semibold text-tone-warn bg-tone-warn-bg rounded-full">
               {t('ordersTab.returnInProgress', { defaultValue: '반품 진행중' })}
             </span>
           )}
@@ -421,7 +429,9 @@ function OrderCard({
           {canConfirm && onConfirmOrder && (
             <button
               onClick={() => onConfirmOrder(order.id, orderNum)}
-              className="px-2.5 py-1.5 text-[12px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full hover:bg-emerald-100 transition-colors"
+              /* 🔵 이 줄의 **긍정 행동**이다. emerald 는 중화돼 회색이라, 파괴적 행동(취소=빨강)만
+                 눈에 띄고 정작 눌러야 할 버튼이 안 보였다 ⇒ 브랜드. */
+              className="px-2.5 py-1.5 text-[12px] font-semibold text-white bg-brand rounded-full hover:bg-brand-dark transition-colors"
             >
               {t('ordersTab.confirmOrder', { defaultValue: '구매확정' })}
             </button>

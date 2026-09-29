@@ -74,15 +74,19 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
                 <Badge
                   className={`
                     border-0 px-3 py-1
+                    ${/* 🚦 2026-09-29: `배송완료`·`배송중` 이 둘 다 같은 잉크였고 `준비중`(amber)은
+                         MONO 중화로 회색이 됐다 — 네 상태 중 셋이 구별되지 않았다. 중화를 통과하는
+                         `tone-*` 로(주문내역 목록 `OrdersTab` 과 같은 배정 — 한 주문을 목록에서 보고
+                         열었을 때 색이 달라지면 그게 더 나쁘다). */''}
                     ${order.status.toLowerCase() === 'delivered'
-                      ? 'bg-gray-900 text-white'
+                      ? 'bg-tone-ok-bg text-tone-ok'
                       : order.status.toLowerCase() === 'shipping'
-                      ? 'bg-gray-900 text-white'
+                      ? 'bg-tone-info-bg text-tone-info'
                       : ['cancelled', 'refunded'].includes(order.status.toLowerCase())
-                      ? 'bg-red-500 text-white'
+                      ? 'bg-tone-bad-bg text-tone-bad'
                       : order.status.toLowerCase() === 'preparing'
-                      ? 'bg-amber-500 text-white'
-                      : 'bg-gray-400 text-white'
+                      ? 'bg-tone-warn-bg text-tone-warn'
+                      : 'bg-gray-100 text-gray-600 dark:bg-white/[0.08] dark:text-gray-300'
                     }
                   `}
                 >
@@ -249,7 +253,7 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
               {discountAmount > 0 && (
                 <div className="flex justify-between">
                   <span className="text-gray-500 dark:text-gray-400">{t('orderDetail.discountAmount', { defaultValue: '할인 금액' })}</span>
-                  <span className="font-medium text-rose-600">-{formatNumber(discountAmount)}원</span>
+                  <span className="font-medium text-sale">-{formatNumber(discountAmount)}원</span>
                 </div>
               )}
               {isProduct && (
@@ -298,7 +302,7 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
                 onClose()
                 navigate(`/products/${order.items?.[0]?.product_id || ''}`)
               }}
-              className="w-full py-3 text-[15px] font-medium text-amber-600 border border-amber-300 rounded-xl hover:bg-amber-50 transition-colors"
+              className="w-full py-3 text-[15px] font-semibold text-brand-text border border-brand rounded-xl hover:bg-brand/[0.06] transition-colors"
             >
               {t('orderDetail.writeReview', { defaultValue: '★ 리뷰 작성하기' })}
             </button>

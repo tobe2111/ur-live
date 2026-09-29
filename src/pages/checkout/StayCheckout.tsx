@@ -134,12 +134,12 @@ export default function StayCheckout({ orderId }: { orderId: number }) {
             <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
           </div>
         ) : error || !order ? (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-2xl">
+          <div className="p-4 bg-tone-bad-bg rounded-2xl">
             <div className="flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
               <p className="text-[13px] font-medium text-red-800">{error || '주문을 불러오지 못했습니다'}</p>
             </div>
-            <button onClick={() => navigate('/stays')} className="mt-3 text-[12px] text-blue-600 underline font-medium">
+            <button onClick={() => navigate('/stays')} className="mt-3 text-[12px] text-brand-text underline font-medium">
               숙소 둘러보기로 이동
             </button>
           </div>
@@ -181,23 +181,23 @@ export default function StayCheckout({ orderId }: { orderId: number }) {
             </section>
 
             {alreadyPaid && (
-              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
-                <p className="text-[13px] font-bold text-emerald-700">이미 결제가 완료된 주문입니다.</p>
-                <button onClick={() => navigate('/my-stays')} className="mt-2 text-[12px] text-blue-600 underline font-medium">
+              <div className="p-4 bg-tone-ok-bg rounded-2xl">
+                <p className="text-[13px] font-bold text-tone-ok">이미 결제가 완료된 주문입니다.</p>
+                <button onClick={() => navigate('/my-stays')} className="mt-2 text-[12px] text-brand-text underline font-medium">
                   내 숙소 예약 보기 →
                 </button>
               </div>
             )}
             {notPayable && (
-              <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl">
-                <p className="text-[13px] font-medium text-amber-800">
+              <div className="p-4 bg-tone-warn-bg rounded-2xl">
+                <p className="text-[13px] font-medium text-tone-warn">
                   결제할 수 없는 주문 상태입니다 ({order.status}). 예약을 다시 생성해주세요.
                 </p>
               </div>
             )}
             {!alreadyPaid && !notPayable && !clientKey && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-2xl">
-                <p className="text-[13px] font-medium text-red-800">결제 시스템이 설정되지 않았습니다. 관리자에게 문의해주세요.</p>
+              <div className="p-4 bg-tone-bad-bg rounded-2xl">
+                <p className="text-[13px] font-medium text-tone-bad">결제 시스템이 설정되지 않았습니다. 관리자에게 문의해주세요.</p>
               </div>
             )}
           </>
