@@ -4784,7 +4784,7 @@
     "sellerContact": "매장 연락처: {{phone}}",
     "sellerNoContact": "매장 연락처가 등록되지 않았습니다",
     "emptyTitle": "주문 내역이 없습니다",
-    "emptyDesc": "라이브에서 마음에 드는 상품을 구매해보세요",
+    "emptyDesc": "마음에 드는 이용권이나 상품을 찾아보세요",
     "goToLive": "둘러보러 가기",
     "trackingLink": "배송조회",
     "paymentAmount": "결제금액",
@@ -5531,7 +5531,7 @@
   "myCoupons": {
     "title": "내 쿠폰",
     "empty": "사용 가능한 쿠폰이 없습니다",
-    "emptySub": "라이브 방송·이벤트 참여로 쿠폰을 받아보세요",
+    "emptySub": "받은 쿠폰이 없어요. 이벤트에 참여하면 쿠폰을 받을 수 있어요",
     "loginRequired": "로그인이 필요합니다.",
     "loadFailed": "쿠폰을 불러올 수 없습니다.",
     "sessionExpired": "세션이 만료되었습니다. 다시 로그인해주세요.",

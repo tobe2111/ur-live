@@ -148,7 +148,7 @@ export default function MobileHomePage() {
                 aria-pressed={on}
                 className={`shrink-0 pb-2 text-[14.5px] transition-colors border-b-2 ${
                   on
-                    ? 'font-black text-gray-900 dark:text-white border-gray-900 dark:border-white'
+                    ? 'font-black text-gray-900 dark:text-white border-brand'
                     : 'font-semibold text-gray-400 dark:text-gray-500 border-transparent'
                 }`}
               >

@@ -36,7 +36,7 @@ export default [
   {
     name: '🔵 잠금표 잔여분을 동결이 아니라 영구 면제로 바꾼다',
     file: 'scripts/primary-button-baseline.json',
-    find: '"src/pages/BrowsePage.tsx": 5',
+    find: '"src/pages/BrowsePage.tsx": 6',
     replace: '"src/pages/BrowsePage.tsx": 99',
     test: TEST,
     why: '동결값을 크게 잡으면 그 파일 안에서는 얼마든지 검정이 늘어난다 — 래칫이 아니라 면제가 된다.',

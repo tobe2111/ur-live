@@ -58,8 +58,14 @@ const EXEMPT_PATH = /(\/tests?\/|\.test\.tsx?$|\.spec\.tsx?$|\.stories\.tsx?$)/
  * ⚠️ `bg-gray-900` 단독은 안 잡는다 — 카드 바탕·스크림의 정상 용법이다.
  *    흰 글자를 달고 있어야 "누르는 것" 으로 읽힌다.
  */
-const BLACK_FILL = /\bbg-gray-900\b(?![\w-])/
-const WHITE_TEXT = /\btext-white\b(?![\w-])/
+/**
+ * ⚠️ **variant 접두사가 붙은 것은 제외한다**(`hover:` · `dark:` · `active:` …).
+ * `hover:bg-gray-900` 은 *눌렀을 때 살짝 어두워지는 것*이고, `dark:bg-gray-900` 은 다크 표면이다.
+ * 둘 다 "주 버튼을 검정으로 칠했다" 가 아니다 — 2026-09-29 에 앱스토어 배지(`bg-black` +
+ * `hover:bg-gray-900`)가 이 구멍으로 오탐됐다. `check-theme-consistency` 와 같은 방식이다.
+ */
+const BLACK_FILL = /(?<![\w:-])bg-gray-900\b(?![\w-])/
+const WHITE_TEXT = /(?<![\w:-])text-white\b(?![\w-])/
 
 function walk(dir, out = []) {
   let entries
@@ -87,9 +93,20 @@ if (files.length < 200) {
  * **누를 수 있는가**를 판정한다. 검정 채움 + 흰 글자만으로는 부족하다 —
  * 다크 *카드*(`<div className="bg-gray-900 rounded-2xl p-5 text-white">`)와 다크 *섹션*이
  * 같은 모양이고, 그건 규칙 위반이 아니라 정상이다(첫 판에서 144건 중 상당수가 그것이었다).
- * 그래서 className 줄 위 3줄 안에 눌림의 증거가 있어야만 버튼으로 읽는다.
+ * 그래서 className 줄 위 **8줄** 안에 눌림의 증거가 있어야만 버튼으로 읽는다.
+ *
+ * 🩸 2026-09-29 — 창이 **3줄이라 선택 칩을 통째로 놓치고 있었다.** 칩은 이렇게 생겼다:
+ *     <button                     ← 눌림의 증거가 여기
+ *       key={...}
+ *       onClick={...}
+ *       aria-pressed={on}
+ *       className={`... ${
+ *         on
+ *           ? 'bg-gray-900 text-white …'   ← 위반은 여기(6~7줄 아래)
+ *   실측으로 지역 칩·PC 홈 카테고리 칩·지역 카테고리 칩·정렬 시트가 전부 이 구멍으로 샜다.
+ *   8줄로 넓히고 오탐을 다시 셌다(다크 카드 오탐 0 — 카드는 `<div>` 라 눌림의 증거가 없다).
  */
-const PRESSABLE = /<button|<Link\b|<a\s|onClick|role=["']button["']|htmlFor=/
+const PRESSABLE = /<button|<Link\b|<a\s|onClick|role=["']button["']|htmlFor=|aria-(?:pressed|current|selected)=/
 /** 주석 줄은 코드가 아니다(`CartPage` 의 설명 주석이 첫 판에서 잡혔다). */
 const COMMENT = /^\s*(\/\/|\/\*|\*|\{\/\*)/
 
@@ -102,7 +119,7 @@ for (const f of files) {
   lines.forEach((l, i) => {
     if (l.includes(ALLOW_MARK) || COMMENT.test(l)) return
     if (!BLACK_FILL.test(l) || !WHITE_TEXT.test(l)) return
-    const window = lines.slice(Math.max(0, i - 3), i + 1).join('\n')
+    const window = lines.slice(Math.max(0, i - 8), i + 1).join('\n')
     if (!PRESSABLE.test(window)) return
     hits.push(`${f}:${i + 1}  ${l.trim().slice(0, 110)}`)
   })

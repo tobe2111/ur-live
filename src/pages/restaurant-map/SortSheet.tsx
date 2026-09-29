@@ -48,7 +48,7 @@ export default function SortSheet({
                 aria-pressed={sel}
                 className={`w-full flex items-center justify-between px-3 py-3 rounded-xl text-[14px] transition-colors ${
                   sel
-                    ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900 font-bold'
+                    ? 'bg-brand text-white font-bold'
                     : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1D1F29]'
                 }`}
               >

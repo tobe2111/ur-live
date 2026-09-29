@@ -48,7 +48,7 @@ describe('주 버튼은 브랜드 블루다 (검정 손색 차단)', () => {
     // 0 이 되면 baseline 파일째 지우고 이 단언을 없앤다(그때 가드가 0 을 강제한다).
     expect(total).toBeGreaterThan(0)
     // ⚠️ 동결은 **래칫**이지 면제가 아니다. 값을 크게 잡으면 그 파일 안에서는 검정이 얼마든지
-    //    늘어난다 — 실측 20건이라 상한을 25 로 둔다(늘리려면 왜 늘었는지부터 적을 것).
+    //    늘어난다 — 실측 21건이라 상한을 25 로 둔다(늘리려면 왜 늘었는지부터 적을 것).
     expect(total).toBeLessThanOrEqual(25)
     for (const [f, n] of Object.entries(b.files as Record<string, number>)) {
       expect(n, `${f} 동결값이 과하다`).toBeLessThanOrEqual(10)
@@ -73,6 +73,18 @@ describe('주 버튼은 브랜드 블루다 (검정 손색 차단)', () => {
     expect(src).toMatch(/PRESSABLE\s*=\s*\//)
     // "측정 0 = 통과 아님" — 경로가 낡아 훑을 게 없어진 것을 초록으로 넘기지 않는다.
     expect(src).toMatch(/files\.length\s*<\s*200/)
+    /**
+     * 🩸 2026-09-29 — **눌림 판정 창이 3줄이라 선택 칩을 통째로 놓치고 있었다.**
+     * 칩은 `<button` → `key` → `onClick` → `aria-pressed` → `className={\`…` → `on` → `? '…'` 라
+     * 위반이 6~7줄 아래에 있다. 실측으로 검정 칩 다섯이 이 구멍으로 샜다(지역·PC홈·지역카테고리·
+     * 숙소카테고리·정렬시트). 8줄로 넓히자 주소 저장·공용 모달 버튼까지 더 드러났다.
+     * ⇒ **값을 잠근다** — 좁히면 같은 것이 다시 샌다.
+     */
+    const win = src.match(/lines\.slice\(Math\.max\(0, i - (\d+)\)/)
+    expect(win, '눌림 판정 창을 못 찾았다 — 이 검사가 헛돌고 있다').toBeTruthy()
+    expect(Number(win![1]), '창이 좁아졌다 — 칩의 위반은 6~7줄 아래에 있다').toBeGreaterThanOrEqual(8)
+    // variant 접두사(`hover:`·`dark:`)는 제외한다 — 앱스토어 배지가 이 구멍으로 오탐됐다.
+    expect(src).toMatch(/\(\?<!\[\\w:-\]\)bg-gray-900/)
   })
 
   it('브랜드 블루 쪽이 이제 다수다 — 이행이 실제로 됐는가', () => {

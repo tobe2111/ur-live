@@ -213,7 +213,7 @@ export default function PcHomeLocationBar({
                   onClick={() => { if (r.districtGroups.length === 0) apply({ regionKey: r.key }); else setActiveSido(r.key) }}
                   className={`w-full text-left px-4 py-2.5 text-[13px] transition-colors ${
                     activeSido === r.key
-                      ? 'bg-gray-100 dark:bg-white/[0.06] font-bold text-gray-900 dark:text-white'
+                      ? 'bg-brand text-white font-bold'
                       : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.03]'
                   }`}
                 >
@@ -235,7 +235,7 @@ export default function PcHomeLocationBar({
                   onClick={() => apply({ regionKey: sido.key, districtKey: dg.key })}
                   className={`w-full text-left px-4 py-2.5 text-[13px] whitespace-pre-line leading-tight transition-colors ${
                     value.districtKey === dg.key
-                      ? 'bg-gray-100 dark:bg-white/[0.06] font-bold text-gray-900 dark:text-white'
+                      ? 'bg-brand text-white font-bold'
                       : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.03]'
                   }`}
                 >

@@ -4103,7 +4103,7 @@
     "sellerContact": "Contact vendeur : {{phone}}",
     "sellerNoContact": "Contact vendeur non enregistré",
     "emptyTitle": "Aucune commande",
-    "emptyDesc": "Achetez dans nos directs et trouvez quelque chose que vous aimez",
+    "emptyDesc": "Trouvez un pass ou un produit qui vous plaît",
     "goToLive": "Voir les directs",
     "trackingLink": "Suivre",
     "paymentAmount": "Paiement",
@@ -5531,7 +5531,7 @@
   "myCoupons": {
     "title": "Mes coupons",
     "empty": "Aucun coupon disponible",
-    "emptySub": "Obtenez des coupons en participant aux directs et événements",
+    "emptySub": "Pas encore de coupons. Participez à un événement pour en obtenir",
     "loginRequired": "Connexion requise.",
     "loadFailed": "Impossible de charger les coupons.",
     "sessionExpired": "Session expirée. Reconnectez-vous.",

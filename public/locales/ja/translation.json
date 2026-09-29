@@ -4784,7 +4784,7 @@
     "sellerContact": "販売者連絡先: {{phone}}",
     "sellerNoContact": "販売者の連絡先が登録されていません",
     "emptyTitle": "注文履歴がありません",
-    "emptyDesc": "ライブで気に入った商品を購入してみましょう",
+    "emptyDesc": "お気に入りのパスや商品を探してみましょう",
     "goToLive": "ライブを見る",
     "trackingLink": "配送追跡",
     "paymentAmount": "決済金額",
@@ -5531,7 +5531,7 @@
   "myCoupons": {
     "title": "マイクーポン",
     "empty": "利用可能なクーポンがありません",
-    "emptySub": "ライブ配信・イベント参加でクーポンを受け取ろう",
+    "emptySub": "クーポンがありません。イベントに参加すると受け取れます",
     "loginRequired": "ログインが必要です。",
     "loadFailed": "クーポンを読み込めません。",
     "sessionExpired": "セッションが切れました。再度ログインしてください。",

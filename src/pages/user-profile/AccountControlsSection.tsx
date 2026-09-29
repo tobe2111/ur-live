@@ -75,7 +75,7 @@ export function NotificationToggleSection() {
         onClick={onChange}
         aria-pressed={value}
         aria-label={value ? `${label} 끄기` : `${label} 켜기`}
-        className={`relative w-[44px] h-[24px] rounded-full transition-colors duration-200 shrink-0 ${value ? 'bg-gray-900 dark:bg-white' : 'bg-gray-200 dark:bg-white/[0.15]'}`}
+        className={`relative w-[44px] h-[24px] rounded-full transition-colors duration-200 shrink-0 ${value ? 'bg-brand' : 'bg-gray-200 dark:bg-white/[0.15]'}`}
       >
         <span className={`absolute top-[2px] left-[2px] w-[20px] h-[20px] bg-white dark:bg-[#11141C] rounded-full shadow-sm transition-transform duration-200 ${value ? 'translate-x-[20px]' : 'translate-x-0'}`} />
       </button>

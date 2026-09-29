@@ -44,7 +44,7 @@ export const RestaurantRow = memo(function RestaurantRow({ r, isSelected, userLo
       onClick={() => onSelect(r)}
       className={`w-full flex gap-3 py-4 text-left transition-colors ${
         isSelected
-          ? 'bg-gray-50 dark:bg-[#1D1F29]'
+          ? 'bg-brand/[0.06] dark:bg-brand/[0.14]'
           : 'hover:bg-gray-50/60 dark:hover:bg-[#0E0E0E] active:bg-gray-100 dark:active:bg-[#161616]'
       }`}
     >

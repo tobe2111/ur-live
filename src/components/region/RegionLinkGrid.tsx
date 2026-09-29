@@ -73,7 +73,7 @@ export default function RegionLinkGrid({
                 aria-pressed={on}
                 className={`shrink-0 px-3 py-1.5 rounded-full text-[13px] font-bold border transition-colors ${
                   on
-                    ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white'
+                    ? 'bg-brand text-white border-brand'
                     : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
                 }`}
               >

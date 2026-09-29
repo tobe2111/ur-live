@@ -238,8 +238,9 @@ export function MultiImageUpload({ values, onChange, max = 10, tokenKey, label }
             >
               <X className="w-3 h-3" />
             </button>
+            {/* 사진 위 스크림 배지 — 누르는 것이 아니다(브랜드 면으로 칠하면 바로 위 삭제 버튼과 헷갈린다). */}
             {i === 0 && (
-              <div className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-gray-900 text-white text-[9px] font-bold rounded">대표</div>
+              <div className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-gray-900 text-white text-[9px] font-bold rounded">대표</div> /* primary-button-ok */
             )}
           </div>
         ))}
