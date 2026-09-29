@@ -38,10 +38,20 @@ const ROW_SSOT = readFileSync(resolve(__dirname, '../../components/deal/DealRow.
  * `VoucherRow` 처럼 SSOT 에 넘기기만 하는 컴포넌트는 그 SSOT 를 대신 본다
  * (넘기는 값이 있는지는 아래에서 따로 확인한다).
  */
+/**
+ * 🔧 2026-09-29 재조준 — SSOT 가 실제로 그리는 토큰을 **소스에서 찾아온다**.
+ *   종전엔 `'{discountPct}%'` 를 손으로 박아 뒀는데, `DealRow` 가 할인율을 SSOT
+ *   (`priceDisplay`)에서 받게 되면서 렌더가 `{pd.discount}%` 로 바뀌자 **토큰이 안 맞아
+ *   0 렌더**가 됐다(계약은 멀쩡한데 가드만 빨간불). 이름이 또 바뀌어도 따라가게 만든다.
+ *   ⚠️ 그래도 **조용히 통과하지는 않는다**: 못 찾으면 옛 토큰으로 떨어져 0 렌더가 되고
+ *      아래 `toBe(1)` 이 빨간불을 낸다. 이름에서 `discount` 가 사라지는 변경은 사람이 봐야 한다.
+ */
+const SSOT_TOKEN = (ROW_SSOT.match(/\{[\w.]*[Dd]iscount[\w.]*\}%/) || ['{discountPct}%'])[0]
+
 function discountSource(name: string): { body: string; token: string } {
   const body = componentBody(name)
   if (/discountPct=\{discountRate\}/.test(body)) {
-    return { body: ROW_SSOT, token: '{discountPct}%' }
+    return { body: ROW_SSOT, token: SSOT_TOKEN }
   }
   return { body, token: '{discountRate}%' }
 }

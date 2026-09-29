@@ -27,7 +27,7 @@ export interface ManageCurator {
   tiktok_url?: string | null
 }
 
-type Field = 'name' | 'bio' | 'handle' | 'sns' | 'headline' | null
+type Field = 'name' | 'bio' | 'handle' | 'sns' | null
 
 const rowCls = 'w-full flex items-center gap-2 px-3.5 py-3 border-t border-rule first:border-t-0 text-left'
 const keyCls = 'text-[13px] font-semibold text-gray-900 dark:text-white shrink-0'
@@ -47,7 +47,6 @@ export default function ShopInfoCards({ curator, onCuratorUpdate }: {
 
   const [editName, setEditName] = useState(curator.name)
   const [editBio, setEditBio] = useState(curator.bio || '')
-  const [headlineVal, setHeadlineVal] = useState(curator.headline || '')
   const [snsForm, setSnsForm] = useState({
     youtube_url: curator.youtube_url || '',
     instagram_url: curator.instagram_url || '',
@@ -202,23 +201,10 @@ export default function ShopInfoCards({ curator, onCuratorUpdate }: {
         </button>
       )}
 
-      {/* 흐르는 문구(마퀴) — 값이 있을 때만 유어샵 상단에 그려진다. 비우면 안 뜬다. */}
-      {open === 'headline' ? (
-        <div className="p-3.5 border-t border-rule">
-          <input autoFocus value={headlineVal} onChange={(e) => setHeadlineVal(e.target.value)} maxLength={80} className={inputCls} placeholder="예) 이번 주 금정구 신상 3곳" />
-          <p className="text-[11.5px] mt-1.5 text-gray-400 dark:text-gray-500">유어샵 맨 위에 흐르는 한 줄이에요. 비우면 안 보여요.</p>
-          <div className="flex gap-2 mt-2">
-            <button onClick={() => patch({ headline: headlineVal.trim().slice(0, 80) }, { headline: curator.headline || '' })} disabled={saving} className={saveCls}>{saving ? '저장 중…' : '저장'}</button>
-            <button onClick={() => setOpen(null)} className={cancelCls}>취소</button>
-          </div>
-        </div>
-      ) : (
-        <button type="button" onClick={() => { setHeadlineVal(curator.headline || ''); setOpen('headline') }} className={rowCls}>
-          <span className={keyCls}>흐르는 문구</span>
-          <span className={valCls}>{curator.headline || '없음'}</span>
-          <span className="text-[12px] text-gray-400 dark:text-gray-500">›</span>
-        </button>
-      )}
+      {/* 🩸 2026-09-29 (대표 *"배고프다 뭐먹지?는 아예 빼기"*): '흐르는 문구' 편집 행을 뺐다.
+          유어샵 헤더의 마퀴가 유일한 표시 자리였고 그게 사라졌다 — 편집만 남기면 주인이
+          아무도 못 보는 값을 계속 쓴다(에러가 안 나서 아무도 모르는 종류).
+          서버 필드 `headline` 은 그대로 둔다: 되살릴 때 값이 남아 있어야 한다. */}
     </div>
   )
 }
