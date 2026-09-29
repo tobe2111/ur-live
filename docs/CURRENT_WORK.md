@@ -5494,12 +5494,13 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 369건 · 최신순 · 이 목록은 자동 생성된다._
+_총 370건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-28**
 - [유어샵 카톡 공유 카드 — 새까맣던 것 (2026-09-28)](handoff/2026-09-28-ushop-kakao-card.md)
 - [2026-09-28 유어샵 e3/s3 — 관리 화면 분리(1단계) + 본문 밀도형(2단계)](handoff/2026-09-28-ushop-e3-manage.md)
 - [PC 홈 히어로 — 흐르는 이용권 띠 (2026-09-28)](handoff/2026-09-28-pc-home-hero-strip.md)
+- [없는 앱의 스토어 배지 제거 (2026-09-28)](handoff/2026-09-28-no-app-store-badges.md)
 - [마이 판매 구역 — 눈으로 보기 시작했더니 시트가 한 번도 안 열렸다 (2026-09-28)](handoff/2026-09-28-my-sell-zone-and-tool-sheet.md)
 - [마이 — 목록 문법 한 벌 + PC 중복 내비 제거 (2026-09-28)](handoff/2026-09-28-my-quality-one-list-grammar.md)
 - [어드민 플랫폼 설정이 폰에서 한 글자씩 세로로 쌓였다 (2026-09-28)](handoff/2026-09-28-admin-settings-mobile.md)
