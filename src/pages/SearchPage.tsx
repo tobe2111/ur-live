@@ -118,7 +118,8 @@ export default function SearchPage() {
     try {
       // 🔎 2026-07-20 (대표 — 검색 자동완성 수리): `/api/search/suggestions` 는 { data: string[] } 를 반환.
       //   기존 코드는 `data.suggestions`(존재 X)를 읽어 자동완성이 항상 비어 있었음. string[] → {type,text} 매핑.
-      const response = await api.get(`/api/search/suggestions?q=${encodeURIComponent(value)}`)
+      const scopeQs = scope ? `&scope=${encodeURIComponent(scope)}` : ''
+      const response = await api.get(`/api/search/suggestions?q=${encodeURIComponent(value)}${scopeQs}`)
       const list = response.data?.data
       if (Array.isArray(list)) {
         setSuggestions(list.filter((s: unknown): s is string => typeof s === 'string' && !!s)

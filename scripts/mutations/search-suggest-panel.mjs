@@ -8,6 +8,7 @@ const ROUTES = 'src/features/products/api/products.routes.ts'
 const SUGGEST = 'src/features/products/api/search-suggestions.ts'
 const PANEL = 'src/components/search/SearchSuggestPanel.tsx'
 const T = 'src/tests/unit/search-suggest-panel-2026-09-30.test.tsx'
+const REPAIR = 'src/worker/routes/repair-schema.routes.ts'
 
 export default [
   {
@@ -41,7 +42,7 @@ export default [
   {
     name: '🔎별칭 핸들러가 제안 모듈을 안 쓴다(배선 끊김)',
     file: ROUTES,
-    find: `    return c.json({ success: true, data: await buildSearchSuggestions(c.env.DB, q) });`,
+    find: `    return c.json({ success: true, data: await buildSearchSuggestions(c.env.DB, q, scope) });`,
     replace: `    return c.json({ success: true, data: [] });`,
     test: T,
     why: '모듈을 아무리 잘 짜도 라우트가 안 부르면 화면엔 아무것도 안 나온다 — 텍스트 가드의 고전적 사각지대.',
@@ -94,5 +95,52 @@ export default [
     replace: `      <span>{text.slice(i, i + q.length)}</span>`,
     test: T,
     why: '"내가 친 것 + 이어지는 말"로 읽히게 하는 유일한 장치다. 없으면 그냥 글자 목록이다.',
+  },
+  {
+    name: '🔎제안이 결과와 다른 범위를 본다(교환권 검색에 이용권을 제안)',
+    file: ROUTES,
+    find: `    const scope = normalizeScope(c.req.query('scope'));`,
+    replace: `    const scope = 'voucher' as const;`,
+    test: T,
+    why:
+      '검색은 어디서 왔느냐에 따라 범위가 **정반대**다(기본=이용권 / scope=exchange=교환권). ' +
+      '고정하면 교환권 검색창에 이용권이 뜨고 눌러도 0건이다 — 2026-09-30 실측으로 교환권 2,260건이 ' +
+      '제안에서 통째로 빠져 있었다.',
+  },
+  {
+    name: '🔎클라가 scope 를 안 실어 보낸다',
+    file: PAGE,
+    find: "      const scopeQs = scope ? `&scope=${encodeURIComponent(scope)}` : ''",
+    replace: "      const scopeQs = ''",
+    test: T,
+    why: '서버가 아무리 스코프를 받아도 클라가 안 보내면 그대로 기본값으로 떨어진다 — 배선 절반만 하는 고전적 실패.',
+  },
+  {
+    name: '🔎exchange 에서 카테고리 바인딩을 그대로 넘긴다(D1 거절)',
+    file: SUGGEST,
+    find: `  const scopeArgs = exchange ? [] : vc.values;`,
+    replace: `  const scopeArgs = vc.values;`,
+    test: T,
+    why: 'exchange 분기의 SQL 엔 `?` 자리가 없다. 바인딩 개수가 어긋나면 D1 이 쿼리를 거절하고, catch 가 삼켜 **빈 제안**이 된다.',
+  },
+  {
+    name: '🔎제안 요청 디바운스가 사라진다(키마다 D1 쿼리 3개)',
+    file: HEADER,
+    find: `    const t = setTimeout(() => onLoadSuggestions(inputValue), 180)`,
+    replace: `    onLoadSuggestions(inputValue)`,
+    test: T,
+    why:
+      '한글 IME 는 자모마다 입력 이벤트를 낸다. 제안 한 번이 D1 쿼리 셋이라 "돈가스" 다섯 타에 ' +
+      '15 쿼리다 — 이 레포는 이미 D1 일일 읽기 한도에 닿아 소비자 API 가 전부 500 이 난 적이 있다.',
+  },
+  {
+    name: '🔎인기 검색어 테이블 생성이 다시 빠진다',
+    file: REPAIR,
+    find: `    { name: 'popular_searches', sql: \`CREATE TABLE IF NOT EXISTS popular_searches (`,
+    replace: `    { name: 'popular_searches', sql: \`CREATE TABLE IF NOT EXISTS popular_searches_unused (`,
+    test: T,
+    why:
+      '2026-09-30 실측: 라이브에 이 테이블이 **없었다**(migration 0273 미적용 + repair-schema 누락). ' +
+      '그래서 /api/search/popular 가 항상 빈 배열이고 인기 검색어 UI 가 영영 안 떴다 — 에러는 전혀 안 났다.',
   },
 ]

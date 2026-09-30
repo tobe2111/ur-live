@@ -27,7 +27,7 @@ import { cacheGet } from '@/worker/utils/cache';
 import { ProductService } from '../services/ProductService';
 import type { ProductFilter, ProductCreateInput, ProductUpdateInput } from '../types';
 import { seedDemoReviews } from '@/worker/utils/demo-review-generator';
-import { buildSearchSuggestions } from './search-suggestions';
+import { buildSearchSuggestions, normalizeScope } from './search-suggestions';
 import { voucherCategoriesSqlClause } from '@/shared/constants/voucher-categories';
 import type { Env } from '@/worker/types/env';
 import { parsePickup, isEmptyPickup } from '../../../shared/pickup';
@@ -267,7 +267,9 @@ productsRoutes.get('/suggestions', cors(), async (c) => {
   const q = c.req.query('q') || '';
   if (!q || q.length < 2 || q.length > 200) return c.json({ success: true, data: [] });
   try {
-    return c.json({ success: true, data: await buildSearchSuggestions(c.env.DB, q) });
+    // 🔎 scope 는 결과 화면과 **같은 값**이어야 한다 — 안 넘기면 교환권 검색에 이용권이 제안된다.
+    const scope = normalizeScope(c.req.query('scope'));
+    return c.json({ success: true, data: await buildSearchSuggestions(c.env.DB, q, scope) });
   } catch {
     return c.json({ success: true, data: [] });
   }

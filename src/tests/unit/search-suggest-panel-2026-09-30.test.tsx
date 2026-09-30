@@ -21,6 +21,7 @@ const header = stripComments(readFileSync('src/components/search/SearchHeader.ts
 const page = stripComments(readFileSync('src/pages/SearchPage.tsx', 'utf8'))
 const routes = stripComments(readFileSync('src/features/products/api/products.routes.ts', 'utf8'))
 const searchQuery = readFileSync('src/features/products/repositories/search-query.ts', 'utf8')
+const repair = stripComments(readFileSync('src/worker/routes/repair-schema.routes.ts', 'utf8'))
 /** 무엇을 제안할지는 이 모듈이 정한다(2026-09-30 라우트에서 분리 — 파일 크기 래칫). */
 const alias = stripComments(readFileSync('src/features/products/api/search-suggestions.ts', 'utf8'))
 
@@ -31,7 +32,7 @@ describe('① 제안이 결과를 덮지 않는다', () => {
   it('🔴 헤더에 떠 있는 드롭다운이 없다', () => {
     expect(alias.length, '제안 모듈을 못 찾으면 아래가 전부 헛돈다').toBeGreaterThan(200)
     // 🔌 배선 — 별칭 핸들러가 그 모듈을 실제로 부른다(안 부르면 위 검사가 통째로 헛돈다).
-    expect(handler).toContain('buildSearchSuggestions(c.env.DB, q)')
+    expect(handler).toContain('buildSearchSuggestions(c.env.DB, q, scope)')
     expect(routes).toContain("from './search-suggestions'")
     expect(header).not.toMatch(/absolute top-full/)
     expect(header).not.toMatch(/showSuggestions/)
@@ -73,8 +74,9 @@ describe('② 서버 제안이 결과의 복사본이 아니다', () => {
   })
 
   it('🔴 세 쿼리가 같은 이용권 스코프를 쓴다 — 스코프가 갈리면 눌러서 0건이 난다', () => {
-    expect(alias).toContain('const scope = `is_active = 1')
-    // scope 를 실제로 쓰는 자리가 둘(매장명·상품명) 이어야 한다.
+    // 🔁 2026-09-30 재조준: scope 가 **두 분기**(exchange / voucher)가 됐다. 불변식은 그대로 —
+    //    "세 쿼리가 같은 조건을 쓴다". 조건을 고르는 자리는 하나, 쓰는 자리는 둘.
+    expect(alias).toMatch(/const scope = exchange\s*\?/)
     expect((alias.match(/\$\{scope\}/g) ?? []).length).toBe(2)
   })
 })
@@ -100,5 +102,68 @@ describe('③ 패널 — 친 글자를 굵게, 없으면 안 그린다', () => {
     )
     getAllByRole('option')[0].click()
     expect(picked).toEqual(['돈가스'])
+  })
+})
+
+
+describe('④ 제안 범위가 결과 범위와 같다 (2026-09-30 실측으로 드러난 구멍)', () => {
+  /**
+   * 검색은 **어디서 왔느냐에 따라 범위가 정반대**다:
+   *   · 기본        → 이용권만 (2026-07-16 대표 "검색은 무조건 이용권만")
+   *   · scope=exchange → 교환권만 (2026-08-08 대표 — `/vouchers` 검색 버튼이 붙여 보낸다)
+   * 제안이 이걸 안 받으면 교환권 검색창에 이용권이 뜨고 **눌러도 0건**이다.
+   * 실측 2026-09-30: 교환권 2,260건이 제안에서 통째로 빠져 있었다.
+   */
+  it('🔴 클라 → 라우트 → 빌더로 scope 가 이어진다', () => {
+    expect(page).toContain('scope ? `&scope=${encodeURIComponent(scope)}`')
+    expect(handler).toContain("normalizeScope(c.req.query('scope'))")
+    expect(handler).toContain('buildSearchSuggestions(c.env.DB, q, scope)')
+  })
+
+  it('🔴 두 분기가 결과 화면의 분기를 미러한다', () => {
+    // 결과 화면: scope==='exchange' → deal_only===1 / 그 외 → deal_only 아님 + voucher 카테고리
+    expect(page).toContain("if (scope === 'exchange') return Number(product.deal_only) === 1")
+    expect(alias).toContain('AND deal_only = 1')
+    expect(alias).toContain('AND (deal_only IS NULL OR deal_only = 0)')
+  })
+
+  it('🔴 exchange 에서는 카테고리 바인딩을 넘기지 않는다 (개수 어긋나면 D1 이 거절한다)', () => {
+    expect(alias).toContain('const scopeArgs = exchange ? [] : vc.values')
+    expect(alias).not.toMatch(/\.\.\.vc\.values/)
+  })
+})
+
+describe('⑤ 키 입력마다 요청하지 않는다', () => {
+  it('🔴 제안 로드에 디바운스가 있다 (한 번이 D1 쿼리 셋이다)', () => {
+    expect(header).toMatch(/setTimeout\(\(\) => onLoadSuggestions\(inputValue\), \d+\)/)
+    expect(header).toContain('clearTimeout(t)')
+  })
+
+  it('🔴 패널 열림/닫힘은 디바운스에 걸리지 않는다 (글자를 지웠는데 목록이 남으면 안 된다)', () => {
+    const eff = header.slice(header.indexOf('const open = isFocused'), header.indexOf('const handleSearch'))
+    expect(eff.indexOf('onPanelChange(open, inputValue)')).toBeLessThan(eff.indexOf('setTimeout'))
+  })
+})
+
+describe('⑥ 인기 검색어 테이블이 실재한다 (라이브에 없었다)', () => {
+  /**
+   * 2026-09-30 실측: 라이브 D1 이 `no such table: popular_searches` 를 냈다.
+   * migration 0273 이 정의해 두고도 적용되지 않았고 repair-schema 에도 없었다 —
+   * `/api/search/popular` 가 항상 `[]`(실측), 자동완성의 인기 소스도 항상 빈 배열,
+   * 오타 보정 후보 source 도 비어 있었다. 쓰기(`logSearch`)는 try/catch 라 에러도 안 났다.
+   */
+  it('🔴 repair-schema 가 popular_searches · search_logs 를 만든다', () => {
+    // ⚠️ 이름 **접두사**로 검사하면 안 된다 — `popular_searches_unused` 도 통과한다(주입이 잡았다).
+    //    여는 괄호까지 붙여 **그 이름 그대로**인지 본다.
+    expect(repair).toMatch(/CREATE TABLE IF NOT EXISTS popular_searches\s*\(/)
+    expect(repair).toMatch(/CREATE TABLE IF NOT EXISTS search_logs\s*\(/)
+    // 쓰는 쪽이 보는 이름과 같은지 — 다르면 만들어도 소용없다.
+    const reader = readFileSync('src/features/products/api/products.routes.ts', 'utf8')
+    expect(reader).toContain('FROM popular_searches')
+  })
+
+  it('🔴 짝 인덱스도 함께 만든다 (migration 0273 과 동등)', () => {
+    expect(repair).toContain('idx_popular_searches_count')
+    expect(repair).toContain('idx_search_logs_query_created')
   })
 })

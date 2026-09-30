@@ -42,8 +42,17 @@ export default function SearchHeader({
    */
   useEffect(() => {
     const open = isFocused && inputValue.trim().length >= 2
-    if (open) onLoadSuggestions(inputValue)
+    // 패널 열림/닫힘은 **즉시** 반영한다(글자를 지웠는데 목록이 남아 있으면 안 된다).
     onPanelChange(open, inputValue)
+    if (!open) return
+    /**
+     * ⏱️ 2026-09-30 — **디바운스**. 종전엔 키 입력마다 요청이 나갔다(한글 IME 는 자모마다 한 번).
+     *   제안 한 번이 D1 쿼리 **세 개**라, "돈가스" 다섯 타에 15 쿼리가 나간다. 이 레포는 이미
+     *   D1 일일 읽기 한도에 한 번 닿은 적이 있다(2026-09-02 소비자 API 전체 500).
+     *   180ms 는 사람이 다음 글자를 치기 전 — 체감은 그대로고 요청만 준다.
+     */
+    const t = setTimeout(() => onLoadSuggestions(inputValue), 180)
+    return () => clearTimeout(t)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inputValue, isFocused])
 
