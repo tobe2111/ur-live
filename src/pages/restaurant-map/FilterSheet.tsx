@@ -42,7 +42,7 @@ function Pill({ active, onClick, children }: { active: boolean; onClick: () => v
       onClick={onClick}
       className={`px-3 py-2 rounded-full text-[13px] font-semibold whitespace-nowrap transition-all ${
         active
-          ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900'
+          ? 'bg-brand text-white'
           : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#242424]'
       }`}
     >
@@ -52,7 +52,7 @@ function Pill({ active, onClick, children }: { active: boolean; onClick: () => v
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <p className="text-[13px] font-bold text-gray-900 dark:text-white mb-2.5">{children}</p>
+  return <p className="text-[13px] font-bold text-gray-900 dark:text-white mb-2">{children}</p>
 }
 
 export default function FilterSheet({ region: ir, district: id, sortBy: isort, radiusKm: irad, priceRange: ip, hasUserLoc, countFor, onApply, onClose }: Props) {
@@ -80,7 +80,7 @@ export default function FilterSheet({ region: ir, district: id, sortBy: isort, r
         role="dialog" aria-modal="true" aria-label={t('map.filter.ariaLabel', { defaultValue: '필터 설정' })}
       >
         {/* grabber + header */}
-        <div className="pt-2.5 shrink-0">
+        <div className="pt-2 shrink-0">
           <div className="w-9 h-1 rounded-full bg-gray-200 dark:bg-[#2C2F35] mx-auto" />
         </div>
         <div className="px-5 pt-3 pb-3 flex items-center justify-between shrink-0">
@@ -102,13 +102,13 @@ export default function FilterSheet({ region: ir, district: id, sortBy: isort, r
               <div className="w-[86px] shrink-0 overflow-y-auto scrollbar-hide bg-gray-50 dark:bg-[#1D1F29] border-r border-gray-100 dark:border-[#2C2F35]">
                 <button
                   onClick={() => { setRegion(''); setDistrict('') }}
-                  className={`w-full text-left px-3 py-2.5 text-[12.5px] transition-colors ${!region ? 'bg-white dark:bg-[#11141C] font-bold text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
+                  className={`w-full text-left px-3 py-2 text-[12px] transition-colors ${!region ? 'bg-white dark:bg-[#11141C] font-bold text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
                 >전국</button>
                 {KOREA_REGIONS.map(r => (
                   <button
                     key={r.key}
                     onClick={() => { setRegion(r.key); setDistrict('') }}
-                    className={`w-full text-left px-3 py-2.5 text-[12.5px] whitespace-pre-line leading-tight transition-colors ${region === r.key ? 'bg-white dark:bg-[#11141C] font-bold text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
+                    className={`w-full text-left px-3 py-2 text-[12px] whitespace-pre-line leading-tight transition-colors ${region === r.key ? 'bg-white dark:bg-[#11141C] font-bold text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`}
                   >{r.label}</button>
                 ))}
               </div>
@@ -139,7 +139,7 @@ export default function FilterSheet({ region: ir, district: id, sortBy: isort, r
           {/* 정렬 */}
           <section>
             <SectionTitle>{t('map.filter.sort', { defaultValue: '정렬' })}</SectionTitle>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-2">
               {sortOpts.map(o => <Pill key={o.v} active={sort === o.v} onClick={() => setSort(o.v)}>{o.label}</Pill>)}
             </div>
           </section>
@@ -148,9 +148,9 @@ export default function FilterSheet({ region: ir, district: id, sortBy: isort, r
           <section>
             <SectionTitle>
               {t('map.filter.radius', { defaultValue: '거리 반경' })}
-              {!hasUserLoc && <span className="ml-1.5 text-[11px] font-medium text-gray-400">· 위치 허용 필요</span>}
+              {!hasUserLoc && <span className="ml-1.5 text-[12px] font-medium text-gray-400">· 위치 허용 필요</span>}
             </SectionTitle>
-            <div className="flex gap-1.5">
+            <div className="flex gap-2">
               {RADIUS_OPTS.map(o => (
                 <Pill key={o.v} active={radius === o.v} onClick={() => hasUserLoc && setRadius(o.v)}>{o.label}</Pill>
               ))}
@@ -160,7 +160,7 @@ export default function FilterSheet({ region: ir, district: id, sortBy: isort, r
           {/* 가격대 */}
           <section>
             <SectionTitle>{t('map.filter.price', { defaultValue: '가격대' })}</SectionTitle>
-            <div className="flex gap-1.5">
+            <div className="flex gap-2">
               {PRICE_OPTS.map(o => <Pill key={o.v} active={price === o.v} onClick={() => setPrice(o.v)}>{o.label}</Pill>)}
             </div>
           </section>
@@ -171,7 +171,7 @@ export default function FilterSheet({ region: ir, district: id, sortBy: isort, r
           <button
             data-testid="filter-apply"
             onClick={() => onApply(region, district, sort, radius, price)}
-            className="w-full py-3.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[15px] font-extrabold rounded-2xl active:scale-[0.98] transition-transform"
+            className="w-full py-4 bg-brand text-white text-[15px] font-extrabold rounded-2xl active:scale-[0.98] transition-transform"
           >
             {count > 0
               ? t('map.filter.applyCount', { defaultValue: `${count}곳 보기`, count })

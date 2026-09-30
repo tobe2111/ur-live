@@ -89,7 +89,7 @@ export default function DashboardActions({
                   type="button"
                   role="menuitem"
                   onClick={() => { setOpen(false); it.onClick() }}
-                  className={`flex w-full items-center gap-2 px-3.5 py-2.5 text-left text-[13px] font-semibold transition-colors hover:bg-gray-50 ${
+                  className={`flex w-full items-center gap-2 px-4 py-2 text-left text-[13px] font-semibold transition-colors hover:bg-gray-50 ${
                     it.danger ? 'text-red-600' : 'text-gray-700'
                   }`}
                 >

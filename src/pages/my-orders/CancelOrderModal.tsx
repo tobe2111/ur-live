@@ -2,7 +2,8 @@
  * 🛡️ 2026-05-02: TD-018 분할 — MyOrdersPage 주문 취소 모달.
  *   상태 (cancelReason / isPartialCancel / cancelAmount / processing) 는 부모 보유.
  */
-import { X, AlertCircle } from 'lucide-react'
+import { X } from 'lucide-react'
+import { AlertIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from 'react-i18next'
 
 interface Props {
@@ -34,7 +35,7 @@ export default function CancelOrderModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+          <h3 className="text-[17px] font-bold text-gray-900 dark:text-white">
             {t('cancelOrder.title', { defaultValue: '주문 취소' })}
           </h3>
           <button
@@ -47,14 +48,14 @@ export default function CancelOrderModal({
         </div>
 
         <div className="mb-4 p-4 bg-gray-50 dark:bg-[#1D1F29] rounded-xl">
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">{t('cancelOrder.orderNumber', { defaultValue: '주문번호' })}</p>
+          <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-1">{t('cancelOrder.orderNumber', { defaultValue: '주문번호' })}</p>
           <p className="font-semibold text-gray-900 dark:text-white">{orderNumber}</p>
         </div>
 
         {/* 🛡️ 배치 170: 환불 가이드 (셀프서비스 안내) */}
         <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-xl">
-          <p className="text-xs font-bold text-blue-800 mb-1">{t('cancelOrder.refundGuideTitle', { defaultValue: '환불 안내' })}</p>
-          <ul className="text-[11px] text-blue-700 space-y-0.5">
+          <p className="text-[12px] font-bold text-blue-800 mb-1">{t('cancelOrder.refundGuideTitle', { defaultValue: '환불 안내' })}</p>
+          <ul className="text-[12px] text-blue-700 space-y-1">
             <li>• {t('cancelOrder.refundGuide1', { defaultValue: '결제 취소 시 결제 수단으로 자동 환불됩니다' })}</li>
             <li>• {t('cancelOrder.refundGuide2', { defaultValue: '카드 결제: 3~5 영업일 내 환불 | 포인트 결제: 즉시 환불' })}</li>
             <li>• {t('cancelOrder.refundGuide3', { defaultValue: '배송 시작 후에는 반품 절차가 필요합니다' })}</li>
@@ -62,7 +63,7 @@ export default function CancelOrderModal({
         </div>
 
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">
+          <label className="block text-[15px] font-medium text-gray-600 dark:text-gray-300 mb-2">
             {t('cancelOrder.reasonLabel', { defaultValue: '취소 사유' })} <span className="text-red-500">*</span>
           </label>
           <select
@@ -80,13 +81,13 @@ export default function CancelOrderModal({
         </div>
 
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">{t('cancelOrder.refundMethod', { defaultValue: '환불 방식' })}</label>
+          <label className="block text-[15px] font-medium text-gray-600 dark:text-gray-300 mb-2">{t('cancelOrder.refundMethod', { defaultValue: '환불 방식' })}</label>
           <div className="flex gap-2 mb-3">
             <button
               type="button"
               onClick={() => onPartialCancelChange(false)}
-              className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${
-                !isPartialCancel ? 'bg-gray-900 text-white' : 'bg-gray-50 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1D1F29]'
+              className={`flex-1 py-2 rounded-xl text-[15px] font-medium transition-colors ${
+                !isPartialCancel ? 'bg-brand text-white' : 'bg-gray-50 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1D1F29]'
               }`}
             >
               {t('cancelOrder.fullCancel', { defaultValue: '전액 취소' })}
@@ -94,8 +95,8 @@ export default function CancelOrderModal({
             <button
               type="button"
               onClick={() => onPartialCancelChange(true)}
-              className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors ${
-                isPartialCancel ? 'bg-gray-900 text-white' : 'bg-gray-50 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1D1F29]'
+              className={`flex-1 py-2 rounded-xl text-[15px] font-medium transition-colors ${
+                isPartialCancel ? 'bg-brand text-white' : 'bg-gray-50 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1D1F29]'
               }`}
             >
               {t('cancelOrder.partialCancel', { defaultValue: '부분 취소' })}
@@ -120,7 +121,7 @@ export default function CancelOrderModal({
                 className="w-full px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               />
               {isVoucher && (
-                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                <p className="mt-2 text-[12px] text-gray-500 dark:text-gray-400">
                   {t('cancelOrder.qtyHint', { defaultValue: '아직 사용하지 않은 이용권만 환불할 수 있어요. 환불 금액은 장수에 맞춰 자동으로 계산됩니다.' })}
                 </p>
               )}
@@ -130,8 +131,8 @@ export default function CancelOrderModal({
 
         <div className="mb-6 p-4 bg-blue-50 rounded-xl">
           <div className="flex items-start gap-2">
-            <AlertCircle className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
-            <div className="text-sm text-blue-700">
+            <AlertIcon className="h-5 w-5 text-blue-500 mt-1 flex-shrink-0" />
+            <div className="text-[15px] text-blue-700">
               <p className="font-medium mb-1">{t('cancelOrder.noticeTitle', { defaultValue: '취소 안내' })}</p>
               <p className="text-blue-600">• {t('cancelOrder.notice1', { defaultValue: '결제완료 상태에서만 취소가 가능합니다.' })}</p>
               <p className="text-blue-600">• {t('cancelOrder.notice2', { defaultValue: '취소 시 토스페이먼츠를 통해 자동 환불됩니다. (3-5영업일 소요)' })}</p>

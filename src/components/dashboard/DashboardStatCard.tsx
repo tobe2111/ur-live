@@ -47,7 +47,7 @@ export default function DashboardStatCard({
   const inner = (
     <>
       <div className="flex items-start justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-1.5">
+        <div className="flex min-w-0 items-center gap-2">
           <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${DOT[accent]}`} aria-hidden />
           <p className="truncate text-[12px] font-medium text-gray-500">{label}</p>
         </div>
@@ -57,12 +57,12 @@ export default function DashboardStatCard({
       {loading ? (
         <div className="mt-2 h-7 w-20 animate-pulse rounded bg-gray-100" />
       ) : (
-        <p className="dash-num mt-1.5 text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">{value}</p>
+        <p className="dash-num mt-2 text-[length:var(--dash-stat,24px)] font-extrabold leading-tight tracking-tight text-gray-900">{value}</p>
       )}
 
       {hint && <p className="mt-1 text-[12px] text-gray-400">{hint}</p>}
       {trend && (
-        <div className={`mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold ${trend.value >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+        <div className={`mt-2 inline-flex items-center gap-1 text-[12px] font-semibold ${trend.value >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
           <span>{trend.value >= 0 ? '▲' : '▼'}</span>
           <span>{Math.abs(trend.value)}%</span>
           {trend.label && <span className="font-normal text-gray-400">{trend.label}</span>}

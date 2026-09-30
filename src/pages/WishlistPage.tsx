@@ -1,4 +1,5 @@
 import { DEAL_GRID_GAP } from '@/shared/deal-card-grid'
+import { HeartIcon } from '@/components/icons/urdeal-icons'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -6,7 +7,7 @@ import SEO from '@/components/SEO'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { isLoggedInSync, getUserIdSync } from '@/utils/auth'
-import { ArrowLeft, Heart } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { LargeTitle, WalletPageWrapper } from '@/components/wallet/WalletAtoms'
 import { walletTokens } from '@/components/wallet/walletTokens'
 import { useTheme } from '@/shared/stores/useTheme'
@@ -132,12 +133,12 @@ const WishlistPage: React.FC = () => {
              종전엔 테두리 카드 + 그라디언트 버튼이었고, p-12·아이콘 64px 이라 빈 화면이 세로로
              과하게 컸다. 주 행동은 브랜드 블루 면 하나. */
           <div className="rounded-2xl px-6 py-10 text-center bg-surface shadow-lift dark:shadow-none lg:max-w-xl lg:mx-auto lg:mt-4">
-            <Heart className="w-10 h-10 mx-auto mb-3 text-gray-300 dark:text-gray-500" strokeWidth={1.5} aria-hidden />
-            <h2 className="text-[17px] font-extrabold text-[#16181C] dark:text-[#F5F3F1]">{t('wishlist.emptyTitle')}</h2>
+            <HeartIcon className="w-10 h-10 mx-auto mb-3 text-gray-300 dark:text-gray-500" aria-hidden />
+            <h2 className="text-[17px] font-extrabold text-[#16181C] dark:text-[#F8F7FC]">{t('wishlist.emptyTitle')}</h2>
             <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{t('wishlist.emptyHint')}</p>
             <button
               onClick={() => navigate('/')}
-              className="mt-5 h-11 px-6 rounded-full bg-brand text-white text-[14px] font-bold active:scale-[0.98] transition-transform"
+              className="mt-5 h-11 px-6 rounded-full bg-brand text-white text-[15px] font-bold active:scale-[0.98] transition-transform"
             >
               {t('wishlist.continueShopping')}
             </button>

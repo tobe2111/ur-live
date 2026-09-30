@@ -70,16 +70,16 @@ export default function AnalyticsSheet({ sellerId, storeName, onClose }: {
         </div>
       )}
       {failed && (
-        <p className="px-4 py-8 text-center text-[13.5px] text-gray-500 dark:text-gray-400">
+        <p className="px-4 py-8 text-center text-[13px] text-gray-500 dark:text-gray-400">
           매출을 불러오지 못했습니다. 잠시 후 다시 열어 주세요.
         </p>
       )}
       {view && (
         <div className="px-4 py-4">
           <p className="text-[12px] text-gray-500 dark:text-gray-400">{storeName} · 이번 달</p>
-          <p className="text-[30px] font-extrabold tabular-nums leading-none text-gray-900 dark:text-white mt-1">
+          <p className="text-[28px] font-extrabold tabular-nums leading-none text-gray-900 dark:text-white mt-1">
             {formatNumber(view.month)}
-            <span className="text-[16px] font-bold text-gray-500 dark:text-gray-400 ml-1">원</span>
+            <span className="text-[15px] font-bold text-gray-500 dark:text-gray-400 ml-1">원</span>
           </p>
 
           {/* 최근 14일 — 막대 하나가 하루. 높이는 그 기간의 최고 매출 기준(절대 금액이 아니다). */}
@@ -93,25 +93,25 @@ export default function AnalyticsSheet({ sellerId, storeName, onClose }: {
               </span>
             ))}
           </div>
-          <div className="flex justify-between text-[11px] text-gray-500 dark:text-gray-400 mt-1.5">
+          <div className="flex justify-between text-[12px] text-gray-500 dark:text-gray-400 mt-2">
             <span>{view.days[0].label}일</span>
             <span>오늘</span>
           </div>
 
           <dl className="mt-5 pt-4 border-t border-rule space-y-3">
             <div className="flex items-baseline justify-between">
-              <dt className="text-[13.5px] text-gray-500 dark:text-gray-400">최근 7일</dt>
+              <dt className="text-[13px] text-gray-500 dark:text-gray-400">최근 7일</dt>
               <dd className="text-[15px] font-bold tabular-nums text-gray-900 dark:text-white">
                 {formatNumber(view.last7)}원
                 {view.prev7 > 0 && (
-                  <span className={`ml-2 text-[12.5px] font-semibold ${view.delta >= 0 ? 'text-brand-text' : 'text-gray-500 dark:text-gray-400'}`}>
+                  <span className={`ml-2 text-[13px] font-semibold ${view.delta >= 0 ? 'text-brand-text' : 'text-gray-500 dark:text-gray-400'}`}>
                     지난주보다 {view.delta >= 0 ? '+' : ''}{view.delta}%
                   </span>
                 )}
               </dd>
             </div>
             <div className="flex items-baseline justify-between">
-              <dt className="text-[13.5px] text-gray-500 dark:text-gray-400">가장 많이 판 날</dt>
+              <dt className="text-[13px] text-gray-500 dark:text-gray-400">가장 많이 판 날</dt>
               <dd className="text-[15px] font-bold tabular-nums text-gray-900 dark:text-white">
                 {view.best.revenue > 0 ? <>{view.best.label}일 · {formatNumber(view.best.revenue)}원</> : '아직 없어요'}
               </dd>

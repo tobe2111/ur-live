@@ -28,8 +28,8 @@ export default function SharePrompt({ title, message, shareTitle, shareDescripti
       <div className="w-full max-w-sm bg-surface rounded-t-2xl sm:rounded-2xl p-6 animate-slide-up" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={title}>
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">{title}</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{message}</p>
+            <h3 className="text-[17px] font-bold text-gray-900 dark:text-white">{title}</h3>
+            <p className="text-[15px] text-gray-500 dark:text-gray-400 mt-1">{message}</p>
           </div>
           <button onClick={onClose} aria-label={t('sharePrompt.closeAria', { defaultValue: '공유 프롬프트 닫기' })} className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
             <X className="w-5 h-5" />
@@ -38,7 +38,7 @@ export default function SharePrompt({ title, message, shareTitle, shareDescripti
 
         {reward && (
           <div className="bg-brand-tint border border-rule rounded-xl p-3 mb-4 text-center">
-            <p className="text-sm font-bold text-brand-text ">{reward}</p>
+            <p className="text-[15px] font-bold text-brand-text ">{reward}</p>
           </div>
         )}
 
@@ -50,7 +50,7 @@ export default function SharePrompt({ title, message, shareTitle, shareDescripti
         />
 
 
-        <button onClick={onClose} className="w-full mt-2 py-2.5 text-sm text-gray-500 dark:text-gray-400 font-medium">
+        <button onClick={onClose} className="w-full mt-2 py-2 text-[15px] text-gray-500 dark:text-gray-400 font-medium">
           {t('sharePrompt.later', { defaultValue: '다음에 하기' })}
         </button>
       </div>
@@ -69,10 +69,10 @@ export function ShareBanner({ title, description, link, buttonText, className }:
   return (
     <div className={`bg-gray-50 dark:bg-gray-900/20 border border-yellow-200 dark:border-yellow-800/40 rounded-xl p-4 ${className || ''}`}>
       <div className="flex items-center justify-between mb-2">
-        <p className="text-sm font-bold text-gray-900 dark:text-white">{title}</p>
+        <p className="text-[15px] font-bold text-gray-900 dark:text-white">{title}</p>
         <button onClick={() => setDismissed(true)} aria-label={t('common.close')} className="text-gray-400 dark:text-gray-500"><X className="w-4 h-4" /></button>
       </div>
-      <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{description}</p>
+      <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-3">{description}</p>
       <KakaoShareButton title={title} description={description} link={link} buttonText={buttonText} />
     </div>
   )

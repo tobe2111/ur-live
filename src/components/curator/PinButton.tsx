@@ -63,7 +63,7 @@ export default function PinButton({ productId, price, variant = 'card-overlay', 
       ? 'absolute top-11 right-2 z-[3] w-9 h-9 rounded-full flex items-center justify-center bg-black/55 hover:bg-brand backdrop-blur transition-all text-white'
       : variant === 'detail-floating'
         ? 'flex items-center justify-center transition-all'  // chrome 은 호출부(상세 상단바)가 className 으로 준다 — 4개 버튼을 한 벌로 맞추기 위해
-        : 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand hover:bg-brand-dark text-white text-sm font-bold transition-colors'
+        : 'inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-brand hover:bg-brand-dark text-white text-[15px] font-bold transition-colors'
 
   /* 🎨 2026-09-03: 이모지(📌/➕) → 선 아이콘. 이모지는 OS 마다 다른 그림이 뜨고
      "임시로 채워 둔 것"으로 읽힌다(카드 폴백 아이콘을 2026-08-30 에 같은 이유로 바꿨다). */

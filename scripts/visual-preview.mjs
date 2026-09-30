@@ -131,6 +131,7 @@ function shell() {
   const seed = `<script type="application/json" id="__SSR_INITIAL_CURATOR__">${JSON.stringify(CURATOR_SEED)}</script>`
     // MAIN_SEED 는 아래(DEALS 뒤)에서 정의된다 — shell() 은 서버가 뜬 뒤 요청 시점에 불리므로 안전.
     + (MAIN_SEED ? `<script type="application/json" id="__SSR_INITIAL_MAIN__">${JSON.stringify(MAIN_SEED)}</script>` : '')
+    + (DETAIL_SEED ? `<script type="application/json" id="__SSR_INITIAL_DETAIL__">${JSON.stringify(DETAIL_SEED)}</script>` : '')
   html = html.replace('</head>', `${seed}\n</head>`)
   // prerender 된 #root 껍데기는 비운다 — 워커의 needsRootBlank 와 같은 효과
   html = html.replace(/<div id="root">[\s\S]*?<\/div>\s*(?=<script)/, '<div id="root"></div>\n')
@@ -174,6 +175,44 @@ const DEALS = DEAL_TITLES.map(([name, sub, was, now], i) => ({
   slug: `sample-${i}`,
   seller_id: 1,
 }))
+
+/**
+ * 🎫 2026-09-28 상세 시드 — `/group-buy/:id` 의 `__SSR_INITIAL_DETAIL__`.
+ *
+ * 왜 필요한가: 상세는 **첫 페인트에 SSR 시드를 동기 소비**한다(2026-06-22 잠금 항목).
+ * 그게 없으면 첫 프레임이 빈 상품(가격 `0원`)이고 API 응답이 온 뒤에야 채워진다 —
+ * 즉 **라이브의 첫 화면과 다른 그림**을 보게 된다. 이 시드가 그 한 프레임을 맞춘다.
+ *
+ * 🩸 **정정(2026-09-28)**: 처음 이 주석에 *"이게 없으면 상세를 떠 볼 방법이 아예 없었다"* 고
+ *    썼는데 **틀렸다.** `--deals` 뒤에 단건 API 스텁이 이미 있었다(아래 `/api/.../products/:id`).
+ *    내가 `--deals` 없이 뜬 뒤 빈 화면을 보고 "시드가 없어서"라고 단정한 것이다.
+ *    ⇒ 빈 화면을 만나면 **먼저 플래그를 의심할 것**(`--deals`·`--wallet`·`--stores`·`--auth`).
+ *
+ * ⚠️ 합성 데이터다. 실데이터의 긴 매장명·빈 필드·사진 여러 장은 여기서 안 보인다.
+ */
+const DETAIL_ID = (() => {
+  const m = ROUTE.match(/^\/(?:pass|group-buy|vouchers|products)\/(\d+)/)
+  return m ? Number(m[1]) : 0
+})()
+const DETAIL_SEED = DETAIL_ID
+  ? {
+      success: true,
+      data: {
+        ...(DEALS.find((d) => d.id === DETAIL_ID) || { ...DEALS[0], id: DETAIL_ID }),
+        id: DETAIL_ID,
+        description: '연남동 골목 안쪽, 예약 없이 들르기 좋은 이자카야입니다. 2인 코스는 제철 사시미와 구이 4종, 식사까지 포함됩니다.',
+        group_buy_target: 30,
+        group_buy_tiers: [{ count: 10, discount: 15 }, { count: 30, discount: 28 }],
+        current_discount_pct: 28,
+        next_tier: null,
+        next_tier_remaining: null,
+        stock: 40,
+        store_phone: '02-0000-0000',
+        latitude: 37.5602,
+        longitude: 126.9255,
+      },
+    }
+  : null
 
 /**
  * 🎬 2026-09-08 유어쇼츠 레일 시드 — `/api/urshorts`.

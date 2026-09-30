@@ -43,8 +43,8 @@ export default function PartnerBenefits() {
         <div className="mt-12 lg:mt-20 space-y-12 lg:space-y-20 max-w-[52rem]">
           {ITEMS.map(({ k, d }) => (
             <div key={k}>
-              <p className="text-[21px] lg:text-[32px] xl:text-[36px] font-extrabold text-ink leading-[1.3] tracking-[-0.025em]">{k}</p>
-              <p className="mt-3.5 lg:mt-5 text-[14px] lg:text-[17px] leading-[1.8] text-gray-500 dark:text-gray-400 max-w-[34em]">{d}</p>
+              <p className="text-[24px] lg:text-[32px] xl:text-[36px] font-extrabold text-ink leading-[1.3] tracking-[-0.025em]">{k}</p>
+              <p className="mt-4 lg:mt-5 text-[15px] lg:text-[17px] leading-[1.8] text-gray-500 dark:text-gray-400 max-w-[34em]">{d}</p>
             </div>
           ))}
         </div>

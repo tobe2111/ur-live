@@ -1,6 +1,7 @@
 // 🧱 2026-06-29 TD: GroupBuyListPage god 파일 분해 — 유저 공구(커뮤니티) 카드(verbatim 추출). 동작 불변.
 import { useTranslation } from 'react-i18next'
-import { MapPin, Bell, HandCoins, Users, Clock } from 'lucide-react'
+import { PinIcon, BellIcon, PeopleIcon, ClockIcon } from '@/components/icons/urdeal-icons'
+import { HandCoins } from 'lucide-react'
 import { formatPrice } from '@/utils/currency'
 import { STATUS_BADGES } from './constants'
 import { formatTimeLeft } from './utils'
@@ -32,32 +33,32 @@ export default function CommunityGroupBuyCard({
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <div className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-[#1D1F29] flex items-center justify-center flex-shrink-0">
-            <span className="text-[18px]">🙋</span>
+            <span className="text-[17px]">🙋</span>
           </div>
           <div className="min-w-0">
-            <p className="text-[14px] font-bold text-gray-900 dark:text-white truncate">
+            <p className="text-[15px] font-bold text-gray-900 dark:text-white truncate">
               {g.restaurant_name}
             </p>
             {g.restaurant_address && (
-              <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate flex items-center gap-0.5 mt-0.5">
-                <MapPin className="w-3 h-3 flex-shrink-0" />
+              <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate flex items-center gap-1 mt-1">
+                <PinIcon className="w-3 h-3 flex-shrink-0" />
                 {g.restaurant_address}
               </p>
             )}
           </div>
         </div>
-        <div className="flex items-center gap-1.5 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <button
             onClick={(e) => onToggleInterest(e, g.id, g.restaurant_name)}
             className="w-7 h-7 flex items-center justify-center rounded-full border border-line active:scale-90 transition-transform"
             aria-label={t('common.wishlist', { defaultValue: '관심 등록' })}
           >
-            <Bell
+            <BellIcon filled
               className={`w-3.5 h-3.5 ${interested ? 'text-gray-900 fill-gray-900 dark:text-white dark:fill-white' : 'text-gray-400'}`}
             />
           </button>
           <span
-            className={`text-[10px] font-bold px-2 py-0.5 rounded-md whitespace-nowrap ${badge.className}`}
+            className={`text-[12px] font-bold px-2 py-1 rounded-md whitespace-nowrap ${badge.className}`}
           >
             {badge.label}
           </span>
@@ -73,7 +74,7 @@ export default function CommunityGroupBuyCard({
             {formatPrice(g.proposed_price)}
           </span>
         </div>
-        <div className="text-[11px] text-gray-400 dark:text-gray-600">|</div>
+        <div className="text-[12px] text-gray-400 dark:text-gray-600">|</div>
         <div className="text-[12px] text-gray-500 dark:text-gray-400">
           {t('groupBuy.depositLabel', { defaultValue: '보증금' })} <span className="font-semibold text-gray-700 dark:text-gray-200">{formatPrice(g.deposit_per_person)}</span>
         </div>
@@ -89,9 +90,9 @@ export default function CommunityGroupBuyCard({
             style={{ width: `${progress}%` }}
           />
         </div>
-        <div className="flex items-center justify-between mt-1.5">
-          <p className="text-[11px] text-gray-600 dark:text-gray-400 flex items-center gap-1">
-            <Users className="w-3 h-3 text-gray-400" />
+        <div className="flex items-center justify-between mt-2">
+          <p className="text-[12px] text-gray-600 dark:text-gray-400 flex items-center gap-1">
+            <PeopleIcon className="w-3 h-3 text-gray-400" />
             {achieved ? (
               <span className="text-emerald-600 font-semibold">
                 {t('groupBuy.goalReached', { defaultValue: '목표 달성!' })}
@@ -107,8 +108,8 @@ export default function CommunityGroupBuyCard({
             )}
           </p>
           {timeLeft && (
-            <p className="text-[10px] text-gray-400 dark:text-gray-500 flex items-center gap-0.5">
-              <Clock className="w-3 h-3" />
+            <p className="text-[12px] text-gray-400 dark:text-gray-500 flex items-center gap-1">
+              <ClockIcon className="w-3 h-3" />
               {timeLeft}
             </p>
           )}
@@ -116,7 +117,7 @@ export default function CommunityGroupBuyCard({
       </div>
 
       {/* 참여하기 CTA — 부모가 이미 <button> 이라 중첩 불가, 표시용 div 유지 */}
-      <div className="mt-3 bg-gray-900 text-white text-center py-2 rounded-xl text-[13px] font-bold">
+      <div className="mt-3 bg-brand text-white text-center py-2 rounded-xl text-[13px] font-bold">
         {t('groupBuy.joinCta', { defaultValue: '참여하기' })}
       </div>
     </button>

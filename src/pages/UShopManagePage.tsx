@@ -24,9 +24,9 @@ import ShopInfoCards from './ushop-manage/ShopInfoCards'
 const EarnLadder = lazy(() => import('./curator-page/EarnLadder'))
 const SellOwnProductsCTA = lazy(() => import('./curator-page/SellOwnProductsCTA'))
 
-const secCls = 'px-4 pt-6 pb-2 text-[11.5px] font-bold text-gray-400 dark:text-gray-500'
+const secCls = 'px-4 pt-6 pb-2 text-[12px] font-bold text-gray-400 dark:text-gray-500'
 const cardCls = 'mx-4 rounded-xl bg-surface shadow-lift overflow-hidden'
-const rowCls = 'w-full flex items-center gap-2 px-3.5 py-3 border-t border-rule first:border-t-0 text-left'
+const rowCls = 'w-full flex items-center gap-2 px-4 py-3 border-t border-rule first:border-t-0 text-left'
 const keyCls = 'text-[13px] font-semibold text-gray-900 dark:text-white'
 const valCls = 'ml-auto min-w-0 truncate text-[12px] text-gray-400 dark:text-gray-500'
 const chev = <span className="text-[12px] text-gray-400 dark:text-gray-500">›</span>
@@ -81,9 +81,9 @@ export default function UShopManagePage() {
   return (
     <div className="min-h-[100dvh] bg-warm text-gray-900 dark:text-white pb-16">
       {/* 상단 — 뒤로는 내 유어샵. 주소는 바뀔 수 있으니 항상 현재 handle 로 간다. */}
-      <div className="flex items-center gap-2.5 px-4 py-3.5 border-b border-rule">
-        <Link to={`/u/${curator.handle}`} aria-label={t('common.back', { defaultValue: '뒤로' })} className="text-[19px] leading-none text-gray-500 dark:text-gray-400 active:opacity-60">‹</Link>
-        <h1 className="text-[15.5px] font-semibold tracking-[-0.028em]">{t('ushop.manageTitle', { defaultValue: '유어샵 관리' })}</h1>
+      <div className="flex items-center gap-2 px-4 py-4 border-b border-rule">
+        <Link to={`/u/${curator.handle}`} aria-label={t('common.back', { defaultValue: '뒤로' })} className="text-[17px] leading-none text-gray-500 dark:text-gray-400 active:opacity-60">‹</Link>
+        <h1 className="text-[15px] font-semibold tracking-[-0.028em]">{t('ushop.manageTitle', { defaultValue: '유어샵 관리' })}</h1>
       </div>
 
       {/* 적립 — 이 화면의 첫 숫자다(손님 화면에서는 뺐다). 기간은 카드가 스스로 말한다(최근 30일). */}
@@ -96,9 +96,9 @@ export default function UShopManagePage() {
       <div className={secCls}>{t('ushop.manageVouchers', { defaultValue: '이용권' })} {pins.length}</div>
       {reorder ? (
         <div className="px-4">
-          <div className="flex items-center justify-between mb-1.5">
+          <div className="flex items-center justify-between mb-2">
             <span className="text-[13px] font-bold">{t('curator.reorderTitle', { defaultValue: '핀 순서 바꾸기' })}</span>
-            <button onClick={() => setReorder(false)} className="px-3.5 py-1.5 rounded-lg bg-gray-900 dark:bg-white text-warm text-[12.5px] font-bold active:opacity-80">
+            <button onClick={() => setReorder(false)} className="px-4 py-2 rounded-lg bg-gray-900 dark:bg-white text-warm text-[12px] font-bold active:opacity-80">
               {t('curator.done', { defaultValue: '완료' })}
             </button>
           </div>
@@ -137,7 +137,7 @@ export default function UShopManagePage() {
         </Link>
       </div>
 
-      <p className="px-4 pt-6 text-[11px] text-gray-400 dark:text-gray-500 leading-[1.7]">
+      <p className="px-4 pt-6 text-[12px] text-gray-400 dark:text-gray-500 leading-[1.7]">
         {t('ushop.manageFoot', { defaultValue: '담은 이용권이 팔리면 소개비가 자동으로 쌓입니다.' })}
       </p>
     </div>

@@ -45,12 +45,14 @@ function swVersionPlugin() {
  * 정적 import 를 따라 가 **다시 계산**하고 불일치하면 빨간불을 낸다(새 아이콘을 셀에 넣었는데
  * 여기 안 적으면 첫 화면이 다시 256개짜리 봉투를 끌고 온다 — 에러 없이 느려지는 부류).
  */
+// 🪒 2026-09-29: 43 → 26. UI④ 아이콘 이행으로 셸이 lucide 뜻 아이콘 17개를 더는 안 쓴다
+//    (`alert-circle`·`bell`·`gift`·`heart`·`home`/`house`·`info`·`log-out`·`message-circle`·
+//     `package`·`settings`·`shopping-cart`·`store`·`ticket`·`check-circle-2`/`circle-check`/`circle-alert`
+//     → `urdeal-icons.tsx`). 안 쓰는 것을 목록에 남기면 그만큼 셸 봉투가 커진다.
 const LUCIDE_SHELL_ICONS = new Set([
-  'alert-circle', 'bed-double', 'bell', 'book-open', 'check', 'check-circle-2', 'chevron-down',
-  'chevron-right', 'circle-alert', 'circle-check', 'circle-help', 'coins', 'compass', 'gift', 'heart',
-  'help-circle', 'home', 'house', 'info', 'layout-dashboard', 'layout-grid', 'log-in', 'log-out', 'map-pin',
-  'message-circle', 'package', 'plus', 'radio', 'refresh-cw', 'scissors', 'search', 'settings', 'shapes',
-  'shopping-cart', 'smartphone', 'sparkles', 'store', 'ticket', 'user', 'user-plus', 'utensils', 'x', 'zap',
+  'bed-double', 'book-open', 'check', 'chevron-down', 'chevron-right', 'circle-help', 'coins', 'compass',
+  'help-circle', 'layout-dashboard', 'layout-grid', 'log-in', 'map-pin', 'plus', 'radio', 'refresh-cw',
+  'scissors', 'search', 'shapes', 'smartphone', 'sparkles', 'user', 'user-plus', 'utensils', 'x', 'zap',
 ])
 
 export default defineConfig({

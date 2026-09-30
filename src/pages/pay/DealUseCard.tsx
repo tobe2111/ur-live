@@ -63,8 +63,8 @@ export default function DealUseCard({ goodsAmount, dealMax, value, onChange, dis
   return (
     <section className="bg-surface rounded-2xl shadow-lift p-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-[14px] font-bold text-ink">딜 사용</h2>
-        <span className="text-[11.5px] text-ink-faint">
+        <h2 className="text-[15px] font-bold text-ink">딜 사용</h2>
+        <span className="text-[12px] text-ink-faint">
           최대 <span className="font-bold text-brand-text">{cap.toLocaleString('ko-KR')}</span>딜
         </span>
       </div>
@@ -79,7 +79,7 @@ export default function DealUseCard({ goodsAmount, dealMax, value, onChange, dis
           placeholder="0"
           disabled={disabled}
           onChange={(e) => onChange(clampDealUse(e.target.value, cap))}
-          className="flex-1 min-w-0 h-12 px-3.5 rounded-xl bg-warm border border-line text-right text-[17px] font-bold tabular-nums text-ink disabled:opacity-50"
+          className="flex-1 min-w-0 h-12 px-4 rounded-xl bg-warm border border-line text-right text-[17px] font-bold tabular-nums text-ink disabled:opacity-50"
         />
         <span className="text-[13px] text-ink-soft">딜</span>
         <button
@@ -96,7 +96,7 @@ export default function DealUseCard({ goodsAmount, dealMax, value, onChange, dis
         </button>
       </div>
 
-      <p className="mt-2.5 text-[11.5px] text-ink-faint">
+      <p className="mt-2 text-[12px] text-ink-faint">
         카드로 최소 {MIN_CARD_AMOUNT.toLocaleString('ko-KR')}원은 결제돼요. 남은 금액만 카드로 청구됩니다.
       </p>
     </section>

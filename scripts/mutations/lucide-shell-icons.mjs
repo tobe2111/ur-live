@@ -23,9 +23,11 @@ export default [
     why: '코어가 큰 봉투로 가면 셸이 그 봉투를 import 해 분할이 통째로 무의미해진다(총량이 안 줄어든다).',
   },
   {
-    name: '🪒 별칭의 실제 구현 파일이 목록에서 빠진다 (AlertCircle → circle-alert)',
+    /* 🔧 2026-09-29 재조준: UI④ 아이콘 이행으로 셸이 `AlertCircle` 을 안 써서 `circle-alert` 가
+       목록에서 사라졌다. 결함은 그대로 — **살아 있는 별칭**(HelpCircle → circle-help)으로 옮긴다. */
+    name: '🪒 별칭의 실제 구현 파일이 목록에서 빠진다 (HelpCircle → circle-help)',
     file: VITE,
-    find: "'circle-alert',",
+    find: "'circle-help',",
     replace: '',
     test: TEST,
     why: '이 레포가 실제로 밟은 함정 — 별칭 파일만 넣으면 구현이 큰 봉투에 남아 셸이 그 봉투를 다시 끌고 온다. 빌드는 성공하고 총량만 안 준다.',

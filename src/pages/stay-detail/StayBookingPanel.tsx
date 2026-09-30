@@ -63,9 +63,9 @@ export default function StayBookingPanel({
       <div className="pt-1">
         <p className="text-[13px] font-bold text-gray-900 dark:text-white mb-1">객실 ({rooms.length})</p>
         {roomsLoading ? (
-          <p className="py-3 text-xs text-gray-500 dark:text-gray-400">가용 객실 조회 중...</p>
+          <p className="py-3 text-[12px] text-gray-500 dark:text-gray-400">가용 객실 조회 중...</p>
         ) : rooms.length === 0 ? (
-          <p className="py-3 text-xs text-gray-500 dark:text-gray-400">해당 기간 가용 객실이 없습니다</p>
+          <p className="py-3 text-[12px] text-gray-500 dark:text-gray-400">해당 기간 가용 객실이 없습니다</p>
         ) : rooms.map((r) => {
           const qty = cartQty[r.room_id] || 0
           const tooMany = guests > r.max_guests
@@ -73,16 +73,16 @@ export default function StayBookingPanel({
           return (
             <div key={r.room_id} className={`flex items-center justify-between gap-3 py-3 border-t border-rule ${disabled ? 'opacity-55' : ''}`}>
               <div className="min-w-0">
-                <p className="text-[14px] font-bold text-gray-900 dark:text-white truncate">{r.name}</p>
-                <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">
+                <p className="text-[15px] font-bold text-gray-900 dark:text-white truncate">{r.name}</p>
+                <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">
                   기준 {r.base_guests} / 최대 {r.max_guests} · {r.available ? `잔여 ${r.available_count}` : '매진'}
                   {tooMany && r.available ? ` · 최대 ${r.max_guests}인까지` : ''}
                 </p>
-                <p className="text-[14px] font-extrabold text-gray-900 dark:text-white mt-0.5 tabular-nums">
-                  ₩{formatNumber(r.total_price)} <span className="text-[11px] font-normal text-gray-500 dark:text-gray-400">{r.nights}박</span>
+                <p className="text-[15px] font-extrabold text-gray-900 dark:text-white mt-1 tabular-nums">
+                  ₩{formatNumber(r.total_price)} <span className="text-[12px] font-normal text-gray-500 dark:text-gray-400">{r.nights}박</span>
                 </p>
               </div>
-              <div className="flex items-center gap-1 h-9 px-1.5 rounded-[10px] border border-rule-strong shrink-0">
+              <div className="flex items-center gap-1 h-9 px-2 rounded-[10px] border border-rule-strong shrink-0">
                 <button type="button" aria-label={`${r.name} 객실 수 줄이기`} onClick={() => bump(r, -1)} disabled={qty === 0}
                   className="w-7 h-7 rounded-full text-gray-600 dark:text-gray-300 disabled:opacity-25 font-bold">−</button>
                 <span className={`w-5 text-center text-[13px] font-bold tabular-nums ${qty ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>{qty}</span>
@@ -96,7 +96,7 @@ export default function StayBookingPanel({
 
       <div className="flex justify-between items-baseline pt-3 border-t border-rule">
         <span className="text-[13px] text-gray-500 dark:text-gray-400">{totalQty > 0 ? `${totalQty}객실 · ${nights}박` : '객실을 담아 주세요'}</span>
-        <span className="text-[20px] font-extrabold text-gray-900 dark:text-white tabular-nums">₩{formatNumber(subtotal)}</span>
+        <span className="text-[24px] font-extrabold text-gray-900 dark:text-white tabular-nums">₩{formatNumber(subtotal)}</span>
       </div>
       <button type="button" onClick={onBook} disabled={totalQty === 0}
         className="w-full h-12 rounded-xl bg-brand hover:bg-brand-dark text-white text-[15px] font-bold disabled:opacity-45 disabled:cursor-not-allowed">

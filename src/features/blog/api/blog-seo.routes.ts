@@ -61,8 +61,8 @@ app.get('/blog/og/:slug', async (c) => {
   <rect x="0" y="0" width="12" height="630" fill="#1C69EF"/>
   <text x="90" y="140" font-size="34" font-weight="700" fill="#4D8DF5" letter-spacing="2">유어딜 블로그</text>
   ${titleSvg}
-  <text x="90" y="560" font-size="30" font-weight="600" fill="#A5A29E">${xmlEscape(tagText)}</text>
-  <text x="1110" y="560" font-size="28" font-weight="700" fill="#757370" text-anchor="end">urdeal.kr</text>
+  <text x="90" y="560" font-size="30" font-weight="600" fill="#9FA3A8">${xmlEscape(tagText)}</text>
+  <text x="1110" y="560" font-size="28" font-weight="700" fill="#6F747A" text-anchor="end">urdeal.kr</text>
 </svg>`
 
   return new Response(svg, {

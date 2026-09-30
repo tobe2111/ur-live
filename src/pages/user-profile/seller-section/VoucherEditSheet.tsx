@@ -104,7 +104,7 @@ export default function VoucherEditSheet({ sellerId, product, onClose, onSaved }
     }
   }
 
-  const field = 'w-full h-12 rounded-xl border border-rule-strong bg-transparent px-3 text-[16px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
+  const field = 'w-full h-12 rounded-xl border border-rule-strong bg-transparent px-3 text-[17px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
 
   return (
     <Sheet
@@ -136,14 +136,14 @@ export default function VoucherEditSheet({ sellerId, product, onClose, onSaved }
         </div>
       )}
       {failed && (
-        <p className="px-4 py-8 text-center text-[13.5px] text-gray-500 dark:text-gray-400">
+        <p className="px-4 py-8 text-center text-[13px] text-gray-500 dark:text-gray-400">
           지금은 불러올 수 없어요. 잠시 후 다시 열어 주세요.
         </p>
       )}
       {loaded && (
         <div className="px-4 py-4 space-y-3">
           <label className="block">
-            <span className="block text-[13px] font-bold text-gray-900 dark:text-white mb-1.5">판매가</span>
+            <span className="block text-[13px] font-bold text-gray-900 dark:text-white mb-2">판매가</span>
             <input
               inputMode="numeric"
               value={price}
@@ -153,7 +153,7 @@ export default function VoucherEditSheet({ sellerId, product, onClose, onSaved }
             />
           </label>
           <label className="block">
-            <span className="block text-[13px] font-bold text-gray-900 dark:text-white mb-1.5">
+            <span className="block text-[13px] font-bold text-gray-900 dark:text-white mb-2">
               정가 <span className="font-normal text-gray-500 dark:text-gray-400">(할인율 계산에 쓰여요)</span>
             </span>
             <input
@@ -165,7 +165,7 @@ export default function VoucherEditSheet({ sellerId, product, onClose, onSaved }
             />
           </label>
           <label className="block">
-            <span className="block text-[13px] font-bold text-gray-900 dark:text-white mb-1.5">남은 수량</span>
+            <span className="block text-[13px] font-bold text-gray-900 dark:text-white mb-2">남은 수량</span>
             <input
               inputMode="numeric"
               value={stock}
@@ -175,13 +175,13 @@ export default function VoucherEditSheet({ sellerId, product, onClose, onSaved }
             />
           </label>
           <label className="block">
-            <span className="block text-[13px] font-bold text-gray-900 dark:text-white mb-1.5">이용 안내</span>
+            <span className="block text-[13px] font-bold text-gray-900 dark:text-white mb-2">이용 안내</span>
             <textarea
               value={terms}
               onChange={(e) => setTerms(e.target.value.slice(0, 1000))}
               rows={4}
               placeholder="예: 점심시간(11~14시) 제외 · 1인 1매"
-              className="w-full rounded-xl border border-rule-strong bg-transparent px-3 py-2.5 text-[15px] leading-[1.6] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
+              className="w-full rounded-xl border border-rule-strong bg-transparent px-3 py-2 text-[15px] leading-[1.6] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
             />
           </label>
           <p className="text-[12px] leading-[1.6] text-gray-500 dark:text-gray-400 pt-1">

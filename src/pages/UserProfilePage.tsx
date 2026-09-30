@@ -8,8 +8,10 @@ import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { logoutAll } from '@/features/auth/login-flow.service'
 import { getUserProfileImage } from '@/utils/auth'
 import { RewardAdCard } from '@/components/my-page/reward-ad-card'
-import { ChevronRight, LogOut, Receipt, ScanLine, Store } from 'lucide-react'
-import TeamPointsCard from './user-profile/TeamPointsCard'
+import { ChevronRight } from 'lucide-react'
+// 🎨 2026-09-28: 남은 lucide 는 `ChevronRight`(이동) 하나뿐 — 조작이라 그대로 둔다.
+import { LogOutIcon, ReceiptIcon, ScanIcon, UrShopIcon } from '@/components/icons/urdeal-icons'
+import MyStats from './user-profile/MyStats'
 import EarningsGroup from './user-profile/EarningsGroup'
 import ReferralEarnedCard from './user-profile/ReferralEarnedCard'
 import CuratorEarningsCard from './user-profile/CuratorEarningsCard'
@@ -17,7 +19,6 @@ import MyReferralCard from '@/components/MyReferralCard'
 import RoleCtaGrid from './user-profile/RoleCtaGrid'
 import ShoppingGroup from './user-profile/ShoppingGroup'
 import OrderStatusBar from './user-profile/OrderStatusBar'
-import ReviewLevelCard from './user-profile/ReviewLevelCard'
 import SellerSwitchInline from './user-profile/SellerSwitchInline'
 import SellerSection from './user-profile/SellerSectionLazy'
 import SettingsGroup from './user-profile/SettingsGroup'
@@ -168,16 +169,27 @@ export default function UserProfilePage() {
             style={{ border: '2px solid rgba(255,255,255,0.15)' }}
             onError={(e) => cfImageOnError(e.currentTarget, profileImage)}
           />
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <p className="text-[17px] font-extrabold text-gray-900 dark:text-white truncate" style={{ letterSpacing: '-0.01em' }}>{userName}</p>
-              <SellerSwitchInline seats={sellerSeats} />
-            </div>
-            <p className="text-[11px] text-gray-900 dark:text-white/50 mt-0.5 truncate">{localStorage.getItem('user_email') || ''}</p>
-            <button onClick={() => setEditOpen(true)} className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 mt-1.5 bg-gray-100 dark:bg-white/[0.08] text-[10px] text-gray-900 dark:text-white/75 font-semibold">
-              {t('userProfile.editProfile', { defaultValue: '프로필 편집' })} <ChevronRight className="w-2.5 h-2.5" aria-hidden="true" />
-            </button>
-          </div>
+          {/* 🎨 2026-09-28 (대표 *"대기업수준이 필요해"*) — **'프로필 편집' 회색 알약을 없애고
+              프로필 줄 전체를 누르게 했다.** 그 알약은 크림 바탕 위 `bg-gray-100` 이라 배경과 거의
+              같은 색이었고(떠 있지도 눌러 보이지도 않았다), 이름·이메일 아래 **세 번째 줄**을 차지해
+              헤더만 세 층이 됐다. 토스·카카오페이·당근의 마이 헤더는 전부 *프로필 블록 자체가 한 행*
+              이고 오른쪽에 화살표 하나다 — 요소는 하나 줄고 누를 면적은 훨씬 넓어진다.
+              ⚠️ 알림 벨은 **바깥에 그대로** 둔다(이 버튼 안에 넣으면 벨이 편집을 여는 셈이 된다). */}
+          <button
+            type="button"
+            onClick={() => setEditOpen(true)}
+            className="flex-1 min-w-0 flex items-center gap-2 text-left active:opacity-70 transition-opacity"
+            aria-label={t('userProfile.editProfile', { defaultValue: '프로필 편집' })}
+          >
+            <span className="flex-1 min-w-0">
+              <span className="flex items-center gap-2 flex-wrap">
+                <span className="text-[17px] font-extrabold text-gray-900 dark:text-white truncate" style={{ letterSpacing: '-0.01em' }}>{userName}</span>
+              </span>
+              <span className="block text-[13px] text-gray-500 dark:text-white/50 mt-1 truncate">{localStorage.getItem('user_email') || ''}</span>
+            </span>
+            <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
+          </button>
+          <SellerSwitchInline seats={sellerSeats} />
           {/* 알림 버튼 — 프로필 우측 (설정 톱니는 '프로필 편집' 알약과 중복이라 제거, 설정은 하단 '설정' 그룹) */}
           <div className="flex items-center gap-1 flex-shrink-0 self-start pt-1">
             <button onClick={() => navigate('/notifications')} aria-label={t('userProfile.ariaNotifications')} className="rounded-full flex items-center justify-center w-[34px] h-[34px] bg-gray-100 dark:bg-white/[0.06] hover:bg-gray-200 dark:hover:bg-white/[0.12] transition-colors">
@@ -201,7 +213,7 @@ export default function UserProfilePage() {
       <div className="hidden lg:block max-w-[1200px] mx-auto px-8 pt-1 pb-3">
         <p className="text-[12px] text-gray-400 dark:text-gray-500">
           <Link to="/" className="hover:underline">홈</Link>
-          <span className="mx-1.5">/</span>
+          <span className="mx-2">/</span>
           <span className="text-gray-600 dark:text-gray-300 font-semibold">내 계정</span>
         </p>
       </div>
@@ -221,6 +233,14 @@ export default function UserProfilePage() {
       {/* ⚠️ **가게가 없으면 두 열로 나누지 않는다.** 왼쪽 열은 판매 전용이라, 좌석이 0 이면
           그 칸이 통째로 비고 손님 블록이 전부 좁은 오른쪽으로 몰린다(첫 판에서 실제로 그랬다).
           판매가 있을 때만 쪼갠다 — 없으면 종전 한 열 그대로다. */}
+      {/* 🔢 2026-09-29 (대표 확정 **안 C**) — 숫자 한 줄이 **맨 위**이고 폰·PC 가 같다.
+          종전엔 같은 숫자가 두 벌이었다: 폰은 딜 잔액 카드 하나(`TeamPointsCard`, 판매 구역 *아래*),
+          PC 는 우측에 **큰 카드 넷**(딜·이용권·교환권·쿠폰)인데 **그중 셋이 0** 이었다 — 0 을 네 번
+          말하려고 우측 칸의 절반을 쓰고 있었다. 코레일톡이 같은 일을 구분선 한 줄로 하는 것을
+          보고 대표가 이 형태를 골랐다.
+          ⚠️ 2열 래퍼 **밖**이다 — 숫자는 판매/손님 어느 쪽 것도 아니라 두 칸 위에 걸쳐야 한다. */}
+      <MyStats voucher={counts.voucher} gifticon={counts.gifticon} coupon={counts.coupon} />
+
       <div className={sellerSeats.stores.length > 0 ? 'ur-account-cols ur-account-cols--split' : 'ur-account-cols'}>
       <div className="ur-account-col min-w-0">
 
@@ -248,9 +268,6 @@ export default function UserProfilePage() {
           사장님은 하루에 이 화면을 가장 많이 열고, 그때 보려는 건 오늘 숫자다. 셀러가 아니면 렌더 0. */}
       <SellerSection state={sellerSeats} />
 
-      {/* v4 딜 잔액 + 충전 (큰 박스) */}
-      <TeamPointsCard />
-
       {/* v4 광고 리워드 카드 — 딜 버는 수단이라 딜 잔액 바로 아래(웹은 null 렌더·네이티브 전용) */}
       <RewardAdCard />
 
@@ -272,14 +289,14 @@ export default function UserProfilePage() {
           <button
             type="button"
             onClick={() => navigate('/store/scan')}
-            className="w-full flex items-center gap-3.5 p-4 rounded-2xl bg-gray-900 dark:bg-white active:scale-[0.99] transition-transform"
+            className="w-full flex items-center gap-3 p-4 rounded-2xl bg-gray-900 dark:bg-white active:scale-[0.99] transition-transform"
           >
             <span className="w-11 h-11 rounded-xl bg-white/15 dark:bg-gray-900/10 flex items-center justify-center shrink-0">
-              <ScanLine className="w-6 h-6 text-white dark:text-gray-900" aria-hidden="true" />
+              <ScanIcon className="w-6 h-6 text-white dark:text-gray-900" aria-hidden="true" />
             </span>
             <span className="text-left min-w-0">
               <span className="block text-[15px] font-extrabold text-white dark:text-gray-900">{t('userProfile.storeCheckout', { defaultValue: '매장 계산대' })}</span>
-              <span className="block text-[11.5px] text-white/75 dark:text-gray-900/70 mt-0.5">{t('userProfile.storeCheckoutDesc', { defaultValue: '손님 이용권 QR을 스캔해 바로 사용 처리' })}</span>
+              <span className="block text-[12px] text-white/75 dark:text-gray-900/70 mt-1">{t('userProfile.storeCheckoutDesc', { defaultValue: '손님 이용권 QR을 스캔해 바로 사용 처리' })}</span>
             </span>
           </button>
         )}
@@ -287,8 +304,13 @@ export default function UserProfilePage() {
 
       <OrderStatusBar />
 
-      {/* 🗺️ 2026-07-02 동네 리뷰어 레벨 (카카오맵 리뷰 게이미피케이션) — 자산 흐름 안에서 동기부여 노출 */}
-      <ReviewLevelCard />
+      {/* 🗑️ 2026-09-30 — **동네 리뷰어 레벨 카드를 마이에서 뺐다** (대표 *"동네 리뷰어 lv.1 이건
+          지금 없어도 되지 않나? 마이에서?"* → *"동네 리뷰어 lv.1 은 빼줘"*).
+          ⚠️ **기능을 지운 게 아니다** — 후기 미션의 진짜 문은 `/my-vouchers` 의 *사용한* 이용권에
+          붙는 `ReviewBonusButton` 이고(후기는 쓰고 나서 쓴다), 이 카드는 그 위에 얹힌 상시 홍보였다.
+          부품(`ReviewLevelCard.tsx`)·API(`/api/review-bonus/my-level`)·어드민 검증은 그대로 살아 있다.
+          되살릴 때: 레벨 전용 혜택이 실제로 생긴 뒤에 — 지금 라이브 활성 이용권 중 레벨을 요구하는
+          것이 0개라, 이 카드는 없는 혜택을 향해 진행바를 채우고 있었다. */}
 
       {/* v4 쇼핑 InsetGroup — '내가 산 것'(이용권·자산 / 관심 / 주문·배송). 2026-09-28 이름 E. */}
       <ShoppingGroup counts={counts} />
@@ -309,14 +331,14 @@ export default function UserProfilePage() {
         <button
           type="button"
           onClick={() => navigate('/user/affiliate')}
-          className="w-full flex items-center gap-3 px-3.5 py-3 active:bg-gray-200 dark:active:bg-white/[0.06] text-left"
+          className="w-full flex items-center gap-3 px-4 py-3 active:bg-gray-200 dark:active:bg-white/[0.06] text-left"
         >
-          <Store className="w-[18px] h-[18px] text-gray-500 dark:text-gray-400" aria-hidden="true" />
+          <UrShopIcon className="w-[18px] h-[18px] text-gray-500 dark:text-gray-400" aria-hidden="true" />
           <span className="flex-1 min-w-0">
             <span className="block text-[13px] font-medium text-gray-900 dark:text-white">
               {t('my.affiliateLinkTitle', { defaultValue: '상품 추천 링크' })}
             </span>
-            <span className="block text-[10px] text-gray-500 dark:text-white/45 mt-0.5">
+            <span className="block text-[12px] text-gray-500 dark:text-white/45 mt-1">
               {t('my.affiliateLinkSub', { defaultValue: '내 링크로 구매하면 딜 적립 — 실적 보기' })}
             </span>
           </span>
@@ -326,14 +348,14 @@ export default function UserProfilePage() {
         <button
           type="button"
           onClick={() => navigate('/influencer/settlement')}
-          className="w-full flex items-center gap-3 px-3.5 py-3 active:bg-gray-200 dark:active:bg-white/[0.06] text-left"
+          className="w-full flex items-center gap-3 px-4 py-3 active:bg-gray-200 dark:active:bg-white/[0.06] text-left"
         >
-          <Receipt className="w-[18px] h-[18px] text-gray-500 dark:text-gray-400" aria-hidden="true" />
+          <ReceiptIcon className="w-[18px] h-[18px] text-gray-500 dark:text-gray-400" aria-hidden="true" />
           <span className="flex-1 min-w-0">
             <span className="block text-[13px] font-medium text-gray-900 dark:text-white">
               {t('my.settlementTitle', { defaultValue: '추천 수익 정산' })}
             </span>
-            <span className="block text-[10px] text-gray-500 dark:text-white/45 mt-0.5">
+            <span className="block text-[12px] text-gray-500 dark:text-white/45 mt-1">
               {t('my.settlementSub', { defaultValue: '추천·영입 적립 출금 및 내역' })}
             </span>
           </span>
@@ -348,7 +370,9 @@ export default function UserProfilePage() {
 
       {/* 🛡️ 2026-05-21: 역할 진입 CTA 2x2 grid — 공구개최 / 사장님 / 셀러 / 에이전시.
             ur-content-medium 부모 wrap — 다른 섹션과 동일 폭 정렬 (overflow 영구 fix). */}
-      <div className="ur-content-medium px-4 lg:px-8 pt-5">
+      {/* 🧱 2026-09-29(안 C): 가로 패딩 없음 — 평면 줄이 자기 `px-4` 를 갖는다.
+          여기서 또 주면 이 구역만 16px 들여쓰여 제목 줄이 옆 구역과 안 맞는다(첫 렌더에서 실제로 그랬다). */}
+      <div className="ur-content-medium lg:px-4">
         <RoleCtaGrid />
       </div>
 
@@ -394,7 +418,7 @@ export default function UserProfilePage() {
               localStorage.setItem('active_role', 'seller')
               window.location.href = '/seller'
             }}
-            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-surface shadow-lift text-[13px] font-bold text-brand-text active:opacity-70 transition-opacity"
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-surface shadow-lift text-[13px] font-bold text-brand-text active:opacity-70 transition-opacity"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h18v4H3zM3 9h18v12H3zM9 13h6" />
@@ -408,7 +432,7 @@ export default function UserProfilePage() {
           onClick={handleLogout}
           className="ur-btn ur-btn-lg ur-btn-block bg-surface text-gray-900 dark:text-white/75"
         >
-          <LogOut className="w-4 h-4" aria-hidden="true" />
+          <LogOutIcon className="w-4 h-4" aria-hidden="true" />
           {t('userProfile.logout')}
         </button>
         {/* 🛡️ 회원 탈퇴 — 파괴적 동작이다.
@@ -425,7 +449,7 @@ export default function UserProfilePage() {
       {/* 🧹 2026-06-22 (대표 — 도움말 비중 축소): 도움말/약관을 최하단 footer 로.
             볼드 헤더+카드 InsetGroup → 점 구분 muted 텍스트 링크(항목/경로 불변). */}
       <div className="ur-content-medium px-4 lg:px-8 pb-10 pt-4">
-        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           {[
             { label: t('userProfile.kakaoConsult', { defaultValue: '카카오톡 상담' }), emphasize: true, action: () => window.open('http://pf.kakao.com/_AITdn/chat', '_blank', 'noopener,noreferrer') },
             { label: t('userProfile.faq'), path: '/faq' },
@@ -434,19 +458,19 @@ export default function UserProfilePage() {
             // 🛡️ 2026-07-02: '배송정책' 라벨이 /refund(환불·반품 정책)로 리다이렉트돼 라벨-도착지 불일치 — 정합.
             { label: t('userProfile.refundPolicy', { defaultValue: '환불·반품 정책' }), path: '/refund' },
           ].map((item, i) => (
-            <span key={item.label} className="flex items-center gap-2.5">
-              {i > 0 && <span className="text-[10px] text-gray-300 dark:text-white/15" aria-hidden="true">·</span>}
+            <span key={item.label} className="flex items-center gap-3">
+              {i > 0 && <span className="text-[12px] text-gray-300 dark:text-white/15" aria-hidden="true">·</span>}
               <button
                 type="button"
                 onClick={() => (item as any).action ? (item as any).action() : item.path && navigate(item.path)}
-                className={`text-[11px] ${(item as any).emphasize ? 'font-medium text-gray-600 dark:text-white/55' : 'text-gray-500 dark:text-white/40'} active:text-gray-800 dark:active:text-white/75`}
+                className={`text-[12px] ${(item as any).emphasize ? 'font-medium text-gray-600 dark:text-white/55' : 'text-gray-500 dark:text-white/40'} active:text-gray-800 dark:active:text-white/75`}
               >
                 {item.label}
               </button>
             </span>
           ))}
         </div>
-        <p className="text-[10px] text-gray-400 dark:text-white/30 mt-2">{t('userProfile.kakaoConsultSub', { defaultValue: '평일 10:00~18:00 응대' })}</p>
+        <p className="text-[12px] text-gray-400 dark:text-white/30 mt-2">{t('userProfile.kakaoConsultSub', { defaultValue: '평일 10:00~18:00 응대' })}</p>
         {/* 📱 앱 정보 — 페이지 맨 밑(대표 2026-09-02). 설정 그룹에서 이동, 컴포넌트 자체는 불변. */}
         <AppVersionSection />
       </div>

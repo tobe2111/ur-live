@@ -4,12 +4,13 @@
  *   native prompt → promptDialog, refund_rate NaN 가드, isError 분기, 핑크 액센트 → B&W.
  */
 import { useState } from 'react'
+import { StarIcon } from '@/components/icons/urdeal-icons'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from '@/hooks/useToast'
 import { promptDialog } from '@/components/ui/confirm-dialog'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
-import { Building2, Calendar, Star, X as XIcon, ChevronLeft } from 'lucide-react'
+import { Building2, Calendar, X as XIcon, ChevronLeft } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
 import { safeDate } from '@/utils/safe-date'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
@@ -70,7 +71,7 @@ export default function MyStaysPage() {
       <div className="sticky top-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-wide px-4 lg:px-8 py-3 flex items-center gap-3">
           <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="p-1"><ChevronLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" /></button>
-          <h1 className="text-base font-bold flex-1 text-gray-900 dark:text-white">내 숙소 예약</h1>
+          <h1 className="text-[15px] font-bold flex-1 text-gray-900 dark:text-white">내 숙소 예약</h1>
         </div>
       </div>
 
@@ -80,17 +81,17 @@ export default function MyStaysPage() {
           <BrandLoader />
         ) : isError ? (
           <div className="text-center py-20">
-            <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">예약 내역을 불러오지 못했어요</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">네트워크 상태를 확인한 뒤 다시 시도해주세요</p>
-            <button onClick={() => refetch()} className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full text-sm font-bold">
+            <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">예약 내역을 불러오지 못했어요</p>
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">네트워크 상태를 확인한 뒤 다시 시도해주세요</p>
+            <button onClick={() => refetch()} className="px-5 py-2 bg-brand text-white rounded-full text-[15px] font-bold">
               다시 시도
             </button>
           </div>
         ) : bookings.length === 0 ? (
           <div className="text-center py-20">
             <Building2 className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">예약 내역이 없습니다</p>
-            <Link to="/stays" className="inline-flex items-center gap-1 px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-bold rounded-lg">
+            <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-4">예약 내역이 없습니다</p>
+            <Link to="/stays" className="inline-flex items-center gap-1 px-4 py-2 bg-brand text-white text-[15px] font-bold rounded-lg">
               숙소 둘러보기 →
             </Link>
           </div>
@@ -101,26 +102,26 @@ export default function MyStaysPage() {
               const canCancel = ['confirmed', 'pending'].includes(b.status)
               const canReview = b.status === 'checked_out'
               return (
-                <div key={b.id} className="bg-surface border border-line rounded-xl p-4">
+                <div key={b.id} className="bg-surface rounded-xl p-4 shadow-lift">
                   <div className="flex items-start gap-3">
                     <Link to={`/stays/${b.product_id}`} className="w-20 h-20 shrink-0 rounded-lg overflow-hidden bg-gray-100 dark:bg-[#1D1F29]">
                       {b.image_url ? <img src={cfImage(b.image_url, { width: 200, quality: 82, format: 'auto' }) || b.image_url} alt={b.product_name} className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, b.image_url)} /> : null}
                     </Link>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2 mb-1">
-                        <Link to={`/stays/${b.product_id}`} className="text-sm font-bold text-gray-900 dark:text-white line-clamp-1 hover:underline">{b.product_name}</Link>
-                        <span className={`inline-flex px-2 py-0.5 text-[10px] font-bold rounded-full shrink-0 ${st.color}`}>{st.label}</span>
+                        <Link to={`/stays/${b.product_id}`} className="text-[15px] font-bold text-gray-900 dark:text-white line-clamp-1 hover:underline">{b.product_name}</Link>
+                        <span className={`inline-flex px-2 py-1 text-[12px] font-bold rounded-full shrink-0 ${st.color}`}>{st.label}</span>
                       </div>
-                      <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                      <p className="text-[12px] text-gray-500 dark:text-gray-400">
                         {b.room_name}
                         {b.sale_mode === 'voucher' && (
-                          <span className="ml-1.5 px-1.5 py-0.5 text-[9px] bg-gray-100 text-gray-700 dark:bg-white/15 dark:text-white rounded font-bold">🎫 숙소 이용권</span>
+                          <span className="ml-1.5 px-2 py-1 text-[12px] bg-gray-100 text-gray-700 dark:bg-white/15 dark:text-white rounded font-bold">🎫 숙소 이용권</span>
                         )}
                       </p>
                       {b.sale_mode === 'voucher' ? (
                         <VoucherInfo booking={b} />
                       ) : (
-                        <div className="flex items-center gap-1 text-[11px] text-gray-700 dark:text-gray-300 mt-1">
+                        <div className="flex items-center gap-1 text-[12px] text-gray-700 dark:text-gray-300 mt-1">
                           <Calendar className="w-3 h-3" />
                           <span>{b.check_in_date} ~ {b.check_out_date}</span>
                           <span className="text-gray-400 dark:text-gray-500">({b.nights}박 · {b.guest_count}명)</span>
@@ -128,21 +129,21 @@ export default function MyStaysPage() {
                       )}
                       {b.check_in_code && b.status === 'confirmed' && (
                         <div className="mt-2 inline-flex items-center gap-2 px-2 py-1 bg-blue-50 dark:bg-blue-500/20 rounded">
-                          <span className="text-[10px] text-blue-700 dark:text-blue-300">{b.sale_mode === 'voucher' ? '이용권 코드' : '체크인 코드'}</span>
-                          <span className="text-xs tabular-nums font-bold text-blue-800 dark:text-blue-200">{b.check_in_code}</span>
+                          <span className="text-[12px] text-blue-700 dark:text-blue-300">{b.sale_mode === 'voucher' ? '이용권 코드' : '체크인 코드'}</span>
+                          <span className="text-[12px] tabular-nums font-bold text-blue-800 dark:text-blue-200">{b.check_in_code}</span>
                         </div>
                       )}
                       <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 dark:border-[#2C2F35]">
-                        <p className="text-sm font-extrabold text-gray-900 dark:text-white">₩{formatNumber(b.total_amount)}</p>
+                        <p className="text-[15px] font-extrabold text-gray-900 dark:text-white">₩{formatNumber(b.total_amount)}</p>
                         <div className="flex gap-1">
                           {canCancel && (
-                            <button onClick={() => cancel(b)} className="px-2.5 py-1 bg-gray-100 dark:bg-white/[0.06] text-gray-600 dark:text-gray-300 text-[11px] font-semibold rounded hover:bg-gray-200 dark:hover:bg-white/[0.1]">
+                            <button onClick={() => cancel(b)} className="px-2 py-1 bg-gray-100 dark:bg-white/[0.06] text-gray-600 dark:text-gray-300 text-[12px] font-semibold rounded hover:bg-gray-200 dark:hover:bg-white/[0.1]">
                               <XIcon className="w-3 h-3 inline mr-0.5" />취소
                             </button>
                           )}
                           {canReview && (
-                            <button onClick={() => setReviewModalFor(b)} className="px-2.5 py-1 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-[11px] font-bold rounded active:opacity-80">
-                              <Star className="w-3 h-3 inline mr-0.5" />리뷰 작성
+                            <button onClick={() => setReviewModalFor(b)} className="px-2 py-1 bg-brand text-white text-[12px] font-bold rounded active:opacity-80">
+                              <StarIcon className="w-3 h-3 inline mr-0.5" />리뷰 작성
                             </button>
                           )}
                         </div>
@@ -202,11 +203,11 @@ function ReviewModal({ booking, token, onClose, onSubmitted }: {
   function StarRow({ label, val, onChange }: { label: string; val: number; onChange: (n: number) => void }) {
     return (
       <div className="flex items-center justify-between py-1">
-        <span className="text-xs text-gray-600 dark:text-gray-300">{label}</span>
+        <span className="text-[12px] text-gray-600 dark:text-gray-300">{label}</span>
         <div className="flex gap-1">
           {[1, 2, 3, 4, 5].map((n) => (
             <button key={n} onClick={() => onChange(n)} type="button">
-              <Star className={`w-4 h-4 ${n <= val ? 'text-amber-400 fill-amber-400' : 'text-gray-300 dark:text-gray-600'}`} />
+              <StarIcon filled={n <= val} className={`w-4 h-4 ${n <= val ? 'text-amber-400 fill-amber-400' : 'text-gray-300 dark:text-gray-600'}`} />
             </button>
           ))}
         </div>
@@ -218,8 +219,8 @@ function ReviewModal({ booking, token, onClose, onSubmitted }: {
     <div className="fixed inset-0 z-[10600] bg-black/60 dark:bg-black/80 backdrop-blur flex items-end sm:items-center justify-center" onClick={onClose}>
       <div className="bg-surface w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl border border-gray-100 dark:border-[#2C2F35] max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="sticky top-0 bg-white dark:bg-[#11141C] px-5 py-4 border-b border-gray-100 dark:border-[#2C2F35]">
-          <h3 className="text-base font-bold text-gray-900 dark:text-white">리뷰 작성</h3>
-          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{booking.product_name}</p>
+          <h3 className="text-[15px] font-bold text-gray-900 dark:text-white">리뷰 작성</h3>
+          <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{booking.product_name}</p>
         </div>
         <div className="p-5 space-y-3">
           <div className="bg-gray-50 dark:bg-white/[0.04] rounded-lg p-3 space-y-1">
@@ -231,17 +232,17 @@ function ReviewModal({ booking, token, onClose, onSubmitted }: {
             <StarRow label="가성비" val={ratings.value} onChange={(n) => setRatings({ ...ratings, value: n })} />
           </div>
           <div>
-            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">제목 (선택)</label>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} placeholder="예) 깨끗하고 조용한 펜션" className="w-full px-3 py-2 bg-surface border border-line rounded-lg text-sm text-gray-900 dark:text-white" />
+            <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-300 mb-1">제목 (선택)</label>
+            <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} placeholder="예) 깨끗하고 조용한 펜션" className="w-full px-3 py-2 bg-surface border border-line rounded-lg text-[15px] text-gray-900 dark:text-white" />
           </div>
           <div>
-            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">코멘트 *</label>
-            <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={5} maxLength={5000} placeholder="이용 경험을 자세히 알려주세요 (10자 이상)" className="w-full px-3 py-2 bg-surface border border-line rounded-lg text-sm text-gray-900 dark:text-white resize-none" />
-            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">{comment.length}/5000</p>
+            <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-300 mb-1">코멘트 *</label>
+            <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={5} maxLength={5000} placeholder="이용 경험을 자세히 알려주세요 (10자 이상)" className="w-full px-3 py-2 bg-surface border border-line rounded-lg text-[15px] text-gray-900 dark:text-white resize-none" />
+            <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-1">{comment.length}/5000</p>
           </div>
           <div className="flex gap-2 pt-2">
-            <button onClick={onClose} disabled={submitting} className="flex-1 py-3 bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-gray-200 text-sm font-semibold rounded-lg disabled:opacity-50">취소</button>
-            <button onClick={submit} disabled={submitting} className="flex-1 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-bold rounded-lg active:opacity-80 disabled:opacity-50">
+            <button onClick={onClose} disabled={submitting} className="flex-1 py-3 bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-gray-200 text-[15px] font-semibold rounded-lg disabled:opacity-50">취소</button>
+            <button onClick={submit} disabled={submitting} className="flex-1 py-3 bg-brand text-white text-[15px] font-bold rounded-lg active:opacity-80 disabled:opacity-50">
               {submitting ? '등록 중...' : '리뷰 등록'}
             </button>
           </div>
@@ -255,17 +256,17 @@ function ReviewModal({ booking, token, onClose, onSubmitted }: {
 function VoucherInfo({ booking }: { booking: MyBooking }) {
   if (booking.voucher_used_at) {
     return (
-      <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1">
+      <p className="text-[12px] text-emerald-600 dark:text-emerald-400 mt-1">
         ✅ 사용 완료 · {safeDate(booking.voucher_used_at)?.toLocaleDateString('ko-KR')}
       </p>
     )
   }
   if (!booking.voucher_expires_at) {
-    return <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">🎫 {booking.voucher_type === 'weekend' ? '주말권' : '평일권'} × {booking.nights}박</p>
+    return <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">🎫 {booking.voucher_type === 'weekend' ? '주말권' : '평일권'} × {booking.nights}박</p>
   }
   const expiresAt = safeDate(booking.voucher_expires_at)
   if (!expiresAt) {
-    return <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">🎫 {booking.voucher_type === 'weekend' ? '주말권' : '평일권'} × {booking.nights}박</p>
+    return <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">🎫 {booking.voucher_type === 'weekend' ? '주말권' : '평일권'} × {booking.nights}박</p>
   }
   const daysLeft = Math.ceil((expiresAt.getTime() - Date.now()) / 86400000)
   const expired = daysLeft < 0
@@ -275,7 +276,7 @@ function VoucherInfo({ booking }: { booking: MyBooking }) {
     : 'text-gray-600 dark:text-gray-300'
 
   return (
-    <div className={`text-[11px] mt-1 ${colorClass}`}>
+    <div className={`text-[12px] mt-1 ${colorClass}`}>
       🎫 {booking.voucher_type === 'weekend' ? '주말권' : '평일권'} × {booking.nights}박
       {' · '}
       {expired ? (

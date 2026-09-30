@@ -74,7 +74,7 @@ function ShortCard({ item, load, onOpen }: { item: UrShortItem; load: boolean; o
         {/* ⏱️ 재생시간은 **우상단**이다. 시안에서는 우하단이었는데, 글자가 네 줄이 되면서
             아래쪽은 스크림이 다 차지한다 — 그대로 두면 가격 위에 배지가 얹힌다(렌더로 확인). */}
         {durLabel && (
-          <span className="absolute right-1.5 top-1.5 rounded bg-black/60 px-1 py-px text-[9px] font-semibold tabular-nums text-white">
+          <span className="absolute right-1.5 top-1.5 rounded bg-black/60 px-1 py-px text-[12px] font-semibold tabular-nums text-white">
             {durLabel}
           </span>
         )}
@@ -88,20 +88,20 @@ function ShortCard({ item, load, onOpen }: { item: UrShortItem; load: boolean; o
         {hasInfo && (
         <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent px-[7px] pb-[7px] pt-[18px] text-white">
           {item.store_name && (
-            <span className="block truncate text-[9.5px] opacity-90">{item.store_name}</span>
+            <span className="block truncate text-[12px] opacity-90">{item.store_name}</span>
           )}
           {item.product_name && (
-            <span className="mt-px block truncate text-[10.5px] font-semibold leading-tight">
+            <span className="mt-px block truncate text-[12px] font-semibold leading-tight">
               {item.product_name}
             </span>
           )}
           {pd.showOriginal && (
-            <span className="mt-0.5 block text-[9px] tabular-nums line-through opacity-70">
+            <span className="mt-1 block text-[12px] tabular-nums line-through opacity-70">
               {formatNumber(pd.originalPrice)}원
             </span>
           )}
           {pd.price > 0 && (
-          <span className="mt-px block text-[11.5px] font-bold tabular-nums">
+          <span className="mt-px block text-[12px] font-bold tabular-nums">
             {/* 🩸 여기에 새 빨강(#FF8A93)을 발명했다가 되돌렸다. 오늘 아침에 할인율을 `--sale`
                 하나로 통일해 놓고 같은 날 넷째 값을 만들 뻔했다. 사진 위 스크림은 **테마와 무관하게
                 늘 어둡다**(light-island 와 같은 성질)이라 라이트 값 #DC2626 은 안 읽힌다 →
@@ -184,7 +184,7 @@ export default function UrShortsRail() {
             여기엔 짝지을 라이트 상태가 아예 없다. */}
         <h3 className="text-[17px] font-black tracking-tight text-white">
           유어쇼츠
-          <span className="ml-2 text-[11.5px] font-normal text-white/60">
+          <span className="ml-2 text-[12px] font-normal text-white/60">
             눌러서 보고 바로 구매
           </span>
         </h3>
@@ -193,7 +193,7 @@ export default function UrShortsRail() {
             아예 없었다(대표 신고). 카드를 누르는 것은 그대로 뷰어다 — 그건 보러 가는 동작이다. */}
         <Link
           to={URSHORTS_BROWSE_PATH}
-          className="shrink-0 whitespace-nowrap text-[12.5px] font-bold text-white/75 underline-offset-4 hover:underline"
+          className="shrink-0 whitespace-nowrap text-[12px] font-bold text-white/75 underline-offset-4 hover:underline"
         >
           전체 보기
         </Link>
@@ -231,13 +231,13 @@ export default function UrShortsRail() {
           {/* 끝까지 민 사람은 이미 관심이 있다. 그 자리에 문을 둔다. */}
           <Link
             to={URSHORTS_BROWSE_PATH}
-            className="grid shrink-0 snap-start place-items-center gap-1.5 rounded-[10px] border border-dashed border-white/20 text-center text-brand-text"
+            className="grid shrink-0 snap-start place-items-center gap-2 rounded-[10px] border border-dashed border-white/20 text-center text-brand-text"
             style={{ width: URSHORTS_CARD_W, height: URSHORTS_CARD_H }}
           >
             <span>
               <ChevronRight size={24} className="mx-auto" />
               <span className="mt-1 block text-[12px] font-bold">전체 보기</span>
-              <span className="mt-[2px] block text-[10.5px] font-normal text-white/55">
+              <span className="mt-[2px] block text-[12px] font-normal text-white/55">
                 {items.length}편
               </span>
             </span>

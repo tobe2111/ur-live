@@ -25,19 +25,28 @@ const ko = JSON.parse(readFileSync('public/locales/ko/translation.json', 'utf8')
 
 describe('이름 E — 제목이 붙은 구역이 파는 쪽', () => {
   it('판매 구역에 25px 구역 제목이 있다 (본문 라벨과 구별돼야 규칙이 선다)', () => {
-    expect(SELLER).toMatch(/text-\[25px\][^"]*">내 가게<\/h2>/)
+    // 🔁 2026-09-28 재조준: 25 → 24px(여섯 단계 스케일 · 4의 배수). 불변식은 *본문 라벨(12·13·15)과
+    //   확실히 구별되는 큰 제목* 이고 25 라는 값이 아니다 — 24 는 그 아래 단계(17)와도 한참 벌어진다.
+    expect(SELLER).toMatch(/text-\[24px\][^"]*">내 가게<\/h2>/)
   })
 
-  it('판매 구역에만 브랜드 띠가 있다 (구역 전체 길이)', () => {
-    expect(SELLER).toMatch(/absolute[^"]*w-\[3px\][^"]*bg-brand/)
+  /**
+   * 🔁 2026-09-29 재조준(안 C) — **표시자가 띠·경계선에서 판으로 옮겨갔다.**
+   * 안 C 는 모든 구역에 24px 제목을 주므로 *"제목이 붙은 구역이 파는 쪽"* 규칙이 성립하지 않는다.
+   * 대신 판(흰 카드 + 파란 사용처리 줄)을 **파는 쪽에만** 둔다. 띠까지 남기면 표면 규칙 ②
+   * (*"강조색 하나, 자리 셋"*)도 깨진다 — 이 구역의 파란 자리는 이미 셋이다.
+   */
+  it('🔵 판은 파는 쪽에만 있다 (표시자가 띠 → 판으로 옮겨갔다)', () => {
+    expect(SELLER, '판매 구역에 판이 없다 — 표시자가 사라졌다').toContain('<div className={LIST_PLATE_CLS}>')
+    for (const f of ['ShoppingGroup', 'EarningsGroup', 'SettingsGroup', 'RoleCtaGrid']) {
+      const src = readCode(`src/pages/user-profile/${f}.tsx`)
+      expect(src, `${f} 에 판이 생겼다 — 파는 쪽 표시가 무의미해진다`).not.toMatch(/shadow-lift/)
+    }
   })
 
-  it('판매 구역 끝에 경계선이 있다 — 그 아래가 손님 쪽', () => {
-    expect(SELLER).toMatch(/h-px bg-black\/\[0\.08\]/)
-  })
-
-  it('🔴 경계선은 **이 컴포넌트 안**에 있다 (좌석 0 이면 섹션째 사라진다)', () => {
-    // 페이지가 `stores.length` 로 따로 판정해 그리면 "위에 아무것도 없는 선" 이 뜨는 날이 온다.
+  it('🔴 옛 표시자(띠·경계선)가 되살아나지 않았다 — 둘이 되면 규칙 ②가 깨진다', () => {
+    expect(SELLER).not.toMatch(/absolute[^"]*w-\[3px\][^"]*bg-brand/)
+    expect(SELLER).not.toMatch(/h-px bg-black\/\[0\.08\]/)
     expect(PAGE).not.toMatch(/h-px bg-black\/\[0\.08\]/)
   })
 })
@@ -56,11 +65,20 @@ describe('구역 2 — 큰 제목 없이 그룹 라벨 셋', () => {
     })
   }
 
-  it('🔴 2구역에는 큰 제목이 없다 (E 의 핵심 — 덮는 단어를 만들지 않는다)', () => {
-    // 손님 쪽 블록 어디에도 25px 급 제목이 새로 생기면 E 가 깨진다.
-    for (const f of ['ShoppingGroup', 'EarningsGroup', 'SettingsGroup']) {
-      expect(readCode(`src/pages/user-profile/${f}.tsx`)).not.toMatch(/text-\[2[0-9]px\]/)
+  /**
+   * 🔁 2026-09-29 — **이 검사는 뒤집혔다.** 대표가 코레일톡 전체메뉴를 보내며 안 C 를 고르면서
+   * 09-28 의 '이름 E'(손님 구역엔 큰 제목을 두지 않는다)를 대체했다. 안 C 에서는 **모든 구역**이
+   * 24px 제목으로 시작하고, 파는 쪽 표시는 판이 한다(위 검사).
+   * ⚠️ 제목을 각자 손으로 적으면 크기가 다시 갈린다 — `SectionTitle` **한 부품**으로만.
+   */
+  it('🔵 모든 구역이 같은 부품으로 제목을 단다 (손으로 적지 않는다)', () => {
+    for (const f of ['ShoppingGroup', 'EarningsGroup', 'SettingsGroup', 'RoleCtaGrid']) {
+      const src = readCode(`src/pages/user-profile/${f}.tsx`)
+      expect(src, `${f} 에 구역 제목이 없다`).toContain('<SectionTitle>')
+      expect(src, `${f} 이 제목 크기를 손으로 적었다`).not.toMatch(/text-\[2[0-9]px\]/)
     }
+    // 판매 구역만 예외다 — 제목 옆에 가게 전환 버튼이 붙어 한 줄을 이룬다.
+    expect(SELLER).toMatch(/text-\[24px\][^"]*">내 가게<\/h2>/)
   })
 })
 
@@ -77,14 +95,24 @@ describe('PC 1안 — 오늘이 머리', () => {
     expect(PAGE).toContain('<AccountPcPane')
   })
 
-  it('lg+ 에서 [오늘 카드 | 사용처리] 가 한 줄이다', () => {
-    expect(SELLER).toContain('lg:flex lg:items-stretch lg:gap-3')
-    expect(SELLER).toMatch(/lg:mt-0 lg:w-\[290px\]/)
+  /**
+   * 🔁 2026-09-29 재조준(안 C): [오늘 | 사용처리] 가로 배치를 걷고 **같은 판 안에 세로로** 쌓았다.
+   * "오늘이 머리" 라는 09-28 결정의 내용은 그대로다 — 오늘 숫자가 판의 첫 블록이다.
+   */
+  it('🔵 오늘 숫자가 판의 머리이고, 사용처리가 바로 다음이다', () => {
+    const iPlate = SELLER.indexOf('<div className={LIST_PLATE_CLS}>')
+    const iToday = SELLER.indexOf('오늘</span>')
+    const iScan = SELLER.indexOf('이용권 사용처리')
+    expect(iPlate, '판을 못 찾았다 — 이 검사가 헛돌고 있다').toBeGreaterThan(-1)
+    expect(iToday).toBeGreaterThan(iPlate)
+    expect(iScan, '사용처리가 오늘 숫자보다 앞이다').toBeGreaterThan(iToday)
   })
 
-  it('🔴 폰은 안 건드렸다 — 가로 배치는 `lg:` 접두사에만 걸려 있다', () => {
-    // `flex` 가 접두사 없이 붙으면 폰에서도 옆으로 눕는다(30px 숫자 + 버튼이 한 줄에 끼인다).
-    expect(SELLER).not.toMatch(/className="flex items-stretch gap-3"/)
+  it('🔴 숫자 한 줄이 페이지 맨 위에 있다 (2열 래퍼 밖)', () => {
+    const iStats = PAGE.indexOf('<MyStats ')
+    const iCols = PAGE.indexOf("'ur-account-cols ur-account-cols--split'")
+    expect(iStats, 'MyStats 를 못 찾았다').toBeGreaterThan(-1)
+    expect(iStats, '숫자 줄이 2열 안으로 들어갔다 — 한쪽 칸에만 뜬다').toBeLessThan(iCols)
   })
 
   it('🔴 이 시험이 헛돌지 않는다 — 대상이 실제로 읽혔다', () => {
@@ -102,14 +130,14 @@ describe('PC 1안 — 오늘이 머리', () => {
  *   조판을 바꿀 때는 위 명령으로 **그림을 볼 것**. 이 시험은 *알려진 답으로 되돌아가는 것*만 막는다.
  */
 describe('조판 — 하네스 실측으로 잡은 두 결함', () => {
-  it('🔴 PC 에서 구역 띠는 **음수** 오프셋이다 (양수면 카드를 관통한다)', () => {
-    // 마이의 PC 우측 칸은 `.ur-account-pane .ur-content-medium` 이 좌우 패딩을 0 으로 지운다
-    // (index.css — "마이페이지 PC 2단"). 거터가 없으니 `lg:left-3` 은 카드 **안쪽** 12px 이고,
-    // 띠가 일감 카드들의 왼쪽을 세로로 갈랐다. 음수여야 `.ur-account-pc` 의 **좌우 패딩(2rem)** 안에 뜬다.
-    // 🔁 2026-09-28: 근거가 gap(32px, 내비와 칸 사이) → 패딩으로 바뀌었다 — 내비를 걷어냈다.
-    //   값(-12px)은 그대로 맞고, 짝인 CSS 규칙(아래 시험)도 그대로다.
-    expect(SELLER).toContain('left-1.5 lg:-left-3')
-    expect(SELLER).not.toMatch(/left-1\.5 lg:left-\d/)
+  /**
+   * 🔁 2026-09-29(안 C): 띠가 사라져 오프셋 결함이 성립하지 않는다. 그 자리에서 지킬 것은
+   * **PC 숫자 카드 넷이 되살아나지 않는 것**이다 — 실측상 그중 셋이 0 이었고 우측 칸의 절반을 먹었다.
+   */
+  it('🔵 PC 우측 칸에 숫자 카드 넷이 되살아나지 않았다', () => {
+    const pane = readCode('src/pages/user-profile/AccountPcPane.tsx')
+    expect(pane, 'PC 가 숫자를 다시 큰 카드 넷으로 그린다').not.toMatch(/grid-cols-4/)
+    expect(pane, 'PC 가 잔액을 또 조회한다 — 한 화면이 두 번 묻는다').not.toContain('/api/points/balance\'')
   })
 
   it('🔴 그 짝인 CSS 가 아직 패딩을 지우고 있다 (지워졌다면 띠 오프셋도 다시 판단할 것)', () => {
@@ -128,6 +156,8 @@ describe('조판 — 하네스 실측으로 잡은 두 결함', () => {
   })
 
   it('라틴 약어 뒤 조사는 붙여 쓴다', () => {
-    expect(SELLER).toContain('손님 QR을 찍으세요')
+    // 🔁 2026-09-29(안 C): 사용처리 줄이 평면 행이 되며 문구가 짧아졌다("손님 QR").
+    //   지킬 것은 문장 하나가 아니라 **규칙**이므로, 조사가 붙는 자리를 전수로 본다.
+    expect(SELLER, 'QR 뒤 조사를 띄어 썼다').not.toMatch(/QR (을|이|로|은|과)\b/)
   })
 })

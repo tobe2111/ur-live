@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Bell } from 'lucide-react'
+import { BellIcon } from '@/components/icons/urdeal-icons'
 import api from '@/lib/api'
 import { useTranslation } from 'react-i18next'
 import { safeInternalPath } from '@/utils/safe-internal-path'
@@ -150,9 +150,9 @@ export default function DashboardNotificationBell({ tokenKey, iconClassName, but
         aria-haspopup="true"
         aria-expanded={open}
       >
-        <Bell className={`w-5 h-5 ${iconClassName || 'text-gray-600'}`} />
+        <BellIcon className={`w-5 h-5 ${iconClassName || 'text-gray-600'}`} />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1">
+          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[12px] font-bold px-1">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
@@ -161,11 +161,11 @@ export default function DashboardNotificationBell({ tokenKey, iconClassName, but
       {open && (
         <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden" role="dialog" aria-label={t('notifications.listAria', { defaultValue: '알림 목록' })}>
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-            <span className="text-sm font-semibold text-gray-900">알림</span>
+            <span className="text-[15px] font-semibold text-gray-900">알림</span>
             {unreadCount > 0 && (
               <button
                 onClick={markAllRead}
-                className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                className="text-[12px] text-blue-600 hover:text-blue-800 font-medium"
               >
                 모두 읽음
               </button>
@@ -174,7 +174,7 @@ export default function DashboardNotificationBell({ tokenKey, iconClassName, but
 
           <div className="max-h-80 overflow-y-auto">
             {notifications.length === 0 ? (
-              <div className="px-4 py-8 text-center text-sm text-gray-400">
+              <div className="px-4 py-8 text-center text-[15px] text-gray-400">
                 알림이 없습니다
               </div>
             ) : (
@@ -197,14 +197,14 @@ export default function DashboardNotificationBell({ tokenKey, iconClassName, but
                 >
                   <div className="flex items-start gap-2">
                     {!n.is_read && (
-                      <span className="mt-1.5 w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" aria-hidden="true" />
+                      <span className="mt-2 w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" aria-hidden="true" />
                     )}
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-gray-900 truncate">{n.title}</p>
+                      <p className="text-[15px] font-medium text-gray-900 truncate">{n.title}</p>
                       {n.message && (
-                        <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{n.message}</p>
+                        <p className="text-[12px] text-gray-500 mt-1 line-clamp-2">{n.message}</p>
                       )}
-                      <p className="text-xs text-gray-400 mt-1">{timeAgo(n.created_at)}</p>
+                      <p className="text-[12px] text-gray-400 mt-1">{timeAgo(n.created_at)}</p>
                     </div>
                   </div>
                 </div>

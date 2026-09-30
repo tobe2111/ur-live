@@ -370,6 +370,13 @@ jobs:
         run: node scripts/check-legacy-domain.mjs -s
         continue-on-error: false
 
+      # 🔵 2026-09-28: 주 버튼은 2026-09-02 에 브랜드 블루 #1C69EF 로 확정됐는데(.ur-btn-primary),
+      #   소비자 화면 224곳이 아직 bg-gray-900 을 손으로 적고 있었다. 똑같은 역할의 버튼이
+      #   화면마다 검정이거나 파랑 — 빌드는 초록이고 아무도 신고하지 않는다.
+      - name: 주 버튼 손색(검정) 차단 (strict)
+        run: node scripts/check-primary-button-color.mjs -s
+        continue-on-error: false
+
       # 📋 2026-07-29: AUDIT_INVARIANTS.md 는 "무엇을 손으로 재감사하지 않아도 되는가" 의 목록이다.
       #   빠진 가드는 이미 기계가 지키는 영역을 사람이 또 파게 만든다(실측: 문서 49 vs 실제 72).
       - name: 감사 레지스트리 동기화 (strict)

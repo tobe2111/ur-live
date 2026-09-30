@@ -31,8 +31,8 @@ export default function DashboardCard({
       {(title || actions) && (
         <header className="flex items-center justify-between gap-3 border-b border-rule px-[var(--dash-pad-x,20px)] py-[var(--dash-pad-y,16px)]">
           <div className="min-w-0">
-            {title && <h2 className="truncate text-sm font-semibold text-gray-900">{title}</h2>}
-            {subtitle && <p className="mt-0.5 truncate text-xs text-gray-500">{subtitle}</p>}
+            {title && <h2 className="truncate text-[15px] font-semibold text-gray-900">{title}</h2>}
+            {subtitle && <p className="mt-1 truncate text-[12px] text-gray-500">{subtitle}</p>}
           </div>
           {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
         </header>

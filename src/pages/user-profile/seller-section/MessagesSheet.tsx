@@ -95,15 +95,15 @@ export default function MessagesSheet({ sellerId, onClose, onOpenPath }: {
       )}
 
       {failed && (
-        <p className="px-4 py-10 text-center text-[13.5px] text-gray-500 dark:text-gray-400">
+        <p className="px-4 py-10 text-center text-[13px] text-gray-500 dark:text-gray-400">
           잔액을 불러오지 못했어요. 잠시 후 다시 열어 주세요.
         </p>
       )}
 
       {neverUsed && (
         <div className="px-4 py-8">
-          <p className="text-[14px] font-bold text-gray-900 dark:text-white">아직 보낸 메시지가 없어요</p>
-          <p className="mt-1.5 text-[13px] leading-[1.65] text-gray-500 dark:text-gray-400">
+          <p className="text-[15px] font-bold text-gray-900 dark:text-white">아직 보낸 메시지가 없어요</p>
+          <p className="mt-2 text-[13px] leading-[1.65] text-gray-500 dark:text-gray-400">
             단골에게 카카오톡으로 새 이용권·재방문 안내를 보낼 수 있어요.
             건당 요금이라 미리 충전해 두고 씁니다.
           </p>
@@ -115,9 +115,9 @@ export default function MessagesSheet({ sellerId, onClose, onOpenPath }: {
 
       {!loading && !failed && !neverUsed && (
         <div className="px-4 py-3">
-          <div className="rounded-xl bg-wash px-4 py-3.5">
+          <div className="rounded-xl bg-wash px-4 py-3">
             <p className="text-[12px] text-gray-500 dark:text-gray-400">남은 건수</p>
-            <p className="mt-0.5 text-[24px] font-extrabold tabular-nums leading-none text-gray-900 dark:text-white">
+            <p className="mt-1 text-[24px] font-extrabold tabular-nums leading-none text-gray-900 dark:text-white">
               {formatNumber(balance)}
               <span className="text-[13px] font-bold text-gray-500 dark:text-gray-400 ml-1">건</span>
             </p>
@@ -125,19 +125,19 @@ export default function MessagesSheet({ sellerId, onClose, onOpenPath }: {
 
           {logs.length > 0 && (
             <>
-              <h3 className="mt-4 mb-1.5 px-1 text-[12px] font-bold text-gray-400">최근 발송</h3>
-              <div className="space-y-1.5">
+              <h3 className="mt-4 mb-2 px-1 text-[12px] font-bold text-gray-400">최근 발송</h3>
+              <div className="space-y-2">
                 {logs.slice(0, 20).map((g, i) => (
-                  <div key={g.id ?? i} className="rounded-xl bg-wash px-3.5 py-2.5">
+                  <div key={g.id ?? i} className="rounded-xl bg-wash px-4 py-2">
                     <div className="flex items-baseline gap-2">
-                      <span className="flex-1 min-w-0 truncate text-[13.5px] font-semibold text-gray-900 dark:text-white">
+                      <span className="flex-1 min-w-0 truncate text-[13px] font-semibold text-gray-900 dark:text-white">
                         {g.template_name || '메시지'}
                       </span>
                       <span className="shrink-0 text-[12px] font-bold text-gray-500 dark:text-gray-400">
                         {STATUS_LABEL[String(g.status ?? '')] ?? g.status ?? '—'}
                       </span>
                     </div>
-                    <p className="mt-0.5 text-[12px] text-gray-500 dark:text-gray-400">
+                    <p className="mt-1 text-[12px] text-gray-500 dark:text-gray-400">
                       {(g.sent_at || g.created_at) ? formatKSTShort(g.sent_at || g.created_at || '') : '—'}
                     </p>
                   </div>

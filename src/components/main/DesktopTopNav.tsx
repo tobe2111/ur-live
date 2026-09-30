@@ -5,8 +5,8 @@
  */
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Home, ShoppingCart, User, Radio, Gift, Search, Bell, Zap, Sparkles, Smartphone, Store, MapPin, BookOpen, Heart, ChevronRight, ChevronDown } from 'lucide-react'
-import { UrShopIcon, DongneDealIcon } from '@/components/icons/urdeal-icons'
+import { User, Radio, Search, Zap, Sparkles, Smartphone, BookOpen, ChevronRight, ChevronDown } from 'lucide-react'
+import { UrShopIcon, DongneDealIcon, HomeIcon, BagIcon, GiftBoxIcon, BellIcon, StoreIcon, PinIcon, HeartIcon } from '@/components/icons/urdeal-icons'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import AppDownloadModal from './AppDownloadModal'
 import AccountMenu from './AccountMenu'
@@ -84,22 +84,22 @@ export default function DesktopTopNav() {
   // 🛡️ 2026-06-10 [UNLOCK_LOADING] (사용자 결정): 라이브 영구 중단 + 쇼핑 잠정 숨김 — 플래그 가역.
   //   유어샵 탭 추가(하단바와 정합). 쇼핑 라우트(/browse·/cart)는 보존 — 장바구니 아이콘으로 도달 가능.
   const navItems = [
-    { icon: Home, key: 'home', label: t('nav.home', { defaultValue: '홈' }), path: '/' },
+    { icon: HomeIcon, key: 'home', label: t('nav.home', { defaultValue: '홈' }), path: '/' },
     // 🗑️ 2026-07-07 라이브커머스 제거: '라이브' 탭 삭제.
     // 🖥️ 2026-07-16 (대표 신고 — 상단 '동네딜' 무의미): 홈=동네딜 + /group-buy→홈 리다이렉트라 '홈'과 중복.
     //   실제 다른 목적지인 '교환권'(/vouchers)로 교체(하단바 2번째 탭과 정합).
-    { icon: Gift, key: 'vouchers', label: t('nav.vouchers', { defaultValue: '교환권' }), path: '/vouchers' },
-    ...(SHOPPING_TAB_HIDDEN ? [] : [{ icon: ShoppingCart, key: 'shop', label: t('nav.shop', { defaultValue: '쇼핑' }), path: '/browse' }]),
+    { icon: GiftBoxIcon, key: 'vouchers', label: t('nav.vouchers', { defaultValue: '교환권' }), path: '/vouchers' },
+    ...(SHOPPING_TAB_HIDDEN ? [] : [{ icon: BagIcon, key: 'shop', label: t('nav.shop', { defaultValue: '쇼핑' }), path: '/browse' }]),
     { icon: UrShopIcon, key: 'linkshop', label: t('nav.linkshop', { defaultValue: '유어샵' }), path: linkshopPath },
   ]
 
   // 🖥️ 2026-07-19 (대표 요청 — 그루폰식 상단 카테고리 바): 좌측 사이드바 대신 상단 2번째 행에 카테고리/섹션을
   //   가로로. 전부 실제 라우트(끊긴 링크 0). 홈/풀블리드 상단바에서만 노출.
   const categoryItems = [
-    { icon: Home, label: t('nav.home', { defaultValue: '홈' }), path: '/' },
-    { icon: Gift, label: t('nav.vouchers', { defaultValue: '교환권' }), path: '/vouchers' },
+    { icon: HomeIcon, label: t('nav.home', { defaultValue: '홈' }), path: '/' },
+    { icon: GiftBoxIcon, label: t('nav.vouchers', { defaultValue: '교환권' }), path: '/vouchers' },
     { icon: DongneDealIcon, label: t('nav.dongnedeal', { defaultValue: '동네딜' }), path: '/map' },
-    ...(SHOPPING_TAB_HIDDEN ? [] : [{ icon: ShoppingCart, label: t('nav.shop', { defaultValue: '쇼핑' }), path: '/browse' }]),
+    ...(SHOPPING_TAB_HIDDEN ? [] : [{ icon: BagIcon, label: t('nav.shop', { defaultValue: '쇼핑' }), path: '/browse' }]),
     { icon: UrShopIcon, label: t('nav.linkshop', { defaultValue: '유어샵' }), path: linkshopPath },
     { icon: BookOpen, label: t('nav.blog', { defaultValue: '블로그' }), path: '/blog' },
   ]
@@ -238,7 +238,7 @@ export default function DesktopTopNav() {
                 key={item.key}
                 onClick={() => navigate(item.path)}
                 aria-current={active ? 'page' : undefined}
-                className={`relative flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold transition-colors ${
+                className={`relative flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] font-semibold transition-colors ${
                   active
                     ? 'text-gray-900 dark:text-white'
                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/[0.04]'
@@ -270,7 +270,7 @@ export default function DesktopTopNav() {
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder={t('search.placeholder', { defaultValue: '동네딜, 교환권, 상품 검색' })}
-                className="w-full h-[46px] pl-11 pr-[52px] text-[14px] bg-white dark:bg-white/[0.06] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/30 rounded-full border-2 border-brand dark:border-brand/70 outline-none focus:ring-2 focus:ring-brand/25"
+                className="w-full h-[46px] pl-11 pr-[52px] text-[15px] bg-white dark:bg-white/[0.06] text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/30 rounded-full border-2 border-brand dark:border-brand/70 outline-none focus:ring-2 focus:ring-brand/25"
               />
               <button
                 type="submit"
@@ -290,7 +290,7 @@ export default function DesktopTopNav() {
           {/* 앱 — 🖥️ 2026-07-19 (대표 요청): 클릭 시 QR 다운로드 팝업(그루폰식). */}
           <button
             onClick={() => setAppOpen(true)}
-            className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-white/[0.04] transition-colors"
+            className="hidden lg:flex items-center gap-2 px-3 py-2 text-[12px] font-semibold text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-white/[0.04] transition-colors"
           >
             <Smartphone className="w-4 h-4" strokeWidth={1.75} />
             {t('nav.app', { defaultValue: '모바일' })}
@@ -303,9 +303,9 @@ export default function DesktopTopNav() {
           <button
             onClick={() => navigate(sellerEntryPath())}
             aria-label={t('nav.sellOnUrdeal', { defaultValue: '유어딜에서 판매하세요' })}
-            className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-white/[0.04] transition-colors whitespace-nowrap"
+            className="hidden lg:flex items-center gap-2 px-3 py-2 text-[12px] font-medium text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-white/[0.04] transition-colors whitespace-nowrap"
           >
-            <Store className="w-4 h-4 shrink-0" strokeWidth={1.75} />
+            <StoreIcon className="w-4 h-4 shrink-0" />
             <span className="flex items-center gap-1"><UrDealLogo size={13} />에서 판매하세요</span>
           </button>
 
@@ -318,9 +318,9 @@ export default function DesktopTopNav() {
               isActivePath('/wishlist') ? 'bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white' : ''
             }`}
           >
-            <Heart className="w-5 h-5" strokeWidth={1.75} />
+            <HeartIcon className="w-5 h-5" />
             {wishCount > 0 && (
-              <span className="absolute top-1 right-1 bg-brand text-white text-[9px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center">
+              <span className="absolute top-1 right-1 bg-brand text-white text-[12px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center">
                 {wishCount > 99 ? '99+' : wishCount}
               </span>
             )}
@@ -336,9 +336,9 @@ export default function DesktopTopNav() {
                 aria-expanded={notifOpen}
                 className={`relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 ${notifOpen ? 'bg-gray-100 dark:bg-white/[0.08]' : ''}`}
               >
-                <Bell className="w-5 h-5" strokeWidth={1.75} />
+                <BellIcon className="w-5 h-5" />
                 {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 bg-red-500 text-white text-[9px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center">
+                  <span className="absolute top-1 right-1 bg-red-500 text-white text-[12px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center">
                     {unreadCount > 99 ? '99+' : unreadCount}
                   </span>
                 )}
@@ -351,7 +351,7 @@ export default function DesktopTopNav() {
               aria-label="알림"
               className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300"
             >
-              <Bell className="w-5 h-5" strokeWidth={1.75} />
+              <BellIcon className="w-5 h-5" />
             </button>
           )}
 
@@ -361,9 +361,9 @@ export default function DesktopTopNav() {
             aria-label={t('liveList.ariaCart', { defaultValue: '장바구니' })}
             className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300"
           >
-            <ShoppingCart className="w-5 h-5" strokeWidth={1.75} />
+            <BagIcon className="w-5 h-5" />
             {cartCount > 0 && (
-              <span className="absolute top-1 right-1 bg-red-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+              <span className="absolute top-1 right-1 bg-red-500 text-white text-[12px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
                 {cartCount > 9 ? '9+' : cartCount}
               </span>
             )}
@@ -378,7 +378,7 @@ export default function DesktopTopNav() {
               aria-label={t('nav.my', { defaultValue: '마이' })}
               aria-expanded={acctOpen}
               aria-haspopup="menu"
-              className={`flex items-center gap-0.5 pl-1 pr-1.5 h-9 rounded-full border border-line text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/[0.06] transition-colors ${
+              className={`flex items-center gap-1 pl-1 pr-2 h-9 rounded-full border border-line text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/[0.06] transition-colors ${
                 acctOpen || isActivePath('/user/profile') ? 'bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white' : ''
               }`}
             >
@@ -428,7 +428,7 @@ export default function DesktopTopNav() {
                     key={item.path}
                     onClick={() => navigate(item.path)}
                     aria-current={active ? 'page' : undefined}
-                    className={`relative shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-colors ${
+                    className={`relative shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] font-semibold transition-colors ${
                       active
                         ? 'text-gray-900 dark:text-white'
                         : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/[0.04]'
@@ -452,7 +452,7 @@ export default function DesktopTopNav() {
                     key={key}
                     onClick={() => navigate(key === 'all' ? '/' : `/?category=${key}`)}
                     aria-current={active ? 'true' : undefined}
-                    className={`relative shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-colors ${
+                    className={`relative shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] font-semibold transition-colors ${
                       active
                         ? 'text-gray-900 dark:text-white'
                         : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/[0.04]'
@@ -481,7 +481,7 @@ export default function DesktopTopNav() {
 
             <Link
               to={URSHORTS_BROWSE_PATH}
-              className="shrink-0 flex items-center gap-1.5 whitespace-nowrap px-2 text-[13px] font-bold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+              className="shrink-0 flex items-center gap-2 whitespace-nowrap px-2 text-[13px] font-bold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
             >
               <ShortsIcon size={16} />
               유어쇼츠<span aria-hidden="true" className="-ml-[3px] text-brand-text">.</span>

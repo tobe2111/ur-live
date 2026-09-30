@@ -44,8 +44,8 @@ export default function MyReturnsPage() {
       <div className="min-h-screen bg-white dark:bg-[#11141C] text-gray-900 dark:text-white pb-24">
         <header className="sticky top-0 z-20 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35] px-4 py-3">
           <div className="max-w-3xl mx-auto flex items-center justify-between">
-            <h1 className="text-lg font-bold">↩️ {t('returns.title', { defaultValue: '내 반품' })}</h1>
-            <Link to="/my-orders" className="text-sm text-gray-600 dark:text-gray-300 hover:underline">
+            <h1 className="text-[17px] font-bold">↩️ {t('returns.title', { defaultValue: '내 반품' })}</h1>
+            <Link to="/my-orders" className="text-[15px] text-gray-600 dark:text-gray-300 hover:underline">
               {t('returns.backToOrders', { defaultValue: '주문 목록' })}
             </Link>
           </div>
@@ -56,15 +56,15 @@ export default function MyReturnsPage() {
             <p className="text-center text-gray-500 dark:text-gray-400 py-12">{t('common.loading')}</p>
           ) : error ? (
             <div className="text-center py-12">
-              <p className="text-sm text-red-500 mb-4">{error}</p>
-              <button onClick={() => refetch()} className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full text-sm font-bold">
+              <p className="text-[15px] text-red-500 mb-4">{error}</p>
+              <button onClick={() => refetch()} className="px-5 py-2 bg-brand text-white rounded-full text-[15px] font-bold">
                 {t('common.retry', { defaultValue: '다시 시도' })}
               </button>
             </div>
           ) : returns.length === 0 ? (
             <div className="text-center py-16">
               <p className="text-5xl mb-3">📦</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">{t('returns.empty', { defaultValue: '반품 내역이 없습니다' })}</p>
+              <p className="text-[15px] text-gray-500 dark:text-gray-400">{t('returns.empty', { defaultValue: '반품 내역이 없습니다' })}</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -76,16 +76,16 @@ export default function MyReturnsPage() {
                 return (
                   <article key={r.id} className="bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-4 border border-gray-100 dark:border-[#2C2F35]">
                     <header className="flex items-center justify-between mb-2">
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${status.color}`}>{status.label}</span>
-                      <time className="text-[11px] text-gray-400">{formatKSTDate(r.requested_at)}</time>
+                      <span className={`text-[12px] px-2 py-1 rounded-full font-bold ${status.color}`}>{status.label}</span>
+                      <time className="text-[12px] text-gray-400">{formatKSTDate(r.requested_at)}</time>
                     </header>
 
-                    <p className="text-sm font-medium mb-1">주문 {r.order_number}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">사유: {r.reason}</p>
-                    {r.detail_reason && <p className="text-xs text-gray-600 dark:text-gray-300 mb-2">{r.detail_reason}</p>}
+                    <p className="text-[15px] font-medium mb-1">주문 {r.order_number}</p>
+                    <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-2">사유: {r.reason}</p>
+                    {r.detail_reason && <p className="text-[12px] text-gray-600 dark:text-gray-300 mb-2">{r.detail_reason}</p>}
 
                     {r.refund_amount && r.refunded_at && (
-                      <p className="text-sm text-emerald-600 dark:text-emerald-400 font-bold mb-2">
+                      <p className="text-[15px] text-emerald-600 dark:text-emerald-400 font-bold mb-2">
                         ✓ {formatNumber(r.refund_amount)}원 환불됨
                       </p>
                     )}
@@ -93,9 +93,9 @@ export default function MyReturnsPage() {
                     {/* 회수 송장 정보 */}
                     {r.return_tracking_number && (
                       <div className="mt-3 bg-surface rounded-lg p-3 border border-gray-100 dark:border-[#2C2F35]">
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">회수 송장</p>
+                        <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1">회수 송장</p>
                         <div className="flex items-center justify-between">
-                          <span className="text-sm tabular-nums">
+                          <span className="text-[15px] tabular-nums">
                             {r.return_shipping_company} · {r.return_tracking_number}
                           </span>
                           {canTrack && (
@@ -104,7 +104,7 @@ export default function MyReturnsPage() {
                                 carrier: r.return_shipping_company!,
                                 number: r.return_tracking_number!,
                               })}
-                              className="text-xs text-gray-900 dark:text-white font-bold hover:underline"
+                              className="text-[12px] text-gray-900 dark:text-white font-bold hover:underline"
                             >
                               📦 추적 →
                             </button>
@@ -173,27 +173,27 @@ function ShippingForm({ returnId, onSubmitted }: { returnId: number; onSubmitted
 
   return (
     <div className="mt-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
-      <p className="text-xs font-bold text-blue-700 dark:text-blue-200 mb-2">📮 회수 송장 등록 필요</p>
+      <p className="text-[12px] font-bold text-blue-700 dark:text-blue-200 mb-2">📮 회수 송장 등록 필요</p>
       <div className="grid grid-cols-2 gap-2 mb-2">
         <input
           type="text"
           value={carrier}
           onChange={(e) => setCarrier(e.target.value)}
           placeholder="택배사 (예: cj, 한진, kr_post)"
-          className="px-2 py-1.5 text-xs bg-surface border border-line text-gray-900 dark:text-white rounded-lg"
+          className="px-2 py-2 text-[12px] bg-surface border border-line text-gray-900 dark:text-white rounded-lg"
         />
         <input
           type="text"
           value={number}
           onChange={(e) => setNumber(e.target.value.replace(/[^0-9-]/g, ''))}
           placeholder="송장번호"
-          className="px-2 py-1.5 text-xs bg-surface border border-line text-gray-900 dark:text-white rounded-lg tabular-nums"
+          className="px-2 py-2 text-[12px] bg-surface border border-line text-gray-900 dark:text-white rounded-lg tabular-nums"
         />
       </div>
       <button
         onClick={submit}
         disabled={submitting}
-        className="w-full py-1.5 bg-gray-900 hover:bg-gray-900 disabled:opacity-50 text-white text-xs font-bold rounded-lg"
+        className="w-full py-2 bg-brand hover:bg-brand disabled:opacity-50 text-white text-[12px] font-bold rounded-lg"
       >
         {submitting ? '등록 중...' : t('returns.submitShipping', { defaultValue: '회수 송장 등록' })}
       </button>

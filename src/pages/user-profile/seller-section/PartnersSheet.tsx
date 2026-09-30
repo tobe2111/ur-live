@@ -121,7 +121,7 @@ export default function PartnersSheet({ sellerId, onClose, onOpenPath }: {
       }
     >
       <div className="px-4 pt-3">
-        <p className="text-[12.5px] leading-[1.6] text-gray-500 dark:text-gray-400">
+        <p className="text-[13px] leading-[1.6] text-gray-500 dark:text-gray-400">
           내 이용권을 자기 유어샵에 담아 파는 사람들이에요. 수락하면 팔린 만큼 소개비가 나갑니다.
         </p>
       </div>
@@ -133,15 +133,15 @@ export default function PartnersSheet({ sellerId, onClose, onOpenPath }: {
       )}
 
       {failed && (
-        <p className="px-4 py-10 text-center text-[13.5px] text-gray-500 dark:text-gray-400">
+        <p className="px-4 py-10 text-center text-[13px] text-gray-500 dark:text-gray-400">
           제안을 불러오지 못했어요. 잠시 후 다시 열어 주세요.
         </p>
       )}
 
       {!loading && !failed && deals.length === 0 && (
         <div className="px-4 py-10 text-center">
-          <p className="text-[14px] font-bold text-gray-900 dark:text-white">아직 받은 제안이 없어요</p>
-          <p className="mt-1.5 text-[13px] leading-[1.6] text-gray-500 dark:text-gray-400">
+          <p className="text-[15px] font-bold text-gray-900 dark:text-white">아직 받은 제안이 없어요</p>
+          <p className="mt-2 text-[13px] leading-[1.6] text-gray-500 dark:text-gray-400">
             아래에서 직접 파트너를 찾아 제안할 수도 있어요.
           </p>
         </div>
@@ -153,9 +153,9 @@ export default function PartnersSheet({ sellerId, onClose, onOpenPath }: {
             const r = respondability(d)
             const status = String(d.status ?? '')
             return (
-              <div key={d.id} className="rounded-xl bg-wash px-3.5 py-3">
+              <div key={d.id} className="rounded-xl bg-wash px-4 py-3">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-[14px] font-bold text-gray-900 dark:text-white">
+                  <span className="text-[15px] font-bold text-gray-900 dark:text-white">
                     소개비 {Number(d.commission_pct ?? 0)}%
                   </span>
                   <span className="flex-1" />
@@ -163,23 +163,23 @@ export default function PartnersSheet({ sellerId, onClose, onOpenPath }: {
                     {STATUS_LABEL[status] ?? status ?? '—'}
                   </span>
                 </div>
-                <p className="mt-0.5 text-[12px] text-gray-500 dark:text-gray-400">
+                <p className="mt-1 text-[12px] text-gray-500 dark:text-gray-400">
                   {d.proposed_by === 'influencer' ? '상대가 보낸 제안' : '내가 보낸 제안'}
                   {d.created_at && <> · {formatKSTDate(d.created_at)}</>}
                 </p>
                 {d.message && (
-                  <p className="mt-1.5 text-[12.5px] leading-[1.55] text-gray-900 dark:text-gray-100 whitespace-pre-wrap break-words">
+                  <p className="mt-2 text-[13px] leading-[1.55] text-gray-900 dark:text-gray-100 whitespace-pre-wrap break-words">
                     {d.message}
                   </p>
                 )}
 
                 {r.can && (
-                  <div className="mt-2.5 flex gap-2">
+                  <div className="mt-3 flex gap-2">
                     <button
                       type="button"
                       disabled={busyId != null}
                       onClick={() => respond(d.id, 'accept')}
-                      className="flex-1 h-10 rounded-lg bg-brand text-white text-[13.5px] font-bold active:opacity-90 disabled:opacity-50"
+                      className="flex-1 h-10 rounded-lg bg-brand text-white text-[13px] font-bold active:opacity-90 disabled:opacity-50"
                     >
                       {busyId === d.id ? '처리 중…' : '수락'}
                     </button>
@@ -187,7 +187,7 @@ export default function PartnersSheet({ sellerId, onClose, onOpenPath }: {
                       type="button"
                       disabled={busyId != null}
                       onClick={() => respond(d.id, 'reject')}
-                      className="px-4 h-10 rounded-lg bg-surface text-[13.5px] font-bold text-gray-900 dark:text-white active:opacity-70 disabled:opacity-50"
+                      className="px-4 h-10 rounded-lg bg-surface text-[13px] font-bold text-gray-900 dark:text-white active:opacity-70 disabled:opacity-50"
                     >
                       거절
                     </button>

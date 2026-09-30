@@ -6,11 +6,12 @@
  */
 
 import { useEffect, useState } from 'react'
+import { WalletIcon, ClockIcon, OkIcon, WarnIcon } from '@/components/icons/urdeal-icons'
 import BrandLoader from '@/components/brand/BrandLoader'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
-import { Wallet, TrendingUp, Clock, CheckCircle, Save, AlertTriangle } from 'lucide-react'
+import { TrendingUp, Save } from 'lucide-react'
 import ConditionalDealsSection from './influencer-settlement/ConditionalDealsSection'
 import DealsAndCodesSection from './influencer-settlement/DealsAndCodesSection'
 import PublicProfileSection from './influencer-settlement/PublicProfileSection'
@@ -53,12 +54,12 @@ function MyRankCard() {
     <a href="/influencer/rankings" className="block bg-warm border border-amber-200 rounded-xl p-4">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-[11px] text-amber-700 font-medium">🏆 이번 달 나의 순위</p>
-          <p className="text-2xl font-extrabold text-amber-800 mt-0.5">
+          <p className="text-[12px] text-amber-700 font-medium">🏆 이번 달 나의 순위</p>
+          <p className="text-[24px] font-extrabold text-amber-800 mt-1">
             {rank.national_rank ? `전국 ${rank.national_rank}위` : '아직 데이터 없음'}
           </p>
           {rank.national_total_participants > 0 && (
-            <p className="text-[10px] text-amber-600 mt-0.5">총 {rank.national_total_participants}명 중 / commission {rank.my_commission.toLocaleString()}원</p>
+            <p className="text-[12px] text-amber-600 mt-1">총 {rank.national_total_participants}명 중 / commission {rank.my_commission.toLocaleString()}원</p>
           )}
         </div>
         <span className="text-3xl">🏆</span>
@@ -153,8 +154,8 @@ export default function InfluencerSettlementPage() {
       {/* 💡 flip D1: description 만 재원 게이트 — platform(기본) 은 기존 문구 byte-동일 */}
       <SEO title="인플루언서 정산 - 유어딜" description={ownerFunded ? '매장 promo(매장 몫) 재원 커미션 잔액 / 송금 내역 / 세금 정보 관리' : 'referral commission 잔액 / 송금 내역 / 세금 정보 관리'} url="/influencer/settlement" />
       <header className="sticky top-0 z-30 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35] px-4 py-3 flex items-center gap-2">
-        <Wallet className="w-5 h-5 text-brand-text" />
-        <h1 className="text-base font-bold text-gray-900 dark:text-white flex-1">인플루언서 정산</h1>
+        <WalletIcon className="w-5 h-5 text-brand-text" />
+        <h1 className="text-[15px] font-bold text-gray-900 dark:text-white flex-1">인플루언서 정산</h1>
         <button
           onClick={async () => {
             const type = prompt('분쟁 유형 (unfair_block / commission_dispute / other)')?.trim() as 'unfair_block' | 'commission_dispute' | 'other'
@@ -167,9 +168,9 @@ export default function InfluencerSettlementPage() {
               toast.success('분쟁 신고 접수 — 어드민이 검토합니다')
             } catch { toast.error('신고 실패') }
           }}
-          className="text-[11px] px-2.5 py-1 bg-red-50 text-red-600 rounded font-bold flex items-center gap-1"
+          className="text-[12px] px-2 py-1 bg-red-50 text-red-600 rounded font-bold flex items-center gap-1"
         >
-          <AlertTriangle className="w-3 h-3" /> 분쟁 신고
+          <WarnIcon className="w-3 h-3" /> 분쟁 신고
         </button>
       </header>
 
@@ -177,16 +178,16 @@ export default function InfluencerSettlementPage() {
         {/* 🛡️ 2026-05-16: 카탈로그 + 성과표 + 랭킹 진입 카드 */}
         <div className="grid grid-cols-3 gap-2">
           <a href="/influencer/discover" className="bg-gray-800 text-white rounded-xl p-3 flex flex-col items-center justify-center active:scale-95 transition-transform">
-            <span className="text-xl">🛍️</span>
-            <p className="text-[10px] opacity-90 mt-1">카탈로그</p>
+            <span className="text-[17px]">🛍️</span>
+            <p className="text-[12px] opacity-90 mt-1">카탈로그</p>
           </a>
           <a href="/influencer/analytics" className="bg-gray-800 text-white rounded-xl p-3 flex flex-col items-center justify-center active:scale-95 transition-transform">
-            <span className="text-xl">📊</span>
-            <p className="text-[10px] opacity-90 mt-1">성과표</p>
+            <span className="text-[17px]">📊</span>
+            <p className="text-[12px] opacity-90 mt-1">성과표</p>
           </a>
           <a href="/influencer/rankings" className="bg-gradient-to-br from-gray-700 to-gray-800 text-white rounded-xl p-3 flex flex-col items-center justify-center active:scale-95 transition-transform">
-            <span className="text-xl">🏆</span>
-            <p className="text-[10px] opacity-90 mt-1">랭킹</p>
+            <span className="text-[17px]">🏆</span>
+            <p className="text-[12px] opacity-90 mt-1">랭킹</p>
           </a>
         </div>
 
@@ -201,8 +202,8 @@ export default function InfluencerSettlementPage() {
             platform(현행 기본/미확인) 동안 미렌더(기존 화면 byte-동일) */}
         {ownerFunded && (
           <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl p-3">
-            <p className="text-xs font-bold text-emerald-800 dark:text-emerald-300">커미션은 매장 promo(매장 몫)에서 지급됩니다</p>
-            <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-0.5">
+            <p className="text-[12px] font-bold text-emerald-800 dark:text-emerald-300">커미션은 매장 promo(매장 몫)에서 지급됩니다</p>
+            <p className="text-[12px] text-emerald-700 dark:text-emerald-400 mt-1">
               각 매장이 자기 promo 재원(매장 95% 안)에서 부담하는 몫입니다 — 유어딜 5%(인프라비)와 무관합니다.
             </p>
           </div>
@@ -211,28 +212,28 @@ export default function InfluencerSettlementPage() {
         {/* 잔액 요약 */}
         <div className="grid grid-cols-3 gap-2">
           <div className="bg-yellow-50 rounded-xl p-3 text-center">
-            <Clock className="w-4 h-4 text-yellow-700 mx-auto mb-1" />
-            <p className="text-[10px] text-yellow-700 font-medium">{useGate ? '대기 (사용 확인)' : '대기 (환불기간)'}</p>
-            <p className="text-sm font-extrabold text-yellow-800 mt-0.5">{(balance?.pending_amount ?? 0).toLocaleString()}원</p>
+            <ClockIcon className="w-4 h-4 text-yellow-700 mx-auto mb-1" />
+            <p className="text-[12px] text-yellow-700 font-medium">{useGate ? '대기 (사용 확인)' : '대기 (환불기간)'}</p>
+            <p className="text-[15px] font-extrabold text-yellow-800 mt-1">{(balance?.pending_amount ?? 0).toLocaleString()}원</p>
           </div>
           <div className="bg-blue-50 rounded-xl p-3 text-center">
             <TrendingUp className="w-4 h-4 text-blue-700 mx-auto mb-1" />
-            <p className="text-[10px] text-blue-700 font-medium">송금 대기</p>
-            <p className="text-sm font-extrabold text-blue-800 mt-0.5">{(balance?.available_amount ?? 0).toLocaleString()}원</p>
+            <p className="text-[12px] text-blue-700 font-medium">송금 대기</p>
+            <p className="text-[15px] font-extrabold text-blue-800 mt-1">{(balance?.available_amount ?? 0).toLocaleString()}원</p>
           </div>
           <div className="bg-emerald-50 rounded-xl p-3 text-center">
-            <CheckCircle className="w-4 h-4 text-emerald-700 mx-auto mb-1" />
-            <p className="text-[10px] text-emerald-700 font-medium">누적 송금</p>
-            <p className="text-sm font-extrabold text-emerald-800 mt-0.5">{(balance?.total_paid_out ?? 0).toLocaleString()}원</p>
+            <OkIcon className="w-4 h-4 text-emerald-700 mx-auto mb-1" />
+            <p className="text-[12px] text-emerald-700 font-medium">누적 송금</p>
+            <p className="text-[15px] font-extrabold text-emerald-800 mt-1">{(balance?.total_paid_out ?? 0).toLocaleString()}원</p>
           </div>
         </div>
 
         {/* 정산 정보 입력 */}
-        <div className="bg-surface border border-line rounded-xl p-5 space-y-4">
-          <h3 className="text-sm font-bold text-gray-900 dark:text-white">정산 정보</h3>
+        <div className="bg-surface rounded-xl p-5 space-y-4 shadow-lift">
+          <h3 className="text-[15px] font-bold text-gray-900 dark:text-white">정산 정보</h3>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-2">송금 방식</label>
+            <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-200 mb-2">송금 방식</label>
             {/* 🕯️ 2026-09-16: **선택된 칸의 글자가 다크에서 안 보였다**(실측 1.07:1 — 흰 글자 위 흰 판).
                   원인은 오타가 아니라 **되다 만 팔레트 이행**이다 — 선택 상태가 `bg-blue-50`(다크 짝 없음)로
                   남아 있어 다크에서도 밝은 판이 되는데, 안의 `<p>` 는 `dark:text-white` 로 흰 글자가 됐다.
@@ -245,20 +246,20 @@ export default function InfluencerSettlementPage() {
                 onClick={() => setForm(f => ({ ...f, payout_method: 'cash' }))}
                 className={`p-3 rounded-xl border-2 text-left ${form.payout_method === 'cash' ? 'border-brand bg-brand-tint' : 'border-gray-200 bg-white dark:bg-[#11141C]'}`}
               >
-                <p className="text-sm font-bold text-gray-900 dark:text-white">현금 송금</p>
+                <p className="text-[15px] font-bold text-gray-900 dark:text-white">현금 송금</p>
                 {/* 💎 2026-08-31 대표: 최소 금액은 현금에만 적용된다. 고르는 화면에 그 차이가
                     안 적혀 있어서, 딜을 골랐다면 바로 받을 수 있는 사람도 10만원을 기다리는 줄 알았다. */}
-                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">원천징수 후 계좌 입금 · 10만원 이상부터</p>
+                <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">원천징수 후 계좌 입금 · 10만원 이상부터</p>
               </button>
               <button
                 type="button"
                 onClick={() => setForm(f => ({ ...f, payout_method: 'deal' }))}
                 className={`p-3 rounded-xl border-2 text-left ${form.payout_method === 'deal' ? 'border-brand bg-brand-tint' : 'border-gray-200 bg-white dark:bg-[#11141C]'}`}
               >
-                <p className="text-sm font-bold text-gray-900 dark:text-white">딜 포인트 <span className="text-brand-text">+20%</span></p>
+                <p className="text-[15px] font-bold text-gray-900 dark:text-white">딜 포인트 <span className="text-brand-text">+20%</span></p>
                 {/* 💡 flip D1: owner-펀딩일 때만 재원 출처 병기 — platform 은 기존 문구 byte-동일 */}
-                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{ownerFunded ? '매장 promo 재원 · 유어딜 결제 사용 / 환불 X' : '유어딜 결제 / 환불 X'}</p>
-                <p className="text-[10px] font-bold text-brand-text mt-0.5">금액 제한 없음</p>
+                <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{ownerFunded ? '매장 promo 재원 · 유어딜 결제 사용 / 환불 X' : '유어딜 결제 / 환불 X'}</p>
+                <p className="text-[12px] font-bold text-brand-text mt-1">금액 제한 없음</p>
               </button>
             </div>
           </div>
@@ -266,35 +267,35 @@ export default function InfluencerSettlementPage() {
           {/* 🛡️ 2026-05-16: ranking_public 토글 */}
           <div className="flex items-center justify-between gap-3 bg-amber-50 border border-amber-200 rounded-lg p-3">
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold text-amber-800">🏆 랭킹 공개</p>
-              <p className="text-[11px] text-amber-700 mt-0.5">공개 시 /influencer/rankings 에 본인 ID 노출. 비공개 시 "익명 인플 #XXX" 표시</p>
+              <p className="text-[12px] font-bold text-amber-800">🏆 랭킹 공개</p>
+              <p className="text-[12px] text-amber-700 mt-1">공개 시 /influencer/rankings 에 본인 ID 노출. 비공개 시 "익명 인플 #XXX" 표시</p>
             </div>
             <button
               type="button"
               onClick={() => setForm(f => ({ ...f, ranking_public: !f.ranking_public }))}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold ${form.ranking_public ? 'bg-gray-900 text-white' : 'bg-gray-300 text-gray-700 dark:text-gray-200'}`}
+              className={`px-3 py-2 rounded-full text-[12px] font-bold ${form.ranking_public ? 'bg-brand text-white' : 'bg-gray-300 text-gray-700 dark:text-gray-200'}`}
             >
               {form.ranking_public ? '공개' : '비공개'}
             </button>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">사업자번호 (있을 때만)</label>
+            <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-200 mb-1">사업자번호 (있을 때만)</label>
             <input
               value={form.business_number}
               onChange={(e) => setForm(f => ({ ...f, business_number: e.target.value.replace(/[^\d-]/g, '') }))}
               placeholder="000-00-00000 (10자리)"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-[15px] text-gray-900 dark:text-white"
             />
-            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">있으면 사업소득세 3.3% 원천징수, 없으면 기타소득 8.8%</p>
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">있으면 사업소득세 3.3% 원천징수, 없으면 기타소득 8.8%</p>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">세금 구분</label>
+            <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-200 mb-1">세금 구분</label>
             <select
               value={form.tax_type}
               onChange={(e) => setForm(f => ({ ...f, tax_type: e.target.value as 'business_income' | 'other_income' | 'unreported' }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 dark:text-white bg-surface"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-[15px] text-gray-900 dark:text-white bg-surface"
             >
               <option value="business_income">사업소득 (3.3% 원천징수, 사업자번호 필요)</option>
               <option value="other_income">기타소득 (8.8% 원천징수, 사업자번호 불필요)</option>
@@ -303,11 +304,11 @@ export default function InfluencerSettlementPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">은행</label>
+            <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-200 mb-1">은행</label>
             <select
               value={form.bank_name}
               onChange={(e) => setForm(f => ({ ...f, bank_name: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 dark:text-white bg-surface"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-[15px] text-gray-900 dark:text-white bg-surface"
             >
               <option value="">은행 선택</option>
               {['KB국민은행','신한은행','우리은행','하나은행','NH농협은행','IBK기업은행','케이뱅크','카카오뱅크','토스뱅크','새마을금고','신협','우체국'].map(b => (
@@ -317,29 +318,29 @@ export default function InfluencerSettlementPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">계좌번호</label>
+            <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-200 mb-1">계좌번호</label>
             <input
               value={form.bank_account}
               onChange={(e) => setForm(f => ({ ...f, bank_account: e.target.value.replace(/[^\d-]/g, '') }))}
               placeholder="000-000-000000"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm tabular-nums text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-[15px] tabular-nums text-gray-900 dark:text-white"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">예금주</label>
+            <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-200 mb-1">예금주</label>
             <input
               value={form.account_holder}
               onChange={(e) => setForm(f => ({ ...f, account_holder: e.target.value }))}
               placeholder="홍길동"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-[15px] text-gray-900 dark:text-white"
             />
           </div>
 
           <button
             onClick={save}
             disabled={saving}
-            className="w-full py-2.5 bg-brand text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-2 bg-brand text-white rounded-lg text-[15px] font-bold flex items-center justify-center gap-2 disabled:opacity-50"
           >
             <Save className="w-4 h-4" /> {saving ? '저장 중...' : '정산 정보 저장'}
           </button>
@@ -349,10 +350,10 @@ export default function InfluencerSettlementPage() {
         <DealsAndCodesSection ownerFunded={ownerFunded} />
 
         {/* 최근 내역 */}
-        <div className="bg-surface border border-line rounded-xl p-5">
-          <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">최근 commission 내역 ({recent.length}건)</h3>
+        <div className="bg-surface rounded-xl p-5 shadow-lift">
+          <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">최근 commission 내역 ({recent.length}건)</h3>
           {recent.length === 0 ? (
-            <p className="text-xs text-gray-400 text-center py-6">아직 referral commission 이 없습니다</p>
+            <p className="text-[12px] text-gray-400 text-center py-6">아직 referral commission 이 없습니다</p>
           ) : (
             <ul className="space-y-2">
               {recent.map(r => {
@@ -360,10 +361,10 @@ export default function InfluencerSettlementPage() {
                 return (
                   <li key={r.id} className="flex items-center justify-between gap-3 border-b border-gray-100 dark:border-[#2C2F35] pb-2 last:border-0 last:pb-0">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-gray-900 dark:text-white">{r.commission_amount.toLocaleString()}원</p>
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400">상품 #{r.product_id} · {formatKSTDate(r.created_at)}</p>
+                      <p className="text-[15px] font-bold text-gray-900 dark:text-white">{r.commission_amount.toLocaleString()}원</p>
+                      <p className="text-[12px] text-gray-500 dark:text-gray-400">상품 #{r.product_id} · {formatKSTDate(r.created_at)}</p>
                     </div>
-                    <span className={`text-[10px] px-2 py-1 rounded font-bold ${status.color}`}>{status.label}</span>
+                    <span className={`text-[12px] px-2 py-1 rounded font-bold ${status.color}`}>{status.label}</span>
                   </li>
                 )
               })}

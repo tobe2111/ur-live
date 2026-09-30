@@ -9,8 +9,9 @@
  * 사용처리: use-by-seller(원자 CAS) — 서버가 이중사용/타매장 차단. 같은 코드 5초 dedup.
  */
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { OkIcon, BadIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from 'react-i18next'
-import { CheckCircle2, XCircle, Keyboard, Loader2 } from 'lucide-react'
+import { Keyboard, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
 
 type ScanResult = {
@@ -198,7 +199,7 @@ export default function VoucherScanner() {
         {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
         <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
         {!cameraOn && !cameraError && (
-          <div className="absolute inset-0 flex items-center justify-center text-white/70 text-sm">
+          <div className="absolute inset-0 flex items-center justify-center text-white/70 text-[15px]">
             <Loader2 className="w-5 h-5 animate-spin mr-2" /> {t('seller.scan.cameraStarting', { defaultValue: '카메라 시작 중…' })}
           </div>
         )}
@@ -208,12 +209,12 @@ export default function VoucherScanner() {
           </div>
         )}
         {busy && (
-          <div className="absolute inset-x-0 bottom-0 bg-black/60 text-white text-center text-sm py-2">
+          <div className="absolute inset-x-0 bottom-0 bg-black/60 text-white text-center text-[15px] py-2">
             <Loader2 className="w-4 h-4 animate-spin inline mr-1.5" />{t('seller.scan.processing', { defaultValue: '사용 처리 중…' })}
           </div>
         )}
       </div>
-      {cameraError && <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">{cameraError}</p>}
+      {cameraError && <p className="text-[15px] text-tone-warn bg-tone-warn-bg rounded-xl px-3 py-2">{cameraError}</p>}
 
       {/* 수동 입력 (카메라 불가/QR 손상 대비) */}
       <form onSubmit={submitManual} className="flex gap-2">
@@ -228,25 +229,28 @@ export default function VoucherScanner() {
             autoComplete="off"
             spellCheck={false}
             placeholder={t('seller.scan.manualPlaceholder', { defaultValue: '코드 직접 입력 (UR-XXXX-XXXX)' })}
-            className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-line text-sm text-gray-900 dark:text-white bg-surface focus:outline-none focus:ring-2 focus:ring-gray-400/40"
+            className="w-full pl-9 pr-3 py-2 rounded-xl border border-line text-[15px] text-gray-900 dark:text-white bg-surface focus:outline-none focus:ring-2 focus:ring-gray-400/40"
           />
         </div>
         <button type="submit" disabled={busy || !extractCode(manualCode)}
-          className="px-4 py-2.5 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-bold disabled:opacity-40">
+          className="px-4 py-2 rounded-xl bg-brand text-white text-[15px] font-bold disabled:opacity-40">
           {t('seller.scan.useBtn', { defaultValue: '사용 처리' })}
         </button>
       </form>
 
-      {/* 최근 결과 — 최신 1건 크게 + 이번 세션 이력 */}
+      {/* 최근 결과 — 최신 1건 크게 + 이번 세션 이력.
+          🚦 2026-09-29: 성공이 emerald 였는데 MONO 중화로 **회색**이었다 — 실패(red)만 색이 있어서
+          매장에서 스캔했을 때 "통과" 와 "오류" 중 한쪽만 읽혔다. 사용 처리는 되돌릴 수 없는 동작이라
+          이 한 쌍이 이 화면에서 가장 중요한 신호다. */}
       {latest && (
-        <div className={`rounded-2xl border p-4 ${latest.ok ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/30' : 'bg-red-50 border-red-200 dark:bg-red-500/10 dark:border-red-500/30'}`}>
-          <div className="flex items-center gap-2.5">
+        <div className={`rounded-2xl p-4 ${latest.ok ? 'bg-tone-ok-bg' : 'bg-tone-bad-bg'}`}>
+          <div className="flex items-center gap-2">
             {latest.ok
-              ? <CheckCircle2 className="w-7 h-7 text-emerald-600 shrink-0" />
-              : <XCircle className="w-7 h-7 text-red-500 shrink-0" />}
+              ? <OkIcon className="w-7 h-7 text-tone-ok shrink-0" />
+              : <BadIcon className="w-7 h-7 text-tone-bad shrink-0" />}
             <div className="min-w-0">
-              <p className={`text-[15px] font-extrabold ${latest.ok ? 'text-emerald-900 dark:text-emerald-300' : 'text-red-700 dark:text-red-300'}`}>{latest.message}</p>
-              <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 truncate">
+              <p className={`text-[15px] font-extrabold ${latest.ok ? 'text-tone-ok' : 'text-tone-bad'}`}>{latest.message}</p>
+              <p className="text-[12px] text-gray-600 dark:text-gray-400 mt-1 truncate">
                 {latest.productName || latest.code}{latest.restaurantName ? ` · ${latest.restaurantName}` : ''} · {latest.at}
               </p>
             </div>
@@ -254,10 +258,10 @@ export default function VoucherScanner() {
         </div>
       )}
       {results.length > 1 && (
-        <div className="rounded-2xl border border-line bg-surface divide-y divide-gray-100 dark:divide-[#2C2F35]">
+        <div className="rounded-2xl bg-surface divide-y divide-gray-100 dark:divide-[#2C2F35] shadow-lift">
           {results.slice(1).map((r, i) => (
-            <div key={`${r.code}-${i}`} className="flex items-center gap-2 px-3 py-2 text-xs">
-              {r.ok ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> : <XCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />}
+            <div key={`${r.code}-${i}`} className="flex items-center gap-2 px-3 py-2 text-[12px]">
+              {r.ok ? <OkIcon className="w-3.5 h-3.5 text-tone-ok shrink-0" /> : <BadIcon className="w-3.5 h-3.5 text-tone-bad shrink-0" />}
               <span className="flex-1 truncate text-gray-700 dark:text-gray-300">{r.productName || r.code} — {r.message}</span>
               <span className="text-gray-400 dark:text-gray-500 shrink-0">{r.at}</span>
             </div>

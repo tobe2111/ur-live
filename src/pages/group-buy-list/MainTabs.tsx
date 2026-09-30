@@ -15,9 +15,9 @@ export default function MainTabs({ mainTab, setMainTab, setCategory, setSortBy }
         <div className="flex border-b border-line">
           <button
             onClick={() => { setMainTab('seller'); setCategory('all'); setSortBy('popular') }}
-            className={`flex-1 pb-2.5 text-[14px] font-semibold text-center transition-colors border-b-2 ${
+            className={`flex-1 pb-2 text-[15px] font-semibold text-center transition-colors border-b-2 ${
               mainTab === 'seller'
-                ? 'text-gray-900 dark:text-white border-gray-900 dark:border-white'
+                ? 'text-gray-900 dark:text-white border-brand'
                 : 'text-gray-400 dark:text-gray-600 border-transparent'
             }`}
           >
@@ -25,9 +25,9 @@ export default function MainTabs({ mainTab, setMainTab, setCategory, setSortBy }
           </button>
           <button
             onClick={() => { setMainTab('community'); setCategory('all'); setSortBy('popular') }}
-            className={`flex-1 pb-2.5 text-[14px] font-semibold text-center transition-colors border-b-2 ${
+            className={`flex-1 pb-2 text-[15px] font-semibold text-center transition-colors border-b-2 ${
               mainTab === 'community'
-                ? 'text-gray-900 dark:text-white border-gray-900 dark:border-white'
+                ? 'text-gray-900 dark:text-white border-brand'
                 : 'text-gray-400 dark:text-gray-600 border-transparent'
             }`}
           >

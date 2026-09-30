@@ -60,7 +60,7 @@ export default [
   {
     name: 's3 — 목록이 2열 격자로 되돌아간다',
     file: 'src/pages/CuratorPage.tsx',
-    find: 'className="max-w-3xl mx-auto px-4 pb-4 space-y-2"',
+    find: 'className="max-w-3xl mx-auto px-4 pb-4 divide-y divide-rule"',
     replace: 'className="max-w-3xl mx-auto px-4 pb-4 grid grid-cols-2 gap-2"',
     test: 'src/tests/unit/ushop-s3-list-2026-09-28.test.ts',
     why:

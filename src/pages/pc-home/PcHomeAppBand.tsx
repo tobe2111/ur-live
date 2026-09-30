@@ -24,7 +24,7 @@ const dealFeed = [
 function StatusBar() {
   return (
     <div className="flex items-center justify-between px-4 pt-2 pb-1">
-      <span className="text-[10px] font-bold text-gray-900">9:41</span>
+      <span className="text-[12px] font-bold text-gray-900">9:41</span>
       <span className="flex items-center gap-1 text-gray-900">
         <svg width="15" height="10" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="5" y="4" width="3" height="8" rx="1"/><rect x="10" y="1" width="3" height="11" rx="1" opacity=".5"/></svg>
         <svg width="14" height="10" viewBox="0 0 16 12" fill="currentColor"><path d="M8 2.5c2.2 0 4.2.8 5.7 2.2l1.1-1.2A10 10 0 0 0 8 .8 10 10 0 0 0 1.2 3.5l1.1 1.2A8 8 0 0 1 8 2.5z"/><path d="M8 6c1.2 0 2.3.5 3.1 1.2l1.1-1.2A6 6 0 0 0 8 4.3 6 6 0 0 0 3.8 6l1.1 1.2A4.4 4.4 0 0 1 8 6z"/><circle cx="8" cy="9.5" r="1.4"/></svg>
@@ -42,33 +42,33 @@ function PhoneFeed() {
         <div className="absolute top-2 left-1/2 -translate-x-1/2 w-16 h-1.5 rounded-full bg-black/80 z-10" />
         <StatusBar />
         {/* header */}
-        <div className="flex items-center justify-between px-4 py-1.5">
-          <span className="text-[14px] font-extrabold text-gray-900 flex items-center gap-0.5">역삼동
+        <div className="flex items-center justify-between px-4 py-2">
+          <span className="text-[15px] font-extrabold text-gray-900 flex items-center gap-1">역삼동
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m6 9 6 6 6-6"/></svg>
           </span>
-          <span className="flex items-center gap-2.5 text-gray-700">
+          <span className="flex items-center gap-2 text-gray-700">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/></svg>
           </span>
         </div>
         {/* chips */}
-        <div className="flex gap-1.5 px-4 pb-2">
+        <div className="flex gap-2 px-4 pb-2">
           {['전체', '카페', '식사', '미용'].map((c, i) => (
-            <span key={c} className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${i === 0 ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500'}`}>{c}</span>
+            <span key={c} className={`text-[12px] font-bold px-2 py-1 rounded-full ${i === 0 ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500'}`}>{c}</span>
           ))}
         </div>
         {/* feed */}
         <div className="px-3 pb-3">
           {dealFeed.map((d) => (
-            <div key={d.m} className="flex gap-2.5 py-2 border-t border-gray-100 first:border-t-0">
+            <div key={d.m} className="flex gap-2 py-2 border-t border-gray-100 first:border-t-0">
               <div className="w-14 h-14 shrink-0 rounded-xl grid place-items-center text-white text-[15px] font-black" style={{ background: `linear-gradient(140deg, ${d.c}, ${d.c}cc)` }}>{d.m}</div>
               <div className="min-w-0 flex-1">
-                <p className="text-[11.5px] font-semibold text-gray-900 leading-tight line-clamp-2">{d.t}</p>
-                <p className="text-[9.5px] text-gray-400 mt-0.5">{d.loc}</p>
-                <p className="text-[12.5px] font-extrabold text-gray-900 mt-0.5">{d.price}</p>
+                <p className="text-[12px] font-semibold text-gray-900 leading-tight line-clamp-2">{d.t}</p>
+                <p className="text-[12px] text-gray-400 mt-1">{d.loc}</p>
+                <p className="text-[12px] font-extrabold text-gray-900 mt-1">{d.price}</p>
               </div>
-              <span className="self-end flex items-center gap-0.5 text-[9px] text-gray-400">
+              <span className="self-end flex items-center gap-1 text-[12px] text-gray-400">
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z"/></svg>{d.like}
               </span>
             </div>
@@ -84,30 +84,30 @@ function PhoneDetail() {
     <div className="w-[236px] shrink-0 rounded-[34px] bg-[#0c0c0e] p-2 shadow-[0_30px_70px_-20px_rgba(0,0,0,0.7)] ring-1 ring-white/10">
       <div className="rounded-[26px] overflow-hidden bg-white">
         {/* hero image */}
-        <div className="aspect-[4/3] w-full grid place-items-center text-white text-[22px] font-black" style={{ background: 'linear-gradient(140deg,#e67e22,#a04000)' }}>NA</div>
-        <div className="p-3.5">
+        <div className="aspect-[4/3] w-full grid place-items-center text-white text-[24px] font-black" style={{ background: 'linear-gradient(140deg,#e67e22,#a04000)' }}>NA</div>
+        <div className="p-4">
           <div className="flex items-center gap-2">
             <span className="w-7 h-7 rounded-full bg-gradient-to-br from-brand to-rose-500" />
             <span className="flex flex-col leading-none">
-              <span className="text-[11px] font-bold text-gray-900">감성네일 강남점</span>
-              <span className="text-[9px] text-gray-400 mt-0.5">역삼동</span>
+              <span className="text-[12px] font-bold text-gray-900">감성네일 강남점</span>
+              <span className="text-[12px] text-gray-400 mt-1">역삼동</span>
             </span>
-            <span className="ml-auto text-[10px] font-extrabold text-emerald-600">4.9 ★</span>
+            <span className="ml-auto text-[12px] font-extrabold text-emerald-600">4.9 ★</span>
           </div>
-          <p className="text-[13px] font-extrabold text-gray-900 mt-2.5 leading-snug">프라이빗 네일 아트 2시간 이용권</p>
-          <p className="text-[10px] text-gray-500 mt-1.5 leading-relaxed">매장에서 QR로 바로 사용하는 이용권이에요. 온라인 할인가로 미리 준비하세요~</p>
-          <div className="mt-2.5 rounded-xl overflow-hidden border border-gray-100">
+          <p className="text-[13px] font-extrabold text-gray-900 mt-2 leading-snug">프라이빗 네일 아트 2시간 이용권</p>
+          <p className="text-[12px] text-gray-500 mt-2 leading-relaxed">매장에서 QR로 바로 사용하는 이용권이에요. 온라인 할인가로 미리 준비하세요~</p>
+          <div className="mt-2 rounded-xl overflow-hidden border border-gray-100">
             <div className="h-16 w-full grid place-items-center bg-emerald-50">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0ea5a0" strokeWidth="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="2.6"/></svg>
             </div>
           </div>
         </div>
         {/* buy bar */}
-        <div className="flex items-center gap-2 px-3.5 py-3 border-t border-gray-100">
+        <div className="flex items-center gap-2 px-4 py-3 border-t border-gray-100">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z"/></svg>
           <div className="flex flex-col leading-none">
-            <span className="text-[9px] text-brand font-bold">40%</span>
-            <span className="text-[14px] font-black text-gray-900">27,000원</span>
+            <span className="text-[12px] text-brand font-bold">40%</span>
+            <span className="text-[15px] font-black text-gray-900">27,000원</span>
           </div>
           <span className="ml-auto text-[12px] font-bold text-white bg-brand px-4 py-2 rounded-xl">구매하기</span>
         </div>
@@ -126,14 +126,14 @@ export default function PcHomeAppBand() {
           <h2 className="text-[30px] lg:text-[34px] font-black leading-[1.25] tracking-tight text-white">
             유어딜에서 <span className="text-[#ff8a5c]">우리 동네 딜</span>과<br />함께해요
           </h2>
-          <p className="mt-3 text-[16px] font-bold text-white/70">설치 없이 폰에서 바로 열려요</p>
+          <p className="mt-3 text-[17px] font-bold text-white/70">설치 없이 폰에서 바로 열려요</p>
           <div className="mt-7 flex items-center gap-4">
-            <div className="rounded-2xl bg-white p-2.5 shrink-0">{/* QR 은 스캔을 위해 항상 흰 배경 — light-fixed */}
+            <div className="rounded-2xl bg-white p-2 shrink-0">{/* QR 은 스캔을 위해 항상 흰 배경 — light-fixed */}
               <Suspense fallback={<div className="w-[92px] h-[92px]" />}>
                 <QRCodeSVG value="https://urdeal.kr" size={92} fgColor="#11141C" bgColor="#ffffff" level="M" />
               </Suspense>
             </div>
-            <p className="text-[14px] text-white/70 leading-relaxed max-w-[200px]">
+            <p className="text-[15px] text-white/70 leading-relaxed max-w-[200px]">
               카메라로 스캔하면<br />폰에서 이어서 볼 수 있어요
             </p>
           </div>

@@ -12,8 +12,9 @@
  *   3) successUrl/failUrl → /stays/checkout-return?order_id=N (confirm 호출 경량 페이지).
  */
 import { useEffect, useState } from 'react'
+import { AlertIcon, PeopleIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Loader2, AlertCircle, Calendar, Users } from 'lucide-react'
+import { ArrowLeft, Loader2, Calendar } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { formatNumber } from '@/utils/format'
@@ -134,19 +135,19 @@ export default function StayCheckout({ orderId }: { orderId: number }) {
             <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
           </div>
         ) : error || !order ? (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-2xl">
+          <div className="p-4 bg-tone-bad-bg rounded-2xl">
             <div className="flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
+              <AlertIcon className="w-5 h-5 text-red-600 shrink-0" />
               <p className="text-[13px] font-medium text-red-800">{error || '주문을 불러오지 못했습니다'}</p>
             </div>
-            <button onClick={() => navigate('/stays')} className="mt-3 text-[12px] text-blue-600 underline font-medium">
+            <button onClick={() => navigate('/stays')} className="mt-3 text-[12px] text-brand-text underline font-medium">
               숙소 둘러보기로 이동
             </button>
           </div>
         ) : (
           <>
             {/* 예약 요약 — 서버 데이터 그대로 표시 */}
-            <section className="bg-white rounded-2xl border border-gray-100 p-4 space-y-3">
+            <section className="bg-white rounded-2xl p-4 space-y-3 shadow-lift">
               <p className="text-[12px] text-gray-500">예약 내역 ({bookings.length}건)</p>
               {bookings.map((b) => (
                 <div key={b.id} className="flex items-start gap-3 pt-1">
@@ -154,9 +155,9 @@ export default function StayCheckout({ orderId }: { orderId: number }) {
                     {b.image_url ? <img src={cfImage(b.image_url, { width: 200, quality: 82, format: 'auto' }) || b.image_url} alt={b.product_name || ''} className="w-full h-full object-cover" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, b.image_url)} /> : null}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-bold text-gray-900 line-clamp-1">{b.product_name || '숙소'}</p>
+                    <p className="text-[15px] font-bold text-gray-900 line-clamp-1">{b.product_name || '숙소'}</p>
                     {b.room_name && <p className="text-[12px] text-gray-600">{b.room_name}</p>}
-                    <p className="text-[12px] text-gray-500 flex items-center gap-1 mt-0.5">
+                    <p className="text-[12px] text-gray-500 flex items-center gap-1 mt-1">
                       <Calendar className="w-3 h-3 shrink-0" />
                       {b.check_in_date
                         ? `${b.check_in_date} → ${b.check_out_date} (${b.nights || 1}박)`
@@ -164,7 +165,7 @@ export default function StayCheckout({ orderId }: { orderId: number }) {
                     </p>
                     {(b.guest_count || 0) > 0 && (
                       <p className="text-[12px] text-gray-500 flex items-center gap-1">
-                        <Users className="w-3 h-3 shrink-0" /> {b.guest_count}명
+                        <PeopleIcon className="w-3 h-3 shrink-0" /> {b.guest_count}명
                       </p>
                     )}
                   </div>
@@ -173,31 +174,31 @@ export default function StayCheckout({ orderId }: { orderId: number }) {
               ))}
               <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
                 <span className="text-[13px] text-gray-500">총 결제 금액</span>
-                <span className="text-[20px] font-extrabold text-gray-900">
+                <span className="text-[24px] font-extrabold text-gray-900">
                   {formatNumber(order.total_amount)}
-                  <span className="text-[14px] font-bold ml-0.5">원</span>
+                  <span className="text-[15px] font-bold ml-0.5">원</span>
                 </span>
               </div>
             </section>
 
             {alreadyPaid && (
-              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
-                <p className="text-[13px] font-bold text-emerald-700">이미 결제가 완료된 주문입니다.</p>
-                <button onClick={() => navigate('/my-stays')} className="mt-2 text-[12px] text-blue-600 underline font-medium">
+              <div className="p-4 bg-tone-ok-bg rounded-2xl">
+                <p className="text-[13px] font-bold text-tone-ok">이미 결제가 완료된 주문입니다.</p>
+                <button onClick={() => navigate('/my-stays')} className="mt-2 text-[12px] text-brand-text underline font-medium">
                   내 숙소 예약 보기 →
                 </button>
               </div>
             )}
             {notPayable && (
-              <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl">
-                <p className="text-[13px] font-medium text-amber-800">
+              <div className="p-4 bg-tone-warn-bg rounded-2xl">
+                <p className="text-[13px] font-medium text-tone-warn">
                   결제할 수 없는 주문 상태입니다 ({order.status}). 예약을 다시 생성해주세요.
                 </p>
               </div>
             )}
             {!alreadyPaid && !notPayable && !clientKey && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-2xl">
-                <p className="text-[13px] font-medium text-red-800">결제 시스템이 설정되지 않았습니다. 관리자에게 문의해주세요.</p>
+              <div className="p-4 bg-tone-bad-bg rounded-2xl">
+                <p className="text-[13px] font-medium text-tone-bad">결제 시스템이 설정되지 않았습니다. 관리자에게 문의해주세요.</p>
               </div>
             )}
           </>
@@ -214,7 +215,7 @@ export default function StayCheckout({ orderId }: { orderId: number }) {
             <button
               onClick={handlePay}
               disabled={!clientKey}
-              className="w-full py-3.5 bg-gray-800 text-white text-[15px] font-bold rounded-full shadow-sm disabled:opacity-50 active:scale-[0.98] transition-all"
+              className="w-full py-4 bg-gray-800 text-white text-[15px] font-bold rounded-full shadow-sm disabled:opacity-50 active:scale-[0.98] transition-all"
             >
               {formatNumber(order.total_amount)}원 결제하기
             </button>

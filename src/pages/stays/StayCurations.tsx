@@ -94,14 +94,14 @@ export default function StayCurations({
     <div className="space-y-8 pb-2">
       {rows.map(row => (
         <section key={row.key}>
-          <h2 className="text-[17px] sm:text-[19px] font-extrabold tracking-tight text-gray-900 dark:text-white px-1">{row.title}</h2>
+          <h2 className="text-[17px] sm:text-[17px] font-extrabold tracking-tight text-gray-900 dark:text-white px-1">{row.title}</h2>
           {/* 가로 스크롤 — 한 장을 크게 보여 주는 것이 목적이라 폭을 % 로 잡는다(사진이 커진다). */}
           <StayCardRow items={row.items} checkIn={checkIn} checkOut={checkOut} guests={guests} />
         </section>
       ))}
       <div className="flex items-center justify-between px-1 pt-2">
-        <h2 className="text-[17px] sm:text-[19px] font-extrabold tracking-tight text-gray-900 dark:text-white">전체 숙소</h2>
-        <Link to="/map" className="text-[12.5px] font-semibold text-gray-500 dark:text-gray-400">지도에서 보기 →</Link>
+        <h2 className="text-[17px] sm:text-[17px] font-extrabold tracking-tight text-gray-900 dark:text-white">전체 숙소</h2>
+        <Link to="/map" className="text-[12px] font-semibold text-gray-500 dark:text-gray-400">지도에서 보기 →</Link>
       </div>
     </div>
   )

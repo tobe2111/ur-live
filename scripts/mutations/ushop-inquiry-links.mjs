@@ -42,7 +42,7 @@ export default [
   {
     name: '유입링크 — C안(파란 버튼)으로 되돌아간다',
     file: SRC,
-    find: 'className="inline-flex items-center gap-0.5 self-start text-[12.5px] font-semibold text-gray-500 dark:text-gray-400 active:opacity-70"',
+    find: 'className="inline-flex items-center gap-1 self-start text-[12px] font-semibold text-gray-500 dark:text-gray-400 active:opacity-70"',
     replace: 'className="inline-flex items-center gap-0.5 self-start text-[12.5px] font-semibold bg-brand text-white active:opacity-70"',
     test: TEST,
     why:

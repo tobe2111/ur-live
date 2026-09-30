@@ -50,7 +50,7 @@ export default function HostInvitePage() {
     return (
       <div className="min-h-screen bg-[#11141C] text-white flex flex-col items-center justify-center px-4 text-center">
         <p className="text-5xl mb-3">😢</p>
-        <p className="text-base mb-2">{error}</p>
+        <p className="text-[15px] mb-2">{error}</p>
         <Link to="/" className="mt-4 px-6 py-3 bg-brand rounded-xl font-bold">홈으로</Link>
       </div>
     )
@@ -72,13 +72,13 @@ export default function HostInvitePage() {
           {data.host_profile ? (
             <img src={data.host_profile} alt={data.host_name} className="w-16 h-16 rounded-full object-cover mx-auto mb-2 bg-[#1D1F29]" />
           ) : (
-            <div className="w-16 h-16 rounded-full bg-[#1D1F29] flex items-center justify-center text-2xl font-bold text-brand-text mx-auto mb-2">
+            <div className="w-16 h-16 rounded-full bg-[#1D1F29] flex items-center justify-center text-[24px] font-bold text-brand-text mx-auto mb-2">
               {(data.host_name || '?').slice(0, 1)}
             </div>
           )}
-          <p className="text-xs text-gray-400">@{data.host_handle}</p>
-          <p className="text-base font-bold">{data.host_name} 님이 초대했어요</p>
-          {data.note && <p className="text-sm text-gray-300 mt-2 px-6">💬 {data.note}</p>}
+          <p className="text-[12px] text-gray-400">@{data.host_handle}</p>
+          <p className="text-[15px] font-bold">{data.host_name} 님이 초대했어요</p>
+          {data.note && <p className="text-[15px] text-gray-300 mt-2 px-6">💬 {data.note}</p>}
         </header>
 
         {/* 상품 카드 */}
@@ -90,17 +90,17 @@ export default function HostInvitePage() {
               </div>
             )}
             <div className="p-5">
-              <p className="text-base font-bold mb-2">{data.product_name}</p>
+              <p className="text-[15px] font-bold mb-2">{data.product_name}</p>
               <div className="flex items-baseline gap-2 mb-4">
-                <span className="text-2xl font-bold text-brand-text">{formatWon(data.price)}</span>
+                <span className="text-[24px] font-bold text-brand-text">{formatWon(data.price)}</span>
                 {data.original_price && data.original_price > data.price && (
-                  <span className="text-sm text-gray-500 line-through">{formatWon(data.original_price)}</span>
+                  <span className="text-[15px] text-gray-500 line-through">{formatWon(data.original_price)}</span>
                 )}
               </div>
 
               {/* 진행 상황 */}
               <div className="bg-[#1D1F29] rounded-xl p-3 mb-4">
-                <div className="flex justify-between text-xs mb-2">
+                <div className="flex justify-between text-[12px] mb-2">
                   <span className="text-gray-400">모집 현황</span>
                   <span className="font-bold">
                     {formatNumber(data.current_quantity)}/{formatNumber(data.target_quantity)}명
@@ -115,12 +115,12 @@ export default function HostInvitePage() {
               {isActive ? (
                 <button
                   onClick={handleJoin}
-                  className="w-full py-3 bg-brand hover:bg-brand-dark text-white text-base font-bold rounded-xl"
+                  className="w-full py-3 bg-brand hover:bg-brand-dark text-white text-[15px] font-bold rounded-xl"
                 >
                   🎉 공구 참여하기
                 </button>
               ) : (
-                <div className="w-full py-3 bg-[#1D1F29] text-gray-500 text-center text-base font-bold rounded-xl">
+                <div className="w-full py-3 bg-[#1D1F29] text-gray-500 text-center text-[15px] font-bold rounded-xl">
                   {data.status === 'achieved' ? '🎉 달성 완료' : '⏰ 마감되었어요'}
                 </div>
               )}

@@ -1,4 +1,5 @@
-import { AlertCircle, CheckCircle, Info, AlertTriangle, X } from 'lucide-react'
+import { X } from 'lucide-react'
+import { AlertIcon, OkIcon, InfoIcon, WarnIcon } from '@/components/icons/urdeal-icons'
 import { ReactNode, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useBackButton } from '@/hooks/useBackButton'
@@ -46,13 +47,13 @@ export function CustomModal({
   const getIcon = () => {
     switch (type) {
       case 'success':
-        return <CheckCircle className="w-12 h-12 text-green-500" strokeWidth={1.5} />
+        return <OkIcon className="w-12 h-12 text-green-500" />
       case 'error':
-        return <AlertCircle className="w-12 h-12 text-red-500" strokeWidth={1.5} />
+        return <AlertIcon className="w-12 h-12 text-red-500" />
       case 'warning':
-        return <AlertTriangle className="w-12 h-12 text-yellow-500" strokeWidth={1.5} />
+        return <WarnIcon className="w-12 h-12 text-yellow-500" />
       case 'info':
-        return <Info className="w-12 h-12 text-blue-500" strokeWidth={1.5} />
+        return <InfoIcon className="w-12 h-12 text-blue-500" />
       default:
         return null
     }
@@ -117,7 +118,7 @@ export function CustomModal({
 
             {/* Title */}
             {title && (
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white text-center mb-2">
+              <h3 className="text-[17px] font-bold text-gray-900 dark:text-white text-center mb-2">
                 {title}
               </h3>
             )}
@@ -128,7 +129,7 @@ export function CustomModal({
                 {children}
               </div>
             ) : message ? (
-              <p className="text-sm text-gray-600 dark:text-gray-300 text-center mb-6 leading-relaxed whitespace-pre-line">
+              <p className="text-[15px] text-gray-600 dark:text-gray-300 text-center mb-6 leading-relaxed whitespace-pre-line">
                 {message}
               </p>
             ) : null}
@@ -139,7 +140,7 @@ export function CustomModal({
                 <>
                   <button
                     onClick={onClose}
-                    className="flex-1 py-3 px-4 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200 font-medium rounded-full hover:bg-gray-200 transition-colors text-sm"
+                    className="flex-1 py-3 px-4 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200 font-medium rounded-full hover:bg-gray-200 transition-colors text-[15px]"
                   >
                     취소
                   </button>
@@ -148,7 +149,7 @@ export function CustomModal({
                       onConfirm?.()
                       onClose()
                     }}
-                    className="flex-1 py-3 px-4 bg-gray-900 text-white font-medium rounded-full hover:bg-gray-800 transition-colors text-sm"
+                    className="flex-1 py-3 px-4 bg-brand text-white font-medium rounded-full hover:bg-brand-dark transition-colors text-[15px]"
                   >
                     확인
                   </button>
@@ -156,7 +157,7 @@ export function CustomModal({
               ) : (
                 <button
                   onClick={onClose}
-                  className="w-full py-3 px-4 bg-gray-900 text-white font-medium rounded-full hover:bg-gray-800 transition-colors text-sm"
+                  className="w-full py-3 px-4 bg-brand text-white font-medium rounded-full hover:bg-brand-dark transition-colors text-[15px]"
                 >
                   확인
                 </button>

@@ -250,8 +250,11 @@ describe('⑤ 캡션 바탕 — 밝은 대표색 타일에서도 글자가 보�
   }
   const ratio = (a: number, b: number) => { const [x, y] = [a, b].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05) }
 
-  it('기하 전제가 그대로다 (패딩·글자 크기가 바뀌면 위 실측을 다시 해야 한다)', () => {
-    expect(src(STRIP_TSX)).toContain('px-2.5 pt-5 pb-2 text-white text-[13px] font-extrabold')
+  it('기하 전제가 그대로다 (세로 패딩·글자 크기가 바뀌면 위 실측을 다시 해야 한다)', () => {
+    // 🔀 2026-09-29: 가로 패딩만 `px-2.5` → `px-2`(4px 격자, 규칙 ⑧).
+    //    위 대비 실측은 **세로 기하**(pt-5 · pb-2 · 13px 행)에서 나오므로 가로는 무관하다 —
+    //    그래서 다시 재지 않았다. 세로 값이나 글자 크기가 바뀌면 그때는 실측부터 해야 한다.
+    expect(src(STRIP_TSX)).toContain('pt-5 pb-2 text-white text-[13px] font-extrabold')
   })
 
   it('그라디언트를 실제로 읽어 낸다 — 못 읽으면 통과가 아니라 실패다', () => {

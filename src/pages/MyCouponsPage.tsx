@@ -1,8 +1,9 @@
 import { useEffect } from 'react'
+import { TicketStubIcon, AlertIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import BrandLoader from '@/components/brand/BrandLoader'
-import { ArrowLeft, Ticket, AlertCircle } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { requireLogin, isLoggedInSync } from '@/utils/auth'
 import { formatNumber } from '@/utils/format'
@@ -65,11 +66,11 @@ export default function MyCouponsPage() {
           <BrandLoader />  /* 🎯 2026-07-18 로딩 단일화 (헤더 유지 → 인라인) */
         ) : error ? (
           <div className="flex flex-col items-center justify-center py-20">
-            <AlertCircle className="w-10 h-10 text-red-500 mb-3" />
-            <p className="text-[14px] text-gray-900 dark:text-white mb-4">{error}</p>
+            <AlertIcon className="w-10 h-10 text-red-500 mb-3" />
+            <p className="text-[15px] text-gray-900 dark:text-white mb-4">{error}</p>
             <button
               onClick={() => refetch()}
-              className="px-5 py-2 bg-gray-900 text-white text-[13px] font-semibold rounded-full"
+              className="px-5 py-2 bg-brand text-white text-[13px] font-semibold rounded-full"
             >
               {t('myCoupons.retry')}
             </button>
@@ -77,9 +78,9 @@ export default function MyCouponsPage() {
         ) : coupons.length === 0 ? (
           <div className="bg-surface rounded-2xl border border-gray-100 dark:border-[#2C2F35] py-16 text-center">
             <div className="w-20 h-20 bg-gray-50 dark:bg-[#1D1F29] rounded-full flex items-center justify-center mx-auto mb-5">
-              <Ticket className="h-10 w-10 text-gray-400 dark:text-gray-500" strokeWidth={1.5} />
+              <TicketStubIcon className="h-10 w-10 text-gray-400 dark:text-gray-500" />
             </div>
-            <h2 className="text-[16px] font-bold text-gray-900 dark:text-white mb-1.5">{t('myCoupons.empty')}</h2>
+            <h2 className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">{t('myCoupons.empty')}</h2>
             <p className="text-[13px] text-gray-500 dark:text-gray-400">{t('myCoupons.emptySub')}</p>
           </div>
         ) : (
@@ -100,14 +101,14 @@ export default function MyCouponsPage() {
                   <div className="flex">
                     {/* 할인 금액 */}
                     <div className="flex flex-col items-center justify-center px-5 py-4 bg-gray-800 text-white min-w-[100px]">
-                      <p className="text-[10px] font-bold tracking-wide opacity-90">
+                      <p className="text-[12px] font-bold tracking-wide opacity-90">
                         {c.type === 'percent' ? t('myCoupons.labelDiscountRate') : t('myCoupons.labelDiscount')}
                       </p>
-                      <p className="text-[22px] font-extrabold leading-tight mt-0.5">
+                      <p className="text-[24px] font-extrabold leading-tight mt-1">
                         {formatDiscount(c)}
                       </p>
                       {c.type === 'percent' && c.max_discount && (
-                        <p className="text-[9px] opacity-80 mt-0.5">{t('myCoupons.labelMaxDiscount', { amount: formatNumber(c.max_discount) })}</p>
+                        <p className="text-[12px] opacity-80 mt-1">{t('myCoupons.labelMaxDiscount', { amount: formatNumber(c.max_discount) })}</p>
                       )}
                     </div>
                     {/* Notched divider */}
@@ -116,22 +117,22 @@ export default function MyCouponsPage() {
                       <span className="absolute -bottom-2 -left-2 w-4 h-4 rounded-full bg-gray-50 dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35]" aria-hidden="true" />
                     </div>
                     {/* 내용 */}
-                    <div className="flex-1 px-4 py-3.5 min-w-0">
-                      <p className="text-[14px] font-bold text-gray-900 dark:text-white line-clamp-2">
+                    <div className="flex-1 px-4 py-4 min-w-0">
+                      <p className="text-[15px] font-bold text-gray-900 dark:text-white line-clamp-2">
                         {c.name}
                       </p>
-                      <div className="mt-1.5 space-y-0.5">
+                      <div className="mt-2 space-y-1">
                         {c.min_order_amount > 0 && (
-                          <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                          <p className="text-[12px] text-gray-500 dark:text-gray-400">
                             {t('myCoupons.minOrder', { amount: formatNumber(c.min_order_amount) })}
                           </p>
                         )}
-                        <p className={`text-[11px] font-semibold ${isUrgent ? 'text-red-500' : 'text-gray-500 dark:text-gray-400'}`}>
+                        <p className={`text-[12px] font-semibold ${isUrgent ? 'text-red-500' : 'text-gray-500 dark:text-gray-400'}`}>
                           {expiry}
                         </p>
                       </div>
-                      <div className="mt-2 inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#1D1F29]">
-                        <span className="text-[10px] tabular-nums font-semibold text-gray-700 dark:text-gray-200">{c.code}</span>
+                      <div className="mt-2 inline-flex items-center px-2 py-1 rounded-full bg-gray-100 dark:bg-[#1D1F29]">
+                        <span className="text-[12px] tabular-nums font-semibold text-gray-700 dark:text-gray-200">{c.code}</span>
                       </div>
                     </div>
                   </div>
@@ -139,7 +140,7 @@ export default function MyCouponsPage() {
               )
             })}
 
-            <p className="text-[11px] text-gray-400 dark:text-gray-500 text-center pt-2">
+            <p className="text-[12px] text-gray-400 dark:text-gray-500 text-center pt-2">
               {t('myCoupons.footerNote')}
             </p>
           </div>

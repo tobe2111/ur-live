@@ -90,6 +90,8 @@ const MAP_ONLY = process.argv.includes('--map-only')
  * ⏱️ `--changed` — **PR 에서는 이 변경이 건드린 주입만** 돌린다 (2026-09-08 대표 지시).
  *
  * 실측: Verify 48분 29초 중 이 스크립트가 **37분 24초 = 77%**(job 101957335695 스텝 타이밍).
+ * 그 뒤로도 주입 수를 따라 자랐다 — 1,963건 `77.4분`(2026-09-26) → **2,230건 `82.3분`**(2026-09-30,
+ * run 36667310778 · Verify 전체 95.5분). 그래서 **전수는 "몇 분" 이 아니라 job 결론으로 판정한다.**
  * 950건을 넘어 선형으로 는다. 그 길이의 2차 피해가 더 컸다 — CI 가 도는 동안 main 이 움직이고,
  * 거의 모든 PR 이 이 매니페스트를 건드리니 **머지마다 충돌**했다(하루 4번 중 3번이 405 conflict).
  *
@@ -528,7 +530,7 @@ const MUTATIONS = [
   {
     name: '🎨 섹션 더보기가 다시 테두리 알약이 된다 (표면 규칙 ① 위반)',
     file: 'src/components/home/HomeSections.tsx',
-    find: '                  className="shrink-0 text-[12.5px] font-bold text-gray-600 dark:text-gray-300 hover:underline underline-offset-4 whitespace-nowrap"',
+    find: '                  className="shrink-0 text-[12px] font-bold text-gray-600 dark:text-gray-300 hover:underline underline-offset-4 whitespace-nowrap"',
     replace: '                  className="shrink-0 px-3.5 py-1.5 rounded-full border border-gray-200 text-[12.5px] font-bold text-gray-600 whitespace-nowrap"',
     test: 'src/tests/unit/home-selected-is-brand.test.ts',
     why:
@@ -1053,8 +1055,8 @@ const MUTATIONS = [
   {
     name: '🎨 브랜드 강조가 다시 회색으로 — 구 로즈(pink) 유틸이 되돌아온다',
     file: 'src/components/gift/GiftSendModal.tsx',
-    find: 'bg-brand text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-brand-dark',
-    replace: 'bg-pink-500 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-pink-600',
+    find: 'bg-brand text-white rounded-xl font-bold text-[15px] flex items-center justify-center gap-2 hover:bg-brand-dark',
+    replace: 'bg-pink-500 text-white rounded-xl font-bold text-[15px] flex items-center justify-center gap-2 hover:bg-pink-600',
     test: 'src/tests/unit/brand-color-migration.test.ts',
     why: 'tailwind 이 pink 를 MONO 로 중화한다 — 라이브 실측 .bg-pink-500 → rgb(110 107 104). 주 버튼이 조용히 회색이 된다.',
   },
@@ -1287,8 +1289,10 @@ const MUTATIONS = [
   {
     name: '🧹 마이페이지에 에이전시 모집 CTA 가 다시 들어온다',
     file: 'src/pages/user-profile/RoleCtaGrid.tsx',
-    find: "      { Icon: ShoppingBag, title: t('roleCta.openShop'",
-    replace: "      { Icon: ShoppingBag, title: t('roleCta.agencyBiz', { defaultValue: '\uc5d0\uc774\uc804\uc2dc \uc0ac\uc5c5' }), desc: '', to: '/agency/register/business', show: () => true },\n      { Icon: ShoppingBag, title: t('roleCta.openShop'",
+    // 🔁 2026-09-28 재조준: `ShoppingBag` → `ShopPlusIcon`(장바구니는 '사는 행위'로 읽혔다).
+    //    불변식("에이전시 모집 CTA 가 소비자 마이에 들어오지 않는다")은 그대로다.
+    find: "      { Icon: ShopPlusIcon, title: t('roleCta.openShop'",
+    replace: "      { Icon: ShopPlusIcon, title: t('roleCta.agencyBiz', { defaultValue: '\uc5d0\uc774\uc804\uc2dc \uc0ac\uc5c5' }), desc: '', to: '/agency/register/business', show: () => true },\n      { Icon: ShopPlusIcon, title: t('roleCta.openShop'",
     test: 'src/tests/unit/mypage-cleanup-2026-09-02.test.ts',
     why: '\uc5d0\uc774\uc804\uc2dc\ub294 B2B \uc870\uc9c1 \ubaa8\uc9d1\uc774\ub77c \uc18c\ube44\uc790 \ub9c8\uc774\ud398\uc774\uc9c0 \ub3d9\uc120\uc5d0 \uc11e\uc744 \uc790\ub9ac\uac00 \uc544\ub2c8\ub2e4(\ub300\ud45c \uc9c0\uc2dc).',
   },
@@ -2130,12 +2134,16 @@ const MUTATIONS = [
   },
   {
     name: '평면 그라디언트가 다시 들어온다(단색인데 그라디언트인 척)',
-    file: 'src/pages/user-profile/TeamPointsCard.tsx',
+    //   🔁 2026-09-29 세 번째(안 C): `TeamPointsCard` 자체가 사라졌다 — 딜 잔액이 상단 숫자 한 줄로
+    //      옮겨갔다. 불변식(평면 그라디언트 탐지)은 그대로라 그 줄의 컨테이너로 옮긴다.
+    file: 'src/pages/user-profile/MyStats.tsx',
     // 🔁 2026-09-28 재조준: 앵커였던 검정 슬래브(`bg-ink …`)가 사라졌다 — 마이 잔액이 교환권 탭과
     //   **같은 흰 카드 부품**을 쓰게 됐기 때문이다. 지키려는 불변식(평면 그라디언트 탐지)은 그대로라
     //   같은 파일에 남아 있는 줄로 옮긴다.
-    find: '    <div className="ur-content-medium px-4 lg:px-8 py-3">',
-    replace: '    <div className="ur-content-medium px-4 lg:px-8 py-3 bg-gradient-to-r from-gray-800 to-gray-800">',
+    //   🔁 같은 날 두 번째: 그 줄의 `py-3` 도 사라졌다(딜 잔액에 그룹 라벨이 붙으면서 바깥 여백을
+    //      라벨이 가져갔다). 파일 안에서 **가장 안 흔들리는 줄**(부품 호출)로 다시 옮긴다.
+    find: '      <div className="flex items-start divide-x divide-rule py-1">',
+    replace: '      <div className="bg-gradient-to-r from-gray-800 to-gray-800" />\n      <div className="flex items-start divide-x divide-rule py-1">',
     test: 'src/tests/unit/button-system.test.ts',
     why:
       'from/to 가 같은 색이면 브라우저는 그라디언트를 계산하는데 화면엔 단색이 나온다. ' +
@@ -2709,8 +2717,8 @@ canvas {
   {
     name: '/map 패널 칩이 다시 줄바꿈된다(카카오맵 한 줄이 깨진다)',
     file: 'src/pages/restaurant-map/MapTopBar.tsx',
-    find: "panel ? 'grid grid-cols-7 gap-0.5'",
-    replace: "panel ? 'flex flex-wrap gap-1.5'",
+    find: "panel ? 'grid grid-cols-7 gap-1'",
+    replace: "panel ? 'flex flex-wrap gap-2'",
     test: 'src/tests/unit/groupon-detail-map.test.ts',
     why:
       '2026-08-19 대표 시안(카카오맵) — 같은 날 한 번 뒤집힌 자리다. 알약 칩은 400px 에 7개가 안 들어가 ' +
@@ -9702,7 +9710,7 @@ canvas {
   {
     name: '지도 패널 — 테마 대응이 사라진다(패널까지 light-island)',
     file: 'src/pages/restaurant-map/MapTopBar.tsx',
-    find: "? 'hidden lg:block px-3 pt-3 pb-2.5 space-y-2 border-b border-gray-100 dark:border-[#2C2F35]'",
+    find: "? 'hidden lg:block px-3 pt-3 pb-2 space-y-2 border-b border-gray-100 dark:border-[#2C2F35]'",
     replace: "? 'light-island hidden lg:block px-3 pt-3 pb-2.5 space-y-2 border-b border-gray-100'",
     test: 'src/tests/unit/light-island-inputs.test.ts',
     why: 'PC 리스트 패널은 지도 위가 아니라 앱 안이라 테마를 따라야 한다. 섬을 남발하면 다크에서 흰 덩어리가 된다.',
@@ -9740,8 +9748,8 @@ canvas {
   {
     name: 'PC 홈 히어로 — 주 행동이 다시 테두리 고스트 알약이 된다',
     file: 'src/components/home/HomeHeroDefault.tsx',
-    find: 'rounded-full bg-brand text-white text-[13.5px] font-extrabold hover:bg-[#1557C8]',
-    replace: 'rounded-full border border-white/25 text-white text-[13.5px] font-extrabold hover:bg-white/10',
+    find: 'rounded-full bg-brand text-white text-[13px] font-extrabold hover:bg-[#1557C8]',
+    replace: 'rounded-full border border-white/25 text-white text-[13px] font-extrabold hover:bg-white/10',
     test: 'src/tests/unit/pc-home-hero-controls.test.ts',
     why: '표면 규칙 ② 강조색 하나, 자리 셋 — 히어로에서 그 자리는 주 행동이다. 블루가 빠지면 넷 다 같은 무게로 돌아간다.',
   },
@@ -10001,8 +10009,8 @@ canvas {
     name: '🎫 리뷰 textarea 다크 배경이 다시 빠진다 (흰 바탕에 흰 글자)',
     file: 'src/pages/product-detail/ProductReviews.tsx',
     // 🔀 2026-09-15: 〃
-    find: 'bg-warm text-sm text-gray-900 dark:text-white',
-    replace: 'text-sm text-gray-900 dark:text-white',
+    find: 'bg-warm text-[15px] text-gray-900 dark:text-white',
+    replace: 'text-[15px] text-gray-900 dark:text-white',
     test: 'src/tests/unit/consumer-popups-dark.test.ts',
     why:
       '전역 `.dark textarea{color:gray-100}` 가 글자를 흰색으로 만들므로 배경이 없으면 브라우저 기본 흰 바탕에 ' +

@@ -177,7 +177,7 @@ export const COMMISSION_BUDGET_FIELDS: MoneySwitchField[] = [
   {
     key: 'settlement_skip_ledgered', label: '⑨ 자동정산에서 원장 기록분 제외', default: 'false',
     options: [{ value: 'false', label: 'OFF (현행)' }, { value: 'true', label: 'ON — 원장에 이미 잡힌 주문은 자동정산 건너뜀' }],
-    hint: '🔴 머니 경로. 원장(ledger) 경로와 자동정산이 같은 매출을 두 번 정산하는 것을 막는 스위치. 원장 적립이 실제로 돌기 시작한 뒤에 켠다',
+    hint: '🔴 머니 경로. 정산 준비를 하는 길이 둘(자동정산 · 원장)인데, 켜면 원장에 이미 잡힌 이용권을 자동정산이 건너뛴다 → 한 길로 모인다. 안 켜면 같은 매출이 양쪽에 적혀 이중 지급 위험. 원장 기록은 이용권 사용 시점에 게이트 없이 항상 돌므로 지금 켜도 빠지는 정산은 없다',
   },
   {
     key: 'outreach_auto_send', label: '⑩ 인플루언서 제휴 제안 자동 발송', default: 'false',

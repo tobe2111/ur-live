@@ -29,12 +29,12 @@ const ROLE = read('src/pages/user-profile/RoleCtaGrid.tsx')
 
 describe('마이 목록 문법 — 판매와 손님이 같은 부품을 쓴다', () => {
   it('세 목록이 `list-grammar` 에서 행·라벨을 가져온다 (각자 손으로 그리지 않는다)', () => {
+    // 🔁 2026-09-29(안 C): `GroupLabel` 은 더 이상 안 쓴다 — 구역 제목(`SectionTitle`)이 그 일을 한다.
     for (const [name, src] of [['ShoppingGroup', SHOP], ['RoleCtaGrid', ROLE]] as const) {
       expect(src, `${name} 이 ListRow 를 안 쓴다`).toMatch(/import \{[^}]*\bListRow\b[^}]*\} from '\.\/list-grammar'/)
-      expect(src, `${name} 이 GroupLabel 을 안 쓴다`).toMatch(/import \{[^}]*\bGroupLabel\b[^}]*\} from '\.\/list-grammar'/)
+      expect(src, `${name} 이 SectionTitle 을 안 쓴다`).toMatch(/import \{[^}]*\bSectionTitle\b[^}]*\} from '\.\/list-grammar'/)
     }
     expect(SELLER).toMatch(/import \{[^}]*\bListRow as ToolRow\b[^}]*\} from '\.\/list-grammar'/)
-    expect(SELLER).toMatch(/import \{[^}]*\bGroupLabel\b[^}]*\} from '\.\/list-grammar'/)
     // 옛 로컬 정의가 되살아나면 그 순간 문법이 두 벌이 된다.
     expect(SELLER).not.toMatch(/function (ToolRow|GroupLabel)\(/)
   })
@@ -56,31 +56,50 @@ describe('마이 목록 문법 — 판매와 손님이 같은 부품을 쓴다',
     }
   })
 
-  it('🔴 그룹 라벨은 판 **밖** 위다 — 라벨이 판 안으로 들어가면 훑을 단위가 사라진다', () => {
-    const iLabel = SHOP.indexOf('<GroupLabel>')
-    const iPlate = SHOP.indexOf('<ListPlate>')
-    expect(iLabel, 'GroupLabel 을 못 찾았다 — 이 검사가 헛돌고 있다').toBeGreaterThan(-1)
-    expect(iPlate, 'ListPlate 를 못 찾았다 — 이 검사가 헛돌고 있다').toBeGreaterThan(-1)
-    expect(iLabel, '라벨이 판보다 뒤에 있다 = 판 안이다').toBeLessThan(iPlate)
-    const plate = SHOP.slice(iPlate, SHOP.indexOf('</ListPlate>'))
-    expect(plate).not.toContain('GroupLabel')
+  /**
+   * 🔁 2026-09-29(안 C) — 손님 쪽에는 **판도 그룹도 없다.** 판은 *"여기가 파는 쪽"* 표시자가 됐고,
+   * 48px 행이면 열 줄이 480px 에 다 들어와 다시 세 덩어리로 쪼갤 이유가 없다.
+   */
+  it('🔵 손님 목록은 한 목록이고 판 위에 있지 않다', () => {
+    expect(SHOP, '손님 목록이 판 위에 올라갔다 — 파는 쪽 표시가 무의미해진다').not.toContain('ListPlate')
+    expect(SHOP).not.toContain('shadow-lift')
+    expect(SHOP).not.toContain('<GroupLabel>')
+    // 열 줄이 한 배열이다 — 데이터에서 센다(손으로 적으면 낡는다).
+    const rows = [...SHOP.matchAll(/path: '([^']+)'/g)].map(m => m[1])
+    expect(rows.length, '손님 줄을 못 셌다 — 이 검사가 헛돌고 있다').toBeGreaterThanOrEqual(8)
+    expect(new Set(rows).size, `같은 목적지가 두 번: ${rows.join(', ')}`).toBe(rows.length)
   })
 
-  it('🔴 그룹마다 판이 따로다 — 세 그룹을 한 판에 담지 않는다', () => {
-    // 판이 `groups.map` 안에 있어야 그룹 수만큼 그려진다. 밖에 있으면 다시 한 덩어리다.
-    const iMap = SHOP.indexOf('groups.map(')
-    expect(iMap, 'groups.map 을 못 찾았다 — 이 검사가 헛돌고 있다').toBeGreaterThan(-1)
-    expect(SHOP.indexOf('<ListPlate>')).toBeGreaterThan(iMap)
-    // 그룹은 셋(이용권·자산 / 관심 / 주문·배송) — 데이터에서 센다(손으로 적으면 낡는다).
-    const keys = [...SHOP.matchAll(/^\s{6}key: '([^']+)',$/gm)].map(m => m[1])
-    expect(keys.length, '그룹을 못 셌다 — 이 검사가 헛돌고 있다').toBeGreaterThanOrEqual(3)
+  /**
+   * 🔵 2026-09-29(안 C) — **밀도가 곧 품질인 화면**이다. 전체메뉴는 *찾는 화면*이라
+   * 행이 두꺼워지는 순간 목적지가 첫 화면 밖으로 밀려난다(실측: 70px 일 때 손님 줄 0개).
+   * 이 검사가 잠그는 건 미감이 아니라 **한 화면에 들어오는 줄 수**다.
+   */
+  it('🔵 평면 행은 48px 이고 값이 오른쪽이다 (설명 줄이 되살아나지 않는다)', () => {
+    const m = GRAMMAR.match(/const ROW_CLS =\s*\n?\s*'([^']+)'/)
+    expect(m, 'ROW_CLS 를 못 찾았다 — 이 검사가 헛돌고 있다').toBeTruthy()
+    expect(m![1], '행이 두꺼워졌다 — 한 화면에 들어오는 줄이 줄어든다').toContain('min-h-[48px]')
+    expect(m![1], '옛 두 줄 행(56px)으로 되돌아갔다').not.toContain('min-h-[56px]')
+    // 값은 제목 **아래**가 아니라 **오른쪽**이다 — `block` 이 붙으면 다시 두 줄이 된다.
+    expect(GRAMMAR).not.toMatch(/\{hint\} *<\/span>[\s\S]{0,40}block/)
+    expect(GRAMMAR).toMatch(/hint \? \([\s\S]{0,160}truncate/)
   })
 
-  it('🔴 판 클래스가 두 구역에서 같다 (한쪽만 바뀌면 다시 갈린다)', () => {
+  it('🔴 판 클래스는 한 자리에만 있다 (손으로 적으면 갈린다)', () => {
     const m = GRAMMAR.match(/export const LIST_PLATE_CLS = '([^']+)'/)
     expect(m, 'LIST_PLATE_CLS 를 못 찾았다 — 이 검사가 헛돌고 있다').toBeTruthy()
-    // SellerSection 은 아직 문자열로 갖고 있다(그 파일의 판 개수를 세는 기존 가드의 앵커라 남겼다).
-    expect(SELLER, `판매 쪽 판이 '${m![1]}' 과 다르다`).toContain(m![1])
+    // 🔁 2026-09-29: 판매 쪽이 문자열 복제를 그만두고 **상수를 쓴다** — 두 벌이 갈릴 자리가 사라졌다.
+    expect(SELLER, '판매 쪽이 판을 손으로 적었다').not.toContain(m![1])
+    expect(SELLER).toContain('<div className={LIST_PLATE_CLS}>')
+    /**
+     * 🩸 2026-09-29 — 주입 러너가 **이 검사가 헛돈다**고 잡았다.
+     * 단일 출처만 보면 **그 한 자리의 값을 바꿔도 초록**이다(상수를 쓰는 건 여전하니까).
+     * 그런데 이 주입이 심는 결함은 `shadow-lift` → `border border-line`, 즉 **표면 규칙 ①
+     * (카드 테두리 0)** 위반이고 동시에 판이 "여기가 파는 쪽" 이라고 말하던 표시자를 잃는 일이다.
+     * ⇒ 출처가 하나인지에 더해 **값이 규칙을 지키는지**까지 본다.
+     */
+    expect(m![1], '판에 테두리가 생겼다 — 표면 규칙 ①(카드 테두리 0)').not.toMatch(/(^|\s)border(\s|-|$)/)
+    expect(m![1], '판이 들림을 잃었다 — 파는 쪽 표시자가 사라진다').toContain('shadow-lift')
   })
 
   it('🔢 0 은 회색이고, 모르는 값은 아예 안 그린다', () => {

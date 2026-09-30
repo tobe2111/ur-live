@@ -44,19 +44,19 @@ export default function WalletHeader({ title, hideTitle = false, amount, unit, s
               </button>
             )}
             {!hideTitle && (
-              <h1 className="text-[20px] font-extrabold tracking-[-0.02em] text-gray-900 dark:text-white leading-none truncate">{title}</h1>
+              <h1 className="text-[24px] font-extrabold tracking-[-0.02em] text-gray-900 dark:text-white leading-none truncate">{title}</h1>
             )}
           </div>
         )}
         {amount !== null && (
-          <span className="shrink-0 text-[21px] font-extrabold tabular-nums tracking-tight text-gray-900 dark:text-white leading-none">
+          <span className="shrink-0 text-[24px] font-extrabold tabular-nums tracking-tight text-gray-900 dark:text-white leading-none">
             {formatNumber(amount)}<span className="font-sans text-[12px] font-bold text-gray-400 dark:text-gray-500 ml-0.5">{unit}</span>
           </span>
         )}
       </div>
 
       {stats.length > 0 && (
-        <div className="mt-2.5 pt-2.5 border-t border-rule flex items-center gap-4 text-[12px]">
+        <div className="mt-2 pt-2 border-t border-rule flex items-center gap-4 text-[12px]">
           {stats.map((s) => (
             <span key={s.label} className="text-gray-500 dark:text-gray-400">
               {s.label}{' '}

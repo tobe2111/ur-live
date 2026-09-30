@@ -22,12 +22,12 @@ export function ProductNoticeSection() {
     <div className="space-y-3">
       {notices.map((notice, index) => (
         <div key={index} className="flex items-start gap-3">
-          <div className="mt-0.5 h-1.5 w-1.5 rounded-full bg-muted-foreground flex-shrink-0" />
+          <div className="mt-1 h-1.5 w-1.5 rounded-full bg-muted-foreground flex-shrink-0" />
           <div>
-            <p className="text-xs font-medium text-foreground">
+            <p className="text-[13px] font-medium text-foreground">
               {notice.title}
             </p>
-            <p className="mt-0.5 text-[10px] text-muted-foreground">
+            <p className="mt-1 text-[12px] text-muted-foreground">
               {notice.description}
             </p>
           </div>

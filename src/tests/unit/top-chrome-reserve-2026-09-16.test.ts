@@ -61,8 +61,10 @@ describe('② 치수를 정하는 클래스가 진짜 블록과 같다', () => {
   })
 
   it('로고 타일은 BrandChip 과 같은 치수', () => {
-    // 로고 줄 높이는 BrandChip 이 정한다 — 타일 48 + gap-1 + 10px 라벨.
-    for (const cls of ['flex flex-col items-center gap-1', 'w-12 h-12 rounded-2xl', 'text-[10px]']) {
+    // 로고 줄 높이는 BrandChip 이 정한다 — 타일 48 + gap-1 + 라벨.
+    // 🔀 2026-09-29: 라벨이 10 → **12px**(정본 스케일 바닥). `shared.tsx` 가 이행됐으므로
+    //    예약도 같이 따라가야 한다 — 두 값이 갈리면 브랜드 줄이 다시 밀린다.
+    for (const cls of ['flex flex-col items-center gap-1', 'w-12 h-12 rounded-2xl', 'text-[12px]']) {
       expect(SHARED, `BrandChip: ${cls}`).toContain(cls)
       expect(RESERVE, `reserve tile: ${cls}`).toContain(cls)
     }

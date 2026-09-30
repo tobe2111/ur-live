@@ -36,15 +36,15 @@ export default function SellOnUrdealRow() {
   return (
     <Link
       to={SELL_PATH}
-      className="mt-6 flex items-center gap-2.5 border-t border-rule px-4 py-4 active:opacity-60 transition-opacity"
+      className="mt-6 flex items-center gap-2 border-t border-rule px-4 py-4 active:opacity-60 transition-opacity"
     >
       {/* 라이트에서 이 문장은 **잉크**다(대표 2026-09-14: "화이트 버전에서의 글자는 검정이어야 해").
           회색으로 흐리면 피드 끝에서 읽히지 않는다 — 여긴 이미 스크롤 끝이라 더 물러설 곳이 없다. */}
-      <span className="min-w-0 flex-1 text-[12.5px] leading-snug text-gray-900 dark:text-gray-200">
+      <span className="min-w-0 flex-1 text-[12px] leading-snug text-gray-900 dark:text-gray-200">
         <b className="font-bold text-gray-900 dark:text-white">사장님이신가요?</b>{' '}
         내 가게도 유어딜에 올려보세요
       </span>
-      <span className="flex shrink-0 items-center gap-0.5 text-[12px] font-bold text-brand-text">
+      <span className="flex shrink-0 items-center gap-1 text-[12px] font-bold text-brand-text">
         시작하기 <ChevronRight className="h-3.5 w-3.5" />
       </span>
     </Link>

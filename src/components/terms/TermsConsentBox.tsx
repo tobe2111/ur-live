@@ -24,14 +24,14 @@ export default function TermsConsentBox({
   core?: CoreTermsConsent
 }) {
   return (
-    <div className="bg-white rounded-2xl p-5 space-y-4 border border-gray-100">
+    <div className="bg-white rounded-2xl p-5 space-y-4 shadow-lift">
       <div className="flex items-start justify-between gap-2">
-        <label className="flex items-start gap-2.5 cursor-pointer flex-1">
+        <label className="flex items-start gap-2 cursor-pointer flex-1">
           <input
             type="checkbox"
             checked={agreed}
             onChange={e => onAgreedChange(e.target.checked)}
-            className="mt-0.5 w-4 h-4 shrink-0 accent-gray-900"
+            className="mt-1 w-4 h-4 shrink-0 accent-gray-900"
           />
           <span className="text-[13px] font-semibold text-gray-900 leading-snug">
             {termsLabel} <span className="text-red-500">*</span>
@@ -41,7 +41,7 @@ export default function TermsConsentBox({
           href={termsPath}
           target="_blank"
           rel="noopener noreferrer"
-          className="shrink-0 inline-flex items-center gap-1 text-[12px] text-gray-500 underline hover:text-gray-900 mt-0.5"
+          className="shrink-0 inline-flex items-center gap-1 text-[12px] text-gray-500 underline hover:text-gray-900 mt-1"
         >
           약관 보기 <ExternalLink className="w-3 h-3" />
         </a>
@@ -49,20 +49,20 @@ export default function TermsConsentBox({
 
       {core && (
         <div className="space-y-3 border-t border-gray-100 pt-4">
-          <div className="bg-gray-50 rounded-xl p-3.5 space-y-2">
+          <div className="bg-gray-50 rounded-xl p-4 space-y-2">
             {core.items.map((it, i) => (
               <div key={i}>
                 <p className="text-[12px] font-bold text-gray-800">{it.label}</p>
-                <p className="text-[11.5px] text-gray-600 leading-relaxed">{it.text}</p>
+                <p className="text-[12px] text-gray-600 leading-relaxed">{it.text}</p>
               </div>
             ))}
           </div>
-          <label className="flex items-start gap-2.5 cursor-pointer">
+          <label className="flex items-start gap-2 cursor-pointer">
             <input
               type="checkbox"
               checked={core.agreed}
               onChange={e => core.onChange(e.target.checked)}
-              className="mt-0.5 w-4 h-4 shrink-0 accent-gray-900"
+              className="mt-1 w-4 h-4 shrink-0 accent-gray-900"
             />
             <span className="text-[13px] font-semibold text-gray-900 leading-snug">
               {core.label} <span className="text-red-500">*</span>

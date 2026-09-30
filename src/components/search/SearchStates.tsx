@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
+import { BoxIcon, AlertIcon, ClockIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
-import { Search, Package, AlertCircle, Loader2, Clock, X, TrendingUp } from 'lucide-react'
+import { Search, Loader2, X, TrendingUp } from 'lucide-react'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { usePopularSearches } from '@/hooks/queries/usePopularSearches'
 
@@ -71,20 +72,20 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
     return (
       <div className="flex flex-col items-center justify-center py-20">
         <div className="w-16 h-16 rounded-full bg-[#ff3b30]/10 flex items-center justify-center mb-4">
-          <AlertCircle className="w-10 h-10 text-[#ff3b30]" />
+          <AlertIcon className="w-10 h-10 text-[#ff3b30]" />
         </div>
         <p className="text-[17px] font-semibold text-[#1d1d1f] mb-2">오류가 발생했습니다</p>
         <p className="text-[15px] text-[#6e6e73] mb-6">{error}</p>
         <div className="flex gap-3">
           <button
             onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-gray-900 text-white text-sm rounded-lg"
+            className="px-4 py-2 bg-brand text-white text-[15px] rounded-lg"
           >
             다시 시도
           </button>
           <button
             onClick={() => navigate('/')}
-            className="px-6 py-2.5 bg-brand text-white rounded-full text-[15px] font-semibold hover:bg-brand-dark transition-colors"
+            className="px-6 py-2 bg-brand text-white rounded-full text-[15px] font-semibold hover:bg-brand-dark transition-colors"
           >
             홈으로 돌아가기
           </button>
@@ -100,13 +101,13 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
         {recent.length > 0 ? (
           <div className="mb-8">
             <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-1.5">
-                <Clock className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+              <div className="flex items-center gap-2">
+                <ClockIcon className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                 <h3 className="text-[13px] font-bold text-gray-900 dark:text-white">최근 검색어</h3>
               </div>
               <button
                 onClick={clearAll}
-                className="text-[11px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                className="text-[12px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
               >
                 전체 삭제
               </button>
@@ -115,7 +116,7 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
               {recent.map(q => (
                 <div
                   key={q}
-                  className="inline-flex items-center gap-1.5 pl-3 pr-1 py-1.5 bg-gray-100 dark:bg-[#1D1F29] rounded-full text-[12px] text-gray-700 dark:text-gray-300"
+                  className="inline-flex items-center gap-2 pl-3 pr-1 py-2 bg-gray-100 dark:bg-[#1D1F29] rounded-full text-[12px] text-gray-700 dark:text-gray-300"
                 >
                   <button
                     onClick={() => navigate(`/search?q=${encodeURIComponent(q)}`)}
@@ -126,7 +127,7 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
                   <button
                     onClick={() => removeOne(q)}
                     aria-label={`'${q}' 삭제`}
-                    className="p-0.5 rounded-full hover:bg-gray-200 dark:hover:bg-[#2C2F35] transition-colors"
+                    className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-[#2C2F35] transition-colors"
                   >
                     <X className="w-3 h-3 text-gray-400 dark:text-gray-500" />
                   </button>
@@ -145,7 +146,7 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
         {/* 🛡️ 2026-05-19: 인기 검색어 (popular_searches 기반). 사용자 발견성 ↑. */}
         {popular.length > 0 && (
           <div>
-            <div className="flex items-center gap-1.5 mb-3">
+            <div className="flex items-center gap-2 mb-3">
               <TrendingUp className="w-4 h-4 text-rose-500" />
               <h3 className="text-[13px] font-bold text-gray-900 dark:text-white">인기 검색어</h3>
             </div>
@@ -155,9 +156,9 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
                   key={q}
                   type="button"
                   onClick={() => navigate(`/search?q=${encodeURIComponent(q)}`)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300 text-[12px] font-medium hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors"
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300 text-[12px] font-medium hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors"
                 >
-                  <span className="text-rose-400 dark:text-rose-500 font-bold text-[10px]">#{i + 1}</span>
+                  <span className="text-rose-400 dark:text-rose-500 font-bold text-[12px]">#{i + 1}</span>
                   {q}
                 </button>
               ))}
@@ -173,7 +174,7 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
     return (
       <div className="py-10">
         <div className="flex flex-col items-center justify-center mb-6">
-          <Package className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" />
+          <BoxIcon className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" />
           <p className="text-[15px] font-semibold text-gray-900 dark:text-white mb-1">'{query}' 검색 결과가 없어요</p>
           <p className="text-[13px] text-gray-500 dark:text-gray-400">다른 검색어를 시도해보세요</p>
         </div>
@@ -185,7 +186,7 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
             <button
               type="button"
               onClick={() => navigate(`/search?q=${encodeURIComponent(suggestedQuery)}`)}
-              className="text-[16px] font-extrabold text-rose-600 dark:text-rose-300 hover:underline"
+              className="text-[17px] font-extrabold text-rose-600 dark:text-rose-300 hover:underline"
             >
               {suggestedQuery} →
             </button>
@@ -195,7 +196,7 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
         {/* 인기 검색어 폴백 */}
         {popular.length > 0 && (
           <div className="mx-auto max-w-md">
-            <div className="flex items-center gap-1.5 mb-3 justify-center">
+            <div className="flex items-center gap-2 mb-3 justify-center">
               <TrendingUp className="w-4 h-4 text-rose-500" />
               <h3 className="text-[13px] font-bold text-gray-900 dark:text-white">지금 인기 검색어</h3>
             </div>
@@ -205,9 +206,9 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
                   key={q}
                   type="button"
                   onClick={() => navigate(`/search?q=${encodeURIComponent(q)}`)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300 text-[12px] font-medium hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors"
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300 text-[12px] font-medium hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors"
                 >
-                  <span className="text-rose-400 dark:text-rose-500 font-bold text-[10px]">#{i + 1}</span>
+                  <span className="text-rose-400 dark:text-rose-500 font-bold text-[12px]">#{i + 1}</span>
                   {q}
                 </button>
               ))}

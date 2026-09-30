@@ -127,18 +127,18 @@ export default function StoreClaimPage() {
             <h1 className="text-[26px] lg:text-[44px] font-black tracking-[-0.03em] leading-[1.22] text-gray-900">
               매장 이용권<br className="hidden lg:block" /> 판매 등록
             </h1>
-            <p className="mt-2.5 lg:mt-4 text-[14px] lg:text-[16px] leading-relaxed text-gray-600 lg:max-w-[460px]">
+            <p className="mt-2 lg:mt-4 text-[15px] lg:text-[17px] leading-relaxed text-gray-600 lg:max-w-[460px]">
               손님이 유어딜에서 할인가로 이용권을 미리 삽니다. 매장에 와서 QR 을 보여주면 그걸로 끝입니다.
             </p>
 
-            <ul className="mt-4 lg:mt-8 flex flex-col gap-3 lg:gap-3.5 lg:max-w-[460px]">
+            <ul className="mt-4 lg:mt-8 flex flex-col gap-3 lg:gap-4 lg:max-w-[460px]">
               {BENEFITS.map(({ Icon, title, desc }) => (
-                <li key={title} className="flex gap-3 lg:gap-3.5 items-start">
-                  <Icon size={20} className="mt-0.5 shrink-0 text-brand" aria-hidden="true" />
+                <li key={title} className="flex gap-3 lg:gap-4 items-start">
+                  <Icon size={20} className="mt-1 shrink-0 text-brand" aria-hidden="true" />
                   <div className="min-w-0">
-                    <p className="text-[13.5px] lg:text-[15px] font-bold text-gray-900">{title}</p>
+                    <p className="text-[13px] lg:text-[15px] font-bold text-gray-900">{title}</p>
                     {/* 폰은 한 줄로 끊는다 — 설명까지 다 펴면 카드가 밀려 첫 화면에서 사라진다. */}
-                    <p className="hidden lg:block mt-0.5 text-[13.5px] leading-relaxed text-gray-500">{desc}</p>
+                    <p className="hidden lg:block mt-1 text-[13px] leading-relaxed text-gray-500">{desc}</p>
                   </div>
                 </li>
               ))}
@@ -147,8 +147,8 @@ export default function StoreClaimPage() {
             <div className="hidden lg:flex mt-9 pt-5 border-t border-rule gap-9 lg:max-w-[460px]">
               {FACTS.map(({ value, label }) => (
                 <div key={label}>
-                  <div className="text-[22px] font-black text-gray-900">{value}</div>
-                  <div className="mt-1 text-[12.5px] text-gray-500">{label}</div>
+                  <div className="text-[24px] font-black text-gray-900">{value}</div>
+                  <div className="mt-1 text-[12px] text-gray-500">{label}</div>
                 </div>
               ))}
             </div>
@@ -179,7 +179,7 @@ export default function StoreClaimPage() {
               }}
             />
             {/* 폰에서는 위 FACTS 줄 대신 이 한 줄이 같은 말을 한다(세 숫자를 다 펴면 카드가 밀린다). */}
-            <p className="lg:hidden mt-2 text-center text-[11px] text-gray-400">
+            <p className="lg:hidden mt-2 text-center text-[12px] text-gray-400">
               등록 0원, 사업자등록증 사진 1장이면 됩니다.
             </p>
           </div>

@@ -72,12 +72,12 @@ export default function PublicProfileSection() {
   }
 
   return (
-    <section className="rounded-xl border border-line bg-surface p-4 mb-4">
+    <section className="rounded-xl bg-surface p-4 mb-4 shadow-lift">
       <div className="flex items-start gap-2 mb-3">
-        <Megaphone className="w-5 h-5 text-brand-text shrink-0 mt-0.5" />
+        <Megaphone className="w-5 h-5 text-brand-text shrink-0 mt-1" />
         <div className="flex-1 min-w-0">
-          <h2 className="text-sm font-bold text-gray-900 dark:text-white">소개자 프로필</h2>
-          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
+          <h2 className="text-[15px] font-bold text-gray-900 dark:text-white">소개자 프로필</h2>
+          <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
             공개하면 매장이 나를 찾아 <b>소개 제안</b>을 보낼 수 있어요. 연락처는 공개되지 않습니다.
           </p>
         </div>
@@ -85,33 +85,33 @@ export default function PublicProfileSection() {
           type="button"
           disabled={saving}
           onClick={() => save({ ...p, is_open: p.is_open ? 0 : 1 })}
-          className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold ${
-            p.is_open ? 'bg-gray-900 text-white' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300'
+          className={`shrink-0 px-3 py-2 rounded-full text-[12px] font-bold ${
+            p.is_open ? 'bg-brand text-white' : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300'
           } disabled:opacity-50`}
         >
           {p.is_open ? '공개 중' : '비공개'}
         </button>
       </div>
 
-      <label className="block text-[11px] font-medium text-gray-700 dark:text-gray-200 mb-1">한 줄 소개</label>
+      <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-200 mb-1">한 줄 소개</label>
       <input
         value={p.intro ?? ''}
         onChange={(e) => patch({ intro: e.target.value })}
         maxLength={200}
         placeholder="예) 성수동 카페를 주로 소개합니다"
-        className="w-full px-3 py-2 rounded-lg border border-line bg-white dark:bg-[#131A24] text-sm text-gray-900 dark:text-white mb-3"
+        className="w-full px-3 py-2 rounded-lg border border-line bg-white dark:bg-[#131A24] text-[15px] text-gray-900 dark:text-white mb-3"
       />
 
-      <label className="block text-[11px] font-medium text-gray-700 dark:text-gray-200 mb-1">
+      <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-200 mb-1">
         내 채널 <span className="text-gray-400">(공개하려면 1개 이상)</span>
       </label>
       <div className="space-y-2 mb-3">
         {p.channels.map((c, i) => (
-          <div key={i} className="flex gap-1.5 items-center">
+          <div key={i} className="flex gap-2 items-center">
             <select
               value={c.kind}
               onChange={(e) => patch({ channels: p.channels.map((x, j) => (j === i ? { ...x, kind: e.target.value as ChannelKind } : x)) })}
-              className="px-2 py-2 rounded-lg border border-line bg-white dark:bg-[#131A24] text-xs text-gray-900 dark:text-white shrink-0"
+              className="px-2 py-2 rounded-lg border border-line bg-white dark:bg-[#131A24] text-[12px] text-gray-900 dark:text-white shrink-0"
             >
               {(Object.keys(KIND_LABEL) as ChannelKind[]).map((k) => <option key={k} value={k}>{KIND_LABEL[k]}</option>)}
             </select>
@@ -119,55 +119,55 @@ export default function PublicProfileSection() {
               value={c.url}
               onChange={(e) => patch({ channels: p.channels.map((x, j) => (j === i ? { ...x, url: e.target.value } : x)) })}
               placeholder="https://..."
-              className="flex-1 min-w-0 px-2 py-2 rounded-lg border border-line bg-white dark:bg-[#131A24] text-xs text-gray-900 dark:text-white"
+              className="flex-1 min-w-0 px-2 py-2 rounded-lg border border-line bg-white dark:bg-[#131A24] text-[12px] text-gray-900 dark:text-white"
             />
             <input
               value={c.followers ?? ''}
               onChange={(e) => patch({ channels: p.channels.map((x, j) => (j === i ? { ...x, followers: e.target.value ? Number(e.target.value) : null } : x)) })}
               placeholder="팔로워"
               inputMode="numeric"
-              className="w-20 px-2 py-2 rounded-lg border border-line bg-white dark:bg-[#131A24] text-xs text-gray-900 dark:text-white shrink-0"
+              className="w-20 px-2 py-2 rounded-lg border border-line bg-white dark:bg-[#131A24] text-[12px] text-gray-900 dark:text-white shrink-0"
             />
             <button type="button" onClick={() => patch({ channels: p.channels.filter((_, j) => j !== i) })}
-              className="p-1.5 text-gray-400 hover:text-red-500 shrink-0" aria-label="채널 삭제">
+              className="p-2 text-gray-400 hover:text-red-500 shrink-0" aria-label="채널 삭제">
               <X className="w-4 h-4" />
             </button>
           </div>
         ))}
         {p.channels.length < 5 && (
           <button type="button" onClick={() => patch({ channels: [...p.channels, { kind: 'instagram', url: '', followers: null }] })}
-            className="flex items-center gap-1 text-xs font-bold text-brand-text">
+            className="flex items-center gap-1 text-[12px] font-bold text-brand-text">
             <Plus className="w-3.5 h-3.5" /> 채널 추가
           </button>
         )}
       </div>
 
-      <label className="block text-[11px] font-medium text-gray-700 dark:text-gray-200 mb-1">주로 소개하는 분야</label>
-      <div className="flex flex-wrap gap-1.5 mb-3">
+      <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-200 mb-1">주로 소개하는 분야</label>
+      <div className="flex flex-wrap gap-2 mb-3">
         {opts.categories.map((k) => (
           <button key={k} type="button" onClick={() => patch({ categories: toggle(p.categories, k) })}
-            className={`px-2.5 py-1 rounded-full text-xs font-medium border ${
+            className={`px-2 py-1 rounded-full text-[12px] font-medium border ${
               p.categories.includes(k)
-                ? 'bg-gray-900 text-white border-gray-900'
+                ? 'bg-brand text-white border-brand'
                 : 'bg-white dark:bg-[#131A24] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2C2F35]'
             }`}>{CAT_LABEL[k] || k}</button>
         ))}
       </div>
 
-      <label className="block text-[11px] font-medium text-gray-700 dark:text-gray-200 mb-1">활동 지역</label>
-      <div className="flex flex-wrap gap-1.5 mb-4">
+      <label className="block text-[12px] font-medium text-gray-700 dark:text-gray-200 mb-1">활동 지역</label>
+      <div className="flex flex-wrap gap-2 mb-4">
         {opts.regions.map((r) => (
           <button key={r} type="button" onClick={() => patch({ regions: toggle(p.regions, r) })}
-            className={`px-2.5 py-1 rounded-full text-xs font-medium border ${
+            className={`px-2 py-1 rounded-full text-[12px] font-medium border ${
               p.regions.includes(r)
-                ? 'bg-gray-900 text-white border-gray-900'
+                ? 'bg-brand text-white border-brand'
                 : 'bg-white dark:bg-[#131A24] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2C2F35]'
             }`}>{r}</button>
         ))}
       </div>
 
       <button type="button" disabled={saving} onClick={() => save(p)}
-        className="w-full py-2.5 rounded-lg bg-brand hover:bg-brand-dark text-white text-sm font-bold disabled:opacity-50">
+        className="w-full py-2 rounded-lg bg-brand hover:bg-brand-dark text-white text-[15px] font-bold disabled:opacity-50">
         {saving ? '저장 중...' : '저장'}
       </button>
 

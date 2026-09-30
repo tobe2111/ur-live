@@ -95,7 +95,7 @@ export default function CommandPalette({ items, open, onClose }: Props) {
       aria-label="메뉴 빠른 이동"
     >
       <div className="w-full max-w-xl bg-white rounded-2xl shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center gap-2.5 px-4 h-14 border-b border-gray-100">
+        <div className="flex items-center gap-2 px-4 h-14 border-b border-gray-100">
           <Search className="w-4 h-4 text-gray-400 shrink-0" />
           <input
             ref={inputRef}
@@ -103,9 +103,9 @@ export default function CommandPalette({ items, open, onClose }: Props) {
             onChange={(e) => setQ(e.target.value)}
             placeholder="메뉴 검색 — 페이지 이름 입력 후 Enter"
             aria-label="메뉴 검색"
-            className="flex-1 bg-transparent text-[14px] text-gray-900 placeholder:text-gray-400 focus:outline-none"
+            className="flex-1 bg-transparent text-[15px] text-gray-900 placeholder:text-gray-400 focus:outline-none"
           />
-          <kbd className="text-[10px] font-bold text-gray-400 bg-gray-100 rounded px-1.5 py-0.5">ESC</kbd>
+          <kbd className="text-[12px] font-bold text-gray-400 bg-gray-100 rounded px-2 py-1">ESC</kbd>
         </div>
         <div ref={listRef} className="max-h-[52vh] overflow-y-auto py-2">
           {results.length === 0 ? (
@@ -120,11 +120,11 @@ export default function CommandPalette({ items, open, onClose }: Props) {
                   data-idx={i}
                   onMouseEnter={() => setSel(i)}
                   onClick={() => { navigate(it.path); onClose() }}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${active ? 'bg-gray-100' : ''}`}
+                  className={`w-full flex items-center gap-3 px-4 py-2 text-left transition-colors ${active ? 'bg-gray-100' : ''}`}
                 >
                   <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-gray-900' : 'text-gray-400'}`} strokeWidth={2} />
                   <span className="flex-1 text-[13px] font-semibold text-gray-900 truncate">{it.label}</span>
-                  <span className="text-[11px] text-gray-400 truncate max-w-[38%]">{it.group}</span>
+                  <span className="text-[12px] text-gray-400 truncate max-w-[38%]">{it.group}</span>
                   {active && <CornerDownLeft className="w-3.5 h-3.5 text-gray-400 shrink-0" />}
                 </button>
               )

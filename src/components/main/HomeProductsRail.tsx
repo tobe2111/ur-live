@@ -8,9 +8,10 @@
  *   세션 내 메모리 캐시(재클릭 즉시 표시).
  */
 import { useEffect, useRef, useState, useCallback } from 'react'
+import { BagIcon } from '@/components/icons/urdeal-icons'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ShoppingBag, ArrowRight } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import api from '@/lib/api'
 import BrowseProductCard from '@/pages/browse/BrowseProductCard'
 import type { Product } from '@/pages/browse/types'
@@ -73,10 +74,10 @@ export default function HomeProductsRail() {
   return (
     <section ref={ref} className="ur-content-wide px-4 lg:px-8 mt-8 mb-2">
       <div className="flex items-center justify-between mb-1">
-        <h2 className="text-[16px] font-extrabold text-gray-900 dark:text-white flex items-center gap-1.5">
-          <ShoppingBag className="w-4 h-4 text-gray-500 dark:text-gray-400" /> {t('home.shopRailTitle', { defaultValue: '지금 인기 상품' })}
+        <h2 className="text-[17px] font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
+          <BagIcon className="w-4 h-4 text-gray-500 dark:text-gray-400" /> {t('home.shopRailTitle', { defaultValue: '지금 인기 상품' })}
         </h2>
-        <Link to="/browse" className="text-[12px] font-bold text-gray-500 dark:text-gray-400 flex items-center gap-0.5">
+        <Link to="/browse" className="text-[12px] font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1">
           {t('home.shopRailMore', { defaultValue: '쇼핑 전체보기' })} <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       </div>
@@ -92,9 +93,9 @@ export default function HomeProductsRail() {
             <button
               key={c.key}
               onClick={() => onSelectCat(c.key)}
-              className={`shrink-0 px-4 py-1.5 rounded-full text-[13px] font-bold transition-colors ${
+              className={`shrink-0 px-4 py-2 rounded-full text-[13px] font-bold transition-colors ${
                 active
-                  ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
+                  ? 'bg-brand text-white'
                   : 'bg-white text-gray-700 border border-gray-200 dark:bg-[#1D1F29] dark:text-gray-300 dark:border-[#2C2F35]'
               }`}
             >
@@ -105,7 +106,7 @@ export default function HomeProductsRail() {
       </div>
 
       {items === null ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 gap-y-2.5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 gap-y-2">
           {[...Array(2)].map((_, i) => (
             <div key={i} className="aspect-square rounded-2xl bg-gray-100 dark:bg-[#1D1F29] animate-pulse" />
           ))}
@@ -119,7 +120,7 @@ export default function HomeProductsRail() {
       ) : (
         /* /browse 본 페이지와 동일 그리드 — PC 프레임(약 720px) 안에서 뷰포트 기준 lg/xl 브레이크포인트가
            6열까지 곱해져 카드가 과도하게 좁아지던 문제 수정. BrowsePage 와 동일하게 최대 3열로 cap. */
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-2.5 items-stretch">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-2 items-stretch">
           {items.map((p) => (
             <BrowseProductCard key={p.id} product={p} aboveFold={false} />
           ))}

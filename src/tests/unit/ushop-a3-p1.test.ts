@@ -4,6 +4,18 @@ import { stripComments as codeOnly } from '../helpers/source-text'
 import { isFullBleedPcPath } from '@/shared/pc-fullbleed'
 
 /**
+ * INK 스케일(= tailwind `text-gray-*`)의 실제 hex 를 **뽑아** 쓴다.
+ * 손으로 박으면 팔레트가 옮겨질 때마다(2026-09-30 이 그랬다) 시험도 같이 고쳐야 하고,
+ * 그러면 시험이 "대비가 충분한가" 대신 "옛 값인가" 를 묻게 된다.
+ */
+function ink(step: number): string {
+  const tw = codeOnly(readFileSync('tailwind.config.js', 'utf-8'))
+  const m = tw.match(new RegExp(`\\b${step}:\\s*'(#[0-9A-Fa-f]{6})'`))
+  expect(m, `INK.${step} 를 tailwind.config.js 에서 못 찾았다 — 스케일 모양이 바뀌었다`).not.toBeNull()
+  return (m as RegExpMatchArray)[1]
+}
+
+/**
  * 🎫 2026-09-02 (대표 확정) 유어샵 **안3**(모바일 — 왼정렬 헤더 + 반반 버튼 + 카테고리 칩) +
  * **안P1**(PC — 좌 300px 프로필 고정 + 우 3열 진열대) 계약.
  *
@@ -73,11 +85,69 @@ describe('유어샵 안3 — 주인 띠 삭제 · 버튼 한 자리', () => {
   })
 })
 
-describe('유어샵 안3 — 카테고리 칩(지도 B안과 같은 그림)', () => {
-  it('칩은 지도 칩 SSOT(MAP_VOUCHER_DEFS)를 쓰고, 선택은 블루 면 · 비선택은 흰 알약', () => {
-    const src = read(CHIPS)
-    expect(src).toContain("from '@/pages/restaurant-map/voucher-types'")
-    expect(src).toMatch(/on \? 'bg-brand text-white' : 'bg-white dark:bg-\[#1D1F29\][^']*shadow-lift'/)
+describe('유어샵 안3 — 카테고리 분류 줄', () => {
+  /*
+   * 🩸 2026-09-30 재조준 (대표 한 톤 확정 — *"아예 모두 똑같이 배경색을 카드 색상이랑 같게 한다면???"*
+   *   → 시안 확인 후 *"일단 이 형태가 낫고"*). 종전 단언은 **알약의 껍질**을 박고 있었다
+   *   (`on ? 'bg-brand text-white' : 'bg-white … shadow-lift'`). 알약은 *자기 배경*으로 존재를
+   *   주장하는 부품이라, 페이지·카드·칩이 한 톤이 되면 흰 알약이 흰 바탕 위에 그림자로만 뜬다.
+   *   ⇒ 밑줄 탭으로 바뀌었고, 지켜야 할 것은 껍질이 아니라 셋이다:
+   *     ① 분류 정의는 지도와 **같은 SSOT** (유어샵만 다른 이름·순서를 갖지 않는다)
+   *     ② 활성 표시는 **브랜드 하나** (2026-09-02 표면 규칙 ② "강조색 하나")
+   *     ③ **개수를 적는다** — 대표가 *"각 이용권마다 숫자도 달아줘"* 로 직접 요청한 항목이다.
+   *   ⚠️ 느슨해진 게 아니라 판정 대상이 바뀐 것이다. 알약 껍질의 부활은 아래에서 따로 막는다.
+   */
+  it('분류 정의는 지도 칩과 같은 SSOT 를 쓴다', () => {
+    expect(read(CHIPS)).toContain("from '@/pages/restaurant-map/voucher-types'")
+  })
+
+  it('활성 표시는 브랜드 하나 — 밑줄, 그리고 개수가 붙는다', () => {
+    const src = codeOnly(read(CHIPS))
+    expect(src, '활성은 브랜드 밑줄').toMatch(/border-b-2[\s\S]{0,120}border-brand/)
+    expect(src, '비활성은 선을 숨긴다(자리는 남긴다 — 글자가 안 밀리게)').toContain('border-transparent')
+    expect(src, '개수(대표 요청)를 그린다').toMatch(/\{n\}/)
+  })
+
+  /**
+   * 🩸 2026-09-30 신설 — **CI 의 `contrast` 가 내 코드를 잡은 뒤** 만든 가드.
+   *   개수를 `text-gray-300 dark:text-gray-600` 으로 썼더니 다크 카드(#1D1F29) 위 **2.15:1**,
+   *   그리고 아무도 안 보고 있던 라이트는 더 나빴다(흰 바탕 위 **1.50:1**).
+   *   개수는 대표가 직접 요청한 **정보**라 장식으로 칠하면 안 된다.
+   *
+   *   🔑 문자열이 아니라 **비율을 계산해서** 고정한다 — 팔레트가 또 옮겨져도(2026-09-30 이 그랬다)
+   *      이 시험은 따라온다. 반대로 hex 를 박아 두면 팔레트를 고칠 때마다 시험도 고쳐야 하고,
+   *      그러면 시험이 "짝이 맞는가" 대신 "옛 값인가" 를 묻게 된다(같은 날 배운 것).
+   *   ⚠️ 못 보는 것: 실제 렌더(조상 배경이 정말 카드인지)는 `check-dark-contrast` 워크플로가 본다.
+   */
+  it('비활성 탭의 개수가 읽힌다 — 라이트·다크 둘 다 3:1 이상', () => {
+    const src = codeOnly(read(CHIPS))
+    const m = src.match(/text-\[12px\] tabular-nums \$\{on \? '[^']+' : '([^']+)'\}/)
+    expect(m, '비활성 개수의 색 클래스를 못 찾았다 — 마크업이 바뀌었으면 이 시험도 재조준할 것').not.toBeNull()
+    const cls = (m as RegExpMatchArray)[1]
+    const light = cls.match(/(?:^|\s)text-gray-(\d+)/)
+    const dark = cls.match(/dark:text-gray-(\d+)/)
+    expect(light, '라이트 회색 단계가 없다').not.toBeNull()
+    expect(dark, '다크 회색 단계가 없다').not.toBeNull()
+
+    const lum = (hex: string) => {
+      const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+        .map((x) => (x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4))
+      return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+    }
+    const ratio = (a: string, b: string) => {
+      const [x, y] = [lum(a), lum(b)]
+      return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
+    }
+    const onWhite = ratio(ink(Number(light![1])), '#FFFFFF')
+    const onCard = ratio(ink(Number(dark![1])), '#1D1F29')   // --surface 다크
+    expect(onWhite, `라이트에서 개수가 ${onWhite.toFixed(2)}:1 — 안 읽힌다`).toBeGreaterThanOrEqual(3)
+    expect(onCard, `다크에서 개수가 ${onCard.toFixed(2)}:1 — 안 읽힌다`).toBeGreaterThanOrEqual(3)
+  })
+
+  it('🔴 알약 껍질이 돌아오지 않았다 — 한 톤에서 판·그림자는 아무것도 안 나눈다', () => {
+    const src = codeOnly(read(CHIPS))
+    expect(src, '흰 알약 + 들림 복귀').not.toContain('shadow-lift')
+    expect(src, '알약 모서리 복귀').not.toContain('rounded-full')
   })
   // 🔧 2026-09-28 재조준(대표 확정 s3): 종전엔 `CHIPS_MIN_PINS = 7` 미만이면 안 그렸다.
   //   그 게이트는 **한 번도 열린 적이 없다** — 라이브 유어샵은 3곳·최다 5개다. 칩이 존재하지 않는
@@ -96,10 +166,21 @@ describe('유어샵 안3 — 카테고리 칩(지도 B안과 같은 그림)', ()
     // 칩 선택이 실제로 목록을 거른다(배선만 있고 안 걸러지는 것을 막는다).
     expect(src).toMatch(/cat === 'all' \? homePins : homePins\.filter\(p => pinCategory\(p\) === cat\)/)
   })
-  // 🔧 2026-09-28 재조준(s3): 배지가 `CuratorPage` 인라인 카드 → `PinRow` 로 **이사했다**.
-  //   검사 대상만 옮긴다(계약은 그대로 — 사진 위 유일한 표식이라 테마와 무관하게 흰 원이어야 읽힌다).
-  it('순번 배지는 흰 원 + 잉크 숫자', () => {
-    expect(codeOnly(read(ROW))).toMatch(/rounded-full bg-white text-\[#16181C\][^"]*tabular-nums/)
+  /*
+   * 🔧 재조준 두 번째. ① 2026-09-28(s3): 배지가 `CuratorPage` 인라인 카드 → `PinRow` 로 **이사**.
+   *   ② 2026-09-29(대표 *"세련된 느낌이 없다"*): 순번이 **사진 밖**(`DealRow` 의 `leading` 슬롯)으로
+   *   나갔다. 그래서 "흰 원 + 잉크 숫자" 계약은 **녹았다** — 흰 원은 *어떤 사진 위에서도 읽히게*
+   *   하려던 장치였고, 사진 위가 아니면 존재 이유가 없다(2026-08-31 대표 *"할인율이 사진 안으로
+   *   들어가면 안돼"* 와 같은 판단).
+   *   ⇒ 계약을 풀지 않고 **남은 것으로** 옮긴다: 순번은 지울 수 없고(SNS 에서 "N번 사세요" 로
+   *     부르는 주소다) 숫자 폭이 고정이어야 한다(`1`·`10` 이 나란히 서면 칸이 흔들린다).
+   *   자리·크기 계약은 `ushop-console-refresh-2026-09-29.test.ts` ② 가 본다 — 여기서 또 보지 않는다.
+   */
+  it('순번은 남아 있고 숫자 폭이 고정이다 (사진 위 흰 원이 아니다)', () => {
+    const src = codeOnly(read(ROW))
+    expect(src, '순번 렌더').toContain('{order}')
+    expect(src, '숫자 폭 고정').toMatch(/tabular-nums/)
+    expect(src, '사진 위 흰 원 배지 0개').not.toMatch(/rounded-full bg-white/)
   })
 })
 

@@ -5,10 +5,11 @@
  */
 
 import { Link } from 'react-router-dom'
+import { ClockIcon } from '@/components/icons/urdeal-icons'
 import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
-import { TrendingUp, Award, Clock, ChevronLeft, BarChart3 } from 'lucide-react'
+import { TrendingUp, Award, ChevronLeft, BarChart3 } from 'lucide-react'
 
 interface Analytics {
   summary: {
@@ -43,52 +44,52 @@ export default function InfluencerAnalyticsPage() {
       <header className="sticky top-0 z-30 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35] px-4 py-3 flex items-center gap-2">
         <Link to="/influencer/settlement" className="text-gray-700 dark:text-gray-200"><ChevronLeft className="w-5 h-5" /></Link>
         <BarChart3 className="w-5 h-5 text-brand-text" />
-        <h1 className="text-base font-bold text-gray-900 dark:text-white flex-1">성과표</h1>
+        <h1 className="text-[15px] font-bold text-gray-900 dark:text-white flex-1">성과표</h1>
       </header>
 
       <main className="ur-content-narrow mx-auto px-4 py-4 space-y-5">
         {/* 총 commission 5계정 split */}
-        <div className="bg-surface border border-line rounded-xl p-5">
-          <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+        <div className="bg-surface rounded-xl p-5 shadow-lift">
+          <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-brand-text" /> 총 commission ({data.summary.total_attributions}건)
           </h3>
-          <p className="text-2xl font-extrabold text-gray-900 dark:text-white">{data.summary.total.toLocaleString()}원</p>
-          <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
+          <p className="text-[24px] font-extrabold text-gray-900 dark:text-white">{data.summary.total.toLocaleString()}원</p>
+          <div className="mt-3 grid grid-cols-2 gap-2 text-[12px]">
             <div className="bg-yellow-50 rounded p-2">
               <p className="text-yellow-700 font-medium">대기 (환불기간)</p>
-              <p className="text-sm font-bold text-yellow-900">{data.summary.pending.toLocaleString()}원</p>
+              <p className="text-[15px] font-bold text-yellow-900">{data.summary.pending.toLocaleString()}원</p>
             </div>
             <div className="bg-blue-50 rounded p-2">
               <p className="text-blue-700 font-medium">송금 가능</p>
-              <p className="text-sm font-bold text-blue-900">{data.summary.available.toLocaleString()}원</p>
+              <p className="text-[15px] font-bold text-blue-900">{data.summary.available.toLocaleString()}원</p>
             </div>
             <div className="bg-emerald-50 rounded p-2">
               <p className="text-emerald-700 font-medium">지급 완료</p>
-              <p className="text-sm font-bold text-emerald-900">{data.summary.paid.toLocaleString()}원</p>
+              <p className="text-[15px] font-bold text-emerald-900">{data.summary.paid.toLocaleString()}원</p>
             </div>
             <div className="bg-red-50 rounded p-2">
               <p className="text-red-700 font-medium">회수됨 (환불)</p>
-              <p className="text-sm font-bold text-red-900">{data.summary.clawed_back.toLocaleString()}원</p>
+              <p className="text-[15px] font-bold text-red-900">{data.summary.clawed_back.toLocaleString()}원</p>
             </div>
           </div>
         </div>
 
         {/* 일별 추세 (지난 30일) — 간단 가로 막대 */}
-        <div className="bg-surface border border-line rounded-xl p-5">
-          <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-            <Clock className="w-4 h-4 text-blue-500" /> 일별 추세 (지난 30일)
+        <div className="bg-surface rounded-xl p-5 shadow-lift">
+          <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+            <ClockIcon className="w-4 h-4 text-blue-500" /> 일별 추세 (지난 30일)
           </h3>
           {data.daily.length === 0 ? (
-            <p className="text-xs text-gray-400 text-center py-6">데이터 없음</p>
+            <p className="text-[12px] text-gray-400 text-center py-6">데이터 없음</p>
           ) : (
             <div className="space-y-1">
               {data.daily.slice(0, 14).map(d => (
                 <div key={d.d} className="flex items-center gap-2">
-                  <span className="text-[10px] text-gray-500 dark:text-gray-400 w-16 tabular-nums">{d.d.slice(5)}</span>
+                  <span className="text-[12px] text-gray-500 dark:text-gray-400 w-16 tabular-nums">{d.d.slice(5)}</span>
                   <div className="flex-1 bg-gray-100 dark:bg-[#1D1F29] rounded h-4 relative overflow-hidden">
                     <div className="bg-brand h-full" style={{ width: `${(d.amt / maxDaily) * 100}%` }} />
                   </div>
-                  <span className="text-[10px] text-gray-700 dark:text-gray-200 w-20 text-right font-bold">{d.amt.toLocaleString()}원</span>
+                  <span className="text-[12px] text-gray-700 dark:text-gray-200 w-20 text-right font-bold">{d.amt.toLocaleString()}원</span>
                 </div>
               ))}
             </div>
@@ -96,19 +97,19 @@ export default function InfluencerAnalyticsPage() {
         </div>
 
         {/* 매장별 TOP 10 */}
-        <div className="bg-surface border border-line rounded-xl p-5">
-          <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+        <div className="bg-surface rounded-xl p-5 shadow-lift">
+          <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
             <Award className="w-4 h-4 text-amber-500" /> 매장별 Top 10
           </h3>
           {data.top_sellers.length === 0 ? (
-            <p className="text-xs text-gray-400 text-center py-6">아직 commission 없음</p>
+            <p className="text-[12px] text-gray-400 text-center py-6">아직 commission 없음</p>
           ) : (
-            <ol className="space-y-1.5">
+            <ol className="space-y-2">
               {data.top_sellers.map((s, i) => (
-                <li key={s.seller_id} className="flex items-center gap-2 text-xs">
+                <li key={s.seller_id} className="flex items-center gap-2 text-[12px]">
                   <span className="w-5 text-center font-bold text-gray-500 dark:text-gray-400">{i + 1}</span>
                   <span className="flex-1 truncate text-gray-900 dark:text-white">{s.seller_name || `매장 ${s.seller_id}`}</span>
-                  <span className="text-gray-500 dark:text-gray-400 tabular-nums text-[10px]">{s.attribution_count}건</span>
+                  <span className="text-gray-500 dark:text-gray-400 tabular-nums text-[12px]">{s.attribution_count}건</span>
                   <span className="font-bold text-brand-text w-20 text-right">{s.total_commission.toLocaleString()}원</span>
                 </li>
               ))}
@@ -117,20 +118,20 @@ export default function InfluencerAnalyticsPage() {
         </div>
 
         {/* 상품별 TOP 10 */}
-        <div className="bg-surface border border-line rounded-xl p-5">
-          <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">상품별 Top 10</h3>
+        <div className="bg-surface rounded-xl p-5 shadow-lift">
+          <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">상품별 Top 10</h3>
           {data.top_products.length === 0 ? (
-            <p className="text-xs text-gray-400 text-center py-6">데이터 없음</p>
+            <p className="text-[12px] text-gray-400 text-center py-6">데이터 없음</p>
           ) : (
-            <ol className="space-y-1.5">
+            <ol className="space-y-2">
               {data.top_products.map((p, i) => (
-                <li key={p.product_id} className="flex items-center gap-2 text-xs">
+                <li key={p.product_id} className="flex items-center gap-2 text-[12px]">
                   <span className="w-5 text-center font-bold text-gray-500 dark:text-gray-400">{i + 1}</span>
                   <div className="flex-1 min-w-0">
                     <p className="truncate text-gray-900 dark:text-white">{p.product_name || '-'}</p>
-                    {p.restaurant_name && <p className="truncate text-gray-400 text-[10px]">{p.restaurant_name}</p>}
+                    {p.restaurant_name && <p className="truncate text-gray-400 text-[12px]">{p.restaurant_name}</p>}
                   </div>
-                  <span className="text-gray-500 dark:text-gray-400 tabular-nums text-[10px]">{p.attribution_count}건</span>
+                  <span className="text-gray-500 dark:text-gray-400 tabular-nums text-[12px]">{p.attribution_count}건</span>
                   <span className="font-bold text-brand-text w-20 text-right">{p.total_commission.toLocaleString()}원</span>
                 </li>
               ))}

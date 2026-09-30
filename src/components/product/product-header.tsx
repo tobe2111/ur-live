@@ -23,7 +23,7 @@ export function ProductHeader({ name, price, originalPrice, discountRate, seller
       {/* v4 Brand strip */}
       {sellerName && (
         <div className="flex items-center justify-between px-5 pt-5 pb-4">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             <div className="rounded-full flex items-center justify-center w-9 h-9 bg-brand-tint border border-rule">
               <span className="text-[13px] font-extrabold text-brand-text">{sellerName.charAt(0)}</span>
             </div>
@@ -33,12 +33,12 @@ export function ProductHeader({ name, price, originalPrice, discountRate, seller
               ) : (
                 <p className="text-[13px] font-extrabold text-gray-900 dark:text-white">{sellerName}</p>
               )}
-              <p className="text-[10px] text-gray-400 dark:text-gray-500">브랜드</p>
+              <p className="text-[12px] text-gray-400 dark:text-gray-500">브랜드</p>
             </div>
           </div>
           {/* 🧭 2026-06-22: dead '팔로우' 버튼 제거(onClick·팔로우 API 없음) — 셀러명 링크로 스토어 진입. */}
           {sellerId && (
-            <Link to={`/s/${sellerId}`} className="rounded-full px-3 py-1.5 border border-gray-300 dark:border-[#2C2F35] text-[11px] font-bold text-gray-700 dark:text-gray-200 active:scale-95 transition-transform">
+            <Link to={`/s/${sellerId}`} className="rounded-full px-3 py-2 border border-gray-300 dark:border-[#2C2F35] text-[12px] font-bold text-gray-700 dark:text-gray-200 active:scale-95 transition-transform">
               스토어
             </Link>
           )}
@@ -53,7 +53,7 @@ export function ProductHeader({ name, price, originalPrice, discountRate, seller
 
         {/* Rating + stats */}
         {(reviewCount || soldCount) && (
-          <div className="flex items-center gap-1.5 mt-1.5">
+          <div className="flex items-center gap-2 mt-2">
             {avgRating && (
               <>
                 <span className="text-yellow-500 text-[12px]">★</span>
@@ -69,17 +69,19 @@ export function ProductHeader({ name, price, originalPrice, discountRate, seller
 
         {/* v4 Price cluster */}
         <div className="flex items-baseline gap-2 mt-4">
+          {/* 🔴 할인율은 `text-sale`(SSOT) — `red-500`(#EF4444)은 다크 값이 없어 다크 카드 위에서
+              대비가 무너진다(2026-09 `--sale` 토큰이 생긴 이유가 정확히 그 사고다). */}
           {displayDiscount > 0 && (
-            <span className="text-[22px] font-extrabold text-red-500">{displayDiscount}%</span>
+            <span className="text-[24px] font-extrabold text-sale">{displayDiscount}%</span>
           )}
           <span className="text-[26px] font-extrabold text-gray-900 dark:text-white" style={{ letterSpacing: '-0.03em' }}>
             {formatPrice(price)}
           </span>
-          <span className="text-[14px] text-gray-900 dark:text-white">원</span>
+          <span className="text-[15px] text-gray-900 dark:text-white">원</span>
         </div>
 
         {hasDiscount && (
-          <p className="text-[11px] text-gray-400 dark:text-gray-500 line-through mt-0.5">{formatPrice(originalPrice)}원</p>
+          <p className="text-[12px] text-gray-400 dark:text-gray-500 line-through mt-1">{formatPrice(originalPrice)}원</p>
         )}
       </section>
     </>

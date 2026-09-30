@@ -50,8 +50,9 @@
  * ⚠️ 이모지(⏰📦🔒) 대신 선 아이콘 — 안드로이드·iOS 에서 모양이 달라진다〔시안 §3.4〕.
  */
 import { useEffect, useState } from 'react'
+import { ClockIcon, BoxIcon, InfoIcon } from '@/components/icons/urdeal-icons'
 import { useParams, Link } from 'react-router-dom'
-import { Clock, Package, Lock, Info } from 'lucide-react'
+import { Lock } from 'lucide-react'
 import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
 import NotFoundPage from '@/pages/NotFoundPage'
@@ -185,11 +186,11 @@ export default function MallHomePage() {
               onError={(e) => cfImageOnError(e.currentTarget, mall.logoUrl)}
             />
           ) : (
-            <div className="w-[50px] h-[50px] rounded-[15px] flex items-center justify-center text-white dark:text-[#1A1719] text-[21px] font-extrabold tracking-[-0.02em] flex-none"
+            <div className="w-[50px] h-[50px] rounded-[15px] flex items-center justify-center text-white dark:text-[#1A1719] text-[24px] font-extrabold tracking-[-0.02em] flex-none"
               style={{ backgroundColor: 'var(--mall)' }} aria-hidden>{mall.initial}</div>
           )}
           <div className="min-w-0">
-            <h1 className="text-[18.5px] font-extrabold tracking-[-0.035em] leading-tight text-[#1A1719] dark:text-[#F3EFF1] truncate">{mall.name}</h1>
+            <h1 className="text-[17px] font-extrabold tracking-[-0.035em] leading-tight text-[#1A1719] dark:text-[#F3EFF1] truncate">{mall.name}</h1>
             <p className="mt-1 text-[13px] tracking-[-0.015em] text-[#776F74] dark:text-[#9C9398] truncate">{mall.intro}</p>
           </div>
         </div>
@@ -201,14 +202,14 @@ export default function MallHomePage() {
           {banners.map((n) => {
             const inner = (
               <span className="flex items-start gap-[7px]">
-                <Info className="w-[13px] h-[13px] flex-none mt-[2px]" strokeWidth={2.2} />
+                <InfoIcon className="w-[13px] h-[13px] flex-none mt-[2px]" />
                 <span className="min-w-0">
                   <span className="font-bold">{n.title}</span>
                   {n.body && <span className="ml-1.5 font-medium opacity-80">{n.body}</span>}
                 </span>
               </span>
             )
-            const cls = 'block rounded-xl px-3.5 py-2.5 text-[12.5px] tracking-[-0.02em] bg-[#F7F5F6] dark:bg-[#1C181B] border border-[#EDE9EB] dark:border-[#292327] text-[#3F383C] dark:text-[#DAD4D7]'
+            const cls = 'block rounded-xl px-4 py-2 text-[12px] tracking-[-0.02em] bg-[#F7F5F6] dark:bg-[#1C181B] border border-[#EDE9EB] dark:border-[#292327] text-[#3F383C] dark:text-[#DAD4D7]'
             return n.link_url ? (
               <a key={n.id} href={n.link_url} className={cls} target={n.link_url.startsWith('http') ? '_blank' : undefined} rel="noreferrer">{inner}</a>
             ) : (
@@ -221,7 +222,7 @@ export default function MallHomePage() {
       {/* 신뢰 — 대표 UX 기준 ③. 몰 색 띠로 올려 "처음 보는 가게" 불안을 첫 화면에서 받는다.
           ⚠️ 문구(PAYMENT_TRUST_NOTE)는 **법무 확인 대기**라 시안이 ~어요체로 그렸어도 바꾸지 않는다. */}
       <div className="px-5 ur-content-wide mx-auto">
-        <p className="flex items-center gap-[7px] rounded-xl px-3.5 py-2.5 text-[12.5px] font-semibold tracking-[-0.02em] text-white dark:text-[#1A1719]"
+        <p className="flex items-center gap-[7px] rounded-xl px-4 py-2 text-[12px] font-semibold tracking-[-0.02em] text-white dark:text-[#1A1719]"
           style={{ backgroundColor: 'var(--mall)' }}>
           <Lock className="w-[13px] h-[13px] flex-none" strokeWidth={2.2} />
           {PAYMENT_TRUST_NOTE}
@@ -229,21 +230,21 @@ export default function MallHomePage() {
       </div>
 
       <main className="px-5 pb-4 ur-content-wide mx-auto">
-        <div className="flex items-baseline justify-between pt-6 pb-3.5">
-          <h2 className="text-[15.5px] font-extrabold tracking-[-0.03em] text-[#1A1719] dark:text-[#F3EFF1]">진행 중인 공동구매</h2>
+        <div className="flex items-baseline justify-between pt-6 pb-4">
+          <h2 className="text-[15px] font-extrabold tracking-[-0.03em] text-[#1A1719] dark:text-[#F3EFF1]">진행 중인 공동구매</h2>
           {items.length > 0 && <span className="text-[12px] font-semibold text-[#9A9298] dark:text-[#7C7479]">{items.length}</span>}
         </div>
 
         {items.length === 0 ? (
           <div className="flex flex-col items-center justify-center px-10 py-24 text-center">
             <div className="w-[62px] h-[62px] rounded-[20px] bg-[#F5F2F3] dark:bg-[#1C181B] flex items-center justify-center mb-[18px]">
-              <Package className="w-[26px] h-[26px] text-[#B7B0B4]" strokeWidth={1.8} />
+              <BoxIcon className="w-[26px] h-[26px] text-[#B7B0B4]" />
             </div>
             {/* 빈 상태는 마침표를 뺀다〔시안 §3.3〕 */}
-            <p className="text-[14.5px] font-bold tracking-[-0.03em] text-[#3F383C] dark:text-[#DAD4D7]">진행 중인 공동구매가 없어요</p>
+            <p className="text-[15px] font-bold tracking-[-0.03em] text-[#3F383C] dark:text-[#DAD4D7]">진행 중인 공동구매가 없어요</p>
           </div>
         ) : (
-          <ul className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-3.5 gap-y-[22px]">
+          <ul className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-[22px]">
             {items.map((it) => {
               const remain = remainLabel(it.deadline)
               const lowStock = typeof it.stock === 'number' && it.stock > 0 && it.stock <= 10
@@ -263,40 +264,40 @@ export default function MallHomePage() {
                       {/* 🔴 마감·잔여를 이미지 위에 — 카드에서 **제일 먼저 읽혀야 하는 정보**다(기준 ③).
                           마감이 채움 배지, 잔여가 검정 반투명 — 의뢰서가 먼저 읽히라 한 게 마감이라서다. */}
                       {remain && (
-                        <span className="absolute left-2 top-2 flex items-center gap-1 px-2 py-[5px] rounded-full bg-red-600 text-white text-[11.5px] font-bold tracking-[-0.02em] pointer-events-none">
-                          <Clock className="w-[11px] h-[11px]" strokeWidth={2.4} />
+                        <span className="absolute left-2 top-2 flex items-center gap-1 px-2 py-[5px] rounded-full bg-red-600 text-white text-[12px] font-bold tracking-[-0.02em] pointer-events-none">
+                          <ClockIcon className="w-[11px] h-[11px]" />
                           {remain}
                         </span>
                       )}
                       {lowStock && (
-                        <span className="absolute right-2 top-2 px-2 py-[5px] rounded-full bg-[rgba(20,17,19,.74)] backdrop-blur-sm text-white text-[11.5px] font-bold tracking-[-0.02em] pointer-events-none">
+                        <span className="absolute right-2 top-2 px-2 py-[5px] rounded-full bg-[rgba(20,17,19,.74)] backdrop-blur-sm text-white text-[12px] font-bold tracking-[-0.02em] pointer-events-none">
                           {it.stock}개 남음
                         </span>
                       )}
                     </div>
 
-                    <p className="mt-[11px] min-h-[38px] line-clamp-2 text-[13.5px] leading-[1.4] tracking-[-0.025em] text-[#251F22] dark:text-[#ECE7E9]">{it.name}</p>
+                    <p className="mt-[11px] min-h-[38px] line-clamp-2 text-[13px] leading-[1.4] tracking-[-0.025em] text-[#251F22] dark:text-[#ECE7E9]">{it.name}</p>
 
                     <p className="mt-[5px] flex items-baseline gap-[5px] flex-wrap">
                       {it.discount_pct > 0 && (
-                        <span className="text-[15px] font-extrabold tracking-[-0.03em] text-red-600 dark:text-red-400">{it.discount_pct}%</span>
+                        <span className="text-[15px] font-extrabold tracking-[-0.03em] text-sale">{it.discount_pct}%</span>
                       )}
                       <span className="text-[15px] font-extrabold tracking-[-0.03em] text-[#1A1719] dark:text-[#F3EFF1]">{won(it.gb_price)}</span>
                       {it.list_price > it.gb_price && (
-                        <span className="text-[11.5px] line-through text-[#A9A2A6] dark:text-[#7C7479]">{won(it.list_price)}</span>
+                        <span className="text-[12px] line-through text-[#A9A2A6] dark:text-[#7C7479]">{won(it.list_price)}</span>
                       )}
                     </p>
 
                     {/* 📦 픽업 — **언제 받는지**가 카드에서 보여야 "배송인가?" 문의가 안 쏟아진다.
                         옅은 판을 깔아 가격 줄과 분리한다(의뢰서가 가장 걱정한 문의). */}
                     {it.pickup && (it.pickup.date || it.pickup.storage) && (
-                      <p className="mt-[9px] flex items-center gap-1.5 rounded-lg bg-[#F5F2F3] dark:bg-[#211C1F] px-2 py-1.5">
-                        <Package className="w-[13px] h-[13px] flex-none text-[#5C5459] dark:text-[#A69EA3]" strokeWidth={1.9} />
+                      <p className="mt-[9px] flex items-center gap-2 rounded-lg bg-[#F5F2F3] dark:bg-[#211C1F] px-2 py-2">
+                        <BoxIcon className="w-[13px] h-[13px] flex-none text-[#5C5459] dark:text-[#A69EA3]" />
                         {it.pickup.date && (
-                          <span className="text-[11.5px] font-bold tracking-[-0.02em] text-[#3F383C] dark:text-[#DAD4D7]">{pickupDayLabel(it.pickup.date)} 픽업</span>
+                          <span className="text-[12px] font-bold tracking-[-0.02em] text-[#3F383C] dark:text-[#DAD4D7]">{pickupDayLabel(it.pickup.date)} 픽업</span>
                         )}
                         {it.pickup.storage && (
-                          <span className={`ml-auto flex-none px-[5px] py-[3px] rounded-[5px] text-[10.5px] font-bold tracking-[-0.02em] ${STORAGE_BADGE[it.pickup.storage]}`}>
+                          <span className={`ml-auto flex-none px-[5px] py-[3px] rounded-[5px] text-[12px] font-bold tracking-[-0.02em] ${STORAGE_BADGE[it.pickup.storage]}`}>
                             {STORAGE_LABEL[it.pickup.storage]}
                           </span>
                         )}
@@ -317,8 +318,8 @@ export default function MallHomePage() {
         if (kinds.length === 0) return null
         return (
           <aside className="px-5 pb-6 ur-content-wide mx-auto">
-            <div className="flex gap-2.5 rounded-xl bg-[#F7F5F6] dark:bg-[#1C181B] border border-[#EDE9EB] dark:border-[#292327] px-3.5 py-3.5">
-              <Info className="w-[15px] h-[15px] flex-none mt-px text-[#8A8288]" strokeWidth={2} />
+            <div className="flex gap-2 rounded-xl bg-[#F7F5F6] dark:bg-[#1C181B] border border-[#EDE9EB] dark:border-[#292327] px-4 py-4">
+              <InfoIcon className="w-[15px] h-[15px] flex-none mt-px text-[#8A8288]" />
               <div className="space-y-1">
                 {kinds.map((k) => (
                   <p key={k} className="text-[12px] leading-[1.6] tracking-[-0.02em] text-[#6B6469] dark:text-[#A29A9F]">{STORAGE_NOTICE[k]}</p>
@@ -334,33 +335,33 @@ export default function MallHomePage() {
         {/* 📣 몰 방문자 고지문(운영자 작성) — 있을 때만 열람 버튼. 전자 게시 = 과업① 전자동의 축의 고지 절반. */}
         {mall.privacy_md && (
           <button onClick={() => setPolicyOpen(true)}
-            className="block mx-auto pt-5 text-[11px] font-semibold tracking-[-0.01em] text-[#8A8288] dark:text-[#7C7479] underline underline-offset-2">
+            className="block mx-auto pt-5 text-[12px] font-semibold tracking-[-0.01em] text-[#8A8288] dark:text-[#7C7479] underline underline-offset-2">
             이용·개인정보 안내
           </button>
         )}
-        <span className={`inline-block ${mall.privacy_md ? 'pt-3' : 'pt-5'} text-[10.5px] font-semibold tracking-[0.06em] text-[#BCB5B9] dark:text-[#5E5559] select-none cursor-default`}>{POWERED_BY}</span>
+        <span className={`inline-block ${mall.privacy_md ? 'pt-3' : 'pt-5'} text-[12px] font-semibold tracking-[0.06em] text-[#BCB5B9] dark:text-[#5E5559] select-none cursor-default`}>{POWERED_BY}</span>
       </footer>
 
       {/* 📣 팝업 공지 — 표준 모달 z(10500, constants/z-index 스케일). "다시 안 보기"는 id 별 영구. */}
       {popup && popupOpen && (
         <div className="fixed inset-0 z-[10500] flex items-center justify-center bg-black/50 px-6" role="dialog" aria-modal="true">
           <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-[#171317] p-5 shadow-xl">
-            <p className="text-[15.5px] font-extrabold tracking-[-0.03em] text-[#1A1719] dark:text-[#F3EFF1]">{popup.title}</p>
+            <p className="text-[15px] font-extrabold tracking-[-0.03em] text-[#1A1719] dark:text-[#F3EFF1]">{popup.title}</p>
             {popup.body && <p className="mt-2 text-[13px] leading-[1.6] tracking-[-0.02em] whitespace-pre-wrap text-[#524B4F] dark:text-[#BDB5BA]">{popup.body}</p>}
             {popup.link_url && (
               <a href={popup.link_url} target={popup.link_url.startsWith('http') ? '_blank' : undefined} rel="noreferrer"
-                className="mt-3 block w-full rounded-xl py-2.5 text-center text-[13px] font-bold text-white dark:text-[#1A1719]"
+                className="mt-3 block w-full rounded-xl py-2 text-center text-[13px] font-bold text-white dark:text-[#1A1719]"
                 style={{ backgroundColor: 'var(--mall)' }}>
                 자세히 보기
               </a>
             )}
             <div className="mt-4 flex items-center gap-2">
               <button onClick={() => { try { localStorage.setItem(popupSeenKey(popup.id), '1') } catch { /* noop */ } setPopupOpen(false) }}
-                className="flex-1 rounded-xl border border-[#EDE9EB] dark:border-[#292327] py-2.5 text-[13px] font-semibold text-[#6B6469] dark:text-[#A29A9F]">
+                className="flex-1 rounded-xl border border-[#EDE9EB] dark:border-[#292327] py-2 text-[13px] font-semibold text-[#6B6469] dark:text-[#A29A9F]">
                 다시 안 보기
               </button>
               <button onClick={() => setPopupOpen(false)}
-                className="flex-1 rounded-xl bg-[#1A1719] dark:bg-[#F3EFF1] py-2.5 text-[13px] font-bold text-white dark:text-[#1A1719]">
+                className="flex-1 rounded-xl bg-[#1A1719] dark:bg-[#F3EFF1] py-2 text-[13px] font-bold text-white dark:text-[#1A1719]">
                 닫기
               </button>
             </div>
@@ -373,12 +374,12 @@ export default function MallHomePage() {
         <div className="fixed inset-0 z-[10500] flex items-center justify-center bg-black/50 px-6" role="dialog" aria-modal="true"
           onClick={() => setPolicyOpen(false)}>
           <div className="w-full max-w-md max-h-[80dvh] flex flex-col rounded-2xl bg-white dark:bg-[#171317] p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <p className="text-[15.5px] font-extrabold tracking-[-0.03em] text-[#1A1719] dark:text-[#F3EFF1]">이용·개인정보 안내</p>
+            <p className="text-[15px] font-extrabold tracking-[-0.03em] text-[#1A1719] dark:text-[#F3EFF1]">이용·개인정보 안내</p>
             <div className="mt-3 flex-1 min-h-0 overflow-y-auto">
               <p className="text-[13px] leading-[1.7] tracking-[-0.02em] whitespace-pre-wrap text-[#524B4F] dark:text-[#BDB5BA]">{mall.privacy_md}</p>
             </div>
             <button onClick={() => setPolicyOpen(false)}
-              className="mt-4 w-full rounded-xl bg-[#1A1719] dark:bg-[#F3EFF1] py-2.5 text-[13px] font-bold text-white dark:text-[#1A1719]">
+              className="mt-4 w-full rounded-xl bg-[#1A1719] dark:bg-[#F3EFF1] py-2 text-[13px] font-bold text-white dark:text-[#1A1719]">
               닫기
             </button>
           </div>

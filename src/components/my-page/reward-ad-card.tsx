@@ -114,7 +114,7 @@ export function RewardAdCard() {
             </div>
             <div>
               <p className="text-[13px] font-bold text-gray-900 dark:text-white">{t('rewardAd.title', { defaultValue: '광고 보고 딜 받기' })}</p>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400">
+              <p className="text-[12px] text-gray-500 dark:text-gray-400">
                 {isMaxed
                   ? t('rewardAd.descMaxed', { defaultValue: '내일 다시 시청 가능합니다' })
                   : t('rewardAd.descRemaining', { remaining, reward: status.rewardPerAd, defaultValue: `오늘 ${remaining}회 남음 · 1회 ${status.rewardPerAd}딜` })}
@@ -125,12 +125,12 @@ export function RewardAdCard() {
           <button
             onClick={showRewardedAd}
             disabled={isMaxed || loading}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 ${
+            className={`px-4 py-2 rounded-xl text-[12px] font-bold transition-all active:scale-95 ${
               isMaxed
                 ? 'bg-gray-200 dark:bg-white/[0.12] text-gray-500 dark:text-gray-400 cursor-not-allowed'
                 : loading
                 ? 'bg-gray-400 dark:bg-white/50 text-white dark:text-gray-900 cursor-wait'
-                : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-md'
+                : 'bg-brand text-white shadow-md'
             }`}
           >
             {loading ? t('rewardAd.watching', { defaultValue: '시청 중...' }) : isMaxed ? t('rewardAd.maxed', { defaultValue: '완료' }) : t('rewardAd.watch', { defaultValue: '시청하기' })}
@@ -144,14 +144,14 @@ export function RewardAdCard() {
             style={{ width: `${status.dailyLimit > 0 ? (status.todayCount / status.dailyLimit) * 100 : 0}%` }}
           />
         </div>
-        <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 text-right">
+        <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 text-right">
           {t('rewardAd.progress', { today: status.todayCount, limit: status.dailyLimit, defaultValue: `${status.todayCount}/${status.dailyLimit}회 시청` })}
         </p>
 
         {/* 리워드 알림 */}
         {rewarded && (
           <div className="mt-2 text-center animate-fade-in">
-            <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-100 text-green-700 text-xs font-bold rounded-full">
+            <span className="inline-flex items-center gap-1 px-3 py-2 bg-green-100 text-green-700 text-[12px] font-bold rounded-full">
               {t('rewardAd.rewardEarned', { amount: rewarded, balance: formatNumber(newBalance ?? 0), defaultValue: `+${rewarded}딜 적립 완료! (잔액: ${formatNumber(newBalance ?? 0)}딜)` })}
             </span>
           </div>

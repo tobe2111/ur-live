@@ -56,17 +56,17 @@ export default function PartnerCompare() {
         {/* 비대칭: 체험단이 크고 나머지 둘이 아래 두 칸 */}
         <div className="mt-10 lg:mt-16">
           <div className="max-w-[46rem]">
-            <p className="text-[12.5px] lg:text-[14px] font-bold text-brand-text">{lead.vs}</p>
-            <p className="mt-3 lg:mt-4 text-[22px] lg:text-[34px] font-extrabold text-ink leading-[1.3] tracking-[-0.025em]">{lead.t}</p>
-            <p className="mt-4 text-[14px] lg:text-[16.5px] leading-[1.8] text-gray-500 dark:text-gray-400">{lead.d}</p>
+            <p className="text-[12px] lg:text-[15px] font-bold text-brand-text">{lead.vs}</p>
+            <p className="mt-3 lg:mt-4 text-[24px] lg:text-[34px] font-extrabold text-ink leading-[1.3] tracking-[-0.025em]">{lead.t}</p>
+            <p className="mt-4 text-[15px] lg:text-[17px] leading-[1.8] text-gray-500 dark:text-gray-400">{lead.d}</p>
           </div>
 
           <div className="mt-10 lg:mt-14 grid gap-8 sm:grid-cols-2 lg:gap-14">
             {rest.map(({ vs, t, d }) => (
               <div key={vs}>
-                <p className="text-[12.5px] lg:text-[13.5px] font-bold text-brand-text">{vs}</p>
-                <p className="mt-2.5 text-[18px] lg:text-[22px] font-extrabold text-ink leading-[1.35] tracking-[-0.02em]">{t}</p>
-                <p className="mt-3 text-[13.5px] lg:text-[15px] leading-[1.8] text-gray-500 dark:text-gray-400">{d}</p>
+                <p className="text-[12px] lg:text-[13px] font-bold text-brand-text">{vs}</p>
+                <p className="mt-2 text-[17px] lg:text-[24px] font-extrabold text-ink leading-[1.35] tracking-[-0.02em]">{t}</p>
+                <p className="mt-3 text-[13px] lg:text-[15px] leading-[1.8] text-gray-500 dark:text-gray-400">{d}</p>
               </div>
             ))}
           </div>
@@ -83,7 +83,7 @@ export default function PartnerCompare() {
             {ROWS.map(({ k, cells, ours }) => (
               <div key={k}
                 className={`grid ${GRID} gap-x-8 items-center ${ours ? 'mt-3 rounded-2xl bg-brand-tint px-7 py-7 -mx-7' : 'px-0 py-6'}`}>
-                <p className={`text-[17px] xl:text-[19px] font-extrabold tracking-[-0.01em] ${ours ? 'text-brand-text' : 'text-ink'}`}>{k}</p>
+                <p className={`text-[17px] xl:text-[17px] font-extrabold tracking-[-0.01em] ${ours ? 'text-brand-text' : 'text-ink'}`}>{k}</p>
                 {cells.map((c, i) => (
                   <p key={i} className={`text-[15px] leading-relaxed ${ours ? 'font-bold text-ink' : 'text-gray-500 dark:text-gray-400'}`}>{c}</p>
                 ))}
@@ -92,13 +92,13 @@ export default function PartnerCompare() {
           </div>
         </div>
 
-        <div className="lg:hidden mt-10 space-y-2.5">
+        <div className="lg:hidden mt-10 space-y-2">
           {ROWS.map(({ k, cells, ours }) => (
             <div key={k} className={`rounded-2xl p-4 ${ours ? 'bg-brand-tint' : 'bg-black/[0.03] dark:bg-white/[0.04]'}`}>
-              <p className={`text-[14.5px] font-extrabold ${ours ? 'text-brand-text' : 'text-ink'}`}>{k}</p>
-              <dl className="mt-2.5 space-y-1.5">
+              <p className={`text-[15px] font-extrabold ${ours ? 'text-brand-text' : 'text-ink'}`}>{k}</p>
+              <dl className="mt-2 space-y-2">
                 {cells.map((c, i) => (
-                  <div key={i} className="flex gap-3 text-[12.5px]">
+                  <div key={i} className="flex gap-3 text-[12px]">
                     <dt className="w-[6.5rem] shrink-0 text-gray-500 dark:text-gray-400">{HEAD[i + 1]}</dt>
                     <dd className={ours ? 'font-semibold text-ink' : 'text-gray-600 dark:text-gray-300'}>{c}</dd>
                   </div>
@@ -111,7 +111,7 @@ export default function PartnerCompare() {
         <p className="mt-12 lg:mt-20 text-[17px] lg:text-[28px] leading-[1.55] tracking-[-0.02em] text-ink font-extrabold max-w-[18em]">
           체험단은 밥을 공짜로 드립니다. 여기는 손님이 돈을 내고 옵니다.
         </p>
-        <p className="mt-5 text-[12.5px] lg:text-[14px] text-gray-500 dark:text-gray-400 max-w-[44em]">
+        <p className="mt-5 text-[12px] lg:text-[15px] text-gray-500 dark:text-gray-400 max-w-[44em]">
           {F.pgNote}
         </p>
       </div>

@@ -110,7 +110,7 @@ export default function KakaoShareButton({ title, description, imageUrl, link, b
     // className이 원형 버튼이면 아이콘만, 아니면 텍스트 포함
     const isCircle = className?.includes('rounded-full')
     return (
-      <button onClick={handleShare} className={className || "flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-[#FEE500] text-[#3C1E1E] active:scale-95"} style={style} aria-label={t('common.share', { defaultValue: '공유' })}>
+      <button onClick={handleShare} className={className || "flex items-center gap-1 px-2 py-2 rounded-lg text-[12px] font-bold bg-[#FEE500] text-[#3C1E1E] active:scale-95"} style={style} aria-label={t('common.share', { defaultValue: '공유' })}>
         {isCircle ? (
           <svg style={{ width: 18, height: 18 }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
@@ -124,18 +124,18 @@ export default function KakaoShareButton({ title, description, imageUrl, link, b
     <div className="space-y-2">
       <button
         onClick={handleShare}
-        className={className || "w-full flex items-center justify-center gap-2 py-2.5 bg-[#FEE500] text-[#3C1E1E] rounded-xl text-sm font-bold active:scale-[0.97]"}
+        className={className || "w-full flex items-center justify-center gap-2 py-2 bg-[#FEE500] text-[#3C1E1E] rounded-xl text-[15px] font-bold active:scale-[0.97]"}
       >
         {kr ? '💬 카카오톡 공유하기' : '🔗 Share'}
       </button>
       {!kr && (
         <div className="flex gap-2">
           <a href={`https://wa.me/?text=${encodeURIComponent(`${title} ${fullUrl}`)}`} target="_blank" rel="noopener"
-            className="flex-1 py-2 bg-[#25D366] text-white rounded-xl text-xs font-bold text-center">WhatsApp</a>
+            className="flex-1 py-2 bg-[#25D366] text-white rounded-xl text-[12px] font-bold text-center">WhatsApp</a>
           <a href={`https://line.me/R/share?text=${encodeURIComponent(`${title} ${fullUrl}`)}`} target="_blank" rel="noopener"
-            className="flex-1 py-2 bg-[#00B900] text-white rounded-xl text-xs font-bold text-center">LINE</a>
+            className="flex-1 py-2 bg-[#00B900] text-white rounded-xl text-[12px] font-bold text-center">LINE</a>
           <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(fullUrl)}`} target="_blank" rel="noopener"
-            className="flex-1 py-2 bg-black text-white rounded-xl text-xs font-bold text-center">X</a>
+            className="flex-1 py-2 bg-black text-white rounded-xl text-[12px] font-bold text-center">X</a>
         </div>
       )}
     </div>

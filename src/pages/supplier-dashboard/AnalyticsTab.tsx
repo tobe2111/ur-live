@@ -24,9 +24,9 @@ export default function AnalyticsTab({ data, loading, period, setPeriod, t }: {
     { label: t('supplier.aTotalRevenue', { defaultValue: '총 매출(기간)' }), value: formatWon(s?.total_revenue ?? 0), cls: 'text-gray-900' },
     { label: t('supplier.aOrderCount', { defaultValue: '주문 수' }), value: formatNumber(s?.order_count ?? 0), cls: 'text-gray-900' },
     { label: t('supplier.aAvgOrder', { defaultValue: '객단가' }), value: formatWon(s?.avg_order_value ?? 0), cls: 'text-gray-900' },
-    { label: t('supplier.aSettlePending', { defaultValue: '정산 대기' }), value: formatWon(s?.settle_pending ?? 0), cls: 'text-amber-600' },
-    { label: t('supplier.aSettleAvailable', { defaultValue: '출금 가능' }), value: formatWon(s?.settle_available ?? 0), cls: 'text-blue-600' },
-    { label: t('supplier.aSettlePaid', { defaultValue: '지급 완료(누적)' }), value: formatWon(s?.settle_paid ?? 0), cls: 'text-green-600' },
+    { label: t('supplier.aSettlePending', { defaultValue: '정산 대기' }), value: formatWon(s?.settle_pending ?? 0), cls: 'text-tone-warn' },
+    { label: t('supplier.aSettleAvailable', { defaultValue: '출금 가능' }), value: formatWon(s?.settle_available ?? 0), cls: 'text-tone-info' },
+    { label: t('supplier.aSettlePaid', { defaultValue: '지급 완료(누적)' }), value: formatWon(s?.settle_paid ?? 0), cls: 'text-tone-ok' },
   ]
 
   return (
@@ -66,8 +66,8 @@ export default function AnalyticsTab({ data, loading, period, setPeriod, t }: {
               <p className="text-xl font-bold text-red-500">{formatNumber(data?.stock.out_of_stock ?? 0)}</p>
             </div>
             <div className="bg-white rounded-2xl border border-gray-200 p-4 text-center">
-              <p className="text-xs text-gray-500 mb-1 inline-flex items-center gap-1 justify-center"><AlertTriangle className="w-3 h-3 text-amber-500" />{t('supplier.aStockLow', { defaultValue: '저재고' })}</p>
-              <p className="text-xl font-bold text-amber-600">{formatNumber(data?.stock.low_stock ?? 0)}</p>
+              <p className="text-xs text-gray-500 mb-1 inline-flex items-center gap-1 justify-center"><AlertTriangle className="w-3 h-3 text-tone-warn" />{t('supplier.aStockLow', { defaultValue: '저재고' })}</p>
+              <p className="text-xl font-bold text-tone-warn">{formatNumber(data?.stock.low_stock ?? 0)}</p>
             </div>
           </div>
 

@@ -6,7 +6,8 @@
  */
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronDown, Wallet } from 'lucide-react'
+import { WonCoinIcon } from '@/components/icons/urdeal-icons'
+import { SectionTitle, FoldRow, rowIcon } from './list-grammar'
 
 const LS_KEY = 'ur_my_earnings_open_v1'
 
@@ -22,27 +23,20 @@ export default function EarningsGroup({ children }: { children: ReactNode }) {
     })
   }
   return (
-    <div className="ur-content-medium px-4 lg:px-8 pt-5">
-      <button
-        type="button"
-        onClick={toggle}
-        aria-expanded={open}
-        className="w-full flex items-center justify-between rounded-2xl px-4 py-3.5 bg-surface active:scale-[0.99] transition-transform"
-      >
-        <span className="flex items-center gap-2 min-w-0">
-          <Wallet className="w-[18px] h-[18px] text-gray-500 dark:text-gray-400" aria-hidden="true" />
-          <span className="text-left">
-            <span className="block text-[13px] font-bold text-gray-900 dark:text-white">
-              {t('my.earningsGroupTitle', { defaultValue: '내가 소개한 것' })}
-            </span>
-            <span className="block text-[10px] text-gray-500 dark:text-white/45 mt-0.5">
-              {t('my.earningsGroupSub', { defaultValue: '추천 적립 · 유어샵 수익 · 친구 초대' })}
-            </span>
-          </span>
-        </span>
-        <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-      {open && <div className="mt-1">{children}</div>}
+    /* 🔵 2026-09-29 (안 C): 접이식 **카드 버튼**(bg-surface 68px)이 **평면 펼침 줄**(48px)이 됐다.
+       흰 판이 그 자체로 "파는 쪽" 표시자가 됐으므로(문법 머리말) 손님 구역의 판은 전부 걷는다.
+       ⚠️ 접힘 자체는 그대로다 — 자식(토글·카드)은 페이지로 보낼 수 없어 *여기서* 열려야 한다.
+       🧱 가로 패딩 없음: 줄이 자기 `px-4` 를 갖는다. */
+    <div className="ur-content-medium lg:px-4">
+      <SectionTitle>수익 · 추천</SectionTitle>
+      <FoldRow
+        icon={rowIcon(WonCoinIcon)}
+        label={t('my.earningsGroupTitle', { defaultValue: '내가 소개한 것' })}
+        hint={t('my.earningsGroupSub', { defaultValue: '추천 적립 · 유어샵 수익 · 친구 초대' })}
+        open={open}
+        onToggle={toggle}
+      />
+      {open && <div>{children}</div>}
     </div>
   )
 }

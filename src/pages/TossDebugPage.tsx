@@ -124,29 +124,29 @@ export default function TossDebugPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-3xl mx-auto bg-white rounded-lg shadow p-6">
-        <h1 className="text-xl font-bold mb-4 text-gray-900">Toss 결제 진단</h1>
-        <div className="space-y-2 mb-4 text-sm text-gray-700">
+        <h1 className="text-[17px] font-bold mb-4 text-gray-900">Toss 결제 진단</h1>
+        <div className="space-y-2 mb-4 text-[15px] text-gray-700">
           <p><strong>VITE env key:</strong> <code>{mask(clientKeyEnv)}</code> (type={detectTossClientKeyType(clientKeyEnv)})</p>
           <p><strong>server response key:</strong> <code>{mask(clientKeyServer)}</code> (type={detectTossClientKeyType(clientKeyServer)})</p>
           <p><strong>두 키 일치:</strong> {clientKeyEnv === clientKeyServer ? '✅ 동일' : '⚠️ 다름'}</p>
         </div>
 
-        <div className="bg-gray-900 text-green-400 font-mono text-xs p-4 rounded mb-4 max-h-96 overflow-auto">
+        <div className="bg-gray-900 text-green-400 font-mono text-[12px] p-4 rounded mb-4 max-h-96 overflow-auto">
           {logs.map((l, i) => <div key={i}>{l}</div>)}
         </div>
 
         <div className="space-y-3">
           <div>
-            <p className="text-xs text-gray-500 mb-1">renderPaymentMethods 영역:</p>
+            <p className="text-[12px] text-gray-500 mb-1">renderPaymentMethods 영역:</p>
             <div id="toss-debug-payment" className="min-h-[120px] bg-gray-50 border border-gray-200 rounded" />
           </div>
           <div>
-            <p className="text-xs text-gray-500 mb-1">renderAgreement 영역:</p>
+            <p className="text-[12px] text-gray-500 mb-1">renderAgreement 영역:</p>
             <div id="toss-debug-agreement" className="min-h-[60px] bg-gray-50 border border-gray-200 rounded" />
           </div>
         </div>
 
-        <p className="text-xs text-gray-500 mt-4">
+        <p className="text-[12px] text-gray-500 mt-4">
           이 페이지 전체 스크린샷을 운영자/개발자에게 공유해주세요.
         </p>
       </div>

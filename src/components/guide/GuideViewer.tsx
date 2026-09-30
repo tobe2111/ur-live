@@ -53,7 +53,7 @@ function renderMarkdown(md: string): string {
     // Code fence
     if (line.startsWith('```')) {
       if (inCode) { out.push('</code></pre>'); inCode = false }
-      else { out.push('<pre class="bg-gray-900 text-gray-100 rounded-lg p-3 text-xs overflow-x-auto font-mono my-3"><code>'); inCode = true }
+      else { out.push('<pre class="bg-gray-900 text-gray-100 rounded-lg p-3 text-[12px] overflow-x-auto font-mono my-3"><code>'); inCode = true }
       continue
     }
     if (inCode) { out.push(escapeHtml(line) + '\n'); continue }
@@ -61,7 +61,7 @@ function renderMarkdown(md: string): string {
     // Table (only simple pipe tables)
     if (line.match(/^\|.*\|$/) && lines[i + 1]?.match(/^\|[\s\-:|]+\|$/)) {
       if (!inTable) {
-        out.push('<table class="my-3 border-collapse text-xs"><thead>')
+        out.push('<table class="my-3 border-collapse text-[12px]"><thead>')
         const headers = line.split('|').slice(1, -1).map(c => c.trim())
         out.push('<tr>' + headers.map(h => `<th class="border border-gray-300 px-2 py-1 bg-gray-50">${applyInline(h)}</th>`).join('') + '</tr></thead><tbody>')
         inTable = true
@@ -82,19 +82,19 @@ function renderMarkdown(md: string): string {
 
     // Blockquote
     if (line.startsWith('> ')) {
-      out.push(`<blockquote class="border-l-4 border-amber-300 bg-amber-50 pl-3 py-2 my-2 text-sm text-amber-900">${applyInline(line.slice(2))}</blockquote>`)
+      out.push(`<blockquote class="border-l-4 border-amber-300 bg-amber-50 pl-3 py-2 my-2 text-[15px] text-amber-900">${applyInline(line.slice(2))}</blockquote>`)
       continue
     }
 
     // Headings
     if (line.startsWith('### ')) {
       if (inList) { out.push('</ul>'); inList = false }
-      out.push(`<h3 class="text-sm font-bold text-gray-900 mt-4 mb-2">${applyInline(line.slice(4))}</h3>`)
+      out.push(`<h3 class="text-[15px] font-bold text-gray-900 mt-4 mb-2">${applyInline(line.slice(4))}</h3>`)
       continue
     }
     if (line.startsWith('## ')) {
       if (inList) { out.push('</ul>'); inList = false }
-      out.push(`<h2 class="text-base font-bold text-gray-900 mt-5 mb-2">${applyInline(line.slice(3))}</h2>`)
+      out.push(`<h2 class="text-[15px] font-bold text-gray-900 mt-5 mb-2">${applyInline(line.slice(3))}</h2>`)
       continue
     }
 
@@ -135,7 +135,7 @@ function applyInline(s: string): string {
   // **bold**
   r = r.replace(/\*\*([^*]+)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>')
   // `code`
-  r = r.replace(/`([^`]+)`/g, '<code class="bg-gray-100 text-gray-900 px-1 py-0.5 rounded text-[11px] font-mono">$1</code>')
+  r = r.replace(/`([^`]+)`/g, '<code class="bg-gray-100 text-gray-900 px-1 py-1 rounded text-[12px] font-mono">$1</code>')
   return r
 }
 
@@ -261,19 +261,19 @@ export default function GuideViewer({ guideType, editable = false }: Props) {
             value={q}
             onChange={e => setQ(e.target.value)}
             placeholder={t('guide.searchPlaceholder', { defaultValue: '검색 — 제목과 본문에서 찾습니다 (예: 영입, 정산, 요율)' })}
-            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white"
+            className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-[15px] text-gray-900 bg-white"
           />
         </div>
         <button
           type="button"
           onClick={() => setOpenKeys(new Set(visible.map(s => s.section_key)))}
-          className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+          className="px-3 py-2 text-[15px] font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
           모두 펼치기
         </button>
         <button
           type="button"
           onClick={() => setOpenKeys(new Set())}
-          className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+          className="px-3 py-2 text-[15px] font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
           접기
         </button>
       </div>
@@ -281,16 +281,16 @@ export default function GuideViewer({ guideType, editable = false }: Props) {
       {/* 📑 목차 — 어디에 무엇이 있는지 한눈에. 누르면 열고 그 자리로 간다. */}
       {sections.length > 3 && (
         <nav className="bg-white rounded-xl border border-gray-200 p-3">
-          <p className="text-[11px] font-bold tracking-wide text-gray-500 mb-2">
+          <p className="text-[12px] font-bold tracking-wide text-gray-500 mb-2">
             목차 {needle && `· "${q}" 검색 결과 ${visible.length}건`}
           </p>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {visible.map(s => (
               <button
                 key={s.section_key}
                 type="button"
                 onClick={() => jumpTo(s.section_key)}
-                className="px-2.5 py-1 text-xs font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-full hover:bg-gray-100">
+                className="px-2 py-1 text-[12px] font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-full hover:bg-gray-100">
                 <span className="mr-1">{s.section_icon}</span>{s.section_title}
               </button>
             ))}
@@ -299,7 +299,7 @@ export default function GuideViewer({ guideType, editable = false }: Props) {
       )}
 
       {needle && visible.length === 0 && (
-        <p className="text-sm text-gray-500 bg-white border border-gray-200 rounded-xl p-4">
+        <p className="text-[15px] text-gray-500 bg-white border border-gray-200 rounded-xl p-4">
           "{q}" 에 해당하는 섹션이 없습니다.
         </p>
       )}
@@ -307,7 +307,7 @@ export default function GuideViewer({ guideType, editable = false }: Props) {
       {editable && (
         <button
           onClick={addSection}
-          className="w-full py-2 bg-blue-50 border-2 border-dashed border-blue-200 text-blue-700 rounded-xl text-sm font-medium hover:bg-blue-100 flex items-center justify-center gap-1.5">
+          className="w-full py-2 bg-blue-50 border-2 border-dashed border-blue-200 text-blue-700 rounded-xl text-[15px] font-medium hover:bg-blue-100 flex items-center justify-center gap-2">
           <Plus className="w-4 h-4" /> 새 섹션 추가
         </button>
       )}
@@ -321,36 +321,36 @@ export default function GuideViewer({ guideType, editable = false }: Props) {
               value={editForm.section_icon || ''}
               onChange={e => setEditForm(f => ({ ...f, section_icon: e.target.value }))}
               placeholder="🔖"
-              className="w-12 px-2 py-1.5 border border-gray-300 rounded text-sm text-gray-900 text-center"
+              className="w-12 px-2 py-2 border border-gray-300 rounded text-[15px] text-gray-900 text-center"
             />
             <input
               type="text"
               value={editForm.section_title || ''}
               onChange={e => setEditForm(f => ({ ...f, section_title: e.target.value }))}
               placeholder={t('guide.sectionTitlePlaceholder', { defaultValue: '섹션 제목' })}
-              className="flex-1 px-3 py-1.5 border border-gray-300 rounded text-sm font-bold text-gray-900"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded text-[15px] font-bold text-gray-900"
             />
             <input
               type="number"
               value={editForm.section_order || 0}
               onChange={e => setEditForm(f => ({ ...f, section_order: Number(e.target.value) }))}
               placeholder={t('guide.orderPlaceholder', { defaultValue: '순서' })}
-              className="w-20 px-2 py-1.5 border border-gray-300 rounded text-sm text-gray-900"
+              className="w-20 px-2 py-2 border border-gray-300 rounded text-[15px] text-gray-900"
             />
           </div>
           <textarea
             value={editForm.content_md || ''}
             onChange={e => setEditForm(f => ({ ...f, content_md: e.target.value }))}
             rows={12}
-            className="w-full px-3 py-2 border border-gray-300 rounded text-xs font-mono text-gray-900 resize-y"
+            className="w-full px-3 py-2 border border-gray-300 rounded text-[12px] font-mono text-gray-900 resize-y"
           />
           <div className="flex gap-2">
             <button onClick={() => saveSection(editingKey)} disabled={saving}
-              className="flex-1 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg disabled:opacity-50 flex items-center justify-center gap-1.5">
+              className="flex-1 py-2 bg-brand text-white text-[15px] font-semibold rounded-lg disabled:opacity-50 flex items-center justify-center gap-2">
               <Save className="w-4 h-4" /> {saving ? '저장 중...' : '저장'}
             </button>
             <button onClick={() => { setEditingKey(null); setEditForm({}) }}
-              className="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg">
+              className="px-4 py-2 bg-gray-100 text-gray-700 text-[15px] rounded-lg">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -362,14 +362,14 @@ export default function GuideViewer({ guideType, editable = false }: Props) {
         const isExpanded = openKeys.has(s.section_key)
 
         return (
-          <section key={s.section_key} id={`guide-${s.section_key}`} className="bg-white rounded-xl border border-line overflow-hidden scroll-mt-4">
+          <section key={s.section_key} id={`guide-${s.section_key}`} className="bg-white rounded-xl overflow-hidden scroll-mt-4 shadow-lift">
             <div className="flex items-center">
               <button
                 type="button"
                 onClick={() => toggleKey(s.section_key)}
                 className="flex-1 flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50"
               >
-                <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                <h2 className="text-[15px] font-bold text-gray-900 flex items-center gap-2">
                   <span>{s.section_icon}</span>{s.section_title}
                 </h2>
                 {isExpanded ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
@@ -397,44 +397,44 @@ export default function GuideViewer({ guideType, editable = false }: Props) {
                         type="text"
                         value={editForm.section_icon || ''}
                         onChange={e => setEditForm(f => ({ ...f, section_icon: e.target.value }))}
-                        className="w-12 px-2 py-1.5 border border-gray-300 rounded text-sm text-gray-900 text-center"
+                        className="w-12 px-2 py-2 border border-gray-300 rounded text-[15px] text-gray-900 text-center"
                       />
                       <input
                         type="text"
                         value={editForm.section_title || ''}
                         onChange={e => setEditForm(f => ({ ...f, section_title: e.target.value }))}
-                        className="flex-1 px-3 py-1.5 border border-gray-300 rounded text-sm font-bold text-gray-900"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded text-[15px] font-bold text-gray-900"
                       />
                       <input
                         type="number"
                         value={editForm.section_order || 0}
                         onChange={e => setEditForm(f => ({ ...f, section_order: Number(e.target.value) }))}
-                        className="w-20 px-2 py-1.5 border border-gray-300 rounded text-sm text-gray-900"
+                        className="w-20 px-2 py-2 border border-gray-300 rounded text-[15px] text-gray-900"
                       />
                     </div>
                     <textarea
                       value={editForm.content_md || ''}
                       onChange={e => setEditForm(f => ({ ...f, content_md: e.target.value }))}
                       rows={16}
-                      className="w-full px-3 py-2 border border-gray-300 rounded text-xs font-mono text-gray-900 resize-y"
+                      className="w-full px-3 py-2 border border-gray-300 rounded text-[12px] font-mono text-gray-900 resize-y"
                     />
                     <div className="flex gap-2">
                       <button onClick={() => saveSection(s.section_key)} disabled={saving}
-                        className="flex-1 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg disabled:opacity-50 flex items-center justify-center gap-1.5">
+                        className="flex-1 py-2 bg-brand text-white text-[15px] font-semibold rounded-lg disabled:opacity-50 flex items-center justify-center gap-2">
                         <Save className="w-4 h-4" /> {saving ? '저장 중...' : '저장'}
                       </button>
                       <button onClick={() => { setEditingKey(null); setEditForm({}) }}
-                        className="px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-lg">
+                        className="px-4 py-2 bg-gray-100 text-gray-700 text-[15px] rounded-lg">
                         <X className="w-4 h-4" />
                       </button>
                     </div>
-                    <p className="text-[10px] text-gray-500">
+                    <p className="text-[12px] text-gray-500">
                       지원 문법: <code>**bold**</code>, <code>`code`</code>, <code>### 제목</code>, <code>&gt; 인용</code>, 리스트(<code>-</code> 또는 <code>1.</code>), 코드블록(```), 표
                     </p>
                   </div>
                 ) : (
                   <div
-                    className="text-sm text-gray-700 leading-relaxed"
+                    className="text-[15px] text-gray-700 leading-relaxed"
                     // eslint-disable-next-line react/no-danger
                     // 🛡️ 2026-05-01: DOMPurify sanitize — admin/seller 가 markdown 에 악성 태그
                     //   삽입할 수 있는 XSS 위험 차단. renderMarkdown 출력에 추가 layer.
@@ -446,7 +446,7 @@ export default function GuideViewer({ guideType, editable = false }: Props) {
                   />
                 )}
                 {s.updated_at && (
-                  <p className="text-[10px] text-gray-400 mt-3 pt-2 border-t border-gray-100 dark:border-[#2C2F35]">
+                  <p className="text-[12px] text-gray-400 mt-3 pt-2 border-t border-gray-100 dark:border-[#2C2F35]">
                     최종 수정: {formatKST(s.updated_at)}
                   </p>
                 )}

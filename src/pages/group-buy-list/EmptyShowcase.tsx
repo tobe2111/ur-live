@@ -30,24 +30,24 @@ export default function EmptyShowcase({ catEmpty, showcaseCards, createPath, sta
                 <div className={`max-w-md mx-auto ${showcaseCards.length === 1 ? 'flex justify-center' : 'grid grid-cols-2 gap-3'}`}>
                   {showcaseCards.map((c, i) => (
                     <div key={i} className={`bg-surface border-2 border-dashed border-line rounded-2xl p-4 text-center opacity-70 hover:opacity-100 transition-opacity ${showcaseCards.length === 1 ?'w-44' : ''}`}>
-                      <c.Icon className="w-7 h-7 mx-auto mb-1.5 text-gray-400" aria-hidden="true" />
-                      <p className="text-xs font-bold text-gray-700 dark:text-gray-300">{c.label}</p>
-                      <p className="text-[10px] text-gray-400 mt-0.5">{c.desc}</p>
-                      <span className="inline-block mt-2 px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-[9px] font-bold">{t('groupBuy.soonOpen', { defaultValue: '곧 오픈' })}</span>
+                      <c.Icon className="w-7 h-7 mx-auto mb-2 text-gray-400" aria-hidden="true" />
+                      <p className="text-[12px] font-bold text-gray-700 dark:text-gray-300">{c.label}</p>
+                      <p className="text-[12px] text-gray-400 mt-1">{c.desc}</p>
+                      <span className="inline-block mt-2 px-2 py-1 bg-amber-100 text-amber-700 rounded-full text-[12px] font-bold">{t('groupBuy.soonOpen', { defaultValue: '곧 오픈' })}</span>
                     </div>
                   ))}
                 </div>
                 <div className="mt-5 flex gap-2 justify-center flex-wrap">
                   <button
                     onClick={() => navigate(createPath)}
-                    className="flex items-center gap-1 px-5 py-2.5 bg-gray-900 text-white text-[13px] font-semibold rounded-full"
+                    className="flex items-center gap-1 px-5 py-2 bg-brand text-white text-[13px] font-semibold rounded-full"
                   >
                     <Plus className="w-3.5 h-3.5" /> {startCtaLabel}
                   </button>
                   {/* 🧭 2026-06-10: 쇼핑 잠정 숨김 동안엔 숨겨진 표면으로 보내지 않음 — 홈(교환권)으로 */}
                   <button
                     onClick={() => navigate(SHOPPING_TAB_HIDDEN ? '/' : '/browse')}
-                    className="px-5 py-2.5 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300 text-[13px] font-semibold rounded-full"
+                    className="px-5 py-2 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300 text-[13px] font-semibold rounded-full"
                   >
                     {SHOPPING_TAB_HIDDEN
                       ? t('groupBuy.ctaVouchers', { defaultValue: '교환권 보러가기' })

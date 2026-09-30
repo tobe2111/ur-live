@@ -26,12 +26,12 @@ export default function CustomModal({ isOpen, onClose, onConfirm, title, message
     <div className="fixed inset-0 flex items-center justify-center bg-black/50 p-4" style={{ zIndex: Z.MODAL_BACKDROP }} onClick={onClose} role="presentation">
       <div className="w-full max-w-sm rounded-2xl bg-surface p-6 shadow-lift" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby={title ? 'cart-modal-title' : undefined}>
         {title && <h2 id="cart-modal-title" className={`mb-2 text-center text-[17px] font-bold ${titleTone}`}>{title}</h2>}
-        <p className="mb-6 text-center text-sm text-gray-600 dark:text-gray-300">{message}</p>
+        <p className="mb-6 text-center text-[15px] text-gray-600 dark:text-gray-300">{message}</p>
         <div className="flex gap-2">
           {type === 'confirm' && (
             <button
               onClick={onClose}
-              className="flex-1 rounded-xl border border-rule-strong bg-transparent px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 transition-colors hover:bg-gray-50 dark:hover:bg-white/5"
+              className="flex-1 rounded-xl border border-rule-strong bg-transparent px-4 py-2 text-[15px] font-medium text-gray-700 dark:text-gray-200 transition-colors hover:bg-gray-50 dark:hover:bg-white/5"
             >
               취소
             </button>
@@ -41,7 +41,7 @@ export default function CustomModal({ isOpen, onClose, onConfirm, title, message
               if (onConfirm) onConfirm()
               onClose()
             }}
-            className="flex-1 rounded-xl bg-brand px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-dark"
+            className="flex-1 rounded-xl bg-brand px-4 py-2 text-[15px] font-bold text-white transition-colors hover:bg-brand-dark"
           >
             확인
           </button>

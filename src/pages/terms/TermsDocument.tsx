@@ -26,13 +26,13 @@ export default function TermsDocument({ doc, url }: { doc: TermsDoc; url: string
           <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="text-gray-900 dark:text-white">
             <ChevronLeft className="w-6 h-6" />
           </button>
-          <h1 className="text-[16px] font-bold text-gray-900 dark:text-white">{doc.title}</h1>
+          <h1 className="text-[17px] font-bold text-gray-900 dark:text-white">{doc.title}</h1>
           <div className="w-6" />
         </div>
       </div>
 
       <div className="ur-content-medium px-5 pt-6">
-        <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-1">시행일: {doc.effective} · 버전 {doc.version}</p>
+        <p className="text-[12px] text-gray-400 dark:text-gray-500 mb-1">시행일: {doc.effective} · 버전 {doc.version}</p>
         {doc.preamble?.map((p, i) => (
           <p key={i} className="text-[12px] text-gray-500 dark:text-gray-400 leading-relaxed mt-2">{p}</p>
         ))}

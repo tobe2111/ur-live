@@ -137,21 +137,21 @@ export default function OrdersSheet({ sellerId, work, onClose, onDone, onRefund 
         <button
           type="button"
           onClick={onRefund}
-          className="w-full h-12 rounded-xl bg-wash text-[14.5px] font-bold text-gray-900 dark:text-white active:opacity-70"
+          className="w-full h-12 rounded-xl bg-wash text-[15px] font-bold text-gray-900 dark:text-white active:opacity-70"
         >
           환불하기
         </button>
       }
     >
-      <div className="sticky top-0 z-10 bg-surface px-4 pt-3 pb-2.5 border-b border-rule">
-        <div className="flex gap-1.5 overflow-x-auto">
+      <div className="sticky top-0 z-10 bg-surface px-4 pt-3 pb-2 border-b border-rule">
+        <div className="flex gap-2 overflow-x-auto">
           {TABS.map((t) => (
             <button
               key={t.key}
               type="button"
               onClick={() => setTab(t.key)}
               aria-pressed={tab === t.key}
-              className={`shrink-0 h-8 px-3.5 rounded-full text-[13px] font-bold transition-colors ${
+              className={`shrink-0 h-8 px-4 rounded-full text-[13px] font-bold transition-colors ${
                 tab === t.key
                   ? 'bg-brand text-white'
                   : 'bg-wash text-gray-500 dark:text-gray-400'
@@ -164,13 +164,13 @@ export default function OrdersSheet({ sellerId, work, onClose, onDone, onRefund 
       </div>
 
       {failed && (
-        <p className="px-4 py-10 text-center text-[13.5px] text-gray-500 dark:text-gray-400">
+        <p className="px-4 py-10 text-center text-[13px] text-gray-500 dark:text-gray-400">
           지금은 불러올 수 없어요. 잠시 후 다시 열어 주세요.
         </p>
       )}
 
       {!failed && rows.length === 0 && !loading && (
-        <p className="px-4 py-10 text-center text-[13.5px] text-gray-500 dark:text-gray-400">
+        <p className="px-4 py-10 text-center text-[13px] text-gray-500 dark:text-gray-400">
           {tab ? '이 상태의 주문이 없어요.' : '아직 주문이 없어요.'}
         </p>
       )}
@@ -191,13 +191,13 @@ export default function OrdersSheet({ sellerId, work, onClose, onDone, onRefund 
                   type="button"
                   onClick={() => setOpen(expanded ? null : r.orderNumber)}
                   aria-expanded={expanded}
-                  className="w-full flex items-start gap-3 px-3.5 py-3 text-left active:opacity-70"
+                  className="w-full flex items-start gap-3 px-4 py-3 text-left active:opacity-70"
                 >
                   <span className="flex-1 min-w-0">
-                    <span className="block text-[14px] font-semibold text-gray-900 dark:text-white truncate">
+                    <span className="block text-[15px] font-semibold text-gray-900 dark:text-white truncate">
                       {r.title}{r.items.length > 1 ? ` 외 ${r.items.length - 1}` : ''}
                     </span>
-                    <span className="block text-[12px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+                    <span className="block text-[12px] text-gray-500 dark:text-gray-400 mt-1 truncate">
                       {r.buyer} · {r.at} · {STATUS_LABEL[r.status] || r.status}
                     </span>
                   </span>
@@ -205,14 +205,14 @@ export default function OrdersSheet({ sellerId, work, onClose, onDone, onRefund 
                     {formatNumber(r.amount)}원
                   </span>
                   <ChevronDown
-                    className={`w-4 h-4 shrink-0 mt-0.5 text-gray-400 transition-transform ${expanded ? 'rotate-180' : ''}`}
+                    className={`w-4 h-4 shrink-0 mt-1 text-gray-400 transition-transform ${expanded ? 'rotate-180' : ''}`}
                     aria-hidden="true"
                   />
                 </button>
 
                 {expanded && (
-                  <div className="px-3.5 pb-3.5 -mt-0.5">
-                    <dl className="rounded-lg bg-wash px-3 py-2.5 text-[12.5px] leading-[1.7]">
+                  <div className="px-4 pb-4 -mt-0.5">
+                    <dl className="rounded-lg bg-wash px-3 py-2 text-[13px] leading-[1.7]">
                       <div className="flex gap-2">
                         <dt className="w-16 shrink-0 text-gray-500 dark:text-gray-400">주문번호</dt>
                         <dd className="min-w-0 font-medium text-gray-900 dark:text-white tabular-nums break-all">{r.orderNumber}</dd>
@@ -235,7 +235,7 @@ export default function OrdersSheet({ sellerId, work, onClose, onDone, onRefund 
                         type="button"
                         disabled={work.busyOrder !== null}
                         onClick={() => confirm(r)}
-                        className="mt-2.5 w-full h-11 rounded-xl bg-brand text-white text-[14px] font-bold active:opacity-80 disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                        className="mt-3 w-full h-11 rounded-xl bg-brand text-white text-[15px] font-bold active:opacity-80 disabled:opacity-50 inline-flex items-center justify-center gap-2"
                       >
                         {work.busyOrder === r.orderNumber && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
                         주문 확인
@@ -258,7 +258,7 @@ export default function OrdersSheet({ sellerId, work, onClose, onDone, onRefund 
           <button
             type="button"
             onClick={() => load(rows.length, tab)}
-            className="mt-3 w-full h-11 rounded-xl bg-surface shadow-lift text-[13.5px] font-bold text-gray-900 dark:text-white active:opacity-70"
+            className="mt-3 w-full h-11 rounded-xl bg-surface shadow-lift text-[13px] font-bold text-gray-900 dark:text-white active:opacity-70"
           >
             더 보기
           </button>

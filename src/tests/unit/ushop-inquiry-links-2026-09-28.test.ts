@@ -74,7 +74,7 @@ describe('③ B안이다 — 판도 색도 없다', () => {
 
   it('회색 글자 한 벌이고 다크 대응이 있다', () => {
     expect(links).toMatch(/text-gray-500 dark:text-gray-400/)
-    expect(links).toMatch(/text-\[12\.5px\]/)
+    expect(links).toMatch(/text-\[12px\]/)
   })
 })
 

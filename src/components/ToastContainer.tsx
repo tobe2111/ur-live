@@ -1,4 +1,5 @@
-import { X, CheckCircle2, AlertCircle, Info } from 'lucide-react'
+import { X } from 'lucide-react'
+import { OkIcon, AlertIcon, InfoIcon } from '@/components/icons/urdeal-icons'
 import { useToast } from '@/hooks/useToast'
 import { useTranslation } from 'react-i18next'
 
@@ -15,9 +16,9 @@ export default function ToastContainer() {
   if (toasts.length === 0) return null
 
   const icons = {
-    success: <CheckCircle2 className="w-[18px] h-[18px] text-brand-text shrink-0" strokeWidth={1.6} />,
-    error: <AlertCircle className="w-[18px] h-[18px] text-red-500 shrink-0" strokeWidth={1.6} />,
-    info: <Info className="w-[18px] h-[18px] text-gray-500 dark:text-gray-400 shrink-0" strokeWidth={1.6} />,
+    success: <OkIcon className="w-[18px] h-[18px] text-brand-text shrink-0" />,
+    error: <AlertIcon className="w-[18px] h-[18px] text-red-500 shrink-0" />,
+    info: <InfoIcon className="w-[18px] h-[18px] text-gray-500 dark:text-gray-400 shrink-0" />,
   }
 
   return (
@@ -30,10 +31,10 @@ export default function ToastContainer() {
         <div
           key={t.id}
           role={t.type === 'error' ? 'alert' : 'status'}
-          className="flex items-center gap-2.5 pl-3.5 pr-1.5 py-2.5 rounded-2xl bg-surface text-gray-900 dark:text-white shadow-lift pointer-events-auto animate-slide-down max-w-full"
+          className="flex items-center gap-2 pl-4 pr-2 py-2 rounded-2xl bg-surface text-gray-900 dark:text-white shadow-lift pointer-events-auto animate-slide-down max-w-full"
         >
           {icons[t.type]}
-          <p className="flex-1 text-[13.5px] font-medium leading-snug line-clamp-2">{t.message}</p>
+          <p className="flex-1 text-[13px] font-medium leading-snug line-clamp-2">{t.message}</p>
           <button
             onClick={() => remove(t.id)}
             aria-label={tl('common.close')}

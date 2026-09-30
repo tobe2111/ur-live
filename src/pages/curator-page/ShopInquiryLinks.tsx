@@ -39,7 +39,7 @@ export default function ShopInquiryLinks() {
         <Link
           key={to}
           to={to}
-          className="inline-flex items-center gap-0.5 self-start text-[12.5px] font-semibold text-gray-500 dark:text-gray-400 active:opacity-70"
+          className="inline-flex items-center gap-1 self-start text-[12px] font-semibold text-gray-500 dark:text-gray-400 active:opacity-70"
         >
           {label}
           <ChevronRight className="w-3 h-3 text-gray-400 dark:text-gray-500" aria-hidden="true" />

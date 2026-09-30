@@ -30,8 +30,8 @@ export default function EmptyUrShop({ handle, isOwner, emptyType, curatorName, c
   if (!isOwner) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center">
-        <h2 className="text-lg font-bold mb-2 text-gray-900 dark:text-white">{t('curator.emptyTitle', { defaultValue: '아직 추천이 없어요' })}</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400">{t('curator.emptyOther', { defaultValue: `@${handle} 의 첫 추천을 기다리는 중`, handle })}</p>
+        <h2 className="text-[17px] font-bold mb-2 text-gray-900 dark:text-white">{t('curator.emptyTitle', { defaultValue: '아직 추천이 없어요' })}</h2>
+        <p className="text-[15px] text-gray-500 dark:text-gray-400">{t('curator.emptyOther', { defaultValue: `@${handle} 의 첫 추천을 기다리는 중`, handle })}</p>
       </div>
     )
   }
@@ -44,15 +44,15 @@ export default function EmptyUrShop({ handle, isOwner, emptyType, curatorName, c
   return (
     <div className="max-w-3xl mx-auto px-4 pt-4">
       {/* 온보딩 진행 카드 (시안) */}
-      <div className="mb-3 rounded-2xl border border-[#FFE0D6] dark:border-[#3a2218] bg-[#f9fafb] dark:bg-[#1A1410] px-4 py-3.5">
+      <div className="mb-3 rounded-2xl border border-[#FFE0D6] dark:border-[#3a2218] bg-[#f9fafb] dark:bg-[#1A1410] px-4 py-4">
         <div className="flex items-center justify-between">
           <span className="text-[13px] font-extrabold text-[#B4422A] dark:text-[#9ca3af]">{t('curator.stepsLeft', { defaultValue: '유어샵 완성까지 {{n}}단계', n: 3 - doneCount })}</span>
           <span className="text-[12px] font-bold text-[#B4422A] dark:text-[#9ca3af]">{doneCount}/3</span>
         </div>
-        <div className="mt-2.5 h-[7px] rounded-full bg-[#FFE0D6] dark:bg-[#3a2218] overflow-hidden">
+        <div className="mt-2 h-[7px] rounded-full bg-[#FFE0D6] dark:bg-[#3a2218] overflow-hidden">
           <div className="h-full rounded-full bg-[#6b7280] transition-all" style={{ width: `${Math.round((doneCount / 3) * 100)}%` }} />
         </div>
-        <div className="mt-2.5 flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-[#7A4232] dark:text-[#c79a87]">
+        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-[#7A4232] dark:text-[#c79a87]">
           <span className={nameDone ? '' : 'font-bold text-[#16181C] dark:text-white'}>{nameDone ? '✓' : '○'} {t('curator.stepName', { defaultValue: '이름 설정' })}</span>
           <span className={handleDone ? '' : 'font-bold text-[#16181C] dark:text-white'}>{handleDone ? '✓' : '○'} {t('curator.stepHandle', { defaultValue: '주소 설정' })}</span>
           <span className="font-bold text-[#16181C] dark:text-white">○ {sellerFirst ? t('curator.stepRegisterStore', { defaultValue: '매장 등록' }) : t('curator.stepFirstProduct', { defaultValue: '첫 상품 추가' })}</span>
@@ -65,11 +65,11 @@ export default function EmptyUrShop({ handle, isOwner, emptyType, curatorName, c
           aria-hidden="true"
         >
           {[1, 2, 3, 4].map((n) => (
-            <div key={n} className="rounded-xl overflow-hidden border border-line bg-surface">
+            <div key={n} className="rounded-xl overflow-hidden bg-surface shadow-lift">
               <div className="aspect-[3/2] relative bg-gray-200 dark:bg-[#1D1F29]">
-                <span className="absolute top-0 left-0 min-w-[1.5rem] h-6 px-1.5 bg-[#6b7280] text-white text-[13px] font-extrabold flex items-center justify-center rounded-br-[11px]">{n}</span>
+                <span className="absolute top-0 left-0 min-w-[1.5rem] h-6 px-2 bg-[#6b7280] text-white text-[13px] font-extrabold flex items-center justify-center rounded-br-[11px]">{n}</span>
               </div>
-              <div className="p-2.5">
+              <div className="p-2">
                 <div className="h-3 w-4/5 rounded bg-gray-200 dark:bg-[#1D1F29]" />
                 <div className="h-3.5 w-1/2 rounded bg-gray-200 dark:bg-[#1D1F29] mt-2" />
                 <div className="mt-2 pl-2 border-l-2 border-[#6b7280]"><div className="h-2.5 w-11/12 rounded bg-gray-100 dark:bg-[#161616]" /></div>
@@ -82,8 +82,8 @@ export default function EmptyUrShop({ handle, isOwner, emptyType, curatorName, c
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M6 4h12v16l-6-4-6 4V4Z" /></svg>
           </div>
           <h2 className="text-[17px] font-extrabold text-gray-900 dark:text-white mt-3">{sellerFirst ? t('curator.emptyOwnerSellerTitle', { defaultValue: '매장을 등록하면 시작돼요' }) : t('curator.emptyOwnerTitle', { defaultValue: '첫 상품을 추가해 보세요' })}</h2>
-          <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1.5 max-w-[270px] leading-snug">{sellerFirst ? t('curator.emptyOwnerSellerDesc', { defaultValue: '매장을 등록하면 이용권을 올릴 수 있어요. 올린 이용권이 여기 진열됩니다.' }) : t('curator.emptyOwnerDesc', { defaultValue: '마음에 든 상품·동네딜을 추가하면 이렇게 나만의 스토어가 채워져요.' })}</p>
-          <Link to={browseLink} className="mt-4 w-full max-w-xs py-3 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#11141C] text-[14px] font-bold">{browseLabel}</Link>
+          <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-2 max-w-[270px] leading-snug">{sellerFirst ? t('curator.emptyOwnerSellerDesc', { defaultValue: '매장을 등록하면 이용권을 올릴 수 있어요. 올린 이용권이 여기 진열됩니다.' }) : t('curator.emptyOwnerDesc', { defaultValue: '마음에 든 상품·동네딜을 추가하면 이렇게 나만의 스토어가 채워져요.' })}</p>
+          <Link to={browseLink} className="mt-4 w-full max-w-xs py-3 rounded-xl bg-brand text-white text-[15px] font-bold">{browseLabel}</Link>
         </div>
       </div>
     </div>

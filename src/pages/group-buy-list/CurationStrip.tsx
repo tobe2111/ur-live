@@ -1,3 +1,10 @@
+/**
+ * 🪦 status-tone-ok — **이 파일은 화면에 도달하지 않는다.**
+ *   유일 소비자 `GroupBuyListPage` 가 미라우팅이다 — `/group-buy` 는 `<Navigate to="/">`
+ *   (App.tsx:723, 2026-07-10 정리). 큐레이션 스트립도 함께 죽었다.
+ *   색을 고쳐도 아무도 못 보므로 손대지 않는다. 되살릴 때는 이 주석을 지우고
+ *   `tone-*` 로 옮길 것(지금 색은 MONO 중화로 전부 같은 회색이다).
+ */
 // 🧱 2026-06-29 TD: GroupBuyListPage god 파일 분해 — 큐레이션 스트립(verbatim 추출). 동작/스타일 불변.
 import { useTranslation } from 'react-i18next'
 import { cfImage, cfSrcSet, cfImageOnError } from '@/utils/cf-image'
@@ -28,7 +35,7 @@ export default function CurationStrip({
     <section className="mb-6">
       <div className="flex items-baseline justify-between mb-2 px-1">
         <h3 className="text-[15px] font-extrabold text-gray-900 dark:text-white tracking-tight">{title}</h3>
-        <span className="text-[10px] text-gray-400">{subtitle}</span>
+        <span className="text-[12px] text-gray-400">{subtitle}</span>
       </div>
       <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 lg:-mx-8 px-4 lg:px-8 scrollbar-hide snap-x snap-mandatory">
         {items.map((p) => {
@@ -56,15 +63,15 @@ export default function CurationStrip({
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-[#1D1F29] dark:to-[#11141C]" />
                 )}
-                <div className={`absolute top-2 left-2 px-2 py-0.5 rounded-full ${a.bg} ${a.text} text-[9px] font-extrabold`}>
+                <div className={`absolute top-2 left-2 px-2 py-1 rounded-full ${a.bg} ${a.text} text-[12px] font-extrabold`}>
                   {badge}
                 </div>
               </div>
-              <div className="p-2.5 space-y-1">
+              <div className="p-2 space-y-1">
                 <p className="text-[12px] font-bold text-gray-900 dark:text-white truncate">{p.name}</p>
-                {p.restaurant_name && <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">{p.restaurant_name}</p>}
+                {p.restaurant_name && <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">{p.restaurant_name}</p>}
                 {/* 즉시판매 단일가 — 진행률 바 제거. 인원은 소셜 증거로만 노출(0명이면 가격만). */}
-                <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                <p className="text-[12px] text-gray-500 dark:text-gray-400">
                   {current > 0 && (
                     <span className={`${a.text} font-bold`}>
                       {t('groupBuy.curBuying', { defaultValue: '👥 {{count}}명 함께', count: current })} ·{' '}

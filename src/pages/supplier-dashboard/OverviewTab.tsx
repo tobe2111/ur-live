@@ -6,11 +6,18 @@ import { supplierApi } from '@/lib/supplier-api'
 import WholesaleSignupMetaEditor from '@/components/wholesale/WholesaleSignupMetaEditor'
 import type { Me, Tab } from './types'
 
-// 🏭 2026-06-30 (할 일 확장): tone → Tailwind 클래스 매핑(리터럴 — JIT 안전). danger=긴급/info=안내/success=좋은소식.
+/**
+ * 🏭 2026-06-30 (할 일 확장): tone → Tailwind 클래스 매핑(리터럴 — JIT 안전). danger=긴급/info=안내/success=좋은소식.
+ *
+ * 🚦 2026-09-29: 세 tone 이 **같은 회색**이었다. amber·blue·emerald 는 `tailwind.config.js` 의
+ *   MONO 중화를 지나 전부 잉크로 렌더된다(실측: 50 단계 셋 다 `#F8F7FC`, 600 단계 셋 다 `#4F545A`(2026-09-30 온도 정정 전 `#55534F`)).
+ *   즉 '긴급' 과 '좋은 소식' 이 픽셀 단위로 같았다 — tone 이라는 **이름만 남고 색이 없었다.**
+ *   중화를 통과하는 `--tone-*` 로 옮긴다(이름이 이미 그것을 가리키고 있었다).
+ */
 const TODO_TONE: Record<'danger' | 'info' | 'success', { wrap: string; icon: string; text: string; chev: string }> = {
-  danger: { wrap: 'border-amber-200 bg-amber-50 hover:bg-amber-100', icon: 'text-amber-600', text: 'text-amber-900', chev: 'text-amber-500' },
-  info: { wrap: 'border-blue-200 bg-blue-50 hover:bg-blue-100', icon: 'text-blue-600', text: 'text-blue-900', chev: 'text-blue-500' },
-  success: { wrap: 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100', icon: 'text-emerald-600', text: 'text-emerald-900', chev: 'text-emerald-500' },
+  danger: { wrap: 'bg-tone-warn-bg hover:brightness-95', icon: 'text-tone-warn', text: 'text-tone-warn', chev: 'text-tone-warn' },
+  info: { wrap: 'bg-tone-info-bg hover:brightness-95', icon: 'text-tone-info', text: 'text-tone-info', chev: 'text-tone-info' },
+  success: { wrap: 'bg-tone-ok-bg hover:brightness-95', icon: 'text-tone-ok', text: 'text-tone-ok', chev: 'text-tone-ok' },
 }
 
 export default function OverviewTab({ me, meError, onRetry, t, onAdd, onGoTab, pendingShipCount }: { me: Me | null; meError: boolean; onRetry: () => void; t: (k: string, o?: Record<string, unknown>) => string; onAdd: () => void; onGoTab: (tab: Tab) => void; pendingShipCount: number }) {
@@ -51,9 +58,9 @@ export default function OverviewTab({ me, meError, onRetry, t, onAdd, onGoTab, p
     todos.push({ key: 'withdraw', label: t('supplier.todoWithdraw', { defaultValue: '출금 가능 {{amt}} · 출금 신청하기', amt: formatWon(spendable) }).replace('{{amt}}', formatWon(spendable)), count: formatWon(spendable), Icon: Banknote, on: () => onGoTab('settlements'), tone: 'success' })
   }
   const cards = [
-    { label: t('supplier.balPending', { defaultValue: '정산 대기' }), value: b.pending_amount, cls: 'text-amber-600' },
-    { label: t('supplier.balAvailable', { defaultValue: '출금 가능' }), value: spendable, cls: 'text-blue-600' },
-    { label: t('supplier.balPaid', { defaultValue: '지급 완료(누적)' }), value: b.paid_amount, cls: 'text-green-600' },
+    { label: t('supplier.balPending', { defaultValue: '정산 대기' }), value: b.pending_amount, cls: 'text-tone-warn' },
+    { label: t('supplier.balAvailable', { defaultValue: '출금 가능' }), value: spendable, cls: 'text-tone-info' },
+    { label: t('supplier.balPaid', { defaultValue: '지급 완료(누적)' }), value: b.paid_amount, cls: 'text-tone-ok' },
   ]
   const actions: { label: string; desc: string; Icon: typeof Package; on: () => void; primary?: boolean; disabled?: boolean }[] = [
     { label: t('supplier.qaAddProduct', { defaultValue: '상품 등록' }), desc: t('supplier.qaAddProductDesc', { defaultValue: '도매몰에 올릴 공급상품' }), Icon: Plus, on: onAdd, primary: true, disabled: !approved },
@@ -67,17 +74,17 @@ export default function OverviewTab({ me, meError, onRetry, t, onAdd, onGoTab, p
     <div className="space-y-6">
       {/* 승인 상태 */}
       {!approved ? (
-        <div className="px-4 py-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
-          <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+        <div className="px-4 py-3.5 bg-tone-warn-bg rounded-xl flex items-start gap-3">
+          <Clock className="w-5 h-5 text-tone-warn shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-bold text-amber-900">{t('supplier.pendingTitle', { defaultValue: '승인 대기 중' })}</p>
-            <p className="text-xs text-amber-700 mt-0.5">{t('supplier.pendingDesc', { defaultValue: '관리자 승인 후 상품 등록·정산이 활성화됩니다. 보통 1영업일 이내 처리돼요.' })}</p>
+            <p className="text-sm font-bold text-tone-warn">{t('supplier.pendingTitle', { defaultValue: '승인 대기 중' })}</p>
+            <p className="text-xs text-tone-warn mt-0.5">{t('supplier.pendingDesc', { defaultValue: '관리자 승인 후 상품 등록·정산이 활성화됩니다. 보통 1영업일 이내 처리돼요.' })}</p>
           </div>
         </div>
       ) : (
-        <div className="px-4 py-3.5 bg-green-50 border border-green-200 rounded-xl flex items-center gap-3">
-          <ShieldCheck className="w-5 h-5 text-green-600 shrink-0" />
-          <p className="text-sm font-semibold text-green-800">{t('supplier.approvedDesc', { defaultValue: '승인 완료 — 등록한 상품은 검수 후 전국 판매사에게 노출됩니다.' })}</p>
+        <div className="px-4 py-3.5 bg-tone-ok-bg rounded-xl flex items-center gap-3">
+          <ShieldCheck className="w-5 h-5 text-tone-ok shrink-0" />
+          <p className="text-sm font-semibold text-tone-ok">{t('supplier.approvedDesc', { defaultValue: '승인 완료 — 등록한 상품은 검수 후 전국 판매사에게 노출됩니다.' })}</p>
         </div>
       )}
 
@@ -116,7 +123,7 @@ export default function OverviewTab({ me, meError, onRetry, t, onAdd, onGoTab, p
             <div className="flex items-center gap-1.5 flex-wrap">
               {steps.map((s, i) => (
                 <div key={s.label} className="flex items-center gap-1.5">
-                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11.5px] font-bold ${s.done ? 'bg-green-50 text-green-700' : s === next ? 'bg-[#FFF0F2] text-[#FC5424]' : 'bg-gray-50 text-gray-400'}`}>
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11.5px] font-bold ${s.done ? 'bg-tone-ok-bg text-tone-ok' : s === next ? 'bg-[#FFF0F2] text-[#FC5424]' : 'bg-gray-50 text-gray-400'}`}>
                     {s.done ? <CheckCircle className="w-3 h-3" /> : null}{s.label}
                   </span>
                   {i < steps.length - 1 && <span className="text-gray-300 text-[10px]">→</span>}
@@ -134,7 +141,7 @@ export default function OverviewTab({ me, meError, onRetry, t, onAdd, onGoTab, p
           <p className="text-sm font-semibold text-gray-900 mb-3">{t('supplier.todoTitle', { defaultValue: '할 일' })}</p>
           {todos.length === 0 ? (
             <div className="bg-white rounded-2xl border border-gray-200 px-4 py-4 flex items-center gap-2 text-sm text-gray-500">
-              <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
+              <CheckCircle className="w-4 h-4 text-tone-ok shrink-0" />
               {t('supplier.todoClear', { defaultValue: '✓ 처리할 일이 없어요' })}
             </div>
           ) : (
@@ -192,8 +199,8 @@ export default function OverviewTab({ me, meError, onRetry, t, onAdd, onGoTab, p
         <div className="grid grid-cols-4 gap-3 text-center">
           {[
             { label: t('supplier.cntTotal', { defaultValue: '전체' }), v: c.total, cls: 'text-gray-900' },
-            { label: t('supplier.cntPending', { defaultValue: '대기' }), v: c.pending, cls: 'text-amber-600' },
-            { label: t('supplier.cntApproved', { defaultValue: '승인' }), v: c.approved, cls: 'text-green-600' },
+            { label: t('supplier.cntPending', { defaultValue: '대기' }), v: c.pending, cls: 'text-tone-warn' },
+            { label: t('supplier.cntApproved', { defaultValue: '승인' }), v: c.approved, cls: 'text-tone-ok' },
             { label: t('supplier.cntRejected', { defaultValue: '거부' }), v: c.rejected, cls: 'text-red-500' },
           ].map(x => (
             <div key={x.label}>

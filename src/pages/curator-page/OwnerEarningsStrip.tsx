@@ -35,15 +35,15 @@ export default function OwnerEarningsStrip() {
   return (
     <Link to="/creator" className="block max-w-3xl mx-auto rounded-xl bg-surface shadow-lift p-4 active:opacity-90">
       <div className="flex items-center">
-        <span className="text-[11.5px] font-semibold text-gray-500 dark:text-gray-400">
+        <span className="text-[12px] font-semibold text-gray-500 dark:text-gray-400">
           {t('curator.earn30dConfirmed', { defaultValue: '최근 30일 적립' })}
         </span>
-        <span className="ml-auto text-[11.5px] font-semibold text-brand-text">
+        <span className="ml-auto text-[12px] font-semibold text-brand-text">
           {t('curator.consoleLink', { defaultValue: '콘솔' })} ›
         </span>
       </div>
-      <div className="mt-1 text-[27px] font-bold tracking-[-0.035em] tabular-nums text-gray-900 dark:text-white">{formatWon(confirmed)}</div>
-      <div className="mt-1 text-[11.5px] text-gray-400 dark:text-gray-500 tabular-nums">
+      <div className="mt-1 text-[28px] font-bold tracking-[-0.035em] tabular-nums text-gray-900 dark:text-white">{formatWon(confirmed)}</div>
+      <div className="mt-1 text-[12px] text-gray-400 dark:text-gray-500 tabular-nums">
         {pending > 0 && <>{t('curator.pendingEarn', { defaultValue: '예정' })} {formatWon(pending)} · </>}
         {t('curator.statClicks', { defaultValue: '클릭' })} {formatNumber(clicks)} · {t('curator.statConv', { defaultValue: '전환' })} {conv}%
       </div>

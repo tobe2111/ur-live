@@ -54,7 +54,7 @@ export const CartSummary = React.memo(function CartSummary({
   return (
     <div>
       {/* Subtotal / shipping / discount rows */}
-      <div className="space-y-2.5">
+      <div className="space-y-2">
         {/* 카드로 낼 상품 — 교환권만 담겼으면 이 줄은 0 이라 뜨지 않는다. */}
         {!dealOnly && (
           <div className="flex justify-between text-[13px]">
@@ -99,15 +99,15 @@ export const CartSummary = React.memo(function CartSummary({
       {!mixed && (
         <>
           <div className="flex justify-between items-baseline">
-            <span className="text-[14px] font-bold text-gray-900 dark:text-white">{t('cart.paymentAmount', { defaultValue: '결제예정금액' })}</span>
-            <span className="text-[18px] font-bold text-gray-900 dark:text-white tabular-nums">
+            <span className="text-[15px] font-bold text-gray-900 dark:text-white">{t('cart.paymentAmount', { defaultValue: '결제예정금액' })}</span>
+            <span className="text-[17px] font-bold text-gray-900 dark:text-white tabular-nums">
               {dealOnly ? `${fmt(dealAmount)}딜` : `${fmt(total)}${won}`}
             </span>
           </div>
           {/* 🛡️ 2026-04-22 배치 113: VAT 포함 표시 */}
           {!dealOnly && total > 0 && (
-            <div className="flex justify-end mt-0.5">
-              <span className="text-[10.5px] text-gray-400 dark:text-gray-500">{t('cart.vatIncluded', { defaultValue: '부가세 포함 (VAT 10%)' })}</span>
+            <div className="flex justify-end mt-1">
+              <span className="text-[12px] text-gray-400 dark:text-gray-500">{t('cart.vatIncluded', { defaultValue: '부가세 포함 (VAT 10%)' })}</span>
             </div>
           )}
         </>

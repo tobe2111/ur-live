@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
+import { PeopleIcon, ClockIcon, BagIcon, GiftBoxIcon, TicketStubIcon, StoreIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ChevronLeft, Users, Clock, ShoppingBag, Gift, Ticket, Store } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react'
 import SEO from '@/components/SEO';
 import { toast } from '@/hooks/useToast';
 import { useMyGroupBuys, type ReferralGroup, type VoucherEntry, type CommunityGroupBuy, type ProductInfo } from '@/hooks/queries/useMyGroupBuys';
@@ -201,7 +202,7 @@ export default function MyGroupBuysPage() {
           <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="flex items-center text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white">
             <ChevronLeft className="w-6 h-6" />
           </button>
-          <h1 className="text-base font-semibold text-gray-900 dark:text-white">{t('myGroupBuys.title')}</h1>
+          <h1 className="text-[15px] font-semibold text-gray-900 dark:text-white">{t('myGroupBuys.title')}</h1>
           <div className="w-6" />
         </div>
       </header>
@@ -212,7 +213,7 @@ export default function MyGroupBuysPage() {
           <button
             key={item.key}
             onClick={() => setTab(item.key)}
-            className={`flex-1 min-w-[80px] py-3 text-sm font-medium transition-colors whitespace-nowrap ${
+            className={`flex-1 min-w-[80px] py-3 text-[15px] font-medium transition-colors whitespace-nowrap ${
               tab === item.key
                 ? 'text-gray-900 dark:text-white border-b-2 border-gray-900 dark:border-white'
                 : 'text-gray-500 dark:text-gray-400 border-b-2 border-transparent'
@@ -220,7 +221,7 @@ export default function MyGroupBuysPage() {
           >
             {item.label}
             {typeof item.count === 'number' && item.count > 0 && (
-              <span className="ml-1 text-xs text-gray-400">({item.count})</span>
+              <span className="ml-1 text-[12px] text-gray-400">({item.count})</span>
             )}
           </button>
         ))}
@@ -233,9 +234,9 @@ export default function MyGroupBuysPage() {
         ) : isError ? (
           /* 🛡️ 2026-07-02: 로드 전멸을 "참여 내역 없음"으로 위장하지 않음 — 에러 + 재시도. */
           <div className="text-center py-20">
-            <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">{t('myGroupBuys.loadFailed', { defaultValue: '참여 내역을 불러오지 못했어요' })}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">{t('common.checkNetworkRetry', { defaultValue: '네트워크 상태를 확인한 뒤 다시 시도해주세요' })}</p>
-            <button onClick={() => refetch()} className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full text-sm font-bold">
+            <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">{t('myGroupBuys.loadFailed', { defaultValue: '참여 내역을 불러오지 못했어요' })}</p>
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">{t('common.checkNetworkRetry', { defaultValue: '네트워크 상태를 확인한 뒤 다시 시도해주세요' })}</p>
+            <button onClick={() => refetch()} className="px-5 py-2 bg-brand text-white rounded-full text-[15px] font-bold">
               {t('common.retry', { defaultValue: '다시 시도' })}
             </button>
           </div>
@@ -282,16 +283,16 @@ function UnifiedCard({ item }: { item: UnifiedItem }) {
 
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2 mb-1">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+            <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white truncate">
               {item.title}
             </h3>
             <UnifiedStatusBadge item={item} />
           </div>
 
-          <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
             <SourceBadge source={item.source} />
             {item.subBadge && (
-              <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${
+              <span className={`inline-flex items-center px-2 py-1 rounded text-[12px] font-medium ${
                 item.subBadgeAccent === 'pink'
                   ? 'bg-brand-tint text-brand-text'
                   : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300'
@@ -308,11 +309,11 @@ function UnifiedCard({ item }: { item: UnifiedItem }) {
             </div>
           )}
 
-          <div className="flex items-center justify-between text-xs">
+          <div className="flex items-center justify-between text-[12px]">
             <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
               {item.target && item.target > 0 && (
                 <span className="inline-flex items-center gap-1">
-                  <Users className="w-3.5 h-3.5" />
+                  <PeopleIcon className="w-3.5 h-3.5" />
                   {item.current || 0}/{item.target}명
                 </span>
               )}
@@ -322,7 +323,7 @@ function UnifiedCard({ item }: { item: UnifiedItem }) {
             </div>
             {item.isActive && item.expires_at && (
               <span className="inline-flex items-center gap-1 text-gray-500 dark:text-gray-400">
-                <Clock className="w-3.5 h-3.5" />
+                <ClockIcon className="w-3.5 h-3.5" />
                 {formatTimeLeft(item.expires_at, t)}
               </span>
             )}
@@ -338,7 +339,7 @@ function UnifiedCard({ item }: { item: UnifiedItem }) {
           {/* CTA for achieved */}
           {item.ctaLabel && (
             <div className="mt-2">
-              <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-gray-900 text-white text-xs font-semibold">
+              <span className="inline-flex items-center px-2 py-1 rounded-md bg-gray-900 text-white text-[12px] font-semibold">
                 {item.ctaLabel}
               </span>
             </div>
@@ -350,30 +351,28 @@ function UnifiedCard({ item }: { item: UnifiedItem }) {
 }
 
 function SourceIcon({ source }: { source: Source }) {
-  if (source === 'voucher') return <Ticket className="w-6 h-6 text-gray-400 dark:text-gray-500" />;
-  if (source === 'community') return <Store className="w-6 h-6 text-gray-400 dark:text-gray-500" />;
-  return <ShoppingBag className="w-6 h-6 text-gray-400 dark:text-gray-500" />;
+  if (source === 'voucher') return <TicketStubIcon className="w-6 h-6 text-gray-400 dark:text-gray-500" />;
+  if (source === 'community') return <StoreIcon className="w-6 h-6 text-gray-400 dark:text-gray-500" />;
+  return <BagIcon className="w-6 h-6 text-gray-400 dark:text-gray-500" />;
 }
 
 function SourceBadge({ source }: { source: Source }) {
   const { t } = useTranslation();
+  /**
+   * 🚦 2026-09-29: 종전엔 amber·blue·purple 셋이었는데 **셋 다 같은 회색으로 렌더**됐다
+   *   (`tailwind.config.js` MONO 중화 — 50 단계 셋 다 `#F8F7FC`). 즉 코드만 색이 셋이고
+   *   화면은 하나였다. 여기는 **상태가 아니라 종류**라 `tone-*`(완료·대기·실패) 도 틀리다 —
+   *   글자가 이미 종류를 말하므로 **중립 하나**로 통일해 코드와 화면을 일치시킨다.
+   */
+  const NEUTRAL = 'bg-gray-100 text-gray-600 dark:bg-white/[0.08] dark:text-gray-300';
   const map: Record<Source, { label: string; cls: string }> = {
-    voucher: {
-      label: t('myGroupBuys.tabVoucher', { defaultValue: '이용권' }),
-      cls: 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300',
-    },
-    community: {
-      label: t('myGroupBuys.tabCommunity', { defaultValue: '공구 제안' }),
-      cls: 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300',
-    },
-    referral: {
-      label: t('myGroupBuys.tabReferral', { defaultValue: '친구초대' }),
-      cls: 'bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-300',
-    },
+    voucher: { label: t('myGroupBuys.tabVoucher', { defaultValue: '이용권' }), cls: NEUTRAL },
+    community: { label: t('myGroupBuys.tabCommunity', { defaultValue: '공구 제안' }), cls: NEUTRAL },
+    referral: { label: t('myGroupBuys.tabReferral', { defaultValue: '친구초대' }), cls: NEUTRAL },
   };
   const info = map[source];
   return (
-    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${info.cls}`}>
+    <span className={`inline-flex items-center px-2 py-1 rounded text-[12px] font-medium ${info.cls}`}>
       {info.label}
     </span>
   );
@@ -382,16 +381,16 @@ function SourceBadge({ source }: { source: Source }) {
 function UnifiedStatusBadge({ item }: { item: UnifiedItem }) {
   const { t } = useTranslation();
   if (item.isActive) {
-    return <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-900 text-white">{t('myGroupBuys.statusOngoing')}</span>;
+    return <span className="shrink-0 text-[12px] font-semibold px-2 py-1 rounded-full bg-gray-900 text-white">{t('myGroupBuys.statusOngoing')}</span>;
   }
   if (item.isAchieved) {
-    return <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">{t('myGroupBuys.statusAchieved')}</span>;
+    return <span className="shrink-0 text-[12px] font-semibold px-2 py-1 rounded-full bg-tone-ok-bg text-tone-ok">{t('myGroupBuys.statusAchieved')}</span>;
   }
   // expired/refunded/cancelled
   if (item.source === 'voucher' && (item.raw as VoucherEntry).status === 'refunded') {
-    return <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400">{t('myGroupBuys.statusRefunded', { defaultValue: '환불' })}</span>;
+    return <span className="shrink-0 text-[12px] font-semibold px-2 py-1 rounded-full bg-gray-100 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400">{t('myGroupBuys.statusRefunded', { defaultValue: '환불' })}</span>;
   }
-  return <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#1D1F29] text-gray-400 dark:text-gray-500">{t('myGroupBuys.statusExpired')}</span>;
+  return <span className="shrink-0 text-[12px] font-semibold px-2 py-1 rounded-full bg-gray-100 dark:bg-[#1D1F29] text-gray-400 dark:text-gray-500">{t('myGroupBuys.statusExpired')}</span>;
 }
 
 function EmptyState({ onBrowse }: { onBrowse: () => void }) {
@@ -399,13 +398,13 @@ function EmptyState({ onBrowse }: { onBrowse: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
       <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-[#1D1F29] flex items-center justify-center mb-4">
-        <Gift className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+        <GiftBoxIcon className="w-8 h-8 text-gray-400 dark:text-gray-500" />
       </div>
-      <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">{t('myGroupBuys.emptyTitle')}</p>
-      <p className="text-xs text-gray-500 dark:text-gray-400 mb-6">{t('myGroupBuys.emptyHint')}</p>
+      <p className="text-[15px] font-medium text-gray-900 dark:text-white mb-1">{t('myGroupBuys.emptyTitle')}</p>
+      <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-6">{t('myGroupBuys.emptyHint')}</p>
       <button
         onClick={onBrowse}
-        className="px-5 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-gray-800 transition-colors"
+        className="px-5 py-2 bg-brand text-white text-[15px] font-semibold rounded-lg hover:bg-brand-dark transition-colors"
       >
         {t('myGroupBuys.browseProducts', { defaultValue: '상품 둘러보기' })}
       </button>

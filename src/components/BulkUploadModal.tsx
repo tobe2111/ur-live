@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
-import { X, Upload, FileText, Loader2, CheckCircle, XCircle } from 'lucide-react'
+import { OkIcon, BadIcon } from '@/components/icons/urdeal-icons'
+import { X, Upload, FileText, Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 
@@ -215,11 +216,11 @@ export default function BulkUploadModal({ open, onClose, tokenKey, onSuccess }: 
       <div className="relative bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90dvh] overflow-y-auto">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-100 dark:border-[#2C2F35] flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+          <h2 className="text-[15px] font-semibold text-gray-900 flex items-center gap-2">
             <Upload className="w-4 h-4" />
             {t('bulkUpload.title', { defaultValue: '상품 대량등록' })}
           </h2>
-          <button onClick={handleClose} aria-label={t('bulkUpload.closeAria', { defaultValue: '모달 닫기' })} className="p-1.5 rounded-lg hover:bg-gray-100">
+          <button onClick={handleClose} aria-label={t('bulkUpload.closeAria', { defaultValue: '모달 닫기' })} className="p-2 rounded-lg hover:bg-gray-100">
             <X className="w-4 h-4 text-gray-400" />
           </button>
         </div>
@@ -227,17 +228,17 @@ export default function BulkUploadModal({ open, onClose, tokenKey, onSuccess }: 
         <div className="p-6 space-y-5">
           {/* File Input */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-2">{t('bulkUpload.csvLabel', { defaultValue: 'CSV 파일 선택' })}</label>
+            <label className="block text-[12px] font-medium text-gray-700 mb-2">{t('bulkUpload.csvLabel', { defaultValue: 'CSV 파일 선택' })}</label>
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-1.5 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 text-[15px] font-medium rounded-lg hover:bg-gray-200 transition-colors"
               >
                 <FileText className="w-4 h-4" />
                 {t('bulkUpload.selectFile', { defaultValue: '파일 선택' })}
               </button>
-              <span className="text-sm text-gray-500">
+              <span className="text-[15px] text-gray-500">
                 {fileName || t('bulkUpload.noFile', { defaultValue: '선택된 파일 없음' })}
               </span>
               <input
@@ -249,7 +250,7 @@ export default function BulkUploadModal({ open, onClose, tokenKey, onSuccess }: 
               />
             </div>
             {parseError && (
-              <p className="mt-2 text-xs text-red-600">{parseError}</p>
+              <p className="mt-2 text-[12px] text-red-600">{parseError}</p>
             )}
           </div>
 
@@ -257,7 +258,7 @@ export default function BulkUploadModal({ open, onClose, tokenKey, onSuccess }: 
           {parsedProducts.length > 0 && (
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-medium text-gray-700">
+                <label className="text-[12px] font-medium text-gray-700">
                   {t('bulkUpload.preview', { total: parsedProducts.length, defaultValue: `미리보기 (총 ${parsedProducts.length}개 상품 중 최대 5개)` })}
                 </label>
               </div>
@@ -266,7 +267,7 @@ export default function BulkUploadModal({ open, onClose, tokenKey, onSuccess }: 
                   <thead>
                     <tr className="bg-gray-50">
                       {headers.map((h, i) => (
-                        <th key={i} className="px-3 py-2 text-left text-xs font-medium text-gray-500 whitespace-nowrap">
+                        <th key={i} className="px-3 py-2 text-left text-[12px] font-medium text-gray-500 whitespace-nowrap">
                           {h}
                         </th>
                       ))}
@@ -276,7 +277,7 @@ export default function BulkUploadModal({ open, onClose, tokenKey, onSuccess }: 
                     {previewRows.map((row, ri) => (
                       <tr key={ri} className="hover:bg-gray-50">
                         {headers.map((_, ci) => (
-                          <td key={ci} className="px-3 py-2 text-xs text-gray-700 whitespace-nowrap max-w-[200px] truncate">
+                          <td key={ci} className="px-3 py-2 text-[12px] text-gray-700 whitespace-nowrap max-w-[200px] truncate">
                             {row[ci] || ''}
                           </td>
                         ))}
@@ -286,7 +287,7 @@ export default function BulkUploadModal({ open, onClose, tokenKey, onSuccess }: 
                 </table>
               </div>
               {parsedProducts.length > 5 && (
-                <p className="mt-1 text-xs text-gray-400">{t('bulkUpload.moreRows', { count: parsedProducts.length - 5, defaultValue: `... 외 ${parsedProducts.length - 5}개 행` })}</p>
+                <p className="mt-1 text-[12px] text-gray-400">{t('bulkUpload.moreRows', { count: parsedProducts.length - 5, defaultValue: `... 외 ${parsedProducts.length - 5}개 행` })}</p>
               )}
             </div>
           )}
@@ -296,25 +297,25 @@ export default function BulkUploadModal({ open, onClose, tokenKey, onSuccess }: 
             <div className={`p-4 rounded-lg border ${result.fail_count > 0 && result.success_count === 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
               <div className="flex items-center gap-4 mb-2">
                 {result.success_count > 0 && (
-                  <div className="flex items-center gap-1.5 text-green-700">
-                    <CheckCircle className="w-4 h-4" />
-                    <span className="text-sm font-medium">{t('bulkUpload.successCount', { count: result.success_count, defaultValue: `성공: ${result.success_count}개` })}</span>
+                  <div className="flex items-center gap-2 text-green-700">
+                    <OkIcon className="w-4 h-4" />
+                    <span className="text-[15px] font-medium">{t('bulkUpload.successCount', { count: result.success_count, defaultValue: `성공: ${result.success_count}개` })}</span>
                   </div>
                 )}
                 {result.fail_count > 0 && (
-                  <div className="flex items-center gap-1.5 text-red-700">
-                    <XCircle className="w-4 h-4" />
-                    <span className="text-sm font-medium">{t('bulkUpload.failCount', { count: result.fail_count, defaultValue: `실패: ${result.fail_count}개` })}</span>
+                  <div className="flex items-center gap-2 text-red-700">
+                    <BadIcon className="w-4 h-4" />
+                    <span className="text-[15px] font-medium">{t('bulkUpload.failCount', { count: result.fail_count, defaultValue: `실패: ${result.fail_count}개` })}</span>
                   </div>
                 )}
               </div>
               {result.errors && result.errors.length > 0 && (
                 <div className="mt-2 space-y-1">
                   {result.errors.slice(0, 10).map((err, i) => (
-                    <p key={i} className="text-xs text-red-600">- {err}</p>
+                    <p key={i} className="text-[12px] text-red-600">- {err}</p>
                   ))}
                   {result.errors.length > 10 && (
-                    <p className="text-xs text-red-500">{t('bulkUpload.moreErrors', { count: result.errors.length - 10, defaultValue: `... 외 ${result.errors.length - 10}개 오류` })}</p>
+                    <p className="text-[12px] text-red-500">{t('bulkUpload.moreErrors', { count: result.errors.length - 10, defaultValue: `... 외 ${result.errors.length - 10}개 오류` })}</p>
                   )}
                 </div>
               )}
@@ -326,7 +327,7 @@ export default function BulkUploadModal({ open, onClose, tokenKey, onSuccess }: 
             <button
               type="button"
               onClick={handleClose}
-              className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+              className="flex-1 px-4 py-2 rounded-lg text-[15px] font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
             >
               {t('bulkUpload.close', { defaultValue: '닫기' })}
             </button>
@@ -334,7 +335,7 @@ export default function BulkUploadModal({ open, onClose, tokenKey, onSuccess }: 
               type="button"
               onClick={handleUpload}
               disabled={parsedProducts.length === 0 || uploading}
-              className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-gray-900 text-white hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1.5"
+              className="flex-1 px-4 py-2 rounded-lg text-[15px] font-medium bg-brand text-white hover:bg-brand disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
             >
               {uploading ? (
                 <>

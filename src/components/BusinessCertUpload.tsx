@@ -56,13 +56,13 @@ export default function BusinessCertUpload({ value, onChange, required, hideLabe
           "사업자등록증 (선택)" 이 한 번 더 떴다 — 대표가 빼라고 한 그 `(선택)` 이
           **다른 문으로 되살아난 것**이다(렌더 실측으로 잡았다). */}
       {!hideLabel && (
-        <label className="block text-[13px] font-semibold mb-1.5">
+        <label className="block text-[13px] font-semibold mb-2">
           사업자등록증 {required ? <span className="text-[#111827]">*</span> : <span className="text-[#B6BCC4] font-normal">(선택)</span>}
         </label>
       )}
       <input ref={inputRef} type="file" accept="image/*" onChange={onFile} className="hidden" />
       {value ? (
-        <div className="flex items-center gap-3 rounded-xl border border-[#ECEEF1] p-2.5">
+        <div className="flex items-center gap-3 rounded-xl border border-[#ECEEF1] p-2">
           <img src={value} alt="사업자등록증" className="w-14 h-14 rounded-lg object-cover border border-[#ECEEF1]" />
           <span className="flex-1 text-[13px] text-[#11875A] font-semibold">업로드 완료</span>
           <button type="button" onClick={() => inputRef.current?.click()} disabled={busy} className="text-[13px] text-[#4E5560] font-medium">다시 선택</button>
@@ -70,7 +70,7 @@ export default function BusinessCertUpload({ value, onChange, required, hideLabe
         </div>
       ) : (
         <button type="button" onClick={() => inputRef.current?.click()} disabled={busy}
-          className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[#CBD2DA] text-[14px] font-semibold text-[#4E5560] disabled:opacity-60">
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[#CBD2DA] text-[15px] font-semibold text-[#4E5560] disabled:opacity-60">
           <ImagePlus className="h-4 w-4" aria-hidden />
           {busy ? (onRead ? '읽는 중…' : '업로드 중…') : '사업자등록증 사진 올리기'}
         </button>

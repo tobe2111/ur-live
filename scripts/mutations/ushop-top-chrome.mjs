@@ -29,7 +29,7 @@ export default [
   {
     name: '상단1안 — 칩이 다시 자기 줄을 소유한다',
     file: 'src/pages/curator-page/PinCategoryChips.tsx',
-    find: 'className="flex-1 min-w-0 flex gap-2 overflow-x-auto scrollbar-hide"',
+    find: 'className="flex-1 min-w-0 flex overflow-x-auto scrollbar-hide"',
     replace: 'className="max-w-3xl mx-auto px-4 pt-3 flex gap-2 overflow-x-auto scrollbar-hide"',
     test: 'src/tests/unit/ushop-top-chrome-2026-09-28.test.ts',
     why:
@@ -74,24 +74,37 @@ export default [
       '1440px 실측: 화면 맨 위 전역 네비(`urdeal.` + 검색·찜·장바구니)가 있는데 좌측 프로필 카드 ' +
       '**안에서** 같은 말을 또 한다. 모바일용으로 만든 줄이 PC 에 새는 전형이다.',
   },
+  /*
+   * 🩸 2026-09-29 (대표 *"배고프다 뭐먹지?는 아예 빼기"*) — 이 자리에 있던 두 주입은
+   *   `HeaderMarquee.tsx` 의 `lg:` 분기를 깨뜨려 **PC 에서 흐르는가 / PC 에서 사라지는가**를 봤다.
+   *   그 부품이 삭제돼 앵커가 없어졌다(`check-stale-mutation-anchors` 가 잡았다).
+   *   ⇒ **지우지 않고 재조준한다.** 지켜야 할 것이 "PC 에서 잘 흐르는가" 에서
+   *     **"조용히 되살아나지 않는가"** 로 뒤집혔을 뿐이고, 되살아나는 길은 둘이다.
+   *   ⚠️ 두 길을 **따로** 심는다 — `ushop-console-refresh.mjs` 의 두 주입은 각각
+   *     `animate-marquee`·`흐르는 문구` 를 앵커하므로 아래 둘(`HeaderMarquee` 이름 ·
+   *     `headlineVal` 상태)은 그 어느 것도 대신 검증하지 않는다.
+   */
   {
-    name: '상단1안 — PC 에서도 문구를 흐르게 한다 (300px 칸에서 양끝 잘림)',
-    file: 'src/pages/curator-page/HeaderMarquee.tsx',
-    find: '<div className="lg:hidden animate-marquee py-1.5">',
-    replace: '<div className="animate-marquee py-1.5">',
+    name: '상단1안 — 마퀴 부품을 import 만 되살린다 (렌더 없이 조용히)',
+    file: 'src/pages/curator-page/CuratorHeader.tsx',
+    find: "import { snsUrl } from '@/utils/sns-url'",
+    replace: "import { snsUrl } from '@/utils/sns-url'\nimport HeaderMarquee from './HeaderMarquee'",
     test: 'src/tests/unit/ushop-top-chrome-2026-09-28.test.ts',
     why:
-      'PC 유어샵 헤더는 좌측 **300px** 칸에 들어간다(a3/P1). 거기서 흐르면 `지? … 배고프다 뭐` 로 ' +
-      '시작·끝난다 — 흐르는 이유는 폰의 좁은 폭인데 이 칸은 더 좁아서 흐름이 문제를 키운다.',
+      '부활은 보통 렌더가 아니라 **참조**로 시작한다 — 파일을 되살려 import 해 두고 렌더는 다음 커밋에 ' +
+      '붙이는 식이다. 그 순간을 못 보면 가드는 "마퀴가 없다" 를 이름이 아니라 애니메이션 클래스로만 ' +
+      '지키게 되고, 부품이 클래스를 바꿔 돌아오면 통째로 샌다.',
   },
   {
-    name: '상단1안 — PC 에서 문구를 통째로 숨긴다 (주인이 쓴 글이 사라진다)',
-    file: 'src/pages/curator-page/HeaderMarquee.tsx',
-    find: '<p className="hidden lg:block px-3 py-1.5 text-[12px] font-bold tracking-wide leading-snug">',
-    replace: '<p className="hidden px-3 py-1.5 text-[12px] font-bold tracking-wide leading-snug">',
+    name: '상단1안 — 표시 자리 없이 편집 상태만 되살린다 (headlineVal)',
+    file: 'src/pages/ushop-manage/ShopInfoCards.tsx',
+    find: '  const [handleVal, setHandleVal] = useState(curator.handle)',
+    replace:
+      '  const [handleVal, setHandleVal] = useState(curator.handle)\n' +
+      "  const [headlineVal, setHeadlineVal] = useState('')",
     test: 'src/tests/unit/ushop-top-chrome-2026-09-28.test.ts',
     why:
-      '잘리는 걸 고치겠다고 `lg:hidden` 만 걸면 PC 방문자에게 주인의 공지가 **통째로 사라진다.** ' +
-      '고치는 것과 없애는 것은 다르다.',
+      '라벨 문구(`흐르는 문구`)만 안 쓰고 상태·저장 배선을 되살리면 주인이 **아무도 못 보는 값**을 ' +
+      '계속 저장한다. 에러도 안 나고 빌드도 통과한다 — 이 레포가 반복해 당한 "실패가 아니라 조용한 부재".',
   },
 ]

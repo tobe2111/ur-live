@@ -150,6 +150,43 @@ describe('⑤-3 줄에 찜 하트를 달지 않는다', () => {
   })
 })
 
+/**
+ * 🩸 2026-09-30 **한 톤** (대표 *"지금 전체, 식사, 숙소 부분의 배경색은 다르잖아. 아예 모두 똑같이
+ *   배경색을 카드 색상이랑 같게 한다면???"* → 시안 확인 후 *"일단 이 형태가 낫고"*).
+ *
+ *   유어샵 한 화면에 톤이 셋이었다 — 바탕(`bg-warm`) · 카드(흰 판 + 들림) · 알약 칩(또 흰 판 + 들림).
+ *   대표 진단은 *"뭔가 지저분하다 · 전문성도 없어보인다"* 였고, 그 실체가 이 겹침이다.
+ *   한 톤이 되면 나누는 일은 **실선**이 한다(탭 줄 아래 하나 + 줄 사이 `divide-rule`).
+ *
+ *   ⚠️ 이 셋은 **에러 없이 조용히 되돌아간다.** `bg-warm` 이 돌아오면 화면은 뜨고 그냥 톤이 셋이 된다.
+ *   ⚠️ 이 시험은 **클래스 배선**만 본다 — 실제로 한 톤으로 보이는지는 브라우저 프레임 캡처가 판정한다.
+ */
+describe('⑤-4 한 톤 — 판 대신 실선이 나눈다', () => {
+  it('페이지 바탕이 카드와 같은 톤이다', () => {
+    expect(page, '`bg-warm`(웜 바탕) 복귀 — 톤이 둘이 된다').not.toContain('bg-warm')
+    expect(page, '페이지 루트가 bg-surface').toMatch(/min-h-\[100dvh\] bg-surface/)
+  })
+
+  it('줄 사이는 실선으로 나눈다 (판·여백이 아니라)', () => {
+    expect(page, '`space-y-2`(판 사이 여백) 복귀').not.toMatch(/px-4 pb-4 space-y-2/)
+    expect(page).toMatch(/px-4 pb-4 divide-y divide-rule/)
+  })
+
+  it('PinRow 가 판 없는 표면을 쓴다 — 기본값은 안 건드린다', () => {
+    expect(row, '유어샵 줄은 plain').toMatch(/surface="plain"/)
+    const dealRow = stripComments(readCode('src/components/deal/DealRow.tsx'))
+    // 🔴 다른 다섯 화면은 바탕이 `bg-warm` 이라 거기선 판이 실제로 일한다. 기본값을 바꾸면
+    //    유어샵 하나를 위해 그 다섯이 조용히 납작해진다.
+    expect(dealRow, "DealRow 기본 표면은 card 그대로").toMatch(/surface = 'card'/)
+    expect(dealRow, '기본 표면의 판·들림이 살아 있다').toMatch(/rounded-2xl bg-white dark:bg-\[#1D1F29\] shadow-lift/)
+  })
+
+  it('chrome 과 진열대를 나누는 실선이 탭 줄에 있다', () => {
+    // 종전엔 헤더(surface)와 본문(warm)의 톤 차이가 그 일을 했다(b2). 한 톤이 되며 사라졌다.
+    expect(page).toMatch(/border-b border-rule flex items-center gap-2 empty:hidden/)
+  })
+})
+
 describe('⑥ 검사 대상이 비지 않았다', () => {
   it('두 소스가 실제로 읽혔다', () => {
     // 경로가 낡아 빈 문자열이 되면 위 not.toMatch 들이 전부 공짜로 통과한다.

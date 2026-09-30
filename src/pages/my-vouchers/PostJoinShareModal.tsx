@@ -32,22 +32,22 @@ export default function PostJoinShareModal({ data, onClose }: { data: { product_
       <div className="bg-surface rounded-t-3xl sm:rounded-3xl w-full max-w-sm p-6 animate-slideUp" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true">
         <div className="text-center mb-4">
           <PartyPopper className="w-8 h-8 mx-auto mb-2 text-gray-400" aria-hidden="true" />
-          <p className="text-base font-extrabold text-gray-900 dark:text-white">참여 완료!</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">친구 초대 시 양쪽 <span className="font-bold text-gray-900 dark:text-white">0.5% 보너스 딜</span></p>
+          <p className="text-[15px] font-extrabold text-gray-900 dark:text-white">참여 완료!</p>
+          <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">친구 초대 시 양쪽 <span className="font-bold text-gray-900 dark:text-white">0.5% 보너스 딜</span></p>
         </div>
         {data.image_url && (
           <img src={cfImage(data.image_url, { width: 800, quality: 82, format: 'auto' }) || data.image_url} alt="" className="w-full aspect-video object-cover rounded-2xl mb-4" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, data.image_url)} />
         )}
-        <p className="text-sm font-bold text-center text-gray-900 dark:text-white mb-4">{data.name}</p>
+        <p className="text-[15px] font-bold text-center text-gray-900 dark:text-white mb-4">{data.name}</p>
         <button
           onClick={shareToKakao}
-          className="w-full py-3.5 bg-[#FEE500] text-[#3C1E1E] rounded-2xl text-sm font-extrabold flex items-center justify-center gap-2 active:scale-[0.98]"
+          className="w-full py-4 bg-[#FEE500] text-[#3C1E1E] rounded-2xl text-[15px] font-extrabold flex items-center justify-center gap-2 active:scale-[0.98]"
         >
           💬 카카오톡으로 친구 초대
         </button>
         <button
           onClick={onClose}
-          className="w-full mt-2 py-2.5 text-gray-500 dark:text-gray-400 text-xs font-medium"
+          className="w-full mt-2 py-2 text-gray-500 dark:text-gray-400 text-[12px] font-medium"
         >
           나중에
         </button>

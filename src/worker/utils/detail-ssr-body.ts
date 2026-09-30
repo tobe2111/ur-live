@@ -77,7 +77,7 @@ function escText(s: string): string {
  * ⚠️ 라벨은 명칭 SSOT(`getVoucherShortLabel`)를 쓴다 — 여기서 "식사권" 같은 옛 어휘가 되살아나지 않게.
  */
 export const DETAIL_CRUMB_CLASS =
-  'flex items-center gap-1.5 overflow-x-auto whitespace-nowrap text-[13px] leading-none scrollbar-hide px-4 pb-2.5 lg:px-8 lg:pt-4 lg:pb-1 lg:max-w-[1200px] lg:mx-auto pt-[64px]'
+  'flex items-center gap-2 overflow-x-auto whitespace-nowrap text-[13px] leading-none scrollbar-hide px-4 pb-2 lg:px-8 lg:pt-4 lg:pb-1 lg:max-w-[1200px] lg:mx-auto pt-[64px]'
 
 function crumbHtml(category: string | null | undefined): string {
   const cat = normalizeCategory(category)

@@ -3,7 +3,8 @@
  *
  * 등록된 배송지 리스트 + 새 배송지 추가 버튼.
  */
-import { MapPin, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
+import { PinIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from 'react-i18next'
 import { CustomModal } from '@/components/CustomModal'
 import type { ShippingAddress } from './types'
@@ -32,7 +33,7 @@ export default function AddressListModal({
       <div className="space-y-2">
         {addresses.length === 0 ? (
           <div className="py-12 text-center">
-            <MapPin className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
+            <PinIcon className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
             <p className="text-[15px] text-gray-500 dark:text-gray-400">{t('checkout.address.empty', { defaultValue: '등록된 배송지가 없습니다.' })}</p>
             <p className="text-[13px] text-gray-400 dark:text-gray-500 mt-1">{t('checkout.address.pleaseAddNew', { defaultValue: '새 배송지를 추가해주세요.' })}</p>
           </div>
@@ -44,7 +45,7 @@ export default function AddressListModal({
                 key={addr.id}
                 className={`relative rounded-xl p-4 cursor-pointer transition-all active:scale-[0.99] ${
                   isSelected
-                    ? 'bg-gray-50 dark:bg-[#1D1F29] ring-1 ring-gray-900'
+                    ? 'bg-brand/[0.06] dark:bg-brand/[0.16] ring-1 ring-brand'
                     : 'bg-white dark:bg-[#11141C] border border-gray-100 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-[#1D1F29]'
                 }`}
                 onClick={(e) => {
@@ -52,11 +53,11 @@ export default function AddressListModal({
                   onSelectAddress(addr)
                 }}
               >
-                <div className="flex items-center gap-2 mb-1.5">
+                <div className="flex items-center gap-2 mb-2">
                   <p className="text-[15px] font-bold text-gray-900 dark:text-white">{addr.recipient_name}</p>
                   <span className="text-[13px] text-gray-400 dark:text-gray-500">{addr.phone}</span>
                   {addr.is_default === 1 && (
-                    <span className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">{t('checkout.address.defaultLabel', { defaultValue: '기본 배송지' })}</span>
+                    <span className="text-[12px] text-gray-500 dark:text-gray-400 font-medium">{t('checkout.address.defaultLabel', { defaultValue: '기본 배송지' })}</span>
                   )}
                   {isSelected && (
                     <svg className="w-4 h-4 text-gray-900 dark:text-white ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -78,7 +79,7 @@ export default function AddressListModal({
             e.stopPropagation()
             onAddNewAddress()
           }}
-          className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-gray-300 dark:border-[#3A3A3A] py-3.5 text-[14px] font-medium text-gray-500 dark:text-gray-400 transition-all hover:bg-gray-50 dark:hover:bg-[#1D1F29] cursor-pointer active:scale-[0.98]"
+          className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 dark:border-[#3A3A3A] py-4 text-[15px] font-medium text-gray-500 dark:text-gray-400 transition-all hover:bg-gray-50 dark:hover:bg-[#1D1F29] cursor-pointer active:scale-[0.98]"
         >
           <Plus className="w-4 h-4" />
           {t('checkout.address.addNew', { defaultValue: '새 배송지 추가' })}
