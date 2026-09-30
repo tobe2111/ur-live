@@ -221,7 +221,15 @@ describe('🔴 cron 배선', () => {
   })
 
   it('🔴 CAS 멱등이 그대로다 — 이중 환불의 유일한 방어선', () => {
-    expect(fn).toContain("UPDATE vouchers SET status = 'expired' WHERE id = ? AND status = 'unused'")
+    // 🩸 2026-09-30 **재조준**(지우지 않았다): 선점 SQL 이 `cron/expired-voucher-refund-sql.ts`
+    //   SSOT 로 옮겨갔다 — 매시 도는 청소 cron 이 `status` 를 먼저 `expired` 로 바꿔 이 CAS 가
+    //   `changes=0` 을 받고 **환불을 통째로 건너뛰던** 결함을 고치면서, 선점을 표시 status 가 아니라
+    //   `refund_status` 로 분리했다. **이 시험이 지키려던 것은 그대로다**: 선점이 원자적 CAS 이고
+    //   실패하면 그 행을 건너뛴다(= 이중 환불 방어).
+    //   SQL 이 실제로 그 일을 하는지는 `expired-voucher-refund-2026-09-30.test.ts` 가 `node:sqlite`
+    //   에 직접 돌려 **행 수로** 판정한다(문자열 비교로는 이 결함을 못 잡았다 — 깨진 것이 문법이
+    //   아니라 의미였다).
+    expect(fn).toContain('expiredVoucherClaimSql(')
     expect(fn).toMatch(/if \(!casResult\.meta\?\.changes\)[\s\S]{0,80}continue/)
   })
 
