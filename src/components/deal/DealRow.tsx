@@ -45,6 +45,16 @@ export interface DealRowProps {
    * 사진의 가장 좋은 자리를 표식이 덮으면 파는 물건이 안 보인다.
    */
   leading?: ReactNode
+  /**
+   * 표면. 기본 `card`(흰 판 + `shadow-lift`) — 2026-09-03 부터의 값이고 **다섯 화면이 이걸 쓴다**.
+   *
+   * 🩸 2026-09-30 `plain` 추가 (대표 *"아예 모두 똑같이 배경색을 카드 색상이랑 같게 한다면???"* →
+   *   *"일단 이 형태가 낫고"*). 페이지 바탕이 카드와 **같은 톤**이 되면 판(plate)이 아무것도 안 나눈다 —
+   *   흰 판을 흰 바탕 위에 얹고 그림자로 억지로 띄우는 모양이 되고, 그게 "지저분하다" 로 읽힌다.
+   *   `plain` 은 판·그림자·모서리를 빼고 **줄 사이 실선 하나**(호출부의 `divide-y divide-rule`)로 나눈다.
+   *   ⚠️ 기본값을 바꾸지 않는다 — 다른 다섯 화면은 바탕이 `bg-warm` 이라 거기선 판이 실제로 일한다.
+   */
+  surface?: 'card' | 'plain'
   className?: string
   onClick?: () => void
   /** hover/touch/focus 즉시 상세 prefetch — 목록→상세 워터폴 방지(잠금 로딩 계약). */
@@ -54,7 +64,8 @@ export interface DealRowProps {
 /** 표면 규칙(09-02): 흰 카드 + `shadow-lift`, 테두리 0, 숫자가 주인공. */
 export default memo(function DealRow({
   to, imageUrl, thumb, thumbStyle, thumbClassName = '', eyebrow, title, price, originalPrice,
-  unit = '원', discountPct = 0, meta, trailing, thumbSize = 'md', leading, className = '', onClick, prefetch,
+  unit = '원', discountPct = 0, meta, trailing, thumbSize = 'md', leading, surface = 'card',
+  className = '', onClick, prefetch,
 }: DealRowProps) {
   const box = thumbSize === 'sm'
     ? 'w-16 h-16'
@@ -124,7 +135,10 @@ export default memo(function DealRow({
       {trailing}
     </>
   )
-  const cls = `w-full flex items-center gap-3 text-left px-3 py-2 rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift active:opacity-60 transition-opacity ${className}`
+  const skin = surface === 'plain'
+    ? 'px-1 py-3'                                                   // 판 없음 — 줄 사이 실선이 나눈다
+    : 'px-3 py-2 rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift' // 기본(다섯 화면) — byte-불변
+  const cls = `w-full flex items-center gap-3 text-left ${skin} active:opacity-60 transition-opacity ${className}`
   const warm = prefetch
     ? { onMouseEnter: prefetch, onTouchStart: prefetch, onFocus: prefetch }
     : undefined

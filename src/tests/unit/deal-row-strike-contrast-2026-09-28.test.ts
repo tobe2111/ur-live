@@ -96,7 +96,10 @@ describe('DealRow 취소선 정가 — 대비 (2026-09-28)', () => {
 
   it('④ 계산기 자신이 맞다 — 알려진 값으로 검산', () => {
     expect(contrast('#FFFFFF', '#000000')).toBeCloseTo(21, 1)
-    expect(contrast('#D8D2CC', '#FFFFFF')).toBeCloseTo(1.5, 1)   // 되돌리면 이 값이 된다
-    expect(contrast('#55534F', '#1D1F29')).toBeCloseTo(2.14, 1)  // 다크 종전 값
+    // ⚠️ 이 둘은 **팔레트와 무관한 고정 검산값**이다(계산기가 맞는지만 본다). 2026-09-30 온도 정정
+    //    이전 램프의 gray-300·gray-600 이었고, 그래서 "되돌리면 이 값" 이라는 뜻이 이제는 없다.
+    //    값을 새 hex 로 갈면 계산기 검산이 램프에 묶여 **함께 틀려도 초록**이 되므로 그대로 둔다.
+    expect(contrast('#D8D2CC', '#FFFFFF')).toBeCloseTo(1.5, 1)
+    expect(contrast('#55534F', '#1D1F29')).toBeCloseTo(2.14, 1)
   })
 })

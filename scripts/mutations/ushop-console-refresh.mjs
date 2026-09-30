@@ -37,7 +37,7 @@ export default [
   {
     name: '유어샵 — 순번을 다시 사진 위 절대배치로',
     file: PIN,
-    find: '      thumbSize="lg"\n      leading={',
+    find: '      surface="plain"\n      leading={',
     replace: '      thumbSize="lg"\n      trailing={',
     test: T_NEW,
     why:
@@ -72,8 +72,11 @@ export default [
   {
     name: 'DealRow — leading 에 기본값을 준다 (나머지 5개 화면에 숫자 칸이 갑자기 생긴다)',
     file: ROW,
-    find: "thumbSize = 'md', leading, className = ''",
-    replace: "thumbSize = 'md', leading = null, className = ''",
+    find: "thumbSize = 'md', leading, surface = 'card',",
+    // ⚠️ 재조준(2026-09-30): 앵커에 `surface = 'card',` 가 들어오면서, 종전 replace 는 그 인자를
+    //   통째로 지워 **타입 에러**(중복 className)를 냈다 — 주입은 컴파일되는 결함이어야 한다.
+    //   지키려는 것은 `leading` 의 **기본값 부여**뿐이므로 그 한 글자만 바꾼다.
+    replace: "thumbSize = 'md', leading = null, surface = 'card',",
     test: T_NEW,
     why:
       '`DealRow` 는 **6개 화면이 공유**한다(교환권 목록·내 이용권 같은매장·유어샵 핀·인플루언서 탐색· ' +

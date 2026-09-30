@@ -30,8 +30,8 @@ export default [
   {
     name: '[섬] 잉크 토큰을 되박기 목록에서 뺀다 (흰 카드 위 다크용 밝은 글자)',
     file: CSS,
-    find: '  --ink: #16181C;\n  --ink2: #3D3C3A;\n  --ink-soft: #6E6B68;\n  --ink-faint: #8A8580;',
-    replace: '  --ink2: #3D3C3A;\n  --ink-soft: #6E6B68;\n  --ink-faint: #8A8580;',
+    find: '  --ink: #16181C;\n  --ink2: #383D42;\n  --ink-soft: #666C72;\n  --ink-faint: #81868C;',
+    replace: '  --ink2: #383D42;\n  --ink-soft: #666C72;\n  --ink-faint: #81868C;',
     test: TEST,
     why: '목록이 불완전하면 언제든 같은 사고가 난다 — 하나만 빠져도 잡혀야 한다.',
   },
