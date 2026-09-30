@@ -6,6 +6,14 @@
  *   ② 이 배열이 곧 **"대표가 켤 수 있는 것의 목록"** 이다. 페이지 렌더 코드 사이에 묻혀 있으면
  *      다음 세션이 게이트를 만들고도 여기에 줄을 안 넣는다 — 그게 실제로 반복된 사고다.
  *
+ * 🔢 **라벨에 동그라미 번호(①②③…)를 붙이지 마라** (2026-09-30 — 대표 *"스위치 on 어떤거
+ *    얘기하는거야? 이 페이지 너무 복잡해"*). 원래 ①②③④ 는 8월 flip **활성화 순서**였는데, 뒤
+ *    세션들이 새 스위치에 "다음 번호"를 붙이며 부딪혀 **③이 셋 · ⑧이 셋 · ⑨가 둘 · ⑩이 둘**이
+ *    됐다. 그러면 `③-a` 가 가리키는 ③ 이 어느 것인지 화면에서 알 수 없고, 대표에게 "⑨ 를 켜세요"
+ *    라고 말할 수조차 없다(실제로 그래서 이 지시가 나왔다). ⇒ **순서가 있는 넷만 `[순서 N]`**,
+ *    나머지는 **이름으로** 부른다. 부속 값 필드는 `↳` + 부모 바로 아래. hint 의 상호참조도
+ *    번호가 아니라 **이름**으로 쓴다. `money-switch-labels` 시험이 강제한다.
+ *
  * ⚠️ 새 게이트를 만들면 여기에 한 줄 넣어라. `check-gate-registry` 가 강제한다
  *    (`platform_settings` 를 `=== 'true'` 로 읽는 키는 OPS_GATES 등재 필수, 등재되면
  *     `ops-gate-reachable` 이 이 배열에 실재하는지 확인한다).
@@ -22,22 +30,59 @@ export type MoneySwitchField = {
 //   전부 미설정=현행. 활성화는 staging 실결제 검증 후(설계 §5). select 형은 숫자 검증 제외.
 export const COMMISSION_BUDGET_FIELDS: MoneySwitchField[] = [
   {
-    key: 'commission_budget_enabled', label: '① 커미션 예산 캡 활성화', default: 'false',
+    key: 'commission_budget_enabled', label: '[순서 1] 커미션 예산 캡 활성화', default: 'false',
     options: [{ value: 'false', label: 'OFF (현행)' }, { value: 'true', label: 'ON — 예산 캡 적용' }],
     hint: '3P 주문당 성장 커미션 총합 ≤ 수수료 − PG준비금 (비례 축소). ⚠️ staging 검증 후 ON',
   },
   {
-    key: 'pg_reserve_pct', label: 'PG 준비금 (%)', default: '2.5',
+    key: 'pg_reserve_pct', label: '↳ PG 준비금 (%)', default: '2.5',
     hint: '예산 = 플랫폼 수수료 − 결제액×이 비율',
+  },
+  // 🥇 2026-07-05 (운영 감사 Q10): 캡 발동 시 어느 축을 먼저 보전할지 — "에이전시 1% 보호 최우선" 자문.
+  {
+    key: 'commission_priority_axes', label: '↳ 캡 발동 시 우선 보전 축', default: 'agency_intro',
+    options: [
+      { value: 'agency_intro', label: '에이전시 매장영입 최우선 (권장)' },
+      { value: '', label: '우선 없음 — 전 축 비례 축소' },
+    ],
+    hint: '계약 기반(24개월) 에이전시 커미션을 캡 축소에서 먼저 보전. 발동 이력은 아래 표',
+  },
+  {
+    key: 'promo_funding_source', label: '[순서 2] 핀 추천(어필리에이트) 재원', default: 'platform',
+    options: [{ value: 'platform', label: '플랫폼 부담 (현행)' }, { value: 'owner', label: '주인(셀러) 부담 — promo 슬라이스' }],
+    hint: "'owner' 시 추천인 딜 적립은 유지, 같은 금액을 매장/셀러 정산에서 차감",
+  },
+  // 💰 2026-07-05 (§1 인플루언서 엔진): 셀러 딜 등록 화면의 소개비(promo)% 저장 게이트.
+  {
+    key: 'seller_promo_field_enabled', label: '[순서 3] 셀러 소개비(promo)% 필드 저장', default: 'false',
+    options: [{ value: 'false', label: 'OFF (현행 — 저장 안 함)' }, { value: 'true', label: 'ON — referral_commission_rate 저장' }],
+    hint: "⚠️ owner-funding('주인 부담') 을 먼저 켜고 staging 검증한 뒤에만 ON. 안 그러면 매장 소개비를 플랫폼이 부담(누수). 클라 플래그 SELLER_PROMO_FIELD_ENABLED 도 함께 배포",
+  },
+  // 🎟️ 2026-07-10 (flip-ui-checklist A1): 공구 엔진 서버 게이트 — gb-marketplace/gb-proposals/seller-orders 가
+  //   platform_settings.gb_engine_enabled==='true' 로 읽음. 8월 flip 단계 ④ 조종석 토글.
+  {
+    key: 'gb_engine_enabled', label: '[순서 4] 공구 엔진 (gb_engine)', default: 'false',
+    options: [{ value: 'false', label: 'OFF (현행 — 표면 미노출)' }, { value: 'true', label: 'ON — 공구 엔진 서버 게이트' }],
+    hint: '활성화 순서의 마지막 — [순서 1] 예산캡 · [순서 2] owner 펀딩 · [순서 3] promo 필드가 staging 검증 후 켜진 뒤에만. ⚠️ 서버 게이트만 켜짐 — 클라 표면은 GB_ENGINE_ENABLED(코드 배포) 별도. 런북: commission-funding-restructure.md §1',
   },
   {
     // 💸 2026-08-25 (누락 발견): **플랫폼 take 율 자체를 정하는 게이트인데 켤 화면이 없었다.**
     //   `channelPlatformRate` 가 이 값으로 직판 10% / 중개 5% 를 가른다(OFF 면 종전 `commission_rate`).
     //   `ops-gate-reachable` 가 즉시 잡아 줬다 — 그 시험의 docblock 이 말하는
     //   *"안 켠 게 아니라 못 켠"* 경우다. 게이트를 만들 때 손잡이를 같이 만들지 않으면 이렇게 된다.
-    key: 'fee_channel_rates_enabled', label: '③ 채널별 플랫폼 요율 (직판 10% / 중개 5%)', default: 'false',
+    key: 'fee_channel_rates_enabled', label: '채널별 플랫폼 요율 (직판 10% / 중개 5%)', default: 'false',
     options: [{ value: 'false', label: 'OFF (현행 — sellers.commission_rate)' }, { value: 'true', label: 'ON — 채널로 요율 분기' }],
     hint: '직판(자기 상품)=10% · 중개(벤더 상품)=5%. ⚠️ 원장 fee 가 바뀐다 — staging 실결제 각 1건 확인 후 ON',
+  },
+  // 💸 2026-09-07: ③ 게이트는 켬/끔만 있고 **요율 값 자체를 고칠 자리가 없었다**(매장 카드는 표시 전용).
+  //   미설정이면 코드 기본값(직접 10 / 중개 5)으로 동작한다 — 비워 두는 것이 안전한 기본이다.
+  {
+    key: 'platform_fee_pct_direct', label: '↳ 직접 입점 요율 (%)', default: '10',
+    hint: '바로 위 **채널별 플랫폼 요율** 이 ON 일 때만 쓰인다. 비우면 코드 기본 10%',
+  },
+  {
+    key: 'platform_fee_pct_brokered', label: '↳ 중개(대행사) 요율 (%)', default: '5',
+    hint: '바로 위 **채널별 플랫폼 요율** 이 ON 일 때만 쓰인다. 비우면 코드 기본 5%',
   },
   // 🪙 2026-09-07 (대표 "모두 어드민에 붙혀줘"): **담기 적립의 주 스위치인데 켤 화면이 없었다.**
   //   `affiliate_program_enabled` 는 읽는 곳이 둘(affiliate-credit.ts 지급 · affiliate-program.ts 표시)
@@ -46,44 +91,29 @@ export const COMMISSION_BUDGET_FIELDS: MoneySwitchField[] = [
   //   ⚠️ 이 구멍이 `ops-gate-reachable` 를 통과한 이유: 그 시험은 **OPS_GATES 에 등재된 것만** 본다.
   //   등재를 안 하면 검사 대상이 아니다 — 그래서 같은 커밋에서 OPS_GATES 에도 넣는다.
   {
-    key: 'affiliate_program_enabled', label: '⑧ 담기 적립(어필리에이트) 프로그램', default: 'false',
+    key: 'affiliate_program_enabled', label: '담기 적립(어필리에이트) 프로그램', default: 'false',
     options: [{ value: 'false', label: 'OFF (2026-08-22 종료 — 현행)' }, { value: 'true', label: 'ON — 담아서 팔면 소개비 적립' }],
-    hint: "🔴 머니 경로. **② 재원을 'owner' 로 먼저** 켤 것 — 'platform' 인 채로 켜면 매장이 건 소개비를 유어딜이 문다. 순서: ②재원 → ③promo필드 → 이 키. OFF 면 지급도 화면 배지도 함께 꺼진다(표시 게이트가 같은 키를 본다)",
-  },
-  // 💸 2026-09-07: ③ 게이트는 켬/끔만 있고 **요율 값 자체를 고칠 자리가 없었다**(매장 카드는 표시 전용).
-  //   미설정이면 코드 기본값(직접 10 / 중개 5)으로 동작한다 — 비워 두는 것이 안전한 기본이다.
-  {
-    key: 'platform_fee_pct_direct', label: '③-a 직접 입점 요율 (%)', default: '10',
-    hint: '③ 이 ON 일 때만 쓰인다. 비우면 코드 기본 10%',
-  },
-  {
-    key: 'platform_fee_pct_brokered', label: '③-b 중개(대행사) 요율 (%)', default: '5',
-    hint: '③ 이 ON 일 때만 쓰인다. 비우면 코드 기본 5%',
+    hint: "🔴 머니 경로. **[순서 2] 재원을 'owner' 로 먼저** 켤 것 — 'platform' 인 채로 켜면 매장이 건 소개비를 유어딜이 문다. 순서: [순서 2] 재원 → [순서 3] promo 필드 → 이 키. OFF 면 지급도 화면 배지도 함께 꺼진다(표시 게이트가 같은 키를 본다)",
   },
   // 🔒 2026-09-16 대표 *"모든게 다 이용권을 쓰고 나서 정산 할 때 정산되는거고"* — 그 규칙의 스위치.
   //   🩸 `ops-gate-reachable` 이 즉시 잡았다: OPS_GATES 에는 등재했는데 **켤 칸을 안 만들어서**
   //   대표가 규칙을 말해도 화면에서 켤 방법이 없었다(그 시험 docblock 의 *"안 켠 게 아니라 못 켠"*).
   {
-    key: 'payout_requires_voucher_use', label: '⑨ 소개 정산을 이용권 사용 뒤로', default: 'false',
+    key: 'payout_requires_voucher_use', label: '소개 정산을 이용권 사용 뒤로', default: 'false',
     options: [{ value: 'false', label: 'OFF (현행 — 주문 + 환불창 7일이면 익음)' }, { value: 'true', label: 'ON — 사용 확인 뒤에만 익음' }],
     hint: '🔴 머니 경로. OFF 면 아무도 그 가게에 안 가도 소개 몫이 송금 대기에 오른다(매장 몫은 이미 사용 시점). 라이브 적립 0건이라 켜도 오늘 영향 0. 절차: S-USEGATE',
+  },
+  {
+    key: 'payout_unused_max_wait_days', label: '↳ 무기한 이용권 정산 천장 (일)', default: '180',
+    hint: '바로 위 **소개 정산을 이용권 사용 뒤로** 가 ON 일 때만. 유효기간이 없는 이용권은 발급 후 이 기간이 지나야 소개 몫이 정리된다 — 비우면 180. **소비자의 사용 권리와 무관**(소비자는 계속 무기한)',
   },
   // 💸 2026-09-19 결재 `2026-09-16-broker-payout-model.md` 안 1 — 중개사 몫을 유어딜이 직접 송금.
   //   OFF = 중개사는 매장과 장부 밖 거래(2026-09-04). ON = 중개 매장 결제마다 `broker_share_pct` 가 매장 몫에서
   //   중개사(유저)에게 적립되고 인플루언서와 같은 성숙·원천징수·지급센터를 탄다. 켜기 전 S-BROKER.
   {
-    key: 'broker_share_enabled', label: '⑩ 중개사 몫 유어딜 직접 송금', default: 'false',
+    key: 'broker_share_enabled', label: '중개사 몫 유어딜 직접 송금', default: 'false',
     options: [{ value: 'false', label: 'OFF (현행 — 중개사는 매장과 직접 정산)' }, { value: 'true', label: 'ON — 매장 등록 때 정한 % 를 유어딜이 중개사에게' }],
     hint: '🔴 머니 경로. 매장 몫에서 나간다(유어딜 5% 불변). 라이브 중개 매장 1곳·주문 0건이라 켜도 오늘 영향 0. 절차: S-BROKER',
-  },
-  {
-    key: 'payout_unused_max_wait_days', label: '⑨-a 무기한 이용권 정산 천장 (일)', default: '180',
-    hint: '⑨ 가 ON 일 때만. 유효기간이 없는 이용권은 발급 후 이 기간이 지나야 소개 몫이 정리된다 — 비우면 180. **소비자의 사용 권리와 무관**(소비자는 계속 무기한)',
-  },
-  {
-    key: 'promo_funding_source', label: '② 핀 추천(어필리에이트) 재원', default: 'platform',
-    options: [{ value: 'platform', label: '플랫폼 부담 (현행)' }, { value: 'owner', label: '주인(셀러) 부담 — promo 슬라이스' }],
-    hint: "'owner' 시 추천인 딜 적립은 유지, 같은 금액을 매장/셀러 정산에서 차감",
   },
   {
     key: 'invite_reward_monthly_budget_krw', label: '초대 보상 월 예산 (딜, 0=무제한)', default: '0',
@@ -93,34 +123,26 @@ export const COMMISSION_BUDGET_FIELDS: MoneySwitchField[] = [
     key: 'agency_signup_bonus_monthly_budget_krw', label: '에이전시 signup 보너스 월 예산 (원, 0=무제한)', default: '0',
     hint: '₩30,000 정액 보너스의 월 상한',
   },
-  // 🥇 2026-07-05 (운영 감사 Q10): 캡 발동 시 어느 축을 먼저 보전할지 — "에이전시 1% 보호 최우선" 자문.
-  {
-    key: 'commission_priority_axes', label: '캡 발동 시 우선 보전 축', default: 'agency_intro',
-    options: [
-      { value: 'agency_intro', label: '에이전시 매장영입 최우선 (권장)' },
-      { value: '', label: '우선 없음 — 전 축 비례 축소' },
-    ],
-    hint: '계약 기반(24개월) 에이전시 커미션을 캡 축소에서 먼저 보전. 발동 이력은 아래 표',
-  },
-  // 💰 2026-07-05 (§1 인플루언서 엔진): 셀러 딜 등록 화면의 소개비(promo)% 저장 게이트.
-  {
-    key: 'seller_promo_field_enabled', label: '③ 셀러 소개비(promo)% 필드 저장', default: 'false',
-    options: [{ value: 'false', label: 'OFF (현행 — 저장 안 함)' }, { value: 'true', label: 'ON — referral_commission_rate 저장' }],
-    hint: "⚠️ owner-funding('주인 부담') 을 먼저 켜고 staging 검증한 뒤에만 ON. 안 그러면 매장 소개비를 플랫폼이 부담(누수). 클라 플래그 SELLER_PROMO_FIELD_ENABLED 도 함께 배포",
-  },
-  // 🎟️ 2026-07-10 (flip-ui-checklist A1): 공구 엔진 서버 게이트 — gb-marketplace/gb-proposals/seller-orders 가
-  //   platform_settings.gb_engine_enabled==='true' 로 읽음. 8월 flip 단계 ④ 조종석 토글.
-  {
-    key: 'gb_engine_enabled', label: '④ 공구 엔진 (gb_engine)', default: 'false',
-    options: [{ value: 'false', label: 'OFF (현행 — 표면 미노출)' }, { value: 'true', label: 'ON — 공구 엔진 서버 게이트' }],
-    hint: '활성화 순서 ④ — ①예산캡 ②owner펀딩 ③promo필드가 staging 검증 후 켜진 뒤에만. ⚠️ 서버 게이트만 켜짐 — 클라 표면은 GB_ENGINE_ENABLED(코드 배포) 별도. 런북: commission-funding-restructure.md §1',
-  },
   // 💰 2026-08-31: 이용권을 딜로도 살 수 있게 (대표 방향 — 상품 마진 대신 현금 출구에 마진).
   //   ⚠️ 이 키가 없으면 게이트를 **켤 방법 자체가 없다** — `ops-gate-reachable` 테스트가 그걸 막았다.
   {
     key: 'voucher_deal_payment_enabled', label: '이용권 딜 결제', default: 'false',
     options: [{ value: 'false', label: 'OFF (현행 — 이용권은 카드만)' }, { value: 'true', label: 'ON — 이용권도 딜로 결제' }],
-    hint: '🔴 선행 필수: influencer_deal_bonus_pct = 0. 보너스 20% 가 이용권 마진(5~10%)보다 커서 켜면 팔릴수록 건당 8~14원 적자(2026-08-31 실측). 순서: ①교환권 마진 0+재계산 ②딜 보너스 0 + 현금 정산 수수료 ③이 키. ⚠️ 서버 게이트만 — 클라 표면은 VOUCHER_DEAL_PAYMENT_ENABLED(코드 배포) 별도. 검증: STAGING_CHECKLIST S9',
+    hint: '🔴 선행 필수: influencer_deal_bonus_pct = 0. 보너스 20% 가 이용권 마진(5~10%)보다 커서 켜면 팔릴수록 건당 8~14원 적자(2026-08-31 실측). 순서: (1) 교환권 마진 0+재계산 → (2) 딜 보너스 0 + 현금 정산 수수료 → (3) 이 키. ⚠️ 서버 게이트만 — 클라 표면은 VOUCHER_DEAL_PAYMENT_ENABLED(코드 배포) 별도. 검증: STAGING_CHECKLIST S9',
+  },
+  // 🪙 2026-09-01: 이용권을 "딜 일부 + 카드 나머지" 로 살 수 있게 하는 스위치(대표 "포인트 차감처럼").
+  //   ⚠️ 게이트를 만들면서 이 손잡이를 안 만들면 `ops-gate-reachable` 가 즉시 잡는다 — 이번에도 잡혔다.
+  {
+    key: 'voucher_partial_deal_enabled', label: '이용권 부분결제 (딜 + 카드)', default: 'false',
+    options: [{ value: 'false', label: 'OFF (현행 — 전부-딜 또는 전부-카드)' }, { value: 'true', label: 'ON — 가진 딜만큼 카드 청구액 차감' }],
+    hint: '🔴 머니 경로. **먼저 딜 보너스(influencer_deal_bonus_pct)를 0 으로** — 20%가 살아 있으면 딜이 액면가보다 비싸서(1,000딜 = 부채 1,200원) 마진 5~10%인 이용권에 쓰일수록 적자다. 그다음 이걸 켜면 딜 잔액만큼 카드 청구액이 줄고 차액이 딜에서 빠진다. 매장 정산은 총액 기준 그대로(딜도 유저가 낸 현금). 끄면 즉시 현행 복귀. 검증 절차: docs/STAGING_CHECKLIST.md (S12)',
+  },
+  // 🧺 2026-09-15: 이용권 장바구니 결제 레일. 게이트를 만들면서 이 손잡이를 빠뜨려
+  //   `ops-gate-reachable` 가 잡았다 — 같은 클래스가 이 파일에서만 세 번째다.
+  {
+    key: 'voucher_cart_enabled', label: '이용권 장바구니 결제', default: 'false',
+    options: [{ value: 'false', label: 'OFF (현행 — 이용권은 한 개씩만 구매)' }, { value: 'true', label: 'ON — 여러 이용권을 담아 한 번에 결제' }],
+    hint: '🔴 머니 경로. ON 이면 `/api/group-buy/cart/init`·`/cart/confirm-toss` 가 열린다(발급이 있는 공구 레일). **담기 버튼은 별개 스위치**(코드 `VOUCHER_CART_UI_ENABLED`)라 배포가 필요하다 — 서버만 켜면 이미 장바구니에 이용권이 든 사람만 결제할 수 있다. 교환권(딜)은 이 레일이 거절한다. 끄면 즉시 403 = 현행 복귀. 검증 절차: docs/STAGING_CHECKLIST.md (S-CART)',
   },
   // 🥡💳 2026-08-12: **켤 화면이 없어서 영영 못 켜던 게이트 2개** (검증 데이 블로커).
   //   실측: `pickup_unclaimed_policy_enabled` 는 이 화면에 *"시스템 모니터링에서 켜라"* 는 **안내문만**
@@ -130,39 +152,26 @@ export const COMMISSION_BUDGET_FIELDS: MoneySwitchField[] = [
   //   주석이 기록한 사고(*"결정은 했는데 넣을 화면이 없어 값이 비어 있었다"*)와 동일하다.
   //   기본값·환불 로직·계산은 전부 무변경 — **토글 노출만** 추가한다.
   {
-    key: 'pickup_unclaimed_policy_enabled', label: '⑤ 미수령 환불 정책 (보관구분별)', default: 'false',
+    key: 'pickup_unclaimed_policy_enabled', label: '미수령 환불 정책 (보관구분별)', default: 'false',
     options: [{ value: 'false', label: 'OFF (현행 — 항상 전액 환불)' }, { value: 'true', label: 'ON — 아래 보관구분 비율 적용' }],
     hint: '🔴 머니 경로. 켜면 이미 흐르던 환불의 **금액이 바뀐다**. 아래 "운영 정책" 의 비율을 먼저 채울 것 — 비우면 100%(전액)로 동작한다. 끄면 즉시 전액 환불로 복귀. 검증 절차: docs/VERIFICATION_DAY.md (P10)',
   },
   {
-    key: 'partial_refund_enabled', label: '⑥ 부분환불 금액 지정', default: 'false',
+    key: 'partial_refund_enabled', label: '부분환불 금액 지정', default: 'false',
     options: [{ value: 'false', label: 'OFF (현행 — 전액 환불만)' }, { value: 'true', label: 'ON — 반품 화면에서 금액 지정 가능' }],
     hint: '🔴 머니 경로. OFF 면 금액 설정 API 가 403 이다(=현행 전액 환불 그대로). ON 시 결제액 초과는 서버가 클램프하고, 환불 실행 후에는 변경 불가. 검증 절차: docs/VERIFICATION_DAY.md (P11)',
   },
   // 🎟️ 2026-09-28 대표 *"일부 환불 가능하게 해줘"* — 손님이 이용권을 **장 단위**로 무른다.
   {
-    key: 'voucher_partial_refund_enabled', label: '⑧ 이용권 일부 환불 (장 단위)', default: 'false',
+    key: 'voucher_partial_refund_enabled', label: '이용권 일부 환불 (장 단위)', default: 'false',
     options: [{ value: 'false', label: 'OFF (현행 — 전액 취소만)' }, { value: 'true', label: 'ON — 손님이 장수를 골라 일부 환불' }],
     hint: '🔴 머니 경로. 켜면 손님이 마이페이지에서 **안 쓴 이용권 몇 장**을 골라 무를 수 있다. 금액은 사람이 입력하지 않고 장수에서 서버가 계산한다(임의 금액 환불 차단). 무른 장만 무효화되고 쓴 장은 대상이 아니다. ⚠️ 어필리에이트·영입 커미션은 비례 역전이 없어 무른 장의 몫이 남는다(적게 회수하는 쪽). 끄면 즉시 현행 복귀. 검증 절차: docs/STAGING_CHECKLIST.md (P17)',
-  },
-  // 🪙 2026-09-01: 이용권을 "딜 일부 + 카드 나머지" 로 살 수 있게 하는 스위치(대표 "포인트 차감처럼").
-  //   ⚠️ 게이트를 만들면서 이 손잡이를 안 만들면 `ops-gate-reachable` 가 즉시 잡는다 — 이번에도 잡혔다.
-  {
-    key: 'voucher_partial_deal_enabled', label: '⑦ 이용권 부분결제 (딜 + 카드)', default: 'false',
-    options: [{ value: 'false', label: 'OFF (현행 — 전부-딜 또는 전부-카드)' }, { value: 'true', label: 'ON — 가진 딜만큼 카드 청구액 차감' }],
-    hint: '🔴 머니 경로. **먼저 딜 보너스(influencer_deal_bonus_pct)를 0 으로** — 20%가 살아 있으면 딜이 액면가보다 비싸서(1,000딜 = 부채 1,200원) 마진 5~10%인 이용권에 쓰일수록 적자다. 그다음 이걸 켜면 딜 잔액만큼 카드 청구액이 줄고 차액이 딜에서 빠진다. 매장 정산은 총액 기준 그대로(딜도 유저가 낸 현금). 끄면 즉시 현행 복귀. 검증 절차: docs/STAGING_CHECKLIST.md (S12)',
-  },
-  // 🧺 2026-09-15: 이용권 장바구니 결제 레일. 게이트를 만들면서 이 손잡이를 빠뜨려
-  //   `ops-gate-reachable` 가 잡았다 — 같은 클래스가 이 파일에서만 세 번째다.
-  {
-    key: 'voucher_cart_enabled', label: '⑧ 이용권 장바구니 결제', default: 'false',
-    options: [{ value: 'false', label: 'OFF (현행 — 이용권은 한 개씩만 구매)' }, { value: 'true', label: 'ON — 여러 이용권을 담아 한 번에 결제' }],
-    hint: '🔴 머니 경로. ON 이면 `/api/group-buy/cart/init`·`/cart/confirm-toss` 가 열린다(발급이 있는 공구 레일). **담기 버튼은 별개 스위치**(코드 `VOUCHER_CART_UI_ENABLED`)라 배포가 필요하다 — 서버만 켜면 이미 장바구니에 이용권이 든 사람만 결제할 수 있다. 교환권(딜)은 이 레일이 거절한다. 끄면 즉시 403 = 현행 복귀. 검증 절차: docs/STAGING_CHECKLIST.md (S-CART)',
   },
   // 🚨 2026-08-12: **킬스위치인데 당길 손잡이가 없었다.**
   //   `gb_pricing_enabled` 는 *"잘못 설정된 공구가로 과소청구가 날 때 false 로 저장해 즉시 상시가로
   //   되돌린다"* 는 긴급 안전장치인데(OPS_GATES 의 turn_on_when), 어느 화면에도 없었다 —
-  //   즉 **돈이 새는 중에 멈출 방법이 없었다.** 위 ⑤⑥ 과 같은 클래스이고 이쪽이 더 급하다.
+  //   즉 **돈이 새는 중에 멈출 방법이 없었다.** 위 '미수령 환불 정책'·'부분환불 금액 지정' 과
+  //   같은 클래스이고 이쪽이 더 급하다.
   //
   //   🔴 **다른 게이트와 반대로 기본이 ON 이다.** 그래서 `default: 'true'` 여야 한다 —
   //   'false' 로 적으면 이 페이지를 **한 번 저장하는 것만으로** 공구가 청구가 꺼져
@@ -175,19 +184,19 @@ export const COMMISSION_BUDGET_FIELDS: MoneySwitchField[] = [
   // 🎛️ 2026-09-07: 게이트 레지스트리 가드가 **손잡이 없는 strict-true 게이트 둘**을 찾아냈다.
   //   둘 다 read-site 가 `=== 'true'` 인데 어느 화면에도 없어서 D1 을 직접 고쳐야 켤 수 있었다.
   {
-    key: 'settlement_skip_ledgered', label: '⑨ 자동정산에서 원장 기록분 제외', default: 'false',
+    key: 'settlement_skip_ledgered', label: '자동정산에서 원장 기록분 제외', default: 'false',
     options: [{ value: 'false', label: 'OFF (현행)' }, { value: 'true', label: 'ON — 원장에 이미 잡힌 주문은 자동정산 건너뜀' }],
     hint: '🔴 머니 경로. 정산 준비를 하는 길이 둘(자동정산 · 원장)인데, 켜면 원장에 이미 잡힌 이용권을 자동정산이 건너뛴다 → 한 길로 모인다. 안 켜면 같은 매출이 양쪽에 적혀 이중 지급 위험. 원장 기록은 이용권 사용 시점에 게이트 없이 항상 돌므로 지금 켜도 빠지는 정산은 없다',
   },
   {
-    key: 'outreach_auto_send', label: '⑩ 인플루언서 제휴 제안 자동 발송', default: 'false',
+    key: 'outreach_auto_send', label: '인플루언서 제휴 제안 자동 발송', default: 'false',
     options: [{ value: 'false', label: 'OFF (현행 — 사람이 보낸다)' }, { value: 'true', label: 'ON — 승인된 제안을 자동 발송' }],
     hint: '📮 콜드 발송은 법·평판 문제라 **대표 판단 사항**이다. 켜면 사람 확인 없이 나간다',
   },
   // 🧾 2026-09-01: 후기 보너스를 **매장 부담**으로 돌리는 스위치(대표 "매장 사장님이 부담하게끔").
   //   ⚠️ 게이트를 만들면서 이 손잡이를 안 만들면 `ops-gate-reachable` 가 즉시 잡는다 — 이번에도 잡혔다.
   {
-    key: 'review_bonus_owner_funded', label: '⑪ 후기 보너스 매장 부담', default: 'false',
+    key: 'review_bonus_owner_funded', label: '후기 보너스 매장 부담', default: 'false',
     options: [{ value: 'false', label: 'OFF (현행 — 유어딜 부담)' }, { value: 'true', label: 'ON — 매장 정산에서 차감' }],
     hint: '🔴 머니 경로. 켜면 **매장이 금액을 직접 설정한 건만** 그 매장 정산에서 빠진다(설정 안 한 매장은 그대로 유어딜 부담). 끄면 즉시 현행 복귀. 검증 절차: docs/STAGING_CHECKLIST.md (S11)',
   },

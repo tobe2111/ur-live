@@ -75,6 +75,51 @@ for ghsa, (pkg, sev, title) in blocking.items():
     print(f'{sev}\t{pkg}\t{ghsa}\t{title}')
 " 2>/dev/null || echo "")
 
+# 🧹 2026-09-30: **낡은 면제 경고**(차단 아님). 면제는 "지금 도달 불가"라는 판단이고, 의존성이
+#   올라가 advisory 가 audit 에서 사라지면 그 판단이 더는 아무것도 안 지킨다 — 그 상태로 남아 있으면
+#   같은 취약점이 **다시 들어와도 게이트가 조용히 통과**시킨다(이 레포가 반복해 당한 '조용한 부재').
+#   실측 2026-09-30: 9건 중 6건이 이미 그 상태였다(의존성 상향으로 해소된 뒤에도 면제만 남아 있었다).
+#   ⚠️ 경고로만 둔다 — audit 이 네트워크/레지스트리 상태에 따라 비거나 실패할 수 있고, 그때 차단하면
+#     멀쩡한 PR 이 막힌다(이 파일 머리말의 '파싱 실패 시 통과' 와 같은 판단).
+STALE=$(echo "$AUDIT_JSON" | python3 -c "
+import sys, json
+
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+
+present = set()
+for pkg, v in d.get('vulnerabilities', {}).items():
+    for via in v.get('via', []):
+        if isinstance(via, dict) and 'GHSA' in (via.get('url') or ''):
+            present.add(via['url'].rstrip('/').split('/')[-1])
+
+# audit 이 통째로 비었으면(레지스트리 실패 등) 전부 낡음으로 보이므로 판정하지 않는다.
+if not present:
+    sys.exit(0)
+
+try:
+    with open('.audit-allowlist.json') as f:
+        al = json.load(f)
+except Exception:
+    sys.exit(0)
+
+for e in al.get('allow', []):
+    g = (e.get('ghsa') or '').strip()
+    if g and g not in present:
+        print(f\"{g}\t{e.get('pkg', '?')}\")
+" 2>/dev/null || echo "")
+
+if [ -n "$STALE" ]; then
+  echo "⚠️  낡은 면제: 아래 advisory 는 지금 audit 에 없다 — 의존성이 이미 올라갔으면 .audit-allowlist.json 에서 지울 것"
+  echo "$STALE" | while IFS=$'\t' read -r ghsa pkg; do
+    [ -n "$ghsa" ] && echo "    $pkg ($ghsa)"
+  done
+  echo "    (남겨 두면 같은 취약점이 다시 들어와도 게이트가 조용히 통과시킨다)"
+  echo ""
+fi
+
 if [ -n "$BLOCKING" ]; then
   COUNT=$(echo "$BLOCKING" | grep -c '' || echo "0")
   echo "❌ npm audit: 허용목록에 없는 high/critical 취약점 ${COUNT}건 발견"

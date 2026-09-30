@@ -5494,10 +5494,11 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 377건 · 최신순 · 이 목록은 자동 생성된다._
+_총 378건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-30**
 - [2026-09-30 — 대표 지시 "다 순서대로 이상적으로 해줘" (여섯 항목)](handoff/2026-09-30-six-items-in-order.md)
+- [미사용 만료 환불이 한 번도 돈 적 없다(🔴) · 머니 스위치 번호가 겹쳐 지시가 안 통했다](handoff/2026-09-30-refund-stolen-and-switch-labels.md)
 - [회색 램프 온도 정정(전 화면) + 유어샵 한 톤 — 2026-09-30](handoff/2026-09-30-palette-temperature-ushop-one-tone.md)
 - [마이 여섯 정리 + 로딩 밀림 수리 (2026-09-30)](handoff/2026-09-30-my-page-six-and-loading-shift.md)
 **2026-09-29**
