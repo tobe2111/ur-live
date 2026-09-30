@@ -65,8 +65,9 @@ export default [
   {
     name: '한톤 — 줄 사이를 실선 대신 판 여백으로 되돌린다',
     file: PAGE,
-    find: 'className="max-w-3xl mx-auto px-4 pb-4 divide-y divide-rule"',
-    replace: 'className="max-w-3xl mx-auto px-4 pb-4 space-y-2"',
+    // 🔁 2026-09-30 재조준(#1579 안 A 머지) — PC 2열이 같은 줄에 붙었다. 불변식은 그대로 폰 실선이다.
+    find: 'className="max-w-3xl mx-auto px-4 pb-4 divide-y divide-rule lg:divide-y-0 lg:grid lg:gap-2 ur-ushop-rows"',
+    replace: 'className="max-w-3xl mx-auto px-4 pb-4 space-y-2 lg:grid lg:gap-2 ur-ushop-rows"',
     test: T_LIST,
     why:
       '판(카드) 사이 여백은 바탕이 달라야 일한다. 한 톤에서는 흰 판이 흰 바탕 위에 그림자로만 떠 ' +
