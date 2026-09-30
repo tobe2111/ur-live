@@ -191,7 +191,7 @@ export default function IntroducePage() {
             { n: '3초', l: '토스 간편결제' },
           ].map(s => (
             <div key={s.l} className="text-center">
-              <p className="text-[32px] md:text-[40px] font-black text-white leading-none">{s.n}</p>
+              <p className="text-[34px] md:text-[40px] font-black text-white leading-none">{s.n}</p>
               <p className="text-[12px] font-semibold text-gray-500 mt-2">{s.l}</p>
             </div>
           ))}

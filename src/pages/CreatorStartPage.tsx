@@ -59,14 +59,14 @@ export default function CreatorStartPage() {
       <div className="mx-auto max-w-md rounded-xl bg-white p-8 text-center shadow-lift">
         {phase === 'checking' && (
           <>
-            <div className="text-3xl mb-3">⏳</div>
+            <div className="text-[28px] mb-3">⏳</div>
             <div className="text-[15px] font-semibold text-gray-900">확인 중입니다…</div>
           </>
         )}
 
         {phase === 'need_login' && (
           <>
-            <div className="text-3xl mb-3">👋</div>
+            <div className="text-[28px] mb-3">👋</div>
             <h1 className="text-[17px] font-bold text-gray-900">딜 소개 시작하기</h1>
             <p className="mt-2 text-[15px] text-gray-600">카카오 로그인 1분이면 내 유어샵이 자동으로 만들어집니다.<br />로그인하면 신청 내역과 자동으로 연결됩니다.</p>
             {/* 코드는 이미 localStorage 에 있으므로 returnUrl 은 경로만으로 충분(돌아오면 자동 연결). */}
@@ -77,7 +77,7 @@ export default function CreatorStartPage() {
 
         {phase === 'done' && (
           <>
-            <div className="text-4xl mb-3">🎉</div>
+            <div className="text-[34px] mb-3">🎉</div>
             <h1 className="text-[17px] font-bold text-gray-900">시작 준비가 끝났습니다</h1>
             <p className="mt-2 text-[15px] text-gray-600">내 유어샵이 준비됐어요. 소개하고 싶은 딜을 담고 링크만 공유하면 됩니다.</p>
             <div className="mt-5 flex flex-col gap-2">
@@ -90,7 +90,7 @@ export default function CreatorStartPage() {
 
         {phase === 'error' && (
           <>
-            <div className="text-3xl mb-3">⚠️</div>
+            <div className="text-[28px] mb-3">⚠️</div>
             <h1 className="text-[17px] font-bold text-gray-900">연결하지 못했습니다</h1>
             <p className="mt-2 text-[15px] text-gray-600">{msg}</p>
             <div className="mt-5 flex flex-col gap-2">

@@ -212,7 +212,7 @@ export default function PointsChargePage() {
               <Zap className="w-4 h-4 fill-white" strokeWidth={0} />
               <span className="text-[12px] font-semibold opacity-90">{t('pointsCharge.balance', { defaultValue: '내 딜 잔액' })}</span>
             </div>
-            <p className="text-[32px] font-extrabold leading-none tracking-tight">
+            <p className="text-[34px] font-extrabold leading-none tracking-tight">
               {formatNumber(balance)}
               <span className="text-[17px] font-bold ml-1">딜</span>
             </p>

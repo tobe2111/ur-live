@@ -72,7 +72,7 @@ export default function CreatorsPage() {
         <section className="ur-panel-ink text-white overflow-hidden">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 pt-10 pb-14 lg:pt-16 lg:pb-24 grid gap-14 lg:grid-cols-[1fr_0.62fr] lg:gap-16 xl:gap-24 lg:items-center">
             <div>
-              <h1 className="text-[30px] sm:text-[40px] lg:text-[52px] xl:text-[60px] leading-[1.22] font-extrabold tracking-[-0.035em]">
+              <h1 className="text-[28px] sm:text-[40px] lg:text-[48px] xl:text-[60px] leading-[1.22] font-extrabold tracking-[-0.035em]">
                 <span className="text-brand-text">링크 하나</span>로<br />
                 동네 맛집을 팔고<br />
                 커미션을 받으세요
@@ -111,11 +111,11 @@ export default function CreatorsPage() {
         {/* ② 수익 구조 — 한 문장을 크게 두고 조건은 아래 헤어라인으로. PC 는 제목 고정 + 본문 분리. */}
         <section className="bg-warm">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-28 grid gap-8 lg:grid-cols-[minmax(0,22rem)_1fr] lg:gap-20">
-            <h2 className="text-[26px] lg:text-[40px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2] lg:self-start lg:sticky lg:top-24">
+            <h2 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2] lg:self-start lg:sticky lg:top-24">
               수익 구조는 단순합니다
             </h2>
             <div>
-              <p className="flex items-start gap-2 lg:gap-4 text-[17px] lg:text-[32px] xl:text-[36px] font-extrabold text-ink leading-[1.35] tracking-[-0.025em]">
+              <p className="flex items-start gap-2 lg:gap-4 text-[17px] lg:text-[34px] font-extrabold text-ink leading-[1.35] tracking-[-0.025em]">
                 <Link2 className="w-5 h-5 lg:w-8 lg:h-8 mt-1 lg:mt-2 text-brand shrink-0" strokeWidth={1.9} aria-hidden />
                 <span>내 링크로 판매될 때마다 <span className="text-brand-text">판매액의 소개비(promo%)</span> 적립</span>
               </p>
@@ -133,7 +133,7 @@ export default function CreatorsPage() {
         {/* ③ 시작 3단계 — 모바일은 세로 목록, PC 는 가로 타임라인(가로선 하나에 세 점). */}
         <section className="ur-panel-ink text-white">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-28">
-            <h2 className="text-[26px] lg:text-[40px] font-extrabold tracking-[-0.03em] leading-[1.2]">시작은 3단계</h2>
+            <h2 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] leading-[1.2]">시작은 3단계</h2>
 
             <ol className="mt-8 lg:mt-16 space-y-2 lg:space-y-0 lg:grid lg:grid-cols-3 lg:gap-12 xl:gap-20">
               {STEPS.map(({ icon: Icon, t, d }, i) => (
@@ -160,7 +160,7 @@ export default function CreatorsPage() {
         {/* ④ 실제 화면 — 폰 갤러리. 캡션은 덱과 같은 문구로, 라이브인지 예시 데이터인지 밝힌다. */}
         <section className="bg-warm">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-28">
-            <h2 className="text-[26px] lg:text-[40px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">제안을 받고, 정산까지 앱에서</h2>
+            <h2 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">제안을 받고, 정산까지 앱에서</h2>
             <p className="mt-3 lg:mt-5 text-[13px] lg:text-[17px] text-gray-500 dark:text-gray-400 max-w-[34em] leading-relaxed">
               매장에 돈을 달라고 할 일이 없습니다. 제안 수락도 적립 확인도 같은 앱 안에서 끝납니다.
             </p>
@@ -182,7 +182,7 @@ export default function CreatorsPage() {
         <section id="apply" className="ur-panel-ink text-white">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-32">
             <div className="max-w-[46rem] mx-auto text-center">
-              <h2 className="text-[26px] lg:text-[52px] xl:text-[60px] font-extrabold tracking-[-0.03em] leading-[1.22]">
+              <h2 className="text-[28px] lg:text-[48px] xl:text-[60px] font-extrabold tracking-[-0.03em] leading-[1.22]">
                 1기 소개 파트너 모집
               </h2>
               <p className="mt-6 lg:mt-8 text-[15px] lg:text-[17px] leading-relaxed text-white/70">
@@ -245,7 +245,7 @@ function Stat({ n, d }: { n: string; d: string }) {
     <div>
       <dt className="sr-only">{d}</dt>
       <dd>
-        <span className="block text-[26px] lg:text-[40px] xl:text-[46px] font-extrabold tracking-[-0.045em] tabular-nums leading-none">{n}</span>
+        <span className="block text-[28px] lg:text-[40px] xl:text-[48px] font-extrabold tracking-[-0.045em] tabular-nums leading-none">{n}</span>
         <span className="block text-[12px] lg:text-[13px] text-white/55 mt-2 lg:mt-3 whitespace-nowrap">{d}</span>
       </dd>
     </div>

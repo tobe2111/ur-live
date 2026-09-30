@@ -127,7 +127,7 @@ export default function BlogListPage() {
             <Link to={`/blog/${hero.slug}`} className="group grid lg:grid-cols-2 gap-5 lg:gap-8 items-center">
               <div className="order-2 lg:order-1">
                 <ChipRow tags={parseTags(hero.tags)} author={hero.author} />
-                <h2 className="mt-3 text-[24px] sm:text-3xl leading-snug font-extrabold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
+                <h2 className="mt-3 text-[24px] sm:text-[28px] leading-snug font-extrabold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
                   {stripBold(hero.title)}
                 </h2>
                 <p className="mt-2 text-[15px] text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-2">{stripBold(hero.summary)}</p>

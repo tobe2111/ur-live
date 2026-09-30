@@ -42,7 +42,7 @@ export default function DetailTitleHeader({
           )}
         </div>
       )}
-      <h1 className="mt-2 text-[29px] leading-[1.24] font-black tracking-[-.028em] text-gray-900 dark:text-white">{name}</h1>
+      <h1 className="mt-2 text-[28px] leading-[1.24] font-black tracking-[-.028em] text-gray-900 dark:text-white">{name}</h1>
       <div className="mt-2 flex items-center gap-2 flex-wrap text-[13px] text-gray-500 dark:text-gray-400">
         {hasRating && (
           <span className="inline-flex items-center gap-2">

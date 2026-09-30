@@ -20,11 +20,22 @@ import { stripComments } from '../helpers/source-text'
  * ## 정본 (CLAUDE.md 🎫 ⑧)
  * 본문 `12 · 13 · 15 · 17 · 24` (+ 큰 숫자 `28`). 간격은 **4의 배수**만.
  *
- * ## ⚠️ 디스플레이(26px+)는 **일부러 안 건드렸다**
- * 랜딩 히어로의 40·46px 를 28 로 눌러 버리면 그 화면의 위계를 내가 혼자 바꾸는 일이 된다.
- * 지금 26px 이상은 26·28·29·30·32·34·36·40·42·44·46·48·56·58·66 으로 **또 한 번 가까운 값이 겹쳐
- * 있고**(26 vs 28 vs 29 vs 30), 그걸 몇 단계로 묶을지는 제품 판단이라 **대표에게 따로 올렸다.**
- * 그때까지는 `DISPLAY_BASELINE` 으로 **늘지 않게만** 막는다.
+ * ## 🖼️ 디스플레이(26px+) — 2026-09-30 에 이행됐다
+ * 이 자리에는 *"랜딩 히어로의 위계를 세션이 혼자 바꿀 수 없으니 대표 판단으로 올렸다"* 고 적혀
+ * 있었다. 대표가 결정했다(**"다 순서대로 이상적으로 해줘"**) → 7 rung 모듈러 스케일로 묶었다.
+ *   정본 `28 · 34 · 40 · 48 · 60 · 76 · 96`   (비율 1.21 · 1.18 · 1.20 · 1.25 · 1.27 · 1.26)
+ * 이행 전은 **임의 px 25단계 130건 + tailwind `3xl~7xl` 5단계 48건** = 체계가 둘이었다.
+ * 이동은 최대 6px(66→60 · 54→48), 대부분 ≤2px. 코드모드 `scripts/codemods/display-scale.mjs`.
+ *
+ * 🩸 **코드모드가 조용히 만든 결함을 하나 잡았다 — 반응형 사다리 붕괴.** 7 rung 은 원본보다
+ * 촘촘하지 않아서 `34/44/58/66` → `34/40/60/60` 처럼 **인접 rung 이 같아진다**(그 브레이크포인트가
+ * 아무 일도 안 한다). 빌드도 화면도 안 깨지고 에러도 없다. 5곳을 전수로 찾아 **늘리지 않고 잉여
+ * rung 을 덜어내는** 쪽으로 손으로 고쳤고(늘리면 −10px 급 이동이 생긴다), 아래 시험이 고정한다.
+ *
+ * ## ⚠️ 96px 초과는 글자가 아니라 **그래픽**이라 무접촉
+ *   `IntroducePage` 100px(`opacity-[0.04] select-none` 워터마크) · `NotFoundPage` 140/200px(404 글리프)
+ * 스케일에 밀어넣으면 그림이 망가진다. 진짜 글자가 이 예외로 새지 못하게, 아래 시험이
+ * **`select-none` 인지** 대조한다.
  *
  * ## 🔒 잠금표 파일은 **일부러 안 고쳤다** (대표 승인 대기)
  * `LOCKED` 세 파일은 Toss V2 / 로딩 잠금표에 있다. **클래스만 바꾸는 일이어도** 잠금 절대 룰이
@@ -58,10 +69,12 @@ const files = execSync(
 
 /** 본문 스케일 — 이 범위(≤25px)에서는 이것뿐이다. */
 const BODY = new Set(['12px', '13px', '15px', '17px', '24px'])
-/** 디스플레이 경계 — 이보다 크면 이 시험의 판단 밖(위 머리말 참조). */
+/** 디스플레이 경계 — 이 이상은 아래 `DISPLAY` 스케일이 강제한다. */
 const DISPLAY_FROM = 26
-/** 디스플레이 크기를 가진 파일 수 — **늘면 빨간불**(줄이는 건 자유). */
-const DISPLAY_BASELINE = 66
+/** 디스플레이 정본 — 7 rung 모듈러 스케일 (2026-09-30 대표 결정). */
+const DISPLAY = new Set([28, 34, 40, 48, 60, 76, 96])
+/** 이보다 크면 글자가 아니라 그래픽 — `select-none` 이어야 한다(위 머리말). */
+const GRAPHIC_ABOVE = 96
 
 /**
  * 🔒 잠금표 파일 — 대표 승인 전까지 손대지 않는다(위 머리말). **늘지 않게만** 막는다.
@@ -155,15 +168,94 @@ describe('소비자 — 간격은 4px 격자', () => {
   })
 })
 
-describe('소비자 — 디스플레이 크기는 늘지 않는다 (대표 판단 대기)', () => {
-  it('🖼️ 26px 이상을 쓰는 파일 수가 baseline 을 안 넘는다', () => {
-    const hit = files.filter((f) => {
-      const src = read(f)
-      if (/(?:^|[\s"'`{:])(?:[a-z-]+:)*text-[3-9]xl\b/.test(src)) return true
-      return [...src.matchAll(/text-\[([0-9.]+)px\]/g)].some((m) => parseFloat(m[1]) >= DISPLAY_FROM)
-    })
-    expect(hit.length, `디스플레이 크기 파일이 늘었다(baseline ${DISPLAY_BASELINE}):\n${hit.join('\n')}`)
-      .toBeLessThanOrEqual(DISPLAY_BASELINE)
+describe('소비자 — 디스플레이 스케일 일곱 단계', () => {
+  it('🖼️ 정본 집합이 CLAUDE.md 와 일치한다 (가드가 스스로 스케일을 넓힐 수 없다)', () => {
+    /**
+     * 🛡️ 이 시험 없이는 **`DISPLAY` 에 값을 하나 더하면 아무것도 안 깨진다** — 가드가 자기
+     * 기준을 조용히 헐겁게 만드는 길이 열린다(이 레포가 반복해 당한 클래스: 래칫을 올리거나
+     * 허용목록에 이름을 더해 통과시키는 것). 정본은 사람이 읽는 자리(CLAUDE.md 규칙 ⑧)에 있고,
+     * 코드는 그것과 **같아야** 한다.
+     */
+    const md = readFileSync('CLAUDE.md', 'utf8')
+    const m = md.match(/디스플레이\(26px 이상\)는 일곱 단계 — `([0-9 ·]+)`/)
+    expect(m, 'CLAUDE.md 규칙 ⑧ 에서 디스플레이 스케일 문장을 못 찾았다 — 문서와 코드가 갈렸다').toBeTruthy()
+    const documented = m![1].split('·').map((x) => Number(x.trim()))
+    expect(documented.length, '문서의 rung 수').toBe(7)
+    expect([...DISPLAY].sort((a, b) => a - b), '코드의 DISPLAY 가 문서와 다르다').toEqual(documented)
+  })
+
+  it('🖼️ 26px 이상은 28/34/40/48/60/76/96 뿐이다 (96 초과는 그래픽)', () => {
+    const bad: string[] = []
+    let seen = 0
+    for (const f of open) {
+      for (const m of read(f).matchAll(/text-\[([0-9.]+)px\]/g)) {
+        const n = parseFloat(m[1])
+        if (n < DISPLAY_FROM) continue
+        seen++
+        if (n > GRAPHIC_ABOVE) continue // 그래픽 — 아래 시험이 따로 본다
+        if (!DISPLAY.has(n)) bad.push(`${f}: ${n}px`)
+      }
+    }
+    // 대상이 0이면 통과가 아니라 실패다 — 경로가 낡아 조용히 비는 것을 막는다.
+    expect(seen, `디스플레이 토큰을 ${seen}개밖에 못 찾았다 — 이 검사가 헛돌고 있다`).toBeGreaterThan(120)
+    expect([...new Set(bad)], `스케일 밖 디스플레이 크기:\n${[...new Set(bad)].join('\n')}`).toEqual([])
+  })
+
+  it('🖼️ tailwind 디스플레이 단계(text-3xl~9xl)를 섞지 않는다', () => {
+    /**
+     * 본문이 `text-[Npx]` 로 통일돼 있는데 디스플레이만 tailwind 단계를 쓰면 **체계가 둘**이 된다.
+     * 이행 전 실측: `3xl`(30)×20 · `4xl`(36)×16 · `5xl`(48)×7 · `6xl`(60)×4 · `7xl`(72)×1.
+     */
+    const bad: string[] = []
+    for (const f of open) {
+      for (const m of read(f).matchAll(/(?:^|[\s"'`{:])((?:[a-z-]+:)*text-[3-9]xl)\b/g)) bad.push(`${f}: ${m[1]}`)
+    }
+    expect([...new Set(bad)], `tailwind 디스플레이 단계 사용:\n${[...new Set(bad)].join('\n')}`).toEqual([])
+  })
+
+  it('🖼️ 96px 초과는 `select-none` 인 그래픽뿐이다', () => {
+    /**
+     * 이 예외가 **진짜 글자의 탈출구**가 되면 스케일이 무의미해진다.
+     * 그래픽(404 글리프·워터마크 숫자)은 고를 수도 읽을 수도 없게 만들어져 있으므로 그걸 대조한다.
+     */
+    const bad: string[] = []
+    let seen = 0
+    for (const f of open) {
+      for (const line of read(f).split('\n')) {
+        for (const m of line.matchAll(/text-\[([0-9.]+)px\]/g)) {
+          if (parseFloat(m[1]) <= GRAPHIC_ABOVE) continue
+          seen++
+          if (!/select-none/.test(line)) bad.push(`${f}: ${m[1]}px (select-none 없음)`)
+        }
+      }
+    }
+    expect(seen, '96px 초과가 하나도 없다 — 이 검사가 헛돌고 있다(있었으면 앵커를 재조준할 것)').toBeGreaterThan(0)
+    expect(bad, `글자가 그래픽 예외로 샜다:\n${bad.join('\n')}`).toEqual([])
+  })
+
+  it('🖼️ 반응형 사다리에 아무 일도 안 하는 rung 이 없다', () => {
+    /**
+     * 🩸 코드모드가 만든 결함 클래스(위 머리말). `sm:`/`lg:` 가 앞 rung 과 **같은 값**이면
+     * 그 브레이크포인트는 존재하지 않는 것과 같은데 빌드도 화면도 안 깨진다.
+     */
+    const ORDER = ['', 'sm:', 'md:', 'lg:', 'xl:', '2xl:']
+    const bad: string[] = []
+    let seen = 0
+    for (const f of open) {
+      read(f).split('\n').forEach((line, i) => {
+        const rungs = [...line.matchAll(/(?:^|[\s"'`{])((?:sm|md|lg|xl|2xl):)?text-\[(\d+)px\]/g)]
+          .map((m) => ({ bp: m[1] || '', px: Number(m[2]) }))
+          .filter((r) => r.px >= DISPLAY_FROM)
+        if (rungs.length < 2) return
+        seen++
+        rungs.sort((a, b) => ORDER.indexOf(a.bp) - ORDER.indexOf(b.bp))
+        if (rungs.some((r, j) => j > 0 && r.px === rungs[j - 1].px)) {
+          bad.push(`${f}:${i + 1}  ${rungs.map((r) => `${r.bp || 'base'}=${r.px}`).join(' → ')}`)
+        }
+      })
+    }
+    expect(seen, `사다리를 ${seen}개밖에 못 찾았다 — 이 검사가 헛돌고 있다`).toBeGreaterThan(10)
+    expect(bad, `같은 값이 이어지는 사다리:\n${bad.join('\n')}`).toEqual([])
   })
 })
 

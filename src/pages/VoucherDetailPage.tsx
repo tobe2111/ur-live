@@ -392,7 +392,7 @@ export default function VoucherDetailPage() {
           {/* 🎨 2026-06-17: 시안 의도 복원 — original_price(정가) 있으면 취소선 + 실제 할인율 표시 */}
           <div className="mt-4 flex items-end justify-between gap-3">
             <div className="flex items-baseline gap-1">
-              <span className="text-[32px] font-extrabold text-[#171B24] dark:text-white tracking-tight">{formatNumber(product.price)}</span>
+              <span className="text-[34px] font-extrabold text-[#171B24] dark:text-white tracking-tight">{formatNumber(product.price)}</span>
               <span className="text-[17px] font-bold text-[#171B24] dark:text-white">딜</span>
             </div>
             {hasDiscount && (

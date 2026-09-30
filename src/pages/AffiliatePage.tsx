@@ -48,7 +48,7 @@ export default function AffiliatePage() {
               <GiftBoxIcon className="w-5 h-5" />
               <span className="text-[15px] font-bold opacity-90">{t('affiliate.earnHero')}</span>
             </div>
-            <p className="text-3xl font-extrabold mb-1">{formatNumber(data.total_earned)}<span className="text-[17px] ml-1">딜</span></p>
+            <p className="text-[28px] font-extrabold mb-1">{formatNumber(data.total_earned)}<span className="text-[17px] ml-1">딜</span></p>
             <p className="text-[12px] opacity-70">{t('affiliate.totalEarned')}</p>
 
             <div className="grid grid-cols-2 gap-3 mt-4">

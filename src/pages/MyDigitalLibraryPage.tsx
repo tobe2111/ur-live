@@ -105,7 +105,7 @@ export default function MyDigitalLibraryPage() {
           <button onClick={() => navigate(-1)} className="mb-2 -ml-1.5 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-[#1D1F29]" aria-label={t('common.back', { defaultValue: '뒤로' })}>
             <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" />
           </button>
-          <h1 className="text-[17px] lg:text-3xl font-bold text-gray-900 dark:text-white">{t('digitalLibrary.title', { defaultValue: '디지털 보관함' })}</h1>
+          <h1 className="text-[17px] lg:text-[28px] font-bold text-gray-900 dark:text-white">{t('digitalLibrary.title', { defaultValue: '디지털 보관함' })}</h1>
           <p className="text-[15px] text-gray-500 dark:text-gray-400 mt-1">{t('digitalLibrary.subtitle', { defaultValue: '전자책 · 강의 · 가이드 · 영상 — 구매한 콘텐츠 모음' })}</p>
         </header>
 

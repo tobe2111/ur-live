@@ -17,9 +17,14 @@ const card = stripComments(readFileSync('src/pages/vouchers/DealBalanceCard.tsx'
 const page = stripComments(readFileSync('src/pages/VouchersPage.tsx', 'utf8'))
 
 describe('🪙 확정 구조 (안 A3)', () => {
-  it('숫자는 42px — 대표가 세 크기(36/42/48) 중 고른 값', () => {
-    expect(card).toMatch(/text-\[42px\]/)
-    expect(card).not.toMatch(/text-\[36px\]/)   // 종전 값으로 되돌아가면 빨간불
+  it('숫자는 40px — 대표가 고른 "큰 쪽"(36/42/48 중 42 → 스케일 이행으로 40)', () => {
+    /**
+     * 🔧 2026-09-30: 디스플레이 7 rung 이행(`28·34·40·48·60·76·96`)으로 **42 → 40**(−2px).
+     * 대표가 고른 것은 "36 이 아니라 큰 쪽" 이었고 그 뜻은 40 에서도 그대로다.
+     * 종전 값(36)은 이제 스케일 밖이라, 되돌아가는 자리는 한 단계 아래인 34 다.
+     */
+    expect(card).toMatch(/text-\[40px\]/)
+    expect(card).not.toMatch(/text-\[34px\]/)   // 한 단계 내려가면 아래층에 눌려 보인다
   })
 
   // 두 층을 가르는 실제 코드 경계. ⚠️ **주석 문구를 앵커로 쓰지 말 것** — 2026-09-14 에

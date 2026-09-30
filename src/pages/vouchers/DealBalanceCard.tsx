@@ -116,7 +116,7 @@ export default function DealBalanceCard({
       <div className={compact ? 'px-4 pt-4 pb-4' : 'px-5 pt-5 pb-4'}>
         <p className={`text-gray-500 dark:text-gray-400 tracking-wide ${compact ? 'text-[12px] mb-2' : 'text-[12px] mb-2'}`}>내 딜 잔액</p>
         <div className="flex items-baseline gap-2">
-          <span className={`font-extrabold text-gray-900 dark:text-white leading-none tracking-tight tabular-nums ${compact ? 'text-[30px]' : 'text-[42px]'}`}>
+          <span className={`font-extrabold text-gray-900 dark:text-white leading-none tracking-tight tabular-nums ${compact ? 'text-[28px]' : 'text-[40px]'}`}>
             {/* ⏳ 숫자를 모를 땐 빈 자리를 둔다 — 0 을 적으면 거짓말이고, 비워 두면 높이만 잡힌다. */}
             {awaiting ? <span className="inline-block w-[2.2em] h-[0.72em] rounded bg-wash align-baseline" aria-hidden="true" /> : formatNumber(balance)}
           </span>
