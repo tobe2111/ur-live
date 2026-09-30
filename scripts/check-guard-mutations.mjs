@@ -611,12 +611,16 @@ const MUTATIONS = [
   {
     name: '🎛️ 담기 적립 스위치를 어드민에서 다시 뗀다 (켤 손잡이가 사라진다)',
     file: 'src/pages/admin-platform-settings/money-switch-fields.ts',
-    find: "    key: 'affiliate_program_enabled', label: '⑧ 담기 적립(어필리에이트) 프로그램', default: 'false',",
-    replace: "    key: 'affiliate_program_enabled_REMOVED', label: '⑧ 담기 적립(어필리에이트) 프로그램', default: 'false',",
+    // 🩸 2026-09-30: 앵커에 **라벨을 담고 있었다** — 라벨의 동그라미 번호를 걷어내자
+    //   `stale-mutation-anchors` 가 즉시 빨간불을 냈다(pre-push 23.5초). 지키려는 것은
+    //   *손잡이가 배열에 있는가* 이고 라벨은 표시일 뿐이므로, **키만** 앵커로 쓴다.
+    find: "    key: 'affiliate_program_enabled',",
+    replace: "    key: 'affiliate_program_enabled_REMOVED',",
     test: 'src/tests/unit/admin-money-switch-ui-2026-09-07.test.ts',
     why:
       '이게 없던 것이 원래 상태다 — 읽는 곳 둘, 쓰는 화면 0. 머니 스위치를 D1 직접 수정으로만 ' +
-      '켤 수 있으면 오타값이 저장돼도 read-site 가 조용히 OFF 로 읽는다.',
+      '켤 수 있으면 오타값이 저장돼도 read-site 가 조용히 OFF 로 읽는다. ' +
+      '앵커는 키만 쓴다 — 라벨을 담으면 문구를 다듬을 때마다 이 주입이 낡는다.',
   },
   {
     name: "🎛️ 스위치 옵션 값을 'True' 로 (켠 줄 알지만 꺼진 채로 돈다)",
