@@ -52,7 +52,7 @@ export default function SearchSuggestPanel({ query, suggestions, onPick }: Searc
                   (닫힘 자체는 blur 에 안 걸려 있지만, 입력창이 포커스를 잃으면 키보드가 내려간다.) */
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => onPick(text)}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left active:bg-wash transition-colors"
+            className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left active:bg-wash transition-colors"
           >
             <span className="shrink-0 w-9 h-9 rounded-full bg-wash flex items-center justify-center">
               <Search className="w-[17px] h-[17px] text-gray-400 dark:text-gray-500" />
