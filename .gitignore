@@ -1,5 +1,7 @@
 # Dependencies
-node_modules/
+# ⚠️ 슬래시 없이 — `node_modules/` 는 **디렉터리만** 매치해서
+#    심볼릭 링크로 만들어진 node_modules 가 `git add -A` 에 딸려 들어간다(2026-09-30 실제 사고).
+node_modules
 
 # Build outputs
 dist/
