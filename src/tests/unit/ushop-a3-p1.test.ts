@@ -4,6 +4,18 @@ import { stripComments as codeOnly } from '../helpers/source-text'
 import { isFullBleedPcPath } from '@/shared/pc-fullbleed'
 
 /**
+ * INK 스케일(= tailwind `text-gray-*`)의 실제 hex 를 **뽑아** 쓴다.
+ * 손으로 박으면 팔레트가 옮겨질 때마다(2026-09-30 이 그랬다) 시험도 같이 고쳐야 하고,
+ * 그러면 시험이 "대비가 충분한가" 대신 "옛 값인가" 를 묻게 된다.
+ */
+function ink(step: number): string {
+  const tw = codeOnly(readFileSync('tailwind.config.js', 'utf-8'))
+  const m = tw.match(new RegExp(`\\b${step}:\\s*'(#[0-9A-Fa-f]{6})'`))
+  expect(m, `INK.${step} 를 tailwind.config.js 에서 못 찾았다 — 스케일 모양이 바뀌었다`).not.toBeNull()
+  return (m as RegExpMatchArray)[1]
+}
+
+/**
  * 🎫 2026-09-02 (대표 확정) 유어샵 **안3**(모바일 — 왼정렬 헤더 + 반반 버튼 + 카테고리 칩) +
  * **안P1**(PC — 좌 300px 프로필 고정 + 우 3열 진열대) 계약.
  *
@@ -94,6 +106,42 @@ describe('유어샵 안3 — 카테고리 분류 줄', () => {
     expect(src, '활성은 브랜드 밑줄').toMatch(/border-b-2[\s\S]{0,120}border-brand/)
     expect(src, '비활성은 선을 숨긴다(자리는 남긴다 — 글자가 안 밀리게)').toContain('border-transparent')
     expect(src, '개수(대표 요청)를 그린다').toMatch(/\{n\}/)
+  })
+
+  /**
+   * 🩸 2026-09-30 신설 — **CI 의 `contrast` 가 내 코드를 잡은 뒤** 만든 가드.
+   *   개수를 `text-gray-300 dark:text-gray-600` 으로 썼더니 다크 카드(#1D1F29) 위 **2.15:1**,
+   *   그리고 아무도 안 보고 있던 라이트는 더 나빴다(흰 바탕 위 **1.50:1**).
+   *   개수는 대표가 직접 요청한 **정보**라 장식으로 칠하면 안 된다.
+   *
+   *   🔑 문자열이 아니라 **비율을 계산해서** 고정한다 — 팔레트가 또 옮겨져도(2026-09-30 이 그랬다)
+   *      이 시험은 따라온다. 반대로 hex 를 박아 두면 팔레트를 고칠 때마다 시험도 고쳐야 하고,
+   *      그러면 시험이 "짝이 맞는가" 대신 "옛 값인가" 를 묻게 된다(같은 날 배운 것).
+   *   ⚠️ 못 보는 것: 실제 렌더(조상 배경이 정말 카드인지)는 `check-dark-contrast` 워크플로가 본다.
+   */
+  it('비활성 탭의 개수가 읽힌다 — 라이트·다크 둘 다 3:1 이상', () => {
+    const src = codeOnly(read(CHIPS))
+    const m = src.match(/text-\[12px\] tabular-nums \$\{on \? '[^']+' : '([^']+)'\}/)
+    expect(m, '비활성 개수의 색 클래스를 못 찾았다 — 마크업이 바뀌었으면 이 시험도 재조준할 것').not.toBeNull()
+    const cls = (m as RegExpMatchArray)[1]
+    const light = cls.match(/(?:^|\s)text-gray-(\d+)/)
+    const dark = cls.match(/dark:text-gray-(\d+)/)
+    expect(light, '라이트 회색 단계가 없다').not.toBeNull()
+    expect(dark, '다크 회색 단계가 없다').not.toBeNull()
+
+    const lum = (hex: string) => {
+      const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+        .map((x) => (x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4))
+      return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+    }
+    const ratio = (a: string, b: string) => {
+      const [x, y] = [lum(a), lum(b)]
+      return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
+    }
+    const onWhite = ratio(ink(Number(light![1])), '#FFFFFF')
+    const onCard = ratio(ink(Number(dark![1])), '#1D1F29')   // --surface 다크
+    expect(onWhite, `라이트에서 개수가 ${onWhite.toFixed(2)}:1 — 안 읽힌다`).toBeGreaterThanOrEqual(3)
+    expect(onCard, `다크에서 개수가 ${onCard.toFixed(2)}:1 — 안 읽힌다`).toBeGreaterThanOrEqual(3)
   })
 
   it('🔴 알약 껍질이 돌아오지 않았다 — 한 톤에서 판·그림자는 아무것도 안 나눈다', () => {

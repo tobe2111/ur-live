@@ -68,7 +68,13 @@ export default function PinCategoryChips({ pins, value, onChange }: { pins: Cura
             className={`shrink-0 inline-flex items-center gap-1 h-9 px-3 -mb-px border-b-2 text-[15px] font-bold whitespace-nowrap active:opacity-60 transition-colors ${on ? 'border-brand text-gray-900 dark:text-white' : 'border-transparent text-gray-400 dark:text-gray-500'}`}
           >
             {t(d.labelKey, { defaultValue: d.defaultLabel })}
-            <span className={`text-[12px] tabular-nums ${on ? 'text-brand' : 'text-gray-300 dark:text-gray-600'}`}>{n}</span>
+            {/* 🩸 2026-09-30 — `text-gray-300 dark:text-gray-600` 으로 썼다가 **CI 의 `contrast` 가 잡았다**
+                (다크 2.15:1 — 안 보이는 글자). 실측해 보니 라이트는 더 나빴다(**1.50:1**) — 그 검사는
+                다크만 렌더하므로 라이트 쪽은 아무도 안 보고 있었다. 개수는 대표가 직접 요청한
+                *정보*(*"각 이용권마다 숫자도 달아줘"*)라 장식으로 칠하면 안 된다.
+                ⇒ 라벨과 **같은 회색 단계**로: 라이트 3.67:1 · 다크 3.09:1(둘 다 통과). 위계는 색이 아니라
+                크기가 만든다(라벨 15px vs 개수 12px). 가드가 이 비율을 **계산해서** 고정한다. */}
+            <span className={`text-[12px] tabular-nums ${on ? 'text-brand' : 'text-gray-400 dark:text-gray-500'}`}>{n}</span>
           </button>
         )
       })}
