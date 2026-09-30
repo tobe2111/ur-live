@@ -19,10 +19,46 @@
  *    `src/components/deal/DealRow.tsx` **전체 경로**만 찾아서 **못 골랐다**. 그 파일을 고친
  *    푸시가 로컬에서 초록이었고 5분 뒤 CI 가 알려 줬다 — 이 그물이 막으려던 바로 그 사고다.
  *    폴더가 아니라 **폴더까지 붙은 파일 경로**라 규칙 3 의 폭발(225개)과 무관하다.
+ * 5. **`src/` 파일은 확장자를 뗀 형태도** 검색어다 — 시험이 소스를 **import 로만** 쓰면
+ *    (`import X from '@/components/search/SearchHeader'`) 확장자가 없어 규칙 4 로도 안 걸린다.
+ *    🩸 2026-09-30 에 값을 치렀다: `SearchHeader` 에 필수 prop 을 더했는데
+ *    `tests/unit/components/search/SearchHeader.test.tsx` 가 그것을 import 로만 써서 **안 걸렸고**,
+ *    로컬 초록으로 푸시한 뒤 CI 가 `onPanelChange is not a function` 으로 알려 줬다.
+ *    (이 머리말이 "못 잡는 것" 으로 적어 두었던 바로 그 한계다 — 적어 두는 것만으로는 안 막힌다.)
+ *    ⚠️ 확장자가 없으니 접두사가 겹치는 이름(`utils/format` ↔ `utils/formatDate`)도 걸린다.
+ *      시험 몇 개 더 도는 값이고, CI 한 바퀴(실측 57분)보다 훨씬 싸다.
+ * 6. **트리를 통째로 읽는 시험**(`globSync('src/pages/**')`·`readdirSync`)은 검색어로 못 고른다 —
+ *    그 시험은 본문에 **파일 이름을 안 들고 있다.** 그래서 `scansTree()` 로 따로 고른다(아래).
+ *
  * 3. **`src/` 안에서는 폴더 매칭을 하지 않는다.** `src/pages/Foo.tsx` 의 폴더는 `src/pages` 이고
  *    그걸로 매칭하면 시험 **225개**가 딸려 와(실측) 푸시가 느려진다 — 느려지면 사람들이 끈다.
  *    같은 이유로 **최상위 한 칸**(`docs`·`scripts`)도 제외한다(`dir.includes('/')` 조건).
  */
+
+/**
+ * 🌲 **트리를 통째로 읽는 시험인가** — 규칙 6 의 판정.
+ *
+ * 🩸 2026-09-30 에 값을 치렀다(이 그물이 하루에 놓친 두 번째다). 새 부품
+ * `src/components/search/SearchSuggestPanel.tsx` 에 `py-2.5` 를 썼는데,
+ * `consumer-type-scale-2026-09-29.test.ts` 가 **`src/components/**` 를 글롭으로 훑어** 4px 격자를
+ * 강제한다. 그 시험은 본문에 **내 파일 이름을 안 들고 있으므로** 검색어로는 원리상 못 고른다
+ * (새 파일이면 더더욱 — 세상 어떤 시험도 아직 그 이름을 모른다). 로컬 초록 → 6분 뒤 CI.
+ *
+ * ⚠️ **일부러 과하게 고른다.** 글롭 대상이 `src/` 인지 `docs/` 인지 가리려면 파싱이 필요한데,
+ *   `readdirSync(SOME_DIR)` 처럼 변수를 쓰는 시험이 많아 그 파싱은 **조용히 적게** 고른다 —
+ *   이 그물이 반복해 당한 실패 모드가 정확히 그거다(`-e` 누락 · 뿌리 하나 · import-only).
+ *   그래서 "트리를 읽는가" 만 보고 48개를 통째로 돌린다(실측 29초, 합쳐 50초).
+ *
+ * ⚠️ grep 과 **같은 줄 단위**로 판정한다 — 스크립트는 이 패턴을 `grep -rlE` 에 그대로 넘긴다.
+ *   JS 정규식으로 통짜 문자열을 검사하면 `[^)]*` 가 줄을 넘어 grep 보다 더 많이 고른다(갈린다).
+ */
+export const TREE_SCAN_PATTERN = 'ls-files[^)]*src/|glob(Sync)?\\(|readdirSync\\('
+
+/** @param {string} source 시험 파일 본문 @returns {boolean} */
+export function scansTree(source) {
+  const re = new RegExp(TREE_SCAN_PATTERN)
+  return source.split('\n').some((line) => re.test(line))
+}
 
 /**
  * @param {string[]} files 바뀐 파일 경로들(레포 루트 기준)
@@ -34,7 +70,10 @@ export function searchTermsFor(files) {
     if (!f) continue
     set.add(f)                                    // 규칙 1
     if (f.startsWith('src/')) {
-      set.add(f.slice(4))                         // 규칙 4 — `components/deal/DealRow.tsx`
+      const rel = f.slice(4)
+      set.add(rel)                                // 규칙 4 — `components/deal/DealRow.tsx`
+      const noExt = rel.replace(/\.(tsx?|jsx?|mjs|cjs)$/, '')
+      if (noExt !== rel) set.add(noExt)           // 규칙 5 — `components/search/SearchHeader`
       continue                                    // 규칙 3
     }
     const dir = f.slice(0, f.lastIndexOf('/'))

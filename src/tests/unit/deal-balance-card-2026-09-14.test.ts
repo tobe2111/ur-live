@@ -1,13 +1,17 @@
 /**
- * 🪙 **딜 잔액 카드 — 대표 확정(2026-09-14, 안 A3 + 42px)을 고정한다**
+ * 🪙 **딜 잔액 카드 — 대표 확정을 고정한다** (2026-09-14 A3 → **2026-09-30 안 B "납작 카드"**)
  *
- * 레퍼런스(당근포인트)를 놓고 A/B/C 세 방향 → A 안에서 여섯 배치 → **A3** 로 확정됐다.
- * 확정된 것 넷을 시험으로 못 박는다. 넷 다 **에러를 내지 않고 조용히 되돌아갈 수 있는** 것들이다.
+ * 🔁 **2026-09-30 재조준.** 대표 *"내 딜 잔액 부분이 너무 크달까?"* → 시안 넷 중 **B**(한 줄에
+ *   금액 + 행동 둘, 실측 70px). 대체된 것은 **크기와 배치**뿐이고, A3 가 지키던 이유 넷
+ *   (채운 버튼 0 · 고아 링크 0 · "1딜=1원" 없음 · 0 이면 큰 카드 안 씀)은 **그대로 살아 있다.**
+ *
+ * ⚠️ 시험을 **지우지 않고 재조준**한 이유: 저 넷은 전부 *에러 없이 조용히 되돌아갈 수 있는* 것들이고,
+ *   실제로 한 번씩 되돌아간 적이 있다. 배치가 바뀌었다고 이유까지 버리면 다음 세션이 다시 밟는다.
  *
  * ## ⚠️ 이 시험이 못 보는 것
- * 실제로 예뻐 보이는지는 못 잰다(그건 대표가 본다). 여기서 지키는 것은
- * "고른 구조가 남아 있는가" 하나다. 색 대비는 `check-dark-contrast`, 테마 누락은
- * `check-theme-consistency` 가 따로 본다.
+ * 실제로 예뻐 보이는지는 못 잰다(그건 대표가 본다). 픽셀 높이도 못 잰다(jsdom 은 레이아웃이 없다 —
+ * 70px 은 브라우저 실측값이고 여기서는 *치수를 정하는 클래스*만 대조한다).
+ * 색 대비는 `check-dark-contrast`, 테마 누락은 `check-theme-consistency` 가 따로 본다.
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'fs'
@@ -17,38 +21,45 @@ const card = stripComments(readFileSync('src/pages/vouchers/DealBalanceCard.tsx'
 const page = stripComments(readFileSync('src/pages/VouchersPage.tsx', 'utf8'))
 
 describe('🪙 확정 구조 (안 A3)', () => {
-  it('숫자는 40px — 대표가 고른 "큰 쪽"(36/42/48 중 42 → 스케일 이행으로 40)', () => {
-    /**
-     * 🔧 2026-09-30: 디스플레이 7 rung 이행(`28·34·40·48·60·76·96`)으로 **42 → 40**(−2px).
-     * 대표가 고른 것은 "36 이 아니라 큰 쪽" 이었고 그 뜻은 40 에서도 그대로다.
-     * 종전 값(36)은 이제 스케일 밖이라, 되돌아가는 자리는 한 단계 아래인 34 다.
-     */
-    expect(card).toMatch(/text-\[40px\]/)
-    expect(card).not.toMatch(/text-\[34px\]/)   // 한 단계 내려가면 아래층에 눌려 보인다
+  it('숫자는 28px — 안 B 의 치수 — 대표 확정 B + main #1568 타입 스케일(28/24/17/15/13/12)', () => {
+    expect(card).toMatch(/text-\[28px\]/)
+    expect(card).toMatch(/text-\[17px\]/)
+    /* 🔴 종전 두 층 카드로 되돌아가면 빨간불 — 그게 152px 짜리였다.
+       🔧 머지 재조준: main #1579 의 디스플레이 스케일 이행으로 그 값이 **42 → 40**. 42 는 이제
+          코드 어디에도 없어(스케일 밖), 그대로 두면 이 단언이 아무것도 안 지킨다. */
+    expect(card).not.toMatch(/text-\[40px\]/)
   })
 
-  // 두 층을 가르는 실제 코드 경계. ⚠️ **주석 문구를 앵커로 쓰지 말 것** — 2026-09-14 에
-  // 여기 `card.indexOf('아래층')`(주석에만 있던 낱말)을 썼다가, 같은 날 main 이 주석
-  // 제거기를 여러 줄 JSX 주석까지 지우도록 고치자 -1 이 되어 슬라이스가 카드 전체로 번졌다.
-  const DIVIDER = 'h-px bg-rule'
+  // 행동 둘을 가르는 실제 코드 경계(B 는 **세로** 선 하나뿐 — 가로 rule 은 없다).
+  // ⚠️ **주석 문구를 앵커로 쓰지 말 것** — 2026-09-14 에 `card.indexOf('아래층')`(주석에만 있던
+  //    낱말)을 썼다가, 같은 날 main 이 주석 제거기를 고치자 -1 이 되어 슬라이스가 카드 전체로 번졌다.
+  const DIVIDER = 'w-px h-3 bg-rule'
   const dividerAt = card.indexOf(DIVIDER)
 
-  it('경계 앵커가 실재한다 — 없으면 아래 두 시험이 헛돈다', () => {
+  it('경계 앵커가 실재한다 — 없으면 아래 시험이 헛돈다', () => {
     expect(dividerAt).toBeGreaterThan(-1)
   })
 
-  it('🔴 위층에 버튼이 없다 — 그게 A3 의 전부다', () => {
-    // 위층(라벨~금액)을 잘라 그 안에 button 이 없는지 본다.
-    const top = card.slice(card.indexOf('내 딜 잔액'), dividerAt)
-    expect(top).not.toMatch(/<button/)
+  it('🔴 행동은 정확히 둘 — 딜 모으기 · 이용내역', () => {
+    // ⚠️ 끝 앵커는 `'\n  return ('` — 2칸짜리 `'  return ('` 는 위 조기반환의 `    return (`
+    //    **안에도 매치**돼서 slice 가 뒤집혀 빈 문자열이 된다(실제로 한 번 그랬다).
+    const acts = card.slice(card.indexOf('const actions = ('), card.indexOf('\n  return ('))
+    expect(acts).toMatch(/딜 모으기/)
+    expect(acts).toMatch(/이용내역/)
+    expect((acts.match(/<button/g) ?? []).length).toBe(2)
+    expect(acts).toContain(DIVIDER)      // 둘을 가르는 세로 선
   })
 
-  it('🔴 아래층은 두 칸 — 딜 모으기 · 이용내역', () => {
-    const bottom = card.slice(dividerAt)
-    expect(bottom).toMatch(/딜 모으기/)
-    expect(bottom).toMatch(/이용내역/)
-    expect((bottom.match(/<button/g) ?? []).length).toBe(2)
-    expect(bottom).toMatch(/w-px bg-rule/)     // 두 칸을 가르는 세로 선
+  it('🔴 금액 옆에 버튼을 두지 않는다 — 금액 블록은 글자뿐', () => {
+    // 왼쪽 블록(라벨~note)에 버튼이 끼면 A3 가 걷어낸 "가장 센 버튼이 내역" 문제가 되돌아온다.
+    const left = card.slice(card.indexOf('내 딜 잔액'), card.indexOf('{!compact && actions}'))
+    expect(left).not.toMatch(/<button/)
+  })
+
+  it('🔴 좁은 레일에서는 행동이 아래로 내려간다 — 7자리 잔액이 넘치지 않게', () => {
+    // compact 폭은 248px. 28px 숫자 + 행동 둘을 한 줄에 넣으면 999,999 에서 넘친다(실측 248 > 216).
+    expect(card).toContain("compact ? 'flex items-center gap-3 mt-2'")
+    expect(card).toContain('{compact && actions}')
   })
 
   it('🔴 채운 브랜드 버튼이 없다 — 블루는 글자 한 곳에만', () => {
@@ -65,7 +76,9 @@ describe('🪙 확정 구조 (안 A3)', () => {
   it('🔴 잔액 0 은 큰 카드를 쓰지 않는다 — 첫 진입이 "당신은 0" 이 되지 않게', () => {
     expect(card).toMatch(/if \(!balance && !awaiting\)/)
     const zero = card.slice(card.indexOf('if (!balance && !awaiting)'), card.indexOf('내 딜 잔액'))
-    expect(zero).not.toMatch(/text-\[42px\]/)
+    // 🔴 표식은 **지금 살아 있는 큰 숫자**여야 한다(안 B 는 28px). 42/40 을 그대로 두면 그 값이
+    //   코드 어디에도 없어 이 단언이 늘 통과한다 — 머지에서 실제로 그렇게 될 뻔했다.
+    expect(zero).not.toMatch(/text-\[28px\]/)
   })
 
   it('🔴 기다리는 카드는 **로그인한 사람에게만** — 비로그인은 종전대로 한 줄 바다', () => {

@@ -53,8 +53,19 @@ describe('pre-push 검색어', () => {
       const terms = searchTermsFor([f])
       expect(terms, '전체 경로').toContain(f)
       expect(terms, 'src 를 뗀 파일 경로').toContain(f.slice(4))
-      // 폴더는 어떤 형태로도 검색어가 아니다 — 이게 225개 폭발을 막는 선이다.
-      for (const t of terms) expect(t, `폴더 검색어: ${t}`).toMatch(/\.tsx?$/)
+      expect(terms, '확장자 뗀 경로(별칭 import 용)').toContain(f.slice(4).replace(/\.tsx?$/, ''))
+      // 🔧 2026-09-30 재조준: 규칙 5 가 **확장자를 뗀 파일 경로**를 하나 더 넣는다
+      //   (`import X from '@/components/search/SearchHeader'` 를 잡으려고). 확장자가 없다고
+      //   폴더인 것은 아니다 — 지키는 선은 여전히 **"폴더가 검색어가 되지 않는가"** 다.
+      const dir = f.slice(4, f.lastIndexOf('/'))          // 예: 'pages/user-profile'
+      const srcDir = f.slice(0, f.lastIndexOf('/'))       // 예: 'src/pages/user-profile'
+      for (const t of terms) {
+        expect(t, `폴더가 검색어가 됐다: ${t}`).not.toBe(dir)
+        expect(t, `폴더가 검색어가 됐다: ${t}`).not.toBe(srcDir)
+        // 파일 경로이거나(확장자 유지) 그 파일에서 확장자만 뗀 것이어야 한다.
+        expect(t === f || t === f.slice(4) || t === f.slice(4).replace(/\.tsx?$/, ''),
+          `파일 경로가 아닌 검색어: ${t}`).toBe(true)
+      }
     }
   })
 

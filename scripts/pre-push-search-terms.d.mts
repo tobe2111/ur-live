@@ -13,3 +13,14 @@
  * 파일 경로는 언제나 포함. `src/` 밖이면 담긴 폴더도(**끝 슬래시 없이**, 최상위 한 칸은 제외).
  */
 export declare function searchTermsFor(files: string[]): string[]
+
+/**
+ * 시험 본문이 **트리를 통째로 훑는가** (`globSync`·`readdirSync`·`ls-files … src/`).
+ *
+ * 그런 시험은 본문에 파일 이름을 안 들고 있어 검색어로는 **원리상** 못 고른다 — 그물이
+ * `src/` 변경 때 따로 합친다. grep 과 같은 **줄 단위**로 판정한다.
+ */
+export declare function scansTree(source: string): boolean
+
+/** 위 판정의 정규식 — 그물이 이 문자열을 **그대로** `grep -rlE` 에 넘긴다(두 벌이면 갈린다). */
+export declare const TREE_SCAN_PATTERN: string
