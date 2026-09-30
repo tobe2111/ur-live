@@ -32,13 +32,27 @@
  * 적어 뒀다). 이 결함은 문자열도 배열도 전부 맞고 **순서만** 틀렸다 ⇒ 실행해야만 보인다.
  * 그래서 이 파일은 `node:sqlite` 로 **진짜 SQL 을 돌린다.**
  *
+ * ## 🩸 그런데 라이브에서는 그 랭킹 쿼리가 **한 번도 돈 적이 없었다**
+ *
+ * 같은 날 더 파 보니 `searchByText` 의 ORDER BY 가 `COALESCE(p.rating,0)` 인데
+ * **products 에 `rating` 컬럼이 없다**(실제 이름 `avg_rating` — 라이브 100컬럼 실측).
+ * 그래서 매 검색마다 `no such column` → catch → `findAll`(통짜 문자열 LIKE)로 조용히 내려갔다.
+ *
+ * 증거(라이브 응답의 키 집합): 검색 결과 한 행이 `findAll` 의 목록 컬럼 **30개와 정확히 일치**하고
+ * (`brand_name`·`view_count`·`product_type`·`referral_enabled` 포함), 랭킹 경로가 돌려주는
+ * `PRODUCT_DETAIL_FIELDS`(`description`·`slug`·`group_buy_tiers` …)는 **하나도 없다.**
+ *
+ * ⇒ 2026-09-03 재작성(부분매칭·토큰 AND·동의어·랭킹·매장명)이 **통째로 죽어 있었다.**
+ *   `홍대 세트` 가 0건인 것도 그 탓이다(통짜 LIKE 는 "홍대 세트" 가 연속으로 있어야 한다).
+ *   ⚠️ 그래서 바인드 순서 수정만으로는 라이브가 안 바뀐다 — **둘 다** 고쳐야 한다.
+ *
  * ⚠️ 이 파일이 **못** 보는 것: D1 고유 동작(바인드 한도·컬럼 한도), 성능, 동의어 사전의 내용,
  *   그리고 `productDetailColsHealed` 가 만드는 실제 컬럼 목록(여기선 최소 컬럼만 만든다).
  */
 import { describe, it, expect } from 'vitest'
 import { createRequire } from 'node:module'
 import type { DatabaseSync as Sqlite } from 'node:sqlite'
-import { readFileSync } from 'node:fs'
+import { globSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { buildSearchClause, SEARCH_COLUMNS } from '@/features/products/repositories/search-query'
 import { stripComments } from '../helpers/source-text'
@@ -63,7 +77,9 @@ function freshDb() {
   const db = new DatabaseSync(':memory:')
   db.exec(`CREATE TABLE products (
     id INTEGER PRIMARY KEY, name TEXT, restaurant_name TEXT, description TEXT, category TEXT,
-    is_active INTEGER DEFAULT 1, sold_count INTEGER DEFAULT 0, rating REAL DEFAULT 0)`)
+    is_active INTEGER DEFAULT 1, sold_count INTEGER DEFAULT 0, avg_rating REAL DEFAULT 0)`)
+  // 🩸 `rating` 을 만들지 않는다 — 라이브 products 에 없는 컬럼이다. 픽스처가 그걸 갖고 있으면
+  //   진짜 스키마를 가리고, 바로 이 결함(2026-09-03~09-30 랭킹 쿼리 전멸)을 못 잡는다.
   const ins = db.prepare('INSERT INTO products (id,name,restaurant_name,description,category) VALUES (?,?,?,?,?)')
   for (const r of ROWS) ins.run(...(r as [number, string, string, string | null, string]))
   return db
@@ -172,5 +188,68 @@ describe('③ 배선 — 리포지토리가 SQL 등장 순서대로 넘긴다', 
     const { where, whereParams } = buildSearchClause('커피 세트', t => (t === '커피' ? ['카페', 'coffee'] : []))
     expect((where.match(/\?/g) || []).length).toBe(whereParams.length)
     expect(whereParams.length).toBe((3 + 1) * SEARCH_COLUMNS.length)
+  })
+})
+
+describe('④ 컬럼 실재 — 랭킹 쿼리가 없는 컬럼을 부르면 검색 전체가 조용히 강등된다', () => {
+  /**
+   * 레포가 아는 products 컬럼 집합 — 손으로 적지 않고 **두 SSOT 를 합쳐** 만든다.
+   *   ① `ProductsTable`(스키마 SSOT, 기본 컬럼)  ② `ALTER TABLE products ADD COLUMN`(증축 기록)
+   * ⚠️ 라이브 실제 컬럼(100개)의 **부분집합이 아니라 상위집합**일 수 있다 — 이 시험의 일은
+   *   "레포 어디에도 근거가 없는 컬럼을 부르고 있지 않은가" 이지 라이브 스키마 대조가 아니다.
+   */
+  function knownProductColumns(): Set<string> {
+    const schema = readFileSync(resolve(__dirname, '../../shared/db/production-schema.ts'), 'utf-8')
+    const at = schema.indexOf('export interface ProductsTable {')
+    expect(at, 'ProductsTable 를 못 찾았다 — 이 시험이 헛돈다').toBeGreaterThan(-1)
+    const close = schema.slice(at).search(/^\}/m)
+    const body = schema.slice(at, at + close)
+    const cols = new Set<string>()
+    for (const m of body.matchAll(/^\s{2}([a-z_][a-z_0-9]*)\??\s*:/gm)) cols.add(m[1])
+
+    // 증축 기록 — 레포 전체의 `ALTER TABLE products ADD COLUMN` 전수(정비 레인·마이그레이션 흩어져 있다)
+    for (const f of globSync('{src,migrations}/**/*.{ts,sql}')) {
+      const src = readFileSync(f, 'utf-8')
+      for (const m of src.matchAll(/ALTER TABLE products ADD COLUMN\s+[`"']?([a-z_][a-z_0-9]*)/g)) cols.add(m[1])
+    }
+    return cols
+  }
+
+  /** searchByText 본문에서 `p.<컬럼>` 을 전부 긁는다. */
+  function aliasedColumns(): string[] {
+    const at = REPO.indexOf('async searchByText(')
+    expect(at, 'searchByText 를 못 찾았다 — 이 시험이 헛돈다').toBeGreaterThan(-1)
+    const stop = REPO.indexOf('falling back to findAll', at)
+    expect(stop, 'searchByText 끝을 못 찾았다').toBeGreaterThan(at)
+    const body = REPO.slice(at, stop)
+    return [...new Set([...body.matchAll(/\bp\.([a-z_][a-z_0-9]*)/g)].map(m => m[1]))]
+  }
+
+  it('두 SSOT 를 실제로 읽어 왔다 (0개면 통과가 아니라 고장)', () => {
+    expect(knownProductColumns().size).toBeGreaterThan(60)
+    expect(aliasedColumns().length).toBeGreaterThan(3)
+  })
+
+  it('🔴 랭킹 쿼리가 부르는 products 컬럼이 전부 레포에 근거가 있다', () => {
+    const have = knownProductColumns()
+    for (const col of aliasedColumns()) {
+      expect(have.has(col), `products.${col} 의 근거가 레포에 없다 — 이 쿼리는 매번 죽고 findAll 로 조용히 강등된다`).toBe(true)
+    }
+  })
+
+  it('평점 정렬은 `avg_rating` 이다 (`rating` 은 products 에 없다)', () => {
+    expect(REPO).toMatch(/COALESCE\(p\.avg_rating,\s*0\) DESC/)
+    expect(REPO).not.toMatch(/COALESCE\(p\.rating,\s*0\)/)
+  })
+
+  it('검색 대상 컬럼도 전부 근거가 있다', () => {
+    const have = knownProductColumns()
+    for (const col of SEARCH_COLUMNS) expect(have.has(col), `products.${col}`).toBe(true)
+  })
+
+  it('🔁 되돌려-검증: 없는 컬럼으로 정렬하면 SQLite 가 실제로 거부한다', () => {
+    const db = freshDb()
+    expect(() => db.prepare('SELECT id FROM products ORDER BY COALESCE(rating,0) DESC').all())
+      .toThrow(/no such column/i)
   })
 })

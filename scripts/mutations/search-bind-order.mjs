@@ -43,6 +43,22 @@ export default [
     why: '식과 값의 개수가 갈리면 그 뒤 모든 바인드가 한 칸씩 밀린다 — 같은 클래스의 재발.',
   },
   {
+    name: '🔎 평점 정렬을 없는 컬럼(`p.rating`)으로 되돌린다 — 랭킹 쿼리 전멸',
+    file: REPO,
+    find: 'COALESCE(p.avg_rating,0) DESC',
+    replace: 'COALESCE(p.rating,0) DESC',
+    test: TEST,
+    why: 'products 에 `rating` 은 없다(`avg_rating` 이다). 부르면 매 검색이 no such column 으로 죽고 catch 가 findAll(통짜 LIKE)로 조용히 내려간다 — 2026-09-03~09-30 라이브가 그 상태였고 에러가 화면에 안 보인다.',
+  },
+  {
+    name: '🔎 컬럼 근거 검사의 증축 기록 스캔을 지운다',
+    file: 'src/tests/unit/search-bind-order-2026-09-30.test.ts',
+    find: "for (const f of globSync('{src,migrations}/**/*.{ts,sql}')) {",
+    replace: "for (const f of ([] as string[])) {",
+    test: TEST,
+    why: '증축 기록을 안 읽으면 알려진 컬럼이 25개로 쪼그라들어 멀쩡한 컬럼까지 빨간불이 된다 — 과잉 가드는 꺼지고, 꺼진 가드는 없는 것과 같다.',
+  },
+  {
     name: '🔎 매칭 조건에서 앞뒤 `%` 를 떼어 접두사 매칭으로 되돌린다',
     file: SSOT,
     find: 'const like = `%${escapeLike(v)}%`',

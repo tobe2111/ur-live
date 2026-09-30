@@ -141,8 +141,46 @@ done
 ⇒ **다음 세션**: ① 이 PR 배포 후 재측정(바인드 수정의 부수효과였는지) ② 여전하면 `safeError` 가
 `_debug` 를 붙이는 조건을 임시로 넓히거나, 핸들러 안 단계별 계측을 한 번 배포해 예외 원문을 잡는다.
 
+## 11. 🔴🔴 더 큰 것 — 랭킹 검색이 **라이브에서 한 번도 돈 적이 없었다** (같은 PR 에서 수리)
+
+§1 의 바인드 순서를 고치고 배포 전 라이브를 더 재 보다가, **그 코드가 애초에 실행된 적이 없다**는 것을
+알았다.
+
+**증거 — 응답의 키 집합**(추측 아님):
+
+```
+/api/search?q=홍대 의 한 행 = 30개 키
+  brand_name · view_count · product_type · referral_enabled …  ← findAll 의 LIST_COLUMNS 와 정확히 일치
+  description · slug · group_buy_tiers · restaurant_address 없음 ← 랭킹 경로의 PRODUCT_DETAIL_FIELDS 는 0개
+/api/products?limit=1 (일반 목록=findAll) 의 한 행 = **완전히 같은 30개 키**
+```
+
+**원인 한 글자**: `searchByText` 의 `ORDER BY … COALESCE(p.rating,0) DESC` — **products 에 `rating`
+컬럼이 없다**(실제 `avg_rating`. 라이브 `PRAGMA table_info(products)` 100컬럼 실측, 레포 SSOT·증축
+기록 어디에도 `rating` 없음). 매 검색이 `no such column` → `catch` → `findAll` **통짜 문자열 LIKE**.
+
+⇒ **2026-09-03 재작성이 통째로 죽어 있었다**: 부분매칭(단어 안쪽)·토큰 AND·동의어·랭킹·매장명 커버리지.
+   `홍대 세트` 가 0건인 것도 이 탓이다(통짜 LIKE 는 "홍대 세트" 가 **연속으로** 있어야 한다).
+
+🩸 **그래서 §1 보고를 정정한다** — `홍대 홍대` 0건, `제안 눌렀는데 0건` 의 **직접 원인은 바인드
+순서가 아니라 이 컬럼 오타**다. 바인드 순서는 그 뒤에 숨어 있던 두 번째 결함이고, **둘 다 고쳐야**
+라이브가 바뀐다(바인드만 고쳤으면 아무 변화도 없었을 것이다).
+
+**왜 아무도 몰랐나** — 세 겹:
+1. `catch` 가 조용히 findAll 로 내려간다(로그는 `console.warn` 뿐, 화면엔 결과가 *나오긴* 한다)
+2. `searchByText` 는 `withColumnPruning` 을 **안 쓴다** — 자가치유가 `rating` 을 고칠 수도 없다
+   (`PRODUCT_DETAIL_FIELDS` 밖의 컬럼이라 `pruneMissingProductColumn` 이 애초에 손대지 않는다)
+3. `check-sql-column-exists` 는 **INSERT/UPDATE 컬럼만** 본다 — SELECT/ORDER BY 는 사각지대다
+
+**가드(④, 5건)**: `searchByText` 가 부르는 `p.<컬럼>` 전부가 레포에 근거(`ProductsTable` ∪ 레포 전체의
+`ALTER TABLE products ADD COLUMN`)를 갖는지 검사. 🩸 **작성 중 내 픽스처가 이 결함을 가리고 있었다** —
+테스트용 임시 테이블에 `rating` 을 만들어 둬서 되돌려-검증이 초록이었다. 픽스처에서 빼고 나서야 빨간불이
+떴다. **픽스처가 유령 컬럼을 만들면 스키마 결함은 영원히 안 보인다.**
+
 ## 8. 남은 것
 
 - 위 §6 라이브 판정(배포 후)
-- §10 의 49바이트 500 (배포 후에도 남으면) — 상품명 17개가 실제로 걸린다
+- §10 의 49바이트 500 (배포 후에도 남으면) — 상품명 17개가 실제로 걸린다.
+  ⚠️ §11 을 알고 나면 **findAll 폴백이 던지는 것**이 유력하다(그 경로만 생 검색어를 LIKE 로 쓴다).
+  랭킹 경로가 살아나면 폴백에 안 가므로 이 500 도 함께 사라질 수 있다 — 배포 후 먼저 재측정할 것.
 - (별건, 대표 보류) P16+P17 staging 실결제 · `voucher_partial_refund_enabled` 는 P17 통과 전 켜지 않는다

@@ -462,7 +462,11 @@ export class ProductRepository {
     if (filter.maxPrice !== undefined) { sql += ` AND p.price <= ?`; params.push(filter.maxPrice) }
 
     // 동점은 많이 팔린 것 → 평점 → 최신 순. `_rank` 는 위 SELECT 의 별칭이라 재계산 없음.
-    sql += ` ORDER BY _rank DESC, COALESCE(p.sold_count,0) DESC, COALESCE(p.rating,0) DESC, p.id DESC LIMIT ? OFFSET ?`
+    // 🔴 평점 컬럼은 `avg_rating` 이다 — `rating` 은 products 에 **없다**(라이브 100컬럼 실측).
+    //   2026-09-03~09-30 동안 이 한 글자 때문에 랭킹 쿼리가 **매 검색마다** 'no such column' 으로
+    //   죽고 아래 catch 가 findAll(통짜 문자열 LIKE)로 조용히 내려갔다 — 부분매칭·토큰 AND·동의어·
+    //   랭킹·매장명까지 2026-09-03 재작성 전체가 라이브에서 한 번도 돈 적이 없다.
+    sql += ` ORDER BY _rank DESC, COALESCE(p.sold_count,0) DESC, COALESCE(p.avg_rating,0) DESC, p.id DESC LIMIT ? OFFSET ?`
     params.push(limit, offset)
 
     try {
