@@ -25,7 +25,7 @@
  * `isSeatableStoreStatus` 가 대기·반려도 좌석을 열어 준다(당근 모델). 그래서 이 카드는
  * 상태를 **직접 말한다** — 노출·정산이 왜 아직인지 화면이 설명하지 않으면 사장님은 고장으로 읽는다.
  */
-import { Suspense, lazy, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { ChevronDown, ChevronRight, Loader2, Search } from 'lucide-react'
 // 🎨 2026-09-28: 판매 도구 여덟 칸의 뜻 아이콘. lucide 로 남긴 넷은 전부 **조작**이다
 //    (펼치기·이동·로딩·검색) — 어느 앱에서나 같은 모양이라 직접 그릴 값이 없다.
@@ -37,12 +37,13 @@ import { currentSeatId, onSeatChange, switchSeat } from '@/lib/seller-seat'
 import { clearMyReturn, withMyReturn } from '@/lib/seller-return'
 import { toast } from '@/hooks/useToast'
 import type { MyStoresState } from './useMyStores'
+import { writeReservedHeight } from './seller-reserve'
 import { useSellerWork } from './seller-section/useSellerWork'
 import PendingOrders from './seller-section/PendingOrders'
 // 🧾 2026-09-28: 묶음 라벨·줄은 손님 쪽 목록과 **같은 부품**이다(`list-grammar`).
 //   종전엔 이 파일 안에 `GroupLabel`/`ToolRow` 가 따로 있었고, 손님 쪽은 또 다른 문법이라
 //   같은 화면에 목록 문법이 두 벌이었다 — 대표 *"허술해"*(09-28)의 실체 중 하나.
-import { LIST_PLATE_CLS, ListRow as ToolRow } from './list-grammar'
+import { LIST_PLATE_CLS, SECTION_TITLE_CLS, ListRow as ToolRow } from './list-grammar'
 
 /**
  * ⏳ **시트는 전부 열 때 받는다** (2026-09-26 — 대표 *"로딩 속도를 줄이고"*).
@@ -174,6 +175,19 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
   // ↩️ 마이에 도착했다 = 여정이 끝났다. 흔적을 지워야 다음 대시보드 방문에 띠가 안 남는다.
   useEffect(() => { clearMyReturn() }, [])
 
+  /**
+   * 📐 2026-09-30 — 이 구역의 **실제 높이**를 적어 둔다. 다음 방문의 첫 프레임이 그만큼을 비워 둬서
+   * 손님 줄이 안 밀린다(대표 신고 *"2번째 이미지가 … 첫번째 이미지로 바뀌더라?"* — `SellerSectionLazy` 머리말).
+   * ⚠️ 시트가 열린 상태의 높이를 적지 않으려고 **마운트/내용 변화 직후 한 프레임**만 잰다.
+   */
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const el = rootRef.current
+    if (!el) return
+    const id = requestAnimationFrame(() => writeReservedHeight(el.offsetHeight))
+    return () => cancelAnimationFrame(id)
+  }, [stores.length, store?.seller_id, store?.status])
+
   const onWorkDone = () => { state.refetch() }
 
   /**
@@ -198,7 +212,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
   const note = store.status ? STATUS_NOTE[store.status] : undefined
 
   return (
-    <div className="ur-content-medium lg:px-4 pt-4">
+    <div ref={rootRef} className="ur-content-medium lg:px-4 pt-4">
       {/* 🔵 2026-09-29 (대표 확정 **안 C**) — **구역 띠를 걷었다.**
           09-28 의 띠(`w-[3px] bg-brand`)는 *"제목이 붙은 구역이 파는 쪽"* 이라는 이름 E 규칙을 구역
           전체로 늘린 표시였다. 안 C 는 **모든 구역**에 24px 제목을 주므로 그 규칙이 성립하지 않고,
@@ -210,7 +224,9 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
              카드 **안쪽**을 세로로 관통한다(2026-09-28 에 하네스로 실측해 고친 결함이다). */}
       {/* 섹션 머리 — 오른쪽이 곧 가게 전환(2곳 이상일 때만 누를 수 있다) */}
       <div className="flex items-center gap-2 mb-2 px-4">
-        <h2 className="text-[24px] leading-tight font-extrabold tracking-[-0.03em] text-gray-900 dark:text-white">내 가게</h2>
+        {/* ⚠️ 크기·무게·색은 `SECTION_TITLE_CLS` 한 곳에서 온다 — 여기에 손으로 적으면
+            2026-09-30 오전처럼 이 제목만 옛 값으로 남는다(시험이 대조한다). */}
+        <h2 className={`leading-tight ${SECTION_TITLE_CLS}`}>내 가게</h2>
         <div className="flex-1" />
         {stores.length >= 2 ? (
           <button

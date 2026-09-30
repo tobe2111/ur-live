@@ -9,13 +9,11 @@ import { logoutAll } from '@/features/auth/login-flow.service'
 import { getUserProfileImage } from '@/utils/auth'
 import { RewardAdCard } from '@/components/my-page/reward-ad-card'
 import { ChevronRight } from 'lucide-react'
-// 🎨 2026-09-28: 남은 lucide 는 `ChevronRight`(이동) 하나뿐 — 조작이라 그대로 둔다.
-import { LogOutIcon, ReceiptIcon, ScanIcon, UrShopIcon } from '@/components/icons/urdeal-icons'
+// 🎨 2026-09-28: 남은 lucide 는 `ChevronRight`(프로필 편집 화살표) 하나뿐 — 조작이라 그대로 둔다.
+//    2026-09-30 수익·추천 구역이 빠지며 `ReceiptIcon`·`UrShopIcon` 소비처는 사라졌다.
+import { LogOutIcon, ScanIcon } from '@/components/icons/urdeal-icons'
+import { ListRow, rowIcon } from './user-profile/list-grammar'
 import MyStats from './user-profile/MyStats'
-import EarningsGroup from './user-profile/EarningsGroup'
-import ReferralEarnedCard from './user-profile/ReferralEarnedCard'
-import CuratorEarningsCard from './user-profile/CuratorEarningsCard'
-import MyReferralCard from '@/components/MyReferralCard'
 import RoleCtaGrid from './user-profile/RoleCtaGrid'
 import ShoppingGroup from './user-profile/ShoppingGroup'
 import OrderStatusBar from './user-profile/OrderStatusBar'
@@ -285,7 +283,11 @@ export default function UserProfilePage() {
             (그쪽은 **먼저 그 가게 좌석에 앉히고** 보낸다 — 소각은 되돌릴 수 없다).
             여기 남긴 건 **폴백**이다: 좌석 목록을 못 받았거나(요약 실패) 정지 매장이라 섹션이
             안 뜨는 경우. 그때도 계산대로 가는 길이 사라지면 안 된다. 둘은 상호배타다. */}
-        {!!localStorage.getItem('seller_token') && sellerSeats.stores.length === 0 && (
+        {/* ⏳ 2026-09-30 (대표 *"2번째 이미지가 로딩에 나오다가 첫번째 이미지로 바뀌더라?"*):
+            `!sellerSeats.loading` 을 더했다. 종전엔 좌석 조회가 **도는 동안에도** 이 카드가 떴다가
+            응답이 오면 사라져(하네스 실측 — `사라짐: ["매장 계산대", …]`), 손님 줄 전체가 **+336px**
+            밀렸다. 이 카드는 주석이 말하듯 *폴백*이다 — "아직 모른다" 는 "없다" 가 아니다. */}
+        {!!localStorage.getItem('seller_token') && !sellerSeats.loading && sellerSeats.stores.length === 0 && (
           <button
             type="button"
             onClick={() => navigate('/store/scan')}
@@ -317,56 +319,16 @@ export default function UserProfilePage() {
       </>
       )}
 
-      {/* 🧭 2026-06-10 (UI 100점 패스): 수익·추천 3카드 도배 → 접이식 그룹(자산 다음으로 1탭 뒤). */}
-      <EarningsGroup>
-      {/* 🧹 2026-06-22 (대표 — 수익·추천 폴드 압축): 큰 카드 도배 → 컴팩트 행 한 묶음(B&W).
-            ReferralEarnedCard/CuratorEarningsCard 는 행으로(데이터/라우트 불변, 빈값이면 null →
-            divide-y 가 자동 정렬). 각 행 라우트는 단일 진입점이라 제거 없이 한 카드로 통합만. */}
-      <div className="mt-1 rounded-2xl overflow-hidden bg-gray-100 dark:bg-white/[0.04] divide-y divide-black/[0.05] dark:divide-white/[0.05]">
-        {/* referral 적립 현황 → /influencer (entry point) */}
-        <ReferralEarnedCard />
-        {/* 유어샵(큐레이터) 수익 → /creator. 누적 0 이면 null. 사업자=현금 / user=딜 */}
-        <CuratorEarningsCard />
-        {/* /user/affiliate 고아 라우트 진입점 — 추천 링크 실적 */}
-        <button
-          type="button"
-          onClick={() => navigate('/user/affiliate')}
-          className="w-full flex items-center gap-3 px-4 py-3 active:bg-gray-200 dark:active:bg-white/[0.06] text-left"
-        >
-          <UrShopIcon className="w-[18px] h-[18px] text-gray-500 dark:text-gray-400" aria-hidden="true" />
-          <span className="flex-1 min-w-0">
-            <span className="block text-[13px] font-medium text-gray-900 dark:text-white">
-              {t('my.affiliateLinkTitle', { defaultValue: '상품 추천 링크' })}
-            </span>
-            <span className="block text-[12px] text-gray-500 dark:text-white/45 mt-1">
-              {t('my.affiliateLinkSub', { defaultValue: '내 링크로 구매하면 딜 적립 — 실적 보기' })}
-            </span>
-          </span>
-          <ChevronRight className="w-3.5 h-3.5 text-gray-400 dark:text-white/30 shrink-0" aria-hidden="true" />
-        </button>
-        {/* 추천 수익 정산(출금) → /influencer/settlement */}
-        <button
-          type="button"
-          onClick={() => navigate('/influencer/settlement')}
-          className="w-full flex items-center gap-3 px-4 py-3 active:bg-gray-200 dark:active:bg-white/[0.06] text-left"
-        >
-          <ReceiptIcon className="w-[18px] h-[18px] text-gray-500 dark:text-gray-400" aria-hidden="true" />
-          <span className="flex-1 min-w-0">
-            <span className="block text-[13px] font-medium text-gray-900 dark:text-white">
-              {t('my.settlementTitle', { defaultValue: '추천 수익 정산' })}
-            </span>
-            <span className="block text-[12px] text-gray-500 dark:text-white/45 mt-1">
-              {t('my.settlementSub', { defaultValue: '추천·영입 적립 출금 및 내역' })}
-            </span>
-          </span>
-          <ChevronRight className="w-3.5 h-3.5 text-gray-400 dark:text-white/30 shrink-0" aria-hidden="true" />
-        </button>
-      </div>
-
-
-      {/* 🛡️ 2026-05-27 (P2 referral): 친구 초대 카드 — 초대링크 복사가 핵심이라 행 압축 대신 카드 유지(B&W) */}
-      <MyReferralCard />
-      </EarningsGroup>
+      {/* 🗑️ 2026-09-30 — **수익 · 추천 구역을 마이에서 뺐다** (대표 *"수익 추천은 지금은 아예
+          마이에서 안보여도 될 것 같아"*).
+          ⚠️ **기능을 지운 게 아니다.** 라우트 넷(`/influencer`, `/creator`, `/user/affiliate`,
+          `/influencer/settlement`)과 카드 부품(`EarningsGroup`·`ReferralEarnedCard`·
+          `CuratorEarningsCard`·`MyReferralCard`)은 그대로 살아 있다. 그리고 소비자 유입도 남는다 —
+          홈 `DealEarnStrip`(내 추천 링크), `/my-deal-history`, `/referral` 이 같은 곳으로 보낸다
+          (2026-07-29 인계가 기록한 인바운드 세 곳 중 둘). 되살릴 때는 이 자리에 한 블록을 되돌리면 된다.
+          🔎 왜 지금 뺐나: 이 구역은 **접혀 있었다**. 접힌 채 제목 하나와 줄 하나(`내가 소개한 것`)만
+          차지하고 있었고, 그 한 줄을 위해 구역 제목이 하나 더 서 있었다 — 대표가 지적한 '촌스러움'의
+          실체 중 하나가 *한 줄짜리 구역*이다. */}
 
       {/* 🛡️ 2026-05-21: 역할 진입 CTA 2x2 grid — 공구개최 / 사장님 / 셀러 / 에이전시.
             ur-content-medium 부모 wrap — 다른 섹션과 동일 폭 정렬 (overflow 영구 fix). */}
@@ -382,66 +344,32 @@ export default function UserProfilePage() {
            기능/데이터 로직 불변 — 표시만 1탭 뒤로. 탈퇴는 파괴적 동작이라 그룹 밖 최하단 유지. */}
       <SettingsGroup>
         <NotificationToggleSection />
-        <ThemeToggleSection className="ur-content-medium px-4 lg:px-8 pt-5" />
+        {/* 🧱 가로 패딩 없음 — 줄이 자기 `px-4` 를 갖는다(2026-09-30 안 C 정합). */}
+        <ThemeToggleSection className="ur-content-medium lg:px-4" />
         {/* 🌐 2026-08-11: 번역이 반쯤 빈 상태(언어당 [TODO] 289개)에서 전환을 열어 두면
             어중간한 화면이 된다. 한국 전용 서비스라 문을 닫는다 — 플래그 false 로 즉시 복원. */}
         {!CONSUMER_LANGUAGE_SWITCH_HIDDEN && <LanguageSection className="ur-content-medium px-4 lg:px-8 pt-3" />}
         {/* 🧹 2026-09-02 (대표 "앱 정보는 맨 밑에 넣어줘"): 버전 표기는 **찾을 수 있으면 되는 정보**라
             설정 그룹을 열어야 보이는 자리가 아니라 페이지 맨 아래(약관·FAQ 옆)로 내렸다. */}
+        {/* 🚪 2026-09-30 — 로그아웃이 **설정 · 계정 안**으로 들어왔다 (대표 *"맨 하단도 좀 정리해야
+            할 것 같아"*). 종전엔 페이지 맨 아래 흰 판 버튼이었는데, ⓐ 로그아웃은 설정이지 독립 구역이
+            아니고 ⓑ 안 C 에서 **흰 판은 "파는 쪽" 표시자**라 손님 구역에 판이 하나 떠 있으면 그 표시가
+            무의미해진다(표면 규칙 ⑦). ⇒ 다른 줄과 같은 평면 줄로. */}
+        <div className="mt-4">
+          <ListRow icon={rowIcon(LogOutIcon)} label={t('userProfile.logout')} onClick={handleLogout} />
+        </div>
       </SettingsGroup>
 
-      {/* v4 로그아웃 + 계정 전환 + 회원 탈퇴 — 한 묶음, 동일 간격(space-y-2) */}
-      <div className="ur-content-medium px-4 lg:px-8 pt-6 space-y-2">
-        {/* 🛡️ 2026-05-01: linked seller 가 있으면 셀러 대시보드 전환 버튼 표시.
-            이전: BottomNav 가 seller_token 만 보고 자동으로 셀러 UI 표시 → 사용자 혼란.
-            이번: 명시 전환만 셀러 모드로. */}
-
-        {/* 🚪 2026-09-28 (대표 확정) — **'내 매장' 버튼을 없앴다.** 2026-06-22 에 "소상공인은 풀
-            대시보드 대신 앱에서 바로" 로 만든 문인데, 2026-09-25 에 페이지 **맨 위**에 '내 가게'
-            섹션이 생기면서 **같은 일을 하는 화면이 둘**이 됐다(`/my-store` 는 297줄짜리 별도 페이지에
-            타일 여섯을 자기 손으로 다시 그린다 — 도구가 하나 늘면 두 곳을 고쳐야 하고, 반드시 한쪽을
-            잊는다). 게다가 이 버튼은 **로그아웃 바로 위**에 있어서, 하루에 가장 많이 쓰는 도구가
-            페이지 맨 끝까지 스크롤해야 나왔다.
-            ⚠️ 라우트 `/my-store` 는 **남긴다** — 이미 나간 링크·북마크가 있다. 페이지 삭제는 별건. */}
-        {/* 🎨 2026-09-28 (대표 *"디자인 및 UI 퀄리티가 너무 허술해"*) — **검정 면을 내렸다.**
-            이 버튼은 화면에서 **가장 무거운 요소**였다(유일한 검정 면). 그런데 하는 일은 *다른 화면으로
-            나가기*이고, 09-25 §14 "하는 것도 마이에서" 이후 판매 도구는 이미 이 페이지 맨 위에 있다 —
-            즉 화면이 "여기서 나가라" 고 가장 크게 말하고 있었다.
-            표면 규칙 ②(*"강조색 하나, 자리 셋 — 밴드 · 주 행동 **글자** · 강조 단어"*)에도 어긋났다:
-            파란 면(사용처리)과 검정 면이 같은 화면에서 주 행동을 다퉜다.
-            ⇒ 흰 판 + **브랜드 글자**로. 무게 순서가 서고(사용처리 면 › 전환 글자 › 로그아웃 회색 ›
-              탈퇴 링크), 찾기는 그대로 쉽다. 2026-08-30 에 회원 탈퇴를 격하한 것과 같은 판단이다. */}
-        {!!localStorage.getItem('seller_token') && (
-          <button
-            type="button"
-            onClick={() => {
-              localStorage.setItem('active_role', 'seller')
-              window.location.href = '/seller'
-            }}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-surface shadow-lift text-[13px] font-bold text-brand-text active:opacity-70 transition-opacity"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h18v4H3zM3 9h18v12H3zM9 13h6" />
-            </svg>
-            {t('userProfile.switchToSeller')}
-          </button>
-        )}
-        {/* 🛡️ 2026-05-01: 다른 계정으로 로그인 — hidden per product decision 2026-05-04 */}
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="ur-btn ur-btn-lg ur-btn-block bg-surface text-gray-900 dark:text-white/75"
-        >
-          <LogOutIcon className="w-4 h-4" aria-hidden="true" />
-          {t('userProfile.logout')}
-        </button>
-        {/* 🛡️ 회원 탈퇴 — 파괴적 동작이다.
-            🩸 2026-08-30: 그런데 **빨강 아웃라인 박스**라서 바로 위 로그아웃(회색)보다
-               시각적으로 **더 강했다.** 화면이 "탈퇴를 누르라" 고 말하고 있던 셈이다 —
-               파괴적 동작은 눈에 띄면 안 되고, 찾을 수는 있어야 한다.
-            ⇒ 조용한 텍스트 링크로 격하. 라우트·경고 화면(/account/delete-warning)은 그대로다. */}
-        <DeleteAccountLink />
-      </div>
+      {/* 🗑️ 2026-09-30 — **'셀러 대시보드로 전환' 버튼을 없앴다** (대표 *"셀러 대시보드로 전환도
+          이젠 필요없잖아"*). 맞다. 2026-09-25 §14("하는 것도 마이에서") 이후 **매일 쓰는 판매 도구는
+          이 페이지 맨 위 '내 가게' 구역**이 전부 맡고, 넓은 화면이 필요한 일은 그 구역의 `전체 도구`가
+          같은 시트로 연다. 즉 이 버튼은 *같은 일을 하는 셋째 문*이었다(09-28 에 타일을 지우고 이것만
+          남겼는데, 그 뒤 §14 가 문 자체를 불필요하게 만들었다).
+          ⚠️ `/seller` 라우트와 대시보드는 그대로다 — 북마크·직링크는 살아 있고, `active_role` 을
+             심는 일은 좌석 전환(`switchSeat`)이 이미 한다.
+          🧹 같은 커밋에서 이 묶음(`로그아웃 + 전환 + 탈퇴`) 자체가 사라졌다 — 로그아웃은 설정 구역
+             안으로, 탈퇴는 페이지 **맨 끝**(약관·버전 다음)으로 갔다. 대표 *"맨 하단도 좀 정리해야
+             할 것 같아"*: 파괴적 동작은 눈에 띄면 안 되고 찾을 수는 있어야 한다는 2026-08-30 판단의 연장이다. */}
 
       </div>{/* /오른쪽 열 — 손님 */}
       </div>{/* /ur-account-cols */}
@@ -449,7 +377,7 @@ export default function UserProfilePage() {
       {/* 🧹 2026-06-22 (대표 — 도움말 비중 축소): 도움말/약관을 최하단 footer 로.
             볼드 헤더+카드 InsetGroup → 점 구분 muted 텍스트 링크(항목/경로 불변). */}
       <div className="ur-content-medium px-4 lg:px-8 pb-10 pt-4">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           {[
             { label: t('userProfile.kakaoConsult', { defaultValue: '카카오톡 상담' }), emphasize: true, action: () => window.open('http://pf.kakao.com/_AITdn/chat', '_blank', 'noopener,noreferrer') },
             { label: t('userProfile.faq'), path: '/faq' },
@@ -457,9 +385,12 @@ export default function UserProfilePage() {
             { label: t('userProfile.privacy'), path: '/privacy' },
             // 🛡️ 2026-07-02: '배송정책' 라벨이 /refund(환불·반품 정책)로 리다이렉트돼 라벨-도착지 불일치 — 정합.
             { label: t('userProfile.refundPolicy', { defaultValue: '환불·반품 정책' }), path: '/refund' },
-          ].map((item, i) => (
-            <span key={item.label} className="flex items-center gap-3">
-              {i > 0 && <span className="text-[12px] text-gray-300 dark:text-white/15" aria-hidden="true">·</span>}
+          ].map((item) => (
+            /* 🧹 2026-09-30 (대표 *"맨 하단도 좀 정리해야 할 것 같아"*) — **가운뎃점 구분자를 없앴다.**
+               줄이 넘칠 때 `·` 가 **다음 줄 맨 앞**에 혼자 떨어졌다(실측: `· 환불·반품 정책`).
+               간격만으로 충분히 갈리고, 대외 문구 룰(*"가운뎃점은 줄당 1개"*)에도 맞는다.
+               ⚠️ `환불·반품` 의 붙여 쓴 가운뎃점은 한국어 표준이라 대상이 아니다. */
+            <span key={item.label} className="flex items-center">
               <button
                 type="button"
                 onClick={() => (item as any).action ? (item as any).action() : item.path && navigate(item.path)}
@@ -473,6 +404,16 @@ export default function UserProfilePage() {
         <p className="text-[12px] text-gray-400 dark:text-white/30 mt-2">{t('userProfile.kakaoConsultSub', { defaultValue: '평일 10:00~18:00 응대' })}</p>
         {/* 📱 앱 정보 — 페이지 맨 밑(대표 2026-09-02). 설정 그룹에서 이동, 컴포넌트 자체는 불변. */}
         <AppVersionSection />
+        {/* 🛡️ 회원 탈퇴 — 파괴적 동작이다.
+            🩸 2026-08-30: 그런데 **빨강 아웃라인 박스**라서 바로 위 로그아웃(회색)보다
+               시각적으로 **더 강했다.** 화면이 "탈퇴를 누르라" 고 말하고 있던 셈이다 —
+               파괴적 동작은 눈에 띄면 안 되고, 찾을 수는 있어야 한다.
+            ⇒ 조용한 텍스트 링크로 격하. 라우트·경고 화면(/account/delete-warning)은 그대로다.
+            🧹 2026-09-30: 로그아웃이 설정 구역으로 올라가면서, 탈퇴는 **페이지의 마지막 줄**이 됐다.
+               찾을 수 있는 자리이면서 어떤 동선에도 안 걸린다. */}
+        <div className="mt-6">
+          <DeleteAccountLink />
+        </div>
       </div>
 
         </div>{/* /우측 내용 칸 */}

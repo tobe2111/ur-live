@@ -403,6 +403,15 @@ const STORE_NAMES = [
   '망원제빵소 연남점',
   '코어필라테스 성산',
 ]
+/**
+ * ⏳ `--slow=N` — 좌석 요약(`/api/seller/my-stores/summary`)의 응답을 N ms 늦춘다.
+ *   라이브에서 이 응답은 수백 ms 걸리는데 하네스 스텁은 **즉답**이라, 그 사이에만 존재하는
+ *   화면(판매 구역이 아직 없는 한 프레임)을 지금까지 한 번도 못 봤다. 대표가 본 것이 그 프레임이다.
+ * 📐 `--shift` — 그 프레임과 완성 프레임에서 **같은 글자가 같은 y 에 있는지** 재서 밀림을 판정한다.
+ *   "그럴듯한 기제" 로 결론 내지 않기 위한 측정이다(CLAUDE.md 2026-09-21 교훈).
+ */
+const SLOW = Number(args.slow) || 0
+const SHIFT = 'shift' in args
 const STORE_STATUS = typeof args.stores === 'string' && /^[a-z]+$/.test(args.stores) ? args.stores : 'approved'
 const STORES_N = (() => {
   const a = process.argv.find((x) => x.startsWith('--stores'))
@@ -470,7 +479,11 @@ function serve() {
             return res.end(JSON.stringify({ success: true, data: rows }))
           }
         }
-        if (STORES_N > 0 && p === '/api/seller/my-stores/summary') return res.end(JSON.stringify(storesSeed(STORES_N)))
+        if (STORES_N > 0 && p === '/api/seller/my-stores/summary') {
+          const body = JSON.stringify(storesSeed(STORES_N))
+          if (SLOW > 0) return void setTimeout(() => res.end(body), SLOW)
+          return res.end(body)
+        }
         // 🎬 레일은 홈 어느 경로에서든 뜬다 — 플래그 없이 항상 준다.
         if (p === '/api/urshorts') return res.end(JSON.stringify({ success: true, data: SHORTS_SEED }))
         if (args.wallet && p === '/api/vouchers/my')
@@ -574,6 +587,53 @@ page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(m.text(
 page.on('pageerror', (e) => consoleErrors.push(`[pageerror] ${String(e && e.message).slice(0, 300)}`))
 
 await page.goto(`http://127.0.0.1:${PORT}${ROUTE}`, { waitUntil: 'domcontentloaded', timeout: 40000 }).catch(() => {})
+/**
+ * 📐 `--shift` — 두 프레임의 같은 글자를 대조한다.
+ *   ⚠️ 이 측정이 못 보는 것: **그 사이에 몇 번 움직였는가**(두 점만 본다) · 애니메이션 · 폰트 로드로
+ *      인한 미세 이동. 그리고 `--slow` 없이 쓰면 스텁이 즉답이라 **늘 0 이 나온다**(그건 통과가 아니라
+ *      측정을 안 한 것이다) — 그래서 SLOW 가 0 이면 크게 소리낸다.
+ */
+if (SHIFT) {
+  const snap = () => page.evaluate(() => {
+    const m = new Map()
+    for (const el of document.querySelectorAll('p,span,h1,h2,h3,h4,button,a,label,li,div')) {
+      if (el.children.length) continue
+      const s = (el.textContent || '').trim()
+      if (s.length < 2 || s.length > 40) continue
+      const r = el.getBoundingClientRect()
+      if (r.width === 0 && r.height === 0) continue
+      if (!m.has(s)) m.set(s, Math.round(r.top + window.scrollY))
+    }
+    return { pos: Object.fromEntries(m), docH: document.documentElement.scrollHeight }
+  })
+  /**
+   * 🔁 **두 번 잰다 — 첫 방문과 재방문.**
+   *   자리 예약이 *지난 렌더에서 잰 값*으로 동작하는 화면이 있어서(판매 구역), 한 번만 재면
+   *   그 처방을 **영영 못 본다**. 재방문은 같은 브라우저 컨텍스트에서 새로고침으로 만든다
+   *   (localStorage 가 그대로 남는다 — 그게 예약값이 사는 곳이다).
+   */
+  const round = async (label) => {
+    await page.waitForTimeout(Math.max(500, Math.round(SLOW * 0.5)))
+    const a = await snap()
+    await page.waitForTimeout(SLOW + 2500)
+    const b = await snap()
+    const moved = [], gone = [], born = []
+    for (const [k, y] of Object.entries(a.pos)) {
+      if (!(k in b.pos)) { gone.push(k); continue }
+      const d = b.pos[k] - y
+      if (Math.abs(d) > 8) moved.push(`${k} ${y}→${b.pos[k]} (${d > 0 ? '+' : ''}${d})`)
+    }
+    for (const k of Object.keys(b.pos)) if (!(k in a.pos)) born.push(k)
+    console.log(`📐 밀림 측정 [${ROUTE}] ${label} ${moved.length ? '🔴 밀림 있음' : '🟢 안 밀림'} — 이동 ${moved.length} · 사라짐 ${gone.length} · 생김 ${born.length} · 문서높이 ${a.docH}→${b.docH}px`)
+    for (const l of moved.slice(0, 10)) console.log(`   ↕ ${l}`)
+    if (gone.length) console.log(`   ✂️ 사라짐: ${JSON.stringify(gone.slice(0, 8))}`)
+    if (born.length) console.log(`   ✚ 생김: ${JSON.stringify(born.slice(0, 6))}`)
+  }
+  if (SLOW <= 0) console.log('📐 밀림 측정 ⚠️ `--slow=N` 없이 돌렸다 — 스텁이 즉답이라 이 0 은 아무것도 증명하지 않는다')
+  await round('첫 방문')
+  await page.reload({ waitUntil: 'domcontentloaded' }).catch(() => {})
+  await round('재방문')
+}
 await page.waitForTimeout(4000)
 /**
  * 🖱️ `--click="글자"` — 버튼을 눌러 **연 뒤**를 찍는다(여러 개면 `>>` 로 이어서).
@@ -741,6 +801,15 @@ if (args['phone-audit']) {
   console.log(`   PHONE_AUDIT_JSON ${JSON.stringify({ route: ROUTE, name: NAME, ...audit, cutSample: undefined, clippedSample: undefined, tinySample: undefined })}`)
 }
 
+/**
+ * 📜 `--scroll=N` — N px 내린 뒤 찍는다. 페이지 아래쪽(설정·푸터)은 한 화면에 안 들어오는데,
+ *   전체 캡처(`fullPage`)는 sticky/fixed 요소가 이상하게 늘어나 판정에 못 쓴다.
+ */
+const SCROLL = Number(args.scroll) || 0
+if (SCROLL > 0) {
+  await page.evaluate((y) => window.scrollTo(0, y), SCROLL)
+  await page.waitForTimeout(600)
+}
 await page.screenshot({ path: out })
 /**
  * 📄 `--text=N` — 본문을 N 자까지 찍는다(기본 60).

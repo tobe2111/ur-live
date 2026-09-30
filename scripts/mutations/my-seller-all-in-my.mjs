@@ -23,8 +23,10 @@ export default [
   {
     name: '💸 비셀러가 판매 코드를 다시 받는다 (게이트가 lazy 안으로)',
     file: GATE,
-    find: '  if (state.loading || state.failed || state.stores.length === 0) return null',
-    replace: '  void state',
+    // 🔁 2026-09-30 재조준: 조기 반환이 둘로 갈렸다 — 로딩 중엔 **자리를 예약**하고(밀림 수리),
+    //   확정되면 종전처럼 `null`. 다이어트를 지키는 줄은 아래쪽 하나다.
+    find: '  if (state.failed || state.stores.length === 0) return null',
+    replace: '  void state.failed',
     test: TEST,
     why:
       'React.lazy 는 **렌더될 때** 받는다. 게이트가 없으면 판매를 안 하는 사람도 셀러 청크를 ' +

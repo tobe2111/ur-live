@@ -15,8 +15,10 @@ export default [
     //   목적지도 그대로인데, 첫 화면에 들어오는 줄이 13 → 7 로 줄어든다(실측).
     name: '🔵 평면 행이 다시 두꺼워진다 (첫 화면 줄 수가 반으로 준다)',
     file: 'src/pages/user-profile/list-grammar.tsx',
-    find: "  'w-full flex items-center gap-3 px-4 min-h-[48px] py-2 text-left",
-    replace: "  'w-full flex items-center gap-3 px-4 min-h-[56px] py-3 text-left",
+    // 🔁 2026-09-30 재조준: 행 기하가 `ROW_GEOM_CLS` 로 분리됐다(설정 줄이 같은 치수를 쓰려고).
+    //   지키려던 불변식(*행이 다시 두꺼워지지 않는다*)은 그대로 — 앵커만 새 상수로.
+    find: "export const ROW_GEOM_CLS = 'w-full flex items-center gap-3 px-4 min-h-[48px] py-2 text-left'",
+    replace: "export const ROW_GEOM_CLS = 'w-full flex items-center gap-3 px-4 min-h-[56px] py-3 text-left'",
     test: TEST,
     why: '안 C 의 이득은 전부 밀도에서 나온다 — 행이 70px 이던 시절 폰 한 화면에 손님 줄이 0개였다.',
   },

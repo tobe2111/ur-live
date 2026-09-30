@@ -52,19 +52,33 @@ describe('🔢 마이 숫자 한 줄 — 값이 칸 안에 들어간다', () => 
   })
 })
 
+/**
+ * 🔁 **같은 날 오후 재조준** — 이 아침 처방으로 끝나지 않았다.
+ *
+ * 아침엔 *"폰트 하며 너무 투박해"* 에 **무게·자간만** 고치고 *"크기는 안 건드린다"* 고 적었다.
+ * 오후에 대표가 *"글자들이 너무 촌스러워. 이 문제 무조건 해결해야 하고"* 를 다시 보냈다.
+ * 실측(`out/visual/my-before.png`)으로 보니 남은 변수는 **크기(24)와 색(순잉크)** 이었고,
+ * 그리고 더 나쁜 것 — **판매 구역은 이 부품을 안 쓰고 제목을 손으로 적고 있어서** 아침 커밋이
+ * 그 제목에 아예 안 닿았다.
+ *
+ * ⇒ 두 가지가 바뀌었다: 값이 `SECTION_TITLE_CLS` **한 곳**으로 모였고, 구역 제목은 17px 흐린 잉크다.
+ *   불변식(*제목이 화면에서 가장 무거운 글자가 되지 않는다*)은 그대로이고 앵커만 옮긴다.
+ *   출처 검사(두 자리가 갈리지 않는가)는 `my-zones-and-pc-2026-09-28` 이 맡는다.
+ */
 describe('🔠 구역 제목 — 무게와 자간', () => {
-  it('🔴 제목이 extrabold 로 되돌아가지 않는다', () => {
-    const m = GRAMMAR.match(/<Tag className="[^"]*text-\[24px\][^"]*"/)
-    expect(m, 'SectionTitle 의 제목 클래스를 못 찾았다 — 이 검사가 헛돌고 있다').not.toBeNull()
-    const cls = (m as RegExpMatchArray)[0]
+  it('🔴 제목이 extrabold·-3% 로 되돌아가지 않는다', () => {
+    const m = GRAMMAR.match(/SECTION_TITLE_CLS = '([^']+)'/)
+    expect(m, 'SECTION_TITLE_CLS 를 못 찾았다 — 이 검사가 헛돌고 있다').not.toBeNull()
+    const cls = (m as RegExpMatchArray)[1]
     expect(cls, '제목이 다시 extrabold 다(대표 "투박")').not.toContain('font-extrabold')
-    expect(cls, '제목이 bold 가 아니다').toContain('font-bold')
     expect(cls, '자간을 다시 -3% 로 조였다').not.toContain('tracking-[-0.03em]')
   })
 
-  it('🔴 제목 크기는 24px 그대로 (무게만 바꿨다)', () => {
-    // ⚠️ 끝에 `\b` 를 붙이면 안 된다 — `]` 다음이 공백이라 둘 다 비-단어 경계가 아니다(처음에 그렇게 썼다).
-    expect(GRAMMAR).toMatch(/<Tag className="[^"]*text-\[24px\][ "]/)
+  it('🔴 제목이 화면에서 가장 무거운 글자가 아니다 (24px 잉크로 되돌아가지 않는다)', () => {
+    const cls = GRAMMAR.match(/SECTION_TITLE_CLS = '([^']+)'/)![1]
+    expect(cls, '24px 로 되돌아갔다 — 대표가 두 번 지적한 그 무게다').not.toContain('text-[24px]')
+    expect(cls, '순잉크로 되돌아갔다 — 구역을 가르기만 하면 되는 글자다').not.toContain('text-gray-900')
+    expect(cls).toContain('text-[17px]')
   })
 })
 

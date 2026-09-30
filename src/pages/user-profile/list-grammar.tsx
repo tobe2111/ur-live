@@ -68,18 +68,32 @@ export const LIST_PLATE_CLS = 'rounded-2xl bg-surface shadow-lift overflow-hidde
  *   파는 쪽 표시는 **판**이 한다(위 머리말).
  */
 /**
- * 구역 제목 — 24px(타입 스케일의 둘째 단계).
+ * 구역 제목 — **17px · semibold · 흐린 잉크** (타입 스케일의 셋째 단계).
  *
- * 🩸 2026-09-30 (대표 *"내 가게, 내가 산 것 이런 주제들의 폰트 하며 너무 투박해"*):
- * `font-extrabold tracking-[-0.03em]` 이었다. **크기가 아니라 무게와 자간이 문제였다** —
- * 셋(24px · extrabold · −3%)을 한꺼번에 쌓으면 한글이 뭉쳐 보인다. 이 화면이 베낀
- * 코레일톡 시안을 다시 보니 가장 큰 글자("이용 가능"·"16:09")가 **bold 이고 자간을 안 조였다**.
- * ⇒ `font-bold tracking-[-0.01em]`. **크기는 안 건드린다**(24는 대표 확정 안 C 의 구역 제목이고,
- * 줄이면 구역 경계가 약해져 목록이 다시 한 덩어리로 읽힌다).
+ * 🩸 2026-09-30 **두 번째 정정**. 대표가 같은 것을 두 번 지적했다:
+ *   오전 *"내 가게, 내가 산 것 이런 주제들의 폰트 하며 너무 투박해"* → 무게·자간만 고쳤다
+ *   (extrabold −3% → bold −1%, **크기 24는 안 건드림**).
+ *   오후 *"내 가게, 내가 산 것, 수익 추천, 내 바로가기, 설정 고객지원 … 글자들이 너무 촌스러워.
+ *   이 문제 무조건 해결해야 하고"*.
+ *
+ * ## 오전 처방이 왜 화면에 안 닿았나 (실측)
+ * `SellerSection` 의 "내 가게" 는 이 부품을 **안 쓰고 자기 h2 를 손으로 적고 있었다** —
+ * 그래서 오전 커밋 뒤에도 그 제목만 `font-extrabold tracking-[-0.03em]` 그대로였다.
+ * 09-28 의 시험이 *"제목을 각자 손으로 적으면 크기가 다시 갈린다"* 고 경고한 그 일이 실제로 났다.
+ * ⇒ 값을 `SECTION_TITLE_CLS` **한 곳**에 두고 둘이 그걸 쓴다(시험이 대조한다).
+ *
+ * ## 그리고 남은 변수는 크기와 색이었다
+ * 렌더(`out/visual/my-before.png`)로 보면 24px 순잉크 제목이 구역마다 서서, 화면에서 가장 무거운
+ * 글자가 **제목**이 된다. 그런데 이 화면의 주인공은 오늘 매출(28px)과 행 제목(15px)이고 제목은
+ * **구역을 가르기만** 하면 된다. ⇒ 17px · semibold · 흐린 잉크.
+ * ⚠️ 크기를 줄인 만큼 **위 여백을 늘린다**(mt-7 → mt-8). 경계를 이제 공백이 만들기 때문이고,
+ *    둘은 짝이다 — 한쪽만 하면 목록이 도로 한 덩어리로 읽힌다.
  */
+export const SECTION_TITLE_CLS = 'text-[17px] font-semibold tracking-[-0.01em] text-gray-500 dark:text-white/45'
+
 export function SectionTitle({ children, as: Tag = 'h2' }: { children: React.ReactNode; as?: 'h2' | 'h3' }) {
   return (
-    <Tag className="mt-7 mb-2 px-4 text-[24px] font-bold tracking-[-0.01em] text-gray-900 dark:text-white">
+    <Tag className={`mt-8 mb-1 px-4 ${SECTION_TITLE_CLS}`}>
       {children}
     </Tag>
   )
@@ -116,8 +130,18 @@ export function ListPlate({ className, children }: { className?: string; childre
  *   바깥 래퍼는 가로 패딩을 **주면 안 된다**(주면 16+16=32px 로 들어간다).
  * ➖ 구분선은 마지막 줄에서만 사라진다 — 판 안에서는 판이 끝을 만들고, 밖에서는 구역이 끝을 만든다.
  */
-const ROW_CLS =
-  'w-full flex items-center gap-3 px-4 min-h-[48px] py-2 text-left border-b border-rule last:border-b-0 active:opacity-70 disabled:opacity-50'
+/**
+ * 🧱 **행의 기하**만 따로 내보낸다 — 누르는 줄이 아닌 것(토글 줄·설정 줄)이 같은 치수를 쓰게.
+ *   2026-09-30 에 설정 구역이 펼쳐지면서 그 안이 *다른 문법*(흰 판 + 12px 라벨 + 13px 행)으로
+ *   그려지는 게 드러났다 — 같은 화면에 목록 문법이 둘이면 반드시 갈린다(이 파일이 생긴 이유).
+ */
+export const ROW_GEOM_CLS = 'w-full flex items-center gap-3 px-4 min-h-[48px] py-2 text-left'
+/** 기하 + 구분선. 구분선이 없어야 하는 줄(설정 라벨 + 그 아래 컨트롤)은 `ROW_GEOM_CLS` 를 쓴다. */
+export const ROW_SHELL_CLS = `${ROW_GEOM_CLS} border-b border-rule last:border-b-0`
+/** 행의 라벨 — 누르는 줄과 설정 줄이 같은 글자여야 한 목록으로 읽힌다. */
+export const ROW_LABEL_CLS = 'flex-1 min-w-0 text-[15px] font-semibold text-gray-900 dark:text-white truncate'
+
+const ROW_CLS = `${ROW_SHELL_CLS} active:opacity-70 disabled:opacity-50`
 
 export function ListRow({ icon, label, hint, count, busy, onClick, to }: {
   icon: React.ReactNode
@@ -148,7 +172,7 @@ export function ListRow({ icon, label, hint, count, busy, onClick, to }: {
     <>
       <span className="shrink-0 text-gray-500 dark:text-gray-400">{icon}</span>
       {/* 제목은 한 줄이고 **줄지 않는다** — 오른쪽 값이 길면 그쪽이 줄어든다(`min-w-0` 이 값 쪽에 있다). */}
-      <span className="flex-1 min-w-0 text-[15px] font-semibold text-gray-900 dark:text-white truncate">{label}</span>
+      <span className={ROW_LABEL_CLS}>{label}</span>
       {count != null ? (
         <span
           className={`shrink-0 text-[13px] font-bold tabular-nums ${
@@ -187,7 +211,7 @@ export function FoldRow({ icon, label, hint, open, onToggle }: {
   return (
     <button type="button" onClick={onToggle} aria-expanded={open} className={ROW_CLS}>
       <span className="shrink-0 text-gray-500 dark:text-gray-400">{icon}</span>
-      <span className="flex-1 min-w-0 text-[15px] font-semibold text-gray-900 dark:text-white truncate">{label}</span>
+      <span className={ROW_LABEL_CLS}>{label}</span>
       {hint && <span className="min-w-0 text-[13px] text-gray-500 dark:text-gray-400 truncate">{hint}</span>}
       <ChevronDown className={`w-4 h-4 shrink-0 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
     </button>
