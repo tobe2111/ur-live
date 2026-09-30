@@ -30,8 +30,7 @@ import { ChevronDown, ChevronRight, Loader2, Search } from 'lucide-react'
 // 🎨 2026-09-28: 판매 도구 여덟 칸의 뜻 아이콘. lucide 로 남긴 넷은 전부 **조작**이다
 //    (펼치기·이동·로딩·검색) — 어느 앱에서나 같은 모양이라 직접 그릴 값이 없다.
 import {
-  OrdersIcon, TicketStubIcon, WonCoinIcon, ChartIcon, UrShopIcon, PeopleIcon,
-  MessageIcon, ScanIcon,
+  OrdersIcon, TicketStubIcon, WonCoinIcon, UrShopIcon, ScanIcon,
 } from '@/components/icons/urdeal-icons'
 import { formatNumber } from '@/utils/format'
 import { currentSeatId, onSeatChange, switchSeat } from '@/lib/seller-seat'
@@ -247,22 +246,41 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
       <div className={LIST_PLATE_CLS}>
         {/* 🎨 파란 밴드 없음(2026-09-28 판단 승계): 바로 아래 파란 사용처리 줄과 면이 둘이 되면
             어느 쪽도 강조가 아니다. 주인공은 규칙 ③ 그대로 **숫자**다. */}
-        <div className="px-4 pt-4 pb-4 border-b border-rule">
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="text-[12px] font-bold text-gray-400">오늘</span>
-            <span className="text-[12px] text-gray-400 tabular-nums">{todayLabelKST()}</span>
-          </div>
-          {/* 🖥️ `whitespace-nowrap`: 좁은 칸에서 `412,000` 과 `원` 이 두 줄로 갈라지면 안 된다. */}
-          <p className="mt-2 text-[28px] font-extrabold tabular-nums leading-none whitespace-nowrap text-gray-900 dark:text-white">
-            {formatNumber(store.today_revenue)}
-            <span className="text-[15px] font-bold text-gray-500 dark:text-gray-400 ml-1">원</span>
-          </p>
-          <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-2">
-            주문 {formatNumber(store.today_orders)}건
-            {store.pending > 0 && <> · 확인 대기 {formatNumber(store.pending)}건</>}
-          </p>
+        <div className="border-b border-rule">
+          {/* 🔢 2026-09-30 (대표 "다 순서대로 이상적으로") — **오늘 카드가 곧 매출 분석의 입구다.**
+              종전엔 이 숫자 아래에 `매출 분석` 줄이 따로 있었다. 같은 데이터의 드릴다운인데
+              줄 하나를 더 쓰고 있었던 셈이라, 그 줄을 지우고 **숫자를 누르면 열리게** 했다.
+              ⚠️ 말 없는 클릭면을 만들지 않는다 — 오른쪽에 `매출 분석 ›` 라고 **적는다**.
+                 (2026-07-02 상세의 "ChevronRight 로 클릭 유도하면서 onClick 없던 dead 어포던스" 의
+                  정반대 실수 = onClick 은 있는데 아무 표시가 없는 것. 둘 다 안 된다.) */}
+          <button
+            type="button"
+            disabled={entering}
+            onClick={() => openTool('analytics')}
+            className="w-full text-left px-4 pt-4 pb-4 active:opacity-70 disabled:opacity-60"
+          >
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-[12px] font-bold text-gray-400">오늘</span>
+              <span className="text-[12px] text-gray-400 tabular-nums">{todayLabelKST()}</span>
+            </div>
+            {/* 🖥️ `whitespace-nowrap`: 좁은 칸에서 `412,000` 과 `원` 이 두 줄로 갈라지면 안 된다. */}
+            <p className="mt-2 text-[28px] font-extrabold tabular-nums leading-none whitespace-nowrap text-gray-900 dark:text-white">
+              {formatNumber(store.today_revenue)}
+              <span className="text-[15px] font-bold text-gray-500 dark:text-gray-400 ml-1">원</span>
+            </p>
+            <div className="flex items-center justify-between gap-2 mt-2">
+              <p className="text-[13px] text-gray-500 dark:text-gray-400 min-w-0 truncate">
+                주문 {formatNumber(store.today_orders)}건
+                {store.pending > 0 && <> · 확인 대기 {formatNumber(store.pending)}건</>}
+              </p>
+              <span className="shrink-0 flex items-center gap-1 text-[13px] text-gray-500 dark:text-gray-400">
+                매출 분석
+                <ChevronRight className="w-4 h-4" aria-hidden="true" />
+              </span>
+            </div>
+          </button>
           {note && (
-            <p className="text-[13px] leading-[1.55] text-gray-500 dark:text-gray-400 mt-3 pt-3 border-t border-rule">
+            <p className="text-[13px] leading-[1.55] text-gray-500 dark:text-gray-400 px-4 pb-4 -mt-1">
               {note}
             </p>
           )}
@@ -312,36 +330,17 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           busy={entering}
           onClick={() => openTool('withdraw')}
         />
-        <ToolRow
-          icon={<ChartIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
-          label="매출 분석"
-          hint="최근 2주 · 이번 달"
-          busy={entering}
-          onClick={() => openTool('analytics')}
-        />
-        <ToolRow
-          icon={<UrShopIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
-          label="가게"
-          hint={stores.length >= 2 ? '정보 · 가게 전환' : '이름 · 연락처 · 주소'}
-          busy={entering}
-          onClick={() => openTool('store')}
-        />
-        {/* 🤝 소개 파트너 — 라이브 실측으로 **살아 있는** 기능이라 묶음으로 올렸다(제안 1건 · 팔로워 3). */}
-        <ToolRow
-          icon={<PeopleIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
-          label="소개 파트너"
-          hint="담아 파는 사람 · 제안"
-          busy={entering}
-          onClick={() => openTool('partners')}
-        />
-        {/* 💬 브랜드메시지 — 여기서는 **보내지 않는다**(발송은 등급 C). 잔액·최근 발송만 읽는다. */}
-        <ToolRow
-          icon={<MessageIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
-          label="브랜드메시지"
-          hint="단골 안내 · 남은 건수"
-          busy={entering}
-          onClick={() => openTool('messages')}
-        />
+        {/* 🧹 2026-09-30 — **바로가기 넷 + 전체 도구.** 여기 있던 `매출 분석 · 가게 · 소개 파트너 ·
+            브랜드메시지` 를 뺐다. 지운 게 아니라 **바로 아래 `전체 도구` 가 같은 시트로 보낸다**
+            (`COVERED_BY_SHEET` 가 네 주소를 전부 덮는다 — 한 번의 탭이 두 번이 될 뿐이다).
+            매출 분석은 아예 사라지지도 않았다: 위 오늘 숫자가 그 입구가 됐다.
+            **왜**: 바로가기가 아홉이면 바로가기가 아니다. 2026-09-26 이 그룹 라벨을 걷을 때의 근거는
+            *"48px 행이면 여덟 줄이 384px 에 다 들어온다"* 였는데, 그건 이 목록만 떼어 본 계산이다.
+            위(헤더 84 + 스탯 76 + 제목 44 + 오늘 카드 100)와 아래(탭 76)를 같이 재면
+            **폰 한 화면(844px)이 `전체 도구` 에서 정확히 끝난다** — 손님 줄은 0, "내가 산 것" 제목조차
+            안 보였다(실측 `--width=430 --height=844 --stores=1`).
+            ⚠️ 남긴 넷의 기준은 **하루에 몇 번 여는가**다: 사용처리(손님마다) · 주문(매일) ·
+               이용권(수량·가격) · 정산(주 1회). 뺀 넷은 전부 가끔이거나 한 번 정하면 끝인 것들이다. */}
         {/* 🩸 예시를 **문자열로 적어 두는 것을 그만뒀다** — 메뉴가 바뀔 때마다 어긋났고(쿠폰·숙소를
             내렸을 때 두 번), 개수를 세려면 나브 색인을 정적으로 읽어야 하는데 그 순간 청크가 딸려 온다. */}
         <ToolRow

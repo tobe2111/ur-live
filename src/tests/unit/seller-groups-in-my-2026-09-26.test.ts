@@ -170,10 +170,20 @@ describe('4. 🏪 가게 묶음 — 계좌는 여기 없다', () => {
 })
 
 describe('5. 🧰 배선 — 낱개 목록이 아니라 묶음이다', () => {
-  it('다섯 묶음이 모두 카드에 있다', () => {
+  /**
+   * 🎯 2026-09-30 재조준 — 지키는 것은 **"그 화면에 닿을 길이 있다"** 이지
+   * *"바로가기 줄로 있다"* 가 아니었다. 대표 확정으로 바로가기를 넷으로 줄이면서
+   * `store` 는 `전체 도구`(= `COVERED_BY_SHEET`)를 거쳐 **같은 시트**로 열린다.
+   * ⚠️ 그래서 둘 중 하나만 있으면 통과다 — 하지만 **둘 다 없으면** 그 기능은 마이에서 사라진다.
+   */
+  it('다섯 묶음에 모두 닿을 길이 있다 (바로가기 줄 또는 전체 도구)', () => {
     const code = stripComments(SECTION)
+    const table = code.slice(code.indexOf('const COVERED_BY_SHEET'), code.indexOf('/** 묶음 한 줄'))
+    const viaTools = new Set([...table.matchAll(/:\s*'([a-z]+)',/g)].map((m) => m[1]))
+    expect(viaTools.size, '표가 비었다 — 이 검사가 헛돌고 있다').toBeGreaterThanOrEqual(5)
     for (const t of ['orders', 'vouchers', 'withdraw', 'analytics', 'store']) {
-      expect(code, `${t} 묶음 줄이 없다 — 그 화면에 닿을 길이 사라진다`).toContain(`openTool('${t}')`)
+      const direct = code.includes(`openTool('${t}')`)
+      expect(direct || viaTools.has(t), `${t} 에 닿을 길이 없다 — 바로가기 줄도 전체 도구 표도 없다`).toBe(true)
     }
   })
 
