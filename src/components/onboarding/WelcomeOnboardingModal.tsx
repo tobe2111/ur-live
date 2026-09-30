@@ -167,8 +167,8 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
                 {userName ? t('welcomeOnboarding.welcomeTitle', { name: userName, defaultValue: `${userName}님, 환영해요!` }) : t('welcomeOnboarding.welcomeTitleDefault', { defaultValue: '유어딜에 오신 걸 환영해요!' })}
               </h2>
               <p className="text-[15px] text-gray-500 dark:text-gray-400 leading-relaxed">
-                {t('welcomeOnboarding.welcomeDesc1', { defaultValue: '라이브 방송으로 보고 바로 사는' })}<br />
-                <strong className="text-gray-900 dark:text-white">{t('welcomeOnboarding.welcomeDesc2', { defaultValue: '한국 1위 라이브 커머스' })}</strong>
+                {t('welcomeOnboarding.welcomeDesc1', { defaultValue: '동네 맛집·뷰티·숙소 이용권을' })}<br />
+                <strong className="text-gray-900 dark:text-white">{t('welcomeOnboarding.welcomeDesc2', { defaultValue: '할인가로 사고 바로 쓰는 곳' })}</strong>
               </p>
 
               {/* 🛡️ 2026-05-20: 신규 가입 보너스 3000딜 — 자동 적립 완료 카드 (bonusAmount > 0 일 때만). */}
@@ -184,7 +184,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
                         {bonusAmount.toLocaleString()}딜 <span className="text-[12px] font-medium text-gray-500">(₩{bonusAmount.toLocaleString()} 가치)</span>
                       </p>
                       <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">
-                        이용권 결제 / 후원에 현금처럼 바로 사용 가능
+                        이용권·교환권 결제에 현금처럼 바로 사용 가능
                       </p>
                     </div>
                   </div>
@@ -263,7 +263,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
                   <BellIcon className="w-8 h-8 text-brand-text" />
                 </div>
                 <h2 className="text-[24px] font-extrabold text-gray-900 dark:text-white mb-1">{t('welcomeOnboarding.step3Title', { defaultValue: '알림 받기' })}</h2>
-                <p className="text-[13px] text-gray-500 dark:text-gray-400">{t('welcomeOnboarding.step3Desc', { defaultValue: '놓치면 아쉬운 핫딜·라이브 소식을 알려드려요' })}</p>
+                <p className="text-[13px] text-gray-500 dark:text-gray-400">{t('welcomeOnboarding.step3Desc', { defaultValue: '놓치면 아쉬운 핫딜·마감 임박 소식을 알려드려요' })}</p>
               </div>
 
               <button
@@ -287,7 +287,7 @@ export default function WelcomeOnboardingModal({ onClose, userName, bonusAmount 
                       {alimtalkOptIn && <Check className="w-4 h-4 text-brand-text" />}
                     </p>
                     <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
-                      {t('welcomeOnboarding.alimtalkDesc1', { defaultValue: '라이브 시작 / 핫딜 / 주문 상태 등' })}<br />
+                      {t('welcomeOnboarding.alimtalkDesc1', { defaultValue: '핫딜 / 이용권 발급 / 주문 상태 등' })}<br />
                       {t('welcomeOnboarding.alimtalkDesc2', { defaultValue: '카톡으로 무료 알림 (광고성 정보 제외)' })}
                     </p>
                   </div>

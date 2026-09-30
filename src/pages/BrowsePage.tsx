@@ -374,7 +374,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
     <div className="bg-white dark:bg-[#11141C] min-h-screen">
       <SEO
         title={t('browse.title')}
-        description={t('browse.seoDesc')}
+        description={t('browse.seoDesc', { defaultValue: '유어딜 인기 상품, 동네 가게 이용권, 교환권을 할인가로 만나보세요' })}
         url="/browse"
         jsonLd={products.length > 0 ? itemListJsonLd(
           products.slice(0, 20).map((p, i) => ({

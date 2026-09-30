@@ -288,7 +288,7 @@ export default function PointsChargePage() {
               <div className="text-[12px] leading-relaxed">
                 <p className="font-semibold text-amber-800">{t('pointsCharge.noRefund', { defaultValue: '충전된 딜은 환불이 불가합니다' })}</p>
                 <p className="text-amber-700 mt-1">
-                  {t('pointsCharge.usageNote', { defaultValue: '라이브 방송 후원 및 상품 결제에만 사용 가능합니다.' })}
+                  {t('pointsCharge.usageNote', { defaultValue: '교환권 구매와 상품 결제에만 사용 가능합니다.' })}
                 </p>
               </div>
             </section>
