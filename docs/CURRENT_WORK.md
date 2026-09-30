@@ -5495,6 +5495,7 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
 _총 375건 · 최신순 · 이 목록은 자동 생성된다._
+_총 374건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-30**
 - [2026-09-30 — 대표 지시 "다 순서대로 이상적으로 해줘" (여섯 항목)](handoff/2026-09-30-six-items-in-order.md)
