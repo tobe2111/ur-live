@@ -644,6 +644,103 @@ if (args.dom) {
   console.log('🔎 DOM:', JSON.stringify(dump, null, 1))
 }
 
+/**
+ * 📱 `--phone-audit` — **"폰에서 쓸 만한가"를 눈이 아니라 숫자로 판정한다** (2026-09-30 신설)
+ *
+ * 왜: 마이의 손수 시트 일곱(1,362줄)이 존재하는 이유가 *"대시보드 화면이 폰에서 나쁘기 때문"* 이라고
+ *   `SellerSection.tsx` 주석에 적혀 있는데, **그 전제를 아무도 잰 적이 없다.** 그래서 철거도 유지도
+ *   근거가 없었다(결재 `2026-09-28-my-stage2-sheet-teardown`). 대표 확정: *"측정부터."*
+ *
+ * 무엇을 재나 — 전부 **그림으로는 안 보이거나 세기 어려운** 것들:
+ *   ① 가로 스크롤(px)  — CLAUDE.md 가 0 을 요구한다. 1px 이라도 있으면 폰에서 화면이 흔들린다
+ *   ② 화면 밖으로 나간 요소 — 잘려서 **아예 못 누르는** 것이 있는지
+ *   ③ 잘린 글자        — ellipsis/clip 으로 뜻이 사라진 줄(리프 노드만)
+ *   ④ 작은 터치 타깃   — 높이 40px 미만(iOS HIG 44 · Material 48 보다 관대하게 잡았다)
+ *   ⑤ 표 오버플로      — `<table>` 이 `overflow-x` 컨테이너 없이 폭을 넘는지
+ *   ⑥ 첫 화면 밀도     — 844px 안에 **실제 콘텐츠**가 몇 줄 오는가(헤더·로더만이면 나쁘다)
+ *
+ * ⚠️ 이 측정이 **못 보는 것**: 글자가 읽기 좋은가 · 순서가 자연스러운가 · 폰트(시스템 폴백이다).
+ *   숫자가 깨끗해도 화면이 나쁠 수 있다 — 그래서 `.png` 를 같이 남긴다. 숫자는 **나쁨의 증거**이고
+ *   깨끗함은 좋음의 증거가 아니다.
+ */
+if (args['phone-audit']) {
+  const audit = await page.evaluate((vw) => {
+    const seen = (el) => {
+      const r = el.getBoundingClientRect(); const s = getComputedStyle(el)
+      return r.width > 0.5 && r.height > 0.5 && s.visibility !== 'hidden' && s.display !== 'none' && Number(s.opacity) > 0.01
+    }
+    const label = (el) => (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 34)
+    const hScroll = Math.max(0, document.documentElement.scrollWidth - vw)
+
+    // ② 잘려 나간 것 — 컨테이너가 스크롤되는 경우는 의도된 가로 스크롤이라 제외한다.
+    const cut = []
+    for (const el of document.querySelectorAll('body *')) {
+      if (!seen(el)) continue
+      const r = el.getBoundingClientRect()
+      if (r.right <= vw + 1 || r.width > vw * 3) continue
+      let scrollable = false
+      for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) {
+        const ox = getComputedStyle(a).overflowX
+        if (ox === 'auto' || ox === 'scroll') { scrollable = true; break }
+      }
+      if (scrollable) continue
+      if (el.children.length === 0 || r.right > vw + 8) cut.push({ t: el.tagName.toLowerCase(), right: Math.round(r.right), s: label(el) })
+    }
+
+    // ③ 잘린 글자 — 리프 노드만(조상은 자식 때문에 늘 초과로 잡힌다)
+    const clipped = []
+    for (const el of document.querySelectorAll('p,span,h1,h2,h3,h4,h5,td,th,button,a,label,div,li')) {
+      if (el.children.length || !seen(el)) continue
+      const t = (el.textContent || '').trim()
+      if (t.length < 2) continue
+      if (el.scrollWidth > el.clientWidth + 1) clipped.push(t.slice(0, 34))
+    }
+
+    // ④ 작은 터치 타깃 — 숨은 것·아이콘만인 것도 눌러야 하므로 모두 센다
+    const tiny = []
+    for (const el of document.querySelectorAll('button, a[href], [role="button"], input:not([type="hidden"]), select')) {
+      if (!seen(el)) continue
+      const r = el.getBoundingClientRect()
+      if (r.height < 40) tiny.push({ h: Math.round(r.height), w: Math.round(r.width), s: label(el) || el.tagName.toLowerCase() })
+    }
+
+    // ⑤ 표 오버플로
+    const tables = []
+    for (const el of document.querySelectorAll('table')) {
+      if (!seen(el)) continue
+      const r = el.getBoundingClientRect()
+      const ox = el.parentElement ? getComputedStyle(el.parentElement).overflowX : 'visible'
+      tables.push({ w: Math.round(r.width), wrapped: ox === 'auto' || ox === 'scroll' })
+    }
+
+    // ⑥ 첫 화면 밀도 — 844px 안에 글자를 가진 리프가 몇 개인가
+    let firstScreen = 0
+    for (const el of document.querySelectorAll('p,span,h1,h2,h3,h4,td,th,button,a,label,li')) {
+      if (el.children.length || !seen(el)) continue
+      if ((el.textContent || '').trim().length < 2) continue
+      const r = el.getBoundingClientRect()
+      if (r.top >= 0 && r.top < 844) firstScreen++
+    }
+
+    return {
+      hScroll,
+      cut: cut.length, cutSample: cut.slice(0, 4),
+      clipped: clipped.length, clippedSample: clipped.slice(0, 5),
+      tiny: tiny.length, tinySample: tiny.slice(0, 5),
+      tables: tables.filter((t) => t.w > vw && !t.wrapped).length, tablesAll: tables.length,
+      firstScreen,
+      docH: document.documentElement.scrollHeight,
+    }
+  }, VIEWPORT_W)
+  const bad = audit.hScroll > 0 || audit.cut > 0 || audit.clipped > 0 || audit.tables > 0
+  console.log(`📱 폰 적합성 [${ROUTE}] ${bad ? '🔴 결함 있음' : '🟢 깨끗'}`)
+  console.log(`   가로스크롤 ${audit.hScroll}px · 잘려나감 ${audit.cut} · 잘린글자 ${audit.clipped} · 작은타깃 ${audit.tiny} · 표오버플로 ${audit.tables}/${audit.tablesAll} · 첫화면 ${audit.firstScreen}줄 · 문서높이 ${audit.docH}px`)
+  if (audit.cutSample.length) console.log(`   잘려나감: ${JSON.stringify(audit.cutSample)}`)
+  if (audit.clippedSample.length) console.log(`   잘린글자: ${JSON.stringify(audit.clippedSample)}`)
+  if (audit.tinySample.length) console.log(`   작은타깃: ${JSON.stringify(audit.tinySample)}`)
+  console.log(`   PHONE_AUDIT_JSON ${JSON.stringify({ route: ROUTE, name: NAME, ...audit, cutSample: undefined, clippedSample: undefined, tinySample: undefined })}`)
+}
+
 await page.screenshot({ path: out })
 /**
  * 📄 `--text=N` — 본문을 N 자까지 찍는다(기본 60).
