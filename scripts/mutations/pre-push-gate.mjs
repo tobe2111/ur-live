@@ -83,11 +83,64 @@ export default [
   {
     name: '그물 — 시험 뿌리를 하나만 본다 (tests/ 가 통째로 눈 밖이 된다)',
     file: 'scripts/pre-push-tests.mjs',
-    find: "'src/tests', 'tests'])",
-    replace: "'src/tests'])",
+    /* 🔧 2026-09-30 재조준: grep 이 **둘**이 되면서 `'src/tests', 'tests'])` 가 2곳이 됐다(유일해야 한다).
+       지키는 것은 그대로 — **검색어 grep 이 뿌리 하나만 보면 안 된다**. 그쪽 줄에만 있는 꼬리를 앵커로. */
+    find: "['-e', t]), 'src/tests', 'tests'])",
+    replace: "['-e', t]), 'src/tests'])",
     test: 'src/tests/unit/pre-push-roots-2026-09-30.test.ts',
     why:
       '이 레포엔 시험 뿌리가 **둘**이다(`vitest.config` include: `tests/**` + `src/tests/**`). ' +
       '`src/tests` 만 보면 나머지 뿌리의 시험이 로컬에서 한 번도 안 돈다 — 2026-09-30 에 그래서 깨진 채 푸시됐다.',
+  },
+  {
+    name: '🌲 그물 — 트리 시험을 구해 놓고 안 합친다 (가장 조용한 회귀)',
+    file: 'scripts/pre-push-tests.mjs',
+    find: 'const files = [...new Set([...termFiles, ...treeFiles])]',
+    replace: 'const files = [...new Set([...termFiles])]',
+    test: 'src/tests/unit/pre-push-roots-2026-09-30.test.ts',
+    why:
+      '구하는 코드는 남아 있고 시험도 통과하는데 최종 목록에만 안 들어간다 — 선택된 시험이 줄어든 걸 ' +
+      '아무도 못 본다(에러 0, 초록). 2026-09-30 의 `py-2.5` 가 다시 CI 까지 간다.',
+  },
+  {
+    name: '🌲 그물 — 트리 판정 패턴이 글롭을 못 알아본다',
+    file: 'scripts/pre-push-search-terms.mjs',
+    find: "export const TREE_SCAN_PATTERN = 'ls-files[^)]*src/|glob(Sync)?\\\\(|readdirSync\\\\('",
+    replace: "export const TREE_SCAN_PATTERN = 'ls-files[^)]*srcXX/|globXX(Sync)?\\\\(|readdirSyncXX\\\\('",
+    test: 'src/tests/unit/pre-push-roots-2026-09-30.test.ts',
+    why:
+      '패턴이 조용히 안 맞게 되는 것이 이 클래스의 가장 흔한 회귀다 — 고르는 시험이 0개가 되고 ' +
+      '**그냥 초록**이다. 그래서 가드가 레포의 진짜 시험 본문을 먹여 동작을 잰다.',
+  },
+  {
+    name: '🌲 그물 — 순수 모듈 대신 grep 에 패턴을 손으로 적는다 (두 벌이 갈린다)',
+    file: 'scripts/pre-push-tests.mjs',
+    find: "'--include=*.test.tsx', TREE_SCAN_PATTERN,",
+    replace: "'--include=*.test.tsx', 'readdirSync\\\\(',",
+    test: 'src/tests/unit/pre-push-roots-2026-09-30.test.ts',
+    why:
+      '판정이 모듈과 스크립트 두 벌이 되면 갈린다 — 시험은 모듈을 재고 푸시는 다른 패턴으로 고른다. ' +
+      '이 레포가 반복해 당한 "가드는 초록인데 현실은 다름".',
+  },
+  {
+    name: '🌲 그물 — src 변경 게이트를 없앤다 (문서만 고친 푸시도 29초를 문다)',
+    file: 'scripts/pre-push-tests.mjs',
+    find: "if (changed.some((f) => f.startsWith('src/'))) {",
+    replace: 'if (true) {',
+    test: 'src/tests/unit/pre-push-roots-2026-09-30.test.ts',
+    why:
+      '느려지면 사람들이 끈다 — 이 레포가 반복해 당한 길이라 머리말이 직접 경고한다. ' +
+      '문서만 바꾼 푸시의 트리 리더는 규칙 ② 의 폴더 매칭이 이미 고른다.',
+  },
+  {
+    name: '📄 순수 모듈 — .d.mts 가 구현의 새 export 를 안 따라간다',
+    file: 'scripts/pre-push-search-terms.d.mts',
+    find: 'export declare function scansTree(source: string): boolean',
+    replace: '// export declare function scansTree(source: string): boolean',
+    test: 'src/tests/unit/pre-push-roots-2026-09-30.test.ts',
+    why:
+      '🩸 2026-09-30 에 실제로 밟았다. `allowJs` 가 꺼져 있어 tsc 는 `.mjs` 를 **안 읽고** 손으로 쓴 ' +
+      '`.d.mts` 만 읽는다 — 구현에만 export 를 더하면 시험이 import 하는 순간 `TS2305` 로 커밋이 막힌다. ' +
+      '더 고약한 건 **나중에 선언된 함수는 멀쩡히 잡혀서** "TS 가 파일을 중간부터 못 읽나" 로 오진하게 되는 것.',
   },
 ]

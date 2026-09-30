@@ -30,16 +30,28 @@
  *      ⚠️ `src/` 안에서는 디렉터리 매칭을 **하지 않는다**: `src/pages` 한 줄만 바꿔도 수백 개가
  *         딸려 와 pre-push 가 느려지고, 느려지면 사람들이 끈다(이 레포가 반복해 당한 길).
  *
+ * ## 🩸 2026-09-30 확장 — 트리를 통째로 훑는 시험 (세 번째로 값을 치렀다)
+ * 새 부품 `SearchSuggestPanel.tsx` 에 `py-2.5` 를 썼는데 `consumer-type-scale-2026-09-29.test.ts`
+ * 가 **`src/components/**` 를 글롭으로 훑어** 4px 격자를 강제한다. 그 시험은 본문에 **내 파일
+ * 이름을 안 들고 있어서** 검색어로는 **원리상** 못 고른다(새 파일이면 더더욱 — 아직 아무도 그
+ * 이름을 모른다). 이 머리말이 바로 위 줄에서 *"그건 CI 담당"* 이라고 **적어 두었던** 한계이고,
+ * 적어 두는 것만으로는 안 막힌다는 걸 또 배웠다.
+ *
+ * ⇒ ③ `src/` 파일이 하나라도 바뀌면 **트리를 읽는 시험 전부**를 검색어 결과에 합친다
+ *   (`scansTree` — `globSync`·`readdirSync`·`ls-files … src/`). 실측 48개 29초, 합쳐 **50초**.
+ *   ⚠️ `src/` 변경이 없으면 안 돌린다 — 문서만 고친 푸시까지 29초를 물릴 이유가 없다
+ *     (그쪽 트리 리더는 규칙 ② 의 폴더 매칭이 이미 고른다).
+ *
  * ## ⚠️ 못 잡는 것 (과신 금지)
  *  - 경로를 문자열로 안 들고 import 로만 쓰는 시험(`import X from '@/...'`) — 별칭이라 안 걸린다.
  *  - 런타임 회귀(이 레포 시험 상당수가 텍스트 검사다).
  *  - 바뀐 파일이 0개이거나 base 를 못 구하면 **아무것도 안 돌린다**(그때는 CI 가 유일한 판정).
- *  - `src/` 안에서 디렉터리를 통째로 읽는 시험(위 ② 가 src 를 제외하므로) — 그건 CI 담당.
+ *  - 트리를 읽는 시험이 **`src/` 밖만** 훑는 경우도 함께 돈다(과하게 고른다 — 아래 ③).
  * ⇒ 전수는 여전히 CI 담당이다. 이건 "가장 흔한 사고 하나"를 싸게 막는 그물이다.
  */
 import { execFileSync } from 'node:child_process'
 // 🔎 판정은 순수 모듈에 있다 — 그래야 시험이 문자열이 아니라 **동작**을 잰다(2026-09-28 분리, 판정 불변).
-import { searchTermsFor } from './pre-push-search-terms.mjs'
+import { searchTermsFor, TREE_SCAN_PATTERN } from './pre-push-search-terms.mjs'
 
 const sh = (cmd, args) => execFileSync(cmd, args, { encoding: 'utf8', maxBuffer: 64 << 20 }).trim()
 
@@ -75,17 +87,31 @@ try {
   //   ⚠️ 뿌리를 늘릴 땐 `vitest.config` 의 include 와 같이 봐야 한다(갈리면 또 반쪽만 본다).
   hits = sh('grep', ['-rlF', '--include=*.ts', '--include=*.tsx', ...searchTermsFor(changed).flatMap((t) => ['-e', t]), 'src/tests', 'tests'])
 } catch { hits = '' }   // grep 은 매치 0 이면 exit 1 — 실패가 아니다.
-const files = hits ? hits.split('\n').filter(Boolean) : []
+const termFiles = hits ? hits.split('\n').filter(Boolean) : []
+
+// ③ 트리를 통째로 읽는 시험 — 검색어로는 원리상 못 고른다(본문에 파일 이름이 없다).
+//   `src/` 가 바뀐 푸시에서만 합친다. 판정(`TREE_SCAN_PATTERN`)은 순수 모듈에 있고,
+//   여기선 **그 패턴 그대로** grep 에 넘긴다 — 두 벌이면 갈린다.
+let treeFiles = []
+if (changed.some((f) => f.startsWith('src/'))) {
+  try {
+    // 시험 파일만 — 헬퍼(`src/tests/helpers/source-text.ts`)도 트리를 읽지만 vitest 에 넘길 게 아니다.
+    const out = sh('grep', ['-rlE', '--include=*.test.ts', '--include=*.test.tsx', TREE_SCAN_PATTERN, 'src/tests', 'tests'])
+    treeFiles = out ? out.split('\n').filter(Boolean) : []
+  } catch { treeFiles = [] }   // grep 은 매치 0 이면 exit 1 — 실패가 아니다.
+}
+
+const files = [...new Set([...termFiles, ...treeFiles])]
 
 if (files.length === 0) {
-  console.log(`⏭️  pre-push 시험: 바뀐 ${changed.length}개 파일을 경로로 참조하는 시험 없음.`)
+  console.log(`⏭️  pre-push 시험: 바뀐 ${changed.length}개 파일을 보는 시험 없음(검색어·트리 둘 다 0건).`)
   process.exit(0)
 }
 
 const t0 = Date.now()
 try {
   execFileSync('npx', ['vitest', 'run', ...files, '--reporter=dot'], { stdio: 'pipe', timeout: 600_000 })
-  console.log(`✅ pre-push 시험: 바뀐 코드를 보는 시험 ${files.length}개 통과 (${((Date.now() - t0) / 1000).toFixed(1)}초).`)
+  console.log(`✅ pre-push 시험: 바뀐 코드를 보는 시험 ${files.length}개 통과 (검색어 ${termFiles.length} · 트리 ${treeFiles.length}, ${((Date.now() - t0) / 1000).toFixed(1)}초).`)
 } catch (err) {
   const out = `${err.stdout ?? ''}${err.stderr ?? ''}`
   console.error(`\n❌ pre-push 시험: 바뀐 코드를 보는 시험이 빨간불 (${((Date.now() - t0) / 1000).toFixed(1)}초).`)
