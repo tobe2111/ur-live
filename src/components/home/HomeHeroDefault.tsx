@@ -170,7 +170,7 @@ export default function HomeHeroDefault({
       </div>{/* ← 배경 래퍼 끝. 아래 콘텐츠는 잘리지 않는다(드롭다운이 히어로 밖으로 펼쳐진다). */}
 
       <div className="relative z-10 w-full max-w-[1440px] mx-auto px-6 lg:px-8 py-6 flex flex-col justify-center">
-        <h2 className="text-[26px] md:text-[29px] lg:text-[32px] font-black tracking-tight text-white leading-[1.16] [text-wrap:balance]">
+        <h2 className="text-[28px] lg:text-[34px] font-black tracking-tight text-white leading-[1.16] [text-wrap:balance]">
           {content?.title || (
             <>{DEFAULT_TITLE_HEAD}<span className="text-brand">{DEFAULT_TITLE_ACCENT}</span>{DEFAULT_TITLE_TAIL}</>
           )}

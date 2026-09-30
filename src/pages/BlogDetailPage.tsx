@@ -184,7 +184,7 @@ export default function BlogDetailPage() {
               ))}
             </div>
           )}
-          <h1 className="text-[24px] sm:text-4xl font-extrabold text-gray-900 dark:text-white leading-tight">{stripBold(post.title)}</h1>
+          <h1 className="text-[24px] sm:text-[34px] font-extrabold text-gray-900 dark:text-white leading-tight">{stripBold(post.title)}</h1>
           <p className="text-[15px] sm:text-[17px] text-gray-500 dark:text-gray-400 mt-3 leading-relaxed">{stripBold(post.summary)}</p>
           <div className="flex items-center gap-3 mt-4 pb-6 text-[15px] text-gray-400 dark:text-gray-500">
             <span>{post.author}</span>

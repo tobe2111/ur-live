@@ -42,14 +42,6 @@
       "review": "shell-quote 1.8.x 패치 릴리스 나오면 업그레이드 후 제거."
     },
     {
-      "ghsa": "GHSA-gcfj-64vw-6mp9",
-      "pkg": "axios",
-      "reason": "취약 경로 = axios **Node HTTP 어댑터**의 프록시 상속(인터셉터 config clone 시). 유어딜 axios(1.17.0)는 브라우저 클라이언트(src/lib/api.ts 등)에서만 사용 → 브라우저는 XHR 어댑터, Cloudflare Workers 는 node:http 부재 → **Node 어댑터 코드경로가 production 에서 실행 안 됨** → 도달 불가. ⚠️ 순수 도달불가라 등재하나, 다음 npm 설치 가능 시점에 axios 패치 버전 상향 권장(review).",
-      "accepted_by": "대표(urteam.corp) 승인 — Node-어댑터 전용 취약점, 브라우저/Workers 런타임 도달불가",
-      "date": "2026-07-21",
-      "review": "npm 설치 가능 환경에서 axios 패치 버전(GHSA-gcfj 수정본) 상향 후 제거 — 근본 해결 우선."
-    },
-    {
       "ghsa": "GHSA-mh99-v99m-4gvg",
       "pkg": "brace-expansion",
       "reason": "dev/빌드툴 전용 transitive(glob/minimatch 경유, 무한 확장 OOM DoS). 기등재 GHSA-3jxr-9vmj-r5cp 와 동일 패키지·동일 도달불가 근거 — 직접 의존 아님 + src/ 미참조 → production Workers/브라우저 번들 미포함. 2026-07-25 신규 published advisory 가 전 PR 배포를 차단해 등재.",

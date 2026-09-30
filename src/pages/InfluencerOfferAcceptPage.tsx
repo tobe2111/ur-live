@@ -63,7 +63,7 @@ export default function InfluencerOfferAcceptPage() {
           </div>
         ) : trackingUrl ? (
           <div className="text-center space-y-4">
-            <div className="text-4xl">🎉</div>
+            <div className="text-[34px]">🎉</div>
             <h1 className="text-[17px] font-bold text-gray-900 dark:text-white">제안을 수락했어요!</h1>
             <p className="text-[15px] text-gray-600 dark:text-gray-300">
               아래 <strong>내 전용 링크</strong>로 팔로워가 구매하면, 이용권이 <strong>사용될 때</strong> 커미션이 적립돼요.

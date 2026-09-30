@@ -204,13 +204,39 @@ describe('유어샵 안P1 — PC 2단', () => {
       expect(src, f).toMatch(/className="ur-ushop-pc"[\s\S]*?className="ur-ushop-side"[\s\S]*?<CuratorHeader[\s\S]*?<UShopQrCard \/>[\s\S]*?className="ur-ushop-main"/)
     }
   })
-  it('index.css — 좌 300px 고정 + 우 3열, lg+ 에서만', () => {
+  it('index.css — 좌 300px 고정 + 우 칸(카드 3열 · 줄 목록 2열), lg+ 에서만', () => {
     const css = read(CSS)
     const i = css.indexOf('.ur-ushop-pc {')
     expect(i).toBeGreaterThan(-1)
-    const block = css.slice(css.lastIndexOf('@media (min-width: 1024px)', i), i + 900)
+    const block = css.slice(css.lastIndexOf('@media (min-width: 1024px)', i), i + 2200)
     expect(block).toContain('grid-template-columns: 300px minmax(0, 1fr)')
     expect(block).toMatch(/\.ur-ushop-side \{ position: sticky/)
     expect(block).toMatch(/\.ur-ushop-main \.grid-cols-2 \{ grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/)
+    /**
+     * 🛍️ 2026-09-30 (대표 확정 **안 A**) — 줄 목록(s3)은 **2열**.
+     * 위 3열은 *카드* 격자(`grid-cols-2`)용이고 줄에는 안 맞는다: 우 칸이 796px 라 그대로 늘리면
+     * 64px 썸네일 하나에 **오른쪽 절반이 빈 칸**이 된다(2026-09-28 실측 `out/visual/ushop-pc.png`).
+     * 2열이면 줄당 ~378px = 폰 폭과 거의 같아 줄 형식을 한 글자도 안 바꾸고 놓인다.
+     */
+    expect(block, '줄 목록 2열 규칙이 없다 — 우 칸 796px 에 줄이 통째로 늘어난다').toMatch(
+      /\.ur-ushop-main \.ur-ushop-rows \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/,
+    )
+  })
+  it('🛍️ 줄 목록이 그 2열 규칙을 실제로 받는다 (그리드 + 전용 클래스)', () => {
+    const src = codeOnly(read(PAGE))
+    const m = src.match(/className="[^"]*\bur-ushop-rows\b[^"]*"/)
+    expect(m, 'CuratorPage 의 핀 목록에 `ur-ushop-rows` 가 없다 — CSS 규칙이 아무것도 안 잡는다').toBeTruthy()
+    // 컨테이너가 그리드가 아니면 `grid-template-columns` 는 무시된다(1열 그대로).
+    expect(m![0], '`grid` 가 없으면 열 규칙이 적용되지 않는다').toMatch(/\bgrid\b/)
+    // `space-y-*` 와 그리드를 같이 쓰면 열마다 2번째 줄부터 위 여백이 겹친다.
+    expect(m![0], 'space-y-* 와 grid 를 같이 쓰면 열 안 간격이 두 배가 된다').not.toMatch(/space-y-/)
+    // 그 컨테이너가 `<PinRow`(줄 목록) 를 감싸는 자리인가 — 다른 그리드에 클래스를 붙여도 통과하면 헛돈다.
+    const at = src.indexOf(m![0])
+    expect(src.slice(at, at + 400), '`ur-ushop-rows` 가 감싸는 것이 PinRow 가 아니다').toContain('<PinRow')
+    /**
+     * ⚠️ tailwind `lg:grid-cols-2` 로 하면 **액자가 남는 표면에서 되돌아간다** —
+     * `index.css` 의 `.app-framed .lg\:grid-cols-2` 가 1열로 덮는다(`/profile`·`/s`).
+     */
+    expect(m![0], 'lg:grid-cols-2 는 액자 1열 오버라이드에 먹힌다 — 전용 클래스를 쓸 것').not.toMatch(/lg:grid-cols-/)
   })
 })

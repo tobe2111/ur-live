@@ -113,7 +113,7 @@ export default function PointsChargeSuccessPage() {
             <Zap className="w-4 h-4 text-[#d1d5db]" />
             <span className="text-[12px] text-white/55">{t('pointsCharge.chargedDeals', { defaultValue: '충전된 딜' })}</span>
           </div>
-          <p className="text-[34px] font-extrabold text-white leading-none tracking-tight">+{formatNumber(result?.points_added)}<span className="text-[24px] font-bold ml-0.5">딜</span></p>
+          <p className="text-[34px] font-extrabold text-white leading-none tracking-tight">+{formatNumber(result?.points_added)}<span className="text-[24px] font-bold ml-1">딜</span></p>
           <p className="text-[12px] text-white/55 mt-2">{t('pointsCharge.successBalance', { balance: formatNumber(result?.balance), defaultValue: '현재 잔액: {{balance}}딜' })}</p>
         </div>
         {/* 🔗 2026-07-03 [UNLOCK_LOADING] (대표 승인 "1~4번 전부, 가장 이상적으로" — 딜포인트 락인 강화):

@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { PinIcon, ClockIcon, OkIcon, AlertIcon } from '@/components/icons/urdeal-icons'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import DetailGallery from './group-buy/DetailGallery'
 import { detailGalleryImages } from '@/shared/detail-hero-image'
@@ -15,7 +16,7 @@ import { derivePricing } from './group-buy/pricing'
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { withMyReturn } from '@/lib/seller-return'
 import { useTranslation } from 'react-i18next'
-import { MapPin, Phone, Clock, Sparkles, CheckCircle2, AlertCircle, Instagram, Youtube, Facebook, Music2, RefreshCcw } from 'lucide-react'
+import { Phone, Sparkles, Instagram, Youtube, Facebook, Music2, RefreshCcw } from 'lucide-react'
 import { resolveTossFlow } from '@/lib/toss-key-type'
 import { TOPUP_DISABLED } from '@/shared/feature-flags'
 import { appendPaySummary } from '@/shared/pay-summary'
@@ -496,7 +497,7 @@ export default function GroupBuyDetailPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-[#11141C] text-gray-900 dark:text-white">
         <p className="font-bold mb-3">상품을 찾을 수 없습니다</p>
-        <button onClick={() => navigate('/map')} className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold">공구 목록으로</button>
+        <button onClick={() => navigate('/map')} className="px-4 py-2 bg-brand text-white rounded-lg text-[15px] font-bold">공구 목록으로</button>
       </div>
     )
   }
@@ -556,7 +557,7 @@ export default function GroupBuyDetailPage() {
       />
 
       {/* WCAG AA: skip-link */}
-      <a href="#gb-main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:bg-gray-900 focus:text-white focus:px-3 focus:py-2 focus:rounded-lg focus:text-sm focus:font-bold">
+      <a href="#gb-main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:bg-gray-900 focus:text-white focus:px-3 focus:py-2 focus:rounded-lg focus:text-[15px] focus:font-bold">
         본문으로 건너뛰기
       </a>
 
@@ -670,7 +671,7 @@ export default function GroupBuyDetailPage() {
               {detail.restaurant_name}
               {/* 🏪 2026-07-05 온누리 가맹 뱃지 (B2G — "온누리 사용 가능 표시" 약속) */}
               {(detail as { onnuri_merchant?: boolean }).onnuri_merchant && (
-                <span className="ml-1.5 px-1.5 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-bold align-middle">온누리 사용 가능</span>
+                <span className="ml-2 px-2 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[12px] font-bold align-middle">온누리 사용 가능</span>
               )}
             </div>
           )}
@@ -680,7 +681,7 @@ export default function GroupBuyDetailPage() {
           <h1 style={{ margin: '4px 0 0', fontSize: 21, lineHeight: 1.3, fontWeight: 800, letterSpacing: '-.03em', color: 'var(--gbd-ink)' }}>{detail.name}</h1>
           {detail.restaurant_address && (
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginTop: 8 }}>
-              <MapPin style={{ width: 17, height: 17, marginTop: 2, flex: '0 0 auto', color: 'var(--gbd-sub)' }} />
+              <PinIcon style={{ width: 17, height: 17, marginTop: 2, flex: '0 0 auto', color: 'var(--gbd-sub)' }} />
               <div style={{ fontSize: 13.5, color: 'var(--gbd-sub)', lineHeight: 1.5 }}>
                 {detail.restaurant_address || ''}
                 {distKm != null && <> · <b style={{ fontWeight: 700, color: 'var(--gbd-ink2)' }}>{distKm}km</b></>}

@@ -416,7 +416,7 @@ export default function GroupBuyFeed({
       ) : isError && sorted.length === 0 ? (
         // 🛡️ 2026-06-26 (소비자 감사 P0): fetch 실패를 '공구 없음'(죽은 마켓)으로 위장하지 않음 — 재시도 노출.
         <div className="px-4 py-16 text-center">
-          <p className="text-4xl mb-3">📡</p>
+          <p className="text-[34px] mb-3">📡</p>
           <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">공구를 불러오지 못했어요</p>
           <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">네트워크 상태를 확인해주세요.</p>
           <button onClick={() => refetch()} className="inline-block px-5 py-3 bg-brand text-white rounded-full text-[15px] font-bold">다시 시도</button>

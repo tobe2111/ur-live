@@ -60,6 +60,23 @@ describe('② 목록이 끝난 뒤에 온다', () => {
     expect(block, '블록이 있다').toBeGreaterThan(0)
     expect(block, '블록은 목록 뒤').toBeGreaterThan(list)
   })
+  /**
+   * 🖥️ 2026-09-30 — **진열대 칸(`.ur-ushop-main`) 안**에 있어야 한다.
+   * 밖에 두면 자기 `max-w-3xl mx-auto` 가 1,440px 페이지 한가운데를 잡아, PC 2단에서
+   * 좌 프로필 칸(210~630)과도 줄(685~)과도 어긋난 **485~665** 에 떴다(2026-09-28 실측).
+   * 칸 안에서는 `.ur-ushop-main .max-w-3xl` 가 상한·좌우 패딩을 지워 줄과 같은 선에 선다.
+   * ⚠️ 모바일은 `.ur-ushop-pc` 가 lg+ 에서만 격자라 **DOM 순서 그대로** — 그림이 안 바뀐다.
+   */
+  it('🖥️ 진열대 칸 안에 있다 — PC 2단에서 줄과 같은 왼쪽 선', () => {
+    const pane = page.indexOf('className="ur-ushop-main"')
+    expect(pane, '진열대 칸이 있다').toBeGreaterThan(0)
+    const block = page.indexOf('<ShopInquiryLinks')
+    expect(block, '블록은 칸이 열린 뒤').toBeGreaterThan(pane)
+    // 칸이 닫히기 전인가 — 뒤에만 있으면 칸 **밖**(페이지 꼬리)일 수도 있다.
+    const closes = page.indexOf('\n        </div>\n        </div>', pane)
+    expect(closes, '칸을 닫는 자리를 찾았다').toBeGreaterThan(pane)
+    expect(block, '블록이 칸 밖으로 나갔다 — 페이지 한가운데에 떠서 어느 칸과도 안 맞는다').toBeLessThan(closes)
+  })
 })
 
 describe('③ B안이다 — 판도 색도 없다', () => {

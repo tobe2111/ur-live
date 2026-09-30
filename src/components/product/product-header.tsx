@@ -74,7 +74,7 @@ export function ProductHeader({ name, price, originalPrice, discountRate, seller
           {displayDiscount > 0 && (
             <span className="text-[24px] font-extrabold text-sale">{displayDiscount}%</span>
           )}
-          <span className="text-[26px] font-extrabold text-gray-900 dark:text-white" style={{ letterSpacing: '-0.03em' }}>
+          <span className="text-[28px] font-extrabold text-gray-900 dark:text-white" style={{ letterSpacing: '-0.03em' }}>
             {formatPrice(price)}
           </span>
           <span className="text-[15px] text-gray-900 dark:text-white">원</span>

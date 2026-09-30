@@ -50,7 +50,7 @@ export default function PartnerFaq() {
       <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-32">
         <div className="grid gap-10 lg:grid-cols-[0.62fr_1.38fr] lg:gap-16">
           <div>
-            <h2 className="text-[24px] lg:text-[42px] xl:text-[48px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
+            <h2 className="text-[24px] lg:text-[40px] xl:text-[48px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
               자주 묻는 것
             </h2>
             <p className="mt-5 lg:mt-7 text-[13px] lg:text-[17px] leading-[1.8] text-gray-500 dark:text-gray-400">

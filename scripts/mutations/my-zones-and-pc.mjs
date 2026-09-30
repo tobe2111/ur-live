@@ -12,10 +12,12 @@ export default [
   {
     name: '🧭 구역 제목이 본문 라벨 크기로 되돌아간다 (제목이 파는 쪽 신호를 못 한다)',
     file: 'src/pages/user-profile/SellerSection.tsx',
-    find: 'className="text-[24px] leading-tight font-extrabold tracking-[-0.03em] text-gray-900 dark:text-white">내 가게</h2>',
+    // 🔁 2026-09-30 재조준: 이 제목이 **손으로 적혀 있어서** 아침 처방이 화면에 안 닿았다
+    //   (대표가 같은 것을 두 번 지적한 이유). 이제 `SECTION_TITLE_CLS` 에서 온다.
+    find: 'className={`leading-tight ${SECTION_TITLE_CLS}`}>내 가게</h2>',
     replace: 'className="text-[13px] font-extrabold text-gray-900 dark:text-white">내 가게</h2>',
     test: TEST,
-    why: '이름 E 의 읽는 규칙은 "제목이 붙은 구역이 파는 쪽" 하나다 — 제목이 본문과 같은 크기면 규칙 자체가 안 보인다.',
+    why: '제목이 본문 라벨과 같은 크기면 구역 경계가 안 보인다. 그리고 여기에 **손으로 적는 것 자체**가 사고다 — 공용 부품만 고치면 이 줄만 옛 값으로 남는다(2026-09-30 오전에 실제로 그랬다).',
   },
   {
     // 🔁 2026-09-29 재조준(안 C): 브랜드 띠를 걷었다 — 모든 구역이 24px 제목을 달게 되면서

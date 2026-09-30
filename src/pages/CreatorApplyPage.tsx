@@ -52,7 +52,7 @@ export default function CreatorApplyPage() {
 
         {done ? (
           <div className="rounded-xl bg-white p-8 text-center shadow-lift">
-            <div className="text-4xl mb-3">✅</div>
+            <div className="text-[34px] mb-3">✅</div>
             <div className="text-[17px] font-semibold text-gray-900">신청이 접수되었습니다</div>
             <p className="mt-2 text-[15px] text-gray-600">검토 후 제휴 담당자가 입력해주신 연락처로 연락드립니다. 감사합니다.</p>
             {/* 🔗 기다릴 필요 없이 바로 시작 — 이 링크의 코드가 신청↔가입을 이어 붙인다(lead-claim). */}

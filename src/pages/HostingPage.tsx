@@ -101,7 +101,7 @@ export default function HostingPage() {
             <p className="text-center text-gray-500 dark:text-gray-400 py-12">{t('common.loading')}</p>
           ) : hosts.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-5xl mb-3">🎁</p>
+              <p className="text-[48px] mb-3">🎁</p>
               <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-4">
                 {t('hosting.empty', { defaultValue: '아직 호스팅이 없어요. 친구와 함께 살 상품을 찾아보세요!' })}
               </p>

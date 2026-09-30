@@ -347,7 +347,7 @@ export default function ProductDetailPage() {
       <div className="flex min-h-screen items-center justify-center bg-white dark:bg-[#11141C] p-4">
         <div className="text-center">
           <p className="text-[15px] text-gray-500 dark:text-gray-400">{error?.message || t('productDetailPage.notFound')}</p>
-          <button onClick={() => window.location.reload()} className="mt-3 px-4 py-2 bg-gray-900 text-white text-[15px] rounded-lg">{t('productDetail.retry')}</button>
+          <button onClick={() => window.location.reload()} className="mt-3 px-4 py-2 bg-brand text-white text-[15px] rounded-lg">{t('productDetail.retry')}</button>
           {/* 🏬 2026-08-02 — 여기선 상품을 못 읽어 `mall_id` 를 모른다. 그래서 **어디서 왔는지**를
               쓴다: 몰 홈이 남긴 흔적이 있으면 그 가게로 돌려보낸다. 흔적이 없으면 기존대로 유어딜 홈
               — 즉 **본진 손님의 동작은 불변**이고, 몰 손님만 자기 가게로 간다.
@@ -621,8 +621,8 @@ export default function ProductDetailPage() {
         {/* v4 공동구매 배너 (다크 카드) */}
         {product.category === 'meal_voucher' && (product.group_buy_target ?? 0) > 0 && (
           <div className="px-5 py-5">
-            {/* 🚑 2026-07-02 (상세 리뷰): ChevronRight 로 클릭 유도하면서 onClick 없던 dead 어포던스 → 공구 상세로 배선 */}
-            <div className="rounded-2xl p-4 bg-gray-900 text-white cursor-pointer active:scale-[0.99] transition-transform" role="button" tabIndex={0}
+            {/* 🚑 2026-07-02: ChevronRight 인데 onClick 없던 dead 어포던스 → 공구 상세 배선 · 🔵 주 버튼이 아니라 클릭 가능한 다크 패널이다(블루면 진짜 CTA 와 같은 색 큰 면이 둘) */}
+            <div className="rounded-2xl p-4 bg-gray-900 text-white cursor-pointer active:scale-[0.99] transition-transform" role="button" tabIndex={0} /* primary-button-ok */
               onClick={() => navigate(`/pass/${id}`)}
               onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/pass/${id}`) }}>
               <div className="flex items-start justify-between mb-3">
@@ -745,7 +745,7 @@ export default function ProductDetailPage() {
             return (
               <button
                 onClick={() => navigate(`/login?returnUrl=${encodeURIComponent(window.location.pathname)}`)}
-                className="w-full py-4 bg-gray-900 hover:bg-black text-white rounded-xl flex flex-col items-center justify-center gap-1 active:scale-[0.98]"
+                className="w-full py-4 bg-brand hover:bg-brand-dark text-white rounded-xl flex flex-col items-center justify-center gap-1 active:scale-[0.98]"
               >
                 <span className="text-[15px] font-bold">회원가입하고 손님이 쓸 때마다 {amountStr} 받기</span>
                 <span className="text-[12px] opacity-90">내 유어샵에 담아 친구에게 추천만 해도 수익</span>

@@ -93,7 +93,7 @@ export default function MyDealHistoryPage() {
       <div className="ur-content-medium px-4 lg:px-8 pt-5">
         <div className="rounded-2xl p-5 text-white" style={{ background: 'linear-gradient(135deg, #2b2b2e 0%, #161618 60%, #0a0a0b 100%)' }}>
           <p className="text-[12px] font-medium opacity-80">현재 딜 잔액</p>
-          <p className="text-3xl font-extrabold mt-1">{formatNumber(balance)}<span className="text-[15px] ml-1 font-bold opacity-80">딜</span></p>
+          <p className="text-[28px] font-extrabold mt-1">{formatNumber(balance)}<span className="text-[15px] ml-1 font-bold opacity-80">딜</span></p>
           <div className="mt-3 flex gap-2">
             {/* 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 충전 버튼 → 딜 모으기(마이 리워드 카드) 유도 */}
             {TOPUP_DISABLED ? (

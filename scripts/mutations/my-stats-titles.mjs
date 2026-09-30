@@ -35,12 +35,15 @@ export default [
     why: '가장 쉬운 오답. 숫자를 줄이면 잘림은 사라지지만 이 줄의 존재 이유(표면 규칙 ③ — 숫자가 주인공)가 함께 사라지고, 라벨 13px 과 값 17px 이 붙어 위계가 무너진다.',
   },
   {
-    name: '구역 제목 — extrabold 로 되돌아간다(대표 "투박")',
+    // 🔁 2026-09-30 **같은 날 재조준** — 아침 처방(무게·자간)으로 안 끝났다. 대표가 *"촌스러워.
+    //   무조건 해결"* 을 다시 보냈고, 실측 결과 크기(24)와 색(순잉크)이 남은 변수였다.
+    //   ⇒ 17px 흐린 잉크 + 값은 `SECTION_TITLE_CLS` 한 곳. 되돌리려는 사고는 그대로다.
+    name: '구역 제목 — 24px extrabold 로 되돌아간다(대표가 두 번 지적한 그 인상)',
     file: 'src/pages/user-profile/list-grammar.tsx',
-    find: 'text-[24px] font-bold tracking-[-0.01em] text-gray-900',
-    replace: 'text-[24px] font-extrabold tracking-[-0.03em] text-gray-900',
-    test: 'src/tests/unit/my-stats-titles-2026-09-30.test.ts',
-    why: '대표가 두 번 지적한 그 인상이다. 크기가 아니라 **무게+자간**이 원인이었고(시안의 가장 큰 글자는 bold·자간 무보정), 되돌아가도 빌드는 초록이라 조용히 재발한다.',
+    find: "SECTION_TITLE_CLS = 'text-[17px] font-semibold tracking-[-0.01em]",
+    replace: "SECTION_TITLE_CLS = 'text-[24px] font-extrabold tracking-[-0.03em]",
+    test: 'src/tests/unit/my-zones-and-pc-2026-09-28.test.ts',
+    why: '대표가 **두 번** 지적한 그 인상이다. 아침엔 무게·자간만 고쳤는데 판매 구역이 제목을 손으로 적고 있어 화면에 안 닿았다 — 그래서 이제 *값*이 아니라 *출처*를 지키는 시험(my-zones)으로 옮겼다. 되돌아가도 빌드는 초록이라 조용히 재발한다.',
   },
   {
     name: '레벨 카드 — 마이(폰)에 다시 렌더된다',

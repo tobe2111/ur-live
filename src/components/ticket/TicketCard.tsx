@@ -74,7 +74,7 @@ export function TicketNotes({ items }: { items: string[] }) {
     <ul className="px-1 space-y-2 text-[13px] leading-[1.55] text-gray-500 dark:text-gray-400">
       {items.map((line) => (
         <li key={line} className="grid grid-cols-[12px_1fr] gap-2">
-          <span aria-hidden="true" className="mt-[9px] ml-0.5 w-1 h-1 bg-gray-400 dark:bg-gray-500" />
+          <span aria-hidden="true" className="mt-[9px] ml-1 w-1 h-1 bg-gray-400 dark:bg-gray-500" />
           <span>{line}</span>
         </li>
       ))}

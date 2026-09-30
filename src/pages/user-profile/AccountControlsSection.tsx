@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next'
 import { X } from 'lucide-react'
 import { BellIcon, MailIcon } from '@/components/icons/urdeal-icons'
 import api from '@/lib/api'
+import { ROW_SHELL_CLS, ROW_LABEL_CLS } from './list-grammar'
 import { toast } from '@/hooks/useToast'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { formatPhone } from '@/utils/format-phone'
@@ -66,10 +67,15 @@ export function NotificationToggleSection() {
     }
   }
 
+  /**
+   * 🔵 2026-09-30 — **평면 줄**(안 C). 종전엔 흰 판(`rounded-2xl bg-surface`) 안에 13px 행이었는데,
+   *   설정 구역이 펼쳐지면서 바로 위 `내가 산 것` 목록과 **문법이 갈린** 것이 드러났다.
+   *   치수·라벨은 `list-grammar` 에서 온다 — 손으로 적으면 또 갈린다.
+   */
   const Toggle = ({ icon, label, value, onChange }: { icon: React.ReactNode; label: string; value: boolean; onChange: () => void }) => (
-    <div className="flex items-center gap-3 px-4 py-3" style={{ borderTop: 'var(--toggle-border, none)' }}>
-      <span className="text-gray-900 dark:text-white/55">{icon}</span>
-      <span className="flex-1 text-[13px] text-gray-900 dark:text-white">{label}</span>
+    <div className={ROW_SHELL_CLS}>
+      <span className="shrink-0 text-gray-500 dark:text-gray-400">{icon}</span>
+      <span className={ROW_LABEL_CLS}>{label}</span>
       <button
         type="button"
         onClick={onChange}
@@ -83,17 +89,19 @@ export function NotificationToggleSection() {
   )
 
   return (
-    <div className="ur-content-medium px-4 lg:px-8 pt-5">
-      <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-2">{t('accountSettings.sectionNotification', { defaultValue: '알림 설정' })}</p>
-      <div className="rounded-2xl overflow-hidden bg-surface">
+    /* 🧱 가로 패딩 없음 — 줄이 자기 `px-4` 를 갖는다(구역 제목과 왼쪽 끝이 맞는다).
+       라벨('알림 설정')도 없앴다: 구역 제목이 이미 `설정 · 고객지원` 이라, 12px 라벨을 두면
+       한 화면에 제목 층이 셋이 된다(17 구역, 12 그룹, 15 행 — `list-grammar` 가 경고한 그것). */
+    <div className="ur-content-medium lg:px-4">
+      <div>
         <Toggle
-          icon={<BellIcon className="w-4 h-4" aria-hidden="true" />}
+          icon={<BellIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
           label={t('accountSettings.togglePush', { defaultValue: '푸시 알림' })}
           value={notif.push}
           onChange={() => toggle('push')}
         />
         <Toggle
-          icon={<MailIcon className="w-4 h-4" aria-hidden="true" />}
+          icon={<MailIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
           label={t('accountSettings.toggleEmail', { defaultValue: '이메일 알림' })}
           value={notif.email}
           onChange={() => toggle('email')}

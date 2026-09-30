@@ -1,10 +1,11 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
+import { GiftBoxIcon, BoxIcon, BagIcon, TruckIcon } from '@/components/icons/urdeal-icons'
 import { saveListView } from '@/lib/list-view-cache'
 import { browseViewKey, useBrowseRestore, type BrowseViewState } from './browse/list-restore'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ChevronDown, ChevronLeft, Gift, List, Map, Package, Search, Shirt, ShoppingBag, ShoppingCart, SlidersHorizontal, Smartphone, Sofa, Soup, Sparkle, Truck, X } from 'lucide-react'
+import { ChevronDown, ChevronLeft, List, Map, Search, Shirt, SlidersHorizontal, Smartphone, Sofa, Soup, Sparkle, X } from 'lucide-react'
 import { captureTrackingFromUrl } from '@/lib/seller-tracking'
 import api from '@/lib/api'
 import SEO, { itemListJsonLd } from '@/components/SEO'
@@ -373,7 +374,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
     <div className="bg-white dark:bg-[#11141C] min-h-screen">
       <SEO
         title={t('browse.title')}
-        description={t('browse.seoDesc')}
+        description={t('browse.seoDesc', { defaultValue: '유어딜 인기 상품, 동네 가게 이용권, 교환권을 할인가로 만나보세요' })}
         url="/browse"
         jsonLd={products.length > 0 ? itemListJsonLd(
           products.slice(0, 20).map((p, i) => ({
@@ -386,19 +387,19 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
       />
       {/* 상단 헤더: 검색바 + 아이콘 — 모바일 전용. md+ 는 DesktopTopNav 가 동일 기능 제공. */}
       <div className="md:hidden sticky top-0 z-50 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35]">
-        <div className="ur-content-wide px-4 py-2.5 lg:px-8">
+        <div className="ur-content-wide px-4 py-2 lg:px-8">
           <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => navigate('/search')}
-            className="flex-1 flex items-center gap-2 bg-gray-100 dark:bg-[#1D1F29] rounded-full px-4 py-2.5 cursor-pointer"
+            className="flex-1 flex items-center gap-2 bg-gray-100 dark:bg-[#1D1F29] rounded-full px-4 py-2 cursor-pointer"
             aria-label={t('browse.searchAria')}
           >
             <Search className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-            <span className="text-sm text-gray-400 dark:text-gray-500">상품명, 브랜드명</span>
+            <span className="text-[15px] text-gray-400 dark:text-gray-500">상품명, 브랜드명</span>
           </button>
           <button onClick={() => navigate('/cart')} aria-label="장바구니" className="p-1 relative">
-            <ShoppingCart className="w-6 h-6 text-gray-800 dark:text-gray-100" />
+            <BagIcon className="w-6 h-6 text-gray-800 dark:text-gray-100" />
           </button>
           </div>
         </div>
@@ -416,7 +417,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
       <div className="border-b border-gray-100 dark:border-[#2C2F35] overflow-x-auto scrollbar-hide">
         <div className="ur-content-wide flex px-4 lg:px-8 gap-3 py-3">
           {[
-            { key: 'all',          label: t('browse.categoryAll', { defaultValue: '전체' }),       Icon: ShoppingBag },
+            { key: 'all',          label: t('browse.categoryAll', { defaultValue: '전체' }),       Icon: BagIcon },
             // 🏭 2026-06-04 (사용자 지적): 이용권/교환권은 쇼핑(/browse=실물상품)이 아닌 동네딜·교환권 영역 → 칩 제거.
             { key: 'food',         label: t('browse.categoryFood', { defaultValue: '식품' }),      Icon: Soup },
             { key: 'fashion',      label: t('browse.categoryFashion', { defaultValue: '패션' }),   Icon: Shirt },
@@ -430,16 +431,16 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
             return (
               <button key={c.key}
                 onClick={() => { navigate(c.key === 'all' ? '/browse' : `/browse?category=${c.key}`); setShowCount(ITEMS_PER_PAGE) }}
-                className="shrink-0 flex flex-col items-center gap-1.5 active:scale-95 transition-transform min-w-[56px]"
+                className="shrink-0 flex flex-col items-center gap-2 active:scale-95 transition-transform min-w-[56px]"
               >
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl transition-colors ${
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-[24px] transition-colors ${
                   active
-                    ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-md'
+                    ? 'bg-brand text-white shadow-md'
                     : 'bg-gray-100 dark:bg-[#1D1F29]'
                 }`}>
                   {c.Icon && <c.Icon className="w-3.5 h-3.5" aria-hidden="true" />}
                 </div>
-                <span className={`text-[11px] font-bold ${
+                <span className={`text-[12px] font-bold ${
                   active ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'
                 }`}>
                   {c.label}
@@ -455,7 +456,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
         {/* 섹션 헤더 — 🏭 2026-06-04: 기본('전체')에선 '오늘의 핫딜' 타이틀 숨김(핫딜 섹션 제거). 카테고리 선택 시엔 라벨 표시. */}
         {category !== 'all' && (
           <div className="flex items-center justify-between mb-3">
-            <h1 className="text-xl lg:text-3xl font-extrabold text-gray-900 dark:text-white">{(({'fashion':t('browse.categoryFashion'),'beauty':t('browse.categoryBeauty'),'food':t('browse.categoryFood'),'lifestyle':t('browse.categoryLiving'),'electronics':t('browse.categoryDigital'),'living':t('browse.categoryLiving'),'digital':t('browse.categoryDigital'),'meal_voucher':'식사','beauty_voucher':'뷰티 교환권','health_voucher':'건강 교환권','pet_voucher':'반려 교환권','stay_voucher':'숙박 교환권','activity_voucher':'액티비티 교환권','etc_voucher':'기타 교환권'} as Record<string, string>)[category] || category)}</h1>
+            <h1 className="text-[17px] lg:text-[28px] font-extrabold text-gray-900 dark:text-white">{(({'fashion':t('browse.categoryFashion'),'beauty':t('browse.categoryBeauty'),'food':t('browse.categoryFood'),'lifestyle':t('browse.categoryLiving'),'electronics':t('browse.categoryDigital'),'living':t('browse.categoryLiving'),'digital':t('browse.categoryDigital'),'meal_voucher':'식사','beauty_voucher':'뷰티 교환권','health_voucher':'건강 교환권','pet_voucher':'반려 교환권','stay_voucher':'숙박 교환권','activity_voucher':'액티비티 교환권','etc_voucher':'기타 교환권'} as Record<string, string>)[category] || category)}</h1>
           </div>
         )}
 
@@ -465,13 +466,13 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <button onClick={() => setShowFilter(v => !v)}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-bold ${showFilter ? 'bg-gray-900 text-white' : 'bg-white dark:bg-[#11141C] text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-[#2C2F35]'}`}>
+              className={`flex items-center gap-1 px-3 py-2 rounded-full text-[12px] font-bold ${showFilter ? 'bg-brand text-white' : 'bg-white dark:bg-[#11141C] text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-[#2C2F35]'}`}>
               <SlidersHorizontal className="w-3 h-3" /> 필터
             </button>
-            <span className="text-xs text-gray-500 dark:text-gray-400">{sorted.length}개</span>
+            <span className="text-[12px] text-gray-500 dark:text-gray-400">{sorted.length}개</span>
             {isMealVoucher && (
               <button onClick={() => setMapView(!mapView)}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border ${mapView ? 'bg-gray-900 text-white border-gray-900' : 'bg-white dark:bg-[#11141C] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2C2F35]'}`}>
+                className={`flex items-center gap-1 px-3 py-2 rounded-full text-[12px] font-medium border ${mapView ? 'bg-brand text-white border-brand' : 'bg-white dark:bg-[#11141C] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2C2F35]'}`}>
                 {mapView ? <><List className="w-3 h-3" /> {t('browse.viewList')}</> : <><Map className="w-3 h-3" /> {t('browse.viewMap')}</>}
               </button>
             )}
@@ -479,7 +480,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
           <div className="relative" onClick={e => e.stopPropagation()}>
             <button
               onClick={() => setShowSortDropdown(v => !v)}
-              className="flex items-center gap-1 text-sm text-gray-700 dark:text-gray-200 font-medium"
+              className="flex items-center gap-1 text-[15px] text-gray-700 dark:text-gray-200 font-medium"
             >
               {SORT_LABELS[sortBy]}
               <ChevronDown className={`w-4 h-4 transition-transform ${showSortDropdown ? 'rotate-180' : ''}`} />
@@ -490,7 +491,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
                   <button
                     key={opt}
                     onClick={() => { setSortBy(opt); setShowSortDropdown(false) }}
-                    className={`w-full text-left px-3 py-2.5 text-sm ${
+                    className={`w-full text-left px-3 py-2 text-[15px] ${
                       sortBy === opt ? 'bg-red-50 text-red-500 font-semibold' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1D1F29]'
                     }`}
                   >
@@ -506,21 +507,21 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
         {showFilter && (
           <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-3 mb-4 space-y-3">
             <div>
-              <p className="text-xs font-medium text-gray-700 dark:text-gray-200 mb-1.5">가격대</p>
-              <div className="flex flex-wrap gap-1.5">
+              <p className="text-[12px] font-medium text-gray-700 dark:text-gray-200 mb-2">가격대</p>
+              <div className="flex flex-wrap gap-2">
                 {([['all', t('browse.priceAll')],['under10', t('browse.priceUnder10')],['under30', t('browse.priceUnder30')],['under50', t('browse.priceUnder50')],['over50', t('browse.priceOver50')]] as const).map(([v, l]) => (
                   <button key={v} onClick={() => { setPriceRange(v); setShowCount(ITEMS_PER_PAGE) }}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium ${priceRange === v ? 'bg-gray-900 text-white' : 'bg-white dark:bg-[#11141C] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2C2F35]'}`}>{l}</button>
+                    className={`px-3 py-2 rounded-full text-[12px] font-medium ${priceRange === v ? 'bg-brand text-white' : 'bg-white dark:bg-[#11141C] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2C2F35]'}`}>{l}</button>
                 ))}
               </div>
             </div>
             <div className="flex items-center gap-2">
               <button onClick={() => { setFreeShipOnly(!freeShipOnly); setShowCount(ITEMS_PER_PAGE) }}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium ${freeShipOnly ? 'bg-gray-900 text-white' : 'bg-white dark:bg-[#11141C] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2C2F35]'}`}>
-                <Truck className="w-3 h-3" /> 무료배송만
+                className={`flex items-center gap-1 px-3 py-2 rounded-full text-[12px] font-medium ${freeShipOnly ? 'bg-brand text-white' : 'bg-white dark:bg-[#11141C] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2C2F35]'}`}>
+                <TruckIcon className="w-3 h-3" /> 무료배송만
               </button>
               {(priceRange !== 'all' || freeShipOnly) && (
-                <button onClick={() => { setPriceRange('all'); setFreeShipOnly(false) }} className="text-xs text-red-500 font-medium flex items-center gap-0.5">
+                <button onClick={() => { setPriceRange('all'); setFreeShipOnly(false) }} className="text-[12px] text-red-500 font-medium flex items-center gap-1">
                   <X className="w-3 h-3" /> 초기화
                 </button>
               )}
@@ -546,7 +547,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
             <p className="text-gray-900 dark:text-white mb-4">{error}</p>
             <button
               onClick={() => loadProducts(1, true)}
-              className="px-6 py-2 bg-gray-900 text-white rounded-xl font-semibold hover:bg-gray-800 transition-colors"
+              className="px-6 py-2 bg-brand hover:bg-brand-dark text-white rounded-xl font-semibold transition-colors"
             >
               다시 시도
             </button>
@@ -562,7 +563,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
                   원인: original_price/discount 가 조건부 렌더 → 카드마다 높이 다름.
                   해결: items-stretch flex-col + 슬롯 명시 placeholder (모든 카드 동일 구조).
                   디자인: 첨부 이미지 (참외 카드) 스타일 — 원가 strike → 제목 → 할인%+가격 → ⭐+무료 */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-2 gap-y-2.5 lg:gap-4 items-stretch">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-2 gap-y-2 lg:gap-4 items-stretch">
               {displayed.map((product, idx) => (
                 <BrowseProductCard
                   key={product.id}
@@ -582,7 +583,7 @@ export default function BrowsePage({ defaultCategory }: BrowsePageProps = {}) {
                   if (showCount < sorted.length) setShowCount(c => c + ITEMS_PER_PAGE)
                   else if (hasMore && !loadingMore) { const n = page + 1; setPage(n); loadProducts(n, false) }
                 }}
-                  className="px-8 py-3 border border-line rounded-full text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1D1F29]">
+                  className="px-8 py-3 border border-line rounded-full text-[15px] font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1D1F29]">
                   더보기 ({sorted.length - showCount}개 남음)
                 </button>
               </div>

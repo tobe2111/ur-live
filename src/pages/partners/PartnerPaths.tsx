@@ -56,7 +56,7 @@ export default function PartnerPaths() {
       <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-32">
         <div className="lg:grid lg:grid-cols-[1.6fr_0.4fr] lg:gap-16 lg:items-end">
           <div>
-            <h2 className="text-[26px] lg:text-[40px] xl:text-[46px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
+            <h2 className="text-[28px] lg:text-[40px] xl:text-[48px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
               시작하는 길, 세 가지
             </h2>
             <p className="mt-4 text-[15px] lg:text-[17px] leading-relaxed text-gray-500 dark:text-gray-400 max-w-[28em]">
@@ -75,7 +75,7 @@ export default function PartnerPaths() {
             <article key={title}
               className={`rounded-2xl flex flex-col ${hi ? 'bg-surface shadow-lift p-6 lg:p-10' : 'bg-black/[0.03] dark:bg-white/[0.04] p-6 lg:p-8'}`}>
               <div className="flex items-baseline justify-between gap-3">
-                <h3 className={`font-extrabold text-ink tracking-[-0.02em] ${hi ? 'text-[24px] lg:text-[30px]' : 'text-[17px] lg:text-[24px]'}`}>{title}</h3>
+                <h3 className={`font-extrabold text-ink tracking-[-0.02em] ${hi ? 'text-[24px] lg:text-[28px]' : 'text-[17px] lg:text-[24px]'}`}>{title}</h3>
                 <span className={`text-[12px] lg:text-[15px] font-bold shrink-0 ${hi ? 'text-brand-text' : 'text-gray-500 dark:text-gray-400'}`}>{fee}</span>
               </div>
               <ol className="mt-6 lg:mt-8 space-y-2 lg:space-y-4 flex-1">

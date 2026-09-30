@@ -52,7 +52,7 @@ export default function InfluencerLandingPage() {
       <section className="px-6 lg:px-12 py-12 lg:py-24 max-w-6xl mx-auto">
         <div className="text-center mb-12">
           <span className="inline-block px-3 py-1 bg-brand/10 text-brand rounded-full text-[12px] font-bold mb-5">✨ 팔로워 수 제한 없음</span>
-          <h1 className="text-4xl lg:text-6xl font-extrabold leading-tight tracking-tight mb-6">
+          <h1 className="text-[34px] lg:text-[60px] font-extrabold leading-tight tracking-tight mb-6">
             아는 가게를<br />
             <span className="text-brand">소개하면</span> 몫이 남습니다.
           </h1>
@@ -73,7 +73,7 @@ export default function InfluencerLandingPage() {
       {/* 어떻게 되는지 — 숫자를 약속하지 않고 구조를 설명한다 */}
       <section className="bg-gray-50 dark:bg-[#1D1F29] px-6 lg:px-12 py-16">
         <div className="max-w-4xl mx-auto">
-          <h2 className="text-[24px] lg:text-3xl font-extrabold text-center mb-10">어떻게 되나요?</h2>
+          <h2 className="text-[24px] lg:text-[28px] font-extrabold text-center mb-10">어떻게 되나요?</h2>
           <div className="space-y-4">
             {STEPS.map((s, i) => (
               <div key={i} className="bg-surface rounded-2xl p-6 flex gap-4 shadow-lift">

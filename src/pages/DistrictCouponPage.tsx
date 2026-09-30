@@ -132,7 +132,7 @@ function RedeemModal({ coupon, stores, onClose, onRedeemed }: { coupon: MyCoupon
     return (
       <div className="fixed inset-0 z-[10600] flex items-end sm:items-center justify-center bg-black/60" onClick={onClose} role="presentation">
         <div className="w-full sm:max-w-xs sm:mx-4 rounded-t-3xl sm:rounded-3xl bg-surface p-6 text-center" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-          <p className="text-3xl" aria-hidden>✅</p>
+          <p className="text-[28px]" aria-hidden>✅</p>
           <p className="mt-2 text-[17px] font-extrabold text-gray-900 dark:text-white">사용 완료!</p>
           <p className="mt-1 text-[12px] text-gray-500 dark:text-gray-400">결제 금액에서 쿠폰 금액을 빼고 결제하세요</p>
           <button type="button" onClick={() => navigate(`/pass/${doneBridge.product_id}`)}
@@ -250,11 +250,11 @@ export default function DistrictCouponPage() {
                 {stores.map((s) => (
                   <li key={s.id} className="text-[12px] text-gray-600 dark:text-gray-300">
                     <span className="font-medium text-gray-900 dark:text-white">{s.name}</span>
-                    {s.address && <span className="ml-1.5 inline-flex items-center gap-1 text-[12px] text-gray-400 dark:text-gray-500"><PinIcon className="h-3 w-3" />{s.address}</span>}
+                    {s.address && <span className="ml-2 inline-flex items-center gap-1 text-[12px] text-gray-400 dark:text-gray-500"><PinIcon className="h-3 w-3" />{s.address}</span>}
                     {/* 🔗 전환 다리(게이트 ON 시에만 서버가 동봉): 이 매장의 유어딜 동네딜 병기 */}
                     {!!s.deal_product_id && (
                       <button type="button" onClick={() => navigate(`/pass/${s.deal_product_id}`)}
-                        className="ml-1.5 inline-flex items-center rounded-full bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 text-[12px] font-bold text-emerald-700 dark:text-emerald-400 active:opacity-70">
+                        className="ml-2 inline-flex items-center rounded-full bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 text-[12px] font-bold text-emerald-700 dark:text-emerald-400 active:opacity-70">
                         동네딜 {s.deal_count && s.deal_count > 1 ? `${s.deal_count}개` : ''} →
                       </button>
                     )}
@@ -283,7 +283,7 @@ export default function DistrictCouponPage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-[15px] font-extrabold text-gray-900 dark:text-white">{formatWon(cp.face_value)}
-                    {cp.source === 'online' && <span className="ml-1.5 align-middle rounded bg-blue-50 dark:bg-blue-900/30 px-2 py-1 text-[12px] font-semibold text-blue-600 dark:text-blue-300">결제 자동지급</span>}
+                    {cp.source === 'online' && <span className="ml-2 align-middle rounded bg-blue-50 dark:bg-blue-900/30 px-2 py-1 text-[12px] font-semibold text-blue-600 dark:text-blue-300">결제 자동지급</span>}
                   </p>
                   <p className="truncate text-[12px] text-gray-500 dark:text-gray-400">{cp.campaign_name} · {formatKSTDate(cp.expires_at)}까지</p>
                 </div>

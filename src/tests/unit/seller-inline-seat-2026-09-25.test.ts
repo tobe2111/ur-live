@@ -250,7 +250,18 @@ describe('단계 3 — 소각은 되돌릴 수 없다', () => {
 
   it('검은 계산대 카드는 좌석 섹션이 못 뜰 때만 남는다(진입점 둘 금지)', () => {
     const code = stripComments(PAGE)
-    expect(code).toMatch(/localStorage\.getItem\('seller_token'\) && sellerSeats\.stores\.length === 0/)
+    // 🔁 2026-09-30: 사이에 `!sellerSeats.loading` 이 끼어들었다(아래 검사가 그걸 따로 못 박는다).
+    expect(code).toMatch(/localStorage\.getItem\('seller_token'\)[^\n]*sellerSeats\.stores\.length === 0/)
+  })
+
+  /**
+   * ⏳ 2026-09-30 (대표 *"2번째 이미지가 로딩에 나오다가 첫번째 이미지로 바뀌더라?"*):
+   *   좌석 조회가 **도는 동안**에도 이 카드가 떴다가 응답이 오면 사라졌다(하네스 실측
+   *   `사라짐: ["매장 계산대", …]`). "아직 모른다" 는 "없다" 가 아니다.
+   */
+  it('좌석이 확정되기 전에는 뜨지 않는다 (떴다 사라지지 않는다)', () => {
+    const code = stripComments(PAGE)
+    expect(code).toMatch(/localStorage\.getItem\('seller_token'\) && !sellerSeats\.loading/)
   })
 })
 

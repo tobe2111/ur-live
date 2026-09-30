@@ -49,7 +49,7 @@ export default function PartnerCompare() {
   return (
     <section className="bg-surface">
       <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-28">
-        <h2 className="text-[26px] lg:text-[40px] xl:text-[46px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2] max-w-[14em]">
+        <h2 className="text-[28px] lg:text-[40px] xl:text-[48px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2] max-w-[14em]">
           그 광고비, 효과 보셨어요?
         </h2>
 

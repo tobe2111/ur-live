@@ -83,7 +83,13 @@ describe('② "넓어진 모바일" 로 되돌아가지 않는다', () => {
     const px = (prefix: string) => Number(h1.match(new RegExp(`${prefix}:text-\\[(\\d+(?:\\.\\d+)?)px\\]`))?.[1] ?? 0)
     const [base, lg, xl] = [px('text') || Number(h1.match(/(?:^|\s)text-\[(\d+)px\]/)?.[1] ?? 0), px('lg'), px('xl')]
     expect(lg, '`lg:` 단계가 없으면 PC 에서 폰 크기 그대로다').toBeGreaterThanOrEqual(44)
-    expect(xl, '`xl:` 가 `lg:` 보다 작으면 넓은 화면에서 되레 줄어든다').toBeGreaterThanOrEqual(lg)
+    /**
+     * 🩸 2026-09-30 재조준 — 이 단언이 **없는 rung 과 줄어드는 rung 을 구분하지 못했다.**
+     * 디스플레이 7 rung 이행에서 `xl` 이 `lg` 와 같은 값이 되어(사다리 붕괴) 잉여 rung 을
+     * 덜어냈더니, `px('xl')` 가 0 이 되어 `0 >= 48` 로 빨간불이 났다. 지키려던 것은
+     * *"넓은 화면에서 되레 줄어들지 않는다"* 이고, **rung 이 없으면 줄어들지 않는다**(유지된다).
+     */
+    if (xl > 0) expect(xl, '`xl:` 가 `lg:` 보다 작으면 넓은 화면에서 되레 줄어든다').toBeGreaterThanOrEqual(lg)
     expect(lg, 'PC 제목이 모바일보다 확실히 커야 한다').toBeGreaterThan(base)
   })
 
