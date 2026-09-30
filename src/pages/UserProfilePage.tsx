@@ -19,7 +19,6 @@ import MyReferralCard from '@/components/MyReferralCard'
 import RoleCtaGrid from './user-profile/RoleCtaGrid'
 import ShoppingGroup from './user-profile/ShoppingGroup'
 import OrderStatusBar from './user-profile/OrderStatusBar'
-import ReviewLevelCard from './user-profile/ReviewLevelCard'
 import SellerSwitchInline from './user-profile/SellerSwitchInline'
 import SellerSection from './user-profile/SellerSectionLazy'
 import SettingsGroup from './user-profile/SettingsGroup'
@@ -305,8 +304,13 @@ export default function UserProfilePage() {
 
       <OrderStatusBar />
 
-      {/* 🗺️ 2026-07-02 동네 리뷰어 레벨 (카카오맵 리뷰 게이미피케이션) — 자산 흐름 안에서 동기부여 노출 */}
-      <ReviewLevelCard />
+      {/* 🗑️ 2026-09-30 — **동네 리뷰어 레벨 카드를 마이에서 뺐다** (대표 *"동네 리뷰어 lv.1 이건
+          지금 없어도 되지 않나? 마이에서?"* → *"동네 리뷰어 lv.1 은 빼줘"*).
+          ⚠️ **기능을 지운 게 아니다** — 후기 미션의 진짜 문은 `/my-vouchers` 의 *사용한* 이용권에
+          붙는 `ReviewBonusButton` 이고(후기는 쓰고 나서 쓴다), 이 카드는 그 위에 얹힌 상시 홍보였다.
+          부품(`ReviewLevelCard.tsx`)·API(`/api/review-bonus/my-level`)·어드민 검증은 그대로 살아 있다.
+          되살릴 때: 레벨 전용 혜택이 실제로 생긴 뒤에 — 지금 라이브 활성 이용권 중 레벨을 요구하는
+          것이 0개라, 이 카드는 없는 혜택을 향해 진행바를 채우고 있었다. */}
 
       {/* v4 쇼핑 InsetGroup — '내가 산 것'(이용권·자산 / 관심 / 주문·배송). 2026-09-28 이름 E. */}
       <ShoppingGroup counts={counts} />

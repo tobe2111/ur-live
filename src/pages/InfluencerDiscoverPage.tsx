@@ -189,7 +189,7 @@ export default function InfluencerDiscoverPage() {
                             내 소개비 {p.my_deal_pct}%
                           </span>
                         )}
-                        <span className="block w-full bg-gray-100 dark:bg-[#2A2A2B] rounded-full h-1.5 overflow-hidden">
+                        <span className="block w-full bg-gray-100 dark:bg-[#262A2F] rounded-full h-1.5 overflow-hidden">
                           <span className="block h-full bg-brand rounded-full" style={{ width: `${progress}%` }} />
                         </span>
                         <span className="block text-[12px] text-gray-500 dark:text-gray-400 mt-1">{p.group_buy_current}/{p.group_buy_target}명</span>
@@ -213,7 +213,7 @@ export default function InfluencerDiscoverPage() {
                     </div>
                   ) : (
                     <div className="px-3 pb-3">
-                      <p className="py-2 rounded-lg bg-gray-50 dark:bg-[#2A2A2B] text-[12px] text-gray-600 dark:text-gray-300 text-center leading-relaxed">
+                      <p className="py-2 rounded-lg bg-gray-50 dark:bg-[#262A2F] text-[12px] text-gray-600 dark:text-gray-300 text-center leading-relaxed">
                         {authed
                           ? '이 매장과 딜을 맺어야 소개비가 붙습니다'
                           : '로그인하면 내 딜을 확인할 수 있어요'}

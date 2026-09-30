@@ -2,9 +2,19 @@
  * 유어샵 헤더 — `/u/:handle` (개인·사업자 공통. 헤더는 하나다).
  *
  * 🎫 2026-09-28 (대표 확정 **s3 + a3 + b2 + c2 + e3**): 11라운드 37안 끝에 닫힌 결정을 그대로 옮긴 것.
- *   ① **`urdeal` 브랜드 바**(a3) — 로고는 홈 링크(`<Link to="/">`). 그 옆 GNB 세 개(검색·찜·내 이용권).
- *   ② **면으로 구분**(b2) — 헤더 안 가로선 **0개**. 헤더는 `bg-surface`, 아래 본문은 `bg-warm` 이라
- *      **두 면이 맞닿는 자리가 곧 구분선**이다. 선을 그리면 b2 가 아니게 된다.
+ *   ① **`urdeal` 브랜드 바**(a3) — 로고는 홈 링크(`<Link to="/">`).
+ *      🩸 2026-09-30 두 가지를 고쳤다(대표 *"유어딜 로고 좌측 상단에 있는거 왜 제대로 적용이 안됐지?
+ *      검색, 찜, 내 이용권은 없어도 되고"*):
+ *        ⓐ **로고가 로고가 아니었다** — `urdeal` 을 그냥 텍스트로 적어 놓아서 라이브 실측이
+ *           `font: Pretendard`(Poppins 아님) · `dot: false`(브랜드 원 마침표 없음)였다. 폰트는 이미
+ *           로드돼 있었는데(`poppinsLoaded: true`) 이 자리만 안 쓰고 있었다 — **배선 누락**이다.
+ *           ⇒ 워드마크 SSOT `<UrDealLogo/>` 로 교체. 손으로 다시 적으면 또 갈린다.
+ *        ⓑ **GNB 세 개(검색·찜·내 이용권) 제거** — 하단 탭이 같은 곳을 이미 담고, 남의 가게에 와서
+ *           가장 눈에 띄는 자리에 **유어딜로 나가는 링크 셋**을 두면 손님을 밖으로 내보내는 셈이다.
+ *   ② **면으로 구분**(b2) — 헤더 안 가로선 **0개**.
+ *      ⚠️ 2026-09-30 로 그 전제가 **바뀌었다**: 대표가 한 톤을 확정해(*"아예 모두 똑같이 배경색을
+ *      카드 색상이랑 같게"*) 헤더와 본문이 같은 `bg-surface` 다. 이제 맞닿는 자리가 안 보이므로
+ *      chrome 과 목록을 나누는 일은 **본문 탭 줄의 실선 하나**가 한다(`CuratorPage`). 헤더는 여전히 선 0개.
  *   ③ **주소 텍스트 없음**(대표: *"링크를 적지 말고 그냥 공유하기 버튼 하나로 둬줘"*) — 주소는
  *      읽으라고 있는 게 아니라 **보내라고** 있는 것이라 [공유] 버튼이 대신한다.
  *   ④ **버튼 두 자리**(c2) — `[⤴ 공유]`(항상) + `[관리]`(주인만, `/u/me/manage`).
@@ -30,6 +40,7 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Share2 } from 'lucide-react'
 import VerifiedSeal from '@/components/VerifiedSeal'
+import UrDealLogo from '@/components/brand/UrDealLogo'
 import { snsUrl } from '@/utils/sns-url'
 
 interface CuratorHeaderProps {
@@ -94,21 +105,20 @@ export default function CuratorHeader({ curator, canEdit, counts, accountType, o
             ⚠️ `?embed=1`(깨끗한 매장 링크)은 PC 에서도 전역 네비가 없지만, 그 모드의 목적 자체가
                "유어딜 chrome 을 안 보여 준다" 라 여기서도 안 그리는 쪽이 맞다. */}
         <div className="lg:hidden flex items-center px-4 pt-3">
-          <Link to="/" aria-label={t('nav.homeAria', { defaultValue: '유어딜 홈' })} className="text-[15px] font-bold tracking-[-0.03em] text-gray-900 dark:text-white active:opacity-70">
-            urdeal
+          <Link to="/" aria-label={t('nav.homeAria', { defaultValue: '유어딜 홈' })} className="active:opacity-70">
+            <UrDealLogo size={19} />
           </Link>
-          <nav className="ml-auto flex items-center gap-4 text-[12px] font-semibold text-gray-500 dark:text-gray-400">
-            <Link to="/search" className="active:opacity-70">{t('nav.search', { defaultValue: '검색' })}</Link>
-            <Link to="/wishlist" className="active:opacity-70">{t('nav.wishlist', { defaultValue: '찜' })}</Link>
-            <Link to="/my-vouchers" className="active:opacity-70">{t('nav.myVouchers', { defaultValue: '내 이용권' })}</Link>
-          </nav>
         </div>
 
         {/* ③④ 상호명 줄 — 그 위 선 없음(면으로 나뉜다). 오른쪽이 버튼 자리. */}
         <div className="flex items-start px-4 pt-4 pb-4">
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 min-w-0">
-              <h1 className="text-[17px] font-bold text-gray-900 dark:text-white leading-tight tracking-[-0.03em] truncate">{curator.name}</h1>
+            <div className="flex items-start gap-2 min-w-0">
+              {/* 🩸 2026-09-30 렌더 실측: `truncate` 라 주인 화면(SNS 2 + 공유 + 관리)에서 왼쪽 칸이 156px 가 되고
+                  "지원의 동네가게" 가 **"지원의 동네…"** 로 잘렸다. 가게 이름은 이 화면의 정체 자체다.
+                  대표 제약은 *"이름 크기는 그대로"*(17px)·*"SNS 버튼들 위치도 그대로"* 라 둘 다 안 건드리고
+                  **두 줄까지 허용**한다(`line-clamp-2`) — 크기도 자리도 안 옮기면서 이름이 다 보인다. */}
+              <h1 className="text-[17px] font-bold text-gray-900 dark:text-white leading-tight tracking-[-0.03em] line-clamp-2">{curator.name}</h1>
               {accountType === 'business' && <VerifiedSeal size={17} className="shrink-0" />}
             </div>
             {curator.bio && (

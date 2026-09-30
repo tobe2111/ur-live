@@ -29,7 +29,7 @@ export default [
   {
     name: '상단1안 — 칩이 다시 자기 줄을 소유한다',
     file: 'src/pages/curator-page/PinCategoryChips.tsx',
-    find: 'className="flex-1 min-w-0 flex gap-2 overflow-x-auto scrollbar-hide"',
+    find: 'className="flex-1 min-w-0 flex overflow-x-auto scrollbar-hide"',
     replace: 'className="max-w-3xl mx-auto px-4 pt-3 flex gap-2 overflow-x-auto scrollbar-hide"',
     test: 'src/tests/unit/ushop-top-chrome-2026-09-28.test.ts',
     why:

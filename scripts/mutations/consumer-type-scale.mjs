@@ -27,8 +27,11 @@ export default [
   {
     name: '📐 반쪽 간격이 다시 들어온다 (4px 격자 이탈)',
     file: 'src/pages/curator-page/CuratorHeader.tsx',
-    find: '<div className="flex items-center gap-2 min-w-0">',
-    replace: '<div className="flex items-center gap-1.5 min-w-0">',
+    // ⚠️ 재조준(2026-09-30): 이름이 두 줄까지 늘 수 있게 되며 `items-center` → `items-start` 로
+    //   바뀌었다(렌더 실측 — 주인 화면에서 "지원의 동네가게" 가 잘렸다). 지키는 것은 정렬이 아니라
+    //   **4px 격자**(gap-2) 이므로 앵커만 현재 줄로 옮긴다.
+    find: '<div className="flex items-start gap-2 min-w-0">',
+    replace: '<div className="flex items-start gap-1.5 min-w-0">',
     test: TEST,
     why: '6px 와 8px 가 섞이면 줄 사이 리듬이 화면마다 달라진다 — 개별 결함이 아니라 "덜 만든 화면" 의 인상을 만든다.',
   },

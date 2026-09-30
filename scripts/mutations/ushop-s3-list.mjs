@@ -62,10 +62,12 @@ export default [
      * 🎯 2026-09-30 재조준 — 앵커가 `space-y-2` 였는데 안 A 로 `grid gap-2 ur-ushop-rows` 가 됐다.
      * **지키려던 것은 그대로 살아 있다**: *폰에서 한 열*. 안 A 의 2열은 `.ur-ushop-main
      * .ur-ushop-rows`(lg+ CSS)라 폰에 안 닿는다. 되살아나면 안 되는 것은 **폭 무관 2열**이다.
+     * 🔁 2026-09-30 재조준(#1581 머지) — 폰은 한 톤 `divide-y divide-rule`, PC 만 `lg:grid` 2열.
+     *   두 확정(폰 한 톤 · PC 안 A)이 서로 다른 뷰포트라 결합했다. 불변식은 그대로 폰 한 열이다.
      */
     name: 's3 — 목록이 폰에서도 2열 격자가 된다',
     file: 'src/pages/CuratorPage.tsx',
-    find: 'className="max-w-3xl mx-auto px-4 pb-4 grid gap-2 ur-ushop-rows"',
+    find: 'className="max-w-3xl mx-auto px-4 pb-4 divide-y divide-rule lg:divide-y-0 lg:grid lg:gap-2 ur-ushop-rows"',
     replace: 'className="max-w-3xl mx-auto px-4 pb-4 grid grid-cols-2 gap-2 ur-ushop-rows"',
     test: 'src/tests/unit/ushop-s3-list-2026-09-28.test.ts',
     why:

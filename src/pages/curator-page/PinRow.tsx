@@ -65,6 +65,10 @@ export default memo(function PinRow({ pin, handle, order, prefetch }: {
         </>
       }
       thumbSize="lg"
+      /* 🩸 2026-09-30 한 톤 (대표 *"일단 이 형태가 낫고"*): 판(흰 카드 + 들림) 대신 줄 사이 실선.
+         페이지 바탕이 카드와 같은 톤이 되면 판은 아무것도 나누지 않으면서 그림자만 남긴다.
+         ⚠️ 기본값(`card`)은 안 건드린다 — `DealRow` 를 쓰는 다른 다섯 화면은 바탕이 `bg-warm` 이다. */
+      surface="plain"
       leading={
         /*
          * 🩸 2026-09-29 (대표 *"세련된 느낌이 없다"* 진단) — 순번을 **사진 밖**으로 옮겼다.

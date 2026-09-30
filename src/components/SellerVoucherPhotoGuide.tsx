@@ -31,16 +31,16 @@ function GoodExampleSvg() {
 function BadExampleSvg() {
   return (
     <svg viewBox="0 0 96 72" className="w-full h-auto" aria-hidden="true">
-      <rect width="96" height="72" rx="6" fill="#F3EEEA" />
+      <rect width="96" height="72" rx="6" fill="#EDEFF3" />
       {/* 건물 외관 */}
-      <rect x="18" y="22" width="60" height="42" fill="#FFFFFF" stroke="#8A8580" strokeWidth="2" />
+      <rect x="18" y="22" width="60" height="42" fill="#FFFFFF" stroke="#81868C" strokeWidth="2" />
       {/* 간판 */}
-      <rect x="22" y="12" width="52" height="14" rx="2" fill="#D8D2CC" stroke="#8A8580" strokeWidth="2" />
-      <path d="M30 19h20M54 19h12" stroke="#6E6B68" strokeWidth="2.5" strokeLinecap="round" />
+      <rect x="22" y="12" width="52" height="14" rx="2" fill="#CFD3D8" stroke="#81868C" strokeWidth="2" />
+      <path d="M30 19h20M54 19h12" stroke="#666C72" strokeWidth="2.5" strokeLinecap="round" />
       {/* 문 · 창(메뉴판) */}
-      <rect x="26" y="34" width="18" height="30" fill="#F3EEEA" stroke="#8A8580" strokeWidth="1.5" />
-      <rect x="52" y="34" width="18" height="20" fill="#F3EEEA" stroke="#8A8580" strokeWidth="1.5" />
-      <path d="M55 39h12M55 43h12M55 47h8" stroke="#8A8580" strokeWidth="1.5" strokeLinecap="round" />
+      <rect x="26" y="34" width="18" height="30" fill="#EDEFF3" stroke="#81868C" strokeWidth="1.5" />
+      <rect x="52" y="34" width="18" height="20" fill="#EDEFF3" stroke="#81868C" strokeWidth="1.5" />
+      <path d="M55 39h12M55 43h12M55 47h8" stroke="#81868C" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   )
 }

@@ -67,9 +67,19 @@ export const LIST_PLATE_CLS = 'rounded-2xl bg-surface shadow-lift overflow-hidde
  *   2026-09-28 '이름 E' 는 *"제목이 붙은 구역이 파는 쪽"* 이었는데, 안 C 가 그 규칙을 대체했다 —
  *   파는 쪽 표시는 **판**이 한다(위 머리말).
  */
+/**
+ * 구역 제목 — 24px(타입 스케일의 둘째 단계).
+ *
+ * 🩸 2026-09-30 (대표 *"내 가게, 내가 산 것 이런 주제들의 폰트 하며 너무 투박해"*):
+ * `font-extrabold tracking-[-0.03em]` 이었다. **크기가 아니라 무게와 자간이 문제였다** —
+ * 셋(24px · extrabold · −3%)을 한꺼번에 쌓으면 한글이 뭉쳐 보인다. 이 화면이 베낀
+ * 코레일톡 시안을 다시 보니 가장 큰 글자("이용 가능"·"16:09")가 **bold 이고 자간을 안 조였다**.
+ * ⇒ `font-bold tracking-[-0.01em]`. **크기는 안 건드린다**(24는 대표 확정 안 C 의 구역 제목이고,
+ * 줄이면 구역 경계가 약해져 목록이 다시 한 덩어리로 읽힌다).
+ */
 export function SectionTitle({ children, as: Tag = 'h2' }: { children: React.ReactNode; as?: 'h2' | 'h3' }) {
   return (
-    <Tag className="mt-7 mb-2 px-4 text-[24px] font-extrabold tracking-[-0.03em] text-gray-900 dark:text-white">
+    <Tag className="mt-7 mb-2 px-4 text-[24px] font-bold tracking-[-0.01em] text-gray-900 dark:text-white">
       {children}
     </Tag>
   )

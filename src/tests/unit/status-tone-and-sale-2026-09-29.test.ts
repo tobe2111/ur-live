@@ -11,7 +11,7 @@ import { stripComments } from '../helpers/source-text'
  * **전부 잉크 스케일로 중화**한다. 소비자 화면에서는 의도다. 그런데 그 중화가 **의미까지** 먹었다:
  *
  * ```
- * rose-600 = emerald-600 = amber-600 = blue-600 = green-600 = #55534F   (실측, tailwind.config.js)
+ * rose-600 = emerald-600 = amber-600 = blue-600 = green-600 = #4F545A   (실측, tailwind.config.js — 2026-09-30 온도 정정 전 #55534F)
  * rose-50  = emerald-50  = amber-50  = blue-50  = green-50  = #F8F7FC
  * ```
  *

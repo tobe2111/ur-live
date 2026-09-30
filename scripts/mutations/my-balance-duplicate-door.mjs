@@ -15,7 +15,9 @@ export default [
   {
     name: '🪙마이잔액 딜 칸이 상단 줄에서 통째로 사라진다',
     file: MY,
-    find: '        <Cell label="내 딜" to={DEAL_PATH} value={balance} unit="딜" />\n',
+    // 🔁 2026-09-30 재조준 — 값에서 단위(`unit="딜"`)를 뺐다(390px 에서 숫자가 잘리던 원인).
+    //   불변식은 그대로다: **딜 칸이 이 줄에 있어야 한다.**
+    find: '        <Cell label="내 딜" to={DEAL_PATH} value={balance} />\n',
     replace: '',
     test: TEST,
     why: '딜은 이 화면에서 가장 중요한 숫자다 — 칸이 빠져도 나머지 둘이 멀쩡히 서서 아무도 신고하지 않는다.',
