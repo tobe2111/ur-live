@@ -73,11 +73,33 @@ describe('유어샵 안3 — 주인 띠 삭제 · 버튼 한 자리', () => {
   })
 })
 
-describe('유어샵 안3 — 카테고리 칩(지도 B안과 같은 그림)', () => {
-  it('칩은 지도 칩 SSOT(MAP_VOUCHER_DEFS)를 쓰고, 선택은 블루 면 · 비선택은 흰 알약', () => {
-    const src = read(CHIPS)
-    expect(src).toContain("from '@/pages/restaurant-map/voucher-types'")
-    expect(src).toMatch(/on \? 'bg-brand text-white' : 'bg-white dark:bg-\[#1D1F29\][^']*shadow-lift'/)
+describe('유어샵 안3 — 카테고리 분류 줄', () => {
+  /*
+   * 🩸 2026-09-30 재조준 (대표 한 톤 확정 — *"아예 모두 똑같이 배경색을 카드 색상이랑 같게 한다면???"*
+   *   → 시안 확인 후 *"일단 이 형태가 낫고"*). 종전 단언은 **알약의 껍질**을 박고 있었다
+   *   (`on ? 'bg-brand text-white' : 'bg-white … shadow-lift'`). 알약은 *자기 배경*으로 존재를
+   *   주장하는 부품이라, 페이지·카드·칩이 한 톤이 되면 흰 알약이 흰 바탕 위에 그림자로만 뜬다.
+   *   ⇒ 밑줄 탭으로 바뀌었고, 지켜야 할 것은 껍질이 아니라 셋이다:
+   *     ① 분류 정의는 지도와 **같은 SSOT** (유어샵만 다른 이름·순서를 갖지 않는다)
+   *     ② 활성 표시는 **브랜드 하나** (2026-09-02 표면 규칙 ② "강조색 하나")
+   *     ③ **개수를 적는다** — 대표가 *"각 이용권마다 숫자도 달아줘"* 로 직접 요청한 항목이다.
+   *   ⚠️ 느슨해진 게 아니라 판정 대상이 바뀐 것이다. 알약 껍질의 부활은 아래에서 따로 막는다.
+   */
+  it('분류 정의는 지도 칩과 같은 SSOT 를 쓴다', () => {
+    expect(read(CHIPS)).toContain("from '@/pages/restaurant-map/voucher-types'")
+  })
+
+  it('활성 표시는 브랜드 하나 — 밑줄, 그리고 개수가 붙는다', () => {
+    const src = codeOnly(read(CHIPS))
+    expect(src, '활성은 브랜드 밑줄').toMatch(/border-b-2[\s\S]{0,120}border-brand/)
+    expect(src, '비활성은 선을 숨긴다(자리는 남긴다 — 글자가 안 밀리게)').toContain('border-transparent')
+    expect(src, '개수(대표 요청)를 그린다').toMatch(/\{n\}/)
+  })
+
+  it('🔴 알약 껍질이 돌아오지 않았다 — 한 톤에서 판·그림자는 아무것도 안 나눈다', () => {
+    const src = codeOnly(read(CHIPS))
+    expect(src, '흰 알약 + 들림 복귀').not.toContain('shadow-lift')
+    expect(src, '알약 모서리 복귀').not.toContain('rounded-full')
   })
   // 🔧 2026-09-28 재조준(대표 확정 s3): 종전엔 `CHIPS_MIN_PINS = 7` 미만이면 안 그렸다.
   //   그 게이트는 **한 번도 열린 적이 없다** — 라이브 유어샵은 3곳·최다 5개다. 칩이 존재하지 않는

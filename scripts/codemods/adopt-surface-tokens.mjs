@@ -8,7 +8,7 @@
  * | 접기 전 | 접은 뒤 | 근거 |
  * |---|---|---|
  * | `bg-white` + `dark:bg-[#1D1F29]` | `bg-surface` | `--surface` = #FFFFFF / #1D1F29 |
- * | `border-gray-200` + `dark:border-[#2C2F35]` | `border-line` | `--line` = #EAE4E0(=INK.200) / #2C2F35 |
+ * | `border-gray-200` + `dark:border-[#2C2F35]` | `border-line` | `--line` = #E2E5E9(=INK.200) / #2C2F35 |
  * | `divide-gray-200` + `dark:divide-[#2C2F35]` | `divide-line` | 〃 |
  * | `bg-gray-50` + `dark:bg-[#11141C]` | `bg-warm` | `--bg` = #F8F7FC(=INK.50) / #11141C |
  * | `bg-[#F8F7FC]` + `dark:bg-[#11141C]` | `bg-warm` | 〃 |
@@ -17,8 +17,8 @@
  *   - `bg-white` + `dark:bg-[#11141C]` (321곳) — 라이트 흰색인데 다크에선 **페이지** 색이다.
  *     같은 `bg-white` 가 168곳에선 **카드**(#1D1F29)로 간다. 한 라이트 값에 다크 답이 둘이라
  *     기계가 고를 수 없다. 어느 쪽이 맞는지는 대표 판단.
- *   - `border-gray-100`(#F3EEEA) — `--line`(#EAE4E0)과 **다른 값**이다. 접으면 화면이 바뀐다.
- *   - `bg-gray-100`(#F3EEEA) — 체계의 두 톤(bg·surface) 밖의 **세 번째 톤**이다. 같은 이유로 보류.
+ *   - `border-gray-100`(#EDEFF3) — `--line`(#E2E5E9)과 **다른 값**이다. 접으면 화면이 바뀐다.
+ *   - `bg-gray-100`(#EDEFF3) — 체계의 두 톤(bg·surface) 밖의 **세 번째 톤**이다. 같은 이유로 보류.
  *
  * ## 쓰는 법
  *   node scripts/codemods/adopt-surface-tokens.mjs --dry    # 세기만

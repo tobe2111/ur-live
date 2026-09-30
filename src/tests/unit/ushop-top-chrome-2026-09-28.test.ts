@@ -89,7 +89,10 @@ describe('③ 칩과 정렬이 줄 하나를 나눠 쓴다', () => {
   it('칩 부품이 자기 줄의 바깥 여백을 갖지 않는다', () => {
     // `max-w-3xl mx-auto px-4` 가 부품 안에 있으면 그건 자기 줄을 소유한다는 뜻이다.
     expect(chips, '칩은 줄을 소유하지 않는다').not.toMatch(/max-w-3xl mx-auto px-4/)
-    expect(chips, '줄을 나눠 쓰는 형태').toMatch(/flex-1 min-w-0 flex gap-2 overflow-x-auto/)
+    // 🩸 2026-09-30 재조준: 종전엔 `gap-2` 까지 박아 놨는데, 그건 **알약 사이 여백**이라
+    //   밑줄 탭(한 톤 확정)으로 바뀌며 사라졌다. 지키려던 것은 여백 수치가 아니라
+    //   **"자기 줄을 소유하지 않고 나눠 쓴다"** 다 — `flex-1 min-w-0` + 가로 스크롤이 그것이다.
+    expect(chips, '줄을 나눠 쓰는 형태').toMatch(/flex-1 min-w-0 flex[^"]*overflow-x-auto/)
   })
 
   it('호출부의 한 줄에 칩과 정렬이 함께 있다', () => {
@@ -136,8 +139,29 @@ describe('⑤ PC(lg+) — 같은 말을 두 번 하지 않는다', () => {
 
   it('브랜드 바를 없애지는 않았다 — 모바일에는 그대로 있다', () => {
     // 이게 없으면 폰에서 유어샵이 유어딜 밖 페이지처럼 보인다(a3 확정안의 ①).
-    expect(header).toContain("t('nav.myVouchers'")
+    // 🩸 2026-09-30 재조준: 종전 앵커는 `t('nav.myVouchers'`(GNB 세 개 중 하나)였는데 대표가
+    //   *"검색, 찜, 내 이용권은 없어도 되고"* 로 그 셋을 뺐다. 브랜드 바의 정체는 GNB 가 아니라
+    //   **홈으로 가는 로고** 하나다 — 앵커를 그것으로 옮긴다.
     expect(header).toMatch(/<Link to="\/" aria-label=/)
+    expect(header, '로고는 워드마크 SSOT 로 그린다').toContain('<UrDealLogo')
+  })
+
+  /**
+   * 🩸 2026-09-30 신설 (대표 *"유어딜 로고 좌측 상단에 있는거 왜 제대로 적용이 안됐지?
+   *   검색, 찜, 내 이용권은 없어도 되고"*).
+   *
+   *   ⓐ **로고가 로고가 아니었다.** `urdeal` 을 텍스트로 적어 놔서 라이브 실측이
+   *      `font: Pretendard`(Poppins 아님) · 브랜드 원 마침표 `false` 였다. 폰트는 이미 로드돼
+   *      있었으니(`poppinsLoaded: true`) **이 자리만 SSOT 를 안 쓴 배선 누락**이다.
+   *      워드마크를 손으로 다시 적으면 자간·굵기·점이 조용히 갈린다 — 에러는 안 난다.
+   *   ⓑ **GNB 세 개는 손님을 밖으로 내보낸다.** 남의 가게에서 가장 눈에 띄는 자리에 유어딜로
+   *      나가는 링크 셋이 있었고, 같은 목적지는 하단 탭이 이미 담고 있다.
+   */
+  it('🔴 로고는 워드마크 SSOT 이고, GNB 세 개는 돌아오지 않았다', () => {
+    expect(header, '텍스트로 다시 적지 않는다').not.toMatch(/>\s*urdeal\s*</)
+    for (const k of ['nav.search', 'nav.wishlist', 'nav.myVouchers']) {
+      expect(header, `${k} 링크가 브랜드 바로 돌아왔다`).not.toContain(k)
+    }
   })
 
   /**

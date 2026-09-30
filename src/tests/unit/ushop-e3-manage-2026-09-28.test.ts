@@ -54,7 +54,10 @@ describe('e3 — 관리 화면 분리', () => {
     const src = codeOnly(read(HEADER))
     // 로고 = 홈. 스크린리더가 "urdeal" 만 읽으면 어디로 가는지 모른다 → aria-label 필수.
     expect(src).toMatch(/<Link to="\/"[\s\S]{0,200}?aria-label=/)
-    expect(src).toContain('urdeal')
+    // 🩸 2026-09-30 재조준: 종전엔 `toContain('urdeal')` — 즉 **워드마크를 손으로 적었는지**를 봤다.
+    //   그게 바로 결함이었다(라이브 실측 `font: Pretendard` · 브랜드 원 마침표 없음). 이제 SSOT 부품을
+    //   쓰므로 그 문자열이 소스에 없다. 지키려던 것은 "로고가 있고 홈으로 간다" 이고, 그건 그대로다.
+    expect(src, '워드마크는 SSOT 부품으로 그린다').toContain('<UrDealLogo')
     // 대표: "링크를 적지 말고 그냥 공유하기 버튼 하나로 둬줘" — 주소는 [공유]가 보낸다.
     expect(src).not.toContain('shareHost')
     expect(src).not.toMatch(/@\{curator\.handle\}/)

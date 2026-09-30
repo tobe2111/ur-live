@@ -13,6 +13,14 @@
  *
  *   쇼핑 상품 핀(이용권 아님)이 있으면 '상품' 칩을 하나 더 낸다(SSOT 4종 밖 — 유어샵만의 것).
  *
+ *   🩸 2026-09-30 (대표 한 톤 확정 — *"아예 모두 똑같이 배경색을 카드 색상이랑 같게 한다면???"* →
+ *   *"일단 이 형태가 낫고"*): **알약 칩 → 밑줄 탭.** 알약은 *자기 배경*으로 존재를 주장하는 부품이라,
+ *   페이지·카드·칩이 전부 같은 톤이 되면 흰 알약이 흰 바탕 위에 그림자로만 떠 있는 모양이 된다
+ *   (대표가 "지저분하다" 고 한 자리 중 하나). 밑줄 탭은 **선 하나로** 활성만 말하므로 톤이 하나여도
+ *   읽힌다. 개수는 그대로 남긴다 — 대표가 *"각 이용권마다 숫자도 달아줘"* 로 직접 요청한 항목이다.
+ *   ⚠️ 선 아이콘은 탭에서 **안 그린다**(라벨 + 숫자 + 밑줄이면 충분하고, 아이콘까지 넣으면 탭 하나가
+ *      다시 알약만큼 넓어져 한 화면에 두 개밖에 안 들어간다). 정의 SSOT 는 그대로 쓴다.
+ *
  *   🔧 2026-09-28 (대표 확정 **상단 1안**): 이 부품은 이제 **자기 줄을 소유하지 않는다.**
  *   정렬 드롭다운이 바로 아래에서 **버튼 하나를 위해 줄 하나를 더** 쓰고 있었고(라이브 실측 32px),
  *   둘을 한 줄에 놓으면 상단이 102px 줄어든다. 그래서 바깥 여백(`max-w-3xl mx-auto px-4 pt-3`)은
@@ -21,7 +29,6 @@
  */
 import { useTranslation } from 'react-i18next'
 import { MAP_VOUCHER_DEFS, type MapVoucherType } from '@/pages/restaurant-map/voucher-types'
-import { GiftBoxIcon } from '@/components/icons/urdeal-icons'
 import type { CuratorPin } from '@/features/curator/api/curator-api'
 
 export type PinCategory = MapVoucherType | 'shop'
@@ -42,12 +49,12 @@ export default function PinCategoryChips({ pins, value, onChange }: { pins: Cura
   for (const p of pins) { const k = pinCategory(p); counts.set(k, (counts.get(k) || 0) + 1) }
   const defs = [
     ...MAP_VOUCHER_DEFS.filter((d) => d.key === 'all' || (counts.get(d.key) || 0) > 0),
-    ...((counts.get('shop') || 0) > 0 ? [{ key: 'shop' as const, labelKey: 'curator.chipShop', defaultLabel: '상품', icon: GiftBoxIcon }] : []),
+    ...((counts.get('shop') || 0) > 0 ? [{ key: 'shop' as const, labelKey: 'curator.chipShop', defaultLabel: '상품' }] : []),
   ]
   // 카테고리가 하나뿐이면 칩은 정보가 0 — 전체 + 그 하나 = 늘 같은 목록.
   if (defs.length <= 2) return null
   return (
-    <div className="flex-1 min-w-0 flex gap-2 overflow-x-auto scrollbar-hide" role="tablist" aria-label={t('curator.chipsLabel', { defaultValue: '카테고리' })}>
+    <div className="flex-1 min-w-0 flex overflow-x-auto scrollbar-hide" role="tablist" aria-label={t('curator.chipsLabel', { defaultValue: '카테고리' })}>
       {defs.map((d) => {
         const on = value === d.key
         const n = d.key === 'all' ? pins.length : counts.get(d.key) || 0
@@ -58,10 +65,10 @@ export default function PinCategoryChips({ pins, value, onChange }: { pins: Cura
             role="tab"
             aria-selected={on}
             onClick={() => onChange(d.key as PinCategory)}
-            className={`shrink-0 inline-flex items-center gap-2 h-9 pl-3 pr-4 rounded-full text-[13px] font-bold whitespace-nowrap active:scale-95 transition-transform ${on ? 'bg-brand text-white' : 'bg-white dark:bg-[#1D1F29] text-gray-800 dark:text-gray-100 shadow-lift'}`}
+            className={`shrink-0 inline-flex items-center gap-1 h-9 px-3 -mb-px border-b-2 text-[15px] font-bold whitespace-nowrap active:opacity-60 transition-colors ${on ? 'border-brand text-gray-900 dark:text-white' : 'border-transparent text-gray-400 dark:text-gray-500'}`}
           >
-            <d.icon size={15} />
-            {t(d.labelKey, { defaultValue: d.defaultLabel })} <span className={`tabular-nums ${on ? 'text-white/80' : 'text-gray-400'}`}>{n}</span>
+            {t(d.labelKey, { defaultValue: d.defaultLabel })}
+            <span className={`text-[12px] tabular-nums ${on ? 'text-brand' : 'text-gray-300 dark:text-gray-600'}`}>{n}</span>
           </button>
         )
       })}
