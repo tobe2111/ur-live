@@ -6,10 +6,13 @@ export default [
   {
     name: '🪙잔액 숫자가 종전 36px 로 되돌아간다',
     file: 'src/pages/vouchers/DealBalanceCard.tsx',
-    find: `text-[42px]`,
-    replace: `text-[36px]`,
+    /* 🔧 2026-09-30 재조준: 디스플레이 스케일 이행으로 42 → **40**(스케일 위 최근접, −2px).
+       대표가 고른 것은 "36 이 아니라 큰 쪽" 이고 그 뜻은 40 에서도 지켜진다.
+       결함은 그대로 — 아래층에 눌려 보이는 작은 단계로 되돌린다(36 은 이제 스케일 밖이라 34). */
+    find: `text-[40px]`,
+    replace: `text-[34px]`,
     test: 'src/tests/unit/deal-balance-card-2026-09-14.test.ts',
-    why: '대표가 36/42/48 중 42 를 골랐다. 두 층 구조에서 36 은 아래층에 눌려 보인다.',
+    why: '대표가 36/42/48 중 큰 쪽을 골랐다(이행 후 40). 두 층 구조에서 한 단계 내려가면 아래층에 눌려 보인다.',
   },
   {
     name: '🪙잔액 위층에 채운 버튼이 다시 생긴다',
@@ -67,7 +70,10 @@ export default [
     name: '🪙잔액 페이지가 부품 대신 다시 인라인으로 그린다',
     file: 'src/pages/VouchersPage.tsx',
     find: `        <DealBalanceCard balance={dealBalance} loggedIn={!!userId} />`,
-    replace: `        <div className="rounded-2xl p-5 bg-white shadow-lift"><span className="text-[42px]">0</span></div>`,
+    /* 🔧 2026-09-30: 확정 숫자 크기가 스케일 이행으로 42 → 40 이 되면서, 42 를 심는 이 주입은
+       "인라인 회귀" 단언(`SRC` 에 큰 숫자 표식이 없다)을 **더는 건드리지 않는다**(다른 단언 때문에
+       빨갛긴 하나 지키려던 그 줄이 헛돈다). 표식을 현재 값으로 맞춘다. */
+    replace: `        <div className="rounded-2xl p-5 bg-white shadow-lift"><span className="text-[40px]">0</span></div>`,
     test: 'src/tests/unit/vouchers-top-chrome.test.ts',
     why:
       '2026-09-14 에 잔액 카드를 부품으로 뺐고, `vouchers-top-chrome` ① 의 불변식(0 이면 큰 카드를 ' +

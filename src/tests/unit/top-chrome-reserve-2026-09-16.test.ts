@@ -41,7 +41,9 @@ describe('① 마법의 숫자가 아니라 마크업으로 예약한다', () =>
 describe('② 치수를 정하는 클래스가 진짜 블록과 같다', () => {
   it('칩 줄: 바깥 패딩과 알약 치수', () => {
     // 진짜 블록(VouchersPage)과 예약(TopChromeReserve)이 같은 토큰을 쓴다.
-    for (const cls of ['ur-content-wide px-4 lg:px-8 py-2.5', 'h-9 pl-3 pr-3.5', 'text-[13px] font-bold']) {
+    // 🔀 2026-09-30: 잠금표 이행으로 공통 토큰이 4px 격자로 옮겨졌다(`py-2.5`→`py-2` · `pr-3.5`→`pr-4`).
+    //    불변식은 그대로 — **두 파일이 같은 토큰을 쓴다**. 값만 현재 것으로.
+    for (const cls of ['ur-content-wide px-4 lg:px-8 py-2', 'h-9 pl-3 pr-4', 'text-[13px] font-bold']) {
       expect(PAGE, `real chip: ${cls}`).toContain(cls)
       expect(RESERVE, `reserve chip: ${cls}`).toContain(cls)
     }
@@ -49,11 +51,11 @@ describe('② 치수를 정하는 클래스가 진짜 블록과 같다', () => {
 
   it('브랜드 줄: 바깥 패딩 · 헤더 · 로고 줄', () => {
     for (const cls of [
-      'ur-content-wide px-4 lg:px-8 pt-1.5 pb-3', // 바깥 패딩
-      'flex items-center justify-between mb-1.5', // 헤더 줄
+      'ur-content-wide px-4 lg:px-8 pt-2 pb-3',   // 바깥 패딩 (2026-09-30: pt-1.5 → pt-2, 4px 격자)
+      'flex items-center justify-between mb-2',   // 헤더 줄 (mb-1.5 → mb-2)
       'text-[12px] font-bold',                     // 헤더 글자 크기
       'w-3.5 h-3.5',                               // ChevronDown
-      'flex gap-2.5 overflow-x-auto scrollbar-hide py-1 -mx-1 px-1', // 로고 줄
+      'flex gap-2 overflow-x-auto scrollbar-hide py-1 -mx-1 px-1',   // 로고 줄 (gap-2.5 → gap-2)
     ]) {
       expect(PAGE, `real brand: ${cls}`).toContain(cls)
       expect(RESERVE, `reserve brand: ${cls}`).toContain(cls)

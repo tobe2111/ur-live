@@ -785,7 +785,7 @@ export default function GroupBuyListPage() {
               </div>
             ) : filteredCommunity.length === 0 ? (
               <div className="text-center py-20">
-                <p className="text-[36px] mb-3">🙋</p>
+                <p className="text-[34px] mb-3">🙋</p>
                 <p className="text-gray-900 dark:text-white font-semibold text-[15px]">
                   {t('groupBuy.emptyCommunity', { defaultValue: '진행 중인 유저 공구가 없습니다' })}
                 </p>

@@ -23,8 +23,10 @@ export default [
   {
     name: '💸 비셀러가 판매 코드를 다시 받는다 (게이트가 lazy 안으로)',
     file: GATE,
-    find: '  if (state.loading || state.failed || state.stores.length === 0) return null',
-    replace: '  void state',
+    // 🔁 2026-09-30 재조준: 조기 반환이 둘로 갈렸다 — 로딩 중엔 **자리를 예약**하고(밀림 수리),
+    //   확정되면 종전처럼 `null`. 다이어트를 지키는 줄은 아래쪽 하나다.
+    find: '  if (state.failed || state.stores.length === 0) return null',
+    replace: '  void state.failed',
     test: TEST,
     why:
       'React.lazy 는 **렌더될 때** 받는다. 게이트가 없으면 판매를 안 하는 사람도 셀러 청크를 ' +
@@ -191,8 +193,10 @@ export default [
     //   이제 지킬 불변식은 **판매 도구가 판 하나**라는 것이다 — 판이 파는 쪽 표시자이므로 둘이 되면 안 된다.
     name: '📋 판매 도구가 다시 판 둘로 쪼개진다 (표시자가 둘이 된다)',
     file: SECTION,
-    find: '        <ToolRow\n          icon={<ChartIcon',
-    replace: '        </div>\n        <div className={LIST_PLATE_CLS}>\n        <ToolRow\n          icon={<ChartIcon',
+    // 🎯 2026-09-30 재조준: 앵커가 `ChartIcon`(매출 분석 줄)이었는데 그 줄이 오늘 카드로 옮겨갔다
+    //   (대표 확정 ⑥ — 바로가기 넷). **지키던 것은 그대로다**: 판매 도구는 판 하나다.
+    find: '        <ToolRow\n          icon={<WonCoinIcon',
+    replace: '        </div>\n        <div className={LIST_PLATE_CLS}>\n        <ToolRow\n          icon={<WonCoinIcon',
     test: TEST,
     why:
       '대표 확정 구조 시안 A 의 요점이다 — 똑같은 줄 일곱은 무엇이 중요한지 한 마디도 안 하고, ' +

@@ -38,8 +38,10 @@ export default [
   {
     name: '🧭 /about 제목이 PC 에서 폰 크기 그대로 남는다',
     file: 'src/pages/AboutServicePage.tsx',
-    find: `text-[30px] sm:text-[38px] lg:text-[46px] xl:text-[52px]`,
-    replace: `text-[30px] sm:text-[38px]`,
+    /* 🔧 2026-09-30 재조준: 디스플레이 7 rung 이행 + 사다리 정리로 `30/38/46/52` → `28/40/48`
+       (xl 이 lg 와 같은 rung 이 되어 잉여였다). 지키려던 것은 그대로 — PC 에서 제목이 커지는가. */
+    find: `text-[28px] sm:text-[40px] lg:text-[48px]`,
+    replace: `text-[28px] sm:text-[40px]`,
     test: T,
     why:
       '대표가 `/partners` 1차를 보고 지적한 것이 정확히 이것이다 — 1440 에서도 제목이 폰 크기라 ' +

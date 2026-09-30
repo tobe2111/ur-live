@@ -32,7 +32,7 @@ export default function ServerErrorPage() {
         </div>
 
         {/* Title */}
-        <h1 className="mb-4 text-[32px] sm:text-[40px] md:text-[48px] font-semibold leading-[1.0625] tracking-tight text-[#1d1d1f] dark:text-white smooth-appear" style={{ animationDelay: '0.2s' }}>
+        <h1 className="mb-4 text-[34px] sm:text-[40px] md:text-[48px] font-semibold leading-[1.0625] tracking-tight text-[#1d1d1f] dark:text-white smooth-appear" style={{ animationDelay: '0.2s' }}>
           {t('serverError.heading')}
         </h1>
 

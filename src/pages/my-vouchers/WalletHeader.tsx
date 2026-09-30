@@ -50,7 +50,7 @@ export default function WalletHeader({ title, hideTitle = false, amount, unit, s
         )}
         {amount !== null && (
           <span className="shrink-0 text-[24px] font-extrabold tabular-nums tracking-tight text-gray-900 dark:text-white leading-none">
-            {formatNumber(amount)}<span className="font-sans text-[12px] font-bold text-gray-400 dark:text-gray-500 ml-0.5">{unit}</span>
+            {formatNumber(amount)}<span className="font-sans text-[12px] font-bold text-gray-400 dark:text-gray-500 ml-1">{unit}</span>
           </span>
         )}
       </div>

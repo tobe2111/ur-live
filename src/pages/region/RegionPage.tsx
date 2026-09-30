@@ -112,7 +112,7 @@ export default function RegionPage() {
         </nav>
 
         <header className="mb-4">
-          <h1 className="text-[24px] lg:text-[26px] font-black tracking-tight text-gray-900 dark:text-white">
+          <h1 className="text-[24px] lg:text-[28px] font-black tracking-tight text-gray-900 dark:text-white">
             {label} 이용권·동네딜
           </h1>
           <p className="mt-2 text-[13px] lg:text-[15px] text-gray-500 dark:text-gray-400">

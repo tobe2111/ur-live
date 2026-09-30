@@ -45,7 +45,7 @@ export default function AboutPage() {
                 <Sparkles className="w-3.5 h-3.5" />
                 우리 동네 공동구매
               </div>
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold tracking-tight leading-tight mb-6">
+              <h1 className="text-[34px] sm:text-[48px] lg:text-[60px] xl:text-[76px] font-extrabold tracking-tight leading-tight mb-6">
                 유어딜
                 <span className="block text-brand-text mt-2">함께라서 더 좋은 가격</span>
               </h1>
@@ -414,7 +414,7 @@ export default function AboutPage() {
         {/* ========== Final CTA ========== */}
         <section className="bg-gradient-to-br from-gray-800 to-gray-900 dark:bg-none dark:bg-gray-900 text-white py-16 lg:py-24">
           <div className="ur-content-wide px-4 lg:px-8 text-center">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold mb-4">시작하기</h2>
+            <h2 className="text-[28px] sm:text-[34px] lg:text-[48px] font-extrabold mb-4">시작하기</h2>
             <p className="text-[15px] lg:text-[17px] text-white/90 mb-10 max-w-2xl mx-auto">
               유어딜은 우리 동네를 그룹 특가로 잇습니다.
               <br />
@@ -472,7 +472,7 @@ function Section({
     <section id={id} className={`${toneBg[tone]} border-b border-gray-100 dark:border-[#2C2F35]`}>
       <div className="ur-content-wide px-4 lg:px-8 py-12 lg:py-20">
         <div className="mb-8 lg:mb-12 text-center">
-          <h2 className="text-[24px] sm:text-3xl lg:text-4xl xl:text-5xl font-extrabold text-gray-900 dark:text-white mb-3">{title}</h2>
+          <h2 className="text-[24px] sm:text-[28px] lg:text-[34px] xl:text-[48px] font-extrabold text-gray-900 dark:text-white mb-3">{title}</h2>
           {subtitle && <p className="text-[15px] lg:text-[15px] text-gray-600 dark:text-gray-400">{subtitle}</p>}
         </div>
         {children}

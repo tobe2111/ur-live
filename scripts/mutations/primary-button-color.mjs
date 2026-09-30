@@ -34,11 +34,14 @@ export default [
     why: 'ROOTS 가 낡아 훑을 게 0개가 돼도 초록이 뜬다 — 이 레포가 반복해 당한 "헛도는 가드".',
   },
   {
-    name: '🔵 잠금표 잔여분을 동결이 아니라 영구 면제로 바꾼다',
-    file: 'scripts/primary-button-baseline.json',
-    find: '"src/pages/BrowsePage.tsx": 6',
-    replace: '"src/pages/BrowsePage.tsx": 99',
+    /* 🔧 2026-09-30 재조준: 대표 승인으로 잠금표 잔여 21건을 전부 이행해 `primary-button-baseline.json`
+       자체가 없어졌다. **탈출구는 자리를 옮겼을 뿐이다** — 이제는 `primary-button-ok` 표식이
+       그 자리다. 진짜 주 버튼에 표식을 달면 빨간불이 떠야 한다. */
+    name: '🔵 예외 표식이 진짜 주 버튼의 면제로 쓰인다 (탈출구가 자리를 옮겼다)',
+    file: 'src/pages/BrowsePage.tsx',
+    find: "className=\"px-6 py-2 bg-brand hover:bg-brand-dark text-white rounded-xl font-semibold transition-colors\"",
+    replace: "className=\"px-6 py-2 bg-gray-900 text-white rounded-xl font-semibold transition-colors\" /* primary-button-ok */ /* primary-button-ok */",
     test: TEST,
-    why: '동결값을 크게 잡으면 그 파일 안에서는 얼마든지 검정이 늘어난다 — 래칫이 아니라 면제가 된다.',
+    why: '표식은 "카드 바탕·스크림" 같은 진짜 예외에만 쓰라고 있는 것이다 — 주 버튼에 달면 그 파일은 조용히 체계 밖으로 나간다.',
   },
 ]

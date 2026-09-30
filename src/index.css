@@ -1841,6 +1841,13 @@ canvas {
   .ur-ushop-main .ur-content-wide { max-width: none; margin-left: 0; margin-right: 0; padding-left: 0; padding-right: 0; }
   .ur-ushop-main .grid-cols-2 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .ur-ushop-main .col-span-2 { grid-column: span 3 / span 3; }
+  /* 🛍️ 2026-09-30 (대표 확정 **안 A**): 한 줄 목록(s3)은 **2열**. 위 3열 규칙은 *카드* 격자용이고
+     (사업자 유어샵 상품·핀 카드 — `grid-cols-2`), 줄 목록엔 안 맞는다. 줄은 폰 폭에 맞춰 11라운드
+     끝에 확정된 형식이라(`PinRow` 머리말) 늘리면 64px 썸네일 하나에 오른쪽 절반이 빈 칸이 된다
+     — 실측 796px. 2열이면 줄당 ~378px = 폰 폭과 거의 같아 **줄 디자인이 한 글자도 안 바뀐다.**
+     ⚠️ tailwind `lg:grid-cols-2` 를 쓰지 않는다 — 액자 1열 오버라이드(index.css `.app-framed
+        .lg\:grid-cols-2`)가 `/profile`·`/s` 처럼 액자가 남는 표면에서 이걸 1열로 되돌린다. */
+  .ur-ushop-main .ur-ushop-rows { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* 🖥️ 2026-09-02 (대표 — PC 마이 "왼쪽 메뉴 + 오른쪽은 내용"): 우측 칸 상단의 한 줄 그리드 안에서

@@ -298,7 +298,7 @@ export default function VoucherDetailPage() {
         <button onClick={() => navigate(-1)} aria-label="뒤로" className="mb-4"><ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" /></button>
         <div className="text-center mt-12">
           <p className="text-[15px] text-gray-700 dark:text-gray-200 mb-4">{error || '교환권을 찾을 수 없습니다'}</p>
-          <button onClick={() => navigate('/vouchers')} className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-[15px] font-bold">교환권 목록으로</button>
+          <button onClick={() => navigate('/vouchers')} className="px-4 py-2 bg-brand text-white rounded-lg text-[15px] font-bold">교환권 목록으로</button>
         </div>
       </div>
     )
@@ -392,7 +392,7 @@ export default function VoucherDetailPage() {
           {/* 🎨 2026-06-17: 시안 의도 복원 — original_price(정가) 있으면 취소선 + 실제 할인율 표시 */}
           <div className="mt-4 flex items-end justify-between gap-3">
             <div className="flex items-baseline gap-1">
-              <span className="text-[32px] font-extrabold text-[#171B24] dark:text-white tracking-tight">{formatNumber(product.price)}</span>
+              <span className="text-[34px] font-extrabold text-[#171B24] dark:text-white tracking-tight">{formatNumber(product.price)}</span>
               <span className="text-[17px] font-bold text-[#171B24] dark:text-white">딜</span>
             </div>
             {hasDiscount && (
@@ -529,7 +529,7 @@ export default function VoucherDetailPage() {
               <button
                 onClick={() => savePhoneAndRetry(phoneInput)}
                 disabled={!phoneInput || !phoneConsent}
-                className="py-2 bg-gray-900 text-white rounded-lg text-[15px] font-bold disabled:opacity-40"
+                className="py-2 bg-brand text-white rounded-lg text-[15px] font-bold disabled:opacity-40"
               >
                 저장 후 교환
               </button>

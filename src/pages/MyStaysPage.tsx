@@ -115,7 +115,7 @@ export default function MyStaysPage() {
                       <p className="text-[12px] text-gray-500 dark:text-gray-400">
                         {b.room_name}
                         {b.sale_mode === 'voucher' && (
-                          <span className="ml-1.5 px-2 py-1 text-[12px] bg-gray-100 text-gray-700 dark:bg-white/15 dark:text-white rounded font-bold">🎫 숙소 이용권</span>
+                          <span className="ml-2 px-2 py-1 text-[12px] bg-gray-100 text-gray-700 dark:bg-white/15 dark:text-white rounded font-bold">🎫 숙소 이용권</span>
                         )}
                       </p>
                       {b.sale_mode === 'voucher' ? (
@@ -138,12 +138,12 @@ export default function MyStaysPage() {
                         <div className="flex gap-1">
                           {canCancel && (
                             <button onClick={() => cancel(b)} className="px-2 py-1 bg-gray-100 dark:bg-white/[0.06] text-gray-600 dark:text-gray-300 text-[12px] font-semibold rounded hover:bg-gray-200 dark:hover:bg-white/[0.1]">
-                              <XIcon className="w-3 h-3 inline mr-0.5" />취소
+                              <XIcon className="w-3 h-3 inline mr-1" />취소
                             </button>
                           )}
                           {canReview && (
                             <button onClick={() => setReviewModalFor(b)} className="px-2 py-1 bg-brand text-white text-[12px] font-bold rounded active:opacity-80">
-                              <StarIcon className="w-3 h-3 inline mr-0.5" />리뷰 작성
+                              <StarIcon className="w-3 h-3 inline mr-1" />리뷰 작성
                             </button>
                           )}
                         </div>

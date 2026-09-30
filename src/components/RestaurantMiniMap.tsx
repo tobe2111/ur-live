@@ -14,7 +14,8 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
-import { MapPin, ExternalLink } from 'lucide-react'
+import { PinIcon } from '@/components/icons/urdeal-icons'
+import { ExternalLink } from 'lucide-react'
 import { ensureKakaoMaps } from '@/lib/kakao-sdk'
 import { escapeHtml } from '@/shared/utils/html'
 import { normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url'
@@ -177,10 +178,10 @@ export default function RestaurantMiniMap({ name, address, lat, lng, placeUrl, h
     <div ref={containerRef} className="rounded-2xl border border-gray-100 dark:border-[#2C2F35] bg-surface overflow-hidden">
       <div className="px-4 py-3 flex items-center justify-between gap-2 border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="flex items-start gap-2 min-w-0">
-          <MapPin className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
+          <PinIcon className="w-4 h-4 text-gray-400 mt-1 shrink-0" />
           <div className="min-w-0">
-            {name && <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{name}</p>}
-            {address && <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{address}</p>}
+            {name && <p className="text-[15px] font-bold text-gray-900 dark:text-white truncate">{name}</p>}
+            {address && <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">{address}</p>}
           </div>
         </div>
         {kakaoMapUrl && (
@@ -188,7 +189,7 @@ export default function RestaurantMiniMap({ name, address, lat, lng, placeUrl, h
             href={kakaoMapUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+            className="shrink-0 inline-flex items-center gap-1 text-[12px] font-semibold text-blue-600 dark:text-blue-400 hover:underline"
           >
             카카오맵 <ExternalLink className="w-3 h-3" />
           </a>
@@ -199,11 +200,11 @@ export default function RestaurantMiniMap({ name, address, lat, lng, placeUrl, h
       <div className="relative" style={{ height }}>
         {error ? (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-50 dark:bg-[#111]">
-            <p className="text-xs text-gray-400">{error}</p>
+            <p className="text-[12px] text-gray-400">{error}</p>
           </div>
         ) : !resolvedCoord ? (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-50 dark:bg-[#111]">
-            <p className="text-xs text-gray-400">지도 로딩 중...</p>
+            <p className="text-[12px] text-gray-400">지도 로딩 중...</p>
           </div>
         ) : (
           <div ref={mapRef} className="absolute inset-0" style={{ touchAction: 'pan-y' }} />

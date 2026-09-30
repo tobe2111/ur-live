@@ -62,7 +62,7 @@ function MyRankCard() {
             <p className="text-[12px] text-amber-600 mt-1">총 {rank.national_total_participants}명 중 / commission {rank.my_commission.toLocaleString()}원</p>
           )}
         </div>
-        <span className="text-3xl">🏆</span>
+        <span className="text-[28px]">🏆</span>
       </div>
     </a>
   )

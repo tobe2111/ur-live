@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next'
 import type { LucideIcon } from 'lucide-react'
 // 🎨 2026-09-28: 셋 다 '무엇을 하는 곳' 이라 유어딜 아이콘. 특히 '내 가게 등록' 은
 //    장바구니(ShoppingBag)였는데 **사는 행위**로 읽혔다 — 실제 뜻은 가게를 내는 것이다.
-import { UrShopIcon, ProposeIcon, ShopPlusIcon } from '@/components/icons/urdeal-icons'
+import { ProposeIcon, ShopPlusIcon } from '@/components/icons/urdeal-icons'
 import { SectionTitle, ListRow, rowIcon } from './list-grammar'
 import { COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
 
@@ -39,7 +39,13 @@ export default function RoleCtaGrid() {
     const hasSellerToken = typeof window !== 'undefined' && !!localStorage.getItem('seller_token')
     // 내 바로가기 (모든 유저가 가진 유어샵 + 보유 role 의 대시보드 단축)
     const dash: Cta[] = [
-      { Icon: UrShopIcon, title: t('roleCta.linkshop', { defaultValue: '내 유어샵' }), desc: t('roleCta.linkshopDesc', { defaultValue: '이용권을 담아 진열하고 소개해요' }), to: '/u/me', show: () => true, accent: true },
+      // 🗑️ 2026-09-30 (대표 *"내 바로가기도 필요없잖아"*) — **'내 유어샵' 줄을 뺐다.**
+      //   하단 탭에 **유어샵 탭이 있다**(`BottomNav` 다섯 탭 중 넷째, `linkshopPath`). 같은 곳으로
+      //   가는 문이 한 화면에 둘이었고, 그 한 줄을 위해 구역 제목(`바로 가기`)이 하나 더 서 있었다.
+      //   ⇒ 셀러에게는 이 구역이 통째로 사라진다(아래 `signup` 도 `!hasSellerToken` 이라 비어 있다).
+      //   ⚠️ **비셀러에게는 남는다** — `내 가게 등록`(`/store/new`)이 여기 있고, 2026-09-28 에
+      //      이름 옆 알약을 지우면서 *"둘 중 남길 것은 타일"* 이라고 정한 **유일한 가게 등록 문**이다.
+      //      이 구역을 통째로 지우면 그 퍼널이 같이 죽는다.
       // 🚪 2026-09-28 (대표 확정 — 판매로 가는 문이 넷이고 셋이 복제였다): '셀러 대시보드' 타일 제거.
       //   이 타일과 페이지 최하단 '판매자 모드로 전환' 버튼은 **목적지가 같다**(`/seller`). 같은 일을
       //   하는 문이 둘이면 한쪽만 고쳐지는 날이 오고, 실제로 그렇게 됐다(타일은 `<Link>` 인데
@@ -85,7 +91,10 @@ export default function RoleCtaGrid() {
   return (
     /* 🧱 가로 패딩 없음 — 줄이 자기 `px-4` 를 갖는다. */
     <section className="w-full min-w-0">
-      <SectionTitle>{t('roleCta.myShortcuts', { defaultValue: '바로 가기' })}</SectionTitle>
+      {/* 🏷️ 2026-09-30: '내 바로가기' → '가게 열기'. 이 구역에 남은 줄은 **가게를 내는 것** 하나라
+          (내 유어샵은 하단 탭과 겹쳐 빠졌다), 옛 이름은 무엇이 있는지 말해 주지 않았다.
+          ⚠️ 코드 `defaultValue` 만 고치면 화면은 안 바뀐다 — `public/locales/ko` 값이 이긴다. */}
+      <SectionTitle>{t('roleCta.myShortcuts', { defaultValue: '가게 열기' })}</SectionTitle>
       <div>
         {dashboardItems.map(Row)}
         {signupItems.map(Row)}

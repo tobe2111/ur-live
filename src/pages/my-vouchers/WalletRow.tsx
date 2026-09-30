@@ -64,7 +64,7 @@ export default function WalletRow({ v, t, onOpen }: {
 
       {price !== null && (
         <div className="shrink-0 text-[15px] font-extrabold tabular-nums text-gray-700 dark:text-gray-200">
-          {formatNumber(price)}<span className="text-[12px] font-bold text-gray-400 dark:text-gray-500 ml-0.5">{unit}</span>
+          {formatNumber(price)}<span className="text-[12px] font-bold text-gray-400 dark:text-gray-500 ml-1">{unit}</span>
         </div>
       )}
     </button>

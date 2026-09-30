@@ -309,7 +309,7 @@ export default function ProductReviews({ productId, limit = 5 }: { productId: nu
       {totalCount > 0 ? (
         <div className="flex items-center gap-4 mb-4">
           <div className="text-center">
-            <p className="text-3xl font-bold text-gray-900 dark:text-white">{avgRating}</p>
+            <p className="text-[28px] font-bold text-gray-900 dark:text-white">{avgRating}</p>
             <div className="flex gap-1 mt-1">
               {[1, 2, 3, 4, 5].map(s => (
                 <span key={s} className={`text-[15px] ${s <= Math.round(avgRating) ? 'text-brand-text' : 'text-gray-200 dark:text-[#3A3D44]'}`}>★</span>

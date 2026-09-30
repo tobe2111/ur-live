@@ -190,10 +190,18 @@ describe('🔌 배선 — 마이가 세 시트를 실제로 연다', () => {
     }
   })
 
-  it('파트너·브랜드메시지는 묶음 줄에서 열린다', () => {
+  /**
+   * 🎯 2026-09-30 재조준 — 바로가기 줄에서 **전체 도구**로 옮겼다(대표 확정 ⑥).
+   * 지키는 것은 그대로다: *이 둘에 마이에서 닿을 수 있다*. 닿는 길이 표 → 시트로 바뀌었을 뿐이라
+   * 표의 두 주소와 **시트 렌더** 둘 다 본다(표만 보면 시트가 없어도 통과한다).
+   */
+  it('파트너·브랜드메시지에 전체 도구로 닿는다', () => {
     const code = stripComments(SECTION)
-    expect(code).toMatch(/label="소개 파트너"[\s\S]{0,200}openTool\('partners'\)/)
-    expect(code).toMatch(/label="브랜드메시지"[\s\S]{0,200}openTool\('messages'\)/)
+    expect(code, '/seller/influencer-deals 가 표에 없다').toMatch(/'\/seller\/influencer-deals':\s*'partners'/)
+    expect(code, '/seller/alimtalk 가 표에 없다').toMatch(/'\/seller\/alimtalk':\s*'messages'/)
+    // 표에 있어도 시트를 안 그리면 아무 일도 안 난다.
+    expect(code).toMatch(/tool === 'partners'/)
+    expect(code).toMatch(/tool === 'messages'/)
   })
 
   it('전체 도구 줄이 메뉴 이름을 나열하지 않는다 (나열하면 반드시 낡는다)', () => {

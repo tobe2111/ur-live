@@ -63,7 +63,7 @@ export default function CampaignApplyPage() {
     return (
       <div className="force-light-theme min-h-[100dvh] bg-gray-50 flex items-center justify-center px-4">
         <div className="text-center">
-          <div className="text-4xl mb-3">🔍</div>
+          <div className="text-[34px] mb-3">🔍</div>
           <div className="text-[17px] font-semibold text-gray-900">진행 중인 캠페인이 아닙니다</div>
           <p className="mt-2 text-[15px] text-gray-600">링크를 다시 확인해주세요.</p>
         </div>
@@ -82,7 +82,7 @@ export default function CampaignApplyPage() {
 
         {done ? (
           <div className="rounded-xl bg-white p-8 text-center shadow-lift">
-            <div className="text-4xl mb-3">🎉</div>
+            <div className="text-[34px] mb-3">🎉</div>
             <div className="text-[17px] font-semibold text-gray-900">신청이 완료되었습니다</div>
             <p className="mt-2 text-[15px] text-gray-600">
               선정 여부와 관계없이 <strong className="text-gray-900">유어딜 파트너로 등록</strong>되었으며,
@@ -101,7 +101,7 @@ export default function CampaignApplyPage() {
           </div>
         ) : !loggedIn ? (
           <div className="rounded-xl bg-white p-8 text-center shadow-lift">
-            <div className="text-4xl mb-3">💬</div>
+            <div className="text-[34px] mb-3">💬</div>
             <div className="text-[15px] font-semibold text-gray-900">카카오 로그인 후 1분이면 신청 완료</div>
             <p className="mt-2 text-[15px] text-gray-600">신청하면 유어딜 계정과 내 추천 링크가 바로 만들어집니다.</p>
             <a href={loginUrl} className="mt-5 inline-block w-full py-3 rounded-lg bg-[#FEE500] text-[#3C1E1E] text-[15px] font-semibold">

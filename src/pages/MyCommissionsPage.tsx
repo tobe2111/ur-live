@@ -97,7 +97,7 @@ export default function MyCommissionsPage() {
         {/* 잔액 카드 */}
         <div className="rounded-3xl p-6 bg-gray-900 dark:bg-[#1D1F29] text-white mb-4">
           <p className="text-[12px] opacity-80">출금 가능 수익</p>
-          <p className="text-[36px] font-extrabold leading-tight mt-1">{formatWon(summary.total_granted)}</p>
+          <p className="text-[34px] font-extrabold leading-tight mt-1">{formatWon(summary.total_granted)}</p>
           <div className="flex items-center gap-4 mt-3 text-[12px] opacity-80">
             <span>대기 {formatWon(summary.total_pending)}</span>
             <span>·</span>

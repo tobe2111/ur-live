@@ -97,7 +97,7 @@ export default function PaymentCompleteTicket({ productId, qty, amount }: { prod
             <p className="text-[17px] font-bold tracking-[-0.01em] mt-1">{itemName}</p>
             <div className="flex items-baseline gap-2 mt-3 mb-4 tabular-nums">
               {pct !== null && pct > 0 && <span className="text-[17px] font-extrabold text-brand-text">{pct}%</span>}
-              <span className="text-[30px] font-extrabold tracking-[-0.03em] leading-none">{formatNumber(amount)}원</span>
+              <span className="text-[28px] font-extrabold tracking-[-0.03em] leading-none">{formatNumber(amount)}원</span>
               {original !== null && original * qty > amount && <span className="text-[13px] text-gray-400 dark:text-gray-500 line-through">{formatNumber(original * qty)}원</span>}
             </div>
             <TicketOutlineButton onClick={() => navigate('/my-vouchers')}>이용권 확인</TicketOutlineButton>

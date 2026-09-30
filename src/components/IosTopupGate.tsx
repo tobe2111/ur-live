@@ -21,7 +21,7 @@ function TopupClosedNotice() {
   const navigate = useNavigate()
   return (
     <div className="min-h-[100dvh] bg-white dark:bg-[#11141C] flex flex-col items-center justify-center px-6 text-center">
-      <div className="text-4xl mb-4">💎</div>
+      <div className="text-[34px] mb-4">💎</div>
       <h1 className="text-[17px] font-bold text-gray-900 dark:text-white">딜 충전이 종료되었어요</h1>
       <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed">
         이제 딜은 충전이 아니라 <b className="text-gray-900 dark:text-white">활동으로 모으는 리워드</b>예요.<br />
@@ -55,7 +55,7 @@ export default function IosTopupGate({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-[100dvh] bg-white dark:bg-[#11141C] flex flex-col items-center justify-center px-6 text-center">
-      <div className="text-4xl mb-4">💳</div>
+      <div className="text-[34px] mb-4">💳</div>
       <h1 className="text-[17px] font-bold text-gray-900 dark:text-white">딜 충전은 웹에서 진행돼요</h1>
       <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed">
         앱 정책상 딜 충전은 외부 브라우저(웹)에서 안전하게 결제하실 수 있습니다.<br />

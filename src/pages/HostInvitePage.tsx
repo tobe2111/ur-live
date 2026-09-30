@@ -49,7 +49,7 @@ export default function HostInvitePage() {
   if (error || !data) {
     return (
       <div className="min-h-screen bg-[#11141C] text-white flex flex-col items-center justify-center px-4 text-center">
-        <p className="text-5xl mb-3">😢</p>
+        <p className="text-[48px] mb-3">😢</p>
         <p className="text-[15px] mb-2">{error}</p>
         <Link to="/" className="mt-4 px-6 py-3 bg-brand rounded-xl font-bold">홈으로</Link>
       </div>

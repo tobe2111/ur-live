@@ -395,7 +395,7 @@ export default function CuratorPage() {
                     <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{t('curator.tryOtherKeyword', { defaultValue: '다른 키워드로 찾아보세요.' })}</p>
                   </div>
                 ) : (
-                  <div className="max-w-3xl mx-auto px-4 pb-4 divide-y divide-rule">
+                  <div className="max-w-3xl mx-auto px-4 pb-4 divide-y divide-rule lg:divide-y-0 lg:grid lg:gap-2 ur-ushop-rows">
                     {visiblePins.map((pin) => (
                       <PinRow
                         key={pin.id}
@@ -409,6 +409,18 @@ export default function CuratorPage() {
                 )}
               </>
             )}
+            {/* 🧾 2026-09-28 (대표 확정 **B안** — *"B가 낫겠는데?"*): 맨 아래 유입 링크 세 줄.
+                ⚠️ 위 2026-06-19 결정과 **모순이 아니다.** 그때 문제였던 둘을 피한다 —
+                  ① 따라다니는 고정 CTA 가 아니라 **목록이 끝난 뒤**의 조용한 링크(상품을 안 민다)
+                  ② **주인에겐 안 그린다**(그때는 주인에게도 떴다 — 대표가 `AskUserQuestion` 에서
+                     "손님에게만 (주인은 숨김)" 을 골랐다).
+                🔴 판정은 **호출부에서** 한다 — 부품이 소유권을 스스로 캐면
+                   `check-linkshop-ownership` ③(순수 뷰 자식은 prop 구동)을 어긴다.
+                🖥️ 2026-09-30: 자리를 **진열대 칸 안**으로 옮겼다. 밖에 두면 자기 `max-w-3xl mx-auto`
+                   가 1,440px 페이지 한가운데를 잡아, 좌 프로필 칸(210~630)과도 줄(685~)과도 어긋난
+                   485~665 에 떴다(2026-09-28 실측). 칸 안에서는 줄과 같은 왼쪽 선에 선다.
+                   모바일은 `.ur-ushop-pc` 가 격자가 아니라 **DOM 순서 그대로**라 그림이 안 바뀐다. */}
+            {!isOwner && <ShopInquiryLinks />}
         </div>
         </div>
         {/* 🔗 2026-06-17 (사용자 요청): 유어샵 주소 변경 + 공유는 헤더의 '내 유어샵 주소' 카드로 통합 이동
@@ -417,14 +429,6 @@ export default function CuratorPage() {
         {/* 🎨 2026-06-19 (대표 — "나도 내 유어샵 만들기 버튼 별로"): 하단 고정 방문자 전환 CTA 제거.
             (조잡함 정리 + 주인 기본 뷰=방문자 미리보기라 주인에게도 떴을 것 → 제거가 맞음.) */}
 
-        {/* 🧾 2026-09-28 (대표 확정 **B안** — *"B가 낫겠는데?"*): 맨 아래 유입 링크 세 줄.
-            ⚠️ 위 2026-06-19 결정과 **모순이 아니다.** 그때 문제였던 둘을 피한다 —
-              ① 따라다니는 고정 CTA 가 아니라 **목록이 끝난 뒤**의 조용한 링크(상품을 안 민다)
-              ② **주인에겐 안 그린다**(그때는 주인에게도 떴다 — 대표가 `AskUserQuestion` 에서
-                 "손님에게만 (주인은 숨김)" 을 골랐다).
-            🔴 판정은 **호출부에서** 한다 — 부품이 소유권을 스스로 캐면
-               `check-linkshop-ownership` ③(순수 뷰 자식은 prop 구동)을 어긴다. */}
-        {!isOwner && <ShopInquiryLinks />}
       </div>
     </>
   )

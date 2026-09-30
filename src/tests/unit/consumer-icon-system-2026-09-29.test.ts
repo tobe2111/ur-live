@@ -34,7 +34,8 @@ import { stripComments } from '../helpers/source-text'
  * - **그림이 좋은지.** 이름만 본다. 그건 그려서 봐야 한다(이번엔 42종 시트를 실제로 렌더해 확인했다).
  * - **자리가 맞는지** — `TruckIcon` 을 결제 버튼에 달아도 통과한다.
  * - 인라인 `<svg>` 를 손으로 그린 것. 세트 밖이라 이름으로 안 잡힌다.
- * - 잠금표 파일 7개(뜻 27건) — 승인 없이 못 건드려서 래칫 안에 남아 있다.
+ * - **코드모드가 실제로 무엇을 건드렸는지**. 잠금표 파일은 2026-09-30 대표 승인으로 이행됐고
+ *   (아래 `--locked` 게이트 시험), 잠긴 *계약* 자체는 각 잠금 가드와 핸드오프 grep 카운트가 본다.
  */
 
 const LOCK = new Set(
@@ -59,8 +60,15 @@ const OPERATION = new Set([
   'Maximize2', 'Minimize2', 'LucideIcon',
 ])
 
-/** 실측 2026-09-29 — 긴 꼬리. **줄이는 건 자유, 늘리는 건 차단.** */
-const MEANING_BASELINE = 184
+/**
+ * 실측 — 긴 꼬리. **줄이는 건 자유, 늘리는 건 차단.**
+ *
+ * 🔧 2026-09-30: 184 → **172**. 대표 승인으로 잠금표 12파일을 `--locked` 로 이행하면서 12건이 줄었는데
+ *    **기준을 안 조였다** — 그러면 래칫에 여유 12칸이 생겨 되돌아오는 12건을 조용히 통과시킨다.
+ *    실제로 주입(`뜻 아이콘이 한 건 되돌아온다`)이 통과해 CI 가 잡았다(head e5784cd).
+ *    ⇒ **개선했으면 같은 커밋에서 기준을 내린다.** 안 내리면 그만큼이 조용한 탈출구로 남는다.
+ */
+const MEANING_BASELINE = 172
 
 const read = (f: string) => readFileSync(f, 'utf8')
 
@@ -145,10 +153,48 @@ describe('소비자 아이콘 — 뜻은 유어딜 세트', () => {
     expect(bad, `채워야 하는데 안 채워진다(filled 누락): ${[...new Set(bad)].slice(0, 8).join(' · ')}`).toEqual([])
   })
 
-  it('🔒 잠금표 파일은 이 이행에서 빠져 있다 — 승인 없이 건드리지 않았다', () => {
-    const touched = files.filter((f) => LOCK.has(f) && /urdeal-icons/.test(read(f)))
-    // BottomNav 는 2026-09-02 에 대표 승인으로 이미 세트를 쓴다(그 한 건만 정상).
-    expect(touched, `승인 없이 잠금 파일에 세트를 넣었다: ${touched.join(' · ')}`)
-      .toEqual(['src/components/main/BottomNav.tsx'])
+  it('🔒 잠금표 파일도 이행됐다 — 2026-09-30 대표 승인', () => {
+    /**
+     * 🔓 이 자리에는 *"승인 없이 건드리지 않았다"* 며 `BottomNav` 한 건만 허용하는 단언이 있었다.
+     * 대표가 승인했다(**"다 순서대로 이상적으로 해줘"**) → `--locked` 로 이행했고 CLAUDE.md audit log 에
+     * `[UNLOCK]`/`[UNLOCK_LOADING]` 으로 기재했다.
+     *
+     * 지키는 것이 바뀌었다: *"손대지 않았는가"* 가 아니라 **"이행한 파일이 잠금 계약을 깨지 않았는가"** 다.
+     * 계약 자체(결제 호출·SDK 마운트 id·`linkshopPath`·`React.memo`·SSR 시드…)는 각 잠금 가드와
+     * 핸드오프의 grep 카운트가 본다 — 여기서는 **세트가 실제로 들어갔는지**만 확인해, 되돌아가면 빨간불이 되게 한다.
+     */
+    // 🩸 2026-09-30: 여기가 `/urdeal-icons/` **부분일치**였다 — `urdeal-icons-REVERTED` 처럼
+    //    경로가 깨져도 통과해서, 이행이 되돌아가는 회귀를 못 잡았다(내가 심은 주입이 잡았다).
+    //    ⇒ 모듈 경로 전체를 앵커로 쓴다.
+    const IMPORTS_SET = /from '@\/components\/icons\/urdeal-icons'/
+    const touched = files.filter((f) => LOCK.has(f) && IMPORTS_SET.test(read(f)))
+    expect(touched.length, `잠금표 파일에 세트가 ${touched.length}개밖에 없다 — 이행이 되돌아갔다`)
+      .toBeGreaterThanOrEqual(5)
+    expect(touched, 'BottomNav 는 2026-09-02 승인분이라 반드시 포함된다').toContain('src/components/main/BottomNav.tsx')
+  })
+
+  it('🔓 코드모드는 잠금표를 `--locked` 뒤에 둔다 (기본 실행이 조용히 쓸지 않는다)', () => {
+    /**
+     * 🎯 2026-09-30 재조준. 이 자리에는 *"잠금 파일에 세트를 밀어 넣는다"* 주입이 걸려 있었는데,
+     * 대표 승인으로 잠금표가 이행된 순간 **그 결함이 곧 정답**이 되어 주입이 헛돌았다(CI 가 잡았다).
+     * 지우지 않고 그 주입의 `why` 가 실제로 말하던 자리로 옮긴다 —
+     * *"코드모드가 잠금 목록을 안 보면 조용히 들어가고, 그러면 잠금 자체가 형해화된다."*
+     *
+     * 이행이 끝났어도 그 문장은 여전히 유효하다: **다음** 아이콘 이행이 잠금표를 승인 없이
+     * 쓸어 가면 안 된다. 그래서 보는 것은 *"손댔는가"* 가 아니라 **게이트가 살아 있는가** 다.
+     *
+     * ⚠️ 이 시험이 못 보는 것: 누가 `--locked` 를 주고 돌리는 것(그건 승인 절차의 일이고
+     *    CLAUDE.md audit log 가 기록한다) · 코드모드를 안 쓰고 손으로 고치는 것.
+     */
+    const codemod = readFileSync('scripts/codemods/adopt-urdeal-icons.mjs', 'utf8')
+    // 잠금 목록은 **손으로 적지 않고** CLAUDE.md 잠금표에서 파생한다 — 손목록은 조용히 낡는다.
+    expect(codemod, '잠금 목록을 CLAUDE.md 에서 파생하지 않는다 — 손으로 적은 목록은 낡는다')
+      .toMatch(/LOCK\s*=\s*new Set\([\s\S]{0,160}CLAUDE\.md/)
+    const gate = stripComments(codemod).split('\n').find((l) => l.includes('--locked') && l.includes('.filter('))
+    expect(gate, '`--locked` 게이트가 걸린 `.filter(` 줄이 없다').toBeTruthy()
+    expect(gate!, '기본 실행이 잠금표를 빼지 않는다 — 승인 없이 조용히 들어간다')
+      .toMatch(/!LOCK\.has\(f\)\s*&&\s*!MIRRORS\.has\(f\)/)
+    expect(gate!, '`--locked` 를 줬을 때 잠금표·거울만 돌지 않는다')
+      .toMatch(/LOCK\.has\(f\)\s*\|\|\s*MIRRORS\.has\(f\)/)
   })
 })

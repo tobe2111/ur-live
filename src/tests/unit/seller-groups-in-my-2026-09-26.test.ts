@@ -170,11 +170,41 @@ describe('4. 🏪 가게 묶음 — 계좌는 여기 없다', () => {
 })
 
 describe('5. 🧰 배선 — 낱개 목록이 아니라 묶음이다', () => {
-  it('다섯 묶음이 모두 카드에 있다', () => {
+  /**
+   * 🎯 2026-09-30 재조준 — 지키는 것은 **"그 화면에 닿을 길이 있다"** 이지
+   * *"바로가기 줄로 있다"* 가 아니었다. 대표 확정으로 바로가기를 넷으로 줄이면서
+   * `store` 는 `전체 도구`(= `COVERED_BY_SHEET`)를 거쳐 **같은 시트**로 열린다.
+   * ⚠️ 그래서 둘 중 하나만 있으면 통과다 — 하지만 **둘 다 없으면** 그 기능은 마이에서 사라진다.
+   */
+  it('다섯 묶음에 모두 닿을 길이 있다 (바로가기 줄 또는 전체 도구)', () => {
     const code = stripComments(SECTION)
+    const table = code.slice(code.indexOf('const COVERED_BY_SHEET'), code.indexOf('/** 묶음 한 줄'))
+    const viaTools = new Set([...table.matchAll(/:\s*'([a-z]+)',/g)].map((m) => m[1]))
+    expect(viaTools.size, '표가 비었다 — 이 검사가 헛돌고 있다').toBeGreaterThanOrEqual(5)
     for (const t of ['orders', 'vouchers', 'withdraw', 'analytics', 'store']) {
-      expect(code, `${t} 묶음 줄이 없다 — 그 화면에 닿을 길이 사라진다`).toContain(`openTool('${t}')`)
+      const direct = code.includes(`openTool('${t}')`)
+      expect(direct || viaTools.has(t), `${t} 에 닿을 길이 없다 — 바로가기 줄도 전체 도구 표도 없다`).toBe(true)
     }
+  })
+
+  it('🧰 시트가 있는 주소로는 나가지 않는다 (마이가 경유지가 되지 않는다)', () => {
+    /**
+     * 🎯 2026-09-30 신설 — 위 *"닿을 길이 있다"* 가 2026-09-30 ⑥(바로가기 아홉 → 넷)에서
+     * `direct || viaTools` 로 넓어지자, **줄이 대시보드로 나가도 "전체 도구로 닿으니" 통과**하게 됐다.
+     * 주입(`주문 묶음이 다시 대시보드로 나간다`)이 그걸 잡았다(head e5784cd).
+     *
+     * 지키려던 것은 *줄이 있는가* 가 아니라 **나가지 않는가** 였고, 그건 바로가기가 넷이 된 뒤에도
+     * 그대로 살아 있다 — 나가는 순간 사장님은 "대시보드라는 게 따로 있다" 를 배운다(대표 지시의 정반대).
+     *
+     * ⚠️ `enterSeat` 자체는 금지가 아니다: 시트가 **없는** 주소(41개 중 나머지)는 좌석을 받아 나가는 게 맞고
+     *    `/store/scan`(손님 쪽)도 그렇다. 금지는 **시트가 있는 주소를 리터럴로 넘기는 것**뿐이다.
+     */
+    const code = stripComments(SECTION)
+    const table = code.slice(code.indexOf('const COVERED_BY_SHEET'), code.indexOf('/** 묶음 한 줄'))
+    const covered = [...table.matchAll(/'(\/seller\/[a-z-]+)'/g)].map((m) => m[1])
+    expect(covered.length, '표가 비었다 — 이 검사가 헛돌고 있다').toBeGreaterThanOrEqual(5)
+    const leaked = covered.filter((path) => code.includes(`enterSeat('${path}')`))
+    expect(leaked, `시트가 있는데 대시보드로 나간다: ${leaked.join(' · ')}`).toEqual([])
   })
 
   it('다섯 묶음이 모두 시트로 열린다 (줄만 있고 시트가 없으면 아무 일도 안 난다)', () => {

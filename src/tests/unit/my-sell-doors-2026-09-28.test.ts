@@ -35,10 +35,30 @@ describe('판매 문 정리 — 넷에서 둘로', () => {
     expect(GRID).not.toContain("to: '/seller'")
   })
 
-  it('④ 최하단 전환 버튼은 살아 있다 (넓은 화면으로 가는 유일한 문)', () => {
-    // 이 문이 사라지면 대시보드가 **닿을 수 없는 화면**이 된다 — ②③ 을 지운 지금은 여기 하나뿐이다.
-    expect(PAGE).toContain("localStorage.setItem('active_role', 'seller')")
-    expect(PAGE).toContain("window.location.href = '/seller'")
+  /**
+   * 🔁 **2026-09-30 재조준 — ④ 가 뒤집혔다** (대표 *"셀러 대시보드로 전환도 이젠 필요없잖아"*).
+   *
+   * 09-28 에 ④ 를 *"넓은 화면으로 가는 유일한 문"* 이라고 남겼는데, 그 판단의 전제는
+   * **마이 안에서 할 수 없는 일이 있다** 였다. 그 뒤 §14("하는 것도 마이에서")가 도구를 전부
+   * 마이 안 시트로 들여오면서 전제가 사라졌다 — 전환 버튼은 *같은 일을 하는 셋째 문*이 됐다.
+   *
+   * ⚠️ 그래도 **대시보드가 닿을 수 없는 화면이 되면 안 된다.** 그 책임은 이제 판매 구역이 진다:
+   *   `enterSeat(to)` 가 좌석에 앉힌 뒤 `withMyReturn(to)` 로 보낸다(돌아오는 띠까지 달고).
+   *   아래 두 단언이 짝이다 — 버튼이 없는 것만 보면 "문이 통째로 사라졌다" 를 못 잡는다.
+   */
+  it('④ 마이에 대시보드로 *나가는* 버튼이 없다 — 판매는 마이 안에서 한다', () => {
+    expect(PAGE).not.toContain("localStorage.setItem('active_role', 'seller')")
+    expect(PAGE).not.toContain("window.location.href = '/seller'")
+  })
+
+  it('④-2 그래도 대시보드는 닿는다 — 판매 구역이 좌석에 앉혀 보낸다', () => {
+    const SELLER = readCode('src/pages/user-profile/SellerSection.tsx')
+    // 🩸 첫 판에서 `enterSeat('/seller…')` 를 앵커로 썼다가 빨간불이 났다 — 그 문자열은 없다.
+    //   대시보드 주소는 **시트가 건네주고**(`onOpenPath`) `enterSeat` 는 받아서 보낸다.
+    //   그게 이 구조의 요점이다: 주소 표가 한 곳(`COVERED_BY_SHEET` / 시트의 라우트 표)에만 있다.
+    expect(SELLER).toContain('withMyReturn(to)')
+    expect(SELLER).toMatch(/onOpenPath=\{\(path\) => \{ setTool\(null\); enterSeat\(path\) \}\}/)
+    expect(SELLER).toContain("'/seller/orders'") // 시트로 덮인 대시보드 주소가 살아 있다
   })
 
   it('① 맨 위 판매 섹션은 살아 있다 (매일 쓰는 도구)', () => {

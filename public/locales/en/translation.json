@@ -634,7 +634,7 @@
   },
   "browse": {
     "title": "Shop",
-    "seoDesc": "Discover YourDeal trending products, restaurant vouchers, and live specials",
+    "seoDesc": "Discover UrDeal trending products, local store passes and gift vouchers at a discount",
     "loadError": "Unable to load products.",
     "loadRetry": "Unable to load products. Please retry.",
     "searchAria": "Search products",
@@ -699,7 +699,7 @@
     "system": "System",
     "light": "Light",
     "dark": "Dark",
-    "description": "Applied to white-theme pages (shopping, checkout, orders). My/Home/Live remain always dark.",
+    "description": "Choose System / Light / Dark. System follows your OS dark setting.",
     "currentlyFollowing": "OS: {{theme}}"
   },
   "myOrders": {
@@ -4806,8 +4806,8 @@
     "skip": "Skip",
     "welcomeTitle": "Welcome, {{name}}!",
     "welcomeTitleDefault": "Welcome to UrDeal!",
-    "welcomeDesc1": "Watch live and buy instantly —",
-    "welcomeDesc2": "Korea's #1 Live Commerce",
+    "welcomeDesc1": "Local restaurants, beauty and stays —",
+    "welcomeDesc2": "buy at a discount, use right away",
     "couponBadge": "New Member Coupon",
     "couponAmount": "₩5,000 Off",
     "couponDesc": "Valid on orders ₩10,000+ · Expires in 7 days",
@@ -4820,9 +4820,9 @@
     "step2Desc": "Used for personalized recommendations (select at least 1)",
     "selectedCount": "Selected: {{count}}",
     "step3Title": "Get Notifications",
-    "step3Desc": "Stay updated on hot deals and live streams",
+    "step3Desc": "Get notified about hot deals you would hate to miss",
     "alimtalkLabel": "Receive via KakaoTalk",
-    "alimtalkDesc1": "Live start / Hot deals / Order status etc.",
+    "alimtalkDesc1": "Hot deals / Pass issued / Order status, etc.",
     "alimtalkDesc2": "Free alerts via KakaoTalk (no ads)",
     "alimtalkNote1": "Go to My Page → Notification settings",
     "alimtalkNote2": "to change anytime.",
@@ -5633,8 +5633,8 @@
   },
   "introduce": {
     "navStart": "Get Started",
-    "seoTitle": "Ur-Deal - Live Commerce Restaurant Group Buy",
-    "seoDesc": "Live commerce run by restaurant owners. The fastest way to find great local food deals.",
+    "seoTitle": "UrDeal - Neighborhood group buys (food, beauty, stays)",
+    "seoDesc": "Local food, beauty and stays at group prices. Buy together for a better price; vouchers are issued the moment you pay.",
     "heroLiveCount": "[TODO:en] 지금 {{count}}명이 라이브 시청 중",
     "heroDesc": "Local restaurant owners go live themselves. Chat in real time and group-buy vouchers and meal kits at up to 50% off.",
     "heroCtaStart": "[TODO:en] 지금 시작하기",
@@ -5898,7 +5898,7 @@
   "search.pageTitle": "Search - UrDeal",
   "search.errorMsg": "An error occurred while searching",
   "search.seoTitleQuery": "{{query}} search results - UrDeal",
-  "search.seoDesc": "Search for products on UrDeal. Find the best prices on live commerce products.",
+  "search.seoDesc": "Search on UrDeal. Find local store passes at a discount.",
   "reviews": {
     "heading": "Reviews",
     "writeBtn": "Write a Review",
@@ -6075,7 +6075,7 @@
     "chargeDeals": "Deals to charge",
     "afterBalance": "Balance after charge",
     "noRefund": "Charged deals are non-refundable",
-    "usageNote": "Only usable for live donations and product payments.",
+    "usageNote": "Usable only for gift vouchers and product payments.",
     "chargeHistory": "Charge details",
     "paymentNoRefund": "Charged deals are non-refundable after payment.",
     "prev": "Previous",
@@ -6126,7 +6126,7 @@
   },
   "blog": {
     "listSeoTitle": "Blog",
-    "listSeoDesc": "Ur-Deal live commerce blog — seller guides, trends, tips",
+    "listSeoDesc": "UrDeal blog: guides to passes and group buys, and local store stories",
     "readBtn": "Read article"
   },
   "embed": {
@@ -6185,7 +6185,7 @@
     "errorInvalidEmail": "[TODO:en] 유효하지 않은 이메일 형식입니다.",
     "errorWeakPassword": "[TODO:en] 비밀번호가 너무 약합니다. 8자 이상 입력해주세요.",
     "seoTitle": "[TODO:en] 회원가입 - 유어딜",
-    "seoDesc": "[TODO:en] 유어딜에 가입하고 라이브 쇼핑을 시작하세요"
+    "seoDesc": "Join UrDeal and get local store passes at a discount"
   },
   "following": {
     "title": "[TODO:en] 팔로잉",
@@ -6997,7 +6997,7 @@
   "groupBuy.categoryEtc": "🎯 Others",
   "groupBuy.stayBadge": "Stay",
   "roleCta": {
-    "myShortcuts": "My shortcuts",
+    "myShortcuts": "Open a store",
     "startNewRole": "Start a new role",
     "linkshop": "My UrShop",
     "linkshopDesc": "Add passes to your UrShop and share them",

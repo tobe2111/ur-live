@@ -130,8 +130,10 @@ export default [
   {
     name: '🎟️ 검은 계산대 카드가 좌석 섹션과 **함께** 뜬다(진입점 둘)',
     file: 'src/pages/UserProfilePage.tsx',
-    find: "{!!localStorage.getItem('seller_token') && sellerSeats.stores.length === 0 && (",
-    replace: "{!!localStorage.getItem('seller_token') && (",
+    // 🔁 2026-09-30 재조준: 좌석 조회 중 깜빡임을 막으려고 `!sellerSeats.loading` 이 끼어들었다
+    //   (대표 *"2번째 이미지가 로딩에 나오다가 …"*). 지키는 불변식(*진입점이 둘이 되지 않는다*)은 그대로.
+    find: "{!!localStorage.getItem('seller_token') && !sellerSeats.loading && sellerSeats.stores.length === 0 && (",
+    replace: "{!!localStorage.getItem('seller_token') && !sellerSeats.loading && (",
     test: 'src/tests/unit/seller-inline-seat-2026-09-25.test.ts',
     why: '한 화면에 계산대 진입점이 둘이면 하나는 좌석을 맞추고 하나는 안 맞춘다 — 둘은 반드시 갈린다.',
   },

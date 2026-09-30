@@ -210,7 +210,7 @@ export default function VoucherScanner() {
         )}
         {busy && (
           <div className="absolute inset-x-0 bottom-0 bg-black/60 text-white text-center text-[15px] py-2">
-            <Loader2 className="w-4 h-4 animate-spin inline mr-1.5" />{t('seller.scan.processing', { defaultValue: '사용 처리 중…' })}
+            <Loader2 className="w-4 h-4 animate-spin inline mr-2" />{t('seller.scan.processing', { defaultValue: '사용 처리 중…' })}
           </div>
         )}
       </div>

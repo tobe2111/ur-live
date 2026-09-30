@@ -26,7 +26,7 @@ export default function PartnerHero() {
     <section className="ur-panel-ink text-white overflow-hidden">
       <div className="ur-content-wide mx-auto px-5 lg:px-10 pt-10 pb-14 lg:pt-14 lg:pb-24 grid gap-14 lg:grid-cols-[1fr_0.86fr] lg:gap-16 xl:gap-24 lg:items-center">
         <div>
-          <h1 className="text-[34px] sm:text-[44px] lg:text-[58px] xl:text-[66px] leading-[1.14] font-extrabold tracking-[-0.035em]">
+          <h1 className="text-[34px] sm:text-[48px] lg:text-[60px] leading-[1.14] font-extrabold tracking-[-0.035em]">
             체험단 말고,<br />
             <span className="text-brand-text">계산하는 손님</span>
           </h1>
@@ -76,7 +76,7 @@ function Stat({ n, d }: { n: string; d: string }) {
     <div>
       <dt className="sr-only">{d}</dt>
       <dd>
-        <span className="block text-[30px] lg:text-[48px] xl:text-[56px] font-extrabold tracking-[-0.045em] tabular-nums leading-none">{n}</span>
+        <span className="block text-[28px] lg:text-[48px] xl:text-[60px] font-extrabold tracking-[-0.045em] tabular-nums leading-none">{n}</span>
         <span className="block text-[12px] lg:text-[13px] text-white/55 mt-2 lg:mt-3 whitespace-nowrap">{d}</span>
       </dd>
     </div>

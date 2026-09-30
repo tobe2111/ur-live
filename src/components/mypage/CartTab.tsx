@@ -64,7 +64,7 @@ export function CartTab({ cartItems, onUpdateQuantity, onRemoveItem, onCheckout 
               )}
               <p className="text-[17px] font-bold text-gray-900 dark:text-white mt-2">
                 {formatNumber(item.price_snapshot * item.quantity)}
-                <span className="text-[15px] font-semibold text-gray-600 dark:text-gray-300 ml-0.5">원</span>
+                <span className="text-[15px] font-semibold text-gray-600 dark:text-gray-300 ml-1">원</span>
               </p>
             </div>
 

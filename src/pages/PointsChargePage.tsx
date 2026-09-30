@@ -212,7 +212,7 @@ export default function PointsChargePage() {
               <Zap className="w-4 h-4 fill-white" strokeWidth={0} />
               <span className="text-[12px] font-semibold opacity-90">{t('pointsCharge.balance', { defaultValue: '내 딜 잔액' })}</span>
             </div>
-            <p className="text-[32px] font-extrabold leading-none tracking-tight">
+            <p className="text-[34px] font-extrabold leading-none tracking-tight">
               {formatNumber(balance)}
               <span className="text-[17px] font-bold ml-1">딜</span>
             </p>
@@ -250,7 +250,7 @@ export default function PointsChargePage() {
                       )}
                       <p className={`text-[17px] font-extrabold ${isSelected ? 'text-brand-text' : 'text-gray-900 dark:text-white'}`}>
                         {formatNumber(opt.amount)}
-                        <span className="text-[12px] font-bold ml-0.5">원</span>
+                        <span className="text-[12px] font-bold ml-1">원</span>
                       </p>
                       <p className="text-[12px] font-semibold text-gray-500 dark:text-gray-400 mt-1">
                         {formatNumber(opt.points)}딜
@@ -276,7 +276,7 @@ export default function PointsChargePage() {
                   <span className="text-[13px] font-bold text-gray-900 dark:text-white">{t('pointsCharge.afterBalance', { defaultValue: '충전 후 잔액' })}</span>
                   <span className="text-[17px] font-extrabold text-gray-900 dark:text-white">
                     {formatNumber(balance + pointsPreview)}
-                    <span className="text-[13px] font-bold ml-0.5">딜</span>
+                    <span className="text-[13px] font-bold ml-1">딜</span>
                   </span>
                 </div>
               </section>
@@ -288,7 +288,7 @@ export default function PointsChargePage() {
               <div className="text-[12px] leading-relaxed">
                 <p className="font-semibold text-amber-800">{t('pointsCharge.noRefund', { defaultValue: '충전된 딜은 환불이 불가합니다' })}</p>
                 <p className="text-amber-700 mt-1">
-                  {t('pointsCharge.usageNote', { defaultValue: '라이브 방송 후원 및 상품 결제에만 사용 가능합니다.' })}
+                  {t('pointsCharge.usageNote', { defaultValue: '교환권 구매와 상품 결제에만 사용 가능합니다.' })}
                 </p>
               </div>
             </section>
