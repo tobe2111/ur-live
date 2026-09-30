@@ -9,6 +9,19 @@
  *
  * ## 규칙
  * - 숫자가 주인공이다(표면 규칙 ③) — 라벨 13px 위, 값 24px 아래.
+ * - **값에 단위를 붙이지 않는다**(`10,300딜` 아님 `10,300`) — 라벨이 이미 무엇인지 말한다.
+ *   🩸 2026-09-30 (대표 *"홈 / 마이에서 내 딜이 10,30 이렇게 잘려보여 … 모바일 기준으로"*):
+ *   단위가 그 잘림의 원인이었다. **실측**(dist 를 실제로 띄워 `scrollWidth` vs `clientWidth`):
+ *
+ *   | 폭 | 칸 안쪽 | `10,300딜` 필요 | 판정 |
+ *   |---|---|---|---|
+ *   | 430 | 111px | 105px | 통과(6px 여유 — 그래서 내 화면에선 안 보였다) |
+ *   | **390**(아이폰 13) | **97px** | 105px | 🔴 **잘림** — 대표 폰이 이 폭이다 |
+ *   | 360(갤럭시) | 87px | 105px | 🔴 잘림 |
+ *
+ *   이 부품이 베낀 코레일톡 화면도 값에 단위가 없다(`쿠폰 0` · `16:09`) — 단위는 내가 얹은
+ *   드리프트였고, 그 17px 가 숫자를 칸 밖으로 밀어냈다. 빼고 안쪽 여백을 `px-4`→`px-3` 으로
+ *   조여 세 폭 전부 통과한다. **다시 붙이지 말 것**(가드가 고정한다).
  * - **실패를 0 으로 위장하지 않는다**(머니 표면 룰, 2026-07-02 에 값을 치르고 배운 것):
  *   잔액 조회가 실패하면 `0딜` 이 아니라 `—` 다. 모르는 것과 없는 것은 다르다.
  * - 아직 안 온 값(`undefined`)은 **아예 안 그린다** — 잠깐 0 을 보여 주면 딜 보유자에게
@@ -30,17 +43,16 @@ import { TOPUP_DISABLED } from '@/shared/feature-flags'
 /** 💸 충전은 2026-07-18 에 종료됐다 — 딜의 "자세히" 는 내역이다. */
 const DEAL_PATH = TOPUP_DISABLED ? '/my-deal-history' : '/points/charge'
 
-function Cell({ label, to, value, unit, className = '' }: {
+function Cell({ label, to, value, className = '' }: {
   label: string
   to: string
   /** 칸을 특정 폭에서만 보이게 할 때(교환권은 폰에서 넷째 칸이 되면 숫자가 잘린다). */
   className?: string
   /** `undefined` = 아직 모름(안 그린다) · `null` = 조회 실패(`—`) · 숫자 = 값 */
   value: number | null | undefined
-  unit: string
 }) {
   return (
-    <Link to={to} className={`flex-1 min-w-0 px-4 first:pl-4 active:opacity-70 ${className}`}>
+    <Link to={to} className={`flex-1 min-w-0 px-3 first:pl-4 last:pr-4 active:opacity-70 ${className}`}>
       <span className="flex items-center gap-1 text-[13px] font-semibold text-gray-500 dark:text-gray-400">
         <span className="truncate">{label}</span>
         <ChevronRight className="w-3 h-3 shrink-0" aria-hidden="true" />
@@ -52,12 +64,9 @@ function Cell({ label, to, value, unit, className = '' }: {
         ) : value === null ? (
           <span className="text-gray-400 dark:text-gray-500">—</span>
         ) : (
-          <>
-            <span className={value > 0 ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}>
-              {formatNumber(value)}
-            </span>
-            <span className="text-[15px] font-bold text-gray-500 dark:text-gray-400 ml-0.5">{unit}</span>
-          </>
+          <span className={value > 0 ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}>
+            {formatNumber(value)}
+          </span>
         )}
       </span>
     </Link>
@@ -95,12 +104,12 @@ export default function MyStats({ voucher, gifticon, coupon }: { voucher?: numbe
     <div className="ur-content-medium lg:px-4">
       {/* ➖ 칸 사이 세로 구분선 — `divide-x` 가 첫 칸 앞에는 안 긋는다(코레일톡과 같은 모양). */}
       <div className="flex items-start divide-x divide-rule py-1">
-        <Cell label="내 딜" to={DEAL_PATH} value={balance} unit="딜" />
-        <Cell label="이용권" to="/my-vouchers" value={voucher} unit="장" />
-        {/* 📱 교환권은 **폰에서 넷째 칸이 되면 숫자가 잘린다**(430px ÷ 4 = 107px, 안쪽 여백 32 빼면 75px).
+        <Cell label="내 딜" to={DEAL_PATH} value={balance} />
+        <Cell label="이용권" to="/my-vouchers" value={voucher} />
+        {/* 📱 교환권은 **폰에서 넷째 칸이 되면 칸이 너무 좁다**(390px ÷ 4 = 97px, 안쪽 여백 빼면 73px).
             폰에서는 아래 `내가 산 것` 목록의 '내 교환권' 줄이 같은 숫자를 들고 있으므로 잃는 게 없다. */}
-        <Cell className="hidden lg:block" label="교환권" to="/my-gifticons" value={gifticon} unit="장" />
-        <Cell label="쿠폰" to="/my-coupons" value={coupon} unit="장" />
+        <Cell className="hidden lg:block" label="교환권" to="/my-gifticons" value={gifticon} />
+        <Cell label="쿠폰" to="/my-coupons" value={coupon} />
       </div>
       {/* 💸 무상(리워드) 딜은 사용은 자유지만 **현금 환급 제외**(약관)라, 0 이 아니면 한 줄로 알린다. */}
       {balance != null && freeBalance > 0 && (

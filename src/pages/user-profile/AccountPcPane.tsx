@@ -25,7 +25,6 @@ import { useMyVouchers } from '@/hooks/queries/useMyData'
 import { isStoreVoucher } from '@/shared/voucher-wallet'
 import { TicketCard } from '@/components/ticket/TicketCard'
 import OrderStatusBar from './OrderStatusBar'
-import ReviewLevelCard from './ReviewLevelCard'
 import SellerSwitchInline from './SellerSwitchInline'
 import type { MyStoresState } from './useMyStores'
 
@@ -107,11 +106,9 @@ export default function AccountPcPane({ counts, userName, profileImage, onEditPr
           `p-5` + 28px 숫자 + 링크 줄이라 넷이 우측 칸의 절반을 먹었고, 실측상 **셋이 0** 이었다.
           목적지는 하나도 안 잃었다 — 네 경로 전부 그 줄의 칸이 그대로 들고 간다. */}
 
-      {/* ③ 주문 현황 + 리뷰어 레벨 — 한 줄 (기존 컴포넌트 재사용, 칸 안에서 폭 제한 무력화는 index.css) */}
-      <div className="grid grid-cols-2 gap-4 items-start">
-        <OrderStatusBar />
-        <ReviewLevelCard />
-      </div>
+      {/* ③ 주문 현황 — 리뷰어 레벨 카드를 뺐으므로 2열 그리드도 함께 걷는다(혼자 남으면 반쪽 폭이 된다).
+          뺀 이유는 `UserProfilePage` 의 같은 자리 주석에 있다. */}
+      <OrderStatusBar />
 
       {/* ④ 곧 쓸 이용권 — 티켓 카드 (지갑·결제 완료와 같은 부품). 없으면 이 절 자체를 그리지 않는다. */}
       {soon.length > 0 && (
