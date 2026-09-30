@@ -4,9 +4,9 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { LIVE_COMMERCE_SUSPENDED, SHOPPING_TAB_HIDDEN, COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
 import { isWholesaleSurface } from '@/utils/domain'
-import { Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Utensils, Sparkles, MapPin } from 'lucide-react'
+import { Plus, X, Radio, LayoutDashboard, UserPlus, LogIn, Utensils, Sparkles } from 'lucide-react'
 // 🎫 2026-09-02 (대표 시안 — 코레일톡 하단 탭): 다섯 탭 전부 유어딜 아이콘. 비활성 = 선, 활성 = 면(`filled`).
-import { UrShopIcon, HomeIcon, GiftBoxIcon, TicketStubIcon, PersonIcon } from '@/components/icons/urdeal-icons'
+import { UrShopIcon, HomeIcon, GiftBoxIcon, TicketStubIcon, PersonIcon, PinIcon } from '@/components/icons/urdeal-icons'
 
 // 카카오 유저가 같은 계정을 셀러로 확장 — 비즈니스 정보 입력 페이지로 안내.
 function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
@@ -27,9 +27,9 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
           <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gray-100 dark:bg-warm flex items-center justify-center">
             <Radio className="w-7 h-7 text-gray-700 dark:text-gray-300" />
           </div>
-          <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+          <p className="text-[15px] text-gray-700 dark:text-gray-300 leading-relaxed">
             {t('bottomNav.sellerHasToken', { defaultValue: '등록된 셀러 계정이 있습니다' })}<br />
-            <span className="text-gray-500 text-xs">{t('bottomNav.sellerHasTokenSub', { defaultValue: '셀러 대시보드로 전환합니다' })}</span>
+            <span className="text-gray-500 text-[12px]">{t('bottomNav.sellerHasTokenSub', { defaultValue: '셀러 대시보드로 전환합니다' })}</span>
           </p>
         </div>
         <button
@@ -38,7 +38,7 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
             onDone()
             window.location.href = '/seller'
           }}
-          className="w-full flex items-center justify-center gap-2 py-3.5 bg-brand hover:bg-brand-dark text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
+          className="w-full flex items-center justify-center gap-2 py-4 bg-brand hover:bg-brand-dark text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
         >
           <Radio className="w-5 h-5" />
           {t('bottomNav.goToSellerDashboard', { defaultValue: '셀러 대시보드로 전환' })}
@@ -63,7 +63,7 @@ function SellerUpgradePanel({ onDone }: { onDone: () => void }) {
         </div>
         <div className="text-left flex-1">
           <p className="text-[15px] font-bold text-white">{t('bottomNav.openMyShop', { defaultValue: '내 가게 등록' })}</p>
-          <p className="text-[12px] text-white/80 mt-0.5">{t('bottomNav.sellerNoTokenSub', { defaultValue: '카카오 계정으로 가입·로그인 없이 한 번에' })}</p>
+          <p className="text-[12px] text-white/80 mt-1">{t('bottomNav.sellerNoTokenSub', { defaultValue: '카카오 계정으로 가입·로그인 없이 한 번에' })}</p>
         </div>
       </button>
 
@@ -254,7 +254,7 @@ export default function BottomNav() {
           <span className="flex items-center justify-center w-9 h-9 -mt-0.5 rounded-full bg-brand">
             <Icon size={20} className="text-white" strokeWidth={2.25} />
           </span>
-          <span className="text-[9px] mt-0.5 text-gray-500">{label}</span>
+          <span className="text-[12px] mt-1 text-gray-500">{label}</span>
         </button>
       )
     }
@@ -289,7 +289,7 @@ export default function BottomNav() {
         )}
         {/* 🔴 2026-09-01 로즈 마침표: 활성은 아이콘·라벨을 통째로 물들이지 않고 아래 점 하나로 말한다.
             로고 `urdeal.` 의 점과 같은 장치 — 로즈가 사는 자리를 셋(할인율·주 버튼·점)으로 잠근다. */}
-        <span className={`relative text-[9px] mt-0.5 ${
+        <span className={`relative text-[12px] mt-1 ${
           active ? 'font-semibold text-gray-900 dark:text-white' : 'text-gray-400'
         }`}>
           {label}
@@ -358,7 +358,7 @@ export default function BottomNav() {
                 <div className="px-6 pb-6">
                   {/* Close — 🛡️ 2026-06-10: 시트의 유일한 진입이 ➕(만들기)가 되어 타이틀 통일 */}
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                    <h3 className="text-[17px] font-bold text-gray-900 dark:text-white">
                       {t('bottomNav.sheetTitleCreate', { defaultValue: '만들기' })}
                     </h3>
                     <button onClick={() => setSheetOpen(false)} aria-label={t('bottomNav.closeSheetAria', { defaultValue: '시트 닫기' })} className="p-1 rounded-full hover:bg-white/10">
@@ -374,11 +374,11 @@ export default function BottomNav() {
                     className="w-full mb-3 flex items-center gap-4 p-4 bg-gray-800 rounded-2xl active:scale-[0.98] transition-transform"
                   >
                     <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-                      <MapPin className="w-6 h-6 text-white" />
+                      <PinIcon className="w-6 h-6 text-white" />
                     </div>
                     <div className="text-left flex-1">
                       <p className="text-[15px] font-bold text-white">{t('bottomNav.proposeDeal', { defaultValue: '우리 동네 공구 제안하기' })}</p>
-                      <p className="text-[12px] text-white/80 mt-0.5">{t('bottomNav.proposeDealDesc', { defaultValue: '원하는 가게를 제안하면 모아서 열어드려요' })}</p>
+                      <p className="text-[12px] text-white/80 mt-1">{t('bottomNav.proposeDealDesc', { defaultValue: '원하는 가게를 제안하면 모아서 열어드려요' })}</p>
                     </div>
                   </button>
                   ) : (!isSeller && !hasSellerToken) ? (
@@ -387,11 +387,11 @@ export default function BottomNav() {
                     className="w-full mb-3 flex items-center gap-4 p-4 bg-gray-800 rounded-2xl active:scale-[0.98] transition-transform"
                   >
                     <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-                      <MapPin className="w-6 h-6 text-white" />
+                      <PinIcon className="w-6 h-6 text-white" />
                     </div>
                     <div className="text-left flex-1">
                       <p className="text-[15px] font-bold text-white">{t('bottomNav.browseDongneDeal', { defaultValue: '동네딜 둘러보기' })}</p>
-                      <p className="text-[12px] text-white/80 mt-0.5">{t('bottomNav.browseDongneDealDesc', { defaultValue: '내 주변 동네 공구 딜을 확인해요' })}</p>
+                      <p className="text-[12px] text-white/80 mt-1">{t('bottomNav.browseDongneDealDesc', { defaultValue: '내 주변 동네 공구 딜을 확인해요' })}</p>
                     </div>
                   </button>
                   ) : null}
@@ -413,7 +413,7 @@ export default function BottomNav() {
                         </div>
                         <div className="text-left">
                           <p className="text-[15px] font-bold text-white">{t('bottomNav.mealVoucherRegister', { defaultValue: '이용권 상품 등록' })}</p>
-                          <p className="text-[12px] text-white/80 mt-0.5">{t('bottomNav.mealVoucherDesc', { defaultValue: '맛집 이용권을 공구 상품으로 올리기' })}</p>
+                          <p className="text-[12px] text-white/80 mt-1">{t('bottomNav.mealVoucherDesc', { defaultValue: '맛집 이용권을 공구 상품으로 올리기' })}</p>
                         </div>
                       </button>
 
@@ -426,7 +426,7 @@ export default function BottomNav() {
                         </div>
                         <div className="text-left">
                           <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t('bottomNav.sellerDashboard', { defaultValue: '셀러 대시보드' })}</p>
-                          <p className="text-[12px] text-gray-500 mt-0.5">{t('bottomNav.sellerDashboardDesc', { defaultValue: '상품 관리, 주문, 매출 확인' })}</p>
+                          <p className="text-[12px] text-gray-500 mt-1">{t('bottomNav.sellerDashboardDesc', { defaultValue: '상품 관리, 주문, 매출 확인' })}</p>
                         </div>
                       </button>
                     </div>
@@ -444,13 +444,13 @@ export default function BottomNav() {
                   {/* Not logged in — 셀러 전용 */}
                   {!isLoggedIn && (
                     <div className="space-y-3">
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                      <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-2">
                         {t('bottomNav.loginDesc', { defaultValue: '카카오 계정으로 로그인하세요.' })}
                       </p>
 
                       <button
                         onClick={() => { setSheetOpen(false); navigate('/seller/login') }}
-                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-brand hover:bg-brand-dark text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
+                        className="w-full flex items-center justify-center gap-2 py-4 bg-brand hover:bg-brand-dark text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
                       >
                         <LogIn className="w-5 h-5" />
                         {t('bottomNav.sellerLogin', { defaultValue: '셀러 로그인' })}
@@ -459,7 +459,7 @@ export default function BottomNav() {
                       {/* 🏁 2026-07-02 단일 퍼널: 레거시 별도계정 가입 → 카카오 로그인 후 단일 관문(같은 계정 업그레이드). */}
                       <button
                         onClick={() => { setSheetOpen(false); navigate('/login?returnUrl=' + encodeURIComponent('/store/new')) }}
-                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-gray-100 dark:bg-[#1D1F29] text-gray-900 dark:text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
+                        className="w-full flex items-center justify-center gap-2 py-4 bg-gray-100 dark:bg-[#1D1F29] text-gray-900 dark:text-white font-bold text-[15px] rounded-2xl active:scale-[0.98] transition-transform"
                       >
                         <UserPlus className="w-5 h-5" />
                         {t('bottomNav.openMyShop', { defaultValue: '내 가게 등록' })}

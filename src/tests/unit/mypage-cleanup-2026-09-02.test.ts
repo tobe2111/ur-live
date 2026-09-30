@@ -179,10 +179,19 @@ describe('⑦ 매장 계산대는 셀러 계정이면 위에', () => {
     expect(scan).toBeLessThan(shopping)
   })
 
-  it('수익 그룹(접이식) 안에 들어가 있지 않다 — 접혀 있으면 안 보인다', () => {
+  /**
+   * 🔁 2026-09-30 재조준 — 앵커(`<EarningsGroup>`)가 사라졌다(대표 *"수익 추천은 지금은 아예
+   * 마이에서 안보여도 될 것 같아"*). **지키려던 것은 그대로다**: 계산대가 *접혀서 안 보이는 자리*에
+   * 있으면 안 된다. 이제 마이에 접이식 자체가 없다(설정도 09-30 에 펼쳐졌다) — 그걸 직접 잰다.
+   */
+  it('접혀서 안 보이는 자리에 있지 않다 — 마이에 접이식이 없다', () => {
     const scan = SRC.indexOf("navigate('/store/scan')")
-    const groupOpen = SRC.indexOf('<EarningsGroup>')
-    expect(scan).toBeLessThan(groupOpen)
+    expect(scan).toBeGreaterThan(-1)
+    expect(SRC, '수익 구역이 되살아났다면 계산대가 그 안으로 들어갔는지 다시 볼 것').not.toContain('<EarningsGroup>')
+    for (const f of ['SettingsGroup', 'RoleCtaGrid']) {
+      const src = read(`src/pages/user-profile/${f}.tsx`)
+      expect(src, `${f} 이 다시 접힌다 — 그 안의 것은 한 번 더 눌러야 보인다`).not.toContain('<FoldRow')
+    }
   })
 
   it('셀러 계정에서만 뜬다', () => {

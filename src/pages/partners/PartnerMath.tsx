@@ -39,7 +39,7 @@ export default function PartnerMath() {
     <section className="bg-warm">
       <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-32 grid gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-20 xl:gap-28 lg:items-center">
         <div>
-          <h2 className="text-[26px] lg:text-[40px] xl:text-[46px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
+          <h2 className="text-[28px] lg:text-[40px] xl:text-[48px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
             그래서 얼마 남나
           </h2>
           <p className="mt-4 text-[15px] lg:text-[17px] leading-relaxed text-gray-500 dark:text-gray-400 max-w-[30em]">
@@ -62,7 +62,7 @@ export default function PartnerMath() {
               <Row k="카드 수수료" v="0원 (유어딜 부담)" accent />
               <div className="pt-3 border-t border-rule flex items-baseline justify-between">
                 <dt className="text-[15px] lg:text-[17px] font-extrabold text-ink">사장님 계좌에</dt>
-                <dd className="text-[28px] lg:text-[42px] font-extrabold text-brand-text tabular-nums tracking-[-0.03em]">
+                <dd className="text-[28px] lg:text-[40px] font-extrabold text-brand-text tabular-nums tracking-[-0.03em]">
                   {formatNumber(calc.payout)}원
                 </dd>
               </div>

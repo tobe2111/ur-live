@@ -176,7 +176,7 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
             const near = Math.abs(i - active) <= 1
             const hi = src && near ? heroUrl(src, DETAIL_HERO_MOBILE_WIDTH) : ''
             return (
-              <div key={i} role="img" aria-label={alt} className="flex items-center justify-center text-6xl"
+              <div key={i} role="img" aria-label={alt} className="flex items-center justify-center text-[60px]"
                 style={{ flex: '0 0 100%', scrollSnapAlign: 'center',
                   backgroundColor: '#1D1F29',
                   backgroundImage: hi ? layered(hi, src) : undefined,
@@ -203,7 +203,7 @@ export default function DetailGallery({ images: rawImages, alt, badges, fallback
             type="button"
             onClick={() => has && setLightbox(true)}
             aria-label={has ? '사진 크게 보기' : alt}
-            className="relative block w-full text-6xl flex items-center justify-center cursor-zoom-in"
+            className="relative block w-full text-[60px] flex items-center justify-center cursor-zoom-in"
             /* 📐 2026-08-19 (대표 확정 — 상세 1안): 제목·별점이 사진 **위**로 올라갔으므로 사진이
                화면을 통째로 먹으면 안 된다. 1장짜리도 정사각(=800px 높이) 대신 16:9 로 눕힌다.
                모바일 스와이프(위 블록)는 1:1 그대로 — 세로 화면에선 정사각이 맞다. */

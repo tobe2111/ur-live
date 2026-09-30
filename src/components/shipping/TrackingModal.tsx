@@ -143,7 +143,7 @@ export default function TrackingModal({ orderId, carrier, trackingNumber, title,
             </div>
           ) : !data?.has_tracking ? (
             <div className="text-center py-8">
-              <p className="text-4xl mb-3">📭</p>
+              <p className="text-[34px] mb-3">📭</p>
               <p className="text-gray-500 dark:text-gray-400">{t('shipping.notShipped', { defaultValue: '아직 발송되지 않았습니다' })}</p>
             </div>
           ) : (

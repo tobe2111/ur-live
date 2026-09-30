@@ -124,7 +124,7 @@ export default function StoreClaimPage() {
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-16">
           {/* 왼쪽(PC) · 위(폰) — 무엇을 등록하는 곳인가 */}
           <div className="lg:pt-4">
-            <h1 className="text-[26px] lg:text-[44px] font-black tracking-[-0.03em] leading-[1.22] text-gray-900">
+            <h1 className="text-[28px] lg:text-[40px] font-black tracking-[-0.03em] leading-[1.22] text-gray-900">
               매장 이용권<br className="hidden lg:block" /> 판매 등록
             </h1>
             <p className="mt-2 lg:mt-4 text-[15px] lg:text-[17px] leading-relaxed text-gray-600 lg:max-w-[460px]">

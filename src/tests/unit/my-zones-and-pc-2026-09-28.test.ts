@@ -24,10 +24,28 @@ const PAGE = readCode('src/pages/UserProfilePage.tsx')
 const ko = JSON.parse(readFileSync('public/locales/ko/translation.json', 'utf8'))
 
 describe('이름 E — 제목이 붙은 구역이 파는 쪽', () => {
-  it('판매 구역에 25px 구역 제목이 있다 (본문 라벨과 구별돼야 규칙이 선다)', () => {
-    // 🔁 2026-09-28 재조준: 25 → 24px(여섯 단계 스케일 · 4의 배수). 불변식은 *본문 라벨(12·13·15)과
-    //   확실히 구별되는 큰 제목* 이고 25 라는 값이 아니다 — 24 는 그 아래 단계(17)와도 한참 벌어진다.
-    expect(SELLER).toMatch(/text-\[24px\][^"]*">내 가게<\/h2>/)
+  /**
+   * 🔁 **2026-09-30 재조준 — 값(24px)이 아니라 *출처*를 잰다.**
+   *
+   * 대표가 같은 것을 두 번 지적했다(*"투박해"* → *"촌스러워. 무조건 해결"*). 오전 처방이 화면에
+   * 안 닿은 이유는 이 제목이 **부품을 안 쓰고 자기 h2 를 손으로 적고 있었기 때문**이다 —
+   * 아래 검사가 `text-[24px]` 라는 **값**을 앵커로 쓰는 바람에, 손으로 적는 것 자체를 못 막았다.
+   * ⇒ 불변식을 *"크기가 24다"* 에서 *"크기·무게·색이 `SECTION_TITLE_CLS` 한 곳에서 온다"* 로 옮긴다.
+   *   그러면 다음에 값이 또 바뀌어도 두 자리가 갈리지 않는다.
+   */
+  it('판매 구역 제목이 공용 토큰에서 온다 (손으로 적지 않는다)', () => {
+    expect(SELLER).toMatch(/\$\{SECTION_TITLE_CLS\}`}>내 가게<\/h2>/)
+    expect(SELLER, '크기를 손으로 적었다 — 오전 커밋이 이 제목에 안 닿은 이유가 그것이다')
+      .not.toMatch(/text-\[\d+px\][^"]*">내 가게/)
+  })
+
+  it('그 토큰이 본문 라벨(12·13·15)과 구별된다', () => {
+    const GRAMMAR = readCode('src/pages/user-profile/list-grammar.tsx')
+    const m = GRAMMAR.match(/SECTION_TITLE_CLS = '([^']+)'/)
+    expect(m, 'SECTION_TITLE_CLS 를 못 찾았다 — 이 검사가 헛돌고 있다').toBeTruthy()
+    const px = Number(m![1].match(/text-\[(\d+)px\]/)?.[1])
+    expect(px, '본문 제목(15)보다 커야 구역이 갈린다').toBeGreaterThan(15)
+    expect(px, '24 로 되돌아가면 대표가 두 번 지적한 그 무게다').toBeLessThanOrEqual(17)
   })
 
   /**
@@ -55,7 +73,8 @@ describe('구역 2 — 큰 제목 없이 그룹 라벨 셋', () => {
   const cases: [string, string, string][] = [
     ['src/pages/user-profile/ShoppingGroup.tsx', 'shopping.sectionTitle', '내가 산 것'],
     ['src/pages/user-profile/EarningsGroup.tsx', 'my.earningsGroupTitle', '내가 소개한 것'],
-    ['src/pages/user-profile/SettingsGroup.tsx', 'my.settingsGroupTitle', '설정 · 계정'],
+    // 🔁 2026-09-30: `SettingsGroup` 은 접이식이 아니게 되면서 `my.settingsGroupTitle` 줄이 사라졌다
+    //   (대표 *"왜 굳이 열고 닫게 해두는거지"*). 그 구역의 검사는 아래 '펼쳐져 있다' 로 옮겼다.
   ]
   for (const [file, key, label] of cases) {
     it(`${label} — 코드의 defaultValue 와 ko 로케일이 **둘 다** 그 값이다`, () => {
@@ -77,8 +96,20 @@ describe('구역 2 — 큰 제목 없이 그룹 라벨 셋', () => {
       expect(src, `${f} 에 구역 제목이 없다`).toContain('<SectionTitle>')
       expect(src, `${f} 이 제목 크기를 손으로 적었다`).not.toMatch(/text-\[2[0-9]px\]/)
     }
-    // 판매 구역만 예외다 — 제목 옆에 가게 전환 버튼이 붙어 한 줄을 이룬다.
-    expect(SELLER).toMatch(/text-\[24px\][^"]*">내 가게<\/h2>/)
+    // 판매 구역은 제목 옆에 가게 전환 버튼이 붙어 한 줄을 이루므로 `SectionTitle` 대신
+    // **같은 토큰**을 쓴다(위 검사가 그 출처를 고정한다).
+    expect(SELLER).toContain('SECTION_TITLE_CLS')
+  })
+
+  /**
+   * 🔓 2026-09-30 — 설정 구역은 **펼쳐져 있다**(대표 *"설정 고객지원 이 부분 좀 가시적이지 않아
+   * 보는데에 불편해"*). 접이식으로 되돌리면 알림을 끄러 온 사람이 한 번 더 눌러야 한다.
+   */
+  it('🔓 설정 구역이 접혀 있지 않다 — 내용이 바로 보인다', () => {
+    const SET = readCode('src/pages/user-profile/SettingsGroup.tsx')
+    expect(SET).toContain('<SectionTitle>설정 · 고객지원</SectionTitle>')
+    expect(SET, '접이식으로 되돌아갔다').not.toContain('<FoldRow')
+    expect(SET, '펼침 상태를 다시 기억하기 시작했다 = 접혔다는 뜻').not.toContain('useState')
   })
 })
 

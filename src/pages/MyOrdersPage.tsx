@@ -270,7 +270,7 @@ export default function MyOrdersPage() {
               onClick={() => setSearchParams(f.key === 'all' ? {} : { status: f.key }, { replace: true })}
               className={`shrink-0 px-3 py-2 rounded-full text-[12px] font-semibold border transition-colors ${
                 statusFilter === f.key
-                  ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-gray-900 dark:border-white'
+                  ? 'bg-brand text-white border-brand'
                   : 'bg-white dark:bg-[#11141C] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35]'
               }`}
             >
@@ -293,7 +293,7 @@ export default function MyOrdersPage() {
               <p className="text-[15px] text-gray-900 dark:text-white mb-4">{error}</p>
               <button
                 onClick={() => loadData()}
-                className="px-6 py-2 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-colors font-semibold"
+                className="px-6 py-2 bg-brand hover:bg-brand-dark text-white rounded-xl transition-colors font-semibold"
               >
                 {t('common.retry', { defaultValue: '다시 시도' })}
               </button>

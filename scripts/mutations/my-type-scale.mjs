@@ -14,8 +14,10 @@ export default [
     file: 'src/pages/user-profile/list-grammar.tsx',
     // ⚠️ 같은 줄이 `ListRow`·`FoldRow` 둘에 있다(2026-09-29 안 C 에서 치수를 통일했다) —
     //    **다음 줄까지** 묶어 `ListRow` 쪽 하나만 가리킨다. `find` 가 둘이면 어디를 고쳤는지 모른다.
-    find: "      <span className=\"flex-1 min-w-0 text-[15px] font-semibold text-gray-900 dark:text-white truncate\">{label}</span>\n      {count != null ? (",
-    replace: "        <span className=\"block text-[12.5px] font-bold text-gray-900 dark:text-white\">{label}</span>\n      {count != null ? (",
+    // 🔁 2026-09-30 재조준: 행 라벨이 `ROW_LABEL_CLS` 로 분리됐다(설정 줄이 같은 글자를 쓰려고).
+    //   그래서 `ListRow`·`FoldRow` 둘을 가리키던 "다음 줄까지 묶기" 요령이 더는 필요 없다.
+    find: "export const ROW_LABEL_CLS = 'flex-1 min-w-0 text-[15px] font-semibold",
+    replace: "export const ROW_LABEL_CLS = 'flex-1 min-w-0 text-[12.5px] font-semibold",
     test: TEST,
     why: '반쪽 크기 하나면 그 줄만 이웃과 미세하게 다르다 — 빌드도 화면도 안 깨져서 17단계까지 이렇게 자랐다.',
   },
@@ -30,8 +32,9 @@ export default [
   {
     name: '📐 행 간격이 격자를 벗어난다 (py-3.5)',
     file: 'src/pages/user-profile/list-grammar.tsx',
-    find: "  'w-full flex items-center gap-3 px-4 min-h-[48px] py-2 text-left",
-    replace: "  'w-full flex items-center gap-3 px-4 py-3.5 min-h-[56px] text-left",
+    // 🔁 2026-09-30 재조준: 행 기하가 `ROW_GEOM_CLS` 로 분리됐다(설정 줄이 같은 치수를 쓰려고).
+    find: "export const ROW_GEOM_CLS = 'w-full flex items-center gap-3 px-4 min-h-[48px] py-2 text-left'",
+    replace: "export const ROW_GEOM_CLS = 'w-full flex items-center gap-3 px-4 py-3.5 min-h-[56px] text-left'",
     test: TEST,
     why: '14px 패딩은 4의 배수가 아니라 이 행만 이웃과 2px 어긋난다 — 줄이 스무 개면 스무 번 어긋난다.',
   },

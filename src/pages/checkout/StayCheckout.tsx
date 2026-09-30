@@ -176,7 +176,7 @@ export default function StayCheckout({ orderId }: { orderId: number }) {
                 <span className="text-[13px] text-gray-500">총 결제 금액</span>
                 <span className="text-[24px] font-extrabold text-gray-900">
                   {formatNumber(order.total_amount)}
-                  <span className="text-[15px] font-bold ml-0.5">원</span>
+                  <span className="text-[15px] font-bold ml-1">원</span>
                 </span>
               </div>
             </section>

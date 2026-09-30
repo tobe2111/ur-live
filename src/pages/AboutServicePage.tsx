@@ -80,7 +80,7 @@ export default function AboutServicePage() {
         <section className="ur-panel-ink text-white overflow-hidden">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 pt-10 pb-14 lg:pt-16 lg:pb-24 grid gap-14 lg:grid-cols-[1fr_0.72fr] lg:gap-16 xl:gap-24 lg:items-center">
             <div>
-              <h1 className="text-[30px] sm:text-[38px] lg:text-[46px] xl:text-[52px] leading-[1.22] font-extrabold tracking-[-0.035em]">
+              <h1 className="text-[28px] sm:text-[40px] lg:text-[48px] leading-[1.22] font-extrabold tracking-[-0.035em]">
                 동네 가게의 할인 이용권을<br />
                 <span className="text-brand-text">앱에서 사고, 매장에서 QR 로</span><br />
                 쓰는 로컬 딜 플랫폼
@@ -114,7 +114,7 @@ export default function AboutServicePage() {
             목록만 오른쪽에서 커진다(제목이 목록 위에 또 한 줄 쌓이면 폰을 늘린 그림이 된다). */}
         <section className="bg-warm">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-28 grid gap-8 lg:grid-cols-[minmax(0,22rem)_1fr] lg:gap-20">
-            <h2 className="text-[26px] lg:text-[40px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2] lg:self-start lg:sticky lg:top-24">
+            <h2 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2] lg:self-start lg:sticky lg:top-24">
               소비자에게는
             </h2>
             <div className="border-t border-rule">
@@ -122,7 +122,7 @@ export default function AboutServicePage() {
                 <div key={t} className="flex items-baseline gap-3 lg:gap-6 py-4 lg:py-8 border-b border-rule">
                   <Icon className="w-4 h-4 lg:w-[22px] lg:h-[22px] shrink-0 translate-y-0.5 text-brand" strokeWidth={1.9} aria-hidden />
                   <div className="min-w-0">
-                    <p className="text-[15px] lg:text-[26px] font-extrabold text-ink tracking-[-0.02em]">{t}</p>
+                    <p className="text-[15px] lg:text-[28px] font-extrabold text-ink tracking-[-0.02em]">{t}</p>
                     <p className="text-[12px] lg:text-[17px] text-gray-500 dark:text-gray-400 leading-snug lg:leading-relaxed mt-1 lg:mt-2 max-w-[34em]">{d}</p>
                   </div>
                 </div>
@@ -135,7 +135,7 @@ export default function AboutServicePage() {
             ⚠️ 카드로 감싸지 않는다(테두리 셋이 나란히 서면 곧바로 "3열 균등 카드" 가 된다). */}
         <section className="ur-panel-ink text-white">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-28">
-            <h2 className="text-[26px] lg:text-[40px] font-extrabold tracking-[-0.03em] leading-[1.2]">셋이 함께 커지는 구조</h2>
+            <h2 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] leading-[1.2]">셋이 함께 커지는 구조</h2>
             <p className="mt-3 lg:mt-5 text-[13px] lg:text-[17px] text-white/60">누구도 먼저 돈을 내지 않습니다.</p>
 
             <ol className="mt-8 lg:mt-16 relative pl-5 lg:pl-0 lg:grid lg:grid-cols-3 lg:gap-12 xl:gap-20">
@@ -167,7 +167,7 @@ export default function AboutServicePage() {
             숫자 배지(01/02/03/04)는 쓰지 않는다. 순서는 선이 이미 말한다(taste-skill: 섹션번호 금지). */}
         <section className="bg-warm">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-28">
-            <h2 className="text-[26px] lg:text-[40px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">사장님은 이렇게 진행해요</h2>
+            <h2 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">사장님은 이렇게 진행해요</h2>
             <p className="mt-3 lg:mt-5 text-[13px] lg:text-[17px] text-gray-500 dark:text-gray-400">가입부터 정산까지, 전부 셀러 대시보드 하나에서.</p>
 
             <ol className="mt-8 lg:mt-16 space-y-4 lg:space-y-0 lg:grid lg:grid-cols-4 lg:gap-10">
@@ -193,8 +193,8 @@ export default function AboutServicePage() {
         <section className="bg-warm">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 pb-16 lg:pb-32 grid gap-8 lg:grid-cols-2 lg:gap-24 lg:items-end">
             <div>
-              <h2 className="text-[26px] lg:text-[40px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2] mb-6 lg:mb-10">숫자와 이야기</h2>
-              <p className="text-[34px] lg:text-[80px] xl:text-[96px] leading-none font-extrabold tracking-[-0.045em] text-ink">19조 원</p>
+              <h2 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2] mb-6 lg:mb-10">숫자와 이야기</h2>
+              <p className="text-[34px] lg:text-[76px] xl:text-[96px] leading-none font-extrabold tracking-[-0.045em] text-ink">19조 원</p>
               <p className="text-[13px] lg:text-[17px] text-gray-500 dark:text-gray-400 mt-2 lg:mt-5">글로벌 동일 모델 시장 규모</p>
             </div>
             <div>
@@ -218,7 +218,7 @@ export default function AboutServicePage() {
         {/* ⑥ 마무리 — 색면 한 장. PC 에서 마지막 화면이 흰 여백으로 끝나면 페이지가 잘린 것처럼 보인다. */}
         <section className="ur-panel-ink text-white">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-36 text-center">
-            <h2 className="text-[26px] lg:text-[52px] xl:text-[60px] font-extrabold tracking-[-0.03em] leading-[1.22]">
+            <h2 className="text-[28px] lg:text-[48px] xl:text-[60px] font-extrabold tracking-[-0.03em] leading-[1.22]">
               지금 내 주변부터 열어 보세요
             </h2>
             <p className="mt-6 lg:mt-8 text-[15px] lg:text-[17px] leading-relaxed text-white/70 max-w-[32em] mx-auto">

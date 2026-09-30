@@ -123,7 +123,7 @@ export default function PcHomeAppBand() {
       <div className="pointer-events-none absolute -right-20 -top-24 w-[420px] h-[420px] rounded-full blur-3xl opacity-25" style={{ background: 'radial-gradient(circle,#ff6a3d,transparent 70%)' }} />
       <div className="max-w-[1600px] mx-auto px-6 lg:px-10 py-14 flex items-center justify-between gap-10 relative">
         <div className="min-w-0">
-          <h2 className="text-[30px] lg:text-[34px] font-black leading-[1.25] tracking-tight text-white">
+          <h2 className="text-[28px] lg:text-[34px] font-black leading-[1.25] tracking-tight text-white">
             유어딜에서 <span className="text-[#ff8a5c]">우리 동네 딜</span>과<br />함께해요
           </h2>
           <p className="mt-3 text-[17px] font-bold text-white/70">설치 없이 폰에서 바로 열려요</p>

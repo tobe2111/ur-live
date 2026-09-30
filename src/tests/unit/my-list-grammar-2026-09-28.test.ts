@@ -76,8 +76,10 @@ describe('마이 목록 문법 — 판매와 손님이 같은 부품을 쓴다',
    * 이 검사가 잠그는 건 미감이 아니라 **한 화면에 들어오는 줄 수**다.
    */
   it('🔵 평면 행은 48px 이고 값이 오른쪽이다 (설명 줄이 되살아나지 않는다)', () => {
-    const m = GRAMMAR.match(/const ROW_CLS =\s*\n?\s*'([^']+)'/)
-    expect(m, 'ROW_CLS 를 못 찾았다 — 이 검사가 헛돌고 있다').toBeTruthy()
+    // 🔁 2026-09-30 재조준: 기하가 `ROW_GEOM_CLS` 로 분리됐다(설정 줄이 같은 치수를 쓰려고).
+    //   `ROW_CLS` 는 이제 그 위에 상호작용만 얹는 템플릿 리터럴이라 치수가 거기 없다.
+    const m = GRAMMAR.match(/const ROW_GEOM_CLS =\s*\n?\s*'([^']+)'/)
+    expect(m, 'ROW_GEOM_CLS 를 못 찾았다 — 이 검사가 헛돌고 있다').toBeTruthy()
     expect(m![1], '행이 두꺼워졌다 — 한 화면에 들어오는 줄이 줄어든다').toContain('min-h-[48px]')
     expect(m![1], '옛 두 줄 행(56px)으로 되돌아갔다').not.toContain('min-h-[56px]')
     // 값은 제목 **아래**가 아니라 **오른쪽**이다 — `block` 이 붙으면 다시 두 줄이 된다.

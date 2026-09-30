@@ -4104,7 +4104,7 @@
     "sellerNoContact": "Contact vendeur non enregistré",
     "emptyTitle": "Aucune commande",
     "emptyDesc": "Trouvez un pass ou un produit qui vous plaît",
-    "goToLive": "Voir les directs",
+    "goToLive": "Voir les offres",
     "trackingLink": "Suivre",
     "paymentAmount": "Paiement",
     "won": "KRW",
@@ -4125,8 +4125,8 @@
     "skip": "Passer",
     "welcomeTitle": "Bienvenue, {{name}} !",
     "welcomeTitleDefault": "Bienvenue sur UrDeal !",
-    "welcomeDesc1": "Regardez en direct et achetez instantanément —",
-    "welcomeDesc2": "Le #1 du Live Commerce en Corée",
+    "welcomeDesc1": "Les bons plans restaurants, beauté et séjours du quartier",
+    "welcomeDesc2": "à prix réduit, utilisables tout de suite",
     "couponBadge": "Coupon de bienvenue",
     "couponAmount": "5 000 ₩ de réduction",
     "couponDesc": "Valable à partir de 10 000 ₩ · Expire dans 7 jours",
@@ -4139,9 +4139,9 @@
     "step2Desc": "Pour des recommandations personnalisées (choisissez au moins 1)",
     "selectedCount": "Sélectionnés : {{count}}",
     "step3Title": "Recevoir des notifications",
-    "step3Desc": "Restez informé des offres et des directs",
+    "step3Desc": "Nous vous prévenons des offres à ne pas manquer",
     "alimtalkLabel": "Recevoir via KakaoTalk",
-    "alimtalkDesc1": "Début de direct / Offres flash / Statut de commande, etc.",
+    "alimtalkDesc1": "Offres / Bon émis / Statut de commande, etc.",
     "alimtalkDesc2": "Alertes gratuites (sans publicité)",
     "alimtalkNote1": "Dans Mon compte → Paramètres de notifications",
     "alimtalkNote2": "modifiable à tout moment.",
@@ -4713,7 +4713,7 @@
   },
   "browse": {
     "title": "Boutique",
-    "seoDesc": "Découvrez les produits tendance, bons resto et promos live de YourDeal",
+    "seoDesc": "Découvrez sur UrDeal les produits tendance, bons locaux et chèques cadeaux à prix réduit",
     "loadError": "Impossible de charger les produits.",
     "loadRetry": "Impossible de charger les produits. Veuillez réessayer.",
     "searchAria": "Rechercher des produits",
@@ -4778,7 +4778,7 @@
     "system": "Système",
     "light": "Clair",
     "dark": "Sombre",
-    "description": "S'applique aux pages à thème clair (shopping, paiement, commandes). Mes/Accueil/Live restent toujours en sombre.",
+    "description": "Choisissez Système / Clair / Sombre. Le mode Système suit le réglage sombre de l’OS.",
     "currentlyFollowing": "OS : {{theme}}"
   },
   "myOrders": {
@@ -5633,8 +5633,8 @@
   },
   "introduce": {
     "navStart": "Commencer",
-    "seoTitle": "Ur-Deal - Commerce live restauration achat groupé",
-    "seoDesc": "Commerce live géré par les propriétaires. La façon la plus rapide de trouver des offres locales.",
+    "seoTitle": "UrDeal - Achats groupés du quartier (resto, beauté, séjours)",
+    "seoDesc": "Resto, beauté et séjours du quartier à prix groupé. Achetez ensemble, le bon est émis dès le paiement.",
     "heroLiveCount": "[TODO:fr] 지금 {{count}}명이 라이브 시청 중",
     "heroDesc": "Les restaurateurs de votre quartier passent en direct. Échangez en temps réel et achetez en groupe des coupons et kits repas jusqu’à -50 %.",
     "heroCtaStart": "[TODO:fr] 지금 시작하기",
@@ -5845,7 +5845,7 @@
   "search.pageTitle": "Search - UrDeal",
   "search.errorMsg": "An error occurred while searching",
   "search.seoTitleQuery": "{{query}} search results - UrDeal",
-  "search.seoDesc": "Search for products on UrDeal. Find the best prices on live commerce products.",
+  "search.seoDesc": "Cherchez sur UrDeal. Trouvez des bons locaux à prix réduit.",
   "reviews": {
     "heading": "Avis",
     "writeBtn": "Écrire un avis",
@@ -6022,7 +6022,7 @@
     "chargeDeals": "Deal à recharger",
     "afterBalance": "Solde après recharge",
     "noRefund": "Les deals rechargés ne sont pas remboursables",
-    "usageNote": "Utilisable uniquement pour les dons live et les paiements de produits.",
+    "usageNote": "Utilisable uniquement pour les chèques cadeaux et les paiements de produits.",
     "chargeHistory": "Détails de recharge",
     "paymentNoRefund": "Les deals rechargés ne sont pas remboursables après paiement.",
     "prev": "Précédent",
@@ -6073,7 +6073,7 @@
   },
   "blog": {
     "listSeoTitle": "Blog",
-    "listSeoDesc": "Blog de commerce live Ur-Deal — guides vendeurs, tendances, conseils",
+    "listSeoDesc": "Blog UrDeal : guides des bons et achats groupés, et histoires locales",
     "readBtn": "Lire l'article"
   },
   "embed": {
@@ -6132,7 +6132,7 @@
     "errorInvalidEmail": "[TODO:fr] 유효하지 않은 이메일 형식입니다.",
     "errorWeakPassword": "[TODO:fr] 비밀번호가 너무 약합니다. 8자 이상 입력해주세요.",
     "seoTitle": "[TODO:fr] 회원가입 - 유어딜",
-    "seoDesc": "[TODO:fr] 유어딜에 가입하고 라이브 쇼핑을 시작하세요"
+    "seoDesc": "Rejoignez UrDeal et obtenez des bons locaux à prix réduit"
   },
   "following": {
     "title": "[TODO:fr] 팔로잉",
@@ -6997,7 +6997,7 @@
   "groupBuy.categoryEtc": "🎯 Autres",
   "groupBuy.stayBadge": "Séjour",
   "roleCta": {
-    "myShortcuts": "Mes raccourcis",
+    "myShortcuts": "Ouvrir une boutique",
     "startNewRole": "Commencer un nouveau rôle",
     "linkshop": "Mon UrShop",
     "linkshopDesc": "Ajoutez des pass à votre UrShop et partagez-les",

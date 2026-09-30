@@ -277,9 +277,9 @@ export default function TossWidgetPayPage() {
             )}
             <div className="min-w-0 flex-1">
               {summary.merchant
-                ? <p className="text-[11px] text-gray-400 dark:text-gray-500 truncate">{summary.merchant}</p>
-                : <p className="text-[11px] text-gray-400 dark:text-gray-500">결제 상품</p>}
-              <p className="text-[14px] font-bold leading-snug text-gray-900 dark:text-white line-clamp-2">{orderName || '—'}</p>
+                ? <p className="text-[12px] text-gray-400 dark:text-gray-500 truncate">{summary.merchant}</p>
+                : <p className="text-[12px] text-gray-400 dark:text-gray-500">결제 상품</p>}
+              <p className="text-[15px] font-bold leading-snug text-gray-900 dark:text-white line-clamp-2">{orderName || '—'}</p>
               {(discountPct > 0 || summary.qty) && (
                 <p className="mt-1 flex items-baseline gap-1 text-[12px]">
                   {discountPct > 0 && <span className="font-extrabold text-sale">{discountPct}%</span>}
@@ -296,24 +296,24 @@ export default function TossWidgetPayPage() {
               합이 딱 맞는 게 이 화면의 계약이다: 딜 + 카드 = 상품 금액. */}
           {goodsAmount > chargeAmount ? (
             <div className="mt-3 pt-3 border-t border-rule space-y-1">
-              <div className="flex items-baseline justify-between text-[12.5px]">
+              <div className="flex items-baseline justify-between text-[12px]">
                 <span className="text-gray-400 dark:text-gray-500">상품 금액</span>
                 <span className="tabular-nums text-gray-600 dark:text-gray-300">{goodsAmount.toLocaleString('ko-KR')}원</span>
               </div>
-              <div className="flex items-baseline justify-between text-[12.5px]">
+              <div className="flex items-baseline justify-between text-[12px]">
                 <span className="text-gray-400 dark:text-gray-500">딜 사용</span>
                 <span className="tabular-nums font-semibold text-brand-text">−{(goodsAmount - chargeAmount).toLocaleString('ko-KR')}딜</span>
               </div>
             </div>
           ) : null}
           <div className="mt-3 pt-3 border-t border-rule flex items-baseline justify-between">
-            <span className="text-[12.5px] text-gray-400 dark:text-gray-500">{goodsAmount > chargeAmount ? '카드 결제' : '결제 금액'}</span>
-            <span className="text-[27px] font-extrabold tracking-tight tabular-nums text-gray-900 dark:text-white">
+            <span className="text-[12px] text-gray-400 dark:text-gray-500">{goodsAmount > chargeAmount ? '카드 결제' : '결제 금액'}</span>
+            <span className="text-[28px] font-extrabold tracking-tight tabular-nums text-gray-900 dark:text-white">
               {Number.isFinite(chargeAmount) ? chargeAmount.toLocaleString('ko-KR') : '0'}
-              <span className="text-[17px] font-bold ml-0.5">원</span>
+              <span className="text-[17px] font-bold ml-1">원</span>
             </span>
           </div>
-          <p className="mt-2.5 pt-2.5 border-t border-rule text-[11.5px] text-gray-500 dark:text-gray-400">
+          <p className="mt-2 pt-2 border-t border-rule text-[12px] text-gray-500 dark:text-gray-400">
             토스로 안전결제 · 미사용 시 100% 자동환불
           </p>
         </section>
@@ -363,7 +363,7 @@ export default function TossWidgetPayPage() {
             /* 🎨 2026-09-03 (대표 확정 안 2-D): 검정 → 브랜드 블루.
                화면에서 가장 강한 행동이 브랜드 색이어야 한다(표면 규칙 ②).
                ⚠️ 색만 바뀐다 — onClick·disabled·상태별 라벨 전부 byte-불변. */
-            className="w-full py-3.5 bg-brand hover:bg-brand-dark text-white text-[15px] font-bold rounded-full disabled:opacity-50 active:scale-[0.98] transition-all"
+            className="w-full py-4 bg-brand hover:bg-brand-dark text-white text-[15px] font-bold rounded-full disabled:opacity-50 active:scale-[0.98] transition-all"
           >
             {state === 'loading' && (
               <span className="flex items-center justify-center gap-2">

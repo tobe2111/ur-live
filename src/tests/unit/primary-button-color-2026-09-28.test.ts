@@ -42,26 +42,7 @@ describe('주 버튼은 브랜드 블루다 (검정 손색 차단)', () => {
     expect(runGuard()).toBe(0)
   })
 
-  it('잠금표 잔여분은 **동결**돼 있다 — 늘 수 없다', () => {
-    const b = JSON.parse(readFileSync(BASELINE, 'utf8'))
-    const total = Object.values(b.files as Record<string, number>).reduce((a, n) => a + n, 0)
-    // 0 이 되면 baseline 파일째 지우고 이 단언을 없앤다(그때 가드가 0 을 강제한다).
-    expect(total).toBeGreaterThan(0)
-    // ⚠️ 동결은 **래칫**이지 면제가 아니다. 값을 크게 잡으면 그 파일 안에서는 검정이 얼마든지
-    //    늘어난다 — 실측 21건이라 상한을 25 로 둔다(늘리려면 왜 늘었는지부터 적을 것).
-    expect(total).toBeLessThanOrEqual(25)
-    for (const [f, n] of Object.entries(b.files as Record<string, number>)) {
-      expect(n, `${f} 동결값이 과하다`).toBeLessThanOrEqual(10)
-    }
-    // 잠긴 파일에만 남아 있어야 한다 — 잠기지 않은 파일이 동결 목록에 끼면 그냥 봐주는 것이다.
-    const LOCKED = [
-      'BrowsePage', 'GroupBuyDetailPage', 'MyOrdersPage', 'MyVouchersPage',
-      'PaymentSuccessPage', 'ProductDetailPage', 'VoucherDetailPage', 'VouchersPage',
-    ]
-    for (const f of Object.keys(b.files)) {
-      expect(LOCKED.some((n) => f.includes(n))).toBe(true)
-    }
-  })
+
 
   it('가드가 실패할 수 있다 — 검정 주버튼을 심으면 빨간불', () => {
     // 합성 위반을 임시 파일이 아니라 **가드 자신의 판정 함수**로 확인할 수는 없으므로
@@ -88,10 +69,30 @@ describe('주 버튼은 브랜드 블루다 (검정 손색 차단)', () => {
   })
 
   it('브랜드 블루 쪽이 이제 다수다 — 이행이 실제로 됐는가', () => {
-    // 이행 전: 검정 224 vs 블루 409. 이행 후 검정은 잠금표 20건만 남는다.
+    // 이행 전: 검정 224 vs 블루 409. 2026-09-30 잠금표 21건까지 이행해 검정 주버튼은 0 이다.
     const out = execFileSync('bash', ['-c',
       `grep -rn "bg-brand text-white\\|ur-btn-primary" src/pages src/components --include=*.tsx | wc -l`,
     ], { encoding: 'utf8' })
     expect(Number(out.trim())).toBeGreaterThan(400)
+  })
+
+  it('🚪 예외 표식이 면제의 문이 되지 않는다 — 개수가 늘지 않는다', () => {
+    /**
+     * 🩸 2026-09-30: `primary-button-ok` 를 진짜 주 버튼에 달면 가드는 **표식을 존중해 통과시킨다** —
+     * 주입으로 그 남용을 잡을 방법이 없다(가드가 스스로 예외를 인정하도록 만들어져 있다).
+     * 그래서 막는 방법은 하나다: **표식의 개수를 래칫으로 묶는 것.**
+     *
+     * 지금 **둘**이고 둘 다 버튼이 아니다:
+     *   `ProductDetailPage` — 클릭 가능한 다크 정보 패널(카드). 파랗게 칠하면 진짜 CTA 와 같은 색의 큰 면이 둘이 된다.
+     *   `ImageUpload`       — 사진 위 스크림 배지. 가드 머리말이 말한 "카드 바탕·스크림의 정상 용법" 그 자체다.
+     * 늘려야 할 진짜 예외가 생기면 **이 숫자를 올리면서 왜인지 여기 적는다.**
+     *
+     * 🗑️ 이 시험이 종전의 *"잠금표 잔여분은 동결돼 있다"* 를 대체한다 — 2026-09-30 에 그 21건을
+     * 전부 이행해 `primary-button-baseline.json` 자체가 없어졌고, 탈출구가 baseline 에서 표식으로 옮겨졌다.
+     */
+    const out = execFileSync('bash', ['-c',
+      `grep -rn "primary-button-ok" src/pages src/components --include=*.tsx | wc -l`,
+    ], { encoding: 'utf8' })
+    expect(Number(out.trim()), '예외 표식이 늘었다 — 왜 필요한지 이 시험에 적고 숫자를 올릴 것').toBeLessThanOrEqual(2)
   })
 })

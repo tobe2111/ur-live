@@ -67,13 +67,34 @@ export default [
       '`src/pages/*.tsx` 734개가 통째로 빠지는데 "몇백 개 검사함" 처럼 보여 아무도 모른다(09-29 실측).',
   },
   {
-    name: '🔒 잠금 파일에 세트를 밀어 넣는다 (승인 절차 우회)',
-    file: 'src/pages/PaymentSuccessPage.tsx',
-    find: "import { useNavigate",
-    replace: "import { StoreIcon } from '@/components/icons/urdeal-icons'\nimport { useNavigate",
+    /**
+     * 🎯 2026-09-30 재조준(지운 것이 아니다). 앵커는 `PaymentSuccessPage` 의 import 였고
+     * 결함은 *"잠금 파일에 세트를 밀어 넣는다"* 였는데, **대표 승인으로 잠금표가 이행된 순간
+     * 그 결함이 곧 정답이 됐다** — 시험의 단언이 "손대지 않았는가" → "이행됐는가" 로 뒤집혔기 때문이다.
+     * ⇒ 주입이 헛돌아 CI 가 잡았다(2026-09-30 head e5784cd, Verify 스텝 19).
+     *
+     * 이 주입의 `why` 는 원래부터 **코드모드**를 말하고 있었다("코드모드가 잠금 목록을 안 보면…").
+     * 그 자리로 옮긴다 — 지키려던 것은 그대로 살아 있다: *다음* 이행이 잠금표를 승인 없이 쓸면 안 된다.
+     */
+    name: '🔒 코드모드가 잠금표를 기본 실행에서 쓸어 간다 (승인 절차 우회)',
+    file: 'scripts/codemods/adopt-urdeal-icons.mjs',
+    find: "? LOCK.has(f) || MIRRORS.has(f) : !LOCK.has(f) && !MIRRORS.has(f)",
+    replace: "? LOCK.has(f) || MIRRORS.has(f) : !MIRRORS.has(f)",
     test: TEST,
     why:
-      'Toss V2 잠금표 파일은 색 하나를 바꿔도 대표 승인이 필요하다(CLAUDE.md 절대 룰). ' +
-      '코드모드가 잠금 목록을 안 보면 이런 식으로 조용히 들어가고, 그러면 잠금 자체가 형해화된다.',
+      'Toss V2·로딩 잠금표 파일은 className 하나를 바꿔도 대표 승인 + audit log 가 필요하다(CLAUDE.md 절대 룰). ' +
+      '기본 실행이 그 목록을 안 보면 다음 이행에 조용히 섞여 들어가고, 그러면 잠금 절차가 형해화된다 — ' +
+      '에러가 안 나서 아무도 신고하지 않는 클래스다.',
+  },
+  {
+    name: '🔒 잠금표 이행이 되돌아간다 (BottomNav 가 세트를 잃는다)',
+    file: 'src/components/main/BottomNav.tsx',
+    find: "} from '@/components/icons/urdeal-icons'",
+    replace: "} from '@/components/icons/urdeal-icons-REVERTED'",
+    test: TEST,
+    why:
+      '2026-09-02·09-30 승인분이 되돌아가면 하단 탭이 다시 lucide 로 돌아가 획이 2.0 과 1.6 으로 갈린다. ' +
+      '단언(`touched >= 5` + BottomNav 포함)이 그 회귀를 잡는지 확인한다 — ' +
+      '이행형 단언은 "늘 통과" 하기 쉬워서 반대 방향을 따로 심어야 한다.',
   },
 ]

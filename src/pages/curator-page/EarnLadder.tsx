@@ -50,7 +50,7 @@ export default function EarnLadder({ dealCount, pinCount }: Props) {
             <div className="min-w-0 flex-1">
               <p className="text-[13px] font-extrabold text-gray-900 dark:text-white">
                 그 가게와 소개비를 정하세요
-                {dealCount > 0 && <span className="ml-1.5 text-[12px] font-bold text-emerald-600 dark:text-emerald-400">계약 {dealCount}곳</span>}
+                {dealCount > 0 && <span className="ml-2 text-[12px] font-bold text-emerald-600 dark:text-emerald-400">계약 {dealCount}곳</span>}
               </p>
               <p className="mt-1 text-[12px] leading-relaxed text-gray-600 dark:text-gray-300">
                 가게가 “이 이용권 팔아주면 몇 %” 를 정해 제안합니다. 수락하면 계약이 됩니다.
@@ -78,7 +78,7 @@ export default function EarnLadder({ dealCount, pinCount }: Props) {
             <div className="min-w-0 flex-1">
               <p className="text-[13px] font-extrabold text-gray-900 dark:text-white">
                 담아서 파세요
-                {pinCount > 0 && <span className="ml-1.5 text-[12px] font-bold text-gray-400">{pinCount}개 담음</span>}
+                {pinCount > 0 && <span className="ml-2 text-[12px] font-bold text-gray-400">{pinCount}개 담음</span>}
               </p>
               <p className="mt-1 text-[12px] leading-relaxed text-gray-600 dark:text-gray-300">
                 담은 이용권은 내 유어샵에 <b className="text-gray-900 dark:text-white">계속 남습니다</b>. 내 샵으로 팔릴 때마다 소개비가 붙어요.

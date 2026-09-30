@@ -169,7 +169,7 @@ export default function CouponClaimPage() {
 
               <p className="text-[12px] text-brand-text font-medium mb-1">{t('couponClaim.couponLabel')}</p>
               <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">{coupon.name}</p>
-              <p className="text-4xl font-black text-brand-text">
+              <p className="text-[34px] font-black text-brand-text">
                 {coupon.type === 'percent' ? `${coupon.value}%` : `${formatNumber(coupon.value)}원`}
               </p>
               <p className="text-[17px] font-bold text-gray-700 dark:text-gray-300 -mt-1">{t('couponClaim.discount')}</p>

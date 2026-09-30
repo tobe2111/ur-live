@@ -232,12 +232,18 @@ describe('⑥ 판매 도구 — 한 판, 자주 쓰는 셋이 맨 위 (2026-09-2
     expect(code).not.toContain('<GroupLabel>')
   })
 
-  it('🔵 도구 여덟 줄이 한 판 안에 있고, 자주 쓰는 셋이 맨 위다', () => {
+  /**
+   * 🎯 2026-09-30 재조준 — 여덟 줄 → **넷**(대표 확정, ⑥).
+   * 지키던 것 둘은 그대로다: *순서*(주문·이용권·정산이 먼저 = 옛 근육기억)와 *전체 도구의 존재*.
+   * 새로 지키는 것: **바로가기는 넷을 넘지 않는다.** 여덟이면 폰 한 화면(844px)이
+   * `전체 도구` 에서 정확히 끝나 손님 줄이 0이 된다(실측). 바로가기가 아홉이면 바로가기가 아니다.
+   */
+  it('🔵 바로가기가 넷이고, 자주 쓰는 셋이 맨 위다', () => {
     const labels = [...code.matchAll(/^\s*label="([^"]+)"$/gm)].map((m) => m[1])
-    expect(labels.length, '도구 줄을 못 셌다 — 이 검사가 헛돌고 있다').toBe(8)
+    expect(labels.length, '도구 줄을 못 셌다 — 이 검사가 헛돌고 있다').toBe(4)
     // 순서가 바뀌면 옛 근육기억이 깨진다 — 주문·이용권·정산이 먼저다.
     expect(labels.slice(0, 3)).toEqual(['주문', '이용권', '정산'])
-    expect(labels).toContain('전체 도구')
+    expect(labels[3], '마지막은 나머지로 가는 문이다').toBe('전체 도구')
   })
 
   it('전체 도구가 예시를 나열하지 않는다 (적으면 반드시 낡는다)', () => {
@@ -276,7 +282,9 @@ describe('⑦ 같은 일에 화면이 둘이 되지 않는다', () => {
     const covered = new Set([...table.matchAll(/:\s*'([a-z]+)',/g)].map((m) => m[1]))
     const rows = [...code.matchAll(/openTool\('([a-z]+)'\)/g)].map((m) => m[1])
       .filter((t) => t !== 'tools')
-    expect(rows.length).toBeGreaterThanOrEqual(7)
+    // 🎯 2026-09-30: 하한 7 → 4. 바로가기가 넷으로 줄었고(대표 확정 ⑥) `analytics` 는
+    //    오늘 카드가 연다. 하한의 일은 "몇 개여야 한다" 가 아니라 **매치 0으로 헛도는 것**을 막는 것이다.
+    expect(rows.length, '`openTool(...)` 를 하나도 못 찾았다 — 이 검사가 헛돌고 있다').toBeGreaterThanOrEqual(4)
     for (const t of new Set(rows)) {
       expect(covered, `묶음 줄 '${t}' 이 표에 없다 — 전체 도구에서 다른 화면이 열린다`).toContain(t)
     }

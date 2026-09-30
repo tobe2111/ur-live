@@ -97,7 +97,7 @@ export default function ReviewCard({ r }: { r: ReviewItem }) {
               <p className="text-[12px] font-bold text-blue-600 dark:text-blue-400 mb-1">
                 {t('reviews.sellerReplyLabel', { defaultValue: '매장 답글' })}
                 {r.seller_reply_at && (
-                  <span className="ml-1.5 font-normal text-gray-400 dark:text-gray-500">{formatKSTDate(r.seller_reply_at)}</span>
+                  <span className="ml-2 font-normal text-gray-400 dark:text-gray-500">{formatKSTDate(r.seller_reply_at)}</span>
                 )}
               </p>
               <p className="text-[13px] text-gray-700 dark:text-gray-200 leading-relaxed">{r.seller_reply}</p>

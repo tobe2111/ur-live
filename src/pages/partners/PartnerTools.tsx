@@ -60,7 +60,7 @@ export default function PartnerTools() {
   return (
     <section className="bg-surface">
       <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-32">
-        <h2 className="text-[26px] lg:text-[40px] xl:text-[46px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
+        <h2 className="text-[28px] lg:text-[40px] xl:text-[48px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
           사장님 폰에 뜨는 화면
         </h2>
 

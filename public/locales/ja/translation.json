@@ -634,7 +634,7 @@
   },
   "browse": {
     "title": "ショッピング",
-    "seoDesc": "ユアディール人気商品、グルメバウチャー、ライブ特価を発見",
+    "seoDesc": "UrDealの人気商品、近所のお店の利用券、交換券をお得に",
     "loadError": "商品を読み込めません。",
     "loadRetry": "商品を読み込めません。再試行してください。",
     "searchAria": "商品検索",
@@ -699,7 +699,7 @@
     "system": "システム",
     "light": "ライト",
     "dark": "ダーク",
-    "description": "ショッピング・決済・注文などホワイトテーマページに適用されます。マイページ／ホーム／ライブは常にダーク。",
+    "description": "システム / ライト / ダークから選択。システムはOSのダーク設定に従います。",
     "currentlyFollowing": "現在のOS：{{theme}}"
   },
   "myOrders": {
@@ -4785,7 +4785,7 @@
     "sellerNoContact": "販売者の連絡先が登録されていません",
     "emptyTitle": "注文履歴がありません",
     "emptyDesc": "お気に入りのパスや商品を探してみましょう",
-    "goToLive": "ライブを見る",
+    "goToLive": "ディールを見る",
     "trackingLink": "配送追跡",
     "paymentAmount": "決済金額",
     "won": "円",
@@ -4806,8 +4806,8 @@
     "skip": "スキップ",
     "welcomeTitle": "{{name}}さん、ようこそ！",
     "welcomeTitleDefault": "UrDealへようこそ！",
-    "welcomeDesc1": "ライブ配信を見てすぐ購入 —",
-    "welcomeDesc2": "韓国No.1ライブコマース",
+    "welcomeDesc1": "近所のグルメ・ビューティー・宿の利用券を",
+    "welcomeDesc2": "割引価格で買ってすぐ使える",
     "couponBadge": "新規会員クーポン",
     "couponAmount": "5,000ウォン割引",
     "couponDesc": "10,000ウォン以上のご購入に使用可 · 7日間有効",
@@ -4820,9 +4820,9 @@
     "step2Desc": "おすすめに使用します (1つ以上選択、変更可能)",
     "selectedCount": "選択: {{count}}個",
     "step3Title": "通知を受け取る",
-    "step3Desc": "ホットディールやライブ情報をお届けします",
+    "step3Desc": "見逃したくないホットディールをお知らせします",
     "alimtalkLabel": "カカオトークで受け取る",
-    "alimtalkDesc1": "ライブ開始 / ホットディール / 注文状況など",
+    "alimtalkDesc1": "ホットディール / 利用券の発行 / 注文状況など",
     "alimtalkDesc2": "無料通知 (広告なし)",
     "alimtalkNote1": "マイページ → 通知設定から",
     "alimtalkNote2": "いつでも変更できます。",
@@ -5633,8 +5633,8 @@
   },
   "introduce": {
     "navStart": "始める",
-    "seoTitle": "Ur-Deal - ライブコマース グルメ共同購入",
-    "seoDesc": "オーナーが直接行うライブコマース。地元グルメを特価で見つける最速の方法。",
+    "seoTitle": "UrDeal - ご近所の共同購入（グルメ・ビューティー・宿）",
+    "seoDesc": "近所のグルメ・ビューティー・宿をグループ特価で。一緒に買うほどお得、交換券は決済と同時に発行。",
     "heroLiveCount": "[TODO:ja] 지금 {{count}}명이 라이브 시청 중",
     "heroDesc": "地元の人気店の店主が自らライブ配信。リアルタイムで交流しながら、利用券・ミールキットを最大50%OFFで共同購入できます。",
     "heroCtaStart": "[TODO:ja] 지금 시작하기",
@@ -5845,7 +5845,7 @@
   "search.pageTitle": "Search - UrDeal",
   "search.errorMsg": "An error occurred while searching",
   "search.seoTitleQuery": "{{query}} search results - UrDeal",
-  "search.seoDesc": "Search for products on UrDeal. Find the best prices on live commerce products.",
+  "search.seoDesc": "UrDealで検索。近所のお店の利用券をお得に。",
   "reviews": {
     "heading": "レビュー",
     "writeBtn": "レビューを書く",
@@ -6022,7 +6022,7 @@
     "chargeDeals": "充電ディール",
     "afterBalance": "充電後残高",
     "noRefund": "充電済みディールは返金不可です",
-    "usageNote": "ライブ放送の支援と商品決済のみ使用可能です。",
+    "usageNote": "交換券の購入と商品決済にのみ使用できます。",
     "chargeHistory": "充電内訳",
     "paymentNoRefund": "決済完了後、充電済みディールは返金不可です。",
     "prev": "前へ",
@@ -6073,7 +6073,7 @@
   },
   "blog": {
     "listSeoTitle": "ブログ",
-    "listSeoDesc": "Ur-Dealライブコマースブログ — セラーガイド、トレンド、ヒント",
+    "listSeoDesc": "UrDealブログ：利用券・共同購入ガイドと近所のお店の話",
     "readBtn": "記事を読む"
   },
   "embed": {
@@ -6132,7 +6132,7 @@
     "errorInvalidEmail": "[TODO:ja] 유효하지 않은 이메일 형식입니다.",
     "errorWeakPassword": "[TODO:ja] 비밀번호가 너무 약합니다. 8자 이상 입력해주세요.",
     "seoTitle": "[TODO:ja] 회원가입 - 유어딜",
-    "seoDesc": "[TODO:ja] 유어딜에 가입하고 라이브 쇼핑을 시작하세요"
+    "seoDesc": "UrDealに登録して、近所のお店の利用券をお得に"
   },
   "following": {
     "title": "[TODO:ja] 팔로잉",
@@ -6997,7 +6997,7 @@
   "groupBuy.categoryEtc": "🎯 その他",
   "groupBuy.stayBadge": "宿泊",
   "roleCta": {
-    "myShortcuts": "マイショートカット",
+    "myShortcuts": "店舗を開く",
     "startNewRole": "新しい役割を始める",
     "linkshop": "マイUrShop",
     "linkshopDesc": "利用券を UrShop に並べて紹介しよう",

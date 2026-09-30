@@ -13,12 +13,13 @@
  *   3. 카테고리 탭 (편의점/카페/외식/도서 등) — KT Alpha categories
  */
 import { useEffect, useState, useRef, useCallback, useMemo, Fragment } from 'react'
+import { BagIcon } from '@/components/icons/urdeal-icons'
 import { saveListView } from '@/lib/list-view-cache'
 import { useListSeed } from './vouchers/warm-seed'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ChevronDown, ShoppingBag, Flame, Clock, Tag, ArrowDownWideNarrow, ArrowUpWideNarrow, Soup, Shirt, Sparkle, Sofa, Smartphone, type LucideIcon } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 // 🎟️ 2026-07-10 (대표 결정): 일반상품(쇼핑) 노출은 SHOPPING_TAB_HIDDEN 게이트 — 교환권은 유지.
 import { SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'
@@ -435,8 +436,8 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             {/* 카테고리 — 세로 리스트 */}
             {sections.length > 0 && (
               <div>
-                <h3 className="text-[11px] font-bold text-gray-400 dark:text-gray-500 mb-2 px-1">카테고리</h3>
-                <div className="space-y-0.5">
+                <h3 className="text-[12px] font-bold text-gray-400 dark:text-gray-500 mb-2 px-1">카테고리</h3>
+                <div className="space-y-1">
                   {sections.map(s => {
                     const active = s.category === category
                     return (
@@ -452,7 +453,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                       >
                         <CategoryIcon category={s.category} />
                         <span className="flex-1 text-left truncate">{s.category}</span>
-                        <span className={`text-[11px] tabular-nums ${active ? 'text-white/80' : 'text-gray-400 dark:text-gray-500'}`}>{s.count}</span>
+                        <span className={`text-[12px] tabular-nums ${active ? 'text-white/80' : 'text-gray-400 dark:text-gray-500'}`}>{s.count}</span>
                       </button>
                     )
                   })}
@@ -468,7 +469,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             {/* 인기 브랜드 — 상단 가로 스트립(대표 — 좌레일 하단은 불편 → 상품 바로 위로). */}
             {currentBrands.length > 0 && (
               <div className="mb-5 pb-4 border-b border-gray-100 dark:border-[#2C2F35]">
-                <h3 className="text-[11px] font-bold text-gray-400 dark:text-gray-500 mb-2">인기 브랜드</h3>
+                <h3 className="text-[12px] font-bold text-gray-400 dark:text-gray-500 mb-2">인기 브랜드</h3>
                 <div className="flex gap-3 overflow-x-auto scrollbar-hide py-1">
                   {orderedBrands.map(b => (
                     <BrandChip
@@ -482,15 +483,15 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
               </div>
             )}
             <div className="flex items-center justify-between gap-2 mb-4">
-              <h2 className="text-[19px] font-extrabold text-gray-900 dark:text-white flex items-center gap-2 min-w-0">
+              <h2 className="text-[17px] font-extrabold text-gray-900 dark:text-white flex items-center gap-2 min-w-0">
                 <span className="truncate">{brand ? brand : category ? category : '전체'} 교환권</span>
                 {/* 🐛 2026-08-17 (UX 전수검사 P1): 로드분 개수를 총계 자리에 그대로 쓰면 "커피/음료 775개"
                     카테고리가 "20"으로 읽힌다 — 더 있으면 `20+` 로 표기(정확한 총계 API 없음). */}
-                <span className="text-[14px] font-semibold text-gray-400 dark:text-gray-500 shrink-0">{hasMore ? `${products.length}+` : products.length}</span>
+                <span className="text-[15px] font-semibold text-gray-400 dark:text-gray-500 shrink-0">{hasMore ? `${products.length}+` : products.length}</span>
                 {brand && (
                   <button
                     onClick={() => setBrand('')}
-                    className="shrink-0 ml-1 inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-white/[0.08] text-gray-600 dark:text-gray-300 text-[11px] font-medium"
+                    className="shrink-0 ml-1 inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 dark:bg-white/[0.08] text-gray-600 dark:text-gray-300 text-[12px] font-medium"
                   >
                     해제 ✕
                   </button>
@@ -500,7 +501,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             </div>
 
             {products.length === 0 ? (
-              <div className="text-center py-20 text-gray-400 dark:text-gray-500 text-sm">
+              <div className="text-center py-20 text-gray-400 dark:text-gray-500 text-[15px]">
                 {brand ? `${brand} 교환권이 없습니다` : '교환권이 없습니다'}
               </div>
             ) : (
@@ -535,7 +536,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                     </button>
                   </div>
                 )}
-                {loadingMore && <div className="mt-4 text-center text-[11px] text-gray-400 dark:text-gray-500">로드 중...</div>}
+                {loadingMore && <div className="mt-4 text-center text-[12px] text-gray-400 dark:text-gray-500">로드 중...</div>}
               </>
             )}
           </main>
@@ -591,7 +592,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
       {sections.length === 0 && !sectionsReady && <ChipRowReserve />}
       {sections.length > 0 && (
         <div className="bg-warm dark:bg-[#11141C]">
-          <div className="ur-content-wide px-4 lg:px-8 py-2.5">
+          <div className="ur-content-wide px-4 lg:px-8 py-2">
             <div className="flex gap-2 overflow-x-auto scrollbar-hide">
               {sections.map(s => {
                 const active = s.category === category
@@ -600,7 +601,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                     key={s.category}
                     type="button"
                     onClick={() => setCategory(s.category)}
-                    className={`shrink-0 inline-flex items-center gap-1.5 h-9 pl-3 pr-3.5 rounded-full text-[13px] font-bold transition-colors ${
+                    className={`shrink-0 inline-flex items-center gap-2 h-9 pl-3 pr-4 rounded-full text-[13px] font-bold transition-colors ${
                       active
                         ? 'bg-brand text-white'
                         : 'bg-white dark:bg-[#1D1F29] text-gray-800 dark:text-gray-100 shadow-lift'
@@ -608,7 +609,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                   >
                     <CategoryIcon category={s.category} className="w-[15px] h-[15px]" />
                     {s.category}
-                    <span className={`text-[11px] tabular-nums ${active ? 'text-white/80' : 'text-gray-400'}`}>{s.count}</span>
+                    <span className={`text-[12px] tabular-nums ${active ? 'text-white/80' : 'text-gray-400'}`}>{s.count}</span>
                   </button>
                 )
               })}
@@ -631,12 +632,12 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
       {currentBrands.length === 0 && !sectionsReady && <BrandStripReserve open={brandsOpen} category={category} />}
       {currentBrands.length > 0 && (
         /* 🎫 2026-06-26 (대표 결정 A): 상단 레이어 정리 — 상품을 위로. py-4→pt-1.5/pb-3, 헤더/로고 컴팩트. */
-        <div className="ur-content-wide px-4 lg:px-8 pt-1.5 pb-3">
-          <div className="flex items-center justify-between mb-1.5">
+        <div className="ur-content-wide px-4 lg:px-8 pt-2 pb-3">
+          <div className="flex items-center justify-between mb-2">
             <button
               type="button"
               onClick={() => setBrandsOpen(v => !v)}
-              className="text-[12px] font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1.5"
+              className="text-[12px] font-bold text-gray-500 dark:text-gray-400 flex items-center gap-2"
             >
               <CategoryIcon category={category} />
               브랜드로 찾기
@@ -648,7 +649,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           {/* 🧭 2026-06-20 (사용자: 상품이 너무 아래로 밀림): /vouchers 도 홈처럼 1행 가로 스크롤로 압축 —
               12개 로고 그리드(3~4행)가 상품을 fold 아래로 밀던 주범. 클릭/ring 강조 동작 불변. */}
           {brandsOpen && (
-          <div className="flex gap-2.5 overflow-x-auto scrollbar-hide py-1 -mx-1 px-1">
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide py-1 -mx-1 px-1">
             {orderedBrands.map(b => (
               <BrandChip
                 key={b.brand_name}
@@ -669,7 +670,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           <span className="text-[12px] text-gray-500 dark:text-gray-400">필터:</span>
           <button
             onClick={() => setBrand('')}
-            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-100 dark:bg-white/[0.08] text-gray-600 dark:text-gray-300 text-[12px] font-medium"
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 dark:bg-white/[0.08] text-gray-600 dark:text-gray-300 text-[12px] font-medium"
           >
             {brand} ✕
           </button>
@@ -683,7 +684,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           {/* 🧹 2026-08-31: ① 선물 아이콘 제거 — 바로 아래 하단 탭의 '교환권' 아이콘과 **같은 그림**이라
               같은 화면에서 두 번 같은 말을 했고, 앰버 한 점이 이 화면의 유일한 색이라 시선만 끌었다.
               ② 0 은 세지 않는다 — 곧바로 아래 빈 상태가 같은 사실을 더 잘 말한다. */}
-          <h2 className="text-[16px] font-extrabold text-gray-900 dark:text-white flex items-center gap-1.5 min-w-0">
+          <h2 className="text-[15px] font-extrabold text-gray-900 dark:text-white flex items-center gap-2 min-w-0">
             <span className="truncate">{brand ? brand : category ? category : '전체'} 교환권</span>
             {!loading && products.length > 0 && (
               <span className="text-[13px] font-semibold text-gray-400 dark:text-gray-500 shrink-0">{hasMore ? `${products.length}+` : products.length}</span>
@@ -691,7 +692,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             {brand && (
               <button
                 onClick={() => setBrand('')}
-                className="shrink-0 ml-1 inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-white/[0.08] text-gray-600 dark:text-gray-300 text-[11px] font-medium"
+                className="shrink-0 ml-1 inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gray-100 dark:bg-white/[0.08] text-gray-600 dark:text-gray-300 text-[12px] font-medium"
               >
                 해제 ✕
               </button>
@@ -706,11 +707,11 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
         {loading ? (
           gridMode ? (
             // 🏠 홈/PC — 2/3/4/5열 그리드 카드 스켈레톤 (main 의 PC 확장 lg:4 xl:5 반영).
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-2">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="animate-pulse rounded-2xl overflow-hidden border border-gray-100 dark:border-[#2C2F35] bg-surface">
                   <div className="aspect-square bg-gray-100 dark:bg-[#1D1F29]" />
-                  <div className="px-2.5 pt-2 pb-2.5">
+                  <div className="px-2 pt-2 pb-2">
                     <div className="h-3 bg-gray-100 dark:bg-[#1D1F29] rounded w-3/4" />
                     <div className="h-3 mt-2 bg-gray-100 dark:bg-[#1D1F29] rounded w-1/2" />
                   </div>
@@ -721,7 +722,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             // 🎨 2026-06-20: /vouchers 1줄 리스트 스켈레톤 (이미지 좌측 + 텍스트 우측). PC 도 1열(사용자 요청).
             <div className="grid grid-cols-1">
               {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="animate-pulse flex items-center gap-3.5 py-3.5 border-b border-gray-100 dark:border-[#2C2F35]">
+                <div key={i} className="animate-pulse flex items-center gap-4 py-4 border-b border-gray-100 dark:border-[#2C2F35]">
                   <div className="w-[88px] h-[88px] sm:w-24 sm:h-24 shrink-0 rounded-2xl bg-gray-100 dark:bg-[#1D1F29]" />
                   <div className="flex-1">
                     <div className="h-3 bg-gray-100 dark:bg-[#1D1F29] rounded w-1/3" />
@@ -745,7 +746,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             <button
               type="button"
               onClick={() => { setBrand(''); setCategory('') }}
-              className="ur-btn ur-btn-md bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-4"
+              className="ur-btn ur-btn-primary ur-btn-md px-4"
             >
               전체 교환권 보기
             </button>
@@ -754,7 +755,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           <>
             {gridMode ? (
               // 🏠 홈/PC — 2/3/4/5열 그리드 카드 (main 의 PC 확장 lg:4 xl:5 반영).
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-2">
                 {displayProducts.slice(0, embedVisible).map((p, idx) => (
                   <Fragment key={p.id}>
                     <VoucherCard p={p} aboveFold={idx < 4} />
@@ -785,7 +786,7 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
                       const np = page + 1; setPage(np); loadProducts(np, false)
                     }
                   }}
-                  className="w-full flex items-center justify-center gap-1.5 h-12 rounded-2xl bg-gray-100 dark:bg-[#1D1F29] text-[13px] font-bold text-gray-700 dark:text-gray-200 active:scale-[0.99] transition-transform"
+                  className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl bg-gray-100 dark:bg-[#1D1F29] text-[13px] font-bold text-gray-700 dark:text-gray-200 active:scale-[0.99] transition-transform"
                 >
                   {t('home.moreVouchers', { defaultValue: '교환권 더보기' })}
                   {embedTotalSteps && embedTotalSteps > 1 && (
@@ -798,9 +799,9 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
             {/* 더보기 로딩 표시 (sentinel — 교환권 무한관찰은 비활성, 더보기 버튼이 로드 담당).
                 '마지막' 표시는 홈(embedded)만 — /vouchers 는 이 아래로 쇼핑 섹션이 이어져 '마지막'이 아님. */}
             <div ref={loadMoreRef} className="h-10 flex items-center justify-center mt-4">
-              {loadingMore && <div className="text-[11px] text-gray-400 dark:text-gray-500">로드 중...</div>}
+              {loadingMore && <div className="text-[12px] text-gray-400 dark:text-gray-500">로드 중...</div>}
               {embedded && !hasMore && products.length > 0 && (
-                <div className="text-[11px] text-gray-400 dark:text-gray-500">— 마지막 —</div>
+                <div className="text-[12px] text-gray-400 dark:text-gray-500">— 마지막 —</div>
               )}
             </div>
           </>
@@ -812,9 +813,9 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
           순수 교환권 페이지(인플 딜포인트→교환권 구매 경로 보존). 플래그 false 로 즉시 복원(가역). */}
       {!embedded && !SHOPPING_TAB_HIDDEN && (
         <section ref={shoppingRef} className="scroll-mt-14 mt-2 border-t-8 border-gray-50 dark:border-[#1D1F29]">
-          <div className="ur-content-wide px-4 lg:px-8 pt-5 pb-1 flex items-center gap-1.5">
-            <ShoppingBag className="w-[18px] h-[18px] text-gray-900 dark:text-white" />
-            <h2 className="text-[16px] font-extrabold text-gray-900 dark:text-white">쇼핑</h2>
+          <div className="ur-content-wide px-4 lg:px-8 pt-5 pb-1 flex items-center gap-2">
+            <BagIcon className="w-[18px] h-[18px] text-gray-900 dark:text-white" />
+            <h2 className="text-[15px] font-extrabold text-gray-900 dark:text-white">쇼핑</h2>
           </div>
           <ShoppingGrid />
         </section>

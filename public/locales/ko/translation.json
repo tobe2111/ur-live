@@ -634,7 +634,7 @@
   },
   "browse": {
     "title": "쇼핑",
-    "seoDesc": "유어딜 인기 상품, 맛집 바우처, 라이브 특가를 만나보세요",
+    "seoDesc": "유어딜 인기 상품, 동네 가게 이용권, 교환권을 할인가로 만나보세요",
     "loadError": "상품을 불러올 수 없습니다.",
     "loadRetry": "상품을 불러올 수 없습니다. 다시 시도해주세요.",
     "searchAria": "상품 검색",
@@ -699,7 +699,7 @@
     "system": "시스템",
     "light": "라이트",
     "dark": "다크",
-    "description": "쇼핑·결제·주문 등 화이트 테마 페이지에 적용됩니다. 마이페이지/홈/라이브는 항상 다크 테마.",
+    "description": "시스템 / 라이트 / 다크 중 선택. 시스템 모드는 OS 다크 설정을 따라갑니다.",
     "currentlyFollowing": "현재 OS: {{theme}}"
   },
   "myOrders": {
@@ -4806,8 +4806,8 @@
     "skip": "건너뛰기",
     "welcomeTitle": "{{name}}님, 환영해요!",
     "welcomeTitleDefault": "유어딜에 오신 걸 환영해요!",
-    "welcomeDesc1": "라이브 방송으로 보고 바로 사는",
-    "welcomeDesc2": "한국 1위 라이브 커머스",
+    "welcomeDesc1": "동네 맛집·뷰티·숙소 이용권을",
+    "welcomeDesc2": "할인가로 사고 바로 쓰는 곳",
     "couponBadge": "신규 환영 쿠폰",
     "couponAmount": "5,000원 할인",
     "couponDesc": "10,000원 이상 구매 시 사용 가능 · 7일 유효",
@@ -4820,9 +4820,9 @@
     "step2Desc": "맞춤 추천에 사용돼요 (1개 이상 선택, 변경 가능)",
     "selectedCount": "선택한 카테고리: {{count}}개",
     "step3Title": "알림 받기",
-    "step3Desc": "놓치면 아쉬운 핫딜·라이브 소식을 알려드려요",
+    "step3Desc": "놓치면 아쉬운 핫딜·마감 임박 소식을 알려드려요",
     "alimtalkLabel": "카카오 알림톡으로 받기",
-    "alimtalkDesc1": "라이브 시작 / 핫딜 / 주문 상태 등",
+    "alimtalkDesc1": "핫딜 / 이용권 발급 / 주문 상태 등",
     "alimtalkDesc2": "카톡으로 무료 알림 (광고성 정보 제외)",
     "alimtalkNote1": "마이페이지 → 알림 설정에서",
     "alimtalkNote2": "언제든지 변경 가능합니다.",
@@ -5696,7 +5696,7 @@
     "errorInvalidEmail": "유효하지 않은 이메일 형식입니다.",
     "errorWeakPassword": "비밀번호가 너무 약합니다. 8자 이상 입력해주세요.",
     "seoTitle": "회원가입 - 유어딜",
-    "seoDesc": "유어딜에 가입하고 라이브 쇼핑을 시작하세요"
+    "seoDesc": "유어딜에 가입하고 동네 가게 이용권을 할인가로 만나보세요"
   },
   "faq": {
     "title": "자주 묻는 질문",
@@ -6094,7 +6094,7 @@
   "search.pageTitle": "검색 - 유어딜",
   "search.errorMsg": "검색 중 오류가 발생했습니다",
   "search.seoTitleQuery": "{{query}} 검색결과 - 유어딜",
-  "search.seoDesc": "유어딜에서 원하는 상품을 검색하세요. 라이브 커머스 최저가 상품을 만나보세요.",
+  "search.seoDesc": "유어딜에서 원하는 이용권을 검색하세요. 동네 가게 할인 이용권을 만나보세요.",
   "reviews": {
     "heading": "리뷰",
     "writeBtn": "리뷰 작성하기",
@@ -6271,7 +6271,7 @@
     "chargeDeals": "충전 딜",
     "afterBalance": "충전 후 잔액",
     "noRefund": "충전된 딜은 환불이 불가합니다",
-    "usageNote": "라이브 방송 후원 및 상품 결제에만 사용 가능합니다.",
+    "usageNote": "교환권 구매와 상품 결제에만 사용 가능합니다.",
     "chargeHistory": "충전 내역",
     "paymentNoRefund": "결제 완료 시 충전된 딜은 환불이 불가합니다.",
     "prev": "이전",
@@ -6322,7 +6322,7 @@
   },
   "blog": {
     "listSeoTitle": "블로그",
-    "listSeoDesc": "유어딜 라이브 커머스 블로그 — 셀러 가이드, 트렌드, 팁",
+    "listSeoDesc": "유어딜 블로그. 이용권과 교환권, 동네딜, 유어샵 가이드와 서비스 소식",
     "readBtn": "글 읽기"
   },
   "embed": {
@@ -6993,7 +6993,7 @@
   "groupBuy.categoryEtc": "🎯 기타",
   "groupBuy.stayBadge": "숙박",
   "roleCta": {
-    "myShortcuts": "내 바로가기",
+    "myShortcuts": "가게 열기",
     "startNewRole": "추가 역할로 시작하기",
     "linkshop": "내 유어샵",
     "linkshopDesc": "이용권을 담아 진열하고 소개해요",

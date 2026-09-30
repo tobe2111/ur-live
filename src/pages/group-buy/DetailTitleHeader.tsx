@@ -38,11 +38,11 @@ export default function DetailTitleHeader({
         <div className="text-[12px] font-bold tracking-[.01em] text-brand">
           {storeName} · 정식 등록 매장
           {onnuri && (
-            <span className="ml-1.5 px-2 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[12px] font-bold align-middle">온누리 사용 가능</span>
+            <span className="ml-2 px-2 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[12px] font-bold align-middle">온누리 사용 가능</span>
           )}
         </div>
       )}
-      <h1 className="mt-2 text-[29px] leading-[1.24] font-black tracking-[-.028em] text-gray-900 dark:text-white">{name}</h1>
+      <h1 className="mt-2 text-[28px] leading-[1.24] font-black tracking-[-.028em] text-gray-900 dark:text-white">{name}</h1>
       <div className="mt-2 flex items-center gap-2 flex-wrap text-[13px] text-gray-500 dark:text-gray-400">
         {hasRating && (
           <span className="inline-flex items-center gap-2">

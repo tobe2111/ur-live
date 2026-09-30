@@ -12,8 +12,10 @@ export default [
   {
     name: '🚪 `/my-store` 버튼이 마이 최하단에 되살아난다 (로그아웃 바로 위)',
     file: 'src/pages/UserProfilePage.tsx',
-    find: "      {/* 🚪 2026-09-28 (대표 확정) — **'내 매장' 버튼을 없앴다.**",
-    replace: "      {!!localStorage.getItem('seller_token') && (\n        <button type=\"button\" onClick={() => navigate('/my-store')}>내 매장</button>\n      )}\n      {/* 🚪 2026-09-28 (대표 확정) — **'내 매장' 버튼을 없앴다.**",
+    // 🔁 2026-09-30 재조준: 앵커였던 09-28 주석 블록이 하단 정리(대표 *"맨 하단도 좀 정리해야"*)에서
+    //   통째로 사라졌다. 불변식(*`/my-store` 로 가는 문이 마이에 되살아나지 않는다*)은 그대로다.
+    find: "        <DeleteAccountLink />",
+    replace: "        <button type=\"button\" onClick={() => navigate('/my-store')}>내 매장</button>\n        <DeleteAccountLink />",
     test: TEST,
     why: '맨 위 `내 가게` 섹션과 같은 일을 하는 297줄짜리 별도 페이지로 가는 문이다 — 도구가 하나 늘면 두 곳을 고쳐야 한다.',
   },
@@ -34,11 +36,17 @@ export default [
     why: '그 페이지가 있던 이유는 마이 `내 가게` 섹션이 대신한다 — 되살리면 도구가 늘 때 두 곳을 고쳐야 하고 반드시 한쪽을 잊는다.',
   },
   {
-    name: '🚪 넓은 화면으로 가는 **유일한** 문(최하단 전환)이 사라진다',
+    /**
+     * 🔁 **2026-09-30 방향이 뒤집혔다** (대표 *"셀러 대시보드로 전환도 이젠 필요없잖아"*).
+     * 09-28 엔 *"사라지는 것"* 이 사고였는데(그때는 그 문이 하나뿐이었다), §14 가 도구를 전부
+     * 마이 안으로 들여오면서 **되살아나는 것**이 사고가 됐다 — 같은 일을 하는 셋째 문이다.
+     * 지키는 것은 그때나 지금이나 *문이 하나다* 이고, 그 하나가 어디냐만 바뀌었다.
+     */
+    name: '🚪 최하단 전환 버튼이 되살아난다 (판매로 가는 셋째 문)',
     file: 'src/pages/UserProfilePage.tsx',
-    find: "              localStorage.setItem('active_role', 'seller')",
-    replace: "              // 지워졌다",
+    find: "        <DeleteAccountLink />",
+    replace: "        <button type=\"button\" onClick={() => { localStorage.setItem('active_role', 'seller'); window.location.href = '/seller' }}>전환</button>\n        <DeleteAccountLink />",
     test: TEST,
-    why: '②③ 를 없앤 지금 이 문이 하나뿐이다 — 사라지면 대시보드가 닿을 수 없는 화면이 된다(조용한 부재).',
+    why: '마이 안 판매 구역과 목적지가 겹친다 — 같은 일을 하는 문이 둘이면 한쪽만 고쳐지는 날이 온다(09-28 에 실제로 그랬다).',
   },
 ]

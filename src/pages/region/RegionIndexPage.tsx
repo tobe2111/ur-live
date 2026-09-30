@@ -50,7 +50,7 @@ export default function RegionIndexPage() {
         </nav>
 
         <header className="mb-6">
-          <h1 className="text-[24px] lg:text-[26px] font-black tracking-tight text-gray-900 dark:text-white">
+          <h1 className="text-[24px] lg:text-[28px] font-black tracking-tight text-gray-900 dark:text-white">
             지역별 이용권·동네딜
           </h1>
           <p className="mt-2 text-[13px] lg:text-[15px] text-gray-500 dark:text-gray-400">

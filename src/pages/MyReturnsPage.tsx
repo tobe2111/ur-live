@@ -63,7 +63,7 @@ export default function MyReturnsPage() {
             </div>
           ) : returns.length === 0 ? (
             <div className="text-center py-16">
-              <p className="text-5xl mb-3">📦</p>
+              <p className="text-[48px] mb-3">📦</p>
               <p className="text-[15px] text-gray-500 dark:text-gray-400">{t('returns.empty', { defaultValue: '반품 내역이 없습니다' })}</p>
             </div>
           ) : (

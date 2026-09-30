@@ -85,7 +85,7 @@ export default function SheetFilterBar({
         >
           <SlidersHorizontal className="w-3.5 h-3.5" />
           {activeFilterCount > 0 && (
-            <span className="ml-0.5 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-white dark:bg-[#11141C]/25 text-[12px] font-bold">
+            <span className="ml-1 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-white dark:bg-[#11141C]/25 text-[12px] font-bold">
               {activeFilterCount}
             </span>
           )}

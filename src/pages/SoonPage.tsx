@@ -41,7 +41,7 @@ export default function SoonPage() {
       <SEO title="오픈 예정 - 유어딜" description="아직 문을 열지 않은 매장의 딜. 사전 응모를 받는 곳은 지금 응모할 수 있어요." url="/soon" />
 
       <header className="ur-content-wide px-4 lg:px-8 pt-7 pb-5">
-        <h1 className="text-[24px] sm:text-[27px] font-extrabold tracking-tight">오픈 예정</h1>
+        <h1 className="text-[24px] sm:text-[28px] font-extrabold tracking-tight">오픈 예정</h1>
         <p className="mt-2 text-[13px] leading-relaxed text-gray-600 dark:text-gray-300">
           아직 문을 열지 않은 매장이에요. 사전 응모를 받는 곳은 카드를 눌러 지금 응모할 수 있어요.
           {/* 🔕 "오픈하면 알려드려요" 라고 쓰지 않는다 — 오픈 알림을 보내는 코드가 없다.

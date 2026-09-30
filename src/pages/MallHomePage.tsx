@@ -205,7 +205,7 @@ export default function MallHomePage() {
                 <InfoIcon className="w-[13px] h-[13px] flex-none mt-[2px]" />
                 <span className="min-w-0">
                   <span className="font-bold">{n.title}</span>
-                  {n.body && <span className="ml-1.5 font-medium opacity-80">{n.body}</span>}
+                  {n.body && <span className="ml-2 font-medium opacity-80">{n.body}</span>}
                 </span>
               </span>
             )

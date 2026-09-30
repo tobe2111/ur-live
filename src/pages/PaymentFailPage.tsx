@@ -106,7 +106,7 @@ export default function PaymentFailPage() {
             <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full ${heroIconBg} mb-4`}>
               <HeroIcon className={`h-12 w-12 ${heroIconColor}`} />
             </div>
-            <h1 className="text-3xl font-bold text-[#1d1d1f] dark:text-white mb-2">{heroTitle}</h1>
+            <h1 className="text-[28px] font-bold text-[#1d1d1f] dark:text-white mb-2">{heroTitle}</h1>
             <p className="text-[#6e6e73] dark:text-gray-400">{heroSub}</p>
           </div>
 

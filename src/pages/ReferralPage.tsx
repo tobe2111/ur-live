@@ -333,12 +333,12 @@ export default function ReferralPage() {
             {currentDiscount > 0 ? (
               <>
                 <p className="text-[12px] text-gray-600 dark:text-gray-300 mb-1">현재 적용 할인</p>
-                <p className="text-3xl font-bold text-brand-text">{currentDiscount}% 할인 적용 중!</p>
+                <p className="text-[28px] font-bold text-brand-text">{currentDiscount}% 할인 적용 중!</p>
               </>
             ) : (
               <>
                 <p className="text-[12px] text-gray-600 dark:text-gray-300 mb-1">현재 참여 인원</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">{group.current_count}명</p>
+                <p className="text-[28px] font-bold text-gray-900 dark:text-white">{group.current_count}명</p>
               </>
             )}
             {group.next_tier && (

@@ -62,33 +62,58 @@ export default [
     test: TEST,
     why: '최상위가 빠지면 검사 대상이 3,576 → 1,000대로 줄어 `seen` 하한이 잡는다. 하한이 없으면 조용히 "지키는 척" 이 된다.',
   },
+
+
+
+  // ── 🖼️ 디스플레이 스케일 (2026-09-30 대표 결정으로 이행) ──
   {
-    // 🔒 잠금표 제외가 **아무 파일이나 빠져나가는 문**이 되면 안 된다.
-    name: '🔒 잠금표 제외가 아무 파일이나 받아 준다 (검사 탈출구)',
-    file: 'src/tests/unit/consumer-type-scale-2026-09-29.test.ts',
-    find: 'const LOCKED = files.filter((f) => LOCK_ROWS.has(f) || f in MIRRORS)',
-    replace: "const LOCKED = files.filter((f) => LOCK_ROWS.has(f) || f in MIRRORS || f.includes('curator-page'))",
+    name: '🖼️ 디스플레이 크기가 다시 스케일 밖으로 샌다 (28 옆에 30)',
+    file: 'src/pages/CreatorsPage.tsx',
+    find: '<h1 className="text-[28px] sm:text-[40px] lg:text-[48px] xl:text-[60px] leading-[1.22] font-extrabold tracking-[-0.035em]">',
+    replace: '<h1 className="text-[30px] sm:text-[40px] lg:text-[48px] xl:text-[60px] leading-[1.22] font-extrabold tracking-[-0.035em]">',
     test: TEST,
-    why: 'CLAUDE.md 잠금표에 없는 파일이 제외 목록에 들어가면 그 화면은 조용히 정본 밖으로 나간다.',
+    why: '28 과 30 은 눈에 거의 안 보이는 차이인데 체계는 무너진다 — 이행 전 25단계가 정확히 그렇게 자랐다.',
   },
   {
-    // 🪞 2026-09-29: 이 세션이 실제로 그렇게 깨뜨렸다 — 코드모드가 `TopChromeReserve` 를 정본으로
-    //    이행시켜 **잠긴 `VouchersPage` 와 거울이 깨졌고**, 그 파일이 막으려던 10px 밀림이 돌아왔다.
-    //    거울을 제외 목록에서 빼면 다음 세션이 같은 길로 간다.
-    name: '🪞 잠금 파일의 그림자를 정본으로 끌고 간다 (거울이 깨진다)',
-    file: 'src/tests/unit/consumer-type-scale-2026-09-29.test.ts',
-    find: "  'src/pages/vouchers/TopChromeReserve.tsx': 'src/pages/VouchersPage.tsx',",
-    replace: '',
+    name: '🖼️ tailwind 디스플레이 단계가 다시 섞인다 (디스플레이도 체계가 둘)',
+    file: 'src/pages/CreatorsPage.tsx',
+    find: 'text-[17px] lg:text-[34px] font-extrabold text-ink leading-[1.35] tracking-[-0.025em]',
+    replace: 'text-[17px] lg:text-4xl font-extrabold text-ink leading-[1.35] tracking-[-0.025em]',
     test: TEST,
-    why: '거울이 제외에서 빠지면 그 파일을 4px 격자로 옮기게 되고, 잠긴 원본은 못 따라와 예약 높이가 어긋난다.',
+    why: '본문은 `text-[Npx]` 인데 디스플레이만 tailwind 단계를 쓰면 같은 화면에 두 체계가 선다.',
   },
   {
-    // 🪞 거울이 **잠기지 않은 파일**을 가리키면 그것도 탈출구다.
-    name: '🪞 거울이 잠금표 밖 파일을 가리킨다 (또 하나의 탈출구)',
-    file: 'src/tests/unit/consumer-type-scale-2026-09-29.test.ts',
-    find: "  'src/pages/vouchers/TopChromeReserve.tsx': 'src/pages/VouchersPage.tsx',",
-    replace: "  'src/pages/vouchers/TopChromeReserve.tsx': 'src/pages/vouchers/shared.tsx',",
+    // 🕳️ 96 초과 예외가 **진짜 글자의 탈출구**가 되는 자리.
+    name: '🖼️ 그래픽 예외로 진짜 글자가 샌다 (select-none 없는 200px)',
+    file: 'src/pages/NotFoundPage.tsx',
+    find: 'text-[140px] md:text-[200px] bg-[#6b7280] bg-clip-text text-transparent select-none',
+    replace: 'text-[140px] md:text-[200px] bg-[#6b7280] bg-clip-text text-transparent',
     test: TEST,
-    why: '원본이 잠겨 있지 않다면 그 파일은 정본으로 이행하면 될 일이고, 거울이라고 부를 이유가 없다.',
+    why: '`select-none` 을 떼면 그것은 읽는 글자다 — 그러면 스케일 밖 크기를 "그래픽이라" 며 통과시킬 수 없어야 한다.',
   },
+  {
+    // 🩸 코드모드가 실제로 만든 결함 클래스 — 브레이크포인트가 아무 일도 안 한다.
+    name: '🖼️ 반응형 사다리가 다시 붕괴한다 (sm 과 lg 가 같은 값)',
+    file: 'src/pages/partners/PartnerHero.tsx',
+    find: '<h1 className="text-[34px] sm:text-[48px] lg:text-[60px] leading-[1.14] font-extrabold tracking-[-0.035em]">',
+    replace: '<h1 className="text-[34px] sm:text-[60px] lg:text-[60px] leading-[1.14] font-extrabold tracking-[-0.035em]">',
+    test: TEST,
+    why: 'sm 과 lg 가 같으면 그 브레이크포인트는 존재하지 않는 것과 같은데 빌드도 화면도 안 깨진다 — 조용한 결함.',
+  },
+  {
+    // 🛡️ 가드가 **자기 기준을 헐겁게** 만드는 길을 막는다(래칫 상향·허용목록 확장과 같은 클래스).
+    name: '🛡️ 가드가 스스로 디스플레이 스케일을 넓힌다 (문서와 갈린다)',
+    file: TEST,
+    find: 'const DISPLAY = new Set([28, 34, 40, 48, 60, 76, 96])',
+    replace: 'const DISPLAY = new Set([28, 30, 34, 40, 48, 60, 76, 96])',
+    test: TEST,
+    why: '정본은 CLAUDE.md 규칙 ⑧ 에 있다 — 코드가 거기서 벗어나면 문서를 믿는 다음 세션이 오판한다.',
+  },
+  /**
+   * 🗑️ 2026-09-30 — 잠금표 제외·거울 주입 3건을 **지웠다**(재조준이 아니다).
+   * 대표 승인으로 잠금표 12파일을 정본으로 옮기면서 `LOCKED`·`MIRRORS`·`LOCKED_BASELINE` 자체가
+   * 가드에서 사라졌다 — **지키던 대상이 없어진 주입**은 남겨 둬도 아무것도 검증하지 않는다.
+   * 제외 목록이 없어졌다고 탈출구가 없는 건 아니다: 범위 필터(`.filter(admin|seller|…)`)가 그
+   * 자리를 대신하고, 그건 위 '경로가 낡아 대상 0' 주입이 이미 지킨다.
+   */
 ]

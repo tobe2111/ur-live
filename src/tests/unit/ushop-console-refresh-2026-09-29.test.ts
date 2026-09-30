@@ -117,7 +117,8 @@ describe('④ 소개 콘솔 — 확정 디자인 시스템', () => {
   it('요약은 한 판 — 주인공 숫자가 크다', () => {
     const earn = read('src/pages/curator-earnings/EarningsPanel.tsx')
     expect(earn.length, '측정이 비어 있지 않다').toBeGreaterThan(1500)
-    expect(earn, '30px 주인공 숫자').toMatch(/text-\[30px\]/)
+    // 🔧 2026-09-30: 디스플레이 스케일 이행으로 30 → **28**(최근접 rung, −2px). 계약은 그대로 — 숫자가 주인공이다.
+    expect(earn, '28px 주인공 숫자').toMatch(/text-\[28px\]/)
     expect(console_, '3열 균등 카드로 되돌아가지 않았다').not.toMatch(/grid-cols-3/)
   })
 })

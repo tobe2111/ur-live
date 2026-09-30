@@ -24,8 +24,10 @@ describe('🪙 확정 구조 (안 A3)', () => {
   it('숫자는 28px — 안 B 의 치수 — 대표 확정 B + main #1568 타입 스케일(28/24/17/15/13/12)', () => {
     expect(card).toMatch(/text-\[28px\]/)
     expect(card).toMatch(/text-\[17px\]/)
-    // 🔴 종전 두 층 카드(42px)로 되돌아가면 빨간불 — 그게 152px 짜리였다.
-    expect(card).not.toMatch(/text-\[42px\]/)
+    /* 🔴 종전 두 층 카드로 되돌아가면 빨간불 — 그게 152px 짜리였다.
+       🔧 머지 재조준: main #1579 의 디스플레이 스케일 이행으로 그 값이 **42 → 40**. 42 는 이제
+          코드 어디에도 없어(스케일 밖), 그대로 두면 이 단언이 아무것도 안 지킨다. */
+    expect(card).not.toMatch(/text-\[40px\]/)
   })
 
   // 행동 둘을 가르는 실제 코드 경계(B 는 **세로** 선 하나뿐 — 가로 rule 은 없다).
@@ -74,7 +76,9 @@ describe('🪙 확정 구조 (안 A3)', () => {
   it('🔴 잔액 0 은 큰 카드를 쓰지 않는다 — 첫 진입이 "당신은 0" 이 되지 않게', () => {
     expect(card).toMatch(/if \(!balance && !awaiting\)/)
     const zero = card.slice(card.indexOf('if (!balance && !awaiting)'), card.indexOf('내 딜 잔액'))
-    expect(zero).not.toMatch(/text-\[42px\]/)
+    // 🔴 표식은 **지금 살아 있는 큰 숫자**여야 한다(안 B 는 28px). 42/40 을 그대로 두면 그 값이
+    //   코드 어디에도 없어 이 단언이 늘 통과한다 — 머지에서 실제로 그렇게 될 뻔했다.
+    expect(zero).not.toMatch(/text-\[28px\]/)
   })
 
   it('🔴 기다리는 카드는 **로그인한 사람에게만** — 비로그인은 종전대로 한 줄 바다', () => {

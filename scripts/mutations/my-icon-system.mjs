@@ -49,10 +49,13 @@ export default [
     why: '`base` 한 줄이 32개 아이콘 전부를 정한다 — 여기가 2가 되면 한글 라벨 옆에서 아이콘만 튄다.',
   },
   {
+    // 🔁 2026-09-30 재조준: `SettingsGroup` 이 접이식을 버리면서(대표 *"왜 굳이 열고 닫게"*)
+    //   그 파일의 아이콘 import 가 통째로 사라졌다. 불변식(*세트에 없는 이름은 런타임에 빈 자리*)은
+    //   그대로라 같은 구역의 형제 파일로 옮긴다.
     name: '🎨 세트에 없는 이름을 import 한다',
-    file: 'src/pages/user-profile/SettingsGroup.tsx',
-    find: "import { SettingsIcon } from '@/components/icons/urdeal-icons'",
-    replace: "import { SettingsIcon, GearIcon } from '@/components/icons/urdeal-icons'",
+    file: 'src/pages/user-profile/ShoppingGroup.tsx',
+    find: "  TicketStubIcon, CouponIcon, GiftBoxIcon,",
+    replace: "  TicketStubIcon, CouponIcon, GiftBoxIcon, GearIcon,",
     test: TEST,
     why: '이름만 맞고 실물이 없으면 런타임에 빈 자리가 된다(번들러가 조용히 undefined 를 준다).',
   },
