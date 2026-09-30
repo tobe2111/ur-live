@@ -621,10 +621,7 @@ export default function ProductDetailPage() {
         {/* v4 공동구매 배너 (다크 카드) */}
         {product.category === 'meal_voucher' && (product.group_buy_target ?? 0) > 0 && (
           <div className="px-5 py-5">
-            {/* 🚑 2026-07-02 (상세 리뷰): ChevronRight 로 클릭 유도하면서 onClick 없던 dead 어포던스 → 공구 상세로 배선 */}
-            {/* 주 버튼이 아니라 **클릭 가능한 다크 정보 패널**(공구 안내 카드)이다. 브랜드 블루로 칠하면
-                아래 진짜 CTA 와 같은 색의 큰 면이 둘이 되어 무엇을 눌러야 하는지 흐려진다. 가드 머리말도
-                `bg-gray-900` 단독을 "카드 바탕·스크림의 정상 용법" 이라 적었다 — `role="button"` 때문에 창에 걸렸다. */}
+            {/* 🚑 2026-07-02: ChevronRight 인데 onClick 없던 dead 어포던스 → 공구 상세 배선 · 🔵 주 버튼이 아니라 클릭 가능한 다크 패널이다(블루면 진짜 CTA 와 같은 색 큰 면이 둘) */}
             <div className="rounded-2xl p-4 bg-gray-900 text-white cursor-pointer active:scale-[0.99] transition-transform" role="button" tabIndex={0} /* primary-button-ok */
               onClick={() => navigate(`/pass/${id}`)}
               onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/pass/${id}`) }}>

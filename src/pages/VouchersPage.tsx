@@ -13,13 +13,13 @@
  *   3. 카테고리 탭 (편의점/카페/외식/도서 등) — KT Alpha categories
  */
 import { useEffect, useState, useRef, useCallback, useMemo, Fragment } from 'react'
-import { BagIcon, ClockIcon } from '@/components/icons/urdeal-icons'
+import { BagIcon } from '@/components/icons/urdeal-icons'
 import { saveListView } from '@/lib/list-view-cache'
 import { useListSeed } from './vouchers/warm-seed'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ChevronDown, Flame, Tag, ArrowDownWideNarrow, ArrowUpWideNarrow, Soup, Shirt, Sparkle, Sofa, Smartphone, type LucideIcon } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 // 🎟️ 2026-07-10 (대표 결정): 일반상품(쇼핑) 노출은 SHOPPING_TAB_HIDDEN 게이트 — 교환권은 유지.
 import { SHOPPING_TAB_HIDDEN } from '@/shared/feature-flags'

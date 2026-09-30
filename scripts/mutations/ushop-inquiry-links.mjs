@@ -79,4 +79,19 @@ export default [
       '골랐다**(2026-09-28 `AskUserQuestion`). 다음 세션이 규칙만 보고 조용히 바꾸는 것을 막는다 — ' +
       '바꾸려면 규칙이 아니라 대표에게 물을 것.',
   },
+  {
+    name: '🖥️ 유입 링크가 진열대 칸 밖으로 나간다 (PC 2단에서 어느 칸과도 안 맞음)',
+    file: 'src/pages/CuratorPage.tsx',
+    find: `            {!isOwner && <ShopInquiryLinks />}
+        </div>
+        </div>`,
+    replace: `        </div>
+        </div>
+        {!isOwner && <ShopInquiryLinks />}`,
+    test: 'src/tests/unit/ushop-inquiry-links-2026-09-28.test.ts',
+    why:
+      '칸 밖에서는 자기 `max-w-3xl mx-auto` 가 **1,440px 페이지 한가운데**를 잡아 485~665 에 뜬다 — ' +
+      '좌 프로필 칸(210~630)과도 줄(685~)과도 안 맞는다(2026-09-28 실측). ' +
+      '순서는 그대로라 "목록 뒤" 단언은 통과한다 — 그래서 칸 경계를 따로 본다.',
+  },
 ]

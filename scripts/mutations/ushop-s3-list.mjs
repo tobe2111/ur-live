@@ -58,14 +58,20 @@ export default [
       '(정렬 한 번으로 번호가 바뀌는 것 — ①과 같은 귀속 사고).',
   },
   {
-    name: 's3 — 목록이 2열 격자로 되돌아간다',
+    /**
+     * 🎯 2026-09-30 재조준 — 앵커가 `space-y-2` 였는데 안 A 로 `grid gap-2 ur-ushop-rows` 가 됐다.
+     * **지키려던 것은 그대로 살아 있다**: *폰에서 한 열*. 안 A 의 2열은 `.ur-ushop-main
+     * .ur-ushop-rows`(lg+ CSS)라 폰에 안 닿는다. 되살아나면 안 되는 것은 **폭 무관 2열**이다.
+     */
+    name: 's3 — 목록이 폰에서도 2열 격자가 된다',
     file: 'src/pages/CuratorPage.tsx',
-    find: 'className="max-w-3xl mx-auto px-4 pb-4 space-y-2"',
-    replace: 'className="max-w-3xl mx-auto px-4 pb-4 grid grid-cols-2 gap-2"',
+    find: 'className="max-w-3xl mx-auto px-4 pb-4 grid gap-2 ur-ushop-rows"',
+    replace: 'className="max-w-3xl mx-auto px-4 pb-4 grid grid-cols-2 gap-2 ur-ushop-rows"',
     test: 'src/tests/unit/ushop-s3-list-2026-09-28.test.ts',
     why:
       '유어샵은 3곳·최다 5개다. 2열 격자는 그 수에서 첫 화면에 1.5개만 보여 줬고 ' +
-      '헤더 chrome 이 화면의 76%를 먹었다 — s3 로 바꾼 이유가 그 밀도다.',
+      '헤더 chrome 이 화면의 76%를 먹었다 — s3 로 바꾼 이유가 그 밀도다. ' +
+      'PC 2열(안 A)은 폰에 안 닿는 CSS 로 하므로 이 단언과 충돌하지 않는다.',
   },
   {
     name: 's3 — 칩 게이트가 되살아난다',
