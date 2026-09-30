@@ -76,7 +76,7 @@ export default [
   {
     name: '🧾 지난 정산이 0건과 실패를 같은 말로 뭉갠다',
     file: SETTLE,
-    find: "          <p className=\"text-[14px] font-bold text-gray-900 dark:text-white\">아직 정산 내역이 없어요</p>",
+    find: "          <p className=\"text-[15px] font-bold text-gray-900 dark:text-white\">아직 정산 내역이 없어요</p>",
     replace: "          <p className=\"text-[14px] font-bold text-gray-900 dark:text-white\">목록</p>",
     test: TEST,
     why: '못 불러온 것을 "내역 없음" 으로 그리면 돈이 사라진 것처럼 보인다(머니 표면 룰).',

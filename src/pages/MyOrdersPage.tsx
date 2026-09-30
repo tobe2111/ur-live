@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { AlertIcon } from '@/components/icons/urdeal-icons'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -7,7 +8,7 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import MobileFooter from '@/components/MobileFooter'
 import { OrdersTab } from '@/components/mypage/OrdersTab'
-import { ArrowLeft, AlertCircle } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { getUserIdSync, isLoggedInSync, requireLogin } from '@/utils/auth'
 import type { Order } from '@/types/order'
 import { isVoucherCategory } from '@/shared/constants/voucher-categories'
@@ -31,7 +32,7 @@ function OrdersSkeleton() {
   return (
     <div className="space-y-4 animate-pulse" aria-hidden="true">
       <div className="h-11 rounded-xl bg-gray-100 dark:bg-[#161616]" />
-      <div className="flex gap-5 border-b border-gray-100 dark:border-[#2C2F35] pb-2.5">
+      <div className="flex gap-5 border-b border-gray-100 dark:border-[#2C2F35] pb-2">
         {[40, 32, 44, 32].map((w, i) => (
           <div key={i} className="h-4 rounded bg-gray-100 dark:bg-[#161616]" style={{ width: w }} />
         ))}
@@ -42,7 +43,7 @@ function OrdersSkeleton() {
             <div className="h-3 w-16 rounded bg-gray-100 dark:bg-[#161616] mb-3" />
             <div className="flex gap-3">
               <div className="w-16 h-16 rounded-lg bg-gray-100 dark:bg-[#161616] shrink-0" />
-              <div className="flex-1 space-y-2 py-0.5">
+              <div className="flex-1 space-y-2 py-1">
                 <div className="h-3.5 w-3/4 rounded bg-gray-100 dark:bg-[#161616]" />
                 <div className="h-3 w-1/3 rounded bg-gray-100 dark:bg-[#161616]" />
                 <div className="h-3.5 w-1/4 rounded bg-gray-100 dark:bg-[#161616]" />
@@ -255,19 +256,19 @@ export default function MyOrdersPage() {
           <button type="button" onClick={() => navigate(-1)} aria-label={t('notifications.back', { defaultValue: '뒤로' })} className="w-9 h-9 -ml-2 flex items-center justify-center">
             <ArrowLeft className="h-5 w-5 text-gray-900 dark:text-white" aria-hidden="true" />
           </button>
-          <h1 className="text-[18px] font-extrabold text-gray-900 dark:text-white">{t('myOrders.title')}</h1>
+          <h1 className="text-[17px] font-extrabold text-gray-900 dark:text-white">{t('myOrders.title')}</h1>
         </div>
       </div>
 
       {/* 🛡️ 2026-07-02: 상태 필터 칩 — 주문 현황 바(?status=)와 연동 */}
       <div className="ur-content-medium px-4 sm:px-6 lg:px-8 pt-3">
-        <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide">
           {STATUS_FILTERS.map(f => (
             <button
               key={f.key}
               type="button"
               onClick={() => setSearchParams(f.key === 'all' ? {} : { status: f.key }, { replace: true })}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-colors ${
+              className={`shrink-0 px-3 py-2 rounded-full text-[12px] font-semibold border transition-colors ${
                 statusFilter === f.key
                   ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-gray-900 dark:border-white'
                   : 'bg-white dark:bg-[#11141C] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35]'
@@ -288,7 +289,7 @@ export default function MyOrdersPage() {
           /* ✅ UX C5 FIX: 에러 상태 + 재시도 버튼 (리다이렉트 루프 방지) */
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
-              <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+              <AlertIcon className="w-12 h-12 text-red-500 mx-auto mb-4" />
               <p className="text-[15px] text-gray-900 dark:text-white mb-4">{error}</p>
               <button
                 onClick={() => loadData()}

@@ -25,7 +25,8 @@
  *   연락·사업자 정보는 `shared/partners-facts`(덱과 대조되는 SSOT) 한 곳에서만 읽는다.
  */
 import { Link } from 'react-router-dom'
-import { Store, Users, Megaphone, QrCode, BadgePercent, MapPin, ArrowRight, FileText } from 'lucide-react'
+import { StoreIcon, PeopleIcon, PinIcon } from '@/components/icons/urdeal-icons'
+import { Megaphone, QrCode, BadgePercent, ArrowRight, FileText } from 'lucide-react'
 import SEO from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { PARTNER_FACTS as F } from '@/shared/partners-facts'
@@ -34,14 +35,14 @@ import PhoneShot, { SHOT } from './landing/PhoneShot'
 const BENEFITS = [
   { icon: BadgePercent, t: '동네 할인', d: '내 주변 맛집과 뷰티, 숙소를 정가보다 싸게' },
   { icon: QrCode, t: 'QR 간편 사용', d: '결제는 미리, 매장에선 QR 한 번이면 끝' },
-  { icon: MapPin, t: '지도로 발견', d: '지금 내 위치 주변의 딜을 지도에서 바로' },
+  { icon: PinIcon, t: '지도로 발견', d: '지금 내 위치 주변의 딜을 지도에서 바로' },
 ]
 
 /** 3자 구조 — 각자가 내는 것과 받는 것. 셋이 한 문장으로 이어지도록 순서 고정. */
 const TRIANGLE = [
-  { icon: Store, t: '매장', gives: '팔린 만큼만 내는 판매 수수료', gets: '선불 광고비 없이 새 손님' },
+  { icon: StoreIcon, t: '매장', gives: '팔린 만큼만 내는 판매 수수료', gets: '선불 광고비 없이 새 손님' },
   { icon: Megaphone, t: '소개하는 사람', gives: '내 유어샵에 담아 링크 하나로 소개', gets: '팔릴 때마다 쌓이는 몫' },
-  { icon: Users, t: '소비자', gives: '앱에서 미리 결제', gets: '검증된 동네 가게를 할인가로' },
+  { icon: PeopleIcon, t: '소비자', gives: '앱에서 미리 결제', gets: '검증된 동네 가게를 할인가로' },
 ]
 
 const STEPS = [
@@ -58,15 +59,15 @@ export default function AboutServicePage() {
 
       <header className="sticky top-0 z-20 ur-panel-ink">
         <div className="ur-content-wide mx-auto px-5 lg:px-10 h-14 lg:h-16 flex items-center justify-between">
-          <Link to="/" aria-label="유어딜 홈" className="flex items-center gap-2.5">
+          <Link to="/" aria-label="유어딜 홈" className="flex items-center gap-2">
             <UrDealLogo size={19} forceDark />
-            <span className="hidden sm:inline text-[12.5px] font-bold text-white/55">서비스 소개</span>
+            <span className="hidden sm:inline text-[12px] font-bold text-white/55">서비스 소개</span>
           </Link>
           <div className="flex items-center gap-2 lg:gap-3">
-            <Link to="/partners" className="hidden sm:inline text-[12.5px] font-semibold text-white/70 px-2">입점 안내</Link>
-            <Link to="/creators" className="hidden sm:inline text-[12.5px] font-semibold text-white/70 px-2">소개하기</Link>
+            <Link to="/partners" className="hidden sm:inline text-[12px] font-semibold text-white/70 px-2">입점 안내</Link>
+            <Link to="/creators" className="hidden sm:inline text-[12px] font-semibold text-white/70 px-2">소개하기</Link>
             <Link to="/"
-              className="h-9 lg:h-10 px-3.5 lg:px-5 rounded-full bg-brand text-white inline-flex items-center gap-1.5 text-[12.5px] lg:text-[13.5px] font-extrabold">
+              className="h-9 lg:h-10 px-4 lg:px-5 rounded-full bg-brand text-white inline-flex items-center gap-2 text-[12px] lg:text-[13px] font-extrabold">
               딜 보러가기 <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -84,16 +85,16 @@ export default function AboutServicePage() {
                 <span className="text-brand-text">앱에서 사고, 매장에서 QR 로</span><br />
                 쓰는 로컬 딜 플랫폼
               </h1>
-              <p className="mt-6 lg:mt-8 text-[15px] lg:text-[19px] leading-[1.7] text-white/70 max-w-[26em]">
+              <p className="mt-6 lg:mt-8 text-[15px] lg:text-[17px] leading-[1.7] text-white/70 max-w-[26em]">
                 서울 서초구 상권 활성화 사업을 수행하고 있어요.
               </p>
               <div className="mt-10 lg:mt-12 flex flex-col sm:flex-row gap-3 max-w-[32rem]">
                 <Link to="/"
-                  className="sm:flex-1 h-[52px] lg:h-[58px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[16.5px] font-extrabold active:scale-[0.98] transition-transform">
+                  className="sm:flex-1 h-[52px] lg:h-[58px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-extrabold active:scale-[0.98] transition-transform">
                   내 주변 딜 보러가기 <ArrowRight className="w-4 h-4 lg:w-[18px] lg:h-[18px]" />
                 </Link>
                 <Link to="/partners"
-                  className="sm:flex-1 h-[52px] lg:h-[58px] rounded-2xl bg-white/[0.10] border border-white/20 flex items-center justify-center gap-2 text-[15px] lg:text-[16.5px] font-bold text-white">
+                  className="sm:flex-1 h-[52px] lg:h-[58px] rounded-2xl bg-white/[0.10] border border-white/20 flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-bold text-white">
                   매장 입점 안내
                 </Link>
               </div>
@@ -118,11 +119,11 @@ export default function AboutServicePage() {
             </h2>
             <div className="border-t border-rule">
               {BENEFITS.map(({ icon: Icon, t, d }) => (
-                <div key={t} className="flex items-baseline gap-3 lg:gap-6 py-3.5 lg:py-8 border-b border-rule">
+                <div key={t} className="flex items-baseline gap-3 lg:gap-6 py-4 lg:py-8 border-b border-rule">
                   <Icon className="w-4 h-4 lg:w-[22px] lg:h-[22px] shrink-0 translate-y-0.5 text-brand" strokeWidth={1.9} aria-hidden />
                   <div className="min-w-0">
-                    <p className="text-[14.5px] lg:text-[26px] font-extrabold text-ink tracking-[-0.02em]">{t}</p>
-                    <p className="text-[12.5px] lg:text-[16px] text-gray-500 dark:text-gray-400 leading-snug lg:leading-relaxed mt-0.5 lg:mt-2 max-w-[34em]">{d}</p>
+                    <p className="text-[15px] lg:text-[26px] font-extrabold text-ink tracking-[-0.02em]">{t}</p>
+                    <p className="text-[12px] lg:text-[17px] text-gray-500 dark:text-gray-400 leading-snug lg:leading-relaxed mt-1 lg:mt-2 max-w-[34em]">{d}</p>
                   </div>
                 </div>
               ))}
@@ -142,13 +143,13 @@ export default function AboutServicePage() {
               {TRIANGLE.map(({ icon: Icon, t, gives, gets }) => (
                 <li key={t} className="relative pb-5 last:pb-0 lg:pb-0 lg:border-t lg:border-white/20 lg:pt-7">
                   <span aria-hidden className="absolute -left-5 top-1.5 w-[11px] h-[11px] rounded-full bg-[var(--home-field)] ring-2 ring-brand lg:hidden" />
-                  <p className="flex items-center gap-1.5 lg:gap-2.5 text-[14.5px] lg:text-[28px] font-extrabold tracking-[-0.02em]">
+                  <p className="flex items-center gap-2 lg:gap-2 text-[15px] lg:text-[28px] font-extrabold tracking-[-0.02em]">
                     <Icon className="w-[15px] h-[15px] lg:w-6 lg:h-6 text-brand-text" strokeWidth={1.9} aria-hidden />{t}
                   </p>
-                  <p className="text-[12.5px] lg:text-[15px] text-white/60 leading-snug lg:leading-relaxed mt-1 lg:mt-6">
+                  <p className="text-[12px] lg:text-[15px] text-white/60 leading-snug lg:leading-relaxed mt-1 lg:mt-6">
                     <span className="text-white/40">내는 것</span> {gives}
                   </p>
-                  <p className="text-[12.5px] lg:text-[15px] leading-snug lg:leading-relaxed mt-0.5 lg:mt-3">
+                  <p className="text-[12px] lg:text-[15px] leading-snug lg:leading-relaxed mt-1 lg:mt-3">
                     <span className="text-white/40 font-normal">받는 것</span> <b className="font-semibold">{gets}</b>
                   </p>
                 </li>
@@ -156,8 +157,8 @@ export default function AboutServicePage() {
             </ol>
 
             <div className="mt-10 lg:mt-16 flex flex-wrap gap-2 lg:gap-3">
-              <Link to="/partners" className="h-11 lg:h-[54px] px-4 lg:px-7 rounded-full border border-white/25 inline-flex items-center gap-1.5 text-[13px] lg:text-[15px] font-bold text-white">매장 입점 안내 <ArrowRight className="w-3.5 h-3.5" /></Link>
-              <Link to="/creators" className="h-11 lg:h-[54px] px-4 lg:px-7 rounded-full border border-white/25 inline-flex items-center gap-1.5 text-[13px] lg:text-[15px] font-bold text-white">소개 파트너 모집 <ArrowRight className="w-3.5 h-3.5" /></Link>
+              <Link to="/partners" className="h-11 lg:h-[54px] px-4 lg:px-7 rounded-full border border-white/25 inline-flex items-center gap-2 text-[13px] lg:text-[15px] font-bold text-white">매장 입점 안내 <ArrowRight className="w-3.5 h-3.5" /></Link>
+              <Link to="/creators" className="h-11 lg:h-[54px] px-4 lg:px-7 rounded-full border border-white/25 inline-flex items-center gap-2 text-[13px] lg:text-[15px] font-bold text-white">소개 파트너 모집 <ArrowRight className="w-3.5 h-3.5" /></Link>
             </div>
           </div>
         </section>
@@ -172,14 +173,14 @@ export default function AboutServicePage() {
             <ol className="mt-8 lg:mt-16 space-y-4 lg:space-y-0 lg:grid lg:grid-cols-4 lg:gap-10">
               {STEPS.map(([t, d], i) => (
                 <li key={t} className="flex gap-3 lg:block">
-                  <span aria-hidden className="shrink-0 mt-[3px] w-5 text-[11px] font-extrabold tabular-nums text-gray-400 dark:text-gray-500 lg:hidden">{i + 1}</span>
+                  <span aria-hidden className="shrink-0 mt-[3px] w-5 text-[12px] font-extrabold tabular-nums text-gray-400 dark:text-gray-500 lg:hidden">{i + 1}</span>
                   <span aria-hidden className="hidden lg:flex items-center gap-3 mb-7">
                     <i className="w-[13px] h-[13px] rounded-full bg-brand not-italic" />
                     <i className="flex-1 h-px bg-rule not-italic" />
                   </span>
                   <div className="min-w-0 border-b border-rule pb-4 flex-1 last:border-0 lg:border-0 lg:pb-0">
-                    <p className="text-[14.5px] lg:text-[22px] font-extrabold text-ink tracking-[-0.02em] leading-[1.3]">{t}</p>
-                    <p className="text-[12.5px] lg:text-[15px] text-gray-500 dark:text-gray-400 leading-relaxed mt-1 lg:mt-4">{d}</p>
+                    <p className="text-[15px] lg:text-[24px] font-extrabold text-ink tracking-[-0.02em] leading-[1.3]">{t}</p>
+                    <p className="text-[12px] lg:text-[15px] text-gray-500 dark:text-gray-400 leading-relaxed mt-1 lg:mt-4">{d}</p>
                   </div>
                 </li>
               ))}
@@ -197,7 +198,7 @@ export default function AboutServicePage() {
               <p className="text-[13px] lg:text-[17px] text-gray-500 dark:text-gray-400 mt-2 lg:mt-5">글로벌 동일 모델 시장 규모</p>
             </div>
             <div>
-              <dl className="text-[12.5px] lg:text-[15px] leading-relaxed border-t border-rule pt-4 lg:pt-6">
+              <dl className="text-[12px] lg:text-[15px] leading-relaxed border-t border-rule pt-4 lg:pt-6">
                 <div className="flex gap-3 lg:gap-6 py-1 lg:py-3 border-b border-rule">
                   <dt className="w-24 lg:w-36 shrink-0 text-gray-400 dark:text-gray-500">수행 사업</dt>
                   <dd className="text-ink">서초구 상권 활성화 사업</dd>
@@ -207,7 +208,7 @@ export default function AboutServicePage() {
                   <dd className="text-gray-500 dark:text-gray-400">10월 실측 예정. 결과는 이 자리에 올립니다.</dd>
                 </div>
               </dl>
-              <Link to="/about/print" className="mt-6 lg:mt-8 inline-flex items-center gap-1.5 text-[13px] lg:text-[15px] font-bold text-ink underline underline-offset-4 decoration-rule-strong">
+              <Link to="/about/print" className="mt-6 lg:mt-8 inline-flex items-center gap-2 text-[13px] lg:text-[15px] font-bold text-ink underline underline-offset-4 decoration-rule-strong">
                 <FileText className="w-4 h-4" /> 상세 소개서 보기 (PDF 저장 가능)
               </Link>
             </div>
@@ -220,7 +221,7 @@ export default function AboutServicePage() {
             <h2 className="text-[26px] lg:text-[52px] xl:text-[60px] font-extrabold tracking-[-0.03em] leading-[1.22]">
               지금 내 주변부터 열어 보세요
             </h2>
-            <p className="mt-6 lg:mt-8 text-[14px] lg:text-[19px] leading-relaxed text-white/70 max-w-[32em] mx-auto">
+            <p className="mt-6 lg:mt-8 text-[15px] lg:text-[17px] leading-relaxed text-white/70 max-w-[32em] mx-auto">
               가입하면 내 유어샵이 함께 생깁니다. 좋았던 가게를 담아 두면 그대로 소개가 됩니다.
             </p>
             <div className="mt-10 lg:mt-12 flex flex-col sm:flex-row gap-3 justify-center max-w-[32rem] mx-auto">
@@ -245,7 +246,7 @@ export default function AboutServicePage() {
       {/* 📱 모바일 고정 CTA. PC 는 상단 헤더 버튼과 각 섹션 CTA 가 담당한다(lg 에서 숨김) */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-[#1D1F29]/95 backdrop-blur-md border-t border-rule px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))]">
         <div className="max-w-xl mx-auto">
-          <Link to="/" className="flex h-12 rounded-2xl bg-brand text-white items-center justify-center gap-1.5 text-[14px] font-extrabold active:scale-[0.98] transition-transform">
+          <Link to="/" className="flex h-12 rounded-2xl bg-brand text-white items-center justify-center gap-2 text-[15px] font-extrabold active:scale-[0.98] transition-transform">
             내 주변 딜 보러가기 <ArrowRight className="w-4 h-4" />
           </Link>
         </div>

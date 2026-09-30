@@ -3,8 +3,8 @@
  *
  * 셀러별 그룹 + 각 상품 + 배송비 표시. read-only.
  */
-import { Package } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { BoxIcon } from '@/components/icons/urdeal-icons'
 import { formatNumber } from '@/utils/format'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import type { SellerGroup } from './types'
@@ -42,13 +42,13 @@ export default function OrderItemsList({ sellerGroups, totalItemCount }: Props) 
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center">
-                      <Package className="h-7 w-7 text-gray-400 dark:text-gray-500" />
+                      <BoxIcon className="h-7 w-7 text-gray-400 dark:text-gray-500" />
                     </div>
                   )}
                 </div>
 
                 <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
-                  <p className="truncate text-[14px] leading-snug text-gray-900 dark:text-white">
+                  <p className="truncate text-[15px] leading-snug text-gray-900 dark:text-white">
                     {item.product_name}
                   </p>
                   {item.option_value && (
@@ -56,7 +56,7 @@ export default function OrderItemsList({ sellerGroups, totalItemCount }: Props) 
                       {t('checkout.items.optionLine', { defaultValue: '{{option}} / {{count}}개', option: item.option_value, count: item.quantity })}
                     </p>
                   )}
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-2">
                     <span className="text-[15px] font-bold text-gray-900 dark:text-white">
                       {formatNumber((item.price_snapshot ?? 0) * item.quantity)}{t('checkout.summary.wonSuffix', { defaultValue: '원' })}
                     </span>

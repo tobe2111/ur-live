@@ -29,7 +29,7 @@ export default function PcHomeRail({
   onCategory: (c: DealCategory) => void
 }) {
   return (
-    <nav aria-label="동네딜 카테고리" className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
+    <nav aria-label="동네딜 카테고리" className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
       {DEAL_CATS.map(({ key, label, icon: Icon }) => {
         const active = category === key
         return (
@@ -37,9 +37,9 @@ export default function PcHomeRail({
             key={key}
             onClick={() => onCategory(key)}
             aria-current={active ? 'true' : undefined}
-            className={`shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-[14px] font-bold border transition-colors ${
+            className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-[15px] font-bold border transition-colors ${
               active
-                ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white'
+                ? 'bg-brand text-white border-brand'
                 : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
             }`}
           >

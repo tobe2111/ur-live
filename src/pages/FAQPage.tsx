@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { ChevronLeft, ChevronDown, Search, HelpCircle, Mail, Clock } from 'lucide-react'
+import { MailIcon, ClockIcon } from '@/components/icons/urdeal-icons'
+import { ChevronLeft, ChevronDown, Search, HelpCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
@@ -66,7 +67,7 @@ export default function FAQPage() {
           <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="p-1 -ml-1">
             <ChevronLeft size={22} className="text-gray-700 dark:text-gray-200" />
           </button>
-          <h1 className="text-[16px] font-bold text-gray-900 dark:text-white ml-2">{t('faq.title', { defaultValue: '자주 묻는 질문' })}</h1>
+          <h1 className="text-[17px] font-bold text-gray-900 dark:text-white ml-2">{t('faq.title', { defaultValue: '자주 묻는 질문' })}</h1>
         </div>
       </header>
 
@@ -88,19 +89,19 @@ export default function FAQPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t('faq.searchPlaceholder', { defaultValue: '궁금한 내용을 검색해보세요' })}
-            className="w-full pl-9 pr-4 py-3 bg-gray-100 dark:bg-[#1D1F29] rounded-xl text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:bg-white dark:focus:bg-[#11141C] focus:ring-1 focus:ring-gray-900 focus:outline-none transition-all"
+            className="w-full pl-9 pr-4 py-3 bg-gray-100 dark:bg-[#1D1F29] rounded-xl text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:bg-white dark:focus:bg-[#11141C] focus:ring-1 focus:ring-gray-900 focus:outline-none transition-all"
           />
         </div>
 
         {/* 카테고리 탭 */}
-        <div className="flex gap-1.5 mb-5 overflow-x-auto scrollbar-hide -mx-1 px-1">
+        <div className="flex gap-2 mb-5 overflow-x-auto scrollbar-hide -mx-1 px-1">
           {categories.map(category => (
             <button
               key={category}
               onClick={() => setSelectedCategory(category)}
-              className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium whitespace-nowrap transition-all ${
+              className={`px-4 py-2 rounded-full text-[13px] font-medium whitespace-nowrap transition-all ${
                 selectedCategory === category
-                  ? 'bg-gray-900 text-white'
+                  ? 'bg-brand text-white'
                   : 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#2C2F35]'
               }`}
             >
@@ -113,7 +114,7 @@ export default function FAQPage() {
         {filteredFAQs.length === 0 ? (
           <div className="py-16 text-center">
             <HelpCircle className="w-10 h-10 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
-            <p className="text-[14px] text-gray-500 dark:text-gray-400">{t('faq.emptyTitle', { defaultValue: '검색 결과가 없습니다.' })}</p>
+            <p className="text-[15px] text-gray-500 dark:text-gray-400">{t('faq.emptyTitle', { defaultValue: '검색 결과가 없습니다.' })}</p>
           </div>
         ) : (
           <div className="border-t border-gray-100 dark:border-[#2C2F35]">
@@ -125,12 +126,12 @@ export default function FAQPage() {
                     onClick={() => setExpandedId(isOpen ? null : faq.id)}
                     className="w-full py-4 flex items-start gap-3 text-left hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors -mx-4 px-4"
                   >
-                    <span className="shrink-0 w-6 h-6 rounded-full bg-gray-900 text-white text-[11px] font-bold flex items-center justify-center mt-0.5">
+                    <span className="shrink-0 w-6 h-6 rounded-full bg-brand text-white text-[12px] font-bold flex items-center justify-center mt-1">
                       Q
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[11px] text-gray-500 dark:text-gray-400 font-medium mb-1">{faq.category}</p>
-                      <p className="text-[14px] font-medium text-gray-900 dark:text-white leading-snug">{faq.question}</p>
+                      <p className="text-[12px] text-gray-500 dark:text-gray-400 font-medium mb-1">{faq.category}</p>
+                      <p className="text-[15px] font-medium text-gray-900 dark:text-white leading-snug">{faq.question}</p>
                     </div>
                     <ChevronDown
                       className={`shrink-0 w-4 h-4 text-gray-400 dark:text-gray-500 mt-1 transition-transform ${isOpen ? 'rotate-180' : ''}`}
@@ -150,17 +151,17 @@ export default function FAQPage() {
 
         {/* 고객센터 */}
         <div className="mt-8 bg-gray-50 dark:bg-[#1D1F29] rounded-2xl p-5">
-          <h2 className="text-[14px] font-bold text-gray-900 dark:text-white mb-1">{t('faq.supportTitle', { defaultValue: '도움이 더 필요하신가요?' })}</h2>
+          <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">{t('faq.supportTitle', { defaultValue: '도움이 더 필요하신가요?' })}</h2>
           <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">{t('faq.supportDesc', { defaultValue: '궁금한 사항이 해결되지 않았다면 연락주세요.' })}</p>
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             {/* 🧹 2026-06-21 (대표 — 고객센터 전화번호 전체 비노출): 전화 행 제거, 이메일/운영시간만 안내. */}
-            <div className="flex items-center gap-2.5 text-[13px] text-gray-700 dark:text-gray-200">
-              <Clock className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+            <div className="flex items-center gap-2 text-[13px] text-gray-700 dark:text-gray-200">
+              <ClockIcon className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
               <span className="text-gray-500 dark:text-gray-400 w-16">{t('faq.supportHours', { defaultValue: '운영시간' })}</span>
               <span className="font-medium text-gray-900 dark:text-white">{t('faq.supportHoursValue', { defaultValue: '평일 09:00 - 18:00' })}</span>
             </div>
-            <div className="flex items-center gap-2.5 text-[13px] text-gray-700 dark:text-gray-200">
-              <Mail className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+            <div className="flex items-center gap-2 text-[13px] text-gray-700 dark:text-gray-200">
+              <MailIcon className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
               <span className="text-gray-500 dark:text-gray-400 w-16">{t('faq.supportEmail', { defaultValue: '이메일' })}</span>
               <span className="font-medium text-gray-900 dark:text-white">{t('faq.supportEmailValue', { defaultValue: 'support@ur-team.com' })}</span>
             </div>

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
+import { BoxIcon, TruckIcon, MessageIcon, TicketStubIcon, PeopleIcon } from '@/components/icons/urdeal-icons'
 import { Link } from 'react-router-dom'
-import { Package, Truck, ChevronRight, MessageCircle, Search, Ticket, Users } from 'lucide-react'
+import { ChevronRight, Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { safeDate } from '@/utils/safe-date'
@@ -43,24 +44,31 @@ export function getTrackingUrl(courier?: string, trackingNumber?: string): strin
 
 type KindFilter = 'all' | OrderKind
 
-// 🛡️ 2026-06-18: 상태를 큰 컬러 배지 → 은은한 컬러 텍스트(무신사 스타일). 종류별 라벨 분기.
+/**
+ * 🛡️ 2026-06-18: 상태를 큰 컬러 배지 → 은은한 컬러 텍스트(무신사 스타일). 종류별 라벨 분기.
+ *
+ * 🚦 2026-09-29: 그 "은은한 컬러" 가 **색이 아니었다.** rose·emerald·amber·blue 는
+ *   `tailwind.config.js` 의 MONO 중화를 거쳐 전부 같은 잉크로 렌더된다(실측: 600 단계가 넷 다 `#55534F`).
+ *   즉 `취소/환불` · `구매완료` · `배송중` · `상품준비중` 이 **픽셀 단위로 같은 회색**이었고,
+ *   에러가 없어 아무도 신고하지 않았다. 의미 색은 중화를 통과하는 `tone-*` 뿐이다.
+ */
 function getStatusInfo(status: string, kind: OrderKind, t: TFunction): { label: string; cls: string } {
   const s = (status || '').toLowerCase()
   if (s === 'cancelled' || s === 'refunded') {
-    return { label: t('ordersTab.statusCancelled', { defaultValue: '취소/환불' }), cls: 'text-rose-600 dark:text-rose-400' }
+    return { label: t('ordersTab.statusCancelled', { defaultValue: '취소/환불' }), cls: 'text-tone-bad' }
   }
   if (kind !== 'product') {
     // 교환권/공구: 배송 단계 없음 — 구매완료 단일 상태(취소 제외)
-    return { label: t('ordersTab.statusIssued', { defaultValue: '구매완료' }), cls: 'text-emerald-600 dark:text-emerald-400' }
+    return { label: t('ordersTab.statusIssued', { defaultValue: '구매완료' }), cls: 'text-tone-ok' }
   }
   switch (s) {
     case 'shipping':
-      return { label: t('ordersTab.statusShipping', { defaultValue: '배송중' }), cls: 'text-blue-600 dark:text-blue-400' }
+      return { label: t('ordersTab.statusShipping', { defaultValue: '배송중' }), cls: 'text-tone-info' }
     case 'delivered':
     case 'done':
-      return { label: t('ordersTab.statusDelivered', { defaultValue: '배송완료' }), cls: 'text-emerald-600 dark:text-emerald-400' }
+      return { label: t('ordersTab.statusDelivered', { defaultValue: '배송완료' }), cls: 'text-tone-ok' }
     case 'preparing':
-      return { label: t('ordersTab.statusPreparing', { defaultValue: '상품준비중' }), cls: 'text-amber-600 dark:text-amber-500' }
+      return { label: t('ordersTab.statusPreparing', { defaultValue: '상품준비중' }), cls: 'text-tone-warn' }
     default:
       return { label: t('ordersTab.statusPaid', { defaultValue: '결제완료' }), cls: 'text-gray-600 dark:text-gray-300' }
   }
@@ -94,7 +102,7 @@ function ItemThumb({ item }: { item: OrderItem }) {
   if (!src) {
     return (
       <div className="w-16 h-16 shrink-0 rounded-lg bg-gray-100 dark:bg-[#1D1F29] flex items-center justify-center">
-        <Package className="w-6 h-6 text-gray-300 dark:text-gray-600" strokeWidth={1.5} aria-hidden="true" />
+        <BoxIcon className="w-6 h-6 text-gray-300 dark:text-gray-600" aria-hidden="true" />
       </div>
     )
   }
@@ -188,7 +196,7 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t('ordersTab.searchPlaceholder', { defaultValue: '상품명 / 브랜드명으로 검색하세요.' })}
           aria-label={t('ordersTab.searchAria', { defaultValue: '주문 검색' })}
-          className="w-full h-11 pl-10 pr-4 rounded-xl bg-gray-50 dark:bg-[#1D1F29] border border-line text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/10"
+          className="w-full h-11 pl-10 pr-4 rounded-xl bg-gray-50 dark:bg-[#1D1F29] border border-line text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/10"
         />
       </div>
 
@@ -200,7 +208,7 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
             <button
               key={tab.key}
               onClick={() => setKindFilter(tab.key)}
-              className={`relative whitespace-nowrap pb-2.5 text-[15px] transition-colors ${
+              className={`relative whitespace-nowrap pb-2 text-[15px] transition-colors ${
                 active
                   ? 'font-extrabold text-gray-900 dark:text-white'
                   : 'font-medium text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
@@ -226,7 +234,7 @@ export function OrdersTab({ orders, onCancelOrder, onSelectOrder, onConfirmOrder
           {groups.map(group => (
             <section key={group.label}>
               {/* 날짜 그룹 헤더 */}
-              <h2 className="text-[15px] font-extrabold text-gray-900 dark:text-white mb-2.5 px-0.5">
+              <h2 className="text-[15px] font-extrabold text-gray-900 dark:text-white mb-2 px-1">
                 {group.label}
               </h2>
               <div className="space-y-3">
@@ -287,7 +295,7 @@ function OrderCard({
         tabIndex={0}
         onClick={openDetail}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail() } }}
-        className="w-full text-left px-4 pt-3.5 cursor-pointer"
+        className="w-full text-left px-4 pt-4 cursor-pointer"
       >
         <div className="flex items-center justify-between mb-2">
           <span className={`text-[12px] font-bold ${status.cls}`}>{status.label}</span>
@@ -310,15 +318,15 @@ function OrderCard({
             return (
               <div key={idx} className="flex gap-3">
                 <ItemThumb item={item} />
-                <div className="flex-1 min-w-0 py-0.5">
-                  <p className="text-[14px] font-medium text-gray-900 dark:text-white line-clamp-2 leading-snug">
+                <div className="flex-1 min-w-0 py-1">
+                  <p className="text-[15px] font-medium text-gray-900 dark:text-white line-clamp-2 leading-snug">
                     {item.product_name}
                   </p>
                   <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">
                     {opt && <span>{opt} · </span>}
                     {t('ordersTab.itemQty', { qty: item.quantity, defaultValue: `${item.quantity}개` })}
                   </p>
-                  <p className="text-[14px] font-bold text-gray-900 dark:text-white mt-0.5">
+                  <p className="text-[15px] font-bold text-gray-900 dark:text-white mt-1">
                     {formatNumber(orderItemLineTotal(item))}
                     <span className="text-[12px] font-semibold text-gray-500 dark:text-gray-400 ml-0.5">{t('ordersTab.won', { defaultValue: '원' })}</span>
                   </p>
@@ -337,8 +345,8 @@ function OrderCard({
       {/* 배송 송장 (상품만) */}
       {hasTracking && (
         <div className="mx-4 mt-1 mb-3 flex items-center justify-between gap-2 px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] rounded-xl">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <Truck className="h-3.5 w-3.5 text-blue-500 shrink-0" strokeWidth={2} aria-hidden="true" />
+          <div className="flex items-center gap-2 min-w-0">
+            <TruckIcon className="h-3.5 w-3.5 text-blue-500 shrink-0" aria-hidden="true" />
             <span className="text-[12px] min-w-0 truncate">
               <span className="text-gray-500 dark:text-gray-400">{order.courier} · </span>
               <span className="font-semibold text-gray-900 dark:text-white">{order.tracking_number}</span>
@@ -348,7 +356,7 @@ function OrderCard({
             href={getTrackingUrl(order.courier, order.tracking_number)}
             target="_blank" rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className="shrink-0 text-[12px] font-semibold text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-0.5"
+            className="shrink-0 text-[12px] font-semibold text-brand-text hover:underline transition-colors flex items-center gap-1"
           >
             {t('ordersTab.trackingLink', { defaultValue: '배송조회' })}
             <ChevronRight className="h-3 w-3" />
@@ -367,10 +375,10 @@ function OrderCard({
           onClick={(e) => e.stopPropagation()}
           className="mx-4 mt-1 mb-3 flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-[#1D1F29] rounded-xl"
         >
-          <span className="text-[12px] text-gray-600 dark:text-gray-300 flex items-center gap-1.5 min-w-0">
+          <span className="text-[12px] text-gray-600 dark:text-gray-300 flex items-center gap-2 min-w-0">
             {kind === 'voucher'
-              ? <Ticket className="h-3.5 w-3.5 text-emerald-500 shrink-0" strokeWidth={2} aria-hidden="true" />
-              : <Users className="h-3.5 w-3.5 text-emerald-500 shrink-0" strokeWidth={2} aria-hidden="true" />}
+              ? <TicketStubIcon className="h-3.5 w-3.5 text-emerald-500 shrink-0" aria-hidden="true" />
+              : <PeopleIcon className="h-3.5 w-3.5 text-emerald-500 shrink-0" aria-hidden="true" />}
             <span className="truncate">{kind === 'voucher'
               ? t('ordersTab.useInMyGifticons', { defaultValue: "'내 교환권'에서 사용하세요" })
               : t('ordersTab.useInMyVouchers', { defaultValue: "'내 이용권'에서 사용하세요" })}</span>
@@ -380,32 +388,33 @@ function OrderCard({
       )}
 
       {/* 푸터: 결제금액 + 액션 */}
-      <div className="px-4 pb-3.5 pt-3 flex items-center justify-between border-t border-gray-100 dark:border-[#2C2F35]">
+      <div className="px-4 pb-4 pt-3 flex items-center justify-between border-t border-gray-100 dark:border-[#2C2F35]">
         <div>
-          <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-0.5">{t('ordersTab.paymentAmount', { defaultValue: '결제금액' })}</p>
+          <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1">{t('ordersTab.paymentAmount', { defaultValue: '결제금액' })}</p>
           <p className="text-[17px] font-extrabold text-gray-900 dark:text-white">
             {formatNumber(order.total_amount ?? order.amount ?? 0)}
             <span className="text-[13px] font-semibold text-gray-600 dark:text-gray-300 ml-0.5">{t('ordersTab.won', { defaultValue: '원' })}</span>
           </p>
         </div>
-        <div className="flex items-center gap-1.5 flex-wrap justify-end">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
           <button
             onClick={() => onSellerContact(order)}
-            className="flex items-center gap-1 px-2.5 py-1.5 text-[12px] font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-[#11141C] border border-line rounded-full hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
+            className="flex items-center gap-1 px-2 py-2 text-[12px] font-semibold text-gray-600 dark:text-gray-300 bg-white dark:bg-[#11141C] border border-line rounded-full hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
             aria-label={t('ordersTab.inquiry', { defaultValue: '매장 문의' })}
           >
-            <MessageCircle className="h-3 w-3" strokeWidth={2} aria-hidden="true" />
+            <MessageIcon className="h-3 w-3" aria-hidden="true" />
             {t('ordersTab.inquiry', { defaultValue: '문의' })}
           </button>
           {returnStatus && (
-            <span className="px-2.5 py-1.5 text-[12px] font-semibold text-amber-700 bg-amber-50 border border-amber-100 rounded-full">
+            /* 🚦 진행 *상태* 다(누르는 것이 아니다) — 중화되지 않는 tone 으로. */
+            <span className="px-2 py-2 text-[12px] font-semibold text-tone-warn bg-tone-warn-bg rounded-full">
               {t('ordersTab.returnInProgress', { defaultValue: '반품 진행중' })}
             </span>
           )}
           {canReturn && (
             <button
               onClick={() => onRequestReturn!(order.id, orderNum)}
-              className="px-2.5 py-1.5 text-[12px] font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-[#11141C] border border-line rounded-full hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
+              className="px-2 py-2 text-[12px] font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-[#11141C] border border-line rounded-full hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
             >
               {t('ordersTab.requestReturn', { defaultValue: '반품' })}
             </button>
@@ -413,7 +422,7 @@ function OrderCard({
           {canCancel && (
             <button
               onClick={() => onCancelOrder(order.id, orderNum)}
-              className="px-2.5 py-1.5 text-[12px] font-semibold text-red-600 bg-white dark:bg-[#11141C] border border-red-100 dark:border-red-900/40 rounded-full hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+              className="px-2 py-2 text-[12px] font-semibold text-red-600 bg-white dark:bg-[#11141C] border border-red-100 dark:border-red-900/40 rounded-full hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
             >
               {t('ordersTab.cancelOrder', { defaultValue: '취소' })}
             </button>
@@ -421,7 +430,9 @@ function OrderCard({
           {canConfirm && onConfirmOrder && (
             <button
               onClick={() => onConfirmOrder(order.id, orderNum)}
-              className="px-2.5 py-1.5 text-[12px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full hover:bg-emerald-100 transition-colors"
+              /* 🔵 이 줄의 **긍정 행동**이다. emerald 는 중화돼 회색이라, 파괴적 행동(취소=빨강)만
+                 눈에 띄고 정작 눌러야 할 버튼이 안 보였다 ⇒ 브랜드. */
+              className="px-2 py-2 text-[12px] font-semibold text-white bg-brand rounded-full hover:bg-brand-dark transition-colors"
             >
               {t('ordersTab.confirmOrder', { defaultValue: '구매확정' })}
             </button>
@@ -463,14 +474,14 @@ function EmptyState({ kindFilter, searching, t }: { kindFilter: KindFilter; sear
   return (
     <div className="bg-surface rounded-2xl border border-gray-100 dark:border-[#2C2F35] p-12 text-center">
       <div className="w-20 h-20 bg-gray-50 dark:bg-[#1D1F29] rounded-full flex items-center justify-center mx-auto mb-5">
-        <Package className="h-10 w-10 text-gray-400 dark:text-gray-500" strokeWidth={1.5} aria-hidden="true" />
+        <BoxIcon className="h-10 w-10 text-gray-400 dark:text-gray-500" aria-hidden="true" />
       </div>
-      <h2 className="text-[18px] font-bold text-gray-900 dark:text-white mb-2">{title}</h2>
-      <p className="text-[14px] text-gray-500 dark:text-gray-400 mb-6">{desc}</p>
+      <h2 className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">{title}</h2>
+      <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-6">{desc}</p>
       {!searching && (
         <Link
           to="/"
-          className="inline-flex items-center justify-center px-6 py-3 bg-gray-900 text-white text-[14px] font-semibold rounded-full hover:bg-gray-800 active:bg-gray-700 transition-colors"
+          className="inline-flex items-center justify-center px-6 py-3 bg-brand text-white text-[15px] font-semibold rounded-full hover:bg-brand-dark active:bg-gray-700 transition-colors"
         >
           {t('ordersTab.goToLive', { defaultValue: '둘러보기' })}
         </Link>

@@ -1,7 +1,8 @@
 import { useState } from 'react'
+import { HomeIcon } from '@/components/icons/urdeal-icons'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Home, ChevronLeft, ChevronRight, Search, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { CoverImg } from '@/features/blog/BlogCover'
@@ -30,14 +31,14 @@ function readBlogListSeed(): BlogPost[] | undefined {
 // 카테고리 칩(파란) + 작성자 칩(회색) — 토스 테크 스타일.
 function ChipRow({ tags, author }: { tags: string[]; author?: string }) {
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
+    <div className="flex flex-wrap items-center gap-2">
       {tags[0] && (
-        <span className="text-[11px] font-semibold bg-blue-50 dark:bg-blue-900/25 text-blue-600 dark:text-blue-300 px-2 py-0.5 rounded-md">{tags[0]}</span>
+        <span className="text-[12px] font-semibold bg-blue-50 dark:bg-blue-900/25 text-blue-600 dark:text-blue-300 px-2 py-1 rounded-md">{tags[0]}</span>
       )}
       {/* 🐛 2026-08-17 (UX 전수검사 P1): 첫 태그와 작성자가 같은 값이면(둘 다 "유어딜") 칩이
           "유어딜 · 유어딜" 로 중복돼 오타처럼 보였다 — 같으면 작성자 칩 생략. */}
       {author && author !== tags[0] && (
-        <span className="text-[11px] font-medium bg-gray-100 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-md">{author}</span>
+        <span className="text-[12px] font-medium bg-gray-100 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400 px-2 py-1 rounded-md">{author}</span>
       )}
     </div>
   )
@@ -107,12 +108,12 @@ export default function BlogListPage() {
       {/* Header — 뒤로가기 제거, 유어딜 홈 버튼 추가, non-sticky(오버랩 방지) */}
       <div className="bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-5 lg:px-8 h-14">
-          <Link to="/blog" className="text-lg font-extrabold text-gray-900 dark:text-white tracking-tight">유어딜 블로그</Link>
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            <Link to="/" className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1D1F29]">
-              <Home className="w-4 h-4" /><span className="hidden sm:inline">유어딜 홈</span>
+          <Link to="/blog" className="text-[17px] font-extrabold text-gray-900 dark:text-white tracking-tight">유어딜 블로그</Link>
+          <div className="flex items-center gap-2 sm:gap-2">
+            <Link to="/" className="flex items-center gap-2 px-3 py-2 rounded-lg text-[15px] font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1D1F29]">
+              <HomeIcon className="w-4 h-4" /><span className="hidden sm:inline">유어딜 홈</span>
             </Link>
-            <Link to="/store/new" className="px-3.5 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold hover:opacity-90">
+            <Link to="/store/new" className="px-4 py-2 bg-brand text-white rounded-lg text-[15px] font-bold hover:opacity-90">
               내 가게 등록
             </Link>
           </div>
@@ -126,10 +127,10 @@ export default function BlogListPage() {
             <Link to={`/blog/${hero.slug}`} className="group grid lg:grid-cols-2 gap-5 lg:gap-8 items-center">
               <div className="order-2 lg:order-1">
                 <ChipRow tags={parseTags(hero.tags)} author={hero.author} />
-                <h2 className="mt-3 text-2xl sm:text-3xl leading-snug font-extrabold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
+                <h2 className="mt-3 text-[24px] sm:text-3xl leading-snug font-extrabold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
                   {stripBold(hero.title)}
                 </h2>
-                <p className="mt-2.5 text-[15px] text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-2">{stripBold(hero.summary)}</p>
+                <p className="mt-2 text-[15px] text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-2">{stripBold(hero.summary)}</p>
               </div>
               <div className="order-1 lg:order-2">
                 <CoverImg post={hero} variant="hero" className="w-full aspect-[16/9] rounded-2xl" />
@@ -143,7 +144,7 @@ export default function BlogListPage() {
                 <button onClick={() => moveHero(1)} aria-label="다음" className="w-10 h-10 rounded-full border border-line flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1D1F29]">
                   <ChevronRight className="w-5 h-5" />
                 </button>
-                <span className="ml-2 text-xs text-gray-400 dark:text-gray-500 tabular-nums">{(heroIdx % featured.length) + 1} / {featured.length}</span>
+                <span className="ml-2 text-[12px] text-gray-400 dark:text-gray-500 tabular-nums">{(heroIdx % featured.length) + 1} / {featured.length}</span>
               </div>
             )}
           </section>
@@ -170,12 +171,12 @@ export default function BlogListPage() {
         {/* ── 태그 필터 ── */}
         <div className="flex gap-2 overflow-x-auto scrollbar-hide py-4">
           <button onClick={() => pickTag('')}
-            className={`px-3.5 py-1.5 rounded-full text-sm font-medium shrink-0 ${!selectedTag ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-50 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2C2F35]'}`}>
+            className={`px-4 py-2 rounded-full text-[15px] font-medium shrink-0 ${!selectedTag ? 'bg-brand text-white' : 'bg-gray-50 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2C2F35]'}`}>
             전체
           </button>
           {allTags.map((tag: string) => (
             <button key={tag} onClick={() => pickTag(tag)}
-              className={`px-3.5 py-1.5 rounded-full text-sm font-medium shrink-0 ${selectedTag === tag ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'bg-gray-50 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2C2F35]'}`}>
+              className={`px-4 py-2 rounded-full text-[15px] font-medium shrink-0 ${selectedTag === tag ? 'bg-brand text-white' : 'bg-gray-50 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-[#2C2F35]'}`}>
               {tag}
             </button>
           ))}
@@ -183,9 +184,9 @@ export default function BlogListPage() {
 
         {/* ── 전체 아티클 리스트 ── */}
         <section className="py-8">
-          <h3 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-2">
+          <h3 className="text-[24px] font-extrabold text-gray-900 dark:text-white mb-2">
             {searching ? `‘${query.trim()}’ 검색 결과` : selectedTag ? `#${selectedTag}` : '전체 아티클'}
-            {(searching || selectedTag) && <span className="ml-2 text-base font-semibold text-gray-400 dark:text-gray-500">{filtered.length}</span>}
+            {(searching || selectedTag) && <span className="ml-2 text-[15px] font-semibold text-gray-400 dark:text-gray-500">{filtered.length}</span>}
           </h3>
 
           {loading ? (
@@ -213,10 +214,10 @@ export default function BlogListPage() {
                   <Link key={post.id} to={`/blog/${post.slug}`} className="group flex items-start justify-between gap-5 sm:gap-8 py-6">
                     <div className="flex-1 min-w-0">
                       <ChipRow tags={tags} author={post.author} />
-                      <h4 className="mt-2.5 text-lg sm:text-xl font-bold text-gray-900 dark:text-white leading-snug line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                      <h4 className="mt-2 text-[17px] sm:text-[17px] font-bold text-gray-900 dark:text-white leading-snug line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                         {stripBold(post.title)}
                       </h4>
-                      <p className="mt-1.5 text-sm text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-2">{stripBold(post.summary)}</p>
+                      <p className="mt-2 text-[15px] text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-2">{stripBold(post.summary)}</p>
                     </div>
                     <CoverImg post={post} className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl shrink-0" />
                   </Link>
@@ -227,14 +228,14 @@ export default function BlogListPage() {
 
           {/* ── 페이지네이션 ── */}
           {!loading && totalPages > 1 && (
-            <div className="flex items-center justify-center gap-1.5 mt-10">
+            <div className="flex items-center justify-center gap-2 mt-10">
               <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={curPage === 1} aria-label="이전 페이지"
                 className="w-9 h-9 rounded-lg flex items-center justify-center text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#1D1F29] disabled:opacity-30 disabled:hover:bg-transparent">
                 <ChevronLeft className="w-4 h-4" />
               </button>
               {pageNums.map(n => (
                 <button key={n} onClick={() => setPage(n)}
-                  className={`min-w-9 h-9 px-2 rounded-lg text-sm font-semibold tabular-nums ${n === curPage ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1D1F29]'}`}>
+                  className={`min-w-9 h-9 px-2 rounded-lg text-[15px] font-semibold tabular-nums ${n === curPage ? 'bg-brand text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1D1F29]'}`}>
                   {n}
                 </button>
               ))}

@@ -63,7 +63,9 @@ describe('PC 마이 — 두 열', () => {
 
   it('🔴 금액이 두 줄로 갈라지지 않는다', () => {
     // 카드가 ≈340px 로 좁아지면서 `412,000` 과 `원` 이 갈라졌다.
-    expect(SELLER).toMatch(/text-\[30px\][^"]*whitespace-nowrap/)
+    // 🔁 2026-09-28 재조준: 30px → 28px(여섯 단계 스케일). 불변식은 **금액이 안 갈라진다** 이고
+    //   크기 숫자가 아니다. 크기 자체는 `my-type-scale-2026-09-28` 이 따로 지킨다.
+    expect(SELLER).toMatch(/text-\[28px\][^"]*whitespace-nowrap/)
   })
 
   it('판매는 넓은 쪽에 산다 — 좁히면 설명이 먼저 잘린다', () => {

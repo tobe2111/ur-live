@@ -46,8 +46,8 @@ export function ProxyProductModal({ merchant, onClose }: { merchant: { id: numbe
   return (
     <div className="fixed inset-0 z-[10000] bg-black/60 flex items-end sm:items-center justify-center p-4" onClick={onClose}>
       <div className="w-full max-w-md bg-surface rounded-2xl p-5" onClick={(e) => e.stopPropagation()}>
-        <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">공구 대행 등록</p>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">{merchant.name} — 등록 후 매장 승인 시 공개됩니다.</p>
+        <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">공구 대행 등록</p>
+        <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">{merchant.name} — 등록 후 매장 승인 시 공개됩니다.</p>
         <div className="space-y-2">
           {([
             ['name', '상품명'],
@@ -61,7 +61,7 @@ export function ProxyProductModal({ merchant, onClose }: { merchant: { id: numbe
               value={(form as any)[k]}
               onChange={(e) => setForm({ ...form, [k]: e.target.value })}
               placeholder={label}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-rule-strong bg-surface text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 text-[15px] rounded-lg border border-rule-strong bg-surface text-gray-900 dark:text-white"
             />
           ))}
           <textarea
@@ -69,13 +69,13 @@ export function ProxyProductModal({ merchant, onClose }: { merchant: { id: numbe
             onChange={(e) => setForm({ ...form, description: e.target.value })}
             placeholder="설명 (선택)"
             rows={2}
-            className="w-full px-3 py-2 text-sm rounded-lg border border-rule-strong bg-surface text-gray-900 dark:text-white"
+            className="w-full px-3 py-2 text-[15px] rounded-lg border border-rule-strong bg-surface text-gray-900 dark:text-white"
           />
           <div className="flex gap-2 pt-1">
-            <button onClick={submit} disabled={submitting} className="flex-1 py-2 bg-brand text-white text-sm font-bold rounded-lg disabled:opacity-50">
+            <button onClick={submit} disabled={submitting} className="flex-1 py-2 bg-brand text-white text-[15px] font-bold rounded-lg disabled:opacity-50">
               {submitting ? '등록 중…' : '대행 등록'}
             </button>
-            <button onClick={onClose} className="px-3 py-2 text-gray-500 dark:text-gray-400 text-sm">취소</button>
+            <button onClick={onClose} className="px-3 py-2 text-gray-500 dark:text-gray-400 text-[15px]">취소</button>
           </div>
         </div>
       </div>
@@ -131,60 +131,60 @@ export function WithdrawModal({ info, onClose, onSuccess }: { info: WithdrawalIn
   return (
     <div className="fixed inset-0 z-[10001] bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
       <div className="w-full sm:max-w-md bg-surface rounded-t-2xl sm:rounded-2xl p-5" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-base font-bold text-gray-900 dark:text-white mb-4">💰 출금 신청</h2>
+        <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-4">💰 출금 신청</h2>
 
         <div className="space-y-3">
           <div>
-            <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">금액 (최대 {formatWon(info.available)})</label>
+            <label className="text-[12px] text-gray-500 dark:text-gray-400 block mb-1">금액 (최대 {formatWon(info.available)})</label>
             <input
               type="number"
               min={info.min_withdrawal}
               max={info.available}
               value={amount}
               onChange={(e) => setAmount(Math.max(0, Math.min(info.available, Number(e.target.value) || 0)))}
-              className="w-full px-3 py-2 text-sm bg-warm border border-line text-gray-900 dark:text-white rounded-lg"
+              className="w-full px-3 py-2 text-[15px] bg-warm border border-line text-gray-900 dark:text-white rounded-lg"
             />
           </div>
           <div>
-            <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">은행</label>
+            <label className="text-[12px] text-gray-500 dark:text-gray-400 block mb-1">은행</label>
             <input
               type="text"
               value={bankName}
               onChange={(e) => setBankName(e.target.value)}
               placeholder="예: 카카오뱅크"
-              className="w-full px-3 py-2 text-sm bg-warm border border-line text-gray-900 dark:text-white rounded-lg"
+              className="w-full px-3 py-2 text-[15px] bg-warm border border-line text-gray-900 dark:text-white rounded-lg"
             />
           </div>
           <div>
-            <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">계좌번호</label>
+            <label className="text-[12px] text-gray-500 dark:text-gray-400 block mb-1">계좌번호</label>
             <input
               type="text"
               value={bankAccount}
               onChange={(e) => setBankAccount(e.target.value.replace(/[^0-9-]/g, ''))}
               placeholder="3333-01-1234567"
-              className="w-full px-3 py-2 text-sm bg-warm border border-line text-gray-900 dark:text-white rounded-lg"
+              className="w-full px-3 py-2 text-[15px] bg-warm border border-line text-gray-900 dark:text-white rounded-lg"
             />
           </div>
           <div>
-            <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">예금주</label>
+            <label className="text-[12px] text-gray-500 dark:text-gray-400 block mb-1">예금주</label>
             <input
               type="text"
               value={accountHolder}
               onChange={(e) => setAccountHolder(e.target.value)}
-              className="w-full px-3 py-2 text-sm bg-warm border border-line text-gray-900 dark:text-white rounded-lg"
+              className="w-full px-3 py-2 text-[15px] bg-warm border border-line text-gray-900 dark:text-white rounded-lg"
             />
           </div>
         </div>
 
-        <div className="mt-4 bg-warm rounded-lg p-3 text-xs space-y-1">
+        <div className="mt-4 bg-warm rounded-lg p-3 text-[12px] space-y-1">
           <div className="flex justify-between text-gray-600 dark:text-gray-400"><span>신청 금액</span><span>{formatWon(amount)}</span></div>
           <div className="flex justify-between text-gray-600 dark:text-gray-400"><span>원천징수 ({(info.withholding_rate * 100).toFixed(1)}%)</span><span>-{formatWon(withholding)}</span></div>
           <div className="flex justify-between font-bold text-gray-900 dark:text-white pt-1 border-t border-line"><span>실 입금</span><span>{formatWon(netAmount)}</span></div>
         </div>
 
         <div className="mt-4 flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2.5 bg-wash text-gray-700 dark:text-gray-300 font-bold rounded-lg">취소</button>
-          <button onClick={submit} disabled={submitting} className="flex-1 py-2.5 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white font-bold rounded-lg">
+          <button onClick={onClose} className="flex-1 py-2 bg-wash text-gray-700 dark:text-gray-300 font-bold rounded-lg">취소</button>
+          <button onClick={submit} disabled={submitting} className="flex-1 py-2 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white font-bold rounded-lg">
             {submitting ? '신청 중...' : '신청'}
           </button>
         </div>

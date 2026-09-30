@@ -96,10 +96,10 @@ export default function InAppFeatureBlockedModal({ feature, onClose, onAlternati
       >
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1 min-w-0">
-            <span className="inline-block px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[11px] font-bold mb-2 border border-amber-200">
+            <span className="inline-block px-2 py-1 rounded-full bg-amber-50 text-amber-700 text-[12px] font-bold mb-2 border border-amber-200">
               ⚠️ {inAppLabel} 인앱 브라우저
             </span>
-            <h2 id="iafm-title" className="text-[18px] font-extrabold text-gray-900 dark:text-white leading-tight">
+            <h2 id="iafm-title" className="text-[17px] font-extrabold text-gray-900 dark:text-white leading-tight">
               <span className="mr-1.5">{info.icon}</span>
               {info.title}
             </h2>
@@ -109,7 +109,7 @@ export default function InAppFeatureBlockedModal({ feature, onClose, onAlternati
           </button>
         </div>
 
-        <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-5">
+        <p className="text-[15px] text-gray-600 dark:text-gray-300 leading-relaxed mb-5">
           {info.desc}
         </p>
 
@@ -122,7 +122,7 @@ export default function InAppFeatureBlockedModal({ feature, onClose, onAlternati
         <div className="space-y-2">
           <button
             onClick={handleOpen}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-gray-900 text-white rounded-2xl font-bold text-[14px] active:scale-[0.98] transition-transform"
+            className="w-full flex items-center justify-center gap-2 px-4 py-4 bg-brand text-white rounded-2xl font-bold text-[15px] active:scale-[0.98] transition-transform"
           >
             <ExternalLink className="w-4 h-4" />
             외부 브라우저로 열기
@@ -147,7 +147,7 @@ export default function InAppFeatureBlockedModal({ feature, onClose, onAlternati
 
           <button
             onClick={onClose}
-            className="w-full px-4 py-2.5 text-gray-500 dark:text-gray-400 text-[13px]"
+            className="w-full px-4 py-2 text-gray-500 dark:text-gray-400 text-[13px]"
           >
             나중에 하기
           </button>

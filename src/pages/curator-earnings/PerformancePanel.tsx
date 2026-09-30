@@ -71,13 +71,13 @@ function Row({ n, to, onClick, thumb, name, sub, value, muted }: {
         />
       )}
       <span className="flex-1 min-w-0">
-        <span className="block text-[13.5px] font-bold tracking-[-0.01em] truncate text-gray-900 dark:text-white">{name}</span>
-        <span className="block text-[11.5px] text-gray-400 dark:text-gray-500 mt-px truncate">{sub}</span>
+        <span className="block text-[13px] font-bold tracking-[-0.01em] truncate text-gray-900 dark:text-white">{name}</span>
+        <span className="block text-[12px] text-gray-400 dark:text-gray-500 mt-px truncate">{sub}</span>
       </span>
-      <span className={`shrink-0 text-[13.5px] font-extrabold tabular-nums ${muted ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-white'}`}>{value}</span>
+      <span className={`shrink-0 text-[13px] font-extrabold tabular-nums ${muted ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-white'}`}>{value}</span>
     </>
   )
-  const cls = 'w-full text-left flex items-center gap-2.5 py-2.5 border-t border-rule first:border-t-0'
+  const cls = 'w-full text-left flex items-center gap-2 py-2 border-t border-rule first:border-t-0'
   if (to) return <Link to={to} className={`${cls} active:opacity-70`}>{inner}</Link>
   if (onClick) return <button type="button" onClick={onClick} className={`${cls} active:opacity-70`}>{inner}</button>
   return <div className={cls}>{inner}</div>
@@ -109,21 +109,21 @@ export default function PerformancePanel({ stats, onProxy }: {
   if (!products.length && !hasStores && !earnings.length) return null
 
   return (
-    <section className="bg-surface shadow-lift rounded-2xl px-4 pt-3 pb-1.5 mb-3">
-      <div className="flex items-center gap-1.5 mb-1">
+    <section className="bg-surface shadow-lift rounded-2xl px-4 pt-3 pb-2 mb-3">
+      <div className="flex items-center gap-2 mb-1">
         {tabs.map(([k, label]) => (
           <button
             key={k}
             type="button"
             onClick={() => setTab(k)}
-            className={`px-2.5 py-1 rounded-full text-[12.5px] font-extrabold ${
+            className={`px-2 py-1 rounded-full text-[12px] font-extrabold ${
               active === k ? 'bg-brand text-white' : 'text-gray-500 dark:text-gray-400'
             }`}
           >
             {label}
           </button>
         ))}
-        <span className="ml-auto text-[11px] text-gray-400 dark:text-gray-500">
+        <span className="ml-auto text-[12px] text-gray-400 dark:text-gray-500">
           {active === 'store' ? `누적 ${formatWon(stores?.total_commission ?? 0)}` : '최근 30건 기준'}
         </span>
       </div>

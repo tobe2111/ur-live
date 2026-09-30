@@ -52,7 +52,7 @@ export default function ThemeToggleSection({ variant, className }: Props) {
                 role="radio"
                 aria-checked={active}
                 onClick={() => setMode(o.key)}
-                className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-[11px] font-semibold transition-colors ${active ? activeClass : baseInactive}`}
+                className={`flex items-center justify-center gap-2 py-2 rounded-xl text-[12px] font-semibold transition-colors ${active ? activeClass : baseInactive}`}
               >
                 {o.icon}
                 <span>{o.label}</span>
@@ -60,11 +60,11 @@ export default function ThemeToggleSection({ variant, className }: Props) {
             )
           })}
         </div>
-        <p className={`text-[10.5px] mt-2.5 px-1 leading-relaxed ${isDark ? 'text-white/40' : 'text-gray-500 dark:text-white/45'}`}>
+        <p className={`text-[12px] mt-2 px-1 leading-relaxed ${isDark ? 'text-white/40' : 'text-gray-500 dark:text-white/45'}`}>
           {t('theme.description', { defaultValue: '시스템 / 라이트 / 다크 중 선택. 시스템 모드는 OS 다크 설정을 따라갑니다.' })}
         </p>
         {mode === 'system' && (
-          <p className={`text-[10px] mt-1.5 px-1 ${isDark ? 'text-white/30' : 'text-gray-400 dark:text-white/35'}`}>
+          <p className={`text-[12px] mt-2 px-1 ${isDark ? 'text-white/30' : 'text-gray-400 dark:text-white/35'}`}>
             {t('theme.currentlyFollowing', {
               theme: applied === 'dark' ? t('theme.dark', { defaultValue: '다크' }) : t('theme.light', { defaultValue: '라이트' }),
               defaultValue: applied === 'dark' ? '현재 OS: 다크' : '현재 OS: 라이트',

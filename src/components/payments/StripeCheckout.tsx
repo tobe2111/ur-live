@@ -95,7 +95,7 @@ function CheckoutForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Stripe Payment Element */}
-      <div className="bg-surface rounded-lg border border-line p-4">
+      <div className="bg-surface rounded-lg p-4 shadow-lift">
         <PaymentElement />
       </div>
 
@@ -104,7 +104,7 @@ function CheckoutForm({
         type="submit"
         disabled={!stripe || isProcessing}
         className={`
-          w-full py-4 rounded-lg font-bold text-white text-lg
+          w-full py-4 rounded-lg font-bold text-white text-[17px]
           ${!stripe || isProcessing
             ? 'bg-gray-300 cursor-not-allowed'
             : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
@@ -167,7 +167,7 @@ export function StripeCheckout(props: StripeCheckoutProps) {
   // clientSecret이 없으면 로딩 표시
   if (!clientSecret) {
     return (
-      <div className="flex items-center justify-center py-12 text-gray-500 text-sm">
+      <div className="flex items-center justify-center py-12 text-gray-500 text-[15px]">
         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-2"></div>
         <p>{t('payment.loading', { defaultValue: 'Loading payment...' })}</p>
       </div>

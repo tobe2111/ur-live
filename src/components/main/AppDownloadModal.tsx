@@ -47,7 +47,7 @@ export default function AppDownloadModal({ onClose }: Props) {
       >
         {/* 헤더 */}
         <div className="flex items-start justify-between px-6 pt-6 pb-2">
-          <h2 className="text-[19px] font-extrabold text-gray-900 dark:text-white leading-snug pr-4">
+          <h2 className="text-[17px] font-extrabold text-gray-900 dark:text-white leading-snug pr-4">
             폰에서 유어딜을<br />더 빠르게 · 더 편하게
           </h2>
           <button

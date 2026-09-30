@@ -1,4 +1,5 @@
-import { ChevronLeft, Share2, ShoppingBag } from 'lucide-react'
+import { ChevronLeft, Share2 } from 'lucide-react'
+import { BagIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
@@ -33,12 +34,12 @@ export function MobileHeader({ onShare }: MobileHeaderProps) {
       <button aria-label={t('productDetail.header.back', { defaultValue: '뒤로가기' })} className={btnClass} onClick={handleBack}>
         <ChevronLeft className="h-[18px] w-[18px] text-gray-900 dark:text-white" />
       </button>
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-2">
         <button aria-label={t('productDetail.header.share', { defaultValue: '공유' })} className={btnClass} onClick={onShare}>
           <Share2 className="h-4 w-4 text-gray-900 dark:text-white" />
         </button>
         <button aria-label={t('productDetail.header.cart', { defaultValue: '장바구니' })} className={btnClass} onClick={() => navigate('/cart')}>
-          <ShoppingBag className="h-4 w-4 text-gray-900 dark:text-white" />
+          <BagIcon className="h-4 w-4 text-gray-900 dark:text-white" />
         </button>
       </div>
     </header>

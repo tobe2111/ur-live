@@ -56,7 +56,7 @@ export default function RegionPickerModal({ open, regionKey, districtKey, onClos
             >
               <X className="w-5 h-5 text-gray-700 dark:text-gray-200" />
             </button>
-            <span className="text-base font-bold text-gray-900 dark:text-white">지역 선택</span>
+            <span className="text-[15px] font-bold text-gray-900 dark:text-white">지역 선택</span>
           </div>
         </div>
 
@@ -70,7 +70,7 @@ export default function RegionPickerModal({ open, regionKey, districtKey, onClos
                 <button
                   key={r.key}
                   onClick={() => setActiveRegion(r.key)}
-                  className={`w-full text-center py-3.5 px-2 text-[13px] font-semibold transition-colors whitespace-pre-line leading-tight ${
+                  className={`w-full text-center py-4 px-2 text-[13px] font-semibold transition-colors whitespace-pre-line leading-tight ${
                     active
                       ? 'bg-white dark:bg-[#111] text-gray-900 dark:text-white border-l-[3px] border-brand'
                       : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
@@ -105,10 +105,10 @@ export default function RegionPickerModal({ open, regionKey, districtKey, onClos
             {/* 동/역 그룹 목록 */}
             {region.districtGroups.length === 0 ? (
               <div className="px-5 py-12 text-center">
-                <p className="text-sm text-gray-400 dark:text-gray-500">
+                <p className="text-[15px] text-gray-400 dark:text-gray-500">
                   {region.label.replace('\n', ' ')} 세부 지역은 곧 추가됩니다.
                 </p>
-                <p className="text-xs text-gray-300 dark:text-gray-600 mt-2">
+                <p className="text-[12px] text-gray-300 dark:text-gray-600 mt-2">
                   '전체' 를 선택해 전체 매물을 보세요.
                 </p>
               </div>
@@ -123,7 +123,7 @@ export default function RegionPickerModal({ open, regionKey, districtKey, onClos
                           onSelect(region.key, g.key)
                           onClose()
                         }}
-                        className={`w-full text-left px-5 py-3 text-[14px] transition-colors ${
+                        className={`w-full text-left px-5 py-3 text-[15px] transition-colors ${
                           active
                             ? 'text-brand-text  font-bold bg-brand-tint '
                             : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#111]'

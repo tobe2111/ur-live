@@ -114,7 +114,7 @@ describe('③ 지도 딜 카드 — 대표가 본 그 화면', () => {
 
   it('본문으로 읽는 작은 글자에 `--ink-faint`(=gray-400, 비활성용)를 쓰지 않는다', () => {
     // 주소·정가·쿠폰가 라벨·위치 표시는 **읽는 값**이다. 3.65:1 → 5.30:1.
-    for (const anchor of ['쿠폰가</span>', 'line-through', 'mt-1 flex items-center gap-0.5 truncate']) {
+    for (const anchor of ['쿠폰가</span>', 'line-through', 'mt-1 flex items-center gap-1 truncate']) {
       const at = CARD.indexOf(anchor)
       expect(at, `앵커를 못 찾았다: ${anchor}`).toBeGreaterThan(-1)
       // 그 줄이 gray-400 을 쓰고 있지 않아야 한다

@@ -17,8 +17,8 @@ export default [
   {
     name: '🫥 유어쇼츠 구매 바가 다시 투명해진다 (실사고 원본 — bg-white/97)',
     file: VIDEOS,
-    find: 'rounded-2xl bg-white/95 p-2.5 shadow-2xl',
-    replace: 'rounded-2xl bg-white/97 p-2.5 shadow-2xl',
+    find: 'rounded-2xl bg-white/95 p-2 shadow-2xl',
+    replace: 'rounded-2xl bg-white/97 p-2 shadow-2xl',
     test: GUARD,
     why:
       '대표가 신고한 그 화면이다. 97 은 스케일에 없어 클래스가 안 만들어지고, 상품명·가격이 ' +
@@ -27,8 +27,8 @@ export default [
   {
     name: '🫥 구매 바 배경 클래스를 통째로 뗀다 (테스트가 바닥을 보는지)',
     file: VIDEOS,
-    find: 'rounded-2xl bg-white/95 p-2.5 shadow-2xl',
-    replace: 'rounded-2xl p-2.5 shadow-2xl',
+    find: 'rounded-2xl bg-white/95 p-2 shadow-2xl',
+    replace: 'rounded-2xl p-2 shadow-2xl',
     test: BAR_TEST,
     why:
       '기존 검사 15개는 글자·배치만 봐서 배경이 없어도 전부 통과했다. 이 주입이 통과하면 ' +

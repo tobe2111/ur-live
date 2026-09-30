@@ -9,11 +9,11 @@ interface ProductInfoGridProps {
 
 export function ProductInfoGrid({ items }: ProductInfoGridProps) {
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-2">
       {items.map((item, index) => (
         <div key={index} className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">{item.label}</span>
-          <span className="text-xs font-medium text-foreground">{item.value}</span>
+          <span className="text-[12px] text-muted-foreground">{item.label}</span>
+          <span className="text-[12px] font-medium text-foreground">{item.value}</span>
         </div>
       ))}
     </div>

@@ -58,7 +58,7 @@ export default function PinCategoryChips({ pins, value, onChange }: { pins: Cura
             role="tab"
             aria-selected={on}
             onClick={() => onChange(d.key as PinCategory)}
-            className={`shrink-0 inline-flex items-center gap-1.5 h-9 pl-3 pr-3.5 rounded-full text-[13px] font-bold whitespace-nowrap active:scale-95 transition-transform ${on ? 'bg-brand text-white' : 'bg-white dark:bg-[#1D1F29] text-gray-800 dark:text-gray-100 shadow-lift'}`}
+            className={`shrink-0 inline-flex items-center gap-2 h-9 pl-3 pr-4 rounded-full text-[13px] font-bold whitespace-nowrap active:scale-95 transition-transform ${on ? 'bg-brand text-white' : 'bg-white dark:bg-[#1D1F29] text-gray-800 dark:text-gray-100 shadow-lift'}`}
           >
             <d.icon size={15} />
             {t(d.labelKey, { defaultValue: d.defaultLabel })} <span className={`tabular-nums ${on ? 'text-white/80' : 'text-gray-400'}`}>{n}</span>

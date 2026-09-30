@@ -13,7 +13,8 @@
  * 그래서 여기서는 시트를 닫기만 한다 — 리로드하지 않는다(그러면 인라인이 아니다).
  */
 import { useEffect, useState } from 'react'
-import { Check, Loader2, Store, X } from 'lucide-react'
+import { Check, Loader2, X } from 'lucide-react'
+import { UrShopIcon } from '@/components/icons/urdeal-icons'
 import { Z } from '@/constants/z-index'
 import { switchSeat } from '@/lib/seller-seat'
 import { toast } from '@/hooks/useToast'
@@ -82,7 +83,7 @@ export default function StoreSwitchSheet({ currentSellerId, onClose }: {
         style={{ zIndex: Z.SHEET_BODY }}
       >
         <div className="flex items-center justify-between px-4 h-14 border-b border-rule shrink-0">
-          <span className="text-[16px] font-extrabold text-gray-900 dark:text-white">가게 전환</span>
+          <span className="text-[17px] font-extrabold text-gray-900 dark:text-white">가게 전환</span>
           <button type="button" onClick={onClose} aria-label="닫기" className="w-9 h-9 -mr-2 flex items-center justify-center">
             <X className="w-5 h-5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
           </button>
@@ -95,7 +96,7 @@ export default function StoreSwitchSheet({ currentSellerId, onClose }: {
             </div>
           )}
           {failed && (
-            <p className="px-4 py-8 text-center text-[13.5px] text-gray-500 dark:text-gray-400">
+            <p className="px-4 py-8 text-center text-[13px] text-gray-500 dark:text-gray-400">
               목록을 불러오지 못했습니다. 잠시 후 다시 열어 주세요.
             </p>
           )}
@@ -108,12 +109,12 @@ export default function StoreSwitchSheet({ currentSellerId, onClose }: {
                 type="button"
                 onClick={() => pick(s)}
                 disabled={busy !== null}
-                className="w-full flex items-start gap-3 px-4 py-3.5 text-left border-b border-rule active:opacity-70 disabled:opacity-50"
+                className="w-full flex items-start gap-3 px-4 py-3 text-left border-b border-rule active:opacity-70 disabled:opacity-50"
               >
-                <Store className="w-[18px] h-[18px] mt-0.5 shrink-0 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+                <UrShopIcon className="w-[18px] h-[18px] mt-1 shrink-0 text-gray-500 dark:text-gray-400" aria-hidden="true" />
                 <span className="flex-1 min-w-0">
                   <span className="block text-[15px] font-bold text-gray-900 dark:text-white truncate">{label(s)}</span>
-                  <span className="block text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">
+                  <span className="block text-[12px] text-gray-500 dark:text-gray-400 mt-1">
                     {s.role === 'owner' ? '내 가게' : '운영 중'}
                     {note ? ` · ${note}` : ''}
                   </span>
@@ -124,8 +125,8 @@ export default function StoreSwitchSheet({ currentSellerId, onClose }: {
                   )}
                 </span>
                 {busy === s.seller_id
-                  ? <Loader2 className="w-[18px] h-[18px] mt-0.5 shrink-0 animate-spin text-gray-400" aria-hidden="true" />
-                  : isCurrent && <Check className="w-[18px] h-[18px] mt-0.5 shrink-0 text-brand-text" aria-hidden="true" />}
+                  ? <Loader2 className="w-[18px] h-[18px] mt-1 shrink-0 animate-spin text-gray-400" aria-hidden="true" />
+                  : isCurrent && <Check className="w-[18px] h-[18px] mt-1 shrink-0 text-brand-text" aria-hidden="true" />}
               </button>
             )
           })}

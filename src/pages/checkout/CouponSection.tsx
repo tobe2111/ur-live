@@ -43,19 +43,19 @@ export default function CouponSection({ couponCode, setCouponCode, couponDiscoun
           onChange={e => setCouponCode(e.target.value.toUpperCase())}
           placeholder={t('checkout.coupon.placeholder', { defaultValue: '쿠폰 코드 입력' })}
           aria-label={t('checkout.coupon.placeholder', { defaultValue: '쿠폰 코드 입력' })}
-          className="flex-1 min-w-0 px-3 py-2.5 border border-line rounded-lg text-sm bg-surface text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-400 focus:outline-none"
+          className="flex-1 min-w-0 px-3 py-2 border border-line rounded-lg text-[15px] bg-surface text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-400 focus:outline-none"
         />
         <button
           onClick={handleApply}
-          className="px-4 py-2.5 bg-gray-900 text-white text-sm font-bold rounded-lg shrink-0"
+          className="px-4 py-2 bg-brand text-white text-[15px] font-bold rounded-lg shrink-0"
         >
           {t('checkout.coupon.apply', { defaultValue: '적용' })}
         </button>
       </div>
       {couponDiscount > 0 && (
         <div className="flex items-center justify-between mt-2 p-2 bg-green-50 rounded-lg border border-green-200">
-          <span className="text-sm text-green-700 font-medium">{t('checkout.coupon.applied', { defaultValue: '✓ 쿠폰 할인 적용됨' })}</span>
-          <span className="text-sm font-bold text-green-700">-{formatNumber(couponDiscount)}{t('checkout.summary.wonSuffix', { defaultValue: '원' })}</span>
+          <span className="text-[15px] text-green-700 font-medium">{t('checkout.coupon.applied', { defaultValue: '✓ 쿠폰 할인 적용됨' })}</span>
+          <span className="text-[15px] font-bold text-green-700">-{formatNumber(couponDiscount)}{t('checkout.summary.wonSuffix', { defaultValue: '원' })}</span>
         </div>
       )}
     </section>

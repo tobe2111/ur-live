@@ -102,9 +102,9 @@ export default function FlashDealsHero() {
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-[15px]">🔥</span>
                 <span className="text-[12px] lg:text-[13px] font-extrabold text-white/90 tracking-[0.12em]">FLASH DEALS</span>
-                <span className="text-[10px] text-white/60 ml-1 hidden lg:inline">· 매일 자정·정오 갱신</span>
+                <span className="text-[12px] text-white/60 ml-1 hidden lg:inline">· 매일 자정·정오 갱신</span>
               </div>
-              <p className="text-[10px] text-white/60 lg:hidden">· 매일 자정·정오 갱신</p>
+              <p className="text-[12px] text-white/60 lg:hidden">· 매일 자정·정오 갱신</p>
 
               {/* 카운트다운 */}
               <div className="flex items-baseline gap-1 mt-2 mb-3">
@@ -114,31 +114,31 @@ export default function FlashDealsHero() {
                 >
                   {pad(h)}:{pad(m)}:{pad(s)}
                 </span>
-                <span className="text-[11px] lg:text-[12px] text-white/70 font-semibold ml-1">
+                <span className="text-[12px] lg:text-[12px] text-white/70 font-semibold ml-1">
                   {isNoonTarget ? '정오까지' : '자정까지'}
                 </span>
               </div>
             </div>
 
             {/* 통계 */}
-            <div className="space-y-1.5">
-              <p className="text-[11px] lg:text-[12px] text-white/90 font-semibold">
+            <div className="space-y-2">
+              <p className="text-[12px] lg:text-[12px] text-white/90 font-semibold">
                 진행 중 타임딜{' '}
-                <span className="text-white font-extrabold text-[13px] lg:text-[14px]">{data.count}개</span>
+                <span className="text-white font-extrabold text-[13px] lg:text-[15px]">{data.count}개</span>
               </p>
               {data.avg_discount_rate > 0 && (
-                <p className="text-[11px] lg:text-[12px] text-white/90 font-semibold">
+                <p className="text-[12px] lg:text-[12px] text-white/90 font-semibold">
                   평균 할인율{' '}
-                  <span className="text-white font-extrabold text-[13px] lg:text-[14px]">{data.avg_discount_rate}%</span>
+                  <span className="text-white font-extrabold text-[13px] lg:text-[15px]">{data.avg_discount_rate}%</span>
                 </p>
               )}
 
               {/* 강조 배지 */}
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                <span className="bg-white/20 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+              <div className="flex flex-wrap gap-2 mt-2">
+                <span className="bg-white/20 backdrop-blur-sm text-white text-[12px] font-bold px-2 py-1 rounded-full">
                   ⚡ 한정수량
                 </span>
-                <span className="bg-white/20 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                <span className="bg-white/20 backdrop-blur-sm text-white text-[12px] font-bold px-2 py-1 rounded-full">
                   🎯 특가딜
                 </span>
               </div>
@@ -149,7 +149,7 @@ export default function FlashDealsHero() {
         {/* ── 타임딜 그리드 ── */}
         <div className="flex-1 min-w-0">
           {/* 📐 PC 프레임(720) 안에서 xl 이 4열로 곱해져 카드가 좁아지던 것 방지 — 최대 3열 cap. */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
             {data.deals.map(deal => (
               <TimedealCard
                 key={deal.id}

@@ -59,7 +59,7 @@ export default function PartnerPaths() {
             <h2 className="text-[26px] lg:text-[40px] xl:text-[46px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
               시작하는 길, 세 가지
             </h2>
-            <p className="mt-4 text-[14px] lg:text-[17px] leading-relaxed text-gray-500 dark:text-gray-400 max-w-[28em]">
+            <p className="mt-4 text-[15px] lg:text-[17px] leading-relaxed text-gray-500 dark:text-gray-400 max-w-[28em]">
               어느 길이든 손님이 낸 돈은 사장님 계좌로만 갑니다.
             </p>
           </div>
@@ -75,26 +75,26 @@ export default function PartnerPaths() {
             <article key={title}
               className={`rounded-2xl flex flex-col ${hi ? 'bg-surface shadow-lift p-6 lg:p-10' : 'bg-black/[0.03] dark:bg-white/[0.04] p-6 lg:p-8'}`}>
               <div className="flex items-baseline justify-between gap-3">
-                <h3 className={`font-extrabold text-ink tracking-[-0.02em] ${hi ? 'text-[20px] lg:text-[30px]' : 'text-[18px] lg:text-[23px]'}`}>{title}</h3>
-                <span className={`text-[12px] lg:text-[14px] font-bold shrink-0 ${hi ? 'text-brand-text' : 'text-gray-500 dark:text-gray-400'}`}>{fee}</span>
+                <h3 className={`font-extrabold text-ink tracking-[-0.02em] ${hi ? 'text-[24px] lg:text-[30px]' : 'text-[17px] lg:text-[24px]'}`}>{title}</h3>
+                <span className={`text-[12px] lg:text-[15px] font-bold shrink-0 ${hi ? 'text-brand-text' : 'text-gray-500 dark:text-gray-400'}`}>{fee}</span>
               </div>
-              <ol className="mt-6 lg:mt-8 space-y-2.5 lg:space-y-3.5 flex-1">
+              <ol className="mt-6 lg:mt-8 space-y-2 lg:space-y-4 flex-1">
                 {steps.map(s => (
-                  <li key={s} className="flex gap-2.5 text-[13px] lg:text-[15px] leading-snug text-gray-600 dark:text-gray-300">
+                  <li key={s} className="flex gap-2 text-[13px] lg:text-[15px] leading-snug text-gray-600 dark:text-gray-300">
                     <Check className="w-3.5 h-3.5 mt-[3px] shrink-0 text-brand-text" strokeWidth={2.4} />
                     <span>{s}</span>
                   </li>
                 ))}
               </ol>
-              <p className="mt-6 pt-5 border-t border-rule text-[12px] lg:text-[13.5px] leading-relaxed text-gray-500 dark:text-gray-400">{note}</p>
+              <p className="mt-6 pt-5 border-t border-rule text-[12px] lg:text-[13px] leading-relaxed text-gray-500 dark:text-gray-400">{note}</p>
               {'to' in cta ? (
                 <Link to={cta.to}
-                  className="mt-6 h-12 lg:h-14 rounded-2xl bg-brand text-white flex items-center justify-center gap-1.5 text-[14px] font-extrabold active:scale-[0.98] transition-transform">
+                  className="mt-6 h-12 lg:h-14 rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] font-extrabold active:scale-[0.98] transition-transform">
                   {cta.label} <ArrowRight className="w-4 h-4" />
                 </Link>
               ) : (
                 <a href={cta.href} target="_blank" rel="noopener noreferrer"
-                  className="mt-6 h-12 lg:h-14 rounded-2xl border border-rule-strong flex items-center justify-center gap-1.5 text-[14px] font-bold text-ink">
+                  className="mt-6 h-12 lg:h-14 rounded-2xl border border-rule-strong flex items-center justify-center gap-2 text-[15px] font-bold text-ink">
                   {cta.label} <ArrowRight className="w-4 h-4" />
                 </a>
               )}
@@ -102,7 +102,7 @@ export default function PartnerPaths() {
           ))}
         </div>
 
-        <p className="mt-8 lg:mt-14 text-[13px] lg:text-[15.5px] leading-[1.8] text-gray-500 dark:text-gray-400 max-w-[54em]">
+        <p className="mt-8 lg:mt-14 text-[13px] lg:text-[15px] leading-[1.8] text-gray-500 dark:text-gray-400 max-w-[54em]">
           어느 길이든 사업자등록번호는 국세청에 자동으로 조회됩니다. 등록증 사본은 사람이 한 번 보고 승인합니다.
           가짜 매장이 섞이면 먼저 들어오신 사장님이 손해라서, 이 한 단계는 사람이 맡습니다.
         </p>

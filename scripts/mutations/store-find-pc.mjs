@@ -33,7 +33,7 @@ export default [
   {
     name: '🙋 설명 블록이 폰까지 펴진다 (입력 칸이 첫 화면에서 사라진다)',
     file: PAGE,
-    find: `            <ol className="hidden lg:flex mt-8 flex-col gap-3.5 lg:max-w-[460px]">`,
+    find: `            <ol className="hidden lg:flex mt-8 flex-col gap-4 lg:max-w-[460px]">`,
     replace: `            <ol className="flex mt-8 flex-col gap-3.5 lg:max-w-[460px]">`,
     test: T,
     why:

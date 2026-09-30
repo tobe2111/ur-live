@@ -11,8 +11,8 @@
  * 넘기면 그만이라 **새 prop 이 하나도 필요 없다**.
  */
 import { memo } from 'react'
+import { PinIcon } from '@/components/icons/urdeal-icons'
 import { priceDisplay } from '@/shared/price-display'
-import { MapPin } from 'lucide-react'
 import CatIcon from './CatIcon'
 import { formatNumber } from '@/utils/format'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
@@ -44,7 +44,7 @@ export const RestaurantRow = memo(function RestaurantRow({ r, isSelected, userLo
       onClick={() => onSelect(r)}
       className={`w-full flex gap-3 py-4 text-left transition-colors ${
         isSelected
-          ? 'bg-gray-50 dark:bg-[#1D1F29]'
+          ? 'bg-brand/[0.06] dark:bg-brand/[0.14]'
           : 'hover:bg-gray-50/60 dark:hover:bg-[#0E0E0E] active:bg-gray-100 dark:active:bg-[#161616]'
       }`}
     >
@@ -62,9 +62,9 @@ export const RestaurantRow = memo(function RestaurantRow({ r, isSelected, userLo
             라인(FcfsBadge)으로 전용 줄에 배치(긴 제목 안 찌그러뜨림).
             🏷️ 2026-07-19 (대표 — 제목 중복 제거): 제목의 "매장명 · " 프리픽스 제거 — 매장명은 아랫줄 한 곳에만. */}
         <p className="font-bold text-gray-900 dark:text-white text-[15px] truncate">{stripStorePrefix(r.name, r.restaurant_name)}</p>
-        <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">{r.restaurant_name}</p>
-        <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-0.5 truncate flex items-center gap-0.5">
-          <MapPin className="w-3 h-3 shrink-0" />
+        <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 truncate">{r.restaurant_name}</p>
+        <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-1 truncate flex items-center gap-1">
+          <PinIcon className="w-3 h-3 shrink-0" />
           {isFar
             ? (regionShort(r.restaurant_address) || r.restaurant_address || '주소 미등록')
             : (r.restaurant_address || '주소 미등록')}
@@ -76,14 +76,14 @@ export const RestaurantRow = memo(function RestaurantRow({ r, isSelected, userLo
             </span>
           ))}
         </p>
-        <div className="flex items-baseline gap-1.5 mt-1.5">
+        <div className="flex items-baseline gap-2 mt-2">
           {/* 🎨 2026-07-19 (대표 — 브랜드 컬러 통일): 순수 빨강 → 웜 로즈 brand 토큰(라이트/다크 var 보정). */}
           {discount > 0 && (
-            <span className="text-[16px] font-extrabold text-sale">{discount}%</span>
+            <span className="text-[17px] font-extrabold text-sale">{discount}%</span>
           )}
-          <span className="text-[16px] font-extrabold text-gray-900 dark:text-white">{formatNumber(r.price)}원</span>
+          <span className="text-[17px] font-extrabold text-gray-900 dark:text-white">{formatNumber(r.price)}원</span>
           {r.original_price > r.price && (
-            <span className="text-xs text-gray-400 dark:text-gray-500 line-through">{formatNumber(r.original_price)}원</span>
+            <span className="text-[12px] text-gray-400 dark:text-gray-500 line-through">{formatNumber(r.original_price)}원</span>
           )}
         </div>
         {fcfs && <div className="mt-2"><FcfsBadge info={fcfs} /></div>}

@@ -93,12 +93,12 @@ export default function EarningsPanel({ stats, info, onWithdraw }: {
               type="button"
               onClick={onWithdraw}
               disabled={belowMin}
-              className="shrink-0 px-4 py-2.5 rounded-xl bg-white/20 text-white text-[13px] font-extrabold disabled:opacity-50"
+              className="shrink-0 px-4 py-2 rounded-xl bg-white/20 text-white text-[13px] font-extrabold disabled:opacity-50"
             >
               {belowMin ? `${formatWon(info.min_withdrawal)}부터` : '출금'}
             </button>
           ) : (
-            <Link to="/browse" className="shrink-0 px-4 py-2.5 rounded-xl bg-white/20 text-white text-[13px] font-extrabold">
+            <Link to="/browse" className="shrink-0 px-4 py-2 rounded-xl bg-white/20 text-white text-[13px] font-extrabold">
               쓰러 가기
             </Link>
           )}
@@ -106,14 +106,14 @@ export default function EarningsPanel({ stats, info, onWithdraw }: {
       )}
 
       {/* ── 본문: 이번 달 + 30일 추이 ── */}
-      <div className="bg-surface px-4 pt-3.5 pb-4">
-        <div className="flex items-baseline gap-2.5 mb-3">
-          <span className="text-[22px] font-black tracking-[-0.03em] tabular-nums text-gray-900 dark:text-white">
+      <div className="bg-surface px-4 pt-4 pb-4">
+        <div className="flex items-baseline gap-2 mb-3">
+          <span className="text-[24px] font-black tracking-[-0.03em] tabular-nums text-gray-900 dark:text-white">
             {formatWon(stats.month_earnings)}
           </span>
           <span className="text-[12px] text-gray-500 dark:text-gray-400">30일 적립</span>
           {delta && (
-            <span className="ml-auto text-[11.5px] font-bold text-gray-500 dark:text-gray-400">
+            <span className="ml-auto text-[12px] font-bold text-gray-500 dark:text-gray-400">
               최근 2주 <b className={delta.pct >= 0 ? 'text-brand-text' : 'text-sale'}>{delta.pct >= 0 ? '+' : ''}{delta.pct}%</b>
             </span>
           )}
@@ -129,22 +129,22 @@ export default function EarningsPanel({ stats, info, onWithdraw }: {
             />
           ))}
         </div>
-        <div className="flex justify-between text-[10.5px] text-gray-400 dark:text-gray-500 mt-1.5">
+        <div className="flex justify-between text-[12px] text-gray-400 dark:text-gray-500 mt-2">
           <span>{startLabel(slots[0]?.date)}</span>
           <span>{today && today.amount > 0 ? `오늘 ${formatWon(today.amount)}` : '오늘'}</span>
         </div>
 
         {pending > 0 && (
-          <p className="text-[11.5px] text-gray-500 dark:text-gray-400 mt-2.5">
+          <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-2">
             적립 예정 {formatNumber(pending)}딜. 구매가 확정되면 더해진다
           </p>
         )}
 
         {/* 최근 출금 — 돈 이야기를 이 판에서 끝낸다(별도 섹션을 만들지 않는다) */}
         {!!info?.history?.length && (
-          <div className="mt-3 pt-3 border-t border-rule space-y-1.5">
+          <div className="mt-3 pt-3 border-t border-rule space-y-2">
             {info.history.slice(0, 3).map((h) => (
-              <div key={h.id} className="flex items-center justify-between text-[11.5px]">
+              <div key={h.id} className="flex items-center justify-between text-[12px]">
                 <span className="text-gray-500 dark:text-gray-400 truncate">
                   {formatWon(h.amount)} <span className="text-gray-400 dark:text-gray-500">{h.bank_name}</span>
                 </span>

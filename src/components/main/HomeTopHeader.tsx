@@ -9,8 +9,9 @@
  * - 테마: 라이트/다크 모두 지원(홈은 테마 토글 대상).
  */
 import { useState } from 'react'
+import { BellIcon, ClockIcon, PinIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
-import { Search, Bell, Clock, MapPin, ChevronDown, LocateFixed } from 'lucide-react'
+import { Search, ChevronDown, LocateFixed } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { useUnreadCount } from '@/hooks/queries'
@@ -72,9 +73,9 @@ export default function HomeTopHeader() {
 
   return (
     <div className="md:hidden lg:block sticky top-0 inset-x-0 z-30 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur-md border-b border-gray-100 dark:border-[#2C2F35]">
-      <div className="ur-content-wide px-4 lg:px-8 pt-2 pb-2.5 space-y-2">
+      <div className="ur-content-wide px-4 lg:px-8 pt-2 pb-2 space-y-2">
         {/* 1행: 로고 + 검색 + 기록 + 알림 */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <button onClick={() => navigate('/')} aria-label="홈" className="shrink-0">
             <span className="flex items-center justify-center w-9 h-9 rounded-full bg-gray-900 dark:bg-white">
               <span className="text-white dark:text-gray-900 font-black italic text-[13px] tracking-tight">UR</span>
@@ -83,24 +84,24 @@ export default function HomeTopHeader() {
 
           <button
             onClick={() => navigate('/search')}
-            className="flex-1 min-w-0 flex items-center gap-2 h-10 px-3.5 rounded-full bg-gray-100 dark:bg-[#1D1F29] text-left"
+            className="flex-1 min-w-0 flex items-center gap-2 h-10 px-4 rounded-full bg-gray-100 dark:bg-[#1D1F29] text-left"
             aria-label="검색"
           >
             <Search className="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0" strokeWidth={2} />
             <span className="text-[13px] text-gray-400 dark:text-gray-500 truncate">우선입장을 검색해 보세요!</span>
           </button>
 
-          <button onClick={() => navigate('/browse')} aria-label="최근 본" className="shrink-0 p-1.5 text-gray-700 dark:text-gray-200">
-            <Clock className="w-[22px] h-[22px]" strokeWidth={1.75} />
+          <button onClick={() => navigate('/browse')} aria-label="최근 본" className="shrink-0 p-2 text-gray-700 dark:text-gray-200">
+            <ClockIcon className="w-[22px] h-[22px]" />
           </button>
           <button
             onClick={() => navigate('/notifications')}
             aria-label={unreadCount > 0 ? `알림 ${unreadCount}개` : '알림'}
-            className="shrink-0 p-1.5 relative text-gray-700 dark:text-gray-200"
+            className="shrink-0 p-2 relative text-gray-700 dark:text-gray-200"
           >
-            <Bell className="w-[22px] h-[22px]" strokeWidth={1.75} />
+            <BellIcon className="w-[22px] h-[22px]" />
             {unreadCount > 0 && (
-              <span className="absolute top-0.5 right-0.5 bg-red-500 text-white text-[9px] font-bold min-w-[15px] h-[15px] px-1 rounded-full flex items-center justify-center">
+              <span className="absolute top-0.5 right-0.5 bg-red-500 text-white text-[12px] font-bold min-w-[15px] h-[15px] px-1 rounded-full flex items-center justify-center">
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
@@ -110,7 +111,7 @@ export default function HomeTopHeader() {
         {/* 2행: 위치 선택 + 현재 위치 */}
         <div className="flex items-center justify-between gap-2">
           <button onClick={goRegion} className="flex items-center gap-1 min-w-0 text-gray-900 dark:text-white" aria-label="동네 선택">
-            <MapPin className="w-4 h-4 text-red-500 shrink-0" strokeWidth={2.25} fill="currentColor" />
+            <PinIcon className="w-4 h-4 text-red-500 shrink-0" filled />
             <span className="text-[15px] font-bold truncate">{region?.name || '동네 선택'}</span>
             <ChevronDown className="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0" strokeWidth={2.5} />
           </button>

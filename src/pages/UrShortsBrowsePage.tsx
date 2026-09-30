@@ -77,7 +77,7 @@ export default function UrShortsBrowsePage() {
       />
 
       {/* 상단 — 뒤로 + 제목 + 지금 보이는 편수 */}
-      <header className="sticky top-0 z-10 flex items-center gap-1 bg-[var(--bg)]/95 px-2 py-2.5 backdrop-blur">
+      <header className="sticky top-0 z-10 flex items-center gap-1 bg-[var(--bg)]/95 px-2 py-2 backdrop-blur">
         <button
           type="button"
           aria-label="뒤로"
@@ -91,7 +91,7 @@ export default function UrShortsBrowsePage() {
           <span aria-hidden="true" className="-ml-[3px] text-brand-text">.</span>
         </h1>
         {items && (
-          <span className="ml-1.5 text-[12.5px] font-medium text-gray-500 dark:text-gray-400">
+          <span className="ml-1.5 text-[12px] font-medium text-gray-500 dark:text-gray-400">
             {shown.length}편
           </span>
         )}
@@ -117,11 +117,11 @@ export default function UrShortsBrowsePage() {
           />
 
           {shown.length === 0 ? (
-            <p className="py-20 text-center text-[13.5px] text-gray-500 dark:text-gray-400">
+            <p className="py-20 text-center text-[13px] text-gray-500 dark:text-gray-400">
               {all.length === 0 ? '아직 올라온 영상이 없어요' : '고른 조건에 맞는 영상이 없어요'}
             </p>
           ) : (
-            <ul className="grid grid-cols-2 gap-x-2.5 gap-y-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            <ul className="grid grid-cols-2 gap-x-2 gap-y-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {shown.map((it, i) => (
                 <li key={it.id}>
                   {/* 첫 줄만 즉시 로드 — 아래는 스크롤할 때. 2열이면 두 장이 첫 화면이다. */}
@@ -154,7 +154,7 @@ function ChipRow({
   const on = 'bg-brand text-white'
   const off = 'bg-surface text-gray-800 dark:text-gray-100 shadow-lift'
   return (
-    <div className="-mx-3 mb-2.5 flex gap-1.5 overflow-x-auto px-3 py-1 scrollbar-hide" aria-label={label}>
+    <div className="-mx-3 mb-2 flex gap-2 overflow-x-auto px-3 py-1 scrollbar-hide" aria-label={label}>
       <Chip active={!value} className={!value ? on : off} onClick={() => onPick(null)}>
         전체 <Count n={total} active={!value} />
       </Chip>
@@ -180,7 +180,7 @@ function Chip({
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className={`shrink-0 inline-flex items-center gap-1 h-9 px-3.5 rounded-full text-[13px] font-bold transition-colors ${className}`}
+      className={`shrink-0 inline-flex items-center gap-1 h-9 px-4 rounded-full text-[13px] font-bold transition-colors ${className}`}
     >
       {children}
     </button>
@@ -190,7 +190,7 @@ function Chip({
 /** 개수는 항상 칩 안에 — "부산에 몇 편 있나" 가 누르기 전에 보여야 고를 수 있다. */
 function Count({ n, active }: { n: number; active: boolean }) {
   return (
-    <span className={`tabular-nums text-[11.5px] font-semibold ${active ? 'text-white/75' : 'text-gray-400 dark:text-gray-500'}`}>
+    <span className={`tabular-nums text-[12px] font-semibold ${active ? 'text-white/75' : 'text-gray-400 dark:text-gray-500'}`}>
       {n}
     </span>
   )

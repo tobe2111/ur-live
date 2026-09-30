@@ -11,7 +11,7 @@ export default function AccordionSection({ title, children, defaultOpen = false 
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between px-5 py-4 text-left"
       >
-        <span className="text-sm font-semibold text-gray-900 dark:text-white">{title}</span>
+        <span className="text-[15px] font-semibold text-gray-900 dark:text-white">{title}</span>
         <svg className={`w-4 h-4 text-gray-400 dark:text-gray-500 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>

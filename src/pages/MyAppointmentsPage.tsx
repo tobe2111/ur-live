@@ -7,9 +7,10 @@
  *   → POST /api/appointments/book. ?from_payment=<orderId|order_number> 진입 시 해당 주문 자동 선택.
  */
 import { useEffect, useState } from 'react'
+import { PinIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Calendar, CalendarPlus, MapPin, Phone, X } from 'lucide-react'
+import { ArrowLeft, Calendar, CalendarPlus, Phone, X } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { promptDialog } from '@/components/ui/confirm-dialog'
@@ -137,7 +138,7 @@ export default function MyAppointmentsPage() {
         {/* 🛡️ 2026-06-12 (B-5): 예약 가능한 구매 — 예약 생성 입구 (기존엔 백엔드만 있고 UI 0). */}
         {bookable.length > 0 && (
           <section className="mb-5">
-            <h2 className="text-[13px] font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-1.5">
+            <h2 className="text-[13px] font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
               <CalendarPlus className="w-4 h-4 text-purple-600 dark:text-purple-400" />
               {t('myAppointments.bookableTitle', { defaultValue: '예약을 잡아주세요' })}
               <span className="text-purple-600 dark:text-purple-400">({bookable.length})</span>
@@ -150,11 +151,11 @@ export default function MyAppointmentsPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[13px] font-bold text-gray-900 dark:text-white line-clamp-1">{b.product_name}</p>
-                    {b.restaurant_name && <p className="text-[11px] text-gray-500 dark:text-gray-400">🏪 {b.restaurant_name}</p>}
+                    {b.restaurant_name && <p className="text-[12px] text-gray-500 dark:text-gray-400">🏪 {b.restaurant_name}</p>}
                   </div>
                   <button
                     onClick={() => setBookingTarget(b)}
-                    className="shrink-0 px-3 py-2 bg-gray-900 hover:bg-gray-900 text-white text-xs font-bold rounded-lg"
+                    className="shrink-0 px-3 py-2 bg-brand hover:bg-brand text-white text-[12px] font-bold rounded-lg"
                   >
                     {t('myAppointments.bookCta', { defaultValue: '예약 잡기' })}
                   </button>
@@ -165,19 +166,19 @@ export default function MyAppointmentsPage() {
         )}
 
         {loading ? (
-          <p className="text-center text-sm text-gray-400 py-16">불러오는 중...</p>
+          <p className="text-center text-[15px] text-gray-400 py-16">불러오는 중...</p>
         ) : isError ? (
           <div className="text-center py-20">
-            <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">예약 내역을 불러오지 못했어요</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">네트워크 상태를 확인한 뒤 다시 시도해주세요</p>
-            <button onClick={() => refetch()} className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full text-sm font-bold">
+            <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">예약 내역을 불러오지 못했어요</p>
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">네트워크 상태를 확인한 뒤 다시 시도해주세요</p>
+            <button onClick={() => refetch()} className="px-5 py-2 bg-brand text-white rounded-full text-[15px] font-bold">
               다시 시도
             </button>
           </div>
         ) : items.length === 0 ? (
           <div className="text-center py-20">
             <Calendar className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-            <p className="text-sm text-gray-400">아직 예약이 없습니다.</p>
+            <p className="text-[15px] text-gray-400">아직 예약이 없습니다.</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -193,22 +194,22 @@ export default function MyAppointmentsPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-bold text-gray-900 dark:text-white line-clamp-1">{a.product_name}</p>
-                        <span className={`shrink-0 inline-block px-2 py-0.5 rounded-full text-[10px] font-medium ${meta.cls}`}>{meta.label}</span>
+                        <p className="text-[15px] font-bold text-gray-900 dark:text-white line-clamp-1">{a.product_name}</p>
+                        <span className={`shrink-0 inline-block px-2 py-1 rounded-full text-[12px] font-medium ${meta.cls}`}>{meta.label}</span>
                       </div>
                       <p className="text-[12px] text-gray-700 dark:text-gray-300 mt-1 tabular-nums">
                         📅 {a.booking_date} {a.start_time} ~ {a.end_time}
                       </p>
                       {a.restaurant_name && (
-                        <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">🏪 {a.restaurant_name}</p>
+                        <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">🏪 {a.restaurant_name}</p>
                       )}
                       {a.restaurant_address && (
-                        <p className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                          <MapPin className="w-3 h-3" /> {a.restaurant_address}
+                        <p className="text-[12px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                          <PinIcon className="w-3 h-3" /> {a.restaurant_address}
                         </p>
                       )}
                       {a.restaurant_phone && (
-                        <a href={`tel:${a.restaurant_phone}`} className="text-[11px] text-blue-600 dark:text-blue-400 flex items-center gap-1 mt-0.5">
+                        <a href={`tel:${a.restaurant_phone}`} className="text-[12px] text-blue-600 dark:text-blue-400 flex items-center gap-1 mt-1">
                           <Phone className="w-3 h-3" /> {a.restaurant_phone}
                         </a>
                       )}
@@ -217,7 +218,7 @@ export default function MyAppointmentsPage() {
                   {a.status === 'confirmed' && (
                     <button
                       onClick={() => cancel(a)}
-                      className="mt-3 w-full py-2 bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 text-xs font-medium rounded-lg flex items-center justify-center gap-1"
+                      className="mt-3 w-full py-2 bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300 text-[12px] font-medium rounded-lg flex items-center justify-center gap-1"
                     >
                       <X className="w-3 h-3" /> 예약 취소
                     </button>
@@ -315,14 +316,14 @@ function AppointmentBookingModal({ item, onClose, onBooked }: {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="sticky top-0 bg-white dark:bg-[#11141C] px-5 py-4 border-b border-gray-100 dark:border-[#2C2F35]">
-          <h3 className="text-base font-bold text-gray-900 dark:text-white">
+          <h3 className="text-[15px] font-bold text-gray-900 dark:text-white">
             {t('myAppointments.modalTitle', { defaultValue: '예약 날짜·시간 선택' })}
           </h3>
-          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">{item.product_name}</p>
+          <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">{item.product_name}</p>
         </div>
         <div className="p-5 space-y-4">
           <div>
-            <label className="block text-xs font-bold text-gray-700 dark:text-gray-200 mb-1">
+            <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-200 mb-1">
               {t('myAppointments.dateLabel', { defaultValue: '날짜' })}
             </label>
             <input
@@ -330,19 +331,19 @@ function AppointmentBookingModal({ item, onClose, onBooked }: {
               value={date}
               min={todayIso}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full px-3 py-2 bg-surface border border-line rounded-lg text-sm text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 bg-surface border border-line rounded-lg text-[15px] text-gray-900 dark:text-white"
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-gray-700 dark:text-gray-200 mb-1">
+            <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-200 mb-1">
               {t('myAppointments.slotLabel', { defaultValue: '시간' })}
             </label>
             {slotsLoading ? (
-              <p className="text-xs text-gray-400 dark:text-gray-500 py-3">
+              <p className="text-[12px] text-gray-400 dark:text-gray-500 py-3">
                 {t('myAppointments.loadingSlots', { defaultValue: '예약 가능 시간 조회 중...' })}
               </p>
             ) : slots.length === 0 ? (
-              <p className="text-xs text-gray-400 dark:text-gray-500 py-3">
+              <p className="text-[12px] text-gray-400 dark:text-gray-500 py-3">
                 {t('myAppointments.slotsEmpty', { defaultValue: '해당 날짜에 예약 가능한 시간이 없습니다. 다른 날짜를 선택해주세요.' })}
               </p>
             ) : (
@@ -352,14 +353,14 @@ function AppointmentBookingModal({ item, onClose, onBooked }: {
                     key={`${s.start_time}-${s.end_time}`}
                     type="button"
                     onClick={() => setSelectedSlot(s)}
-                    className={`py-2 rounded-lg text-xs font-bold border transition-colors ${
+                    className={`py-2 rounded-lg text-[12px] font-bold border transition-colors ${
                       selectedSlot?.start_time === s.start_time
-                        ? 'bg-gray-900 text-white border-purple-600'
+                        ? 'bg-brand text-white border-purple-600'
                         : 'bg-white dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2C2F35] hover:border-purple-400'
                     }`}
                   >
                     {s.start_time}
-                    <span className="block text-[9px] font-normal opacity-70">
+                    <span className="block text-[12px] font-normal opacity-70">
                       {t('myAppointments.remaining', { defaultValue: '잔여 {{n}}', n: s.remaining })}
                     </span>
                   </button>
@@ -368,49 +369,49 @@ function AppointmentBookingModal({ item, onClose, onBooked }: {
             )}
           </div>
           <div>
-            <label className="block text-xs font-bold text-gray-700 dark:text-gray-200 mb-1">
+            <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-200 mb-1">
               {t('myAppointments.nameLabel', { defaultValue: '예약자 이름' })} *
             </label>
             <input
               value={form.user_name}
               onChange={(e) => setForm({ ...form, user_name: e.target.value })}
-              className="w-full px-3 py-2 bg-surface border border-line rounded-lg text-sm text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 bg-surface border border-line rounded-lg text-[15px] text-gray-900 dark:text-white"
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-gray-700 dark:text-gray-200 mb-1">
+            <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-200 mb-1">
               {t('myAppointments.phoneLabel', { defaultValue: '전화번호' })} *
             </label>
             <input
               value={form.user_phone}
               onChange={(e) => setForm({ ...form, user_phone: e.target.value })}
               placeholder="010-1234-5678"
-              className="w-full px-3 py-2 bg-surface border border-line rounded-lg text-sm text-gray-900 dark:text-white"
+              className="w-full px-3 py-2 bg-surface border border-line rounded-lg text-[15px] text-gray-900 dark:text-white"
             />
           </div>
           <div>
-            <label className="block text-xs font-bold text-gray-700 dark:text-gray-200 mb-1">
+            <label className="block text-[12px] font-bold text-gray-700 dark:text-gray-200 mb-1">
               {t('myAppointments.notesLabel', { defaultValue: '요청사항' })}
             </label>
             <textarea
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
               rows={2}
-              className="w-full px-3 py-2 bg-surface border border-line rounded-lg text-sm text-gray-900 dark:text-white resize-none"
+              className="w-full px-3 py-2 bg-surface border border-line rounded-lg text-[15px] text-gray-900 dark:text-white resize-none"
             />
           </div>
           <div className="flex gap-2">
             <button
               onClick={onClose}
               disabled={submitting}
-              className="flex-1 py-3 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200 text-sm font-semibold rounded-lg disabled:opacity-50"
+              className="flex-1 py-3 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200 text-[15px] font-semibold rounded-lg disabled:opacity-50"
             >
               {t('common.cancel', { defaultValue: '취소' })}
             </button>
             <button
               onClick={submit}
               disabled={submitting || !selectedSlot}
-              className="flex-1 py-3 bg-gray-900 hover:bg-gray-900 text-white text-sm font-bold rounded-lg disabled:opacity-50"
+              className="flex-1 py-3 bg-brand hover:bg-brand text-white text-[15px] font-bold rounded-lg disabled:opacity-50"
             >
               {submitting
                 ? t('myAppointments.submitting', { defaultValue: '예약 중...' })

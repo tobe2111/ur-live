@@ -38,7 +38,7 @@ export default function StoreReportLink({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-[11px] text-gray-400 dark:text-gray-500 underline underline-offset-2"
+        className="text-[12px] text-gray-400 dark:text-gray-500 underline underline-offset-2"
       >
         이 매장 제보하기
       </button>

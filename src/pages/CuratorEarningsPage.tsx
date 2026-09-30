@@ -27,6 +27,7 @@
  */
 
 import { useEffect, useState } from 'react'
+import { BagIcon } from '@/components/icons/urdeal-icons'
 import { Link } from 'react-router-dom'
 import { HOSTING_HIDDEN } from '@/shared/feature-flags'
 import { useTranslation } from 'react-i18next'
@@ -36,7 +37,7 @@ import { useAuthStore } from '@/client/stores/auth.store'
 import { formatWon } from '@/utils/format'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SellOwnProductsCTA from './curator-page/SellOwnProductsCTA'
-import { ShoppingBag, Sparkles } from 'lucide-react'
+import { Sparkles } from 'lucide-react'
 import EarningsPanel from './curator-earnings/EarningsPanel'
 import PerformancePanel from './curator-earnings/PerformancePanel'
 import { ProxyProductModal, WithdrawModal } from './curator-earnings/ConsoleModals'
@@ -103,14 +104,14 @@ export default function CuratorEarningsPage() {
             페이지는 `bg-warm`, 헤더는 `bg-surface` 라 두 면이 맞닿는 자리가 곧 구분선이다. */}
         <header className="sticky top-0 z-20 bg-surface px-4 py-3">
           <div className="max-w-3xl mx-auto flex items-center justify-between">
-            <h1 className="text-lg font-bold tracking-[-0.02em]">{t('curator.console.title', { defaultValue: '소개 콘솔' })}</h1>
+            <h1 className="text-[17px] font-bold tracking-[-0.02em]">{t('curator.console.title', { defaultValue: '소개 콘솔' })}</h1>
             {handle && (
-              <Link to={`/u/${handle}`} className="text-[12.5px] text-gray-500 dark:text-gray-400">@{handle}</Link>
+              <Link to={`/u/${handle}`} className="text-[12px] text-gray-500 dark:text-gray-400">@{handle}</Link>
             )}
           </div>
         </header>
 
-        <div className="max-w-3xl mx-auto px-4 pt-3.5 pb-6">
+        <div className="max-w-3xl mx-auto px-4 pt-4 pb-6">
           {loading ? (
             <p className="text-center text-gray-500 dark:text-gray-400 py-12">{t('common.loading')}</p>
           ) : error ? (
@@ -122,7 +123,7 @@ export default function CuratorEarningsPage() {
 
               {/* 진입은 압축 바 한 줄 — 판을 만들지 않는다(대표: "섹션이 너무 많다"). */}
               <div className="flex gap-2 mb-3">
-                <QuickTile to={handle ? `/u/${handle}` : '/u/me'} icon={<ShoppingBag className="w-[18px] h-[18px]" aria-hidden="true" />} label="내 유어샵" />
+                <QuickTile to={handle ? `/u/${handle}` : '/u/me'} icon={<BagIcon className="w-[18px] h-[18px]" aria-hidden="true" />} label="내 유어샵" />
                 {!HOSTING_HIDDEN && (
                   <QuickTile to="/host" icon={<Sparkles className="w-[18px] h-[18px]" aria-hidden="true" />} label="공구 호스팅" />
                 )}
@@ -131,12 +132,12 @@ export default function CuratorEarningsPage() {
               {/* 셀러 승급 안내 — 누적이 임계치를 넘은 사람에게만, 한 번만. */}
               {wdInfo?.seller_upgrade.eligible && !wdInfo.seller_upgrade.offered && (
                 <div className="bg-surface shadow-lift rounded-2xl p-4 mb-3">
-                  <p className="text-[14px] font-bold mb-1">셀러 승급 안내</p>
+                  <p className="text-[15px] font-bold mb-1">셀러 승급 안내</p>
                   <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-3">
                     누적 적립이 {formatWon(wdInfo.seller_upgrade.threshold)} 를 넘었어요. 셀러가 되면 직접 상품을 팔 수 있어요.
                   </p>
                   <div className="flex gap-2">
-                    <Link to="/store/new" className="flex-1 py-2.5 bg-brand text-white text-[13px] font-extrabold rounded-xl text-center active:opacity-70">
+                    <Link to="/store/new" className="flex-1 py-2 bg-brand text-white text-[13px] font-extrabold rounded-xl text-center active:opacity-70">
                       셀러 가입하기
                     </Link>
                     <button
@@ -145,7 +146,7 @@ export default function CuratorEarningsPage() {
                         await curatorApi.acknowledgeUpgradeOffer()
                         setWdInfo({ ...wdInfo, seller_upgrade: { ...wdInfo.seller_upgrade, offered: true } })
                       }}
-                      className="px-3.5 py-2.5 text-gray-500 dark:text-gray-400 text-[13px] font-bold active:opacity-70"
+                      className="px-4 py-2 text-gray-500 dark:text-gray-400 text-[13px] font-bold active:opacity-70"
                     >
                       나중에
                     </button>
@@ -179,7 +180,7 @@ export default function CuratorEarningsPage() {
  */
 function QuickTile({ to, icon, label }: { to: string; icon: React.ReactNode; label: string }) {
   return (
-    <Link to={to} className="flex-1 bg-surface shadow-lift rounded-2xl px-4 py-3 flex items-center gap-2.5 active:opacity-70">
+    <Link to={to} className="flex-1 bg-surface shadow-lift rounded-2xl px-4 py-3 flex items-center gap-2 active:opacity-70">
       <span className="text-gray-500 dark:text-gray-400">{icon}</span>
       <span className="text-[13px] font-bold tracking-[-0.02em]">{label}</span>
     </Link>

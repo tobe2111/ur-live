@@ -195,7 +195,7 @@ export default function VideosPage() {
       <div className="grid min-h-[100dvh] place-items-center bg-[#0A0C12] px-6 text-center text-white">
         <div>
           <p className="text-[15px] text-gray-300">아직 올라온 영상이 없어요.</p>
-          <Link to="/" className="mt-4 inline-block rounded-xl bg-brand px-5 py-3 text-[14px] font-bold text-white">
+          <Link to="/" className="mt-4 inline-block rounded-xl bg-brand px-5 py-3 text-[15px] font-bold text-white">
             홈으로
           </Link>
         </div>
@@ -325,7 +325,7 @@ export default function VideosPage() {
              위로 올리지 말 것 — 바는 이 화면의 본체이고, 올리면 영상을 더 가린다.
              (같은 날 대표 지시로 좌상단 닫기 X 는 제거됐다. 나가는 길은 브라우저 뒤로가기·Esc.) */}
       {cur && cur.product_id ? (
-        <div className="absolute inset-x-2.5 bottom-2.5 z-20 flex items-center gap-2.5 rounded-2xl bg-white/95 p-2.5 shadow-2xl">
+        <div className="absolute inset-x-2.5 bottom-2.5 z-20 flex items-center gap-2 rounded-2xl bg-white/95 p-2 shadow-2xl">
           {thumb && (
             <img
               src={cfImage(thumb, { width: 120 })} alt=""
@@ -348,24 +348,24 @@ export default function VideosPage() {
             {/* 매장명은 비어 있을 수 있다 — `|| ''` 로 두면 빈 줄이 남아 카드마다 높이가 갈린다
                 (홈 레일 카드에서 고친 것과 같은 결함). */}
             {cur.store_name && (
-              <div className="truncate text-[10.5px] text-gray-500">{cur.store_name}</div>
+              <div className="truncate text-[12px] text-gray-500">{cur.store_name}</div>
             )}
             {cur.product_name && (
-              <div className="truncate text-[12.5px] font-semibold leading-tight">{cur.product_name}</div>
+              <div className="truncate text-[12px] font-semibold leading-tight">{cur.product_name}</div>
             )}
             <div className="mt-[1px] flex items-baseline whitespace-nowrap text-[15px] font-bold tabular-nums">
               {pd.showOriginal && (
-                <span className="mr-1 text-[11px] font-normal text-gray-400 line-through">
+                <span className="mr-1 text-[12px] font-normal text-gray-400 line-through">
                   {formatNumber(pd.originalPrice)}원
                 </span>
               )}
-              {pd.discount > 0 && <span className="mr-1 text-[12.5px] text-sale">{pd.discount}%</span>}
+              {pd.discount > 0 && <span className="mr-1 text-[12px] text-sale">{pd.discount}%</span>}
               {formatNumber(pd.price)}원
             </div>
           </div>
           <Link
             to={`/pass/${cur.product_id}`}
-            className="shrink-0 rounded-[10px] bg-brand px-[15px] py-[11px] text-[13.5px] font-bold text-white"
+            className="shrink-0 rounded-[10px] bg-brand px-[15px] py-[11px] text-[13px] font-bold text-white"
           >
             구매
           </Link>

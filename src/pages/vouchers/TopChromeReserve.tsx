@@ -59,7 +59,7 @@ export function BrandStripReserve({ open, category }: { open: boolean; category:
           {/* `BrandChip` 과 같은 치수: w-12 h-12 타일 + gap-1 + text-[10px] 라벨 */}
           <span className="flex flex-col items-center gap-1 shrink-0">
             <span className="w-12 h-12 rounded-2xl block" />
-            <span className="text-[10px] max-w-[56px]">&nbsp;</span>
+            <span className="text-[12px] max-w-[56px]">&nbsp;</span>
           </span>
         </div>
       )}

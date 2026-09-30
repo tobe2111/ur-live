@@ -5,7 +5,8 @@
  *   SSR/로딩 잠금 무접촉: 홈 슬롯·피드와 독립된 additive 섹션(기프티콘 entry 와 동일 카드 톤).
  */
 import { useEffect, useState } from 'react'
-import { BedDouble, Coffee, Droplets, Dumbbell, GraduationCap, Mic, PawPrint, Pill, Scissors, Sparkle, Stethoscope, Store, Utensils, type LucideIcon } from 'lucide-react'
+import { StoreIcon } from '@/components/icons/urdeal-icons'
+import { BedDouble, Coffee, Droplets, Dumbbell, GraduationCap, Mic, PawPrint, Pill, Scissors, Sparkle, Stethoscope, Utensils, type LucideIcon } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
@@ -53,11 +54,11 @@ export default function NewOpeningsStrip() {
           <button key={i} onClick={() => navigate('/new-openings')}
             className="shrink-0 w-[150px] text-left rounded-xl border border-line bg-surface p-3 active:scale-[0.98] transition-transform">
             <div className="flex items-center justify-between gap-1">
-              {(() => { const I = CAT_ICON[o.category || ''] || Store; return <I className="w-4 h-4 text-gray-400" aria-hidden="true" /> })()}
-              <span className={`text-[9px] px-1 py-0.5 rounded font-bold ${dDay(o.apv_perm_ymd) === 'NEW' ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-300' : 'bg-gray-100 text-gray-500 dark:bg-[#243049] dark:text-gray-400'}`}>{dDay(o.apv_perm_ymd) || '개업'}</span>
+              {(() => { const I = CAT_ICON[o.category || ''] || StoreIcon; return <I className="w-4 h-4 text-gray-400" aria-hidden="true" /> })()}
+              <span className={`text-[12px] px-1 py-1 rounded font-bold ${dDay(o.apv_perm_ymd) === 'NEW' ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-300' : 'bg-gray-100 text-gray-500 dark:bg-[#243049] dark:text-gray-400'}`}>{dDay(o.apv_perm_ymd) || '개업'}</span>
             </div>
-            <div className="mt-1.5 text-[12px] font-semibold text-gray-900 dark:text-white truncate">{o.biz_name}</div>
-            <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate">{[o.region, o.uptae || o.category].filter(Boolean).join(' · ')}</div>
+            <div className="mt-2 text-[12px] font-semibold text-gray-900 dark:text-white truncate">{o.biz_name}</div>
+            <div className="text-[12px] text-gray-500 dark:text-gray-400 truncate">{[o.region, o.uptae || o.category].filter(Boolean).join(' · ')}</div>
           </button>
         ))}
       </div>

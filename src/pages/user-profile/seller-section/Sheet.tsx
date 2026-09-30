@@ -113,7 +113,7 @@ export default function Sheet({ title, onClose, onBack, children, footer, tall =
               <ChevronLeft className="w-5 h-5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
             </button>
           )}
-          <span className="flex-1 min-w-0 truncate text-[16px] font-extrabold text-gray-900 dark:text-white">{title}</span>
+          <span className="flex-1 min-w-0 truncate text-[17px] font-extrabold text-gray-900 dark:text-white">{title}</span>
           <button type="button" onClick={onClose} aria-label="닫기" className="w-9 h-9 -mr-2 flex items-center justify-center">
             <X className="w-5 h-5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
           </button>

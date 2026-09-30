@@ -50,10 +50,10 @@ export default function RegionIndexPage() {
         </nav>
 
         <header className="mb-6">
-          <h1 className="text-[22px] lg:text-[26px] font-black tracking-tight text-gray-900 dark:text-white">
+          <h1 className="text-[24px] lg:text-[26px] font-black tracking-tight text-gray-900 dark:text-white">
             지역별 이용권·동네딜
           </h1>
-          <p className="mt-1.5 text-[13px] lg:text-[14px] text-gray-500 dark:text-gray-400">
+          <p className="mt-2 text-[13px] lg:text-[15px] text-gray-500 dark:text-gray-400">
             {total > 0
               ? <>전국 <b className="text-gray-900 dark:text-white">{total}개</b> 딜 진행 중 · 우리 동네를 골라보세요</>
               : <>지역을 골라 우리 동네 딜을 확인해보세요</>}
@@ -63,23 +63,23 @@ export default function RegionIndexPage() {
         {isLoading ? (
           <div className="py-20"><BrandLoader label="지역 정보를 불러오는 중" /></div>
         ) : regions.length === 0 ? (
-          <p className="py-20 text-center text-[14px] text-gray-500 dark:text-gray-400">
+          <p className="py-20 text-center text-[15px] text-gray-500 dark:text-gray-400">
             아직 등록된 지역 딜이 없어요.
           </p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-7 pb-12">
             {regions.map(r => (
               <section key={r.sido} aria-labelledby={`sido-${r.sido}`}>
-                <h2 id={`sido-${r.sido}`} className="mb-2.5 pb-2 border-b border-gray-100 dark:border-[#2C2F35]">
+                <h2 id={`sido-${r.sido}`} className="mb-2 pb-2 border-b border-gray-100 dark:border-[#2C2F35]">
                   <Link
                     to={regionPath({ sido: r.sido })}
-                    className="inline-flex items-baseline gap-1.5 text-[15px] font-black text-gray-900 dark:text-white hover:underline"
+                    className="inline-flex items-baseline gap-2 text-[15px] font-black text-gray-900 dark:text-white hover:underline"
                   >
                     {r.sido}
                     <span className="text-[12px] font-medium text-gray-400 dark:text-gray-500">{r.count}</span>
                   </Link>
                 </h2>
-                <ul className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+                <ul className="grid grid-cols-2 gap-x-3 gap-y-2">
                   {r.sigungu.filter(s => s.indexable).map(s => (
                     <li key={s.sigungu}>
                       <Link

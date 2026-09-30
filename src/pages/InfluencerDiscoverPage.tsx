@@ -125,8 +125,8 @@ export default function InfluencerDiscoverPage() {
       <SEO title="추천 공구 카탈로그 - 유어딜" description="매장과 딜을 맺은 이용권을 골라 내 링크로 소개하세요. 소개비는 매장이 정한 비율로 정산됩니다." url="/influencer/discover" />
       <header className="sticky top-0 z-30 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35] px-4 py-3 flex items-center gap-2">
         <Link2 className="w-5 h-5 text-brand-text" />
-        <h1 className="text-base font-bold text-gray-900 dark:text-white flex-1">추천 공구 카탈로그</h1>
-        <button onClick={() => navigate('/influencer/settlement')} className="text-xs text-brand-text font-bold">내 정산 →</button>
+        <h1 className="text-[15px] font-bold text-gray-900 dark:text-white flex-1">추천 공구 카탈로그</h1>
+        <button onClick={() => navigate('/influencer/settlement')} className="text-[12px] text-brand-text font-bold">내 정산 →</button>
       </header>
 
       <main className="ur-content-wide mx-auto px-4 py-4 space-y-4">
@@ -136,7 +136,7 @@ export default function InfluencerDiscoverPage() {
             <button
               key={k}
               onClick={() => setCat(k)}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border ${cat === k ? 'bg-gray-900 text-white border-gray-900' : 'bg-white dark:bg-[#11141C] text-gray-700 dark:text-gray-200 border-gray-200'}`}
+              className={`shrink-0 px-3 py-2 rounded-full text-[12px] font-bold border ${cat === k ? 'bg-brand text-white border-brand' : 'bg-white dark:bg-[#11141C] text-gray-700 dark:text-gray-200 border-gray-200'}`}
             >
               {v}
             </button>
@@ -151,13 +151,13 @@ export default function InfluencerDiscoverPage() {
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               placeholder="공구명/매장명 검색"
-              className="w-full pl-9 pr-3 py-2 border border-line rounded-full text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand/40"
+              className="w-full pl-9 pr-3 py-2 border border-line rounded-full text-[15px] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand/40"
             />
           </div>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as 'latest' | 'popular')}
-            className="px-3 py-2 border border-line rounded-full text-xs text-gray-900 dark:text-white font-medium bg-white dark:bg-[#11141C]"
+            className="px-3 py-2 border border-line rounded-full text-[12px] text-gray-900 dark:text-white font-medium bg-white dark:bg-[#11141C]"
           >
             <option value="latest">최신순</option>
             <option value="popular">인기순</option>
@@ -185,14 +185,14 @@ export default function InfluencerDiscoverPage() {
                     meta={
                       <>
                         {p.my_deal_pct != null && (
-                          <span className="inline-block px-1.5 py-0.5 rounded bg-brand text-white text-[10px] font-bold mb-1">
+                          <span className="inline-block px-2 py-1 rounded bg-brand text-white text-[12px] font-bold mb-1">
                             내 소개비 {p.my_deal_pct}%
                           </span>
                         )}
                         <span className="block w-full bg-gray-100 dark:bg-[#2A2A2B] rounded-full h-1.5 overflow-hidden">
                           <span className="block h-full bg-brand rounded-full" style={{ width: `${progress}%` }} />
                         </span>
-                        <span className="block text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{p.group_buy_current}/{p.group_buy_target}명</span>
+                        <span className="block text-[12px] text-gray-500 dark:text-gray-400 mt-1">{p.group_buy_current}/{p.group_buy_target}명</span>
                       </>
                     }
                   />
@@ -201,19 +201,19 @@ export default function InfluencerDiscoverPage() {
                          `discover-deal-gate.test.ts` 가 CI 에서 잡았다. 이건 디자인이 아니라
                          약속이다 — 딜 없는 사람이 링크를 뿌리면 첫 정산에서 0원을 본다. */}
                   {p.my_deal_pct != null ? (
-                    <div className="grid grid-cols-2 gap-1.5 px-3 pb-3">
+                    <div className="grid grid-cols-2 gap-2 px-3 pb-3">
                       <button onClick={() => copyLink(p.id)}
-                        className="py-2 rounded-lg border border-rule-strong text-xs font-bold text-gray-700 dark:text-gray-200 flex items-center justify-center gap-1">
+                        className="py-2 rounded-lg border border-rule-strong text-[12px] font-bold text-gray-700 dark:text-gray-200 flex items-center justify-center gap-1">
                         <Copy className="w-3 h-3" /> 링크 복사
                       </button>
                       <button onClick={() => shareLink(p)}
-                        className="py-2 rounded-lg bg-brand text-white text-xs font-bold flex items-center justify-center gap-1">
+                        className="py-2 rounded-lg bg-brand text-white text-[12px] font-bold flex items-center justify-center gap-1">
                         <Share2 className="w-3 h-3" /> SNS 공유
                       </button>
                     </div>
                   ) : (
                     <div className="px-3 pb-3">
-                      <p className="py-2 rounded-lg bg-gray-50 dark:bg-[#2A2A2B] text-[11px] text-gray-600 dark:text-gray-300 text-center leading-relaxed">
+                      <p className="py-2 rounded-lg bg-gray-50 dark:bg-[#2A2A2B] text-[12px] text-gray-600 dark:text-gray-300 text-center leading-relaxed">
                         {authed
                           ? '이 매장과 딜을 맺어야 소개비가 붙습니다'
                           : '로그인하면 내 딜을 확인할 수 있어요'}
@@ -226,7 +226,7 @@ export default function InfluencerDiscoverPage() {
           </ul>
         )}
 
-        <p className="text-[11px] text-gray-500 dark:text-gray-400 text-center pt-2 leading-relaxed">
+        <p className="text-[12px] text-gray-500 dark:text-gray-400 text-center pt-2 leading-relaxed">
           소개비는 <b className="text-gray-700 dark:text-gray-200">매장과 딜을 맺은 상품</b>에만 붙습니다. 비율은 매장이 정합니다.<br />
           구매 7일 뒤 확정되고(환불 시 회수), 세금을 뗀 뒤 정산됩니다.
         </p>

@@ -63,7 +63,7 @@ export default function AllToolsSheet({ storeName, onPick, onClose }: {
   return (
     <Sheet title="전체 도구" onClose={onClose}>
       <div className="px-4 pt-3 pb-2">
-        <p className="text-[12.5px] text-gray-500 dark:text-gray-400 mb-2">
+        <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-2">
           <span className="font-semibold text-gray-900 dark:text-white">{storeName}</span> 의 판매 도구예요.
           대부분 여기서 바로 열려요. <ExternalLink size={11} className="inline -mt-0.5" aria-hidden="true" /> 표시는
           전체 화면으로 열리고, 그 위에 마이로 돌아오는 버튼이 있어요.
@@ -81,7 +81,7 @@ export default function AllToolsSheet({ storeName, onPick, onClose }: {
       </div>
 
       {total === 0 && (
-        <p className="px-4 py-10 text-center text-[13.5px] text-gray-500 dark:text-gray-400">
+        <p className="px-4 py-10 text-center text-[13px] text-gray-500 dark:text-gray-400">
           찾는 도구가 없어요. 다른 말로 찾아 보세요.
         </p>
       )}
@@ -89,7 +89,7 @@ export default function AllToolsSheet({ storeName, onPick, onClose }: {
       <div className="px-4 pb-4 space-y-4">
         {groups.map(([group, items]) => (
           <section key={group}>
-            {group && <h3 className="px-1 mb-1.5 text-[12px] font-bold text-gray-400">{group}</h3>}
+            {group && <h3 className="px-1 mb-2 text-[12px] font-bold text-gray-400">{group}</h3>}
             <div className="overflow-hidden rounded-xl bg-surface shadow-lift">
               {items.map(({ path, label, icon: Icon }) => {
                 const leaves = !canOpenInSheet(path)
@@ -98,10 +98,10 @@ export default function AllToolsSheet({ storeName, onPick, onClose }: {
                     key={path}
                     type="button"
                     onClick={() => onPick(path, label, !leaves)}
-                    className="w-full flex items-center gap-3 px-3.5 py-3 text-left border-b border-rule last:border-b-0 active:opacity-70"
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left border-b border-rule last:border-b-0 active:opacity-70"
                   >
                     <Icon size={18} strokeWidth={1.8} className="shrink-0 text-gray-400" aria-hidden="true" />
-                    <span className="flex-1 truncate text-[14px] font-semibold text-gray-900 dark:text-white">{label}</span>
+                    <span className="flex-1 truncate text-[15px] font-semibold text-gray-900 dark:text-white">{label}</span>
                     {/* 나가는 도구만 표시한다 — 대부분은 여기서 열리므로 표시가 없는 게 기본이다. */}
                     {leaves
                       ? <ExternalLink size={14} className="shrink-0 text-gray-300 dark:text-gray-600" aria-label="전체 화면으로 열림" />

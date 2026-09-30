@@ -1,12 +1,13 @@
 // 🧱 2026-06-29 TD: MyVouchersPage god 파일 분해 — 이용권 카드 클러스터(verbatim 추출). 동작 불변.
 //   MiniQrHint·Barcode·KtAlphaVoucherCard 는 모듈 내부 전용, VoucherTicket 만 페이지가 사용.
 import { useRef, useEffect, useState } from 'react'
+import { GiftBoxIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { safeDate } from '@/utils/safe-date'
 import { formatNumber } from '@/utils/format'
 import { toast } from '@/hooks/useToast'
-import { QrCode, Copy, Gift, Smartphone } from 'lucide-react'
+import { QrCode, Copy, Smartphone } from 'lucide-react'
 import { TicketCard, TicketRow } from '@/components/ticket/TicketCard'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import type { Voucher } from './types'
@@ -108,8 +109,8 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
         right={tappable && mode ? MODE_CHIP[mode] : (v.status === 'used' && usedAt ? `${usedAt.toLocaleDateString(locale)} ${t('voucher.usedSuffix', { defaultValue: '사용' })}` : undefined)}
       />
 
-      <div className="px-4 pt-3.5 pb-4">
-        <p className={`text-[18px] font-extrabold tracking-tight truncate ${urgent ? 'text-gray-900 dark:text-white' : 'text-gray-900 dark:text-white'}`}>{v.product_name}</p>
+      <div className="px-4 pt-4 pb-4">
+        <p className={`text-[17px] font-extrabold tracking-tight truncate ${urgent ? 'text-gray-900 dark:text-white' : 'text-gray-900 dark:text-white'}`}>{v.product_name}</p>
         <div className="flex items-end justify-between mt-3">
           {price !== null ? (
             <div className="text-[17px] font-extrabold tabular-nums tracking-tight text-gray-700 dark:text-gray-200 leading-none">
@@ -120,7 +121,7 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
             <button
               onClick={(e) => { e.stopPropagation(); onShowQr() }}
               aria-label={t('voucher.scan', { defaultValue: '사용' })}
-              className="flex items-center gap-1.5 rounded-full px-5 py-2.5 bg-brand text-white text-[13.5px] font-extrabold active:opacity-80"
+              className="flex items-center gap-2 rounded-full px-5 py-2 bg-brand text-white text-[13px] font-extrabold active:opacity-80"
             >
               <QrCode className="w-4 h-4" strokeWidth={1.6} />
               {t('voucher.useFull', { defaultValue: '사용하기' })}
@@ -147,11 +148,11 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
             >
               <MiniQrHint />
               <div className="min-w-0">
-                <span className="flex items-center gap-1.5 tabular-nums text-[12px] font-bold tracking-wide text-gray-700 dark:text-gray-200">
+                <span className="flex items-center gap-2 tabular-nums text-[12px] font-bold tracking-wide text-gray-700 dark:text-gray-200">
                   <span className="truncate">{v.code}</span>
                   <Copy className="w-3 h-3 shrink-0 text-gray-400 dark:text-gray-500" strokeWidth={1.6} aria-hidden />
                 </span>
-                <span className="block text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{t('voucher.tapForQr', { defaultValue: '탭하면 코드 복사 · 사용하기로 QR 제시' })}</span>
+                <span className="block text-[12px] text-gray-500 dark:text-gray-400 mt-1">{t('voucher.tapForQr', { defaultValue: '탭하면 코드 복사 · 사용하기로 QR 제시' })}</span>
               </div>
             </button>
             {/* ↩️ 2026-08-20 (대표): 유저도 서비스에서 환불 요청 가능 — 미사용 이용권 한정.
@@ -170,7 +171,7 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
                     })
                     .catch(err => toast.error(err?.response?.data?.error || t('voucher.refundFailed', { defaultValue: '환불 요청에 실패했어요' })))
                 }}
-                className="w-full px-4 pb-2.5 -mt-1 text-left text-[10px] text-gray-400 dark:text-gray-500 underline underline-offset-2 active:opacity-70"
+                className="w-full px-4 pb-2 -mt-1 text-left text-[12px] text-gray-400 dark:text-gray-500 underline underline-offset-2 active:opacity-70"
               >
                 {t('voucher.requestRefund', { defaultValue: '사용 전이라면 환불 요청' })}
               </button>
@@ -178,7 +179,7 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
             </>
           ) : (
             /* 🎨 2026-06-21 (개선 #4): 사용완료/만료 동선 — 재구매 + (사용완료만) 후기 보너스 */
-            <div className="px-4 pt-3 pb-3.5">
+            <div className="px-4 pt-3 pb-4">
               {v.product_id != null && (
                 <button
                   type="button"
@@ -246,14 +247,14 @@ function KtAlphaVoucherCard({ v, muted, t }: {
           {v.product_image ? (
             <img src={cfImage(v.product_image, { width: 200, quality: 82, format: 'auto' }) || v.product_image} alt={v.product_name} loading="lazy" className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, v.product_image)} />
           ) : (
-            <Gift className="w-6 h-6 text-gray-300 dark:text-gray-600" strokeWidth={1.5} />
+            <GiftBoxIcon className="w-6 h-6 text-gray-300 dark:text-gray-600" />
           )}
         </div>
 
         {/* 본문 */}
         <div className="flex-1 min-w-0 flex flex-col gap-1">
           {/* 상태 줄 + 기프티쇼 칩 */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             {sendFailed ? (
               <>
                 <span className="w-[6px] h-[6px] rounded-full shrink-0 bg-tone-bad" aria-hidden />
@@ -267,11 +268,11 @@ function KtAlphaVoucherCard({ v, muted, t }: {
             ) : (
               <span className={`text-[12px] font-semibold ${v.status === 'expired' ? 'text-tone-bad' : 'text-gray-500 dark:text-gray-400'}`}>{t(`voucher.status.${v.status}`)}</span>
             )}
-            <span className="ml-auto shrink-0 inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-bold tracking-wide bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-300">📱 기프티쇼</span>
+            <span className="ml-auto shrink-0 inline-flex items-center gap-1 rounded-md px-2 py-1 text-[12px] font-bold tracking-wide bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-300">📱 기프티쇼</span>
           </div>
 
           {/* 제목 */}
-          <p className="text-gray-900 dark:text-white font-bold text-[16px] leading-tight tracking-tight truncate">{v.product_name}</p>
+          <p className="text-gray-900 dark:text-white font-bold text-[17px] leading-tight tracking-tight truncate">{v.product_name}</p>
 
           {/* 서브: 발송/실패/바코드 안내 */}
           {sendFailed ? (
@@ -291,7 +292,7 @@ function KtAlphaVoucherCard({ v, muted, t }: {
         <div className="shrink-0 flex flex-col items-end justify-between">
           {price !== null ? (
             <div className="text-[15px] font-bold tabular-nums text-gray-900 dark:text-white whitespace-nowrap">
-              {formatNumber(price)}<span className="font-sans text-[11px] font-semibold text-gray-400 dark:text-gray-500">{t('voucher.deal', { defaultValue: '딜' })}</span>
+              {formatNumber(price)}<span className="font-sans text-[12px] font-semibold text-gray-400 dark:text-gray-500">{t('voucher.deal', { defaultValue: '딜' })}</span>
             </div>
           ) : <span />}
           {sendFailed ? (
@@ -309,7 +310,7 @@ function KtAlphaVoucherCard({ v, muted, t }: {
 
       {/* PIN 모드 인앱 바코드 — 하단 (매장 제시용) */}
       {hasBarcode && (
-        <div className="mt-3 px-3 py-3 rounded-xl bg-warm border border-gray-100 dark:border-[#2C2F35] flex flex-col items-center gap-1.5">
+        <div className="mt-3 px-3 py-3 rounded-xl bg-warm border border-gray-100 dark:border-[#2C2F35] flex flex-col items-center gap-2">
           <Barcode value={v.kt_pin as string} />
           <span className="text-[12px] tabular-nums font-bold tracking-[0.15em] text-gray-900 dark:text-white">{v.kt_pin}</span>
         </div>

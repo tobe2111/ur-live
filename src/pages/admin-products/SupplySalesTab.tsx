@@ -17,10 +17,10 @@ export default function SupplySalesTab({ loading, supplySummary, supplySales }: 
       {supplySummary && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: t('admin.products.supplySummaryOrders', { defaultValue: '총 주문 수' }), value: `${formatNumber(supplySummary.total_orders)}건`, color: 'text-blue-700' },
+            { label: t('admin.products.supplySummaryOrders', { defaultValue: '총 주문 수' }), value: `${formatNumber(supplySummary.total_orders)}건`, color: 'text-gray-900' },
             { label: t('admin.products.supplySummaryQty', { defaultValue: '총 판매 수량' }), value: `${formatNumber(supplySummary.total_qty)}개`, color: 'text-gray-700' },
             { label: t('admin.products.supplySummaryRevenue', { defaultValue: '셀러 총 매출' }), value: `${formatNumber(supplySummary.total_revenue)}원`, color: 'text-gray-700' },
-            { label: t('admin.products.supplySummaryCost', { defaultValue: '어드민 공급 수익' }), value: `${formatNumber(supplySummary.total_supply_cost)}원`, color: 'text-purple-700' },
+            { label: t('admin.products.supplySummaryCost', { defaultValue: '어드민 공급 수익' }), value: `${formatNumber(supplySummary.total_supply_cost)}원`, color: 'text-gray-900' },
           ].map(c => (
             <div key={c.label} className="bg-white rounded-xl shadow-sm p-4">
               <p className="text-xs text-gray-400 mb-1">{c.label}</p>
@@ -32,7 +32,7 @@ export default function SupplySalesTab({ loading, supplySummary, supplySales }: 
 
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         {loading ? (
-          <div className="py-16 text-center"><Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto" /></div>
+          <div className="py-16 text-center"><Loader2 className="w-8 h-8 animate-spin text-gray-400 mx-auto" /></div>
         ) : supplySales.length === 0 ? (
           <div className="py-20 text-center">
             <TrendingUp className="w-12 h-12 text-gray-200 mx-auto mb-3" />
@@ -69,12 +69,12 @@ export default function SupplySalesTab({ loading, supplySummary, supplySales }: 
                       <p className="text-xs font-medium text-gray-900">{row.business_name || row.seller_name}</p>
                     </td>
                     <td className="px-4 py-3 text-xs text-gray-700 text-right">{formatNumber(row.seller_price)}원</td>
-                    <td className="px-4 py-3 text-xs text-purple-600 font-medium text-right">{formatNumber(row.supply_price)}원</td>
+                    <td className="px-4 py-3 text-xs text-gray-700 font-medium text-right">{formatNumber(row.supply_price)}원</td>
                     <td className="px-4 py-3 text-xs text-gray-700 text-center">{row.order_count}건</td>
                     <td className="px-4 py-3 text-xs text-gray-700 text-center">{row.total_qty}개</td>
                     <td className="px-4 py-3 text-xs text-gray-900 font-medium text-right">{formatNumber(row.total_revenue)}원</td>
-                    <td className="px-4 py-3 text-xs text-purple-700 font-semibold text-right">{formatNumber(row.total_supply_cost)}원</td>
-                    <td className="px-4 py-3 text-xs text-emerald-600 text-right">{formatNumber(row.seller_margin)}원</td>
+                    <td className="px-4 py-3 text-xs text-gray-900 font-semibold text-right">{formatNumber(row.total_supply_cost)}원</td>
+                    <td className="px-4 py-3 text-xs text-gray-700 text-right">{formatNumber(row.seller_margin)}원</td>
                   </tr>
                 ))}
               </tbody>

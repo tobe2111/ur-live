@@ -22,7 +22,8 @@
  * 달력·객실 편집은 전체화면이다(달력은 가로 폭을 요구한다).
  */
 import { useState } from 'react'
-import { Building2, ChevronRight, Loader2, Plus } from 'lucide-react'
+import { ChevronRight, Loader2, Plus } from 'lucide-react'
+import { UrShopIcon } from '@/components/icons/urdeal-icons'
 // ⏳ 좌석에 막 앉았으면 목록이 아직 비어 있다 — 그 순간을 "없음" 으로 그리면 거짓말이 된다.
 import { formatNumber } from '@/utils/format'
 import Sheet from './Sheet'
@@ -65,7 +66,7 @@ export default function VoucherSheet({ sellerId, work, onClose, onOpenPath }: {
           <button
             type="button"
             onClick={() => setAdding(true)}
-            className="w-full h-12 rounded-xl bg-brand text-white text-[15px] font-bold active:opacity-80 inline-flex items-center justify-center gap-1.5"
+            className="w-full h-12 rounded-xl bg-brand text-white text-[15px] font-bold active:opacity-80 inline-flex items-center justify-center gap-2"
           >
             <Plus className="w-4 h-4" aria-hidden="true" />
             새 이용권 등록
@@ -83,7 +84,7 @@ export default function VoucherSheet({ sellerId, work, onClose, onOpenPath }: {
             </div>
           )}
           {products.length === 0 && !work.loading && (
-            <p className="py-10 text-center text-[13.5px] text-gray-500 dark:text-gray-400">
+            <p className="py-10 text-center text-[13px] text-gray-500 dark:text-gray-400">
               {work.failed ? '지금은 불러올 수 없어요. 잠시 후 다시 열어 주세요.' : '아직 등록한 이용권이 없어요.'}
             </p>
           )}
@@ -98,11 +99,11 @@ export default function VoucherSheet({ sellerId, work, onClose, onOpenPath }: {
                 <button
                   type="button"
                   onClick={() => setEditing(p)}
-                  className="flex-1 min-w-0 flex items-center gap-2 px-3.5 py-3 text-left active:opacity-70"
+                  className="flex-1 min-w-0 flex items-center gap-2 px-4 py-3 text-left active:opacity-70"
                 >
                   <span className="flex-1 min-w-0">
-                    <span className="block text-[14px] font-semibold text-gray-900 dark:text-white truncate">{p.name}</span>
-                    <span className="block text-[12px] text-gray-500 dark:text-gray-400 mt-0.5 tabular-nums">
+                    <span className="block text-[15px] font-semibold text-gray-900 dark:text-white truncate">{p.name}</span>
+                    <span className="block text-[12px] text-gray-500 dark:text-gray-400 mt-1 tabular-nums">
                       {formatNumber(p.price)}원{p.sold > 0 ? ` · ${formatNumber(p.sold)}개 팔림` : ''}{p.isActive ? '' : ' · 중지됨'}
                     </span>
                   </span>
@@ -115,7 +116,7 @@ export default function VoucherSheet({ sellerId, work, onClose, onOpenPath }: {
                   aria-label={`${p.name} ${p.isActive ? '판매 중지' : '판매 재개'}`}
                   disabled={busyProduct !== null}
                   onClick={() => toggleProduct(p)}
-                  className="shrink-0 pl-1 pr-3.5 py-3 active:opacity-70 disabled:opacity-60"
+                  className="shrink-0 pl-1 pr-4 py-3 active:opacity-70 disabled:opacity-60"
                 >
                   {busyProduct === p.id
                     ? <Loader2 className="w-5 h-5 animate-spin text-gray-400" aria-hidden="true" />
@@ -132,10 +133,10 @@ export default function VoucherSheet({ sellerId, work, onClose, onOpenPath }: {
             <button
               type="button"
               onClick={() => setStaysOpen(true)}
-              className="w-full flex items-center gap-2.5 mt-3 px-3.5 h-12 rounded-xl bg-surface shadow-lift text-left active:opacity-70"
+              className="w-full flex items-center gap-3 mt-3 px-4 h-12 rounded-xl bg-surface shadow-lift text-left active:opacity-70"
             >
-              <Building2 className="w-[18px] h-[18px] shrink-0 text-gray-400" aria-hidden="true" />
-              <span className="flex-1 text-[14px] font-semibold text-gray-900 dark:text-white">숙소</span>
+              <UrShopIcon className="w-[18px] h-[18px] shrink-0 text-gray-400" aria-hidden="true" />
+              <span className="flex-1 text-[15px] font-semibold text-gray-900 dark:text-white">숙소</span>
               <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
             </button>
           )}

@@ -166,18 +166,18 @@ export default function WithdrawSheet({ sellerId, onClose, onDone, onFixPin, onF
         </div>
       )}
       {failed && (
-        <p className="px-4 py-8 text-center text-[13.5px] text-gray-500 dark:text-gray-400">
+        <p className="px-4 py-8 text-center text-[13px] text-gray-500 dark:text-gray-400">
           잔액을 불러오지 못했습니다. 잠시 후 다시 열어 주세요.
         </p>
       )}
       {available !== null && (
         <div className="px-4 py-4">
           <p className="text-[12px] text-gray-500 dark:text-gray-400">지금 받을 수 있는 금액</p>
-          <p className="text-[30px] font-extrabold tabular-nums leading-none text-gray-900 dark:text-white mt-1">
+          <p className="text-[28px] font-extrabold tabular-nums leading-none text-gray-900 dark:text-white mt-1">
             {formatNumber(available)}
-            <span className="text-[16px] font-bold text-gray-500 dark:text-gray-400 ml-1">원</span>
+            <span className="text-[15px] font-bold text-gray-500 dark:text-gray-400 ml-1">원</span>
           </p>
-          {notice && <p className="text-[12.5px] leading-[1.6] text-gray-500 dark:text-gray-400 mt-2">{notice}</p>}
+          {notice && <p className="text-[13px] leading-[1.6] text-gray-500 dark:text-gray-400 mt-2">{notice}</p>}
 
           {bizVerified === false && (
             <p className="text-[13px] leading-[1.6] text-gray-900 dark:text-white mt-4 pt-4 border-t border-rule">
@@ -188,13 +188,13 @@ export default function WithdrawSheet({ sellerId, onClose, onDone, onFixPin, onF
           {bizVerified && (
             <>
               <label className="block mt-4 pt-4 border-t border-rule">
-                <span className="block text-[13px] font-bold text-gray-900 dark:text-white mb-1.5">얼마를 받을까요</span>
+                <span className="block text-[13px] font-bold text-gray-900 dark:text-white mb-2">얼마를 받을까요</span>
                 <input
                   inputMode="numeric"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder={`최소 ${formatNumber(MIN_WITHDRAW)}원`}
-                  className="w-full h-12 rounded-xl border border-rule-strong bg-transparent px-3 text-[16px] font-bold tabular-nums text-gray-900 dark:text-white placeholder:font-normal placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                  className="w-full h-12 rounded-xl border border-rule-strong bg-transparent px-3 text-[17px] font-bold tabular-nums text-gray-900 dark:text-white placeholder:font-normal placeholder:text-gray-400 dark:placeholder:text-gray-500"
                 />
               </label>
               <div className="flex gap-2 mt-2">
@@ -208,12 +208,12 @@ export default function WithdrawSheet({ sellerId, onClose, onDone, onFixPin, onF
                 </button>
               </div>
               {tooSmall && (
-                <p className="text-[12.5px] text-gray-900 dark:text-white mt-2">
+                <p className="text-[13px] text-gray-900 dark:text-white mt-2">
                   최소 {formatNumber(MIN_WITHDRAW)}원부터 신청할 수 있어요.
                 </p>
               )}
               {tooBig && (
-                <p className="text-[12.5px] text-gray-900 dark:text-white mt-2">
+                <p className="text-[13px] text-gray-900 dark:text-white mt-2">
                   받을 수 있는 금액({formatNumber(available)}원)보다 많아요.
                 </p>
               )}
@@ -235,7 +235,7 @@ export default function WithdrawSheet({ sellerId, onClose, onDone, onFixPin, onF
                     <button
                       type="button"
                       onClick={onFixBank}
-                      className="mt-2 h-11 px-4 rounded-xl border border-rule-strong text-[14px] font-bold text-gray-900 dark:text-white active:opacity-70"
+                      className="mt-2 h-11 px-4 rounded-xl border border-rule-strong text-[15px] font-bold text-gray-900 dark:text-white active:opacity-70"
                     >
                       계좌 등록하기
                     </button>
@@ -250,7 +250,7 @@ export default function WithdrawSheet({ sellerId, onClose, onDone, onFixPin, onF
                   onClick={onHistory}
                   className="w-full mt-4 pt-3 border-t border-rule flex items-center text-left active:opacity-70"
                 >
-                  <span className="flex-1 text-[13.5px] font-semibold text-gray-900 dark:text-white">지난 정산 보기</span>
+                  <span className="flex-1 text-[13px] font-semibold text-gray-900 dark:text-white">지난 정산 보기</span>
                   <ChevronRight className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
                 </button>
               )}

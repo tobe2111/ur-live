@@ -17,7 +17,7 @@ export default function SelectedPeekCard({ selected, liveSellerIds, onClose }: P
   const { t } = useTranslation()
   return (
     <div className="absolute left-3 right-3 z-30" style={{ bottom: 'calc(18vh + 80px)' }}>
-      <div className="bg-surface rounded-2xl shadow-xl border border-gray-100 dark:border-[#2C2F35] p-3.5 relative">
+      <div className="bg-surface rounded-2xl shadow-xl border border-gray-100 dark:border-[#2C2F35] p-4 relative">
         <button onClick={onClose} aria-label={t('common.close', { defaultValue: '닫기' })} className="absolute top-2.5 right-2.5 w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 dark:bg-[#1D1F29]">
           <X className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
         </button>
@@ -30,19 +30,19 @@ export default function SelectedPeekCard({ selected, liveSellerIds, onClose }: P
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <p className="font-bold text-gray-900 dark:text-white text-sm flex items-center gap-1.5">
+            <p className="font-bold text-gray-900 dark:text-white text-[15px] flex items-center gap-2">
               <span className="truncate">{selected.restaurant_name}</span>
               {selected.seller_id && liveSellerIds.has(selected.seller_id) && (
-                <span className="inline-flex items-center gap-0.5 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md shrink-0">
+                <span className="inline-flex items-center gap-1 bg-red-500 text-white text-[12px] font-bold px-2 py-1 rounded-md shrink-0">
                   <Radio className="w-2.5 h-2.5 animate-pulse" /> LIVE
                 </span>
               )}
             </p>
-            <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="text-base font-extrabold text-gray-900 dark:text-white">{selected.price?.toLocaleString()}원</span>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-[15px] font-extrabold text-gray-900 dark:text-white">{selected.price?.toLocaleString()}원</span>
               {/* 🎨 2026-07-19 (대표 — 브랜드 컬러 통일): 할인 뱃지 순수 빨강 → 웜 로즈 brand 토큰. */}
               {selected.original_price > selected.price && (
-                <span className="text-[10px] bg-brand text-white font-bold px-1 py-0.5 rounded">
+                <span className="text-[12px] bg-brand text-white font-bold px-1 py-1 rounded">
                   -{priceDisplay(selected).discount}%
                 </span>
               )}
@@ -50,7 +50,7 @@ export default function SelectedPeekCard({ selected, liveSellerIds, onClose }: P
           </div>
           <button
             onClick={() => navigate(`/products/${selected.id}`)}
-            className="self-center px-3 py-2 bg-brand text-white text-xs font-bold rounded-xl shrink-0 active:scale-95 transition-transform"
+            className="self-center px-3 py-2 bg-brand text-white text-[12px] font-bold rounded-xl shrink-0 active:scale-95 transition-transform"
           >
             {t('map.detail.buy', { defaultValue: '구매' })}
           </button>

@@ -95,9 +95,9 @@ export default memo(function DealRow({
       </div>
       <div className="flex-1 min-w-0">
         {eyebrow && (
-          <p className="text-[11px] font-semibold leading-none mb-0.5 text-gray-400 dark:text-gray-500 truncate">{eyebrow}</p>
+          <p className="text-[12px] font-semibold leading-none mb-1 text-gray-400 dark:text-gray-500 truncate">{eyebrow}</p>
         )}
-        <p className="text-[14px] leading-snug line-clamp-2 font-bold text-gray-900 dark:text-white">{title}</p>
+        <p className="text-[15px] leading-snug line-clamp-2 font-bold text-gray-900 dark:text-white">{title}</p>
         {price != null && (
           <div className="flex items-baseline gap-1 mt-1">
             {pd.discount > 0 && (
@@ -115,16 +115,16 @@ export default memo(function DealRow({
                *   있기 때문이다(결재 `2026-09-28-dark-contrast-guard-coverage.md`).
                *   지금 값: 라이트 3.65:1 · 다크 3.10:1 — 판매가(≈16:1)보다 한참 약해 위계는 그대로다.
                */
-              <span className="text-[11px] ml-1 leading-none line-through text-gray-400 dark:text-gray-500">{formatNumber(originalPrice!)}{unit}</span>
+              <span className="text-[12px] ml-1 leading-none line-through text-gray-400 dark:text-gray-500">{formatNumber(originalPrice!)}{unit}</span>
             )}
           </div>
         )}
-        {meta && <div className="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400">{meta}</div>}
+        {meta && <div className="mt-1 text-[12px] text-gray-500 dark:text-gray-400">{meta}</div>}
       </div>
       {trailing}
     </>
   )
-  const cls = `w-full flex items-center gap-3 text-left px-3 py-2.5 rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift active:opacity-60 transition-opacity ${className}`
+  const cls = `w-full flex items-center gap-3 text-left px-3 py-2 rounded-2xl bg-white dark:bg-[#1D1F29] shadow-lift active:opacity-60 transition-opacity ${className}`
   const warm = prefetch
     ? { onMouseEnter: prefetch, onTouchStart: prefetch, onFocus: prefetch }
     : undefined

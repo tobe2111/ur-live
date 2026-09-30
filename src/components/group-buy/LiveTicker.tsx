@@ -10,7 +10,8 @@
  *   - 페이지 hidden 시 polling/rotation 일시정지 (배터리)
  */
 import { useEffect, useState } from 'react'
-import { BedDouble, Dumbbell, PartyPopper, PawPrint, Scissors, ShoppingBag, Ticket, Utensils, type LucideIcon } from 'lucide-react'
+import { BagIcon, TicketStubIcon } from '@/components/icons/urdeal-icons'
+import { BedDouble, Dumbbell, PartyPopper, PawPrint, Scissors, Utensils, type LucideIcon } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import api from '@/lib/api'
 import { parseUTCDate } from '@/utils/date'
@@ -31,7 +32,7 @@ interface TickerEntry {
 const CATEGORY_ICON: Record<string, LucideIcon> = {
   meal_voucher: Utensils, beauty_voucher: Scissors, health_voucher: Dumbbell,
   pet_voucher: PawPrint, stay_voucher: BedDouble, activity_voucher: PartyPopper,
-  etc_voucher: Ticket, general: ShoppingBag,
+  etc_voucher: TicketStubIcon, general: BagIcon,
 }
 
 function timeAgo(iso: string): string {
@@ -92,13 +93,13 @@ export default function LiveTicker({ className = '' }: { className?: string }) {
       {e.avatar ? (
         <img src={e.avatar} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" loading="lazy" />
       ) : (
-        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-gray-300 to-gray-700 shrink-0 flex items-center justify-center text-[10px]">
-          {(() => { const I = CATEGORY_ICON[e.category] || Ticket; return <I className="w-3.5 h-3.5" aria-hidden="true" /> })()}
+        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-gray-300 to-gray-700 shrink-0 flex items-center justify-center text-[12px]">
+          {(() => { const I = CATEGORY_ICON[e.category] || TicketStubIcon; return <I className="w-3.5 h-3.5" aria-hidden="true" /> })()}
         </div>
       )}
 
       {/* 텍스트 (animate-in) */}
-      <p key={`${e.product_id}-${e.created_at}`} className="text-[11px] text-gray-700 dark:text-gray-200 truncate flex-1 animate-fadeIn">
+      <p key={`${e.product_id}-${e.created_at}`} className="text-[12px] text-gray-700 dark:text-gray-200 truncate flex-1 animate-fadeIn">
         <span className="font-bold text-gray-900 dark:text-white">{e.masked_name}</span>
         <span className="text-gray-500"> · </span>
         <span className="text-gray-700 dark:text-gray-200">{e.restaurant_name || e.product_name}</span>

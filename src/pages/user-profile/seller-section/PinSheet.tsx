@@ -92,7 +92,7 @@ export default function PinSheet({ sellerId, onClose, onDone }: {
     }
   }
 
-  const field = 'w-full h-12 rounded-xl border border-rule-strong bg-transparent px-3 text-[16px] font-bold tabular-nums tracking-[0.2em] text-gray-900 dark:text-white placeholder:font-normal placeholder:tracking-normal placeholder:text-gray-400 dark:placeholder:text-gray-500'
+  const field = 'w-full h-12 rounded-xl border border-rule-strong bg-transparent px-3 text-[17px] font-bold tabular-nums tracking-[0.2em] text-gray-900 dark:text-white placeholder:font-normal placeholder:tracking-normal placeholder:text-gray-400 dark:placeholder:text-gray-500'
 
   return (
     <Sheet
@@ -116,7 +116,7 @@ export default function PinSheet({ sellerId, onClose, onDone }: {
         </div>
       )}
       {failed && (
-        <p className="px-4 py-8 text-center text-[13.5px] text-gray-500 dark:text-gray-400">
+        <p className="px-4 py-8 text-center text-[13px] text-gray-500 dark:text-gray-400">
           지금은 확인할 수 없어요. 잠시 후 다시 열어 주세요.
         </p>
       )}
@@ -126,7 +126,7 @@ export default function PinSheet({ sellerId, onClose, onDone }: {
             돈이 나가는 일에는 PIN 을 한 번 더 확인해요. 숫자 4~6자리예요.
           </p>
           <label className="block">
-            <span className="block text-[13px] font-bold text-gray-900 dark:text-white mb-1.5">PIN</span>
+            <span className="block text-[13px] font-bold text-gray-900 dark:text-white mb-2">PIN</span>
             <input
               type="password"
               inputMode="numeric"
@@ -139,7 +139,7 @@ export default function PinSheet({ sellerId, onClose, onDone }: {
           </label>
           {!pinSet && (
             <label className="block">
-              <span className="block text-[13px] font-bold text-gray-900 dark:text-white mb-1.5">한 번 더</span>
+              <span className="block text-[13px] font-bold text-gray-900 dark:text-white mb-2">한 번 더</span>
               <input
                 type="password"
                 inputMode="numeric"
@@ -150,22 +150,22 @@ export default function PinSheet({ sellerId, onClose, onDone }: {
                 className={field}
               />
               {confirm.length > 0 && !matchOk && (
-                <span className="block mt-1.5 text-[12.5px] text-gray-900 dark:text-white">두 숫자가 달라요.</span>
+                <span className="block mt-2 text-[13px] text-gray-900 dark:text-white">두 숫자가 달라요.</span>
               )}
             </label>
           )}
           {needPassword && (
             <label className="block pt-1">
-              <span className="block text-[13px] font-bold text-gray-900 dark:text-white mb-1.5">매장 비밀번호</span>
+              <span className="block text-[13px] font-bold text-gray-900 dark:text-white mb-2">매장 비밀번호</span>
               <input
                 type="password"
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="매장 로그인 비밀번호"
-                className="w-full h-12 rounded-xl border border-rule-strong bg-transparent px-3 text-[16px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                className="w-full h-12 rounded-xl border border-rule-strong bg-transparent px-3 text-[17px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
               />
-              <span className="block mt-1.5 text-[12.5px] text-gray-500 dark:text-gray-400">
+              <span className="block mt-2 text-[13px] text-gray-500 dark:text-gray-400">
                 이 매장은 소비자 계정과 따로 만들어져서 한 번 확인이 필요해요.
               </span>
             </label>

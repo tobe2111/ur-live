@@ -53,7 +53,7 @@ export default function PhoneShot({
           놓이는데, `text-gray-500` 을 박으면 잉크 위에서 2.5:1 로 잠긴다(다크 대비 가드가 잡는 그 클래스).
           부모 글자색을 물려받고 투명도로만 눌러 두 자리에서 같은 무게로 읽히게 한다. */}
       {caption ? (
-        <figcaption className="mt-3 lg:mt-4 text-center text-[11.5px] lg:text-[12.5px] leading-snug opacity-60">
+        <figcaption className="mt-3 lg:mt-4 text-center text-[12px] lg:text-[12px] leading-snug opacity-60">
           {caption}
         </figcaption>
       ) : null}

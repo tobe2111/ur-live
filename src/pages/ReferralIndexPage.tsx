@@ -1,6 +1,7 @@
 import { useNavigate, Navigate } from 'react-router-dom'
+import { PeopleIcon, GiftBoxIcon, BagIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Users, Gift, ShoppingBag, Share2 } from 'lucide-react'
+import { ArrowLeft, Share2 } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags'
 
@@ -35,9 +36,9 @@ export default function ReferralIndexPage() {
         {/* Hero */}
         <section className="pt-6 pb-8 text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-800 mb-4">
-            <Users className="h-8 w-8 text-white" strokeWidth={2} />
+            <PeopleIcon className="h-8 w-8 text-white" />
           </div>
-          <h2 className="text-[22px] font-extrabold text-gray-900 dark:text-white leading-tight">
+          <h2 className="text-[24px] font-extrabold text-gray-900 dark:text-white leading-tight">
             {t('referral.heroTitle1', { defaultValue: '친구와 함께' })}<br />
             <span className="text-brand-text">{t('referral.heroTitle2', { defaultValue: '더 저렴하게' })}</span> {t('referral.heroTitle3', { defaultValue: '쇼핑하세요' })}
           </h2>
@@ -52,7 +53,7 @@ export default function ReferralIndexPage() {
           <div className="bg-surface rounded-2xl border border-gray-100 dark:border-[#2C2F35] divide-y divide-gray-100 dark:divide-[#2C2F35]">
             {[
               {
-                icon: ShoppingBag,
+                icon: BagIcon,
                 title: t('referral.step1Title', { defaultValue: '공동구매 상품 선택' }),
                 desc: t('referral.step1Desc', { defaultValue: '진행 중인 공동구매 상품을 둘러보세요' }),
                 tint: 'bg-blue-50 text-blue-500',
@@ -64,7 +65,7 @@ export default function ReferralIndexPage() {
                 tint: 'bg-brand-tint text-brand-text',
               },
               {
-                icon: Gift,
+                icon: GiftBoxIcon,
                 title: t('referral.step3Title', { defaultValue: '친구 초대 보너스' }),
                 desc: t('referral.step3Desc', { defaultValue: '친구를 초대해 함께 구매하면 보너스 딜을 받을 수 있어요' }),
                 tint: 'bg-amber-50 text-amber-500',
@@ -81,7 +82,7 @@ export default function ReferralIndexPage() {
                       <span className="text-brand-text mr-1">0{i + 1}</span>
                       {step.title}
                     </p>
-                    <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
+                    <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
                       {step.desc}
                     </p>
                   </div>
@@ -95,20 +96,20 @@ export default function ReferralIndexPage() {
         <section className="space-y-2">
           <button
             onClick={() => navigate('/browse?filter=group-buy')}
-            className="w-full py-3.5 bg-gray-900 text-white text-[14px] font-bold rounded-full hover:bg-gray-800 active:bg-gray-700 transition-colors"
+            className="w-full py-4 bg-brand text-white text-[15px] font-bold rounded-full hover:bg-brand-dark active:bg-gray-700 transition-colors"
           >
             {t('referral.ctaBrowse', { defaultValue: '공동구매 상품 둘러보기' })}
           </button>
           <button
             onClick={() => navigate('/group-buy')}
-            className="w-full py-3.5 bg-white dark:bg-[#11141C] text-gray-900 dark:text-white border border-line text-[14px] font-semibold rounded-full hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
+            className="w-full py-4 bg-white dark:bg-[#11141C] text-gray-900 dark:text-white border border-line text-[15px] font-semibold rounded-full hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
           >
             {t('referral.ctaList', { defaultValue: '진행 중인 공동구매 모아보기' })}
           </button>
         </section>
 
         {/* 안내 */}
-        <p className="mt-6 text-[11px] text-gray-400 dark:text-gray-500 text-center leading-relaxed">
+        <p className="mt-6 text-[12px] text-gray-400 dark:text-gray-500 text-center leading-relaxed">
           {t('referral.footerNote', { defaultValue: '친구가 보낸 공동구매 링크를 받았다면 해당 링크를 눌러 그룹에 참여할 수 있습니다' })}
         </p>
       </main>

@@ -14,7 +14,7 @@ export default [
   {
     name: '🪙잔액 위층에 채운 버튼이 다시 생긴다',
     file: 'src/pages/vouchers/DealBalanceCard.tsx',
-    find: `          <span className={\`font-bold text-gray-400 dark:text-gray-500 \${compact ? 'text-[15px]' : 'text-[18px]'}\`}>딜</span>`,
+    find: `          <span className={\`font-bold text-gray-400 dark:text-gray-500 \${compact ? 'text-[15px]' : 'text-[17px]'}\`}>딜</span>`,
     replace: `          <span className={\`font-bold text-gray-400 dark:text-gray-500 \${compact ? 'text-[15px]' : 'text-[18px]'}\`}>딜</span>
           <button type="button" className="ml-auto px-3 py-1 rounded-full bg-brand text-white text-[12px]">내역</button>`,
     test: 'src/tests/unit/deal-balance-card-2026-09-14.test.ts',
@@ -35,7 +35,7 @@ export default [
     file: 'src/pages/vouchers/DealBalanceCard.tsx',
     // 🔁 2026-09-28 재조준: 위층 끝에 `note` 한 줄(마이가 쓰는 무상 리워드 안내)이 생기면서
     //   `</div></div>` 두 줄 앵커가 깨졌다. 불변식은 그대로 — **위층에 값어치 문구를 다시 넣지 않는다.**
-    find: `        <p className={\`text-gray-500 dark:text-gray-400 tracking-wide \${compact ? 'text-[11px] mb-1.5' : 'text-[12px] mb-2'}\`}>내 딜 잔액</p>`,
+    find: `        <p className={\`text-gray-500 dark:text-gray-400 tracking-wide \${compact ? 'text-[12px] mb-2' : 'text-[12px] mb-2'}\`}>내 딜 잔액</p>`,
     replace: `        <p className={\`text-gray-500 dark:text-gray-400 tracking-wide \${compact ? 'text-[11px] mb-1.5' : 'text-[12px] mb-2'}\`}>내 딜 잔액</p>
         <p className="text-[11px] text-gray-400 mt-1.5">1딜 = 1원 · 현금처럼 사용</p>`,
     test: 'src/tests/unit/deal-balance-card-2026-09-14.test.ts',

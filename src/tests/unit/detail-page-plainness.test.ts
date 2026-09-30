@@ -147,7 +147,7 @@ describe('같은 정보를 두 번 보여주지 않는다', () => {
 describe('위계가 살아 있다', () => {
   it('섹션 제목이 본문과 같은 크기로 주저앉지 않았다', () => {
     // 예전엔 전부 `text-sm font-bold` — 제목인지 굵은 본문인지 구분이 안 됐다.
-    expect(code(read(SECTIONS)), '섹션 제목 스펙(16px/800)이 바뀌었다').toContain('text-[16px] font-extrabold')
+    expect(code(read(SECTIONS)), '섹션 제목 스펙(17px/800)이 바뀌었다').toContain('text-[17px] font-extrabold')
     const src = code(read(STAY))
     expect(src, '섹션 제목이 SectionTitle 밖으로 흩어졌다').toContain('<SectionTitle')
     expect(src, '옛 13px 굵은 제목이 되살아났다').not.toMatch(/<h2 className="text-sm font-bold/)

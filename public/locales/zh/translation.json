@@ -4784,7 +4784,7 @@
     "sellerContact": "卖家联系方式: {{phone}}",
     "sellerNoContact": "卖家未注册联系方式",
     "emptyTitle": "暂无订单",
-    "emptyDesc": "在直播中找到您喜欢的商品购买吧",
+    "emptyDesc": "来找找您喜欢的优惠券或商品吧",
     "goToLive": "去看直播",
     "trackingLink": "查看物流",
     "paymentAmount": "支付金额",
@@ -5531,7 +5531,7 @@
   "myCoupons": {
     "title": "我的优惠券",
     "empty": "没有可用的优惠券",
-    "emptySub": "通过参与直播和活动获得优惠券",
+    "emptySub": "还没有优惠券。参加活动即可获得",
     "loginRequired": "需要登录。",
     "loadFailed": "无法加载优惠券。",
     "sessionExpired": "会话已过期，请重新登录。",

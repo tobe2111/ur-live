@@ -66,14 +66,14 @@ describe('ProductInfoGrid', () => {
   it('applies correct styling to labels', () => {
     const { container } = render(<ProductInfoGrid items={mockItems} />)
 
-    const labels = container.querySelectorAll('.text-xs.text-muted-foreground')
+    const labels = container.querySelectorAll('.text-\\[12px\\].text-muted-foreground')
     expect(labels.length).toBeGreaterThan(0)
   })
 
   it('applies correct styling to values', () => {
     const { container } = render(<ProductInfoGrid items={mockItems} />)
 
-    const values = container.querySelectorAll('.text-xs.font-medium.text-foreground')
+    const values = container.querySelectorAll('.text-\\[12px\\].font-medium.text-foreground')
     expect(values.length).toBeGreaterThan(0)
   })
 

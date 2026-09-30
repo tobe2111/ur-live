@@ -4784,7 +4784,7 @@
     "sellerContact": "Seller contact: {{phone}}",
     "sellerNoContact": "Seller contact not registered",
     "emptyTitle": "No orders yet",
-    "emptyDesc": "Shop in our live streams and find something you love",
+    "emptyDesc": "Find a pass or product you like",
     "goToLive": "Browse deals",
     "trackingLink": "Track",
     "paymentAmount": "Payment",
@@ -5531,7 +5531,7 @@
   "myCoupons": {
     "title": "My Coupons",
     "empty": "No coupons available",
-    "emptySub": "Get coupons by joining live streams and events",
+    "emptySub": "No coupons yet. Join an event to get one",
     "loginRequired": "Login required.",
     "loadFailed": "Unable to load coupons.",
     "sessionExpired": "Session expired. Please log in again.",

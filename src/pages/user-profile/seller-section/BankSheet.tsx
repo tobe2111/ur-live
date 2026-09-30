@@ -102,7 +102,7 @@ export default function BankSheet({ sellerId, onClose, onDone, onFixPin }: {
     }
   }
 
-  const field = 'w-full h-12 rounded-xl border border-rule-strong bg-transparent px-3 text-[16px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
+  const field = 'w-full h-12 rounded-xl border border-rule-strong bg-transparent px-3 text-[17px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500'
 
   return (
     <Sheet
@@ -126,7 +126,7 @@ export default function BankSheet({ sellerId, onClose, onDone, onFixPin }: {
         </div>
       )}
       {failed && (
-        <p className="px-4 py-8 text-center text-[13.5px] text-gray-500 dark:text-gray-400">
+        <p className="px-4 py-8 text-center text-[13px] text-gray-500 dark:text-gray-400">
           지금은 불러올 수 없어요. 잠시 후 다시 열어 주세요.
         </p>
       )}
@@ -136,14 +136,14 @@ export default function BankSheet({ sellerId, onClose, onDone, onFixPin }: {
             출금한 돈이 들어갈 계좌예요. <span className="text-gray-900 dark:text-white font-semibold">사업자 본인 명의</span> 계좌만 쓸 수 있어요.
           </p>
           <label className="block">
-            <span className="block text-[13px] font-bold text-gray-900 dark:text-white mb-1.5">은행</span>
+            <span className="block text-[13px] font-bold text-gray-900 dark:text-white mb-2">은행</span>
             <select value={bank} onChange={(e) => setBank(e.target.value)} className={field}>
               <option value="">은행을 골라 주세요</option>
               {BANKS.map((b) => <option key={b} value={b}>{b}</option>)}
             </select>
           </label>
           <label className="block">
-            <span className="block text-[13px] font-bold text-gray-900 dark:text-white mb-1.5">계좌번호</span>
+            <span className="block text-[13px] font-bold text-gray-900 dark:text-white mb-2">계좌번호</span>
             <input
               inputMode="numeric"
               value={account}
@@ -153,7 +153,7 @@ export default function BankSheet({ sellerId, onClose, onDone, onFixPin }: {
             />
           </label>
           <label className="block">
-            <span className="block text-[13px] font-bold text-gray-900 dark:text-white mb-1.5">예금주</span>
+            <span className="block text-[13px] font-bold text-gray-900 dark:text-white mb-2">예금주</span>
             <input
               value={holder}
               onChange={(e) => setHolder(e.target.value)}

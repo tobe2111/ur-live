@@ -126,7 +126,7 @@ export default function TrackingModal({ orderId, carrier, trackingNumber, title,
         onClick={(e) => e.stopPropagation()}
       >
         <header className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-[#2C2F35]">
-          <h2 className="text-base font-bold text-gray-900 dark:text-white">
+          <h2 className="text-[15px] font-bold text-gray-900 dark:text-white">
             📦 {t('shipping.trackingTitle', { defaultValue: '배송 추적' })}
           </h2>
           <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-[#1D1F29] flex items-center justify-center text-gray-500" aria-label="close">
@@ -149,14 +149,14 @@ export default function TrackingModal({ orderId, carrier, trackingNumber, title,
           ) : (
             <>
               <section className="mb-5 p-3 bg-warm rounded-xl">
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1">
                   {data.courier?.name || '택배사'} · {data.tracking_number}
                 </p>
-                <p className={`text-lg font-bold ${STATUS_LABELS[data.status || 'unknown']?.color || 'text-gray-500'}`}>
+                <p className={`text-[17px] font-bold ${STATUS_LABELS[data.status || 'unknown']?.color || 'text-gray-500'}`}>
                   {STATUS_LABELS[data.status || 'unknown']?.label || data.status}
                 </p>
                 {data.cached && (
-                  <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">캐시 데이터 · 60초 후 갱신</p>
+                  <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-1">캐시 데이터 · 60초 후 갱신</p>
                 )}
               </section>
 
@@ -168,14 +168,14 @@ export default function TrackingModal({ orderId, carrier, trackingNumber, title,
                     return (
                       <li key={i} className="ml-4">
                         <div className={`absolute -left-[7px] w-3 h-3 rounded-full ${isLatest ? 'bg-brand ring-2 ring-brand/30' : 'bg-gray-300 dark:bg-[#2C2F35]'}`} />
-                        <p className={`text-sm ${isLatest ? 'font-bold text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'}`}>
+                        <p className={`text-[15px] ${isLatest ? 'font-bold text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'}`}>
                           {getEventStatus(ev)}
                         </p>
                         {getEventLocation(ev) && (
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{getEventLocation(ev)}</p>
+                          <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{getEventLocation(ev)}</p>
                         )}
                         {getEventTime(ev) && (
-                          <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">
+                          <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-1">
                             {new Date(getEventTime(ev)).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                           </p>
                         )}
@@ -184,7 +184,7 @@ export default function TrackingModal({ orderId, carrier, trackingNumber, title,
                   })}
                 </ol>
               ) : (
-                <p className="text-center py-6 text-sm text-gray-500 dark:text-gray-400">
+                <p className="text-center py-6 text-[15px] text-gray-500 dark:text-gray-400">
                   {t('shipping.noEvents', { defaultValue: '추적 정보가 아직 없습니다' })}
                 </p>
               )}
@@ -195,7 +195,7 @@ export default function TrackingModal({ orderId, carrier, trackingNumber, title,
                   href={data.external_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-6 block w-full text-center py-3 bg-gray-100 dark:bg-[#1D1F29] hover:bg-gray-200 dark:hover:bg-[#2C2F35] text-gray-700 dark:text-gray-200 text-sm font-bold rounded-xl transition-colors"
+                  className="mt-6 block w-full text-center py-3 bg-gray-100 dark:bg-[#1D1F29] hover:bg-gray-200 dark:hover:bg-[#2C2F35] text-gray-700 dark:text-gray-200 text-[15px] font-bold rounded-xl transition-colors"
                 >
                   🔗 {t('shipping.externalSite', { defaultValue: '택배사 페이지에서 보기' })}
                 </a>

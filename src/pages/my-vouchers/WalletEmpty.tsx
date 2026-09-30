@@ -1,7 +1,8 @@
 // 🧱 2026-06-29 TD: MyVouchersPage god 파일 분해 — 빈 상태/스켈레톤/티켓 일러스트(verbatim 추출). 동작 불변.
 //   TicketShape·WalletEmptyGlyph 는 모듈 내부 전용, WalletSkeleton·EmptyVouchers 만 페이지가 사용.
 import { Fragment } from 'react'
-import { ArrowRight, ShoppingBag, Wallet, QrCode, Gift, Smartphone, Store, type LucideIcon } from 'lucide-react'
+import { BagIcon, WalletIcon, GiftBoxIcon, StoreIcon } from '@/components/icons/urdeal-icons'
+import { ArrowRight, QrCode, Smartphone, type LucideIcon } from 'lucide-react'
 
 function TicketShape({ className, strokeWidth = 2.2, variant, faded }: {
   className?: string
@@ -88,7 +89,7 @@ export function WalletSkeleton() {
       {/* 패스 카드 2장 */}
       {[0, 1].map(i => (
         <div key={i} className="rounded-[18px] bg-surface shadow-lift p-4 mb-4">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             <div className="w-9 h-9 rounded-[10px] bg-gray-200 dark:bg-[#2C2F35]" />
             <div className="h-3 w-28 rounded bg-gray-200 dark:bg-[#2C2F35]" />
             <div className="ml-auto h-5 w-12 rounded-full bg-gray-200 dark:bg-[#2C2F35]" />
@@ -132,13 +133,13 @@ export function EmptyVouchers({ mode, onExplore, t }: {
   // 🎨 2026-07-20 — 아이콘 스텝(구매 → 지갑 → 매장). 교환권은 구매 → MMS → 매장.
   const steps: { icon: LucideIcon; label: string }[] = isGift
     ? [
-        { icon: Gift, label: t('voucher.stepGift1', { defaultValue: '교환권\n구매' }) },
+        { icon: GiftBoxIcon, label: t('voucher.stepGift1', { defaultValue: '교환권\n구매' }) },
         { icon: Smartphone, label: t('voucher.stepGift2', { defaultValue: 'MMS\n발송' }) },
-        { icon: Store, label: t('voucher.stepGift3', { defaultValue: '매장에서\n제시' }) },
+        { icon: StoreIcon, label: t('voucher.stepGift3', { defaultValue: '매장에서\n제시' }) },
       ]
     : [
-        { icon: ShoppingBag, label: t('voucher.stepGb1', { defaultValue: '이용권\n구매' }) },
-        { icon: Wallet, label: t('voucher.stepGb2', { defaultValue: '지갑에\n도착' }) },
+        { icon: BagIcon, label: t('voucher.stepGb1', { defaultValue: '이용권\n구매' }) },
+        { icon: WalletIcon, label: t('voucher.stepGb2', { defaultValue: '지갑에\n도착' }) },
         { icon: QrCode, label: t('voucher.stepGb3', { defaultValue: '매장에서\nQR 사용' }) },
       ]
 
@@ -147,8 +148,8 @@ export function EmptyVouchers({ mode, onExplore, t }: {
       {/* 히어로 일러스트 — 스택 티켓(천공·스텁·QR/바코드) */}
       <WalletEmptyGlyph variant={isGift ? 'gift' : 'gb'} />
 
-      <h2 className="text-[20px] font-extrabold tracking-[-0.02em] text-gray-900 dark:text-white">{title}</h2>
-      <p className="mt-2 max-w-[264px] text-[13.5px] leading-relaxed text-gray-500 dark:text-gray-400 whitespace-pre-line">{desc}</p>
+      <h2 className="text-[24px] font-extrabold tracking-[-0.02em] text-gray-900 dark:text-white">{title}</h2>
+      <p className="mt-2 max-w-[264px] text-[13px] leading-relaxed text-gray-500 dark:text-gray-400 whitespace-pre-line">{desc}</p>
 
       {/* 사용 흐름 — 로즈 틴트 아이콘 칩 + 연결 트랙(헤어라인) + 작은 스텝 번호 */}
       <div className="mt-9 w-full max-w-[312px] flex items-start">
@@ -160,9 +161,9 @@ export function EmptyVouchers({ mode, onExplore, t }: {
             <div className="flex flex-col items-center gap-2 w-[66px] shrink-0">
               <div className="relative w-11 h-11 rounded-2xl flex items-center justify-center bg-brand-tint text-brand-text">
                 <Icon className="w-[19px] h-[19px]" strokeWidth={2} />
-                <span className="absolute -top-1 -right-1 w-[15px] h-[15px] rounded-full bg-surface border border-rule-strong text-[9px] font-extrabold text-gray-500 dark:text-gray-400 flex items-center justify-center tabular-nums">{i + 1}</span>
+                <span className="absolute -top-1 -right-1 w-[15px] h-[15px] rounded-full bg-surface border border-rule-strong text-[12px] font-extrabold text-gray-500 dark:text-gray-400 flex items-center justify-center tabular-nums">{i + 1}</span>
               </div>
-              <span className="text-[11px] font-medium leading-tight text-gray-600 dark:text-gray-300 whitespace-pre-line">{label}</span>
+              <span className="text-[12px] font-medium leading-tight text-gray-600 dark:text-gray-300 whitespace-pre-line">{label}</span>
             </div>
           </Fragment>
         ))}
@@ -170,7 +171,7 @@ export function EmptyVouchers({ mode, onExplore, t }: {
 
       <button
         onClick={onExplore}
-        className="mt-9 w-full max-w-[300px] py-3.5 rounded-2xl text-[15px] font-extrabold bg-brand hover:bg-brand-dark text-white active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 shadow-[0_8px_22px_rgba(28,105,239,0.32)] dark:shadow-[0_8px_22px_rgba(28,105,239,0.2)]"
+        className="mt-9 w-full max-w-[300px] py-4 rounded-2xl text-[15px] font-extrabold bg-brand hover:bg-brand-dark text-white active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-[0_8px_22px_rgba(28,105,239,0.32)] dark:shadow-[0_8px_22px_rgba(28,105,239,0.2)]"
       >
         {cta}
         <ArrowRight className="w-[17px] h-[17px]" strokeWidth={2.4} />

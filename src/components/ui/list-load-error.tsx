@@ -15,7 +15,7 @@ export function ListLoadError({ onRetry, className = '' }: { onRetry: () => void
       <p className="mb-4 text-[15px] text-gray-900 dark:text-white">{t('common.loadFailed')}</p>
       <button
         onClick={onRetry}
-        className="px-6 py-2.5 rounded-full bg-brand text-white text-[13px] font-bold active:opacity-90"
+        className="px-6 py-2 rounded-full bg-brand text-white text-[13px] font-bold active:opacity-90"
       >
         {t('common.retry')}
       </button>

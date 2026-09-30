@@ -232,9 +232,9 @@ export default function CuratorPage() {
   if (error || !data) {
     return (
       <div className="min-h-[100dvh] bg-warm dark:bg-[#11141C] text-gray-900 dark:text-white flex flex-col items-center justify-center px-4 text-center">
-        <h1 className="text-2xl font-bold mb-2">{t('curator.notFoundTitle', { defaultValue: '유어샵을 찾을 수 없어요' })}</h1>
+        <h1 className="text-[24px] font-bold mb-2">{t('curator.notFoundTitle', { defaultValue: '유어샵을 찾을 수 없어요' })}</h1>
         <p className="text-gray-500 dark:text-gray-400 mb-6">@{handle}</p>
-        <Link to="/" className="px-6 py-3 bg-gray-900 dark:bg-white rounded-xl text-white dark:text-[#11141C] font-bold">{t('curator.goHome', { defaultValue: '홈으로' })}</Link>
+        <Link to="/" className="px-6 py-3 bg-brand rounded-xl text-white font-bold">{t('curator.goHome', { defaultValue: '홈으로' })}</Link>
       </div>
     )
   }
@@ -332,13 +332,13 @@ export default function CuratorPage() {
             {/* 🔍 2026-06-16 유어샵 시안: 검색창 — 상품명 + 추천 코멘트 라이브 필터(SEARCH_MIN_PINS 이상일 때만). */}
             {pins.length >= SEARCH_MIN_PINS && (
               <div className="max-w-3xl mx-auto px-4 pt-3 pb-1">
-                <div className="flex items-center gap-2 h-11 px-3.5 rounded-xl border border-line bg-gray-50 dark:bg-[#1D1F29]">
+                <div className="flex items-center gap-2 h-11 px-4 rounded-xl border border-line bg-gray-50 dark:bg-[#1D1F29]">
                   <Search className="w-4 h-4 text-gray-400 shrink-0" />
                   <input
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder={t('curator.searchPlaceholder', { defaultValue: '상품·딜 이름으로 검색' })}
-                    className="flex-1 min-w-0 bg-transparent outline-none text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400"
+                    className="flex-1 min-w-0 bg-transparent outline-none text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400"
                   />
                   {query && (
                     <button onClick={() => setQuery('')} aria-label={t('curator.clearSearch', { defaultValue: '지우기' })} className="shrink-0 w-5 h-5 rounded-full bg-gray-300 dark:bg-[#3A3A3A] text-white flex items-center justify-center">
@@ -370,7 +370,7 @@ export default function CuratorPage() {
                 <div className="max-w-3xl mx-auto px-4 pt-3 pb-2 flex items-center gap-2 empty:hidden">
                   <PinCategoryChips pins={pins} value={cat} onChange={setCat} />
                   {query.trim() && (
-                    <span className="shrink-0 text-[11.5px] text-gray-500 dark:text-gray-400">
+                    <span className="shrink-0 text-[12px] text-gray-500 dark:text-gray-400">
                       <b className="text-gray-900 dark:text-white tabular-nums">{visiblePins.length}{t('curator.countUnit', { defaultValue: '개' })}</b>
                     </span>
                   )}
@@ -380,8 +380,8 @@ export default function CuratorPage() {
                 </div>
                 {visiblePins.length === 0 ? (
                   <div className="max-w-3xl mx-auto px-4 py-16 text-center">
-                    <p className="text-sm font-bold text-gray-900 dark:text-white">{t('curator.noSearchResults', { defaultValue: '검색 결과가 없어요' })}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('curator.tryOtherKeyword', { defaultValue: '다른 키워드로 찾아보세요.' })}</p>
+                    <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t('curator.noSearchResults', { defaultValue: '검색 결과가 없어요' })}</p>
+                    <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{t('curator.tryOtherKeyword', { defaultValue: '다른 키워드로 찾아보세요.' })}</p>
                   </div>
                 ) : (
                   <div className="max-w-3xl mx-auto px-4 pb-4 space-y-2">

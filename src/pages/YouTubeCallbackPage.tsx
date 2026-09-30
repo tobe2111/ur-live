@@ -4,9 +4,10 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
+import { OkIcon, AlertIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
-import { Loader2, CheckCircle2, AlertCircle, Youtube, Radio, RefreshCw } from 'lucide-react'
+import { Loader2, Youtube, Radio, RefreshCw } from 'lucide-react'
 
 const LOADING_STEPS = [
   'Google 인증 확인 중',
@@ -97,9 +98,9 @@ export default function YouTubeCallbackPage() {
         {status === 'loading' && (
           <div className="space-y-8">
             {/* 브랜드 플로우 */}
-            <div className="flex items-center justify-center gap-2.5">
+            <div className="flex items-center justify-center gap-2">
               <div className="w-12 h-12 rounded-2xl bg-white border border-gray-100 dark:border-[#2C2F35] shadow-sm flex items-center justify-center">
-                <span className="text-[22px] font-black" style={{ color: '#4285F4' }}>G</span>
+                <span className="text-[24px] font-black" style={{ color: '#4285F4' }}>G</span>
               </div>
               <ConnectDots />
               <div className="w-12 h-12 rounded-2xl bg-brand flex items-center justify-center shadow-sm">
@@ -113,7 +114,7 @@ export default function YouTubeCallbackPage() {
 
             {/* 타이틀 */}
             <div>
-              <h2 className="text-[20px] font-bold text-[#1d1d1f] mb-1.5">
+              <h2 className="text-[24px] font-bold text-[#1d1d1f] mb-2">
                 YouTube 계정 연동 중
               </h2>
               <p className="text-[13px] text-[#8e8e93]">잠시만 기다려주세요</p>
@@ -130,7 +131,7 @@ export default function YouTubeCallbackPage() {
                 >
                   <div className="w-5 h-5 flex items-center justify-center shrink-0">
                     {i < loadingStep ? (
-                      <CheckCircle2 className="w-5 h-5 text-green-500" />
+                      <OkIcon className="w-5 h-5 text-green-500" />
                     ) : i === loadingStep ? (
                       <Loader2 className="w-4 h-4 text-brand animate-spin" />
                     ) : (
@@ -138,7 +139,7 @@ export default function YouTubeCallbackPage() {
                     )}
                   </div>
                   {/* 🛡️ 2026-05-14: 진행 안 한 단계 text-[#c7c7cc] (RGB 199) 너무 흐림 → 가독성 보강 (gray-500). */}
-                  <span className={`text-[14px] transition-colors duration-300 ${
+                  <span className={`text-[15px] transition-colors duration-300 ${
                     i < loadingStep
                       ? 'text-gray-500 line-through decoration-gray-400'
                       : i === loadingStep
@@ -158,14 +159,14 @@ export default function YouTubeCallbackPage() {
           <div className="space-y-6">
             <div className="relative mx-auto w-20 h-20">
               <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center">
-                <CheckCircle2 className="h-10 w-10 text-green-500" />
+                <OkIcon className="h-10 w-10 text-green-500" />
               </div>
               <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-red-600 rounded-xl flex items-center justify-center shadow-sm">
                 <Youtube className="w-4 h-4 text-white" />
               </div>
             </div>
             <div>
-              <h2 className="text-[22px] font-bold text-[#1d1d1f] mb-1">연동 완료!</h2>
+              <h2 className="text-[24px] font-bold text-[#1d1d1f] mb-1">연동 완료!</h2>
               <p className="text-[15px] font-medium text-[#1d1d1f]">{message}</p>
               <p className="text-[13px] text-[#8e8e93] mt-2">잠시 후 자동으로 이동합니다</p>
             </div>
@@ -176,10 +177,10 @@ export default function YouTubeCallbackPage() {
         {status === 'error' && (
           <div className="space-y-6">
             <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto">
-              <AlertCircle className="h-10 w-10 text-red-500" />
+              <AlertIcon className="h-10 w-10 text-red-500" />
             </div>
             <div>
-              <h2 className="text-[22px] font-bold text-[#1d1d1f] mb-2">연동 실패</h2>
+              <h2 className="text-[24px] font-bold text-[#1d1d1f] mb-2">연동 실패</h2>
               <p className="text-[13px] text-[#6e6e73] bg-gray-50 rounded-xl px-4 py-3 text-left break-all">
                 {message}
               </p>

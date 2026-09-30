@@ -1,11 +1,12 @@
 import { useNavigate } from 'react-router-dom'
+import { BellIcon } from '@/components/icons/urdeal-icons'
 import { useState } from 'react'
 import { safeDate } from '@/utils/safe-date'
 import api from '@/lib/api'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
-import { ChevronLeft, Bell } from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import { safeInternalPath } from '@/utils/safe-internal-path'
 import { useNotifications, useMarkAllNotificationsRead, useMarkNotificationRead } from '@/hooks/queries/useNotifications'
@@ -52,7 +53,7 @@ export default function NotificationsPage() {
             <ChevronLeft className="w-6 h-6" aria-hidden="true" />
           </button>
           <h1 className="text-gray-900 dark:text-white font-bold text-[15px]">{t('notifications.title')}</h1>
-          <button type="button" onClick={markAllRead} className="text-xs text-brand-text font-medium">{t('notifications.markAllRead')}</button>
+          <button type="button" onClick={markAllRead} className="text-[12px] text-brand-text font-medium">{t('notifications.markAllRead')}</button>
         </div>
       </div>
 
@@ -61,15 +62,15 @@ export default function NotificationsPage() {
           <BrandLoader />
         ) : error ? (
           <div className="text-center py-20">
-            <Bell className="w-12 h-12 text-gray-600 dark:text-gray-300 mx-auto mb-3" aria-hidden="true" />
+            <BellIcon className="w-12 h-12 text-gray-600 dark:text-gray-300 mx-auto mb-3" aria-hidden="true" />
             <p className="text-gray-900 dark:text-white font-bold">{error}</p>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{t('notifications.retryLater')}</p>
+            <p className="text-[15px] text-gray-600 dark:text-gray-400 mt-1">{t('notifications.retryLater')}</p>
           </div>
         ) : notifications.length === 0 ? (
           <div className="text-center py-20">
-            <Bell className="w-12 h-12 text-gray-600 dark:text-gray-300 mx-auto mb-3" aria-hidden="true" />
+            <BellIcon className="w-12 h-12 text-gray-600 dark:text-gray-300 mx-auto mb-3" aria-hidden="true" />
             <p className="text-gray-900 dark:text-white font-bold">{t('notifications.empty')}</p>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{t('notifications.emptyDesc')}</p>
+            <p className="text-[15px] text-gray-600 dark:text-gray-400 mt-1">{t('notifications.emptyDesc')}</p>
           </div>
         ) : (
           <div>
@@ -84,9 +85,9 @@ export default function NotificationsPage() {
               >
                 <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${n.is_read ? 'bg-transparent' : 'bg-brand'}`} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white">{n.title}</p>
-                  {n.message && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">{n.message}</p>}
-                  <p className="text-[10px] text-gray-500 dark:text-gray-500 mt-1">
+                  <p className="text-[15px] font-semibold text-gray-900 dark:text-white">{n.title}</p>
+                  {n.message && <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{n.message}</p>}
+                  <p className="text-[12px] text-gray-500 dark:text-gray-500 mt-1">
                     {/* 🛡️ 2026-06-26 (소비자 감사): safeDate — 사파리가 D1 datetime 을 Invalid Date 로 파싱하던 것 보정. */}
                     {safeDate(n.created_at)?.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) ?? ''}
                   </p>
@@ -95,7 +96,7 @@ export default function NotificationsPage() {
             ))}
             {hasMore && notifications.length >= 50 && (
               <button onClick={loadMore} disabled={loadingMore}
-                className="w-full py-3.5 text-sm font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white disabled:opacity-50">
+                className="w-full py-4 text-[15px] font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white disabled:opacity-50">
                 {loadingMore ? t('common.loading', { defaultValue: '불러오는 중…' }) : t('notifications.loadMore', { defaultValue: '더 보기' })}
               </button>
             )}

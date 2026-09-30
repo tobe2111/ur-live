@@ -1,7 +1,7 @@
 import { useState } from 'react'
+import { HeartIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { Heart } from 'lucide-react'
 import api from '@/lib/api'
 import { isLoggedInSync } from '@/utils/auth'
 import { useWishlist } from '@/hooks/queries/useWishlist'
@@ -57,10 +57,8 @@ export default function WishlistHeart({ productId, className = '' }: { productId
       /* 찜된 카드의 하트는 **항상 보인다**(is-on) — 안 그러면 내가 찜했는지 hover 해야 알 수 있다. */
       className={`ur-appear ${on ? 'is-on' : ''} w-8 h-8 rounded-full bg-white/85 dark:bg-black/55 backdrop-blur-sm shadow-sm flex items-center justify-center hover:bg-white dark:hover:bg-black/75 ${className}`}
     >
-      <Heart
-        className={`w-[17px] h-[17px] ${popping ? 'ur-pop' : ''} ${on ? 'text-brand' : 'text-gray-500 dark:text-gray-300'}`}
-        fill={on ? 'currentColor' : 'none'}
-        strokeWidth={on ? 0 : 2}
+      <HeartIcon
+        className={`w-[17px] h-[17px] ${popping ? 'ur-pop' : ''} ${on ? 'text-brand' : 'text-gray-500 dark:text-gray-300'}`} filled={on}
         aria-hidden="true"
       />
     </button>

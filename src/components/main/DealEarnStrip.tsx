@@ -5,8 +5,9 @@
  *   각 카드는 실제 적립 경로(유어샵/매장영입/추천/충전)로 연결.
  */
 import { useNavigate } from 'react-router-dom'
+import { StoreIcon, WalletIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from 'react-i18next'
-import { Coins, Link2, Store, UserPlus, Wallet } from 'lucide-react'
+import { Coins, Link2, UserPlus } from 'lucide-react'
 import { REFERRAL_GROUP_DISCOUNT_DISABLED, TOPUP_DISABLED } from '@/shared/feature-flags'
 
 export default function DealEarnStrip() {
@@ -24,7 +25,7 @@ export default function DealEarnStrip() {
       tint: 'bg-gray-100 text-gray-700 dark:bg-white/[0.08] dark:text-gray-200',
     },
     {
-      icon: Store,
+      icon: StoreIcon,
       label: t('dealEarn.recruit', { defaultValue: '매장 영입' }),
       desc: t('dealEarn.recruitDesc', { defaultValue: '매출마다 영입 커미션' }),
       to: '/seller/prospects',
@@ -40,7 +41,7 @@ export default function DealEarnStrip() {
     },
     // 🛡️ 2026-07-18 (대표 "충전 자체를 빼자"): 딜 충전 카드 — TOPUP_DISABLED 시 제외 (딜=적립 전용).
     ...(TOPUP_DISABLED ? [] : [{
-      icon: Wallet,
+      icon: WalletIcon,
       label: t('dealEarn.charge', { defaultValue: '딜 충전' }),
       desc: t('dealEarn.chargeDesc', { defaultValue: '1원 = 1딜' }),
       to: '/points/charge',
@@ -51,10 +52,10 @@ export default function DealEarnStrip() {
   return (
     <section className="ur-content-wide px-4 lg:px-8 pt-3 pb-1">
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-sm font-bold text-gray-900 dark:text-white">
+        <h2 className="text-[15px] font-bold text-gray-900 dark:text-white">
           <Coins className="w-4 h-4 inline-block align-[-3px] mr-1" aria-hidden="true" />{t('dealEarn.title', { defaultValue: '딜 모으는 법' })}
         </h2>
-        <span className="text-[11px] text-gray-400 dark:text-gray-500">
+        <span className="text-[12px] text-gray-400 dark:text-gray-500">
           {t('dealEarn.subtitle', { defaultValue: '모아서 교환권으로 바꾸세요' })}
         </span>
       </div>
@@ -64,13 +65,13 @@ export default function DealEarnStrip() {
             key={label}
             type="button"
             onClick={() => navigate(to)}
-            className="group flex flex-col items-center text-center gap-1.5 py-2 active:scale-[0.97] transition-transform"
+            className="group flex flex-col items-center text-center gap-2 py-2 active:scale-[0.97] transition-transform"
           >
             <span className={`w-12 h-12 rounded-2xl ${tint} flex items-center justify-center transition-shadow group-hover:shadow-sm`}>
               <Icon className="w-[22px] h-[22px]" strokeWidth={2} />
             </span>
-            <span className="text-[11px] font-semibold text-gray-900 dark:text-white leading-tight">{label}</span>
-            <span className="text-[9px] text-gray-400 dark:text-gray-500 leading-tight hidden sm:block">{desc}</span>
+            <span className="text-[12px] font-semibold text-gray-900 dark:text-white leading-tight">{label}</span>
+            <span className="text-[12px] text-gray-400 dark:text-gray-500 leading-tight hidden sm:block">{desc}</span>
           </button>
         ))}
       </div>

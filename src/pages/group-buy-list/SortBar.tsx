@@ -45,9 +45,9 @@ export default function SortBar({ mainTab, currentCount, sortBy, setSortBy, show
                     setSortBy(opt)
                     setShowSortDropdown(false)
                   }}
-                  className={`w-full text-left px-3 py-2.5 text-[13px] ${
+                  className={`w-full text-left px-3 py-2 text-[13px] ${
                     sortBy === opt
-                      ? 'bg-gray-100 dark:bg-white/[0.08] text-gray-900 dark:text-white font-semibold'
+                      ? 'bg-brand text-white font-semibold'
                       : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#1D1F29]'
                   }`}
                 >
