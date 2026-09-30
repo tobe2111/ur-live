@@ -437,7 +437,7 @@ export class ProductRepository {
     //   **부분매칭 + SQL 랭킹**으로 간다. 왜 그게 이 규모에서 이상적인지는 `search-query.ts` 머리말 참조
     //   (요약: 라이브 FTS 는 porter 토크나이저라 단어 *안쪽*을 못 잡고, trigram 으로 바꾸면 2글자
     //    검색어가 통째로 죽으며, FTS 인덱스엔 **매장명이 아예 없다**).
-    const { where, rank, params: searchParams } = buildSearchClause(query, expandSynonyms, 'p')
+    const { where, rank, whereParams, rankParams } = buildSearchClause(query, expandSynonyms, 'p')
     if (!where) return []
 
     const params: any[] = []
@@ -449,7 +449,10 @@ export class ProductRepository {
       AND NOT (COALESCE(p.is_supply_product, 0) = 1 AND COALESCE(p.supply_source_id, 0) = 0)
       AND NOT (COALESCE(p.category, '') = 'general' AND p.seller_id IS NULL)
     `;
-    params.push(...searchParams)
+    // 🔴 바인딩은 **SQL 텍스트 등장 순서**다 — 랭킹 식이 SELECT 에 있으니 `rank` 값이 먼저,
+    //   그다음이 WHERE 값이다. (2026-09-30: 반대로 넣고 있었다. 개수가 맞아 예외가 안 나고
+    //   값이 전부 LIKE 패턴이라 **틀린 결과가 조용히** 나왔다 — search-query.ts 머리말 참조.)
+    params.push(...rankParams, ...whereParams)
 
     // 추가 필터 — 기존 계약 그대로 승계.
     if (filter.sellerId) { sql += ` AND p.seller_id = ?`; params.push(filter.sellerId) }
