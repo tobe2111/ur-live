@@ -1037,7 +1037,7 @@ const MUTATIONS = [
   {
     name: '🧾 결제 화면 주 행동이 다시 검정 알약으로',
     file: 'src/pages/TossWidgetPayPage.tsx',
-    find: 'className="w-full py-3.5 bg-brand hover:bg-brand-dark text-white',
+    find: 'className="w-full py-4 bg-brand hover:bg-brand-dark text-white',
     replace: 'className="w-full py-3.5 bg-gray-800 text-white',
     test: 'src/tests/unit/pay-screen-summary.test.ts',
     why: '화면에서 가장 강한 행동이 브랜드가 아닌 색이면 결제 직전에 다른 서비스처럼 보인다.',
@@ -9394,7 +9394,7 @@ canvas {
     file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
     find: `            </p>
           )}
-          <p className="flex items-baseline gap-1 mt-0.5 leading-none">`,
+          <p className="flex items-baseline gap-1 mt-1 leading-none">`,
     replace: '',
     test: 'src/tests/unit/deal-card-price-block.test.ts',
     why:

@@ -180,7 +180,7 @@ export default function ImageUpload({
               onClick={() => onChange('')}
               className="px-3 py-2 bg-red-500 text-white text-[12px] font-semibold rounded shadow"
             >
-              <X className="w-3 h-3 inline mr-0.5" />제거
+              <X className="w-3 h-3 inline mr-1" />제거
             </button>
           </div>
         </div>

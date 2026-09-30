@@ -328,7 +328,7 @@ function OrderCard({
                   </p>
                   <p className="text-[15px] font-bold text-gray-900 dark:text-white mt-1">
                     {formatNumber(orderItemLineTotal(item))}
-                    <span className="text-[12px] font-semibold text-gray-500 dark:text-gray-400 ml-0.5">{t('ordersTab.won', { defaultValue: '원' })}</span>
+                    <span className="text-[12px] font-semibold text-gray-500 dark:text-gray-400 ml-1">{t('ordersTab.won', { defaultValue: '원' })}</span>
                   </p>
                 </div>
               </div>
@@ -393,7 +393,7 @@ function OrderCard({
           <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1">{t('ordersTab.paymentAmount', { defaultValue: '결제금액' })}</p>
           <p className="text-[17px] font-extrabold text-gray-900 dark:text-white">
             {formatNumber(order.total_amount ?? order.amount ?? 0)}
-            <span className="text-[13px] font-semibold text-gray-600 dark:text-gray-300 ml-0.5">{t('ordersTab.won', { defaultValue: '원' })}</span>
+            <span className="text-[13px] font-semibold text-gray-600 dark:text-gray-300 ml-1">{t('ordersTab.won', { defaultValue: '원' })}</span>
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end">
@@ -439,7 +439,7 @@ function OrderCard({
           )}
           <button
             onClick={openDetail}
-            className="flex items-center text-[13px] font-bold text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-200 transition-colors ml-0.5"
+            className="flex items-center text-[13px] font-bold text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-200 transition-colors ml-1"
           >
             {t('ordersTab.detail', { defaultValue: '상세' })}
             <ChevronRight className="h-3.5 w-3.5" />

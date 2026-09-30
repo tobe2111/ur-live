@@ -114,7 +114,7 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
         <div className="flex items-end justify-between mt-3">
           {price !== null ? (
             <div className="text-[17px] font-extrabold tabular-nums tracking-tight text-gray-700 dark:text-gray-200 leading-none">
-              {formatNumber(price)}<span className="text-[12px] font-bold text-gray-400 dark:text-gray-500 ml-0.5">{t('voucher.won', { defaultValue: '원' })}</span>
+              {formatNumber(price)}<span className="text-[12px] font-bold text-gray-400 dark:text-gray-500 ml-1">{t('voucher.won', { defaultValue: '원' })}</span>
             </div>
           ) : <span />}
           {v.status === 'unused' && (

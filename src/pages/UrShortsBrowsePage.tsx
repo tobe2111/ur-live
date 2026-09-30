@@ -91,7 +91,7 @@ export default function UrShortsBrowsePage() {
           <span aria-hidden="true" className="-ml-[3px] text-brand-text">.</span>
         </h1>
         {items && (
-          <span className="ml-1.5 text-[12px] font-medium text-gray-500 dark:text-gray-400">
+          <span className="ml-2 text-[12px] font-medium text-gray-500 dark:text-gray-400">
             {shown.length}편
           </span>
         )}

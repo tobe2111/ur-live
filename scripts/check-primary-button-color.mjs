@@ -128,55 +128,21 @@ for (const f of files) {
 /**
  * 🔒 래칫 — 잠금표(Toss V2 / 로딩) 파일의 잔여분.
  *
- * 색만 바꾸는 일인데도 CLAUDE.md 의 *"사용자 명시 허가 없이 변경/제거 금지"* 절대 룰이 걸린다
+ * 🔓 **2026-09-30: 동결 해제.** 여기엔 *"색만 바꾸는 일인데도 잠금 절대 룰이 걸려 0 이 아니라
+ * 동결한다"* 며 `scripts/primary-button-baseline.json` 으로 잠금표 21건을 얼려 둔 장치가 있었다
  * (2026-07-19 에 `TossPaymentWidget` 버튼을 **색만** 바꿀 때도 명시 승인 + `[UNLOCK]` 을 받았다).
- * 그래서 0 이 아니라 **동결**한다 — 늘면 빨간불, 줄이는 건 자유.
- * 대표 승인이 나오면 0 으로 내리고 baseline 파일을 지운다.
+ * 대표 승인("다 순서대로 이상적으로 해줘")으로 **21건을 전부 이행**해 baseline 이 0 이 됐고,
+ * 그 파일과 동결 로직을 함께 지웠다 — 남겨 두면 다음 세션이 "여긴 면제 구역" 으로 읽는다.
+ *
+ * ⚠️ 탈출구는 없어진 게 아니라 **자리를 옮겼다**: 이제는 `${ALLOW_MARK}` 표식이다.
+ * 그 남용은 주입으로 못 잡으므로(가드가 표식을 존중하도록 만들어져 있다)
+ * `primary-button-color-2026-09-28.test.ts` 가 **표식 개수를 래칫으로** 묶는다.
  */
-const BASELINE_PATH = 'scripts/primary-button-baseline.json'
-let baseline = {}
-try { baseline = JSON.parse(readFileSync(BASELINE_PATH, 'utf8')).files || {} } catch { baseline = {} }
 
-if (process.argv.includes('--rebaseline')) {
-  const counts = {}
-  for (const h of hits) {
-    const f = h.split(':')[0]
-    counts[f] = (counts[f] || 0) + 1
-  }
-  const prev = JSON.parse(readFileSync(BASELINE_PATH, 'utf8'))
-  prev.files = Object.fromEntries(Object.entries(counts).sort())
-  writeFileSync(BASELINE_PATH, JSON.stringify(prev, null, 2) + '\n')
-  console.log(`✅ primary-button: baseline 갱신 — ${hits.length}건.`)
+if (hits.length === 0) {
+  console.log(`✅ primary-button: 소비자 ${files.length}개 파일 — 새 위반 0건.`)
   process.exit(0)
 }
-
-/** 동결값 이내인 파일의 건은 통과시키고, 넘친 만큼만 남긴다. */
-const overflow = []
-const seen = {}
-for (const h of hits) {
-  const f = h.split(':')[0]
-  seen[f] = (seen[f] || 0) + 1
-  if (seen[f] > (baseline[f] || 0)) overflow.push(h)
-}
-/** 동결해 둔 파일이 이미 깨끗해졌으면 baseline 을 내리라고 알린다(낡은 지도 방지). */
-const stale = Object.keys(baseline).filter((f) => !seen[f])
-
-if (overflow.length === 0 && stale.length === 0) {
-  const frozen = Object.values(baseline).reduce((a, b) => a + b, 0)
-  console.log(`✅ primary-button: 소비자 ${files.length}개 파일 — 새 위반 0건`
-    + (frozen ? ` (잠금표 잔여 ${frozen}건 동결 — 대표 승인 대기).` : '.'))
-  process.exit(0)
-}
-
-if (overflow.length === 0 && stale.length > 0) {
-  const say0 = STRICT ? console.error : console.warn
-  say0(`${STRICT ? '❌' : '⚠️'} primary-button: 동결해 둔 파일이 이미 깨끗하다 — baseline 이 낡았다: ${stale.join(', ')}`)
-  say0('   `node scripts/check-primary-button-color.mjs --rebaseline` 로 내릴 것.')
-  process.exit(STRICT ? 1 : 0)
-}
-
-hits.length = 0
-hits.push(...overflow)
 
 const say = STRICT ? console.error : console.warn
 say(`${STRICT ? '❌' : '⚠️'} primary-button: 소비자 주 버튼을 손으로 검정으로 칠한 곳 ${hits.length}건`)

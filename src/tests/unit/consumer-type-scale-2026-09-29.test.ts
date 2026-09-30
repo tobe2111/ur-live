@@ -37,15 +37,19 @@ import { stripComments } from '../helpers/source-text'
  * 스케일에 밀어넣으면 그림이 망가진다. 진짜 글자가 이 예외로 새지 못하게, 아래 시험이
  * **`select-none` 인지** 대조한다.
  *
- * ## 🔒 잠금표 파일은 **일부러 안 고쳤다** (대표 승인 대기)
- * `LOCKED` 세 파일은 Toss V2 / 로딩 잠금표에 있다. **클래스만 바꾸는 일이어도** 잠금 절대 룰이
- * 걸려 대표 승인(`AskUserQuestion`)과 audit log 항목이 필요하다 — 2026-09-28 의 검정 버튼 이행이
- * `primary-button-baseline.json` 으로 남긴 것과 **같은 처리**다.
- * 게다가 이건 색만 바뀌는 일도 아니다: `text-[9px]` → `12px` 면 **하단 탭 라벨과 온누리 뱃지가
- * 눈에 띄게 커진다**(잠금표가 지키는 `BottomNav` 탭 구조 · `GroupBuyFeedCard` 카드 높이 근처다).
- * ⇒ 지금은 **늘지 않게만** 막고(`LOCKED_BASELINE`), 승인이 나면 고친 뒤 이 세 줄을 지운다.
- * 🛡️ `LOCKED` 에 아무 파일이나 넣어 검사를 빠져나가지 못하게, **CLAUDE.md 잠금표에 실제로
- *    적힌 파일인지**를 아래 시험이 대조한다.
+ * ## 🔓 잠금표 파일도 이행됐다 (2026-09-30 대표 승인 "다 순서대로 이상적으로 해줘")
+ * 이 자리에는 *"클래스만 바꾸는 일이어도 잠금 절대 룰이 걸려 승인이 필요하다"* 며 `LOCKED_BASELINE`
+ * 으로 **늘지 않게만** 막아 둔 절이 있었다. 승인이 나서 12파일을 전부 정본으로 옮겼고
+ * (`scripts/codemods/locked-type-scale.mjs`), 그래서 **제외 목록도 baseline 도 없앴다** —
+ * 남겨 두면 그 파일들이 조용히 정본 밖에 머문다.
+ *
+ * 🔒 **잠긴 계약은 한 글자도 안 움직였다**: 이행 전후로 23종 지문(`requestPayment`·`widgets()`·
+ * `setAmount`·SDK 마운트 id·`safePaymentReturnPath`·`confirmPayment`·`serverTotal`·`linkshopPath`·
+ * `isActivePath`·`React.memo`·`rootMargin`·`aboveFold`·`shouldLoadSdk`·`__SSR_INITIAL_*`·`price_low`)을
+ * grep 카운트로 대조해 **전부 동일**함을 확인했다(핸드오프에 표로 남겼다). 바뀐 것은 className 토큰뿐이다.
+ *
+ * 🪞 거울(`TopChromeReserve`)은 원본(`VouchersPage`)과 **같은 커밋에서 같이** 옮겼다 — 따로 가면
+ * 예약 높이가 어긋나 첫 방문자 화면이 내려앉는다(2026-09-29 에 실제로 그렇게 깨뜨렸다).
  *
  * ## ⚠️ 이 시험이 못 막는 것
  * - 인라인 `style` · CSS 파일의 크기값 (Tailwind 임의값 토큰만 본다).
@@ -80,24 +84,8 @@ const GRAPHIC_ABOVE = 96
  * 🔒 잠금표 파일 — 대표 승인 전까지 손대지 않는다(위 머리말). **늘지 않게만** 막는다.
  * 승인이 나면 고친 뒤 이 세 줄과 `LOCKED_BASELINE` 을 함께 지운다.
  */
-const LOCK_ROWS = new Set(
-  [...readFileSync('CLAUDE.md', 'utf8').matchAll(/^\| `(src\/[^`]+?)`/gm)].map((m) => m[1]),
-)
-/**
- * 🪞 **잠금 파일의 그림자** — 존재 이유가 "잠긴 블록과 같은 클래스로 자리를 잡는 것" 인 파일.
- * 정본으로 이행하면 **거울이 깨져** 그 파일이 막으려던 레이아웃 밀림이 그대로 돌아온다
- * (2026-09-29 실측: 예약 `py-2` vs 진짜 `py-2.5` → 첫 방문자 화면이 다시 내려앉는다).
- * ⇒ 거울은 **원본이 이행될 때 같이** 간다. 원본이 잠금표에 실재하는지는 아래 시험이 대조한다.
- */
-const MIRRORS: Record<string, string> = {
-  'src/pages/vouchers/TopChromeReserve.tsx': 'src/pages/VouchersPage.tsx',
-}
-const LOCKED = files.filter((f) => LOCK_ROWS.has(f) || f in MIRRORS)
-/** 그 파일들의 현재 위반 수(고유 토큰 기준) — 줄이는 건 자유, 늘면 빨간불. */
-const LOCKED_BASELINE = { size: 22, tw: 29, half: 50 }
-
-/** 잠금표 밖 = 이 시험이 정본을 강제하는 범위. */
-const open = files.filter((f) => !LOCKED.includes(f))
+/** 정본을 강제하는 범위 = 소비자 전 화면. 2026-09-30 부터 잠금표 파일도 포함한다(위 머리말). */
+const open = files
 
 const read = (f: string) => stripComments(readFileSync(f, 'utf8'))
 
@@ -128,7 +116,8 @@ const scan = {
   half: (fs: string[]) => {
     const bad: string[] = []
     let seen = 0
-    const PROPS = '(?:p|px|py|pt|pb|pl|pr|m|mx|my|mt|mb|gap|gap-x|gap-y|space-x|space-y)'
+    // 🕳️ 2026-09-30: `ml`·`mr` 이 빠져 있었다 — 이 검사가 35건을 못 보고 있었다.
+    const PROPS = '(?:p|px|py|pt|pb|pl|pr|m|mx|my|mt|mb|ml|mr|gap|gap-x|gap-y|space-x|space-y)'
     for (const f of fs) {
       const src = read(f)
       for (const _ of src.matchAll(new RegExp(`(?:^|[\\s"'\`{:])(?:[a-z-]+:)*${PROPS}-\\d+(?![\\w.-])`, 'g'))) seen++
@@ -256,38 +245,5 @@ describe('소비자 — 디스플레이 스케일 일곱 단계', () => {
     }
     expect(seen, `사다리를 ${seen}개밖에 못 찾았다 — 이 검사가 헛돌고 있다`).toBeGreaterThan(10)
     expect(bad, `같은 값이 이어지는 사다리:\n${bad.join('\n')}`).toEqual([])
-  })
-})
-
-describe('소비자 — 잠금표 파일은 늘지 않는다 (대표 승인 대기)', () => {
-  it('🔒 `LOCKED` 는 CLAUDE.md 잠금표에 실제로 적힌 파일뿐이다', () => {
-    /**
-     * 이 목록이 **검사를 빠져나가는 문**이 되면 안 된다 — 아무 파일이나 넣으면 그 화면은
-     * 조용히 정본 밖으로 나간다(이 레포가 반복해 당한 "조용한 부재").
-     * ⇒ 잠금표 행(`| \`src/…\` |`)에 실제로 있는 파일만 허용한다.
-     */
-    const md = readFileSync('CLAUDE.md', 'utf8')
-    const rows = new Set([...md.matchAll(/^\| `(src\/[^`]+?)`/gm)].map((m) => m[1]))
-    expect(rows.size, `잠금표 행을 ${rows.size}개밖에 못 찾았다 — 이 검사가 헛돌고 있다`).toBeGreaterThan(20)
-    const stray = LOCKED.filter((f) => !rows.has(f) && !(f in MIRRORS))
-    expect(stray, '잠금표에도 없고 거울도 아닌 파일이 제외 목록에 있다').toEqual([])
-    // 거울은 **잠긴 원본**만 가리킬 수 있다 — 아무 파일이나 가리키면 그것도 탈출구다.
-    const badMirror = Object.entries(MIRRORS).filter(([, src]) => !rows.has(src))
-    expect(badMirror, '거울이 잠금표에 없는 파일을 가리킨다').toEqual([])
-  })
-
-  it('🔒 잠금표 파일의 위반 수가 baseline 을 안 넘는다', () => {
-    const now = {
-      size: scan.size(LOCKED).bad.length,
-      tw: scan.tw(LOCKED).bad.length,
-      half: scan.half(LOCKED).bad.length,
-    }
-    for (const k of ['size', 'tw', 'half'] as const) {
-      expect(
-        now[k],
-        `잠금표 파일 ${k} 위반이 ${LOCKED_BASELINE[k]} → ${now[k]} 로 늘었다.\n` +
-          `줄였다면 LOCKED_BASELINE 을 내리고, 0 이 되면 그 파일을 LOCKED 에서 빼라.`,
-      ).toBeLessThanOrEqual(LOCKED_BASELINE[k])
-    }
   })
 })

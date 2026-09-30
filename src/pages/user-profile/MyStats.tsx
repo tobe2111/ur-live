@@ -56,7 +56,7 @@ function Cell({ label, to, value, unit, className = '' }: {
             <span className={value > 0 ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}>
               {formatNumber(value)}
             </span>
-            <span className="text-[15px] font-bold text-gray-500 dark:text-gray-400 ml-0.5">{unit}</span>
+            <span className="text-[15px] font-bold text-gray-500 dark:text-gray-400 ml-1">{unit}</span>
           </>
         )}
       </span>

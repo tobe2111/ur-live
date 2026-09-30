@@ -250,7 +250,7 @@ export default function PointsChargePage() {
                       )}
                       <p className={`text-[17px] font-extrabold ${isSelected ? 'text-brand-text' : 'text-gray-900 dark:text-white'}`}>
                         {formatNumber(opt.amount)}
-                        <span className="text-[12px] font-bold ml-0.5">원</span>
+                        <span className="text-[12px] font-bold ml-1">원</span>
                       </p>
                       <p className="text-[12px] font-semibold text-gray-500 dark:text-gray-400 mt-1">
                         {formatNumber(opt.points)}딜
@@ -276,7 +276,7 @@ export default function PointsChargePage() {
                   <span className="text-[13px] font-bold text-gray-900 dark:text-white">{t('pointsCharge.afterBalance', { defaultValue: '충전 후 잔액' })}</span>
                   <span className="text-[17px] font-extrabold text-gray-900 dark:text-white">
                     {formatNumber(balance + pointsPreview)}
-                    <span className="text-[13px] font-bold ml-0.5">딜</span>
+                    <span className="text-[13px] font-bold ml-1">딜</span>
                   </span>
                 </div>
               </section>

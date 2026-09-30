@@ -33,7 +33,13 @@ const files = execSync(
   { encoding: 'utf8' },
 ).trim().split('\n').filter(Boolean)
   .filter((f) => !/(admin|seller|agency|wholesale|supplier|marketing|debug|design-variants|Admin|Seller|Agency|Wholesale|Supplier)/.test(f))
-  .filter((f) => !LOCK.has(f) && !MIRRORS.has(f))
+  /**
+   * 🔓 2026-09-30 — 대표 승인("다 순서대로 이상적으로 해줘")으로 잠금표 파일도 범위에 든다.
+   * `--locked` 를 주면 **잠금표 파일만**, 안 주면 종전대로 잠금표를 뺀 나머지만 훑는다.
+   * 승인 없이 잠금 파일을 건드리는 일이 기본값이 되면 안 되므로 **플래그로 명시**하게 둔다.
+   * ⚠️ 거울(`MIRRORS`)은 원본과 **같이** 움직여야 하므로 `--locked` 에 포함한다.
+   */
+  .filter((f) => (process.argv.includes('--locked') ? LOCK.has(f) || MIRRORS.has(f) : !LOCK.has(f) && !MIRRORS.has(f)))
 
 const write = !process.argv.includes('--dry')
 let touched = 0, swapped = 0

@@ -6,6 +6,7 @@
  */
 
 import { memo, useEffect, useRef, useState, type ReactNode } from 'react'
+import { StarIcon } from '@/components/icons/urdeal-icons'
 import { Link } from 'react-router-dom'
 import { formatNumber } from '@/utils/format'
 import DealCardMedia from '@/components/deal/DealCardMedia'
@@ -16,7 +17,6 @@ import { canonicalDetailPath } from '@/shared/product-flow'
 import FcfsBadge from '@/features/group-buy/FcfsBadge'
 import { stripStorePrefix } from '@/utils/deal-title'
 import StarRating from '@/components/deal/StarRating'
-import { Star } from 'lucide-react'
 import { dealCategoryMeta } from '@/shared/deal-category-icon'
 import type { FcfsInfo } from '@/features/group-buy/useFcfs'
 import type { Product } from './types'
@@ -25,7 +25,7 @@ import { priceDisplay } from '@/shared/price-display'
 /**
  * 🖼️ 사진 없는 카드의 자리표시 (2026-08-30 — 이모지 → 선 아이콘)
  *
- *   이전엔 `🍽️ 💇 🏨 🎯 💪 🐶 🎉` 이모지를 `text-3xl` 로 띄웠다. 두 가지가 문제였다 —
+ *   이전엔 `🍽️ 💇 🏨 🎯 💪 🐶 🎉` 이모지를 `text-[28px]` 로 띄웠다. 두 가지가 문제였다 —
  *   ① **OS 마다 완전히 다른 그림이 나온다**(애플 컬러 이모지 / 노토 / Segoe). 우리가 고른
  *      색·형태가 아니라 남의 그림이 우리 카드 한복판에 뜬다.
  *   ② 이모지는 화면 어디서든 "임시로 채워 둔 것" 으로 읽힌다 — 실제로 임시가 아닌데도.
@@ -298,28 +298,28 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
         {flags}
         {/* [시안 B] 08-19 그루폰 5줄 위계 유지 — 배지만 사진 위로 */}
         {(p.restaurant_name || brandName || p.onnuri_merchant) && (
-          <p className={`flex items-center gap-1 text-[11px] leading-none mb-0.5 ${cSub}`}>
+          <p className={`flex items-center gap-1 text-[12px] leading-none mb-1 ${cSub}`}>
             <span className="truncate">{p.restaurant_name || brandName}</span>
             {/* 🏪 온누리 가맹 — B2G 상권 사업의 약속("온누리 사용 가능 표시").
                 2026-07-05 에 이 필드가 생겼는데 **상권관(`/local/:code`)의 자체 카드에만** 그려졌다.
                 같은 딜이 홈·검색·유어샵에 뜰 땐 표시가 사라졌다 — 카드가 한 벌이 아니어서 생긴 누락.
                 이제 카드 SSOT 가 그리므로 그 딜이 어디에 뜨든 따라간다. */}
             {p.onnuri_merchant && (
-              <span className="shrink-0 px-1 py-[1px] rounded bg-brand-tint text-brand-text text-[9px] font-bold">온누리</span>
+              <span className="shrink-0 px-1 py-[1px] rounded bg-brand-tint text-brand-text text-[12px] font-bold">온누리</span>
             )}
           </p>
         )}
-        <p className={`text-[13.5px] font-bold line-clamp-2 leading-tight ${cText}`}>
+        <p className={`text-[13px] font-bold line-clamp-2 leading-tight ${cText}`}>
           {titleNode ?? stripStorePrefix(p.name, p.restaurant_name)}
         </p>
         {(addrShort || distKm != null) && (
-          <p className={`flex items-center justify-between gap-2 mt-0.5 text-[11px] min-w-0 ${cSub}`}>
+          <p className={`flex items-center justify-between gap-2 mt-1 text-[12px] min-w-0 ${cSub}`}>
             <span className="truncate">{addrShort}</span>
             {distKm != null && <span className="shrink-0 whitespace-nowrap">{distKm}km</span>}
           </p>
         )}
         {rating > 0 && (
-          <p className={`flex items-center gap-1.5 mt-0.5 text-[11px] ${cSub}`}>
+          <p className={`flex items-center gap-2 mt-1 text-[12px] ${cSub}`}>
             <StarRating value={rating} />
             <span className={`font-bold ${cText}`}>{rating.toFixed(1)}</span>
             {reviewCount > 0 && <span>({formatNumber(reviewCount)})</span>}
@@ -333,16 +333,16 @@ function GroupBuyFeedCard({ p, aboveFold = false, fcfs, imgWidth = 200, userLoc,
         <div className="mt-1">
           {(discount > 0 || (originalPrice > price && originalPrice > 0)) && (
             <p className="flex items-baseline gap-1 leading-none">
-              {discount > 0 && <span className="text-[12.5px] font-extrabold text-sale">{discount}%</span>}
+              {discount > 0 && <span className="text-[12px] font-extrabold text-sale">{discount}%</span>}
               {originalPrice > price && originalPrice > 0 && (
-                <span className={`text-[11.5px] line-through ${cSub}`}>{formatNumber(originalPrice)}{unitLabel}</span>
+                <span className={`text-[12px] line-through ${cSub}`}>{formatNumber(originalPrice)}{unitLabel}</span>
               )}
             </p>
           )}
-          <p className="flex items-baseline gap-1 mt-0.5 leading-none">
+          <p className="flex items-baseline gap-1 mt-1 leading-none">
             <span className={`text-[17px] font-extrabold tracking-tight ${cText}`}>{formatNumber(price)}{unitLabel}</span>
             {p.category === 'stay_voucher' && price > 0 && (
-              <span className={`text-[11px] font-semibold ${cSub}`}>/1박~</span>
+              <span className={`text-[12px] font-semibold ${cSub}`}>/1박~</span>
             )}
           </p>
         </div>

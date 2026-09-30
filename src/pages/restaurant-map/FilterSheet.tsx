@@ -148,7 +148,7 @@ export default function FilterSheet({ region: ir, district: id, sortBy: isort, r
           <section>
             <SectionTitle>
               {t('map.filter.radius', { defaultValue: '거리 반경' })}
-              {!hasUserLoc && <span className="ml-1.5 text-[12px] font-medium text-gray-400">· 위치 허용 필요</span>}
+              {!hasUserLoc && <span className="ml-2 text-[12px] font-medium text-gray-400">· 위치 허용 필요</span>}
             </SectionTitle>
             <div className="flex gap-2">
               {RADIUS_OPTS.map(o => (

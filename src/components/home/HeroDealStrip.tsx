@@ -88,7 +88,7 @@ function Tile({ tile, eager, priority, clone }: { tile: HeroTile; eager: boolean
          */
         style={{ background: 'linear-gradient(0deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.75) 60%, rgba(0,0,0,0) 100%)' }}
       >
-        {tile.discount > 0 && <span className="ur-hero-tile-off mr-1.5">{tile.discount}%</span>}
+        {tile.discount > 0 && <span className="ur-hero-tile-off mr-2">{tile.discount}%</span>}
         {formatNumber(tile.price)}원
       </div>
     </Link>

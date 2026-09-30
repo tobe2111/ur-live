@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState, useEffect, useMemo, useCallback } from 'react'
+import { TicketStubIcon, OkIcon, BadIcon } from '@/components/icons/urdeal-icons'
 import { safeTime } from '@/utils/safe-date'
 import { useNavigate } from 'react-router-dom'
 
@@ -7,7 +8,7 @@ import { useNavigate } from 'react-router-dom'
 const VoucherMap = lazy(() => import('./my-vouchers/VoucherMap'))
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
-import { ArrowLeft, Ticket, CheckCircle, XCircle, QrCode, Map } from 'lucide-react'
+import { ArrowLeft, QrCode, Map } from 'lucide-react'
 import { useMyVouchers } from '@/hooks/queries'
 import { WalletPageWrapper } from '@/components/wallet/WalletAtoms'
 import WalletHeader from './my-vouchers/WalletHeader'
@@ -43,10 +44,10 @@ function walkMinutes(m: number): number {
 }
 
 const STATUS_MAP = {
-  unused: { labelKey: 'voucher.status.unused', color: 'bg-green-100 text-green-700', icon: Ticket },
-  used: { labelKey: 'voucher.status.used', color: 'bg-gray-100 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400', icon: CheckCircle },
-  expired: { labelKey: 'voucher.status.expired', color: 'bg-red-100 text-red-600', icon: XCircle },
-  refunded: { labelKey: 'voucher.status.refunded', color: 'bg-yellow-100 text-yellow-700', icon: XCircle },
+  unused: { labelKey: 'voucher.status.unused', color: 'bg-green-100 text-green-700', icon: TicketStubIcon },
+  used: { labelKey: 'voucher.status.used', color: 'bg-gray-100 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400', icon: OkIcon },
+  expired: { labelKey: 'voucher.status.expired', color: 'bg-red-100 text-red-600', icon: BadIcon },
+  refunded: { labelKey: 'voucher.status.refunded', color: 'bg-yellow-100 text-yellow-700', icon: BadIcon },
 } as const
 
 
@@ -172,17 +173,17 @@ export default function MyVouchersPage() {
     return (
       <WalletPageWrapper theme={theme}>
         <SEO title={t('voucher.seoTitle')} description={t('voucher.seoDescription')} url="/my-vouchers" noindex />
-        <div className="sticky top-0 md:top-14 z-30 flex items-center gap-2.5 px-3 pt-3 pb-2.5"
+        <div className="sticky top-0 md:top-14 z-30 flex items-center gap-2 px-3 pt-3 pb-2"
           style={{ background: tk.chrome, borderBottom: `0.5px solid ${tk.separator}` }}>
           <button onClick={() => { setViewMode('list'); setMapSelected(null) }}
             className="w-9 h-9 flex items-center justify-center rounded-full" style={{ background: tk.fillSoft, color: tk.label }}
             aria-label={t('common.back', { defaultValue: '뒤로가기' })}>
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-[19px] font-bold tracking-tight text-gray-900 dark:text-white">{t('voucher.mapTitle', { defaultValue: '지도에서 보기' })}</h1>
+          <h1 className="text-[17px] font-bold tracking-tight text-gray-900 dark:text-white">{t('voucher.mapTitle', { defaultValue: '지도에서 보기' })}</h1>
         </div>
         <div className="relative">
-          <Suspense fallback={<div className="flex items-center justify-center text-sm text-gray-500 dark:text-gray-400" style={{ height: 460 }}>{t('voucher.mapLoading', { defaultValue: '지도 불러오는 중...' })}</div>}>
+          <Suspense fallback={<div className="flex items-center justify-center text-[15px] text-gray-500 dark:text-gray-400" style={{ height: 460 }}>{t('voucher.mapLoading', { defaultValue: '지도 불러오는 중...' })}</div>}>
             <div className="[&>div]:rounded-none [&>div]:border-0" style={{ height: 460 }}>
               <VoucherMap
                 vouchers={mapVouchers}
@@ -210,11 +211,11 @@ export default function MyVouchersPage() {
                       <div className="w-[52px] h-[52px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-brand-tint">
                         {v.product_image
                           ? <img src={cfImage(v.product_image, { width: 200, quality: 82, format: 'auto' }) || v.product_image} alt="" loading="lazy" className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, v.product_image)} />
-                          : <Ticket className="w-5 h-5 text-gray-300 dark:text-gray-600" strokeWidth={1.5} />}
+                          : <TicketStubIcon className="w-5 h-5 text-gray-300 dark:text-gray-600" />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-[15px] font-bold tracking-tight text-gray-900 dark:text-white truncate">{v.product_name}</p>
-                        <p className="text-[12px] text-gray-400 dark:text-gray-500 truncate mt-0.5">
+                        <p className="text-[12px] text-gray-400 dark:text-gray-500 truncate mt-1">
                           {v.restaurant_name || ''}
                           {d !== null && (
                             <>{v.restaurant_name ? ' · ' : ''}{formatDistance(d)} · {t('voucher.walkMin', { count: walkMinutes(d), defaultValue: `도보 ${walkMinutes(d)}분` })}</>
@@ -226,7 +227,7 @@ export default function MyVouchersPage() {
                         tabIndex={0}
                         onClick={(e) => { e.stopPropagation(); setQrVoucher(v) }}
                         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); setQrVoucher(v) } }}
-                        className="shrink-0 flex items-center gap-1.5 rounded-xl px-4 py-2.5 bg-gray-900 text-white dark:bg-white dark:text-gray-900 text-[13px] font-bold active:scale-95 transition-transform"
+                        className="shrink-0 flex items-center gap-2 rounded-xl px-4 py-2 bg-brand text-white text-[13px] font-bold active:scale-95 transition-transform"
                       >
                         <QrCode className="w-4 h-4" strokeWidth={1.8} />{t('voucher.use', { defaultValue: '사용' })}
                       </span>
@@ -270,11 +271,11 @@ export default function MyVouchersPage() {
         ) : isError ? (
           /* 🛡️ 2026-07-02: 네트워크 실패를 "빈 지갑"으로 위장하지 않음 — 에러 + 재시도. */
           <div className="text-center py-16">
-            <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">{t('voucher.loadFailed', { defaultValue: '이용권을 불러오지 못했어요' })}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">{t('common.checkNetworkRetry', { defaultValue: '네트워크 상태를 확인한 뒤 다시 시도해주세요' })}</p>
+            <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">{t('voucher.loadFailed', { defaultValue: '이용권을 불러오지 못했어요' })}</p>
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">{t('common.checkNetworkRetry', { defaultValue: '네트워크 상태를 확인한 뒤 다시 시도해주세요' })}</p>
             <button
               onClick={() => refetch()}
-              className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full text-sm font-bold"
+              className="px-5 py-2 bg-brand text-white rounded-full text-[15px] font-bold"
             >
               {t('common.retry', { defaultValue: '다시 시도' })}
             </button>
@@ -291,13 +292,13 @@ export default function MyVouchersPage() {
             {/* 🏠 2026-07-12 (앱-레디): 지갑 = 최고 관여 순간 → 홈 화면 추가 컨텍스트 유도(자가 게이트) */}
             <AddToHomeHint context="wallet" />
             {/* 🎫 탭 — 시안: 검정 밑줄, 비활성 회색. 숫자는 탭에만 한 번. */}
-            <div className="flex items-end gap-5 -mt-1 mb-3.5 border-b border-rule">
+            <div className="flex items-end gap-5 -mt-1 mb-4 border-b border-rule">
               {/* 개수는 탭에 안 붙인다 — 요약 줄(시안 4)이 이미 "사용 가능 N장"을 말하고, 칩 "전체 N"이 필터 안에서 말한다(시안도 탭엔 숫자가 없다). */}
               {([['unused', t('voucher.groupUnused', { defaultValue: '사용 가능' })], ['done', t('voucher.groupUsed', { defaultValue: '사용 완료' })]] as const).map(([key, label]) => (
                 <button key={key} type="button" onClick={() => setTab(key)}
-                  className={`relative pb-2.5 text-[18px] font-extrabold tracking-[-0.02em] ${tab === key ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500 font-semibold'}`}>
+                  className={`relative pb-2 text-[17px] font-extrabold tracking-[-0.02em] ${tab === key ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500 font-semibold'}`}>
                   {label}
-                  {tab === key && <span aria-hidden="true" className="absolute left-0 right-0 -bottom-px h-[2.5px] bg-gray-900 dark:bg-white" />}
+                  {tab === key && <span aria-hidden="true" className="absolute left-0 right-0 -bottom-px h-[2.5px] bg-brand" />}
                 </button>
               ))}
             </div>
@@ -307,13 +308,13 @@ export default function MyVouchersPage() {
               <div className="flex gap-2 mb-4 overflow-x-auto scrollbar-hide">
                 {([['all', `${t('voucher.chipAll', { defaultValue: '전체' })} ${unusedItems.length}`], ['soon', t('voucher.chipSoon', { defaultValue: '만료 임박' })]] as const).map(([key, label]) => (
                   <button key={key} type="button" onClick={() => setChip(key)}
-                    className={`shrink-0 h-9 px-4 rounded-full text-[14px] border ${chip === key ? 'border-brand-text text-brand-text font-bold' : 'border-rule-strong text-gray-800 dark:text-gray-200'}`}>
+                    className={`shrink-0 h-9 px-4 rounded-full text-[15px] border ${chip === key ? 'border-brand-text text-brand-text font-bold' : 'border-rule-strong text-gray-800 dark:text-gray-200'}`}>
                     {label}
                   </button>
                 ))}
                 {mapVouchers.length > 0 && (
                   <button type="button" onClick={() => setViewMode('map')}
-                    className="shrink-0 h-9 px-4 rounded-full text-[14px] border border-rule-strong text-gray-800 dark:text-gray-200 inline-flex items-center gap-1">
+                    className="shrink-0 h-9 px-4 rounded-full text-[15px] border border-rule-strong text-gray-800 dark:text-gray-200 inline-flex items-center gap-1">
                     <Map className="w-4 h-4" strokeWidth={1.6} />{t('voucher.mapView', { defaultValue: '지도' })}
                   </button>
                 )}

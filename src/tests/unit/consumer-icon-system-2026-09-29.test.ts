@@ -145,10 +145,19 @@ describe('소비자 아이콘 — 뜻은 유어딜 세트', () => {
     expect(bad, `채워야 하는데 안 채워진다(filled 누락): ${[...new Set(bad)].slice(0, 8).join(' · ')}`).toEqual([])
   })
 
-  it('🔒 잠금표 파일은 이 이행에서 빠져 있다 — 승인 없이 건드리지 않았다', () => {
+  it('🔒 잠금표 파일도 이행됐다 — 2026-09-30 대표 승인', () => {
+    /**
+     * 🔓 이 자리에는 *"승인 없이 건드리지 않았다"* 며 `BottomNav` 한 건만 허용하는 단언이 있었다.
+     * 대표가 승인했다(**"다 순서대로 이상적으로 해줘"**) → `--locked` 로 이행했고 CLAUDE.md audit log 에
+     * `[UNLOCK]`/`[UNLOCK_LOADING]` 으로 기재했다.
+     *
+     * 지키는 것이 바뀌었다: *"손대지 않았는가"* 가 아니라 **"이행한 파일이 잠금 계약을 깨지 않았는가"** 다.
+     * 계약 자체(결제 호출·SDK 마운트 id·`linkshopPath`·`React.memo`·SSR 시드…)는 각 잠금 가드와
+     * 핸드오프의 grep 카운트가 본다 — 여기서는 **세트가 실제로 들어갔는지**만 확인해, 되돌아가면 빨간불이 되게 한다.
+     */
     const touched = files.filter((f) => LOCK.has(f) && /urdeal-icons/.test(read(f)))
-    // BottomNav 는 2026-09-02 에 대표 승인으로 이미 세트를 쓴다(그 한 건만 정상).
-    expect(touched, `승인 없이 잠금 파일에 세트를 넣었다: ${touched.join(' · ')}`)
-      .toEqual(['src/components/main/BottomNav.tsx'])
+    expect(touched.length, `잠금표 파일에 세트가 ${touched.length}개밖에 없다 — 이행이 되돌아갔다`)
+      .toBeGreaterThanOrEqual(5)
+    expect(touched, 'BottomNav 는 2026-09-02 승인분이라 반드시 포함된다').toContain('src/components/main/BottomNav.tsx')
   })
 })

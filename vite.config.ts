@@ -51,7 +51,8 @@ function swVersionPlugin() {
 //     → `urdeal-icons.tsx`). 안 쓰는 것을 목록에 남기면 그만큼 셸 봉투가 커진다.
 const LUCIDE_SHELL_ICONS = new Set([
   'bed-double', 'book-open', 'check', 'chevron-down', 'chevron-right', 'circle-help', 'coins', 'compass',
-  'help-circle', 'layout-dashboard', 'layout-grid', 'log-in', 'map-pin', 'plus', 'radio', 'refresh-cw',
+  // 🪒 2026-09-30: `map-pin` 제거 — 잠금표 이행으로 셸이 `PinIcon`(유어딜 세트)을 쓴다. 26 → 25.
+  'help-circle', 'layout-dashboard', 'layout-grid', 'log-in', 'plus', 'radio', 'refresh-cw',
   'scissors', 'search', 'shapes', 'smartphone', 'sparkles', 'user', 'user-plus', 'utensils', 'x', 'zap',
 ])
 

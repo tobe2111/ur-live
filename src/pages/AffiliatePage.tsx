@@ -80,7 +80,7 @@ export default function AffiliatePage() {
               </div>
               <div className="rounded-xl bg-gray-50 dark:bg-[#1D1F29] px-3 py-2">
                 <p className="text-[12px] text-gray-500 dark:text-gray-400">{t('affiliate.perfPending', { defaultValue: '적립 예정' })}</p>
-                <p className="text-[17px] font-bold text-amber-600">{formatNumber(data.pending_amount || 0)}<span className="text-[12px] ml-0.5">딜</span></p>
+                <p className="text-[17px] font-bold text-amber-600">{formatNumber(data.pending_amount || 0)}<span className="text-[12px] ml-1">딜</span></p>
               </div>
               <div className="rounded-xl bg-gray-50 dark:bg-[#1D1F29] px-3 py-2">
                 <p className="text-[12px] text-gray-500 dark:text-gray-400">{t('affiliate.perfSettle', { defaultValue: '정산 예정일' })}</p>
@@ -235,7 +235,7 @@ function TopGroupsToShare() {
               }}
               className="px-3 py-2 bg-brand-tint text-brand-text rounded-lg text-[12px] font-bold shrink-0 active:scale-95"
             >
-              <Copy className="w-3 h-3 inline mr-0.5" /> 복사
+              <Copy className="w-3 h-3 inline mr-1" /> 복사
             </button>
             <button
               onClick={() => navigate(`/pass/${g.id}`)}
