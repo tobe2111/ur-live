@@ -187,6 +187,26 @@ describe('5. 🧰 배선 — 낱개 목록이 아니라 묶음이다', () => {
     }
   })
 
+  it('🧰 시트가 있는 주소로는 나가지 않는다 (마이가 경유지가 되지 않는다)', () => {
+    /**
+     * 🎯 2026-09-30 신설 — 위 *"닿을 길이 있다"* 가 2026-09-30 ⑥(바로가기 아홉 → 넷)에서
+     * `direct || viaTools` 로 넓어지자, **줄이 대시보드로 나가도 "전체 도구로 닿으니" 통과**하게 됐다.
+     * 주입(`주문 묶음이 다시 대시보드로 나간다`)이 그걸 잡았다(head e5784cd).
+     *
+     * 지키려던 것은 *줄이 있는가* 가 아니라 **나가지 않는가** 였고, 그건 바로가기가 넷이 된 뒤에도
+     * 그대로 살아 있다 — 나가는 순간 사장님은 "대시보드라는 게 따로 있다" 를 배운다(대표 지시의 정반대).
+     *
+     * ⚠️ `enterSeat` 자체는 금지가 아니다: 시트가 **없는** 주소(41개 중 나머지)는 좌석을 받아 나가는 게 맞고
+     *    `/store/scan`(손님 쪽)도 그렇다. 금지는 **시트가 있는 주소를 리터럴로 넘기는 것**뿐이다.
+     */
+    const code = stripComments(SECTION)
+    const table = code.slice(code.indexOf('const COVERED_BY_SHEET'), code.indexOf('/** 묶음 한 줄'))
+    const covered = [...table.matchAll(/'(\/seller\/[a-z-]+)'/g)].map((m) => m[1])
+    expect(covered.length, '표가 비었다 — 이 검사가 헛돌고 있다').toBeGreaterThanOrEqual(5)
+    const leaked = covered.filter((path) => code.includes(`enterSeat('${path}')`))
+    expect(leaked, `시트가 있는데 대시보드로 나간다: ${leaked.join(' · ')}`).toEqual([])
+  })
+
   it('다섯 묶음이 모두 시트로 열린다 (줄만 있고 시트가 없으면 아무 일도 안 난다)', () => {
     const code = stripComments(SECTION)
     for (const [t, tag] of [['orders', '<OrdersSheet'], ['vouchers', '<VoucherSheet'], ['store', '<StoreSheet'], ['analytics', '<AnalyticsSheet'], ['withdraw', '<WithdrawSheet']] as const) {
