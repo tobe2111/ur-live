@@ -5494,10 +5494,11 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 375건 · 최신순 · 이 목록은 자동 생성된다._
+_총 376건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-09-30**
 - [회색 램프 온도 정정(전 화면) + 유어샵 한 톤 — 2026-09-30](handoff/2026-09-30-palette-temperature-ushop-one-tone.md)
+- [소비자 UI 세 건 — 잔액 카드 · 지도 시트 제스처 · 검색 제안 (2026-09-30)](handoff/2026-09-30-consumer-ui-three.md)
 **2026-09-29**
 - [유어샵·소개 콘솔 — "왜 이리 세련된 느낌이 없지?" (2026-09-29)](handoff/2026-09-29-ushop-console-refresh.md)
 - [정산 마무리 3건 — 게이트 문구 정정 · 세무사 질의서 · 계좌 0곳의 진짜 원인](handoff/2026-09-29-settlement-gate-and-bank-accounts.md)

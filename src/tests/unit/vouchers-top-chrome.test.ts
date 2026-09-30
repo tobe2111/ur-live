@@ -31,7 +31,8 @@ describe('교환권 탭 상단', () => {
     const zeroAt = CARD.indexOf('if (!balance && !awaiting)')
     expect(zeroAt).toBeGreaterThan(-1)
     expect(CARD).toContain('const awaiting = balance == null && loggedIn')
-    const bigAt = CARD.indexOf('text-[42px]')          // 큰 카드의 표식 = 확정된 숫자 크기
+    // 🔁 2026-09-30 재조준: 안 B 로 42px → 28px(main #1568 타입 스케일). 불변식은 그대로 — **큰 카드는 0 분기 뒤**에만 있다.
+    const bigAt = CARD.indexOf('text-[28px]')          // 큰 카드의 표식 = 확정된 숫자 크기
     expect(bigAt).toBeGreaterThan(zeroAt)              // 큰 카드는 0 분기 **뒤**에만 있다
     // ⚠️ `toMatch(/<DealBalanceCard balance=\{dealBalance\}/)` 로는 부족하다 — **PC 호출부에도 매치**돼
     //    모바일을 인라인으로 되돌려도 통과한다(주입이 잡았다). 페이지가 잔액 카드를 **직접 그리지

@@ -8,6 +8,7 @@ import { useSearchInfinite } from '@/hooks/useSearch'
 import { isVoucherCategory } from '@/shared/constants/voucher-categories'
 import SearchHeader from '@/components/search/SearchHeader'
 import SearchStates, { addRecentSearch } from '@/components/search/SearchStates'
+import SearchSuggestPanel from '@/components/search/SearchSuggestPanel'
 import RestaurantRow from '@/pages/restaurant-map/RestaurantRow'
 import SortFilterBar from '@/components/search/SortFilterBar'
 
@@ -80,6 +81,11 @@ export default function SearchPage() {
 
   const [error, setError] = useState('')
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([])
+  /**
+   * 🔎 2026-09-30 (대표 *"연관검색? 처럼 나오는거 별로야"*) — 제안은 결과 **위에 뜨지 않고**
+   *   결과 **자리**에 들어선다. 헤더는 열림 신호만 올리고, 그리는 건 `SearchSuggestPanel` 이다.
+   */
+  const [panel, setPanel] = useState<{ open: boolean; value: string }>({ open: false, value: '' })
   const [sortBy, setSortBy] = useState<'relevance' | 'price_low' | 'price_high' | 'newest'>('relevance')
   const [priceRange] = useState<{ min: number; max: number }>({ min: 0, max: 1000000 })
   // 🛡️ 2026-05-19: 검색 결과 타입 탭 (전체/교환권/쇼핑) — 사용자가 결과 안에서 분류 가능.
@@ -172,6 +178,8 @@ export default function SearchPage() {
   // 아직 필터 통과 결과가 0건인데 더 불러올 게 남아 있으면 '없음' 대신 로딩 유지(자동 페치 중).
   const stillLoadingResults = loading || (query.length >= 2 && products.length === 0 && (isFetchingNextPage || hasNextPage))
   const showResults = !stillLoadingResults && !error && query && hasResults
+  // 제안이 하나도 없으면 패널을 열지 않는다 — 빈 화면이 결과를 가리는 게 제일 나쁘다.
+  const showPanel = panel.open && suggestions.length > 0
 
   /**
    * 🔎 2026-09-04: 여기 있던 **하드코딩 6개**(인기상품·신상품·할인특가·무료배송·베스트셀러·한정판)를
@@ -190,11 +198,19 @@ export default function SearchPage() {
         query={query}
         totalResults={searchResult?.total}
         onSearch={handleSearch}
-        suggestions={suggestions}
         onLoadSuggestions={loadSuggestions}
+        onPanelChange={(open, value) => setPanel({ open, value })}
       />
 
-      {/* Content */}
+      {/* 🔎 제안 — 결과를 덮지 않고 **대신한다**. 하나라도 있을 때만(없으면 종전 화면 그대로). */}
+      {showPanel ? (
+        <SearchSuggestPanel
+          query={panel.value}
+          suggestions={suggestions.map((s) => s.text)}
+          onPick={(text) => { setPanel({ open: false, value: text }); handleSearch(text) }}
+        />
+      ) : (
+      /* Content */
       <div className="ur-content-wide px-4 lg:px-8 py-4">
         {/* States: Loading, Error, No Query, No Results */}
         <SearchStates
@@ -281,6 +297,7 @@ export default function SearchPage() {
           </>
         )}
       </div>
+      )}
 
     </div>
   )

@@ -291,9 +291,9 @@
 |---|---|---|---|
 | 도매몰 (유통스타트) | `wholesale-mall-brief.md` | 43 | 4 |
 | 오프라인 공구 / 동네딜 | `offline-groupbuy-brief.md` | 29 | 96 |
-| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 72 | 272 |
+| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 72 | 276 |
 | 유어샵 / 담기·소개 | `linkshop-brief.md` | 24 | 86 |
-| **합계** | — | **168** | **458** |
+| **합계** | — | **168** | **462** |
 
 ### 전체 커버리지 검증 (자동 — 빠진 기능 보증)
 
@@ -302,8 +302,8 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 374 | 1134 |
-| 도메인 버킷 (5개 소개서) | 168 | 458 |
+| 전체 | 374 | 1138 |
+| 도메인 버킷 (5개 소개서) | 168 | 462 |
 | 공통/인프라 (의도적 제외) | 166 | 485 |
 | **미커버 (점검 필요)** | **40** | **191** |
 
@@ -976,7 +976,7 @@
 - `/vouchers/:id`
 - `/wishlist`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (272개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (276개)
 
 
 **/api/admin-review-bonus/:id**
@@ -1075,9 +1075,15 @@
 **/api/products/dominant-color**
 - `POST /api/products/dominant-color`
 
+**/api/products/popular**
+- `GET /api/products/popular`
+
 **/api/products/search**
 - `GET /api/products/search/popular`
 - `GET /api/products/search/suggestions`
+
+**/api/products/suggestions**
+- `GET /api/products/suggestions`
 
 **/api/returns/:id**
 - `PUT /api/returns/:id/approve`
@@ -1127,9 +1133,15 @@
 **/api/search/dominant-color**
 - `POST /api/search/dominant-color`
 
+**/api/search/popular**
+- `GET /api/search/popular`
+
 **/api/search/search**
 - `GET /api/search/search/popular`
 - `GET /api/search/search/suggestions`
+
+**/api/search/suggestions**
+- `GET /api/search/suggestions`
 
 **/api/seller/:sellerId**
 - `GET /api/seller/:sellerId/products-public`
@@ -1734,7 +1746,7 @@
 
 
 
-> 마지막 생성: 2026-09-28T01:01:54.171Z
+> 마지막 생성: 2026-09-30T17:26:16.388Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

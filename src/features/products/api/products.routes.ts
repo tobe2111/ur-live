@@ -27,6 +27,7 @@ import { cacheGet } from '@/worker/utils/cache';
 import { ProductService } from '../services/ProductService';
 import type { ProductFilter, ProductCreateInput, ProductUpdateInput } from '../types';
 import { seedDemoReviews } from '@/worker/utils/demo-review-generator';
+import { buildSearchSuggestions } from './search-suggestions';
 import { voucherCategoriesSqlClause } from '@/shared/constants/voucher-categories';
 import type { Env } from '@/worker/types/env';
 import { parsePickup, isEmptyPickup } from '../../../shared/pickup';
@@ -255,27 +256,18 @@ productsRoutes.get('/search/suggestions', cors(), async (c) => {
 //   worker/index.ts:813 의 app.route('/api/search', featureProductsRoutes) 로 인해
 //   '/search/suggestions' 는 /api/search/search/suggestions 가 됨 (불일치).
 //   같은 handler 를 '/suggestions' 와 '/popular' 에 추가 등록하여 /api/search/* 매칭 보장.
+/**
+ * 🔎 `/api/search/suggestions?q=` — 검색 자동완성 (SearchPage 가 실제로 부르는 자리).
+ *   **무엇을** 제안할지는 `./search-suggestions` 가 정한다(2026-09-30 — 상품명 통짜 → 짧은 검색어).
+ *   ⚠️ 이 별칭이 실제 경로다. 위 `/search/suggestions` 는 라우트 마운트 때문에 안 닿는다.
+ */
 productsRoutes.get('/suggestions', cors(), async (c) => {
   const flags = await getFeatureFlags(c.env.SESSION_KV, c.env.DB);
   if (!flags.enable_search_suggestions) return c.json({ success: true, data: [] });
-  const { DB } = c.env;
   const q = c.req.query('q') || '';
-  if (!q || q.length < 2) return c.json({ success: true, data: [] });
-  if (q.length > 200) return c.json({ success: true, data: [] });
+  if (!q || q.length < 2 || q.length > 200) return c.json({ success: true, data: [] });
   try {
-    // 🔎 2026-07-20 (대표 "이용권만"): 자동완성도 검색 결과(SearchPage 이용권-스코프)와 정확히 일치시켜
-    //   교환권(deal_only=1)/쇼핑(비-voucher 카테고리) 이름 제안 제거 — 눌러도 0건 나오는 불일치 방지.
-    //   결과 필터(SearchPage: deal_only!==1 AND (category null OR isVoucherCategory))의 SQL 미러.
-    const vc = voucherCategoriesSqlClause();
-    const result = await DB.prepare(
-      `SELECT DISTINCT name as suggestion FROM products
-       WHERE name LIKE ? AND is_active = 1
-         AND NOT (COALESCE(is_supply_product,0) = 1 AND COALESCE(supply_source_id,0) = 0)
-         AND (deal_only IS NULL OR deal_only = 0)
-         AND (category IS NULL OR category IN (${vc.placeholders}))
-       ORDER BY name ASC LIMIT 10`
-    ).bind(`%${q}%`, ...vc.values).all().catch(() => ({ results: [] }));
-    return c.json({ success: true, data: (result.results || []).map((r: any) => r.suggestion) });
+    return c.json({ success: true, data: await buildSearchSuggestions(c.env.DB, q) });
   } catch {
     return c.json({ success: true, data: [] });
   }
