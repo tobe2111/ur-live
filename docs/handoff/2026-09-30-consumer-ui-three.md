@@ -169,3 +169,44 @@ D1 마이그레이션 부채), `repair-schema` 에도 없어 **아무도 만들�
 ## 남은 것 (안 한 것)
 - **오타 보정**(`suggested_query`)은 ②가 풀려 데이터가 쌓여야 의미가 생긴다. 그전엔 항상 null.
 - 검색 **빈 입력** 화면은 종전 칩 목록 그대로(대표 레퍼런스는 행 목록) — 이번 신고 범위 밖.
+
+---
+
+# 🕸️ 그 뒤 CI 가 잡은 것 — **로컬 그물이 시험 뿌리 하나를 통째로 못 보고 있었다**
+
+위 검색 변경을 푸시한 뒤 CI 가 `TypeError: onPanelChange is not a function` 으로 빨간불.
+`SearchHeader` 에 필수 prop 을 더했는데 그것을 렌더하는 시험이 있었다 —
+**`tests/unit/components/search/SearchHeader.test.tsx`**.
+
+## 왜 로컬에서 못 봤나 (구멍이 **둘** 겹쳤다)
+
+1. **시험 뿌리가 둘인데 그물은 하나만 봤다.** `vitest.config` 의
+   `include: ['tests/**', 'src/tests/**']` 인데 `pre-push-tests.mjs` 는 `src/tests` 만 grep 했다.
+   ⇒ `tests/` 아래 시험은 **로컬에서 한 번도 안 돌았다.**
+2. **별칭 import 는 검색어에 안 걸렸다.** 그 시험은 경로를 문자열로 안 들고
+   `import SearchHeader from '@/components/search/SearchHeader'` 로만 쓴다(확장자 없음).
+   `pre-push-search-terms.mjs` 머리말이 이 한계를 *"못 잡는 것"* 으로 **적어 두고 있었다** —
+   적어 두는 것만으로는 안 막힌다.
+3. **tsc 도 못 봤다**: `tsconfig.json` 의 `include` 가 `src/**/*` 라 `tests/` 는 타입체크 밖이다.
+
+## 고친 것
+
+| 무엇 | 파일 |
+|---|---|
+| 그물이 **두 뿌리 다** grep | `scripts/pre-push-tests.mjs` |
+| 규칙 5 — `src/` 파일은 **확장자 뗀 형태**도 검색어(별칭 import 매칭) | `scripts/pre-push-search-terms.mjs` |
+| 뿌리 목록을 **vitest 설정에서 읽어** 그물과 대조(손으로 안 적는다) | `pre-push-roots-2026-09-30.test.ts` 🆕 |
+| 주입 2건 추가 + 낡은 앵커 1건 재조준 | `scripts/mutations/pre-push-gate.mjs` |
+
+⚠️ 규칙 5 는 접두사가 겹치는 이름(`utils/format` ↔ `utils/formatDate`)도 걸어 시험 몇 개가 더 돈다.
+   실측 후보 64개 / 25.6초 — CI 한 바퀴(57분)보다 압도적으로 싸다.
+
+## 옛 시험을 지우지 않고 **옮겨 적었다**
+
+`SearchHeader.test.tsx` 의 세 시험(제안 렌더 · '브랜드' 배지 · 항목 클릭)은 **없어진 드롭다운**을
+보고 있었다. 지키던 것(포커스해야 뜬다 · 제출하면 검색된다 · 공백만이면 검색 안 한다)은 살리고,
+판정 대상을 *"무엇을 그렸나"* → *"무엇을 알렸나"*(`onPanelChange`)로 옮겼다. 디바운스 시험 2건 추가.
+
+## 🧭 교훈
+**"이 가드가 못 보는 것" 을 주석에 적었으면, 그건 언젠가 사고가 된다.** 적는 대신 막을 수 있는지
+먼저 보라 — 이번 둘 다 각각 한 줄이었다.

@@ -69,7 +69,11 @@ let hits = ''
 try {
   // ⚠️ `-e` 는 패턴마다 붙여야 한다 — 한 번만 쓰면 나머지가 **검색 경로**로 먹혀 조용히 적게 본다
   //   (첫 판이 정확히 그랬다: 77개여야 할 것이 30개였고, 에러 없이 초록이었다).
-  hits = sh('grep', ['-rlF', '--include=*.ts', '--include=*.tsx', ...searchTermsFor(changed).flatMap((t) => ['-e', t]), 'src/tests'])
+  // 🩸 2026-09-30: 이 레포엔 시험 뿌리가 **둘**이다(`vitest.config` include: `tests/**` + `src/tests/**`).
+  //   여기선 `src/tests` 만 보고 있어서 `tests/unit/components/search/SearchHeader.test.tsx` 가
+  //   통째로 눈 밖이었다 — 그 파일이 깨진 채 로컬 초록으로 푸시됐고 CI 가 알려 줬다.
+  //   ⚠️ 뿌리를 늘릴 땐 `vitest.config` 의 include 와 같이 봐야 한다(갈리면 또 반쪽만 본다).
+  hits = sh('grep', ['-rlF', '--include=*.ts', '--include=*.tsx', ...searchTermsFor(changed).flatMap((t) => ['-e', t]), 'src/tests', 'tests'])
 } catch { hits = '' }   // grep 은 매치 0 이면 exit 1 — 실패가 아니다.
 const files = hits ? hits.split('\n').filter(Boolean) : []
 

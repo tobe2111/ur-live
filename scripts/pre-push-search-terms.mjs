@@ -19,6 +19,14 @@
  *    `src/components/deal/DealRow.tsx` **전체 경로**만 찾아서 **못 골랐다**. 그 파일을 고친
  *    푸시가 로컬에서 초록이었고 5분 뒤 CI 가 알려 줬다 — 이 그물이 막으려던 바로 그 사고다.
  *    폴더가 아니라 **폴더까지 붙은 파일 경로**라 규칙 3 의 폭발(225개)과 무관하다.
+ * 5. **`src/` 파일은 확장자를 뗀 형태도** 검색어다 — 시험이 소스를 **import 로만** 쓰면
+ *    (`import X from '@/components/search/SearchHeader'`) 확장자가 없어 규칙 4 로도 안 걸린다.
+ *    🩸 2026-09-30 에 값을 치렀다: `SearchHeader` 에 필수 prop 을 더했는데
+ *    `tests/unit/components/search/SearchHeader.test.tsx` 가 그것을 import 로만 써서 **안 걸렸고**,
+ *    로컬 초록으로 푸시한 뒤 CI 가 `onPanelChange is not a function` 으로 알려 줬다.
+ *    (이 머리말이 "못 잡는 것" 으로 적어 두었던 바로 그 한계다 — 적어 두는 것만으로는 안 막힌다.)
+ *    ⚠️ 확장자가 없으니 접두사가 겹치는 이름(`utils/format` ↔ `utils/formatDate`)도 걸린다.
+ *      시험 몇 개 더 도는 값이고, CI 한 바퀴(실측 57분)보다 훨씬 싸다.
  * 3. **`src/` 안에서는 폴더 매칭을 하지 않는다.** `src/pages/Foo.tsx` 의 폴더는 `src/pages` 이고
  *    그걸로 매칭하면 시험 **225개**가 딸려 와(실측) 푸시가 느려진다 — 느려지면 사람들이 끈다.
  *    같은 이유로 **최상위 한 칸**(`docs`·`scripts`)도 제외한다(`dir.includes('/')` 조건).
@@ -34,7 +42,10 @@ export function searchTermsFor(files) {
     if (!f) continue
     set.add(f)                                    // 규칙 1
     if (f.startsWith('src/')) {
-      set.add(f.slice(4))                         // 규칙 4 — `components/deal/DealRow.tsx`
+      const rel = f.slice(4)
+      set.add(rel)                                // 규칙 4 — `components/deal/DealRow.tsx`
+      const noExt = rel.replace(/\.(tsx?|jsx?|mjs|cjs)$/, '')
+      if (noExt !== rel) set.add(noExt)           // 규칙 5 — `components/search/SearchHeader`
       continue                                    // 규칙 3
     }
     const dir = f.slice(0, f.lastIndexOf('/'))

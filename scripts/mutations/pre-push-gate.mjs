@@ -59,12 +59,35 @@ export default [
   {
     name: '그물 — src 파일의 상대경로 검색어를 뺀다 (상대경로로 읽는 시험을 다시 놓친다)',
     file: 'scripts/pre-push-search-terms.mjs',
-    find: "      set.add(f.slice(4))                         // 규칙 4",
-    replace: "      //  set.add(f.slice(4))                    // 규칙 4",
+    /* 🔧 2026-09-30 재조준: 규칙 5 가 들어오며 `f.slice(4)` 가 `rel` 변수로 바뀌었다.
+       지키는 것은 그대로 — **상대경로(확장자 포함) 검색어가 사라지면 안 된다**. */
+    find: "      set.add(rel)                                // 규칙 4",
+    replace: "      //  set.add(rel)                          // 규칙 4",
     test: TEST,
     why:
       '🩸 2026-09-29 에 실제로 놓쳤다: `voucher-card-discount-once.test.ts` 가 SSOT 를 ' +
       "`resolve(__dirname, '../../components/deal/DealRow.tsx')` 로 읽는데 그물은 전체 경로만 찾아 " +
       '그 시험을 후보에서 통째로 빠뜨렸다. 로컬 초록 → 5분 뒤 CI 빨간불 — 이 그물이 막으려던 사고다.',
+  },
+  {
+    name: '그물 — 확장자 뗀 검색어를 뺀다 (별칭 import 로만 쓰는 시험을 다시 놓친다)',
+    file: 'scripts/pre-push-search-terms.mjs',
+    find: "      if (noExt !== rel) set.add(noExt)           // 규칙 5",
+    replace: "      if (false) set.add(noExt)                  // 규칙 5",
+    test: TEST,
+    why:
+      '🩸 2026-09-30 에 실제로 놓쳤다: `SearchHeader` 에 필수 prop 을 더했는데 ' +
+      "`tests/unit/components/search/SearchHeader.test.tsx` 가 `import … from '@/components/search/SearchHeader'` " +
+      '로만 써서(확장자 없음) 후보에서 빠졌다. 로컬 초록 → CI 가 `onPanelChange is not a function` 으로 알려 줬다.',
+  },
+  {
+    name: '그물 — 시험 뿌리를 하나만 본다 (tests/ 가 통째로 눈 밖이 된다)',
+    file: 'scripts/pre-push-tests.mjs',
+    find: "'src/tests', 'tests'])",
+    replace: "'src/tests'])",
+    test: 'src/tests/unit/pre-push-roots-2026-09-30.test.ts',
+    why:
+      '이 레포엔 시험 뿌리가 **둘**이다(`vitest.config` include: `tests/**` + `src/tests/**`). ' +
+      '`src/tests` 만 보면 나머지 뿌리의 시험이 로컬에서 한 번도 안 돈다 — 2026-09-30 에 그래서 깨진 채 푸시됐다.',
   },
 ]
