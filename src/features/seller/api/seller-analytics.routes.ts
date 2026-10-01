@@ -432,14 +432,17 @@ sellerAnalyticsRoutes.get('/store-dashboard/stats', requireAuth(), async (c) => 
        WHERE p.seller_id = ?`,
     ).bind(sellerId).first<{ total: number; used: number; unused: number; refunded: number }>().catch(() => ({ total: 0, used: 0, unused: 0, refunded: 0 }))
 
-    // 매출 합산 (ledger 기준 — merchant credit)
+    // 매출 합산 (ledger 기준 — 이용권 사용 적립)
+    // 🔗 2026-10-01: 적립 계정이 `merchant:N` → `seller:N` 으로 통일됐다. **둘 다 센다** —
+    //   과거 행은 `merchant:` 로 남아 있고(라이브 실측 0건이지만 다른 환경엔 있을 수 있다),
+    //   한쪽만 보면 통일 전후로 매출이 **조용히 0 이 된다**(에러가 안 난다).
     const revenue = await c.env.DB.prepare(
       `SELECT
          COALESCE(SUM(amount), 0) as total,
          COALESCE(SUM(CASE WHEN created_at >= datetime('now', 'start of month') THEN amount ELSE 0 END), 0) as this_month
        FROM ledger_entries
-       WHERE credit_account = ? AND event_type = 'voucher_used'`,
-    ).bind(`merchant:${sellerId}`).first<{ total: number; this_month: number }>().catch(() => ({ total: 0, this_month: 0 }))
+       WHERE credit_account IN (?, ?) AND event_type = 'voucher_used'`,
+    ).bind(`merchant:${sellerId}`, `seller:${sellerId}`).first<{ total: number; this_month: number }>().catch(() => ({ total: 0, this_month: 0 }))
 
     // 미정산 잔액 (credit - paid)
     const paid = await c.env.DB.prepare(

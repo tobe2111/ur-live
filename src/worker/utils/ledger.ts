@@ -78,9 +78,47 @@ export async function ensureLedgerTable(DB: D1Database): Promise<void> {
  *   화이트리스트도 통과해, 잔액이 최소출금액(10,000원)을 넘는 순간 **계좌 없는 유령 payout** 이
  *   만들어진다(실측: 현재 잔액 1,710원이라 아직 안 생겼다 — payouts 0건).
  */
-export function sellerLedgerAccount(sellerId: number | null | undefined): string {
+/* 🔓 2026-10-01: 시그니처가 `number` 만 받아서, id 가 `number | string` 인 호출부들
+ *   (`recordVoucherUsedLedger` 의 merchant_id·seller_id 등)이 **이 SSOT 를 쓸 수 없어**
+ *   손으로 템플릿을 조립하고 있었다 — 그게 위 `seller:null` 이 태어난 자리다.
+ *   본문은 이미 `Number(...)` 로 정규화하므로 받아들이는 폭만 넓힌다(동작 불변). */
+export function sellerLedgerAccount(sellerId: number | string | null | undefined): string {
   const id = Number(sellerId)
   return Number.isFinite(id) && id > 0 ? `seller:${id}` : 'platform:revenue'
+}
+
+/**
+ * 🏪 **이용권 구매 시점 적립의 자리** — 매장이 있으면 `platform:escrow`, 없으면 종전 그대로.
+ *
+ * 🩸 왜 생겼나 (2026-09-30 실측 → 2026-10-01 대표 승인 "다 해줘"):
+ *   같은 이용권 한 장에 매장 적립이 **두 번** 일어났다 — 구매 시 `seller:N`, 사용 시 `merchant:N`.
+ *   `payouts-generate` 는 계정 **문자열**로 GROUP BY 하므로 그 둘이 서로 상쇄되지 않고 **둘 다 더해졌다**:
+ *   `node:sqlite` 로 실제 집계 SQL 을 돌리니 **1,000원 판매가 1,850원**으로 집계됐다(185%).
+ *
+ * 🧭 왜 *사용* 시점을 택했나: 코드의 설계 의도(`recordVoucherUsedLedger` 주석이 처음부터
+ *   `escrow → merchant_payable` 이라고 적고 있다) · 다른 정산 레일(`auto-settlement` 는
+ *   `WHERE v.status='used'`) · 대표가 이미 켠 `payout_requires_voucher_use` 게이트 —
+ *   **셋이 모두 사용 시점**을 가리킨다. 구매 시점으로 통일하면 미사용·환불된 이용권까지 지급된다.
+ *
+ * ⚠️ **매장이 없는 상품은 절대 escrow 에 담지 않는다.** 플랫폼 상품(교환권·KT, `seller_id` NULL)은
+ *   사용 시점 적립이 **아예 없어서**(`merchantId` 0 → 스킵) escrow 에 넣으면 **영원히 안 빠진다**.
+ *   그래서 `sellerLedgerAccount` 가 `platform:revenue` 를 돌려주는 경우는 종전 동작을 그대로 쓴다.
+ *
+ * 📐 `fee_amount` 규칙(`getLedgerReceivable` 주석): payout 대상 credit 의 fee 는 "payee 의 몫이 아닌 부분".
+ *   escrow 는 payout 대상이 아니고 수수료는 **사용 시점 3번째 분개**가 인식하므로 여기선 0 이다.
+ *   두 번 떼면 매장이 받을 돈이 줄어든다.
+ */
+export function voucherPurchaseCredit(
+  sellerId: number | string | null | undefined,
+  commissionAmount: number,
+): { credit_account: string; fee_amount: number } {
+  const account = sellerLedgerAccount(sellerId)
+  if (account.startsWith('seller:')) {
+    // 매장이 있는 이용권 — 손님이 쓸 때까지 플랫폼이 보관한다.
+    return { credit_account: 'platform:escrow', fee_amount: 0 }
+  }
+  // 매장 없는 플랫폼 상품 — 종전 그대로(사용 시점 적립이 없으므로 여기서 확정한다).
+  return { credit_account: account, fee_amount: commissionAmount }
 }
 
 export async function recordLedger(DB: D1Database, entry: LedgerEntry): Promise<void> {
@@ -202,7 +240,11 @@ export async function recordVoucherUsedLedger(
     reference_id: ref,
     amount: merchantAmount,
     debit_account: 'platform:escrow',
-    credit_account: `merchant:${params.merchant_id}`,
+    // 🔗 2026-10-01: `merchant:N` → **`seller:N`**. 한 매장에 계정 이름이 둘이면
+    //   `payouts-generate` 가 둘을 따로 묶고(문자열 GROUP BY), `seller:N` 에 걸린 차감들
+    //   (인플루언서 커미션·친구 추천·중개사 몫·부분 환불)이 이 적립에서 빠지지 않는다.
+    //   ⇒ 매장이 부담할 몫을 아무도 안 내게 된다. 이름을 하나로 모아야 차감이 제자리를 찾는다.
+    credit_account: sellerLedgerAccount(params.merchant_id),
     metadata: { kind: 'merchant_payable', voucher_id: params.voucher_id },
   })
   // 2) 셀러 commission (위탁 판매 시만)
@@ -212,7 +254,9 @@ export async function recordVoucherUsedLedger(
       reference_id: ref,
       amount: sellerAmount,
       debit_account: 'platform:escrow',
-      credit_account: `seller:${params.seller_id}`,
+      // ⚠️ 여기 `seller_id` 는 **위탁 판매자(consignor)** 다 — 매장(`merchant_id`)과 다른 id.
+      //   가드 없는 템플릿이 `seller:null` 유령 계정을 만든 전례가 있어(라이브 실측 1건) SSOT 경유.
+      credit_account: sellerLedgerAccount(params.seller_id),
       metadata: { kind: 'seller_commission', voucher_id: params.voucher_id },
     })
   }
@@ -438,7 +482,7 @@ export async function recordIntroductionCommissionShare(
     description: `영입 매장 공구 커미션 (voucher ${params.voucher_id})`,
     meta: { voucher_id: params.voucher_id, share_pct: sharePct },
     // 💸 [INV-#44] flip ON 이면 이 20% 도 매장 promo 재원에서 — 5% 무접촉.
-    ownerAccount: `merchant:${params.merchant_id}`,
+    ownerAccount: sellerLedgerAccount(params.merchant_id),  // 🔗 2026-10-01 계정 통일(적립과 같은 이름이어야 상쇄된다)
   })
 
   return { influencer_id: influencerUserId, amount }

@@ -1,6 +1,6 @@
 # 이용권 매출을 매장에 **구매 시점**에 적립하는 지금 방식을 **사용 시점**으로 옮길까?
 
-상태: open
+상태: approved
 등급: C
 역할: finance
 올린 날: 2026-09-30
@@ -130,5 +130,43 @@ seller:14   → 950
 환원, 계정 통일은 `merchant:` 접두어 복원. 그때 새 가드가 빨간불이 되므로 함께 판단할 것.
 
 ## 결정 (대표가 한 말 그대로)
+
+**2026-10-01 대표 — "코드 수정 해줘. 남은 것들 다 해줘."** ⇒ **기본안 1번 채택**
+(사용 시점 단일화 + 매장 계정 이름 통일).
+
+## 구현 (2026-10-01)
+
+**새 SSOT `voucherPurchaseCredit()`(`ledger.ts`)이 구매 적립의 자리를 한 곳에서 정한다.**
+
+| | 바뀐 것 |
+|---|---|
+| 구매 3곳 (`group-buy.routes` 딜·카드 · `cart-checkout.routes`) | 매장 있으면 `platform:escrow` + `fee_amount 0`, 없으면 **종전 그대로** |
+| 사용 시점 (`recordVoucherUsedLedger`) | `merchant:N` → **`sellerLedgerAccount(merchant_id)`** = `seller:N` |
+| 위탁 판매자 credit | 손으로 적던 `` `seller:${...}` `` → SSOT 경유 (`seller:null` 유령 방지) |
+| owner-promo 3곳 (`ledger.ts` · `group-buy-voucher.routes` ×2) | 같은 이름으로 통일 — 적립과 차감이 상쇄돼야 한다 |
+| 셀러 매출 조회 | `credit_account IN ('merchant:N','seller:N')` — 통일 전후로 매출이 0 이 되지 않게 |
+| `sellerLedgerAccount` 시그니처 | `number` → `number | string` — **좁은 타입이 호출부를 손 조립으로 내몰던 것이 `seller:null` 이 태어난 자리였다**(동작 불변) |
+
+**⑥(계정 이름 통일)이 왜 함께 가야 했는지가 실측으로 확인됐다**: 구매 적립만 escrow 로 옮기면
+`seller:N` 에는 차감만 남아 음수가 되고, 음수는 최소출금액 미달로 스킵돼 **매장이 부담할
+인플루언서 커미션·중개사 몫을 아무도 안 내게 된다.** 시험 ①-3 이 그 상쇄를 SQL 로 고정한다.
+
+### 🍀 지금이 가장 안전한 시점이다 (라이브 실측 2026-10-01)
+
+원장 전체가 **3행**이고 `merchant:%` 행은 **0건**이다 ⇒ 계정 통합에 과거 데이터 마이그레이션이 없다.
+payouts 0건 · 계좌 등록 매장 0곳 · 사용된 이용권 0장. **잘못 나간 돈은 여전히 0원이다.**
+
+### ⚠️ 이 변경이 **안 고친 것** (의도적으로 남김)
+
+`recordRefundLedger` 는 `platform:revenue → platform:escrow` 라 새 모델에선 방향이 맞지 않는다
+(구매가 escrow 에 넣었는데 환불이 또 넣는다). **payout 대상 계정이 아니라서 나가는 돈에는 영향이
+없고**(아무도 escrow 잔액을 읽지 않는다 — 실측), 환불 분개를 고치는 것은 별도 판단이 필요하다.
+⇒ 별건으로 남긴다. 시험 머리말에 "못 막는 것"으로 명시.
+
+## 🧪 머지 전 필수 — staging 실결제 (대표 몫)
+
+머니 경로라 **코드만으로 끝내지 않는다.** `docs/STAGING_CHECKLIST.md` S-VC1 참조:
+이용권 1장 구매 → 원장이 `platform:escrow` 인지 → 사용 처리 → `seller:N` 에 **한 번만** 잡히는지
+→ payouts 집계가 판매액을 넘지 않는지.
 
 ## 반영 커밋

@@ -15,7 +15,7 @@ import { scanOrSellerAuth } from '../../seller/api/seller-scan-devices.routes'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { auditLog } from '@/worker/middleware/audit-log'
 import type { Env } from '@/worker/types/env'
-import { recordLedger } from '@/worker/utils/ledger'
+import { recordLedger, sellerLedgerAccount } from '@/worker/utils/ledger'
 import type { GroupBuyProductRow } from '@/shared/db/group-buy-types'
 import { sendBuyerVoucherUsedAlimtalk, sendSellerVoucherUsedAlimtalk } from './helpers'
 import { ensureTables, clawbackVoucherCommission, sendRefundAlimtalk } from './helpers'
@@ -194,7 +194,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
                 //   차감(주문당 1회 멱등). 게이트 promo_funding_source='owner' 아닐 땐 내부 no-op(현행).
                 await debitOwnerPromoForOrder(DB, {
                   orderId: meta.order_id,
-                  ownerAccount: `merchant:${merchantId}`,
+                  ownerAccount: sellerLedgerAccount(merchantId),  // 🔗 2026-10-01 계정 통일
                 })
               }
             } catch (e) { if (import.meta.env?.DEV) console.warn('[voucher-used-ledger]', e) }
@@ -394,7 +394,7 @@ export function registerVoucherEndpoints(router: Hono<{ Bindings: Env }>): void 
             //   voucherId 로 전달(헬퍼가 vouchers.order_id 해석). 게이트 아닐 땐 내부 no-op(현행).
             await debitOwnerPromoForOrder(DB, {
               voucherId: voucher.id,
-              ownerAccount: `merchant:${merchantId}`,
+              ownerAccount: sellerLedgerAccount(merchantId),  // 🔗 2026-10-01 계정 통일
             })
           }
         } catch (e) { if (import.meta.env?.DEV) console.warn('[voucher-used-ledger]', e) }

@@ -12,7 +12,7 @@ import { Hono } from 'hono'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { auditLog } from '@/worker/middleware/audit-log'
-import { recordLedger, sellerLedgerAccount } from '@/worker/utils/ledger'; import { creditBrokerShare } from '@/worker/utils/broker-share' // 💸 2026-09-19 중개사 몫(게이트 OFF=no-op)
+import { recordLedger, sellerLedgerAccount, voucherPurchaseCredit } from '@/worker/utils/ledger'; import { creditBrokerShare } from '@/worker/utils/broker-share' // 💸 2026-09-19 중개사 몫(게이트 OFF=no-op)
 import { formatKSTDate } from '@/utils/date' // 워커 TZ=UTC — 만료일 안내가 하루 이르던 것 교정
 import { swallow } from '@/worker/utils/swallow'
 import { resolveUserIdString } from '@/worker/utils/resolve-user-id'
@@ -506,8 +506,9 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
         reference_id: orderNumber,
         amount: totalAmount,
         debit_account: `user:${userId}`,                  // 유저 wallet 차감
-        credit_account: sellerLedgerAccount(product.seller_id),    // 셀러 receivable 증가
-        fee_amount: commissionAmount,
+        // 🏪 2026-10-01: 매장이 있는 이용권은 **손님이 쓸 때까지 escrow 에 보관**한다(적립이 두 번이던 것).
+        //   매장 없는 플랫폼 상품은 종전 그대로 — 판정은 `voucherPurchaseCredit` 한 곳에서만 한다.
+        ...voucherPurchaseCredit(product.seller_id, commissionAmount),
         fee_account: 'platform:commission',
         metadata: { product_id: productId, qty, applied_discount_pct: appliedDiscountPct },
       })
@@ -1355,8 +1356,7 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
         reference_id: orderNumber,
         amount: expectedAmount,
         debit_account: `user:${userId}`,
-        credit_account: sellerLedgerAccount(product.seller_id),
-        fee_amount: commissionAmount,
+        ...voucherPurchaseCredit(product.seller_id, commissionAmount),  // 🏪 2026-10-01 — /join 과 같은 판정
         fee_account: 'platform:commission',
         metadata: { product_id: productId, qty, applied_discount_pct: tierDiscountPct, payment_method: 'toss' },
       })

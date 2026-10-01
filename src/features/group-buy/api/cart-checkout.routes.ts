@@ -24,7 +24,7 @@
 import { Hono } from 'hono'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
-import { recordLedger, sellerLedgerAccount } from '@/worker/utils/ledger'
+import { recordLedger, sellerLedgerAccount, voucherPurchaseCredit } from '@/worker/utils/ledger'
 import { resolveUserIdString } from '@/worker/utils/resolve-user-id'
 import { getCommissionRates } from './commission-rates'
 import { getSellerCommissionRate, generateUniqueVoucherCode, applyGroupBuyReferral } from './helpers'
@@ -277,8 +277,7 @@ cartCheckoutRoutes.post('/cart/confirm-toss', rateLimit({ action: 'gb_cart_confi
           reference_id: orderNumber,
           amount,
           debit_account: `user:${userId}`,
-          credit_account: sellerLedgerAccount(sid),
-          fee_amount: commissionAmount,
+          ...voucherPurchaseCredit(sid, commissionAmount),  // 🏪 2026-10-01 — /join·카드와 같은 판정
           fee_account: 'platform:commission',
           metadata: { cart: true, order_id: newOrderId, product_ids: mine.map(l => l.productId), payment_method: 'toss' },
         })

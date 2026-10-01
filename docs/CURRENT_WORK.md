@@ -5500,6 +5500,10 @@ _총 384건 · 최신순 · 이 목록은 자동 생성된다._
 - [2026-10-01 — 마이 시트 측정 2차 + 정산 화면이 응답 하나에 통째로 죽던 것](handoff/2026-10-01-seller-phone-audit-and-settlements.md)
 - [로그인하면 보던 링크로 안 돌아오던 것 (2026-10-01)](handoff/2026-10-01-login-return-url.md)
 - [2026-10-01 — 인스타 댓글 → 자동 DM (유어딜 공식 계정)](handoff/2026-10-01-instagram-comment-autodm.md)
+_총 382건 · 최신순 · 이 목록은 자동 생성된다._
+
+**2026-10-01**
+- [2026-10-01 — 이용권 매출 단일 레일 (+ 만료 환불 결재 종결)](handoff/2026-10-01-voucher-credit-single-rail.md)
 - [2026-10-01 — 로그아웃했는데 로그인 상태로 보이던 것 + 이메일 가입·로그인](handoff/2026-10-01-consumer-logout-and-email-auth.md)
 **2026-09-30**
 - [2026-09-30 — 대표 지시 "다 순서대로 이상적으로 해줘" (여섯 항목)](handoff/2026-09-30-six-items-in-order.md)
