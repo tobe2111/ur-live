@@ -26,6 +26,7 @@ import { authTokenRoutes } from './routes/auth-token.routes'; // Phase 2.3
 import { healthRoutes } from './routes/health.routes';
 import { killerSwRoutes } from './routes/killer-sw.routes'; // 2026-04-27 PWA 사고 복구
 import kakaoSkillWebhookRoutes from './routes/kakao-skill-webhook.routes'; // 💬 2026-07-19 CS FAQ 봇(오픈빌더 스킬, KAKAO_SKILL_SECRET 미설정=404)
+import { instagramWebhookRoutes, instagramAutoDmAdminRoutes } from '../features/instagram-autodm/api/autodm.routes'; // 💬 2026-10-01 인스타 댓글→자동 DM(어드민 '켜기' 전엔 0통)
 import { sitemapRoutes } from './routes/sitemap.routes'; // 2026-04-27 TD-006 분할
 import { ordersRouter } from './routes/order.routes';
 import { paymentsRouter } from './routes/payment.routes';
@@ -390,7 +391,7 @@ const _bodyLimitIngest = bodyLimit(1_500_000);
 app.use('/api/*', (c, next) => c.req.path === '/api/buyer-ingest' ? _bodyLimitIngest(c, next) : _bodyLimit1m(c, next));
 app.use('/api/*', i18nMiddleware);
 // 인제스트는 토큰 인증 + 크로스오리진 → 전역 IP 레이트리밋 제외(429 가 CORS 없이 나가 북마클릿 배치 실패 방지). /known 서브경로 포함.
-app.use('/api/*', (c, next) => c.req.path.startsWith('/api/buyer-ingest') ? next() : (rateLimiterMiddleware as any)(c, next));
+app.use('/api/*', (c, next) => c.req.path.startsWith('/api/buyer-ingest') || c.req.path === '/api/instagram/webhook' ? next() : (rateLimiterMiddleware as any)(c, next));
 
 // CORS — multi-region support
 const _globalCors = cors({
@@ -1160,6 +1161,7 @@ app.route('/', internalDiagnosticsRoutes);
 app.route('/', internalAdminToolsRoutes);
 app.route('/', smokeTestRoutes);
 app.route('/', kakaoSkillWebhookRoutes); // 💬 CS FAQ 봇 — read-only, 시크릿 게이트(기본 404)
+app.route('/', instagramWebhookRoutes); // 💬 인스타 웹훅 — 서명 검증(앱 시크릿), 발송 게이트 기본 OFF
 app.route('/', repairSchemaRoutes);
 app.route('/', errorTelemetryRoutes);
 app.route('/', healthcheckRoutes);
@@ -1799,19 +1801,14 @@ adminApp.route('/flags', adminFlagsRoutes);
 adminApp.route('/cafe24', cafe24Routes);
 // Blog admin — mounted INSIDE adminApp (requireAdmin + IP whitelist + audit log)
 adminApp.route('/blog', adminBlogRoutes);
+adminApp.route('/instagram-autodm', instagramAutoDmAdminRoutes); // 💬 인스타 자동 DM 설정·규칙·발송 기록
 // 🥗 2026-07-15 워커 다이어트(대표 승인): 소셜 자동화 라우트 마운트 분리(위 import 참조). 게이트 OFF·미사용이라
 //   /api/admin/social/* 는 다이어트 기간 404 — 라이브 영향 0. 재도입=이 줄+import+크론 원복.
 // adminApp.route('/social', socialMediaRoutes);
 // Restaurant settlement (admin)
 adminApp.route('/restaurant-settlement', restaurantSettlementRoutes);
-// Naver Ad Scraper 제거됨 (2026-04-22) — 법적 리스크(PIPA/정보통신망법) + 기술 불안정
-// 남은 `/api/scraper/d1/*` 엔드포인트도 단계적 제거. scraped_advertisers 테이블은 데이터 보존 목적으로 남김.
-
-// 🛡️ 2026-04-22: Legacy scraper endpoint 제거 (법적 리스크 + 보안 위험)
-// - /api/scraper/d1/emails, /api/scraper/d1/stats 모두 제거
-// - 이유: adminApp 미들웨어 체인 (IP whitelist + audit) 을 우회하고 있었음
-// - scraped_advertisers 테이블은 데이터 보존용으로 남겨둠 (직접 SQL 조회 가능)
-// - 스크래핑 기능은 이미 CLAUDE.md 에 따라 제거됨 (PIPA/정보통신망법 리스크)
+// Naver Ad Scraper·legacy /api/scraper/d1/* 제거됨 (2026-04-22) — 법적 리스크(PIPA/정보통신망법) + adminApp 미들웨어 우회.
+// scraped_advertisers 테이블은 데이터 보존용으로 남김(직접 SQL 조회 가능).
 
 // 🏭 [wholesale-split 2026-07-16] 도매 라우트는 WHOLESALE_BUNDLE=1 빌드에서만 포함.
 //   __INCLUDE_WHOLESALE__=false(소비자) → esbuild DCE 로 mount-wholesale + 도매 그래프 전체 제외(워커 gzip ~200KB↓).
