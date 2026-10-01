@@ -63,7 +63,7 @@ export default function ConnectCard({ base, status, returnPath, fromMy = false, 
   })
 
   const unlink = () => run('unlink', async () => {
-    const ok = await confirmDialog({ title: '연결을 해제할까요?', message: '자동 DM 이 꺼집니다. 규칙과 기록은 남아서 다시 연결하면 그대로 씁니다.', confirmText: '해제', danger: true })
+    const ok = await confirmDialog({ title: '연결을 해제할까요?', message: '자동 DM 이 꺼지고 발송 기록(댓글 단 사람 정보)이 지워집니다. 키워드 규칙은 남아서 다시 연결하면 그대로 씁니다.', confirmText: '해제', danger: true })
     if (!ok) return
     try { await api.post(`${base}/disconnect`); toast.success('연결을 해제했습니다'); onChange() } catch (e) { toast.error(apiError(e, '해제하지 못했습니다')) }
   })

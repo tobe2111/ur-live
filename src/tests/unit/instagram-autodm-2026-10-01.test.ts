@@ -8,10 +8,12 @@ import {
 import {
   saveConnection, setEnabled, createRule, updateRule, deleteRule, listRules, listSends, ensureVerifyToken,
   saveAppConfig, getAccountByOwner, ensureAccountRow, purgeByIgUserId, PLATFORM_OWNER, sellerOwnerKey,
+  disconnect, disconnectByIgUserId, pruneOldSends, SEND_RETENTION_DAYS,
 } from '@/features/instagram-autodm/api/autodm-store'
 import { processWebhookPayload } from '@/features/instagram-autodm/api/autodm-service'
 import { signState, verifyState, safeReturnPath, authorizeUrl, STATE_TTL_MS, parseSignedRequest } from '@/features/instagram-autodm/api/autodm-oauth'
 import { canonicalOrigin } from '@/features/instagram-autodm/api/autodm.routes'
+import { readCode } from '../helpers/source-text'
 
 /**
  * 💬 2026-10-01 인스타 댓글 → 자동 DM.
@@ -271,6 +273,41 @@ describe('웹훅 처리(실제 SQLite)', () => {
       expect((await listRules(DB, platformId)).length).toBe(1)
     })
 
+    // 개인정보 처리방침 `#instagram` 이 약속한 것 — 문서와 코드가 갈리면 처리방침이 거짓말이 된다.
+    it('연결 해제하면 발송 기록(댓글 단 사람 정보)은 지우고 규칙은 남긴다', async () => {
+      await saveAppConfig(DB, undefined, { sellers_enabled: true })
+      await processWebhookPayload(DB, undefined, payload([{ id: 's1', text: '쿠폰' }], STORE_IG))
+      expect((await listSends(DB, storeId)).length).toBe(1)
+      await disconnect(DB, storeId)
+      expect(await listSends(DB, storeId)).toEqual([])
+      expect((await listRules(DB, storeId)).length).toBe(1)
+      expect((await getAccountByOwner(DB, undefined, sellerOwnerKey(7)))?.ig_user_id ?? null).toBeNull()
+    })
+
+    it('메타의 권한 해제 알림도 같은 방식으로 지운다', async () => {
+      await saveAppConfig(DB, undefined, { sellers_enabled: true })
+      await processWebhookPayload(DB, undefined, payload([{ id: 's1', text: '쿠폰' }], STORE_IG))
+      await disconnectByIgUserId(DB, STORE_IG)
+      expect(await listSends(DB, storeId)).toEqual([])
+      expect((await listSends(DB, platformId))).toEqual([])
+    })
+
+    it(`발송 기록은 ${SEND_RETENTION_DAYS}일이 지나면 지워지고, 그 안의 기록은 남는다`, async () => {
+      await saveAppConfig(DB, undefined, { sellers_enabled: true })
+      await processWebhookPayload(DB, undefined, payload([{ id: 's1', text: '쿠폰' }, { id: 's2', text: '쿠폰 주세요' }], STORE_IG))
+      await DB.prepare(`UPDATE ig_autodm_sends SET created_at = datetime('now', ?) WHERE comment_id = 's1'`).bind(`-${SEND_RETENTION_DAYS + 1} days`).run()
+      await pruneOldSends(DB, storeId)
+      expect((await listSends(DB, storeId)).map(l => l.comment_id)).toEqual(['s2'])
+    })
+
+    it('웹훅이 들어오면 그 계정의 묵은 기록을 정리한다(배선)', async () => {
+      await saveAppConfig(DB, undefined, { sellers_enabled: true })
+      await processWebhookPayload(DB, undefined, payload([{ id: 's1', text: '쿠폰' }], STORE_IG))
+      await DB.prepare(`UPDATE ig_autodm_sends SET created_at = datetime('now', ?) WHERE comment_id = 's1'`).bind(`-${SEND_RETENTION_DAYS + 1} days`).run()
+      await processWebhookPayload(DB, undefined, payload([{ id: 's9', text: '안녕' }], STORE_IG))
+      expect((await listSends(DB, storeId)).map(l => l.comment_id)).toEqual([])
+    })
+
     it('연결 전에도 계정 행을 만들어 규칙을 먼저 써 둘 수 있다', async () => {
       const id = await ensureAccountRow(DB, sellerOwnerKey(9), 9)
       expect(id).toBeGreaterThan(0)
@@ -323,5 +360,23 @@ describe('인스타 로그인 state', () => {
   it('메타에 등록하는 주소는 구 도메인으로 들어와도 정본(urdeal.kr)', () => {
     expect(canonicalOrigin('https://live.ur-team.com/api/x')).toBe('https://urdeal.kr')
     expect(canonicalOrigin('http://localhost:8787/api/x')).toBe('http://localhost:8787')
+  })
+})
+
+describe('개인정보 처리방침 — 인스타 연결 문단(메타 심사 요건)', () => {
+  it('처리방침 페이지가 국문·영문 모두에 그 문단을 싣는다', () => {
+    const page = readCode('src/pages/PrivacyPolicyPage.tsx')
+    expect(page.match(/<InstagramConnectSection\b/g)?.length).toBe(2)
+  })
+  it('데이터 삭제 콜백이 돌려주는 상태 주소가 그 문단을 가리킨다', () => {
+    const routes = readCode('src/features/instagram-autodm/api/autodm.routes.ts')
+    expect(routes).toMatch(/\/privacy\?ig_deletion=\$\{encodeURIComponent\(code\)\}#instagram/)
+    const section = readCode('src/pages/privacy/InstagramConnectSection.tsx')
+    expect(section).toMatch(/id="instagram"/)
+    expect(section).toMatch(/params\.get\('ig_deletion'\)/)
+  })
+  it('문단이 적은 보관 기간이 코드의 값과 같다', () => {
+    const section = readCode('src/pages/privacy/InstagramConnectSection.tsx')
+    expect(section).toContain(`${SEND_RETENTION_DAYS}일이 지나면 파기`)
   })
 })

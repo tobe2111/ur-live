@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { isKorea } from '@/shared/config/region'
 import SEO from '@/components/SEO'
 import { CONSUMER_SURFACE_SEO } from '@/shared/seo/consumer-surfaces'
+import InstagramConnectSection from './privacy/InstagramConnectSection'
 
 export default function PrivacyPolicyPage() {
   const navigate = useNavigate()
@@ -97,6 +98,8 @@ export default function PrivacyPolicyPage() {
               <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">8. Contact</h2>
               <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">For privacy inquiries, contact us at: jiwon@ur-team.com</p>
             </section>
+
+            <InstagramConnectSection number="9" />
           </div>
         )}
 
@@ -348,8 +351,11 @@ export default function PrivacyPolicyPage() {
                 <p>① 이 개인정보 처리방침은 2024년 1월 15일부터 적용됩니다.</p>
                 <p>② 이전의 개인정보 처리방침은 아래에서 확인하실 수 있습니다:</p>
                 <p className="ml-3 text-gray-500 dark:text-gray-400">- 해당 사항 없음</p>
+                <p>③ 2026년 10월 1일: 제12조(인스타그램 연결) 신설.</p>
               </div>
             </section>
+
+            <InstagramConnectSection number="12" />
           </div>
         )}
       </div>

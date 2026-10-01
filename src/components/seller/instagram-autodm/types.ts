@@ -29,6 +29,7 @@ export interface AutoDmAppConfig {
   redirect_uri: string
   deauthorize_url: string
   data_deletion_url: string
+  privacy_url: string
   encryption_key_set: boolean
 }
 

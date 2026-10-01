@@ -82,7 +82,7 @@ export default function AppPanel({ app, onChange }: { app: AutoDmAppConfig; onCh
         <h3 className="mb-1 font-semibold text-gray-900">① 메타 앱에 붙여 넣을 값</h3>
         <p className="mb-3 text-sm text-gray-500">
           Meta for Developers → 앱 → Instagram → API 설정(Instagram 로그인). 웹훅 구독 필드는 <b>comments</b>,
-          비즈니스 로그인의 리디렉션·권한 해제·데이터 삭제 주소는 아래 그대로.
+          비즈니스 로그인의 리디렉션·권한 해제·데이터 삭제 주소와 앱 기본 설정의 개인정보처리방침 주소는 아래 그대로.
         </p>
         <div className="space-y-2">
           <CopyRow label="웹훅 콜백 URL" value={app.webhook_url} />
@@ -90,6 +90,7 @@ export default function AppPanel({ app, onChange }: { app: AutoDmAppConfig; onCh
           <CopyRow label="리디렉션 URL" value={app.redirect_uri} />
           <CopyRow label="권한 해제 콜백" value={app.deauthorize_url} />
           <CopyRow label="데이터 삭제 콜백" value={app.data_deletion_url} />
+          <CopyRow label="개인정보처리방침" value={app.privacy_url} />
         </div>
       </div>
 

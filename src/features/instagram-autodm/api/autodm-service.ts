@@ -12,7 +12,7 @@
  */
 import { parseCommentEvents, pickRule, renderDm, pickPublicReply, type CommentEvent } from './autodm-core'
 import {
-  getAppConfig, getAccountByIgUserId, listRules, claimComment, markSend, sentLast24h, updateToken,
+  getAppConfig, getAccountByIgUserId, listRules, claimComment, markSend, sentLast24h, updateToken, pruneOldSends,
   PLATFORM_OWNER, type AutoDmAccount,
 } from './autodm-store'
 import { sendPrivateReply, replyToComment, refreshLongLivedToken } from './autodm-graph'
@@ -99,6 +99,8 @@ export async function processWebhookPayload(DB: D1Database, kek: string | undefi
     }
     touched.push(account)
     await processForAccount(DB, account, evs, summary)
+    // 처리방침의 보관 기간(90일) — 웹훅이 들어올 때 그 계정 것만 정리한다(실패해도 발송엔 영향 없음).
+    await pruneOldSends(DB, account.id).catch(() => {})
   }
   return { ...summary, accounts: touched }
 }

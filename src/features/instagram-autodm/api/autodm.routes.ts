@@ -160,8 +160,10 @@ instagramWebhookRoutes.post('/api/instagram/oauth/data-deletion', async (c) => {
     if (!req?.user_id) return c.json({ success: false }, 400)
     await purgeByIgUserId(c.env.DB, req.user_id)
     const code = `ig-${req.user_id.slice(-6)}-${Date.now().toString(36)}`
-    // 메타가 요구하는 응답 모양: 상태를 볼 수 있는 주소 + 확인 코드
-    return c.json({ url: `${canonicalOrigin(c.req.url)}/privacy`, confirmation_code: code })
+    // 메타가 요구하는 응답 모양: 상태를 볼 수 있는 주소 + 확인 코드.
+    // 삭제는 위에서 이미 끝났다(동기) — 그 주소는 처리방침의 인스타 문단에서 "완료"를 코드와 함께 보여 준다.
+    const url = `${canonicalOrigin(c.req.url)}/privacy?ig_deletion=${encodeURIComponent(code)}#instagram`
+    return c.json({ url, confirmation_code: code })
   } catch (err) {
     return safeError(c, err, '처리하지 못했습니다', '[ig-autodm]')
   }
@@ -365,6 +367,7 @@ instagramAutoDmAdminRoutes.get('/app', async (c) => {
         redirect_uri: `${origin}${CALLBACK_PATH}`,
         deauthorize_url: `${origin}/api/instagram/oauth/deauthorize`,
         data_deletion_url: `${origin}/api/instagram/oauth/data-deletion`,
+        privacy_url: `${origin}/privacy#instagram`,
         encryption_key_set: !!(kek && kek.length >= 16),
       },
     })
