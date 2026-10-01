@@ -33,8 +33,7 @@ const AdminWholesaleActivityPage = lazy(() => import('@/pages/admin/AdminWholesa
 const AdminLoginHistoryPage = lazy(() => import('@/pages/AdminLoginHistoryPage'))
 const AdminWholesaleOrdersPage = lazy(() => import('@/pages/AdminWholesaleOrdersPage'))
 // 🏦 2026-07-02 (어드민 도매 IA 통합): 예치금/출금 페이지는 라우트가 직접 렌더하지 않음 —
-//   예치금 = AdminDistributorGradesPage('판매사 관리')의 '예치금' 탭, 출금 = AdminSuppliersPage('제조사 관리')의
-//   '출금 처리' 탭에서 embedded 로 사용(딥링크 경로는 아래에서 컨테이너 페이지로 매핑 → 탭으로 열림).
+//   예치금 = AdminDistributorGradesPage('판매사 관리')의 '예치금' 탭, 출금 = AdminSuppliersPage('제조사 관리')의 '출금 처리' 탭에서 embedded 로 사용(딥링크 경로는 아래에서 컨테이너 페이지로 매핑 → 탭으로 열림).
 // 🏭 2026-06-09 Wave 2: 도매 메인 배너 관리 + 제안/신고 처리 큐.
 const AdminWholesaleBannersPage = lazy(() => import('@/pages/AdminWholesaleBannersPage'))
 const AdminWholesaleBoardPage = lazy(() => import('@/pages/AdminWholesaleBoardPage'))
@@ -48,8 +47,7 @@ const AdminWholesaleMallsPage = lazy(() => import('@/pages/admin/AdminWholesaleM
 const AdminWholesaleOverviewPage = lazy(() => import('@/pages/admin/AdminWholesaleOverviewPage'))
 // 🔧 2026-06-29: 환경 준비상태 진단(바인딩/시크릿 설정 여부 — 다른 운영자/브라우저 정상동작 확인).
 const AdminEnvReadinessPage = lazy(() => import('@/pages/admin/AdminEnvReadinessPage'))
-// 🏭 2026-06-29 (판매사 승인 통합): AdminDistributorApprovalPage 는 더 이상 라우트가 직접 렌더하지 않음
-//   (AdminDistributorGradesPage 의 '승인' 탭에서 embedded 로 사용). 여기 import 제거.
+// 🏭 2026-06-29 (판매사 승인 통합): AdminDistributorApprovalPage 는 더 이상 라우트가 직접 렌더하지 않음 (AdminDistributorGradesPage 의 '승인' 탭에서 embedded 로 사용). 여기 import 제거.
 // 🗺️ 2026-06-18: 동네별 딜 밀도 (행정동 태깅 기반 영입 타겟).
 const AdminRegionDensityPage = lazy(() => import('@/pages/AdminRegionDensityPage'))
 const AdminDistrictReportPage = lazy(() => import('@/pages/AdminDistrictReportPage'))
@@ -90,6 +88,7 @@ const AdminPlatformModelPage = lazy(() => import('@/pages/admin/AdminPlatformMod
 // 🏭 2026-06-07: 도매몰(유통스타트 B2B) 전용 운영 가이드.
 const AdminWholesaleGuidePage = lazy(() => import('@/pages/admin/AdminWholesaleGuidePage'))
 const AdminBlogPage = lazy(() => import('@/pages/AdminBlogPage'))
+const AdminInstagramAutoDmPage = lazy(() => import('@/pages/AdminInstagramAutoDmPage'))
 const AdminSocialPage = lazy(() => import('@/pages/AdminSocialPage'))
 const AdminNotificationSettingsPage = lazy(() => import('@/pages/AdminNotificationSettingsPage'))
 const AdminSellerApprovalPage = lazy(() => import('@/pages/AdminSellerApprovalPage'))
@@ -547,6 +546,7 @@ export function AdminRoutes() {
           <ErrorBoundary><AdminBlogPage /></ErrorBoundary>
         </ProtectedRoute>
       } />
+      <Route path="/admin/instagram-autodm" element={<ProtectedRoute requireAdmin><ErrorBoundary><AdminInstagramAutoDmPage /></ErrorBoundary></ProtectedRoute>} />
       {/* 🆕 2026-07-15 소셜 홍보 자동화(스레드/인스타/유튜브) */}
       <Route path="/admin/social" element={
         <ProtectedRoute requireAdmin>
