@@ -79,4 +79,28 @@ export default [
     test: TEST,
     why: '데이터 삭제 콜백은 공개 주소다 — 서명 없이 믿으면 누구나 user_id 만 넣어 남의 가게 규칙·기록을 지운다.',
   },
+  {
+    name: '💬 연결 해제가 발송 기록(댓글 단 사람 정보)을 남긴다',
+    file: STORE,
+    find: "    DB.prepare(`DELETE FROM ig_autodm_sends WHERE account_id = ?`).bind(accountId),\n  ])",
+    replace: '  ])',
+    test: TEST,
+    why: '개인정보 처리방침이 "연결 해제 시 발송 기록 즉시 파기"를 약속한다. 코드가 안 지우면 처리방침이 거짓말이 되고 메타 심사 요건도 어긴다.',
+  },
+  {
+    name: '💬 90일 지난 발송 기록 정리가 배선에서 빠진다',
+    file: SVC,
+    find: 'await pruneOldSends(DB, account.id).catch(() => {})',
+    replace: '// prune 생략',
+    test: TEST,
+    why: '보관 기간을 함수로만 만들고 아무도 안 부르면 기록이 영원히 쌓인다 — 처리방침의 90일이 거짓말이 된다.',
+  },
+  {
+    name: '💬 데이터 삭제 상태 주소가 처리방침의 인스타 문단을 안 가리킨다',
+    file: 'src/features/instagram-autodm/api/autodm.routes.ts',
+    find: '/privacy?ig_deletion=${encodeURIComponent(code)}#instagram',
+    replace: '/privacy',
+    test: TEST,
+    why: '메타 데이터 삭제 콜백은 "삭제 상태를 볼 수 있는 주소"를 요구한다. 처리방침 첫 화면으로만 보내면 사용자가 자기 삭제가 됐는지 확인할 수 없다.',
+  },
 ]

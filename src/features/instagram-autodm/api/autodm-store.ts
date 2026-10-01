@@ -261,9 +261,24 @@ export async function setEnabled(DB: D1Database, accountId: number, enabled: boo
 }
 
 /** 연결 해제 — 토큰과 인스타 계정을 지우고 끈다. 규칙·기록은 남긴다(다시 연결하면 그대로 쓴다). */
+/**
+ * 연결 해제 — 토큰을 지우고 끄고, **발송 기록(댓글 단 사람의 정보)을 지운다**(개인정보 처리방침 `#instagram` 의 약속).
+ * 규칙은 남긴다: 매장 자신의 설정이지 남의 개인정보가 아니고, 다시 연결하면 그대로 쓴다.
+ */
 export async function disconnect(DB: D1Database, accountId: number): Promise<void> {
-  await DB.prepare(`UPDATE ig_autodm_accounts SET ig_user_id = NULL, username = NULL, access_token_enc = NULL,
-      token_expires_at = NULL, token_refreshed_at = NULL, enabled = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(accountId).run()
+  await DB.batch([
+    DB.prepare(`UPDATE ig_autodm_accounts SET ig_user_id = NULL, username = NULL, access_token_enc = NULL,
+      token_expires_at = NULL, token_refreshed_at = NULL, enabled = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(accountId),
+    DB.prepare(`DELETE FROM ig_autodm_sends WHERE account_id = ?`).bind(accountId),
+  ])
+}
+
+/** 발송 기록 보관 기간(일) — 처리방침에 적은 값. 같은 댓글 재발송 방지는 7일(메타의 답장 가능 기간)이면 충분하다. */
+export const SEND_RETENTION_DAYS = 90
+
+export async function pruneOldSends(DB: D1Database, accountId: number): Promise<void> {
+  await DB.prepare(`DELETE FROM ig_autodm_sends WHERE account_id = ? AND created_at < datetime('now', ?)`)
+    .bind(accountId, `-${SEND_RETENTION_DAYS} days`).run()
 }
 
 /**
@@ -285,8 +300,8 @@ export async function purgeByIgUserId(DB: D1Database, igUserId: string): Promise
 /** 메타의 "연결 해제" 알림 — 사용자가 인스타 설정에서 우리 앱 권한을 뺐다. 토큰을 지우고 끈다. */
 export async function disconnectByIgUserId(DB: D1Database, igUserId: string): Promise<void> {
   await ensureAutoDmTables(DB)
-  await DB.prepare(`UPDATE ig_autodm_accounts SET ig_user_id = NULL, username = NULL, access_token_enc = NULL,
-      token_expires_at = NULL, token_refreshed_at = NULL, enabled = 0, updated_at = CURRENT_TIMESTAMP WHERE ig_user_id = ?`).bind(igUserId).run()
+  const row = await DB.prepare(`SELECT id FROM ig_autodm_accounts WHERE ig_user_id = ?`).bind(igUserId).first<{ id: number }>().catch(() => null)
+  if (row) await disconnect(DB, row.id)
 }
 
 /** 계정 행만 있고 연결은 아직인 상태를 만든다(규칙을 먼저 써 둘 수 있게). */

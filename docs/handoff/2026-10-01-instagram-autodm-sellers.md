@@ -31,10 +31,33 @@
 5. 그 화면을 녹화해 **앱 검수 제출**: 권한 3종 `instagram_business_basic` · `instagram_business_manage_comments` · `instagram_business_manage_messages` 고급 액세스. 비즈니스 인증(사업자등록증)을 함께 요구받을 수 있다
 6. 통과하면 앱을 **라이브** 전환 → 어드민 ③ **매장 계정 발송 열기**
 
+## 상태 (2026-10-01 오후)
+- **[E3]** #1594 머지 `91ff1b3` · 배포. 라이브 확인(urdeal.kr): 웹훅 잘못된 토큰 403 · 서명 없는 POST 401 · 위조 state → `/seller/instagram-dm?ig=error&reason=…`(302) ·
+  권한해제/데이터삭제 서명 없음 400 · 매장 API 비로그인 401 · `/seller/instagram-dm` 200 · 어드민 앱 설정 미입력 · 매장 발송 스위치 닫힘 · 연결 계정 0.
+- **후속(같은 날, 이 브랜치)**: 개인정보 처리방침 `#instagram` 문단(국·영) · 데이터 삭제 상태 주소 `/privacy?ig_deletion=<코드>#instagram` ·
+  **연결 해제 시 발송 기록 즉시 삭제**(전엔 남았다 — 처리방침과 어긋나 고침) · 발송 기록 90일 보관 후 삭제(웹훅 때 그 계정만 정리) ·
+  어드민 복사 목록에 개인정보처리방침 주소. 테스트 39건 · 주입 12건.
+
+## 메타 앱 심사 제출 문안 (대표가 그대로 붙여 넣기)
+권한별 "사용 방법" 칸(영문):
+- **instagram_business_basic** — UrDeal lets a business connect its own Instagram professional account so that it can set up comment keyword rules. We read the account ID and username to show which account is connected and to route incoming comment webhooks to that business.
+- **instagram_business_manage_comments** — We subscribe to the `comments` webhook to receive new comments on the business's own posts, match them against the keywords the business configured, and optionally post one short public reply ("Sent you a DM") to the matching comment.
+- **instagram_business_manage_messages** — When a comment matches a keyword, we send exactly one private reply to that commenter (Private Replies API, within 7 days of the comment) containing the link the business configured. We never send unsolicited messages: only people who commented with the keyword receive one message.
+
+화면 녹화 순서(1~2분):
+1. urdeal.kr 로그인 → 마이 → 전체 도구 → 인스타 자동 DM
+2. "인스타로 연결" → instagram.com 로그인·권한 3종 허용 화면이 보이게 → 유어딜로 돌아와 연결됨 표시
+3. 규칙 만들기(키워드 "링크", 메시지, 링크) → 켜기
+4. 다른 인스타 계정으로 그 게시물에 "링크" 댓글 → 그 계정의 DM 함에 메시지 도착 + 공개 답글
+5. 유어딜 화면의 발송 기록에 그 건이 뜨는 것
+6. 연결 해제 버튼
+
+앱 기본 설정: 개인정보처리방침 URL = `https://urdeal.kr/privacy#instagram`, 데이터 삭제 = 콜백 URL(어드민 ① 에 있음).
+
 ## 남은 것 / 판단 필요
-- **개인정보처리방침**(`/privacy`)에 "인스타 연결 시 수집 항목(인스타 계정 ID·아이디·댓글 내용 일부·발송 기록), 보관·삭제" 문단 추가가 메타 심사에 필요할 수 있다 — 법적 문구라 대표 확인 후 반영(이번 커밋엔 없음).
-- 데이터 삭제 응답의 상태 확인 주소는 지금 `/privacy` 다. 전용 상태 페이지가 필요하면 별건.
-- 팔로우 확인 2단계(버튼 → 답장 → 링크)는 아직 없다.
+- **팔로우 확인 2단계(버튼 → 답장 → 링크)는 하지 않았다.** 비공개 답장에 버튼을 싣는 모양과 팔로우 여부 조회 필드를
+  실계정 없이 확인할 수 없다 — 추측으로 만들면 심사 녹화 때 처음 깨진다. 공식 계정을 연결한 뒤 실제 응답을 보고 붙일 것.
+- 처리방침 문단(`src/pages/privacy/InstagramConnectSection.tsx`)은 **대표 확정**(2026-10-01 "그냥 확정하고"). 문구를 바꾸려면 다시 대표 확인.
 
 ## 틀렸던 판단
 - 처음엔 마이 전용 손수 시트를 따로 만들려 했다 — 그러면 다크 지원·타입 스케일·아이콘 규칙을 따로 맞춘 **두 번째 화면**이 생긴다.
