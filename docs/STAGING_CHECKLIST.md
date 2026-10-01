@@ -516,3 +516,59 @@ the prompt 'agree'"*. Llama 3.2 비전은 계정 단위 **1회 라이선스 동�
 - **S-MYSELL-63** 시트 안 화면이 **다크 모드에서** 읽힌다(흰 폼 위 흰 글자 0 — `light-island`).
 - **S-MYSELL-64** 시트 안에서 버튼이 실제로 눌린다(예: 단골 분석 조회 · 매장 목록). 좌석은
   마이가 맞춰 열었으므로 403 이 나오면 안 된다.
+
+## 💰 S-VC1~6 — 이용권 매출 단일 레일 (2026-10-01, PR #1591 `aed1694ca` 머지됨)
+
+**무엇을 고쳤나**: 같은 이용권 **한 장**에 매장 적립이 **두 번** 일어났다 — 구매 시 `seller:N`,
+사용 시 `merchant:N`. `payouts-generate` 가 계정 **문자열**로 GROUP BY 하므로 둘이 상쇄되지 않고
+둘 다 더해졌다(실측: **1,000원 판매가 1,850원 = 185%**).
+
+**처방(main 구현 — `src/worker/utils/payout-account.ts`)**:
+구매 적립을 `platform:escrow` 로 보내고(손님이 쓸 때 꺼낸다), **계정 이름은 리네임하지 않고**
+`canonicalPayee()` 가 **지급 집계에서만** `merchant:N` 과 `seller:N` 을 한 payee 로 접는다.
+
+> 🔴 **`merchant:N` → `seller:N` 리네임을 하지 말 것.** #1591 이 실측으로 **기각한** 안이다 —
+> 그 이름을 읽는 곳이 세었던 것보다 많고, 넷 다 **에러 없이** 틀린 값을 내기 시작한다
+> (셀러 '매출' 카드 · 주간 이중레일 경보 `payee_type='store_owner'` · owner-promo 재원 계정 ·
+> `payout-use-gate` 의 의미). 근거는 `payout-account.ts` 머리말에 박혀 있다.
+> ⚠️ 그 목록은 **다섯 번째를 놓쳤다** — 아래 **S-VC6** 이 그것이다.
+
+**라이브 영향 0 인 창에서 머지됐다**(실측 2026-10-01): payouts **0건** · `restaurant_settlements` **0건** ·
+사용된 이용권 **0장** · `merchant:%` 원장 행 **0건** · 계좌 등록 매장 **0곳**.
+⇒ 마이그레이션이 필요 없다. **첫 실사용이 곧 이 검증이다.**
+
+| ID | 시나리오 | 통과 기준 | 상태 |
+|---|---|---|---|
+| **S-VC1** | 매장 이용권 1장 **구매**(딜) 후 `ledger_entries` | `group_buy_join` 의 `credit_account` 가 **`platform:escrow`** · `fee_amount` **0**(수수료는 사용 시점 3번째 분개가 인식한다 — 두 번 떼면 매장 몫이 준다) | ⬜ |
+| **S-VC2** | 같은 이용권을 매장에서 **사용 처리** | `voucher_used` **3분개** · 매장 credit 이 **`merchant:N`**(⚠️ `seller:N` 이 아니다 — 리네임은 기각됐다) · escrow 에서 같은 금액이 빠진다 | ⬜ |
+| **S-VC3** | payouts 집계(cron `payouts-generate` 또는 어드민 '정산 생성') | 그 가게 합계가 **판매액을 넘지 않는다**(185% 가 안 나온다) · `merchant:N` 과 `seller:N` 이 **한 payee 로 접힌다**(`canonicalPayee`) · `payee_type` 이 접두어가 아니라 `sellers.seller_type` 에서 나온다 | ⬜ |
+| **S-VC4** | **카드** 결제와 **장바구니** 결제로도 각 1건 | S-VC1 과 같은 결과 — **결제수단에 따라 갈리지 않는다**(`group-buy.routes` 딜·카드 2곳 + `cart-checkout.routes`) | ⬜ |
+| **S-VC5** | **교환권**(KT·플랫폼 상품, `seller_id` 없음) 1건 구매 | 종전 그대로 **`platform:revenue`** + 수수료 인식 — **escrow 에 안 담긴다.** 플랫폼 상품은 사용 시점 분개가 아예 없어서, 담기면 **영원히 안 빠진다** | ⬜ |
+| **S-VC6** | 🔴 **매장 소유자 변경**(`store-handover-guard`) — 이용권을 쓴 적 있는 매장을 넘긴다 | 미정산 잔액이 남아 있으면 **막힌다**. ⚠️ **2026-10-01 현재 안 막힌다** — 아래 참조 | 🔴 **결함 확인됨** |
+
+### 🔴 S-VC6 — 집계 접기가 안 닿는 다섯 번째 자리 (2026-10-01 발견, **미수정**)
+
+`src/worker/utils/store-handover-guard.ts:117` 이 미정산 잔액을 **`seller:N` 하나로만** 읽는다:
+
+```ts
+receivable = await getUnsettledBalance(DB, `seller:${sellerId}`)
+```
+
+`getUnsettledBalance` → `getLedgerReceivable` 는 계정 **문자열 정확히 일치**로 집계하고
+(`WHERE credit_account = ? OR debit_account = ?`) **접기를 하지 않는다**. `canonicalPayee` 를
+쓰는 곳은 `payouts-generate` 와 `admin-payouts` **둘뿐**이다(실측 grep).
+
+⇒ 이용권 사용 적립은 `merchant:N` 에 쌓이는데 이 가드는 `seller:N` 만 본다:
+
+| 매장 상태 | `seller:N` | 가드 판정 | 옳은가 |
+|---|---|---|---|
+| 이용권 사용 적립만 있음(흔한 경우) | **0** | `receivable === 0` → **통과** | ❌ **못 받은 돈을 남겨둔 채 매장이 넘어간다** |
+| 거기에 인플루언서 커미션 차감까지 | **음수** | 음수 → 막음 | ⭕ (우연히 맞다) |
+
+이 가드는 **fail-closed 로 설계**됐는데(조회 실패도 막는다) 이 자리에서는 **fail-open** 이다 —
+돈이 안 보여서 0 으로 읽기 때문이다. **에러도 로그도 없다.**
+
+**처방(권장)**: `getUnsettledBalance` 에 `canonicalPayee` 와 **같은 접기**를 적용하거나,
+가드가 `merchant:N`·`seller:N` 두 계정을 합산해 읽는다.
+⚠️ **머니 경로(등급 C)라 이 파일에서는 고치지 않았다** — 단독 세션 + staging 실결제가 선행이다.
+🍀 지금은 **사용된 이용권 0장 · payouts 0건**이라 피해자가 없다. 첫 실사용 전에 닫을 것.
