@@ -40,7 +40,9 @@ export default [
   },
   {
     name: '🚦 payouts-generate 가 merchant 계정 집계를 잃어 원장이 지급까지 못 간다',
-    file: 'src/worker/cron/payouts-generate.ts',
+    // 🎯 2026-10-01 재조준: 집계 문장이 `payout-account.ts payoutCreditsSql()` 로 옮겨졌다
+    //   (결재 voucher-credit-double-rail). 불변식은 그대로: merchant 패턴이 집계에 있어야 한다.
+    file: 'src/worker/utils/payout-account.ts',
     find: "WHERE (credit_account LIKE 'merchant:%' OR credit_account LIKE 'seller:%'",
     replace: "WHERE (credit_account LIKE 'seller:%'",
     test: TEST,

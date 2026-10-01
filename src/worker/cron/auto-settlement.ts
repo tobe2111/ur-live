@@ -362,7 +362,19 @@ export async function handleExpiredVoucherRefunds(env: Env) {
       // 💸 ④-b 미수령 정책 — **게이트 OFF 면 `unclaimedRefundAmount` 가 전액을 그대로 돌려준다.**
       //   즉 이 블록이 있어도 OFF 상태의 환불액은 위 `paidAmount` 와 동일하다(현행 불변).
       //   보관구분(`storage`)을 모르면 역시 전액 — 모르는 상태에서 소비자 돈을 덜 주지 않는다.
-      const pickup = parsePickup(pickupMeta.get(Number(voucher.product_id)));
+      // 🛡️ 2026-10-01 (결재 expired-voucher-refund-stolen 동반 수리): 선점(`claimed`)과 결과 기록
+      //   사이의 `await` 는 전부 try/catch 가 감싸고 있지만, **동기 파서가 던지면** 아래 결과 기록
+      //   줄에 도달하지 못한다 — 그 행은 `claimed` 로 영구히 남고 **다시 선점되지 않아 환불이
+      //   영영 안 된다.** 그게 바로 이 결재가 고친 사고와 **같은 클래스의 조용한 부재**다.
+      //   ⇒ 던지면 빈 PickupInfo 로 떨어진다 ⇒ `storage` 모름 ⇒ `unclaimedRefundAmount` 가
+      //     **전액 환불**(`unknown-storage`)을 돌려준다. 이미 문서화된 경로이고 소비자에게 안전한 쪽이다.
+      let pickup: ReturnType<typeof parsePickup>;
+      try {
+        pickup = parsePickup(pickupMeta.get(Number(voucher.product_id)));
+      } catch (e) {
+        logError('[Cron] expired voucher: pickup 메타 파싱 실패 — 전액 환불로 진행', { voucher_id: voucher.id, error: String(e) });
+        pickup = { date: null, place: null, storage: null };
+      }
       const pickupMs = pickup.date ? Date.parse(pickup.date) : NaN;
       const verdict = unclaimedRefundAmount({
         paidAmount,

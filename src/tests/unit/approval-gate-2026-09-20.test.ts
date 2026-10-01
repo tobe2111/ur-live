@@ -67,10 +67,14 @@ describe('② 좌석 — 세 곳(토큰·가산·화면)이 같은 함수를 쓴
 
 describe('③ 정산 게이트 — 좌석 개방의 짝', () => {
   it('payouts-generate 가 셀러 status 를 읽고, 계좌를 쓰기 전에 SSOT 로 skip 한다', () => {
-    const at = PAYOUT.indexOf("payeeType === 'store_owner' || payeeType === 'seller'")
-    expect(at).toBeGreaterThan(0)
-    const body = PAYOUT.slice(at, at + 900)
-    expect(body).toMatch(/SELECT bank_account, business_name, status FROM sellers/)
+    // 🎯 2026-10-01 재조준: 분기 조건이 `payeeType === 'store_owner' || …` → `payee.kind === 'seller'`
+    //   로 바뀌었다 — `merchant:N` 과 `seller:N` 을 한 payee 로 접으면서 접두어가 사라졌기 때문이다
+    //   (결재 voucher-credit-double-rail). **불변식은 그대로**: 셀러 행을 읽고, 계좌를 쓰기 전에
+    //   승인 상태로 skip 한다. ⇒ 앵커를 그 분기의 **셀러 조회 SELECT** 로 옮긴다(조건문 모양에 안 묶인다).
+    const at = PAYOUT.indexOf('FROM sellers WHERE id = ?')
+    expect(at, '셀러 행을 읽지 않으면 승인 게이트도 계좌도 없다').toBeGreaterThan(0)
+    const body = PAYOUT.slice(at - 300, at + 900)
+    expect(body).toMatch(/SELECT bank_account, business_name, status(?:, seller_type)? FROM sellers/)
     const gate = body.indexOf('isPayoutEligibleSellerStatus(row?.status)')
     const use = body.indexOf('accountNumber = row?.bank_account')
     expect(gate).toBeGreaterThan(0)

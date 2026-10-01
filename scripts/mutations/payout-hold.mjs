@@ -7,15 +7,19 @@ const TEST = 'src/tests/unit/payout-hold-2026-09-21.test.ts'
 export default [
   {
     name: '🕙 cron 집계에서 유보 조각이 빠져 적립 즉시 정산 대상이 된다',
-    file: 'src/worker/cron/payouts-generate.ts',
-    find: "LIKE 'user:%')\n           ${hold.sql}",
+    // 🎯 2026-10-01 재조준: 그 집계 문장이 `payout-account.ts payoutCreditsSql()` 로 옮겨졌다
+    //   (가드가 실제 sqlite 에 돌려 판정할 수 있게 — 결재 voucher-credit-double-rail).
+    //   불변식은 그대로: credit WHERE 에 유보 조각이 붙어 있어야 한다.
+    file: 'src/worker/utils/payout-account.ts',
+    find: "LIKE 'user:%')\n           ${holdSql}",
     replace: "LIKE 'user:%')",
     test: TEST,
     why: '유보가 사라지면 토스가 우리에게 입금하기 전에 우리 돈이 먼저 나간다. 에러가 안 나서 아무도 모른다.',
   },
   {
     name: "🕙 cron 의 credit WHERE 괄호가 풀려 유보가 마지막 LIKE 에만 걸린다",
-    file: 'src/worker/cron/payouts-generate.ts',
+    // 🎯 2026-10-01 재조준: 위와 같은 이유로 파일만 바뀌었다(문장은 byte-동일).
+    file: 'src/worker/utils/payout-account.ts',
     find: "WHERE (credit_account LIKE 'merchant:%' OR credit_account LIKE 'seller:%' OR credit_account LIKE 'agency:%' OR credit_account LIKE 'user:%')",
     replace: "WHERE credit_account LIKE 'merchant:%' OR credit_account LIKE 'seller:%' OR credit_account LIKE 'agency:%' OR credit_account LIKE 'user:%'",
     test: TEST,
@@ -23,8 +27,11 @@ export default [
   },
   {
     name: '🕙 어드민 정산대기 화면이 유보를 무시해 cron 과 값이 갈린다',
-    file: 'src/features/admin/api/admin-payouts.routes.ts',
-    find: "OR credit_account LIKE 'agency:%' OR credit_account LIKE 'user:%')\n           ${hold.sql}",
+    // 🎯 2026-10-01 재조준: 그 CTE 가 `payout-account.ts payoutPendingRowsSql()` 로 옮겨졌다
+    //   (파일 크기 래칫 + 같은 머니 공식 세 벌의 드리프트 축소). 불변식 그대로: 표시용 credit 에도
+    //   유보가 붙어 있어야 cron 과 값이 같다. `holdSql` 이 쓰이는 자리가 **거기 하나**라 앵커도 유일하다.
+    file: 'src/worker/utils/payout-account.ts',
+    find: "OR credit_account LIKE 'agency:%' OR credit_account LIKE 'user:%')\n           ${holdSql}",
     replace: "OR credit_account LIKE 'agency:%' OR credit_account LIKE 'user:%')",
     test: TEST,
     why: '화면이 유보 전 금액을 보여 주면 운영자가 아직 못 주는 돈을 승인한다.',
