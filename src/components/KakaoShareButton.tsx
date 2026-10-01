@@ -135,7 +135,8 @@ export default function KakaoShareButton({ title, description, imageUrl, link, b
           <a href={`https://line.me/R/share?text=${encodeURIComponent(`${title} ${fullUrl}`)}`} target="_blank" rel="noopener"
             className="flex-1 py-2 bg-[#00B900] text-white rounded-xl text-[12px] font-bold text-center">LINE</a>
           <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(fullUrl)}`} target="_blank" rel="noopener"
-            className="flex-1 py-2 bg-black text-white rounded-xl text-[12px] font-bold text-center">X</a>
+            // X(구 트위터)의 플랫폼 브랜드색 — 형제가 LINE #00B900 인 것과 같은 축이고 우리 주 버튼이 아니다.
+            className="flex-1 py-2 bg-black text-white rounded-xl text-[12px] font-bold text-center">X</a>{/* primary-button-ok */}
         </div>
       )}
     </div>

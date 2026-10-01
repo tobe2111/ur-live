@@ -190,7 +190,16 @@ export default function LoginPage() {
       }
     } catch (err: unknown) {
       if (import.meta.env.DEV) console.error('[Email Login] Error:', err)
-      setError(t('auth.invalidCredentials'))
+      /**
+       * 🩸 2026-10-01 (대표 "이메일 계정 가입 및 로그인도 되게끔 해줘"): 무슨 이유든 항상
+       *   "이메일 또는 비밀번호가 올바르지 않습니다" 로 뭉개고 있었다. 그런데 서버는 **구분되는**
+       *   이유를 돌려준다 — 특히 `ACCOUNT_LOCKED`(423, 브루트포스 방어로 일시 잠금). 그 사람은
+       *   비밀번호가 맞는데도 "틀렸다" 는 말만 보고 계속 시도하게 되고, 시도할수록 잠금이 길어진다.
+       *   ⇒ 서버 문장을 그대로 보여 준다. 🔒 **계정 존재 여부는 새어 나가지 않는다** — 서버가
+       *      미존재 계정과 비번 오류에 *같은 문장*을 주도록 이미 설계돼 있다(auth.routes `/login`).
+       */
+      const msg = err instanceof Error ? err.message : ''
+      setError(msg || t('auth.invalidCredentials'))
     } finally {
       setLoading(false)
     }
@@ -421,7 +430,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full h-[48px] bg-[#111] hover:bg-black text-white rounded-xl text-[15px] font-semibold tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full h-[48px] bg-brand hover:bg-brand-dark text-white rounded-xl text-[15px] font-semibold tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? t('common.loading') : t('common.login')}
             </button>
@@ -465,7 +474,7 @@ export default function LoginPage() {
             <button
               onClick={handleResetPassword}
               disabled={loading}
-              className="w-full h-[48px] bg-[#111] hover:bg-black text-white rounded-xl text-[15px] font-semibold tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full h-[48px] bg-brand hover:bg-brand-dark text-white rounded-xl text-[15px] font-semibold tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? t('common.loading') : t('auth.resetPasswordButton')}
             </button>
