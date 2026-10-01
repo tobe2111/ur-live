@@ -52,10 +52,20 @@ describe('🧹 마이 판매 바로가기 — 넷 + 전체 도구 (2026-09-30)',
      * 2026-07-02 상세의 *"ChevronRight 로 클릭 유도하면서 onClick 없던 dead 어포던스"* 의
      * **정반대 실수** = onClick 은 있는데 아무 표시가 없는 것. 둘 다 안 된다.
      */
+    /**
+     * 🩸 **2026-10-01: 이 검사가 내 재조준 때문에 헛돌았고, CI 주입이 잡았다.**
+     *   철거로 입구가 `openPage('/seller/analytics', '매출 분석')` 이 되면서 그 문구가
+     *   **핸들러 안에도** 생겼다. 그래서 *화면의* 라벨을 지우는 주입에도 `toContain('매출 분석')`
+     *   이 통과했다 — 핸들러의 인자를 보고 "적혀 있다" 고 판정한 것이다.
+     * ⇒ `onClick` 줄을 **건너뛴 뒤**(닫는 `}` 다음)부터 본다. 화면에 적힌 것만 센다.
+     */
     const at = code.indexOf("openPage('/seller/analytics'")
     expect(at, 'analytics 입구가 없다').toBeGreaterThan(0)
-    const around = code.slice(at, at + 1400)
-    expect(around, '누르면 무엇이 열리는지 화면에 적혀 있어야 한다').toContain('매출 분석')
+    const afterHandler = code.indexOf('\n', at)
+    expect(afterHandler, 'onClick 줄이 안 끝난다 — 앵커가 낡았다').toBeGreaterThan(at)
+    const around = code.slice(afterHandler, afterHandler + 1400)
+    expect(around, '누르면 무엇이 열리는지 **화면에** 적혀 있어야 한다(핸들러 인자는 화면이 아니다)')
+      .toContain('매출 분석')
   })
 
   /**
