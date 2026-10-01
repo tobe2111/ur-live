@@ -35,6 +35,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { sellerListResponse } from './preview-seeds/seller-lists.mjs'
+import { looksEmpty, emptyHintMatch } from './preview-seeds/empty-screen-hint.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const DIST = path.join(ROOT, 'dist/client')
@@ -982,11 +983,18 @@ if (args['phone-audit']) {
    *     **초록을 빈손으로 내주지 않는 것**이다.
    */
   const bodyText = await page.innerText('body').catch(() => '')
-  const EMPTY_HINT = /없어요|없습니다|아직 .*없|비어 ?있|문제가 발생|오류가 발생/
-  const suspect = EMPTY_HINT.test(bodyText) || audit.firstScreen < 8
+  // 🩸 2026-10-01: 이 판정이 **거짓 🟡 를 내고 있었다** — 안내 문장 "별도의 정산 신청은 필요 없습니다"
+  //   가 맨 `없습니다` 에 걸려, 끝까지 멀쩡히 그려지는 /seller/settlements 가 "판정 보류" 였다.
+  //   규칙·근거·반례는 `preview-seeds/empty-screen-hint.mjs` 머리주석, 고정은 그 테스트.
+  const suspect = looksEmpty(bodyText, audit.firstScreen)
   const bad = audit.hScroll > 0 || audit.cut > 0 || audit.clipped > 0 || audit.tables > 0
   console.log(`📱 폰 적합성 [${ROUTE}] ${bad ? '🔴 결함 있음' : suspect ? '🟡 판정 보류 — 잴 내용이 없다' : '🟢 깨끗'}`)
-  if (suspect) console.log(`   ⚠️ 빈 상태·오류 화면으로 보인다. 이 숫자를 "폰에서 쓸 만하다" 로 읽지 말 것(시드를 먼저 채울 것).`)
+  if (suspect) {
+    const why = emptyHintMatch(bodyText)
+    console.log(`   ⚠️ 빈 상태·오류 화면으로 보인다. 이 숫자를 "폰에서 쓸 만하다" 로 읽지 말 것(시드를 먼저 채울 것).`)
+    // 🔎 **왜 🟡 인지 같이 찍는다** — 판정만 보여 주면 고칠 수가 없다(문구가 없으면 첫화면 줄 수가 이유다).
+    console.log(`   ↳ 근거: ${why ? `"${why}"` : `첫화면 ${audit.firstScreen}줄(8 미만)`}`)
+  }
   console.log(`   가로스크롤 ${audit.hScroll}px · 잘려나감 ${audit.cut} · 잘린글자 ${audit.clipped} · 작은타깃 ${audit.tiny} · 표오버플로 ${audit.tables}/${audit.tablesAll} · 첫화면 ${audit.firstScreen}줄 · 문서높이 ${audit.docH}px`)
   if (audit.cutSample.length) console.log(`   잘려나감: ${JSON.stringify(audit.cutSample)}`)
   if (audit.clippedSample.length) console.log(`   잘린글자: ${JSON.stringify(audit.clippedSample)}`)
