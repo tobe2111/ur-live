@@ -502,9 +502,21 @@ function serve() {
       const p = new URL(req.url, 'http://x').pathname
       if (p.startsWith('/api/')) {
         res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' })
+        // 🔀 두 겹을 **순서대로** 감는다(동시 세션 병합 2026-10-01): 안쪽이 기록, 바깥이 지연.
+        //   둘 다 `res.end` 를 감싸므로 한쪽만 남기면 다른 쪽이 조용히 사라진다.
         if (TRACE_API) {
           const origEnd = res.end.bind(res)
           res.end = (body) => { API_LOG.push(`${p} → ${String(body || '').slice(0, 110)}`); return origEnd(body) }
+        }
+        /**
+         * ⏱️ `--slow=N` 은 **모든** 스텁 응답을 늦춘다 (2026-10-01).
+         *   처음엔 `/api/seller/my-stores/summary` 하나에만 걸려 있었다. 그래서 다른 화면에
+         *   `--shift` 를 걸면 스텁이 즉답이라 **늘 "안 밀림"** 이 나왔다 — 통과가 아니라 측정을
+         *   안 한 것이다. 밀림은 "늦게 오는 응답"이 만드는 현상이므로 전 경로를 늦춰야 보인다.
+         */
+        if (SLOW > 0) {
+          const realEnd = res.end.bind(res)
+          res.end = (body) => { setTimeout(() => realEnd(body), SLOW); return res }
         }
         // 큐레이터 조회는 시드와 같은 페이로드로 — 아니면 백그라운드 갱신이 오류 상태로 빠진다
         if (p.startsWith('/api/curator/') && !p.includes('/me/')) return res.end(JSON.stringify(CURATOR_SEED))
@@ -543,11 +555,10 @@ function serve() {
           const hit = sellerListResponse(p, SELLER_LISTS)
           if (hit) return res.end(JSON.stringify(hit))
         }
-        if (STORES_N > 0 && p === '/api/seller/my-stores/summary') {
-          const body = JSON.stringify(storesSeed(STORES_N))
-          if (SLOW > 0) return void setTimeout(() => res.end(body), SLOW)
-          return res.end(body)
-        }
+        // ⏱️ 지연은 위 전역 `--slow` 래퍼가 건다 — 여기서 또 늦추면 이 경로만 **두 배**가 된다.
+        //    (#1601 의 개선을 그대로 승계 — 이 머지에서 내 쪽 per-route setTimeout 을 버렸다.)
+        if (STORES_N > 0 && p === '/api/seller/my-stores/summary')
+          return res.end(JSON.stringify(storesSeed(STORES_N)))
         // 🎬 레일은 홈 어느 경로에서든 뜬다 — 플래그 없이 항상 준다.
         if (p === '/api/urshorts') return res.end(JSON.stringify({ success: true, data: SHORTS_SEED }))
         if (args.wallet && p === '/api/vouchers/my')
@@ -557,6 +568,18 @@ function serve() {
           // 상세는 **단건**이다 — 목록과 같은 배열을 주면 화면이 안 그려진다.
           const m = p.match(/^\/api\/(?:group-buy\/)?products\/(\d+)/)
           if (m) {
+            /**
+             * 🩸 2026-10-01 — **스텁이 시드와 같은 값을 줘야 한다.**
+             *   그전까지 이 분기는 `DEALS` 원본을 그대로 줬는데, `__SSR_INITIAL_DETAIL__` 시드는
+             *   거기에 `description`·`current_discount_pct`·`group_buy_tiers` 를 **더해서** 넣는다.
+             *   그래서 [시드로 그린 첫 프레임] → [스텁 응답으로 다시 그린 프레임] 사이에
+             *   '상품 구성' 블록이 사라지고 가격·할인율이 바뀌어 **−130px 밀림이 측정됐다.**
+             *   그건 제품 결함이 아니라 **이 하네스가 만든 가짜**다 — 라이브에서는 워커가 같은
+             *   엔드포인트를 self-fetch 해 시드를 만들므로 둘이 애초에 같은 값이다.
+             *   ⇒ 여기서도 같은 값을 돌려준다. 안 그러면 이 도구가 없는 결함을 신고한다.
+             */
+            if (DETAIL_SEED && String(DETAIL_ID) === m[1])
+              return res.end(JSON.stringify({ ...DETAIL_SEED, product: DETAIL_SEED.data }))
             const one = DEALS.find((d) => String(d.id) === m[1]) || DEALS[0]
             return res.end(JSON.stringify({ success: true, data: one, product: one }))
           }
@@ -668,7 +691,7 @@ if (SHIFT) {
       if (r.width === 0 && r.height === 0) continue
       if (!m.has(s)) m.set(s, Math.round(r.top + window.scrollY))
     }
-    return { pos: Object.fromEntries(m), docH: document.documentElement.scrollHeight }
+    return { pos: Object.fromEntries(m), docH: document.documentElement.scrollHeight, vh: window.innerHeight }
   })
   /**
    * 🔁 **두 번 잰다 — 첫 방문과 재방문.**
@@ -682,13 +705,35 @@ if (SHIFT) {
     await page.waitForTimeout(SLOW + 2500)
     const b = await snap()
     const moved = [], gone = [], born = []
+    /**
+     * 👁️ **보이는 곳이 밀렸는가** 를 따로 센다 (2026-10-01).
+     *   그전까지는 문서 전체의 이동만 셌는데, 그러면 **화면 밖 푸터가 움직인 것**과
+     *   **읽고 있던 줄이 손가락 밑에서 움직인 것**이 같은 숫자로 보고된다. 둘은 심각도가
+     *   전혀 다르다 — 전자는 아무도 모르고, 후자는 대표가 신고한 바로 그 증상이다.
+     *   기준: 첫 스냅 시점의 y 가 첫 화면(뷰포트) 안이면 '보이는 곳'.
+     *   ⚠️ 스크롤 0 을 가정한다(하네스는 늘 맨 위에서 잰다).
+     */
+    const fold = a.vh || 0
+    let movedVisible = 0
     for (const [k, y] of Object.entries(a.pos)) {
       if (!(k in b.pos)) { gone.push(k); continue }
       const d = b.pos[k] - y
-      if (Math.abs(d) > 8) moved.push(`${k} ${y}→${b.pos[k]} (${d > 0 ? '+' : ''}${d})`)
+      if (Math.abs(d) > 8) {
+        const vis = y < fold
+        if (vis) movedVisible++
+        moved.push(`${vis ? '👁️ ' : '   '}${k} ${y}→${b.pos[k]} (${d > 0 ? '+' : ''}${d})`)
+      }
     }
     for (const k of Object.keys(b.pos)) if (!(k in a.pos)) born.push(k)
-    console.log(`📐 밀림 측정 [${ROUTE}] ${label} ${moved.length ? '🔴 밀림 있음' : '🟢 안 밀림'} — 이동 ${moved.length} · 사라짐 ${gone.length} · 생김 ${born.length} · 문서높이 ${a.docH}→${b.docH}px`)
+    const verdict = movedVisible ? '🔴 보이는 곳이 밀림' : moved.length ? '🟡 화면 밖만 밀림' : '🟢 안 밀림'
+    console.log(`📐 밀림 측정 [${ROUTE}] ${label} ${verdict} — 이동 ${moved.length}(보이는 곳 ${movedVisible}) · 사라짐 ${gone.length} · 생김 ${born.length} · 문서높이 ${a.docH}→${b.docH}px`)
+    /**
+     * 🤖 기계가 읽는 한 줄. `check-layout-shift.mjs` 가 이 하네스를 **그대로 불러서** 판정한다 —
+     *   측정기를 두 벌 만들면 둘이 갈리고, 그때 가드 쪽이 조용히 헛돌게 된다(이 레포의 단골 사고).
+     *   ⚠️ 형식을 바꾸면 그 가드가 **0건을 읽고 통과**할 수 있다. 그래서 가드는 줄을 **못 찾으면
+     *      실패**하도록 돼 있다(그쪽 `parse()` 주석 참조).
+     */
+    console.log(`SHIFT_RESULT ${JSON.stringify({ route: ROUTE, label, moved: moved.length, movedVisible, gone: gone.length, born: born.length, docH: [a.docH, b.docH], top: moved.slice(0, 6) })}`)
     for (const l of moved.slice(0, 10)) console.log(`   ↕ ${l}`)
     if (gone.length) console.log(`   ✂️ 사라짐: ${JSON.stringify(gone.slice(0, 8))}`)
     if (born.length) console.log(`   ✚ 생김: ${JSON.stringify(born.slice(0, 6))}`)

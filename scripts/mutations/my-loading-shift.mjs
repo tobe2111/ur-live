@@ -22,18 +22,21 @@ export default [
   {
     name: '밀림 — 로딩 중 자리를 안 비운다(종전 동작으로 환원)',
     file: LAZY,
-    find: '    return isSeller ? <Reserve /> : null',
+    // 🔁 2026-10-01 재조준: 로딩 분기가 `<Reserve/>` 에서 **껍데기 렌더**로 바뀌었다(10-01 처방).
+    //    불변식은 그대로 — **셀러에게 로딩 중 자리를 비워 두지 않는다.**
+    find: '    if (!isSeller) return null',
     replace: '    return null',
     test: T_SHIFT,
     why:
-      '2026-09-30 이전이 정확히 이 줄이었고, 그 파일의 주석은 그게 *밀림을 막는 처방*이라고 ' +
+      '2026-09-30 이전이 정확히 이 모양이었고, 그 파일의 주석은 그게 *밀림을 막는 처방*이라고 ' +
       '적어 두기까지 했다. 실측은 반대였다 — 비워 두면 구역 **전체 높이**(+336px)만큼 밀린다.',
   },
   {
     name: '밀림 — 청크가 오는 동안 자리를 놓는다(Suspense 폴백 null)',
     file: LAZY,
-    find: '    <Suspense fallback={<Reserve />}>',
-    replace: '    <Suspense fallback={null}>',
+    // 🔁 2026-10-01: 같은 모양이 둘이 됐다(로딩 분기에도 Suspense 가 생겼다) — 앞 줄까지 묶어 유일하게.
+    find: '  // 청크가 아직 안 왔으면 같은 높이를 계속 붙들고 있는다(여기서 비우면 다시 밀린다).\n  return (\n    <Suspense fallback={<Reserve />}>',
+    replace: '  // 청크가 아직 안 왔으면 같은 높이를 계속 붙들고 있는다(여기서 비우면 다시 밀린다).\n  return (\n    <Suspense fallback={null}>',
     test: T_SHIFT,
     why:
       '데이터가 와도 셀러 청크는 아직 네트워크에 있다. 여기서 놓으면 예약이 한 프레임 접혔다 ' +

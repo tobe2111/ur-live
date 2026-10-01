@@ -179,8 +179,13 @@ describe('단계 2 — 일감은 좌석에 앉아야 그리고, 보내기 전에
   })
 
   it('일감 블록은 seated 일 때만 그린다', () => {
+    /**
+     * 🔁 2026-10-01 재조준: 기다리는 동안 껍데기를 그리게 되면서 분기가
+     *   `{(awaiting ? seatId != null : seated) ? (` 로 바뀌었다. **불변식은 그대로다** —
+     *   데이터가 온 뒤(`!awaiting`)의 판정은 여전히 `seated` 하나이고, 그 가지만 일감을 그린다.
+     */
     const code = stripComments(SECTION)
-    const at = code.indexOf('{seated ? (')
+    const at = code.indexOf(': seated) ? (')
     expect(at, 'seated 분기가 없으면 좌석 없는 사람에게 빈 목록을 그린다').toBeGreaterThan(0)
     const branch = code.slice(at, at + 600)
     expect(branch).toContain('<PendingOrders')
@@ -280,7 +285,13 @@ describe('오늘 카드 경로는 보기만 — 돈이 움직이지 않는다', 
   })
 
   it('불러오기 실패를 0 으로 위장하지 않는다', () => {
+    /**
+     * 🔁 2026-10-01 재조준: 한 줄이 셋으로 갈렸다(로딩은 이제 껍데기를 그린다).
+     *   지키려던 것은 **실패를 그리지 않는다** 하나이고 그건 그대로 살아 있다.
+     *   ⚠️ 로딩을 여기에 다시 묶지 말 것 — 그러면 첫 방문이 다시 404px 밀린다.
+     */
     const code = stripComments(SECTION)
-    expect(code).toMatch(/if \(loading \|\| failed \|\| !store\) return null/)
+    expect(code, '실패를 그리면 "오늘 매출 0원" 이라는 거짓말이 된다').toMatch(/if \(failed\) return null/)
+    expect(code, '좌석 0곳으로 확정되면 그리지 않는다').toMatch(/if \(!loading && !store\) return null/)
   })
 })

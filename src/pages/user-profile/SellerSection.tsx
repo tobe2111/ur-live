@@ -183,7 +183,9 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
   const rootRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
     const el = rootRef.current
-    if (!el) return
+    // ⏳ 껍데기(awaiting)의 높이는 적지 않는다 — 상태 안내문(`note`)이 빠져 있어 진짜보다 짧다.
+    //   짧은 값을 적어 두면 다음 방문의 예약이 모자라 그만큼 또 밀린다.
+    if (!el || !store) return
     const id = requestAnimationFrame(() => writeReservedHeight(el.offsetHeight))
     return () => cancelAnimationFrame(id)
   }, [stores.length, store?.seller_id, store?.status])
@@ -205,14 +207,48 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
     setTool(which)
   }
 
-  // 좌석 0곳(= 셀러가 아님) · 첫 로드 중 · 실패 → 아무것도 그리지 않는다.
+  // 좌석 0곳(= 셀러가 아님) · 실패 → 아무것도 그리지 않는다.
   //   실패를 0 으로 그리면 "오늘 매출 0원" 이라는 거짓말이 된다(머니 표면 룰).
-  if (loading || failed || !store) return null
+  if (failed) return null
+  if (!loading && !store) return null
 
-  const note = store.status ? STATUS_NOTE[store.status] : undefined
+  /**
+   * ⏳ **기다리는 중에도 같은 자리를 차지한다** (2026-10-01 — 대표 *"저런 로딩이 발생되는 근본적인
+   *   원인을 모두 없애줘"*).
+   *
+   * 09-30 의 처방은 *지난 렌더에서 잰 높이만큼 빈 칸*을 두는 것이었고, 그건 **재방문만** 고쳤다.
+   * 하네스 전수 측정(2026-10-01, 19개 화면)에서 소비자 화면 중 **보이는 곳이 밀리는 건 여기 하나**였고,
+   * 첫 방문은 여전히 `이동 29(보이는 곳 15) · +404px` 였다 — 대표가 찍은 바로 그 그림이다.
+   *
+   * ⇒ 빈 칸 대신 **이 구역의 진짜 마크업**을 그리고 **숫자만 비운다**(2026-09-16 `DealBalanceCard`
+   *   가 잔액에 쓴 그 처방). 높이가 같은 CSS 에서 나오므로 디자인이 바뀌어도 저절로 따라온다 —
+   *   마크업을 복제하지 않았으니 두 벌이 갈릴 자리도 없다.
+   *
+   * ⚠️ **0 을 적지 않는다.** 모르는 값과 0 은 다르고, 잠깐이라도 `0원` 을 보여 주면 매출이 있는
+   *   사장님에게 "오늘 0원" 이라고 말하는 셈이다(머니 표면 룰). `invisible` 로 자리만 남긴다.
+   * ⚠️ 기다리는 동안 **눌러도 아무 일도 안 일어난다** — 좌석·시트가 전부 `store` 를 요구한다.
+   *   그래서 `pointer-events-none` 으로 아예 안 눌리게 한다(말없이 삼키는 탭을 만들지 않는다).
+   *   흐리게(`opacity`) 하지는 않는다 — 도착 순간 화면이 또 한 번 바뀐다.
+   *
+   * ## 이 처방이 **못** 하는 것
+   * - 상태 안내문(`note`, 승인 대기·반려)은 상태를 알아야 그릴 수 있어 껍데기에 없다. 그 매장은
+   *   도착 순간 그 줄만큼(≈2줄) 밀린다 — 404 가 40 이 된 것이지 0 이 된 것은 아니다.
+   * - 청크(`lazy`)가 오기 전 **첫 100ms 안팎**은 여전히 `SellerSectionLazy` 의 예약(첫 방문엔 0)이다.
+   *   그 구간은 사람이 아직 읽기 전이고, 하네스의 첫 스냅(750ms)보다도 앞이라 측정에 안 잡힌다.
+   *   **"첫 방문 0 밀림" 이라고 단정하지 말 것** — 측정이 못 본 구간이 있다.
+   */
+  const awaiting = !store
+  /** 모르는 값의 자리. 글자는 있고 안 보인다 — 높이가 진짜와 같아진다. */
+  const blank = (v: string) => (awaiting ? <span className="invisible">{v}</span> : v)
+
+  const note = store?.status ? STATUS_NOTE[store.status] : undefined
 
   return (
-    <div ref={rootRef} className="ur-content-medium lg:px-4 pt-4">
+    <div
+      ref={rootRef}
+      aria-busy={awaiting || undefined}
+      className={`ur-content-medium lg:px-4 pt-4${awaiting ? ' pointer-events-none' : ''}`}
+    >
       {/* 🔵 2026-09-29 (대표 확정 **안 C**) — **구역 띠를 걷었다.**
           09-28 의 띠(`w-[3px] bg-brand`)는 *"제목이 붙은 구역이 파는 쪽"* 이라는 이름 E 규칙을 구역
           전체로 늘린 표시였다. 안 C 는 **모든 구역**에 24px 제목을 주므로 그 규칙이 성립하지 않고,
@@ -228,7 +264,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
             2026-09-30 오전처럼 이 제목만 옛 값으로 남는다(시험이 대조한다). */}
         <h2 className={`leading-tight ${SECTION_TITLE_CLS}`}>내 가게</h2>
         <div className="flex-1" />
-        {stores.length >= 2 ? (
+        {!awaiting && stores.length >= 2 ? (
           <button
             type="button"
             onClick={() => setSheetOpen(true)}
@@ -244,8 +280,8 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           </button>
         ) : (
           <span className="inline-flex items-center gap-1 max-w-[60%] text-[12px] font-semibold text-gray-500 dark:text-gray-400">
-            <UrShopIcon className="w-3 h-3 shrink-0" aria-hidden="true" />
-            <span className="truncate">{store.name}</span>
+            <UrShopIcon className={`w-3 h-3 shrink-0${awaiting ? ' invisible' : ''}`} aria-hidden="true" />
+            <span className="truncate">{blank('가게 이름')}</span>
           </span>
         )}
       </div>
@@ -277,17 +313,17 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           >
             <div className="flex items-baseline justify-between gap-2">
               <span className="text-[12px] font-bold text-gray-400">오늘</span>
-              <span className="text-[12px] text-gray-400 tabular-nums">{todayLabelKST()}</span>
+              <span className="text-[12px] text-gray-400 tabular-nums">{blank(todayLabelKST())}</span>
             </div>
             {/* 🖥️ `whitespace-nowrap`: 좁은 칸에서 `412,000` 과 `원` 이 두 줄로 갈라지면 안 된다. */}
             <p className="mt-2 text-[28px] font-extrabold tabular-nums leading-none whitespace-nowrap text-gray-900 dark:text-white">
-              {formatNumber(store.today_revenue)}
-              <span className="text-[15px] font-bold text-gray-500 dark:text-gray-400 ml-1">원</span>
+              {blank(formatNumber(store?.today_revenue))}
+              <span className={`text-[15px] font-bold text-gray-500 dark:text-gray-400 ml-1${awaiting ? ' invisible' : ''}`}>원</span>
             </p>
             <div className="flex items-center justify-between gap-2 mt-2">
               <p className="text-[13px] text-gray-500 dark:text-gray-400 min-w-0 truncate">
-                주문 {formatNumber(store.today_orders)}건
-                {store.pending > 0 && <> · 확인 대기 {formatNumber(store.pending)}건</>}
+                {blank(`주문 ${formatNumber(store?.today_orders)}건`)}
+                {!awaiting && store.pending > 0 && <> · 확인 대기 {formatNumber(store.pending)}건</>}
               </p>
               <span className="shrink-0 flex items-center gap-1 text-[13px] text-gray-500 dark:text-gray-400">
                 매출 분석
@@ -373,7 +409,12 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           ⚠️ **마이를 여는 것만으로 좌석을 발급하지 않는다**(`startDashboardSession` 이 단일 세션을
           갱신해 다른 기기의 대시보드를 끊는다). 사람이 펼치는 순간에만 앉는다 —
           오늘 숫자는 좌석 없이도 보이므로, 앉지 않은 사람도 "볼 것" 은 다 본다. */}
-      {seated ? (
+      {/* 🪑 기다리는 중엔 **좌석 토큰**으로 가른다 — `seatId` 는 동기라 첫 프레임에 이미 안다.
+          ⚠️ 이 줄이 없으면 껍데기가 늘 '주문 확인' 버튼(60px)을 그리고, 좌석에 앉은 사람은
+             도착 순간 그 60px 이 사라지며 손님 줄이 위로 당겨진다(2026-10-01 실측 −60px —
+             빈 칸 예약으로 이미 0 이던 **재방문까지** 나빠졌다). 측정이 그걸 잡았다. */}
+      {(awaiting ? seatId != null : seated) ? (
+        awaiting ? null : (
         <>
           <PendingOrders work={work} onDone={onWorkDone} />
           {work.failed && (
@@ -382,6 +423,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
             </p>
           )}
         </>
+        )
       ) : (
         <button
           type="button"
@@ -390,7 +432,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           className="w-full flex items-center gap-2 mt-3 px-4 h-12 rounded-2xl bg-surface shadow-lift text-left active:opacity-70 disabled:opacity-50"
         >
           <span className="flex-1 min-w-0 text-[15px] font-semibold text-gray-900 dark:text-white truncate">
-            주문 확인{store.pending > 0 ? ` ${formatNumber(store.pending)}건` : ''}
+            {awaiting ? <span className="invisible">주문 확인</span> : `주문 확인${store.pending > 0 ? ` ${formatNumber(store.pending)}건` : ''}`}
           </span>
           {entering
             ? <Loader2 className="w-4 h-4 shrink-0 animate-spin text-gray-400" aria-hidden="true" />
@@ -400,6 +442,9 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
 
       {/* ⏳ 시트는 전부 lazy 다 — 폴백이 `null` 인 이유는 머리말에 적었다(누른 직후 깜빡임 방지).
           시트 자신이 각자 로딩 표시를 갖고 있으므로 여기서 또 그리면 표시가 두 겹이 된다. */}
+      {/* 🪟 판매 시트는 **가게를 알 때만** 존재한다 — 기다리는 중(껍데기)엔 `store` 가 null 이고,
+          그 사이에는 열 수 있는 길도 없다(`pointer-events-none` + 모든 핸들러가 `!store` 가드). */}
+      {store && (
       <Suspense fallback={null}>
       {/* 🧾 주문 — 확인 전이는 `useSellerWork` 것을 쓴다(전이 규칙이 두 벌이 되지 않게).
           환불은 시트 안에서 부르되 **별도 시트**로 연다(사유를 적어야 하는 일이라 섞지 않는다). */}
@@ -504,6 +549,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
         <StoreSwitchSheet currentSellerId={store.seller_id} onClose={() => setSheetOpen(false)} />
       )}
       </Suspense>
+      )}
 
       {/* ─ 구역 경계 (2026-09-28 이름 E) — 여기까지가 **파는 쪽**이고 아래는 손님 쪽이다.
           선을 이 컴포넌트 안에 두는 이유: 이 섹션은 좌석이 없거나 조회가 실패하면 `null` 을 돌려주는데,

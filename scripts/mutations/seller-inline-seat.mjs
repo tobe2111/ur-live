@@ -64,8 +64,10 @@ export default [
   {
     name: '🪑 불러오기 실패를 0원으로 위장한다',
     file: 'src/pages/user-profile/SellerSection.tsx',
-    find: '  if (loading || failed || !store) return null',
-    replace: '  if (loading || !store) return null',
+    // 🔁 2026-10-01 재조준: 그 한 줄이 셋으로 갈렸다(로딩 중엔 껍데기를 그리게 되면서).
+    //    지키려던 불변식은 그대로다 — **실패는 그리지 않는다**(0원으로 위장하지 않는다).
+    find: '  if (failed) return null',
+    replace: '  if (false) return null',
     test: TEST,
     why: '"오늘 매출 0원" 은 실패와 구분되지 않는다 — 사장님이 장사가 안 된 줄 안다(머니 표면 룰).',
   },
