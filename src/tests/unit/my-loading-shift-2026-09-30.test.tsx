@@ -69,7 +69,15 @@ describe('① 로딩 중 자리 예약', () => {
    *   (렌더로는 못 잰다 — 청크가 즉시 해석돼 폴백 프레임이 안 생긴다. 배선으로 고정한다.)
    */
   it('🔴 청크가 오는 동안에도 같은 높이를 붙들고 있다', () => {
-    expect(LAZY).toContain('<Suspense fallback={<Reserve />}>')
+    /**
+     * 🔁 2026-10-01 재조준 — **같은 모양이 둘이 됐다.** 로딩 분기도 `SellerSection` 을 렌더하게
+     *   되면서 `Suspense` 가 두 곳이 됐고, 그러자 `toContain` 은 한쪽 폴백을 `null` 로 꺼도
+     *   **다른 쪽 문자열 때문에 통과**했다(주입이 잡았다). ⇒ 개수를 센다.
+     *   둘 중 어느 쪽이든 폴백이 비면 그 프레임에 예약이 접혀 다시 밀린다.
+     */
+    const n = LAZY.split('<Suspense fallback={<Reserve />}>').length - 1
+    expect(n, '청크 대기 폴백이 예약이 아니다 — 그 프레임에 자리가 접힌다').toBe(2)
+    expect(LAZY).not.toContain('<Suspense fallback={null}>')
   })
 
   it('좌석이 0곳으로 확정되면 예약이 사라진다 (빈 칸이 영원히 남지 않는다)', () => {

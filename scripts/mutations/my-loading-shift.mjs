@@ -34,8 +34,9 @@ export default [
   {
     name: '밀림 — 청크가 오는 동안 자리를 놓는다(Suspense 폴백 null)',
     file: LAZY,
-    find: '    <Suspense fallback={<Reserve />}>',
-    replace: '    <Suspense fallback={null}>',
+    // 🔁 2026-10-01: 같은 모양이 둘이 됐다(로딩 분기에도 Suspense 가 생겼다) — 앞 줄까지 묶어 유일하게.
+    find: '  // 청크가 아직 안 왔으면 같은 높이를 계속 붙들고 있는다(여기서 비우면 다시 밀린다).\n  return (\n    <Suspense fallback={<Reserve />}>',
+    replace: '  // 청크가 아직 안 왔으면 같은 높이를 계속 붙들고 있는다(여기서 비우면 다시 밀린다).\n  return (\n    <Suspense fallback={null}>',
     test: T_SHIFT,
     why:
       '데이터가 와도 셀러 청크는 아직 네트워크에 있다. 여기서 놓으면 예약이 한 프레임 접혔다 ' +
