@@ -78,6 +78,29 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
     }
   }
 
+  // ↩️ 2026-10-01 (대표 "환불요청 버튼만 어디 따로"): 카드에 있던 '사용 전이라면 환불 요청' 을 이 화면으로.
+  //   7일 안이면 위의 즉시 취소(돈이 바로 돌아간다), 그 뒤엔 **접수만** 한다 — 승인·환불 실행은 운영자(머니 경로 밖).
+  const [refundRequested, setRefundRequested] = useState(false)
+  const canRequestRefund = voucher.status === 'unused' && !canSelfCancel && !!voucher.order_id
+  async function handleRefundRequest() {
+    if (cancelling || refundRequested || !voucher.order_id) return
+    const reason = window.prompt(t('voucher.refundReasonPrompt', { defaultValue: '환불 요청 사유를 입력해주세요 (예: 방문 계획 취소)' }))
+    if (!reason || !reason.trim()) return
+    setCancelling(true)
+    try {
+      const r = await api.post('/api/returns/request', { order_id: voucher.order_id, reason: '이용권 환불 요청', detail_reason: reason.trim().slice(0, 500) })
+      if (r.data?.success) {
+        setRefundRequested(true)
+        toast.success(t('voucher.refundRequested', { defaultValue: '환불 요청이 접수되었어요. 확인 후 처리해 드릴게요.' }))
+      } else toast.error(r.data?.error || t('voucher.refundFailed', { defaultValue: '환불 요청에 실패했어요' }))
+    } catch (e) {
+      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
+      toast.error(msg || t('voucher.refundFailed', { defaultValue: '환불 요청에 실패했어요' }))
+    } finally {
+      setCancelling(false)
+    }
+  }
+
   // 🛡️ 2026-05-16: 실시간 status 폴링 (5초마다) — 사장님이 스캔하면 즉시 "사용 완료" 표시
   //   백엔드 atomic CAS 로 재사용 자체는 차단되어 있음. UI 가 늦게 인지하는 것만 해결.
   useEffect(() => {
@@ -375,7 +398,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
               >
                 {t('voucher.useNow', { defaultValue: '현장에서 사용하기' })}
               </button>
-              <div className={`mt-2 grid gap-2 ${canSelfCancel ? 'grid-cols-2' : 'grid-cols-1'}`}>
+              <div className={`mt-2 grid gap-2 ${canSelfCancel || canRequestRefund ? 'grid-cols-2' : 'grid-cols-1'}`}>
                 <button onClick={shareVoucher}
                   className="py-3 rounded-xl border border-rule-strong text-gray-900 dark:text-white text-[13px] font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform">
                   <Share2 className="w-4 h-4" /> {t('voucher.share')}
@@ -384,6 +407,12 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
                   <button onClick={handleSelfCancel} disabled={cancelling}
                     className="py-3 rounded-xl border border-rule-strong text-gray-500 dark:text-gray-400 text-[13px] font-bold disabled:opacity-50 active:scale-[0.98] transition-transform">
                     {cancelling ? t('voucher.cancelling', { defaultValue: '취소 처리 중…' }) : t('voucher.cancelRefund', { defaultValue: '구매 취소·환불' })}
+                  </button>
+                )}
+                {canRequestRefund && (
+                  <button onClick={handleRefundRequest} disabled={cancelling || refundRequested}
+                    className="py-3 rounded-xl border border-rule-strong text-gray-500 dark:text-gray-400 text-[13px] font-bold disabled:opacity-50 active:scale-[0.98] transition-transform">
+                    {refundRequested ? t('voucher.refundRequestedShort', { defaultValue: '환불 요청 접수됨' }) : t('voucher.requestRefundShort', { defaultValue: '환불 요청' })}
                   </button>
                 )}
               </div>

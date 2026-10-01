@@ -225,3 +225,35 @@ describe('🔴 반품 접수 자격 — 픽업은 DELIVERED 를 안 거친다', 
     expect(canRequestReturn({ status: 'PAID', isPickup: true, basisIso: '내일', nowMs: now }).ok).toBe(true)
   })
 })
+
+describe('🎟️ 이용권 환불 요청 접수 (2026-10-01 — "배송완료된 주문만" 오판 수리)', () => {
+  const now = Date.parse('2026-10-01T00:00:00Z')
+  it('결제 완료 + 미사용 이용권이면 접수 — 배송 게이트에 안 걸린다', () => {
+    for (const st of ['PAID', 'DONE']) {
+      const r = canRequestReturn({ status: st, isPickup: false, nowMs: now, voucher: { total: 1, unused: 1 } })
+      expect(r.ok).toBe(true)
+    }
+  })
+  it('기간 창이 없다 — 결제 오래 전이어도 미사용이면 접수', () => {
+    expect(canRequestReturn({ status: 'PAID', isPickup: false, basisIso: '2025-01-01', nowMs: now, voucher: { total: 1, unused: 1 } }).ok).toBe(true)
+  })
+  it('🔴 다 쓴 이용권은 거부', () => {
+    const r = canRequestReturn({ status: 'PAID', isPickup: false, nowMs: now, voucher: { total: 2, unused: 0 } })
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error).not.toContain('배송')
+  })
+  it('🔴 결제 전 이용권 주문은 거부(fail-closed)', () => {
+    for (const st of ['PENDING', 'FAILED', 'CANCELLED', 'REFUNDED']) {
+      expect(canRequestReturn({ status: st, isPickup: false, nowMs: now, voucher: { total: 1, unused: 1 } }).ok).toBe(false)
+    }
+  })
+  it('이용권 0장이면 종전 배송 판정 그대로', () => {
+    expect(canRequestReturn({ status: 'PAID', isPickup: false, nowMs: now, voucher: { total: 0, unused: 0 } }).ok).toBe(false)
+  })
+  it('배선 — 라우트가 vouchers.order_id 로 세서 넘긴다', async () => {
+    const fs = await import('node:fs')
+    const src = fs.readFileSync('src/features/returns/api/returns.routes.ts', 'utf8')
+    expect(src).toMatch(/FROM vouchers WHERE order_id = \?/)
+    expect(src).toMatch(/nowMs: Date\.now\(\), voucher,/)
+  })
+})

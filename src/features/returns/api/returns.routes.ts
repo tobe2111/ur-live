@@ -137,8 +137,16 @@ returnsRoutes.post('/request', rateLimit({ action: 'return_request', max: 10, wi
   const basisIso = isPickup
     ? (pickups.map((p) => p.date).filter(Boolean).sort()[0] ?? null)
     : (order.delivered_at || null);
+  // 🎟️ 2026-10-01 이용권 주문 판정 — `vouchers.order_id` 로 센다(카테고리 추측 금지, 발급된 이용권이 사실).
+  //   조회 실패면 undefined → 종전 판정(배송/픽업) 그대로.
+  const vRow = await DB.prepare(
+    "SELECT COUNT(*) AS total, SUM(CASE WHEN status = 'unused' THEN 1 ELSE 0 END) AS unused FROM vouchers WHERE order_id = ?"
+  ).bind(order.id).first<{ total: number | null; unused: number | null }>().catch(() => null);
+  const voucher = vRow && Number(vRow.total) > 0
+    ? { total: Number(vRow.total), unused: Number(vRow.unused) || 0 }
+    : undefined;
   const elig = canRequestReturn({
-    status: String(order.status || ''), isPickup, basisIso, nowMs: Date.now(),
+    status: String(order.status || ''), isPickup, basisIso, nowMs: Date.now(), voucher,
   });
   if (!elig.ok) return c.json({ success: false, error: elig.error }, 400);
 

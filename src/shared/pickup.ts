@@ -132,11 +132,29 @@ export interface ReturnEligibilityInput {
   nowMs: number
   /** 허용 일수(기본 7). */
   windowDays?: number
+  /**
+   * 🎟️ 2026-10-01 이용권 주문이면 그 주문의 이용권 개수. 이용권도 `DELIVERED` 를 거치지 않는다 —
+   *   결제(`PAID`/`DONE`) 후 매장에서 QR 로 소각될 뿐이라, 이 값 없이 판정하면 배송 게이트에 걸려
+   *   *"배송완료된 주문만…"* 이 뜬다(대표 신고 — 미사용 이용권 환불 요청이 막힘).
+   */
+  voucher?: { total: number; unused: number }
 }
 
 export function canRequestReturn(i: ReturnEligibilityInput): { ok: true } | { ok: false; error: string } {
   const st = String(i.status || '').toUpperCase()
   const days = i.windowDays ?? 7
+
+  // 🎟️ 이용권: 결제 완료 + **아직 안 쓴 이용권이 있어야** 접수한다. 기간 창은 없다 —
+  //   사용 기한 안의 미사용 이용권이 기준이고(창 7일은 배송 반품의 규칙), 판단은 운영자가 한다.
+  if (i.voucher && i.voucher.total > 0) {
+    if (st !== 'PAID' && st !== 'DONE') {
+      return { ok: false, error: '결제가 완료된 이용권만 환불 요청이 가능합니다' }
+    }
+    if (i.voucher.unused <= 0) {
+      return { ok: false, error: '이미 사용했거나 환불된 이용권은 환불 요청할 수 없습니다' }
+    }
+    return { ok: true }
+  }
 
   if (i.isPickup) {
     // 픽업: 결제가 끝난 주문이면 접수한다. 아직 안 찾아갔어도 문제 제기는 할 수 있어야 한다.
