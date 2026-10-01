@@ -16,6 +16,9 @@ import type { Env } from '../types/env'
 import { logInfo, logError } from '../utils/logger'
 import { isPayoutEligibleSellerStatus } from '../../shared/seller-status'
 import { resolvePayoutHold } from '../utils/payout-hold'
+// 💸 2026-10-01 (결재 voucher-credit-double-rail): `merchant:N` 과 `seller:N` 은 **같은 가게**다.
+//   계정 문자열로 GROUP BY 하면 한 가게에 payout 이 두 개 생긴다(실측 185% 과다지급) — 집계에서 접는다.
+import { canonicalPayee, payoutCreditsSql, payoutPaidSql, payoutPayeeType } from '../utils/payout-account'
 
 // 🔎 2026-07-28: 반환값 추가 — safeCron 이 하트비트에 '무엇을 했나'로 기록한다(#826).
 //   0건이 '이번 주 정산할 게 없었다' 인지 '조용히 실패했다' 인지 구분하려면 실행 사실만으론 부족하다.
@@ -49,19 +52,7 @@ export async function handlePayoutsGenerate(env: Env): Promise<{ created: number
     //     유보가 마지막 LIKE 에만 걸리고 나머지 계정은 통째로 샌다. OR 만 있을 땐 괄호가 무해하므로
     //     유보 0(빈 문자열)이어도 종전과 결과가 같다.
     const hold = await resolvePayoutHold(DB)
-    const credits = await DB.prepare(`
-      SELECT account, SUM(net) as total FROM (
-        SELECT credit_account AS account, amount - COALESCE(fee_amount, 0) AS net
-          FROM ledger_entries
-         WHERE (credit_account LIKE 'merchant:%' OR credit_account LIKE 'seller:%' OR credit_account LIKE 'agency:%' OR credit_account LIKE 'user:%')
-           ${hold.sql}
-        UNION ALL
-        SELECT debit_account AS account, -amount AS net
-          FROM ledger_entries
-         WHERE debit_account LIKE 'merchant:%' OR debit_account LIKE 'seller:%' OR debit_account LIKE 'agency:%' OR debit_account LIKE 'user:%'
-      )
-      GROUP BY account
-    `).all<{ account: string; total: number }>()
+    const credits = await DB.prepare(payoutCreditsSql(hold.sql)).all<{ account: string; total: number }>()
       .then(r => ({ results: (r.results || []).map(x => ({ credit_account: x.account, total: x.total })) }))
       .catch(() => ({ results: [] as Array<{ credit_account: string; total: number }> }))
 
@@ -69,35 +60,33 @@ export async function handlePayoutsGenerate(env: Env): Promise<{ created: number
     // 🛡️ credit 이 전기간 누적이 됐으므로 차감도 전기간 — 'pending' 도 포함해야 직전 run 이 만든
     //   미승인 pending payout 이 다음 주(다른 period) run 에서 같은 외상으로 재생성되는 이중 pending 을 차단.
     //   (rejected/failed/cancelled 는 미차감 → 그 외상은 다음 run 에서 정상 재포착.)
-    const paid = await DB.prepare(`
-      SELECT (payee_type || ':' || payee_id) as account, SUM(amount) as total
-        FROM payouts
-       WHERE status IN ('pending','approved','sent')
-       GROUP BY payee_type, payee_id
-    `).all<{ account: string; total: number }>().catch(() => ({ results: [] as Array<{ account: string; total: number }> }))
+    const paid = await DB.prepare(payoutPaidSql()).all<{ account: string; total: number }>().catch(() => ({ results: [] as Array<{ account: string; total: number }> }))
     const paidMap = new Map((paid.results || []).map(r => [r.account, r.total]))
 
     let created = 0
     for (const c of credits.results || []) {
       const pending = c.total - (paidMap.get(c.credit_account) || 0)
       if (pending < MIN_AMOUNT) continue
-      const [type, id] = c.credit_account.split(':')
-      if (!type || !id) continue
-      // 🔐 2026-09-07: id 는 **숫자여야 한다.** `'seller:null'` 같은 오염 계정은 `id='null'`
-      //   (truthy 문자열)이라 위 가드를 통과해 왔고, 그러면 계좌 없는 **유령 payout** 이
-      //   만들어진다(payee_id='null', account_number=NULL). 실측으로 그런 원장 행이 있었다.
-      //   ⚠️ 근본 수리는 `sellerLedgerAccount()`(ledger.ts)가 애초에 안 쓰게 하는 것이고,
-      //     이건 그 뒤를 받치는 두 번째 방어선이다 — 오염 경로가 하나뿐이라고 믿지 않는다.
-      if (!/^\d+$/.test(id)) continue
+      // 🔐 2026-09-07 / 2026-10-01: 계정 해석은 `canonicalPayee`(SSOT)가 한다. 그 함수가 id 숫자 검사도
+      //   같이 한다 — `'seller:null'` 은 `split(':')` 이 `id='null'`(truthy)을 내므로 가드 없는 호출부를
+      //   통과해 **계좌 없는 유령 payout** 을 만든다(실측으로 그런 원장 행이 있었다). 근본 수리는
+      //   구매 적립이 애초에 그 이름을 안 쓰는 것(`purchaseCreditAccount`)이고 이건 두 번째 방어선이다.
+      const payee = canonicalPayee(c.credit_account)
+      if (!payee) continue
+      const id = payee.id
       // userdeal:N 은 비사업자 딜 적립 audit 전용 → 현금 payout 대상 아님 (위 WHERE 의 user:% 와 구분됨).
-      const payeeType = type === 'merchant' ? 'store_owner' : type
-      if (!['store_owner', 'seller', 'agency', 'user'].includes(payeeType)) continue
+      // 💸 2026-10-01: payee_type 을 **계정 접두어가 아니라 셀러 역할**에서 정한다. 접두어로 정하면
+      //   `merchant:`→store_owner / `seller:`→seller 로 갈려 **같은 가게가 두 payee** 가 됐다(이번 결함).
+      //   접은 뒤엔 접두어가 사라지므로, 매장인지 여부는 `sellers.seller_type` 이 말한다
+      //   (`weekly-metrics-summary` 의 이중레일 경보가 `payee_type='store_owner'` 를 보므로 이 라벨은 살려야 한다).
+      let payeeType: string = payoutPayeeType(payee.kind)
 
       // 계좌 정보 조회
       let accountNumber: string | null = null, accountHolder: string | null = null
       try {
-        if (payeeType === 'store_owner' || payeeType === 'seller') {
-          const row = await DB.prepare('SELECT bank_account, business_name, status FROM sellers WHERE id = ?').bind(id).first<{ bank_account: string | null; business_name: string | null; status: string | null }>()
+        if (payee.kind === 'seller') {
+          const row = await DB.prepare('SELECT bank_account, business_name, status, seller_type FROM sellers WHERE id = ?').bind(id).first<{ bank_account: string | null; business_name: string | null; status: string | null; seller_type: string | null }>()
+          payeeType = payoutPayeeType(payee.kind, row?.seller_type)
           // 🔒 2026-09-20 (승인 게이트 — 좌석을 대기·반려 매장에도 열면서 그 짝): 돈은 **사람이 등록증을
           //   보고 승인한 매장**에만 나간다(`isPayoutEligibleSellerStatus`). 원장 credit 은 그대로 쌓이고
           //   승인되는 순간 다음 run 이 전기간 외상을 잡는다(이 cron 이 전기간 누적을 보므로 잃는 돈 0).
@@ -106,7 +95,7 @@ export async function handlePayoutsGenerate(env: Env): Promise<{ created: number
           if (!isPayoutEligibleSellerStatus(row?.status)) { logInfo(`[payouts-cron] skip unapproved seller ${id} (${row?.status ?? 'null'})`); continue }
           accountNumber = row?.bank_account || null
           accountHolder = row?.business_name || null
-        } else if (payeeType === 'user') {
+        } else if (payee.kind === 'user') {
           // 사업자 유저 영입 commission 현금 정산 (비사업자는 userdeal:N → 여기 안 옴).
           const row = await DB.prepare('SELECT bank_account, account_holder, business_name FROM users WHERE id = ?').bind(id).first<{ bank_account: string | null; account_holder: string | null; business_name: string | null }>()
           accountNumber = row?.bank_account || null

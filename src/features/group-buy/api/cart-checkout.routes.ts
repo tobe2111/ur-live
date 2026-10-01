@@ -24,7 +24,8 @@
 import { Hono } from 'hono'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
-import { recordLedger, sellerLedgerAccount } from '@/worker/utils/ledger'
+import { recordLedger } from '@/worker/utils/ledger'
+import { purchaseCreditAccount } from '@/worker/utils/payout-account' // 💸 2026-10-01 구매 적립은 escrow(이중적립 제거)
 import { resolveUserIdString } from '@/worker/utils/resolve-user-id'
 import { getCommissionRates } from './commission-rates'
 import { getSellerCommissionRate, generateUniqueVoucherCode, applyGroupBuyReferral } from './helpers'
@@ -272,13 +273,16 @@ cartCheckoutRoutes.post('/cart/confirm-toss', rateLimit({ action: 'gb_cart_confi
       })
       const sellerAmount = amount - commissionAmount - influencerAmount - userBonusAmount
       try {
+        // 💸 2026-10-01 (결재 voucher-credit-double-rail): 구매 적립은 escrow — 사용 시점에 매장으로.
+        //   `group-buy.routes.ts` 의 두 자리와 **같은 규칙**이다(SSOT `payout-account.ts`).
+        const purchaseCredit = purchaseCreditAccount(sid)
         await recordLedger(DB, {
           event_type: 'group_buy_join',
           reference_id: orderNumber,
           amount,
           debit_account: `user:${userId}`,
-          credit_account: sellerLedgerAccount(sid),
-          fee_amount: commissionAmount,
+          credit_account: purchaseCredit.account,
+          fee_amount: purchaseCredit.carriesFee ? commissionAmount : 0,
           fee_account: 'platform:commission',
           metadata: { cart: true, order_id: newOrderId, product_ids: mine.map(l => l.productId), payment_method: 'toss' },
         })

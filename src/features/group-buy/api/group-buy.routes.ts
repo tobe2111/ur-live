@@ -13,6 +13,8 @@ import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { auditLog } from '@/worker/middleware/audit-log'
 import { recordLedger, sellerLedgerAccount } from '@/worker/utils/ledger'; import { creditBrokerShare } from '@/worker/utils/broker-share' // 💸 2026-09-19 중개사 몫(게이트 OFF=no-op)
+// 💸 2026-10-01 구매 적립은 매장이 아니라 escrow 로 — 이중적립 제거(결재 voucher-credit-double-rail)
+import { purchaseCreditAccount } from '@/worker/utils/payout-account'
 import { formatKSTDate } from '@/utils/date' // 워커 TZ=UTC — 만료일 안내가 하루 이르던 것 교정
 import { swallow } from '@/worker/utils/swallow'
 import { resolveUserIdString } from '@/worker/utils/resolve-user-id'
@@ -501,13 +503,19 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
 
     // 🛡️ 2026-05-15: Double-entry ledger 기록 (정합성 검증 가능)
     try {
+      // 💸 2026-10-01 (결재 voucher-credit-double-rail · 대표 "최대한 이상적으로 다 해줘"):
+      //   구매 적립은 **매장에 가지 않는다** — 매장 상품은 `platform:escrow` 로 들어가고 손님이
+      //   실제로 쓸 때 `recordVoucherUsedLedger` 가 꺼낸다. 종전엔 여기서 `seller:N` 에 적립하고
+      //   사용 시점에 `merchant:N` 에 또 적립해 **한 장을 두 번 지급**했다(실측 185%).
+      //   플랫폼 상품(판매자 없음)은 사용 시점 분개가 없으므로 종전대로 `platform:revenue` + 수수료 인식.
+      const purchaseCredit = purchaseCreditAccount(product.seller_id)
       await recordLedger(DB, {
         event_type: 'group_buy_join',
         reference_id: orderNumber,
         amount: totalAmount,
         debit_account: `user:${userId}`,                  // 유저 wallet 차감
-        credit_account: sellerLedgerAccount(product.seller_id),    // 셀러 receivable 증가
-        fee_amount: commissionAmount,
+        credit_account: purchaseCredit.account,
+        fee_amount: purchaseCredit.carriesFee ? commissionAmount : 0,
         fee_account: 'platform:commission',
         metadata: { product_id: productId, qty, applied_discount_pct: appliedDiscountPct },
       })
@@ -1350,13 +1358,19 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
         .run().catch(swallow('group-buy:confirm-toss:commission-cols'))
     }
     try {
+      // 💸 2026-10-01 (결재 voucher-credit-double-rail · 대표 "최대한 이상적으로 다 해줘"):
+      //   구매 적립은 **매장에 가지 않는다** — 매장 상품은 `platform:escrow` 로 들어가고 손님이
+      //   실제로 쓸 때 `recordVoucherUsedLedger` 가 꺼낸다. 종전엔 여기서 `seller:N` 에 적립하고
+      //   사용 시점에 `merchant:N` 에 또 적립해 **한 장을 두 번 지급**했다(실측 185%).
+      //   플랫폼 상품(판매자 없음)은 사용 시점 분개가 없으므로 종전대로 `platform:revenue` + 수수료 인식.
+      const purchaseCredit = purchaseCreditAccount(product.seller_id)
       await recordLedger(DB, {
         event_type: 'group_buy_join',
         reference_id: orderNumber,
         amount: expectedAmount,
         debit_account: `user:${userId}`,
-        credit_account: sellerLedgerAccount(product.seller_id),
-        fee_amount: commissionAmount,
+        credit_account: purchaseCredit.account,
+        fee_amount: purchaseCredit.carriesFee ? commissionAmount : 0,
         fee_account: 'platform:commission',
         metadata: { product_id: productId, qty, applied_discount_pct: tierDiscountPct, payment_method: 'toss' },
       })

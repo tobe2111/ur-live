@@ -167,13 +167,20 @@ describe('정산 유보 — 배선', () => {
   const src = (p: string) => stripComments(readFileSync(p, 'utf8'))
 
   it('⑨ cron 이 유보를 해석해 credit WHERE 에만 적용한다 (괄호 포함)', () => {
-    const s = src('src/worker/cron/payouts-generate.ts')
-    expect(s).toMatch(/const hold = await resolvePayoutHold\(DB\)/)
+    // 🎯 2026-10-01 재조준: 집계 문장이 `payout-account.ts payoutCreditsSql(holdSql)` 로 옮겨졌다
+    //   (결재 voucher-credit-double-rail — 가드가 실제 sqlite 에 돌려 금액을 세게 하려고).
+    //   ⇒ 유보를 **해석**하는 곳은 여전히 cron 이고, **쓰는** 곳이 그 모듈이다. 둘 다 본다.
+    const cron = src('src/worker/cron/payouts-generate.ts')
+    expect(cron).toMatch(/const hold = await resolvePayoutHold\(DB\)/)
+    expect(cron, 'cron 이 유보를 집계 문장에 넘기지 않으면 해석해도 의미가 없다')
+      .toMatch(/payoutCreditsSql\(hold\.sql\)/)
+
+    const sql = src('src/worker/utils/payout-account.ts')
     // credit 블록: 괄호로 감싼 LIKE 묶음 바로 뒤에 유보 조각이 온다.
-    expect(s).toMatch(/WHERE \(credit_account LIKE[\s\S]*?\)\s*\n\s*\$\{hold\.sql\}/)
+    expect(sql).toMatch(/WHERE \(credit_account LIKE[\s\S]*?\)\s*\n\s*\$\{holdSql\}/)
     // debit 블록에는 유보가 붙지 않는다(환불은 즉시).
-    const debitBlock = s.slice(s.indexOf('debit_account AS account'))
-    expect(debitBlock).not.toContain('${hold.sql}')
+    const debitBlock = sql.slice(sql.indexOf("canonicalPayeeSql('debit_account')"))
+    expect(debitBlock).not.toContain('${holdSql}')
   })
 
   it('⑩ 어드민 정산대기 화면이 cron 과 같은 함수를 쓴다(값이 갈리면 없는 돈을 승인한다)', () => {

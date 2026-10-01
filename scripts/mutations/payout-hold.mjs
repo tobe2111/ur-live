@@ -7,15 +7,19 @@ const TEST = 'src/tests/unit/payout-hold-2026-09-21.test.ts'
 export default [
   {
     name: '🕙 cron 집계에서 유보 조각이 빠져 적립 즉시 정산 대상이 된다',
-    file: 'src/worker/cron/payouts-generate.ts',
-    find: "LIKE 'user:%')\n           ${hold.sql}",
+    // 🎯 2026-10-01 재조준: 그 집계 문장이 `payout-account.ts payoutCreditsSql()` 로 옮겨졌다
+    //   (가드가 실제 sqlite 에 돌려 판정할 수 있게 — 결재 voucher-credit-double-rail).
+    //   불변식은 그대로: credit WHERE 에 유보 조각이 붙어 있어야 한다.
+    file: 'src/worker/utils/payout-account.ts',
+    find: "LIKE 'user:%')\n           ${holdSql}",
     replace: "LIKE 'user:%')",
     test: TEST,
     why: '유보가 사라지면 토스가 우리에게 입금하기 전에 우리 돈이 먼저 나간다. 에러가 안 나서 아무도 모른다.',
   },
   {
     name: "🕙 cron 의 credit WHERE 괄호가 풀려 유보가 마지막 LIKE 에만 걸린다",
-    file: 'src/worker/cron/payouts-generate.ts',
+    // 🎯 2026-10-01 재조준: 위와 같은 이유로 파일만 바뀌었다(문장은 byte-동일).
+    file: 'src/worker/utils/payout-account.ts',
     find: "WHERE (credit_account LIKE 'merchant:%' OR credit_account LIKE 'seller:%' OR credit_account LIKE 'agency:%' OR credit_account LIKE 'user:%')",
     replace: "WHERE credit_account LIKE 'merchant:%' OR credit_account LIKE 'seller:%' OR credit_account LIKE 'agency:%' OR credit_account LIKE 'user:%'",
     test: TEST,

@@ -21,6 +21,10 @@ import { auditLog } from '../../../worker/middleware/audit-log'
 import type { Env } from '../../../worker/types/env'
 import { markPayoutSent, isTransferable, type PayoutRow } from '../../../worker/utils/payout-sent'
 import { resolvePayoutHold } from '../../../worker/utils/payout-hold'
+// 💸 2026-10-01 (결재 voucher-credit-double-rail): `merchant:N` 과 `seller:N` 은 같은 가게다.
+//   이 화면과 cron 이 **같은 조각**을 써야 한다 — 갈리면 운영자가 화면에서 본 금액과 실제 생성분이 달라진다.
+import { canonicalPayee, canonicalPayeeSql, canonicalPaidPayeeSql, payoutPayeeType } from '@/worker/utils/payout-account'
+
 import { csvEscape } from '../../../worker/utils/csv-safe'
 import { handoverCloseout } from './admin-payouts/handover-closeout'
 
@@ -47,25 +51,25 @@ adminPayoutsRoutes.get('/admin/payouts/pending', requireAdmin(), async (c) => {
     const hold = await resolvePayoutHold(DB)
     const rows = await DB.prepare(`
       WITH cred AS (
-        SELECT credit_account AS account, SUM(amount - COALESCE(fee_amount, 0)) AS c
+        SELECT ${canonicalPayeeSql('credit_account')} AS account, SUM(amount - COALESCE(fee_amount, 0)) AS c
           FROM ledger_entries
          WHERE (credit_account LIKE 'merchant:%' OR credit_account LIKE 'seller:%'
             OR credit_account LIKE 'agency:%' OR credit_account LIKE 'user:%')
            ${hold.sql}
-         GROUP BY credit_account
+         GROUP BY account
       ),
       deb AS (
-        SELECT debit_account AS account, SUM(amount) AS d
+        SELECT ${canonicalPayeeSql('debit_account')} AS account, SUM(amount) AS d
           FROM ledger_entries
          WHERE debit_account LIKE 'merchant:%' OR debit_account LIKE 'seller:%'
             OR debit_account LIKE 'agency:%' OR debit_account LIKE 'user:%'
-         GROUP BY debit_account
+         GROUP BY account
       ),
       paid AS (
-        SELECT (payee_type || ':' || payee_id) AS account, SUM(amount) AS p
+        SELECT ${canonicalPaidPayeeSql('payee_type', 'payee_id')} AS account, SUM(amount) AS p
           FROM payouts
          WHERE status IN ('pending','approved','sent')
-         GROUP BY payee_type, payee_id
+         GROUP BY account
       ),
       accts AS (SELECT account FROM cred UNION SELECT account FROM deb)
       SELECT
@@ -104,40 +108,59 @@ adminPayoutsRoutes.post('/admin/payouts/generate', requireAdmin(), require2FA(),
   }
 
   // 직접 SQL 로 pending 계산
+  // 💸 2026-10-01: 이 수동 생성이 cron 과 **다른 공식**을 쓰고 있었다 — credit 만 더하고
+  //   `fee_amount`(플랫폼 수수료)도 `debit`(환불 역전·커미션 차감)도 빼지 않아 **과다지급**이 된다.
+  //   표시용 집계는 2026-07-01 에 net 으로 고쳐졌는데 이 버튼만 남았다. 같은 공식으로 맞춘다
+  //   (`getLedgerReceivable` · `payouts-generate` 와 동일: (credit − fee) − debit − 이미 payout).
+  //   ⚠️ 기간 창은 credit·debit **양쪽에 대칭으로** 건다 — 한쪽만 걸면 그 기간 밖 차감이 사라진다.
   const pendingRows = await DB.prepare(`
     WITH credits AS (
-      SELECT credit_account, SUM(amount) as total
+      SELECT ${canonicalPayeeSql('credit_account')} as account, SUM(amount - COALESCE(fee_amount, 0)) as total
         FROM ledger_entries
        WHERE (credit_account LIKE 'merchant:%' OR credit_account LIKE 'seller:%' OR credit_account LIKE 'agency:%' OR credit_account LIKE 'user:%')
          AND created_at BETWEEN ? AND ?
-       GROUP BY credit_account
+       GROUP BY account
+    ),
+    debits AS (
+      SELECT ${canonicalPayeeSql('debit_account')} as account, SUM(amount) as total
+        FROM ledger_entries
+       WHERE (debit_account LIKE 'merchant:%' OR debit_account LIKE 'seller:%' OR debit_account LIKE 'agency:%' OR debit_account LIKE 'user:%')
+         AND created_at BETWEEN ? AND ?
+       GROUP BY account
     ),
     paid AS (
-      SELECT (payee_type || ':' || payee_id) as account, SUM(amount) as total
+      SELECT ${canonicalPaidPayeeSql('payee_type', 'payee_id')} as account, SUM(amount) as total
         FROM payouts
        WHERE status IN ('approved','sent')
-       GROUP BY payee_type, payee_id
-    )
-    SELECT c.credit_account as account, c.total - COALESCE(p.total, 0) as pending_amount
-      FROM credits c
-      LEFT JOIN paid p ON p.account = c.credit_account
-     WHERE c.total - COALESCE(p.total, 0) >= ?
-  `).bind(periodStart + ' 00:00:00', periodEnd + ' 23:59:59', minAmount).all<{ account: string; pending_amount: number }>().catch(() => ({ results: [] as Array<{ account: string; pending_amount: number }> }))
+       GROUP BY account
+    ),
+    accts AS (SELECT account FROM credits UNION SELECT account FROM debits)
+    SELECT a.account as account,
+           COALESCE(c.total, 0) - COALESCE(d.total, 0) - COALESCE(p.total, 0) as pending_amount
+      FROM accts a
+      LEFT JOIN credits c ON c.account = a.account
+      LEFT JOIN debits d ON d.account = a.account
+      LEFT JOIN paid p ON p.account = a.account
+     WHERE COALESCE(c.total, 0) - COALESCE(d.total, 0) - COALESCE(p.total, 0) >= ?
+  `).bind(periodStart + ' 00:00:00', periodEnd + ' 23:59:59', periodStart + ' 00:00:00', periodEnd + ' 23:59:59', minAmount).all<{ account: string; pending_amount: number }>().catch(() => ({ results: [] as Array<{ account: string; pending_amount: number }> }))
 
   let created = 0
   for (const r of pendingRows.results || []) {
-    const [type, id] = r.account.split(':')
-    if (!type || !id) continue
-    if (!['merchant', 'seller', 'agency', 'store_owner', 'user'].includes(type)) continue
-    const payeeType = type === 'merchant' ? 'store_owner' : type
+    // 💸 2026-10-01: 계정 해석·payee 접기·id 숫자 검사는 `canonicalPayee`(SSOT) 하나로.
+    //   payee_type 은 접두어가 아니라 **셀러 역할**에서 정한다(cron 과 동일 규칙).
+    const payee = canonicalPayee(r.account)
+    if (!payee) continue
+    const id = payee.id
+    let payeeType: string = payoutPayeeType(payee.kind)
     // 계좌 정보 조회 (sellers / agencies)
     let bankName: string | null = null, accountNumber: string | null = null, accountHolder: string | null = null
     try {
-      if (payeeType === 'store_owner' || payeeType === 'seller') {
-        const row = await DB.prepare('SELECT bank_account, business_name FROM sellers WHERE id = ?').bind(id).first<{ bank_account: string | null; business_name: string | null }>()
+      if (payee.kind === 'seller') {
+        const row = await DB.prepare('SELECT bank_account, business_name, seller_type FROM sellers WHERE id = ?').bind(id).first<{ bank_account: string | null; business_name: string | null; seller_type: string | null }>()
+        payeeType = payoutPayeeType(payee.kind, row?.seller_type)
         accountNumber = row?.bank_account || null
         accountHolder = row?.business_name || null
-      } else if (payeeType === 'agency') {
+      } else if (payee.kind === 'agency') {
         const row = await DB.prepare('SELECT name FROM agencies WHERE id = ?').bind(id).first<{ name: string | null }>()
         accountHolder = row?.name || null
       }

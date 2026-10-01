@@ -10324,9 +10324,13 @@ canvas {
   },
   {
     name: '🏷️ payout 이 숫자 아닌 계정 id 를 다시 통과시킨다',
-    file: 'src/worker/cron/payouts-generate.ts',
-    find: '      if (!/^\\d+$/.test(id)) continue',
-    replace: '',
+    // 🎯 2026-10-01 재조준: 그 검사가 `payout-account.ts canonicalPayee()` 로 옮겨졌다
+    //   (계정 해석을 한 곳에 모은 결과 — 결재 voucher-credit-double-rail). 불변식은 그대로.
+    file: 'src/worker/utils/payout-account.ts',
+    // ⚠️ 그 검사는 `canonicalPayee` 와 `canonicalPaidPayee` **두 곳**에 있다(지급 대상 해석의 두 입구).
+    //   앵커는 유일해야 하므로 `canonicalPayee` 쪽(원장 계정 입구)을 앞 줄까지 포함해 집는다.
+    find: "  const id = account.slice(i + 1)\n  if (!/^\\d+$/.test(id)) return null",
+    replace: '  const id = account.slice(i + 1)',
     test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
     why:
       "'seller:null' 은 split(':') 이 id='null'(truthy 문자열)을 내서 기존 `if (!id) continue` 를 " +

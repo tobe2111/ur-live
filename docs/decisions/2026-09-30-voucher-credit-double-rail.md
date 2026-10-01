@@ -1,6 +1,6 @@
 # 이용권 매출을 매장에 **구매 시점**에 적립하는 지금 방식을 **사용 시점**으로 옮길까?
 
-상태: open
+상태: approved
 등급: C
 역할: finance
 올린 날: 2026-09-30
@@ -131,4 +131,91 @@ seller:14   → 950
 
 ## 결정 (대표가 한 말 그대로)
 
+**2026-10-01 대표 — "최대한 이상적으로 다 해줘."**
+
+⇒ **안 1 채택**(사용 시점 단일화 + 매장 계정 접기). 같은 날 구현했다.
+
+### 🔀 안 1 의 "계정 이름 통일" 을 **리네임이 아니라 접기**로 바꿨다
+
+§⑥ 은 `merchant:N` ↔ `seller:N` 을 "한 이름으로 수렴" 하라고 했다. 착수해서 실측하니
+**그 이름을 읽는 곳이 §⑥ 이 센 5곳보다 많았다**:
+
+| 읽는 곳 | 무엇을 읽나 | 리네임하면 |
+|---|---|---|
+| `seller-analytics.routes.ts:442` | `credit_account = 'merchant:N' AND event_type='voucher_used'` | 셀러 대시보드 **'매출' 카드가 0원**이 된다 |
+| `weekly-metrics-summary.ts:64` | `payouts.payee_type = 'store_owner'` | 정산 **이중레일 경보가 조용히 0을 센다** |
+| `owner-promo.ts:47` · `ledger.ts:441` | `ownerAccount: merchant:{id}`(promo 재원) | 재원 계정이 가리키는 대상이 바뀐다 |
+| `payout-use-gate.ts:12` | *"매장 몫(`merchant:N`)은 사용 시점에만 붙는다"* 는 **의미** | 그 게이트의 전제가 사라진다 |
+
+넷 다 **에러 없이** 틀린 값을 내기 시작한다(이 레포가 반복해 당한 조용한 부재).
+
+⇒ **이름은 그대로 두고 지급 집계에서만 한 payee 로 접었다.** `merchant:` 는 *사용 시점의 매장 몫*
+이라는 뜻을 유지하고, 지급은 "같은 가게에 두 번 보내지 않는다" 만 지킨다. §⑥ 이 요구한 효과
+(*"차감이 제자리를 찾는다"*)는 그대로 달성되고, 읽는 곳 네 군데는 **한 글자도 안 건드렸다.**
+
+### 구현 (SSOT = `src/worker/utils/payout-account.ts`)
+
+| 무엇 | 어디 |
+|---|---|
+| 구매 적립 → `platform:escrow`(매장 상품) / `platform:revenue`(플랫폼 상품) | `purchaseCreditAccount()` · 구매 3자리(딜·카드·장바구니) |
+| 구매 시점 수수료 **미인식**(escrow 는 총액) | `carriesFee` — 사용 시점 3번째 분개가 인식한다 |
+| `merchant:N` ↔ `seller:N` 접기 | `canonicalPayee()` + `canonicalPayeeSql()` |
+| 이미 생성된 payout 도 같은 키로 | `canonicalPaidPayee()` + `canonicalPaidPayeeSql()` |
+| `payee_type` 을 **셀러 역할**에서 | `payoutPayeeType()` — 접두어가 아니다 |
+| 집계 문장 자체를 SSOT 로 | `payoutCreditsSql()` · `payoutPaidSql()` — cron 이 위임 |
+
+**곁가지로 같이 고친 것 둘** (같은 함수를 지나가므로 분리가 더 위험하다):
+1. 🔴 **어드민 '정산 생성' 버튼이 cron 과 다른 공식을 쓰고 있었다** — credit 만 더하고 `fee_amount`도
+   `debit`(환불 역전·커미션 차감)도 빼지 않아 **과다지급**이 된다. 표시용 집계는 2026-07-01 에 net 으로
+   고쳐졌는데 이 버튼만 남아 있었다(그 코드의 주석이 걱정한 *"화면과 생성분이 갈리면 없는 돈을
+   승인한다"* 가 실제로 성립해 있었다). 같은 net 공식으로 맞췄다.
+2. `seller:null` 오염을 **근원에서** 막는다 — 플랫폼 상품의 구매 적립이 더는 그 이름을 만들지 않는다
+   (`payouts-generate` 의 id 숫자 검사는 두 번째 방어선으로 유지).
+
+### 가드 — 문자열이 아니라 **실제 sqlite 로 금액을 센다**
+
+`src/tests/unit/voucher-credit-single-rail-2026-10-01.test.ts` 18건. `node:sqlite` 에 표 둘을 만들고
+**cron 이 실제로 쓰는 문장**을 돌려 행 수와 금액으로 판정한다:
+`매장 지급 900`(종전 구조 재현 시 1,850 — 되돌려-검증이 그걸 고정) · `payee 행 1개` ·
+`차감 접힘 800` · `기존 payout 차감 600` · 플랫폼 상품 미노출 · `seller:null` 미노출.
+주입 **9건 전부 빨간불 확인**(`scripts/mutations/voucher-credit-single-rail.mjs`).
+
+🩸 **주입 러너가 내 가드 하나를 "지키는 척" 이라고 잡았다**: `payee_type` 시험을 *"접두어 삼항이
+없는가"* 라는 **모양**으로 썼더니, 다른 모양의 하드코딩(`kind === 'seller' ? 'store_owner' : …`)을
+주입해도 초록이었다 ⇒ 판정을 순수 함수(`payoutPayeeType`)로 빼고 **동작**을 재도록 교체했다.
+그리고 내 픽스처가 아니라 **내 단언**이 틀린 것도 하나 있었다 — 집계 SQL 은 `debit_account LIKE 'user:%'`
+때문에 **구매자 지갑도 음수로 등장한다**(라이브도 그렇고 cron 은 최소출금액에서 건너뛴다).
+"받을 사람" 을 말할 때는 **양수만** 봐야 한다.
+
+### ⚠️ 라이브 영향 — 지금은 0, 그러나 지금이 유일하게 싼 창이다 (실측 2026-10-01)
+
+```
+payouts 0건 · restaurant_settlements 0건 · vouchers used 0건
+ledger_entries 3행:  group_buy_join seller:null 1800(fee 90) · supplier_wholesale supplier:3 10000 · group_buy_join seller:14 1000(fee 50)
+```
+⇒ **지급이 한 번도 일어난 적이 없다.** 이 변경으로 **소급되는 돈은 없다.**
+
+🔴 단 **이미 적힌 `seller:14` 1,000원(순 950)은 남는다** — 그건 한 번도 안 쓴 무기한 이용권
+(id=2 `UR-LUBA-RCP5`)의 구매 적립이고, 최소출금액 10,000원을 넘는 순간 나간다. 지금 잔액이
+그보다 작아 당장 나가지는 않지만, **다음 판매가 쌓이면 넘는다.** 그 한 행은 코드가 아니라
+어드민에서 상계해야 한다(세션은 프로덕션 D1 을 쓰지 않는다 — CLAUDE.md).
+⇒ **대표 액션 1건**: 이용권 id=2 가 사용되기 전에 그 950원을 지급 대상에서 뺄지 결정.
+   (쓰면 사용 시점 적립이 또 붙어 그 한 장은 여전히 두 번 적립된 상태가 된다.)
+
+### E4 판정 (첫 이용권 사용 뒤 — 다음 세션이 이걸 확인한다)
+
+```sql
+-- 한 가게에 payee 행이 하나인가
+SELECT payee_type, payee_id, amount FROM payouts ORDER BY id;
+-- 구매 적립이 escrow 로 갔는가(매장 계정이 아니라)
+SELECT credit_account, amount, fee_amount FROM ledger_entries WHERE event_type='group_buy_join' ORDER BY id DESC LIMIT 3;
+-- 사용 시점 세 분개가 escrow 를 비웠는가
+SELECT credit_account, amount FROM ledger_entries WHERE event_type='voucher_used' ORDER BY id;
+```
+기대: `group_buy_join` 의 credit 이 `platform:escrow`(매장 상품) · `voucher_used` 가
+`merchant:N`/`platform:revenue` · payouts 에 그 가게 행이 **하나**.
+
 ## 반영 커밋
+
+- 2026-10-01 신규 SSOT `payout-account.ts` + 구매 3자리 + `payouts-generate` + 어드민 집계 2곳
+  + 가드 18건 + 주입 9건(전부 빨간불 확인)
