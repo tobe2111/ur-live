@@ -57,17 +57,10 @@ import { LIST_PLATE_CLS, SECTION_TITLE_CLS, ListRow as ToolRow } from './list-gr
  * 배경 스피너를 띄우지 않는다(누른 직후 화면이 깜빡이는 것보다 낫다).
  */
 const StoreSwitchSheet = lazy(() => import('./StoreSwitchSheet'))
-const RefundSheet = lazy(() => import('./seller-section/RefundSheet'))
-const AnalyticsSheet = lazy(() => import('./seller-section/AnalyticsSheet'))
 const WithdrawSheet = lazy(() => import('./seller-section/WithdrawSheet'))
 const AllToolsSheet = lazy(() => import('./seller-section/AllToolsSheet'))
 const PinSheet = lazy(() => import('./seller-section/PinSheet'))
 const BankSheet = lazy(() => import('./seller-section/BankSheet'))
-const OrdersSheet = lazy(() => import('./seller-section/OrdersSheet'))
-const VoucherSheet = lazy(() => import('./seller-section/VoucherSheet'))
-const StoreSheet = lazy(() => import('./seller-section/StoreSheet'))
-const PartnersSheet = lazy(() => import('./seller-section/PartnersSheet'))
-const MessagesSheet = lazy(() => import('./seller-section/MessagesSheet'))
 const SettlementsSheet = lazy(() => import('./seller-section/SettlementsSheet'))
 const ToolPageSheet = lazy(() => import('./seller-section/ToolPageSheet'))
 
@@ -83,36 +76,41 @@ function todayLabelKST(): string {
   })
 }
 
-/** 마이 안에서 열리는 묶음·도구. 하나가 늘면 여기와 `openTool` 두 곳이 같이 바뀐다. */
-type Tool = 'orders' | 'vouchers' | 'withdraw' | 'analytics' | 'store' | 'refund' | 'tools' | 'pin' | 'bank'
-  | 'partners' | 'messages' | 'settlements' | 'page'
+/**
+ * 마이 안에서 열리는 묶음·도구. 하나가 늘면 여기와 `openTool` 두 곳이 같이 바뀐다.
+ *
+ * 🧹 **2026-10-01 철거** — 손수 만든 폰 시트 일곱(`orders`·`vouchers`·`analytics`·`store`
+ *   ·`partners`·`messages` + 그 안의 `refund`)이 내려갔다. 그 일들은 이제 `page`
+ *   (`ToolPageSheet` = 대시보드 화면을 시트 안에서 그대로 렌더)로 열린다. 근거는 아래 §철거.
+ *   남은 `withdraw`·`pin`·`bank`·`settlements` 는 **돈이 나가는 흐름**이라 별도 판단 대기다.
+ */
+type Tool = 'withdraw' | 'tools' | 'pin' | 'bank' | 'settlements' | 'page'
 
 /**
- * 🔀 **같은 일에 화면이 둘이 되지 않게** (2026-09-26 — 대표 *"전체적으로 이상적이지 않은 것 같은데?"*)
+ * 🔀 **같은 일에 화면이 둘이 되지 않게** (2026-09-26 → **2026-10-01 철거로 거의 비었다**)
  *
- * ## 무엇이 잘못됐었나
+ * ## 무엇이 잘못됐었나 (기록)
  * 마이에 문이 둘 생겼다. 묶음 줄은 **손수 만든 폰 시트**를 열고, 전체 도구는 같은 일의
  * **대시보드 화면**을 열었다 — 일곱 개 전부. 사장님이 어느 문으로 들어왔느냐에 따라 "주문" 이
  * 다른 화면으로 뜬다. 그리고 버그가 오면 한쪽만 고친다.
- * **이 레포가 반복해 당한 클래스이고, 이번엔 내가 만들었다**(범용 도구 시트를 손수 시트 위에 얹었다).
+ * 그때의 처방은 *"문은 둘이어도 도착지는 하나"* — 전체 도구에서 그 주소를 고르면 손수 시트로 보냈다.
+ * 그리고 그 주석은 **종착지가 아니라 다리**라고 적어 뒀다: *"대시보드 화면이 폰에서 좋아지면
+ * 이 표와 시트 일곱은 내려와야 한다."*
  *
- * ## 처방: 문은 둘이어도 **도착지는 하나**
- * 전체 도구에서 이 주소들을 고르면 대시보드 화면이 아니라 **그 손수 시트로** 보낸다.
- * 색인에서 빼지 않는 이유 — 빼면 "전체 도구" 가 전체가 아니게 되고, 찾던 사람이 못 찾는다.
+ * ## 🧹 그 조건이 충족돼서 내렸다 (2026-10-01, 대표 *"철거도 해주고"*)
+ * 일곱 화면을 430px 로 전수 측정했다 — **가로스크롤 0 · 하드 클립 0 · 표 오버플로 0**
+ * (결재 `docs/decisions/2026-09-28-my-stage2-sheet-teardown.md` §측정 3차). 폰에서 깨지지 않는다.
+ * ⇒ 두 벌을 유지할 이유가 사라졌으므로 손수 시트 쪽을 지웠다. 도착지는 **대시보드 화면 하나**이고,
+ *   마이를 벗어나지 않는다(`ToolPageSheet` 가 그 화면을 시트 안에서 그대로 렌더한다).
  *
- * ## ⚠️ 이건 종착지가 아니라 다리다
- * 손수 시트가 존재하는 이유는 **대시보드 화면이 폰에서 나쁘기 때문**이다. UI 정리로 그 화면들이
- * 폰에서 좋아지면 이 표와 시트 일곱은 **내려와야 한다** — 그때까지만 두 벌을 유지한다.
- * 그 판단이 필요해지면 이 주석이 근거다.
+ * ## 왜 표가 아직 남아 있나 — **돈 하나**
+ * `/seller/settlements` 만 손수 시트(`WithdrawSheet`)를 유지한다. 그 시트가 가진 것이
+ * 대시보드에 없다: 출금이 `412 PIN_REQUIRED` 로 막히면 **그 자리에서** PIN 을 걸고 돌아온다
+ * (대시보드 `DealBalanceCard` 는 "프로필에서 설정해주세요" 토스트로 끝난다).
+ * **돈이 나가는 흐름이라 등급 C** — 대표 판단 전에 내리지 않는다.
  */
 const COVERED_BY_SHEET: Record<string, Tool> = {
-  '/seller/orders': 'orders',
-  '/seller/group-buy': 'vouchers',
   '/seller/settlements': 'withdraw',
-  '/seller/store': 'store',
-  '/seller/analytics': 'analytics',
-  '/seller/influencer-deals': 'partners',
-  '/seller/alimtalk': 'messages',
 }
 
 /** 묶음 한 줄 — 전부 같은 모양이어야 무엇이 있는지 한눈에 읽힌다. */
@@ -135,6 +133,12 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
    *   나브 색인이 정본이고, 두 벌이 되면 메뉴 이름과 시트 이름이 갈린다.
    */
   const [page, setPage] = useState<{ path: string; title: string } | null>(null)
+  /**
+   * ↩️ **그 화면을 어디서 열었나** — 닫을 때 돌아갈 곳이 다르다(2026-10-01 철거).
+   *   전체 도구에서 골랐으면 그 목록으로 돌아와야 하고(도구를 하나 보고 다음을 보는 흐름),
+   *   바로가기 줄에서 열었으면 **마이로** 닫힌다. 한쪽으로 고정하면 반드시 한쪽이 어색해진다.
+   */
+  const [pageFrom, setPageFrom] = useState<'tools' | null>(null)
   /**
    * 🪑 지금 토큰이 앉아 있는 좌석. **서버 응답이 아니라 토큰에서 읽는다** — 전환 직후에도 즉시 맞는다
    *   (`useMyStores` 의 `current_seller_id` 는 재조회 뒤에야 따라온다).
@@ -176,6 +180,29 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
   useEffect(() => { clearMyReturn() }, [])
 
   /**
+   * 🪑 **좌석이 바뀌면 열린 시트를 닫는다** (2026-10-01 철거와 함께 신설).
+   *
+   * 종전엔 손수 시트 **각자가** 이 일을 했다(`onSeatChange` + 자기 `onClose`). 그 시트들을
+   * 내리면서 그 성질이 `ToolPageSheet` 에 없다는 것이 드러났다 — 대시보드 화면은 좌석 토큰으로
+   * 스코프되지만, **열린 뒤에 좌석이 바뀌면** 가게 A 의 화면을 보며 가게 B 에 앉아 있게 된다.
+   * ⇒ 자리를 한 곳으로 옮겨 **모든 시트**(page·withdraw·pin·bank·settlements)에 걸리게 했다.
+   *
+   * ⚠️ 첫 마운트에서 닫지 않는다 — `seatId` 는 첫 프레임에 이미 값이 있고, 그걸 '변화' 로 읽으면
+   *   열자마자 닫힌다. 이전 값과 **다를 때만** 닫는다.
+   * ⚠️ 이건 "쓰기를 막는" 장치가 아니다. 쓰기 직전 검증은 각 화면이 좌석 토큰으로 하고,
+   *   서버도 토큰 스코프로 거른다. 이 효과는 **보고 있는 것과 앉아 있는 곳을 어긋나게 두지 않는** 것이다.
+   */
+  const lastSeatRef = useRef<number | null>(null)
+  useEffect(() => {
+    const prev = lastSeatRef.current
+    lastSeatRef.current = seatId
+    if (prev == null || prev === seatId) return
+    setTool(null)
+    setPage(null)
+    setPageFrom(null)
+  }, [seatId])
+
+  /**
    * 📐 2026-09-30 — 이 구역의 **실제 높이**를 적어 둔다. 다음 방문의 첫 프레임이 그만큼을 비워 둬서
    * 손님 줄이 안 밀린다(대표 신고 *"2번째 이미지가 … 첫번째 이미지로 바뀌더라?"* — `SellerSectionLazy` 머리말).
    * ⚠️ 시트가 열린 상태의 높이를 적지 않으려고 **마운트/내용 변화 직후 한 프레임**만 잰다.
@@ -205,6 +232,25 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
       if (!ok) { toast.error('가게로 들어가지 못했습니다'); return }
     }
     setTool(which)
+  }
+
+  /**
+   * 🪟 **대시보드 화면을 시트로 연다** (2026-10-01 철거 — 손수 시트가 있던 자리).
+   *   `openTool` 과 같은 좌석 규칙을 쓴다(그 화면들이 부르는 API 가 전부 좌석 토큰으로 스코프된다).
+   *   ⚠️ 이름(`title`)을 여기서 짓지 않고 호출부가 넘긴다 — 나브 색인이 정본이고,
+   *      두 벌이 되면 메뉴 이름과 시트 머리 이름이 갈린다.
+   */
+  async function openPage(path: string, title: string, from: 'tools' | null = null) {
+    if (!store || entering) return
+    if (currentSeatId() !== store.seller_id) {
+      setEntering(true)
+      const ok = await switchSeat(store.seller_id, store.name).catch(() => false)
+      setEntering(false)
+      if (!ok) { toast.error('가게로 들어가지 못했습니다'); return }
+    }
+    setPage({ path, title })
+    setPageFrom(from)
+    setTool('page')
   }
 
   // 좌석 0곳(= 셀러가 아님) · 실패 → 아무것도 그리지 않는다.
@@ -308,7 +354,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           <button
             type="button"
             disabled={entering}
-            onClick={() => openTool('analytics')}
+            onClick={() => openPage('/seller/analytics', '매출 분석')}
             className="w-full text-left px-4 pt-4 pb-4 active:opacity-70 disabled:opacity-60"
           >
             <div className="flex items-baseline justify-between gap-2">
@@ -364,7 +410,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           label="주문"
           hint={work.orders.length > 0 ? `확인 대기 ${formatNumber(work.orders.length)}건` : '지난 주문 · 환불'}
           busy={entering}
-          onClick={() => openTool('orders')}
+          onClick={() => openPage('/seller/orders', '주문')}
         />
         <ToolRow
           icon={<TicketStubIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
@@ -373,7 +419,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
             ? `판매 중 ${formatNumber(work.products.filter((p) => p.isActive).length)}개`
             : '등록 · 가격 · 수량'}
           busy={entering}
-          onClick={() => openTool('vouchers')}
+          onClick={() => openPage('/seller/group-buy', '이용권')}
         />
         <ToolRow
           icon={<WonCoinIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
@@ -384,7 +430,10 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
         />
         {/* 🧹 2026-09-30 — **바로가기 넷 + 전체 도구.** 여기 있던 `매출 분석 · 가게 · 소개 파트너 ·
             브랜드메시지` 를 뺐다. 지운 게 아니라 **바로 아래 `전체 도구` 가 같은 시트로 보낸다**
-            (`COVERED_BY_SHEET` 가 네 주소를 전부 덮는다 — 한 번의 탭이 두 번이 될 뿐이다).
+            (`전체 도구` 가 그 주소를 전부 찾아 준다 — 한 번의 탭이 두 번이 될 뿐이다.
+            ⚠️ 2026-09-30 엔 이 자리에 *"`COVERED_BY_SHEET` 가 네 주소를 전부 덮는다"* 고 적혀 있었다.
+            10-01 철거로 그 표가 돈 하나만 남았으므로 **그 문장은 더 이상 사실이 아니다** — 지금은
+            손수 시트가 아니라 대시보드 화면이 시트 안에서 열린다).
             매출 분석은 아예 사라지지도 않았다: 위 오늘 숫자가 그 입구가 됐다.
             **왜**: 바로가기가 아홉이면 바로가기가 아니다. 2026-09-26 이 그룹 라벨을 걷을 때의 근거는
             *"48px 행이면 여덟 줄이 384px 에 다 들어온다"* 였는데, 그건 이 목록만 떼어 본 계산이다.
@@ -446,38 +495,11 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           그 사이에는 열 수 있는 길도 없다(`pointer-events-none` + 모든 핸들러가 `!store` 가드). */}
       {store && (
       <Suspense fallback={null}>
-      {/* 🧾 주문 — 확인 전이는 `useSellerWork` 것을 쓴다(전이 규칙이 두 벌이 되지 않게).
-          환불은 시트 안에서 부르되 **별도 시트**로 연다(사유를 적어야 하는 일이라 섞지 않는다). */}
-      {tool === 'orders' && (
-        <OrdersSheet
-          sellerId={store.seller_id}
-          work={work}
-          onClose={() => setTool(null)}
-          onDone={onWorkDone}
-          onRefund={() => setTool('refund')}
-        />
-      )}
-      {tool === 'vouchers' && (
-        <VoucherSheet
-          sellerId={store.seller_id}
-          work={work}
-          onClose={() => setTool(null)}
-          onOpenPath={(path) => { setTool(null); enterSeat(path) }}
-        />
-      )}
-      {tool === 'store' && (
-        <StoreSheet
-          sellerId={store.seller_id}
-          statusNote={note}
-          canSwitch={stores.length >= 2}
-          onSwitch={() => { setTool(null); setSheetOpen(true) }}
-          onClose={() => setTool(null)}
-          onSaved={() => state.refetch()}
-        />
-      )}
-      {/* ↩️ 환불은 **주문에서만** 열린다 — 닫으면 그 목록으로 돌아온다(어디서 왔는지 잊지 않게). */}
-      {tool === 'refund' && <RefundSheet sellerId={store.seller_id} onClose={() => setTool('orders')} onDone={() => { state.refetch(); work.refetch(); setTool('orders') }} />}
-      {tool === 'analytics' && <AnalyticsSheet sellerId={store.seller_id} storeName={store.name} onClose={() => setTool(null)} />}
+      {/* 🧹 **2026-10-01 철거** — 여기 있던 손수 시트 일곱(주문·이용권·가게·환불·매출 분석
+          ·소개 파트너·브랜드메시지)을 지웠다. 그 일들은 `page`(`ToolPageSheet`)로 열린다 =
+          **대시보드가 쓰는 바로 그 화면**이 시트 안에서 그대로 렌더된다(복제 0).
+          근거: 일곱을 430px 로 전수 측정해 가로스크롤·하드 클립·표 오버플로가 전부 0 이었다
+          (결재 `2026-09-28-my-stage2-sheet-teardown.md` §측정 3차). 되돌리기는 revert 한 번. */}
       {/* 🔑🏦 2026-09-26 (§20-5): 출금이 막히면 **그 자리에서** 푼다 — 돈이 나가는 흐름 한복판에서
           대시보드로 보내지 않는다. 풀고 나면 요구한 시트로 되돌아온다(`pinReturn`). */}
       {tool === 'withdraw' && (
@@ -500,20 +522,6 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           onFixPin={() => { setPinReturn('bank'); setTool('pin') }}
         />
       )}
-      {tool === 'partners' && (
-        <PartnersSheet
-          sellerId={store.seller_id}
-          onClose={() => setTool(null)}
-          onOpenPath={(path) => { setTool(null); enterSeat(path) }}
-        />
-      )}
-      {tool === 'messages' && (
-        <MessagesSheet
-          sellerId={store.seller_id}
-          onClose={() => setTool(null)}
-          onOpenPath={(path) => { setTool(null); enterSeat(path) }}
-        />
-      )}
       {/* ↩️ 지난 정산은 **출금에서만** 열린다 — 닫으면 출금으로 돌아온다(주문 → 환불과 같은 배치). */}
       {tool === 'settlements' && <SettlementsSheet sellerId={store.seller_id} onClose={() => setTool('withdraw')} />}
       {tool === 'tools' && (
@@ -521,14 +529,15 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
           storeName={store.name}
           onClose={() => setTool(null)}
           onPick={(path, label, inSheet) => {
-            // 🔀 손수 시트가 덮는 일이면 **그리로** 보낸다 — 같은 일에 화면이 둘이 되지 않게(위 표).
+            // 🔀 손수 시트가 남은 일(= 돈 하나)이면 **그리로** 보낸다 — 같은 일에 화면이 둘이 되지 않게(위 표).
+            //   2026-10-01 철거로 이 표는 `/seller/settlements` 만 덮는다. 나머지는 아래 시트 경로다.
             const covered = COVERED_BY_SHEET[path]
             if (covered) { setTool(covered); return }
             // 🪟 나머지는 시트 안에서 열린다 — 나가는 둘만 종전처럼 전체화면으로
             //   (이유는 `tool-pages.ts` 의 FULL_SCREEN_ONLY 에 값으로 적혀 있다).
             //   ⚠️ 판정은 시트가 해서 넘겨준다 — 여기서 `tool-pages` 를 읽으면 그 지도가
             //      **정적 의존**이 되어 시트 청크 전체가 마이에 붙는다(lazy 가 무의미해진다).
-            if (inSheet) { setPage({ path, title: label }); setTool('page'); return }
+            if (inSheet) { setPage({ path, title: label }); setPageFrom('tools'); setTool('page'); return }
             setTool(null); enterSeat(path)
           }}
         />
@@ -538,10 +547,10 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
         <ToolPageSheet
           path={page.path}
           title={page.title}
-          onClose={() => { setPage(null); setTool('tools') }}
+          onClose={() => { const back = pageFrom; setPage(null); setPageFrom(null); setTool(back) }}
           /* 🚪 안쪽이 셀러 밖(`/`·`/u/me` …)을 가리켰다 — 시트를 닫고 진짜로 보낸다.
              그대로 두면 메모리 라우터엔 그 주소가 없어 **빈 화면**이 된다. */
-          onLeave={(to) => { setPage(null); setTool(null); window.location.assign(to) }}
+          onLeave={(to) => { setPage(null); setPageFrom(null); setTool(null); window.location.assign(to) }}
         />
       )}
 

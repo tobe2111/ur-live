@@ -29,8 +29,8 @@ const WORK = readCode('src/pages/user-profile/seller-section/useSellerWork.ts')
 const ORDERS_UI = readCode('src/pages/user-profile/seller-section/PendingOrders.tsx')
 // 🔁 2026-09-26 (§21): `SellingList`(인라인 판매 중 목록)는 **삭제됐다** — 같은 목록이 카드와
 //   이용권 묶음 두 곳에 있으면 반드시 갈린다. 현황은 묶음 안에서 본다(할 일만 카드에 남는다).
-const VOUCHER_SHEET = readCode('src/pages/user-profile/seller-section/VoucherSheet.tsx')
-const VOUCHER_EDIT = readCode('src/pages/user-profile/seller-section/VoucherEditSheet.tsx')
+// 🧹 2026-10-01 철거: `VoucherSheet`·`VoucherEditSheet` 는 내려갔다(이용권은 대시보드 화면이 맡는다).
+//    아래 '환불·삭제·출금은 여기 없다' 검사의 **대상만** 줄었고 판정은 그대로다.
 const SCAN = readCode('src/pages/StoreScanPage.tsx')
 
 /** base64url 로 JWT 흉내 — 한글 매장 이름 포함(그게 순진한 atob 을 깨뜨린다). */
@@ -216,7 +216,7 @@ describe('단계 2 — 일감은 좌석에 앉아야 그리고, 보내기 전에
     // 🔁 2026-09-26: `selling` 자리를 이용권 묶음 둘로 옮겼다(그 화면이 목록·토글을 이어받았다).
     //   ⚠️ 판정은 그대로다 — **삭제**는 어디에도 없다. 환불·출금은 §19 로 마이에 들어왔지만
     //   전용 시트가 맡으므로 이 넷에는 여전히 없어야 한다(섞이면 한 손 실수가 돈을 움직인다).
-    for (const [name, code] of [['work', WORK], ['orders', ORDERS_UI], ['voucherSheet', VOUCHER_SHEET], ['voucherEdit', VOUCHER_EDIT]] as const) {
+    for (const [name, code] of [['work', WORK], ['orders', ORDERS_UI]] as const) {
       const stripped = stripComments(code)
       expect(stripped, `${name}: 삭제는 되돌릴 수 없다 — 끄는 것(HIDDEN)이어야 한다`).not.toMatch(/\/refund|DELETED'\s*\}|api\.delete\(/)
       expect(stripped, `${name}: 출금은 전용 시트가 맡는다`).not.toMatch(/withdraw/)
