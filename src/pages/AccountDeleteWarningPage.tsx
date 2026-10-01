@@ -17,6 +17,7 @@ import { getUserId, logout as authLogout } from '@/utils/auth'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { loginPathFromHere } from '@/utils/login-return'
 
 export default function AccountDeleteWarningPage() {
   const { t } = useTranslation()
@@ -32,7 +33,7 @@ export default function AccountDeleteWarningPage() {
       const userId = await getUserId()
       if (!userId) {
         toast.info(t('accountDeleteWarning.loginRequired'))
-        navigate('/login')
+        navigate(loginPathFromHere())
       }
     }
     checkAuth()
@@ -88,7 +89,8 @@ export default function AccountDeleteWarningPage() {
       toast.error(errorMessage)
 
       if (err.response?.status === 401) {
-        setTimeout(() => navigate('/login'), 1000)
+        // login-return-ok: 탈퇴 **직후**다 — 돌아갈 계정이 없다.
+    setTimeout(() => navigate('/login'), 1000)
       }
     } finally {
       setIsLoading(false)

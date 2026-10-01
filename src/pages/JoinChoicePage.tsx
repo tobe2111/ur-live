@@ -59,7 +59,7 @@ export default function JoinChoicePage() {
           </div>
 
           <p className="text-center text-[12px] text-gray-500 mt-8">
-            이미 계정이 있으신가요? <Link to="/login" className="text-white font-bold underline">로그인</Link>
+            이미 계정이 있으신가요? {/* login-return-ok: 가입 흐름 안의 안내 링크 */}<Link to="/login" className="text-white font-bold underline">로그인</Link>
           </p>
         </div>
       </div>

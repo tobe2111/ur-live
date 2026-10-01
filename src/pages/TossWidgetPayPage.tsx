@@ -8,6 +8,7 @@ import { safePaymentReturnPath } from '@/utils/safe-internal-path'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { readPaySummary, displayDiscountPct } from '@/shared/pay-summary'
 import DealUseCard, { dealUseCap, clampDealUse } from './pay/DealUseCard'
+import { loginPathFromHere } from '@/utils/login-return'
 
 type TossWidgets = ReturnType<Awaited<ReturnType<typeof getTossPayments>>['widgets']>
 
@@ -87,7 +88,10 @@ export default function TossWidgetPayPage() {
     }
     const userId = getUserIdSync()
     if (!userId) {
-      navigate('/login')
+      // 🔑 2026-10-01 [UNLOCK] 대표 허가 "그 한 줄만" — 복귀 주소를 실어 보낸다.
+      //   종전엔 로그인 후 홈으로 떨어져 **딜 충전하려던 사람을 잃었다**. 위젯이 뜨기 **전**,
+      //   비로그인일 때만 타는 분기라 결제 경로와 무관하다(아래 계약 전부 byte-불변).
+      navigate(loginPathFromHere())
       return
     }
     initializedRef.current = true

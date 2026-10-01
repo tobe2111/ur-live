@@ -96,6 +96,7 @@ export default function RegisterPage() {
         age_confirmed: true,
       })
       toast.success(t('register.successMessage', { defaultValue: '회원가입이 완료되었습니다! 로그인해주세요.' }))
+      // login-return-ok: 가입 완료 → 로그인. 가입 전 보던 화면으로 돌아갈 맥락이 없다.
       navigate('/login')
     } catch (err: unknown) {
       /**
@@ -324,7 +325,7 @@ export default function RegisterPage() {
           </button>
         </form>
 
-        {/* Login Link */}
+        {/* Login Link — login-return-ok: 가입 화면 하단의 "로그인" 안내 링크(가입 흐름 안) */}
         <div className="text-center text-[13px] text-gray-400 dark:text-gray-500 mt-8 font-light">
           {t('register.alreadyHaveAccount', { defaultValue: '이미 계정이 있으신가요?' })}{' '}
           <Link

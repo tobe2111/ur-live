@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { X, RotateCcw } from 'lucide-react'
+import { loginPathFromHere } from '@/utils/login-return'
 
 const RESTORE_PROCESSED_KEY = 'ur_restore_consent_handled_v1'
 
@@ -78,7 +79,7 @@ export default function RestoreAccountModal() {
         } catch (clearErr) {
           if (import.meta.env.DEV) console.warn('[RestoreAccount] localStorage clear failed:', clearErr)
         }
-        setTimeout(() => { window.location.href = '/login' }, 800)
+        setTimeout(() => { window.location.href = loginPathFromHere() }, 800)
       } else {
         const errMsg = res.data?.error || t('user.restoreFailed', { defaultValue: '복원 실패' })
         toast.error(errMsg)

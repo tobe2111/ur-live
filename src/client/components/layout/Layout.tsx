@@ -79,7 +79,8 @@ export function Layout() {
                 </div>
               ) : (
                 <div className="hidden md:flex items-center gap-2">
-                  <Link to="/login" className="btn-secondary text-sm py-1.5 px-3">
+                  {/* login-return-ok: 이 레이아웃은 참조 0인 옛 코드다(실측) — 소비자 앱은 MobileAppLayout 을 쓴다 */}
+              <Link to="/login" className="btn-secondary text-sm py-1.5 px-3">
                     로그인
                   </Link>
                   <Link to="/register" className="btn-primary text-sm py-1.5 px-3">
@@ -125,7 +126,8 @@ export function Layout() {
                 </>
               ) : (
                 <>
-                  <Link to="/login" className="block text-gray-600" onClick={() => setMobileMenuOpen(false)}>
+                  {/* login-return-ok: 같은 죽은 레이아웃 */}
+              <Link to="/login" className="block text-gray-600" onClick={() => setMobileMenuOpen(false)}>
                     로그인
                   </Link>
                   <Link to="/register" className="block text-blue-600" onClick={() => setMobileMenuOpen(false)}>

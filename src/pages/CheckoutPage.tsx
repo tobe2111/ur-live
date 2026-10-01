@@ -36,6 +36,7 @@ import { getTossClientKey } from '@/lib/toss-preload'
 import StayCheckout from './checkout/StayCheckout'
 import { isNoShippingProduct } from '@/shared/product-flow'
 import MallOriginBanner from '@/components/mall/MallOriginBanner'
+import { loginPathFromHere } from '@/utils/login-return'
 
 const clientKey = getTossClientKey()
 
@@ -473,7 +474,7 @@ function CartCheckout() {
                 <>
                   <CheckoutAddressSection
                     userId={userId}
-                    navigateToLogin={() => navigate('/login')}
+                    navigateToLogin={() => navigate(loginPathFromHere())}
                     selectedAddress={selectedAddress}
                     onAddressSelected={setSelectedAddress}
                   />
