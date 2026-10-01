@@ -77,3 +77,61 @@ AccountDeleteWarningPage(진입) · RestoreAccountModal
 로그아웃 상태에서 **결제 경로**로 확인한다(가장 값이 큰 자리):
 `/checkout` 배송지 · `/points/charge` → 로그인 유도 → 카카오 → **그 화면으로 돌아오는지**.
 브라우저 없이도 판정 가능: `/auth/kakao/start?redirect=` 에 그 경로가 실리는지(#1588 때 쓴 방법).
+
+## 7. 🩸 E4 판정에서 **내 영향 진단이 뒤집혔다** (2026-10-01, 배포 후 라이브 실측)
+
+**이 절이 이 문서에서 제일 값지다.** 대표에게 보고한 영향이 과장이었고, 실측이 그걸 바로잡았다.
+
+### 처음 보고한 것 (틀림)
+> "결제 화면 둘(체크아웃 배송지·딜 충전)과 세션 만료 인터셉터 둘이 **돈 내려던 사람을 홈으로
+> 떨어뜨리고 있었다**."
+
+### 실제 (라이브 측정)
+먼저 비로그인으로 네 경로를 재니 **4/4 통과**였다. 그런데 그게 **내 코드가 아니었다** —
+`ProtectedRoute` 가 페이지보다 먼저 가로채고, 거기엔 **원래부터** 복귀가 있었다:
+
+```ts
+// RouteGuards.tsx — 내 변경 이전부터 존재
+function makeLoginUrl(pathname: string, search: string) {
+  return `/login?returnUrl=${encodeURIComponent(pathname + search)}`
+}
+```
+
+내가 고친 **페이지 안 가드 9곳이 전부 `ProtectedRoute` 뒤에 있다**(실측 — App.tsx 라우트 파싱):
+`/points/charge` · `/mypage/addresses` · `/mypage/group-buys` · `/mypage` · `/user/profile` ·
+`/checkout` · `/pay/widget` · `/community-group-buy/new` · `/account/delete-warning` — **전부 `[P]`**.
+즉 **콜드 진입에서는 원래 안 깨져 있었다.**
+
+### 그래도 죽은 코드는 아니다 — 두 검사가 **다르다**
+```
+ProtectedRoute : user_id || session_login      (isUserLoggedIn)
+페이지 안 가드 : user_id || userId             (getUserIdSync)
+```
+⇒ **`session_login` 은 있는데 `user_id` 가 없는 상태**에서는 ProtectedRoute 를 통과하고 페이지가
+뜬 뒤 내 가드가 돈다. 그 틈을 실제로 만들어 재니 **`/mypage/addresses` 가 통과**했다
+(`→ /login?returnUrl=%2Fmypage%2Faddresses`). **라이브에서 `loginPathFromHere()` 가 도는 증거는 이것 하나다.**
+나머지 셋은 그 틈에서도 안 탔다 — `/points/charge`(충전 종료 화면이 먼저) ·
+`/mypage/group-buys`(`hasConsumerSession()` 이 `session_login` 을 인정) · `/user/profile`(동일 계열).
+
+### `auth-api.ts` 인터셉터 둘은 **호출자가 0이다**
+`authFetch` · `redirectToLogin`(이 파일 것) 을 부르는 곳이 모듈 밖에 없다. 임포트되는 건
+`getIdTokenFromBackend` 하나뿐이고 그 경로는 이 둘을 안 지난다. 셀러 대시보드가 쓰는
+`redirectToLogin` 은 **다른 파일**(`lib/seller-auth.ts`)이다. ⇒ "세션 만료 인터셉터가 사람을
+홈으로 보내고 있었다" 도 **입증 못 했다**.
+
+### 그래서 이 PR 의 진짜 값
+1. **ProtectedRoute 틈 메우기** — 1곳 라이브 확인.
+2. **가드** — 진짜 구멍은 *공개 라우트의 페이지 안 로그인 유도*였고(`/pass/:id` 가 바로 그것,
+   어제 수리·E4), `ProtectedRoute` 는 그걸 못 막는다. 앞으로 생길 공개 라우트가 같은 실수를
+   반복하는 것을 가드가 막는다.
+3. **공식 하나로 통일** — 종전엔 `makeLoginUrl`(가드) 과 맨 `'/login'`(페이지) 두 벌이었다.
+
+### 🧭 교훈
+**"측정했다" 와 "내 코드를 측정했다" 는 다르다.** 비로그인 콜드 진입은 내 변경이 아니라 그 위의
+라우트 가드를 잰 것이었고, 숫자(4/4)가 그럴듯해서 하마터면 그대로 보고할 뻔했다.
+**변경한 코드가 실제로 실행되는 조건을 먼저 만들고 재라** — 여기선 `session_login` 만 심는 것이었다.
+(같은 교훈이 2026-09-21 폰트 건에도 있다: "그럴듯한 기제를 증거로 쓰지 말 것.")
+
+### 쿼리 보존은 확인됨
+`/points/charge?ref=abc123&junk=xx` → 카카오 `redirect=/points/charge?ref=abc123`
+(`safeInternalPath` 화이트리스트 `ref·aff·invite·code·auto` 생존, 나머지 제거 — 종전 규칙 그대로).
