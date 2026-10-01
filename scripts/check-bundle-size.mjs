@@ -293,7 +293,10 @@ const BUDGET = {
   //   `SellerInstagramDmPage` + 어드민·셀러 공용 부품(연결·규칙·기록)을 셀러 쪽으로 옮겨 나눴다.
   //   실측 7.544 → **7.551 MB(+7 KB raw)**, 전부 lazy(로그인 뒤 그 화면을 열 때만). 헤드룸 9 KB.
   //   ✅ critical-chunks 17 불변 · critical path 196.2 / 240 KB.
-  totalRawMB: 7.56,
+  // ⬆️ 2026-10-01 3차: 7.56 → **7.57**(+0.01). 메타 앱 심사 요건 — 개인정보 처리방침에 인스타 연결 문단
+  //   (`pages/privacy/InstagramConnectSection`, 국·영 본문) + 어드민 복사 목록 한 줄. 그사이 main 도 자라
+  //   CI 실측이 7.56 경계를 넘었다(헤드룸 소진). 전부 lazy(처리방침·어드민 화면을 열 때만). critical path 196.1 / 240 KB 불변.
+  totalRawMB: 7.57,
   // ✅ 2026-07-29 교정 완료 — **CI 실측 2.707 MB**(run 30426592229, main+가드 변경 기준).
   //   ⚠️ 교정 전 추정은 "2.2~2.5MB" 였고 **틀렸다**. 그 추정값으로 켰다면 전 PR 이 red 였다.
   //   숫자를 지어내지 말고 반드시 CI 의 "Bundle size report" 로그에서 읽을 것.
