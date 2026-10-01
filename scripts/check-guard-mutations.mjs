@@ -42,6 +42,7 @@ import { GUARD_RUNNER, touchesGuardScripts } from './guard-mutations-scope.mjs'
 import {
   changedInjectionNames, runnerLogicChanged, testSpawnsSubprocess,
 } from './guard-mutations-manifest-diff.mjs'
+import { parseShard, shardOf } from './guard-mutations-shard.mjs'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const STRICT = process.argv.includes('-s') || process.argv.includes('--strict')
@@ -109,6 +110,21 @@ const MAP_ONLY = process.argv.includes('--map-only')
  */
 const DUMP_MANIFEST = process.argv.includes('--dump-manifest')
 const CHANGED = process.argv.includes('--changed')
+/**
+ * 🧩 `--shard k/n` — **전수를 n 조각으로 갈라 그중 k 번째만** 돈다 (2026-10-01).
+ *
+ * 왜: 전수 벽시계가 주입 수에 선형이라 `timeout-minutes: 90` 을 향해 기어올랐다(3주에 42→77분).
+ * 조각을 쓰면 벽시계가 `O(주입수 / n)` 이 되고, n 은 야간 워크플로의 계획 작업이 **세어서** 정한다.
+ * 근거·상수·분배 규칙: `guard-mutations-shard.mjs` 머리주석.
+ *
+ * ⚠️ `--changed`·`--only` 와 **같이 쓰지 않는다** — 둘 다 이미 "일부만" 고르는 장치라, 겹치면
+ * 무엇이 돌았는지가 둘의 교집합이 되어 *초록이 무엇을 보증하는지* 말할 수 없게 된다.
+ */
+const SHARD = parseShard(process.argv)
+if (SHARD && (CHANGED || ONLY)) {
+  console.error('❌ --shard 는 --changed·--only 와 같이 쓸 수 없다 — 초록이 무엇을 보증하는지 모호해진다.')
+  process.exit(1)
+}
 const SCOPE = changedScope({
   enabled: CHANGED,
   baseRef: process.env.GUARD_MUTATIONS_BASE,
@@ -10623,6 +10639,16 @@ const ALL = [...MUTATIONS, ...SPLIT]
   }
 }
 
+/**
+ * 🔢 `--count` — 주입 수만 찍는다. 야간 워크플로의 **계획 작업**이 조각 수를 정하려고 부른다.
+ * `--dump-manifest` 로도 셀 수 있지만 그건 수 MB JSON 을 흘려보내는 일이고, 계획 작업은
+ * `npm ci` 없이 수초에 끝나야 한다(이 파일은 node 내장 + 로컬 모듈만 import 한다).
+ */
+if (process.argv.includes('--count')) {
+  process.stdout.write(String(ALL.length))
+  process.exit(0)
+}
+
 // 📤 목록만 찍고 끝 — base 쪽을 이 모드로 부른다. 소스도 안 읽고 자물쇠도 안 건다.
 if (DUMP_MANIFEST) {
   // ⚠️ `process.stdout.write` + `process.exit` 는 **flush 를 기다리지 않는다** — 파이프로 보내면
@@ -10978,8 +11004,28 @@ if (integrity.length) {
   process.exit(1)
 }
 
-const planned = ALL.filter((m) => (!ONLY || m.name.includes(ONLY)) && (inScope(m, SCOPE) || CHANGED_NAMES.has(m.name))).length
-if (SCOPE.full) {
+/**
+ * 🧩 조각 선택 — `ALL` 안의 **색인**으로 가른다(이름 해시가 아니라 색인이라 조각 크기 차이 ≤ 1).
+ * 조각이 아니면 전부 통과한다(`has` 가 null 이면 무조건 true).
+ */
+const SHARD_PICK = SHARD
+  ? new Set(ALL.map((m, i) => (shardOf(i, SHARD.total) === SHARD.index ? m.name : null)).filter(Boolean))
+  : null
+const inShard = (m) => !SHARD_PICK || SHARD_PICK.has(m.name)
+
+const planned = ALL.filter((m) => (!ONLY || m.name.includes(ONLY)) && inShard(m) && (inScope(m, SCOPE) || CHANGED_NAMES.has(m.name))).length
+if (SHARD) {
+  console.log(
+    `🧬 guard-mutations(--shard ${SHARD.index}/${SHARD.total}): 전체 ${ALL.length}건 중 **${planned}건**.\n` +
+      `   ⚠️ 이 조각 하나가 초록이라고 전수가 초록인 건 아니다 — 조각 ${SHARD.total}개가 모두 초록이어야 전수다.\n`,
+  )
+  // 🚨 조각이 0건을 고르면 **실패**다 — n 이 주입 수보다 크거나 분배가 깨진 것이고,
+  //    그대로 두면 "조각 전부 초록" 이 실제로는 아무것도 안 돈 것일 수 있다(이 레포의 조용한 부재).
+  if (planned === 0) {
+    console.error(`❌ --shard ${SHARD.index}/${SHARD.total} 이 고른 주입이 0건이다 — 분배가 깨졌거나 n 이 과하다.`)
+    process.exit(1)
+  }
+} else if (SCOPE.full) {
   console.log(`🧬 guard-mutations: ${ALL.length}개 주입 검증 (각각 소스를 잠깐 고쳤다가 되돌린다)\n`)
   if (CHANGED) console.log(`   ⚠️ 전수로 돈다 — ${SCOPE.why}\n`)
 } else {
@@ -10991,6 +11037,7 @@ let onlyMatched = 0
 for (const m of ALL) {
   if (ONLY && !m.name.includes(ONLY)) continue
   if (ONLY) onlyMatched += 1
+  if (!inShard(m)) continue
   if (!inScope(m, SCOPE) && !CHANGED_NAMES.has(m.name)) continue
   const abs = path.join(ROOT, m.file)
   if (!fs.existsSync(abs)) { problems.push(`${m.name}: 파일 없음 — ${m.file} (코드가 옮겨갔다)`); continue }
