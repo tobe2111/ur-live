@@ -13,6 +13,7 @@
  */
 
 import { featureFlags } from '@/shared/config/feature-flags';
+import { loginPathFromHere } from '@/utils/login-return'
 
 /**
  * Request tracker to prevent duplicate requests
@@ -262,7 +263,7 @@ export async function authFetch<T = any>(
         // Redirect to login (one-time only)
         if (!sessionStorage.getItem('auth_redirect_attempted')) {
           sessionStorage.setItem('auth_redirect_attempted', 'true');
-          window.location.href = '/login';
+          window.location.href = loginPathFromHere();
         }
 
         throw new Error('AUTHENTICATION_FAILED');
@@ -303,7 +304,7 @@ export function redirectToLogin() {
   localStorage.removeItem('firebase_token_cache');
   
   // Redirect
-  window.location.href = '/login';
+  window.location.href = loginPathFromHere();
 }
 
 /**

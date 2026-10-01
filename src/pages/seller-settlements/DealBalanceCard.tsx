@@ -4,6 +4,12 @@ import { toast } from '@/hooks/useToast'
 import { DashboardCard } from '@/components/dashboard'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import VoucherRedeemModal from './VoucherRedeemModal'
+/**
+ * 🛡️ CLAUDE.md 숫자 포매팅 룰 — `value.toLocaleString()` 직접 호출 금지.
+ *   이 화면은 응답 필드 하나가 비면 **카드가 아니라 정산 화면 전체**가 ErrorBoundary 로 떨어진다
+ *   (2026-10-01 실측: `Cannot read properties of undefined (reading 'toLocaleString')`).
+ */
+import { formatNumber } from '@/utils/format'
 
 // 🛡️ 2026-06-10: SellerSettlementsPage 분해 — 순수 이동 (동작 변화 0).
 // 🛡️ 2026-05-18: 딜 잔액 + 환급 + 원천징수 카드 (셀러 본인용)
@@ -38,12 +44,12 @@ export default function DealBalanceCard() {
     const amount = Number(withdrawAmount) || 0
     if (amount < 10_000) { toast.error('최소 환급 금액은 10,000 딜입니다'); return }
     if (balance && amount > balance.withdrawable) {
-      toast.error(`환급 가능 잔액 부족 (보유: ${balance.withdrawable.toLocaleString()})`); return
+      toast.error(`환급 가능 잔액 부족 (보유: ${formatNumber(balance.withdrawable)})`); return
     }
     // 🛡️ 2026-06-11 (감사 — CLAUDE.md 원천징수 hardcode 금지 룰 위반이었음): 세율은 서버가
     //   sellers.tax_type 별 계산(기본 3.3% 사업소득 / 8.8% 기타소득) — 클라 고정 8.8% 는 대부분
     //   셀러에게 잘못된 예상액이었음. 정확한 금액은 신청 응답(gross/net)으로 안내.
-    if (!(await confirmDialog(`${amount.toLocaleString()}딜 환급 신청? (사업자 유형에 따른 원천징수 3.3%/8.8% 차감 후 입금 — 정확한 금액은 신청 직후 표시됩니다)`))) return
+    if (!(await confirmDialog(`${formatNumber(amount)}딜 환급 신청? (사업자 유형에 따른 원천징수 3.3%/8.8% 차감 후 입금 — 정확한 금액은 신청 직후 표시됩니다)`))) return
     setSubmitting(true)
     try {
       const token = localStorage.getItem('seller_token')
@@ -78,6 +84,9 @@ export default function DealBalanceCard() {
     } finally { setSubmitting(false) }
   }
 
+  /** 산술 결과가 NaN 이 되지 않게 — CLAUDE.md "산술 후 포매팅" 룰. */
+  const safeMinus = (a: unknown, b: unknown) => (Number(a) || 0) - (Number(b) || 0)
+
   if (!balance) return null
 
   return (
@@ -89,7 +98,7 @@ export default function DealBalanceCard() {
           <div>
             <p className="text-xs font-bold text-gray-500">딜 잔액</p>
             <p className="dash-num mt-1 text-[22px] font-extrabold text-gray-900 sm:text-2xl">
-              {balance.total.toLocaleString()}<span className="ml-1 text-sm font-medium">딜</span>
+              {formatNumber(balance.total)}<span className="ml-1 text-sm font-medium">딜</span>
             </p>
           </div>
           {(balance.total > 0 || (balance.business_verified && balance.withdrawable > 0)) && (
@@ -113,13 +122,13 @@ export default function DealBalanceCard() {
           <div className="px-3 py-2">
             <p className="font-semibold text-gray-500">환급 가능</p>
             <p className="dash-num mt-0.5 text-[15px] font-extrabold text-gray-900">
-              {balance.withdrawable.toLocaleString()}
+              {formatNumber(balance.withdrawable)}
             </p>
           </div>
           <div className="px-3 py-2">
             <p className="font-semibold text-gray-500">플랫폼 안에서만 사용</p>
             <p className="dash-num mt-0.5 text-[15px] font-extrabold text-gray-900">
-              {(balance.total - balance.withdrawable).toLocaleString()}
+              {formatNumber(safeMinus(balance.total, balance.withdrawable))}
             </p>
           </div>
         </div>
@@ -133,15 +142,15 @@ export default function DealBalanceCard() {
             <div className="grid grid-cols-3 gap-2 text-xs">
               <div className="min-w-0">
                 <p className="text-[10px] text-gray-500">총 지급</p>
-                <p className="dash-num truncate font-bold text-gray-900">₩{tax.total_gross.toLocaleString()}</p>
+                <p className="dash-num truncate font-bold text-gray-900">₩{formatNumber(tax.total_gross)}</p>
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] text-gray-500">원천징수 3.3%/8.8%</p>
-                <p className="dash-num truncate font-bold text-tone-bad">-₩{tax.total_withheld.toLocaleString()}</p>
+                <p className="dash-num truncate font-bold text-tone-bad">-₩{formatNumber(tax.total_withheld)}</p>
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] text-gray-500">실 수령</p>
-                <p className="dash-num truncate font-bold text-tone-ok">₩{tax.total_net.toLocaleString()}</p>
+                <p className="dash-num truncate font-bold text-tone-ok">₩{formatNumber(tax.total_net)}</p>
               </div>
             </div>
             {tax.reportable && (
@@ -166,7 +175,7 @@ export default function DealBalanceCard() {
                 type="number"
                 value={withdrawAmount}
                 onChange={e => setWithdrawAmount(e.target.value)}
-                placeholder={`최대 ${balance.withdrawable.toLocaleString()}`}
+                placeholder={`최대 ${formatNumber(balance.withdrawable)}`}
                 min={10000}
                 max={balance.withdrawable}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-900"
@@ -174,7 +183,7 @@ export default function DealBalanceCard() {
               />
               {withdrawAmount && Number(withdrawAmount) >= 10000 && (
                 <div className="mt-2 p-2 bg-gray-50 rounded text-xs space-y-0.5">
-                  <p className="flex justify-between"><span className="text-gray-500">총 지급 신청</span><span className="font-bold">₩{Number(withdrawAmount).toLocaleString()}</span></p>
+                  <p className="flex justify-between"><span className="text-gray-500">총 지급 신청</span><span className="font-bold">₩{formatNumber(withdrawAmount)}</span></p>
                   {/* 🛡️ 2026-06-25: 원천징수율 hardcode 금지(CLAUDE.md) — 8.8% 고정은 사업소득(기본 3.3%) 셀러에게
                       실수령을 과소표시. 실 세율은 셀러 소득유형(business_income 3.3% / other_income 8.8%)에 따라
                       서버(withholdAndLog)가 적용하므로, 클라는 잘못된 숫자를 만들지 않고 안내만. */}
