@@ -5494,9 +5494,10 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 382건 · 최신순 · 이 목록은 자동 생성된다._
+_총 383건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-10-01**
+- [로그인하면 보던 링크로 안 돌아오던 것 (2026-10-01)](handoff/2026-10-01-login-return-url.md)
 - [2026-10-01 — 인스타 댓글 → 자동 DM (유어딜 공식 계정)](handoff/2026-10-01-instagram-comment-autodm.md)
 - [2026-10-01 — 로그아웃했는데 로그인 상태로 보이던 것 + 이메일 가입·로그인](handoff/2026-10-01-consumer-logout-and-email-auth.md)
 **2026-09-30**

@@ -13,7 +13,7 @@ import { Eye, EyeOff } from 'lucide-react'
 import SEO from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { addBreadcrumb, maskEmail } from '@/lib/sentry'
-import { safeInternalPath } from '@/utils/safe-internal-path'
+import { resolveLoginReturnUrl, clearLoginReturnUrl } from '@/utils/login-return'
 import { showKakaoLoadingOverlay, removeKakaoLoadingOverlay } from '@/utils/kakao-login-overlay'
 import { hasConsumerSession } from '@/utils/auth'
 
@@ -78,11 +78,12 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
 
   // ✅ 무한루프 방지: returnUrl은 마운트 시 1회만 계산 (useRef로 고정)
-  // 🛡️ 2026-04-29: 검증 로직을 safeInternalPath 헬퍼로 통일
+  // 🛡️ 2026-04-29: 검증 로직은 safeInternalPath SSOT (이제 utils/login-return 안에서 호출)
+  // 🔑 2026-10-01: 화면들이 적어 둔 `localStorage.loginReturnUrl` 까지 본다 — 종전엔 쿼리/세션만 봐서
+  //   그 열 곳 남짓의 writer 가 전부 헛돌았다(대표 신고: 링크 보고 로그인하면 홈으로). SSOT: utils/login-return.
   const returnUrlRef = useRef<string | null>(null)
   if (returnUrlRef.current === null) {
-    const raw = searchParams.get('returnUrl') || sessionStorage.getItem('returnUrl') || '/'
-    returnUrlRef.current = safeInternalPath(raw, '/')
+    returnUrlRef.current = resolveLoginReturnUrl(searchParams.get('returnUrl'))
   }
   const returnUrl = returnUrlRef.current
   // 🆕 2026-06-29 퍼널 계측: returnUrl 이 있으면 보호 라우트(결제/보관함/유어샵)에서 튕겨 온 것 = 로그인 벽 노출.
@@ -112,6 +113,7 @@ export default function LoginPage() {
     }
     if (isLoggedIn && !hasRedirected.current) {
       hasRedirected.current = true
+      clearLoginReturnUrl()   // 복귀했으면 지운다 — 남겨 두면 다음 로그인이 옛 주소로 간다
       navigate(returnUrlRef.current!, { replace: true })
     }
   }, [isLoggedIn, navigate, wantsSwitch])
@@ -141,10 +143,9 @@ export default function LoginPage() {
     if (kakaoNavRef.current) return // 이미 진행 중 — 반복 클릭 무시
     kakaoNavRef.current = true
     try {
-      const rawReturnUrl = searchParams.get('returnUrl')
-        || sessionStorage.getItem('returnUrl')
-        || '/'
-      const currentReturnUrl = safeInternalPath(rawReturnUrl, '/')
+      // 🔑 같은 SSOT 로 고른다 — 여기서 '/' 를 보내면 카카오 콜백의 `safeInternalPath(state, stored)`
+      //   에서 그 '/' 가 **저장된 복귀 주소를 이겨** 홈으로 떨어진다(그게 이 결함의 마지막 고리였다).
+      const currentReturnUrl = resolveLoginReturnUrl(searchParams.get('returnUrl'))
       const params = new URLSearchParams({ redirect: currentReturnUrl })
       if (wantsSwitch) {
         params.set('force_account', '1')
@@ -186,6 +187,7 @@ export default function LoginPage() {
       } else if (userRole === 'admin') {
         navigate('/admin', { replace: true })
       } else {
+        clearLoginReturnUrl()
         navigate(returnUrl, { replace: true })
       }
     } catch (err: unknown) {
