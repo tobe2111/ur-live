@@ -254,6 +254,6 @@ describe('🎟️ 이용권 환불 요청 접수 (2026-10-01 — "배송완료�
     const fs = await import('node:fs')
     const src = fs.readFileSync('src/features/returns/api/returns.routes.ts', 'utf8')
     expect(src).toMatch(/FROM vouchers WHERE order_id = \?/)
-    expect(src).toMatch(/nowMs: Date\.now\(\), voucher,/)
+    expect(src).toMatch(/nowMs: Date\.now\(\), voucher \}/)
   })
 })
