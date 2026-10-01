@@ -5494,10 +5494,11 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 389건 · 최신순 · 이 목록은 자동 생성된다._
+_총 390건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-10-01**
 - [2026-10-01 — 마이 시트 측정 2차 + 정산 화면이 응답 하나에 통째로 죽던 것](handoff/2026-10-01-seller-phone-audit-and-settlements.md)
+- [2026-10-01 — 머니 게이트 판정 도구가 수수료를 0원으로 읽고 있었다](handoff/2026-10-01-money-gate-judge-broken.md)
 - [로그인하면 보던 링크로 안 돌아오던 것 (2026-10-01)](handoff/2026-10-01-login-return-url.md)
 - [로그인 복귀를 **공식**으로 — 전수 (2026-10-01)](handoff/2026-10-01-login-return-everywhere.md)
 - [2026-10-01 — 로딩 밀림의 근본 원인 제거 + 전수 측정 가드](handoff/2026-10-01-loading-shift-root-cause.md)
