@@ -10,6 +10,7 @@ import { hasConsumerSession } from '@/utils/auth';
 import { REFERRAL_GROUP_DISCOUNT_DISABLED } from '@/shared/feature-flags';
 import BrandLoader from '@/components/brand/BrandLoader'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
+import { loginPathFromHere } from '@/utils/login-return'
 
 // ─────────────────────────────────────────────────────────────────────
 // Types
@@ -79,7 +80,7 @@ export default function MyGroupBuysPage() {
     // 🛡️ 2026-06-17 듀얼 로그인 충돌 수정: user_type 비의존 — 소비자 세션 존재만 검사.
     if (!hasConsumerSession()) {
       toast.info(t('myGroupBuys.loginRequired'));
-      navigate('/login');
+      navigate(loginPathFromHere());
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

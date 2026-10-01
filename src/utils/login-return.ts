@@ -65,3 +65,25 @@ export function clearLoginReturnUrl(): void {
   try { localStorage.removeItem(LOGIN_RETURN_KEY) } catch { /* private mode */ }
   try { sessionStorage.removeItem('returnUrl') } catch { /* private mode */ }
 }
+
+/**
+ * 🧭 **공식: 로그인으로 보낼 때는 돌아올 곳을 같이 보낸다.**
+ *
+ * 지금 보고 있는 화면으로 돌아오는 로그인 주소를 만든다. 복귀 주소를 **URL 에 명시**하므로
+ * `localStorage` 가 막힌 브라우저(사생활 보호 모드)에서도, 다른 탭에서 로그인해도 성립한다.
+ *
+ * 쓰는 법: `navigate(loginPathFromHere())` — `navigate('/login')` 대신.
+ * (전수 가드: `src/tests/unit/login-return-everywhere-2026-10-01.test.ts`)
+ *
+ * @param from 돌아갈 곳(생략하면 현재 주소). 경로+쿼리를 그대로 넘겨도 된다.
+ */
+export function loginPathFromHere(from?: string): string {
+  let raw = from
+  if (!raw) {
+    try { raw = window.location.pathname + window.location.search } catch { raw = '/' }
+  }
+  const safe = safeInternalPath(raw, '/')
+  // '/' 로 떨어졌으면(외부 URL·/login 자기참조 등) 복귀를 붙이지 않는다 — 붙이면 홈이 복귀 주소가 되어
+  // 저장된 값을 이기는, 바로 그 결함을 다시 만든다.
+  return safe === '/' ? '/login' : `/login?returnUrl=${encodeURIComponent(safe)}`
+}

@@ -423,6 +423,7 @@ export default function AboutPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 max-w-3xl mx-auto mb-10">
               <CTACard to="/seller/login" title="셀러 / 매장" subtitle="카카오 로그인 → 5분 후 공구 등록" />
+              {/* login-return-ok: 소개 랜딩의 시작 CTA — 돌아올 "보던 화면" 이 없다 */}
               <CTACard to="/login" title="소비자" subtitle="카카오/이메일 → 동네 공구" />
               <CTACard to="/admin/login" title="어드민" subtitle="운영팀 전용" />
             </div>

@@ -10,6 +10,7 @@ import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { formatNumber } from '@/utils/format'
 import { hasConsumerSession } from '@/utils/auth'
+import { loginPathFromHere } from '@/utils/login-return'
 
 interface SelectedRestaurant {
   name: string
@@ -50,7 +51,7 @@ export default function UserGroupBuyCreatePage() {
   useEffect(() => {
     if (!isLoggedIn) {
       toast.error(t('groupbuy.loginRequired', { defaultValue: '로그인이 필요합니다' }))
-      navigate('/login', { replace: true })
+      navigate(loginPathFromHere(), { replace: true })
       return
     }
     if (isSeller) {

@@ -36,6 +36,7 @@ import api from '@/lib/api'
 import BrandLoader from '@/components/brand/BrandLoader'
 import AccountPcPane from './user-profile/AccountPcPane'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { loginPathFromHere } from '@/utils/login-return'
 
 /**
  * 🛡️ 2026-05-01: TD-018 분할 — sub-component 들을 ./user-profile/ 디렉토리로 이동.
@@ -118,7 +119,7 @@ export default function UserProfilePage() {
   //   CLAUDE.md 잠금규칙("토큰/ID 존재만으로 인증 판단, user_type 추가검사 X")과 정합.
   const isLoggedInViaLocalStorage = !!localStorage.getItem('user_id') || !!localStorage.getItem('session_login')
   if (!user && !isLoggedInViaLocalStorage) {
-    return <Navigate to="/login" replace />
+    return <Navigate to={loginPathFromHere()} replace />
   }
 
   // ✅ 로그아웃 핸들러

@@ -13,6 +13,7 @@ import { getUserIdSync } from '@/utils/auth'
 import { formatNumber } from '@/utils/format'
 import { useBalance } from '@/hooks/queries'
 import BrandLoader from '@/components/brand/BrandLoader'
+import { loginPathFromHere } from '@/utils/login-return'
 
 const clientKey = getTossClientKey()
 
@@ -49,7 +50,7 @@ export default function PointsChargePage() {
   const userId = getUserIdSync()
 
   useEffect(() => {
-    if (!userId) { navigate('/login'); return }
+    if (!userId) { navigate(loginPathFromHere()); return }
     Promise.all([
       api.get('/api/points/charge-options').then(r => {
         if (r.data.success) {
