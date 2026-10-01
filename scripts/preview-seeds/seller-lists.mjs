@@ -173,6 +173,82 @@ export const SELLER_PROFILE = {
 }
 
 /**
+ * 🩸 **1차 시드도 얇았다** (2026-10-01, 이 파일을 만든 바로 그날).
+ *
+ * 결재문이 적어 둔 목록(`/orders` · `/settlements` · `/settlements/stats` · `/dashboard/stats` ·
+ * `/settlement-options` · 이용권 · 알림톡)만 목했더니 `/seller/settlements` 화면이 여전히
+ * *"아직 자동 정산 내역이 없습니다"* · 미지급 0 · 지급예정 0 이었다 — **그 화면의 주 숫자는
+ * `/api/seller/payouts` 에서 온다.** 소스를 다시 읽고 넷을 더 담는다.
+ *
+ * ⇒ 교훈이 또 한 겹: *"결재문이 센 API 목록"* 도 실측이 아니다. **화면 소스에서 뽑아야** 한다.
+ */
+export const SELLER_PAYOUTS = {
+  payable: 11_793_600,
+  held: 9_900_000,
+  hold_days: 14,
+  scheduled_total: 926_100,
+  sent_total: 12_719_700,
+  auto: true,
+  scope: 'owner',
+  since: null,
+  payouts: [
+    {
+      id: 41, amount: 926_100, period_start: '2026-09-14', period_end: '2026-09-20',
+      status: 'approved', account_number: '카카오뱅크 3333-01-1234567', account_holder: '정지원',
+      admin_memo: null, created_at: '2026-09-21 00:10:00', approved_at: '2026-09-22 09:00:00', sent_at: null,
+    },
+    {
+      id: 40, amount: 12_719_700, period_start: '2026-09-07', period_end: '2026-09-13',
+      status: 'sent', account_number: '카카오뱅크 3333-01-1234567', account_holder: '정지원',
+      admin_memo: '정상 송금 (영업일 D+7)', created_at: '2026-09-14 00:10:00',
+      approved_at: '2026-09-15 09:00:00', sent_at: '2026-09-24 14:30:00',
+    },
+  ],
+}
+
+/** 매장(오프라인 이용권) 정산 — 수동 레일. */
+export const SELLER_RESTAURANT_SETTLEMENTS = [
+  {
+    id: 12, seller_id: 1, period_start: '2026-09-21', period_end: '2026-09-27',
+    total_amount: 980_000, commission_amount: 53_900, settlement_amount: 926_100,
+    status: 'pending', created_at: '2026-09-28 00:10:00', paid_at: null,
+  },
+]
+
+export const SELLER_TAX_SUMMARY = {
+  year: 2026, total_sales: 142_300_000, total_commission: 7_826_500,
+  total_settled: 134_473_500, withholding_total: 0, invoice_count: 9,
+}
+
+export const SELLER_TAX_INVOICES = [
+  {
+    id: 3, period_start: '2026-09-01', period_end: '2026-09-30', amount: 7_826_500,
+    status: 'pending', issued_at: null, approved_at: null, created_at: '2026-10-01 00:05:00',
+  },
+]
+
+/**
+ * 🩸 **세 번째로 빠진 것** — 이 파일의 가드(`seller-list-fixtures-2026-10-01`)가 바로 잡았다.
+ *   `/api/seller/voucher-catalog`(딜 잔액을 교환권으로 받는 화면). 손으로 센 목록은 **세 번 다** 모자랐다
+ *   — 그래서 목록을 **화면 소스에서 뽑는** 가드를 같이 둔다.
+ */
+export const SELLER_VOUCHER_CATALOG = [
+  {
+    gift_code: 'G0001', name: '스타벅스 아메리카노 T', brand_name: '스타벅스',
+    brand_icon_url: null, sale_price: 4_500, real_price: 4_900, discount_rate: 8,
+    image_url_small: null, image_url_large: null,
+    valid_period_type: 'DAYS', valid_period_days: 90, goods_type_detail: '음료',
+  },
+  {
+    gift_code: 'G0002', name: '배스킨라빈스 패밀리 아이스크림 (쿼터 · 토핑 2종 포함 · 매장 수령 전용)',
+    brand_name: '배스킨라빈스', brand_icon_url: null,
+    sale_price: 19_800, real_price: 22_000, discount_rate: 10,
+    image_url_small: null, image_url_large: null,
+    valid_period_type: 'DAYS', valid_period_days: 30, goods_type_detail: '아이스크림',
+  },
+]
+
+/**
  * 하네스의 가짜 서버가 쓰는 라우팅 표. `empty` 면 **빈 목록**을 준다 — 두 상태를 모두 봐야 한다
  * (빈 화면은 1차 측정이 이미 봤고, 그게 "🟢 깨끗" 오판의 원인이었다).
  */
@@ -187,6 +263,11 @@ export function sellerListResponse(path, mode = 'full') {
     '/api/seller/deal-balance': () => ({ success: true, data: empty ? { ...SELLER_DEAL_BALANCE, gated_deal_amount: 0, redeemable_deal_amount: 0, total: 0, withdrawable: 0 } : SELLER_DEAL_BALANCE }),
     '/api/seller/alimtalk/credits': () => ({ success: true, data: empty ? { balance: 0, packages: SELLER_ALIMTALK_CREDITS.packages, history: [] } : SELLER_ALIMTALK_CREDITS }),
     '/api/seller/alimtalk/logs': () => ({ success: true, data: empty ? [] : SELLER_ALIMTALK_LOGS }),
+    '/api/seller/payouts': () => ({ success: true, data: empty ? { ...SELLER_PAYOUTS, payable: 0, held: 0, scheduled_total: 0, sent_total: 0, payouts: [] } : SELLER_PAYOUTS }),
+    '/api/seller/restaurant-settlements': () => ({ success: true, data: empty ? [] : SELLER_RESTAURANT_SETTLEMENTS }),
+    '/api/seller/tax-summary': () => ({ success: true, data: SELLER_TAX_SUMMARY }),
+    '/api/seller/settlement-tax-invoices': () => ({ success: true, data: empty ? [] : SELLER_TAX_INVOICES }),
+    '/api/seller/voucher-catalog': () => ({ success: true, data: empty ? [] : SELLER_VOUCHER_CATALOG }),
     '/api/seller/stays': () => ({ success: true, data: empty ? [] : SELLER_STAYS }),
     '/api/seller/profile': () => ({ success: true, data: SELLER_PROFILE, seller: SELLER_PROFILE }),
     // PIN 게이트는 **열어 둔다** — 안 열면 시트가 PIN 화면에서 멈춰 또 빈 화면을 재게 된다.
@@ -200,6 +281,11 @@ export function sellerListResponse(path, mode = 'full') {
 /** 이 시드가 덮는 경로 — 가드가 "시트가 부르는 API 를 다 목하는가" 를 이것으로 판정한다. */
 export const SELLER_LIST_PATHS = Object.freeze([
   '/api/seller/orders',
+  '/api/seller/payouts',
+  '/api/seller/restaurant-settlements',
+  '/api/seller/tax-summary',
+  '/api/seller/settlement-tax-invoices',
+  '/api/seller/voucher-catalog',
   '/api/seller/settlements',
   '/api/seller/settlements/stats',
   '/api/seller/dashboard/stats',
