@@ -263,7 +263,15 @@ jsdom 렌더 시험이 메시지를 살려 진단했다 — `tool-page-sheet-ren
   **"아직 코드가 없어요"** 로 떴다 — 404 도 에러도 안 난다. 봉투는 **소비자 쪽**에서 읽는다.
 - 🗓️ **모듈 쪽 시드도 고정 날짜**였다(`2026-09-XX`). 둘 다 상대 날짜로 고쳤다.
 
-### 측정 결과 (430px · 시드 적용 · 2026-10-01)
+### 측정 결과 (430px · 2026-10-01)
+
+재현 명령 — **일곱이 한 깃발로 열린다**(2차는 `/seller/analytics` 만 다른 깃발을 요구해 빠뜨렸다):
+```bash
+npm run build:client
+for r in orders group-buy settlements store analytics influencer-deals alimtalk; do
+  node scripts/visual-preview.mjs --route=/seller/$r --auth=seller --seller-lists --phone-audit
+done
+```
 
 | 화면 | 시트 | 판정 | 가로스크롤 | 하드 클립 | 표 오버플로 | 작은 타깃(<40px) |
 |---|---|---|---|---|---|---|

@@ -524,12 +524,19 @@ function serve() {
           if (p === '/api/coupons/my') return res.end(JSON.stringify({ success: true, data: [] }))
           if (p === '/api/payments/client-key') return res.end(JSON.stringify({ success: true, data: { clientKey: 'test_ck_preview' }, clientKey: 'test_ck_preview' }))
         }
-        if (args.analytics) {
+        /**
+         * 📊 매출 분석 — `--analytics` **또는 `--seller-lists`** 로 열린다.
+         *
+         * 🩸 2026-10-01: 셀러 일곱을 한 명령으로 재려는데 `/seller/analytics` 만 플래그가 따로라
+         *   `--seller-lists` 로는 계속 🟡("잴 내용이 없다")였다. 일곱 중 하나가 다른 깃발을
+         *   요구하면 **다음 세션은 그 하나를 안 잰다**(실제로 2차가 그렇게 빠뜨렸다).
+         *   `--analytics=empty` 는 그대로 — "판 적은 있으나 이 기간엔 없음" 을 따로 보는 깃발이다.
+         */
+        if (args.analytics || SELLER_LISTS) {
           if (p === '/api/seller/analytics/detailed') return res.end(JSON.stringify({ success: true, data: ANALYTICS_DETAILED }))
           if (p.startsWith('/api/seller/analytics/chart/revenue')) {
-            // `--analytics=empty` — 판 적은 있으나 이 기간엔 없음(안 C 의 두 번째 "없음").
-            const rows = args.analytics === 'empty' ? [] : ANALYTICS_REVENUE
-            return res.end(JSON.stringify({ success: true, data: rows }))
+            const none = args.analytics === 'empty' || SELLER_LISTS === 'empty'
+            return res.end(JSON.stringify({ success: true, data: none ? [] : ANALYTICS_REVENUE }))
           }
         }
         if (SELLER_LISTS) {

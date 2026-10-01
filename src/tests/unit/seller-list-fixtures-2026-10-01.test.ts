@@ -79,6 +79,22 @@ describe('셀러 목록 시드 — 화면이 부르는 것을 덮는다', () => 
     expect(logs.some((l) => l.success === 0), '실패 로그가 없다 — 오류 배지를 못 본다').toBe(true)
   })
 
+  /**
+   * 🚩 일곱 화면이 **한 깃발**로 열린다.
+   *
+   * 🩸 2026-10-01: `/seller/analytics` 만 `--analytics` 를 따로 요구해 `--seller-lists` 로는
+   *   계속 🟡("잴 내용이 없다")였다. 일곱 중 하나가 다른 깃발을 요구하면 **다음 세션은 그 하나를
+   *   안 잰다** — 2차가 실제로 그렇게 빠뜨렸고, 그 화면이 빠진 표가 결재문에 올라갔다.
+   */
+  it('매출 분석도 --seller-lists 로 열린다 (일곱이 한 깃발)', () => {
+    const h = readFileSync('scripts/visual-preview.mjs', 'utf8')
+    expect(h, '매출 분석이 다른 깃발만 본다 — 일곱 중 하나가 측정에서 빠진다')
+      .toMatch(/if \(args\.analytics \|\| SELLER_LISTS\) \{/)
+    // `=empty` 는 **따로 살아 있어야** 한다 — "판 적은 있으나 이 기간엔 없음" 화면을 보는 깃발이다.
+    expect(h, 'empty 변형이 사라졌다 — 빈 상태 화면을 못 본다')
+      .toMatch(/args\.analytics === 'empty' \|\| SELLER_LISTS === 'empty'/)
+  })
+
   it('하네스가 이 시드를 배선해 쓴다 (모듈만 있고 안 쓰면 측정은 그대로 빈 화면)', () => {
     const h = readFileSync('scripts/visual-preview.mjs', 'utf8')
     expect(h).toMatch(/import \{ sellerListResponse \} from '\.\/preview-seeds\/seller-lists\.mjs'/)

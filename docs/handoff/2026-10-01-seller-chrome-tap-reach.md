@@ -8,7 +8,9 @@
 ```bash
 bash scripts/install-git-hooks.sh          # 세션마다 다시 — .git/hooks 는 클론에 안 딸려 온다
 npm run build:client                        # 하네스는 dist/client 를 띄운다. 낡은 dist = 옛 화면
-node scripts/visual-preview.mjs --route=/seller/settlements --auth=seller --seller-lists --phone-audit
+for r in orders group-buy settlements store analytics influencer-deals alimtalk; do
+  node scripts/visual-preview.mjs --route=/seller/$r --auth=seller --seller-lists --phone-audit
+done
 ```
 판정: `🟢 깨끗` + `안 닿는 히트영역` 줄이 **없어야** 한다. 🔴 가 뜨면 `.tap-reach` 의 히트 영역이
 어딘가에서 잘린 것이다(조상 `overflow: hidden` 이 유일한 원인 — 그 자리를 찾아 박스를 키울지 판단).
@@ -46,7 +48,10 @@ node scripts/visual-preview.mjs --route=/seller/settlements --auth=seller --sell
 6. 🩸 **측정 도구가 두 가지를 틀리게 재고 있었다** — 줄임표(`truncate`)를 결함으로 셌고(390px 에서
    긴 이름을 줄이는 건 설계다), 빈 문구 한 줄로 페이지 전체를 보류시켰다(정산 화면은 가득한데
    패널 하나가 "아직 ... 없습니다" 라고 말한다). 둘 다 **판정 기준**을 고쳤다.
-7. 🩸 **주입 매니페스트를 `[...BASE, ...SEED]` 로 합치려 했다** — 러너의 자기 무결성 검사가
+7. 🩸 **일곱 중 하나가 다른 깃발을 요구했다.** `/seller/analytics` 만 `--analytics` 를 따로
+   요구해 `--seller-lists` 로는 계속 🟡 였다 — 2차가 그래서 그 화면을 빠뜨린 표를 결재문에
+   올렸다. ⇒ 한 깃발로 통일(`=empty` 변형은 그대로 살려 둔다). 주입으로 잠갔다.
+8. 🩸 **주입 매니페스트를 `[...BASE, ...SEED]` 로 합치려 했다** — 러너의 자기 무결성 검사가
    `export default [` 를 요구해 빨간불이 났다(항목이 조용히 사라지는 것을 막는 그 검사다).
    ⇒ 매니페스트는 **리터럴 배열 하나**로 둘 것.
 

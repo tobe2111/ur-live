@@ -96,4 +96,12 @@ export default [
     replace: "  daily_revenue: DAILY.map((revenue, i) => ({ date: `2026-09-${String(24 + i).padStart(2, '0')}`, revenue })),",
     test: 'src/tests/unit/seller-list-fixtures-2026-10-01.test.ts',
   },
+  {
+    name: '🚩 매출 분석만 다른 깃발을 요구한다 (일곱 중 하나가 측정에서 빠진다)',
+    why: '2026-10-01 측정 2차가 실제로 그렇게 한 화면을 빠뜨렸고, 그 표가 결재문에 올라갔다. 빠진 화면은 🟡 로 뜨는데 "시드 더 필요" 처럼 읽혀 아무도 다시 안 잰다.',
+    file: 'scripts/visual-preview.mjs',
+    find: '        if (args.analytics || SELLER_LISTS) {',
+    replace: '        if (args.analytics) {',
+    test: 'src/tests/unit/seller-list-fixtures-2026-10-01.test.ts',
+  },
 ]
