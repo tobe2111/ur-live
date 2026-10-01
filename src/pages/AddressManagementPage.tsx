@@ -12,6 +12,7 @@ import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useAddresses, type EntryMethod, type ShippingAddress } from '@/hooks/queries/useAddresses'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { ListLoadError } from '@/components/ui/list-load-error'
+import { loginPathFromHere } from '@/utils/login-return'
 
 const EMPTY_FORM = {
   recipient_name: '',
@@ -55,7 +56,7 @@ export default function AddressManagementPage() {
     const userId = getUserIdSync()
     if (!userId) {
       toast.info(t('address.loginRequired'))
-      navigate('/login')
+      navigate(loginPathFromHere())
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate])
