@@ -58,16 +58,27 @@ export default function AccountMenu({
         { icon: HelpCircle, label: t('nav.support', { defaultValue: '고객센터' }), path: '/faq' },
       ]
 
+  /**
+   * 🔑 명시적 로그아웃 = **전 역할 종료**(2026-07-07 대표 확정 "전부 로그아웃", `logoutAll`).
+   *
+   * 🩸 2026-10-01 (대표 신고 — "로그아웃했는데 로그아웃하라는 UI 가 뜬다"): 여기는 그 확정 **이후**
+   *   만들어진 입구(08-19 그루폰식 헤더)인데 옛 방식(`clearAuthData('user')` = 소비자만 정리)을
+   *   쓰고 있었다. 그래서 다중역할 계정은 로그아웃을 눌러도 `seller_token`/`admin_token` 이 남아
+   *   헤더가 계속 로그인 상태로 보였다 — 같은 버그가 **새 문으로 다시 들어온** 것이다.
+   *   마이페이지는 이미 `logoutAll()` 을 쓴다. 두 입구가 다른 로그아웃을 하면 안 된다.
+   *
+   * ⚠️ `logoutAll()` 이 서버 세션쿠키 삭제를 **await 한 뒤** 스스로 홈으로 하드 리로드까지 한다
+   *   (여기서 `window.location.href` 를 또 부르면 쿠키 삭제가 끝나기 전에 떠나 재인증 레이스가 난다).
+   */
   async function signOut() {
     onClose()
     try {
-      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
-    } catch { /* 네트워크 실패해도 아래 로컬 정리는 반드시 한다 */ }
-    try {
-      const { clearAuthData } = await import('@/utils/auth')
-      clearAuthData('user')
-    } catch { /* noop */ }
-    window.location.href = '/'
+      const { logoutAll } = await import('@/features/auth/login-flow.service')
+      await logoutAll()
+    } catch {
+      // 모듈 로드/네트워크 실패 — 최소한 홈으로는 보낸다(다음 진입에서 재시도).
+      window.location.href = '/'
+    }
   }
 
   return (

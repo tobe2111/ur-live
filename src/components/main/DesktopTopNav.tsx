@@ -13,7 +13,7 @@ import AccountMenu from './AccountMenu'
 import { useUnreadCount, useCartCount } from '@/hooks/queries'
 import { useWishlist } from '@/hooks/queries/useWishlist'
 import { DEAL_CATS } from '@/pages/pc-home/PcHomeRail'
-import { isLoggedInSync } from '@/utils/auth'
+import { hasConsumerSession } from '@/utils/auth'
 import { sellerEntryPath } from '@/utils/seller-entry'
 import { isWholesaleSurface } from '@/utils/domain'
 import { hasOwnHeaderPc, isFullBleedPcPath } from '@/shared/pc-fullbleed'
@@ -35,7 +35,19 @@ export default function DesktopTopNav() {
   const [acctOpen, setAcctOpen] = useState(false)
   const acctRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
-  const loggedIn = isLoggedInSync()
+  /**
+   * 🩸 2026-10-01 (대표 신고 — "로그아웃을 했는데 로그아웃하라는 UI 로 뜬다"):
+   *   여기는 **소비자 헤더**인데 `isLoggedInSync()` 를 읽고 있었다. 그 함수는 `seller_token`·
+   *   `admin_token`·`agency_token` 까지 로그인으로 세므로, 소비자 로그아웃을 끝낸 뒤에도
+   *   대시보드 토큰이 한 개라도 남아 있으면 헤더가 계속 "로그인됨"으로 그려졌다 —
+   *   인사말은 손님용("환영해요")인데 메뉴는 내 이용권·주문 내역·**로그아웃**이 뜨는 모순된 화면.
+   *   (재현 확인: `localStorage` 에 `admin_token` 하나만 두고 홈을 열면 대표 스크린샷과 동일.)
+   *
+   *   ⇒ 소비자 세션은 `hasConsumerSession()` 으로 판정한다. 그 함수 주석이 이미 못 박아 둔 규칙이다:
+   *      *"seller_token / admin_token 단독은 소비자 세션이 아니므로 포함하지 않는다."*
+   *   이 값이 가르는 것 셋(계정 메뉴·찜·알림)은 전부 소비자 기능이라 기준이 같아야 맞다.
+   */
+  const loggedIn = hasConsumerSession()
   // 🔗 2026-06-17 (대표 신고): 유어샵 탭이 항상 /host/new 로 가던 버그 — 본인 유어샵 경로로 정합(BottomNav 와 동일).
   const linkshopPath = useLinkshopPath()
 
