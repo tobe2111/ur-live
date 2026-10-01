@@ -325,8 +325,10 @@
 5. **SEO/공유 루프**: 유어샵·블로그·공구 상세 서버측 OG/JSON-LD → 카톡/네이버/구글 유입 → 재유통.
 6. **인스타 댓글 → DM 루프** (2026-10-01 신설 · 기본 OFF): 유어딜 공식 인스타 게시물에 정해 둔 키워드로
    댓글 → 그 사람에게 링크 DM 1통(메타 공식 Private Reply, 댓글 후 7일 이내) + 선택적 공개 답글.
-   유어딜 **자체 홍보** 도구다(셀러·유어애즈 광고주용 아님). 어드민 `/admin/instagram-autodm`,
-   웹훅 `/api/instagram/webhook`(앱 시크릿 서명 검증), 코드 `src/features/instagram-autodm/`.
+   같은 날 **매장(사업자 유저·중개사)** 에게도 열었다: 마이 → 전체 도구 → '인스타 자동 DM'(`/seller/instagram-dm`),
+   연결은 **인스타 로그인**(토큰 없음), 계정 = `seller:{id}`(좌석 토큰). 공식 계정은 어드민 `/admin/instagram-autodm`.
+   게이트 두 겹(계정 '켜기' + 어드민 '매장 계정 발송' 스위치, 둘 다 기본 OFF — 메타 앱 심사 뒤 연다).
+   웹훅 `/api/instagram/webhook`(앱 시크릿 서명 검증)이 인스타 계정 ID 로 주인을 찾는다. 코드 `src/features/instagram-autodm/`.
 
 ---
 

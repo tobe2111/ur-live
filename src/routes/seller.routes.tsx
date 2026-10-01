@@ -53,6 +53,7 @@ const SellerStoreInfoPage = lazy(() => import('@/pages/SellerStoreInfoPage'))
 const SellerOperatingSummaryPage = lazy(() => import('@/pages/SellerOperatingSummaryPage'))
 const SellerInfluencersPage = lazy(() => import('@/pages/SellerInfluencersPage'))
 const SellerAlimtalkPage = lazy(() => import('@/pages/SellerAlimtalkPage'))
+const SellerInstagramDmPage = lazy(() => import('@/pages/SellerInstagramDmPage'))
 const SellerTransfersPage = lazy(() => import('@/pages/SellerTransfersPage'))
 const SellerAnalyticsPage = lazy(() => import('@/pages/SellerAnalyticsPage'))
 const SellerReviewsPage = lazy(() => import('@/pages/SellerReviewsPage'))
@@ -274,6 +275,7 @@ export function SellerRoutes() {
           <SellerAlimtalkPage />
         </ProtectedRoute>
       } />
+      <Route path="/seller/instagram-dm" element={<ProtectedRoute requireSeller><ErrorBoundary><SellerInstagramDmPage /></ErrorBoundary></ProtectedRoute>} />
       <Route path="/seller/transfers" element={
         <ProtectedRoute requireSeller>
           <ErrorBoundary><SellerTransfersPage /></ErrorBoundary>

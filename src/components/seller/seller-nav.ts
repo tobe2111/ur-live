@@ -166,5 +166,6 @@ export const SELLER_SEARCH_ONLY: { path: string; labelKey: string; fallback: str
   { path: '/seller/voucher-orders', labelKey: 'seller.nav.voucherOrders', fallback: '교환권 발송 이력', icon: Gift, group: '수익' },
   { path: '/seller/transfers', labelKey: 'seller.nav.transfers', fallback: '매장 이관', icon: Handshake, group: '설정' },
   { path: '/seller/marketing', labelKey: 'seller.nav.marketing', fallback: '마케팅', icon: Megaphone, group: '주문·고객' },
+  { path: '/seller/instagram-dm', labelKey: 'seller.nav.instagramDm', fallback: '인스타 자동 DM', icon: Megaphone, group: '주문·고객' },
   { path: '/seller/ad-slots', labelKey: 'seller.nav.adSlots', fallback: '광고 슬롯', icon: Rocket, group: '주문·고객' },
 ]
