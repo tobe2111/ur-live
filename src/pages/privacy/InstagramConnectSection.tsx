@@ -32,7 +32,7 @@ export default function InstagramConnectSection({ number }: { number?: string })
       {code && (
         <div className="mb-4 rounded-lg bg-tone-ok-bg p-4 text-[13px] text-tone-ok">
           <p className="font-semibold">삭제가 완료되었습니다 (Deletion completed)</p>
-          <p className="mt-1">확인 코드 (Confirmation code): <code className="font-mono">{code}</code></p>
+          <p className="mt-1">확인 코드 (Confirmation code): <span className="font-semibold tabular-nums">{code}</span></p>
         </div>
       )}
 
