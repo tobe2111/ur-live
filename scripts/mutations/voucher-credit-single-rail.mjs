@@ -49,19 +49,21 @@ export default [
     why: 'credit 은 seller:N 으로 접히는데 paid 가 store_owner:N 으로 남으면 이미 보낸 돈이 안 빠져 매주 다시 생성된다.',
   },
   {
-    // ⚠️ 앵커를 GB 에 두면 **두 곳(딜·카드)에 매치**돼 러너가 거부한다 — CART 는 한 곳뿐이다.
+    // 🎯 2026-10-01 재조준: 계정·수수료를 **한 호출이 함께** 내도록 바꿨다(`purchaseCreditFields`) —
+    //   호출부에서 둘을 따로 적을 수 없으니 짝 불일치가 구조적으로 불가능해졌다. ⇒ 주입은 SSOT 쪽에서
+    //   그 짝을 깨뜨린다(매장 상품인데 수수료를 싣는다).
     name: '💸 구매 적립이 수수료를 그때 떼어 escrow 가 총액이 아니게 된다',
-    file: CART,
-    find: 'fee_amount: purchaseCredit.carriesFee ? commissionAmount : 0,',
-    replace: 'fee_amount: commissionAmount,',
+    file: SSOT,
+    find: '  return { credit_account: account, fee_amount: carriesFee ? feeAmount : 0 }',
+    replace: '  return { credit_account: account, fee_amount: feeAmount }',
     test: TEST,
     why: '사용 시점 세 분개가 escrow 에서 총액을 꺼내므로, 구매 때 수수료를 빼 두면 escrow 가 모자란다(수수료를 두 번 뗀 셈).',
   },
   {
     name: '💸 장바구니 구매 적립만 옛 경로로 돌아간다 (한 자리만 새도 같은 사고)',
     file: CART,
-    find: 'credit_account: purchaseCredit.account,',
-    replace: "credit_account: `seller:${sid}`,",
+    find: '...purchaseCreditFields(sid, commissionAmount), // 💸 escrow 경유(이중적립 제거)',
+    replace: "credit_account: `seller:${sid}`, fee_amount: commissionAmount,",
     test: TEST,
     why: '구매 경로가 셋(딜·카드·장바구니)이라 하나만 빠뜨리면 그 경로로 산 이용권에서만 이중적립이 난다 — 가장 찾기 어려운 모양이다.',
   },
@@ -85,8 +87,10 @@ export default [
     why: 'SSOT 에 위임하지 않으면 cron 과 어드민 수동 생성이 서로 다른 라벨을 쓴다 — 같은 가게에 payout 행이 둘 생긴다.',
   },
   {
+    // 🎯 2026-10-01 재조준: 그 집계 문장이 `payout-account.ts payoutPeriodPendingSql()` 로 옮겨졌다
+    //   (파일 크기 래칫이 분리를 요구했고, 같은 머니 공식 세 벌의 드리프트를 줄이는 쪽이기도 하다).
     name: '💸 어드민 수동 생성이 다시 credit-only(과다지급) 로 돌아간다',
-    file: ADMIN,
+    file: SSOT,
     find: "      SELECT ${canonicalPayeeSql('credit_account')} as account, SUM(amount - COALESCE(fee_amount, 0)) as total",
     replace: "      SELECT ${canonicalPayeeSql('credit_account')} as account, SUM(amount) as total",
     test: TEST,

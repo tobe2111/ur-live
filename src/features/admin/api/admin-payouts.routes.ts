@@ -23,7 +23,7 @@ import { markPayoutSent, isTransferable, type PayoutRow } from '../../../worker/
 import { resolvePayoutHold } from '../../../worker/utils/payout-hold'
 // 💸 2026-10-01 (결재 voucher-credit-double-rail): `merchant:N` 과 `seller:N` 은 같은 가게다.
 //   이 화면과 cron 이 **같은 조각**을 써야 한다 — 갈리면 운영자가 화면에서 본 금액과 실제 생성분이 달라진다.
-import { canonicalPayee, canonicalPayeeSql, canonicalPaidPayeeSql, payoutPayeeType } from '@/worker/utils/payout-account'
+import { canonicalPayee, payoutPayeeType, payoutPendingRowsSql, payoutPeriodPendingSql } from '@/worker/utils/payout-account'
 
 import { csvEscape } from '../../../worker/utils/csv-safe'
 import { handoverCloseout } from './admin-payouts/handover-closeout'
@@ -49,42 +49,7 @@ adminPayoutsRoutes.get('/admin/payouts/pending', requireAdmin(), async (c) => {
     //   ⚠️ credit 에만 걸고 debit 은 즉시(아래 deb CTE 무접촉) · WHERE 를 괄호로 감싼 이유는
     //     `payout-hold.ts` 와 `payouts-generate.ts` 주석 참조(OR 우선순위).
     const hold = await resolvePayoutHold(DB)
-    const rows = await DB.prepare(`
-      WITH cred AS (
-        SELECT ${canonicalPayeeSql('credit_account')} AS account, SUM(amount - COALESCE(fee_amount, 0)) AS c
-          FROM ledger_entries
-         WHERE (credit_account LIKE 'merchant:%' OR credit_account LIKE 'seller:%'
-            OR credit_account LIKE 'agency:%' OR credit_account LIKE 'user:%')
-           ${hold.sql}
-         GROUP BY account
-      ),
-      deb AS (
-        SELECT ${canonicalPayeeSql('debit_account')} AS account, SUM(amount) AS d
-          FROM ledger_entries
-         WHERE debit_account LIKE 'merchant:%' OR debit_account LIKE 'seller:%'
-            OR debit_account LIKE 'agency:%' OR debit_account LIKE 'user:%'
-         GROUP BY account
-      ),
-      paid AS (
-        SELECT ${canonicalPaidPayeeSql('payee_type', 'payee_id')} AS account, SUM(amount) AS p
-          FROM payouts
-         WHERE status IN ('pending','approved','sent')
-         GROUP BY account
-      ),
-      accts AS (SELECT account FROM cred UNION SELECT account FROM deb)
-      SELECT
-        a.account AS account,
-        (COALESCE(cred.c, 0) - COALESCE(deb.d, 0) - COALESCE(paid.p, 0)) AS pending_amount,
-        (COALESCE(cred.c, 0) - COALESCE(deb.d, 0)) AS total_credited,
-        COALESCE(paid.p, 0) AS total_paid
-      FROM accts a
-      LEFT JOIN cred ON cred.account = a.account
-      LEFT JOIN deb ON deb.account = a.account
-      LEFT JOIN paid ON paid.account = a.account
-      WHERE (COALESCE(cred.c, 0) - COALESCE(deb.d, 0) - COALESCE(paid.p, 0)) > 0
-      ORDER BY pending_amount DESC
-      LIMIT 200
-    `).all<{ account: string; pending_amount: number; total_credited: number; total_paid: number }>().catch(() => ({ results: [] as Array<{ account: string; pending_amount: number; total_credited: number; total_paid: number }> }))
+    const rows = await DB.prepare(payoutPendingRowsSql(hold.sql)).all<{ account: string; pending_amount: number; total_credited: number; total_paid: number }>().catch(() => ({ results: [] as Array<{ account: string; pending_amount: number; total_credited: number; total_paid: number }> }))
     return c.json({ success: true, data: rows.results || [], hold_days: hold.days })
   } catch (err) {
     return safeError(c, err, '요청 처리 중 오류가 발생했습니다', '[admin]')
@@ -113,36 +78,7 @@ adminPayoutsRoutes.post('/admin/payouts/generate', requireAdmin(), require2FA(),
   //   표시용 집계는 2026-07-01 에 net 으로 고쳐졌는데 이 버튼만 남았다. 같은 공식으로 맞춘다
   //   (`getLedgerReceivable` · `payouts-generate` 와 동일: (credit − fee) − debit − 이미 payout).
   //   ⚠️ 기간 창은 credit·debit **양쪽에 대칭으로** 건다 — 한쪽만 걸면 그 기간 밖 차감이 사라진다.
-  const pendingRows = await DB.prepare(`
-    WITH credits AS (
-      SELECT ${canonicalPayeeSql('credit_account')} as account, SUM(amount - COALESCE(fee_amount, 0)) as total
-        FROM ledger_entries
-       WHERE (credit_account LIKE 'merchant:%' OR credit_account LIKE 'seller:%' OR credit_account LIKE 'agency:%' OR credit_account LIKE 'user:%')
-         AND created_at BETWEEN ? AND ?
-       GROUP BY account
-    ),
-    debits AS (
-      SELECT ${canonicalPayeeSql('debit_account')} as account, SUM(amount) as total
-        FROM ledger_entries
-       WHERE (debit_account LIKE 'merchant:%' OR debit_account LIKE 'seller:%' OR debit_account LIKE 'agency:%' OR debit_account LIKE 'user:%')
-         AND created_at BETWEEN ? AND ?
-       GROUP BY account
-    ),
-    paid AS (
-      SELECT ${canonicalPaidPayeeSql('payee_type', 'payee_id')} as account, SUM(amount) as total
-        FROM payouts
-       WHERE status IN ('approved','sent')
-       GROUP BY account
-    ),
-    accts AS (SELECT account FROM credits UNION SELECT account FROM debits)
-    SELECT a.account as account,
-           COALESCE(c.total, 0) - COALESCE(d.total, 0) - COALESCE(p.total, 0) as pending_amount
-      FROM accts a
-      LEFT JOIN credits c ON c.account = a.account
-      LEFT JOIN debits d ON d.account = a.account
-      LEFT JOIN paid p ON p.account = a.account
-     WHERE COALESCE(c.total, 0) - COALESCE(d.total, 0) - COALESCE(p.total, 0) >= ?
-  `).bind(periodStart + ' 00:00:00', periodEnd + ' 23:59:59', periodStart + ' 00:00:00', periodEnd + ' 23:59:59', minAmount).all<{ account: string; pending_amount: number }>().catch(() => ({ results: [] as Array<{ account: string; pending_amount: number }> }))
+  const pendingRows = await DB.prepare(payoutPeriodPendingSql()).bind(periodStart + ' 00:00:00', periodEnd + ' 23:59:59', periodStart + ' 00:00:00', periodEnd + ' 23:59:59', minAmount).all<{ account: string; pending_amount: number }>().catch(() => ({ results: [] as Array<{ account: string; pending_amount: number }> }))
 
   let created = 0
   for (const r of pendingRows.results || []) {

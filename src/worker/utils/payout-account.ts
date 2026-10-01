@@ -123,6 +123,26 @@ export function canonicalPaidPayeeSql(typeCol: string, idCol: string): string {
 }
 
 /**
+ * 🧩 **지급 집계의 WHERE 조각** — 세 집계(cron · 어드민 표시 · 어드민 수동 생성)가 공유한다.
+ *
+ * 🩸 왜 조각까지 뺐나: 세 문장이 거의 같은 WHERE 를 **각자** 들고 있으면 유보(`holdSql`)가 한 곳에만
+ *   붙는 날이 온다 — `payout-hold` 가드가 정확히 그 사고를 막으려고 존재한다("화면이 보여 주는
+ *   정산 대기와 실제 생성분이 갈리면 운영자가 없는 돈을 승인한다"). 보간 자리를 **하나**로 만들면
+ *   그 드리프트가 구조적으로 불가능하다. (주입 앵커가 유일해지는 것도 그 덕이다.)
+ *
+ * ⚠️ LIKE 묶음을 **괄호로 감싼다** — `A OR B OR C AND D` 는 `A OR B OR (C AND D)` 로 묶여
+ *   유보가 마지막 LIKE 에만 걸리고 나머지 계정은 통째로 샌다.
+ */
+function payoutCreditWhere(holdSql: string): string {
+  return `WHERE (credit_account LIKE 'merchant:%' OR credit_account LIKE 'seller:%' OR credit_account LIKE 'agency:%' OR credit_account LIKE 'user:%')
+           ${holdSql}`
+}
+
+/** 차감 쪽. **유보가 붙지 않는다** — 환불 역전을 미루면 과다지급이다. */
+const PAYOUT_DEBIT_WHERE =
+  "WHERE debit_account LIKE 'merchant:%' OR debit_account LIKE 'seller:%' OR debit_account LIKE 'agency:%' OR debit_account LIKE 'user:%'"
+
+/**
  * 💰 **지급 대기 순액 집계 SQL** — `payouts-generate` cron 이 쓰는 문장 그대로.
  *
  * 여기로 뺀 이유는 `expired-voucher-refund-sql.ts` 와 같다: 이 문장이 혼자 *"누가 얼마를 받는가"* 를
@@ -139,12 +159,11 @@ export function payoutCreditsSql(holdSql: string): string {
       SELECT account, SUM(net) as total FROM (
         SELECT ${canonicalPayeeSql('credit_account')} AS account, amount - COALESCE(fee_amount, 0) AS net
           FROM ledger_entries
-         WHERE (credit_account LIKE 'merchant:%' OR credit_account LIKE 'seller:%' OR credit_account LIKE 'agency:%' OR credit_account LIKE 'user:%')
-           ${holdSql}
+         ${payoutCreditWhere(holdSql)}
         UNION ALL
         SELECT ${canonicalPayeeSql('debit_account')} AS account, -amount AS net
           FROM ledger_entries
-         WHERE debit_account LIKE 'merchant:%' OR debit_account LIKE 'seller:%' OR debit_account LIKE 'agency:%' OR debit_account LIKE 'user:%'
+         ${PAYOUT_DEBIT_WHERE}
       )
       GROUP BY account
     `
@@ -181,4 +200,103 @@ export function payoutPayeeType(
 ): 'store_owner' | 'seller' | 'agency' | 'user' {
   if (kind !== 'seller') return kind
   return isStoreOwner(sellerType) ? 'store_owner' : 'seller'
+}
+
+/**
+ * 🧾 **구매 적립의 원장 필드 두 개를 한 번에** 만든다.
+ *
+ * 🩸 왜 따로 뺐나: 호출부가 `credit_account` 와 `fee_amount` 를 **각자** 쓰면 둘이 어긋날 수 있다 —
+ *   escrow 로 보내면서 수수료를 그때 떼면 escrow 가 총액이 아니게 되고(사용 시점 세 분개가 총액을
+ *   꺼낸다) **수수료를 두 번 뗀 셈**이 된다. 주입 매니페스트가 그 결함을 심어 보는 항목을 갖고 있다.
+ *   ⇒ 한 함수가 둘을 함께 내면 **짝이 틀릴 수 없다.**
+ *
+ * @param feeAmount 그 주문의 플랫폼 수수료. 매장 상품이면 **싣지 않는다**(사용 시점에 인식).
+ */
+export function purchaseCreditFields(
+  sellerId: number | string | null | undefined,
+  feeAmount: number,
+): { credit_account: string; fee_amount: number } {
+  const { account, carriesFee } = purchaseCreditAccount(sellerId)
+  return { credit_account: account, fee_amount: carriesFee ? feeAmount : 0 }
+}
+
+/**
+ * 📋 **어드민 '정산 대기' 표** — 계정별 순 외상. cron 과 같은 공식·같은 정규화를 쓴다.
+ *
+ * 🩸 여기로 뺀 이유는 `payoutCreditsSql` 과 같다. 그리고 하나 더 있다 — 이 레포는 **같은 머니 공식을
+ *   세 벌**(cron · 이 표 · 어드민 수동 생성) 갖고 있었고, 2026-07-01 에 net 으로 고칠 때 **표만 고쳐져**
+ *   수동 생성은 credit-only(과다지급)로 남아 있었다. 문장을 모듈로 모으면 그런 드리프트가 구조적으로 준다.
+ */
+export function payoutPendingRowsSql(holdSql: string): string {
+  return `
+      WITH cred AS (
+        SELECT ${canonicalPayeeSql('credit_account')} AS account, SUM(amount - COALESCE(fee_amount, 0)) AS c
+          FROM ledger_entries
+         ${payoutCreditWhere(holdSql)}
+         GROUP BY account
+      ),
+      deb AS (
+        SELECT ${canonicalPayeeSql('debit_account')} AS account, SUM(amount) AS d
+          FROM ledger_entries
+         ${PAYOUT_DEBIT_WHERE}
+         GROUP BY account
+      ),
+      paid AS (
+        SELECT ${canonicalPaidPayeeSql('payee_type', 'payee_id')} AS account, SUM(amount) AS p
+          FROM payouts
+         WHERE status IN ('pending','approved','sent')
+         GROUP BY account
+      ),
+      accts AS (SELECT account FROM cred UNION SELECT account FROM deb)
+      SELECT
+        a.account AS account,
+        (COALESCE(cred.c, 0) - COALESCE(deb.d, 0) - COALESCE(paid.p, 0)) AS pending_amount,
+        (COALESCE(cred.c, 0) - COALESCE(deb.d, 0)) AS total_credited,
+        COALESCE(paid.p, 0) AS total_paid
+      FROM accts a
+      LEFT JOIN cred ON cred.account = a.account
+      LEFT JOIN deb ON deb.account = a.account
+      LEFT JOIN paid ON paid.account = a.account
+      WHERE (COALESCE(cred.c, 0) - COALESCE(deb.d, 0) - COALESCE(paid.p, 0)) > 0
+      ORDER BY pending_amount DESC
+      LIMIT 200
+    `
+}
+
+/**
+ * 📋 **어드민 수동 '정산 생성'** — 기간 창 안의 순 외상. 바인딩 5개(기간 ×2 쌍 + 최소금액).
+ *
+ * ⚠️ 기간 창은 credit·debit **양쪽에 대칭으로** 건다 — 한쪽만 걸면 그 기간 밖의 차감
+ *   (환불 역전·커미션)이 사라져 과다지급이 된다.
+ */
+export function payoutPeriodPendingSql(): string {
+  return `
+    WITH credits AS (
+      SELECT ${canonicalPayeeSql('credit_account')} as account, SUM(amount - COALESCE(fee_amount, 0)) as total
+        FROM ledger_entries
+       ${payoutCreditWhere('AND created_at BETWEEN ? AND ?')}
+       GROUP BY account
+    ),
+    debits AS (
+      SELECT ${canonicalPayeeSql('debit_account')} as account, SUM(amount) as total
+        FROM ledger_entries
+       ${PAYOUT_DEBIT_WHERE}
+         AND created_at BETWEEN ? AND ?
+       GROUP BY account
+    ),
+    paid AS (
+      SELECT ${canonicalPaidPayeeSql('payee_type', 'payee_id')} as account, SUM(amount) as total
+        FROM payouts
+       WHERE status IN ('approved','sent')
+       GROUP BY account
+    ),
+    accts AS (SELECT account FROM credits UNION SELECT account FROM debits)
+    SELECT a.account as account,
+           COALESCE(c.total, 0) - COALESCE(d.total, 0) - COALESCE(p.total, 0) as pending_amount
+      FROM accts a
+      LEFT JOIN credits c ON c.account = a.account
+      LEFT JOIN debits d ON d.account = a.account
+      LEFT JOIN paid p ON p.account = a.account
+     WHERE COALESCE(c.total, 0) - COALESCE(d.total, 0) - COALESCE(p.total, 0) >= ?
+  `
 }

@@ -40,6 +40,7 @@ import {
   payoutCreditsSql,
   payoutPaidSql,
   payoutPayeeType,
+  purchaseCreditFields,
 } from '@/worker/utils/payout-account'
 import { readCode, stripComments, stripImports } from '../helpers/source-text'
 
@@ -222,23 +223,25 @@ describe('배선 — 세 구매 자리와 집계 셋이 같은 SSOT 를 쓴다',
   const CRON = stripComments(readCode('src/worker/cron/payouts-generate.ts'))
   const ADMIN = stripComments(readCode('src/features/admin/api/admin-payouts.routes.ts'))
 
-  it('구매 적립 세 자리가 purchaseCreditAccount 의 결과를 credit 한다', () => {
-    // 🩸 `toContain('purchaseCreditAccount')` 로는 **import 줄 때문에** 본문을 되돌려도 통과한다.
-    //    그래서 `credit_account:` 에 무엇이 들어가는지를 본다.
-    expect((GB.match(/credit_account: purchaseCredit\.account/g) ?? []).length,
+  it('구매 적립 세 자리가 SSOT 헬퍼로 두 필드를 함께 쓴다 (짝이 틀릴 수 없다)', () => {
+    // 🩸 `toContain('purchaseCreditFields')` 로는 **import 줄 때문에** 본문을 되돌려도 통과한다.
+    //    그래서 **호출 형태**를 앵커로 쓴다. 그리고 계정과 수수료를 한 호출이 함께 내므로
+    //    "escrow 로 보내면서 수수료는 뗀다" 같은 **짝 불일치가 구조적으로 불가능**하다.
+    expect((GB.match(/\.\.\.purchaseCreditFields\(product\.seller_id, commissionAmount\)/g) ?? []).length,
       'group-buy 의 구매 적립 두 자리(딜·카드)가 escrow 로 안 간다').toBe(2)
-    expect((CART.match(/credit_account: purchaseCredit\.account/g) ?? []).length,
+    expect((CART.match(/\.\.\.purchaseCreditFields\(sid, commissionAmount\)/g) ?? []).length,
       '장바구니 구매 적립이 escrow 로 안 간다').toBe(1)
     // 구매 적립이 매장 계정으로 돌아가면 이중지급이 되살아난다.
     expect(stripImports(GB)).not.toMatch(/credit_account: sellerLedgerAccount\(/)
     expect(stripImports(CART)).not.toMatch(/credit_account: sellerLedgerAccount\(/)
+    // 수수료를 따로 적으면 짝이 갈릴 수 있다 — 구매 적립 자리에 raw fee_amount 가 없어야 한다.
+    expect(stripImports(CART)).not.toMatch(/fee_amount: commissionAmount/)
   })
 
   it('수수료는 매장 상품 구매 시점에 인식하지 않는다 (사용 시점 세 번째 분개가 인식한다)', () => {
-    for (const [name, src] of [['group-buy', GB], ['cart', CART]] as const) {
-      expect(src, `${name}: fee_amount 가 구매 시점에 무조건 실린다 — escrow 가 총액이 아니게 된다`)
-        .toMatch(/fee_amount: purchaseCredit\.carriesFee \? commissionAmount : 0/)
-    }
+    // 동작으로 잰다 — 매장 상품은 0, 플랫폼 상품은 그대로.
+    expect(purchaseCreditFields(14, 50)).toEqual({ credit_account: 'platform:escrow', fee_amount: 0 })
+    expect(purchaseCreditFields(null, 90)).toEqual({ credit_account: 'platform:revenue', fee_amount: 90 })
   })
 
   it('차감(인플 커미션·중개사 몫)은 여전히 seller:N 으로 간다 — 접기가 그걸 전제한다', () => {
@@ -265,15 +268,23 @@ describe('배선 — 세 구매 자리와 집계 셋이 같은 SSOT 를 쓴다',
     }
   })
 
-  it('어드민 집계 둘도 같은 조각을 쓴다 (화면과 생성분이 갈리면 없는 돈을 승인한다)', () => {
-    expect((ADMIN.match(/canonicalPayeeSql\(/g) ?? []).length,
-      '표시용·수동생성 두 집계 모두 정규화해야 한다(credit·debit 각 2 = 4)').toBe(4)
-    expect((ADMIN.match(/canonicalPaidPayeeSql\(/g) ?? []).length).toBe(2)
-    expect(ADMIN).not.toMatch(/GROUP BY payee_type, payee_id/)
+  it('어드민 집계 둘도 SSOT 문장을 쓴다 (화면과 생성분이 갈리면 없는 돈을 승인한다)', () => {
+    expect(ADMIN, '표시용 집계가 자기 SQL 을 들고 있으면 cron 과 갈린다')
+      .toMatch(/DB\.prepare\(payoutPendingRowsSql\(hold\.sql\)\)/)
+    expect(ADMIN, '수동 생성이 자기 SQL 을 들고 있으면 같은 드리프트가 다시 난다')
+      .toMatch(/DB\.prepare\(payoutPeriodPendingSql\(\)\)/)
+    expect(ADMIN, '계정 문자열로 다시 GROUP BY 하면 한 가게가 두 payee 가 된다')
+      .not.toMatch(/GROUP BY payee_type, payee_id/)
   })
 
-  it('어드민 수동 생성이 cron 과 같은 net 공식을 쓴다 (credit-only 면 과다지급)', () => {
-    expect(ADMIN, '수수료를 안 빼면 gross 를 지급한다').toMatch(/SUM\(amount - COALESCE\(fee_amount, 0\)\) as total/)
-    expect(ADMIN, '차감(debits)을 안 빼면 환불 역전·커미션이 사라진다').toMatch(/debits AS \(/)
+  it('세 집계 문장이 모두 net 공식 + 정규화를 쓴다 (credit-only 면 과다지급)', () => {
+    const SQL = stripComments(readCode('src/worker/utils/payout-account.ts'))
+    // cron · 표시 · 수동생성 = credit 3 + debit 3
+    expect((SQL.match(/canonicalPayeeSql\('credit_account'\)/g) ?? []).length, 'credit 정규화가 빠진 집계가 있다').toBe(3)
+    expect((SQL.match(/canonicalPayeeSql\('debit_account'\)/g) ?? []).length, 'debit 정규화가 빠진 집계가 있다').toBe(3)
+    expect((SQL.match(/canonicalPaidPayeeSql\('payee_type', 'payee_id'\)/g) ?? []).length, '이미 지급분 정규화가 빠졌다').toBe(3)
+    // 수수료·차감을 안 빼면 gross 를 지급한다.
+    expect((SQL.match(/amount - COALESCE\(fee_amount, 0\)/g) ?? []).length).toBe(3)
+    expect(SQL, '수동 생성에서 차감(debits)이 빠지면 환불 역전·커미션이 사라진다').toMatch(/debits AS \(/)
   })
 })

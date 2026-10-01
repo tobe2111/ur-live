@@ -27,8 +27,11 @@ export default [
   },
   {
     name: '🕙 어드민 정산대기 화면이 유보를 무시해 cron 과 값이 갈린다',
-    file: 'src/features/admin/api/admin-payouts.routes.ts',
-    find: "OR credit_account LIKE 'agency:%' OR credit_account LIKE 'user:%')\n           ${hold.sql}",
+    // 🎯 2026-10-01 재조준: 그 CTE 가 `payout-account.ts payoutPendingRowsSql()` 로 옮겨졌다
+    //   (파일 크기 래칫 + 같은 머니 공식 세 벌의 드리프트 축소). 불변식 그대로: 표시용 credit 에도
+    //   유보가 붙어 있어야 cron 과 값이 같다. `holdSql` 이 쓰이는 자리가 **거기 하나**라 앵커도 유일하다.
+    file: 'src/worker/utils/payout-account.ts',
+    find: "OR credit_account LIKE 'agency:%' OR credit_account LIKE 'user:%')\n           ${holdSql}",
     replace: "OR credit_account LIKE 'agency:%' OR credit_account LIKE 'user:%')",
     test: TEST,
     why: '화면이 유보 전 금액을 보여 주면 운영자가 아직 못 주는 돈을 승인한다.',
