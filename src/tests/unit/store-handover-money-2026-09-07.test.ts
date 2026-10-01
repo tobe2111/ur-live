@@ -12,6 +12,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
+import { canonicalPayee, canonicalPaidPayee } from '@/worker/utils/payout-account'
 
 const read = (p: string) => readFileSync(p, 'utf8')
 /** 블록 주석을 **먼저 통째로** 지운다 — 줄 단위로 지우면 가운데 줄이 남아 헛도는 판정이 된다. */
@@ -82,8 +83,20 @@ describe('🏷️ ② 판매자 없는 상품이 seller:null 로 적립되지 �
 
   it('payout 이 숫자 아닌 계정 id 를 거른다 (두 번째 방어선)', () => {
     // 'seller:null' 은 id='null'(truthy 문자열)이라 기존 `if (!id) continue` 를 통과했다.
-    const p = strip(read(PAYOUT))
-    expect(p, `${PAYOUT}: 계좌 없는 유령 payout 이 다시 만들어진다`).toMatch(/\/\^\\d\+\$\/\.test\(id\)/)
+    // 🎯 2026-10-01 재조준: 그 검사가 `payout-account.ts canonicalPayee()` 로 옮겨졌다
+    //   (계정 해석을 한 곳에 모은 결과 — 결재 voucher-credit-double-rail). 불변식은 그대로이고,
+    //   cron 이 그 함수를 실제로 쓰는지도 함께 본다(모듈에만 있고 안 쓰면 방어선이 아니다).
+    // 🩸 처음엔 정규식으로 `/^\d+$/.test(id)` 가 소스에 있는지만 봤다. 그런데 그 줄이 **두 입구에
+    //   같은 모양으로** 있어서(원장 계정 · payouts 행), 한쪽을 지워도 다른 쪽 때문에 초록이었다 —
+    //   주입 러너가 잡았다. ⇒ **모양이 아니라 동작**을 잰다. 두 입구를 각각 호출한다.
+    for (const bad of ['seller:null', 'merchant:null', 'seller:undefined', 'seller:abc', 'seller:']) {
+      expect(canonicalPayee(bad), `${bad} 가 지급 대상으로 샜다 — 계좌 없는 유령 payout 이 된다`).toBeNull()
+    }
+    expect(canonicalPaidPayee('store_owner', 'null'), "payouts 쪽 입구로 'null' 이 샜다").toBeNull()
+    // 정상 계정은 통과해야 한다 — 전부 null 로 막아도 위 단언은 통과하므로 반대 방향도 고정한다.
+    expect(canonicalPayee('seller:14')).toEqual({ kind: 'seller', id: '14' })
+    expect(strip(read(PAYOUT)), `${PAYOUT}: 계정 해석을 SSOT 에 위임하지 않으면 그 검사를 우회한다`)
+      .toMatch(/canonicalPayee\(/)
   })
 })
 

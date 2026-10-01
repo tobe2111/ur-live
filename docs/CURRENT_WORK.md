@@ -5502,6 +5502,7 @@ _총 386건 · 최신순 · 이 목록은 자동 생성된다._
 - [로그인 복귀를 **공식**으로 — 전수 (2026-10-01)](handoff/2026-10-01-login-return-everywhere.md)
 - [2026-10-01 — 인스타 댓글 → 자동 DM (유어딜 공식 계정)](handoff/2026-10-01-instagram-comment-autodm.md)
 - [2026-10-01 (2차) — 인스타 자동 DM 을 매장(사장님·중개사)에게 — 마이에서, 토큰 없이](handoff/2026-10-01-instagram-autodm-sellers.md)
+- [대표 결재 넷을 실행했다 — 이중적립 제거 · 만료환불 마감 · 부가세 손잡이 · 시트 측정 (2026-10-01)](handoff/2026-10-01-four-decisions-executed.md)
 - [2026-10-01 — 로그아웃했는데 로그인 상태로 보이던 것 + 이메일 가입·로그인](handoff/2026-10-01-consumer-logout-and-email-auth.md)
 **2026-09-30**
 - [2026-09-30 — 대표 지시 "다 순서대로 이상적으로 해줘" (여섯 항목)](handoff/2026-09-30-six-items-in-order.md)

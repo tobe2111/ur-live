@@ -96,9 +96,14 @@ describe('켜도 안전한 이유 — 원장 기록은 게이트가 없다', () 
   })
 
   it('그 원장이 실제 지급까지 간다 (payouts-generate 가 merchant 계정을 집계한다)', () => {
-    const exec = stripComments(PAYOUTS)
-    expect(exec).toContain('FROM ledger_entries')
-    expect(exec).toMatch(/credit_account LIKE 'merchant:%'/)
+    // 🎯 2026-10-01 재조준: 집계 문장이 `payout-account.ts` 로 옮겨졌다(결재 voucher-credit-double-rail).
+    //   불변식은 그대로 — **원장을 읽고, 매장 몫(`merchant:N`)을 집계에 포함한다.** 둘 다 본다:
+    //   문장이 그 모듈에 있고, cron 이 그 문장을 실제로 쓴다.
+    const sql = stripComments(readCode('src/worker/utils/payout-account.ts'))
+    expect(sql).toContain('FROM ledger_entries')
+    expect(sql).toMatch(/credit_account LIKE 'merchant:%'/)
+    expect(stripComments(PAYOUTS), 'cron 이 그 문장을 쓰지 않으면 모듈에 있어도 지급이 안 된다')
+      .toMatch(/payoutCreditsSql\(/)
   })
 })
 

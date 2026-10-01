@@ -77,12 +77,15 @@ export const COMMISSION_BUDGET_FIELDS: MoneySwitchField[] = [
   // 💸 2026-09-07: ③ 게이트는 켬/끔만 있고 **요율 값 자체를 고칠 자리가 없었다**(매장 카드는 표시 전용).
   //   미설정이면 코드 기본값(직접 10 / 중개 5)으로 동작한다 — 비워 두는 것이 안전한 기본이다.
   {
-    key: 'platform_fee_pct_direct', label: '↳ 직접 입점 요율 (%)', default: '10',
-    hint: '바로 위 **채널별 플랫폼 요율** 이 ON 일 때만 쓰인다. 비우면 코드 기본 10%',
+    key: 'platform_fee_pct_direct', label: '↳ 직접 입점 요율 (%, 부가세 포함 차감률)', default: '10',
+    hint: '바로 위 **채널별 플랫폼 요율** 이 ON 일 때만 쓰인다. 비우면 코드 기본 10%. '
+      + '📌 부가세 별도로 받으려면 **11** (= 10% + 부가세 10%). 코드는 이 값을 그대로 떼므로 '
+      + '약관의 "10% + 부가세" 와 결과가 같다',
   },
   {
-    key: 'platform_fee_pct_brokered', label: '↳ 중개(대행사) 요율 (%)', default: '5',
-    hint: '바로 위 **채널별 플랫폼 요율** 이 ON 일 때만 쓰인다. 비우면 코드 기본 5%',
+    key: 'platform_fee_pct_brokered', label: '↳ 중개(대행사) 요율 (%, 부가세 포함 차감률)', default: '5',
+    hint: '바로 위 **채널별 플랫폼 요율** 이 ON 일 때만 쓰인다. 비우면 코드 기본 5%. '
+      + '📌 부가세 별도로 받으려면 **5.5** (= 5% + 부가세 10%) → 10,000원에 550원',
   },
   // 🪙 2026-09-07 (대표 "모두 어드민에 붙혀줘"): **담기 적립의 주 스위치인데 켤 화면이 없었다.**
   //   `affiliate_program_enabled` 는 읽는 곳이 둘(affiliate-credit.ts 지급 · affiliate-program.ts 표시)
