@@ -45,10 +45,13 @@ export default [
   {
     name: '🪑 도구 시트가 좌석을 안 맞추고 열린다',
     file: 'src/pages/user-profile/SellerSection.tsx',
-    find: '    if (currentSeatId() !== store.seller_id) {\n      setEntering(true)',
-    replace: '    if (false) {\n      setEntering(true)',
-    test: TEST,
-    why: '화면엔 A 가 떠 있는데 토큰이 B 면, 환불 목록에 B 의 주문이 뜨고 사장님이 남의 주문을 환불한다.',
+    // 🔁 2026-10-01 철거 재조준: 좌석 규칙이 `ensureSeat` **한 벌**로 합쳐졌다.
+    //   종전 앵커는 복사된 두 곳에 걸려 *"주입 대상이 2곳"* 으로 잡혔다(그 검사가 내 중복을 찾아냈다).
+    //   불변식은 그대로 — **좌석을 안 맞추고 열면 남의 가게 데이터를 그린다.**
+    find: "    if (currentSeatId() === store.seller_id) return true",
+    replace: "    return true",
+    test: 'src/tests/unit/seller-tools-in-my-2026-09-25.test.ts',
+    why: '좌석 토큰이 다른 가게를 가리키는데 시트를 열면 **남의 가게 주문·정산**이 뜬다. 서버는 토큰으로 거르므로 에러가 아니라 **다른 가게 데이터**가 보인다 — 그게 더 나쁘다.',
   },
   {
     name: '🏦 출금이 입금 계좌를 본문에서 뺀다 (송금 못 하는 지급 행)',

@@ -166,12 +166,27 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
    * 경로의 id 가 아니라 **토큰**이 권한 근거다(§15-3 규칙 ③). 좌석이 이미 맞으면 발급도 안 한다.
    * @param to 주면 앉은 뒤 그 주소로 하드 진입(대시보드는 전역이 옛 매장을 캐싱하므로 — `StoreSwitcher` 와 같은 판단).
    */
-  async function enterSeat(to?: string) {
-    if (!store || entering) return
+  /**
+   * 🪑 **좌석 맞추기 — 한 벌만 있다** (2026-10-01 철거와 함께 통합).
+   *
+   * 🩸 철거 때 `openPage` 가 `openTool` 의 이 블록을 **복사**했고 주입 검사가 바로 잡았다
+   *   (*"주입 대상이 2곳 — 유일해야 한다"*). 고치려고 보니 `enterSeat` 에도 **세 번째 벌**이 있었다
+   *   (선재 — 다만 좌석이 맞는데도 `entering` 을 켜는 차이가 있었다. 그건 없어지는 쪽이 맞다).
+   *   같은 규칙이 여러 벌이면 한쪽만 고쳐지는 날이 온다 — 이 PR 이 없애려던 바로 그 클래스다.
+   * @returns 열어도 되는가
+   */
+  async function ensureSeat(): Promise<boolean> {
+    if (!store || entering) return false
+    if (currentSeatId() === store.seller_id) return true
     setEntering(true)
-    const ok = currentSeatId() === store.seller_id || await switchSeat(store.seller_id, store.name).catch(() => false)
+    const ok = await switchSeat(store.seller_id, store.name).catch(() => false)
     setEntering(false)
-    if (!ok) { toast.error('가게로 들어가지 못했습니다'); return }
+    if (!ok) { toast.error('가게로 들어가지 못했습니다'); return false }
+    return true
+  }
+
+  async function enterSeat(to?: string) {
+    if (!(await ensureSeat())) return
     // ↩️ 2026-09-26: 표시를 달고 보낸다 — 그 화면 맨 위에 "마이로 돌아가기" 띠가 뜬다.
     //   안 달면 일이 끝나는 화면(등록 폼은 저장 후 `/seller/group-buy` 로 간다)에서 길을 잃는다.
     if (to) window.location.assign(withMyReturn(to))
@@ -224,13 +239,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
    *   안 맞으면 먼저 앉히고(사람이 누른 행동이다), 실패하면 열지 않는다.
    */
   async function openTool(which: Tool) {
-    if (!store || entering) return
-    if (currentSeatId() !== store.seller_id) {
-      setEntering(true)
-      const ok = await switchSeat(store.seller_id, store.name).catch(() => false)
-      setEntering(false)
-      if (!ok) { toast.error('가게로 들어가지 못했습니다'); return }
-    }
+    if (!(await ensureSeat())) return
     setTool(which)
   }
 
@@ -241,13 +250,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
    *      두 벌이 되면 메뉴 이름과 시트 머리 이름이 갈린다.
    */
   async function openPage(path: string, title: string, from: 'tools' | null = null) {
-    if (!store || entering) return
-    if (currentSeatId() !== store.seller_id) {
-      setEntering(true)
-      const ok = await switchSeat(store.seller_id, store.name).catch(() => false)
-      setEntering(false)
-      if (!ok) { toast.error('가게로 들어가지 못했습니다'); return }
-    }
+    if (!(await ensureSeat())) return
     setPage({ path, title })
     setPageFrom(from)
     setTool('page')

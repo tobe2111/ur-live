@@ -123,12 +123,18 @@ describe('등록 — 폼을 복제하지 않는다', () => {
 describe('시트는 좌석이 맞을 때만 열리고, 같은 셸을 쓴다', () => {
   it('도구를 열기 전에 좌석을 맞춘다', () => {
     const code = stripComments(SECTION)
+    // 🔁 2026-10-01 철거: 좌석 맞추기가 `ensureSeat` 한 벌로 합쳐졌다(`openTool`·`openPage` 공용).
+    //   불변식은 그대로 — **좌석을 맞추고, 못 잡으면 열지 않는다.**
     const at = code.indexOf('async function openTool')
     expect(at, 'openTool 이 없다 — 앵커가 낡았다').toBeGreaterThan(0)
-    const fn = code.slice(at, at + 500)
-    expect(fn).toContain('currentSeatId() !== store.seller_id')
+    expect(code.slice(at, at + 200), 'openTool 이 좌석을 안 거친다')
+      .toMatch(/if \(!\(await ensureSeat\(\)\)\) return/)
+    const sat = code.indexOf('async function ensureSeat()')
+    expect(sat, 'ensureSeat 가 없다 — 좌석 규칙이 흩어졌다').toBeGreaterThan(0)
+    const fn = code.slice(sat, sat + 500)
+    expect(fn).toContain('currentSeatId() === store.seller_id')
     expect(fn).toContain('switchSeat(')
-    expect(fn, '좌석을 못 잡았는데 열면 남의 가게 데이터를 그린다').toMatch(/if \(!ok\).*return/s)
+    expect(fn, '좌석을 못 잡았는데 열면 남의 가게 데이터를 그린다').toMatch(/if \(!ok\).*return false/s)
   })
 
   it('남은 시트가 좌석을 스스로도 확인한다', () => {

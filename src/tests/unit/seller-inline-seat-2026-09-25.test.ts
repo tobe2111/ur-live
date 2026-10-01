@@ -165,8 +165,14 @@ describe('권한 근거는 토큰뿐 (§15-3 규칙 ③)', () => {
   //   ⇒ 이제 **불변식 자체**에 앵커한다: 좌석이 이미 맞으면 토큰을 다시 발급하지 않는다.
   it('셀러 화면 진입은 좌석이 맞을 때 발급조차 안 한다', () => {
     const code = stripComments(SECTION)
-    // 단락 평가 — 왼쪽이 참이면 `switchSeat` 을 아예 안 부른다.
-    expect(code).toMatch(/currentSeatId\(\) === store\.seller_id \|\| await switchSeat\(/)
+    // 🔁 2026-10-01 철거: 좌석 규칙이 `ensureSeat` **한 벌**로 합쳐졌다(종전엔 세 벌이었고
+    //   주입 검사가 *"주입 대상이 2곳"* 으로 잡았다). 단락 평가 한 줄 → 조기 반환으로 모양이 바뀌었다.
+    //   지키는 것은 그대로다: **좌석이 맞으면 `switchSeat` 을 아예 안 부른다.**
+    const at = code.indexOf('async function ensureSeat()')
+    expect(at, 'ensureSeat 가 없다 — 앵커가 낡았다').toBeGreaterThan(0)
+    const fn = code.slice(at, at + 400)
+    expect(fn, '좌석이 맞는데도 발급하면 다른 기기의 대시보드가 끊긴다')
+      .toMatch(/if \(currentSeatId\(\) === store\.seller_id\) return true[\s\S]{0,80}switchSeat\(/)
     expect(code).toMatch(/window\.location\.assign\(/)
   })
 })

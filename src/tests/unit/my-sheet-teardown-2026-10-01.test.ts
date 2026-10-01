@@ -67,10 +67,20 @@ describe('🧹 손수 시트 철거 (2026-10-01)', () => {
     const at = bare.indexOf('async function openPage(')
     expect(at, 'openPage 가 없다 — 앵커가 낡았다').toBeGreaterThan(0)
     const fn = bare.slice(at, at + 700)
-    expect(fn, '좌석을 안 맞추고 열면 남의 가게 데이터를 그린다').toContain('currentSeatId() !== store.seller_id')
-    expect(fn, '좌석을 못 잡았는데 열면 안 된다').toMatch(/if \(!ok\)/)
+    // 🩸 2026-10-01: 처음엔 좌석 조건을 `openPage` **안에서** 찾았는데, 그건 `openTool` 의 복사였다
+    //   (주입 검사가 *"주입 대상이 2곳"* 으로 잡았다). 한 벌(`ensureSeat`)로 합치고 앵커도 거기로.
+    expect(fn, '좌석을 안 맞추고 열면 남의 가게 데이터를 그린다').toContain('await ensureSeat()')
+    expect(fn, '좌석을 못 잡았는데 열면 안 된다').toMatch(/if \(!\(await ensureSeat\(\)\)\) return/)
     expect(fn, '시트로 열지 않으면 마이 밖으로 나간다').toContain("setTool('page')")
     expect(fn, 'openPage 가 바깥 라우터로 나가면 안 된다').not.toContain('enterSeat(')
+    // 좌석 규칙은 **한 곳**에만 있어야 한다 — 두 벌이면 한쪽만 고쳐지는 날이 온다.
+    const sat = bare.indexOf('async function ensureSeat()')
+    expect(sat, 'ensureSeat 가 없다 — 좌석 규칙이 다시 흩어졌다').toBeGreaterThan(0)
+    const seat = bare.slice(sat, sat + 500)
+    expect(seat).toContain('currentSeatId() === store.seller_id')
+    expect(seat, '좌석을 못 잡으면 false 를 돌려줘야 한다').toMatch(/if \(!ok\) \{[\s\S]{0,80}return false/)
+    expect(bare.split('currentSeatId() === store.seller_id').length - 1,
+      '좌석 비교가 두 곳 이상이다 — 규칙이 두 벌이 됐다').toBe(1)
   })
 
   it('② 닫으면 **온 곳으로** 돌아간다 (전체 도구에서 왔으면 그 목록으로)', () => {
