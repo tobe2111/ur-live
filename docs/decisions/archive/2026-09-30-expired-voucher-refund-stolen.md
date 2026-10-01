@@ -152,6 +152,35 @@ SELECT COUNT(*) FROM notifications WHERE user_id = 3 AND type = 'refund'
 `refund_status='claimed'` 로 남아 있으면 **처리 중에 예외가 터져 결과를 못 적은 것**이므로
 그때는 사람이 봐야 한다(아래 동반 수리 참조).
 
+### ✅ E4 판정 통과 — 2026-10-02 03:20 KST 실측 (라이브 D1, 읽기 전용)
+
+**환불이 처음으로 실제로 돌았다.** 위 세 줄을 값으로 확인했다:
+
+| 무엇 | 값 | 판정 |
+|---|---|---|
+| `cron_hb:expired-voucher-refund` | `at 2026-10-01T18:00:34Z`(= **10-02 03:00:34 KST**) · `ok:true` · `ms 6235` · `rr 144` · **`rw 10`** | 돌았다 |
+| `vouchers` id=1 (`UR-UR66-YDAZ`) | `status='expired'` · `refund_status=`**`'refunded'`** | ✅ |
+| `point_transactions` id=33 | user 3 · **+1,800** · `type='refund'` · `"바우처 만료 환불 (아메리카노(Hot)(TAKE-OUT))"` · `18:00:30Z` | ✅ |
+| `notifications` id=1 | user 3 · `type='refund'` · `"바우처 만료 환불"` · `18:00:31Z` | ✅ |
+| `user_points` user 3 | `balance 12,100` · `updated_at `**`18:00:30`** — 거래와 **같은 초** | 잔액이 실제로 움직였다 |
+| 이중환불 | `description LIKE '바우처 만료 환불%'` 전수 = **1건** | ✅ |
+| 남은 대상 | `status='active' AND expires_at IS NOT NULL` = **0건** | 큐 비었다 |
+
+🔑 **하트비트만 보면 판정이 안 된다는 이 문서의 경고가 맞았다** — `ok:true` 는 사고 당시에도 초록이었다.
+이번엔 `rw 10`(쓰기 10회)이 함께 있고, 그 쓰기가 위 네 행으로 **값으로** 확인된다.
+
+**0 이 정답인 것 둘**(결함이 아니다): 커미션 회수 0건 — 이용권 1 의 `introduced_by_influencer_id` 가
+`null` 이라 회수할 것이 없다. `unclaimed_forfeit` 원장 0건 — 미수령 정책이 OFF 이고 픽업 건도 아니라
+**전액 환불**이 맞다(`unclaimedRefundAmount` 가 전액을 돌려준 것).
+
+### 🔴 그런데 판정하면서 **새 결함**이 나왔다 — 장부에 안 적혀서 또 환불할 수 있다
+
+`orders.refunded_amount` 가 **여전히 0** 이다(주문 85, 총액 1,800). 이 문서의 근거 표가
+*"`orders.refunded_amount` = 0"* 을 버그의 증거로 적어 뒀는데, 머지된 수리는 그 칸을 건드리지 않았다
+(`grep refunded_amount src/worker/cron/auto-settlement.ts` = **0건**. 딜 환불은 `adjustUserPoints` 를
+직접 부른다). 그 칸이 **전액환불 경로의 상한**이라 지금 상태는 이중환불 구멍이다.
+⇒ 별도 결재 `docs/decisions/2026-10-02-expired-refund-not-booked.md` 로 올렸다(등급 C — 코드 미변경).
+
 ### 동반 수리 (같은 결정으로 함께 간다 — 머니 PR 에 묶는다)
 
 선점(`claimed`)과 결과 기록 사이의 `await` 는 전부 try/catch 가 감싸고 있지만, **순수 함수
