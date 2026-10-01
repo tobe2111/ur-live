@@ -20,6 +20,7 @@
 
 // 💸 커미션 재원·요율 **정책**은 별도 모듈(파일크기 래칫 — 원장 기록과 정책 판단은 층이 다르다).
 import { ownerFundedFor, channelPlatformRate } from './ledger-commission-policy'
+import { ledgerAccountAliases, paidPayeeAliases } from './payout-account'
 
 interface LedgerEntry {
   event_type: string  // group_buy_join | refund | charge | settlement | dispute_refund
@@ -489,13 +490,18 @@ export async function getLedgerReceivable(
   account: string,
 ): Promise<number> {
   await ensureLedgerTable(DB)
+  // 🔗 2026-10-01: 같은 가게의 `merchant:N` 과 `seller:N` 은 **한 payee** 다(`payout-account.ts` SSOT).
+  //   집계 SQL 셋은 2026-10-01 에 접기를 배웠는데 이 헬퍼는 못 배워서, 구매 적립이 escrow 로 간 뒤
+  //   매장 돈이 전부 `merchant:N` 에 쌓이자 **`seller:N` 만 묻는 여섯 자리가 0 을 읽었다.**
+  const accounts = ledgerAccountAliases(account)
+  const ph = accounts.map(() => '?').join(', ')
   const bal = await DB.prepare(`
     SELECT
-      COALESCE(SUM(CASE WHEN credit_account = ? THEN amount - COALESCE(fee_amount, 0) ELSE 0 END), 0) AS credit_net,
-      COALESCE(SUM(CASE WHEN debit_account  = ? THEN amount ELSE 0 END), 0) AS debit_total
+      COALESCE(SUM(CASE WHEN credit_account IN (${ph}) THEN amount - COALESCE(fee_amount, 0) ELSE 0 END), 0) AS credit_net,
+      COALESCE(SUM(CASE WHEN debit_account  IN (${ph}) THEN amount ELSE 0 END), 0) AS debit_total
     FROM ledger_entries
-    WHERE credit_account = ? OR debit_account = ?
-  `).bind(account, account, account, account)
+    WHERE credit_account IN (${ph}) OR debit_account IN (${ph})
+  `).bind(...accounts, ...accounts, ...accounts, ...accounts)
     .first<{ credit_net: number; debit_total: number }>()
     .catch(() => ({ credit_net: 0, debit_total: 0 }))
   return Number(bal?.credit_net ?? 0) - Number(bal?.debit_total ?? 0)
@@ -525,10 +531,14 @@ export async function getUnsettledBalance(
   payeeAccount: string,
 ): Promise<number> {
   const receivable = await getLedgerReceivable(DB, payeeAccount)
+  // 🔗 2026-10-01: `payoutPayeeType` 은 매장 사장님 payout 에 **`store_owner`** 를 박는다 —
+  //   `seller:N` 만 물으면 그 행들이 **안 빠져** 미배정 잔액이 과대로 읽힌다(마감해도 계속 막힌다).
+  const paidKeys = paidPayeeAliases(payeeAccount)
+  const paidPh = paidKeys.map(() => '?').join(', ')
   const earmarked = await DB.prepare(
     `SELECT COALESCE(SUM(amount), 0) as total FROM payouts
-      WHERE (payee_type || ':' || payee_id) = ? AND status IN ('pending','approved','sent')`,
-  ).bind(payeeAccount).first<{ total: number }>().catch(() => ({ total: 0 }))
+      WHERE (payee_type || ':' || payee_id) IN (${paidPh}) AND status IN ('pending','approved','sent')`,
+  ).bind(...paidKeys).first<{ total: number }>().catch(() => ({ total: 0 }))
   return receivable - Number(earmarked?.total ?? 0)
 }
 
@@ -537,10 +547,13 @@ export async function getPayablePending(
   payeeAccount: string,
 ): Promise<number> {
   const receivable = await getLedgerReceivable(DB, payeeAccount)
+  // 🔗 2026-10-01: 위와 같은 이유로 `store_owner:N` 도 함께 센다.
+  const paidKeys = paidPayeeAliases(payeeAccount)
+  const paidPh = paidKeys.map(() => '?').join(', ')
   const paid = await DB.prepare(
     `SELECT COALESCE(SUM(amount), 0) as total FROM payouts
-      WHERE (payee_type || ':' || payee_id) = ? AND status IN ('approved','sent')`,
-  ).bind(payeeAccount).first<{ total: number }>().catch(() => ({ total: 0 }))
+      WHERE (payee_type || ':' || payee_id) IN (${paidPh}) AND status IN ('approved','sent')`,
+  ).bind(...paidKeys).first<{ total: number }>().catch(() => ({ total: 0 }))
   return receivable - Number(paid?.total ?? 0)
 }
 

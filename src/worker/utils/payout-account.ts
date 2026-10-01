@@ -117,6 +117,45 @@ export function canonicalPayeeSql(col: string): string {
   return `CASE WHEN ${col} LIKE 'merchant:%' THEN 'seller:' || substr(${col}, 10) ELSE ${col} END`
 }
 
+/**
+ * 🔎 **canonical 계정 하나가 원장에서 가질 수 있는 원시 이름들** — `canonicalPayeeSql` 의 역방향.
+ *
+ * 🩸 왜 생겼나 (2026-10-01 실측): 접기는 **집계 SQL 세 곳**(`payoutCreditsSql` ·
+ *   `payoutPendingRowsSql` · 어드민 수동 생성)에만 들어갔고, **계정 하나를 묻는 헬퍼**
+ *   (`getLedgerReceivable` · `getUnsettledBalance` · `getPayablePending`)는 못 배웠다.
+ *   그 헬퍼들은 계정 문자열 **정확히 일치**로 집계한다(`WHERE credit_account = ?`).
+ *
+ *   구매 적립이 escrow 로 간 뒤로 **매장 돈은 전부 `merchant:N` 에만 쌓인다.** 그래서
+ *   `seller:N` 하나만 묻는 여섯 자리가 **0 을 읽는다** — 그중 셋이 "이 가게 아직 받을 돈 있나"
+ *   를 묻는 **가드**라, 돈이 안 보여서 통과시킨다(fail-closed 로 설계된 가드가 fail-open 이 된다):
+ *
+ *   | 자리 | 무엇이 샜나 |
+ *   |---|---|
+ *   | `store-handover-guard` | 못 받은 돈을 남긴 채 **매장이 넘어간다** |
+ *   | `seller-withdraw.routes` | 못 받은 돈을 남긴 채 **매장이 탈퇴한다** |
+ *   | `admin-payouts` 승인 가드 | 승인 상한이 0 으로 읽힌다 |
+ *   | `seller-settlements` · 셀러 출금 화면 | 사장님에게 **₩0** 으로 보인다 |
+ *
+ * ⚠️ 접두어 없는 계정(`platform:*`)이나 `agency:`·`user:` 는 접을 대상이 **없다** — 그대로 돌려준다.
+ */
+export function ledgerAccountAliases(account: string): string[] {
+  const m = /^seller:(\d+)$/.exec(account)
+  return m ? [account, `merchant:${m[1]}`] : [account]
+}
+
+/**
+ * 🏷️ **같은 payee 의 `payouts` 행 키들** — `canonicalPaidPayeeSql` 의 역방향.
+ *
+ * 🩸 같은 함수 안의 **두 번째** 결함이었다(방향은 반대라 서로 가려졌다):
+ *   `getUnsettledBalance` 의 배정분 뺄셈이 `(payee_type || ':' || payee_id) = 'seller:N'` 인데,
+ *   `payoutPayeeType` 은 매장 사장님 payout 에 **`store_owner`** 를 박는다 ⇒ 그 행들이 **안 빠진다**
+ *   ⇒ 미배정 잔액이 **과대**로 읽혀 마감을 해도 손바뀜이 계속 막힌다(2026-09-08 이 고치려던 그 막다른 길).
+ */
+export function paidPayeeAliases(account: string): string[] {
+  const m = /^seller:(\d+)$/.exec(account)
+  return m ? [account, `store_owner:${m[1]}`] : [account]
+}
+
 /** `payouts` 쪽 같은 규칙. `store_owner` 를 `seller` 로 접는다. */
 export function canonicalPaidPayeeSql(typeCol: string, idCol: string): string {
   return `(CASE WHEN ${typeCol} = 'store_owner' THEN 'seller' ELSE ${typeCol} END) || ':' || ${idCol}`

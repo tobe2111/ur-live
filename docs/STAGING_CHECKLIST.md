@@ -544,31 +544,49 @@ the prompt 'agree'"*. Llama 3.2 비전은 계정 단위 **1회 라이선스 동�
 | **S-VC3** | payouts 집계(cron `payouts-generate` 또는 어드민 '정산 생성') | 그 가게 합계가 **판매액을 넘지 않는다**(185% 가 안 나온다) · `merchant:N` 과 `seller:N` 이 **한 payee 로 접힌다**(`canonicalPayee`) · `payee_type` 이 접두어가 아니라 `sellers.seller_type` 에서 나온다 | ⬜ |
 | **S-VC4** | **카드** 결제와 **장바구니** 결제로도 각 1건 | S-VC1 과 같은 결과 — **결제수단에 따라 갈리지 않는다**(`group-buy.routes` 딜·카드 2곳 + `cart-checkout.routes`) | ⬜ |
 | **S-VC5** | **교환권**(KT·플랫폼 상품, `seller_id` 없음) 1건 구매 | 종전 그대로 **`platform:revenue`** + 수수료 인식 — **escrow 에 안 담긴다.** 플랫폼 상품은 사용 시점 분개가 아예 없어서, 담기면 **영원히 안 빠진다** | ⬜ |
-| **S-VC6** | 🔴 **매장 소유자 변경**(`store-handover-guard`) — 이용권을 쓴 적 있는 매장을 넘긴다 | 미정산 잔액이 남아 있으면 **막힌다**. ⚠️ **2026-10-01 현재 안 막힌다** — 아래 참조 | 🔴 **결함 확인됨** |
+| **S-VC6** | 🔴 이용권을 **쓴 적 있는 매장**에서 ⓐ 소유자 변경 ⓑ 매장 탈퇴 ⓒ 셀러 출금/정산 화면 ⓓ 어드민 승인 | 넷 **모두** 그 매장의 받을 돈을 **본다**: ⓐⓑ 잔액이 남아 있으면 **막힌다** · ⓒ 사장님 화면에 금액이 뜬다(₩0 아님) · ⓓ 승인 상한이 그 금액 | ✅ **수정됨**(2026-10-01, 아래) — **실결제 재확인 필요** |
 
-### 🔴 S-VC6 — 집계 접기가 안 닿는 다섯 번째 자리 (2026-10-01 발견, **미수정**)
+### ✅ S-VC6 — 집계 접기가 안 닿던 자리들 (2026-10-01 발견 → 같은 날 수정)
 
-`src/worker/utils/store-handover-guard.ts:117` 이 미정산 잔액을 **`seller:N` 하나로만** 읽는다:
+접기(`canonicalPayeeSql`)는 **집계 SQL 셋**에만 들어갔고, **계정 하나를 묻는 헬퍼** 셋
+(`getLedgerReceivable` · `getUnsettledBalance` · `getPayablePending`)은 못 배웠다 —
+그 헬퍼들은 `WHERE credit_account = ?` 로 **정확히 일치**를 본다.
 
-```ts
-receivable = await getUnsettledBalance(DB, `seller:${sellerId}`)
-```
+구매 적립이 escrow 로 간 뒤로 **매장 돈은 전부 `merchant:N` 에만 쌓인다.** 그래서
+`seller:N` 만 묻는 **여섯 자리가 0 을 읽고 있었다**:
 
-`getUnsettledBalance` → `getLedgerReceivable` 는 계정 **문자열 정확히 일치**로 집계하고
-(`WHERE credit_account = ? OR debit_account = ?`) **접기를 하지 않는다**. `canonicalPayee` 를
-쓰는 곳은 `payouts-generate` 와 `admin-payouts` **둘뿐**이다(실측 grep).
+| 자리 | 샌 것 | 방향 |
+|---|---|---|
+| `store-handover-guard.ts:117` | 못 받은 돈을 남긴 채 **매장이 넘어간다** | 🔴 fail-**open** |
+| `seller-withdraw.routes.ts:54` | 못 받은 돈을 남긴 채 **매장이 탈퇴한다** | 🔴 fail-**open** |
+| `admin-payouts.routes.ts:143,175` | 승인 상한이 0 | 🟡 과소 |
+| `seller-settlements/payouts.ts:34` · 셀러 출금 화면 | 사장님에게 **₩0** | 🟡 과소 |
+| `admin-payouts/handover-closeout.ts:55` | 마감할 금액이 0 | 🟡 과소 |
 
-⇒ 이용권 사용 적립은 `merchant:N` 에 쌓이는데 이 가드는 `seller:N` 만 본다:
+fail-closed 로 **설계된** 가드가 fail-open 이 된다 — 돈이 *안 보여서* 0 이기 때문이다. 에러도 로그도 없다.
 
-| 매장 상태 | `seller:N` | 가드 판정 | 옳은가 |
-|---|---|---|---|
-| 이용권 사용 적립만 있음(흔한 경우) | **0** | `receivable === 0` → **통과** | ❌ **못 받은 돈을 남겨둔 채 매장이 넘어간다** |
-| 거기에 인플루언서 커미션 차감까지 | **음수** | 음수 → 막음 | ⭕ (우연히 맞다) |
+**🩸 같은 함수 안에 두 번째 결함이 있었고, 방향이 반대라 서로 가리고 있었다.**
+`getUnsettledBalance` 의 배정분 뺄셈이 `(payee_type || ':' || payee_id) = 'seller:N'` 인데
+`payoutPayeeType` 은 매장 사장님 payout 에 **`store_owner`** 를 박는다 ⇒ 그 행이 **안 빠져**
+미배정 잔액이 **과대**로 읽힌다(2026-09-08 이 고치려던 "마감해도 계속 막히는 막다른 길"이 되살아난다).
 
-이 가드는 **fail-closed 로 설계**됐는데(조회 실패도 막는다) 이 자리에서는 **fail-open** 이다 —
-돈이 안 보여서 0 으로 읽기 때문이다. **에러도 로그도 없다.**
+**수정**: SSOT `payout-account.ts` 에 접기의 **역방향**을 둔다 —
+`ledgerAccountAliases('seller:N') → ['seller:N','merchant:N']` ·
+`paidPayeeAliases('seller:N') → ['seller:N','store_owner:N']`.
+세 헬퍼가 그걸 `IN (...)` 으로 쓴다. **이름은 그대로**(리네임은 #1591 이 기각했다) —
+읽는 쪽만 두 이름을 같은 payee 로 본다.
+`agency:`·`user:`·`platform:*` 은 접을 짝이 없어 **종전과 byte-동일**이다.
 
-**처방(권장)**: `getUnsettledBalance` 에 `canonicalPayee` 와 **같은 접기**를 적용하거나,
-가드가 `merchant:N`·`seller:N` 두 계정을 합산해 읽는다.
-⚠️ **머니 경로(등급 C)라 이 파일에서는 고치지 않았다** — 단독 세션 + staging 실결제가 선행이다.
-🍀 지금은 **사용된 이용권 0장 · payouts 0건**이라 피해자가 없다. 첫 실사용 전에 닫을 것.
+**가드**: `payee-balance-folding-2026-10-01.test.ts` 17건 — D1 모양만 얇게 흉내 내고
+**`ledger.ts` 의 그 함수를 실제 sqlite 에 돌려** 금액을 센다(SQL 을 베끼면 두 벌이 갈린다).
+주입 6건 **되돌려-검증 전부 빨간불 확인**.
+🩸 그중 하나가 처음엔 통과했다 — "라벨을 덮는가" 단언이 `payoutPayeeType` 이 *지금 내는* 라벨
+하나만 봐서, 라벨 규칙을 바꾸는 주입에 늘 참이었다. 그런데 재 보니 **그 주입은 이 시험의 책임이
+아니었다**(라벨 회귀는 `voucher-credit-single-rail:74` 가 소유하고, 접기 자체는 안 깨진다).
+⇒ 단언을 *모든* 라벨을 덮는지로 강화하고, 주입은 이 파일이 소유한 결함(별칭 철자 오타)으로 재조준했다.
+🧭 **주입이 통과하면 ① 가드가 헛돈다 ② 주입이 사실 결함이 아니다 ③ 결함이지만 다른 가드의 몫이다 —
+셋을 다 의심할 것.**
+
+⚠️ **실결제 재확인**: S-VC1~5 를 돌릴 때 ⓒ 셀러 정산 화면에 금액이 **뜨는지**와
+ⓐ 잔액이 남은 매장의 손바뀜이 **막히는지**를 함께 본다. 라이브 영향은 지금 0 이다
+(사용된 이용권 0장 · payouts 0건).
