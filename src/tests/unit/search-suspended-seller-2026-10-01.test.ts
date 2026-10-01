@@ -33,6 +33,7 @@ type Db = InstanceType<typeof DatabaseSync>
 
 const REPO = 'src/features/products/repositories/ProductRepository.ts'
 const SUGG = 'src/features/products/api/search-suggestions.ts'
+const ROUTES = 'src/features/products/api/products.routes.ts'
 const src = (p: string) => stripComments(readFileSync(p, 'utf-8'))
 
 /** 매장 상태별 상품을 깔고, 주어진 술어로 걸러 **보이는 상품 id** 를 돌려준다. */
@@ -62,6 +63,36 @@ function visibleIds(predicate: string, alias: 'products' | 'p'): number[] {
 
 /** `findAll`/`count` 가 인라인으로 갖고 있는 쌍둥이 술어 — 네 자리가 안 갈리는지 대조용. */
 const INLINE_TWIN = `NOT EXISTS (SELECT 1 FROM sellers s WHERE s.id = products.seller_id AND s.is_active = 0)`
+
+/** 상품명/매장명을 `LIKE` 로 긁는 SQL 리터럴을 전부 모은다 — 자동완성 표면의 정의. */
+function productNameQueries(file: string): string[] {
+  const text = src(file)
+  const out: string[] = []
+  for (const m of text.matchAll(/`[^`]*\bFROM products\b[^`]*`/g)) {
+    if (/name\s+LIKE/i.test(m[0])) out.push(m[0])
+  }
+  return out
+}
+
+/**
+ * SQL 리터럴 안의 `${지역변수}` 를 그 파일의 `const 지역변수 = …` 정의로 한 단계씩 펼친다.
+ *
+ * 🩸 왜 필요한가: `search-suggestions.ts` 는 술어를 `const scope = \`… ${sellerLive} …\`` 로
+ *   **간접** 보유한다. 리터럴 본문만 보면 "술어 없음" 으로 읽혀 **멀쩡한 코드에 빨간불**이 난다
+ *   (첫 판이 실제로 그랬다). 반대로 펼치지 않으면 복제본을 놓친다.
+ */
+function expandLocalTemplates(fileText: string, sql: string): string {
+  let out = sql
+  for (let pass = 0; pass < 4; pass++) {
+    const before = out
+    out = out.replace(/\$\{(\w+)\}/g, (whole, name) => {
+      const m = fileText.match(new RegExp(String.raw`const\s+${name}\s*=\s*([\s\S]*?);\n`))
+      return m ? m[1] : whole
+    })
+    if (out === before) break
+  }
+  return out
+}
 
 describe('검색·자동완성이 정지 매장 상품을 가린다 (2026-10-01)', () => {
   // ── ① 술어 자체가 의도대로 도는가 (실제 SQL) ──────────────────────────────
@@ -113,5 +144,53 @@ describe('검색·자동완성이 정지 매장 상품을 가린다 (2026-10-01)
   it('③-3 검사 대상이 비어 있지 않다 — 파일이 옮겨가면 위 toContain 이 전부 헛돈다', () => {
     expect(src(REPO).length).toBeGreaterThan(5000)
     expect(src(SUGG).length).toBeGreaterThan(1000)
+  })
+
+  // ── ④ 자동완성은 구현이 **두 벌**이다 ─────────────────────────────────────
+  //
+  // 🩸 2026-10-01: ③-2 를 통과시키고도 라이브 `/api/products/search/suggestions` 가 그대로 샜다.
+  //   `search-suggestions.ts`(SearchPage 가 부르는 `/api/search/suggestions`)만 고쳤고,
+  //   `products.routes.ts` 안의 **인라인 SQL 복제본**은 손대지 않았기 때문이다.
+  //   그 핸들러는 소스 주석이 *"안 닿는다"* 고 적어 둔 자리였는데 **실제로는 200 이 나온다**.
+  //   ⇒ 한 파일만 앵커하는 배선 검사는 복제본을 구조적으로 못 본다. 아래는 **전수**로 센다.
+  it('④ products.routes 의 인라인 자동완성 SQL 도 같은 술어를 쓴다', () => {
+    expect(src(ROUTES)).toContain("AND ${activeSellerProductSql('products')}")
+  })
+
+  it('④-2 상품명을 LIKE 로 긁는 쿼리는 **전부** 셀러 술어를 갖는다 (세 번째 복제본 차단)', () => {
+    const leaks: string[] = []
+    for (const f of [ROUTES, SUGG]) {
+      for (const sql of productNameQueries(f)) {
+        if (!expandLocalTemplates(src(f), sql).includes('activeSellerProductSql')) {
+          leaks.push(`${f}: ${sql.slice(0, 90).replace(/\s+/g, ' ')}…`)
+        }
+      }
+    }
+    expect(leaks).toEqual([])
+  })
+
+  it('④-2-1 술어에 넘긴 별칭이 그 쿼리의 FROM 과 맞는다 (어긋나면 조용히 빈 결과)', () => {
+    // 🩸 2026-10-01 주입이 찾아낸 사각지대: `FROM products p` 로 바꾸면 술어 안의
+    //   `products.seller_id` 가 해석 불가라 SQLite 가 던지는데, 호출부의
+    //   `.catch(() => ({ results: [] }))` 가 삼켜 **자동완성이 조용히 비어 버린다**.
+    //   빨간불도 에러 로그도 없어서 "제안이 원래 안 뜨나 보다" 로 지나간다.
+    const bad: string[] = []
+    for (const f of [ROUTES, SUGG]) {
+      for (const sql of productNameQueries(f)) {
+        const full = expandLocalTemplates(src(f), sql)
+        const used = [...full.matchAll(/activeSellerProductSql\(\s*'([^']+)'\s*\)/g)].map(m => m[1])
+        if (!used.length) continue
+        // `FROM products` → 바인딩은 'products' / `FROM products p` → 'p'
+        const from = full.match(/\bFROM\s+products(?:\s+(?!WHERE\b|JOIN\b|ORDER\b|LIMIT\b)(\w+))?/i)
+        const bound = from?.[1] ?? 'products'
+        for (const u of used) if (u !== bound) bad.push(`${f}: 술어 별칭 '${u}' ≠ FROM 별칭 '${bound}'`)
+      }
+    }
+    expect(bad).toEqual([])
+  })
+
+  it('④-3 그런 쿼리가 실제로 발견된다 — 0건이면 통과가 아니라 수집기가 낡은 것이다', () => {
+    const n = [ROUTES, SUGG].reduce((a, f) => a + productNameQueries(f).length, 0)
+    expect(n).toBeGreaterThanOrEqual(3) // 인라인 복제본 1 + search-suggestions 2(매장명·상품명)
   })
 })
