@@ -24,7 +24,7 @@ export default function InstagramConnectSection({ number }: { number?: string })
   }, [])
 
   return (
-    <section id="instagram" className="border-t border-gray-100 dark:border-[#2C2F35] pt-6 mt-6 scroll-mt-20">
+    <section id="instagram" className="border-t border-rule pt-6 mt-6 scroll-mt-20">
       <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">
         {number ? `${number}. ` : ''}인스타그램 연결 (댓글 자동 DM) / Instagram connection
       </h2>
@@ -42,14 +42,14 @@ export default function InstagramConnectSection({ number }: { number?: string })
           정해 둔 키워드로 댓글을 단 사람에게 링크를 담은 메시지를 한 번 보냅니다(댓글 1개당 1통, 댓글 후 7일 이내).
         </p>
 
-        <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-4 space-y-1">
+        <div className="bg-warm rounded-lg p-4 space-y-1">
           <h3 className="text-[13px] font-semibold text-gray-900 dark:text-white mb-1">① 처리하는 항목</h3>
           <p>연결한 계정: 인스타그램 계정 ID, 아이디(@), 접근 토큰(암호화 저장), 토큰 만료일</p>
           <p>댓글을 단 사람: 인스타그램 사용자 ID, 아이디(@), 댓글 ID, 댓글 내용 앞부분(최대 200자), 게시물 ID</p>
           <p>발송 기록: 보낸 시각, 적용된 규칙, 성공·실패 여부와 실패 사유</p>
         </div>
 
-        <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-4 space-y-1">
+        <div className="bg-warm rounded-lg p-4 space-y-1">
           <h3 className="text-[13px] font-semibold text-gray-900 dark:text-white mb-1">② 목적과 보관 기간</h3>
           <p>같은 댓글에 두 번 보내지 않기, 하루 발송 상한 지키기, 매장에 발송 결과 보여 주기에만 씁니다.
             광고, 추적, 제3자 제공에는 쓰지 않습니다.</p>
@@ -57,7 +57,7 @@ export default function InstagramConnectSection({ number }: { number?: string })
             매장이 만든 키워드 규칙만 다시 연결할 때를 위해 남깁니다. 삭제를 요청하면 규칙까지 모두 파기합니다.</p>
         </div>
 
-        <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-4 space-y-1">
+        <div className="bg-warm rounded-lg p-4 space-y-1">
           <h3 className="text-[13px] font-semibold text-gray-900 dark:text-white mb-1">③ 삭제하는 방법</h3>
           <p>매장: 마이 → 전체 도구 → 인스타 자동 DM 에서 「연결 해제」.</p>
           <p>누구나: 인스타그램 설정의 웹사이트 권한(앱 및 웹사이트)에서 유어딜을 삭제하면 연결이 해제되고,
