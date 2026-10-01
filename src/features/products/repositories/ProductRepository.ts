@@ -8,6 +8,7 @@ import type { Product, ProductFilter, ProductCreateInput, ProductUpdateInput } f
 import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories';
 import { capRowGalleries } from '@/features/group-buy/api/card-gallery'
 import { buildSearchClause } from './search-query'
+import { activeSellerProductSql } from '@/shared/db/consumer-visible-product'
 import { isAffiliateProgramEnabled, gateAffiliateRows } from '../../../worker/utils/affiliate-program';
 
 /**
@@ -446,6 +447,7 @@ export class ProductRepository {
       FROM products p
       WHERE ${where}
       AND p.is_active = 1
+      AND ${activeSellerProductSql('p')}
       AND NOT (COALESCE(p.is_supply_product, 0) = 1 AND COALESCE(p.supply_source_id, 0) = 0)
       AND NOT (COALESCE(p.category, '') = 'general' AND p.seller_id IS NULL)
     `;
