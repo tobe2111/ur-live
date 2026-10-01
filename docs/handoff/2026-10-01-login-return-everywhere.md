@@ -55,7 +55,7 @@ AccountDeleteWarningPage(진입) · RestoreAccountModal
 위젯이 뜨기 **전**, 비로그인일 때만 타는 분기라 결제 경로와 무관하다.
 **잠긴 계약 전부 byte-불변(grep 대조 전후 동일)**: `requestPayment`(3) · `widgets(`(3) · `setAmount`(5) ·
 `safePaymentReturnPath`(5) · `STEP_TIMEOUT_MS`(2) · SDK 마운트 id ×2 · `USER_CANCEL`(1).
-⚠️ CLAUDE.md audit log 에 `[UNLOCK]` 으로 기록할 것(이 PR 머지 후).
+✅ CLAUDE.md Toss audit log 에 `[UNLOCK]` 기재 완료(머지 `b1f30603` 뒤 후속 커밋 — 잠긴 계약 8종 grep 카운트 전후 동일 기록 포함).
 
 ## 5. 가드 — 전수 + 자기 자신
 
