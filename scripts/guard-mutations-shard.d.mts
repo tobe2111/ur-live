@@ -7,7 +7,7 @@
  * 형제: `guard-mutations-scope.d.mts` · `guard-mutations-manifest-diff.d.mts`.
  */
 
-/** 주입 1건당 벽시계(초). **GitHub 러너** 실측 역산 — 낮추지 말 것, 로컬 컨테이너 값(2.5~3배 느림)은 쓰지 말 것. */
+/** 주입 1건당 벽시계(초). **GitHub 러너의 가장 긴 조각**에서만 역산 — 추측으로 낮추지 말 것, 로컬 컨테이너 값(2.5~3배 느림)은 쓰지 말 것. */
 export declare const SECONDS_PER_INJECTION: number
 
 /** 조각 하나의 목표 벽시계(분). */
