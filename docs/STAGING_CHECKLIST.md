@@ -221,9 +221,29 @@ GET /api/admin/promo-ledger/order/:orderNumber      (read-only, finance 권한)
 
 | 날짜 | 항목 | 결과 | 비고 |
 |---|---|---|---|
+| 2026-10-02 | **S-EVR1** — 만료 이용권 자동환불 cron (라이브, 게이트 없음) | ✅ **E4 통과** | 아래 §S-EVR1. 같은 판정에서 **새 결함 1건** 발견 → 결재 `2026-10-02-expired-refund-not-booked.md` |
 | 2026-10-01 | **판정 도구 자체의 결함** (`GET /api/admin/promo-ledger/order/:no`) | 🔴 발견·수정 | 아래 §2026-10-01 |
 | 2026-10-01 | S5 (`pickup_unclaimed_policy_enabled`) — 라이브 주문 1건 조회 | ⬜ 대상 없음 | 그 주문의 교환권 1장이 `expires_at=NULL`(무기한) — 미수령 몰수의 **대상 자체가 아니다**. 게이트 OFF·`forfeits 0` 은 "통과"가 아니라 "안 재어졌다" |
 | 2026-10-01 | S4 (`FEE_RESOLVER_ENABLED`) | ⬜ 판정 불가 | `order_fee_breakdown` **테이블이 라이브에 없다**(게이트를 한 번도 안 켜 생성 자체가 안 됨). 스키마 사고가 아니다 |
+
+### ✅ S-EVR1 — 만료 이용권 자동환불 (2026-10-02 03:20 KST 판정)
+
+게이트 없는 항목이다(배포되면 바로 돈다). 결재 `docs/decisions/archive/2026-09-30-expired-voucher-refund-stolen.md`
+가 요구한 세 줄을 **값으로** 확인했다 — 자세한 표는 그 문서의 `### ✅ E4 판정 통과` 절.
+
+| 무엇 | 값 |
+|---|---|
+| `cron_hb:expired-voucher-refund` | `18:00:34Z`(10-02 03:00:34 KST) · `ok:true` · `rw 10` |
+| 이용권 1 `UR-UR66-YDAZ` | `refund_status='refunded'` |
+| 딜 입금 | `point_transactions` id=33 · user 3 · **+1,800** |
+| 알림 | `notifications` id=1 · `type='refund'` |
+| 이중환불 | 전수 **1건**(=0건 중복) |
+
+⚠️ **하트비트 `ok:true` 는 판정이 아니다** — 이 사고가 정확히 "초록 하트비트 + 환불 0" 이었다.
+
+🔴 **같은 판정에서 나온 새 결함**: `orders.refunded_amount` 가 여전히 **0** 이라 그 주문을 또 환불할 수
+있다(1,800 → 3,600). 어드민·셀러·주문 세 자리에서 누를 수 있다. 등급 C · 코드 미변경 ·
+결재 `docs/decisions/2026-10-02-expired-refund-not-booked.md`.
 
 ### 🔴 2026-10-01 — **판정 도구가 수수료를 0원으로 읽고 있었다** (대표 *"모두 진행해줘"*)
 
