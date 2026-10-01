@@ -155,37 +155,13 @@ seller:14   → 950
 
 ### 구현 (SSOT = `src/worker/utils/payout-account.ts`)
 
-| 무엇 | 어디 |
-|---|---|
-| 구매 적립 → `platform:escrow`(매장 상품) / `platform:revenue`(플랫폼 상품) | `purchaseCreditAccount()` · 구매 3자리(딜·카드·장바구니) |
-| 구매 시점 수수료 **미인식**(escrow 는 총액) | `carriesFee` — 사용 시점 3번째 분개가 인식한다 |
-| `merchant:N` ↔ `seller:N` 접기 | `canonicalPayee()` + `canonicalPayeeSql()` |
-| 이미 생성된 payout 도 같은 키로 | `canonicalPaidPayee()` + `canonicalPaidPayeeSql()` |
-| `payee_type` 을 **셀러 역할**에서 | `payoutPayeeType()` — 접두어가 아니다 |
-| 집계 문장 자체를 SSOT 로 | `payoutCreditsSql()` · `payoutPaidSql()` — cron 이 위임 |
-
-**곁가지로 같이 고친 것 둘** (같은 함수를 지나가므로 분리가 더 위험하다):
-1. 🔴 **어드민 '정산 생성' 버튼이 cron 과 다른 공식을 쓰고 있었다** — credit 만 더하고 `fee_amount`도
-   `debit`(환불 역전·커미션 차감)도 빼지 않아 **과다지급**이 된다. 표시용 집계는 2026-07-01 에 net 으로
-   고쳐졌는데 이 버튼만 남아 있었다(그 코드의 주석이 걱정한 *"화면과 생성분이 갈리면 없는 돈을
-   승인한다"* 가 실제로 성립해 있었다). 같은 net 공식으로 맞췄다.
-2. `seller:null` 오염을 **근원에서** 막는다 — 플랫폼 상품의 구매 적립이 더는 그 이름을 만들지 않는다
-   (`payouts-generate` 의 id 숫자 검사는 두 번째 방어선으로 유지).
+구매 적립을 `platform:escrow` 경유로 바꿔 한 레일로 만들고, "구매 적립은 어디로" + "수취인 정규화" 를
+그 SSOT 한 곳에 모아 **cron · 어드민 표시 · 어드민 수동 생성 세 자리가 같은 SQL** 을 쓰게 했다.
+파일별 상세는 `docs/handoff/2026-10-01-four-decisions-executed.md` ②-구현 절.
 
 ### 가드 — 문자열이 아니라 **실제 sqlite 로 금액을 센다**
 
-`src/tests/unit/voucher-credit-single-rail-2026-10-01.test.ts` 18건. `node:sqlite` 에 표 둘을 만들고
-**cron 이 실제로 쓰는 문장**을 돌려 행 수와 금액으로 판정한다:
-`매장 지급 900`(종전 구조 재현 시 1,850 — 되돌려-검증이 그걸 고정) · `payee 행 1개` ·
-`차감 접힘 800` · `기존 payout 차감 600` · 플랫폼 상품 미노출 · `seller:null` 미노출.
-주입 **9건 전부 빨간불 확인**(`scripts/mutations/voucher-credit-single-rail.mjs`).
-
-🩸 **주입 러너가 내 가드 하나를 "지키는 척" 이라고 잡았다**: `payee_type` 시험을 *"접두어 삼항이
-없는가"* 라는 **모양**으로 썼더니, 다른 모양의 하드코딩(`kind === 'seller' ? 'store_owner' : …`)을
-주입해도 초록이었다 ⇒ 판정을 순수 함수(`payoutPayeeType`)로 빼고 **동작**을 재도록 교체했다.
-그리고 내 픽스처가 아니라 **내 단언**이 틀린 것도 하나 있었다 — 집계 SQL 은 `debit_account LIKE 'user:%'`
-때문에 **구매자 지갑도 음수로 등장한다**(라이브도 그렇고 cron 은 최소출금액에서 건너뛴다).
-"받을 사람" 을 말할 때는 **양수만** 봐야 한다.
+18건. 상세는 `docs/handoff/2026-10-01-four-decisions-executed.md` ②-가드 절.
 
 ### ⚠️ 라이브 영향 — 지금은 0, 그러나 지금이 유일하게 싼 창이다 (실측 2026-10-01)
 
