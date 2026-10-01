@@ -379,6 +379,92 @@ const ANALYTICS_REVENUE = ANALYTICS_DAYS.map((v, i) => ({
 const ANALYTICS_DETAILED = { conversion_rate: 3.4, repeat_purchase_rate: 28, repeat_buyers: 52, total_buyers: 186 }
 
 /**
+ * 🧾 `--seller-work[=empty]` — 셀러 **업무 목록** 시드(주문 · 정산 · 출금).
+ *
+ * 🩸 왜 생겼나 (2026-09-30 측정 1차가 헛돌았다 → 2026-10-01 수리):
+ *   `--phone-audit` 로 대시보드 일곱을 430px 로 쟀더니 여섯이 **"🟢 깨끗"** 으로 나왔다.
+ *   본문을 찍어 보니 `"해당하는 주문이 없어요"` — **빈 화면을 재고 있었다.** 빈 목록은 당연히
+ *   가로스크롤 0 · 잘린 글자 0 이다. 하네스가 목하는 API 는 analytics 둘과 좌석 요약 하나뿐이고,
+ *   나머지는 전부 catch-all `{ data: [] }` 로 떨어졌다.
+ *
+ * ⚠️ **얇은 픽스처는 "없는 결함"을 만든다**(결재문의 교훈). 그래서 일부러 **폰에서 깨지는 값**을 넣는다:
+ *   · 아주 긴 매장명·상품명(줄바꿈·말줄임 판정)  · `null` 운송장·메모(빈 필드 처리)
+ *   · 일곱 자리 금액(숫자 칸 넘침)              · 긴 계좌 문자열(표 오버플로)
+ *   짧고 예쁜 값만 넣으면 측정이 또 초록을 낸다.
+ *
+ * 📐 응답 **모양은 라우트에서 읽어 맞췄다**(추측 아님):
+ *   `seller-orders.routes.ts:168` · `seller-settlements.routes.ts:47·88·199` ·
+ *   `seller-settlements/payouts.ts:82`.
+ *   `--seller-work=empty` 는 "진짜 비었을 때" 의 화면 — 빈 상태 안내가 제대로 뜨는지 본다.
+ */
+const LONG_STORE = '연남동 수제화덕피자 앤 파스타 하우스 본점(2층)'
+const LONG_PRODUCT = '[1+1 한정] 트러플 마르게리타 피자 + 알리오올리오 파스타 2인 세트 (음료 포함)'
+
+const SELLER_ORDERS = [
+  { id: 9001, order_number: 'GB-14-1790000000001', user_id: 3, total_amount: 1234000, status: 'PAID',
+    shipping_name: '정지원', shipping_phone: '010-1234-5678',
+    shipping_address: '서울특별시 마포구 연남로 21-3, 301호 (연남동, 연남빌딩)',
+    tracking_number: null, courier: null, payment_method: 'toss', payment_status: 'approved',
+    created_at: '2026-09-30 14:21:03', updated_at: '2026-09-30 14:21:03',
+    user_name: '정지원', user_email: 'jiwon@example.com', product_name: LONG_PRODUCT },
+  { id: 9002, order_number: 'GB-14-1790000000002', user_id: 4, total_amount: 9800, status: 'DONE',
+    shipping_name: null, shipping_phone: null, shipping_address: null,
+    tracking_number: '1234567890123', courier: 'CJ대한통운', payment_method: 'deal_points', payment_status: 'approved',
+    created_at: '2026-09-29 09:05:44', updated_at: '2026-09-29 11:00:00',
+    user_name: null, user_email: 'nobody@example.com', product_name: '아메리카노 1잔' },
+  { id: 9003, order_number: 'GB-14-1790000000003', user_id: 5, total_amount: 45000, status: 'PENDING',
+    shipping_name: '김아주아주긴이름입니다', shipping_phone: '010-0000-0000',
+    shipping_address: '경기도 성남시 분당구 판교역로 235, 에이치스퀘어 엔동 7층',
+    tracking_number: null, courier: null, payment_method: 'toss', payment_status: 'pending',
+    created_at: '2026-09-28 22:47:10', updated_at: '2026-09-28 22:47:10',
+    user_name: '김아주아주긴이름입니다', user_email: 'long@example.com', product_name: LONG_PRODUCT },
+]
+
+const SELLER_SETTLEMENTS = [
+  { id: 501, seller_id: 1, total_sales: 12345000, commission_amount: 617250, commission_rate: 5.0,
+    settlement_amount: 11727750, amount: 11727750,
+    bank_name: '중소기업은행', account_number: '010-9999-8888-7777-6666', account_holder: LONG_STORE,
+    period_start: '2026-09-01', period_end: '2026-09-30', status: 'pending',
+    admin_memo: null, requested_at: '2026-10-01 09:00:00', created_at: '2026-10-01 09:00:00', updated_at: '2026-10-01 09:00:00' },
+  { id: 502, seller_id: 1, total_sales: 980000, commission_amount: 49000, commission_rate: 5.0,
+    settlement_amount: 931000, amount: 931000,
+    bank_name: '국민은행', account_number: '123456-01-234567', account_holder: '유어딜',
+    period_start: '2026-08-01', period_end: '2026-08-31', status: 'paid',
+    admin_memo: '정상 지급 완료', requested_at: '2026-09-01 09:00:00', created_at: '2026-09-01 09:00:00', updated_at: '2026-09-03 10:00:00' },
+]
+
+const SELLER_SETTLEMENT_STATS = {
+  total_settled: 931000, pending_amount: 11727750, approved_amount: 0, paid_amount: 931000,
+  total_pending: 1, total_approved: 0, total_paid: 1, total_requests: 2,
+}
+
+const SELLER_PAYOUTS = {
+  payable: 11727750, held: 2340000, hold_days: 10, scheduled_total: 0, sent_total: 931000,
+  auto: true, scope: 'owner', since: null,
+  payouts: [
+    { id: 77, amount: 931000, period_start: '2026-08-01', period_end: '2026-08-31', status: 'sent',
+      account_number: '123456-01-234567', account_holder: '유어딜', admin_memo: null,
+      created_at: '2026-09-01 09:00:00', approved_at: '2026-09-02 10:00:00', sent_at: '2026-09-03 10:00:00' },
+  ],
+}
+
+const SELLER_SETTLEMENT_OPTIONS = {
+  business_registration: { status: 'approved', image_url: null, reject_reason: null, business_number: '123-45-67890' },
+  preferred_method: 'auto',
+  available_amount: 11727750,
+  methods: {
+    cash: { available: true, label: '현금 (계좌 입금)', description: '사업자등록 완료 — 신청 후 영업일 D+7 입금', withholding_rate: 0 },
+    voucher: { available: true, label: '모바일 교환권 (기프티쇼)', description: '즉시 발송 · 사업자 미등록 시 8.8% 원천징수 후 발송', withholding_rate: 0, note: '추후 KT Alpha 통합 후 활성화' },
+    deal: { available: true, label: '딜 포인트 (플랫폼 내 사용)', description: '플랫폼 내 사용 + 환급 가능 (8.8% 원천징수)', withholding_rate: 8.8, redeemable: true },
+  },
+}
+
+const SELLER_DASHBOARD_STATS = {
+  daily_revenue: ANALYTICS_DAYS.map((v, i) => ({ date: `2026-09-${String(i + 1).padStart(2, '0')}`, revenue: v * 1000 })),
+}
+
+
+/**
  * 🪑 `--stores=N` — 마이의 **'내 가게' 구역**(§14 `SellerSection`)을 눈으로 본다.
  *
  * ■ 왜 필요했나 — 실제로 막혔던 일
@@ -423,6 +509,17 @@ const STORE_NAMES = [
 const SELLER_LISTS = args['seller-lists'] === true ? 'full'
   : typeof args['seller-lists'] === 'string' ? args['seller-lists'] : ''
 
+/**
+ * 🔍 `--trace-api` — 화면이 부른 `/api/*` 와 **스텁이 뭘 돌려줬는지**를 찍는다.
+ *
+ * 🩸 왜 필요한가: 프로덕션 빌드는 `drop_console: true` 라 화면이 ErrorBoundary 로 떨어져도
+ *   콘솔에 아무것도 안 남는다. 그러면 "오류 화면이다" 까지만 알고 **어느 응답 때문인지는 모른다**
+ *   (2026-09-30 측정 1차가 정확히 거기서 멈췄다). 서버는 렌더 직후 닫히므로 밖에서 붙을 수도 없다.
+ *   ⇒ 스텁이 **자기가 응답한 것**을 남긴다. 목이 라우트 모양과 어긋난 자리가 바로 보인다.
+ */
+const TRACE_API = 'trace-api' in args
+const API_LOG = []
+const SELLER_WORK = 'seller-work' in args ? (args['seller-work'] === 'empty' ? 'empty' : 'full') : null
 const SLOW = Number(args.slow) || 0
 const SHIFT = 'shift' in args
 const STORE_STATUS = typeof args.stores === 'string' && /^[a-z]+$/.test(args.stores) ? args.stores : 'approved'
@@ -466,6 +563,10 @@ function serve() {
       const p = new URL(req.url, 'http://x').pathname
       if (p.startsWith('/api/')) {
         res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' })
+        if (TRACE_API) {
+          const origEnd = res.end.bind(res)
+          res.end = (body) => { API_LOG.push(`${p} → ${String(body || '').slice(0, 110)}`); return origEnd(body) }
+        }
         // 큐레이터 조회는 시드와 같은 페이로드로 — 아니면 백그라운드 갱신이 오류 상태로 빠진다
         if (p.startsWith('/api/curator/') && !p.includes('/me/')) return res.end(JSON.stringify(CURATOR_SEED))
         if (args.cart) {
@@ -500,6 +601,26 @@ function serve() {
           const body = JSON.stringify(storesSeed(STORES_N))
           if (SLOW > 0) return void setTimeout(() => res.end(body), SLOW)
           return res.end(body)
+        }
+        if (SELLER_WORK) {
+          // 🧾 셀러 업무 목록 — 모양은 라우트에서 읽어 맞췄다(위 시드 주석의 파일·줄 참조).
+          const none = SELLER_WORK === 'empty'
+          if (p.startsWith('/api/seller/orders')) {
+            const data = none ? [] : SELLER_ORDERS
+            return res.end(JSON.stringify({ success: true, data, pagination: { total: data.length, limit: 20, offset: 0, has_more: false } }))
+          }
+          if (p.startsWith('/api/seller/settlements/stats'))
+            return res.end(JSON.stringify({ success: true, data: none ? { total_settled: 0, pending_amount: 0, approved_amount: 0, paid_amount: 0, total_pending: 0, total_approved: 0, total_paid: 0, total_requests: 0 } : SELLER_SETTLEMENT_STATS }))
+          if (p.startsWith('/api/seller/settlements/payouts'))
+            return res.end(JSON.stringify({ success: true, data: none ? { ...SELLER_PAYOUTS, payable: 0, held: 0, sent_total: 0, payouts: [] } : SELLER_PAYOUTS }))
+          if (p.startsWith('/api/seller/settlements')) {
+            const data = none ? [] : SELLER_SETTLEMENTS
+            return res.end(JSON.stringify({ success: true, data, total: data.length }))
+          }
+          if (p.startsWith('/api/seller/settlement-options'))
+            return res.end(JSON.stringify({ success: true, data: SELLER_SETTLEMENT_OPTIONS }))
+          if (p.startsWith('/api/seller/dashboard/stats'))
+            return res.end(JSON.stringify({ success: true, data: none ? { daily_revenue: [] } : SELLER_DASHBOARD_STATS }))
         }
         // 🎬 레일은 홈 어느 경로에서든 뜬다 — 플래그 없이 항상 준다.
         if (p === '/api/urshorts') return res.end(JSON.stringify({ success: true, data: SHORTS_SEED }))
@@ -809,13 +930,24 @@ if (args['phone-audit']) {
       docH: document.documentElement.scrollHeight,
     }
   }, VIEWPORT_W)
+  /**
+   * 🩸 2026-10-01 — **빈 화면을 재고 "🟢 깨끗" 을 내던 것**(2026-09-30 측정 1차가 그렇게 헛돌았다).
+   *   빈 목록은 당연히 가로스크롤 0 · 잘린 글자 0 이다. 오류 화면도 마찬가지다.
+   *   ⇒ 본문을 보고 **재는 대상이 있었는지 먼저 의심한다.** 결함 0 과 "잴 게 없었음" 은 다른 결론이다.
+   *   ⚠️ 이건 "빈 상태 화면을 못 재게" 하는 게 아니다(`--seller-work=empty` 는 일부러 그걸 본다) —
+   *     **초록을 빈손으로 내주지 않는 것**이다.
+   */
+  const bodyText = await page.innerText('body').catch(() => '')
+  const EMPTY_HINT = /없어요|없습니다|아직 .*없|비어 ?있|문제가 발생|오류가 발생/
+  const suspect = EMPTY_HINT.test(bodyText) || audit.firstScreen < 8
   const bad = audit.hScroll > 0 || audit.cut > 0 || audit.clipped > 0 || audit.tables > 0
-  console.log(`📱 폰 적합성 [${ROUTE}] ${bad ? '🔴 결함 있음' : '🟢 깨끗'}`)
+  console.log(`📱 폰 적합성 [${ROUTE}] ${bad ? '🔴 결함 있음' : suspect ? '🟡 판정 보류 — 잴 내용이 없다' : '🟢 깨끗'}`)
+  if (suspect) console.log(`   ⚠️ 빈 상태·오류 화면으로 보인다. 이 숫자를 "폰에서 쓸 만하다" 로 읽지 말 것(시드를 먼저 채울 것).`)
   console.log(`   가로스크롤 ${audit.hScroll}px · 잘려나감 ${audit.cut} · 잘린글자 ${audit.clipped} · 작은타깃 ${audit.tiny} · 표오버플로 ${audit.tables}/${audit.tablesAll} · 첫화면 ${audit.firstScreen}줄 · 문서높이 ${audit.docH}px`)
   if (audit.cutSample.length) console.log(`   잘려나감: ${JSON.stringify(audit.cutSample)}`)
   if (audit.clippedSample.length) console.log(`   잘린글자: ${JSON.stringify(audit.clippedSample)}`)
   if (audit.tinySample.length) console.log(`   작은타깃: ${JSON.stringify(audit.tinySample)}`)
-  console.log(`   PHONE_AUDIT_JSON ${JSON.stringify({ route: ROUTE, name: NAME, ...audit, cutSample: undefined, clippedSample: undefined, tinySample: undefined })}`)
+  console.log(`   PHONE_AUDIT_JSON ${JSON.stringify({ route: ROUTE, name: NAME, suspect, ...audit, cutSample: undefined, clippedSample: undefined, tinySample: undefined })}`)
 }
 
 /**
@@ -846,6 +978,10 @@ if (consoleErrors.length) {
   if (!real.length) console.log('      (전부 외부 차단 잡음 — 진짜 예외는 없었다)')
 }
 console.log(`   본문 앞부분: ${text}`)
+if (TRACE_API) {
+  console.log(`   🔍 /api 호출 ${API_LOG.length}건:`)
+  for (const l of API_LOG) console.log(`      ${l}`)
+}
 if (/문제가 발생|오류가 발생/.test(text)) {
   console.log('   ⚠️  오류 화면이다 — 시드가 라우트와 안 맞거나 목 응답 모양이 틀렸다.')
 }
