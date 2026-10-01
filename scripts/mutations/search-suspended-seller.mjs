@@ -45,4 +45,20 @@ export default [
     test: TEST,
     why: '네 자리(findAll·count·검색·자동완성)가 갈리면 같은 상품이 화면마다 보였다 안 보였다 한다.',
   },
+  {
+    name: '🔎 자동완성 인라인 복제본에서 셀러 술어가 사라진다 (라이브 누수 원상복구)',
+    file: 'src/features/products/api/products.routes.ts',
+    find: "         AND ${activeSellerProductSql('products')}\n",
+    replace: '',
+    test: TEST,
+    why: '2026-10-01 라이브 실측: /api/products/search/suggestions 는 소스 주석이 "안 닿는다" 고 적어 둔 자리인데 200 이 나오고, 이 인라인 SQL 이 정지 매장 상품명을 그대로 뱉고 있었다.',
+  },
+  {
+    name: '🔎 자동완성 쿼리에 별칭이 붙어 술어의 products.seller_id 가 깨진다 (조용히 빈 제안)',
+    file: 'src/features/products/api/products.routes.ts',
+    find: '`SELECT DISTINCT name FROM products WHERE name LIKE ? AND is_active = 1',
+    replace: '`SELECT DISTINCT p.name FROM products p WHERE p.name LIKE ? AND p.is_active = 1',
+    test: TEST,
+    why: 'SQLite 가 던지지만 호출부 .catch 가 삼켜 자동완성이 조용히 비어 버린다 — 빨간불도 로그도 없다.',
+  },
 ]

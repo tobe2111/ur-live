@@ -87,3 +87,34 @@ done
   그림으로만 보인다 — `node scripts/visual-preview.mjs --route=... --auth=seller --seller-lists`.
 - 탭 타깃이 **의미상 맞는 크기인지**도 안 본다(파괴적 행동이 작아도 숫자만 본다).
 - 시트 일곱 자체는 **안 쟀다**. 이번 측정은 *대시보드 화면*(= 철거의 전제)이다.
+
+---
+
+## 정산 패널 봉투 — 라이브 결함 1건 (이 PR 에서 **안 고쳤다**, 제안만)
+
+`/seller/settlements` 의 `공구 자동정산 내역` 패널이 **행이 있어도 영원히 빈 상태 문구**를 띄운다.
+
+| | |
+|---|---|
+| 서버 | `restaurant-settlement.routes.ts` GET `/api/seller/restaurant-settlements` → `{ success, data: rows, pagination }` |
+| 부품 | `RestaurantSettlementsSection.tsx:41` → `q.data?.items ?? []` |
+| 이유 | `useApiQuery` 는 **응답 본문을 그대로** 돌려준다(`res.data`, `.data` 를 벗기지 않는다) ⇒ `items` 는 항상 `undefined` |
+
+**실측** — 하네스 시드를 서버와 같은 `data:` 로 두면 🟡 + 표 `0/2`, `items:` 로 바꾸면 **🟢 + 표 `0/3`**.
+같은 렌더를 두 번 돌려 확인했고 시드는 원복했다(시드가 **서버를 따라야** 맞다).
+
+**제안 패치(1줄 + 타입 1줄)**
+```diff
+-  const items = q.data?.items ?? []
++  const items = q.data?.data ?? []        // 서버 봉투는 { success, data, pagination }
+```
+```diff
+-  const q = useApiQuery<{ success: boolean; items?: RestaurantSettlement[] }>(
++  const q = useApiQuery<{ success: boolean; data?: RestaurantSettlement[] }>(
+```
+🔴 **반대 방향(서버를 `items` 로)은 금지** — 그 라우트는 어드민 화면도 쓰고 `pagination` 계약이 붙어 있다.
+
+⚠️ **왜 이 PR 에서 안 했나**: 정산 화면은 등급 C 이고 이 PR 은 공용 chrome·측정 도구다.
+레포 룰("변경과 무관한 코드의 결함은 패치를 제안하고 PR 을 넓히지 않는다")을 따랐다.
+⚠️ **못 확인한 것**: 라이브 `restaurant_settlements` 에 실제 행이 있는지는 안 봤다(어드민 읽기로
+확인 가능). 행이 0 이면 사용자 영향은 아직 없고, 행이 생기는 순간부터 안 보인다.

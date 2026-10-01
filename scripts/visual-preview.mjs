@@ -35,6 +35,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { sellerListResponse } from './preview-seeds/seller-lists.mjs'
+import { looksEmpty, emptyHintMatch } from './preview-seeds/empty-screen-hint.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const DIST = path.join(ROOT, 'dist/client')
@@ -977,23 +978,22 @@ if (args['phone-audit']) {
    *     **초록을 빈손으로 내주지 않는 것**이다.
    */
   const bodyText = await page.innerText('body').catch(() => '')
-  const EMPTY_HINT = /없어요|없습니다|아직 .*없|비어 ?있|문제가 발생|오류가 발생/
-  /**
-   * 🩸 2026-10-01(2차) — **빈 문구 한 줄로 페이지 전체를 보류시키고 있었다.**
-   *   `/seller/settlements` 는 정산 행·딜 잔액·수수료가 가득한데 패널 하나가
-   *   `"아직 자동 정산 내역이 없습니다"` 라고 말한다 — 그 한 줄 때문에 🟡 가 떴다.
-   *   ⇒ 빈 문구는 **페이지가 얇을 때만** 보류 사유로 센다(`/seller/analytics` 는 빈 상태가
-   *     페이지 전부라 본문이 얇다 → 그대로 🟡). 두께는 본문 글자 수로 가늠한다.
-   *   ⚠️ 글자 수는 **대리 지표**다 — 긴 안내문만 있고 데이터가 0인 화면은 이 눈을 통과한다.
-   *     그래서 `firstScreen < 8`(=잴 줄이 거의 없다) 는 글자 수와 무관하게 그대로 보류시킨다.
-   */
-  const CHROME_CHARS = 300 // 헤더·카카오 배너·탭·하단바가 그만큼은 늘 찍힌다
-  const thin = bodyText.replace(/\s+/g, '').length < CHROME_CHARS + 120
-  const suspect = (EMPTY_HINT.test(bodyText) && thin) || audit.firstScreen < 8
+  // 🩸 2026-10-01: 이 판정이 **거짓 🟡 를 내고 있었다** — 안내 문장 "별도의 정산 신청은 필요 없습니다"
+  //   가 맨 `없습니다` 에 걸려, 끝까지 멀쩡히 그려지는 /seller/settlements 가 "판정 보류" 였다.
+  //   규칙·근거·반례는 `preview-seeds/empty-screen-hint.mjs` 머리주석, 고정은 그 테스트.
+  //   🔀 **머지(2026-10-01)**: 이 자리에 같은 날 두 수리가 들어왔다. 같은 거짓 🟡 를 봤는데
+  //     한쪽은 **본문 두께**(글자 수)로 눌렀고 한쪽은 **정규식의 뿌리**(조사 `이/가` 가 가른다)를
+  //     고쳤다. 뿌리 쪽을 남긴다 — 두께는 대리 지표라 "긴 안내문 + 데이터 0" 화면을 통과시킨다.
+  const suspect = looksEmpty(bodyText, audit.firstScreen)
   // 넓혔다고 선언한 히트 영역이 실제로 안 닿으면 **결함이다** — 고친 줄 알고 넘어가게 된다.
   const bad = audit.hScroll > 0 || audit.cut > 0 || audit.clipped > 0 || audit.tables > 0 || audit.reachDead > 0
   console.log(`📱 폰 적합성 [${ROUTE}] ${bad ? '🔴 결함 있음' : suspect ? '🟡 판정 보류 — 잴 내용이 없다' : '🟢 깨끗'}`)
-  if (suspect) console.log(`   ⚠️ 빈 상태·오류 화면으로 보인다. 이 숫자를 "폰에서 쓸 만하다" 로 읽지 말 것(시드를 먼저 채울 것).`)
+  if (suspect) {
+    const why = emptyHintMatch(bodyText)
+    console.log(`   ⚠️ 빈 상태·오류 화면으로 보인다. 이 숫자를 "폰에서 쓸 만하다" 로 읽지 말 것(시드를 먼저 채울 것).`)
+    // 🔎 **왜 🟡 인지 같이 찍는다** — 판정만 보여 주면 고칠 수가 없다(문구가 없으면 첫화면 줄 수가 이유다).
+    console.log(`   ↳ 근거: ${why ? `"${why}"` : `첫화면 ${audit.firstScreen}줄(8 미만)`}`)
+  }
   console.log(`   가로스크롤 ${audit.hScroll}px · 잘려나감 ${audit.cut} · 잘린글자 ${audit.clipped} · 줄임표 ${audit.ellipsis} · 작은타깃 ${audit.tiny} · 표오버플로 ${audit.tables}/${audit.tablesAll} · 첫화면 ${audit.firstScreen}줄 · 문서높이 ${audit.docH}px`)
   if (audit.cutSample.length) console.log(`   잘려나감: ${JSON.stringify(audit.cutSample)}`)
   if (audit.clippedSample.length) console.log(`   잘린글자: ${JSON.stringify(audit.clippedSample)}`)
