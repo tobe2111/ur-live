@@ -30,7 +30,13 @@ describe('주문 판정 패널 (S1)', () => {
 
   it('예산은 이 주문의 실제 원장 fee 로 계산한다 — 요율을 다시 계산하지 않는다', () => {
     // 요율을 여기서 다시 계산하면 실제 청구와 갈린다. 갈리는 것이 이 레포의 단골 사고다.
-    expect(HANDLER).toMatch(/SUM\(fee_amount\)/)
+    //
+    // 🩸 2026-10-01 재조준 — **이 단언이 통과하는 동안 쿼리가 틀려 있었다.** `SUM(fee_amount)` 가
+    //   있는지만 봤고, *어떤 행에* 더하는지는 안 봤다(틀린 계정·틀린 참조 키로 라이브에서 늘 0원).
+    //   ⇒ 쿼리는 `order-platform-fee.ts` SSOT 로 옮겼고, **맞는지**는 실제 sqlite 에 라이브와 같은
+    //   행을 넣어 돌리는 `promo-ledger-fee-real-rows-2026-10-01.test.ts` 가 판정한다.
+    //   여기 남는 몫은 *"핸들러가 그 SSOT 를 부르고, 요율로 다시 계산하지 않는가"* 다.
+    expect(HANDLER).toContain('platformFeeQuery(orderIds, orderNumber)')
     expect(HANDLER).toMatch(/computeCommissionBudget\(\{/)
     // 요율 테이블을 끌어와 곱하기 시작하면 그 순간 실제 청구와 갈릴 수 있다.
     expect(HANDLER).not.toMatch(/channelPlatformRate|commission_rate_default/)
