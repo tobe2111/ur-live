@@ -9,7 +9,7 @@
 ③의 마지막 한 걸음(**어드민 값 셋 누르기**)은 **대표 몫**으로 남겼다 — 대표 자신이 2026-09-21 에
 *"게이트 ON 은 여전히 대표만 한다"* 로 그은 선이다.
 
-## ① 만료 이용권 자동환불 — 결재 마감 (`2026-09-30-expired-voucher-refund-stolen.md` → approved)
+## ① 만료 이용권 자동환불 — 결재 마감 (`archive/2026-09-30-expired-voucher-refund-stolen.md` → approved)
 
 **코드는 이미 #1582 로 들어가 있었다.** 결재문은 그때까지 `open` + *"승인 전 코드 미변경"* 이었다.
 ⚠️ **다음 세션이 선례로 읽지 말 것** — 머니 경로는 결재가 먼저다. 결과가 좋았던 것은 운이다.
@@ -107,8 +107,35 @@ credit 만 더하고 `fee_amount`·`debit` 을 안 빼 **과다지급**. 표시�
    앵커 6건 + 기존 시험 3건이 낡았다. 전부 불변식 그대로 따라가게 고쳤다
    (`payout-hold` · `settlement-gate-direction` · `store-handover-money` · `money-switch-labels`).
 
+5. 🔴 **결재문을 길게 쓰면 번들 예산이 깨진다 — 실제로 깨뜨렸다.** CI `Bundle size budget` 이
+   `7.54 / 7.53 MB` 로 빨간불이었고 원인이 내 코드가 아니었다: `AdminDecisionsPage.tsx:15` 가
+   `import.meta.glob('docs/decisions/*.md', ?raw, eager)` 로 **결재 원문을 통째로 번들에 박는다.**
+   이 브랜치가 결재문 넷에 더한 산문이 **+18,432 B**(`voucher-credit-double-rail` +6,444 ·
+   `expired-voucher-refund-stolen` +4,982 · `my-stage2-sheet-teardown` +3,739 ·
+   `settlement-structure-payouts` +3,267)이고 예산 여유는 13 KB 였다 — 초과 **5,769 B**.
+   ⚠️ **클라 코드 변경은 라벨 두 곳(+14/−5줄)뿐이다.** 즉 *문서를 쓴 것*이 예산을 넘겼다.
+   ⇒ 임계값을 **올리지 않았다**(그 파일의 이력이 *"또 올리기 전에 처리 끝난 결재를 archive 로 옮겨라"*
+   고 요구하고, 그 값은 아홉 번 올라간 뒤 09-28 에 처음 내려간 것이다). `docs/decisions/archive/README.md`
+   의 규칙대로 **`fullyApplied`(approved + 반영 커밋에 해시 + '머지 대기' 없음)인 내 결재 하나**를
+   보관소로 옮겼다(10,817 B 회수 → **7.530 MB 이내**). glob 이 `*.md` 비재귀라 코드 변경 0 이다.
+   🚫 **다른 두 후보는 일부러 안 건드렸다**: `settlement-structure-payouts`(rejected, 28 KB)는
+   표만 보면 보관 대상이지만 **§Q4 가 살아 있다**(대표가 누를 어드민 값 셋) — 옮기면 대표가
+   *"승인해 줬는데 어디 갔지"* 를 겪는다. 나머지 approved 13건은 반영 커밋이 비어 **구현 중**이다.
+6. **`src/worker/generated/route-chunk-map.ts` 를 커밋해 버렸다**(`cb34b83c3`). CLAUDE.md 가
+   *"빌드 산출물이라 커밋 대상이 아니다 — 검증 후 `git checkout --` 로 되돌릴 것"* 이라고 적어 둔
+   그 파일이고, 로컬 청크 해시 44줄이 들어갔다. 번들 예산엔 무관(워커 파일)이지만 되돌렸다.
+   ⇒ **`npm run build` 를 돌린 세션은 커밋 전에 그 파일을 반드시 확인할 것.**
+
 ## 검증
 
 - `tsc 0` · 신규 가드 18건 pass · 주입 **9건 신규 + 재조준 4건 전부 빨간불 확인**
 - `pre-push-gate` 가드 103개 통과 · `stale-mutation-anchors` 2,346건 실재
 - ⚠️ **머니 경로다** — 배포 후 첫 이용권 사용에서 원장 행으로 판정할 것(결재문 E4 쿼리).
+
+## 번들 예산 — 다음 사람이 알아야 할 것
+
+지금 여유는 **약 7 KB** 다. 결재문을 길게 쓰거나 새로 올리면 **그만큼 그대로** 번들에 들어간다
+(실측: 결재 파일 2.5 KB 추가 = 어드민 청크 +3,096 B). 보관 가능한 결재는 지금 **0건**이므로,
+다음에 닿는 사람은 상향 대신 **근본 처방**을 마주한다 — `AdminDecisionsPage` 의 `?raw` eager 인라인을
+걷어내고 워커가 서빙하거나 lazy fetch 로 바꾸는 것(새 API 표면이라 별건). 그 청크는 현재 **140 KB**,
+예산의 1.9% 다.
