@@ -94,3 +94,75 @@ receivable = await getUnsettledBalance(DB, `seller:${sellerId}`)
    `PATCH /api/admin/sellers/15/approve`. 둘 다 어드민 쓰기 → 대표 지시 필요.
 4. **대표 미답 2건**: ① 2916 커버 이미지(사업자등록증 이미지 — 교체 필요)
    ② `popular_searches` 유령 제안(눌러서 0건 — 선재 구조, `2026-10-01-hide-from-main-not-from-search.md` §).
+
+---
+
+## ✅ 후속 — S-VC6 수리됨 (같은 날, 대표 *"2번 일단 먼저 고쳐줘"*)
+
+위에서 "미수정" 으로 남겼던 것을 대표 지시로 고쳤다. **범위가 보고보다 컸다.**
+
+### 처음 보고가 과소였다 — 한 자리가 아니라 **여섯 자리**
+
+`store-handover-guard` 만 보고했는데, 전수로 세니 `seller:N` 하나만 묻는 자리가 여섯이었다:
+
+| 자리 | 샌 것 | 방향 |
+|---|---|---|
+| `store-handover-guard.ts:117` | 못 받은 돈을 남긴 채 **매장이 넘어간다** | 🔴 fail-**open** |
+| `seller-withdraw.routes.ts:54` | 못 받은 돈을 남긴 채 **매장이 탈퇴한다** | 🔴 fail-**open** |
+| `admin-payouts.routes.ts:143,175` | 승인 상한 0 | 🟡 과소 |
+| `seller-settlements/payouts.ts:34` | 사장님 정산 화면 **₩0** | 🟡 과소 |
+| `admin-payouts/handover-closeout.ts:55` | 마감 금액 0 | 🟡 과소 |
+
+🧭 **교훈: 한 자리를 찾으면 그 자리가 쓰는 *함수*의 호출부를 전수로 세라.** 처음에 그 함수
+(`getUnsettledBalance`)만 보고 "가드 하나" 로 보고했는데, 같은 질문을 하는 다른 호출부가
+다섯 더 있었다. 셀러 화면이 ₩0 으로 보이는 쪽이 사용자에게는 더 먼저 보였을 것이다.
+
+### 🩸 같은 함수 안의 두 번째 결함 — 방향이 반대라 서로 가렸다
+
+`getUnsettledBalance` 의 배정분 뺄셈이 `(payee_type||':'||payee_id) = 'seller:N'` 인데
+`payoutPayeeType` 은 매장 payout 에 **`store_owner`** 를 박는다 ⇒ 그 행이 안 빠져 잔액이
+**과대**로 읽힌다. 원장 쪽은 과소(fail-open), payouts 쪽은 과대(fail-closed) — **둘이 상쇄돼
+"대충 맞는 숫자" 가 나오는 경우가 있어** 더 안 보였다.
+
+### 수정
+
+SSOT `payout-account.ts` 에 접기의 **역방향**을 뒀다(`canonicalPayeeSql` 의 짝):
+
+```ts
+ledgerAccountAliases('seller:14') → ['seller:14', 'merchant:14']
+paidPayeeAliases('seller:14')     → ['seller:14', 'store_owner:14']
+```
+
+세 헬퍼가 `IN (...)` 으로 쓴다. **이름은 안 바꿨다**(리네임은 #1591 이 실측으로 기각).
+`agency:`·`user:`·`platform:*` 은 접을 짝이 없어 **종전과 byte-동일**.
+
+### 가드
+
+`payee-balance-folding-2026-10-01.test.ts` **17건** — D1 표면만 얇게 흉내 내고
+**`ledger.ts` 의 그 함수를 실제 sqlite 에 돌려** 금액을 센다. 주입 **6건 전부 빨간불 확인**.
+
+🩸 **주입 하나가 처음엔 통과했고, 원인이 셋 중 어느 것인지 확인해야 했다**:
+"라벨을 덮는가" 단언이 `payoutPayeeType` 이 *지금 내는* 라벨 하나만 봐서 늘 참이었다 —
+헛돌긴 했다. 그런데 재 보니 **그 주입은 이 시험의 책임이 아니었다**: 라벨이 `seller` 로 통일돼도
+별칭에 `seller:N` 이 있어 **접기 자체는 안 깨지고**, 진짜 피해(주간 이중레일 경보가 0을 셈)는
+`voucher-credit-single-rail:74` 가 이미 소유한다. ⇒ 단언은 *모든* 라벨을 덮는지로 강화하고,
+주입은 이 파일이 소유한 결함(별칭 철자 오타)으로 **재조준**했다.
+
+🧭 **주입이 통과하면 셋을 다 의심할 것**: ① 가드가 헛돈다 ② 주입이 사실 결함이 아니다
+③ **결함이지만 다른 가드의 몫이다.** 오늘 ①과 ③이 겹쳐 있었다.
+
+### 🕳️ 그리고 내 변경이 기존 주입 **둘**의 앵커를 낡게 만들었다
+
+`= ?` → `IN (${paidPh})` 로 바뀌면서 `배정 잔액이 pending 을 안 뺀다` 계열 주입 2건의 `find` 가
+소스에서 사라졌다. `check-stale-mutation-anchors` 가 pre-push 에서 잡았다(0초).
+**지우지 않고 재조준**했다 — 지키려던 불변식(*pending 을 뺀다*)은 그대로 살아 있다.
+⚠️ 같은 앵커를 **서로 다른 시험 둘**이 쓰고 있었다(`store-handover-behavior` ·
+`store-handover-money`). 하나만 고치면 나머지가 조용히 남는다 — 전수로 셀 것.
+
+### 검증
+
+tsc 0 · 신규 17건 + 관련 머니 시험 84건 pass · pre-push 게이트 가드 103개 ·
+주입 8건(신규 6 + 재조준 2) 되돌려-검증 전부 빨간불 · 순환 import 없음.
+
+⚠️ **실결제 재확인 항목**(S-VC6 에 적어 뒀다): 셀러 정산 화면에 금액이 **뜨는지** ·
+잔액 남은 매장의 손바뀜이 **막히는지**. 라이브 영향은 지금 0(사용된 이용권 0장 · payouts 0건).
