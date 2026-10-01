@@ -1,6 +1,6 @@
 /**
- * 💬 인스타 자동 DM — 규칙 작성/수정 폼.
- * ⚠️ 라이트 대시보드(AdminLayout) — dark: variant 금지.
+ * 💬 인스타 자동 DM — 규칙 작성/수정 폼. 어드민(공식 계정)과 셀러(매장 계정)가 같이 쓴다 — `base` 만 다르다.
+ * ⚠️ 라이트 대시보드(AdminLayout·SellerLayout) — dark: variant 금지.
  */
 import { useState } from 'react'
 import api from '@/lib/api'
@@ -11,8 +11,8 @@ import { apiError, type AutoDmRule, type IgMedia } from './types'
 
 const field = 'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900'
 
-export default function RuleEditor({ rule, connected, onClose, onSaved }: {
-  rule: AutoDmRule | null; connected: boolean; onClose: () => void; onSaved: () => void
+export default function RuleEditor({ base, rule, connected, onClose, onSaved }: {
+  base: string; rule: AutoDmRule | null; connected: boolean; onClose: () => void; onSaved: () => void
 }) {
   const [form, setForm] = useState({
     name: rule?.name || '',
@@ -32,7 +32,7 @@ export default function RuleEditor({ rule, connected, onClose, onSaved }: {
   const loadMedia = async () => {
     setMediaLoading(true)
     try {
-      const { data } = await api.get('/api/admin/instagram-autodm/media')
+      const { data } = await api.get(`${base}/media`)
       setMedia(data?.data || [])
     } catch (e) { toast.error(apiError(e, '게시물을 불러오지 못했습니다')) } finally { setMediaLoading(false) }
   }
@@ -40,8 +40,8 @@ export default function RuleEditor({ rule, connected, onClose, onSaved }: {
   const save = async () => {
     setSaving(true)
     try {
-      if (rule) await api.put(`/api/admin/instagram-autodm/rules/${rule.id}`, form)
-      else await api.post('/api/admin/instagram-autodm/rules', form)
+      if (rule) await api.put(`${base}/rules/${rule.id}`, form)
+      else await api.post(`${base}/rules`, form)
       toast.success('규칙을 저장했습니다')
       onSaved()
     } catch (e) { toast.error(apiError(e, '저장하지 못했습니다')) } finally { setSaving(false) }

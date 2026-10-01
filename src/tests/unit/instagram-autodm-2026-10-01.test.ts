@@ -6,14 +6,20 @@ import {
   isSafeLink, normalizeForMatch, type AutoDmRule,
 } from '@/features/instagram-autodm/api/autodm-core'
 import {
-  saveConnection, setEnabled, createRule, listSends, ensureVerifyToken, getAccount,
+  saveConnection, setEnabled, createRule, updateRule, deleteRule, listRules, listSends, ensureVerifyToken,
+  saveAppConfig, getAccountByOwner, ensureAccountRow, purgeByIgUserId, PLATFORM_OWNER, sellerOwnerKey,
 } from '@/features/instagram-autodm/api/autodm-store'
 import { processWebhookPayload } from '@/features/instagram-autodm/api/autodm-service'
+import { signState, verifyState, safeReturnPath, authorizeUrl, STATE_TTL_MS, parseSignedRequest } from '@/features/instagram-autodm/api/autodm-oauth'
+import { canonicalOrigin } from '@/features/instagram-autodm/api/autodm.routes'
 
 /**
  * 💬 2026-10-01 인스타 댓글 → 자동 DM.
  *   ① 서명 검증이 위조·누락을 거절하는가 ② 키워드 매칭 ③ **같은 댓글에 DM 이 두 번 안 나가는가**(웹훅 재전송)
  *   ④ 우리 계정의 댓글(공개 답글이 되돌아온 것)에 반응하지 않는가 — 무한 루프 ⑤ 꺼져 있으면 0통 ⑥ 일일 상한.
+ *   ⑦ 다중 계정: 댓글이 **그 인스타 계정의 주인 규칙**으로만 가는가 · 매장 계정은 앱 전체 스위치가 닫히면 0통
+ *      · 다른 매장의 규칙 id 로 수정·삭제 못 함(IDOR) · 같은 인스타를 두 가게에 못 붙임
+ *   ⑧ 인스타 로그인 state: 위조·만료·주인 문법·돌아갈 주소 화이트리스트.
  *   ⚠️ 못 보는 것: 메타 실제 응답 모양(fetch 는 가짜다). 실계정 1회 확인이 필요하다.
  */
 
@@ -129,6 +135,7 @@ describe('메시지', () => {
 describe('웹훅 처리(실제 SQLite)', () => {
   let DB: D1Database
   let calls: Array<{ url: string; body: unknown }>
+  let platformId: number
 
   beforeEach(async () => {
     DB = makeD1()
@@ -138,62 +145,64 @@ describe('웹훅 처리(실제 SQLite)', () => {
       return new Response(JSON.stringify({ recipient_id: '999', message_id: 'm1', id: 'r1' }), { status: 200 })
     }))
     await ensureVerifyToken(DB)
-    await saveConnection(DB, undefined, { ig_user_id: OUR, username: 'urdeal', access_token: 'TOKEN', app_secret: SECRET })
-    await createRule(DB, { name: null, keywords: '링크', match_mode: 'contains', media_id: null, dm_text: 'DM {username}', link_url: 'https://urdeal.kr/x', public_reply: '보냈어요', is_active: true })
+    await saveAppConfig(DB, undefined, { app_id: '123456', app_secret: SECRET })
+    const saved = await saveConnection(DB, undefined, { owner_key: PLATFORM_OWNER, seller_id: null, ig_user_id: OUR, username: 'urdeal', access_token: 'TOKEN' })
+    if (!saved.ok) throw new Error('setup')
+    platformId = saved.id
+    await createRule(DB, platformId, { name: null, keywords: '링크', match_mode: 'contains', media_id: null, dm_text: 'DM {username}', link_url: 'https://urdeal.kr/x', public_reply: '보냈어요', is_active: true })
   })
   afterEach(() => { vi.unstubAllGlobals() })
 
   const dmCalls = () => calls.filter(c => c.url.endsWith('/messages'))
 
   it('꺼져 있으면(기본값) 한 통도 안 보낸다', async () => {
-    const acc = await getAccount(DB, undefined)
-    expect(acc?.enabled).toBe(false)
-    const r = await processWebhookPayload(DB, undefined, payload([{ id: 'c1', text: '링크' }]))
-    expect(r.reason).toBe('disabled')
+    expect((await getAccountByOwner(DB, undefined, PLATFORM_OWNER))?.enabled).toBe(false)
+    await processWebhookPayload(DB, undefined, payload([{ id: 'c1', text: '링크' }]))
     expect(dmCalls()).toHaveLength(0)
   })
 
   it('켜면 키워드 댓글에 DM + 공개 답글, 아닌 댓글은 무시', async () => {
-    await setEnabled(DB, true)
+    await setEnabled(DB, platformId, true)
     const r = await processWebhookPayload(DB, undefined, payload([{ id: 'c1', text: '링크 주세요' }, { id: 'c2', text: '예뻐요' }]))
     expect(r.sent).toBe(1)
     expect(dmCalls()).toHaveLength(1)
+    expect(dmCalls()[0].url).toContain(`/${OUR}/messages`)
     expect(dmCalls()[0].body).toEqual({ recipient: { comment_id: 'c1' }, message: { text: 'DM @kim\n\nhttps://urdeal.kr/x' } })
     expect(calls.some(c => c.url.includes('/c1/replies'))).toBe(true)
-    const log = await listSends(DB)
+    const log = await listSends(DB, platformId)
     expect(log.map(l => [l.comment_id, l.status])).toEqual([['c1', 'sent']])
   })
 
   it('같은 댓글이 다시 와도(웹훅 재전송) DM 은 한 통', async () => {
-    await setEnabled(DB, true)
+    await setEnabled(DB, platformId, true)
     const p = payload([{ id: 'c1', text: '링크' }])
     await Promise.all([processWebhookPayload(DB, undefined, p), processWebhookPayload(DB, undefined, p)])
     await processWebhookPayload(DB, undefined, p)
     expect(dmCalls()).toHaveLength(1)
   })
 
-  it('우리 계정이 단 댓글(공개 답글이 되돌아온 것)에는 반응하지 않는다', async () => {
-    await setEnabled(DB, true)
+  it('그 계정이 단 댓글(공개 답글이 되돌아온 것)에는 반응하지 않는다', async () => {
+    await setEnabled(DB, platformId, true)
     await processWebhookPayload(DB, undefined, payload([{ id: 'c9', text: '링크 보냈어요', from: OUR, fromName: 'urdeal' }]))
     expect(dmCalls()).toHaveLength(0)
   })
 
-  it('다른 계정의 이벤트는 무시', async () => {
-    await setEnabled(DB, true)
+  it('연결되지 않은 인스타 계정의 이벤트는 무시', async () => {
+    await setEnabled(DB, platformId, true)
     await processWebhookPayload(DB, undefined, payload([{ id: 'c1', text: '링크' }], '42'))
     expect(dmCalls()).toHaveLength(0)
   })
 
   it('일일 상한을 넘으면 건너뛰고 기록한다', async () => {
-    await setEnabled(DB, true, 1)
+    await setEnabled(DB, platformId, true, 1)
     await processWebhookPayload(DB, undefined, payload([{ id: 'c1', text: '링크' }, { id: 'c2', text: '링크' }]))
     expect(dmCalls()).toHaveLength(1)
-    const log = await listSends(DB)
+    const log = await listSends(DB, platformId)
     expect(log.find(l => l.comment_id === 'c2')?.status).toBe('skipped')
   })
 
   it('메타가 거절하면 failed 로 남고 공개 답글은 안 단다', async () => {
-    await setEnabled(DB, true)
+    await setEnabled(DB, platformId, true)
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {
       calls.push({ url: String(url), body: null })
       return new Response(JSON.stringify({ error: { message: 'too old', code: 10 } }), { status: 400 })
@@ -201,8 +210,118 @@ describe('웹훅 처리(실제 SQLite)', () => {
     const r = await processWebhookPayload(DB, undefined, payload([{ id: 'c1', text: '링크' }]))
     expect(r.failed).toBe(1)
     expect(calls.some(c => c.url.includes('/replies'))).toBe(false)
-    const log = await listSends(DB)
+    const log = await listSends(DB, platformId)
     expect(log[0].status).toBe('failed')
     expect(log[0].error).toContain('too old')
+  })
+
+  describe('매장 계정(사장님·중개사)', () => {
+    const STORE_IG = '1784000000000777'
+    let storeId: number
+
+    beforeEach(async () => {
+      const saved = await saveConnection(DB, undefined, { owner_key: sellerOwnerKey(7), seller_id: 7, ig_user_id: STORE_IG, username: 'cafe', access_token: 'STORE_TOKEN' })
+      if (!saved.ok) throw new Error('setup')
+      storeId = saved.id
+      await createRule(DB, storeId, { name: null, keywords: '쿠폰', match_mode: 'contains', media_id: null, dm_text: '쿠폰 여기', link_url: null, public_reply: null, is_active: true })
+      await setEnabled(DB, storeId, true)
+      await setEnabled(DB, platformId, true)
+    })
+
+    it('앱 전체 스위치(sellers_enabled)가 닫혀 있으면 켜 둔 매장 계정도 0통', async () => {
+      await processWebhookPayload(DB, undefined, payload([{ id: 's1', text: '쿠폰' }], STORE_IG))
+      expect(dmCalls()).toHaveLength(0)
+    })
+
+    it('열리면 그 매장 계정의 토큰·규칙으로만 보낸다(공식 계정 규칙과 섞이지 않는다)', async () => {
+      await saveAppConfig(DB, undefined, { sellers_enabled: true })
+      // 매장 인스타에 '링크'(공식 계정 키워드) 댓글 → 매장 규칙엔 없으니 0통
+      await processWebhookPayload(DB, undefined, payload([{ id: 's0', text: '링크' }], STORE_IG))
+      expect(dmCalls()).toHaveLength(0)
+      await processWebhookPayload(DB, undefined, payload([{ id: 's1', text: '쿠폰 주세요' }], STORE_IG))
+      expect(dmCalls()).toHaveLength(1)
+      expect(dmCalls()[0].url).toContain(`/${STORE_IG}/messages`)
+      expect((await listSends(DB, storeId)).map(l => l.comment_id)).toEqual(['s1'])
+      expect(await listSends(DB, platformId)).toEqual([])
+    })
+
+    it('다른 계정의 규칙 id 로는 수정·삭제가 안 된다(IDOR)', async () => {
+      const platformRule = (await listRules(DB, platformId))[0]
+      const input = { name: null, keywords: '해킹', match_mode: 'contains' as const, media_id: null, dm_text: 'x', link_url: null, public_reply: null, is_active: true }
+      expect(await updateRule(DB, storeId, platformRule.id, input)).toBe(false)
+      expect(await deleteRule(DB, storeId, platformRule.id)).toBe(false)
+      expect((await listRules(DB, platformId))[0].keywords).toBe('링크')
+    })
+
+    it('같은 인스타 계정을 다른 가게에 붙일 수 없다', async () => {
+      const r = await saveConnection(DB, undefined, { owner_key: sellerOwnerKey(8), seller_id: 8, ig_user_id: STORE_IG, username: 'cafe', access_token: 'X' })
+      expect(r.ok).toBe(false)
+      // 같은 주인이 다시 연결(토큰 교체)은 된다
+      const again = await saveConnection(DB, undefined, { owner_key: sellerOwnerKey(7), seller_id: 7, ig_user_id: STORE_IG, username: 'cafe2', access_token: 'NEW' })
+      expect(again.ok).toBe(true)
+    })
+
+    it('데이터 삭제 요청이 오면 그 계정의 규칙·기록·계정이 지워지고 공식 계정은 남는다', async () => {
+      await saveAppConfig(DB, undefined, { sellers_enabled: true })
+      await processWebhookPayload(DB, undefined, payload([{ id: 's1', text: '쿠폰' }], STORE_IG))
+      expect(await purgeByIgUserId(DB, STORE_IG)).toBe(1)
+      expect(await getAccountByOwner(DB, undefined, sellerOwnerKey(7))).toBeNull()
+      expect(await listSends(DB, storeId)).toEqual([])
+      expect(await listRules(DB, storeId)).toEqual([])
+      expect((await listRules(DB, platformId)).length).toBe(1)
+    })
+
+    it('연결 전에도 계정 행을 만들어 규칙을 먼저 써 둘 수 있다', async () => {
+      const id = await ensureAccountRow(DB, sellerOwnerKey(9), 9)
+      expect(id).toBeGreaterThan(0)
+      expect(await ensureAccountRow(DB, sellerOwnerKey(9), 9)).toBe(id)
+    })
+  })
+})
+
+describe('인스타 로그인 state', () => {
+  const JWT = 'jwt-secret-for-test'
+  it('서명한 state 는 그대로 돌아온다', async () => {
+    const t = await signState(JWT, { o: 'seller:7', s: 7, u: 3, r: '/seller/instagram-dm', m: true })
+    const st = await verifyState(JWT, t)
+    expect(st).toMatchObject({ o: 'seller:7', s: 7, u: 3, r: '/seller/instagram-dm', m: true })
+  })
+  it('다른 비밀로 서명했거나 내용을 바꾸면 거절', async () => {
+    const t = await signState(JWT, { o: 'seller:7', s: 7, u: null, r: '/seller/instagram-dm' })
+    expect(await verifyState('other-secret', t)).toBeNull()
+    const [body, sig] = t.split('.')
+    const forged = JSON.parse(atob(body.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((body.length + 3) % 4)))
+    forged.o = 'seller:8'
+    const forgedBody = btoa(JSON.stringify(forged)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+    expect(await verifyState(JWT, `${forgedBody}.${sig}`)).toBeNull()
+  })
+  it('만료되면 거절', async () => {
+    const t = await signState(JWT, { o: 'platform', s: null, u: null, r: '/admin/instagram-autodm' }, 0)
+    expect(await verifyState(JWT, t, STATE_TTL_MS + 1)).toBeNull()
+  })
+  it('돌아갈 주소는 화이트리스트만', () => {
+    expect(safeReturnPath('/admin/instagram-autodm')).toBe('/admin/instagram-autodm')
+    expect(safeReturnPath('https://evil.com')).toBe('/seller/instagram-dm')
+    expect(safeReturnPath('//evil.com')).toBe('/seller/instagram-dm')
+  })
+  it('인스타 로그인 주소에 권한 3종과 state 가 실린다', () => {
+    const u = new URL(authorizeUrl('123', 'https://urdeal.kr/api/instagram/oauth/callback', 'ST'))
+    expect(u.hostname).toBe('www.instagram.com')
+    expect(u.searchParams.get('scope')).toBe('instagram_business_basic,instagram_business_manage_comments,instagram_business_manage_messages')
+    expect(u.searchParams.get('state')).toBe('ST')
+  })
+  it('메타 signed_request: 앱 시크릿 서명만 통과', async () => {
+    const b64 = (u: Uint8Array) => btoa(String.fromCharCode(...u)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+    const body = b64(new TextEncoder().encode(JSON.stringify({ algorithm: 'HMAC-SHA256', user_id: '777' })))
+    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+    const sig = b64(new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(body))))
+    expect(await parseSignedRequest(`${sig}.${body}`, SECRET)).toEqual({ user_id: '777' })
+    expect(await parseSignedRequest(`${sig}.${body}`, 'f'.repeat(32))).toBeNull()
+    expect(await parseSignedRequest(`${sig}.${body}x`, SECRET)).toBeNull()
+    expect(await parseSignedRequest(null, SECRET)).toBeNull()
+  })
+  it('메타에 등록하는 주소는 구 도메인으로 들어와도 정본(urdeal.kr)', () => {
+    expect(canonicalOrigin('https://live.ur-team.com/api/x')).toBe('https://urdeal.kr')
+    expect(canonicalOrigin('http://localhost:8787/api/x')).toBe('http://localhost:8787')
   })
 })

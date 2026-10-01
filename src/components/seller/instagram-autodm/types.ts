@@ -1,20 +1,46 @@
-/** 💬 인스타 자동 DM 어드민 — 서버 응답 모양. 백엔드: features/instagram-autodm/api/autodm.routes.ts */
+/** 💬 인스타 자동 DM — 서버 응답 모양(어드민·셀러 공용). 백엔드: features/instagram-autodm/api/autodm.routes.ts */
 
+/** 계정 하나의 상태 — `${base}/status`. 공식 계정·매장 계정 같은 모양. */
 export interface AutoDmStatus {
+  /** 유어딜 쪽 앱 설정(앱 ID·시크릿)이 됐나 — 안 됐으면 연결 버튼이 동작하지 않는다 */
+  available: boolean
+  /** 매장 계정 전체 스위치(공식 계정은 항상 true). false 면 켜도 발송 0 */
+  sellers_enabled: boolean
+  /** 켤 수 없는 이유(가게 승인 전 등) */
+  enable_block: string | null
   connected: boolean
   username: string | null
-  ig_user_id: string | null
-  has_app_secret: boolean
   enabled: boolean
   daily_cap: number
+  cap_max: number
   token_expires_at: string | null
-  token_refreshed_at: string | null
   token_refresh_error: string | null
-  encryption_key_set: boolean
-  verify_token: string
-  webhook_url: string
   active_rules: number
   stats: { sent24h: number; failed24h: number; sentTotal: number }
+}
+
+/** 어드민 — 메타 앱 설정. */
+export interface AutoDmAppConfig {
+  app_id: string | null
+  has_app_secret: boolean
+  sellers_enabled: boolean
+  verify_token: string
+  webhook_url: string
+  redirect_uri: string
+  deauthorize_url: string
+  data_deletion_url: string
+  encryption_key_set: boolean
+}
+
+export interface SellerAccountRow {
+  id: number
+  seller_id: number | null
+  store_name: string | null
+  username: string | null
+  enabled: number
+  daily_cap: number
+  sent24h: number
+  failed24h: number
 }
 
 export interface AutoDmRule {
