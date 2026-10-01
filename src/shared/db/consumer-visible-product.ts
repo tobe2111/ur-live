@@ -92,3 +92,38 @@ export function exposureReadySql(alias: string): string {
        AND sm_exp.value > datetime('now')
   )`
 }
+
+/**
+ * 🚫 **정지·비활성 매장의 상품은 소비자 목록에서 가린다** (2026-04-22 규칙, 2026-10-01 SSOT 로 수습).
+ *
+ * `ProductRepository.findAll` 머리말이 2026-04-22 부터 이 규칙을 *"(검색/브라우즈 방어)"* 라고
+ * 적어 두고 있었는데, **검색 쪽은 그 방어를 갖고 있지 않았다.** 2026-09-03 FTS 재작성이
+ * `searchProducts` 를 새로 쓰면서 셀러 술어만 따라오지 않았고, 자동완성(`search-suggestions`)은
+ * 애초에 가진 적이 없다. 둘 다 `p.is_active = 1` 은 있어서 **평소엔 증상이 안 보인다** —
+ * 정지 엔드포인트가 그 매장 상품을 전부 `is_active = 0` 으로 만들기 때문이다.
+ *
+ * 2026-10-01 에 "메인에선 숨기고 직링크로는 팔리게" 를 만들며 **매장만 정지 + 상품은 활성**
+ * 조합이 생기자 즉시 드러났다: 피드·섹션·카탈로그에선 사라졌는데 `이용권`·`분식` 검색과
+ * 자동완성에는 그대로 떴다.
+ *
+ * ## 판정
+ * `sellers.is_active = 0` 인 매장의 상품만 가린다. `seller_id IS NULL`(플랫폼 교환권·KT·데모)과
+ * **셀러 행이 아예 없는 dangling `seller_id`** 는 통과 — 이 파일의 다른 술어와 같은 이유로
+ * 관대한 쪽이다(조인이 깨진 날 멀쩡한 상품이 통째로 사라지면 안 된다).
+ *
+ * ## ⚠️ `approvedSellerProductSql` 과 다른 축이다
+ * 그쪽은 *"승인됐는가"*(`status`)를 묻고 **메인 노출**에만 걸린다. 이쪽은 *"살아 있는 매장인가"*
+ * (`is_active`)를 묻고 **소비자 목록 전반**에 걸린다. 겹쳐 쓰지 말 것 — 어느 쪽이 가렸는지
+ * 못 읽게 된다(`approvedSellerProductSql` 주석의 같은 경고).
+ *
+ * ## ⚠️ 쌍둥이가 둘 남아 있다
+ * `ProductRepository` 의 `findAll`·`count` 는 같은 술어를 **인라인으로** 갖고 있다
+ * (`products` 별칭, 잠긴 로딩 경로라 이번에 건드리지 않았다). 가드가 넷이 안 갈리는지 검사한다.
+ */
+export function activeSellerProductSql(alias: string): string {
+  return `NOT EXISTS (
+    SELECT 1 FROM sellers s_act
+     WHERE s_act.id = ${alias}.seller_id
+       AND s_act.is_active = 0
+  )`
+}

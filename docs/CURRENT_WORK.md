@@ -5503,6 +5503,7 @@ _총 388건 · 최신순 · 이 목록은 자동 생성된다._
 - [2026-10-01 — 로딩 밀림의 근본 원인 제거 + 전수 측정 가드](handoff/2026-10-01-loading-shift-root-cause.md)
 - [2026-10-01 — 인스타 댓글 → 자동 DM (유어딜 공식 계정)](handoff/2026-10-01-instagram-comment-autodm.md)
 - [2026-10-01 (2차) — 인스타 자동 DM 을 매장(사장님·중개사)에게 — 마이에서, 토큰 없이](handoff/2026-10-01-instagram-autodm-sellers.md)
+- [2026-10-01 — 메인에선 숨기고 직링크로는 팔리게 (A 방식) + 그때 드러난 검색 누수](handoff/2026-10-01-hide-from-main-not-from-search.md)
 - [대표 결재 넷을 실행했다 — 이중적립 제거 · 만료환불 마감 · 부가세 손잡이 · 시트 측정 (2026-10-01)](handoff/2026-10-01-four-decisions-executed.md)
 - [2026-10-01 — 로그아웃했는데 로그인 상태로 보이던 것 + 이메일 가입·로그인](handoff/2026-10-01-consumer-logout-and-email-auth.md)
 **2026-09-30**

@@ -23,6 +23,7 @@
  *     배열이었다. 같은 커밋에서 `repair-schema` 에 넣었다 — 그전까지는 ①이 조용히 죽어 있다.
  */
 import { voucherCategoriesSqlClause } from '../../../shared/constants/voucher-categories';
+import { activeSellerProductSql } from '../../../shared/db/consumer-visible-product';
 
 /** 제안 최대 개수 — 화면이 결과 자리를 차지하므로 길면 결과를 못 본다. */
 export const SUGGEST_LIMIT = 10;
@@ -44,11 +45,16 @@ export async function buildSearchSuggestions(
   // 세 쿼리가 **같은 조건**을 쓴다(한쪽만 달라지면 눌러서 0건이 난다).
   // ⚠️ `SearchPage.getSortedAndFilteredProducts` 의 분기를 그대로 미러한 것이다 — 한쪽을 고치면
   //    다른 쪽도 고쳐야 하고, 가드가 그 짝을 검사한다.
+  // 🚫 2026-10-01: 정지·비활성 매장 제외 — 결과(`searchProducts`)와 **같은 술어**를 쓴다.
+  //   제안만 가려 주면 눌렀을 때 0건이 나고, 결과만 가리면 제안이 유령을 광고한다.
+  const sellerLive = activeSellerProductSql('products');
   const scope = exchange
     ? `is_active = 1
+         AND ${sellerLive}
          AND NOT (COALESCE(is_supply_product,0) = 1 AND COALESCE(supply_source_id,0) = 0)
          AND deal_only = 1`
     : `is_active = 1
+         AND ${sellerLive}
          AND NOT (COALESCE(is_supply_product,0) = 1 AND COALESCE(supply_source_id,0) = 0)
          AND (deal_only IS NULL OR deal_only = 0)
          AND (category IS NULL OR category IN (${vc.placeholders}))`;
