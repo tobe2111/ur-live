@@ -410,6 +410,11 @@ payouts 0건 · restaurant_settlements 0건 · vouchers used 0건
 첫 이용권 사용의 `voucher_used` 분개에서 `platform:revenue` 몫이 **총액의 5.5%**(중개) 또는
 **11%**(직접)인지 본다. 어드민 화면 숫자만으로는 판정이 안 된다 — 원장 행으로 봐야 한다.
 
+### 대표가 직접 누른다 (2026-10-01)
+
+*"1번은 그냥 내가 생각해보고 할게."* ⇒ 위 세 값은 **대표 몫**이다. 다음 세션은 다시 올리지
+않는다 — 안 눌려 있어도 그건 결함이 아니고, 눌렸는지는 위 E4 원장 행으로 확인한다.
+
 ## 반영 커밋
 
 - 2026-10-01 어드민 라벨/힌트 3곳(`money-switch-fields.ts` · `AdminPlatformSettingsPage.tsx`) +
