@@ -39,7 +39,7 @@
 
 | ID | 게이트 | 위치 | 시나리오 | 통과 기준 | 상태 |
 |---|---|---|---|---|---|
-| **S1** | `commission_budget_enabled='true'` | platform_settings | 영입자 커미션 + 추천트리 커미션이 **겹치는** 3P 주문 결제 → 환불 | ① Σ(모든 커미션 적립) ≤ 주문당 예산(수수료−`pg_reserve_pct`) ② 환불 시 전 커미션 역전 대칭 ③ OFF 복귀 시 기존 동작과 동일 | ⬜ 미검증 (2026-07-04 배선). **2026-09-07 결재 Q4-2 로 켜기 확정(대표)** — 이 항목 통과가 선행. 지금 살아 있는 플랫폼 부담 축은 **영입 2%(직접 입점 매장만)** 하나라 시나리오를 그에 맞춘다: ⓐ 직접 입점 매장(채널 direct · `introduced_by_influencer_id` 있음) 주문 1건 → 영입 적립 = 2% 이고 총합 ≤ 10% − `pg_reserve_pct` ⓑ 같은 매장에 추천트리(`multi_tier_enabled`)까지 켜서 겹친 주문 1건 → Σ 적립이 예산에 비례 배분돼 상한을 안 넘는다 ⓒ 중개 매장 주문 1건 → 영입 0(08-31) ⓓ 환불 → 전 커미션 역전 ⓔ OFF 복귀 → 종전 동작. 판정 근거는 `ledger_entries`·`influencer_attributions` 행과 어드민 `/admin/commission-settings` 표시값의 일치 (PR [#1394](https://github.com/tobe2111/ur-live/pull/1394) 머지됨 `95d172157`) |
+| **S1** | `commission_budget_enabled='true'` | platform_settings | 영입자 커미션 + 추천트리 커미션이 **겹치는** 3P 주문 결제 → 환불 | ① Σ(모든 커미션 적립) ≤ 주문당 예산(수수료−`pg_reserve_pct`) ② 환불 시 전 커미션 역전 대칭 ③ OFF 복귀 시 기존 동작과 동일 | ⬜ 미검증 (2026-07-04 배선). **2026-09-07 결재 Q4-2 로 켜기 확정(대표)** — 이 항목 통과가 선행. 지금 살아 있는 플랫폼 부담 축은 **영입 2%(직접 입점 매장만)** 하나라 시나리오를 그에 맞춘다: ⓐ 직접 입점 매장(채널 direct · `introduced_by_influencer_id` 있음) 주문 1건 → 영입 적립 = 2% 이고 총합 ≤ 10% − `pg_reserve_pct` ⓑ 같은 매장에 추천트리(`multi_tier_enabled`)까지 켜서 겹친 주문 1건 → Σ 적립이 예산에 비례 배분돼 상한을 안 넘는다 ⓒ 중개 매장 주문 1건 → 영입 0(08-31) ⓓ 환불 → 전 커미션 역전 ⓔ OFF 복귀 → 종전 동작. 판정 근거는 `ledger_entries`·`influencer_attributions` 행과 어드민 `/admin/commission-settings` 표시값의 일치 (PR [#1394](https://github.com/tobe2111/ur-live/pull/1394) 머지됨 `95d172157`) | 🔴 **2026-10-01 — 켜기 전에 판정 도구를 먼저 고쳤다**: 합격선의 재료인 수수료를 0원으로 읽고 있어 판정이 양쪽으로 틀렸다(§완료 기록 2026-10-01). 이제 라이브 주문에서 `platform_fee_krw=50 · budget_krw=22` 가 나온다.
 | **S2** | `promo_funding_source='owner'` | platform_settings | 이용권 구매 → 매장에서 사용 → 환불 | ① 사용 시 매장 원장 promo debit **정확히 1회** ② 쇼핑 원장 fee 합산 정합 ③ 환불 시 debit 복원 | ⬜ 미검증 (2026-07-04 배선) |
 | **S3** | `SHOPPING_LEDGER_ENABLED='true'` | Cloudflare env | 일반 쇼핑 주문 결제 → 환불 (쇼핑탭 재오픈 전 필수) | ① 셀러 원장 net 크레딧(gross+fee) **정확히 1회**(이용권/공구 주문은 skip — 이중적립 0) ② 환불 시 역전 → receivable 0 | ⬜ 미검증 (2026-07-01 배선) |
 | **S5** | `pickup_unclaimed_policy_enabled='true'` | platform_settings | 🔴 **머니 경로 · 이미 흐르는 환불의 방향을 바꾼다**(cron `0 18` 실행 확인됨). 절차: P10 참조 | ① 게이트 OFF 로 되돌리면 **즉시 전액 환불 복귀** ② `storage` 미설정 상품은 **전액**(모르면 안 깎는다) ③ cron 2회 실행에도 **이중 환불 0**(CAS) ④ 깎인 만큼 `ledger_entries` 에 `unclaimed_forfeit` 1행 ⑤ **유어딜 5% 불변** | ⬜ 미검증 (2026-08-01 배선, 기본 OFF) |
@@ -221,7 +221,38 @@ GET /api/admin/promo-ledger/order/:orderNumber      (read-only, finance 권한)
 
 | 날짜 | 항목 | 결과 | 비고 |
 |---|---|---|---|
-| — | — | — | 아직 없음 |
+| 2026-10-01 | **판정 도구 자체의 결함** (`GET /api/admin/promo-ledger/order/:no`) | 🔴 발견·수정 | 아래 §2026-10-01 |
+| 2026-10-01 | S5 (`pickup_unclaimed_policy_enabled`) — 라이브 주문 1건 조회 | ⬜ 대상 없음 | 그 주문의 교환권 1장이 `expires_at=NULL`(무기한) — 미수령 몰수의 **대상 자체가 아니다**. 게이트 OFF·`forfeits 0` 은 "통과"가 아니라 "안 재어졌다" |
+| 2026-10-01 | S4 (`FEE_RESOLVER_ENABLED`) | ⬜ 판정 불가 | `order_fee_breakdown` **테이블이 라이브에 없다**(게이트를 한 번도 안 켜 생성 자체가 안 됨). 스키마 사고가 아니다 |
+
+### 🔴 2026-10-01 — **판정 도구가 수수료를 0원으로 읽고 있었다** (대표 *"모두 진행해줘"*)
+
+2026-09-15 에 *"게이트 판정은 주문번호 하나로 한다"* 며 만든 판정 패널에 **라이브 유일 주문**
+(`GB-3-1789611467065`)을 넣어 봤다. 응답이 `budget.platform_fee_krw: 0` 이었다.
+그런데 원장에는 분명히 있었다 — `ledger_entries` id=3 · `fee_amount=50` · `fee_account='platform:commission'`.
+
+**두 군데가 어긋나 있었고, 각각만으로도 늘 0 이 된다.**
+
+| | 틀린 것 | 실제 |
+|---|---|---|
+| ① | `credit_account = 'platform:revenue'` 로 걸렀다 | 수수료는 `fee_amount` 에 붙고 목적지는 `fee_account` 가 말한다. 매장이 있는 주문의 크레딧은 **`seller:N`** 이다 |
+| ② | 참조 키를 `order:N` 만 물었다 | 쇼핑은 `order:N`, **공구·이용권은 주문번호 그대로** ⇒ 지금 라이브 트래픽 **전부**를 놓쳤다 |
+
+**왜 치명적인가** — 수수료가 0 이면 예산도 0 이고, S1 의 합격선(`Σ적립 ≤ 예산`)이
+**양쪽으로 다 틀린다**: 적립이 0 이면 `0 ≤ 0` 으로 늘 통과, 적립이 1원만 있어도 늘 초과.
+즉 아비터가 멀쩡히 일해도 *"게이트가 작동하지 않는다"* 고 읽게 된다.
+**S1 을 켜기 전에 이게 먼저 고쳐져야 했다**(2026-09-07 결재 Q4-2 가 "켠다"로 확정한 그 게이트).
+
+**라이브 D1 대조(읽기 전용)**: 종전 쿼리 `fee=0` · 수정 쿼리 `fee=50` ⇒ 예산 `50 − round(1000×2.75%) = 22원`.
+
+🩸 **그 쿼리를 보던 시험은 통과하고 있었다.** `SUM(fee_amount)` 가 **있는지**만 봤고
+*어떤 행에* 더하는지는 안 봤다. ⇒ `promo-ledger-fee-real-rows-2026-10-01.test.ts` 가
+**라이브와 같은 스키마·같은 행 모양**을 실제 sqlite 에 넣고 **라우트가 쓰는 그 SQL 문자열**
+(`order-platform-fee.ts` SSOT)을 돌려 금액을 센다. 주입 5건 전부 빨간불 확인.
+🧭 **교훈: "쿼리가 있는가" 는 "쿼리가 맞는가" 를 전혀 말해 주지 않는다.**
+
+⚠️ **같은 클래스를 다른 게이트에서도 찾아봤고 없었다**: S2 `order:{id}:promo`(✅ `owner-promo.ts` 와 일치) ·
+S3 `order:N`(✅ `order-ledger-credit.ts` 와 일치) · S5 `voucher:{id}` · S6·S8 은 `order_id` 컬럼.
 
 ## S-QTYCAP · 1인당 구매 상한 (2026-09-14)
 

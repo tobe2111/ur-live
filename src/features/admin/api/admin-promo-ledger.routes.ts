@@ -17,6 +17,7 @@ import { requireAdminRole } from '../../../worker/middleware/auth'
 import { intParam } from '../../../shared/pagination'
 import { computeCommissionBudget, DEFAULT_PG_RESERVE_PCT } from '../../../worker/utils/commission-budget'
 import { findActiveDealPct } from '../../../worker/utils/influencer-deal'
+import { platformFeeQuery, orderLedgerRefs } from '../../../worker/utils/order-platform-fee'
 import type { Env } from '../../../worker/types/env'
 
 export const adminPromoLedgerRoutes = new Hono<{ Bindings: Env }>()
@@ -248,15 +249,19 @@ adminPromoLedgerRoutes.get('/order/:orderNumber', requireAdminRole('finance'), a
     }
     const orderIds = orderRows.map((o) => Number(o.id))
     const idPh = orderIds.map(() => '?').join(', ')
-    const refs = orderIds.map((id) => `order:${id}`)
+    // 🔑 원장 참조 키는 **두 가지**다 — 쇼핑 `order:N` · 공구·이용권은 주문번호 그대로.
+    //    한쪽만 물으면 그 레일의 주문이 조용히 0원으로 읽힌다(2026-10-01 실측 — `order-platform-fee.ts`).
+    const refs = orderLedgerRefs(orderIds, orderNumber)
     const refPh = refs.map(() => '?').join(', ')
     const amountKrw = orderRows.reduce((s, o) => s + (Number(o.total_amount) || 0), 0)
 
     // ① 예산 = max(0, 플랫폼 수수료 − PG 준비금). 수수료는 이 주문의 원장 fee 가 진실.
-    const feeRow = await DB.prepare(
-      `SELECT COALESCE(SUM(fee_amount), 0) AS fee FROM ledger_entries
-        WHERE credit_account = 'platform:revenue' AND reference_id IN (${refPh})`
-    ).bind(...refs).first<{ fee: number }>().catch(() => null)
+    // 🩸 2026-10-01 — 이 쿼리가 틀려서 **S1 의 합격선이 헛돌고 있었다**(라이브 유일 주문에서 0원).
+    //    수수료는 `credit_account` 가 아니라 `fee_amount`/`fee_account` 에 있고, 참조 키도 두 가지다.
+    //    근거·실측은 `order-platform-fee.ts` 머리말. 여기서 다시 쓰지 않고 그 SSOT 를 부른다.
+    const feeQ = platformFeeQuery(orderIds, orderNumber)
+    const feeRow = await DB.prepare(feeQ.sql).bind(...feeQ.binds)
+      .first<{ fee: number }>().catch(() => null)
     const settingRow = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'pg_reserve_pct'")
       .first<{ value: string | null }>().catch(() => null)
     const pgReserveRaw = Number(settingRow?.value ?? NaN)
@@ -329,7 +334,14 @@ adminPromoLedgerRoutes.get('/order/:orderNumber', requireAdminRole('finance'), a
     ).bind(...orderIds).first<{ rows: number; platform_krw: number; agency_krw: number; owner_net_krw: number }>()
       .catch(() => null)
     const s4 = s4Row === null
-      ? { readable: false as const, note: 'order_fee_breakdown 조회 실패 — 판정 불가(통과 아님)' }
+      ? {
+          readable: false as const,
+          // 🔎 2026-10-01 실측: 라이브에 이 테이블이 **아직 없다**(S4 는 `FEE_RESOLVER_ENABLED` 게이트드라
+          //    한 번도 안 켜졌고, 그래서 생성도 안 됐다). "조회 실패" 만 적어 두면 원인을 알 수 없어
+          //    다음 사람이 스키마 사고로 오진한다 ⇒ 그 가능성을 문장에 담는다. 통과는 아니다.
+          note: 'order_fee_breakdown 조회 실패 — 판정 불가(통과 아님). 게이트를 한 번도 켠 적 없으면 '
+            + '테이블 자체가 없는 것이 정상이다(라이브 2026-10-01 실측). repair-schema 로 스키마를 맞춘 뒤 다시 볼 것',
+        }
       : {
           readable: true as const,
           gate_on: String(c.env.FEE_RESOLVER_ENABLED || '') === 'true',
@@ -509,7 +521,9 @@ adminPromoLedgerRoutes.get('/order/:orderNumber', requireAdminRole('finance'), a
           credit_krw: Math.round(Number(credit?.total ?? 0)),
           debit_krw: debitTotal,
           debit_rows: debitRows,
-          note: 'debit > 0 은 정상 — 2026-09-07 결재 Q4-2 로 성장 커미션은 플랫폼 수수료 안에서 부담한다(판정 아님)',
+          note: 'debit > 0 은 정상 — 2026-09-07 결재 Q4-2 로 성장 커미션은 플랫폼 수수료 안에서 부담한다(판정 아님). '
+            + '⚠️ 매장이 있는 주문은 credit_krw 가 0 인 것이 정상이다 — 유어딜 몫은 그 행의 fee_amount 로 찍히고 '
+            + '`budget.platform_fee_krw` 가 그 값이다. 여기 0 을 "수취 0" 으로 읽지 말 것',
         },
         // 👇 이 두 줄이 S1 판정이다. 손으로 더할 필요가 없게.
         verdict: {
