@@ -79,11 +79,64 @@ describe('셀러 목록 시드 — 화면이 부르는 것을 덮는다', () => 
     expect(logs.some((l) => l.success === 0), '실패 로그가 없다 — 오류 배지를 못 본다').toBe(true)
   })
 
+  /**
+   * 🚩 일곱 화면이 **한 깃발**로 열린다.
+   *
+   * 🩸 2026-10-01: `/seller/analytics` 만 `--analytics` 를 따로 요구해 `--seller-lists` 로는
+   *   계속 🟡("잴 내용이 없다")였다. 일곱 중 하나가 다른 깃발을 요구하면 **다음 세션은 그 하나를
+   *   안 잰다** — 2차가 실제로 그렇게 빠뜨렸고, 그 화면이 빠진 표가 결재문에 올라갔다.
+   */
+  it('매출 분석도 --seller-lists 로 열린다 (일곱이 한 깃발)', () => {
+    const h = readFileSync('scripts/visual-preview.mjs', 'utf8')
+    expect(h, '매출 분석이 다른 깃발만 본다 — 일곱 중 하나가 측정에서 빠진다')
+      .toMatch(/if \(args\.analytics \|\| SELLER_LISTS\) \{/)
+    // `=empty` 는 **따로 살아 있어야** 한다 — "판 적은 있으나 이 기간엔 없음" 화면을 보는 깃발이다.
+    expect(h, 'empty 변형이 사라졌다 — 빈 상태 화면을 못 본다')
+      .toMatch(/args\.analytics === 'empty' \|\| SELLER_LISTS === 'empty'/)
+  })
+
   it('하네스가 이 시드를 배선해 쓴다 (모듈만 있고 안 쓰면 측정은 그대로 빈 화면)', () => {
     const h = readFileSync('scripts/visual-preview.mjs', 'utf8')
     expect(h).toMatch(/import \{ sellerListResponse \} from '\.\/preview-seeds\/seller-lists\.mjs'/)
     expect(h, '플래그가 꺼져 있으면 아무 일도 안 일어난다').toMatch(/sellerListResponse\(p, SELLER_LISTS\)/)
     expect(h, '좌석 토큰이 JWT 모양이 아니면 시트가 안 열려 또 빈 화면이 된다')
       .toMatch(/if \(STORES_N > 0 \|\| SELLER_LISTS\) \{/)
+  })
+  /**
+   * 🩸 2026-10-01(합치면서 값을 치렀다) — **봉투를 서버 코드만 보고 짜면 틀린다.**
+   *   협업 코드 라우트의 서버 코드엔 `codes:` 가 최상위처럼 보이지만 `success(c, {...})` 가
+   *   한 겹 더 감싸므로 실제 응답은 `{ success, data: { codes } }` 다. 합치는 중에 최상위로
+   *   spread 했더니 화면이 **"아직 코드가 없어요"** 로 떴다 — 404 도 아니고 에러도 없다.
+   *   ⇒ 봉투는 **소비자 쪽**(`CollabCodesSection.tsx:36` 의 `r.data.data.codes`)에서 읽는다.
+   *   ⚠️ 이 시험은 **모양만** 본다. 화면이 실제로 그 값을 그리는지는 `--phone-audit` 의
+   *     🟡("잴 내용이 없다") 판정이 잡는다 — 둘은 짝이다.
+   */
+  it('새로 담은 셋의 봉투가 소비자가 읽는 자리와 맞다', () => {
+    const codes = sellerListResponse('/api/seller-marketing/codes')! as { data: { codes: unknown[]; influencer_pct_cap: unknown } }
+    expect(Array.isArray(codes.data?.codes), 'data.codes 가 아니다 — 화면은 r.data.data.codes 를 읽는다').toBe(true)
+    expect(codes.data.codes.length, '코드가 비었다 — 빈 화면을 재게 된다').toBeGreaterThan(1)
+    expect(codes.data.influencer_pct_cap, '커미션 상한이 없다 — 화면이 상한 안내를 못 그린다').toBeTruthy()
+
+    const deals = sellerListResponse('/api/seller-marketing/deals')! as { data: unknown[] }
+    expect(deals.data.length, '제안이 비었다').toBeGreaterThan(1)
+
+    const products = sellerListResponse('/api/seller/products')! as { data: Array<Record<string, unknown>> }
+    expect(products.data.length, '이용권이 비었다').toBeGreaterThan(1)
+    // 이용권 화면은 `sold`·`group_buy_status` 로 판매 중/종료를 가른다 — 둘 다 있어야 세그먼트가 갈린다.
+    expect(products.data.some((x) => x.group_buy_status === 'active'), '판매 중이 없다').toBe(true)
+    expect(products.data.some((x) => Number(x.total_revenue) >= 1_000_000), '큰 매출이 없다 — 칸 넘침을 못 본다').toBe(true)
+  })
+
+  /**
+   * 🗓️ 고정 날짜 금지 — `이번 달` 칸은 `monthRevenue(daily)`(`useSellerHome.ts:61`)가
+   *   **이번 달 키만** 더한다. 시드가 지난달로 박혀 있으면 달이 넘어가는 순간 `₩0` 이 뜨고,
+   *   시드는 멀쩡해 보이는데 숫자만 0 이라 "판매 0" 으로 오판한다(2026-10-01 에 실제로 겪었다).
+   */
+  it('일별 매출 시드가 오늘을 포함한다 (달이 넘어가도 0 이 안 된다)', () => {
+    const stats = sellerListResponse('/api/seller/dashboard/stats')! as { data: { daily_revenue: Array<{ date: string; revenue: number }> } }
+    const ym = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 7)
+    const thisMonth = stats.data.daily_revenue.filter((d) => d.date.startsWith(ym))
+    expect(thisMonth.length, `이번 달(${ym}) 치가 없다 — 고정 날짜로 박혀 있다`).toBeGreaterThan(0)
+    expect(thisMonth.reduce((a, d) => a + d.revenue, 0), '이번 달 합이 0 이다').toBeGreaterThan(0)
   })
 })

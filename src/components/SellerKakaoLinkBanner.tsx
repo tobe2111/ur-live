@@ -74,10 +74,21 @@ export default function SellerKakaoLinkBanner() {
           {t('seller.kakaoBannerDesc', { defaultValue: '카카오 계정을 연동하면 다음부터 카카오 로그인 한 번으로 셀러 대시보드에 들어올 수 있어요.' })}
         </p>
       </div>
+      {/**
+        * 👆 2026-10-01 — **닿는 범위만** `ur-btn-md`(40px) 눈금으로 넓혔다(`.tap-reach`).
+        *   430px 폰 실측에서 닫기가 **24×24**, 연동하기가 **32** 였다. 이 배너는 셀러 대시보드
+        *   **일곱 화면 전부**에 뜨는 공용 chrome 이라 한 자리가 일곱 화면을 좌우한다.
+        *   🩸 **처음엔 박스째 키웠다가 되돌렸다**: 닫기 `p-3`·CTA `ur-btn-md` 로 바꾸자 같은 행의
+        *     글자 칸이 197 → 167px 로 좁아져 설명이 한 줄 더 감기고 **배너가 109 → 148px** 이 됐다
+        *     (`--probe` 로 실측). 일곱 화면에 +39px 씩 얹는 셈이라 공용 chrome 에서는 그 대가가 크다.
+        *   ⚠️ 44(Apple HIG) 가 아니라 **40** 인 이유: 이 레포 디자인 시스템의 보통 버튼이
+        *     `.ur-btn-md { height: 2.5rem }` = 40px 다. 외부 숫자를 들여오면 체계가 정한 보통
+        *     버튼이 전부 "위반" 이 되고, 그러면 아무도 안 고친다.
+        */}
       <button
         type="button"
         onClick={() => navigate('/seller/profile')}
-        className="ur-btn ur-btn-sm ur-btn-primary shrink-0"
+        className="ur-btn ur-btn-sm ur-btn-primary shrink-0 tap-reach"
       >
         {t('seller.kakaoBannerCta', { defaultValue: '연동하기' })}
       </button>
@@ -85,7 +96,7 @@ export default function SellerKakaoLinkBanner() {
         type="button"
         onClick={dismiss}
         aria-label={t('common.close', { defaultValue: '닫기' })}
-        className="shrink-0 p-1 text-gray-400 hover:text-gray-600 transition-colors"
+        className="shrink-0 p-1 text-gray-400 hover:text-gray-600 transition-colors tap-reach"
       >
         <X className="w-4 h-4" />
       </button>

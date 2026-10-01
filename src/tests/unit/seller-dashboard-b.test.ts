@@ -43,7 +43,19 @@ describe('셀러 대시보드 B안', () => {
   it('카카오 연동 배너: 노랑 원·이모지 없음, 버튼은 체계(ur-btn-primary)', () => {
     expect(BANNER).not.toContain('#FEE500')
     expect(BANNER).not.toContain('💬')
-    expect(BANNER).toMatch(/className="ur-btn ur-btn-sm ur-btn-primary shrink-0"/)
+    /**
+     * 🩸 2026-10-01 재조준: 여기는 className **문자열 전체**를 동결하고 있었다
+     *   (`"ur-btn ur-btn-sm ur-btn-primary shrink-0"`). 그래서 이 버튼에 탭 타깃을 넓히는
+     *   `tap-reach` 를 **더하기만** 해도 빨간불이 났다. 이 시험이 지키려던 것은 문자열이 아니라
+     *   *"버튼이 체계(ur-btn-primary)를 쓴다"* 다 ⇒ **클래스가 있는가**로 바꾼다(동결은 풀지 않는다 —
+     *   `bg-gray-900` 같은 손색이 들어오면 여전히 빨간불이다).
+     */
+    const cta = BANNER.slice(BANNER.indexOf("navigate('/seller/profile')"), BANNER.indexOf("navigate('/seller/profile')") + 300)
+    expect(cta, '연동하기 버튼을 못 찾았다 — 이 검사가 헛돌고 있다').toContain('className=')
+    for (const need of ['ur-btn', 'ur-btn-sm', 'ur-btn-primary', 'shrink-0']) {
+      expect(cta, `연동하기 버튼에 ${need} 가 없다`).toContain(need)
+    }
+    expect(cta, '주 버튼을 손으로 칠했다 — 체계(ur-btn-primary)를 쓸 것').not.toMatch(/bg-gray-900|bg-black|bg-\[#1/)
   })
   it('STEP 카드는 티켓 부품(블루 밴드 + 흰 본문) — 잉크 카드가 아니다', () => {
     expect(STORES).toMatch(/h-11 px-4 text-\[14px\] text-white bg-brand tabular-nums/)
