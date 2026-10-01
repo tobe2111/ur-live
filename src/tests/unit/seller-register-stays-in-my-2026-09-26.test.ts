@@ -13,12 +13,13 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readCode, readRaw, stripComments } from '../helpers/source-text'
+import { canOpenInSheet } from '@/pages/user-profile/seller-section/tool-pages'
 
 const WIZARD = readCode('src/pages/SellerMealVoucherNewPage.tsx')
 const LAYOUT = readCode('src/components/SellerLayout.tsx')
 const NEWSHEET = readCode('src/pages/user-profile/seller-section/VoucherNewSheet.tsx')
-const STAYS = readCode('src/pages/user-profile/seller-section/StaysSheet.tsx')
-const VOUCHERS = readCode('src/pages/user-profile/seller-section/VoucherSheet.tsx')
+// 🧹 2026-10-01 철거: `StaysSheet`·`VoucherSheet` 는 내려갔다(대시보드 화면의 폰용 사본이었다).
+//    숙소는 이제 `/seller/stays` 가 `ToolPageSheet` 로 열린다 — 아래 묶음 3 참조.
 const NAV = readCode('src/components/seller/seller-nav.ts')
 const FLAGS = readCode('src/shared/feature-flags.ts')
 // ⚠️ `readCode` 는 **주석을 지운다** — 근거는 주석에 적혀 있으므로 그 검사만 원문을 읽는다.
@@ -29,7 +30,8 @@ describe('0. 검사 대상이 실재한다', () => {
   it('소스가 모두 충분한 길이로 읽힌다', () => {
     // ⚠️ `readCode` 는 주석을 지운 **코드 길이**다. `VoucherNewSheet` 는 설명이 길고 코드가 짧은
     //   것이 정상이다(자기 폼이 없다는 뜻) — 그래서 바가 낮다. 0 이면 경로가 낡은 것이다.
-    for (const [n, c, min] of [['wizard', WIZARD, 8000], ['layout', LAYOUT, 4000], ['newSheet', NEWSHEET, 400], ['stays', STAYS, 2500]] as const) {
+    // 🧹 2026-10-01 철거: `stays` 사본이 내려가 대상에서 빠졌다(원본은 묶음 3 이 본다).
+    for (const [n, c, min] of [['wizard', WIZARD, 8000], ['layout', LAYOUT, 4000], ['newSheet', NEWSHEET, 400]] as const) {
       expect(c.length, `${n}: 소스를 못 읽었다 — 앵커부터 고칠 것`).toBeGreaterThan(min)
     }
   })
@@ -101,31 +103,17 @@ describe('2. 🪟 껍데기만 벗는다 — 폼 계약은 불변', () => {
   })
 })
 
-describe('3. 🏨 숙소 — 목록은 시트, 달력은 전체화면', () => {
-  it('🪑 좌석이 안 맞으면 부르지 않는다', () => {
-    expect(stripComments(STAYS)).toMatch(/if \(currentSeatId\(\) !== sellerId\)/)
-  })
-
-  it('읽기만 한다 — 시트에서 숙소를 고치지 않는다', () => {
-    const code = stripComments(STAYS)
-    expect(code, '쓰기가 생기면 assertSeat 이 함께 와야 한다').not.toMatch(/api\.(put|post|patch|delete)\(/)
-  })
-
-  it('달력·객실은 시트에서 그리지 않고 내보낸다', () => {
-    const code = stripComments(STAYS)
-    expect(code).toMatch(/onOpen\(`\/seller\/stays\/\$\{s\.id\}`\)/)
-    expect(code, '달력을 시트 폭에 그리면 날짜 칸이 손가락보다 작아진다').not.toMatch(/calendar|달력 그리기/i)
-  })
-
-  it('빈 목록을 "고장" 으로 읽히게 두지 않는다', () => {
-    // 라이브에서 셀러 소유 숙소는 0개다(2026-09-26 실측) — 대부분 이 화면을 본다.
-    expect(stripComments(STAYS)).toContain('아직 등록한 숙소가 없어요')
-  })
-
-  it('이용권 묶음에서 열린다 — 별도 최상위 줄을 만들지 않는다', () => {
-    const code = stripComments(VOUCHERS)
-    expect(code).toContain('<StaysSheet')
-    expect(code).toContain('onOpenPath')
+/**
+ * 🧹 **2026-10-01 철거 — 숙소 묶음(5건)의 대상이 사본이었다.**
+ *   `StaysSheet` 는 `/seller/stays` 의 폰용 사본이고, 그 사본을 지웠다. 원본은 그대로다
+ *   (라우트·페이지·API — `seller-rest-in-my` 의 *"지운 게 아니라 접은 것"* 이 그걸 지킨다).
+ *   사본이 지키던 것 중 원본에 없는 것은 없었다: 좌석은 토큰 스코프 · 달력은 원래 그 화면의 것 ·
+ *   빈 목록 문구는 원본에도 있다. ⚠️ 숙소는 `SELLER_DORMANT_HIDDEN` 으로 **접혀 있다**(실측 0건).
+ */
+describe('3. 🏨 숙소 — 접혀 있지만 되돌릴 수 있다', () => {
+  it('원본 라우트가 남아 있고, 플래그를 켜면 마이에서 열린다', () => {
+    expect(ROUTES, '숙소 라우트가 사라졌다 — 플래그를 켜도 돌아올 곳이 없다').toContain('/seller/stays')
+    expect(canOpenInSheet('/seller/stays'), '마이에서 못 열면 반쪽 복구다').toBe(true)
   })
 })
 

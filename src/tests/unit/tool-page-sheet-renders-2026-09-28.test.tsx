@@ -69,6 +69,22 @@ describe('ToolPageSheet — 터지지 않는가', () => {
     }
   })
 
+  /**
+   * 🧹 **2026-10-01 철거의 안전망** — 손수 시트 일곱을 지우면서 그 일들이 **이 시트로** 넘어왔다.
+   *   그래서 그 다섯 주소가 여기서 실제로 마운트되는지가 철거의 전제다. 소스 검사로는 못 본다
+   *   (2026-09-28 에 이 파일이 생긴 이유가 정확히 그것 — 텍스트 가드는 "배선이 있는가" 만 봤고
+   *   그 시트는 **한 번도 동작한 적이 없었다**).
+   */
+  it('🧹 철거로 이 시트가 맡게 된 다섯 화면이 실제로 마운트된다', () => {
+    for (const p of ['/seller/group-buy', '/seller/analytics', '/seller/store',
+      '/seller/influencer-deals', '/seller/alimtalk']) {
+      const { unmount } = mount(p)
+      expect(screen.queryByText('문제가 발생했습니다'), `${p} 가 에러 화면이다 — 철거의 도착지가 깨졌다`).toBeNull()
+      expect(screen.getByText('테스트'), `${p}: 시트 껍데기가 안 그려졌다`).toBeTruthy()
+      unmount()
+    }
+  })
+
   it('🔴 이 시험이 헛돌지 않는다 — 시트 껍데기가 실제로 그려졌다', () => {
     mount('/seller/tier')
     expect(screen.getByText('테스트')).toBeTruthy()   // 시트 머리(title)

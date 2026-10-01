@@ -18,8 +18,11 @@ import { readCode, stripComments } from '../helpers/source-text'
 
 const SECTION = readCode('src/pages/user-profile/SellerSection.tsx')
 const WITHDRAW = readCode('src/pages/user-profile/seller-section/WithdrawSheet.tsx')
-const REFUND = readCode('src/pages/user-profile/seller-section/RefundSheet.tsx')
-const ANALYTICS = readCode('src/pages/user-profile/seller-section/AnalyticsSheet.tsx')
+// 🧹 2026-10-01 철거: `RefundSheet`·`AnalyticsSheet` 는 내려갔다 — 환불은 주문 대시보드 화면이,
+//    분석은 `/seller/analytics` 가 맡는다(원본이고, 손수 시트는 그 **복제**였다).
+//    아래에서 그 둘을 대상으로 하던 검사는 **대상만** 줄었고 판정은 그대로다. 사라진 판정 둘
+//    (환불이 사유를 요구한다 · 분석이 서버 값만 그린다)은 복제가 아니라 **원본 화면의 성질**이라
+//    그 화면들의 시험이 지킨다 — 복제가 없어졌으니 복제용 가드도 함께 내린다.
 const SHEET = readCode('src/pages/user-profile/seller-section/Sheet.tsx')
 
 describe('🔴 출금 ≠ 탈퇴 (§19-0)', () => {
@@ -31,7 +34,7 @@ describe('🔴 출금 ≠ 탈퇴 (§19-0)', () => {
   })
 
   it('마이 판매 화면 어디에도 탈퇴 엔드포인트가 없다', () => {
-    for (const [name, code] of [['section', SECTION], ['refund', REFUND], ['analytics', ANALYTICS]] as const) {
+    for (const [name, code] of [['section', SECTION]] as const) {
       expect(stripComments(code), `${name}`).not.toContain('account/withdraw')
     }
   })
@@ -85,42 +88,22 @@ describe('🔴 출금 ≠ 탈퇴 (§19-0)', () => {
   })
 })
 
-describe('환불 — 화면이 돈을 옮기지 않는다', () => {
-  it('환불은 환불 경로로만 한다 (상태 변경 취소 금지)', () => {
-    const code = stripComments(REFUND)
-    expect(code).toMatch(/api\.post\(`\/api\/seller\/orders\/\$\{encodeURIComponent\(picked\.orderNumber\)\}\/refund`/)
-    expect(code, "status='CANCELLED' 는 돈을 안 돌려주고 취소 알림만 보낸다(서버도 REFUND_REQUIRED 로 막는다)")
-      .not.toContain("'CANCELLED'")
-  })
-
-  it('한 번의 탭으로 환불되지 않는다 — 고르고, 사유를 적고, 확인한다', () => {
-    const code = stripComments(REFUND)
-    expect(code).toMatch(/if \(picked\)/)
-    expect(code).toContain('setPicked(o)')
-    expect(code).toContain('되돌릴 수 없습니다')
-  })
-
-  it('결제가 캡처된 주문만 후보다', () => {
-    const code = stripComments(REFUND)
-    expect(code).toMatch(/REFUNDABLE = new Set\(\['PAID', 'DONE', 'PREPARING', 'SHIPPING', 'DELIVERED'\]\)/)
-  })
-})
-
-describe('분석 — 서버가 준 값만 그린다', () => {
-  it('매출은 `/dashboard/stats` 의 daily_revenue 하나에서 온다', () => {
-    const code = stripComments(ANALYTICS)
-    expect(code).toContain("api.get('/api/seller/dashboard/stats')")
-    expect(code).toContain('daily_revenue')
-    expect(code, '주문 목록으로 매출을 다시 계산하면 대시보드와 숫자가 갈린다')
-      .not.toContain('/api/seller/orders')
-  })
-
-  it('표가 아니라 요약이다 — 폰에서 읽히는 기간만 그린다', () => {
-    const code = stripComments(ANALYTICS)
-    expect(code).toMatch(/length: 14/)
-    expect(code).not.toContain('<table')
-  })
-})
+/**
+ * 🧹 **2026-10-01 철거 — 여기 있던 두 묶음(환불 · 분석)을 내렸다. 무엇을 확인하고 내렸는지 남긴다.**
+ *
+ * 그 검사들의 대상은 **복제**였다(`RefundSheet`·`AnalyticsSheet` = 대시보드 화면의 폰용 사본).
+ * 복제를 지우면 복제용 가드도 내려간다 — 다만 *"원본에도 그 성질이 있나"* 를 먼저 확인했다:
+ *
+ * | 지키던 것 | 원본(`/seller/orders`·`/seller/analytics`) | 판정 |
+ * |---|---|---|
+ * | 환불을 상태 변경으로 하지 않는다 | `api.post('/api/seller/orders/{n}/refund')` | ✅ 같다 |
+ * | 한 번의 탭으로 환불되지 않는다 | `confirmDialog({ danger: true, '되돌릴 수 없습니다' })` | ✅ 같다 |
+ * | **환불 사유를 적는다** | 본문이 `{}` — 사유 칸이 없다 | 🔴 **손수 시트가 더 나았다** |
+ * | 분석이 서버 값만 그린다 | 그 화면이 원본이다(사본이 복제했던 것) | ✅ 같다 |
+ *
+ * 🔴 **그래서 철거로 잃은 것이 하나 있다 — 환불 사유.** 되돌릴 수 없는 일에 이유를 남기는 것은
+ *   원본에 **넣어야 할 것**이고, 환불은 등급 C 라 대표 판단 자리다(결재문 §철거로 잃은 것).
+ */
 
 describe('등록 — 폼을 복제하지 않는다', () => {
   /**
@@ -140,28 +123,34 @@ describe('등록 — 폼을 복제하지 않는다', () => {
 describe('시트는 좌석이 맞을 때만 열리고, 같은 셸을 쓴다', () => {
   it('도구를 열기 전에 좌석을 맞춘다', () => {
     const code = stripComments(SECTION)
+    // 🔁 2026-10-01 철거: 좌석 맞추기가 `ensureSeat` 한 벌로 합쳐졌다(`openTool`·`openPage` 공용).
+    //   불변식은 그대로 — **좌석을 맞추고, 못 잡으면 열지 않는다.**
     const at = code.indexOf('async function openTool')
     expect(at, 'openTool 이 없다 — 앵커가 낡았다').toBeGreaterThan(0)
-    const fn = code.slice(at, at + 500)
-    expect(fn).toContain('currentSeatId() !== store.seller_id')
+    expect(code.slice(at, at + 200), 'openTool 이 좌석을 안 거친다')
+      .toMatch(/if \(!\(await ensureSeat\(\)\)\) return/)
+    const sat = code.indexOf('async function ensureSeat()')
+    expect(sat, 'ensureSeat 가 없다 — 좌석 규칙이 흩어졌다').toBeGreaterThan(0)
+    const fn = code.slice(sat, sat + 500)
+    expect(fn).toContain('currentSeatId() === store.seller_id')
     expect(fn).toContain('switchSeat(')
-    expect(fn, '좌석을 못 잡았는데 열면 남의 가게 데이터를 그린다').toMatch(/if \(!ok\).*return/s)
+    expect(fn, '좌석을 못 잡았는데 열면 남의 가게 데이터를 그린다').toMatch(/if \(!ok\).*return false/s)
   })
 
-  it('세 시트가 좌석을 스스로도 확인한다', () => {
-    for (const [name, code] of [['refund', REFUND], ['analytics', ANALYTICS], ['withdraw', WITHDRAW]] as const) {
+  it('남은 시트가 좌석을 스스로도 확인한다', () => {
+    for (const [name, code] of [['withdraw', WITHDRAW]] as const) {
       expect(stripComments(code), `${name}`).toContain('currentSeatId() !== sellerId')
     }
   })
 
   it('쓰기 시트는 보내기 직전 assertSeat 을 지난다', () => {
-    for (const [name, code] of [['refund', REFUND], ['withdraw', WITHDRAW]] as const) {
+    for (const [name, code] of [['withdraw', WITHDRAW]] as const) {
       expect(stripComments(code), `${name}`).toContain('assertSeat(sellerId)')
     }
   })
 
   it('시트 셸이 하나다 — 높이·z-index·스크롤 규약이 갈리지 않게', () => {
-    for (const [name, code] of [['refund', REFUND], ['analytics', ANALYTICS], ['withdraw', WITHDRAW]] as const) {
+    for (const [name, code] of [['withdraw', WITHDRAW]] as const) {
       expect(stripComments(code), `${name} 가 자체 오버레이를 그리면 셸이 두 벌이 된다`).toContain("from './Sheet'")
       expect(stripComments(code), `${name}`).not.toContain('fixed inset-0')
     }

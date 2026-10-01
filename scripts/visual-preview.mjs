@@ -891,6 +891,17 @@ if (args['phone-audit']) {
       const t = (el.textContent || '').trim()
       if (t.length < 2) continue
       const cs = getComputedStyle(el)
+      /**
+       * 🔇 **보조기기 전용 글자(`sr-only`)는 잘려 있는 게 정상이다** (2026-10-01).
+       *   탭루윈드 `sr-only` 는 `1px` 상자 + `clip: rect(0,0,0,0)` 로 **일부러** 숨긴다.
+       *   `/user/profile` 의 `<h1 className="sr-only">마이페이지</h1>` 가 그것이고, 그 한 줄 때문에
+       *   마이가 🔴 로 떴다 — 종전 줄임표 오탐과 **같은 클래스**다(의도를 결함으로 세는 것).
+       *   ⚠️ 클래스 이름이 아니라 **계산된 모양**으로 판정한다 — 같은 기법을 손으로 쓴 자리도 잡힌다.
+       */
+      const srOnly = cs.position === 'absolute'
+        && (el.clientWidth <= 1 || el.clientHeight <= 1)
+        && cs.overflow !== 'visible'
+      if (srOnly) continue
       const signalled = cs.textOverflow === 'ellipsis' || cs.webkitLineClamp !== 'none'
       if (signalled) {
         // line-clamp 은 세로로 넘친다 — 가로(scrollWidth) 로는 안 잡힌다.
