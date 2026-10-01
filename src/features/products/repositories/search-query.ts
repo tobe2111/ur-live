@@ -59,10 +59,12 @@ export function tokenizeQuery(query: string): string[] {
 export interface SearchClause {
   /** `AND (...)` 형태로 이어 붙일 조건. 토큰이 없으면 빈 문자열. */
   where: string
-  /** `ORDER BY` 앞에 놓을 점수 식(별칭 없이 표현식만). */
+  /** 점수 식(별칭 없이 표현식만). SELECT 에 놓든 ORDER BY 에 놓든 호출부 자유. */
   rank: string
-  /** where → rank 순서로 이어 붙인 바인드 값. */
-  params: string[]
+  /** 🔴 `where` 안의 `?` 에 들어갈 값 — **`where` 가 SQL 텍스트에 등장하는 자리**에 맞춰 넘긴다. */
+  whereParams: string[]
+  /** 🔴 `rank` 안의 `?` 에 들어갈 값 — **`rank` 가 SQL 텍스트에 등장하는 자리**에 맞춰 넘긴다. */
+  rankParams: string[]
 }
 
 /**
@@ -73,6 +75,15 @@ export interface SearchClause {
  * - 부분매칭(`%토큰%`)이라 **단어 안쪽**도 잡힌다(치즈**돈가스**)
  *
  * @param expand 동의어 확장기(호출부의 사전을 주입 — 이 모듈은 사전을 모른다)
+ *
+ * 🩸 **바인드 값을 한 배열로 합쳐 돌려주지 않는다**(2026-09-30 라이브 결함 수리). 종전엔
+ *   `params = [...where, ...rank]` 한 벌이었는데, 호출부(`ProductRepository.searchByText`)는
+ *   랭킹 식을 **SELECT 에** 놓는다 — SQL 텍스트에서 `rank` 의 `?` 가 `where` 의 `?` 보다 **먼저**
+ *   나온다. SQLite 는 **텍스트 등장 순서**로 바인딩하므로 두 묶음이 통째로 어긋났다.
+ *   개수가 맞아 예외가 안 나고, 어긋난 값도 전부 `%…%` LIKE 패턴이라 **에러 없이 조용히 틀린 결과**가
+ *   나왔다(라이브 실측: `홍대` 21건인데 `홍대 홍대` 0건 · 제안으로 띄운 상품명을 그대로 검색하면 0건).
+ *   ⇒ 묶음을 **둘로 쪼개** 호출부가 자기 SQL 순서대로 넘기게 한다. 합쳐서 주면 순서를 아는 사람이
+ *   아무도 없다 — 그게 이 결함의 원인이었다.
  */
 export function buildSearchClause(
   query: string,
@@ -81,10 +92,10 @@ export function buildSearchClause(
 ): SearchClause {
   const p = table ? `${table}.` : ''
   const tokens = tokenizeQuery(query)
-  if (!tokens.length) return { where: '', rank: '0', params: [] }
+  if (!tokens.length) return { where: '', rank: '0', whereParams: [], rankParams: [] }
 
   const whereParts: string[] = []
-  const params: string[] = []
+  const whereParams: string[] = []
 
   for (const token of tokens) {
     const variants = [token, ...expand(token)]
@@ -93,7 +104,7 @@ export function buildSearchClause(
       const like = `%${escapeLike(v)}%`
       for (const col of SEARCH_COLUMNS) {
         ors.push(`${p}${col} LIKE ? ESCAPE '\\'`)
-        params.push(like)
+        whereParams.push(like)
       }
     }
     whereParts.push(`(${ors.join(' OR ')})`)
@@ -110,7 +121,7 @@ export function buildSearchClause(
       WHEN ${p}restaurant_name LIKE ? ESCAPE '\\' THEN 500
       WHEN ${p}category LIKE ? ESCAPE '\\' THEN 300
       ELSE 100 END`
-  params.push(whole, `${esc}%`, `%${esc}%`, `%${esc}%`, `%${esc}%`)
+  const rankParams = [whole, `${esc}%`, `%${esc}%`, `%${esc}%`, `%${esc}%`]
 
-  return { where: whereParts.join(' AND '), rank, params }
+  return { where: whereParts.join(' AND '), rank, whereParams, rankParams }
 }
