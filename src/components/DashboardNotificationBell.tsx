@@ -145,7 +145,7 @@ export default function DashboardNotificationBell({ tokenKey, iconClassName, but
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className={`relative p-2 rounded-lg transition-colors ${buttonClassName || 'hover:bg-gray-100'}`}
+        className={`relative p-2.5 rounded-lg transition-colors ${buttonClassName || 'hover:bg-gray-100'}`}
         aria-label={unreadCount > 0 ? `알림 ${unreadCount}개 있음` : '알림 열기'}
         aria-haspopup="true"
         aria-expanded={open}

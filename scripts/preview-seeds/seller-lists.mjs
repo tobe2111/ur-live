@@ -90,15 +90,22 @@ export const SELLER_SETTLEMENT_STATS = {
   total_pending: 1, total_approved: 0, total_paid: 1, total_requests: 3,
 }
 
+/**
+ * 🗓️ 날짜는 **오늘 기준 상대값**이다 — 고정 날짜를 쓰면 달이 넘어가는 순간 조용히 0 이 된다.
+ *
+ * 🩸 2026-10-01 에 실제로 그랬다: 이 `daily_revenue` 가 `2026-09-XX` 로 박혀 있었는데
+ *   이용권 화면은 `monthRevenue(daily)`(`useSellerHome.ts:61`)로 **이번 달 키만** 더한다.
+ *   10월 1일이 되자 `이번 달 ₩0` 이 떴다 — 시드는 멀쩡해 보이는데 숫자만 0 이라
+ *   "판매 0" 으로 오판한다(= 1차가 빈 화면에 초록을 준 것과 같은 클래스).
+ */
+const kstDayKey = (back) => new Date(Date.now() + 9 * 3600_000 - back * 86400_000).toISOString().slice(0, 10)
+const DAILY = [320_000, 1_180_000, 0, 940_000, 48_000, 9_900, 12_480_000]
+
 export const SELLER_DASHBOARD_STATS = {
   today_orders: 3, today_revenue: 12_537_900, total_products: 24, active_products: 21,
   total_streams: 0, live_streams: 0,
-  daily_revenue: [
-    { date: '2026-09-24', revenue: 320_000 }, { date: '2026-09-25', revenue: 1_180_000 },
-    { date: '2026-09-26', revenue: 0 }, { date: '2026-09-27', revenue: 940_000 },
-    { date: '2026-09-28', revenue: 48_000 }, { date: '2026-09-29', revenue: 9_900 },
-    { date: '2026-09-30', revenue: 12_480_000 },
-  ],
+  // 오늘로 끝나는 7일 — 적어도 하루는 이번 달이라 `이번 달` 칸이 0 이 될 수 없다.
+  daily_revenue: DAILY.map((revenue, i) => ({ date: kstDayKey(DAILY.length - 1 - i), revenue })),
 }
 
 export const SELLER_SETTLEMENT_OPTIONS = {
@@ -272,6 +279,12 @@ export function sellerListResponse(path, mode = 'full') {
     '/api/seller/profile': () => ({ success: true, data: SELLER_PROFILE, seller: SELLER_PROFILE }),
     // PIN 게이트는 **열어 둔다** — 안 열면 시트가 PIN 화면에서 멈춰 또 빈 화면을 재게 된다.
     '/api/seller/pin-status': () => ({ success: true, data: { has_pin: true, verified: true }, has_pin: true, verified: true }),
+    // 🔎 봉투는 **소비자 쪽**에서 읽었다 — `CollabCodesSection.tsx:36` 이 `r.data.data.codes` 를 본다.
+    //    합치는 중에 한 번 틀려(최상위 spread) 코드 목록이 `아직 코드가 없어요` 로 떴다. 서버 코드만
+    //    보면 `codes:` 가 최상위처럼 읽히는데, 그건 `success(c, { codes })` 로 한 겹 더 감싸이기 때문이다.
+    '/api/seller-marketing/codes': () => ({ success: true, data: empty ? { codes: [], influencer_pct_cap: SELLER_MKT_CODES.influencer_pct_cap } : SELLER_MKT_CODES }),
+    '/api/seller-marketing/deals': () => ({ success: true, data: empty ? [] : SELLER_MKT_DEALS }),
+    '/api/seller/products': () => ({ success: true, data: empty ? [] : SELLER_PRODUCTS, pagination: { total: empty ? 0 : SELLER_PRODUCTS.length, limit: 50, offset: 0, has_more: false } }),
   }
   const base = path.split('?')[0]
   const hit = T[base]
@@ -279,6 +292,60 @@ export function sellerListResponse(path, mode = 'full') {
 }
 
 /** 이 시드가 덮는 경로 — 가드가 "시트가 부르는 API 를 다 목하는가" 를 이것으로 판정한다. */
+/**
+ * 🤝 인플 협업(`/seller/influencer-deals`) · 🎟️ 이용권 관리(`/seller/group-buy`) 시드.
+ *
+ * 🩸 2026-10-01 — **같은 일을 하는 시드 기제가 둘이 됐다가 여기로 합쳤다.** 두 세션이 같은 날
+ *   각자 셀러 목록 시드를 만들었다(`--seller-lists` 이 모듈 ↔ `--seller-work` 하네스 인라인).
+ *   응답 모양을 두 벌로 들고 있으면 **서로 다른 화면을 재고도 둘 다 초록**이 된다 —
+ *   이 레포가 "같은 일에 화면이 둘" 로 반복해 당한 그 클래스다. ⇒ 데이터는 이 모듈 하나.
+ *
+ * 📐 모양 출처(추측 아님): `marketing/collab-codes.ts:70`(codes) · `marketing.routes.ts:429`(deals) ·
+ *   `seller-products-query.ts:53`(목록 컬럼) + `seller-orders.routes.ts:518`(봉투).
+ * ⚠️ 여기서도 **폰에서 깨지는 값**을 일부러 넣는다 — 긴 상품명·`null` 사진·만료된 코드·큰 숫자.
+ */
+export const SELLER_MKT_CODES = {
+  codes: [
+    { code: 'UR7K2M9Q', display: 'UR7K-2M9Q', join_url: 'https://urdeal.kr/i/join/UR7K2M9Q',
+      seller_id: 1, kind: 'influencer', commission_pct: 12.5, requires_approval: 1,
+      label: '가을 신메뉴 협업 — 연남·망원 지역 한정 모집(10월)', created_by: 1,
+      created_at: '2026-09-20 10:00:00', expires_at: '2026-10-31 23:59:59', revoked_at: null,
+      use_count: 1234, max_uses: 10000 },
+    { code: 'UR3F8T1W', display: 'UR3F-8T1W', join_url: 'https://urdeal.kr/i/join/UR3F8T1W',
+      seller_id: 1, kind: 'influencer', commission_pct: 5, requires_approval: 0,
+      label: null, created_by: 1, created_at: '2026-08-02 09:00:00',
+      expires_at: '2026-09-01 00:00:00', revoked_at: null, use_count: 0, max_uses: null },
+  ],
+  influencer_pct_cap: 15,
+}
+
+export const SELLER_MKT_DEALS = [
+  { id: 11, influencer_id: 'inf_0001', commission_pct: 12.5, starts_at: '2026-10-01', ends_at: '2026-10-31',
+    status: 'proposed', proposed_by: 'influencer',
+    message: '연남동 버거 가게 소개 영상 찍고 싶어요! 팔로워 3.2만, 음식 리뷰 위주로 올리고 있습니다.',
+    created_at: '2026-09-29 18:20:00', responded_at: null,
+    requires_content_proof: 1, proof_url: null, proof_status: 'pending' },
+  { id: 12, influencer_id: 'inf_0002', commission_pct: 5, starts_at: '2026-09-01', ends_at: '2026-09-30',
+    status: 'accepted', proposed_by: 'seller', message: null,
+    created_at: '2026-08-28 11:00:00', responded_at: '2026-08-29 09:30:00',
+    requires_content_proof: 0, proof_url: null, proof_status: null },
+]
+
+export const SELLER_PRODUCTS = [
+  { id: 7001, name: LONG_ITEM, description: '수제 도우로 만든 버거에 크래프트비어를 더한 2인 세트입니다.',
+    price: 32_000, stock: 0, image_url: null, status: 'ACTIVE', is_active: 1,
+    category: 'meal_voucher', created_at: '2026-09-01 12:00:00', updated_at: '2026-09-30 12:00:00',
+    original_price: 45_000, restaurant_name: LONG_STORE, restaurant_phone: '02-1234-5678',
+    store_owner_token: null, group_buy_current: 1284, group_buy_status: 'active',
+    order_count: 1284, total_revenue: 41_088_000 },
+  { id: 7002, name: '아메리카노 1잔', description: null, price: 2_500, stock: 999, image_url: null,
+    status: 'ACTIVE', is_active: 1, category: 'meal_voucher',
+    created_at: '2026-09-15 09:00:00', updated_at: '2026-09-15 09:00:00',
+    original_price: 4_500, restaurant_name: '연남 카페', restaurant_phone: null,
+    store_owner_token: null, group_buy_current: 0, group_buy_status: 'ended',
+    order_count: 0, total_revenue: 0 },
+]
+
 export const SELLER_LIST_PATHS = Object.freeze([
   '/api/seller/orders',
   '/api/seller/payouts',
@@ -294,6 +361,9 @@ export const SELLER_LIST_PATHS = Object.freeze([
   '/api/seller/alimtalk/credits',
   '/api/seller/alimtalk/logs',
   '/api/seller/stays',
+  '/api/seller-marketing/codes',
+  '/api/seller-marketing/deals',
+  '/api/seller/products',
   '/api/seller/profile',
   '/api/seller/pin-status',
 ])

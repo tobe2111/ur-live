@@ -297,7 +297,8 @@ export default function SellerLayout({ title, children, headerRight, pendingOrde
           <div className="flex items-center gap-1.5 sm:gap-2">
             {/* 🏪 2026-08-19 매장 전환 — PC 는 우측 드롭다운(2곳 이상일 때만), 폰은 위 제목형이 맡는다. */}
             <div className="hidden md:block"><StoreSwitcher /></div>
-            <button type="button" onClick={() => setPaletteOpen(true)} aria-label={t('seller.pageSearch', { defaultValue: '페이지 검색' })} className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 md:hidden">
+            {/* 👆 2026-10-01: 32 → 40(`ur-btn-md` 눈금). 헤더는 `h-14`(56px) 고정이라 **높이가 안 변한다**. */}
+            <button type="button" onClick={() => setPaletteOpen(true)} aria-label={t('seller.pageSearch', { defaultValue: '페이지 검색' })} className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 md:hidden">
               <Search size={18} />
             </button>
             {/* 🏠 2026-07-16 (대표): 셀러 대시보드에서 유어딜 소비자 홈(/)으로. */}
