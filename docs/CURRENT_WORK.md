@@ -5494,20 +5494,14 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 382건 · 최신순 · 이 목록은 자동 생성된다._
-
-**2026-10-01**
-- [대표 결재 넷을 실행했다 — 이중적립 제거 · 만료환불 마감 · 부가세 손잡이 · 시트 측정 (2026-10-01)](handoff/2026-10-01-four-decisions-executed.md)
-_총 381건 · 최신순 · 이 목록은 자동 생성된다._
-_총 383건 · 최신순 · 이 목록은 자동 생성된다._
-_총 384건 · 최신순 · 이 목록은 자동 생성된다._
-_총 385건 · 최신순 · 이 목록은 자동 생성된다._
+_총 386건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-10-01**
 - [2026-10-01 — 마이 시트 측정 2차 + 정산 화면이 응답 하나에 통째로 죽던 것](handoff/2026-10-01-seller-phone-audit-and-settlements.md)
 - [로그인하면 보던 링크로 안 돌아오던 것 (2026-10-01)](handoff/2026-10-01-login-return-url.md)
 - [로그인 복귀를 **공식**으로 — 전수 (2026-10-01)](handoff/2026-10-01-login-return-everywhere.md)
 - [2026-10-01 — 인스타 댓글 → 자동 DM (유어딜 공식 계정)](handoff/2026-10-01-instagram-comment-autodm.md)
+- [대표 결재 넷을 실행했다 — 이중적립 제거 · 만료환불 마감 · 부가세 손잡이 · 시트 측정 (2026-10-01)](handoff/2026-10-01-four-decisions-executed.md)
 - [2026-10-01 — 로그아웃했는데 로그인 상태로 보이던 것 + 이메일 가입·로그인](handoff/2026-10-01-consumer-logout-and-email-auth.md)
 **2026-09-30**
 - [2026-09-30 — 대표 지시 "다 순서대로 이상적으로 해줘" (여섯 항목)](handoff/2026-09-30-six-items-in-order.md)
