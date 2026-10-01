@@ -37,8 +37,14 @@ function OrdersSkeleton() {
           <div key={i} className="h-4 rounded bg-gray-100 dark:bg-[#161616]" style={{ width: w }} />
         ))}
       </div>
+      {/* 🩸 2026-10-01 — 카드 **셋 → 하나** (대표 *"저런 로딩이 발생되는 근본적인 원인을 모두 없애줘"*).
+          하네스 실측(`--slow=1500 --shift --height=844`): 주문이 0건인 사람에게 셋을 그렸다가
+          빈 상태로 바뀌면서 그 아래가 **−212px 위로 당겨졌다**(푸터가 눈에 띄게 올라온다).
+          스켈레톤의 일은 *"목록이 온다"* 고 말하는 것이지 **몇 개가 올지 흉내 내는 것이 아니다** —
+          개수는 알 수 없고, 틀린 개수는 그만큼의 밀림이 된다. 하나면 ⓐ 주문이 있는 사람(≥1건)의
+          첫 장과 맞고 ⓑ 0건인 사람의 당겨짐이 1/3 로 준다. 양쪽 다 나아진다. */}
       <div className="space-y-3">
-        {[0, 1, 2].map(i => (
+        {[0].map(i => (
           <div key={i} className="rounded-2xl border border-gray-100 dark:border-[#2C2F35] p-4">
             <div className="h-3 w-16 rounded bg-gray-100 dark:bg-[#161616] mb-3" />
             <div className="flex gap-3">
@@ -281,7 +287,14 @@ export default function MyOrdersPage() {
       </div>
 
       {/* Content */}
-      <main className="ur-content-medium px-4 sm:px-6 lg:px-8 pt-3 pb-6 sm:pt-5 sm:pb-10">
+      {/* 📐 2026-10-01 — **본문이 최소 한 화면을 채운다.**
+          스켈레톤 높이와 결과 높이는 원리상 같을 수 없다(몇 건이 올지 모른다). 그러면 그 차이만큼
+          **바로 아래 푸터가 화면을 가로질러 움직인다** — 실측으로 두 방향 다 봤다:
+          카드 셋이면 0건인 사람에게 −212px(위로 당겨짐), 하나면 +154px(아래로 밀림).
+          개수를 맞히려는 시도는 둘 다 틀린다. ⇒ **맞히지 말고 푸터를 화면 밖으로 보낸다.**
+          본문이 최소 60dvh 면 어느 상태든 푸터가 첫 화면 밖이라, 안에서 자라고 줄어도
+          사람이 읽는 영역은 안 움직인다. 주문이 많으면 그 아래로 자연히 길어진다. */}
+      <main className="ur-content-medium px-4 sm:px-6 lg:px-8 pt-3 pb-6 sm:pt-5 sm:pb-10 min-h-[60dvh]">
         {loading ? (
           /* 🛡️ 2026-06-18: 스피너 → 스켈레톤 카드 (CLAUDE.md 첫 페인트 표준) */
           <OrdersSkeleton />

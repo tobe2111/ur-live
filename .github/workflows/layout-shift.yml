@@ -1,0 +1,68 @@
+# 📐 로딩 밀림 — **읽고 있던 줄이 손가락 밑에서 움직이는가** 를 실제 렌더로 잡는다.
+#
+# 왜 만들었나 (2026-10-01 대표 신고):
+#   마이 화면 스크린샷 둘을 보내며 *"지금 2번째 이미지가 로딩에 나오다가 첫번째 이미지로 바뀌더라?"* —
+#   늦게 도착한 판매 구역이 손님 메뉴를 **+404px 아래로** 밀어내고 있었다. 고친 뒤 대표:
+#   *"저런 로딩이 발생되는 근본적인 원인을 모두 없애줘. 다른 페이지들도 분명히 있을거고."*
+#
+#   이 클래스는 **에러가 안 난다.** 빌드도 테스트도 초록이고 화면도 안 깨진다 — 그 순간을 보고 있던
+#   사람만 안다. 사람에게 맡기면 반드시 다시 생기므로 기계가 잰다.
+#
+# ⚠️ **PR 게이트로 승격하지 말 것.** `dark-contrast.yml` · `render-smoke.yml` · `live-contracts.yml` 과
+#   같은 판단이다 — 브라우저를 띄우므로 느리고 환경에 민감해서, 간헐 실패가 머지를 막으면 결국
+#   가드를 꺼 버리게 된다. 손으로 돌릴 수 있게 하고(`workflow_dispatch`), 이 클래스를 건드리는
+#   PR 에서만 자동으로 돈다.
+#
+# 🔑 ROUTES 에 화면을 넣으면 **그 화면을 그리는 파일도 아래 paths 에 넣는다** —
+#   `dark-contrast.yml` 이 같은 실수를 두 번 하고서야 배운 것이다(목록에 있어도 안 돌면 없는 것이다).
+name: Layout shift
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'src/pages/user-profile/**'
+      - 'src/pages/UserProfilePage.tsx'
+      - 'src/pages/MyOrdersPage.tsx'
+      - 'src/pages/VouchersPage.tsx'
+      - 'src/pages/vouchers/**'
+      - 'src/pages/BrowsePage.tsx'
+      - 'src/pages/GroupBuyDetailPage.tsx'
+      - 'src/pages/group-buy/**'
+      - 'src/pages/MyVouchersPage.tsx'
+      - 'src/pages/my-vouchers/**'
+      - 'src/pages/CartPage.tsx'
+      - 'src/pages/CuratorPage.tsx'
+      - 'src/pages/SellerPublicPage.tsx'
+      - 'src/pages/RestaurantMapPage.tsx'
+      - 'src/pages/restaurant-map/**'
+      - 'src/pages/main-home/**'
+      - 'src/pages/pc-home/**'
+      - 'scripts/check-layout-shift.mjs'
+      - 'scripts/layout-shift-baseline.json'
+      - 'scripts/visual-preview.mjs'
+
+jobs:
+  shift:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm }
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      # 측정기는 빌드 산출물(dist/client)을 띄워 실제 컴포넌트를 렌더한다.
+      - name: Build client
+        env:
+          VITE_FIREBASE_API_KEY: 'pr-verify'
+          VITE_FIREBASE_AUTH_DOMAIN: 'pr.example.com'
+          VITE_FIREBASE_PROJECT_ID: 'pr-verify'
+          VITE_FIREBASE_STORAGE_BUCKET: 'pr.example.com'
+          VITE_FIREBASE_MESSAGING_SENDER_ID: '0'
+          VITE_FIREBASE_APP_ID: '0'
+          VITE_KAKAO_APP_KEY: 'pr-verify'
+          VITE_TOSS_CLIENT_KEY: 'pr-verify'
+        run: npm run build:client
+      - name: Layout shift (rendered)
+        run: node scripts/check-layout-shift.mjs
