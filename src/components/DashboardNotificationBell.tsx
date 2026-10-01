@@ -143,9 +143,17 @@ export default function DashboardNotificationBell({ tokenKey, iconClassName, but
 
   return (
     <div ref={ref} className="relative">
+      {/**
+        * 👆 2026-10-01 — 눌리는 크기 36 → **40px**(`ur-btn-md` 눈금). 셀러·어드민·에이전시가
+        *   **같은 부품**을 쓰므로 한 줄이 세 대시보드의 헤더를 좌우한다.
+        *   ⚠️ `p-2.5`(10px)로 키웠다가 되돌렸다 — **4px 격자 규칙**(🎫 ⑧)의 반쪽 간격이라
+        *     `consumer-type-scale` 가드가 빨간불을 냈다. 패딩이 아니라 **박스**로 40px 을 만든다
+        *     (헤더 페이지검색 버튼과 같은 패턴). 아이콘 20px 은 그대로 가운데 온다.
+        *   🔖 뱃지의 `-top-0.5`·`-right-0.5` 는 **음수 광학 보정**이라 그 규칙의 예외다(그대로).
+        */}
       <button
         onClick={() => setOpen(!open)}
-        className={`relative p-2.5 rounded-lg transition-colors ${buttonClassName || 'hover:bg-gray-100'}`}
+        className={`relative flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${buttonClassName || 'hover:bg-gray-100'}`}
         aria-label={unreadCount > 0 ? `알림 ${unreadCount}개 있음` : '알림 열기'}
         aria-haspopup="true"
         aria-expanded={open}

@@ -79,7 +79,13 @@ describe('셀러 공용 chrome 의 탭 타깃은 40px 눈금에 닿는다', () =
     const search = code.slice(code.indexOf("aria-label={t('seller.pageSearch'"))
     expect(search, '폰 페이지검색 버튼을 못 찾았다 — 이 검사가 헛돌고 있다').not.toBe('')
     expect(search.slice(0, 300), '폰 페이지검색 버튼이 40px(h-10 w-10) 가 아니다').toMatch(/h-10 w-10/)
-    expect(readCode(BELL), '알림 벨이 40px(p-2.5) 가 아니다').toMatch(/relative p-2\.5 rounded-lg/)
+    /**
+     * 🩸 `p-2.5`(10px)로 키웠다가 되돌렸다 — **4px 격자 규칙**(🎫 ⑧)의 반쪽 간격이라
+     *   `consumer-type-scale` 가드가 빨간불을 냈다(pre-push 게이트가 잡았다). 패딩이 아니라
+     *   **박스**로 40px 을 만든다 — 바로 위 헤더 검색 버튼과 같은 패턴이다.
+     */
+    expect(readCode(BELL), '알림 벨이 40px 박스가 아니다').toMatch(/relative flex h-10 w-10 items-center justify-center/)
+    expect(readCode(BELL), '벨을 반쪽 간격 패딩으로 키웠다 — 4px 격자를 쓸 것').not.toMatch(/relative p-2\.5 /)
   })
 
   it('측정 도구가 넓힌 히트 영역을 **보고 또 검증한다** (다음 세션이 박스를 또 키우지 않게)', () => {

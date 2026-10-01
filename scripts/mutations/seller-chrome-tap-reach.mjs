@@ -55,7 +55,7 @@ export default [
     name: '👆 알림 벨이 36px 로 되돌아간다',
     why: '벨은 셀러·어드민·에이전시 대시보드가 **같은 부품**을 쓴다 — 한 줄이 세 서비스의 헤더를 좌우한다.',
     file: 'src/components/DashboardNotificationBell.tsx',
-    find: 'className={`relative p-2.5 rounded-lg transition-colors',
+    find: 'className={`relative flex h-10 w-10 items-center justify-center rounded-lg transition-colors',
     replace: 'className={`relative p-2 rounded-lg transition-colors',
     test: TEST,
   },
