@@ -1,6 +1,6 @@
 # 이용권 매출을 매장에 **구매 시점**에 적립하는 지금 방식을 **사용 시점**으로 옮길까?
 
-상태: open
+상태: approved
 등급: C
 역할: finance
 올린 날: 2026-09-30
@@ -94,27 +94,8 @@ seller:14   → 950
 
 ## 선택지
 
-1. **사용 시점으로 단일화 + 매장 계정 이름을 하나로 통일**
-   - 구매 적립 → `platform:escrow`(수수료도 그때 안 뗀다 — 사용 시점 3번째 분개가 인식한다).
-     매장이 없는 플랫폼 상품(`seller_id` NULL, 교환권·KT)은 **종전 `platform:revenue` 유지** —
-     그 경로는 사용 시점 적립이 아예 없어서(`merchantId` 0 → 스킵) escrow 에 담으면 영원히 안 빠진다.
-   - `merchant:N` ↔ `seller:N` 을 한 이름으로 수렴(⑥). `payouts-generate` 의 `merchant → store_owner`
-     매핑도 함께 정리.
-   - 장점: `recordVoucherUsedLedger` 주석이 처음부터 말한 설계(`escrow → merchant_payable`) ·
-     레일 A(④)와 일치 · 대표가 켠 사용 확인 게이트와 일치 · ②의 환불 역전이 **필요 없어진다**
-     (적립 자체가 없다) · ⑥의 차감이 제자리를 찾는다
-   - 단점: **매장은 손님이 실제로 쓴 뒤에 받는다**(판매 시점엔 못 받는다). 무기한 이용권은
-     손님이 언제든 쓸 수 있으므로 그때까지 escrow 에 남는다. 손대는 자리 5곳 + 집계 1곳.
-   - 머니 접촉: **있음** — 단독 세션 + staging 실결제
-
-2. **구매 시점으로 단일화** — `recordVoucherUsedLedger` 의 `merchant:N` 적립을 지운다
-   - 장점: 매장이 빨리 받는다 · 변경 지점 1곳 · ⑥을 건드릴 필요가 없다(차감이 이미 `seller:N`)
-   - 단점: 미사용·환불된 이용권까지 매장에 지급된다(②가 영구 결함으로 굳는다) ·
-     채널 요율(③)이 적용되는 쪽을 버린다 · 사용 확인 게이트가 무의미해진다 · 레일 A(④)와 어긋난다
-   - 머니 접촉: 있음
-
-3. **아무것도 안 한다**
-   - 단점: 첫 실사용이 곧 이중지급이다. 지금은 손실 0 이지만 그 순간부터 회수 문제가 된다.
+1. **사용 시점 단일화**(채택) — 구매 적립을 `platform:escrow` 경유로 바꿔 한 레일로. 2. 구매 시점 단일화.
+3. 그대로 두고 집계에서 중복 제거. 각 안의 득실·왜 1번인지는 인계 ②-선택지 절.
 
 ## 기본안 (답이 없을 때 권하는 것 — 자동 실행되지 않는다)
 
@@ -131,4 +112,53 @@ seller:14   → 950
 
 ## 결정 (대표가 한 말 그대로)
 
+**2026-10-01 대표 — "최대한 이상적으로 다 해줘."**
+
+⇒ **안 1 채택**(사용 시점 단일화 + 매장 계정 접기). 같은 날 구현했다.
+
+### 🔀 안 1 의 "계정 이름 통일" 을 **리네임이 아니라 접기**로 바꿨다
+
+읽는 자리가 넷이라 리네임은 조용히 깨진다 — 집계에서 접었다. 근거는 인계 ②-접기 절.
+
+### 구현 (SSOT = `src/worker/utils/payout-account.ts`)
+
+구매 적립을 `platform:escrow` 경유로 바꿔 한 레일로 만들고, "구매 적립은 어디로" + "수취인 정규화" 를
+그 SSOT 한 곳에 모아 **cron · 어드민 표시 · 어드민 수동 생성 세 자리가 같은 SQL** 을 쓰게 했다.
+파일별 상세는 `docs/handoff/2026-10-01-four-decisions-executed.md` ②-구현 절.
+
+### 가드 — 문자열이 아니라 **실제 sqlite 로 금액을 센다**
+
+18건. 상세는 `docs/handoff/2026-10-01-four-decisions-executed.md` ②-가드 절.
+
+### ⚠️ 라이브 영향 — 지금은 0, 그러나 지금이 유일하게 싼 창이다 (실측 2026-10-01)
+
+```
+payouts 0건 · restaurant_settlements 0건 · vouchers used 0건
+ledger_entries 3행:  group_buy_join seller:null 1800(fee 90) · supplier_wholesale supplier:3 10000 · group_buy_join seller:14 1000(fee 50)
+```
+⇒ **지급이 한 번도 일어난 적이 없다.** 이 변경으로 **소급되는 돈은 없다.**
+
+🔴 단 **이미 적힌 `seller:14` 1,000원(순 950)은 남는다** — 그건 한 번도 안 쓴 무기한 이용권
+(id=2 `UR-LUBA-RCP5`)의 구매 적립이고, 최소출금액 10,000원을 넘는 순간 나간다. 지금 잔액이
+그보다 작아 당장 나가지는 않지만, **다음 판매가 쌓이면 넘는다.** 그 한 행은 코드가 아니라
+어드민에서 상계해야 한다(세션은 프로덕션 D1 을 쓰지 않는다 — CLAUDE.md).
+⇒ **대표가 직접 처리한다**(2026-10-01 — *"2번은 내가 알아서 할게."*). 다음 세션은 이 한 행을
+   다시 올리지 않는다. (쓰면 사용 시점 적립이 또 붙어 그 한 장은 여전히 두 번 적립된다.)
+
+### E4 판정 (첫 이용권 사용 뒤 — 다음 세션이 이걸 확인한다)
+
+```sql
+-- 한 가게에 payee 행이 하나인가
+SELECT payee_type, payee_id, amount FROM payouts ORDER BY id;
+-- 구매 적립이 escrow 로 갔는가(매장 계정이 아니라)
+SELECT credit_account, amount, fee_amount FROM ledger_entries WHERE event_type='group_buy_join' ORDER BY id DESC LIMIT 3;
+-- 사용 시점 세 분개가 escrow 를 비웠는가
+SELECT credit_account, amount FROM ledger_entries WHERE event_type='voucher_used' ORDER BY id;
+```
+기대: `group_buy_join` 의 credit 이 `platform:escrow`(매장 상품) · `voucher_used` 가
+`merchant:N`/`platform:revenue` · payouts 에 그 가게 행이 **하나**.
+
 ## 반영 커밋
+
+- 2026-10-01 신규 SSOT `payout-account.ts` + 구매 3자리 + `payouts-generate` + 어드민 집계 2곳
+  + 가드 18건 + 주입 9건(전부 빨간불 확인)

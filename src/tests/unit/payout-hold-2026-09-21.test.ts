@@ -167,21 +167,42 @@ describe('정산 유보 — 배선', () => {
   const src = (p: string) => stripComments(readFileSync(p, 'utf8'))
 
   it('⑨ cron 이 유보를 해석해 credit WHERE 에만 적용한다 (괄호 포함)', () => {
-    const s = src('src/worker/cron/payouts-generate.ts')
-    expect(s).toMatch(/const hold = await resolvePayoutHold\(DB\)/)
+    // 🎯 2026-10-01 재조준: 집계 문장이 `payout-account.ts payoutCreditsSql(holdSql)` 로 옮겨졌다
+    //   (결재 voucher-credit-double-rail — 가드가 실제 sqlite 에 돌려 금액을 세게 하려고).
+    //   ⇒ 유보를 **해석**하는 곳은 여전히 cron 이고, **쓰는** 곳이 그 모듈이다. 둘 다 본다.
+    const cron = src('src/worker/cron/payouts-generate.ts')
+    expect(cron).toMatch(/const hold = await resolvePayoutHold\(DB\)/)
+    expect(cron, 'cron 이 유보를 집계 문장에 넘기지 않으면 해석해도 의미가 없다')
+      .toMatch(/payoutCreditsSql\(hold\.sql\)/)
+
+    const sql = src('src/worker/utils/payout-account.ts')
     // credit 블록: 괄호로 감싼 LIKE 묶음 바로 뒤에 유보 조각이 온다.
-    expect(s).toMatch(/WHERE \(credit_account LIKE[\s\S]*?\)\s*\n\s*\$\{hold\.sql\}/)
+    expect(sql).toMatch(/WHERE \(credit_account LIKE[\s\S]*?\)\s*\n\s*\$\{holdSql\}/)
     // debit 블록에는 유보가 붙지 않는다(환불은 즉시).
-    const debitBlock = s.slice(s.indexOf('debit_account AS account'))
-    expect(debitBlock).not.toContain('${hold.sql}')
+    const debitBlock = sql.slice(sql.indexOf("canonicalPayeeSql('debit_account')"))
+    expect(debitBlock).not.toContain('${holdSql}')
   })
 
   it('⑩ 어드민 정산대기 화면이 cron 과 같은 함수를 쓴다(값이 갈리면 없는 돈을 승인한다)', () => {
+    // 🎯 2026-10-01 재조준: 그 CTE 가 `payout-account.ts payoutPendingRowsSql()` 로 옮겨졌고,
+    //   WHERE 조각도 `payoutCreditWhere(holdSql)` 하나로 모였다 — **유보 보간 자리가 하나**라
+    //   화면과 cron 이 갈릴 수 없다(이 시험이 지키려던 바로 그것이 구조로 올라갔다).
     const s = src('src/features/admin/api/admin-payouts.routes.ts')
     expect(s).toMatch(/const hold = await resolvePayoutHold\(DB\)/)
-    expect(s).toMatch(/WITH cred AS \([\s\S]*?WHERE \(credit_account LIKE[\s\S]*?\)\s*\n\s*\$\{hold\.sql\}/)
-    const debBlock = s.slice(s.indexOf('deb AS ('))
-    expect(debBlock.slice(0, 400)).not.toContain('${hold.sql}')
+    expect(s, '화면이 유보를 집계 문장에 넘기지 않으면 해석해도 의미가 없다')
+      .toMatch(/payoutPendingRowsSql\(hold\.sql\)/)
     expect(s).toContain('hold_days: hold.days')
+
+    const sql = src('src/worker/utils/payout-account.ts')
+    // 표시용 credit 에 유보가 붙는다(조각 재사용).
+    expect(sql).toMatch(/WITH cred AS \([\s\S]*?\$\{payoutCreditWhere\(holdSql\)\}/)
+    // 차감 쪽엔 유보가 없다 — 조각 자체가 유보를 안 받는다.
+    expect(sql).toMatch(/const PAYOUT_DEBIT_WHERE\s*=/)
+    // ⚠️ 고정 길이로 자르면 **다음 함수까지 삼켜** 그쪽의 holdSql 에 걸린다(실제로 걸렸다).
+    //   선언 하나만 보도록 빈 줄까지 자른다.
+    const from = sql.indexOf('const PAYOUT_DEBIT_WHERE')
+    const debFrag = sql.slice(from, sql.indexOf('\n\n', from))
+    expect(debFrag.length, '차감 조각 선언을 못 찾았다').toBeGreaterThan(40)
+    expect(debFrag, '차감에 유보가 붙으면 환불 역전이 미뤄져 과다지급이다').not.toContain('holdSql')
   })
 })

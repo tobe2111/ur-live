@@ -34,6 +34,7 @@ import http from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { sellerListResponse } from './preview-seeds/seller-lists.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const DIST = path.join(ROOT, 'dist/client')
@@ -497,6 +498,18 @@ const STORE_NAMES = [
  *   "그럴듯한 기제" 로 결론 내지 않기 위한 측정이다(CLAUDE.md 2026-09-21 교훈).
  */
 /**
+ * 🪑 `--seller-lists[=empty]` — 마이의 판매 시트 일곱이 부르는 **목록 API 를 목한다**.
+ *
+ * 🩸 왜 필요한가: 이게 없으면 그 API 들이 전부 404 → **빈 목록**이 되고, `--phone-audit` 는
+ *   빈 화면을 재서 "🟢 깨끗" 을 낸다(2026-09-30 1차 측정이 실제로 그렇게 헛돌았다).
+ *   픽스처는 `scripts/preview-seeds/seller-lists.mjs` — 서버가 실제로 주는 필드 전부 + **폰에서
+ *   깨지는 값**(긴 매장명 · 7~8자리 금액 · 빈 필드 · 실패 로그)을 일부러 담았다.
+ *   `=empty` 면 빈 상태를 본다 — **두 상태를 모두** 봐야 측정이 의미를 갖는다.
+ */
+const SELLER_LISTS = args['seller-lists'] === true ? 'full'
+  : typeof args['seller-lists'] === 'string' ? args['seller-lists'] : ''
+
+/**
  * 🔍 `--trace-api` — 화면이 부른 `/api/*` 와 **스텁이 뭘 돌려줬는지**를 찍는다.
  *
  * 🩸 왜 필요한가: 프로덕션 빌드는 `drop_console: true` 라 화면이 ErrorBoundary 로 떨어져도
@@ -579,6 +592,10 @@ function serve() {
             const rows = args.analytics === 'empty' ? [] : ANALYTICS_REVENUE
             return res.end(JSON.stringify({ success: true, data: rows }))
           }
+        }
+        if (SELLER_LISTS) {
+          const hit = sellerListResponse(p, SELLER_LISTS)
+          if (hit) return res.end(JSON.stringify(hit))
         }
         if (STORES_N > 0 && p === '/api/seller/my-stores/summary') {
           const body = JSON.stringify(storesSeed(STORES_N))
@@ -688,7 +705,7 @@ if (AUTH || STORES_N > 0) {
    *   ⚠️ 3조각 토큰이라도 `exp` 가 없으면 `isDashboardTokenUsable` 은 관대 통과다(RouteGuards:48) —
    *      즉 로그인 가드는 전과 같이 열린다.
    */
-  if (STORES_N > 0) {
+  if (STORES_N > 0 || SELLER_LISTS) {
     seed.seller_token = seatToken(1, STORE_NAMES[0])
     seed.seller_id = '1'
   }

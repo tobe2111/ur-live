@@ -27,7 +27,13 @@ export { CREDENTIAL_KEYS, buildSettingsPayload }
 const SETTINGS_FIELDS = [
   { key: 'commission_rate_default', label: '기본 수수료율 — 일반 상품 (%)', default: '10' },
   { key: 'commission_rate_live', label: '라이브 판매 수수료율 (%)', default: '5' },
-  { key: 'commission_rate_meal_voucher', label: '이용권(공동구매) 수수료율 (%)', default: '5' },
+  // 💸 2026-10-01 (대표 "5% + vat로 해야해. 부가세 별도"): 이 값은 **그대로 떼는 차감률**이다 —
+  //   코드에 부가세 승수가 없으므로 부가세를 별도로 받으려면 값 자체를 5.5 로 올린다(약관과 결과 동일).
+  //   ⚠️ 값은 대표가 직접 바꾼다(등급 C). 여기서 `default` 를 올리지 **않는** 이유는 따로 있다 —
+  //   `buildSettingsPayload` 는 **바뀐 키만** 보내므로 default 를 고쳐도 저장되는 것은 없다. 대신
+  //   `value={settings[f.key] ?? f.default}` 라서 그 키가 platform_settings 에 **없을 때 화면에만**
+  //   그 숫자가 뜬다 ⇒ 코드의 자체 폴백(5)과 어긋나면 **화면이 거짓말을 한다.** 그래서 라벨로 안내만 한다.
+  { key: 'commission_rate_meal_voucher', label: '이용권(공동구매) 수수료율 (%, 부가세 포함 차감률 — 별도로 받으려면 5.5)', default: '5' },
   { key: 'agency_commission_rate', label: '에이전시 추가 수수료율 (%)', default: '2' },
   { key: 'min_donation', label: '최소 후원 금액 (딜)', default: '500' },
   { key: 'free_shipping_threshold', label: '무료배송 기준 (원)', default: '50000' },
