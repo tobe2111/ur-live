@@ -72,7 +72,7 @@ jobs:
       fail-fast: false
       matrix:
         shard: ${{ fromJSON(needs.plan.outputs.matrix) }}
-    # 계획이 조각당 ~12분을 목표로 잡는다(+ npm ci 실측 ~2분). 넉넉히 두되 무한 대기는 막는다.
+    # 계획이 조각당 ~12분을 목표로 잡는다(+ 부대비용 실측 ~0.6분 — checkout·setup-node·npm ci).
     # ⚠️ 이 값을 올려 타임아웃을 피하지 말 것 — 조각이 느려졌다면 `SECONDS_PER_INJECTION` 이
     #    실측과 벌어진 것이고, 그 상수를 고치면 조각 수가 **저절로** 늘어난다.
     timeout-minutes: 35

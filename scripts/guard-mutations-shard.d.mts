@@ -23,8 +23,14 @@ export declare function planShards(count: number): {
   estMinutes: number
 }
 
-/** 주입 `i` 번째가 어느 조각인가(색인 나머지 분배 — 조각 크기 차 ≤ 1). */
-export declare function shardOf(i: number, total: number): number
+/**
+ * 주입 목록을 조각에 배분한다 — **테스트 파일 단위로 묶어서**(baseline 중복 제거, 실측 −38%).
+ * 반환 배열은 `items` 와 같은 길이·순서. 같은 입력이면 항상 같은 결과(결정론).
+ */
+export declare function assignShards(
+  items: { name?: string; test?: string }[],
+  total: number,
+): number[]
 
 /** `--shard k/n` 파싱. 없으면 null(=전수). 잘못된 값은 **던진다**(조용히 전수로 떨어지지 않게). */
 export declare function parseShard(argv: string[]): { index: number; total: number } | null

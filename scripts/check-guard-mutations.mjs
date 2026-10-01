@@ -42,7 +42,7 @@ import { GUARD_RUNNER, touchesGuardScripts } from './guard-mutations-scope.mjs'
 import {
   changedInjectionNames, runnerLogicChanged, testSpawnsSubprocess,
 } from './guard-mutations-manifest-diff.mjs'
-import { parseShard, shardOf } from './guard-mutations-shard.mjs'
+import { assignShards, parseShard } from './guard-mutations-shard.mjs'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const STRICT = process.argv.includes('-s') || process.argv.includes('--strict')
@@ -11005,11 +11005,15 @@ if (integrity.length) {
 }
 
 /**
- * 🧩 조각 선택 — `ALL` 안의 **색인**으로 가른다(이름 해시가 아니라 색인이라 조각 크기 차이 ≤ 1).
+ * 🧩 조각 선택 — `assignShards` 가 **테스트 파일 단위로 묶어** 배분한다.
+ *
+ * 🔑 같은 테스트를 쓰는 주입이 한 조각에 모이는 것이 요점이다. 아래 `baselineGreen` 이
+ * 테스트 파일별로 baseline 을 한 번 돌므로, 흩뿌리면 그 baseline 이 **조각마다 중복**된다
+ * (실측: 최대 조각 vitest 호출 396 → 245, −38%). 근거·수치는 `guard-mutations-shard.mjs`.
  * 조각이 아니면 전부 통과한다(`has` 가 null 이면 무조건 true).
  */
 const SHARD_PICK = SHARD
-  ? new Set(ALL.map((m, i) => (shardOf(i, SHARD.total) === SHARD.index ? m.name : null)).filter(Boolean))
+  ? new Set(assignShards(ALL, SHARD.total).map((k, i) => (k === SHARD.index ? ALL[i].name : null)).filter(Boolean))
   : null
 const inShard = (m) => !SHARD_PICK || SHARD_PICK.has(m.name)
 
