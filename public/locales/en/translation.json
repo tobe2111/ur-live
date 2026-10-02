@@ -5060,7 +5060,9 @@
     "gifticonSeoDescription": "Check the gifticons you bought and use them in store",
     "loadFailedGift": "Couldn't load your gifticons",
     "noUnusedGift": "No gifticons available to use",
-    "totalCountLabel": "Total"
+    "totalCountLabel": "Total",
+    "requestRefundShort": "Request refund",
+    "refundRequestedShort": "Refund requested"
   },
   "sellerWaiting": {
     "title": "Seller Approval Pending",

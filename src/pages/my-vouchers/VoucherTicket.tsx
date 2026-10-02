@@ -1,13 +1,12 @@
 // 🧱 2026-06-29 TD: MyVouchersPage god 파일 분해 — 이용권 카드 클러스터(verbatim 추출). 동작 불변.
-//   MiniQrHint·Barcode·KtAlphaVoucherCard 는 모듈 내부 전용, VoucherTicket 만 페이지가 사용.
+//   Barcode·KtAlphaVoucherCard 는 모듈 내부 전용, VoucherTicket 만 페이지가 사용.
 import { useRef, useEffect, useState } from 'react'
 import { GiftBoxIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { safeDate } from '@/utils/safe-date'
 import { formatNumber } from '@/utils/format'
-import { toast } from '@/hooks/useToast'
-import { QrCode, Copy, Smartphone } from 'lucide-react'
+import { QrCode, Smartphone } from 'lucide-react'
 import { TicketCard, TicketRow } from '@/components/ticket/TicketCard'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import type { Voucher } from './types'
@@ -22,26 +21,6 @@ const MODE_CHIP: Record<RedeemMode, string> = {
   self_free: '바로 사용',
 }
 const _modeCache = new Map<string, RedeemMode | null>()
-
-// 🎨 2026-06-21 시안 A: 패스 풋 'QR 힌트' (장식 — 실제 QR 은 사용하기 모달). 잉크 finder 패턴 + 닷.
-function MiniQrHint({ muted }: { muted?: boolean }) {
-  return (
-    <svg viewBox="0 0 100 100" className={`w-10 h-10 shrink-0 ${muted ? 'text-gray-300 dark:text-gray-700' : 'text-gray-900 dark:text-white'}`} aria-hidden>
-      <g fill="none" stroke="currentColor" strokeWidth="7">
-        <rect x="6" y="6" width="26" height="26" rx="4" />
-        <rect x="68" y="6" width="26" height="26" rx="4" />
-        <rect x="6" y="68" width="26" height="26" rx="4" />
-      </g>
-      <g fill="currentColor">
-        <rect x="44" y="44" width="10" height="10" rx="1.5" />
-        <rect x="62" y="44" width="10" height="10" rx="1.5" />
-        <rect x="44" y="62" width="10" height="10" rx="1.5" />
-        <rect x="80" y="62" width="10" height="10" rx="1.5" />
-        <rect x="62" y="80" width="10" height="10" rx="1.5" />
-      </g>
-    </svg>
-  )
-}
 
 /**
  * 🎨 2026-06-21 시안 A '프리미엄 패스' (대표 "페이지가 투박 — UX/UI 재설계" 승인):
@@ -130,68 +109,24 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
         </div>
       </div>
 
-      {/* 풋 — refunded 는 액션 없음 */}
-      {v.status !== 'refunded' && (
+      {/* 풋 — 사용 완료·만료만. 🧹 2026-10-01 (대표 "빨간 부분은 굳이 없어도 되지 않을까? 환불요청 버튼만 따로"):
+          미사용 카드의 코드 줄·환불 링크를 걷어냈다 — 코드와 QR 은 '사용하기'(카드 어디를 눌러도 열린다)에
+          이미 크게 있고, 환불도 그 화면으로 옮겼다(QRModal — 7일 내 즉시 취소 / 이후 환불 요청 접수). */}
+      {v.status !== 'refunded' && v.status !== 'unused' && (
         <div className="border-t border-rule">
-          {v.status === 'unused' ? (
-            <>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                // 🐛 2026-06-21: 실제 복사 성공 시에만 토스트 (비보안 컨텍스트 등 미지원 시 거짓 '복사됨' 방지)
-                const cb = navigator.clipboard
-                if (!cb?.writeText) return
-                cb.writeText(v.code).then(() => toast.success(t('voucher.copied', { defaultValue: '복사됨' }))).catch(() => { /* 권한 거부 */ })
-              }}
-              className="w-full flex items-center gap-3 px-4 py-3 text-left active:opacity-70"
-            >
-              <MiniQrHint />
-              <div className="min-w-0">
-                <span className="flex items-center gap-2 tabular-nums text-[12px] font-bold tracking-wide text-gray-700 dark:text-gray-200">
-                  <span className="truncate">{v.code}</span>
-                  <Copy className="w-3 h-3 shrink-0 text-gray-400 dark:text-gray-500" strokeWidth={1.6} aria-hidden />
-                </span>
-                <span className="block text-[12px] text-gray-500 dark:text-gray-400 mt-1">{t('voucher.tapForQr', { defaultValue: '탭하면 코드 복사 · 사용하기로 QR 제시' })}</span>
-              </div>
-            </button>
-            {/* ↩️ 2026-08-20 (대표): 유저도 서비스에서 환불 요청 가능 — 미사용 이용권 한정.
-                접수만 한다(돈은 안 움직임) — 승인·환불 실행은 운영자 확인 후 어드민(머니 경로). */}
-            {v.order_id ? (
+          {/* 🎨 2026-06-21 (개선 #4): 사용완료/만료 동선 — 재구매 + (사용완료만) 후기 보너스 */}
+          <div className="px-4 pt-3 pb-4">
+            {v.product_id != null && (
               <button
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  const reason = window.prompt(t('voucher.refundReasonPrompt', { defaultValue: '환불 요청 사유를 입력해주세요 (예: 방문 계획 취소)' }))
-                  if (!reason || !reason.trim()) return
-                  api.post('/api/returns/request', { order_id: v.order_id, reason: '이용권 환불 요청', detail_reason: reason.trim().slice(0, 500) })
-                    .then(r => {
-                      if (r.data?.success) toast.success(t('voucher.refundRequested', { defaultValue: '환불 요청이 접수되었어요. 확인 후 처리해 드릴게요.' }))
-                      else toast.error(r.data?.error || t('voucher.refundFailed', { defaultValue: '환불 요청에 실패했어요' }))
-                    })
-                    .catch(err => toast.error(err?.response?.data?.error || t('voucher.refundFailed', { defaultValue: '환불 요청에 실패했어요' })))
-                }}
-                className="w-full px-4 pb-2 -mt-1 text-left text-[12px] text-gray-400 dark:text-gray-500 underline underline-offset-2 active:opacity-70"
+                onClick={() => navigate(`/pass/${v.product_id}`)}
+                className="w-full h-11 rounded-xl border border-rule-strong text-brand-text text-[13px] font-bold active:opacity-70"
               >
-                {t('voucher.requestRefund', { defaultValue: '사용 전이라면 환불 요청' })}
+                {t('voucher.rebuy', { defaultValue: '다시 구매하기' })}
               </button>
-            ) : null}
-            </>
-          ) : (
-            /* 🎨 2026-06-21 (개선 #4): 사용완료/만료 동선 — 재구매 + (사용완료만) 후기 보너스 */
-            <div className="px-4 pt-3 pb-4">
-              {v.product_id != null && (
-                <button
-                  type="button"
-                  onClick={() => navigate(`/pass/${v.product_id}`)}
-                  className="w-full h-11 rounded-xl border border-rule-strong text-brand-text text-[13px] font-bold active:opacity-70"
-                >
-                  {t('voucher.rebuy', { defaultValue: '다시 구매하기' })}
-                </button>
-              )}
-              {v.status === 'used' && <ReviewBonusButton voucherCode={v.code} restaurantName={v.restaurant_name} restaurantAddress={v.restaurant_address} />}
-            </div>
-          )}
+            )}
+            {v.status === 'used' && <ReviewBonusButton voucherCode={v.code} restaurantName={v.restaurant_name} restaurantAddress={v.restaurant_address} />}
+          </div>
         </div>
       )}
     </TicketCard>

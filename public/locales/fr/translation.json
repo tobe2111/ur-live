@@ -5060,7 +5060,9 @@
     "gifticonSeoDescription": "Retrouvez les gifticons achetés et utilisez-les en magasin",
     "loadFailedGift": "Impossible de charger les gifticons",
     "noUnusedGift": "Aucun gifticon disponible",
-    "totalCountLabel": "Total"
+    "totalCountLabel": "Total",
+    "requestRefundShort": "Demander un remboursement",
+    "refundRequestedShort": "Remboursement demandé"
   },
   "sellerWaiting": {
     "title": "Approbation Vendeur en Attente",
