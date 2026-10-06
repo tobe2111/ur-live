@@ -12,7 +12,7 @@
  * `lg:hidden`(PC 는 우측 sticky 박스가 담당)·safe-area 패딩은 손대지 않았다.
  */
 import { formatNumber } from '@/utils/format'
-import DealUseChooser from './DealUseChooser'
+import DealUseChooser, { coversAll, defaultDealUse } from './DealUseChooser'
 import DealPayButton from './DealPayButton'
 import AddToCartButton from './AddToCartButton'
 import { VOUCHER_CART_UI_ENABLED } from '@/shared/feature-flags'
@@ -41,6 +41,9 @@ export default function DealBottomBar({
   productId: number
   onJoin: (withDeal?: boolean) => void
 }) {
+  // 🪙 2026-10-06: 딜이 총액을 다 덮으면 카드를 안 탄다 — 버튼도 그렇게 말한다("N딜로 결제하기").
+  const allDeal = canPayWithDeal && coversAll(dealPlan, dealUse)
+  const verb = isDemoDeal ? '결제하기' : '구매하기'
   return (
     <>
     {/* 🎨 2026-06-16 리디자인 결제 푸터 — 할인중 + 수량 스테퍼 + 안심 카피 + 잉크블랙 '구매하기'.
@@ -64,16 +67,17 @@ export default function DealBottomBar({
         <span style={{ fontSize: 11.5, color: 'var(--gbd-sub)', fontWeight: 500, whiteSpace: 'nowrap' }}>{isPrelaunch ? '오픈 협의 중 매장 · 응모는 무료, 오픈 시 알림을 드려요' : '토스로 3초 안전결제 · 미사용 시 100% 자동환불'}</span>
       </div>
       {/* 조건은 호출부가 이미 걸어서 넘긴다(`dealPlan` prop) — 여기서 또 걸면 두 곳이 갈린다. */}
-      <DealUseChooser plan={dealPlan} value={dealUse ?? dealPlan?.max_deal_usable ?? 0} onChange={setDealUse} />
+      <DealUseChooser plan={dealPlan} value={dealUse ?? defaultDealUse(dealPlan)} onChange={setDealUse} />
       <button
         onClick={isPrelaunch ? () => document.getElementById('fcfs-apply-block')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) : () => onJoin()}
         disabled={(!isJoinable && !isPrelaunch) || joining}
-        aria-label={isPrelaunch ? '사전 응모하기' : isJoinable ? `${formatNumber(total)}원 ${isDemoDeal ? '결제하기' : '구매하기'}` : isDemoDeal ? '결제 불가' : '구매 불가'}
+        aria-label={isPrelaunch ? '사전 응모하기' : isJoinable ? (allDeal ? `${formatNumber(total)}딜로 결제하기` : `${formatNumber(total)}원 ${verb}`) : isDemoDeal ? '결제 불가' : '구매 불가'}
         style={{ width: '100%', height: 50, border: 'none', borderRadius: 14, background: (buyable || isPrelaunch) ? 'var(--gbd-cta-bg)' : 'var(--gbd-sub2)', color: 'var(--gbd-cta-fg)', fontSize: 16, fontWeight: 800, letterSpacing: '-.01em', cursor: (buyable || isPrelaunch) ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
       >
-        {joining ? '처리 중…' : isPrelaunch ? '사전 응모하기' : !isJoinable ? (isDemoDeal ? '결제 불가' : '구매 불가') : <>{formatNumber(total)}원 {isDemoDeal ? '결제하기' : '구매하기'}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
+        {joining ? '처리 중…' : isPrelaunch ? '사전 응모하기' : !isJoinable ? (isDemoDeal ? '결제 불가' : '구매 불가') : <>{allDeal ? `${formatNumber(total)}딜로 결제하기` : `${formatNumber(total)}원 ${verb}`}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
       </button>
-      <DealPayButton show={canPayWithDeal && !isPrelaunch && isJoinable} joining={joining} dealBalance={dealBalance} onPay={() => onJoin(true)} />
+      {/* 대체물 — 위 고르는 칸이 [전부 딜로] 를 이미 내면 같은 뜻의 버튼을 또 내지 않는다(칸이 안 뜰 때만). */}
+      <DealPayButton show={canPayWithDeal && !isPrelaunch && isJoinable && !dealPlan?.can_pay_all_with_deal} joining={joining} dealBalance={dealBalance} onPay={() => onJoin(true)} />
       {/* 🧺 2026-09-15 담기 — 결제 버튼 **아래**에 둔다. 위에 두면 주 행동이 둘로 보인다. */}
       <AddToCartButton productId={productId} qty={quantity} show={VOUCHER_CART_UI_ENABLED && isJoinable && !isPrelaunch} />
     </div>{/* /bar box */}

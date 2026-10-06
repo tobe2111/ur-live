@@ -34,12 +34,14 @@ interface Props {
   onPrelaunchApply: () => void
   /** 🪙 CTA 바로 위 슬롯 — 지금은 딜 사용 선택(`DealUseChooser`). 모바일 결제 바와 같은 자리·같은 순서. */
   dealSlot?: ReactNode
+  /** 🪙 2026-10-06: 고른 딜이 총액을 다 덮는다 → 카드를 안 타는 흐름. 버튼이 "N딜로 결제하기" 라고 말한다. */
+  allDeal?: boolean
 }
 
 export default function DealPurchaseBox({
   name, discountPct, unitPrice, refPrice, unitSaving, totalSaving, total,
   quantity, setQuantity, maxQty, maxPerPerson,
-  buyable, isJoinable, isPrelaunch, isDemo, joining, onBuy, onPrelaunchApply, dealSlot,
+  buyable, isJoinable, isPrelaunch, isDemo, joining, onBuy, onPrelaunchApply, dealSlot, allDeal = false,
 }: Props) {
   // 🎭 2026-08-08 (대표 "데모 상품들만 상품페이지에 구매하기 버튼 대신 응모하기로"): 데모는 '구매하기'가
   //   어울리지 않아 문구를 바꿨다. 동작(onBuy)은 그대로.
@@ -131,10 +133,10 @@ export default function DealPurchaseBox({
       <button
         onClick={isPrelaunch ? onPrelaunchApply : onBuy}
         disabled={(!isJoinable && !isPrelaunch) || joining}
-        aria-label={isPrelaunch ? '사전 응모하기' : isJoinable ? `${formatNumber(total)}원 ${ctaLabel}` : isDemo ? '응모 불가' : '구매 불가'}
+        aria-label={isPrelaunch ? '사전 응모하기' : isJoinable ? (allDeal ? `${formatNumber(total)}딜로 결제하기` : `${formatNumber(total)}원 ${ctaLabel}`) : isDemo ? '응모 불가' : '구매 불가'}
         style={{ width: '100%', height: 50, border: 'none', borderRadius: 14, background: (buyable || isPrelaunch) ? 'var(--gbd-cta-bg)' : 'var(--gbd-sub2)', color: 'var(--gbd-cta-fg)', fontSize: 16, fontWeight: 800, letterSpacing: '-.01em', cursor: (buyable || isPrelaunch) ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
       >
-        {joining ? '처리 중…' : isPrelaunch ? <><BellIcon size={16} aria-hidden="true" />오픈 예정 — 사전 응모하기</> : !isJoinable ? (isDemo ? '응모 불가' : '구매 불가') : <>{formatNumber(total)}원 {ctaLabel}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
+        {joining ? '처리 중…' : isPrelaunch ? <><BellIcon size={16} aria-hidden="true" />오픈 예정 — 사전 응모하기</> : !isJoinable ? (isDemo ? '응모 불가' : '구매 불가') : <>{allDeal ? `${formatNumber(total)}딜로 결제하기` : `${formatNumber(total)}원 ${ctaLabel}`}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></>}
       </button>
 
       {/* 안심 배지 — 그루폰 trust rows */}
