@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import api from '@/lib/api'
+import { confirmPriceChange } from '@/pages/seller-product-edit/confirm-price-change'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
@@ -122,6 +123,12 @@ export default function SellerProductEditPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+
+    // 💰 2026-10-06 (철거로 잃은 것 ② 복원): 판매가가 바뀌면 한 번 더 묻는다.
+    //   판정·문구는 모듈 하나에 있다(`seller-product-edit/confirm-price-change.ts`) —
+    //   **안 바뀌면 창이 아예 안 뜨고**, 금액을 계산하지 않는다(보낼 값은 그대로).
+    if (!(await confirmPriceChange(t, product?.price, formData.price))) return
+
     setSubmitting(true)
 
     try {

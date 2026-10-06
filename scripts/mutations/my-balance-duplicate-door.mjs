@@ -25,8 +25,10 @@ export default [
   {
     name: '🪙마이잔액 실패를 조용히 삼킨다 (0딜로 보인다)',
     file: MY,
-    find: '          .catch(() => setBalance(null))',
-    replace: '          .catch(() => setBalance(0))',
+    // 🔁 2026-10-06 재조준: 동적 import 를 걷어내며 이 줄의 들여쓰기가 10 → 8칸이 됐다.
+    //   불변식(**실패를 0 으로 위장하지 않는다**)은 그대로다 — 앵커만 맞췄다.
+    find: '        .catch(() => setBalance(null))',
+    replace: '        .catch(() => setBalance(0))',
     test: TEST,
     why: '2026-07-02 규칙 — 조회 실패를 0딜로 위장하지 않는다. 잔액 0 과 장애는 다른 일이다.',
   },
