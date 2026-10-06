@@ -10,7 +10,7 @@ import SellerLayout from '@/components/SellerLayout'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { DashboardPageHeader, DashboardCard } from '@/components/dashboard'
 import { formatNumber } from '@/utils/format'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { confirmDialog, promptDialog } from '@/components/ui/confirm-dialog'
 import {
   Package,
   Truck,
@@ -221,13 +221,30 @@ export default function SellerOrdersPage() {
 
   // 🛡️ 2026-06-01 머니플로우 감사: 결제완료 주문 정식 취소·환불 (Toss/딜 환불 + 커미션 역전).
   async function handleRefund(orderNumber: string) {
-    if (!(await confirmDialog({ message: t('seller.confirmRefund', { defaultValue: '이 주문을 취소하고 결제를 환불할까요? 되돌릴 수 없습니다.' }), danger: true }))) {
-      return
-    }
+    // 🧾 2026-10-06 (철거로 잃은 것 ① 복원): **사유를 받는다.**
+    //   손수 시트(철거됨)는 고르고 → 사유 → 확인 두 단계였는데 원본엔 확인 창만 있고 **칸이 없었다**
+    //   ⇒ 되돌릴 수 없는 일에 이유가 안 남았다(분쟁의 유일한 근거가 사라진다).
+    //   🔒 **서버 무접촉**: `seller-orders.routes.ts` 가 이미 `reason` 을 읽어 200자로 자른다.
+    //     환불 금액·경로(`refundOrderFully`)는 한 글자도 안 바뀐다 — 문자열 하나가 더 실린다.
+    //   ⚠️ 사유는 **선택**이다 — 철거된 사본과 같은 계약(`reason.trim() || 기본값`). 필수로 바꾸면
+    //     "복원" 이 아니라 환불을 막는 새 규칙이 된다(그건 대표가 정할 자리다).
+    const reason = await promptDialog({
+      title: t('seller.refundTitle', { defaultValue: '주문 취소·환불' }),
+      message: t('seller.confirmRefund', { defaultValue: '이 주문을 취소하고 결제를 환불할까요? 되돌릴 수 없습니다.' }),
+      danger: true,
+      confirmText: t('seller.refundConfirmText', { defaultValue: '환불' }),
+      prompt: {
+        placeholder: t('seller.refundReasonHint', { defaultValue: '사유 (기록에 남습니다 · 예: 재고 부족, 손님 요청)' }),
+        multiline: true,
+      },
+    })
+    if (reason === null) return
     setUpdating(true)
     setError('')
     try {
-      const response = await api.post(`/api/seller/orders/${orderNumber}/refund`, {})
+      const response = await api.post(`/api/seller/orders/${orderNumber}/refund`, {
+        reason: reason.trim() || '판매자 주문 취소',
+      })
       if (response.data.success) {
         toast.success(t('seller.refundDone', { defaultValue: '취소·환불 처리되었습니다' }))
         invalidateOrders()

@@ -5494,8 +5494,10 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 393건 · 최신순 · 이 목록은 자동 생성된다._
+_총 395건 · 최신순 · 이 목록은 자동 생성된다._
 
+**2026-10-06**
+- [철거로 잃은 둘을 원본 화면에 복원 (2026-10-06)](handoff/2026-10-06-teardown-losses.md)
 **2026-10-02**
 - [S-EVR1 판정 — 만료 이용권 자동환불이 처음으로 돌았다 (2026-10-02 03:20 KST)](handoff/2026-10-02-expired-refund-booking.md)
 **2026-10-01**
