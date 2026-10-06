@@ -2242,7 +2242,7 @@
     },
     "scan": {
       "title": "Escanear vale",
-      "subtitle": "Apunta al QR del cliente para canjear automáticamente (escaneo continuo)",
+      "subtitle": "Escanea el QR del cliente para ver el bono y confirma para canjearlo",
       "usedOk": "Canjeado",
       "usedFail": "Error al canjear",
       "networkError": "Error de red — reintenta",
@@ -2254,7 +2254,13 @@
       "useBtn": "Canjear",
       "homeCardTitle": "Dueños — escanea los vales de clientes aquí",
       "homeCardDesc": "Apunta al QR y canjea en un toque · Magic link sin iniciar sesión",
-      "homeCardBtn": "Abrir escáner"
+      "homeCardBtn": "Abrir escáner",
+      "notFound": "No se encontró el bono",
+      "alreadyUsed": "Este bono ya fue usado",
+      "notUsable": "Este bono no se puede usar (vencido o reembolsado)",
+      "checking": "Verificando bono…",
+      "confirmQ": "¿Canjear este bono?",
+      "confirmNote": "El canje no se puede deshacer."
     },
     "gbSettle": {
       "title": "Liquidaciones automáticas de compra grupal",
@@ -2506,7 +2512,7 @@
       "delegated": "Delegada",
       "info": "Info",
       "registered": "Tienda registrada — ya puedes crear cupones",
-      "pendingHint": "Tienda en verificación — los cupones se abren al aprobarse",
+      "pendingHint": "Puedes registrar cupones ya. Aparecerán en la portada cuando se verifique el negocio",
       "gateTitle": "Empieza registrando tu tienda",
       "gateDesc": "Todo en UrDeal parte de una tienda. Encuéntrala en Kakao Map y regístrala para desbloquear ventas, colaboraciones y liquidaciones.",
       "step1": "Registrar tienda",
@@ -2516,7 +2522,8 @@
       "registerCta": "Registrar tienda con Kakao Map",
       "lockedNote": "Registra tu tienda para desbloquear cupones · pedidos · liquidación · colaboraciones",
       "savedPropagated": "Información guardada — aplicada a {{count}} cupones",
-      "saved": "Información de la tienda guardada"
+      "saved": "Información de la tienda guardada",
+      "suspendedHint": "Tienda suspendida — no se pueden registrar cupones"
     },
     "voucherTabs": {
       "list": "Cupones",

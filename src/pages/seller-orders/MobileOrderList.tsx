@@ -16,6 +16,7 @@
 import { useMemo, useState } from 'react'
 import { shortOrderNo } from '@/shared/order-number-display'
 import { useTranslation } from 'react-i18next'
+import SegmentedTabs from '@/components/ui/segmented-tabs'
 import { parseUTCDate } from '@/utils/date'
 import { formatWon } from '@/utils/format'
 import type { Order } from './types'
@@ -81,16 +82,12 @@ export default function MobileOrderList({ orders, onSelect, onConfirm, confirmin
 
   return (
     <div className="md:hidden">
-      <div className="flex rounded-[var(--dash-radius,16px)] border border-rule bg-white p-1">
-        {TABS.map((tb) => (
-          <button key={tb.id} type="button" onClick={() => setTab(tb.id)} aria-pressed={tab === tb.id}
-            // 📏 2026-10-06: 35px → 40px 눈금(#1621 과 같은 기준). **박스로** 키운다 —
-            //   `tap-reach` 는 조상에 overflow 가 있으면 히트영역이 죽고, 여기도 카드 안이다.
-            className={`flex flex-1 min-h-[40px] items-center justify-center rounded-lg py-2 text-[12.5px] font-bold transition-colors ${tab === tb.id ? 'bg-brand text-white' : 'text-gray-400'}`}>
-            {tb.label}{tb.n != null && tb.n > 0 ? ` ${tb.n}` : ''}
-          </button>
-        ))}
-      </div>
+      {/* 🧭 2026-10-06: 줄바꿈 금지·글자 길이만큼 자리는 `SegmentedTabs` 가 지킨다. 숫자는 종전대로 0 이면 숨긴다. */}
+      <SegmentedTabs<Tab>
+        value={tab}
+        onChange={setTab}
+        items={TABS.map((tb) => ({ id: tb.id, label: tb.label, count: tb.n != null && tb.n > 0 ? tb.n : undefined }))}
+      />
 
       {groups.length === 0 && (
         <p className="py-16 text-center text-[14px] font-bold text-gray-500">{t('seller.ordersM3.none', { defaultValue: '해당하는 주문이 없어요' })}</p>

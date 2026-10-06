@@ -169,8 +169,12 @@ describe('📏 잔여 칩·탭·아이콘 버튼 — 박스로 40px (측정: 12 
   const ORDERS_M = 'src/pages/seller-orders/MobileOrderList.tsx'
 
   it('주문 상태 세그먼트 칩이 min-h-[40px] 를 보장한다 (35px 였다)', () => {
-    const s = code(ORDERS_M)
-    expect(s, '상태 칩의 40px 보장이 사라졌다 — 35px 로 환원').toMatch(/flex-1 min-h-\[40px\]/)
+    // 🧭 2026-10-06: 주문 탭이 공용 `SegmentedTabs` 로 옮겨 갔다(탭 라벨 두 줄 접힘 근본 수리) —
+    //   40px 보장도 **부품에** 산다. 화면은 부품을 쓰는지, 부품은 40px 박스인지 둘 다 본다.
+    expect(code(ORDERS_M), '주문 탭이 공용 부품을 벗어났다 — 그러면 아래 보장이 이 화면에 안 닿는다').toMatch(/<SegmentedTabs\b/)
+    const comp = code('src/components/ui/segmented-tabs.tsx')
+    expect(comp, '상태 칩의 40px 보장이 사라졌다 — 35px 로 환원').toMatch(/inline-flex min-h-\[40px\] items-center/)
+    expect(comp, 'tap-reach 로 "통일" 하면 카드 overflow 때문에 히트영역이 죽는다').not.toMatch(/tap-reach/)
   })
 
   it('정산 기간 칩이 min-h-[40px] + 수직 중앙 정렬 (overflow-x-auto 안이라 tap-reach 불가)', () => {

@@ -40,12 +40,13 @@ describe('① 잴 것이 없으면 재는 도구를 안 그린다', () => {
     //   ② 그 다음 판은 **순서만** 봤는데, 주입이 곧바로 구멍을 보여 줬다: 세그먼트를 그 자리에 두고
     //      `hidden={windowEmpty}` 만 붙이면 화면에서는 사라지는데 순서 검사는 초록이었다.
     //      ⇒ 세그먼트가 windowEmpty 에 **의존하지 않는지**까지 본다.
-    const segAt = OVERVIEW.indexOf('role="group"')
+    //   ③ 2026-10-06: 기간 탭이 공용 `SegmentedTabs` 로 옮겨 갔다(탭 라벨 두 줄 접힘 근본 수리) — 앵커만 옮긴다.
+    const segAt = OVERVIEW.indexOf('<SegmentedTabs<number>')
     const emptyAt = OVERVIEW.indexOf('{windowEmpty ? (')
     expect(segAt).toBeGreaterThan(-1)
     expect(emptyAt).toBeGreaterThan(segAt)
-    expect(OVERVIEW).toContain('onClick={() => p.onDays(d)}')
-    expect(OVERVIEW.slice(segAt, emptyAt)).not.toContain('windowEmpty')
+    expect(OVERVIEW).toContain('onChange={p.onDays}')
+    expect(OVERVIEW.slice(Math.max(0, segAt - 40), emptyAt)).not.toContain('windowEmpty')
   })
 })
 

@@ -143,7 +143,6 @@
     "src/pages/my-orders/CancelOrderModal.tsx": 9,
     "src/pages/my-orders/OrderDetailModal.tsx": 8,
     "src/pages/my-orders/ReturnRequestModal.tsx": 5,
-    "src/pages/my-vouchers/PostJoinShareModal.tsx": 2,
     "src/pages/my-vouchers/QRModal.tsx": 7,
     "src/pages/my-vouchers/ReviewBonusButton.tsx": 4,
     "src/pages/my-vouchers/VoucherMap.tsx": 4,

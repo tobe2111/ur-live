@@ -62,9 +62,9 @@ export default [
   // 📏 2026-10-06 후속 — 잔여 칩·탭·아이콘 버튼 40px (측정 12 → 0)
   {
     name: '잔여눈금 — 주문 상태 칩이 35px 로 환원(세그먼트가 눈금 밖)',
-    file: 'src/pages/seller-orders/MobileOrderList.tsx',
-    find: 'flex flex-1 min-h-[40px] items-center justify-center rounded-lg py-2',
-    replace: 'flex-1 rounded-lg py-2',
+    file: 'src/components/ui/segmented-tabs.tsx',
+    find: 'inline-flex min-h-[40px] items-center justify-center gap-1',
+    replace: 'inline-flex items-center justify-center gap-1',
     test: 'src/tests/unit/seller-rung-40-2026-10-06.test.ts',
     why: '폰 주문 화면의 유일한 필터가 35px 로 돌아간다 — 측정으로 0 을 만든 자리가 다시 4가 된다.',
   },
@@ -86,9 +86,9 @@ export default [
   },
   {
     name: '잔여눈금 — tap-reach 로 "통일"(카드 overflow 때문에 히트영역이 죽는다)',
-    file: 'src/pages/seller-orders/MobileOrderList.tsx',
-    find: 'flex flex-1 min-h-[40px] items-center justify-center rounded-lg py-2',
-    replace: 'tap-reach flex-1 rounded-lg py-2',
+    file: 'src/components/ui/segmented-tabs.tsx',
+    find: 'inline-flex min-h-[40px] items-center justify-center gap-1',
+    replace: 'inline-flex tap-reach items-center justify-center gap-1',
     test: 'src/tests/unit/seller-rung-40-2026-10-06.test.ts',
     why: '다음 세션이 가장 하기 쉬운 "통일" 이고, 그러면 선언은 40px 인데 실제로 안 닿아 감사가 정상으로 센다.',
   },

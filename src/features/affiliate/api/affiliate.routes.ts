@@ -233,6 +233,16 @@ affiliateRoutes.get('/top-groups', requireAuth(), async (c) => {
   const userId = user.id
   const { DB } = c.env
   try {
+    /**
+     * 💸 2026-10-06 (대표 신고 — "참여 완료" 모달이 없는 보너스를 약속하고 있었다):
+     *   종전엔 `p.price * 0.005` 하드코딩이라 **설정을 한 번도 안 봤다**. 그런데 라이브
+     *   `user_referral_bonus_pct` 는 2026-08-23 대표 "심플 모델" 로 **0** 이다 — 즉 이 화면이
+     *   몇 달째 지급되지 않는 보너스를 "친구 가입 시 +N딜" 로 약속하고 있었다.
+     *   ⇒ 설정값을 읽어 계산한다. 0 이면 0 이 내려가고 화면이 그 줄을 안 그린다.
+     */
+    const bonusRow = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'user_referral_bonus_pct'")
+      .first<{ value: string }>().catch(() => null)
+    const bonusPct = Math.max(0, Number(bonusRow?.value ?? 0) || 0)
     const { results } = await DB.prepare(`
       SELECT
         p.id, p.name, p.image_url, p.price, p.category,
@@ -240,7 +250,7 @@ affiliateRoutes.get('/top-groups', requireAuth(), async (c) => {
         p.group_buy_tiers,
         s.name AS seller_name,
         ROUND(p.group_buy_current * 100.0 / NULLIF(p.group_buy_target, 0)) AS progress_pct,
-        ROUND(p.price * 0.005) AS my_potential_bonus
+        ROUND(p.price * ? / 100.0) AS my_potential_bonus
       FROM products p
       LEFT JOIN sellers s ON s.id = p.seller_id
       WHERE p.is_active = 1
@@ -251,7 +261,7 @@ affiliateRoutes.get('/top-groups', requireAuth(), async (c) => {
         (p.group_buy_current * 1.0 / p.group_buy_target) DESC,  -- 진행률 높은 순
         p.created_at DESC                                         -- 동률이면 최신순
       LIMIT 10
-    `).all().catch(() => ({ results: [] }))
+    `).bind(bonusPct).all().catch(() => ({ results: [] }))
 
     // share URL with ref + 'type' 필드 추가 (인플 대시보드가 type 별 다른 라우팅).
     const data = (results ?? []).map((r: any) => ({

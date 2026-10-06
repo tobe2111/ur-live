@@ -79,7 +79,7 @@ export default function StoreScanPage() {
             안 했고, 가게가 여럿인 사람에게 "어느 가게로 처리되는지" 도 안 알려 줬다 — 좌석 토큰이
             정하는데 화면엔 그 사실이 없었다. 값은 표시 전용이고, 대상은 서버가 토큰으로 정한다. */}
         <p className="text-[12px] leading-relaxed text-gray-500 dark:text-gray-400 mb-1">
-          손님 이용권 QR을 비추면 <span className="font-bold text-gray-900 dark:text-white">바로 사용 완료</span>로 처리돼요. 되돌릴 수 없습니다.
+          손님 이용권 QR을 비추면 확인창이 떠요. <span className="font-bold text-gray-900 dark:text-white">사용 처리</span>를 누르면 완료되고, 되돌릴 수 없습니다.
         </p>
         <p className="text-[12px] leading-relaxed text-gray-500 dark:text-gray-400 mb-3">
           {seatLabel ? <>지금은 <span className="font-bold text-brand-text">{seatLabel}</span> 이용권만 처리됩니다. </> : null}

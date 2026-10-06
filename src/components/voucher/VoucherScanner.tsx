@@ -14,6 +14,9 @@ import { useTranslation } from 'react-i18next'
 import { Keyboard, Loader2 } from 'lucide-react'
 import api from '@/lib/api'
 
+/** 확인을 기다리는 스캔. `status` 는 `/verify` 가 준 값(unused·used·expired·refunded…), 조회 실패면 없다. */
+type PendingUse = { code: string; loading: boolean; productName?: string; restaurantName?: string; status?: string }
+
 type ScanResult = {
   ok: boolean
   code: string
@@ -63,11 +66,14 @@ export default function VoucherScanner() {
   const [results, setResults] = useState<ScanResult[]>([])
   const hasDetector = typeof window !== 'undefined' && 'BarcodeDetector' in window
 
+  /**
+   * ✅ 2026-10-06 (대표 "찍고나서 확인될 때 팝업창으로 사용처리 하시겠습니까? 라고 물어보는게 맞잖아"):
+   *   종전엔 비추는 **순간** 사용 처리됐다. 사용은 되돌릴 수 없고(환불 자격이 바뀐다), 카메라는 의도치 않게
+   *   옆 손님 화면이나 사진 속 QR 도 읽는다. ⇒ 스캔 → **조회만** (`GET /verify/:code` — 소비하지 않는다)
+   *   → 상품·매장·상태를 보여 주고 → [사용 처리] 를 눌러야 `use-by-seller` 가 나간다.
+   *   서버 계약은 그대로다(조회 엔드포인트는 원래 있었다). 이 함수는 **확인 뒤에만** 불린다.
+   */
   const useVoucher = useCallback(async (code: string) => {
-    // 같은 코드 5초 내 재인식(카메라가 같은 QR 계속 봄) 무시 — 이중 호출 방지(서버도 CAS 로 안전).
-    const last = lastCodeRef.current
-    if (last && last.code === code && Date.now() - last.at < 5000) return
-    lastCodeRef.current = { code, at: Date.now() }
     setBusy(true)
     try {
       const token = localStorage.getItem('seller_token')
@@ -102,6 +108,46 @@ export default function VoucherScanner() {
     }
   }, [t])
 
+  const [pending, setPending] = useState<PendingUse | null>(null)
+  const pendingRef = useRef(false)
+
+  /** 스캔/입력 → 조회만 하고 확인을 묻는다. 카메라 루프는 ref 로 부르므로 이 함수가 바뀌어도 재시작하지 않는다. */
+  const requestUse = useCallback(async (code: string) => {
+    if (pendingRef.current) return // 확인창이 떠 있는 동안 카메라가 계속 읽는 것은 무시
+    // 같은 코드 5초 내 재인식(카메라가 같은 QR 계속 봄) 무시 — 확인창을 닫자마자 다시 뜨는 것 방지.
+    const last = lastCodeRef.current
+    if (last && last.code === code && Date.now() - last.at < 5000) return
+    lastCodeRef.current = { code, at: Date.now() }
+    pendingRef.current = true
+    setPending({ code, loading: true })
+    try {
+      const r = await api.get(`/api/group-buy/verify/${encodeURIComponent(code)}`)
+      const d = r.data?.data || {}
+      setPending({ code, loading: false, productName: d.product_name, restaurantName: d.restaurant_name, status: d.status })
+    } catch (err: unknown) {
+      const st = (err as { response?: { status?: number } }).response?.status
+      if (st === 404) {
+        pendingRef.current = false
+        setPending(null)
+        setResults((prev) => [{ ok: false, code, message: t('seller.scan.notFound', { defaultValue: '이용권을 찾을 수 없어요' }), at: new Date().toLocaleTimeString('ko-KR') }, ...prev].slice(0, 20))
+        if (navigator.vibrate) navigator.vibrate([60, 60, 60])
+        return
+      }
+      // 조회가 안 돼도 막지 않는다 — 사용 처리 자체는 서버가 다시 검증한다(이중사용·타매장 CAS).
+      setPending({ code, loading: false })
+    }
+  }, [t])
+  const requestUseRef = useRef(requestUse)
+  requestUseRef.current = requestUse
+
+  const closePending = () => { pendingRef.current = false; setPending(null) }
+  const confirmPending = () => {
+    if (!pending) return
+    const code = pending.code
+    closePending()
+    void useVoucher(code)
+  }
+
   const startCamera = useCallback(async () => {
     setCameraError(null)
     // 🟢 기본 경로: 네이티브 BarcodeDetector (Android/Chrome) — 기존 로직 그대로.
@@ -123,7 +169,7 @@ export default function VoucherScanner() {
           try {
             const found = await detector.detect(videoRef.current)
             const code = found.length ? extractCode(found[0].rawValue) : null
-            if (code) await useVoucher(code)
+            if (code) void requestUseRef.current(code)
           } catch { /* 프레임 미준비 등 — 다음 tick */ }
           if (scanningRef.current) setTimeout(tick, 350)
         }
@@ -142,7 +188,7 @@ export default function VoucherScanner() {
         videoRef.current,
         (res: { data: string }) => {
           const code = extractCode(res.data)
-          if (code) void useVoucher(code)
+          if (code) void requestUseRef.current(code)
         },
         { preferredCamera: 'environment', highlightScanRegion: false, maxScansPerSecond: 5 },
       )
@@ -153,7 +199,7 @@ export default function VoucherScanner() {
       setCameraError(t('seller.scan.cameraError', { defaultValue: '카메라를 열 수 없어요. 아래에 코드를 직접 입력해주세요.' }))
       setCameraOn(false)
     }
-  }, [hasDetector, t, useVoucher])
+  }, [hasDetector, t])
 
   useEffect(() => {
     void startCamera()
@@ -187,7 +233,7 @@ export default function VoucherScanner() {
     const code = extractCode(manualCode)
     if (!code) return
     setManualCode('')
-    void useVoucher(code)
+    void requestUse(code)
   }
 
   const latest = results[0]
@@ -268,6 +314,58 @@ export default function VoucherScanner() {
           ))}
         </div>
       )}
+
+      {pending && <UseConfirmSheet pending={pending} onCancel={closePending} onConfirm={confirmPending} />}
+    </div>
+  )
+}
+
+/**
+ * ✅ 사용 처리 확인창. 사용 가능한 이용권만 [사용 처리] 를 낸다 — 이미 쓴/만료/환불은 이유만 말하고 닫게 한다
+ *   (누를 수 없는 버튼을 띄우면 사장님은 눌러 보고서야 안다).
+ */
+function UseConfirmSheet({ pending, onCancel, onConfirm }: { pending: PendingUse; onCancel: () => void; onConfirm: () => void }) {
+  const { t } = useTranslation()
+  const st = pending.status
+  const usable = !pending.loading && (st == null || st === 'unused')
+  const blocked = st === 'used'
+    ? t('seller.scan.alreadyUsed', { defaultValue: '이미 사용된 이용권이에요' })
+    : st && st !== 'unused'
+      ? t('seller.scan.notUsable', { defaultValue: '사용할 수 없는 이용권이에요 (만료·환불)' })
+      : null
+  return (
+    <div className="fixed inset-0 z-[10500] flex items-end sm:items-center justify-center bg-black/50 p-4" role="presentation" onClick={onCancel}>
+      <div role="dialog" aria-modal="true" aria-labelledby="use-confirm-title" onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-sm rounded-3xl bg-surface p-6 shadow-lift">
+        {pending.loading ? (
+          <p className="flex items-center justify-center gap-2 py-6 text-[15px] text-gray-500 dark:text-gray-400">
+            <Loader2 className="h-4 w-4 animate-spin" /> {t('seller.scan.checking', { defaultValue: '이용권 확인 중…' })}
+          </p>
+        ) : (
+          <>
+            <p className="text-[13px] text-gray-500 dark:text-gray-400">{pending.restaurantName || pending.code}</p>
+            <p className="mt-1 text-[17px] font-bold text-gray-900 dark:text-white">{pending.productName || pending.code}</p>
+            <h2 id="use-confirm-title" className={`mt-4 text-[15px] font-bold ${blocked ? 'text-tone-bad' : 'text-gray-900 dark:text-white'}`}>
+              {blocked ?? t('seller.scan.confirmQ', { defaultValue: '사용 처리하시겠습니까?' })}
+            </h2>
+            {!blocked && (
+              <p className="mt-1 text-[13px] text-gray-500 dark:text-gray-400">{t('seller.scan.confirmNote', { defaultValue: '사용 처리하면 되돌릴 수 없어요.' })}</p>
+            )}
+            <div className="mt-5 flex gap-2">
+              <button type="button" onClick={onCancel}
+                className="flex-1 rounded-full bg-gray-100 dark:bg-white/10 py-3 text-[15px] font-bold text-gray-700 dark:text-gray-200">
+                {blocked ? t('common.close', { defaultValue: '닫기' }) : t('common.cancel', { defaultValue: '취소' })}
+              </button>
+              {usable && !blocked && (
+                <button type="button" onClick={onConfirm} autoFocus
+                  className="flex-1 rounded-full bg-brand py-3 text-[15px] font-bold text-white">
+                  {t('seller.scan.useBtn', { defaultValue: '사용 처리' })}
+                </button>
+              )}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   )
 }

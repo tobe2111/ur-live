@@ -9,6 +9,7 @@
  */
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import SegmentedTabs from '@/components/ui/segmented-tabs'
 import { useNavigate } from 'react-router-dom'
 import { AlertCircle, Plus, Ticket } from 'lucide-react'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
@@ -84,20 +85,19 @@ export default function SellerGroupBuyPage() {
         </div>
 
         {/* ── 세그먼트 — 안 고른 것도 흰 면 위 글자다(테두리 박스로 그리지 않는다). ── */}
-        <div className="flex rounded-xl bg-white p-1 border border-rule md:w-fit">
-          {([
-            ['on', t('seller.vouchers.onSale', { defaultValue: '판매 중' }), buckets.on.length],
-            ['off', t('seller.vouchers.paused', { defaultValue: '판매 중지' }), buckets.off.length],
-            ['ended', t('seller.vouchers.ended', { defaultValue: '종료' }), buckets.ended.length],
+        {/* 🧭 2026-10-06 (대표 "판매 중지 0 이 2줄로 나뉜다"): 줄바꿈 금지·글자 길이만큼 자리는 `SegmentedTabs` 가 지킨다. */}
+        <SegmentedTabs<Seg>
+          className="md:w-fit"
+          value={seg}
+          onChange={setSeg}
+          items={[
+            { id: 'on', label: t('seller.vouchers.onSale', { defaultValue: '판매 중' }), count: buckets.on.length },
+            { id: 'off', label: t('seller.vouchers.paused', { defaultValue: '판매 중지' }), count: buckets.off.length },
+            { id: 'ended', label: t('seller.vouchers.ended', { defaultValue: '종료' }), count: buckets.ended.length },
             // 🗑️ 삭제분이 있을 때만 칸을 만든다 — 늘 비어 있는 탭은 자리만 먹는다.
-            ...(buckets.deleted.length > 0 ? [['deleted', t('seller.vouchers.deletedSeg', { defaultValue: '삭제됨' }), buckets.deleted.length] as [Seg, string, number]] : []),
-          ] as Array<[Seg, string, number]>).map(([k, label, n]) => (
-            <button key={k} type="button" onClick={() => setSeg(k)} aria-pressed={seg === k}
-              className={`flex-1 rounded-lg px-4 py-2 text-[13.5px] font-bold transition-colors md:flex-none ${seg === k ? 'bg-brand text-white' : 'text-gray-400 hover:text-gray-700'}`}>
-              {label} {formatNumber(n)}
-            </button>
-          ))}
-        </div>
+            ...(buckets.deleted.length > 0 ? [{ id: 'deleted' as Seg, label: t('seller.vouchers.deletedSeg', { defaultValue: '삭제됨' }), count: buckets.deleted.length }] : []),
+          ]}
+        />
 
         {logs && logs.total > 5 && logs.pin_errors > logs.success_count && (
           <p className="flex items-center gap-1.5 rounded-lg bg-tone-warn-bg px-3 py-2 text-[12px] font-semibold text-tone-warn">
