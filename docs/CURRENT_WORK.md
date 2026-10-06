@@ -5494,7 +5494,7 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 403건 · 최신순 · 이 목록은 자동 생성된다._
+_총 404건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-10-06**
 - [소급 기록 — 이미 환불한 이용권이 장부에 안 적혀 있던 1건 (2026-10-06)](handoff/2026-10-06-voucher-refund-backfill.md)
@@ -5504,6 +5504,7 @@ _총 403건 · 최신순 · 이 목록은 자동 생성된다._
 - [2026-10-06 — 첫 화면이 같은 것을 두 번 받던 것 (전수 수리 + 가드)](handoff/2026-10-06-first-screen-duplicate-fetch.md)
 - [만료 환불을 주문 장부에 적는다 — 이중환불 구멍 (2026-10-06)](handoff/2026-10-06-expired-refund-booked.md)
 - [의존성 권고 · 셀러 40px 눈금 · 정산 패널 봉투 (2026-10-06)](handoff/2026-10-06-deps-rung-envelope.md)
+- [`D1 Migration Auto-Apply` 는 **아무것도 안 하고 success 를 찍는다** — 머지 후 라이브 로그로 발견 (2026-10-06)](handoff/2026-10-06-d1-migrate-silent-noop.md)
 - [유어애즈 월 예산 — 목표를 "포함분 안" 에서 **초과 $0** 으로 (2026-10-06)](handoff/2026-10-06-ads-zero-overage-budget.md)
 **2026-10-02**
 - [S-EVR1 판정 — 만료 이용권 자동환불이 처음으로 돌았다 (2026-10-02 03:20 KST)](handoff/2026-10-02-expired-refund-booking.md)

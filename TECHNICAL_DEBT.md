@@ -1019,7 +1019,12 @@ TD-001 해결 시 자동 후속 가능:
 - **console.log unguarded (browser)**: `useSessionValidation`, `useCart`, `auth-token.ts` 5건 DEV gate 추가. (worker code 는 의도적 제외 — Cloudflare Workers 표준 logging)
 
 ### ⚠️ 사용자 액션 필요 (코드로 자동 해결 불가)
-- **TD-001 D1 Migration CI**: Cloudflare Dashboard → API Tokens → 기존 token 에 `Account > D1 > Edit` 권한 추가 필요. 30분 작업이지만 사용자만 가능.
+- **TD-001 D1 Migration CI**: 🔴 **2026-10-06 정정 — 기록된 원인이 틀렸다.** 라이브 로그(run `37465121609`) 실측:
+  ① `Couldn't find DB with name 'ur-live'` → **`D1_DATABASE_NAME` 시크릿 미설정**이라 기본값 `ur-live` 를 찾는데, 실제 본진 이름은 `toss-live-commerce-db`(`wrangler.toml` 의 `DB` 바인딩)다. **D1 권한과 무관한 이름 문제**이고 권한만 추가해도 안 고쳐진다.
+  ② `⚠️ ADMIN_REPAIR_TOKEN 미설정 — repair-schema 호출 skip` → 그 스텝은 **한 번도 실행된 적이 없다**(기존 기록에 언급 자체가 없었다).
+  그리고 모든 실패를 `|| echo "⚠️ 실패 (already applied?)"` 가 삼켜 **잡이 success 로 찍힌다** — 몇 달간 초록불이었던 이유.
+  ⚠️ 고치면 **main 푸시마다 프로덕션 D1 에 마이그레이션이 실제로 적용되기 시작**하므로 쌓인 분의 영향을 먼저 볼 것. 상세·판단 항목: `docs/handoff/2026-10-06-d1-migrate-silent-noop.md`.
+  (`Account > D1 > Edit` 권한은 CI 시크릿이라 세션이 못 읽어 **확인 못 했다** — 필요할 수는 있으나 ①②가 선행이다.)
 - **TD-003 유령 CF 프로젝트**: Dashboard 직접 확인/삭제 필요.
 - **TD-008 INTERNAL_CRON_TOKEN**: `wrangler secret put INTERNAL_CRON_TOKEN` 또는 Pages Variables 에 등록 필요.
 

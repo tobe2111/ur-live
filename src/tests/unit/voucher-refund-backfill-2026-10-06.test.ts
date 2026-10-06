@@ -220,10 +220,29 @@ describe('배선 — repair-schema 가 실제로 부른다', () => {
     expect(REPAIR).toMatch(/backfill:voucher-refund-booking 수동확인[\s\S]{0,200}status: 'error'/)
   })
 
-  it('d1-migrate 워크플로가 repair-schema 를 자동 호출한다 (사람이 누를 것이 없다)', () => {
+  // 🩸 2026-10-06 — **이 자리에서 틀렸다. 고친 기록을 남긴다.**
+  //   머지 직후 라이브 로그를 읽고서야 알았다: `d1-migrate.yml` 의 repair-schema 호출은
+  //   `ADMIN_REPAIR_TOKEN` 이 **미설정**이라 `⚠️ … 호출 skip` 으로 끝난다(실측 run 37465121609).
+  //   같은 워크플로의 마이그레이션 적용도 `Couldn't find DB with name 'ur-live'` 로 전부 실패하는데
+  //   `|| echo "⚠️ 실패 (already applied?)"` 가 삼켜 **잡은 success 로 찍힌다.**
+  //   ⇒ 그 워크플로는 **보증이 아니다.** 소급 기록을 실제로 돌리는 것은 아래 **일간 cron** 이다.
+  //   그래서 단언을 cron 으로 **재조준**한다(워크플로 쪽은 지우지 않고 '보조 경로'로만 남긴다 —
+  //   토큰이 채워지면 그날부터 다시 일하므로 배선 자체는 지켜야 한다).
+  it('일간 cron(schema-repair-daily)이 runSchemaRepair 를 부른다 — 이게 실제 보증이다', () => {
+    const lane = readCode('src/worker/cron/daily-lane.ts')
+    expect(lane).toContain("run('schema-repair-daily'")
+    expect(lane).toMatch(/schema-repair-daily[\s\S]{0,400}runSchemaRepair\(env\.DB\)/)
+  })
+
+  it('그 cron 이 등록돼 있다 — 등록이 빠지면 조용히 아무 일도 안 일어난다', () => {
+    const sched = readCode('src/worker/scheduled.ts')
+    expect(sched).toMatch(/runDailyLane\('maintenance'/)
+  })
+
+  it('보조 경로: d1-migrate 워크플로의 배선은 유지한다(지금은 토큰 미설정으로 skip)', () => {
     const wf = readRaw('.github/workflows/d1-migrate.yml')
     expect(wf).toContain('/api/_internal/repair-schema')
-    // 이 파일이 바뀌면 워크플로가 트리거돼야 소급 기록이 실제로 돈다.
+    // 이 파일이 바뀌면 워크플로가 트리거되는 것 자체는 맞다(호출이 skip 되는 것과 별개).
     expect(wf).toContain('src/worker/routes/repair-schema.routes.ts')
   })
 })

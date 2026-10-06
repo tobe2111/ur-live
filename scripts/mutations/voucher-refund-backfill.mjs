@@ -68,4 +68,23 @@ export default [
     test: TEST,
     why: '상한이 아직 높은 주문이 ok 로 올라가면 초록불 뒤에 구멍이 남는다 — 그게 이 결함의 원래 수명이다.',
   },
+  // 🩸 2026-10-06 — 머지 후 라이브 로그로 알게 된 것: `d1-migrate.yml` 의 repair-schema 호출은
+  //   토큰 미설정으로 skip 되고 워크플로는 success 로 찍힌다. 실제 보증은 일간 cron 이므로
+  //   그 두 자리(호출·등록)를 주입으로 고정한다 — 둘 중 하나만 빠져도 조용히 아무 일도 안 일어난다.
+  {
+    name: '소급기록 — 일간 cron 의 runSchemaRepair 호출 제거',
+    file: 'src/worker/cron/daily-lane.ts',
+    find: 'const result = await runSchemaRepair(env.DB)',
+    replace: 'const result = { columns: [] as never[], tables: [] as never[] }',
+    test: TEST,
+    why: '유일한 실제 보증 경로다 — 여기가 끊기면 소급 기록이 영원히 안 돌고 에러도 안 난다.',
+  },
+  {
+    name: '소급기록 — maintenance 레인 등록 제거',
+    file: 'src/worker/scheduled.ts',
+    find: "runDailyLane('maintenance'",
+    replace: "runDailyLaneDISABLED('maintenance'",
+    test: TEST,
+    why: 'cron 이 등록되지 않으면 schema-repair-daily 가 한 번도 발화하지 않는다(조용한 부재).',
+  },
 ]
