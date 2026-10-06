@@ -48,13 +48,20 @@ describe('② 산 뒤 도착지 — 교환권은 교환권 보관함으로', () 
     expect(FLOW_CONFIG.voucher_deal.successPath).toBe('/my-gifticons')
   })
   it('딜 교환 성공 직후 이동이 옛 이용권 지갑으로 돌아가 있지 않다', () => {
-    for (const p of ['src/pages/VoucherDetailPage.tsx', 'src/pages/GroupBuyDetailPage.tsx', 'src/pages/ProductDetailPage.tsx']) {
+    // 🪙 2026-10-06: GroupBuyDetailPage 는 아래 별도 시험으로 — 그 화면은 **이용권**도 딜로 판다(대표
+    //   "오롯이 100%로 딜로 이용권을 구매할 수 있어야"). 이용권까지 교환권 보관함으로 보내던 것이 결함이었다.
+    for (const p of ['src/pages/VoucherDetailPage.tsx', 'src/pages/ProductDetailPage.tsx']) {
       const src = strip(read(p))
       // 교환권 발급(딜) 직후의 navigate 는 전부 교환권 보관함이어야 한다.
       const afterInvalidate = src.match(/invalidateVouchers\(\)\s*\n\s*navigate\('([^']+)'\)/g) ?? []
       expect(afterInvalidate.length, `${p}: 딜 발급 후 navigate 를 못 찾음(리팩토링됐으면 이 테스트도 함께 고칠 것)`).toBeGreaterThan(0)
       for (const m of afterInvalidate) expect(m, p).toContain('/my-gifticons')
     }
+  })
+  it('이용권 상세의 딜 결제 — 교환권은 보관함, 이용권은 카드와 같은 완료 화면', () => {
+    const src = strip(read('src/pages/GroupBuyDetailPage.tsx'))
+    expect(src).toMatch(/navigate\(flow === 'voucher_deal' \? '\/my-gifticons' : `\/group-buy\/confirm-payment\?deal=1&/)
+    expect(src, '옛 이용권 지갑(/my-vouchers)으로 딜 결제 직후 보내지 않는다').not.toMatch(/invalidateVouchers\(\)\s*\n\s*navigate\('\/my-vouchers'\)/)
   })
   it('KT 발송 완료·실패 알림도 교환권 보관함으로 보낸다', () => {
     const src = read('src/worker/utils/kt-alpha-auto-send.ts')

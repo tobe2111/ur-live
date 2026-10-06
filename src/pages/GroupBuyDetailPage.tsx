@@ -52,7 +52,7 @@ import OtherDealsRow from './group-buy/OtherDealsRow'
 import ShareRewardBanner from './group-buy/ShareRewardBanner'
 import DeferUntilVisible from './group-buy/DeferUntilVisible'
 import DealPayButton, { useCanPayWithDeal } from './group-buy/DealPayButton'
-import DealUseChooser, { useDealPlan } from './group-buy/DealUseChooser'
+import DealUseChooser, { useDealPlan, defaultDealUse, coversAll } from './group-buy/DealUseChooser'
 import DealBottomBar from './group-buy/DealBottomBar'
 import { handleDealJoinError } from './group-buy/deal-join-error'
 import { useProductViewBeacon } from '@/hooks/useProductViewBeacon'
@@ -386,7 +386,7 @@ export default function GroupBuyDetailPage() {
     // 💰 2026-08-31: 이용권도 딜로 살 수 있다(대표 방향 — 상품 마진 대신 현금 출구에 마진).
     //   `deal_only=1` 교환권은 원래 딜 전용이고, 이용권은 **사용자가 딜을 고른 경우에만** 이 경로.
     //   기본은 여전히 카드다 — 대다수 소비자는 딜 잔액이 없다.
-    if (flow === 'voucher_deal' || payWithDeal) {
+    if (flow === 'voucher_deal' || payWithDeal || (canPayWithDeal && coversAll(dealPlan, dealUse))) { // 🪙 2026-10-06 딜이 총액을 다 덮으면 카드를 안 탄다 — 사유는 `DealUseChooser` 머리말
       // 딜 결제 흐름 (교환권 전용 → 2026-08-31 이후 이용권도 선택 시)
       setJoining(true)
       reportFunnel('click', productId)
@@ -401,10 +401,11 @@ export default function GroupBuyDetailPage() {
           quantity, payment_method: 'deal', ref, idempotency_key,
         })
         if (res.data?.success) {
-          toast.success(flow === 'voucher_deal' ? '🎁 교환권 발급 완료' : '🎫 이용권 발급 완료')
+          if (flow === 'voucher_deal') toast.success('🎁 교환권 발급 완료') // 이용권은 아래 완료 화면이 말한다
           fireAffiliateTrack(res?.data?.data?.order_id ?? null, Number(id), detail?.name) // 큐레이터 적립 (fail-soft)
           invalidateVouchers()
-          navigate('/my-gifticons')  // 🎟️ 2026-08-31 지갑 분리 — 교환권(voucher_deal)은 교환권 보관함으로
+          // 🎟️ 교환권은 교환권 보관함으로. 🪙 2026-10-06 이용권(딜 전액)은 카드 결제와 **같은 완료 화면**으로 — 종전엔 교환권 보관함으로 잘못 보냈다.
+          navigate(flow === 'voucher_deal' ? '/my-gifticons' : `/group-buy/confirm-payment?deal=1&productId=${productId}&qty=${quantity}&amount=${Number(res.data?.data?.amount) || total}`)
         } else {
           toast.error(res.data?.error || '교환 실패')
         }
@@ -866,7 +867,8 @@ export default function GroupBuyDetailPage() {
           joining={joining}
           onBuy={() => handleJoin()}
           onPrelaunchApply={() => document.getElementById('fcfs-apply-block')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-          dealSlot={<DealUseChooser plan={!isPrelaunch && isJoinable ? dealPlan : null} value={dealUse ?? dealPlan?.max_deal_usable ?? 0} onChange={setDealUse} />}
+          dealSlot={<DealUseChooser plan={!isPrelaunch && isJoinable ? dealPlan : null} value={dealUse ?? defaultDealUse(dealPlan)} onChange={setDealUse} />}
+          allDeal={canPayWithDeal && !isPrelaunch && isJoinable && coversAll(dealPlan, dealUse)}
         />
       </aside>
       </div>{/* /lg 그루폰식 그리드 */}

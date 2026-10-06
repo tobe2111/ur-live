@@ -21,10 +21,16 @@
  * `GET /api/group-buy/deal-plan/:productId` 가 준 값만 쓴다. 게이트가 꺼져 있으면 `enabled=false`
  * 가 와서 **이 블록이 통째로 안 뜬다** — 없는 선택지를 그리지 않는다.
  *
- * ## 왜 '전부 딜로'가 여기 없나
- * 딜이 총액을 다 덮으면 그건 부분결제가 아니라 **전부-딜**이고, 카드를 아예 안 타는 다른 흐름이다
- * (`payment_method='deal'`). 그 버튼은 형제 `DealPayButton` 이 잔액이 충분할 때만 따로 낸다.
- * 여기서 한 번 더 내면 같은 화면에 같은 뜻의 버튼이 둘이 된다.
+ * ## '전부 딜로' 는 **여기** 있다 (2026-10-06 대표 — 종전 판단을 뒤집는다)
+ * 대표: *"오롯이 100%로 딜로 이용권을 구매할 수 있어야 한다는거야."*
+ * 종전엔 전부-딜을 형제 `DealPayButton`(주 버튼 **아래** 테두리 버튼)이 따로 냈고, 이 칸은 일부러 그걸
+ * 안 냈다("같은 뜻의 버튼이 둘"). 그 결과: 딜이 충분한 사람도 기본값(최대 = 총액 − 카드최소 100원)을
+ * 따라 큰 버튼을 누르면 **카드 100원이 붙었다**(라이브 주문 90: 7,500 = 딜 7,400 + 카드 100,
+ * 구매 전 잔액 12,100). 부분결제는 `MIN_CARD_AMOUNT` 때문에 **구조적으로 100% 에 도달하지 못한다** —
+ * 0원 카드 결제는 PG 가 거절한다. 그리고 PC 구매 박스에는 그 보조 버튼조차 없었다.
+ * ⇒ 한 결정(딜을 얼마나 쓰나)은 한 칸에서 한다: 다 덮을 수 있으면 **[전부 딜로] 가 기본**이고,
+ *   그 선택이면 카드를 아예 안 타는 흐름(`payment_method='deal'`)으로 간다(`coversAll` 이 판정).
+ *   이제 `DealPayButton` 은 이 칸이 안 뜰 때(부분결제 게이트 OFF)의 대체물로만 남는다.
  */
 import { useEffect, useState } from 'react'
 import api from '@/lib/api'
@@ -45,6 +51,18 @@ export interface DealPlan {
  * 결제 시작 전 딜 계획을 서버에서 읽는다. 로그인 안 했거나 상품/수량이 없으면 부르지 않는다.
  * 실패는 **조용히 없음**으로 둔다 — 조회가 안 된다고 구매를 막으면 그게 더 큰 손해다.
  */
+/** 아무것도 안 고른 사람의 딜 사용액 — 다 덮을 수 있으면 **전부**(카드 0원), 아니면 최대(총액 − 카드최소). */
+export function defaultDealUse(plan: DealPlan | null): number {
+  if (!plan || !plan.enabled) return 0
+  return plan.can_pay_all_with_deal ? plan.total_amount : plan.max_deal_usable
+}
+
+/** 고른 딜이 총액을 다 덮는가 — 그러면 부분결제가 아니라 카드를 안 타는 **전부-딜** 흐름이다. */
+export function coversAll(plan: DealPlan | null, dealUse: number | null): boolean {
+  if (!plan || !plan.enabled || !plan.can_pay_all_with_deal || plan.total_amount <= 0) return false
+  return (dealUse ?? defaultDealUse(plan)) >= plan.total_amount
+}
+
 export function useDealPlan(opts: { productId: number; qty: number; enabled: boolean }): DealPlan | null {
   const [plan, setPlan] = useState<DealPlan | null>(null)
   const { productId, qty, enabled } = opts
@@ -59,7 +77,7 @@ export function useDealPlan(opts: { productId: number; qty: number; enabled: boo
   return plan
 }
 
-type Mode = 'max' | 'part' | 'none'
+type Mode = 'all' | 'max' | 'part' | 'none'
 
 export default function DealUseChooser({ plan, value, onChange }: {
   plan: DealPlan | null
@@ -67,19 +85,24 @@ export default function DealUseChooser({ plan, value, onChange }: {
   value: number
   onChange: (dealUse: number) => void
 }) {
-  const [mode, setMode] = useState<Mode>('max')
+  const [mode, setMode] = useState<Mode | null>(null)
   const [open, setOpen] = useState(false)
 
   // 게이트가 꺼졌거나 쓸 딜이 없으면 아무것도 그리지 않는다.
   if (!plan || !plan.enabled || plan.max_deal_usable <= 0) return null
 
   const max = plan.max_deal_usable
-  const used = Math.min(Math.max(0, value), max)
+  const canAll = plan.can_pay_all_with_deal
+  // 전부-딜이면 상한이 총액이다(카드를 안 타므로 카드최소액이 없다). 직접 입력은 여전히 부분결제 상한까지.
+  const all = coversAll(plan, value)
+  const used = all ? plan.total_amount : Math.min(Math.max(0, value), max)
   const card = Math.max(0, plan.total_amount - used)
+  // 고른 적이 없으면 값에서 모드를 읽는다 — 기본값(전부/최대)이 버튼에 그대로 켜져 보이게.
+  const current: Mode = mode ?? (all ? 'all' : used === 0 ? 'none' : used === max ? 'max' : 'part')
 
   const pick = (m: Mode) => {
     setMode(m)
-    onChange(m === 'max' ? max : m === 'none' ? 0 : Math.min(value || max, max))
+    onChange(m === 'all' ? plan.total_amount : m === 'max' ? max : m === 'none' ? 0 : Math.min(value || max, max))
   }
 
   const btn = (m: Mode, label: string) => (
@@ -87,12 +110,12 @@ export default function DealUseChooser({ plan, value, onChange }: {
       key={m}
       type="button"
       onClick={() => pick(m)}
-      aria-pressed={mode === m}
+      aria-pressed={current === m}
       style={{
         flex: 1, height: 36, borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer',
         border: 'none',
-        background: mode === m ? 'var(--gbd-cta-bg)' : 'var(--gbd-chip-bg, rgba(127,127,127,.10))',
-        color: mode === m ? 'var(--gbd-cta-fg, #fff)' : 'var(--gbd-text, var(--gbd-ink))',
+        background: current === m ? 'var(--gbd-cta-bg)' : 'var(--gbd-chip-bg, rgba(127,127,127,.10))',
+        color: current === m ? 'var(--gbd-cta-fg, #fff)' : 'var(--gbd-text, var(--gbd-ink))',
       }}
     >{label}</button>
   )
@@ -102,8 +125,9 @@ export default function DealUseChooser({ plan, value, onChange }: {
       {/* 접혀 있어도 결과를 못 박는다 — 결제창에 가서야 알게 되는 일이 없도록. */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 30 }}>
         <span style={{ flex: 1, fontSize: 12.5, color: 'var(--gbd-sub)', letterSpacing: '-.01em' }}>
-          딜 <b style={{ color: 'var(--gbd-ink)' }}>{formatNumber(used)}</b>
-          {' · '}카드 <b style={{ color: 'var(--gbd-ink)' }}>{formatNumber(card)}원</b>
+          {all
+            ? <>딜 <b style={{ color: 'var(--gbd-ink)' }}>{formatNumber(used)}</b>으로 전부 결제</>
+            : <>딜 <b style={{ color: 'var(--gbd-ink)' }}>{formatNumber(used)}</b>{' · '}카드 <b style={{ color: 'var(--gbd-ink)' }}>{formatNumber(card)}원</b></>}
         </span>
         <button
           type="button"
@@ -119,14 +143,14 @@ export default function DealUseChooser({ plan, value, onChange }: {
       {open && (
         <div style={{ marginTop: 6, padding: 10, borderRadius: 12, background: 'var(--gbd-chip-bg, rgba(127,127,127,.07))' }}>
           <p style={{ fontSize: 12, color: 'var(--gbd-sub)', margin: '0 0 8px' }}>
-            보유 딜 {formatNumber(plan.balance)}딜 · 이 결제엔 최대 {formatNumber(max)}딜까지
+            보유 딜 {formatNumber(plan.balance)}딜{canAll ? ' · 전부 딜로 낼 수 있어요' : ` · 이 결제엔 최대 ${formatNumber(max)}딜까지`}
           </p>
           <div style={{ display: 'flex', gap: 6 }}>
-            {btn('max', '최대로 쓰기')}
+            {canAll ? btn('all', '전부 딜로') : btn('max', '최대로 쓰기')}
             {btn('part', '직접 입력')}
             {btn('none', '안 쓰기')}
           </div>
-          {mode === 'part' && (
+          {current === 'part' && (
             <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
               <input
                 type="number" inputMode="numeric" min={0} max={max}

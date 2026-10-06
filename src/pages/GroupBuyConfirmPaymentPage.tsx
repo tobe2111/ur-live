@@ -48,12 +48,23 @@ export default function GroupBuyConfirmPaymentPage() {
    *   종전 값으로 떨어진다(없는 숫자를 지어내지 않는다).
    */
   const [paid, setPaid] = useState<{ amount: number; dealUsed: number } | null>(null)
+  /**
+   * 🪙 2026-10-06 딜 전액 결제(`?deal=1`) — 토스를 안 탔으므로 승인할 것이 없다. 주문·이용권은 `/join`
+   *   (payment_method='deal')이 **이미 만들었고**, 이 화면은 카드 결제와 같은 완료 티켓만 보여 준다.
+   *   표시 전용이다 — 이 쿼리로 아무것도 발급되지 않는다(위조해도 남의 이용권이 생기지 않는다).
+   */
+  const isDealOnly = params.get('deal') === '1'
   const isCart = params.get('cart') === '1'
   const productId = Number(params.get('productId') || 0)
   const qty = Math.max(1, Number(params.get('qty') || 1))
 
   useEffect(() => {
     if (processedRef.current) return
+    if (isDealOnly && productId && amount > 0) {
+      setPaid({ amount, dealUsed: amount })
+      setState('success')
+      return
+    }
     if (!paymentKey || !orderId || !amount || (!isCart && !productId)) {
       setErrorMsg('결제 정보가 올바르지 않습니다.')
       setState('error')
@@ -93,7 +104,7 @@ export default function GroupBuyConfirmPaymentPage() {
         setErrorMsg(msg)
         setState('error')
       })
-  }, [paymentKey, orderId, amount, productId, qty, isCart, navigate])
+  }, [paymentKey, orderId, amount, productId, qty, isCart, isDealOnly, navigate])
 
   if (state === 'success') {
     // 🧺 장바구니에서 **한 상품만** 샀으면 기존 티켓 그대로(같은 화면을 두 벌로 만들지 않는다).
