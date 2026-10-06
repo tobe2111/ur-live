@@ -5494,19 +5494,21 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 399건 · 최신순 · 이 목록은 자동 생성된다._
+_총 403건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-10-06**
-- [로컬은 clean 인데 GitHub 은 충돌 — Verify 가 *부재*로 남는 함정 (2026-10-06)](handoff/2026-10-06-github-side-merge.md)
-- [만료 환불을 주문 장부에 적는다 — 이중환불 구멍 (2026-10-06)](handoff/2026-10-06-expired-refund-booked.md)
+- [소급 기록 — 이미 환불한 이용권이 장부에 안 적혀 있던 1건 (2026-10-06)](handoff/2026-10-06-voucher-refund-backfill.md)
 - [철거로 잃은 둘을 원본 화면에 복원 (2026-10-06)](handoff/2026-10-06-teardown-losses.md)
+- [로컬은 clean 인데 GitHub 은 충돌 — Verify 가 *부재*로 남는 함정 (2026-10-06)](handoff/2026-10-06-github-side-merge.md)
 - [5일치 점검 — CI 판정 마감 + 라이브에서 나온 머니 발견 1건 (2026-10-06)](handoff/2026-10-06-five-day-sweep.md)
 - [2026-10-06 — 첫 화면이 같은 것을 두 번 받던 것 (전수 수리 + 가드)](handoff/2026-10-06-first-screen-duplicate-fetch.md)
+- [만료 환불을 주문 장부에 적는다 — 이중환불 구멍 (2026-10-06)](handoff/2026-10-06-expired-refund-booked.md)
 - [의존성 권고 · 셀러 40px 눈금 · 정산 패널 봉투 (2026-10-06)](handoff/2026-10-06-deps-rung-envelope.md)
 - [유어애즈 월 예산 — 목표를 "포함분 안" 에서 **초과 $0** 으로 (2026-10-06)](handoff/2026-10-06-ads-zero-overage-budget.md)
 **2026-10-02**
 - [S-EVR1 판정 — 만료 이용권 자동환불이 처음으로 돌았다 (2026-10-02 03:20 KST)](handoff/2026-10-02-expired-refund-booking.md)
 **2026-10-01**
+- [2026-10-01 — 이용권 매출 단일 레일 (+ 만료 환불 결재 종결)](handoff/2026-10-01-voucher-credit-single-rail.md)
 - [2026-10-01 — 마이 시트 측정 2차 + 정산 화면이 응답 하나에 통째로 죽던 것](handoff/2026-10-01-seller-phone-audit-and-settlements.md)
 - [2026-10-01 — 셀러 공용 chrome 탭 타깃 · 폰 측정 완결 · 시드 기제 합침](handoff/2026-10-01-seller-chrome-tap-reach.md)
 - [마이의 손수 시트 철거 — 같은 일에 화면이 하나가 됐다 (2026-10-01)](handoff/2026-10-01-my-sheet-teardown.md)
