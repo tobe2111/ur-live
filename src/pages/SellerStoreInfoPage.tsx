@@ -166,11 +166,19 @@ export default function SellerStoreInfoPage() {
                       className={`${INPUT} resize-y`} />
                   </Field>
                   <Field label="브랜드 컬러">
-                    <div className="flex flex-wrap items-center gap-1.5">
+                    {/* 📏 2026-10-06: 눌리는 박스는 40px, **보이는 원은 28px 그대로**.
+                        색을 버튼이 아니라 안쪽 span 이 칠하므로 팔레트 모양(원 지름·선택 링)이 안 바뀐다.
+                        `tap-reach` 는 쓸 수 없다 — `DashboardCard` 가 `overflow-hidden` 이라 ::after
+                        밴드가 잘려 히트 테스트까지 죽는다. 40px 피치가 되어 원 간격만 6 → 12px 로 넓어진다
+                        (그래서 `gap-1.5` → `gap-0` — 간격은 이제 박스 여백이 만든다). */}
+                    <div className="flex flex-wrap items-center gap-0">
                       {SWATCHES.map((c) => (
                         <button key={c} type="button" onClick={() => set('brand_color', c)}
-                          aria-label={`색상 ${c}`} style={{ background: c }}
-                          className={`h-7 w-7 rounded-full border ${form.brand_color === c ? 'ring-2 ring-offset-1 ring-brand border-transparent' : 'border-rule'}`} />
+                          aria-label={`색상 ${c}`}
+                          className="grid h-10 w-10 place-items-center rounded-full">
+                          <span aria-hidden style={{ background: c }}
+                            className={`block h-7 w-7 rounded-full border ${form.brand_color === c ? 'ring-2 ring-offset-1 ring-brand border-transparent' : 'border-rule'}`} />
+                        </button>
                       ))}
                       <input value={form.brand_color} onChange={(e) => set('brand_color', e.target.value)}
                         placeholder="#1C69EF" className={`${INPUT} ml-1 w-28`} />

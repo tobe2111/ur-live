@@ -39,15 +39,17 @@ fi
 # 🗂️ 인계 목차 자동 생성(2026-07-29) — docs/handoff/ 가 staged 면 목차를 다시 만들어 함께 stage.
 #   사람이 목차를 손으로 고치지 않게 만드는 것이 요점이다(그래야 두 세션이 같은 줄을 다투지 않는다).
 if git diff --cached --name-only --diff-filter=ACMR | grep -q '^docs/handoff/'; then
-  echo "==> Pre-commit: 인계 목차 재생성..."
+  # 🔀 2026-10-06 (대표 "남은 것도 다 해줘") — 목차는 **추적 안 하는 사이드카**로 간다.
+  #   종전엔 `docs/CURRENT_WORK.md` 안의 생성 블록을 `git add` 했는데, 그러면 handoff 파일을
+  #   만든 **모든 브랜치가 같은 블록을 고치므로** 내용상 무관한데도 머지마다 충돌했다
+  #   (2026-07-29 하루 10번+ · 2026-10-06 하루 3번). `.gitattributes` 의 `merge=union` 은
+  #   **로컬 머지에만** 먹고 GitHub 서버측 머지는 그 드라이버를 안 쓴다 — 그래서 PR 이 멎고
+  #   `Verify` 가 실패도 아니고 **부재**로 남았다(머지 커밋을 못 만들어 디스패치 0).
+  echo "==> Pre-commit: 인계 목차 재생성(사이드카 — stage 안 함)..."
   node scripts/generate-handoff-index.mjs > /dev/null 2>&1 || true
   # 🚦 기능 현황판 — feature-flags.ts 에서 재생성 + stage (손 관리하면 반드시 낡는다)
   node scripts/generate-feature-status.mjs > /dev/null 2>&1 || true
   git add docs/FEATURE_STATUS.md > /dev/null 2>&1 || true
-  if ! git diff --quiet docs/CURRENT_WORK.md 2>/dev/null; then
-    git add docs/CURRENT_WORK.md
-    echo "   ✓ CURRENT_WORK.md 목차 재생성 + staged"
-  fi
 fi
 
 # 📑 소개서(docs/proposals/) 자동 동기화 블록 재생성 — 사용자 "무조건" 요구로 매 커밋 실행.
@@ -548,4 +550,4 @@ git config merge.filesize-baseline.name "file-size baseline: 키별 최대값 �
 git config merge.filesize-baseline.driver "node scripts/merge-file-size-baseline.mjs %A %O %B %P"
 echo ""
 echo "==> 병합 드라이버 등록됨: scripts/file-size-baseline.json (키별 최대값 자동 병합)"
-echo "    docs/CURRENT_WORK.md 는 .gitattributes 의 merge=union (git 내장) 으로 양쪽 보존."
+echo "    (docs/CURRENT_WORK.md 의 merge=union 은 2026-10-06 제거 — 목차가 사이드카로 갔다.)"

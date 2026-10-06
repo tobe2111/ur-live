@@ -158,10 +158,14 @@ describe('🧾 정산 패널 — 서버 봉투와 클라 소비가 같은 키를
  * `DashboardCard` 가 `overflow-hidden`(line 30)이라 `::after` 밴드가 잘려 **히트 테스트까지 죽는다.**
  * 기간 칩은 거기에 `overflow-x-auto` 까지 겹친다. 위 머리말이 기록해 둔 그 이유 그대로다.
  *
- * ## ❌ 안 고친 것 (결함이 아니라 판단 — 대표 판단 대기)
+ * ## ✅ 견본 6개도 닫혔다 (2026-10-06 후속 — 대표 *"남은 것도 다 해줘"*)
  *
- * - **브랜드 컬러 견본 6개(28×28)** `SellerStoreInfoPage` — 색상 팔레트 칩이다. 40×40 이면 팔레트
- *   모양이 실제로 달라지고, `tap-reach` 는 위 이유로 못 쓴다.
+ * 여기 *"40×40 이면 팔레트 모양이 실제로 달라진다"* 고 적어 둔 그 자리다. 기법이 **셋째**였다:
+ * **눌리는 박스를 40px 로 두고 색은 안쪽 28px span 이 칠한다** ⇒ 보이는 원 지름·선택 링이
+ * 한 픽셀도 안 바뀌면서 타깃만 커진다. 측정 `/seller/store` 작은타깃 **7 → 1**, `reachDead: 0`.
+ *
+ * ## ❌ 남은 하나 (결함이 아니라 판단)
+ *
  * - **`사업자 정보` 13px 인라인 링크** — #1621 이 **일부러 남긴 자리**(문장 속 inline 박스라 40px
  *   선언이 실제로 안 닿는다. 선언만 남기면 감사가 그 자리를 "정상" 으로 세어 더 나쁘다).
  */
@@ -199,5 +203,65 @@ describe('📏 잔여 칩·탭·아이콘 버튼 — 박스로 40px (측정: 12 
       .toContain('overflow-hidden')
     expect(code(ORDERS_M), '상태 칩이 tap-reach 로 바뀌었다 — 카드 안에서는 안 닿는다').not.toContain('tap-reach')
     expect(code(SETTLE), '정산 칩이 tap-reach 로 바뀌었다').not.toContain('tap-reach')
+  })
+})
+
+/**
+ * 🎨 **브랜드 컬러 견본 — 박스 40px / 보이는 원 28px** (2026-10-06, 위 ✅ 의 고정)
+ *
+ * 이 자리는 두 요구가 부딪힌다: 타깃은 40px 눈금이어야 하고(폰에서 못 누른다), 팔레트는 **보이는
+ * 원 지름이 그대로**여야 한다(28×28 을 40×40 으로 키우면 색 견본이 아니라 버튼 줄처럼 보인다).
+ * `tap-reach` 는 쓸 수 없다 — `DashboardCard` 가 `overflow-hidden` 이라 `::after` 밴드가 잘려
+ * **히트 테스트까지 죽는다**(이 파일 위쪽에서 두 번 값을 치른 그 함정).
+ *
+ * ⇒ **색을 버튼이 아니라 안쪽 span 이 칠한다.** 버튼은 투명한 40px 박스이고, 자식 span 이
+ *   28px 원 + 선택 링을 그린다. 다음 세션이 "단순화" 한다며 색을 버튼으로 되돌리면 팔레트 모양이
+ *   통째로 바뀐다(그리고 그게 **에러 없이** 통과한다) — 그걸 막는다.
+ *
+ * 🩸 이 시험이 **못 보는 것**: 실제 렌더 크기는 문자열로 알 수 없다. 그건
+ *   `node scripts/visual-preview.mjs --route=/seller/store --phone-audit --stores=1` 이 재고,
+ *   그 하네스는 **`dist/client` 를 띄운다** ⇒ **재빌드 없이 측정하면 수정 전 화면을 재는 것**이다.
+ */
+describe('🎨 컬러 견본 — 박스는 40px, 원은 28px (측정: 7 → 1)', () => {
+  it('눌리는 박스가 40×40 이다', () => {
+    const s = code(STORE)
+    expect(s, '견본 버튼의 40px 박스가 사라졌다 — 28×28 로 환원')
+      .toContain('grid h-10 w-10 place-items-center rounded-full')
+  })
+
+  it('🔴 색은 버튼이 아니라 **안쪽 span** 이 칠한다 — 되돌리면 팔레트 모양이 바뀐다', () => {
+    const s = code(STORE)
+    const blk = s.slice(s.indexOf('{SWATCHES.map('), s.indexOf('{SWATCHES.map(') + 700)
+    expect(blk, '견본 블록을 못 찾았다 — 이 검사가 헛돌고 있다').toContain('SWATCHES')
+    // 보이는 원: 28px(h-7 w-7) + 색은 span 의 style.
+    expect(blk, '보이는 원이 28px(h-7 w-7) 가 아니다').toMatch(/<span[^>]*className=\{`block h-7 w-7 rounded-full/)
+    // 🩸 `/<button[^>]*style=…/` 로 쓰면 **헛돈다** — 그 사이의 `onClick={() => …}` 에 `>` 가 있어
+    //   부정 문자열이 화살표에서 끊긴다(주입이 통과하는 것으로 실제로 확인했다).
+    //   ⇒ 줄 단위로 본다: 색을 칠하는 줄은 **전부 span 줄**이어야 한다.
+    const paint = blk.split('\n').filter((l) => l.includes('background: c'))
+    expect(paint.length, '색을 칠하는 자리를 못 찾았다 — 이 검사가 헛돌고 있다').toBeGreaterThan(0)
+    for (const line of paint) {
+      expect(line, `색을 span 이 아닌 곳이 칠한다 → ${line.trim()} (40px 색 원이 되어 팔레트가 달라진다)`)
+        .toContain('<span')
+    }
+  })
+
+  it('선택 링도 안쪽 span 에 붙는다 (원 기준이라야 지름이 안 커진다)', () => {
+    const blk = code(STORE).slice(code(STORE).indexOf('{SWATCHES.map('))
+    expect(blk.slice(0, 700), '선택 표시가 사라졌다').toContain('ring-2 ring-offset-1 ring-brand')
+  })
+
+  it('🔴 tap-reach 로 넓히지 않는다 — 카드가 overflow-hidden 이라 안 닿는다', () => {
+    expect(code(CARD), '전제가 바뀌었다 — DashboardCard 의 overflow-hidden 이 없어졌으면 재판단할 것')
+      .toContain('overflow-hidden')
+    const blk = code(STORE).slice(code(STORE).indexOf('{SWATCHES.map(') - 400, code(STORE).indexOf('{SWATCHES.map(') + 700)
+    expect(blk, '견본에 tap-reach 를 걸었다 — 선언만 남고 실제로는 안 닿는다').not.toContain('tap-reach')
+  })
+
+  it('간격은 박스 여백이 만든다 — gap 을 다시 주면 40px 피치에 겹쳐 팔레트가 벌어진다', () => {
+    const s = code(STORE)
+    const row = s.slice(s.indexOf('{SWATCHES.map(') - 200, s.indexOf('{SWATCHES.map('))
+    expect(row, '견본 줄에 gap 이 되돌아왔다(박스가 이미 12px 를 만든다)')
+      .toContain('flex flex-wrap items-center gap-0')
   })
 })

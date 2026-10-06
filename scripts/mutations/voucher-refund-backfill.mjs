@@ -71,8 +71,9 @@ export default [
   // 🩸 2026-10-06 — 보증 경로가 **셋**이고 성격이 다르다(두 번 오판하고 실측으로 바로잡았다):
   //   1차 `main.yml` 배포 직후 `repair-schema/auto` ← **오늘 실제로 백필을 돌린 것**
   //   2차 일간 cron `schema-repair-daily`(03:30 KST) ← 배포가 없는 날의 받침
-  //   3차 `d1-migrate.yml` ← 지금은 토큰 미설정으로 skip(죽어 있다)
-  //   셋 다 조용히 사라질 수 있는 모양이라 각각 주입으로 고정한다.
+  //   3차 `d1-migrate.yml` ← 토큰 미설정으로 **한 번도 안 돌았다**. 같은 날 **제거**했다
+  //      (중복인데 "자동으로 돈다" 는 거짓 확신을 만들었다 — `d1-migrate-honesty-…test.ts`).
+  //   남은 둘은 조용히 사라질 수 있는 모양이라 각각 주입으로 고정한다.
   {
     name: '소급기록 — 일간 cron 의 runSchemaRepair 호출 제거',
     file: 'src/worker/cron/daily-lane.ts',
