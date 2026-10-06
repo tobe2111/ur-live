@@ -68,4 +68,41 @@ export default [
     test: TEST,
     why: '상한이 아직 높은 주문이 ok 로 올라가면 초록불 뒤에 구멍이 남는다 — 그게 이 결함의 원래 수명이다.',
   },
+  // 🩸 2026-10-06 — 보증 경로가 **셋**이고 성격이 다르다(두 번 오판하고 실측으로 바로잡았다):
+  //   1차 `main.yml` 배포 직후 `repair-schema/auto` ← **오늘 실제로 백필을 돌린 것**
+  //   2차 일간 cron `schema-repair-daily`(03:30 KST) ← 배포가 없는 날의 받침
+  //   3차 `d1-migrate.yml` ← 지금은 토큰 미설정으로 skip(죽어 있다)
+  //   셋 다 조용히 사라질 수 있는 모양이라 각각 주입으로 고정한다.
+  {
+    name: '소급기록 — 일간 cron 의 runSchemaRepair 호출 제거',
+    file: 'src/worker/cron/daily-lane.ts',
+    find: 'const result = await runSchemaRepair(env.DB)',
+    replace: 'const result = { columns: [] as never[], tables: [] as never[] }',
+    test: TEST,
+    why: '유일한 실제 보증 경로다 — 여기가 끊기면 소급 기록이 영원히 안 돌고 에러도 안 난다.',
+  },
+  {
+    name: '소급기록 — maintenance 레인 등록 제거',
+    file: 'src/worker/scheduled.ts',
+    find: "runDailyLane('maintenance'",
+    replace: "runDailyLaneDISABLED('maintenance'",
+    test: TEST,
+    why: 'cron 이 등록되지 않으면 schema-repair-daily 가 한 번도 발화하지 않는다(조용한 부재).',
+  },
+  {
+    name: '소급기록 — 배포 직후 repair-schema/auto 호출 제거(1차 보증)',
+    file: '.github/workflows/main.yml',
+    find: '"https://urdeal.kr/api/_internal/repair-schema/auto"',
+    replace: '"https://urdeal.kr/api/_internal/DISABLED"',
+    test: TEST,
+    why: '실제로 백필을 돌린 경로다 — 빠지면 배포 후 스키마·백필이 다음 cron 까지 미뤄진다.',
+  },
+  {
+    name: '소급기록 — 배포 직후 호출의 토큰 헤더 제거(403 fail-closed 로 조용히 죽는다)',
+    file: '.github/workflows/main.yml',
+    find: '-H "X-Repair-Token: ${{ secrets.REPAIR_SCHEMA_TOKEN }}"',
+    replace: '-H "X-Nope: ${{ secrets.REPAIR_SCHEMA_TOKEN }}"',
+    test: TEST,
+    why: '헤더가 빠지면 403 이고 워크플로는 warning 만 찍는다 — 실패가 아니라 조용한 부재가 된다.',
+  },
 ]
