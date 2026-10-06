@@ -26,5 +26,11 @@
 ## 🟡 다음 세션
 
 - **staging S-RR1** — 창이 실제로 뜨고 사유가 서버 기록에 남는지는 문자열로 알 수 없다. 실결제 1건.
-- **#1620**(의존성) 이 머지되기 전에는 이 PR 의 `Verify` 도 npm-audit 단계에서 빨간불이다
-  (main 에서 온 조건 · 이 diff 는 의존성 무접촉).
+- ~~**#1620**(의존성) 이 머지되기 전에는 이 PR 의 `Verify` 도 npm-audit 단계에서 빨간불이다.~~
+  🔴 **더는 사실이 아니다**(2026-10-06). 같은 의존성 수정이 **다른 세션에서 main 에 먼저** 들어가
+  main 의 audit 게이트가 이미 초록이다(결재 `2026-10-06-npm-audit-three-new-advisories.md`).
+  이 브랜치에 포팅해 넣었던 `package.json`·`package-lock.json`·`.audit-allowlist.json` 은
+  **전부 환원**했다 — 덕분에 CI 도 전수 스윕(80분)이 아니라 `--changed` 로 돌아간다.
+  ⚠️ 그리고 커밋 메시지 `[SKIP_AUDIT]` 로는 **CI 를 통과시킬 수 없다**(그 마커는
+  `.git/COMMIT_EDITMSG` = 로컬 파일을 읽는다). CI 의 유일한 우회는 `SKIP_NPM_AUDIT=1` 이고
+  워크플로에 없다.
