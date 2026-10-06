@@ -135,3 +135,32 @@ _총 404건 · 최신순 · 이 목록은 자동 생성된다._
   **안 나는지**가 실물 확인이다.
 - `TECHNICAL_DEBT.md` TD-001: 원인(이름 ≠ 권한)과 심각도(repair-schema 는 `main.yml` 과 중복이라
   피해 0, 진짜 죽은 것은 `migrations/*.sql` 적용뿐)은 어제 정정해 뒀다.
+
+---
+
+## 🧱 머지 중 만난 벽 — `sharp` advisory 가 **전 PR 을 막고 있었다** (같은 날, 이 PR 과 무관)
+
+`origin/main` 을 머지하고 커밋하려니 pre-commit 이 막았다:
+
+```
+❌ npm audit: 허용목록에 없는 high/critical 취약점 1건 발견
+  [high] sharp (GHSA-wq5f-xc86-pv6w) — librsvg CVE-2026-96889
+```
+
+**새로 published 된 advisory** 라 내 변경과 무관하고, 그 순간 **이 레포의 모든 커밋**이 막혀 있었다
+(2026-10-01 의 `braces` 와 같은 클래스 — 가드가 생긴 뒤 처음 겪는 "남이 터뜨린 빨간불").
+
+🔑 **면제가 아니라 패치로 끝냈다**(`#1620` 선례). `sharp` 은 직접 의존성이 **아니라 override**
+(miniflare ← wrangler 경유)이고 `^0.35.4` → `^0.35.5` 로 범위만 올리면 중첩 사본까지 한 벌로 묶여
+해소된다 — 락파일 변경 27개가 **전부 sharp 계열**(플랫폼 바이너리 + libvips 1.3.3→1.3.4)이고
+다른 의존성은 한 줄도 안 움직였다(전수 대조). 허용목록 **추가 0건**.
+
+⚠️ **`npm audit` 의 `fixAvailable` 을 그대로 믿지 말 것** — 그것은 `wrangler 4.15.2`
+(**isSemVerMajor: true**)를 권했다. override 가 이미 한 벌로 고정하므로 **그 메이저는 필요 없었다.**
+자동 제안은 "최상위 의존성을 올려라" 로만 사고하고 override 를 모른다.
+
+📌 **다음 세션이 같은 빨간불을 만나면**: ① `bash scripts/check-npm-audit.sh` 로 GHSA 를 확인
+② `npm audit --json` 의 `range` 를 보고 **그 범위 밖 패치 버전이 있는지** ③ 선언 위치가
+`dependencies` 인지 `overrides` 인지 확인(후자면 범위만 올리면 끝) ④ `npm install --package-lock-only`
+⑤ 바뀐 패키지를 **전수 대조**해 다른 의존성이 안 움직였는지 확인. **패치가 없을 때만** 결재함으로
+(허용목록 등재는 `accepted_by` 필수 = 대표 승인 사항).
