@@ -20,7 +20,9 @@
  *   재는 것**이다. 2026-10-06 에 실제로 그렇게 "숫자가 하나도 안 바뀌었다" 를 한 번 봤다.
  *   측정값(빌드 후):
  *     `/seller/settlements` 작은타깃 18 → 9 · `/seller/store` 24 → 12 · `/seller/orders` 8 → 4
- *   남은 것은 **36px·35px 칩**이라 결재문의 네 줄이 아니다(별건 — 대표 판단 대기).
+ *   ✅ **그 잔여분은 같은 날 닫혔다**(대표 *"남은 것도 다 해줘"*) — 맨 아래 `describe('📏 잔여 …')`.
+ *   측정 12 → 0(`/seller/settlements` 8→0 · `/seller/orders` 4→0, 둘 다 `reachDead: 0`).
+ *   남은 7(`/seller/store` 컬러 견본 28×28 · 각주 13px)은 **결함이 아니라 판단**이라 그 블록에 사유를 적었다.
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
@@ -130,5 +132,72 @@ describe('🧾 정산 패널 — 서버 봉투와 클라 소비가 같은 키를
     const s = code(ROUTE)
     expect(s, '서버가 items 로 바뀌었다 — 그 라우트는 어드민도 쓴다').not.toMatch(/items:\s*rows/)
     expect(s, 'pagination 계약이 사라졌다').toContain('pagination')
+  })
+})
+
+/**
+ * 📏 **잔여 칩·탭·아이콘 버튼 40px** (2026-10-06 후속 — 대표 *"남은 것도 다 해줘"*)
+ *
+ * 위 머리말이 *"남은 것은 36px·35px 칩이라 별건(대표 판단 대기)"* 이라고 적어 둔 그 잔여분을 닫았다.
+ *
+ * ## 측정으로 범위를 정했다 — handoff 가 적은 것과 달랐다
+ *
+ * `--phone-audit` 를 **빌드 후** 돌려 보니(빌드 전 숫자를 믿으면 수정 전 화면을 재는 것 — 위 머리말의
+ * 그 함정을 이번에 한 번 밟을 뻔했다: `dist/client` 가 09:52 인데 #1621 머지는 10:31 이었다):
+ *
+ * | 화면 | 전 | 후 | 무엇 |
+ * |---|---|---|---|
+ * | `/seller/settlements` | 8 | **0** | 기간 칩 5(36) · 뷰모드 탭 2(36) · 새로고침 1(36×36) |
+ * | `/seller/orders` | 4 | **0** | 상태 세그먼트 칩 4(**35**) |
+ * | `/seller/store` | 7 | 7 | **일부러 안 건드렸다**(아래 ❌) |
+ *
+ * 세 화면 모두 `reachDead: 0` — **선언이 아니라 실제로 닿는다**(그게 이 눈금의 유일한 판정이다).
+ *
+ * ## 왜 전부 `min-h-[40px]`(박스)인가 — `tap-reach` 를 쓸 수 없다
+ *
+ * `DashboardCard` 가 `overflow-hidden`(line 30)이라 `::after` 밴드가 잘려 **히트 테스트까지 죽는다.**
+ * 기간 칩은 거기에 `overflow-x-auto` 까지 겹친다. 위 머리말이 기록해 둔 그 이유 그대로다.
+ *
+ * ## ❌ 안 고친 것 (결함이 아니라 판단 — 대표 판단 대기)
+ *
+ * - **브랜드 컬러 견본 6개(28×28)** `SellerStoreInfoPage` — 색상 팔레트 칩이다. 40×40 이면 팔레트
+ *   모양이 실제로 달라지고, `tap-reach` 는 위 이유로 못 쓴다.
+ * - **`사업자 정보` 13px 인라인 링크** — #1621 이 **일부러 남긴 자리**(문장 속 inline 박스라 40px
+ *   선언이 실제로 안 닿는다. 선언만 남기면 감사가 그 자리를 "정상" 으로 세어 더 나쁘다).
+ */
+describe('📏 잔여 칩·탭·아이콘 버튼 — 박스로 40px (측정: 12 → 0)', () => {
+  const ORDERS_M = 'src/pages/seller-orders/MobileOrderList.tsx'
+
+  it('주문 상태 세그먼트 칩이 min-h-[40px] 를 보장한다 (35px 였다)', () => {
+    // 🧭 2026-10-06: 주문 탭이 공용 `SegmentedTabs` 로 옮겨 갔다(탭 라벨 두 줄 접힘 근본 수리) —
+    //   40px 보장도 **부품에** 산다. 화면은 부품을 쓰는지, 부품은 40px 박스인지 둘 다 본다.
+    expect(code(ORDERS_M), '주문 탭이 공용 부품을 벗어났다 — 그러면 아래 보장이 이 화면에 안 닿는다').toMatch(/<SegmentedTabs\b/)
+    const comp = code('src/components/ui/segmented-tabs.tsx')
+    expect(comp, '상태 칩의 40px 보장이 사라졌다 — 35px 로 환원').toMatch(/inline-flex min-h-\[40px\] items-center/)
+    expect(comp, 'tap-reach 로 "통일" 하면 카드 overflow 때문에 히트영역이 죽는다').not.toMatch(/tap-reach/)
+  })
+
+  it('정산 기간 칩이 min-h-[40px] + 수직 중앙 정렬 (overflow-x-auto 안이라 tap-reach 불가)', () => {
+    const s = code(SETTLE)
+    expect(s, '기간 칩의 40px 보장이 사라졌다').toMatch(/inline-flex min-h-\[40px\] shrink-0 items-center whitespace-nowrap/)
+  })
+
+  it('정산 뷰모드 탭 둘이 min-h-[40px] 를 보장한다', () => {
+    const s = code(SETTLE)
+    const n = (s.match(/flex min-h-\[40px\] items-center gap-1\.5 px-4 py-2/g) || []).length
+    expect(n, `뷰모드 탭의 40px 보장이 ${n}곳만 남았다(둘이어야 한다)`).toBe(2)
+  })
+
+  it('정산 새로고침 아이콘 버튼이 40×40 이다 (36×36 였다)', () => {
+    const s = code(SETTLE)
+    expect(s, '새로고침 버튼이 h-9 w-9 로 환원됐다').toMatch(/flex h-10 w-10 items-center justify-center rounded-lg/)
+    expect(s, 'h-9 w-9 가 되돌아왔다').not.toMatch(/h-9 w-9 items-center justify-center rounded-lg text-gray-500/)
+  })
+
+  it('🔴 tap-reach 로 "통일" 하지 않았다 — 카드가 overflow-hidden 이라 히트영역이 죽는다', () => {
+    expect(code('src/components/dashboard/DashboardCard.tsx'), 'DashboardCard 의 overflow-hidden 이 사라졌다 — 그러면 이 판단의 전제가 바뀐다')
+      .toContain('overflow-hidden')
+    expect(code(ORDERS_M), '상태 칩이 tap-reach 로 바뀌었다 — 카드 안에서는 안 닿는다').not.toContain('tap-reach')
+    expect(code(SETTLE), '정산 칩이 tap-reach 로 바뀌었다').not.toContain('tap-reach')
   })
 })

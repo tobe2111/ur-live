@@ -14,6 +14,9 @@
  *     (똑같이 나누면 긴 라벨만 손해를 본다 — "판매 중지" 는 "종료" 보다 두 배 길다).
  *  ③ **그래도 넘치면 옆으로 민다** — 컨테이너 `overflow-x-auto`. 잘리거나 접히는 대신 스크롤.
  *
+ * 📏 누르는 높이는 **40px 눈금**(`min-h-[40px]`, 2026-10-06 seller-rung-40 과 같은 기준) — 부품에 두면
+ *    세 화면이 따로 키울 필요가 없다(같은 날 다른 세션이 주문 탭만 손으로 40px 로 키웠다가 이 부품과 합쳐졌다).
+ *
  * 숫자는 `tabular-nums` 로 따로 감싼다 — 0 이 1 이 돼도 칸 폭이 흔들리지 않는다.
  * 숫자를 **안 보이게** 할지는 호출부 몫이다(`count` 를 안 넘기면 숫자 없이 라벨만).
  *
@@ -53,7 +56,7 @@ export default function SegmentedTabs<K extends string | number>({
             onClick={() => onChange(it.id)}
             aria-pressed={on}
             style={{ flex: '1 0 auto' }}
-            className={`inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-lg px-3 py-2 text-[13px] font-bold transition-colors ${on ? 'bg-brand text-white' : 'text-gray-400 hover:text-gray-700'}`}
+            className={`inline-flex min-h-[40px] items-center justify-center gap-1 whitespace-nowrap rounded-lg px-3 py-2 text-[13px] font-bold transition-colors ${on ? 'bg-brand text-white' : 'text-gray-400 hover:text-gray-700'}`}
           >
             <span>{it.label}</span>
             {it.count != null && <span className="tabular-nums">{it.count.toLocaleString('ko-KR')}</span>}

@@ -59,4 +59,37 @@ export default [
     test: 'src/tests/unit/seller-rung-40-2026-10-06.test.ts',
     why: '서버는 { success, data, pagination } 을 주는데 items 를 읽으면 늘 undefined — 에러 없이 "내역이 없습니다" 만 뜬다.',
   },
+  // 📏 2026-10-06 후속 — 잔여 칩·탭·아이콘 버튼 40px (측정 12 → 0)
+  {
+    name: '잔여눈금 — 주문 상태 칩이 35px 로 환원(세그먼트가 눈금 밖)',
+    file: 'src/components/ui/segmented-tabs.tsx',
+    find: 'inline-flex min-h-[40px] items-center justify-center gap-1',
+    replace: 'inline-flex items-center justify-center gap-1',
+    test: 'src/tests/unit/seller-rung-40-2026-10-06.test.ts',
+    why: '폰 주문 화면의 유일한 필터가 35px 로 돌아간다 — 측정으로 0 을 만든 자리가 다시 4가 된다.',
+  },
+  {
+    name: '잔여눈금 — 정산 기간 칩이 36px 로 환원',
+    file: 'src/pages/SellerSettlementsPage.tsx',
+    find: 'inline-flex min-h-[40px] shrink-0 items-center whitespace-nowrap px-4 py-2',
+    replace: 'shrink-0 whitespace-nowrap px-4 py-2',
+    test: 'src/tests/unit/seller-rung-40-2026-10-06.test.ts',
+    why: 'overflow-x-auto 안이라 tap-reach 로는 못 고치는 자리다 — 박스가 빠지면 되돌릴 방법이 없다.',
+  },
+  {
+    name: '잔여눈금 — 정산 새로고침 버튼이 36×36 으로 환원',
+    file: 'src/pages/SellerSettlementsPage.tsx',
+    find: 'flex h-10 w-10 items-center justify-center rounded-lg text-gray-500',
+    replace: 'flex h-9 w-9 items-center justify-center rounded-lg text-gray-500',
+    test: 'src/tests/unit/seller-rung-40-2026-10-06.test.ts',
+    why: '폰에서만 보이는 버튼이라(md:hidden) 눈으로 가장 안 잡히는 자리다.',
+  },
+  {
+    name: '잔여눈금 — tap-reach 로 "통일"(카드 overflow 때문에 히트영역이 죽는다)',
+    file: 'src/components/ui/segmented-tabs.tsx',
+    find: 'inline-flex min-h-[40px] items-center justify-center gap-1',
+    replace: 'inline-flex tap-reach items-center justify-center gap-1',
+    test: 'src/tests/unit/seller-rung-40-2026-10-06.test.ts',
+    why: '다음 세션이 가장 하기 쉬운 "통일" 이고, 그러면 선언은 40px 인데 실제로 안 닿아 감사가 정상으로 센다.',
+  },
 ]

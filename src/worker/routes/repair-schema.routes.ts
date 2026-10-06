@@ -319,6 +319,26 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
   // 🛡️ 2026-06-10 (교환권 500 사고 — D1 'too many columns in result set' 한도 100):
   //   넓은 테이블의 컬럼 수를 매 실행 보고 + 85 이상이면 경보. 한도 도달 전에 컬럼 다이어트/
   //   사이드테이블 분리를 결정할 수 있게 하는 조기 경보선. star-select 는 CI 가 별도 차단.
+  // 🧾 2026-10-06 (결재 `2026-10-02-expired-refund-not-booked.md`): **소급 기록.**
+  //   #1625 는 앞으로의 만료 환불만 장부에 적는다 — 이미 나간 1건(라이브 주문 85)은 그대로
+  //   `refunded_amount = 0` 이라 전액환불 상한이 열려 있었다(1,800 받고 3,600 환불 가능).
+  //   멱등이라 매 실행 돌아도 안전하고, 두 번째부터 changes = 0 이다.
+  try {
+    const { backfillVoucherRefundBooking } = await import('./repair-schema/backfill-voucher-refund-booking');
+    const bf = await backfillVoucherRefundBooking(DB);
+    tableResults.push({ name: `backfill:voucher-refund-booking (${bf.booked}건)`, status: 'ok' });
+    // 🔴 사람이 봐야 하는 행은 조용히 넘기지 않는다 — 상한이 아직 높은 주문이다.
+    for (const r of bf.ambiguous) {
+      tableResults.push({
+        name: `⚠️ backfill:voucher-refund-booking 수동확인 order ${r.order_id}`,
+        status: 'error',
+        error: `장부 ${r.refunded_amount} < 환불된 이용권 합 ${r.voucher_refunded} (총액 ${r.total_amount}) — 차액만큼 환불 상한이 높다`,
+      });
+    }
+  } catch (e: any) {
+    tableResults.push({ name: 'backfill:voucher-refund-booking', status: 'error', error: String(e?.message || e).slice(0, 200) });
+  }
+
   const columnCounts: Record<string, number> = {};
   const columnWarnings: string[] = [];
   for (const tbl of ['products', 'users', 'sellers', 'orders', 'suppliers']) {
