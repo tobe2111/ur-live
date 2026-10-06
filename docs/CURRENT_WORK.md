@@ -5498,6 +5498,7 @@ _총 397건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-10-06**
 - [로컬은 clean 인데 GitHub 은 충돌 — Verify 가 *부재*로 남는 함정 (2026-10-06)](handoff/2026-10-06-github-side-merge.md)
+- [만료 환불을 주문 장부에 적는다 — 이중환불 구멍 (2026-10-06)](handoff/2026-10-06-expired-refund-booked.md)
 - [철거로 잃은 둘을 원본 화면에 복원 (2026-10-06)](handoff/2026-10-06-teardown-losses.md)
 - [의존성 권고 · 셀러 40px 눈금 · 정산 패널 봉투 (2026-10-06)](handoff/2026-10-06-deps-rung-envelope.md)
 - [5일치 점검 — CI 판정 마감 + 라이브에서 나온 머니 발견 1건 (2026-10-06)](handoff/2026-10-06-five-day-sweep.md)

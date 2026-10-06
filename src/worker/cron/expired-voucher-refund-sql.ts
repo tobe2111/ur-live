@@ -56,5 +56,32 @@ export function expiredVoucherClaimSql(withRefundStatus: boolean): string {
     : "UPDATE vouchers SET status = 'expired' WHERE id = ? AND status = 'unused'"
 }
 
+/**
+ * 🧾 **환불을 주문 장부에 적는다** (2026-10-06 · 결재 `2026-10-02-expired-refund-not-booked.md`).
+ *
+ * ## 왜 필요한가 — 안 적으면 **같은 돈을 또 환불할 수 있다**
+ *
+ * 2026-10-02 실측: 만료 환불이 라이브에서 처음 돌아 user 3 에게 1,800딜이 들어갔는데
+ * `orders.refunded_amount` 는 **0 그대로**였다. 그 칸은 전액환불 경로의 **상한**이다
+ * (`order-refund.ts` → `amount = total_amount − refunded_amount`) ⇒ 그 주문에 어드민·셀러·주문
+ * 세 자리 중 하나에서 환불을 누르면 `1800 − 0 = 1800` 이 **또** 나간다(1,800 받고 3,600 환불).
+ *
+ * 다른 환불 네 경로는 **전부** 이 칸을 올린다(`refund.ts` · `order-refund.ts` ·
+ * `voucher-partial-refund.ts` · `order.routes.ts`). 규칙이 없는 게 아니라 **한 자리가 규칙 밖**이었다.
+ *
+ * ## 문법은 그 네 경로와 **같다** — CAS 로 총액을 넘지 못한다
+ *
+ * 이용권 **여러 장이 한 주문**일 수 있어 장당 누적이고, 합이 `total_amount` 를 넘으면
+ * `changes = 0` 으로 **기록이 실패**한다. 그때 돈은 이미 나갔으므로 **조용히 넘기지 않는다** —
+ * 호출부가 크게 로그한다(기록 누락 쪽으로 안전하게 실패한다. 과다 기록은 상한을 거짓으로 올려
+ * 다음 환불을 막으므로 더 나쁘다).
+ *
+ * ⚠️ 이 문장은 **금액을 정하지 않는다** — 호출부가 이미 환불한 액수를 그대로 적는다.
+ */
+export function expiredVoucherBookRefundSql(): string {
+  return `UPDATE orders SET refunded_amount = COALESCE(refunded_amount, 0) + ?
+            WHERE id = ? AND COALESCE(refunded_amount, 0) + ? <= total_amount`
+}
+
 /** 처리 결과(관측 + 재선점 차단). 'claimed' 로 남기지 않는다 — 무엇이 일어났는지 모르는 행이 생긴다. */
 export type ExpiredVoucherOutcome = 'refunded' | 'forfeited' | 'failed' | 'none'
