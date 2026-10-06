@@ -2,16 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 🔢 2026-10-06 대표 확정 "숫자 글꼴은 A로"(Poppins) — 숫자·쉼표·마침표·%만 Poppins 로 그린다.
-   `unicode-range` 라 한글·영문은 그대로 Pretendard 이고, 숫자가 있는 화면에서만 1.4KB 씩 받는다.
-   ⚠️ Poppins 숫자는 **비례폭**이고 `tabular-nums` 도 안 먹는다(Chromium 실측: "1111" 150px vs "0000" 261px,
-   tnum 켜도 동일). 그래서 계속 바뀌는 숫자(시계·카운트다운·코드 = `tabular-nums`/`.dash-num`)는 아래 규칙이
-   Pretendard 로 되돌린다 — 안 그러면 2026-09-23 에 고친 '초마다 떨리는 시계'가 돌아온다. */
-@font-face { font-family: 'UrDigits'; font-style: normal; font-weight: 400; font-display: swap; src: url('/static/fonts/poppins-digits-400.woff2') format('woff2'); unicode-range: U+0025, U+002C, U+002E, U+0030-0039; }
-@font-face { font-family: 'UrDigits'; font-style: normal; font-weight: 500; font-display: swap; src: url('/static/fonts/poppins-digits-500.woff2') format('woff2'); unicode-range: U+0025, U+002C, U+002E, U+0030-0039; }
-@font-face { font-family: 'UrDigits'; font-style: normal; font-weight: 600; font-display: swap; src: url('/static/fonts/poppins-digits-600.woff2') format('woff2'); unicode-range: U+0025, U+002C, U+002E, U+0030-0039; }
-@font-face { font-family: 'UrDigits'; font-style: normal; font-weight: 700; font-display: swap; src: url('/static/fonts/poppins-digits-700.woff2') format('woff2'); unicode-range: U+0025, U+002C, U+002E, U+0030-0039; }
-@font-face { font-family: 'UrDigits'; font-style: normal; font-weight: 800; font-display: swap; src: url('/static/fonts/poppins-digits-800.woff2') format('woff2'); unicode-range: U+0025, U+002C, U+002E, U+0030-0039; }
+/* 🔢 2026-10-06 대표 확정 — 숫자 글꼴 Roboto(안드로이드 기본 글꼴). 숫자·쉼표·마침표·%만 Roboto 로 그린다.
+   `unicode-range` 라 한글·영문은 그대로 Pretendard 이고, 숫자가 있는 화면에서만 받는다.
+   처음엔 Poppins(A)였는데 Poppins 숫자는 **비례폭이고 tabular-nums 도 안 먹어서**(1111 150px vs 0000 261px)
+   대기업 글꼴 비교 보드를 보고 대표가 Roboto 로 바꿨다. Roboto 숫자는 **처음부터 모두 같은 폭**이라
+   시계·카운트다운도 안 떨린다 ⇒ 계속 바뀌는 숫자를 따로 Pretendard 로 되돌릴 필요가 없다. */
+@font-face { font-family: 'UrDigits'; font-style: normal; font-weight: 400; font-display: swap; src: url('/static/fonts/roboto-digits-400.woff2') format('woff2'); unicode-range: U+0025, U+002C, U+002E, U+0030-0039; }
+@font-face { font-family: 'UrDigits'; font-style: normal; font-weight: 500; font-display: swap; src: url('/static/fonts/roboto-digits-500.woff2') format('woff2'); unicode-range: U+0025, U+002C, U+002E, U+0030-0039; }
+@font-face { font-family: 'UrDigits'; font-style: normal; font-weight: 600; font-display: swap; src: url('/static/fonts/roboto-digits-600.woff2') format('woff2'); unicode-range: U+0025, U+002C, U+002E, U+0030-0039; }
+@font-face { font-family: 'UrDigits'; font-style: normal; font-weight: 700; font-display: swap; src: url('/static/fonts/roboto-digits-700.woff2') format('woff2'); unicode-range: U+0025, U+002C, U+002E, U+0030-0039; }
+@font-face { font-family: 'UrDigits'; font-style: normal; font-weight: 800; font-display: swap; src: url('/static/fonts/roboto-digits-800.woff2') format('woff2'); unicode-range: U+0025, U+002C, U+002E, U+0030-0039; }
 
 /* ─────────────────────────────────────────────────────────────────
    🔘 버튼 체계 (2026-08-30 — 대표 "버튼 디자인들이고 변경된게 없는데")
@@ -1590,11 +1590,9 @@ html.dark .gbd, [data-theme="dark"] .gbd {
 .ur-agency-nav-active { background: var(--brand-tint); }
 
 /* 🧮 2026-09-15 D3: 숫자는 표처럼 — 모노스페이스·고정폭 자릿수. 페이지가 아니라 숫자 요소에 붙인다(제목·본문엔 금지). */
-/* 🔢 2026-10-06: 고정폭은 터미널 글꼴이 아니라 Pretendard 의 고정폭 숫자로 — 대표 "숫자가 너무 아날로그"
+/* 🔢 2026-10-06: 고정폭은 터미널 글꼴이 아니라 고정폭 숫자로(본문 스택의 UrDigits = Roboto) — 대표 "숫자가 너무 아날로그"
    (모노스페이스가 타자기처럼 보이던 원인). 자리맞춤은 `tabular-nums` 가 그대로 지킨다. */
 .dash-num { font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
-/* 계속 바뀌는 숫자는 Poppins(비례폭) 대신 Pretendard 고정폭 숫자로 — 위 UrDigits 주석 참조. */
-.tabular-nums, .dash-num { font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
 /* 🧮 D3: 셀러·어드민 스코프에서 페이지 헤더의 장식 아이콘 칩은 그리지 않는다(2026-09-15 어드민 합류). 폰에서는 페이지
    제목도 숨긴다 — 레이아웃의 폰 제목 줄(`.dash-phone-title`)이 같은 글자를 한 번만 그린다(두 번 말하지 않는다). */
 .seller-light-theme .dash-header-icon, .admin-light-theme .dash-header-icon { display: none; }
