@@ -210,6 +210,25 @@ GET /api/admin/promo-ledger/order/:orderNumber      (read-only, finance 권한)
 플랫폼 수수료 안에서 부담하되 총합이 예산을 못 넘게 아비터가 강제하는 쪽으로 갔다.
 그래서 S1 의 합격선은 `within_budget` **하나**이고, 원장 debit 은 참고 수치다.
 
+## 🧾 S-EXBOOK — 만료 환불이 주문 장부에 적힌다 (2026-10-06)
+
+게이트 없음(배포되면 바로 적용). 결재 `docs/decisions/2026-10-02-expired-refund-not-booked.md`.
+
+**왜 staging 이 필요한가**: 유닛 시험은 SSOT SQL 을 실제 sqlite 에 돌려 *"적으면 두 번째 환불액이
+0"* 까지 증명했지만, **라이브 cron 이 그 자리에서 실제로 부르는지**는 발화해 봐야 안다
+(2026-09-30 에 "조회·선점은 멀쩡한데 환불이 0건" 이던 것이 정확히 그 층의 사고였다).
+
+| # | 무엇 | 기대 |
+|---|---|---|
+| S-EXBOOK1 | 만료 이용권 1장을 만들고 `0 18 * * *`(03:00 KST) 회차를 기다린다 | `vouchers.refund_status='refunded'` + 딜/카드 환불 1회 |
+| S-EXBOOK2 | 그 주문의 `orders.refunded_amount` | **환불액과 같다**(전엔 0 이었다) |
+| S-EXBOOK3 | 어드민 주문 환불을 **그 주문에** 눌러 본다 | 더 나갈 금액이 **0** — 이중환불이 구조적으로 막힌다 |
+| S-EXBOOK4 | 이용권 **두 장**이 한 주문인 건 | 장당 누적되고 합이 `total_amount` 를 **안 넘는다** |
+| S-EXBOOK5 | 로그 | 기록 실패 시 `장부 기록 실패` 가 **크게** 남는다(조용히 지나가지 않는다) |
+
+⚠️ **반대 방향 사고도 본다**: 장부가 총액을 넘겨 적히면 상한이 거짓이 되어 **정당한 환불을 막는다.**
+S-EXBOOK4 가 그 방향이다.
+
 ## 검증 데이 권장 순서 (반나절)
 
 1. staging 배포 + `bash scripts/audit-gate.sh` GREEN 확인
