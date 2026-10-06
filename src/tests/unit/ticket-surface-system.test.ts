@@ -80,6 +80,13 @@ describe('② 결제 완료 — 자동 이동 폐기, 티켓 화면', () => {
     expect(code(ticket)).not.toMatch(/이런 서비스도 있어요/)
     expect(ticket).toMatch(/navigate\(product\?\.seller_id \? `\/s\/\$\{product\.seller_id\}` : '\/'\)/)
   })
+  // 장바구니 완료 화면은 같은 '결제 완료' 이다 — 2026-10-06 라이브 판정에서 여기만 타일 줄이 남아 있었다.
+  it('A안: 장바구니 결제 완료 화면에도 서비스 타일 줄이 없다', () => {
+    const cart = code(R('src/pages/group-buy/CartComplete.tsx'))
+    expect(cart).not.toMatch(/<CategoryTile\b/)
+    expect(cart).not.toMatch(/이런 서비스도 있어요/)
+    expect(cart).toMatch(/다른 이용권 보기/)
+  })
 })
 
 describe('③ 티켓 부품 — 테두리·그림자 스택 없음', () => {

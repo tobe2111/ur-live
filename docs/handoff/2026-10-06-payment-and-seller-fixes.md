@@ -23,6 +23,11 @@
 - **승인 전 매장 이용권 등록 허용**: `MyStoresPanel` 이 승인 전을 막던 잔재 제거(정지만 막음) — 등록 화면 약속·서버·09-16 당근 모델과 일치.
 - **마이 매장 추가 문**: 가게 시트 맨 아래 [+ 매장 추가], 1곳이어도 시트가 열림.
 
+## 라이브 판정 기록 (2026-10-07 KST)
+- #1631 배포 성공(97f5b99) → urdeal.kr 실측: 결제 화면 인라인 안내 문구 · 완료 화면 '다른 이용권 보기' · QR 확인 문구 · Poppins 글꼴 파일 200 확인.
+- 🕳️ **장바구니(여러 매장) 결제 완료 화면 `CartComplete` 에 '이런 서비스도 있어요' 가 남아 있었다** — A안을 단건 티켓에만 적용했다. 후속 PR 에서 같은 한 줄로 교체 + 가드.
+- #1637(Roboto) 머지 후 main 배포가 **시험 10,992건 전부 통과 뒤 vitest 정리 단계 오류**(`EnvironmentTeardownError: Closing rpc while "onUserConsoleLog" was pending`)로 멈췄다 — 변경과 무관. 이 세션은 재실행 권한이 없어(403) 후속 PR 머지로 배포를 다시 태웠다.
+
 ## 이번에 틀렸던 판단 / 잡힌 헛도는 가드
 - `segmented-tabs` 가드가 처음엔 **부품 주석**의 `whitespace-nowrap` 때문에 클래스를 지워도 통과 — `stripComments` 로 교정.
 - pre-commit 훅은 커밋 메시지를 못 본다 → `[SKIP_AUDIT]` 무효, `SKIP_NPM_AUDIT=1` 이 맞다.
