@@ -42,7 +42,7 @@ import { useStoreInfo, type StoreInfoForm } from './seller-store-info/useStoreIn
 import StorePreviewCard from './seller-store-info/StorePreviewCard'
 import ImageField from './seller-store-info/ImageField'
 
-const INPUT = 'w-full rounded-lg border border-rule px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400'
+const INPUT = 'w-full min-h-[40px] rounded-lg border border-rule px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400'
 
 /** 당근 시안의 브랜드 컬러 견본 — 자유 입력도 그대로 받는다. */
 const SWATCHES = ['#1C69EF', '#0F172A', '#374151', '#0E7C66', '#B45309', '#9333EA']
@@ -134,7 +134,7 @@ export default function SellerStoreInfoPage() {
                       </p>
                     )}
                     <button type="button" onClick={() => setShowMap((v) => !v)}
-                      className="ur-btn ur-btn-sm ur-btn-secondary mt-2">
+                      className="ur-btn ur-btn-md ur-btn-secondary mt-2">
                       <Map className="h-3.5 w-3.5" aria-hidden="true" />
                       {showMap ? '지도 접기' : '지도에서 위치 선택'}
                     </button>
@@ -205,6 +205,13 @@ export default function SellerStoreInfoPage() {
 
               <p className="px-1 text-[11px] text-gray-400">
                 사업자 정보 · 정산 계좌 · 등록증은{' '}
+                {/* 🩸 2026-10-06: 여기에 `tap-reach` 를 걸었다가 **되돌렸다.** 하네스가 `reachDead: 1` 로
+                    잡았다 — 선언한 40px 가 실제로는 안 닿는다(문장 속 inline 박스라 ::after 밴드의
+                    중심이 다른 줄에 떨어진다). **선언만 남기면 감사가 이 자리를 "정상"으로 세어
+                    더 나쁘다.** 박스를 키우면 이 문단의 첫 줄이 40px 가 되어 각주가 깨진다.
+                    ⇒ 13px 로 남긴다: WCAG 2.5.8 의 inline 텍스트 링크 면제에 해당하고,
+                    `/seller/business-info` 는 셀러 내비(`seller-nav.ts`, mode common)에도 있어
+                    여기가 유일한 길이 아니다. */}
                 <Link to="/seller/business-info" className="font-semibold text-brand-text underline">사업자 정보</Link>
                 에서 따로 관리해요.
               </p>
