@@ -54,6 +54,13 @@ function runnerText() {
   const add = (p) => { if (existsSync(p) && statSync(p).isFile()) parts.push(readFileSync(p, 'utf8')) }
   add('scripts/audit-gate.sh')
   add('scripts/install-git-hooks.sh')
+  // 🔀 2026-10-06 추가: pre-push 게이트도 **실제 러너**다 — `install-git-hooks.sh` 가
+  //   `exec node scripts/pre-push-gate.mjs` 로 걸고, 그 안에서 직접 부르는 검사가 있다
+  //   (`check-github-side-merge.mjs`). npm 스크립트를 전이적으로 펼치는 것과 같은 성질의
+  //   간접호출이라 여기 넣는다. ⚠️ `local-ci-parity.mjs` 는 **넣지 않는다** — 그 파일의
+  //   EXCLUDE 에는 "CI 담당이라 로컬에서 안 돈다" 는 **제외 목록**이 이름으로 적혀 있어서,
+  //   넣으면 제외된 가드가 '등록됨' 으로 둔갑한다(이 가드가 막으려는 바로 그 오통과).
+  add('scripts/pre-push-gate.mjs')
   for (const dir of ['.github/workflows', '.husky']) {
     if (!existsSync(dir)) continue
     for (const f of readdirSync(dir)) {
