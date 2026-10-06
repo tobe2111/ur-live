@@ -3,12 +3,13 @@
 서비스: 🎟️ 유어딜(소비자 결제 + 사장님 도구). PR [#1631](https://github.com/tobe2111/ur-live/pull/1631).
 
 ## 다음 세션의 첫 액션
-1. **PR #1631 CI 확인 → 초록이면 대표 지시("머지까지")대로 머지**. head sha 대조 필수.
+1. ✅ #1631 머지 `97f5b99`(2026-10-06 23:31 KST, Poppins 판). 숫자 글꼴 Roboto 전환은 후속 PR. **둘 다 배포 후 라이브 판정**(아래 숫자 글꼴 항목의 E4 명령).
 2. **대표 선택 2건 — 둘 다 A 로 확정·구현(#1631)**. 시안 캔버스 https://claude.ai/artifact/N8ivG9DooQMmhHW9hiMgEz
    - 결제 완료 화면 **A(영수증 정리형)**: "이런 서비스도 있어요" 타일·같은 매장 크로스셀 카드 제거 → "{매장} 다른 이용권 보기" 한 줄(`/s/{seller_id}`).
-   - 숫자 글꼴 **A(Poppins)**: `src/index.css` `@font-face 'UrDigits'`(숫자·쉼표·마침표·% 만, 5굵기 1.4KB, `public/static/fonts/`) + 본문·`font-sans` 스택 맨 앞.
-     ⚠️ **Poppins 숫자는 비례폭이고 tnum 이 안 먹는다**(실측 1111 150px vs 0000 261px) → `.tabular-nums`·`.dash-num` 은 Pretendard 로 되돌림.
-     `.dash-num` 의 터미널 모노스페이스도 제거(고정폭 숫자는 유지). **배포 후 E4 판정**: 결제 완료·셀러 대시보드 숫자가 Poppins 로 그려지는지 + 시계가 안 떨리는지.
+   - 숫자 글꼴 **Roboto**(처음 A=Poppins 로 했다가 대기업 글꼴 비교 보드를 보고 대표가 *"Google · Roboto 이게 낫네"*): `src/index.css` `@font-face 'UrDigits'`(숫자·쉼표·마침표·% 만, 5굵기 ~6KB, `public/static/fonts/roboto-digits-*`) + 본문·`font-sans` 스택 맨 앞.
+     🔬 실측(Chromium, 700·100px "1111"/"0000"): Poppins 150/261 · tnum 무효 → 예외 규칙이 필요했다 / **Roboto 230/230** · Inter 172/270(tnum 259/259) · Geist·Manrope·Outfit 도 tnum 지원 · IBM Plex 240/240.
+     ⇒ Roboto 는 처음부터 고정폭이라 `.tabular-nums` 예외를 지웠다(가드 ③이 그 예외의 재등장을 막는다). `.dash-num` 의 터미널 모노스페이스도 제거.
+     **배포 후 E4 판정**: urdeal.kr 에서 `/static/fonts/roboto-digits-700.woff2` 200 + 배포 CSS 에 UrDigits 가 있는지.
 3. **PR B(딜 100% 결제) — 머니 경로, 아직 미착수.** #1631 머지 후 지정 브랜치를 main 에서 다시 시작해 진행.
 4. 결재 `docs/decisions/2026-10-06-broker-business-cert.md`(중개사 사업자등록증 주체) 답 대기.
 
@@ -33,4 +34,4 @@
 - npm audit high/critical 14건 선재(axios·capacitor·undici 등) — 별건.
 
 ## Notion
-미기록 — 머지 후 기록.
+미기록 — 후속 PR 머지·판정 뒤 기록.
