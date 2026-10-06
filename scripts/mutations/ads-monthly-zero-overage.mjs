@@ -39,8 +39,10 @@ export default [
   {
     name: '💵 하트비트의 `mleft` 가 버퍼를 안 빼 남은 몫을 과대보고한다',
     file: SRC,
-    find: 'monthLeft: Math.max(0, MONTHLY_WRITE_ALLOWANCE - URDEAL_MONTHLY_RESERVE - MONTHLY_SAFETY_BUFFER - writtenMonth),',
-    replace: 'monthLeft: Math.max(0, MONTHLY_WRITE_ALLOWANCE - URDEAL_MONTHLY_RESERVE - writtenMonth),',
+    // 🔬 2026-10-06 재조준: 예약분이 상수 → 실측이 되어 `URDEAL_MONTHLY_RESERVE` 가 `reserve` 로 바뀌었다.
+    //    불변식은 그대로다 — **보고(`mleft`)가 버퍼를 빼야 한다**.
+    find: 'monthLeft: Math.max(0, MONTHLY_WRITE_ALLOWANCE - reserve - MONTHLY_SAFETY_BUFFER - writtenMonth),',
+    replace: 'monthLeft: Math.max(0, MONTHLY_WRITE_ALLOWANCE - reserve - writtenMonth),',
     test: TEST,
     why: '`mleft` 는 사람이 월 상태를 판정할 때 읽는 유일한 숫자다(예약된 월 판정이 그 값을 본다). 식과 어긋나면 "아직 400만 남았다"고 보고하면서 실제로는 버퍼를 태우고 있게 된다.',
   },
