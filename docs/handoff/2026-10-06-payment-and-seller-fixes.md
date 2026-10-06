@@ -3,7 +3,7 @@
 서비스: 🎟️ 유어딜(소비자 결제 + 사장님 도구). PR [#1631](https://github.com/tobe2111/ur-live/pull/1631).
 
 ## 다음 세션의 첫 액션
-1. **PR #1631 CI 확인 → 초록이면 대표 지시("머지까지")대로 머지**. head sha 대조 필수.
+1. ✅ #1631 머지 `97f5b99`(2026-10-06 23:31 KST, Poppins 판). 숫자 글꼴 Roboto 전환은 후속 PR. **둘 다 배포 후 라이브 판정**(아래 숫자 글꼴 항목의 E4 명령).
 2. **대표 선택 2건 — 둘 다 A 로 확정·구현(#1631)**. 시안 캔버스 https://claude.ai/artifact/N8ivG9DooQMmhHW9hiMgEz
    - 결제 완료 화면 **A(영수증 정리형)**: "이런 서비스도 있어요" 타일·같은 매장 크로스셀 카드 제거 → "{매장} 다른 이용권 보기" 한 줄(`/s/{seller_id}`).
    - 숫자 글꼴 **Roboto**(처음 A=Poppins 로 했다가 대기업 글꼴 비교 보드를 보고 대표가 *"Google · Roboto 이게 낫네"*): `src/index.css` `@font-face 'UrDigits'`(숫자·쉼표·마침표·% 만, 5굵기 ~6KB, `public/static/fonts/roboto-digits-*`) + 본문·`font-sans` 스택 맨 앞.
@@ -34,4 +34,4 @@
 - npm audit high/critical 14건 선재(axios·capacitor·undici 등) — 별건.
 
 ## Notion
-미기록 — 머지 후 기록.
+미기록 — 후속 PR 머지·판정 뒤 기록.
