@@ -16,6 +16,7 @@
  * 거절된 주문이 화면에서 사라진 채로 남는다 — 사장님은 처리했다고 믿는다. 응답을 받고 바꾼다.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
+import api from '@/lib/api'
 import { assertSeat, currentSeatId, onSeatChange, SeatMismatchError } from '@/lib/seller-seat'
 import { parseUTCDate } from '@/utils/date'
 
@@ -108,7 +109,12 @@ export function useSellerWork(
     // 🪑 좌석이 안 맞으면 **부르지 않는다** — 부르면 남의 가게 숫자를 그린다.
     if (!enabled || currentSeatId() !== sellerId) { setOrders([]); setProducts([]); return }
     setLoading(true)
-    import('@/lib/api').then(async ({ default: api }) => {
+    /**
+     * ⚡ 2026-10-06 — `api` 정적 사용. 이 조회는 **좌석이 확정된 뒤**에 도는 2단이라
+     *   동적 import 의 task 지연이 1단 지연 위에 **더해진다**(실측 주문 `+893ms`).
+     *   1단(`useMyStores`)까지 함께 고치니 `+714ms`.
+     */
+    void (async () => {
       const [oRes, pRes] = await Promise.all([
         api.get('/api/seller/orders?limit=50&sort=desc').catch(() => null),
         withProducts ? api.get('/api/seller/products').catch(() => null) : Promise.resolve(null),
@@ -144,7 +150,7 @@ export function useSellerWork(
         }))
         .sort((a, b) => Number(b.isActive) - Number(a.isActive) || b.sold - a.sold))
       setFailed(false)
-    }).catch(() => { if (alive.current) setFailed(true) })
+    })().catch(() => { if (alive.current) setFailed(true) })
       .finally(() => { if (alive.current) setLoading(false) })
   }, [sellerId, enabled, withProducts])
 
@@ -166,7 +172,6 @@ export function useSellerWork(
   const confirmOrder = useCallback(async (o: WorkOrder) => guarded(async () => {
     setBusyOrder(o.orderNumber)
     try {
-      const { default: api } = await import('@/lib/api')
       const r = await api.put(`/api/seller/orders/${encodeURIComponent(o.orderNumber)}/status`, { status: 'PREPARING' })
       if (!r.data?.success) return false
       if (alive.current) setOrders((list) => list.filter((x) => x.orderNumber !== o.orderNumber))
@@ -178,7 +183,6 @@ export function useSellerWork(
     setBusyProduct(p.id)
     const next = !p.isActive
     try {
-      const { default: api } = await import('@/lib/api')
       const r = await api.put(`/api/seller/products/${p.id}`, { is_active: next, status: next ? 'ACTIVE' : 'HIDDEN' })
       if (!r.data?.success) return false
       if (alive.current) setProducts((list) => list.map((x) => (x.id === p.id ? { ...x, isActive: next } : x)))

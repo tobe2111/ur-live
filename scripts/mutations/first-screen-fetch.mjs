@@ -110,4 +110,45 @@ export default [
       '예외 목록은 "괜찮은 것" 이 아니라 "지금은 못 고치는 것" 이다. 사유가 없으면 다음 사람이 ' +
       '그게 정상인 줄 알고 숫자를 올린다.',
   },
+  // ── ⚡ 첫 화면 데이터가 다음 task 로 밀리는 회귀 (2026-10-06) ──────────────────
+  {
+    name: '좌석 조회를 동적 import 뒤로 되돌린다',
+    why: '그 한 줄이 좌석 요청을 첫 묶음에서 떨어뜨리고(+842ms), 거기 매달린 주문 조회까지 지연을 상속한다.',
+    file: 'src/pages/user-profile/useMyStores.ts',
+    find: "    Promise.resolve(api.get('/api/seller/my-stores/summary'))",
+    replace: "    import('@/lib/api').then(({ default: api }) => api.get('/api/seller/my-stores/summary'))",
+    test: 'src/tests/unit/first-screen-static-api-2026-10-06.test.ts',
+  },
+  {
+    name: '잔액 조회를 동적 import 뒤로 되돌린다',
+    why: '상단 숫자 한 줄이 형제 여섯보다 한 박자 늦게(+836ms) 나간다.',
+    file: 'src/pages/user-profile/MyStats.tsx',
+    find: "      api.get('/api/points/balance')",
+    replace: "      import('@/lib/api').then(({ default: api }) => api.get('/api/points/balance'))",
+    test: 'src/tests/unit/first-screen-static-api-2026-10-06.test.ts',
+  },
+  {
+    name: '첫 화면 정적 api import 를 지운다',
+    why: '정적 import 가 사라지면 이 모듈은 다시 동적 경로로 돌아갈 수밖에 없다 — 그 자리를 비워 두면 안 된다.',
+    file: 'src/pages/user-profile/seller-section/useSellerWork.ts',
+    find: "import api from '@/lib/api'\n",
+    replace: '',
+    test: 'src/tests/unit/first-screen-static-api-2026-10-06.test.ts',
+  },
+  {
+    name: '시트까지 정적으로 바꾼다 (반대 방향)',
+    why: '시트는 사람이 열 때만 마운트돼 놓칠 첫 묶음이 없다 — 여기까지 정적으로 바꾸면 규칙의 경계가 흐려진다.',
+    file: 'src/pages/user-profile/seller-section/PinSheet.tsx',
+    find: "import { useEffect, useState } from 'react'",
+    replace: "import { useEffect, useState } from 'react'\nimport api from '@/lib/api'",
+    test: 'src/tests/unit/first-screen-static-api-2026-10-06.test.ts',
+  },
+  {
+    name: '검사 대상 목록을 비운다',
+    why: '목록이 비면 it.each 가 0회 돌고 가드가 "지키는 척" 만 한다.',
+    file: 'src/tests/unit/first-screen-static-api-2026-10-06.test.ts',
+    find: "  'src/pages/user-profile/useMyStores.ts',\n",
+    replace: '',
+    test: 'src/tests/unit/first-screen-static-api-2026-10-06.test.ts',
+  },
 ]

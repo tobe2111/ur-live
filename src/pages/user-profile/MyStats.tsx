@@ -36,6 +36,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
+import api from '@/lib/api'
 import { formatNumber } from '@/utils/format'
 import { getUserIdSync } from '@/utils/auth'
 import { TOPUP_DISABLED } from '@/shared/feature-flags'
@@ -80,18 +81,19 @@ export default function MyStats({ voucher, gifticon, coupon }: { voucher?: numbe
 
   useEffect(() => {
     if (!getUserIdSync()) { setBalance(null); return }
+    // ⚡ 2026-10-06 — `api` 정적 사용. 동적 import 는 이 요청을 다음 task 로 밀어
+    //   형제 여섯(+564~571ms)보다 한 박자 늦게(+836ms) 나갔다. 유일 소비처
+    //   `UserProfilePage` 가 이미 `api` 를 정적 import 하므로 청크 비용 0.
     const fetchBalance = () => {
-      import('@/lib/api').then(({ default: api }) => {
-        api.get('/api/points/balance')
-          .then((r) => {
-            if (r.data.success) {
-              setBalance(Number(r.data.data.balance ?? 0))
-              setFreeBalance(Math.max(0, Number(r.data.data.free_balance ?? 0)))
-            } else setBalance(null)
-          })
-          // 🛡️ 실패는 `null` — `0` 으로 떨어뜨리면 화면이 거짓말을 한다.
-          .catch(() => setBalance(null))
-      })
+      api.get('/api/points/balance')
+        .then((r) => {
+          if (r.data.success) {
+            setBalance(Number(r.data.data.balance ?? 0))
+            setFreeBalance(Math.max(0, Number(r.data.data.free_balance ?? 0)))
+          } else setBalance(null)
+        })
+        // 🛡️ 실패는 `null` — `0` 으로 떨어뜨리면 화면이 거짓말을 한다.
+        .catch(() => setBalance(null))
     }
     fetchBalance()
     // 딜을 쓰고 돌아왔을 때 즉시 맞는다.

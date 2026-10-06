@@ -16,6 +16,7 @@
  *   좌석이 없으면 빈 목록이지 에러가 아니다 — 그래서 셀러가 아닌 사람에게는 조용히 아무것도 안 그린다.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
+import api from '@/lib/api'
 import { onSeatChange, seatGeneration } from '@/lib/seller-seat'
 
 export interface StoreSummaryRow {
@@ -60,7 +61,16 @@ export function useMyStores(): MyStoresState {
   const load = useCallback(() => {
     const gen = seatGeneration()
     setLoading(true)
-    import('@/lib/api').then(({ default: api }) => api.get('/api/seller/my-stores/summary'))
+    /**
+     * ⚡ 2026-10-06 — `api` 를 **정적으로** 쓴다 (대표 *"내 가게 이 부분이 가장 늦게 떠"*).
+     *   종전 `import('@/lib/api').then(...)` 은 요청을 **다음 task 로 밀었다**. 그 사이 React 가
+     *   렌더를 돌므로 이 요청만 첫 묶음을 놓쳤다 — 실측 `+842ms` vs 형제 여섯 `+564~571ms`.
+     *   그리고 `seller/orders` 가 이 응답(좌석)을 기다리므로 **지연이 2단으로 전파**됐다(`+893ms`).
+     *   정적으로 바꾸니 `+497ms`(첫 묶음 합류) · 주문 `+787ms`.
+     *   🔑 모듈 그래프 비용 0 — 유일 소비처 `UserProfilePage` 가 이미 `api` 를 정적 import 한다
+     *     (`critical-chunks` 17개 불변으로 확인). ⚠️ 동적 import 로 되돌리지 말 것.
+     */
+    Promise.resolve(api.get('/api/seller/my-stores/summary'))
       .then((r) => {
         if (!alive.current) return
         const d = r.data?.data

@@ -67,6 +67,46 @@ node scripts/visual-preview.mjs --route=/user/profile --stores=1 --trace-api
 변경 요청(POST/PATCH/PUT/DELETE)마다 쿠키가 없으면 **자기가** 토큰을 받았다. 요청들이 겹친
 구간에는 아무도 쿠키를 못 보므로 `readCookie` 가드로는 이 경쟁을 못 막는다 ⇒ **in-flight 공유**.
 
+## 2-B. 두 번째 병 — 같은 것을 두 번이 아니라 **한 박자 늦게** (후속 측정)
+
+중복을 없앤 뒤 13화면의 폭포를 다시 떴다. 마이의 요청 여덟 중 **둘만** 늦게 출발했다:
+
+```
++564~571ms  wishlists · vouchers/my · coupons/my · notification-prefs · promo-bar · version
++836ms      points/balance            ← 늦음
++842ms      seller/my-stores/summary  ← 늦음 (좌석)
++893ms      seller/orders             ← 좌석을 기다리는 2단이라 지연을 **상속**
+```
+
+그 둘만 `import('@/lib/api').then(...)` 을 거쳤다. **모듈 다운로드 비용이 아니다** — `app-utils` 는
+엔트리가 이미 preload 한다. `import()` 의 프로미스가 **다음 task 에서** 풀리고 그 사이 React 가
+렌더를 돌아서 **첫 묶음을 놓친다.** 네 곳(1단 둘 + 2단 둘)을 정적으로 바꾼 결과:
+
+```
+여덟 전부 +496~506ms  ·  seller/orders +714ms   (각 −335ms / 2단 −179ms)
+```
+
+🔑 **모듈 그래프 비용 0** — 유일 소비처 `UserProfilePage` 가 이미 `api` 를 정적 import 한다
+(`critical-chunks` 17개 · `surface-role-leak` 0 으로 확인).
+⚠️ **시트 4개(출금·계좌·PIN·가게전환)는 그대로 동적이다** — 사람이 열 때 마운트돼 놓칠 첫 묶음이 없다.
+
+**마이 밖은 전수로 확인했고 고칠 것이 없었다**: `SellOwnProductsCTA`(주인 전용 게이트) ·
+`useKakaoMap`(지도 SDK) · `UserGroupBuyCreatePage`(꺼진 기능) — 측정된 첫 화면에서 요청이 안 나간다.
+
+### 🩸 오진 기각 세 건 (고치지 않았다 — 다음 세션이 또 파지 말 것)
+
+| 후보 | 왜 아니었나 |
+|---|---|
+| `/browse` 의 `group-buy/products/{id}` ×6 | `BrowseProductCard` 가 `GroupBuyFeedCard` 를 감싼다 — **이미 idle 로 미뤄 둔** 그 프리페치다(2026-08-27) |
+| 이용권 상세 리뷰 summary → list (183ms) | `--slow` 없이 재니 **3ms 차이로 병렬**. 183ms 는 250ms 스텁 + Chrome 6-연결 한도가 만든 **큐 artifact** |
+| 모든 로그인 화면의 `curator/me/dashboard` | 의도된 idle 프리페치(5분 캐시) — 유어샵 탭 0-RTT 용 |
+
+🧭 **`--slow=N` 으로 잰 간격은 의존성의 증거가 아니다.** 연결 한도 때문에 **모든** 뒷 요청이
+N ms 씩 밀려 보인다. 직렬 여부는 **`--slow` 없이** 다시 재서 판정할 것.
+
+⚠️ **그리고 `import('@/lib/api')` 를 전수로 바꾸지 말 것** — 이 PR 이 전에 그 유혹으로 31곳을
+고칠 뻔했다. 바꿀 자리는 **"마운트 즉시 도는 데이터 + 형제가 정적으로 같은 묶음에 있는 경우"** 뿐이다.
+
 ## 3. 규칙 (CLAUDE.md 방어선 표에 등재)
 
 > 첫 화면(아무것도 안 누른 상태)에서 **같은 경로를 두 번** 부르지 않는다. 쿼리가 달라도 마찬가지다.
@@ -100,4 +140,5 @@ node scripts/visual-preview.mjs --route=/user/profile --stores=1 --trace-api
 - 지도 `/api/kakao/place/address` ×5 는 **주소가 전부 달라** 정당하다 — 예외에 사유와 함께 올렸다.
   서버 백필(`ensure-geocode`)이 좌표를 채우면 저절로 0 이 된다.
 - **라이브 판정(E4) 미실시** — 배포 후 대표 화면에서 `내 가게`의 `판매 중 N개`가 즉시 뜨는지,
-  교환권 첫 진입이 한 번에 뜨는지 눈으로 확인이 필요하다.
+  교환권 첫 진입이 한 번에 뜨는지, 마이의 `내 가게` 구역이 손님 줄과 **같이** 뜨는지 눈으로 확인.
+- **ms 는 이 컨테이너 값이다**(CPU 스로틀) — 숫자가 아니라 **순서·묶음**이 판정 기준이다.
