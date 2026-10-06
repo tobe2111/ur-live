@@ -1,4 +1,4 @@
-// 유어딜 소개서 공통 모듈 (2026-09-13) — 사장님·인플루언서·대행사 세 덱이 같은 색·글꼴·헬퍼·공통 블록을 쓴다.
+// 유어딜 소개서 공통 모듈 (2026-09-13 · 2026-10-06 상인회 덱 추가) — 사장님·상인회·인플루언서·대행사 네 덱이 같은 색·글꼴·헬퍼·공통 블록을 쓴다.
 // 대행사 v4 생성기(urdeal-agency-proposal.build.mjs)의 헬퍼를 그대로 옮겼다. 한 곳을 고치면 셋이 같이 바뀐다.
 // 2026-09-15 대표 참고 덱(히로인스 소셜 마케팅 상품 소개서 36장)에서 가져온 장치: section(구분 장 + 우상단 라벨) · takeaway(하단 한 줄 결론 바) ·
 //   callouts(화면 인출선) · personas(말풍선 페르소나 행) · procedureColumns(트랙별 절차 N열) · flywheel(플라이휠) · table hiCol(강조 열).
@@ -26,16 +26,21 @@ export const C = {
 export const FONT = 'Pretendard';
 export const W = 13.333, H = 7.5, M = 0.75;
 
-// ── 세 덱이 글자 그대로 공유하는 사실 (바뀌면 여기 한 곳만) ──
+// ── 네 덱이 글자 그대로 공유하는 사실 (바뀌면 여기 한 곳만) ──
 export const FACTS = {
   feeDirect: '10%', feeBrokered: '5%',
   pgNote: '카드 수수료(현재 약 2.75%, 카드사 정책에 따라 바뀔 수 있음)는 유어딜이 자기 몫 안에서 냅니다.',
   introPct: '2%', introTerm: '1년',
   reviewBonus: '1,000딜',
   minPayout: '1만원',
-  liveMeasuredAt: '2026-09-13',
-  activeVouchers: '337', realStores: '1', avgMeal: '32,411원', avgStay: '155,824원',
-  influencerDb: '201,471명', influencerReachable: '46,220명', influencerYoutube: '18,170명', influencerNaverBlog: '172,755명', influencerAsOf: '2026년 9월 기준',
+  liveMeasuredAt: '2026-10-06',
+  activeVouchers: '359', realStores: '1', avgMeal: '32,409원', avgStay: '155,693원', avgBeauty: '45,253원', avgEtc: '37,168원',
+  influencerDb: '282,818명', influencerReachable: '61,512명', influencerYoutube: '19,571명', influencerNaverBlog: '247,565명', influencerAsOf: '2026년 10월 기준',
+  // 💡 라이브에서 지금 팔리고 있는 유일한 실제 매장 이용권(상품 2915 · 홍대돈까스 · seller 14). 셈법 슬라이드는 셋 다 이 값을 쓴다.
+  //    ⚠️ 2026-09 까지 쓰던 상품 2888(치즈돈가스 25,000 → 16,500)은 2026-10-06 실측에서 is_active=0 — 더 이상 "지금 팔리는" 상품이 아니다.
+  sampleName: '프리미엄 돈가스 1인 세트', sampleOrig: '14,500원', samplePrice: '7,500원', sampleFee: '−750원', sampleNet: '6,750원',
+  // 💼 중개(상인회·대행사) 조건 상한 — broker-share.ts 의 상수와 같은 값. 바뀌면 그 파일과 함께 고친다.
+  brokerShareMax: '50%', brokerTermsSumMax: '90%',
   influencerPayoutMin: '10만원', influencerPayoutDay: '매월 1일', clawbackWindow: '7일',
   contactEmail: 'jiwon@ur-team.com', kakaoChannel: 'pf.kakao.com/_AITdn', site: 'urdeal.kr', biz: '리스터코퍼레이션 · 사업자등록번호 479-09-02930',
 };
@@ -318,7 +323,7 @@ export async function createDeck({ title, footer, shotsDir, shotKeys = [], phone
     });
     return y + 0.36 + body.length * rowH;
   }
-  /** 손님 경험 4단계 (세 덱 공통 블록). 폰 4장을 가로로. */
+  /** 손님 경험 4단계 (덱 공통 블록). 폰 4장을 가로로. */
   function customerSteps(slide, { y = 2.4, h = 4.2, keys = ['home', 'detail', 'use', 'shop'], caps: capsIn } = {}) {
     const caps = capsIn || ['찾기: 홈에서 동네 이용권', '결제: 정가와 할인가를 함께', '발급: 결제 즉시 내 이용권', '사용: 매장에서 QR 또는 확인코드'];
     const frameRatio = (780 + 44) / (1688 + 44);
@@ -329,7 +334,7 @@ export async function createDeck({ title, footer, shotsDir, shotKeys = [], phone
       phone(slide, k, x, y, h, { caption: caps[i] });
     });
   }
-  /** 정직 고지 (세 덱 공통 문장). */
+  /** 정직 고지 (덱 공통 문장). */
   function honesty(slide, { x = M, y, w = W - 2 * M, h = 1.5, text } = {}) {
     card(slide, x, y, w, h, { fill: C.tint });
     T(slide, '정직하게 말씀드립니다', { x: x + 0.3, y: y + 0.18, w: w - 0.6, h: 0.3, fontSize: 12.5, bold: true, color: C.ink, charSpacing: -0.3 });

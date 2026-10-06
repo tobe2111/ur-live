@@ -7,6 +7,7 @@
 | 인플루언서 제휴 제안 (16:9, 9장) | `public/static/proposals/influencer-proposal.html` | `/admin/proposals` |
 | 대행사 제휴 제안 (16:9, 30장 v8 — **09-19 확정 플로우**: 매장 코드·두 요율·코드 링크 매칭·귀사 몫 유어딜 직접 송금. PART 구분 장 4·직접 vs 경유 표·플라이휠·페르소나·목표별 설계·인출선·절차 3열, PowerPoint, 매장 모집 실행서) | `docs/business/proposals/urdeal-agency-proposal.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-agency-proposal.build.mjs`) | 없음. 파일로 전달 |
 | 매장 사장님 소개 (16:9, 15장 v7 — 대표 최종 구성안 9장 + 손님 흐름 + 페르소나·목표별 설계·쌓이는 자산·절차 3열, PowerPoint. 상세판 17장은 `urdeal-store-owner-deck-detail.*`) | `docs/business/proposals/urdeal-store-owner-deck.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-store-owner-deck.build.mjs`, 공통 모듈 `deck-common.mjs`) | 없음. 파일로 전달 |
+| 상인회 서비스 소개 + 입점 요청 (16:9, 20장 v1 — **2026-10-06 대표 지시**. 상인회 설명회 자리용. 공동 사업(전단·축제·쿠폰)과의 비교 · 세 가지 길(직접 10% / 유어딜 대행 10% / 상인회 중개 5%) · 상인회 몫의 구조와 상한 · 마지막 장이 **입점 요청 3가지**) | `docs/business/proposals/urdeal-merchant-association-deck.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-merchant-association-deck.build.mjs`, 공통 모듈 `deck-common.mjs`) | 없음. 파일로 전달 |
 | 인플루언서 제휴 소개 (16:9, 20장 v4 — **중개사 계정 · 유어딜 5% 흐름 + 09-19 확정 플로우**(코드 링크 한 탭 매칭·매장 단위 링크·매장 코드), 영입 2% 제거, 정산은 "이용권 사용 후", 유어쇼츠·이용권 지갑·QR 화면, SNS 로고, https 하이퍼링크. PART 구분 장 3·플라이휠·페르소나·인출선·절차 3열, PowerPoint) | `docs/business/proposals/urdeal-influencer-deck.pptx` + 같은 이름 `.pdf` (생성기 `urdeal-influencer-deck.build.mjs`, 공통 모듈 `deck-common.mjs`). 기존 9장 HTML(`public/static/proposals/influencer-proposal.html`)을 대체한다 | 없음. 파일로 전달 (어드민 `/admin/proposals` 의 HTML 은 구판) |
 | 소개서 3종 기획서 | `docs/business/proposals/three-decks-plan-2026-09.md` | 없음 |
 
@@ -69,9 +70,15 @@ SSOT 는 `docs/decisions/archive/2026-09-19-broker-matching-flow.md`(대표 말 
 
 ## 공통 모듈 `deck-common.mjs` (2026-09-13)
 
-색·글꼴·헬퍼(chrome/title/card/phone/kv/table)와 세 덱이 글자 그대로 공유하는 사실(`FACTS`: 요율, 카드비 문구, 실측 숫자,
-연락처)이 여기 있다. **요율이나 실측 숫자가 바뀌면 이 파일 한 곳만 고친다.** 카드 수수료는 "현재 약 2.75%, 카드사 정책에
-따라 바뀔 수 있음" 으로 적는다(대표 2026-09-13). 세 덱이 공유하는 블록: `customerSteps`(손님 4단계 폰 4장) · `honesty`(정직 고지).
+색·글꼴·헬퍼(chrome/title/card/phone/kv/table)와 **네 덱**이 글자 그대로 공유하는 사실(`FACTS`: 요율, 카드비 문구, 실측 숫자,
+연락처, 셈법에 쓰는 라이브 상품)이 여기 있다. **요율이나 실측 숫자가 바뀌면 이 파일 한 곳만 고친다.** 카드 수수료는 "현재 약 2.75%, 카드사 정책에
+따라 바뀔 수 있음" 으로 적는다(대표 2026-09-13). 덱들이 공유하는 블록: `customerSteps`(손님 4단계 폰 4장) · `honesty`(정직 고지).
+
+**실측값은 2026-10-06 에 갱신했다**(활성 이용권 359 · 식사 평균 32,409 · 숙박 155,693 · 인플루언서 DB 282,818 · 연락 가능 61,512).
+🩸 같은 날 **셈법에 쓰던 상품 2888(치즈돈가스 25,000 → 16,500)이 `is_active=0` 이 된 것**을 발견했다. 사장님 덱은 그 숫자를
+*"지금 팔리는 실제 상품"* 이라고 소개하고 있었으므로 **문장이 거짓이 된 상태**였다. 라이브에서 지금 팔리는 유일한 실제 매장
+이용권(2915 · 홍대돈까스 · 14,500 → 7,500)으로 바꾸고, 값을 `FACTS.sample*` 한 곳에 모아 세 덱이 같이 쓰게 했다.
+⇒ **덱을 다시 만들기 전에 그 상품이 아직 팔리고 있는지부터 확인할 것.**
 대행사 v4 생성기는 아직 자기 헬퍼를 쓴다(v5 에서 이 모듈로 옮긴다).
 
 ## 매장 사장님 안내 (.pptx) 다시 만들려면
@@ -82,7 +89,8 @@ ln -sfn /tmp/deck/node_modules /path/to/ur-live/docs/business/proposals/node_mod
 cd /path/to/ur-live/docs/business/proposals && node urdeal-store-owner-deck.build.mjs out.pptx
 ```
 
-- 12장 구성과 근거는 `three-decks-plan-2026-09.md` §2. 5장의 셈법은 라이브 유일의 실제 매장 이용권(id 2888, 25,000 → 16,500원)을 쓴다.
+- 12장 구성과 근거는 `three-decks-plan-2026-09.md` §2. 5장의 셈법은 라이브 유일의 실제 매장 이용권(id **2915**, 14,500 → 7,500원 · `FACTS.sample*`)을 쓴다.
+  (2026-10-06 이전에는 id 2888(25,000 → 16,500)이었는데 그 상품이 내려갔다.)
   재료비 35% 는 가정이고 슬라이드에도 그렇게 적혀 있다.
 - 셀러 화면은 `capture-seller-shots.mjs` 로 계정 없이 찍는다. 2026-09-13 에 `/seller/settlements`(정산) · `/store/new`(등록 마법사 1단계·3단계) 를 추가했다.
   🩸 정산 화면은 처음에 에러 경계가 떴다: `DealBalanceCard` 가 `balance.total.toLocaleString()` 을 부르는데 예시 응답에 `total` 이 없었다.
@@ -131,6 +139,36 @@ node /path/to/ur-live/docs/business/proposals/urdeal-agency-proposal.build.mjs .
 이 스크립트가 LibreOffice 의 "아시아/비아시아 문자 간 자동 여백" 문단 속성을 꺼서 "월 12 만원" 처럼
 벌어지는 표시를 없앱니다(PowerPoint 원본엔 없는 현상). 차트 안 글자는 별도 객체라 여백이 남고, **pptx 표(addTable) 셀도 보정이 안 먹습니다** —
 그래서 5 장의 규모별 표는 표 객체가 아니라 텍스트 상자로 그립니다.
+
+## 상인회 소개서 (.pptx) 다시 만들려면
+
+```bash
+mkdir -p /tmp/deck && cd /tmp/deck && npm init -y && npm i pptxgenjs sharp react react-dom react-icons
+ln -sfn /tmp/deck/node_modules /path/to/ur-live/docs/business/proposals/node_modules
+cd /path/to/ur-live/docs/business/proposals && node urdeal-merchant-association-deck.build.mjs urdeal-merchant-association-deck.pptx
+python3 export-pptx-to-pdf.py "$PWD/urdeal-merchant-association-deck.pptx" "$PWD/urdeal-merchant-association-deck.pdf"
+```
+
+- **누구에게**: 전통시장·골목형상점가·상가 상인회의 **회원 매장 사장님들**. 읽는 자리가 1:1 상담이 아니라
+  **설명회**라서 사장님 덱과 내용이 갈린다. 회장·사무국·회원이 같이 보고, 마지막 장이 상인회에 드리는 요청이다.
+- **사장님 덱과 다른 점 셋**: ① 비교 대상이 개별 가게 광고가 아니라 **회비로 모아 쓴 공동 사업**(전단·축제·쿠폰·체험단)
+  ② 사무국이 대신 등록·운영하는 길(중개 5% + 매장 몫 안의 상인회 몫) ③ 입점 요청 장.
+  반대로 **기대수익 시나리오는 넣지 않았다** — 단체 자리에서 수익 표를 띄우면 약속으로 읽힌다.
+- 캡처는 기존 `shots/` 를 그대로 쓰고, 인플루언서 풀만 2026-10-06 에 다시 찍어 `shots/admin-pool-rows.jpg`(머리글+3행 크롭)로 넣었다.
+  🩸 **집계 막대 캡처(`admin-influencer-pool-stats.jpg`)는 쓰지 않는다** — 2026-09-14 것이라 슬라이드의 갱신된 숫자(282,818)와
+  캡처 속 숫자(201,471)가 **같은 장에서 어긋났다**. 그리고 다시 찍어 보니 어드민 화면 구조가 바뀌어 그 선택자가
+  **다른 요소(최신화 내역 바)** 를 잡는다. ⇒ `capture-admin-shots.mjs` 의 stats 선택자는 손봐야 쓸 수 있다(미수리).
+  ⚠️ 같은 이유로 `shots/admin-influencer-pool-table.jpg` 도 **덮어쓰지 않았다** — 새 캡처는 세로가 2.6배(1120 → 2920)라
+  그 파일을 쓰는 사장님·대행사 덱의 레이아웃이 깨진다.
+
+### 🩸 이 덱에서 값을 치르고 배운 레이아웃 규칙
+
+- **본문은 y = 6.70 안에서 끝나야 한다.** 꼬리말이 `H − 0.62 = 6.88` 에 있고 `takeaway` 기본값이 `y 6.18 + h 0.52` 다.
+  처음 판에서 **일곱 장**이 이 선을 넘어 결론 바가 본문을 덮거나 캡션이 꼬리말에 깔렸다.
+  ⚠️ PDF 로 바꿔 **그림으로 보기 전에는 안 보인다** — pptxgenjs 는 넘쳐도 아무 말을 하지 않는다.
+- **`section()` 의 제목은 한 줄로 쓴다.** 제목 상자가 `h 1.2` 로 고정이라 40pt 두 줄이면 바로 아래 `sub` 를 덮는다.
+- **`customerSteps` 와 `takeaway` 는 한 장에 같이 못 둔다.** 폰 캡션이 결론 바 자리에 온다. 하나를 고른다.
+- **가로로 긴 캡처(13:1 같은)를 옆 칸에 세우지 말 것.** 글자가 안 읽힌다. 아래에 넓게 깔거나 읽히는 크기로 잘라 쓴다.
 
 ## 인플루언서 제휴 소개 (.pptx) 다시 만들려면
 
