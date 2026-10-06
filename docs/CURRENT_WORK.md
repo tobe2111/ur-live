@@ -5494,13 +5494,14 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 399건 · 최신순 · 이 목록은 자동 생성된다._
+_총 401건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-10-06**
-- [만료 환불을 주문 장부에 적는다 — 이중환불 구멍 (2026-10-06)](handoff/2026-10-06-expired-refund-booked.md)
 - [철거로 잃은 둘을 원본 화면에 복원 (2026-10-06)](handoff/2026-10-06-teardown-losses.md)
+- [상인회 서비스 소개서(입점 요청 포함) 신설 + 네 덱 실측 갱신 (2026-10-06)](handoff/2026-10-06-merchant-association-deck.md)
 - [5일치 점검 — CI 판정 마감 + 라이브에서 나온 머니 발견 1건 (2026-10-06)](handoff/2026-10-06-five-day-sweep.md)
 - [2026-10-06 — 첫 화면이 같은 것을 두 번 받던 것 (전수 수리 + 가드)](handoff/2026-10-06-first-screen-duplicate-fetch.md)
+- [만료 환불을 주문 장부에 적는다 — 이중환불 구멍 (2026-10-06)](handoff/2026-10-06-expired-refund-booked.md)
 - [의존성 권고 · 셀러 40px 눈금 · 정산 패널 봉투 (2026-10-06)](handoff/2026-10-06-deps-rung-envelope.md)
 - [유어애즈 월 예산 — 목표를 "포함분 안" 에서 **초과 $0** 으로 (2026-10-06)](handoff/2026-10-06-ads-zero-overage-budget.md)
 **2026-10-02**

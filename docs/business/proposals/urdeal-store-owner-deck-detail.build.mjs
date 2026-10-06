@@ -12,12 +12,16 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
 
 // ── 기대 매출·순수익 계산 (덱에 찍히는 숫자는 전부 여기서 나온다. 손으로 옮겨 적지 않는다) ──
 const CALC = (() => {
-  const listPrice = 25000, sale = 16500, feePct = 0.10, costRate = 0.35; // 실제 상품 2888 · 원가율은 가정
+  // 실제 상품 2915(홍대돈까스 · 라이브에서 지금 팔리는 유일한 실제 매장 이용권) · 원가율은 가정.
+  // ⚠️ 종전 앵커 2888(25,000 → 16,500)은 2026-10-06 실측에서 is_active=0 — 값은 deck-common FACTS.sample* 과 같다.
+  const listPrice = 14500, sale = 7500, feePct = 0.10, costRate = 0.35;
   const cost = Math.round(listPrice * costRate), fee = Math.round(sale * feePct), dep = sale - fee, net = dep - cost;
   const won = (n) => n.toLocaleString('ko-KR') + '원';
   const scen = [[1, 30], [3, 90], [5, 150]].map(([perDay, n]) => ({ perDay, n, rev: sale * n, fee: fee * n, dep: dep * n, cost: cost * n, net: net * n }));
-  const cats = [['식사', 32411], ['뷰티', 45253], ['숙박', 155824]].map(([k, p]) => ({ k, p, rev: p * 30, dep: p * 30 - Math.round(p * 30 * feePct) }));
-  return { listPrice, sale, cost, fee, dep, net, discount: listPrice - sale, scen, cats, won };
+  // 2026-10-06 실측(FACTS.avgMeal·avgBeauty·avgStay 와 같은 값 — 바꿀 때 같이 고친다)
+  const cats = [['식사', 32409], ['뷰티', 45253], ['숙박', 155693]].map(([k, p]) => ({ k, p, rev: p * 30, dep: p * 30 - Math.round(p * 30 * feePct) }));
+  const discountPct = Math.round(((listPrice - sale) / listPrice) * 100);
+  return { listPrice, sale, cost, fee, dep, net, discount: listPrice - sale, discountPct, scen, cats, won };
 })();
 
 (async () => {
@@ -130,7 +134,7 @@ const CALC = (() => {
       T(s, p, { x: 7.75, y: py + 0.42, w: W - M - 7.75, h: 0.8, fontSize: 11, color: C.inkSoft, lineSpacingMultiple: 1.45, valign: 'top' });
       py += 1.5;
     });
-    s.addNotes('상품 2888(홍대돈까스, 라이브 유일의 실제 매장 이용권) 09-13 실측: 정가 25,000 / 판매가 16,500. 카드 수수료(현재 약 2.75%, 변동 가능)는 유어딜 부담.');
+    s.addNotes('상품 2915(홍대돈까스, 라이브 유일의 실제 매장 이용권) 2026-10-06 실측: 정가 14,500 / 판매가 7,500. 카드 수수료(현재 약 2.75%, 변동 가능)는 유어딜 부담.');
   }
 
   // ───────── 05 기대 매출과 순수익 ─────────
@@ -143,7 +147,7 @@ const CALC = (() => {
     card(s, cx, 2.1, cw, 4.7);
     label(s, '이용권 한 장 (실제 상품 기준)', cx + 0.3, 2.28, cw - 0.6);
     const yEnd = kv(s, [
-      ['정가', won(CALC.listPrice), 0], ['판매가 (34% 할인)', won(CALC.sale), 0, true],
+      ['정가', won(CALC.listPrice), 0], [`판매가 (${CALC.discountPct}% 할인)`, won(CALC.sale), 0, true],
       ['유어딜 10%', '−' + won(CALC.fee), 0], ['계좌 입금', won(CALC.dep), 1, true],
       ['재료비 (정가의 35% 가정)', '−' + won(CALC.cost), 0], ['한 장에 남는 돈', won(CALC.net), 2],
     ], cx + 0.3, 2.6, cw - 0.6, { rowH: 0.41 });
@@ -167,7 +171,7 @@ const CALC = (() => {
       rowH: 0.4, fontSize: 10.5, brandCol: 3,
     });
     T(s, '재료비율과 판매 장수는 가정입니다. 이용권 손님이 추가로 주문하는 음료나 사이드는 계산에 넣지 않았습니다.', { x: tx, y: 6.45, w: tw, h: 0.3, fontSize: 9.5, color: C.gray });
-    s.addNotes(`계산 SSOT는 이 파일 CALC. 장당: 16,500 − 1,650 = 14,850 입금, 재료비 8,750(정가 25,000×35% 가정) → 6,100. 월 30/90/150장 = ${CALC.scen.map((r) => r.net.toLocaleString()).join(' / ')}원. 업종 평균가는 09-13 공개 API 실측(활성 이용권 카탈로그 평균, 실거래 평균 아님). 할인분은 정직하게 "덜 받는 값"으로 적었다.`);
+    s.addNotes(`계산 SSOT는 이 파일 CALC. 장당: ${won(CALC.sale)} − ${won(CALC.fee)} = ${won(CALC.dep)} 입금, 재료비 ${won(CALC.cost)}(정가 ${won(CALC.listPrice)}×35% 가정) → ${won(CALC.net)}. 월 30/90/150장 = ${CALC.scen.map((r) => r.net.toLocaleString()).join(' / ')}원. 업종 평균가는 2026-10-06 D1 실측(활성 이용권 카탈로그 평균, 실거래 평균 아님). 할인분은 정직하게 "덜 받는 값"으로 적었다.`);
   }
 
   // ───────── 06 손님은 어디서 보고 오나 ─────────
