@@ -10,7 +10,7 @@
      🔬 실측(Chromium, 700·100px "1111"/"0000"): Poppins 150/261 · tnum 무효 → 예외 규칙이 필요했다 / **Roboto 230/230** · Inter 172/270(tnum 259/259) · Geist·Manrope·Outfit 도 tnum 지원 · IBM Plex 240/240.
      ⇒ Roboto 는 처음부터 고정폭이라 `.tabular-nums` 예외를 지웠다(가드 ③이 그 예외의 재등장을 막는다). `.dash-num` 의 터미널 모노스페이스도 제거.
      **배포 후 E4 판정**: urdeal.kr 에서 `/static/fonts/roboto-digits-700.woff2` 200 + 배포 CSS 에 UrDigits 가 있는지.
-3. **PR B(딜 100% 결제) — 머니 경로, 아직 미착수.** #1631 머지 후 지정 브랜치를 main 에서 다시 시작해 진행.
+3. **PR B(딜 100% 결제) — 머니 경로. #1638 에 합쳐 머지(대표가 S14 전 머지를 지시).** 커밋 `51eb4f5`(기능) + `cd83ed1`(가운뎃점 래칫 대응). **E3 까지만이다** — `docs/STAGING_CHECKLIST.md` S14 실결제 1건이 남았다(딜 충분한 계정으로 이용권 결제 → 잔액이 총액만큼 정확히 줄고 이용권 발급).
 4. 결재 `docs/decisions/2026-10-06-broker-business-cert.md`(중개사 사업자등록증 주체) 답 대기.
 
 ## 완료분 (전부 #1631)
