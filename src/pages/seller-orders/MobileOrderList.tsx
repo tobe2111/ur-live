@@ -84,7 +84,9 @@ export default function MobileOrderList({ orders, onSelect, onConfirm, confirmin
       <div className="flex rounded-[var(--dash-radius,16px)] border border-rule bg-white p-1">
         {TABS.map((tb) => (
           <button key={tb.id} type="button" onClick={() => setTab(tb.id)} aria-pressed={tab === tb.id}
-            className={`flex-1 rounded-lg py-2 text-[12.5px] font-bold transition-colors ${tab === tb.id ? 'bg-brand text-white' : 'text-gray-400'}`}>
+            // 📏 2026-10-06: 35px → 40px 눈금(#1621 과 같은 기준). **박스로** 키운다 —
+            //   `tap-reach` 는 조상에 overflow 가 있으면 히트영역이 죽고, 여기도 카드 안이다.
+            className={`flex flex-1 min-h-[40px] items-center justify-center rounded-lg py-2 text-[12.5px] font-bold transition-colors ${tab === tb.id ? 'bg-brand text-white' : 'text-gray-400'}`}>
             {tb.label}{tb.n != null && tb.n > 0 ? ` ${tb.n}` : ''}
           </button>
         ))}
