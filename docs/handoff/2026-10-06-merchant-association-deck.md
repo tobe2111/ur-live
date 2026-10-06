@@ -88,6 +88,22 @@ seller_meta.broker_share_pct 가 박힌 매장 = 4곳(전부 10%)
 
 **네 덱 전부 다시 빌드하고 PDF 까지 만들었다**(FACTS 가 바뀌었으므로 산출물이 낡으면 안 된다).
 
+### 🛡️ pre-push 가드가 잡아 준 것 — 라이브 `/partners` 가 같은 숫자를 쓴다
+
+`FACTS` 만 고치고 밀었더니 **pre-push 게이트가 막았다.** 입점 랜딩 `/partners` 가 같은 숫자를 화면에 띄우고
+`src/shared/partners-facts.ts`(거울) ↔ `deck-common.mjs`(원본)를 `partners-landing-2026-09-16.test.ts` 가
+실제로 파싱해 대조하고 있었다. 한쪽만 바뀌면 **대표가 카톡으로 보낸 PDF 와 사이트가 다른 말을 한다.**
+
+⇒ 거울도 같이 갱신했다: `liveMeasuredAt` · `activeVouchers` · `influencerDb` · `influencerReachable` ·
+**`sample`(2888 → 2915)**. 🔴 **랜딩도 그 상품을 *"지금 팔리고 있는 실제 상품입니다"* 라고 말하고 있었다**
+(`PartnerMath.tsx`) — 덱만의 문제가 아니라 **라이브 화면도 거짓이었다.**
+
+🩸 **그 가드 자신이 낡아 있었다.** R4 의 한 줄이 `expect(PARTNER_FACTS.sample.list).toBe(25000)` 으로
+**가격을 손으로 박아** 두고 있었다. 그 값이 바로 내려간 상품이라, 시험이 **죽은 상품을 지키고** 있었고
+살아 있는 상품으로 고치려는 쪽이 빨간불을 맞았다. 지키려던 것은 *그 숫자*가 아니라 **"덱과 같은 라이브
+상품을 쓴다"** 이므로 **풀지 않고 그쪽으로 재조준**했다(덱 `FACTS.sample*` 를 파싱해 대조 + 0건이면 실패).
+주입 2건 등록(`scripts/mutations/partners-landing.mjs`) — **둘 다 빨간불 확인**.
+
 ---
 
 ## 4. 캡처에 대해 (다음 세션이 또 밟을 자리)
@@ -111,6 +127,11 @@ seller_meta.broker_share_pct 가 박힌 매장 = 4곳(전부 10%)
    쌓이는 설계가 `docs/handoff/2026-08-03-market-district-db-plan.md` 에 있다. 그 레인이 지금 어떤 상태인지는
    **이번 세션에서 안 봤다**(덱만 만들었다).
 3. 산출물 확인: `docs/business/proposals/urdeal-merchant-association-deck.pdf`.
+4. ⚠️ **이 컨테이너는 `npm ci` 가 됐다**(레지스트리 열려 있었다). 안 되는 세션이면 pre-push 게이트가
+   `js-yaml` 을 못 찾아 멈춘다 — 그때는 `SKIP_PREPUSH_GATE=1` 이 아니라 **왜 막혔는지부터** 볼 것.
+   이번에 그 게이트가 실제 사고(랜딩-덱 숫자 갈림)를 잡았다.
+5. PDF 변환에는 `libreoffice-impress` 와 `fonts-nanum` 이 필요하다. 컨테이너가 새로 뜨면 둘 다 없다
+   (`type detection failed` 가 그 증상이고, "pptx 가 깨졌다" 로 오진하기 쉽다).
 
 ## 6. 안 한 것
 
