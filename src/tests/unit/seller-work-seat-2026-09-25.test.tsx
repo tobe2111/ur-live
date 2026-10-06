@@ -65,11 +65,31 @@ describe('좌석이 맞을 때만 일한다', () => {
   it('좌석이 맞으면 주문·상품을 부르고, 확인 대기만 남긴다', async () => {
     localStorage.setItem('seller_token', seatToken(7))
     const { useSellerWork } = await load()
-    const { result } = renderHook(() => useSellerWork(7, true))
+    // 🔁 2026-10-06 재조준: 상품 목록은 이제 **달라고 해야** 받는다(4번째 인자). 불변식은 그대로다 —
+    //   *좌석이 맞으면 두 목록을 받아 확인 대기만 남긴다*. 바뀐 것은 "언제 받는가" 하나다.
+    const { result } = renderHook(() => useSellerWork(7, true, undefined, true))
     await waitFor(() => expect(result.current.orders.length).toBe(1))
     expect(result.current.orders[0].title).toBe('치즈돈까스')
     expect(result.current.orders[0].buyer).toBe('김손님')
     expect(result.current.products.length).toBe(1)
+  })
+
+  /**
+   * ⚡ 2026-10-06 — 첫 화면(마이 '내 가게')은 상품 목록을 **안 받는다**(대표 *"내 가게 이 부분이
+   *   가장 늦게 떠"*). 소스 검사는 `first-screen-fetch-2026-10-06.test.ts` 가 하고, 여기서는
+   *   **실제로 요청이 안 나가는지**를 센다(문자열이 맞아도 배선이 틀릴 수 있다).
+   */
+  it('기본(첫 화면)은 주문만 부르고 상품은 안 부른다', async () => {
+    localStorage.setItem('seller_token', seatToken(7))
+    const { useSellerWork } = await load()
+    const { result } = renderHook(() => useSellerWork(7, true))
+    await waitFor(() => expect(result.current.orders.length).toBe(1))
+    await settle()
+    const urls = get.mock.calls.map((c) => String(c[0]))
+    expect(urls.some((u) => u.includes('/api/seller/orders'))).toBe(true)
+    expect(urls.some((u) => u.includes('/api/seller/products'))).toBe(false)
+    // 그리고 그 회차를 **실패로 세지 않는다** — 안 그러면 멀쩡한데 "불러오지 못했습니다" 가 뜬다.
+    expect(result.current.failed).toBe(false)
   })
 
   it('접혀 있으면(enabled=false) 요청이 0 이다', async () => {
@@ -106,7 +126,8 @@ describe('🔴 전환 뒤 남은 행에서 눌러도 보내지 않는다', () =>
     localStorage.setItem('seller_token', seatToken(7))
     const { useSellerWork } = await load()
     const onSeatLost = vi.fn()
-    const { result } = renderHook(() => useSellerWork(7, true, onSeatLost))
+    // 상품 경로를 시험하므로 목록을 켠다(첫 화면은 이걸 안 켠다 — 위 ⚡ 참조).
+    const { result } = renderHook(() => useSellerWork(7, true, onSeatLost, true))
     await waitFor(() => expect(result.current.products.length).toBe(1))
     const stale = result.current.products[0]
 
@@ -136,7 +157,7 @@ describe('좌석이 맞으면 제대로 보낸다', () => {
   it('판매 끄기는 is_active 와 status 를 **함께** 보낸다(한쪽만 보내면 노출이 안 꺼진다)', async () => {
     localStorage.setItem('seller_token', seatToken(7))
     const { useSellerWork } = await load()
-    const { result } = renderHook(() => useSellerWork(7, true))
+    const { result } = renderHook(() => useSellerWork(7, true, undefined, true))
     await waitFor(() => expect(result.current.products.length).toBe(1))
     await act(async () => { await result.current.toggleProduct(result.current.products[0]) })
     expect(put).toHaveBeenCalledWith('/api/seller/products/11', { is_active: false, status: 'HIDDEN' })

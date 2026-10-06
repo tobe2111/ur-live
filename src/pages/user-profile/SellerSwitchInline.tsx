@@ -20,6 +20,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import api from '@/lib/api'
 import { UrShopIcon } from '@/components/icons/urdeal-icons'
 import type { MyStoresState } from './useMyStores'
 
@@ -45,12 +46,11 @@ export default function SellerSwitchInline({ seats }: { seats: MyStoresState }) 
   useEffect(() => {
     if (!seatsResolved || hasSeat) return
     let alive = true
-    import('@/lib/api').then(({ default: api }) => {
-      api.get('/api/seller/my-seller-status')
-        .then(r => { if (alive && r.data.success) setStatus(r.data.data) })
-        .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
-        .finally(() => { if (alive) setLoading(false) })
-    })
+    // ⚡ 2026-10-06 — `api` 정적 사용(비셀러 첫 화면의 2단 — 좌석 판정 뒤에 돈다).
+    api.get('/api/seller/my-seller-status')
+      .then(r => { if (alive && r.data.success) setStatus(r.data.data) })
+      .catch((_e) => { if (import.meta.env.DEV) console.warn(_e) })
+      .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
   }, [seatsResolved, hasSeat])
 
