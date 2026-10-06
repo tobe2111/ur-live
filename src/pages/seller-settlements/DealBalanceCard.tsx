@@ -104,13 +104,13 @@ export default function DealBalanceCard() {
           {(balance.total > 0 || (balance.business_verified && balance.withdrawable > 0)) && (
             <div className="flex gap-2">
               {balance.business_verified && balance.withdrawable > 0 && (
-                <button type="button" onClick={() => setWithdrawOpen(true)} className="ur-btn ur-btn-sm ur-btn-secondary flex-1 sm:flex-none">
+                <button type="button" onClick={() => setWithdrawOpen(true)} className="ur-btn ur-btn-md ur-btn-secondary flex-1 sm:flex-none">
                   환급 신청
                 </button>
               )}
               {/* 🛡️ 2026-05-19: 모든 셀러 (검증/미검증 둘 다) 가 교환권으로 받기 가능 */}
               {balance.total > 0 && (
-                <button type="button" onClick={() => setVoucherOpen(true)} className="ur-btn ur-btn-sm ur-btn-primary flex-1 sm:flex-none">
+                <button type="button" onClick={() => setVoucherOpen(true)} className="ur-btn ur-btn-md ur-btn-primary flex-1 sm:flex-none">
                   교환권으로 받기
                 </button>
               )}

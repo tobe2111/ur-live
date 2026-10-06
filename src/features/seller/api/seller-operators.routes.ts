@@ -115,7 +115,7 @@ app.get('/my-stores/summary', async (c) => {
     const ids = stores.map(s => s.seller_id)
     const marks = ids.map(() => '?').join(',')
     const todayKst = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10)
-    const [today, pending] = await Promise.all([
+    const [today, pending, active] = await Promise.all([
       c.env.DB.prepare(
         `SELECT seller_id, COUNT(*) AS n, COALESCE(SUM(total_amount), 0) AS rev
            FROM orders
@@ -128,9 +128,24 @@ app.get('/my-stores/summary', async (c) => {
           WHERE seller_id IN (${marks}) AND status IN ('PAID','DONE','PAY_COMPLETE') AND created_at >= datetime('now', '-30 days')
           GROUP BY seller_id`
       ).bind(...ids).all<{ seller_id: number; n: number }>().catch(() => ({ results: [] as { seller_id: number; n: number }[] })),
+      /**
+       * ⚡ 2026-10-01 — **판매 중 개수**(대표 *"내 가게 이 부분이 가장 늦게 떠"*).
+       *   마이 첫 화면의 `판매 중 N개` 한 줄을 그리려고 화면이 `/api/seller/products` 로
+       *   **상품 목록 전체**를 따로 받고 있었다. 그것도 이 응답이 와야 좌석이 정해져서
+       *   **직렬 2단**이었다(하네스 실측 `+368ms → +518ms`). 숫자 하나면 되는 일이다.
+       *   ⇒ 여기 이미 돌고 있는 병렬 묶음에 집계 하나를 얹는다 — **왕복은 안 늘어난다.**
+       *   ⚠️ 판정 기준은 셀러 대시보드 목록과 같게 `is_active = 1` + 삭제 제외.
+       */
+      c.env.DB.prepare(
+        `SELECT seller_id, COUNT(*) AS n
+           FROM products
+          WHERE seller_id IN (${marks}) AND is_active = 1 AND COALESCE(status, '') != 'DELETED'
+          GROUP BY seller_id`
+      ).bind(...ids).all<{ seller_id: number; n: number }>().catch(() => ({ results: [] as { seller_id: number; n: number }[] })),
     ])
     const tMap = new Map((today.results || []).map(r => [Number(r.seller_id), r]))
     const pMap = new Map((pending.results || []).map(r => [Number(r.seller_id), Number(r.n) || 0]))
+    const aMap = new Map((active.results || []).map(r => [Number(r.seller_id), Number(r.n) || 0]))
     const rows = stores.map(s => {
       const t = tMap.get(s.seller_id)
       return {
@@ -143,6 +158,8 @@ app.get('/my-stores/summary', async (c) => {
         today_revenue: Number(t?.rev) || 0,
         today_orders: Number(t?.n) || 0,
         pending: pMap.get(s.seller_id) || 0,
+        // ⚡ 첫 화면의 `판매 중 N개` — 이것 때문에 상품 목록을 통째로 받던 2단 요청을 없앴다.
+        active_products: aMap.get(s.seller_id) || 0,
       }
     })
     const totals = rows.reduce((a, r) => ({ today_revenue: a.today_revenue + r.today_revenue, today_orders: a.today_orders + r.today_orders, pending: a.pending + r.pending }), { today_revenue: 0, today_orders: 0, pending: 0 })

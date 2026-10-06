@@ -49,7 +49,7 @@ export default function ReferralEarningsCard() {
       title={t('seller.referral.title', { defaultValue: '소개 수익' })}
       subtitle={t('seller.referral.subtitle', { defaultValue: '유어샵에 담은 남의 이용권이 팔리면 쌓이는 커미션' })}
       actions={
-        <Link to="/u/me/earnings" className="flex items-center gap-1 text-[12px] font-bold text-brand-text">
+        <Link to="/u/me/earnings" className="flex min-h-[40px] items-center gap-1 text-[12px] font-bold text-brand-text">
           <Layers size={14} />
           {t('seller.referral.console', { defaultValue: '소개 콘솔' })}
           <ChevronRight size={14} />

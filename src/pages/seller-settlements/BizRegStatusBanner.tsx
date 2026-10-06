@@ -36,7 +36,7 @@ export default function BizRegStatusBanner({ status, imageUrl, rejectReason, onO
           <button
             type="button"
             onClick={onOpenModal}
-            className={`mt-3 w-full sm:w-auto ${rejected ? 'ur-btn ur-btn-sm ur-btn-danger' : 'ur-btn ur-btn-sm ur-btn-primary'}`}
+            className={`mt-3 w-full sm:w-auto ${rejected ? 'ur-btn ur-btn-md ur-btn-danger' : 'ur-btn ur-btn-md ur-btn-primary'}`}
           >
             {imageUrl ? '다시 제출하기' : '사업자등록증 등록하기'}
           </button>

@@ -159,6 +159,10 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
   /** 좌석에 앉았을 때만 일감을 부른다(안 앉았으면 요청 0). 좌석이 어긋나면 안내하고 다시 부른다. */
   const work = useSellerWork(store?.seller_id ?? 0, seated, () => {
     toast.error('가게가 바뀌었어요. 목록을 다시 불러옵니다')
+    // ⚡ 2026-10-06 — 상품 목록은 **아무도 안 받는다**. 첫 화면의 `판매 중 N개` 는
+    //   `store.active_products`(1단계 응답)가 주고, 그 목록을 쓰던 시트는 10-01 철거로 사라졌다
+    //   (`work.products` 소비처 0 — grep 확인). 종전엔 그 한 줄 때문에 상품 전체를 매번,
+    //   그것도 좌석이 정해진 **뒤에** 받아 직렬 2단이었다.
   })
 
   /**
@@ -418,8 +422,8 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
         <ToolRow
           icon={<TicketStubIcon className="w-[18px] h-[18px]" aria-hidden="true" />}
           label="이용권"
-          hint={work.products.length > 0
-            ? `판매 중 ${formatNumber(work.products.filter((p) => p.isActive).length)}개`
+          hint={(store?.active_products ?? 0) > 0
+            ? `판매 중 ${formatNumber(store?.active_products ?? 0)}개`
             : '등록 · 가격 · 수량'}
           busy={entering}
           onClick={() => openPage('/seller/group-buy', '이용권')}
