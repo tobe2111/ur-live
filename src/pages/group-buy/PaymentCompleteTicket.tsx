@@ -109,7 +109,7 @@ export default function PaymentCompleteTicket({ productId, qty, amount, dealUsed
               {original !== null && original * qty > amount && <span className="text-[13px] text-gray-400 dark:text-gray-500 line-through">{formatNumber(original * qty)}원</span>}
             </div>
             {dealUsed > 0 && (
-              <p className="-mt-2.5 mb-4 text-[12.5px] text-gray-500 dark:text-gray-400 tabular-nums">
+              <p className="-mt-2.5 mb-4 text-[13px] text-gray-500 dark:text-gray-400 tabular-nums">
                 딜 {formatNumber(Math.min(dealUsed, amount))}
                 {amount > dealUsed && <> · 카드 {formatNumber(amount - dealUsed)}원</>}
               </p>
