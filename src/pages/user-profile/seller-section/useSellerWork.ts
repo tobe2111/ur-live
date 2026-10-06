@@ -78,7 +78,23 @@ export interface SellerWorkState {
  * @param enabled  사람이 펼쳤는가. 접혀 있으면 요청 0.
  * @param onSeatLost 좌석이 어긋나 요청을 보내지 않았을 때 — 화면이 안내하고 다시 불러야 한다.
  */
-export function useSellerWork(sellerId: number, enabled: boolean, onSeatLost?: () => void): SellerWorkState {
+export function useSellerWork(
+  sellerId: number,
+  enabled: boolean,
+  onSeatLost?: () => void,
+  /**
+   * ⚡ 2026-10-01 — 상품 목록은 **그게 필요한 시트가 열렸을 때만** 받는다
+   *   (대표 *"내 가게 이 부분이 가장 늦게 떠"*).
+   *   첫 화면이 `work.products` 로 쓰던 것은 `판매 중 N개` **한 줄**뿐이었는데, 그 숫자 하나
+   *   때문에 상품 목록 전체를 매번 받았다. 지금 그 숫자는 `/my-stores/summary` 가 같이 준다
+   *   (`store.active_products` — 이미 병렬로 도는 묶음에 집계를 얹어 왕복이 안 늘었다).
+   *   ⚠️ 기본값을 `true` 로 되돌리지 말 것 — 첫 화면의 요청이 다시 하나 늘어난다.
+   *   ⚠️ 2026-10-06 현재 **호출부가 이 인자를 안 넘긴다**(그 목록을 쓰던 시트가 10-01 에 철거돼
+   *      `work.products` 소비처가 0 이다). 파라미터는 남겨 둔다 — 목록이 다시 필요해지는 시트가
+   *      생기면 그때 `true` 를 넘기면 되고, 그 전까지 첫 화면은 이 요청을 안 보낸다.
+   */
+  withProducts = false,
+): SellerWorkState {
   const [orders, setOrders] = useState<WorkOrder[]>([])
   const [products, setProducts] = useState<WorkProduct[]>([])
   const [loading, setLoading] = useState(false)
@@ -95,10 +111,13 @@ export function useSellerWork(sellerId: number, enabled: boolean, onSeatLost?: (
     import('@/lib/api').then(async ({ default: api }) => {
       const [oRes, pRes] = await Promise.all([
         api.get('/api/seller/orders?limit=50&sort=desc').catch(() => null),
-        api.get('/api/seller/products').catch(() => null),
+        withProducts ? api.get('/api/seller/products').catch(() => null) : Promise.resolve(null),
       ])
       if (!alive.current) return
-      if (!oRes?.data?.success && !pRes?.data?.success) { setFailed(true); return }
+      // 🔴 상품을 안 받는 화면(첫 화면)에서는 `pRes` 가 늘 null 이다 — 그걸 실패로 세면
+      //   주문이 멀쩡히 와도 "불러오지 못했습니다" 가 뜬다. 받은 것만으로 판정한다.
+      const asked = withProducts ? [oRes, pRes] : [oRes]
+      if (asked.every((r) => !r?.data?.success)) { setFailed(true); return }
       const oList = (oRes?.data?.success ? oRes.data.data || [] : []) as Raw[]
       setOrders(oList
         .filter((o) => AWAITING_CONFIRM.has(String(o.status)))
@@ -111,6 +130,8 @@ export function useSellerWork(sellerId: number, enabled: boolean, onSeatLost?: (
           at: hhmmKST(o.created_at),
           status: String(o.status),
         })))
+      // 안 물어봤으면 건드리지 않는다(빈 배열로 덮으면 시트가 열린 채 목록이 사라진다).
+      if (!withProducts) { setFailed(false); return }
       const pList = (pRes?.data?.success ? pRes.data.data || [] : []) as Raw[]
       setProducts(pList
         .filter((p) => String(p.status ?? '') !== 'DELETED')
@@ -125,7 +146,7 @@ export function useSellerWork(sellerId: number, enabled: boolean, onSeatLost?: (
       setFailed(false)
     }).catch(() => { if (alive.current) setFailed(true) })
       .finally(() => { if (alive.current) setLoading(false) })
-  }, [sellerId, enabled])
+  }, [sellerId, enabled, withProducts])
 
   useEffect(() => { load() }, [load])
   // 🪑 가게가 바뀌면 지금 목록은 옛 가게 것이다 — 버리고 다시 판단한다(좌석이 안 맞으면 비운다).

@@ -246,12 +246,10 @@ export default function VouchersPage({ embedded = false }: { embedded?: boolean 
         const list = r.data.data as CategorySection[]
         setSections(list)
         try { localStorage.setItem('vouchers_categories_v1', JSON.stringify({ ts: Date.now(), data: list })) } catch { /* quota */ }
-        // 카테고리 URL 미지정 시 첫 카테고리 (인기 ↑) 자동 선택. (embedded 홈은 제외 — flash 방지)
-        if (!embedded && !category && !brand && list.length > 0) {
-          const next = new URLSearchParams(searchParams)
-          next.set('category', list[0].category)
-          setSearchParams(next, { replace: true })
-        }
+        // ⚡ 2026-10-06 — **여기서 자동 선택하지 않는다**(위 06-04 주석의 그 깜빡임이 `/vouchers`
+        //   에도 있었다). 박는 순간 상품 목록이 다시 나갔다 — `+279ms`(SSR 시드·예열과 같은 키)
+        //   를 버리고 `+491ms` 에 재요청. 기능은 위 localStorage 분기가 **동기로** 유지한다.
+        //   ⚠️ 되살리면 첫 방문 요청이 다시 2회(`first-screen-fetch-2026-10-06.test.ts`).
       }
     }).catch(() => { /* graceful */ }).finally(() => { if (!cancelled) setSectionsReady(true) })
     return () => { cancelled = true }

@@ -24,6 +24,14 @@
       "accepted_by": "대표(urteam.corp) 승인 — dev/빌드툴 도달불가 클래스(2026-06-22·07-15·07-21 선례와 동일)",
       "date": "2026-07-25",
       "review": "npm 설치 가능 환경에서 postcss 패치 버전 상향 후 제거 — 근본 해결 우선."
+    },
+    {
+      "ghsa": "GHSA-vfj7-8cjw-p6xm",
+      "pkg": "braces",
+      "reason": "빌드툴 전용 전이 의존성(tailwindcss 3.4.19 → chokidar/micromatch → braces 3.0.3). 취약점 = 깊게 중첩된 glob 패턴의 스택 고갈 DoS. ⚠️ **업스트림에 패치 버전이 아직 없다**(advisory range `*`, 최신 3.0.3 도 취약) — 그래서 업그레이드·overrides 로 못 없앤다. 도달 불가 근거(2026-10-06 실측): ① `src/` 에서 braces/micromatch 참조 **0건** ② 배포 산출물 미포함 — `dist/_worker.js` 0건, 클라 번들의 유일한 'braces' 매치는 **react-helmet 의 에러 문구**(\"Did you forget to wrap your children in braces?\")로 오탐 ③ 입력은 우리 tailwind config 의 자체 glob 뿐(외부 입력 없음). 유일한 대안은 tailwind 4 major(별도 판단 — vite major 회피 정책과 같은 클래스).",
+      "accepted_by": "세션 판단 — dev/빌드툴 도달불가 클래스(2026-06-22 vite · 07-21 shell-quote · 07-25 postcss 선례와 동일). ⚠️ **대표 확인 대기**: 선례와 달리 업스트림 패치가 없어 '올렸다 지운다' 가 아니라 당분간 유지된다.",
+      "date": "2026-10-06",
+      "review": "braces 패치 릴리스가 나오면 overrides 로 올리고 제거. 또는 tailwind 4 이행 시 자연 소멸."
     }
   ]
 }

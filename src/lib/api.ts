@@ -9,6 +9,8 @@
  */
 
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { ensureCsrfToken } from './csrf-token'
+import { readCookie } from './read-cookie'
 import { type DashboardRole, isDashboardRefreshUrl, dashboardTokenKeys } from './dashboard-token';
 // 🔑 2026-09-23: 토큰 갱신은 `dashboard-refresh.ts` 한 곳 — 401 인터셉터·요청 인터셉터·
 //   `useTokenAutoRefresh` 가 **같은 inflight 락**을 공유해야 회전 토큰 경합이 안 난다.
@@ -21,11 +23,6 @@ import { refreshDashboardToken, ensureFreshDashboardToken } from './dashboard-re
 // 🛡️ 2026-05-24: CSRF 토큰 cookie 읽기 helper — double-submit pattern.
 //   csrf_token cookie 가 SameSite=Strict + non-HttpOnly 라 JS 가 읽을 수 있음.
 //   value 가 없으면 빈 문자열 반환 (호출자가 /api/csrf-token fetch 트리거).
-function readCookie(name: string): string {
-  if (typeof document === 'undefined') return '';
-  const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/[.$?*|{}()[\]\\/+^]/g, '\\$&') + '=([^;]*)'));
-  return m ? decodeURIComponent(m[1]) : '';
-}
 
 // ─── Firebase Token 캐시 (55분 TTL) ────────────────────────────────────────
 interface TokenCache {
@@ -166,6 +163,7 @@ function isPublicAPI(url: string): boolean {
 }
 
 // ─── 요청 인터셉터 ───────────────────────────────────────────────────────────
+    
 api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     if (!config.headers) return config;
@@ -181,22 +179,14 @@ api.interceptors.request.use(
       }
     } catch { /* silent */ }
 
-    // 🛡️ 2026-05-24: CSRF 토큰 자동 첨부 — double-submit cookie 패턴.
+// 🛡️ 2026-05-24: CSRF 토큰 자동 첨부 — double-submit cookie 패턴.
     //   서버 csrfIssue() 가 GET 응답마다 csrf_token cookie 세팅. JS 가 cookie 읽어
     //   X-CSRF-Token 헤더로 전송. PATCH/POST/DELETE 시 csrfProtection() 가 검증.
     //   Bearer 토큰 요청은 서버에서 자동 skip 되므로 헤더 첨부해도 무해.
     //   cookie 없으면 (첫 방문 / 만료) /api/csrf-token 자동 fetch 후 재시도.
     const method = (config.method || 'get').toUpperCase();
     if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) {
-      let token = readCookie('csrf_token');
-      if (!token) {
-        try {
-          const r = await fetch('/api/csrf-token', { credentials: 'include' });
-          const json = await r.json() as { token?: string };
-          if (json?.token) token = json.token;
-          else token = readCookie('csrf_token');
-        } catch { /* graceful — server 가 어차피 403 반환 시 사용자 알림 */ }
-      }
+      const token = await ensureCsrfToken();
       if (token && !config.headers['X-CSRF-Token']) {
         config.headers['X-CSRF-Token'] = token;
       }

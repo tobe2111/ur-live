@@ -27,6 +27,8 @@ export interface StoreSummaryRow {
   today_revenue: number
   today_orders: number
   pending: number
+  /** ⚡ 판매 중 상품 수 — 이 값이 있어서 첫 화면이 상품 목록을 따로 안 받는다(2026-10-01) */
+  active_products: number
 }
 
 export interface MyStoresState {
