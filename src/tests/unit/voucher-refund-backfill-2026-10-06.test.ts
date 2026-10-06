@@ -220,15 +220,31 @@ describe('배선 — repair-schema 가 실제로 부른다', () => {
     expect(REPAIR).toMatch(/backfill:voucher-refund-booking 수동확인[\s\S]{0,200}status: 'error'/)
   })
 
-  // 🩸 2026-10-06 — **이 자리에서 틀렸다. 고친 기록을 남긴다.**
-  //   머지 직후 라이브 로그를 읽고서야 알았다: `d1-migrate.yml` 의 repair-schema 호출은
-  //   `ADMIN_REPAIR_TOKEN` 이 **미설정**이라 `⚠️ … 호출 skip` 으로 끝난다(실측 run 37465121609).
-  //   같은 워크플로의 마이그레이션 적용도 `Couldn't find DB with name 'ur-live'` 로 전부 실패하는데
-  //   `|| echo "⚠️ 실패 (already applied?)"` 가 삼켜 **잡은 success 로 찍힌다.**
-  //   ⇒ 그 워크플로는 **보증이 아니다.** 소급 기록을 실제로 돌리는 것은 아래 **일간 cron** 이다.
-  //   그래서 단언을 cron 으로 **재조준**한다(워크플로 쪽은 지우지 않고 '보조 경로'로만 남긴다 —
-  //   토큰이 채워지면 그날부터 다시 일하므로 배선 자체는 지켜야 한다).
-  it('일간 cron(schema-repair-daily)이 runSchemaRepair 를 부른다 — 이게 실제 보증이다', () => {
+  // 🩸 2026-10-06 — **이 자리에서 두 번 틀렸고, 두 번째가 맞다. 둘 다 남긴다.**
+  //   1차 판단: "`d1-migrate.yml` 이 repair-schema 를 부르니 자동으로 돈다" → **틀렸다.**
+  //     그 워크플로는 `ADMIN_REPAIR_TOKEN` 미설정으로 호출을 skip 하고, 마이그레이션 적용도
+  //     `Couldn't find DB with name 'ur-live'`(실제 이름은 `toss-live-commerce-db`)로 전부 실패하는데
+  //     `|| echo "⚠️ 실패 (already applied?)"` 가 삼켜 **잡이 success 로 찍힌다**(run 37465121609).
+  //   2차 판단: "그럼 보증은 일간 cron 뿐이다" → **이것도 틀렸다.** 실제 백필을 돌린 것은
+  //     **`main.yml` 의 `Auto schema repair after deploy`**(배포 **직후** 같은 잡에서
+  //     `POST /api/_internal/repair-schema/auto`)다. 실측: 주문 85 의 `refunded_amount` 가
+  //     Pages 배포 완료와 **같은 시점에** 0 → 1800 으로 바뀌었다(cron 시각 03:30 KST 가 아니다).
+  //   🧭 2차 오판의 원인: `grep -rn repair-schema … src/ .github/ | … | head -20` 로 찾았는데
+  //     **`head -20` 이 `.github/` 매치를 통째로 잘라냈다.** 검색을 자르고 그 결과로 결론을 내렸다.
+  //   ⇒ 세 경로를 **각자의 성격대로** 고정한다. 하나가 죽어도 나머지가 받치는 것이 요점이다.
+  it('1차 보증: main.yml 이 배포 직후 repair-schema/auto 를 부른다 — 실제로 이게 돌았다', () => {
+    const wf = readRaw('.github/workflows/main.yml')
+    expect(wf).toContain('/api/_internal/repair-schema/auto')
+    // 토큰 헤더가 빠지면 403 fail-closed 라 조용히 아무 일도 안 일어난다.
+    expect(wf).toContain('X-Repair-Token')
+    // 순서가 핵심이다 — 배포 **뒤**여야 새 코드의 백필이 돈다(앞이면 옛 워커에 닿는다).
+    const deployAt = wf.indexOf('pages deploy')
+    const repairAt = wf.indexOf('/api/_internal/repair-schema/auto')
+    expect(deployAt).toBeGreaterThan(-1)
+    expect(repairAt).toBeGreaterThan(deployAt)
+  })
+
+  it('2차 보증: 일간 cron(schema-repair-daily)도 runSchemaRepair 를 부른다', () => {
     const lane = readCode('src/worker/cron/daily-lane.ts')
     expect(lane).toContain("run('schema-repair-daily'")
     expect(lane).toMatch(/schema-repair-daily[\s\S]{0,400}runSchemaRepair\(env\.DB\)/)
@@ -239,7 +255,7 @@ describe('배선 — repair-schema 가 실제로 부른다', () => {
     expect(sched).toMatch(/runDailyLane\('maintenance'/)
   })
 
-  it('보조 경로: d1-migrate 워크플로의 배선은 유지한다(지금은 토큰 미설정으로 skip)', () => {
+  it('3차(현재 죽은) 경로: d1-migrate 워크플로의 배선은 유지한다 — 토큰이 채워지면 다시 일한다', () => {
     const wf = readRaw('.github/workflows/d1-migrate.yml')
     expect(wf).toContain('/api/_internal/repair-schema')
     // 이 파일이 바뀌면 워크플로가 트리거되는 것 자체는 맞다(호출이 skip 되는 것과 별개).
