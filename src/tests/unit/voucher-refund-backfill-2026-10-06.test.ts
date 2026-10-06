@@ -255,10 +255,21 @@ describe('배선 — repair-schema 가 실제로 부른다', () => {
     expect(sched).toMatch(/runDailyLane\('maintenance'/)
   })
 
-  it('3차(현재 죽은) 경로: d1-migrate 워크플로의 배선은 유지한다 — 토큰이 채워지면 다시 일한다', () => {
+  /**
+   * 🔀 **재조준(2026-10-06 같은 날 후속)** — 이 자리는 원래 *"3차(죽은) 경로: d1-migrate 의 배선은
+   *   유지한다 — 토큰이 채워지면 다시 일한다"* 였다. 같은 날 그 호출을 **의도적으로 제거**했다:
+   *     · 토큰(`ADMIN_REPAIR_TOKEN`) 미설정으로 **한 번도 실행된 적이 없고**,
+   *     · `main.yml` 이 배포 **직후** 같은 일을 하며 **실제로 돈다**(위 1차 — 주문 85 를 그것이 메웠다),
+   *     · 그런데도 **있다는 사실만으로 "자동으로 돈다" 는 거짓 확신**을 만들었다(그 오판을 실제로 했다).
+   *   ⇒ 가드를 **풀지 않고 방향을 뒤집는다**: 지키려던 것("복구 경로가 살아 있다")은 위 1차·2차가
+   *     이미 단언한다. 여기서는 **중복이 되돌아오지 않는 것**을 지킨다.
+   *   상세: `src/tests/unit/d1-migrate-honesty-2026-10-06.test.ts`
+   */
+  it('3차 경로는 제거했다 — d1-migrate 는 더 이상 repair-schema 를 부르지 않는다(중복·거짓 확신)', () => {
     const wf = readRaw('.github/workflows/d1-migrate.yml')
-    expect(wf).toContain('/api/_internal/repair-schema')
-    // 이 파일이 바뀌면 워크플로가 트리거되는 것 자체는 맞다(호출이 skip 되는 것과 별개).
-    expect(wf).toContain('src/worker/routes/repair-schema.routes.ts')
+    expect(wf, 'repair-schema 호출이 되돌아왔다 — 한 번도 안 돌았고 "자동으로 돈다" 는 오판을 만든 자리다')
+      .not.toContain('/api/_internal/repair-schema')
+    // 트리거 경로는 그대로 둔다 — repair-schema 라우트가 바뀌면 마이그레이션 상태를 **보고**할 이유가 있다.
+    expect(wf, '트리거 경로가 사라졌다').toContain('src/worker/routes/repair-schema.routes.ts')
   })
 })
