@@ -392,11 +392,11 @@ node scripts/check-conflict-markers.mjs -s || {
 echo "==> Pre-commit: 소개서 동기화 권고 (warn-only)..."
 bash scripts/check-proposal-sync.sh || true
 
-# 🛡️ npm audit — high/critical 취약점 차단 ([SKIP_AUDIT] 커밋 메시지로 우회 가능)
+# 🛡️ npm audit — high/critical 취약점 차단 (우회는 SKIP_NPM_AUDIT=1 뿐 — 2026-10-06 [SKIP_AUDIT] 제거)
 echo "==> Pre-commit: npm audit (high/critical)..."
 bash scripts/check-npm-audit.sh || {
   echo "❌ Commit blocked. npm audit high/critical 취약점 발견."
-  echo "   긴급 우회: 커밋 메시지에 [SKIP_AUDIT] 포함"
+  echo "   긴급 우회: SKIP_NPM_AUDIT=1 git commit"
   exit 1
 }
 
@@ -519,7 +519,7 @@ echo "  1. 스키마 참조 (금지 컬럼)"
 echo "  2. 대시보드 테마 정책 (dark: variant 금지)"
 echo "  3. Service Worker 등록 코드 차단"
 echo "  4. 운영 가이드 동기화 (warn-only, STRICT_GUIDE_SYNC=1로 차단)"
-echo "  5. npm audit high/critical 취약점 ([SKIP_AUDIT]으로 우회)"
+echo "  5. npm audit high/critical 취약점 (SKIP_NPM_AUDIT=1 로 우회)"
 echo "  6. 소개서 동기화 권고 + 자동 참조 재생성 (warn-only, 매 커밋)"
 echo "  7. TypeScript (npx tsc)"
 echo "  8. 파일 중간 import 검출"
