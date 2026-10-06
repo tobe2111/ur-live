@@ -51,7 +51,15 @@ export function bandLeft(expiresRaw: string | null | undefined): string {
   return `${parts.year}.${parts.month}.${parts.day} (${String(parts.weekday).replace('요일', '')})까지`
 }
 
-export default function PaymentCompleteTicket({ productId, qty, amount }: { productId: number; qty: number; amount: number }) {
+export default function PaymentCompleteTicket({ productId, qty, amount, dealUsed = 0 }: {
+  productId: number; qty: number; amount: number
+  /**
+   * 🧾 2026-10-06: 이 결제에서 딜로 낸 금액. `amount` 는 **상품 총액**이고 카드 청구액이 아니다 —
+   *   둘을 섞으면 7,500원짜리 이용권이 완료 화면에선 "100원", 지갑에선 "7,500원"이 된다(대표 신고).
+   *   0 이면 줄이 아예 안 뜬다(딜을 안 쓴 사람 화면은 종전과 동일).
+   */
+  dealUsed?: number
+}) {
   const navigate = useNavigate()
   const [product, setProduct] = useState<ProductLite | null>(null)
   // 방금 발급된 이용권 — 지갑 쿼리는 confirm 직후 invalidate 됐으므로 여기서 다시 읽으면 새 행이 있다.
@@ -100,6 +108,12 @@ export default function PaymentCompleteTicket({ productId, qty, amount }: { prod
               <span className="text-[30px] font-extrabold tracking-[-0.03em] leading-none">{formatNumber(amount)}원</span>
               {original !== null && original * qty > amount && <span className="text-[13px] text-gray-400 dark:text-gray-500 line-through">{formatNumber(original * qty)}원</span>}
             </div>
+            {dealUsed > 0 && (
+              <p className="-mt-2.5 mb-4 text-[12.5px] text-gray-500 dark:text-gray-400 tabular-nums">
+                딜 {formatNumber(Math.min(dealUsed, amount))}
+                {amount > dealUsed && <> · 카드 {formatNumber(amount - dealUsed)}원</>}
+              </p>
+            )}
             <TicketOutlineButton onClick={() => navigate('/my-vouchers')}>이용권 확인</TicketOutlineButton>
           </div>
         </TicketCard>

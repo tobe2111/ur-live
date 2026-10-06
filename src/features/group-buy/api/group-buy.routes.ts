@@ -1375,7 +1375,7 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
 
     return c.json({
       success: true,
-      data: { order_number: orderNumber, order_id: newOrderId, qty, amount: expectedAmount },
+      data: { order_number: orderNumber, order_id: newOrderId, qty, amount: expectedAmount, deal_used: dealUsed }, // 🧾 2026-10-06 `deal_used` additive — `amount` 는 **상품 총액**이지 카드 청구액이 아니다(섞으면 7,500원짜리가 "100원"이 된다)
     })
   } catch (err) {
     // 🛡️ 2026-05-31 M1: 주문 미생성 → 예약했던 재고 롤백(예약은 try 진입 전 차감됨).

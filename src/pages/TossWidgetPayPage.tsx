@@ -37,6 +37,22 @@ export default function TossWidgetPayPage() {
   const [searchParams] = useSearchParams()
   const [state, setState] = useState<'loading' | 'ready' | 'processing' | 'error'>('loading')
   const [errorMsg, setErrorMsg] = useState('')
+  /**
+   * 🩹 2026-10-06 [UNLOCK] (대표 승인 "허가 — 복구 가능한 에러만 분리") — 대표 신고
+   *   *"카드 선택을 안하고 결제 버튼을 누르면 '카드 결제 정보를 선택해주세요' 라고 뜨네?
+   *     페이지 새로고침 버튼이 뜨면서."*
+   *
+   * 토스는 맞게 줬다. 틀린 건 **우리가 그 말을 담은 그릇**이다. 종전엔 `requestPayment` 가 던진
+   * 에러가 USER_CANCEL 말고는 전부 `state='error'` 로 갔고, 그 상태는 아래에서 위젯 두 개를
+   * `hidden` 으로 치운다 — **카드를 고르라고 해 놓고 카드 고르는 자리를 없앴다.** 버튼까지 비활성이라
+   * 남는 행동이 '페이지 새로고침'(= SDK 를 처음부터 다시 받기)뿐이었다. 사용자는 잘못한 게 없다.
+   *
+   * `requestPayment` 거부는 **정의상 복구 가능**하다 — 아무것도 청구되지 않았고 위젯은 그대로 살아 있다.
+   * 그래서 `ready` 를 유지하고 토스가 준 문장을 버튼 위 한 줄로 띄운다(형제 `TossPaymentWidget` 이
+   * 2026-06-26 에 약관 미동의로 똑같이 한 처방 — 이 화면만 그 처방을 못 받고 있었다).
+   * 새로고침 상자는 **초기화 실패**(SDK 자체가 안 뜬 경우)에만 남는다 — 그건 정말로 사용자가 못 고친다.
+   */
+  const [retryMsg, setRetryMsg] = useState('')
   const initializedRef = useRef(false)
   const widgetsRef = useRef<TossWidgets | null>(null)
   /** 위젯이 **지금 아는** 청구액. 화면과 위젯이 갈리지 않게 한 곳에서만 기록한다. */
@@ -209,6 +225,7 @@ export default function TossWidgetPayPage() {
   async function handlePay() {
     if (!widgetsRef.current || state !== 'ready') return
     setState('processing')
+    setRetryMsg('')
     try {
       // 🛡️ 2026-05-24: Toss V2 SDK 권장 — customer 정보 (가상계좌 안내 / 퀵계좌이체 자동완성).
       //   localStorage 에서 안전하게 추출 (XSS 방어 위해 길이 제한).
@@ -234,8 +251,10 @@ export default function TossWidgetPayPage() {
         setState('ready')
         return
       }
-      setErrorMsg(errObj?.message || '결제 요청 실패')
-      setState('error')
+      // 🩹 2026-10-06: 여기 오던 것은 전부 **사용자가 이 화면에서 고칠 수 있는 것**이다
+      //   (카드 미선택·약관 미동의·수단별 입력 누락). 위젯을 치우지 않고 그대로 다시 고르게 둔다.
+      setRetryMsg(errObj?.message || '결제를 시작하지 못했어요. 다시 시도해 주세요.')
+      setState('ready')
     }
   }
 
@@ -357,6 +376,10 @@ export default function TossWidgetPayPage() {
         style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
       >
         <div className="ur-content-narrow px-4 pt-3">
+          {/* 🩹 복구 가능한 안내 — 누르는 자리 바로 위에 둔다(형제 TossPaymentWidget 의 약관 안내와 같은 처방). */}
+          {retryMsg && state === 'ready' && (
+            <p role="alert" className="mb-2 text-[13px] font-medium text-amber-600 dark:text-amber-400">{retryMsg}</p>
+          )}
           <button
             onClick={handlePay}
             disabled={state !== 'ready'}
