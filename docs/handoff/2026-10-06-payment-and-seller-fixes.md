@@ -33,6 +33,12 @@
 - 🕳️ **장바구니(여러 매장) 결제 완료 화면 `CartComplete` 에 '이런 서비스도 있어요' 가 남아 있었다** — A안을 단건 티켓에만 적용했다. 후속 PR 에서 같은 한 줄로 교체 + 가드.
 - #1637(Roboto) 머지 후 main 배포가 **시험 10,992건 전부 통과 뒤 vitest 정리 단계 오류**(`EnvironmentTeardownError: Closing rpc while "onUserConsoleLog" was pending`)로 멈췄다 — 변경과 무관. 이 세션은 재실행 권한이 없어(403) 후속 PR 머지로 배포를 다시 태웠다.
 
+- **#1638 머지 `c7525dc`(2026-10-07 01:44 KST) → main 배포 성공 → urdeal.kr 실측 통과**:
+  - 글꼴: `roboto-digits-700.woff2` 200 `font/woff2` · 배포 CSS 에 UrDigits 8 · roboto 5 · **poppins 0** · `.tabular-nums` 글꼴 덮어쓰기 0 · `.dash-num` 모노스페이스 없음.
+  - 화면: '이런 서비스도 있어요' **청크 0**(장바구니 완료 포함) · '다른 이용권 보기' · '결제를 시작하지 못했어요' · '사용 처리하시겠습니까' 존재.
+  - 딜 100%: '딜로 결제하기' · '전부 딜로 낼 수 있어요' 가 상세 청크에 실렸다. ⇒ **딜 경로는 E3(배포)까지.** E4 는 S14 실결제 1건 뒤.
+  - 참고: '임시저장된 작성 내용' 은 ko 번역 파일에만 남은 미사용 키(화면 참조 0)라 무해.
+
 ## 이번에 틀렸던 판단 / 잡힌 헛도는 가드
 - `segmented-tabs` 가드가 처음엔 **부품 주석**의 `whitespace-nowrap` 때문에 클래스를 지워도 통과 — `stripComments` 로 교정.
 - pre-commit 훅은 커밋 메시지를 못 본다 → `[SKIP_AUDIT]` 무효, `SKIP_NPM_AUDIT=1` 이 맞다.
