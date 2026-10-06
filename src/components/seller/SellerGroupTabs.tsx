@@ -47,7 +47,7 @@ export default function SellerGroupTabs() {
           <Link
             key={path}
             to={path}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
+            className={`px-3.5 min-h-[40px] inline-flex items-center rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
               active ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-800'
             }`}
           >
