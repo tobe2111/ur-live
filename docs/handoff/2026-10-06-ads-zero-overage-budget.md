@@ -108,3 +108,38 @@ SELECT value FROM platform_settings WHERE key='cron_hb:ads:read-budget'   -- DB_
    몫이 −14.7% 라 **더 빡빡해졌다**(Pass 2 를 돌리려면 Pass 1 에서 떼어 와야 한다).
 2. **매장 접촉 채널** — 이메일 vs 전화(전화는 이미 69,007건 보유).
 3. **(신규)** 계정 전체 실측 기반 동적 예약분 — 위 §사각지대.
+
+---
+
+## 🔓 후속 — npm audit 게이트 (대표 승인 "승인", 2026-10-06)
+
+CI 가 `npm audit` 한 스텝에서만 막혔고(다른 44개 통과) 그 3건은 main 선재였다. 결재 기본안
+1번을 승인받아 처리 — 상세는 `docs/decisions/2026-10-06-npm-audit-three-new-advisories.md`.
+
+| | 결과 |
+|---|---|
+| `@capacitor/{core,cli,android,ios}` 8.3.0 → **8.5.2** | critical 사라짐 (앱 코드에 닿던 것) |
+| `postcss` → **`^8.5.29`** | postcss 2건 + **source-map-js 까지 동시 해결**(8.5.29 가 패치본 1.2.2 요구) |
+| `braces` 허용목록 등재 | 패치 버전이 **세상에 없다**(최신 3.0.3 이 곧 취약 범위) |
+| 허용목록에서 **postcss 제거** | 상향으로 audit 에서 사라졌다 — 낡은 면제는 그 취약점이 다시 들어와도 조용히 통과시킨다 |
+
+### 🩸 이번에 치운 덫 — 게이트가 조용히 꺼져 있었다 (두 번째 발생)
+
+`check-npm-audit.sh` 의 `[SKIP_AUDIT]` 우회가 `.git/COMMIT_EDITMSG` 를 읽었다. 그 경로는
+**의도대로 작동한 적이 없고**(git 은 `pre-commit` 을 메시지 준비 *전에* 돌린다)
+**지난 커밋의 메시지는 본다** — 한 번 우회하면 **그 뒤 모든 로컬 실행이 조용히 exit 0**.
+
+`docs/handoff/2026-09-30-refund-stolen-and-switch-labels.md` 가 **이미 적어 뒀다**:
+*"CI 블로커를 'dev 전용 4건' 이라고 대표에게 보고한 것 — 틀렸다. … 로컬 audit 이
+`[SKIP_AUDIT]` 때문에 계속 건너뛰어져서 진짜 실패를 못 보고 있었다."*
+**기록은 남았는데 덫은 안 치웠고, 그래서 오늘 같은 세션이 또 밟았다**(취약점 3건을 두고
+게이트가 "건너뜀" + exit 0 을 찍었다).
+
+⇒ 제거. 우회는 `SKIP_NPM_AUDIT=1` 하나뿐이고, 그건 매 실행마다 명시해야 해 잔존하지 않는다.
+가드 `audit-gate-no-stale-bypass-2026-10-06.test.ts` 5건 + 주입 4건(되돌려-검증 red):
+`COMMIT_EDITMSG` 미참조 · `exit 0` **정확히 1개**(상한을 2 로 뒀더니 주입이 통과해 실측으로
+조였다) · 훅 안내가 안 먹는 우회를 광고하지 않음 · **허용목록의 `accepted_by` 가 비거나
+`TODO` 면 빨간불**(세션이 스스로 보안 예외를 만들 수 없게).
+
+🧭 **다음 세션이 알아야 할 것**: 로컬에서 `bash scripts/check-npm-audit.sh` 가 "건너뜀" 을
+찍으면 이제 그건 **`SKIP_NPM_AUDIT=1` 을 직접 넣은 것뿐**이다. 전에는 그 말이 거짓일 수 있었다.
