@@ -95,6 +95,15 @@ export default [
     why: '목차가 그 파일에 없는데 손댐을 통과로 세면 가드가 헛돈다(인계 없이도 초록).',
   },
 
+  {
+    name: '인계 목차 — merge=union 을 되돌린다(지운 블록이 조용히 되살아난다)',
+    file: '.gitattributes',
+    find: '#   가드: src/tests/unit/handoff-index-sidecar-2026-10-06.test.ts',
+    replace: 'docs/CURRENT_WORK.md merge=union',
+    test: T_SIDECAR,
+    why: '그 파일은 append 대상이 아니라서 union 의 유일한 효과는 "한쪽이 지운 466줄을 되살리는 것" 이다(실제로 당했다).',
+  },
+
   // ───────── ④ 컬러 견본 — 팔레트 모양을 되돌리는 길들
   {
     name: '컬러 견본 — 색을 다시 버튼이 칠한다(40px 색 원이 되어 팔레트가 달라진다)',

@@ -550,4 +550,4 @@ git config merge.filesize-baseline.name "file-size baseline: 키별 최대값 �
 git config merge.filesize-baseline.driver "node scripts/merge-file-size-baseline.mjs %A %O %B %P"
 echo ""
 echo "==> 병합 드라이버 등록됨: scripts/file-size-baseline.json (키별 최대값 자동 병합)"
-echo "    docs/CURRENT_WORK.md 는 .gitattributes 의 merge=union (git 내장) 으로 양쪽 보존."
+echo "    (docs/CURRENT_WORK.md 의 merge=union 은 2026-10-06 제거 — 목차가 사이드카로 갔다.)"

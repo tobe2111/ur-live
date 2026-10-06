@@ -172,4 +172,20 @@ describe('⑤ 문서가 같은 말을 한다 (낡은 지도가 다음 세션을 
     expect(read('docs/CURRENT_WORK.md'), '생성 마커가 아직 있다')
       .not.toContain('HANDOFF-INDEX:BEGIN')
   })
+
+  /**
+   * 🩸 `merge=union` 이 **지운 줄을 되살린다** — 이 변경을 올리는 머지에서 실제로 당했다.
+   *   `docs/CURRENT_WORK.md` 는 더 이상 append 대상이 아니므로 union 이 하는 일은 하나뿐이다:
+   *   한쪽이 지운 466줄짜리 옛 생성 블록을 **조용히 되살리는 것**(실제로 되살아났다).
+   *   게다가 **GitHub 서버측 머지는 이 드라이버를 쓰지 않는다** — 머지 버튼이 막히는 지점에서는
+   *   효과가 0 이었다(그게 이 PR 이 고치는 사고의 절반이다). ⇒ 평소 git 동작(충돌이 보인다)이 낫다.
+   */
+  it('그 파일에 merge=union 이 없다 — 지운 블록을 조용히 되살리는 유일한 효과만 남는다', () => {
+    const attrs = read('.gitattributes')
+    expect(attrs, 'merge=union 이 되돌아왔다 — 옛 생성 블록이 머지마다 되살아난다')
+      .not.toMatch(/^\s*docs\/CURRENT_WORK\.md\s+merge=union/m)
+    // 파일크기 baseline 의 키별-최대값 드라이버는 **유지**한다(그건 실제로 결정론적 병합을 한다).
+    expect(attrs, '파일크기 baseline 병합 규칙이 사라졌다')
+      .toContain('scripts/file-size-baseline.json merge=filesize-baseline')
+  })
 })

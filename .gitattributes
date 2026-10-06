@@ -10,6 +10,11 @@
 # 파일 크기 래칫 baseline: "키별 최대값"으로 병합. 근거는 스크립트 주석 참조.
 scripts/file-size-baseline.json merge=filesize-baseline
 
-# 세션 인계 로그: 양쪽 다 남긴다(append-only 성격). 지금까지 손으로 하던 keep-both 와 같다.
-# 순서가 뒤섞일 수 있으나 인계 문서라 내용 보존이 우선이다.
-docs/CURRENT_WORK.md merge=union
+# 🔀 2026-10-06 — `docs/CURRENT_WORK.md merge=union` 을 **제거했다.**
+#   그 파일은 이제 append 대상이 아니다(목차는 `.gitignore` 된 `docs/handoff/INDEX.local.md` 로 갔고
+#   세션은 `docs/handoff/<날짜>-<슬러그>.md` 자기 파일만 만든다). 그래서 union 이 남으면 **하는 일이
+#   하나뿐**이다 — 한쪽이 지운 줄을 **조용히 되살리는 것**. 실제로 이 변경을 올리는 머지에서 그렇게
+#   466줄짜리 옛 생성 블록이 되살아났다.
+#   그리고 애초에 **GitHub 서버측 머지는 이 드라이버를 쓰지 않는다**(2026-07-29·10-06 실측) —
+#   머지 버튼이 막히는 지점에서는 효과가 0 이었다. ⇒ 평소 git 동작(충돌이 보인다)이 더 낫다.
+#   가드: src/tests/unit/handoff-index-sidecar-2026-10-06.test.ts
