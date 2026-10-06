@@ -53,7 +53,7 @@ export default [
     name: '🪙선택 고르는 자리가 구매 버튼 아래로 내려간다',
     // 🧺 2026-09-15: 모바일 바가 `DealBottomBar` 로 이사했다 — 성질은 그대로라 자리만 재조준.
     file: 'src/pages/group-buy/DealBottomBar.tsx',
-    find: `      <DealUseChooser plan={dealPlan} value={dealUse ?? dealPlan?.max_deal_usable ?? 0} onChange={setDealUse} />
+    find: `      <DealUseChooser plan={dealPlan} value={dealUse ?? defaultDealUse(dealPlan)} onChange={setDealUse} />
       <button`,
     replace: `      <button`,
     test: 'src/tests/unit/deal-use-chooser-2026-09-13.test.ts',
@@ -64,7 +64,7 @@ export default [
   {
     name: '🪙선택 PC 구매 박스에서 선택이 사라진다',
     file: 'src/pages/GroupBuyDetailPage.tsx',
-    find: `          dealSlot={<DealUseChooser plan={!isPrelaunch && isJoinable ? dealPlan : null} value={dealUse ?? dealPlan?.max_deal_usable ?? 0} onChange={setDealUse} />}\n`,
+    find: `          dealSlot={<DealUseChooser plan={!isPrelaunch && isJoinable ? dealPlan : null} value={dealUse ?? defaultDealUse(dealPlan)} onChange={setDealUse} />}\n`,
     replace: ``,
     test: 'src/tests/unit/deal-use-chooser-2026-09-13.test.ts',
     why:
@@ -74,8 +74,10 @@ export default [
   {
     name: '🪙선택 접힌 줄이 결과 숫자를 안 말한다',
     file: 'src/pages/group-buy/DealUseChooser.tsx',
-    find: `          딜 <b style={{ color: 'var(--gbd-ink)' }}>{formatNumber(used)}</b>
-          {' · '}카드 <b style={{ color: 'var(--gbd-ink)' }}>{formatNumber(card)}원</b>`,
+    // 🪙 2026-10-06: 접힌 줄이 [전부 딜 / 딜+카드] 두 갈래가 됐다 — 두 갈래를 통째로 지우는 것으로 재조준.
+    find: `          {all
+            ? <>딜 <b style={{ color: 'var(--gbd-ink)' }}>{formatNumber(used)}</b>으로 전부 결제</>
+            : <>딜 <b style={{ color: 'var(--gbd-ink)' }}>{formatNumber(used)}</b>{' · '}카드 <b style={{ color: 'var(--gbd-ink)' }}>{formatNumber(card)}원</b></>}`,
     replace: `          딜 사용 가능`,
     test: 'src/tests/unit/deal-use-chooser-2026-09-13.test.ts',
     why:

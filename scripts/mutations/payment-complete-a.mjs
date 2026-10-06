@@ -18,4 +18,12 @@ export default [
     test: 'src/tests/unit/ticket-surface-system.test.ts',
     why: '"홍대돈까스 다른 이용권 보기" 를 눌렀는데 홈이 뜨면 말과 목적지가 다르다.',
   },
+  {
+    name: '🧾 장바구니 결제 완료에 "이런 서비스도 있어요" 줄이 되살아난다',
+    file: 'src/pages/group-buy/CartComplete.tsx',
+    find: '          <span className="text-[15px] font-bold">다른 이용권 보기</span>',
+    replace: '          <span className="text-[15px] font-bold">이런 서비스도 있어요</span>',
+    test: 'src/tests/unit/ticket-surface-system.test.ts',
+    why: '단건 화면만 고치고 장바구니 화면이 남아 있던 것이 라이브 판정에서 드러났다.',
+  },
 ]
