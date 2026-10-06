@@ -10,20 +10,12 @@
       "review": "vite 6 호환 확인 시 업그레이드 후 제거."
     },
     {
-      "ghsa": "GHSA-395f-4hp3-45gv",
-      "pkg": "shell-quote",
-      "reason": "빌드 스크립트 전용(parse() 이차 DoS). package.json 직접 의존이나 src/ 미참조 → production Workers/브라우저 번들 미포함. 자체 스크립트가 신뢰된 입력만 parse → 외부 공격자 도달 불가.",
-      "accepted_by": "대표(urteam.corp) 승인 — dev/빌드툴 도달불가 클래스",
-      "date": "2026-07-21",
-      "review": "shell-quote 1.8.x 패치 릴리스 나오면 업그레이드 후 제거."
-    },
-    {
-      "ghsa": "GHSA-r28c-9q8g-f849",
-      "pkg": "postcss",
-      "reason": "dev/빌드툴 전용(devDependencies, vite/tailwind CSS 파이프라인). 취약점 = 소스맵 자동로딩 path traversal — 빌드 시 **자체 신뢰된 CSS 만** 처리(외부 입력 CSS 부재) + production Workers/브라우저 번들에 postcss 미포함(src/ 미참조 확인) → 런타임 도달 불가. 2026-07-25 신규 published advisory 가 전 PR 배포를 차단해 등재.",
-      "accepted_by": "대표(urteam.corp) 승인 — dev/빌드툴 도달불가 클래스(2026-06-22·07-15·07-21 선례와 동일)",
-      "date": "2026-07-25",
-      "review": "npm 설치 가능 환경에서 postcss 패치 버전 상향 후 제거 — 근본 해결 우선."
+      "ghsa": "GHSA-vfj7-8cjw-p6xm",
+      "pkg": "braces",
+      "reason": "빌드 전용(tailwindcss@3 → chokidar/micromatch 경유). **패치 버전이 존재하지 않는다** — braces 최신이 3.0.3 이고 취약 범위가 `<=3.0.3` 이다(실측 2026-10-06: npm view braces versions 의 마지막이 3.0.3). npm 이 제시하는 fixAvailable 은 tailwindcss 4.3.3 = **semver-major** 이고 tailwind 3→4 는 설정 문법이 통째로 바뀌어 별건이다. 도달 불가 실측: ① `npm ls braces --all` 가 tailwindcss 하나만 가리킨다(dependencies 경유 0) ② src/ 에 braces·micromatch·chokidar·fast-glob import 0건 ③ 번들에 braces 패키지 지문(expandRange / braces.compile / braces.expand) **0건** — dist 에서 잡히는 \"braces\" 문자열은 react-helmet 의 에러 문구(\"Did you forget to wrap your children in braces?\")다. 취약점 자체도 **깊게 중첩된 패턴 입력으로 스택 소진**이라, 우리가 처리하는 입력은 tailwind content glob(우리가 쓴 것)뿐이다 — 외부 공격자 입력이 닿지 않는다.",
+      "accepted_by": "대표(urteam.corp) 승인 2026-10-06 \"모두 다 해줘\" — 올릴 수 있는 것은 전부 올린 뒤 남은 1건. dev/빌드툴 도달불가 클래스(2026-06-22·07-21·07-25 선례와 동일)",
+      "date": "2026-10-06",
+      "review": "tailwindcss 4 이행(별건) 또는 braces 3.0.4+ 패치 릴리스 시 제거. 둘 다 아직 없다."
     }
   ]
 }
