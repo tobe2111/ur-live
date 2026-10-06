@@ -12,8 +12,9 @@
  */
 
 import { useNavigate } from 'react-router-dom'
+import { BellIcon, HeartIcon } from '@/components/icons/urdeal-icons'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
-import { ArrowLeft, Bell, BellOff, Loader2, Heart, ChevronRight } from 'lucide-react'
+import { ArrowLeft, BellOff, Loader2, ChevronRight } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
@@ -61,10 +62,10 @@ export default function MyFollowsPage() {
 
       <div className="sticky top-0 z-30 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35]">
         <div className="ur-content-narrow mx-auto px-4 lg:px-8 flex items-center gap-3 py-3">
-          <button onClick={() => navigate(-1)} className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-[#1D1F29]" aria-label="뒤로">
+          <button onClick={() => navigate(-1)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-[#1D1F29]" aria-label="뒤로">
             <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" />
           </button>
-          <h1 className="text-base font-extrabold text-gray-900 dark:text-white">내 단골 가게</h1>
+          <h1 className="text-[15px] font-extrabold text-gray-900 dark:text-white">내 단골 가게</h1>
         </div>
       </div>
 
@@ -74,36 +75,36 @@ export default function MyFollowsPage() {
           <BrandLoader />
         ) : isError ? (
           <div className="text-center py-20">
-            <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">목록을 불러오지 못했어요</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">네트워크 상태를 확인한 뒤 다시 시도해주세요</p>
+            <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">목록을 불러오지 못했어요</p>
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">네트워크 상태를 확인한 뒤 다시 시도해주세요</p>
             <button
               onClick={() => refetch()}
-              className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full text-sm font-bold"
+              className="px-5 py-2 bg-brand text-white rounded-full text-[15px] font-bold"
             >
               다시 시도
             </button>
           </div>
         ) : follows.length === 0 ? (
           <div className="text-center py-20">
-            <Heart className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-            <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">단골 등록한 가게가 없어요</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">관심 있는 가게 페이지에서 단골 등록하세요</p>
+            <HeartIcon className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+            <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">단골 등록한 가게가 없어요</p>
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">관심 있는 가게 페이지에서 단골 등록하세요</p>
             <button
               onClick={() => navigate('/group-buy')}
-              className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full text-sm font-bold"
+              className="px-5 py-2 bg-brand text-white rounded-full text-[15px] font-bold"
             >
               동네딜 둘러보기
             </button>
           </div>
         ) : (
           <>
-            <div className="bg-gray-100 dark:bg-white/[0.06] border border-gray-200 dark:border-white/10 rounded-2xl p-4 mb-4 text-xs text-gray-700 dark:text-gray-300">
+            <div className="bg-gray-100 dark:bg-white/[0.06] border border-gray-200 dark:border-white/10 rounded-2xl p-4 mb-4 text-[12px] text-gray-700 dark:text-gray-300">
               💡 가게별로 받을 알림 종류를 선택하세요. 너무 많이 받으면 OFF, 중요한 알림만 ON.
             </div>
 
             <div className="space-y-3">
               {follows.map(f => (
-                <div key={f.seller_id} className="bg-surface rounded-2xl border border-line overflow-hidden">
+                <div key={f.seller_id} className="bg-surface rounded-2xl overflow-hidden shadow-lift">
                   {/* 셀러 정보 */}
                   <button
                     onClick={() => navigate(`/profile/${f.seller_username || f.seller_id}`)}
@@ -115,8 +116,8 @@ export default function MyFollowsPage() {
                       <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gray-300 to-gray-700 shrink-0" />
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{f.seller_name}</p>
-                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                      <p className="text-[15px] font-bold text-gray-900 dark:text-white truncate">{f.seller_name}</p>
+                      <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">
                         {formatKSTDate(f.created_at)} 부터 단골
                       </p>
                     </div>
@@ -133,20 +134,20 @@ export default function MyFollowsPage() {
                       <label key={opt.key} className="flex items-center justify-between cursor-pointer py-1">
                         <div className="flex items-start gap-2">
                           {f[opt.key] ? (
-                            <Bell className="w-4 h-4 text-gray-900 dark:text-white mt-0.5" />
+                            <BellIcon className="w-4 h-4 text-gray-900 dark:text-white mt-1" />
                           ) : (
-                            <BellOff className="w-4 h-4 text-gray-300 dark:text-gray-600 mt-0.5" />
+                            <BellOff className="w-4 h-4 text-gray-300 dark:text-gray-600 mt-1" />
                           )}
                           <div>
-                            <p className="text-xs font-bold text-gray-900 dark:text-white">{opt.label}</p>
-                            <p className="text-[10px] text-gray-500 dark:text-gray-400">{opt.desc}</p>
+                            <p className="text-[12px] font-bold text-gray-900 dark:text-white">{opt.label}</p>
+                            <p className="text-[12px] text-gray-500 dark:text-gray-400">{opt.desc}</p>
                           </div>
                         </div>
                         <button
                           type="button"
                           onClick={() => toggle(f.seller_id, opt.key)}
                           disabled={savingId === f.seller_id}
-                          className={`relative w-10 h-6 rounded-full transition-colors ${f[opt.key] ? 'bg-gray-900 dark:bg-white' : 'bg-gray-300 dark:bg-gray-600'} disabled:opacity-50`}
+                          className={`relative w-10 h-6 rounded-full transition-colors ${f[opt.key] ? 'bg-brand' : 'bg-gray-300 dark:bg-gray-600'} disabled:opacity-50`}
                           aria-label={`${opt.label} 알림 ${f[opt.key] ? '끄기' : '켜기'}`}
                           aria-pressed={f[opt.key]}
                         >
@@ -157,7 +158,7 @@ export default function MyFollowsPage() {
 
                     <button
                       onClick={() => unfollow(f.seller_id)}
-                      className="w-full mt-2 px-3 py-2 text-[11px] text-gray-500 dark:text-gray-400 hover:text-red-500 transition-colors"
+                      className="w-full mt-2 px-3 py-2 text-[12px] text-gray-500 dark:text-gray-400 hover:text-red-500 transition-colors"
                     >
                       단골 해제
                     </button>

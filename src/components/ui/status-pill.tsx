@@ -46,7 +46,7 @@ export default function StatusPill({
   tone = 'neutral', children, className = '',
 }: { tone?: StatusTone; children: ReactNode; className?: string }) {
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold whitespace-nowrap ${TONE_PILL[tone]} ${className}`}>
+    <span className={`inline-flex items-center px-2 py-1 rounded-full text-[12px] font-semibold whitespace-nowrap ${TONE_PILL[tone]} ${className}`}>
       {children}
     </span>
   )

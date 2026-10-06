@@ -15,12 +15,13 @@
  *   🩸 그리고 이 모달은 2026-08-26 이전까지 **한 번도 뜬 적이 없었다**(CuratorPage 게이트 버그).
  */
 import { useState, useEffect, useRef } from 'react'
+import { StoreIcon, PinIcon } from '@/components/icons/urdeal-icons'
 import { createPortal } from 'react-dom'
 import { curatorApi } from '@/features/curator/api/curator-api'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import { setUrShopIntent, type UrShopIntent } from '@/utils/urshop-intent'
-import { X, Store, Sparkles } from 'lucide-react'
+import {X} from 'lucide-react'
 
 interface Props {
   curatorId: number
@@ -146,35 +147,35 @@ export default function LinkshopOnboardModal({ curatorId, currentHandle, current
                 onClick={() => { setIntent('seller'); setUrShopIntent(curatorId, 'seller'); setStep(2) }}
                 className="w-full flex items-start gap-3 p-4 rounded-2xl border border-line hover:bg-gray-50 dark:hover:bg-white/[0.04] text-left transition"
               >
-                <span className="w-9 h-9 shrink-0 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-[#11141C] flex items-center justify-center"><Store className="w-[18px] h-[18px]" /></span>
+                <span className="w-9 h-9 shrink-0 rounded-xl bg-brand text-white flex items-center justify-center"><StoreIcon className="w-[18px] h-[18px]" /></span>
                 <span className="min-w-0">
-                  <span className="block text-[14px] font-bold text-gray-900 dark:text-white">내 가게를 팔아요</span>
-                  <span className="block text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">매장을 등록하고 이용권을 팔아요</span>
+                  <span className="block text-[15px] font-bold text-gray-900 dark:text-white">내 가게를 팔아요</span>
+                  <span className="block text-[12px] text-gray-500 dark:text-gray-400 mt-1">매장을 등록하고 이용권을 팔아요</span>
                 </span>
               </button>
               <button
                 onClick={() => { setIntent('curator'); setUrShopIntent(curatorId, 'curator'); setStep(2) }}
                 className="w-full flex items-start gap-3 p-4 rounded-2xl border border-line hover:bg-gray-50 dark:hover:bg-white/[0.04] text-left transition"
               >
-                <span className="w-9 h-9 shrink-0 rounded-xl bg-gray-100 dark:bg-[#2C2F35] text-gray-700 dark:text-white flex items-center justify-center"><Sparkles className="w-[18px] h-[18px]" /></span>
+                <span className="w-9 h-9 shrink-0 rounded-xl bg-gray-100 dark:bg-[#2C2F35] text-gray-700 dark:text-white flex items-center justify-center"><PinIcon className="w-[18px] h-[18px]" /></span>
                 <span className="min-w-0">
-                  <span className="block text-[14px] font-bold text-gray-900 dark:text-white">좋은 딜을 소개해요</span>
-                  <span className="block text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">마음에 든 이용권을 담아 친구에게 소개해요</span>
+                  <span className="block text-[15px] font-bold text-gray-900 dark:text-white">좋은 딜을 소개해요</span>
+                  <span className="block text-[12px] text-gray-500 dark:text-gray-400 mt-1">마음에 든 이용권을 담아 친구에게 소개해요</span>
                 </span>
               </button>
             </div>
             {/* ⚠️ 신분이 아니라는 걸 이 자리에서 말한다 — 안 적으면 "잘못 고르면 어쩌지"에서 멈춘다. */}
-            <p className="text-[11.5px] text-gray-400 dark:text-gray-500 mt-3 text-center leading-snug">
+            <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-3 text-center leading-snug">
               나중에 바꿀 수 있고, 둘 다 하셔도 돼요.
             </p>
-            <button onClick={dismissPermanently} className="w-full mt-3 py-2.5 rounded-xl text-[13px] font-semibold text-gray-500 dark:text-gray-400">
+            <button onClick={dismissPermanently} className="w-full mt-3 py-2 rounded-xl text-[13px] font-semibold text-gray-500 dark:text-gray-400">
               나중에
             </button>
           </>
         ) : (
         <>
         <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-4 leading-snug">
-          지금 주소가 <span className="font-mono text-gray-700 dark:text-gray-300">@{currentHandle}</span> 예요.
+          지금 주소가 <span className="font-semibold text-gray-700 dark:text-gray-300">@{currentHandle}</span> 예요.
           나만의 이름과 주소로 바꿔보세요.
         </p>
 
@@ -183,36 +184,36 @@ export default function LinkshopOnboardModal({ curatorId, currentHandle, current
           value={name}
           onChange={(e) => setName(e.target.value.slice(0, 40))}
           placeholder="예: 지원의 추천템"
-          className="w-full px-3.5 py-2.5 mb-4 rounded-xl border border-line bg-gray-50 dark:bg-[#1D1F29] text-gray-900 dark:text-white text-[14px] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/10"
+          className="w-full px-4 py-2 mb-4 rounded-xl border border-line bg-gray-50 dark:bg-[#1D1F29] text-gray-900 dark:text-white text-[15px] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900/10 dark:focus:ring-white/10"
         />
 
         <label className="block text-[12px] font-semibold text-gray-700 dark:text-gray-300 mb-1">유어샵 주소 (@)</label>
-        <div className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-line bg-gray-50 dark:bg-[#1D1F29]">
-          <span className="text-gray-400 text-[14px]">@</span>
+        <div className="flex items-center gap-2 px-4 py-2 rounded-xl border border-line bg-gray-50 dark:bg-[#1D1F29]">
+          <span className="text-gray-400 text-[15px]">@</span>
           <input
             value={handle}
             onChange={(e) => setHandle(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20))}
             placeholder="myshop"
-            className="flex-1 bg-transparent text-gray-900 dark:text-white text-[14px] placeholder:text-gray-400 focus:outline-none"
+            className="flex-1 bg-transparent text-gray-900 dark:text-white text-[15px] placeholder:text-gray-400 focus:outline-none"
           />
-          {checking && <span className="text-[11px] text-gray-400">확인중…</span>}
+          {checking && <span className="text-[12px] text-gray-400">확인중…</span>}
         </div>
         {checkMsg && (
-          <p className={`text-[12px] mt-1.5 ${available ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>{checkMsg}</p>
+          <p className={`text-[12px] mt-2 ${available ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>{checkMsg}</p>
         )}
-        <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">소문자/숫자/_ 만, 3~20자. 비워두면 이름만 바꿔요.</p>
+        <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-1">소문자/숫자/_ 만, 3~20자. 비워두면 이름만 바꿔요.</p>
 
         <div className="flex gap-2 mt-5">
           <button
             onClick={dismissPermanently}
-            className="px-4 py-2.5 rounded-xl text-[13px] font-semibold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-[#1D1F29]"
+            className="px-4 py-2 rounded-xl text-[13px] font-semibold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-[#1D1F29]"
           >
             나중에
           </button>
           <button
             onClick={save}
             disabled={saving || !handleValid || (!name.trim() && !handle.trim())}
-            className="flex-1 px-4 py-2.5 rounded-xl text-[13px] font-bold bg-gray-900 dark:bg-white text-white dark:text-gray-900 disabled:opacity-40"
+            className="flex-1 px-4 py-2 rounded-xl text-[13px] font-bold bg-brand text-white disabled:opacity-40"
           >
             {saving ? '저장 중…' : intent === 'seller' ? '저장하고 매장 등록하기' : '저장하기'}
           </button>

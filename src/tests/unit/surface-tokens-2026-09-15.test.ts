@@ -28,6 +28,20 @@ import { stripComments } from '../helpers/source-text'
 const CSS = readFileSync('src/index.css', 'utf-8')
 const TW = stripComments(readFileSync('tailwind.config.js', 'utf-8'))
 
+/**
+ * 🩸 2026-09-30 재조준 (대표 "전체 적용하자" — 팔레트 온도 정정).
+ *   이 파일은 `--line: #EAE4E0` 처럼 **hex 를 손으로 박아** 짝을 확인하고 있었다. 그러면 팔레트를
+ *   한 번 고칠 때마다 두 곳(tailwind INK · index.css 토큰)을 고친 뒤 **시험도 세 번째로** 고쳐야 하고,
+ *   그 셋 중 하나를 빠뜨려도 시험은 "짝이 맞는다"가 아니라 "옛 베이지인가"를 묻는다.
+ *   ⇒ 지키려던 것은 **"접은 짝의 값이 한 글자도 안 바뀐다"** 이므로, 기대값을 INK 스케일에서 **뽑아** 대조한다.
+ *   이제 한쪽만 고치면 빨간불이고(원래 목적), 둘을 같이 고치면 초록이다(팔레트는 바뀔 수 있다).
+ */
+function ink(step: number): string {
+  const m = TW.match(new RegExp(`\\b${step}:\\s*'(#[0-9A-Fa-f]{6})'`))
+  expect(m, `INK.${step} 를 tailwind.config.js 에서 못 찾았다 — 스케일 모양이 바뀌었다`).not.toBeNull()
+  return (m as RegExpMatchArray)[1]
+}
+
 /** `.light-island …` 되박기 블록 본문 */
 function lightForcedBlock(): { selector: string; body: string } {
   const at = CSS.indexOf('.light-island, .force-light-theme')
@@ -67,28 +81,31 @@ describe('🔴 대시보드는 다크에서도 흰색이다 (절대 규칙)', ()
 
   it('그 블록이 표면 세 토큰을 라이트 값으로 되박는다', () => {
     const { body } = lightForcedBlock()
-    expect(body, '--bg 되박기가 없다').toMatch(/--bg:\s*#F8F7FC/i)
+    expect(body, '--bg 되박기가 없다').toMatch(new RegExp(`--bg:\\s*${ink(50)}`, 'i'))
     expect(body, '--surface 되박기가 없다').toMatch(/--surface:\s*#FFFFFF/i)
-    expect(body, '--line 되박기가 없다').toMatch(/--line:\s*#EAE4E0/i)
+    expect(body, '--line 되박기가 없다').toMatch(new RegExp(`--line:\\s*${ink(200)}`, 'i'))
   })
 })
 
 describe('접은 짝은 값이 한 글자도 안 바뀐다', () => {
   it('토큰의 라이트 값이 접기 전 라이트 클래스와 같다', () => {
     // bg-white(#FFFFFF) → bg-surface · border-gray-200(INK.200) → border-line · bg-gray-50(INK.50) → bg-warm
-    expect(TW, 'INK 스케일이 바뀌었다 — 접은 짝의 라이트 값이 달라진다').toMatch(/200:\s*'#EAE4E0'/)
-    expect(TW, '〃').toMatch(/50:\s*'#F8F7FC'/)
     const { body } = lightForcedBlock()
-    expect(body).toMatch(/--surface:\s*#FFFFFF/i)   // = bg-white
-    expect(body).toMatch(/--line:\s*#EAE4E0/i)      // = gray-200
-    expect(body).toMatch(/--bg:\s*#F8F7FC/i)        // = gray-50
+    expect(body).toMatch(/--surface:\s*#FFFFFF/i)                               // = bg-white
+    expect(body, '--line 이 gray-200 과 갈렸다').toMatch(new RegExp(`--line:\\s*${ink(200)}`, 'i'))
+    expect(body, '--bg 가 gray-50 과 갈렸다').toMatch(new RegExp(`--bg:\\s*${ink(50)}`, 'i'))
+    // :root(라이트 기본)도 같은 값이어야 한다 — 되박기만 맞고 기본이 갈리면 섬 밖에서 선이 두 색이 된다.
+    const root = CSS.slice(CSS.indexOf('  :root {'), CSS.indexOf('.dark, [data-theme="dark"]'))
+    expect(root, ':root --line 이 gray-200 과 갈렸다').toMatch(new RegExp(`--line:\\s*${ink(200)}`, 'i'))
   })
 
   it('접기 규칙(코드모드)이 안전한 짝만 담고 있다', () => {
     const mod = stripComments(readFileSync('scripts/codemods/adopt-surface-tokens.mjs', 'utf-8'))
-    // 🔑 이 둘은 **절대 들어오면 안 된다** — 라이트 값이 토큰과 다르거나(gray-100=#F3EEEA),
+    // 🔑 이 둘은 **절대 들어오면 안 된다** — 라이트 값이 토큰과 다르거나(gray-100 ≠ gray-200),
     //    한 라이트 값에 다크 답이 둘이라(bg-white → #11141C 321곳 vs #1D1F29 168곳) 기계가 못 고른다.
-    expect(mod, 'gray-100 을 --line 으로 접으면 화면이 바뀐다(#F3EEEA ≠ #EAE4E0)').not.toContain("'border-gray-100'")
+    expect(ink(100), 'gray-100 과 gray-200 이 같아졌다 — 아래 금지의 근거가 사라진다').not.toBe(ink(200))
+    expect(mod, `gray-100 을 --line 으로 접으면 화면이 바뀐다(${ink(100)} ≠ ${ink(200)})`)
+      .not.toContain("'border-gray-100'")
     expect(mod, 'bg-white → dark #11141C 는 디자인 결정이다 — 기계가 고르면 안 된다')
       .not.toMatch(/'bg-white',\s*'dark:bg-\[#11141C\]'/)
   })

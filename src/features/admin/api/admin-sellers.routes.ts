@@ -120,7 +120,7 @@ adminSellersRoutes.get('/sellers', cors(), async (c) => {
       }
     }
     const totalRow = await DB.prepare(`SELECT COUNT(*) as cnt FROM sellers ${distWhere}`).first<{ cnt: number }>().catch(() => DB.prepare('SELECT COUNT(*) as cnt FROM sellers').first<{ cnt: number }>());
-    await import('./admin-sellers/cert-fallback').then(m => m.attachCertUrls(DB, sellers)); // 🧾 2026-09-20 등록증 meta 폴백
+    await import('./admin-sellers/enrich-rows').then(m => m.enrichSellerRows(DB, sellers)); // 🧾 등록증 폴백 + 🍽️ 영업신고증·업종(표시만) — 이 파일 961줄 동결이라 목록 enrich 는 저기서 자란다
     return c.json({
       success: true,
       data: sellers,
@@ -454,13 +454,13 @@ adminSellersRoutes.patch('/sellers/:id/approve', cors(), async (c) => {
     if (!sellerId || !/^\d+$/.test(String(sellerId))) return c.json({ success: false, error: 'Invalid ID' }, 400);
     const rows = await executeQuery<IdRow>(DB, 'SELECT id, status FROM sellers WHERE id = ?', [sellerId]);
     if (rows.length === 0) return c.json({ success: false, error: '판매자를 찾을 수 없습니다' }, 404);
-    if (rows[0].status === 'approved') return c.json({ success: false, error: '이미 승인된 판매자입니다' }, 400);
+    if (rows[0].status === 'approved') return c.json({ success: false, code: 'ALREADY_APPROVED', error: '이미 승인된 판매자입니다' }, 400); // 🔁 2026-09-23: 낡은 목록에서 또 누른 것 — 화면이 문구 아닌 code 로 분기하게(문구는 다듬어진다)
     const prevStatus = rows[0].status;
     await executeQuery(DB, `UPDATE sellers SET status = 'approved', updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [sellerId]);
     // 🛡️ 2026-05-07: seller_status_history INSERT — 영구 변경 이력. 잘못된 거절 복구 / 분쟁 대응.
-    DB.prepare(`INSERT INTO seller_status_history (seller_id, prev_status, new_status, reason) VALUES (?, ?, 'approved', NULL)`)
-      .bind(sellerId, prevStatus).run().catch(() => { /* 테이블 없을 시 silent */ });
+    DB.prepare(`INSERT INTO seller_status_history (seller_id, prev_status, new_status, reason) VALUES (?, ?, 'approved', NULL)`).bind(sellerId, prevStatus).run().catch(() => { /* 테이블 없을 시 silent */ });
     await writeAuditLog(c, { action: 'approve_seller', targetType: 'seller', targetId: sellerId, before: { status: prevStatus }, after: { status: 'approved' } });
+    await (await import('../../../worker/utils/seller-approved-hooks')).runSellerApprovedHooks(DB, Number(sellerId), prevStatus).catch(() => null); // ⏳📩 2026-09-21 승인 직후 부수효과(노출 유예 마커 · 사장님 통보 줄) — 둘 다 기본 OFF/게이트 뒤
     // 🏁 2026-06-12 (전수조사 🟢): 정지→재활성도 이 endpoint 재사용이라 '가입 승인' 메시지가
     //   재발송되던 갭 — prevStatus 기반 분기.
     const isReactivation = prevStatus === 'suspended';

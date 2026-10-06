@@ -733,7 +733,7 @@
 | 원천징수 — 기타소득 (단발성 협업) | 8.8% | `src/worker/utils/tax-withholding.ts:WITHHOLDING_RATES.other_income` |
 | 기타소득 분리과세 연 한도 | 3,000,000원 | `src/worker/utils/tax-withholding.ts:ANNUAL_THRESHOLD` |
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (23개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (24개)
 
 - `/admin/influencer-disputes`
 - `/admin/influencer-payouts`
@@ -757,6 +757,7 @@
 - `/u/me`
 - `/u/me/add`
 - `/u/me/earnings`
+- `/u/me/manage`
 - `/user/affiliate`
 
 ### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (86개)
@@ -949,7 +950,7 @@
 - `GET /api/seller/donations/summary`
 
 
-> 마지막 생성: 2026-09-16T12:40:17.747Z
+> 마지막 생성: 2026-09-28T01:01:54.167Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

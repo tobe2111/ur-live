@@ -163,10 +163,10 @@ export default function PWAInstallPrompt() {
           <div className="flex items-start gap-3">
             {/* 🛡️ 2026-05-27 사용자 요청: 좌측 분홍 네모 (smartphone icon 컨테이너) 제거. */}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-gray-900 dark:text-white">
+              <p className="text-[15px] font-bold text-gray-900 dark:text-white">
                 {t('pwa.install.title', { defaultValue: '앱 설치하면 환영 쿠폰!' })}
               </p>
-              <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">{t('pwa.install.desc', { defaultValue: '홈 화면에 설치하고 5,000원 쿠폰 받기' })}</p>
+              <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{t('pwa.install.desc', { defaultValue: '홈 화면에 설치하고 5,000원 쿠폰 받기' })}</p>
             </div>
             <button onClick={handleDismiss} aria-label={t('pwa.install.closeAria', { defaultValue: '닫기' })} className="p-1 -m-1 rounded-full hover:bg-gray-100 dark:hover:bg-[#1D1F29] shrink-0">
               <X className="w-4 h-4 text-gray-400 dark:text-gray-500" />
@@ -175,12 +175,12 @@ export default function PWAInstallPrompt() {
           <div className="flex gap-2 mt-3">
             <button
               onClick={handleInstall}
-              className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-brand text-white rounded-xl font-bold text-sm active:scale-95"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-brand text-white rounded-xl font-bold text-[15px] active:scale-95"
             >
               <Plus className="w-4 h-4" />
               {t('pwa.install.installBtn', { defaultValue: '설치하기' })}
             </button>
-            <button onClick={handleDismiss} className="px-4 py-2.5 text-gray-500 dark:text-gray-400 text-sm font-medium">
+            <button onClick={handleDismiss} className="px-4 py-2 text-gray-500 dark:text-gray-400 text-[15px] font-medium">
               {t('pwa.install.later', { defaultValue: '나중에' })}
             </button>
           </div>
@@ -199,8 +199,8 @@ export default function PWAInstallPrompt() {
           <div className="flex items-start gap-3 mb-2">
             {/* 🛡️ 2026-05-27 사용자 요청: 좌측 분홍 네모 (smartphone icon 컨테이너) 제거. */}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-gray-900 dark:text-white">{t('pwa.install.title', { defaultValue: '앱 설치하면 환영 쿠폰!' })}</p>
-              <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">{t('pwa.install.manualDesc', { defaultValue: '홈 화면에 추가하고 5,000원 받기' })}</p>
+              <p className="text-[15px] font-bold text-gray-900 dark:text-white">{t('pwa.install.title', { defaultValue: '앱 설치하면 환영 쿠폰!' })}</p>
+              <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{t('pwa.install.manualDesc', { defaultValue: '홈 화면에 추가하고 5,000원 받기' })}</p>
             </div>
             <button onClick={handleDismiss} aria-label={t('pwa.install.closeAria', { defaultValue: '닫기' })} className="p-1 -m-1 rounded-full hover:bg-gray-100 dark:hover:bg-[#1D1F29] shrink-0">
               <X className="w-4 h-4 text-gray-400 dark:text-gray-500" />
@@ -209,28 +209,28 @@ export default function PWAInstallPrompt() {
           <div className="bg-warm border border-rule rounded-xl p-3 text-[12px] text-gray-700 dark:text-gray-200 leading-relaxed">
             {isIOSDevice ? (
               <>
-                <div className="flex items-center gap-1.5 mb-1.5">
-                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-brand text-white font-bold text-[10px]">1</span>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-brand text-white font-bold text-[12px]">1</span>
                   <span dangerouslySetInnerHTML={{ __html: t('pwa.install.iosStep1', { defaultValue: '하단 <strong class="text-brand-text">공유 버튼</strong> 누르기' }) }} />
-                  <span className="ml-auto text-base">⬆️</span>
+                  <span className="ml-auto text-[15px]">⬆️</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-brand text-white font-bold text-[10px]">2</span>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-brand text-white font-bold text-[12px]">2</span>
                   <span dangerouslySetInnerHTML={{ __html: t('pwa.install.iosStep2', { defaultValue: '"홈 화면에 추가" 선택' }) }} />
-                  <span className="ml-auto text-base">📱</span>
+                  <span className="ml-auto text-[15px]">📱</span>
                 </div>
               </>
             ) : (
               <>
-                <div className="flex items-center gap-1.5 mb-1.5">
-                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-brand text-white font-bold text-[10px]">1</span>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-brand text-white font-bold text-[12px]">1</span>
                   <span dangerouslySetInnerHTML={{ __html: t('pwa.install.androidStep1', { defaultValue: '우상단 <strong class="text-brand-text">⋮ 메뉴</strong> 누르기' }) }} />
-                  <span className="ml-auto font-bold text-lg leading-none">⋮</span>
+                  <span className="ml-auto font-bold text-[17px] leading-none">⋮</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-brand text-white font-bold text-[10px]">2</span>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-brand text-white font-bold text-[12px]">2</span>
                   <span dangerouslySetInnerHTML={{ __html: t('pwa.install.androidStep2', { defaultValue: '"앱 설치" 또는 "홈 화면에 추가"' }) }} />
-                  <span className="ml-auto text-base">📱</span>
+                  <span className="ml-auto text-[15px]">📱</span>
                 </div>
               </>
             )}

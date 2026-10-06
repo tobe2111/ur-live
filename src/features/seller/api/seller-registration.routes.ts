@@ -23,7 +23,7 @@ import { rateLimit } from '@/worker/middleware/rate-limit'
 import { swallow } from '@/worker/utils/swallow'
 import { startDashboardSession } from '@/worker/utils/dashboard-session'
 import { getSellerIdFromToken, type SellerJWTPayload } from '@/lib/seller-shared'
-import { copyCuratorProfileToSeller, stampSignupStoreChannel } from './seller-signup-meta'
+import { copyCuratorProfileToSeller, stampSignupStoreChannel, stampSignupStorePlace } from './seller-signup-meta'
 import { BIZ_CERT_PATH } from '../../../worker/utils/store-ownership-claims'
 // 🔁 2026-09-16 (파일 분해): 상태 조회·세션 전환 3개는 별 파일로. 경로·순서 불변.
 import { mountSellerSessionRoutes } from './seller-registration/session-routes'
@@ -380,6 +380,18 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
       influencer_intro_code?: string;
       // 📜 2026-07-05: 판매자 이용약관 v1.0 동의 (가입 화면 필수 체크)
       terms_agreed_version?: string;
+      // 🏪 2026-09-21 (대표 확정 "안 B: 가게부터") — 가입 화면이 카카오맵에서 고른 가게를
+      //   **통째로** 보낸다. 종전엔 주소가 `description` 안 `[주소: …]` 텍스트로만 왔고
+      //   좌표·place_id 는 아예 오지 않아, 가입 문으로 들어온 매장이 지도에 안 떴다.
+      //   전부 **선택**이다 — 지도에 없는 가게(신규 개업·무점포)는 종전처럼 손으로 적는다.
+      address?: string;
+      store_category?: string;
+      store_phone?: string;
+      kakao_place_id?: string;
+      kakao_place_url?: string;
+      kakao_category?: string;
+      lat?: string;
+      lng?: string;
     }>();
 
     const { business_name, business_number, phone, seller_type, youtube_email, description, influencer_intro_code } = body;
@@ -511,6 +523,19 @@ sellerRegistrationRoutes.post('/register-from-user', rateLimit({ action: 'seller
     //   였다. 🌇 2026-09-05 에이전시 일몰 후 이 문은 **언제나 직접**이다 — 카카오 user 세션 전용이라
     //   로그인한 본인이 자기 가게를 올리는 자리다(중개 매장은 `/store/new` 에서 채널을 골라 만든다).
     await stampSignupStoreChannel(db, newSellerId);
+
+    // 🏪 2026-09-21 (안 B): 고른 가게의 주소·좌표·업종·place_id 를 **매장 등록 문과 같은 키**로.
+    //   fail-soft — 메타가 없어도 매장은 매장이다(프로필 수정에서 채울 수 있다).
+    await stampSignupStorePlace(db, newSellerId, {
+      address: body.address,
+      store_phone: body.store_phone,
+      store_category: body.store_category,
+      kakao_place_id: body.kakao_place_id,
+      kakao_place_url: body.kakao_place_url,
+      kakao_category: body.kakao_category,
+      lat: body.lat,
+      lng: body.lng,
+    });
 
     const { createDashboardNotification: notify } = await import('../../notifications/api/dashboard-notifications.routes');
     // 🛡️ 2026-06-12 (감사 1단계): deep-link 교정 — /admin/sellers 는 클라 라우트에 없음 → 승인 페이지로.

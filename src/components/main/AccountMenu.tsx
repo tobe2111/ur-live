@@ -1,9 +1,7 @@
 import { useNavigate } from 'react-router-dom'
+import { HeartIcon, TicketStubIcon, GiftBoxIcon, BoxIcon, SettingsIcon, BellIcon, StoreIcon, LogOutIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from 'react-i18next'
-import {
-  X, ChevronRight, Heart, Ticket, Gift, Package, Settings, Coins,
-  Bell, HelpCircle, Store, LogOut, Smartphone, LogIn, UserPlus,
-} from 'lucide-react'
+import { X, ChevronRight, Coins, HelpCircle, Smartphone, LogIn, UserPlus } from 'lucide-react'
 import { getUserNameSync, getUserEmail } from '@/utils/auth'
 import { sellerEntryPath } from '@/utils/seller-entry'
 
@@ -20,7 +18,7 @@ import { sellerEntryPath } from '@/utils/seller-entry'
  *    흉내내지 않고 뺀다 — 눌렀는데 아무 데도 안 가는 항목이 제일 나쁘다.
  */
 
-type Row = { icon: typeof Heart; label: string; path: string; badge?: string }
+type Row = { icon: typeof HeartIcon; label: string; path: string; badge?: string }
 
 export default function AccountMenu({
   loggedIn,
@@ -44,14 +42,14 @@ export default function AccountMenu({
 
   const rows: Row[] = loggedIn
     ? [
-        { icon: Heart,      label: t('nav.myWishlist', { defaultValue: '찜한 이용권' }), path: '/wishlist', badge: wishCount > 0 ? String(wishCount) : undefined },
-        { icon: Ticket,     label: t('nav.myVouchers', { defaultValue: '내 이용권' }), path: '/my-vouchers' },
+        { icon: HeartIcon,      label: t('nav.myWishlist', { defaultValue: '찜한 이용권' }), path: '/wishlist', badge: wishCount > 0 ? String(wishCount) : undefined },
+        { icon: TicketStubIcon,     label: t('nav.myVouchers', { defaultValue: '내 이용권' }), path: '/my-vouchers' },
         // 🎟️ 2026-08-31 (지갑 분리): 교환권(문자로 받는 기프티콘)은 별도 보관함.
-        { icon: Gift,       label: t('nav.myGifticons', { defaultValue: '내 교환권' }), path: '/my-gifticons' },
-        { icon: Package,    label: t('nav.myOrders', { defaultValue: '주문 내역' }), path: '/my-orders' },
+        { icon: GiftBoxIcon,       label: t('nav.myGifticons', { defaultValue: '내 교환권' }), path: '/my-gifticons' },
+        { icon: BoxIcon,    label: t('nav.myOrders', { defaultValue: '주문 내역' }), path: '/my-orders' },
         { icon: Coins,      label: t('nav.myDeal', { defaultValue: '딜 내역' }), path: '/my-deal-history' },
-        { icon: Bell,       label: t('nav.notifications', { defaultValue: '알림' }), path: '/notifications', badge: unreadCount > 0 ? String(unreadCount) : undefined },
-        { icon: Settings,   label: t('nav.settings', { defaultValue: '설정' }), path: '/account/settings' },
+        { icon: BellIcon,       label: t('nav.notifications', { defaultValue: '알림' }), path: '/notifications', badge: unreadCount > 0 ? String(unreadCount) : undefined },
+        { icon: SettingsIcon,   label: t('nav.settings', { defaultValue: '설정' }), path: '/account/settings' },
         { icon: HelpCircle, label: t('nav.support', { defaultValue: '고객센터' }), path: '/faq' },
       ]
     : [
@@ -60,16 +58,27 @@ export default function AccountMenu({
         { icon: HelpCircle, label: t('nav.support', { defaultValue: '고객센터' }), path: '/faq' },
       ]
 
+  /**
+   * 🔑 명시적 로그아웃 = **전 역할 종료**(2026-07-07 대표 확정 "전부 로그아웃", `logoutAll`).
+   *
+   * 🩸 2026-10-01 (대표 신고 — "로그아웃했는데 로그아웃하라는 UI 가 뜬다"): 여기는 그 확정 **이후**
+   *   만들어진 입구(08-19 그루폰식 헤더)인데 옛 방식(`clearAuthData('user')` = 소비자만 정리)을
+   *   쓰고 있었다. 그래서 다중역할 계정은 로그아웃을 눌러도 `seller_token`/`admin_token` 이 남아
+   *   헤더가 계속 로그인 상태로 보였다 — 같은 버그가 **새 문으로 다시 들어온** 것이다.
+   *   마이페이지는 이미 `logoutAll()` 을 쓴다. 두 입구가 다른 로그아웃을 하면 안 된다.
+   *
+   * ⚠️ `logoutAll()` 이 서버 세션쿠키 삭제를 **await 한 뒤** 스스로 홈으로 하드 리로드까지 한다
+   *   (여기서 `window.location.href` 를 또 부르면 쿠키 삭제가 끝나기 전에 떠나 재인증 레이스가 난다).
+   */
   async function signOut() {
     onClose()
     try {
-      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
-    } catch { /* 네트워크 실패해도 아래 로컬 정리는 반드시 한다 */ }
-    try {
-      const { clearAuthData } = await import('@/utils/auth')
-      clearAuthData('user')
-    } catch { /* noop */ }
-    window.location.href = '/'
+      const { logoutAll } = await import('@/features/auth/login-flow.service')
+      await logoutAll()
+    } catch {
+      // 모듈 로드/네트워크 실패 — 최소한 홈으로는 보낸다(다음 진입에서 재시도).
+      window.location.href = '/'
+    }
   }
 
   return (
@@ -105,7 +114,7 @@ export default function AccountMenu({
             {(name || '유').slice(0, 1)}
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-[13.5px] font-bold text-gray-900 dark:text-white truncate">{name || t('nav.my', { defaultValue: '마이' })}</span>
+            <span className="block text-[13px] font-bold text-gray-900 dark:text-white truncate">{name || t('nav.my', { defaultValue: '마이' })}</span>
             {email && <span className="block text-[12px] text-gray-400 dark:text-gray-500 truncate">{email}</span>}
           </span>
           <ChevronRight className="shrink-0 w-4 h-4 text-gray-300 dark:text-gray-600" strokeWidth={2} />
@@ -115,13 +124,13 @@ export default function AccountMenu({
       <div className="mx-5 h-px bg-gray-100 dark:bg-[#2C2F35]" />
 
       {/* 메뉴 */}
-      <div className="py-1.5">
+      <div className="py-2">
         {rows.map(({ icon: Icon, label, path, badge }) => (
           <button
             key={path}
             role="menuitem"
             onClick={() => go(path)}
-            className="w-full flex items-center gap-3 px-5 py-2.5 text-[13.5px] font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors"
+            className="w-full flex items-center gap-3 px-5 py-2 text-[13px] font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors"
           >
             <Icon className="shrink-0 w-[18px] h-[18px] text-gray-400 dark:text-gray-500" strokeWidth={1.9} />
             <span className="flex-1 text-left">{label}</span>
@@ -139,10 +148,10 @@ export default function AccountMenu({
       >
         <Smartphone className="shrink-0 w-[18px] h-[18px] text-gray-400 dark:text-gray-500" strokeWidth={1.9} />
         <span className="min-w-0">
-          <span className="block text-[13.5px] font-bold text-gray-900 dark:text-white">
+          <span className="block text-[13px] font-bold text-gray-900 dark:text-white">
             {t('nav.getApp', { defaultValue: '앱으로 보기' })}
           </span>
-          <span className="block text-[11.5px] text-gray-400 dark:text-gray-500">
+          <span className="block text-[12px] text-gray-400 dark:text-gray-500">
             {t('nav.getAppHint', { defaultValue: 'QR 찍고 폰에서 이어서' })}
           </span>
         </span>
@@ -152,18 +161,18 @@ export default function AccountMenu({
       <button
         role="menuitem"
         onClick={() => go(sellerEntryPath())}
-        className="w-full flex items-center gap-3 px-5 py-2.5 text-[13px] font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors"
+        className="w-full flex items-center gap-3 px-5 py-2 text-[13px] font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors"
       >
-        <Store className="shrink-0 w-[17px] h-[17px]" strokeWidth={1.9} />
+        <StoreIcon className="shrink-0 w-[17px] h-[17px]" />
         {t('nav.sellOnUrdeal', { defaultValue: '유어딜에서 판매하세요' })}
       </button>
       {loggedIn && (
         <button
           role="menuitem"
           onClick={() => void signOut()}
-          className="w-full flex items-center gap-3 px-5 py-2.5 mb-1.5 text-[13px] font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors"
+          className="w-full flex items-center gap-3 px-5 py-2 mb-2 text-[13px] font-semibold text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors"
         >
-          <LogOut className="shrink-0 w-[17px] h-[17px]" strokeWidth={1.9} />
+          <LogOutIcon className="shrink-0 w-[17px] h-[17px]" />
           {t('auth.logout', { defaultValue: '로그아웃' })}
         </button>
       )}

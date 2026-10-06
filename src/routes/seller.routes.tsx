@@ -28,7 +28,6 @@ const SellerResetPasswordPage = lazy(() => import('@/pages/SellerResetPasswordPa
 const SellerBusinessInfoPage = lazy(() => import('@/pages/SellerBusinessInfoPage'))
 const SellerTierPage = lazy(() => import('@/pages/SellerTierPage'))
 const SellerOrdersPage = lazy(() => import('@/pages/SellerOrdersPage'))
-const SellerConsignmentPage = lazy(() => import('@/pages/SellerConsignmentPage'))
 const SellerProductsPage = lazy(() => import('@/pages/SellerProductsPage'))
 const SellerInventoryPage = lazy(() => import('@/pages/SellerInventoryPage'))
 const SellerProductNewPage = lazy(() => import('@/pages/SellerProductNewPage'))
@@ -54,8 +53,7 @@ const SellerStoreInfoPage = lazy(() => import('@/pages/SellerStoreInfoPage'))
 const SellerOperatingSummaryPage = lazy(() => import('@/pages/SellerOperatingSummaryPage'))
 const SellerInfluencersPage = lazy(() => import('@/pages/SellerInfluencersPage'))
 const SellerAlimtalkPage = lazy(() => import('@/pages/SellerAlimtalkPage'))
-const SellerYoutubeGrowthPage = lazy(() => import('@/pages/SellerYoutubeGrowthPage'))
-const SellerYoutubeGrowthSuccessPage = lazy(() => import('@/pages/SellerYoutubeGrowthSuccessPage'))
+const SellerInstagramDmPage = lazy(() => import('@/pages/SellerInstagramDmPage'))
 const SellerTransfersPage = lazy(() => import('@/pages/SellerTransfersPage'))
 const SellerAnalyticsPage = lazy(() => import('@/pages/SellerAnalyticsPage'))
 const SellerReviewsPage = lazy(() => import('@/pages/SellerReviewsPage'))
@@ -67,6 +65,15 @@ const SellerVoucherScanPage = lazy(() => import('@/pages/SellerVoucherScanPage')
 const SellerBundlesPage = lazy(() => import('@/pages/SellerBundlesPage'))
 const SellerGuidePage = lazy(() => import('@/pages/SellerGuidePage'))
 const SellerAdSlotsPage = lazy(() => import('@/pages/SellerAdSlotsPage'))
+// 🕳️ 2026-09-27: 아래 셋은 **`App.tsx` 에 홀로 떨어져 있었다.** 그래서 마이 시트가 열 수 없었다 —
+//   시트는 `SellerRoutes()` 를 렌더하므로 이 표에 없는 주소는 `*`(Escape)로 떨어져 **마이를 통째로 튕겨낸다.**
+//   `/seller/prospects` 는 '전체 도구' 색인이 실제로 내주는 주소였고(`seller-nav.ts:123`),
+//   `/seller/proxy-products` 는 시트 **안의 탭**(`seller-tab-groups.ts:55`), `/seller/plus-friend-guide` 는
+//   온보딩 체크리스트의 CTA 다. 셋 다 "열리는 줄 알았는데 마이에서 쫓겨나는" 모양이었고 에러는 안 났다.
+//   ⚠️ 옮기기만 했다 — 경로·element·가드 전부 그대로다(`App.tsx` 도 같은 `<Routes>` 안이라 대시보드 동작 불변).
+const SellerProspectsPage = lazy(() => import('@/pages/SellerProspectsPage'))
+const SellerProxyProductsPage = lazy(() => import('@/pages/SellerProxyProductsPage'))
+const SellerPlusFriendGuidePage = lazy(() => import('@/pages/SellerPlusFriendGuidePage'))
 const SellerMarketingPage = lazy(() => import('@/pages/SellerMarketingPage'))
 const SellerRealtimeDashboardPage = lazy(() => import('@/pages/SellerRealtimeDashboardPage'))
 const SellerMealVoucherNewPage = lazy(() => import('@/pages/SellerMealVoucherNewPage'))
@@ -139,12 +146,22 @@ export function SellerRoutes() {
           <SellerOrdersPage />
         </ProtectedRoute>
       } />
-      {/* 🛡️ 2026-04-28: MD 위탁 판매 (셀러간 협업) */}
-      <Route path="/seller/consignment" element={
-        <ProtectedRoute requireSeller>
-          <SellerConsignmentPage />
-        </ProtectedRoute>
-      } />
+      {/**
+        * 🪦 2026-09-28 — **깨진 화면을 안 보여 준다.** (2026-04-28 MD 위탁 판매, 셀러간 협업)
+        *
+        * 라이브 D1 에 `consignment_partnerships` **테이블이 없다**(마이그레이션 `0236` 은 레포에
+        * 있으나 D1 마이그레이션이 CI 에서 안 돈다 — `TECHNICAL_DEBT.md` 의 알려진 부채이고
+        * `repair-schema` 에도 없다). ⇒ 페이지를 열면 API 일곱 개가 전부 `no such table` 로 죽는다.
+        * 진입점이 0이라 아무도 신고하지 않았을 뿐이다(사이드바·전체 도구 색인 어디에도 없다).
+        *
+        * ⚠️ **기능을 없앤 게 아니라 문만 닫았다.** API 5개·`checkout.ts` 의 자동 매핑·정비 cron·
+        *   어드민 모니터링·운영 가이드 두 절은 **그대로 둔다** — 살릴지 없앨지는 대표 판단이고
+        *   (`docs/decisions/2026-09-28-dead-seller-screens.md`) 위탁 정산은 머니 경로다.
+        *   `checkout.ts` 는 이미 테이블 부재를 `catch` 로 허용하므로 **오늘 결제엔 영향이 없다**(실측).
+        * ⚠️ 되살리려면 이 줄을 `<SellerConsignmentPage />` 로 되돌리면 된다. 다만 그때
+        *   **테이블부터 만들어야 한다** — 안 만들면 지금과 똑같이 일곱 개가 죽는다.
+        */}
+      <Route path="/seller/consignment" element={<Navigate to="/seller" replace />} />
       <Route path="/seller/products" element={
         <ProtectedRoute requireSeller>
           <SellerProductsPage />
@@ -246,21 +263,19 @@ export function SellerRoutes() {
           <SellerInfluencersPage />
         </ProtectedRoute>
       } />
-      <Route path="/seller/youtube-growth" element={
-        <ProtectedRoute requireSeller>
-          <SellerYoutubeGrowthPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/seller/youtube-growth/success" element={
-        <ProtectedRoute requireSeller>
-          <SellerYoutubeGrowthSuccessPage />
-        </ProtectedRoute>
-      } />
+      {/* 🪦 2026-09-28 (같은 결재): **유튜브 성장 지원 은퇴.** 코드는 멀쩡했지만 라이브 주문 **0건 ·
+          매출 0원**이고, 들어갈 문이 **자기 성공 페이지뿐**이었다(전체 도구 목록에 없었다).
+          ⚠️ 이건 **결제가 붙은 유료 기능**이라(100명 20,000원 ~ 10,000명 850,000원, Toss) 은퇴 =
+             파는 문을 닫는 것이다. 매출 0원이라 잃는 돈은 없다. 되살리려면 이 커밋을 revert.
+          🔒 API(`/api/youtube-growth`)는 안 건드린다 — 결제 경로다. */}
+      <Route path="/seller/youtube-growth" element={<Navigate to="/seller/more" replace />} />
+      <Route path="/seller/youtube-growth/success" element={<Navigate to="/seller/more" replace />} />
       <Route path="/seller/alimtalk" element={
         <ProtectedRoute requireSeller>
           <SellerAlimtalkPage />
         </ProtectedRoute>
       } />
+      <Route path="/seller/instagram-dm" element={<ProtectedRoute requireSeller><ErrorBoundary><SellerInstagramDmPage /></ErrorBoundary></ProtectedRoute>} />
       <Route path="/seller/transfers" element={
         <ProtectedRoute requireSeller>
           <ErrorBoundary><SellerTransfersPage /></ErrorBoundary>
@@ -394,6 +409,10 @@ export function SellerRoutes() {
           <YouTubeCallbackPage />
         </ProtectedRoute>
       } />
+      {/* 🕳️ 2026-09-27 App.tsx 에서 이사 — 위 머리말 참조. 가드를 새로 씌우지 않는다(옮기기만). */}
+      <Route path="/seller/prospects" element={<SellerProspectsPage />} />
+      <Route path="/seller/proxy-products" element={<SellerProxyProductsPage />} />
+      <Route path="/seller/plus-friend-guide" element={<SellerPlusFriendGuidePage />} />
     </>
   )
 }

@@ -21,8 +21,8 @@ function TopupClosedNotice() {
   const navigate = useNavigate()
   return (
     <div className="min-h-[100dvh] bg-white dark:bg-[#11141C] flex flex-col items-center justify-center px-6 text-center">
-      <div className="text-4xl mb-4">💎</div>
-      <h1 className="text-lg font-bold text-gray-900 dark:text-white">딜 충전이 종료되었어요</h1>
+      <div className="text-[34px] mb-4">💎</div>
+      <h1 className="text-[17px] font-bold text-gray-900 dark:text-white">딜 충전이 종료되었어요</h1>
       <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed">
         이제 딜은 충전이 아니라 <b className="text-gray-900 dark:text-white">활동으로 모으는 리워드</b>예요.<br />
         친구 초대·유어샵 추천으로 딜을 모아 교환권과 이용권에 사용하세요.<br />
@@ -31,13 +31,13 @@ function TopupClosedNotice() {
       <div className="mt-6 flex gap-2">
         <button
           onClick={() => navigate('/user/profile')}
-          className="rounded-xl bg-gray-900 dark:bg-white px-5 py-3 text-[14px] font-bold text-white dark:text-[#11141C]"
+          className="rounded-xl bg-brand px-5 py-3 text-[15px] font-bold text-white"
         >
           딜 모으러 가기
         </button>
         <button
           onClick={() => navigate('/my-deal-history')}
-          className="rounded-xl border border-line px-5 py-3 text-[14px] font-bold text-gray-700 dark:text-gray-200"
+          className="rounded-xl border border-line px-5 py-3 text-[15px] font-bold text-gray-700 dark:text-gray-200"
         >
           내 딜 내역
         </button>
@@ -55,15 +55,15 @@ export default function IosTopupGate({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-[100dvh] bg-white dark:bg-[#11141C] flex flex-col items-center justify-center px-6 text-center">
-      <div className="text-4xl mb-4">💳</div>
-      <h1 className="text-lg font-bold text-gray-900 dark:text-white">딜 충전은 웹에서 진행돼요</h1>
+      <div className="text-[34px] mb-4">💳</div>
+      <h1 className="text-[17px] font-bold text-gray-900 dark:text-white">딜 충전은 웹에서 진행돼요</h1>
       <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400 leading-relaxed">
         앱 정책상 딜 충전은 외부 브라우저(웹)에서 안전하게 결제하실 수 있습니다.<br />
         충전 후 앱으로 돌아오면 잔액이 반영됩니다.
       </p>
       <button
         onClick={() => openExternalUrl(CHARGE_WEB_URL)}
-        className="mt-6 rounded-xl bg-gray-900 dark:bg-white px-6 py-3 text-[14px] font-bold text-white dark:text-[#11141C]"
+        className="mt-6 rounded-xl bg-brand px-6 py-3 text-[15px] font-bold text-white"
       >
         웹에서 충전하기
       </button>

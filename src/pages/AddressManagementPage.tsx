@@ -1,15 +1,10 @@
 import { useEffect, useState } from 'react'
+import { PinIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import api from '@/lib/api'
-import {
-  MapPin,
-  Plus,
-  Edit2,
-  Trash2,
-  ChevronLeft,
-} from 'lucide-react'
+import { Plus, Edit2, Trash2, ChevronLeft } from 'lucide-react'
 import { getUserIdSync } from '@/utils/auth'
 import { CustomModal } from '@/components/CustomModal'
 import { toast } from '@/hooks/useToast'
@@ -17,6 +12,7 @@ import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useAddresses, type EntryMethod, type ShippingAddress } from '@/hooks/queries/useAddresses'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { ListLoadError } from '@/components/ui/list-load-error'
+import { loginPathFromHere } from '@/utils/login-return'
 
 const EMPTY_FORM = {
   recipient_name: '',
@@ -60,7 +56,7 @@ export default function AddressManagementPage() {
     const userId = getUserIdSync()
     if (!userId) {
       toast.info(t('address.loginRequired'))
-      navigate('/login')
+      navigate(loginPathFromHere())
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate])
@@ -225,9 +221,9 @@ export default function AddressManagementPage() {
         {/* Hero 카운트 + 추가 CTA */}
         <div className="flex items-end justify-between mb-4">
           <div>
-            <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-1">등록된 배송지</p>
-            <p className="text-2xl font-extrabold text-gray-900 dark:text-white">
-              {addresses.length}<span className="text-[14px] font-semibold text-gray-500 dark:text-gray-400 ml-1">개</span>
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1">등록된 배송지</p>
+            <p className="text-[24px] font-extrabold text-gray-900 dark:text-white">
+              {addresses.length}<span className="text-[15px] font-semibold text-gray-500 dark:text-gray-400 ml-1">개</span>
             </p>
           </div>
           {/* 🕯️ `data-testid` 는 dark-contrast 가드가 **이 폼을 열어** 입력 글자색을 재기 위한 손잡이다.
@@ -235,7 +231,7 @@ export default function AddressManagementPage() {
           <button
             onClick={openAddForm}
             data-testid="address-add"
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-gray-800 text-white text-[13px] font-bold shadow-sm active:scale-[0.97] transition-transform"
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-800 text-white text-[13px] font-bold shadow-sm active:scale-[0.97] transition-transform"
           >
             <Plus className="w-4 h-4" />
             <span>{t('address.addNew')}</span>
@@ -246,13 +242,13 @@ export default function AddressManagementPage() {
         {addresses.length === 0 ? (
           <div className="text-center py-14 px-6 rounded-2xl bg-gray-50 dark:bg-[#1D1F29]">
             <div className="w-20 h-20 mx-auto mb-5 rounded-full bg-brand-tint flex items-center justify-center">
-              <MapPin className="w-10 h-10 text-brand-text" strokeWidth={1.5} />
+              <PinIcon className="w-10 h-10 text-brand-text" />
             </div>
             <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">{t('address.empty')}</p>
             <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-5">{t('address.emptySub')}</p>
             <button
               onClick={openAddForm}
-              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-gray-800 text-white text-[13px] font-bold"
+              className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-gray-800 text-white text-[13px] font-bold"
             >
               <Plus className="w-4 h-4" />
               {t('address.addNew')}
@@ -284,32 +280,32 @@ export default function AddressManagementPage() {
                         {/* 라벨 + 이름 + 기본 뱃지 */}
                         <div className="flex items-center gap-2 mb-2 flex-wrap">
                           {address.label && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-2.5 py-0.5 text-[11px] font-bold">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-brand text-white px-2 py-1 text-[12px] font-bold">
                               {labelEmoji} {address.label}
                             </span>
                           )}
-                          <p className="text-[16px] font-bold text-gray-900 dark:text-white">{address.recipient_name}</p>
+                          <p className="text-[17px] font-bold text-gray-900 dark:text-white">{address.recipient_name}</p>
                           {isDefault && (
-                            <span className="rounded-full bg-gray-800 text-white px-2.5 py-0.5 text-[10px] font-extrabold tracking-wide">
+                            <span className="rounded-full bg-gray-800 text-white px-2 py-1 text-[12px] font-extrabold tracking-wide">
                               기본 배송지
                             </span>
                           )}
                         </div>
-                        <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-1.5 font-mono">{address.phone}</p>
-                        <p className="text-[14px] text-gray-800 dark:text-gray-100 leading-relaxed">
-                          <span className="text-gray-400 dark:text-gray-500 text-[12px] font-mono mr-1">[{address.postal_code}]</span>
+                        <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-2 tabular-nums">{address.phone}</p>
+                        <p className="text-[15px] text-gray-800 dark:text-gray-100 leading-relaxed">
+                          <span className="text-gray-400 dark:text-gray-500 text-[12px] tabular-nums mr-1">[{address.postal_code}]</span>
                           {address.address}
                         </p>
                         {address.address_detail && (
-                          <p className="text-[14px] text-gray-700 dark:text-gray-200 leading-relaxed mt-0.5">
+                          <p className="text-[15px] text-gray-700 dark:text-gray-200 leading-relaxed mt-1">
                             {address.address_detail}
                           </p>
                         )}
                         {(address.delivery_note || (address.entry_method && address.entry_method !== 'free')) && (
                           <div className="mt-3 pt-3 border-t border-gray-100 dark:border-[#2C2F35] space-y-1">
                             {address.entry_method && address.entry_method !== 'free' && (
-                              <p className="text-[12px] text-gray-600 dark:text-gray-300 flex items-center gap-1.5">
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-[#1D1F29] font-semibold">출입</span>
+                              <p className="text-[12px] text-gray-600 dark:text-gray-300 flex items-center gap-2">
+                                <span className="text-[12px] px-2 py-1 rounded bg-gray-100 dark:bg-[#1D1F29] font-semibold">출입</span>
                                 {ENTRY_METHOD_OPTIONS.find(o => o.value === address.entry_method)?.label}
                                 {address.entry_method === 'password' && address.entry_code && (
                                   <span className="text-gray-400 dark:text-gray-500">· 비번 등록됨</span>
@@ -317,8 +313,8 @@ export default function AddressManagementPage() {
                               </p>
                             )}
                             {address.delivery_note && (
-                              <p className="text-[12px] text-gray-600 dark:text-gray-300 line-clamp-2 flex items-start gap-1.5">
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-[#1D1F29] font-semibold flex-shrink-0">메모</span>
+                              <p className="text-[12px] text-gray-600 dark:text-gray-300 line-clamp-2 flex items-start gap-2">
+                                <span className="text-[12px] px-2 py-1 rounded bg-gray-100 dark:bg-[#1D1F29] font-semibold flex-shrink-0">메모</span>
                                 <span className="flex-1">{address.delivery_note}</span>
                               </p>
                             )}
@@ -369,7 +365,7 @@ export default function AddressManagementPage() {
       >
         <div className="space-y-4">
           <div>
-            <label htmlFor="addr-recipient-name" className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
+            <label htmlFor="addr-recipient-name" className="block text-[15px] font-semibold text-gray-900 dark:text-white mb-2">
               {t('address.recipientName')} <span className="text-red-500">*</span>
             </label>
             <input
@@ -383,7 +379,7 @@ export default function AddressManagementPage() {
           </div>
 
           <div>
-            <label htmlFor="addr-phone" className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
+            <label htmlFor="addr-phone" className="block text-[15px] font-semibold text-gray-900 dark:text-white mb-2">
               {t('address.phone')} <span className="text-red-500">*</span>
             </label>
             <input
@@ -397,7 +393,7 @@ export default function AddressManagementPage() {
           </div>
 
           <div>
-            <label htmlFor="addr-postal-code" className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
+            <label htmlFor="addr-postal-code" className="block text-[15px] font-semibold text-gray-900 dark:text-white mb-2">
               {t('address.postalCode')} <span className="text-red-500">*</span>
             </label>
             <div className="flex gap-2 w-full min-w-0">
@@ -412,7 +408,7 @@ export default function AddressManagementPage() {
               <button
                 type="button"
                 onClick={() => setShowPostcodePopup(true)}
-                className="shrink-0 px-5 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl text-[14px] font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-all whitespace-nowrap"
+                className="shrink-0 px-5 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl text-[15px] font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-all whitespace-nowrap"
               >
                 주소 검색
               </button>
@@ -426,7 +422,7 @@ export default function AddressManagementPage() {
           )}
 
           <div>
-            <label htmlFor="addr-address" className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
+            <label htmlFor="addr-address" className="block text-[15px] font-semibold text-gray-900 dark:text-white mb-2">
               {t('address.address')} <span className="text-red-500">*</span>
             </label>
             <input
@@ -440,7 +436,7 @@ export default function AddressManagementPage() {
           </div>
 
           <div>
-            <label htmlFor="addr-address-detail" className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
+            <label htmlFor="addr-address-detail" className="block text-[15px] font-semibold text-gray-900 dark:text-white mb-2">
               {t('address.detail')}
             </label>
             <input
@@ -455,16 +451,16 @@ export default function AddressManagementPage() {
 
           {/* 배송지 별칭 */}
           <div>
-            <label htmlFor="addr-label" className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
+            <label htmlFor="addr-label" className="block text-[15px] font-semibold text-gray-900 dark:text-white mb-2">
               {t('address.label')} <span className="text-gray-400 dark:text-gray-500 font-normal">{t('address.optional')}</span>
             </label>
-            <div className="flex gap-1.5 mb-2">
+            <div className="flex gap-2 mb-2">
               {[t('address.presetHome'), t('address.presetWork'), t('address.presetParents')].map(preset => (
                 <button
                   key={preset}
                   type="button"
                   onClick={() => setFormData({ ...formData, label: preset })}
-                  className={`px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-colors ${
+                  className={`px-3 py-2 rounded-full text-[12px] font-semibold border transition-colors ${
                     formData.label === preset
                       ? 'bg-brand text-white border-brand'
                       : 'bg-white dark:bg-[#11141C] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-[#1D1F29]'
@@ -487,7 +483,7 @@ export default function AddressManagementPage() {
 
           {/* 출입 방식 */}
           <div>
-            <label className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
+            <label className="block text-[15px] font-semibold text-gray-900 dark:text-white mb-2">
               {t('address.entryMethod')} <span className="text-gray-400 dark:text-gray-500 font-normal">{t('address.optional')}</span>
             </label>
             <div className="grid grid-cols-2 gap-2">
@@ -496,7 +492,7 @@ export default function AddressManagementPage() {
                   key={opt.value}
                   type="button"
                   onClick={() => setFormData({ ...formData, entry_method: opt.value })}
-                  className={`px-3 py-2.5 rounded-xl text-[13px] font-semibold border transition-colors ${
+                  className={`px-3 py-2 rounded-xl text-[13px] font-semibold border transition-colors ${
                     formData.entry_method === opt.value
                       ? 'bg-brand-tint text-brand-text border-brand'
                       : 'bg-white dark:bg-[#11141C] text-gray-700 dark:text-gray-200 border-gray-200 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-[#1D1F29]'
@@ -511,7 +507,7 @@ export default function AddressManagementPage() {
           {/* 공동현관 비밀번호 (password 선택 시만) */}
           {formData.entry_method === 'password' && (
             <div>
-              <label htmlFor="addr-entry-code" className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
+              <label htmlFor="addr-entry-code" className="block text-[15px] font-semibold text-gray-900 dark:text-white mb-2">
                 공동현관 비밀번호
               </label>
               <input
@@ -523,7 +519,7 @@ export default function AddressManagementPage() {
                 className="w-full px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl text-[15px] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 placeholder={t('address.entryCodePlaceholder')}
               />
-              <p className="mt-1.5 text-[11px] text-gray-500 dark:text-gray-400">
+              <p className="mt-2 text-[12px] text-gray-500 dark:text-gray-400">
                 배송기사에게만 전달되며 주문 완료 후 60일 뒤 자동 파기됩니다
               </p>
             </div>
@@ -531,18 +527,18 @@ export default function AddressManagementPage() {
 
           {/* 배송 메모 */}
           <div>
-            <label htmlFor="addr-note" className="block text-[14px] font-semibold text-gray-900 dark:text-white mb-2">
+            <label htmlFor="addr-note" className="block text-[15px] font-semibold text-gray-900 dark:text-white mb-2">
               배송 메모 <span className="text-gray-400 dark:text-gray-500 font-normal">(선택)</span>
             </label>
-            <div className="flex flex-wrap gap-1.5 mb-2">
+            <div className="flex flex-wrap gap-2 mb-2">
               {DELIVERY_NOTE_PRESETS.map(preset => (
                 <button
                   key={preset}
                   type="button"
                   onClick={() => setFormData({ ...formData, delivery_note: preset })}
-                  className={`px-2.5 py-1.5 rounded-full text-[11px] font-semibold border transition-colors ${
+                  className={`px-2 py-2 rounded-full text-[12px] font-semibold border transition-colors ${
                     formData.delivery_note === preset
-                      ? 'bg-gray-900 text-white border-gray-900'
+                      ? 'bg-brand text-white border-brand'
                       : 'bg-white dark:bg-[#11141C] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-[#1D1F29]'
                   }`}
                 >
@@ -556,7 +552,7 @@ export default function AddressManagementPage() {
               onChange={(e) => setFormData({ ...formData, delivery_note: e.target.value })}
               maxLength={200}
               rows={2}
-              className="w-full px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl text-[14px] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
+              className="w-full px-4 py-3 border border-gray-300 dark:border-[#3A3A3A] rounded-2xl text-[15px] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
               placeholder={t('address.notePlaceholder')}
             />
           </div>
@@ -569,7 +565,7 @@ export default function AddressManagementPage() {
               onChange={(e) => setFormData({ ...formData, is_default: e.target.checked })}
               className="w-4 h-4 border-gray-300 dark:border-[#3A3A3A] text-blue-600 focus:ring-blue-500 cursor-pointer rounded"
             />
-            <label htmlFor="is_default_modal" className="text-[14px] text-gray-700 dark:text-gray-200 cursor-pointer select-none">
+            <label htmlFor="is_default_modal" className="text-[15px] text-gray-700 dark:text-gray-200 cursor-pointer select-none">
               기본 배송지로 설정
             </label>
           </div>
@@ -578,14 +574,14 @@ export default function AddressManagementPage() {
             <button
               type="button"
               onClick={handleSaveAddress}
-              className="flex-1 py-4 bg-brand text-white rounded-2xl text-[16px] font-bold hover:bg-brand-dark hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
+              className="flex-1 py-4 bg-brand text-white rounded-2xl text-[17px] font-bold hover:bg-brand-dark hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
             >
               {editingId ? t('address.edit') : t('address.save')}
             </button>
             <button
               type="button"
               onClick={closeForm}
-              className="flex-1 py-4 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200 rounded-2xl text-[16px] font-bold hover:bg-gray-200 transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
+              className="flex-1 py-4 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200 rounded-2xl text-[17px] font-bold hover:bg-gray-200 transition-all active:scale-[0.98] cursor-pointer touch-manipulation"
             >
               취소
             </button>

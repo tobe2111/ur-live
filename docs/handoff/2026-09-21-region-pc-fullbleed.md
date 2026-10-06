@@ -133,6 +133,26 @@ BASE=https://urdeal.kr node <하네스>   # /region · /region/부산 · /region
   ⇒ **SSOT 파일을 고쳤으면 그 파일을 읽는 테스트를 전부 찾아서 함께 돌릴 것**:
   `grep -rln 'pc-fullbleed\|isFullBleedPcPath' src/tests/` → 이번 경우 **5개**(groupon-detail-map ·
   pass-route-migration · ushop-a3-p1 + 신규 2개). 이 한 줄이면 CI 한 바퀴(실측 **약 7분**)를 안 태운다.
+- 🩸 **그리고 그 한 줄로도 부족했다**(2026-09-23, `/store/new` PR #1535 에서 같은 날 재발).
+  `StoreRegisterModal.tsx` 를 고치고 이름으로 grep 해 테스트 9개를 돌렸는데 CI 가 **열 번째**에서
+  빨간불을 냈다 — `seller-d3-2026-09-15.test.ts` 의 "옛 패턴 0" 래칫은 **파일 이름을 안 쓴다**.
+  `git ls-files ':(glob)src/components/seller/**/*.tsx'` 로 **경로 글롭**을 훑으므로 이름 grep 에
+  구조적으로 안 걸린다(내가 넣은 `rounded-2xl` 이 그 금지 목록에 있었다).
+  ⇒ **이름 grep 에 한 줄을 더한다**: `grep -rln 'git ls-files' src/tests/` (현재 **7개**) 를 열어
+  바꾼 파일이 그 글롭 밑에 있는지 본다. 둘 다 몇 초면 끝난다.
+- 🩸 **세 번째 변주 (2026-09-24, PR #1540)** — 이번엔 **코드가 아닌 파일**에서 났다.
+  `docs/decisions/*.md` 두 개를 고쳤는데 스윕은 코드 파일(`StoreOwnerClaimPage`)만 했고,
+  `ai-team-operating-model.test.ts` 가 **결재함 폴더를 통째로 훑어** `상태:` 줄 형식을 검사한다
+  (`/^상태: (open|approved|rejected|expired)$/m` — **정확히 한 단어**). 내가 그 줄 뒤에 요약을 붙여
+  빨간불이 났다. `pre-push` 게이트는 **가드 스크립트만** 돌고 vitest 는 안 돌아서 로컬은 초록이었다.
+  ⇒ **바꾼 파일이 `src/` 밖이어도 스윕한다.** 다만 디렉터리 grep 은 너무 거칠다(`src/pages` 는 220개가
+  걸린다) — **`docs/`·`scripts/` 같은 비코드 경로만 디렉터리로**, 코드는 파일명 + 글롭 래칫으로.
+  세 줄이면 끝난다:
+  ```bash
+  git diff --name-only origin/main...HEAD            # 바꾼 것 전부 — src/ 밖도 본다
+  grep -rln "<바꾼 코드 파일명>" src/tests/           # 이름
+  grep -rln 'git ls-files\|docs/decisions\|docs/design' src/tests/   # 폴더째 훑는 가드
+  ```
 
 가드: `src/tests/unit/pc-frame-unlock-2026-09-21.test.ts` 43건 +
 `scripts/mutations/pc-frame-unlock.mjs` **8건**(전부 빨간불) + 지역 5건 재조준 후 재확인 +

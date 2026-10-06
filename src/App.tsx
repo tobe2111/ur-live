@@ -115,12 +115,13 @@ const HostInvitePage = lazy(() => import('./pages/HostInvitePage'))
 const MyReturnsPage = lazy(() => import('./pages/MyReturnsPage'))
 // 🛡️ 2026-05-25: /u/me → 본인 공개페이지 redirect
 const UMeRedirectPage = lazy(() => import('./pages/UMeRedirectPage'))
+// 🔧 2026-09-28 (대표 확정 e3): 유어샵 관리 화면 — 유어샵은 손님 화면 하나뿐, 고치는 일은 전부 여기.
+const UShopManagePage = lazy(() => import('./pages/UShopManagePage'))
 const UserProfilePage = lazy(() => import('./pages/UserProfilePage'))
 const WishlistPage = lazy(() => import('./pages/WishlistPage'))
 const FollowingPage = lazy(() => import('./pages/FollowingPage'))
 const MyVouchersPage = lazy(() => import('./pages/MyVouchersPage'))
 const MyGifticonsPage = lazy(() => import('./pages/MyGifticonsPage'))  // 🎟️ 2026-08-31 지갑 분리 — 교환권 보관함
-const MyStorePage = lazy(() => import('./pages/MyStorePage'))
 const StoreScanPage = lazy(() => import('./pages/StoreScanPage'))
 const InfluencerSettlementPage = lazy(() => import('./pages/InfluencerSettlementPage'))
 const InfluencerDiscoverPage = lazy(() => import('./pages/InfluencerDiscoverPage'))
@@ -153,7 +154,7 @@ const VoucherDetailPage = lazy(() => import('./pages/VoucherDetailPage'))
 const GroupBuyDetailPage = lazy(() => import('./pages/GroupBuyDetailPage'))
 const GroupBuyConfirmPaymentPage = lazy(() => import('./pages/GroupBuyConfirmPaymentPage'))
 // 🛡️ 2026-05-18: 숙소 공구 사용자 페이지 — PR 3/6, PR 6/6.
-const StaysSearchPage = lazy(() => import('./pages/StaysSearchPage'))
+const StaysSearchPage = lazy(() => import('./pages/StaysSearchPage')); const SoonPage = lazy(() => import('./pages/SoonPage')) /* 🌱 오픈 예정 모아보기 */
 const StayDetailPage = lazy(() => import('./pages/StayDetailPage'))
 const MyStaysPage = lazy(() => import('./pages/MyStaysPage'))
 // 🛡️ 2026-06-12 (전수조사 4차 B-1): 숙소 Toss 결제 returnUrl 경량 confirm 페이지.
@@ -161,9 +162,6 @@ const StayCheckoutReturnPage = lazy(() => import('./pages/StayCheckoutReturnPage
 // 🛡️ 2026-05-18: 인플루언서 referral 대시보드.
 const InfluencerDashboardPage = lazy(() => import('./pages/InfluencerDashboardPage'))
 // 🛡️ 2026-05-15: PC 랜딩 (자영업자/인플루언서/에이전시 영업)
-const SellerProspectsPage = lazy(() => import('./pages/SellerProspectsPage'))
-const SellerProxyProductsPage = lazy(() => import('./pages/SellerProxyProductsPage'))
-const SellerPlusFriendGuidePage = lazy(() => import('./pages/SellerPlusFriendGuidePage'))
 const InfluencerLandingPage = lazy(() => import('./pages/InfluencerLandingPage')); const InfluencerOfferAcceptPage = lazy(() => import('./pages/InfluencerOfferAcceptPage')); const InfluencerJoinPage = lazy(() => import('./pages/InfluencerJoinPage')) // 🔑 2026-09-19 협업 코드 착지
 const InterestListPage = lazy(() => import('./pages/InterestListPage'))
 const CouponClaimPage = lazy(() => import('./pages/CouponClaimPage'))
@@ -730,7 +728,7 @@ function AppContent() {
             <Route path="/local/:code" element={<LocalTownPage />} />
             <Route path="/district/:slug" element={<ErrorBoundary><DistrictCouponPage /></ErrorBoundary>} />
             {/* 🛡️ 2026-05-18: 숙소 공구 사용자 페이지 — PR 3/6 */}
-            <Route path="/stays" element={<StaysSearchPage />} />
+            <Route path="/stays" element={<StaysSearchPage />} /><Route path="/soon" element={<SoonPage />} />
             {/* 🛡️ 2026-06-12 (B-1): Toss returnUrl confirm 페이지 — :id 보다 구체적 path (정적 세그먼트 우선 매칭) */}
             <Route path="/stays/checkout-return" element={<ProtectedRoute requireUser><StayCheckoutReturnPage /></ProtectedRoute>} />
             <Route path="/stays/:id" element={<StayDetailPage />} />
@@ -740,39 +738,23 @@ function AppContent() {
             {/* 🗑️ 2026-09-16 (대표 "지워줘") — 랜딩은 `/partners` 하나다. 앱 안 이동용 폴백(서버는 301). */}
             <Route path="/business" element={<Navigate to="/partners" replace />} />
             <Route path="/influencer" element={<InfluencerLandingPage />} /><Route path="/i/offer/:token" element={<InfluencerOfferAcceptPage />} /><Route path="/i/join/:code" element={<InfluencerJoinPage />} />
-            <Route path="/seller/prospects" element={<SellerProspectsPage />} />
-            <Route path="/seller/proxy-products" element={<SellerProxyProductsPage />} />
-            <Route path="/seller/plus-friend-guide" element={<SellerPlusFriendGuidePage />} />
+            {/* 🕳️ 2026-09-27: 셀러 라우트 셋(prospects · proxy-products · plus-friend-guide)을 아래
+                SellerRoutes 표로 이사했다 — 여기 홀로 있던 탓에 마이 시트가 열 수 없었다(시트가 그 표를
+                렌더한다). 같은 Routes 안이고 경로·element 가 그대로라 대시보드 동작은 불변.
+                되돌리려면 seller.routes.tsx 의 세 줄을 도로 이 자리로 옮긴다. */}
             {/* 🗑️ 2026-07-07 라이브커머스 제거: /live·/live/recap·/live/:streamId 라우트 제거 */}
             <Route path="/products/:id" element={<ErrorBoundary><ProductDetailPage /></ErrorBoundary>} />
             {/* Redirect old single product URL to plural */}
             <Route path="/product/:id" element={<PathRedirect base="/products" />} />
             <Route path="/search" element={<SearchPage />} />
 
-            {/* 🛡️ 2026-05-25 큐레이터 유어샵 (migration 0278) */}
-            {/* 🏁 2026-06-15 (옵션 1): /creator = 소개 콘솔 정식 URL (메인 앱 내, 별도 로그인 X). /u/me/earnings 는 하위호환 alias. */}
-            <Route path="/creator" element={
-              <ProtectedRoute requireUser>
-                <ErrorBoundary><CuratorEarningsPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            <Route path="/u/me/earnings" element={
-              <ProtectedRoute requireUser>
-                <ErrorBoundary><CuratorEarningsPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
-            {/* 🏁 2026-06-22 (대표 — 상품/이용권 전용 추가 페이지): 유어샵에 상품·이용권 핀 picker. */}
-            <Route path="/u/me/add" element={
-              <ProtectedRoute requireUser>
-                <ErrorBoundary><LinkshopPinPicker /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
+            {/* 🛡️ 큐레이터 유어샵(0278). /creator = 소개 콘솔 정식 URL, /u/me/earnings 는 하위호환 alias. */}
+            <Route path="/creator" element={<ProtectedRoute requireUser><ErrorBoundary><CuratorEarningsPage /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/u/me/earnings" element={<ProtectedRoute requireUser><ErrorBoundary><CuratorEarningsPage /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/u/me/manage" element={<ProtectedRoute requireUser><ErrorBoundary><UShopManagePage /></ErrorBoundary></ProtectedRoute>} />
+            <Route path="/u/me/add" element={<ProtectedRoute requireUser><ErrorBoundary><LinkshopPinPicker /></ErrorBoundary></ProtectedRoute>} />
             {/* 🛡️ 2026-05-25: /u/me → 본인 공개페이지 자동 redirect */}
-            <Route path="/u/me" element={
-              <ProtectedRoute requireUser>
-                <ErrorBoundary><UMeRedirectPage /></ErrorBoundary>
-              </ProtectedRoute>
-            } />
+            <Route path="/u/me" element={<ProtectedRoute requireUser><ErrorBoundary><UMeRedirectPage /></ErrorBoundary></ProtectedRoute>} />
             <Route path="/u/:handle" element={<ErrorBoundary><CuratorPage /></ErrorBoundary>} />
             {/* SPA fallback: /u/:handle/p/:productId 클릭 시 서버 302 가 작동 안 할 때 ref 부여 후 navigate. */}
             <Route path="/u/:handle/p/:productId" element={<CuratorPinClientRedirect />} />
@@ -889,12 +871,14 @@ function AppContent() {
               </ProtectedRoute>
             } />
             <Route path="/my-gifticons" element={<ProtectedRoute requireUser><MyGifticonsPage /></ProtectedRoute>} />
-            {/* 🏪 2026-06-22 사업자 유저 경량 '내 매장'(원장+분쟁) — 풀 셀러 대시보드 대신 앱 내. */}
-            <Route path="/my-store" element={
-              <ProtectedRoute requireUser>
-                <MyStorePage />
-              </ProtectedRoute>
-            } />
+            {/* 🏪 2026-09-28 (대표 "끝까지 해줘") — **`/my-store` 는 마이로 보낸다.**
+                2026-06-22 에 "풀 대시보드 대신 앱 내" 로 만든 297줄 페이지인데, 2026-09-25 에 마이 맨 위에
+                '내 가게' 섹션이 생기면서 **타일 여섯이 그대로 중복**됐다(주문 확인·상품 관리·상품 등록·
+                이용권 등록·내 유어샵·셀러 대시보드 — 전부 마이에 있다). 같은 날 그 버튼은 지웠지만
+                **페이지가 남아 있으면 도구가 하나 늘 때 두 곳을 고쳐야 하고 반드시 한쪽을 잊는다.**
+                ⚠️ **라우트는 남긴다** — 이미 나간 링크·북마크가 404 가 되면 안 된다. `replace` 라 뒤로가기가
+                이 주소로 되돌아오지 않는다(무한 왕복 방지). */}
+            <Route path="/my-store" element={<Navigate to="/user/profile" replace />} />
             {/* 🎟️ 계산대 스캔 POS(2026-07-06, seller_token 자체가드) · 🏪 매장 등록 단일 목적지(2026-08-26).
                 한 줄 표기는 file-size 래칫 때문 — 동작은 블록 표기와 동일하다. */}
             <Route path="/store/scan" element={<ProtectedRoute requireUser><StoreScanPage /></ProtectedRoute>} />

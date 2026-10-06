@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
+import { HomeIcon, MessageIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from 'react-i18next'
-import { Home, RefreshCw, MessageCircle } from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import SEO from '@/components/SEO'
 
@@ -25,18 +26,18 @@ export default function ServerErrorPage() {
 
         {/* Error Code */}
         <div className="mb-4 smooth-appear" style={{ animationDelay: '0.1s' }}>
-          <span className="inline-block px-4 py-2 rounded-full bg-[#ff3b30]/10 text-[#ff3b30] text-sm font-semibold tracking-tight">
+          <span className="inline-block px-4 py-2 rounded-full bg-[#ff3b30]/10 text-[#ff3b30] text-[15px] font-semibold tracking-tight">
             500 ERROR
           </span>
         </div>
 
         {/* Title */}
-        <h1 className="mb-4 text-[32px] sm:text-[40px] md:text-[48px] font-semibold leading-[1.0625] tracking-tight text-[#1d1d1f] dark:text-white smooth-appear" style={{ animationDelay: '0.2s' }}>
+        <h1 className="mb-4 text-[34px] sm:text-[40px] md:text-[48px] font-semibold leading-[1.0625] tracking-tight text-[#1d1d1f] dark:text-white smooth-appear" style={{ animationDelay: '0.2s' }}>
           {t('serverError.heading')}
         </h1>
 
         {/* Description */}
-        <p className="mb-8 text-[17px] sm:text-[19px] leading-[1.47059] font-normal text-[#6e6e73] dark:text-gray-400 smooth-appear whitespace-pre-line" style={{ animationDelay: '0.3s' }}>
+        <p className="mb-8 text-[17px] sm:text-[17px] leading-[1.47059] font-normal text-[#6e6e73] dark:text-gray-400 smooth-appear whitespace-pre-line" style={{ animationDelay: '0.3s' }}>
           {t('serverError.description')}
         </p>
 
@@ -52,7 +53,7 @@ export default function ServerErrorPage() {
 
           <Button className="apple-button border border-brand bg-white dark:bg-transparent text-brand hover:bg-brand hover:text-white" asChild>
             <Link to="/">
-              <Home className="mr-2 h-4 w-4" />
+              <HomeIcon className="mr-2 h-4 w-4" />
               {t('serverError.goHome')}
             </Link>
           </Button>
@@ -60,7 +61,7 @@ export default function ServerErrorPage() {
 
         {/* Customer Support */}
         <div className="mt-12 pt-8 border-t border-black/5 dark:border-white/10 smooth-appear" style={{ animationDelay: '0.5s' }}>
-          <p className="mb-4 text-[14px] font-normal text-[#6e6e73] dark:text-gray-400">
+          <p className="mb-4 text-[15px] font-normal text-[#6e6e73] dark:text-gray-400">
             {t('serverError.stillIssue')}
           </p>
           <a
@@ -68,7 +69,7 @@ export default function ServerErrorPage() {
             target="_blank" rel="noopener noreferrer"
             className="inline-flex items-center justify-center px-6 py-3 text-[15px] font-normal text-brand hover:text-brand-dark transition-colors rounded-lg hover:bg-brand/5"
           >
-            <MessageCircle className="mr-2 h-4 w-4" />
+            <MessageIcon className="mr-2 h-4 w-4" />
             {t('serverError.contactSupport')}
           </a>
         </div>

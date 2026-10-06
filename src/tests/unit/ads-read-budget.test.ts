@@ -147,9 +147,15 @@ describe('read-budget — 배선', () => {
     expect(alarm.slice(budgetAt, laneAt)).toMatch(/setAlarm\(t0 \+ resolveInterval\(undefined, this\.env\)\)/)
     expect(alarm, '쓴 행도 보고해야 원장이 쓰기를 센다').toMatch(/this\.ctx\.waitUntil\(reportReadUsage\(this\.env, this\.meter\.rr, this\.meter\.rw, this\.lane\)\)/)
   })
-  it('④ DO fetch 에 /budget 라우트 — 순수 처리기에 저장소를 넘긴다', () => {
-    expect(ALARM).toMatch(/if \(url\.pathname === READ_BUDGET_PATH\) return Response\.json\(await handleBudgetRequest\(url, this\.ctx\.storage, this\.env\)\)/)
-    expect(ALARM.indexOf('READ_BUDGET_PATH) return')).toBeLessThan(ALARM.indexOf("if (url.pathname !== '/start')"))
+  it('④ DO fetch 에 /budget 라우트 — 순수 처리기에 저장소 + 계정 실측 갱신기를 넘긴다', () => {
+    // 🔬 2026-10-06 재조준: 종전엔 한 줄짜리 호출을 **모양 그대로** 앵커했는데, 갱신기 주입으로
+    //    블록이 되자 빨간불이 났다. 지키려던 것은 모양이 아니라 **배선**이다 — ① /budget 이 순수
+    //    처리기로 가고 ② 그 처리기가 DO 저장소를 받고 ③ 계정 실측 갱신기가 주입되고(없으면
+    //    예약분이 영원히 상수라 조용히 유어딜 성장을 못 따라간다) ④ 404 분기보다 앞이다.
+    expect(ALARM).toMatch(/url\.pathname === READ_BUDGET_PATH/)
+    expect(ALARM).toMatch(/handleBudgetRequest\(url, this\.ctx\.storage, this\.env/)
+    expect(ALARM, '실측 갱신기가 안 주입되면 예약분이 상수에 고정된다').toMatch(/fetchAccountUsage\(this\.env, at\)/)
+    expect(ALARM.indexOf('READ_BUDGET_PATH')).toBeLessThan(ALARM.indexOf("if (url.pathname !== '/start')"))
   })
   it('④ cron 경로 레인(self-beat)도 회차 읽기량을 원장에 보고한다', () => {
     expect(SELF_BEAT).toMatch(/await reportReadUsage\(env, readEnvMeter\(env\)\?\.rr, readEnvMeter\(env\)\?\.rw, beat\)/)

@@ -1,8 +1,11 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { PinIcon, ClockIcon, OkIcon, AlertIcon } from '@/components/icons/urdeal-icons'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import DetailGallery from './group-buy/DetailGallery'
 import { detailGalleryImages } from '@/shared/detail-hero-image'
 import UsageGuide from './group-buy/UsageGuide'
+import SellerCard from './group-buy/SellerCard'
+import StoreIntro, { hasStoreIntro } from './group-buy/StoreIntro'
 import { FieldCard, FieldRow } from '@/components/ticket/FieldCard'
 import { DEFAULT_QTY_CAP } from '@/shared/purchase-cap-default'
 import DetailTitleHeader from './group-buy/DetailTitleHeader'
@@ -11,8 +14,9 @@ import { readCachedLoc, distanceKm } from './group-buy/detail-derived'
 import DetailFloatingHeader from '@/components/deal/DetailFloatingHeader'
 import { derivePricing } from './group-buy/pricing'
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
+import { withMyReturn } from '@/lib/seller-return'
 import { useTranslation } from 'react-i18next'
-import { MapPin, Phone, Clock, Sparkles, CheckCircle2, AlertCircle, Instagram, Youtube, Facebook, Music2, RefreshCcw } from 'lucide-react'
+import { Phone, Sparkles, Instagram, Youtube, Facebook, Music2, RefreshCcw } from 'lucide-react'
 import { resolveTossFlow } from '@/lib/toss-key-type'
 import { TOPUP_DISABLED } from '@/shared/feature-flags'
 import { appendPaySummary } from '@/shared/pay-summary'
@@ -493,7 +497,7 @@ export default function GroupBuyDetailPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-[#11141C] text-gray-900 dark:text-white">
         <p className="font-bold mb-3">상품을 찾을 수 없습니다</p>
-        <button onClick={() => navigate('/map')} className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold">공구 목록으로</button>
+        <button onClick={() => navigate('/map')} className="px-4 py-2 bg-brand text-white rounded-lg text-[15px] font-bold">공구 목록으로</button>
       </div>
     )
   }
@@ -553,7 +557,7 @@ export default function GroupBuyDetailPage() {
       />
 
       {/* WCAG AA: skip-link */}
-      <a href="#gb-main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:bg-gray-900 focus:text-white focus:px-3 focus:py-2 focus:rounded-lg focus:text-sm focus:font-bold">
+      <a href="#gb-main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:bg-gray-900 focus:text-white focus:px-3 focus:py-2 focus:rounded-lg focus:text-[15px] focus:font-bold">
         본문으로 건너뛰기
       </a>
 
@@ -611,6 +615,13 @@ export default function GroupBuyDetailPage() {
         {/* 🖥️ 2026-07-19 그루폰식 섹션 탭 — PC 전용(클릭 → 해당 섹션 스크롤). 모바일은 세로 스택이라 불필요. */}
         <nav className="hidden lg:flex items-center gap-1 border-b mt-4" style={{ borderColor: 'var(--gbd-line2)' }} aria-label="상세 섹션">
           {[
+            // 🩸 2026-09-25: 이 탭이 **무조건** 떠서, 설명·소개가 빈 상품에선 눌러도 안 가는 탭이 됐다
+            //   (섹션은 내용이 없으면 스스로 사라진다). 이웃 탭들과 같은 모양으로 조건을 붙이고,
+            //   판정은 섹션과 **같은 함수**(`hasStoreIntro`)를 쓴다 — 두 벌이면 언젠가 갈린다.
+            ...(hasStoreIntro({ description: detail.description, productName: detail.name,
+              longDescription: (detail as { long_description?: string | null }).long_description,
+              sellerBio: (detail as { seller_bio?: string | null }).seller_bio })
+              ? [{ id: 'gb-sec-store', label: '가게 소개' }] : []),
             { id: 'gb-sec-info', label: '이용권 정보' },
             ...((detail.restaurant_address || (detail.restaurant_lat && detail.restaurant_lng)) ? [{ id: 'gb-sec-location', label: '매장 위치' }] : []),
             ...(Number(detail.review_count || 0) > 0 ? [{ id: 'gb-sec-reviews', label: '리뷰' }] : []),
@@ -660,7 +671,7 @@ export default function GroupBuyDetailPage() {
               {detail.restaurant_name}
               {/* 🏪 2026-07-05 온누리 가맹 뱃지 (B2G — "온누리 사용 가능 표시" 약속) */}
               {(detail as { onnuri_merchant?: boolean }).onnuri_merchant && (
-                <span className="ml-1.5 px-1.5 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-bold align-middle">온누리 사용 가능</span>
+                <span className="ml-2 px-2 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[12px] font-bold align-middle">온누리 사용 가능</span>
               )}
             </div>
           )}
@@ -670,7 +681,7 @@ export default function GroupBuyDetailPage() {
           <h1 style={{ margin: '4px 0 0', fontSize: 21, lineHeight: 1.3, fontWeight: 800, letterSpacing: '-.03em', color: 'var(--gbd-ink)' }}>{detail.name}</h1>
           {detail.restaurant_address && (
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginTop: 8 }}>
-              <MapPin style={{ width: 17, height: 17, marginTop: 2, flex: '0 0 auto', color: 'var(--gbd-sub)' }} />
+              <PinIcon style={{ width: 17, height: 17, marginTop: 2, flex: '0 0 auto', color: 'var(--gbd-sub)' }} />
               <div style={{ fontSize: 13.5, color: 'var(--gbd-sub)', lineHeight: 1.5 }}>
                 {detail.restaurant_address || ''}
                 {distKm != null && <> · <b style={{ fontWeight: 700, color: 'var(--gbd-ink2)' }}>{distKm}km</b></>}
@@ -735,46 +746,16 @@ export default function GroupBuyDetailPage() {
             띠 자체가 세 번째 톤이었다. 구분선은 같은 일을 하면서 면을 나누지 않는다. */}
         <div aria-hidden style={{ height: 1, margin: '0 18px', background: 'var(--gbd-line)' }} />
 
-        {/* 셀러 (컴팩트) + SNS */}
-        {detail.seller_name && (() => {
-          const snsLinks = [
-            detail.seller_instagram && { icon: Instagram, url: detail.seller_instagram, label: 'Instagram' },
-            detail.seller_youtube && { icon: Youtube, url: detail.seller_youtube, label: 'YouTube' },
-            detail.seller_tiktok && { icon: Music2, url: detail.seller_tiktok, label: 'TikTok' },
-            detail.seller_facebook && { icon: Facebook, url: detail.seller_facebook, label: 'Facebook' },
-          ].filter(Boolean) as { icon: typeof Instagram; url: string; label: string }[]
-          const normalizeUrl = (u: string) => /^https?:\/\//i.test(u) ? u : `https://${u}`
-          return (
-            <div style={{ padding: '16px 18px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                {detail.seller_avatar
-                  ? <div role="img" aria-label={detail.seller_name} style={{ width: 44, height: 44, borderRadius: '50%', flex: '0 0 auto', backgroundColor: 'var(--gbd-chip)', backgroundImage: `url("${cfImage(detail.seller_avatar, { width: 120, format: 'auto' }) || detail.seller_avatar}")`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
-                  : <div style={{ width: 44, height: 44, borderRadius: '50%', flex: '0 0 auto', background: 'var(--gbd-chip)' }} />}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <span style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--gbd-ink)', whiteSpace: 'nowrap' }}>{detail.seller_name}</span>
-                    <CheckCircle2 style={{ width: 15, height: 15, color: 'var(--gbd-accent)', flex: '0 0 auto' }} />
-                    <span style={{ fontSize: 12, color: 'var(--gbd-sub)', whiteSpace: 'nowrap' }}>검증 셀러</span>
-                  </div>
-                  {/* 🏷️ 2026-09-03 대표 — 자동 발급 아이디(@store_xxxx)는 손님에게 의미가 없다(SSOT: shared/seller-handle). */}
-                  {publicSellerHandle(detail.seller_username) && <div style={{ fontSize: 12.5, color: 'var(--gbd-sub)', marginTop: 2 }}>@{publicSellerHandle(detail.seller_username)}</div>}
-                </div>
-                <button onClick={() => { if (detail.seller_handle) { navigate(`/u/${detail.seller_handle}`); return } const t = detail.seller_username || detail.seller_id; if (t) navigate(`/profile/${t}`) }} style={{ display: 'inline-flex', alignItems: 'center', gap: 1, padding: '8px 12px', border: '1px solid var(--rule-strong)', borderRadius: 10, background: 'var(--gbd-card)', color: 'var(--gbd-ink2)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flex: '0 0 auto' }}>
-                  프로필<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
-                </button>
-              </div>
-              {snsLinks.length > 0 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
-                  {snsLinks.map(({ icon: Icon, url, label }) => (
-                    <a key={label} href={normalizeUrl(url)} target="_blank" rel="noopener noreferrer" aria-label={label} style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--gbd-chip)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--gbd-ink)' }}>
-                      <Icon style={{ width: 16, height: 16 }} />
-                    </a>
-                  ))}
-                </div>
-              )}
-            </div>
-          )
-        })()}
+        {/* 🧑‍🍳 셀러 카드 — 2026-09-24 `SellerCard` 로 추출(마크업 불변). 같은 커밋에서 아래 `StoreIntro`
+            를 붙이는데 이 파일이 래칫 906/906 이라 여유가 0이었다. 추출 사유는 그 파일 머리말 참조. */}
+        <SellerCard d={detail} onProfile={() => { if (detail.seller_handle) { navigate(`/u/${detail.seller_handle}`); return } const t = detail.seller_username || detail.seller_id; if (t) navigate(`/profile/${t}`) }} />
+
+        {/* 🏪 상품 구성 + 가게 소개 — 2026-09-24 대표 문서 ①("소개란이 따로 있었으면 좋겠다").
+            `description` 이 `UsageGuide` 꼬리에 붙어 있던 것을 여기로 옮기고, 서버가 이미 보내면서
+            아무도 안 그리던 `long_description`·`seller_bio` 를 함께 그린다. 값 없으면 스스로 사라진다. */}
+        <StoreIntro description={detail.description} productName={detail.name} longDescription={(detail as { long_description?: string | null }).long_description}
+          sellerBio={(detail as { seller_bio?: string | null }).seller_bio} sellerAvatar={detail.seller_avatar}
+          sellerName={detail.seller_name} storeName={detail.restaurant_name} />
 
         <div aria-hidden style={{ height: 1, margin: '0 18px', background: 'var(--gbd-line)' }} />
 
@@ -793,7 +774,6 @@ export default function GroupBuyDetailPage() {
             ⚠️ 상단 탭 `gb-sec-info`(라벨 '이용권 정보')가 이 앵커로 스크롤한다 — id 는 유지해야 한다. */}
         <div id="gb-sec-info" style={{ scrollMarginTop: 116 }}>
           <UsageGuide voucherExpiry={detail.voucher_expiry} voucherTerms={detail.voucher_terms} />
-          {detail.description && detail.description.trim() !== (detail.name || '').trim() && <p style={{ margin: '0 18px 22px', fontSize: 14.5, lineHeight: 1.72, color: 'var(--gbd-ink2)', whiteSpace: 'pre-line' }}>{detail.description}</p>}
         </div>
 
         {/* 대표 메뉴 — 백엔드 menu 데이터 있을 때만 (data-gate; docs/design/group-buy-detail.md). 추출: DealMenuList */}
@@ -826,7 +806,7 @@ export default function GroupBuyDetailPage() {
               <p style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--gbd-ink)', margin: 0 }}>내 공구</p>
               <p style={{ fontSize: 11.5, color: 'var(--gbd-sub)', margin: '2px 0 0' }}>대시보드에서 통계 / 정산 확인</p>
             </div>
-            <button onClick={() => navigate('/seller/group-buy')} style={{ padding: '8px 12px', background: 'var(--gbd-cta-bg)', color: 'var(--gbd-cta-fg)', border: 'none', borderRadius: 10, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flex: '0 0 auto' }}>공구 관리 →</button>
+            <button onClick={() => navigate(withMyReturn('/seller/group-buy'))} style={{ padding: '8px 12px', background: 'var(--gbd-cta-bg)', color: 'var(--gbd-cta-fg)', border: 'none', borderRadius: 10, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flex: '0 0 auto' }}>공구 관리 →</button>
           </div>
         )}
 

@@ -1877,6 +1877,7 @@
       "voucherOrders": "Envíos de vales",
       "transfers": "Transferencia de tienda",
       "marketing": "Marketing",
+      "instagramDm": "DM automático de Instagram",
       "adSlots": "Espacios publicitarios",
       "discounts": "Descuentos",
       "partners": "Socios",
@@ -2672,7 +2673,9 @@
       "fromPhoto": "Leído de tu foto: revísalo, por favor",
       "ocrFilled": "Rellenamos {{n}} campo(s) desde tu foto: revísalos, por favor",
       "ocrNone": "Registro mercantil subido",
-      "certHintDone": "Se usa para la revisión. Revisa los campos de abajo."
+      "certHintDone": "Se usa para la revisión. Revisa los campos de abajo.",
+      "pickHint": "Elige tu local y el nombre, la dirección, el teléfono y el tipo se rellenan de una vez. ¿No está en el mapa? Escríbelo abajo.",
+      "pickPlaceholder": "Buscar por nombre del local"
     },
     "analytics": "Análisis de ventas",
     "analyticsView": {
@@ -4101,8 +4104,8 @@
     "sellerContact": "Contacto del vendedor: {{phone}}",
     "sellerNoContact": "Contacto del vendedor no registrado",
     "emptyTitle": "Sin pedidos",
-    "emptyDesc": "Compra en nuestros directos y encuentra algo que te guste",
-    "goToLive": "Ver directos",
+    "emptyDesc": "Busca un pase o producto que te guste",
+    "goToLive": "Ver ofertas",
     "trackingLink": "Rastrear",
     "paymentAmount": "Pago",
     "won": "KRW",
@@ -4123,8 +4126,8 @@
     "skip": "Omitir",
     "welcomeTitle": "¡Bienvenido/a, {{name}}!",
     "welcomeTitleDefault": "¡Bienvenido/a a UrDeal!",
-    "welcomeDesc1": "Mira en vivo y compra al instante —",
-    "welcomeDesc2": "El #1 Live Commerce de Corea",
+    "welcomeDesc1": "Cupones de restaurantes, belleza y estancias de tu barrio",
+    "welcomeDesc2": "al mejor precio, listos para usar",
     "couponBadge": "Cupón de bienvenida",
     "couponAmount": "₩5.000 de descuento",
     "couponDesc": "Válido en pedidos de ₩10.000+ · Caduca en 7 días",
@@ -4137,9 +4140,9 @@
     "step2Desc": "Para recomendaciones personalizadas (selecciona al menos 1)",
     "selectedCount": "Seleccionados: {{count}}",
     "step3Title": "Recibir notificaciones",
-    "step3Desc": "Mantente al día con ofertas y directos",
+    "step3Desc": "Te avisamos de las ofertas que no querrás perderte",
     "alimtalkLabel": "Recibir por KakaoTalk",
-    "alimtalkDesc1": "Inicio de directo / Ofertas / Estado del pedido, etc.",
+    "alimtalkDesc1": "Ofertas / Cupón emitido / Estado del pedido, etc.",
     "alimtalkDesc2": "Alertas gratuitas (sin publicidad)",
     "alimtalkNote1": "En Mi cuenta → Ajustes de notificaciones",
     "alimtalkNote2": "puedes cambiarlo cuando quieras.",
@@ -4711,7 +4714,7 @@
   },
   "browse": {
     "title": "Comprar",
-    "seoDesc": "Descubre productos populares, cupones de restaurantes y ofertas en vivo en YourDeal",
+    "seoDesc": "Descubre en UrDeal productos populares, cupones locales y vales de regalo con descuento",
     "loadError": "No se pudieron cargar los productos.",
     "loadRetry": "No se pudieron cargar los productos. Intenta de nuevo.",
     "searchAria": "Buscar productos",
@@ -4776,7 +4779,7 @@
     "system": "Sistema",
     "light": "Claro",
     "dark": "Oscuro",
-    "description": "Se aplica a páginas con tema claro (compras, pago, pedidos). Mi/Inicio/En vivo siempre permanecen oscuros.",
+    "description": "Elige Sistema / Claro / Oscuro. El modo Sistema sigue el ajuste oscuro del SO.",
     "currentlyFollowing": "OS: {{theme}}"
   },
   "myOrders": {
@@ -5529,7 +5532,7 @@
   "myCoupons": {
     "title": "Mis cupones",
     "empty": "No hay cupones disponibles",
-    "emptySub": "Consigue cupones participando en directos y eventos",
+    "emptySub": "Aún no tienes cupones. Participa en un evento para conseguir uno",
     "loginRequired": "Inicio de sesión requerido.",
     "loadFailed": "No se pueden cargar los cupones.",
     "sessionExpired": "Sesión caducada. Inicia sesión de nuevo.",
@@ -5631,8 +5634,8 @@
   },
   "introduce": {
     "navStart": "Comenzar",
-    "seoTitle": "Ur-Deal - Comercio en vivo restaurante compra grupal",
-    "seoDesc": "Comercio en vivo gestionado por propietarios. La forma más rápida de encontrar ofertas locales.",
+    "seoTitle": "UrDeal - Compras en grupo del barrio (comida, belleza, estancias)",
+    "seoDesc": "Comida, belleza y estancias locales a precio de grupo. Comprad juntos y pagad menos; el vale se emite al instante.",
     "heroLiveCount": "[TODO:es] 지금 {{count}}명이 라이브 시청 중",
     "heroDesc": "Los dueños de restaurantes locales transmiten en vivo. Interactúa en tiempo real y compra en grupo vales y kits de comida con hasta 50% de descuento.",
     "heroCtaStart": "[TODO:es] 지금 시작하기",
@@ -5843,7 +5846,7 @@
   "search.pageTitle": "Search - UrDeal",
   "search.errorMsg": "An error occurred while searching",
   "search.seoTitleQuery": "{{query}} search results - UrDeal",
-  "search.seoDesc": "Search for products on UrDeal. Find the best prices on live commerce products.",
+  "search.seoDesc": "Busca en UrDeal. Encuentra cupones locales con descuento.",
   "reviews": {
     "heading": "Reseñas",
     "writeBtn": "Escribir reseña",
@@ -6020,7 +6023,7 @@
     "chargeDeals": "Deal a recargar",
     "afterBalance": "Saldo tras recarga",
     "noRefund": "Los deals recargados no son reembolsables",
-    "usageNote": "Solo utilizable para donaciones de live y pagos de productos.",
+    "usageNote": "Solo se puede usar para vales de regalo y pagos de productos.",
     "chargeHistory": "Detalles de recarga",
     "paymentNoRefund": "Los deals recargados no son reembolsables después del pago.",
     "prev": "Anterior",
@@ -6071,7 +6074,7 @@
   },
   "blog": {
     "listSeoTitle": "Blog",
-    "listSeoDesc": "Blog de comercio en vivo Ur-Deal — guías de vendedor, tendencias, consejos",
+    "listSeoDesc": "Blog de UrDeal: guías de cupones y compras en grupo, e historias locales",
     "readBtn": "Leer artículo"
   },
   "embed": {
@@ -6100,7 +6103,7 @@
     "namePlaceholder": "[TODO:es] 홍길동",
     "emailLabel": "[TODO:es] 이메일",
     "passwordLabel": "[TODO:es] 비밀번호",
-    "passwordPlaceholder": "[TODO:es] 8자 이상 입력해주세요",
+    "passwordPlaceholder": "Mínimo 10 caracteres con mayúscula, minúscula, número y símbolo",
     "showPassword": "[TODO:es] 비밀번호 표시",
     "hidePassword": "[TODO:es] 비밀번호 숨기기",
     "confirmPasswordLabel": "[TODO:es] 비밀번호 확인",
@@ -6121,16 +6124,14 @@
     "loginLink": "[TODO:es] 로그인",
     "errorAllFields": "[TODO:es] 모든 필드를 입력해주세요.",
     "errorPasswordMismatch": "[TODO:es] 비밀번호가 일치하지 않습니다.",
-    "errorPasswordLength": "[TODO:es] 비밀번호는 8자 이상이어야 합니다.",
     "errorAgreements": "[TODO:es] 이용약관과 개인정보처리방침에 동의해주세요.",
     "errorAgeConfirm": "[TODO:es] 만 14세 이상만 가입 가능합니다.",
     "successMessage": "[TODO:es] 회원가입이 완료되었습니다! 로그인해주세요.",
     "errorDefault": "[TODO:es] 회원가입에 실패했습니다.",
     "errorEmailInUse": "[TODO:es] 이미 사용 중인 이메일입니다.",
     "errorInvalidEmail": "[TODO:es] 유효하지 않은 이메일 형식입니다.",
-    "errorWeakPassword": "[TODO:es] 비밀번호가 너무 약합니다. 8자 이상 입력해주세요.",
     "seoTitle": "[TODO:es] 회원가입 - 유어딜",
-    "seoDesc": "[TODO:es] 유어딜에 가입하고 라이브 쇼핑을 시작하세요"
+    "seoDesc": "Únete a UrDeal y consigue cupones locales con descuento"
   },
   "following": {
     "title": "[TODO:es] 팔로잉",
@@ -6264,7 +6265,7 @@
     "loadFailed": "No se pudo cargar tu biblioteca"
   },
   "shopping": {
-    "sectionTitle": "Mi actividad",
+    "sectionTitle": "Lo que compré",
     "wishlist": "[TODO:es] 찜한 상품",
     "voucher": "Mis vales",
     "voucherSub": "Usar en tienda con QR o código",
@@ -6920,9 +6921,9 @@
     "gifticonEntrySub": "Compra gifticons de tiendas y cafés con deals"
   },
   "my": {
-    "earningsGroupTitle": "Mis ganancias",
+    "earningsGroupTitle": "Lo que recomendé",
     "earningsGroupSub": "Recompensas, UrShop, Invitaciones",
-    "settingsGroupTitle": "Ajustes",
+    "settingsGroupTitle": "Ajustes · Cuenta",
     "settingsGroupSub": "Notificaciones, Tema, Idioma, Info de la app",
     "affiliateLinkTitle": "Enlaces de recomendación",
     "affiliateLinkSub": "Gana deals cuando compran con tu enlace — ver resultados",
@@ -6995,7 +6996,7 @@
   "groupBuy.categoryEtc": "🎯 Otros",
   "groupBuy.stayBadge": "Hotel",
   "roleCta": {
-    "myShortcuts": "Mis accesos directos",
+    "myShortcuts": "Abrir una tienda",
     "startNewRole": "Comenzar un nuevo rol",
     "linkshop": "Mi UrShop",
     "linkshopDesc": "Añade pases a tu UrShop y compártelos",

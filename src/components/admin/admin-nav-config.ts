@@ -313,6 +313,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { path: '/admin/blog',              label: '블로그 관리',   icon: BookOpen },
       // 🥗 2026-07-15 소셜 자동화는 ur-ads 워커로 이전(메인 슬림 유지). ur-ads 컷오버 완료 후 메뉴 재노출.
       { path: '/admin/social',            label: '소셜 홍보',     icon: Share2 },
+      { path: '/admin/instagram-autodm',  label: '인스타 자동 DM', icon: MessageSquare },
       { path: '/admin/notices',           label: '공지사항',      icon: Send },
       { path: '/admin/bulk-email',        label: '단체메일',      icon: Mail },
       { path: '/admin/reviews',           label: '리뷰 자동 생성', icon: Sparkles },

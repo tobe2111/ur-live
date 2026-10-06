@@ -1,5 +1,5 @@
 /**
- * 🖼️ 히어로 사진 고르기 — **입구가 어디였든** 같은 답 (2026-09-03 대표 신고).
+ * 🖼️ 히어로 미디어 고르기 — **입구가 어디였든** 같은 답 (2026-09-03 대표 신고).
  *
  * ## 무엇이 깨져 있었나
  * 대표: *"메인페이지에 히어로의 이미지는 항상 새로고침을 해야 이미지나 영상이 보이네..? 심각해"*
@@ -19,12 +19,25 @@
  * 목록에서 고른다. 새 요청은 하지 않는다 — 같은 React Query 캐시를 *구독만* 한다.
  * 그래서 피드가 도착하는 순간 히어로도 함께 채워진다(새로고침 불필요).
  *
- * ⚠️ 고르는 규칙 자체는 여기 없다 — `shared/home-hero-photo` 가 SSOT 다(워커의 preload 와
- *    같은 답을 내야 한다. 한 장이라도 어긋나면 preload 가 버려지고 사진을 두 번 받는다).
+ * ## 🎞️ 2026-09-28 — 기본은 **한 장이 아니라 띠**다
+ * 대표 확정(시안 ②)으로 히어로 기본 미디어가 [5.46:1 사진 한 장] → [4:3 타일이 흐르는 띠]가 됐다.
+ * 그래서 이 파일은 훅을 둘 내보낸다 — `useHeroStrip`(기본) · `useHeroPhoto`(어드민 배너·폴백).
+ * **캐시를 읽는 방법은 한 곳(`useFeedFromCache`)** 이다: 두 벌로 두면 한쪽만 고쳐져 갈린다.
+ *
+ * ⚠️ 고르는 규칙 자체는 여기 없다 — `shared/home-hero-photo` · `shared/home-hero-strip` 이 SSOT 다
+ *    (워커의 preload 와 같은 답을 내야 한다. 한 장이라도 어긋나면 preload 가 버려지고 두 번 받는다).
  */
 import { useMemo, useSyncExternalStore } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { pickHeroPhotoFrom, pickHeroPhotoFromSeedJson, type HeroPhotoPick } from '@/shared/home-hero-photo'
+import { pickHeroStripFrom, pickHeroStripFromSeedJson, type HeroTile } from '@/shared/home-hero-strip'
+
+/** 문서에 구워진 홈 시드 원문. 하드로드에서만 존재한다. */
+function mainSeedJson(): string | null {
+  if (typeof document === 'undefined') return null
+  const el = document.getElementById('__SSR_INITIAL_MAIN__')
+  return el?.textContent || null
+}
 
 /**
  * 문서에 구워진 홈 시드에서 사진 1장. 하드로드에서만 존재한다.
@@ -33,28 +46,23 @@ import { pickHeroPhotoFrom, pickHeroPhotoFromSeedJson, type HeroPhotoPick } from
  *    시드 읽기는 훅의 일이므로 여기로 옮긴다.
  */
 export function pickHeroPhoto(): HeroPhotoPick | null {
-  if (typeof document === 'undefined') return null
-  const el = document.getElementById('__SSR_INITIAL_MAIN__')
-  if (!el?.textContent) return null
-  return pickHeroPhotoFromSeedJson(el.textContent)
+  const json = mainSeedJson()
+  return json ? pickHeroPhotoFromSeedJson(json) : null
 }
 
 /** 홈 피드 캐시의 키 앞부분 — `queryKeys.groupBuyList(status, category)` = ['group-buy','list',…]. */
 const FEED_PREFIX = ['group-buy', 'list'] as const
 
-export function useHeroPhoto(enabled = true): HeroPhotoPick | null {
-  // ① 하드로드 빠른 길 — 문서 시드를 동기로 1회. (리렌더·왕복 0)
-  const seed = useMemo(() => (enabled ? pickHeroPhoto() : null), [enabled])
-
+/**
+ * 홈 피드가 **이미 받아 둔** 목록. 새 요청은 하지 않는다 — 전체 캐시를 구독하되
+ * **스냅샷이 바뀔 때만** 리렌더된다(`useSyncExternalStore` 가 Object.is 로 거른다).
+ */
+function useFeedFromCache(enabled: boolean): unknown[] | undefined {
   const qc = useQueryClient()
-  /**
-   * ② 시드가 없을 때만 캐시를 본다. 전체 캐시를 구독하되 **스냅샷이 바뀔 때만** 리렌더된다
-   *    (`useSyncExternalStore` 가 Object.is 로 거른다) — 첫 데이터가 도착하는 그 순간 한 번.
-   */
-  const feed = useSyncExternalStore(
+  return useSyncExternalStore(
     (onChange) => qc.getQueryCache().subscribe(onChange),
     () => {
-      if (!enabled || seed) return undefined
+      if (!enabled) return undefined
       // 카테고리를 눌러 둔 상태로 들어올 수도 있으므로 **데이터가 있는 첫 목록**을 쓴다.
       for (const [, data] of qc.getQueriesData({ queryKey: FEED_PREFIX })) {
         if (Array.isArray(data) && data.length) return data
@@ -63,6 +71,23 @@ export function useHeroPhoto(enabled = true): HeroPhotoPick | null {
     },
     () => undefined, // 서버 스냅샷(SSR/prerender) — 캐시가 없다
   )
+}
 
+export function useHeroPhoto(enabled = true): HeroPhotoPick | null {
+  // ① 하드로드 빠른 길 — 문서 시드를 동기로 1회. (리렌더·왕복 0)
+  const seed = useMemo(() => (enabled ? pickHeroPhoto() : null), [enabled])
+  // ② 시드가 없을 때만 캐시를 본다 — 첫 데이터가 도착하는 그 순간 한 번 리렌더.
+  const feed = useFeedFromCache(enabled && !seed)
   return useMemo(() => seed ?? (feed ? pickHeroPhotoFrom(feed) : null), [seed, feed])
+}
+
+/** 🎞️ 히어로 띠에 태울 이용권들. 위 `useHeroPhoto` 와 **같은 소스·같은 순서**를 본다. */
+export function useHeroStrip(enabled = true): HeroTile[] {
+  const seed = useMemo(() => {
+    if (!enabled) return []
+    const json = mainSeedJson()
+    return json ? pickHeroStripFromSeedJson(json) : []
+  }, [enabled])
+  const feed = useFeedFromCache(enabled && seed.length === 0)
+  return useMemo(() => (seed.length ? seed : feed ? pickHeroStripFrom(feed) : []), [seed, feed])
 }

@@ -1,5 +1,5 @@
-import { MapPin } from 'lucide-react'
 import StarRating from '@/components/deal/StarRating'
+import { PinIcon } from '@/components/icons/urdeal-icons'
 
 /**
  * 🏷️ 이용권 상세 **제목 헤더** — PC 전용 (2026-08-19 대표 확정: 상세 시안 **1안 "그루폰 정석"**).
@@ -35,26 +35,26 @@ export default function DetailTitleHeader({
   return (
     <header className="hidden lg:block lg:max-w-[1200px] lg:mx-auto lg:pt-6 lg:pb-3">
       {storeName && (
-        <div className="text-[12.5px] font-bold tracking-[.01em] text-brand">
+        <div className="text-[12px] font-bold tracking-[.01em] text-brand">
           {storeName} · 정식 등록 매장
           {onnuri && (
-            <span className="ml-1.5 px-1.5 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-bold align-middle">온누리 사용 가능</span>
+            <span className="ml-2 px-2 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[12px] font-bold align-middle">온누리 사용 가능</span>
           )}
         </div>
       )}
-      <h1 className="mt-1.5 text-[29px] leading-[1.24] font-black tracking-[-.028em] text-gray-900 dark:text-white">{name}</h1>
-      <div className="mt-2.5 flex items-center gap-2.5 flex-wrap text-[13.5px] text-gray-500 dark:text-gray-400">
+      <h1 className="mt-2 text-[28px] leading-[1.24] font-black tracking-[-.028em] text-gray-900 dark:text-white">{name}</h1>
+      <div className="mt-2 flex items-center gap-2 flex-wrap text-[13px] text-gray-500 dark:text-gray-400">
         {hasRating && (
-          <span className="inline-flex items-center gap-1.5">
+          <span className="inline-flex items-center gap-2">
             <StarRating value={Number(rating)} size={15} />
             <b className="font-extrabold text-gray-900 dark:text-white">{Number(rating).toFixed(1)}</b>
             {Number(reviewCount) > 0 && <span className="text-gray-400 dark:text-gray-500">({reviewCount})</span>}
           </span>
         )}
         {address && (
-          <span className="inline-flex items-center gap-1.5">
+          <span className="inline-flex items-center gap-2">
             {hasRating && <span className="text-gray-200 dark:text-[#2C2F35]">|</span>}
-            <MapPin className="w-[15px] h-[15px] shrink-0" />
+            <PinIcon className="w-[15px] h-[15px] shrink-0" />
             {address}
           </span>
         )}

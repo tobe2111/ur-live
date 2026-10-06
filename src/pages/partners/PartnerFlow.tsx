@@ -45,10 +45,10 @@ export default function PartnerFlow() {
     <>
       <section className="bg-surface">
         <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-32">
-          <h2 className="text-[26px] lg:text-[40px] xl:text-[46px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
+          <h2 className="text-[28px] lg:text-[40px] xl:text-[48px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
             손님이 오는 길
           </h2>
-          <p className="mt-4 text-[14px] lg:text-[17px] text-gray-500 dark:text-gray-400 max-w-[34em]">
+          <p className="mt-4 text-[15px] lg:text-[17px] text-gray-500 dark:text-gray-400 max-w-[34em]">
             택배도 반품도 재고도 없습니다. 사장님이 만나는 건 결제를 마친 손님 한 명입니다.
           </p>
 
@@ -58,8 +58,8 @@ export default function PartnerFlow() {
             {STEPS.map(({ t, d }) => (
               <li key={t} className="relative lg:pt-12">
                 <span aria-hidden className="hidden lg:block absolute left-0 top-0 w-[15px] h-[15px] rounded-full bg-brand ring-4 ring-surface" />
-                <p className="text-[20px] lg:text-[30px] xl:text-[34px] font-extrabold text-ink tracking-[-0.025em] leading-tight">{t}</p>
-                <p className="mt-3 lg:mt-4 text-[13px] lg:text-[15.5px] leading-[1.75] text-gray-500 dark:text-gray-400">{d}</p>
+                <p className="text-[24px] lg:text-[28px] xl:text-[34px] font-extrabold text-ink tracking-[-0.025em] leading-tight">{t}</p>
+                <p className="mt-3 lg:mt-4 text-[13px] lg:text-[15px] leading-[1.75] text-gray-500 dark:text-gray-400">{d}</p>
               </li>
             ))}
           </ol>
@@ -69,20 +69,20 @@ export default function PartnerFlow() {
       <section className="bg-warm">
         <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-28 grid gap-12 lg:grid-cols-[1.4fr_0.6fr] lg:gap-20">
           <div>
-            <h2 className="text-[26px] lg:text-[40px] xl:text-[46px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
+            <h2 className="text-[28px] lg:text-[40px] xl:text-[48px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">
               안 오면요? 안 쓰면요?
             </h2>
 
             <div className="mt-10 lg:mt-16 space-y-9 lg:space-y-12">
               {SAFETY.map(({ t, d }) => (
                 <div key={t}>
-                  <p className="text-[18px] lg:text-[26px] font-extrabold tracking-[-0.02em] text-ink leading-snug">{t}</p>
-                  <p className="mt-3 text-[13.5px] lg:text-[16px] leading-[1.8] text-gray-500 dark:text-gray-400 max-w-[36em]">{d}</p>
+                  <p className="text-[17px] lg:text-[28px] font-extrabold tracking-[-0.02em] text-ink leading-snug">{t}</p>
+                  <p className="mt-3 text-[13px] lg:text-[17px] leading-[1.8] text-gray-500 dark:text-gray-400 max-w-[36em]">{d}</p>
                 </div>
               ))}
               <div className="pt-9 border-t border-rule">
-                <p className="text-[18px] lg:text-[26px] font-extrabold tracking-[-0.02em] text-ink leading-snug">돈은 매주 들어옵니다</p>
-                <p className="mt-3 text-[13.5px] lg:text-[16px] leading-[1.8] text-gray-500 dark:text-gray-400 max-w-[36em]">
+                <p className="text-[17px] lg:text-[28px] font-extrabold tracking-[-0.02em] text-ink leading-snug">돈은 매주 들어옵니다</p>
+                <p className="mt-3 text-[13px] lg:text-[17px] leading-[1.8] text-gray-500 dark:text-gray-400 max-w-[36em]">
                   사용된 이용권을 주 단위로 모아 등록하신 계좌로 보냅니다. 최소 지급액은 {F.minPayout}입니다.
                   보내기 전에 담당자가 내역을 눈으로 확인합니다. 기계가 알아서 쏘는 구조가 아닙니다.
                 </p>
@@ -92,7 +92,7 @@ export default function PartnerFlow() {
 
           <div className="max-w-[15rem] mx-auto lg:mx-0 lg:max-w-none lg:pt-4">
             <PartnerPhone src={SHOT('use')} alt="손님이 보는 사용 안내와 환불 조건 화면" />
-            <p className="mt-4 text-[12.5px] lg:text-[13.5px] text-gray-500 dark:text-gray-400">손님이 보는 사용 안내와 환불 조건</p>
+            <p className="mt-4 text-[12px] lg:text-[13px] text-gray-500 dark:text-gray-400">손님이 보는 사용 안내와 환불 조건</p>
           </div>
         </div>
       </section>

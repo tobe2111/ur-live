@@ -89,36 +89,36 @@ export default function TimedealCard({
 
         {/* 좌상단: 남은 시간 빨간 pill */}
         {remaining && !remaining.expired && (
-          <span className="absolute top-1.5 left-1.5 flex items-center gap-0.5 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-lg shadow-red-500/30">
+          <span className="absolute top-1.5 left-1.5 flex items-center gap-1 bg-red-500 text-white text-[12px] font-bold px-2 py-1 rounded-full shadow-lg shadow-red-500/30">
             {pad(remaining.h)}:{pad(remaining.m)}:{pad(remaining.s)}
           </span>
         )}
         {remaining?.expired && (
-          <span className="absolute top-1.5 left-1.5 bg-gray-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+          <span className="absolute top-1.5 left-1.5 bg-gray-600 text-white text-[12px] font-bold px-2 py-1 rounded-full">
             종료
           </span>
         )}
 
         {/* 우상단: 할인율 검정 pill */}
         {discPct > 0 && (
-          <span className="absolute top-1.5 right-1.5 bg-black/80 backdrop-blur-sm text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded-full">
+          <span className="absolute top-1.5 right-1.5 bg-black/80 backdrop-blur-sm text-white text-[12px] font-extrabold px-2 py-1 rounded-full">
             -{discPct}%
           </span>
         )}
       </div>
 
       {/* 카드 본문 */}
-      <div className="p-2.5">
-        <p className="text-[12px] text-gray-800 dark:text-gray-200 font-semibold leading-tight line-clamp-2 mb-1.5">
+      <div className="p-2">
+        <p className="text-[12px] text-gray-800 dark:text-gray-200 font-semibold leading-tight line-clamp-2 mb-2">
           {name}
         </p>
 
-        <div className="flex items-baseline gap-1.5 mb-2">
+        <div className="flex items-baseline gap-2 mb-2">
           <span className="text-[15px] font-extrabold text-gray-900 dark:text-white">
             {formatNumber(price)}원
           </span>
           {original_price && original_price > price && (
-            <span className="text-[10px] text-gray-400 dark:text-gray-500 line-through">
+            <span className="text-[12px] text-gray-400 dark:text-gray-500 line-through">
               {formatNumber(original_price)}원
             </span>
           )}
@@ -133,7 +133,7 @@ export default function TimedealCard({
                 style={{ width: `${progressPct}%` }}
               />
             </div>
-            <p className="text-[10px] text-gray-500 dark:text-gray-400">
+            <p className="text-[12px] text-gray-500 dark:text-gray-400">
               {progressPct}% · {formatNumber(soldN)}/{formatNumber(stockN)}개
             </p>
           </div>

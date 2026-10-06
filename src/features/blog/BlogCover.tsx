@@ -1,38 +1,48 @@
 /**
- * 📝 블로그 커버(배너) — 목록·상세 공용. 썸네일 있으면 이미지, 없으면 주제별 디자인 배너
- *   (그라디언트 + 장식 블롭 + 이모지 스티커). 외부 이미지 의존 0(404 없음), 라이트/다크 대응.
+ * 📝 블로그 커버(배너) — 목록·상세 공용. 썸네일이 있으면 그 사진, 없으면 **주제 아이콘 커버**.
+ *
+ * ## 2026-09-24 — 이모지·그라디언트 커버 폐기 (대표 문서 ②)
+ * 대표: *"사진 필요함 · 여기도 가독성이 떨어진다."* 실측하니 발행 글 5개 **전부 `thumbnail_url` 이
+ * null** 이라 목록 전체가 폴백으로 떨어져 있었고, 그 폴백이 **이모지 스티커 + 그라디언트**였다.
+ * 코레일톡 디자인 SSOT 가 금지하는 둘(⑥ 이모지 0 · 그라디언트 0)을 정확히 쓰고 있었던 셈이다.
+ * ⇒ 우리 카테고리 아이콘(`components/icons/category-icons`) + 팔레트 단색 면으로 교체.
+ *
+ * ## ⚠️ 이건 사진의 **대체재가 아니라 빈자리**다
+ * 진짜 사진은 어드민에서 넣는다 — `/admin/blog` 글 편집에 **썸네일 업로더가 이미 있다**
+ * (`AdminBlogPage` 의 `thumbnail_url`). 만들 기능이 아니라 채울 내용이다.
+ * 사진이 들어오면 이 커버는 자동으로 물러난다(첫 분기).
+ *
+ * ## 외부 이미지 의존 0
+ * 폴백은 SVG 와 색 토큰뿐이라 404 가 없고 라이트/다크 모두 대응한다(종전 성질 유지).
  */
-type CoverPost = { slug: string; tags: string; thumbnail_url: string | null }
+import type { ComponentType, SVGProps } from 'react'
+import {
+  CATEGORY_PALETTE, type CategoryHue,
+  MealIcon, CafeIcon, BeautyIcon, StayIcon, GiftIcon, StoreIcon, LeisureIcon,
+} from '@/components/icons/category-icons'
 
-const COVER_GRADIENTS = [
-  'from-rose-100 to-orange-100 dark:from-rose-900/30 dark:to-orange-900/20',
-  'from-sky-100 to-indigo-100 dark:from-sky-900/30 dark:to-indigo-900/20',
-  'from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/20',
-  'from-violet-100 to-fuchsia-100 dark:from-violet-900/30 dark:to-fuchsia-900/20',
-  'from-amber-100 to-yellow-100 dark:from-amber-900/30 dark:to-yellow-900/20',
-  'from-cyan-100 to-blue-100 dark:from-cyan-900/30 dark:to-blue-900/20',
+type CoverPost = { slug: string; tags: string; thumbnail_url: string | null }
+type Ico = ComponentType<SVGProps<SVGSVGElement> & { size?: number | string }>
+
+/** 주제 → 아이콘·색. 위에서부터 먼저 맞는 것. 새 주제는 여기 한 줄. */
+const COVER_TOPICS: Array<[RegExp, Ico, CategoryHue, string]> = [
+  [/exchange|교환권|기프티콘/, GiftIcon, 'yellow', '교환권'],
+  [/voucher|이용권/, MealIcon, 'red', '이용권'],
+  [/stay|숙소|펜션/, StayIcon, 'blue', '숙소'],
+  [/beauty|미용|뷰티/, BeautyIcon, 'pink', '뷰티'],
+  [/dongne|동네딜|지역/, StoreIcon, 'green', '동네딜'],
+  [/linkshop|유어샵|쇼핑몰|business|사업자|판매/, StoreIcon, 'teal', '유어샵'],
+  [/cafe|카페|커피/, CafeIcon, 'orange', '카페'],
+  [/experience|체험|액티비티/, LeisureIcon, 'purple', '체험'],
 ]
-const COVER_EMOJI: Array<[RegExp, string]> = [
-  [/what-is|유어딜/, '✨'],
-  [/exchange|교환권|기프티콘/, '🎁'],
-  [/voucher|이용권/, '🎟️'],
-  [/dongne|동네딜/, '📍'],
-  [/linkshop|유어샵|쇼핑몰/, '🛍️'],
-  [/business|사업자|판매/, '🏪'],
-  [/deal-points|포인트|딜/, '💰'],
-  [/payment|결제/, '💳'],
-  [/review|리뷰/, '⭐'],
-  [/settlement|정산/, '📊'],
-  [/agency|에이전시/, '🤝'],
-]
+
 const parseTags = (raw: string): string[] => { try { return JSON.parse(raw) } catch { return [] } }
 
 export function blogCover(slug: string, tags: string[]) {
   const hay = `${slug} ${tags.join(' ')}`.toLowerCase()
-  const emoji = COVER_EMOJI.find(([re]) => re.test(hay))?.[1] ?? '📝'
-  let h = 0
-  for (let i = 0; i < slug.length; i++) h = (h * 31 + slug.charCodeAt(i)) >>> 0
-  return { emoji, gradient: COVER_GRADIENTS[h % COVER_GRADIENTS.length] }
+  const hit = COVER_TOPICS.find(([re]) => re.test(hay))
+  const [, Icon, hue, label] = hit ?? [null, MealIcon, 'blue' as CategoryHue, '유어딜']
+  return { Icon: Icon as Ico, hue: hue as CategoryHue, label }
 }
 
 export function CoverImg({ post, className, variant = 'thumb' }: { post: CoverPost; className: string; variant?: 'hero' | 'thumb' }) {
@@ -40,19 +50,14 @@ export function CoverImg({ post, className, variant = 'thumb' }: { post: CoverPo
   if (post.thumbnail_url) {
     return <img src={post.thumbnail_url} alt="" className={`${className} object-cover`} loading="lazy" />
   }
-  const { emoji, gradient } = blogCover(post.slug, tags)
+  const { Icon, hue, label } = blogCover(post.slug, tags)
   const big = variant === 'hero'
+  const c = CATEGORY_PALETTE[hue]
   return (
-    <div className={`${className} relative overflow-hidden bg-gradient-to-br ${gradient}`}>
-      <div className="absolute -top-6 -right-6 w-2/3 aspect-square rounded-full bg-white/40 dark:bg-white/10 blur-2xl" />
-      <div className="absolute -bottom-8 -left-6 w-2/3 aspect-square rounded-full bg-black/5 dark:bg-black/25 blur-2xl" />
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className={`${big ? 'w-20 h-20 sm:w-24 sm:h-24 text-4xl sm:text-5xl rounded-3xl' : 'w-14 h-14 text-2xl rounded-2xl'} bg-white/70 dark:bg-white/10 backdrop-blur-sm flex items-center justify-center shadow-sm ring-1 ring-black/5 dark:ring-white/10`}>
-          <span className="drop-shadow-sm">{emoji}</span>
-        </div>
-      </div>
-      {big && tags[0] && (
-        <span className="absolute bottom-3.5 left-4 text-xs font-bold text-gray-700/70 dark:text-white/70">유어딜 · {tags[0]}</span>
+    <div className={`${className} relative overflow-hidden flex items-center justify-center`} style={{ backgroundColor: `${c.main}14` }}>
+      <Icon size={big ? 88 : 40} aria-hidden />
+      {big && (
+        <span className="absolute bottom-3.5 left-4 text-[12px] font-extrabold" style={{ color: c.dark }}>유어딜 · {label}</span>
       )}
     </div>
   )

@@ -147,8 +147,10 @@ export default [
   {
     name: '🏪 PC 타이포가 모바일 치수로 되돌아간다',
     file: 'src/pages/partners/PartnerCompare.tsx',
-    find: `        <h2 className="text-[26px] lg:text-[40px] xl:text-[46px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2] max-w-[14em]">`,
-    replace: `        <h2 className="text-[23px] lg:text-[38px] font-extrabold tracking-[-0.02em] text-ink leading-[1.28] max-w-[14em]">`,
+    /* 🔧 2026-09-30 재조준: 디스플레이 7 rung 이행으로 `26/40/46` → `28/40/48`.
+       결함은 그대로 — PC 단계를 한 rung 내려 "넓어진 모바일" 로 되돌린다(스케일 위 값으로). */
+    find: `        <h2 className="text-[28px] lg:text-[40px] xl:text-[48px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2] max-w-[14em]">`,
+    replace: `        <h2 className="text-[28px] lg:text-[34px] font-extrabold tracking-[-0.02em] text-ink leading-[1.28] max-w-[14em]">`,
     test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
     why:
       '대표 *"PC 버전은 전혀 PC 버전 같지 않은데?"* 의 절반이 이것이었다 — 1440px 에서도 제목이 ' +
@@ -168,9 +170,12 @@ export default [
   {
     name: '🏪 장점 섹션에 01/02/03 번호가 돌아온다',
     file: 'src/pages/partners/PartnerBenefits.tsx',
-    find: `              <p className="text-[21px] lg:text-[32px] xl:text-[36px] font-extrabold text-ink leading-[1.3] tracking-[-0.025em]">{k}</p>`,
+    /* 🔧 2026-09-30 재조준: 디스플레이 이행 + 사다리 정리로 `24/32/36` → `24/34`(xl 잉여였다).
+       결함은 **번호 eyebrow 를 되살리는 것**이므로 크기는 손대지 않는다 — 빨간불이 그 이유 하나로
+       뜨게 둔다(크기까지 바꾸면 무엇 때문에 빨간지 흐려진다). */
+    find: `              <p className="text-[24px] lg:text-[34px] font-extrabold text-ink leading-[1.3] tracking-[-0.025em]">{k}</p>`,
     replace: `              <p className="text-[13px] font-extrabold text-brand-text tabular-nums">0{i + 1}</p>
-              <p className="text-[21px] lg:text-[32px] xl:text-[36px] font-extrabold text-ink leading-[1.3] tracking-[-0.025em]">{k}</p>`,
+              <p className="text-[24px] lg:text-[34px] font-extrabold text-ink leading-[1.3] tracking-[-0.025em]">{k}</p>`,
     test: 'src/tests/unit/partners-landing-2026-09-16.test.ts',
     why:
       '대표가 *"AI 가 만든 디자인"* 이라고 한 화면에서 가장 큰 단일 원인이었다. anti-slop 스킬이 ' +

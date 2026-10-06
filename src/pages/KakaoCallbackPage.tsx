@@ -33,6 +33,7 @@ export default function KakaoCallbackPage() {
 
       if (error || !code) {
         toast.error('카카오 로그인에 실패했습니다.')
+        // login-return-ok: 로그인 **실패** 후 재시도. 저장해 둔 복귀 주소는 그대로 남아 다음 시도에 쓰인다.
         navigate('/login', { replace: true })
         return
       }
@@ -172,6 +173,7 @@ export default function KakaoCallbackPage() {
         const err_ = err as { response?: { data?: { error?: string; message?: string }; status?: number }; message?: string };
         if (import.meta.env.DEV) console.error('[KakaoCallback] 실패:', err)
         toast.error(err_.response?.data?.error || err_.message || '로그인 실패')
+        // login-return-ok: 로그인 **실패** 후 재시도. 저장해 둔 복귀 주소는 그대로 남아 다음 시도에 쓰인다.
         navigate('/login', { replace: true })
       }
     }

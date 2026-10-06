@@ -90,6 +90,19 @@ const FULLBLEED_PC_PATHS = new Set<string>([
    */
   '/experience', '/new-openings', '/gb-market', '/area-report',
   '/interest-list', '/following', '/community-group-buy/new', '/referral',
+  /**
+   * 🧾 2026-09-28 (대표 신고 — *"QR로 찍으려니 별도 이 페이지가 뜨네? 이게 가장 이상적이야?"*,
+   *    PC 스크린샷 첨부): 매장 계산대(`/store/scan`)는 **손님 앞 카운터 화면**인데 1440px 에서
+   *    430 액자에 갇혀 있었다. 좌우 거터를 채운 것이 하필 *소비자 앱 광고*다 —
+   *    `유어딜 안전결제` · `매일 새로운 동네 딜` · **`모바일로 보기` QR**.
+   *    가게 PC 로 계산을 하는 사장님에게 "모바일로 보라" 는 QR 을 띄우고 있었다.
+   *    위 B 묶음(`/store/new`·`/store/find`·`/my-store`)과 **같은 기준 ③**(소비자가 아닌 사람이
+   *    보는 화면)이고, 그 형제들은 이미 등재돼 있었는데 계산대만 빠져 있었다.
+   *    등재 조건 확인: `StoreScanPage`·`VoucherScanner` 에 `app-frame-bar` **0건**(숨길 고정바 없음).
+   *    ⚠️ `App.tsx` 의 `fullScreenPrefixes` 에는 이미 있다 — 그래서 상/하단 네비는 원래 안 뜬다.
+   *      남아 있던 것이 **액자와 거터 레일**이고, 그걸 벗기는 스위치가 여기다.
+   */
+  '/store/scan',
 ])
 
 // 🖥️ 2026-07-16 (대표 — 상세 PC 2단): 상세 라우트(동적 :id)는 prefix 로 풀너비화 → 좌 이미지 + 우 정보 2단.

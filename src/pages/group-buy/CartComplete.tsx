@@ -35,8 +35,8 @@ export default function CartComplete({ qty, kinds, amount }: { qty: number; kind
           <TicketRow left="이용권" right={`${qty}매`} />
           <div className="px-4 pt-4 pb-4">
             <p className="text-[13px] text-gray-500 dark:text-gray-400">사용 기한은 이용권마다 달라요</p>
-            <div className="flex items-baseline gap-2.5 mt-3 mb-4 tabular-nums">
-              <span className="text-[30px] font-extrabold tracking-[-0.03em] leading-none">{formatNumber(amount)}원</span>
+            <div className="flex items-baseline gap-2 mt-3 mb-4 tabular-nums">
+              <span className="text-[28px] font-extrabold tracking-[-0.03em] leading-none">{formatNumber(amount)}원</span>
             </div>
             <TicketOutlineButton onClick={() => navigate('/my-vouchers')}>이용권 확인</TicketOutlineButton>
           </div>

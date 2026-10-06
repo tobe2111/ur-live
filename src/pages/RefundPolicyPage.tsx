@@ -19,19 +19,19 @@ export default function RefundPolicyPage() {
           <button onClick={() => navigate(-1)} aria-label="뒤로 가기" className="text-gray-900 dark:text-white">
             <ChevronLeft className="w-6 h-6" />
           </button>
-          <h1 className="text-[16px] font-bold text-gray-900 dark:text-white">환불 및 교환/반품 정책</h1>
+          <h1 className="text-[17px] font-bold text-gray-900 dark:text-white">환불 및 교환/반품 정책</h1>
           <div className="w-6" />
         </div>
       </div>
 
       {/* Content */}
       <div className="ur-content-medium px-5 pt-6">
-        <p className="text-[11px] text-gray-400 dark:text-gray-500 mb-6">시행일자: 2026년 2월 20일</p>
+        <p className="text-[12px] text-gray-400 dark:text-gray-500 mb-6">시행일자: 2026년 2월 20일</p>
 
         {/* 회사 정보 */}
         <section>
           <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">운영 회사 정보</h2>
-          <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-4 space-y-1.5">
+          <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-4 space-y-2">
             <p className="text-[13px] text-gray-600 dark:text-gray-300"><span className="font-semibold text-gray-900 dark:text-white">상호명:</span> 리스터코퍼레이션 (LISTER Corporation)</p>
             <p className="text-[13px] text-gray-600 dark:text-gray-300"><span className="font-semibold text-gray-900 dark:text-white">대표:</span> 정지원</p>
             <p className="text-[13px] text-gray-600 dark:text-gray-300"><span className="font-semibold text-gray-900 dark:text-white">이메일:</span> jiwon@ur-team.com</p>
@@ -55,7 +55,7 @@ export default function RefundPolicyPage() {
           <div className="mb-5">
             <h3 className="text-[13px] font-semibold text-gray-900 dark:text-white mb-2">배송 비용</h3>
             <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
-              단순 변심은 왕복 택배비 <span className="font-semibold text-red-500">6,000원</span>
+              단순 변심은 왕복 택배비 <span className="font-semibold text-tone-bad">6,000원</span>
             </p>
           </div>
 
@@ -74,7 +74,7 @@ export default function RefundPolicyPage() {
               <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-3">
                 <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
                   <span className="text-green-600 font-semibold">단순 변심</span>의 경우 수령일로부터 7일 이내까지 교환·반품이 가능합니다.
-                  <span className="text-red-500"> (교환/반품비 고객 부담)</span>
+                  <span className="text-tone-bad"> (교환/반품비 고객 부담)</span>
                 </p>
               </div>
               <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-3">
@@ -85,8 +85,8 @@ export default function RefundPolicyPage() {
               </div>
               <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-3">
                 <p className="text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
-                  <span className="text-red-500 font-semibold">제품 특성상</span> 단순 변심, 부주의에 의한 제품 손상 및 파손, 사용 및 개봉한 경우 교환/반품이
-                  <span className="text-red-500 font-semibold"> 불가</span>합니다.
+                  <span className="text-tone-bad font-semibold">제품 특성상</span> 단순 변심, 부주의에 의한 제품 손상 및 파손, 사용 및 개봉한 경우 교환/반품이
+                  <span className="text-tone-bad font-semibold"> 불가</span>합니다.
                 </p>
               </div>
             </div>
@@ -118,19 +118,19 @@ export default function RefundPolicyPage() {
                     결기간은 <span className="font-semibold text-gray-900 dark:text-white">300일</span>로 이용료를 일할로 나눈 금액을 환불합니다.
                   </p>
                   <p>
-                    결제 금액의 <span className="text-red-500 font-semibold">10%를 제외</span>한 일수만큼 금액을 제외하고 계산되니
+                    결제 금액의 <span className="text-tone-bad font-semibold">10%를 제외</span>한 일수만큼 금액을 제외하고 계산되니
                     이용자는 남은 금액만 환불받습니다.
                   </p>
                   <p>
                     다만 결제 이후 <span className="font-semibold text-gray-900 dark:text-white">30일 이내</span>에 남은 기수대로 일할 계산이 이루어지며 남은 금액이 계산은
-                    카드 수수료와 할인금액을 포함한 결제 금액의 <span className="text-red-500 font-semibold">20% 금액을 제외</span>한 금액에,
+                    카드 수수료와 할인금액을 포함한 결제 금액의 <span className="text-tone-bad font-semibold">20% 금액을 제외</span>한 금액에,
                     남은 일 수에 대한 일할 계산을 처리합니다.
                   </p>
-                  <p className="text-red-500 font-semibold">
+                  <p className="text-tone-bad font-semibold">
                     16일 이후 30일 이내 사용자는 환불이 불가능합니다.
                   </p>
                   <div className="bg-white dark:bg-[#11141C] rounded p-3 mt-2">
-                    <p className="text-[12px] font-mono text-gray-600 dark:text-gray-300">
+                    <p className="text-[12px] tabular-nums text-gray-600 dark:text-gray-300">
                       <span className="font-semibold text-gray-900 dark:text-white">계산 공식:</span> [(전체금액) x 0.8 / 30] x 남은 일수
                     </p>
                   </div>
@@ -163,7 +163,7 @@ export default function RefundPolicyPage() {
             <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-4">
               <h3 className="text-[13px] font-semibold text-gray-900 dark:text-white mb-1">배송 업체</h3>
               <p className="text-[13px] text-gray-600 dark:text-gray-300">대한통운 (1588-1255)</p>
-              <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">* 판매 환경에 따라 변경될 수 있음</p>
+              <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-1">* 판매 환경에 따라 변경될 수 있음</p>
             </div>
 
             <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-4">
@@ -176,7 +176,7 @@ export default function RefundPolicyPage() {
               <p className="text-[13px] text-gray-600 dark:text-gray-300">
                 3,000원 / 구매 금액 <span className="font-semibold text-gray-900 dark:text-white">50,000원 이상 시 무료 배송</span>
               </p>
-              <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">* 도서산간 지역 별도 추가 금액 발생</p>
+              <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-1">* 도서산간 지역 별도 추가 금액 발생</p>
             </div>
 
             <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-4">
@@ -188,13 +188,13 @@ export default function RefundPolicyPage() {
           {/* 배송 유의사항 */}
           <div className="mt-4 bg-gray-50 dark:bg-[#1D1F29] rounded-lg p-4">
             <h3 className="text-[13px] font-semibold text-gray-900 dark:text-white mb-2">유의 사항</h3>
-            <ul className="space-y-1.5 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
+            <ul className="space-y-2 text-[13px] text-gray-600 dark:text-gray-300 leading-relaxed">
               <li className="flex items-start gap-2">
-                <span className="mt-0.5">•</span>
+                <span className="mt-1">•</span>
                 <span>주문 폭주 및 공휴 사정으로 인하여 지연 및 품절이 발생될 수 있습니다.</span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="mt-0.5">•</span>
+                <span className="mt-1">•</span>
                 <span>기본 배송기간 이상 소요되는 상품이거나, 품절 상품은 개별 연락을 드립니다.</span>
               </li>
             </ul>
@@ -215,7 +215,7 @@ export default function RefundPolicyPage() {
                 <div className="flex-shrink-0 w-7 h-7 bg-gray-900 text-white rounded-full flex items-center justify-center text-[12px] font-bold">
                   {item.step}
                 </div>
-                <div className="flex-1 pt-0.5">
+                <div className="flex-1 pt-1">
                   <h3 className="text-[13px] font-semibold text-gray-900 dark:text-white">{item.title}</h3>
                   <p className="text-[13px] text-gray-600 dark:text-gray-300">{item.desc}</p>
                 </div>
@@ -231,32 +231,32 @@ export default function RefundPolicyPage() {
             <table className="w-full text-[13px]">
               <thead>
                 <tr className="bg-gray-50 dark:bg-[#1D1F29]">
-                  <th className="border-b border-gray-100 dark:border-[#2C2F35] px-4 py-2.5 text-left font-semibold text-gray-900 dark:text-white">사유</th>
-                  <th className="border-b border-gray-100 dark:border-[#2C2F35] px-4 py-2.5 text-left font-semibold text-gray-900 dark:text-white">배송비 부담</th>
+                  <th className="border-b border-gray-100 dark:border-[#2C2F35] px-4 py-2 text-left font-semibold text-gray-900 dark:text-white">사유</th>
+                  <th className="border-b border-gray-100 dark:border-[#2C2F35] px-4 py-2 text-left font-semibold text-gray-900 dark:text-white">배송비 부담</th>
                 </tr>
               </thead>
               <tbody className="text-gray-600 dark:text-gray-300">
                 <tr>
-                  <td className="border-b border-gray-100 dark:border-[#2C2F35] px-4 py-2.5">단순 변심</td>
-                  <td className="border-b border-gray-100 dark:border-[#2C2F35] px-4 py-2.5">
-                    <span className="text-red-500 font-semibold">구매자 부담</span> (왕복 배송비 6,000원)
+                  <td className="border-b border-gray-100 dark:border-[#2C2F35] px-4 py-2">단순 변심</td>
+                  <td className="border-b border-gray-100 dark:border-[#2C2F35] px-4 py-2">
+                    <span className="text-tone-bad font-semibold">구매자 부담</span> (왕복 배송비 6,000원)
                   </td>
                 </tr>
                 <tr>
-                  <td className="border-b border-gray-100 dark:border-[#2C2F35] px-4 py-2.5">상품 하자</td>
-                  <td className="border-b border-gray-100 dark:border-[#2C2F35] px-4 py-2.5">
+                  <td className="border-b border-gray-100 dark:border-[#2C2F35] px-4 py-2">상품 하자</td>
+                  <td className="border-b border-gray-100 dark:border-[#2C2F35] px-4 py-2">
                     <span className="text-green-600 font-semibold">판매자 부담</span>
                   </td>
                 </tr>
                 <tr>
-                  <td className="border-b border-gray-100 dark:border-[#2C2F35] px-4 py-2.5">오배송</td>
-                  <td className="border-b border-gray-100 dark:border-[#2C2F35] px-4 py-2.5">
+                  <td className="border-b border-gray-100 dark:border-[#2C2F35] px-4 py-2">오배송</td>
+                  <td className="border-b border-gray-100 dark:border-[#2C2F35] px-4 py-2">
                     <span className="text-green-600 font-semibold">판매자 부담</span>
                   </td>
                 </tr>
                 <tr>
-                  <td className="px-4 py-2.5">상품 불일치</td>
-                  <td className="px-4 py-2.5">
+                  <td className="px-4 py-2">상품 불일치</td>
+                  <td className="px-4 py-2">
                     <span className="text-green-600 font-semibold">판매자 부담</span>
                   </td>
                 </tr>
@@ -309,7 +309,7 @@ export default function RefundPolicyPage() {
           <p className="text-[13px] text-gray-600 dark:text-gray-300">
             <span className="font-semibold text-gray-900 dark:text-white">대표:</span> 정지원
           </p>
-          <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-3">
+          <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-3">
             본 정책은 전자상거래 등에서의 소비자보호에 관한 법률을 준수합니다.
           </p>
         </div>

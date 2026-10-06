@@ -59,7 +59,7 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
             setHint(null); setOpen(true)
           }}
           disabled={checking}
-          className="w-full py-2.5 border border-rule-strong rounded-xl text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1D1F29] disabled:opacity-50"
+          className="w-full py-2 border border-rule-strong rounded-xl text-[15px] font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#1D1F29] disabled:opacity-50"
         >
           {checking ? t('reviews.checking', { defaultValue: '확인 중...' }) : t('reviews.writeBtn', { defaultValue: '리뷰 작성하기' })}
         </button>
@@ -74,11 +74,11 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
   //   핑크 정보상자·선물 이모지 → 회색 한 줄, 별은 브랜드 글자색 하나. textarea 는 아래 주석 참조.
   return (
     <div className="mt-3 rounded-2xl bg-surface shadow-lift p-4">
-      <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-1">{t('reviews.title', { defaultValue: '리뷰 작성' })}</h3>
+      <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">{t('reviews.title', { defaultValue: '리뷰 작성' })}</h3>
       <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-3">{t('reviews.rewardBanner', { defaultValue: '텍스트 {{text}}딜, 사진 {{image}}딜, 영상 {{video}}딜 리워드', text: rewards.text, image: rewards.image, video: rewards.video })}</p>
       <div className="flex gap-1 mb-3" role="radiogroup" aria-label={t('reviews.rating', { defaultValue: '별점' })}>
         {[1, 2, 3, 4, 5].map(s => (
-          <button key={s} type="button" role="radio" aria-checked={s === rating} aria-label={`${s}`} onClick={() => setRating(s)} className={`text-xl ${s <= rating ? 'text-brand-text' : 'text-gray-200 dark:text-[#3A3D44]'}`}>★</button>
+          <button key={s} type="button" role="radio" aria-checked={s === rating} aria-label={`${s}`} onClick={() => setRating(s)} className={`text-[17px] ${s <= rating ? 'text-brand-text' : 'text-gray-200 dark:text-[#3A3D44]'}`}>★</button>
         ))}
       </div>
       <textarea
@@ -91,13 +91,13 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
         aria-label={t('reviews.contentLabel', { defaultValue: '리뷰 내용' })}
         // 🩸 2026-09-02: `dark:bg-*` 가 없어 다크에서 브라우저 기본 흰 배경 + 전역 `.dark textarea{color:gray-100}` 글자
         //   = 흰 바탕에 흰 글자(placeholder 만 보임). 입력창은 카드 안의 한 톤 낮은 면(--bg)이다.
-        className="w-full px-3 py-2 rounded-xl bg-warm text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-brand/40"
+        className="w-full px-3 py-2 rounded-xl bg-warm text-[15px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-brand/40"
       />
 
       {/* 남은 글자 안내(항상) + 클릭·서버 판정 사유(hint). 둘은 같은 자리에 쓴다 — 사용자가
           "왜 안 되는지" 를 찾아 헤매지 않게. */}
       {content.length < MIN_REVIEW_LEN && !hint && (
-        <p className="mt-1.5 text-[12px] text-gray-500 dark:text-gray-400">
+        <p className="mt-2 text-[12px] text-gray-500 dark:text-gray-400">
           {t('reviews.minLength', {
             defaultValue: '{{n}}자 더 쓰면 등록할 수 있어요',
             n: MIN_REVIEW_LEN - content.length,
@@ -105,7 +105,7 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
         </p>
       )}
       {hint && (
-        <p className="mt-1.5 text-[12px] font-medium text-gray-800 dark:text-gray-100">{hint}</p>
+        <p className="mt-2 text-[12px] font-medium text-gray-800 dark:text-gray-100">{hint}</p>
       )}
 
       {/* 🛡️ 2026-05-21: 사진 업로드 — 최대 5장, 5MB/장. 리워드 100딜 (사진 첨부 시). */}
@@ -117,7 +117,7 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
               <button
                 type="button"
                 onClick={() => setImages(prev => prev.filter((_, i) => i !== idx))}
-                className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-900 text-white rounded-full text-[10px] font-bold flex items-center justify-center"
+                className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-brand text-white rounded-full text-[12px] font-bold flex items-center justify-center"
                 aria-label="삭제"
               >×</button>
             </div>
@@ -125,11 +125,11 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
           {images.length < 5 && (
             <label className="w-16 h-16 border border-dashed border-rule-strong rounded-xl flex flex-col items-center justify-center cursor-pointer text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 active:scale-95 transition">
               {uploading ? (
-                <span className="text-[10px]">업로드 중</span>
+                <span className="text-[12px]">업로드 중</span>
               ) : (
                 <>
-                  <span className="text-xl">+</span>
-                  <span className="text-[9px]">{images.length}/5</span>
+                  <span className="text-[17px]">+</span>
+                  <span className="text-[12px]">{images.length}/5</span>
                 </>
               )}
               <input
@@ -166,7 +166,7 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
         </div>
       </div>
       <div className="flex gap-2 mt-3">
-        <button onClick={() => setOpen(false)} className="flex-1 py-2 bg-gray-100 dark:bg-[#11141C] text-gray-600 dark:text-gray-300 text-sm rounded-xl font-medium">{t('common.cancel', { defaultValue: '취소' })}</button>
+        <button onClick={() => setOpen(false)} className="flex-1 py-2 bg-gray-100 dark:bg-[#11141C] text-gray-600 dark:text-gray-300 text-[15px] rounded-xl font-medium">{t('common.cancel', { defaultValue: '취소' })}</button>
         {/* 🩸 2026-09-03 (대표 신고 — "10자 이상 썼는데도 흐릿한 비활성"): 버튼을 클라 state
             (`content.length`)에 묶는 **hard-disable 패러다임을 걷어냈다.**
 
@@ -221,7 +221,7 @@ function ReviewForm({ productId, onSubmitted }: { productId: string | number; on
               }
             } finally { setSubmitting(false) }
           }}
-          className="flex-[2] py-2 bg-brand hover:bg-brand-dark text-white text-sm rounded-xl font-bold disabled:opacity-40"
+          className="flex-[2] py-2 bg-brand hover:bg-brand-dark text-white text-[15px] rounded-xl font-bold disabled:opacity-40"
         >
           {submitting ? t('reviews.submitting', { defaultValue: '등록 중...' }) : t('reviews.submit', { defaultValue: '리뷰 등록' })}
         </button>
@@ -302,17 +302,17 @@ export default function ProductReviews({ productId, limit = 5 }: { productId: nu
     <div>
       {/* 🗑️ 2026-07-07 폴드-아래 게이트 센티넬: 뷰포트 600px 안에 들어오면 리뷰 summary/목록 로드. */}
       <div ref={gateRef} aria-hidden style={{ height: 1 }} />
-      <h2 className="text-sm font-bold text-gray-900 dark:text-white mb-4">
+      <h2 className="text-[15px] font-bold text-gray-900 dark:text-white mb-4">
         {t('reviews.heading', { defaultValue: '리뷰' })} {totalCount > 0 && <span className="text-gray-500 dark:text-gray-400 font-normal">({totalCount})</span>}
       </h2>
 
       {totalCount > 0 ? (
         <div className="flex items-center gap-4 mb-4">
           <div className="text-center">
-            <p className="text-3xl font-bold text-gray-900 dark:text-white">{avgRating}</p>
-            <div className="flex gap-0.5 mt-1">
+            <p className="text-[28px] font-bold text-gray-900 dark:text-white">{avgRating}</p>
+            <div className="flex gap-1 mt-1">
               {[1, 2, 3, 4, 5].map(s => (
-                <span key={s} className={`text-sm ${s <= Math.round(avgRating) ? 'text-brand-text' : 'text-gray-200 dark:text-[#3A3D44]'}`}>★</span>
+                <span key={s} className={`text-[15px] ${s <= Math.round(avgRating) ? 'text-brand-text' : 'text-gray-200 dark:text-[#3A3D44]'}`}>★</span>
               ))}
             </div>
           </div>
@@ -322,7 +322,7 @@ export default function ProductReviews({ productId, limit = 5 }: { productId: nu
               const pct = totalCount > 0 ? (count / totalCount) * 100 : 0
               return (
                 <div key={s} className="flex items-center gap-2">
-                  <span className="text-[10px] text-gray-500 dark:text-gray-400 w-3">{s}</span>
+                  <span className="text-[12px] text-gray-500 dark:text-gray-400 w-3">{s}</span>
                   <div className="flex-1 h-1.5 bg-gray-100 dark:bg-[#1D1F29] rounded-full overflow-hidden">
                     <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${pct}%` }} />
                   </div>
@@ -332,7 +332,7 @@ export default function ProductReviews({ productId, limit = 5 }: { productId: nu
           </div>
         </div>
       ) : (
-        <p className="text-xs text-gray-500 dark:text-gray-400 py-6 text-center">{t('reviews.noReviews', { defaultValue: '아직 리뷰가 없습니다.' })}</p>
+        <p className="text-[12px] text-gray-500 dark:text-gray-400 py-6 text-center">{t('reviews.noReviews', { defaultValue: '아직 리뷰가 없습니다.' })}</p>
       )}
 
       <ReviewForm productId={productId} onSubmitted={() => {

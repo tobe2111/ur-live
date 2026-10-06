@@ -70,3 +70,64 @@ export async function copyCuratorProfileToSeller(
   await db.prepare(`UPDATE sellers SET ${sets.join(', ')} WHERE id = ?`)
     .bind(...vals, sellerId).run().catch(() => { /* 컬럼 없는 env — skip */ })
 }
+
+/**
+ * 🏪 지도에서 고른 가게를 **제 자리에** 남긴다 (2026-09-21 대표 확정 "안 B").
+ *
+ * 🩸 종전: 가입 화면이 주소를 `sellers.description` 안 `[주소: …]` **텍스트**로 밀어 넣었고
+ *   그 문자열을 **읽는 코드가 레포 전체에 0건**이었다(라이브 실측 — 셀러 4명 전원 `description`
+ *   비어 있음, `business_address` 비어 있음). 좌표·place_id 는 아예 오지도 않았다. 그래서
+ *   **가입 문으로 들어온 매장은 지도에 뜨지 않았다** — 매장 등록 문(`/store/new`)으로 들어온
+ *   단 한 곳(seller 14)만 좌표를 갖고 있었다.
+ *
+ * ⇒ 키 이름을 **매장 등록 문과 똑같이** 쓴다(`seller-stores.routes.ts` 의 `setSellerMeta`).
+ *   두 문이 다른 이름으로 같은 것을 저장하면, 읽는 쪽이 한쪽만 알게 되는 날이 반드시 온다.
+ *
+ * ⚠️ `store_phone`(가게 대표번호)과 `sellers.phone`(담당자 휴대폰, 알림톡 수신)은 **다른 축**이다.
+ *   여기서 `sellers.phone` 을 건드리지 않는다 — 덮으면 알림톡이 가게 유선번호로 간다.
+ * ⚠️ fail-soft: 메타가 없어도 매장은 매장이다(프로필 수정에서 채울 수 있다). 가입을 되돌리지 않는다.
+ */
+export async function stampSignupStorePlace(
+  db: D1Database,
+  sellerId: number | null | undefined,
+  place: {
+    address?: string; store_phone?: string; store_category?: string
+    kakao_place_id?: string; kakao_place_url?: string; kakao_category?: string
+    lat?: string; lng?: string
+  },
+): Promise<void> {
+  if (!sellerId) return
+  const s = (v: unknown, max: number) => {
+    const t = typeof v === 'string' ? v.trim().slice(0, max) : ''
+    return t || undefined
+  }
+  const address = s(place.address, 200)
+  // 좌표는 숫자여야 한다 — 문자열을 그대로 믿으면 지도가 엉뚱한 곳을 가리킨다.
+  const num = (v: unknown) => {
+    const n = Number(String(v ?? '').trim())
+    return Number.isFinite(n) && n !== 0 ? String(n) : undefined
+  }
+  const lat = num(place.lat)
+  const lng = num(place.lng)
+
+  if (address) {
+    await db.prepare("UPDATE sellers SET address = ? WHERE id = ? AND COALESCE(address, '') = ''")
+      .bind(address, Number(sellerId)).run().catch(() => { /* 컬럼 없는 env — 메타에는 남는다 */ })
+  }
+
+  const meta: Record<string, string> = {}
+  if (address) meta.store_address = address
+  const phone = s(place.store_phone, 20); if (phone) meta.store_phone = phone
+  const cat = s(place.store_category, 40); if (cat) meta.store_category = cat
+  const kcat = s(place.kakao_category, 100); if (kcat) meta.kakao_category = kcat
+  const pid = s(place.kakao_place_id, 40); if (pid) meta.kakao_place_id = pid
+  const purl = s(place.kakao_place_url, 300)
+  if (purl && /^https?:\/\/([a-z0-9-]+\.)*kakao\.com\//i.test(purl)) meta.kakao_place_url = purl
+  if (lat && lng) { meta.store_lat = lat; meta.store_lng = lng }
+  if (Object.keys(meta).length === 0) return
+
+  try {
+    const { setSellerMeta } = await import('../../../worker/utils/seller-meta')
+    await setSellerMeta(db, Number(sellerId), meta)
+  } catch { /* 메타 미기록 — 매장은 유지(프로필 수정으로 채울 수 있다) */ }
+}

@@ -5494,17 +5494,80 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 348건 · 최신순 · 이 목록은 자동 생성된다._
+_총 401건 · 최신순 · 이 목록은 자동 생성된다._
 
+**2026-10-06**
+- [철거로 잃은 둘을 원본 화면에 복원 (2026-10-06)](handoff/2026-10-06-teardown-losses.md)
+- [로컬은 clean 인데 GitHub 은 충돌 — Verify 가 *부재*로 남는 함정 (2026-10-06)](handoff/2026-10-06-github-side-merge.md)
+- [5일치 점검 — CI 판정 마감 + 라이브에서 나온 머니 발견 1건 (2026-10-06)](handoff/2026-10-06-five-day-sweep.md)
+- [2026-10-06 — 첫 화면이 같은 것을 두 번 받던 것 (전수 수리 + 가드)](handoff/2026-10-06-first-screen-duplicate-fetch.md)
+- [만료 환불을 주문 장부에 적는다 — 이중환불 구멍 (2026-10-06)](handoff/2026-10-06-expired-refund-booked.md)
+- [의존성 권고 · 셀러 40px 눈금 · 정산 패널 봉투 (2026-10-06)](handoff/2026-10-06-deps-rung-envelope.md)
+- [유어애즈 월 예산 — 목표를 "포함분 안" 에서 **초과 $0** 으로 (2026-10-06)](handoff/2026-10-06-ads-zero-overage-budget.md)
+**2026-10-02**
+- [S-EVR1 판정 — 만료 이용권 자동환불이 처음으로 돌았다 (2026-10-02 03:20 KST)](handoff/2026-10-02-expired-refund-booking.md)
+**2026-10-01**
+- [2026-10-01 — 마이 시트 측정 2차 + 정산 화면이 응답 하나에 통째로 죽던 것](handoff/2026-10-01-seller-phone-audit-and-settlements.md)
+- [2026-10-01 — 셀러 공용 chrome 탭 타깃 · 폰 측정 완결 · 시드 기제 합침](handoff/2026-10-01-seller-chrome-tap-reach.md)
+- [마이의 손수 시트 철거 — 같은 일에 화면이 하나가 됐다 (2026-10-01)](handoff/2026-10-01-my-sheet-teardown.md)
+- [2026-10-01 — 머니 게이트 판정 도구가 수수료를 0원으로 읽고 있었다](handoff/2026-10-01-money-gate-judge-broken.md)
+- [로그인하면 보던 링크로 안 돌아오던 것 (2026-10-01)](handoff/2026-10-01-login-return-url.md)
+- [로그인 복귀를 **공식**으로 — 전수 (2026-10-01)](handoff/2026-10-01-login-return-everywhere.md)
+- [2026-10-01 — 로딩 밀림의 근본 원인 제거 + 전수 측정 가드](handoff/2026-10-01-loading-shift-root-cause.md)
+- [2026-10-01 — 인스타 댓글 → 자동 DM (유어딜 공식 계정)](handoff/2026-10-01-instagram-comment-autodm.md)
+- [2026-10-01 (2차) — 인스타 자동 DM 을 매장(사장님·중개사)에게 — 마이에서, 토큰 없이](handoff/2026-10-01-instagram-autodm-sellers.md)
+- [2026-10-01 — 메인에선 숨기고 직링크로는 팔리게 (A 방식) + 그때 드러난 검색 누수](handoff/2026-10-01-hide-from-main-not-from-search.md)
+- [대표 결재 넷을 실행했다 — 이중적립 제거 · 만료환불 마감 · 부가세 손잡이 · 시트 측정 (2026-10-01)](handoff/2026-10-01-four-decisions-executed.md)
+- [🔴 2026-10-01 — 같은 머니 결함을 두 세션이 각자 고쳤다 (#1591 머지 · #1593 폐기) + 다섯 번째 읽기 자리 발견](handoff/2026-10-01-duplicate-money-fix-and-handover-gap.md)
+- [2026-10-01 — 로그아웃했는데 로그인 상태로 보이던 것 + 이메일 가입·로그인](handoff/2026-10-01-consumer-logout-and-email-auth.md)
+**2026-09-30**
+- [2026-09-30 — 대표 지시 "다 순서대로 이상적으로 해줘" (여섯 항목)](handoff/2026-09-30-six-items-in-order.md)
+- [검색이 조용히 틀린 결과를 주던 것 — 바인드 순서 (2026-09-30)](handoff/2026-09-30-search-bind-order.md)
+- [미사용 만료 환불이 한 번도 돈 적 없다(🔴) · 머니 스위치 번호가 겹쳐 지시가 안 통했다](handoff/2026-09-30-refund-stolen-and-switch-labels.md)
+- [회색 램프 온도 정정(전 화면) + 유어샵 한 톤 — 2026-09-30](handoff/2026-09-30-palette-temperature-ushop-one-tone.md)
+- [마이 여섯 정리 + 로딩 밀림 수리 (2026-09-30)](handoff/2026-09-30-my-page-six-and-loading-shift.md)
+- [소비자 UI 세 건 — 잔액 카드 · 지도 시트 제스처 · 검색 제안 (2026-09-30)](handoff/2026-09-30-consumer-ui-three.md)
+**2026-09-29**
+- [유어샵·소개 콘솔 — "왜 이리 세련된 느낌이 없지?" (2026-09-29)](handoff/2026-09-29-ushop-console-refresh.md)
+- [정산 마무리 3건 — 게이트 문구 정정 · 세무사 질의서 · 계좌 0곳의 진짜 원인](handoff/2026-09-29-settlement-gate-and-bank-accounts.md)
+- [소개 콘솔 B안 — 판 8개를 3개로 (2026-09-29)](handoff/2026-09-29-curator-console-b.md)
+**2026-09-28**
+- [유어샵 카톡 공유 카드 — 새까맣던 것 (2026-09-28)](handoff/2026-09-28-ushop-kakao-card.md)
+- [2026-09-28 유어샵 e3/s3 — 관리 화면 분리(1단계) + 본문 밀도형(2단계)](handoff/2026-09-28-ushop-e3-manage.md)
+- [PC 홈 히어로 — 흐르는 이용권 띠 (2026-09-28)](handoff/2026-09-28-pc-home-hero-strip.md)
+- [없는 앱의 스토어 배지 제거 (2026-09-28)](handoff/2026-09-28-no-app-store-badges.md)
+- [마이 — 타입 스케일 여섯 단계 + 4px 격자 + 강조면 하나 (2026-09-28)](handoff/2026-09-28-my-type-scale-and-grid.md)
+- [마이 판매 구역 — 눈으로 보기 시작했더니 시트가 한 번도 안 열렸다 (2026-09-28)](handoff/2026-09-28-my-sell-zone-and-tool-sheet.md)
+- [마이 — 목록 문법 한 벌 + PC 중복 내비 제거 (2026-09-28)](handoff/2026-09-28-my-quality-one-list-grammar.md)
+- [어드민 플랫폼 설정이 폰에서 한 글자씩 세로로 쌓였다 (2026-09-28)](handoff/2026-09-28-admin-settings-mobile.md)
+**2026-09-26**
+- [2026-09-26 — 비슷한 스테이 자리 확정(숙소 소개 바로 아래)](handoff/2026-09-26-similar-stays-position.md)
+- [마이에 남은 셋 + 안 쓰는 메뉴 정리 (2026-09-26)](handoff/2026-09-26-seller-rest-and-cleanup.md)
+- [마이에서 전부 + 마이 청크 다이어트 (2026-09-26)](handoff/2026-09-26-my-all-in-my-and-chunk-diet.md)
+**2026-09-25**
+- [2026-09-25 — 셀러 핵심 업무를 소비자 앱 안으로 (설계 + 시안)](handoff/2026-09-25-seller-in-consumer-app-design.md)
+- [2026-09-25 — #1543 라이브 판정(E4)과 거기서 나온 결함 하나](handoff/2026-09-25-e4-store-intro-tab.md)
+**2026-09-24**
+- [영입 커미션 잔재 정리 + 정산 레일 (2026-09-24)](handoff/2026-09-24-intro-commission-residue.md)
+- [2026-09-24 — 대표 문서 「유어딜_추가제안」 6항목 이행](handoff/2026-09-24-doc-followthrough.md)
+**2026-09-23**
+- [2026-09-23 — 이용권 QR 시트 E4 판정 + 소비자 화면 글꼴 정리](handoff/2026-09-23-qr-sheet-e4-and-consumer-type.md)
+- [어드민 재방문 401 일곱 개 · 승인 400 — 영구 수리 (2026-09-23)](handoff/2026-09-23-admin-401-storm-and-approve-400.md)
 **2026-09-21**
 - [🎬 유어쇼츠 전체 보기 — 도시·종류로 고르는 목록 (`/urshorts`)](handoff/2026-09-21-urshorts-browse.md)
+- [2026-09-21 — 매장 확인 통화 기록 + 신규 매장 노출 유예 (사기 방어 ①②)](handoff/2026-09-21-store-verify.md)
 - [2026-09-21 — 사장님 신고 경로 (사기 방어 ③)](handoff/2026-09-21-store-report.md)
+- [2026-09-21 — 사장님 통보(알림톡) 탐지·큐·게이트드 발송](handoff/2026-09-21-store-owner-notice.md)
+- [2026-09-21 — 정산 유보 10일 구현 + 수수료·세금 정리](handoff/2026-09-21-settlement-hold-and-fees.md)
+- [사업자 유저 가입 화면 — 2차 시안 (2026-09-21, 라이브 실측 재작성)](handoff/2026-09-21-seller-signup-simplify.md)
 - [셀러 주문 상세 — 사진·주문번호·이용권 (2026-09-21)](handoff/2026-09-21-seller-order-detail.md)
 - [2026-09-21 — 셀러 상품편집 저장 버튼 위치 + 로더 워드마크가 안 보이던 것](handoff/2026-09-21-seller-edit-save-top-and-loader-font.md)
 - [2026-09-21 — 지역 페이지가 PC 에서 430px 액자에 갇혀 있던 것](handoff/2026-09-21-region-pc-fullbleed.md)
+- [💸 결제된 주문의 `payment_status` — 환불이 막히고 매출이 빠지던 것 (2026-09-21)](handoff/2026-09-21-order-payment-status.md)
 - [2026-09-21 — 주문관리가 이용권을 택배로 그리던 것 (+ 결제 복구 E4 통과)](handoff/2026-09-21-order-kind-shipping-ui.md)
 - [2026-09-21 — 지도 핀 끌어서 위치 잡기 (시안 ②)](handoff/2026-09-21-map-pin-drag.md)
 - [2026-09-21 — 로더 워드마크: 내 진단이 틀렸고, 고쳤다던 것을 되돌렸다](handoff/2026-09-21-font-diagnosis-reverted.md)
+- [2026-09-21 — 사업자등록증 **선택** 전환 + 사장님 통보 링크 둘](handoff/2026-09-21-bizcert-optional.md)
 **2026-09-19**
 - [🧪 "staging 실결제" 게이트가 실재하지 않는다 (2026-09-19)](handoff/2026-09-19-staging-gate-reality.md)
 - [🪙 결제 화면에서 딜 사용액 조절 — 대표 확정 "C안" (2026-09-19)](handoff/2026-09-19-pay-screen-deal-control.md)

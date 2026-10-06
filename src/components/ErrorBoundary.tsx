@@ -81,17 +81,17 @@ class ErrorBoundary extends Component<Props, State> {
               {!exhausted && (
                 <div className="w-12 h-12 mx-auto mb-4 rounded-full border-2 border-line border-t-gray-900 dark:border-t-white animate-spin" />
               )}
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+              <h2 className="text-[17px] font-bold text-gray-900 dark:text-white mb-2">
                 {exhausted ? '새 버전이 배포됐어요' : '화면을 업데이트하고 있어요'}
               </h2>
-              <p className="text-gray-500 dark:text-gray-400 text-sm mb-6 leading-relaxed">
+              <p className="text-gray-500 dark:text-gray-400 text-[15px] mb-6 leading-relaxed">
                 {exhausted
                   ? '아래 버튼을 눌러 최신 화면으로 새로고침해 주세요.'
                   : <>새 버전이 배포되어 최신 화면으로 새로고침하고 있어요.<br />잠시만 기다려 주세요.</>}
               </p>
               <button
                 onClick={this.handleManualReload}
-                className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full text-sm font-bold hover:opacity-90"
+                className="px-5 py-2 bg-brand text-white rounded-full text-[15px] font-bold hover:opacity-90"
               >
                 지금 새로고침
               </button>
@@ -125,7 +125,7 @@ class ErrorBoundary extends Component<Props, State> {
               </svg>
             </div>
 
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            <h2 className="text-[24px] font-bold text-gray-900 dark:text-white mb-2">
               문제가 발생했습니다
             </h2>
 
@@ -135,10 +135,10 @@ class ErrorBoundary extends Component<Props, State> {
 
             {import.meta.env.DEV && this.state.error && (
               <details className="text-left mb-6">
-                <summary className="cursor-pointer text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
+                <summary className="cursor-pointer text-[15px] text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200">
                   오류 상세 보기 (개발 환경)
                 </summary>
-                <pre className="mt-2 text-xs bg-gray-100 dark:bg-[#1D1F29] p-3 rounded overflow-auto max-h-60">
+                <pre className="mt-2 text-[12px] bg-gray-100 dark:bg-[#1D1F29] p-3 rounded overflow-auto max-h-60">
                   {this.state.error.toString()}
                   {'\n\n--- Stack ---\n'}
                   {this.state.error?.stack || ''}
@@ -151,7 +151,7 @@ class ErrorBoundary extends Component<Props, State> {
               {/* 소프트 재시도 — 전체 새로고침 없이 상태 리셋 후 재렌더(일시적 에러 회복). 지속되면 다시 이 화면. */}
               <button
                 onClick={this.handleSoftRetry}
-                className="flex-1 bg-gray-900 dark:bg-white text-white dark:text-gray-900 py-3 px-4 rounded-full font-medium hover:opacity-90 transition-opacity"
+                className="flex-1 bg-brand text-white py-3 px-4 rounded-full font-medium hover:opacity-90 transition-opacity"
               >
                 다시 시도
               </button>

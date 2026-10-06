@@ -17,7 +17,10 @@ import { readCode, sliceFrom } from '../helpers/source-text'
 
 const SRC = readCode('src/pages/curator-page/CuratorHeader.tsx')
 // SNS 블록만 본다 — 파일 전체를 보면 남의 색까지 걸린다.
-const SNS = sliceFrom(SRC, "aria-label=\"YouTube\"", 'SNS 편집', 3000)
+// 🔧 2026-09-28 끝 마커 수리: 'SNS 편집' 은 e3 재작성(편집이 /u/me/manage 로 나감)으로 **사라졌다**.
+//   `sliceFrom` 은 끝 마커가 없으면 maxLen 폴백이라, 슬라이스가 버튼 줄까지 삼켜 "SNS 자리"라는
+//   범위 자체가 헐거워져 있었다. `snsLinks` 상수는 `<header` 바로 앞에서 끝난다.
+const SNS = sliceFrom(SRC, "aria-label=\"YouTube\"", '<header', 3000)
 
 describe('① 브랜드 색 면이 없다', () => {
   it('세 타일의 배경색이 사라졌다', () => {
@@ -48,11 +51,26 @@ describe('② 세 링크가 같은 모양을 공유한다', () => {
   })
 })
 
-describe('③ 왼쪽 선이 위 줄과 맞는다', () => {
-  it('글리프 줄만 당기고 편집 버튼은 안 당긴다', () => {
-    // 타일이 없으면 글리프가 원 안에서 가운데라 ~8px 들어가 보인다.
-    expect(SRC).toMatch(/flex items-center -ml-2 empty:hidden/)
-    // 당김은 글리프 묶음에만 — 편집 버튼까지 당기면 SNS 가 없는 사람 화면에서 버튼만 튀어나간다.
-    expect(SRC).not.toMatch(/flex items-center gap-2 mt-3 -ml-2/)
+describe('③ SNS 는 자기 줄을 갖지 않는다', () => {
+  // 🔧 2026-09-28 재조준(대표 확정 **상단 1안**): 종전 제목은 *"왼쪽 선이 위 줄과 맞는다"* 였다.
+  //   그 전제는 **SNS 가 자기 줄을 갖는다**는 것이었고(그래서 `-ml-2` 로 왼쪽을 당겨 이름 줄과 선을 맞췄다),
+  //   대표가 그 줄 자체를 없애라고 했다(*"SNS 로고도 말이야"* — 아이콘 둘을 위해 36px + 여백 = 48px).
+  //   이제 SNS 는 이름 줄의 오른쪽 버튼 묶음에 들어가 **오른쪽 정렬**이라 맞출 왼쪽 선이 없다.
+  //   ⇒ 지키려던 것(있으면 줄 맞고, 없으면 아무것도 안 그린다)을 새 구조의 말로 옮긴다.
+  //      크기는 36px 그대로다 — 줄을 없앤 것이 높이를 줄인 것이고, 아이콘을 줄여서가 아니다
+  //      (실측: 32px 로 줄여도 헤더 높이 92px 불변 · 얻는 건 이름 칸 12px).
+  it('SNS 가 하나도 없으면 아무것도 그리지 않는다', () => {
+    expect(SRC, 'hasSns 로 조건부').toMatch(/const snsLinks = hasSns \?/)
+    expect(SRC, '없으면 null').toMatch(/\) : null/)
+  })
+
+  it('SNS 전용 줄이 되살아나지 않았다', () => {
+    // 이 한 줄이 곧 48px 이다(아이콘 36 + pb-3 12).
+    expect(SRC).not.toMatch(/-ml-2 px-4 pb-3/)
+  })
+
+  it('당김이 버튼 묶음으로 번지지 않는다', () => {
+    // 버튼 묶음(ml-3)은 오른쪽 정렬이라 당기면 오히려 어긋난다.
+    expect(SRC).not.toMatch(/ml-3 flex items-center gap-1\.5 shrink-0[^"]*-ml-2/)
   })
 })

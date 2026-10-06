@@ -308,7 +308,7 @@ export function TossPaymentWidget({
         onClick={handlePayment}
         disabled={loadingState !== 'ready' || isProcessing}
         className={`
-          w-full py-4 rounded-lg font-bold text-white text-lg transition-all
+          w-full py-4 rounded-lg font-bold text-white text-[17px] transition-all
           ${(loadingState !== 'ready' || isProcessing)
             ? 'bg-gray-300 cursor-not-allowed'
             : 'bg-brand hover:bg-brand-dark active:bg-brand-dark'
@@ -342,10 +342,10 @@ export function TossPaymentWidget({
               </svg>
             </div>
             <div className="flex-1">
-              <p className="text-sm font-medium text-red-800 whitespace-pre-wrap">{errorMessage}</p>
+              <p className="text-[15px] font-medium text-red-800 whitespace-pre-wrap">{errorMessage}</p>
               <button
                 onClick={() => window.location.reload()}
-                className="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium underline"
+                className="mt-2 text-[15px] text-blue-600 hover:text-blue-800 font-medium underline"
               >
                 페이지 새로고침
               </button>

@@ -1,10 +1,17 @@
+// 🅿️ 2026-09-30 — **주차됨(렌더하는 곳 0)**. 대표 지시로 마이에서 뺐다
+//   (*"동네 리뷰어 lv.1 은 빼줘"*). 지우지 않은 이유: 어드민 검증·보너스 지급·레벨 API 는
+//   그대로 살아 있고, 레벨 전용 혜택이 생기면 이 카드가 그때 필요하다.
+//   ⚠️ **되살리기 전에 먼저 볼 것**: 레벨을 요구하는 활성 이용권이 실제로 있는가.
+//   0이면 이 카드는 없는 혜택을 향해 진행바를 채운다(그게 이번에 뺀 이유다).
+//   후기를 *쓰는* 문은 여기가 아니라 `my-vouchers/ReviewBonusButton`(사용한 이용권)이다.
 // 🗺️ 2026-07-02 (카카오맵 리뷰 게이미피케이션 — 대표 "유어딜과 잘 연계되게"): 마이페이지 동네 리뷰어
 //   레벨 카드. 게이미피케이션 동기부여 루프를 프로필에 상시 노출(레벨/진행도 + 후기 미션 진입).
 //   설계: docs/design/kakao-review-gamification.md
 import { useState, useEffect } from 'react'
 import { formatNumber, safeNum } from '@/utils/format'
 import { useNavigate } from 'react-router-dom'
-import { Award, ChevronRight } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
+import { MedalIcon } from '@/components/icons/urdeal-icons'
 import api from '@/lib/api'
 
 type MyLevel = {
@@ -54,16 +61,16 @@ export default function ReviewLevelCard() {
     <button
       type="button"
       onClick={() => navigate('/my-vouchers')}
-      className="w-full mt-3 rounded-2xl bg-surface px-4 py-3.5 text-left active:bg-gray-50 dark:active:bg-white/[0.06] transition-colors"
+      className="w-full mt-3 rounded-2xl bg-surface px-4 py-3 text-left active:bg-gray-50 dark:active:bg-white/[0.06] transition-colors"
     >
       <div className="flex items-center gap-3">
-        <Award className="w-6 h-6 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+        <MedalIcon className="w-6 h-6 text-gray-500 dark:text-gray-400" aria-hidden="true" />
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             <span className="text-[13px] font-bold text-gray-900 dark:text-white">동네 리뷰어 Lv.{formatNumber(data.level)}</span>
-            <span className="text-[11px] font-medium text-gray-500 dark:text-white/50">· {data.label}</span>
+            <span className="text-[12px] font-medium text-gray-500 dark:text-white/50">· {data.label}</span>
           </div>
-          <p className="text-[10.5px] text-gray-500 dark:text-white/45 mt-0.5">
+          <p className="text-[12px] text-gray-500 dark:text-white/45 mt-1">
             {data.next_level != null && data.remaining != null
               ? `Lv.${data.next_level}까지 카카오맵 후기 ${formatNumber(data.remaining)}건 더 (누적 ${formatNumber(approved)}건)`
               : `최고 레벨 달성 · 누적 후기 ${formatNumber(approved)}건`}

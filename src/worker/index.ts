@@ -26,6 +26,7 @@ import { authTokenRoutes } from './routes/auth-token.routes'; // Phase 2.3
 import { healthRoutes } from './routes/health.routes';
 import { killerSwRoutes } from './routes/killer-sw.routes'; // 2026-04-27 PWA 사고 복구
 import kakaoSkillWebhookRoutes from './routes/kakao-skill-webhook.routes'; // 💬 2026-07-19 CS FAQ 봇(오픈빌더 스킬, KAKAO_SKILL_SECRET 미설정=404)
+import { instagramWebhookRoutes, instagramAutoDmAdminRoutes, instagramAutoDmSellerRoutes } from '../features/instagram-autodm/api/autodm.routes'; // 💬 2026-10-01 인스타 댓글→자동 DM(어드민 '켜기' 전엔 0통)
 import { sitemapRoutes } from './routes/sitemap.routes'; // 2026-04-27 TD-006 분할
 import { ordersRouter } from './routes/order.routes';
 import { paymentsRouter } from './routes/payment.routes';
@@ -230,6 +231,7 @@ import { pointsRoutes } from '../features/points/api/points.routes';
 import { groupBuyRoutes } from '../features/group-buy/api/group-buy.routes';
 // 🛡️ 2026-05-18: 숙소 공구 (stay_voucher) 사용자 측 public — PR 1 Foundation.
 import { staysPublicRoutes } from '../features/group-buy/api/stays-public.routes';
+import prelaunchRoutes from '../features/group-buy/api/prelaunch.routes';
 // 🗺️ 2026-08-03 (대표 — 도시별 페이지 + 구글 색인): 지역별 딜 집계(페이지·인덱스·sitemap 공용 SSOT).
 import { regionsRoutes } from '../features/group-buy/api/regions.routes';
 // 🛡️ 2026-05-18: R2 이미지 업로드 (seller/admin/agency/user 공용).
@@ -389,7 +391,7 @@ const _bodyLimitIngest = bodyLimit(1_500_000);
 app.use('/api/*', (c, next) => c.req.path === '/api/buyer-ingest' ? _bodyLimitIngest(c, next) : _bodyLimit1m(c, next));
 app.use('/api/*', i18nMiddleware);
 // 인제스트는 토큰 인증 + 크로스오리진 → 전역 IP 레이트리밋 제외(429 가 CORS 없이 나가 북마클릿 배치 실패 방지). /known 서브경로 포함.
-app.use('/api/*', (c, next) => c.req.path.startsWith('/api/buyer-ingest') ? next() : (rateLimiterMiddleware as any)(c, next));
+app.use('/api/*', (c, next) => c.req.path.startsWith('/api/buyer-ingest') || c.req.path === '/api/instagram/webhook' ? next() : (rateLimiterMiddleware as any)(c, next));
 
 // CORS — multi-region support
 const _globalCors = cors({
@@ -915,7 +917,7 @@ app.use('*', async (c, next) => {
           // 🖼️ 2026-07-01 (전수조사 후속 A): og:image 는 전용 OG 카드(1200×630 SVG, 이름·핸들·프로필 합성)를
           //   사용 — 정사각 raw 프로필보다 소셜(카톡/트위터/FB) 카드 비율에 맞음(블로그 `/blog/og/:slug` 와 동일 방식).
           //   프로필 유무와 무관하게 카드가 렌더되므로 무조건 설정. `/api/og/curator/:handle` = og-image.routes.ts.
-          const ogCard = `${origin2}/api/og/curator/${encodeURIComponent(cur.handle || '')}`;
+          const ogCard = `${origin2}/api/og/curator/${encodeURIComponent(cur.handle || '')}?v=2` // `?v` = 카카오 스크랩 캐시 무효화(og-curator-card.ts 머리말);
           // 🔁 2026-07-29: 동일한 `.on()` 체인이 표면마다 복붙돼 있던 것을 `applySurfaceMeta` 로 통일
           //   (셀렉터·순서·값 전부 동일 — 출력 불변). canonical 은 이제 속성 이스케이프를 거친다.
           rb = applySurfaceMeta(rb, {
@@ -1159,6 +1161,7 @@ app.route('/', internalDiagnosticsRoutes);
 app.route('/', internalAdminToolsRoutes);
 app.route('/', smokeTestRoutes);
 app.route('/', kakaoSkillWebhookRoutes); // 💬 CS FAQ 봇 — read-only, 시크릿 게이트(기본 404)
+app.route('/', instagramWebhookRoutes); // 💬 인스타 웹훅 — 서명 검증(앱 시크릿), 발송 게이트 기본 OFF
 app.route('/', repairSchemaRoutes);
 app.route('/', errorTelemetryRoutes);
 app.route('/', healthcheckRoutes);
@@ -1440,7 +1443,7 @@ app.route('/api/admin', adminAuthRoutes);
 app.use('/api/seller/login', rateLimit({ action: 'seller_login', max: 10, windowSec: 300 }));
 app.route('/api/seller', sellerAuthRoutes);
 app.route('/api/seller', sellerOperatorsRoutes); // 🏪 my-stores · 매장 전환 · 운영자 관리
-app.route('/api/seller/urshorts', sellerUrshortsRoutes); // 🎬 자기 이용권에 쇼츠 붙이기(소유권 검사)
+app.route('/api/seller/instagram-dm', instagramAutoDmSellerRoutes); app.route('/api/seller/urshorts', sellerUrshortsRoutes); // 💬 매장 인스타 자동 DM(좌석 토큰) · 🎬 자기 이용권에 쇼츠 붙이기(소유권 검사)
 app.route('/api/influencer-profile', influencerProfileRoutes); app.route('/api/seller', sellerStoresRoutes); app.route('/api/seller', sellerWithdrawRoutes); app.route('/api/seller/influencers', sellerInfluencersRoutes); app.route('/api/influencer-offers', influencerOfferInvitesRoutes); app.route('/api/admin/influencer-outreach', adminInfluencerOutreachRoutes); // 매장관리/인플탐색·제안/수락다리/어드민 발송큐
 
 // 🔒 2026-07-28: Google/Firebase 로그인 마운트 해제 — 사유·복원법은 auth.ts 주석 / AUDIT_INVARIANTS.md
@@ -1798,19 +1801,14 @@ adminApp.route('/flags', adminFlagsRoutes);
 adminApp.route('/cafe24', cafe24Routes);
 // Blog admin — mounted INSIDE adminApp (requireAdmin + IP whitelist + audit log)
 adminApp.route('/blog', adminBlogRoutes);
+adminApp.route('/instagram-autodm', instagramAutoDmAdminRoutes); // 💬 인스타 자동 DM 설정·규칙·발송 기록
 // 🥗 2026-07-15 워커 다이어트(대표 승인): 소셜 자동화 라우트 마운트 분리(위 import 참조). 게이트 OFF·미사용이라
 //   /api/admin/social/* 는 다이어트 기간 404 — 라이브 영향 0. 재도입=이 줄+import+크론 원복.
 // adminApp.route('/social', socialMediaRoutes);
 // Restaurant settlement (admin)
 adminApp.route('/restaurant-settlement', restaurantSettlementRoutes);
-// Naver Ad Scraper 제거됨 (2026-04-22) — 법적 리스크(PIPA/정보통신망법) + 기술 불안정
-// 남은 `/api/scraper/d1/*` 엔드포인트도 단계적 제거. scraped_advertisers 테이블은 데이터 보존 목적으로 남김.
-
-// 🛡️ 2026-04-22: Legacy scraper endpoint 제거 (법적 리스크 + 보안 위험)
-// - /api/scraper/d1/emails, /api/scraper/d1/stats 모두 제거
-// - 이유: adminApp 미들웨어 체인 (IP whitelist + audit) 을 우회하고 있었음
-// - scraped_advertisers 테이블은 데이터 보존용으로 남겨둠 (직접 SQL 조회 가능)
-// - 스크래핑 기능은 이미 CLAUDE.md 에 따라 제거됨 (PIPA/정보통신망법 리스크)
+// Naver Ad Scraper·legacy /api/scraper/d1/* 제거됨 (2026-04-22) — 법적 리스크(PIPA/정보통신망법) + adminApp 미들웨어 우회.
+// scraped_advertisers 테이블은 데이터 보존용으로 남김(직접 SQL 조회 가능).
 
 // 🏭 [wholesale-split 2026-07-16] 도매 라우트는 WHOLESALE_BUNDLE=1 빌드에서만 포함.
 //   __INCLUDE_WHOLESALE__=false(소비자) → esbuild DCE 로 mount-wholesale + 도매 그래프 전체 제외(워커 gzip ~200KB↓).
@@ -1901,14 +1899,13 @@ app.route('/api/points', pointsRoutes);
 // ── 공동구매 & 바우처 ──
 app.route('/api/group-buy', groupBuyRoutes);
 app.route('/api/vouchers', groupBuyRoutes);
-// 🛡️ 2026-05-18: 숙소 공구 사용자 측 (PR 1 Foundation).
-app.route('/api/group-buy', staysPublicRoutes);
+app.route('/api/group-buy', staysPublicRoutes); // 🛡️ 2026-05-18: 숙소 공구 사용자 측 (PR 1 Foundation).
+app.route('/api/group-buy', prelaunchRoutes); // 🌱 2026-09-24 (대표 문서 ⑤ "공개예정 페이지"): 오픈 예정 모아보기 — **잠긴 피드 라우트 무접촉**.
 // 🗺️ 2026-08-03: 지역별 딜 집계 — `/region/*` 페이지·지역 인덱스·sitemap 이 같은 숫자를 보게 하는 SSOT.
 app.route('/api/regions', regionsRoutes);
 // 🛡️ 2026-05-18: R2 이미지 업로드 (multi-role).
 app.route('/api', uploadRoutes);
-// 🛡️ 2026-05-21: 자체 예약 캘린더 (뷰티/액티비티/건강/펫 등 sub-1day 예약).
-//   숙소는 별도 stay_bookings 유지. routes 내부 prefix 가 /seller/, /products/, /appointments/ 등 다양.
+// 🛡️ 2026-05-21: 자체 예약 캘린더 (뷰티/액티비티/건강/펫 등 sub-1day 예약) — 숙소는 별도 stay_bookings 유지. routes 내부 prefix 가 /seller/, /products/, /appointments/ 등 다양.
 app.route('/api', appointmentsRoutes);
 // 🛡️ 2026-05-21 Phase C: 통합 정산 (payouts 어드민).
 app.route('/api', adminPayoutsRoutes);

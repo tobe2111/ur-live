@@ -48,10 +48,12 @@ export default [
     why: '렌더 실측으로 잡은 결함이다 — Field 라벨 아래 컴포넌트 라벨이 또 떠서 대표가 빼라고 한 "(선택)" 이 다른 문으로 되살아난다.',
   },
   {
+    // 🔀 2026-09-21 재조준 — 안 B 가 '가게 정보' 카드를 `StoreSection` 으로 떼어내고
+    //   핸들러를 `pickStore`(place 객체) 로 바꿨다. 지키는 것(손 타이핑 회귀)은 그대로다.
     name: '가입C — 손 타이핑으로 회귀(대표 "자동으로 API로 입력")',
-    file: 'src/pages/SellerRegisterSupplierPage.tsx',
-    find: '<AddressPickerField id="f-address" value={form.address} onChange={set(\'address\')} />',
-    replace: '<input id="f-address" value={form.address} onChange={e => set(\'address\')(e.target.value)} className={cls(\'address\')} />',
+    file: 'src/pages/seller-register/StoreSection.tsx',
+    find: '<AddressPickerField id="f-address" value={form.address} onChange={pickStore}',
+    replace: '<input id="f-address" value={form.address} onChange={e => set(\'address\')(e.target.value)} x={',
     test: TEST,
     why: '대표 지시 "주소지는 자동으로 API로 입력하게끔" 의 회귀 — 그리고 매장 등록 모달은 이미 검색으로 채우므로 두 문이 다시 갈린다.',
   },

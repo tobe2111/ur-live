@@ -41,11 +41,20 @@ export const EXCLUDE = {
  * 이건 판정용이 아니다 — 파싱 워커가 **못 본 자리**를 드러내는 대조군이다.
  * (matrix·재사용 워크플로처럼 구조가 바뀌면 워커가 눈이 멀 수 있다.)
  */
+/**
+ * 🧭 2026-09-26 — 이름이 `check-` 로 시작하는 것만 집고 있었다. 그런데 **차단(strict) 스텝 둘이
+ * `generate-*.mjs --check`** 였다(`generate-ops-handbook` · `generate-feature-status`) —
+ * 생성기이면서 `--check` 모드로 **검사도 하는** 물건이다. 그래서 그 둘은 CI 는 막는데
+ * 로컬 게이트는 통째로 못 봤고, 실제로 `generate-ops-handbook --check` 가 PR CI 한 바퀴를 태웠다
+ * (쿠폰 플래그 추가로 꺼진 기능 12→13 이 됐는데 `GUIDE_SEED_VERSION` 을 안 올린 것).
+ * ⇒ `(?:check|generate)-` 로 넓힌다. 이 파일의 두 정규식은 **같은 모양이어야 한다** —
+ *   하나만 넓히면 "줍기는 하는데 분류를 못 하는" 상태가 되어 `check-local-ci-parity` 가 빨간불을 낸다.
+ */
 export function guardsMentioned(ymlPath = `${WORKFLOW_DIR}/verify.yml`) {
   const found = new Set()
   for (const line of readFileSync(ymlPath, 'utf8').split('\n')) {
     if (line.trim().startsWith('#')) continue
-    for (const m of line.matchAll(/scripts\/(check-[a-z0-9-]+\.(?:mjs|sh))/g)) found.add(m[1])
+    for (const m of line.matchAll(/scripts\/((?:check|generate)-[a-z0-9-]+\.(?:mjs|sh))/g)) found.add(m[1])
   }
   return [...found].sort()
 }
@@ -160,7 +169,7 @@ function collectGuards(ymlPath) {
       const run = typeof step?.run === 'string' ? step.run : ''
       const isWarn = step?.['continue-on-error'] === true
       const bucket = isWarn ? warn : strict
-      const guards = [...run.matchAll(/scripts\/(check-[a-z0-9-]+\.(?:mjs|sh))/g)].map((m) => m[1])
+      const guards = [...run.matchAll(/scripts\/((?:check|generate)-[a-z0-9-]+\.(?:mjs|sh))/g)].map((m) => m[1])
       for (const g of guards) bucket.add(g)
       // strict 스텝은 **명령·env 그대로** 보관한다 — 게이트가 CI 와 같은 모드로 돌리려면
       // 이름만으로는 부족하다(플래그 44 · env 8 이 그 증거다).

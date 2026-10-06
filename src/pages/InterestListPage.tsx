@@ -3,10 +3,11 @@
  * 다크 테마 (유저 대면 메인)
  */
 import { useNavigate } from 'react-router-dom'
+import { BellIcon } from '@/components/icons/urdeal-icons'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useTranslation } from 'react-i18next'
 import { ListLoadError } from '@/components/ui/list-load-error'
-import { ChevronLeft, Bell, Trash2 } from 'lucide-react'
+import { ChevronLeft, Trash2 } from 'lucide-react'
 import SEO from '@/components/SEO'
 import { toast } from '@/hooks/useToast'
 import { useMyInterests, useRemoveInterest, type InterestItem } from '@/hooks/queries/useMyInterests'
@@ -57,8 +58,8 @@ export default function InterestListPage() {
           <ListLoadError onRetry={() => refetch()} className="py-20" />
         ) : items.length === 0 ? (
           <div className="text-center py-20">
-            <Bell className="w-10 h-10 text-gray-600 mx-auto mb-3" />
-            <p className="text-gray-700 dark:text-gray-300 font-semibold text-[14px]">
+            <BellIcon className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+            <p className="text-gray-700 dark:text-gray-300 font-semibold text-[15px]">
               {t('interestList.empty')}
             </p>
             <p className="text-gray-600 dark:text-gray-400 text-[12px] mt-1">
@@ -66,7 +67,7 @@ export default function InterestListPage() {
             </p>
             <button
               onClick={() => navigate('/group-buy')}
-              className="mt-5 px-5 py-2.5 bg-brand text-white text-[13px] font-semibold rounded-full"
+              className="mt-5 px-5 py-2 bg-brand text-white text-[13px] font-semibold rounded-full"
             >
               {t('interestList.browseGroupBuy')}
             </button>
@@ -76,17 +77,17 @@ export default function InterestListPage() {
             {items.map(item => (
               <div
                 key={item.id}
-                className="flex items-center justify-between bg-gray-50 dark:bg-[#1D1F29] rounded-xl px-4 py-3.5 border border-line"
+                className="flex items-center justify-between bg-gray-50 dark:bg-[#1D1F29] rounded-xl px-4 py-4 border border-line"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-9 h-9 rounded-lg bg-brand/10 flex items-center justify-center flex-shrink-0">
-                    <Bell className="w-4 h-4 text-brand-text" />
+                    <BellIcon className="w-4 h-4 text-brand-text" />
                   </div>
                   <div className="min-w-0">
                     <p className="text-gray-900 dark:text-white text-[13px] font-medium truncate">
                       {item.restaurant_name || `상품 #${item.product_id}`}
                     </p>
-                    <p className="text-gray-500 dark:text-gray-400 text-[11px] mt-0.5">
+                    <p className="text-gray-500 dark:text-gray-400 text-[12px] mt-1">
                       {item.type === 'group_buy' ? t('interestList.tagGroupBuy') : t('interestList.tagVoucher')}
                     </p>
                   </div>

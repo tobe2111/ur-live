@@ -11,12 +11,13 @@ export default [
   {
     name: '[카드표면] 🔴 영수증 등록 카드가 다크 페이지색으로 되돌아간다',
     file: 'src/pages/DistrictCouponPage.tsx',
-    find: 'rounded-2xl border border-line bg-surface p-4 space-y-3',
-    replace: 'rounded-2xl border border-line bg-white dark:bg-[#11141C] p-4 space-y-3',
+    find: 'rounded-2xl bg-surface p-4 space-y-3',
+    replace: 'rounded-2xl bg-white dark:bg-[#11141C] p-4 space-y-3',
     test: TEST,
     why:
-      '카드가 페이지와 같은 색이 된다. 이 자리는 테두리가 있어 아주 안 보이진 않지만, ' +
-      '같은 되돌림이 테두리 없는 28곳에 일어나면 경계가 통째로 사라진다.',
+      '카드가 페이지와 같은 색이 된다. ⚠️ 2026-09-29 에 이 카드의 **테두리가 없어졌다**(규칙 ① — ' +
+      '카드는 들림 한 값) ⇒ 색까지 같아지면 경계가 **통째로** 사라진다. 종전엔 테두리가 남아 ' +
+      '아주 안 보이진 않았는데, 이제 그 완충이 없다.',
   },
   {
     name: '[카드표면] 🔴 선물 보내기 시트가 다크 페이지색으로 되돌아간다',

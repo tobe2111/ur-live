@@ -4,7 +4,7 @@
 
 ## 1. 무엇을 했나
 
-`docs/decisions/2026-09-15-stalled-pr-triage.md` 가 정한 순서 **⑤⑥(운영자 온보딩) → ⑧⑩⑪(어드민 분리)
+`docs/decisions/archive/2026-09-15-stalled-pr-triage.md` 가 정한 순서 **⑤⑥(운영자 온보딩) → ⑧⑩⑪(어드민 분리)
 → ⑫(경로 이전)** 중 **두 번째 조각**. 원 PR #1149 의 커밋 셋(`c2a96fc90` · `fc1355c39` · `cdb20a8a0`)을
 체리픽해 현재 main 위에 다시 세웠다.
 
@@ -127,7 +127,7 @@ CLAUDE.md 가 `check-query-iserror` 로 막는 **바로 그 클래스**인데, �
 
 ## 6. 다음 세션의 첫 액션
 
-`docs/decisions/2026-09-15-stalled-pr-triage.md` 순서대로 **세 번째 조각 ⑧⑩⑪(어드민 분리)**.
+`docs/decisions/archive/2026-09-15-stalled-pr-triage.md` 순서대로 **세 번째 조각 ⑧⑩⑪(어드민 분리)**.
 그다음이 ⑫(`/group-buy/:id` → `/pass/:id`).
 
 ⚠️ **⑫ 의 규모를 그 문서의 표(49곳/34파일)로 믿지 말 것** — 첫 조각에서 다시 세어 보니

@@ -80,8 +80,15 @@ describe('🪪 가입 앞문 — 등록증 사본', () => {
 
   it('서버로 실제로 보낸다 (칸만 있고 안 보내면 아무 일도 안 일어난다)', () => {
     const p = page()
-    const post = p.slice(p.indexOf('/api/seller/register-from-user'))
-    expect(post.slice(0, 600)).toContain('business_cert_url')
+    // 🩸 2026-09-21 재조준: 종전엔 **고정 600자 창**이었는데, 안 B 가 payload 에 가게
+    //   정보(좌표·place_id·업종)를 더하자 등록증 줄이 그 창 밖으로 밀려 빨간불이 났다.
+    //   매직 넘버 대신 **호출의 끝**(약관 버전 줄)까지 잘라서 본다.
+    const at = p.indexOf('/api/seller/register-from-user')
+    expect(at, '제출 호출이 사라졌다 — 앵커가 낡았다').toBeGreaterThan(0)
+    const end = p.indexOf('terms_agreed_version', at)
+    expect(end, 'payload 의 끝(약관 버전)을 못 찾았다').toBeGreaterThan(at)
+    const post = p.slice(at, end)
+    expect(post).toContain('business_cert_url')
   })
 
   /**

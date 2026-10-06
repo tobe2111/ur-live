@@ -634,7 +634,7 @@
   },
   "browse": {
     "title": "购物",
-    "seoDesc": "发现 UR-DEAL 热门商品、餐厅券和直播特价",
+    "seoDesc": "在 UrDeal 以折扣价发现热门商品、本地门店优惠券与兑换券",
     "loadError": "无法加载商品。",
     "loadRetry": "无法加载商品。请重试。",
     "searchAria": "搜索商品",
@@ -699,7 +699,7 @@
     "system": "系统",
     "light": "浅色",
     "dark": "深色",
-    "description": "应用于购物、结账、订单等浅色主题页面。我的/首页/直播始终为深色。",
+    "description": "可选择系统 / 浅色 / 深色。系统模式跟随操作系统的深色设置。",
     "currentlyFollowing": "当前 OS：{{theme}}"
   },
   "myOrders": {
@@ -2558,6 +2558,7 @@
       "voucherOrders": "兑换券发送记录",
       "transfers": "门店转让",
       "marketing": "营销",
+      "instagramDm": "Instagram自动私信",
       "adSlots": "广告位",
       "discounts": "折扣",
       "partners": "合作伙伴",
@@ -3353,7 +3354,9 @@
       "fromPhoto": "从照片读取 — 请确认是否正确",
       "ocrFilled": "已从照片填写 {{n}} 项 — 请确认是否正确",
       "ocrNone": "营业执照已上传",
-      "certHintDone": "用于审核。请确认下方栏位是否正确。"
+      "certHintDone": "用于审核。请确认下方栏位是否正确。",
+      "pickHint": "选择店铺后，店名、地址、电话和类别会一次性填好。地图上没有的话，请在下方直接填写。",
+      "pickPlaceholder": "按店名搜索"
     },
     "analytics": "销售分析",
     "analyticsView": {
@@ -4782,8 +4785,8 @@
     "sellerContact": "卖家联系方式: {{phone}}",
     "sellerNoContact": "卖家未注册联系方式",
     "emptyTitle": "暂无订单",
-    "emptyDesc": "在直播中找到您喜欢的商品购买吧",
-    "goToLive": "去看直播",
+    "emptyDesc": "来找找您喜欢的优惠券或商品吧",
+    "goToLive": "去逛优惠",
     "trackingLink": "查看物流",
     "paymentAmount": "支付金额",
     "won": "韩元",
@@ -4804,8 +4807,8 @@
     "skip": "跳过",
     "welcomeTitle": "欢迎，{{name}}！",
     "welcomeTitleDefault": "欢迎来到UrDeal！",
-    "welcomeDesc1": "观看直播，即时购买 —",
-    "welcomeDesc2": "韩国第一直播电商",
+    "welcomeDesc1": "把本地美食、美容、住宿的优惠券",
+    "welcomeDesc2": "以折扣价买下，立刻使用",
     "couponBadge": "新用户优惠券",
     "couponAmount": "5,000韩元折扣",
     "couponDesc": "满10,000韩元使用 · 7天有效",
@@ -4818,9 +4821,9 @@
     "step2Desc": "用于个性化推荐（至少选1个）",
     "selectedCount": "已选: {{count}}个",
     "step3Title": "接收通知",
-    "step3Desc": "及时获取优惠和直播信息",
+    "step3Desc": "为您推送不容错过的超值优惠",
     "alimtalkLabel": "通过KakaoTalk接收",
-    "alimtalkDesc1": "直播开始 / 热门优惠 / 订单状态等",
+    "alimtalkDesc1": "超值优惠 / 优惠券发放 / 订单状态等",
     "alimtalkDesc2": "免费通知（无广告）",
     "alimtalkNote1": "在我的页面 → 通知设置中",
     "alimtalkNote2": "随时可以修改。",
@@ -5529,7 +5532,7 @@
   "myCoupons": {
     "title": "我的优惠券",
     "empty": "没有可用的优惠券",
-    "emptySub": "通过参与直播和活动获得优惠券",
+    "emptySub": "还没有优惠券。参加活动即可获得",
     "loginRequired": "需要登录。",
     "loadFailed": "无法加载优惠券。",
     "sessionExpired": "会话已过期，请重新登录。",
@@ -5631,8 +5634,8 @@
   },
   "introduce": {
     "navStart": "开始",
-    "seoTitle": "Ur-Deal - 直播电商美食团购",
-    "seoDesc": "店主直播的直播电商。以特价发现当地美食的最快方式。",
+    "seoTitle": "UrDeal - 本地团购（美食·美容·住宿）",
+    "seoDesc": "以团购特价享受本地美食、美容与住宿。一起买更便宜，兑换券付款即发。",
     "heroLiveCount": "[TODO:zh] 지금 {{count}}명이 라이브 시청 중",
     "heroDesc": "本地人气餐厅的老板亲自开直播，实时互动，以最高5折团购使用券和料理包。",
     "heroCtaStart": "[TODO:zh] 지금 시작하기",
@@ -5843,7 +5846,7 @@
   "search.pageTitle": "Search - UrDeal",
   "search.errorMsg": "An error occurred while searching",
   "search.seoTitleQuery": "{{query}} search results - UrDeal",
-  "search.seoDesc": "Search for products on UrDeal. Find the best prices on live commerce products.",
+  "search.seoDesc": "在 UrDeal 搜索。以折扣价找到本地门店优惠券。",
   "reviews": {
     "heading": "评价",
     "writeBtn": "写评价",
@@ -6020,7 +6023,7 @@
     "chargeDeals": "充值Deal",
     "afterBalance": "充值后余额",
     "noRefund": "已充值的Deal不可退款",
-    "usageNote": "仅可用于直播后援及商品结算。",
+    "usageNote": "仅可用于兑换券购买及商品结算。",
     "chargeHistory": "充值明细",
     "paymentNoRefund": "支付完成后，已充值的Deal不可退款。",
     "prev": "上一步",
@@ -6071,7 +6074,7 @@
   },
   "blog": {
     "listSeoTitle": "博客",
-    "listSeoDesc": "Ur-Deal直播电商博客 — 卖家指南、趋势、技巧",
+    "listSeoDesc": "UrDeal 博客：优惠券与团购指南，本地门店故事",
     "readBtn": "阅读文章"
   },
   "embed": {
@@ -6100,7 +6103,7 @@
     "namePlaceholder": "[TODO:zh] 홍길동",
     "emailLabel": "[TODO:zh] 이메일",
     "passwordLabel": "[TODO:zh] 비밀번호",
-    "passwordPlaceholder": "[TODO:zh] 8자 이상 입력해주세요",
+    "passwordPlaceholder": "至少10位，含大小写字母、数字和符号",
     "showPassword": "[TODO:zh] 비밀번호 표시",
     "hidePassword": "[TODO:zh] 비밀번호 숨기기",
     "confirmPasswordLabel": "[TODO:zh] 비밀번호 확인",
@@ -6121,16 +6124,14 @@
     "loginLink": "[TODO:zh] 로그인",
     "errorAllFields": "[TODO:zh] 모든 필드를 입력해주세요.",
     "errorPasswordMismatch": "[TODO:zh] 비밀번호가 일치하지 않습니다.",
-    "errorPasswordLength": "[TODO:zh] 비밀번호는 8자 이상이어야 합니다.",
     "errorAgreements": "[TODO:zh] 이용약관과 개인정보처리방침에 동의해주세요.",
     "errorAgeConfirm": "[TODO:zh] 만 14세 이상만 가입 가능합니다.",
     "successMessage": "[TODO:zh] 회원가입이 완료되었습니다! 로그인해주세요.",
     "errorDefault": "[TODO:zh] 회원가입에 실패했습니다.",
     "errorEmailInUse": "[TODO:zh] 이미 사용 중인 이메일입니다.",
     "errorInvalidEmail": "[TODO:zh] 유효하지 않은 이메일 형식입니다.",
-    "errorWeakPassword": "[TODO:zh] 비밀번호가 너무 약합니다. 8자 이상 입력해주세요.",
     "seoTitle": "[TODO:zh] 회원가입 - 유어딜",
-    "seoDesc": "[TODO:zh] 유어딜에 가입하고 라이브 쇼핑을 시작하세요"
+    "seoDesc": "注册 UrDeal，以折扣价获得本地门店优惠券"
   },
   "following": {
     "title": "[TODO:zh] 팔로잉",
@@ -6264,7 +6265,7 @@
     "loadFailed": "无法加载收藏库"
   },
   "shopping": {
-    "sectionTitle": "我的使用记录",
+    "sectionTitle": "我买的",
     "wishlist": "[TODO:zh] 찜한 상품",
     "voucher": "我的兑换券",
     "voucherSub": "在门店用二维码或密码使用",
@@ -6920,9 +6921,9 @@
     "gifticonEntrySub": "用딜购买便利店·咖啡礼券"
   },
   "my": {
-    "earningsGroupTitle": "我的收益·推荐",
+    "earningsGroupTitle": "我推荐的",
     "earningsGroupSub": "推荐奖励, 链接小店收益, 邀请",
-    "settingsGroupTitle": "设置",
+    "settingsGroupTitle": "设置 · 账户",
     "settingsGroupSub": "通知, 主题, 语言, 应用信息",
     "affiliateLinkTitle": "商品推荐链接",
     "affiliateLinkSub": "好友通过链接购买即可获得积分 — 查看业绩",
@@ -6995,7 +6996,7 @@
   "groupBuy.categoryEtc": "🎯 其他",
   "groupBuy.stayBadge": "住宿",
   "roleCta": {
-    "myShortcuts": "我的快捷方式",
+    "myShortcuts": "开店",
     "startNewRole": "开启新角色",
     "linkshop": "我的UrShop",
     "linkshopDesc": "把使用券放进我的 UrShop 并分享",

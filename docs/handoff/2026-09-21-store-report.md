@@ -1,7 +1,7 @@
 # 2026-09-21 — 사장님 신고 경로 (사기 방어 ③)
 
 대표 지시: *"나머지도 순차적으로 모두 해줘."*
-`docs/decisions/2026-09-16-store-fraud-defense-order.md` 의 ③, `2026-09-16-store-intro-abolished.md` 가
+`docs/decisions/archive/2026-09-16-store-fraud-defense-order.md` 의 ③, `2026-09-16-store-intro-abolished.md` 가
 남긴 다섯 중 세 번째. ④⑤(정산을 사용 확인 뒤로 · 예금주 일치)는 이미 끝났다.
 
 ## 실측으로 확인한 구멍

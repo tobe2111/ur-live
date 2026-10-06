@@ -12,10 +12,13 @@
  *   - 로그인 상태로 자동 필터.
  */
 
-import { Link } from 'react-router-dom'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronRight, Store, LayoutDashboard, Handshake, ShoppingBag, type LucideIcon } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+// 🎨 2026-09-28: 셋 다 '무엇을 하는 곳' 이라 유어딜 아이콘. 특히 '내 가게 등록' 은
+//    장바구니(ShoppingBag)였는데 **사는 행위**로 읽혔다 — 실제 뜻은 가게를 내는 것이다.
+import { ProposeIcon, ShopPlusIcon } from '@/components/icons/urdeal-icons'
+import { SectionTitle, ListRow, rowIcon } from './list-grammar'
 import { COMMUNITY_PROPOSAL_HIDDEN } from '@/shared/feature-flags'
 
 interface Cta {
@@ -36,17 +39,28 @@ export default function RoleCtaGrid() {
     const hasSellerToken = typeof window !== 'undefined' && !!localStorage.getItem('seller_token')
     // 내 바로가기 (모든 유저가 가진 유어샵 + 보유 role 의 대시보드 단축)
     const dash: Cta[] = [
-      { Icon: Store, title: t('roleCta.linkshop', { defaultValue: '내 유어샵' }), desc: t('roleCta.linkshopDesc', { defaultValue: '이용권을 담아 진열하고 소개해요' }), to: '/u/me', show: () => true, accent: true },
-      { Icon: LayoutDashboard, title: t('roleCta.sellerDash', { defaultValue: '셀러 대시보드' }), desc: t('roleCta.sellerDashDesc', { defaultValue: '내 상품·공구·정산 관리' }), to: '/seller', show: () => hasSellerToken, accent: true },
+      // 🗑️ 2026-09-30 (대표 *"내 바로가기도 필요없잖아"*) — **'내 유어샵' 줄을 뺐다.**
+      //   하단 탭에 **유어샵 탭이 있다**(`BottomNav` 다섯 탭 중 넷째, `linkshopPath`). 같은 곳으로
+      //   가는 문이 한 화면에 둘이었고, 그 한 줄을 위해 구역 제목(`바로 가기`)이 하나 더 서 있었다.
+      //   ⇒ 셀러에게는 이 구역이 통째로 사라진다(아래 `signup` 도 `!hasSellerToken` 이라 비어 있다).
+      //   ⚠️ **비셀러에게는 남는다** — `내 가게 등록`(`/store/new`)이 여기 있고, 2026-09-28 에
+      //      이름 옆 알약을 지우면서 *"둘 중 남길 것은 타일"* 이라고 정한 **유일한 가게 등록 문**이다.
+      //      이 구역을 통째로 지우면 그 퍼널이 같이 죽는다.
+      // 🚪 2026-09-28 (대표 확정 — 판매로 가는 문이 넷이고 셋이 복제였다): '셀러 대시보드' 타일 제거.
+      //   이 타일과 페이지 최하단 '판매자 모드로 전환' 버튼은 **목적지가 같다**(`/seller`). 같은 일을
+      //   하는 문이 둘이면 한쪽만 고쳐지는 날이 오고, 실제로 그렇게 됐다(타일은 `<Link>` 인데
+      //   전환 버튼은 `active_role` 을 심고 하드 내비게이션한다 — 같은 곳에 가면서 하는 일이 달랐다).
+      //   ⇒ 넓은 화면 대시보드로 가는 문은 **최하단 전환 버튼 하나**로. 매일 쓰는 판매 도구는
+      //   페이지 맨 위 '내 가게' 섹션이 맡는다(2026-09-25 §18 — 앉아서 하는 일만 대시보드).
     ]
     // 신규 가입 CTA (보유 안 한 role 만)
     const signup: Cta[] = [
       // 🧭 2026-06-10 (전략 정합 — 라이브 영구 중단·동네딜 집중): 라이브 셀러 CTA 제거,
       //   동네 공구 제안 + 역할 전환(사업자/에이전시) 중심으로 재구성.
-      { Icon: Handshake, title: t('roleCta.proposeGb', { defaultValue: '동네 공구 제안' }), desc: t('roleCta.proposeGbDesc', { defaultValue: '원하는 가게 제안하면 모아서 열어드려요' }), to: '/community-group-buy/new', show: () => !COMMUNITY_PROPOSAL_HIDDEN },
+      { Icon: ProposeIcon, title: t('roleCta.proposeGb', { defaultValue: '동네 공구 제안' }), desc: t('roleCta.proposeGbDesc', { defaultValue: '원하는 가게 제안하면 모아서 열어드려요' }), to: '/community-group-buy/new', show: () => !COMMUNITY_PROPOSAL_HIDDEN },
       // 🏷️ 2026-08-26: '내 쇼핑몰 열기' → '내 가게 등록'. 유어샵은 가입하면 **이미 있다** — 여기서
       //   새로 만드는 건 매장이다. 목적지도 매장 등록(/store/new)으로(대표 확정 '매장 등록이 선행').
-      { Icon: ShoppingBag, title: t('roleCta.openShop', { defaultValue: '내 가게 등록' }), desc: t('roleCta.openShopDesc', { defaultValue: '카카오맵에서 내 가게를 찾아 이용권을 팔아요' }), to: '/store/new', show: () => !hasSellerToken },
+      { Icon: ShopPlusIcon, title: t('roleCta.openShop', { defaultValue: '내 가게 등록' }), desc: t('roleCta.openShopDesc', { defaultValue: '카카오맵에서 내 가게를 찾아 이용권을 팔아요' }), to: '/store/new', show: () => !hasSellerToken },
       // 🌇 2026-09-04 에이전시 완전 일몰(대표 확정) — 09-02 에 신규 가입 CTA 만 뺐고 "이미 에이전시인
       //   사람의 대시보드 바로가기는 유지" 했는데, 그 대시보드 자체가 사라졌다. 바로가기도 함께 제거.
     ]
@@ -58,49 +72,33 @@ export default function RoleCtaGrid() {
 
   if (dashboardItems.length === 0 && signupItems.length === 0) return null
 
-  const Row = (c: Cta, i: number) => (
-    <Link
-      key={c.to}
-      to={c.to}
-      className={`flex items-center gap-3 px-4 py-3.5 active:bg-gray-50 dark:active:bg-[#1D1F29] transition-colors min-w-0 ${
-        i > 0 ? 'border-t border-gray-50 dark:border-[#2C2F35]' : ''
-      }`}
-    >
-      <c.Icon className="w-[18px] h-[18px] shrink-0 text-gray-500 dark:text-gray-400" aria-hidden="true" />
-      <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-bold truncate text-gray-900 dark:text-white">
-          {c.title}
-        </p>
-        <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate mt-0.5">
-          {c.desc}
-        </p>
-      </div>
-      <ChevronRight className="w-4 h-4 text-gray-300 dark:text-gray-600 shrink-0" />
-    </Link>
+  /**
+   * 🧾 2026-09-28: 이 목록은 **자기 문법을 갖고 있었다** — 테두리(`border border-line`) · 13px 행 ·
+   *   11px 설명 · 흐린 화살표(`text-gray-300`). 같은 화면의 판매 묶음·`내가 산 것` 과 셋이 갈려 있었고,
+   *   테두리는 표면 규칙 ①(*"카드 테두리 0"*) 위반이었다. ⇒ `list-grammar` 한 벌로.
+   *   경로가 실재하는 줄이라 `to` 로 준다(우클릭·새 탭이 그대로 된다).
+   */
+  /**
+   * 🔵 2026-09-29 (안 C): 판·그룹 라벨을 걷고 **한 구역 · 평면 줄**로.
+   * ⚠️ `desc` 를 안 넘긴다 — 안 C 의 `hint` 는 오른쪽 **짧은 값**(여덟 자 안팎)이라 설명 문장을
+   *   넣으면 잘린다(`이용권을 담아 진열하고…`). 잘린 설명은 없느니만 못하다.
+   *   제목이 혼자 서도 읽힌다: *내 유어샵 · 동네 공구 제안 · 내 가게 등록.*
+   */
+  const Row = (c: Cta) => (
+    <ListRow key={c.to} to={c.to} icon={rowIcon(c.Icon)} label={c.title} />
   )
 
   return (
-    <section className="w-full min-w-0 space-y-4">
-      {dashboardItems.length > 0 && (
-        <div>
-          <p className="text-[12px] font-bold text-gray-600 dark:text-gray-400 mb-2 px-1">
-            {t('roleCta.myShortcuts', { defaultValue: '내 바로가기' })}
-          </p>
-          <div className="rounded-2xl bg-surface border border-line overflow-hidden">
-            {dashboardItems.map((c, i) => Row(c, i))}
-          </div>
-        </div>
-      )}
-      {signupItems.length > 0 && (
-        <div>
-          <p className="text-[12px] font-bold text-gray-600 dark:text-gray-400 mb-2 px-1">
-            {t('roleCta.startNewRole', { defaultValue: '추가 역할로 시작하기' })}
-          </p>
-          <div className="rounded-2xl bg-surface border border-gray-100 dark:border-[#2C2F35] overflow-hidden">
-            {signupItems.map((c, i) => Row(c, i))}
-          </div>
-        </div>
-      )}
+    /* 🧱 가로 패딩 없음 — 줄이 자기 `px-4` 를 갖는다. */
+    <section className="w-full min-w-0">
+      {/* 🏷️ 2026-09-30: '내 바로가기' → '가게 열기'. 이 구역에 남은 줄은 **가게를 내는 것** 하나라
+          (내 유어샵은 하단 탭과 겹쳐 빠졌다), 옛 이름은 무엇이 있는지 말해 주지 않았다.
+          ⚠️ 코드 `defaultValue` 만 고치면 화면은 안 바뀐다 — `public/locales/ko` 값이 이긴다. */}
+      <SectionTitle>{t('roleCta.myShortcuts', { defaultValue: '가게 열기' })}</SectionTitle>
+      <div>
+        {dashboardItems.map(Row)}
+        {signupItems.map(Row)}
+      </div>
     </section>
   )
 }

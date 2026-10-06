@@ -102,10 +102,10 @@ export default function PaymentCompleteTicket({ productId, qty, amount, dealUsed
           <TicketRow left={`${kindLabel}`} right={`${qty}매`} />
           <div className="px-4 pt-4 pb-4">
             {storeName && <p className="text-[13px] text-gray-500 dark:text-gray-400">{storeName}</p>}
-            <p className="text-[17px] font-bold tracking-[-0.01em] mt-0.5">{itemName}</p>
-            <div className="flex items-baseline gap-2.5 mt-3 mb-4 tabular-nums">
+            <p className="text-[17px] font-bold tracking-[-0.01em] mt-1">{itemName}</p>
+            <div className="flex items-baseline gap-2 mt-3 mb-4 tabular-nums">
               {pct !== null && pct > 0 && <span className="text-[17px] font-extrabold text-brand-text">{pct}%</span>}
-              <span className="text-[30px] font-extrabold tracking-[-0.03em] leading-none">{formatNumber(amount)}원</span>
+              <span className="text-[28px] font-extrabold tracking-[-0.03em] leading-none">{formatNumber(amount)}원</span>
               {original !== null && original * qty > amount && <span className="text-[13px] text-gray-400 dark:text-gray-500 line-through">{formatNumber(original * qty)}원</span>}
             </div>
             {dealUsed > 0 && (
@@ -128,10 +128,10 @@ export default function PaymentCompleteTicket({ productId, qty, amount, dealUsed
 
         {/* 크로스셀 — 시안 "오는 열차도 찾아볼까요?" 자리. 같은 매장 다른 이용권(없으면 컴포넌트가 null). */}
         <div className="rounded-2xl bg-surface shadow-lift px-4 pt-4 pb-4">
-          <h2 className="text-center text-[16px] font-bold pb-3 border-b border-rule">{storeName ? `${storeName} 다른 이용권도 볼까요?` : '이런 이용권도 볼까요?'}</h2>
+          <h2 className="text-center text-[17px] font-bold pb-3 border-b border-rule">{storeName ? `${storeName} 다른 이용권도 볼까요?` : '이런 이용권도 볼까요?'}</h2>
           <SameStoreDeals productId={productId} hideTitle />
           <div className="text-center mt-3">
-            <button type="button" onClick={() => navigate('/')} className="inline-flex items-center gap-1 h-10 px-5 rounded-full border border-rule-strong text-[14px] font-semibold active:opacity-70">
+            <button type="button" onClick={() => navigate('/')} className="inline-flex items-center gap-1 h-10 px-5 rounded-full border border-rule-strong text-[15px] font-semibold active:opacity-70">
               <span className="text-brand-text font-bold">이용권</span> 찾아보기 <span aria-hidden="true">›</span>
             </button>
           </div>

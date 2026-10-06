@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
+import { OkIcon, HomeIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { CheckCircle, Home } from 'lucide-react';
 import SEO from '@/components/SEO';
 
 export default function AccountDeletedPage() {
@@ -25,36 +25,36 @@ export default function AccountDeletedPage() {
         <div className="bg-surface rounded-2xl shadow-lg p-8 text-center">
           {/* 완료 아이콘 */}
           <div className="w-20 h-20 mx-auto mb-6 bg-green-100 rounded-full flex items-center justify-center">
-            <CheckCircle className="w-12 h-12 text-green-600" />
+            <OkIcon className="w-12 h-12 text-green-600" />
           </div>
 
           {/* 제목 */}
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+          <h1 className="text-[24px] font-bold text-gray-900 dark:text-white mb-4">
             {t('accountDeleted.title')}
           </h1>
 
           {/* 안내 메시지 */}
           <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-6 mb-6 text-left">
-            <p className="text-sm text-gray-700 dark:text-gray-200 leading-relaxed mb-3">
+            <p className="text-[15px] text-gray-700 dark:text-gray-200 leading-relaxed mb-3">
               {t('accountDeleted.thanks')}
             </p>
-            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-2">
+            <p className="text-[15px] text-gray-600 dark:text-gray-300 leading-relaxed mb-2">
               • {t('accountDeleted.bullet1')}
             </p>
-            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-2">
+            <p className="text-[15px] text-gray-600 dark:text-gray-300 leading-relaxed mb-2">
               • {t('accountDeleted.bullet2')}
             </p>
-            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+            <p className="text-[15px] text-gray-600 dark:text-gray-300 leading-relaxed">
               • {t('accountDeleted.bullet3')}
             </p>
           </div>
 
           {/* 재가입 안내 */}
           <div className="bg-purple-50 border border-purple-200 rounded-xl p-5 mb-6">
-            <p className="text-sm text-purple-800 font-semibold mb-2">
+            <p className="text-[15px] text-purple-800 font-semibold mb-2">
               {t('accountDeleted.comebackTitle')}
             </p>
-            <p className="text-sm text-purple-700 leading-relaxed whitespace-pre-line">
+            <p className="text-[15px] text-purple-700 leading-relaxed whitespace-pre-line">
               {t('accountDeleted.comebackBody')}
             </p>
           </div>
@@ -62,20 +62,20 @@ export default function AccountDeletedPage() {
           {/* 홈으로 버튼 */}
           <button
             onClick={() => navigate('/', { replace: true })}
-            className="w-full py-4 bg-gray-900 text-white rounded-xl font-semibold hover:bg-gray-800 active:scale-95 transition-all flex items-center justify-center"
+            className="w-full py-4 bg-brand text-white rounded-xl font-semibold hover:bg-brand-dark active:scale-95 transition-all flex items-center justify-center"
           >
-            <Home className="w-5 h-5 mr-2" />
+            <HomeIcon className="w-5 h-5 mr-2" />
             {t('accountDeleted.goHome')}
           </button>
 
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-4">
+          <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-4">
             {t('accountDeleted.autoRedirect')}
           </p>
         </div>
 
         {/* 푸터 메시지 */}
         <div className="mt-8 text-center">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-[15px] text-gray-500 dark:text-gray-400">
             {t('accountDeleted.feedbackPrefix')}
             <br />
             <a

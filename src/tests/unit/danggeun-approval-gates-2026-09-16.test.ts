@@ -144,6 +144,11 @@ function feedDb() {
   const db = new DatabaseSync(':memory:')
   db.exec(`CREATE TABLE sellers (id INTEGER PRIMARY KEY, status TEXT)`)
   db.exec(`CREATE TABLE products (id INTEGER PRIMARY KEY, seller_id INTEGER)`)
+  // ⏳ 2026-09-21: `approvedSellerProductSql` 에 노출 유예(②)가 합쳐지면서 이 테이블을 읽는다.
+  //   ⚠️ 이 줄을 지우면 시험이 'no such table' 로 죽는다 — 그건 **라이브에서 메인 피드가 통째로
+  //   깨지는 것과 같은 고장**이다(피드 술어가 이 테이블을 참조하므로). 그래서 `repair-schema` 에도
+  //   등록해 뒀다. 픽스처가 라이브를 흉내 내는 자리이니 같이 만든다.
+  db.exec(`CREATE TABLE seller_meta (seller_id INTEGER, key TEXT, value TEXT)`)
   return db
 }
 /** 피드 WHERE 와 **같은 모양**으로 돌려 보이는 상품 id 를 돌려준다. */

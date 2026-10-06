@@ -299,6 +299,11 @@ const OPS_GATES: OpsGate[] = [
   //   ⚠️ 이 게이트가 없던 동안(2026-05-27~09-16) 코드는 게이트 없이 승인을 냈다 — AI 바인딩이
   //   없어 안 돌았을 뿐이고, 대표가 바인딩을 켠 2026-09-16 그날부터 살아날 상태였다.
   { key: 'ocr_auto_verify_enabled', kind: 'setting', label: '서류 OCR 자동 승인', default_value: 'false', staging_ref: 'S-OCR', turn_on_when: '실사진으로 추출 정확도를 재고(어드민 OCR 버튼의 fill·addressCheck), 오탐 0 을 확인한 뒤 대표 판단으로' },
+  // 📩 2026-09-21 (대표 승인 "010 으로, 되면 보내주는걸로"): 사장님에게 "당신 가게가 유어딜에
+  //   올라갔습니다" 를 보낸다. 줄은 승인 순간 자동으로 서지만 **발송은 사람이 누른다**(등급 C).
+  //   ⚠️ 이 게이트만으로는 안 나간다 — `ALIGO_TPL_STORE_NOTICE`(카카오 검수 통과한 템플릿 코드)가
+  //   함께 있어야 한다. 둘 중 하나라도 없으면 어드민 버튼이 비활성이고 이유가 화면에 뜬다.
+  { key: 'store_owner_notice_enabled', kind: 'setting', label: '사장님 매장 등록 통보(알림톡)', default_value: 'false', staging_ref: 'S-OWNERNOTICE', turn_on_when: '카카오 템플릿 검수가 끝나 ALIGO_TPL_STORE_NOTICE 가 등록되고, 어드민에서 1건만 먼저 보내 실제 수신이 확인되면' },
   // 💸 2026-08-25 (누락 발견): **플랫폼 take 율 자체를 정하는 게이트인데 이 명부에 없었다.**
   //   `channelPlatformRate` 가 이 값으로 직판 10% / 중개 5% 를 가른다(OFF 면 종전 `commission_rate`).
   //   CLAUDE.md 는 게이트 플래그를 여기 등록하라고 규정하는데 이것만 빠져 있어, 운영 화면에서
@@ -335,6 +340,7 @@ const OPS_GATES: OpsGate[] = [
   // 🪙 2026-09-01 — 이용권을 "딜 일부 + 카드 나머지" 로 살 수 있게 하는 스위치(대표 "포인트 차감처럼").
   //   OFF 면 딜 사용액이 항상 0 이고 총액과 다른 청구액은 종전처럼 AMOUNT_MISMATCH 로 막힌다.
   { key: 'voucher_partial_deal_enabled', kind: 'setting', label: '이용권 부분결제(딜+카드)', default_value: 'false', staging_ref: 'S12', turn_on_when: '🔴 **먼저 influencer_deal_bonus_pct = 0** — 딜 보너스 20%가 살아 있으면 딜은 액면가보다 비싸고(1,000딜 = 유어딜 부채 1,200원), 마진 5~10%인 이용권에 쓰이면 팔릴수록 적자다(교환권은 소비자 마크업 20%가 상쇄하지만 이용권엔 그 상쇄가 없다). 그다음 S12 실결제로 카드+딜=총액·매장 정산 총액 불변·환불 복원 확인' },
+  { key: 'voucher_partial_refund_enabled', kind: 'setting', label: '이용권 일부 환불(장 단위)', default_value: 'false', staging_ref: 'P17', turn_on_when: '🔴 P17 실결제로 ① 3장 중 1장 환불 → 금액이 **장수에서 계산**되고(임의 금액 입력 불가) ② 무른 1장만 `refunded`, 남은 2장은 `unused` ③ 이미 쓴 장은 대상 제외 ④ 동시 요청에도 `refunded_amount` 이중 가산 0 ⑤ 토스 거절 시 예약 롤백 확인. ⚠️ 어필리에이트·영입 커미션은 비례 역전이 없어 무른 장의 몫이 남는다(적게 회수하는 쪽 — 감수)' },
   // 🧾 2026-09-01 — 후기 보너스를 **매장 부담**으로 돌리는 스위치(대표 "매장 사장님이 부담하게끔").
   //   OFF 면 판정이 항상 `platform` 이라 차감 경로에 아무것도 안 들어온다(= 오늘과 동일).
   { key: 'review_bonus_owner_funded', kind: 'setting', label: '후기 보너스 매장 부담(정산 차감)', default_value: 'false', staging_ref: 'S11', turn_on_when: '매장이 셀러 대시보드에서 금액을 직접 넣기 시작하고, S11 로 원장 debit 1회·재승인 이중차감 0 이 확인되면' },
@@ -349,7 +355,7 @@ const OPS_GATES: OpsGate[] = [
   // 🎛️ 2026-09-07 — `check-gate-registry` 가 찾아낸 **미등재 strict-true 게이트 5개**.
   //   전부 read-site 가 `=== 'true'` 인데 이 표에 없어서 `ops-gate-reachable` 의 사각지대였다.
   //   등재가 곧 검사 범위다 — 넣는 순간 "켤 화면이 있나"를 기계가 묻기 시작한다.
-  { key: 'settlement_skip_ledgered', kind: 'setting', label: '자동정산에서 원장 기록분 제외', default_value: 'false', staging_ref: null, turn_on_when: '🔴 머니 경로. 원장 적립(SHOPPING_LEDGER 계열)이 실제로 돌기 시작해 같은 매출이 두 번 정산될 위험이 생겼을 때. 그전엔 켜면 정산이 통째로 빠진다' },
+  { key: 'settlement_skip_ledgered', kind: 'setting', label: '자동정산에서 원장 기록분 제외', default_value: 'false', staging_ref: null, turn_on_when: '🔴 머니 경로. 지금이 가장 안전하다 — 양쪽 레일의 정산행이 아직 0이라 켜도 아무 일이 안 일어나고, 이용권이 팔린 뒤엔 이미 양쪽에 적힌 것을 손으로 맞춰야 한다. ⚠️ 2026-09-29 정정: 여기 오래 "그전엔 켜면 정산이 통째로 빠진다"고 적혀 있었는데 사실이 아니다 — skip 절이 NOT EXISTS 라서 원장에 없으면 건너뛸 것도 없고(자동정산 그대로 진행), 원장 기록(recordVoucherUsedLedger)은 이용권 사용 시점에 게이트 없이 항상 돈다. 그 오기를 믿고 두 레일을 켜 둔 채로 두면 오히려 이중 지급 위험' },
   { key: 'outreach_auto_send', kind: 'setting', label: '인플루언서 제휴 제안 자동 발송', default_value: 'false', staging_ref: null, turn_on_when: '📮 콜드 발송은 법·평판 문제라 **대표가 직접 판단**한다. 세션이 켜지 않는다' },
   { key: 'promo_bar_enabled', kind: 'setting', label: '소비자 홈 프로모 바', default_value: 'false', staging_ref: null, turn_on_when: '홍보 문구가 정해지면 (문구·버튼·색은 같은 화면의 프로모 바 섹션에서)' },
   // 🧺 2026-09-15 — 이용권 **장바구니 결제** 레일. 만들 때 이 표에 안 넣어서 어드민에 손잡이가

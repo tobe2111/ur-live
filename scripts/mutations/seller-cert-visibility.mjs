@@ -8,8 +8,10 @@ export default [
   {
     name: '🧾등록증가시성 매장 등록이 컬럼에 안 적는다 (meta 에만 → 어드민·OCR 서류 없음)',
     file: 'src/features/seller/api/seller-stores.routes.ts',
-    find: "    await c.env.DB.prepare(\"UPDATE sellers SET business_registration_image_url = ? WHERE id = ? AND COALESCE(business_registration_image_url, '') = ''\").bind(certUrl, newSellerId).run().catch(() => null)\n",
-    replace: '',
+    // 🩸 2026-09-21: 등록증이 **선택**이 되면서 이 줄 앞에 `if (certUrl) ` 이 붙었다(없으면 안 적는다).
+    //   앵커가 낡으면 주입이 **조용히 적용되지 않고**, 그 불변식은 지켜지는 척만 한다.
+    find: "    if (certUrl) await c.env.DB.prepare(\"UPDATE sellers SET business_registration_image_url",
+    replace: "    if (false) await c.env.DB.prepare(\"UPDATE sellers SET business_registration_image_url",
     test: TEST,
     why: '09-16 "사진을 받아 사람이 심사" 가 이 경로에서 비어 있던 실사고(E5 에서 발견). 에러 0.',
   },

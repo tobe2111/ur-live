@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { BagIcon, StoreIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
@@ -10,7 +11,7 @@ import { CartGroupShippingRow } from '@/components/cart/CartGroupShippingRow'
 import { CartSummary } from '@/components/cart/CartSummary'
 import { EmptyCart } from '@/components/cart/EmptyCart'
 import { CartCtaButton } from '@/components/cart/CartCtaButton'
-import { ShoppingCart, ChevronRight, Store, X, PackageCheck } from 'lucide-react'
+import { ChevronRight, X, PackageCheck } from 'lucide-react'
 import type { CartItem } from '@/types/cart'
 import { getCartItemPrice } from '@/types/cart'
 import { getNoShippingKind, isNoShippingProduct } from '@/shared/product-flow'
@@ -23,8 +24,7 @@ import CustomModal from './cart/CustomModal'
 import BrandLoader from '@/components/brand/BrandLoader'
 import ContinueShoppingLink from '@/components/mall/ContinueShoppingLink'
 
-// 🛡️ 2026-05-02: TD-018 분할 — CustomModal 을 ./cart/CustomModal 로 추출.
-//   CustomModal 내부에서 쓰던 lucide 아이콘 (AlertCircle, CheckCircle, Info) 은
+// 🛡️ 2026-05-02: TD-018 분할 — CustomModal 을 ./cart/CustomModal 로 추출. CustomModal 내부에서 쓰던 lucide 아이콘 (AlertCircle, CheckCircle, Info) 은
 //   해당 파일로 이동. 본체에서 X 아이콘은 헤더 닫기 버튼에서 계속 사용.
 
 /** 📦 2026-09-01: 배송비 판정은 SSOT 하나로 — 여기와 결제 화면이 갈려 총액이 달랐다(product-flow.ts). */
@@ -52,22 +52,22 @@ export default function CartPage() {
             <button type="button" onClick={() => navigate(-1)} aria-label={t('notifications.back')} className="w-9 h-9 flex items-center justify-center">
               <X className="h-5 w-5 text-gray-900 dark:text-white" aria-hidden="true" />
             </button>
-            <h1 className="text-[16px] font-extrabold text-gray-900 dark:text-white">{t('cart.title')}</h1>
+            <h1 className="text-[17px] font-extrabold text-gray-900 dark:text-white">{t('cart.title')}</h1>
             <div className="w-9" />
           </div>
         </div>
         <div className="flex flex-1 flex-col items-center justify-center gap-5 p-8 text-center">
           <div className="w-20 h-20 bg-gray-50 dark:bg-[#1D1F29] rounded-full flex items-center justify-center">
-            <ShoppingCart className="h-10 w-10 text-gray-300 dark:text-gray-600" aria-hidden="true" />
+            <BagIcon className="h-10 w-10 text-gray-300 dark:text-gray-600" aria-hidden="true" />
           </div>
           <div>
-            <p className="text-[16px] font-bold text-gray-900 dark:text-white">{t('common.loginRequired')}</p>
-            <p className="mt-1.5 text-[13px] text-gray-500 dark:text-gray-400">{t('cart.loginRequired')}</p>
+            <p className="text-[17px] font-bold text-gray-900 dark:text-white">{t('common.loginRequired')}</p>
+            <p className="mt-2 text-[13px] text-gray-500 dark:text-gray-400">{t('cart.loginRequired')}</p>
           </div>
           <button
             type="button"
             onClick={() => navigate(`/login?returnUrl=${encodeURIComponent('/cart')}`)}
-            className="w-full max-w-xs rounded-xl bg-brand py-3.5 text-[14px] font-bold text-white hover:bg-brand-dark active:scale-[0.98] transition-all"
+            className="w-full max-w-xs rounded-xl bg-brand py-4 text-[15px] font-bold text-white hover:bg-brand-dark active:scale-[0.98] transition-all"
           >
             {t('common.loginButton')}
           </button>
@@ -474,9 +474,9 @@ function CartPageContent() {
                         </svg>
                       )}
                     </span>
-                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                      <Store size={14} className="text-gray-400 dark:text-gray-500 shrink-0" />
-                      <span className="text-[14px] font-bold text-gray-900 dark:text-white truncate">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <StoreIcon size={14} className="text-gray-400 dark:text-gray-500 shrink-0" />
+                      <span className="text-[15px] font-bold text-gray-900 dark:text-white truncate">
                         {group.seller_name}
                       </span>
                       {/* 🛡️ 2026-05-25 (Phase 6 합배송): 같은 bundling_key 2+ 아이템 묶음 표시 */}
@@ -488,7 +488,7 @@ function CartPageContent() {
                         }
                         const hasBundle = Array.from(bundlingMap.values()).some(v => v >= 2)
                         return hasBundle ? (
-                          <span className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-brand-tint text-brand-text ">
+                          <span className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded text-[12px] font-bold bg-brand-tint text-brand-text ">
                             <PackageCheck className="w-3 h-3" strokeWidth={2} aria-hidden />합배송
                           </span>
                         ) : null
@@ -499,7 +499,7 @@ function CartPageContent() {
 
                   {freeShipThreshold > 0 && remaining > 0 && (
                     <div className="mx-4 mt-3">
-                      <p className="text-[12px] text-gray-600 dark:text-gray-300 font-medium mb-1.5">
+                      <p className="text-[12px] text-gray-600 dark:text-gray-300 font-medium mb-2">
                         <span className="text-brand-text font-bold tabular-nums">{formatNumber(remaining)}원</span> 더 담으면 무료배송
                       </p>
                       <div className="w-full h-1.5 bg-gray-100 dark:bg-white/10 rounded-full overflow-hidden">

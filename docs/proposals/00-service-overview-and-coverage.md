@@ -290,10 +290,10 @@
 | 도메인 | 소개서 파일 | 페이지 | API 엔드포인트 |
 |---|---|---|---|
 | 도매몰 (유통스타트) | `wholesale-mall-brief.md` | 43 | 4 |
-| 오프라인 공구 / 동네딜 | `offline-groupbuy-brief.md` | 29 | 95 |
-| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 72 | 272 |
-| 유어샵 / 담기·소개 | `linkshop-brief.md` | 23 | 86 |
-| **합계** | — | **167** | **457** |
+| 오프라인 공구 / 동네딜 | `offline-groupbuy-brief.md` | 29 | 96 |
+| 온라인 입점 / 라이브커머스 | `online-listing-proposal-brief.md` | 73 | 276 |
+| 유어샵 / 담기·소개 | `linkshop-brief.md` | 24 | 86 |
+| **합계** | — | **169** | **462** |
 
 ### 전체 커버리지 검증 (자동 — 빠진 기능 보증)
 
@@ -302,12 +302,12 @@
 
 | 분류 | 페이지 | API 엔드포인트 |
 |---|---|---|
-| 전체 | 372 | 1128 |
-| 도메인 버킷 (5개 소개서) | 167 | 457 |
-| 공통/인프라 (의도적 제외) | 166 | 480 |
-| **미커버 (점검 필요)** | **39** | **191** |
+| 전체 | 376 | 1138 |
+| 도메인 버킷 (5개 소개서) | 169 | 462 |
+| 공통/인프라 (의도적 제외) | 167 | 485 |
+| **미커버 (점검 필요)** | **40** | **191** |
 
-⚠️ **미커버 230건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
+⚠️ **미커버 231건** — 아래 항목은 도메인 버킷에도 공통/인프라 allowlist 에도 없습니다. 버킷 prefix 확장 또는 allowlist 등록 필요.
 
 **미커버 페이지**
 - `/:mallSlug`
@@ -347,6 +347,7 @@
 - `/region`
 - `/region/:sido`
 - `/region/:sido/:sigungu`
+- `/soon`
 - `/urshorts`
 - `/videos`
 
@@ -714,7 +715,7 @@
 - `/stays/:id`
 - `/stays/checkout-return`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (95개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (96개)
 
 
 **/api/admin/stays**
@@ -799,6 +800,9 @@
 
 **/api/group-buy/my**
 - `GET /api/group-buy/my`
+
+**/api/group-buy/prelaunch**
+- `GET /api/group-buy/prelaunch`
 
 **/api/group-buy/products**
 - `GET /api/group-buy/products`
@@ -897,7 +901,7 @@
 
 #### 온라인 입점 / 라이브커머스
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (72개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (73개)
 
 - `/browse`
 - `/cart`
@@ -925,6 +929,7 @@
 - `/seller/guide`
 - `/seller/influencer-deals`
 - `/seller/influencers`
+- `/seller/instagram-dm`
 - `/seller/inventory`
 - `/seller/ledger`
 - `/seller/login`
@@ -972,7 +977,7 @@
 - `/vouchers/:id`
 - `/wishlist`
 
-### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (272개)
+### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (276개)
 
 
 **/api/admin-review-bonus/:id**
@@ -1071,9 +1076,15 @@
 **/api/products/dominant-color**
 - `POST /api/products/dominant-color`
 
+**/api/products/popular**
+- `GET /api/products/popular`
+
 **/api/products/search**
 - `GET /api/products/search/popular`
 - `GET /api/products/search/suggestions`
+
+**/api/products/suggestions**
+- `GET /api/products/suggestions`
 
 **/api/returns/:id**
 - `PUT /api/returns/:id/approve`
@@ -1123,9 +1134,15 @@
 **/api/search/dominant-color**
 - `POST /api/search/dominant-color`
 
+**/api/search/popular**
+- `GET /api/search/popular`
+
 **/api/search/search**
 - `GET /api/search/search/popular`
 - `GET /api/search/search/suggestions`
+
+**/api/search/suggestions**
+- `GET /api/search/suggestions`
 
 **/api/seller/:sellerId**
 - `GET /api/seller/:sellerId/products-public`
@@ -1512,7 +1529,7 @@
 
 #### 유어샵 / 담기·소개
 
-### 도메인 코드 인벤토리 (자동) — 페이지 (23개)
+### 도메인 코드 인벤토리 (자동) — 페이지 (24개)
 
 - `/admin/influencer-disputes`
 - `/admin/influencer-payouts`
@@ -1536,6 +1553,7 @@
 - `/u/me`
 - `/u/me/add`
 - `/u/me/earnings`
+- `/u/me/manage`
 - `/user/affiliate`
 
 ### 도메인 코드 인벤토리 (자동) — API 엔드포인트 (86개)
@@ -1729,7 +1747,7 @@
 
 
 
-> 마지막 생성: 2026-09-21T04:38:21.464Z
+> 마지막 생성: 2026-10-01T05:23:42.172Z
 > 생성기: `scripts/generate-proposal-refs.mjs`
 
 <!-- AUTO-GENERATED:proposal-refs END -->

@@ -92,6 +92,7 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   //   게이트가 여기 없으면 'True'·'1' 같은 오타가 저장되고 `=== 'true'` 가 조용히 OFF 로 읽는다.
   //   대표가 "켰다"고 믿는 정책이 안 도는 것 — 이 파일이 존재하는 바로 그 이유다.
   pickup_unclaimed_policy_enabled: boolStr,
+  voucher_partial_refund_enabled: boolStr,     // 🎟️ 이용권 장 단위 일부 환불. voucher-partial-refund.ts
   pickup_unclaimed_cold_pct: optionalPct,
   pickup_unclaimed_room_pct: optionalPct,
   pickup_unclaimed_room_grace_days: optionalIntRange(0, 365),
@@ -137,6 +138,11 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   partial_refund_enabled: boolStr,             // returns/api/return-amount.routes.ts:53 (부분환불 금액 지정)
   voucher_cart_enabled: boolStr,               // group-buy/api/cart-checkout.routes.ts:40 (이용권 장바구니)
   ocr_auto_verify_enabled: boolStr,            // worker/utils/ocr-license.ts:175 (서류 자동 판정)
+  store_owner_notice_enabled: boolStr,         // worker/utils/store-owner-notice.ts (사장님 "매장이 등록되었습니다" 발송)
+  // 🕐 2026-09-21: 노출 유예(시간). 읽는 쪽(`getExposureGraceHours`)이 0 이하를 '유예 없음' 으로,
+  //   168 초과를 168 로 클램프하므로 검증도 같은 범위로 맞춘다 — 화면이 받은 값과 코드가 쓰는 값이 갈리면
+  //   "넣었는데 안 걸린다" 가 된다.
+  store_exposure_grace_hours: intRange(0, 168),  // worker/utils/store-verify.ts:84
   multi_tier_enabled: boolStr,                 // referral-tree.routes.ts:349 (종료된 축)
 
   // ── enum ──
@@ -206,7 +212,10 @@ const SETTING_VALIDATORS: Record<string, Validator> = {
   refund_window_days: intRange(0, 365),
   auto_confirm_days: intRange(0, 365),
   return_period_days: intRange(0, 365),
-  settlement_hold_days: intRange(0, 365),
+  payout_hold_days: intRange(0, 365),                  // payout-hold.ts — 정산 유보(역일). 0이면 유보 없음
+  settlement_hold_days: intRange(0, 365),             // ⚠️ 읽는 코드 0 — 죽은 키(2026-09-24 실측).
+                                                      //   화면에서 뺐다. 되살리지 말 것(위 payout_hold_days 가 진짜다).
+
   influencer_payout_day_of_month: intRange(1, 31),
 }
 

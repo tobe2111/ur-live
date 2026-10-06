@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Bell } from 'lucide-react'
+import { BellIcon } from '@/components/icons/urdeal-icons'
 import api from '@/lib/api'
 import { useTranslation } from 'react-i18next'
 import { safeInternalPath } from '@/utils/safe-internal-path'
@@ -143,16 +143,24 @@ export default function DashboardNotificationBell({ tokenKey, iconClassName, but
 
   return (
     <div ref={ref} className="relative">
+      {/**
+        * 👆 2026-10-01 — 눌리는 크기 36 → **40px**(`ur-btn-md` 눈금). 셀러·어드민·에이전시가
+        *   **같은 부품**을 쓰므로 한 줄이 세 대시보드의 헤더를 좌우한다.
+        *   ⚠️ `p-2.5`(10px)로 키웠다가 되돌렸다 — **4px 격자 규칙**(🎫 ⑧)의 반쪽 간격이라
+        *     `consumer-type-scale` 가드가 빨간불을 냈다. 패딩이 아니라 **박스**로 40px 을 만든다
+        *     (헤더 페이지검색 버튼과 같은 패턴). 아이콘 20px 은 그대로 가운데 온다.
+        *   🔖 뱃지의 `-top-0.5`·`-right-0.5` 는 **음수 광학 보정**이라 그 규칙의 예외다(그대로).
+        */}
       <button
         onClick={() => setOpen(!open)}
-        className={`relative p-2 rounded-lg transition-colors ${buttonClassName || 'hover:bg-gray-100'}`}
+        className={`relative flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${buttonClassName || 'hover:bg-gray-100'}`}
         aria-label={unreadCount > 0 ? `알림 ${unreadCount}개 있음` : '알림 열기'}
         aria-haspopup="true"
         aria-expanded={open}
       >
-        <Bell className={`w-5 h-5 ${iconClassName || 'text-gray-600'}`} />
+        <BellIcon className={`w-5 h-5 ${iconClassName || 'text-gray-600'}`} />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1">
+          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[12px] font-bold px-1">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
@@ -161,11 +169,11 @@ export default function DashboardNotificationBell({ tokenKey, iconClassName, but
       {open && (
         <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden" role="dialog" aria-label={t('notifications.listAria', { defaultValue: '알림 목록' })}>
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-            <span className="text-sm font-semibold text-gray-900">알림</span>
+            <span className="text-[15px] font-semibold text-gray-900">알림</span>
             {unreadCount > 0 && (
               <button
                 onClick={markAllRead}
-                className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                className="text-[12px] text-blue-600 hover:text-blue-800 font-medium"
               >
                 모두 읽음
               </button>
@@ -174,7 +182,7 @@ export default function DashboardNotificationBell({ tokenKey, iconClassName, but
 
           <div className="max-h-80 overflow-y-auto">
             {notifications.length === 0 ? (
-              <div className="px-4 py-8 text-center text-sm text-gray-400">
+              <div className="px-4 py-8 text-center text-[15px] text-gray-400">
                 알림이 없습니다
               </div>
             ) : (
@@ -197,14 +205,14 @@ export default function DashboardNotificationBell({ tokenKey, iconClassName, but
                 >
                   <div className="flex items-start gap-2">
                     {!n.is_read && (
-                      <span className="mt-1.5 w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" aria-hidden="true" />
+                      <span className="mt-2 w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" aria-hidden="true" />
                     )}
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-gray-900 truncate">{n.title}</p>
+                      <p className="text-[15px] font-medium text-gray-900 truncate">{n.title}</p>
                       {n.message && (
-                        <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{n.message}</p>
+                        <p className="text-[12px] text-gray-500 mt-1 line-clamp-2">{n.message}</p>
                       )}
-                      <p className="text-xs text-gray-400 mt-1">{timeAgo(n.created_at)}</p>
+                      <p className="text-[12px] text-gray-400 mt-1">{timeAgo(n.created_at)}</p>
                     </div>
                   </div>
                 </div>

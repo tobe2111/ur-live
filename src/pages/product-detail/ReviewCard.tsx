@@ -58,10 +58,10 @@ export default function ReviewCard({ r }: { r: ReviewItem }) {
         </span>
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-[14px] font-bold text-gray-900 dark:text-white">{r.user_name || '익명'}</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[15px] font-bold text-gray-900 dark:text-white">{r.user_name || '익명'}</span>
             {!!r.is_sponsored && (
-              <span className="px-1.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 text-[10px] font-bold border border-amber-200 dark:border-amber-500/30">
+              <span className="px-2 py-1 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 text-[12px] font-bold border border-amber-200 dark:border-amber-500/30">
                 {t('reviews.sponsoredBadge', { defaultValue: '체험 제공' })}
               </span>
             )}
@@ -73,11 +73,11 @@ export default function ReviewCard({ r }: { r: ReviewItem }) {
           </div>
 
           {r.content && (
-            <p className="mt-2 text-[13.5px] leading-relaxed text-gray-800 dark:text-gray-100 break-words">{r.content}</p>
+            <p className="mt-2 text-[13px] leading-relaxed text-gray-800 dark:text-gray-100 break-words">{r.content}</p>
           )}
 
           {photos.length > 0 && (
-            <div className="mt-2.5 flex gap-1.5 flex-wrap">
+            <div className="mt-2 flex gap-2 flex-wrap">
               {photos.map((src) => (
                 <img
                   key={src}
@@ -93,11 +93,11 @@ export default function ReviewCard({ r }: { r: ReviewItem }) {
           )}
 
           {r.seller_reply && (
-            <div className="mt-2.5 rounded-lg bg-gray-50 dark:bg-[#1D1F29] p-2.5">
-              <p className="text-[11px] font-bold text-blue-600 dark:text-blue-400 mb-0.5">
+            <div className="mt-2 rounded-lg bg-gray-50 dark:bg-[#1D1F29] p-2">
+              <p className="text-[12px] font-bold text-blue-600 dark:text-blue-400 mb-1">
                 {t('reviews.sellerReplyLabel', { defaultValue: '매장 답글' })}
                 {r.seller_reply_at && (
-                  <span className="ml-1.5 font-normal text-gray-400 dark:text-gray-500">{formatKSTDate(r.seller_reply_at)}</span>
+                  <span className="ml-2 font-normal text-gray-400 dark:text-gray-500">{formatKSTDate(r.seller_reply_at)}</span>
                 )}
               </p>
               <p className="text-[13px] text-gray-700 dark:text-gray-200 leading-relaxed">{r.seller_reply}</p>

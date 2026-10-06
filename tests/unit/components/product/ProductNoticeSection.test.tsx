@@ -29,14 +29,14 @@ describe('ProductNoticeSection', () => {
   it('applies correct styling to notice titles', () => {
     const { container } = render(<ProductNoticeSection />)
 
-    const titles = container.querySelectorAll('.text-xs.font-medium.text-foreground')
+    const titles = container.querySelectorAll('.text-\\[13px\\].font-medium.text-foreground')
     expect(titles.length).toBe(3)
   })
 
   it('applies correct styling to notice descriptions', () => {
     const { container } = render(<ProductNoticeSection />)
 
-    const descriptions = container.querySelectorAll('.text-\\[10px\\].text-muted-foreground')
+    const descriptions = container.querySelectorAll('.text-\\[12px\\].text-muted-foreground')
     expect(descriptions.length).toBe(3)
   })
 
@@ -57,7 +57,7 @@ describe('ProductNoticeSection', () => {
   it('renders notices in correct order', () => {
     const { container } = render(<ProductNoticeSection />)
 
-    const titles = container.querySelectorAll('.text-xs.font-medium.text-foreground')
+    const titles = container.querySelectorAll('.text-\\[13px\\].font-medium.text-foreground')
     expect(titles[0].textContent).toBe('검수 포함')
     expect(titles[1].textContent).toBe('배송 기간 5-7 영업일')
     expect(titles[2].textContent).toBe('교환/반품 안내')
@@ -73,7 +73,7 @@ describe('ProductNoticeSection', () => {
   it('applies margin-top to bullets', () => {
     const { container } = render(<ProductNoticeSection />)
 
-    const bullets = container.querySelectorAll('.mt-0\\.5')
+    const bullets = container.querySelectorAll('.mt-1')
     expect(bullets.length).toBeGreaterThan(0)
   })
 
@@ -88,11 +88,11 @@ describe('ProductNoticeSection', () => {
     const { container } = render(<ProductNoticeSection />)
 
     // Titles should be text-xs
-    const titles = container.querySelectorAll('.text-xs')
+    const titles = container.querySelectorAll('.text-\\[13px\\]')
     expect(titles.length).toBeGreaterThan(0)
 
     // Descriptions should be text-[10px]
-    const descriptions = container.querySelectorAll('.text-\\[10px\\]')
+    const descriptions = container.querySelectorAll('.text-\\[12px\\]')
     expect(descriptions.length).toBe(3)
   })
 

@@ -6,9 +6,10 @@
  */
 
 import { useState, useEffect } from 'react'
+import { OkIcon, BadIcon, AlertIcon } from '@/components/icons/urdeal-icons'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { CheckCircle2, XCircle, AlertCircle, Copy, ExternalLink } from 'lucide-react'
+import { Copy, ExternalLink } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
 
@@ -97,11 +98,11 @@ export default function KakaoDebugPage() {
   function getStatusIcon(status: CheckResult['status']) {
     switch (status) {
       case 'success':
-        return <CheckCircle2 className="w-5 h-5 text-green-500" />
+        return <OkIcon className="w-5 h-5 text-green-500" />
       case 'error':
-        return <XCircle className="w-5 h-5 text-red-500" />
+        return <BadIcon className="w-5 h-5 text-red-500" />
       case 'warning':
-        return <AlertCircle className="w-5 h-5 text-yellow-500" />
+        return <AlertIcon className="w-5 h-5 text-yellow-500" />
     }
   }
 
@@ -112,8 +113,8 @@ export default function KakaoDebugPage() {
         {/* Header */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">🔍 카카오 로그인 디버그</CardTitle>
-            <p className="text-sm text-gray-600 mt-2">
+            <CardTitle className="text-[24px]">🔍 카카오 로그인 디버그</CardTitle>
+            <p className="text-[15px] text-gray-600 mt-2">
               KOE101 오류가 발생했나요? 아래 설정을 확인하세요.
             </p>
           </CardHeader>
@@ -122,7 +123,7 @@ export default function KakaoDebugPage() {
         {/* Quick Links */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">📚 빠른 링크</CardTitle>
+            <CardTitle className="text-[17px]">📚 빠른 링크</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             <a
@@ -155,7 +156,7 @@ export default function KakaoDebugPage() {
         {/* Diagnostics Results */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg">🔧 진단 결과</CardTitle>
+            <CardTitle className="text-[17px]">🔧 진단 결과</CardTitle>
             <Button onClick={runDiagnostics} disabled={loading} size="sm">
               {loading ? '진단 중...' : '다시 진단'}
             </Button>
@@ -174,9 +175,9 @@ export default function KakaoDebugPage() {
                       {getStatusIcon(check.status)}
                       <div className="flex-1">
                         <h3 className="font-semibold">{check.name}</h3>
-                        <p className="text-sm text-gray-700 mt-1">{check.message}</p>
+                        <p className="text-[15px] text-gray-700 mt-1">{check.message}</p>
                         {check.details && (
-                          <div className="mt-2 p-2 bg-gray-100 rounded text-xs font-mono break-all relative group">
+                          <div className="mt-2 p-2 bg-gray-100 rounded text-[12px] font-mono break-all relative group">
                             {check.details}
                             <button
                               onClick={() => copyToClipboard(check.details!)}
@@ -199,10 +200,10 @@ export default function KakaoDebugPage() {
         {/* Action Items */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">✅ 체크리스트</CardTitle>
+            <CardTitle className="text-[17px]">✅ 체크리스트</CardTitle>
           </CardHeader>
           <CardContent>
-            <ol className="list-decimal list-inside space-y-2 text-sm">
+            <ol className="list-decimal list-inside space-y-2 text-[15px]">
               <li>
                 <strong>카카오 개발자 콘솔</strong>에서 REST API 키 확인
               </li>
@@ -213,7 +214,7 @@ export default function KakaoDebugPage() {
               <li>
                 카카오 개발자 콘솔에서 <strong>Redirect URI</strong> 등록:
                 <br />
-                <code className="bg-gray-100 px-2 py-1 rounded text-xs">
+                <code className="bg-gray-100 px-2 py-1 rounded text-[12px]">
                   https://urdeal.kr/auth/kakao/sync/callback
                 </code>
               </li>
@@ -231,7 +232,7 @@ export default function KakaoDebugPage() {
         {/* Documentation Link */}
         <Card className="bg-blue-50 border-blue-200">
           <CardContent className="pt-6">
-            <p className="text-sm text-blue-900">
+            <p className="text-[15px] text-blue-900">
               📖 자세한 해결 방법은{' '}
               <code className="bg-blue-100 px-2 py-1 rounded font-mono">
                 KAKAO_LOGIN_KOE101_FIX.md

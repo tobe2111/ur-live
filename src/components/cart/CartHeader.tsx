@@ -44,7 +44,7 @@ export const CartHeader = React.memo(function CartHeader({
           <button type="button" onClick={handleBack} aria-label={t('common.back', { defaultValue: '뒤로 가기' })} className="w-9 h-9 flex items-center justify-center">
             <X size={22} className="text-gray-900 dark:text-white" aria-hidden="true" />
           </button>
-          <h1 className="text-[16px] font-extrabold text-gray-900 dark:text-white">
+          <h1 className="text-[17px] font-extrabold text-gray-900 dark:text-white">
             {t('cart.title', { defaultValue: '장바구니' })}{' '}
             {itemCount > 0 && <span className="text-brand-text tabular-nums">{itemCount}</span>}
           </h1>
@@ -55,12 +55,12 @@ export const CartHeader = React.memo(function CartHeader({
       {/* Select-all row */}
       {itemCount > 0 && (
         <div className="bg-gray-50 dark:bg-[#1D1F29] border-b border-gray-100 dark:border-[#2C2F35]">
-          <div className="mx-auto max-w-md lg:max-w-[1020px] flex items-center justify-between px-4 py-2.5">
+          <div className="mx-auto max-w-md lg:max-w-[1020px] flex items-center justify-between px-4 py-2">
             <button
               type="button"
               onClick={onToggleSelectAll}
               aria-pressed={allSelected}
-              className="flex items-center gap-2.5 select-none group"
+              className="flex items-center gap-2 select-none group"
             >
               <span
                 className={`w-5 h-5 rounded-full flex items-center justify-center border-2 transition-colors ${

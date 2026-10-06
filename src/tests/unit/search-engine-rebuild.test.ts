@@ -8,8 +8,10 @@
  *   · LIKE 폴백은 FTS 가 **예외를 던질 때만** 돌아 사실상 죽어 있었음(0건 성공은 폴백 안 함)
  *   · `/search` 결과가 쇼핑용 2열 카드 + **아무것도 안 거르는 칩 5개**
  *
- * ⚠️ 이 파일이 못 잡는 것: 실제 D1 실행 결과와 성능. SQL 문자열·배선 계약만 본다.
- *   (실측 판정은 배포 후 `/api/search?q=돈가스` 가 1건 이상인지로 한다.)
+ * ⚠️ 이 파일이 못 잡는 것: **실제 실행 결과**와 성능. SQL 문자열·배선 계약만 본다.
+ *   🩸 그 눈먼 자리에서 실제로 결함이 났다(2026-09-30 바인드 순서 — 문자열은 전부 맞는데 값이
+ *   어긋났다). 실행 판정은 `search-bind-order-2026-09-30.test.ts` 가 `node:sqlite` 로 한다.
+ *   (라이브 판정은 배포 후 `/api/search?q=돈가스` 가 1건 이상인지로 한다.)
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
@@ -23,19 +25,18 @@ const codeOnly = (src: string) => src.split('\n').filter(l => !/^\s*(\/\/|\*|\/\
 describe('① 매칭 — 단어 안쪽도, 두 글자도, 매장명도', () => {
   it('부분 매칭이다 — `돈가스` 가 "치즈돈가스"를 잡는다', () => {
     // 이게 이번 수정의 핵심. 접두사(`토큰%`)면 라이브와 똑같이 0건이 된다.
-    // ⚠️ params 뒤쪽에는 **랭킹**용 값(`돈가스%` = 이름이 그 말로 시작 → 가점)이 따로 붙는다.
-    //   그래서 "접두사가 아예 없다" 로 재면 안 되고, **매칭 조건이 쓰는 앞부분**만 봐야 한다.
-    const { where, params } = buildSearchClause('돈가스')
-    const matchParams = params.slice(0, SEARCH_COLUMNS.length)
-    expect(matchParams).toHaveLength(SEARCH_COLUMNS.length)
-    expect(matchParams.every(p => p === '%돈가스%')).toBe(true)
+    // ⚠️ 랭킹용 값(`돈가스%` = 이름이 그 말로 시작 → 가점)은 **`rankParams` 로 따로** 나온다.
+    //   그래서 매칭 묶음엔 접두사 패턴이 섞이지 않는다(2026-09-30 이전엔 한 배열이라 섞였다).
+    const { where, whereParams } = buildSearchClause('돈가스')
+    expect(whereParams).toHaveLength(SEARCH_COLUMNS.length)
+    expect(whereParams.every(p => p === '%돈가스%')).toBe(true)
     expect(where).toContain('name LIKE ?')
   })
 
   it('두 글자 검색어도 그대로 동작한다 (trigram 이면 여기서 죽는다)', () => {
-    const { where, params } = buildSearchClause('커트')
+    const { where, whereParams } = buildSearchClause('커트')
     expect(where).not.toBe('')
-    expect(params).toContain('%커트%')
+    expect(whereParams).toContain('%커트%')
   })
 
   it('매장명을 검색 대상에 포함한다 — 이용권은 매장이 본질', () => {
@@ -58,9 +59,9 @@ describe('① 매칭 — 단어 안쪽도, 두 글자도, 매장명도', () => {
   })
 
   it('동의어는 같은 토큰 그룹 안에서 OR 된다', () => {
-    const { params } = buildSearchClause('커피', t => (t === '커피' ? ['카페'] : []))
-    expect(params).toContain('%커피%')
-    expect(params).toContain('%카페%')
+    const { whereParams } = buildSearchClause('커피', t => (t === '커피' ? ['카페'] : []))
+    expect(whereParams).toContain('%커피%')
+    expect(whereParams).toContain('%카페%')
   })
 
   it('빈 검색어는 조건을 만들지 않는다 (전체 조회로 새지 않게)', () => {
@@ -77,8 +78,8 @@ describe('② 안전 — 와일드카드·과도한 입력', () => {
   })
 
   it('사용자가 넣은 %가 와일드카드로 새지 않는다', () => {
-    const { params } = buildSearchClause('50%')
-    expect(params).toContain('%50\\%%')
+    const { whereParams } = buildSearchClause('50%')
+    expect(whereParams).toContain('%50\\%%')
   })
 
   it('토큰 수·길이를 자른다 (거대 LIKE 방지)', () => {

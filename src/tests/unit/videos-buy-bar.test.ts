@@ -97,11 +97,13 @@ describe('안 B — 무엇을 사는지 말한다', () => {
     expect(priceLine).toMatch(/whitespace-nowrap/)
   })
 
-  it('🔒 크기 위계 — 판매가가 가장 크고 정가가 가장 작다', () => {
+  it('🔒 크기 위계 — 판매가가 가장 크고 정가는 바닥 단계다', () => {
     // 정가를 판매가와 같은 크기로 키우면 실측 폭이 무너지고(위 표의 전제),
     // 무엇보다 "지금 얼마인가" 가 안 읽힌다.
+    // 🔀 2026-09-29: 정가가 11 → **12px**(정본 스케일 바닥 — 규칙 ⑧). 할인율도 12 라
+    //    "정가가 유일하게 가장 작다" 는 더 이상 참이 아니다. 지키는 것은 **판매가 > 정가** 다.
     expect(bar).toMatch(/text-\[15px\][^"]*font-bold/)   // 판매가
-    expect(bar).toMatch(/text-\[11px\][^"]*line-through/) // 정가 — 가장 작게
+    expect(bar).toMatch(/text-\[12px\][^"]*line-through/) // 정가 — 바닥 단계
   })
 
   it('🔒 흰 바 위에서는 라이트 할인색(text-sale)을 쓴다', () => {

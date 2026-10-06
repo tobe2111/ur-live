@@ -40,7 +40,13 @@ const count = (s: string) => (s.match(EXCL) || []).length + (s.match(EXCL_HELPER
 // [파일, 최소 제외절 개수] — 소비자에게 상품을 노출하는 전 경로.
 const CONSUMER_PRODUCT_QUERIES: Array<[string, number]> = [
   ['src/features/products/repositories/ProductRepository.ts', 3], // 리스트 + 카운트 + FTS
-  ['src/features/products/api/products.routes.ts', 3],            // /count + 자동완성 ×2
+  // 🔁 2026-09-30 재조준: 자동완성(`/suggestions` 별칭)의 쿼리가 `api/search-suggestions.ts` 로
+  //    옮겨갔다(파일 크기 래칫). 제외절은 **사라지지 않고 따라갔다** — 아래 줄이 그 자리를 잇는다.
+  ['src/features/products/api/products.routes.ts', 2],            // /count + /search/suggestions
+  // 제외절은 `scope` 상수 **한 곳**에 있고 두 쿼리가 그것을 보간해 쓴다. "두 쿼리가 같은 scope 를
+  // 쓰는가"는 `search-suggest-panel-2026-09-30.test.ts` 가 `${scope}` 등장 횟수로 따로 고정한다 —
+  // 그 짝이 없으면 이 1 은 약해진다(옮길 때 함께 옮길 것).
+  ['src/features/products/api/search-suggestions.ts', 1],         // 매장명 + 상품명 제안
   ['src/worker/routes/sitemap.routes.ts', 2],                     // 공구 + 일반상품
   ['src/worker/routes/curator.routes.ts', 2],                     // 유어샵 추천 피드 + 담긴 핀 목록(2026-09-03)
   ['src/features/group-buy/api/group-buy-public.routes.ts', 2],   // gift-catalog + fallback

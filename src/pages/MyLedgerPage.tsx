@@ -7,12 +7,13 @@
  * 두 dashboard 컨텍스트 공통 페이지 — token type 으로 자동 분기.
  */
 import { useEffect, useState } from 'react'
+import { OkIcon, ClockIcon, WalletIcon } from '@/components/icons/urdeal-icons'
 import { formatKSTDate } from '@/utils/date'
 import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import SellerLayout from '@/components/SellerLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
-import { CheckCircle2, Clock, CreditCard, Handshake, List, RotateCcw, Send, TrendingUp, Wallet, type LucideIcon } from 'lucide-react'
+import { CreditCard, Handshake, List, RotateCcw, Send, TrendingUp, type LucideIcon } from 'lucide-react'
 import { formatWon } from '@/utils/format'
 
 interface LedgerEntry {
@@ -44,12 +45,12 @@ interface LedgerData {
 }
 
 const EVENT_LABEL: Record<string, { label: string; Icon: LucideIcon }> = {
-  voucher_used: { label: '바우처 사용', Icon: CheckCircle2 },
+  voucher_used: { label: '바우처 사용', Icon: OkIcon },
   voucher_refund: { label: '환불', Icon: RotateCcw },
   group_buy_join: { label: '공구 참여', Icon: Handshake },
   charge: { label: '충전', Icon: CreditCard },
   refund: { label: '환불', Icon: RotateCcw },
-  settlement: { label: '정산', Icon: Wallet },
+  settlement: { label: '정산', Icon: WalletIcon },
 }
 
 const PAYOUT_STATUS: Record<string, { label: string; cls: string }> = {
@@ -87,46 +88,66 @@ export default function MyLedgerPage() {
   const content = (
     <div className="mx-auto max-w-5xl space-y-6">
       <DashboardPageHeader
-        icon={<Wallet className="h-5 w-5" />}
+        icon={<WalletIcon className="h-5 w-5" />}
         title="내 ledger (정산 원장)"
         subtitle="모든 돈 흐름의 단일 source of truth — 발생액 / 송금완료 / 미정산 잔액"
       />
 
       {loading ? (
-        <p className="text-center text-sm text-gray-400 py-16">불러오는 중...</p>
+        <p className="text-center text-[15px] text-gray-400 py-16">불러오는 중...</p>
       ) : !data ? (
-        <p className="text-center text-sm text-gray-400 py-16">데이터를 불러올 수 없습니다.</p>
+        <p className="text-center text-[15px] text-gray-400 py-16">데이터를 불러올 수 없습니다.</p>
       ) : (
         <>
           {/* 요약 카드 4개 */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <div className="flex items-center gap-1 text-xs text-gray-500"><TrendingUp className="w-3.5 h-3.5" /> 누적 발생액</div>
-              <p className="text-xl font-bold text-gray-900 mt-1">{formatWon(data.summary.total_earned)}</p>
+            <div className="bg-white rounded-xl p-4 shadow-lift">
+              <div className="flex items-center gap-1 text-[12px] text-gray-500"><TrendingUp className="w-3.5 h-3.5" /> 누적 발생액</div>
+              <p className="text-[17px] font-bold text-gray-900 mt-1">{formatWon(data.summary.total_earned)}</p>
             </div>
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <div className="flex items-center gap-1 text-xs text-gray-500"><Send className="w-3.5 h-3.5" /> 송금 완료</div>
-              <p className="text-xl font-bold text-emerald-600 mt-1">{formatWon(data.summary.total_paid)}</p>
+            <div className="bg-white rounded-xl p-4 shadow-lift">
+              <div className="flex items-center gap-1 text-[12px] text-gray-500"><Send className="w-3.5 h-3.5" /> 송금 완료</div>
+              <p className="text-[17px] font-bold text-emerald-600 mt-1">{formatWon(data.summary.total_paid)}</p>
             </div>
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <div className="flex items-center gap-1 text-xs text-gray-500"><Clock className="w-3.5 h-3.5" /> 미정산 잔액</div>
-              <p className="text-xl font-bold text-amber-600 mt-1">{formatWon(data.summary.pending)}</p>
+            <div className="bg-white rounded-xl p-4 shadow-lift">
+              <div className="flex items-center gap-1 text-[12px] text-gray-500"><ClockIcon className="w-3.5 h-3.5" /> 미정산 잔액</div>
+              <p className="text-[17px] font-bold text-amber-600 mt-1">{formatWon(data.summary.pending)}</p>
             </div>
-            <div className="bg-white rounded-xl border border-gray-200 p-4">
-              <div className="text-xs text-gray-500">총 entries</div>
-              <p className="text-xl font-bold text-gray-900 mt-1">{data.summary.entry_count}건</p>
+            <div className="bg-white rounded-xl p-4 shadow-lift">
+              <div className="text-[12px] text-gray-500">총 entries</div>
+              <p className="text-[17px] font-bold text-gray-900 mt-1">{data.summary.entry_count}건</p>
             </div>
           </div>
 
           {/* 송금 이력 */}
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-xl overflow-hidden shadow-lift">
             <div className="px-4 py-3 border-b border-gray-100">
-              <h2 className="text-sm font-bold text-gray-900">최근 송금 이력</h2>
+              <h2 className="text-[15px] font-bold text-gray-900">최근 송금 이력</h2>
             </div>
             {data.recent_payouts.length === 0 ? (
-              <p className="text-center text-xs text-gray-400 py-8">아직 송금 이력이 없습니다.</p>
+              <p className="text-center text-[12px] text-gray-400 py-8">아직 송금 이력이 없습니다.</p>
             ) : (
-              <table className="w-full text-xs">
+              <>
+              {/* 📱 2026-09-27 폰: 표 대신 한 건 한 줄. 실측(366px)에서 4열 표는 잘리지는 않지만
+                  행이 81px 로 부풀고 '정산 기간'·'TX ID' 가 여러 줄로 감긴다. `SellerProductsPage` 가
+                  쓰는 방식(표=PC / 카드=폰)을 따른다. 데이터·동작 동일. */}
+              <div className="lg:hidden divide-y divide-gray-100">
+                {data.recent_payouts.map(p => {
+                  const meta = PAYOUT_STATUS[p.status] ?? { label: p.status || '처리 중', cls: 'bg-gray-100 text-gray-600' }
+                  return (
+                    <div key={p.id} className="px-4 py-3">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-[15px] font-bold text-gray-900 tabular-nums">{formatWon(p.amount)}</span>
+                        <span className={`inline-block px-2 py-1 rounded-full text-[12px] font-medium ${meta.cls}`}>{meta.label}</span>
+                        {p.sent_at && <span className="ml-auto text-[12px] text-gray-400">{formatKSTDate(p.sent_at)}</span>}
+                      </div>
+                      <p className="mt-1 text-[12px] text-gray-600">{p.period_start} ~ {p.period_end}</p>
+                      {p.transaction_id && <p className="text-[12px] text-gray-400 tabular-nums truncate">{p.transaction_id}</p>}
+                    </div>
+                  )
+                })}
+              </div>
+              <table className="hidden lg:table w-full text-[12px]">
                 <thead className="bg-gray-50">
                   <tr className="text-gray-500">
                     <th className="px-4 py-2 text-left">정산 기간</th>
@@ -144,41 +165,42 @@ export default function MyLedgerPage() {
                         <td className="px-4 py-2 text-gray-700">{p.period_start} ~ {p.period_end}</td>
                         <td className="px-4 py-2 text-right font-bold text-gray-900">{formatWon(p.amount)}</td>
                         <td className="px-4 py-2 text-center">
-                          <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium ${meta.cls}`}>{meta.label}</span>
-                          {p.sent_at && <div className="text-[10px] text-gray-400 mt-0.5">{formatKSTDate(p.sent_at)}</div>}
+                          <span className={`inline-block px-2 py-1 rounded-full text-[12px] font-medium ${meta.cls}`}>{meta.label}</span>
+                          {p.sent_at && <div className="text-[12px] text-gray-400 mt-1">{formatKSTDate(p.sent_at)}</div>}
                         </td>
-                        <td className="px-4 py-2 text-gray-700 font-mono">{p.transaction_id || '-'}</td>
+                        <td className="px-4 py-2 text-gray-700 tabular-nums">{p.transaction_id || '-'}</td>
                       </tr>
                     )
                   })}
                 </tbody>
               </table>
+              </>
             )}
           </div>
 
           {/* ledger entries */}
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-xl overflow-hidden shadow-lift">
             <div className="px-4 py-3 border-b border-gray-100">
-              <h2 className="text-sm font-bold text-gray-900">최근 ledger entries (최대 50개)</h2>
+              <h2 className="text-[15px] font-bold text-gray-900">최근 ledger entries (최대 50개)</h2>
             </div>
             {data.entries.length === 0 ? (
-              <p className="text-center text-xs text-gray-400 py-8">아직 ledger entry 가 없습니다.</p>
+              <p className="text-center text-[12px] text-gray-400 py-8">아직 ledger entry 가 없습니다.</p>
             ) : (
               <div className="divide-y divide-gray-100">
                 {data.entries.map(e => {
                   const ev = EVENT_LABEL[e.event_type] || { label: e.event_type, Icon: List }
                   return (
-                    <div key={e.id} className="px-4 py-3 flex items-center justify-between text-xs">
+                    <div key={e.id} className="px-4 py-3 flex items-center justify-between text-[12px]">
                       <div className="flex items-center gap-2 min-w-0 flex-1">
                         <ev.Icon className="w-4 h-4 shrink-0 text-gray-400" aria-hidden="true" />
                         <div className="min-w-0">
                           <p className="font-medium text-gray-900 truncate">{ev.label}</p>
-                          <p className="text-[10px] text-gray-400 font-mono truncate">{e.reference_id}</p>
+                          <p className="text-[12px] text-gray-400 tabular-nums truncate">{e.reference_id}</p>
                         </div>
                       </div>
                       <div className="text-right shrink-0 ml-2">
                         <p className="font-bold text-gray-900">{formatWon(e.amount)}</p>
-                        <p className="text-[10px] text-gray-400">{formatKSTDate(e.created_at)}</p>
+                        <p className="text-[12px] text-gray-400">{formatKSTDate(e.created_at)}</p>
                       </div>
                     </div>
                   )

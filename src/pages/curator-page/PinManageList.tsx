@@ -70,11 +70,11 @@ export default function PinManageList({ pins, onReorder, onDeleted }: { pins: Cu
 
   return (
     <div className="max-w-3xl mx-auto px-4 pt-3 pb-6">
-      <div className="flex items-center justify-between mb-2.5">
-        <span className="text-[14px] font-extrabold text-gray-900 dark:text-white">{t('curator.myPinsCount', { defaultValue: '내 핀 {{count}}개', count: items.length })}</span>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[15px] font-extrabold text-gray-900 dark:text-white">{t('curator.myPinsCount', { defaultValue: '내 핀 {{count}}개', count: items.length })}</span>
         <span className="text-[12px] text-gray-400 dark:text-gray-500">⇅ {t('curator.dragToReorder', { defaultValue: '끌어서 정렬' })}</span>
       </div>
-      <div ref={listRef} className="flex flex-col gap-2.5">
+      <div ref={listRef} className="flex flex-col gap-2">
         {items.map((pin, idx) => {
           const img = pin.thumbnail || pin.image_url || ''
           // 🩸 2026-09-05: `pin.price * rate / 100` 이었다 — rate 는 **분수**(0.05)라 100 으로 또 나누면
@@ -86,28 +86,28 @@ export default function PinManageList({ pins, onReorder, onDeleted }: { pins: Cu
             <div
               key={pin.id}
               data-pinrow
-              className={`flex items-center gap-3 rounded-2xl border p-2.5 bg-surface ${dragging ? 'border-[#6b7280] shadow-lg' : 'border-gray-200 dark:border-[#2C2F35]'}`}
+              className={`flex items-center gap-3 rounded-2xl border p-2 bg-surface ${dragging ? 'border-[#6b7280] shadow-lg' : 'border-gray-200 dark:border-[#2C2F35]'}`}
               style={{ opacity: dragging ? 0.92 : 1 }}
             >
               <span
                 onPointerDown={(e) => { e.preventDefault(); dragIdxRef.current = idx; setDraggingId(pin.id) }}
                 style={{ touchAction: 'none', cursor: 'grab' }}
-                className="text-gray-300 dark:text-gray-600 text-lg px-1 select-none leading-none"
+                className="text-gray-300 dark:text-gray-600 text-[17px] px-1 select-none leading-none"
                 aria-label={t('curator.dragToReorder', { defaultValue: '끌어서 정렬' })}
               >⋮⋮</span>
               {img
                 ? <img src={cfImage(img, { width: 100, format: 'auto' }) || img} alt="" className="w-[52px] h-[52px] rounded-xl object-cover shrink-0" loading="lazy" decoding="async" onError={(e) => cfImageOnError(e.currentTarget, img)} />
                 : <div className="w-[52px] h-[52px] rounded-xl bg-gray-100 dark:bg-[#1D1F29] shrink-0" />}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2">
                   <span className="text-[13px] font-bold text-gray-900 dark:text-white truncate">{pin.product_name}</span>
-                  {idx === 0 && <span className="shrink-0 text-[9.5px] font-extrabold text-[#6b7280] bg-[#FFEDE8] dark:bg-[#2a1812] px-1.5 py-0.5 rounded">{t('curator.topPick', { defaultValue: '강추' })}</span>}
+                  {idx === 0 && <span className="shrink-0 text-[12px] font-extrabold text-[#6b7280] bg-[#FFEDE8] dark:bg-[#2a1812] px-2 py-1 rounded">{t('curator.topPick', { defaultValue: '강추' })}</span>}
                 </div>
                 {pin.note
-                  ? <div className="text-[11.5px] text-gray-500 dark:text-gray-400 mt-1">{t('curator.viewsCount', { defaultValue: '조회 {{n}}', n: fmtK(pin.click_count || 0) })}{est > 0 ? t('curator.earnPerSaleAmt', { defaultValue: ' · 쓰면 ₩{{amt}}', amt: est.toLocaleString('ko-KR') }) : ''}</div>
-                  : <div className="text-[11.5px] font-semibold text-[#C2491F] dark:text-[#9ca3af] mt-1">{t('curator.noCommentNudge', { defaultValue: '추천 코멘트 없음 · 추가하면 전환 ↑' })}</div>}
+                  ? <div className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">{t('curator.viewsCount', { defaultValue: '조회 {{n}}', n: fmtK(pin.click_count || 0) })}{est > 0 ? t('curator.earnPerSaleAmt', { defaultValue: ' · 쓰면 ₩{{amt}}', amt: est.toLocaleString('ko-KR') }) : ''}</div>
+                  : <div className="text-[12px] font-semibold text-[#C2491F] dark:text-[#9ca3af] mt-1">{t('curator.noCommentNudge', { defaultValue: '추천 코멘트 없음 · 추가하면 전환 ↑' })}</div>}
               </div>
-              <button onClick={() => del(pin.id)} aria-label={t('curator.delete', { defaultValue: '삭제' })} className="shrink-0 w-[30px] h-[30px] rounded-lg bg-gray-100 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400 flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-colors text-sm font-bold">✕</button>
+              <button onClick={() => del(pin.id)} aria-label={t('curator.delete', { defaultValue: '삭제' })} className="shrink-0 w-[30px] h-[30px] rounded-lg bg-gray-100 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400 flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-colors text-[15px] font-bold">✕</button>
             </div>
           )
         })}

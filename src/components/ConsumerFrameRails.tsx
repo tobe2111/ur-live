@@ -6,8 +6,8 @@ import { useTranslation } from 'react-i18next'
 //   홈 modulepreload 에 딸려옴(PC 는 거터 QR 렌더, 모바일은 안 쓰는데도 preload). QR 은 장식용 모바일-앱
 //   다운로드 코드라 첫 페인트 비필수 → lazy 로 빼 홈 첫 페인트 preload 에서 18KB 제거.
 const QRCodeSVG = lazy(() => import('qrcode.react').then(m => ({ default: m.QRCodeSVG })))
-import { Home, Gift, Ticket, Sparkles, User, ChevronRight, Smartphone, MapPin, ShieldCheck, Percent, Store } from 'lucide-react'
-import { UrShopIcon } from '@/components/icons/urdeal-icons'
+import { Sparkles, User, ChevronRight, Smartphone, ShieldCheck, Percent } from 'lucide-react'
+import { UrShopIcon, HomeIcon, GiftBoxIcon, TicketStubIcon, PinIcon, StoreIcon } from '@/components/icons/urdeal-icons'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 
 /**
@@ -27,11 +27,11 @@ const rightStyle = { left: `calc(50% + ${FRAME_HALF + GAP}px)`, width: `${RAIL_W
 const cardCls =
   'rounded-2xl border border-gray-200 dark:border-white/10 bg-white/80 dark:bg-white/[0.04] backdrop-blur-sm shadow-sm'
 
-function QuickLink({ icon: Icon, label, onClick }: { icon: typeof Home; label: string; onClick: () => void }) {
+function QuickLink({ icon: Icon, label, onClick }: { icon: typeof HomeIcon; label: string; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-white/[0.06] transition-colors text-left"
+      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-white/[0.06] transition-colors text-left"
     >
       <Icon className="w-[18px] h-[18px] text-gray-700 dark:text-gray-300 shrink-0" aria-hidden="true" />
       <span className="flex-1 text-[13px] font-semibold text-gray-900 dark:text-white">{label}</span>
@@ -65,28 +65,28 @@ export default function ConsumerFrameRails() {
           </div>
 
           {/* 🎨 2026-07-07 (대표 — "PC 거터 휑함"): 큰 QR 하나만 있던 좌측을 브랜드 가치 3종 + 작은 QR 로 재구성. */}
-          <div className={`${cardCls} p-3.5 space-y-2.5`}>
+          <div className={`${cardCls} p-4 space-y-2`}>
             {[
               { icon: ShieldCheck, title: t('frameRails.valTrust', { defaultValue: '유어딜 안전결제' }), desc: t('frameRails.valTrustDesc', { defaultValue: '결제·정산을 보증해요' }) },
               { icon: Percent, title: t('frameRails.valDeal', { defaultValue: '매일 새로운 동네 딜' }), desc: t('frameRails.valDealDesc', { defaultValue: '할인가로 발견·구매' }) },
-              { icon: Store, title: t('frameRails.valShop', { defaultValue: '내 이용권 진열대, 유어샵' }), desc: t('frameRails.valShopDesc', { defaultValue: '가입하면 이미 열려 있어요' }) },
+              { icon: StoreIcon, title: t('frameRails.valShop', { defaultValue: '내 이용권 진열대, 유어샵' }), desc: t('frameRails.valShopDesc', { defaultValue: '가입하면 이미 열려 있어요' }) },
             ].map((v) => (
-              <div key={v.title} className="flex items-start gap-2.5">
-                <span className="mt-0.5 w-7 h-7 shrink-0 rounded-lg bg-gray-900 dark:bg-white/10 text-white dark:text-white flex items-center justify-center">
+              <div key={v.title} className="flex items-start gap-2">
+                <span className="mt-1 w-7 h-7 shrink-0 rounded-lg bg-gray-900 dark:bg-white/10 text-white dark:text-white flex items-center justify-center">
                   <v.icon className="w-[15px] h-[15px]" aria-hidden="true" />
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-[12.5px] font-bold text-gray-900 dark:text-white leading-tight">{v.title}</span>
-                  <span className="block text-[11px] text-gray-500 dark:text-gray-400 leading-snug">{v.desc}</span>
+                  <span className="block text-[12px] font-bold text-gray-900 dark:text-white leading-tight">{v.title}</span>
+                  <span className="block text-[12px] text-gray-500 dark:text-gray-400 leading-snug">{v.desc}</span>
                 </span>
               </div>
             ))}
           </div>
 
-          <div className={`${cardCls} p-3.5`}>
-            <div className="flex items-center gap-1.5 mb-2.5">
+          <div className={`${cardCls} p-4`}>
+            <div className="flex items-center gap-2 mb-2">
               <Smartphone className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
-              <p className="text-[11px] font-bold tracking-wide text-gray-500 dark:text-gray-400">
+              <p className="text-[12px] font-bold tracking-wide text-gray-500 dark:text-gray-400">
                 {t('frameRails.openMobile', { defaultValue: '모바일로 보기' })}
               </p>
             </div>
@@ -100,7 +100,7 @@ export default function ConsumerFrameRails() {
                   <div className="w-[84px] h-[84px]" />
                 )}
               </div>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">
+              <p className="text-[12px] text-gray-500 dark:text-gray-400 leading-relaxed">
                 {t('frameRails.scanInline', { defaultValue: '카메라로 스캔하면 모바일에서 이어서 볼 수 있어요' })}
               </p>
             </div>
@@ -117,14 +117,14 @@ export default function ConsumerFrameRails() {
           {/* 🧭 2026-07-03 (대표 — 바로가기 업데이트): 하단 네비 정본 5탭과 통일
               (홈·쇼핑·이용권·유어샵·마이). 낡은 라벨(교환권/내 지갑)·중복 동네딜(→은퇴한 /group-buy) 제거. */}
           <div className={`${cardCls} p-2`}>
-            <p className="px-3.5 pt-2 pb-1 text-[11px] font-bold tracking-wide text-gray-500 dark:text-gray-400">
+            <p className="px-4 pt-2 pb-1 text-[12px] font-bold tracking-wide text-gray-500 dark:text-gray-400">
               {t('frameRails.quicklinks', { defaultValue: '바로가기' })}
             </p>
-            <QuickLink icon={Home} label={t('nav.home', { defaultValue: '홈' })} onClick={() => navigate('/')} />
+            <QuickLink icon={HomeIcon} label={t('nav.home', { defaultValue: '홈' })} onClick={() => navigate('/')} />
             {/* 🏷️ 2026-08-17 (UX 전수검사 P2): 라벨 "쇼핑"은 잠정 숨김된 쇼핑탭 잔재 — 목적지(/vouchers)에
                 맞는 정본 라벨 "교환권"(하단 네비 탭2와 동일 Gift 아이콘)으로 정정. */}
-            <QuickLink icon={Gift} label={t('nav.vouchers', { defaultValue: '교환권' })} onClick={() => navigate('/vouchers')} />
-            <QuickLink icon={Ticket} label={t('nav.myGbVouchers', { defaultValue: '이용권' })} onClick={() => navigate('/my-vouchers')} />
+            <QuickLink icon={GiftBoxIcon} label={t('nav.vouchers', { defaultValue: '교환권' })} onClick={() => navigate('/vouchers')} />
+            <QuickLink icon={TicketStubIcon} label={t('nav.myGbVouchers', { defaultValue: '이용권' })} onClick={() => navigate('/my-vouchers')} />
             <QuickLink icon={UrShopIcon} label={t('nav.linkshop', { defaultValue: '유어샵' })} onClick={() => navigate('/u/me')} />
             <QuickLink icon={User} label={t('nav.my', { defaultValue: '마이' })} onClick={() => navigate('/user/profile')} />
           </div>
@@ -132,9 +132,9 @@ export default function ConsumerFrameRails() {
           {/* CTA: 홈이 곧 동네딜이라 '전체 동네딜'(은퇴)은 중복 → '지도로 동네딜 보기'로 (홈 목록과 상호보완). */}
           <button
             onClick={() => navigate('/map')}
-            className="pointer-events-auto w-full flex items-center justify-center gap-1.5 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-4 py-3.5 text-[13px] font-bold hover:opacity-90 transition-opacity shadow-sm"
+            className="pointer-events-auto w-full flex items-center justify-center gap-2 rounded-2xl bg-brand text-white px-4 py-4 text-[13px] font-bold hover:opacity-90 transition-opacity shadow-sm"
           >
-            <MapPin className="w-4 h-4" aria-hidden="true" />
+            <PinIcon className="w-4 h-4" aria-hidden="true" />
             {t('frameRails.exploreMap', { defaultValue: '지도로 동네딜 보기 →' })}
           </button>
         </div>

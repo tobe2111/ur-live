@@ -56,7 +56,7 @@ function Caret() {
   )
 }
 
-const LABEL = 'text-[11.5px] font-bold text-gray-500 dark:text-gray-400 leading-none'
+const LABEL = 'text-[12px] font-bold text-gray-500 dark:text-gray-400 leading-none'
 
 /**
  * 라벨 + 값 한 행. 오른쪽에 컨트롤(스테퍼 등)을 두면 꺾쇠 대신 그것이 온다.
@@ -75,11 +75,11 @@ export function FieldRow({
   divider?: boolean
 }) {
   return (
-    <RowShell onClick={onClick} ariaLabel={onClick ? `${label} 변경` : undefined} divider={divider} minH="min-h-[58px] py-2.5">
+    <RowShell onClick={onClick} ariaLabel={onClick ? `${label} 변경` : undefined} divider={divider} minH="min-h-[58px] py-2">
       <span className="flex-1 min-w-0">
-        <span className="flex items-center gap-1.5">
+        <span className="flex items-center gap-2">
           <span className={LABEL}>{label}</span>
-          {hint ? <span className="text-[11px] font-semibold text-gray-400 dark:text-gray-500">{hint}</span> : null}
+          {hint ? <span className="text-[12px] font-semibold text-gray-400 dark:text-gray-500">{hint}</span> : null}
         </span>
         <span className="block mt-[3px] text-[15px] font-bold tracking-[-0.02em] text-gray-900 dark:text-white truncate">
           {value}
@@ -111,7 +111,7 @@ export function FieldSplit({
   divider?: boolean
 }) {
   return (
-    <RowShell onClick={onClick} ariaLabel={onClick ? '날짜 변경' : undefined} divider={divider} minH="min-h-[66px] py-2.5">
+    <RowShell onClick={onClick} ariaLabel={onClick ? '날짜 변경' : undefined} divider={divider} minH="min-h-[66px] py-2">
       <span className="flex-1 min-w-0">
         <span className={`block ${LABEL}`}>{leftLabel}</span>
         <span className="block mt-[3px] text-[17px] font-extrabold tracking-[-0.02em] tabular-nums text-gray-900 dark:text-white">
@@ -119,7 +119,7 @@ export function FieldSplit({
           {leftSub ? <span className="ml-[3px] text-[13px] font-bold">{leftSub}</span> : null}
         </span>
       </span>
-      <span className="shrink-0 rounded-full bg-brand px-2.5 py-[3px] text-[11px] font-extrabold tabular-nums text-white">
+      <span className="shrink-0 rounded-full bg-brand px-2 py-[3px] text-[12px] font-extrabold tabular-nums text-white">
         {badge}
       </span>
       <span className="flex-1 min-w-0 text-right">

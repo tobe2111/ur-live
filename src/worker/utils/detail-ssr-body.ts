@@ -77,7 +77,7 @@ function escText(s: string): string {
  * ⚠️ 라벨은 명칭 SSOT(`getVoucherShortLabel`)를 쓴다 — 여기서 "식사권" 같은 옛 어휘가 되살아나지 않게.
  */
 export const DETAIL_CRUMB_CLASS =
-  'flex items-center gap-1.5 overflow-x-auto whitespace-nowrap text-[13px] leading-none scrollbar-hide px-4 pb-2.5 lg:px-8 lg:pt-4 lg:pb-1 lg:max-w-[1200px] lg:mx-auto pt-[64px]'
+  'flex items-center gap-2 overflow-x-auto whitespace-nowrap text-[13px] leading-none scrollbar-hide px-4 pb-2 lg:px-8 lg:pt-4 lg:pb-1 lg:max-w-[1200px] lg:mx-auto pt-[64px]'
 
 function crumbHtml(category: string | null | undefined): string {
   const cat = normalizeCategory(category)
@@ -122,7 +122,9 @@ export const DETAIL_TITLE_STYLES = {
 
 /** 온누리 뱃지 — 카드보다 짧지만 한 줄을 두 줄로 밀 수 있어 모양까지 같아야 한다. */
 export const DETAIL_ONNURI_CLASS =
-  'ml-1.5 px-1.5 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-bold align-middle'
+  // 🔗 2026-09-30: 컴포넌트가 정본 스케일로 옮겨졌다(`ml-1.5`→`ml-2` · `px-1.5`→`px-2` · `10px`→`12px`).
+  //    **워커가 손으로 그리는 첫 화면과 컴포넌트가 갈리면 마운트 때 제목이 밀린다** — 가드가 그걸 잡았다.
+  'ml-2 px-2 py-[1px] rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[12px] font-bold align-middle'
 
 function titleHtml(d: DetailSeed): string {
   const merchant = (d.restaurant_name || '').trim()

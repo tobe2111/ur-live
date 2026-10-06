@@ -13,6 +13,14 @@
  *      linked_user_id 즉시 연결 + 큐레이터 프로필 승계)
  *   4. 'pending' → /seller/waiting (자동 갱신) → 승인 시 소비자 알림 + 대시보드 진입
  *
+ * 🏪 2026-09-21 **안 B "가게부터"** (대표 *"응 안 B로 하는데"*):
+ *   지도에서 가게를 고르면 상호·주소·전화·업종·좌표·place_id 가 **한 번에** 들어온다.
+ *   종전엔 `AddressPickerField` 가 그 여덟 중 **주소 문자열 하나만** 꺼내고 일곱을 버려서,
+ *   사장님이 방금 고른 가게의 상호를 바로 위 칸에 손으로 다시 쳤다(그리고 그 주소마저
+ *   `description` 안 `[주소: …]` 텍스트로만 남아 **읽는 코드가 0건**이었다 — 라이브 실측).
+ *   ⇒ 고르면 [가게명]·[매장 종류]·[매장 주소] 세 칸이 **카드 한 장**이 되고, 남는 칸은
+ *     사업자 정보 3칸(등록증 사진이 채운다)과 담당자 연락처뿐이다.
+ *
  * 📱 2026-09-15 개편 (대표 *"여기도 개편해야 해. 셀러 계정을 만드는 부분이니까 가장 중요해"*):
  *   - 티켓 카드(블루 밴드)로 **3단계 중 어디인지** 먼저 보여 준다(정보 입력 → 심사 → 판매 시작).
  *   - 폼을 두 카드로 나눴다: [사업자 정보 = 국세청 확인용 3칸] / [가게 정보]. 사장님이 사업자등록증을 꺼내 드는 순간이 한 번이다.
@@ -31,6 +39,8 @@ import TermsConsentBox from '@/components/terms/TermsConsentBox'
 import BusinessCertUpload from '@/components/BusinessCertUpload'
 import type { OcrPrefill } from '@/shared/ocr-prefill'
 import AddressPickerField from './seller-register/AddressPickerField'
+import StoreSection from './seller-register/StoreSection'
+import { storeCategoryFromKakao, type PickedStore } from '@/shared/store-place'
 import ReviewSheet, { type ReviewRow } from './seller-register/ReviewSheet'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { TicketCard } from '@/components/ticket/TicketCard'
@@ -62,6 +72,9 @@ export default function SellerRegisterSupplierPage() {
   //   ② 제출 전 확인 시트가 무엇이 자동인지 말할 수 있다. 값 자체는 평범한 `form` 이라
   //   사장님이 고치는 순간 그냥 사장님 값이 된다(아래 `set` 이 이 집합에서 빼 준다).
   const [autoFilled, setAutoFilled] = useState<Set<keyof SignupForm>>(new Set())
+  // 🏪 지도에서 고른 가게. 있으면 상호·주소·업종은 **묻는 것이 아니라 확인하는 것**이라
+  //   입력 칸 대신 카드로 보여 준다. 좌표·place_id 는 화면에 안 보이지만 제출 payload 로 간다.
+  const [place, setPlace] = useState<PickedStore | null>(null)
   const [reviewOpen, setReviewOpen] = useState(false)
   const [statusChecked, setStatusChecked] = useState(false)
   const [existingStatus, setExistingStatus] = useState<'none' | 'pending' | 'active' | 'suspended'>('none')
@@ -193,6 +206,31 @@ export default function SellerRegisterSupplierPage() {
     toast.success(t('seller.signup.ocrFilled', { defaultValue: '{{n}}칸을 사진에서 채웠어요 — 맞는지 확인해 주세요', n: touched.length }))
   }
 
+  /**
+   * 🏪 지도에서 가게를 고르면 — 또는 지도 없이 주소만 치면 — 여기로 온다.
+   *
+   * ⚠️ 상호는 **지도값이 이긴다**(빈 칸일 때만 채우지 않는다). 사장님이 보고 있는 것은 방금 고른
+   *   카드이고, 그 카드와 제출값이 다르면 아무도 그 사실을 모른다. 등록증 OCR 이 읽은 상호가
+   *   있더라도 마찬가지다 — 등록증의 법인명과 간판 이름은 흔히 다르고, **손님에게 보이는 이름**은
+   *   간판 쪽이다. 그래서 `autoFilled` 에서도 빼 준다(더 이상 '사진에서' 가 아니다).
+   * ⚠️ 매장 종류는 **빈 칸일 때만** 채운다 — 사장님이 칩을 골라 뒀다면 그게 더 정확하다.
+   */
+  function pickStore(address: string, p?: PickedStore) {
+    if (!p) { set('address')(address); return }
+    setPlace(p)
+    setForm(f => ({
+      ...f,
+      address: p.address || f.address,
+      business_name: p.name || f.business_name,
+      store_category: f.store_category || storeCategoryFromKakao(p.category),
+    }))
+    setErrors(e => ({ ...e, business_name: undefined, address: undefined }))
+    setAutoFilled(prev => {
+      if (!prev.has('business_name')) return prev
+      const next = new Set(prev); next.delete('business_name'); return next
+    })
+  }
+
   /** 제출 버튼 — 보내기 전에 검사하고, 통과하면 **확인 시트**를 연다(시안 ④). */
   function review() {
     // 📱 오류는 칸 밑에 적고 첫 오류 칸으로 간다 — 토스트 한 줄로는 어느 칸인지 모른다.
@@ -216,14 +254,11 @@ export default function SellerRegisterSupplierPage() {
   async function submit() {
     setLoading(true)
     try {
-      // store_category/address 는 description 에 메타로 첨부 (DB 추가 컬럼 없이 운영 가능).
-      //   추후 sellers 테이블에 store_category 컬럼 추가 시 raw 전송으로 변경.
-      const descWithMeta = [
-        form.store_category && `[카테고리: ${STORE_CATEGORIES.find(c => c.value === form.store_category)?.label || form.store_category}]`,
-        form.address && `[주소: ${form.address}]`,
-        form.description,
-      ].filter(Boolean).join('\n')
-
+      // 🏪 2026-09-21 (안 B) — 종전엔 주소·카테고리를 `description` 안에 `[주소: …]` **텍스트**로
+      //   밀어 넣었다. 그 문자열을 **읽는 코드가 레포 전체에 0건**이었고(라이브 실측: 셀러 전원
+      //   `description` 비어 있음), 그래서 가입 문으로 들어온 가게는 지도에 뜨지도 않았다.
+      //   ⇒ 이제 제 자리로 보낸다: 주소는 `sellers.address`, 좌표·업종·place_id 는 `seller_meta`
+      //     (매장 등록 문이 쓰는 키와 **같은 이름**). `description` 은 매장 소개 그대로.
       const res = await api.post('/api/seller/register-from-user', {
         business_name: form.business_name,
         business_number: form.business_number,
@@ -231,7 +266,17 @@ export default function SellerRegisterSupplierPage() {
         business_start_date: form.business_start_date || undefined,
         phone: form.phone,
         seller_type: 'store_owner',
-        description: descWithMeta,
+        description: form.description || undefined,
+        address: form.address || undefined,
+        store_category: form.store_category || undefined,
+        ...(place ? {
+          store_phone: place.phone || undefined,
+          kakao_place_id: place.placeId || undefined,
+          kakao_place_url: place.placeUrl || undefined,
+          kakao_category: place.category || undefined,
+          lat: place.lat || undefined,
+          lng: place.lng || undefined,
+        } : {}),
         business_cert_url: certUrl || undefined,
         terms_agreed_version: TERMS_CURRENT_VERSION,
       })
@@ -316,6 +361,7 @@ export default function SellerRegisterSupplierPage() {
     { label: '연락처', value: form.phone },
     { label: '매장 종류', value: STORE_CATEGORIES.find(c => c.value === form.store_category)?.label || '', muted: !form.store_category },
     { label: '매장 주소', value: form.address, muted: !form.address },
+    ...(place?.phone ? [{ label: '가게 전화', value: place.phone }] : []),
     ...(certUrl ? [{ label: '사업자등록증', value: '첨부됨' }] : []),
   ]
   const laterItems = [
@@ -433,43 +479,10 @@ export default function SellerRegisterSupplierPage() {
           </div>
         </section>
 
-        {/* 카드 2 — 손님이 보는 가게 정보 */}
-        <section className="rounded-[var(--dash-radius,16px)] border border-rule bg-white px-4 pb-3 pt-4 sm:px-5">
-          <div className="flex items-baseline justify-between gap-3">
-            <h3 className="text-[15px] font-extrabold text-gray-900">{t('seller.signup.storeSection', { defaultValue: '가게 정보' })}</h3>
-            <span className="dash-num shrink-0 text-[12px] font-bold text-brand-text">{storeDone} / 2</span>
-          </div>
-          <p className="mt-0.5 text-[12.5px] text-gray-500">{t('seller.signup.storeSectionSub', { defaultValue: '유어샵과 이용권에 그대로 보여요. 나중에 대시보드에서 바꿀 수 있어요.' })}</p>
-          <div className="mt-3">
-            <Field id="f-business_name" label="가게명" required hint={hint('business_name')} error={errors.business_name}>
-              <input id="f-business_name" value={form.business_name}
-                onChange={e => set('business_name')(e.target.value)}
-                placeholder="예: 홍대 매운돈까스" autoComplete="organization"
-                aria-invalid={!!errors.business_name}
-                className={cls('business_name')} />
-            </Field>
-            <Field id="f-phone" label="연락처 (담당자 휴대폰)" required hint="주문·정산 알림톡을 받는 번호" error={errors.phone}>
-              <input id="f-phone" type="tel" value={form.phone}
-                onChange={e => set('phone')(formatPhone(e.target.value))}
-                inputMode="numeric" autoComplete="tel" maxLength={13} placeholder="010-1234-5678"
-                aria-invalid={!!errors.phone}
-                className={`${cls('phone')} dash-num`} />
-            </Field>
-            <Field id="f-store_category" label="매장 종류">
-              <ChipGroup name="매장 종류" value={form.store_category} onChange={set('store_category')} options={STORE_CATEGORIES} />
-            </Field>
-            <Field id="f-address" label="매장 주소" hint={hint('address', '가게 이름으로 찾으면 주소가 자동으로 들어가요')}>
-              <AddressPickerField id="f-address" value={form.address} onChange={set('address')} />
-            </Field>
-            <Field id="f-description" label="매장 소개 (선택)">
-              <textarea id="f-description" value={form.description}
-                onChange={e => set('description')(e.target.value)}
-                placeholder="매장 분위기, 대표 메뉴, 운영 시간 등"
-                rows={3} maxLength={500}
-                className={`${INPUT} h-auto resize-none py-2.5`} />
-            </Field>
-          </div>
-        </section>
+        <StoreSection
+          form={form} errors={errors} place={place} cls={cls} hint={hint} storeDone={storeDone}
+          set={set} pickStore={pickStore} clearPlace={() => setPlace(null)}
+        />
 
         {/*
           🔴 2026-09-16 대표 신고 *"이 페이지에 전체적으로 다 떠야하는거 아니야? 어디서 뜨는건데?"*

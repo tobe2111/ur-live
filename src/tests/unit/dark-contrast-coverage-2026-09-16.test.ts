@@ -37,6 +37,31 @@ const LIGHT_ISLAND_COVERAGE: Record<string, { by: string; why: string }> = {
   'src/pages/pc-home/PcHomePage.tsx': { by: '/', why: '잉크 색면 위 홈 패널' },
   'src/components/home/HomeSections.tsx': { by: '/', why: '같은 홈 패널' },
   'src/components/home/UrShortsRail.tsx': { by: '/', why: '같은 홈 패널' },
+  /**
+   * 🎟️ 2026-09-26 — 마이 안 이용권 등록 시트. 안쪽은 **대시보드 위저드를 그대로** 띄우므로
+   * (`SellerMealVoucherNewPage embedded`, `dark:` 0개) 섬 안은 라이트로 자기완결이다.
+   * ⚠️ **다만 이 가드가 실제로 열지는 못한다** — 시트를 열려면 셀러 좌석과 탭이 필요하고,
+   *   `/user/profile` 방문만으로는 거기 못 닿는다. 그래서 여기 등재는 "무엇을 그리는가" 의
+   *   기록이지 "측정됐다" 는 뜻이 아니다. 실제 판정은 staging **S-MYSELL-42**(다크로 등록 시트 열기).
+   */
+  'src/pages/user-profile/seller-section/VoucherNewSheet.tsx': { by: '/user/profile', why: '마이 안 등록 시트 — 라이트 고정 대시보드 폼을 담는 섬' },
+  /**
+   * 🗺️ 2026-09-26 — **OUT_OF_SCOPE 에서 옮겨 왔다.** 그 줄은 *"소비자 화면엔 안 뜬다"* 고 적고
+   * *"소비자 화면이 이 부품을 쓰게 되면 옮길 것"* 이라고 예고해 뒀는데, 오늘 그 일이 일어났다 —
+   * 등록 위저드가 마이 시트 안에서 열리면서 `StoreStep` 의 이 부품이 소비자 경로에 들어왔다.
+   * ⚠️ 위와 같은 한계(가드가 시트를 못 연다)가 그대로 적용된다.
+   */
+  'src/components/KakaoMapPicker.tsx': { by: '/user/profile', why: '마이 등록 시트 1단계(매장 검색) — 그 섬 안에서 함께 뜬다' },
+  /**
+   * 🪟 2026-09-26 — **범용 도구 시트.** 대시보드 화면 36개를 `SellerLayout` 껍데기만 벗겨
+   * (`SellerEmbedProvider`) 마이 시트 안에 그대로 띄운다. 그 화면들은 규칙상 `dark:` 가
+   * 금지돼 있어(라이트 고정) 마이 다크에서는 전역 `.dark input`(0,5,1)이 이긴다 — 섬이 필요하다.
+   * ⚠️ 위 두 줄과 **같은 한계**: 이 가드는 시트를 열지 못한다(셀러 좌석 + 탭이 필요하다).
+   *   여기 등재는 "무엇을 그리는가" 의 기록이고, 실제 판정은 staging **S-MYSELL-63** 이다.
+   * ⚠️ 그리고 이 한 줄이 **36개 화면을 덮는다** — 시트가 하나라 섬도 하나다. 화면마다
+   *   따로 등재할 일이 생기면 그건 누군가 시트를 복제했다는 뜻이다.
+   */
+  'src/pages/user-profile/seller-section/ToolPageSheet.tsx': { by: '/user/profile', why: '마이 안 범용 도구 시트 — 라이트 고정 대시보드 화면 36개를 담는 섬' },
 }
 
 /**
@@ -45,10 +70,9 @@ const LIGHT_ISLAND_COVERAGE: Record<string, { by: string; why: string }> = {
  */
 const OUT_OF_SCOPE: Record<string, string> = {
   'src/components/seller/StoreRegisterModal.tsx': '셀러 대시보드(/seller/*) 전용 — 라이트 고정이라 다크 대비 개념 없음',
-  // 📍 2026-09-21 시안 ② 핀 드래그 안내 띠. 이 부품을 그리는 곳은 `/seller/meal-voucher/new`(StoreStep)와
-  //    `/seller/store-info` 둘뿐이고 **소비자 화면엔 안 뜬다** — 대시보드라 다크 자체가 없다.
-  //    ⚠️ 소비자 화면이 이 부품을 쓰게 되면 이 줄을 지우고 LIGHT_ISLAND_COVERAGE 로 옮길 것.
-  'src/components/KakaoMapPicker.tsx': '셀러 대시보드(/seller/meal-voucher/new · /seller/store-info) 전용 — 라이트 고정',
+  // 🗺️ `KakaoMapPicker` 는 2026-09-26 에 **여기서 LIGHT_ISLAND_COVERAGE 로 옮겼다** —
+  //    등록 위저드가 마이 시트 안에서 열리면서 소비자 경로에 들어왔기 때문이다.
+  //    (이 줄은 그 이동을 기록으로 남긴다. 되돌리는 일이 생기면 여기로 다시 내릴 것.)
 }
 
 describe('dark-contrast 가드 커버리지 (2026-09-16)', () => {
@@ -77,6 +101,10 @@ describe('dark-contrast 가드 커버리지 (2026-09-16)', () => {
       for (const e of readdirSync(dir, { withFileTypes: true })) {
         const p = `${dir}/${e.name}`
         if (e.isDirectory()) walk(p)
+        // ⚠️ **일부러 원시 텍스트로 훑는다**(주석 제거 X). `stripComments` 는 큰 파일에서 문자열·정규식
+        //   리터럴을 오판해 가운데를 통째로 날릴 수 있고, 그러면 **진짜 사용처를 놓친다**(조용한 누락).
+        //   오탐(주석에만 이름이 있는 파일)은 시끄럽게 빨간불이 나서 그 자리에서 고쳐진다 —
+        //   2026-09-26 에 `SellerLayout` 주석이 그렇게 걸렸고, 주석 쪽을 고쳤다.
         else if (/\.tsx?$/.test(e.name) && readFileSync(p, 'utf8').includes('light-island')) actual.add(p)
       }
     }
@@ -99,8 +127,14 @@ describe('dark-contrast 가드 커버리지 (2026-09-16)', () => {
     expect(guard).toMatch(/perRoute\.push\(/)
     // 🩸 되돌려-검증이 잡았다: 처음엔 `filter(` 존재만 봤는데, 임계를 `r.n < 0` 으로 바꾸면
     //    (= 영원히 빈 배열) 검사가 통째로 죽는데도 통과했다. **모양이 아니라 값**을 본다.
-    expect(guard).toMatch(/const EMPTY_ROUTES = perRoute\.filter\(\(r\) => r\.n < EMPTY_FLOOR\)/)
+    // 🔧 2026-09-28 재조준(결재 `dark-contrast-guard-coverage` — *"4번은 모두 고쳐줘"*):
+    //   바닥값이 **한 개**여서 "원래 빈 화면"과 "콘텐츠를 못 불러온 화면"을 구분하지 못했다
+    //   (유어샵 8개 측정 vs 실제 60개 = 87%가 검사 밖). 이제 **경로별 기대치**(`MIN_TEXTS`)가
+    //   앞서고 없는 경로만 종전 바닥값으로 떨어진다. 지키려던 것은 그대로다 —
+    //   **임계가 값으로 살아 있을 것**(`r.n < 0` 처럼 죽이면 빨간불).
+    expect(guard).toMatch(/const EMPTY_ROUTES = perRoute\.filter\(\(r\) => r\.n < \(MIN_TEXTS\[r\.name\] \?\? EMPTY_FLOOR\)\)/)
     expect(guard).toMatch(/const EMPTY_FLOOR = [1-9]\d*/)
+    expect(guard, '경로별 기대치 표가 있어야 한다').toMatch(/const MIN_TEXTS = \{/)
 
     /**
      * 🩸 그리고 그 엄격함이 **flake 를 만들었다**(같은 날 실측): `npm run build` 직후에 돌리면
@@ -136,6 +170,33 @@ describe('dark-contrast 가드 커버리지 (2026-09-16)', () => {
     // 인터셉터가 그 표를 읽는가 — 표만 있고 fulfill 이 없으면 정적 서버의 index.html 이 간다.
     expect(guard).toMatch(/R\.api && R\.api\[/)
     expect(guard).toMatch(/r\.fulfill\(\{ status: 200, contentType: 'application\/json'/)
+  })
+
+  it('⑦-2 라이브에서 받아 적은 픽스처가 실제로 배선돼 있다', () => {
+    /**
+     * 🩸 2026-09-28 — 위 ⑦ 은 **경로 전용 스텁**(`R.api`)만 봤다. 그래서 목록 화면을 채우는
+     *   라이브 픽스처 배선을 통째로 지워도 **초록이었다**(주입 검증이 잡았다).
+     *   그 배선이 죽으면 홈·교환권·동네딜이 도로 빈 껍데기가 되고, 가드는 다시
+     *   "헤더 몇 줄"을 재며 0건을 보고한다 — 이 가드가 고치려던 바로 그 상태다.
+     */
+    expect(guard, '픽스처 파일을 읽어야 한다').toMatch(/scripts\/fixtures\/dark-contrast-api\.json/)
+    // 쿼리까지 같은 것 → pathname 만 같은 것, **두 단계 모두** 살아 있어야 한다.
+    // (숙소 `check_in` 처럼 날짜가 매일 바뀌는 쿼리는 pathname 폴백이 없으면 못 찾는다.)
+    expect(guard, '정확 일치 조회').toMatch(/API_FIXTURES\[p \+ url\.search\]/)
+    expect(guard, 'pathname 폴백').toMatch(/API_BY_PATH\[p\]/)
+    expect(guard, '폴백 표를 만든다').toMatch(/const API_BY_PATH = /)
+  })
+
+  it('⑦-3 픽스처 파일이 실물이고 목록 화면을 채울 만큼 있다', () => {
+    // 파일이 비면 배선이 살아 있어도 화면은 안 그려진다 — "있음"이 아니라 "쓸모 있음"을 본다.
+    const raw = readFileSync('scripts/fixtures/dark-contrast-api.json', 'utf-8')
+    const fx = JSON.parse(raw) as Record<string, unknown>
+    const keys = Object.keys(fx)
+    expect(keys.length, '엔드포인트가 너무 적다').toBeGreaterThanOrEqual(20)
+    // 목록이 그려지려면 이 셋은 반드시 있어야 한다(홈·교환권·유어샵).
+    expect(keys.some((k) => k.startsWith('/api/sections')), '홈 섹션').toBe(true)
+    expect(keys.some((k) => k.startsWith('/api/products?')), '교환권 목록').toBe(true)
+    expect(keys.some((k) => k.startsWith('/api/curator/')), '유어샵').toBe(true)
   })
 
   it('⑥ 전체 측정 하한(헛도는 측정기 차단)이 살아 있다', () => {

@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
+import { TicketStubIcon, OkIcon, ClockIcon, BadIcon } from '@/components/icons/urdeal-icons'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Ticket, CheckCircle, Clock, XCircle, Loader2, Lock, ScanLine, Camera, X } from 'lucide-react'
+import { Loader2, Lock, ScanLine, Camera, X } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
@@ -70,10 +71,10 @@ function QRScannerModal({ onResult, onClose }: { onResult: (code: string) => voi
         <div className="bg-black rounded-2xl overflow-hidden aspect-square">
           <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
         </div>
-        <p className="text-center text-white text-sm mt-4">손님 화면의 QR 코드를 스캔해주세요</p>
+        <p className="text-center text-white text-[15px] mt-4">손님 화면의 QR 코드를 스캔해주세요</p>
         {error && (
           <div className="mt-3 bg-red-500/20 border border-red-400 rounded-lg px-3 py-2 text-center">
-            <p className="text-xs text-white">{error}</p>
+            <p className="text-[12px] text-white">{error}</p>
           </div>
         )}
       </div>
@@ -198,24 +199,24 @@ export default function StoreStatsPage() {
           <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-orange-100 flex items-center justify-center">
             <Lock className="w-7 h-7 text-orange-600" />
           </div>
-          <h1 className="text-lg font-extrabold text-gray-900 dark:text-white mb-1">식당 통계</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">사장님께 알림톡으로 발송된 링크로 접속하시면 비밀번호 없이 바로 확인할 수 있어요.</p>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mb-6">또는 인플루언서에게 받은 비밀번호를 입력하세요</p>
+          <h1 className="text-[17px] font-extrabold text-gray-900 dark:text-white mb-1">식당 통계</h1>
+          <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-2">사장님께 알림톡으로 발송된 링크로 접속하시면 비밀번호 없이 바로 확인할 수 있어요.</p>
+          <p className="text-[12px] text-gray-400 dark:text-gray-500 mb-6">또는 인플루언서에게 받은 비밀번호를 입력하세요</p>
 
-          {error && <p className="text-sm text-red-500 bg-red-50 rounded-lg p-3 mb-4">{error}</p>}
+          {error && <p className="text-[15px] text-red-500 bg-red-50 rounded-lg p-3 mb-4">{error}</p>}
 
           <input
             value={pin}
             onChange={e => setPin(e.target.value)}
             type="password"
             placeholder={t('storeStats.passwordPlaceholder')}
-            className="w-full px-4 py-3.5 border border-gray-300 dark:border-[#3A3A3A] rounded-xl text-center text-lg text-gray-900 dark:text-white tracking-widest focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100 mb-4"
+            className="w-full px-4 py-4 border border-gray-300 dark:border-[#3A3A3A] rounded-xl text-center text-[17px] text-gray-900 dark:text-white tracking-widest focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-100 mb-4"
             onKeyDown={e => e.key === 'Enter' && authenticate()}
           />
           <button
             onClick={() => authenticate()}
             disabled={!pin.trim() || loading}
-            className="w-full py-3.5 bg-gray-800 text-white font-bold rounded-xl disabled:opacity-40"
+            className="w-full py-4 bg-gray-800 text-white font-bold rounded-xl disabled:opacity-40"
           >
             {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : t('storeStats.confirm')}
           </button>
@@ -234,51 +235,51 @@ export default function StoreStatsPage() {
       <div className="ur-content-narrow">
         {/* 헤더 */}
         <div className="text-center mb-6">
-          <h1 className="text-xl font-extrabold text-gray-900 dark:text-white">{stats.restaurant_name || t('storeStats.fallbackRestaurant')}</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{stats.product_name}</p>
+          <h1 className="text-[17px] font-extrabold text-gray-900 dark:text-white">{stats.restaurant_name || t('storeStats.fallbackRestaurant')}</h1>
+          <p className="text-[15px] text-gray-500 dark:text-gray-400 mt-1">{stats.product_name}</p>
         </div>
 
         {/* 요약 카드 */}
         <div className="grid grid-cols-2 gap-3 mb-5">
           {[
-            { label: t('storeStats.labelUsed'), value: stats.used, icon: CheckCircle, color: 'text-tone-ok', bg: 'bg-tone-ok-bg' },
-            { label: t('storeStats.labelUnused'), value: stats.unused, icon: Ticket, color: 'text-tone-info', bg: 'bg-tone-info-bg' },
-            { label: t('storeStats.labelExpired'), value: stats.expired, icon: XCircle, color: 'text-gray-500 dark:text-gray-400', bg: 'bg-gray-100 dark:bg-[#1D1F29]' },
-            { label: t('storeStats.labelTotal'), value: stats.total_vouchers, icon: Clock, color: 'text-tone-warn', bg: 'bg-tone-warn-bg' },
+            { label: t('storeStats.labelUsed'), value: stats.used, icon: OkIcon, color: 'text-tone-ok', bg: 'bg-tone-ok-bg' },
+            { label: t('storeStats.labelUnused'), value: stats.unused, icon: TicketStubIcon, color: 'text-tone-info', bg: 'bg-tone-info-bg' },
+            { label: t('storeStats.labelExpired'), value: stats.expired, icon: BadIcon, color: 'text-gray-500 dark:text-gray-400', bg: 'bg-gray-100 dark:bg-[#1D1F29]' },
+            { label: t('storeStats.labelTotal'), value: stats.total_vouchers, icon: ClockIcon, color: 'text-tone-warn', bg: 'bg-tone-warn-bg' },
           ].map(s => (
-            <div key={s.label} className="bg-surface rounded-xl p-4 border border-line">
+            <div key={s.label} className="bg-surface rounded-xl p-4 shadow-lift">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-gray-500 dark:text-gray-400">{s.label}</span>
+                <span className="text-[12px] text-gray-500 dark:text-gray-400">{s.label}</span>
                 <div className={`w-7 h-7 ${s.bg} rounded-lg flex items-center justify-center`}>
                   <s.icon className={`w-4 h-4 ${s.color}`} />
                 </div>
               </div>
-              <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+              <p className={`text-[24px] font-bold ${s.color}`}>{s.value}</p>
             </div>
           ))}
         </div>
 
         {/* 사용률 바 */}
-        <div className="bg-surface rounded-xl p-5 border border-line mb-5">
+        <div className="bg-surface rounded-xl p-5 mb-5 shadow-lift">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-bold text-gray-900 dark:text-white">바우처 사용률</span>
-            <span className="text-sm font-bold text-green-600">{usedPercent}%</span>
+            <span className="text-[15px] font-bold text-gray-900 dark:text-white">바우처 사용률</span>
+            <span className="text-[15px] font-bold text-green-600">{usedPercent}%</span>
           </div>
           <div className="w-full bg-gray-200 dark:bg-[#2C2F35] rounded-full h-3">
             <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${usedPercent}%` }} />
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{stats.used}장 사용 / {stats.total_vouchers}장 발급</p>
+          <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-2">{stats.used}장 사용 / {stats.total_vouchers}장 발급</p>
         </div>
 
         {/* 🛡️ 2026-05-16 (선물하기 모델): 손님이 미리 결제한 메뉴 제공 */}
         <div className="bg-surface rounded-xl p-5 border-2 border-emerald-200 dark:border-emerald-900 mb-5">
           <div className="flex items-center gap-2 mb-3">
             <ScanLine className="w-5 h-5 text-emerald-600" />
-            <h3 className="text-sm font-bold text-gray-900 dark:text-white">손님 식권 확인 → 메뉴 제공</h3>
+            <h3 className="text-[15px] font-bold text-gray-900 dark:text-white">손님 식권 확인 → 메뉴 제공</h3>
           </div>
           <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 rounded-lg p-3 mb-3">
-            <p className="text-[11px] text-emerald-700 dark:text-emerald-300 font-medium">📋 사용 방법</p>
-            <ol className="text-xs text-emerald-800 dark:text-emerald-200 mt-1 space-y-0.5 list-decimal pl-4">
+            <p className="text-[12px] text-emerald-700 dark:text-emerald-300 font-medium">📋 사용 방법</p>
+            <ol className="text-[12px] text-emerald-800 dark:text-emerald-200 mt-1 space-y-1 list-decimal pl-4">
               <li>손님 QR 스캔 또는 코드 입력</li>
               <li>화면에 "메뉴 X 제공" 확인 후 음식 만들기</li>
               <li>POS / T오더 결제 X (이미 유어딜에서 결제 완료)</li>
@@ -289,11 +290,11 @@ export default function StoreStatsPage() {
           <button
             onClick={() => setScannerOpen(true)}
             disabled={usingVoucher}
-            className="w-full mb-3 py-3.5 bg-brand hover:bg-brand-dark text-white font-bold rounded-xl flex items-center justify-center gap-2 disabled:opacity-40"
+            className="w-full mb-3 py-4 bg-brand hover:bg-brand-dark text-white font-bold rounded-xl flex items-center justify-center gap-2 disabled:opacity-40"
           >
             <Camera className="w-5 h-5" /> QR 스캔하기
           </button>
-          <p className="text-center text-[11px] text-gray-400 mb-2">— 또는 코드 직접 입력 —</p>
+          <p className="text-center text-[12px] text-gray-400 mb-2">— 또는 코드 직접 입력 —</p>
           <div className="flex gap-2">
             <input
               type="text"
@@ -302,7 +303,7 @@ export default function StoreStatsPage() {
               onChange={e => setVoucherCode(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') handleUseVoucher() }}
               placeholder="예: UR-AB12-XY34"
-              className="flex-1 border border-gray-300 dark:border-[#2C2F35] rounded-xl px-3 py-3 text-sm font-mono text-center tracking-wider bg-surface text-gray-900 dark:text-white"
+              className="flex-1 border border-gray-300 dark:border-[#2C2F35] rounded-xl px-3 py-3 text-[15px] tabular-nums text-center tracking-wider bg-surface text-gray-900 dark:text-white"
               autoCapitalize="characters"
               autoCorrect="off"
             />
@@ -316,14 +317,14 @@ export default function StoreStatsPage() {
           </div>
           {recentUses.length > 0 && (
             <div className="mt-4 pt-3 border-t border-gray-100 dark:border-[#2C2F35]">
-              <p className="text-[11px] text-gray-500 mb-2">최근 시도</p>
-              <div className="space-y-1.5">
+              <p className="text-[12px] text-gray-500 mb-2">최근 시도</p>
+              <div className="space-y-2">
                 {recentUses.slice(0, 5).map((u, i) => (
-                  <div key={i} className={`flex items-center justify-between text-xs px-2.5 py-1.5 rounded-lg ${
+                  <div key={i} className={`flex items-center justify-between text-[12px] px-2 py-2 rounded-lg ${
                     u.success ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
                   }`}>
-                    <span className="font-mono">{u.success ? '✓' : '✗'} {u.code}</span>
-                    <span className="text-[10px] opacity-80">{u.success ? '완료' : (u.reason || '실패')}</span>
+                    <span className="tabular-nums">{u.success ? '✓' : '✗'} {u.code}</span>
+                    <span className="text-[12px] opacity-80">{u.success ? '완료' : (u.reason || '실패')}</span>
                   </div>
                 ))}
               </div>
@@ -332,18 +333,18 @@ export default function StoreStatsPage() {
         </div>
 
         {/* 공동구매 현황 */}
-        <div className="bg-surface rounded-xl p-5 border border-line">
-          <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">공동구매 현황</h3>
+        <div className="bg-surface rounded-xl p-5 shadow-lift">
+          <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">공동구매 현황</h3>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-gray-500 dark:text-gray-400">참여자</span>
-            <span className="text-sm font-bold text-brand-text">{stats.group_buy_current}/{stats.group_buy_target}명</span>
+            <span className="text-[12px] text-gray-500 dark:text-gray-400">참여자</span>
+            <span className="text-[15px] font-bold text-brand-text">{stats.group_buy_current}/{stats.group_buy_target}명</span>
           </div>
           <div className="w-full bg-gray-200 dark:bg-[#2C2F35] rounded-full h-2">
             <div className="h-full bg-brand rounded-full" style={{ width: `${stats.group_buy_target > 0 ? Math.min(100, (stats.group_buy_current / stats.group_buy_target) * 100) : 0}%` }} />
           </div>
         </div>
 
-        <p className="text-center text-xs text-gray-400 dark:text-gray-500 mt-6">유어딜 · 식당 공동구매 서비스</p>
+        <p className="text-center text-[12px] text-gray-400 dark:text-gray-500 mt-6">유어딜 · 식당 공동구매 서비스</p>
       </div>
 
       {/* QR 스캐너 모달 */}

@@ -6,7 +6,8 @@
  *   - timeout : GPS 응답 지연 — 다시 시도(저정밀은 호출부가 먼저 시도).
  *   - unavailable : 미지원/일시 실패 — 지역 필터로 대체 안내.
  */
-import { MapPin, ExternalLink, RotateCw, X } from 'lucide-react'
+import { ExternalLink, RotateCw, X } from 'lucide-react'
+import { PinIcon } from '@/components/icons/urdeal-icons'
 import { detectInAppBrowser, openInExternalBrowser, isIOS, isAndroid } from '@/lib/in-app-browser'
 import { getInAppLabel } from '@/lib/in-app-warning'
 import { Z } from '@/constants/z-index'
@@ -83,13 +84,13 @@ export default function GeoHelpSheet({
         <button
           onClick={onClose}
           aria-label="닫기"
-          className="absolute top-3 right-3 p-1.5 rounded-full bg-gray-100 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400"
+          className="absolute top-3 right-3 p-2 rounded-full bg-gray-100 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-400"
         >
           <X className="w-4 h-4" />
         </button>
 
         <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/40 flex items-center justify-center mb-3">
-          <MapPin className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+          <PinIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
         </div>
         <h3 className="text-[17px] font-extrabold text-gray-900 dark:text-white">{title}</h3>
 
@@ -103,7 +104,7 @@ export default function GeoHelpSheet({
           {effReason === 'inapp' ? (
             <button
               onClick={() => { openInExternalBrowser() }}
-              className="w-full flex items-center justify-center gap-1.5 bg-gray-900 text-white rounded-xl py-3 text-[14px] font-bold active:scale-[0.98] transition-transform"
+              className="w-full flex items-center justify-center gap-2 bg-brand text-white rounded-xl py-3 text-[15px] font-bold active:scale-[0.98] transition-transform"
             >
               <ExternalLink className="w-4 h-4" /> 외부 브라우저로 열기
             </button>
@@ -111,7 +112,7 @@ export default function GeoHelpSheet({
             onRetry && (
               <button
                 onClick={() => { onClose(); onRetry() }}
-                className="w-full flex items-center justify-center gap-1.5 bg-gray-900 text-white rounded-xl py-3 text-[14px] font-bold active:scale-[0.98] transition-transform"
+                className="w-full flex items-center justify-center gap-2 bg-brand text-white rounded-xl py-3 text-[15px] font-bold active:scale-[0.98] transition-transform"
               >
                 <RotateCw className="w-4 h-4" /> {retryLabel}
               </button>
@@ -119,7 +120,7 @@ export default function GeoHelpSheet({
           )}
           <button
             onClick={onClose}
-            className="w-full rounded-xl py-3 text-[14px] font-semibold text-gray-500 dark:text-gray-400"
+            className="w-full rounded-xl py-3 text-[15px] font-semibold text-gray-500 dark:text-gray-400"
           >
             닫기
           </button>

@@ -36,7 +36,7 @@ export function TicketCard({ bandLeft, bandRight, muted, children, className = '
       onKeyDown={interactive ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } } : undefined}
       className={`overflow-hidden rounded-2xl bg-surface shadow-lift ${muted ? 'opacity-60' : ''} ${interactive ? 'cursor-pointer active:opacity-90' : ''} ${className}`}
     >
-      <div className={`flex items-center justify-between h-11 px-4 text-[14px] text-white tabular-nums ${muted ? 'bg-gray-400 dark:bg-[#3A3D44]' : 'bg-brand'}`}>
+      <div className={`flex items-center justify-between h-11 px-4 text-[15px] text-white tabular-nums ${muted ? 'bg-gray-400 dark:bg-[#3A3D44]' : 'bg-brand'}`}>
         <span className="font-bold">{bandLeft}</span>
         {bandRight !== undefined && <span className="font-medium">{bandRight}</span>}
       </div>
@@ -48,7 +48,7 @@ export function TicketCard({ bandLeft, bandRight, muted, children, className = '
 /** 본문 첫 줄 — "식사 이용권 ·· 1매" 처럼 종류와 수량. 아래 헤어라인은 `border-rule`. */
 export function TicketRow({ left, right }: { left: ReactNode; right?: ReactNode }) {
   return (
-    <div className="flex items-center justify-between px-4 pt-3.5 pb-3 border-b border-rule text-[14px]">
+    <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-rule text-[15px]">
       <span className="font-semibold text-gray-900 dark:text-white">{left}</span>
       {right !== undefined && <span className="text-gray-500 dark:text-gray-400">{right}</span>}
     </div>
@@ -71,10 +71,10 @@ export function TicketOutlineButton({ children, onClick }: { children: ReactNode
 /** 안내 줄 — 작은 네모 불릿 + 회색. 색깔 상자로 감싸지 않는다. */
 export function TicketNotes({ items }: { items: string[] }) {
   return (
-    <ul className="px-1 space-y-1.5 text-[13.5px] leading-[1.55] text-gray-500 dark:text-gray-400">
+    <ul className="px-1 space-y-2 text-[13px] leading-[1.55] text-gray-500 dark:text-gray-400">
       {items.map((line) => (
-        <li key={line} className="grid grid-cols-[12px_1fr] gap-1.5">
-          <span aria-hidden="true" className="mt-[9px] ml-0.5 w-1 h-1 bg-gray-400 dark:bg-gray-500" />
+        <li key={line} className="grid grid-cols-[12px_1fr] gap-2">
+          <span aria-hidden="true" className="mt-[9px] ml-1 w-1 h-1 bg-gray-400 dark:bg-gray-500" />
           <span>{line}</span>
         </li>
       ))}

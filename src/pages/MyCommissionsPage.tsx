@@ -5,8 +5,9 @@
  *   - GET /api/referral-tree/withdrawals: 내 출금 신청 이력
  */
 import { useState } from 'react'
+import { WalletIcon, OkIcon, ClockIcon, BadIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Wallet, CheckCircle, Clock, XCircle, ArrowRight } from 'lucide-react'
+import { ArrowLeft, ArrowRight } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
@@ -15,13 +16,13 @@ import { useMyCommissions } from '@/hooks/queries/useMyCommissions'
 import CollabPerformance from './my-commissions/CollabPerformance'
 import { formatKST, formatKSTDate } from '@/utils/date'
 
-const STATUS_BADGE: Record<string, { label: string; cls: string; icon: typeof CheckCircle }> = {
-  pending: { label: '심사 대기', cls: 'bg-tone-warn-bg text-tone-warn', icon: Clock },
-  approved: { label: '송금 완료', cls: 'bg-tone-ok-bg text-tone-ok', icon: CheckCircle },
-  rejected: { label: '거절', cls: 'bg-tone-bad-bg text-tone-bad', icon: XCircle },
+const STATUS_BADGE: Record<string, { label: string; cls: string; icon: typeof OkIcon }> = {
+  pending: { label: '심사 대기', cls: 'bg-tone-warn-bg text-tone-warn', icon: ClockIcon },
+  approved: { label: '송금 완료', cls: 'bg-tone-ok-bg text-tone-ok', icon: OkIcon },
+  rejected: { label: '거절', cls: 'bg-tone-bad-bg text-tone-bad', icon: BadIcon },
 }
 // 🛡️ 2026-07-02: 정의 밖 status 방어 — meta undefined 렌더 크래시 방지.
-const STATUS_FALLBACK = { label: '처리 중', cls: 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300', icon: Clock } as const
+const STATUS_FALLBACK = { label: '처리 중', cls: 'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300', icon: ClockIcon } as const
 
 export default function MyCommissionsPage() {
   const navigate = useNavigate()
@@ -83,9 +84,9 @@ export default function MyCommissionsPage() {
         {/* 🛡️ 2026-07-02: 로드 전멸 시 잔액 0원 카드 대신 에러 + 재시도 (돈 표면 오표시 방지). */}
         {isError ? (
           <div className="text-center py-20">
-            <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">수익 정보를 불러오지 못했어요</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">네트워크 상태를 확인한 뒤 다시 시도해주세요</p>
-            <button onClick={() => refetch()} className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full text-sm font-bold">
+            <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">수익 정보를 불러오지 못했어요</p>
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">네트워크 상태를 확인한 뒤 다시 시도해주세요</p>
+            <button onClick={() => refetch()} className="px-5 py-2 bg-brand text-white rounded-full text-[15px] font-bold">
               다시 시도
             </button>
           </div>
@@ -96,8 +97,8 @@ export default function MyCommissionsPage() {
         {/* 잔액 카드 */}
         <div className="rounded-3xl p-6 bg-gray-900 dark:bg-[#1D1F29] text-white mb-4">
           <p className="text-[12px] opacity-80">출금 가능 수익</p>
-          <p className="text-[36px] font-extrabold leading-tight mt-1">{formatWon(summary.total_granted)}</p>
-          <div className="flex items-center gap-4 mt-3 text-[11px] opacity-80">
+          <p className="text-[34px] font-extrabold leading-tight mt-1">{formatWon(summary.total_granted)}</p>
+          <div className="flex items-center gap-4 mt-3 text-[12px] opacity-80">
             <span>대기 {formatWon(summary.total_pending)}</span>
             <span>·</span>
             <span>누적 출금 {formatWon(summary.total_withdrawn)}</span>
@@ -105,9 +106,9 @@ export default function MyCommissionsPage() {
           <button
             onClick={() => setShowForm(true)}
             disabled={summary.total_granted < 10000}
-            className="mt-4 w-full py-3 bg-white dark:bg-white text-gray-900 dark:text-gray-900 rounded-2xl font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+            className="mt-4 w-full py-3 bg-white dark:bg-white text-gray-900 dark:text-gray-900 rounded-2xl font-bold text-[15px] disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            <Wallet className="w-4 h-4" />
+            <WalletIcon className="w-4 h-4" />
             {summary.total_granted < 10000 ? '10,000원 이상부터 출금 가능' : '출금 신청하기'}
             {summary.total_granted >= 10000 && <ArrowRight className="w-4 h-4" />}
           </button>
@@ -116,30 +117,30 @@ export default function MyCommissionsPage() {
         {/* 출금 폼 */}
         {showForm && (
           <div className="rounded-2xl border border-line p-4 mb-4 bg-gray-50 dark:bg-[#1D1F29]">
-            <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">계좌 정보 입력</h3>
+            <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-3">계좌 정보 입력</h3>
             <div className="space-y-2">
               <input
                 value={bankName}
                 onChange={e => setBankName(e.target.value)}
                 placeholder="은행명 (예: 신한은행)"
-                className="w-full px-3 py-2.5 border border-line rounded-lg text-sm bg-surface text-gray-900 dark:text-white"
+                className="w-full px-3 py-2 border border-line rounded-lg text-[15px] bg-surface text-gray-900 dark:text-white"
               />
               <input
                 value={accountNumber}
                 onChange={e => setAccountNumber(e.target.value)}
                 placeholder="계좌번호 (- 포함 가능)"
-                className="w-full px-3 py-2.5 border border-line rounded-lg text-sm bg-surface text-gray-900 dark:text-white"
+                className="w-full px-3 py-2 border border-line rounded-lg text-[15px] bg-surface text-gray-900 dark:text-white"
               />
               <input
                 value={accountHolder}
                 onChange={e => setAccountHolder(e.target.value)}
                 placeholder="예금주명"
-                className="w-full px-3 py-2.5 border border-line rounded-lg text-sm bg-surface text-gray-900 dark:text-white"
+                className="w-full px-3 py-2 border border-line rounded-lg text-[15px] bg-surface text-gray-900 dark:text-white"
               />
             </div>
             <div className="flex gap-2 mt-3">
-              <button onClick={() => setShowForm(false)} className="flex-1 py-2.5 bg-gray-100 dark:bg-[#1D1F29] rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300">취소</button>
-              <button onClick={submit} disabled={submitting} className="flex-[2] py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold disabled:opacity-50">
+              <button onClick={() => setShowForm(false)} className="flex-1 py-2 bg-gray-100 dark:bg-[#1D1F29] rounded-lg text-[15px] font-medium text-gray-700 dark:text-gray-300">취소</button>
+              <button onClick={submit} disabled={submitting} className="flex-[2] py-2 bg-brand text-white rounded-lg text-[15px] font-bold disabled:opacity-50">
                 {submitting ? '신청 중...' : `${formatWon(summary.total_granted)} 출금 신청`}
               </button>
             </div>
@@ -149,7 +150,7 @@ export default function MyCommissionsPage() {
         {/* 출금 이력 */}
         {withdrawals.length > 0 && (
           <section className="mb-6">
-            <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-2">출금 이력</h3>
+            <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-2">출금 이력</h3>
             <div className="space-y-2">
               {withdrawals.map(w => {
                 const meta = STATUS_BADGE[w.status] ?? STATUS_FALLBACK
@@ -157,16 +158,16 @@ export default function MyCommissionsPage() {
                 return (
                   <div key={w.id} className="rounded-xl border border-line p-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold text-gray-900 dark:text-white">{formatWon(w.total_amount)}</span>
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${meta.cls}`}>
+                      <span className="text-[15px] font-bold text-gray-900 dark:text-white">{formatWon(w.total_amount)}</span>
+                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[12px] font-medium ${meta.cls}`}>
                         <Icon className="w-3 h-3" /> {meta.label}
                       </span>
                     </div>
-                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                    <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">
                       {formatKST(w.requested_at)} · {w.bank_name} {w.account_number}
                     </p>
                     {w.rejection_reason && (
-                      <p className="text-[11px] text-red-500 mt-1">거절 사유: {w.rejection_reason}</p>
+                      <p className="text-[12px] text-red-500 mt-1">거절 사유: {w.rejection_reason}</p>
                     )}
                   </div>
                 )
@@ -177,18 +178,18 @@ export default function MyCommissionsPage() {
 
         {/* commission 리스트 */}
         <section>
-          <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-2">최근 적립 내역</h3>
+          <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-2">최근 적립 내역</h3>
           {loading ? (
-            <p className="text-xs text-gray-400 dark:text-gray-500 py-8 text-center">불러오는 중...</p>
+            <p className="text-[12px] text-gray-400 dark:text-gray-500 py-8 text-center">불러오는 중...</p>
           ) : commissions.length === 0 ? (
-            <p className="text-xs text-gray-400 dark:text-gray-500 py-8 text-center">아직 적립된 수익이 없습니다.</p>
+            <p className="text-[12px] text-gray-400 dark:text-gray-500 py-8 text-center">아직 적립된 수익이 없습니다.</p>
           ) : (
             <div className="divide-y divide-gray-100 dark:divide-[#2C2F35] border border-gray-100 dark:border-[#2C2F35] rounded-xl overflow-hidden">
               {commissions.map(c => (
-                <div key={c.id} className="flex items-center justify-between px-3 py-2.5 text-[12px]">
+                <div key={c.id} className="flex items-center justify-between px-3 py-2 text-[12px]">
                   <div>
                     <p className="text-gray-900 dark:text-white">주문 #{c.order_id} · {c.tier}단계</p>
-                    <p className="text-[10px] text-gray-400 dark:text-gray-500">{formatKSTDate(c.created_at)} · {c.status}</p>
+                    <p className="text-[12px] text-gray-400 dark:text-gray-500">{formatKSTDate(c.created_at)} · {c.status}</p>
                   </div>
                   <span className="font-bold text-gray-900 dark:text-white">{formatWon(c.commission_amount)}</span>
                 </div>

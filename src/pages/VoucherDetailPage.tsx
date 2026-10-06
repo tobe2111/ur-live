@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
+import { InfoIcon } from '@/components/icons/urdeal-icons'
 import { DEFAULT_QTY_CAP } from '@/shared/purchase-cap-default'
 import { useParams, useNavigate, Navigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Info, Link as LinkIcon } from 'lucide-react'
+import { ArrowLeft, Link as LinkIcon } from 'lucide-react'
 import api from '@/lib/api'
 import { queryKeys } from '@/hooks/queries/queryKeys'
 import { storeAffiliateRef, fireAffiliateTrack } from '@/utils/affiliate-track'
@@ -97,7 +98,7 @@ function VoucherNotice({ text }: { text: string }) {
     lines = lines.filter((_, i) => i !== firstIdx)
   }
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       {lines.map((raw, i) => {
         const line = raw.trim()
         if (!line) return <div key={i} className="h-1" />
@@ -105,17 +106,17 @@ function VoucherNotice({ text }: { text: string }) {
         if (url) {
           return (
             <a key={i} href={url} target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-gray-900 dark:text-white underline underline-offset-2 break-all">
+              className="inline-flex items-center gap-1 text-[12px] font-semibold text-gray-900 dark:text-white underline underline-offset-2 break-all">
               <LinkIcon className="w-3.5 h-3.5 shrink-0" strokeWidth={2} aria-hidden />안내 링크 열기
             </a>
           )
         }
         if (/^\[[^\]]+\]$/.test(line)) {
-          return <p key={i} className="text-[12.5px] font-extrabold text-gray-900 dark:text-white mt-3 first:mt-0">{line.replace(/^\[|\]$/g, '')}</p>
+          return <p key={i} className="text-[12px] font-extrabold text-gray-900 dark:text-white mt-3 first:mt-0">{line.replace(/^\[|\]$/g, '')}</p>
         }
         if (/^[-•]\s+/.test(line)) {
           return (
-            <div key={i} className="flex gap-1.5 text-[12.5px] text-gray-600 dark:text-gray-300 leading-relaxed">
+            <div key={i} className="flex gap-2 text-[12px] text-gray-600 dark:text-gray-300 leading-relaxed">
               <span className="text-gray-300 dark:text-gray-600 shrink-0">•</span>
               <span className="flex-1">{line.replace(/^[-•]\s+/, '')}</span>
             </div>
@@ -127,7 +128,7 @@ function VoucherNotice({ text }: { text: string }) {
         if (/^(📅|❗|✅|💡|📌)/.test(line)) {
           return <p key={i} className="text-[12px] text-gray-500 dark:text-gray-400 leading-relaxed">{line}</p>
         }
-        return <p key={i} className="text-[12.5px] text-gray-600 dark:text-gray-300 leading-relaxed">{line}</p>
+        return <p key={i} className="text-[12px] text-gray-600 dark:text-gray-300 leading-relaxed">{line}</p>
       })}
     </div>
   )
@@ -296,8 +297,8 @@ export default function VoucherDetailPage() {
       <div className="min-h-screen bg-white dark:bg-[#11141C] p-4">
         <button onClick={() => navigate(-1)} aria-label="뒤로" className="mb-4"><ArrowLeft className="w-5 h-5 text-gray-900 dark:text-white" /></button>
         <div className="text-center mt-12">
-          <p className="text-sm text-gray-700 dark:text-gray-200 mb-4">{error || '교환권을 찾을 수 없습니다'}</p>
-          <button onClick={() => navigate('/vouchers')} className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-bold">교환권 목록으로</button>
+          <p className="text-[15px] text-gray-700 dark:text-gray-200 mb-4">{error || '교환권을 찾을 수 없습니다'}</p>
+          <button onClick={() => navigate('/vouchers')} className="px-4 py-2 bg-brand text-white rounded-lg text-[15px] font-bold">교환권 목록으로</button>
         </div>
       </div>
     )
@@ -375,29 +376,29 @@ export default function VoucherDetailPage() {
         {/* 정보 */}
         <div className="pt-[18px] lg:pt-0">
           <div className="flex items-center">
-            <span className="text-[11.5px] font-bold text-[#171B24] bg-[#d1d5db] rounded-md px-[9px] py-1 whitespace-nowrap">{label}</span>
+            <span className="text-[12px] font-bold text-[#171B24] bg-[#d1d5db] rounded-md px-[9px] py-1 whitespace-nowrap">{label}</span>
           </div>
           {/* ♿ 2026-08-01 (모바일 실측): 이 페이지에 **h1 이 하나도 없었다**(h2 로 시작).
               스크린리더 랜드마크가 없고 검색엔진도 문서 주제를 못 잡는다. 상품명이 이 문서의 h1 이다.
               시각적 크기는 그대로 — 태그만 바꾼다. */}
-          <h1 className="mt-[7px] text-[23px] font-extrabold text-[#171B24] dark:text-white leading-tight tracking-tight">{product.name}</h1>
+          <h1 className="mt-[7px] text-[24px] font-extrabold text-[#171B24] dark:text-white leading-tight tracking-tight">{product.name}</h1>
           {/* 🗺️ 2026-07-02 카카오맵 리뷰 게이미피케이션 — 레벨 전용 배지 (서버 게이트의 UX 안내) */}
           {product.min_review_level && product.min_review_level > 1 ? (
-            <span className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#1A1A1A] text-[11px] font-bold text-gray-700 dark:text-gray-200">동네 리뷰어 Lv.{product.min_review_level} 전용</span>
+            <span className="inline-flex items-center gap-1 mt-2 px-2 py-1 rounded-full bg-gray-100 dark:bg-[#1A1A1A] text-[12px] font-bold text-gray-700 dark:text-gray-200">동네 리뷰어 Lv.{product.min_review_level} 전용</span>
           ) : null}
           {product.restaurant_name && (
-            <div className="mt-1 text-[13.5px] text-gray-400 dark:text-gray-500">{product.restaurant_name}{product.restaurant_address ? ` · ${product.restaurant_address}` : ''}</div>
+            <div className="mt-1 text-[13px] text-gray-400 dark:text-gray-500">{product.restaurant_name}{product.restaurant_address ? ` · ${product.restaurant_address}` : ''}</div>
           )}
           {/* 🎨 2026-06-17: 시안 의도 복원 — original_price(정가) 있으면 취소선 + 실제 할인율 표시 */}
           <div className="mt-4 flex items-end justify-between gap-3">
             <div className="flex items-baseline gap-1">
-              <span className="text-[32px] font-extrabold text-[#171B24] dark:text-white tracking-tight">{formatNumber(product.price)}</span>
-              <span className="text-[18px] font-bold text-[#171B24] dark:text-white">딜</span>
+              <span className="text-[34px] font-extrabold text-[#171B24] dark:text-white tracking-tight">{formatNumber(product.price)}</span>
+              <span className="text-[17px] font-bold text-[#171B24] dark:text-white">딜</span>
             </div>
             {hasDiscount && (
               <div className="text-right leading-tight">
                 <div className="text-[12px] text-gray-400 dark:text-gray-500 line-through">정가 ₩{formatNumber(product.original_price!)}</div>
-                <div className="text-[12.5px] font-bold text-sale">{discountPct}% 할인 교환</div>
+                <div className="text-[12px] font-bold text-sale">{discountPct}% 할인 교환</div>
               </div>
             )}
           </div>
@@ -405,23 +406,23 @@ export default function VoucherDetailPage() {
           <div className="h-px bg-[#EEF0F3] dark:bg-[#1D1F29] my-4" />
 
           <div className="flex flex-col gap-[11px]">
-            <div className="flex justify-between items-start text-[13.5px]">
+            <div className="flex justify-between items-start text-[13px]">
               <span className="text-gray-400 dark:text-gray-500">유효기간</span>
               <span className="text-[#3A404C] dark:text-gray-200 font-semibold text-right">{product.voucher_expiry || '발급 후 사용 기간 적용'}</span>
             </div>
-            <div className="flex justify-between items-start text-[13.5px]">
+            <div className="flex justify-between items-start text-[13px]">
               <span className="text-gray-400 dark:text-gray-500">사용처</span>
               <span className="text-[#3A404C] dark:text-gray-200 font-semibold text-right">{product.restaurant_name || '전국 가맹 매장'}</span>
             </div>
-            <div className="flex justify-between items-start text-[13.5px]">
+            <div className="flex justify-between items-start text-[13px]">
               <span className="text-gray-400 dark:text-gray-500">환불</span>
               <span className="text-[#3A404C] dark:text-gray-200 font-semibold text-right">환불 불가</span>
             </div>
           </div>
 
           {/* 사용 안내 */}
-          <div className="mt-[14px] flex items-center gap-1.5 text-gray-400 dark:text-gray-500">
-            <Info className="w-3.5 h-3.5 shrink-0" />
+          <div className="mt-[14px] flex items-center gap-2 text-gray-400 dark:text-gray-500">
+            <InfoIcon className="w-3.5 h-3.5 shrink-0" />
             <span className="text-[12px]">매장에서 바코드 제시 후 사용 가능</span>
           </div>
 
@@ -429,7 +430,7 @@ export default function VoucherDetailPage() {
               + 가시성 개선 — 평문 → 구조화 렌더(VoucherNotice). 데이터 무변경, 표시만. */}
           {cleanDescription && (
             <div className="mt-5 pt-5 border-t border-[#EEF0F3] dark:border-[#2C2F35]">
-              <p className="text-[12px] font-bold text-gray-400 dark:text-gray-500 mb-2.5">상품 안내</p>
+              <p className="text-[12px] font-bold text-gray-400 dark:text-gray-500 mb-2">상품 안내</p>
               <VoucherNotice text={cleanDescription} />
             </div>
           )}
@@ -444,14 +445,14 @@ export default function VoucherDetailPage() {
         <div className="ur-content-narrow lg:max-w-[1000px] px-4 pt-3">
           {/* 🎨 보유 딜 + 교환 후 잔액 (로그인 시) */}
           {loggedIn && (
-            <div className="flex items-center justify-between bg-[#F6F7F9] dark:bg-[#1D1F29] rounded-xl px-3.5 py-2.5 mb-3">
-              <span className="text-[12.5px] text-gray-500 dark:text-gray-400">보유 <b className="font-semibold text-gray-700 dark:text-gray-200">{balancePending ? '…' : `${formatNumber(balance)}딜`}</b></span>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-[11.5px] font-semibold text-gray-500 dark:text-gray-400">교환 후</span>
+            <div className="flex items-center justify-between bg-[#F6F7F9] dark:bg-[#1D1F29] rounded-xl px-4 py-2 mb-3">
+              <span className="text-[12px] text-gray-500 dark:text-gray-400">보유 <b className="font-semibold text-gray-700 dark:text-gray-200">{balancePending ? '…' : `${formatNumber(balance)}딜`}</b></span>
+              <div className="flex items-baseline gap-2">
+                <span className="text-[12px] font-semibold text-gray-500 dark:text-gray-400">교환 후</span>
                 {balancePending ? (
-                  <span className="text-[18px] font-extrabold text-gray-400 dark:text-gray-500 tracking-tight">…</span>
+                  <span className="text-[17px] font-extrabold text-gray-400 dark:text-gray-500 tracking-tight">…</span>
                 ) : afterBalance >= 0 ? (
-                  <span className="text-[18px] font-extrabold text-[#171B24] dark:text-white tracking-tight">{formatNumber(afterBalance)}딜</span>
+                  <span className="text-[17px] font-extrabold text-[#171B24] dark:text-white tracking-tight">{formatNumber(afterBalance)}딜</span>
                 ) : (
                   <span className="text-[15px] font-extrabold text-red-500">딜 부족</span>
                 )}
@@ -464,14 +465,14 @@ export default function VoucherDetailPage() {
                 컨테이너 높이 54px·테두리·간격은 그대로 두고 **버튼 자체에 44×44 탭 영역**만 준다. */}
             <div className="flex items-center border border-[#E6E9ED] dark:border-[#2C2F35] rounded-2xl px-1 h-[54px] shrink-0">
               {/* 🎯 2026-07-01: 1인당 한도(max_per_person) cap — 미설정 시 10(서버 공통 상한과 별개 UX 가드). */}
-              <button onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={quantity <= 1} aria-label="수량 감소" className="flex h-11 w-11 items-center justify-center text-[20px] font-semibold text-gray-900 dark:text-white disabled:text-gray-300 dark:disabled:text-gray-600">−</button>
-              <span className="min-w-[20px] text-center text-[16px] font-bold text-gray-900 dark:text-white">{quantity}</span>
-              <button onClick={() => { const cap = product?.qty_cap && product.qty_cap > 0 ? product.qty_cap : (product?.max_per_person && product.max_per_person > 0 ? product.max_per_person : DEFAULT_QTY_CAP); setQuantity(q => Math.min(cap, q + 1)) }} disabled={quantity >= (product?.qty_cap && product.qty_cap > 0 ? product.qty_cap : (product?.max_per_person && product.max_per_person > 0 ? product.max_per_person : DEFAULT_QTY_CAP))} aria-label="수량 증가" className="flex h-11 w-11 items-center justify-center text-[20px] font-semibold text-gray-900 dark:text-white disabled:text-gray-300 dark:disabled:text-gray-600">+</button>
+              <button onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={quantity <= 1} aria-label="수량 감소" className="flex h-11 w-11 items-center justify-center text-[24px] font-semibold text-gray-900 dark:text-white disabled:text-gray-300 dark:disabled:text-gray-600">−</button>
+              <span className="min-w-[20px] text-center text-[17px] font-bold text-gray-900 dark:text-white">{quantity}</span>
+              <button onClick={() => { const cap = product?.qty_cap && product.qty_cap > 0 ? product.qty_cap : (product?.max_per_person && product.max_per_person > 0 ? product.max_per_person : DEFAULT_QTY_CAP); setQuantity(q => Math.min(cap, q + 1)) }} disabled={quantity >= (product?.qty_cap && product.qty_cap > 0 ? product.qty_cap : (product?.max_per_person && product.max_per_person > 0 ? product.max_per_person : DEFAULT_QTY_CAP))} aria-label="수량 증가" className="flex h-11 w-11 items-center justify-center text-[24px] font-semibold text-gray-900 dark:text-white disabled:text-gray-300 dark:disabled:text-gray-600">+</button>
             </div>
             <button
               onClick={handleExchange}
               disabled={exchanging}
-              className="flex-1 h-[54px] rounded-2xl text-white text-[16px] font-bold disabled:opacity-50"
+              className="flex-1 h-[54px] rounded-2xl text-white text-[17px] font-bold disabled:opacity-50"
               style={{ background: 'linear-gradient(180deg,#26282D,#16181C)' }}
             >
               {exchanging ? '교환 중…' : `${formatNumber(total)}딜로 교환하기`}
@@ -484,8 +485,8 @@ export default function VoucherDetailPage() {
       {showPhoneModal && (
         <div className="fixed inset-0 z-[10100] bg-black/60 flex items-end sm:items-center justify-center p-4" onClick={() => setShowPhoneModal(false)}>
           <div className="bg-surface rounded-t-2xl sm:rounded-2xl w-full max-w-sm p-5" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-base font-bold text-gray-900 dark:text-white mb-2">휴대폰 번호 등록</h3>
-            <p className="text-xs text-gray-600 dark:text-gray-300 mb-4">
+            <h3 className="text-[15px] font-bold text-gray-900 dark:text-white mb-2">휴대폰 번호 등록</h3>
+            <p className="text-[12px] text-gray-600 dark:text-gray-300 mb-4">
               기프티쇼 교환권은 휴대폰 MMS 로 발송됩니다.<br/>
               발송 받을 번호를 입력해주세요.
             </p>
@@ -495,7 +496,7 @@ export default function VoucherDetailPage() {
               onChange={(e) => setPhoneInput(formatPhone(e.target.value))}
               onKeyDown={(e) => { if (e.key === 'Enter') savePhoneAndRetry(phoneInput) }}
               placeholder="010-1234-5678"
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-base text-gray-900 dark:text-white mb-3"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-[15px] text-gray-900 dark:text-white mb-3"
               autoFocus
             />
 
@@ -505,9 +506,9 @@ export default function VoucherDetailPage() {
                 type="checkbox"
                 checked={phoneConsent}
                 onChange={(e) => setPhoneConsent(e.target.checked)}
-                className="mt-0.5 w-4 h-4 accent-gray-900"
+                className="mt-1 w-4 h-4 accent-gray-900"
               />
-              <span className="text-[11px] text-gray-700 dark:text-gray-200 leading-relaxed">
+              <span className="text-[12px] text-gray-700 dark:text-gray-200 leading-relaxed">
                 <b>휴대폰 번호 수집·이용에 동의</b>합니다 (필수)
                 <br/>
                 <span className="text-gray-500 dark:text-gray-400">
@@ -521,14 +522,14 @@ export default function VoucherDetailPage() {
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => { setShowPhoneModal(false); setPhoneConsent(false) }}
-                className="py-2.5 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 dark:text-gray-200"
+                className="py-2 border border-gray-200 rounded-lg text-[15px] font-bold text-gray-700 dark:text-gray-200"
               >
                 취소
               </button>
               <button
                 onClick={() => savePhoneAndRetry(phoneInput)}
                 disabled={!phoneInput || !phoneConsent}
-                className="py-2.5 bg-gray-900 text-white rounded-lg text-sm font-bold disabled:opacity-40"
+                className="py-2 bg-brand text-white rounded-lg text-[15px] font-bold disabled:opacity-40"
               >
                 저장 후 교환
               </button>

@@ -13,6 +13,7 @@ import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
 import { auditLog } from '@/worker/middleware/audit-log'
 import { recordLedger, sellerLedgerAccount } from '@/worker/utils/ledger'; import { creditBrokerShare } from '@/worker/utils/broker-share' // 💸 2026-09-19 중개사 몫(게이트 OFF=no-op)
+import { purchaseCreditFields } from '@/worker/utils/payout-account' // 💸 2026-10-01 구매 적립 escrow 경유(이중적립 제거)
 import { formatKSTDate } from '@/utils/date' // 워커 TZ=UTC — 만료일 안내가 하루 이르던 것 교정
 import { swallow } from '@/worker/utils/swallow'
 import { resolveUserIdString } from '@/worker/utils/resolve-user-id'
@@ -484,8 +485,8 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
     // 주문 생성 (idempotency_key 저장 — 중복 발급 영구 차단)
     // 🛡️ 2026-05-24 Q4 perf: INSERT ... RETURNING id 로 즉시 id 획득 (이전: INSERT 후 SELECT 별도 — 1 await 절약 ~20-50ms).
     const orderInsert = await DB.prepare(`
-      INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_method, idempotency_key)
-      VALUES (?, ?, ?, ?, 0, 0, ?, 'KRW', 'PAID', ?, ?)
+      INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_status, payment_method, idempotency_key)
+      VALUES (?, ?, ?, ?, 0, 0, ?, 'KRW', 'PAID', 'approved', ?, ?)
       RETURNING id
     `).bind(orderNumber, userId, product.seller_id, totalAmount, totalAmount, payment_method === 'deal' ? 'deal_points' : 'toss', idempotency_key || null).first<{ id: number }>()
     const newOrderId = orderInsert?.id ?? null
@@ -506,8 +507,7 @@ groupBuyRoutes.post('/join/:id', rateLimit({ action: 'group_buy_join', max: 5, w
         reference_id: orderNumber,
         amount: totalAmount,
         debit_account: `user:${userId}`,                  // 유저 wallet 차감
-        credit_account: sellerLedgerAccount(product.seller_id),    // 셀러 receivable 증가
-        fee_amount: commissionAmount,
+        ...purchaseCreditFields(product.seller_id, commissionAmount), // 💸 escrow 경유(이중적립 제거)
         fee_account: 'platform:commission',
         metadata: { product_id: productId, qty, applied_discount_pct: appliedDiscountPct },
       })
@@ -1227,8 +1227,8 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
   const expiresAt = product.voucher_expiry || null // 2026-08-22 대표: 미설정 = 무기한(90일 강제 기본값 폐지)
   try {
     const orderInsert = await DB.prepare(`
-      INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_method, payment_key, idempotency_key)
-      VALUES (?, ?, ?, ?, 0, 0, ?, 'KRW', 'PAID', 'toss', ?, ?)
+      INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_status, payment_method, payment_key, idempotency_key)
+      VALUES (?, ?, ?, ?, 0, 0, ?, 'KRW', 'PAID', 'approved', 'toss', ?, ?)
       RETURNING id
     `).bind(orderNumber, userId, product.seller_id, expectedAmount, expectedAmount, paymentKey, paymentKey).first<{ id: number }>()
     const newOrderId = orderInsert?.id ?? null
@@ -1355,8 +1355,7 @@ groupBuyRoutes.post('/confirm-toss', rateLimit({ action: 'group_buy_confirm_toss
         reference_id: orderNumber,
         amount: expectedAmount,
         debit_account: `user:${userId}`,
-        credit_account: sellerLedgerAccount(product.seller_id),
-        fee_amount: commissionAmount,
+        ...purchaseCreditFields(product.seller_id, commissionAmount), // 💸 escrow 경유(이중적립 제거)
         fee_account: 'platform:commission',
         metadata: { product_id: productId, qty, applied_discount_pct: tierDiscountPct, payment_method: 'toss' },
       })

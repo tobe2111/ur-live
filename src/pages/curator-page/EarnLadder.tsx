@@ -36,21 +36,21 @@ interface Props {
 export default function EarnLadder({ dealCount, pinCount }: Props) {
   return (
     <div className="max-w-3xl mx-auto px-4 pt-3">
-      <div className="rounded-2xl border border-line bg-surface overflow-hidden">
-        <div className="px-4 pt-3.5 pb-2">
-          <p className="text-[14px] font-extrabold text-gray-900 dark:text-white">내 유어샵으로 버는 법</p>
-          <p className="mt-0.5 text-[11.5px] text-gray-500 dark:text-gray-400">위에서부터 하면 아래가 쉬워져요.</p>
+      <div className="rounded-2xl bg-surface overflow-hidden shadow-lift">
+        <div className="px-4 pt-4 pb-2">
+          <p className="text-[15px] font-extrabold text-gray-900 dark:text-white">내 유어샵으로 버는 법</p>
+          <p className="mt-1 text-[12px] text-gray-500 dark:text-gray-400">위에서부터 하면 아래가 쉬워져요.</p>
         </div>
 
         {/* 1단 — 조건. 여기가 비면 2단이 0원이라 그 사실을 그대로 적는다.
             브랜드색을 여기 한 곳에만 쓴다(무엇이 제일 중요한지 눈으로 보이게). */}
         <div className="mx-3 mb-2 rounded-xl border border-brand/25 bg-brand/[0.04] dark:bg-brand/[0.08] p-3">
-          <div className="flex items-start gap-2.5">
-            <span className="mt-0.5 shrink-0 w-5 h-5 rounded-full bg-brand text-white text-[11px] font-extrabold flex items-center justify-center">1</span>
+          <div className="flex items-start gap-2">
+            <span className="mt-1 shrink-0 w-5 h-5 rounded-full bg-brand text-white text-[12px] font-extrabold flex items-center justify-center">1</span>
             <div className="min-w-0 flex-1">
-              <p className="text-[13.5px] font-extrabold text-gray-900 dark:text-white">
+              <p className="text-[13px] font-extrabold text-gray-900 dark:text-white">
                 그 가게와 소개비를 정하세요
-                {dealCount > 0 && <span className="ml-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">계약 {dealCount}곳</span>}
+                {dealCount > 0 && <span className="ml-2 text-[12px] font-bold text-emerald-600 dark:text-emerald-400">계약 {dealCount}곳</span>}
               </p>
               <p className="mt-1 text-[12px] leading-relaxed text-gray-600 dark:text-gray-300">
                 가게가 “이 이용권 팔아주면 몇 %” 를 정해 제안합니다. 수락하면 계약이 됩니다.
@@ -63,7 +63,7 @@ export default function EarnLadder({ dealCount, pinCount }: Props) {
               </p>
               <Link
                 to="/influencer/settlement"
-                className="mt-2.5 inline-flex items-center gap-1 rounded-lg border border-gray-300 dark:border-[#2C2F35] px-3 py-1.5 text-[12px] font-bold text-gray-700 dark:text-gray-200 active:opacity-70"
+                className="mt-2 inline-flex items-center gap-1 rounded-lg border border-gray-300 dark:border-[#2C2F35] px-3 py-2 text-[12px] font-bold text-gray-700 dark:text-gray-200 active:opacity-70"
               >
                 내 계약·정산 보기 <ChevronRight className="w-3.5 h-3.5" />
               </Link>
@@ -73,12 +73,12 @@ export default function EarnLadder({ dealCount, pinCount }: Props) {
 
         {/* 2단 — 이미 하고 있는 것. 위를 하면 여기가 돈이 된다는 연결을 적는다. */}
         <div className="mx-3 mb-3 rounded-xl border border-line p-3">
-          <div className="flex items-start gap-2.5">
-            <span className="mt-0.5 shrink-0 w-5 h-5 rounded-full bg-gray-900 dark:bg-white text-white dark:text-[#11141C] text-[11px] font-extrabold flex items-center justify-center">2</span>
+          <div className="flex items-start gap-2">
+            <span className="mt-1 shrink-0 w-5 h-5 rounded-full bg-brand text-white text-[12px] font-extrabold flex items-center justify-center">2</span>
             <div className="min-w-0 flex-1">
-              <p className="text-[13.5px] font-extrabold text-gray-900 dark:text-white">
+              <p className="text-[13px] font-extrabold text-gray-900 dark:text-white">
                 담아서 파세요
-                {pinCount > 0 && <span className="ml-1.5 text-[11px] font-bold text-gray-400">{pinCount}개 담음</span>}
+                {pinCount > 0 && <span className="ml-2 text-[12px] font-bold text-gray-400">{pinCount}개 담음</span>}
               </p>
               <p className="mt-1 text-[12px] leading-relaxed text-gray-600 dark:text-gray-300">
                 담은 이용권은 내 유어샵에 <b className="text-gray-900 dark:text-white">계속 남습니다</b>. 내 샵으로 팔릴 때마다 소개비가 붙어요.

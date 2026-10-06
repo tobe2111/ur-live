@@ -2,7 +2,9 @@ import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
+import { sellerCertView, SELLER_CERT_LABEL } from '@/shared/seller-cert-badge'
 import { safeHttpHref } from '@/utils/safe-external-url'
+import FoodPermitBlock from './admin-seller-approval/FoodPermitBlock'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader, DashboardLoading, DashboardEmptyState } from '@/components/dashboard'
@@ -11,6 +13,7 @@ import { makePurgeSeller } from './admin-seller-approval/purge-seller-action'
 import { toast } from '@/hooks/useToast'
 import { confirmDialog, alertDialog } from '@/components/ui/confirm-dialog'
 import { formatKSTDate } from '@/utils/date'
+import { errorCode } from '@/utils/api-error-code'
 
 /**
  * 🛡️ 2026-04-28: 셀러 관리 통합 페이지
@@ -33,6 +36,9 @@ type Seller = {
   bank_account?: string | null
   account_holder?: string | null
   business_registration_image_url?: string | null
+  // 🍽️ 2026-09-21 — 서버가 seller_meta 에서 얹어 준다(`seller-permit-flag.ts`). 표시용이고 승인을 막지 않는다.
+  food_permit_url?: string | null
+  needs_food_permit?: boolean
   business_registration_status?: BizRegStatus | string | null
   business_registration_reject_reason?: string | null
   // 🧱 2026-06-30 (서비스 분리 — 도매 판매사 구분): is_distributor=1 이면 도매(유통스타트) 판매사.
@@ -116,14 +122,27 @@ export default function AdminSellerApprovalPage() {
     })
   }, [sellers, filter, search, hideDistributor])
 
+  /**
+   * 🔁 2026-09-23 (대표 콘솔 실측 — `PATCH /sellers/24/approve` 400): 실패했을 때 **목록을 다시 불러온다**.
+   *
+   * 종전엔 성공에서만 `load()` 를 했다. 그래서 이미 승인된 매장(다른 탭·다른 관리자·방금 내가 누른 것)을
+   * 누르면 400 만 뜨고 **그 줄이 화면에 그대로 남아** 또 누르게 된다 — 돌아오는 건 같은 400 뿐이다.
+   * 화면이 서버와 어긋난 것이 원인이므로, 실패야말로 다시 맞출 신호다.
+   *
+   * 그리고 '이미 승인됨'은 **실패가 아니라 결과가 같은 일**이라 빨간 토스트로 겁줄 이유가 없다 →
+   * 서버가 주는 안정적인 `code` 로만 판정한다(문구는 바뀌므로 문자열 매칭 금지).
+   */
   const approve = async (id: number) => {
     setActingId(id)
     try {
       // 🛡️ 2026-06-12 (감사 1단계): 알림 없는 admin-tools approve → 알림톡+벨+이력 있는
       //   PATCH /api/admin/sellers/:id/approve (admin-sellers.routes.ts) 로 교체.
       await api.patch(`/api/admin/sellers/${id}/approve`, {}, h)
-      toast.success('승인 완료'); load()
-    } catch { toast.error('승인 실패') } finally { setActingId(null) }
+      toast.success('승인 완료')
+    } catch (err) {
+      if (errorCode(err) === 'ALREADY_APPROVED') toast.info('이미 승인된 매장이에요 — 목록을 새로 불러옵니다')
+      else toast.error('승인 실패')
+    } finally { setActingId(null); load() }
   }
 
   const reject = async (id: number) => {
@@ -131,8 +150,8 @@ export default function AdminSellerApprovalPage() {
     setActingId(id)
     try {
       await api.put(`/api/admin/tools/sellers/${id}/reject`, { reason }, h)
-      toast.info('거절됨'); load()
-    } catch { toast.error('거절 실패') } finally { setActingId(null) }
+      toast.info('거절됨')
+    } catch { toast.error('거절 실패') } finally { setActingId(null); load() }
   }
 
   // 🛡️ 2026-05-19: 공급자 (가게 사장님) 빠른 등록 — D 공동구매 3자 분배 위함.
@@ -334,17 +353,17 @@ export default function AdminSellerApprovalPage() {
           <div className="space-y-2">
             {filtered.map(s => {
               const isExpanded = expandedId === s.id
-              const bizStatus = (s.business_registration_status || 'none') as 'none' | 'pending' | 'verified' | 'rejected' | string
+              // 아래 상세 패널의 승인·반려 버튼은 **원래 상태**를 그대로 봐야 한다(파일 유무로 갈리면 안 된다).
+              const bizStatus = (s.business_registration_status || 'none') as string
+              // 🧾 2026-09-21: 등록증이 **선택**이 되면서 "아예 없음" 이 흔한 상태가 됐다.
+              //   판정은 `shared/seller-cert-badge.ts`(순수 함수 — 시험이 동작을 잰다).
+              const bizView = sellerCertView(s.business_registration_status, s.business_registration_image_url)
               const bizBadge =
-                bizStatus === 'verified' ? 'bg-white text-tone-ok border-rule' :
-                bizStatus === 'pending' ? 'bg-white text-tone-warn border-rule' :
-                bizStatus === 'rejected' ? 'bg-white text-tone-bad border-rule' :
+                bizView === 'verified' ? 'bg-white text-tone-ok border-rule' :
+                bizView === 'pending' || bizView === 'submitted' ? 'bg-white text-tone-warn border-rule' :
+                bizView === 'rejected' ? 'bg-white text-tone-bad border-rule' :
                 'bg-gray-100 text-gray-500 border-gray-200'
-              const bizLabel =
-                bizStatus === 'verified' ? '사업자 검증 완료' :
-                bizStatus === 'pending' ? '사업자 검증 대기' :
-                bizStatus === 'rejected' ? '사업자 반려' :
-                '사업자 미제출'
+              const bizLabel = SELLER_CERT_LABEL[bizView]
               return (
               <div key={s.id} className="bg-white rounded-xl border border-gray-200 p-4">
               <div className="flex items-start justify-between gap-3">
@@ -559,6 +578,9 @@ export default function AdminSellerApprovalPage() {
                       </p>
                     )}
                   </div>
+
+                  {/* 🍽️ 영업신고증 — **판매 전에 본다**(2026-09-21 대표). 보여 주기만 하고 승인을 막지 않는다. */}
+                  <FoodPermitBlock url={s.food_permit_url} needed={s.needs_food_permit} />
                 </div>
               )}
               </div>

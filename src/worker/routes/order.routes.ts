@@ -29,6 +29,8 @@ import { calculateShippingFee, generateId } from '../../shared/utils';
 import type { CreateOrderRequest } from '../../shared/types';
 import { tossCancelPayment } from '../utils/toss-payments';
 import { reverseOrderAncillaryOnRefund } from '../utils/order-refund';
+import { tryVoucherPartialRefund } from '../utils/voucher-partial-refund'
+import { notifyOrderCancelled } from '../utils/order-cancel-notify'
 import { safeError } from '../utils/safe-error';
 import { createDashboardNotification } from '../../features/notifications/api/dashboard-notifications.routes';
 // AuthVariables compatible with auth.ts AuthUser
@@ -877,6 +879,7 @@ ordersRouter.post('/refund', rateLimit({ action: 'order_refund', max: 5, windowS
       await orderRepo.updateStatusById(body.order_id, 'REFUNDED', {
         cancel_reason: `[환불요청] ${body.reason}`,
         cancelled_at: new Date().toISOString(),
+        payment_status: 'refunded', // 💸 안 되돌리면 환불된 주문이 계속 매출로 집계된다(머니 룰 #2)
       });
       await orderRepo.restoreStock(body.order_id);
     }
@@ -968,7 +971,7 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
     if (!isValidOrderId(orderId)) {
       return c.json({ success: false, error: 'Invalid order ID' }, 400);
     }
-    const body = await c.req.json<{ reason?: string; cancel_amount?: number }>();
+    const body = await c.req.json<{ reason?: string; cancel_amount?: number; cancel_qty?: number }>();
     const reason = body.reason ?? '고객 요청';
     if (typeof reason !== 'string' || reason.length > 500) {
       return c.json({ success: false, error: 'reason은 500자 이하 문자열이어야 합니다' }, 400);
@@ -1016,6 +1019,9 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
     // PAID / DONE 상태: 실제 결제가 이루어졌으므로 Toss Cancel API 호출
     const paymentMadeStatuses = ['PAID', 'DONE'];
     if (paymentMadeStatuses.includes(order.status)) {
+      // 🎟️ 2026-09-28 이용권은 **장 단위**로만 무른다 — 판정·계산·실행은 voucher-partial-refund.ts
+      const vPartial = await tryVoucherPartialRefund(c, order, body.cancel_qty, reason)
+      if (vPartial) return vPartial
       // 💸 2026-06-26 셀프취소 머니버그 근본수정 — 전액취소는 refundOrderFully SSOT 경유.
       //   기존 인라인 경로 버그(머니룰 #2 대칭·CAS 멱등): ① 딜 전액결제(toss_key 없음) 422 차단 + 딜환급 dead
       //   ② 혼합결제(카드+딜) deal_used 미복원 ③ 쿠폰·referral_bonus·affiliate/공급/에이전시/영입자 미역전.
@@ -1161,17 +1167,8 @@ ordersRouter.post('/:id/cancel', rateLimit({ action: 'order_cancel', max: 10, wi
         console.error('[ORDERS] Mixed-pay deal partial refund error:', e);
       }
 
-      // 부분취소 알림 (주문 status 는 유지 — '부분 취소').
-      createDashboardNotification(c.env.DB, 'admin', null, 'order_cancelled', '부분 취소', `주문번호: ${order.order_number}`, '/admin/orders').catch(swallow('order:notify-admin-cancel-paid'));
-      if (order.seller_id) {
-        createDashboardNotification(c.env.DB, 'seller', String(order.seller_id), 'order_cancelled', '부분 취소', `주문번호: ${order.order_number}`, '/seller/orders').catch(swallow('order:notify-seller-cancel-paid'));
-      }
-
-      // 유저에게 인앱 알림 (주문 취소)
-      try {
-        const { notifyUser } = await import('../../lib/notifications');
-        await notifyUser(c.env.DB, String(order.user_id), 'order_status', '\u274C 주문이 취소되었습니다.', `주문번호: ${order.order_number}`, '/my-orders');
-      } catch {} // fire and forget
+      // 부분취소 알림 (주문 status 는 유지 — '부분 취소'). 3종 한 곳: order-cancel-notify.ts
+      await notifyOrderCancelled(c.env.DB, order, '부분 취소');
 
       const latestCancel = tossResult.data.cancels[tossResult.data.cancels.length - 1];
 

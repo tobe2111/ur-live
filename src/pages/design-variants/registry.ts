@@ -62,10 +62,12 @@ export interface VariantSet {
 export const SET_LOADERS: Record<string, () => Promise<{ default: VariantSet }>> = {
   'seller-analytics': () => import('./sets/seller-analytics'),
   'partners-landing': () => import('./sets/partners-landing'),
+  'seller-signup': () => import('./sets/seller-signup'),
 }
 
 /** 🎨 세트 목록 — 본문을 불러오기 전에 이름을 보여 주기 위한 최소 미러. */
 export const SET_INDEX: { id: string; label: string; route: string }[] = [
   { id: 'seller-analytics', label: '셀러 매출 분석', route: '/seller/analytics' },
   { id: 'partners-landing', label: '입점 랜딩', route: '/partners' },
+  { id: 'seller-signup', label: '사업자 유저 가입', route: '/seller/register/supplier' },
 ]

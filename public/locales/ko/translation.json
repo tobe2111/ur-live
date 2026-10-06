@@ -634,7 +634,7 @@
   },
   "browse": {
     "title": "쇼핑",
-    "seoDesc": "유어딜 인기 상품, 맛집 바우처, 라이브 특가를 만나보세요",
+    "seoDesc": "유어딜 인기 상품, 동네 가게 이용권, 교환권을 할인가로 만나보세요",
     "loadError": "상품을 불러올 수 없습니다.",
     "loadRetry": "상품을 불러올 수 없습니다. 다시 시도해주세요.",
     "searchAria": "상품 검색",
@@ -699,7 +699,7 @@
     "system": "시스템",
     "light": "라이트",
     "dark": "다크",
-    "description": "쇼핑·결제·주문 등 화이트 테마 페이지에 적용됩니다. 마이페이지/홈/라이브는 항상 다크 테마.",
+    "description": "시스템 / 라이트 / 다크 중 선택. 시스템 모드는 OS 다크 설정을 따라갑니다.",
     "currentlyFollowing": "현재 OS: {{theme}}"
   },
   "myOrders": {
@@ -2598,6 +2598,7 @@
       "voucherOrders": "교환권 발송 이력",
       "transfers": "매장 이관",
       "marketing": "마케팅",
+      "instagramDm": "인스타 자동 DM",
       "adSlots": "광고 슬롯",
       "discounts": "할인",
       "partners": "파트너",
@@ -3353,7 +3354,9 @@
       "fromPhoto": "사진에서 읽었어요 — 맞는지 확인해 주세요",
       "ocrFilled": "{{n}}칸을 사진에서 채웠어요 — 맞는지 확인해 주세요",
       "ocrNone": "사업자등록증이 업로드됐어요",
-      "certHintDone": "심사에 쓰입니다. 아래 값이 맞는지 확인해 주세요."
+      "certHintDone": "심사에 쓰입니다. 아래 값이 맞는지 확인해 주세요.",
+      "pickHint": "가게를 고르면 상호·주소·전화·업종이 한 번에 채워져요. 지도에 없으면 아래에 직접 적어 주세요.",
+      "pickPlaceholder": "가게 이름으로 찾기"
     },
     "analytics": "매출 분석",
     "analyticsView": {
@@ -4782,7 +4785,7 @@
     "sellerContact": "매장 연락처: {{phone}}",
     "sellerNoContact": "매장 연락처가 등록되지 않았습니다",
     "emptyTitle": "주문 내역이 없습니다",
-    "emptyDesc": "라이브에서 마음에 드는 상품을 구매해보세요",
+    "emptyDesc": "마음에 드는 이용권이나 상품을 찾아보세요",
     "goToLive": "둘러보러 가기",
     "trackingLink": "배송조회",
     "paymentAmount": "결제금액",
@@ -4804,8 +4807,8 @@
     "skip": "건너뛰기",
     "welcomeTitle": "{{name}}님, 환영해요!",
     "welcomeTitleDefault": "유어딜에 오신 걸 환영해요!",
-    "welcomeDesc1": "라이브 방송으로 보고 바로 사는",
-    "welcomeDesc2": "한국 1위 라이브 커머스",
+    "welcomeDesc1": "동네 맛집·뷰티·숙소 이용권을",
+    "welcomeDesc2": "할인가로 사고 바로 쓰는 곳",
     "couponBadge": "신규 환영 쿠폰",
     "couponAmount": "5,000원 할인",
     "couponDesc": "10,000원 이상 구매 시 사용 가능 · 7일 유효",
@@ -4818,9 +4821,9 @@
     "step2Desc": "맞춤 추천에 사용돼요 (1개 이상 선택, 변경 가능)",
     "selectedCount": "선택한 카테고리: {{count}}개",
     "step3Title": "알림 받기",
-    "step3Desc": "놓치면 아쉬운 핫딜·라이브 소식을 알려드려요",
+    "step3Desc": "놓치면 아쉬운 핫딜·마감 임박 소식을 알려드려요",
     "alimtalkLabel": "카카오 알림톡으로 받기",
-    "alimtalkDesc1": "라이브 시작 / 핫딜 / 주문 상태 등",
+    "alimtalkDesc1": "핫딜 / 이용권 발급 / 주문 상태 등",
     "alimtalkDesc2": "카톡으로 무료 알림 (광고성 정보 제외)",
     "alimtalkNote1": "마이페이지 → 알림 설정에서",
     "alimtalkNote2": "언제든지 변경 가능합니다.",
@@ -5529,7 +5532,7 @@
   "myCoupons": {
     "title": "내 쿠폰",
     "empty": "사용 가능한 쿠폰이 없습니다",
-    "emptySub": "라이브 방송·이벤트 참여로 쿠폰을 받아보세요",
+    "emptySub": "받은 쿠폰이 없어요. 이벤트에 참여하면 쿠폰을 받을 수 있어요",
     "loginRequired": "로그인이 필요합니다.",
     "loadFailed": "쿠폰을 불러올 수 없습니다.",
     "sessionExpired": "세션이 만료되었습니다. 다시 로그인해주세요.",
@@ -5664,7 +5667,7 @@
     "namePlaceholder": "홍길동",
     "emailLabel": "이메일",
     "passwordLabel": "비밀번호",
-    "passwordPlaceholder": "8자 이상 입력해주세요",
+    "passwordPlaceholder": "10자 이상, 대·소문자와 숫자·특수문자",
     "showPassword": "비밀번호 표시",
     "hidePassword": "비밀번호 숨기기",
     "confirmPasswordLabel": "비밀번호 확인",
@@ -5685,16 +5688,14 @@
     "loginLink": "로그인",
     "errorAllFields": "모든 필드를 입력해주세요.",
     "errorPasswordMismatch": "비밀번호가 일치하지 않습니다.",
-    "errorPasswordLength": "비밀번호는 8자 이상이어야 합니다.",
     "errorAgreements": "이용약관과 개인정보처리방침에 동의해주세요.",
     "errorAgeConfirm": "만 14세 이상만 가입 가능합니다.",
     "successMessage": "회원가입이 완료되었습니다! 로그인해주세요.",
     "errorDefault": "회원가입에 실패했습니다.",
     "errorEmailInUse": "이미 사용 중인 이메일입니다.",
     "errorInvalidEmail": "유효하지 않은 이메일 형식입니다.",
-    "errorWeakPassword": "비밀번호가 너무 약합니다. 8자 이상 입력해주세요.",
     "seoTitle": "회원가입 - 유어딜",
-    "seoDesc": "유어딜에 가입하고 라이브 쇼핑을 시작하세요"
+    "seoDesc": "유어딜에 가입하고 동네 가게 이용권을 할인가로 만나보세요"
   },
   "faq": {
     "title": "자주 묻는 질문",
@@ -5872,7 +5873,7 @@
     "loadFailed": "보관함을 불러오지 못했어요"
   },
   "shopping": {
-    "sectionTitle": "나의 이용 내역",
+    "sectionTitle": "내가 산 것",
     "wishlist": "찜한 상품",
     "voucher": "내 이용권",
     "voucherSub": "매장에서 QR·코드로 사용",
@@ -6092,7 +6093,7 @@
   "search.pageTitle": "검색 - 유어딜",
   "search.errorMsg": "검색 중 오류가 발생했습니다",
   "search.seoTitleQuery": "{{query}} 검색결과 - 유어딜",
-  "search.seoDesc": "유어딜에서 원하는 상품을 검색하세요. 라이브 커머스 최저가 상품을 만나보세요.",
+  "search.seoDesc": "유어딜에서 원하는 이용권을 검색하세요. 동네 가게 할인 이용권을 만나보세요.",
   "reviews": {
     "heading": "리뷰",
     "writeBtn": "리뷰 작성하기",
@@ -6269,7 +6270,7 @@
     "chargeDeals": "충전 딜",
     "afterBalance": "충전 후 잔액",
     "noRefund": "충전된 딜은 환불이 불가합니다",
-    "usageNote": "라이브 방송 후원 및 상품 결제에만 사용 가능합니다.",
+    "usageNote": "교환권 구매와 상품 결제에만 사용 가능합니다.",
     "chargeHistory": "충전 내역",
     "paymentNoRefund": "결제 완료 시 충전된 딜은 환불이 불가합니다.",
     "prev": "이전",
@@ -6320,7 +6321,7 @@
   },
   "blog": {
     "listSeoTitle": "블로그",
-    "listSeoDesc": "유어딜 라이브 커머스 블로그 — 셀러 가이드, 트렌드, 팁",
+    "listSeoDesc": "유어딜 블로그. 이용권과 교환권, 동네딜, 유어샵 가이드와 서비스 소식",
     "readBtn": "글 읽기"
   },
   "embed": {
@@ -6916,9 +6917,9 @@
     "clearRegion": "지역 해제"
   },
   "my": {
-    "earningsGroupTitle": "내 수익·추천",
+    "earningsGroupTitle": "내가 소개한 것",
     "earningsGroupSub": "추천 적립, 유어샵 수익, 친구 초대",
-    "settingsGroupTitle": "설정",
+    "settingsGroupTitle": "설정 · 계정",
     "settingsGroupSub": "알림, 화면 테마, 언어, 앱 정보",
     "affiliateLinkTitle": "상품 추천 링크",
     "affiliateLinkSub": "내 링크로 구매하면 딜 적립 — 실적 보기",
@@ -6991,7 +6992,7 @@
   "groupBuy.categoryEtc": "🎯 기타",
   "groupBuy.stayBadge": "숙박",
   "roleCta": {
-    "myShortcuts": "내 바로가기",
+    "myShortcuts": "가게 열기",
     "startNewRole": "추가 역할로 시작하기",
     "linkshop": "내 유어샵",
     "linkshopDesc": "이용권을 담아 진열하고 소개해요",

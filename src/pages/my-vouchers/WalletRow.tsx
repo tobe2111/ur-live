@@ -15,8 +15,8 @@
  * 줄마다 테두리를 두르지 않는다. 줄들은 **카드 한 장 안**에 들어가고 사이만 `border-rule`.
  * 색은 토큰만 — 툴킷 기본 초록·빨강을 hex 로 직접 적지 말 것(그게 "AI 같다"의 정체였다).
  */
-import { Ticket } from 'lucide-react'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
+import { TicketStubIcon } from '@/components/icons/urdeal-icons'
 import { formatNumber } from '@/utils/format'
 import { safeDate } from '@/utils/safe-date'
 import type { Voucher } from './types'
@@ -41,17 +41,17 @@ export default function WalletRow({ v, t, onOpen }: {
     <button
       type="button"
       onClick={onOpen}
-      className="w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-black/[0.03] dark:active:bg-white/[0.04] transition-colors"
+      className="w-full flex items-center gap-3 px-4 py-4 text-left active:bg-black/[0.03] dark:active:bg-white/[0.04] transition-colors"
     >
       <div className="w-[42px] h-[42px] shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-brand-tint">
         {v.product_image
           ? <img src={cfImage(v.product_image, { width: 140, quality: 82, format: 'auto' }) || v.product_image} alt="" loading="lazy" className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, v.product_image)} />
-          : <Ticket className="w-[18px] h-[18px] text-brand-text opacity-45" strokeWidth={1.6} aria-hidden />}
+          : <TicketStubIcon className="w-[18px] h-[18px] text-brand-text opacity-45" aria-hidden />}
       </div>
 
       <div className="flex-1 min-w-0">
-        <div className="text-[14px] font-bold tracking-tight text-gray-900 dark:text-white truncate">{v.product_name}</div>
-        <div className="text-[11.5px] text-gray-500 dark:text-gray-400 truncate mt-0.5">
+        <div className="text-[15px] font-bold tracking-tight text-gray-900 dark:text-white truncate">{v.product_name}</div>
+        <div className="text-[12px] text-gray-500 dark:text-gray-400 truncate mt-1">
           {v.restaurant_name || ''}
           {d !== null && (
             <>
@@ -63,8 +63,8 @@ export default function WalletRow({ v, t, onOpen }: {
       </div>
 
       {price !== null && (
-        <div className="shrink-0 text-[14px] font-extrabold tabular-nums text-gray-700 dark:text-gray-200">
-          {formatNumber(price)}<span className="text-[11px] font-bold text-gray-400 dark:text-gray-500 ml-0.5">{unit}</span>
+        <div className="shrink-0 text-[15px] font-extrabold tabular-nums text-gray-700 dark:text-gray-200">
+          {formatNumber(price)}<span className="text-[12px] font-bold text-gray-400 dark:text-gray-500 ml-1">{unit}</span>
         </div>
       )}
     </button>

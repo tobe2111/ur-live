@@ -25,6 +25,12 @@ import {
   type UnclaimedPolicy,
 } from '../../shared/pickup-refund';
 import { recordLedger } from '../utils/ledger';
+import {
+  expiredVoucherSelectSql,
+  expiredVoucherClaimSql,
+  expiredVoucherBookRefundSql,
+  type ExpiredVoucherOutcome,
+} from './expired-voucher-refund-sql';
 
 /**
  * 💸 **미수령 환불 정책 로드** — 세션 ④-b (머니 경로, 게이트 뒤)
@@ -278,24 +284,71 @@ export async function handleAutoSettlement(env: Env) {
  * 3. If paid with deal points, refund the user's deal_balance
  * 4. Send notification to the user
  */
+/**
+ * 🧾 만료 환불을 **주문 장부에 적는다** (2026-10-06 · 결재 `2026-10-02-expired-refund-not-booked.md`).
+ *
+ * 금액을 **정하지 않는다** — 이미 환불한 액수를 그대로 적는다. SQL 은 SSOT
+ * (`expiredVoucherBookRefundSql`)라 가드가 실제 sqlite 에 돌려 판정한다.
+ *
+ * 🔴 **실패를 삼키지 않는다.** `changes = 0` 이면 합이 `total_amount` 를 넘은 것이고, 그때 **돈은
+ *   이미 나갔다** — 조용히 넘기면 상한이 0 으로 남아 다음 환불이 또 나간다(이 결재가 고친 바로 그 사고).
+ *   던지지는 않는다(환불·알림·회수가 뒤에 남아 있다) ⇒ **크게 로그**해서 사람이 보게 한다.
+ */
+async function bookRefundOnOrder(
+  DB: D1Database,
+  orderId: unknown,
+  amount: number,
+  voucherId: unknown,
+): Promise<void> {
+  const oid = Number(orderId);
+  const amt = Math.round(Number(amount));
+  if (!Number.isFinite(oid) || oid <= 0 || !Number.isFinite(amt) || amt <= 0) return;
+  try {
+    const r = await DB.prepare(expiredVoucherBookRefundSql()).bind(amt, oid, amt).run();
+    if (!r.meta?.changes) {
+      logError('[Cron] expired voucher refund: 장부 기록 실패 — 환불은 나갔다(상한 초과 가능)', {
+        order_id: oid, voucher_id: voucherId, amount: amt,
+      });
+    }
+  } catch (e) {
+    logError('[Cron] expired voucher refund: 장부 기록 예외 — 환불은 나갔다', {
+      order_id: oid, voucher_id: voucherId, amount: amt, error: String(e),
+    });
+  }
+}
+
 export async function handleExpiredVoucherRefunds(env: Env) {
   const DB = env.DB;
 
   try {
     // 🛡️ 2026-04-22: LIMIT 5000 추가 — 수만 건 expired voucher 시 cron hang/OOM 방어.
     // 다음 cron 주기에 나머지 처리 (idempotent).
-    const expired = await DB.prepare(`
-      SELECT v.id, v.code, v.order_id, v.product_id, v.applied_price,
-             o.user_id, o.payment_method, o.payment_key, p.price, p.name as product_name,
-             p.seller_id
-      FROM vouchers v
-      JOIN orders o ON v.order_id = o.id
-      JOIN products p ON v.product_id = p.id
-      WHERE v.status = 'unused'
-        AND v.expires_at < datetime('now')
-      ORDER BY v.expires_at ASC
-      LIMIT 5000
-    `).all();
+    //
+    // 🔴 2026-09-30 (대표 *"모두 고쳐줘 완벽해질 때까지"*) — **이 조회가 환불을 한 번도 못 하고 있었다.**
+    //   종전 조건은 `status = 'unused'` 하나였고, 만료 표시를 하는 자리가 **셋**이다:
+    //     ⓐ 이 함수(표시 + 환불 + 알림 + 커미션 회수) — **하루 1회** `0 18 * * *`
+    //     ⓑ `scheduled-cleanup.ts` 의 일괄 UPDATE(표시만) — **매시 :10**
+    //     ⓒ 사용 시도 경로(`group-buy-voucher.routes.ts`) — 손님이 만료 코드를 찍는 순간
+    //   ⓑ 가 12배 자주 돌아 **최대 23시간 먼저** `expired` 로 바꾸고, 그러면 여기 조회가
+    //   아무것도 못 찾아 **환불이 0건**이 된다. 에러도 안 난다 — "이번엔 만료된 게 없었다" 로
+    //   정상 종료하고 하트비트도 `ok:true` 다(라이브 실측: 이용권 1장이 38일 전 만료됐는데
+    //   환불·알림 0건, `refund_status` null). 소비자 화면은 *"미사용 시 100% 자동환불"* 을 약속한다.
+    //
+    //   ⚠️ **표시를 금지하는 길로 고치지 않았다.** 만료 표시는 어느 코드나 하고 싶어 하는 자연스러운
+    //     일이라(그래서 자리가 셋이 됐다) 금지 규칙은 네 번째 작성자가 또 깬다. 대신 **환불 클레임을
+    //     표시 상태에서 떼어낸다** — 클레임은 `refund_status`(이 함수만 쓴다)이고, 누가 `expired` 로
+    //     바꿔 놨든 환불 안 된 건은 여기서 잡힌다. `appointment_bookings` 가 같은 문제를 이미 그렇게 푼다.
+    //   🔁 그래서 **이미 놓친 과거분도 다음 실행에서 자동 회수**된다(과거 미환불 만료건 = 라이브 1장).
+    // 🩹 `vouchers.refund_status` 는 repair-schema 가 보장하지만(column-repairs), 컬럼이 아직 없는
+    //   환경에서 이 cron 이 통째로 죽으면 **환불이 다시 0건**이 된다 — 그 경우엔 종전 조건으로 물러난다
+    //   (같은 파일의 다른 graceful 재시도와 동일한 판단. 물러난 상태에서도 최소한 종전만큼은 돈다).
+    let expired = await DB.prepare(expiredVoucherSelectSql(true)).all().catch(() => null);
+    let hasRefundStatus = expired !== null;
+    if (!expired) {
+      logError('[Cron] expired voucher refunds: refund_status 컬럼 없음 — 종전 조건으로 폴백', {});
+      expired = await DB.prepare(expiredVoucherSelectSql(false)).all();
+      hasRefundStatus = false;
+    }
 
     if (!expired.results?.length) return;
 
@@ -311,17 +364,27 @@ export async function handleExpiredVoucherRefunds(env: Env) {
     let forfeitCount = 0;
 
     for (const voucher of expired.results) {
-      // 🛡️ 2026-04-22: Atomic CAS — status 가 'unused' 일 때만 'expired' 로 변경.
-      // 이전: SELECT 후 UPDATE 사이 재실행 시 두 번 환불 가능 (CRITICAL bug).
-      // 수정 후: CAS 성공 (changes=1) 시만 환불. 이미 expired 면 skip.
-      const casResult = await DB.prepare(
-        "UPDATE vouchers SET status = 'expired' WHERE id = ? AND status = 'unused'"
-      ).bind(voucher.id).run();
+      // 🛡️ 2026-04-22: Atomic CAS — 돈 side-effect 앞의 원자적 선점(CLAUDE.md 머니 룰 #1).
+      //   SELECT 후 UPDATE 사이 재실행 시 두 번 환불되던 것을 막는다. changes=1 인 thread 만 환불한다.
+      //
+      // 🔴 2026-09-30: 선점 대상을 `status` → **`refund_status`** 로 옮겼다(위 조회 주석 참조).
+      //   `status` 는 ⓑⓒ 도 쓰는 **표시** 값이라 선점 근거가 될 수 없었다 — 그 둘이 먼저 바꿔 놓으면
+      //   여기 CAS 가 `changes=0` 으로 떨어져 환불이 조용히 사라졌다.
+      //   ⚠️ `status IN ('unused','expired')` 를 함께 잠근다 — 조회와 이 UPDATE 사이에 손님이 **실제로
+      //     사용**했을 수 있고(`used`), 그때 강제로 만료시켜 환불하면 **쓰고도 환불받는다**.
+      //   ⚠️ 크래시 노출은 종전과 동일하다 — 선점 직후 isolate 가 죽으면 그 건은 'claimed' 로 남아
+      //     다시 안 잡힌다(종전에도 `expired` 로 남아 다시 안 잡혔다). 머니 룰 #1 이 택한 트레이드오프다.
+      const casResult = await DB.prepare(expiredVoucherClaimSql(hasRefundStatus))
+        .bind(voucher.id).run();
       if (!casResult.meta?.changes) {
         // 이미 다른 실행에서 처리됨 — skip
         continue;
       }
       expireCount++;
+      // 🧾 이 건의 처리 결과를 남긴다(관측 + 재선점 차단). 값: refunded · forfeited · failed · none.
+      //   실패로 끝나도 'claimed' 로 두지 않는다 — 무엇이 일어났는지 모르는 행이 남으면 다음 세션이
+      //   과거분 회수를 판단할 수 없다(이번에 판단을 못 하게 만든 것이 정확히 그 부재였다).
+      let outcome: ExpiredVoucherOutcome = 'none';
 
       // 🛡️ 2026-05-30 낙전(breakage) 정책 = "만료 시 고객 환불" (즉시판매 모델 정합).
       //   환불 금액은 실제 결제가(applied_price). 미존재 시 정가(price) fallback — 과다환불 방지.
@@ -333,7 +396,19 @@ export async function handleExpiredVoucherRefunds(env: Env) {
       // 💸 ④-b 미수령 정책 — **게이트 OFF 면 `unclaimedRefundAmount` 가 전액을 그대로 돌려준다.**
       //   즉 이 블록이 있어도 OFF 상태의 환불액은 위 `paidAmount` 와 동일하다(현행 불변).
       //   보관구분(`storage`)을 모르면 역시 전액 — 모르는 상태에서 소비자 돈을 덜 주지 않는다.
-      const pickup = parsePickup(pickupMeta.get(Number(voucher.product_id)));
+      // 🛡️ 2026-10-01 (결재 expired-voucher-refund-stolen 동반 수리): 선점(`claimed`)과 결과 기록
+      //   사이의 `await` 는 전부 try/catch 가 감싸고 있지만, **동기 파서가 던지면** 아래 결과 기록
+      //   줄에 도달하지 못한다 — 그 행은 `claimed` 로 영구히 남고 **다시 선점되지 않아 환불이
+      //   영영 안 된다.** 그게 바로 이 결재가 고친 사고와 **같은 클래스의 조용한 부재**다.
+      //   ⇒ 던지면 빈 PickupInfo 로 떨어진다 ⇒ `storage` 모름 ⇒ `unclaimedRefundAmount` 가
+      //     **전액 환불**(`unknown-storage`)을 돌려준다. 이미 문서화된 경로이고 소비자에게 안전한 쪽이다.
+      let pickup: ReturnType<typeof parsePickup>;
+      try {
+        pickup = parsePickup(pickupMeta.get(Number(voucher.product_id)));
+      } catch (e) {
+        logError('[Cron] expired voucher: pickup 메타 파싱 실패 — 전액 환불로 진행', { voucher_id: voucher.id, error: String(e) });
+        pickup = { date: null, place: null, storage: null };
+      }
       const pickupMs = pickup.date ? Date.parse(pickup.date) : NaN;
       const verdict = unclaimedRefundAmount({
         paidAmount,
@@ -350,6 +425,7 @@ export async function handleExpiredVoucherRefunds(env: Env) {
       //   ⚠️ 유어딜 5% 는 여기서 건드리지 않는다 — 이건 소비자↔운영자 사이의 분배다.
       if (verdict.operatorShare > 0 && voucher.seller_id) {
         forfeitCount++;
+        outcome = 'forfeited';
         try {
           await recordLedger(DB, {
             event_type: 'unclaimed_forfeit',
@@ -404,6 +480,13 @@ export async function handleExpiredVoucherRefunds(env: Env) {
           if (env.ENVIRONMENT !== 'production') console.warn('[auto-settlement deal_balance]', e);
         }
         refundCount++;
+        outcome = 'refunded';
+
+        // 🧾 2026-10-06 (결재 `2026-10-02-expired-refund-not-booked.md`): **장부에 적는다.**
+        //   안 적으면 전액환불 경로의 상한(`total_amount − refunded_amount`)이 0 인 채로 남아
+        //   어드민·셀러·주문 세 자리 중 하나에서 **같은 돈이 또 나간다**(실측 1,800 → 3,600).
+        //   ⚠️ 실패(`changes = 0`)는 **조용히 넘기지 않는다** — 돈은 이미 나갔다.
+        await bookRefundOnOrder(DB, voucher.order_id, refundAmount, voucher.id);
 
         // Send notification to user (production notifications requires user_type)
         try {
@@ -437,6 +520,9 @@ export async function handleExpiredVoucherRefunds(env: Env) {
           if (result.ok) {
             await DB.prepare("UPDATE orders SET status = 'REFUNDED' WHERE id = ?").bind(voucher.order_id).run().catch(() => null);
             refundCount++;
+            outcome = 'refunded';
+            // 🧾 같은 이유로 카드(토스) 경로도 적는다 — 한쪽만 적으면 결제수단에 따라 상한이 갈린다.
+            await bookRefundOnOrder(DB, voucher.order_id, refundAmount, voucher.id);
             try {
               await DB.prepare(`
                 INSERT INTO notifications (user_id, user_type, type, title, message, created_at, is_read)
@@ -447,9 +533,11 @@ export async function handleExpiredVoucherRefunds(env: Env) {
               ).run();
             } catch (e) { if (env.ENVIRONMENT !== 'production') console.warn('[auto-settlement toss notif]', e); }
           } else {
+            outcome = 'failed';
             logError('[Cron] expired voucher toss refund failed', { voucher_id: voucher.id, error_code: result.error_code });
           }
         } catch (e) {
+          outcome = 'failed';
           if (env.ENVIRONMENT !== 'production') console.warn('[auto-settlement toss refund]', e);
         }
       }
@@ -462,6 +550,14 @@ export async function handleExpiredVoucherRefunds(env: Env) {
         await clawbackVoucherCommission(DB, Number(voucher.id), 'voucher_expired');
       } catch (e) {
         if (env.ENVIRONMENT !== 'production') console.warn('[clawback]', e);
+      }
+
+      // 🧾 선점값 'claimed' → 실제 결과로 확정. 'failed' 는 토스 취소가 거부된 경우이고, 그 재시도는
+      //   기존 `toss_refund_failures` + `toss-refund-retry` cron 이 맡는다(여기서 다시 안 잡는다 —
+      //   재선점 가능하게 비워 두면 그 cron 과 이 cron 이 같은 결제를 두 번 취소하려 든다).
+      if (hasRefundStatus) {
+        await DB.prepare('UPDATE vouchers SET refund_status = ? WHERE id = ?')
+          .bind(outcome, voucher.id).run().catch(() => null);
       }
     }
 

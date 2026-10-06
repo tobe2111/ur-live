@@ -34,12 +34,17 @@ const STATUS_STYLE: Record<string, string> = {
 
 export default function RestaurantSettlementsSection() {
   const { t } = useTranslation()
-  const q = useApiQuery<{ success: boolean; items?: RestaurantSettlement[] }>(
+  // 🩸 2026-10-06: 이 패널은 **행이 있어도 영원히 빈 상태 문구**를 띄웠다.
+  //   서버(`restaurant-settlement.routes.ts` GET `/`)는 `{ success, data: rows, pagination }` 을 주고
+  //   `useApiQuery` 는 **응답 본문을 그대로** 돌려준다(`.data` 를 벗기지 않는다) ⇒ `items` 는 늘 undefined.
+  //   에러도 안 나고 "내역이 없습니다" 로만 보여서 아무도 신고하지 않는다.
+  // 🔴 반대 방향(서버를 `items` 로)은 금지 — 그 라우트는 어드민 화면도 쓰고 `pagination` 계약이 붙어 있다.
+  const q = useApiQuery<{ success: boolean; data?: RestaurantSettlement[] }>(
     ['seller', 'restaurant-settlements'],
     '/api/seller/restaurant-settlements',
-    { select: (d) => d as { success: boolean; items?: RestaurantSettlement[] } },
+    { select: (d) => d as { success: boolean; data?: RestaurantSettlement[] } },
   )
-  const items = q.data?.items ?? []
+  const items = q.data?.data ?? []
 
   const statusLabel = (s: string) =>
     s === 'completed' ? t('seller.gbSettle.statusCompleted', { defaultValue: '지급 완료' })

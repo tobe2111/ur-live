@@ -70,10 +70,10 @@ export default function HostingPage() {
       <div className="min-h-screen bg-white dark:bg-[#11141C] text-gray-900 dark:text-white pb-24">
         <header className="sticky top-0 z-20 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35] px-4 py-3">
           <div className="max-w-3xl mx-auto flex items-center justify-between">
-            <h1 className="text-lg font-bold">🎉 {t('hosting.title', { defaultValue: '내 공구 호스팅' })}</h1>
+            <h1 className="text-[17px] font-bold">🎉 {t('hosting.title', { defaultValue: '내 공구 호스팅' })}</h1>
             <button
               onClick={() => navigate('/host/new')}
-              className="px-3 py-1.5 bg-brand hover:bg-brand-dark text-white text-sm font-bold rounded-lg"
+              className="px-3 py-2 bg-brand hover:bg-brand-dark text-white text-[15px] font-bold rounded-lg"
             >
               + {t('hosting.startNew', { defaultValue: '공구 열기' })}
             </button>
@@ -90,8 +90,8 @@ export default function HostingPage() {
                 { label: '적립', value: formatWon(summary.total_earnings), accent: 'text-brand-text' },
               ].map(card => (
                 <div key={card.label} className="bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-3 border border-gray-100 dark:border-[#2C2F35]">
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-0.5">{card.label}</p>
-                  <p className={`text-base font-bold ${card.accent || ''}`}>{card.value}</p>
+                  <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-1">{card.label}</p>
+                  <p className={`text-[15px] font-bold ${card.accent || ''}`}>{card.value}</p>
                 </div>
               ))}
             </div>
@@ -101,8 +101,8 @@ export default function HostingPage() {
             <p className="text-center text-gray-500 dark:text-gray-400 py-12">{t('common.loading')}</p>
           ) : hosts.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-5xl mb-3">🎁</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              <p className="text-[48px] mb-3">🎁</p>
+              <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-4">
                 {t('hosting.empty', { defaultValue: '아직 호스팅이 없어요. 친구와 함께 살 상품을 찾아보세요!' })}
               </p>
               <button
@@ -124,33 +124,33 @@ export default function HostingPage() {
                       )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${status.color}`}>{status.label}</span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                          <span className={`text-[12px] px-2 py-1 rounded-full font-bold ${status.color}`}>{status.label}</span>
+                          <span className="text-[12px] text-gray-500 dark:text-gray-400">
                             {formatNumber(host.current_quantity)}/{formatNumber(host.target_quantity)}명
                           </span>
                         </div>
-                        <p className="text-sm font-medium truncate">{host.product_name}</p>
-                        {host.note && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">💬 {host.note}</p>}
-                        <p className="text-xs text-brand-text mt-1 font-bold">+{formatWon(host.total_earnings)} 적립</p>
+                        <p className="text-[15px] font-medium truncate">{host.product_name}</p>
+                        {host.note && <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 line-clamp-1">💬 {host.note}</p>}
+                        <p className="text-[12px] text-brand-text mt-1 font-bold">+{formatWon(host.total_earnings)} 적립</p>
                       </div>
                     </div>
                     <div className="flex gap-2">
                       <button
                         onClick={() => copyInvite(host)}
-                        className="flex-1 py-2 bg-surface hover:bg-gray-100 dark:hover:bg-[#2C2F35] text-gray-700 dark:text-gray-300 text-xs font-bold rounded-lg border border-line"
+                        className="flex-1 py-2 bg-surface hover:bg-gray-100 dark:hover:bg-[#2C2F35] text-gray-700 dark:text-gray-300 text-[12px] font-bold rounded-lg border border-line"
                       >
                         🔗 초대 링크
                       </button>
                       <Link
                         to={`/host/${host.id}`}
-                        className="flex-1 py-2 bg-surface hover:bg-gray-100 dark:hover:bg-[#2C2F35] text-gray-700 dark:text-gray-300 text-xs font-bold rounded-lg text-center border border-line"
+                        className="flex-1 py-2 bg-surface hover:bg-gray-100 dark:hover:bg-[#2C2F35] text-gray-700 dark:text-gray-300 text-[12px] font-bold rounded-lg text-center border border-line"
                       >
                         👥 참여자
                       </Link>
                       {host.status === 'active' && (
                         <button
                           onClick={() => handleCancel(host.id)}
-                          className="px-3 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 text-xs font-bold rounded-lg"
+                          className="px-3 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 text-[12px] font-bold rounded-lg"
                         >
                           취소
                         </button>

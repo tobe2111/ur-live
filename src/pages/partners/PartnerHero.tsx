@@ -16,7 +16,8 @@
  *    걸치게 했는데 `overflow-hidden` 이 아랫부분을 잘라 **고장처럼** 읽혔다(1440 렌더 실측).
  */
 import { Link } from 'react-router-dom'
-import { ArrowRight, MessageCircle } from 'lucide-react'
+import { MessageIcon } from '@/components/icons/urdeal-icons'
+import { ArrowRight } from 'lucide-react'
 import { PARTNER_FACTS as F } from '@/shared/partners-facts'
 import PartnerPhone, { SHOT } from './PartnerPhone'
 
@@ -25,11 +26,11 @@ export default function PartnerHero() {
     <section className="ur-panel-ink text-white overflow-hidden">
       <div className="ur-content-wide mx-auto px-5 lg:px-10 pt-10 pb-14 lg:pt-14 lg:pb-24 grid gap-14 lg:grid-cols-[1fr_0.86fr] lg:gap-16 xl:gap-24 lg:items-center">
         <div>
-          <h1 className="text-[34px] sm:text-[44px] lg:text-[58px] xl:text-[66px] leading-[1.14] font-extrabold tracking-[-0.035em]">
+          <h1 className="text-[34px] sm:text-[48px] lg:text-[60px] leading-[1.14] font-extrabold tracking-[-0.035em]">
             체험단 말고,<br />
             <span className="text-brand-text">계산하는 손님</span>
           </h1>
-          <p className="mt-6 lg:mt-8 text-[15.5px] lg:text-[19px] leading-[1.7] text-white/70 max-w-[26em]">
+          <p className="mt-6 lg:mt-8 text-[15px] lg:text-[17px] leading-[1.7] text-white/70 max-w-[26em]">
             손님이 온라인에서 먼저 결제하고, 이용권을 들고 가게로 옵니다.
             사장님이 내는 건 팔린 이용권의 수수료 {F.feeDirect}, 그게 전부입니다.
           </p>
@@ -43,12 +44,12 @@ export default function PartnerHero() {
 
           <div className="mt-10 lg:mt-12 flex flex-col sm:flex-row gap-3 max-w-[32rem]">
             <Link to="/store/new"
-              className="sm:flex-1 h-[52px] lg:h-[58px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[16.5px] font-extrabold active:scale-[0.98] transition-transform">
+              className="sm:flex-1 h-[52px] lg:h-[58px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-extrabold active:scale-[0.98] transition-transform">
               내 가게 등록하기 <ArrowRight className="w-4 h-4 lg:w-[18px] lg:h-[18px]" />
             </Link>
             <a href={F.kakaoChannel} target="_blank" rel="noopener noreferrer"
-              className="sm:flex-1 h-[52px] lg:h-[58px] rounded-2xl bg-white/[0.10] border border-white/20 flex items-center justify-center gap-2 text-[15px] lg:text-[16.5px] font-bold text-white">
-              <MessageCircle className="w-4 h-4 lg:w-[18px] lg:h-[18px]" /> 카카오로 물어보기
+              className="sm:flex-1 h-[52px] lg:h-[58px] rounded-2xl bg-white/[0.10] border border-white/20 flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-bold text-white">
+              <MessageIcon className="w-4 h-4 lg:w-[18px] lg:h-[18px]" /> 카카오로 물어보기
             </a>
           </div>
         </div>
@@ -61,7 +62,7 @@ export default function PartnerHero() {
             <PartnerPhone src={SHOT('detail')} alt="손님이 보는 이용권 상세 화면"
               className="w-[38%] max-w-[12.5rem] lg:w-[44%] lg:mb-12" />
           </div>
-          <p className="mt-7 lg:mt-10 text-center text-[12.5px] lg:text-[13.5px] text-white/50">
+          <p className="mt-7 lg:mt-10 text-center text-[12px] lg:text-[13px] text-white/50">
             손님이 보는 화면입니다.
           </p>
         </div>
@@ -75,8 +76,8 @@ function Stat({ n, d }: { n: string; d: string }) {
     <div>
       <dt className="sr-only">{d}</dt>
       <dd>
-        <span className="block text-[30px] lg:text-[48px] xl:text-[56px] font-extrabold tracking-[-0.045em] tabular-nums leading-none">{n}</span>
-        <span className="block text-[11.5px] lg:text-[13px] text-white/55 mt-2 lg:mt-3 whitespace-nowrap">{d}</span>
+        <span className="block text-[28px] lg:text-[48px] xl:text-[60px] font-extrabold tracking-[-0.045em] tabular-nums leading-none">{n}</span>
+        <span className="block text-[12px] lg:text-[13px] text-white/55 mt-2 lg:mt-3 whitespace-nowrap">{d}</span>
       </dd>
     </div>
   )

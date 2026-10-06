@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { AlertIcon } from '@/components/icons/urdeal-icons'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -7,9 +8,10 @@ import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import MobileFooter from '@/components/MobileFooter'
 import { OrdersTab } from '@/components/mypage/OrdersTab'
-import { ArrowLeft, AlertCircle } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { getUserIdSync, isLoggedInSync, requireLogin } from '@/utils/auth'
 import type { Order } from '@/types/order'
+import { isVoucherCategory } from '@/shared/constants/voucher-categories'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { useMyOrders } from '@/hooks/queries/useMyData'
 import { useMyReturns } from '@/hooks/queries/useMyReturns'
@@ -30,18 +32,24 @@ function OrdersSkeleton() {
   return (
     <div className="space-y-4 animate-pulse" aria-hidden="true">
       <div className="h-11 rounded-xl bg-gray-100 dark:bg-[#161616]" />
-      <div className="flex gap-5 border-b border-gray-100 dark:border-[#2C2F35] pb-2.5">
+      <div className="flex gap-5 border-b border-gray-100 dark:border-[#2C2F35] pb-2">
         {[40, 32, 44, 32].map((w, i) => (
           <div key={i} className="h-4 rounded bg-gray-100 dark:bg-[#161616]" style={{ width: w }} />
         ))}
       </div>
+      {/* 🩸 2026-10-01 — 카드 **셋 → 하나** (대표 *"저런 로딩이 발생되는 근본적인 원인을 모두 없애줘"*).
+          하네스 실측(`--slow=1500 --shift --height=844`): 주문이 0건인 사람에게 셋을 그렸다가
+          빈 상태로 바뀌면서 그 아래가 **−212px 위로 당겨졌다**(푸터가 눈에 띄게 올라온다).
+          스켈레톤의 일은 *"목록이 온다"* 고 말하는 것이지 **몇 개가 올지 흉내 내는 것이 아니다** —
+          개수는 알 수 없고, 틀린 개수는 그만큼의 밀림이 된다. 하나면 ⓐ 주문이 있는 사람(≥1건)의
+          첫 장과 맞고 ⓑ 0건인 사람의 당겨짐이 1/3 로 준다. 양쪽 다 나아진다. */}
       <div className="space-y-3">
-        {[0, 1, 2].map(i => (
+        {[0].map(i => (
           <div key={i} className="rounded-2xl border border-gray-100 dark:border-[#2C2F35] p-4">
             <div className="h-3 w-16 rounded bg-gray-100 dark:bg-[#161616] mb-3" />
             <div className="flex gap-3">
               <div className="w-16 h-16 rounded-lg bg-gray-100 dark:bg-[#161616] shrink-0" />
-              <div className="flex-1 space-y-2 py-0.5">
+              <div className="flex-1 space-y-2 py-1">
                 <div className="h-3.5 w-3/4 rounded bg-gray-100 dark:bg-[#161616]" />
                 <div className="h-3 w-1/3 rounded bg-gray-100 dark:bg-[#161616]" />
                 <div className="h-3.5 w-1/4 rounded bg-gray-100 dark:bg-[#161616]" />
@@ -116,6 +124,7 @@ export default function MyOrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   useEscapeKey(() => { if (selectedOrder) setSelectedOrder(null) })
   const [cancelModal, setCancelModal] = useState<{
+    isVoucher?: boolean
     isOpen: boolean
     orderId: number | string | null
     orderNumber: string
@@ -189,7 +198,10 @@ export default function MyOrdersPage() {
   }
 
   async function handleCancelOrder(orderId: number | string, orderNumber: string) {
-    setCancelModal({ isOpen: true, orderId, orderNumber })
+    // 🎟️ 이용권 주문이면 부분 환불이 **장 단위**다(금액 입력이 아니라). 판별은 종류 SSOT.
+    const o = orders.find(x => String(x.id) === String(orderId))
+    const isVoucher = (o?.items ?? []).some(it => Number(it.deal_only) !== 1 && isVoucherCategory(it.category))
+    setCancelModal({ isOpen: true, orderId, orderNumber, isVoucher })
     setCancelReason('')
     setIsPartialCancel(false)
     setCancelAmount('')
@@ -203,17 +215,23 @@ export default function MyOrdersPage() {
       return
     }
     if (isPartialCancel && (!cancelAmount || Number(cancelAmount) <= 0)) {
-      toast.error(t('myOrders.cancelAmountRequired'))
+      toast.error(cancelModal.isVoucher
+        ? t('myOrders.cancelQtyRequired', { defaultValue: '환불할 이용권 장수를 입력해 주세요' })
+        : t('myOrders.cancelAmountRequired'))
       return
     }
     setProcessing(true)
     try {
       const response = await api.post(`/api/orders/${orderId}/cancel`, {
         reason: cancelReason,
-        ...(isPartialCancel && cancelAmount ? { cancel_amount: Number(cancelAmount) } : {}),
+        // 🎟️ 이용권은 장수(cancel_qty)를 보낸다 — 금액은 서버가 계산한다(임의 금액 환불 차단).
+        ...(isPartialCancel && cancelAmount
+          ? (cancelModal.isVoucher ? { cancel_qty: Number(cancelAmount) } : { cancel_amount: Number(cancelAmount) })
+          : {}),
       })
       if (response.data.success) {
-        toast.success(t('myOrders.cancelSuccess'))
+        const n = response.data?.data?.refunded_qty
+        toast.success(n ? t('myOrders.cancelVoucherSuccess', { count: n, defaultValue: `이용권 ${n}장이 환불되었습니다` }) : t('myOrders.cancelSuccess'))
         setCancelModal({ isOpen: false, orderId: null, orderNumber: '' })
         setCancelReason('')
         setIsPartialCancel(false)
@@ -244,21 +262,21 @@ export default function MyOrdersPage() {
           <button type="button" onClick={() => navigate(-1)} aria-label={t('notifications.back', { defaultValue: '뒤로' })} className="w-9 h-9 -ml-2 flex items-center justify-center">
             <ArrowLeft className="h-5 w-5 text-gray-900 dark:text-white" aria-hidden="true" />
           </button>
-          <h1 className="text-[18px] font-extrabold text-gray-900 dark:text-white">{t('myOrders.title')}</h1>
+          <h1 className="text-[17px] font-extrabold text-gray-900 dark:text-white">{t('myOrders.title')}</h1>
         </div>
       </div>
 
       {/* 🛡️ 2026-07-02: 상태 필터 칩 — 주문 현황 바(?status=)와 연동 */}
       <div className="ur-content-medium px-4 sm:px-6 lg:px-8 pt-3">
-        <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide">
           {STATUS_FILTERS.map(f => (
             <button
               key={f.key}
               type="button"
               onClick={() => setSearchParams(f.key === 'all' ? {} : { status: f.key }, { replace: true })}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-colors ${
+              className={`shrink-0 px-3 py-2 rounded-full text-[12px] font-semibold border transition-colors ${
                 statusFilter === f.key
-                  ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 border-gray-900 dark:border-white'
+                  ? 'bg-brand text-white border-brand'
                   : 'bg-white dark:bg-[#11141C] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35]'
               }`}
             >
@@ -269,7 +287,14 @@ export default function MyOrdersPage() {
       </div>
 
       {/* Content */}
-      <main className="ur-content-medium px-4 sm:px-6 lg:px-8 pt-3 pb-6 sm:pt-5 sm:pb-10">
+      {/* 📐 2026-10-01 — **본문이 최소 한 화면을 채운다.**
+          스켈레톤 높이와 결과 높이는 원리상 같을 수 없다(몇 건이 올지 모른다). 그러면 그 차이만큼
+          **바로 아래 푸터가 화면을 가로질러 움직인다** — 실측으로 두 방향 다 봤다:
+          카드 셋이면 0건인 사람에게 −212px(위로 당겨짐), 하나면 +154px(아래로 밀림).
+          개수를 맞히려는 시도는 둘 다 틀린다. ⇒ **맞히지 말고 푸터를 화면 밖으로 보낸다.**
+          본문이 최소 60dvh 면 어느 상태든 푸터가 첫 화면 밖이라, 안에서 자라고 줄어도
+          사람이 읽는 영역은 안 움직인다. 주문이 많으면 그 아래로 자연히 길어진다. */}
+      <main className="ur-content-medium px-4 sm:px-6 lg:px-8 pt-3 pb-6 sm:pt-5 sm:pb-10 min-h-[60dvh]">
         {loading ? (
           /* 🛡️ 2026-06-18: 스피너 → 스켈레톤 카드 (CLAUDE.md 첫 페인트 표준) */
           <OrdersSkeleton />
@@ -277,11 +302,11 @@ export default function MyOrdersPage() {
           /* ✅ UX C5 FIX: 에러 상태 + 재시도 버튼 (리다이렉트 루프 방지) */
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
-              <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+              <AlertIcon className="w-12 h-12 text-red-500 mx-auto mb-4" />
               <p className="text-[15px] text-gray-900 dark:text-white mb-4">{error}</p>
               <button
                 onClick={() => loadData()}
-                className="px-6 py-2 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-colors font-semibold"
+                className="px-6 py-2 bg-brand hover:bg-brand-dark text-white rounded-xl transition-colors font-semibold"
               >
                 {t('common.retry', { defaultValue: '다시 시도' })}
               </button>
@@ -332,6 +357,7 @@ export default function MyOrdersPage() {
           orderNumber={cancelModal.orderNumber}
           reason={cancelReason}
           onReasonChange={setCancelReason}
+          isVoucher={!!cancelModal.isVoucher}
           isPartialCancel={isPartialCancel}
           onPartialCancelChange={setIsPartialCancel}
           cancelAmount={cancelAmount}

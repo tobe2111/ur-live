@@ -33,8 +33,9 @@
  *   ⚠️ 다만 **실제 청구액은 staging 실결제로만 판정된다** — 테스트는 판정·배선까지만 본다.
  */
 import { useEffect, useState } from 'react'
+import { ClockIcon, BoxIcon } from '@/components/icons/urdeal-icons'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { Clock, Package, Lock, ChevronLeft } from 'lucide-react'
+import { Lock, ChevronLeft } from 'lucide-react'
 import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
 import NotFoundPage from '@/pages/NotFoundPage'
@@ -136,7 +137,7 @@ export default function MallProductPage() {
         <p className="text-[15px] font-bold tracking-[-0.03em] text-[#3F383C] dark:text-[#DAD4D7]">지금은 판매하지 않는 상품이에요</p>
         <p className="mt-2 text-[13px] tracking-[-0.02em] text-[#8A8288] dark:text-[#7C7479]">공동구매가 끝났거나 준비된 수량이 모두 나갔어요</p>
         <Link to={`/${mall.slug}`}
-          className="mt-6 px-6 py-2.5 rounded-xl text-[14px] font-extrabold tracking-[-0.03em] text-white dark:text-[#1A1719]"
+          className="mt-6 px-6 py-2 rounded-xl text-[15px] font-extrabold tracking-[-0.03em] text-white dark:text-[#1A1719]"
           style={{ backgroundColor: 'var(--mall-l)' }}>
           {mall.name} 둘러보기
         </Link>
@@ -196,9 +197,9 @@ export default function MallProductPage() {
       <SEO title={`${product.name} - ${mall.name}`} description={product.description || mall.intro} url={`/${mall.slug}/p/${product.product_id}`} />
 
       {/* 헤더 — 돌아갈 곳은 **그 가게**다(유어딜 아님, 기준 ⑤). */}
-      <header className="ur-content-wide mx-auto px-5 pt-5 pb-3 flex items-center gap-2.5">
+      <header className="ur-content-wide mx-auto px-5 pt-5 pb-3 flex items-center gap-2">
         <Link to={`/${mall.slug}`} aria-label={`${mall.name} 홈으로`}
-          className="flex-none -ml-1.5 p-1.5 rounded-full text-[#524B4F] dark:text-[#BDB5BA]">
+          className="flex-none -ml-1.5 p-2 rounded-full text-[#524B4F] dark:text-[#BDB5BA]">
           <ChevronLeft className="w-[21px] h-[21px]" strokeWidth={2.2} />
         </Link>
         {mall.logoUrl ? (
@@ -210,7 +211,7 @@ export default function MallProductPage() {
           <div className="w-7 h-7 rounded-lg flex items-center justify-center text-[13px] font-extrabold text-white dark:text-[#1A1719] flex-none"
             style={{ backgroundColor: 'var(--mall)' }} aria-hidden>{mall.initial}</div>
         )}
-        <p className="min-w-0 truncate text-[14.5px] font-extrabold tracking-[-0.03em] text-[#1A1719] dark:text-[#F3EFF1]">{mall.name}</p>
+        <p className="min-w-0 truncate text-[15px] font-extrabold tracking-[-0.03em] text-[#1A1719] dark:text-[#F3EFF1]">{mall.name}</p>
       </header>
 
       <main className="ur-content-wide mx-auto px-5 pb-40">
@@ -222,61 +223,61 @@ export default function MallProductPage() {
             />
           )}
           {remain && (
-            <span className="absolute left-2.5 top-2.5 flex items-center gap-1 px-2.5 py-[6px] rounded-full bg-red-600 text-white text-[12px] font-bold tracking-[-0.02em]">
-              <Clock className="w-[12px] h-[12px]" strokeWidth={2.4} />
+            <span className="absolute left-2.5 top-2.5 flex items-center gap-1 px-2 py-[6px] rounded-full bg-red-600 text-white text-[12px] font-bold tracking-[-0.02em]">
+              <ClockIcon className="w-[12px] h-[12px]" />
               {remain}
             </span>
           )}
           {lowStock && (
-            <span className="absolute right-2.5 top-2.5 px-2.5 py-[6px] rounded-full bg-[rgba(20,17,19,.74)] backdrop-blur-sm text-white text-[12px] font-bold tracking-[-0.02em]">
+            <span className="absolute right-2.5 top-2.5 px-2 py-[6px] rounded-full bg-[rgba(20,17,19,.74)] backdrop-blur-sm text-white text-[12px] font-bold tracking-[-0.02em]">
               {product.stock}개 남음
             </span>
           )}
         </div>
 
-        <h1 className="mt-5 text-[19px] font-extrabold leading-[1.35] tracking-[-0.035em] text-[#1A1719] dark:text-[#F3EFF1]">{product.name}</h1>
+        <h1 className="mt-5 text-[17px] font-extrabold leading-[1.35] tracking-[-0.035em] text-[#1A1719] dark:text-[#F3EFF1]">{product.name}</h1>
 
         {/* 🔴 가격 — 목록·카톡 카드와 **같은 값**이어야 한다. 서버가 준 값을 그대로 쓴다. */}
-        <p className="mt-2.5 flex items-baseline gap-2 flex-wrap">
+        <p className="mt-2 flex items-baseline gap-2 flex-wrap">
           {product.discount_pct > 0 && (
-            <span className="text-[24px] font-extrabold tracking-[-0.04em] text-red-600 dark:text-red-400">{product.discount_pct}%</span>
+            <span className="text-[24px] font-extrabold tracking-[-0.04em] text-sale">{product.discount_pct}%</span>
           )}
           <span className="text-[24px] font-extrabold tracking-[-0.04em] text-[#1A1719] dark:text-[#F3EFF1]">{won(product.gb_price)}</span>
           {product.list_price > product.gb_price && (
-            <span className="text-[13.5px] line-through text-[#A9A2A6] dark:text-[#7C7479]">{won(product.list_price)}</span>
+            <span className="text-[13px] line-through text-[#A9A2A6] dark:text-[#7C7479]">{won(product.list_price)}</span>
           )}
         </p>
 
         {product.pickup && (pickupDay || product.pickup.place || product.pickup.storage) && (
-          <div className="mt-4 rounded-xl bg-[#F5F2F3] dark:bg-[#211C1F] px-4 py-3.5">
+          <div className="mt-4 rounded-xl bg-[#F5F2F3] dark:bg-[#211C1F] px-4 py-4">
             <p className="flex items-center gap-2">
-              <Package className="w-[15px] h-[15px] flex-none text-[#5C5459] dark:text-[#A69EA3]" strokeWidth={1.9} />
+              <BoxIcon className="w-[15px] h-[15px] flex-none text-[#5C5459] dark:text-[#A69EA3]" />
               <span className="text-[13px] font-bold tracking-[-0.025em] text-[#3F383C] dark:text-[#DAD4D7]">
                 {pickupDay ? `${pickupDay} 픽업` : '매장 픽업'}
               </span>
               {product.pickup.storage && (
-                <span className="ml-auto flex-none px-[6px] py-[3px] rounded-[6px] bg-white dark:bg-[#171317] text-[11px] font-bold tracking-[-0.02em] text-[#3F383C] dark:text-[#DAD4D7]">
+                <span className="ml-auto flex-none px-[6px] py-[3px] rounded-[6px] bg-white dark:bg-[#171317] text-[12px] font-bold tracking-[-0.02em] text-[#3F383C] dark:text-[#DAD4D7]">
                   {STORAGE_LABEL[product.pickup.storage]}
                 </span>
               )}
             </p>
             {product.pickup.place && (
-              <p className="mt-2 text-[12.5px] leading-[1.6] tracking-[-0.02em] text-[#6B6469] dark:text-[#A29A9F]">{product.pickup.place}</p>
+              <p className="mt-2 text-[12px] leading-[1.6] tracking-[-0.02em] text-[#6B6469] dark:text-[#A29A9F]">{product.pickup.place}</p>
             )}
             {product.pickup.storage && (
-              <p className="mt-1.5 text-[11.5px] leading-[1.6] tracking-[-0.02em] text-[#8A8288] dark:text-[#7C7479]">{STORAGE_NOTICE[product.pickup.storage]}</p>
+              <p className="mt-2 text-[12px] leading-[1.6] tracking-[-0.02em] text-[#8A8288] dark:text-[#7C7479]">{STORAGE_NOTICE[product.pickup.storage]}</p>
             )}
           </div>
         )}
 
-        <p className="mt-4 flex items-center gap-[7px] rounded-xl px-3.5 py-2.5 text-[12.5px] font-semibold tracking-[-0.02em] text-white dark:text-[#1A1719]"
+        <p className="mt-4 flex items-center gap-[7px] rounded-xl px-4 py-2 text-[12px] font-semibold tracking-[-0.02em] text-white dark:text-[#1A1719]"
           style={{ backgroundColor: 'var(--mall)' }}>
           <Lock className="w-[13px] h-[13px] flex-none" strokeWidth={2.2} />
           {PAYMENT_TRUST_NOTE}
         </p>
 
         {product.description && (
-          <p className="mt-6 text-[13.5px] leading-[1.75] tracking-[-0.02em] whitespace-pre-wrap text-[#524B4F] dark:text-[#BDB5BA]">{product.description}</p>
+          <p className="mt-6 text-[13px] leading-[1.75] tracking-[-0.02em] whitespace-pre-wrap text-[#524B4F] dark:text-[#BDB5BA]">{product.description}</p>
         )}
 
         {product.detail_images.length > 0 && (
@@ -288,7 +289,7 @@ export default function MallProductPage() {
         )}
 
         <footer className="pt-10 pb-2 text-center">
-          <span className="text-[10.5px] font-semibold tracking-[0.06em] text-[#BCB5B9] dark:text-[#5E5559] select-none cursor-default">{POWERED_BY}</span>
+          <span className="text-[12px] font-semibold tracking-[0.06em] text-[#BCB5B9] dark:text-[#5E5559] select-none cursor-default">{POWERED_BY}</span>
         </footer>
       </main>
 
@@ -298,14 +299,14 @@ export default function MallProductPage() {
           {!closed && !soldOut && (
             <div className="flex-none flex items-center rounded-xl border border-[#EDE9EB] dark:border-[#292327]">
               <button onClick={() => setQty((q) => Math.max(1, q - 1))} aria-label="수량 줄이기"
-                className="w-9 h-10 text-[16px] font-bold text-[#6B6469] dark:text-[#A29A9F]">−</button>
-              <span className="w-7 text-center text-[14px] font-bold text-[#1A1719] dark:text-[#F3EFF1]">{qty}</span>
+                className="w-9 h-10 text-[17px] font-bold text-[#6B6469] dark:text-[#A29A9F]">−</button>
+              <span className="w-7 text-center text-[15px] font-bold text-[#1A1719] dark:text-[#F3EFF1]">{qty}</span>
               <button onClick={() => setQty((q) => Math.min(maxQty, q + 1))} aria-label="수량 늘리기"
-                className="w-9 h-10 text-[16px] font-bold text-[#6B6469] dark:text-[#A29A9F]">+</button>
+                className="w-9 h-10 text-[17px] font-bold text-[#6B6469] dark:text-[#A29A9F]">+</button>
             </div>
           )}
           <button onClick={buy} disabled={closed || soldOut}
-            className="flex-1 h-11 rounded-xl text-[14.5px] font-extrabold tracking-[-0.03em] text-white dark:text-[#1A1719] disabled:opacity-45"
+            className="flex-1 h-11 rounded-xl text-[15px] font-extrabold tracking-[-0.03em] text-white dark:text-[#1A1719] disabled:opacity-45"
             style={{ backgroundColor: 'var(--mall)' }}>
             {closed ? '마감됐어요' : soldOut ? '수량이 모두 나갔어요' : '구매하기'}
           </button>

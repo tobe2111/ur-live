@@ -43,8 +43,18 @@ const STAYS = 'src/pages/StaysSearchPage.tsx'
 const read = (f: string) => readFileSync(f, 'utf-8')
 
 
+/**
+ * 🔧 2026-09-28 재조준 (대표 확정 **s3 밀도형**): 일반유저 유어샵(`CuratorPage`)의 본문이
+ *   **2열 격자 → 한 줄 목록**으로 바뀌었다. 그래서 그 화면은 격자 카드 SSOT(`GroupBuyFeedCard`)가
+ *   아니라 **줄 카드 SSOT(`DealRow`, 2026-09-03)** 를 쓴다.
+ *   ⚠️ **이 파일이 지키려는 불변식은 그대로다** — "화면이 자기 카드를 새로 그리지 않는다".
+ *      바뀐 것은 *어느 SSOT 인가* 뿐이라, 느슨하게 푸는 대신 검사 대상을 `PinRow` 로 옮긴다.
+ *      귀속 경로(②)도 같은 이유로 `PinRow` 에서 본다.
+ */
+const PIN_ROW = 'src/pages/curator-page/PinRow.tsx'
+
 describe('① 유어샵이 홈과 같은 카드를 쓴다', () => {
-  for (const [label, f] of [['이용권 그리드', VOUCHERS], ['담은 핀(사업자)', PINS], ['담은 핀(일반유저)', CURATOR], ['내 상품 그리드', SHOP], ['숙소 목록', STAYS]] as const) {
+  for (const [label, f] of [['이용권 그리드', VOUCHERS], ['담은 핀(사업자)', PINS], ['내 상품 그리드', SHOP], ['숙소 목록', STAYS]] as const) {
     it(`${label} — GroupBuyFeedCard 를 렌더한다`, () => {
       const src = read(f)
       // ⚠️ import 줄만 보면 `<div>` 로 바꿔도 통과한다(2026-08-19 에 실제로 그렇게 헛돌았다).
@@ -55,6 +65,15 @@ describe('① 유어샵이 홈과 같은 카드를 쓴다', () => {
       expect(codeOnly(read(f))).not.toMatch(/<BrowseProductCard\b/)
     })
   }
+
+  it('담은 핀(일반유저) — 줄 SSOT(DealRow)를 쓰고 자기 카드를 그리지 않는다', () => {
+    const row = codeOnly(read(PIN_ROW))
+    expect(row).toContain("from '@/components/deal/DealRow'")
+    expect(row, 'import 만으로는 부족 — JSX 로 실제 렌더').toMatch(/<DealRow\b/)
+    const page = codeOnly(read(CURATOR))
+    expect(page, '목록은 PinRow 한 부품으로만').toMatch(/<PinRow\b/)
+    expect(page, '옛 격자 카드 잔존 금지').not.toMatch(/<(BrowseProductCard|PinCard|PinGrid)\b/)
+  })
 })
 
 describe('② 담은 핀은 귀속 경로를 잃지 않는다 (돈이 새는 회귀)', () => {
@@ -65,14 +84,23 @@ describe('② 담은 핀은 귀속 경로를 잃지 않는다 (돈이 새는 회
     expect(src).toContain('to={to ?? canonicalDetailPath(p)')
   })
 
-  for (const [label, f] of [['사업자 유어샵', PINS], ['일반유저 유어샵', CURATOR]] as const) {
-    it(`${label} — 핀 카드에 /u/{handle}/p/{id} 를 넘긴다`, () => {
-      const src = read(f)
-      // 카드 호출부에 그 형태의 to 가 실제로 붙어 있는지 (문자열이 파일 어딘가 있는 것으로는 부족)
-      const call = src.slice(src.indexOf('<GroupBuyFeedCard'), src.indexOf('<GroupBuyFeedCard') + 400)
-      expect(call).toMatch(/to=\{`\/u\/\$\{handle\}\/p\/\$\{pin\.product_id\}`\}/)
-    })
-  }
+  it('사업자 유어샵 — 핀 카드에 /u/{handle}/p/{id} 를 넘긴다', () => {
+    const src = read(PINS)
+    // 카드 호출부에 그 형태의 to 가 실제로 붙어 있는지 (문자열이 파일 어딘가 있는 것으로는 부족)
+    const call = src.slice(src.indexOf('<GroupBuyFeedCard'), src.indexOf('<GroupBuyFeedCard') + 400)
+    expect(call).toMatch(/to=\{`\/u\/\$\{handle\}\/p\/\$\{pin\.product_id\}`\}/)
+  })
+
+  // 🔧 2026-09-28 재조준(s3): 일반유저 쪽은 줄 카드라 `to` 가 아니라 `DealRow` 의 `to` 로 간다.
+  //   **같은 돈 불변식**이다 — 상세로 직행시키면 화면은 같은데 귀속만 조용히 사라진다.
+  it('일반유저 유어샵 — 줄 카드가 /u/{handle}/p/{id} 로 간다', () => {
+    const src = read(PIN_ROW)
+    const at = src.indexOf('<DealRow')
+    expect(at, '줄 카드 호출부를 못 찾았다 — 마크업이 바뀌었다(검사가 무의미해진다)').toBeGreaterThan(0)
+    const call = src.slice(at, at + 400)
+    expect(call).toMatch(/to=\{`\/u\/\$\{handle\}\/p\/\$\{pin\.product_id\}`\}/)
+    expect(codeOnly(src), '상세 직행 금지').not.toMatch(/`\/group-buy\/|`\/products\//)
+  })
 
   it('매장 자기 이용권 그리드는 `to` 를 넘기지 않는다 (귀속 대상이 아니다)', () => {
     // 여기에 핀 경로를 넘기면 남의 귀속이 붙는다 — 반대 방향의 사고.

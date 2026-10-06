@@ -137,7 +137,7 @@ export default function PcHomePage() {
           {/* 🎨 그루폰 구조 — 제목·정렬칩·그리드를 하나의 흰 패널에 담는다(색면 위에 뜬 매대). */}
           <div className="ur-home-panel light-island">
           <header ref={gridHeaderRef} className="mb-3 scroll-mt-24">
-            <h1 className="text-[20px] font-black tracking-tight text-gray-900 dark:text-white">
+            <h1 className="text-[24px] font-black tracking-tight text-gray-900 dark:text-white">
               {catLabel
                 ? `${catLabel} 이용권`
                 : userLoc ? (dong?.dong ? `${dong.dong} 주변 딜` : '내 주변 가까운 딜') : region.regionKey ? '이 지역 동네 딜' : '가까운 동네 딜'}
@@ -161,7 +161,7 @@ export default function PcHomePage() {
               <button
                 onClick={() => setSort('near')}
                 aria-pressed={sort === 'near'}
-                className={`px-3.5 py-1.5 rounded-full text-[12.5px] font-bold border transition-colors inline-flex items-center gap-1 ${
+                className={`px-4 py-2 rounded-full text-[12px] font-bold border transition-colors inline-flex items-center gap-1 ${
                   sort === 'near'
                     ? 'bg-brand text-white border-brand'
                     : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
@@ -177,7 +177,7 @@ export default function PcHomePage() {
                   key={s.key}
                   onClick={() => setSort(s.key)}
                   aria-pressed={active}
-                  className={`px-3.5 py-1.5 rounded-full text-[12.5px] font-bold border transition-colors ${
+                  className={`px-4 py-2 rounded-full text-[12px] font-bold border transition-colors ${
                     active
                       ? 'bg-brand text-white border-brand'
                       : 'bg-white dark:bg-transparent text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2C2F35] hover:bg-gray-50 dark:hover:bg-white/[0.04]'

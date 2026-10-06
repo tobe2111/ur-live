@@ -12,8 +12,10 @@ export default [
   {
     name: '[섬] 카드 자신에 dark:bg 가 다시 붙는다 (배경만 검어지고 글자는 라이트로 남는다)',
     file: CARD,
-    find: 'className="light-island ur-content-wide pointer-events-auto relative rounded-2xl border border-gray-100 bg-white',
-    replace: 'className="light-island ur-content-wide pointer-events-auto relative rounded-2xl border border-gray-100 dark:border-[#2C2F35] bg-white dark:bg-[#11141C]',
+    // 🔀 2026-09-29: 규칙 ①(카드 테두리 0)로 `border border-gray-100` 이 빠졌다 — 앵커만 재조준하고
+    //    지키는 것(카드 자신에 `dark:bg` 를 붙이지 않는다)은 그대로다.
+    find: 'className="light-island ur-content-wide pointer-events-auto relative rounded-2xl bg-white',
+    replace: 'className="light-island ur-content-wide pointer-events-auto relative rounded-2xl bg-white dark:bg-[#11141C]',
     test: TEST,
     why: '대표가 신고한 원본 상태 그대로다 — 제목(text-gray-900)이 근검정 배경 위에 남아 안 보였다.',
   },
@@ -28,15 +30,15 @@ export default [
   {
     name: '[섬] 잉크 토큰을 되박기 목록에서 뺀다 (흰 카드 위 다크용 밝은 글자)',
     file: CSS,
-    find: '  --ink: #16181C;\n  --ink2: #3D3C3A;\n  --ink-soft: #6E6B68;\n  --ink-faint: #8A8580;',
-    replace: '  --ink2: #3D3C3A;\n  --ink-soft: #6E6B68;\n  --ink-faint: #8A8580;',
+    find: '  --ink: #16181C;\n  --ink2: #383D42;\n  --ink-soft: #666C72;\n  --ink-faint: #81868C;',
+    replace: '  --ink2: #383D42;\n  --ink-soft: #666C72;\n  --ink-faint: #81868C;',
     test: TEST,
     why: '목록이 불완전하면 언제든 같은 사고가 난다 — 하나만 빠져도 잡혀야 한다.',
   },
   {
     name: '[섬] 주소 줄이 다시 비활성 색(gray-400)으로 돌아간다',
     file: CARD,
-    find: '<p className="text-[11px] text-gray-500 mt-1 flex items-center gap-0.5 truncate">',
+    find: '<p className="text-[12px] text-gray-500 mt-1 flex items-center gap-1 truncate">',
     replace: '<p className="text-[11px] text-gray-400 mt-1 flex items-center gap-0.5 truncate">',
     test: TEST,
     why: 'gray-400 은 `--ink-faint`(비활성·플레이스홀더)다 — 흰 카드 위 3.65:1 로 AA 미달.',
@@ -44,7 +46,7 @@ export default [
   {
     name: '[섬] 쿠폰가 라벨이 다시 비활성 색으로 돌아간다',
     file: CARD,
-    find: '<span className="text-[10px] text-gray-500">쿠폰가</span>',
+    find: '<span className="text-[12px] text-gray-500">쿠폰가</span>',
     replace: '<span className="text-[10px] text-gray-400">쿠폰가</span>',
     test: TEST,
     why: '10px 라 더 나쁘다 — 3.65:1.',
@@ -52,7 +54,7 @@ export default [
   {
     name: '[섬] 정가 취소선이 다시 비활성 색으로 돌아간다',
     file: CARD,
-    find: '<span className="text-[11px] text-gray-500 line-through">',
+    find: '<span className="text-[12px] text-gray-500 line-through">',
     replace: '<span className="text-[11px] text-gray-400 line-through">',
     test: TEST,
     why: '취소선이어도 사람이 읽는 숫자다.',

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { PinIcon, TicketStubIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 // Firebase Auth will be lazy loaded when needed
@@ -8,11 +9,11 @@ import { toast } from '@/hooks/useToast'
 import { trackFunnel } from '@/lib/funnel'
 // ✅ Zustand 직접 사용
 import { useAuthKR } from '@/shared/stores/useAuthKR'
-import { Eye, EyeOff, MapPin, Ticket } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
 import SEO from '@/components/SEO'
 import UrDealLogo from '@/components/brand/UrDealLogo'
 import { addBreadcrumb, maskEmail } from '@/lib/sentry'
-import { safeInternalPath } from '@/utils/safe-internal-path'
+import { resolveLoginReturnUrl, clearLoginReturnUrl } from '@/utils/login-return'
 import { showKakaoLoadingOverlay, removeKakaoLoadingOverlay } from '@/utils/kakao-login-overlay'
 import { hasConsumerSession } from '@/utils/auth'
 
@@ -77,11 +78,12 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
 
   // ✅ 무한루프 방지: returnUrl은 마운트 시 1회만 계산 (useRef로 고정)
-  // 🛡️ 2026-04-29: 검증 로직을 safeInternalPath 헬퍼로 통일
+  // 🛡️ 2026-04-29: 검증 로직은 safeInternalPath SSOT (이제 utils/login-return 안에서 호출)
+  // 🔑 2026-10-01: 화면들이 적어 둔 `localStorage.loginReturnUrl` 까지 본다 — 종전엔 쿼리/세션만 봐서
+  //   그 열 곳 남짓의 writer 가 전부 헛돌았다(대표 신고: 링크 보고 로그인하면 홈으로). SSOT: utils/login-return.
   const returnUrlRef = useRef<string | null>(null)
   if (returnUrlRef.current === null) {
-    const raw = searchParams.get('returnUrl') || sessionStorage.getItem('returnUrl') || '/'
-    returnUrlRef.current = safeInternalPath(raw, '/')
+    returnUrlRef.current = resolveLoginReturnUrl(searchParams.get('returnUrl'))
   }
   const returnUrl = returnUrlRef.current
   // 🆕 2026-06-29 퍼널 계측: returnUrl 이 있으면 보호 라우트(결제/보관함/유어샵)에서 튕겨 온 것 = 로그인 벽 노출.
@@ -111,6 +113,7 @@ export default function LoginPage() {
     }
     if (isLoggedIn && !hasRedirected.current) {
       hasRedirected.current = true
+      clearLoginReturnUrl()   // 복귀했으면 지운다 — 남겨 두면 다음 로그인이 옛 주소로 간다
       navigate(returnUrlRef.current!, { replace: true })
     }
   }, [isLoggedIn, navigate, wantsSwitch])
@@ -140,10 +143,9 @@ export default function LoginPage() {
     if (kakaoNavRef.current) return // 이미 진행 중 — 반복 클릭 무시
     kakaoNavRef.current = true
     try {
-      const rawReturnUrl = searchParams.get('returnUrl')
-        || sessionStorage.getItem('returnUrl')
-        || '/'
-      const currentReturnUrl = safeInternalPath(rawReturnUrl, '/')
+      // 🔑 같은 SSOT 로 고른다 — 여기서 '/' 를 보내면 카카오 콜백의 `safeInternalPath(state, stored)`
+      //   에서 그 '/' 가 **저장된 복귀 주소를 이겨** 홈으로 떨어진다(그게 이 결함의 마지막 고리였다).
+      const currentReturnUrl = resolveLoginReturnUrl(searchParams.get('returnUrl'))
       const params = new URLSearchParams({ redirect: currentReturnUrl })
       if (wantsSwitch) {
         params.set('force_account', '1')
@@ -185,11 +187,21 @@ export default function LoginPage() {
       } else if (userRole === 'admin') {
         navigate('/admin', { replace: true })
       } else {
+        clearLoginReturnUrl()
         navigate(returnUrl, { replace: true })
       }
     } catch (err: unknown) {
       if (import.meta.env.DEV) console.error('[Email Login] Error:', err)
-      setError(t('auth.invalidCredentials'))
+      /**
+       * 🩸 2026-10-01 (대표 "이메일 계정 가입 및 로그인도 되게끔 해줘"): 무슨 이유든 항상
+       *   "이메일 또는 비밀번호가 올바르지 않습니다" 로 뭉개고 있었다. 그런데 서버는 **구분되는**
+       *   이유를 돌려준다 — 특히 `ACCOUNT_LOCKED`(423, 브루트포스 방어로 일시 잠금). 그 사람은
+       *   비밀번호가 맞는데도 "틀렸다" 는 말만 보고 계속 시도하게 되고, 시도할수록 잠금이 길어진다.
+       *   ⇒ 서버 문장을 그대로 보여 준다. 🔒 **계정 존재 여부는 새어 나가지 않는다** — 서버가
+       *      미존재 계정과 비번 오류에 *같은 문장*을 주도록 이미 설계돼 있다(auth.routes `/login`).
+       */
+      const msg = err instanceof Error ? err.message : ''
+      setError(msg || t('auth.invalidCredentials'))
     } finally {
       setLoading(false)
     }
@@ -245,19 +257,19 @@ export default function LoginPage() {
         {/* Brand + 가치 제안 (동네딜 / 교환권) */}
         <div className="flex flex-col items-center mb-12">
           <UrDealLogo size={34} />
-          <h1 className="mt-6 text-[20px] md:text-[22px] font-bold text-gray-900 dark:text-white text-center leading-snug tracking-tight">
+          <h1 className="mt-6 text-[24px] md:text-[24px] font-bold text-gray-900 dark:text-white text-center leading-snug tracking-tight">
             {t('login.heroTitle', { defaultValue: '우리 동네 맛집, 같이 사면 더 싸다' })}
           </h1>
           <p className="mt-2 text-[13px] text-gray-600 dark:text-gray-400 text-center font-light leading-relaxed">
             {t('login.heroSub', { defaultValue: '동네 공동구매 교환권부터 인기 기프티콘까지, 매일 새로운 딜' })}
           </p>
           <div className="flex flex-wrap items-center justify-center gap-2 mt-5">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 dark:bg-[#1D1F29] border border-line text-[12px] text-gray-700 dark:text-gray-300">
-              <MapPin className="w-3.5 h-3.5 text-emerald-500" />
+            <span className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-gray-50 dark:bg-[#1D1F29] border border-line text-[12px] text-gray-700 dark:text-gray-300">
+              <PinIcon className="w-3.5 h-3.5 text-emerald-500" />
               {t('login.chipDongne', { defaultValue: '동네딜 공동구매' })}
             </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 dark:bg-[#1D1F29] border border-line text-[12px] text-gray-700 dark:text-gray-300">
-              <Ticket className="w-3.5 h-3.5 text-emerald-500" />
+            <span className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-gray-50 dark:bg-[#1D1F29] border border-line text-[12px] text-gray-700 dark:text-gray-300">
+              <TicketStubIcon className="w-3.5 h-3.5 text-emerald-500" />
               {t('login.chipVoucher', { defaultValue: '교환권·기프티콘' })}
             </span>
             {/* 2026-06-11 (사용자 요청): 소비자 로그인에서 도매몰 칩 제거 — 도매는 /wholesale/login 별도 표면 */}
@@ -315,12 +327,12 @@ export default function LoginPage() {
                   </>
                 )}
               </button>
-              <p className="mt-3 text-center text-[11px] text-gray-500 dark:text-gray-500 font-light">
+              <p className="mt-3 text-center text-[12px] text-gray-500 dark:text-gray-500 font-light">
                 {t('login.kakaoHint', { defaultValue: '복잡한 가입 절차 없이 바로 시작할 수 있어요' })}
               </p>
               {/* 📜 2026-07-05 이용약관 v1.0 제5조: 가입(로그인)으로 약관·개인정보처리방침 동의 성립 고지 */}
               {/* 📖 2026-08-17 (UX 전수검사 P2 — AA 경계 저대비): gray-400/600 → gray-500 로 한 단계 진하게. */}
-              <p className="mt-2 text-center text-[10.5px] text-gray-500 dark:text-gray-500 font-light leading-relaxed">
+              <p className="mt-2 text-center text-[12px] text-gray-500 dark:text-gray-500 font-light leading-relaxed">
                 {t('login.termsNotice', { defaultValue: '로그인(가입) 시' })}{' '}
                 <Link to="/terms" className="underline underline-offset-2 hover:text-gray-600 dark:hover:text-gray-400">{t('login.termsLink', { defaultValue: '이용약관' })}</Link>
                 {' '}{t('login.termsAnd', { defaultValue: '및' })}{' '}
@@ -359,7 +371,7 @@ export default function LoginPage() {
         {showEmailLogin && !showForgotPassword && (
           <form onSubmit={handleEmailLogin} className="space-y-4">
             <div>
-              <label htmlFor="login-email" className="block text-[12px] font-medium text-[#555] mb-1.5">
+              <label htmlFor="login-email" className="block text-[12px] font-medium text-[#555] mb-2">
                 {t('auth.email')}
               </label>
               <input
@@ -368,7 +380,7 @@ export default function LoginPage() {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full h-[48px] px-4 border border-[#333] rounded-xl text-[14px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
+                className="w-full h-[48px] px-4 border border-[#333] rounded-xl text-[15px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
                 placeholder={t('auth.emailPlaceholder')}
                 aria-label={t('auth.email')}
                 required
@@ -376,7 +388,7 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label htmlFor="login-password" className="block text-[12px] font-medium text-[#555] mb-1.5">
+              <label htmlFor="login-password" className="block text-[12px] font-medium text-[#555] mb-2">
                 {t('auth.password')}
               </label>
               <div className="relative">
@@ -386,7 +398,7 @@ export default function LoginPage() {
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full h-[48px] px-4 pr-12 border border-[#333] rounded-xl text-[14px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
+                  className="w-full h-[48px] px-4 pr-12 border border-[#333] rounded-xl text-[15px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
                   placeholder={t('auth.passwordPlaceholder')}
                   aria-label={t('auth.password')}
                   required
@@ -420,7 +432,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full h-[48px] bg-[#111] hover:bg-black text-white rounded-xl text-[14px] font-semibold tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full h-[48px] bg-brand hover:bg-brand-dark text-white rounded-xl text-[15px] font-semibold tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? t('common.loading') : t('common.login')}
             </button>
@@ -428,7 +440,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => setShowEmailLogin(false)}
-              className="w-full h-[48px] border border-[#333] hover:border-[#999] text-[#555] rounded-xl text-[14px] font-medium tracking-tight transition-all"
+              className="w-full h-[48px] border border-[#333] hover:border-[#999] text-[#555] rounded-xl text-[15px] font-medium tracking-tight transition-all"
             >
               {t('common.back')}
             </button>
@@ -439,13 +451,13 @@ export default function LoginPage() {
         {showForgotPassword && (
           <div className="space-y-4">
             <div className="text-center mb-6">
-              <p className="text-[14px] text-gray-500 dark:text-gray-400 font-light leading-relaxed">
+              <p className="text-[15px] text-gray-500 dark:text-gray-400 font-light leading-relaxed">
                 {t('auth.resetPasswordDesc')}
               </p>
             </div>
 
             <div>
-              <label htmlFor="reset-email" className="block text-[12px] font-medium text-[#555] mb-1.5">
+              <label htmlFor="reset-email" className="block text-[12px] font-medium text-[#555] mb-2">
                 {t('auth.email')}
               </label>
               <input
@@ -454,7 +466,7 @@ export default function LoginPage() {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full h-[48px] px-4 border border-[#333] rounded-xl text-[14px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
+                className="w-full h-[48px] px-4 border border-[#333] rounded-xl text-[15px] text-gray-900 focus:outline-none focus:border-[#111] focus:ring-1 focus:ring-[#111] transition-all placeholder:text-[#bbb]"
                 placeholder={t('auth.emailPlaceholder')}
                 aria-label={t('auth.email')}
                 required
@@ -464,7 +476,7 @@ export default function LoginPage() {
             <button
               onClick={handleResetPassword}
               disabled={loading}
-              className="w-full h-[48px] bg-[#111] hover:bg-black text-white rounded-xl text-[14px] font-semibold tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full h-[48px] bg-brand hover:bg-brand-dark text-white rounded-xl text-[15px] font-semibold tracking-tight transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? t('common.loading') : t('auth.resetPasswordButton')}
             </button>
@@ -475,7 +487,7 @@ export default function LoginPage() {
                 setShowForgotPassword(false)
                 setShowEmailLogin(true)
               }}
-              className="w-full h-[48px] border border-[#333] hover:border-[#999] text-[#555] rounded-xl text-[14px] font-medium tracking-tight transition-all"
+              className="w-full h-[48px] border border-[#333] hover:border-[#999] text-[#555] rounded-xl text-[15px] font-medium tracking-tight transition-all"
             >
               {t('common.back')}
             </button>

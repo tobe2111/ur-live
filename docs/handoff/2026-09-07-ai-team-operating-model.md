@@ -12,7 +12,7 @@
    분명하지 않고, 각각에게 베네핏을 어떻게 줄 것인지 등 말이야 그런게 분명하지 않아."*
 
 ## 다음 세션의 첫 액션
-1. `docs/decisions/2026-09-07-actor-benefit-conflicts.md` 에 대표 답(Q1~Q5)이 왔는지 본다. 왔으면 **한 말 그대로** `결정` 필드에 옮기고
+1. `docs/decisions/archive/2026-09-07-actor-benefit-conflicts.md` 에 대표 답(Q1~Q5)이 왔는지 본다. 왔으면 **한 말 그대로** `결정` 필드에 옮기고
    `상태: approved`, 그 뒤 `actor-benefit-map.md` §1 확정값 갱신 + 필요한 설정/코드 변경은 **별도 결재**(머니 경로면 단독 세션+staging).
 2. 루틴 6개의 첫 실행 결과(handoff `docs/handoff/2026-09-08-*` 예정)를 읽고 소음이 크면 주기를 줄인다(§7 3단계 — 대표 판단).
 3. 세션 시작 룰: `bash scripts/install-git-hooks.sh` · `npm view ms version`(이번 세션은 npm 정상).

@@ -7,10 +7,10 @@
  */
 
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
+import SellerLayout from '@/components/SellerLayout'
 import { toast } from '@/hooks/useToast'
 import { formatWon } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
@@ -55,15 +55,8 @@ export default function SellerProxyProductsPage() {
   }
 
   return (
-    <>
+    <SellerLayout title="대행 등록 승인">
       <SEO title="대행 등록 승인 - 유어딜" description="크리에이터가 대행 등록한 공구 검토" url="/seller/proxy-products" />
-      <div className="min-h-screen bg-gray-50 pb-24">
-        <header className="bg-white border-b border-gray-200">
-          <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-            <h1 className="text-base font-bold text-gray-900">대행 등록 승인</h1>
-            <Link to="/seller" className="text-xs text-gray-500">대시보드</Link>
-          </div>
-        </header>
 
         <div className="max-w-3xl mx-auto px-4 py-4">
           <div className="bg-white border border-rule rounded-xl p-3 text-xs text-gray-700 leading-relaxed">
@@ -104,7 +97,6 @@ export default function SellerProxyProductsPage() {
             ))
           )}
         </div>
-      </div>
-    </>
+    </SellerLayout>
   )
 }

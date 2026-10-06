@@ -113,11 +113,19 @@ describe('① 목록이 소스와 일치한다', () => {
     expect(extra, `셸이 더는 안 쓴다 — 목록에서 뺄 것: ${JSON.stringify(extra)}`).toEqual([])
   })
 
-  it('🔴 별칭 체인을 실제로 따라간다 (AlertCircle → circle-alert)', () => {
+  it('🔴 별칭 체인을 실제로 따라간다 (HelpCircle → circle-help)', () => {
     // 이 한 줄이 첫 판을 헛돌게 했다 — 별칭만 넣으면 구현 파일이 큰 봉투에 남는다.
-    expect([...withAliases('alert-circle')].sort()).toEqual(['alert-circle', 'circle-alert'])
+    expect([...withAliases('help-circle')].sort()).toEqual(['circle-help', 'help-circle'])
+    /**
+     * 🔧 2026-09-29 재조준: 표본을 `circle-alert`·`house`·`circle-check` 로 **손으로 박아** 뒀는데
+     *    그 셋은 UI④ 아이콘 이행으로 셸에서 사라졌다(뜻 아이콘 SSOT `urdeal-icons.tsx` 로 옮김).
+     *    지키려던 것은 그대로다 — **목록에 별칭이 있으면 그 구현 파일도 목록에 있어야 한다**.
+     *    표본 세 개 대신 **전수**로 고정해, 셸이 쓰는 아이콘이 바뀌어도 앵커가 안 낡는다.
+     */
     const listed = new Set(listedIcons())
-    for (const real of ['circle-alert', 'house', 'circle-check']) expect(listed.has(real), real).toBe(true)
+    const chains = [...listed].filter((i) => withAliases(i).size > 1)
+    expect(chains.length, '별칭을 가진 아이콘이 목록에 하나도 없다 — 이 검사가 헛돌고 있다').toBeGreaterThan(0)
+    for (const i of chains) for (const real of withAliases(i)) expect(listed.has(real), `${i} → ${real}`).toBe(true)
   })
 })
 
@@ -142,6 +150,9 @@ describe('② 규칙이 실제로 배선돼 있다', () => {
 
   it('폐쇄 계산이 비어 있지 않다 (0개면 통과가 아니라 시험이 고장난 것)', () => {
     expect(staticClosure().length).toBeGreaterThan(60)
-    expect(shellIconFiles().size).toBeGreaterThan(30)
+    // 🪒 2026-09-29: 하한 30 → 15. 실측 42 → **26** — UI④ 아이콘 이행으로 셸이 lucide 뜻 아이콘을
+    //    17개 덜 쓴다(줄어든 것이 성과라 이 하한은 그 성과를 따라 내려간다). 이 하한의 일은
+    //    "몇 개여야 한다"가 아니라 **폐쇄 계산이 통째로 비면 초록이 뜨는 것**을 막는 것이다.
+    expect(shellIconFiles().size).toBeGreaterThan(15)
   })
 })

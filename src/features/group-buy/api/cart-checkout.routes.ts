@@ -24,7 +24,8 @@
 import { Hono } from 'hono'
 import { requireAuth, getCurrentUser } from '@/worker/middleware/auth'
 import { rateLimit } from '@/worker/middleware/rate-limit'
-import { recordLedger, sellerLedgerAccount } from '@/worker/utils/ledger'
+import { recordLedger } from '@/worker/utils/ledger'
+import { purchaseCreditFields } from '@/worker/utils/payout-account' // 💸 2026-10-01 구매 적립 escrow 경유(이중적립 제거)
 import { resolveUserIdString } from '@/worker/utils/resolve-user-id'
 import { getCommissionRates } from './commission-rates'
 import { getSellerCommissionRate, generateUniqueVoucherCode, applyGroupBuyReferral } from './helpers'
@@ -220,8 +221,8 @@ cartCheckoutRoutes.post('/cart/confirm-toss', rateLimit({ action: 'gb_cart_confi
   try {
     // ── 주문 한 행 ─────────────────────────────────────────────────────────────
     const orderInsert = await DB.prepare(`
-      INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_method, payment_key, idempotency_key)
-      VALUES (?, ?, ?, ?, 0, 0, ?, 'KRW', 'PAID', 'toss', ?, ?)
+      INSERT INTO orders (order_number, user_id, seller_id, subtotal, shipping_fee, discount_amount, total_amount, currency, status, payment_status, payment_method, payment_key, idempotency_key)
+      VALUES (?, ?, ?, ?, 0, 0, ?, 'KRW', 'PAID', 'approved', 'toss', ?, ?)
       RETURNING id
     `).bind(orderNumber, userId, singleSeller, expectedAmount, expectedAmount, paymentKey, paymentKey).first<{ id: number }>()
     const newOrderId = orderInsert?.id ?? null
@@ -277,8 +278,7 @@ cartCheckoutRoutes.post('/cart/confirm-toss', rateLimit({ action: 'gb_cart_confi
           reference_id: orderNumber,
           amount,
           debit_account: `user:${userId}`,
-          credit_account: sellerLedgerAccount(sid),
-          fee_amount: commissionAmount,
+          ...purchaseCreditFields(sid, commissionAmount), // 💸 escrow 경유(이중적립 제거)
           fee_account: 'platform:commission',
           metadata: { cart: true, order_id: newOrderId, product_ids: mine.map(l => l.productId), payment_method: 'toss' },
         })

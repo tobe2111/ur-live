@@ -13,15 +13,15 @@ export default function UShopQrCard() {
   const [url, setUrl] = useState('')
   useEffect(() => { if (typeof window !== 'undefined') setUrl(window.location.origin + window.location.pathname) }, [])
   return (
-    <div className="hidden lg:flex items-center gap-3 mt-4 rounded-2xl bg-surface shadow-lift p-3.5">
-      <div className="rounded-lg bg-white dark:bg-white p-1.5 shrink-0">
+    <div className="hidden lg:flex items-center gap-3 mt-4 rounded-2xl bg-surface shadow-lift p-4">
+      <div className="rounded-lg bg-white dark:bg-white p-2 shrink-0">
         <Suspense fallback={<div className="w-[76px] h-[76px] rounded bg-gray-100 dark:bg-gray-100 animate-pulse" />}>
           {url ? <QRCodeSVG value={url} size={76} level="M" /> : <div className="w-[76px] h-[76px]" />}
         </Suspense>
       </div>
       <div className="min-w-0">
-        <p className="flex items-center gap-1.5 text-[12.5px] font-bold text-gray-900 dark:text-white"><Smartphone className="w-3.5 h-3.5" aria-hidden="true" />폰에서 이어 보기</p>
-        <p className="mt-1 text-[11.5px] leading-snug text-gray-500 dark:text-gray-400">카메라로 스캔하면 이 유어샵을 폰에서 엽니다</p>
+        <p className="flex items-center gap-2 text-[12px] font-bold text-gray-900 dark:text-white"><Smartphone className="w-3.5 h-3.5" aria-hidden="true" />폰에서 이어 보기</p>
+        <p className="mt-1 text-[12px] leading-snug text-gray-500 dark:text-gray-400">카메라로 스캔하면 이 유어샵을 폰에서 엽니다</p>
       </div>
     </div>
   )

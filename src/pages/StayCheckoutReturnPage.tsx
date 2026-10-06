@@ -10,8 +10,9 @@
  * PaymentSuccessPage(일반 주문 흐름, 잠금) 와 분리된 stays 전용 페이지.
  */
 import { useEffect, useRef, useState } from 'react'
+import { OkIcon, AlertIcon, BadIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Loader2, CheckCircle2, AlertCircle, XCircle } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import BrandLoader from '@/components/brand/BrandLoader'
@@ -87,12 +88,12 @@ export default function StayCheckoutReturnPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <SEO title="숙소 결제 확인 - 유어딜" description="숙소 결제 확인" url="/stays/checkout-return" noindex />
-      <div className="w-full max-w-md bg-white rounded-2xl border border-gray-100 p-6 text-center">
+      <div className="w-full max-w-md bg-white rounded-2xl p-6 text-center shadow-lift">
         {/* 🎯 2026-07-18 로딩 단일화 — 결제 승인 중은 유어딜 BrandLoader(경고문은 label 로 보존). */}
         {state === 'confirming' && <BrandLoader label="결제 승인 중 · 페이지를 닫지 마세요" />}
         {state === 'success' && (
           <>
-            <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-4" />
+            <OkIcon className="w-12 h-12 text-emerald-500 mx-auto mb-4" />
             <p className="text-[17px] font-extrabold text-gray-900">예약이 확정되었습니다 🎉</p>
             {amountDone > 0 && (
               <p className="text-[13px] text-gray-600 mt-1">결제 금액: ₩{formatNumber(amountDone)}</p>
@@ -100,11 +101,11 @@ export default function StayCheckoutReturnPage() {
             <p className="text-[12px] text-gray-500 mt-2">체크인 코드 등 상세는 내 숙소 예약에서 확인하세요.</p>
             <div className="mt-5 space-y-2">
               <button onClick={() => navigate('/my-stays', { replace: true })}
-                className="w-full py-3 bg-brand text-white text-[14px] font-bold rounded-full">
+                className="w-full py-3 bg-brand text-white text-[15px] font-bold rounded-full">
                 내 숙소 예약 보기
               </button>
               <button onClick={() => navigate('/', { replace: true })}
-                className="w-full py-3 bg-gray-100 text-gray-700 text-[14px] font-semibold rounded-full">
+                className="w-full py-3 bg-gray-100 text-gray-700 text-[15px] font-semibold rounded-full">
                 홈으로
               </button>
             </div>
@@ -112,30 +113,30 @@ export default function StayCheckoutReturnPage() {
         )}
         {state === 'overbooked' && (
           <>
-            <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
-            <p className="text-[16px] font-extrabold text-gray-900">객실이 매진되었습니다</p>
+            <AlertIcon className="w-12 h-12 text-amber-500 mx-auto mb-4" />
+            <p className="text-[17px] font-extrabold text-gray-900">객실이 매진되었습니다</p>
             <p className="text-[13px] text-gray-600 mt-2">{message}</p>
             <p className="text-[12px] text-gray-500 mt-1">결제는 자동 환불 처리됩니다 (영업일 기준 3-5일).</p>
             <button onClick={() => navigate('/stays', { replace: true })}
-              className="mt-5 w-full py-3 bg-brand text-white text-[14px] font-bold rounded-full">
+              className="mt-5 w-full py-3 bg-brand text-white text-[15px] font-bold rounded-full">
               다른 숙소 둘러보기
             </button>
           </>
         )}
         {state === 'fail' && (
           <>
-            <XCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <p className="text-[16px] font-extrabold text-gray-900">결제가 완료되지 않았습니다</p>
+            <BadIcon className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <p className="text-[17px] font-extrabold text-gray-900">결제가 완료되지 않았습니다</p>
             {message && <p className="text-[13px] text-gray-600 mt-2 break-words">{message}</p>}
             <div className="mt-5 space-y-2">
               {Number.isFinite(orderId) && orderId > 0 && (
                 <button onClick={() => navigate(`/checkout?order_id=${orderId}&stay=1`, { replace: true })}
-                  className="w-full py-3 bg-brand text-white text-[14px] font-bold rounded-full">
+                  className="w-full py-3 bg-brand text-white text-[15px] font-bold rounded-full">
                   다시 결제하기
                 </button>
               )}
               <button onClick={() => navigate('/my-stays', { replace: true })}
-                className="w-full py-3 bg-gray-100 text-gray-700 text-[14px] font-semibold rounded-full">
+                className="w-full py-3 bg-gray-100 text-gray-700 text-[15px] font-semibold rounded-full">
                 내 숙소 예약 보기
               </button>
             </div>

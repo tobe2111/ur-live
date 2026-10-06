@@ -91,6 +91,17 @@ interface Props {
    *   같은 컴포넌트라도 **닫기의 의미가 다르다** ⇒ 페이지로 쓸 땐 `false`.
    */
   dismissOnBackdrop?: boolean
+  /**
+   * 🖥️ 2026-09-23 (대표 확정 "안 B"): 이 부품이 사는 자리가 둘이다 —
+   *   `'overlay'`(기본) 대시보드 `MyStoresPanel` 위에 **겹쳐 뜨는 모달**,
+   *   `'page'` `/store/new` 에서 **페이지의 본문 한 칸**.
+   *
+   * ⚠️ **포크하지 않는 이유**: 4단계 문구·전화번호 검증·등록증 업로드·409 분기가 두 벌이 되면
+   *   언젠가 갈린다. 이 파일 안에서 이미 한 번 그렇게 갈렸다 — `taken` 안내 화면이 같은 날 고쳐진
+   *   두 가지(`light-island`·`dismissOnBackdrop`)를 못 받아서 다크에서 흰 글자가 됐다(2026-09-07).
+   *   ⇒ 달라지는 것은 **껍데기 두 줄**(바깥 틀·패널)뿐이고 안쪽은 byte-동일하다.
+   */
+  variant?: 'overlay' | 'page'
 }
 
 /** 질문 넷. 순서가 곧 진행바이고, 각 단계는 **하나만** 묻는다. */
@@ -98,10 +109,10 @@ const STEPS = [
   { key: 'place', title: '내 매장을 찾아주세요', hint: '카카오맵에서 검색하면 주소·전화번호가 자동으로 채워져요' },
   { key: 'manager', title: '담당자 전화번호를 알려주세요', hint: '승인·사용 문의·정산 확인 때 연락드릴 번호예요' },
   { key: 'channel', title: '이 매장, 누가 운영하나요?', hint: '사장님인지 대행사인지에 따라 정산 방식이 달라져요' },
-  { key: 'business', title: '사업자등록증을 올려주세요', hint: '사람이 직접 확인해요 — 내용이 잘 보이는 사진이면 돼요' },
+  { key: 'business', title: '사업자등록증을 올려주세요 (선택)', hint: '지금 없으면 건너뛰어도 등록돼요. 다만 승인 전에는 메인에 노출되지 않아요' },
 ] as const
 
-export default function StoreRegisterModal({ initialPlace, onClose, onDone, dismissOnBackdrop = true }: Props) {
+export default function StoreRegisterModal({ initialPlace, onClose, onDone, dismissOnBackdrop = true, variant = 'overlay' }: Props) {
   const navigate = useNavigate()
   const [picked, setPicked] = useState<RegisterPlace | null>(initialPlace ?? null)
   const [showMap, setShowMap] = useState(!initialPlace)
@@ -179,7 +190,11 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
       }
       return null
     }
-    return certOk ? null : '사업자등록증 사진을 첨부해주세요'
+    // 📄 2026-09-21 (대표 "너 말대로 하자"): 등록증은 **선택**이다 — 여기서 막지 않는다.
+    //   막을 이유가 사라진 게 아니라 **막을 자리가 뒤로 옮겨졌다**: 승인 전에는 어차피 메인에
+    //   노출되지 않고(`approvedSellerProductSql`), 서류는 어드민이 승인할 때 본다.
+    //   마지막 단계에서 사진이 없다고 되돌려 보내면, 다 적은 사람을 그 자리에서 잃는다.
+    return null
   }
   // 🗺️ 지도가 보이는 단계인가 — 바디 스크롤을 끌지 정한다(위 주석)
   const mapStep = step === 0 && (!picked || showMap)
@@ -187,7 +202,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
   const last = step === STEPS.length - 1
 
   async function submit() {
-    if (!picked || !channel || !managerOk || !certOk || submitting) return
+    if (!picked || !channel || !managerOk || submitting) return
     setSubmitting(true)
     try {
       const r = await api.post('/api/seller/stores', {
@@ -253,11 +268,43 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
   //   모달 마크업이라, 같은 날 고쳐진 두 가지가 여기엔 안 들어와 있었다 — `light-island` 없이
   //   `bg-white` 라 다크에서 흰 판 위 흰 글자가 되고, 배경 클릭이 `dismissOnBackdrop` 을 안 거쳐
   //   곧장 닫혔다. 한 파일 안에 같은 성질의 표면이 둘이면 **하나만 고치고 끝났다고 믿기 쉽다.**
+  /**
+   * 🖥️ 껍데기 두 줄. 안쪽(헤더·바디·푸터)은 두 자리에서 **완전히 같다**.
+   *
+   * page 에서 바깥 틀이 `fixed inset-0 bg-black/40` 이 아니게 되는 것은 장식이 아니라 **방어**다 —
+   * 2026-09-07 대표 신고 *"흰 섹션 바깥쪽을 클릭하니까 페이지가 꺼져"* 가 그 오버레이 때문이었고,
+   * 그때는 `dismissOnBackdrop={false}` 로 막았다. 이제 그 자리에 **배경 자체가 없어** 구조적으로 못 닫힌다
+   * (오버레이 경로의 `dismissOnBackdrop` 은 그대로 살아 있다 — 대시보드는 뒤에 돌아갈 화면이 보이므로 맞다).
+   *
+   * 📏 높이는 **스스로 바운드한다**(`max-h`), 부모 높이에 기대지 않는다. 바운드가 있어야 지도 단계의
+   * `KakaoMapPicker fill`(`flex-1 min-h-0` 사슬)이 높이를 얻는다 — 없으면 지도가 0px 로 접힌다.
+   * 🩸 처음엔 page 를 `h-full` 로 두고 페이지가 `h-[100dvh]` 로 높이를 주게 했는데, **렌더해 보니 카드
+   *   아래 24px 이 하단 네비(고정, 57px) 밑으로 들어가 잘렸다** — `main` 이 이미 `padding-bottom:56px` 로
+   *   그 자리를 예약하고 있어서 거기에 뷰포트 높이를 또 얹은 셈이었다. 부모의 여백을 모르는 채
+   *   뷰포트 높이를 잡으면 이 클래스의 사고가 난다(CLAUDE.md 모바일 뷰포트 룰). ⇒ 자기 바운드로.
+   */
+  const asPage = variant === 'page'
+  const shellCls = asPage
+    ? 'w-full'
+    : 'fixed inset-0 z-[10500] flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4'
+  const shellClick = asPage ? undefined : (dismissOnBackdrop ? onClose : undefined)
+  /**
+   * 🩸 2026-09-23 CI 가 잡은 것 — page 패널을 처음엔 `rounded-2xl` 로 썼는데, 이 파일은
+   *   `src/components/seller/**` 라 **셀러 D3 래칫**(`seller-d3-2026-09-15.test.ts` "옛 패턴 0")의
+   *   대상이다. 그 래칫은 `rounded-2xl` 과 `bg-white rounded-xl shadow` 를 금지한다.
+   *   ⇒ overlay 가지가 이미 쓰던 **같은 토큰**(`--dash-radius`, 셀러/어드민 8px · 그 밖 16px)으로 통일.
+   *   같은 부품이 두 반경을 갖고 있던 것 자체가 드리프트였다.
+   */
+  const panelCls = asPage
+    ? 'light-island w-full bg-white rounded-[var(--dash-radius,16px)] shadow-lift flex flex-col min-h-0 max-h-[78dvh] lg:max-h-[82dvh]'
+    : 'light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)] max-h-[92dvh] flex flex-col'
+
   if (taken) {
     return (
-      <div className="fixed inset-0 z-[10500] flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4"
-        onClick={dismissOnBackdrop ? onClose : undefined}>
-        <div className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)]" onClick={e => e.stopPropagation()}>
+      <div className={shellCls} onClick={shellClick}>
+        <div className={asPage
+          ? 'light-island w-full bg-white rounded-[var(--dash-radius,16px)] shadow-lift'
+          : 'light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)]'} onClick={e => e.stopPropagation()}>
           <div className="p-5">
             <h2 className="text-base font-bold text-gray-900">이미 유어딜에 등록된 매장이에요</h2>
             {/* ⚠️ 누구 것인지 단정하지 않는다 — 내 매장이어도 승인 대기면 좌석이 안 열려 여기로 온다. */}
@@ -302,8 +349,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
   }
 
   return (
-    <div className="fixed inset-0 z-[10500] flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4"
-      onClick={dismissOnBackdrop ? onClose : undefined}>
+    <div className={shellCls} onClick={shellClick}>
       {/* 🏝️ light-island — 이 패널은 `bg-white` 뿐이라 **테마와 무관하게 늘 흰색**이다. 그런데 이 모달은
         * 소비자 라우트(`/store/new`)에서도 열리므로, 다크에서 안쪽 `dark:` 유틸이 살아 있으면
         * 흰 판 위에 흰 글자가 된다 — 실제로 대표가 검색창에 친 글자를 못 봤다(2026-09-07).
@@ -315,16 +361,21 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
         * ⚠️ `light-fixed` 주석은 가드 면제용 부표일 뿐 런타임엔 아무 일도 안 한다(CLAUDE.md 🏝️ 절).
         * ⚠️ 이 블록의 이어지는 줄이 `*` 로 시작하는 이유: `check-dashboard-theme.sh` 가 여러 줄 JSX
         *    주석의 둘째 줄부터를 실코드로 보고 다크 유틸 표기를 위반으로 잡는다(오탐 방향이라 안전). */}
-      <div className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)] max-h-[92dvh] flex flex-col" onClick={e => e.stopPropagation()}>
+      <div className={panelCls} onClick={e => e.stopPropagation()}>
         <div className="px-4 pt-3 pb-2 shrink-0">
           <div className="flex items-center justify-between">
-            <button
-              onClick={() => (step === 0 ? onClose() : setStep(step - 1))}
-              aria-label={step === 0 ? '닫기' : '이전 단계'}
-              className="-ml-1 p-1 text-gray-400 hover:text-gray-700"
-            >
-              {step === 0 ? <X className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
-            </button>
+            {/* 🖥️ 2026-09-23: page 에서는 1단계의 ✕ 를 그리지 않는다 — 페이지가 이미 자기 ✕ 를 갖고 있어
+                같은 일을 하는 버튼이 둘이 된다(렌더해 보고 발견했다). 2단계부터의 ← 는 페이지가 못 하는
+                일이라 그대로 남는다. `justify-between` 이므로 자리는 빈 span 으로 지켜 `1 / 4` 가 안 밀린다. */}
+            {asPage && step === 0 ? <span aria-hidden="true" /> : (
+              <button
+                onClick={() => (step === 0 ? onClose() : setStep(step - 1))}
+                aria-label={step === 0 ? '닫기' : '이전 단계'}
+                className="-ml-1 p-1 text-gray-400 hover:text-gray-700"
+              >
+                {step === 0 ? <X className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
+              </button>
+            )}
             <span className="text-[11px] font-bold text-gray-400 tabular-nums">{step + 1} / {STEPS.length}</span>
           </div>
           {/* 진행바 — 몇 개 남았는지가 보이면 중간 이탈이 줄어든다(당근 시안 공통) */}
@@ -432,7 +483,7 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
             </div>
           )}
 
-          {/* ④ 사업자 확인 — 사진이 필수, 번호는 선택 */}
+          {/* ④ 사업자 확인 — 사진·번호 **둘 다 선택**(2026-09-21 대표 확정). 심사는 어드민이 한다. */}
           {step === 3 && (
             <div className="space-y-3">
               {/* 🪞 당근 원칙 ⑤ "매 단계 결과 미리보기" — 마지막 문턱에서 **무엇이 등록되는지** 보여 준다.
@@ -475,6 +526,17 @@ export default function StoreRegisterModal({ initialPlace, onClose, onDone, dism
                   </span>
                 </span>
               </label>
+
+              {/* 🕰️ 선택으로 바꾼 대가를 **숨기지 않는다**. "선택" 이라고만 적으면 사장님은 안 올려도
+                  아무 차이가 없는 줄 안다 — 그러면 승인이 며칠 늦어졌을 때 우리가 말 안 해 준 게 된다.
+                  ⚠️ 여기 적는 말은 실제 동작과 같아야 한다: 승인 전에는 `approvedSellerProductSql` 이
+                  메인 노출을 막고, 등록증은 어드민 승인 화면이 본다. */}
+              {!certOk && !uploading && (
+                <p className="text-[11px] text-gray-500 leading-relaxed">
+                  지금 건너뛰어도 매장은 등록돼요. 다만 <span className="font-bold text-gray-700">승인 전까지는 메인에 노출되지 않고</span>,
+                  등록증이 없으면 확인에 더 오래 걸려요. 나중에 <span className="font-bold text-gray-700">업체 정보</span>에서 올릴 수 있어요.
+                </p>
+              )}
 
               {/* 🏷️ 당근 원칙 ②: 선택인 것은 제목에 적는다 — 안 쓰면 못 넘어가나 고민하지 않게. */}
               <div className="pt-1">

@@ -29,23 +29,23 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { execSync } from 'node:child_process'
+import { violations, FIXTURES } from './lib/status-table-scan.mjs'
 
 const ROOT = process.cwd()
 const BASELINE = path.join(ROOT, 'scripts/status-tone-baseline.json')
 const STRICT = process.env.STRICT_STATUS_TONE === '1' || process.argv.includes('-s')
 
-/** 중화되는(=MONO 로 리맵되는) 색조. `red` 만 살아남으므로 제외한다. */
-const NEUTRALIZED = 'pink|rose|fuchsia|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple'
 
-/** 상태 라벨 표로 보이는 줄: 라벨 키(label/t/text)와 색 키(cls/c/color/bg)가 한 객체에 있다. */
-const STATUS_LINE = new RegExp(
-  `\\{[^{}]*\\b(?:label|t|text)\\s*:[^{}]*\\b(?:cls|c|color|bg|className)\\s*:[^{}]*\\}`,
-  'g',
-)
-const HUE = new RegExp(`\\b(?:bg|text|border|ring)-(?:${NEUTRALIZED})-\\d{2,3}\\b`)
-
+/**
+ * 🚦 판정은 순수 모듈에 있다 — `scripts/lib/status-table-scan.mjs`.
+ *   거기로 옮긴 이유와 2026-09-29 의 눈먼 자리(중괄호 금지 정규식)는 그 파일 머리말에 있다.
+ *   여기서는 **훑고·래칫하고·안내**만 한다.
+ */
 const files = execSync("git ls-files 'src/**/*.tsx' 'src/**/*.ts'", { encoding: 'utf-8' })
   .trim().split('\n').filter(Boolean)
+  // 🧪 시험 파일은 화면이 아니다 — 게다가 이 가드의 **대조 픽스처**가 그 안에 문자열로 들어 있어서
+  //    자기 자신을 위반으로 신고한다(2026-09-29 실제로 그랬다). 검사 대상은 렌더되는 소스뿐이다.
+  .filter((f) => !/^src\/tests?\//.test(f))
 
 // ⚠️ 대상이 0이면 통과가 아니라 실패다 — 경로가 낡아 조용히 비는 것을 막는다.
 if (files.length < 200) {
@@ -53,20 +53,21 @@ if (files.length < 200) {
   process.exit(1)
 }
 
-/* 양성/음성 대조 — 매칭이 죽으면 여기서 걸린다(0건 초록이 가장 위험한 실패다). */
-{
-  const bad = `const S = { rejected: { t: '반려', c: 'bg-rose-50 text-rose-700' } }`
-  const ok = `const S = { rejected: { t: '반려', c: 'bg-tone-bad-bg text-tone-bad' }, x: { label: 'x', cls: 'bg-red-50 text-red-700' } }`
-  const hits = (s) => (s.match(STATUS_LINE) || []).filter((m) => HUE.test(m)).length
-  if (hits(bad) !== 1) { console.error('❌ status-tone: 양성 대조 실패 — 명백한 위반을 못 찾는다.'); process.exit(1) }
-  if (hits(ok) !== 0) { console.error('❌ status-tone: 음성 대조 실패 — tone/red 를 위반으로 센다(오탐).'); process.exit(1) }
+/* 양성/음성 대조 — 매칭이 죽으면 여기서 걸린다(0건 초록이 가장 위험한 실패다).
+   픽스처는 순수 모듈이 갖고 있고 유닛시험이 **같은 것을 직접 돌린다**. */
+for (const [name, { src, expect }] of Object.entries(FIXTURES)) {
+  const got = violations(src)
+  if (got !== expect) {
+    console.error(`❌ status-tone: 대조 픽스처 '${name}' 실패 — ${expect} 이어야 하는데 ${got}. 판정이 죽었다.`)
+    process.exit(1)
+  }
 }
 
 const found = []
 for (const f of files) {
   const src = fs.readFileSync(path.join(ROOT, f), 'utf-8')
   if (src.includes('status-tone-ok')) continue
-  const n = (src.match(STATUS_LINE) || []).filter((m) => HUE.test(m)).length
+  const n = violations(src)
   if (n) found.push(`${f}:${n}`)
 }
 

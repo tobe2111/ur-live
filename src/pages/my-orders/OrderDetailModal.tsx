@@ -3,9 +3,10 @@
  *   배송 타임라인 + 결제 정보 + 매장 문의 + 리뷰/취소 액션 포함.
  */
 import { useState } from 'react'
+import { TruckIcon, BoxIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Truck, ChevronRight, Package } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { toast } from '@/hooks/useToast'
 import { formatKST } from '@/utils/date'
@@ -44,7 +45,7 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose} role="presentation">
       <div className="bg-surface rounded-2xl w-full max-h-[80dvh] overflow-y-auto" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('orderDetail.title', { defaultValue: '주문 상세' })}>
         <div className="sticky top-0 bg-white dark:bg-[#11141C] border-b border-gray-100 dark:border-[#2C2F35] p-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t('orderDetail.title', { defaultValue: '주문 상세' })}</h3>
+          <h3 className="text-[17px] font-semibold text-gray-900 dark:text-white">{t('orderDetail.title', { defaultValue: '주문 상세' })}</h3>
           <button
             onClick={onClose}
             aria-label={t('orderDetail.closeAria', { defaultValue: '닫기' })}
@@ -58,7 +59,7 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
           {/* Order Info */}
           <div>
             <h4 className="text-[15px] font-semibold text-gray-900 dark:text-white mb-3">{t('orderDetail.sectionOrderInfo', { defaultValue: '주문 정보' })}</h4>
-            <div className="space-y-2 text-[14px]">
+            <div className="space-y-2 text-[15px]">
               <div className="flex justify-between">
                 <span className="text-gray-500 dark:text-gray-400">{t('orderDetail.orderNumber', { defaultValue: '주문번호' })}</span>
                 <span className="font-medium text-gray-900 dark:text-white">{order.order_number}</span>
@@ -74,15 +75,19 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
                 <Badge
                   className={`
                     border-0 px-3 py-1
+                    ${/* 🚦 2026-09-29: `배송완료`·`배송중` 이 둘 다 같은 잉크였고 `준비중`(amber)은
+                         MONO 중화로 회색이 됐다 — 네 상태 중 셋이 구별되지 않았다. 중화를 통과하는
+                         `tone-*` 로(주문내역 목록 `OrdersTab` 과 같은 배정 — 한 주문을 목록에서 보고
+                         열었을 때 색이 달라지면 그게 더 나쁘다). */''}
                     ${order.status.toLowerCase() === 'delivered'
-                      ? 'bg-gray-900 text-white'
+                      ? 'bg-tone-ok-bg text-tone-ok'
                       : order.status.toLowerCase() === 'shipping'
-                      ? 'bg-gray-900 text-white'
+                      ? 'bg-tone-info-bg text-tone-info'
                       : ['cancelled', 'refunded'].includes(order.status.toLowerCase())
-                      ? 'bg-red-500 text-white'
+                      ? 'bg-tone-bad-bg text-tone-bad'
                       : order.status.toLowerCase() === 'preparing'
-                      ? 'bg-amber-500 text-white'
-                      : 'bg-gray-400 text-white'
+                      ? 'bg-tone-warn-bg text-tone-warn'
+                      : 'bg-gray-100 text-gray-600 dark:bg-white/[0.08] dark:text-gray-300'
                     }
                   `}
                 >
@@ -123,11 +128,11 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
                       />
                     ) : (
                       <div className="w-14 h-14 shrink-0 rounded-lg bg-gray-100 dark:bg-[#1D1F29] flex items-center justify-center">
-                        <Package className="w-5 h-5 text-gray-300 dark:text-gray-600" strokeWidth={1.5} aria-hidden="true" />
+                        <BoxIcon className="w-5 h-5 text-gray-300 dark:text-gray-600" aria-hidden="true" />
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-[14px] font-medium text-gray-900 dark:text-white line-clamp-2">
+                      <p className="text-[15px] font-medium text-gray-900 dark:text-white line-clamp-2">
                         {item.product_name}
                       </p>
                       {item.option_value && (
@@ -139,7 +144,7 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
                         <p className="text-[13px] text-gray-500 dark:text-gray-400">
                           {t('orderDetail.itemQty', { qty: item.quantity, defaultValue: '{{qty}}개' })}
                         </p>
-                        <p className="text-[14px] font-semibold text-gray-900 dark:text-white">
+                        <p className="text-[15px] font-semibold text-gray-900 dark:text-white">
                           {/* 🛡️ 2026-06-18: price_snapshot 직접곱(→0원 버그) 대신 lineTotal 헬퍼 */}
                           {formatNumber(orderItemLineTotal(item))}원
                         </p>
@@ -155,7 +160,7 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
           {isProduct && (
           <div>
             <h4 className="text-[15px] font-semibold text-gray-900 dark:text-white mb-3">{t('orderDetail.sectionShipping', { defaultValue: '배송 정보' })}</h4>
-            <div className="p-4 bg-gray-50 dark:bg-[#1D1F29] rounded-xl space-y-2 text-[14px]">
+            <div className="p-4 bg-gray-50 dark:bg-[#1D1F29] rounded-xl space-y-2 text-[15px]">
               <div className="flex gap-2">
                 <span className="text-gray-500 dark:text-gray-400 min-w-[60px]">{t('orderDetail.recipient', { defaultValue: '받는분' })}</span>
                 <span className="font-medium text-gray-900 dark:text-white">{order.shipping_name}</span>
@@ -192,10 +197,10 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
                       {steps.map((step, si) => (
                         <div key={si} className="flex items-center flex-1">
                           <div className="flex flex-col items-center">
-                            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${step.done ? 'bg-gray-900 text-white' : 'bg-gray-200 dark:bg-[#2C2F35] text-gray-400 dark:text-gray-500'}`}>
+                            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[12px] font-bold ${step.done ? 'bg-gray-900 text-white' : 'bg-gray-200 dark:bg-[#2C2F35] text-gray-400 dark:text-gray-500'}`}>
                               {step.done ? '✓' : si + 1}
                             </div>
-                            <span className={`text-[10px] mt-1 ${step.done ? 'text-blue-600 font-medium' : 'text-gray-400 dark:text-gray-500'}`}>{step.label}</span>
+                            <span className={`text-[12px] mt-1 ${step.done ? 'text-blue-600 font-medium' : 'text-gray-400 dark:text-gray-500'}`}>{step.label}</span>
                           </div>
                           {si < steps.length - 1 && <div className={`flex-1 h-0.5 mx-1 mt-[-12px] ${steps[si + 1].done ? 'bg-blue-500' : 'bg-gray-200 dark:bg-[#2C2F35]'}`} />}
                         </div>
@@ -203,7 +208,7 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Truck className="h-4 w-4 text-blue-600" />
+                        <TruckIcon className="h-4 w-4 text-blue-600" />
                         <div className="text-[13px]">
                           {order.courier && (
                             <span className="text-gray-500 dark:text-gray-400">{order.courier} · </span>
@@ -215,7 +220,7 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
                         {/* 🛡️ 2026-05-25 (migration 0279): 인앱 추적 모달 — tracker.delivery 무료 API */}
                         <button
                           onClick={() => setShowTracking(true)}
-                          className="text-[13px] text-brand-text font-medium hover:opacity-60 transition-opacity flex items-center gap-0.5"
+                          className="text-[13px] text-brand-text font-medium hover:opacity-60 transition-opacity flex items-center gap-1"
                         >
                           📦 {t('orderDetail.trackingDetail', { defaultValue: '상세 추적' })}
                         </button>
@@ -223,7 +228,7 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
                           <a
                             href={getTrackingUrl(order.courier, order.tracking_number)}
                             target="_blank" rel="noopener noreferrer"
-                            className="text-[13px] text-blue-600 font-medium hover:opacity-60 transition-opacity flex items-center gap-0.5"
+                            className="text-[13px] text-blue-600 font-medium hover:opacity-60 transition-opacity flex items-center gap-1"
                           >
                             {t('orderDetail.trackingLink', { defaultValue: '배송조회' })}
                             <ChevronRight className="h-3.5 w-3.5" />
@@ -241,7 +246,7 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
           {/* Payment Info — 🛡️ 2026-06-18: 하드코딩 3,000원 제거, 실 subtotal/shipping_fee/discount 로 분해 */}
           <div>
             <h4 className="text-[15px] font-semibold text-gray-900 dark:text-white mb-3">{t('orderDetail.sectionPayment', { defaultValue: '결제 정보' })}</h4>
-            <div className="space-y-2 text-[14px]">
+            <div className="space-y-2 text-[15px]">
               <div className="flex justify-between">
                 <span className="text-gray-500 dark:text-gray-400">{t('orderDetail.productAmount', { defaultValue: '상품 금액' })}</span>
                 <span className="font-medium text-gray-900 dark:text-white">{formatNumber(productAmount)}원</span>
@@ -249,7 +254,7 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
               {discountAmount > 0 && (
                 <div className="flex justify-between">
                   <span className="text-gray-500 dark:text-gray-400">{t('orderDetail.discountAmount', { defaultValue: '할인 금액' })}</span>
-                  <span className="font-medium text-rose-600">-{formatNumber(discountAmount)}원</span>
+                  <span className="font-medium text-sale">-{formatNumber(discountAmount)}원</span>
                 </div>
               )}
               {isProduct && (
@@ -262,7 +267,7 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
               )}
               <div className="flex justify-between pt-2 border-t border-line">
                 <span className="text-gray-900 dark:text-white font-semibold">{t('orderDetail.totalAmount', { defaultValue: '총 결제금액' })}</span>
-                <span className="text-[19px] font-bold text-gray-900 dark:text-white">{formatNumber(totalAmount)}원</span>
+                <span className="text-[17px] font-bold text-gray-900 dark:text-white">{formatNumber(totalAmount)}원</span>
               </div>
               {order.payment_method && (
                 <div className="flex justify-between">
@@ -298,7 +303,7 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
                 onClose()
                 navigate(`/products/${order.items?.[0]?.product_id || ''}`)
               }}
-              className="w-full py-3 text-[15px] font-medium text-amber-600 border border-amber-300 rounded-xl hover:bg-amber-50 transition-colors"
+              className="w-full py-3 text-[15px] font-semibold text-brand-text border border-brand rounded-xl hover:bg-brand/[0.06] transition-colors"
             >
               {t('orderDetail.writeReview', { defaultValue: '★ 리뷰 작성하기' })}
             </button>
@@ -324,7 +329,7 @@ export default function OrderDetailModal({ order, onClose, onCancel, onHide }: P
                 onClose()
                 onHide(order.id, order.order_number ?? String(order.id))
               }}
-              className="w-full py-3 text-[14px] font-medium text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              className="w-full py-3 text-[15px] font-medium text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
             >
               {t('orderDetail.hideOrder', { defaultValue: '구매 내역 삭제' })}
             </button>

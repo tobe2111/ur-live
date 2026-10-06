@@ -8,6 +8,7 @@ import type { Product, ProductFilter, ProductCreateInput, ProductUpdateInput } f
 import { VOUCHER_CATEGORIES } from '@/shared/constants/voucher-categories';
 import { capRowGalleries } from '@/features/group-buy/api/card-gallery'
 import { buildSearchClause } from './search-query'
+import { activeSellerProductSql } from '@/shared/db/consumer-visible-product'
 import { isAffiliateProgramEnabled, gateAffiliateRows } from '../../../worker/utils/affiliate-program';
 
 /**
@@ -437,7 +438,7 @@ export class ProductRepository {
     //   **부분매칭 + SQL 랭킹**으로 간다. 왜 그게 이 규모에서 이상적인지는 `search-query.ts` 머리말 참조
     //   (요약: 라이브 FTS 는 porter 토크나이저라 단어 *안쪽*을 못 잡고, trigram 으로 바꾸면 2글자
     //    검색어가 통째로 죽으며, FTS 인덱스엔 **매장명이 아예 없다**).
-    const { where, rank, params: searchParams } = buildSearchClause(query, expandSynonyms, 'p')
+    const { where, rank, whereParams, rankParams } = buildSearchClause(query, expandSynonyms, 'p')
     if (!where) return []
 
     const params: any[] = []
@@ -446,10 +447,14 @@ export class ProductRepository {
       FROM products p
       WHERE ${where}
       AND p.is_active = 1
+      AND ${activeSellerProductSql('p')}
       AND NOT (COALESCE(p.is_supply_product, 0) = 1 AND COALESCE(p.supply_source_id, 0) = 0)
       AND NOT (COALESCE(p.category, '') = 'general' AND p.seller_id IS NULL)
     `;
-    params.push(...searchParams)
+    // 🔴 바인딩은 **SQL 텍스트 등장 순서**다 — 랭킹 식이 SELECT 에 있으니 `rank` 값이 먼저,
+    //   그다음이 WHERE 값이다. (2026-09-30: 반대로 넣고 있었다. 개수가 맞아 예외가 안 나고
+    //   값이 전부 LIKE 패턴이라 **틀린 결과가 조용히** 나왔다 — search-query.ts 머리말 참조.)
+    params.push(...rankParams, ...whereParams)
 
     // 추가 필터 — 기존 계약 그대로 승계.
     if (filter.sellerId) { sql += ` AND p.seller_id = ?`; params.push(filter.sellerId) }
@@ -459,7 +464,11 @@ export class ProductRepository {
     if (filter.maxPrice !== undefined) { sql += ` AND p.price <= ?`; params.push(filter.maxPrice) }
 
     // 동점은 많이 팔린 것 → 평점 → 최신 순. `_rank` 는 위 SELECT 의 별칭이라 재계산 없음.
-    sql += ` ORDER BY _rank DESC, COALESCE(p.sold_count,0) DESC, COALESCE(p.rating,0) DESC, p.id DESC LIMIT ? OFFSET ?`
+    // 🔴 평점 컬럼은 `avg_rating` 이다 — `rating` 은 products 에 **없다**(라이브 100컬럼 실측).
+    //   2026-09-03~09-30 동안 이 한 글자 때문에 랭킹 쿼리가 **매 검색마다** 'no such column' 으로
+    //   죽고 아래 catch 가 findAll(통짜 문자열 LIKE)로 조용히 내려갔다 — 부분매칭·토큰 AND·동의어·
+    //   랭킹·매장명까지 2026-09-03 재작성 전체가 라이브에서 한 번도 돈 적이 없다.
+    sql += ` ORDER BY _rank DESC, COALESCE(p.sold_count,0) DESC, COALESCE(p.avg_rating,0) DESC, p.id DESC LIMIT ? OFFSET ?`
     params.push(limit, offset)
 
     try {

@@ -7,9 +7,10 @@
  * - 외부 콘텐츠 (YouTube/Vimeo) 는 새 창 열기, 파일은 직접 다운로드
  */
 import { useEffect, useState } from 'react'
+import { ClockIcon, WarnIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Download, Play, FileText, BookOpen, Music, Image as ImageIcon, Clock, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, Download, Play, FileText, BookOpen, Music, Image as ImageIcon } from 'lucide-react'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
 import SEO from '@/components/SEO'
@@ -101,11 +102,11 @@ export default function MyDigitalLibraryPage() {
       <div className="ur-content-narrow px-4 py-6 lg:py-10 mx-auto" style={{ width: '100%' }}>
         <header className="mb-6">
           {/* 🛡️ 2026-07-02: 위성 페이지 이탈 동선 — 뒤로가기 (다른 My* 페이지와 통일) */}
-          <button onClick={() => navigate(-1)} className="mb-2 -ml-1.5 p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-[#1D1F29]" aria-label={t('common.back', { defaultValue: '뒤로' })}>
+          <button onClick={() => navigate(-1)} className="mb-2 -ml-1.5 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-[#1D1F29]" aria-label={t('common.back', { defaultValue: '뒤로' })}>
             <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-200" />
           </button>
-          <h1 className="text-xl lg:text-3xl font-bold text-gray-900 dark:text-white">{t('digitalLibrary.title', { defaultValue: '디지털 보관함' })}</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{t('digitalLibrary.subtitle', { defaultValue: '전자책 · 강의 · 가이드 · 영상 — 구매한 콘텐츠 모음' })}</p>
+          <h1 className="text-[17px] lg:text-[28px] font-bold text-gray-900 dark:text-white">{t('digitalLibrary.title', { defaultValue: '디지털 보관함' })}</h1>
+          <p className="text-[15px] text-gray-500 dark:text-gray-400 mt-1">{t('digitalLibrary.subtitle', { defaultValue: '전자책 · 강의 · 가이드 · 영상 — 구매한 콘텐츠 모음' })}</p>
         </header>
 
         {loading ? (
@@ -116,17 +117,17 @@ export default function MyDigitalLibraryPage() {
           </div>
         ) : isError ? (
           <div className="text-center py-16">
-            <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">{t('digitalLibrary.loadFailed', { defaultValue: '보관함을 불러오지 못했어요' })}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">{t('common.checkNetworkRetry', { defaultValue: '네트워크 상태를 확인한 뒤 다시 시도해주세요' })}</p>
-            <button onClick={() => refetch()} className="px-5 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full text-sm font-bold">
+            <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">{t('digitalLibrary.loadFailed', { defaultValue: '보관함을 불러오지 못했어요' })}</p>
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-4">{t('common.checkNetworkRetry', { defaultValue: '네트워크 상태를 확인한 뒤 다시 시도해주세요' })}</p>
+            <button onClick={() => refetch()} className="px-5 py-2 bg-brand text-white rounded-full text-[15px] font-bold">
               {t('common.retry', { defaultValue: '다시 시도' })}
             </button>
           </div>
         ) : items.length === 0 ? (
           <div className="text-center py-16">
             <BookOpen className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
-            <p className="text-sm text-gray-500 dark:text-gray-400">{t('digitalLibrary.empty', { defaultValue: '아직 구매한 디지털 상품이 없습니다' })}</p>
-            <button onClick={() => navigate('/browse')} className="mt-4 px-5 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-xl hover:bg-gray-900">
+            <p className="text-[15px] text-gray-500 dark:text-gray-400">{t('digitalLibrary.empty', { defaultValue: '아직 구매한 디지털 상품이 없습니다' })}</p>
+            <button onClick={() => navigate('/browse')} className="mt-4 px-5 py-2 bg-brand text-white text-[15px] font-medium rounded-xl hover:bg-brand">
               {t('digitalLibrary.browseCta', { defaultValue: '상품 둘러보기' })}
             </button>
           </div>
@@ -152,17 +153,17 @@ export default function MyDigitalLibraryPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="text-[11px] font-bold text-purple-600 dark:text-purple-400">{KIND_LABEL[it.product_kind] || t('digitalLibrary.kindDefault', { defaultValue: '디지털' })}</p>
-                          <h3 className="text-sm font-bold text-gray-900 dark:text-white truncate">{it.product_name}</h3>
+                          <p className="text-[12px] font-bold text-purple-600 dark:text-purple-400">{KIND_LABEL[it.product_kind] || t('digitalLibrary.kindDefault', { defaultValue: '디지털' })}</p>
+                          <h3 className="text-[15px] font-bold text-gray-900 dark:text-white truncate">{it.product_name}</h3>
                           {it.seller_name && (
-                            <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">{it.seller_name}</p>
+                            <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">{it.seller_name}</p>
                           )}
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3 mt-2 text-[11px] text-gray-500 dark:text-gray-400">
+                      <div className="flex items-center gap-3 mt-2 text-[12px] text-gray-500 dark:text-gray-400">
                         <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
+                          <ClockIcon className="w-3 h-3" />
                           {formatExpiry(it.expires_at)}
                         </span>
                         <span>{t('digitalLibrary.downloadCount', { count: it.download_count, limit: it.download_limit, defaultValue: '다운로드 {{count}}/{{limit}}' })}</span>
@@ -170,15 +171,15 @@ export default function MyDigitalLibraryPage() {
                       </div>
 
                       {isExpired ? (
-                        <div className="mt-2 flex items-center gap-1 text-[11px] text-red-600">
-                          <AlertTriangle className="w-3 h-3" /> {t('digitalLibrary.accessError', { status: it.status, defaultValue: '접근 불가 ({{status}})' })}
+                        <div className="mt-2 flex items-center gap-1 text-[12px] text-red-600">
+                          <WarnIcon className="w-3 h-3" /> {t('digitalLibrary.accessError', { status: it.status, defaultValue: '접근 불가 ({{status}})' })}
                         </div>
                       ) : (
                         <div className="mt-3 flex gap-2">
                           <button
                             onClick={() => openItem(it.access_token)}
                             disabled={opening === it.access_token || remainingDownloads === 0}
-                            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-900 hover:bg-gray-900 text-white text-xs font-bold rounded-lg disabled:opacity-50"
+                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-brand hover:bg-brand text-white text-[12px] font-bold rounded-lg disabled:opacity-50"
                           >
                             {it.product_kind === 'video_course' ? <Play className="w-3.5 h-3.5" /> : <Download className="w-3.5 h-3.5" />}
                             {opening === it.access_token ? t('digitalLibrary.openingLabel', { defaultValue: '여는 중...' }) : it.product_kind === 'video_course' ? t('digitalLibrary.watchLabel', { defaultValue: '시청하기' }) : t('digitalLibrary.downloadLabel', { defaultValue: '다운로드' })}
@@ -186,7 +187,7 @@ export default function MyDigitalLibraryPage() {
                           {it.preview_url && (
                             <button
                               onClick={() => window.open(it.preview_url!, '_blank', 'noopener,noreferrer')}
-                              className="px-3 py-2 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200 text-xs font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-[#2C2F35]"
+                              className="px-3 py-2 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-200 text-[12px] font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-[#2C2F35]"
                             >
                               {t('digitalLibrary.previewLabel', { defaultValue: '미리보기' })}
                             </button>
@@ -195,7 +196,7 @@ export default function MyDigitalLibraryPage() {
                       )}
 
                       {isExpiringSoon && !isExpired && (
-                        <p className="mt-2 text-[10px] text-amber-600 dark:text-amber-400">{t('digitalLibrary.expiringSoon', { defaultValue: '⏰ 곧 만료됩니다' })}</p>
+                        <p className="mt-2 text-[12px] text-amber-600 dark:text-amber-400">{t('digitalLibrary.expiringSoon', { defaultValue: '⏰ 곧 만료됩니다' })}</p>
                       )}
                     </div>
                   </div>

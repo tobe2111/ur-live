@@ -30,6 +30,8 @@ const USAGE = 'src/pages/group-buy/UsageGuide.tsx'
 const JOIN = 'src/features/group-buy/api/group-buy.routes.ts'
 const META = 'src/features/group-buy/api/detail-meta-enrich.ts'
 const CAP = 'src/worker/utils/purchase-cap.ts'
+// 🔄 2026-09-24: 설명 렌더가 상세 본문 → '가게 소개' 부품으로 옮겨졌다(대표 문서 ①).
+const STORE_INTRO = 'src/pages/group-buy/StoreIntro.tsx'
 
 describe('안 B — 공구 상세', () => {
   it('① 매장명 4회차였던 이용 안내의 `사용처` 행이 없다', () => {
@@ -38,8 +40,14 @@ describe('안 B — 공구 상세', () => {
   })
 
   it('② 설명이 제목과 같은 문자열이면 안 그린다 (상품명 3회 → 1회)', () => {
-    const s = code(GB)
-    expect(s).toMatch(/detail\.description\.trim\(\)\s*!==\s*\(detail\.name \|\| ''\)\.trim\(\)/)
+    /* 🔄 2026-09-24: 이 판정의 **자리가 옮겨졌다.** 대표 문서 ① 로 상품 설명이 '이용 안내' 꼬리에서
+       나와 새 '가게 소개' 블록(`StoreIntro`)으로 갔다. 불변식은 그대로이므로 가드를 풀지 않고
+       새 자리로 재조준한다 — 상세 페이지는 이제 값을 **넘기기만** 하고 판정은 부품이 한다.
+       (주입 지도 검사가 이 어긋남을 먼저 잡아 줬다.) */
+    const s = code(STORE_INTRO)
+    expect(s).toMatch(/raw\s*!==\s*\(productName \|\| ''\)\.trim\(\)/)
+    // 상세 본문이 설명을 **직접** 그리던 자리로 되돌아가지 않는다(그러면 두 벌이 된다).
+    expect(code(GB)).not.toMatch(/\{detail\.description &&[\s\S]{0,80}<p /)
   })
 
   it('③ 할인 문구가 줄었다 — `1매당 N원 저렴` 이 없다(바로 위 줄이 정가·할인율·판매가를 이미 말한다)', () => {

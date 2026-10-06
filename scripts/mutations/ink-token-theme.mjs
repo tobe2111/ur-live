@@ -8,7 +8,7 @@ export default [
   {
     name: '🖋️ 잉크가 다시 고정 hex 로 돌아간다',
     file: 'tailwind.config.js',
-    find: `          DEFAULT: 'var(--ink)',       // 제목/본문/가격 — 라이트 #16181C / 다크 #F5F3F1`,
+    find: `          DEFAULT: 'var(--ink)',       // 제목/본문/가격 — 라이트 #16181C / 다크 #F8F7FC`,
     replace: `          DEFAULT: '#16181C',`,
     test: 'src/tests/unit/ink-token-theme-2026-09-16.test.ts',
     why:

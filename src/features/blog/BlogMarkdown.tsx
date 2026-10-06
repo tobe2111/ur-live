@@ -1,4 +1,12 @@
 /**
+ * 🔤 2026-09-24 (대표 문서 ② "너무 가독성이 떨어진다"): 본문 15px → **16.5px**, 줄간격 1.8 → 1.85.
+ *
+ * 왜 이 숫자인가 — 상세는 `[목차 220 | 본문 | 사이드 260]` 3열이라 1280px 에서 본문 칸이 약 760px 다.
+ * 15px 한글이면 한 줄에 **95자** 가까이 들어가는데, 편한 길이는 40~50자다. 글자를 키우고
+ * (한 줄 글자 수↓) 같은 커밋에서 본문 폭도 `max-w-[46rem]` 으로 묶었다(`BlogDetailPage`).
+ * ⚠️ 둘은 짝이다 — 폭만 줄이거나 글자만 키우면 반쪽이다.
+ */
+/**
  * 📝 2026-07-01 블로그 본문 렌더러 (SSOT) — 상세 페이지 + 관리자 미리보기 공용.
  *
  *   안전성: dangerouslySetInnerHTML 미사용 — 전부 React 노드로 렌더(문자열 자식은 React 가 자동 이스케이프).
@@ -99,7 +107,7 @@ export function BlogMarkdown({ content }: { content: string }) {
       return (
         <ul key={i} className="my-3 space-y-1.5">
           {items.map((item, j) => (
-            <li key={j} className="flex items-start gap-2 text-[15px] text-gray-700 dark:text-gray-200 leading-relaxed">
+            <li key={j} className="flex items-start gap-2 text-[16.5px] text-gray-700 dark:text-gray-200 leading-[1.85]">
               <span className="text-brand-text mt-1 shrink-0">•</span>
               <span>{renderInline(item.trim().slice(2), `u${i}i${j}`)}</span>
             </li>
@@ -116,7 +124,7 @@ export function BlogMarkdown({ content }: { content: string }) {
           {items.map((item, j) => {
             const mm = item.trim().match(/^(\d+)\.\s+(.*)$/)
             return (
-              <li key={j} className="flex items-start gap-2 text-[15px] text-gray-700 dark:text-gray-200 leading-relaxed">
+              <li key={j} className="flex items-start gap-2 text-[16.5px] text-gray-700 dark:text-gray-200 leading-[1.85]">
                 <span className="text-brand-text font-semibold mt-0.5 shrink-0 tabular-nums">{mm?.[1] ?? j + 1}.</span>
                 <span>{renderInline(mm?.[2] ?? item, `o${i}i${j}`)}</span>
               </li>
@@ -140,7 +148,7 @@ export function BlogMarkdown({ content }: { content: string }) {
     if (trimmed === '---') return <hr key={i} className="my-8 border-line" />
 
     // 일반 단락
-    return <p key={i} className="text-[15px] text-gray-700 dark:text-gray-200 leading-[1.8] my-3">{renderInline(trimmed, `p${i}`)}</p>
+    return <p key={i} className="text-[16.5px] text-gray-700 dark:text-gray-200 leading-[1.85] my-3">{renderInline(trimmed, `p${i}`)}</p>
   }).filter(Boolean)
 
   return <>{blocks}</>

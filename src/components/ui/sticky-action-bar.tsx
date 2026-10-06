@@ -27,7 +27,7 @@ interface StickyActionBarProps extends React.HTMLAttributes<HTMLDivElement> {
  * 사용: 스크롤 본문의 **맨 끝**에 배치.
  *   <Screen>                              // min-h-[100dvh] (pb-NN 불필요)
  *     …content…
- *     <StickyActionBar responsiveClassName="lg:hidden" className="bg-white border-t px-5 pt-2.5">
+ *     <StickyActionBar responsiveClassName="lg:hidden" className="bg-white border-t px-5 pt-2">
  *       <button>주문</button>
  *     </StickyActionBar>
  *   </Screen>

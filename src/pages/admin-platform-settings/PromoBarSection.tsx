@@ -7,6 +7,8 @@
  * 페이지(AdminPlatformSettingsPage)가 600줄 한도에 가까워 별도 파일로 뺐다(file-size 룰).
  */
 
+import SettingRow, { settingControlCls } from './SettingRow'
+
 const PROMO_KEYS = {
   enabled: 'promo_bar_enabled',
   text: 'promo_bar_text',
@@ -51,78 +53,52 @@ export default function PromoBarSection({
       </div>
 
       <div className="divide-y divide-gray-100">
-        <label className="flex items-center justify-between gap-4 px-5 py-4">
-          <span className="min-w-0">
-            <span className="block text-sm font-medium text-gray-900">문구</span>
-            <span className="block text-xs text-gray-400 mt-0.5">비우면 켜져 있어도 안 나온다. 한 줄로 짧게</span>
-          </span>
+        <SettingRow as="label" label="문구" hint="비우면 켜져 있어도 안 나온다. 한 줄로 짧게">
           <input
             value={settings[PROMO_KEYS.text] ?? ''}
             placeholder="예: 첫 구매 5,000원 할인 쿠폰"
             onChange={e => set(PROMO_KEYS.text, e.target.value)}
-            className="w-72 shrink-0 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 font-medium"
+            className={settingControlCls('sm:w-72')}
           />
-        </label>
+        </SettingRow>
 
-        <label className="flex items-center justify-between gap-4 px-5 py-4">
-          <span className="min-w-0">
-            <span className="block text-sm font-medium text-gray-900">버튼 문구</span>
-            <span className="block text-xs text-gray-400 mt-0.5">비우면 버튼 없이 문구만</span>
-          </span>
+        <SettingRow as="label" label="버튼 문구" hint="비우면 버튼 없이 문구만">
           <input
             value={settings[PROMO_KEYS.cta] ?? ''}
             placeholder="예: 받으러 가기"
             onChange={e => set(PROMO_KEYS.cta, e.target.value)}
-            className="w-72 shrink-0 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 font-medium"
+            className={settingControlCls('sm:w-72')}
           />
-        </label>
+        </SettingRow>
 
-        <label className="flex items-center justify-between gap-4 px-5 py-4">
-          <span className="min-w-0">
-            <span className="block text-sm font-medium text-gray-900">버튼 링크</span>
-            <span className="block text-xs text-gray-400 mt-0.5">
-              <span className="font-semibold text-gray-600">사이트 내부 경로만</span> (예: <code>/vouchers</code>).
-              외부 주소를 넣으면 서버가 링크를 버린다
-            </span>
-          </span>
+        <SettingRow as="label" label="버튼 링크" hint={<><span className="font-semibold text-gray-600">사이트 내부 경로만</span> (예: <code>/vouchers</code>).
+              외부 주소를 넣으면 서버가 링크를 버린다</>}>
           <input
             value={settings[PROMO_KEYS.href] ?? ''}
             placeholder="/vouchers"
             onChange={e => set(PROMO_KEYS.href, e.target.value)}
-            className="w-72 shrink-0 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 font-medium"
+            className={settingControlCls('sm:w-72')}
           />
-        </label>
+        </SettingRow>
 
-        <label className="flex items-center justify-between gap-4 px-5 py-4">
-          <span className="min-w-0">
-            <span className="block text-sm font-medium text-gray-900">배경색</span>
-            <span className="block text-xs text-gray-400 mt-0.5">
-              <code>#16181C</code> 형식. 비우면 브랜드 잉크색
-            </span>
-          </span>
+        <SettingRow as="label" label="배경색" hint={<><code>#16181C</code> 형식. 비우면 브랜드 잉크색</>}>
           <input
             value={settings[PROMO_KEYS.bg] ?? ''}
             placeholder="#16181C"
             onChange={e => set(PROMO_KEYS.bg, e.target.value)}
-            className="w-40 shrink-0 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 font-medium"
+            className={settingControlCls('sm:w-40')}
           />
-        </label>
+        </SettingRow>
 
-        <label className="flex items-center justify-between gap-4 px-5 py-4">
-          <span className="min-w-0">
-            <span className="block text-sm font-medium text-gray-900">버전</span>
-            <span className="block text-xs text-gray-400 mt-0.5">
-              닫기(X)를 누른 사람에게 <span className="font-semibold text-gray-600">다시 보여주려면 숫자를 올린다</span>.
-              문구만 바꾸면 이미 닫은 사람에게는 안 보인다
-            </span>
-          </span>
+        <SettingRow as="label" label="버전" hint={<>닫기(X)를 누른 사람에게 <span className="font-semibold text-gray-600">다시 보여주려면 숫자를 올린다</span>.
+              문구만 바꾸면 이미 닫은 사람에게는 안 보인다</>}>
           <input
             value={settings[PROMO_KEYS.version] ?? ''}
             placeholder="1"
             onChange={e => set(PROMO_KEYS.version, e.target.value.replace(/[^0-9]/g, ''))}
-            className="w-28 text-right shrink-0 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 font-medium"
+            className={settingControlCls('sm:w-28', 'text-right')}
           />
-        </label>
+        </SettingRow>
       </div>
 
       {/* 미리보기 — 저장 전에 어떻게 보일지 그 자리에서 확인 */}

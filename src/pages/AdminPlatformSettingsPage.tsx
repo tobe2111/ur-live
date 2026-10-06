@@ -13,6 +13,7 @@ import MapMarkerSection from './admin-platform-settings/MapMarkerSection'
 import CloudflareCredsSection from './admin-platform-settings/CloudflareCredsSection'
 import { CREDENTIAL_KEYS, buildSettingsPayload } from './admin-platform-settings/settings-payload'
 import { COMMISSION_BUDGET_FIELDS } from './admin-platform-settings/money-switch-fields'
+import SettingRow, { settingControlCls } from './admin-platform-settings/SettingRow'
 
 /**
  * 🔁 재수출 — 이 페이지가 이 두 심볼의 **공개 표면**이다(시험·다른 화면이 여기서 가져간다).
@@ -26,14 +27,25 @@ export { CREDENTIAL_KEYS, buildSettingsPayload }
 const SETTINGS_FIELDS = [
   { key: 'commission_rate_default', label: '기본 수수료율 — 일반 상품 (%)', default: '10' },
   { key: 'commission_rate_live', label: '라이브 판매 수수료율 (%)', default: '5' },
-  { key: 'commission_rate_meal_voucher', label: '이용권(공동구매) 수수료율 (%)', default: '5' },
+  // 💸 2026-10-01 (대표 "5% + vat로 해야해. 부가세 별도"): 이 값은 **그대로 떼는 차감률**이다 —
+  //   코드에 부가세 승수가 없으므로 부가세를 별도로 받으려면 값 자체를 5.5 로 올린다(약관과 결과 동일).
+  //   ⚠️ 값은 대표가 직접 바꾼다(등급 C). 여기서 `default` 를 올리지 **않는** 이유는 따로 있다 —
+  //   `buildSettingsPayload` 는 **바뀐 키만** 보내므로 default 를 고쳐도 저장되는 것은 없다. 대신
+  //   `value={settings[f.key] ?? f.default}` 라서 그 키가 platform_settings 에 **없을 때 화면에만**
+  //   그 숫자가 뜬다 ⇒ 코드의 자체 폴백(5)과 어긋나면 **화면이 거짓말을 한다.** 그래서 라벨로 안내만 한다.
+  { key: 'commission_rate_meal_voucher', label: '이용권(공동구매) 수수료율 (%, 부가세 포함 차감률 — 별도로 받으려면 5.5)', default: '5' },
   { key: 'agency_commission_rate', label: '에이전시 추가 수수료율 (%)', default: '2' },
   { key: 'min_donation', label: '최소 후원 금액 (딜)', default: '500' },
   { key: 'free_shipping_threshold', label: '무료배송 기준 (원)', default: '50000' },
   { key: 'default_shipping_fee', label: '기본 배송비 (원)', default: '3000' },
   { key: 'auto_confirm_days', label: '자동 구매확정 (일)', default: '14' },
   { key: 'return_period_days', label: '반품 가능 기간 (일)', default: '7' },
-  { key: 'settlement_hold_days', label: '정산 대기 기간 (일)', default: '7' },
+  // 🕙 2026-09-24: 여기 오래 `settlement_hold_days`(기본 7)가 있었는데 **아무도 안 읽는 키였다**
+  //   (전수 grep: 검증표 한 줄 외에 참조 0). 그런데 라벨이 '정산 대기 기간'이라, 유보를 줄이거나
+  //   끄려고 그 값을 고치면 **아무 일도 안 일어난다** — 돈이 안 나가는데 화면은 고쳤다고 말한다.
+  //   진짜 키는 `payout_hold_days`(payout-hold.ts)이고 그게 #1521 이 적어 둔 **롤백 수단**인데
+  //   이 화면에 없어서 대표가 닿을 수 없었다("머니 경로의 롤백 시간이 곧 손실 크기다" — 그 PR 본문).
+  { key: 'payout_hold_days', label: '정산 유보 기간 (역일 · 기본 14 = 영업일 10일, 0이면 유보 없음)', default: '14' },
   { key: 'invite_reward_amount', label: '초대 보상 딜', default: '1000' },
   { key: 'review_reward_text', label: '텍스트 리뷰 보상 (딜)', default: '100' },
   { key: 'review_reward_image', label: '이미지 리뷰 보상 (딜)', default: '300' },
@@ -96,6 +108,23 @@ export const OPS_POLICY_FIELDS: Array<{ key: string; label: string; hint: string
     label: '서류 OCR 자동 승인',
     hint: "기본 꺼짐. 'true' 로 켜면 등록증 추출값이 전부 맞을 때 승인이 자동으로 난다. 켜기 전 S-OCR 절차(실사진 정확도)를 먼저 돌 것 — 자동 반려는 어떤 값으로도 켜지지 않는다",
     text: true,
+  },
+  {
+    // 📮 2026-09-21: 이 게이트는 `OPS_GATES` 에만 있고 **켤 화면이 없었다** — 코드에만 존재하고
+    //   영영 OFF 로 남는 모양이다(`ops-gate-reachable` 이 잡았다). CI 가 스택된 PR 에는 안 돌아
+    //   묻혀 있던 결함이다.
+    //   ⚠️ `text: true` — 값이 'true'/'false' 문자열이라 숫자 검증 배열에 두면 저장이 거부된다.
+    key: 'store_owner_notice_enabled',
+    label: '사장님 매장 등록 통보(알림톡)',
+    hint: "기본 꺼짐. 'true' 로 켜도 `ALIGO_TPL_STORE_NOTICE`(카카오 검수 통과 템플릿)가 없으면 안 나간다. 자동 발송은 없고 /admin/store-owner 에서 눌러야 나간다 — 켜기 전 S-OWNERNOTICE 절차",
+    text: true,
+  },
+  {
+    // 🕐 2026-09-21: 같은 이유로 노출 유예도 켤 자리가 없었다(숫자라 게이트 명부엔 안 잡힌다).
+    //   0·빈값이면 마커를 **아예 안 쓴다** ⇒ 오늘과 byte-동일. 상한 168(=7일)은 코드가 클램프한다.
+    key: 'store_exposure_grace_hours',
+    label: '신규 매장 메인 노출 유예 (시간)',
+    hint: '비우거나 0 이면 유예 없음(현재 상태 — 승인 즉시 노출). 24 를 넣으면 승인 후 24시간 동안 메인 피드에 안 뜬다. 매장 확인 통화가 끝나면 즉시 풀린다. 최대 168(7일)',
   },
   {
     key: 'pickup_unclaimed_cold_pct',
@@ -276,17 +305,17 @@ export default function AdminPlatformSettingsPage() {
           <>
           <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
             {SETTINGS_FIELDS.map(f => (
-              <div key={f.key} className="flex items-center justify-between px-5 py-4">
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{f.label}</p>
-                  <p className="text-xs text-gray-400">{t('admin.platformSettings.defaultLabel', { defaultValue: '기본값' })}: {f.default}</p>
-                </div>
+              <SettingRow
+                key={f.key}
+                label={f.label}
+                hint={`${t('admin.platformSettings.defaultLabel', { defaultValue: '기본값' })}: ${f.default}`}
+              >
                 <input
                   value={settings[f.key] ?? f.default}
                   onChange={e => setSettings(prev => ({ ...prev, [f.key]: e.target.value }))}
-                  className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 text-right font-medium"
+                  className={settingControlCls('sm:w-24', 'text-right')}
                 />
-              </div>
+              </SettingRow>
             ))}
           </div>
 
@@ -301,16 +330,12 @@ export default function AdminPlatformSettingsPage() {
             </div>
             <div className="divide-y divide-gray-100">
               {COMMISSION_BUDGET_FIELDS.map(f => (
-                <div key={f.key} className="flex items-center justify-between gap-4 px-5 py-4">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-900">{f.label}</p>
-                    {f.hint && <p className="text-xs text-gray-400 mt-0.5">{f.hint}</p>}
-                  </div>
+                <SettingRow key={f.key} label={f.label} hint={f.hint}>
                   {f.options ? (
                     <select
                       value={settings[f.key] ?? f.default}
                       onChange={e => setSettings(prev => ({ ...prev, [f.key]: e.target.value }))}
-                      className="shrink-0 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 font-medium bg-white"
+                      className={settingControlCls(undefined, 'sm:w-auto bg-white')}
                     >
                       {f.options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
@@ -318,10 +343,10 @@ export default function AdminPlatformSettingsPage() {
                     <input
                       value={settings[f.key] ?? f.default}
                       onChange={e => setSettings(prev => ({ ...prev, [f.key]: e.target.value }))}
-                      className="w-28 shrink-0 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 text-right font-medium"
+                      className={settingControlCls('sm:w-28', 'text-right')}
                     />
                   )}
-                </div>
+                </SettingRow>
               ))}
             </div>
           </div>
@@ -337,18 +362,14 @@ export default function AdminPlatformSettingsPage() {
             </div>
             <div className="divide-y divide-gray-100">
               {OPS_POLICY_FIELDS.map(f => (
-                <div key={f.key} className="flex items-center justify-between gap-4 px-5 py-4">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-900">{f.label}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{f.hint}</p>
-                  </div>
+                <SettingRow key={f.key} label={f.label} hint={f.hint}>
                   <input
                     value={settings[f.key] ?? ''}
                     placeholder="미설정"
                     onChange={e => setSettings(prev => ({ ...prev, [f.key]: e.target.value }))}
-                    className={`${f.text ? 'w-56' : 'w-28 text-right'} shrink-0 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 font-medium`}
+                    className={settingControlCls(f.text ? 'sm:w-56' : 'sm:w-28', f.text ? '' : 'text-right')}
                   />
-                </div>
+                </SettingRow>
               ))}
             </div>
           </div>

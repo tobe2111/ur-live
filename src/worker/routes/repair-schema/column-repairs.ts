@@ -425,6 +425,40 @@ export const COLUMN_REPAIRS: ColumnRepair[] = [
     )` },
     { desc: 'idx_store_reports_open', sql: "CREATE UNIQUE INDEX IF NOT EXISTS idx_store_reports_open ON store_reports(seller_id, reporter_key) WHERE status = 'open'" },
     { desc: 'idx_store_reports_status', sql: "CREATE INDEX IF NOT EXISTS idx_store_reports_status ON store_reports(status, created_at)" },
+    // ☎️ 2026-09-21 매장 확인 통화 — 런타임 ensureStoreVerify 의 짝. 이력이라 한 매장에 여러 행이다
+    //   (부재 → 재시도 → 확인됨). 마지막 결과만 남기면 "몇 번 걸었는가" 를 잃는다.
+    { desc: 'store_verify_calls', sql: `CREATE TABLE IF NOT EXISTS store_verify_calls (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      seller_id INTEGER NOT NULL,
+      admin_id INTEGER,
+      result TEXT NOT NULL,
+      note TEXT,
+      created_at DATETIME DEFAULT (datetime('now'))
+    )` },
+    { desc: 'idx_store_verify_calls_seller', sql: 'CREATE INDEX IF NOT EXISTS idx_store_verify_calls_seller ON store_verify_calls(seller_id, created_at DESC)' },
+    // ⏳ 2026-09-21 노출 유예 마커가 사는 곳. 이 테이블이 없으면 소비자 피드의
+    //   `exposureReadySql` 술어가 통째로 깨진다 — 런타임 ensure 만 믿지 않고 여기서도 보장한다.
+    { desc: 'seller_meta', sql: `CREATE TABLE IF NOT EXISTS seller_meta (
+      seller_id INTEGER NOT NULL,
+      key TEXT NOT NULL,
+      value TEXT,
+      updated_at DATETIME DEFAULT (datetime('now')),
+      PRIMARY KEY (seller_id, key)
+    )` },
+    { desc: 'idx_seller_meta_key', sql: 'CREATE INDEX IF NOT EXISTS idx_seller_meta_key ON seller_meta(key, seller_id)' },
+    // 📩 2026-09-21 사장님 통보 줄 — (seller_id, kind) UNIQUE 가 "한 번만" 의 근거다.
+    //   전체 UNIQUE 로 만들면 안 된다 — 나중에 다른 종류의 안내를 못 보낸다.
+    { desc: 'store_owner_notices', sql: `CREATE TABLE IF NOT EXISTS store_owner_notices (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      seller_id INTEGER NOT NULL,
+      phone TEXT NOT NULL,
+      kind TEXT NOT NULL DEFAULT 'store_listed',
+      status TEXT NOT NULL DEFAULT 'queued',
+      error_msg TEXT,
+      created_at DATETIME DEFAULT (datetime('now')),
+      sent_at DATETIME
+    )` },
+    { desc: 'idx_store_owner_notices_once', sql: 'CREATE UNIQUE INDEX IF NOT EXISTS idx_store_owner_notices_once ON store_owner_notices(seller_id, kind)' },
     // 🔒 2026-08-27 유어애즈 DB 열람량 — 대행사 차단(ads-db-access.ts)의 짝. 등록 유형은 자기신고라
     //   우회되지만 "하루에 몇 행 가져갔나"는 우회할 수 없다. 상한의 근거이자 감사 기록.
     { desc: 'seller_ads_db_usage', sql: `CREATE TABLE IF NOT EXISTS seller_ads_db_usage (
@@ -1122,4 +1156,30 @@ export const COLUMN_REPAIRS: ColumnRepair[] = [
     //   guide.routes.ts maybeSyncGuideSeed 가 manually_edited=0 섹션만 시드 최신화(관리자 편집 보존).
     //   guide.routes.ts 인라인 ensure(ensureGuideEditColumn) 병행 — 여기 등록은 repair 경로용.
     { desc: 'operation_guides.manually_edited', sql: "ALTER TABLE operation_guides ADD COLUMN manually_edited INTEGER DEFAULT 0", requiresTable: 'operation_guides' },
+    /**
+     * 💸 2026-09-21 — **결제된 주문인데 `payment_status` 가 기본값 `'pending'` 에 남은 것** 정정.
+     *
+     * 공구·장바구니 결제 경로가 `status='PAID'` 만 쓰고 이 컬럼을 안 써서 기본값에 머물렀다
+     * (오늘 그 INSERT 들을 고쳤고, 이건 그 이전에 쌓인 행들이다). 라이브 실측 4건.
+     * 그 주문들은 `payment_status='approved'` 를 읽는 곳에서 **통째로 빠져 있었다** —
+     * 소비자 환불 요청 게이트(`order.routes` 400) · 일일 매출 다이제스트 · 셀러 일일 리포트 ·
+     * 등급 산정 · 이상 탐지 · 온보딩 `first_payment`.
+     *
+     * ## 왜 이 조건인가
+     * - `status` 가 **결제가 실제로 일어난 상태**일 때만(`PAID`/`DONE`/`DELIVERED`).
+     *   `CANCELLED` 는 건드리지 않는다 — 결제 없이 취소된 건과 결제 후 취소된 건이 섞여 있고,
+     *   섞인 채로 approved 를 찍으면 환불 건수 집계가 되레 틀어진다(라이브 57건).
+     * - **결제 흔적이 있어야 한다**(payment_key / toss_payment_key / 딜 결제 중 하나).
+     *   흔적이 없으면 어떤 경로로 만들어진 행인지 모른다 — 모르면 안 바꾼다.
+     * - `payment_status='pending'` 인 행만. 이미 값이 있는 건 그 값이 진실이다.
+     * 멱등 — 매번 돌려도 같은 결과(일일 schema-repair cron 안전).
+     */
+    { desc: "backfill: orders.payment_status approved (paid rows stuck at default)", sql: `
+      UPDATE orders SET payment_status = 'approved'
+       WHERE COALESCE(payment_status, 'pending') = 'pending'
+         AND UPPER(status) IN ('PAID', 'DONE', 'DELIVERED')
+         AND ( payment_key IS NOT NULL
+            OR toss_payment_key IS NOT NULL
+            OR payment_method = 'deal_points' )
+    ` },
 ]

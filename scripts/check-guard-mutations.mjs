@@ -42,6 +42,7 @@ import { GUARD_RUNNER, touchesGuardScripts } from './guard-mutations-scope.mjs'
 import {
   changedInjectionNames, runnerLogicChanged, testSpawnsSubprocess,
 } from './guard-mutations-manifest-diff.mjs'
+import { assignShards, parseShard } from './guard-mutations-shard.mjs'
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const STRICT = process.argv.includes('-s') || process.argv.includes('--strict')
@@ -90,6 +91,8 @@ const MAP_ONLY = process.argv.includes('--map-only')
  * ⏱️ `--changed` — **PR 에서는 이 변경이 건드린 주입만** 돌린다 (2026-09-08 대표 지시).
  *
  * 실측: Verify 48분 29초 중 이 스크립트가 **37분 24초 = 77%**(job 101957335695 스텝 타이밍).
+ * 그 뒤로도 주입 수를 따라 자랐다 — 1,963건 `77.4분`(2026-09-26) → **2,230건 `82.3분`**(2026-09-30,
+ * run 36667310778 · Verify 전체 95.5분). 그래서 **전수는 "몇 분" 이 아니라 job 결론으로 판정한다.**
  * 950건을 넘어 선형으로 는다. 그 길이의 2차 피해가 더 컸다 — CI 가 도는 동안 main 이 움직이고,
  * 거의 모든 PR 이 이 매니페스트를 건드리니 **머지마다 충돌**했다(하루 4번 중 3번이 405 conflict).
  *
@@ -107,6 +110,21 @@ const MAP_ONLY = process.argv.includes('--map-only')
  */
 const DUMP_MANIFEST = process.argv.includes('--dump-manifest')
 const CHANGED = process.argv.includes('--changed')
+/**
+ * 🧩 `--shard k/n` — **전수를 n 조각으로 갈라 그중 k 번째만** 돈다 (2026-10-01).
+ *
+ * 왜: 전수 벽시계가 주입 수에 선형이라 `timeout-minutes: 90` 을 향해 기어올랐다(3주에 42→77분).
+ * 조각을 쓰면 벽시계가 `O(주입수 / n)` 이 되고, n 은 야간 워크플로의 계획 작업이 **세어서** 정한다.
+ * 근거·상수·분배 규칙: `guard-mutations-shard.mjs` 머리주석.
+ *
+ * ⚠️ `--changed`·`--only` 와 **같이 쓰지 않는다** — 둘 다 이미 "일부만" 고르는 장치라, 겹치면
+ * 무엇이 돌았는지가 둘의 교집합이 되어 *초록이 무엇을 보증하는지* 말할 수 없게 된다.
+ */
+const SHARD = parseShard(process.argv)
+if (SHARD && (CHANGED || ONLY)) {
+  console.error('❌ --shard 는 --changed·--only 와 같이 쓸 수 없다 — 초록이 무엇을 보증하는지 모호해진다.')
+  process.exit(1)
+}
 const SCOPE = changedScope({
   enabled: CHANGED,
   baseRef: process.env.GUARD_MUTATIONS_BASE,
@@ -528,7 +546,7 @@ const MUTATIONS = [
   {
     name: '🎨 섹션 더보기가 다시 테두리 알약이 된다 (표면 규칙 ① 위반)',
     file: 'src/components/home/HomeSections.tsx',
-    find: '                  className="shrink-0 text-[12.5px] font-bold text-gray-600 dark:text-gray-300 hover:underline underline-offset-4 whitespace-nowrap"',
+    find: '                  className="shrink-0 text-[12px] font-bold text-gray-600 dark:text-gray-300 hover:underline underline-offset-4 whitespace-nowrap"',
     replace: '                  className="shrink-0 px-3.5 py-1.5 rounded-full border border-gray-200 text-[12.5px] font-bold text-gray-600 whitespace-nowrap"',
     test: 'src/tests/unit/home-selected-is-brand.test.ts',
     why:
@@ -609,12 +627,16 @@ const MUTATIONS = [
   {
     name: '🎛️ 담기 적립 스위치를 어드민에서 다시 뗀다 (켤 손잡이가 사라진다)',
     file: 'src/pages/admin-platform-settings/money-switch-fields.ts',
-    find: "    key: 'affiliate_program_enabled', label: '⑧ 담기 적립(어필리에이트) 프로그램', default: 'false',",
-    replace: "    key: 'affiliate_program_enabled_REMOVED', label: '⑧ 담기 적립(어필리에이트) 프로그램', default: 'false',",
+    // 🩸 2026-09-30: 앵커에 **라벨을 담고 있었다** — 라벨의 동그라미 번호를 걷어내자
+    //   `stale-mutation-anchors` 가 즉시 빨간불을 냈다(pre-push 23.5초). 지키려는 것은
+    //   *손잡이가 배열에 있는가* 이고 라벨은 표시일 뿐이므로, **키만** 앵커로 쓴다.
+    find: "    key: 'affiliate_program_enabled',",
+    replace: "    key: 'affiliate_program_enabled_REMOVED',",
     test: 'src/tests/unit/admin-money-switch-ui-2026-09-07.test.ts',
     why:
       '이게 없던 것이 원래 상태다 — 읽는 곳 둘, 쓰는 화면 0. 머니 스위치를 D1 직접 수정으로만 ' +
-      '켤 수 있으면 오타값이 저장돼도 read-site 가 조용히 OFF 로 읽는다.',
+      '켤 수 있으면 오타값이 저장돼도 read-site 가 조용히 OFF 로 읽는다. ' +
+      '앵커는 키만 쓴다 — 라벨을 담으면 문구를 다듬을 때마다 이 주입이 낡는다.',
   },
   {
     name: "🎛️ 스위치 옵션 값을 'True' 로 (켠 줄 알지만 꺼진 채로 돈다)",
@@ -812,8 +834,10 @@ const MUTATIONS = [
   {
     name: '🏪 매장 등록 모달이 "누가 운영하나요?" 없이 제출된다',
     file: 'src/components/seller/StoreRegisterModal.tsx',
-    find: '    if (!picked || !channel || !managerOk || !certOk || submitting) return',
-    replace: '    if (!picked || !managerOk || !certOk || submitting) return',
+    // 🩸 2026-09-21: 등록증이 **선택**이 되면서 제출 가드에서 `!certOk` 가 빠졌다.
+    //   앵커가 낡으면 주입이 조용히 적용되지 않는다 — 이 불변식(채널 없이 제출 금지)은 그대로다.
+    find: '    if (!picked || !channel || !managerOk || submitting) return',
+    replace: '    if (!picked || !managerOk || submitting) return',
     test: 'src/tests/unit/signup-store-channel-2026-09-04.test.ts',
     why:
       '에이전시 일몰 후 brokered 를 만들 수 있는 문은 여기 하나다. 이 강제가 풀리면 채널 미지정 ' +
@@ -1035,7 +1059,7 @@ const MUTATIONS = [
   {
     name: '🧾 결제 화면 주 행동이 다시 검정 알약으로',
     file: 'src/pages/TossWidgetPayPage.tsx',
-    find: 'className="w-full py-3.5 bg-brand hover:bg-brand-dark text-white',
+    find: 'className="w-full py-4 bg-brand hover:bg-brand-dark text-white',
     replace: 'className="w-full py-3.5 bg-gray-800 text-white',
     test: 'src/tests/unit/pay-screen-summary.test.ts',
     why: '화면에서 가장 강한 행동이 브랜드가 아닌 색이면 결제 직전에 다른 서비스처럼 보인다.',
@@ -1051,8 +1075,8 @@ const MUTATIONS = [
   {
     name: '🎨 브랜드 강조가 다시 회색으로 — 구 로즈(pink) 유틸이 되돌아온다',
     file: 'src/components/gift/GiftSendModal.tsx',
-    find: 'bg-brand text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-brand-dark',
-    replace: 'bg-pink-500 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-pink-600',
+    find: 'bg-brand text-white rounded-xl font-bold text-[15px] flex items-center justify-center gap-2 hover:bg-brand-dark',
+    replace: 'bg-pink-500 text-white rounded-xl font-bold text-[15px] flex items-center justify-center gap-2 hover:bg-pink-600',
     test: 'src/tests/unit/brand-color-migration.test.ts',
     why: 'tailwind 이 pink 를 MONO 로 중화한다 — 라이브 실측 .bg-pink-500 → rgb(110 107 104). 주 버튼이 조용히 회색이 된다.',
   },
@@ -1285,8 +1309,10 @@ const MUTATIONS = [
   {
     name: '🧹 마이페이지에 에이전시 모집 CTA 가 다시 들어온다',
     file: 'src/pages/user-profile/RoleCtaGrid.tsx',
-    find: "      { Icon: ShoppingBag, title: t('roleCta.openShop'",
-    replace: "      { Icon: ShoppingBag, title: t('roleCta.agencyBiz', { defaultValue: '\uc5d0\uc774\uc804\uc2dc \uc0ac\uc5c5' }), desc: '', to: '/agency/register/business', show: () => true },\n      { Icon: ShoppingBag, title: t('roleCta.openShop'",
+    // 🔁 2026-09-28 재조준: `ShoppingBag` → `ShopPlusIcon`(장바구니는 '사는 행위'로 읽혔다).
+    //    불변식("에이전시 모집 CTA 가 소비자 마이에 들어오지 않는다")은 그대로다.
+    find: "      { Icon: ShopPlusIcon, title: t('roleCta.openShop'",
+    replace: "      { Icon: ShopPlusIcon, title: t('roleCta.agencyBiz', { defaultValue: '\uc5d0\uc774\uc804\uc2dc \uc0ac\uc5c5' }), desc: '', to: '/agency/register/business', show: () => true },\n      { Icon: ShopPlusIcon, title: t('roleCta.openShop'",
     test: 'src/tests/unit/mypage-cleanup-2026-09-02.test.ts',
     why: '\uc5d0\uc774\uc804\uc2dc\ub294 B2B \uc870\uc9c1 \ubaa8\uc9d1\uc774\ub77c \uc18c\ube44\uc790 \ub9c8\uc774\ud398\uc774\uc9c0 \ub3d9\uc120\uc5d0 \uc11e\uc744 \uc790\ub9ac\uac00 \uc544\ub2c8\ub2e4(\ub300\ud45c \uc9c0\uc2dc).',
   },
@@ -2128,9 +2154,16 @@ const MUTATIONS = [
   },
   {
     name: '평면 그라디언트가 다시 들어온다(단색인데 그라디언트인 척)',
-    file: 'src/pages/user-profile/TeamPointsCard.tsx',
-    find: '      <div className="bg-ink dark:bg-[#1D1F29] rounded-2xl px-5 py-4">',
-    replace: '      <div className="bg-gradient-to-r from-gray-800 to-gray-800 dark:bg-[#1D1F29] rounded-2xl px-5 py-4">',
+    //   🔁 2026-09-29 세 번째(안 C): `TeamPointsCard` 자체가 사라졌다 — 딜 잔액이 상단 숫자 한 줄로
+    //      옮겨갔다. 불변식(평면 그라디언트 탐지)은 그대로라 그 줄의 컨테이너로 옮긴다.
+    file: 'src/pages/user-profile/MyStats.tsx',
+    // 🔁 2026-09-28 재조준: 앵커였던 검정 슬래브(`bg-ink …`)가 사라졌다 — 마이 잔액이 교환권 탭과
+    //   **같은 흰 카드 부품**을 쓰게 됐기 때문이다. 지키려는 불변식(평면 그라디언트 탐지)은 그대로라
+    //   같은 파일에 남아 있는 줄로 옮긴다.
+    //   🔁 같은 날 두 번째: 그 줄의 `py-3` 도 사라졌다(딜 잔액에 그룹 라벨이 붙으면서 바깥 여백을
+    //      라벨이 가져갔다). 파일 안에서 **가장 안 흔들리는 줄**(부품 호출)로 다시 옮긴다.
+    find: '      <div className="flex items-start divide-x divide-rule py-1">',
+    replace: '      <div className="bg-gradient-to-r from-gray-800 to-gray-800" />\n      <div className="flex items-start divide-x divide-rule py-1">',
     test: 'src/tests/unit/button-system.test.ts',
     why:
       'from/to 가 같은 색이면 브라우저는 그라디언트를 계산하는데 화면엔 단색이 나온다. ' +
@@ -2704,8 +2737,8 @@ canvas {
   {
     name: '/map 패널 칩이 다시 줄바꿈된다(카카오맵 한 줄이 깨진다)',
     file: 'src/pages/restaurant-map/MapTopBar.tsx',
-    find: "panel ? 'grid grid-cols-7 gap-0.5'",
-    replace: "panel ? 'flex flex-wrap gap-1.5'",
+    find: "panel ? 'grid grid-cols-7 gap-1'",
+    replace: "panel ? 'flex flex-wrap gap-2'",
     test: 'src/tests/unit/groupon-detail-map.test.ts',
     why:
       '2026-08-19 대표 시안(카카오맵) — 같은 날 한 번 뒤집힌 자리다. 알약 칩은 400px 에 7개가 안 들어가 ' +
@@ -3429,23 +3462,27 @@ canvas {
   {
     name: '히어로 preload 가 보이지 않는 폭에서도 받는다',
     file: 'src/worker/utils/home-card-preload.ts',
-    find: 'return `<link rel="preload" as="image" fetchpriority="high" media="${HOME_HERO_MEDIA_QUERY}"',
-    replace: 'return `<link rel="preload" as="image" fetchpriority="high"',
+    // 🎞️ 2026-09-28: 히어로 기본 미디어가 [사진 한 장] → [흐르는 띠]가 되면서 preload 도 타일을
+    //   당긴다. 불변식(안 보이는 폭에서 받지 않는다)은 그대로라 앵커만 새 자리로 재조준했다.
+    find: 'links.push(`<link rel="preload" as="image" fetchpriority="high" media="${HOME_HERO_MEDIA_QUERY}"',
+    replace: 'links.push(`<link rel="preload" as="image" fetchpriority="high"',
     test: 'src/tests/unit/home-hero-preload.test.ts',
     why:
-      '히어로 사진은 `hidden md:block` 이라 768px 미만에서 **보이지 않는다**. media 게이트를 빼면 ' +
+      '히어로 띠는 `hidden md:block` 이라 768px 미만에서 **보이지 않는다**. media 게이트를 빼면 ' +
       '폰이 96KB 를 헛되이 받는다 — 고치려던 것(늦게 뜬다)보다 나쁜 회귀인데 **PC 에서는 아무 차이가 ' +
       '없어 눈으로 못 잡는다.** ⚠️ 이 파일엔 카드 preload 도 있어 문자열이 겹친다 — 앵커는 히어로 쪽으로.',
   },
   {
     name: '히어로 preload URL 이 클라이언트 렌더와 어긋난다',
     file: 'src/worker/utils/home-card-preload.ts',
-    find: 'const href = cfImage(pick.src, { width: HOME_HERO_REQUEST_WIDTH, quality: HOME_HERO_QUALITY })',
-    replace: 'const href = cfImage(pick.src, { width: 900, quality: HOME_HERO_QUALITY })',
+    // 🎞️ 2026-09-28: 당기는 대상이 타일로 바뀌었다. 같은 불변식(양쪽이 **같은 SSOT 함수**로 URL 을
+    //   만든다)을 새 자리에 다시 건다 — 여기서 손으로 조립하면 그 순간 갈린다.
+    find: 'const href = heroTileUrl(tile.src)',
+    replace: "const href = cfImage(tile.src, { width: 400 })",
     test: 'src/tests/unit/home-hero-preload.test.ts',
     why:
-      'preload 는 URL 이 **byte-일치할 때만** 쓰인다. 폭이 한쪽에서만 바뀌면 브라우저가 preload 를 ' +
-      '버리고 96KB 를 **두 번** 받는다 — 에러도 없고 화면도 멀쩡한데 더 느려지고 트래픽만 두 배다. ' +
+      'preload 는 URL 이 **byte-일치할 때만** 쓰인다. 한쪽만 바뀌면 브라우저가 preload 를 ' +
+      '버리고 같은 사진을 **두 번** 받는다 — 에러도 없고 화면도 멀쩡한데 더 느려지고 트래픽만 두 배다. ' +
       '눈으로는 절대 안 보이는 종류라 가드가 유일한 방어다(2026-08-22 에 실제로 900→1280 으로 바뀐 값이다).',
   },
   {
@@ -9379,7 +9416,7 @@ canvas {
     file: 'src/pages/main-home/GroupBuyFeedCard.tsx',
     find: `            </p>
           )}
-          <p className="flex items-baseline gap-1 mt-0.5 leading-none">`,
+          <p className="flex items-baseline gap-1 mt-1 leading-none">`,
     replace: '',
     test: 'src/tests/unit/deal-card-price-block.test.ts',
     why:
@@ -9498,8 +9535,8 @@ canvas {
   {
     name: '유어샵 안3 — 헤더가 방문자에게 팔로우 버튼을 준다',
     file: 'src/pages/curator-page/CuratorHeader.tsx',
-    find: "{canEdit && !isOwner && (",
-    replace: "{!canEdit && <button type=\"button\" className={editBtnCls}>팔로우</button>}\n          {canEdit && !isOwner && (",
+    find: "{canEdit && (",
+    replace: "{!canEdit && <button type=\"button\" className={btnCls}>팔로우</button>}\n            {canEdit && (",
     test: 'src/tests/unit/ushop-a3-p1.test.ts',
     why:
       '2026-09-02 대표: "그냥 방문자는 안보이면 되잖아". 시안 목업에 있던 "방문자일 때: 팔로우" 띠는 ' +
@@ -9524,8 +9561,11 @@ canvas {
   {
     name: 'PC 마이 — 우측 칸이 다시 모바일 메뉴 목록으로(isPc 분기 제거)',
     file: 'src/pages/UserProfilePage.tsx',
-    find: "      {isPc ? (\n        <AccountPcPane",
-    replace: "      {false ? (\n        <AccountPcPane",
+    // 🎯 2026-09-28 재조준 — PC 1안("오늘이 머리")으로 `<SellerSection>` 이 `<AccountPcPane>` 위로
+    //   올라가며 앵커 사이 줄이 바뀌었다. **불변식은 그대로다**(isPc 분기가 죽으면 PC 우측 칸이
+    //   다시 모바일 메뉴 목록이 된다) → 삼항 자체를 앵커로 좁힌다(사이 줄에 안 묶인다).
+    find: "      {isPc ? (\n      <>\n",
+    replace: "      {false ? (\n      <>\n",
     test: 'src/tests/unit/account-pc-pane.test.ts',
     why: '2026-09-02 대표 "PC 모드 답지 않은 페이지야". 좌우가 같은 메뉴를 두 번 보여 주던 화면으로 돌아간다.',
   },
@@ -9690,7 +9730,7 @@ canvas {
   {
     name: '지도 패널 — 테마 대응이 사라진다(패널까지 light-island)',
     file: 'src/pages/restaurant-map/MapTopBar.tsx',
-    find: "? 'hidden lg:block px-3 pt-3 pb-2.5 space-y-2 border-b border-gray-100 dark:border-[#2C2F35]'",
+    find: "? 'hidden lg:block px-3 pt-3 pb-2 space-y-2 border-b border-gray-100 dark:border-[#2C2F35]'",
     replace: "? 'light-island hidden lg:block px-3 pt-3 pb-2.5 space-y-2 border-b border-gray-100'",
     test: 'src/tests/unit/light-island-inputs.test.ts',
     why: 'PC 리스트 패널은 지도 위가 아니라 앱 안이라 테마를 따라야 한다. 섬을 남발하면 다크에서 흰 덩어리가 된다.',
@@ -9728,8 +9768,8 @@ canvas {
   {
     name: 'PC 홈 히어로 — 주 행동이 다시 테두리 고스트 알약이 된다',
     file: 'src/components/home/HomeHeroDefault.tsx',
-    find: 'rounded-full bg-brand text-white text-[13.5px] font-extrabold hover:bg-[#1557C8]',
-    replace: 'rounded-full border border-white/25 text-white text-[13.5px] font-extrabold hover:bg-white/10',
+    find: 'rounded-full bg-brand text-white text-[13px] font-extrabold hover:bg-[#1557C8]',
+    replace: 'rounded-full border border-white/25 text-white text-[13px] font-extrabold hover:bg-white/10',
     test: 'src/tests/unit/pc-home-hero-controls.test.ts',
     why: '표면 규칙 ② 강조색 하나, 자리 셋 — 히어로에서 그 자리는 주 행동이다. 블루가 빠지면 넷 다 같은 무게로 돌아간다.',
   },
@@ -9989,8 +10029,8 @@ canvas {
     name: '🎫 리뷰 textarea 다크 배경이 다시 빠진다 (흰 바탕에 흰 글자)',
     file: 'src/pages/product-detail/ProductReviews.tsx',
     // 🔀 2026-09-15: 〃
-    find: 'bg-warm text-sm text-gray-900 dark:text-white',
-    replace: 'text-sm text-gray-900 dark:text-white',
+    find: 'bg-warm text-[15px] text-gray-900 dark:text-white',
+    replace: 'text-[15px] text-gray-900 dark:text-white',
     test: 'src/tests/unit/consumer-popups-dark.test.ts',
     why:
       '전역 `.dark textarea{color:gray-100}` 가 글자를 흰색으로 만들므로 배경이 없으면 브라우저 기본 흰 바탕에 ' +
@@ -10211,8 +10251,11 @@ canvas {
   {
     name: '🏝️ 매장 등록 모달이 다시 흰 판 위 흰 글자가 된다 (light-island 소실)',
     file: 'src/components/seller/StoreRegisterModal.tsx',
-    find: 'className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)] max-h-[92dvh]',
-    replace: 'className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)] max-h-[92dvh]',
+    // ⚠️ 2026-09-23 재조준 — 안 B(PC 2단)가 패널 클래스를 `panelCls` 변수(overlay ↔ page 두 벌)로
+    //    옮기면서 옛 앵커(`className="light-island …`)가 사라졌다. **낡은 앵커는 조용히 아무것도 주입하지 않는다.**
+    //    ⚠️ 줄바꿈까지 앵커에 넣는다 — 409 패널 쪽 같은 문자열이 들여쓰기만 깊어 **부분일치로 2곳**이 잡혔다.
+    find: "\n    : 'light-island w-full sm:max-w-lg bg-white rounded-t-2xl",
+    replace: "\n    : 'w-full sm:max-w-lg bg-white rounded-t-2xl",
     test: 'src/tests/unit/store-claim-2026-09-07.test.ts',
     why:
       '이 패널은 bg-white 뿐이라 늘 흰데 소비자 라우트(/store/new)에서도 열린다. 전역 .dark input' +
@@ -10234,7 +10277,8 @@ canvas {
   {
     name: '🚪 매장 등록 페이지가 다시 배경 클릭으로 꺼진다 (폼 통째로 날아감)',
     file: 'src/pages/StoreClaimPage.tsx',
-    find: '        dismissOnBackdrop={false}',
+    // ⚠️ 2026-09-23 재조준 — 안 B 에서 이 prop 이 2단 레이아웃 안쪽으로 들어가 들여쓰기가 바뀌었다.
+    find: '              dismissOnBackdrop={false}',
     replace: '',
     test: 'src/tests/unit/store-claim-2026-09-07.test.ts',
     why:
@@ -10245,8 +10289,9 @@ canvas {
   {
     name: '🏝️ 409 안내 패널만 light-island 를 잃는다 (한 파일 안 두 표면 중 하나)',
     file: 'src/components/seller/StoreRegisterModal.tsx',
-    find: '        <div className="light-island w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)]" onClick={e => e.stopPropagation()}>',
-    replace: '        <div className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-[var(--dash-radius,16px)]" onClick={e => e.stopPropagation()}>',
+    // ⚠️ 2026-09-23 재조준 — 같은 이유(변수화). 409 패널도 overlay ↔ page 두 벌이 됐다.
+    find: "          ? 'light-island w-full bg-white rounded-[var(--dash-radius,16px)] shadow-lift'",
+    replace: "          ? 'w-full bg-white rounded-[var(--dash-radius,16px)] shadow-lift'",
     test: 'src/tests/unit/store-claim-2026-09-07.test.ts',
     why:
       '이 파일엔 늘-흰 패널이 **둘**이다(등록 폼 · 409 안내). 실제로 409 화면이 light-island 없이 ' +
@@ -10295,9 +10340,13 @@ canvas {
   },
   {
     name: '🏷️ payout 이 숫자 아닌 계정 id 를 다시 통과시킨다',
-    file: 'src/worker/cron/payouts-generate.ts',
-    find: '      if (!/^\\d+$/.test(id)) continue',
-    replace: '',
+    // 🎯 2026-10-01 재조준: 그 검사가 `payout-account.ts canonicalPayee()` 로 옮겨졌다
+    //   (계정 해석을 한 곳에 모은 결과 — 결재 voucher-credit-double-rail). 불변식은 그대로.
+    file: 'src/worker/utils/payout-account.ts',
+    // ⚠️ 그 검사는 `canonicalPayee` 와 `canonicalPaidPayee` **두 곳**에 있다(지급 대상 해석의 두 입구).
+    //   앵커는 유일해야 하므로 `canonicalPayee` 쪽(원장 계정 입구)을 앞 줄까지 포함해 집는다.
+    find: "  const id = account.slice(i + 1)\n  if (!/^\\d+$/.test(id)) return null",
+    replace: '  const id = account.slice(i + 1)',
     test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
     why:
       "'seller:null' 은 split(':') 이 id='null'(truthy 문자열)을 내서 기존 `if (!id) continue` 를 " +
@@ -10459,8 +10508,8 @@ canvas {
   {
     name: '🧪 [행동] 배정 잔액이 pending 을 안 빼서 사슬이 끊긴다',
     file: 'src/worker/utils/ledger.ts',
-    find: "      WHERE (payee_type || ':' || payee_id) = ? AND status IN ('pending','approved','sent')",
-    replace: "      WHERE (payee_type || ':' || payee_id) = ? AND status IN ('approved','sent')",
+    find: "      WHERE (payee_type || ':' || payee_id) IN (${paidPh}) AND status IN ('pending','approved','sent')",
+    replace: "      WHERE (payee_type || ':' || payee_id) IN (${paidPh}) AND status IN ('approved','sent')",
     test: 'src/tests/unit/store-handover-behavior-2026-09-08.test.ts',
     why:
       '마감이 만드는 행은 pending 이다. 안 빼면 마감 직후에도 잔액이 그대로라 손바뀜이 안 열린다. ' +
@@ -10479,8 +10528,8 @@ canvas {
   {
     name: '🤝 배정 잔액이 pending 을 안 뺀다 (마감이 문을 못 연다)',
     file: 'src/worker/utils/ledger.ts',
-    find: "      WHERE (payee_type || ':' || payee_id) = ? AND status IN ('pending','approved','sent')",
-    replace: "      WHERE (payee_type || ':' || payee_id) = ? AND status IN ('approved','sent')",
+    find: "      WHERE (payee_type || ':' || payee_id) IN (${paidPh}) AND status IN ('pending','approved','sent')",
+    replace: "      WHERE (payee_type || ':' || payee_id) IN (${paidPh}) AND status IN ('approved','sent')",
     test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
     why:
       '마감이 만드는 행은 pending 이다. 그걸 안 빼면 마감 직후에도 잔액이 그대로라 손바뀜이 ' +
@@ -10588,6 +10637,16 @@ const ALL = [...MUTATIONS, ...SPLIT]
     console.error(`❌ 주입 이름 중복 ${dup.length}건 — --only 가 무엇을 돌렸는지 알 수 없게 된다\n   • ${dup.join('\n   • ')}`)
     process.exit(1)
   }
+}
+
+/**
+ * 🔢 `--count` — 주입 수만 찍는다. 야간 워크플로의 **계획 작업**이 조각 수를 정하려고 부른다.
+ * `--dump-manifest` 로도 셀 수 있지만 그건 수 MB JSON 을 흘려보내는 일이고, 계획 작업은
+ * `npm ci` 없이 수초에 끝나야 한다(이 파일은 node 내장 + 로컬 모듈만 import 한다).
+ */
+if (process.argv.includes('--count')) {
+  process.stdout.write(String(ALL.length))
+  process.exit(0)
 }
 
 // 📤 목록만 찍고 끝 — base 쪽을 이 모드로 부른다. 소스도 안 읽고 자물쇠도 안 건다.
@@ -10945,8 +11004,32 @@ if (integrity.length) {
   process.exit(1)
 }
 
-const planned = ALL.filter((m) => (!ONLY || m.name.includes(ONLY)) && (inScope(m, SCOPE) || CHANGED_NAMES.has(m.name))).length
-if (SCOPE.full) {
+/**
+ * 🧩 조각 선택 — `assignShards` 가 **테스트 파일 단위로 묶어** 배분한다.
+ *
+ * 🔑 같은 테스트를 쓰는 주입이 한 조각에 모이는 것이 요점이다. 아래 `baselineGreen` 이
+ * 테스트 파일별로 baseline 을 한 번 돌므로, 흩뿌리면 그 baseline 이 **조각마다 중복**된다
+ * (실측: 최대 조각 vitest 호출 396 → 245, −38%). 근거·수치는 `guard-mutations-shard.mjs`.
+ * 조각이 아니면 전부 통과한다(`has` 가 null 이면 무조건 true).
+ */
+const SHARD_PICK = SHARD
+  ? new Set(assignShards(ALL, SHARD.total).map((k, i) => (k === SHARD.index ? ALL[i].name : null)).filter(Boolean))
+  : null
+const inShard = (m) => !SHARD_PICK || SHARD_PICK.has(m.name)
+
+const planned = ALL.filter((m) => (!ONLY || m.name.includes(ONLY)) && inShard(m) && (inScope(m, SCOPE) || CHANGED_NAMES.has(m.name))).length
+if (SHARD) {
+  console.log(
+    `🧬 guard-mutations(--shard ${SHARD.index}/${SHARD.total}): 전체 ${ALL.length}건 중 **${planned}건**.\n` +
+      `   ⚠️ 이 조각 하나가 초록이라고 전수가 초록인 건 아니다 — 조각 ${SHARD.total}개가 모두 초록이어야 전수다.\n`,
+  )
+  // 🚨 조각이 0건을 고르면 **실패**다 — n 이 주입 수보다 크거나 분배가 깨진 것이고,
+  //    그대로 두면 "조각 전부 초록" 이 실제로는 아무것도 안 돈 것일 수 있다(이 레포의 조용한 부재).
+  if (planned === 0) {
+    console.error(`❌ --shard ${SHARD.index}/${SHARD.total} 이 고른 주입이 0건이다 — 분배가 깨졌거나 n 이 과하다.`)
+    process.exit(1)
+  }
+} else if (SCOPE.full) {
   console.log(`🧬 guard-mutations: ${ALL.length}개 주입 검증 (각각 소스를 잠깐 고쳤다가 되돌린다)\n`)
   if (CHANGED) console.log(`   ⚠️ 전수로 돈다 — ${SCOPE.why}\n`)
 } else {
@@ -10958,6 +11041,7 @@ let onlyMatched = 0
 for (const m of ALL) {
   if (ONLY && !m.name.includes(ONLY)) continue
   if (ONLY) onlyMatched += 1
+  if (!inShard(m)) continue
   if (!inScope(m, SCOPE) && !CHANGED_NAMES.has(m.name)) continue
   const abs = path.join(ROOT, m.file)
   if (!fs.existsSync(abs)) { problems.push(`${m.name}: 파일 없음 — ${m.file} (코드가 옮겨갔다)`); continue }

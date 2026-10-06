@@ -160,8 +160,24 @@ describe('N5 "매장 등록" 이라 말하는 버튼은 실제로 매장 등록�
       'src/pages/SellerRegisterSupplierPage.tsx', // 폼 자신(로그인 복귀 returnUrl)
       'src/pages/SellerWaitingPage.tsx',          // 심사 대기 → 폼으로 되돌림
     ])
+    /**
+     * 🎨 2026-09-21 재조준 — 시안 갤러리(`/design/variants`)는 **소비자 화면을 다시 그리는 도구**라
+     *   자기가 어느 화면의 시안인지를 `route:` 필드에 적는다(`VariantSet.route`, 타입이 요구한다).
+     *   그 한 줄 때문에 걸리는데, 그건 **목적지가 아니라 라벨**이다 — 그 파일들엔 navigate·href 가 0개이고,
+     *   `design-variants-2026-09-15.test.ts` 가 "어디에서도 링크하지 않는다" + robots + noindex 를 따로 고정한다.
+     *
+     *   ⚠️ 가드를 푼 것이 아니다. 파일 단위로 면제하면 다음 세트마다 예외가 하나씩 늘고 그게 곧
+     *   구멍이 된다 ⇒ **`route:` 메타 줄에만 허용**하고, 같은 파일이 실제로 이동하는 코드를 쓰면
+     *   (navigate·href·to=) 그 줄은 이 조건에 안 걸려 그대로 빨간불이 된다.
+     */
+    const metaOnly = (f: string, code: string) =>
+      f.startsWith('src/pages/design-variants/') &&
+      code.split('\n').filter(l => l.includes(SIGNUP_FORM)).every(l => /\broute:\s*'/.test(l))
     const hits = CONSUMER_FILES.filter(f => !allow.has(f))
-      .filter(f => stripComments(readFileSync(f, 'utf-8')).includes(SIGNUP_FORM))
+      .filter(f => {
+        const code = stripComments(readFileSync(f, 'utf-8'))
+        return code.includes(SIGNUP_FORM) && !metaOnly(f, code)
+      })
     expect(hits, `소비자 진입점이 매장 등록 대신 사업자 폼으로 간다:\n${hits.join('\n')}`).toEqual([])
   })
 

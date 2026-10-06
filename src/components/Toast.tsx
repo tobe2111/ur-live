@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
-import { X, CheckCircle, AlertCircle, Info } from 'lucide-react'
+import { OkIcon, AlertIcon, InfoIcon } from '@/components/icons/urdeal-icons'
+import { X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 interface ToastProps {
@@ -20,9 +21,9 @@ export default function Toast({ message, type = 'info', onClose, duration = 3000
   }, [duration, onClose])
 
   const icons = {
-    success: <CheckCircle className="w-5 h-5 text-green-500" />,
-    error: <AlertCircle className="w-5 h-5 text-red-500" />,
-    info: <Info className="w-5 h-5 text-blue-500" />
+    success: <OkIcon className="w-5 h-5 text-green-500" />,
+    error: <AlertIcon className="w-5 h-5 text-red-500" />,
+    info: <InfoIcon className="w-5 h-5 text-blue-500" />
   }
 
   const colors = {
@@ -35,7 +36,7 @@ export default function Toast({ message, type = 'info', onClose, duration = 3000
     <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-slide-down">
       <div className={`flex items-center gap-3 px-4 py-3 rounded-lg border shadow-lg ${colors[type]} min-w-[280px] max-w-md`}>
         {icons[type]}
-        <p className="flex-1 text-sm font-medium text-gray-900">{message}</p>
+        <p className="flex-1 text-[15px] font-medium text-gray-900">{message}</p>
         <button onClick={onClose} aria-label={t('common.close')} className="text-gray-400 hover:text-gray-600">
           <X className="w-4 h-4" />
         </button>

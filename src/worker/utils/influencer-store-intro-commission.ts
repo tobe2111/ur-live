@@ -82,11 +82,24 @@ async function getStoreIntroMonths(DB: D1Database): Promise<number> {
   return Number.isFinite(m) && m > 0 ? m : DEFAULT_STORE_INTRO_MONTHS
 }
 
+/**
+ * 🛑 **`>= 0` 이지 `> 0` 이 아니다 — 0 은 "끔"이라는 유효한 값이다.**
+ *
+ * 2026-09-24 까지 이 줄은 `pct > 0` 이었다. 그래서 어드민이 0(= 영입 커미션 중단)을 넣어도
+ * **조용히 기본값으로 되돌아갔다** — 끄는 스위치가 안 듣는 상태였고, 화면·로그 어디에도
+ * 신호가 없었다(대표가 *"아예 없기로 했다"* 고 한 정책이 코드에서 안 꺼지고 있었다).
+ *
+ * CLAUDE.md 가 경고하는 **0-falsy 함정**의 변종이다: `Number(x) || 기본값` 이든
+ * `x > 0 ? x : 기본값` 이든, 0 을 "값이 없음"으로 읽으면 **끄는 길이 사라진다.**
+ * 같은 이유로 `payout-hold.ts` 도 `v >= 0` 으로 읽는다.
+ *
+ * 음수만 거른다(요율이 음수면 적립이 아니라 징수가 된다).
+ */
 async function getStoreIntroPct(DB: D1Database): Promise<number> {
   const row = await DB.prepare("SELECT value FROM platform_settings WHERE key = 'influencer_store_intro_pct'")
     .first<{ value: string }>().catch(() => null)
   const pct = Number(row?.value ?? DEFAULT_STORE_INTRO_PCT)
-  return Number.isFinite(pct) && pct > 0 ? pct : DEFAULT_STORE_INTRO_PCT
+  return Number.isFinite(pct) && pct >= 0 ? pct : DEFAULT_STORE_INTRO_PCT
 }
 
 /**

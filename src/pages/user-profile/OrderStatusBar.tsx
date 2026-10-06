@@ -87,15 +87,18 @@ export default function OrderStatusBar() {
   ]
 
   return (
-    <div className="ur-content-medium px-4 lg:px-8 pt-3">
-      <p className="text-[12px] font-bold text-gray-900 dark:text-white mb-3">{t('voucherStatus.sectionTitle', { defaultValue: '이용권 현황' })}</p>
-      <div className="flex items-center justify-between rounded-2xl px-2 py-4 bg-surface">
+    /* 🔵 2026-09-29 (대표 확정 **안 C**): 흰 판을 걷었다 — 안 C 에서 **판은 "여기가 파는 쪽"** 표시자라
+       손님 구역에 판이 서면 그 표시가 무의미해진다. 숫자 넷과 목적지는 한 글자도 안 바뀐다.
+       🧱 가로 패딩 없음: 아래 목록 줄(`px-4`)과 왼쪽 끝을 맞춘다. */
+    <div className="ur-content-medium lg:px-4 pt-3">
+      <p className="px-4 text-[12px] font-bold text-gray-500 dark:text-gray-400 mb-2">{t('voucherStatus.sectionTitle', { defaultValue: '이용권 현황' })}</p>
+      <div className="flex items-center justify-between px-2 py-2">
         {items.map(o => (
           <button key={o.label} onClick={() => navigate(o.path)} className="flex-1 text-center">
-            <p className={`text-[18px] font-extrabold ${counts[o.key] ? 'text-gray-900 dark:text-white' : 'text-gray-300 dark:text-white/20'}`} style={{ letterSpacing: '-0.02em' }}>
+            <p className={`text-[17px] font-extrabold ${counts[o.key] ? 'text-gray-900 dark:text-white' : 'text-gray-300 dark:text-white/20'}`} style={{ letterSpacing: '-0.02em' }}>
               {counts[o.key] || 0}
             </p>
-            <p className="text-[9px] text-gray-900 dark:text-white/55 mt-0.5">{o.label}</p>
+            <p className="text-[12px] text-gray-900 dark:text-white/55 mt-1">{o.label}</p>
           </button>
         ))}
       </div>

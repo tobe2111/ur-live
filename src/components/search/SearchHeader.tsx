@@ -1,34 +1,33 @@
-import { useRef, useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
+import { BagIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, Search, X, ShoppingBag } from 'lucide-react'
+import { ChevronLeft, Search, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-
-interface SearchSuggestion {
-  type: 'product' | 'seller'
-  text: string
-}
 
 interface SearchHeaderProps {
   query: string
   totalResults?: number
   onSearch: (query: string) => void
-  suggestions: SearchSuggestion[]
   onLoadSuggestions: (value: string) => void
+  /**
+   * 🔎 2026-09-30 — 제안은 여기서 **안 그린다**. 결과 자리에 들어서는
+   * `SearchSuggestPanel` 이 그리고(대표 확정), 헤더는 *"지금 이 글자로 제안을 보여 줘"* 만 올린다.
+   * 떠 있는 카드가 결과를 덮던 것이 대표 신고의 절반이었다 — 그래서 이 파일에서 드롭다운을 없앴다.
+   */
+  onPanelChange: (open: boolean, value: string) => void
 }
 
 export default function SearchHeader({
   query,
   totalResults,
   onSearch,
-  suggestions,
-  onLoadSuggestions
+  onLoadSuggestions,
+  onPanelChange,
 }: SearchHeaderProps) {
   const navigate = useNavigate()
   const { t } = useTranslation()
   const [inputValue, setInputValue] = useState(query)
-  const [showSuggestions, setShowSuggestions] = useState(false)
   const [isFocused, setIsFocused] = useState(false)
-  const searchRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (query) {
@@ -36,46 +35,35 @@ export default function SearchHeader({
     }
   }, [query])
 
-  // 외부 클릭 감지
+  /**
+   * 🐛 2026-08-17 (UX 전수검사 P1): `/search?q=…` 로 **진입만 해도** 제안이 열린 채 남았다 —
+   *   마운트 시 query→inputValue 동기화가 이 효과를 발화시켜, 사용자가 아무것도 안 했는데
+   *   제안이 떠서 필터 칩을 가렸다. **입력창이 포커스된 동안만** 로드/오픈한다(입력 중 = 의도).
+   */
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-        setShowSuggestions(false)
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  // 입력값 변경 시 자동완성 로드
-  // 🐛 2026-08-17 (UX 전수검사 P1): `/search?q=…` 로 **진입만 해도** 드롭다운이 결과 위에 열린 채
-  //   남았다 — 마운트 시 query→inputValue 동기화가 이 효과를 발화시켜, 사용자가 아무것도 안 했는데
-  //   자동완성이 떠서 필터 칩을 가렸다. **입력창이 포커스된 동안만** 로드/오픈한다(입력 중 = 의도).
-  useEffect(() => {
-    if (isFocused && inputValue && inputValue.length >= 2) {
-      onLoadSuggestions(inputValue)
-      if (suggestions.length > 0) {
-        setShowSuggestions(true)
-      }
-    } else if (!inputValue || inputValue.length < 2) {
-      setShowSuggestions(false)
-    }
+    const open = isFocused && inputValue.trim().length >= 2
+    // 패널 열림/닫힘은 **즉시** 반영한다(글자를 지웠는데 목록이 남아 있으면 안 된다).
+    onPanelChange(open, inputValue)
+    if (!open) return
+    /**
+     * ⏱️ 2026-09-30 — **디바운스**. 종전엔 키 입력마다 요청이 나갔다(한글 IME 는 자모마다 한 번).
+     *   제안 한 번이 D1 쿼리 **세 개**라, "돈가스" 다섯 타에 15 쿼리가 나간다. 이 레포는 이미
+     *   D1 일일 읽기 한도에 한 번 닿은 적이 있다(2026-09-02 소비자 API 전체 500).
+     *   180ms 는 사람이 다음 글자를 치기 전 — 체감은 그대로고 요청만 준다.
+     */
+    const t = setTimeout(() => onLoadSuggestions(inputValue), 180)
+    return () => clearTimeout(t)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inputValue, suggestions.length, isFocused])
+  }, [inputValue, isFocused])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (inputValue.trim()) {
       onSearch(inputValue.trim())
-      setShowSuggestions(false)
+      onPanelChange(false, inputValue)
+      // 제출했으면 키보드를 내린다 — 결과를 보려고 친 것이다.
+      ;(document.activeElement as HTMLElement | null)?.blur?.()
     }
-  }
-
-  const handleSuggestionClick = (text: string) => {
-    setInputValue(text)
-    onSearch(text)
-    setShowSuggestions(false)
   }
 
   /**
@@ -94,50 +82,36 @@ export default function SearchHeader({
    */
   return (
     <div className="sticky top-0 md:static z-50 bg-white dark:bg-[#11141C]">
-      <div className="flex items-center gap-2 px-3 py-2.5">
+      <div className="flex items-center gap-2 px-3 py-2">
         <button onClick={() => navigate(-1)} className="shrink-0 p-1">
           <ChevronLeft className="w-6 h-6 text-gray-900 dark:text-white" />
         </button>
-        <div className="flex-1 relative" ref={searchRef}>
+        <div className="flex-1 relative">
           <form onSubmit={handleSearch} className="relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
             <input
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              onFocus={() => { setIsFocused(true); if (suggestions.length > 0) setShowSuggestions(true) }}
-              onBlur={() => setIsFocused(false)}
+              onFocus={() => setIsFocused(true)}
+              /* 🔴 blur 로 제안을 닫지 않는다 — 모바일에서 행을 탭하면 blur 가 click 보다 **먼저**
+                    나서, 닫힌 뒤에 click 이 와 아무 일도 안 일어난다(자동완성 최다 버그).
+                    닫는 건 선택·제출·지움 셋뿐이고, 패널이 결과를 덮지 않아 닫을 이유도 없다. */
+              onBlur={() => { /* 의도적 무동작 — 위 주석 */ }}
               placeholder={t('search.inputPlaceholder', { defaultValue: '상품명, 브랜드, 셀러 검색' })}
-              className={`w-full pl-10 pr-9 py-2.5 bg-gray-50 dark:bg-[#1D1F29] rounded-full text-[14px] text-gray-900 dark:text-white font-medium transition-all focus:outline-none ${
+              className={`w-full pl-10 pr-9 py-2 bg-gray-50 dark:bg-[#1D1F29] rounded-full text-[15px] text-gray-900 dark:text-white font-medium transition-all focus:outline-none ${
                 isFocused ? 'border-2 border-gray-900 bg-white dark:bg-[#11141C]' : 'border-2 border-transparent'
               }`}
             />
             {inputValue && (
-              <button type="button" onClick={() => { setInputValue(''); setShowSuggestions(false) }} className="absolute right-3.5 top-1/2 -translate-y-1/2">
+              <button type="button" onClick={() => { setInputValue(''); onPanelChange(false, '') }} className="absolute right-3.5 top-1/2 -translate-y-1/2">
                 <X className="w-4 h-4 text-gray-400 dark:text-gray-500" />
               </button>
             )}
           </form>
-          {showSuggestions && suggestions.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1.5 bg-surface rounded-xl shadow-lg border border-line overflow-hidden z-50">
-              {suggestions.map((suggestion, index) => (
-                <button
-                  key={`${suggestion.type}-${suggestion.text}-${index}`}
-                  onClick={() => handleSuggestionClick(suggestion.text)}
-                  className="w-full px-4 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-[#1D1F29] flex items-center gap-3 border-b border-gray-50 dark:border-[#2C2F35] last:border-b-0"
-                >
-                  <Search className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-                  <span className="text-[14px] text-gray-900 dark:text-white flex-1">{suggestion.text}</span>
-                  {suggestion.type === 'seller' && (
-                    <span className="rounded-full px-2 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-semibold">브랜드</span>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
         <button onClick={() => navigate('/cart')} className="shrink-0 p-1">
-          <ShoppingBag className="w-5 h-5 text-gray-900 dark:text-white" />
+          <BagIcon className="w-5 h-5 text-gray-900 dark:text-white" />
         </button>
       </div>
     </div>

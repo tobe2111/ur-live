@@ -65,7 +65,7 @@ export default function RecentlyViewedStrip() {
     <section className="mb-6">
       <div className="flex items-baseline justify-between mb-2 px-1">
         <h3 className="text-[15px] font-extrabold text-gray-900 dark:text-white tracking-tight"><History className="w-4 h-4 inline-block align-[-3px] mr-1 text-gray-400" aria-hidden="true" />최근 본 공구</h3>
-        <span className="text-[10px] text-gray-400">{items.length}개</span>
+        <span className="text-[12px] text-gray-400">{items.length}개</span>
       </div>
       <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 lg:-mx-8 px-4 lg:px-8 scrollbar-hide snap-x snap-mandatory">
         {items.slice(0, 8).map(item => (
@@ -82,9 +82,9 @@ export default function RecentlyViewedStrip() {
                 <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200" />
               )}
             </div>
-            <p className="text-[11px] font-medium text-gray-900 dark:text-white truncate mt-1.5">{item.name}</p>
+            <p className="text-[12px] font-medium text-gray-900 dark:text-white truncate mt-2">{item.name}</p>
             {item.restaurant_name && (
-              <p className="text-[10px] text-gray-500 truncate">{item.restaurant_name}</p>
+              <p className="text-[12px] text-gray-500 truncate">{item.restaurant_name}</p>
             )}
           </button>
         ))}

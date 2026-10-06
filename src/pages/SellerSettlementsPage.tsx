@@ -212,7 +212,7 @@ export default function SellerSettlementsPage() {
             <p className="mt-0.5 text-[12px] text-gray-500">{t('seller.bankInfoMissingDesc')}</p>
             <button
               onClick={() => navigate('/seller/business-info#bank-info-section')}
-              className="ur-btn ur-btn-sm ur-btn-primary mt-3 w-full sm:w-auto"
+              className="ur-btn ur-btn-md ur-btn-primary mt-3 w-full sm:w-auto"
             >
               {t('seller.registerBankInfo')}
             </button>

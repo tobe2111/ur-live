@@ -3,7 +3,7 @@
  *   localStorage('recently_viewed') 에서 최대 10개 표시.
  */
 import { useEffect, useState } from 'react'
-import { Clock } from 'lucide-react'
+import { ClockIcon } from '@/components/icons/urdeal-icons'
 import DealMiniCard from '@/components/deal/DealMiniCard'
 import type { RecentProduct } from './types'
 
@@ -27,11 +27,11 @@ export default function RecentlyViewedSection() {
 
   return (
     <div className="mb-5">
-      <div className="flex items-center gap-1.5 mb-3">
-        <Clock className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+      <div className="flex items-center gap-2 mb-3">
+        <ClockIcon className="w-4 h-4 text-gray-400 dark:text-gray-500" />
         <h2 className="text-[13px] font-bold text-gray-900 dark:text-white">최근 본 상품</h2>
       </div>
-      <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 pt-0.5 px-0.5">
+      <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 pt-1 px-1">
         {items.map(p => (
           <DealMiniCard
             key={p.id}

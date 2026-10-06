@@ -14,7 +14,7 @@
  *   `ur-cv-card`(content-visibility) 도 래퍼로 승계 — 목록 스크롤 비용 불변.
  */
 import { memo } from 'react'
-import { Bell } from 'lucide-react'
+import { BellIcon } from '@/components/icons/urdeal-icons'
 import GroupBuyFeedCard from '@/pages/main-home/GroupBuyFeedCard'
 import type { Product } from './types'
 
@@ -42,8 +42,8 @@ const BrowseProductCard = memo(function BrowseProductCard({
          찜 하트와 자리가 겹치므로 하트를 내리고 이 벨이 그 자리를 쓴다. */
       hideWishlist={isMealVoucher}
       overlayExtra={isMealVoucher ? (
-        <span className="absolute top-2 right-2 z-[3] rounded-full p-1.5 bg-white/85 dark:bg-[#11141C]/85 backdrop-blur-sm">
-          <Bell
+        <span className="absolute top-2 right-2 z-[3] rounded-full p-2 bg-white/85 dark:bg-[#11141C]/85 backdrop-blur-sm">
+          <BellIcon
             onClick={(e: React.MouseEvent) => { e.preventDefault(); onToggleInterest?.(e, product.id, product.name, interested) }}
             className={`w-3 h-3 ${interested ? 'text-gray-900 fill-gray-900 dark:text-white dark:fill-white' : 'text-gray-300 dark:text-gray-600'}`}
           />

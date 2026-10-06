@@ -25,7 +25,7 @@ export function WishlistSortChips({ value, onChange }: { value: WishlistSort; on
           role="tab"
           aria-selected={value === s.key}
           onClick={() => onChange(s.key)}
-          className={`shrink-0 h-9 px-4 rounded-full text-[13.5px] transition-colors ${s.pcOnly ? 'hidden lg:inline-flex items-center' : ''} ${
+          className={`shrink-0 h-9 px-4 rounded-full text-[13px] transition-colors ${s.pcOnly ? 'hidden lg:inline-flex items-center' : ''} ${
             value === s.key
               ? 'bg-brand text-white font-bold'
               : 'bg-white dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300 shadow-lift dark:shadow-none'
@@ -47,7 +47,7 @@ export function WishlistSortChips({ value, onChange }: { value: WishlistSort; on
 export function WishlistFlag({ drop }: { drop: number | null }) {
   if (drop != null) {
     return (
-      <p className="flex items-center gap-0.5 text-[11px] font-bold leading-none mb-1 text-brand-text">
+      <p className="flex items-center gap-1 text-[12px] font-bold leading-none mb-1 text-brand-text">
         <ArrowDown className="w-3 h-3" aria-hidden="true" />
         {formatNumber(drop)}원 내림
       </p>
@@ -76,7 +76,7 @@ export function WishlistSummaryRail({ s }: { s: WishlistSummary }) {
       <div className="text-[40px] font-extrabold leading-none tracking-tight tabular-nums text-gray-900 dark:text-white">
         {headline.n}
       </div>
-      <p className="mt-1.5 text-[12.5px] text-gray-500 dark:text-gray-400">{headline.cap}</p>
+      <p className="mt-2 text-[12px] text-gray-500 dark:text-gray-400">{headline.cap}</p>
       {rows.length > 0 && (
         <>
           <hr className="my-4 border-0 border-t border-rule" />

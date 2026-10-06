@@ -9,6 +9,7 @@
  * 무엇을: `verify.yml` 에서 strict 가드를 **매번 새로 뽑아** 전부 돌린다(손목록 없음).
  *   제외는 `local-ci-parity.mjs` 의 EXCLUDE 하나뿐이고 이유가 적혀 있다.
  *
+ * 2026-09-24 추가: 가드가 전부 초록이면 **바뀐 코드를 보는 시험**도 돌린다(`pre-push-tests.mjs`).
  * 우회: `SKIP_PREPUSH_GATE=1 git push …` (긴급 시). 우회해도 CI 가 다시 막는다.
  */
 import { execFileSync } from 'node:child_process'
@@ -17,6 +18,24 @@ import { localGateSteps, EXCLUDE } from './local-ci-parity.mjs'
 if (process.env.SKIP_PREPUSH_GATE === '1') {
   console.log('⏭️  pre-push 게이트 건너뜀 (SKIP_PREPUSH_GATE=1) — CI 가 대신 막는다.')
   process.exit(0)
+}
+
+// 🔀 2026-10-06 — **CI 가 아예 안 도는 경우**를 먼저 막는다(가드보다 앞).
+//   `.gitattributes` 의 `merge=union` 덕에 로컬 머지는 깨끗한데 **GitHub 서버측은 그 규칙을
+//   안 쓴다** → PR 이 conflicted 로 남고, 그러면 GitHub 이 머지 커밋을 못 만들어
+//   **`pull_request` 워크플로가 디스패치되지 않는다**(Verify 가 실패도 아니고 **부재**).
+//   화면엔 빨간 게 없고 auto-merge 는 조용히 멎는다 — 실측 2026-10-06 PR #1621·#1623·#1625.
+//   이 검사는 '로컬만 clean' 함정만 본다(평소 충돌은 경고만). 우회: GSM_SKIP=1
+try {
+  const out = execFileSync('node', ['scripts/check-github-side-merge.mjs'], {
+    encoding: 'utf8',
+    timeout: 60_000,
+  })
+  if (/⚠️/.test(out)) process.stdout.write(out)
+} catch (err) {
+  process.stdout.write(`${err.stdout ?? ''}`)
+  process.stderr.write(`${err.stderr ?? ''}`)
+  process.exit(1)
 }
 
 // 🔑 이름이 아니라 **CI 의 명령 그대로** 돌린다(2026-09-14 수리).
@@ -47,6 +66,17 @@ const secs = ((Date.now() - t0) / 1000).toFixed(1)
 
 if (failed.length === 0) {
   console.log(`✅ pre-push 게이트: 가드 ${steps.length}개 통과 (${secs}초). 제외 ${Object.keys(EXCLUDE).length}개는 CI 담당.`)
+  // 🧪 2026-09-24: 가드가 초록이어도 **시험**은 깨질 수 있다 — 코드를 옮기면 그 코드를 보던
+  //   남의 가드가 조용히 빨간불이 된다(PR #1543 에서 4건). 바뀐 코드를 보는 시험만 골라 돌린다(실측 36초).
+  //   실패 판정·설명은 그 스크립트가 직접 한다.
+  try {
+    const out = execFileSync('node', ['scripts/pre-push-tests.mjs'], { encoding: 'utf8', timeout: 900_000 })
+    process.stdout.write(out)
+  } catch (err) {
+    process.stdout.write(`${err.stdout ?? ''}`)
+    process.stderr.write(`${err.stderr ?? ''}`)
+    process.exit(1)
+  }
   process.exit(0)
 }
 

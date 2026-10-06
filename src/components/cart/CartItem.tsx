@@ -99,7 +99,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
       {/* Product info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
-          <h3 className={`text-[14px] font-medium leading-tight line-clamp-2 ${isOutOfStock ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-white'}`}>
+          <h3 className={`text-[15px] font-medium leading-tight line-clamp-2 ${isOutOfStock ? 'text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-white'}`}>
             {item.product_name}
           </h3>
           <button
@@ -118,7 +118,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
           <button
             onClick={() => onOpenOption(item)}
             disabled={isUpdating}
-            className="mt-1.5 inline-flex items-center gap-1 text-[12px] text-gray-600 dark:text-gray-300 border border-line px-2.5 py-1 rounded-full hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
+            className="mt-2 inline-flex items-center gap-1 text-[12px] text-gray-600 dark:text-gray-300 border border-line px-2 py-1 rounded-full hover:bg-gray-50 dark:hover:bg-[#1D1F29] transition-colors"
           >
             {item.option_value}
             <svg className="w-3 h-3 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -138,7 +138,7 @@ export const CartItemComponent = React.memo(function CartItemComponent({
             return (
               <>
                 {d.hasDiscountLine && !isOutOfStock && (
-                  <p className="flex items-baseline gap-1.5 text-[12px] leading-none mb-1">
+                  <p className="flex items-baseline gap-2 text-[12px] leading-none mb-1">
                     {d.discount > 0 && <span className="font-extrabold text-brand-text tabular-nums">{d.discount}%</span>}
                     {d.showOriginal && (
                       <span className="text-gray-400 dark:text-gray-500 line-through tabular-nums">
@@ -183,10 +183,10 @@ export const CartItemComponent = React.memo(function CartItemComponent({
 
           {/* Stock warnings — 🛡️ 2026-05-19: 판매 종료 상품 (is_active=0) 도 별도 표시. */}
           <div className="text-right">
-            {isInactive && <p className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">{t('cart.inactive', { defaultValue: '판매 종료' })}</p>}
-            {!isInactive && isOutOfStock && <p className="text-[11px] text-red-500 font-medium">{t('cart.soldOut', { defaultValue: '품절' })}</p>}
-            {!isUnavailable && isAtStockLimit && <p className="text-[11px] text-orange-500">{t('cart.maxQty', { stock, defaultValue: '최대 수량 ({{stock}}개)' })}</p>}
-            {!isUnavailable && !isAtStockLimit && isLowStock && <p className="text-[11px] text-orange-400">{t('cart.lowStock', { stock, defaultValue: '재고 {{stock}}개' })}</p>}
+            {isInactive && <p className="text-[12px] text-gray-500 dark:text-gray-400 font-medium">{t('cart.inactive', { defaultValue: '판매 종료' })}</p>}
+            {!isInactive && isOutOfStock && <p className="text-[12px] text-red-500 font-medium">{t('cart.soldOut', { defaultValue: '품절' })}</p>}
+            {!isUnavailable && isAtStockLimit && <p className="text-[12px] text-orange-500">{t('cart.maxQty', { stock, defaultValue: '최대 수량 ({{stock}}개)' })}</p>}
+            {!isUnavailable && !isAtStockLimit && isLowStock && <p className="text-[12px] text-orange-400">{t('cart.lowStock', { stock, defaultValue: '재고 {{stock}}개' })}</p>}
           </div>
         </div>
       </div>

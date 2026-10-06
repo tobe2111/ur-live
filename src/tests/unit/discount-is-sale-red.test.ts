@@ -36,8 +36,14 @@ const SITES = [
   'src/pages/TossWidgetPayPage.tsx',
   'src/pages/VoucherDetailPage.tsx',
 ]
-/** 할인 퍼센트를 렌더하는 줄. */
-const PCT = /\{\s*(discount|discountPct|discountRate|dp)\s*\}\s*%/
+/**
+ * 할인 퍼센트를 렌더하는 줄.
+ * 🔧 2026-09-29 재조준: `DealRow` 가 할인율을 **SSOT**(`priceDisplay`)에서 받게 되면서 렌더가
+ *   `{discountPct}%` → `{pd.discount}%` 로 바뀌었다. 계약(= `text-sale` 한 색)은 그대로이고
+ *   변한 것은 값의 출처뿐이라, 이름 목록에 그 형태를 더한다. 이 목록이 낡으면 검사 대상이
+ *   0줄이 되어 **통과처럼 보인다** — 아래 `toBeGreaterThan(0)` 이 그 순간을 잡는다.
+ */
+const PCT = /\{\s*(discount|discountPct|discountRate|dp|pd\.discount)\s*\}\s*%/
 
 describe('할인율은 한 색이다', () => {
   it.each(SITES)('%s 의 할인율이 --sale 을 쓴다', (p) => {

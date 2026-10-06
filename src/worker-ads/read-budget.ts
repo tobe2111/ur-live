@@ -24,6 +24,10 @@
  *
  * 🔻 롤백: `ADS_DAILY_READ_BUDGET=0`(끔) 또는 이 모듈 호출부 3곳 제거. 원장 DO 는 남아도 무해(알람 없음).
  */
+import { utcDay, utcDaysLeftInMonth, utcMonth } from './budget-calendar'
+import { ACCT_RETRY_MS, effectiveReserve, type AccountUsage } from './account-usage'
+export { utcDay, utcDaysLeftInMonth, utcMonth }   // 🗓️ 달력 SSOT = budget-calendar(실측 모듈과 공유 — 순환 방지). 재수출이라 호출부 무수정.
+
 export const READ_BUDGET_ENV = 'ADS_DAILY_READ_BUDGET'
 export const DEFAULT_DAILY_READ_BUDGET = 1_500_000
 
@@ -31,42 +35,26 @@ export const DEFAULT_DAILY_READ_BUDGET = 1_500_000
  * ✍️ **쓰기 예산** (2026-09-02 추가 — 대표 *"$5 에서 더 추가 비용이 발생되어선 안돼"*).
  *
  * ## 왜 읽기만으로는 부족한가 (같은 날 실측)
- * 요금을 실제로 터뜨릴 뻔한 축은 읽기가 아니라 **쓰기**였다:
- * ```
- *   09-02 00~13시  업체 DB 쓴 행 시간당 210만~780만   ← "1회 마이그레이션" 무한 반복
- *   월 환산 4.8억 행 · 유료 포함분 5,000만/월 → 9.5배 초과 ≈ 월 $427
- *   09-02 13시 #1302 배포 → 14시 이후 0 · 0 · 14,969   (200배 감소)
- * ```
- * 읽기 차단기는 이걸 **못 막는다** — 그 UPDATE 들은 읽기도 많았지만, 읽기 한도를 넘기 전에
- * 쓰기 요금이 먼저 붙는 구간이 있다(포함분 비율이 읽기 250억 vs 쓰기 5,000만 = 500배 차이).
+ * 요금을 터뜨릴 뻔한 축은 읽기가 아니라 **쓰기**였다 — 업체 DB 쓴 행이 시간당 210만~780만
+ * ("1회 마이그레이션" 무한 반복 → 월 환산 4.8억 = 포함분의 9.5배 ≈ 월 $427). #1302 배포 후 200배 감소.
+ * 읽기 차단기로는 안 막힌다: 포함분 비율이 읽기 250억 vs 쓰기 5,000만 = **500배** 차이라
+ * 읽기 한도에 닿기 전에 쓰기 요금이 먼저 붙는다.
  *
- * ## 기본값 근거 — 150만 → **120만** (2026-09-03 대표 승인 "응 그렇게 하자")
+ * ✅ **이 차단기는 라이브에서 실제로 돈다**(추측이 아니라 실측). 유료 첫날 누적이 예산에서 정확히 멈췄다
+ * — 05시 KST 1,511,523 → 06시 1,627,367 → 07·08시 **+0 +0**(레인 정지) → 09시(UTC 자정) 재개.
+ * 계량기 정확도도 같은 시간대 CF 분석과 대조했다: **쓰기 원장 147,064 vs 실측 132,495(111% — 넉넉히
+ * 셈) · 읽기 95%** ⇒ 안전한 방향으로 틀린다.
  *
- * ✅ **먼저: 이 차단기는 라이브에서 실제로 돈다.** 유료 전환 첫날(9/2 UTC 날) 시간별 누적이
- * 정확히 예산에서 멈췄다 — 추측이 아니라 실측이다:
- * ```
- *   05시 KST  누적 1,511,523  ← 150만 돌파
- *   06시      누적 1,627,367
- *   07·08시   +0  +0          ← 레인 정지
- *   09시 KST(=UTC 자정)        ← 리셋 후 재개
- * ```
- * 계량기 정확도도 같은 시간대 Cloudflare 분석과 맞춰 확인했다:
- * **쓰기 원장 147,064 vs 실측 132,495(111% — 넉넉히 셈) · 읽기 95%.** 안전한 방향으로 틀린다.
+ * ## 기본값 150만 → **120만** (2026-09-03 대표 승인 "응 그렇게 하자")
+ * 150만은 유어애즈만 보고 잡은 값인데 포함분은 **계정 단위**다. 본진 하루 약 10만 행(9/3 실측 시간당
+ * 4,062)을 더하면 `150만×30 + 300만 = 4,800만/5,000만 = 96%`(여유 4%) vs `120만 → 3,900만 = 78%`.
+ * 4% 여유는 얇다 — 본진은 사용자가 늘면 커지고 그때 넘는 것은 **유어애즈가 아니라 계정**이다.
+ * 대가(유어애즈 처리량 약 20% 감소 = 하루 3~4시간 일찍 정지)를 밝히고 승인받았다.
  *
- * ## 왜 150만이 아니라 120만인가 — **본진 몫을 안 빼고 있었다**
- * 포함분은 **계정 단위**인데 150만은 유어애즈만 보고 잡은 값이다. 유어딜 본진이 하루 약 10만 행을
- * 쓰므로(9/3 실측 시간당 4,062) 실제 월 합계는:
- * ```
- *   유어애즈 150만×30 = 4,500만  +  본진 10만×30 = 300만  =  4,800만 / 5,000만 = 96%   ← 여유 4%
- *   유어애즈 120만×30 = 3,600만  +  본진        300만  =  3,900만 / 5,000만 = 78%   ← 여유 22%
- * ```
- * 대표 지시 *"유료요금제 용량을 넘어선 안돼"* 에 4% 여유는 얇다 — 본진 트래픽은 사용자가 늘면 커지고,
- * 그때 넘는 것은 **유어애즈가 아니라 계정**이다. 맞교환은 유어애즈 처리량 약 20% 감소(레인이 하루
- * 3~4시간 일찍 멈춘다)이고, 대표에게 그 대가를 밝히고 승인받았다.
- *
- * ⚠️ **폭주 방어력은 그대로다** — 시간당 300만짜리 폭주는 120만이든 150만이면 어차피 30분 안에 걸린다.
- * 이 값이 정하는 것은 "정상 수집을 하루 몇 시간 돌리나"지 "폭주를 막나"가 아니다.
- * `0` 이면 끈다(무제한).
+ * ⚠️ **폭주 방어력은 그대로다** — 시간당 300만짜리 폭주는 120만이든 150만이든 30분 안에 걸린다.
+ *   이 값이 정하는 것은 "정상 수집을 하루 몇 시간 돌리나"지 "폭주를 막나"가 아니다. `0` 이면 끈다(무제한).
+ * 🗓️ 그리고 2026-09-08 부터 이 값은 **env 명시가 있을 때의 기본값**일 뿐이다 — 평시 상한은 아래
+ *   `monthlyDerivedWriteBudget`(월에서 역산)이 정한다.
  */
 export const WRITE_BUDGET_ENV = 'ADS_DAILY_WRITE_BUDGET'
 export const DEFAULT_DAILY_WRITE_BUDGET = 1_200_000
@@ -82,6 +70,10 @@ export interface ReadBudgetState {
   month?: string; writtenMonth?: number
   /** 🧾 오늘 레인별 사용량 — "누가 썼나"가 없으면 넘쳤을 때 전 레인을 끄는 수밖에 없다(아래 헤더). */
   lanes?: Record<string, LaneSpend>
+  /** 🔬 계정 전체 실측(유어딜 예약분을 상수 대신 여기서 만든다 — `account-usage.ts`). */
+  acct?: AccountUsage
+  /** 🔬 마지막 갱신 **시도** 시각 — 실패도 기록한다(안 적으면 매 보고가 재시도해 전부 느려진다). */
+  acctAt?: number
 }
 
 /**
@@ -103,6 +95,8 @@ export interface ReadBudgetView extends ReadBudgetState {
   written: number; writeBudget: number; writeOver: boolean
   /** 🗓️ 월 상태 — 화면에 안 보이면 "왜 오늘 예산이 이 값인지"를 아무도 못 설명한다. */
   writtenMonth?: number; monthLeft?: number; daysLeft?: number
+  /** 🔬 이번 판정에 쓴 유어딜 예약분. 상수(`URDEAL_MONTHLY_RESERVE`)와 같으면 실측이 없거나 낡은 것이다. */
+  reserve?: number
   /**
    * 🧾 레인 귀속 — **기본 응답은 작게** 유지한다(이 뷰는 레인 인보케이션마다 읽힌다).
    * `cutLanes` 는 게이트가 쓰고, `top` 은 하트비트가 쓴다. 전체 표는 `?full=1` 일 때만 실린다.
@@ -186,39 +180,23 @@ export function laneLedgerKey(raw: unknown): string {
   return n ? n.slice(0, 40) : 'unknown'
 }
 
-/** Cloudflare 가 일일 한도를 되돌리는 경계 = UTC 자정. */
-export function utcDay(nowMs: number): string { return new Date(nowMs).toISOString().slice(0, 10) }
-
 /** env 값 → 예산(행). 없거나 못 읽으면 기본값, 0 이하는 0(= 끔). */
 export function resolveReadBudget(env: unknown): number {
   return resolveBudget(env, READ_BUDGET_ENV, DEFAULT_DAILY_READ_BUDGET)
 }
 
 /**
- * 🚨 **2026년 9월 한시 스로틀 — 10/1 UTC 에 스스로 풀린다.**
+ * 🚨 **2026년 9월 한시 스로틀 — 10/1 UTC 에 스스로 풀렸다(이력).**
  *
- * 9/2 하루에 **4,554만 행**을 쓴 폭주(업체 DB 전면 재기록)가 월 포함분 5,000만을 통째로 먹었다.
- * 그래서 9월 남은 기간은 **누가 쓰든 전부 과금 구간**이다 — 유어딜 본진의 하루 4.5만 행도 포함이다
- * (포함분은 DB 가 아니라 **계정** 단위다). 대표 지시 2026-09-07: *"이번 달은 과금 안 되게"*.
+ * 9/2 하루에 **4,554만 행**을 쓴 폭주(업체 DB 전면 재기록)가 월 포함분 5,000만을 통째로 먹어, 9월
+ * 남은 기간이 **누가 쓰든 전부 과금 구간**이 됐다(포함분은 DB 가 아니라 **계정** 단위다 — 본진의
+ * 하루 4.5만 행도 포함). 대표 지시 2026-09-07 *"이번 달은 과금 안 되게"* → 하루 30,000 으로 조였다.
+ * 실측 선택지: 0 → $2.35(본진 몫, 못 멈춘다) · **30,000 → $3.06(채택)** · 1,200,000 → $30.55.
+ * 잃는 것이 거의 없었다 — 제휴 제안 발송은 "한참 뒤"(대표 확정)이고 **백로그는 썩지 않는다**.
  *
- * 실측 기반 선택지(9/7 21:00 KST 기준, 남은 23.5일):
- * ```
- *   유어애즈 쓰기/일        9월 총 초과      금액
- *              0           2,350,952      $2.35   ← 바닥(본진 몫, 못 멈춘다)
- *         30,000           3,055,952      $3.06   ← 채택
- *      1,200,000          30,550,952     $30.55   ← 그대로 뒀을 때
- * ```
- * 잃는 것이 거의 없어 채택했다 — 제휴 제안 발송은 "한참 뒤"(대표 확정)이고 **백로그는 썩지 않는다**.
- * 6개월 뒤에 측정해도 그때의 현재 활동을 재는 것이라 결과가 같다(CLAUDE.md 유어애즈 절).
- *
- * ⚠️ **`0` 을 쓰면 안 된다** — 아래 `resolveBudget` 에서 0 은 "끔"(**무제한**)이다. 정반대가 된다.
- * ⚠️ **날짜로 스스로 풀리게 한 이유**: 되돌리는 것을 잊어 수집이 영영 묶이는 사고를 막기 위해서다.
- *   이 레포가 반복해 만난 *"실패가 아니라 조용한 부재"* 를 여기서 만들지 않는다.
+ * ⚠️ **`0` 을 쓰면 안 된다** — `resolveBudget` 에서 0 은 "끔"(**무제한**)이라 정반대가 된다.
+ * ⚠️ **날짜로 스스로 풀리게 한 이유**: 되돌리는 것을 잊어 수집이 영영 묶이는 *조용한 부재*를 막기 위해서다.
  * ⚠️ env `ADS_DAILY_WRITE_BUDGET` 를 명시하면 **그 값이 이긴다** — 대표가 언제든 되돌릴 수 있다.
- *
- * 🔭 **근본 처방은 따로다**(이번 범위 밖): 이 예산은 *일일* 상한이라 **월 포함분이 이미 소진됐는지를
- *   모른다**. 그래서 폭주가 월초에 한도를 태워도 남은 날들이 태연히 과금 구간으로 걸어 들어간다.
- *   월 인식 예산이 있었다면 이번 $29 는 애초에 안 생겼다.
  */
 export const SEPT_2026_WRITE_THROTTLE = 30_000
 export const SEPT_2026_THROTTLE_UNTIL_MS = Date.parse('2026-10-01T00:00:00Z')
@@ -242,41 +220,61 @@ export function resolveWriteBudget(env: unknown, nowMs: number = Date.now()): nu
  *
  * ## 계산
  * ```
- *   남은 몫   = 포함분 − 유어딜 예약분 − 이번 달 유어애즈 누적
+ *   남은 몫   = 포함분 − 유어딜 예약분 − 안전버퍼 − 이번 달 유어애즈 누적
  *   오늘 예산 = 남은 몫 ÷ 남은 일수(오늘 포함)
  * ```
  * **스스로 균형을 잡는다** — 적게 쓴 날이 있으면 남은 날이 그만큼 더 쓰고, 많이 쓴 날이 있으면
  * 남은 날이 조여진다. 월을 터뜨리는 것도, 용량을 남기는 것도 구조적으로 안 된다.
  *
- * ⚠️ **유어딜 몫을 먼저 뗀다** — 포함분은 DB 가 아니라 **계정** 단위다. 본진(하루 4.5만 행 실측)이
- *   쓰는 만큼을 빼지 않으면 유어애즈가 그 몫까지 먹고 본진 쓰기가 과금으로 넘어간다.
+ * ## 🔴 목표는 "포함분 안"이 아니라 **초과 $0** 이다 (2026-10-06 대표 확정)
+ * 대표: *"유료 전환은 되어있는데? 그래도 그 $5 이상을 넘으면 절대 안돼. 유어딜 사용자 많아지는
+ * 것도 감안해야하고."* Workers Paid 는 **기본료가 $5/월**이라 포함분(5,000만 행)을 1행이라도
+ * 넘기면 그 초과분($1.00/백만 행)이 곧 $5 초과다 ⇒ **허용 초과분 0. "안 넘는다"가 아니라
+ * "넘을 수 없다"** 여야 한다.
+ *
+ * ⚠️ **유어딜 몫을 먼저 뗀다** — 포함분은 DB 가 아니라 **계정** 단위다. 본진이 쓰는 만큼을 빼지
+ *   않으면 유어애즈가 그 몫까지 먹고 본진 쓰기가 과금으로 넘어간다.
  * ⚠️ **절대 0 을 돌려주지 않는다** — 이 파일에서 0 은 "끔"(**무제한**)이라 정반대가 된다.
  *   월 몫이 이미 소진됐어도 바닥값(`MONTH_SPENT_FLOOR`)을 돌려준다.
- * ⚠️ 원장은 **유어애즈 자신의 쓰기만** 센다(레인이 보고한 값). 본진 실적은 안 보이므로 예약분은
- *   상수다 — 본진이 커지면 이 값을 다시 재서 올려야 한다.
+ * 🔬 **예약분·지출 둘 다 계정 실측을 쓴다**(2026-10-06 — 그 전엔 예약분이 상수, 지출은 레인 자기보고뿐이라
+ *   "틀리면 청구서로만 드러나는" 자리였다). 근거·폴백 규약: `account-usage.ts`.
  */
+/** Cloudflare 가 정한 사실 — Workers Paid 의 D1 월 포함 쓰기 행수. **정책 손잡이가 아니다.** */
 export const MONTHLY_WRITE_ALLOWANCE = 50_000_000
-/** 유어딜 본진 월 예약분 — 실측 하루 4.5만 행 × 31일에 여유를 얹었다(2026-09 측정). */
-export const URDEAL_MONTHLY_RESERVE = 1_500_000
+/**
+ * 유어딜 본진 월 예약분. 🔬 **2026-10-06 재측정으로 1,500,000 → 6,000,000** — 위 주석이
+ * *"본진이 커지면 이 값을 다시 재서 올려야 한다"* 고 경고한 그 시점이 왔다. CF GraphQL 계정 전체
+ * 실측(10/1~10/5 완결 5일): **본진 하루 44,305 행 → 31일 1,373,461 = 옛 예약분의 91.6%**,
+ * 남은 여유 126,539(=**1.09배만 커져도 넘는다**). 6,000,000 은 그 실측의 **4.4배**다.
+ *
+ * ⚠️ 이 값엔 **유어애즈가 본진 DB 에 쓰는 양도 섞여 있다**(하트비트·설정 — 같은 DB 라 분리 불가)
+ *   → 보수적으로 전량을 본진 몫으로 잡는다.
+ *
+ * 🔬 **2026-10-06 부터 이 상수는 "폴백"이다**(대표 *"예약분 실측 자동으로 하자."*) — 평시엔 계정 전체
+ *   실측에서 예약분을 만들고(`account-usage.ts` `effectiveReserve`), 실측을 못 읽거나 낡았을 때만
+ *   이 값으로 돌아온다. 그래서 **더는 손으로 재측정해 올릴 필요가 없다**(그 단계가 실제로 밀려 있었다).
+ *   폴백이 실측의 4.4배인 것은 의도다 — 모르는 동안은 유어애즈가 **덜** 쓴다.
+ */
+export const URDEAL_MONTHLY_RESERVE = 6_000_000
+/**
+ * 월 안전버퍼 — 어느 몫에도 배정하지 않고 비워 두는 행수. 초과 허용치가 **0** 이므로 계획을
+ * 포함분에 딱 붙이면 안 된다. 덮는 것: ① 유어딜이 예약분(4.4배)마저 넘겨 자람 ② 원장이 실제
+ * 쓰기를 과소계수(레인이 보고하지 않는 경로) ③ 월말로 몰린 하루치 튐.
+ *
+ * ⚠️ **이 값을 줄여 수집을 늘리지 말 것** — 그 거래는 "수집 몇 %" 와 "청구서" 를 바꾸는 것이고,
+ *   대표가 후자를 **절대 안 된다**고 못 박았다.
+ */
+export const MONTHLY_SAFETY_BUFFER = 4_000_000
 /** 월 몫이 다 떨어졌을 때의 바닥값. **0 이면 안 된다**(0 = 끔 = 무제한). */
 export const MONTH_SPENT_FLOOR = 30_000
-
-/** UTC 기준 이번 달 남은 일수(오늘 포함). 요금 경계가 UTC 월이라 그 달력을 쓴다. */
-export function utcDaysLeftInMonth(nowMs: number): number {
-  const d = new Date(nowMs)
-  const last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate()
-  return Math.max(1, last - d.getUTCDate() + 1)
-}
-
-/** UTC 월 키(`2026-10`) — 요금 경계와 같은 달력. */
-export function utcMonth(nowMs: number): string { return new Date(nowMs).toISOString().slice(0, 7) }
 
 export function monthlyDerivedWriteBudget(
   writtenMonth: number, nowMs: number,
   allowance: number = MONTHLY_WRITE_ALLOWANCE, reserve: number = URDEAL_MONTHLY_RESERVE,
+  buffer: number = MONTHLY_SAFETY_BUFFER,
 ): number {
   const spent = Number.isFinite(writtenMonth) && writtenMonth > 0 ? writtenMonth : 0
-  const left = allowance - reserve - spent
+  const left = allowance - reserve - buffer - spent
   if (!(left > 0)) return MONTH_SPENT_FLOOR
   return Math.max(MONTH_SPENT_FLOOR, Math.floor(left / utcDaysLeftInMonth(nowMs)))
 }
@@ -311,8 +309,13 @@ export function effectiveWriteBudget(env: unknown, state: ReadBudgetState | null
   if (raw !== undefined && raw !== null && String(raw).trim() !== '') {
     return resolveBudget(env, WRITE_BUDGET_ENV, DEFAULT_DAILY_WRITE_BUDGET)
   }
-  const sameMonth = state && state.month === utcMonth(nowMs)
-  const derived = monthlyDerivedWriteBudget(sameMonth ? state.writtenMonth || 0 : 0, nowMs)
+  const m = utcMonth(nowMs)
+  // 🔬 지출은 **큰 쪽**: 원장은 즉시지만 *보고된 것만* 세고(알려진 사각지대), CF 실측은 수 분 늦지만
+  //    **빠진 쓰기까지** 센다 ⇒ 큰 값이 "최소 이만큼 썼다"의 하한(낡아도 하한으론 유효 — 신선도는 예약분만 요구).
+  const self = state && state.month === m ? state.writtenMonth || 0 : 0
+  const seen = state?.acct?.month === m ? state.acct.ads || 0 : 0
+  const derived = monthlyDerivedWriteBudget(Math.max(self, seen), nowMs,
+    MONTHLY_WRITE_ALLOWANCE, effectiveReserve(state?.acct, nowMs, URDEAL_MONTHLY_RESERVE))
   // 9월 한시 스로틀은 **천장**으로 남는다 — 그 달 원장엔 9/2 폭주 이력이 없어 역산이 과대평가한다.
   return nowMs < SEPT_2026_THROTTLE_UNTIL_MS ? Math.min(SEPT_2026_WRITE_THROTTLE, derived) : derived
 }
@@ -395,6 +398,8 @@ export function applyRead(
     month,
     writtenMonth: (sameMonth ? prev.writtenMonth || 0 : 0) + pos(rw),
     lanes: capLanes(lanes, day),
+    // 🔬 실측은 **날이 바뀌어도 들고 간다**(월 추정값이라 하루 경계와 무관) — 버리면 매일 자정에 예약분이 상수로 떨어져 수집이 공짜로 깎인다.
+    ...(prev?.acct ? { acct: prev.acct } : {}), ...(prev?.acctAt ? { acctAt: prev.acctAt } : {}),
   }
 }
 
@@ -438,7 +443,12 @@ export const READ_BUDGET_STORAGE_KEY = 'readBudget'
  * 원장 DO 의 `/budget` 처리 — 순수하게 떼어 둔 것은 테스트 때문이다(`cloudflare:workers` 의 DO 클래스는 vitest 에서
  * 못 올린다). `?rr=N` 이 있으면 더하고, 없으면 읽기만. 응답은 언제나 현재 상태.
  */
-export async function handleBudgetRequest(url: URL, storage: StorageLike, env: unknown, nowMs = Date.now()): Promise<ReadBudgetView> {
+export async function handleBudgetRequest(
+  url: URL, storage: StorageLike, env: unknown, nowMs = Date.now(),
+  /** 🔬 계정 실측 갱신기(DO 가 주입 · 시험은 가짜). **보고(POST)에서만** 불린다 — 게이트의 읽기
+   *  경로는 레인 인보케이션마다 돌아서 거기에 CF API 지연을 얹으면 안 된다. */
+  refresh?: (at: number) => Promise<AccountUsage | null>,
+): Promise<ReadBudgetView> {
   const budget = resolveReadBudget(env)
   const prev = (await storage.get<ReadBudgetState>(READ_BUDGET_STORAGE_KEY)) ?? null
   const rr = Number(url.searchParams.get('rr') || 0)
@@ -455,10 +465,20 @@ export async function handleBudgetRequest(url: URL, storage: StorageLike, env: u
   const next = reported
     ? applyRead(prev, rr, nowMs, rw, laneKeyed || undefined, verdict)
     : (prev && prev.day === utcDay(nowMs) ? prev : { day: utcDay(nowMs), used: 0, written: 0 })
-  if (reported) await storage.put(READ_BUDGET_STORAGE_KEY, next)
+  if (reported) {
+    // 🔬 시도 시각을 **성공·실패 무관** 먼저 적는다 — 실패를 안 적으면 모든 보고가 재시도해 전부 느려진다.
+    if (refresh && nowMs - (next.acctAt || 0) >= ACCT_RETRY_MS) {
+      next.acctAt = nowMs
+      const got = await refresh(nowMs).catch(() => null)
+      if (got) next.acct = got   // 실패면 **옛 실측을 그대로 둔다**(지우면 예약분이 상수로 떨어진다)
+    }
+    await storage.put(READ_BUDGET_STORAGE_KEY, next)
+  }
   // 🗓️ 예산은 **갱신된 상태로** 계산한다 — 이 회차의 쓰기까지 반영해야 다음 판정이 정확하다.
   const writeBudget = effectiveWriteBudget(env, next, nowMs)
   const writtenMonth = next.writtenMonth || 0
+  // 🔬 역산식과 **같은 예약분**을 보고한다 — 보고와 집행이 갈리면 "아직 남았다"고 읽으며 버퍼를 태운다.
+  const reserve = effectiveReserve(next.acct, nowMs, URDEAL_MONTHLY_RESERVE)
   // ⚠️ `lanes`(전체 표)는 **스프레드에서 뺀다** — 안 빼면 레인 인보케이션마다 96줄짜리 표가 실려 온다.
   //    아래에서 `?full=1` 일 때만 다시 넣는다.
   const { lanes: _allLanes, ...totals } = next
@@ -469,7 +489,8 @@ export async function handleBudgetRequest(url: URL, storage: StorageLike, env: u
     // ⚠️ 일일 상한과 페이싱 **둘 다** 본다. 페이싱만 두면 23시엔 하루치가 통째로 열린다.
     writeOver: writeBudgetOver(next, writeBudget, nowMs) || pacedWriteOver(next, writeBudget, nowMs),
     writtenMonth,
-    monthLeft: Math.max(0, MONTHLY_WRITE_ALLOWANCE - URDEAL_MONTHLY_RESERVE - writtenMonth),
+    monthLeft: Math.max(0, MONTHLY_WRITE_ALLOWANCE - reserve - MONTHLY_SAFETY_BUFFER - writtenMonth),
+    reserve,
     daysLeft: utcDaysLeftInMonth(nowMs),
     // 🧾 기본 응답은 작게 — 이 뷰는 레인 인보케이션마다 읽힌다. 전체 표는 물어볼 때만.
     cutLanes: cutLaneNames(next, nowMs),
@@ -509,6 +530,7 @@ export async function readBudgetState(env: unknown): Promise<ReadBudgetView> {
       writeBudget: Number(body.writeBudget) || writeBudget, writeOver: !!body.writeOver,
       writtenMonth: Number(body.writtenMonth) || 0,
       monthLeft: Number(body.monthLeft) || 0, daysLeft: Number(body.daysLeft) || 0,
+      reserve: Number(body.reserve) || 0,
       // 🧾 레인 귀속 — 원장이 준 것만 신뢰한다(못 읽으면 아래 catch 가 빈 배열로 준다).
       cutLanes: Array.isArray(body.cutLanes) ? body.cutLanes.map(String) : [],
       top: Array.isArray(body.top) ? body.top : [],
@@ -563,7 +585,8 @@ export function budgetBeatFields(v: ReadBudgetView): Record<string, number | boo
     // 🚨 "누가 잘렸나" — 사건이므로 월 상태보다 앞. 평시엔 비어 있어 한 글자도 안 먹는다.
     ...(cut.length ? { cut: cut.join(','), cutn: cut.length } : {}),
     // 🗓️ 월 상태 — 이게 없으면 "왜 오늘 예산이 이 값인가"를 아무도 설명 못 한다.
-    ...(v.writtenMonth !== undefined ? { wmonth: v.writtenMonth, mleft: v.monthLeft || 0, dleft: v.daysLeft || 0 } : {}),
+    // 🔬 `rsv` = 이번 판정의 유어딜 예약분. 6000000 이면 **실측이 없거나 낡은 것**(= 폴백 중)이라는 뜻이다.
+    ...(v.writtenMonth !== undefined ? { wmonth: v.writtenMonth, mleft: v.monthLeft || 0, dleft: v.daysLeft || 0, rsv: v.reserve || 0 } : {}),
     ...(v.unknown ? { unknown: true } : {}),
     // 🧾 "누가 많이 썼나" — 참고용이라 **맨 뒤**. 잘려도 판단에 지장이 없다.
     ...(top ? { top } : {}),

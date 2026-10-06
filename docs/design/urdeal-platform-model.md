@@ -200,7 +200,7 @@
 ### 소비자 (다크/화이트 테마)
 - **발견**: `/`(동네딜 지도) · `/vouchers`(이용권+쇼핑) · `/group-buy`(동네딜) · `/browse`(쇼핑,숨김) · `/search` · `/blog` · **`/local/:code`(상권관 — B2G 상권 패키지 지역 랜딩, 2026-07-04)**
 - **상세/구매**: `/vouchers/:id` · `/pass/:id`(2026-09-16 정본 — 옛 `/group-buy/:id` 는 영구 301) · `/products/:id` · `/stays/:id` · `/checkout` · `/points/charge`
-- **유어샵**: `/u/:handle`(단일화) · `/u/me`(본인) · `/u/me/add`(핀 추가) · `/u/me/earnings` · `/profile/:username`·`/s/:id`(셀러 공개)
+- **유어샵**: `/u/:handle`(단일화 — **손님 화면 하나뿐**, 주인이 봐도 같다) · **`/u/me/manage`(관리 — 이름·소개·주소·SNS·흐르는 문구·핀 순서, 2026-09-28 대표 확정 e3 로 손님 화면에서 분리)** · `/u/me`(본인) · `/u/me/add`(핀 추가) · `/u/me/earnings` · `/profile/:username`·`/s/:id`(셀러 공개)
 - **마이**: `/user/profile` · `/my-vouchers`(이용권 지갑) · **`/my-gifticons`(교환권 보관함 — 2026-08-31 분리: 교환권은 `/vouchers` 에서 사고 여기서 확인, 이용권은 `/my-vouchers`)** · `/my-orders` · `/my-deal-history` · `/my-commissions` · `/notifications` · `/account/settings`
 - **성장**: `/referral` · `/g/:invite_code` · `/influencer/*`(랭킹·정산·발굴) · **`/experience`(체험 캠페인 응모, 2026-07-12)**
 - **성장**: `/referral` · `/g/:invite_code` · `/influencer/*`(랭킹·정산·발굴)
@@ -294,7 +294,7 @@
 >
 > 🔄 **2026-08-31 대표 재검토(확정 아님)**: *"매장 promo 재원은 이제 5%가 아니라 수수료 10%도 받기 때문에 지금은 변경된 얘기 같아."* 위 원칙은 **플랫폼 수수료가 5% 하나**이던 시절 계산이다. 그 뒤 채널별 요율(`fee_channel_rates_enabled=true` · **직접 10% / 중개 5%**)이 들어와 직접 입점 매장에서는 폭이 훨씬 넓다. ⇒ **flip 을 지금 밀지 말 것.** 폐기도 아니다 — 중개(5%) 매장에서는 이 계산이 그대로 유효하다. 대신 8-31 결정 둘로 간다: 영입 2% 를 직접 입점 매장으로 한정, 예산 아비터(`commission_budget_enabled`) 활성(staging 실결제 선행).
 >
-> ⭐ **2026-09-07 대표 확정(결재 `docs/decisions/2026-09-07-actor-benefit-conflicts.md` Q4-2 — *"기본안대로 모두 승인"*)**: **07-08 재원 원칙은 폐기한다.** 현재 유효한 원칙은 하나다 — **성장 커미션(지금 살아 있는 축은 영입 2% 하나)은 플랫폼 수수료 안에서 유어딜이 부담하되, 주문당 총합이 `수수료 − PG 준비금(pg_reserve_pct)` 을 구조적으로 못 넘게 예산 아비터([INV-CB] `commission_budget_enabled`)가 강제한다.** 직접 입점 10% 에서는 폭이 있고(10 − 2.75 − 2 = +5.25), 중개 5% 에서는 영입 2% 가 애초에 안 붙는다(08-31 결정 — 직접 입점 한정)라 적자 경로가 없다. "유어딜 5% 는 어떤 커미션에도 안 쓴다" 와 그에 딸린 전 축 owner-promo flip·불변식 #44(platform:revenue 전액) 계획은 **더 이상 추진하지 않는다** — 08-25 에 구현된 owner 경로(이용권 share·에이전시 share)는 게이트 OFF 인 채 남되 켜지 않는다. ⚠️ **아비터 ON 은 대표가 켠다** — 선행은 staging S1(`docs/STAGING_CHECKLIST.md`) 실결제. 기본 OFF 라 이 문단 자체는 라이브 동작을 바꾸지 않는다.
+> ⭐ **2026-09-07 대표 확정(결재 `docs/decisions/archive/2026-09-07-actor-benefit-conflicts.md` Q4-2 — *"기본안대로 모두 승인"*)**: **07-08 재원 원칙은 폐기한다.** 현재 유효한 원칙은 하나다 — **성장 커미션(지금 살아 있는 축은 영입 2% 하나)은 플랫폼 수수료 안에서 유어딜이 부담하되, 주문당 총합이 `수수료 − PG 준비금(pg_reserve_pct)` 을 구조적으로 못 넘게 예산 아비터([INV-CB] `commission_budget_enabled`)가 강제한다.** 직접 입점 10% 에서는 폭이 있고(10 − 2.75 − 2 = +5.25), 중개 5% 에서는 영입 2% 가 애초에 안 붙는다(08-31 결정 — 직접 입점 한정)라 적자 경로가 없다. "유어딜 5% 는 어떤 커미션에도 안 쓴다" 와 그에 딸린 전 축 owner-promo flip·불변식 #44(platform:revenue 전액) 계획은 **더 이상 추진하지 않는다** — 08-25 에 구현된 owner 경로(이용권 share·에이전시 share)는 게이트 OFF 인 채 남되 켜지 않는다. ⚠️ **아비터 ON 은 대표가 켠다** — 선행은 staging S1(`docs/STAGING_CHECKLIST.md`) 실결제. 기본 OFF 라 이 문단 자체는 라이브 동작을 바꾸지 않는다.
 
 ### 5-4. 결제 (Toss V2)
 - 모든 confirm은 `confirmTossPayment()` 게이트웨이 경유(직접 fetch 금지). circuit breaker·idempotency·금액검증 자동.
@@ -323,6 +323,12 @@
 4. **수요신호 루프**: 커뮤니티 공구 제안 → 어드민 알림 → 확정 시 참여자 전원 알림. (없는 상품을 유저가 끌어옴)
    ⚠️ 현재 진입 UI 는 `COMMUNITY_PROPOSAL_HIDDEN` 로 가려져 있다(레일은 살아 있음).
 5. **SEO/공유 루프**: 유어샵·블로그·공구 상세 서버측 OG/JSON-LD → 카톡/네이버/구글 유입 → 재유통.
+6. **인스타 댓글 → DM 루프** (2026-10-01 신설 · 기본 OFF): 유어딜 공식 인스타 게시물에 정해 둔 키워드로
+   댓글 → 그 사람에게 링크 DM 1통(메타 공식 Private Reply, 댓글 후 7일 이내) + 선택적 공개 답글.
+   같은 날 **매장(사업자 유저·중개사)** 에게도 열었다: 마이 → 전체 도구 → '인스타 자동 DM'(`/seller/instagram-dm`),
+   연결은 **인스타 로그인**(토큰 없음), 계정 = `seller:{id}`(좌석 토큰). 공식 계정은 어드민 `/admin/instagram-autodm`.
+   게이트 두 겹(계정 '켜기' + 어드민 '매장 계정 발송' 스위치, 둘 다 기본 OFF — 메타 앱 심사 뒤 연다).
+   웹훅 `/api/instagram/webhook`(앱 시크릿 서명 검증)이 인스타 계정 ID 로 주인을 찾는다. 코드 `src/features/instagram-autodm/`.
 
 ---
 

@@ -27,6 +27,8 @@ const BOX = stripComments(readFileSync('src/pages/group-buy/DealPurchaseBox.tsx'
 const MENU = stripComments(readFileSync('src/pages/group-buy/DealMenuList.tsx', 'utf-8'))
 const USAGE = stripComments(readFileSync('src/pages/group-buy/UsageGuide.tsx', 'utf-8'))
 const BAR = stripComments(readFileSync('src/pages/group-buy/DealBottomBar.tsx', 'utf-8'))
+// 🔀 2026-09-24: 셀러 카드가 상세에서 추출됐다(대표 문서 ① — 가게 소개란 신설).
+const SELLER_CARD = stripComments(readFileSync('src/pages/group-buy/SellerCard.tsx', 'utf-8'))
 // 🔀 2026-09-15 머지: 매장 위치 블록이 `StoreLocation` 부품으로 추출됐다(같은 날 안 B 작업).
 //   불변식은 그대로이고 **읽을 파일만** 옮긴다 — 안 옮기면 이 시험은 코드가 이사한 순간
 //   "정상인데 빨간불" 이 되고, 억지로 지우면 그 자리는 아무도 안 지키게 된다.
@@ -90,8 +92,12 @@ describe('바꾼 것 — outline 컨트롤은 전용 토큰을 쓴다', () => {
   it('수량 −/+ · 셀러 방문 · 길찾기 넷 다 `--rule-strong`', () => {
     // `--gbd-line2`(=`--line`, 카드선)가 아니라 체계가 outline 버튼·칩용으로 정의한 값.
     // 길찾기·전화는 `StoreLocation` 으로 옮겨졌고 거기선 **버튼 스타일 상수 하나**를 둘이 공유한다.
-    const strong = (DETAIL.match(/1px solid var\(--rule-strong\)/g) || []).length
+    // 🔀 2026-09-24: '셀러 방문' 이 `SellerCard.tsx` 로 옮겨졌다(대표 문서 ① — 가게 소개란 신설로
+    //   상세가 파일크기 래칫에 걸려 카드를 추출). **불변식은 넷 다 같은 토큰**이므로 가드를 풀지 않고
+    //   옮겨간 자리를 합쳐서 센다 — 한쪽이 토큰을 잃으면 합이 줄어 여전히 빨간불이다.
+    const strong = ((DETAIL + SELLER_CARD).match(/1px solid var\(--rule-strong\)/g) || []).length
     expect(strong, '상세의 outline 컨트롤(수량 −/+ · 셀러 방문)이 토큰을 잃었다').toBe(3)
+    expect((SELLER_CARD.match(/1px solid var\(--rule-strong\)/g) || []).length, '셀러 방문 버튼이 토큰을 잃었다').toBe(1)
     expect((STORE.match(/1px solid var\(--rule-strong\)/g) || []).length, '매장 위치 버튼이 토큰을 잃었다').toBe(1)
   })
 

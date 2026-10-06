@@ -98,7 +98,46 @@ export default function SellerAppointmentsPage() {
           ) : items.length === 0 ? (
             <p className="p-12 text-center text-sm text-gray-400">해당 상태의 예약이 없습니다.</p>
           ) : (
-            <table className="w-full text-sm">
+            <>
+            {/* 📱 2026-09-27 폰: 표 대신 카드 한 장에 한 건.
+                실측(366px 시트 폭): 5열 표는 잘리지는 않지만 폭의 **44%가 칸 패딩**(5열×px-4=160px)이라
+                각 칸이 55~68px 로 눌리고 한 행이 91px 로 부풀었다. 열을 줄이거나 가로 스크롤을 붙이는
+                대신 `SellerProductsPage` 가 이미 쓰는 방식(표=PC / 카드=폰)을 따른다. 데이터·동작 동일. */}
+            <div className="lg:hidden divide-y divide-gray-100">
+              {items.map(a => {
+                const meta = STATUS_LABEL[a.status]
+                return (
+                  <div key={a.id} className="p-3.5">
+                    <div className="flex items-start gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold text-gray-900 truncate">{a.product_name}</p>
+                        <p className="font-mono text-xs text-gray-600 mt-1">{a.booking_date} {a.start_time}~{a.end_time}</p>
+                      </div>
+                      <span className={`shrink-0 inline-block px-2 py-0.5 rounded-full text-[10px] font-medium ${meta.cls}`}>{meta.label}</span>
+                    </div>
+                    <div className="mt-2 flex items-center gap-2 text-xs text-gray-700">
+                      <span className="truncate">{a.user_name || a.user_id}</span>
+                      {a.user_phone && (
+                        <a href={`tel:${a.user_phone}`} className="flex items-center gap-1 shrink-0">
+                          <Phone className="w-3 h-3" aria-hidden="true" /> {a.user_phone}
+                        </a>
+                      )}
+                    </div>
+                    {a.status === 'confirmed' && (
+                      <div className="mt-3 flex items-center gap-2">
+                        <button onClick={() => markComplete(a)} className="ur-btn ur-btn-sm ur-btn-primary flex-1 gap-1">
+                          <CheckCircle className="w-3.5 h-3.5" aria-hidden="true" /> 완료
+                        </button>
+                        <button onClick={() => markNoShow(a)} className="ur-btn ur-btn-sm ur-btn-danger flex-1 gap-1">
+                          <XCircle className="w-3.5 h-3.5" aria-hidden="true" /> 노쇼
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+            <table className="hidden lg:table w-full text-sm">
               <thead className="bg-gray-50">
                 <tr className="text-xs text-gray-500">
                   <th className="px-4 py-3 text-left font-medium">일시</th>
@@ -146,6 +185,7 @@ export default function SellerAppointmentsPage() {
                 })}
               </tbody>
             </table>
+            </>
           )}
         </div>
       </div>

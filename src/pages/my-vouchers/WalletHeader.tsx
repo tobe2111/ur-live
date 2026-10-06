@@ -44,23 +44,23 @@ export default function WalletHeader({ title, hideTitle = false, amount, unit, s
               </button>
             )}
             {!hideTitle && (
-              <h1 className="text-[20px] font-extrabold tracking-[-0.02em] text-gray-900 dark:text-white leading-none truncate">{title}</h1>
+              <h1 className="text-[24px] font-extrabold tracking-[-0.02em] text-gray-900 dark:text-white leading-none truncate">{title}</h1>
             )}
           </div>
         )}
         {amount !== null && (
-          <span className="shrink-0 text-[21px] font-extrabold font-mono tracking-tight text-gray-900 dark:text-white leading-none">
-            {formatNumber(amount)}<span className="font-sans text-[12px] font-bold text-gray-400 dark:text-gray-500 ml-0.5">{unit}</span>
+          <span className="shrink-0 text-[24px] font-extrabold tabular-nums tracking-tight text-gray-900 dark:text-white leading-none">
+            {formatNumber(amount)}<span className="font-sans text-[12px] font-bold text-gray-400 dark:text-gray-500 ml-1">{unit}</span>
           </span>
         )}
       </div>
 
       {stats.length > 0 && (
-        <div className="mt-2.5 pt-2.5 border-t border-rule flex items-center gap-4 text-[12px]">
+        <div className="mt-2 pt-2 border-t border-rule flex items-center gap-4 text-[12px]">
           {stats.map((s) => (
             <span key={s.label} className="text-gray-500 dark:text-gray-400">
               {s.label}{' '}
-              <b className={`font-extrabold ${s.mono ? 'font-mono' : ''} ${
+              <b className={`font-extrabold ${s.mono ? 'tabular-nums' : ''} ${
                 /* 🎨 2026-09-15: 툴킷 기본 빨강·초록을 hex 로 직접 적고 있었다 — 체계 토큰
                    (`--tone-bad`/`--tone-ok`)과 값이 달라 같은 '위험'이 화면마다 다른 빨강이었다. */
                 s.tone === 'danger' ? 'text-tone-bad' : s.tone === 'success' ? 'text-tone-ok' : 'text-gray-900 dark:text-white'

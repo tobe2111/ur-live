@@ -53,14 +53,14 @@ export default function CreatorsPage() {
 
       <header className="sticky top-0 z-20 ur-panel-ink">
         <div className="ur-content-wide mx-auto px-5 lg:px-10 h-14 lg:h-16 flex items-center justify-between">
-          <Link to="/" aria-label="유어딜 홈" className="flex items-center gap-2.5">
+          <Link to="/" aria-label="유어딜 홈" className="flex items-center gap-2">
             <UrDealLogo size={19} forceDark />
-            <span className="hidden sm:inline text-[12.5px] font-bold text-white/55">소개하기</span>
+            <span className="hidden sm:inline text-[12px] font-bold text-white/55">소개하기</span>
           </Link>
           <div className="flex items-center gap-2 lg:gap-3">
-            <Link to="/about" className="hidden sm:inline text-[12.5px] font-semibold text-white/70 px-2">서비스 소개</Link>
+            <Link to="/about" className="hidden sm:inline text-[12px] font-semibold text-white/70 px-2">서비스 소개</Link>
             <ApplyLink href={applyHref}
-              className="h-9 lg:h-10 px-3.5 lg:px-5 rounded-full bg-brand text-white inline-flex items-center gap-1.5 text-[12.5px] lg:text-[13.5px] font-extrabold">
+              className="h-9 lg:h-10 px-4 lg:px-5 rounded-full bg-brand text-white inline-flex items-center gap-2 text-[12px] lg:text-[13px] font-extrabold">
               소개 파트너 지원 <ArrowRight className="w-3.5 h-3.5" />
             </ApplyLink>
           </div>
@@ -72,12 +72,12 @@ export default function CreatorsPage() {
         <section className="ur-panel-ink text-white overflow-hidden">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 pt-10 pb-14 lg:pt-16 lg:pb-24 grid gap-14 lg:grid-cols-[1fr_0.62fr] lg:gap-16 xl:gap-24 lg:items-center">
             <div>
-              <h1 className="text-[30px] sm:text-[40px] lg:text-[52px] xl:text-[60px] leading-[1.22] font-extrabold tracking-[-0.035em]">
+              <h1 className="text-[28px] sm:text-[40px] lg:text-[48px] xl:text-[60px] leading-[1.22] font-extrabold tracking-[-0.035em]">
                 <span className="text-brand-text">링크 하나</span>로<br />
                 동네 맛집을 팔고<br />
                 커미션을 받으세요
               </h1>
-              <p className="mt-6 lg:mt-8 text-[15px] lg:text-[19px] leading-[1.7] text-white/70 max-w-[26em]">
+              <p className="mt-6 lg:mt-8 text-[15px] lg:text-[17px] leading-[1.7] text-white/70 max-w-[26em]">
                 팔로워가 많지 않아도 괜찮아요. 동네 이웃에게 진짜 좋은 딜을 소개하는 것부터 시작합니다.
               </p>
 
@@ -90,11 +90,11 @@ export default function CreatorsPage() {
 
               <div className="mt-10 lg:mt-12 flex flex-col sm:flex-row gap-3 max-w-[32rem]">
                 <ApplyLink href={applyHref}
-                  className="sm:flex-1 h-[52px] lg:h-[58px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[16.5px] font-extrabold active:scale-[0.98] transition-transform">
+                  className="sm:flex-1 h-[52px] lg:h-[58px] rounded-2xl bg-brand text-white flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-extrabold active:scale-[0.98] transition-transform">
                   소개 파트너 지원 <ArrowRight className="w-4 h-4 lg:w-[18px] lg:h-[18px]" />
                 </ApplyLink>
                 <Link to="/about"
-                  className="sm:flex-1 h-[52px] lg:h-[58px] rounded-2xl bg-white/[0.10] border border-white/20 flex items-center justify-center gap-2 text-[15px] lg:text-[16.5px] font-bold text-white">
+                  className="sm:flex-1 h-[52px] lg:h-[58px] rounded-2xl bg-white/[0.10] border border-white/20 flex items-center justify-center gap-2 text-[15px] lg:text-[17px] font-bold text-white">
                   서비스 먼저 보기
                 </Link>
               </div>
@@ -111,17 +111,17 @@ export default function CreatorsPage() {
         {/* ② 수익 구조 — 한 문장을 크게 두고 조건은 아래 헤어라인으로. PC 는 제목 고정 + 본문 분리. */}
         <section className="bg-warm">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-28 grid gap-8 lg:grid-cols-[minmax(0,22rem)_1fr] lg:gap-20">
-            <h2 className="text-[26px] lg:text-[40px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2] lg:self-start lg:sticky lg:top-24">
+            <h2 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2] lg:self-start lg:sticky lg:top-24">
               수익 구조는 단순합니다
             </h2>
             <div>
-              <p className="flex items-start gap-2.5 lg:gap-4 text-[19px] lg:text-[32px] xl:text-[36px] font-extrabold text-ink leading-[1.35] tracking-[-0.025em]">
+              <p className="flex items-start gap-2 lg:gap-4 text-[17px] lg:text-[34px] font-extrabold text-ink leading-[1.35] tracking-[-0.025em]">
                 <Link2 className="w-5 h-5 lg:w-8 lg:h-8 mt-1 lg:mt-2 text-brand shrink-0" strokeWidth={1.9} aria-hidden />
                 <span>내 링크로 판매될 때마다 <span className="text-brand-text">판매액의 소개비(promo%)</span> 적립</span>
               </p>
               <ul className="mt-8 lg:mt-12 border-t border-rule">
                 {TERMS.map((t) => (
-                  <li key={t} className="py-3.5 lg:py-6 border-b border-rule text-[13.5px] lg:text-[17px] leading-relaxed text-gray-500 dark:text-gray-400">
+                  <li key={t} className="py-4 lg:py-6 border-b border-rule text-[13px] lg:text-[17px] leading-relaxed text-gray-500 dark:text-gray-400">
                     {t}
                   </li>
                 ))}
@@ -133,11 +133,11 @@ export default function CreatorsPage() {
         {/* ③ 시작 3단계 — 모바일은 세로 목록, PC 는 가로 타임라인(가로선 하나에 세 점). */}
         <section className="ur-panel-ink text-white">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-28">
-            <h2 className="text-[26px] lg:text-[40px] font-extrabold tracking-[-0.03em] leading-[1.2]">시작은 3단계</h2>
+            <h2 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] leading-[1.2]">시작은 3단계</h2>
 
-            <ol className="mt-8 lg:mt-16 space-y-2.5 lg:space-y-0 lg:grid lg:grid-cols-3 lg:gap-12 xl:gap-20">
+            <ol className="mt-8 lg:mt-16 space-y-2 lg:space-y-0 lg:grid lg:grid-cols-3 lg:gap-12 xl:gap-20">
               {STEPS.map(({ icon: Icon, t, d }, i) => (
-                <li key={t} className="flex items-start gap-3.5 rounded-2xl bg-white/[0.06] p-4 lg:bg-transparent lg:p-0 lg:block lg:rounded-none">
+                <li key={t} className="flex items-start gap-4 rounded-2xl bg-white/[0.06] p-4 lg:bg-transparent lg:p-0 lg:block lg:rounded-none">
                   <span aria-hidden className="w-9 h-9 rounded-xl bg-white/[0.10] flex items-center justify-center shrink-0 lg:hidden">
                     <Icon className="w-[18px] h-[18px] text-brand-text" />
                   </span>
@@ -146,10 +146,10 @@ export default function CreatorsPage() {
                     <i className="flex-1 h-px bg-white/20 not-italic" />
                   </span>
                   <div className="min-w-0">
-                    <p className="text-[14.5px] lg:text-[28px] font-extrabold tracking-[-0.02em] leading-[1.3]">
+                    <p className="text-[15px] lg:text-[28px] font-extrabold tracking-[-0.02em] leading-[1.3]">
                       <span className="text-brand-text mr-1 lg:hidden">{i + 1}.</span>{t}
                     </p>
-                    <p className="text-[12.5px] lg:text-[16px] text-white/60 mt-0.5 lg:mt-5 leading-snug lg:leading-relaxed">{d}</p>
+                    <p className="text-[12px] lg:text-[17px] text-white/60 mt-1 lg:mt-5 leading-snug lg:leading-relaxed">{d}</p>
                   </div>
                 </li>
               ))}
@@ -160,7 +160,7 @@ export default function CreatorsPage() {
         {/* ④ 실제 화면 — 폰 갤러리. 캡션은 덱과 같은 문구로, 라이브인지 예시 데이터인지 밝힌다. */}
         <section className="bg-warm">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-28">
-            <h2 className="text-[26px] lg:text-[40px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">제안을 받고, 정산까지 앱에서</h2>
+            <h2 className="text-[28px] lg:text-[40px] font-extrabold tracking-[-0.03em] text-ink leading-[1.2]">제안을 받고, 정산까지 앱에서</h2>
             <p className="mt-3 lg:mt-5 text-[13px] lg:text-[17px] text-gray-500 dark:text-gray-400 max-w-[34em] leading-relaxed">
               매장에 돈을 달라고 할 일이 없습니다. 제안 수락도 적립 확인도 같은 앱 안에서 끝납니다.
             </p>
@@ -182,10 +182,10 @@ export default function CreatorsPage() {
         <section id="apply" className="ur-panel-ink text-white">
           <div className="ur-content-wide mx-auto px-5 lg:px-10 py-16 lg:py-32">
             <div className="max-w-[46rem] mx-auto text-center">
-              <h2 className="text-[26px] lg:text-[52px] xl:text-[60px] font-extrabold tracking-[-0.03em] leading-[1.22]">
+              <h2 className="text-[28px] lg:text-[48px] xl:text-[60px] font-extrabold tracking-[-0.03em] leading-[1.22]">
                 1기 소개 파트너 모집
               </h2>
-              <p className="mt-6 lg:mt-8 text-[14px] lg:text-[19px] leading-relaxed text-white/70">
+              <p className="mt-6 lg:mt-8 text-[15px] lg:text-[17px] leading-relaxed text-white/70">
                 지금 지원하시면 온보딩 안내를 보내드립니다.
               </p>
             </div>
@@ -220,7 +220,7 @@ export default function CreatorsPage() {
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-[#1D1F29]/95 backdrop-blur-md border-t border-rule px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))]">
         <div className="max-w-xl mx-auto">
           <ApplyLink href={applyHref}
-            className="flex h-12 rounded-2xl bg-brand text-white items-center justify-center gap-1.5 text-[14px] font-extrabold active:scale-[0.98] transition-transform">
+            className="flex h-12 rounded-2xl bg-brand text-white items-center justify-center gap-2 text-[15px] font-extrabold active:scale-[0.98] transition-transform">
             소개 파트너 지원 <ArrowRight className="w-4 h-4" />
           </ApplyLink>
         </div>
@@ -245,8 +245,8 @@ function Stat({ n, d }: { n: string; d: string }) {
     <div>
       <dt className="sr-only">{d}</dt>
       <dd>
-        <span className="block text-[26px] lg:text-[40px] xl:text-[46px] font-extrabold tracking-[-0.045em] tabular-nums leading-none">{n}</span>
-        <span className="block text-[11.5px] lg:text-[13px] text-white/55 mt-2 lg:mt-3 whitespace-nowrap">{d}</span>
+        <span className="block text-[28px] lg:text-[40px] xl:text-[48px] font-extrabold tracking-[-0.045em] tabular-nums leading-none">{n}</span>
+        <span className="block text-[12px] lg:text-[13px] text-white/55 mt-2 lg:mt-3 whitespace-nowrap">{d}</span>
       </dd>
     </div>
   )

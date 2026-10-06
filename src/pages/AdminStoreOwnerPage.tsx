@@ -16,6 +16,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import api from '@/lib/api'
 import StoreReportQueue from './admin-store-owner/StoreReportQueue'
+import StoreVerifyQueue from './admin-store-owner/StoreVerifyQueue'
+import StoreOwnerNoticeQueue from './admin-store-owner/StoreOwnerNoticeQueue'
 import AdminLayout from '@/components/AdminLayout'
 import { DashboardPageHeader } from '@/components/dashboard'
 import { toast } from '@/hooks/useToast'
@@ -191,6 +193,8 @@ export default function AdminStoreOwnerPage() {
       {/* 🚨 2026-09-21 매장 제보 큐 — 매장명을 누르면 위 조회로 이어진다(어드민이 창을 옮겨다니지 않게). */}
       <div className="mb-6">
         <StoreReportQueue onPickStore={(id) => { setSellerId(String(id)); void lookup(id) }} />
+        <StoreVerifyQueue onPickStore={(id) => { setSellerId(String(id)); void lookup(id) }} />
+        <StoreOwnerNoticeQueue onPickStore={(id) => { setSellerId(String(id)); void lookup(id) }} />
       </div>
 
       {state && (

@@ -224,6 +224,28 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
         is_read INTEGER DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )` },
+    /**
+     * 🔎 2026-09-30 — **라이브에 없던 테이블**(실측: `no such table: popular_searches`).
+     *   migration `0273_search_logs_popular.sql` 이 정의해 두고도 적용되지 않았고(이 레포의
+     *   알려진 D1 마이그레이션 부채), repair-schema 에도 없어 **아무도 만들지 않았다.**
+     *   그래서 조용히 죽어 있던 것 셋:
+     *     · `/api/search/popular` → 항상 `[]` (검색 빈 화면·결과 하단의 "인기 검색어" 가 영영 안 뜸)
+     *     · 자동완성의 인기 검색어 소스 → 항상 빈 배열
+     *     · 0건일 때의 오타 보정(`suggested_query`) 후보 source → 비어 있음
+     *   쓰기(`ProductRepository.logSearch`)도 try/catch 라 **에러 없이** 계속 실패하고 있었다.
+     */
+    { name: 'popular_searches', sql: `CREATE TABLE IF NOT EXISTS popular_searches (
+        keyword TEXT PRIMARY KEY,
+        search_count INTEGER NOT NULL DEFAULT 1,
+        last_searched_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )` },
+    { name: 'search_logs', sql: `CREATE TABLE IF NOT EXISTS search_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT,
+        search_query TEXT NOT NULL,
+        results_count INTEGER DEFAULT 0,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )` },
     { name: 'push_subscriptions', sql: `CREATE TABLE IF NOT EXISTS push_subscriptions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
@@ -278,6 +300,20 @@ export async function runSchemaRepair(DB: D1Database): Promise<SchemaRepairResul
     }
   } catch (e: any) {
     tableResults.push({ name: 'dashboard_notifications:check-migration', status: 'error', error: String(e?.message || e).slice(0, 200) });
+  }
+
+  // 🔎 2026-09-30: 검색 로그/인기 검색어 인덱스 (위 CREATE TABLE 짝 — migration 0273 동등).
+  for (const sql of [
+    "CREATE INDEX IF NOT EXISTS idx_popular_searches_count ON popular_searches(search_count DESC)",
+    "CREATE INDEX IF NOT EXISTS idx_search_logs_query_created ON search_logs(search_query, created_at DESC)",
+    "CREATE INDEX IF NOT EXISTS idx_search_logs_user_created ON search_logs(user_id, created_at DESC) WHERE user_id IS NOT NULL",
+  ]) {
+    try {
+      await DB.prepare(sql).run();
+      tableResults.push({ name: sql.slice(0, 60), status: 'ok' });
+    } catch (e: any) {
+      tableResults.push({ name: sql.slice(0, 60), status: 'error', error: String(e?.message || e).slice(0, 200) });
+    }
   }
 
   // 🛡️ 2026-06-10 (교환권 500 사고 — D1 'too many columns in result set' 한도 100):

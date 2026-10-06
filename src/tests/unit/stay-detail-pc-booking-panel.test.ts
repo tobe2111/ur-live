@@ -77,6 +77,14 @@ describe('③ PC 예약 패널(B안) · 트리거 · 라벨', () => {
     expect(page).toMatch(/storeName=\{propertyTypeLabel\(stay\.property_type\)\}/)
   })
   it('취소 정책 문장은 본문과 패널이 같은 함수를 쓴다', () => {
-    expect((page.match(/cancellationLabel\(stay\.cancellation_policy\)/g) || []).length).toBe(2)
+    /* 🔀 2026-09-24: 본문의 '이용 안내' 표가 `StayInfoSections` 로 옮겨졌다(대표 문서 ⑥ —
+       '비슷한 스테이' 를 붙이며 상세가 파일크기 래칫에 걸려 추출). **불변식은 두 자리가 같은
+       함수를 쓴다** 이므로 가드를 풀지 않고 옮겨간 자리를 합쳐서 센다. */
+    const info = readFileSync('src/pages/stay-detail/StayInfoSections.tsx', 'utf8')
+    // 패널은 `stay.cancellation_policy` 를 직접, 본문 표는 prop 으로 받은 같은 값을 넘긴다.
+    expect((page + info).match(/cancellationLabel\(/g)?.length).toBe(2)
+    expect(page, '패널이 같은 함수를 안 쓴다').toContain('cancellationLabel(stay.cancellation_policy)')
+    expect(info, '본문 표가 같은 함수를 안 쓴다(문장이 두 벌이 된다)').toContain('cancellationLabel(policy)')
+    expect(page, '본문 표에 취소 정책이 안 내려간다').toMatch(/<StayPolicyInfo[\s\S]{0,120}policy=\{stay\.cancellation_policy\}/)
   })
 })

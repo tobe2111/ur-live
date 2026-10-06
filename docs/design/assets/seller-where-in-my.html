@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>마이 어디에서 보나 — 3형태</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --brand:#1C69EF; --brand-tint:#EAF1FE; --brand-text:#1C69EF;
+  --bg:#F8F7FC; --surface:#FFFFFF;
+  --ink:#16181C; --ink-soft:#6E6B68; --ink-faint:#8A8580;
+  --rule:rgb(22 24 28 / .08); --rule-strong:rgb(22 24 28 / .28);
+  --lift:0 2px 10px rgb(22 24 28 / .06);
+  --page:#EFEEF4; --pagefg:#16181C; --pagemute:#6E6B68; --paneled:#E4E2EC;
+}
+:root[data-theme="dark"]{
+  --bg:#11141C; --surface:#1D1F29; --ink:#F5F3F1; --ink-soft:#A5A29E; --ink-faint:#757370;
+  --brand-text:#4D8DF5; --brand-tint:#16243D;
+  --rule:rgb(255 255 255 / .08); --rule-strong:rgb(255 255 255 / .32); --lift:none;
+  --page:#0A0C12; --pagefg:#F5F3F1; --pagemute:#A5A29E; --paneled:#171A23;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--page);color:var(--pagefg);font-family:'Noto Sans KR',system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;padding:34px 18px 70px}
+.wrap{max-width:1340px;margin:0 auto}
+h1{font-size:26px;font-weight:800;letter-spacing:-.025em}
+.sub{color:var(--pagemute);font-size:14px;margin-top:9px;line-height:1.7;max-width:70ch}
+.sub b{color:var(--pagefg);font-weight:700}
+.bar{display:flex;gap:8px;margin-top:18px}
+.tgl{border:1px solid var(--rule-strong);background:transparent;color:var(--pagefg);
+  border-radius:999px;padding:7px 16px;font:600 13px 'Noto Sans KR';cursor:pointer}
+.tgl[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:#fff}
+.row{display:flex;gap:26px;flex-wrap:wrap;margin-top:34px;align-items:flex-start}
+.slot{width:372px}
+.tag{display:inline-block;font-size:11.5px;font-weight:900;color:var(--page);background:var(--pagefg);
+  border-radius:6px;padding:3px 9px;letter-spacing:.02em;margin-bottom:8px}
+.ttl{font-size:16.5px;font-weight:800;letter-spacing:-.02em}
+.dsc{font-size:12.5px;color:var(--pagemute);line-height:1.7;margin-top:6px;min-height:78px}
+.dsc b{color:var(--pagefg)}
+.verdict{font-size:12.5px;font-weight:700;margin:2px 0 12px;padding:8px 11px;border-radius:9px;background:var(--paneled)}
+.verdict.ok{color:var(--brand-text)}
+.verdict.no{color:var(--pagefg)}
+
+.phone{width:372px;background:var(--bg);border-radius:28px;overflow:hidden;
+  box-shadow:0 12px 40px rgb(0 0 0 / .18);display:flex;flex-direction:column;position:relative}
+.h760{height:760px}
+.st{height:25px;flex:none;display:flex;align-items:center;justify-content:space-between;
+  padding:0 19px;font-size:10.5px;font-weight:700;color:var(--ink-faint)}
+.hd{flex:none;padding:5px 15px 8px;display:flex;align-items:center;gap:9px}
+.hd .t{font-size:19px;font-weight:800;color:var(--ink);letter-spacing:-.02em}
+.body{flex:1;overflow:hidden;padding:0 15px 10px;display:flex;flex-direction:column;gap:9px}
+.tabs{flex:none;height:58px;background:var(--surface);border-top:1px solid var(--rule);display:flex}
+.tabs a{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  font-size:10px;font-weight:700;color:var(--ink-faint);position:relative}
+.tabs a.on{color:var(--ink);font-weight:800}
+.tabs a .pt{position:absolute;bottom:6px;width:4px;height:4px;border-radius:50%;background:var(--brand)}
+svg{display:block}
+
+.card{background:var(--surface);box-shadow:var(--lift);border-radius:14px;padding:14px;flex:none}
+.sm{font-size:11.5px;color:var(--ink-soft);line-height:1.55}
+.grp{background:var(--surface);box-shadow:var(--lift);border-radius:14px;flex:none;overflow:hidden}
+.grp .gh{font-size:12px;font-weight:800;color:var(--ink);padding:12px 14px 8px}
+.grp .gr{display:flex;align-items:center;gap:9px;padding:11px 14px;font-size:13px;color:var(--ink);font-weight:600}
+.grp .gr + .gr{border-top:1px solid var(--rule)}
+.grp .gr .v{margin-left:auto;font-size:12px;color:var(--ink-faint);font-weight:700}
+
+/* 판매 요약 (히어로) */
+.hero{border-radius:15px;overflow:hidden;box-shadow:var(--lift);flex:none}
+.hero .band{background:var(--brand);color:#fff;padding:10px 15px;display:flex;align-items:center}
+.hero .band .l{font-size:12px;font-weight:800}
+.hero .band .r{margin-left:auto;font-size:11.5px;font-weight:600;opacity:.9}
+.hero .in{background:var(--surface);padding:17px 15px 15px}
+.hero .num{font-size:35px;font-weight:900;color:var(--ink);letter-spacing:-.045em;line-height:1}
+.hero .num s{font-size:16px;font-weight:700;margin-left:3px;text-decoration:none}
+.hero .meta{margin-top:9px;font-size:12px;color:var(--ink-soft)}
+.quiet{display:flex;align-items:center;gap:10px;padding:11px 3px;flex:none}
+.quiet + .quiet{border-top:1px solid var(--rule)}
+.quiet .tx{font-size:13.5px;font-weight:600;color:var(--ink)}
+.quiet .vl{margin-left:auto;font-size:13.5px;font-weight:800;color:var(--ink)}
+
+/* 토글 */
+.seg{display:flex;background:var(--paneled);border-radius:11px;padding:3px;flex:none}
+.seg button{flex:1;border:0;border-radius:9px;padding:9px 0;font:800 13px 'Noto Sans KR';
+  background:transparent;color:var(--ink-soft);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--lift)}
+
+.cta{border:0;border-radius:12px;padding:13px;font:800 14px 'Noto Sans KR';
+  background:var(--brand);color:#fff;width:100%;cursor:pointer;flex:none}
+.cta.gh{background:transparent;color:var(--ink-soft);border:1px solid var(--rule-strong);font-weight:700;font-size:12.5px;padding:11px}
+
+/* 형태 3 — 스크롤 길이 */
+.scrollbox{width:372px;position:relative}
+.ruler{position:absolute;left:-30px;top:0;bottom:0;width:22px;display:flex;flex-direction:column;align-items:center}
+.ruler .ln{flex:1;width:2px;background:var(--rule-strong);opacity:.4}
+.ruler .cap2{writing-mode:vertical-rl;font-size:10.5px;font-weight:800;color:var(--pagemute);padding:6px 0}
+.long{background:var(--bg);border-radius:28px;overflow:hidden;box-shadow:0 12px 40px rgb(0 0 0 / .18);
+  display:flex;flex-direction:column;padding-bottom:10px}
+.blk{margin:0 15px 9px;border-radius:13px;background:var(--surface);box-shadow:var(--lift);
+  padding:12px 14px;font-size:12.5px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:8px}
+.blk .n{margin-left:auto;font-size:11px;color:var(--ink-faint);font-weight:700}
+.blk.sell{background:var(--brand-tint);color:var(--brand-text)}
+.blk.tall{padding-top:26px;padding-bottom:26px}
+.blk.taller{padding-top:46px;padding-bottom:46px}
+.divider{margin:14px 15px 10px;font-size:11px;font-weight:800;color:var(--pagemute);letter-spacing:.03em}
+.legend{margin-top:34px;font-size:13px;color:var(--pagemute);line-height:1.9;max-width:78ch}
+.legend b{color:var(--pagefg)}
+.legend code{background:var(--surface);color:var(--ink);padding:1px 6px;border-radius:5px;font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>“판매자의 마이페이지에서 보게끔 되나?”</h1>
+  <p class="sub">세 가지 뜻이 될 수 있어서 그려 봤습니다. 지금 마이는 이미 <b>14블록</b>이 세로로 쌓여 있습니다
+  (프로필 · 주문 상태 · 쇼핑 · 수익 · 추천 · 설정 · 알림 · 언어 · 버전 · 탈퇴 …).
+  <b>그 길이가 답을 정합니다.</b></p>
+
+  <div class="bar">
+    <button class="tgl" id="tL" aria-pressed="true">라이트</button>
+    <button class="tgl" id="tD" aria-pressed="false">다크</button>
+  </div>
+
+  <div class="row">
+
+    <!-- 형태 1 -->
+    <div class="slot">
+      <div class="tag">형태 1</div>
+      <div class="ttl">마이에 카드 → 눌러서 들어간다</div>
+      <p class="dsc">마이 스크롤 안에서 <b>오늘 숫자와 할 일은 바로 보인다.</b>
+      주문 확인·QR 스캔·출금 신청 같은 <b>작업만</b> 별도 화면으로 간다.
+      (지금까지 제가 설계한 형태입니다.)</p>
+      <div class="verdict ok">✓ 요약은 마이 안에서 보인다 · 작업은 한 번 더 누른다</div>
+      <div class="phone h760">
+        <div class="st"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="hd"><span class="t">마이</span></div>
+        <div class="body">
+          <div class="card" style="display:flex;align-items:center;gap:11px">
+            <div style="width:42px;height:42px;border-radius:50%;background:var(--brand-tint);flex:none;
+              display:flex;align-items:center;justify-content:center;font:800 14px 'Noto Sans KR';color:var(--brand-text)">정</div>
+            <div><div style="font-size:14.5px;font-weight:800;color:var(--ink)">정지원</div>
+              <div class="sm">urdeal.kr/u/jiwon</div></div>
+          </div>
+
+          <div class="hero">
+            <div class="band"><span class="l">내 가게 · 오늘</span><span class="r">돈까스연구소 ⌄</span></div>
+            <div class="in">
+              <div class="num">312,000<s>원</s></div>
+              <div class="meta">주문 8건 · 이용권 5장 사용</div>
+              <div style="margin-top:12px">
+                <div class="quiet" style="padding-top:0"><span class="tx">확인할 주문</span><span class="vl">3</span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink-faint)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+                <div class="quiet"><span class="tx">이번 주 받을 돈</span><span class="vl">1,178,000</span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink-faint)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+              </div>
+              <button class="cta" style="margin-top:13px">판매 관리 열기</button>
+            </div>
+          </div>
+
+          <div class="grp">
+            <div class="gh">쇼핑</div>
+            <div class="gr">주문 내역<span class="v">2</span></div>
+            <div class="gr">이용권 지갑<span class="v">5</span></div>
+          </div>
+          <div class="grp">
+            <div class="gh">수익</div>
+            <div class="gr">소개 수익<span class="v">12,400</span></div>
+          </div>
+          <div class="grp"><div class="gh">설정</div><div class="gr">알림 · 언어 · 계정</div></div>
+        </div>
+        <div class="tabs">
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/></svg>홈</a>
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 11h18"/></svg>교환권</a>
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 1 0 4 2 2 0 0 1-2 2H6a2 2 0 0 1-2-2 2 2 0 0 0 0-4 2 2 0 0 1 0-4z"/></svg>이용권</a>
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16v13H4z"/><path d="M8 7V5a4 4 0 0 1 8 0v2"/></svg>유어샵</a>
+          <a class="on"><svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0z"/></svg>마이<span class="pt"></span></a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 형태 2 -->
+    <div class="slot">
+      <div class="tag">형태 2</div>
+      <div class="ttl">마이 안에서 [쇼핑 ↔ 판매] 전환</div>
+      <p class="dsc">마이 <b>그 페이지에 그대로 머문다.</b> 위 토글로 내용만 바뀐다.
+      주문 확인·사용처리도 여기서 한다. 깊은 것(기간 필터·원장)만 넘긴다.
+      <b>손님 쓰는 마이와 사장님 쓰는 마이가 한 주소</b>다.</p>
+      <div class="verdict ok">✓ 말 그대로 마이페이지 안 · 탭이 늘지 않는다</div>
+      <div class="phone h760">
+        <div class="st"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="hd"><span class="t">마이</span></div>
+        <div class="body">
+          <div class="seg">
+            <button>쇼핑</button>
+            <button aria-pressed="true">판매</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:7px;padding:2px 3px;flex:none">
+            <span style="width:6px;height:6px;border-radius:50%;background:var(--brand)"></span>
+            <span style="font-size:13px;font-weight:700;color:var(--ink)">돈까스연구소</span>
+            <span style="font-size:10.5px;font-weight:700;color:var(--brand-text);background:var(--brand-tint);border-radius:999px;padding:2px 7px">주인</span>
+            <span style="margin-left:auto;font-size:11.5px;font-weight:700;color:var(--ink-soft)">매장 2곳 ⌄</span>
+          </div>
+
+          <div class="hero">
+            <div class="band"><span class="l">오늘</span><span class="r">9월 25일 목</span></div>
+            <div class="in">
+              <div class="num">312,000<s>원</s></div>
+              <div class="meta">주문 8건 · 이용권 5장 사용</div>
+            </div>
+          </div>
+
+          <div class="grp">
+            <div class="gh">확인할 주문 · 3건</div>
+            <div class="gr">치즈돈까스 2인 세트
+              <button style="margin-left:auto;border:0;border-radius:8px;padding:6px 12px;background:var(--brand);color:#fff;font:800 11.5px 'Noto Sans KR'">확인</button></div>
+            <div class="gr">등심돈까스
+              <button style="margin-left:auto;border:0;border-radius:8px;padding:6px 12px;background:var(--brand);color:#fff;font:800 11.5px 'Noto Sans KR'">확인</button></div>
+          </div>
+
+          <div style="padding:0 3px">
+            <div class="quiet"><span class="tx">이용권 사용처리</span>
+              <svg style="margin-left:auto" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink-faint)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+            <div class="quiet"><span class="tx">이번 주 받을 돈</span><span class="vl">1,178,000</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink-faint)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+          </div>
+          <div style="flex:1"></div>
+          <button class="cta gh">전체 관리 도구</button>
+        </div>
+        <div class="tabs">
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/></svg>홈</a>
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 11h18"/></svg>교환권</a>
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 1 0 4 2 2 0 0 1-2 2H6a2 2 0 0 1-2-2 2 2 0 0 0 0-4 2 2 0 0 1 0-4z"/></svg>이용권</a>
+          <a><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16v13H4z"/><path d="M8 7V5a4 4 0 0 1 8 0v2"/></svg>유어샵</a>
+          <a class="on"><svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0z"/></svg>마이<span class="pt"></span></a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 형태 3 -->
+    <div class="slot">
+      <div class="tag">형태 3</div>
+      <div class="ttl">마이 한 스크롤에 전부 넣는다</div>
+      <p class="dsc">토글 없이 마이 스크롤 안에 판매 블록이 <b>그냥 더 들어간다.</b>
+      화면 전환이 0이라는 점은 좋은데 — <b>스크롤이 14블록에서 22블록이 된다.</b>
+      손님으로 알림 설정 하나 바꾸러 온 날도 그 길을 다 지나야 한다.</p>
+      <div class="verdict no">✕ 권하지 않습니다 — 아래 길이가 이유입니다</div>
+      <div class="scrollbox">
+        <div class="ruler"><div class="ln"></div><div class="cap2">한 스크롤</div><div class="ln"></div></div>
+        <div class="long">
+          <div class="st"><span>9:41</span><span>●●● ▮</span></div>
+          <div class="hd"><span class="t">마이</span></div>
+          <div class="blk">프로필<span class="n">1</span></div>
+          <div class="divider">— 판매 —</div>
+          <div class="blk sell tall">오늘 매출 312,000원<span class="n">2</span></div>
+          <div class="blk sell tall">확인할 주문 3건<span class="n">3</span></div>
+          <div class="blk sell taller">이용권 QR 사용처리<span class="n">4</span></div>
+          <div class="blk sell tall">판매 중 이용권 2개<span class="n">5</span></div>
+          <div class="blk sell tall">받을 돈 · 출금 신청<span class="n">6</span></div>
+          <div class="blk sell">매장 전환 · 주인 연결<span class="n">7</span></div>
+          <div class="blk sell">전체 관리 도구<span class="n">8</span></div>
+          <div class="divider">— 손님으로서의 나 —</div>
+          <div class="blk">주문 상태<span class="n">9</span></div>
+          <div class="blk">리뷰 레벨<span class="n">10</span></div>
+          <div class="blk">쇼핑(주문내역·지갑·찜)<span class="n">11</span></div>
+          <div class="blk">수익(소개·추천·딜)<span class="n">12</span></div>
+          <div class="blk">팀 포인트<span class="n">13</span></div>
+          <div class="blk">추천 링크<span class="n">14</span></div>
+          <div class="blk">역할 전환<span class="n">15</span></div>
+          <div class="blk">알림 설정<span class="n">16</span></div>
+          <div class="blk">언어<span class="n">17</span></div>
+          <div class="blk">계정<span class="n">18</span></div>
+          <div class="blk">버전 · 탈퇴<span class="n">19</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="legend">
+    <b>어느 형태든 바뀌지 않는 것</b> — 좌석(매장) 전환은 이미 있는 <code>GET /my-stores</code> ·
+    <code>POST /stores/:id/token</code> 을 쓰고, 출금은 <code>POST /account/withdraw</code>,
+    주인 연결은 <code>/store-claims</code> + 어드민 심사를 그대로 씁니다. <b>새로 짓는 기능은 없습니다.</b><br>
+    <b>형태만 정하면 됩니다</b> — 그 뒤에 앞서 보여드린 디자인 방향(A 숫자 / B 티켓 / C 할 일)을 이 그릇에 담습니다.
+    (위 그림은 셋 다 <b>A 문법</b>으로 그렸습니다. 그릇과 문법은 따로 고를 수 있습니다.)
+  </p>
+</div>
+<script>
+const r=document.documentElement,L=document.getElementById('tL'),D=document.getElementById('tD');
+function set(m){r.setAttribute('data-theme',m);L.setAttribute('aria-pressed',m==='light');D.setAttribute('aria-pressed',m==='dark')}
+L.onclick=()=>set('light');D.onclick=()=>set('dark');set('light');
+</script>
+</body>
+</html>

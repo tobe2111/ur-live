@@ -1,7 +1,8 @@
 import { useEffect, useState, lazy, Suspense } from 'react'
+import { GiftBoxIcon, WarnIcon } from '@/components/icons/urdeal-icons'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Gift, ChevronRight, ChevronLeft, Map, Bookmark, AlertTriangle } from 'lucide-react'
+import { ChevronRight, ChevronLeft, Map, Bookmark } from 'lucide-react'
 import api from '@/lib/api'
 import { getUserId, getUserIdSync, hasConsumerSession } from '@/utils/auth'
 import { TOPUP_DISABLED } from '@/shared/feature-flags'
@@ -41,8 +42,7 @@ import { useProductViewBeacon } from '@/hooks/useProductViewBeacon'
 import { effectiveAffiliateRate } from '@/shared/affiliate-rate'
 
 // 🛡️ 2026-05-02: TD-018 분할 — ReviewForm/ProductReviews/ReferralSection/AccordionSection 을
-//   ./product-detail/ 로 추출. 미사용 imports (Separator, ProgressiveImage, SharePrompt, toast,
-//   Users, Clock, Product type, lucide 일부) 제거.
+//   ./product-detail/ 로 추출. 미사용 imports (Separator, ProgressiveImage, SharePrompt, toast, Users, Clock, Product type, lucide 일부) 제거.
 //   🗓️ 2026-09-04: 함께 추출했던 GroupBuyCountdown 은 마감 개념 제거로 파일째 삭제됐다.
 
 // Lazy load heavy components
@@ -346,8 +346,8 @@ export default function ProductDetailPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white dark:bg-[#11141C] p-4">
         <div className="text-center">
-          <p className="text-sm text-gray-500 dark:text-gray-400">{error?.message || t('productDetailPage.notFound')}</p>
-          <button onClick={() => window.location.reload()} className="mt-3 px-4 py-2 bg-gray-900 text-white text-sm rounded-lg">{t('productDetail.retry')}</button>
+          <p className="text-[15px] text-gray-500 dark:text-gray-400">{error?.message || t('productDetailPage.notFound')}</p>
+          <button onClick={() => window.location.reload()} className="mt-3 px-4 py-2 bg-brand text-white text-[15px] rounded-lg">{t('productDetail.retry')}</button>
           {/* 🏬 2026-08-02 — 여기선 상품을 못 읽어 `mall_id` 를 모른다. 그래서 **어디서 왔는지**를
               쓴다: 몰 홈이 남긴 흔적이 있으면 그 가게로 돌려보낸다. 흔적이 없으면 기존대로 유어딜 홈
               — 즉 **본진 손님의 동작은 불변**이고, 몰 손님만 자기 가게로 간다.
@@ -355,14 +355,14 @@ export default function ProductDetailPage() {
           {mallOrigin ? (
             <button
               onClick={() => navigate(`/${mallOrigin}`)}
-              className="mt-4 ml-2 px-6 py-2 bg-foreground text-background rounded-lg text-sm font-semibold"
+              className="mt-4 ml-2 px-6 py-2 bg-foreground text-background rounded-lg text-[15px] font-semibold"
             >
               가게로 돌아가기
             </button>
           ) : (
             <button
               onClick={() => navigate('/')}
-              className="mt-4 ml-2 px-6 py-2 bg-foreground text-background rounded-lg text-sm font-semibold"
+              className="mt-4 ml-2 px-6 py-2 bg-foreground text-background rounded-lg text-[15px] font-semibold"
             >
               {t('common.backToHome', { defaultValue: '홈으로 돌아가기' })}
             </button>
@@ -435,10 +435,10 @@ export default function ProductDetailPage() {
         {/* 이름 + 가격 */}
         <div className="px-5 text-center">
           {brandName && <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-1">{brandName}</p>}
-          <h2 className="text-[18px] font-bold text-gray-900 dark:text-white leading-tight">{product.name}</h2>
-          <div className="mt-3 inline-flex items-center gap-1.5 bg-amber-50 px-3 py-1.5 rounded-full">
-            <span className="w-5 h-5 rounded-full bg-amber-400 text-white text-[10px] font-bold flex items-center justify-center">딜</span>
-            <span className="text-[16px] font-extrabold text-amber-700">{formatNumber(displayPrice)} 딜</span>
+          <h2 className="text-[17px] font-bold text-gray-900 dark:text-white leading-tight">{product.name}</h2>
+          <div className="mt-3 inline-flex items-center gap-2 bg-amber-50 px-3 py-2 rounded-full">
+            <span className="w-5 h-5 rounded-full bg-amber-400 text-white text-[12px] font-bold flex items-center justify-center">딜</span>
+            <span className="text-[17px] font-extrabold text-amber-700">{formatNumber(displayPrice)} 딜</span>
           </div>
         </div>
 
@@ -452,13 +452,13 @@ export default function ProductDetailPage() {
               {brandIcon ? (
                 <img src={cfImage(brandIcon, { width: 96, quality: 80, format: 'auto' }) || brandIcon} alt={brandName} className="w-12 h-12 rounded-lg object-cover bg-surface border border-amber-100" loading="lazy" onError={(e) => cfImageOnError(e.currentTarget, brandIcon)} />
               ) : (
-                <div className="w-12 h-12 bg-surface rounded-lg flex items-center justify-center text-[10px] text-gray-400 font-bold border border-amber-100">
+                <div className="w-12 h-12 bg-surface rounded-lg flex items-center justify-center text-[12px] text-gray-400 font-bold shadow-lift">
                   {brandName.slice(0, 4)}
                 </div>
               )}
               <div className="flex-1">
-                <p className="text-[11px] text-gray-500 dark:text-gray-400">브랜드 상품 더 보러가기</p>
-                <p className="text-[14px] font-bold text-gray-900 dark:text-white">{brandName} <span className="text-amber-600">›</span></p>
+                <p className="text-[12px] text-gray-500 dark:text-gray-400">브랜드 상품 더 보러가기</p>
+                <p className="text-[15px] font-bold text-gray-900 dark:text-white">{brandName} <span className="text-amber-600">›</span></p>
               </div>
             </div>
           )
@@ -467,12 +467,12 @@ export default function ProductDetailPage() {
         {/* 상세 정보 */}
         <div className="mx-5 mt-6 divide-y divide-gray-100 dark:divide-[#2C2F35] border-t border-gray-100 dark:border-[#2C2F35]">
           <div className="flex justify-between py-4">
-            <span className="text-[14px] text-gray-700 dark:text-gray-200">유효기간</span>
-            <span className="text-[14px] font-bold text-gray-900 dark:text-white">30일</span>
+            <span className="text-[15px] text-gray-700 dark:text-gray-200">유효기간</span>
+            <span className="text-[15px] font-bold text-gray-900 dark:text-white">30일</span>
           </div>
           <details className="py-4 group">
             <summary className="flex justify-between items-center cursor-pointer list-none">
-              <span className="text-[14px] text-gray-700 dark:text-gray-200">{brandName ? `${brandName} 유의사항 안내` : '유의사항 안내'}</span>
+              <span className="text-[15px] text-gray-700 dark:text-gray-200">{brandName ? `${brandName} 유의사항 안내` : '유의사항 안내'}</span>
               <span className="text-gray-400 group-open:rotate-180 transition-transform">⌄</span>
             </summary>
             <div className="mt-3 text-[12px] text-gray-600 dark:text-gray-300 whitespace-pre-line leading-relaxed">
@@ -486,7 +486,7 @@ export default function ProductDetailPage() {
         {/* 하단 노란 CTA */}
         <div className="fixed bottom-0 left-0 right-0 z-50 bg-amber-400 app-frame-bar">
           <button onClick={handleBuyNow}
-            className="w-full py-4 text-center text-[16px] font-bold text-gray-900 dark:text-white active:bg-amber-500"
+            className="w-full py-4 text-center text-[17px] font-bold text-gray-900 dark:text-white active:bg-amber-500"
             style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
           >
             딜로 교환하기
@@ -540,9 +540,9 @@ export default function ProductDetailPage() {
           <div className="lg:col-span-2 lg:sticky lg:top-20 lg:self-start">
             {/* 🛡️ 2026-05-19: 딜 교환 전용 배지 (KT Alpha 직판 상품). */}
             {Number(product.deal_only) === 1 && (
-              <div className="mb-3 inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 border border-amber-300 rounded-full">
-                <span className="text-[11px] font-extrabold text-amber-800">딜 교환 전용</span>
-                <span className="text-[10px] text-amber-700">· 30일 유효 · 환불 불가</span>
+              <div className="mb-3 inline-flex items-center gap-2 px-3 py-2 bg-amber-100 border border-amber-300 rounded-full">
+                <span className="text-[12px] font-extrabold text-amber-800">딜 교환 전용</span>
+                <span className="text-[12px] text-amber-700">· 30일 유효 · 환불 불가</span>
               </div>
             )}
             {/* Product Info */}
@@ -558,9 +558,9 @@ export default function ProductDetailPage() {
               avgRating={reviewSummary?.avg_rating}
             />
             {Number(product.deal_only) === 1 && (
-              <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-3 text-[11px] text-amber-900 space-y-1">
+              <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-3 text-[12px] text-amber-900 space-y-1">
                 <p className="font-bold">ℹ️ 딜 교환 전용 상품 안내</p>
-                <ul className="list-disc list-inside space-y-0.5 ml-1">
+                <ul className="list-disc list-inside space-y-1 ml-1">
                   <li>본 상품은 <b>유어딜 딜로만 교환</b> 가능합니다 (카드 결제 불가)</li>
                   <li>결제 즉시 <b>본인 명의 휴대폰</b>으로 MMS 발송</li>
                   <li>유효기간 <b>발행일로부터 30일</b>, 환불/취소/연장 불가</li>
@@ -621,18 +621,18 @@ export default function ProductDetailPage() {
         {/* v4 공동구매 배너 (다크 카드) */}
         {product.category === 'meal_voucher' && (product.group_buy_target ?? 0) > 0 && (
           <div className="px-5 py-5">
-            {/* 🚑 2026-07-02 (상세 리뷰): ChevronRight 로 클릭 유도하면서 onClick 없던 dead 어포던스 → 공구 상세로 배선 */}
-            <div className="rounded-2xl p-4 bg-gray-900 text-white cursor-pointer active:scale-[0.99] transition-transform" role="button" tabIndex={0}
+            {/* 🚑 2026-07-02: ChevronRight 인데 onClick 없던 dead 어포던스 → 공구 상세 배선 · 🔵 주 버튼이 아니라 클릭 가능한 다크 패널이다(블루면 진짜 CTA 와 같은 색 큰 면이 둘) */}
+            <div className="rounded-2xl p-4 bg-gray-900 text-white cursor-pointer active:scale-[0.99] transition-transform" role="button" tabIndex={0} /* primary-button-ok */
               onClick={() => navigate(`/pass/${id}`)}
               onKeyDown={(e) => { if (e.key === 'Enter') navigate(`/pass/${id}`) }}>
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 bg-red-500 text-[9px] font-extrabold tracking-wide mb-2">{t('productDetail.groupBuyJoin')}</span>
+                  <span className="inline-flex items-center gap-1 rounded-md px-2 py-1 bg-red-500 text-[12px] font-extrabold tracking-wide mb-2">{t('productDetail.groupBuyJoin')}</span>
                   <p className="text-[15px] font-bold">{t('productDetail.extraDiscount')}</p>
                 </div>
                 <ChevronRight className="w-4 h-4 text-white/60" />
               </div>
-              <div className="flex items-center justify-between mb-1 text-[11px] text-white/70">
+              <div className="flex items-center justify-between mb-1 text-[12px] text-white/70">
                 <span>{t('productDetail.groupBuyProgress', { current: product.group_buy_current || 0, target: product.group_buy_target, defaultValue: `${product.group_buy_current || 0}명 참여 · ${product.group_buy_target}명 목표` })}</span>
               </div>
               <div className="w-full rounded-full overflow-hidden h-1 bg-white dark:bg-[#11141C]/15">
@@ -646,7 +646,7 @@ export default function ProductDetailPage() {
         {/* 식당 정보 (이용권일 때만) */}
         {product.category === 'meal_voucher' && product.restaurant_name && (
           <AccordionSection title={t('productDetailPage.restaurantInfo')} defaultOpen={true}>
-            <div className="space-y-2.5 text-xs text-gray-500 dark:text-gray-400">
+            <div className="space-y-2 text-[12px] text-gray-500 dark:text-gray-400">
               <div className="flex"><span className="w-16 shrink-0 text-gray-400 dark:text-gray-500">{t('productDetail.restaurantName')}</span><span className="text-gray-900 dark:text-white font-medium">{product.restaurant_name}</span></div>
               {product.restaurant_address && (
                 <div className="flex"><span className="w-16 shrink-0 text-gray-400 dark:text-gray-500">{t('productDetail.restaurantAddress')}</span><span>{product.restaurant_address}</span></div>
@@ -671,17 +671,17 @@ export default function ProductDetailPage() {
                 <div className="grid grid-cols-3 gap-2 pt-2">
                   <button type="button"
                     onClick={() => navigate(`/map?q=${encodeURIComponent(product.restaurant_address || '')}`)}
-                    className="py-2 bg-gray-100 dark:bg-[#1D1F29] hover:bg-gray-200 dark:hover:bg-[#2C2F35] text-gray-700 dark:text-gray-200 text-xs font-semibold rounded-lg flex items-center justify-center gap-1">
+                    className="py-2 bg-gray-100 dark:bg-[#1D1F29] hover:bg-gray-200 dark:hover:bg-[#2C2F35] text-gray-700 dark:text-gray-200 text-[12px] font-semibold rounded-lg flex items-center justify-center gap-1">
                     {<><Map className="w-3.5 h-3.5" strokeWidth={2} aria-hidden />{t('productDetail.mapLink', { defaultValue: '지도' })}</>}
                   </button>
                   <a href={`https://map.naver.com/v5/search/${encodeURIComponent(product.restaurant_name || product.restaurant_address)}`}
                     target="_blank" rel="noopener noreferrer"
-                    className="py-2 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-semibold rounded-lg flex items-center justify-center gap-1">
+                    className="py-2 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-700 dark:text-green-400 text-[12px] font-semibold rounded-lg flex items-center justify-center gap-1">
                     {t('productDetail.naverMap', { defaultValue: '네이버' })}
                   </a>
                   <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((product.restaurant_name || '') + ' ' + (product.restaurant_address || ''))}`}
                     target="_blank" rel="noopener noreferrer"
-                    className="py-2 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-semibold rounded-lg flex items-center justify-center gap-1">
+                    className="py-2 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-[12px] font-semibold rounded-lg flex items-center justify-center gap-1">
                     Google
                   </a>
                 </div>
@@ -734,10 +734,10 @@ export default function ProductDetailPage() {
                       'success'
                     )
                   }}
-                  className="w-full py-3.5 bg-gradient-to-r from-gray-800 to-gray-900 text-white rounded-xl flex flex-col items-center justify-center gap-0.5 active:scale-[0.98]"
+                  className="w-full py-4 bg-gradient-to-r from-gray-800 to-gray-900 text-white rounded-xl flex flex-col items-center justify-center gap-1 active:scale-[0.98]"
                 >
-                  <span className="flex items-center gap-1.5 text-[15px] font-bold"><Bookmark className="w-4 h-4 shrink-0" strokeWidth={2} aria-hidden />내 유어샵에 담기 + 추천 링크 복사</span>
-                  <span className="text-[11px] opacity-90">손님이 사서 <b>쓰면</b> {amountStr} 적립 · 친구 공유 가능</span>
+                  <span className="flex items-center gap-2 text-[15px] font-bold"><Bookmark className="w-4 h-4 shrink-0" strokeWidth={2} aria-hidden />내 유어샵에 담기 + 추천 링크 복사</span>
+                  <span className="text-[12px] opacity-90">손님이 사서 <b>쓰면</b> {amountStr} 적립 · 친구 공유 가능</span>
                 </button>
               )
             }
@@ -745,10 +745,10 @@ export default function ProductDetailPage() {
             return (
               <button
                 onClick={() => navigate(`/login?returnUrl=${encodeURIComponent(window.location.pathname)}`)}
-                className="w-full py-3.5 bg-gray-900 hover:bg-black text-white rounded-xl flex flex-col items-center justify-center gap-0.5 active:scale-[0.98]"
+                className="w-full py-4 bg-brand hover:bg-brand-dark text-white rounded-xl flex flex-col items-center justify-center gap-1 active:scale-[0.98]"
               >
                 <span className="text-[15px] font-bold">회원가입하고 손님이 쓸 때마다 {amountStr} 받기</span>
-                <span className="text-[11px] opacity-90">내 유어샵에 담아 친구에게 추천만 해도 수익</span>
+                <span className="text-[12px] opacity-90">내 유어샵에 담아 친구에게 추천만 해도 수익</span>
               </button>
             )
           })()}
@@ -790,7 +790,7 @@ export default function ProductDetailPage() {
               {t('productDetail.reviewsLabel', { defaultValue: '리뷰' })} <span className="text-gray-400 dark:text-gray-500 font-normal">({formatNumber(reviewSummary?.total_count || 0)})</span>
             </p>
             {!showAllReviews && (reviewSummary?.total_count ?? 0) > 5 && (
-              <button onClick={() => setShowAllReviews(true)} className="flex items-center gap-0.5 text-[11px] text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 active:opacity-70">
+              <button onClick={() => setShowAllReviews(true)} className="flex items-center gap-1 text-[12px] text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 active:opacity-70">
                 {t('productDetail.viewAll', { defaultValue: '전체보기' })} <ChevronRight className="w-2.5 h-2.5" />
               </button>
             )}
@@ -843,15 +843,15 @@ export default function ProductDetailPage() {
         className="fixed left-0 right-0 z-30 px-4 pr-5 pointer-events-none"
         style={{ bottom: 'calc(env(safe-area-inset-bottom) + 96px)' }}
       >
-        <div className="ur-content-wide mx-auto flex flex-col items-end gap-2.5">
+        <div className="ur-content-wide mx-auto flex flex-col items-end gap-2">
           {/* 🧭 2026-06-22: 중복 '담기' floating pill 제거 — 본문의 '📌 내 유어샵에 담기 + 추천 링크 복사'
                CTA(적립액 표시 + 링크 복사 포함)가 정규 담기 진입점. floating 은 보조 액션(선물)만 유지. */}
           <button
             onClick={() => setGiftModalOpen(true)}
-            className="pointer-events-auto inline-flex items-center gap-1.5 h-10 pl-3 pr-3.5 rounded-full bg-surface border border-line shadow-lg active:scale-95 transition-transform"
+            className="pointer-events-auto inline-flex items-center gap-2 h-10 pl-3 pr-4 rounded-full bg-surface border border-line shadow-lg active:scale-95 transition-transform"
             aria-label={t('productDetailPage.ariaGift')}
           >
-            <Gift className="w-4 h-4 text-gray-900 dark:text-white" />
+            <GiftBoxIcon className="w-4 h-4 text-gray-900 dark:text-white" />
             <span className="text-[12px] font-bold text-gray-900 dark:text-white">선물</span>
           </button>
         </div>
@@ -879,27 +879,27 @@ export default function ProductDetailPage() {
                 <img src={cfImage(product.image_url, { width: 112, quality: 80, format: 'auto' }) || product.image_url} alt="" loading="lazy" decoding="async" className="w-14 h-14 rounded-xl object-cover shrink-0" onError={(e) => cfImageOnError(e.currentTarget, product.image_url)} />
               )}
               <div className="min-w-0">
-                <p className="text-[14px] font-bold text-gray-900 dark:text-white line-clamp-2">{product.name}</p>
-                <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">
+                <p className="text-[15px] font-bold text-gray-900 dark:text-white line-clamp-2">{product.name}</p>
+                <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">
                   {quantity}장 × {formatNumber(product.price)}딜
                 </p>
               </div>
             </div>
             <div className="mt-4 flex items-baseline justify-between">
               <span className="text-[13px] text-gray-500 dark:text-gray-400">결제 금액</span>
-              <span className="text-[20px] font-extrabold text-gray-900 dark:text-white">{formatNumber(dealConfirm.total)}딜</span>
+              <span className="text-[24px] font-extrabold text-gray-900 dark:text-white">{formatNumber(dealConfirm.total)}딜</span>
             </div>
-            <div className="mt-3 flex items-start gap-1.5 rounded-xl px-3 py-2.5 bg-amber-50 dark:bg-amber-500/10">
-              <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-500" strokeWidth={2} aria-hidden />
+            <div className="mt-3 flex items-start gap-2 rounded-xl px-3 py-2 bg-amber-50 dark:bg-amber-500/10">
+              <WarnIcon className="w-3.5 h-3.5 shrink-0 mt-1 text-amber-500" aria-hidden />
               <p className="text-[12px] text-amber-700 dark:text-amber-300 leading-snug">교환 후에는 환불이 불가합니다. 딜로 즉시 결제됩니다.</p>
             </div>
             <div className="mt-5 flex gap-2">
               <button onClick={() => setDealConfirm(null)} disabled={dealBuying}
-                className="flex-1 h-12 rounded-xl text-[14px] font-bold text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-[#2C2F35] active:scale-[0.98] transition-transform disabled:opacity-50">
+                className="flex-1 h-12 rounded-xl text-[15px] font-bold text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-[#2C2F35] active:scale-[0.98] transition-transform disabled:opacity-50">
                 취소
               </button>
               <button onClick={runVoucherDealPurchase} disabled={dealBuying}
-                className="flex-1 h-12 rounded-xl text-[14px] font-extrabold text-white active:scale-[0.98] transition-transform disabled:opacity-60"
+                className="flex-1 h-12 rounded-xl text-[15px] font-extrabold text-white active:scale-[0.98] transition-transform disabled:opacity-60"
                 style={{ background: 'linear-gradient(135deg, #1f2937, #111827)' }}>
                 {dealBuying ? '처리 중…' : `${formatNumber(dealConfirm.total)}딜로 교환`}
               </button>
@@ -911,13 +911,13 @@ export default function ProductDetailPage() {
       {/* Toast Notification */}
       {toast && (
         <div 
-          className={`fixed top-20 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-lg shadow-lg max-w-sm transition-all ${
+          className={`fixed top-20 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 rounded-lg shadow-lg max-w-sm transition-all ${
             toast.type === 'success' 
               ? 'bg-foreground text-background' 
               : 'bg-destructive text-white'
           }`}
         >
-          <p className="text-sm font-medium text-center">{toast.message}</p>
+          <p className="text-[15px] font-medium text-center">{toast.message}</p>
         </div>
       )}
     </div>

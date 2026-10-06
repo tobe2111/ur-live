@@ -68,7 +68,10 @@ export default [
   {
     name: '🕳️ 대조군 정규식이 아무것도 안 줍는다 (파서 눈먼 자리를 못 본다)',
     file: SSOT,
-    find: "    for (const m of line.matchAll(/scripts\\/(check-[a-z0-9-]+\\.(?:mjs|sh))/g)) found.add(m[1])",
+    // 🔁 2026-09-26 재조준: 정규식을 `(?:check|generate)-` 로 넓히며 옛 앵커가 사라졌다
+    //   (차단 스텝 둘이 `generate-*.mjs --check` 라 게이트 밖이었다). 지키는 것은 그대로다 —
+    //   대조군이 아무것도 안 주우면 R5 가 저절로 통과한다. 앵커는 **줍는 줄** 자체에 건다.
+    find: "for (const m of line.matchAll(",
     replace: '    if (line) continue',
     test: TEST,
     why:

@@ -28,26 +28,25 @@ export default function OwnerEarningsStrip() {
   const clicks = stats.unique_clicks_30d ?? stats.clicks_30d ?? 0
   const conv = stats.conversion_rate_30d ?? 0
 
-  // 🎨 2026-06-17 (C — 편집 모드 정리): 큰 멀티라인 네이비 카드 → 한 줄 탭 가능 바.
-  //   상세(구매수/보류 설명)는 콘솔(/creator)에서. 공개뷰에 가깝게 시각 무게만 축소(데이터/링크 동일). theme-dual
+  // 🎫 2026-09-28 (e3 — 관리 화면으로 이사): 잉크 **그라디언트** 바 → 흰 카드 + 큰 숫자.
+  //   디자인 시스템 표면 규칙 ⑥(그라디언트 0)·②(강조색 하나, 자리 셋)을 그 바가 정면으로 어기고 있었다
+  //   (잉크 그라디언트 + 초록 전환율 + 연어색 예정액 = 한 줄에 색이 셋). 관리 화면은 볼륨 규율에서는
+  //   자유롭지만 **색 규율은 브랜드 전체 규칙**이라 예외가 아니다. 숫자가 주인공이 되게 27px 로 올린다.
   return (
-    <div className="max-w-3xl mx-auto px-4 pt-2">
-      <Link
-        to="/creator"
-        className="flex items-center justify-between gap-3 rounded-xl px-3.5 py-2 text-white active:opacity-90"
-        style={{ background: 'linear-gradient(120deg,#1D1F29,#3A3D44)' }}
-      >
-        <span className="flex items-baseline gap-1.5 min-w-0">
-          <span className="shrink-0 text-[11px] text-white/55">{t('curator.earn30dConfirmed', { defaultValue: '최근 30일 적립' })}</span>
-          <b className="text-[15px] font-extrabold leading-none">{formatWon(confirmed)}</b>
-          {pending > 0 && <span className="truncate text-[11px] font-bold text-[#FFB59E]">+{formatWon(pending)} {t('curator.pendingEarn', { defaultValue: '예정' })}</span>}
+    <Link to="/creator" className="block max-w-3xl mx-auto rounded-xl bg-surface shadow-lift p-4 active:opacity-90">
+      <div className="flex items-center">
+        <span className="text-[12px] font-semibold text-gray-500 dark:text-gray-400">
+          {t('curator.earn30dConfirmed', { defaultValue: '최근 30일 적립' })}
         </span>
-        <span className="flex shrink-0 items-center gap-2.5 text-[11px] text-white/70">
-          <span className="hidden xs:inline">{t('curator.statClicks', { defaultValue: '클릭' })} <b className="text-white">{formatNumber(clicks)}</b></span>
-          <span>{t('curator.statConv', { defaultValue: '전환' })} <b className="text-[#37D399]">{conv}%</b></span>
-          <span className="font-bold text-white/85">{t('curator.consoleLink', { defaultValue: '콘솔' })} →</span>
+        <span className="ml-auto text-[12px] font-semibold text-brand-text">
+          {t('curator.consoleLink', { defaultValue: '콘솔' })} ›
         </span>
-      </Link>
-    </div>
+      </div>
+      <div className="mt-1 text-[28px] font-bold tracking-[-0.035em] tabular-nums text-gray-900 dark:text-white">{formatWon(confirmed)}</div>
+      <div className="mt-1 text-[12px] text-gray-400 dark:text-gray-500 tabular-nums">
+        {pending > 0 && <>{t('curator.pendingEarn', { defaultValue: '예정' })} {formatWon(pending)} · </>}
+        {t('curator.statClicks', { defaultValue: '클릭' })} {formatNumber(clicks)} · {t('curator.statConv', { defaultValue: '전환' })} {conv}%
+      </div>
+    </Link>
   )
 }

@@ -30,11 +30,19 @@ export default [
       '**빼도 숫자가 안 변해서** 더 위험하다 — "안 센 것"과 "0 인 것"이 화면에서 같아 보인다.',
   },
   {
+    // 🔁 2026-10-01 재조준 — 쿼리가 `order-platform-fee.ts` SSOT 로 옮겨갔다(이 파일의 라우트는
+    //   이제 그 함수를 부른다). **지키려던 불변식은 그대로다**: 예산의 근거는 *실제로 찍힌 수수료*이고,
+    //   거기에 다른 값(결제액 전체 등)을 끼우면 판정이 실제 청구와 갈린다.
+    //   ⚠️ 그때 이 주입이 눈먼 자리였던 것도 드러났다 — `SUM(fee_amount)` 가 **어떤 행에** 더하는지는
+    //   안 봤고, 그래서 라이브에서 늘 0원을 내는 동안 초록불이었다. 그쪽은
+    //   `promo-ledger-fee-real-rows-2026-10-01.test.ts`(실제 sqlite) + 그 전용 주입이 맡는다.
     name: '🔍S1 예산을 원장 fee 대신 요율로 다시 계산한다',
-    file: FILE,
-    find: '      `SELECT COALESCE(SUM(fee_amount), 0) AS fee FROM ledger_entries',
-    replace: '      `SELECT COALESCE(SUM(amount), 0) AS fee FROM ledger_entries',
-    test: TEST,
+    file: 'src/worker/utils/order-platform-fee.ts',
+    find: '    sql: `SELECT COALESCE(SUM(fee_amount), 0) AS fee FROM ledger_entries',
+    replace: '    sql: `SELECT COALESCE(SUM(amount), 0) AS fee FROM ledger_entries',
+    // 🔁 가리키는 시험도 함께 옮겼다 — 이 불변식("예산 근거 = 실제 찍힌 수수료")의 판정은
+    //   텍스트 검사가 아니라 **실제 행에 돌려 금액을 세는** 쪽으로 갔다(`SUM(amount)` 면 50 대신 1000 이 나온다).
+    test: 'src/tests/unit/promo-ledger-fee-real-rows-2026-10-01.test.ts',
     why:
       '실제로 찍힌 수수료가 아니라 다른 값을 예산의 근거로 삼으면 판정이 실제 청구와 갈린다. ' +
       '갈리는 것이 이 레포의 단골 사고다(채널 요율 표시가 실제 청구와 달랐던 건과 같은 클래스).',

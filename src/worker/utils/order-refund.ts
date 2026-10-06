@@ -241,7 +241,11 @@ export async function refundOrderFully(
   const { transitionOrderStatus } = await import('./state-machine')
   const transitioned = await transitionOrderStatus(DB, Number(order.id), 'REFUNDED', {
     allowedPrev: CANCELLABLE,
-    extraSets: { refund_status: 'completed', refunded_at: new Date().toISOString() },
+    // 💸 2026-09-21: `payment_status` 도 같이 되돌린다(머니 룰 #2 — 적립엔 역전이 따른다).
+    //   이 컬럼은 오늘부터 결제 시점에 'approved' 로 찍히므로, 환불하고도 'approved' 로 남으면
+    //   일일 다이제스트가 그 주문을 **매출로 세고 환불 건수에선 빼먹는다**(`payment_status IN
+    //   ('refunded','cancelled')` 로 센다). 라이브 CHECK 제약이 'refunded' 를 허용한다(실측).
+    extraSets: { refund_status: 'completed', refunded_at: new Date().toISOString(), payment_status: 'refunded' },
   })
   if (!transitioned) return { ok: true, status: 200, already: true }
 

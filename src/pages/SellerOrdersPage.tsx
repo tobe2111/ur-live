@@ -11,6 +11,7 @@ import BrandLoader from '@/components/brand/BrandLoader'
 import { DashboardPageHeader, DashboardCard } from '@/components/dashboard'
 import { formatNumber } from '@/utils/format'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
+import { askRefundReason, REFUND_REASON_FALLBACK } from '@/pages/seller-orders/refund-prompt'
 import {
   Package,
   Truck,
@@ -221,13 +222,16 @@ export default function SellerOrdersPage() {
 
   // 🛡️ 2026-06-01 머니플로우 감사: 결제완료 주문 정식 취소·환불 (Toss/딜 환불 + 커미션 역전).
   async function handleRefund(orderNumber: string) {
-    if (!(await confirmDialog({ message: t('seller.confirmRefund', { defaultValue: '이 주문을 취소하고 결제를 환불할까요? 되돌릴 수 없습니다.' }), danger: true }))) {
-      return
-    }
+    // 🧾 2026-10-06 (철거로 잃은 것 ① 복원): 사유를 받는다. 계약·문구는 모듈 하나에 있다
+    //   (`seller-orders/refund-prompt.ts` — 선택 · 빈 칸이면 기본값 · 취소는 null).
+    const reason = await askRefundReason(t)
+    if (reason === null) return
     setUpdating(true)
     setError('')
     try {
-      const response = await api.post(`/api/seller/orders/${orderNumber}/refund`, {})
+      const response = await api.post(`/api/seller/orders/${orderNumber}/refund`, {
+        reason: reason.trim() || REFUND_REASON_FALLBACK,
+      })
       if (response.data.success) {
         toast.success(t('seller.refundDone', { defaultValue: '취소·환불 처리되었습니다' }))
         invalidateOrders()

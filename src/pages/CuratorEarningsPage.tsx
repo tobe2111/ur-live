@@ -1,26 +1,48 @@
 /**
- * 🛡️ 2026-05-25 (migration 0278): 소개 수익 대시보드 (/u/me/earnings).
+ * 🎫 소개 수익 콘솔 (`/u/me/earnings`) — **B안 통장형**(2026-09-29 대표 확정).
  *
- * Phase 1-C 핵심 UX — 수익 가시화.
- * 30일 적립 / 클릭 / 구매 / 인기 핀 top 3 / 일별 차트.
- * 출금은 기존 user_withdrawals 시스템 재활용 (Phase 4 에서 본격 통합).
+ * ## 무엇이 달라졌나
+ * 대표: *"소개 콘솔도 페이지 너무 별로다"* → 무엇이 걸리는지 물었더니 **셋 다** 골랐다:
+ * **섹션이 많다 · 차트가 밋밋하다 · 목록 문법이 안 맞는다.** 시안 둘을 드리고 **B안** 확정.
+ *
+ * | | 전 | 후 |
+ * |---|---|---|
+ * | 판 | **8개**(빠른진입 · 요약 · 출금 · 영입매장 · 셀러CTA · 인기핀 · 최근적립 · 차트) | **3개** |
+ * | 세로 | 화면 4장 | 1장 |
+ * | 돈 | 요약·출금·차트가 **따로**, 출금이 한가운데 묻힘 | `EarningsPanel` 한 판 |
+ * | 성과 | 인기핀·영입매장·최근적립이 **따로** | `PerformancePanel` 탭 셋 |
+ *
+ * 🔴 **정보는 빼지 않았다.** 없앤 것은 *판의 개수*이고, 각 값은 새 자리로 옮겼다 —
+ *    순클릭·전환율만 예외다(아래 참조).
+ *
+ * ## 🩸 순클릭·전환율은 **뺐다**
+ * 종전 요약 카드의 `30일 순클릭` · `30일 전환율` 은 이 화면에서 **아무 행동으로도 이어지지 않았다**.
+ * 소개자가 콘솔에 오는 이유는 *얼마 벌었고 언제 받나* 이고, 그 둘은 그 질문에 답하지 않는다.
+ * 클릭은 상품 탭의 부제(`N건 · N 클릭`)에 상품별로 남아 있다 — 총합보다 그쪽이 행동에 가깝다.
+ * ⚠️ 되살리고 싶으면 `stats.unique_clicks_30d` / `conversion_rate_30d` 가 그대로 온다(서버 무변경).
+ *
+ * ## 🔴 서버는 한 글자도 안 바꿨다
+ * 새 쿼리도, 새 필드도 없다. 시안의 *"지난달 대비"* 는 전월 합계가 필요한데 대시보드는 30일치만
+ * 주므로 **최근 2주 vs 그 전 2주**로 바꿨다(라벨이 무엇을 비교했는지 그대로 적는다).
  */
 
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { BagIcon } from '@/components/icons/urdeal-icons'
+import { Link } from 'react-router-dom'
 import { HOSTING_HIDDEN } from '@/shared/feature-flags'
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
 import { curatorApi, type DashboardStats } from '@/features/curator/api/curator-api'
 import { useAuthStore } from '@/client/stores/auth.store'
-import { formatWon, formatNumber, safeNum } from '@/utils/format'
-import { cfImage, cfImageOnError } from '@/utils/cf-image'
-import { toast } from '@/hooks/useToast'
+import { formatWon } from '@/utils/format'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import SellOwnProductsCTA from './curator-page/SellOwnProductsCTA'
-import { parseUTCDate } from '@/utils/date'
+import { Sparkles } from 'lucide-react'
+import EarningsPanel from './curator-earnings/EarningsPanel'
+import PerformancePanel from './curator-earnings/PerformancePanel'
+import { ProxyProductModal, WithdrawModal } from './curator-earnings/ConsoleModals'
 
-interface WithdrawalInfo {
+export interface WithdrawalInfo {
   lifetime_earnings: number
   total_withdrawn: number
   available: number
@@ -40,13 +62,14 @@ export default function CuratorEarningsPage() {
   // 🎨 2026-06-17 (콘솔 @handle 표시 fix): dashboard select 가 handle 을 버려 user.handle(주로 null)에만
   //   의존 → 헤더 @handle 미표시 + '내 유어샵' 이 /u/me 리다이렉트 홉. localStorage.user_handle
   //   (App/UMeRedirect/Kakao 가 기록, BottomNav 와 동일 소스)로 seed → 직접 /u/{handle} 진입.
-  const [handle, setHandle] = useState<string | null>(() => {
+  const [handle] = useState<string | null>(() => {
     const fromUser = (user as any)?.handle
     if (fromUser) return fromUser
     try { return localStorage.getItem('user_handle') || null } catch { return null }
   })
   const [wdInfo, setWdInfo] = useState<WithdrawalInfo | null>(null)
   const [showWithdraw, setShowWithdraw] = useState(false)
+  const [proxyFor, setProxyFor] = useState<{ id: number; name: string } | null>(null)
 
   // 🛡️ 2026-05-31: 메인 대시보드 fetch → useApiQuery (RQ — 재방문 캐시/dedup). 인증=인터셉터 자동.
   const dashQ = useApiQuery<DashboardStats | null>(
@@ -71,66 +94,67 @@ export default function CuratorEarningsPage() {
     } catch {}
   }
 
-  // best-effort: handle 가져오기
-  useEffect(() => {
-    if (handle || !user) return
-    // user store 에 handle 없을 수 있음. /api/curator/me/dashboard 응답에는 없으나 user store sync 가
-    // 미반영일 수 있어 굳이 안 받아옴. 핀 추가하면 자동 동기.
-  }, [handle, user])
-
   return (
     <>
       <SEO title={t('curator.console.title', { defaultValue: '소개 콘솔' })} noindex />
-      <div className="min-h-screen bg-white dark:bg-[#11141C] text-gray-900 dark:text-white pb-24">
-        <header className="sticky top-0 z-20 bg-white/95 dark:bg-[#11141C]/95 backdrop-blur border-b border-gray-100 dark:border-[#2C2F35] px-4 py-3">
+      <div className="min-h-[100dvh] bg-warm dark:bg-[#11141C] text-gray-900 dark:text-white pb-24">
+        {/* 🩸 `bg-surface/95 backdrop-blur` 는 **CSS 가 아예 안 나온다** — `--surface` 같은 var() 색에
+            투명도 접미사를 붙이면 Tailwind 가 클래스를 만들지 못한다(`check-ghost-classes` 가 잡았다).
+            헤더가 통째로 투명해진다. 표면 규칙 ①대로 **불투명 면**으로 간다 —
+            페이지는 `bg-warm`, 헤더는 `bg-surface` 라 두 면이 맞닿는 자리가 곧 구분선이다. */}
+        <header className="sticky top-0 z-20 bg-surface px-4 py-3">
           <div className="max-w-3xl mx-auto flex items-center justify-between">
-            <h1 className="text-lg font-bold">🎤 {t('curator.console.title', { defaultValue: '소개 콘솔' })}</h1>
+            <h1 className="text-[17px] font-bold tracking-[-0.02em]">{t('curator.console.title', { defaultValue: '소개 콘솔' })}</h1>
             {handle && (
-              <Link to={`/u/${handle}`} className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
-                @{handle}
-              </Link>
+              <Link to={`/u/${handle}`} className="text-[12px] text-gray-500 dark:text-gray-400">@{handle}</Link>
             )}
           </div>
         </header>
 
-        <div className="max-w-3xl mx-auto px-4 py-6">
-          {/* 🏁 2026-06-15 (옵션 1 콘솔): 크리에이터 핵심 동선 빠른 진입 — 유어샵. 🏁 2026-06-17: 공구 호스팅 숨김(HOSTING_HIDDEN) */}
-          <div className={`grid ${HOSTING_HIDDEN ? 'grid-cols-1' : 'grid-cols-2'} gap-2 mb-5`}>
-            <Link to={handle ? `/u/${handle}` : '/u/me'}
-              className="rounded-2xl bg-gray-100 dark:bg-white/[0.04] active:bg-gray-200 dark:active:bg-white/[0.08] p-4 transition-colors">
-              <p className="text-[13px] font-bold text-gray-900 dark:text-white">🔗 내 유어샵</p>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">상품 핀 추가·정렬·공유</p>
-            </Link>
-            {!HOSTING_HIDDEN && (
-              <Link to="/host"
-                className="rounded-2xl bg-gray-100 dark:bg-white/[0.04] active:bg-gray-200 dark:active:bg-white/[0.08] p-4 transition-colors">
-                <p className="text-[13px] font-bold text-gray-900 dark:text-white">✨ 공구 호스팅</p>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">동네 공구 직접 제안</p>
-              </Link>
-            )}
-          </div>
+        <div className="max-w-3xl mx-auto px-4 pt-4 pb-6">
           {loading ? (
             <p className="text-center text-gray-500 dark:text-gray-400 py-12">{t('common.loading')}</p>
           ) : error ? (
             <p className="text-center text-red-500 py-12">{error}</p>
           ) : !stats ? null : (
             <>
-              <SummaryCards stats={stats} />
-              {wdInfo && (
-                <WithdrawalCard
-                  info={wdInfo}
-                  onWithdraw={() => setShowWithdraw(true)}
-                  onAckUpgrade={async () => {
-                    await curatorApi.acknowledgeUpgradeOffer()
-                    setWdInfo({ ...wdInfo, seller_upgrade: { ...wdInfo.seller_upgrade, offered: true } })
-                  }}
-                />
+              <EarningsPanel stats={stats} info={wdInfo} onWithdraw={() => setShowWithdraw(true)} />
+              <PerformancePanel stats={stats} onProxy={setProxyFor} />
+
+              {/* 진입은 압축 바 한 줄 — 판을 만들지 않는다(대표: "섹션이 너무 많다"). */}
+              <div className="flex gap-2 mb-3">
+                <QuickTile to={handle ? `/u/${handle}` : '/u/me'} icon={<BagIcon className="w-[18px] h-[18px]" aria-hidden="true" />} label="내 유어샵" />
+                {!HOSTING_HIDDEN && (
+                  <QuickTile to="/host" icon={<Sparkles className="w-[18px] h-[18px]" aria-hidden="true" />} label="공구 호스팅" />
+                )}
+              </div>
+
+              {/* 셀러 승급 안내 — 누적이 임계치를 넘은 사람에게만, 한 번만. */}
+              {wdInfo?.seller_upgrade.eligible && !wdInfo.seller_upgrade.offered && (
+                <div className="bg-surface shadow-lift rounded-2xl p-4 mb-3">
+                  <p className="text-[15px] font-bold mb-1">셀러 승급 안내</p>
+                  <p className="text-[12px] text-gray-500 dark:text-gray-400 mb-3">
+                    누적 적립이 {formatWon(wdInfo.seller_upgrade.threshold)} 를 넘었어요. 셀러가 되면 직접 상품을 팔 수 있어요.
+                  </p>
+                  <div className="flex gap-2">
+                    <Link to="/store/new" className="flex-1 py-2 bg-brand text-white text-[13px] font-extrabold rounded-xl text-center active:opacity-70">
+                      셀러 가입하기
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await curatorApi.acknowledgeUpgradeOffer()
+                        setWdInfo({ ...wdInfo, seller_upgrade: { ...wdInfo.seller_upgrade, offered: true } })
+                      }}
+                      className="px-4 py-2 text-gray-500 dark:text-gray-400 text-[13px] font-bold active:opacity-70"
+                    >
+                      나중에
+                    </button>
+                  </div>
+                </div>
               )}
-              <IntroducedStoresSection />
+
               <SellOwnProductsCTA />
-              <TopPinsSection stats={stats} />
-              <RecentEarningsSection stats={stats} />
-              <DailyChart stats={stats} />
             </>
           )}
         </div>
@@ -143,454 +167,22 @@ export default function CuratorEarningsPage() {
             onSuccess={() => { setShowWithdraw(false); reloadWithdrawal() }}
           />
         )}
+        {proxyFor && <ProxyProductModal merchant={proxyFor} onClose={() => setProxyFor(null)} />}
       </div>
     </>
   )
 }
 
-function IntroducedStoresSection() {
-  const [data, setData] = useState<{ total_commission: number; stores: Array<{ id: number; business_name: string | null; status: string | null; referral_bonus_until: string | null; total_orders: number; total_sales: number }> } | null>(null)
-  const [proxyFor, setProxyFor] = useState<{ id: number; name: string } | null>(null)
-
-  useEffect(() => {
-    curatorApi.getIntroducedStores().then((r) => { if (r.success) setData(r) }).catch(() => {})
-  }, [])
-
-  if (!data || data.stores.length === 0) return null
-
-  return (
-    <section className="mb-6 bg-surface border border-line rounded-xl p-4">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-sm font-bold text-gray-900 dark:text-white">🏪 내가 영입한 매장</p>
-        <span className="text-xs text-gray-500 dark:text-gray-400">누적 커미션 {formatWon(data.total_commission)}</span>
-      </div>
-      <div className="space-y-2">
-        {data.stores.map((s) => {
-          const expired = s.referral_bonus_until && new Date(s.referral_bonus_until) < new Date()
-          return (
-            <div key={s.id} className="flex items-center justify-between text-xs border-b border-gray-100 dark:border-[#2C2F35] pb-2 last:border-0">
-              <div>
-                <span className="font-bold text-gray-900 dark:text-white">{s.business_name || `매장 #${s.id}`}</span>
-                <span className="ml-2 text-gray-400 dark:text-gray-500">{s.total_orders}건 · {formatWon(s.total_sales)}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                  expired ? 'bg-gray-100 dark:bg-[#1D1F29] text-gray-500 dark:text-gray-500'
-                  : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-                }`}>
-                  {expired ? '커미션 만료' : (s.referral_bonus_until ? `~${s.referral_bonus_until.slice(0, 10)}` : '무기한')}
-                </span>
-                <button
-                  onClick={() => setProxyFor({ id: s.id, name: s.business_name || `매장 #${s.id}` })}
-                  className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand text-white"
-                >
-                  공구 대행 등록
-                </button>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-      {proxyFor && <ProxyProductModal merchant={proxyFor} onClose={() => setProxyFor(null)} />}
-    </section>
-  )
-}
-
-function ProxyProductModal({ merchant, onClose }: { merchant: { id: number; name: string }; onClose: () => void }) {
-  const [form, setForm] = useState({ name: '', description: '', price: '', stock: '', category: '', image_url: '' })
-  const [submitting, setSubmitting] = useState(false)
-
-  async function submit() {
-    if (submitting) return
-    if (!form.name.trim() || !form.price) { toast.error('상품명/가격을 입력하세요'); return }
-    setSubmitting(true)
-    try {
-      const r = await curatorApi.createProxyProduct({
-        merchant_seller_id: merchant.id,
-        name: form.name.trim(),
-        description: form.description || undefined,
-        price: Number(form.price),
-        stock: form.stock ? Number(form.stock) : undefined,
-        category: form.category || undefined,
-        image_url: form.image_url || undefined,
-      })
-      if (r.success) { toast.success(r.message || '대행 등록 완료'); onClose() }
-      else toast.error(r.error || '등록 실패')
-    } catch {
-      toast.error('등록 중 오류가 발생했습니다')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 z-[10000] bg-black/60 flex items-end sm:items-center justify-center p-4" onClick={onClose}>
-      <div className="w-full max-w-md bg-surface rounded-2xl p-5" onClick={(e) => e.stopPropagation()}>
-        <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">공구 대행 등록</p>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">{merchant.name} — 등록 후 매장 승인 시 공개됩니다.</p>
-        <div className="space-y-2">
-          {([
-            ['name', '상품명'],
-            ['price', '가격 (원)'],
-            ['stock', '재고 (선택)'],
-            ['category', '카테고리 (선택)'],
-            ['image_url', '대표 이미지 URL (선택)'],
-          ] as const).map(([k, label]) => (
-            <input
-              key={k}
-              value={(form as any)[k]}
-              onChange={(e) => setForm({ ...form, [k]: e.target.value })}
-              placeholder={label}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-[#2C2F35] bg-surface text-gray-900 dark:text-white"
-            />
-          ))}
-          <textarea
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-            placeholder="설명 (선택)"
-            rows={2}
-            className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-[#2C2F35] bg-surface text-gray-900 dark:text-white"
-          />
-          <div className="flex gap-2 pt-1">
-            <button onClick={submit} disabled={submitting} className="flex-1 py-2 bg-brand text-white text-sm font-bold rounded-lg disabled:opacity-50">
-              {submitting ? '등록 중…' : '대행 등록'}
-            </button>
-            <button onClick={onClose} className="px-3 py-2 text-gray-500 dark:text-gray-400 text-sm">취소</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 /**
- * 🏁 2026-06-17 — "사업자 등록 → 사업자 유저" 단일 진입 (사용자 명칭 확정: 유저 / 사업자 유저).
- *   일원화: 과거 BusinessSection(현금정산용 사업자등록)과 본 카드(판매 매장등록)가 분리돼 "사업자
- *   등록"이 2군데였고, 현금 출금 게이트(curator.routes:861)가 이미 '연결 승인 매장'을 요구해
- *   BusinessSection-only 등록은 현금정산이 안 되는 오해유발 UI였음 → BusinessSection 은퇴, 본 카드로 통합.
- *   유저 → [사업자 등록 1번 = 판매 승인] → 사업자 유저 (판매 + 추천수익 현금정산 동시).
- *   기존 검증된 매장 등록(/seller/register/supplier → register-from-user store_owner) + 어드민 승인
- *   재활용. 승인되면 /u/{handle} 가 셀러 상점 + 추천 핀(CuratorPinsSection) 통합 페이지가 됨.
+ * 진입 한 줄 — **가로**다. 세로 타일로 두면 `HOSTING_HIDDEN` 이라 칸이 하나뿐인 지금
+ * 큰 빈 상자가 하나 남는다(로컬 렌더에서 실제로 그랬다). 가로면 한 칸일 때 슬림한 바,
+ * 두 칸일 때 나란한 바가 된다.
  */
-
-function WithdrawalCard({ info, onWithdraw, onAckUpgrade }: { info: WithdrawalInfo; onWithdraw: () => void; onAckUpgrade: () => Promise<void> }) {
-  // 🛡️ 2026-05-25 신모델: 사업자 셀러는 실제 돈 출금, 일반 user 는 딜 잔액 표시.
-  const isCash = info.payout_mode === 'cash'
+function QuickTile({ to, icon, label }: { to: string; icon: React.ReactNode; label: string }) {
   return (
-    <section className="mb-6">
-      {isCash ? (
-        <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-5 text-white">
-          <p className="text-xs opacity-80 mb-1">💰 출금 가능 잔액 (현금)</p>
-          <p className="text-3xl font-bold mb-3">{formatWon(info.available)}</p>
-          <div className="flex justify-between text-xs opacity-90 mb-4">
-            <span>누적 적립 {formatWon(info.lifetime_earnings)}</span>
-            <span>출금 {formatWon(info.total_withdrawn)}</span>
-          </div>
-          <button
-            onClick={onWithdraw}
-            disabled={info.available < info.min_withdrawal}
-            className="w-full py-2.5 bg-surface text-brand-text font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {info.available < info.min_withdrawal
-              ? `최소 ${formatWon(info.min_withdrawal)} 부터 출금 가능`
-              : '출금 신청'}
-          </button>
-        </div>
-      ) : (
-        <div className="bg-gradient-to-br from-gray-700 to-gray-800 rounded-xl p-5 text-white">
-          <p className="text-xs opacity-80 mb-1">🟡 내 딜 잔액</p>
-          <p className="text-3xl font-bold mb-3">{formatNumber(info.deal_balance)}딜</p>
-          <p className="text-xs opacity-90 mb-3">
-            누적 적립 {formatNumber(info.lifetime_earnings)}딜 — 1딜 = 1원으로 쇼핑/공구에 사용
-          </p>
-          <Link
-            to="/browse"
-            className="block w-full py-2.5 bg-surface text-orange-600 font-bold rounded-lg text-center"
-          >
-            🛍️ 쇼핑 둘러보기
-          </Link>
-        </div>
-      )}
-
-      {/* 셀러 승급 안내 */}
-      {info.seller_upgrade.eligible && !info.seller_upgrade.offered && (
-        <div className="mt-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-4">
-          <p className="text-sm font-bold text-amber-900 dark:text-amber-100 mb-1">🎯 셀러 승급 안내</p>
-          <p className="text-xs text-amber-800 dark:text-amber-200 mb-3">
-            누적 적립이 {formatWon(info.seller_upgrade.threshold)} 를 넘었어요! 셀러로 승급하시면 직접 상품 판매·라이브 송출이 가능해져요.
-          </p>
-          <div className="flex gap-2">
-            <Link to="/store/new" className="flex-1 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg text-center">
-              셀러 가입하기
-            </Link>
-            <button onClick={onAckUpgrade} className="px-3 py-2 text-amber-700 dark:text-amber-300 text-xs font-bold">
-              나중에
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 출금 이력 */}
-      {info.history.length > 0 && (
-        <div className="mt-3 bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-4">
-          <p className="text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">최근 출금 이력</p>
-          <div className="space-y-2">
-            {info.history.slice(0, 5).map((h) => (
-              <div key={h.id} className="flex justify-between items-center text-xs">
-                <div>
-                  <span className="text-gray-700 dark:text-gray-300">{formatWon(h.amount)}</span>
-                  <span className="text-gray-400 dark:text-gray-500 ml-2">({h.bank_name})</span>
-                </div>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                  h.status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
-                  h.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                  'bg-gray-100 dark:bg-[#1D1F29] text-gray-600 dark:text-gray-300'
-                }`}>{h.status}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </section>
-  )
-}
-
-function WithdrawModal({ info, onClose, onSuccess }: { info: WithdrawalInfo; onClose: () => void; onSuccess: () => void }) {
-  const [amount, setAmount] = useState(info.available)
-  const [bankName, setBankName] = useState('')
-  const [bankAccount, setBankAccount] = useState('')
-  const [accountHolder, setAccountHolder] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-
-  const withholding = Math.floor(amount * info.withholding_rate)
-  const netAmount = amount - withholding
-
-  async function submit() {
-    if (amount < info.min_withdrawal) {
-      toast.error(`최소 ${info.min_withdrawal.toLocaleString()}원 부터 출금 가능`)
-      return
-    }
-    if (!bankName || !bankAccount || !accountHolder) {
-      toast.error('은행 / 계좌 / 예금주를 모두 입력하세요')
-      return
-    }
-    setSubmitting(true)
-    try {
-      const res = await curatorApi.requestWithdrawal({ amount, bank_name: bankName, bank_account: bankAccount, account_holder: accountHolder })
-      if (res.success) {
-        toast.success(`출금 신청 완료 — 실 입금 ${res.withdrawal?.net_amount.toLocaleString()}원`)
-        onSuccess()
-      } else {
-        toast.error(res.error || '출금 신청 실패')
-      }
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || '출금 신청 실패')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 z-[10001] bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
-      <div className="w-full sm:max-w-md bg-surface rounded-t-2xl sm:rounded-2xl p-5" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-base font-bold text-gray-900 dark:text-white mb-4">💰 출금 신청</h2>
-
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">금액 (최대 {formatWon(info.available)})</label>
-            <input
-              type="number"
-              min={info.min_withdrawal}
-              max={info.available}
-              value={amount}
-              onChange={(e) => setAmount(Math.max(0, Math.min(info.available, Number(e.target.value) || 0)))}
-              className="w-full px-3 py-2 text-sm bg-warm border border-line text-gray-900 dark:text-white rounded-lg"
-            />
-          </div>
-          <div>
-            <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">은행</label>
-            <input
-              type="text"
-              value={bankName}
-              onChange={(e) => setBankName(e.target.value)}
-              placeholder="예: 카카오뱅크"
-              className="w-full px-3 py-2 text-sm bg-warm border border-line text-gray-900 dark:text-white rounded-lg"
-            />
-          </div>
-          <div>
-            <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">계좌번호</label>
-            <input
-              type="text"
-              value={bankAccount}
-              onChange={(e) => setBankAccount(e.target.value.replace(/[^0-9-]/g, ''))}
-              placeholder="3333-01-1234567"
-              className="w-full px-3 py-2 text-sm bg-warm border border-line text-gray-900 dark:text-white rounded-lg"
-            />
-          </div>
-          <div>
-            <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">예금주</label>
-            <input
-              type="text"
-              value={accountHolder}
-              onChange={(e) => setAccountHolder(e.target.value)}
-              className="w-full px-3 py-2 text-sm bg-warm border border-line text-gray-900 dark:text-white rounded-lg"
-            />
-          </div>
-        </div>
-
-        <div className="mt-4 bg-warm rounded-lg p-3 text-xs space-y-1">
-          <div className="flex justify-between text-gray-600 dark:text-gray-400"><span>신청 금액</span><span>{formatWon(amount)}</span></div>
-          <div className="flex justify-between text-gray-600 dark:text-gray-400"><span>원천징수 ({(info.withholding_rate * 100).toFixed(1)}%)</span><span>-{formatWon(withholding)}</span></div>
-          <div className="flex justify-between font-bold text-gray-900 dark:text-white pt-1 border-t border-line"><span>실 입금</span><span>{formatWon(netAmount)}</span></div>
-        </div>
-
-        <div className="mt-4 flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2.5 bg-gray-100 dark:bg-[#1D1F29] text-gray-700 dark:text-gray-300 font-bold rounded-lg">취소</button>
-          <button onClick={submit} disabled={submitting} className="flex-1 py-2.5 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white font-bold rounded-lg">
-            {submitting ? '신청 중...' : '신청'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function SummaryCards({ stats }: { stats: DashboardStats }) {
-  const { t } = useTranslation()
-  const pending = safeNum(stats.pending_earnings)
-  const uniqueClicks = stats.unique_clicks_30d != null ? safeNum(stats.unique_clicks_30d) : safeNum(stats.clicks_30d)
-  const conversion = safeNum(stats.conversion_rate_30d)
-  const cards: Array<{ label: string; value: string; sub?: string; accent: string }> = [
-    {
-      label: t('curator.earnings.monthEarning', { defaultValue: '30일 적립 (확정)' }),
-      value: formatWon(stats.month_earnings),
-      sub: pending > 0 ? `+ ${formatNumber(pending)}딜 적립예정` : undefined,
-      accent: 'text-brand-text ',
-    },
-    {
-      // 순클릭(ip+ua+일자 dedup) — raw 클릭은 새로고침/봇 부풀림 포함.
-      label: t('curator.earnings.uniqueClicks30d', { defaultValue: '30일 순클릭' }),
-      value: formatNumber(uniqueClicks),
-      sub: stats.unique_clicks_30d != null && stats.clicks_30d > uniqueClicks ? `전체 ${formatNumber(stats.clicks_30d)}` : undefined,
-      accent: 'text-blue-500 dark:text-blue-400',
-    },
-    {
-      label: t('curator.earnings.conversion30d', { defaultValue: '30일 전환율' }),
-      value: `${conversion}%`,
-      sub: `구매 ${formatNumber(stats.purchases_30d)}`,
-      accent: 'text-emerald-500 dark:text-emerald-400',
-    },
-  ]
-  return (
-    <div className="grid grid-cols-3 gap-3 mb-6">
-      {cards.map((card) => (
-        <div key={card.label} className="bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-3 border border-gray-100 dark:border-[#2C2F35]">
-          <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-1">{card.label}</p>
-          <p className={`text-lg font-bold ${card.accent}`}>{card.value}</p>
-          {card.sub && <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">{card.sub}</p>}
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function TopPinsSection({ stats }: { stats: DashboardStats }) {
-  const { t } = useTranslation()
-  if (!stats.top_pins?.length) return null
-  return (
-    <section className="mb-6">
-      <h2 className="text-sm font-bold mb-3">🔥 {t('curator.earnings.topPins', { defaultValue: '인기 핀 TOP 3' })}</h2>
-      <div className="space-y-2">
-        {stats.top_pins.map((pin, idx) => (
-          <Link
-            key={pin.id}
-            to={`/products/${pin.product_id}`}
-            className="flex items-center gap-3 bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-3 border border-gray-100 dark:border-[#2C2F35] hover:border-brand/50 transition-colors"
-          >
-            <div className="text-lg font-bold text-gray-400 dark:text-gray-500 w-6">{idx + 1}</div>
-            {(pin.thumbnail || pin.image_url) && (
-              <img
-                src={cfImage(pin.thumbnail || pin.image_url || '', { width: 96, format: 'auto' }) || (pin.thumbnail || pin.image_url || '')}
-                alt={pin.product_name}
-                className="w-12 h-12 rounded object-cover"
-                loading="lazy"
-                decoding="async"
-                onError={(e) => cfImageOnError(e.currentTarget, pin.thumbnail || pin.image_url || '')}
-              />
-            )}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{pin.product_name}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">👆 {formatNumber(pin.click_count)} 클릭</p>
-            </div>
-          </Link>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function RecentEarningsSection({ stats }: { stats: DashboardStats }) {
-  const { t } = useTranslation()
-  const items = stats.recent_earnings || []
-  if (!items.length) return null
-  return (
-    <section className="mb-6">
-      <h2 className="text-sm font-bold mb-3">🧾 {t('curator.earnings.recent', { defaultValue: '수익 내역 (원천별)' })}</h2>
-      <div className="space-y-2">
-        {items.map((e) => (
-          <Link
-            key={e.id}
-            to={`/products/${e.product_id}`}
-            className="flex items-center justify-between gap-3 bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-3 border border-gray-100 dark:border-[#2C2F35] hover:border-brand/50 transition-colors"
-          >
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">
-                {e.product_name || t('curator.earnings.unknownProduct', { defaultValue: '상품' })}
-                {e.status === 'holding' && (
-                  <span className="ml-1.5 align-middle inline-block px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
-                    적립예정
-                  </span>
-                )}
-              </p>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                {parseUTCDate(e.created_at).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', month: 'short', day: 'numeric' })}
-                {e.order_amount ? ` · 주문 ${formatWon(e.order_amount)}` : ''}
-              </p>
-            </div>
-            <span className={`text-sm font-bold shrink-0 ${e.status === 'holding' ? 'text-amber-500' : 'text-brand-text'}`}>+{formatWon(e.commission)}</span>
-          </Link>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function DailyChart({ stats }: { stats: DashboardStats }) {
-  const { t } = useTranslation()
-  const daily = stats.earnings_daily_30d || []
-  if (!daily.length) return (
-    <section className="bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-6 text-center text-sm text-gray-500 dark:text-gray-400">
-      {t('curator.earnings.noData', { defaultValue: '아직 데이터가 없어요. 친구에게 핀을 공유해보세요!' })}
-    </section>
-  )
-
-  const max = Math.max(...daily.map((d) => safeNum(d.amount)), 1)
-  return (
-    <section>
-      <h2 className="text-sm font-bold mb-3">📈 {t('curator.earnings.dailyChart', { defaultValue: '일별 적립 (30일)' })}</h2>
-      <div className="bg-gray-50 dark:bg-[#1D1F29] rounded-xl p-4 border border-gray-100 dark:border-[#2C2F35]">
-        <div className="flex items-end gap-1 h-32">
-          {daily.map((d) => {
-            const pct = (safeNum(d.amount) / max) * 100
-            return (
-              <div key={d.date} className="flex-1 flex flex-col items-center gap-1 group" title={`${d.date}: ${formatWon(d.amount)}`}>
-                <div className="w-full bg-brand/30 rounded-t group-hover:bg-brand" style={{ height: `${pct}%` }} />
-              </div>
-            )
-          })}
-        </div>
-        <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-2 text-center">{daily[0]?.date} → {daily[daily.length - 1]?.date}</p>
-      </div>
-    </section>
+    <Link to={to} className="flex-1 bg-surface shadow-lift rounded-2xl px-4 py-3 flex items-center gap-2 active:opacity-70">
+      <span className="text-gray-500 dark:text-gray-400">{icon}</span>
+      <span className="text-[13px] font-bold tracking-[-0.02em]">{label}</span>
+    </Link>
   )
 }

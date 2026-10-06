@@ -33,7 +33,7 @@ export default function GroupBuyGuideCard() {
   return (
     <div className="mx-4 mt-3 mb-1 rounded-2xl bg-gray-50 dark:bg-[#141414] border border-line p-3">
       <div className="flex items-center justify-between mb-2">
-        <p className="flex items-center gap-1.5 text-[12px] font-extrabold text-gray-900 dark:text-white">
+        <p className="flex items-center gap-2 text-[12px] font-extrabold text-gray-900 dark:text-white">
           <Sparkles className="w-3.5 h-3.5" />
           공구로 딜 얻는 법
         </p>
@@ -41,7 +41,7 @@ export default function GroupBuyGuideCard() {
           type="button"
           onClick={handleDismiss}
           aria-label="가이드 닫기"
-          className="p-0.5 text-gray-400 hover:text-gray-700 dark:hover:text-white"
+          className="p-1 text-gray-400 hover:text-gray-700 dark:hover:text-white"
         >
           <X className="w-3.5 h-3.5" />
         </button>
@@ -50,30 +50,30 @@ export default function GroupBuyGuideCard() {
       {/* 3-step horizontal flow */}
       <ol className="grid grid-cols-3 gap-2 text-center">
         <li className="flex flex-col items-center">
-          <div className="w-9 h-9 rounded-full bg-surface border border-line flex items-center justify-center text-base mb-1">
+          <div className="w-9 h-9 rounded-full bg-surface border border-line flex items-center justify-center text-[15px] mb-1">
             🛒
           </div>
-          <p className="text-[10px] font-bold text-gray-900 dark:text-white">결제</p>
-          <p className="text-[9px] text-gray-500 dark:text-gray-400 mt-0.5">마음에 든 이용권 결제</p>
+          <p className="text-[12px] font-bold text-gray-900 dark:text-white">결제</p>
+          <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">마음에 든 이용권 결제</p>
         </li>
         <li className="flex flex-col items-center">
-          <div className="w-9 h-9 rounded-full bg-surface border border-line flex items-center justify-center text-base mb-1">
+          <div className="w-9 h-9 rounded-full bg-surface border border-line flex items-center justify-center text-[15px] mb-1">
             💌
           </div>
-          <p className="text-[10px] font-bold text-gray-900 dark:text-white">공유</p>
-          <p className="text-[9px] text-gray-500 dark:text-gray-400 mt-0.5">친구가 결제 시 자동 적립</p>
+          <p className="text-[12px] font-bold text-gray-900 dark:text-white">공유</p>
+          <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">친구가 결제 시 자동 적립</p>
         </li>
         <li className="flex flex-col items-center">
-          <div className="w-9 h-9 rounded-full bg-surface border border-line flex items-center justify-center text-base mb-1">
+          <div className="w-9 h-9 rounded-full bg-surface border border-line flex items-center justify-center text-[15px] mb-1">
             💰
           </div>
-          <p className="text-[10px] font-bold text-gray-900 dark:text-white">적립</p>
-          <p className="text-[9px] text-gray-500 dark:text-gray-400 mt-0.5">현금처럼 쓰는 딜 받기</p>
+          <p className="text-[12px] font-bold text-gray-900 dark:text-white">적립</p>
+          <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1">현금처럼 쓰는 딜 받기</p>
         </li>
       </ol>
 
       {/* CTA — 자세히 보기 / referral 페이지 */}
-      <div className="mt-2.5 flex items-center justify-center gap-3 text-[11px]">
+      <div className="mt-2 flex items-center justify-center gap-3 text-[12px]">
         <Link to="/influencer/dashboard" className="font-bold text-gray-900 dark:text-white hover:underline">
           내 추천 링크 →
         </Link>

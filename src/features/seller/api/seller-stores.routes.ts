@@ -382,9 +382,9 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
      * 국세청 번호 조회는 그대로 돌리되 **승인 근거가 아니라 심사 재료**로만 쓴다(meta 스탬프).
      */
     const certUrl = String(b.business_cert_url || '').trim()
-    if (!/^\/api\/media\/uploads\/biz-cert\//.test(certUrl)) {
-      return c.json({ success: false, error: '사업자등록증 사본을 첨부해주세요' }, 400)
-    }
+    // 📄 2026-09-21 등록증 **선택**(대표 확정) — 없어도 등록된다. 막는 자리는 승인으로 옮겼다.
+    //   ⚠️ 모양 검사는 남긴다: 지우면 임의 URL 을 심사 자료로 들이밀 수 있다(그게 이 줄의 진짜 일).
+    if (certUrl && !/^\/api\/media\/uploads\/biz-cert\//.test(certUrl)) return c.json({ success: false, error: '사업자등록증 사본이 올바르지 않습니다' }, 400)
 
     // 국세청 조회 — 심사 재료(어드민이 볼 신호). 이 결과로 자동 승인하지 않는다.
     let ntsResult: { ok: boolean; valid: boolean | null } = { ok: false, valid: null }
@@ -505,12 +505,12 @@ app.post('/stores', rateLimit({ action: 'store_register', max: 10, windowSec: 36
       nts_checked: ntsResult.valid === true ? '1' : ntsResult.valid === false ? '0' : '',
       // 🧾 번호의 진실은 여기다 — 컬럼은 UNIQUE 라 "그 번호의 첫 매장" 만 가질 수 있다(위 주석).
       ...(bno ? { [BUSINESS_NUMBER_META_KEY]: normalizeBno(bno) } : {}),
-      business_cert_url: certUrl,
+      ...(certUrl ? { business_cert_url: certUrl } : {}), // 선택이라 빈 값이면 키 자체를 안 만든다
       registered_by_user_id: String(userId),
     }).catch(() => { /* 메타 실패 — 매장은 유지(프로필 수정으로 채울 수 있다) */ })
 
     // 🩸 2026-09-20 (E5 실사용에서 발견): 등록증이 meta 에만 남아 어드민 승인 목록·상세·OCR(컬럼만 읽음)이 서류를 못 봤다 → 컬럼에도(best-effort). 읽기 폴백 `seller-cert-url.ts`
-    await c.env.DB.prepare("UPDATE sellers SET business_registration_image_url = ? WHERE id = ? AND COALESCE(business_registration_image_url, '') = ''").bind(certUrl, newSellerId).run().catch(() => null)
+    if (certUrl) await c.env.DB.prepare("UPDATE sellers SET business_registration_image_url = ? WHERE id = ? AND COALESCE(business_registration_image_url, '') = ''").bind(certUrl, newSellerId).run().catch(() => null)
 
     // 등록자 권한 — 직접=owner / 중개=operator(사장님 자리는 비워 둔다: owner 승계 3단계)
     const role = b.channel === 'direct' ? 'owner' : 'operator'

@@ -225,13 +225,13 @@
     /* 🎨 2026-08-30 (대표 확정 "완전 검정이면 좋겠어") — 다크 = 중성 근검정(#11141C 계열) + 웜 화이트 잉크.
        구 네이비 혈통(#0F151D/#1A2334/#2A3446)에서 파랑기를 뺀 값. 명도 순서는 그대로 승계. */
     --background: 216 16% 6%;     /* #11141C */
-    --foreground: 30 17% 95%;     /* #F5F3F1 (순백 아닌 웜 화이트) */
+    --foreground: 252 45% 98%;    /* #F8F7FC — 2026-09-30 웜 화이트(#F5F3F1) 온도 정정 */
 
     --card: 223 12% 12%;          /* #1D1F29 */
-    --card-foreground: 30 17% 95%;
+    --card-foreground: 252 45% 98%;
 
     --popover: 223 12% 12%;
-    --popover-foreground: 30 17% 95%;
+    --popover-foreground: 252 45% 98%;
 
     --primary: 218 87% 52%;       /* 🎨 #1C69EF 브랜드 블루 (2026-09-02 대표 확정 — 코레일톡 시안 실측. 구 로즈 #E0526B) */
     --primary-foreground: 0 0% 100%;
@@ -265,12 +265,16 @@
     --ink: #16181C;         /* 차콜 블랙 — 제목/본문/가격. 홈 색면(--home-field)과 같은 값 */
     /* 🎫 2026-09-14: 잉크와 보조 사이의 **중간 단계**. 공구 상세가 `--gbd-ink2` 로 따로 갖고 있던
        것을 체계로 올렸다(두 번째 토큰 세트를 없애면서 — `.gbd` 블록 주석 참조). 본문 강조·부제용. */
-    --ink2: #3D3C3A;
-    --ink-soft: #6E6B68;    /* 보조 텍스트 (중성 그레이) */
-    --ink-faint: #8A8580;   /* 비활성/플레이스홀더 */
+    /* 🩸 2026-09-30 (대표 "전체 적용하자") — 이 셋과 `--line` 은 **웜 베이지**였다(#3D3C3A/#6E6B68/#8A8580/#EAE4E0).
+       바탕·잉크는 2026-09-02 에 쿨 토큰으로 갈렸는데 가운데만 로즈·크림 시절 값이 남아, 한 화면에
+       온도가 둘이었다(그게 "지저분함"의 실체). 대비는 ±0.10 안에서 보존 — 근거·수치는 `tailwind.config.js`
+       INK 주석. ⚠️ tailwind 의 gray-200/400/500/700 과 **쌍이다**(한쪽만 고치면 선이 두 색이 된다). */
+    --ink2: #383D42;
+    --ink-soft: #666C72;    /* 보조 텍스트 */
+    --ink-faint: #81868C;   /* 비활성/플레이스홀더 */
     --bg: #F8F7FC;          /* 페이지 배경 — 2026-09-02 시안 화이트 실측(#F8F7FC, 쿨 오프화이트). 구 웜 크림 #FAF7F5 */
     --surface: #FFFFFF;     /* 카드/시트/입력창 */
-    --line: #EAE4E0;        /* 구분선/테두리 */
+    --line: #E2E5E9;        /* 구분선/테두리 */
     --brand-text: #1C69EF;  /* 로즈 '글자·뱃지'용 — 라이트에선 brand 와 동일, 다크에선 밝힌 로즈 */
     /* 🏷️ 2026-09-07 할인 강조 전용(대표 "할인율도 빨강으로 유지"). 흰 카드 위 4.83:1 — AA.
        ⚠️ 기존 `--gbd-danger`(#F23E4D)를 그대로 쓰지 않은 이유: 흰 배경 위 3.77:1 로 본문 크기
@@ -338,10 +342,10 @@
     --bg: #11141C;          /* 다크 페이지 배경 — 2026-09-02 대표 "결제가 완료되었어요 뒷 배경색이 가장 마음에 들어" (시안 실측 #10131C~#11141D, 남색 기운 근검정). 구 중성 #0D0F12 */
     --surface: #1D1F29;     /* 카드/시트 — 시안 실측 #1D2029~#1D1F29 */
     --line: #2C2F35;
-    --ink: #F5F3F1;         /* 순백 아닌 웜 화이트 */
-    --ink2: #C5C9D0;        /* 🎫 중간 단계(라이트 짝은 #3D3C3A) */
-    --ink-soft: #A5A29E;
-    --ink-faint: #757370;
+    --ink: #F8F7FC;         /* 순백 아닌 오프화이트 — 라이트 --bg 와 같은 값(구 웜 #F5F3F1) */
+    --ink2: #C5C9D0;        /* 🎫 중간 단계(라이트 짝은 #383D42) */
+    --ink-soft: #9FA3A8;
+    --ink-faint: #6F747A;
     --brand-text: #4D8DF5;  /* 다크 배경 위 블루 글자·뱃지 (시안 활성 아이콘 실측 #4D88ED 계열, 대비 6:1) */
     --sale: #FF5C69;        /* 다크 카드(#1D1F29) 위 5.46:1 — 공구 상세가 이미 쓰던 값 */
     --brand-tint: #16243D;  /* 블루 옅은 배경의 다크 대응 */
@@ -511,12 +515,12 @@
 .light-island, .force-light-theme, .admin-light-theme, .agency-light-theme, .seller-light-theme {
   --brand-tint: #EAF1FE;
   --ink: #16181C;
-  --ink2: #3D3C3A;
-  --ink-soft: #6E6B68;
-  --ink-faint: #8A8580;
+  --ink2: #383D42;
+  --ink-soft: #666C72;
+  --ink-faint: #81868C;
   --bg: #F8F7FC;
   --surface: #FFFFFF;
-  --line: #EAE4E0;
+  --line: #E2E5E9;
   --brand-text: #1C69EF;
   --sale: #DC2626;
   --lift: 0 2px 10px rgb(22 24 28 / 0.06);
@@ -960,6 +964,32 @@ img {
    🛡️ 2026-05-06: 모든 button/a 에 min-height:44px 강제 시 작은 아이콘 버튼이 늘어나
    flex 컨테이너 안에서 wrap/overflow → 모바일 레이아웃 깨짐 사고 다발. opt-in 패턴으로 변경.
    필요 시 .tap-target 클래스 부여. */
+/* 👆 `.tap-reach` — **레이아웃을 안 건드리고** 닿는 범위만 40px 로 넓힌다 (2026-10-01).
+   ■ 왜 `min-height`(위 `.tap-target`) 로는 안 되나 — 실측으로 값을 치렀다
+     셀러 공용 배너의 닫기(24px)·CTA(32px)를 박스째 40px 로 키우자, 같은 flex 행의 글자 칸이
+     197 → 167px 로 좁아져 설명이 한 줄 더 감기고 **배너가 109 → 148px(+39px)** 로 두꺼워졌다.
+     그 배너는 셀러 화면 **일곱 곳 전부**에 뜨므로 +39px 가 일곱 번 쌓인다.
+     (`.tap-target` 주석이 2026-05-06 에 경고한 바로 그 사고다 — 경고를 읽고도 한 번 밟았다.)
+   ■ 그래서 의사요소로 **히트 영역만** 키운다. `max(100%, 2.5rem)` 이라 이미 넓은 버튼은
+     **높이만** 늘고 폭은 그대로다. 40px = 디자인 시스템의 보통 버튼(`.ur-btn-md`) 눈금.
+   ■ ⚠️ 못 쓰는 자리
+     · 조상에 `overflow: hidden` 이 있으면 **히트 테스트까지 잘린다** — 넓힌 만큼이 죽는다.
+     · **간격이 좁은 이웃 아이콘 버튼 둘**에 같이 주면 겹치는 띠에서 나중 것이 이긴다
+       (= 엉뚱한 버튼이 눌린다). 그런 자리는 박스를 키울 수 있는지 먼저 보라.
+     · 호스트가 이미 `::after` 를 쓰면 덮어쓴다.
+   ■ 포인터 종류로 가르지 않는다 — 터치 노트북·터치 모니터가 `hover: hover` 로 잡히고,
+     마우스에서도 40px 히트는 해가 없다(겹침만 위 규칙으로 피한다). */
+.tap-reach { position: relative; }
+.tap-reach::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  width: max(100%, 2.5rem);
+  height: max(100%, 2.5rem);
+}
+
 @media (hover: none) and (pointer: coarse) {
   .tap-target {
     min-height: 44px;
@@ -1554,6 +1584,29 @@ html.dark .gbd, [data-theme="dark"] .gbd {
 .seller-light-theme .dash-header-icon, .admin-light-theme .dash-header-icon { display: none; }
 @media (max-width: 767px) { .seller-light-theme .dash-page-title, .admin-light-theme .dash-page-title { display: none; } }
 
+/* 🪟 2026-09-26: 마이 시트 안에서는 페이지 h1 을 그리지 않는다 — **시트 머리가 이미 그 이름을
+   말한다**(두 번 말하지 않는다. 위 폰 규칙과 같은 판단이고, 시트는 폭과 무관하게 늘 머리가 있다).
+   ⚠️ 부제(`p`)는 남긴다 — 그건 이름이 아니라 설명이고, 시트 머리가 담지 못한다. */
+.ur-embed-page .dash-page-title h1 { display: none; }
+
+/* 🪟 2026-09-27 — 시트 안에서 "화면 높이" 는 화면이 아니라 **시트** 높이여야 한다.
+   대시보드 화면 상당수가 로딩·에러를 `if (loading) return <div className="min-h-screen …">` 로
+   **SellerLayout 밖에서** 조기 반환한다(설계상 그게 맞다 — 전체 화면을 대신하는 상태다).
+   그래서 껍데기 벗기기(`ur-embed-page`)가 그 상태엔 닿지 않고, 86dvh 시트 안에 100vh 상자가
+   들어가 스크롤이 생기고 스피너가 가운데를 벗어난다.
+   ⇒ 페이지를 하나씩 고치지 않고 **시트 안에서만** 화면높이 유틸을 시트높이로 되돌린다.
+   ⚠️ 이 셋은 시트 안에서 언제나 틀린 값이다("화면만큼 큰 것"을 원하는 자리가 아니다) —
+      그래서 예외 없이 덮어도 안전하다. 시트 밖(대시보드)은 한 글자도 안 바뀐다.
+   🔢 **왜 100% 가 아니라 60dvh 인가** (실측): `100%` 는 부모가 `min-h-full`(min-height 만) 이라
+      퍼센트가 확정 높이에 기대지 못해 상자가 **24px 로 찌그러졌다** — 스크롤은 없어지지만 스피너가
+      가운데를 잃는다. 60dvh 는 시트의 스크롤 영역(`max-h-[86dvh]` − 머리 56px ≈ 63dvh)보다 작아
+      **스크롤을 만들지 않으면서** 가운데 정렬을 살린다.
+      ⚠️ 시트 높이(`Sheet.tsx` 의 `top-6`/`lg:max-h-[86dvh]`)를 바꾸면 이 값을 다시 계산할 것. */
+.ur-embed-sheet .min-h-screen,
+.ur-embed-sheet .h-screen,
+.ur-embed-sheet .min-h-\[100dvh\],
+.ur-embed-sheet .h-\[100dvh\] { min-height: 60dvh; height: auto; }
+
 /* 🛡️ 2026-05-20: 라이브/쇼츠/숏폼 카드 공통 utility (CSP unsafe-inline 제거 — style={{}} 일괄 제거) */
 .ur-live-pill {
   background: rgba(239, 68, 68, 0.92);
@@ -1647,6 +1700,38 @@ html.dark .gbd, [data-theme="dark"] .gbd {
 }
 
 /* ──────────────────────────────────────────────────────────────
+   🎞️ 홈 히어로 이용권 띠 (2026-09-28 대표 확정 — 시안 ② + "좌우로 자연스럽게 계속 이동").
+   같은 벌 2개를 이어 붙이고 **한 벌 폭만큼** 민다 → 이음매가 안 보이는 무한 루프.
+   ⚠️ 거리(--ur-hero-loop)·지속시간(--ur-hero-dur)은 **장수에 따라 달라지므로** 컴포넌트가
+      인라인 변수로 준다. 여기 숫자를 박으면 딜이 적은 지역에서 이음매가 벌어지거나 속도가 널뛴다.
+   ────────────────────────────────────────────────────────────── */
+@keyframes ur-hero-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(calc(-1 * var(--ur-hero-loop, 0px))); }
+}
+.ur-hero-marquee { animation: ur-hero-marquee var(--ur-hero-dur, 40s) linear infinite; }
+/* 양끝을 색면에 녹인다 — 타일이 칼같이 잘리면 고장 난 것처럼 보인다.
+   (`#000` 은 색이 아니라 **알파 스텐실**이다 — 마스크에서 불투명 = 남긴다는 뜻.) */
+.ur-hero-band {
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 9%, #000 96%, transparent 100%);
+          mask-image: linear-gradient(90deg, transparent 0%, #000 9%, #000 96%, transparent 100%);
+  /* 타일 캡션의 할인율 색. 캡션은 사진 위 검정 그라디언트에 얹히므로 **테마와 무관하게 늘
+     어두운 바탕**이다 — `--brand-text`(라이트에서 #1C69EF)를 쓰면 대비가 3:1 로 떨어진다.
+     🩸 2026-09-28 정정: 이 전제가 **코드에서 지켜지지 않고 있었다.** 그라디언트가 두 스톱이라
+     0.8 은 밴드 맨 아래 한 줄에서만 나고 **글자가 앉는 줄은 0.5** 였다 → 밝은 대표색 타일
+     (`rgb(243,243,243)`)에서 2.04:1. `HeroDealStrip` 의 스톱을 고쳐 전제를 실제로 지키게 했다
+     (5.83:1). ⇒ 이 색을 믿으려면 **그 그라디언트를 약하게 만들지 말 것.** */
+  --hero-tile-accent: #7FB0FF;
+}
+.ur-hero-tile-off { color: var(--hero-tile-accent); }
+/* 읽으려는데 지나가 버리면 화난다 — 올리면 멈춘다(키보드 포커스도 같이). */
+.ur-hero-band:hover .ur-hero-marquee,
+.ur-hero-band:focus-within .ur-hero-marquee { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  .ur-hero-marquee { animation: none; }
+}
+
+/* ──────────────────────────────────────────────────────────────
    🏭 2026-07-01 도매 카테고리 타일 — CSS 3D + 마이크로 애니메이션 (대표 요청).
    의존성 0. 잉크/모노톤 브랜드에 맞춰 컬러 대신 입체 음영(gradient+shadow+depth) +
    상시 float + hover 3D 틸트. prefers-reduced-motion 존중.
@@ -1694,10 +1779,13 @@ html.dark .gbd, [data-theme="dark"] .gbd {
    ⚠️ 우측 칸 안의 섹션들은 저마다 `ur-content-medium`(max-width 1024 + 가운데 정렬)을 갖고 있다.
       그걸 그대로 두면 좁은 칸 안에서 또 가운데로 몰려 좌우가 어긋난다 → 칸 안에서만 무력화한다. */
 @media (min-width: 1024px) {
+  /* 🧭 2026-09-28: 좌측 내비(216px + gap 32)를 걷어내 본문이 1200px 전폭을 쓴다.
+     그 내비는 `/user/profile` 에만 렌더돼 **누르면 사라지는 내비**였고, 일곱 항목 중 넷이
+     오른쪽 열과 중복이었다(사유는 `UserProfilePage` 의 그 자리 주석).
+     ⚠️ 한 칸짜리 그리드로 남겨 둔다 — `.ur-account-pane` 의 폭 무력화 규칙이 이 칸을 전제한다. */
   .ur-account-pc {
     display: grid;
-    grid-template-columns: 216px minmax(0, 1fr);
-    gap: 32px;
+    grid-template-columns: minmax(0, 1fr);
     align-items: start;
     max-width: 1200px;
     margin: 0 auto;
@@ -1710,6 +1798,29 @@ html.dark .gbd, [data-theme="dark"] .gbd {
     padding-left: 0;
     padding-right: 0;
   }
+
+  /* 🖥️ 2026-09-28 (대표 *"PC 가 너무 별로, 허술하다"* · 시안 `PcFull1` — "오늘이 머리").
+     판매 구역 아래를 **두 열**로 편다. 안 나누면 블록 열한 개가 888px 한 줄에 세로 1,900px 쌓이고,
+     좌측 내비는 440px 에서 끝나 그 아래 1,500px 가 빈 채로 남는다.
+     ⚠️ **균등이 아니다** — 왼쪽 1.25 : 오른쪽 1. 균등으로 쪼개면 한 칸이 폰(430)보다 좁아진다.
+        09-28 에 그 계산만 보고 "2열 안 함" 으로 결론 냈던 것이 오판이었다(시안은 처음부터 비대칭).
+     ⚠️ `align-items: start` 가 없으면 짧은 열이 긴 열 높이로 늘어나 카드가 붕 뜬다. */
+  /* 두 열의 자식. 그리드 칸은 기본 `min-width:auto` 라 안쪽 내용이 칸보다 넓으면 칸을 밀어낸다 —
+     긴 매장 이름 한 줄이 열 비율을 통째로 무너뜨린다. (모바일에선 이 규칙이 없어도 무해하다.) */
+  .ur-account-col { min-width: 0; }
+
+  .ur-account-cols--split {
+    display: grid;
+    grid-template-columns: 1.25fr 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+
+  /* 좁은 오른쪽 칸(≈400px): 안쪽 격자를 접는다. 접지 않으면 글자가 잘린다 —
+     첫 판에서 알약 셋이 `내...` `내...` `찜.` 이 됐고 숫자 라벨이 두 줄로 깨졌다. */
+  .ur-account-cols--split .ur-account-col--narrow .grid-cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ur-account-cols--split .ur-account-col--narrow .grid-cols-3 { grid-template-columns: minmax(0, 1fr); }
+  .ur-account-cols--split .ur-account-col--narrow .grid-cols-2 { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* 🖼️ 사진 저장 억제 — iOS 짝 (2026-08-22 대표 지시)
@@ -1756,6 +1867,13 @@ canvas {
   .ur-ushop-main .ur-content-wide { max-width: none; margin-left: 0; margin-right: 0; padding-left: 0; padding-right: 0; }
   .ur-ushop-main .grid-cols-2 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .ur-ushop-main .col-span-2 { grid-column: span 3 / span 3; }
+  /* 🛍️ 2026-09-30 (대표 확정 **안 A**): 한 줄 목록(s3)은 **2열**. 위 3열 규칙은 *카드* 격자용이고
+     (사업자 유어샵 상품·핀 카드 — `grid-cols-2`), 줄 목록엔 안 맞는다. 줄은 폰 폭에 맞춰 11라운드
+     끝에 확정된 형식이라(`PinRow` 머리말) 늘리면 64px 썸네일 하나에 오른쪽 절반이 빈 칸이 된다
+     — 실측 796px. 2열이면 줄당 ~378px = 폰 폭과 거의 같아 **줄 디자인이 한 글자도 안 바뀐다.**
+     ⚠️ tailwind `lg:grid-cols-2` 를 쓰지 않는다 — 액자 1열 오버라이드(index.css `.app-framed
+        .lg\:grid-cols-2`)가 `/profile`·`/s` 처럼 액자가 남는 표면에서 이걸 1열로 되돌린다. */
+  .ur-ushop-main .ur-ushop-rows { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* 🖥️ 2026-09-02 (대표 — PC 마이 "왼쪽 메뉴 + 오른쪽은 내용"): 우측 칸 상단의 한 줄 그리드 안에서
