@@ -139,3 +139,48 @@ seller_meta.broker_share_pct 가 박힌 매장 = 4곳(전부 10%)
 - 상권 쿠폰(`district_coupons`)은 **넣지 않았다** — 재단 예산 기반 병렬 엔티티이고 WP2(원장→payout)가
   미완이라 상인회에게 제품으로 약속할 수 없다.
 - 상권 단위 묶음 페이지는 **없다**. 덱 9장이 그 사실을 직접 말한다("아직 없는 것도 말씀드립니다").
+
+## 7. ✅ E4 판정 통과 — 머지 `8c809c5` (PR #1632, squash)
+
+대표 *"일단 머지해줘"* → draft 해제 + auto-merge(squash). ⚠️ **auto-merge 는 `clean` 이 된 뒤에도 안 움직였다**
+→ 검증된 head 를 **해시로 명시해** 직접 머지했다(`PUT /merge` 에 `sha: 8cfc0be`). 그러면 그 사이 누가 푸시해도
+엉뚱한 커밋이 머지되지 않는다. CI 는 그 head 위에서 초록이었다(Verify 22:58→23:13 KST · Pages ✅).
+
+**라이브 실측(배포 후, `urdeal.kr`)** — 랜딩이 내려간 상품을 "지금 팔린다"고 말하던 것이 고쳐졌는지:
+
+| 본 것 | 결과 |
+|---|---|
+| `/assets/partners-facts-*.js` | `sample:{name:"프리미엄 돈가스 1인 세트",list:14500,sale:7500}` ✅ |
+| 같은 청크의 내려간 상품 숫자 | `25000` **0회** · `16500` **0회** ✅ |
+| `/assets/PartnersPage-*.js` | `.sample.list` 1회 · `.sample.sale` 1회 = **값을 읽어 그린다**(하드코딩 아님) |
+| 그 문장 | `지금 팔리고 있는 실제 상품입니다.` — 이제 **참이다** |
+| 함께 실린 실측값 | `liveMeasuredAt:"2026-10-06"` · `activeVouchers:"359"` · `realStores:"1"` |
+
+⚠️ **스크린샷이 아니라 "라이브가 내려주는 번들 바이트"로 판정했다.** 이 질문("배포된 코드가 고쳐진
+코드인가")엔 그게 더 직접적이지만, **렌더된 화면을 본 것은 아니다**(픽셀·레이아웃은 미판정).
+
+### 🩸 측정하면서 값을 치른 것 셋 (다음 세션이 다시 밟지 말 것)
+
+1. **Playwright Chromium 은 이 환경에서 TLS 를 못 한다** — `net::ERR_CERT_AUTHORITY_INVALID`.
+   프록시 CA 가 `/root/.pki/nssdb` 에 들어 있는데도 그렇다(이 Chromium 빌드가 NSS 를 안 읽는다).
+   🔴 **`ignoreHTTPSErrors`·`--ignore-certificate-errors` 로 우회하지 말 것**(검증을 끄는 것이다).
+   라이브 화면을 꼭 눈으로 봐야 하면 대표 스크린샷이 현재 유일한 길이다.
+2. **lazy 라우트 청크는 HTML 프리로드 목록에 없다.** `/partners` 의 17개 프리로드 청크를 다 뒤져도
+   상품명이 **0건**이었는데, 그건 "고쳐졌다"가 아니라 **엉뚱한 곳을 본 것**이었다. 청크 이름은
+   엔트리의 import 맵에서 찾는다: `grep -ohoE '"[^"]*[Pp]artner[^"]*\.js"' <받은 청크들>`.
+   ⇒ **0 이 나오면 먼저 측정기를 의심하라**(이 레포가 반복해 배운 그것).
+3. **스크래치패드의 `.mjs` 는 레포 패키지를 못 찾는다**(ESM 은 *스크립트 위치* 기준). 절대 경로로
+   import 하고, `playwright-core` 는 CJS 라 `import pw from '…/index.js'; const { chromium } = pw`.
+
+### 🔁 그리고 이 브랜치에서 GitHub 쪽 충돌이 **30분 사이 두 번** 났다
+
+`docs/CURRENT_WORK.md merge=union` 비대칭 때문이다(CLAUDE.md 에 기록된 그 함정). 증상이 고약하다 —
+**Verify 가 실패가 아니라 *부재*** 가 되어 PR 화면엔 `Cloudflare Pages ✅` 하나만 남아 통과처럼 보인다.
+⇒ 판정은 `mergeable`/`mergeable_state` 로 하고, **첫 조회는 `unknown` 으로 오므로 한 번 더 읽어야**
+참값이 나온다. 해소는 `git merge origin/main` → `node scripts/check-github-side-merge.mjs` → 푸시.
+
+### 머지 뒤 상태
+
+머지와 함께 GitHub 이 작업 브랜치를 **삭제**했다(`git ls-remote` 로 확인). 그래서 로컬 추적 ref 가
+낡은 head 를 가리켜 "안 올린 커밋 1개"처럼 보일 수 있다 — `git fetch --prune` 하면 사라지고,
+`HEAD` 는 `origin/main` 과 0/0 이다. **빈 커밋이나 force-push 로 그 경고를 지우려 하지 말 것.**
