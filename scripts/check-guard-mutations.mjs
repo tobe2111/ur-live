@@ -10508,8 +10508,8 @@ canvas {
   {
     name: '🧪 [행동] 배정 잔액이 pending 을 안 빼서 사슬이 끊긴다',
     file: 'src/worker/utils/ledger.ts',
-    find: "      WHERE (payee_type || ':' || payee_id) = ? AND status IN ('pending','approved','sent')",
-    replace: "      WHERE (payee_type || ':' || payee_id) = ? AND status IN ('approved','sent')",
+    find: "      WHERE (payee_type || ':' || payee_id) IN (${paidPh}) AND status IN ('pending','approved','sent')",
+    replace: "      WHERE (payee_type || ':' || payee_id) IN (${paidPh}) AND status IN ('approved','sent')",
     test: 'src/tests/unit/store-handover-behavior-2026-09-08.test.ts',
     why:
       '마감이 만드는 행은 pending 이다. 안 빼면 마감 직후에도 잔액이 그대로라 손바뀜이 안 열린다. ' +
@@ -10528,8 +10528,8 @@ canvas {
   {
     name: '🤝 배정 잔액이 pending 을 안 뺀다 (마감이 문을 못 연다)',
     file: 'src/worker/utils/ledger.ts',
-    find: "      WHERE (payee_type || ':' || payee_id) = ? AND status IN ('pending','approved','sent')",
-    replace: "      WHERE (payee_type || ':' || payee_id) = ? AND status IN ('approved','sent')",
+    find: "      WHERE (payee_type || ':' || payee_id) IN (${paidPh}) AND status IN ('pending','approved','sent')",
+    replace: "      WHERE (payee_type || ':' || payee_id) IN (${paidPh}) AND status IN ('approved','sent')",
     test: 'src/tests/unit/store-handover-money-2026-09-07.test.ts',
     why:
       '마감이 만드는 행은 pending 이다. 그걸 안 빼면 마감 직후에도 잔액이 그대로라 손바뀜이 ' +
