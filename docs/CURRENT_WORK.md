@@ -5494,9 +5494,10 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 395건 · 최신순 · 이 목록은 자동 생성된다._
+_총 397건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-10-06**
+- [5일치 점검 — CI 판정 마감 + 라이브에서 나온 머니 발견 1건 (2026-10-06)](handoff/2026-10-06-five-day-sweep.md)
 - [2026-10-06 — 첫 화면이 같은 것을 두 번 받던 것 (전수 수리 + 가드)](handoff/2026-10-06-first-screen-duplicate-fetch.md)
 - [유어애즈 월 예산 — 목표를 "포함분 안" 에서 **초과 $0** 으로 (2026-10-06)](handoff/2026-10-06-ads-zero-overage-budget.md)
 **2026-10-02**
