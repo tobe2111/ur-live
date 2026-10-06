@@ -86,11 +86,11 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     title(s, '여기는 손님이 돈을 내고 옵니다.');
     card(s, M, 2.15, 5.9, 3.85);
     const x = M + 0.35, w = 5.2;
-    label(s, '지금 팔리는 실제 상품 (치즈돈가스 2인 세트)', x, 2.35, w);
+    label(s, '지금 팔리는 실제 상품 (' + FACTS.sampleName + ')', x, 2.35, w);
     const yEnd = kv(s, [
-      ['정가', '25,000원', 0], ['이용권 판매가 (할인율은 사장님이 정함)', '16,500원', 0, true],
-      ['유어딜 10%', '−1,650원', 0], ['카드 수수료', '0원 (유어딜 부담)', 0, true],
-      ['사장님 계좌에', '14,850원', 2],
+      ['정가', FACTS.sampleOrig, 0], ['이용권 판매가 (할인율은 사장님이 정함)', FACTS.samplePrice, 0, true],
+      ['유어딜 ' + FACTS.feeDirect, FACTS.sampleFee, 0], ['카드 수수료', '0원 (유어딜 부담)', 0, true],
+      ['사장님 계좌에', FACTS.sampleNet, 2],
     ], x, 2.7, w, { rowH: 0.44 });
     T(s, '그 손님이 몇 명인지, 언제 왔는지, 얼마를 썼는지가 매장 화면에 그대로 남습니다. "효과가 있었나?"를 감으로 판단할 필요가 없습니다.',
       { x, y: yEnd + 0.12, w, h: 0.95, fontSize: 10.5, color: C.ink, lineSpacingMultiple: 1.42, valign: 'top' });
@@ -110,7 +110,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
       { text: '체험단 한 팀에 나가는 무료 식사값이면, ', options: { color: C.inkSoft } },
       { text: '유어딜에선 돈 내는 손님이 옵니다. 안 팔리면 0원, 팔리면 새 손님입니다.', options: { bold: true, color: C.ink } },
     ]);
-    s.addNotes('상품 2888 실측: 정가 25,000 / 판매가 16,500 → 수수료 1,650 → 입금 14,850. 카드 수수료(현재 약 2.75%, 변동 가능)는 유어딜 부담. 월 판매 시나리오와 업종 평균가 표는 상세판 5장.');
+    s.addNotes('상품 2915(홍대돈까스) 2026-10-06 실측: 정가 14,500 / 판매가 7,500 → 수수료 750 → 입금 6,750. ⚠️ 종전에 쓴 2888(25,000 → 16,500)은 10-06 실측에서 is_active=0 — 값은 FACTS.sample* 에 있다. 카드 수수료(현재 약 2.75%, 변동 가능)는 유어딜 부담. 월 판매 시나리오와 업종 평균가 표는 상세판 5장.');
   }
 
   // ───────── 03-1 이런 매장에 맞습니다 (페르소나 + 말풍선) ─────────
@@ -182,7 +182,7 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     kv(s, [['유튜버', FACTS.influencerYoutube, 1], ['네이버 블로거', FACTS.influencerNaverBlog, 1, true], ['미리 나가는 홍보비', '0원', 2]], lx, ay + 0.36, lw, { rowH: 0.32 });
     // 오른쪽: 실제 인플루언서 풀 관리 화면 (연락처는 블러)
     const ix = 5.15, iw = W - M - ix;
-    const ih = await screen(s, path.join(SHOTS_DIR, 'admin-influencer-pool-table.jpg'), ix, 3.1, iw, { caption: '유어딜 크리에이터 풀 관리 화면 (실제 화면, 연락처는 가렸습니다)' });
+    const ih = await screen(s, path.join(SHOTS_DIR, 'admin-influencer-pool-table.jpg'), ix, 3.1, iw, { caption: '유어딜 인플루언서 풀 관리 화면 (실제 화면, 연락처는 가렸습니다)' });
     chip(s, ix + iw - 2.35, 3.1 - 0.12, '연락처는 가렸습니다', { tone: 'ink' });
     chip(s, ix - 0.15, 3.1 + ih - 0.16, '채널 · 구독자 · 카테고리로 고릅니다');
     s.addNotes('노출 4곳: 홈 섹션/지도(/map)/검색·카톡 OG/유어쇼츠(/videos). 크리에이터 풀: /api/admin/ads/influencer-pool/stats 2026-09-13 실측 youtube 18,170 / naver_blog 172,755. 오른쪽은 /admin/influencer-pool 데스크톱 캡처(capture-admin-shots.mjs — 이메일·IG·TT 블러, 아바타는 외부 CDN 차단이라 중립 원). 소개비: 매장 제안 %·매장 부담.');
@@ -330,13 +330,13 @@ const SHOTS_DIR = process.env.SHOTS_DIR || path.join(__dirname, 'shots');
     const s = pres.addSlide();
     chrome(s);
     title(s, '시작하는 길은 셋입니다. 어느 길이든 손님이 낸 돈은 매장 계좌로만 갑니다.', { size: 25 });
-    lead(s, '직접 하시면 10%, 대행사와 함께하시면 5%입니다. 대행사 보수는 사장님과 대행사가 정하고, 유어딜 장부에는 나오지 않습니다.', { y: 2.0, h: 0.4 });
+    lead(s, '직접 하시면 10%, 대행사와 함께하시면 5%입니다. 대행사 보수는 사장님과 대행사가 정하고, 유어딜 몫이 아니라 매장 몫 안에서 나갑니다.', { y: 2.0, h: 0.4 });
     procedureColumns(s, [
       { title: '사장님이 직접 (수수료 10%)', hi: true, steps: ['urdeal.kr 카카오 로그인', '카카오맵에서 내 가게 찾기', '사업자등록증 사진 한 장', '승인 문자 받고 첫 이용권 올리기', '손님 오면 QR 한 번 찍기', '매주 정산 확인'], note: '10분. 막히면 카카오톡 채널로 "등록 도와주세요"' },
       { title: '유어딜이 대신 (수수료 10%)', steps: ['카카오톡 채널에 "등록 도와주세요"', '전화로 메뉴, 가격, 사진을 받습니다', '유어딜이 매장과 첫 이용권을 만듭니다', '사장님은 등록증 사진과 승인 확인만', '손님 오면 QR 한 번 찍기', '매주 정산 확인'], note: '폰이 익숙하지 않으셔도 됩니다. 사람이 합니다' },
-      { title: '대행사와 함께 (수수료 5%)', steps: ['대행사가 매장을 "중개"로 등록', '대행사가 이용권과 인플루언서를 운영', '사장님은 본인 카카오로 소유자 확인', '정산 계좌는 사장님만 등록', '손님 오면 QR 한 번 찍기', '대행사 보수는 매장과 대행사가 직접'], note: '대행사는 계좌를 못 건드립니다. 권한은 언제든 회수' },
+      { title: '대행사와 함께 (수수료 5%)', steps: ['대행사가 매장을 "중개"로 등록', '대행사가 이용권과 인플루언서를 운영', '사장님은 본인 카카오로 소유자 확인', '정산 계좌는 사장님만 등록', '손님 오면 QR 한 번 찍기', '대행사 보수는 매장과 대행사가 정합니다'], note: '대행사는 계좌를 못 건드립니다. 권한은 언제든 회수' },
     ], { y: 2.55, h: 4.2 });
-    s.addNotes('09-15 참고 덱 "광고 집행 절차" 장치. 직접 10% / 중개 5%: fee-resolver.ts(fee_channel_rates_enabled). 소유자 지정·계좌 owner 전용: store-operator-model §7. "대신 만들어 드립니다"는 대표 운영 약속.');
+    s.addNotes('09-15 참고 덱 "광고 집행 절차" 장치. 직접 10% / 중개 5%: fee-resolver.ts(fee_channel_rates_enabled). 소유자 지정·계좌 owner 전용: store-operator-model §7. "대신 만들어 드립니다"는 대표 운영 약속. ⚠️ 2026-10-06: 종전 리드 문구 "유어딜 장부에는 나오지 않습니다" 는 broker_share_enabled 가 OFF 이던 때의 문장인데 라이브 실측이 true 라 좁혔다(요율·몫의 주인은 불변). 대행사 덱 §14 는 아직 "켜기 전" 이라고 적혀 있다 — 대표 확인 필요.');
   }
 
   // ───────── 09 마무리 ─────────

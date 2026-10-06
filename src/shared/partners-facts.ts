@@ -34,20 +34,26 @@ export const PARTNER_FACTS = {
   /** 등록 소요 — 기획 §7-3 확정값(1분·3분·5분 혼용을 이것 하나로 통일) */
   signupMinutes: '10분',
 
-  /** 📏 규모 실측 (기획 §0-3, 2026-09-13). 정직 고지에 그대로 쓴다 */
-  liveMeasuredAt: '2026-09-13',
-  activeVouchers: '337',
+  /** 📏 규모 실측 (2026-10-06 D1 실측으로 갱신). 정직 고지에 그대로 쓴다 */
+  liveMeasuredAt: '2026-10-06',
+  activeVouchers: '359',
   realStores: '1',
 
   /**
-   * 💴 실계산에 쓰는 **라이브 실제 상품**(id 2888, 치즈돈가스 2인 세트).
-   * 데모 시드 가격은 쓰지 않는다 — 기획 §2-5.
+   * 💴 실계산에 쓰는 **라이브 실제 상품**(id 2915, 홍대돈까스). 데모 시드 가격은 쓰지 않는다 — 기획 §2-5.
+   *
+   * 🩸 2026-10-06: 종전 앵커 **id 2888**(치즈돈가스 25,000 → 16,500)이 `is_active=0` 이 됐는데
+   *    이 화면과 소개서가 *"지금 팔리고 있는 실제 상품"* 이라고 말하고 있었다. 에러가 나지 않아
+   *    아무도 신고하지 않는 종류다. ⇒ 앵커를 바꿀 때는 아래 쿼리로 **아직 파는지부터** 확인할 것.
+   *    SELECT id,name,price,original_price,is_active FROM products
+   *      WHERE seller_id IS NOT NULL AND group_buy_status='active'
+   *        AND category IN ('meal_voucher','beauty_voucher','stay_voucher','etc_voucher')
    */
-  sample: { name: '치즈돈가스 2인 세트', list: 25000, sale: 16500 },
+  sample: { name: '프리미엄 돈가스 1인 세트', list: 14500, sale: 7500 },
 
   /** 🤝 소개 트랙 (기획 §0-3 실측). 사장님이 "손님을 더 부르는 법" 으로 보는 숫자 */
-  influencerDb: '201,471명',
-  influencerReachable: '46,220명',
+  influencerDb: '282,818명',
+  influencerReachable: '61,512명',
   /** 첫 카카오·네이버 후기 보너스. **지금은 유어딜 부담**(매장 부담 게이트 OFF) */
   reviewBonus: '1,000딜',
   /** 매장이 인플루언서에게 거는 소개비 — 요율은 매장이 정하고 매장이 낸다(상한 없음, 입력검증 90) */

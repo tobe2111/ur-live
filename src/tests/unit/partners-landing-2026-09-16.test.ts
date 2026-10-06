@@ -184,9 +184,27 @@ describe('R4 — 덱이 정한 설득 구조가 살아 있다', () => {
     expect(ALL_VISIBLE).not.toMatch(/to="\/seller\/login"/)
   })
 
-  it('계산기가 라이브 실제 상품 가격으로 앵커돼 있다 (데모 시드 금지)', () => {
-    expect(PARTNER_FACTS.sample.list).toBe(25000)
-    expect(PARTNER_FACTS.sample.sale).toBe(16500)
+  /**
+   * 🩸 2026-10-06 재조준: 이 시험은 가격을 **25,000 / 16,500 으로 손으로 박아** 두고 있었다.
+   * 그 값은 상품 2888 인데 그날 실측에서 `is_active=0` 이 됐다 — 즉 시험이 **내려간 상품을 지키고**
+   * 있었고, 살아 있는 상품으로 고치려는 쪽이 빨간불을 맞았다(실제로 그렇게 걸렸다).
+   * 지키려던 것은 *"그 숫자"* 가 아니라 **"덱과 같은 라이브 상품을 쓴다"** 이므로 앵커를 그쪽으로 옮긴다.
+   * 가격은 `deck-common.mjs` 의 `FACTS.sample*` 에서 읽어 대조한다(R2 가 쓰는 방식과 같다).
+   */
+  it('계산기가 덱과 같은 라이브 실제 상품 가격으로 앵커돼 있다 (데모 시드 금지)', () => {
+    const deck = R('docs/business/proposals/deck-common.mjs')
+    const body = deck.slice(deck.indexOf('export const FACTS'))
+    const won = (k: string) => {
+      const m = body.match(new RegExp(`\\b${k}:\\s*'([\\d,]+)원'`))
+      if (!m) throw new Error(`deck-common.mjs 의 FACTS 에 ${k} 가 없다`)
+      return Number(m[1].replace(/,/g, ''))
+    }
+    // 0건이면 통과가 아니라 실패 — 파싱이 헛돌면 아래 대조가 무의미해진다.
+    expect(won('sampleOrig')).toBeGreaterThan(0)
+    expect(PARTNER_FACTS.sample.list).toBe(won('sampleOrig'))
+    expect(PARTNER_FACTS.sample.sale).toBe(won('samplePrice'))
+    // 데모 시드는 금액이 둥글게 떨어진다. 실제 매장 가격은 정가 > 판매가 이고 둘이 다르다.
+    expect(PARTNER_FACTS.sample.list).toBeGreaterThan(PARTNER_FACTS.sample.sale)
     expect(visible('src/pages/partners/PartnerMath.tsx')).toMatch(/F\.sample\.(list|sale)/)
   })
 
