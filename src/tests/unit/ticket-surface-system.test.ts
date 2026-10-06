@@ -67,12 +67,18 @@ describe('② 결제 완료 — 자동 이동 폐기, 티켓 화면', () => {
     expect(page).not.toMatch(/CheckCircle|XCircle/)
   })
   const ticket = R('src/pages/group-buy/PaymentCompleteTicket.tsx')
-  it('티켓 화면은 TicketCard + outline 버튼 + 안내 + 서비스 타일로 구성', () => {
+  it('티켓 화면은 TicketCard + outline 버튼 + 안내로 구성', () => {
     expect(ticket).toMatch(/<TicketCard\b/)
     expect(ticket).toMatch(/<TicketOutlineButton\b/)
     expect(ticket).toMatch(/<TicketNotes\b/)
-    expect(ticket).toMatch(/<CategoryTile\b/)
     expect(ticket).toMatch(/결제가 완료되었어요/)
+  })
+  // 🧾 2026-10-06 대표 확정 A안 — 서비스 타일 줄을 뺐고, 크로스셀은 매장 한 줄 링크다.
+  it('A안: 서비스 타일 줄이 없다 · 다른 이용권은 한 줄 링크로 그 매장에 간다', () => {
+    // 주석은 뺀 결정을 **설명**하느라 그 문구를 담고 있다 — 코드만 본다.
+    expect(code(ticket)).not.toMatch(/<CategoryTile\b/)
+    expect(code(ticket)).not.toMatch(/이런 서비스도 있어요/)
+    expect(ticket).toMatch(/navigate\(product\?\.seller_id \? `\/s\/\$\{product\.seller_id\}` : '\/'\)/)
   })
 })
 

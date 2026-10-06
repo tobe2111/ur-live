@@ -4,10 +4,11 @@
 
 ## 다음 세션의 첫 액션
 1. **PR #1631 CI 확인 → 초록이면 대표 지시("머지까지")대로 머지**. head sha 대조 필수.
-2. **대표 선택 대기 2건** — 시안 캔버스 https://claude.ai/artifact/N8ivG9DooQMmhHW9hiMgEz
-   - 결제 완료 화면 A/B/C/D (권장 B · 바로 쓰는 티켓 — 착수 시 지갑 `VoucherTicket` 과 QR SSOT 공유가 선행)
-   - 숫자 글꼴 지금(Pretendard)/A Poppins/B Outfit/C Manrope — 고르면 **숫자만 `unicode-range`** 로 교체 +
-     `.dash-num`(고정폭 = 타자기처럼 보이는 원인, 38파일 78곳) 제거
+2. **대표 선택 2건 — 둘 다 A 로 확정·구현(#1631)**. 시안 캔버스 https://claude.ai/artifact/N8ivG9DooQMmhHW9hiMgEz
+   - 결제 완료 화면 **A(영수증 정리형)**: "이런 서비스도 있어요" 타일·같은 매장 크로스셀 카드 제거 → "{매장} 다른 이용권 보기" 한 줄(`/s/{seller_id}`).
+   - 숫자 글꼴 **A(Poppins)**: `src/index.css` `@font-face 'UrDigits'`(숫자·쉼표·마침표·% 만, 5굵기 1.4KB, `public/static/fonts/`) + 본문·`font-sans` 스택 맨 앞.
+     ⚠️ **Poppins 숫자는 비례폭이고 tnum 이 안 먹는다**(실측 1111 150px vs 0000 261px) → `.tabular-nums`·`.dash-num` 은 Pretendard 로 되돌림.
+     `.dash-num` 의 터미널 모노스페이스도 제거(고정폭 숫자는 유지). **배포 후 E4 판정**: 결제 완료·셀러 대시보드 숫자가 Poppins 로 그려지는지 + 시계가 안 떨리는지.
 3. **PR B(딜 100% 결제) — 머니 경로, 아직 미착수.** #1631 머지 후 지정 브랜치를 main 에서 다시 시작해 진행.
 4. 결재 `docs/decisions/2026-10-06-broker-business-cert.md`(중개사 사업자등록증 주체) 답 대기.
 
