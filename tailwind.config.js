@@ -63,7 +63,7 @@ export default {
         // ⚠️ 'Pretendard Variable' 이 먼저다 — index.html 이 CDN 에서 로드하는 실제 패밀리명이
         // 그것이고, 여기 'Pretendard' 만 있으면 `font-sans` 를 명시한 자리는 로드된 적 없는
         // 이름을 찾다 실패해 시스템 폰트로 떨어진다(본문은 index.css body 규칙이 덮어 무사했다).
-        sans: ['Pretendard Variable', 'Pretendard', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+        sans: ['UrDigits', 'Pretendard Variable', 'Pretendard', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
       },
       colors: {
         border: 'hsl(var(--border))',

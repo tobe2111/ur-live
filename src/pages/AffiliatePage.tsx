@@ -224,7 +224,11 @@ function TopGroupsToShare() {
             <div className="flex-1 min-w-0">
               <p className="text-[12px] font-bold text-gray-900 dark:text-white truncate">{g.name}</p>
               <p className="text-[12px] text-gray-500 truncate">{g.restaurant_name || ''} · {g.progress_pct}% · {g.group_buy_current}/{g.group_buy_target}명</p>
-              <p className="text-[12px] text-brand-text font-bold mt-1">친구 가입 시 +{(g.my_potential_bonus ?? 0).toLocaleString()}딜 보너스</p>
+              {/* 💸 2026-10-06: 0 이면 **아무 말도 하지 않는다** — 라이브 `user_referral_bonus_pct` 가 0 인데
+                  "친구 가입 시 +0딜 보너스" 를 적으면 없는 보상을 있는 것처럼 말하는 꼴이다. */}
+              {(g.my_potential_bonus ?? 0) > 0 && (
+                <p className="text-[12px] text-brand-text font-bold mt-1">친구 가입 시 +{(g.my_potential_bonus ?? 0).toLocaleString()}딜 보너스</p>
+              )}
             </div>
             <button
               onClick={async () => {

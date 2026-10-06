@@ -2923,7 +2923,7 @@
     },
     "scan": {
       "title": "扫描兑换券",
-      "subtitle": "对准顾客二维码即可自动核销(可连续扫描)",
+      "subtitle": "扫描顾客二维码后先确认券信息，再决定是否核销",
       "usedOk": "核销完成",
       "usedFail": "核销失败",
       "networkError": "网络错误 — 请重试",
@@ -2935,7 +2935,13 @@
       "useBtn": "核销",
       "homeCardTitle": "店主 — 在这里扫描顾客兑换券",
       "homeCardDesc": "对准二维码一键核销 · 魔法链接无需登录",
-      "homeCardBtn": "打开扫描器"
+      "homeCardBtn": "打开扫描器",
+      "notFound": "找不到该券",
+      "alreadyUsed": "该券已被使用",
+      "notUsable": "该券无法使用（已过期或已退款）",
+      "checking": "正在确认券…",
+      "confirmQ": "确定核销吗？",
+      "confirmNote": "核销后无法撤销。"
     },
     "gbSettle": {
       "title": "团购自动结算明细",
@@ -3187,7 +3193,7 @@
       "delegated": "委托",
       "info": "信息",
       "registered": "门店已注册 — 现在可以创建使用券",
-      "pendingHint": "门店正在核验中 — 批准后可注册使用券",
+      "pendingHint": "现在即可注册。核验完成后会在首页展示",
       "gateTitle": "从注册门店开始",
       "gateDesc": "UrDeal 的一切从门店开始。在 Kakao 地图找到并注册门店后，即可开启使用券销售、达人合作与结算。",
       "step1": "注册门店",
@@ -3197,7 +3203,8 @@
       "registerCta": "通过 Kakao 地图注册门店",
       "lockedNote": "完成门店注册后即可使用使用券·订单·结算·达人合作",
       "savedPropagated": "门店信息已保存 — 已应用到 {{count}} 张使用券",
-      "saved": "门店信息已保存"
+      "saved": "门店信息已保存",
+      "suspendedHint": "门店已被停用 — 无法注册使用券"
     },
     "voucherTabs": {
       "list": "使用券",

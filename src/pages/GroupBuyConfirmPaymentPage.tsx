@@ -12,7 +12,7 @@
  *
  * 🎫 2026-09-02 (대표 시안 — 코레일톡 "결제가 완료되었어요"): 성공 직후 1.5초 뒤 /my-vouchers 로 자동 이동하던
  *   것을 폐기했다. 사용자가 "완료되었어요"를 한 번도 못 봤다. 이제 티켓 한 장을 보여 주고 '이용권 확인'으로 지갑에 간다.
- *   confirm 호출·퍼널 계측·추천 적립·지갑 invalidate·gb_just_joined 기록은 그대로다(실행 시점·순서 불변).
+ *   confirm 호출·퍼널 계측·추천 적립·지갑 invalidate 는 그대로다(실행 시점·순서 불변).
  */
 
 import { useEffect, useState, useRef } from 'react'
@@ -39,6 +39,15 @@ export default function GroupBuyConfirmPaymentPage() {
   const paymentKey = params.get('paymentKey') || ''
   const orderId = params.get('orderId') || ''
   const amount = Number(params.get('amount') || 0)
+  /**
+   * 🧾 2026-10-06 (대표 신고 — 완료 화면 "100원", 지갑 "7,500원"): 위 `amount` 는 **토스가 리다이렉트에
+   *   붙여 준 카드 청구액**이다. 딜을 쓰면 그 둘이 갈린다(딜 7,400 + 카드 100 = 상품 7,500).
+   *   종전엔 카드 청구액을 상품값 자리에 크게 띄우고 정가를 취소선으로 깔아서
+   *   "14,500원짜리를 100원에 샀다"로 읽혔다 — 같은 구매를 두 화면이 다른 숫자로 말하고 있었다.
+   *   ⇒ 표시는 **서버가 확정한 상품 총액**(`confirm-toss` 의 `amount`)으로 한다. 응답 전/실패 시엔
+   *   종전 값으로 떨어진다(없는 숫자를 지어내지 않는다).
+   */
+  const [paid, setPaid] = useState<{ amount: number; dealUsed: number } | null>(null)
   const isCart = params.get('cart') === '1'
   const productId = Number(params.get('productId') || 0)
   const qty = Math.max(1, Number(params.get('qty') || 1))
@@ -62,6 +71,11 @@ export default function GroupBuyConfirmPaymentPage() {
       .then((r) => {
         if (r.data?.success) {
           setState('success')
+          {
+            const d = r.data?.data as { amount?: number; deal_used?: number } | undefined
+            const goods = Number(d?.amount)
+            if (Number.isFinite(goods) && goods > 0) setPaid({ amount: goods, dealUsed: Math.max(0, Number(d?.deal_used) || 0) })
+          }
           if (isCart) {
             const d = r.data?.data as { qty?: number; product_ids?: number[] } | undefined
             setCartDone({ qty: Number(d?.qty ?? 0), productIds: Array.isArray(d?.product_ids) ? d!.product_ids! : [] })
@@ -69,15 +83,6 @@ export default function GroupBuyConfirmPaymentPage() {
           trackFunnel('payment_succeeded', { type: 'group_buy' }) // 🆕 퍼널 계측 (이용권 결제 완료)
           fireAffiliateTrack(r.data?.data?.order_id, Number(productId), undefined) // 큐레이터 적립 (fail-soft)
           invalidateVouchers()
-          // 상세로 돌아갔을 때 "방금 샀다" 를 보여 주는 표식 — 단일 구매에만 의미가 있다.
-          if (!isCart) {
-            try {
-              localStorage.setItem('gb_just_joined', JSON.stringify({
-                product_id: productId,
-                timestamp: Date.now(),
-              }))
-            } catch { /* */ }
-          }
         } else {
           setErrorMsg(r.data?.error || '결제 처리 실패')
           setState('error')
@@ -98,8 +103,8 @@ export default function GroupBuyConfirmPaymentPage() {
       <>
         <SEO title="결제 완료 - 유어딜" url="/group-buy/confirm-payment" noindex />
         {ticketId
-          ? <PaymentCompleteTicket productId={ticketId} qty={isCart ? (cartDone?.qty ?? qty) : qty} amount={amount} />
-          : <CartComplete qty={cartDone?.qty ?? 0} kinds={cartDone?.productIds.length ?? 0} amount={amount} />}
+          ? <PaymentCompleteTicket productId={ticketId} qty={isCart ? (cartDone?.qty ?? qty) : qty} amount={paid?.amount ?? amount} dealUsed={paid?.dealUsed ?? 0} />
+          : <CartComplete qty={cartDone?.qty ?? 0} kinds={cartDone?.productIds.length ?? 0} amount={paid?.amount ?? amount} />}
       </>
     )
   }
