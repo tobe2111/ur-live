@@ -249,7 +249,9 @@ describe('단계 3 — 소각은 되돌릴 수 없다', () => {
 
   it('계산대가 되돌릴 수 없음을 **먼저** 말한다', () => {
     const code = stripComments(SCAN)
-    expect(code).toContain('바로 사용 완료')
+    // 2026-10-06: '바로 사용 완료' → 확인창(대표 "찍고나서 확인될 때 팝업창으로 사용처리 하시겠습니까?").
+    //   지키는 것은 그대로다 — 찍기 전에 되돌릴 수 없음을 말한다.
+    expect(code).toContain('확인창이 떠요')
     expect(code).toContain('되돌릴 수 없습니다')
   })
 

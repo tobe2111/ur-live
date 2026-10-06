@@ -317,7 +317,8 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
             2026-09-30 오전처럼 이 제목만 옛 값으로 남는다(시험이 대조한다). */}
         <h2 className={`leading-tight ${SECTION_TITLE_CLS}`}>내 가게</h2>
         <div className="flex-1" />
-        {!awaiting && stores.length >= 2 ? (
+        {/* ➕ 2026-10-06: 1곳이어도 누를 수 있다 — 시트 맨 아래 [+ 매장 추가] 가 마이의 유일한 매장 추가 문이다. */}
+        {!awaiting && stores.length >= 1 ? (
           <button
             type="button"
             onClick={() => setSheetOpen(true)}
@@ -328,7 +329,7 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
                 (`합정 살롱드합정 헤어&메이크업 본점 · …`). 그런데 이 줄이 눌리는 이유가 바로 그 개수다 —
                 2곳 이상일 때만 전환 버튼이 되니까. 잘려야 하는 건 이름이지 개수가 아니다. */}
             <span className="truncate">{store.name}</span>
-            <span className="shrink-0">· {stores.length}곳</span>
+            {stores.length >= 2 && <span className="shrink-0">· {stores.length}곳</span>}
             <ChevronDown className="w-3 h-3 shrink-0" aria-hidden="true" />
           </button>
         ) : (

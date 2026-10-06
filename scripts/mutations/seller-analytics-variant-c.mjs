@@ -56,8 +56,8 @@ export default [
   {
     name: '📊 기간이 비면 기간 선택까지 감춘다 (다른 기간으로 갈 길 없음)',
     file: 'src/pages/seller-analytics/AnalyticsOverview.tsx',
-    find: 'role="group"',
-    replace: 'role="group" hidden={windowEmpty}',
+    find: '      <SegmentedTabs<number>\n',
+    replace: '      {windowEmpty ? null : null}<SegmentedTabs<number>\n',
     test: TEST,
     why: '빈 기간에 세그먼트까지 사라지면 90일로 넓혀 볼 길이 없어진다. 순서만 보는 검사는 이걸 못 잡는다.',
   },

@@ -23,7 +23,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Utensils, CheckCircle, ChevronLeft, ChevronRight, Save } from 'lucide-react'
+import { Utensils, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react'
 import api from '@/lib/api'
 import { applyPinMove, type PinLocation } from '@/shared/pin-move'
 import { toast } from '@/hooks/useToast'
@@ -39,11 +39,9 @@ import StoreChannelRequired from './seller-meal-voucher/StoreChannelRequired'
 import VoucherInfoStep from './seller-meal-voucher/VoucherInfoStep'
 import SaleSettingsStep from './seller-meal-voucher/SaleSettingsStep'
 import {
-  emptyVoucherForm, applyStoreContext, isDraftWorthSaving,
-  loadVoucherDraft, saveVoucherDraft, clearVoucherDraft, pickNewerDraft,
-  type StoreContext, type VoucherDraft, type VoucherForm,
+  emptyVoucherForm, applyStoreContext,
+  type StoreContext, type VoucherForm,
 } from './seller-meal-voucher/voucher-form'
-import { fetchServerDraft, pushServerDraft, deleteServerDraft } from './seller-meal-voucher/draft-sync'
 
 export default function SellerMealVoucherNewPage({ embedded = false, onClose, onCreated }: {
   /** 🪟 마이 안 시트에서 열렸는가 — 껍데기를 벗고, 라우팅 대신 콜백으로 끝낸다. */
@@ -66,7 +64,6 @@ export default function SellerMealVoucherNewPage({ embedded = false, onClose, on
   const [loadingImages, setLoadingImages] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
   // 임시저장 복원 배너 — 결정 전에는 자동저장을 멈춰 기존 드래프트를 덮어쓰지 않는다.
-  const [pendingDraft, setPendingDraft] = useState<VoucherDraft | null>(null)
   const skipContextPrefill = useRef(false)
   // 🚪 2026-08-24 (대표): 매장 등록이 무조건 선행 — 서버 판정(store_ready). false 면 1단계에서
   //   등록을 완료해야 다음 단계로 넘어갈 수 있다. null(판정 중/실패)은 막지 않는다(fail-open).
@@ -118,20 +115,9 @@ export default function SellerMealVoucherNewPage({ embedded = false, onClose, on
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // 💾 임시저장 감지 (마운트 1회) — 로컬 vs 서버 중 더 최근 것을 복원 배너로.
-  //   로컬 드래프트는 마운트 시점에 동기 캡처(클로저) — 서버 응답 전 자동저장이 localStorage 를
-  //   덮어써도 복원은 캡처본에서 하므로 안전하다.
-  useEffect(() => {
-    let alive = true
-    const local = loadVoucherDraft()
-    fetchServerDraft().then(server => {
-      if (!alive) return
-      const best = pickNewerDraft(local, server)
-      if (best) setPendingDraft(best)
-    })
-    return () => { alive = false }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  // 🗑️ 2026-10-06 (대표 "임시저장된 작성 내용이 있어요 이거 그냥 없애줘. 불편하네"): 임시저장 기능 전체 제거 —
+  //   복원 배너 · 로컬/서버 자동저장 · 임시저장 버튼. 버튼만 남기면 저장은 되는데 **불러올 길이 없는**
+  //   고장 난 기능이 된다. 이미 저장돼 있던 드래프트는 읽는 곳이 없으니 무해하게 남는다.
 
   // 🏪 등록 매장 자동 상속 — 매장 필드가 비어 있을 때만(드래프트/복사를 덮지 않는다).
   //   + store_ready(매장 등록 선행 게이트 판정)도 같은 응답에서 읽는다.
@@ -153,23 +139,6 @@ export default function SellerMealVoucherNewPage({ embedded = false, onClose, on
     return () => { alive = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  // 💾 자동저장 (800ms 디바운스) — 복원 결정 전·제출 완료 후에는 쓰지 않는다.
-  useEffect(() => {
-    if (pendingDraft || done || !isDraftWorthSaving(form)) return
-    const id = setTimeout(() => {
-      saveVoucherDraft(form, Number(localStorage.getItem('seller_id') || 0))
-    }, 800)
-    return () => clearTimeout(id)
-  }, [form, pendingDraft, done])
-
-  // ☁️ 서버 자동저장 (5s 디바운스) — 기기 간 이어쓰기. 연속 타이핑 중엔 타이머가 리셋되므로
-  //   쓰기는 타이핑이 멈춘 뒤 1회만 나간다(fail-soft — 로컬이 1차 방어선).
-  useEffect(() => {
-    if (pendingDraft || done || !isDraftWorthSaving(form)) return
-    const id = setTimeout(() => pushServerDraft(form), 5000)
-    return () => clearTimeout(id)
-  }, [form, pendingDraft, done])
 
   // 🪟 시트 안에서는 튕기지 않는다 — 마이가 좌석을 확인하고 열었고, 튕기면 작성 중인 내용이 날아간다.
   if (!isSellerAuthenticated()) { if (!embedded) { redirectToLogin(navigate); return null } }
@@ -300,8 +269,6 @@ export default function SellerMealVoucherNewPage({ embedded = false, onClose, on
 
       const res = await api.post('/api/seller/products', payload, { headers })
       if (res.data.success) {
-        clearVoucherDraft()
-        deleteServerDraft()
         setCreatedId(Number(res.data.data?.id) || null)
         setDone(true)
         toast.success(t('seller.mealVoucher.registered'))
@@ -385,34 +352,6 @@ export default function SellerMealVoucherNewPage({ embedded = false, onClose, on
           icon={<Utensils className="h-5 w-5" />}
         />
 
-        {/* 💾 임시저장 복원 배너 */}
-        {pendingDraft && (
-          <div className="bg-white border border-rule rounded-xl p-4 flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm font-bold text-gray-900">{t('seller.mealVoucher.draftFound', { defaultValue: '임시저장된 작성 내용이 있어요' })}</p>
-              <p className="text-[11px] text-gray-500 mt-0.5 truncate">
-                {pendingDraft.form.name || pendingDraft.form.restaurant_name || t('seller.mealVoucher.draftUntitled', { defaultValue: '(제목 없음)' })}
-              </p>
-            </div>
-            <div className="flex gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => { clearVoucherDraft(); deleteServerDraft(); setPendingDraft(null) }}
-                className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-semibold text-gray-600"
-              >
-                {t('seller.mealVoucher.draftDiscard', { defaultValue: '새로 작성' })}
-              </button>
-              <button
-                type="button"
-                onClick={() => { setForm(pendingDraft.form); setPendingDraft(null); toast.success(t('seller.mealVoucher.draftRestored', { defaultValue: '이어서 작성합니다' })) }}
-                className="ur-btn ur-btn-md ur-btn-primary"
-              >
-                {t('seller.mealVoucher.draftResume', { defaultValue: '이어서 작성' })}
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* 단계 표시 */}
         <div className="flex items-center gap-2">
           {steps.map((label, i) => (
@@ -479,13 +418,6 @@ export default function SellerMealVoucherNewPage({ embedded = false, onClose, on
                 {t('common.cancel')}
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => { saveVoucherDraft(form, Number(localStorage.getItem('seller_id') || 0)); pushServerDraft(form); toast.success(t('seller.mealVoucher.draftSaved', { defaultValue: '임시저장 완료 — 다른 기기에서도 이어서 작성할 수 있어요' })) }}
-              className="shrink-0 px-4 py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold text-sm flex items-center gap-1.5"
-            >
-              <Save className="w-4 h-4" /> {t('seller.mealVoucher.saveDraft', { defaultValue: '임시저장' })}
-            </button>
             {step < 2 ? (
               <button
                 type="button"

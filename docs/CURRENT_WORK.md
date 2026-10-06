@@ -5494,10 +5494,11 @@ OAuth verification 검토 (4-6주) 동안 공동구매 서비스를 정식 운�
 
 <!-- HANDOFF-INDEX:BEGIN -- 자동 생성 · 직접 편집 금지 (scripts/generate-handoff-index.mjs) -->
 
-_총 401건 · 최신순 · 이 목록은 자동 생성된다._
+_총 402건 · 최신순 · 이 목록은 자동 생성된다._
 
 **2026-10-06**
 - [철거로 잃은 둘을 원본 화면에 복원 (2026-10-06)](handoff/2026-10-06-teardown-losses.md)
+- [2026-10-06 결제 화면 · 완료 화면 · 사장님 화면 수리 묶음](handoff/2026-10-06-payment-and-seller-fixes.md)
 - [로컬은 clean 인데 GitHub 은 충돌 — Verify 가 *부재*로 남는 함정 (2026-10-06)](handoff/2026-10-06-github-side-merge.md)
 - [5일치 점검 — CI 판정 마감 + 라이브에서 나온 머니 발견 1건 (2026-10-06)](handoff/2026-10-06-five-day-sweep.md)
 - [2026-10-06 — 첫 화면이 같은 것을 두 번 받던 것 (전수 수리 + 가드)](handoff/2026-10-06-first-screen-duplicate-fetch.md)

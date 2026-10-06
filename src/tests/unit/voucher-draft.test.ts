@@ -14,6 +14,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
+import { stripComments } from '../helpers/source-text'
 import { pickNewerDraft, emptyVoucherForm, type VoucherDraft } from '@/pages/seller-meal-voucher/voucher-form'
 
 const read = (p: string) => readFileSync(p, 'utf-8')
@@ -85,14 +86,22 @@ describe('R2~R3 서버 드래프트 라우트 계약', () => {
   })
 })
 
-describe('R4 제출/폐기 시 양쪽 모두 삭제', () => {
-  const p = read(PAGE)
-  it('제출 성공 경로에 clearVoucherDraft + deleteServerDraft 가 나란히 있다', () => {
-    const at = p.indexOf('clearVoucherDraft()\n        deleteServerDraft()')
-    expect(at, '한쪽만 지우면 다음 진입에서 유령 복원 배너가 뜬다').toBeGreaterThan(-1)
+/**
+ * 🗑️ 2026-10-06 R4 교체 — 대표 *"임시저장된 작성 내용이 있어요 이거 그냥 없애줘. 불편하네"*.
+ *   종전 R4 는 "제출 시 로컬·서버 둘 다 지운다" 였는데, 등록 화면이 이제 임시저장을 **아예 안 쓴다**.
+ *   지킬 것이 뒤집혔다: 다음 세션이 "작성 중 날아가면 아깝다" 며 배너를 되살리지 않게 막는다.
+ *   (서버 라우트·draft-sync 모듈은 남아 있다 — 읽는 곳이 없어 무해하고, R1~R3·R5·R6 이 그 계약을 지킨다.)
+ */
+describe('R4 등록 화면은 임시저장을 쓰지도 읽지도 않는다 (대표 결정 2026-10-06)', () => {
+  const p = stripComments(read(PAGE))
+  it('복원 배너가 없다', () => {
+    expect(p).not.toMatch(/draftFound|임시저장된 작성 내용/)
   })
-  it('새로 작성(폐기)도 서버까지 지운다', () => {
-    expect(p).toMatch(/clearVoucherDraft\(\); deleteServerDraft\(\); setPendingDraft\(null\)/)
+  it('자동저장·서버 동기화를 부르지 않는다', () => {
+    expect(p).not.toMatch(/\b(saveVoucherDraft|loadVoucherDraft|pushServerDraft|fetchServerDraft)\(/)
+  })
+  it('임시저장 버튼이 없다', () => {
+    expect(p).not.toMatch(/seller\.mealVoucher\.saveDraft/)
   })
 })
 

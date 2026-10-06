@@ -2242,7 +2242,7 @@
     },
     "scan": {
       "title": "Scanner un bon",
-      "subtitle": "Visez le QR du client pour valider automatiquement (scan continu)",
+      "subtitle": "Scannez le QR du client pour vérifier le bon, puis confirmez la validation",
       "usedOk": "Validé",
       "usedFail": "Échec de validation",
       "networkError": "Erreur réseau — réessayez",
@@ -2254,7 +2254,13 @@
       "useBtn": "Valider",
       "homeCardTitle": "Commerçants — scannez les bons clients ici",
       "homeCardDesc": "Visez le QR pour valider en un geste · Magic link sans connexion",
-      "homeCardBtn": "Ouvrir le scanner"
+      "homeCardBtn": "Ouvrir le scanner",
+      "notFound": "Bon introuvable",
+      "alreadyUsed": "Ce bon a déjà été utilisé",
+      "notUsable": "Ce bon ne peut pas être utilisé (expiré ou remboursé)",
+      "checking": "Vérification du bon…",
+      "confirmQ": "Valider ce bon ?",
+      "confirmNote": "La validation est définitive."
     },
     "gbSettle": {
       "title": "Règlements automatiques d'achat groupé",
@@ -2506,7 +2512,7 @@
       "delegated": "Déléguée",
       "info": "Infos",
       "registered": "Boutique enregistrée — vous pouvez créer des coupons",
-      "pendingHint": "Boutique en vérification — les coupons s'ouvrent après approbation",
+      "pendingHint": "Vous pouvez enregistrer des coupons dès maintenant. Ils apparaîtront en accueil après vérification",
       "gateTitle": "Commencez par enregistrer votre boutique",
       "gateDesc": "Tout sur UrDeal part d'une boutique. Trouvez-la sur Kakao Map et enregistrez-la pour débloquer ventes, collaborations et règlements.",
       "step1": "Enregistrer la boutique",
@@ -2516,7 +2522,8 @@
       "registerCta": "Enregistrer via Kakao Map",
       "lockedNote": "Enregistrez votre boutique pour débloquer coupons · commandes · règlement · collaborations",
       "savedPropagated": "Infos enregistrées — appliquées à {{count}} coupons",
-      "saved": "Infos de la boutique enregistrées"
+      "saved": "Infos de la boutique enregistrées",
+      "suspendedHint": "Boutique suspendue — impossible d'enregistrer des coupons"
     },
     "voucherTabs": {
       "list": "Bons",

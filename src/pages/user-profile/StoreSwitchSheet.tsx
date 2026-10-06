@@ -1,8 +1,11 @@
 /**
  * 🪑 가게 전환 시트 — 마이 안에서 (2026-09-25, 설계 §14)
  *
- * 매장이 **2곳 이상일 때만** 열린다. 대부분의 사장님은 가게가 하나뿐이고, 그들에게
- * "전환할 곳이 하나뿐인 목록"은 순수한 소음이다(셀러 대시보드 `StoreSwitcher` 와 같은 판단).
+ * ➕ 2026-10-06 (대표 "지금 상태에서 매장 등록 새로 마이 페이지에서 하려면 뭐 눌러야 해?"): 답이
+ *   **"없다"** 였다. `내 가게 등록` 타일·알약은 사장님이 **아닐 때만** 보이고, 이 시트는 2곳 이상일 때만
+ *   열렸다 — 한 번 사장님이 되면 마이에서 매장을 더할 문이 사라졌다(매장 여럿·중개사에겐 막힌 길).
+ *   ⇒ 맨 아래에 **[+ 매장 추가]** 를 두고, 1곳이어도 열린다(목록 하나 + 추가 = 의미 있는 시트).
+ *   종전 판단("하나뿐인 목록은 소음")은 추가 줄이 생기면서 더는 성립하지 않는다.
  *
  * ## 여기서만 `/my-stores` 를 부른다
  * 마이 첫 로드는 `/my-stores/summary` 한 번뿐이다. 사장님 승계 코드(`owner_claim_code`)는
@@ -13,7 +16,8 @@
  * 그래서 여기서는 시트를 닫기만 한다 — 리로드하지 않는다(그러면 인라인이 아니다).
  */
 import { useEffect, useState } from 'react'
-import { Check, Loader2, X } from 'lucide-react'
+import { Check, Loader2, Plus, X } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { UrShopIcon } from '@/components/icons/urdeal-icons'
 import { Z } from '@/constants/z-index'
 import { switchSeat } from '@/lib/seller-seat'
@@ -40,6 +44,7 @@ export default function StoreSwitchSheet({ currentSellerId, onClose }: {
   currentSellerId: number | null
   onClose: () => void
 }) {
+  const navigate = useNavigate()
   const [stores, setStores] = useState<OperableStore[] | null>(null)
   const [failed, setFailed] = useState(false)
   const [busy, setBusy] = useState<number | null>(null)
@@ -130,6 +135,15 @@ export default function StoreSwitchSheet({ currentSellerId, onClose }: {
               </button>
             )
           })}
+          {/* ➕ 매장 추가 — 사장님이 된 뒤에도 마이에서 새 매장을 더할 유일한 문(위 머리말 참조). */}
+          <button
+            type="button"
+            onClick={() => { onClose(); navigate('/store/new?from=my') }}
+            className="w-full flex items-center gap-3 px-4 py-4 text-left active:opacity-70"
+          >
+            <Plus className="w-[18px] h-[18px] shrink-0 text-brand-text" aria-hidden="true" />
+            <span className="flex-1 text-[15px] font-bold text-brand-text">매장 추가</span>
+          </button>
         </div>
       </div>
     </>

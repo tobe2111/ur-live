@@ -31,6 +31,15 @@ interface OperableStore {
 
 const storeLabel = (s: OperableStore) => s.business_name || s.name || `매장 #${s.seller_id}`
 const isApproved = (s: OperableStore) => s.status === 'active' || s.status === 'approved'
+/**
+ * 🧾 2026-10-06 (대표 "이용권 등록은 사업자 확인 이후라는데 그러면 안되지 않나?"): 이용권 등록을 막는 건
+ *   **정지(`suspended`) 하나뿐**이다. 종전엔 승인 전 매장을 여기서 막았는데, 그건 2026-09-16 대표 확정
+ *   (당근 모델 — 들여보내고 **메인 노출만** 승인 뒤)과 정면으로 어긋난 잔재였다: 서버 `switch-to-seller` 는
+ *   대기·반려 매장에도 좌석을 열어 주고, 메인 노출은 `approvedSellerProductSql` 이 따로 거른다. 그리고 등록
+ *   화면은 *"건너뛰어도 등록돼요. 다만 승인 전에는 메인에 노출되지 않아요"* 라고 약속한다 — 두 화면이
+ *   정반대를 말하고 있었다.
+ */
+const canRegisterVoucher = (s: OperableStore) => s.status !== 'suspended'
 
 interface Props {
   /** 게이트 여부를 부모(대시보드)에 알린다 — 다른 작업 잠금에 사용. null = 판정 중. */
@@ -82,10 +91,12 @@ export default function MyStoresPanel({ onGateChange, gateOnly = false }: Props)
 
   /** 그 매장 좌석으로 전환 후 이용권 위저드 진입 — StoreSwitcher 와 동일 토큰 계약. */
   async function registerVoucherFor(s: OperableStore) {
-    if (!isApproved(s)) {
-      toast.info(t('seller.stores.pendingHint', { defaultValue: '사업자 확인 중인 매장이에요 — 승인되면 이용권을 등록할 수 있어요' }))
+    if (!canRegisterVoucher(s)) {
+      toast.info(t('seller.stores.suspendedHint', { defaultValue: '정지된 매장이에요 — 이용권을 등록할 수 없어요' }))
       return
     }
+    // 승인 전이면 등록은 되지만 메인엔 안 뜬다 — 그 사실을 한 번 알려 준다(막지는 않는다).
+    if (!isApproved(s)) toast.info(t('seller.stores.pendingHint', { defaultValue: '등록은 지금 할 수 있어요. 사업자 확인이 끝나면 메인에 노출돼요' }))
     if (s.seller_id === currentId) { navigate('/seller/meal-voucher/new'); return }
     if (switching != null) return
     setSwitching(s.seller_id)
@@ -195,7 +206,7 @@ export default function MyStoresPanel({ onGateChange, gateOnly = false }: Props)
                 <button
                   onClick={() => registerVoucherFor(s)}
                   disabled={switching != null}
-                  className={`ur-btn ur-btn-sm flex-1 whitespace-nowrap sm:flex-none ${isApproved(s) ? 'ur-btn-primary' : 'ur-btn-secondary'}`}
+                  className={`ur-btn ur-btn-sm flex-1 whitespace-nowrap sm:flex-none ${canRegisterVoucher(s) ? 'ur-btn-primary' : 'ur-btn-secondary'}`}
                 >
                   {switching === s.seller_id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Ticket className="h-3.5 w-3.5" />}
                   {t('seller.registerVoucher', { defaultValue: '이용권 등록' })}
