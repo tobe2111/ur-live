@@ -28,6 +28,7 @@ import { recordLedger } from '../utils/ledger';
 import {
   expiredVoucherSelectSql,
   expiredVoucherClaimSql,
+  expiredVoucherBookRefundSql,
   type ExpiredVoucherOutcome,
 } from './expired-voucher-refund-sql';
 
@@ -283,6 +284,39 @@ export async function handleAutoSettlement(env: Env) {
  * 3. If paid with deal points, refund the user's deal_balance
  * 4. Send notification to the user
  */
+/**
+ * 🧾 만료 환불을 **주문 장부에 적는다** (2026-10-06 · 결재 `2026-10-02-expired-refund-not-booked.md`).
+ *
+ * 금액을 **정하지 않는다** — 이미 환불한 액수를 그대로 적는다. SQL 은 SSOT
+ * (`expiredVoucherBookRefundSql`)라 가드가 실제 sqlite 에 돌려 판정한다.
+ *
+ * 🔴 **실패를 삼키지 않는다.** `changes = 0` 이면 합이 `total_amount` 를 넘은 것이고, 그때 **돈은
+ *   이미 나갔다** — 조용히 넘기면 상한이 0 으로 남아 다음 환불이 또 나간다(이 결재가 고친 바로 그 사고).
+ *   던지지는 않는다(환불·알림·회수가 뒤에 남아 있다) ⇒ **크게 로그**해서 사람이 보게 한다.
+ */
+async function bookRefundOnOrder(
+  DB: D1Database,
+  orderId: unknown,
+  amount: number,
+  voucherId: unknown,
+): Promise<void> {
+  const oid = Number(orderId);
+  const amt = Math.round(Number(amount));
+  if (!Number.isFinite(oid) || oid <= 0 || !Number.isFinite(amt) || amt <= 0) return;
+  try {
+    const r = await DB.prepare(expiredVoucherBookRefundSql()).bind(amt, oid, amt).run();
+    if (!r.meta?.changes) {
+      logError('[Cron] expired voucher refund: 장부 기록 실패 — 환불은 나갔다(상한 초과 가능)', {
+        order_id: oid, voucher_id: voucherId, amount: amt,
+      });
+    }
+  } catch (e) {
+    logError('[Cron] expired voucher refund: 장부 기록 예외 — 환불은 나갔다', {
+      order_id: oid, voucher_id: voucherId, amount: amt, error: String(e),
+    });
+  }
+}
+
 export async function handleExpiredVoucherRefunds(env: Env) {
   const DB = env.DB;
 
@@ -448,6 +482,12 @@ export async function handleExpiredVoucherRefunds(env: Env) {
         refundCount++;
         outcome = 'refunded';
 
+        // 🧾 2026-10-06 (결재 `2026-10-02-expired-refund-not-booked.md`): **장부에 적는다.**
+        //   안 적으면 전액환불 경로의 상한(`total_amount − refunded_amount`)이 0 인 채로 남아
+        //   어드민·셀러·주문 세 자리 중 하나에서 **같은 돈이 또 나간다**(실측 1,800 → 3,600).
+        //   ⚠️ 실패(`changes = 0`)는 **조용히 넘기지 않는다** — 돈은 이미 나갔다.
+        await bookRefundOnOrder(DB, voucher.order_id, refundAmount, voucher.id);
+
         // Send notification to user (production notifications requires user_type)
         try {
           await DB.prepare(`
@@ -481,6 +521,8 @@ export async function handleExpiredVoucherRefunds(env: Env) {
             await DB.prepare("UPDATE orders SET status = 'REFUNDED' WHERE id = ?").bind(voucher.order_id).run().catch(() => null);
             refundCount++;
             outcome = 'refunded';
+            // 🧾 같은 이유로 카드(토스) 경로도 적는다 — 한쪽만 적으면 결제수단에 따라 상한이 갈린다.
+            await bookRefundOnOrder(DB, voucher.order_id, refundAmount, voucher.id);
             try {
               await DB.prepare(`
                 INSERT INTO notifications (user_id, user_type, type, title, message, created_at, is_read)
