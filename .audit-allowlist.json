@@ -18,12 +18,12 @@
       "review": "shell-quote 1.8.x 패치 릴리스 나오면 업그레이드 후 제거."
     },
     {
-      "ghsa": "GHSA-r28c-9q8g-f849",
-      "pkg": "postcss",
-      "reason": "dev/빌드툴 전용(devDependencies, vite/tailwind CSS 파이프라인). 취약점 = 소스맵 자동로딩 path traversal — 빌드 시 **자체 신뢰된 CSS 만** 처리(외부 입력 CSS 부재) + production Workers/브라우저 번들에 postcss 미포함(src/ 미참조 확인) → 런타임 도달 불가. 2026-07-25 신규 published advisory 가 전 PR 배포를 차단해 등재.",
-      "accepted_by": "대표(urteam.corp) 승인 — dev/빌드툴 도달불가 클래스(2026-06-22·07-15·07-21 선례와 동일)",
-      "date": "2026-07-25",
-      "review": "npm 설치 가능 환경에서 postcss 패치 버전 상향 후 제거 — 근본 해결 우선."
+      "ghsa": "GHSA-vfj7-8cjw-p6xm",
+      "pkg": "braces",
+      "reason": "dev/빌드툴 전용(tailwindcss@3.4.19 -> chokidar/micromatch -> braces). 취약점 = 깊게 중첩된 brace 패턴으로 스택 소진 DoS — 빌드 시 **자체 신뢰된 glob 패턴만** 전개하고(외부 입력 부재) production Workers/브라우저 번들에 braces 미포함(src/ 미참조 확인) -> 런타임 도달 불가. ⚠️ **패치 버전이 존재하지 않는다** — npm 최신이 3.0.3 인데 취약 범위가 <=3.0.3 이라 업그레이드로는 해결 불가이고, 유일한 우회는 tailwindcss 4(메이저 + 소비자 화면 391개 전수 회귀)다. 2026-10-01 이후 신규 published advisory 가 전 PR 을 차단해 등재.",
+      "accepted_by": "대표(urteam.corp) 승인 — 2026-10-06 \"승인\" (결재 docs/decisions/2026-10-06-npm-audit-three-new-advisories.md 기본안 1번). 같은 커밋에서 고칠 수 있는 둘(@capacitor critical · source-map-js/postcss)은 패치 버전으로 실제 상향.",
+      "date": "2026-10-06",
+      "review": "tailwindcss 4 이행 시 제거 — 그때 braces 체인 자체가 사라진다. 또는 braces 3.0.4+ 가 나오면 상향 후 제거."
     }
   ]
 }

@@ -242,22 +242,46 @@ export function resolveWriteBudget(env: unknown, nowMs: number = Date.now()): nu
  *
  * ## 계산
  * ```
- *   남은 몫   = 포함분 − 유어딜 예약분 − 이번 달 유어애즈 누적
+ *   남은 몫   = 포함분 − 유어딜 예약분 − 안전버퍼 − 이번 달 유어애즈 누적
  *   오늘 예산 = 남은 몫 ÷ 남은 일수(오늘 포함)
  * ```
  * **스스로 균형을 잡는다** — 적게 쓴 날이 있으면 남은 날이 그만큼 더 쓰고, 많이 쓴 날이 있으면
  * 남은 날이 조여진다. 월을 터뜨리는 것도, 용량을 남기는 것도 구조적으로 안 된다.
  *
- * ⚠️ **유어딜 몫을 먼저 뗀다** — 포함분은 DB 가 아니라 **계정** 단위다. 본진(하루 4.5만 행 실측)이
- *   쓰는 만큼을 빼지 않으면 유어애즈가 그 몫까지 먹고 본진 쓰기가 과금으로 넘어간다.
+ * ## 🔴 목표는 "포함분 안"이 아니라 **초과 $0** 이다 (2026-10-06 대표 확정)
+ * 대표: *"유료 전환은 되어있는데? 그래도 그 $5 이상을 넘으면 절대 안돼. 유어딜 사용자 많아지는
+ * 것도 감안해야하고."* Workers Paid 는 **기본료가 $5/월**이라 포함분(5,000만 행)을 1행이라도
+ * 넘기면 그 초과분($1.00/백만 행)이 곧 $5 초과다 ⇒ **허용 초과분 0. "안 넘는다"가 아니라
+ * "넘을 수 없다"** 여야 한다.
+ *
+ * ⚠️ **유어딜 몫을 먼저 뗀다** — 포함분은 DB 가 아니라 **계정** 단위다. 본진이 쓰는 만큼을 빼지
+ *   않으면 유어애즈가 그 몫까지 먹고 본진 쓰기가 과금으로 넘어간다.
  * ⚠️ **절대 0 을 돌려주지 않는다** — 이 파일에서 0 은 "끔"(**무제한**)이라 정반대가 된다.
  *   월 몫이 이미 소진됐어도 바닥값(`MONTH_SPENT_FLOOR`)을 돌려준다.
- * ⚠️ 원장은 **유어애즈 자신의 쓰기만** 센다(레인이 보고한 값). 본진 실적은 안 보이므로 예약분은
- *   상수다 — 본진이 커지면 이 값을 다시 재서 올려야 한다.
+ * ⚠️ 원장은 **유어애즈 자신의 쓰기만** 센다(레인이 보고한 값). 본진 실적은 **이 워커에 안 보여서**
+ *   예약분이 상수이고, 그 상수가 틀리면 **에러 없이 청구서로만** 드러난다 — 이 파일의 가장 약한 자리.
  */
+/** Cloudflare 가 정한 사실 — Workers Paid 의 D1 월 포함 쓰기 행수. **정책 손잡이가 아니다.** */
 export const MONTHLY_WRITE_ALLOWANCE = 50_000_000
-/** 유어딜 본진 월 예약분 — 실측 하루 4.5만 행 × 31일에 여유를 얹었다(2026-09 측정). */
-export const URDEAL_MONTHLY_RESERVE = 1_500_000
+/**
+ * 유어딜 본진 월 예약분. 🔬 **2026-10-06 재측정으로 1,500,000 → 6,000,000** — 위 주석이
+ * *"본진이 커지면 이 값을 다시 재서 올려야 한다"* 고 경고한 그 시점이 왔다. CF GraphQL 계정 전체
+ * 실측(10/1~10/5 완결 5일): **본진 하루 44,305 행 → 31일 1,373,461 = 옛 예약분의 91.6%**,
+ * 남은 여유 126,539(=**1.09배만 커져도 넘는다**). 6,000,000 은 그 실측의 **4.4배**다.
+ *
+ * ⚠️ 이 값엔 **유어애즈가 본진 DB 에 쓰는 양도 섞여 있다**(하트비트·설정 — 같은 DB 라 분리 불가)
+ *   → 보수적으로 전량을 본진 몫으로 잡는다. 4.4배를 넘어 자랄 땐 이 값을 다시 올려야 한다.
+ */
+export const URDEAL_MONTHLY_RESERVE = 6_000_000
+/**
+ * 월 안전버퍼 — 어느 몫에도 배정하지 않고 비워 두는 행수. 초과 허용치가 **0** 이므로 계획을
+ * 포함분에 딱 붙이면 안 된다. 덮는 것: ① 유어딜이 예약분(4.4배)마저 넘겨 자람 ② 원장이 실제
+ * 쓰기를 과소계수(레인이 보고하지 않는 경로) ③ 월말로 몰린 하루치 튐.
+ *
+ * ⚠️ **이 값을 줄여 수집을 늘리지 말 것** — 그 거래는 "수집 몇 %" 와 "청구서" 를 바꾸는 것이고,
+ *   대표가 후자를 **절대 안 된다**고 못 박았다.
+ */
+export const MONTHLY_SAFETY_BUFFER = 4_000_000
 /** 월 몫이 다 떨어졌을 때의 바닥값. **0 이면 안 된다**(0 = 끔 = 무제한). */
 export const MONTH_SPENT_FLOOR = 30_000
 
@@ -274,9 +298,10 @@ export function utcMonth(nowMs: number): string { return new Date(nowMs).toISOSt
 export function monthlyDerivedWriteBudget(
   writtenMonth: number, nowMs: number,
   allowance: number = MONTHLY_WRITE_ALLOWANCE, reserve: number = URDEAL_MONTHLY_RESERVE,
+  buffer: number = MONTHLY_SAFETY_BUFFER,
 ): number {
   const spent = Number.isFinite(writtenMonth) && writtenMonth > 0 ? writtenMonth : 0
-  const left = allowance - reserve - spent
+  const left = allowance - reserve - buffer - spent
   if (!(left > 0)) return MONTH_SPENT_FLOOR
   return Math.max(MONTH_SPENT_FLOOR, Math.floor(left / utcDaysLeftInMonth(nowMs)))
 }
@@ -469,7 +494,7 @@ export async function handleBudgetRequest(url: URL, storage: StorageLike, env: u
     // ⚠️ 일일 상한과 페이싱 **둘 다** 본다. 페이싱만 두면 23시엔 하루치가 통째로 열린다.
     writeOver: writeBudgetOver(next, writeBudget, nowMs) || pacedWriteOver(next, writeBudget, nowMs),
     writtenMonth,
-    monthLeft: Math.max(0, MONTHLY_WRITE_ALLOWANCE - URDEAL_MONTHLY_RESERVE - writtenMonth),
+    monthLeft: Math.max(0, MONTHLY_WRITE_ALLOWANCE - URDEAL_MONTHLY_RESERVE - MONTHLY_SAFETY_BUFFER - writtenMonth),
     daysLeft: utcDaysLeftInMonth(nowMs),
     // 🧾 기본 응답은 작게 — 이 뷰는 레인 인보케이션마다 읽힌다. 전체 표는 물어볼 때만.
     cutLanes: cutLaneNames(next, nowMs),
