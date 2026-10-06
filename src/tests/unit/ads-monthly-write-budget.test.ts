@@ -18,7 +18,7 @@ import { describe, it, expect } from 'vitest'
 import {
   applyRead, monthlyDerivedWriteBudget, pacedWriteOver, effectiveWriteBudget,
   utcDaysLeftInMonth, utcMonth,
-  MONTHLY_WRITE_ALLOWANCE, URDEAL_MONTHLY_RESERVE, MONTH_SPENT_FLOOR, handleBudgetRequest,
+  MONTHLY_WRITE_ALLOWANCE, URDEAL_MONTHLY_RESERVE, MONTHLY_SAFETY_BUFFER, MONTH_SPENT_FLOOR, handleBudgetRequest,
   SEPT_2026_WRITE_THROTTLE, DEFAULT_DAILY_WRITE_BUDGET,
 } from '@/worker-ads/read-budget'
 
@@ -34,10 +34,15 @@ describe('① 월 역산 일일 예산', () => {
     expect(utcMonth(OCT16)).toBe('2026-10')
   })
 
-  it('월초엔 (포함분 − 본진예약) ÷ 31 이다', () => {
-    const expected = Math.floor((MONTHLY_WRITE_ALLOWANCE - URDEAL_MONTHLY_RESERVE) / 31)
+  it('월초엔 (포함분 − 본진예약 − 안전버퍼) ÷ 31 이다', () => {
+    const expected = Math.floor(
+      (MONTHLY_WRITE_ALLOWANCE - URDEAL_MONTHLY_RESERVE - MONTHLY_SAFETY_BUFFER) / 31,
+    )
     expect(monthlyDerivedWriteBudget(0, OCT1)).toBe(expected)
-    expect(expected).toBeGreaterThan(1_500_000)   // 하루 150만 이상은 나와야 수집이 산다
+    // 🔬 하한은 **실측에 묶는다**(종전 150만은 2026-10-06 재측정 뒤 불가능한 값이 됐다).
+    //    10/1 실측: 하루 1,512,143 행으로 리드 19,107건 ⇒ 100만 행이면 ~1.26만건/일.
+    //    그 아래로 내려가면 9월 스로틀(하루 ~600건) 시절로 되돌아가므로 수집이 죽는다.
+    expect(expected).toBeGreaterThan(1_000_000)
   })
 
   it('🩸 적게 쓴 날이 있으면 남은 날이 그만큼 더 쓴다 (용량을 안 버린다)', () => {
@@ -61,8 +66,47 @@ describe('① 월 역산 일일 예산', () => {
   })
 
   it('본진 몫을 먼저 뗀다 — 포함분은 DB 가 아니라 계정 단위다', () => {
-    expect(monthlyDerivedWriteBudget(0, OCT31)).toBe(MONTHLY_WRITE_ALLOWANCE - URDEAL_MONTHLY_RESERVE)
+    expect(monthlyDerivedWriteBudget(0, OCT31)).toBe(
+      MONTHLY_WRITE_ALLOWANCE - URDEAL_MONTHLY_RESERVE - MONTHLY_SAFETY_BUFFER,
+    )
     expect(URDEAL_MONTHLY_RESERVE).toBeGreaterThan(0)
+  })
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // 🔴 초과 $0 (2026-10-06 대표 *"그 $5 이상을 넘으면 절대 안돼"*)
+  //
+  // Workers Paid 기본료가 $5/월이라 포함분을 1행 넘기면 그게 곧 $5 초과다. 그래서 이 조는
+  // "안 넘는다"가 아니라 **넘을 수 없다**를 잰다. 숫자는 2026-10-06 CF GraphQL 실측이다.
+  //
+  // ⚠️ 이 시험이 **못 보는 것**: 본진 실제 쓰기는 이 워커에 안 보인다(원장은 유어애즈 몫만 센다).
+  //    예약분이 현실보다 작으면 코드는 멀쩡한데 청구서로만 드러난다 — 그래서 아래 ②가 예약분을
+  //    실측값에 못 박아, 본진이 자랐을 때 **이 시험이 먼저 빨간불**이 되게 한다.
+  // ─────────────────────────────────────────────────────────────────────────────
+  const URDEAL_MEASURED_MONTH = 1_373_461   // 10/1~10/5 완결 5일, 하루 44,305 × 31
+
+  it('① 모든 몫을 꽉 채워도 포함분을 못 넘는다 — 초과 허용치가 0 이다', () => {
+    const adsShare = monthlyDerivedWriteBudget(0, OCT1) * 31
+    expect(adsShare + URDEAL_MONTHLY_RESERVE).toBeLessThanOrEqual(MONTHLY_WRITE_ALLOWANCE)
+    // 버퍼가 실제로 비어 있어야 한다 — 꽉 채운 계획과 포함분 사이에 여백이 남는가.
+    expect(MONTHLY_WRITE_ALLOWANCE - (adsShare + URDEAL_MONTHLY_RESERVE))
+      .toBeGreaterThanOrEqual(MONTHLY_SAFETY_BUFFER - 31)
+  })
+
+  it('② 유어딜 예약분이 실측보다 넉넉하다 — 사용자가 늘어도 버틴다', () => {
+    // 종전 1,500,000 은 실측의 1.09배뿐이었다(10% 성장에 터진다). 최소 3배는 받쳐야 한다.
+    expect(URDEAL_MONTHLY_RESERVE).toBeGreaterThanOrEqual(URDEAL_MEASURED_MONTH * 3)
+  })
+
+  it('③ 유어딜이 예약분을 넘겨 자라도 버퍼가 한 겹 더 받는다', () => {
+    const adsShare = monthlyDerivedWriteBudget(0, OCT1) * 31
+    // 본진이 예약분의 1.5배까지 자란 최악에서도 포함분 안이어야 한다.
+    expect(adsShare + URDEAL_MONTHLY_RESERVE * 1.5).toBeLessThanOrEqual(MONTHLY_WRITE_ALLOWANCE)
+  })
+
+  it('④ 버퍼를 0 으로 되돌리면 ①이 지키던 여백이 사라진다 (버퍼가 실제로 일한다)', () => {
+    const noBuf = monthlyDerivedWriteBudget(0, OCT1, MONTHLY_WRITE_ALLOWANCE, URDEAL_MONTHLY_RESERVE, 0)
+    expect(noBuf).toBeGreaterThan(monthlyDerivedWriteBudget(0, OCT1))
+    expect(noBuf * 31 + URDEAL_MONTHLY_RESERVE).toBeGreaterThan(MONTHLY_WRITE_ALLOWANCE - MONTHLY_SAFETY_BUFFER)
   })
 })
 
@@ -152,6 +196,22 @@ describe('배선 — 원장이 실제로 페이싱과 월 역산을 쓴다', () 
     expect(spent.writeBudget).toBeLessThan(fresh.writeBudget)
     expect(spent.writtenMonth).toBe(40_000_000)   // 화면에 보여야 설명이 된다
     expect(spent.daysLeft).toBe(16)
+  })
+
+  // 🩸 2026-10-06 주입 러너가 잡은 구멍 — `mleft` 를 아무도 재지 않고 있었다.
+  //    역산식에서만 버퍼를 빼고 하트비트의 `mleft` 는 안 빼도 **전부 초록**이었다. 그러면
+  //    예약된 월 판정이 "아직 400만 남았다"고 읽으면서 실제로는 버퍼를 태우고 있게 된다.
+  it('🔒 `mleft`(남은 월 몫)가 역산식과 같은 셈을 쓴다 — 보고와 집행이 갈리면 안 된다', async () => {
+    const at = Date.parse('2026-10-16T06:00:00Z')
+    const wmonth = 12_000_000
+    const v = await handleBudgetRequest(
+      url, mem({ day: '2026-10-16', used: 0, written: 0, month: '2026-10', writtenMonth: wmonth }), {}, at,
+    )
+    expect(v.monthLeft).toBe(
+      MONTHLY_WRITE_ALLOWANCE - URDEAL_MONTHLY_RESERVE - MONTHLY_SAFETY_BUFFER - wmonth,
+    )
+    // 보고한 남은 몫을 남은 일수로 나눈 것이 곧 오늘 예산이어야 한다(두 숫자가 한 셈에서 나온다).
+    expect(v.writeBudget).toBe(Math.floor((v.monthLeft as number) / (v.daysLeft as number)))
   })
 })
 
