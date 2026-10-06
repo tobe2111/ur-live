@@ -2,8 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import api from '@/lib/api'
-import { confirmDialog } from '@/components/ui/confirm-dialog'
-import { formatWon } from '@/utils/format'
+import { confirmPriceChange } from '@/pages/seller-product-edit/confirm-price-change'
 import { useApiQuery } from '@/hooks/queries/useApiQuery'
 import { toast } from '@/hooks/useToast'
 import { Button } from '@/components/ui/button'
@@ -125,22 +124,10 @@ export default function SellerProductEditPage() {
     e.preventDefault()
     setError('')
 
-    // 💰 2026-10-06 (철거로 잃은 것 ② 복원): **판매가가 바뀌면 한 번 더 묻는다.**
-    //   손수 시트(철거됨)는 그 단계가 있었고 원본엔 없었다 ⇒ 한 손 실수가 손님이 보는 값을
-    //   그대로 바꾼다. 이 폼은 가격 말고도 열한 칸을 함께 저장하므로 "저장" 한 번의 무게가 다르다.
-    //   🔒 **금액을 계산하지 않는다** — 바뀐다는 사실만 보여 주고 보낼 값은 그대로다(서버 무접촉).
-    //   ⚠️ 가격이 안 바뀌면 이 단계가 **아예 없다**(현행과 byte-동일한 경험).
-    const nextPrice = Number(formData.price)
-    const basePrice = Number(product?.price)
-    if (product && Number.isFinite(nextPrice) && Number.isFinite(basePrice) && nextPrice !== basePrice) {
-      const ok = await confirmDialog({
-        title: t('seller.priceChangeTitle', { defaultValue: '판매가를 바꿉니다' }),
-        message: `${formatWon(basePrice)} → ${formatWon(nextPrice)}\n\n${t('seller.priceChangeWarn', { defaultValue: '손님에게 보이는 값이 바로 바뀝니다.' })}`,
-        confirmText: t('seller.priceChangeConfirm', { defaultValue: '바꾸고 저장' }),
-        danger: true,
-      })
-      if (!ok) return
-    }
+    // 💰 2026-10-06 (철거로 잃은 것 ② 복원): 판매가가 바뀌면 한 번 더 묻는다.
+    //   판정·문구는 모듈 하나에 있다(`seller-product-edit/confirm-price-change.ts`) —
+    //   **안 바뀌면 창이 아예 안 뜨고**, 금액을 계산하지 않는다(보낼 값은 그대로).
+    if (!(await confirmPriceChange(t, product?.price, formData.price))) return
 
     setSubmitting(true)
 
