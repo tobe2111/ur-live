@@ -107,6 +107,22 @@ N ms 씩 밀려 보인다. 직렬 여부는 **`--slow` 없이** 다시 재서 �
 ⚠️ **그리고 `import('@/lib/api')` 를 전수로 바꾸지 말 것** — 이 PR 이 전에 그 유혹으로 31곳을
 고칠 뻔했다. 바꿀 자리는 **"마운트 즉시 도는 데이터 + 형제가 정적으로 같은 묶음에 있는 경우"** 뿐이다.
 
+### 🔎 전수 재검증 — 왜 마이만 고쳤나 (다시 파지 말 것)
+
+`useEffect(..., [])` 안에서 `import('@/lib/api')` 를 쓰는 자리를 전수로 다시 셌다. 마이 넷을 고친
+뒤 **일곱이 남았고, 일곱 다 그대로 두는 것이 맞다**:
+
+| 남은 자리 | 왜 안 고치나 |
+|---|---|
+| `seller-section/{WithdrawSheet,BankSheet,PinSheet}.tsx` · `StoreSwitchSheet.tsx` (4) | **사람이 열 때** 마운트된다 — 놓칠 묶음이 없다. `first-screen-static-api` 가 이 방향을 **반대로도** 고정한다(여기 정적 import 가 생기면 빨간불) |
+| `restaurant-map/useKakaoMap.ts:426` | 소스 주석이 *"첫 화면을 막지 않는다"* 를 명시 — 마커는 **코드 상수로 이미 그려져 있고** 이 응답은 색만 다시 칠한다. 아무것도 이 응답을 기다리지 않으므로 당겨도 **사용자에게 보이는 이득이 0** 이고, 대신 잠금표(로딩)의 지도 첫 화면 경로를 건드리는 위험만 남는다 |
+| `curator-page/SellOwnProductsCTA.tsx:26` | **`/u/:handle`(유어샵)이 아니다** — 소비처는 `CuratorEarningsPage`(내 수익)와 `UShopManagePage`(유어샵 관리)이고, 후자는 `lazy()` + `Suspense` 라 **부품 자체가 늦게 도착**한다(지연이 이미 구조적). 그리고 그 닫힘에 `api` 를 정적 import 하는 형제가 **없다**(`LinkshopOnboardModal`·`LinkshopPinPicker` 둘뿐이고 그것들도 조건부) ⇒ 정적으로 바꾸면 **청크 간선이 새로 생긴다**(마이와 달리 비용 0 이 아니다) |
+| `UserGroupBuyCreatePage.tsx:63` | `COMMUNITY_PROPOSAL_HIDDEN = true` — **진입점이 없다**(2026-06-18 대표 결정, `FEATURE_STATUS.md:24`). 꺼진 기능의 첫 화면 지연은 아무에게도 안 보인다 |
+
+🔑 **그래서 이 처방의 적용 조건은 둘을 **함께** 만족할 때다**: ① 마운트 즉시 도는 데이터이고
+② **형제가 이미 같은 묶음에서 `api` 를 정적 import** 한다(= 청크 비용 0). 마이는 `UserProfilePage.tsx:35`
+가 그 조건을 채워 줬다. 둘 중 하나라도 빠지면 바꾸지 말 것 — 전수로 쓸어 담으면 청크가 자란다.
+
 ## 3. 규칙 (CLAUDE.md 방어선 표에 등재)
 
 > 첫 화면(아무것도 안 누른 상태)에서 **같은 경로를 두 번** 부르지 않는다. 쿼리가 달라도 마찬가지다.
