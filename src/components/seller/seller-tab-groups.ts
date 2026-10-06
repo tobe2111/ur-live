@@ -57,7 +57,9 @@ export const SELLER_TAB_GROUPS: SellerTabGroup[] = [
   },
   // 🛏️ 2026-09-26 (대표 *"뺄 것들 빼자"* → 실측): 셀러 소유 숙소 상품 **0** · 예약 **0**.
   //   쿠폰과 같은 판정이라 같은 방식으로 내린다 — 착지점(`/seller/stays`)이 사라지므로 묶음째.
-  //   ⚠️ 지운 게 아니라 접은 것이다. 라우트·페이지·API·`StaysSheet` 전부 보존 — 플래그 false 면 복귀.
+  //   ⚠️ 지운 게 아니라 접은 것이다. 라우트·페이지·API 전부 보존 — 플래그 false 면 복귀.
+  //   🧹 2026-10-01 정정: 여기 적혀 있던 `StaysSheet`(마이 안 **사본**)는 철거로 지워졌다.
+  //      보존 약속의 대상은 **원본**(`/seller/stays` + `SellerStaysPage`)이고 그 둘은 그대로다.
   ...(SELLER_DORMANT_HIDDEN ? [] : [{
     labelKey: 'seller.nav.stays', fallback: '숙소', icon: BedDouble, mode: 'store' as const, hideFor: ['influencer' as const],
     tabs: [

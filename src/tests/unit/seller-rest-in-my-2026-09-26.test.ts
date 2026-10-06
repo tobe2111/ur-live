@@ -20,85 +20,55 @@
  */
 import { describe, it, expect } from 'vitest'
 import { readCode, readRaw, stripComments } from '../helpers/source-text'
-import { respondability } from '@/pages/user-profile/seller-section/PartnersSheet'
+import { canOpenInSheet } from '@/pages/user-profile/seller-section/tool-pages'
 
 const SECTION = readCode('src/pages/user-profile/SellerSection.tsx')
 const SETTLE = readCode('src/pages/user-profile/seller-section/SettlementsSheet.tsx')
-const PARTNERS = readCode('src/pages/user-profile/seller-section/PartnersSheet.tsx')
-const MESSAGES = readCode('src/pages/user-profile/seller-section/MessagesSheet.tsx')
 const WITHDRAW = readCode('src/pages/user-profile/seller-section/WithdrawSheet.tsx')
-const VOUCHER = readCode('src/pages/user-profile/seller-section/VoucherSheet.tsx')
 const GROUPS = readCode('src/components/seller/seller-tab-groups.ts')
 const NAV = readCode('src/components/seller/seller-nav.ts')
 const FLAGS_RAW = readRaw('src/shared/feature-flags.ts')
 
-describe('🔴 브랜드메시지 — 마이에서 보내지 않는다 (등급 C)', () => {
-  it('발송·템플릿 쓰기 엔드포인트를 부르지 않는다', () => {
-    const code = stripComments(MESSAGES)
-    // 조회 둘만 허용. 아래 이름이 들어오는 순간 마이가 문자를 보내는 화면이 된다.
-    for (const forbidden of ['alimtalk/send', 'alimtalk/templates', 'credits/charge', 'credits/confirm']) {
-      expect(code, `${forbidden} 는 마이에서 부르면 안 된다(발송·결제는 전용 화면)`).not.toContain(forbidden)
+/**
+ * 🔴 **브랜드메시지 — 마이의 *손수 코드*가 보내지 않는다 (등급 C)**
+ *
+ * 🧹 **2026-10-01 철거로 판정 대상이 바뀌었다 — 풀지 않고 재조준했다.**
+ *   종전 대상은 `MessagesSheet`(조회 전용 손수 시트)였고, 그 시트가 내려갔다.
+ *   ⚠️ 그래서 *발송 화면에 마이에서 닿는가* 는 **달라졌다**: 이제 `/seller/alimtalk` 가
+ *   `ToolPageSheet` 로 마이 안에서 열린다(= 발송이 마이에서 가능하다).
+ *   그건 회귀가 아니라 **대표가 지시한 방향**이다 —
+ *   *"드물게 하는 일도 일단 마이로 하고, 대시보드는 쓸 필요없게끔 하자"*(2026-09-26).
+ *
+ *   지키려던 것은 *"마이가 문자 보내는 화면이 되지 않는다"* 가 아니라
+ *   **"우리가 마이에 발송·결제 UI 를 또 만들지 않는다"** 였다(두 벌이 되면 한쪽만 고쳐진다).
+ *   ⇒ 판정을 **마이의 손수 코드 전부**(판매 구역 + 남은 시트)로 옮긴다. 발송은 그 화면 자신의 일이다.
+ */
+describe('🔴 브랜드메시지 — 마이의 손수 코드가 보내지 않는다 (등급 C)', () => {
+  /** 마이가 **직접 쓴** 판매 코드. 대시보드 화면(ToolPageSheet 가 그대로 렌더)은 여기 없다. */
+  const HANDWRITTEN = ['SellerSection.tsx', 'seller-section/WithdrawSheet.tsx',
+    'seller-section/BankSheet.tsx', 'seller-section/PinSheet.tsx',
+    'seller-section/SettlementsSheet.tsx', 'seller-section/AllToolsSheet.tsx',
+  ].map((f) => [f, readCode(`src/pages/user-profile/${f}`)] as const)
+
+  it('발송·템플릿·충전 엔드포인트를 부르지 않는다', () => {
+    expect(HANDWRITTEN.length, '대상 0건 — 목록이 낡아 검사가 헛돌고 있다').toBeGreaterThanOrEqual(6)
+    for (const [name, raw] of HANDWRITTEN) {
+      const code = stripComments(raw)
+      for (const forbidden of ['alimtalk/send', 'alimtalk/templates', 'credits/charge', 'credits/confirm']) {
+        expect(code, `${name}: ${forbidden} 는 마이가 직접 부르면 안 된다(그 화면의 일이다)`)
+          .not.toContain(forbidden)
+      }
     }
-    expect(code).toContain("api.get('/api/seller/alimtalk/credits')")
-    expect(code).toContain("api.get('/api/seller/alimtalk/logs')")
-  })
-
-  it('쓰기 요청 자체가 없다', () => {
-    const code = stripComments(MESSAGES)
-    expect(code, '조회 전용 시트다 — post/put/delete 가 있으면 설계가 바뀐 것').not.toMatch(/api\.(post|put|patch|delete)\(/)
-  })
-
-  it('충전·발송은 전용 화면으로 보낸다', () => {
-    expect(stripComments(MESSAGES)).toContain("onOpenPath('/seller/alimtalk')")
-  })
-
-  it('잔액을 못 읽었을 때 0 으로 덮지 않는다', () => {
-    const code = stripComments(MESSAGES)
-    // 모르는 것과 0건은 다르다 — 실패는 실패로 말해야 한다(2026-06-26 룰).
-    expect(code).toMatch(/setFailed\(true\)/)
-    expect(code, '잔액 초기값이 0 이면 "0건" 이 로딩 중에도 참말처럼 보인다').toContain('useState<number | null>(null)')
   })
 })
 
-describe('🤝 소개 파트너 — 화면 조건이 서버 WHERE 와 같다', () => {
-  // ⚙️ 여기가 이 파일의 핵심이다. 문자열이 아니라 **함수를 돌려서** 잰다.
-  const base = { id: 1, commission_pct: 5 }
-
-  it('상대가 보낸 · 답변 대기 · 인증 불필요 → 답할 수 있다', () => {
-    expect(respondability({ ...base, status: 'proposed', proposed_by: 'influencer', requires_content_proof: 0 }))
-      .toEqual({ can: true })
-  })
-
-  it('이미 진행 중이면 답하지 않는다', () => {
-    const r = respondability({ ...base, status: 'active', proposed_by: 'influencer' })
-    expect(r.can).toBe(false)
-  })
-
-  it('내가 보낸 제안에는 내가 답할 수 없다 — 이유를 말한다', () => {
-    const r = respondability({ ...base, status: 'proposed', proposed_by: 'seller' })
-    expect(r.can).toBe(false)
-    expect(r.can === false && r.why).toMatch(/기다려요/)
-  })
-
-  it('콘텐츠 인증이 걸린 제안은 시트에서 수락하지 않는다 — 이유를 말한다', () => {
-    const r = respondability({ ...base, status: 'proposed', proposed_by: 'influencer', requires_content_proof: 1 })
-    expect(r.can).toBe(false)
-    expect(r.can === false && r.why).toMatch(/인증/)
-  })
-
-  it('필드가 비어 있어도 터지지 않고 "못 함" 으로 떨어진다', () => {
-    expect(respondability({ id: 2 }).can).toBe(false)
-    expect(respondability({ id: 3, status: null, proposed_by: null, requires_content_proof: null }).can).toBe(false)
-  })
-
-  it('목록은 셀러 마케팅 경로에서 읽고, 쓰기 전에 좌석을 다시 확인한다', () => {
-    const code = stripComments(PARTNERS)
-    expect(code).toContain("api.get('/api/seller-marketing/deals')")
-    expect(code).toMatch(/api\.post\(`\/api\/seller-marketing\/deals\/\$\{id\}\/respond`/)
-    expect(code, '§15-3 규칙 ②: 보내기 직전 assertSeat').toContain('assertSeat(sellerId)')
-    expect(code, '§15-3 규칙 ①: 좌석이 맞을 때만 조회').toContain('currentSeatId() !== sellerId')
-  })
-})
+/**
+ * 🧹 **2026-10-01 철거 — 여기 있던 `🤝 소개 파트너` 묶음(6건)을 내렸다.**
+ *   그 검사들의 대상은 `PartnersSheet` 가 export 한 `respondability` — **그 시트 안에서
+ *   바로 수락할 수 있는 제안인가** 를 가르는 규칙이었다. 시트가 없어졌으니 그 규칙도 없다.
+ *   제안 응답은 이제 `/seller/influencer-deals` 대시보드 화면이 맡는다(원본이고, 자기 조건을 갖는다).
+ *   ⚠️ 그 화면의 조건이 서버 WHERE 와 같은지는 **이 파일의 일이 아니다** — 그 화면의 시험이 볼 일이다.
+ */
 
 describe('🧾 지난 정산 — 조회 전용이고 금액을 지어내지 않는다', () => {
   it('서버 목록을 그대로 읽는다', () => {
@@ -142,11 +112,12 @@ describe('🧹 뺄 것 — 실측 0 인 메뉴만, 그리고 되돌릴 수 있�
     expect(FLAGS_RAW).toMatch(/kakao_review_submissions/)
   })
 
-  it('숙소는 사이드바·탭·마이 셋 모두에서 같은 플래그로 접힌다', () => {
+  it('숙소는 사이드바·탭 **둘 다**에서 같은 플래그로 접힌다', () => {
     // 한 곳만 내리면 착지점을 잃거나 두 표면이 갈린다.
+    // 🧹 2026-10-01 철거: 셋째 표면(마이의 `VoucherSheet` 안 숙소 줄)이 내려갔다 — 그 시트가 없다.
+    //   ⇒ 플래그가 가리는 표면은 **둘**이고, 둘 다 보는 것이 지금의 불변식이다.
     expect(stripComments(NAV)).toMatch(/SELLER_DORMANT_HIDDEN \? \[\] : \[navFromGroup\('\/seller\/stays'\)\]/)
     expect(stripComments(GROUPS)).toMatch(/SELLER_DORMANT_HIDDEN \? \[\] : \[\{[\s\S]{0,400}\/seller\/stays/)
-    expect(stripComments(VOUCHER)).toContain('!SELLER_DORMANT_HIDDEN')
   })
 
   it('체험 캠페인·후기 인증 탭이 같은 플래그 뒤에 있다', () => {
@@ -169,18 +140,25 @@ describe('🧹 뺄 것 — 실측 0 인 메뉴만, 그리고 되돌릴 수 있�
       .not.toContain('SELLER_DORMANT_HIDDEN')
   })
 
-  it('지운 게 아니라 접은 것 — 숙소 화면·라우트는 남아 있다', () => {
+  it('지운 게 아니라 접은 것 — 숙소 **라우트·페이지**는 남아 있다', () => {
     // 플래그를 false 로 하면 되돌아와야 한다. 파일이 사라지면 되돌릴 수 없다.
-    expect(() => readCode('src/pages/user-profile/seller-section/StaysSheet.tsx')).not.toThrow()
-    expect(stripComments(VOUCHER), 'StaysSheet 렌더가 통째로 사라지면 복구가 코드 작성이 된다')
-      .toContain('<StaysSheet')
+    // 🧹 2026-10-01 철거: 마이의 `StaysSheet`(대시보드 숙소 목록의 폰용 **사본**)는 지웠다.
+    //   보존 약속의 진짜 대상은 **원본**이다 — 라우트·페이지·API. 그 셋이 있으면 플래그 하나로 돌아온다.
+    //   ⚠️ 사본을 되살릴 일은 없다: 플래그를 켜면 나브가 `/seller/stays` 를 보여 주고
+    //      전체 도구가 그 화면을 시트로 연다(`canOpenInSheet`).
+    const routes = readCode('src/routes/seller.routes.tsx')
+    expect(routes, '숙소 라우트가 사라졌다 — 플래그를 켜도 돌아올 곳이 없다').toContain('/seller/stays')
+    expect(() => readCode('src/pages/SellerStaysPage.tsx')).not.toThrow()
+    expect(canOpenInSheet('/seller/stays'), '플래그를 켜도 마이에서 못 열면 반쪽 복구다').toBe(true)
   })
 })
 
-describe('🔌 배선 — 마이가 세 시트를 실제로 연다', () => {
-  it('세 시트가 import 되고 렌더된다', () => {
+describe('🔌 배선 — 마이가 남은 시트를 실제로 연다', () => {
+  it('남은 시트가 import 되고 렌더된다', () => {
+    // 🧹 2026-10-01 철거: 셋 중 둘(`PartnersSheet`·`MessagesSheet`)이 내려갔다. 판정은 그대로 —
+    //   **import 만 있고 렌더가 없으면 죽은 코드다**(이 레포가 반복해 당한 클래스).
     const code = stripComments(SECTION)
-    for (const [name, tool] of [['PartnersSheet', 'partners'], ['MessagesSheet', 'messages'], ['SettlementsSheet', 'settlements']] as const) {
+    for (const [name, tool] of [['SettlementsSheet', 'settlements']] as const) {
       // 🔁 2026-09-26 재조준: 시트가 전부 `lazy` 로 바뀌어 정적 import 줄이 사라졌다.
       //   지키는 것은 그대로다 — **이 파일이 그 시트를 실제로 가져온다**(형태만 dynamic).
       expect(code, `${name} 로딩 누락`).toContain(`lazy(() => import('./seller-section/${name}'))`)
@@ -196,12 +174,15 @@ describe('🔌 배선 — 마이가 세 시트를 실제로 연다', () => {
    * 표의 두 주소와 **시트 렌더** 둘 다 본다(표만 보면 시트가 없어도 통과한다).
    */
   it('파트너·브랜드메시지에 전체 도구로 닿는다', () => {
+    // 🧹 2026-10-01 철거: 닿는 길이 **표 → 대시보드 화면**으로 바뀌었다(손수 시트가 없다).
+    //   지키는 것은 그대로다 — *이 둘에 마이에서 닿을 수 있다.*
     const code = stripComments(SECTION)
-    expect(code, '/seller/influencer-deals 가 표에 없다').toMatch(/'\/seller\/influencer-deals':\s*'partners'/)
-    expect(code, '/seller/alimtalk 가 표에 없다').toMatch(/'\/seller\/alimtalk':\s*'messages'/)
-    // 표에 있어도 시트를 안 그리면 아무 일도 안 난다.
-    expect(code).toMatch(/tool === 'partners'/)
-    expect(code).toMatch(/tool === 'messages'/)
+    for (const path of ['/seller/influencer-deals', '/seller/alimtalk']) {
+      expect(canOpenInSheet(path), `${path} 를 시트로 못 연다 — 마이에서 닿을 길이 없다`).toBe(true)
+    }
+    // 열 수 있다고 선언만 하고 배선이 없으면 아무 일도 안 난다.
+    expect(code, '전체 도구가 고른 화면을 시트로 안 연다').toMatch(/if \(inSheet\) \{ setPage\(/)
+    expect(code).toMatch(/tool === 'page'/)
   })
 
   it('전체 도구 줄이 메뉴 이름을 나열하지 않는다 (나열하면 반드시 낡는다)', () => {

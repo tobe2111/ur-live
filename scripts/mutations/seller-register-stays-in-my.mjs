@@ -64,14 +64,6 @@ export default [
     why: '마이는 이미 로그인 상태이고 좌석도 맞춰 열었다 — 여기서 튕기면 3단계까지 쓴 내용이 사라진다.',
   },
   {
-    name: '🏨 숙소 시트가 쓰기를 시작한다 (좌석 확인 없이 남의 가게를 고친다)',
-    file: 'src/pages/user-profile/seller-section/StaysSheet.tsx',
-    find: "                  onClick={() => onOpen(`/seller/stays/${s.id}`)}",
-    replace: "                  onClick={() => { import('@/lib/api').then(({ default: api }) => api.put(`/api/seller/stays/${s.id}`, {})) }}",
-    test: TEST,
-    why: '이 시트는 읽기 전용이라 `assertSeat` 이 없다 — 쓰기가 생기면 그 가드 없이 나간다.',
-  },
-  {
     name: '🏝️ 새 라이트 섬을 커버리지 표에 안 올린다 (다크 검사 밖으로 조용히 나간다)',
     file: 'src/tests/unit/dark-contrast-coverage-2026-09-16.test.ts',
     find: "  'src/pages/user-profile/seller-section/VoucherNewSheet.tsx': { by: '/user/profile',",
@@ -102,13 +94,5 @@ export default [
     replace: '  ...([{',
     test: 'src/tests/unit/voucher-nav-reachability-2026-09-03.test.ts',
     why: '이 커밋에서 실제로 난 회귀다 — 쿠폰을 사이드바에서만 내렸더니 그 묶음의 착지점이 사라져, 탭으로 이동한 순간 사이드바 줄이 꺼진다(pre-push 게이트가 잡았다).',
-  },
-  {
-    name: '🎟️ 이용권 묶음이 등록 시트 대신 경로로 나간다',
-    file: 'src/pages/user-profile/seller-section/VoucherSheet.tsx',
-    find: '            onClick={() => setAdding(true)}',
-    replace: "            onClick={() => onOpenPath('/seller/meal-voucher/new')}",
-    test: TEST_GROUPS,
-    why: '대표 지시가 "등록도 마이에서" 다 — 경로로 나가면 마이를 떠나고 귀환 띠에 의존하게 된다.',
   },
 ]
