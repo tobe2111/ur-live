@@ -51,10 +51,17 @@ node scripts/visual-preview.mjs --route=/user/profile --stores=1 --trace-api
 바뀌는 건 **생애 첫 방문**뿐(시드가 이미 그린 '전체'를 가격순으로 본다).
 
 ### ③ 마이 내 가게 — 숫자 하나 때문에 목록 전체를, 그것도 2단으로
-`work.products` 는 `판매 중 N개` **한 줄**에만 쓰였다(`toggleProduct` 는 탭해야 열리는 시트 전용).
-그 요청은 `my-stores/summary` 가 좌석을 정해 준 **뒤에** 나가므로 직렬 2단이었다
-(실측 `+368ms → +518ms`). ⇒ 1단계 응답에 `active_products` 를 **이미 돌고 있는 병렬 묶음**으로
-얹고(왕복 안 늘어남), 상품 목록은 `tool === 'vouchers'` 일 때만 받는다.
+`work.products` 는 `판매 중 N개` **한 줄**에만 쓰였다. 그 요청은 `my-stores/summary` 가
+좌석을 정해 준 **뒤에** 나가므로 직렬 2단이었다(실측 `+368ms → +518ms`).
+⇒ 1단계 응답에 `active_products` 를 **이미 돌고 있는 병렬 묶음**으로 얹고(왕복 안 늘어남),
+상품 목록은 **달라고 할 때만**(`withProducts`) 받는다.
+
+🔁 **처음엔 `tool === 'vouchers'` 일 때만 켜게 썼다가 재조준했다** — 그 `Tool` 값 자체가
+2026-10-01 시트 철거로 사라져 **TS2367** 이 잡았다. 지금 `work.products` 와 `toggleProduct` 는
+**소비처가 0 이다**(grep 확인 — `SellerBundlesPage` 의 동명 함수는 자기 로컬 것이다).
+그래도 훅의 파라미터와 쓰기 경로는 **남겨 뒀다**: 목록이 필요한 시트가 다시 생기면 `true` 를
+넘기면 되고, 쓰기 앞 좌석 확인(`assertSeat`)은 `seller-inline-seat` 가 계속 지킨다.
+⚠️ **기본값을 `true` 로 되돌리지 말 것** — 첫 화면 요청이 다시 하나 는다(되돌리면 새 시험이 빨간불).
 
 ### ④ CSRF — 쿠키를 세팅하는 건 응답이다
 변경 요청(POST/PATCH/PUT/DELETE)마다 쿠키가 없으면 **자기가** 토큰을 받았다. 요청들이 겹친
@@ -87,6 +94,9 @@ node scripts/visual-preview.mjs --route=/user/profile --stores=1 --trace-api
   마이에 `my-stores/summary → seller/orders` 2단이 **남아 있다** — 그건 좌석이 정해져야 하는
   진짜 의존성이고 `PendingOrders`(눌러야 할 것)를 그린다.
 - 상호작용 뒤(탭·스크롤·시트)의 요청은 범위 밖. 경로 목록이 곧 범위다.
+- **`seller-work-seat-2026-09-25` 시험 셋을 재조준했다**(상품 경로를 전제하던 것 → 4번째 인자
+  `withProducts: true`). 지우지 않았다 — 좌석 불변식은 그대로 살아 있다. 그 자리에 **동작**
+  불변식 하나를 더 박았다: *기본 호출은 주문만 부르고 상품은 안 부르며, 그 회차를 실패로 세지 않는다.*
 - 지도 `/api/kakao/place/address` ×5 는 **주소가 전부 달라** 정당하다 — 예외에 사유와 함께 올렸다.
   서버 백필(`ensure-geocode`)이 좌표를 채우면 저절로 0 이 된다.
 - **라이브 판정(E4) 미실시** — 배포 후 대표 화면에서 `내 가게`의 `판매 중 N개`가 즉시 뜨는지,

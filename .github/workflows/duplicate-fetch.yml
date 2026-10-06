@@ -8,6 +8,7 @@ on:
   pull_request:
     paths:
       - 'src/lib/api.ts'
+      - 'src/lib/csrf-token.ts'
       - 'src/components/home/useHomeBanners.ts'
       - 'src/pages/VouchersPage.tsx'
       - 'src/pages/user-profile/**'
