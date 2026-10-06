@@ -143,7 +143,7 @@ export default function DealUseChooser({ plan, value, onChange }: {
       {open && (
         <div style={{ marginTop: 6, padding: 10, borderRadius: 12, background: 'var(--gbd-chip-bg, rgba(127,127,127,.07))' }}>
           <p style={{ fontSize: 12, color: 'var(--gbd-sub)', margin: '0 0 8px' }}>
-            보유 딜 {formatNumber(plan.balance)}딜{canAll ? ' · 전부 딜로 낼 수 있어요' : ` · 이 결제엔 최대 ${formatNumber(max)}딜까지`}
+            보유 딜 {formatNumber(plan.balance)}딜{canAll ? ', 전부 딜로 낼 수 있어요' : `, 이 결제엔 최대 ${formatNumber(max)}딜까지`}
           </p>
           <div style={{ display: 'flex', gap: 6 }}>
             {canAll ? btn('all', '전부 딜로') : btn('max', '최대로 쓰기')}
