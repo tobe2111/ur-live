@@ -11,6 +11,9 @@ const KEY = 'affiliate_ref'
 const EXP_KEY = 'affiliate_ref_expires'
 // 📡 유입 클릭 이벤트 클라 dedup — 같은 ref 재발사 억제(서버도 INSERT OR IGNORE 로 이중 방어).
 const INFLOW_SENT_KEY = 'ur_inflow_sent_v1'
+// 🧹 2026-10-07 유입 귀속 dedup — **묶은 ref** 를 적어 둔다(같은 유입을 매 진입마다 다시 보내지 않게).
+//   값이 `INFLOW_SENT_KEY` 와 같을 때만 '이미 묶었다' 로 본다 — 영구 플래그면 두 번째 유입이 영영 안 묶인다.
+const INFLOW_BOUND_KEY = 'ur_inflow_bound_v1'
 // 🧭 2026-07-12 (WP-C — 블로거 영입 트랙): 어트리뷰션 윈도우 24h→7d. 네이버 블로그는 롱테일
 //   유입(글 발행 뒤 며칠~몇 주 후 클릭·구매)이라 24h 로는 인플 귀속이 유실됨. ProductDetailPage
 //   와 동일 상수(4곳 동기). 비-머니(귀속 타이밍만) — 서버 /track 검증·중복차단 불변.
@@ -106,13 +109,39 @@ function fireInflowClick(ref: string): void {
 
 /**
  * 📡 2026-07-13 (데이터 감사 2단계): 로그인/가입 후 익명 유입 클릭을 유저에 귀속(bind).
- *   멱등(서버는 user_id IS NULL 인 행만 UPDATE) — 마운트마다 호출돼도 무해. fail-soft.
+ *   멱등(서버는 user_id IS NULL 인 행만 UPDATE) — 여러 번 호출돼도 무해. fail-soft.
+ *
+ * ## 🧹 2026-10-07 — **묶을 것이 있을 때만 보낸다** (대표 *"2번은 무조건 하는게 좋으면 해줘"*)
+ * 종전엔 이 함수가 `App` 마운트(하드로드)마다 **무조건** POST 했다. 그런데 `?ref=` 링크로
+ * 들어온 적이 없는 사람에겐 **묶을 행이 애초에 없다** — 라이브 실측(`/map`·`/user/profile`,
+ * 유입 기록 0인 계정)에서 그 POST 가 보였고, 그걸 위해 **`/api/csrf-token` 까지 한 번 더**
+ * 받고 있었다(변경 요청이라). 즉 둘러보기만 하는 로그인 사용자에게 **요청 2개 + D1 왕복**이
+ * 매 하드로드마다 공짜로 나가고 있었다.
+ *
+ * ### 왜 게이트가 기능을 못 뺏는가
+ * `anon_id`(`ur_anon_id_v1`)와 `INFLOW_SENT_KEY` 는 **같은 localStorage** 에 산다. 스토리지가
+ * 비면 `getAnonId()` 가 **새 id** 를 만들므로 서버에 묶을 행이 없다 ⇒ 게이트가 건너뛰는 경우와
+ * 보내도 0행인 경우가 **같다**. 그리고 행을 만드는 경로는 `fireInflowClick` 하나이고 그것이
+ * 바로 이 키를 세팅한다(`storeAffiliateRef`·`captureInflowRef` 둘 다 거친다).
+ *
+ * ### 🔒 머니 경로 무접촉
+ * 구매 귀속은 `affiliate_ref` + 서버 `/api/affiliate/track` 이고 `inflow_clicks` 를 안 읽는다.
+ * 그 테이블을 읽는 곳은 ① 내 링크 클릭수 표시(**anon_id** 기준 — bind 와 무관) ② 어드민 매칭
+ * 추천(읽기 전용 집계)뿐이다. 정산·커미션 어디도 안 읽는다.
  */
 export function bindInflowClicksIfLoggedIn(loggedIn: boolean): void {
   try {
     if (!loggedIn) return
+    // 이 브라우저가 `?ref=` 로 들어온 적이 없으면 묶을 것이 없다.
+    const sent = localStorage.getItem(INFLOW_SENT_KEY)
+    if (!sent) return
+    // 그 유입은 이미 묶었다. (새 ref 를 또 누르면 `sent` 가 바뀌어 다시 보낸다.)
+    if (localStorage.getItem(INFLOW_BOUND_KEY) === sent) return
     const anonId = getAnonId()
-    void api.post('/api/acquisition/inflow/bind', { anon_id: anonId }).catch(() => { /* best-effort */ })
+    void api.post('/api/acquisition/inflow/bind', { anon_id: anonId })
+      // 성공했을 때만 적는다 — 실패하면 다음 진입에 다시 시도한다(fail-soft 유지).
+      .then(() => { try { localStorage.setItem(INFLOW_BOUND_KEY, sent) } catch { /* quota */ } })
+      .catch(() => { /* best-effort */ })
   } catch { /* noop */ }
 }
 
