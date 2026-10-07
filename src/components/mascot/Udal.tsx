@@ -24,7 +24,7 @@ import poseQr from '@/assets/mascot/udal-pose-qr.webp'
 
 /** 화면이 고르는 것은 상황이다. 그림은 아래 표가 정한다. */
 export type UdalMood =
-  | 'hello' // 기본 · 환영 (가입 환영 · 검색어 입력 전)
+  | 'hello' // 기본, 환영 (가입 환영, 검색어 입력 전)
   | 'done' // 이용권 사용 완료 (도장)
   | 'paid' // 결제 완료 · 지갑 (이용권 더미 위 지갑)
   | 'yay' // 신남 · 혜택 발견
