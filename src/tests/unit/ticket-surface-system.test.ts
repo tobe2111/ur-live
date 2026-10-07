@@ -130,8 +130,11 @@ describe('⑤ 지갑 — 탭 + TicketCard', () => {
     expect(page).not.toMatch(/<WalletArchive\b/)
     expect(page).toMatch(/setTab\(/)
   })
-  it('카드는 TicketCard 이고 천공·노치·테두리 스택이 없다', () => {
-    expect(card).toMatch(/<TicketCard\b/)
+  // 🎫 2026-10-07 대표 확정 A안: 지갑 카드는 색 밴드 티켓 → 사진·가게·메뉴·쓰는 법 한 장(밴드가 '사용 가능' 을 또 말하던 것).
+  it('카드는 사진 + 전폭 사용 버튼이고 천공·노치·테두리 스택이 없다', () => {
+    expect(card).not.toMatch(/<TicketCard\b/)
+    expect(card).toMatch(/w-\[72px\] h-\[72px\]/)
+    expect(card).toMatch(/w-full h-12 rounded-xl bg-brand/)
     expect(card).not.toMatch(/notchStyle/)
     expect(card).not.toMatch(/rounded-\[18px\] bg-white dark:bg-\[#141414\] border/)
   })

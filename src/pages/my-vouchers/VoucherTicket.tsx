@@ -6,8 +6,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '@/lib/api'
 import { safeDate } from '@/utils/safe-date'
 import { formatNumber } from '@/utils/format'
-import { QrCode, Smartphone } from 'lucide-react'
-import { TicketCard, TicketRow } from '@/components/ticket/TicketCard'
+import { Smartphone } from 'lucide-react'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import type { Voucher } from './types'
 import ReviewBonusButton from './ReviewBonusButton'
@@ -15,9 +14,10 @@ import ReviewBonusButton from './ReviewBonusButton'
 // 🎟️ 2026-07-06 (대표 "ㄴ 이것도 개선해줘"): 이용권 카드에 매장 사용방식 칩 표시 — 유저가 매장 가기 전에
 //   이 카드만 보고도 사용법을 파악. redemption-info(사장님 설정)를 코드별 1회 조회(모듈 캐시로 재조회 방지).
 type RedeemMode = 'scan_only' | 'store_code' | 'self_free'
-const MODE_CHIP: Record<RedeemMode, string> = {
-  scan_only: '직원 스캔',
-  store_code: '코드 입력',
+/** 카드 한 줄 안내용 — 칩보다 긴 문장(무엇을 하면 되는지). 2026-10-07 A안 */
+const MODE_HINT: Record<RedeemMode, string> = {
+  scan_only: '직원에게 QR 보여주기',
+  store_code: '매장에서 코드 입력',
   self_free: '바로 사용',
 }
 const _modeCache = new Map<string, RedeemMode | null>()
@@ -64,72 +64,80 @@ export default function VoucherTicket({ v, muted, locale, t, onShowQr }: {
   // 🎨 2026-06-20 흑백 iOS-클린 (docs/design/my-vouchers-wallet-bw.md 화면1 카드):
   //   60px 썸네일 · 🟢 상태점+사용가능+D-N · 제목 · 📍가게 · 코드칩 / 우측: 가격 + 컴팩트 사용 pill.
   const urgent = v.status === 'unused' && daysLeft !== null && daysLeft <= 2
-  const price = v.applied_price ?? v.product_price ?? null
-
   // 🎟️ 2026-07-06 (대표 승인): 미사용 카드는 어디를 눌러도 사용 안내(QR/사용법) 모달이 열림 —
   //   버튼 하나만 찾을 필요 없이 카드 전체가 진입점. 내부 인터랙션(코드 복사)은 stopPropagation 으로 보호.
   const tappable = v.status === 'unused'
 
-  // 🎫 2026-09-02 (대표 시안 — 코레일톡 화이트 지갑 "나의 티켓"): 카드 = **색 밴드(기한 · D-N) + 흰 본문** 한 장.
-  //   천공·노치·테두리·그림자 스택을 걷어내고 TicketCard 부품 하나로. 밴드가 티켓 은유를 맡으니 장식이 필요 없다.
-  //   사용 완료·만료·환불은 밴드가 회색이 되고 전체가 흐려진다(muted). 동작(모달·복사·환불요청·재구매·후기)은 불변.
-  const bandLeftText = expiresAt
-    ? `${expiresAt.getFullYear()}.${String(expiresAt.getMonth() + 1).padStart(2, '0')}.${String(expiresAt.getDate()).padStart(2, '0')} (${['일', '월', '화', '수', '목', '금', '토'][expiresAt.getDay()]})까지`
-    : (v.status === 'unused' ? t('voucher.noExpiry', { defaultValue: '사용 기한 없음' }) : t(`voucher.status.${v.status}`))
-  const bandRightText = v.status === 'unused'
-    ? (daysLeft !== null ? (daysLeft === 0 ? 'D-DAY' : `D-${daysLeft}`) : t('voucher.status.unused', { defaultValue: '사용 가능' }))
-    : t(`voucher.status.${v.status}`)
+  // 🎫 2026-10-07 (대표 확정 A안 "정돈" — "이 페이지 자체가 못생겼어"): 색 밴드 티켓 → **사진 · 가게 · 메뉴 · 쓰는 법** 한 장.
+  //   종전 카드는 밴드("사용 기한 없음 / 사용 가능")·가게 줄·메뉴·가격을 따로 그려 같은 말을 반복했다
+  //   (가게 이름이 두 번, 금액은 머리글 합계와 두 번). 금액은 머리글이 한 번 말하고 카드는 *무엇을·어디서·어떻게* 만.
+  //   동작(카드 탭 → 사용 모달 · 재구매 · 후기)은 불변.
+  const inactive = muted || v.status !== 'unused'
+  const store = v.restaurant_name || ''
+  const dong = (v.restaurant_address || '').split(/\s+/).find((w) => /[가-힣]+(동|읍|면|가)$/.test(w) && w.length <= 8) || ''
+  const menu = store && v.product_name.startsWith(store) ? (v.product_name.slice(store.length).trim() || v.product_name) : v.product_name
+  const expiryText = v.status === 'used' && usedAt
+    ? `${usedAt.toLocaleDateString(locale)} ${t('voucher.usedSuffix', { defaultValue: '사용' })}`
+    : v.status !== 'unused'
+      ? t(`voucher.status.${v.status}`)
+      : expiresAt
+        ? `${expiresAt.getMonth() + 1}.${expiresAt.getDate()}${t('voucher.untilSuffix', { defaultValue: '까지' })} · ${daysLeft === 0 ? 'D-DAY' : `D-${daysLeft}`}`
+        : t('voucher.noExpiryShort', { defaultValue: '기한 없음' })
+  const howText = tappable && mode ? MODE_HINT[mode] : ''
 
   return (
-    <TicketCard bandLeft={bandLeftText} bandRight={bandRightText} muted={muted || v.status !== 'unused'} onClick={tappable ? onShowQr : undefined}>
-      {/* 첫 줄: 매장 · 사용 방식 칩 */}
-      <TicketRow
-        left={v.restaurant_name || t('voucher.tabGroupBuy', { defaultValue: '이용권' })}
-        right={tappable && mode ? MODE_CHIP[mode] : (v.status === 'used' && usedAt ? `${usedAt.toLocaleDateString(locale)} ${t('voucher.usedSuffix', { defaultValue: '사용' })}` : undefined)}
-      />
-
-      <div className="px-4 pt-4 pb-4">
-        <p className={`text-[17px] font-extrabold tracking-tight truncate ${urgent ? 'text-gray-900 dark:text-white' : 'text-gray-900 dark:text-white'}`}>{v.product_name}</p>
-        <div className="flex items-end justify-between mt-3">
-          {price !== null ? (
-            <div className="text-[17px] font-extrabold tabular-nums tracking-tight text-gray-700 dark:text-gray-200 leading-none">
-              {formatNumber(price)}<span className="text-[12px] font-bold text-gray-400 dark:text-gray-500 ml-1">{t('voucher.won', { defaultValue: '원' })}</span>
-            </div>
-          ) : <span />}
-          {v.status === 'unused' && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onShowQr() }}
-              aria-label={t('voucher.scan', { defaultValue: '사용' })}
-              className="flex items-center gap-2 rounded-full px-5 py-2 bg-brand text-white text-[13px] font-extrabold active:opacity-80"
-            >
-              <QrCode className="w-4 h-4" strokeWidth={1.6} />
-              {t('voucher.useFull', { defaultValue: '사용하기' })}
-            </button>
+    <div
+      onClick={tappable ? onShowQr : undefined}
+      role={tappable ? 'button' : undefined}
+      tabIndex={tappable ? 0 : undefined}
+      onKeyDown={tappable ? (e) => { if (e.key === 'Enter') onShowQr() } : undefined}
+      className={`rounded-2xl bg-surface overflow-hidden ${inactive ? 'opacity-60' : 'shadow-lift'} ${tappable ? 'cursor-pointer' : ''}`}
+    >
+      <div className="flex gap-4 p-4">
+        <div className="w-[72px] h-[72px] shrink-0 rounded-xl overflow-hidden bg-gray-100 dark:bg-white/10 flex items-center justify-center">
+          {v.product_image ? (
+            <img src={cfImage(v.product_image, { width: 200, quality: 82, format: 'auto' }) || v.product_image} alt="" loading="lazy" className="w-full h-full object-cover" onError={(e) => cfImageOnError(e.currentTarget, v.product_image)} />
+          ) : (
+            <GiftBoxIcon className="w-6 h-6 text-gray-300 dark:text-gray-600" />
           )}
+        </div>
+        <div className="min-w-0 flex-1">
+          {store && <p className="text-[13px] font-semibold text-gray-500 dark:text-gray-400 truncate">{store}{dong ? ` · ${dong}` : ''}</p>}
+          <p className="mt-1 text-[17px] font-extrabold tracking-tight text-gray-900 dark:text-white truncate">{menu}</p>
+          <p className={`mt-2 text-[13px] truncate ${urgent ? 'text-tone-bad font-bold' : 'text-gray-500 dark:text-gray-400'}`}>
+            {expiryText}{howText ? ` · ${howText}` : ''}
+          </p>
         </div>
       </div>
 
-      {/* 풋 — 사용 완료·만료만. 🧹 2026-10-01 (대표 "빨간 부분은 굳이 없어도 되지 않을까? 환불요청 버튼만 따로"):
-          미사용 카드의 코드 줄·환불 링크를 걷어냈다 — 코드와 QR 은 '사용하기'(카드 어디를 눌러도 열린다)에
-          이미 크게 있고, 환불도 그 화면으로 옮겼다(QRModal — 7일 내 즉시 취소 / 이후 환불 요청 접수). */}
-      {v.status !== 'refunded' && v.status !== 'unused' && (
-        <div className="border-t border-rule">
-          {/* 🎨 2026-06-21 (개선 #4): 사용완료/만료 동선 — 재구매 + (사용완료만) 후기 보너스 */}
-          <div className="px-4 pt-3 pb-4">
-            {v.product_id != null && (
-              <button
-                type="button"
-                onClick={() => navigate(`/pass/${v.product_id}`)}
-                className="w-full h-11 rounded-xl border border-rule-strong text-brand-text text-[13px] font-bold active:opacity-70"
-              >
-                {t('voucher.rebuy', { defaultValue: '다시 구매하기' })}
-              </button>
-            )}
-            {v.status === 'used' && <ReviewBonusButton voucherCode={v.code} restaurantName={v.restaurant_name} restaurantAddress={v.restaurant_address} />}
-          </div>
+      {v.status === 'unused' && (
+        <div className="px-4 pb-4">
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onShowQr() }}
+            className="w-full h-12 rounded-xl bg-brand text-white text-[15px] font-extrabold active:opacity-80"
+          >
+            {t('voucher.useFull', { defaultValue: '사용하기' })}
+          </button>
         </div>
       )}
-    </TicketCard>
+
+      {/* 풋 — 사용 완료·만료만(재구매 + 후기). 🧹 2026-10-01: 미사용 카드의 코드·환불은 사용 모달로 옮겼다. */}
+      {v.status !== 'refunded' && v.status !== 'unused' && (
+        <div className="border-t border-rule px-4 pt-3 pb-4" onClick={(e) => e.stopPropagation()}>
+          {v.product_id != null && (
+            <button
+              type="button"
+              onClick={() => navigate(`/pass/${v.product_id}`)}
+              className="w-full h-11 rounded-xl border border-rule-strong text-brand-text text-[13px] font-bold active:opacity-70"
+            >
+              {t('voucher.rebuy', { defaultValue: '다시 구매하기' })}
+            </button>
+          )}
+          {v.status === 'used' && <ReviewBonusButton voucherCode={v.code} restaurantName={v.restaurant_name} restaurantAddress={v.restaurant_address} />}
+        </div>
+      )}
+    </div>
   )
 }
 

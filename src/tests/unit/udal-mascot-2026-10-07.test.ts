@@ -105,7 +105,6 @@ describe('🦦 유달이 — 배선한 화면이 되돌아가지 않는다', () 
     ['src/pages/my-vouchers/WalletEmpty.tsx', 'empty'],
     ['src/pages/PaymentSuccessPage.tsx', 'paid'],
     ['src/pages/my-vouchers/QRModal.tsx', 'showQr'],
-    ['src/pages/my-vouchers/WalletHeader.tsx', 'paid'],
     ['src/components/onboarding/WelcomeOnboardingModal.tsx', 'hello'],
     ['src/pages/restaurant-map/RestaurantList.tsx', 'notFound'],
     ['src/pages/restaurant-map/NearbyEmptyBanner.tsx', 'notFound'],

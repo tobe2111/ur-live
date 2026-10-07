@@ -9436,10 +9436,10 @@ canvas {
       '다시 붙기 쉽다.',
   },
   {
-    name: '🎟️ 지갑 카드 가격이 다시 상품명보다 커진다',
+    name: '🎟️ 지갑 카드에 가격이 다시 들어온다 (금액은 머리글 합계 한 번 — 2026-10-07 A안)',
     file: 'src/pages/my-vouchers/VoucherTicket.tsx',
-    find: 'text-[17px] font-extrabold tabular-nums',
-    replace: 'text-[24px] font-extrabold tabular-nums',
+    find: '{menu}</p>',
+    replace: '{menu} {v.applied_price}</p>',
     test: 'src/tests/unit/wallet-and-slop.test.ts',
     why:
       '지갑의 이용권은 **이미 산 것**이라 카드 안 가격은 영수증 정보다. 24px 이면 상품명(18px)보다 ' +

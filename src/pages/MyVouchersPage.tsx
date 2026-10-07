@@ -8,12 +8,11 @@ import { useNavigate } from 'react-router-dom'
 const VoucherMap = lazy(() => import('./my-vouchers/VoucherMap'))
 import { useTranslation } from 'react-i18next'
 import SEO from '@/components/SEO'
-import { ArrowLeft, QrCode, Map } from 'lucide-react'
+import { ArrowLeft, QrCode } from 'lucide-react'
 import { useMyVouchers } from '@/hooks/queries'
 import { WalletPageWrapper } from '@/components/wallet/WalletAtoms'
 import WalletHeader from './my-vouchers/WalletHeader'
 import { walletTokens } from '@/components/wallet/walletTokens'
-import { formatNumber } from '@/utils/format'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import VoucherDisputeBanner from '@/components/voucher/VoucherDisputeBanner'
 import { EmptyVouchers } from './my-vouchers/WalletEmpty'
@@ -65,7 +64,6 @@ export default function MyVouchersPage() {
   // 🎫 2026-09-02 (대표 시안 — 코레일톡 화이트 지갑): [사용 가능 | 사용 완료] 밑줄 탭 + outline 칩 필터.
   //   접기 박스(WalletArchive)는 이 지갑에서 탭으로 대체(교환권 지갑 /my-gifticons 는 그대로 그 박스를 쓴다).
   const [tab, setTab] = useState<'unused' | 'done'>('unused')
-  const [chip, setChip] = useState<'all' | 'soon'>('all')
   // 🎨 2026-06-20 흑백 리디자인 화면2(지도 전용) — 인-페이지 뷰(새 라우트 X)
   const [mapSelected, setMapSelected] = useState<Voucher | null>(null)
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number } | null>(null)
@@ -126,29 +124,11 @@ export default function MyVouchersPage() {
     [vouchers],
   )
 
-  // 가까운 만료일 (현재 탭 unused 이용권 중 가장 가까운)
-  const nearestExpiry = (() => {
-    const now = Date.now()
-    const candidates = unusedItems
-      .filter(v => v.expires_at)
-      .map(v => safeTime(v.expires_at!))
-      .filter(t => t > now)
-      .sort((a, b) => a - b)
-    if (!candidates[0]) return null
-    const days = Math.max(0, Math.ceil((candidates[0] - now) / (1000 * 60 * 60 * 24)))
-    return days
-  })()
-
   // 🎨 2026-06-21 (대표 "페이지가 투박 — UX/UI 재설계", 시안 A '프리미엄 패스'):
   //   지갑 = 자산. 상단 '보유 이용권 금액' 히어로 — 보유 금액(사용 가능분 합) + 아낀 돈.
   // 🐛 2026-06-21 fix: /vouchers/my 는 product_price 를 안 줘서 (원가-액면)=항상 0 → '아낀 돈' 영구 미표시였음.
   //   applied_price 는 '결제한(할인된) 단가', applied_discount_pct 는 할인율 → 원가 대비 절약 = 액면 * pct/(100-pct).
   const heroTotal = unusedItems.reduce((s, v) => s + (v.applied_price ?? v.product_price ?? 0), 0)
-  const heroSaved = unusedItems.reduce((s, v) => {
-    const pct = v.applied_discount_pct ?? 0
-    const paid = v.applied_price ?? 0
-    return (pct > 0 && pct < 100 && paid > 0) ? s + Math.round((paid * pct) / (100 - pct)) : s
-  }, 0)
   // 🪙 2026-08-31: 이 지갑은 이용권 전용이라 단위는 항상 '원'(교환권의 '딜' 단위는 /my-gifticons 가 담당).
   const heroUnit = t('voucher.won', { defaultValue: '원' })
 
@@ -245,13 +225,12 @@ export default function MyVouchersPage() {
            하단 탭 '이용권'이 이미 어디인지 말하고, 지갑의 주인공은 금액과 카드다.
            제목은 sr-only 로만 남아 문서 구조·보조기술 접근성은 유지된다. */
         hideTitle
+        /* 🎫 2026-10-07 (대표 확정 A안 "정돈" — "이 페이지 자체가 못생겼어"): 금액·장수를 여기서 **한 번만** 말한다.
+           종전엔 '사용 가능' 이 요약·탭·칩·카드 띠에 네 번, 금액이 합계·카드에 두 번 나왔다. */
+        eyebrow={t('voucher.walletEyebrow', { defaultValue: '쓸 수 있는 이용권' })}
+        countText={`${unusedItems.length}${t('voucher.heroCountUnit', { defaultValue: '장' })}`}
         amount={shownVouchers.length > 0 ? heroTotal : null}
         unit={heroUnit}
-        stats={shownVouchers.length > 0 ? [
-          { label: t('voucher.heroUsable', { defaultValue: '사용 가능' }), value: `${unusedItems.length}${t('voucher.heroCountUnit', { defaultValue: '장' })}` },
-          ...(nearestExpiry !== null ? [{ label: t('voucher.heroExpiry', { defaultValue: '만료 임박' }), value: nearestExpiry === 0 ? 'D-DAY' : `D-${nearestExpiry}`, mono: true, tone: (nearestExpiry <= 2 ? 'danger' : undefined) as 'danger' | undefined }] : []),
-          ...(heroSaved > 0 ? [{ label: t('voucher.heroSaved', { defaultValue: '아낀 돈' }), value: `${formatNumber(heroSaved)}${heroUnit}`, mono: true, tone: 'success' as const }] : []),
-        ] : []}
       />
 
 
@@ -281,41 +260,28 @@ export default function MyVouchersPage() {
           <>
             {/* 🏠 2026-07-12 (앱-레디): 지갑 = 최고 관여 순간 → 홈 화면 추가 컨텍스트 유도(자가 게이트) */}
             <AddToHomeHint context="wallet" />
-            {/* 🎫 탭 — 시안: 검정 밑줄, 비활성 회색. 숫자는 탭에만 한 번. */}
-            <div className="flex items-end gap-5 -mt-1 mb-4 border-b border-rule">
-              {/* 개수는 탭에 안 붙인다 — 요약 줄(시안 4)이 이미 "사용 가능 N장"을 말하고, 칩 "전체 N"이 필터 안에서 말한다(시안도 탭엔 숫자가 없다). */}
-              {([['unused', t('voucher.groupUnused', { defaultValue: '사용 가능' })], ['done', t('voucher.groupUsed', { defaultValue: '사용 완료' })]] as const).map(([key, label]) => (
+            {/* 🎫 탭 — [사용 가능 N | 지난 이용권] + 오른쪽 '지도로 보기'(2026-10-07 A안). 칩 줄(전체·만료 임박·지도)은 걷었다:
+                '전체 N' 은 탭이 이미 말하고, 만료가 가까운 순서는 목록 정렬이 이미 맡는다. */}
+            <div className="flex items-end gap-5 mb-4 border-b border-rule">
+              {([['unused', t('voucher.groupUnused', { defaultValue: '사용 가능' })], ['done', t('voucher.groupPast', { defaultValue: '지난 이용권' })]] as const).map(([key, label]) => (
                 <button key={key} type="button" onClick={() => setTab(key)}
-                  className={`relative pb-2 text-[17px] font-extrabold tracking-[-0.02em] ${tab === key ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500 font-semibold'}`}>
+                  className={`relative pb-2 text-[17px] tracking-[-0.02em] ${tab === key ? 'font-extrabold text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500 font-semibold'}`}>
                   {label}
+                  {key === 'unused' && unusedItems.length > 0 && <span className="ml-1 text-[13px] font-bold text-brand-text tabular-nums">{unusedItems.length}</span>}
                   {tab === key && <span aria-hidden="true" className="absolute left-0 right-0 -bottom-px h-[2.5px] bg-brand" />}
                 </button>
               ))}
+              {tab === 'unused' && mapVouchers.length > 0 && (
+                <button type="button" onClick={() => setViewMode('map')}
+                  className="ml-auto pb-2 text-[13px] font-bold text-gray-600 dark:text-gray-300">
+                  {t('voucher.mapViewLink', { defaultValue: '지도로 보기' })}
+                </button>
+              )}
             </div>
-
-            {/* 🎫 칩 — outline pill, 선택은 브랜드 테두리 + 브랜드 글자(면 채움 없음). 지도는 칩으로 들어간다. */}
-            {tab === 'unused' && unusedItems.length > 0 && (
-              <div className="flex gap-2 mb-4 overflow-x-auto scrollbar-hide">
-                {([['all', `${t('voucher.chipAll', { defaultValue: '전체' })} ${unusedItems.length}`], ['soon', t('voucher.chipSoon', { defaultValue: '만료 임박' })]] as const).map(([key, label]) => (
-                  <button key={key} type="button" onClick={() => setChip(key)}
-                    className={`shrink-0 h-9 px-4 rounded-full text-[15px] border ${chip === key ? 'border-brand-text text-brand-text font-bold' : 'border-rule-strong text-gray-800 dark:text-gray-200'}`}>
-                    {label}
-                  </button>
-                ))}
-                {mapVouchers.length > 0 && (
-                  <button type="button" onClick={() => setViewMode('map')}
-                    className="shrink-0 h-9 px-4 rounded-full text-[15px] border border-rule-strong text-gray-800 dark:text-gray-200 inline-flex items-center gap-1">
-                    <Map className="w-4 h-4" strokeWidth={1.6} />{t('voucher.mapView', { defaultValue: '지도' })}
-                  </button>
-                )}
-              </div>
-            )}
 
             {tab === 'unused' ? (
               (() => {
-                const shown = chip === 'soon'
-                  ? unusedItems.filter((v) => v.expires_at && (safeTime(v.expires_at) - Date.now()) <= 7 * 86400000)
-                  : unusedItems
+                const shown = unusedItems
                 return shown.length > 0 ? (
                   /* 🎫 2026-09-15 (대표 확정 "안 E"): **가장 급한 한 장만 펴고 나머지는 한 줄씩**.
                      종전엔 가진 이용권을 전부 펼친 티켓으로 그려, 3장이면 스크롤 한 번이고 8장이면
@@ -331,7 +297,7 @@ export default function MyVouchersPage() {
                     )}
                   </div>
                 ) : (
-                  <p className="py-8 text-center text-[13px] text-gray-400 dark:text-gray-500">{chip === 'soon' ? t('voucher.noSoon', { defaultValue: '7일 안에 만료되는 이용권이 없어요' }) : t('voucher.noUnused', { defaultValue: '사용 가능한 이용권이 없어요' })}</p>
+                  <p className="py-8 text-center text-[13px] text-gray-400 dark:text-gray-500">{t('voucher.noUnused', { defaultValue: '사용 가능한 이용권이 없어요' })}</p>
                 )
               })()
             ) : (
