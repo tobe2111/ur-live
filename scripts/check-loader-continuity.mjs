@@ -86,6 +86,38 @@ const CHECKS = [
     ],
     hint: '주기를 바꾸려면 index.css 와 BrandLoader.tsx(% 상수) 를 함께 바꾸고 이 가드도 갱신하세요.',
   },
+  // 🦦 2026-10-07 (대표 허가 "로딩 화면"): 로더의 유달이 — 정적(워커)↔앱(BrandLoader)이 같은 파일·같은 위상.
+  //   하나만 빠져도 [유달이 있는 로더 → 없는 로더] 로 바뀌는 순간 화면이 튄다("로딩 화면 2~3개" 클래스).
+  {
+    file: 'src/shared/udal-loader.ts',
+    name: '유달이 로더 값 SSOT (경로·주기)',
+    must: [/UDAL_LOADER_SRC\s*=\s*'\/assets\/mascot\/udal-loader-v\d+\.webp'/, /UDAL_BOB_PERIOD_S\s*=\s*3\.2\b/],
+    hint: '경로·주기는 이 파일 한 곳에서만 바꾸세요. 그림을 바꾸면 파일명 버전(-v2)을 올릴 것(/assets 는 1년 캐시).',
+  },
+  {
+    file: 'src/index.css',
+    name: '유달이 둥실 주기 동기 (3.2s)',
+    must: [/ur-udal-bob\s+3\.2s/],
+    hint: 'index.css 의 ur-udal-bob 주기와 shared/udal-loader.ts 의 UDAL_BOB_PERIOD_S 를 함께 바꾸세요.',
+  },
+  {
+    file: 'src/components/brand/BrandLoader.tsx',
+    name: '앱 로더 유달이 = 같은 파일 + 위상 동기',
+    must: [/src=\{UDAL_LOADER_SRC\}/, /%\s*UDAL_BOB_PERIOD_S/, /animationDelay:\s*bobDelay/],
+    hint: '앱 로더의 유달이는 UDAL_LOADER_SRC 와 FCP 기준 음수 delay(% UDAL_BOB_PERIOD_S) 를 쓰세요.',
+  },
+  {
+    file: 'src/worker/index.ts',
+    name: '정적 로더 유달이 = 같은 파일',
+    must: [/const\s+urdealLoaderHtml\s*=[\s\S]{0,400}?src="\$\{UDAL_LOADER_SRC\}"[\s\S]{0,300}?class="ur-udal-bob/],
+    hint: '워커 정적 로더(urdealLoaderHtml)에 BrandLoader 와 같은 유달이(UDAL_LOADER_SRC, ur-udal-bob)를 유지하세요.',
+  },
+  {
+    file: 'index.html',
+    name: '로더 유달이 preload (늦게 튀어나오기 방지)',
+    must: [/<link rel="preload" as="image" href="\/assets\/mascot\/udal-loader-v\d+\.webp"/],
+    hint: '첫 페인트 로더가 바로 그리는 그림이라 head 에서 미리 받아야 합니다(경로는 UDAL_LOADER_SRC 와 동일).',
+  },
   {
     file: 'src/hooks/useOnlineStatus.ts',
     name: 'OfflineBanner SSR-safe (프리렌더 오프라인 오판 금지)',

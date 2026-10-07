@@ -8,6 +8,7 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { distanceKm } from './utils'
 import type { Restaurant } from './types'
+import Udal from '@/components/mascot/Udal'
 
 const NEAR_RADIUS_KM = 5
 
@@ -38,7 +39,10 @@ export default function NearbyEmptyBanner({ loading, userLoc, sortBy, list, onOp
 
   return (
     <div className="mb-3 flex items-center justify-between gap-3 rounded-xl bg-gray-50 dark:bg-[#1D1F29] border border-gray-100 dark:border-[#2C2F35] px-4 py-3">
-      <p className="text-[12px] leading-snug text-gray-500 dark:text-gray-400 min-w-0">
+      {/* 🦦 2026-10-07 (대표 "1번 2번 둘 다 진행해줘"): 내 주변엔 아직 없음 → 작은 갸웃 유달이.
+          목록이 비어 있지 않을 때만 뜨는 띠라 위의 0건 화면 유달이와 한 화면에 겹치지 않는다. */}
+      <Udal mood="notFound" size={44} className="shrink-0 -my-1" />
+      <p className="flex-1 text-[12px] leading-snug text-gray-500 dark:text-gray-400 min-w-0">
         <span className="block font-bold text-gray-900 dark:text-white">
           {t('restaurantMap.farBannerTitle', { defaultValue: '내 주변엔 아직 딜이 없어요' })}
         </span>

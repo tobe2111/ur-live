@@ -1,5 +1,5 @@
 import CatIcon from './CatIcon'
-import { PinIcon } from '@/components/icons/urdeal-icons'
+import Udal from '@/components/mascot/Udal'
 import RestaurantRow from './RestaurantRow'
 import { memo, useEffect, useRef, useState } from 'react'
 import { formatNumber } from '@/utils/format'
@@ -54,7 +54,8 @@ export default function RestaurantList({ loading, filtered, selected, userLoc, o
   if (filtered.length === 0) {
     return (
       <div className="text-center py-16">
-        <PinIcon className="w-14 h-14 text-gray-200 dark:text-gray-700 mx-auto mb-4" />
+        {/* 🦦 2026-10-07 (대표 "1번 2번 둘 다 진행해줘"): 조건에 맞는 이용권 0건 → 갸웃하는 유달이(검색 0건과 같은 얼굴). */}
+        <Udal mood="notFound" size={104} className="mx-auto mb-3" />
         <p className="text-gray-900 dark:text-white font-bold">{MAP_EMPTY_MSG[voucherType] || MAP_EMPTY_MSG.all}</p>
         <p className="text-[15px] text-gray-400 dark:text-gray-500 mt-1">다른 지역이나 검색어를 시도해보세요</p>
       </div>
