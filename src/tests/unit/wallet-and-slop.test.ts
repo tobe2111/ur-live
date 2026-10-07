@@ -32,6 +32,10 @@ describe('이용권 지갑', () => {
     expect(page).toMatch(/countText=\{`\$\{unusedItems\.length\}/)
     expect(page, '요약 지표 줄(stats)이 돌아왔다').not.toMatch(/heroUsable/)
     expect(page, '칩 줄(전체 N·만료 임박)이 돌아왔다').not.toMatch(/voucher\.chipAll|voucher\.chipSoon/)
+    // 탭의 개수는 라벨 옆 브랜드색 숫자 한 번뿐이다 — 라벨 문자열에 개수를 이어 붙이면 '사용 가능 3 3' 이 된다.
+    const tabLabels = page.match(/\[\['unused',[\s\S]*?\]\] as const\)/)?.[0] ?? ''
+    expect(tabLabels.length, '탭 라벨 목록을 못 찾았다').toBeGreaterThan(40)
+    expect(tabLabels, '탭 라벨에 개수가 들어왔다').not.toMatch(/unusedItems/)
   })
 
   /**
