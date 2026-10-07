@@ -2263,7 +2263,8 @@
       "photoReading": "Recherche d’un QR code dans la photo…",
       "photoNoQr": "Aucun QR code trouvé sur cette photo. Rapprochez-vous et éclairez mieux.",
       "helpTitle": "Le QR code ne se scanne pas ?",
-      "helpBody": "1) Demandez au client d’augmenter la luminosité 2) Approchez-vous à 10-20 cm 3) Inclinez pour éviter les reflets 4) Toujours rien ? Utilisez « Scanner depuis une photo » ci-dessus"
+      "helpBody": "1) Demandez au client d’augmenter la luminosité 2) Approchez-vous à 10-20 cm 3) Inclinez pour éviter les reflets 4) Toujours rien ? Utilisez « Scanner depuis une photo » ci-dessus",
+      "switchCamera": "Changer de caméra"
     },
     "gbSettle": {
       "title": "Règlements automatiques d'achat groupé",

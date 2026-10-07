@@ -49,7 +49,10 @@ describe('① 카메라에 해상도를 요구한다', () => {
     // 🩸 첫 판은 `applyConstraints({ width: ...` 를 **화면 파일에서** 찾았는데, 그 호출을 SSOT 로
     //   옮기자 앵커가 사라져 빨간불이 났다(가드가 제 일을 한 경우다 — 지우지 않고 재조준한다).
     //   화면은 **위임**만 하고, 제약을 실제로 거는 곳은 `scan-camera.ts` 다.
-    expect(SRC).toMatch(/getUserMedia\(\{ video: SCAN_VIDEO_CONSTRAINTS \}\)/)
+    // 🩸 2026-10-07 재조준(2회차): 렌즈 선택이 생겨 네이티브 경로가 `open(id)` 로 열린다.
+    //   지키려는 것은 그대로다 — **렌즈를 정했든 안 정했든 해상도를 요구한다.**
+    expect(SRC).toMatch(/: SCAN_VIDEO_CONSTRAINTS,/)  // 렌즈 미정 → 해상도 포함 기본 제약
+    expect(SRC).toMatch(/deviceId: \{ exact: id \}, width: SCAN_VIDEO_CONSTRAINTS\.width, height: SCAN_VIDEO_CONSTRAINTS\.height/)
     // 네이티브·wasm **두 경로 모두** 헬퍼를 부른다(둘 중 하나만이면 그 기기에서만 고쳐진다).
     expect([...SRC.matchAll(/applyBestCameraSettings\(/g)]).toHaveLength(2)
     expect(CAM).toMatch(/applyConstraints\(\{ width: \{ ideal: 1920 \}/)
