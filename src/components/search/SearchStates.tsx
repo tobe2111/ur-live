@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { BoxIcon, AlertIcon, ClockIcon } from '@/components/icons/urdeal-icons'
+import { ClockIcon } from '@/components/icons/urdeal-icons'
 import { useNavigate } from 'react-router-dom'
-import { Search, Loader2, X, TrendingUp } from 'lucide-react'
+import { X, TrendingUp } from 'lucide-react'
 import BrandLoader from '@/components/brand/BrandLoader'
 import { usePopularSearches } from '@/hooks/queries/usePopularSearches'
+import Udal from '@/components/mascot/Udal'
 
 interface SearchStatesProps {
   loading: boolean
@@ -71,11 +72,10 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
-        <div className="w-16 h-16 rounded-full bg-[#ff3b30]/10 flex items-center justify-center mb-4">
-          <AlertIcon className="w-10 h-10 text-[#ff3b30]" />
-        </div>
-        <p className="text-[17px] font-semibold text-[#1d1d1f] mb-2">오류가 발생했습니다</p>
-        <p className="text-[15px] text-[#6e6e73] mb-6">{error}</p>
+        {/* 🦦 2026-10-07 유달이 — 오류는 '미안' 얼굴(빨간 경고 원 대체). */}
+        <Udal mood="oops" size={112} className="mb-4" />
+        <p className="text-[17px] font-semibold text-gray-900 dark:text-white mb-2">오류가 발생했습니다</p>
+        <p className="text-[15px] text-gray-500 dark:text-gray-400 mb-6">{error}</p>
         <div className="flex gap-3">
           <button
             onClick={() => window.location.reload()}
@@ -137,7 +137,7 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-12 mb-4">
-            <Search className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" />
+            <Udal mood="hello" size={96} className="mb-3" />
             <p className="text-[15px] font-semibold text-gray-900 dark:text-white mb-1">검색어를 입력해주세요</p>
             <p className="text-[13px] text-gray-500 dark:text-gray-400">상품명 또는 판매자명으로 검색할 수 있습니다</p>
           </div>
@@ -174,7 +174,8 @@ export default function SearchStates({ loading, error, query, hasResults, sugges
     return (
       <div className="py-10">
         <div className="flex flex-col items-center justify-center mb-6">
-          <BoxIcon className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" />
+          {/* 🦦 2026-10-07 유달이 — 찾는 게 없을 땐 갸웃. */}
+          <Udal mood="notFound" size={112} className="mb-3" />
           <p className="text-[15px] font-semibold text-gray-900 dark:text-white mb-1">'{query}' 검색 결과가 없어요</p>
           <p className="text-[13px] text-gray-500 dark:text-gray-400">다른 검색어를 시도해보세요</p>
         </div>

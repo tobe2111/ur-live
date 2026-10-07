@@ -84,10 +84,12 @@ export default [
   },
   {
     // 🕳️ 96 초과 예외가 **진짜 글자의 탈출구**가 되는 자리.
-    name: '🖼️ 그래픽 예외로 진짜 글자가 샌다 (select-none 없는 200px)',
-    file: 'src/pages/NotFoundPage.tsx',
-    find: 'text-[140px] md:text-[200px] bg-[#6b7280] bg-clip-text text-transparent select-none',
-    replace: 'text-[140px] md:text-[200px] bg-[#6b7280] bg-clip-text text-transparent',
+    // 🦦 2026-10-07: 앵커를 404 글리프 → 소개 페이지 워터마크로 옮겼다. 404 의 거대한 '404' 글자는
+    //   유달이(길 잃은 얼굴)로 바뀌어 사라졌고, 남은 96px 초과 그래픽은 이 워터마크다(불변식은 그대로).
+    name: '🖼️ 그래픽 예외로 진짜 글자가 샌다 (select-none 없는 100px)',
+    file: 'src/pages/IntroducePage.tsx',
+    find: 'text-[100px] font-black opacity-[0.04] text-white select-none',
+    replace: 'text-[100px] font-black opacity-[0.04] text-white',
     test: TEST,
     why: '`select-none` 을 떼면 그것은 읽는 글자다 — 그러면 스케일 밖 크기를 "그래픽이라" 며 통과시킬 수 없어야 한다.',
   },
