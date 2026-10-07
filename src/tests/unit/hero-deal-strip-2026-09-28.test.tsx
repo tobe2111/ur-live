@@ -15,6 +15,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import fs from 'node:fs'
+import { stripComments } from '../helpers/source-text'
 import { render } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import HeroDealStrip from '@/components/home/HeroDealStrip'
@@ -50,6 +51,9 @@ const rows = (n: number, from = 1) =>
     original_price: 20000,
     image_url: `/api/media/p${from + i}.jpg`,
     dominant_color: '#a57c5b',
+    // 🏪 2026-10-07: 라이브 피드의 실제 모양 — 주소는 **한 줄 전체**이고 종류는 원시 키다.
+    restaurant_address: '전북특별자치도 전주시 덕진구 가리내10길 10',
+    category: 'meal_voucher',
   }))
 
 const draw = (tiles: HeroTile[]) =>
@@ -192,6 +196,57 @@ describe('④ 배선 — 눈으로는 안 보이는 것들', () => {
   })
 })
 
+describe('④-B 캡션이 "어디서 · 무엇을 · 얼마나 싸게" 에 답한다 (2026-10-07 대표 B안)', () => {
+  it('🔴 매장명·지역·종류·정가가 **실제로 그려진다** (타일에 와 있는데 안 그리던 것이 이 사고였다)', () => {
+    const c = draw(pickHeroStripFrom(rows(20)))
+    const txt = c.textContent ?? ''
+    expect(txt, '매장명').toContain('가게 ')
+    expect(txt, '주소에서 뽑은 지역').toContain('전북 전주시')
+    expect(txt, '종류 라벨(SSOT)').toContain('식사')
+    expect(txt, '정가 취소선').toContain('20,000')
+    expect(txt, '판매가').toContain('10,000원')
+    // 할인율은 정가·판매가에서 계산된다(피드의 discount_rate 는 라이브 50건 전부 0이다).
+    expect(txt, '계산된 할인율').toContain('50%')
+    expect(c.querySelector('s'), '정가는 취소선 요소로 그린다').not.toBeNull()
+  })
+
+  it('🔴 종류 라벨을 **베끼지 않는다** — SSOT 에서 가져온다', () => {
+    const t = fs.readFileSync(STRIP_TSX, 'utf8')
+    expect(t, 'CATEGORY_META 를 쓰지 않는다').toContain('CATEGORY_META[tile.category]')
+    // 라벨 문자열을 이 파일에 손으로 적으면 SSOT 와 갈린다.
+    expect(t, "'식사' 를 손으로 적었다").not.toContain("'식사'")
+  })
+
+  it('🔴 워커가 import 하는 공유 모듈에 **아이콘이 새지 않는다**', () => {
+    // `shared/home-hero-strip` 은 `worker/utils/home-card-preload` 가 import 한다.
+    // 라벨 SSOT 둘(deal-category-icon · voucher-types)은 lucide 를 들고 있어, 거기서 쓰면
+    // 워커 번들에 React 아이콘이 끌려 들어간다. 그래서 공유 모듈은 **원시 키만** 싣는다.
+    // 🩸 처음엔 원문을 통째로 검사했더니 **주석에 걸려** 빨간불이 났다(그 모듈의 설명문이
+    //    왜 그 SSOT 를 못 쓰는지 적고 있다). 지키려는 것은 *import* 이므로 주석을 먼저 걷는다
+    //    — 제거기는 레포 SSOT 를 쓴다(테스트마다 새로 쓰면 문자열·정규식 안의 `/*` 를 먹는다).
+    const shared = stripComments(fs.readFileSync('src/shared/home-hero-strip.ts', 'utf8'))
+    expect(shared, '공유 모듈이 라벨 SSOT 를 import 했다').not.toMatch(/deal-category-icon|voucher-types/)
+    expect(shared, '공유 모듈이 lucide 를 끌어왔다').not.toContain('lucide-react')
+    expect(fs.readFileSync('src/worker/utils/home-card-preload.ts', 'utf8'), '배선 전제')
+      .toContain('home-hero-strip')
+  })
+
+  it('🔴 빈 값이면 **줄을 안 그린다** (빈 자리를 남기지 않는다)', () => {
+    const bare = pickHeroStripFrom(
+      Array.from({ length: 12 }, (_, i) => ({
+        id: i + 1, name: `딜 ${i + 1}`, price: 10000, original_price: 10000,
+        image_url: `/api/media/q${i + 1}.jpg`,
+      })),
+    )
+    const c = draw(bare)
+    const txt = c.textContent ?? ''
+    expect(txt, '매장명이 없으면 상품명으로 떨어진다').toContain('딜 ')
+    expect(txt, '지역·종류가 없으면 가운뎃점만 남으면 안 된다').not.toMatch(/·\s*$/)
+    expect(c.querySelector('s'), '정가 = 판매가 면 취소선을 안 그린다').toBeNull()
+    expect(txt, '할인 0% 배지는 안 그린다').not.toContain('0%')
+  })
+})
+
 /**
  * ⑤ 🩸 2026-09-28 — **캡션 글자가 밝은 타일에서 안 보였다**(다크 대비 가드가 잡았다).
  *
@@ -204,15 +259,25 @@ describe('④ 배선 — 눈으로는 안 보이는 것들', () => {
  *    알파를 구하고, **순백(255) 사진**이라는 최악의 바탕에 합성해 WCAG 대비를 실제로 계산한다.
  *    그래야 스톱을 어떻게 다시 쓰든 *결과*가 지켜진다(색 이름 매칭은 재작성에 뚫린다).
  *
- * 📐 기하(브라우저 실측): 밴드 `pt-5 pb-2` + `text-[13px]` → 높이 48, 글자 박스는 바닥에서
- *    8..28px = **아래에서 16.7%..58.3%**. 즉 글자가 닿는 가장 밝은 지점이 60% 근처다.
- *    ⇒ 아래 `TEXT_TOP_PCT` 는 그 실측값이고, 패딩·글자 크기가 바뀌면 전제가 깨지므로
+ * 📐 기하: 밴드 `pt-5 pb-2` + 글자 블록. 글자가 닿는 **가장 밝은 지점**(= 블록 상단)의 알파를 본다.
+ *    ⇒ 아래 `TEXT_TOP_PCT` 는 그 계산값이고, 패딩·글자 크기가 바뀌면 전제가 깨지므로
  *      그 토큰들이 그대로인지 **함께** 단언한다.
+ *
+ * 🔀 **2026-10-07 재조준 (대표 "B안으로 진행") — 캡션이 한 줄에서 세 줄이 됐다.**
+ *    이 시험이 *"세로 값이나 글자 크기가 바뀌면 그때는 실측부터 해야 한다"* 고 적어 둔 그 경우다.
+ *    실제로 **이 시험이 먼저 빨간불을 내서** 재측정하게 만들었고, 종전 램프로는 못 쓴다는 것이 나왔다:
+ *    ```
+ *      종전 1줄  밴드 48px · 글자 상단 60%  · 종전 스톱 알파 0.75 → 할인율 5.83:1  ✅
+ *      B안 3줄   밴드 86px · 글자 상단 76.7% · 종전 스톱 알파 0.436 → 할인율 1.06:1 ❌ (안 보인다)
+ *      ⇒ 스톱을 (0.92 / 0.84@78 / 0)로. 그 지점 알파 0.841 → 할인율 4.87:1 ✅
+ *    ```
+ *    밴드 86 = pb-2(8) + 가격행 13px(16) + mt-1(4) + 지역 12px(15) + mt-1(4) + 매장 15px(19) + pt-5(20).
+ *    글자 상단 66/86 = 76.7%.
  *
  * 이 시험이 **못** 하는 것: 실제 픽셀은 `check-dark-contrast`(브라우저)가 잰다. 여기는 *수학*만 본다.
  */
 describe('⑤ 캡션 바탕 — 밝은 대표색 타일에서도 글자가 보인다', () => {
-  const TEXT_TOP_PCT = 60
+  const TEXT_TOP_PCT = 76.7
 
   /** `linear-gradient(0deg, rgba(0,0,0,a) p%, …)` 의 스톱을 [비율, 알파] 로. 0% = 밴드 맨 아래. */
   const stops = () => {
@@ -251,10 +316,14 @@ describe('⑤ 캡션 바탕 — 밝은 대표색 타일에서도 글자가 보�
   const ratio = (a: number, b: number) => { const [x, y] = [a, b].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05) }
 
   it('기하 전제가 그대로다 (세로 패딩·글자 크기가 바뀌면 위 실측을 다시 해야 한다)', () => {
-    // 🔀 2026-09-29: 가로 패딩만 `px-2.5` → `px-2`(4px 격자, 규칙 ⑧).
-    //    위 대비 실측은 **세로 기하**(pt-5 · pb-2 · 13px 행)에서 나오므로 가로는 무관하다 —
-    //    그래서 다시 재지 않았다. 세로 값이나 글자 크기가 바뀌면 그때는 실측부터 해야 한다.
-    expect(src(STRIP_TSX)).toContain('pt-5 pb-2 text-white text-[13px] font-extrabold')
+    // 🔀 2026-10-07: 캡션이 세 줄이 되면서 크기가 바깥 div 에서 각 줄로 내려갔다.
+    //    위 대비 계산은 **세로 기하**(pt-5 · pb-2 · 15/12/13px 세 줄 + mt-1 두 번)에서 나온다.
+    //    ⚠️ 하나라도 바뀌면 `TEXT_TOP_PCT` 가 틀려지므로 **실측부터** 다시 할 것.
+    const t = src(STRIP_TSX)
+    expect(t, '밴드 패딩').toContain('px-2 pt-5 pb-2 text-white')
+    expect(t, '매장명 15px').toContain("text-[15px] font-bold leading-tight truncate")
+    expect(t, '지역·종류 12px').toContain("mt-1 text-[12px] text-white/70 truncate")
+    expect(t, '가격 행 13px').toContain("mt-1 text-[13px] font-extrabold whitespace-nowrap")
   })
 
   it('그라디언트를 실제로 읽어 낸다 — 못 읽으면 통과가 아니라 실패다', () => {
@@ -265,17 +334,36 @@ describe('⑤ 캡션 바탕 — 밝은 대표색 타일에서도 글자가 보�
     expect(list![0].pct).toBe(0)
   })
 
-  it('🔴 글자가 닿는 가장 밝은 지점에서도 **순백 사진** 위 할인율이 3:1 이상이다', () => {
+  it('🔴 글자가 닿는 가장 밝은 지점에서도 **순백 사진** 위 할인율이 4.5:1 이상이다', () => {
     const list = stops()!
     const a = alphaAt(TEXT_TOP_PCT, list)
     // 대표색은 라이브에서 243 까지 봤다. 최악은 255(순백)이므로 그것으로 잰다.
     const bg = 255 * (1 - a)
-    const hex = src(CSS).match(/--hero-tile-accent:\s*#([0-9A-Fa-f]{6})/)
-    expect(hex, '--hero-tile-accent 를 CSS 에서 읽었다').not.toBeNull()
-    const [r, g, b] = [0, 2, 4].map((i) => parseInt(hex![1].slice(i, i + 2), 16))
+    /* 🔗 2026-10-07: 토큰이 `var(--sale-on-media)` 로 바뀌었다(할인 빨강 한 벌로 모았다).
+       그래서 **한 단계 따라가** 실제로 칠해지는 hex 를 구한다 — 못 구하면 통과가 아니라 실패다
+       (여기서 멈추면 이 시험은 아무 색도 안 재게 된다). */
+    const css = src(CSS)
+    const resolve = (name: string, depth = 0): string | null => {
+      if (depth > 3) return null
+      const m = css.match(new RegExp(`--${name}:\\s*([^;]+);`))
+      if (!m) return null
+      const v = m[1].trim()
+      const hexM = v.match(/^#([0-9A-Fa-f]{6})$/)
+      if (hexM) return hexM[1]
+      const varM = v.match(/^var\(\s*--([\w-]+)\s*\)$/)
+      return varM ? resolve(varM[1], depth + 1) : null
+    }
+    const hex = resolve('hero-tile-accent')
+    expect(hex, '--hero-tile-accent 가 실제로 칠하는 hex 를 못 구했다').not.toBeNull()
+    const [r, g, b] = [0, 2, 4].map((i) => parseInt(hex!.slice(i, i + 2), 16))
     const cr = ratio(lum(r, g, b), lum(bg, bg, bg))
     expect(a, `글자 줄 알파 (${TEXT_TOP_PCT}%)`).toBeGreaterThanOrEqual(0.7)
-    expect(cr, `순백 위 할인율 대비 (알파 ${a.toFixed(2)} → 배경 ${Math.round(bg)})`).toBeGreaterThanOrEqual(3.0)
+    /* 🔴 2026-10-07: 바닥을 3.0 → **4.5** 로 올렸다. 할인율은 **13px bold** 라 WCAG 의 '큰 글자'
+       (18.66px bold / 24px regular)가 아니다 ⇒ 보통 글자의 AA 바닥은 4.5:1 이다. 3.0 은 처음부터
+       틀린 바닥이었고, 밴드를 B안에서 더 어둡게 만든 뒤로는 **아무 색이나 통과시키는** 값이 됐다
+       (실측: 브랜드 블루 3.01 · `--sale`(#DC2626) 3.03 — 둘 다 3.0 을 넘는다). 그래서 색을 바꾸는
+       주입이 통째로 샜다. 지금 색 `--sale-on-media`(#FF5C69)는 4.88 로 새 바닥을 넘는다. */
+    expect(cr, `순백 위 할인율 대비 (알파 ${a.toFixed(2)} → 배경 ${Math.round(bg)})`).toBeGreaterThanOrEqual(4.5)
   })
 
   it('🔴 맨 위는 여전히 투명하다 — 평면 판이 되면 위쪽에 경계선이 보인다', () => {

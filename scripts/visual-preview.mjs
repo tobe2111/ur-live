@@ -157,6 +157,11 @@ const DEAL_TITLES = [
   ['본죽 전복죽', '본죽 삼성점 · 삼성동', 12000, 8900],
   ['CU 모바일상품권 1만원', 'CU 강남역점 · 전국', 10000, 9300],
 ]
+/** 색 한 판짜리 4:3 인라인 사진 — 네트워크 0, 결정론. 띠·카드가 "사진 없음" 으로 떨어지지 않게. */
+const tilePlaceholder = (hex) =>
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="384" height="288"><rect width="384" height="288" fill="${hex}"/></svg>`)
+
 const DEALS = DEAL_TITLES.map(([name, sub, was, now], i) => ({
   id: 9000 + i,
   name,
@@ -165,7 +170,12 @@ const DEALS = DEAL_TITLES.map(([name, sub, was, now], i) => ({
   price: now,
   original_price: was,
   discount_rate: Math.round((1 - now / was) * 100),
-  image_url: '',
+  /* 🖼️ 2026-10-07: 종전엔 `''` 였다 — 그래서 **홈 히어로 띠가 하네스에서 구조적으로 안 보였다**
+     (`pickHeroStripFrom` 의 `toTile` 은 `image_url` 이 비면 null 을 돌려준다). 띠를 눈으로 보려던
+     사람은 "왜 안 뜨지" 를 코드에서 찾아야 했다. 네트워크를 타지 않는 **인라인 data URI** 를 심어
+     오프라인·결정론을 지키면서 띠가 뜨게 한다(`cfImage` 는 `data:` 를 그대로 통과시킨다 — 실측).
+     ⚠️ 색만 있는 판이라 **사진 크롭·화질은 이걸로 판정하지 말 것**(그건 라이브 실측의 일이다). */
+  image_url: tilePlaceholder(['#E8DED6', '#D9D2CB', '#E3DAD2', '#DCD5CE', '#E6DDD5', '#D7D0C9'][i]),
   images: '[]',
   dominant_color: ['#E8DED6', '#D9D2CB', '#E3DAD2', '#DCD5CE', '#E6DDD5', '#D7D0C9'][i],
   category: 'meal_voucher',
