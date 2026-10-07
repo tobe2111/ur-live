@@ -978,8 +978,15 @@ sellerOrdersRoutes.post('/products', async (c) => {
     if (category && VOUCHER_CATEGORY_SET.has(category)) {
       const kv = (c.env as Bindings).SESSION_KV;
       invalidateGroupBuyProductsCache(kv).catch(swallow('seller:cache-invalidate'));
-      // 🔄 2026-07-01: edge/materialized 피드도 퍼지(어드민 동네딜과 동일) → 홈 즉시 반영.
-      import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env as unknown as Parameters<typeof m.invalidateGroupBuyFeed>[0], new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(swallow('seller:feed-invalidate'));
+      // 🔄 2026-07-01: edge/materialized 피드도 퍼지 → 홈 즉시 반영.
+      // 🩸 2026-10-07: **import 부터** waitUntil 로 감싼다 — 종전엔 함수 *안에서만* 걸어서,
+      //   응답이 먼저 끝나면 그 import 가 resolve 되기 전에 isolate 가 떠나 퍼지도 materialized
+      //   삭제도 조용히 사라졌다(대표 "방금 올렸는데 메인에 안 보이네"). 경위는 인계 문서.
+      c.executionCtx?.waitUntil?.(
+        import('../../../worker/utils/group-buy-feed-invalidate')
+          .then((m) => m.invalidateGroupBuyFeed(c.env as unknown as Parameters<typeof m.invalidateGroupBuyFeed>[0], new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p)))
+          .catch(swallow('seller:feed-invalidate'))
+      );
     }
 
     return c.json({ success: true, data: newProduct }, 201);
