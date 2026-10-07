@@ -45,7 +45,24 @@ describe('✅ 스캔 → 확인 → 사용 처리', () => {
     expect(SRC).toMatch(/usable && !blocked && \(/)
   })
 
+  /**
+   * 🩸 2026-10-07 재조준: 네이티브→wasm **자동 폴백**이 생겨 `startCamera` 의 의존성이
+   *   `[hasDetector, t]` → `[hasDetector, startWasm, t]` 가 됐다(`startWasm` 자신은 `t` 에만
+   *   의존한다). 종전 앵커는 그 문자열을 그대로 찾아서 빨간불이 났다 — **지키려던 것은 목록의
+   *   모양이 아니라 "매 스캔마다 바뀌는 상태가 그 목록에 없다"** 는 것이다. 그래서 루프는
+   *   `requestUseRef` 로 부른다. 불변식으로 다시 쓴다.
+   */
   it('④ 카메라 루프가 콜백 변화로 재시작되지 않는다', () => {
-    expect(SRC).toMatch(/\}, \[hasDetector, t\]\)/)
+    const i = SRC.indexOf('const startCamera = useCallback')
+    expect(i).toBeGreaterThan(0)
+    const deps = SRC.slice(i).match(/\n  \}, \[([^\]]*)\]\)/)
+    expect(deps).not.toBeNull()
+    const list = deps![1].split(',').map((x) => x.trim()).filter(Boolean)
+    expect(list.length).toBeGreaterThan(0)
+    // 안정적인 것만 — 상태(pending·results·busy·cameraOn…)가 끼면 매 스캔마다 카메라가 재시작된다.
+    const STABLE = ['hasDetector', 't', 'startWasm']
+    for (const d of list) expect(STABLE).toContain(d)
+    // 그리고 루프는 ref 로 부른다(그래서 위 목록에 요청 함수가 없어도 최신 것을 쓴다).
+    expect(SRC).toMatch(/requestUseRef\.current\(code\)/)
   })
 })

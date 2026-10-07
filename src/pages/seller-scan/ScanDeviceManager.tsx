@@ -4,14 +4,14 @@
  *   그 기기는 로그인 없이 /store/scan 에서 스캔만 가능(정산·설정 접근 불가). 분실 시 즉시 회수.
  *   ⚠️ 키 원문은 발급 응답 1회만 표시(서버엔 해시만) — 새로 보려면 재발급.
  */
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Smartphone, Copy, XCircle, Plus } from 'lucide-react'
 import api from '@/lib/api'
+import ScannableQr from '@/components/voucher/ScannableQr'
 import { toast } from '@/hooks/useToast'
 import { getSellerToken } from '@/lib/seller-auth'
 
-const QRCodeSVG = lazy(() => import('qrcode.react').then(m => ({ default: m.QRCodeSVG })))
 
 interface Device { id: number; name: string; created_at: string; last_used_at: string | null; revoked_at: string | null }
 
@@ -76,11 +76,9 @@ export default function ScanDeviceManager() {
       {issued && (
         <div className="mt-3 rounded-xl bg-[var(--brand-tint)] p-4 flex flex-col items-center gap-3">
           <p className="text-[12px] font-bold text-gray-900">{issued.name} — {t('seller.scanDevices.oneTime', { defaultValue: '이 화면에서만 표시돼요 (다시 못 봄)' })}</p>
-          <div className="bg-white p-3 rounded-xl">
-            <Suspense fallback={<div className="w-[132px] h-[132px]" aria-hidden />}>
-              <QRCodeSVG value={issued.link} size={132} />
-            </Suspense>
-          </div>
+          {/* 🎟️ 2026-10-07: 이것도 **다른 기기가 찍는** QR 이라 조용영역·흰 바탕·크기가 필요하다
+              (`ScannableQr` SSOT). 종전 132px 는 직원 폰이 찍기엔 작았다. */}
+          <ScannableQr value={issued.link} />
           <button
             onClick={() => { navigator.clipboard?.writeText(issued.link).then(() => toast.success(t('common.copied', { defaultValue: '복사되었습니다' }))) }}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white border border-gray-200 text-[12px] font-bold text-gray-900">

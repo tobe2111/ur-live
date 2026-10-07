@@ -1,10 +1,11 @@
 // 🧱 2026-06-29 TD: MyVouchersPage god 파일 분해 — 이용권 사용(QR/PIN) 모달(verbatim 추출). 동작 불변.
 //   QRCodeSVG(lazy)·VoucherQRCode 는 모듈 내부 전용, QRModal 만 페이지가 사용.
-import { lazy, Suspense, useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { OkIcon, PinIcon, BadIcon } from '@/components/icons/urdeal-icons'
 import { useTranslation } from 'react-i18next'
 import api from '@/lib/api'
 import { toast } from '@/hooks/useToast'
+import ScannableQr from '@/components/voucher/ScannableQr'
 import VoucherRedeemModal from '@/components/voucher/VoucherRedeemModal'
 import { confirmDialog } from '@/components/ui/confirm-dialog'
 import { useEscapeKey } from '@/hooks/useEscapeKey'
@@ -20,20 +21,16 @@ import SameStoreDeals from './SameStoreDeals'
 // 🛡️ 2026-05-16: 외부 QR API (api.qrserver.com) 의존 제거 → qrcode.react 로컬 SVG.
 // 🛡️ 2026-06-01 (loading): qrcode.react 는 QR 모달 열 때만 필요 → lazy (페이지 chunk -10KB).
 //   장점: 외부 서비스 다운에 영향 X, latency 0, 오프라인에서도 렌더, 프라이버시.
-const QRCodeSVG = lazy(() => import('qrcode.react').then(m => ({ default: m.QRCodeSVG })))
+// 🎟️ 2026-10-07: 이 자리의 속성(조용영역·바탕색·크기)을 `ScannableQr` 로 옮겼다.
+//   ⚠️ 이것이 대표가 겪은 "안 읽힌다" 의 **원인은 아니다** — 같은 QR 을 네이티브 카메라는 읽었다
+//   (대표가 바로잡아 준 것). 원인은 우리 카메라 파이프라인이고 그쪽은 `scan-camera.ts` 가 고쳤다.
+//   여기서 고치는 것은 **여유**다: 종전 `includeMargin={false}` 는 QR 표준이 요구하는 4모듈
+//   조용영역을 안 뒀고(밖의 p-2 는 1.25모듈), `dark:bg-[#11141C]` 는 **다크모드에서 QR 둘레를
+//   검정으로 만들어** 파인더 패턴 경계를 배경에 녹였다(대표는 노트북으로 봤다). 둘 다 그 자체로
+//   결함이고, 여유가 없는 QR 은 좋은 카메라만 읽는다.
 
 // 🛡️ 2026-05-16: 카카오맵 후기 보너스 제출 버튼 (used voucher 에 노출)
 //   URL 또는 스크린샷 둘 중 하나 제출 → 백엔드가 OCR / 어드민 검증
-
-function VoucherQRCode({ value, size = 160 }: { value: string; size?: number }) {
-  return (
-    <div className="mx-auto bg-white dark:bg-[#11141C] p-2 rounded">
-      <Suspense fallback={<div style={{ width: size, height: size }} className="animate-pulse bg-gray-100 dark:bg-[#1D1F29] rounded" />}>
-        <QRCodeSVG value={value} size={size} level="M" includeMargin={false} />
-      </Suspense>
-    </div>
-  )
-}
 
 export default function QRModal({ voucher: initialVoucher, onClose }: { voucher: Voucher; onClose: () => void }) {
   const { t } = useTranslation()
@@ -240,7 +237,7 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
                 </>
               )}
               <div className={isUsed || isExpired ? 'opacity-20 grayscale' : ''}>
-                <VoucherQRCode value={qrUrl} size={160} />
+                <ScannableQr value={qrUrl} />
               </div>
               {/* 🦦 2026-10-07 (확정 시안 ② "QR 카드 모서리에 작게"): 매장 계산대 스티커와 같은 수달이라 직원이
                   "유어딜 이용권"인 걸 바로 안다. **QR 밖** 오른쪽 아래 모서리에 걸쳐 두어 스캔을 가리지 않는다.

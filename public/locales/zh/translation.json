@@ -2939,7 +2939,12 @@
       "notUsable": "该券无法使用（已过期或已退款）",
       "checking": "正在确认券…",
       "confirmQ": "确定核销吗？",
-      "confirmNote": "核销后无法撤销。"
+      "confirmNote": "核销后无法撤销。",
+      "photoPick": "从照片识别",
+      "photoReading": "正在从照片中寻找二维码…",
+      "photoNoQr": "照片中没找到二维码。请靠近一些、光线亮一些再拍。",
+      "helpTitle": "二维码扫不出来？",
+      "helpBody": "① 请顾客调高屏幕亮度 ② 靠近到 10~20 厘米 ③ 稍微倾斜以避开反光 ④ 仍然不行就用上方\"从照片识别\""
     },
     "gbSettle": {
       "title": "团购自动结算明细",
@@ -5030,7 +5035,12 @@
       "notFound": "未找到餐券",
       "processingError": "处理时发生错误",
       "seoTitle": "餐券确认",
-      "seoDescription": "通过二维码确认餐券"
+      "seoDescription": "通过二维码确认餐券",
+      "sellerAsk": "您是这家店的店主吗？",
+      "sellerLoginHint": "登录后无需验证码即可直接核销。",
+      "sellerPickStore": "在\"我的\"中的\"我的门店\"选择门店后，无需验证码即可核销。",
+      "goLogin": "用 Kakao 登录",
+      "goMyStores": "打开我的门店"
     },
     "qrCode": "二维码",
     "share": "分享",

@@ -2258,7 +2258,12 @@
       "notUsable": "Este bono no se puede usar (vencido o reembolsado)",
       "checking": "Verificando bono…",
       "confirmQ": "¿Canjear este bono?",
-      "confirmNote": "El canje no se puede deshacer."
+      "confirmNote": "El canje no se puede deshacer.",
+      "photoPick": "Escanear desde foto",
+      "photoReading": "Buscando un código QR en la foto…",
+      "photoNoQr": "No se encontró ningún QR en esa foto. Acércate más y con más luz.",
+      "helpTitle": "¿El QR no se escanea?",
+      "helpBody": "1) Pide al cliente que suba el brillo 2) Acércate a 10-20 cm 3) Inclina para evitar reflejos 4) ¿Sigue sin funcionar? Usa «Escanear desde foto» arriba"
     },
     "gbSettle": {
       "title": "Liquidaciones automáticas de compra grupal",
@@ -5030,7 +5035,12 @@
       "notFound": "Cupón no encontrado",
       "processingError": "Error durante el procesamiento",
       "seoTitle": "Verificación de cupón",
-      "seoDescription": "Verificar cupón mediante código QR"
+      "seoDescription": "Verificar cupón mediante código QR",
+      "sellerAsk": "¿Eres el dueño del local?",
+      "sellerLoginHint": "Inicia sesión para canjear al instante, sin código de verificación.",
+      "sellerPickStore": "Elige tu local en «Mis locales» dentro de Mi cuenta para canjear sin código.",
+      "goLogin": "Entrar con Kakao",
+      "goMyStores": "Abrir mis locales"
     },
     "qrCode": "Código QR",
     "share": "Compartir",
