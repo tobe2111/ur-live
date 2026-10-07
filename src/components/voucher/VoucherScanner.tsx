@@ -436,17 +436,6 @@ export default function VoucherScanner() {
             <div className="w-52 h-52 rounded-2xl border-2 border-white/80" />
           </div>
         )}
-        {/* 🔄 후면 렌즈가 둘 이상일 때만. 자동 선택이 틀렸을 때의 탈출구다(위 switchCamera). */}
-        {cameraOn && backCams.length > 1 && (
-          <button
-            type="button"
-            onClick={() => { void switchCamera() }}
-            className="absolute top-3 right-3 px-3 py-2 rounded-full bg-black/60 text-white text-[13px] font-bold"
-          >
-            {/* 아이콘 없이 글자만 — lucide 뜻 아이콘을 늘리지 않는다(소비자 아이콘 래칫). */}
-            {t('seller.scan.switchCamera', { defaultValue: '카메라 전환' })}
-          </button>
-        )}
         {busy && (
           <div className="absolute inset-x-0 bottom-0 bg-black/60 text-white text-center text-[15px] py-2">
             <Loader2 className="w-4 h-4 animate-spin inline mr-2" />{t('seller.scan.processing', { defaultValue: '사용 처리 중…' })}
@@ -471,6 +460,18 @@ export default function VoucherScanner() {
             {t('seller.scan.helpTitle', { defaultValue: 'QR 이 안 읽히나요?' })}
           </p>
           <p>{t('seller.scan.helpBody', { defaultValue: '① 손님 화면 밝기를 올려 주세요 ② 10~20cm 까지 가까이 ③ 비스듬히 들어 반사를 피하세요 ④ 그래도 안 되면 위의 사진으로 읽기' })}</p>
+          {/* 🔄 렌즈 전환은 **여기에만** 둔다(2026-10-07 대표 "그런게 필요해?"). 평소엔 자동으로 메인
+              렌즈를 고르므로 늘 떠 있는 버튼은 소음이다 — 7초 동안 한 건도 못 읽은, 즉 자동 선택이
+              틀렸을 수 있는 순간에만 보인다. 렌즈가 하나뿐인 폰엔 안 뜬다. */}
+          {cameraOn && backCams.length > 1 && (
+            <button
+              type="button"
+              onClick={() => { void switchCamera() }}
+              className="mt-2 w-full py-2 rounded-xl bg-brand text-white text-[15px] font-bold"
+            >
+              {t('seller.scan.switchCamera', { defaultValue: '다른 렌즈로 바꿔 보기' })}
+            </button>
+          )}
         </div>
       )}
 
