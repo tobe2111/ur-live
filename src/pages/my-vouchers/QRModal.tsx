@@ -14,6 +14,7 @@ import { safeDate } from '@/utils/safe-date'
 import { Phone, Share2, X } from 'lucide-react'
 import type { Voucher } from './types'
 import ReviewBonusButton from './ReviewBonusButton'
+import Udal from '@/components/mascot/Udal'
 import SameStoreDeals from './SameStoreDeals'
 
 // 🛡️ 2026-05-16: 외부 QR API (api.qrserver.com) 의존 제거 → qrcode.react 로컬 SVG.
@@ -218,6 +219,12 @@ export default function QRModal({ voucher: initialVoucher, onClose }: { voucher:
               <div className={isUsed || isExpired ? 'opacity-20 grayscale' : ''}>
                 <VoucherQRCode value={qrUrl} size={160} />
               </div>
+              {/* 🦦 2026-10-07 (확정 시안 ② "QR 카드 모서리에 작게"): 매장 계산대 스티커와 같은 수달이라 직원이
+                  "유어딜 이용권"인 걸 바로 안다. **QR 밖** 오른쪽 아래 모서리에 걸쳐 두어 스캔을 가리지 않는다.
+                  사용 완료·만료면 빠진다(그때는 도장이 그 자리의 주인공이다). */}
+              {!isUsed && !isExpired && (
+                <Udal mood="showQr" size={52} className="absolute -right-11 -bottom-3" />
+              )}
               {/* 🛡️ 2026-05-16 → 2026-07-06 (대표 "QR 위에 사용 완료 도장처럼 박기"): 사용/만료 시
                   고무도장 스타일 오버레이 — 비스듬히 박힌 이중 테두리 스탬프 + QR grayscale(위 div) 로
                   재사용을 시각적으로 명백히 차단(실제 재사용 차단은 서버 atomic CAS). */}

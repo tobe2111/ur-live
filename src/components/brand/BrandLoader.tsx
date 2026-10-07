@@ -11,7 +11,7 @@
  */
 import UrDealLogo from './UrDealLogo'
 import { takeBootFirstScreen } from '@/lib/boot-first-screen'
-import { UDAL_LOADER_SRC, UDAL_BOB_PERIOD_S, UDAL_FADE_MASK, udalLoaderWidth, udalLoaderHeight } from '@/shared/udal-loader'
+import { UDAL_LOADER_SRC, UDAL_HOP_PERIOD_S, udalLoaderWidth, udalLoaderHeight } from '@/shared/udal-loader'
 
 interface BrandLoaderProps {
   /** 전체화면 중앙(라우트 Suspense fallback). false 면 섹션 인라인 로더. */
@@ -48,7 +48,7 @@ export default function BrandLoader({ fullScreen = false, size = 34, label, forc
   const nowSec = typeof performance !== 'undefined' ? Math.max(0, performance.now() - phaseBase) / 1000 : 0
   const breatheDelay = `-${(nowSec % 1.5).toFixed(3)}s`
   const sweepDelay = `-${(nowSec % 1.15).toFixed(3)}s`
-  const bobDelay = `-${(nowSec % UDAL_BOB_PERIOD_S).toFixed(3)}s`
+  const hopDelay = `-${(nowSec % UDAL_HOP_PERIOD_S).toFixed(3)}s`
   // 🦦 2026-10-07 (대표 허가 "로딩 화면"): 로고 위에 유달이. 대시보드(forceLight)는 마스코트를 안 쓰는
   //   자리라 빠진다. 워커 정적 로더(`urdealLoaderHtml`)와 **같은 파일·같은 크기·같은 위상**이다.
   const showUdal = !forceLight
@@ -74,8 +74,8 @@ export default function BrandLoader({ fullScreen = false, size = 34, label, forc
           width={udalW}
           height={udalLoaderHeight(size)}
           decoding="async"
-          className="ur-udal-bob select-none pointer-events-none"
-          style={{ width: udalW, height: 'auto', animationDelay: bobDelay, WebkitMaskImage: UDAL_FADE_MASK, maskImage: UDAL_FADE_MASK }}
+          className="ur-udal-hop select-none pointer-events-none"
+          style={{ width: udalW, height: 'auto', animationDelay: hopDelay }}
         />
       )}
       {/* 로고 — 은은한 호흡 (전역 위상 동기 — 재마운트에도 연속) */}

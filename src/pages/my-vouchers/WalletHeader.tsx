@@ -6,6 +6,7 @@
 //   글자 크기: 제목 20 / 금액 21 (직전 24·26 은 대표 지적대로 컸다). 지표 줄은 12.
 import { ArrowLeft } from 'lucide-react'
 import { formatNumber } from '@/utils/format'
+import Udal from '@/components/mascot/Udal'
 
 export interface WalletStat {
   label: string
@@ -49,9 +50,14 @@ export default function WalletHeader({ title, hideTitle = false, amount, unit, s
           </div>
         )}
         {amount !== null && (
-          <span className="shrink-0 text-[24px] font-extrabold tabular-nums tracking-tight text-gray-900 dark:text-white leading-none">
-            {formatNumber(amount)}<span className="font-sans text-[12px] font-bold text-gray-400 dark:text-gray-500 ml-1">{unit}</span>
-          </span>
+          <div className="shrink-0 flex items-end gap-2">
+            <span className="text-[24px] font-extrabold tabular-nums tracking-tight text-gray-900 dark:text-white leading-none">
+              {formatNumber(amount)}<span className="font-sans text-[12px] font-bold text-gray-400 dark:text-gray-500 ml-1">{unit}</span>
+            </span>
+            {/* 🦦 2026-10-07 (확정 시안 ⑤ "지갑 맨 위 요약에만"): 이용권 카드마다 넣지 않는다(한 화면에 한 마리).
+                지갑이 비면(amount=null) 빈 지갑 화면의 수달이 대신 나오므로 여기선 빠진다. */}
+            <Udal mood="paid" size={36} priority className="-mb-1" />
+          </div>
         )}
       </div>
 

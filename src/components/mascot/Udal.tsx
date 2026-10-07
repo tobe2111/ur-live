@@ -12,42 +12,54 @@
  * ⛔ 쓰지 않는 자리(문서 그대로): 결제 위젯 안 · 가격·할인율 옆 · 목록 카드마다 · 환불·사용 불가 안내 ·
  *    셀러 대시보드·어드민·도매몰. 한 화면에 한 마리.
  */
-import neutral from '@/assets/mascot/udal-neutral.webp'
-import happy from '@/assets/mascot/udal-happy.webp'
-import excited from '@/assets/mascot/udal-excited.webp'
-import surprised from '@/assets/mascot/udal-surprised.webp'
 import curious from '@/assets/mascot/udal-curious.webp'
-import sleepy from '@/assets/mascot/udal-sleepy.webp'
-import sorry from '@/assets/mascot/udal-sorry.webp'
 import wink from '@/assets/mascot/udal-wink.webp'
+import poseStand from '@/assets/mascot/udal-pose-stand.webp'
+import poseStamp from '@/assets/mascot/udal-pose-stamp.webp'
+import poseWallet from '@/assets/mascot/udal-pose-wallet.webp'
+import poseHighfive from '@/assets/mascot/udal-pose-highfive.webp'
+import poseCable from '@/assets/mascot/udal-pose-cable.webp'
+import poseEmptyWallet from '@/assets/mascot/udal-pose-empty-wallet.webp'
+import poseQr from '@/assets/mascot/udal-pose-qr.webp'
 
-/** 화면이 고르는 것은 상황이다. 표정은 아래 표가 정한다. */
+/** 화면이 고르는 것은 상황이다. 그림은 아래 표가 정한다. */
 export type UdalMood =
-  | 'hello' // 기본 · 환영
-  | 'done' // 완료 · 감사 (사용 완료 등)
+  | 'hello' // 기본 · 환영 (가입 환영 · 검색어 입력 전)
+  | 'done' // 이용권 사용 완료 (도장)
+  | 'paid' // 결제 완료 · 지갑 (이용권 더미 위 지갑)
   | 'yay' // 신남 · 혜택 발견
   | 'lost' // 길 잃음 (404)
-  | 'notFound' // 찾는 게 없음 (검색 0건)
-  | 'empty' // 아직 아무것도 없음 (빈 목록)
-  | 'oops' // 오류 · 연결 실패
+  | 'notFound' // 찾는 게 없음 (검색 0건 · 지도 0건)
+  | 'empty' // 아직 아무것도 없음 (빈 지갑 · 찜 0개)
+  | 'oops' // 오류 · 연결 실패 (빠진 케이블)
   | 'tip' // 팁 · 안내
+  | 'showQr' // 이용권 사용 화면 — 직원에게 QR 보여주기
 
-const FACE: Record<UdalMood, string> = {
-  hello: neutral,
-  done: happy,
-  yay: excited,
-  lost: surprised,
-  notFound: curious,
-  empty: sleepy,
-  oops: sorry,
-  tip: wink,
+/**
+ * 🦦 2026-10-07 (대표 "남은 것들 모두 해줘" — 확정 시안 10곳): 표정 얼굴(흉상) → 시안의 **포즈 그림**(전신)으로.
+ *   원본은 대표 시안 아티팩트(유어딜 마스코트 시안 · Pages 보드)에 올라간 누끼 그림이다.
+ *   `bust` 는 가슴께에서 잘린 얼굴 그림이라 아래 끝을 바탕으로 녹인다(전신 포즈는 녹이지 않는다).
+ *   원본 해상도가 200px 남짓이라 **화면에선 가로 128px 이하로 쓴다**(2배 화면에서 흐려지지 않는 한계).
+ */
+interface Art { src: string; w: number; h: number; bust?: boolean }
+const ART: Record<UdalMood, Art> = {
+  hello: { src: poseStand, w: 332, h: 487 },
+  done: { src: poseStamp, w: 214, h: 222 },
+  paid: { src: poseWallet, w: 175, h: 239 },
+  yay: { src: poseHighfive, w: 204, h: 229 },
+  lost: { src: poseCable, w: 256, h: 230 },
+  notFound: { src: curious, w: 359, h: 394, bust: true },
+  empty: { src: poseEmptyWallet, w: 184, h: 233 },
+  oops: { src: poseCable, w: 256, h: 230 },
+  tip: { src: wink, w: 359, h: 394, bust: true },
+  showQr: { src: poseQr, w: 189, h: 238 },
 }
 
-/** 원본 캔버스 비율(359×394) — width/height 를 같이 줘야 로딩 중 자리가 밀리지 않는다. */
-const RATIO = 394 / 359
+/** 흉상 그림의 아래 끝을 바탕으로 녹이는 마스크. */
+const BUST_FADE = 'linear-gradient(to bottom, black 86%, transparent)'
 
 export function udalSrc(mood: UdalMood): string {
-  return FACE[mood]
+  return ART[mood].src
 }
 
 interface UdalProps {
@@ -65,25 +77,21 @@ interface UdalProps {
  * 장식 이미지다 — 옆 문장이 이미 뜻을 말하므로 스크린리더에는 읽히지 않게 한다(`alt=""`).
  */
 export default function Udal({ mood, size = 120, motion = false, priority = false, className = '' }: UdalProps) {
+  const art = ART[mood]
+  const mask = art.bust ? { WebkitMaskImage: BUST_FADE, maskImage: BUST_FADE } : {}
   return (
     <img
-      src={FACE[mood]}
+      src={art.src}
       alt=""
       aria-hidden="true"
       draggable={false}
       width={size}
-      height={Math.round(size * RATIO)}
+      height={Math.round((size * art.h) / art.w)}
       loading={priority ? 'eager' : 'lazy'}
       decoding="async"
       data-udal={mood}
       className={`select-none pointer-events-none ${motion ? 'ur-udal-bob' : ''} ${className}`}
-      // 원본이 가슴께에서 잘린 흉상이라 아래 끝이 칼선으로 보인다 → 아래 14% 만 바탕으로 녹인다.
-      style={{
-        width: size,
-        height: 'auto',
-        WebkitMaskImage: 'linear-gradient(to bottom, black 86%, transparent)',
-        maskImage: 'linear-gradient(to bottom, black 86%, transparent)',
-      }}
+      style={{ width: size, height: 'auto', ...mask }}
     />
   )
 }
