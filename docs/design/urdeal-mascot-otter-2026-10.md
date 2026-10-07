@@ -1,7 +1,8 @@
 # 유어딜 마스코트: 수달 (2026-10-06)
 
-> 상태: **캐릭터 확정 (2026-10-07 대표 "지금 좋다 … 이 캐릭터로 하자")** — 아래 접점 포즈 4종의 3D 피규어 수달
-> (흰 눈썹 무늬 · 흰 수염 · 블루 스카프). 구현 전. 상표용 최종 원본(3D 아티스트)·이름·KIPRIS 미정.
+> 상태: **캐릭터 완전 확정 (2026-10-07 대표 "이거 너무 좋다 … 이거로 완전 픽스")** — 기준 원본은
+> `docs/design/assets/mascot/otter-turnaround-master.png`(정면·3/4·측면·3/4 뒤·뒤). 이 그림이 SSOT 다.
+> 앞서 만든 접점 포즈 4종(점토 질감)은 이 기준과 질감·비율이 달라 **재생성 대상**. 상표용 3D 원본·이름·KIPRIS 미정.
 
 ## 결정 흐름 (대표 발언 그대로)
 
@@ -68,6 +69,27 @@ High quality, Pixar-like charm, no text.
 
 화면 시안(캔버스 "확정 캐릭터: 접점 4곳 화면 시안"): 매장 스티커 · 내 이용권 요약 카드 · 사용 완료 · 정산 완료 알림.
 
+## ⭐ 기준 원본 (SSOT) — 2026-10-07 확정
+
+대표: *"이거 너무 좋다. 전이랑 다르긴 한데 이거로 완전 픽스할 수 있어?"*
+
+| 파일 | 용도 |
+|---|---|
+| `assets/mascot/otter-turnaround-master.png` | 원본(회색 배경) — 모든 생성·의뢰의 기준 |
+| `assets/mascot/otter-turnaround-transparent.png` | 같은 그림 투명 배경 |
+| `assets/mascot/otter-view-front.png` · `-three-quarter-front` · `-side` · `-three-quarter-back` · `-back` | 방향별 투명 PNG (영상 도구 참조 이미지로 바로 넣는다) |
+
+방향별 분리는 직선 자르기 대신 알파 연결 성분 단위(수염·꼬리가 옆 칸과 겹쳐 직선은 조각이 섞였다).
+
+**확정 디자인의 특징 (이전 점토 버전과 다른 점)**
+- 질감: 점토가 아니라 **보송한 봉제인형 같은 짧은 털**
+- 비율: 머리가 몸 전체의 약 45%, 짧고 통통한 몸, 짧은 팔다리
+- 얼굴: 아주 큰 동그란 갈색 눈(하이라이트 2개) · 연한 크림색 눈썹 두 개 · 작은 분홍 코 · 작은 미소 · 볼 터치
+- 크림색: 볼·주둥이·턱에서 가슴을 지나 배 전체의 큰 타원까지
+- 귀: 머리 옆 눈 높이에 작고 둥글게, 안쪽이 조금 어둡다
+- 꼬리: 굵고 긴 수달 꼬리 · 발바닥 무늬 없이 둥근 발
+- 스카프: 브랜드 블루(#1C69EF) 반다나, 앞에서 매듭 · 뒤에서는 삼각형만
+
 ## 누끼(투명 PNG) — 2026-10-07
 
 대표가 원본 1024px 4장을 전달 → BiRefNet(`rembg birefnet-general`)으로 배경 제거, 여백 24px 로 크롭.
@@ -83,18 +105,18 @@ High quality, Pixar-like charm, no text.
 문구를 바꾸면 캐릭터가 바뀐다 — 수정은 이 문서에서만.
 
 ```
-Chibi baby otter designer toy, soft matte clay material with subtle fur texture.
-VERY BIG ROUND HEAD (about 45% of total height), short chubby body, short stubby arms and legs.
-Warm light-brown fur. Small rounded ears on the sides of the head at eye level.
-Cream-white face mask over cheeks, muzzle and chin, plus two thick cream-white eyebrow marks.
-Large round glossy dark-brown eyes with white highlights. Small rounded pink nose, small smile,
-pink cheek blush, long thin white whiskers (3 per side). Cream belly patch.
-Long thick tapering tail. Bright cobalt-blue (#1C69EF) neckerchief knotted at the front;
-from behind only the folded triangle of the scarf shows.
+Cute chibi baby otter mascot, 3D animated character, soft plush short fur texture (like a high-end stuffed toy).
+VERY BIG ROUND HEAD (about 45% of total height), short chubby body, short stubby arms and legs, rounded feet.
+Warm medium-brown fur. Small rounded ears on the sides of the head at eye level, slightly darker inside.
+Cream-white fur on cheeks, muzzle and chin continuing down the chest into a large cream oval belly.
+Two soft cream-white eyebrow marks. Very large round glossy brown eyes with two white highlights.
+Small rounded pink nose, small gentle smile, soft pink cheek blush, thin white whiskers.
+Long thick tapering otter tail. Bright cobalt-blue (#1C69EF) bandana neckerchief knotted at the front;
+from behind only the triangle of the bandana shows.
 ```
 
-턴어라운드(정면·3/4·측면·3/4 뒤·뒤) 생성본 — URL 2026-10-14 경 만료, 대표 로컬 저장 필요:
-- 채택 후보(gpt-image-2.5): https://www.figma.com/api/mcp/asset/380c367b-a43a-4ac6-acd7-e2f4818fbc74.png
+턴어라운드 생성 이력 (원본은 위 ⭐ 기준 원본으로 레포에 저장 완료):
+- **확정**(gpt-image-2.5): https://www.figma.com/api/mcp/asset/380c367b-a43a-4ac6-acd7-e2f4818fbc74.png
 - 폐기(gemini, 머리가 작아 다른 캐릭터처럼 보임): https://www.figma.com/api/mcp/asset/7d988555-9ad7-4cf9-9d45-07aed7f08157.png
 - 표정 시트 1차(gemini) — 얼굴이 길고 나이 들어 보여 **재생성 필요**: https://www.figma.com/api/mcp/asset/f845b4fd-359f-420a-a0c1-f9258055a056.png
 
