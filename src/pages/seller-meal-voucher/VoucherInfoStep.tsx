@@ -13,6 +13,7 @@ import NetProceedsCard from './NetProceedsCard'
 import PromoMarginCalculator, { promoGuideFor } from '../seller-product-new/PromoMarginCalculator'
 import VoucherPhotoSection from './VoucherPhotoSection'
 import CardPreview from './CardPreview'
+import DiscountPriceFields from './DiscountPriceFields'
 import type { VoucherCategory, VoucherForm } from './voucher-form'
 
 interface Props {
@@ -96,29 +97,8 @@ export default function VoucherInfoStep({ form, update, setCategory, suggestedIm
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.mealVoucher.sellingPrice')} *</label>
-              <input
-                type="number"
-                value={form.price || ''}
-                onChange={e => update('price', Number(e.target.value))}
-                placeholder="25000"
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('seller.mealVoucher.originalPrice')}</label>
-              <input
-                type="number"
-                value={form.original_price || ''}
-                onChange={e => update('original_price', Number(e.target.value))}
-                placeholder="50000"
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:border-brand focus:outline-none"
-              />
-            </div>
-          </div>
+          {/* 💸 2026-10-07: 정가 → 할인 [원 / %] → 판매가. 할인은 판매가를 쓰는 손잡이(저장 안 함). */}
+          <DiscountPriceFields price={form.price} originalPrice={form.original_price} update={update} />
 
           {/* 💰 판매 1건당 실수령가 — 항상 표시(채널별 수수료 SSOT). */}
           <NetProceedsCard price={form.price} promoPct={form.promo_pct} />
