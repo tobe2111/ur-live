@@ -63,3 +63,4 @@
 - 동반: lucide 뜻 아이콘 래칫 171→170(환영 시트 Sparkles)→169(SearchX). 안 내려서 CI 주입이 통과→Verify 실패했던 것(`9d64a72`).
 - `home-chunk-diet` OK_PARTS 거울에 `/src/components/mascot/`(이미 app-shell 규칙) 추가.
 - 대표가 고르지 않은 2번(피드 오류 화면)·3번(PC QR 띠)은 하지 않았다.
+- PC 홈 하단 "폰으로 이어보기" 띠(`pc-home/PcHomeAppBand.tsx`)에 QR 든 유달이(`showQr`, 76px) — 대표 "1번만 넣어줘". 1440px 렌더로 QR·문구 오른쪽 배치 눈 확인. 히어로·피드 끝은 대표가 안 고름.
