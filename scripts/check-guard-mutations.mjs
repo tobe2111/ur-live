@@ -9834,13 +9834,16 @@ canvas {
   {
     name: '🎟️ 발송 실패한 교환권을 다시 "내 교환권" 으로 센다',
     file: 'src/pages/user-profile/useMyCounts.ts',
-    find: 'vouchers.filter(v => isGifticonVoucher(v) && !isFailedGifticon(v)).length',
-    replace: 'vouchers.filter(isGifticonVoucher).length',
+    find: "isGifticonVoucher(v) && isUsableWalletItem(v)).length",
+    replace: "isGifticonVoucher(v) && v.status === 'unused').length",
     test: 'src/tests/unit/gifticon-failed-not-counted.test.tsx',
     why:
       '대표가 지목한 숫자가 정확히 이것이다 — 문자조차 못 받은 교환권을 "내 교환권 1" 로 말하면 거짓이다. ' +
       'KT 병합이 발송 실패를 status:unused 로 눌러 담기 때문에 kt_status 를 안 보면 되살아난다. ' +
-      '⚠️ 이 항목은 되돌려-검증에서 **처음엔 통과했다** — 지갑 페이지만 테스트하고 이 카운트를 안 봤다.',
+      '⚠️ 이 항목은 되돌려-검증에서 **처음엔 통과했다** — 지갑 페이지만 테스트하고 이 카운트를 안 봤다. ' +
+      '🩸 2026-10-07 재조준: 그 줄이 `!isFailedGifticon(v)` → `isUsableWalletItem(v)` 로 바뀌어 앵커가 ' +
+      '사라졌다(술어를 SSOT 로 합치면서). **불변식은 그대로 살아 있다** — 상태만 보고 실패분을 안 거르면 ' +
+      '다시 되살아난다. 주입은 그 모양으로 옮겼다.',
   },
   {
     name: '🎟️ 교환권 지갑이 발송 실패분을 다시 사용가능·합계에 넣는다',
