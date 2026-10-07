@@ -32,6 +32,7 @@ import { notifyUser } from '@/lib/notifications'
 import { getOrIssueOwnerClaimCode, formatStoreCode } from '@/worker/utils/store-codes'
 import { readBrokerTerms } from '@/worker/utils/broker-share'
 import { isSeatableStoreStatus } from '@/shared/seller-status'
+import { shippingOrderSql } from '@/shared/db/shipping-order-sql'
 import {
   listOperableStores,
   canOperateStore,
@@ -100,7 +101,7 @@ app.get('/my-stores', async (c) => {
 //   사람 기준: 앉을 수 있는 매장(active|approved) 전부의 **오늘**(KST) 매출·주문·처리 대기를 한 번에.
 //   읽기 전용 집계. 권한은 listOperableStores 가 이미 판정한 좌석 집합 안에서만 센다(좌석 토큰 발급과 같은 근거).
 //   ⚠️ 판정 규칙은 `/dashboard/stats`(seller-settlements.routes)와 **같아야** 한다 — PAID/DONE · DATE(created_at,'+9 hours').
-//   처리 대기 = 결제됐는데 아직 확인 전(useSellerHome AWAITING_CONFIRM 과 같은 집합), 최근 30일.
+//   처리 대기 = 결제됐는데 아직 확인 전인 **배송 주문**(클라 `order-stage.needsSellerConfirm` 과 같은 규칙), 최근 30일.
 app.get('/my-stores/summary', async (c) => {
   try {
     const userId = await resolveActorUserId(c)
@@ -123,10 +124,13 @@ app.get('/my-stores/summary', async (c) => {
           GROUP BY seller_id`
       ).bind(...ids, todayKst).all<{ seller_id: number; n: number; rev: number }>().catch(() => ({ results: [] as { seller_id: number; n: number; rev: number }[] })),
       c.env.DB.prepare(
-        `SELECT seller_id, COUNT(*) AS n
-           FROM orders
-          WHERE seller_id IN (${marks}) AND status IN ('PAID','DONE','PAY_COMPLETE') AND created_at >= datetime('now', '-30 days')
-          GROUP BY seller_id`
+        // 🧭 2026-10-07: **배송 주문만** — 이용권·교환권은 [주문 확인] 할 일이 없어 영원히 여기 쌓였다
+        //   (클라 `order-stage.ts` 와 같은 규칙, SQL 짝 `shipping-order-sql.ts`).
+        `SELECT o.seller_id, COUNT(*) AS n
+           FROM orders o
+          WHERE o.seller_id IN (${marks}) AND o.status IN ('PAID','DONE','PAY_COMPLETE') AND o.created_at >= datetime('now', '-30 days')
+            AND ${shippingOrderSql('o')}
+          GROUP BY o.seller_id`
       ).bind(...ids).all<{ seller_id: number; n: number }>().catch(() => ({ results: [] as { seller_id: number; n: number }[] })),
       /**
        * ⚡ 2026-10-01 — **판매 중 개수**(대표 *"내 가게 이 부분이 가장 늦게 떠"*).

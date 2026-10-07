@@ -65,6 +65,26 @@ export const SELLER_ORDERS = [
     created_at: '2026-09-28 20:05:00', updated_at: '2026-09-29 09:00:00',
     user_name: '박하늘별님구름햇님보다사랑스러우리', user_email: 'very.long.email.address.for.testing@example-domain.co.kr',
   },
+  // 🎟️ 2026-10-07 — 이용권 주문 둘(미사용 1 · 다 씀 1). `order-list-enrich` 가 붙이는 `order_kind`·`vouchers` 모양.
+  //   이게 없으면 주문 탭의 [사용 전] 을 미리보기로 볼 수 없다(택배 주문만 있는 매장처럼 그려진다).
+  {
+    id: 10231, order_number: 'UR-20260930-0007', user_id: 11, total_amount: 18_000,
+    status: 'DONE', shipping_name: null, shipping_phone: null, shipping_address: null,
+    tracking_number: null, courier: null, payment_method: 'deal_points', payment_status: 'approved',
+    created_at: '2026-09-30 03:20:00', updated_at: '2026-09-30 03:20:00',
+    user_name: '이용권손님', user_email: 'guest@example.com',
+    order_kind: 'voucher', items: [{ id: 1, product_id: 501, product_name: '치즈돈가스 2인 이용권', image_url: null, quantity: 1, price: 18_000 }],
+    vouchers: [{ code: 'UR-LUBA-RCP5', status: 'unused', used_at: null, expires_at: '2026-12-31 14:59:59' }],
+  },
+  {
+    id: 10230, order_number: 'UR-20260929-0101', user_id: 12, total_amount: 9_000,
+    status: 'DONE', shipping_name: null, shipping_phone: null, shipping_address: null,
+    tracking_number: null, courier: null, payment_method: 'toss', payment_status: 'approved',
+    created_at: '2026-09-29 05:00:00', updated_at: '2026-09-29 08:00:00',
+    user_name: '다쓴손님', user_email: null,
+    order_kind: 'voucher', items: [{ id: 2, product_id: 502, product_name: '아메리카노 이용권', image_url: null, quantity: 1, price: 9_000 }],
+    vouchers: [{ code: 'UR-QWER-1234', status: 'used', used_at: '2026-09-29 08:00:00', expires_at: null }],
+  },
 ]
 
 export const SELLER_SETTLEMENTS = [
