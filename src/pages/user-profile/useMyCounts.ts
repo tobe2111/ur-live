@@ -17,7 +17,7 @@ import type { MyCounts } from './types'
 import { useMyVouchers } from '@/hooks/queries'
 import { useWishlist } from '@/hooks/queries/useWishlist'
 import { useMyCoupons } from '@/hooks/queries/useMyCoupons'
-import { isFailedGifticon, isGifticonVoucher, isStoreVoucher } from '@/shared/voucher-wallet'
+import { isGifticonVoucher, isStoreVoucher, isUsableWalletItem } from '@/shared/voucher-wallet'
 
 export function useMyCounts(): MyCounts {
   const { data: vouchers } = useMyVouchers()
@@ -31,7 +31,11 @@ export function useMyCounts(): MyCounts {
   return {
     wish: wishlist ? wishlist.length : null,
     coupon: coupons ? coupons.length : null,
-    voucher: vouchers ? vouchers.filter(isStoreVoucher).length : null,
-    gifticon: vouchers ? vouchers.filter(v => isGifticonVoucher(v) && !isFailedGifticon(v)).length : null,
+    // 🎟️ 2026-10-07 (대표 *"2개라고 해서 들어갔더니 없어"*): **지갑의 첫 탭과 같은 술어**로 센다.
+    //   종전엔 상태를 안 봐서 **이미 다 쓴 이용권까지** 세고 있었다 — 눌러 들어가면 0장이다.
+    //   🔴 `isUsableWalletItem` 을 여기서 풀어 쓰지 말 것: 지갑(`MyVouchersPage`·`MyGifticonsPage`)이
+    //      같은 함수를 쓰고 있어야 다시 갈리지 않는다(2026-05-27 사고의 한 칸 아래 처방).
+    voucher: vouchers ? vouchers.filter(v => isStoreVoucher(v) && isUsableWalletItem(v)).length : null,
+    gifticon: vouchers ? vouchers.filter(v => isGifticonVoucher(v) && isUsableWalletItem(v)).length : null,
   }
 }

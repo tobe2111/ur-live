@@ -21,7 +21,7 @@ import BrandLoader from '@/components/brand/BrandLoader'
 import VoucherTicket from './my-vouchers/VoucherTicket'
 import WalletRow from './my-vouchers/WalletRow'
 import QRModal from './my-vouchers/QRModal'
-import { isStoreVoucher } from '@/shared/voucher-wallet'
+import { isStoreVoucher, isUsableWalletItem } from '@/shared/voucher-wallet'
 import AddToHomeHint from '@/components/AddToHomeHint'
 import type { Voucher, ViewMode } from './my-vouchers/types'
 
@@ -106,7 +106,8 @@ export default function MyVouchersPage() {
   // 🎨 2026-06-20 흑백 리디자인 화면1: 사용가능 카드 + (사용완료 / 만료·환불) 헤어라인 박스
   // 🎨 2026-06-21 (개선 #1): 만료 임박순 정렬 — API 는 created_at DESC 만 → 히어로 'D-N'과 목록 최상단 불일치.
   //   곧 사라질 이용권이 위로 오도록 만료 가까운 순(만료일 없는 건 뒤로). filter 가 새 배열이라 원본 불변.
-  const unusedItems = shownVouchers.filter(v => v.status === 'unused')
+  // 🎟️ 마이 상단 카운트와 **같은 술어**(2026-10-07) — 손으로 적으면 또 갈린다.
+  const unusedItems = shownVouchers.filter(isUsableWalletItem)
     .sort((a, b) => {
       const ta = a.expires_at ? safeTime(a.expires_at) : Number.POSITIVE_INFINITY
       const tb = b.expires_at ? safeTime(b.expires_at) : Number.POSITIVE_INFINITY
@@ -117,7 +118,7 @@ export default function MyVouchersPage() {
   // 지도에 표시 가능한 미사용 이용권 (좌표 보유) — 메모이즈(지도 재초기화 방지)
   // 🐛 2026-06-21: 지갑 스코프로 제한 — 교환권 핀이 이용권 지도에 새던 것 차단(2026-08-31 이후엔 페이지가 분리돼 구조적으로도 0).
   const mapVouchers = useMemo(
-    () => shownVouchers.filter(v => v.status === 'unused' && v.restaurant_lat && v.restaurant_lng),
+    () => shownVouchers.filter(v => isUsableWalletItem(v) && v.restaurant_lat && v.restaurant_lng),
     [shownVouchers],
   )
   const handleMarkerClick = useCallback(

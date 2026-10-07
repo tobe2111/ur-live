@@ -30,6 +30,7 @@ import { ensureSupplyVisibilitySchema } from '../../supply/api/supply-visibility
 import { ensureTables as ensureGroupBuyColumns } from '../../group-buy/api/helpers';
 import { buildSellerProductsQuery } from './seller-products-query';
 import { intParam } from '@/shared/pagination'
+import { ORDER_STATUS_NOTICE } from '@/shared/order-status-notice'
 import { normalizeKakaoPlaceUrl } from '@/shared/kakao-place-url'
 import { mallIdForSeller } from '../../../shared/mall/resolve';
 import { applySellerPromoRate } from '../../../worker/utils/seller-promo-rate';
@@ -71,19 +72,15 @@ async function getSellerIdFromToken(authorization: string | undefined, jwtSecret
  * and could otherwise keep calling these endpoints.  This helper does the JWT
  * check + a DB status check in one shot.
  */
-async function getActiveSellerId(
-  DB: D1Database,
-  authorization: string | undefined,
-  jwtSecret: string
-): Promise<string | null> {
-  const id = await getSellerIdFromToken(authorization, jwtSecret);
-  if (!id) return null;
-  // 🛡️ 2026-05-07: status 표준 분기 — 'active' 와 'approved' 모두 인정 (코드베이스 혼용 사고 방지).
-  //   admin 라우트는 'active' 사용, 일부 구 코드는 'approved'. 둘 다 활성 상태로 처리.
-  const seller = await DB.prepare(
-    "SELECT id FROM sellers WHERE id = ? AND status IN ('approved', 'active') AND is_active = 1"
-  ).bind(id).first();
-  return seller ? id : null;
+/** 🪑 좌석 판정 — 사유까지 구분해 돌려준다. 왜 그래야 하는지는 `seller-approval-gate` 머리말. */
+async function sellerGate(c: Context<{ Bindings: Bindings }>) {
+  const { resolveApprovedSeller } = await import('../../../worker/utils/seller-approval-gate');
+  return resolveApprovedSeller(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET);
+}
+async function denySellerGate(c: Context<{ Bindings: Bindings }>, gate: { reason: 'no_token' | 'no_seller' | 'not_approved' }) {
+  const { sellerGateDenial } = await import('../../../worker/utils/seller-approval-gate');
+  const d = sellerGateDenial(gate);
+  return c.json(d.body, d.status);
 }
 
 /** DB status 값과 프론트엔드 status 값 매핑 */
@@ -97,8 +94,9 @@ const VALID_STATUSES = ['PREPARING', 'SHIPPING', 'DELIVERED', 'CANCELLED', 'DONE
 sellerOrdersRoutes.get('/orders', async (c) => {
   try {
     // ✅ BUG #33 FIX: Require approved + active seller (not just a signed JWT).
-    const sellerId = await getActiveSellerId(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET);
-    if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
+    const gate = await sellerGate(c);
+    if (!gate.ok) return denySellerGate(c, gate);
+    const sellerId = gate.sellerId;  // gate.ok 가 보장한다
 
     const db = c.env.DB;
     const status = c.req.query('status');
@@ -249,15 +247,12 @@ async function handleStatusUpdate(c: Context<{ Bindings: Bindings }>) {
           `SELECT user_id, order_number FROM orders WHERE (id = ? OR order_number = ?) AND seller_id = ? LIMIT 1`
         ).bind(orderId, orderId, sellerId).first<{ user_id: string; order_number: string }>();
         if (orderInfo?.user_id) {
-          const statusMessages: Record<string, string> = {
-            'CONFIRMED': '주문이 확인되었습니다',
-            'SHIPPING': '\u{1F4E6} 주문하신 상품이 발송되었습니다!',
-            'DELIVERED': '\u2705 배송이 완료되었습니다. 상품을 확인해주세요!',
-            'CANCELLED': '\u274C 주문이 취소되었습니다.',
-          };
-          const msg = statusMessages[dbStatus] || `주문 상태: ${dbStatus}`;
-          const { notifyUser } = await import('../../../lib/notifications');
-          await notifyUser(db, orderInfo.user_id, 'order_status', msg, `주문번호: ${orderInfo.order_number}`, '/my-orders');
+          // 🔔 문장이 있는 상태만 알린다 — 사유·금지선은 `ORDER_STATUS_NOTICE` 주석.
+          const msg = ORDER_STATUS_NOTICE[dbStatus];
+          if (msg) {
+            const { notifyUser } = await import('../../../lib/notifications');
+            await notifyUser(db, orderInfo.user_id, 'order_status', msg, `주문번호: ${orderInfo.order_number}`, '/my-orders');
+          }
         }
       } catch {} // fire and forget
     }
@@ -330,8 +325,9 @@ sellerOrdersRoutes.patch('/orders/:id/status', handleStatusUpdate);
 //   검증된 공유 루틴 refundOrderFully — Toss취소/딜환불 + CAS + 재고복원 + 커미션/공급자/영입자 역전.
 sellerOrdersRoutes.post('/orders/:id/refund', rateLimit({ action: 'seller_order_refund', max: 20, windowSec: 3600 }), async (c) => {
   try {
-    const sellerId = await getActiveSellerId(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET);
-    if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
+    const gate = await sellerGate(c);
+    if (!gate.ok) return denySellerGate(c, gate);
+    const sellerId = gate.sellerId;  // gate.ok 가 보장한다
     const orderId = c.req.param('id');
     if (!orderId) return c.json({ success: false, error: '잘못된 주문 ID' }, 400);
     const body = await c.req.json<{ reason?: string }>().catch(() => ({} as { reason?: string }));
@@ -685,12 +681,9 @@ sellerOrdersRoutes.patch('/orders/bulk-status', async (c) => {
     // ── 유저에게 인앱 알림 일괄 발송 ──
     if (result.meta.changes) {
       try {
-        const statusMessages: Record<string, string> = {
-          'SHIPPING': '\u{1F4E6} 주문하신 상품이 발송되었습니다!',
-          'DELIVERED': '\u2705 배송이 완료되었습니다. 상품을 확인해주세요!',
-          'CANCELLED': '\u274C 주문이 취소되었습니다.',
-        };
-        const msg = statusMessages[dbStatus];
+        // 🔔 단건 경로와 **같은 맵** — 종전엔 따로 들고 있어 `PREPARING` 이 빠져 있었다
+        //   (셀렉트에는 있는데 알림은 0건). 사유는 `ORDER_STATUS_NOTICE` 주석.
+        const msg = ORDER_STATUS_NOTICE[dbStatus];
         if (msg) {
           const { notifyUser } = await import('../../../lib/notifications');
           const { results: affectedOrders } = await db.prepare(
@@ -985,8 +978,15 @@ sellerOrdersRoutes.post('/products', async (c) => {
     if (category && VOUCHER_CATEGORY_SET.has(category)) {
       const kv = (c.env as Bindings).SESSION_KV;
       invalidateGroupBuyProductsCache(kv).catch(swallow('seller:cache-invalidate'));
-      // 🔄 2026-07-01: edge/materialized 피드도 퍼지(어드민 동네딜과 동일) → 홈 즉시 반영.
-      import('../../../worker/utils/group-buy-feed-invalidate').then((m) => m.invalidateGroupBuyFeed(c.env as unknown as Parameters<typeof m.invalidateGroupBuyFeed>[0], new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p))).catch(swallow('seller:feed-invalidate'));
+      // 🔄 2026-07-01: edge/materialized 피드도 퍼지 → 홈 즉시 반영.
+      // 🩸 2026-10-07: **import 부터** waitUntil 로 감싼다 — 종전엔 함수 *안에서만* 걸어서,
+      //   응답이 먼저 끝나면 그 import 가 resolve 되기 전에 isolate 가 떠나 퍼지도 materialized
+      //   삭제도 조용히 사라졌다(대표 "방금 올렸는데 메인에 안 보이네"). 경위는 인계 문서.
+      c.executionCtx?.waitUntil?.(
+        import('../../../worker/utils/group-buy-feed-invalidate')
+          .then((m) => m.invalidateGroupBuyFeed(c.env as unknown as Parameters<typeof m.invalidateGroupBuyFeed>[0], new URL(c.req.url).origin, (p) => c.executionCtx?.waitUntil?.(p)))
+          .catch(swallow('seller:feed-invalidate'))
+      );
     }
 
     return c.json({ success: true, data: newProduct }, 201);
