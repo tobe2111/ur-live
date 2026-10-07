@@ -5,8 +5,10 @@ export default [
   {
     name: '✅ 카메라 인식이 다시 즉시 사용 처리한다 (확인 생략)',
     file: 'src/components/voucher/VoucherScanner.tsx',
-    find: '            if (code) void requestUseRef.current(code)',
-    replace: '            if (code) await useVoucher(code)',
+    // 🩸 2026-10-07 재조준: 네이티브 경로가 폴백 전환 로직을 갖게 되면서 들여쓰기가 두 칸
+    //   줄었다(앵커 소실). 지키려는 것은 그대로다 — **스캔은 조회만 하고, 사용은 확인 뒤에만**.
+    find: '          if (code) void requestUseRef.current(code)',
+    replace: '          if (code) await useVoucher(code)',
     test: 'src/tests/unit/scan-confirm-before-use-2026-10-06.test.ts',
     why: '비추는 순간 되돌릴 수 없는 사용이 나간다 — 옆 손님 화면·사진 속 QR 도 소비된다. 대표가 확인을 넣으라고 한 그 흐름.',
   },

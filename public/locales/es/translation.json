@@ -2258,7 +2258,12 @@
       "notUsable": "Este bono no se puede usar (vencido o reembolsado)",
       "checking": "Verificando bono…",
       "confirmQ": "¿Canjear este bono?",
-      "confirmNote": "El canje no se puede deshacer."
+      "confirmNote": "El canje no se puede deshacer.",
+      "photoPick": "Escanear desde foto",
+      "photoReading": "Buscando un código QR en la foto…",
+      "photoNoQr": "No se encontró ningún QR en esa foto. Acércate más y con más luz.",
+      "helpTitle": "¿El QR no se escanea?",
+      "helpBody": "1) Pide al cliente que suba el brillo 2) Acércate a 10-20 cm 3) Inclina para evitar reflejos 4) ¿Sigue sin funcionar? Usa «Escanear desde foto» arriba"
     },
     "gbSettle": {
       "title": "Liquidaciones automáticas de compra grupal",

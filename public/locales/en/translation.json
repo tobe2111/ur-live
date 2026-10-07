@@ -2939,7 +2939,12 @@
       "notUsable": "This voucher cannot be used (expired or refunded)",
       "checking": "Checking voucher…",
       "confirmQ": "Redeem this voucher?",
-      "confirmNote": "Redeeming cannot be undone."
+      "confirmNote": "Redeeming cannot be undone.",
+      "photoPick": "Scan from photo",
+      "photoReading": "Looking for a QR code in the photo…",
+      "photoNoQr": "Couldn't find a QR code in that photo. Try closer and brighter.",
+      "helpTitle": "QR code not scanning?",
+      "helpBody": "1) Ask the customer to raise screen brightness 2) Move within 10-20cm 3) Tilt to avoid glare 4) Still nothing? Use \"Scan from photo\" above"
     },
     "gbSettle": {
       "title": "Group-buy auto settlements",
