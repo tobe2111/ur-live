@@ -104,6 +104,8 @@ describe('🦦 유달이 — 배선한 화면이 되돌아가지 않는다', () 
     ['src/components/voucher/VoucherRedeemModal.tsx', 'done'],
     ['src/pages/my-vouchers/WalletEmpty.tsx', 'empty'],
     ['src/pages/PaymentSuccessPage.tsx', 'done'],
+    ['src/pages/restaurant-map/RestaurantList.tsx', 'notFound'],
+    ['src/pages/restaurant-map/NearbyEmptyBanner.tsx', 'notFound'],
   ]
   it.each(WIRED)('⑤ %s 에 유달이(%s)가 있다', (file, mood) => {
     expect(readCode(file)).toMatch(new RegExp(`<Udal[^>]*mood="${mood}"`))

@@ -180,6 +180,7 @@ Kling 3 ~82 · Veo 3.1 이미지→영상 ~90 · Kling Motion Control ~164(실�
 | `lost` | 놀람 | 404 (`NotFoundPage` — 거대한 '404' 글자 대체, 둥실) |
 | `oops` | 미안 | 기본 오류 화면(`ErrorBoundary`) · 목록 못 불러옴(`ListLoadError`) · 검색 오류 |
 | `notFound` | 갸웃 | 검색 결과 0건 |
+| `notFound` | 갸웃 | **홈(지도 목록)** 조건에 맞는 딜 0건 (`restaurant-map/RestaurantList` — 핀 아이콘 대체, 104px) · 내 주변 5km 밖 안내 띠 (`NearbyEmptyBanner`, 44px — 렌더로 표정 판독 확인). 대표 *"1번 2번 둘 다 진행해줘"* |
 | `empty` | 졸림 | 찜 0개 (`WishlistPage`) |
 | `hello` | 기본 | 검색어 입력 전(최근 검색어 없을 때) |
 | `done` | 웃음 | 이용권 사용 완료 (`VoucherRedeemModal` — 검정 체크 원 대체, 둥실·실시간 시계는 그대로) |
