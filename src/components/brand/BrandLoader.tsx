@@ -11,6 +11,7 @@
  */
 import UrDealLogo from './UrDealLogo'
 import { takeBootFirstScreen } from '@/lib/boot-first-screen'
+import { UDAL_LOADER_SRC, UDAL_BOB_PERIOD_S, UDAL_FADE_MASK, udalLoaderWidth, udalLoaderHeight } from '@/shared/udal-loader'
 
 interface BrandLoaderProps {
   /** 전체화면 중앙(라우트 Suspense fallback). false 면 섹션 인라인 로더. */
@@ -47,6 +48,11 @@ export default function BrandLoader({ fullScreen = false, size = 34, label, forc
   const nowSec = typeof performance !== 'undefined' ? Math.max(0, performance.now() - phaseBase) / 1000 : 0
   const breatheDelay = `-${(nowSec % 1.5).toFixed(3)}s`
   const sweepDelay = `-${(nowSec % 1.15).toFixed(3)}s`
+  const bobDelay = `-${(nowSec % UDAL_BOB_PERIOD_S).toFixed(3)}s`
+  // 🦦 2026-10-07 (대표 허가 "로딩 화면"): 로고 위에 유달이. 대시보드(forceLight)는 마스코트를 안 쓰는
+  //   자리라 빠진다. 워커 정적 로더(`urdealLoaderHtml`)와 **같은 파일·같은 크기·같은 위상**이다.
+  const showUdal = !forceLight
+  const udalW = udalLoaderWidth(size)
   // 🎯 2026-07-18 (대표 신고 — "로딩 순간 유어딜 로더 말고도 보임"): fullScreen 로더가 배경 없는 in-flow
   //   박스(min-h-[100dvh])라, 뒤/주변의 이전 페이지(예: /map 분할)·body 배경이 비쳐 보였음(로더가
   //   화면을 '덮지' 못함). → 불투명 fixed inset-0 오버레이(z-[10000], 네비 9999 위·모달 10500 아래)로
@@ -59,6 +65,19 @@ export default function BrandLoader({ fullScreen = false, size = 34, label, forc
       aria-live="polite"
       aria-busy="true"
     >
+      {showUdal && (
+        <img
+          src={UDAL_LOADER_SRC}
+          alt=""
+          aria-hidden="true"
+          draggable={false}
+          width={udalW}
+          height={udalLoaderHeight(size)}
+          decoding="async"
+          className="ur-udal-bob select-none pointer-events-none"
+          style={{ width: udalW, height: 'auto', animationDelay: bobDelay, WebkitMaskImage: UDAL_FADE_MASK, maskImage: UDAL_FADE_MASK }}
+        />
+      )}
       {/* 로고 — 은은한 호흡 (전역 위상 동기 — 재마운트에도 연속) */}
       <div className="ur-loader-breathe" style={{ animationDelay: breatheDelay }}>
         <UrDealLogo size={size} forceLight={forceLight} forceDark={forceDark} />

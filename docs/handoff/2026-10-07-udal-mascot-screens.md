@@ -21,16 +21,25 @@
 
 ## 다음 세션 첫 액션
 1. 포즈 원본 7종(QR·지갑·도장·하이파이브·빈 지갑·케이블·달리기)이 올라오면 rembg `birefnet-general`(한 장씩 프로세스 분리)로 누끼 → `src/assets/mascot/` 에 추가하고 `Udal` 에 포즈용 prop(또는 별도 부품) 추가.
-2. 대표가 잠금 화면을 허가하면: `MyVouchersPage` 이용권 0장(`empty`) · `PaymentSuccessPage` 결제 완료(`done`) · `BrandLoader`(로더 연속성 가드와 함께).
+2. ~~잠금 화면 허가~~ → 같은 세션에서 승인·구현(아래).
 
 ## 틀렸던 판단
 - 없음(이번 범위). 다만 `ErrorBoundary` 는 앱 셸이라 부품이 셸 폐쇄에 들어간다 — 이미지는 URL 문자열뿐이라 렌더 전엔 내려받지 않는다(번들 영향은 부품 코드 ~1KB).
 
 ## 남은 결정
-- 잠금 화면 3곳 허가 여부(위 2) · 정산 완료 알림(사장님 쪽) 예외 여부.
+- 정산 완료 알림(사장님 쪽) 예외 여부.
 
 ## 추가 (같은 세션)
 - 🩸 `ErrorBoundary`(셸)가 `Udal` 을 정적 import 하자 `critical-chunks` 가 **첫 페인트에 청크 9개 진입**으로 빨간불 —
   `vite.config.ts` app-shell 목록에 `/src/components/mascot/` 한 줄 추가로 해소(CLAUDE.md 로딩 audit log 기록).
   ⇒ **셸 부품에 새 부품을 붙일 땐 그 부품 폴더도 app-shell 에 넣어야 한다**(규칙 주석에 이미 적혀 있다).
 - 전체 유닛 867파일 11,067건 pass.
+
+## 잠금 화면 3곳 (대표 AskUserQuestion 승인: 이용권 0장 · 결제 완료 · 로딩 화면)
+- 이용권 0장: `my-vouchers/WalletEmpty.tsx` 의 티켓 SVG → 유달이(empty). 잠금 파일 `MyVouchersPage.tsx` 자체는 무접촉.
+- 결제 완료: `PaymentSuccessPage.tsx` 성공 아이콘만 교체 — 잠금 지문 11종 전후 동일. CLAUDE.md Toss audit log 기록.
+- 로딩: 정적 로더(워커) + `BrandLoader` 로고 위 유달이. 고정 경로 `public/assets/mascot/udal-loader-v1.webp` + `index.html` preload.
+  SSOT `src/shared/udal-loader.ts`. 대시보드(forceLight)엔 없음. loader-continuity 불변식 +5.
+- ⚠️ 그림을 바꾸면 **파일명 버전(-v2)을 올릴 것** — `/assets/*` 는 1년 immutable 캐시.
+- 🩸 틀릴 뻔한 것: 워커 import 를 기존 한 줄 끝에 붙였더니 그 줄 끝 `// 한 줄: …` 주석 **뒤**라 import 가 주석이 됐다(tsc 가 잡음).
+- 배포 후 확인할 것(E4): 하드로드 시 정적 로더 → 앱 로더 교체 순간 유달이가 안 튀는지 · 결제 완료 화면 정상 렌더(staging 실결제 1회 권장).

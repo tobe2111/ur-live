@@ -45,4 +45,20 @@ export default [
     test: TEST,
     why: '문서가 대시보드·어드민·도매몰을 "안 쓰는 자리" 로 못 박았다(정산 알림만 결정 대기).',
   },
+  {
+    name: '🦦 로더 preload 경로가 실제 로더 그림과 갈린다',
+    file: 'index.html',
+    find: '<link rel="preload" as="image" href="/assets/mascot/udal-loader-v1.webp" />',
+    replace: '<link rel="preload" as="image" href="/assets/mascot/udal-loader-v0.webp" />',
+    test: TEST,
+    why: '경로가 한 글자만 달라도 미리 받은 그림을 안 쓴다 — 유달이가 로고보다 늦게 튀어나온다.',
+  },
+  {
+    name: '🦦 대시보드 로더에도 유달이가 뜬다',
+    file: 'src/components/brand/BrandLoader.tsx',
+    find: 'const showUdal = !forceLight',
+    replace: 'const showUdal = true',
+    test: TEST,
+    why: '대시보드는 마스코트를 안 쓰는 자리다(문서).',
+  },
 ]

@@ -35,7 +35,7 @@ describe('🦦 유달이 — 부품 하나로만 그린다', () => {
   })
 
   it('① 마스코트 이미지를 직접 import 하는 곳은 부품뿐이다', () => {
-    const bad = files.filter((f) => f !== COMPONENT && /assets\/mascot\//.test(readCode(f)))
+    const bad = files.filter((f) => f !== COMPONENT && /from '@\/assets\/mascot\//.test(readCode(f)))
     expect(bad, `부품을 우회해 이미지를 직접 쓴다: ${bad.join(', ')}`).toEqual([])
   })
 
@@ -48,7 +48,7 @@ describe('🦦 유달이 — 부품 하나로만 그린다', () => {
       /^src\/components\/payments\/TossPaymentWidget\.tsx$/,
       /^src\/pages\/TossWidgetPayPage\.tsx$/,
     ]
-    const users = files.filter((f) => f !== COMPONENT && /from '@\/components\/mascot\/Udal'/.test(readFileSync(f, 'utf8')))
+    const users = files.filter((f) => f !== COMPONENT && /from '@\/(components\/mascot\/Udal|shared\/udal-loader)'/.test(readFileSync(f, 'utf8')))
     expect(users.length, '배선한 화면이 하나도 안 잡힌다 — 검사가 헛돈다').toBeGreaterThan(3)
     const bad = users.filter((f) => FORBIDDEN.some((re) => re.test(f)))
     expect(bad, `문서가 금지한 자리에 유달이: ${bad.join(', ')}`).toEqual([])
@@ -102,8 +102,34 @@ describe('🦦 유달이 — 배선한 화면이 되돌아가지 않는다', () 
     ['src/pages/WishlistPage.tsx', 'empty'],
     ['src/components/search/SearchStates.tsx', 'notFound'],
     ['src/components/voucher/VoucherRedeemModal.tsx', 'done'],
+    ['src/pages/my-vouchers/WalletEmpty.tsx', 'empty'],
+    ['src/pages/PaymentSuccessPage.tsx', 'done'],
   ]
   it.each(WIRED)('⑤ %s 에 유달이(%s)가 있다', (file, mood) => {
     expect(readCode(file)).toMatch(new RegExp(`<Udal[^>]*mood="${mood}"`))
+  })
+})
+
+describe('🦦 로딩 화면의 유달이 — 정적 로더와 앱 로더가 같은 그림', () => {
+  const shared = readCode('src/shared/udal-loader.ts')
+  const src = /UDAL_LOADER_SRC = '([^']+)'/.exec(shared)?.[1] ?? ''
+
+  it('경로가 실재하는 파일을 가리킨다(public 고정 경로 — 워커는 해시를 모른다)', () => {
+    expect(src).toMatch(/^\/assets\/mascot\/udal-loader-v\d+\.webp$/)
+    expect(existsSync(`public${src}`), `public${src} 없음 — 로더에 깨진 그림`).toBe(true)
+  })
+
+  it('index.html 이 바로 그 파일을 미리 받는다(경로가 갈리면 preload 가 헛돈다)', () => {
+    const html = readFileSync('index.html', 'utf8')
+    expect(html).toContain(`<link rel="preload" as="image" href="${src}"`)
+  })
+
+  it('워커 정적 로더와 BrandLoader 가 같은 SSOT 를 읽는다', () => {
+    expect(readFileSync('src/worker/index.ts', 'utf8')).toMatch(/src="\$\{UDAL_LOADER_SRC\}"/)
+    expect(readCode('src/components/brand/BrandLoader.tsx')).toMatch(/src=\{UDAL_LOADER_SRC\}/)
+  })
+
+  it('대시보드 로더(forceLight)에는 유달이가 없다', () => {
+    expect(readCode('src/components/brand/BrandLoader.tsx')).toMatch(/const showUdal = !forceLight/)
   })
 })
