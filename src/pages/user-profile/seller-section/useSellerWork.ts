@@ -19,9 +19,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import api from '@/lib/api'
 import { assertSeat, currentSeatId, onSeatChange, SeatMismatchError } from '@/lib/seller-seat'
 import { parseUTCDate } from '@/utils/date'
+import { needsSellerConfirm } from '@/shared/order-stage'
 
-/** 결제는 끝났고 사장님이 아직 "확인" 을 안 누른 상태. `seller-orders/statusHelpers.nextStatusOf` 와 같은 집합. */
-export const AWAITING_CONFIRM = new Set(['PAID', 'DONE', 'PAY_COMPLETE'])
+// 🧭 "확인할 주문" 판정은 `shared/order-stage.needsSellerConfirm`(SSOT) — 이용권·교환권은 [확인] 할 일이 없다(2026-10-07).
 
 export interface WorkOrder {
   id: number
@@ -126,7 +126,7 @@ export function useSellerWork(
       if (asked.every((r) => !r?.data?.success)) { setFailed(true); return }
       const oList = (oRes?.data?.success ? oRes.data.data || [] : []) as Raw[]
       setOrders(oList
-        .filter((o) => AWAITING_CONFIRM.has(String(o.status)))
+        .filter((o) => needsSellerConfirm(o as { status?: string; order_kind?: string | null }))
         .map((o) => ({
           id: Number(o.id),
           orderNumber: String(o.order_number ?? ''),

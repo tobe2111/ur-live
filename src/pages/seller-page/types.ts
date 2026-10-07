@@ -14,4 +14,7 @@ export interface Order {
   shipping_phone: string
   payment_method: string
   created_at: string
+  /** 🧾 `'voucher'`·`'deal'`·`'shipping'` — 서버 `order-list-enrich` 가 붙인다. "처리 대기" 판정에 쓴다(`order-stage`). */
+  order_kind?: string | null
+  vouchers?: Array<{ status?: string | null }>
 }

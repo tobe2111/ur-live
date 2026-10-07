@@ -21,6 +21,7 @@ import api from '@/lib/api'
 import { getSellerToken, isSellerAuthenticated } from '@/lib/seller-auth'
 import { isVoucherCategory } from '@/shared/constants/voucher-categories'
 import { parseUTCDate } from '@/utils/date'
+import { needsSellerConfirm } from '@/shared/order-stage'
 import type { Order } from './types'
 
 export interface HomeVoucher {
@@ -41,8 +42,8 @@ export interface HomeVoucher {
   category?: string | null
 }
 
-/** 결제는 끝났고 셀러가 아직 "주문 확인"(→ 준비 중)을 안 누른 상태. `seller-orders/statusHelpers.nextStatusOf` 와 같은 집합. */
-export const AWAITING_CONFIRM = new Set(['PAID', 'DONE', 'PAY_COMPLETE'])
+// 🧭 "처리 대기" 판정은 `shared/order-stage.needsSellerConfirm`(SSOT) — 이용권·교환권은 확인할 일이 없어
+//   여기서 세지 않는다(2026-10-07. 종전엔 상태 집합만 봐서 이용권 주문이 영원히 "새 주문 N건" 이었다).
 
 export function kstKey(ms: number): string {
   return new Date(ms + 9 * 3600_000).toISOString().slice(0, 10)
@@ -167,7 +168,7 @@ export function useSellerHome() {
   })
 
   const orders = ordersQ.data ?? []
-  const pendingOrders = orders.filter((o) => AWAITING_CONFIRM.has(o.status)).length
+  const pendingOrders = orders.filter(needsSellerConfirm).length
 
   const daily = statsQ.data?.daily ?? []
   const w = weekRanges()
