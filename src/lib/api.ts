@@ -499,9 +499,28 @@ api.interceptors.response.use(
 
         // 🛡️ 2026-04-29: alert 제거 — 카톡 인앱이 alert 차단 → throw → 흰화면.
         //   대신 로그인 페이지에서 ?error=session_expired query 감지해 toast 표시.
+        /**
+         * 🚪 **그 역할의 화면에 있을 때만** 로그인 페이지로 보낸다 (2026-10-07 대표 신고).
+         * 🩸 소비자 화면(마이·`/store/new`)도 `/api/seller/*` 를 부른다. 그 401 하나로 *셀러*
+         *   세션이 죽었다고 단정해 소비자를 셀러 로그인으로 내던졌고(세션은 멀쩡했다), 하드
+         *   내비게이션이라 호출부의 fail-soft(`.catch(() => null)`·`onSeatLost`·`enterStoreSeat`)를
+         *   **전부 선점해 무력화**했다. ⇒ 토큰 정리는 하되 **이동은 그 대시보드 안에서만**.
+         *   경위: `docs/handoff/2026-10-07-inflow-bind-gate-and-live-e4.md`.
+         */
         const loginUrl = isAgency ? '/agency/login' : isSeller ? '/seller/login' : '/admin/login';
-        console.warn(`[Auth] ${roleLabel} 인증 ${_superseded ? '다른 기기 로그인으로 종료' : '만료'} — 로그인 페이지 이동`);
-        window.location.href = `${loginUrl}?error=${_superseded ? 'session_superseded' : 'session_expired'}`;
+        const surface = isAgency ? '/agency' : isSeller ? '/seller' : '/admin';
+        let onRoleSurface = false;
+        try {
+          const p = window.location.pathname;
+          onRoleSurface = p === surface || p.startsWith(`${surface}/`);
+        } catch { onRoleSurface = false; }
+        const _why = _superseded ? '다른 기기 로그인으로 종료' : '만료';
+        if (onRoleSurface) {
+          console.warn(`[Auth] ${roleLabel} 인증 ${_why} — 로그인 페이지 이동`);
+          window.location.href = `${loginUrl}?error=${_superseded ? 'session_superseded' : 'session_expired'}`;
+        } else {
+          console.warn(`[Auth] ${roleLabel} 인증 ${_why} — 소비자 화면이라 이동하지 않음(호출부가 처리)`);
+        }
         return Promise.reject(error);
       }
 

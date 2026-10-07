@@ -474,7 +474,14 @@ export default function SellerSection({ state }: { state: MyStoresState }) {
         awaiting ? null : (
         <>
           <PendingOrders work={work} onDone={onWorkDone} />
-          {work.failed && (
+          {/* 🪑 2026-10-07 — "승인 대기" 와 "못 불러왔다" 는 다른 말이다. 종전엔 둘 다 후자로
+              보였고(서버가 401 을 주던 시절엔 아예 셀러 로그인으로 튕겼다), 사장님은 자기가
+              뭘 잘못한 줄 안다. 할 일이 **기다리는 것뿐**이라면 그렇게 말해야 한다. */}
+          {work.pendingApproval ? (
+            <p className="mt-2 px-4 text-[12px] text-gray-500 dark:text-gray-400">
+              매장 승인 대기 중이에요 — 승인되면 주문이 여기에 보여요.
+            </p>
+          ) : work.failed && (
             <p className="mt-2 px-4 text-[12px] text-gray-500 dark:text-gray-400">
               목록을 불러오지 못했습니다. 잠시 후 다시 열어 주세요.
             </p>
