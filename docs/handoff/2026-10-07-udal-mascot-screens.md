@@ -28,3 +28,9 @@
 
 ## 남은 결정
 - 잠금 화면 3곳 허가 여부(위 2) · 정산 완료 알림(사장님 쪽) 예외 여부.
+
+## 추가 (같은 세션)
+- 🩸 `ErrorBoundary`(셸)가 `Udal` 을 정적 import 하자 `critical-chunks` 가 **첫 페인트에 청크 9개 진입**으로 빨간불 —
+  `vite.config.ts` app-shell 목록에 `/src/components/mascot/` 한 줄 추가로 해소(CLAUDE.md 로딩 audit log 기록).
+  ⇒ **셸 부품에 새 부품을 붙일 땐 그 부품 폴더도 app-shell 에 넣어야 한다**(규칙 주석에 이미 적혀 있다).
+- 전체 유닛 867파일 11,067건 pass.

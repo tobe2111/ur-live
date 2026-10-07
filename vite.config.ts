@@ -408,7 +408,11 @@ export default defineConfig({
             id.includes('/src/components/IosTopupGate') ||
             id.includes('/src/components/KakaoConsultButton') ||
             id.includes('/src/components/brand/') ||
-            id.includes('/src/components/ui/confirm-dialog')
+            id.includes('/src/components/ui/confirm-dialog') ||
+            // 🦦 2026-10-07: ErrorBoundary(셸)가 유달이 부품을 정적 import 한다 → 함께 들어와야
+            //   app-components 가 다시 preload 되지 않는다(critical-chunks 가 9개 청크 진입으로 잡았다).
+            //   부품은 ~1KB 이고 이미지는 /assets/*.webp 별도 파일이라 렌더 전엔 내려받지 않는다.
+            id.includes('/src/components/mascot/')
           ) return 'app-shell'
           if (id.includes('/src/components/')) return 'app-components'
           // 나머지 src/ 디렉터리 — types, constants, config, layouts
