@@ -120,3 +120,96 @@ export async function scanImageFile(file: Blob): Promise<string | null> {
     return null
   }
 }
+
+/**
+ * 🔭 **어느 렌즈로 보는가** (2026-10-07 — 대표 *"이제 다 된거야? 가장 이상적이야?"* 에 답하다 찾은 것)
+ *
+ * 🩸 **이것이 대표가 겪은 증상의 원인일 수 있다 — 첫 수리에서 놓쳤다.**
+ *   후면 렌즈가 여럿인 폰(갤럭시 S·울트라, 아이폰 프로)에서 `facingMode: 'environment'` 는
+ *   **어느 렌즈를 줄지 보장하지 않는다.** 안드로이드 크롬은 기종에 따라 **초광각(0.5x)** 을 주는데,
+ *   초광각은 ① 피사체가 작게 잡히고 ② **근거리 자동초점이 없거나 약하다.** 20~30cm 의 QR 은
+ *   흐릿하게 맺혀 **해상도·초점 제약을 아무리 걸어도 못 읽는다** — 그 렌즈엔 걸 초점이 없다.
+ *   **네이티브 카메라 앱은 메인 렌즈로 자동 전환한다.** 그래서 "폰 카메라는 되는데 우리 건 안 된다"
+ *   는 증상과 정확히 맞는다(웹 QR 스캐너 라이브러리들이 반복해서 받는 신고가 이것이다).
+ *
+ * ⚠️ **라벨만으로는 못 가른다** — 아이폰은 `Back Ultra Wide Camera` 처럼 알려 주지만 삼성은
+ *   `camera2 0, facing back` · `camera2 2, facing back` 이라 어느 게 초광각인지 이름에 없다.
+ *   그래서 **각 렌즈를 잠깐 열어 연속 초점을 지원하는지** 본다(초광각은 대개 `fixed` 뿐이다).
+ *   한 번 고르면 기억해 두므로 다음부터는 바로 그 렌즈로 연다.
+ *
+ * 이 판정은 **권한을 받은 뒤에만** 의미가 있다 — 그 전엔 `enumerateDevices()` 가 라벨을 비워 준다.
+ */
+export const SCAN_CAMERA_KEY = 'scan_camera_device_id'
+
+/** 이름으로 앞면·초광각·망원을 걸러낸다. 이름이 비어 있으면(삼성) 아무것도 안 거른다. */
+export function isFrontLabel(label: string): boolean {
+  return /front|user|facetime|전면|셀카/i.test(label)
+}
+export function isAuxLensLabel(label: string): boolean {
+  return /ultra\s*wide|ultrawide|0\.5|telephoto|망원|초광각/i.test(label)
+}
+
+type MediaDevicesLike = Pick<MediaDevices, 'enumerateDevices' | 'getUserMedia'>
+
+function readCachedCamera(): string | null {
+  try { return localStorage.getItem(SCAN_CAMERA_KEY) } catch { return null }
+}
+export function rememberCamera(deviceId: string): void {
+  try { localStorage.setItem(SCAN_CAMERA_KEY, deviceId) } catch { /* 사생활 보호 모드 */ }
+}
+
+/** 후면 카메라 목록(앞면 제외). 권한 전이면 라벨이 비어 있어 전부 남는다. */
+export async function listBackCameras(md: MediaDevicesLike | undefined = navigator?.mediaDevices): Promise<MediaDeviceInfo[]> {
+  if (!md?.enumerateDevices) return []
+  try {
+    const all = (await md.enumerateDevices()).filter((d) => d.kind === 'videoinput')
+    const back = all.filter((d) => !isFrontLabel(d.label))
+    return back.length ? back : all
+  } catch {
+    return []
+  }
+}
+
+/**
+ * 🎯 **QR 을 읽기 가장 좋은 후면 렌즈를 고른다.** 기억해 둔 것이 아직 있으면 그것.
+ * 없으면: 이름으로 걸러지는 보조 렌즈를 빼고 → 남은 렌즈를 하나씩 잠깐 열어 **연속 초점**을
+ * 지원하는 첫 렌즈를 고른다 → 그런 렌즈가 없으면 남은 것 중 첫째.
+ *
+ * 실패해도 던지지 않는다(`null` = "기본 facingMode 로 가라"). 여기서 던지면 카메라가 안 열린다.
+ */
+export async function pickBestBackCamera(md: MediaDevicesLike | undefined = navigator?.mediaDevices): Promise<string | null> {
+  const back = await listBackCameras(md)
+  if (back.length === 0) return null
+  const cached = readCachedCamera()
+  if (cached && back.some((d) => d.deviceId === cached)) return cached
+  if (back.length === 1) return back[0].deviceId || null
+
+  const main = back.filter((d) => !isAuxLensLabel(d.label))
+  const candidates = main.length ? main : back
+  for (const d of candidates) {
+    if (!d.deviceId) continue
+    let stream: MediaStream | null = null
+    try {
+      stream = await md!.getUserMedia({ video: { deviceId: { exact: d.deviceId } } })
+      const caps = stream.getVideoTracks()[0]?.getCapabilities?.() as { focusMode?: string[] } | undefined
+      if (caps?.focusMode?.includes('continuous')) {
+        rememberCamera(d.deviceId)
+        return d.deviceId
+      }
+    } catch {
+      /* 그 렌즈는 못 연다 — 다음 */
+    } finally {
+      stream?.getTracks().forEach((t) => t.stop())
+    }
+  }
+  return candidates[0]?.deviceId || null
+}
+
+/** 다음 후면 렌즈(사장님이 직접 넘길 때). 고른 것은 기억한다 — 기기마다 맞는 렌즈가 다르다. */
+export function nextCamera(list: MediaDeviceInfo[], currentId: string | null): string | null {
+  if (list.length === 0) return null
+  const i = list.findIndex((d) => d.deviceId === currentId)
+  const next = list[(i + 1) % list.length]?.deviceId || null
+  if (next) rememberCamera(next)
+  return next
+}

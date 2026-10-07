@@ -21,6 +21,9 @@ import {
   fullFrameScanRegion,
   applyBestCameraSettings,
   scanImageFile,
+  pickBestBackCamera,
+  listBackCameras,
+  nextCamera,
 } from './scan-camera'
 
 /** 확인을 기다리는 스캔. `status` 는 `/verify` 가 준 값(unused·used·expired·refunded…), 조회 실패면 없다. */
@@ -66,7 +69,11 @@ export default function VoucherScanner() {
   const streamRef = useRef<MediaStream | null>(null)
   const scanningRef = useRef(false)
   // qr-scanner 인스턴스(iOS 폴백) — start/stop/destroy 만 사용.
-  const qrScannerRef = useRef<{ start: () => Promise<void>; stop: () => void; destroy: () => void } | null>(null)
+  const qrScannerRef = useRef<{ start: () => Promise<void>; stop: () => void; destroy: () => void; setCamera: (id: string) => Promise<void> } | null>(null)
+  /** 지금 열려 있는 후면 렌즈. 사장님이 넘기면 바뀐다(기기마다 맞는 렌즈가 다르다). */
+  const cameraIdRef = useRef<string | null>(null)
+  /** 후면 렌즈가 둘 이상이면 [카메라 전환] 버튼을 낸다. */
+  const [backCams, setBackCams] = useState<MediaDeviceInfo[]>([])
   /** 네이티브가 못 읽어 넘어온 것인가 — 그때는 확대까지 켜고 안내를 띄운다. */
   const escalatedRef = useRef(false)
   /** 지금 어느 디코더로 도는가 — 같은 엔진을 두 번 띄우지 않기 위한 것(전환은 한 방향뿐). */
@@ -177,6 +184,8 @@ export default function VoucherScanner() {
     try {
       const QrScanner = (await import('qr-scanner')).default
       if (!videoRef.current) return
+      // 🔭 렌즈를 고른다(기억해 둔 것이 있으면 즉시). 권한 전이면 null → 기본 facingMode.
+      const chosen = await pickBestBackCamera()
       const scanner = new QrScanner(
         videoRef.current,
         (res: { data: string }) => {
@@ -185,7 +194,7 @@ export default function VoucherScanner() {
           if (code) void requestUseRef.current(code)
         },
         {
-          preferredCamera: 'environment',
+          preferredCamera: chosen ?? 'environment',
           highlightScanRegion: false,
           maxScansPerSecond: 8,
           // 보이는 화면 전체를 판독한다 — 기본값은 보이지 않는 중앙 일부만 본다(위 머리말).
@@ -194,6 +203,20 @@ export default function VoucherScanner() {
       )
       qrScannerRef.current = scanner
       await scanner.start()
+      // 🔭 첫 방문엔 권한 전이라 렌즈를 못 골랐다. 권한을 받은 지금, 렌즈가 둘 이상이면 다시 고른다.
+      //   ⚠️ 먼저 스트림을 놓는다 — 기기에 따라 카메라를 **하나만** 열 수 있어 검사가 실패한다.
+      let cams = await listBackCameras()
+      if (!chosen && cams.length > 1) {
+        scanner.stop()
+        const better = await pickBestBackCamera()
+        if (better) await scanner.setCamera(better)
+        await scanner.start()
+        cameraIdRef.current = better
+        cams = await listBackCameras()
+      } else {
+        cameraIdRef.current = chosen
+      }
+      setBackCams(cams)
       // 📷 qr-scanner 는 스스로 `{ facingMode }` 만 요청하고 **해상도도 초점도 안 건다**(소스 실측).
       //   스트림이 열린 뒤 트랙에 다시 요구한다. 넘겨받은 경우(네이티브가 못 읽었다)엔 확대까지.
       const track = (videoRef.current?.srcObject as MediaStream | null)?.getVideoTracks?.()[0]
@@ -237,7 +260,32 @@ export default function VoucherScanner() {
 
     engineRef.current = 'detector'
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: SCAN_VIDEO_CONSTRAINTS })
+      /** 고른 렌즈로 연다. 렌즈를 정하면 facingMode 는 빼야 한다(둘이 충돌하면 기기가 거부한다). */
+      const open = (id: string | null) =>
+        navigator.mediaDevices.getUserMedia({
+          video: id
+            ? { deviceId: { exact: id }, width: SCAN_VIDEO_CONSTRAINTS.width, height: SCAN_VIDEO_CONSTRAINTS.height }
+            : SCAN_VIDEO_CONSTRAINTS,
+        })
+      let chosen = await pickBestBackCamera()
+      let stream: MediaStream
+      try {
+        stream = await open(chosen)
+      } catch {
+        chosen = null  // 기억해 둔 렌즈가 사라졌거나 못 연다 → 기본으로
+        stream = await open(null)
+      }
+      // 🔭 첫 방문엔 권한 전이라 못 골랐다 — 권한을 받은 지금, 렌즈가 둘 이상이면 다시 고른다.
+      //   ⚠️ 먼저 스트림을 놓는다(카메라를 하나만 열 수 있는 기기가 있다).
+      let cams = await listBackCameras()
+      if (!chosen && cams.length > 1) {
+        stream.getTracks().forEach((tr) => tr.stop())
+        chosen = await pickBestBackCamera()
+        stream = await open(chosen)
+        cams = await listBackCameras()
+      }
+      cameraIdRef.current = chosen ?? stream.getVideoTracks()[0]?.getSettings?.().deviceId ?? null
+      setBackCams(cams)
       streamRef.current = stream
       if (videoRef.current) {
         videoRef.current.srcObject = stream
@@ -342,6 +390,26 @@ export default function VoucherScanner() {
     }
   }
 
+  /**
+   * 🔄 **렌즈를 직접 넘긴다** — 자동 선택이 틀릴 수 있는 마지막 탈출구.
+   * 기기마다 맞는 렌즈가 다르고(라벨이 비어 있는 기종이 있다) 자동 판정은 추측이다. 고른 것은
+   * 기억하므로 다음에 계산대를 열면 그 렌즈로 바로 연다.
+   */
+  const switchCamera = async () => {
+    const next = nextCamera(backCams, cameraIdRef.current)
+    if (!next) return
+    cameraIdRef.current = next
+    if (engineRef.current === 'wasm' && qrScannerRef.current) {
+      try { await qrScannerRef.current.setCamera(next) } catch { /* 기기가 거부 — 그대로 둔다 */ }
+      return
+    }
+    // 네이티브: 스트림을 놓고 다시 연다(기억해 둔 렌즈가 방금 바뀌었으므로 그 렌즈로 열린다).
+    scanningRef.current = false
+    streamRef.current?.getTracks().forEach((tr) => tr.stop())
+    engineRef.current = null
+    void startCamera()
+  }
+
   const submitManual = (e: React.FormEvent) => {
     e.preventDefault()
     const code = extractCode(manualCode)
@@ -367,6 +435,17 @@ export default function VoucherScanner() {
           <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
             <div className="w-52 h-52 rounded-2xl border-2 border-white/80" />
           </div>
+        )}
+        {/* 🔄 후면 렌즈가 둘 이상일 때만. 자동 선택이 틀렸을 때의 탈출구다(위 switchCamera). */}
+        {cameraOn && backCams.length > 1 && (
+          <button
+            type="button"
+            onClick={() => { void switchCamera() }}
+            className="absolute top-3 right-3 px-3 py-2 rounded-full bg-black/60 text-white text-[13px] font-bold"
+          >
+            {/* 아이콘 없이 글자만 — lucide 뜻 아이콘을 늘리지 않는다(소비자 아이콘 래칫). */}
+            {t('seller.scan.switchCamera', { defaultValue: '카메라 전환' })}
+          </button>
         )}
         {busy && (
           <div className="absolute inset-x-0 bottom-0 bg-black/60 text-white text-center text-[15px] py-2">

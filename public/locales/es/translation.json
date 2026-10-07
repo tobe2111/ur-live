@@ -2263,7 +2263,8 @@
       "photoReading": "Buscando un código QR en la foto…",
       "photoNoQr": "No se encontró ningún QR en esa foto. Acércate más y con más luz.",
       "helpTitle": "¿El QR no se escanea?",
-      "helpBody": "1) Pide al cliente que suba el brillo 2) Acércate a 10-20 cm 3) Inclina para evitar reflejos 4) ¿Sigue sin funcionar? Usa «Escanear desde foto» arriba"
+      "helpBody": "1) Pide al cliente que suba el brillo 2) Acércate a 10-20 cm 3) Inclina para evitar reflejos 4) ¿Sigue sin funcionar? Usa «Escanear desde foto» arriba",
+      "switchCamera": "Cambiar cámara"
     },
     "gbSettle": {
       "title": "Liquidaciones automáticas de compra grupal",
