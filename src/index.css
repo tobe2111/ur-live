@@ -1720,8 +1720,15 @@ html.dark .gbd, [data-theme="dark"] .gbd {
   50%      { transform: translateY(-6px) rotate(-2deg); }
 }
 .ur-udal-bob { animation: ur-udal-bob 3.2s ease-in-out infinite; transform-origin: 50% 90%; }
+/* 🦦 2026-10-07 v2 로딩 화면 유달이 — 이용권 들고 통통 튄다(확정 시안 ①). 바닥에 닿을 때 살짝 눌린다.
+   주기는 `shared/udal-loader.ts` 의 UDAL_HOP_PERIOD_S 와 같아야 정적↔앱 로더 교체 순간 안 튄다. */
+@keyframes ur-udal-hop {
+  0%, 100% { transform: translateY(0) scale(1.03, 0.97); }
+  50%      { transform: translateY(-9px) scale(1, 1); }
+}
+.ur-udal-hop { animation: ur-udal-hop 0.7s ease-in-out infinite; transform-origin: 50% 100%; }
 @media (prefers-reduced-motion: reduce) {
-  .ur-udal-bob { animation: none; }
+  .ur-udal-bob, .ur-udal-hop { animation: none; }
 }
 
 /* ──────────────────────────────────────────────────────────────

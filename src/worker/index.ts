@@ -286,7 +286,7 @@ import { referralRoutes } from '../features/referral/api/referral.routes';
 //   (typeof navigator/window 가드 보유라 워커 안전). URL 이 클라 렌더값과 byte-일치해야 preload 적중.
 import { cfImage, cfSrcSet } from '../utils/cf-image';
 // 🖼️ 홈 첫 화면 카드 사진 preload — 링크 생성은 헬퍼가 한다(파일 크기 래칫 + 직접 테스트 용이).
-import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { UDAL_LOADER_SRC, UDAL_FADE_MASK, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; // 한 줄: 파일크기 래칫(2685) 안
+import { buildHomeCardPreloadLinks, buildDetailHeroPreloadLink, buildHomeHeroPreloadLink } from './utils/home-card-preload'; import { buildDetailFirstScreen } from './utils/detail-ssr-body'; import { isMobileUserAgent } from '../shared/detail-hero-image'; import { UDAL_LOADER_SRC, udalLoaderWidth, udalLoaderHeight } from '../shared/udal-loader'; // 한 줄: 파일크기 래칫(2685) 안
 
 // ---- Durable Objects (re-exported for wrangler binding) ----
 export { LiveStreamDurableObject } from '../durable-object';
@@ -936,7 +936,7 @@ app.use('*', async (c, next) => {
     //   (값 SSOT `shared/udal-loader.ts`). 위상은 둘 다 첫 페인트 기준이라 교체 순간 안 튄다.
     const urdealLoaderHtml =
       '<div style="min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px">' +
-        `<img src="${UDAL_LOADER_SRC}" alt="" aria-hidden="true" draggable="false" width="${udalLoaderWidth(34)}" height="${udalLoaderHeight(34)}" decoding="async" class="ur-udal-bob select-none pointer-events-none" style="width:${udalLoaderWidth(34)}px;height:auto;-webkit-mask-image:${UDAL_FADE_MASK};mask-image:${UDAL_FADE_MASK}">` +
+        `<img src="${UDAL_LOADER_SRC}" alt="" aria-hidden="true" draggable="false" width="${udalLoaderWidth(34)}" height="${udalLoaderHeight(34)}" decoding="async" class="ur-udal-hop select-none pointer-events-none" style="width:${udalLoaderWidth(34)}px;height:auto">` +
         '<div class="ur-loader-breathe text-[#16181C] dark:text-[#F8F7FC]" style="display:inline-flex;align-items:baseline;font-family:\'Poppins\',\'Pretendard Variable\',system-ui,sans-serif;font-weight:800;font-size:34px;letter-spacing:-0.035em;line-height:1">' +
           'urdeal' +
           '<span class="bg-brand" style="display:inline-block;width:6.12px;height:6.12px;border-radius:50%;margin-left:2.72px"></span>' +

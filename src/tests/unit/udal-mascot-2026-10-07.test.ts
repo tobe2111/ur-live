@@ -69,28 +69,28 @@ describe('🦦 유달이 — 부품 하나로만 그린다', () => {
 describe('🦦 유달이 — 상황표가 온전하다', () => {
   const src = readCode(COMPONENT)
 
-  it('③ 상황 8가지가 모두 얼굴을 가진다', () => {
+  it('③ 상황 10가지가 모두 그림을 가진다', () => {
     const moods = [...src.matchAll(/\|\s*'(\w+)'/g)].map((m) => m[1])
-    expect(moods.length).toBe(8)
-    const face = src.slice(src.indexOf('const FACE'), src.indexOf('}', src.indexOf('const FACE')))
-    for (const m of moods) expect(face, `상황 '${m}' 에 얼굴이 없다`).toMatch(new RegExp(`\\b${m}:\\s*\\w+`))
+    expect(moods.length).toBe(10)
+    const table = src.slice(src.indexOf('const ART'), src.indexOf('\n}', src.indexOf('const ART')))
+    for (const m of moods) expect(table, `상황 '${m}' 에 그림이 없다`).toMatch(new RegExp(`\\b${m}:\\s*\\{\\s*src:\\s*\\w+,\\s*w:\\s*\\d+,\\s*h:\\s*\\d+`))
   })
 
   it('③ 가리키는 이미지 파일이 전부 실재한다', () => {
     const imports = [...src.matchAll(/from '@\/assets\/mascot\/([\w-]+\.webp)'/g)].map((m) => m[1])
-    expect(imports.length).toBe(8)
+    expect(imports.length).toBe(9)
     for (const f of imports) expect(existsSync(`src/assets/mascot/${f}`), `${f} 없음`).toBe(true)
   })
 
   it('③ 자리가 밀리지 않게 width·height 를 같이 준다', () => {
     expect(src).toMatch(/width=\{size\}/)
-    expect(src).toMatch(/height=\{Math\.round\(size \* RATIO\)\}/)
+    expect(src).toMatch(/height=\{Math\.round\(\(size \* art\.h\) \/ art\.w\)\}/)
   })
 
   it('④ 움직임 줄이기 사용자에게는 멈춘다', () => {
     const css = readFileSync('src/index.css', 'utf8')
     expect(css).toMatch(/@keyframes ur-udal-bob/)
-    expect(css).toMatch(/prefers-reduced-motion: reduce\)\s*\{\s*\.ur-udal-bob\s*\{\s*animation:\s*none/)
+    expect(css).toMatch(/prefers-reduced-motion: reduce\)\s*\{\s*\.ur-udal-bob,\s*\.ur-udal-hop\s*\{\s*animation:\s*none/)
   })
 })
 
@@ -103,9 +103,14 @@ describe('🦦 유달이 — 배선한 화면이 되돌아가지 않는다', () 
     ['src/components/search/SearchStates.tsx', 'notFound'],
     ['src/components/voucher/VoucherRedeemModal.tsx', 'done'],
     ['src/pages/my-vouchers/WalletEmpty.tsx', 'empty'],
-    ['src/pages/PaymentSuccessPage.tsx', 'done'],
+    ['src/pages/PaymentSuccessPage.tsx', 'paid'],
+    ['src/pages/my-vouchers/QRModal.tsx', 'showQr'],
+    ['src/pages/my-vouchers/WalletHeader.tsx', 'paid'],
+    ['src/components/onboarding/WelcomeOnboardingModal.tsx', 'hello'],
     ['src/pages/restaurant-map/RestaurantList.tsx', 'notFound'],
     ['src/pages/restaurant-map/NearbyEmptyBanner.tsx', 'notFound'],
+    ['src/pages/main-home/GroupBuyFeed.tsx', 'empty'],
+    ['src/pages/pc-home/PcHomeAppBand.tsx', 'showQr'],
   ]
   it.each(WIRED)('⑤ %s 에 유달이(%s)가 있다', (file, mood) => {
     expect(readCode(file)).toMatch(new RegExp(`<Udal[^>]*mood="${mood}"`))
@@ -129,6 +134,10 @@ describe('🦦 로딩 화면의 유달이 — 정적 로더와 앱 로더가 같
   it('워커 정적 로더와 BrandLoader 가 같은 SSOT 를 읽는다', () => {
     expect(readFileSync('src/worker/index.ts', 'utf8')).toMatch(/src="\$\{UDAL_LOADER_SRC\}"/)
     expect(readCode('src/components/brand/BrandLoader.tsx')).toMatch(/src=\{UDAL_LOADER_SRC\}/)
+  })
+
+  it('로더 그림 원본 비율과 SSOT 높이 계산이 같다(그림이 오기 전 자리 예약이 맞다)', () => {
+    expect(shared).toMatch(/udalLoaderWidth\(logoSize\) \* \(220 \/ 204\)/)
   })
 
   it('대시보드 로더(forceLight)에는 유달이가 없다', () => {

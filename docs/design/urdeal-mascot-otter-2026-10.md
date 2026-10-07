@@ -257,3 +257,25 @@ from behind only the triangle of the bandana shows.
 - [ ] 이름
 
 시안 캔버스: https://claude.ai/artifact/H55erf8rdnSpKFfUUZAKuu (비공개 — 공유 메뉴에서 공유 필요)
+
+## ✅ 구현 2차 — 확정 시안 10곳을 포즈 그림으로 (2026-10-07 대표 *"남은 것들 모두 해줘. 원본은 없는데?? 너가 찾거나 신중히 만들어서"*)
+
+포즈 원본은 **대표 시안 아티팩트(유어딜 마스코트 시안 · Pages 보드)에 이미 올라가 있던 누끼 그림 8장**이다.
+새로 그리지 않고 그걸 그대로 가져왔다 → `docs/design/assets/mascot/otter-pose-*.png`(원본) ·
+`src/assets/mascot/udal-pose-*.webp`(여백 잘라 변환). ⚠️ 원본이 **200px 남짓**이라 화면에선 가로 128px 이하로만 쓴다.
+
+| 시안 | 그림(mood) | 화면 |
+|---|---|---|
+| ① 로딩 | 이용권 들고 달리기 · 통통 0.7초 | 정적 로더 + `BrandLoader` (`udal-loader-v2`) |
+| ② 이용권 사용(직원에게 보여주기) | QR 내미는 수달 `showQr` | `my-vouchers/QRModal` QR 카드 **밖** 오른쪽 아래 모서리(52px) |
+| ③ 사용 완료 | 도장 + 엄지 `done` | `VoucherRedeemModal` |
+| ④ 결제 완료 | 이용권 더미 위 지갑 `paid` | `PaymentSuccessPage` |
+| ⑤ 내 이용권 맨 위 | 지갑 `paid` (36px) | `my-vouchers/WalletHeader` 금액 옆(빈 지갑이면 빠짐) |
+| ⑥ 빈 화면 | 빈 지갑 들여다보기 `empty` | 이용권 0장 · 찜 0개 |
+| ⑦ 연결 오류 · 404 | 빠진 케이블 `oops`/`lost` | 오류 화면 · 목록 못 불러옴 · 검색 오류 · 404 |
+| ⑧ 첫 가입 환영 | 서서 인사 `hello` | `WelcomeOnboardingModal` 1단계(가입 직후 1회) · 검색어 입력 전 |
+| ⑨ 사장님 정산 알림 | 하이파이브(그림만 준비) | **안 함** — 카톡 알림톡은 이미지 템플릿 심사가 필요하고, 사장님 화면 예외는 결정 대기 |
+| ⑩ 계산대 스티커 | QR 수달 | **코드 밖**(인쇄물) |
+
+얼굴 그림은 `notFound`(검색·지도 0건, 갸웃)·`tip`(윙크) 두 개만 남겼다.
+

@@ -60,7 +60,7 @@ export default function NotFoundPage() {
         <div className="relative z-10 max-w-xl w-full text-center px-4 lg:px-8 animate-fade-in">
           {/* 🦦 2026-10-07 유달이 — 거대한 '404' 글자 대신 길 잃은(놀란) 얼굴.
               숫자는 작게 남긴다(무슨 일인지 아는 사람에겐 그게 가장 빠른 신호다). */}
-          <Udal mood="lost" size={152} motion priority className="mx-auto" />
+          <Udal mood="lost" size={128} motion priority className="mx-auto" />
           <p className="mt-4 text-[13px] font-bold tracking-[0.2em] text-gray-400 dark:text-gray-500" aria-hidden="true">404</p>
 
           <h1 className="mt-1 text-[24px] font-bold text-gray-900 dark:text-white">

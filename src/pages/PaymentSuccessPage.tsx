@@ -322,7 +322,7 @@ export default function PaymentSuccessPage() {
         <div className="bg-white dark:bg-[#1D1F29] rounded-xl sm:rounded-2xl p-5 sm:p-6 lg:p-8 shadow-lg border border-[#e5e5e7] dark:border-[#2C2F35]">
           {/* 성공 표시 — 🦦 2026-10-07 (대표 허가 "결제 완료"): 초록 체크 원 → 웃는 유달이(둥실). 마크업만. */}
           <div className="text-center mb-5 sm:mb-6 lg:mb-8">
-            <Udal mood="done" size={104} motion priority className="mx-auto mb-3 sm:mb-4" />
+            <Udal mood="paid" size={96} motion priority className="mx-auto mb-3 sm:mb-4" />
             <h1 className="text-[17px] sm:text-[24px] lg:text-[28px] font-bold text-[#1d1d1f] dark:text-white mb-1 sm:mb-2">{t('paymentSuccess.title')}</h1>
             <p className="text-[12px] sm:text-[15px] lg:text-[15px] text-[#6e6e73] dark:text-gray-400">{t('paymentSuccess.subtitle')}</p>
           </div>

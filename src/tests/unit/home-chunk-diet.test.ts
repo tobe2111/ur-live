@@ -37,7 +37,7 @@ const OK_PARTS = [
   '/src/shared/price-display',  // 가격·할인율 표시 규칙 SSOT → app-shared (2026-09-08)
   '/src/shared/urshorts',       // 유어쇼츠 SSOT(카드 크기·뷰어 주소) → app-shared (2026-09-09)
   '/src/components/icons/', '/src/client/', '/src/i18n', '/src/pages/main-home/GroupBuyFeed', '/src/pages/mobile-home/',
-  '/src/routes/', '/src/shared/feature-flags', '/src/components/brand/', // app-shell 규칙(엔트리 셸)에 이미 있는 것
+  '/src/routes/', '/src/shared/feature-flags', '/src/components/brand/', '/src/components/mascot/', // app-shell 규칙(엔트리 셸)에 이미 있는 것
 ]
 const ruleBlock = (() => {
   const at = VITE.indexOf(") return 'app-home'")
