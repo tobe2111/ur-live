@@ -90,6 +90,20 @@ High quality, Pixar-like charm, no text.
 - 꼬리: 굵고 긴 수달 꼬리 · 발바닥 무늬 없이 둥근 발
 - 스카프: 브랜드 블루(#1C69EF) 반다나, 앞에서 매듭 · 뒤에서는 삼각형만
 
+## 접점 포즈 4종 v2 — 확정 디자인 기준 재생성 (2026-10-07)
+
+대표: *"털 색상 다른 것 같은데? 얼굴도 가로로 길어진 것 같기도 하고? 신중하게 만들어줘."*
+기준 원본에서 **측정한 값**을 문구에 넣었다: 털 #AA7A5A(밝은 카라멜) · 크림 #DDC9B7 · 머리 = 전체 키의 약 절반 ·
+머리 가로:세로 ≈ 1.1:1(넓은 타원 금지). 아래 "캐릭터 설정서" 문구에 이 수치를 함께 쓴다.
+
+측정 결과(갈색 화소 평균): 기준 **#9F7559** · v1 #8A6148~#91654D(어두움) · **v2 #9B6F52~#A47759**(기준과 일치).
+v2 생성본 URL(2026-10-14 경 만료): qr `7fabbfb4-…` · wallet `1825fe77-…` · stamp `19978e8a-…` · highfive `2e66b4f5-…`
+(전체 URL 은 https://www.figma.com/api/mcp/asset/<id>.png). 원본을 받으면 누끼 후 `assets/mascot/` 의 v1 파일을 교체한다.
+
+페이지 적용 시안(캔버스 "확정 수달: 유어딜 페이지 적용 시안 10곳"): 로딩 · 이용권 사용(QR) · 사용 완료 · 결제 완료 ·
+내 이용권 · 빈 화면 · 404 · 첫 가입 환영 · 사장님 정산 알림 · 매장 스티커.
+⚠️ 구현 시 잠금: 결제 완료(`PaymentSuccessPage` Toss 잠금) · 로딩(`BrandLoader` 로더 연속성 가드) → 각각 별도 승인.
+
 ## 누끼(투명 PNG) — 2026-10-07
 
 대표가 원본 1024px 4장을 전달 → BiRefNet(`rembg birefnet-general`)으로 배경 제거, 여백 24px 로 크롭.
@@ -107,7 +121,7 @@ High quality, Pixar-like charm, no text.
 ```
 Cute chibi baby otter mascot, 3D animated character, soft plush short fur texture (like a high-end stuffed toy).
 VERY BIG ROUND HEAD (about 45% of total height), short chubby body, short stubby arms and legs, rounded feet.
-Warm medium-brown fur. Small rounded ears on the sides of the head at eye level, slightly darker inside.
+Light caramel-brown fur (#AA7A5A, not dark chocolate). Head is about half of total height and almost round (width:height ≈ 1.1:1, not a wide oval). Small rounded ears on the sides of the head at eye level, slightly darker inside.
 Cream-white fur on cheeks, muzzle and chin continuing down the chest into a large cream oval belly.
 Two soft cream-white eyebrow marks. Very large round glossy brown eyes with two white highlights.
 Small rounded pink nose, small gentle smile, soft pink cheek blush, thin white whiskers.
