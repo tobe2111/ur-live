@@ -581,3 +581,17 @@ export const TruckIcon = forwardRef<SVGSVGElement, IconProps>(function TruckIcon
     </svg>
   )
 })
+
+/**
+ * 고치기(편집) — 연필 + 그 아래 받침선. 몸통만 그리면 '쓰기' 로 읽혀서,
+ * 밑줄이 "이 줄을 고친다" 를 만든다. `filled` 는 연필 몸통만 채운다(촉은 비워 방향이 남는다).
+ */
+export const EditIcon = forwardRef<SVGSVGElement, IconProps>(function EditIcon({ size = 24, filled, ...props }, ref) {
+  return (
+    <svg ref={ref} {...base} width={size} height={size} {...props}>
+      <path d="M16.1 4.3a1.9 1.9 0 0 1 2.7 0l.9.9a1.9 1.9 0 0 1 0 2.7l-8.2 8.2-4 1.3 1.3-4z" fill={filled ? 'currentColor' : 'none'} />
+      <path d="m14.6 5.8 3.6 3.6" stroke={filled ? KNOCKOUT : 'currentColor'} />
+      <path d="M4.6 20.2h14.8" />
+    </svg>
+  )
+})

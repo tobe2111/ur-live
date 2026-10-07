@@ -36,18 +36,34 @@ describe('① 브랜드 색 면이 없다', () => {
   })
 })
 
+/**
+ * 🔀 2026-10-07 재조준 (대표 확정 **안 C** — 공유·관리 버튼 위계).
+ *   종전엔 세 링크의 className 을 **문자열로 세 번** 적어 두고 "셋이 글자 하나까지 같은가" 를
+ *   물었다. 안 C 가 그 모양을 상수 `iconBtnCls` 하나로 모았고(공유 버튼도 같은 상수를 쓴다)
+ *   ⇒ **같음이 구조가 됐으므로** 질문을 "같은 문자열인가" → "같은 상수를 쓰는가" 로 옮긴다.
+ *   지키려던 것(한 줄로 읽히는 같은 치수·같은 잉크 · 터치 영역 36px)은 그대로다.
+ */
 describe('② 세 링크가 같은 모양을 공유한다', () => {
-  it('같은 치수·같은 잉크', () => {
-    const tiles = SNS.match(/w-9 h-9 rounded-full[^"]*text-gray-500 dark:text-gray-400/g) ?? []
-    expect(tiles.length, '유튜브·인스타·틱톡 셋').toBe(3)
-    // 셋이 글자 하나까지 같아야 한 줄로 읽힌다.
-    expect(new Set(tiles).size).toBe(1)
+  it('같은 치수·같은 잉크 — 상수 한 벌', () => {
+    const decl = SRC.match(/const iconBtnCls = '([^']+)'/)
+    expect(decl, 'iconBtnCls 선언').not.toBeNull()
+    expect(decl![1], '36px 원 + 회색 잉크').toMatch(/w-9 h-9 rounded-full[\s\S]*text-gray-500 dark:text-gray-400/)
+    // 셋이 **같은 상수**를 쓴다 — 문자열을 다시 적는 순간 갈린다.
+    expect((SNS.match(/className=\{iconBtnCls\}/g) ?? []).length, '유튜브·인스타·틱톡 셋').toBe(3)
+    expect(SNS, 'SNS 자리에 손으로 적은 치수 금지').not.toMatch(/className="w-9 h-9/)
+  })
+
+  it('공유 버튼도 SNS 와 같은 모양이다 (안 C)', () => {
+    // 안 C 의 핵심: 한 줄에 모양은 **하나**, 채운 면도 **하나**(관리)뿐이다.
+    const row = sliceFrom(SRC, 'onClick={onCopyLink}', '</div>', 900)
+    expect(row, '공유가 같은 상수를 쓴다').toMatch(/className=\{iconBtnCls\}/)
+    expect(row, '테두리 친 알약으로 되돌아가지 않는다').not.toMatch(/border-rule-strong/)
   })
 
   it('탭 영역이 34px 보다 줄지 않았다', () => {
     // 타일을 없애면서 터치 영역까지 없애면 접근성 회귀다 — 36px 원으로 오히려 키웠다.
-    expect(SNS).toMatch(/w-9 h-9/)
-    expect(SNS).not.toMatch(/w-\[34px\]/)
+    expect(SRC).toMatch(/const iconBtnCls = 'w-9 h-9/)
+    expect(SRC).not.toMatch(/w-\[34px\]/)
   })
 })
 
