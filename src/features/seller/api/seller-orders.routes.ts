@@ -72,19 +72,33 @@ async function getSellerIdFromToken(authorization: string | undefined, jwtSecret
  * and could otherwise keep calling these endpoints.  This helper does the JWT
  * check + a DB status check in one shot.
  */
-async function getActiveSellerId(
-  DB: D1Database,
-  authorization: string | undefined,
-  jwtSecret: string
-): Promise<string | null> {
-  const id = await getSellerIdFromToken(authorization, jwtSecret);
-  if (!id) return null;
-  // 🛡️ 2026-05-07: status 표준 분기 — 'active' 와 'approved' 모두 인정 (코드베이스 혼용 사고 방지).
-  //   admin 라우트는 'active' 사용, 일부 구 코드는 'approved'. 둘 다 활성 상태로 처리.
-  const seller = await DB.prepare(
-    "SELECT id FROM sellers WHERE id = ? AND status IN ('approved', 'active') AND is_active = 1"
-  ).bind(id).first();
-  return seller ? id : null;
+/**
+ * 🪑 좌석 판정 — **판정 자체는 `worker/utils/seller-approval-gate` 가 한다.**
+ *
+ * 🩸 2026-10-07 (대표 신고 — 매장 등록 직후 `/seller/login` 으로 튕김): 종전엔 여기서 직접
+ *   `status IN ('approved','active')` 를 보고 **셋을 전부 `null` 로 뭉개** 호출부가 401 밖에
+ *   못 줬다. 그런데 2026-09-20 당근 모델이 **승인 대기 매장에도 좌석을 열어 주므로**(그 좌석은
+ *   유효하다) 그 401 은 거짓이었고, 클라 인터셉터가 그걸 "셀러 세션 만료" 로 읽어 방금 받은
+ *   좌석 토큰을 지우고 셀러 로그인 화면으로 하드 이동시켰다. 사유를 구분해 돌려주는 것이 수리다.
+ */
+async function sellerGate(c: Context<{ Bindings: Bindings }>) {
+  const { resolveApprovedSeller } = await import('../../../worker/utils/seller-approval-gate');
+  return resolveApprovedSeller(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET);
+}
+
+/**
+ * 좌석 판정 결과를 **표준 응답**으로. 401 은 "네가 누구인지 모르겠다" 일 때만이다.
+ * 승인 전 매장은 인증 실패가 아니라 **상태**라 403 + `SELLER_PENDING_APPROVAL`.
+ */
+async function denySellerGate(
+  c: Context<{ Bindings: Bindings }>,
+  gate: { reason: 'no_token' | 'no_seller' | 'not_approved' },
+) {
+  if (gate.reason === 'not_approved') {
+    const { SELLER_PENDING_APPROVAL } = await import('../../../worker/utils/seller-approval-gate');
+    return c.json(SELLER_PENDING_APPROVAL, 403);
+  }
+  return c.json({ success: false, error: '셀러 인증이 필요합니다' }, 401);
 }
 
 /** DB status 값과 프론트엔드 status 값 매핑 */
@@ -98,7 +112,9 @@ const VALID_STATUSES = ['PREPARING', 'SHIPPING', 'DELIVERED', 'CANCELLED', 'DONE
 sellerOrdersRoutes.get('/orders', async (c) => {
   try {
     // ✅ BUG #33 FIX: Require approved + active seller (not just a signed JWT).
-    const sellerId = await getActiveSellerId(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET);
+    const gate = await sellerGate(c);
+    if (!gate.ok) return denySellerGate(c, gate);
+    const sellerId = gate.sellerId;
     if (!sellerId) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
     const db = c.env.DB;
@@ -328,7 +344,9 @@ sellerOrdersRoutes.patch('/orders/:id/status', handleStatusUpdate);
 //   검증된 공유 루틴 refundOrderFully — Toss취소/딜환불 + CAS + 재고복원 + 커미션/공급자/영입자 역전.
 sellerOrdersRoutes.post('/orders/:id/refund', rateLimit({ action: 'seller_order_refund', max: 20, windowSec: 3600 }), async (c) => {
   try {
-    const sellerId = await getActiveSellerId(c.env.DB, c.req.header('Authorization'), c.env.JWT_SECRET);
+    const gate = await sellerGate(c);
+    if (!gate.ok) return denySellerGate(c, gate);
+    const sellerId = gate.sellerId;
     if (!sellerId) return c.json({ success: false, error: '로그인이 필요합니다' }, 401);
     const orderId = c.req.param('id');
     if (!orderId) return c.json({ success: false, error: '잘못된 주문 ID' }, 400);

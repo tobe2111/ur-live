@@ -66,6 +66,8 @@ export interface SellerWorkState {
   products: WorkProduct[]
   loading: boolean
   failed: boolean
+  /** 🪑 좌석은 유효한데 **매장이 아직 승인 전**(서버 403 `SELLER_PENDING_APPROVAL`). 실패가 아니다. */
+  pendingApproval: boolean
   /** 지금 처리 중인 주문번호 · 상품 id (버튼 잠금용) */
   busyOrder: string | null
   busyProduct: number | null
@@ -100,6 +102,7 @@ export function useSellerWork(
   const [products, setProducts] = useState<WorkProduct[]>([])
   const [loading, setLoading] = useState(false)
   const [failed, setFailed] = useState(false)
+  const [pendingApproval, setPendingApproval] = useState(false)
   const [busyOrder, setBusyOrder] = useState<string | null>(null)
   const [busyProduct, setBusyProduct] = useState<number | null>(null)
   const alive = useRef(true)
@@ -115,11 +118,19 @@ export function useSellerWork(
      *   1단(`useMyStores`)까지 함께 고치니 `+714ms`.
      */
     void (async () => {
+      // 🪑 2026-10-07 — 403 `SELLER_PENDING_APPROVAL` 은 **실패가 아니다**(승인 대기 매장).
+      //   그래서 거절 응답을 버리지 않고 들고 온다. 종전엔 `.catch(() => null)` 이 사유를 통째로
+      //   지워 화면이 "불러오지 못했습니다" 라고만 말했다 — 사장님이 할 일은 기다리는 것뿐인데.
+      const grab = (e: unknown) => (e as { response?: { status?: number; data?: { code?: string } } })?.response ?? null
       const [oRes, pRes] = await Promise.all([
-        api.get('/api/seller/orders?limit=50&sort=desc').catch(() => null),
-        withProducts ? api.get('/api/seller/products').catch(() => null) : Promise.resolve(null),
+        api.get('/api/seller/orders?limit=50&sort=desc').catch(grab),
+        withProducts ? api.get('/api/seller/products').catch(grab) : Promise.resolve(null),
       ])
       if (!alive.current) return
+      const isPending = (r: unknown) =>
+        (r as { status?: number; data?: { code?: string } } | null)?.data?.code === 'SELLER_PENDING_APPROVAL'
+      if (isPending(oRes) || isPending(pRes)) { setPendingApproval(true); setFailed(false); setLoading(false); return }
+      setPendingApproval(false)
       // 🔴 상품을 안 받는 화면(첫 화면)에서는 `pRes` 가 늘 null 이다 — 그걸 실패로 세면
       //   주문이 멀쩡히 와도 "불러오지 못했습니다" 가 뜬다. 받은 것만으로 판정한다.
       const asked = withProducts ? [oRes, pRes] : [oRes]
@@ -190,5 +201,5 @@ export function useSellerWork(
     } catch { return false } finally { if (alive.current) setBusyProduct(null) }
   }), [guarded])
 
-  return { orders, products, loading, failed, busyOrder, busyProduct, confirmOrder, toggleProduct, refetch: load }
+  return { orders, products, loading, failed, pendingApproval, busyOrder, busyProduct, confirmOrder, toggleProduct, refetch: load }
 }
