@@ -1,8 +1,8 @@
-# 유어딜 마스코트: 수달 (2026-10-06)
+# 유어딜 마스코트: 수달 "유달이" (2026-10-06)
 
 > 상태: **캐릭터 완전 확정 (2026-10-07 대표 "이거 너무 좋다 … 이거로 완전 픽스")** — 기준 원본은
 > `docs/design/assets/mascot/otter-turnaround-master.png`(정면·3/4·측면·3/4 뒤·뒤). 이 그림이 SSOT 다.
-> 앞서 만든 접점 포즈 4종(점토 질감)은 이 기준과 질감·비율이 달라 **재생성 대상**. 상표용 3D 원본·이름·KIPRIS 미정.
+> 앞서 만든 접점 포즈 4종(점토 질감)은 이 기준과 질감·비율이 달라 **재생성 대상**. 이름 **유달이(가칭)**. 상표용 3D 원본·KIPRIS 미정.
 
 ## 결정 흐름 (대표 발언 그대로)
 
@@ -90,6 +90,88 @@ High quality, Pixar-like charm, no text.
 - 꼬리: 굵고 긴 수달 꼬리 · 발바닥 무늬 없이 둥근 발
 - 스카프: 브랜드 블루(#1C69EF) 반다나, 앞에서 매듭 · 뒤에서는 삼각형만
 
+## 접점 포즈 4종 v2 — 확정 디자인 기준 재생성 (2026-10-07)
+
+대표: *"털 색상 다른 것 같은데? 얼굴도 가로로 길어진 것 같기도 하고? 신중하게 만들어줘."*
+기준 원본에서 **측정한 값**을 문구에 넣었다: 털 #AA7A5A(밝은 카라멜) · 크림 #DDC9B7 · 머리 = 전체 키의 약 절반 ·
+머리 가로:세로 ≈ 1.1:1(넓은 타원 금지). 아래 "캐릭터 설정서" 문구에 이 수치를 함께 쓴다.
+
+측정 결과(갈색 화소 평균): 기준 **#9F7559** · v1 #8A6148~#91654D(어두움) · **v2 #9B6F52~#A47759**(기준과 일치).
+v2 생성본 URL(2026-10-14 경 만료): qr `7fabbfb4-…` · wallet `1825fe77-…` · stamp `19978e8a-…` · highfive `2e66b4f5-…`
+(전체 URL 은 https://www.figma.com/api/mcp/asset/<id>.png). 원본을 받으면 누끼 후 `assets/mascot/` 의 v1 파일을 교체한다.
+
+페이지 적용 시안(캔버스 "확정 수달: 유어딜 페이지 적용 시안 10곳"): 로딩 · 이용권 사용(QR) · 사용 완료 · 결제 완료 ·
+내 이용권 · 빈 화면 · 404 · 첫 가입 환영 · 사장님 정산 알림 · 매장 스티커.
+⚠️ 구현 시 잠금: 결제 완료(`PaymentSuccessPage` Toss 잠금) · 로딩(`BrandLoader` 로더 연속성 가드) → 각각 별도 승인.
+
+## ⭐ 표정 시트 확정 (2026-10-07 대표 *"너무 잘 만들었어 완벽해"*)
+
+원본: `assets/mascot/otter-expressions-master.png` · 표정별 투명 PNG `assets/mascot/otter-face-<이름>.png`:
+
+| 파일 | 표정 | 쓰는 자리 |
+|---|---|---|
+| `neutral` | 기본 미소 | 기본 얼굴, 지도 내 위치, 앱 아이콘 후보 |
+| `happy` | 눈 감고 웃음 | 사용 완료, 리뷰 작성 완료 |
+| `excited` | 반짝이는 눈, 활짝 | 결제 완료, 첫 가입 환영 |
+| `surprised` | 놀람 | 404 |
+| `curious` | 갸웃 | 빈 화면, 검색 결과 없음 |
+| `sleepy` | 졸림 | 점검 중, 오래 기다림 |
+| `sorry` | 미안 | 연결 오류, 실패 |
+| `wink` | 윙크 | 친구 초대, 이벤트 |
+
+3D 제작 의뢰서의 표정 블렌드셰이프 8종은 이 시트를 기준으로 한다.
+
+## 장면용 포즈 3종 · 모션 · 표정 시트 (2026-10-07)
+
+대표: *"빈 화면, 연결 오류, 로딩에서는 다른 이미지가 필요하겠는데? 그리고 움직이는 모션도 만들 수 있어?"*
+
+| 장면 | 포즈 | 생성본(2026-10-14 경 만료) |
+|---|---|---|
+| 빈 화면 | 빈 파란 지갑 들여다보며 갸웃 | `c8ac4751-6c16-4460-a749-fdccf3dab94c` |
+| 연결 오류 | 빠진 케이블 양 끝 들고 땀 한 방울 | `6ee48765-64c3-4d7f-ae9f-5e6a7e9e756a` |
+| 로딩 | 이용권 들고 오른쪽으로 달리기 | `b0f0f7db-bac3-4d82-a103-8df941540df4` |
+| 표정 시트 8종 | 기본·웃음·신남·놀람·갸웃·졸림·미안·윙크 | `5f640b8f-0610-4dd6-ab1f-52b990a85161` |
+
+(전체 URL: https://www.figma.com/api/mcp/asset/<id>.png) 표정 시트 1차(gemini)는 얼굴이 길어 폐기, 이번은 측정값 문구로 재생성.
+
+**모션 (시안에 적용 — 캔버스 "페이지 적용 시안 10곳" ①⑥⑦)**: 이미지 한 장을 CSS 로 움직이는 방식.
+로딩 = 통통 튀기 + 그림자 0.7초 반복 · 빈 화면 = 3초마다 갸웃 · 연결 오류 = 좌우 흔들흔들.
+`prefers-reduced-motion` 이면 정지. 팔다리가 실제로 움직이는 애니메이션은 AI 영상 또는 3D 리깅본이 필요.
+
+**AI 영상(Figma Weave)**: 대표가 Weave 에 Figma 계정 연결 완료(10-07). 그러나 Listing 팀이 **무료 Starter 플랜이라
+영상 모델이 막혀 있다**("Video models are only available on paid plans"). 사용 가능 모델(유료 시): Kling Video ~35 ·
+Kling 3 ~82 · Veo 3.1 이미지→영상 ~90 · Kling Motion Control ~164(실사 동작 영상을 수달이 따라 함 — 릴스 전략과 직결).
+대표: *"일단 영상 말고"* → 보류.
+
+## 이름 — **"유달이" 가확정** (2026-10-07 대표 *"유달이로 하자 일단은. 변경될 수도 있어"*)
+
+가칭이다. 외부 공개·상표 출원 전에 대표 재확인 + KIPRIS 검색. 코드·파일명에는 아직 이름을 박지 않는다(`otter-*` 유지) — 바뀌면 문서만 고치면 되게.
+
+후보 기록:
+
+| 이름 | 뜻 | 메모 |
+|---|---|---|
+| **유달이** (추천) | 유어딜 + 수달 | 서비스와 동물이 한 이름에. 목포 "유달산"과 소리가 같음 |
+| **딜달이** | 딜 + 수달 | 서비스 성격이 드러남. 발음이 약간 꼬임 |
+| 달이 | 수달의 "달" | 가장 짧지만 흔해서 상표로 지키기 어려움 |
+| 오딜 | Otter + Deal | 영문·해외용 |
+| 딜리 | Deal + 애칭 | 배달 서비스처럼 들릴 수 있음 |
+| 모아 | 이용권을 "모아" | 수달과 연결이 약함 |
+
+확정 전 KIPRIS 동일 상품류 검색 필요.
+
+## 화면 배치 계획 (우선순위)
+
+- **1순위(핵심 순간)**: 결제 완료 · 이용권 사용 화면(QR) · 사용 완료 · 매장 스티커
+- **2순위(빈 화면)**: 이용권 0장 · 검색 결과 없음 · 찜 0개 · 404 · 연결 오류
+- **3순위(관계)**: 첫 가입 환영 · 리뷰 작성 완료 · 친구 초대·공유 카드(OG) · 사장님 정산 완료 알림 · 입점 승인 알림
+- **안 씀**: 결제 위젯 안 · 가격·할인율 옆 · 목록 카드마다 · 환불·사용 불가 안내 · 셀러 대시보드·어드민·도매몰(정산 알림만 예외 결정 대기)
+- 구현 잠금: 결제 완료(`PaymentSuccessPage`, Toss 잠금) · 로딩(`BrandLoader`, 로더 연속성 가드) → 각각 별도 승인
+
+## 3D 제작 의뢰서
+
+`docs/design/urdeal-mascot-3d-commission-brief.md` (초안 — 예산·일정·애니메이션 형식·이름 결정 후 발송).
+
 ## 누끼(투명 PNG) — 2026-10-07
 
 대표가 원본 1024px 4장을 전달 → BiRefNet(`rembg birefnet-general`)으로 배경 제거, 여백 24px 로 크롭.
@@ -107,7 +189,7 @@ High quality, Pixar-like charm, no text.
 ```
 Cute chibi baby otter mascot, 3D animated character, soft plush short fur texture (like a high-end stuffed toy).
 VERY BIG ROUND HEAD (about 45% of total height), short chubby body, short stubby arms and legs, rounded feet.
-Warm medium-brown fur. Small rounded ears on the sides of the head at eye level, slightly darker inside.
+Light caramel-brown fur (#AA7A5A, not dark chocolate). Head is about half of total height and almost round (width:height ≈ 1.1:1, not a wide oval). Small rounded ears on the sides of the head at eye level, slightly darker inside.
 Cream-white fur on cheeks, muzzle and chin continuing down the chest into a large cream oval belly.
 Two soft cream-white eyebrow marks. Very large round glossy brown eyes with two white highlights.
 Small rounded pink nose, small gentle smile, soft pink cheek blush, thin white whiskers.
