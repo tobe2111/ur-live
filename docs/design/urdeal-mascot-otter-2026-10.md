@@ -68,6 +68,38 @@ High quality, Pixar-like charm, no text.
 
 화면 시안(캔버스 "확정 캐릭터: 접점 4곳 화면 시안"): 매장 스티커 · 내 이용권 요약 카드 · 사용 완료 · 정산 완료 알림.
 
+## 누끼(투명 PNG) — 2026-10-07
+
+대표가 원본 1024px 4장을 전달 → BiRefNet(`rembg birefnet-general`)으로 배경 제거, 여백 24px 로 크롭.
+`docs/design/assets/mascot/otter-{qr,wallet,stamp,highfive}.png` (투명 배경).
+- 1차 isnet 모델은 도장 수달의 오른쪽 눈썹을 지우고 종이·티켓을 반투명하게 만들어 **폐기**.
+- 남은 흠: 하이파이브의 금화·반짝이는 배경으로 판정돼 빠졌다(오히려 깔끔). 도장 종이 오른쪽 위 가장자리가 조금 뜯겨 보인다.
+- 원본이 AI 생성물이라 최종 상표·인쇄용은 3D 아티스트 재제작본으로 교체한다.
+
+## 캐릭터 설정서 (AI 영상·추가 생성용 고정 문구)
+
+대표: *"측면 정면 뒷모습 다 필요하거든? AI로 얘 영상도 만들거야. 최대한 정확하게."*
+영상 도구(Kling·Runway·Veo 등)에는 **아래 문구 + 기준 이미지(누끼 PNG·턴어라운드)를 함께** 넣는다.
+문구를 바꾸면 캐릭터가 바뀐다 — 수정은 이 문서에서만.
+
+```
+Chibi baby otter designer toy, soft matte clay material with subtle fur texture.
+VERY BIG ROUND HEAD (about 45% of total height), short chubby body, short stubby arms and legs.
+Warm light-brown fur. Small rounded ears on the sides of the head at eye level.
+Cream-white face mask over cheeks, muzzle and chin, plus two thick cream-white eyebrow marks.
+Large round glossy dark-brown eyes with white highlights. Small rounded pink nose, small smile,
+pink cheek blush, long thin white whiskers (3 per side). Cream belly patch.
+Long thick tapering tail. Bright cobalt-blue (#1C69EF) neckerchief knotted at the front;
+from behind only the folded triangle of the scarf shows.
+```
+
+턴어라운드(정면·3/4·측면·3/4 뒤·뒤) 생성본 — URL 2026-10-14 경 만료, 대표 로컬 저장 필요:
+- 채택 후보(gpt-image-2.5): https://www.figma.com/api/mcp/asset/380c367b-a43a-4ac6-acd7-e2f4818fbc74.png
+- 폐기(gemini, 머리가 작아 다른 캐릭터처럼 보임): https://www.figma.com/api/mcp/asset/7d988555-9ad7-4cf9-9d45-07aed7f08157.png
+- 표정 시트 1차(gemini) — 얼굴이 길고 나이 들어 보여 **재생성 필요**: https://www.figma.com/api/mcp/asset/f845b4fd-359f-420a-a0c1-f9258055a056.png
+
+⚠️ AI 생성 턴어라운드는 시점마다 미세하게 달라진다. 영상 일관성의 상한은 결국 **리깅된 3D 모델**이다(아래 릴스 전략).
+
 ## 활용 전략: 실사 영상 + 캐릭터 릴스 (대표 구상)
 
 *"트레이드마크 정하면 릴스도 만들텐데 실제 식당, 숙소 영상에다가 저 트레이드마크 캐릭터가
