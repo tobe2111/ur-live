@@ -81,8 +81,8 @@ export default function Udal({ mood, size = 120, motion = false, priority = fals
       style={{
         width: size,
         height: 'auto',
-        WebkitMaskImage: 'linear-gradient(to bottom, #000 86%, transparent)',
-        maskImage: 'linear-gradient(to bottom, #000 86%, transparent)',
+        WebkitMaskImage: 'linear-gradient(to bottom, black 86%, transparent)',
+        maskImage: 'linear-gradient(to bottom, black 86%, transparent)',
       }}
     />
   )
