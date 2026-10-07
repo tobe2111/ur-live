@@ -5035,7 +5035,12 @@
       "notFound": "クーポンが見つかりません",
       "processingError": "処理中にエラーが発生しました",
       "seoTitle": "クーポン確認",
-      "seoDescription": "QRコードでクーポンを確認します"
+      "seoDescription": "QRコードでクーポンを確認します",
+      "sellerAsk": "この店舗のオーナー様ですか？",
+      "sellerLoginHint": "ログインすると確認コードなしでそのまま利用処理できます。",
+      "sellerPickStore": "マイの「自分の店舗」で店舗を選ぶと、確認コードなしで利用処理できます。",
+      "goLogin": "カカオでログイン",
+      "goMyStores": "自分の店舗を開く"
     },
     "qrCode": "QRコード",
     "share": "共有",

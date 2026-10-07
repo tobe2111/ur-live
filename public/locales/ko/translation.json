@@ -5037,7 +5037,12 @@
       "notFound": "바우처를 찾을 수 없습니다",
       "processingError": "처리 중 오류가 발생했습니다",
       "seoTitle": "교환권 확인",
-      "seoDescription": "QR 코드로 교환권을 확인합니다"
+      "seoDescription": "QR 코드로 교환권을 확인합니다",
+      "sellerAsk": "이 매장의 사장님이신가요?",
+      "sellerLoginHint": "로그인하면 확인코드 없이 바로 사용 처리할 수 있어요.",
+      "sellerPickStore": "마이의 ‘내 가게’ 에서 매장을 고르면 확인코드 없이 바로 사용 처리할 수 있어요.",
+      "goLogin": "카카오로 로그인",
+      "goMyStores": "내 가게 열기"
     },
     "qrCode": "QR 코드",
     "share": "공유",

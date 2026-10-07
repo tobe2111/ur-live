@@ -6,6 +6,9 @@ import { Loader2, QrCode } from 'lucide-react'
 import api from '@/lib/api'
 import SEO from '@/components/SEO'
 import { getSellerToken, isSellerAuthenticated } from '@/lib/seller-auth'
+import { Link } from 'react-router-dom'
+import { loginPathFromHere } from '@/utils/login-return'
+import { getUserIdSync } from '@/utils/auth'
 import { cfImage, cfImageOnError } from '@/utils/cf-image'
 import { parseUTCDate } from '@/utils/date'
 
@@ -42,6 +45,25 @@ export default function VoucherVerifyPage() {
 
   const locale = i18n.language?.startsWith('ko') ? 'ko-KR' : i18n.language || 'en-US'
   const isSeller = isSellerAuthenticated()
+  /**
+   * 🔑 **일반 카메라로 찍고 들어온 사장님에게 로그인을 권한다** (2026-10-07 대표 —
+   *   *"QR 인증을 사장님이 할 때 로그인이 안되어있으면 일반 카메라로 QR 인증 시 카카오 로그인을
+   *   먼저 요청하는게 맞지 않을까?"*).
+   *
+   * 🩸 종전엔 이 화면에 **로그인 유도가 한 줄도 없었다.** 좌석이 있으면 초록 상자 + [사용 처리]가
+   *   뜨지만, 없으면 그 상자가 **그냥 안 뜨고** 대신 `PIN 을 입력하세요` 칸만 남는다. 그 PIN 은
+   *   매장 확인코드(`store_verify_pin`)인데 대부분 매장이 설정을 안 해 뒀다 — 즉 사장님은
+   *   **자기가 모르는 것을 요구하는 화면**을 보고 막히고, 로그인하라는 말도 버튼도 없다.
+   *
+   * ⚠️ **로그인 벽을 세우지 않는다.** 이 화면은 손님도 연다(자기 QR 을 자기 폰으로 찍으면 같은
+   *   주소다). 벽을 세우면 손님이 자기 이용권을 못 본다. 권하는 한 줄이면 충분하다.
+   *
+   * 두 경우를 가른다 — **없는 길로 보내지 않기 위해서**다:
+   *   · 아예 비로그인 → 카카오 로그인(복귀 주소를 싣는다 — `loginPathFromHere`)
+   *   · 로그인은 했는데 **좌석이 없다** → `/login` 으로 보내면 이미 로그인돼 있어 아무 일도
+   *     안 일어난다. 마이의 '내 가게' 로 보내 매장을 고르게 한다.
+   */
+  const loggedIn = !!getUserIdSync()
 
   // 🛡️ 2026-05-16: URL 로 진입 시 (기본 카메라 스캔) 자동으로 voucher 조회
   useEffect(() => {
@@ -196,6 +218,28 @@ export default function VoucherVerifyPage() {
                   {verifying ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : `✅ "${voucher.product_name}" 제공 (사용 처리)`}
                 </button>
                 <p className="text-[12px] text-emerald-600 mt-2 text-center">POS / T오더 결제 X — 이 메뉴는 이미 결제 완료</p>
+              </div>
+            )}
+
+            {/* 🔑 좌석이 없을 때만. 위 머리말 참조 — 권하는 한 줄이지 벽이 아니다. */}
+            {!isSeller && (
+              <div className="mb-5 rounded-xl bg-surface border border-line p-4">
+                <p className="text-[15px] font-bold text-gray-900 dark:text-white mb-1">
+                  {t('voucher.verify.sellerAsk', { defaultValue: '이 매장의 사장님이신가요?' })}
+                </p>
+                <p className="text-[13px] text-gray-600 dark:text-gray-300 mb-3">
+                  {loggedIn
+                    ? t('voucher.verify.sellerPickStore', { defaultValue: '마이의 ‘내 가게’ 에서 매장을 고르면 확인코드 없이 바로 사용 처리할 수 있어요.' })
+                    : t('voucher.verify.sellerLoginHint', { defaultValue: '로그인하면 확인코드 없이 바로 사용 처리할 수 있어요.' })}
+                </p>
+                <Link
+                  to={loggedIn ? '/user/profile' : loginPathFromHere()}
+                  className="block w-full py-3 rounded-xl bg-brand text-white text-center text-[15px] font-extrabold active:scale-[0.98] transition-transform"
+                >
+                  {loggedIn
+                    ? t('voucher.verify.goMyStores', { defaultValue: '내 가게 열기' })
+                    : t('voucher.verify.goLogin', { defaultValue: '카카오로 로그인' })}
+                </Link>
               </div>
             )}
 

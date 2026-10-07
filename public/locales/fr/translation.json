@@ -5035,7 +5035,12 @@
       "notFound": "Coupon introuvable",
       "processingError": "Erreur lors du traitement",
       "seoTitle": "Vérification du coupon",
-      "seoDescription": "Vérifier le coupon par code QR"
+      "seoDescription": "Vérifier le coupon par code QR",
+      "sellerAsk": "Êtes-vous le gérant de ce commerce ?",
+      "sellerLoginHint": "Connectez-vous pour valider directement, sans code de vérification.",
+      "sellerPickStore": "Choisissez votre commerce dans « Mes commerces » depuis Mon compte pour valider sans code.",
+      "goLogin": "Se connecter avec Kakao",
+      "goMyStores": "Ouvrir mes commerces"
     },
     "qrCode": "Code QR",
     "share": "Partager",

@@ -5035,7 +5035,12 @@
       "notFound": "Voucher not found",
       "processingError": "An error occurred while processing",
       "seoTitle": "Voucher Verification",
-      "seoDescription": "Verify a voucher by QR code"
+      "seoDescription": "Verify a voucher by QR code",
+      "sellerAsk": "Are you the store owner?",
+      "sellerLoginHint": "Sign in to redeem instantly, no verification code needed.",
+      "sellerPickStore": "Pick your store under “My stores” in My page to redeem without a code.",
+      "goLogin": "Sign in with Kakao",
+      "goMyStores": "Open My stores"
     },
     "qrCode": "QR Code",
     "share": "Share",
